@@ -4,7 +4,7 @@
 
 自查修订：2026-10-09；发现及修订范围见第 14 节。新增协议细节仍为提案，未获 A/B 会审或实施批准。
 
-状态：C 的接口提案、资源需求与验证方案及五项讨论决定已整理，交付 PR 正在提交；A/B 会审和实施批准未完成。正式应用代码、运行隔离、恢复和浏览器验收未执行，Issue 保持 Open。
+状态：C 的接口提案、资源需求与验证方案及五项讨论决定已通过 [PR #6](https://github.com/paher-din/XunJie/pull/6) 提交；A/B 会审和实施批准未完成。正式应用代码、运行隔离、恢复和浏览器验收未执行，Issue 保持 Open。
 
 ## 1. 范围与文档边界
 
@@ -280,11 +280,11 @@ PR 关联 #4，说明独立文档边界、来源版本、章节/参数、拒绝/
 | git diff --check | 通过；新增任务文档另检查末尾空白与文件编码 |
 | 受保护文件 | 本任务误加 TECH_DESIGN 内容及恢复时引入的换行变化已撤回，字节与任务开始时版本一致；PRD 未改，product/planning/reference 无内容 diff；只同步本人任务文档和 README 导航 |
 | 应用/隔离/资源/恢复/浏览器 | 未执行，无正式代码/环境，不计入 AC/NFR 通过数 |
-| 交付 PR/A/B 会审 | 项目负责人已于 2026-10-09 明确授权提交 C0 文档 PR，正在提交；A/B 会审未完成，不能由 C 自行代签 |
+| 交付 PR/A/B 会审 | 项目负责人已于 2026-10-09 明确授权提交 C0 文档 PR；[PR #6](https://github.com/paher-din/XunJie/pull/6) 已创建且为 Open，A/B 会审未完成，不能由 C 自行代签 |
 
-待授权维护者汇总：MVP_SPEC 第 10 节登记“C0 独立任务文档交付稿已整理，接口/验证方案覆盖九项任务；无代码、业务及浏览器验收未执行，PR/会审/参数冻结待完成”；TEAM_WORK_PLAN/G0 跟踪登记同一真实状态。受保护基线的具体契约合并只在批准相应提案并授权写入后处理，本任务不直接修改这些文件。
+待授权维护者汇总：MVP_SPEC 第 10 节登记“C0 三份独立任务文档已提交 PR #6，接口/验证方案覆盖九项任务、18 个拟执行用例及五项已确认讨论取舍；无代码、业务及浏览器验收未执行，A/B 会审及参数冻结待完成”；TEAM_WORK_PLAN/G0 跟踪登记同一真实状态。受保护基线的具体契约合并只在批准相应提案并授权写入后处理，本任务不直接修改这些文件。
 
-PR 准备：标题 `docs: deliver C0 workspace, records and runner proposals`；提交范围为本文、C0_GLOSSARY、C0_ADR_0001_UNIFIED_RECOVERY 及 README 中的 C0 导航条目，关联 #4 而不自动关闭。不纳入并行技能安装/接入任务的文件或 README 改动。说明 C0 九项覆盖、参考提交/差异、18 个后续用例、五项已确认讨论决定与实际文档检查结果，明确 A/B 会审、D-01/D-03、基线汇总及业务验收尚未完成。工作规范已由仓库独立提交 `8a0e332` 更新，当前 C0 不重复提交或改写该规范。
+PR 交付：标题 `docs: propose C0 workspace, records and runner contracts`，[PR #6](https://github.com/paher-din/XunJie/pull/6)，分支 `codex/c0-contract-review` → `main`。范围为本文、C0_GLOSSARY、C0_ADR_0001_UNIFIED_RECOVERY 及 README 中的 C0 导航条目，关联 #4 而不自动关闭。不纳入并行技能安装/接入任务的文件或 README 改动。正文说明九项覆盖、参考差异、18 个拟执行用例、五项讨论决定及实际文档检查，A/B 会审、D-01/D-03、基线汇总和业务验收尚未完成。工作规范已由独立提交 `8a0e332` 更新，当前 C0 不重复提交或改写该规范。
 
 ## 14. 2026-10-09 自查记录
 
@@ -340,6 +340,8 @@ PR 准备：标题 `docs: deliver C0 workspace, records and runner proposals`；
 
 ## 16. PR 交付记录
 
-2026-10-09，项目负责人明确要求“提交pr吧”，授权公开提交当前 C0 文档 PR。范围为三份 C0 文档及 README 的 C0 导航条目；在独立工作树制作提交，不带入并行技能安装/接入的文件、配置或 README 变更。当前正在提交，后续记录实际 PR 身份及提交工作树的验证结果；此授权不包含合并 PR、关闭 Issue、改写产品基线或实施应用。
+2026-10-09，项目负责人明确要求“提交pr吧”，授权公开提交当前 C0 文档 PR。已创建 [PR #6](https://github.com/paher-din/XunJie/pull/6)，分支 `codex/c0-contract-review` → `main`，状态 Open，并附到当前任务。范围为三份 C0 文档及 README 的 C0 导航条目；使用独立工作树，不带入并行技能安装/接入文件、配置或 README 变更。此授权不包含合并 PR、关闭 Issue、改写产品基线或实施应用。
 
 提交工作树验证：`node --input-type=module` 内联检查通过，12 份 Markdown、73 处仓库文件/锚点引用、18 个拟执行用例、五项已确认讨论取舍；三个 C0 文档编码/空白/本地路径依赖检查、`git diff --check` 通过。README 仅增加一条 C0 导航，AGENTS、product/planning/reference 和 .gitignore 无差异。此前源工作空间的 14 份/92 处检查包含并行任务文档，提交工作树仅包含当前 PR 范围，分别记录，不混算业务验收。
+
+GitHub 回读：`gh pr view 6 --repo paher-din/XunJie --json number,title,state,url,baseRefName,headRefName,files,body` 确认 PR 状态、分支、四个文件及正文模板一致；`gh issue view 4 --repo paher-din/XunJie --json number,state,title,url` 确认 #4 仍为 Open。待 A/B 会审及实际验证，不宣称任务关闭或产品验收通过。
