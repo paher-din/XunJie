@@ -1,8 +1,8 @@
 # G0：缺口收敛与首批实施提案
 
-日期：2026-10-09。任务：[G0 #1](https://github.com/paher-din/XunJie/issues/1)。状态：**负责人提供 TextScope 外部参考并确认学生在 Web 学生空间开发，基础数据方案已确认；经过筛选的活动适配、技术配置、共享契约与分段实施方案待审阅。没有照搬候选全部要求、冒充 A/B/C 签认或宣布 G0 已通过。**
+日期：2026-10-09。任务：[G0 #1](https://github.com/paher-din/XunJie/issues/1)。状态：**项目负责人已统一批准剩余提案，并授权同步 PRD、MVP_SPEC、TECH_DESIGN、TEAM_WORK_PLAN、G0_ISSUES。正在按批准范围合入基线，文档验证后完成 G0 准备门禁；不记为 A/B/C 逐人签认或产品已验收。** 授权和执行记录见 §10。
 
-依据：已读 [AGENTS](../../AGENTS.md)、[README](../../README.md)、[PRD](../product/PRD.md)、[MVP_SPEC](../product/MVP_SPEC.md)、[TECH_DESIGN](../product/TECH_DESIGN.md)、[TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md)、[两份参考](../reference/ENGINEERING_HANDOFF.md)以及 A0/B0/C0 交付。详细差异见 [G0 核对稿](G0_SCOPE_CONTRACT_GATE_REVIEW.md)。本次可写本人 G0 任务稿和 README；产品/规划/规范/参考及其他成员记录只读。
+依据：已读 [AGENTS](../../AGENTS.md)、[README](../../README.md)、[PRD](../product/PRD.md)、[MVP_SPEC](../product/MVP_SPEC.md)、[TECH_DESIGN](../product/TECH_DESIGN.md)、[TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md)、[工程参考](../reference/ENGINEERING_HANDOFF.md)以及 A0/B0/C0 交付。详细差异见 [G0 核对稿](G0_SCOPE_CONTRACT_GATE_REVIEW.md)。以下 §2～9 保留提交裁决时的提案/验证过程；最新授权、正式基线位置及执行状态见 §10。AGENTS/reference/其他成员任务继续只读，五份基线仅在本次明确范围内获授权。
 
 ## 1. 已明确的决定
 
@@ -144,3 +144,19 @@ TextScope report 产生文件，当前 RunRecord/可信验证描述尚未把其�
 没有安装依赖、调用付费模型、建数据库、配置 VM 或执行学生程序；教学效果和全部 AC/NFR 业务部分未验收。实际三方签认、剩余提案批准、五份基线写入授权及具体实施批准仍缺，本文可供负责人审阅，不能单凭这些静态通过关闭 G0。
 
 直接交付：本稿、活动适配稿、G0 当前记录及 README 已以 [fab0a5b](https://github.com/paher-din/XunJie/commit/fab0a5ba1437fce1ce19401bebc1e9a65fb9f861) 非强制推送 main，远程 ref 与本地一致；G0 Issue 已通过 gh 同步确认的 Core→Report/先备/数据规则及提案入口，正文逐字回读一致，保持 Open，仅 D-04 勾选。本条交付事实随任务追加记录，不把公开交付当作方案已批准。
+
+## 10. 2026-10-09 负责人统一裁决及基线同步
+
+项目负责人明确指示：“批准这些剩余提案作为负责人统一裁决，并授权同步 PRD、MVP_SPEC、TECH_DESIGN、TEAM_WORK_PLAN、G0_ISSUES”。批准范围为 §2～7、活动稿 TS-P01～06 与 G0-C01～15，保留原 M/AC/NFR、分工、UI 接入和红线门禁。裁决者为项目负责人，不补造 A/B/C 各自签名、模型/执行/浏览器通过记录。
+
+G0 执行 Agent 作为本次获授权维护者，按 PRD→MVP→TECH 同步五份基线和本人任务记录/README，合入具体行为和共享契约，不仅追加提案链接。若基线采纳使旧 A0 文档检查工具的“两个接口仍属新增提案”假设失效，仅修正相关检查兼容及内存反例测试，作为本次必要验证适配；不改其他成员任务稿、AGENTS/reference 或应用代码。
+
+首批实施方案的批准只确定 §7 的范围和进入条件；本工作项完成 G0 文档与门禁，不开始应用编码、依赖安装、建表/迁移、凭据/CI、VM 配置、真实数据或付费模型调用、生产部署。尚未具备的环境/数据条件按明确责任与触发时点后置，不能伪造就绪或取消验收。
+
+正式内容已合入：PRD v0.3 的课程/活动/数据与 D 表，MVP v0.3 §1.3 的 TS 行为/教学和 §8 的分段进入，TECH v0.3 §2～12 的版本/目录、27 条变更命令、身份/引用/信封/角色、同 tx 候选/纠正、停止/覆盖/恢复、运行参数与报告产物、模型/数据/后置门禁；TEAM v0.3 登记统一裁决和责任，G0_ISSUES 保留发布历史并登记当前决定。没有仅用本任务链接代替共享契约正文。
+
+验证工具适配：基线采纳后原 7 项测试为 5/7，失败是旧工具把三条 G0 新接口当 A0 遗漏、把已采纳的反馈/试评仍要求为新增提案。工具保留 A0 原编号/矩阵/JSON/映射/路径检查，新增 G0 已批准接口必在基线、未知变更接口拒绝及旧提案阶段兼容；14/14 内存测试通过，没有关闭检查或改写 A0 原稿。完整文档与保护范围复核进行中，发布后只关闭 G0 #1，其他子 Issue 由主责维护。
+
+最终静态核查通过：19 份项目 Markdown、151 处仓库文件/锚点引用、27 条当前变更接口；14/14 检查器回归、脚本语法与 Git 空白检查。独立只读断言核对 M-01～10、AC-01～16、NFR-01～06 覆盖和原 AC/NFR 表逐字未变，角色矩阵/依赖图/各实施任务正文、既有 MVP 历史行及 Issue 发布正文保留；15 项契约在正式 TECH 正文可查。保护范围核验：AGENTS/reference/原 A0/B0/C0 任务稿未改，写入为五份授权基线、README/三份本人 G0 任务稿、必要两份只读检查工具。
+
+首次合入章节 patch 有上下文定位失败，失败未写出；拆为确切片段后完成。Git 空白检查曾发现新版本标题沿用硬换行尾空格，已只移除新改行的尾空白后通过，未批量格式化历史文档。本次没有任何应用业务通过数；准备门禁可在发布/外部回读后收口，实际 G1～G4 与后置门禁保持。

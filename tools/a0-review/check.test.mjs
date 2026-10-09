@@ -6,6 +6,8 @@ import { checkRepository } from './check.mjs';
 
 const readmeUrl = new URL('../../README.md', import.meta.url);
 const readme = readFileSync(readmeUrl, 'utf8');
+const technicalPath = 'docs/product/TECH_DESIGN.md';
+const technical = readFileSync(new URL('../../docs/product/TECH_DESIGN.md', import.meta.url), 'utf8');
 const absolutePath = fileURLToPath(readmeUrl);
 const errorsFor = (target) => checkRepository(undefined, {
   'README.md': `${readme}\n[fixture](${target})\n`,
@@ -30,3 +32,34 @@ for (const [name, target, expected] of [
     assert.ok(errorsFor(target).some((error) => error.includes(expected)));
   });
 }
+
+test('legacy proposal routes remain valid before G0 adoption', () => {
+  const newRoutes = ['feedback', 'rubric-trials', 'sample-runs', 'snapshots'];
+  const legacy = technical.split(/\r?\n/).filter((line) =>
+    !line.startsWith('| POST /api/activities/:id/controls') &&
+    !newRoutes.some((name) => line.startsWith('| POST ') && line.includes(`/:id/${name} |`)),
+  ).join('\n').replace(/^状态：.*$/m, '状态：推荐技术基线；尚未批准。');
+  const result = checkRepository(undefined, { [technicalPath]: legacy });
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.g0Approved, false);
+  assert.equal(result.baselineMutationRoutes, 22);
+  assert.equal(result.additionalProposedRoutes.length, 2);
+});
+
+for (const route of [
+  'POST /api/attempts/:id/feedback',
+  'POST /api/blueprints/:id/rubric-trials',
+  'POST /api/activities/:id/controls',
+  'POST /api/blueprints/:id/sample-runs',
+  'POST /api/attempts/:id/snapshots',
+]) {
+  test(`rejects missing approved route ${route}`, () => {
+    const broken = technical.split(/\r?\n/).filter((line) => !line.startsWith(`| ${route} |`)).join('\n');
+    assert.ok(checkRepository(undefined, { [technicalPath]: broken }).errors.some((error) => error.includes(route)));
+  });
+}
+
+test('G0 adoption does not allow arbitrary command additions', () => {
+  const broken = technical.replace('## 6. 教学决策与上下文', 'POST /api/unsupported\n\n## 6. 教学决策与上下文');
+  assert.ok(checkRepository(undefined, { [technicalPath]: broken }).errors.some((error) => error.includes('POST /api/unsupported')));
+});

@@ -125,15 +125,24 @@ export function checkRepository(root = repositoryRoot, overrides = {}) {
   const baselineCommandSection = technical.split('## 5. ')[1]?.split('## 6. ')[0] ?? '';
   const baselineRoutes = routes(baselineCommandSection, ['POST', 'PATCH']);
   const proposedRoutes = routes(commands.join('\n'), ['POST', 'PATCH']);
-  const missingBaselineRoutes = [...baselineRoutes].filter((route) => !proposedRoutes.has(route));
+  const expectedAdditionalRoutes = new Set(['POST /api/attempts/:id/feedback', 'POST /api/blueprints/:id/rubric-trials']);
+  // The historical A0 proposal predates these three G0-approved commands.
+  const approvedG0Routes = new Set(['POST /api/activities/:id/controls', 'POST /api/blueprints/:id/sample-runs', 'POST /api/attempts/:id/snapshots']);
+  const g0Approved = /^状态：.*已获负责人统一批准/m.test(technical);
+  const missingBaselineRoutes = [...baselineRoutes].filter((route) => !proposedRoutes.has(route) && !(g0Approved && approvedG0Routes.has(route)));
   errors.push(...missingBaselineRoutes.map((route) => `Baseline command omitted: ${route}`));
   const additionalRoutes = [...proposedRoutes].filter((route) => !baselineRoutes.has(route));
-  const expectedAdditionalRoutes = new Set(['POST /api/attempts/:id/feedback', 'POST /api/blueprints/:id/rubric-trials']);
   for (const route of additionalRoutes) {
     if (!expectedAdditionalRoutes.has(route)) errors.push(`Undocumented command addition: ${route}`);
   }
   for (const route of expectedAdditionalRoutes) {
-    if (!additionalRoutes.includes(route)) errors.push(`Missing proposed completion route: ${route}`);
+    if (!proposedRoutes.has(route)) errors.push(`Missing proposed completion route: ${route}`);
+    if (g0Approved && !baselineRoutes.has(route)) errors.push(`Missing adopted A0 route: ${route}`);
+  }
+  if (g0Approved) {
+    for (const route of approvedG0Routes) {
+      if (!baselineRoutes.has(route)) errors.push(`Missing G0 baseline route: ${route}`);
+    }
   }
 
   for (const file of [taskPath, 'README.md']) {
@@ -166,6 +175,8 @@ export function checkRepository(root = repositoryRoot, overrides = {}) {
     firstBatches: batches.length,
     baselineMutationRoutes: baselineRoutes.size,
     additionalProposedRoutes: additionalRoutes,
+    g0Approved,
+    approvedG0Extensions: g0Approved ? [...approvedG0Routes] : [],
     businessTests: 'NOT_EXECUTED',
     errors,
   };
