@@ -16,6 +16,8 @@
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
 | [工程衔接说明](docs/reference/ENGINEERING_HANDOFF.md) | 可沿用的 IDE/记录/运行/诊断契约与历史试验限制 |
+| [模型与预算调研](docs/reference/MODEL_VENDOR_RESEARCH.md) | D-02 提案：主模型候选、结构化输出/引用、数据条款、价格与预算估算（待批准） |
+| [合成工程样例](docs/reference/TEACHING_EXAMPLES.md) | 三类教学任务的隔离测试样例与预期边界（不进入真实学生记录） |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
