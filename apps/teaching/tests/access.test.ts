@@ -110,6 +110,29 @@ test('a real database failure during password verification cannot ACK a session 
   } finally { await f.close(); }
 });
 
+test('the mature session plugin propagates a real store save failure before an HTTP acknowledgement', async () => {
+  const f = await fixture();
+  let entered = false;
+  let acknowledged = false;
+  f.app.post('/fixture/save-failure', async request => {
+    entered = true;
+    f.db.close();
+    await request.session.save();
+    acknowledged = true;
+    return { requestId: request.id, data: { saved: true } };
+  });
+  try {
+    const signed = await login(f);
+    const response = await f.app.inject({ method: 'POST', url: '/fixture/save-failure', headers: { origin, cookie: signed.cookie, 'x-csrf-token': signed.csrfToken } });
+    assert.equal(entered, true);
+    assert.equal(acknowledged, false);
+    assert.equal(response.statusCode, 503);
+    assert.equal(response.json().error.code, 'PERSISTENCE_UNAVAILABLE');
+    assert.equal(response.json().data, undefined);
+    assert.equal(response.cookies.some(c => c.value), false);
+  } finally { await f.close(); }
+});
+
 test('session identity and reserved account attempts survive an actual process restart using IPC-only signing material', { timeout: 15000 }, async t => {
   const f = await fixture();
   try {

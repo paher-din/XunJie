@@ -1,8 +1,8 @@
 # A1：应用基础、权限与短事务实施记录
 
-主责：A。任务：[Issue #10](https://github.com/paher-din/XunJie/issues/10)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)，接缝：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。日期：2026-10-09（Asia/Shanghai）。开始基线：bc1d466a073521235e54cb6995bfcc476619fafd。
+主责：A。任务：[Issue #10](https://github.com/paher-din/XunJie/issues/10)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)，接缝：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。开始日期：2026-10-09，最新批次：2026-10-10（Asia/Shanghai）。开始基线：bc1d466a073521235e54cb6995bfcc476619fafd。
 
-状态：**P1 已完成本地交付，独立审查通过；后续参数/原生加载准备已验证，深化的 P2/P3 操作提案见 §8，待具体批准；P2/P3 未实施。A1/G1 未完成。**
+状态：**P1 已完成本地交付并审查通过；2026-10-10 已批准并实现 A 自有独立合成认证/短事务批次（§9，28/28 测试通过，当前审查待收口）。完整 P2/P3 的 C2 资源/业务链及真实入口仍未完成，A1/G1 未完成。§8 的待批准状态为历史记录。**
 
 ## 1. 已读依据与本批授权
 
@@ -233,11 +233,11 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 
 项目负责人在 §8.4 的准确操作/风险提请后明确指示“开始”，批准该独立批次：两个精确依赖、§8.3 参数与五表提案、仅新建临时合成库的 SQL 和 §8.5 验证接缝。§8 的“待批准/未执行”保留为当时记录，本节记录较新状态。没有授权生产数据、既有库迁移、密钥文件、共享接口新增字段、受保护基线修改或远程发布。
 
-编码前已读 AGENTS、README、PRD §5/8/9、MVP_SPEC M10 与 §4/5/6、TECH_DESIGN §4/5/9/10/12 和本任务 §8。范围是 A 自有 access/db 与测试、共享 package/lock、README/本记录；对应 AC-02 与 NFR-04 的身份/课程部分、真实短事务基础。AC-06/08/15 的真实资源、旧 revision、回执/Job/Event 与教师纠正并发待 C2/下游，不提前计通过。
+编码前已读 AGENTS、README、PRD §5/8/9、MVP_SPEC M-10 与 §4/5/6、TECH_DESIGN §4/5/9/10/12 和本任务 §8。范围是 A 自有 access/db 与测试、共享 package/lock、README/本记录；对应 AC-02 与 NFR-04 的身份/课程部分、真实短事务基础。AC-06/08/15 的真实资源、旧 revision、回执/Job/Event 与教师纠正并发待 C2/下游，不提前计通过。
 
 实施细节：合成验证工厂独立于默认 main；保留 ready=503，不监听认证网络入口。登录/退出使用既定变更入口；CSRF 仅作为合成验证工厂登录结果，当前 Session GET 路径与公共返回字段保持待共同确认，不加入共享 contracts。测试 fixture 路由仅验证服务端授权能力，不成为应用 API。插件显式 save 成功后才回登录响应，Secure cookie 不因注入测试降级；app.inject 的 HTTPS Origin 不证明实际 TLS。事务公开接缝仅暴露同连接同步 SQL capability，测试通过该接缝观察提交/回滚；竞争验证的第二连接/子进程仅打开本批自身新建库。库关闭后保留文件。
 
-当前状态：实施中。实际 SQL、认证与事务验证结果待下节填写，不以批准替代运行事实。
+启动时状态：实施中；当时实际 SQL、认证与事务验证结果待填写。现状以 §9.2/9.3 的实际结果为准，不以批准替代运行事实。
 
 ### 9.1 已实现与代码位置
 
@@ -255,13 +255,13 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 | --- | --- |
 | Node 24.21.0 / npm 11.19.0；npm install --no-audit --no-fund | 退出 0，精确 lock 已更新；原生脚本提示保留，不自动 approve |
 | npm run typecheck | 通过；初次发现 scrypt promisify 重载类型不接纳第 4 参数，改为标准 callback 的显式 Promise 包装后通过，没有绕过检查 |
-| npm test（含 pretest build） | **27/27，通过，0 跳过**；其中原 P1 14 项，本批 13 项；总耗时约 44.63 s，不是产品时延/NFR 统计 |
+| npm test（含 pretest build） | 初次 **27/27** 通过；补插件保存失败精确用例后最终 **28/28，通过，0 跳过**；其中原 P1 14 项，本批 14 项；最终总耗时约 47.82 s，不是产品时延/NFR 统计 |
 | sqlite_version/实际读回 PRAGMA | **3.53.4 / foreign_keys=1 / journal_mode=wal / synchronous=2 / busy_timeout=1000**；已执行真实 SQL，超过最低修复版本 3.51.3 |
 | 认证/授权/请求防护 | 合法合成登录/退出，错误密码/未知账号同 401；role/studentId 拒绝；一用户两课程不同角色、非任课教师、权限/账号变化后重查；cookie Secure/HttpOnly/Lax、轮换/签名篡改、精确闲置/绝对期限；Origin/JSON/CSRF 缺失/伪造/跨会话拒绝通过 |
 | 限流/持久性 | 12 同时到达仅 2 个哈希获准登录，其余 429，10 账号尝试预留不会回退；窗口恰到 15 分钟重置，成功也计数；50 个不同未知账号耗尽同 IP 窗口。实际关闭/重开库与应用后不重置；独立子进程用 IPC-only 原签名材料读回既有身份且保留账号限流 |
-| Session/故障/隐私 | 撤销与过期 token、迟到 set、不可信身份和匿名持久写拒绝；关闭真实 DB 注入登录中故障，503/PERSISTENCE_UNAVAILABLE，无成功 data/有效 cookie；响应/应用日志无密码、账号输入、摘要字段或真实私有路径，存储投影无原 cookie/CSRF/密码/IP |
+| Session/故障/隐私 | 撤销与过期 token、迟到 set、不可信身份和匿名持久写拒绝；关闭真实 DB 注入登录中故障，503/PERSISTENCE_UNAVAILABLE，无成功 data/有效 cookie。另在已登录/已校验 CSRF 的测试 handler 中关闭真实 DB，再调用成熟插件 session.save：handler 确已进入、save 后 ACK 分支未执行、HTTP 503，无成功 data/有效 cookie，明确验证保存失败传播。响应/应用日志无密码、账号输入、摘要字段或真实私有路径，存储投影无原 cookie/CSRF/密码/IP |
 | 短事务/崩溃 | 外键/唯一约束、thenable、嵌套、失效 capability 拒绝；失败无前置行。真实第二连接 CAS 失配回滚整批；子进程持锁时另连接 busy 且回调未执行，强制结束后未提交行消失、已确认行保留，再次可提交 |
-| 文档检查/检查器回归/Git 空白 | 23 份/201 处引用/27 条正式变更路由，通过；16/16 回归通过；git diff --check 通过（换行提示不影响空白检查） |
+| 文档检查/检查器回归/Git 空白 | 更新记录后 23 份/210 处引用/27 条正式变更路由，通过；16/16 回归通过；git diff --check 通过（换行提示不影响空白检查） |
 
 第一条新事务/登录测试曾因模块尚未实现退出 1，随后实现通过；新方案按约定接缝逐步补验证，失败与修复未改产品验收条件。全部临时库仍在各自系统临时目录，不调用清理。驱动平台证据仅本机 Windows x64；故障用 SIGKILL 终止自有子进程，不声称 POSIX 优雅信号或 C5 备份恢复已验收。
 
@@ -274,3 +274,5 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 2026-10-10 再查远程 #10/#14：均 Open，#14 无评论交付证据；不据此推断成员本地未工作。下一步提供 A 工程/独立验证代码供 C2 核对，同连接能力和公共字段共同确认后，再接真实资源与业务原子链。实际签名材料持续性测试只在同一个受控父进程持有期间成立，真实运维密钥保存/轮换/恢复未执行；真实网络侧信道与目标节点 10 会话性能未执行。
 
 本批仅 README、本任务稿、A 自有代码/测试与 package/lock 有变化；受保护基线未修改。待获授权维护者将本节实际进度/边界汇总 MVP_SPEC §10 与相关技术接缝，未宣称基线已同步。远程推送/PR 未执行。
+
+审查固定基线 6da3cd8，候选本地实现提交 3db1959；Standards：硬违规 0 项、可操作异味 0 项；Spec：未解决发现 0 项。已修订任务顶部历史状态与引用数，追加的插件保存失败精确用例和记录补充等待两轴复核。提交含任务记录，未推送或创建 PR；此前 P1 与准备阶段提交保留。
