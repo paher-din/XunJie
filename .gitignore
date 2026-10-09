@@ -6,6 +6,13 @@ Thumbs.db
 .vscode/
 .idea/
 
+# DSH local skill root: a junction pointing at skills/, not real files.
+# Ignored so git add does not follow the link and duplicate every skill file.
+.dsh/
+
+# Codex local skill junction; the source files live in skills/.
+/.agents/skills/
+
 # Node
 node_modules/
 dist/

@@ -13,6 +13,7 @@
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | A/B/C 的详细任务、并行与等待关系、交接和验收责任；UI 成员仅在最终接入阶段参与 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
+| [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
 | [工程衔接说明](docs/reference/ENGINEERING_HANDOFF.md) | 可沿用的 IDE/记录/运行/诊断契约与历史试验限制 |
@@ -24,6 +25,27 @@
 开发 Agent 必须遵守 [Agent 权限与项目边界](AGENTS.md#agent-权限与项目边界硬性要求)：`docs/product/` 整体默认只读，包括 MVP_SPEC 的进度记录；规范、共同计划和参考材料同样受保护。执行任务、完成 Issue 或要求“文档优先”不自动授予基线修改权限。边界需要调整时，先提出差异，再由项目负责人明确授权指定维护者修改对应文件。
 
 按 [文档优先规则](AGENTS.md#文档优先硬性要求)，编码前阅读相关规格，方案、差异、进展和验证结果写入 `docs/tasks/<任务编号>_<主题>.md`；影响产品结果或共享契约的提案待确认后实施。需同步产品基线时列出汇总请求，由获授权维护者处理。代码交付必须包含对应任务记录；基线汇总未处理时如实标为待汇总，不越权写入或宣称已同步。
+
+## 开发 skills
+
+项目安装的 27 个技能包保存在 [skills/](skills/)，来源与安装清单见 [W0](docs/tasks/W0_AGENT_SKILLS_INSTALL.md)，Codex 接入与验证见 [W1](docs/tasks/W1_CODEX_SKILLS_CONFIG.md)。Codex 通过 `.agents/skills` 发现本项目技能，该路径链接到 `skills/`，维护时只编辑实体目录。
+
+本机已建立入口。其他工作副本首次接入时，在仓库根目录执行：
+
+```powershell
+# Windows：无需复制技能，也无需管理员权限
+New-Item -ItemType Directory -Path .agents -Force | Out-Null
+New-Item -ItemType Junction -Path .agents\skills -Target (Resolve-Path .\skills).Path
+```
+
+```bash
+# macOS / Linux
+mkdir -p .agents && ln -s ../skills .agents/skills
+```
+
+目录联接本身不随 Git 分发，`/.agents/skills/` 已忽略，避免重复纳入技能文件；已有 `.dsh/skills` 入口保留。可在 Codex 输入 `$code-review`、`$diagnosing-bugs` 或 `$tdd` 选择技能；有全局同名技能时按项目路径选择。Codex 会自动发现变更，若选择器没有刷新，重启 Codex，参见 [官方技能文档](https://learn.chatgpt.com/docs/build-skills)。
+
+技能使用遵守 [AGENTS.md](AGENTS.md) 的授权、文档与操作边界。议题、标签和领域文档的 `setup-matt-pocock-skills` 初始化流程属于另一个配置范围，本次仅接入技能发现。
 
 ## 状态
 
