@@ -72,7 +72,7 @@ A3/B2 负责传入 A/C 构造的可信信封与获准正文。B 只产经校验�
 ## 5. Git 交付状态
 
 - 实现提交：`cdc4ac4`（`feat: add B1 synthetic tutoring core`）。
-- 分支：`codex/b1-agent-core`；首轮审查修复将在同一分支以独立提交交付。
-- 上游 PR：[PR #15](https://github.com/paher-din/XunJie/pull/15) 保持开放，正文关联 `Refs #11`。合成首批交接不改变 Issue #11 的真实 SDK/typecheck/model 验证等关闭条件。
+- 分支：`codex/b1-agent-core`；首轮审查修复提交 `52b8800`（`fix: address B1 review feedback`）已推送到 fork。
+- 上游 PR：[PR #15](https://github.com/paher-din/XunJie/pull/15) 保持开放，正文已改为 `Refs #11`，并已发布修复及复验摘要请求负责人复审。合成首批交接不改变 Issue #11 的真实 SDK/typecheck/model 验证等关闭条件。
 - 审查线程由负责人复核后处理，提交方不自行标记解决。
 - `.trae/` 保持原有未跟踪状态，未暂存、提交或推送。
