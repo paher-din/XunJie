@@ -1,6 +1,6 @@
 # B0：模型、数据处理与预算提案复核
 
-核验日期：2026-10-09（Asia/Shanghai）。主责：B。关联 [Issue #3](https://github.com/paher-din/XunJie/issues/3)、[B0 交接稿](B0_模型帮助分析契约.md)。状态：独立研究提案，D-02 未批准；不接入真实数据、不运行付费调用、不决定采购/部署。
+核验日期：2026-10-09（Asia/Shanghai）。主责：B。关联 [Issue #3](https://github.com/paher-din/XunJie/issues/3)、[B0 交接稿](B0_模型帮助分析契约.md)、交付 [PR #8](https://github.com/paher-din/XunJie/pull/8)。状态：独立研究提案，D-02 未批准；不接入真实数据、不运行付费调用、不决定采购/部署。
 
 本稿替代原 PR 研究入口，纠正精确型号、区域阶梯与结构化能力。旧 `docs/reference/` 两份文件已按负责人 2026-10-09 授权删除，原记录保留在 Git 历史，本稿为当前结论。官方链接存在不代表事实成立：表中分别注明正文可核验、条件/不足或读取限制；第三方价表不作关键主张依据。
 
