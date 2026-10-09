@@ -27,6 +27,7 @@
 | [B0 模型、帮助与候选分析交接稿](docs/tasks/B0_模型帮助分析契约.md) | 三类输入/输出、可信来源、保存归属、拒绝与取消提案；待 A/C 会审 |
 | [B0 模型与预算复核](docs/tasks/B0_MODEL_VENDOR_RESEARCH.md) | 精确型号/区域/结构化方式、数据条款证据状态及预算/配额建议；D-02 待批准 |
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
+| [B1 合成 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、注入式 DeepSeek 适配边界及实际验证记录 |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
@@ -67,6 +68,14 @@ node --test tools/a0-review/check.test.mjs
 ```
 
 第一条检查项目文档的行内文件/目录引用、A0 既有编号/矩阵/JSON/映射与接口覆盖，兼容 G0 采纳后的 27 条变更接口；第二条检查路径、合法目录导航/错误目录锚点、旧提案兼容、必需接口缺失和未知接口反例，均只在内存构造。失败返回退出码 1。静态通过不校验业务/权限/状态语义、真实模型或执行隔离，不创建数据库或启动应用；skills 内示例不作为产品文档验收入口，正式应用仍未实现。
+
+B1 合成核心可在尚无共享 package/锁文件时使用 Node.js 24 的原生 TypeScript type-stripping 验证，不安装依赖：
+
+```powershell
+node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.test.ts
+```
+
+该命令只验证 B1 合成领域逻辑和注入式适配边界，不是 TypeScript 7 静态 typecheck、Zod/AI SDK 实包兼容或真实 DeepSeek 调用。完整记录见 [B1 任务文档](docs/tasks/B1_AGENT_CORE.md)。
 
 ## 状态
 
