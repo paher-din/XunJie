@@ -11,6 +11,12 @@
 | B0 | B | [#3](https://github.com/paher-din/XunJie/issues/3) |
 | C0 | C | [#4](https://github.com/paher-din/XunJie/issues/4) |
 
+## 2026-10-09 当前调整
+
+项目负责人已取消 A/B/C 实际投入时间和首批交付日期的强制登记要求，并授权同步 PRD、MVP_SPEC、TECH_DESIGN、TEAM_WORK_PLAN、本文件和 GitHub G0 正文；交付采用直接推送 main。当前 D-04 为：沿用 TEAM 的职责、任务依赖、阶段交付与验收主责，不登记投入时间或首批交付日期。其余 G0 退出项继续有效，G0 保持开放。
+
+取消要求的授权与执行结果见 [G0 任务记录](../tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md#10-2026-10-09-授权与直接交付记录)。下方是 2026-10-08 发布时正文的历史快照，其中原 D-04 的日期要求已被本段决定取代，不再作为执行要求；教学里程碑及原验证事实保留。
+
 以下保存发布时的任务正文，实时任务进度以 GitHub Issue 为准。正式业务契约仍以 [TECH_DESIGN](../product/TECH_DESIGN.md) 为准，完成条件以 [MVP_SPEC](../product/MVP_SPEC.md) 和 [TEAM_WORK_PLAN](TEAM_WORK_PLAN.md) 为准。Issue 关闭要有交付 PR、评审结论和对应记录，不改变 G0～G4 门禁。
 
 ## [G0] 范围冻结、契约会审与实施门禁
