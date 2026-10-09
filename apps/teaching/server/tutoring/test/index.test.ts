@@ -155,6 +155,83 @@ test("blueprint, patch, and rubric trial remain teacher-reviewable proposals", a
   }
 });
 
+test("teacher validators rebuild every body mode without unknown model fields", async (t) => {
+  const cases = [
+    {
+      mode: "candidates",
+      request: teacherRequest(),
+      expected: validCandidateBody(),
+      tainted: {
+        ...validCandidateBody(),
+        candidates: [{ ...validCandidateBody().candidates[0], reasoning_content: "private reasoning" }],
+        scope: { courseId: "other-course" },
+      },
+    },
+    {
+      mode: "blueprint",
+      request: teacherRequest({ mode: "blueprint" }),
+      expected: {
+        kind: "blueprint",
+        problem: "Analyze text",
+        audience: "C learners",
+        artifact: "TextScope",
+        routes: ["array", "tree"],
+        goals: ["explain pointer use"],
+        milestones: ["stats"],
+        resources: ["resource-1"],
+        helpPolicy: "bounded hints",
+        checkpoints: ["course_check"],
+        rubric: ["correctness"],
+        goalEvidenceLinks: ["goal-1:evidence-1"],
+        unresolved: [],
+      },
+    },
+    {
+      mode: "patch",
+      request: teacherRequest({ mode: "patch", blueprintId: "blueprint-1", baseRevision: 3 }),
+      expected: {
+        kind: "patch",
+        changes: [{ field: "helpPolicy", value: "bounded hints" }],
+        rationale: "Align help with the checkpoint.",
+        resourceRefs: ["resource-1"],
+        affectedLinks: ["goal-1:evidence-1"],
+        unresolved: [],
+      },
+    },
+    {
+      mode: "rubric_trial",
+      request: teacherRequest({ mode: "rubric_trial" }),
+      expected: {
+        kind: "rubric_trial",
+        criterionComments: ["The criterion is observable."],
+        ambiguities: [],
+        suggestedChanges: [],
+        sampleRefs: ["evidence-1"],
+        unresolved: [],
+      },
+    },
+  ] as const;
+
+  for (const item of cases) {
+    await t.test(item.mode, async () => {
+      const tainted = "tainted" in item
+        ? item.tainted
+        : {
+            ...item.expected,
+            reasoning_content: "private reasoning",
+            scope: { courseId: "other-course" },
+            ...(item.mode === "patch"
+              ? { changes: item.expected.changes.map((change) => ({ ...change, internal: "drop-me" })) }
+              : {}),
+          };
+      const provider = new SyntheticProvider([{ body: tainted }]);
+      const result = await generateTeacherProposal(item.request, { provider });
+      assert.equal(result.outcome, "success");
+      if (result.outcome === "success") assert.deepEqual(result.body, item.expected);
+    });
+  }
+});
+
 test("teacher candidates reject an oversized list after one repair", async () => {
   const oversized = { kind: "candidates", candidates: Array.from({ length: 4 }, () => validCandidateBody().candidates[0]) };
   const provider = new SyntheticProvider([{ body: oversized }, { body: oversized }]);
@@ -188,6 +265,21 @@ test("student help works with no learner history and returns control", async () 
   if (result.outcome === "success") {
     assert.equal(result.body.expectedStudentAction, "Write and test the delimiter predicate.");
   }
+});
+
+test("student validator rebuilds the body without unknown model fields", async () => {
+  const expected = validHelpBody();
+  const provider = new SyntheticProvider([{
+    body: {
+      ...expected,
+      reasoning_content: "private reasoning",
+      scope: { courseId: "other-course" },
+      policyChecks: { ...expected.policyChecks, internal: "drop-me" },
+    },
+  }]);
+  const result = await generateStudentHelp(helpRequest(), { provider });
+  assert.equal(result.outcome, "success");
+  if (result.outcome === "success") assert.deepEqual(result.body, expected);
 });
 
 test("disabled help is policy-blocked with zero provider calls", async () => {
@@ -281,6 +373,69 @@ test("cancellation interrupts a provider that ignores AbortSignal", async () => 
   assert.ok(Date.now() - startedAt < 80);
 });
 
+test("cancellation interrupts a current guard that never settles", async () => {
+  const controller = new AbortController();
+  const provider = new SyntheticProvider([]);
+  const pending = generateStudentHelp(helpRequest({ signal: controller.signal }), {
+    provider,
+    checkCurrent: () => new Promise(() => {}),
+  });
+  setTimeout(() => controller.abort(), 5);
+  const result = await pending;
+  assert.equal(result.outcome, "cancelled");
+  assert.equal(result.calls, 0);
+  assert.equal(provider.calls.length, 0);
+});
+
+test("deadline interrupts a current guard that never settles", async () => {
+  const acceptedAtMs = Date.now();
+  let guardSignal: AbortSignal | undefined;
+  const provider = new SyntheticProvider([]);
+  const result = await generateStudentHelp(helpRequest({
+    context: context("student_help", { acceptedAtMs, deadlineAtMs: acceptedAtMs + 8 }),
+  }), {
+    provider,
+    checkCurrent: (signal) => {
+      guardSignal = signal;
+      return new Promise(() => {});
+    },
+  });
+  assert.equal(result.outcome, "timed_out");
+  assert.equal(result.calls, 0);
+  assert.equal(provider.calls.length, 0);
+  assert.equal(guardSignal?.aborted, true);
+});
+
+test("current guard result is discarded when cancellation happens before it returns", async () => {
+  const controller = new AbortController();
+  const provider = new SyntheticProvider([]);
+  const result = await generateStudentHelp(helpRequest({ signal: controller.signal }), {
+    provider,
+    checkCurrent: () => {
+      controller.abort();
+      return "current";
+    },
+  });
+  assert.equal(result.outcome, "cancelled");
+  assert.equal(result.calls, 0);
+  assert.equal(provider.calls.length, 0);
+});
+
+test("deadline interrupts a post-provider current guard", async () => {
+  const acceptedAtMs = Date.now();
+  let checks = 0;
+  const provider = new SyntheticProvider([{ body: validHelpBody(), usage }]);
+  const result = await generateStudentHelp(helpRequest({
+    context: context("student_help", { acceptedAtMs, deadlineAtMs: acceptedAtMs + 10 }),
+  }), {
+    provider,
+    checkCurrent: () => (++checks === 1 ? "current" : new Promise(() => {})),
+  });
+  assert.equal(result.outcome, "timed_out");
+  assert.equal(result.calls, 1);
+  assert.deepEqual(result.usage, usage);
+});
+
 test("post-call current guard discards stale output", async () => {
   let checks = 0;
   const provider = new SyntheticProvider([{ body: validHelpBody() }]);
@@ -314,6 +469,45 @@ test("provider failure is explicit and retryable without hidden retries", async 
   assert.equal(result.calls, 1);
   assert.equal(provider.calls.length, 1);
   if (result.outcome === "unavailable") assert.equal(result.retryable, true);
+});
+
+test("a failed second provider call makes aggregate usage unknown", async () => {
+  const provider = new SyntheticProvider([
+    { body: {}, usage, needsAnotherCall: true },
+    new Error("offline"),
+  ]);
+  const result = await generateStudentHelp(helpRequest(), { provider });
+  assert.equal(result.outcome, "unavailable");
+  assert.equal(result.calls, 2);
+  assert.deepEqual(result.usage, { status: "unknown" });
+});
+
+test("a cancelled second provider call makes aggregate usage unknown", async () => {
+  const controller = new AbortController();
+  const provider = new SyntheticProvider([
+    { body: {}, usage, needsAnotherCall: true },
+    () => new Promise(() => {}),
+  ]);
+  const pending = generateStudentHelp(helpRequest({ signal: controller.signal }), { provider });
+  setTimeout(() => controller.abort(), 5);
+  const result = await pending;
+  assert.equal(result.outcome, "cancelled");
+  assert.equal(result.calls, 2);
+  assert.deepEqual(result.usage, { status: "unknown" });
+});
+
+test("a timed out second provider call makes aggregate usage unknown", async () => {
+  const acceptedAtMs = Date.now();
+  const provider = new SyntheticProvider([
+    { body: {}, usage, needsAnotherCall: true },
+    () => new Promise(() => {}),
+  ]);
+  const result = await generateStudentHelp(helpRequest({
+    context: context("student_help", { acceptedAtMs, deadlineAtMs: acceptedAtMs + 10 }),
+  }), { provider });
+  assert.equal(result.outcome, "timed_out");
+  assert.equal(result.calls, 2);
+  assert.deepEqual(result.usage, { status: "unknown" });
 });
 
 test("DeepSeek adapter fixes approved configuration and performs no implicit call", async () => {
@@ -352,4 +546,21 @@ test("DeepSeek input budget rejects over 16K before injected SDK invocation", as
   const result = await generateStudentHelp(helpRequest(), { provider });
   assert.equal(result.outcome, "needs_input");
   assert.equal(invoked, false);
+});
+
+test("a later DeepSeek input rejection preserves only completed call usage", async () => {
+  let counts = 0;
+  let invocations = 0;
+  const provider = createDeepSeekProvider({
+    countTokens: () => (++counts === 1 ? 128 : 16_001),
+    invoke: async () => {
+      invocations += 1;
+      return { body: {}, usage, needsAnotherCall: true };
+    },
+  });
+  const result = await generateStudentHelp(helpRequest(), { provider });
+  assert.equal(result.outcome, "needs_input");
+  assert.equal(result.calls, 1);
+  assert.equal(invocations, 1);
+  assert.deepEqual(result.usage, usage);
 });

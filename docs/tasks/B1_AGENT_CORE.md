@@ -1,8 +1,8 @@
 # B1：教师生成与学生辅导合成核心
 
-日期：2026-10-09（Asia/Shanghai）。任务编号：B1。主责：B。关联 [Issue #11](https://github.com/paher-din/XunJie/issues/11) 与 [G1 #9](https://github.com/paher-din/XunJie/issues/9)。
+日期：2026-10-09（Asia/Shanghai），2026-10-10 完成 PR #15 首轮审查修复。任务编号：B1。主责：B。关联 [Issue #11](https://github.com/paher-din/XunJie/issues/11)、[G1 #9](https://github.com/paher-din/XunJie/issues/9) 与 [PR #15](https://github.com/paher-din/XunJie/pull/15)。
 
-状态：**合成首批已实现并通过领域测试；真实 DeepSeek 调用、统一工程 typecheck、Zod/AI SDK 实包兼容、A3/B2/C2 联调、浏览器及人工语义验收未执行。** 本状态不表示完整教学链、B4 或 G1 已完成。
+状态：**合成首批已实现，PR #15 首轮 Request Changes 的 4 项问题已修复并通过领域测试，等待负责人复审；真实 DeepSeek 调用、统一工程 typecheck、Zod/AI SDK 实包兼容、A3/B2/C2 联调、浏览器及人工语义验收未执行。** 本状态不表示完整 B1、完整教学链、B4 或 G1 已完成，Issue #11 保持开放。
 
 ## 1. 依据、范围与文件边界
 
@@ -34,21 +34,26 @@ A3/B2 负责传入 A/C 构造的可信信封与获准正文。B 只产经校验�
 
 - 先核 purpose、预算、截止时间和引用授权，禁用帮助在 provider 调用前拒绝。
 - 资料、问题和对象通过 `untrustedInput` 与固定系统政策分离，不能作为权限或工具指令。
-- 模型结果执行结构、引用子集、帮助政策及禁止能力校验；失败最多修复一次。
-- 单轮最多 3 次，接受起最长 45 秒；取消、过时与截止在调用前后核验，迟到结果不能成功返回。
-- actual usage 聚合；任一次缺 usage 时整体保持 unknown，不按零计。
+- 模型结果执行结构、引用子集、帮助政策及禁止能力校验；成功 body 按公开契约白名单重新构造，不携带模型附加的未知字段；失败最多修复一次。
+- 单轮最多 3 次，接受起最长 45 秒；provider 与当前性守卫共享取消信号和绝对截止边界，守卫完成后再次核验取消与截止，迟到结果不能成功返回。
+- 每次已发起 provider 调用先预留 unknown usage，只有收到实际 usage 才更新；任一次已发起调用缺 usage 时整轮保持 unknown，不按零计。输入超限发生在实际 invoker 前，不计为已发送调用。
 
 `server/tutoring/providers.ts` 提供确定性 `SyntheticProvider` 和注入式 DeepSeek adapter。适配器固定 `deepseek-flash`、`maxRetries=0`、显式 `thinking.type=disabled`、16,000 输入 token、4,096 输出 token，并透传 AbortSignal/剩余时限。实际 AI SDK invoker 与 token counter 由 A1 依赖到位后注入；当前测试供应商网络调用为零。
 
 ## 3. 合成样例与验证结果
 
-领域测试取 B0 E1～E10 和 T1 中属于 B1 的场景，覆盖：教师候选数量/修复、patch 基础版本、空历史、缺输入、越权引用、资料指令注入、整份答案政策、禁用帮助、三次上限、取消、迟到、过时、超时、provider 故障、actual/unknown usage、预算耗尽，以及 DeepSeek 配置和输入上限。T2 候选学习状态分析属于 B3，未在本任务实现。
+领域测试取 B0 E1～E10 和 T1 中属于 B1 的场景，覆盖：教师候选数量/修复、patch 基础版本、空历史、缺输入、越权引用、资料指令注入、整份答案政策、禁用帮助、三次上限、取消、迟到、过时、超时、provider 故障、actual/unknown usage、预算耗尽，以及 DeepSeek 配置和输入上限。PR #15 审查修复另覆盖教师四种模式与学生 body 的未知字段剥离、挂起守卫的取消/截止、守卫返回后的取消复查、第二次调用失败/取消/超时的 unknown usage，以及后续输入超限不计实际调用。T2 候选学习状态分析属于 B3，未在本任务实现。
 
 | 检查 | 实际结果 |
 | --- | --- |
-| `node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.test.ts` | 22/22 通过；本机 Node v24.14.1 原生 type-stripping，合成 provider；真实网络调用 0。批准的精确 Node 24.21.0 仍待 A1 统一环境核验 |
-| 同命令增加 `--experimental-test-coverage` | 22/22 通过；合计 line 98.15%、branch 85.14%、functions 100% |
+| `node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.test.ts` | 36/36 通过；本机 Node v24.14.1 原生 type-stripping，合成 provider；真实网络调用 0。批准的精确 Node 24.21.0 仍待 A1 统一环境核验 |
+| 同命令增加 `--experimental-test-coverage` | 36/36 通过；合计 line 97.64%、branch 84.39%、functions 100% |
+| `node --experimental-strip-types --check`（contracts、core、providers、测试入口） | 4/4 通过；仅为 Node 原生语法检查，不替代 TypeScript 7 静态 typecheck |
+| `node tools/a0-review/check.mjs` | 通过；24 份文档、197 个内部链接、27 条基线变更路径，`errors=[]` |
+| `node --test tools/a0-review/check.test.mjs` | 16/16 通过 |
+| `git diff --check` 与保护范围检查 | 通过；修复仅涉及 B1 core、领域测试和本文，`.trae/` 未纳入 |
 | 首次领域测试 | 14/17，通过测试发现禁止能力扫描把值为 false 的政策声明误判为能力；修正为仅拒绝启用的禁止能力后复跑通过，并新增忽略 AbortSignal provider 的即时取消用例 |
+| PR #15 首轮审查修复 | 负责人在固定提交 `d82f540` 提出 2 项 P1、2 项 P2；已修复守卫边界、逐调用 usage、未知字段重建和 Issue 关联语义，新增反例均通过，等待复审 |
 | TypeScript 7 静态 typecheck | 未执行；仓库尚无 A1 package/锁文件/tsconfig，未伪造命令 |
 | Zod/AI SDK/@ai-sdk/deepseek 实包兼容 | 未执行；依赖安装归 A1，共享文件未越权创建 |
 | 真实 DeepSeek、30 次性能、人工语义 | 未执行；账号/API/条款/数据/凭据/付费条件未落实，B4 后置 |
@@ -62,11 +67,12 @@ A3/B2 负责传入 A/C 构造的可信信封与获准正文。B 只产经校验�
 - **给 C2/C3：** 提供可信上下文、当前性守卫、持久取消与 usage/Job/Action 保存；本模块不另造队列、回执或事件表。
 - **验收边界：** schema/标志只能证明确定性结构约束，不能证明普通语言输出的教学适切性；人工语义审阅保留给 B4。
 
-待授权维护者汇总：MVP_SPEC §10 和 TEAM 的当前状态可登记“B1 合成核心、公开契约、合成 provider 与注入式 DeepSeek 适配边界已实现，Node 原生领域测试 22/22；共享依赖/typecheck、真实模型和跨模块/浏览器/真人验收未执行”。本文不直接修改受保护基线。
+待授权维护者汇总：MVP_SPEC §10 和 TEAM 的当前状态可登记“B1 合成核心、公开契约、合成 provider 与注入式 DeepSeek 适配边界已实现，PR #15 首轮审查问题已修复，Node 原生领域测试 36/36；共享依赖/typecheck、真实模型和跨模块/浏览器/真人验收未执行”。本文不直接修改受保护基线。
 
 ## 5. Git 交付状态
 
 - 实现提交：`cdc4ac4`（`feat: add B1 synthetic tutoring core`）。
-- 分支：`codex/b1-agent-core`，已推送并回读确认 `fork/codex/b1-agent-core` 指向同一提交。
-- 上游 PR：当前环境无 `gh`，GitHub 浏览器自动化连接超时，尚未创建；可从 fork 分支向 `paher-din/XunJie:main` 建立 PR，正文应关联 `Closes #11` 并保留本文的未执行项。
+- 分支：`codex/b1-agent-core`；首轮审查修复将在同一分支以独立提交交付。
+- 上游 PR：[PR #15](https://github.com/paher-din/XunJie/pull/15) 保持开放，正文关联 `Refs #11`。合成首批交接不改变 Issue #11 的真实 SDK/typecheck/model 验证等关闭条件。
+- 审查线程由负责人复核后处理，提交方不自行标记解决。
 - `.trae/` 保持原有未跟踪状态，未暂存、提交或推送。

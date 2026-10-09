@@ -13,7 +13,7 @@ import {
 import { InputLimitError, type ModelProvider, type ProviderRequest } from "./providers.ts";
 
 export type GuardState = "current" | "stale" | "cancelled";
-export type CurrentGuard = () => GuardState | Promise<GuardState>;
+export type CurrentGuard = (signal: AbortSignal) => GuardState | Promise<GuardState>;
 
 export type TutoringRuntime = {
   provider: ModelProvider;
@@ -101,24 +101,40 @@ async function execute<TBody>(
   const now = runtime.now ?? Date.now;
   const effectiveDeadline = Math.min(context.deadlineAtMs, context.acceptedAtMs + MAX_REQUEST_MS);
   const startedAt = now();
-  const usages: Array<Extract<ModelUsage, { status: "actual" }> | undefined> = [];
+  const usages: ModelUsage[] = [];
   let repairUsed = false;
 
   for (let call = 1; call <= MAX_CALLS; call += 1) {
-    const before = await guardFailure(externalSignal, runtime.checkCurrent, call - 1, usages);
+    const before = await guardFailure(
+      externalSignal,
+      runtime.checkCurrent,
+      effectiveDeadline,
+      now,
+      call - 1,
+      usages,
+    );
     if (before) return before;
     const remainingMs = effectiveDeadline - now();
     if (remainingMs <= 0) return failure("timed_out", "DEADLINE_EXCEEDED", false, call - 1, aggregateUsage(usages));
 
+    const usageIndex = usages.length;
+    usages.push({ status: "unknown" });
     try {
       const response = await callWithDeadline(runtime.provider, {
         ...baseProviderRequest,
         repair: repairUsed,
         remainingMs,
       }, externalSignal, remainingMs);
-      usages.push(response.usage);
+      usages[usageIndex] = response.usage ?? { status: "unknown" };
 
-      const after = await guardFailure(externalSignal, runtime.checkCurrent, call, usages);
+      const after = await guardFailure(
+        externalSignal,
+        runtime.checkCurrent,
+        effectiveDeadline,
+        now,
+        call,
+        usages,
+      );
       if (after) return after;
       if (now() >= effectiveDeadline) {
         return failure("timed_out", "DEADLINE_EXCEEDED", false, call, aggregateUsage(usages));
@@ -146,14 +162,18 @@ async function execute<TBody>(
       }
       repairUsed = true;
     } catch (error) {
+      if (error instanceof InputLimitError) {
+        usages.splice(usageIndex, 1);
+        return failure("needs_input", "INPUT_LIMIT_EXCEEDED", false, call - 1, aggregateUsage(usages));
+      }
       if (externalSignal?.aborted) {
+        return failure("cancelled", "CANCELLED", false, call, aggregateUsage(usages));
+      }
+      if (error instanceof CancellationError) {
         return failure("cancelled", "CANCELLED", false, call, aggregateUsage(usages));
       }
       if (error instanceof DeadlineError) {
         return failure("timed_out", "DEADLINE_EXCEEDED", false, call, aggregateUsage(usages));
-      }
-      if (error instanceof InputLimitError) {
-        return failure("needs_input", "INPUT_LIMIT_EXCEEDED", false, call - 1, aggregateUsage(usages));
       }
       return failure("unavailable", "PROVIDER_UNAVAILABLE", true, call, aggregateUsage(usages));
     }
@@ -168,6 +188,21 @@ async function callWithDeadline(
   externalSignal: AbortSignal | undefined,
   remainingMs: number,
 ) {
+  return runWithinRequestBoundary(
+    (signal) => provider.generate({ ...request, signal }),
+    externalSignal,
+    remainingMs,
+  );
+}
+
+async function runWithinRequestBoundary<T>(
+  operation: (signal: AbortSignal) => T | Promise<T>,
+  externalSignal: AbortSignal | undefined,
+  remainingMs: number,
+): Promise<T> {
+  if (remainingMs <= 0) throw new DeadlineError();
+  if (externalSignal?.aborted) throw new CancellationError();
+
   const deadlineController = new AbortController();
   const signal = externalSignal
     ? AbortSignal.any([externalSignal, deadlineController.signal])
@@ -191,7 +226,11 @@ async function callWithDeadline(
     removeExternalAbort = () => externalSignal.removeEventListener("abort", onAbort);
   });
   try {
-    return await Promise.race([provider.generate({ ...request, signal }), deadline, cancellation]);
+    return await Promise.race([
+      Promise.resolve().then(() => operation(signal)),
+      deadline,
+      cancellation,
+    ]);
   } finally {
     if (timeout !== undefined) clearTimeout(timeout);
     removeExternalAbort?.();
@@ -201,11 +240,34 @@ async function callWithDeadline(
 async function guardFailure(
   signal: AbortSignal | undefined,
   checkCurrent: CurrentGuard | undefined,
+  effectiveDeadline: number,
+  now: () => number,
   calls: number,
-  usages: Array<Extract<ModelUsage, { status: "actual" }> | undefined>,
+  usages: readonly ModelUsage[],
 ): Promise<TutoringFailure | undefined> {
   if (signal?.aborted) return failure("cancelled", "CANCELLED", false, calls, aggregateUsage(usages));
-  const state = checkCurrent ? await checkCurrent() : "current";
+  const remainingMs = effectiveDeadline - now();
+  if (remainingMs <= 0) return failure("timed_out", "DEADLINE_EXCEEDED", false, calls, aggregateUsage(usages));
+
+  let state: GuardState;
+  try {
+    state = checkCurrent
+      ? await runWithinRequestBoundary((guardSignal) => checkCurrent(guardSignal), signal, remainingMs)
+      : "current";
+  } catch (error) {
+    if (signal?.aborted || error instanceof CancellationError) {
+      return failure("cancelled", "CANCELLED", false, calls, aggregateUsage(usages));
+    }
+    if (error instanceof DeadlineError) {
+      return failure("timed_out", "DEADLINE_EXCEEDED", false, calls, aggregateUsage(usages));
+    }
+    throw error;
+  }
+
+  if (signal?.aborted) return failure("cancelled", "CANCELLED", false, calls, aggregateUsage(usages));
+  if (now() >= effectiveDeadline) {
+    return failure("timed_out", "DEADLINE_EXCEEDED", false, calls, aggregateUsage(usages));
+  }
   if (state === "stale") return failure("stale", "STALE_CONTEXT", false, calls, aggregateUsage(usages));
   if (state === "cancelled") return failure("cancelled", "CANCELLED", false, calls, aggregateUsage(usages));
   return undefined;
@@ -239,19 +301,65 @@ function validateTeacherBody(
       isRecord(item) && strings(item, ["problem", "audience", "artifact"]) &&
       stringArrays(item, ["routes", "goals", "constraints", "unresolved", "resourceRefs"]) &&
       refsAllowed(item.resourceRefs, allowed))) return undefined;
+    return {
+      kind: "candidates",
+      candidates: (value.candidates as Record<string, unknown>[]).map((item) => ({
+        problem: item.problem as string,
+        audience: item.audience as string,
+        artifact: item.artifact as string,
+        routes: copyStringArray(item.routes),
+        goals: copyStringArray(item.goals),
+        constraints: copyStringArray(item.constraints),
+        unresolved: copyStringArray(item.unresolved),
+        resourceRefs: copyStringArray(item.resourceRefs),
+      })),
+    };
   } else if (expectedKind === "blueprint") {
     if (!strings(value, ["problem", "audience", "artifact", "helpPolicy"]) ||
       !stringArrays(value, ["routes", "goals", "milestones", "resources", "checkpoints", "rubric", "goalEvidenceLinks", "unresolved"]) ||
       !refsAllowed(value.resources, allowed)) return undefined;
+    return {
+      kind: "blueprint",
+      problem: value.problem as string,
+      audience: value.audience as string,
+      artifact: value.artifact as string,
+      routes: copyStringArray(value.routes),
+      goals: copyStringArray(value.goals),
+      milestones: copyStringArray(value.milestones),
+      resources: copyStringArray(value.resources),
+      helpPolicy: value.helpPolicy as string,
+      checkpoints: copyStringArray(value.checkpoints),
+      rubric: copyStringArray(value.rubric),
+      goalEvidenceLinks: copyStringArray(value.goalEvidenceLinks),
+      unresolved: copyStringArray(value.unresolved),
+    };
   } else if (expectedKind === "patch") {
     if (!Array.isArray(value.changes) || !value.changes.every((change) => isRecord(change) && typeof change.field === "string" && "value" in change) ||
       !strings(value, ["rationale"]) || !stringArrays(value, ["resourceRefs", "affectedLinks", "unresolved"]) ||
       !refsAllowed(value.resourceRefs, allowed)) return undefined;
+    return {
+      kind: "patch",
+      changes: (value.changes as Record<string, unknown>[]).map((change) => ({
+        field: change.field as string,
+        value: change.value,
+      })),
+      rationale: value.rationale as string,
+      resourceRefs: copyStringArray(value.resourceRefs),
+      affectedLinks: copyStringArray(value.affectedLinks),
+      unresolved: copyStringArray(value.unresolved),
+    };
   } else {
     if (!stringArrays(value, ["criterionComments", "ambiguities", "suggestedChanges", "sampleRefs", "unresolved"]) ||
       !refsAllowed(value.sampleRefs, allowed)) return undefined;
+    return {
+      kind: "rubric_trial",
+      criterionComments: copyStringArray(value.criterionComments),
+      ambiguities: copyStringArray(value.ambiguities),
+      suggestedChanges: copyStringArray(value.suggestedChanges),
+      sampleRefs: copyStringArray(value.sampleRefs),
+      unresolved: copyStringArray(value.unresolved),
+    };
   }
-  return value as TeacherGenerationBody;
 }
 
 function validateStudentBody(value: unknown, authorizedReferenceIds: readonly string[]): StudentHelpBody | undefined {
@@ -266,7 +374,23 @@ function validateStudentBody(value: unknown, authorizedReferenceIds: readonly st
     value.policyChecks.writesStudentWork !== false ||
     value.policyChecks.runsCode !== false ||
     value.policyChecks.makesFormalEvaluation !== false) return undefined;
-  return value as StudentHelpBody;
+  return {
+    kind: "student_help",
+    actionType: value.actionType as StudentHelpBody["actionType"],
+    content: value.content as string,
+    rationale: value.rationale as string,
+    expectedStudentAction: value.expectedStudentAction as string,
+    evidenceIds: copyStringArray(value.evidenceIds),
+    resourceRefs: copyStringArray(value.resourceRefs),
+    assistanceContext: value.assistanceContext as string,
+    unresolved: copyStringArray(value.unresolved),
+    policyChecks: {
+      containsWholeSolution: false,
+      writesStudentWork: false,
+      runsCode: false,
+      makesFormalEvaluation: false,
+    },
+  };
 }
 
 function hasForbiddenCapability(value: unknown): boolean {
@@ -288,20 +412,27 @@ function stringArrays(value: Record<string, unknown>, keys: readonly string[]): 
   return keys.every((key) => Array.isArray(value[key]) && (value[key] as unknown[]).every((item) => typeof item === "string"));
 }
 
+function copyStringArray(value: unknown): string[] {
+  return [...(value as string[])];
+}
+
 function refsAllowed(value: unknown, allowed: ReadonlySet<string>): boolean {
   return Array.isArray(value) && value.every((item) => typeof item === "string" && allowed.has(item));
 }
 
-function aggregateUsage(usages: Array<Extract<ModelUsage, { status: "actual" }> | undefined>): ModelUsage {
-  if (usages.length === 0 || usages.some((usage) => usage === undefined)) return { status: "unknown" };
-  return usages.reduce<Extract<ModelUsage, { status: "actual" }>>(
-    (total, usage) => ({
-      status: "actual",
-      inputTokens: total.inputTokens + (usage?.inputTokens ?? 0),
-      outputTokens: total.outputTokens + (usage?.outputTokens ?? 0),
-    }),
-    { status: "actual", inputTokens: 0, outputTokens: 0 },
-  );
+function aggregateUsage(usages: readonly ModelUsage[]): ModelUsage {
+  if (usages.length === 0 || usages.some((usage) => usage.status === "unknown")) {
+    return { status: "unknown" };
+  }
+  let inputTokens = 0;
+  let outputTokens = 0;
+  for (const usage of usages) {
+    if (usage.status === "actual") {
+      inputTokens += usage.inputTokens;
+      outputTokens += usage.outputTokens;
+    }
+  }
+  return { status: "actual", inputTokens, outputTokens };
 }
 
 function failure(
