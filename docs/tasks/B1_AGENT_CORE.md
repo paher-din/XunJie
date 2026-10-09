@@ -63,3 +63,10 @@ A3/B2 负责传入 A/C 构造的可信信封与获准正文。B 只产经校验�
 - **验收边界：** schema/标志只能证明确定性结构约束，不能证明普通语言输出的教学适切性；人工语义审阅保留给 B4。
 
 待授权维护者汇总：MVP_SPEC §10 和 TEAM 的当前状态可登记“B1 合成核心、公开契约、合成 provider 与注入式 DeepSeek 适配边界已实现，Node 原生领域测试 22/22；共享依赖/typecheck、真实模型和跨模块/浏览器/真人验收未执行”。本文不直接修改受保护基线。
+
+## 5. Git 交付状态
+
+- 实现提交：`cdc4ac4`（`feat: add B1 synthetic tutoring core`）。
+- 分支：`codex/b1-agent-core`，已推送并回读确认 `fork/codex/b1-agent-core` 指向同一提交。
+- 上游 PR：当前环境无 `gh`，GitHub 浏览器自动化连接超时，尚未创建；可从 fork 分支向 `paher-din/XunJie:main` 建立 PR，正文应关联 `Closes #11` 并保留本文的未执行项。
+- `.trae/` 保持原有未跟踪状态，未暂存、提交或推送。
