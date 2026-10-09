@@ -2,7 +2,7 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
-当前仓库保存团队开发所需的产品规格、工作规范和必要参考，并已实现 A1-P1 后台工程、公共校验/错误和健康入口；完整正式应用尚未实现。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
+当前仓库保存团队开发所需的产品规格、工作规范和必要参考，并已实现 A1-P1 后台工程、公共校验/错误和健康入口，以及 A 自有独立合成认证/短事务验证能力；完整正式应用尚未实现。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
 
 ## 文档
 
@@ -81,13 +81,13 @@ npm run build
 npm start
 ```
 
-`npm test` 会先编译，并运行合成 HTTP、错误/校验和实际本机监听/入口测试。开发入口为 `http://127.0.0.1:3000`，可在进程环境设置有效整数 `PORT`（1～65535），退出时关闭监听。没有 UI 页面，无需 `.env` 或数据库初始化。
+`npm test` 会先编译，并运行合成 HTTP、错误/校验、认证/事务/进程故障恢复和实际本机监听/入口测试。认证/存储测试按负责人批准，仅在系统临时目录新建 `xunjie-a1-p2-*/synthetic.sqlite`；包含 SQLite 自身 WAL/SHM 文件生命周期，关闭后保留库，不执行清理/既有库迁移。凭据与签名材料仅由夹具临时生成，重启测试仅经 IPC 复用，不写 `.env`。测试中的强制进程结束仅针对自己的故障夹具。开发入口为 `http://127.0.0.1:3000`，可在进程环境设置有效整数 `PORT`（1～65535），退出时关闭监听。没有 UI 页面；默认 main 无需 `.env` 或数据库初始化。
 
-`GET /health/live` 返回 200 和服务端 requestId，只表示入口存活；`GET /health/ready` 当前固定返回 503/DEPENDENCY_UNAVAILABLE，因为数据库、模型、runner 尚未接入。认证、归属权限、真实短事务和业务接口尚未实现，未注册的路由返回统一的技术错误。安装了驱动/SDK 不表示真实业务或产品验收通过，完整记录见 [A1 任务文档](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md)。
+`GET /health/live` 返回 200 和服务端 requestId，只表示入口存活；`GET /health/ready` 当前固定返回 503/DEPENDENCY_UNAVAILABLE，因为完整数据库、模型、runner 链尚未接入。默认 main 仍仅提供 P1 入口。独立 [合成验证工厂](apps/teaching/server/access/app.ts) 实现既定登录/退出路径、持久 Session、课程归属和短事务，仅供授权的 `app.inject` 测试，不监听网络；其登录字段/CSRF 结果和 fixture 路由不是新冻结的公共字段。实际 HTTPS/安全配置、资源授权与 C2 业务链未完成。未注册的路由返回统一的技术错误，完整记录见 [A1 任务文档](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md#9-2026-10-10-独立合成验证批次)。
 
-本批使用 npm 11.19.0。`npm ci` 可能提示 better-sqlite3 原生安装脚本尚未获 allowScripts 放行；P1 的 HTTP/校验测试不加载数据库驱动。本批未执行原生构建、SQL 或 SQLite 校验，驱动实际加载与安装脚本处理留在 P2/P3 存储方案中，不将依赖列表安装成功当作 DB 就绪。
+本批使用 npm 11.19.0。`npm ci` 可能提示 better-sqlite3 原生安装脚本尚未获 allowScripts 放行；本机 Windows x64 使用包内预构建模块，未放行 node-gyp。独立合成测试已实际打开 SQLite 3.53.4，核验外键/WAL/FULL/busy_timeout=1000；其他平台须验证其批准运行时与原生模块，不能只凭依赖安装成功称 DB 就绪。
 
-后续 A1 准备已核对包内 Windows x64 预构建模块并直接加载成功，没有运行构建脚本、打开 DB 或执行 SQL；因此不因安装提示自动放行 node-gyp。scrypt 参数准备可在 apps/teaching 中执行 `node tools/benchmark-scrypt.mjs`：只使用合成字节和标准库，输出耗时/内存采样及匹配检查，不读取或保存真实密码/配置。结果与待授权的认证/存储操作方案见 A1 记录 §8，不能计作真实登录或产品性能验收。
+早期 A1 原生加载与参数准备的历史记录保留在 §8，负责人于 2026-10-10 批准该节独立批次，实施证据见 §9。scrypt 参数探针仍可在 apps/teaching 中执行 `node tools/benchmark-scrypt.mjs`：只使用合成字节和标准库，输出耗时/内存采样及匹配检查，不读取或保存真实密码/配置。合成登录通过不代表真实凭据发放、完整 AC/NFR 或产品性能验收。
 
 ## 状态
 

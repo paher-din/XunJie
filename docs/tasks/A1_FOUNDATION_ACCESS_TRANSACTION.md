@@ -228,3 +228,49 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 本次仅 README、本任务记录、一个 A 自有合成参数工具有变化，应用 P1 无行为改动；未改 package/lock、受保护基线或其他模块。实现/方案提交 191c700 已保存在 codex/a1-foundation，本节审查收口随本地补充文档提交交付；未推送、未创建 PR。既有产品验收与本节真实 SQL/认证用例保持未执行。P2/P3 操作提案待批准，C2 缺少公开交付证据的依赖保持，P1 工程远程交接尚未完成。
 
 独立审查固定基线 9050c6b，候选 191c70034ffc987bcc1541260603b408debe24ea，git diff 9050c6b...HEAD。Standards：0 项硬违规/可操作异味，工具和文档遵守任务与证据边界。Spec：0 项，探针/原生加载与待批准方案没有冒充真实 SQL/登录，期限/撤销/事务外密码算法与后置 C2 依赖保持。最终两轴各 0 项，无未解决问题。
+
+## 9. 2026-10-10 独立合成验证批次
+
+项目负责人在 §8.4 的准确操作/风险提请后明确指示“开始”，批准该独立批次：两个精确依赖、§8.3 参数与五表提案、仅新建临时合成库的 SQL 和 §8.5 验证接缝。§8 的“待批准/未执行”保留为当时记录，本节记录较新状态。没有授权生产数据、既有库迁移、密钥文件、共享接口新增字段、受保护基线修改或远程发布。
+
+编码前已读 AGENTS、README、PRD §5/8/9、MVP_SPEC M10 与 §4/5/6、TECH_DESIGN §4/5/9/10/12 和本任务 §8。范围是 A 自有 access/db 与测试、共享 package/lock、README/本记录；对应 AC-02 与 NFR-04 的身份/课程部分、真实短事务基础。AC-06/08/15 的真实资源、旧 revision、回执/Job/Event 与教师纠正并发待 C2/下游，不提前计通过。
+
+实施细节：合成验证工厂独立于默认 main；保留 ready=503，不监听认证网络入口。登录/退出使用既定变更入口；CSRF 仅作为合成验证工厂登录结果，当前 Session GET 路径与公共返回字段保持待共同确认，不加入共享 contracts。测试 fixture 路由仅验证服务端授权能力，不成为应用 API。插件显式 save 成功后才回登录响应，Secure cookie 不因注入测试降级；app.inject 的 HTTPS Origin 不证明实际 TLS。事务公开接缝仅暴露同连接同步 SQL capability，测试通过该接缝观察提交/回滚；竞争验证的第二连接/子进程仅打开本批自身新建库。库关闭后保留文件。
+
+当前状态：实施中。实际 SQL、认证与事务验证结果待下节填写，不以批准替代运行事实。
+
+### 9.1 已实现与代码位置
+
+- [transaction.ts](../../apps/teaching/server/db/transaction.ts)：独占新合成目录、固定文件与非符号链接检查；新文件一次性五表初始化；仅重开本批合成目标，不含生产配置/既有库迁移。实际驱动配置核验；同步 IMMEDIATE 事务、失败整批回滚、拒绝 async/thenable/嵌套/事务控制语句，回调结束后 capability 失效。callback 禁止安排网络/模型/runner/其他外部副作用，这是可信调用约束，不宣称 JavaScript 沙箱。
+- [password.ts](../../apps/teaching/server/access/password.ts)：异步固定参数 scrypt、随机盐、等长 timingSafeEqual、未知账号同参数合成比较，每个验证应用最多 2 个 derivation，无无限排队。临时合成账号通过测试预置，无账号管理/实际凭据发放入口。
+- [session-store.ts](../../apps/teaching/server/access/session-store.ts)：成熟 Session 插件的持久 store；原 token/CSRF 不落库，一次性可信登录 grant、保存前账号状态/密码摘要复核、8h/30min 精确守卫、撤销标记与迟到 set 拒绝。set 不推进活动或改绝对到期；课程授权成功才推进 lastActive。账号禁用即时拒绝既有 Session。
+- [access/app.ts](../../apps/teaching/server/access/app.ts)：独立验证工厂，既定 POST /api/sessions 与 POST /api/logout，严格 body/Origin/JSON、会话绑定 CSRF、成功保存后才响应；同一事务重读账号与课程角色、非任课/跨课程拒绝。角色不存 Session 或信任 body。登录名 1～128、密码 1～1024 个 JS 字符仅作为合成入口有界校验细节，不 trim/归一化/截短，不冻结公共登录字段。账号/IP 分别 10/50 次尝试的 15 分钟持久窗口、HMAC bucket、事务预留计数，拒绝倒退窗口覆盖与并发超额。密码计算在事务外。签名材料必须由调用方提供，验证工厂不读环境/密钥文件，默认 main 未注册认证。
+- [access 测试](../../apps/teaching/tests/access.test.ts)、[Session store 测试](../../apps/teaching/tests/session-store.test.ts)、[事务测试](../../apps/teaching/tests/transaction.test.ts)、[持久性测试](../../apps/teaching/tests/durability.test.ts)：通过批准接缝与真实 SQLite/成熟插件执行；子进程 fixture 仅受控 IPC 和故障注入，不是对外服务或产品接口。
+
+新增精确 @fastify/session 11.1.4、@fastify/cookie 11.1.3；安装新增 4 个实际包（含解析后的传递依赖），未自动放行原生安装脚本。本机包内预构建模块直接用于 SQL，无 node-gyp 构建或新类型依赖。驱动未提供类型，代码定义实际消费 API 的局部类型边界；不关闭 strict/检查或使用 any。
+
+### 9.2 2026-10-10 实际验证
+
+| 命令/环境 | 结果与证据边界 |
+| --- | --- |
+| Node 24.21.0 / npm 11.19.0；npm install --no-audit --no-fund | 退出 0，精确 lock 已更新；原生脚本提示保留，不自动 approve |
+| npm run typecheck | 通过；初次发现 scrypt promisify 重载类型不接纳第 4 参数，改为标准 callback 的显式 Promise 包装后通过，没有绕过检查 |
+| npm test（含 pretest build） | **27/27，通过，0 跳过**；其中原 P1 14 项，本批 13 项；总耗时约 44.63 s，不是产品时延/NFR 统计 |
+| sqlite_version/实际读回 PRAGMA | **3.53.4 / foreign_keys=1 / journal_mode=wal / synchronous=2 / busy_timeout=1000**；已执行真实 SQL，超过最低修复版本 3.51.3 |
+| 认证/授权/请求防护 | 合法合成登录/退出，错误密码/未知账号同 401；role/studentId 拒绝；一用户两课程不同角色、非任课教师、权限/账号变化后重查；cookie Secure/HttpOnly/Lax、轮换/签名篡改、精确闲置/绝对期限；Origin/JSON/CSRF 缺失/伪造/跨会话拒绝通过 |
+| 限流/持久性 | 12 同时到达仅 2 个哈希获准登录，其余 429，10 账号尝试预留不会回退；窗口恰到 15 分钟重置，成功也计数；50 个不同未知账号耗尽同 IP 窗口。实际关闭/重开库与应用后不重置；独立子进程用 IPC-only 原签名材料读回既有身份且保留账号限流 |
+| Session/故障/隐私 | 撤销与过期 token、迟到 set、不可信身份和匿名持久写拒绝；关闭真实 DB 注入登录中故障，503/PERSISTENCE_UNAVAILABLE，无成功 data/有效 cookie；响应/应用日志无密码、账号输入、摘要字段或真实私有路径，存储投影无原 cookie/CSRF/密码/IP |
+| 短事务/崩溃 | 外键/唯一约束、thenable、嵌套、失效 capability 拒绝；失败无前置行。真实第二连接 CAS 失配回滚整批；子进程持锁时另连接 busy 且回调未执行，强制结束后未提交行消失、已确认行保留，再次可提交 |
+| 文档检查/检查器回归/Git 空白 | 23 份/201 处引用/27 条正式变更路由，通过；16/16 回归通过；git diff --check 通过（换行提示不影响空白检查） |
+
+第一条新事务/登录测试曾因模块尚未实现退出 1，随后实现通过；新方案按约定接缝逐步补验证，失败与修复未改产品验收条件。全部临时库仍在各自系统临时目录，不调用清理。驱动平台证据仅本机 Windows x64；故障用 SIGKILL 终止自有子进程，不声称 POSIX 优雅信号或 C5 备份恢复已验收。
+
+### 9.3 交付状态与剩余限制
+
+本节独立合成批次已实现并验证，审查待收口；**A1 整体未完成，#10/#9 保持 Open**。默认 main 仍只有 P1，ready=503。本工厂不是生产认证开关，不在本批监听认证入口/提供 UI。
+
+尚未执行：真实 HTTPS/代理/密钥配置、实际账号安全恢复与发放、当前 Session 公共 GET/字段会审、ResourceVersion/Attempt 的完整 authorizeResource 与正文投影、跨学生作品/私有资料、同键同摘要原业务 IDs/异摘要冲突/旧 revision、C2 同 tx Job/Receipt/Event、纠正与迟到候选/Action 并发、模型/runner、浏览器/真人/G1 完整验收。不得将本批 CAS 夹具计作业务版本/幂等通过，不能把 A 自有五表当 C2 已实现。
+
+2026-10-10 再查远程 #10/#14：均 Open，#14 无评论交付证据；不据此推断成员本地未工作。下一步提供 A 工程/独立验证代码供 C2 核对，同连接能力和公共字段共同确认后，再接真实资源与业务原子链。实际签名材料持续性测试只在同一个受控父进程持有期间成立，真实运维密钥保存/轮换/恢复未执行；真实网络侧信道与目标节点 10 会话性能未执行。
+
+本批仅 README、本任务稿、A 自有代码/测试与 package/lock 有变化；受保护基线未修改。待获授权维护者将本节实际进度/边界汇总 MVP_SPEC §10 与相关技术接缝，未宣称基线已同步。远程推送/PR 未执行。
