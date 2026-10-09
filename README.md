@@ -18,6 +18,7 @@
 | [G0 TextScope 参考与活动适配](docs/tasks/G0_TEXTSCOPE_ACTIVITY_SPEC.md) | 外部候选供追溯，Web 学生空间的 Core/Report 活动提案另列；不照搬本地开发/六阶段/评分要求 |
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
 | [A1 基础实施与验证记录](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md) | Issue #10 的 P1 工程/入口/公共校验与错误、实际验证和后续权限/短事务边界；A1 未全部完成 |
+| [A2 教师设计与版本任务](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md) | Issue #13 的 S1 材料/草稿/检查/投影内部核心与验证；真实接口/存储及确认/分配待 S2/S3 的 A1/C1/C2 条件 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
@@ -104,3 +105,15 @@ A0/B0/C0 的材料已通过 PR #5/#8/#6 合入并纳入统一裁决。2026-10-09
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
 
 上述文档及其仓库内引用可供团队独立查阅，必要的一手资料使用公开链接。原研究的完整归档、旧实验操作手册与原始过程资料不作为正式开发的阅读依赖；历史实现和通过统计不代表当前应用已交付。
+
+
+## 教师设计独立核心（A2-S1）
+
+[内部模块](apps/teaching/server/design/) 提供 TXT/Markdown/粘贴材料准备、手工/复制蓝图与 revision 编辑、关系与三类检查、教师授权后的三角色预览；实现与验证见 [A2 记录](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#8-s1-实际实现与验证记录)。字段仅供内部确定性计算，尚未冻结为共享 HTTP DTO。资料默认不对学生/辅导开放；私有答案/验证资产不能公开。检查保留教师疑点和效果未知；缺少真实运行就绪阻断开放条件。
+
+使用上方已批准运行时，在 apps/teaching 运行独立测试：
+```powershell
+node --test tests/design-material.test.ts tests/design-draft.test.ts tests/design-checks.test.ts tests/design-projection.test.ts
+npm run typecheck
+```
+这四组测试只使用合成对象，不建 A2 数据库、不启动业务服务；完整回归仍执行 `npm test`。当前没有可供浏览器调用的 A2 保存/确认/分配接口；真实授权、事务存储、不可变活动版本、分配/控制和 UI 验收待 S2/S3，不凭计算结果发保存 ACK。
