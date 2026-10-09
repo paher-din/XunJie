@@ -142,3 +142,5 @@ TextScope report 产生文件，当前 RunRecord/可信验证描述尚未把其�
 已做只读环境与官方元数据核查；`node tools/a0-review/check.mjs` 通过：19 份文档、145 处内部链接、errors=[]；`node --test tools/a0-review/check.test.mjs` 7/7，`git diff --check` 通过。Node 内联断言核对 TextScope 公开数据/检索/词频、原稿阶段/权重、自洽的参考/适配标记、TS-P01～06、模型/依赖及授权范围，修正章节识别后通过。写入仅三份 G0 本人任务稿和 README；规范/产品/规划/参考/其他成员任务/工具无差异。
 
 没有安装依赖、调用付费模型、建数据库、配置 VM 或执行学生程序；教学效果和全部 AC/NFR 业务部分未验收。实际三方签认、剩余提案批准、五份基线写入授权及具体实施批准仍缺，本文可供负责人审阅，不能单凭这些静态通过关闭 G0。
+
+直接交付：本稿、活动适配稿、G0 当前记录及 README 已以 [fab0a5b](https://github.com/paher-din/XunJie/commit/fab0a5ba1437fce1ce19401bebc1e9a65fb9f861) 非强制推送 main，远程 ref 与本地一致；G0 Issue 已通过 gh 同步确认的 Core→Report/先备/数据规则及提案入口，正文逐字回读一致，保持 Open，仅 D-04 勾选。本条交付事实随任务追加记录，不把公开交付当作方案已批准。
