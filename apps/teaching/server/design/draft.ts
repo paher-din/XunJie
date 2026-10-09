@@ -17,8 +17,8 @@ export function editDraft(current: BlueprintDraft, expectedRevision: number, pat
   const changes = parseRequest(contentPatchSchema, patch);
   const content = parseRequest(contentSchema, { ...draft.content, ...changes });
   for (const goal of content.goals) {
-    const previous = draft.content.goals.find(g => g.competencyId === goal.competencyId && g.competencyVersion === goal.competencyVersion);
-    if (previous && (previous.domain !== goal.domain || previous.title !== goal.title)) throw new ApiError('INVALID_REQUEST');
+    const previous = draft.content.goals.find(g => g.competencyId === goal.competencyId);
+    if (previous && (goal.competencyVersion < previous.competencyVersion || (goal.competencyVersion === previous.competencyVersion && (previous.domain !== goal.domain || previous.title !== goal.title)))) throw new ApiError('INVALID_REQUEST');
   }
   return { ...draft, revision: draft.revision + 1, content };
 }

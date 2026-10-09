@@ -48,3 +48,10 @@ test('goal semantics cannot silently change while retaining the same competency 
   assert.equal(changed.content.goals[0]!.competencyVersion, 2);
   assert.equal(draft.content.goals[0]!.title, 'Explain pointers');
 });
+
+test('an edit cannot reuse a lower competency version for changed goal semantics', () => {
+  const goal = { competencyId: 'knowledge', competencyVersion: 2, domain: 'domain', title: 'Explain pointers', core: true };
+  const draft = createDraft({ courseId: 'course', blueprintId: 'draft' }, { goals: [goal] });
+  assert.throws(() => editDraft(draft, 1, { goals: [{ ...goal, competencyVersion: 1, title: 'Implement allocation' }] }), { code: 'INVALID_REQUEST' });
+  assert.equal(draft.content.goals[0]!.competencyVersion, 2);
+});
