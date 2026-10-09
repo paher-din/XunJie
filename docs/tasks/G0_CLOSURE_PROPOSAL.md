@@ -1,6 +1,6 @@
 # G0：缺口收敛与首批实施提案
 
-日期：2026-10-09。任务：[G0 #1](https://github.com/paher-din/XunJie/issues/1)。状态：**项目负责人已统一批准剩余提案，并授权同步 PRD、MVP_SPEC、TECH_DESIGN、TEAM_WORK_PLAN、G0_ISSUES。正在按批准范围合入基线，文档验证后完成 G0 准备门禁；不记为 A/B/C 逐人签认或产品已验收。** 授权和执行记录见 §10。
+日期：2026-10-09。任务：[G0 #1](https://github.com/paher-din/XunJie/issues/1)。状态：**负责人统一裁决的五份基线已合入、验证并直接推送，G0 #1 已关闭，准备门禁完成；不记为 A/B/C 逐人签认或产品已验收。** 授权和执行记录见 §10。
 
 依据：已读 [AGENTS](../../AGENTS.md)、[README](../../README.md)、[PRD](../product/PRD.md)、[MVP_SPEC](../product/MVP_SPEC.md)、[TECH_DESIGN](../product/TECH_DESIGN.md)、[TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md)、[工程参考](../reference/ENGINEERING_HANDOFF.md)以及 A0/B0/C0 交付。详细差异见 [G0 核对稿](G0_SCOPE_CONTRACT_GATE_REVIEW.md)。以下 §2～9 保留提交裁决时的提案/验证过程；最新授权、正式基线位置及执行状态见 §10。AGENTS/reference/其他成员任务继续只读，五份基线仅在本次明确范围内获授权。
 
@@ -160,3 +160,5 @@ G0 执行 Agent 作为本次获授权维护者，按 PRD→MVP→TECH 同步五�
 最终静态核查通过：19 份项目 Markdown、151 处仓库文件/锚点引用、27 条当前变更接口；14/14 检查器回归、脚本语法与 Git 空白检查。独立只读断言核对 M-01～10、AC-01～16、NFR-01～06 覆盖和原 AC/NFR 表逐字未变，角色矩阵/依赖图/各实施任务正文、既有 MVP 历史行及 Issue 发布正文保留；15 项契约在正式 TECH 正文可查。保护范围核验：AGENTS/reference/原 A0/B0/C0 任务稿未改，写入为五份授权基线、README/三份本人 G0 任务稿、必要两份只读检查工具。
 
 首次合入章节 patch 有上下文定位失败，失败未写出；拆为确切片段后完成。Git 空白检查曾发现新版本标题沿用硬换行尾空格，已只移除新改行的尾空白后通过，未批量格式化历史文档。本次没有任何应用业务通过数；准备门禁可在发布/外部回读后收口，实际 G1～G4 与后置门禁保持。
+
+已完成外部交付：提交 a010683 非强制推送 main，远程 ref 与本地一致；`gh issue edit 1 --body-file` 更新准备/裁决/后置门禁、保留历史过程，`gh issue close 1 --reason completed` 完成关闭。`gh issue view 1 --json number,state,stateReason,closedAt,body,url` 回读 Closed/Completed、正文逐字一致、13 项勾选，关闭时间 2026-10-09 18:12:59（Asia/Shanghai）。只关闭 #1，#2/#3/#4 保持 Open。执行记录随本任务追加推送；没有开始首批应用编码或任何后置红线/真实验收操作。
