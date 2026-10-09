@@ -17,6 +17,7 @@
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
 | [G0 TextScope 参考与活动适配](docs/tasks/G0_TEXTSCOPE_ACTIVITY_SPEC.md) | 外部候选供追溯，Web 学生空间的 Core/Report 活动提案另列；不照搬本地开发/六阶段/评分要求 |
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
+| [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 整体 G1 的任务依赖、进入门禁、交接与验收账目；模块实现仍由 A/B/C 负责 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
@@ -72,6 +73,8 @@ node --test tools/a0-review/check.test.mjs
 三份产品文档已于 2026-10-09 更新为 v0.3：项目负责人统一批准 G0 的教学/模型/数据/技术契约和分段实施方案，并明确授权同步五份基线。裁决角色为负责人，A0/B0/C0 PR 作为输入，不记录三人逐一签字；正式应用与业务验收仍未完成。
 
 G0 准备门禁已完成，五份基线及任务记录已直接推送 main，[G0 #1](https://github.com/paher-din/XunJie/issues/1) 已关闭为 Completed。实际模型、执行隔离/备份恢复、浏览器与真人验收未执行，G1～G4 尚未完成。
+
+2026-10-09，项目负责人明确进入 G1，并指定整体 G1 总协调工作项。依赖、阻塞与证据集中记录在 [G1 总协调任务](docs/tasks/G1_OVERALL_COORDINATION.md)，A/B/C 仍按既定分工交付，A 保留集成协调职责。已按负责人指令建立 [G1 总 Issue #9](https://github.com/paher-din/XunJie/issues/9)、[A1 #10](https://github.com/paher-din/XunJie/issues/10)、[A2 #13](https://github.com/paher-din/XunJie/issues/13)、[B1 #11](https://github.com/paher-din/XunJie/issues/11)、[C1 #12](https://github.com/paher-din/XunJie/issues/12)、[C2 #14](https://github.com/paher-din/XunJie/issues/14)，正文/依赖已回读，均 Open。当前完成协调记录与任务发布，服务端作品链和完整 G1 验收未执行；实际 UI 仍在最终阶段接入。
 
 当前准备门禁与后置条件见 [G0 统筹记录](docs/planning/TEAM_WORK_PLAN.md#41-整体-g0-统筹与冻结记录)。A1-P1、B1 合成核心、C2 首批可按批准进入条件建立任务并推进；真实数据库、凭据/付费/数据、C1 节点/隔离、最后 UI/真人链仍按各自授权和验收门禁落实，本工作项不开始应用编码。
 
