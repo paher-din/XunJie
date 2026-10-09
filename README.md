@@ -15,6 +15,8 @@
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项交付的实际核对、跨模块差异与统一建议、待定条件及取消投入/日期要求的同步范围；G0 尚未通过 |
+| [G0 TextScope 参考与活动适配](docs/tasks/G0_TEXTSCOPE_ACTIVITY_SPEC.md) | 外部候选供追溯，Web 学生空间的 Core/Report 活动提案另列；不照搬本地开发/六阶段/评分要求 |
+| [G0 缺口收敛与首批实施提案](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 教学衔接、模型/数据、资源门禁、精确依赖/文件责任、契约与首批放行建议；尚未批准或实施 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
@@ -56,6 +58,6 @@ A0 #2 的待评审提案已整理在上方任务文档；B0/C0 会审与参数�
 
 2026-10-09 核对：A0/B0/C0 的评审材料已通过 PR #5/#8/#6 合入，三个 Issue 当前均 Open；契约会审及 D-01～D-03 仍未完成。按项目负责人明确授权，取消 A/B/C 实际投入时间和首批交付日期要求已同步 PRD、MVP_SPEC、TECH_DESIGN、TEAM_WORK_PLAN 和 G0 跟踪，既定分工、依赖与验收责任保留；直接推送和 GitHub 正文更新结果见上方 G0 任务记录。G0 尚不具备关闭条件。
 
-2026-10-09 后续决定：首发 C 程序设计，唯一语言 C；`course_matrial/` 中的《C 程序设计语言（第 2 版·新版）》是课程教材，学生主项目仍待定。主模型为 DeepSeek 的 `deepseek-flash`，预算金额不写入本次方案或新增文档；调用限额、用量记录与数据条件保留。教材当前为本地未跟踪 PDF，未公开交付，MVP 的 TXT/Markdown 格式范围没有扩大。新决定与基线同步范围见 [G0 最新记录](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md#11-2026-10-09-课程教材与主模型决定)，受保护基线的新范围写入待授权。
+2026-10-09 后续决定：首发 C 程序设计、唯一语言 C、指定教材和 DeepSeek 的 `deepseek-flash` 已确认，预算金额不写入新增方案；合成开发/预置账号/私有试点/90 天复核而不自动删除及数据责任规则已确认。负责人提供 TextScope 外部参考并明确须适配实际产品；学生只在 Web 学生空间写代码、保存、运行、求助与提交，后台 Linux/容器由 C 负责。Core→反馈→Report 的活动提案、模型/技术配置和资源门禁见上方文档；基线写入与具体实施未授权，G0 保持开放。
 
 上述文档及其仓库内引用可供团队独立查阅，必要的一手资料使用公开链接。原研究的完整归档、旧实验操作手册与原始过程资料不作为正式开发的阅读依赖；历史实现和通过统计不代表当前应用已交付。
