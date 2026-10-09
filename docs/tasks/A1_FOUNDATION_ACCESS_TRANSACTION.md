@@ -131,3 +131,98 @@ P1 两轴各 0 项，无阻断问题。后补 §6 仅为未实施的操作方案
 ## 7. 基线汇总请求
 
 待授权维护者汇总：MVP_SPEC §10、TEAM/G1 登记本批实际代码/命令及 P1 交付状态，P2/P3/完整权限和业务验收未完成；不直接修改受保护文件，不关闭 Issue #10/#9。
+
+## 8. 2026-10-09 后续准备（实施前核查）
+
+项目负责人指示继续。本次继续完成 Issue #10 规定的认证/实际存储操作方案、成熟组件与参数验证准备，不把继续指令解释为 SQL/schema、凭据/新依赖、删除或公开发布的具体授权。可写本任务、README 与 A 的 tools；产品/共同规划/他人任务稿只读，不开始 P2/P3 应用实现。
+
+已核对远程 origin/main=898b2e3，较开始基线仅新增 G1 协调文档及 README 更新，产品 v0.3 未变；读取其完整 G1 门禁/首批依赖、Issue #10/#14 与当前分支任务记录，并复核 PRD §5/8/9、MVP M-10/§5/6、TECH §4/5/9/10/12 的身份/权限/存储与进入条件。当前公开分支/PR/Issue 没有 C2 新代码或任务稿交付；不能推断其他成员未开展本地工作。G1 协调材料的“无应用代码”反映远程交付时点，本地 P1 实际状态仍以 §5 为准。
+
+准备步骤：只读官方 session/cookie/ncrypto/npm 与固定驱动源码；先记录 scrypt 候选参数（N=131072、r=8、p=1、maxmem=192 MiB、64 字节输出/16 字节 salt），用独立工具、固定合成字节输入实测 5 次串行/2 次并发及匹配/不匹配行为。工具仅用批准 Node 标准库，输出参数/耗时/进程 RSS/事件循环采样与布尔检查结果，不读取真实密码/环境配置、不保存输入/salt/摘要、不接应用、DB 或网络。结果只是本机密码算法参数准备，不计真实登录、目标 Linux、限流或 NFR 验收。
+
+初步来源：[Node scrypt](https://nodejs.org/docs/v24.21.0/api/crypto.html#cryptoscryptpassword-salt-keylen-options-callback) 的随机 salt/内存约束，[OWASP 密码存储](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#scrypt) 的 scrypt 参数组；这些支持待评审建议，不自动冻结参数。具体组件/操作/结果在本节后续补齐。
+
+### 8.1 依赖与原生模块核查
+
+维护中的候选为 @fastify/session **11.1.4** + @fastify/cookie **11.1.3**，只读核对 npm registry 的精确版本/来源与对应 gitHead。两个插件源码声明 Fastify 5.x；这是声明兼容，不是实际安装/typecheck/运行通过。未安装候选，也未修改 package/lock。增加这两个依赖及其传递依赖须获批准后固定 lock；不引入第三方 SQLite session store、公开注册或无状态 JWT。
+
+来源：[session registry](https://registry.npmjs.org/@fastify%2fsession/11.1.4)、[cookie registry](https://registry.npmjs.org/@fastify%2fcookie/11.1.3)、[session 固定源码](https://github.com/fastify/session/blob/8b97d4266ccacad8d1cf4791ba505c46bde81840/index.js)、[cookie 固定源码](https://github.com/fastify/fastify-cookie/blob/576e0ddcacbd4cf652ba7228e5c1c44742091366/index.js)。session 默认内存 store 和默认 rolling 不满足本项目持久性/绝对时限；建议自有 SQLite store、saveUninitialized=false、rolling=false，明确 DB 的两项时限。参考 [session 官方说明](https://github.com/fastify/session#options)；单纯配置 cookie maxAge 不能作为会话验收证据。
+
+本机已安装的 better-sqlite3@13.0.3 包含 prebuilds/win32-x64.node；lib/binding.js 优先查找适用 prebuild，binding.gyp 在 prebuild 存在时不做实际源码编译。标准 Node 24.21.0、N-API 10 下直接 require 此模块通过，Database 构造器存在，**未调用构造器/initialize、未打开数据库、未执行 SQL**。没有运行安装/构建脚本。此结果解除“必须先编译”的假设，未证明 sqlite_version 或 WAL/事务。
+
+§6 原生安装提案据此细化：优先使用 lock 中固定包的适用 prebuild；其他节点先核源文件/平台再加载。加载失败如实报告，提交具体构建条件/理由后授权，不自动运行 npm install-scripts approve/rebuild、不放行全部安装脚本，不静默换驱动。本机无需为后续合成验证批准 node-gyp 源码构建；真实应用节点仍另验。
+
+核查曾访问两个猜测的上游源码路径返回 404；随后按仓库 tree 找到实际 index.js，以精确 gitHead 的源码复核，未把 404 当组件失效或安装结论。
+
+### 8.2 scrypt 实测与待评审参数
+
+工具：[benchmark-scrypt.mjs](../../apps/teaching/tools/benchmark-scrypt.mjs)。命令：apps/teaching 下 `node tools/benchmark-scrypt.mjs`，仅批准 Node；`node --check tools/benchmark-scrypt.mjs` 通过。
+
+| 项目 | 本机实际结果 |
+| --- | --- |
+| 环境 | Node v24.21.0，Windows x64；无账户、数据库、网络或真实密码 |
+| 参数 | N=131072，r=8，p=1，maxmem=201326592，keyLength=64，saltLength=16 |
+| 5 次串行耗时（ms） | 373.29 / 353.83 / 355.52 / 358.97 / 441.77；中位 358.97 |
+| 2 个并发的整批耗时 | 495.90 ms；不是每请求时延统计 |
+| 整个独立进程 RSS 采样峰值 | 295.83 MiB；包含进程与两个 derivation，不等于单次 scrypt 精确内存 |
+| 事件循环采样 p95 | 16.12 ms，10 ms 采样分辨率；不代表应用 API 延迟 |
+| 合成输入检查 | 相同输入/同 salt 匹配，不同输入拒绝，均 true；实际命令退出 0 |
+
+该参数组是候选，不因本机探针通过自动冻结。建议使用异步 scrypt、逐账号随机 salt、固定算法版本/参数与等长 timingSafeEqual；不 trim/归一化/截短密码。未知账号也作同参数的合成比较，具体拒绝、并发与时序泄漏仍须在真实登录入口验证。拟将密码哈希并发限定 2 个且不设置无限队列，超额用已批准 RATE_LIMITED，防止请求耗尽内存；目标节点须复测，不能据此宣称 10 会话 NFR 达标或成熟认证已实现。
+
+### 8.3 A 自有认证/短事务验证方案（待批准；不是 schema 文件）
+
+本提案限定为独立合成验证批次。完整 A1-P2/P3 的资源授权/业务原子提交仍等 C2 的同连接接缝。下列物理列/约束为待评审建议，不代签 C、不修改正式模型，也不在本批创建 SQL 或应用接口。
+
+| 拟用表 | 字段/约束提案 | 使用边界 |
+| --- | --- | --- |
+| users | id 主键、login_name 唯一、password_hash/salt 与 algorithm/N/r/p/key_length、disabled_at_ms 可空；二进制长度/参数受检查 | 只预置合成账号，真实凭据不进入代码/commit/日志；账户状态在认证时重读 |
+| courses | id 主键 | 仅为合成课程归属的最小父记录；无新增公共课程创建 API，后续课程元数据由 A2/C2 对齐 |
+| course_memberships | (course_id,user_id) 联合主键，分别 FK→courses/users；role 仅 teacher/student，active 状态 | 同一用户角色按课程查询，不从 Session 保存的旧 role 或请求体取角色 |
+| sessions | token_hash 主键，user_id FK→users，created_at_ms/last_active_at_ms/absolute_expires_at_ms/revoked_at_ms、csrf_hash、获准 cookie 元数据 | token/CSRF 原值只在内存/获准客户端出现，DB 存摘要；created/absolute expiry 不因 set/touch 改写，退出写撤销标记 |
+| login_attempt_windows | (kind,bucket_hash) 主键，window_start_ms/attempt_count/failure_count；kind 为账号/IP，计数非负且 failure≤attempt | unknown/known 账号同形计数；bucket 用运行签名材料 HMAC，不保存明文凭据/IP；不作为学习过程证据 |
+
+不创建 C 的 Job/CommandReceipt/AuditEvent/Attempt/ProjectFile 表、不写私有资产或作品记录。A 的授权先在自有 account/course membership 上验证；真实 ResourceVersion/Attempt scope、同 tx Job/Receipt/Event 和数据库物理接缝等待 C2。上述最小课程父记录和成员/Session 映射应交 C2 核对，不要求 C 采用未批准的列或迁移编号。
+
+时间采用服务端 UTC 毫秒。store.get 校验未撤销、账号有效、now 小于 created+8h 且小于 lastActive+30min；恰到边界拒绝。有效已认证请求才推进 lastActive。store.set 仅接受服务端明确完成登录的账号数据；现有记录不得复活撤销/过期 token，不从 plugin 的 stale payload 延长绝对期限，匿名/无效请求不创建持久 Session。登录换新 ID/CSRF，退出撤销原 ID；所有 callback 的持久失败必须传给 HTTP 拒绝，不能先 ACK 再保存。
+
+cookie 建议固定 path=/、HttpOnly、SameSite=Lax；真实入口强制 Secure，禁止 secure=auto 和无条件 trustProxy。合成 app.inject 测试模拟获准 HTTPS Origin，测试签名材料仅进程内生成/注入，不配置 .env/实际密钥；私有 HTTPS/校园网/VPN 的真实入口、可信代理和密钥提供通道另授权。Session cookie 原 ID 不授权任意账号/课程；登录 body 不接纳 role/studentId，未知账号/错误密码统一 UNAUTHENTICATED。
+
+所有变更先核严格同源 Origin，拒绝缺失/null/多个/错误源；同源不靠请求 Host/任意 X-Forwarded-* 推断。登录无已有 Session 时按获准 Origin + 固定 JSON 媒体入口防登录 CSRF；登录后变更还需服务端 Session 绑定的 CSRF header，摘要等长比较，SameSite 不能代替校验。既定当前 Session GET 不激活学习，返回身份/所属课程与获准 CSRF，不回传 cookie token；返回字段/确切读路径待公共契约确认，不单方新增到 contracts。
+
+限流候选为固定 15 分钟窗口、每登录名最多 10 次尝试/每 IP 最多 50 次尝试，成功与失败都计入尝试，失败另计；unknown/known 同样累计，不能靠重启或切换不存在账号绕过 IP 窗口。数值是本次待批准建议，不是 G0 已冻结值。窗口预留/计数在短事务中，密码算法在事务外；并发 admission 先计尝试再派发，失败不退尝试计数。全局最多 2 个 scrypt；DB 失败明确拒绝，不能绕过限制。测试需证明允许次数、边界、同时到达和重启不重置；真正耗时侧信道不能仅凭相同错误码宣称解决。
+
+withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE 短事务与参数绑定实现；callback 仅同步 DB 操作，拒绝 promise/async（开始前拒绝显式 async；返回 thenable 则回滚，仍禁止回调安排外部副作用），禁止跨连接或调用网络/模型/runner。拒绝嵌套事务，C2 接收同一 tx capability；busy_timeout 建议 1000 ms，foreign_keys=ON、journal_mode=WAL、synchronous=FULL，用真实结果核配置，不把返回值或 PRAGMA 声明当验证通过。session/成员授权也在该 tx 内读当前记录，初始读取不能代替提交前复核。
+
+### 8.4 准确操作范围与审批对象
+
+提请项目负责人批准的是 **A 自有独立合成存储/认证/事务验证批次**，不是整个 A1 或真实试点。实施目录仍为 apps/teaching 的 A 自有 server/access、server/db/transaction、contracts/access（仅批准字段）、tools/tests 与任务记录/README；不改受保护文档或 B/C/UI 领域。
+
+批准后才执行：
+
+1. 将 @fastify/session 11.1.4 与 @fastify/cookie 11.1.3 加入共享 package，更新精确 lock 后安装/typecheck。只批准这两个新增组件与实际 lock 解析出的传递依赖，不全局安装或自动放行安装脚本；实际组合失败报告，不替换栈。
+2. 每个测试批次用 fs.mkdtemp，在 os.tmpdir 下创建 xunjie-a1-p2- 前缀的独占新目录，库名固定 synthetic.sqlite（含 SQLite 自身的 -wal/-shm 生命周期文件）；先核目录绝对解析范围、非符号链接且目标不存在，禁止使用配置指向既有文件。无真实个人数据和持久密钥文件。
+3. 在该新库执行 sqlite_version/PRAGMA 核验、上述五个 A 自有合成表/必要索引创建、参数绑定的合成 INSERT/UPDATE/SELECT；每个测试独立文件。仅这些新文件的 schema/夹具，不对任何既有库 ALTER/DROP/导入/迁移。SQLite 自身临时 WAL/SHM 的关闭生命周期限于独占目录；不执行人工递归删除，库/目录暂留供核验，不调用清理脚本。
+4. 拟编写 schema/init 与连接/短事务/认证验证代码后，按下节用例实际验证；预置账号数据和签名材料在合成夹具内临时生成，明文不写源码、仓库、日志或 .env。不发放真实账号，不调用模型/runner，不开放网络/页面，不创建生产部署配置。
+5. 证据写回本任务，分开报告驱动/SQL/认证/事务和 C2 未联调项；不把仅 A 自有库通过算完整 AC-02/06/08/15 或 NFR-04/G1，不关闭 #10/#9。签名材料由同一受控测试父进程保留供子进程重启复用，仅 IPC 传递、不落盘；真实签名密钥/安全恢复与凭据发放仍另授权。
+
+风险：新的 native 模块/会话组件会在本机执行依赖代码；建表/索引及事务会写独占数据库，SQLite 还产生其内部生命周期文件；每个测试保留临时库会占磁盘。已把目标限定新建合成目录、固定批准依赖和五个 A 自有对象，原生构建不在本机申请范围；不使用生产/已有数据库或真实资料。合成验证开始前仍需负责人批准组件/参数/表提案与实际写库范围；不能仅因本节写成详细方案就执行。
+
+本批审批不冻结 C2 物理模型、tx 的最终共享签名或当前 Session API 新字段；它们另行对齐共同契约，并满足 TECH §12 条件后再接真实作品链。若负责人仅批准方案评审、未批准独立 SQL 验证，则继续保持所有 SQL 未执行。
+
+### 8.5 批准后验证清单（当前全部未执行）
+
+| 用例组 | 明确通过条件 | 判据范围 |
+| --- | --- | --- |
+| 驱动/配置/存储 | 实际内嵌 SQLite 修复版本、外键拒绝孤儿/WAL/FULL/busy；提交与强制进程退出后原已确认行仍在 | 存储基础；不替代 C5 故障/备份演练 |
+| 登录/会话 | 合法合成登录；错误/未知账号同码；换 ID/CSRF；8h/30min 精确边界、撤销/账号失效与迟到 set 不复活；插件保存失败不 ACK | A 自有身份入口；整体资源授权尚待 C2 |
+| 身份/归属 | role/studentId 伪造拒绝；一用户两课程不同角色，跨课程与非任课教师拒绝；权限变更后旧 Session 重查 | AC-02/NFR-04 部分；私有 ResourceVersion 正文裁剪待 A2/C2 |
+| 请求防护/限流 | Origin/JSON/CSRF 缺失/伪造/跨会话拒绝；窗口/并发/重启计数和 scrypt=2 admission；日志/响应没有输入/盐/摘要/cookie/CSRF/原异常路径 | 确定性防护；真实网络/安全配置未执行 |
+| 短事务 | 任一步失败、thenable 返回、FK/唯一约束/忙锁与 CAS 竞争整批回滚；同连接/拒绝嵌套，不能先 ACK 后失败 | 真实 A 库原子性；没有 C 的回执/Job/Event 时不宣称业务幂等通过 |
+| 后置联调 | 同键同摘要原 IDs、异摘要409、旧 revision、C2同 tx公共记录；A4+C3/B3教师纠正/迟到候选与Action失效竞争 | C2/下游真实交付和共同契约到位后再执行 |
+
+### 8.6 当前验证与状态
+
+已执行且通过：scrypt 合成参数探针、工具语法检查、本机预构建原生模块的无 DB 加载、npm run typecheck、npm test（含 pretest build，14/14）、文档检查（23 份/201 处仓库引用/27 条正式变更接口）、文档检查器回归 16/16、Git 空白检查。系统 Node 24.15.0 执行该探针返回预期退出 1，在密码算法前停止；批准运行时返回 0。
+
+本次仅 README、本任务记录、一个 A 自有合成参数工具有变化，应用 P1 无行为改动；未改 package/lock、受保护基线或其他模块。待独立审查与本地提交收口。既有产品验收与本节真实 SQL/认证用例保持未执行。P2/P3 操作提案待批准，C2 缺少公开交付证据的依赖保持，P1 工程远程交接尚未完成。
