@@ -91,7 +91,8 @@ export function runCommand(state:WorkspaceState,context:CommandContext,request:R
   const checks=structuredClone(state.checks);
   if(request.mode==='course_check') {
     if(!runtime.policyVersion||!runtime.checkRuleVersion||checks.some(check=>check.state==='active'))throw new RunnerError('STATE_CONFLICT','Check policy or prior check termination unavailable');
-    attempt={...attempt,decisionEpoch:attempt.decisionEpoch+1};
+    attempt={...attempt,decisionEpoch:attempt.decisionEpoch+1,
+      attemptRevision:attempt.attemptRevision===state.attempt.attemptRevision?attempt.attemptRevision+1:attempt.attemptRevision};
     jobs=cancelByPurpose(jobs,context.identity.scope,runtime.checkCancelPurposes).jobs;
     checks.push({jobId:ids.jobId,runId:ids.runId,policyVersion:runtime.policyVersion,state:'active'});
   }
@@ -133,6 +134,15 @@ export function claimRun(state:WorkspaceState,jobId:string,token:string,until:st
   const claimed=claimJob(job,token,until,generation,now);
   return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?claimed:row)}};
 }
+export function claimRunReconciliation(state:WorkspaceState,jobId:string,token:string,until:string,generation:string,now:string) {
+  const {job}=ownRun(state,jobId);
+  if(job.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Original reconciliation generation required');
+  if(!['running','outcome_unknown','cancelling'].includes(job.status)||(!job.stopRequested&&job.leaseUntil&&Date.parse(job.leaseUntil)>Date.parse(now)))throw new RunnerError('STATE_CONFLICT','Original run is already leased or terminal');
+  if(!token||!Number.isFinite(Date.parse(now))||!Number.isFinite(Date.parse(until))||Date.parse(until)<=Date.parse(now)
+    ||Date.parse(until)>Date.parse(now)+150000)throw new RunnerError('INVALID_REQUEST','Bounded reconciliation lease required');
+  const leased:Job={...job,leaseToken:token,leaseUntil:until,status:job.stopRequested?'cancelling':'outcome_unknown'};
+  return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?leased:row)}};
+}
 export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
   if(authorize()!==true)throw new RunnerError('FORBIDDEN','Workspace read denied');
   const own=state.records.jobs.filter(row=>row.scope.attemptId===state.attempt.attemptId
@@ -156,7 +166,8 @@ export function reconcileRun(state:WorkspaceState,jobId:string,result:{record:un
   const confirmed=validateRunResult(run.submission,result.record);
   if(confirmed.contentHash!==result.contentHash)throw new RunnerError('INVALID_REFERENCE','Run result hash mismatch');
   if(run.resultHash&&run.resultHash!==result.contentHash)throw new RunnerError('IDEMPOTENCY_CONFLICT','Original run result changed');
-  if(job.leaseToken&&job.leaseToken!==leaseToken)throw new RunnerError('STATE_CONFLICT','Current reconciliation lease required');
+  if(run.resultHash&&job.resultRef===result.resultRef&&['succeeded','cancelled'].includes(job.status))return structuredClone(state);
+  if(job.leaseToken&&(job.leaseToken!==leaseToken||!job.leaseUntil||Date.parse(job.leaseUntil)<=Date.parse(now)))throw new RunnerError('STATE_CONFLICT','Current reconciliation lease required');
   if(!result.resultRef||!Number.isFinite(Date.parse(now)))throw new RunnerError('INVALID_REFERENCE','Original result reference and trusted time required');
   if(run.resultHash&&job.resultRef!==result.resultRef)throw new RunnerError('IDEMPOTENCY_CONFLICT','Original result reference changed');
   if(!['running','outcome_unknown','cancelling','succeeded','cancelled'].includes(job.status))throw new RunnerError('STATE_CONFLICT','Run is not awaiting original reconciliation');

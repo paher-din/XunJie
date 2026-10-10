@@ -1,1 +1,4 @@
 * text eol=lf
+# Preserve the exact spacing emitted by npm and Node diagnostics in these raw outputs.
+c2.complete-checks-native.txt whitespace=-blank-at-eof
+c2.complete-regression.txt whitespace=-blank-at-eol

@@ -21,7 +21,8 @@ const jobSchema = z.strictObject({ jobId: id, kind: id, purpose: purposeSchema, 
   acceptedAt: time, deadline: time, attemptCount: natural.max(3), leaseToken: id.optional(), leaseUntil: time.optional(),
   runId: id.optional(), resultRef: id.optional(), resultHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), failure: id.optional() });
 const receiptSchema = z.strictObject({ receiptId: id, commandId: id, identity: identitySchema, requestHash: z.string().regex(/^[a-f0-9]{64}$/),
-  result: z.json(), serverSeq: z.number().int().positive(), committedAt: time });
+  // JSON validation must not normalize client file keys such as "__proto__" in the original ACK.
+  result: z.unknown().refine(value => z.json().safeParse(value).success), serverSeq: z.number().int().positive(), committedAt: time });
 const eventSchema = z.strictObject({ eventId: id, serverSeq: z.number().int().positive(), scope: scopeSchema, type: id,
   occurredAt: time, source: z.enum(['student_command', 'trusted_service']), payloadRef: id.optional() });
 const objectRefSchema = z.discriminatedUnion('kind', [
@@ -42,6 +43,7 @@ function persisted<Schema extends z.ZodType>(schema: Schema, json: string): z.ou
   if (!value.success) throw new Error('Invalid persisted shared record.');
   return value.data;
 }
+export function readCommandIdentity(value: unknown): CommandIdentity { return persisted(identitySchema, JSON.stringify(value)) as CommandIdentity; }
 
 export function readAttempt(tx: Transaction, attemptId: string): Attempt {
   const row = tx.get('SELECT * FROM attempts WHERE attempt_id=?', attemptId);
@@ -104,7 +106,7 @@ export function saveJob(tx: Transaction, input: Job) {
   const saved = readJobs(tx, job.scope.courseId).find(row => row.jobId === job.jobId);
   if (JSON.stringify(saved) !== JSON.stringify(job)) throw new ApiError('FORBIDDEN');
 }
-function readRecords(tx: Transaction, courseId: string): Records {
+export function readRecords(tx: Transaction, courseId: string): Records {
   const receipts = tx.all("SELECT * FROM command_receipts WHERE course_id=? AND command LIKE 'shared.%'", courseId).map(row => {
     const receipt = persisted(receiptSchema, String(row.result_json)) as CommandReceipt;
     if (receipt.receiptId !== row.receipt_id || receipt.commandId !== row.command_id || receipt.identity.actorId !== row.actor_id
@@ -163,13 +165,23 @@ export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentit
     { eventId: randomUUID(), scope: identity.scope, type: identity.command, occurredAt: timestamp, source: identity.scope.studentId === identity.actorId ? 'student_command' : 'trusted_service', payloadRef: receiptId }, generation);
   const receipt = plan.receipt as CommandReceipt<T>;
   const event = plan.records.events[plan.records.events.length - 1]!;
+  saveRecordPlan(tx, receipt, event);
+  return receipt;
+}
+// C's validated pure plan is persisted through the same format and connection as A's commands.
+export function saveRecordPlan(tx: Transaction, input: CommandReceipt, inputEvent: AuditEvent) {
+  const receipt = persisted(receiptSchema, JSON.stringify(input)) as CommandReceipt;
+  const event = persisted(eventSchema, JSON.stringify(inputEvent)) as AuditEvent;
+  const identity = receipt.identity, receiptId = receipt.receiptId, commandId = receipt.commandId;
+  const generation = identity.recoveryGeneration, hash = receipt.requestHash, now = Date.parse(receipt.committedAt);
+  if (!sameScope(event.scope, identity.scope) || event.payloadRef !== receiptId || event.serverSeq !== receipt.serverSeq
+    || event.occurredAt !== receipt.committedAt) throw new ApiError('INVALID_REFERENCE');
   tx.run(`INSERT INTO audit_events(server_seq,event_id,actor_id,course_id,command_id,command,target,object_ref_json,recovery_generation,committed_at_ms)
     VALUES (?,?,?,?,?,?,?,?,?,?)`, receipt.serverSeq, event.eventId, identity.actorId, identity.scope.courseId, commandId,
-    'shared.' + identity.command, identity.target, JSON.stringify(event), generation, now);
+    'shared.' + event.type, identity.target, JSON.stringify(event), generation, now);
   tx.run(`INSERT INTO command_receipts(receipt_id,command_id,actor_id,course_id,command,target,idempotency_key,request_hash,recovery_generation,server_seq,result_json)
     VALUES (?,?,?,?,?,?,?,?,?,?,?)`, receiptId, commandId, identity.actorId, identity.scope.courseId, 'shared.' + identity.command,
     identity.target, identity.idempotencyKey, hash, generation, receipt.serverSeq, JSON.stringify(receipt));
-  return receipt;
 }
 export function enqueueStoredJob(tx: Transaction, job: Job) {
   if (job.scope.attemptId) {

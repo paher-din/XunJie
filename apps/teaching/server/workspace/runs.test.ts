@@ -4,7 +4,7 @@ import {setTimeout} from 'node:timers/promises';
 import {test} from 'node:test';
 import {sha256} from '../../runner/snapshot.ts';
 import {createAttempt,freezeSnapshot} from './snapshots.ts';
-import {runCommand,claimRun,reconcileRun,markRunUnknown,cancelRunCommand,confirmNodeCancellation,readWorkspace,readConfirmedSnapshot,readRunDiagnostics,controlCommand} from './commands.ts';
+import {runCommand,claimRun,claimRunReconciliation,reconcileRun,markRunUnknown,cancelRunCommand,confirmNodeCancellation,readWorkspace,readConfirmedSnapshot,readRunDiagnostics,controlCommand} from './commands.ts';
 import type {CommandContext,WorkspaceState,RuntimeConfiguration} from './commands.ts';
 import {readRuntime,sshRunner,dispatchOriginalRun,readOriginalResult,stopOriginalRun,validateRunResult} from '../records/runner.ts';
 import type {RunnerTransport} from '../records/runner.ts';
@@ -75,11 +75,14 @@ test('check cancellation keeps stage until the authenticated node confirms no pe
 });
 test('confirmed original facts reconcile expired/unknown leases and never become current-code claims',()=>{
   const f=fixture();const planned=runCommand(f.state,f.context,f.request,f.runtime,f.ids,at(100000)).state;
-  const active=claimRun(planned,f.ids.jobId,'lease',at(20000),'gen',now),unknown=markRunUnknown(active,f.ids.jobId,'gen');
+  const active=claimRun(planned,f.ids.jobId,'old-lease',at(20000),'gen',now),expired=markRunUnknown(active,f.ids.jobId,'gen');
+  const unknown=claimRunReconciliation(expired,f.ids.jobId,'lease',at(90000),'gen',at(25000));
   const record={runId:f.ids.runId,snapshotId:f.request.snapshotId,snapshotHash:planned.runs[0]!.submission.identity.snapshotHash,
     inputHash:planned.runs[0]!.submission.identity.inputHash,runtimeProfileVersion:profile.runtimeProfileVersion,imageDigest:profile.imageDigest,
     unitTerminated:true,failureKind:'program_error'};
   const result={...validateRunResult(planned.runs[0]!.submission,record),resultRef:'node-result'};
+  assert.throws(()=>reconcileRun(expired,f.ids.jobId,result,'old-lease','gen',at(25000)),/lease/);
+  assert.throws(()=>claimRunReconciliation(unknown,f.ids.jobId,'racing-worker',at(90000),'gen',at(25000)),/leased/);
   const recovered=reconcileRun(unknown,f.ids.jobId,result,'lease','gen',at(25000));
   assert.equal(recovered.records.jobs[0]!.status,'succeeded');assert.equal(recovered.runs[0]!.resultHash,result.contentHash);
   assert.deepEqual(reconcileRun(recovered,f.ids.jobId,result,'lease','gen',at(25000)),recovered);
