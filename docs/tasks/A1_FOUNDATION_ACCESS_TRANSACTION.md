@@ -401,4 +401,4 @@ A1 Spec 审查发现 P2：SQL 幂等唯一键为 actor/command/target/key 全局
 
 项目负责人交回 PAHER 对 A2 源码 `8421157d7e917067b397d76378ed91096c4a8369` 实际执行结果：Node24.21.0、npm ci/typecheck/build 通过；经真实应用 SSH readiness 与教师/学生 POST /api/sessions 登录，checks→release→assign→pause→assignment active=false 指定用例 1 通过、0 失败、0 跳过。A 已重算 TAP 摘要/节点指纹并核固定活动来源与 C 信封一致；原字节证据及消费详情随 A2 #13 分支交付，不属于 A1 diff。没有改 A1 业务源码或复跑/改写原独立 112/117（5 跳过）；A2 本机全量 151/157 与 PAHER 指定 1/1 分别保留。
 
-此前按用户“完成 A1/A2 所有内容后分别提交 PR”等待的 A2 真实联调条件已补齐。准确批准的 A1 实现、验证、文档与两轴审查收口，开始普通推送/创建独立 PR；不合并、关闭 Issue、修改凭据/CI/既有 schema 或宣称完整 G1。当前 C1/C2 PR 尚未合入 main，A1 base 采用 codex/c2-workspace-core（C2 64eaa958），A2 base 采用 codex/a1-complete，只审各自实际增量；依赖 C1 #16→C2 #17→A1→A2。推送/PR URL/远端 SHA 将回读记录；产品基线仍待授权维护者汇总。
+此前按项目负责人“完成 A1/A2 所有内容后分别提交 PR”等待的 A2 真实联调条件已补齐。准确批准的 A1 实现、验证、文档与两轴审查收口，开始普通推送/创建独立 PR；不合并、关闭 Issue、修改凭据/CI/既有 schema 或宣称完整 G1。当前 C1/C2 PR 尚未合入 main，A1 base 采用 codex/c2-workspace-core（C2 64eaa958），A2 base 采用 codex/a1-complete，只审各自实际增量；依赖 C1 #16→C2 #17→A1→A2。推送/PR URL/远端 SHA 将回读记录；产品基线仍待授权维护者汇总。
