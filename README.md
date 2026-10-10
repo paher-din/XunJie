@@ -117,4 +117,4 @@ A0/B0/C0 的材料已通过 PR #5/#8/#6 合入并纳入统一裁决。2026-10-09
 
 [A1 记录](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md#13-已批准收尾批次实施记录进行中尚未-pr) 中的 createAccessApp 注册真实登录/退出与当前 Session 读取；withAuthorizedResource 使用当前 Session、课程成员和同 tx 可信资源定位器，提供用途/学生归属守卫。A 的 server/db/records-adapter 消费 C 已交公共类型/函数，把 Attempt/Job/Receipt/Event 与授权活跃时间同事务保存。C2 文件/别名/执行整链不因此已验收。
 
-准确批准的 createCompletionDatabase 仅新建系统临时 xunjie-a12-completion-*/synthetic.sqlite，共十七张应用表；旧五表/十表工厂保留范围，不迁移或清理现有库。应用调用方显式提供获准 HTTPS Origin、即时签名材料、实际 DB 和领域路由；不配置真实账号/密钥或替代 UI。默认 main 仍健康入口，ready=503。使用批准 Node 在 apps/teaching 执行 node --test tests/records-adapter.test.ts；全工程 npm run typecheck / npm test 仍必须通过后交付。目前 B/C 与 A 全量配置兼容问题待处理，不声称完整 A1/G1 通过。
+准确批准的 createCompletionDatabase 仅新建系统临时 xunjie-a12-completion-*/synthetic.sqlite，共十七张应用表；旧五表/十表工厂保留范围，不迁移或清理现有库。应用调用方显式提供获准 HTTPS Origin、即时签名材料、实际 DB 和领域路由；不配置真实账号/密钥或替代 UI。默认 main 仍健康入口，ready=503。使用批准 Node 在 apps/teaching 执行 node --test tests/records-adapter.test.ts；全工程 npm run typecheck / npm test 仍必须通过后交付。完整类型检查（含 runner）与统一回归已通过：149 项中 144 通过、0 失败、5 项 Linux/真实节点检查跳过。当前吸收 C1/C2 新提交并准备两轴审查，真实 C1 联调与完整 G1 仍未完成。

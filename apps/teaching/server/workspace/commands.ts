@@ -121,8 +121,9 @@ export function cancelRunCommand(state:WorkspaceState,context:CommandContext,job
 
 function ownRun(state:WorkspaceState,jobId:string) {
   const jobs=state.records.jobs.filter(row=>row.jobId===jobId),runs=state.runs.filter(row=>row.jobId===jobId);
-  if(jobs.length!==1||runs.length!==1)throw new RunnerError('INVALID_REFERENCE','Original run/job association unavailable');
-  const job=jobs[0],run=runs[0],scope=run.submission.identity.authorizedScope;
+  const [job]=jobs,[run]=runs;
+  if(jobs.length!==1||runs.length!==1||!job||!run)throw new RunnerError('INVALID_REFERENCE','Original run/job association unavailable');
+  const scope=run.submission.identity.authorizedScope;
   if(job.purpose!=='student_run'||job.scope.attemptId!==state.attempt.attemptId||job.scope.courseId!==state.attempt.courseId
     ||job.scope.studentId!==state.attempt.studentId||scope.attemptId!==state.attempt.attemptId||scope.courseId!==state.attempt.courseId
     ||scope.userId!==state.attempt.studentId||run.runId!==job.runId||run.submission.identity.runId!==run.runId)throw new RunnerError('FORBIDDEN','Original run scope mismatch');
@@ -140,7 +141,10 @@ export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
     &&row.scope.courseId===state.attempt.courseId&&row.scope.studentId===state.attempt.studentId);
   return structuredClone({attempt:state.attempt,files:state.files.filter(row=>row.attemptId===state.attempt.attemptId),
     snapshots:state.snapshots.filter(row=>row.attemptId===state.attempt.attemptId&&row.activityVersionId===state.attempt.activityVersionId),
-    jobs:own,runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)),checks:state.checks.filter(row=>own.some(job=>job.jobId===row.jobId))});
+    jobs:own.map(job=>({jobId:job.jobId,kind:job.kind,purpose:job.purpose,scope:job.scope,requestReceiptId:job.requestReceiptId,
+      status:job.status,stopRequested:job.stopRequested,expectedRevision:job.expectedRevision,decisionEpoch:job.decisionEpoch,
+      recoveryGeneration:job.recoveryGeneration,acceptedAt:job.acceptedAt,deadline:job.deadline,attemptCount:job.attemptCount,
+      ...(job.runId?{runId:job.runId}:{})})),runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)).map(({result:_privateResult,resultHash:_privateHash,...row})=>row),checks:state.checks.filter(row=>own.some(job=>job.jobId===row.jobId))});
 }
 
 export function reconcileRun(state:WorkspaceState,jobId:string,result:{record:unknown;contentHash:string;resultRef:string},
@@ -185,8 +189,9 @@ export function readConfirmedSnapshot(state:WorkspaceState,snapshotId:string,aut
 }
 export function readRunDiagnostics(state:WorkspaceState,runId:string,authorize:()=>boolean) {
   const workspace=readWorkspace(state,authorize);
-  const run=workspace.runs.find(row=>row.runId===runId);
-  if(!run)throw new RunnerError('INVALID_REFERENCE','Authorized run unavailable');
+  const visible=workspace.runs.find(row=>row.runId===runId);
+  if(!visible)throw new RunnerError('INVALID_REFERENCE','Authorized run unavailable');
+  const {run}=ownRun(state,visible.jobId);
   const base={runId,snapshotId:run.submission.snapshot.snapshotId,snapshotHash:run.submission.snapshot.hash,source:'runner_diagnostics'};
   if(!run.result)return {...base,status:'unavailable'};
   const result=validateRunResult(run.submission,run.result).record;

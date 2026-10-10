@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Attempt } from '../../contracts/workspace/index.ts';
-import type { Job, CommandIdentity, CommandReceipt, Records } from '../../contracts/records/index.ts';
+import type { Job, CommandIdentity, CommandReceipt, Records, AuditEvent } from '../../contracts/records/index.ts';
 import { finishCommand, requestHash, resolveCommandReceipt, sameScope } from '../records/commands.ts';
 import { enqueueJob, cancelByPurpose } from '../records/jobs.ts';
 import type { Purpose } from '../../contracts/records/index.ts';
@@ -114,27 +114,49 @@ function readRecords(tx: Transaction, courseId: string): Records {
       || receipt.serverSeq !== row.server_seq) throw new Error('Invalid persisted receipt scope.');
     return receipt;
   });
-  const events = tx.all("SELECT object_ref_json FROM audit_events WHERE course_id=? AND command LIKE 'shared.%'", courseId)
-    .map(row => persisted(eventSchema, String(row.object_ref_json)));
+  const events = tx.all("SELECT * FROM audit_events WHERE course_id=? AND command LIKE 'shared.%'", courseId)
+    .map(row => {
+      const event = persisted(eventSchema, String(row.object_ref_json)) as AuditEvent;
+      if (event.eventId !== row.event_id || event.serverSeq !== row.server_seq || event.scope.courseId !== row.course_id
+        || 'shared.' + event.type !== row.command || Date.parse(event.occurredAt) !== row.committed_at_ms) throw new Error('Invalid persisted event scope.');
+      const receipt = receipts.find(item => item.receiptId === event.payloadRef);
+      if (!receipt || !sameScope(receipt.identity.scope, event.scope) || receipt.identity.actorId !== row.actor_id
+        || receipt.commandId !== row.command_id || receipt.identity.target !== row.target
+        || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.serverSeq !== event.serverSeq
+        || receipt.committedAt !== event.occurredAt) throw new Error('Invalid persisted receipt/event association.');
+      return event;
+    });
   return { receipts, events, jobs: readJobs(tx, courseId), commandAliases: [],
     serverSeq: Number(tx.get('SELECT COALESCE(MAX(server_seq),0) AS seq FROM audit_events')!.seq) };
 }
 export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentity, fields: unknown,
-  generation: string, now: number, work: (receiptId: string) => T): CommandReceipt<T> {
+  generation: string, now: number, work: (receiptId: string) => T, validateResult: (value: unknown) => T): CommandReceipt<T> {
+  if (work.constructor.name === 'AsyncFunction' || validateResult.constructor.name === 'AsyncFunction') throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const validatedResult = (value: unknown) => {
+    const result = validateResult(value);
+    if (result && (typeof result === 'object' || typeof result === 'function') && 'then' in result && typeof result.then === 'function') throw new ApiError('PERSISTENCE_UNAVAILABLE');
+    return result;
+  };
   if (identity.sync) throw new ApiError('INVALID_REQUEST'); // C2 owns sync-alias persistence, outside this approved seven-table batch.
   if (identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
   const records = readRecords(tx, identity.scope.courseId);
+  const original = records.receipts.find(receipt => receipt.identity.actorId === identity.actorId && receipt.identity.command === identity.command
+    && receipt.identity.target === identity.target && receipt.identity.idempotencyKey === identity.idempotencyKey);
+  if (original && original.identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
   const hash = requestHash(identity.target, fields);
   const previous = resolveCommandReceipt(records, identity, hash, generation);
   if (previous) {
     if (previous.identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
-    return previous as CommandReceipt<T>;
+    return { ...previous, result: validatedResult(previous.result) };
   }
   const receiptId = randomUUID(), commandId = randomUUID();
-  const result = work(receiptId);
+  const candidate = work(receiptId);
+  if (candidate && typeof candidate === 'object' && 'then' in candidate && typeof candidate.then === 'function') throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const result = validatedResult(candidate);
+
   const timestamp = new Date(now).toISOString();
   const plan = finishCommand(records, { receiptId, commandId, identity, requestHash: hash, result, committedAt: timestamp },
-    { eventId: randomUUID(), scope: identity.scope, type: identity.command, occurredAt: timestamp, source: 'trusted_service', payloadRef: receiptId }, generation);
+    { eventId: randomUUID(), scope: identity.scope, type: identity.command, occurredAt: timestamp, source: identity.scope.studentId === identity.actorId ? 'student_command' : 'trusted_service', payloadRef: receiptId }, generation);
   const receipt = plan.receipt as CommandReceipt<T>;
   const event = plan.records.events[plan.records.events.length - 1]!;
   tx.run(`INSERT INTO audit_events(server_seq,event_id,actor_id,course_id,command_id,command,target,object_ref_json,recovery_generation,committed_at_ms)
@@ -146,11 +168,22 @@ export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentit
   return receipt;
 }
 export function enqueueStoredJob(tx: Transaction, job: Job) {
+  if (job.scope.attemptId) {
+    const attempt = readAttempt(tx, job.scope.attemptId);
+    if (attempt.courseId !== job.scope.courseId || attempt.studentId !== job.scope.studentId) throw new ApiError('FORBIDDEN');
+    if (attempt.attemptRevision !== job.expectedRevision || attempt.decisionEpoch !== job.decisionEpoch) throw new ApiError('VERSION_CONFLICT');
+  }
   const jobs = enqueueJob(readJobs(tx, job.scope.courseId), job);
   saveJob(tx, jobs[jobs.length - 1]!);
 }
 export function stopAttemptJobs(tx: Transaction, attempt: Attempt, purposes: Purpose[]) {
-  const result = cancelByPurpose(readJobs(tx, attempt.courseId), { courseId: attempt.courseId, studentId: attempt.studentId, attemptId: attempt.attemptId }, purposes);
-  for (const job of result.jobs) if (result.jobIds.includes(job.jobId)) saveJob(tx, job);
+  const existing = readJobs(tx, attempt.courseId);
+  const result = cancelByPurpose(existing, { courseId: attempt.courseId, studentId: attempt.studentId, attemptId: attempt.attemptId }, purposes);
+  for (const job of result.jobs) if (result.jobIds.includes(job.jobId)) {
+    // C2 requires a node tombstone even for a queued business run before confirming its termination.
+    const previous = existing.find(row => row.jobId === job.jobId)!;
+    saveJob(tx, job.purpose === 'student_run' && previous.status === 'queued' && job.status === 'cancelled'
+      ? { ...job, status: 'cancelling' } : job);
+  }
   return result.jobIds;
 }

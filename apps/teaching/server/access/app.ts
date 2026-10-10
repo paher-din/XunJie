@@ -45,7 +45,7 @@ export async function createAccessApp(options: VerificationOptions) {
   };
   const withAuthorizedCourse = <T>(request: FastifyRequest, courseId: string | ((tx: Transaction) => string),
     requiredRole: 'teacher' | 'student' | undefined,
-    work: (tx: Transaction, actor: { userId: string; courseId: string; role: 'teacher' | 'student' }) => T): T => {
+    work: (tx: Transaction, actor: { userId: string; courseId: string; role: 'teacher' | 'student' }) => T, advanceActivity = true): T => {
     return persisted(tx => {
       if (work.constructor.name === 'AsyncFunction') throw new Error('Synchronous authorized work required.');
       const current = activeSession(request, tx);
@@ -55,12 +55,15 @@ export async function createAccessApp(options: VerificationOptions) {
       const membership = tx.get('SELECT role FROM course_memberships WHERE user_id=? AND course_id=? AND active=1', String(current.user_id), resolvedCourseId);
       const role = membership?.role;
       if ((role !== 'teacher' && role !== 'student') || (requiredRole && role !== requiredRole)) throw new ApiError('FORBIDDEN');
-      tx.run('UPDATE sessions SET last_active_at_ms=? WHERE token_hash=?', now(), digest(request.session.sessionId));
+      if (advanceActivity) tx.run('UPDATE sessions SET last_active_at_ms=? WHERE token_hash=?', now(), digest(request.session.sessionId));
       return work(tx, { userId: String(current.user_id), courseId: resolvedCourseId, role });
     });
   };
   const access = {
     withAuthorizedCourse,
+    inspectCourse(request: FastifyRequest, courseId: string | ((tx: Transaction) => string), requiredRole?: 'teacher' | 'student') {
+      return withAuthorizedCourse(request, courseId, requiredRole, (_tx, actor) => actor, false);
+    },
     withAuthorizedResource<T>(request: FastifyRequest, locate: (tx: Transaction) => ResourceScope | undefined,
       use: ResourceUse, work: (tx: Transaction, actor: ActorContext, scope: ResourceScope) => T): T {
       if (locate.constructor.name === 'AsyncFunction' || work.constructor.name === 'AsyncFunction') throw new ApiError('PERSISTENCE_UNAVAILABLE');
@@ -148,5 +151,5 @@ export async function createAccessApp(options: VerificationOptions) {
   return { app, access };
 }
 
-// Historical verification entry remains compatible; both register the same real routes and storage. 
+// Historical verification entry remains compatible; both register the same real routes and storage.
 export const createVerificationApp = createAccessApp;

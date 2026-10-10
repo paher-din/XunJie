@@ -6,8 +6,10 @@ import {courseChecks} from './course.ts';
 import {readEnvelope,readJson,writeImmutable,envelope} from './node-files.ts';
 
 const directory=process.argv[2];
+const configPath=process.argv[3];
+if(!directory||!configPath)throw Error('Job directory and runner configuration arguments are required');
 const submission=readEnvelope(join(directory,'submission.json'));
-const config=readJson(process.argv[3]);
+const config=readJson(configPath);
 const executor=new DockerExecutor(config.dockerBinary,config.dockerSocket,config.cliConfig);
 const signal=new AbortController();
 if(existsSync(join(directory,'stop.intent')))signal.abort();

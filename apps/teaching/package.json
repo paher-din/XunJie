@@ -11,7 +11,7 @@
     "typecheck": "node tools/check-runtime.mjs && tsc --noEmit",
     "build": "node tools/check-runtime.mjs && tsc -p tsconfig.build.json",
     "pretest": "npm run build",
-    "test": "node tools/check-runtime.mjs && node --test tests/*.test.ts",
+    "test": "node tools/check-runtime.mjs && node --test tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
     "start": "node tools/check-runtime.mjs && node dist/server/main.js"
   },
   "dependencies": {
