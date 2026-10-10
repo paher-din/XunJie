@@ -9,8 +9,8 @@ const files=[{fileId:'input',path:'a space.txt',documentVersion:1,text:'C c!\nMe
 const snapshot={snapshotId:'synthetic',hashFormat:'sha256-manifest-v1' as const,hash:manifestHash(files),files};
 test('course rules bind selected snapshot inputs, records and approved error exits',()=>{
   const cases=courseChecks(snapshot,{operation:'stats',fileIds:['input']},'textscope-core-v1');
-  assert.equal(cases.length,5);
-  assert.deepEqual(cases.map(item=>item.rule.expectedExitCode),[0,2,2,2,1]);
+  assert.equal(cases.length,6);
+  assert.deepEqual(cases.map(item=>item.rule.expectedExitCode),[0,2,2,2,2,1]);
   assert(matchesStdout('/snapshot/a space.txt\t2\t4\t20\nTOTAL\t2\t4\t20\n',cases[0].rule.stdoutRecords!));
   assert(!matchesStdout('other/a space.txt\t2\t4\t20\nTOTAL\t2\t4\t20\n',cases[0].rule.stdoutRecords!));
   const find=courseChecks(snapshot,{operation:'find',word:'c',fileIds:['input']},'textscope-core-v1');
@@ -36,4 +36,13 @@ test('missing input case avoids every snapshot file and implied directory withou
   assert.equal(missing.rule.expectedExitCode,1);
   assert.equal(verifyCase('check',{phase:'execute',containerId:'synthetic',exitCode:1,stdout:'',stderr:'cannot open\n',
     outputBytes:12,durationMs:1,unitTerminated:true},missing.rule)?.verdict,'passed');
+});
+test('overflow is a trusted exit-2 case and maximum normal N still covers all words',()=>{
+  assert.throws(()=>courseChecks(snapshot,{operation:'top',fileIds:['input'],count:'9'.repeat(100)},'textscope-core-v1'),/positive integer/);
+  const cases=courseChecks(snapshot,{operation:'top',fileIds:['input'],count:'2147483647'},'textscope-core-v1');
+  assert(matchesStdout('c 2\nmatters 1\nmemory 1\n',cases[0].rule.stdoutRecords!));
+  const overflow=cases.find(item=>item.args[0]==='top'&&item.args[2]==='2147483648');
+  assert(overflow,'Overflow sample must be independently checked');
+  assert.equal(verifyCase('check',{phase:'execute',containerId:'synthetic',exitCode:2,stdout:'',stderr:'usage\n',
+    outputBytes:6,durationMs:1,unitTerminated:true},overflow.rule)?.verdict,'passed');
 });
