@@ -2,7 +2,7 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
-当前仓库保存团队开发所需的产品规格、工作规范和必要参考，已交付 C1 专用执行节点；完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
+当前仓库保存团队开发所需的产品规格、工作规范和必要参考，已交付 C1 专用执行节点与 C2 首批领域核心；完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
 
 ## 文档
 
@@ -19,6 +19,7 @@
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 整体 G1 的任务依赖、进入门禁、交接与验收账目；模块实现仍由 A/B/C 负责 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
+| [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 文件整批变更/重放、不可变引用、Job/回执/事件/用途失效、限定检查与 C1 原 ID 对接；首批核心有合成及真实节点验证，实际 A1/A2/数据库与完整 C2 尚未完成 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
@@ -84,7 +85,17 @@ C1 已在本机 WSL2 内的专用 QEMU/KVM Ubuntu VM 交付 [runner](apps/teachi
 
 在获准且已准备的 Linux 宿主维护环境，从仓库根执行 `sh apps/teaching/runner/vm.sh start`，再按任务稿同步源码并运行 `/opt/xunjie-runner/node/bin/node apps/teaching/runner/acceptance.ts`；它包含合成故障注入/Engine 恢复/测试代际注册，仅用于无真实业务作业的维护窗口。停止 VM 用 `sh apps/teaching/runner/vm.sh stop`，不删除持久盘/密钥/账本；未准备的开发副本不能假定本机节点、权限或私钥已存在。学生仍只操作团队 Web UI。
 
-C1 完成节点实现与独立验收；A1/C2 的真实业务权限/事务、A2 活动开放、B 的政策投影、浏览器/真人和完整业务备份仍须对应任务验收。进度待授权维护者汇总至受保护基线；本 PR 不合并或关闭 Issue，不把环境通过当作完整 G1 或教学效果。
+C1 完成节点实现与独立验收；C2 已实现 [workspace](apps/teaching/server/workspace/) 与 [records](apps/teaching/server/records/) 的首批核心和节点适配。C2 目前输出待 A 的同连接事务保存的变更计划，不提供真实数据库 ACK/登录或替代 API；真实成员/分配/SQL、业务备份、浏览器与真人仍按对应任务验收。进度待授权维护者汇总至受保护基线；未执行远端 C1/C2 Issue 关闭，不把首批或环境通过当完整 C2/G1 或教学效果。
+
+在已批准的 Node 24.21.0/TypeScript 工具和 C1 本机维护环境，从仓库根运行 C2 检查：
+
+```bash
+/opt/xunjie-runner/node/bin/node --test apps/teaching/server/records/*.test.ts apps/teaching/server/workspace/*.test.ts
+# 无真实业务作业的获准合成环境，可同时执行实际 C1 SSH/container 对接
+XUNJIE_C2_RUNTIME=1 /opt/xunjie-runner/node/bin/node --test apps/teaching/server/records/*.test.ts apps/teaching/server/workspace/*.test.ts
+```
+
+不设置 XUNJIE_C2_RUNTIME 时，专用节点对接明确跳过，其余核心检查正常执行。实际 16 项通过、strict 类型检查和原始记录/下游 tx 要求见 [C2 交付记录](docs/tasks/C2_WORKSPACE_JOBS.md#6-验证与交付记录)；A3/B2/C3/C4 可复用首批核心，但真实存储/权限未接入前不能宣称完整服务端作品链通过。
 
 三份产品文档已于 2026-10-09 更新为 v0.3：项目负责人统一批准 G0 的教学/模型/数据/技术契约和分段实施方案，并明确授权同步五份基线。裁决角色为负责人，A0/B0/C0 PR 作为输入，不记录三人逐一签字；正式应用与业务验收仍未完成。
 
