@@ -2,7 +2,7 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
-当前仓库保存团队开发所需的产品规格、工作规范和必要参考，正式应用尚未实现。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
+当前仓库保存团队开发所需的产品规格、工作规范和必要参考，已交付 C1 专用执行节点；完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
 
 ## 文档
 
@@ -18,6 +18,7 @@
 | [G0 TextScope 参考与活动适配](docs/tasks/G0_TEXTSCOPE_ACTIVITY_SPEC.md) | 外部候选供追溯，Web 学生空间的 Core/Report 活动提案另列；不照搬本地开发/六阶段/评分要求 |
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 整体 G1 的任务依赖、进入门禁、交接与验收账目；模块实现仍由 A/B/C 负责 |
+| [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
@@ -78,6 +79,12 @@ node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.
 该命令只验证 B1 合成领域逻辑和注入式适配边界，不是 TypeScript 7 静态 typecheck、Zod/AI SDK 实包兼容或真实 DeepSeek 调用。完整记录见 [B1 任务文档](docs/tasks/B1_AGENT_CORE.md)。
 
 ## 状态
+
+C1 已在本机 WSL2 内的专用 QEMU/KVM Ubuntu VM 交付 [runner](apps/teaching/runner/) 和 [节点契约](apps/teaching/contracts/runner/index.ts)：固定内容 ID、快照、受限编译/运行、原 ID/代际/两槽、持久取消/未知保槽/进程恢复、可信 Core/Report 与不可变产物均有实际合成验收。审查修复后 guest 48 项通过，宿主受认证控制链 10 项通过，strict 类型检查通过；应用入口实际 ready=true，整台 VM 重启后的原结果/代际保留有前次原始证明；本次新源码/指纹的 ready 已重新验收。guest 内跳过的 SSH 入口由宿主完整执行，不计为通过。top N 按已确认 C int 范围（1～2,147,483,647）；validator 为 v2。准备/启动/复验、历史/新指纹和下游责任见 [C1 第 14 节](docs/tasks/C1_ISOLATED_RUNNER.md#14-2026-10-10-收口方案批准与执行)。
+
+在获准且已准备的 Linux 宿主维护环境，从仓库根执行 `sh apps/teaching/runner/vm.sh start`，再按任务稿同步源码并运行 `/opt/xunjie-runner/node/bin/node apps/teaching/runner/acceptance.ts`；它包含合成故障注入/Engine 恢复/测试代际注册，仅用于无真实业务作业的维护窗口。停止 VM 用 `sh apps/teaching/runner/vm.sh stop`，不删除持久盘/密钥/账本；未准备的开发副本不能假定本机节点、权限或私钥已存在。学生仍只操作团队 Web UI。
+
+C1 完成节点实现与独立验收；A1/C2 的真实业务权限/事务、A2 活动开放、B 的政策投影、浏览器/真人和完整业务备份仍须对应任务验收。进度待授权维护者汇总至受保护基线；本 PR 不合并或关闭 Issue，不把环境通过当作完整 G1 或教学效果。
 
 三份产品文档已于 2026-10-09 更新为 v0.3：项目负责人统一批准 G0 的教学/模型/数据/技术契约和分段实施方案，并明确授权同步五份基线。裁决角色为负责人，A0/B0/C0 PR 作为输入，不记录三人逐一签字；正式应用与业务验收仍未完成。
 
