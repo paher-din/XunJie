@@ -1,0 +1,17 @@
+▶ authenticated dedicated VM control and supervision
+  ✔ SSH application entry rejects shell, role injection, maintenance and unknown credential (3093.192856ms)
+  ✔ trusted Core and Report check real output, error exits and immutable original results (45666.595186ms)
+  ✔ cancel before submit is durable; running cancellation waits for original units (6609.235596ms)
+  ✔ multiple checks share ten seconds and stdout plus report share 64 KiB (18710.672734ms)
+  ✔ controller crash preserves independent timeout, original identity and queued work (19740.835359ms)
+  ✔ worker crash keeps unknown reserved until authenticated Engine recovery barrier (9162.5693ms)
+  ✔ registered new generation rejects old control and never reruns original ID (7108.327972ms)
+✔ authenticated dedicated VM control and supervision (114193.075418ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114585.988311
