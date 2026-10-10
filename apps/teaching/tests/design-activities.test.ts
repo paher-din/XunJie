@@ -87,7 +87,7 @@ function command(f: Fixture, headers: Headers, url: string, payload: object, key
 }
 async function draft(f: Fixture, headers: Headers) {
   assert.equal((await f.app.inject({ method: 'POST', url: '/fixture/policy', headers, payload: { versionId: 'help-v1', helpAllowed: true, wholeSolutionAllowed: false, limitedCheckHelpAllowed: false, description: 'Teacher help policy' } })).statusCode, 200);
-  assert.equal((await f.app.inject({ method: 'POST', url: '/fixture/rule', headers, payload: { versionId: 'textscope-core-v1', validatorVersion: 'textscope-validator-v1', limitedHelp: false, description: 'Trusted core checks' } })).statusCode, 200);
+  assert.equal((await f.app.inject({ method: 'POST', url: '/fixture/rule', headers, payload: { versionId: 'textscope-core-v1', validatorVersion: 'textscope-validator-v2', limitedHelp: false, description: 'Trusted core checks' } })).statusCode, 200);
   const materials = [];
   for (const kind of ['learning_material', 'private_answer'] as const) {
     const res = await command(f, headers, '/api/courses/course/resources', { teacherDesignAllowed: true, material: { format: 'txt', title: kind === 'private_answer' ? 'PRIVATE_TITLE' : 'Reading', content: kind === 'private_answer' ? 'PRIVATE_BODY' : 'abc', kind, visibility: { student: kind === 'learning_material', tutor: kind === 'learning_material' } } });

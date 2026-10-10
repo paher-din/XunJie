@@ -5,7 +5,7 @@ const id = z.string().min(1).max(128);
 export const helpPolicySchema = z.strictObject({ versionId: id, helpAllowed: z.boolean(), wholeSolutionAllowed: z.literal(false),
   limitedCheckHelpAllowed: z.literal(false), description: z.string().min(1) });
 export const checkRuleSchema = z.strictObject({ versionId: z.enum(['textscope-core-v1', 'textscope-report-v1']),
-  validatorVersion: z.literal('textscope-validator-v1'), limitedHelp: z.boolean(), description: z.string().min(1) });
+  validatorVersion: z.literal('textscope-validator-v2'), limitedHelp: z.boolean(), description: z.string().min(1) });
 export const runtimeSchema = z.strictObject({ runtimeProfileVersion: id, imageDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   compilerImage: z.string().regex(/^sha256:[a-f0-9]{64}$/), runtimeImage: z.string().regex(/^sha256:[a-f0-9]{64}$/), approvedResultFiles: z.array(id) });
 export const releaseSchema = z.strictObject({ expectedRevision: versionSchema, recoveryGeneration: id, confirmed: z.literal(true),

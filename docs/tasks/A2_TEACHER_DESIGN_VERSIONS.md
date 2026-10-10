@@ -355,3 +355,4 @@ Node 24.21.0/npm 11.19.0，联合 A1/A2 工作副本 npm run typecheck 通过，
 新增服务端实现与本机合成验证已经执行；真实 C1 正向开放联调、最终两轴审查和远程 PR 尚未执行，A2 全部完成暂未确认。真实教师课程内容审阅、A3 AI 接入、C2 整体作品链、C3 Action 最终投递、C5 旧备份/可靠恢复登记、UI/真人与完整 AC/NFR/G1～G4 分别保持原阶段，不能凭合成通过宣称完成。
 
 待授权维护者汇总 MVP_SPEC §10：A1 同 tx 真实授权与 C 记录适配，A2 公开服务端固定版本/分配/控制及统一验证结果；本次不修改保护基线。按负责人“完成全部后分别 PR”的要求，保留本地独立候选与源码历史，真实 C1 验证未补齐前不提前发布 A2 完成 PR。
+实施前对齐细化：C 现交检查为 validator-v2，A2 新规则配置按该确切版本消费，不给旧 v1 判断改贴标签。C1 authenticated readiness 还返回 fingerprint/validation；A2 除消费 C readRuntime 的 Profile/代际核验外，将核 validation.passed、其 fingerprintHash 与实际 fingerprint UTF-8 JSON 摘要一致，并在固定 activity_json 保存内部只读来源元数据 fingerprintHash/sourceHash/validatedAt/checkedAt。此为 §11.1 已批准的指纹/有效结果/确切来源核验，不增加表/列或公开输入，不向学生输出节点内部数据；readiness 缺证据/指纹冲突拒绝新开放，合法原回执仍先重放。合成夹具补足对应来源字段，不计真实节点通过。
