@@ -293,7 +293,7 @@ Standards：**硬性违规 0、可操作判断性异味 0**。原 A1 五表工�
 | check_rule_versions | id 主键、course_id FK、created_by FK、created_at_ms、完整严格 rules_json、content_hash；不可变 | 教师/可信验证器检查版本，不向学生/tutor 下发私有内容 |
 | activity_versions | id 主键、course_id / blueprint_id FK、source_revision、created_by / created_at_ms、完整 activity_json / content_hash；正文不可原地更新 | 确切资源/目标/量规/政策/规则/Profile 与就绪来源固定 |
 | activity_controls | activity_id PK/FK、control_revision 正整数、status active/paused、reason / controlled_by / controlled_at_ms | 活动可用性 CAS，不改正文 |
-| assignments | id 主键、course_id/student_id/activity_id FK、assignment_revision 正整数、status active/paused、individual_paused/paused_by_activity 两个布尔来源、reason / controlled_by / controlled_at_ms；同活动/学生唯一 | 仅当前课程学生；分配暂停优先 |
+| assignments | id 主键、course_id/student_id/activity_id FK、assignment_revision 正整数、status active/paused、individual_paused/paused_by_activity 两个布尔来源与 individual_reason/activity_reason、controlled_by / controlled_at_ms；同活动/学生唯一 | 仅当前课程学生；分配暂停优先 |
 | attempts | attempt_id 主键、course_id/student_id/assignment_id/activity_id FK、attempt_revision / decision_epoch 独立列、严格 C Attempt JSON；归属/JSON 一致 | 仅 C 已交公共 Attempt 的读取/控制持久适配，不实现文件/快照/运行 |
 | jobs | job_id 主键、course_id/student_id/attempt_id 作用域、request_receipt_id FK、purpose/status/stop_requested/recovery_generation 与严格 C Job JSON、租约/epoch关联核验；teacher scope 可空学生/Attempt | C2 enqueueJob/cancelByPurpose 等实际同 tx 保存与拒绝 |
 
@@ -319,3 +319,5 @@ A2 需上述固定版本/分配/控制及服务端交接全部完成后才建独
 已核对需求/远程 Issue/PR 与 C 当前代码，完成准确收尾方案。新七表/十七表工厂、上述新增公开 GET/DTO、活动版本/分配/控制及新批业务测试均未执行；需要负责人批准 §11.1～11.3 的接口细化、准确合成 schema/写库范围及测试接缝。请求不包含基线写入、真实数据库/凭据/生产部署或变更 C/B/UI 权限。授权一旦到位沿顺序推进，不逐步骤重复确认。
 
 方案静态验证：node tools/a0-review/check.mjs 通过（24 份文档/241 处仓库引用/27 条正式变更接口），git diff --check 通过。仅核链接/结构，不计新增业务通过；准确授权提请已发出，等待负责人答复。
+
+负责人已明确答复“批准该范围并继续”，批准 §11.1～11.3 公共接口/17表新临时合成库/测试接缝。原待审状态保留当时事实，以本记录为准；不含生产/既有库/凭据/CI/基线或 B/C/UI 修改。暂停来源分别保存理由为准确列细化，未增加表或操作许可。实施按顺序进行，只有实际通过并审查收口后才分别 PR。
