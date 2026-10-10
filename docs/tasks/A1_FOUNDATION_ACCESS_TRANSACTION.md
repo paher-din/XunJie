@@ -2,7 +2,7 @@
 
 主责：A。任务：[Issue #10](https://github.com/paher-din/XunJie/issues/10)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)，接缝：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。开始日期：2026-10-09，最新批次：2026-10-10（Asia/Shanghai）。开始基线：bc1d466a073521235e54cb6995bfcc476619fafd。
 
-状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。本地候选尚未远程 PR。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
+状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。准确批准服务端范围已收口，正在分别交付 PR；较新真实联调接收事实见 §14.4。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
 
 ## 1. 已读依据与本批授权
 
@@ -289,7 +289,7 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 
 验证用例：合法身份与 SQL 写入同连接提交；授权/回调失败不能返回 ACK 或留下前置行，lastActive 不因失败推进；当前角色撤销后 callback 不执行；async callback 不开始、thenable/嵌套回调整批回滚、逃逸 tx 失效。它验证既有基础组合，不冒称 C2 的业务幂等、回执/Job/Event 落库或 A2 完成。固定开始提交 59ddd79；总审查沿已约定 9221370，新增部分单列 59ddd79..候选。
 
-状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。本地候选尚未远程 PR。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
+状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。准确批准服务端范围已收口，正在分别交付 PR；较新真实联调接收事实见 §14.4。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
 
 ### 10.1 实际实现与验证
 
@@ -397,3 +397,8 @@ A1 Spec 审查发现 P2：SQL 幂等唯一键为 actor/command/target/key 全局
 交 A2/B/C 的真实入口为 createAccessApp/withAuthorizedCourse/withAuthorizedResource 和 db.withTransaction/records-adapter；由服务端可信定位器核课程/归属/用途，外部等待在事务外。调用方先重查当前会话/成员/资源，再核代际并消费实际 C 变更计划，同 tx 保存并提交成功后才 ACK；严格结果 validator 必须验证命令-specific shape及当前授权范围。不可把HTTPbody或模型生成的 ActorContext/scope/authorize 回调当许可。
 
 真实预置账号发放、私有 HTTPS/代理/生产初始化、密钥保管、可靠恢复登记及 C5 对账仍按原具体环境授权/验收条件处理；默认 main健康工厂不等于已配置完整应用。A1候选分支 codex/a1-complete 独立保留；按“完成A1/A2所有内容后分别PR”要求，A2实际 C1 联调未补齐前尚未远程推送/PR/关闭 Issue。任务/README已同步，保护基线待授权维护者汇总。
+### 14.4 A2 真实联调已补齐与独立 PR 交付准备
+
+项目负责人交回 PAHER 对 A2 源码 `8421157d7e917067b397d76378ed91096c4a8369` 实际执行结果：Node24.21.0、npm ci/typecheck/build 通过；经真实应用 SSH readiness 与教师/学生 POST /api/sessions 登录，checks→release→assign→pause→assignment active=false 指定用例 1 通过、0 失败、0 跳过。A 已重算 TAP 摘要/节点指纹并核固定活动来源与 C 信封一致；原字节证据及消费详情随 A2 #13 分支交付，不属于 A1 diff。没有改 A1 业务源码或复跑/改写原独立 112/117（5 跳过）；A2 本机全量 151/157 与 PAHER 指定 1/1 分别保留。
+
+此前按用户“完成 A1/A2 所有内容后分别提交 PR”等待的 A2 真实联调条件已补齐。准确批准的 A1 实现、验证、文档与两轴审查收口，开始普通推送/创建独立 PR；不合并、关闭 Issue、修改凭据/CI/既有 schema 或宣称完整 G1。当前 C1/C2 PR 尚未合入 main，A1 base 采用 codex/c2-workspace-core（C2 64eaa958），A2 base 采用 codex/a1-complete，只审各自实际增量；依赖 C1 #16→C2 #17→A1→A2。推送/PR URL/远端 SHA 将回读记录；产品基线仍待授权维护者汇总。
