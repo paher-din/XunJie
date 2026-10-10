@@ -84,7 +84,7 @@ npm start
 
 `npm test` 会先编译，并运行合成 HTTP、错误/校验、认证/事务/进程故障恢复和实际本机监听/入口测试。认证/存储测试按负责人批准，仅在系统临时目录新建 `xunjie-a1-p2-*/synthetic.sqlite`；包含 SQLite 自身 WAL/SHM 文件生命周期，关闭后保留库，不执行清理/既有库迁移。凭据与签名材料仅由夹具临时生成，重启测试仅经 IPC 复用，不写 `.env`。测试中的强制进程结束仅针对自己的故障夹具。开发入口为 `http://127.0.0.1:3000`，可在进程环境设置有效整数 `PORT`（1～65535），退出时关闭监听。没有 UI 页面；默认 main 无需 `.env` 或数据库初始化。
 
-`GET /health/live` 返回 200 和服务端 requestId，只表示入口存活；`GET /health/ready` 当前固定返回 503/DEPENDENCY_UNAVAILABLE，因为完整数据库、模型、runner 链尚未接入。默认 main 仍仅提供 P1 入口。独立 [合成验证工厂](apps/teaching/server/access/app.ts) 实现既定登录/退出路径、持久 Session、课程归属和短事务，仅供授权的 `app.inject` 测试，不监听网络；其登录字段/CSRF 结果和 fixture 路由不是新冻结的公共字段。实际 HTTPS/安全配置、资源授权与 C2 业务链未完成。未注册的路由返回统一的技术错误，完整记录见 [A1 任务文档](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md#9-2026-10-10-独立合成验证批次)。
+`GET /health/live` 返回 200 和服务端 requestId，只表示入口存活；`GET /health/ready` 当前固定返回 503/DEPENDENCY_UNAVAILABLE，因为完整数据库、模型、runner 链尚未接入。默认 main 仍仅提供 P1 入口。独立 [合成验证工厂](apps/teaching/server/access/app.ts) 实现既定登录/退出路径、持久 Session、课程归属和短事务，仅供授权的 `app.inject` 测试，不监听网络；其登录字段/CSRF 结果和 fixture 路由不是新冻结的公共字段。内部 withAuthorizedCourse 已支持课程鉴权、Session 活跃时间和可信同步 SQL 回调同事务提交/回滚，验证见 [A1 接缝记录](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md#10-2026-10-10-c2-接缝推进既有合成鉴权与事务组合)。实际 HTTPS/安全配置、资源授权与 C2 业务链未完成。未注册的路由返回统一的技术错误，完整记录见 [A1 任务文档](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md#9-2026-10-10-独立合成验证批次)。
 
 本批使用 npm 11.19.0。`npm ci` 可能提示 better-sqlite3 原生安装脚本尚未获 allowScripts 放行；本机 Windows x64 使用包内预构建模块，未放行 node-gyp。独立合成测试已实际打开 SQLite 3.53.4，核验外键/WAL/FULL/busy_timeout=1000；其他平台须验证其批准运行时与原生模块，不能只凭依赖安装成功称 DB 就绪。
 
@@ -117,3 +117,5 @@ node --test tests/design-material.test.ts tests/design-draft.test.ts tests/desig
 npm run typecheck
 ```
 这四组测试只使用合成对象，不建 A2 数据库、不启动业务服务；完整回归仍执行 `npm test`。当前没有可供浏览器调用的 A2 保存/确认/分配接口；真实授权、事务存储、不可变活动版本、分配/控制和 UI 验收待 S2/S3，不凭计算结果发保存 ACK。
+
+A2 后续存储对象、独立新库范围、原子命令顺序及验证接缝已列为 [S2 待审方案](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#9-s2-首批持久化方案待负责人批准未执行)。该方案尚未批准或执行；原 A1 五表合成库许可不覆盖新增 A2 表。

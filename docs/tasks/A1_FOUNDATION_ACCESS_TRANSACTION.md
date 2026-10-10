@@ -2,7 +2,7 @@
 
 主责：A。任务：[Issue #10](https://github.com/paher-din/XunJie/issues/10)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)，接缝：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。开始日期：2026-10-09，最新批次：2026-10-10（Asia/Shanghai）。开始基线：bc1d466a073521235e54cb6995bfcc476619fafd。
 
-状态：**P1 已完成本地交付并审查通过；2026-10-10 A 自有独立合成认证/短事务批次已获批准、实现、验证并完成两轴审查（§9，28/28 测试通过，Standards/Spec 各 0 项）。完整 P2/P3 的 C2 资源/业务链及真实入口仍未完成，A1/G1 未完成。§8 的待批准状态为历史记录。**
+状态：**P1 已完成本地交付并审查通过；2026-10-10 A 自有独立合成认证/短事务批次已获批准、实现、验证并完成两轴审查（§9，28/28 测试通过，Standards/Spec 各 0 项）。最新 §10 的同事务课程鉴权组合已实现、完整回归 49/49 通过，待本批两轴审查。完整 P2/P3 的 C2 资源/业务链及真实入口仍未完成，A1/G1 未完成。§8 的待批准状态为历史记录。**
 
 ## 1. 已读依据与本批授权
 
@@ -276,3 +276,31 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 本批仅 README、本任务稿、A 自有代码/测试与 package/lock 有变化；受保护基线未修改。待获授权维护者将本节实际进度/边界汇总 MVP_SPEC §10 与相关技术接缝，未宣称基线已同步。远程推送/PR 未执行。
 
 审查固定基线 6da3cd8，候选本地实现提交 3db1959；Standards：硬违规 0 项、可操作异味 0 项；Spec：未解决发现 0 项。追加保存失败用例与记录的候选 d54ba78，以 git diff 3db1959...d54ba78 单独两轴复核，Standards/Spec 再各 0 项；最终无未解决发现。已修订顶部历史状态与引用数，最终 28/28 和 typecheck/build 均通过。收口仅追加本任务文档，静态/空白检查通过，不因纯记录变更重复业务测试。全部保存在本地 codex/a1-foundation，未推送或创建 PR；此前 P1 与准备阶段提交保留，原工作副本未提交草案未动。
+
+## 10. 2026-10-10 C2 接缝推进：既有合成鉴权与事务组合
+
+项目负责人在新 PR 核对后要求继续 A1/A2 对接。已读 AGENTS/README、PRD §8/9、MVP M-10/AC-02/NFR-04、TECH §9/10.1、TEAM A1/A2，以及 [C2 固定交付 §5](https://github.com/paher-din/XunJie/blob/84545ec4084aa9bdb29649ef4be21c28a6615d4d/docs/tasks/C2_WORKSPACE_JOBS.md#5-实际接入提案待-a负责人确认)。C2 已交纯变更计划，不能继续沿用 §9.3 当时“无评论交付证据”推断无依赖。新 PR #16/#17 尚未合并；A 的本地代码仍未远程交付。
+
+当前具体差距：authorizeCourse 自行开启 withTransaction 并完成 Session 续期，随后另一个保存事务会把鉴权与业务写入分开；在已有事务内调用它又因嵌套事务被拒绝。因此先完善 A 自有独立验证工厂的内部组合接缝，不创建 C2/A2 表、生产认证入口或新公共 ActorContext。
+
+本次在已批准 §8.5/§9 的 app.inject 鉴权与真实短事务接缝内补同连接用例，仍仅新建 xunjie-a1-p2 临时合成库/原五表。新增内部 withAuthorizedCourse(request, courseId, requiredRole, work) 使用同一同步事务重读有效 Session/账号/课程角色，再把既有 userId/courseId/role 与 tx 交可信同步回调；全部提交成功才返回。authorizeCourse 复用这一个鉴权实现，避免两份规则。Session lastActive 与回调 SQL 同提交/同回滚；拒绝异步/thenable/嵌套调用、越权及失效身份，错误沿已有错误定义。不从 body 构造角色或课程归属。
+
+可写仅 access/app.ts、既有 access 测试、本文/README，以及 A2 本任务的待审存储方案；共享 contracts、package/lock、原五表 schema、B/C/UI、保护基线均不改。不启动 SSH/runner、修改其 PR 或发送成员消息。SQL 只沿用原授权的五表验证（用合成课程标识观察提交/回滚），不插入真实教学记录。同步 callback 禁止 HTTP/模型/runner 等外部副作用，可信调用约束不当 JavaScript 沙箱。
+
+验证用例：合法身份与 SQL 写入同连接提交；授权/回调失败不能返回 ACK 或留下前置行，lastActive 不因失败推进；当前角色撤销后 callback 不执行；async callback 不开始、thenable/嵌套回调整批回滚、逃逸 tx 失效。它验证既有基础组合，不冒称 C2 的业务幂等、回执/Job/Event 落库或 A2 完成。固定开始提交 59ddd79；总审查沿已约定 9221370，新增部分单列 59ddd79..候选。
+
+状态：内部基础接缝已实现并通过用例与全量回归，待本批审查收口；A2 新 schema/真实凭据/公共字段确认及 C1/C2 缺陷修正仍按具体进入条件推进。后续存储提案先完整落到 A2 任务文档再申请准确新库/表授权，不在本批执行。
+
+### 10.1 实际实现与验证
+
+实现位于 [access/app.ts](../../apps/teaching/server/access/app.ts)，反例与成功路径位于既有 [access.test.ts](../../apps/teaching/tests/access.test.ts)。新增内部方法不改变原 authorizeCourse 的返回形状；两者共用 Session/课程角色核验。不存在 A2/C2 建表、共享 DTO 或默认 main 路由变更。
+
+已执行（Node 24.21.0/npm 11.19.0）：
+- 首个 app.inject 同事务用例先失败（尚无方法，503 而非 200），实现后 1/1 通过；实际 SQL 回滚/撤权用例 1/1，异步/嵌套/逃逸用例 1/1，通过。
+- npm run typecheck：通过；没有绕过类型或关闭检查。
+- npm test：**49/49 通过，0 失败/跳过**（既有 A1 28 + 本批 3 + A2 S1 18），pretest build 通过。总耗时约 39.48 s，不计 NFR 时延验收。测试仍只使用原授权 A1 五表临时库与 S1 合成对象。
+- 仓库根目录 node tools/a0-review/check.mjs：通过（24 份文档/231 处仓库引用/27 条正式变更接口）；node --test tools/a0-review/check.test.mjs：16/16 通过。git diff --check 初次因新增测试末尾多空行失败，规范 EOF 后复核；两轴审查待候选提交。静态脚本 businessTests=NOT_EXECUTED 只表示该脚本不执行业务测试，不替代上述 49 项实际结果。
+
+真实资源/跨学生读取、业务幂等/回执与 Job/Event、纠正并发、生产认证及浏览器验收**未执行**。当前 helper 的工程通过不表示这些业务通过。A2 新存储仅 [待审提案](A2_TEACHER_DESIGN_VERSIONS.md#9-s2-首批持久化方案待负责人批准未执行)，未编写/执行新增 SQL 或初始化新表。
+
+需获授权维护者汇总 MVP_SPEC §10：A1 新增同事务课程鉴权组合并验证，A1/G1 整体仍未完成；A2 S2 首批准确存储/验证方案待批准，S2/S3 未实现。**待授权维护者汇总**；本批未改保护基线。实现和文档仅本地交付，未推送、创建 PR 或关闭 Issue。

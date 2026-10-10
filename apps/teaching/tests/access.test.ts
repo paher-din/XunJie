@@ -230,3 +230,98 @@ test('idle and absolute deadlines reject at the exact boundary; forbidden reques
     assert.equal((await f.app.inject({ url: '/fixture/course/course', headers: { cookie: active.cookie } })).statusCode, 401);
   } finally { await f.close(); }
 });
+
+test('course authorization and a SQL command share the same atomic transaction', async () => {
+  const f = await fixture();
+  f.app.post('/fixture/atomic', request => ({
+    requestId: request.id,
+    data: f.access.withAuthorizedCourse(request, 'course', 'student', (tx, actor) => {
+      tx.run('INSERT INTO courses(id) VALUES (?)', 'committed-marker');
+      return { ...actor, committed: true };
+    }),
+  }));
+  try {
+    const signed = await login(f);
+    f.advance(1000);
+    const response = await f.app.inject({ method: 'POST', url: '/fixture/atomic',
+      headers: { origin, cookie: signed.cookie, 'x-csrf-token': signed.csrfToken }, payload: {} });
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json().data, { userId: 'user', courseId: 'course', role: 'student', committed: true });
+    assert.deepEqual(f.db.withTransaction(tx => tx.get('SELECT id FROM courses WHERE id=?', 'committed-marker')), { id: 'committed-marker' });
+    assert.equal(f.db.withTransaction(tx => tx.get('SELECT last_active_at_ms FROM sessions'))!.last_active_at_ms, f.clock());
+  } finally { await f.close(); }
+});
+
+
+test('authorized SQL failure rolls back session activity and revoked roles cannot enter the callback', async () => {
+  const f = await fixture();
+  let entered = 0;
+  f.app.post('/fixture/atomic-failure', request => f.access.withAuthorizedCourse(request, 'course', 'student', tx => {
+    entered++;
+    tx.run('INSERT INTO courses(id) VALUES (?)', 'rollback-marker');
+    tx.run('INSERT INTO courses(id) VALUES (?)', 'course');
+    return { acknowledged: true };
+  }));
+  f.app.post('/fixture/atomic-teacher', request => f.access.withAuthorizedCourse(request, 'course', 'teacher', () => {
+    entered++;
+    return { acknowledged: true };
+  }));
+  try {
+    const signed = await login(f);
+    const originalActivity = f.db.withTransaction(tx => tx.get('SELECT last_active_at_ms FROM sessions'))!.last_active_at_ms;
+    f.advance(1000);
+    const headers = { origin, cookie: signed.cookie, 'x-csrf-token': signed.csrfToken };
+    const failed = await f.app.inject({ method: 'POST', url: '/fixture/atomic-failure', headers, payload: {} });
+    assert.equal(failed.statusCode, 503);
+    assert.equal(failed.json().error.code, 'PERSISTENCE_UNAVAILABLE');
+    assert.equal(failed.json().acknowledged, undefined);
+    assert.equal(f.db.withTransaction(tx => tx.get('SELECT id FROM courses WHERE id=?', 'rollback-marker')), undefined);
+    assert.equal(f.db.withTransaction(tx => tx.get('SELECT last_active_at_ms FROM sessions'))!.last_active_at_ms, originalActivity);
+    assert.equal(entered, 1);
+    assert.equal((await f.app.inject({ method: 'POST', url: '/fixture/atomic-teacher', headers, payload: {} })).statusCode, 403);
+    assert.equal(entered, 1);
+    f.db.withTransaction(tx => tx.run('UPDATE course_memberships SET active=0 WHERE course_id=? AND user_id=?', 'course', 'user'));
+    assert.equal((await f.app.inject({ method: 'POST', url: '/fixture/atomic-failure', headers, payload: {} })).statusCode, 403);
+    assert.equal(entered, 1);
+    assert.equal(f.db.withTransaction(tx => tx.get('SELECT last_active_at_ms FROM sessions'))!.last_active_at_ms, originalActivity);
+  } finally { await f.close(); }
+});
+
+
+test('authorized transactions reject async and nested work and expire escaped SQL capability', async () => {
+  const f = await fixture();
+  let asyncStarted = false;
+  let escaped: Parameters<Parameters<typeof f.db.withTransaction>[0]>[0] | undefined;
+  f.app.post('/fixture/atomic-async', request => f.access.withAuthorizedCourse(request, 'course', 'student', async () => {
+    asyncStarted = true;
+    return { acknowledged: true };
+  }));
+  f.app.post('/fixture/atomic-thenable', request => f.access.withAuthorizedCourse(request, 'course', 'student', tx => {
+    tx.run('INSERT INTO courses(id) VALUES (?)', 'thenable-marker');
+    return Promise.resolve({ acknowledged: true });
+  }));
+  f.app.post('/fixture/atomic-nested', request => f.access.withAuthorizedCourse(request, 'course', 'student', tx => {
+    tx.run('INSERT INTO courses(id) VALUES (?)', 'nested-marker');
+    return f.db.withTransaction(() => ({ acknowledged: true }));
+  }));
+  f.app.post('/fixture/atomic-escape', request => f.access.withAuthorizedCourse(request, 'course', 'student', (tx, actor) => {
+    escaped = tx;
+    return actor;
+  }));
+  try {
+    const signed = await login(f);
+    const headers = { origin, cookie: signed.cookie, 'x-csrf-token': signed.csrfToken };
+    for (const path of ['async', 'thenable', 'nested']) {
+      const response = await f.app.inject({ method: 'POST', url: '/fixture/atomic-' + path, headers, payload: {} });
+      assert.equal(response.statusCode, 503);
+      assert.equal(response.json().error.code, 'PERSISTENCE_UNAVAILABLE');
+      assert.equal(response.json().acknowledged, undefined);
+    }
+    assert.equal(asyncStarted, false);
+    assert.equal(f.db.withTransaction(tx => tx.get('SELECT id FROM courses WHERE id=?', 'thenable-marker')), undefined);
+    assert.equal(f.db.withTransaction(tx => tx.get('SELECT id FROM courses WHERE id=?', 'nested-marker')), undefined);
+    assert.equal((await f.app.inject({ method: 'POST', url: '/fixture/atomic-escape', headers, payload: {} })).statusCode, 200);
+    assert.ok(escaped);
+    assert.throws(() => escaped!.get('SELECT id FROM courses'), /expired/);
+  } finally { await f.close(); }
+});
