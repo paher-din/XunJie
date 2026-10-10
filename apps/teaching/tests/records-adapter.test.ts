@@ -30,6 +30,18 @@ async function fixture() {
   });
   const create = async () => {
     const instance = await createVerificationApp({ db, origin, signingSecret: secret });
+    instance.app.post('/fixture/keys/:courseId', request => {
+      const { courseId } = z.strictObject({ courseId: z.string() }).parse(request.params);
+      const key = z.string().parse(request.headers['idempotency-key']);
+      const data = instance.access.withAuthorizedCourse(request, courseId, 'student', (tx, actor) => finishRecordCommand(tx, {
+        actorId: actor.userId, command: 'fixture.key', target: 'shared-target', scope: { courseId: actor.courseId },
+        idempotencyKey: key, recoveryGeneration: 'generation',
+      }, {}, 'generation', Date.now(), () => {
+        if (actor.courseId === 'second-course') throw new ApiError('INVALID_CONFIGURATION');
+        return { courseId: actor.courseId };
+      }, value => z.strictObject({ courseId: z.string() }).parse(value)));
+      return { data };
+    });
     instance.app.post('/fixture/jobs', request => {
       const input = parseRequest(schema, request.body);
       const key = request.headers['idempotency-key'];
@@ -141,4 +153,21 @@ test('an asynchronous result validator is rejected before the command callback s
     }, {}, 'generation', Date.now(), () => { started = true; return { accepted: true }; }, async value => value)));
     assert.equal(started, false);
   } finally { db.close(); }
+});
+test('a global idempotency key conflicts across authorized courses before running new business work', async () => {
+  const f = await fixture();
+  try {
+    const signed = await f.login();
+    f.db.withTransaction(tx => {
+      tx.run('INSERT INTO courses(id) VALUES (?)', 'second-course');
+      tx.run('INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,?,?,1)', 'second-course', 'student', 'student');
+    });
+    const headers = { origin, cookie: signed.cookie, 'x-csrf-token': signed.csrf, 'idempotency-key': 'global-key' };
+    const first = await f.app.inject({ method: 'POST', url: '/fixture/keys/course', headers, payload: {} });
+    assert.equal(first.statusCode, 200, first.body);
+    const conflict = await f.app.inject({ method: 'POST', url: '/fixture/keys/second-course', headers, payload: {} });
+    assert.equal(conflict.statusCode, 409, conflict.body);
+    assert.equal(conflict.json().error.code, 'IDEMPOTENCY_CONFLICT');
+    assert.deepEqual((await f.app.inject({ method: 'POST', url: '/fixture/keys/course', headers, payload: {} })).json().data, first.json().data);
+  } finally { await f.close(); }
 });
