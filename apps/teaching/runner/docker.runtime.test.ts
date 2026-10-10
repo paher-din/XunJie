@@ -162,9 +162,9 @@ test('dedicated Linux synthetic container execution and resource checks', { skip
     const { executed, workDirectory } = await fixture('#define _POSIX_C_SOURCE 200809L\n#include <stdio.h>\n#include <unistd.h>\nint main(void){FILE *f=fopen("report.txt","wx");if(!f)return 1;fputs("TOTAL\\t4\\t11\\t51\\n",f);fclose(f);symlink("/snapshot/a.txt","link.txt");return 0;}');
     assert.equal(executed.exitCode, 0);
     const files = collectResultFiles(workDirectory, ['report.txt', 'link.txt'], 65536, executed.unitTerminated);
-    assert.equal(files[0].status, 'complete');
-    assert.equal(files[0].text, 'TOTAL\t4\t11\t51\n');
-    assert.equal(files[1].status, 'incomplete');
+    assert.equal(files[0]!.status, 'complete');
+    assert.equal(files[0]!.text, 'TOTAL\t4\t11\t51\n');
+    assert.equal(files[1]!.status, 'incomplete');
   });
   await t.test('durable control uses actual fixed-snapshot containers and duplicate submit returns original results', async () => {
     const text = '#include <stdio.h>\nint main(void){puts("pipeline");return 0;}';
@@ -196,10 +196,10 @@ test('dedicated Linux synthetic container execution and resource checks', { skip
     assert.equal(fact?.state, 'succeeded');
     const result = await control.readResult('synthetic-service', identity);
     assert.equal(result.snapshotHash, snapshot.hash);
-    assert.equal(result.phases[1].stdout, 'pipeline\n');
+    assert.equal(result.phases[1]!.stdout, 'pipeline\n');
     assert.equal(result.unitTerminated, true);
-    assert.equal(result.phases[0].imageId, compilerImage);
-    assert.equal(result.phases[1].imageId, runtimeImage);
+    assert.equal(result.phases[0]!.imageId, compilerImage);
+    assert.equal(result.phases[1]!.imageId, runtimeImage);
     const replayed = await control.submitRun('synthetic-service', identity, work);
     assert.equal(replayed?.resultRef, fact.resultRef);
     assert.equal(replayed?.units.length, 2);
