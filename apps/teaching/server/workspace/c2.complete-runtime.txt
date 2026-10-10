@@ -1,0 +1,10 @@
+✔ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (46672.056876ms)
+ℹ {"layers":["A1-real-session-sql","A2-fixed-activity-assignment","C1-authenticated-ssh-container"],"sqlite":{"sqliteVersion":"3.53.4","journalMode":"wal","foreignKeys":1,"synchronous":2,"busyTimeout":1000},"tables":22,"recoveryGeneration":"synthetic-generation-e5b86470-f907-48ce-9975-4793b8ac1cdd","runtimeProfileVersion":"c17-gcc15.3.0-textscope-v1","imageDigest":"sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5","fingerprintHash":"02351c15ef9683d19ebb6b2b8ed079a28e2f6e51f888e3e31a9cd99c3b14b42b","runnerSourceHash":"0869fdbeb71287d22cfecaf6424abf4ed79db9a98ef687de91f7ff6ad2520e36","originalRunId":"63f931f7-566c-49e7-8044-4541b7ff24d9","oldSnapshotId":"a6e3a26a-afc2-4cb5-8761-7ef45961798a","courseVerdict":"failed","checkFiles":"redacted","cancelledBeforeDispatch":true,"durableReopen":true,"transportCalls":{"submits":2,"queries":14,"cancels":1}}
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62391.733068
