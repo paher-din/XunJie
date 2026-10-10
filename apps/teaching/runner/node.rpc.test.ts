@@ -35,13 +35,19 @@ const report='FILE "a.txt" 3 8 37\nFILE "b.txt" 1 3 14\nTOTAL 4 11 51\nUNIQUE 7\
 // Synthetic fixture only implements this test's two inputs; it is not a course solution.
 const validSource=`#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
+_Static_assert(INT_MAX==2147483647,"Approved C int profile");
 int main(int n,char **v){
  if(n<2){fputs("usage\\n",stderr);return 2;}
  if(!strcmp(v[1],"stats")){
   if(n<3){fputs("usage\\n",stderr);return 2;}
   for(int i=2;i<n;i++){FILE *f=fopen(v[i],"r");if(!f){fputs("cannot open\\n",stderr);return 1;}fclose(f);}
   puts("a.txt\\t3\\t8\\t37\\nb.txt\\t1\\t3\\t14\\nTOTAL\\t4\\t11\\t51");return 0;}
- if(!strcmp(v[1],"top")){if(n<5||!strcmp(v[3],"0")){fputs("usage\\n",stderr);return 2;}puts("c 3\\nis 2\\nmemory 2");return 0;}
+ if(!strcmp(v[1],"top")){if(n<5){fputs("usage\\n",stderr);return 2;}char *end;errno=0;long count=strtol(v[3],&end,10);
+  if(errno||*end||count<1||count>INT_MAX){fputs("usage\\n",stderr);return 2;}
+  const char *rows[]={"c 3","is 2","memory 2","and 1","fast 1","fun 1","matters 1"};for(int i=0;i<7&&i<count;i++)puts(rows[i]);return 0;}
  if(!strcmp(v[1],"find")){puts("a.txt:1:C is fun.\\na.txt:2:C is fast.\\nb.txt:1:C and memory.");return 0;}
  if(!strcmp(v[1],"report")){FILE *f=fopen(v[3],"w");if(!f)return 1;fputs(${JSON.stringify(report)},f);fclose(f);return 0;}
  fputs("usage\\n",stderr);return 2;}
@@ -85,8 +91,8 @@ test('authenticated dedicated VM control and supervision',{skip:!enabled},async 
     for(const input of [{operation:'stats',fileIds:['a','b']},{operation:'find',word:'C',fileIds:['a','b']},
       {operation:'top',count:'3',fileIds:['a','b']},{operation:'report',resultFile:'report.txt',fileIds:['a','b']}] as TextScopeInput[]) {
       const item=submission(validSource,input,'check');await submit(item);const result=await finished(item);
-      assert.equal(result.verdict,'passed',JSON.stringify(result));assert.equal(result.checkResults.length,5);
-      assert.deepEqual(result.phases.slice(1).map((phase:any)=>phase.exitCode),[0,2,2,2,1]);
+      assert.equal(result.verdict,'passed',JSON.stringify(result));assert.equal(result.checkResults.length,6);
+      assert.deepEqual(result.phases.slice(1).map((phase:any)=>phase.exitCode),[0,2,2,2,2,1]);
       assert.equal(result.checkResults[0].source,'trusted_validator');
       const before=await fact(item);const duplicate=await submit(item);assert.equal(duplicate.resultRef,before.resultRef);
       assert.equal(duplicate.units.length,1);
@@ -107,6 +113,14 @@ test('authenticated dedicated VM control and supervision',{skip:!enabled},async 
     item.identity.requestHash=sha256(JSON.stringify({snapshot:item.snapshot,input:item.input,mode:item.mode}));
     await submit(item);const result=await finished(item);
     assert.equal(result.verdict,'passed');assert.equal(result.phases.at(-1).exitCode,1);
+  });
+  await t.test('C int maximum is normal, while overflow is rejected or checked as expected exit two',async()=>{
+    const item=submission(validSource,{operation:'top',count:'2147483647',fileIds:['a','b']},'check');
+    await submit(item);const result=await finished(item);
+    assert.equal(result.verdict,'passed');assert.equal(result.checkResults[0].validatorVersion,'textscope-validator-v2');
+    assert.deepEqual(result.phases.slice(1).map((phase:any)=>phase.exitCode),[0,2,2,2,2,1]);
+    item.input.count='2147483648';
+    assert.equal((await rpc({op:'submit',submission:item})).error.code,'INVALID_REQUEST');
   });
   await t.test('cancel before submit is durable; running cancellation waits for original units',async()=>{
     const pre=submission(spin);assert.equal((await rpc({op:'cancel',identity:pre.identity})).data.state,'cancelled');

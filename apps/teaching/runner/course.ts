@@ -1,5 +1,5 @@
 import { expectedReport, wordFrequency } from './report.ts';
-import { textScopeArgs } from './run-snapshot.ts';
+import { textScopeArgs, TOP_COUNT_MAX } from './run-snapshot.ts';
 import type { TextScopeInput } from './run-snapshot.ts';
 import type { Snapshot } from './snapshot.ts';
 import type { TrustedCase } from './verify.ts';
@@ -13,7 +13,7 @@ export function courseChecks(snapshot: Snapshot, input: TextScopeInput, version:
   const args = textScopeArgs(snapshot, input, input.operation === 'report' ? ['report.txt'] : []);
   const inputs = input.fileIds.map(id => snapshot.files.find(file => file.fileId === id)!);
   const expected = expectedReport(inputs.map(file => ({path:file.path, text:file.text})));
-  const base = { checkRuleVersion: version, validatorVersion: 'textscope-validator-v1', expectedExitCode: 0 };
+  const base = { checkRuleVersion: version, validatorVersion: 'textscope-validator-v2', expectedExitCode: 0 };
   let rule: TrustedCase;
   if (input.operation === 'report') rule = { ...base, expectedReport: { relativeName: 'report.txt', expectation: expected } };
   else if (input.operation === 'stats') rule = { ...base, stdoutRecords: {
@@ -36,5 +36,6 @@ export function courseChecks(snapshot: Snapshot, input: TextScopeInput, version:
     {args:['__invalid_command__'],rule:error(2)},
     {args:['stats'],rule:error(2)},
     {args:['top','-n','0',...args.filter(arg=>arg.startsWith('/snapshot/'))],rule:error(2)},
+    {args:['top','-n',(TOP_COUNT_MAX+1n).toString(),...args.filter(arg=>arg.startsWith('/snapshot/'))],rule:error(2)},
     {args:['stats',`/snapshot/${missing}`],rule:error(1)}];
 }
