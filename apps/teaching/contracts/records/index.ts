@@ -1,0 +1,15 @@
+export type Scope = {courseId:string;studentId?:string;attemptId?:string;blueprintId?:string|null};
+export type Purpose = 'teacher_design'|'student_help'|'reminder'|'explicit_analysis'|'passive_analysis'|'student_run'|'teacher_sample';
+export type JobStatus = 'queued'|'running'|'succeeded'|'failed'|'cancelling'|'cancelled'|'stale'|'timed_out'|'outcome_unknown';
+export type CommandIdentity = {actorId:string;command:string;target:string;scope:Scope;idempotencyKey:string;
+  recoveryGeneration:string;sync?:{clientId:string;clientSeq:number}};
+export type CommandReceipt<T=unknown> = {receiptId:string;commandId:string;identity:CommandIdentity;requestHash:string;
+  result:T;serverSeq:number;committedAt:string};
+export type AuditEvent = {eventId:string;serverSeq:number;scope:Scope;type:string;occurredAt:string;
+  source:'student_command'|'trusted_service';payloadRef?:string};
+export type Job = {jobId:string;kind:string;purpose:Purpose;scope:Scope;requestReceiptId:string;
+  status:JobStatus;stopRequested:boolean;expectedRevision:number;decisionEpoch:number;
+  recoveryGeneration:string;acceptedAt:string;deadline:string;attemptCount:number;
+  leaseToken?:string;leaseUntil?:string;runId?:string;resultRef?:string;resultHash?:string;failure?:string};
+export type Records = {receipts:CommandReceipt[];commandAliases:{identity:CommandIdentity;receiptId:string}[];
+  events:AuditEvent[];jobs:Job[];serverSeq:number};

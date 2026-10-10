@@ -1,0 +1,26 @@
+✔ canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials (3.124319ms)
+✔ receipt plan binds both keys to original IDs and aliases cannot be reused for other payload (1.774479ms)
+✔ jobs retain bounded deadlines/call counts across leases and reject expired worker completion (26.551779ms)
+✔ cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy (2.509871ms)
+✔ run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution (6.708913ms)
+✔ lost transport queries same original run and rechecks current authorization before submit (2.343982ms)
+✔ check cancellation keeps stage until the authenticated node confirms no pending units (1.671286ms)
+✔ confirmed original facts reconcile expired/unknown leases and never become current-code claims (3.970294ms)
+✔ authorized diagnostic reads exclude other attempts and private check detail (1.614122ms)
+✔ pause queued run retains cancellation intent and prevents new execution until node confirmation (1.997324ms)
+✔ stopping an already confirmed cancelled run under a new key preserves terminal state (1.504645ms)
+✔ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (14806.71232ms)
+✔ whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted (5.518654ms)
+✔ CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input (9.346166ms)
+✔ exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges (0.906698ms)
+✔ snapshot and ObjectRef bind old file instance/version/body rather than current paths (1.801219ms)
+✔ capture/reminder/lifecycle controls are separate and stale process does not block saving (1.289323ms)
+✔ unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely (2.143584ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15345.762164
