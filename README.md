@@ -2,7 +2,7 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
-当前仓库保存团队开发所需的产品规格、工作规范和必要参考，已交付 C1 专用执行节点与 C2 首批领域核心；完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
+当前仓库保存团队开发所需的产品规格、工作规范和必要参考，C1、C2 首批领域核心及 A1/A2 已批准服务端范围已合入 main；完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
 
 ## 文档
 
@@ -19,7 +19,8 @@
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 整体 G1 的任务依赖、进入门禁、交接与验收账目；模块实现仍由 A/B/C 负责 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
-| [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 文件整批变更/重放、不可变引用、Job/回执/事件/用途失效、限定检查与 C1 原 ID 对接；首批核心有合成及真实节点验证，实际 A1/A2/数据库与完整 C2 尚未完成 |
+| [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 文件整批变更/重放、不可变引用、Job/回执/事件/用途失效、限定检查与 C1 原 ID 对接；首批核心有合成及真实节点验证，A1/A2 服务端接缝已合入；完整 C2 尚未验收 |
+| [C1/C2/A1/A2 合并记录](docs/tasks/A1_A2_PR_MERGE.md) | 四项 PR 固定提交、旧审查关闭、依赖顺序合并和 main 验证；完整 C2/G1 与浏览器/TLS 仍分别验收 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
@@ -85,7 +86,7 @@ C1 已在本机 WSL2 内的专用 QEMU/KVM Ubuntu VM 交付 [runner](apps/teachi
 
 在获准且已准备的 Linux 宿主维护环境，从仓库根执行 `sh apps/teaching/runner/vm.sh start`，再按任务稿同步源码并运行 `/opt/xunjie-runner/node/bin/node apps/teaching/runner/acceptance.ts`；它包含合成故障注入/Engine 恢复/测试代际注册，仅用于无真实业务作业的维护窗口。停止 VM 用 `sh apps/teaching/runner/vm.sh stop`，不删除持久盘/密钥/账本；未准备的开发副本不能假定本机节点、权限或私钥已存在。学生仍只操作团队 Web UI。
 
-C1 完成节点实现与独立验收；C2 已实现 [workspace](apps/teaching/server/workspace/) 与 [records](apps/teaching/server/records/) 的首批核心和节点适配。C2 目前输出待 A 的同连接事务保存的变更计划，不提供真实数据库 ACK/登录或替代 API；真实成员/分配/SQL、业务备份、浏览器与真人仍按对应任务验收。进度待授权维护者汇总至受保护基线；未执行远端 C1/C2 Issue 关闭，不把首批或环境通过当完整 C2/G1 或教学效果。
+C1 完成节点实现与独立验收；C2 已实现 [workspace](apps/teaching/server/workspace/) 与 [records](apps/teaching/server/records/) 的首批核心和节点适配。C2 首批输出同连接事务保存的变更计划，A1/A2 已接入当前登录/权限、合成 SQL ACK 与固定活动分配控制；完整工作区/作品执行整链、业务备份、浏览器与真人仍按对应任务验收。进度待授权维护者汇总至受保护基线；未执行远端 C1/C2 Issue 关闭，不把首批或环境通过当完整 C2/G1 或教学效果。
 
 在已批准的 Node 24.21.0/TypeScript 工具和 C1 本机维护环境，从仓库根运行 C2 检查：
 
@@ -117,7 +118,7 @@ A0/B0/C0 的材料已通过 PR #5/#8/#6 合入并纳入统一裁决。2026-10-09
 
 [A1 记录](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md#13-已批准收尾批次实施记录进行中尚未-pr) 中的 createAccessApp 注册真实登录/退出与当前 Session 读取；withAuthorizedResource 使用当前 Session、课程成员和同 tx 可信资源定位器，提供用途/学生归属守卫。A 的 server/db/records-adapter 消费 C 已交公共类型/函数，把 Attempt/Job/Receipt/Event 与授权活跃时间同事务保存。C2 文件/别名/执行整链不因此已验收。
 
-准确批准的 createCompletionDatabase 仅新建系统临时 xunjie-a12-completion-*/synthetic.sqlite，共十七张应用表；旧五表/十表工厂保留范围，不迁移或清理现有库。应用调用方显式提供获准 HTTPS Origin、即时签名材料、实际 DB 和领域路由；不配置真实账号/密钥或替代 UI。默认 main 仍健康入口，ready=503。使用批准 Node 在 apps/teaching 执行 node --test tests/records-adapter.test.ts；全工程 npm run typecheck / npm test 仍必须通过后交付。A1 独立分支已吸收 C1/C2 新提交；完整类型检查（含 runner）、build 与本分支统一回归通过：117 项中 112 通过、0 失败、5 项 Linux/真实节点检查跳过。早期联合 A1/A2 的 144/149 为历史范围，见任务稿。两轴审查的幂等/记录范围问题已修正并增量复核关闭；PAHER 已另行完成 A2 指定真实 C1 联调 1/1，记录随 A2 交付；本 A1 分支独立结果不改写。准确批准范围已通过 [A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 交付（依赖 C2 #17，未合并），完整 G1/浏览器/TLS/真实账号保持后置。
+准确批准的 createCompletionDatabase 仅新建系统临时 xunjie-a12-completion-*/synthetic.sqlite，共十七张应用表；旧五表/十表工厂保留范围，不迁移或清理现有库。应用调用方显式提供获准 HTTPS Origin、即时签名材料、实际 DB 和领域路由；不配置真实账号/密钥或替代 UI。默认 main 仍健康入口，ready=503。使用批准 Node 在 apps/teaching 执行 node --test tests/records-adapter.test.ts；全工程 npm run typecheck / npm test 仍必须通过后交付。A1 独立分支已吸收 C1/C2 新提交；完整类型检查（含 runner）、build 与本分支统一回归通过：117 项中 112 通过、0 失败、5 项 Linux/真实节点检查跳过。早期联合 A1/A2 的 144/149 为历史范围，见任务稿。两轴审查的幂等/记录范围问题已修正并增量复核关闭；PAHER 已另行完成 A2 指定真实 C1 联调 1/1，记录随 A2 交付；本 A1 分支独立结果不改写。准确批准范围已通过 [A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 交付并合入 main（上游 C1 #16、C2 #17 已先行合并），完整 G1/浏览器/TLS/真实账号保持后置。
 
 ## A2 固定活动、分配与控制（服务端验证已收口）
 
@@ -125,4 +126,6 @@ A0/B0/C0 的材料已通过 PR #5/#8/#6 合入并纳入统一裁决。2026-10-09
 
 在已批准 Node 24.21.0 工具环境，apps/teaching 目录执行 npm ci、npm run typecheck、npm test；npm ci 仅安装精确 lock 依赖，不准备 C 节点。统一测试包含 A/B/C 领域，Linux/受认证节点专属用例遵守原门禁。独立 A2 批次可从仓库根执行 node --test apps/teaching/tests/design-activities.test.ts，只用保留的十七表新临时合成库，不运行真实 SSH/模型/容器。这里的 ready 是明确的测试替身，不能计为真实 C1 开放；真实节点连接/验证交接见任务稿 §12.2。
 
-A2 当前联合类型检查/build 与统一回归通过：157 项中 151 通过、0 失败、6 跳过。8 个新增合成业务用例通过，PAHER 对源码 8421157 的真实受认证 C1 正向用例已另行执行 1 通过、0 失败、0 跳过；原本机六项跳过保留事实。该用例通过 XUNJIE_A2_RUNTIME/XUNJIE_A2_SSH_CONFIG 显式启用，只使用 C 提供的受控配置，具体单用例命令见任务稿 §12.2。独立两轴审查已完成，幂等重放 P2 已修复并增量复核关闭，两轴未解决 0；本次真实就绪开放联调已补齐，原字节证据/指纹核验见任务稿 §12.6；已通过 [A2 PR #19](https://github.com/paher-din/XunJie/pull/19) 交付（依赖 A1 #18，未合并）。仅批准服务端范围收口，完整 C2/G1、浏览器/TLS/真人未验收。
+A2 当前联合类型检查/build 与统一回归通过：157 项中 151 通过、0 失败、6 跳过。8 个新增合成业务用例通过，PAHER 对源码 8421157 的真实受认证 C1 正向用例已另行执行 1 通过、0 失败、0 跳过；原本机六项跳过保留事实。该用例通过 XUNJIE_A2_RUNTIME/XUNJIE_A2_SSH_CONFIG 显式启用，只使用 C 提供的受控配置，具体单用例命令见任务稿 §12.2。独立两轴审查已完成，幂等重放 P2 已修复并增量复核关闭，两轴未解决 0；本次真实就绪开放联调已补齐，原字节证据/指纹核验见任务稿 §12.6；已通过 [A2 PR #19](https://github.com/paher-din/XunJie/pull/19) 交付并合入 main（上游 A1 #18 已先行合并）。仅批准服务端范围收口，完整 C2/G1、浏览器/TLS/真人未验收。
+
+2026-10-10，按项目负责人明确授权，C1 #16 → C2 #17 → A1 #18 → A2 #19 已依次合并到 main，源分支/原历史保留。最终合并代码树与已验证 A2 候选完全一致；五条旧审查已复核关闭，实际验证与合并 SHA 见 [合并记录](docs/tasks/A1_A2_PR_MERGE.md)。此状态不替代完整 C2/G1、浏览器/TLS/真人验收。
