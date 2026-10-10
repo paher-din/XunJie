@@ -126,3 +126,5 @@ A1/A2 到位后按以下顺序继续同一 C2：
 独立工作树保留远端 main 已合入 B1，不覆盖主工作副本或其他成员 G1 记录。C2 白名单为 server/workspace/records、contracts/workspace/records、本文及 C2 README 增量；C1 文件不在 C2 增量中。仅 C 自有目录增加 LF 属性，保证 Windows 检出/Linux 运行和原始证据字节一致，不写根共享配置。交付后追加提交/远端/PR 及范围核验结果。
 
 PR 提交前独立工作树复验：C2 16/16（含真实 C1 SSH/容器）再次通过、0 跳过；strict TypeScript 7.0.2 noEmit、26 份文档/268 引用/27 正式接口、检查器 16/16、C2 白名单和暂存空白通过；原始代码/证据字节与 Git index 一致。C2 暂存增量 19 文件，仅本人领域、任务稿和 README，不含 C1/A/B/受保护基线或其他成员 G1 变更。
+
+实际交付：正文提交 `fcb0cac7971c67f1a84de0523f1ee9f86c8d2760` 已普通推送 `codex/c2-workspace-core`；[C2 PR #17](https://github.com/paher-din/XunJie/pull/17) 已创建并附到本任务，base=codex/c1-isolated-runner，依赖 [C1 PR #16](https://github.com/paher-din/XunJie/pull/16)，Open/非 Draft。远端 head 与本地、标题/完整正文/19 文件白名单回读一致；C1 和 A/B/G1/受保护文件不在本 PR 增量中。Refs #14 保持完整 Issue Open，尚未合并；后续按原决定等 A1/A2，不将发布首批 PR 当作完整 C2 验收。
