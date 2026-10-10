@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import { readFileSync } from 'node:fs';
+import { readRuntime, sshRunner } from '../server/records/runner.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createCompletionDatabase, openSyntheticDatabase } from '../server/db/transaction.ts';
 import { createPasswordRecord } from '../server/access/password.ts';
 import { createDesignApp } from '../server/design/application.ts';
@@ -16,8 +18,10 @@ import type { Job } from '../contracts/records/index.ts';
 import type { RunnerTransport } from '../server/records/runner.ts';
 
 const origin = 'https://synthetic.example';
-const profile = { runtimeProfileVersion: 'runtime-v1', imageDigest: 'sha256:' + 'a'.repeat(64), compilerImage: 'sha256:' + 'b'.repeat(64), runtimeImage: 'sha256:' + 'c'.repeat(64), approvedResultFiles: ['report.txt'] };
-async function fixture() {
+const syntheticProfile = { runtimeProfileVersion: 'runtime-v1', imageDigest: 'sha256:' + 'a'.repeat(64), compilerImage: 'sha256:' + 'b'.repeat(64), runtimeImage: 'sha256:' + 'c'.repeat(64), approvedResultFiles: ['report.txt'] };
+async function fixture(transport?: RunnerTransport) {
+  const runtime = transport ? await readRuntime(transport) : undefined;
+  const profile = runtime?.profile ?? syntheticProfile;
   let db = createCompletionDatabase();
   const password = randomBytes(32).toString('base64url'), record = await createPasswordRecord(password);
   db.withTransaction(tx => {
@@ -25,9 +29,11 @@ async function fixture() {
     for (const course of ['course', 'foreign-course']) tx.run('INSERT INTO courses(id) VALUES (?)', course);
     for (const [course, user, role] of [['course','teacher','teacher'],['course','student','student'],['course','other','student'],['foreign-course','foreign','teacher']]) tx.run('INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,?,?,1)', course!, user!, role!);
   });
-  let ready = true, generation = 'generation';
+  let ready = true, generation = runtime?.recoveryGeneration ?? 'generation', evidenceValid = true;
+  const fingerprint = { kernel: 'synthetic', node: 'v24.21.0', engine: 'synthetic', cgroup: '2', seccomp: ['name=seccomp'], profile, sourceHash: 'd'.repeat(64) };
+  const fingerprintHash = createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex');
   const secret = randomBytes(48).toString('hex');
-  const runner: RunnerTransport = async () => ({ data: { ready, ...profile, recoveryGeneration: generation, fingerprint: { profile } } });
+  const runner: RunnerTransport = transport ?? (async () => ({ data: { ready, ...profile, recoveryGeneration: generation, fingerprint, validation: { passed: true, fingerprintHash: evidenceValid ? fingerprintHash : '0'.repeat(64), validatedAt: new Date().toISOString() } } }));
   const options = () => ({ db, origin, signingSecret: secret, currentGeneration: () => generation, runner });
   let service = await createDesignApp(options());
   function register() {
@@ -75,7 +81,8 @@ async function fixture() {
     assert.equal(res.statusCode, 200);
     return { origin, cookie: res.cookies.filter(c => c.value).map(c => `${c.name}=${encodeURIComponent(c.value)}`).join('; '), 'x-csrf-token': res.json().data.csrfToken as string };
   }
-  return { signingSecret: secret, login, get app() { return service.app; }, get db() { return db; }, generation: () => generation,
+  return { profile, signingSecret: secret, login, get app() { return service.app; }, get db() { return db; }, generation: () => generation,
+    corruptEvidence() { evidenceValid = false; },
     unavailable() { ready = false; }, restore() { generation = 'new-generation'; },
     async reopen() { const file = db.file; await service.app.close(); db.close(); db = openSyntheticDatabase(file); service = await createDesignApp(options()); register(); },
     async close() { await service.app.close(); db.close(); } };
@@ -98,7 +105,7 @@ async function draft(f: Fixture, headers: Headers) {
   const content = { projectTitle: 'Synthetic', problem: 'Explore text', audience: 'Peers', artifact: 'C source', routes: ['array','tree'], goals,
     tasks: [{ taskId: 't', title: 'Compare', goalRefs: refs }], observations: [{ observationId: 'o', description: 'Explain decisions', goalRefs: refs, taskIds: ['t'] }],
     rubricCriteria: [{ criterionId: 'r', description: 'Reasoning', goalRefs: refs, observationIds: ['o'] }], milestones: [{ milestoneId: 'm', title: 'Review', taskIds: ['t'] }],
-    resources: materials.map(resourceVersionId => ({ resourceVersionId })), helpPolicyVersionId: 'help-v1', checkRuleVersionId: 'textscope-core-v1', runtimeProfileVersionId: profile.runtimeProfileVersion };
+    resources: materials.map(resourceVersionId => ({ resourceVersionId })), helpPolicyVersionId: 'help-v1', checkRuleVersionId: 'textscope-core-v1', runtimeProfileVersionId: f.profile.runtimeProfileVersion };
   const res = await command(f, headers, '/api/courses/course/blueprints', { mode: 'manual', content });
   assert.equal(res.statusCode, 200);
   return { id: res.json().data.result.draft.blueprintId as string, materials };
@@ -298,3 +305,43 @@ test('a replaced material version cannot silently change the fixed activity proj
     assert.ok(!response.body.includes('REPLACED_TITLE'));
   } finally { await f.close(); }
 });
+test('a readiness response with an unbound validation fingerprint cannot open an activity', async () => {
+  const f = await fixture();
+  try {
+    const teacher = await f.login(), initial = await draft(f, teacher);
+    f.corruptEvidence();
+    const rejected = await command(f, teacher, `/api/blueprints/${initial.id}/releases`, { expectedRevision: 1, confirmed: true });
+    assert.equal(rejected.statusCode, 422, rejected.body);
+    assert.equal(rejected.json().error.code, 'INVALID_REFERENCE');
+    assert.equal(rejected.json().data, undefined);
+  } finally { await f.close(); }
+});
+test('real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain',
+  { skip: process.env.XUNJIE_A2_RUNTIME !== '1' }, async () => {
+    let config: { binary: string; host: string; port: number; keyFile: string; knownHostsFile: string };
+    try {
+      const path = process.env.XUNJIE_A2_SSH_CONFIG;
+      if (!path) throw new Error('Missing controlled connection configuration.');
+      config = z.strictObject({ binary: z.string().min(1), host: z.string().min(1), port: z.number().int().min(1).max(65535),
+        keyFile: z.string().min(1), knownHostsFile: z.string().min(1) }).parse(JSON.parse(readFileSync(path, 'utf8')));
+    } catch { assert.fail('Authorized C1 connection configuration is required; do not paste credentials.'); }
+    const f = await fixture(sshRunner(config));
+    try {
+      const teacher = await f.login(), student = await f.login('student'), initial = await draft(f, teacher);
+      const checks = await command(f, teacher, `/api/blueprints/${initial.id}/checks`, { expectedRevision: 1 });
+      assert.equal(checks.statusCode, 200, checks.body);
+      assert.deepEqual(checks.json().data.result.report.blocking, []);
+      const release = await command(f, teacher, `/api/blueprints/${initial.id}/releases`, { expectedRevision: 1, confirmed: true });
+      assert.equal(release.statusCode, 200, release.body);
+      const activity = release.json().data.result.activityVersionId as string;
+      const assigned = await command(f, teacher, `/api/activities/${activity}/assignments`, { expectedActivityControlRevision: 1, studentIds: ['student'] });
+      assert.equal(assigned.statusCode, 200, assigned.body);
+      const assignment = assigned.json().data.result.assignments[0].assignmentId as string;
+      const visible = await f.app.inject({ url: `/api/activities/${activity}`, headers: student });
+      assert.equal(visible.statusCode, 200, visible.body);
+      assert.equal(visible.json().data.runtimeProfileVersionId, f.profile.runtimeProfileVersion);
+      const pause = await command(f, teacher, `/api/activities/${activity}/controls`, { expectedActivityControlRevision: 1, action: 'pause', reason: 'Synthetic readiness acceptance' });
+      assert.equal(pause.statusCode, 200, pause.body);
+      assert.equal((await f.app.inject({ url: `/api/assignments/${assignment}`, headers: student })).json().data.active, false);
+    } finally { await f.close(); }
+  });

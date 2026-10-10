@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Transaction, SqlRow } from '../db/transaction.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
-import { helpPolicySchema, checkRuleSchema, runtimeSchema, frozenActivityShape, activityViewSchema } from '../../contracts/design/index.ts';
+import { helpPolicySchema, checkRuleSchema, runtimeSchema, frozenActivityShape, activityViewSchema, runtimeReadinessSchema } from '../../contracts/design/index.ts';
 import { ApiError } from '../app/errors.ts';
 import { readDraft, draftMaterials, resourceSchema } from './storage.ts';
 import { checkDraft, type TeacherConcern } from './checks.ts';
@@ -57,7 +57,7 @@ function readVersion<Schema extends z.ZodType>(schema: Schema, row: SqlRow, fiel
   return checked(schema, JSON.parse(body));
 }
 export function confirmActivity(tx: Transaction, actor: ActorContext, blueprintId: string, revision: number, concerns: TeacherConcern[],
-  runtime: z.infer<typeof runtimeSchema>, generation: string, now: number) {
+  runtime: z.infer<typeof runtimeSchema>, readiness: z.infer<typeof runtimeReadinessSchema>, generation: string, now: number) {
   teacher(tx, actor);
   const context = releaseContext(tx, actor.courseId, blueprintId, concerns, runtime);
   if (context.draft.revision !== revision) throw new ApiError('VERSION_CONFLICT');
@@ -66,7 +66,7 @@ export function confirmActivity(tx: Transaction, actor: ActorContext, blueprintI
     || context.report.designConcerns.some(item => item.status === 'requires_teacher')) throw new ApiError('INVALID_CONFIGURATION');
   const activity = checked(activitySchema, { activityVersionId: randomUUID(), courseId: actor.courseId, sourceBlueprintId: blueprintId,
     sourceRevision: revision, draft: context.draft, materials: context.materials, helpPolicy: context.helpPolicy, checkRule: context.checkRule,
-    runtimeProfile: runtime, recoveryGeneration: generation, confirmedBy: actor.userId, confirmedAt: now });
+    runtimeProfile: runtime, runtimeReadiness: readiness, recoveryGeneration: generation, confirmedBy: actor.userId, confirmedAt: now });
   const body = JSON.stringify(activity);
   tx.run('INSERT INTO activity_versions(id,course_id,blueprint_id,source_revision,created_by,created_at_ms,activity_json,content_hash) VALUES (?,?,?,?,?,?,?,?)',
     activity.activityVersionId, actor.courseId, blueprintId, revision, actor.userId, now, body, hash(body));

@@ -8,6 +8,8 @@ export const checkRuleSchema = z.strictObject({ versionId: z.enum(['textscope-co
   validatorVersion: z.literal('textscope-validator-v2'), limitedHelp: z.boolean(), description: z.string().min(1) });
 export const runtimeSchema = z.strictObject({ runtimeProfileVersion: id, imageDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   compilerImage: z.string().regex(/^sha256:[a-f0-9]{64}$/), runtimeImage: z.string().regex(/^sha256:[a-f0-9]{64}$/), approvedResultFiles: z.array(id) });
+export const runtimeReadinessSchema = z.strictObject({ fingerprintHash: z.string().regex(/^[a-f0-9]{64}$/),
+  sourceHash: z.string().regex(/^[a-f0-9]{64}$/), validatedAt: z.iso.datetime(), checkedAt: z.iso.datetime() });
 export const releaseSchema = z.strictObject({ expectedRevision: versionSchema, recoveryGeneration: id, confirmed: z.literal(true),
   concerns: z.array(z.strictObject({ code: z.enum(['meaning', 'difficulty', 'time', 'solution_space', 'rubric_ambiguity']),
     path: z.string(), reason: z.string(), resolution: z.string().optional() })).default([]) });
@@ -17,7 +19,7 @@ export const activityControlSchema = z.strictObject({ expectedActivityControlRev
 export const assignmentControlSchema = z.strictObject({ expectedAssignmentRevision: versionSchema, action: z.enum(['pause', 'resume']), reason: z.string().trim().min(1), recoveryGeneration: id });
 export const frozenActivityShape = {
   activityVersionId: id, courseId: id, sourceBlueprintId: id, sourceRevision: versionSchema,
-  draft: draftSchema, helpPolicy: helpPolicySchema, checkRule: checkRuleSchema, runtimeProfile: runtimeSchema,
+  draft: draftSchema, helpPolicy: helpPolicySchema, checkRule: checkRuleSchema, runtimeProfile: runtimeSchema, runtimeReadiness: runtimeReadinessSchema,
   recoveryGeneration: id, confirmedBy: id, confirmedAt: z.number().int().nonnegative(),
 };
 export type HelpPolicyVersion = z.infer<typeof helpPolicySchema>;

@@ -2,7 +2,7 @@
 
 主责：A。任务：[Issue #13](https://github.com/paher-din/XunJie/issues/13)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)；上游：[A1 #10](https://github.com/paher-din/XunJie/issues/10)，合作：[C2 #14](https://github.com/paher-din/XunJie/issues/14)，活动开放条件：[C1 #12](https://github.com/paher-din/XunJie/issues/12)。建立日期：2026-10-10（Asia/Shanghai）。开始代码基线：9221370。
 
-状态：**S1 独立确定性核心已实现，18/18 独立测试、完整回归 46/46、类型检查/build 通过；双轴及增量审查通过。S2 教师持久化合成批次已实现、完整回归 62/62、类型检查/build 通过，两轴审查收口（§10）；S2 整体/S3 未完成，正式公共接口与产品验收未执行。** §1～6 保留批准前的方案/状态，最新批准与实际进度见 §7/8；S2 首批方案及审查历史见 §9，最新批准和实现见 §10。 项目负责人要求继续推进；依赖已有基线提出下述可提前实施批次，不将发起任务解释为批准新共享字段或数据库对象。A1 的独立合成库批准仅适用于其五表，不延伸到 A2。本文提出接口/验证边界确认事项，不修改产品基线。
+状态：**§11 准确批准的完整服务端范围已实现；§12 公共草稿/固定活动/分配/控制及真实 SQL、C 公共记录适配的合成验证已执行。最新联合 typecheck/build/回归 151 通过、0 失败、6 跳过（157 项）；其中 A2 真实 C1 正向用例未执行。当前独立两轴审查待执行，真实节点联调待 C1 交接；A2 全部完成暂未确认，尚未远程 PR。S1/S2 首批数量与待批说明保留其历史范围，最新进度以 §11/12 为准。**
 
 ## 1. 已读依据、负责文件与进入条件
 
@@ -101,7 +101,7 @@ S1 工程通过仅对应 AC-01/02 确定性部分的预验证，不能记整个 
 
 检查上下文是可信资料目录、帮助/规则版本目录、运行就绪登记和教师疑点输入；报告项只用内部 code/path 与需要教师处理或 unknown 状态，不新增 HTTP 错误码。无实际运行登记时开放阻断；测试中的 ready 仅验证纯守卫，不是 C1 证据。教师预览接服务端持有的 authorizeTeacher(courseId) 调用边界，测试其拒绝传播；这不是 request.body.role、真实 Session 或认证替身验收。非教师不能靠 audience 提权。预览白名单不带私有资产/检查器配置/教师疑点；不可见资料只返 redacted/unavailable 状态，不泄露私有 ID、标题、hash 或正文。
 
-状态：S1 核心已实现，目标版本修复已通过回归，双轴及增量审查通过。A2 S2/S3、正式公共 DTO 核对、A1/C2 同事务接入、C1/教师内容与 UI 验收仍待后续；本节不改变关闭条件。
+状态：**§11 准确批准的完整服务端范围已实现；§12 公共草稿/固定活动/分配/控制及真实 SQL、C 公共记录适配的合成验证已执行。最新联合 typecheck/build/回归 151 通过、0 失败、6 跳过（157 项）；其中 A2 真实 C1 正向用例未执行。当前独立两轴审查待执行，真实节点联调待 C1 交接；A2 全部完成暂未确认，尚未远程 PR。S1/S2 首批数量与待批说明保留其历史范围，最新进度以 §11/12 为准。**
 
 
 
@@ -224,7 +224,7 @@ TECH §5 的上述四类变更路由已批准；本批拟仅在独立 app.inject
 - 已存资源正文/段落/JSON、草稿、回执读回按内部 schema 校验，存储损坏走 PERSISTENCE_UNAVAILABLE，不把内部损坏报为客户输入错误。资源版本只由新增命令追加；无更新/删除公共操作。
 - 教师读/预览只提供服务端持有的同步函数，测试路由仅夹具注册；实际公共 GET/共享消费字段另对齐。checks 缺少真实政策/规则/profile 时保留阻断与未知，无 releases 路由。
 
-状态：已批准，本批已实现、验证并完成两轴审查。新增 schema 操作仅允许 xunjie-a2-s2-* 全新临时合成库十表；本批失败库也保留，旧 A1 工厂仍仅初始化原五表。
+状态：**§11 准确批准的完整服务端范围已实现；§12 公共草稿/固定活动/分配/控制及真实 SQL、C 公共记录适配的合成验证已执行。最新联合 typecheck/build/回归 151 通过、0 失败、6 跳过（157 项）；其中 A2 真实 C1 正向用例未执行。当前独立两轴审查待执行，真实节点联调待 C1 交接；A2 全部完成暂未确认，尚未远程 PR。S1/S2 首批数量与待批说明保留其历史范围，最新进度以 §11/12 为准。**
 
 确切资料引用输入仅接受本课程已保存资源：缺失与跨课程 ID 同报 FORBIDDEN，不通过错误差异泄露其他课程对象是否存在；空 resources/其他设计缺项仍可存草稿。已保存对象后续缺失的读取/检查保留 unavailable，不补造正文。
 
@@ -356,3 +356,18 @@ Node 24.21.0/npm 11.19.0，联合 A1/A2 工作副本 npm run typecheck 通过，
 
 待授权维护者汇总 MVP_SPEC §10：A1 同 tx 真实授权与 C 记录适配，A2 公开服务端固定版本/分配/控制及统一验证结果；本次不修改保护基线。按负责人“完成全部后分别 PR”的要求，保留本地独立候选与源码历史，真实 C1 验证未补齐前不提前发布 A2 完成 PR。
 实施前对齐细化：C 现交检查为 validator-v2，A2 新规则配置按该确切版本消费，不给旧 v1 判断改贴标签。C1 authenticated readiness 还返回 fingerprint/validation；A2 除消费 C readRuntime 的 Profile/代际核验外，将核 validation.passed、其 fingerprintHash 与实际 fingerprint UTF-8 JSON 摘要一致，并在固定 activity_json 保存内部只读来源元数据 fingerprintHash/sourceHash/validatedAt/checkedAt。此为 §11.1 已批准的指纹/有效结果/确切来源核验，不增加表/列或公开输入，不向学生输出节点内部数据；readiness 缺证据/指纹冲突拒绝新开放，合法原回执仍先重放。合成夹具补足对应来源字段，不计真实节点通过。
+真实节点验证入口细化：沿已经批准的 app.inject/新十七表库，增加 XUNJIE_A2_RUNTIME=1 才执行的专属用例；从 XUNJIE_A2_SSH_CONFIG 指向的既有受控 JSON 读取 sshRunner 五个配置字段（binary/host/port/keyFile/knownHostsFile）。仅调用应用 readiness，不运行 acceptance 的维护/Engine/代际操作。未启用或没有已授权配置时不把合成 ready 转成真实通过；本机默认明确跳过。可由 C 在实际宿主准备授权入口后执行，不要求私钥进入仓库或聊天。测试用真实 Profile/代际配置合成草稿，走 checks→release→assign→pause；仍不涉及真实课程/学生/模型/执行作业。
+C1 主责可在实际节点所在、已授权且具备精确依赖的宿主工作副本运行以下命令（Node 24.21.0 已在 PATH）；配置文件由节点负责人通过受控方式提供，不提交到仓库：
+
+```bash
+XUNJIE_A2_RUNTIME=1 XUNJIE_A2_SSH_CONFIG="由C提供的受控配置文件路径" node --test --test-name-pattern='real authenticated C1 readiness' apps/teaching/tests/design-activities.test.ts
+```
+
+将命令中的“由C提供的受控配置文件路径”替换成实际本地文件名。文件只包含 binary/host/port/keyFile/knownHostsFile 五项连接设置，不包含密钥正文；本机节点的值来源见 C1 §14.1/14.2，跨机器地址由 C 交接，不能把 127.0.0.1 当远程地址。该命令仅执行一个真实 readiness 业务链用例；输出显示通过后，C 主责交回所用源码 commit/Node 版本/实际通过摘要和 C 验收状态，不传配置或凭据。失败完整保留，不能以省略该用例、手工设置 ready 或作者历史通过替代。
+### 12.4 当前候选验证与审查入口
+
+C 原提交与 A1 全局幂等修复均已通过普通 merge 消费，批准规则对齐 validator-v2。A2 readiness 指纹反例先失败 200（不匹配证据仍能开放）→修复后 422 INVALID_REFERENCE；证据缺失/未通过也拒绝新确认。实际服务端校验 validation 与 fingerprint 摘要/来源/时间，固定版本存只读来源元数据，公开 student/tutor DTO 不下发；没有改 C 传输/公共状态或 schema。
+
+最终联合工作副本已执行 npm run typecheck 通过；npm test/pretest build 通过：**157 项中 151 通过、0 失败、6 跳过**，约 48.07 秒。A2 新业务文件 8 个合成用例通过，真实受认证 C1 用例未启用、明确跳过；另五项 Linux/节点跳过沿 A1 §14.2，不计通过。测试仅保留合成库，无网络/真实节点/模型/容器执行。文档/检查器/空白复核及独立两轴审查接着进行，不能把尚未执行项表述为完成。
+
+A1 本地增量 Standards/Spec 已各关闭原 P2，未解决 0；A2 独立审查固定 A1 038a66e 作为上游，对本分支准确新增 diff 审查。早期总体基线 9221370 保留来源历史；此次 C1/C2 与 A1 增量已经分别审查，避免把来源代码计入 A2 所有权。

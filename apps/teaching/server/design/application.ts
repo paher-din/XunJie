@@ -104,7 +104,7 @@ export async function createDesignApp(options: DesignAppOptions) {
       if (runtime.recoveryGeneration !== input.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
       return confirmActivity(tx, actor, blueprintId, input.expectedRevision,
         input.concerns.map(({ resolution, ...item }) => ({ ...item, ...(resolution === undefined ? {} : { resolution }) })),
-        runtime.profile, input.recoveryGeneration, now());
+        runtime.profile, runtime.readiness, input.recoveryGeneration, now());
     });
   });
   app.post('/api/activities/:id/assignments', request => {

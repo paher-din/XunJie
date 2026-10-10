@@ -124,3 +124,5 @@ A0/B0/C0 的材料已通过 PR #5/#8/#6 合入并纳入统一裁决。2026-10-09
 [完整服务端批次记录](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#12-已批准完整服务端批次实际记录待真实-c1-联调与最终审查) 对应 server/design/application.ts 的 createDesignApp。调用方显式提供 A1 的 db/origin/signingSecret、受信 currentGeneration 和 C RunnerTransport；教师政策/检查规则配置使用工厂的当前教师授权方法。公共 GET 覆盖蓝图/预览/资料/活动/分配；release/assignment/control 和资源/manual/copy/PATCH/checks 复用 C 公共记录与同一 SQL 事务。没有业务监听或账号/密钥自动初始化，默认 main 仍 ready=503。
 
 在已批准 Node 24.21.0 工具环境，apps/teaching 目录执行 npm ci、npm run typecheck、npm test；npm ci 仅安装精确 lock 依赖，不准备 C 节点。统一测试包含 A/B/C 领域，Linux/受认证节点专属用例遵守原门禁。独立 A2 批次可从仓库根执行 node --test apps/teaching/tests/design-activities.test.ts，只用保留的十七表新临时合成库，不运行真实 SSH/模型/容器。这里的 ready 是明确的测试替身，不能计为真实 C1 开放；真实节点连接/验证交接见任务稿 §12.2。
+
+A2 当前联合类型检查/build 与统一回归通过：157 项中 151 通过、0 失败、6 跳过。8 个新增合成业务用例通过，真实受认证 C1 正向用例尚未执行；它通过 XUNJIE_A2_RUNTIME/XUNJIE_A2_SSH_CONFIG 显式启用，只使用 C 提供的受控配置，具体单用例命令见任务稿 §12.2。当前候选待独立两轴审查和节点联调，按批准完成条件尚未提交远程 PR。
