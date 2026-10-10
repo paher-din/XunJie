@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain
+ok 1 - real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain
+  ---
+  duration_ms: 10600.922549
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 20567.837083
