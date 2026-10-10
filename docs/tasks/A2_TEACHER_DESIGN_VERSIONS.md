@@ -445,3 +445,5 @@ records-adapter 抽取同一 recordCommandState，新增只读 readRecordCommand
 固定基线 ac96cf6083b8f7b8403896e2a505b53e94c20d58，Standards/Spec 两名审查者独立只读检查准确工作区增量；均未代跑业务测试或真实节点。Standards 硬性违规/可操作异味 **0/0**；Spec 未解决 **0**。确认两入口不再等待节点才读取原回执，探查与最终事务共用完整校验，原 Session/权限/代际/竞争和原子 ACK 语义保持。
 
 本次交付限七个文件：A 的 records-adapter、design app/application/readiness、design-activities 测试、README 与本文。原 #19 两线程保持待修复合入后的审查者确认；不修改原 PR head/合并历史或自动解决仍存在于 main 的缺陷。修复以新分支普通推送，建立基于 main 的独立 PR（Refs #13/#19），未自动合并、未关闭 Issue；实际 PR 链接后续补记。受保护基线仍待授权维护者汇总。
+
+实际交付：[修复 PR #21](https://github.com/paher-din/XunJie/pull/21) 已创建、base=main、非 Draft/Open、未合并，初始源码提交 `1481c79477208c2103f9ee2d7cfe90c9dd954521`。后续补记仅本文/README 链接，不改变已验证业务/测试源码或原始证据。原 #19 保持合并状态和两个待确认线程；未关闭 #13，未改 main。
