@@ -2,7 +2,7 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
-当前仓库保存团队开发所需的产品规格、工作规范和必要参考，C1、C2 首批领域核心及 A1/A2 已批准服务端范围已合入 main；C2 完整服务端在 codex/c2-complete 完成实现与真实链验收，尚未推送新的 PR。完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
+当前仓库保存团队开发所需的产品规格、工作规范和必要参考，C1、C2 首批领域核心及 A1/A2 已批准服务端范围已合入 main；C2 完整服务端在 codex/c2-complete 完成实现与真实链验收，已通过 [PR #20](https://github.com/paher-din/XunJie/pull/20) 提交审查，尚未合并。完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
 
 ## 文档
 
@@ -86,7 +86,7 @@ C1 已在本机 WSL2 内的专用 QEMU/KVM Ubuntu VM 交付 [runner](apps/teachi
 
 在获准且已准备的 Linux 宿主维护环境，从仓库根执行 `sh apps/teaching/runner/vm.sh start`，再按任务稿同步源码并运行 `/opt/xunjie-runner/node/bin/node apps/teaching/runner/acceptance.ts`；它包含合成故障注入/Engine 恢复/测试代际注册，仅用于无真实业务作业的维护窗口。停止 VM 用 `sh apps/teaching/runner/vm.sh stop`，不删除持久盘/密钥/账本；未准备的开发副本不能假定本机节点、权限或私钥已存在。学生仍只操作团队 Web UI。
 
-C1 完成节点实现与独立验收；C2 已完成 [workspace](apps/teaching/server/workspace/) 与 [records](apps/teaching/server/records/) 的完整服务端接入。createWorkspaceApp 组合 A 的真实登录/资源授权/同事务记录与固定活动分配，createWorkspaceDatabase 只新建准确获准的二十二表临时合成库，文件/快照/双键/Job/必要过程全部提交后才 ACK。运行、未知原 ID 对账、暂停/取消、限定帮助和只读产物已经过真实 A1/A2/C1 作品链验证。业务备份、浏览器、负载和真人仍按对应任务验收；进度待授权维护者汇总。完整 C2 保存在 codex/c2-complete，尚未推送新 PR/关闭 #14，不计完整应用/G1 或教学效果。
+C1 完成节点实现与独立验收；C2 已完成 [workspace](apps/teaching/server/workspace/) 与 [records](apps/teaching/server/records/) 的完整服务端接入。createWorkspaceApp 组合 A 的真实登录/资源授权/同事务记录与固定活动分配，createWorkspaceDatabase 只新建准确获准的二十二表临时合成库，文件/快照/双键/Job/必要过程全部提交后才 ACK。运行、未知原 ID 对账、暂停/取消、限定帮助和只读产物已经过真实 A1/A2/C1 作品链验证。业务备份、浏览器、负载和真人仍按对应任务验收；进度待授权维护者汇总。完整 C2 已通过 [PR #20](https://github.com/paher-din/XunJie/pull/20) 提交审查，尚未合并/关闭 #14，不计完整应用/G1 或教学效果。
 
 在已批准 Node 24.21.0 工具环境、apps/teaching 目录验证；WSL 请把源码和精确 lock 依赖放在 Linux 文件系统，Windows 挂载目录的模块启动开销曾触发既有子进程时限，原生目录保持原检查全部通过：
 

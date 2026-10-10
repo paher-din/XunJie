@@ -1,6 +1,6 @@
 # C2：学生工作区、固定快照与基础作业
 
-日期：2026-10-10（Asia/Shanghai）。主责：C；Issue：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。状态：完整 C2 服务端已实现并通过真实 A1/A2/SQLite/C1 作品链验收，最终记录见 §11；工作分支 `codex/c2-complete`，尚未推送新的 PR，Issue 保持 Open。浏览器、真人、业务负载与旧备份恢复分别后置，不计作完整产品/G1 通过。
+日期：2026-10-10（Asia/Shanghai）。主责：C；Issue：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。状态：完整 C2 服务端已实现并通过真实 A1/A2/SQLite/C1 作品链验收，最终记录见 §11；工作分支 `codex/c2-complete` 已通过 [PR #20](https://github.com/paher-din/XunJie/pull/20) 提交审查，Open/非 Draft，尚未合并，Issue 保持 Open。浏览器、真人、业务负载与旧备份恢复分别后置，不计作完整产品/G1 通过。
 
 最新推进状态：A1/A2 已经由 PR #18/#19 合入 main，本任务从 `ac96cf6083b8f7b8403896e2a505b53e94c20d58` 的独立干净工作树完成完整 C2。旧章节保留各自时点；准确存储/最小 A 接缝的批准前提案与负责人批准记录见 §10/10.4，当前交付以 §11 为准。
 
@@ -271,3 +271,7 @@ SSH JSON 字段为 binary/host/port/keyFile/knownHostsFile，交给既有 sshRun
 项目负责人明确要求“推送 pr”，授权完整 C2 的已有代码/测试/证据、本文和 README 通过 `codex/c2-complete` 普通推送并创建 PR；未授权合并、关闭 Issue、生产部署或其他红线操作。开始发布时主分支仍为 `ac96cf6083b8f7b8403896e2a505b53e94c20d58`，与实际验收基线相同；工作树干净，原实现 `1162224` 和收口记录 `151096f` 已保留。
 
 PR 以 main 为基线，引用 #14，范围为 C 所有 workspace/records、两个准确获准 A/db 最小接缝、C2 文档和 README。正文明确二十二表仅新临时合成库、原子 ACK/双键/当前授权、原 runId 对账/取消/只读产物、26/26 与统一 171 通过/5 跳过，以及 UI/真人/负载/旧备份的后置范围。仅发布记录变更，沿用 §11 最终源码/测试证据，不重复业务测试。实际远端 head、PR/body/文件范围及附加结果在成功后追加。
+
+发布实际结果：普通推送 `codex/c2-complete` 成功，初始远端/PR head=`01af933b8b956a9fe3fd9c1461c8ebbe84591b8c` 与本地一致；[PR #20](https://github.com/paher-din/XunJie/pull/20) 已创建并附到当前任务，base=main/ac96cf6，标题为“[C2] 完成持久工作区与 A1/A2/C1 真实作品链”，Open/非 Draft。PR 完整正文、25 文件增量及角色/数据/后置边界已回读一致，不含受保护基线、A/access/design/package/lock/tsconfig、CI/凭据或他人 G1 改动；没有合并/关闭 Issue。
+
+本条和 README 同步发布状态，收尾仅增加文档记录；源码清单/26 项节点组合/统一回归证据不变，后续仅核静态链接、空白与最终远端 head。此前 §11 的“未推送”保留本地交付时点，以本节实际发布状态为准。
