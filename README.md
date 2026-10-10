@@ -95,7 +95,7 @@ C1 完成节点实现与独立验收；C2 已实现 [workspace](apps/teaching/se
 XUNJIE_C2_RUNTIME=1 /opt/xunjie-runner/node/bin/node --test apps/teaching/server/records/*.test.ts apps/teaching/server/workspace/*.test.ts
 ```
 
-不设置 XUNJIE_C2_RUNTIME 时，专用节点对接明确跳过，其余核心检查正常执行。实际 16 项通过、strict 类型检查和原始记录/下游 tx 要求见 [C2 交付记录](docs/tasks/C2_WORKSPACE_JOBS.md#6-验证与交付记录)；A3/B2/C3/C4 可复用首批核心，但真实存储/权限未接入前不能宣称完整服务端作品链通过。
+不设置 XUNJIE_C2_RUNTIME 时，专用节点对接明确跳过，其余核心检查正常执行。审查修复后实际 18 项通过、strict 类型检查和新原始记录/下游 tx 要求见 [C2 交付记录](docs/tasks/C2_WORKSPACE_JOBS.md#6-验证与交付记录)；A3/B2/C3/C4 可复用首批核心，但真实存储/权限未接入前不能宣称完整服务端作品链通过。
 
 三份产品文档已于 2026-10-09 更新为 v0.3：项目负责人统一批准 G0 的教学/模型/数据/技术契约和分段实施方案，并明确授权同步五份基线。裁决角色为负责人，A0/B0/C0 PR 作为输入，不记录三人逐一签字；正式应用与业务验收仍未完成。
 
