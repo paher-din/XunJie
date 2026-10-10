@@ -18,7 +18,7 @@
 | [G0 TextScope 参考与活动适配](docs/tasks/G0_TEXTSCOPE_ACTIVITY_SPEC.md) | 外部候选供追溯，Web 学生空间的 Core/Report 活动提案另列；不照搬本地开发/六阶段/评分要求 |
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
 | [A1 基础实施与验证记录](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md) | Issue #10 的 P1 工程/入口/公共校验与错误、实际验证和后续权限/短事务边界；A1 未全部完成 |
-| [A2 教师设计与版本任务](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md) | Issue #13 的 S1 材料/草稿/检查/投影内部核心与验证；真实接口/存储及确认/分配待 S2/S3 的 A1/C1/C2 条件 |
+| [A2 教师设计与版本任务](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md) | Issue #13 的 S1 内部核心与 S2 首批教师持久化合成链；正式共享接口、活动版本/分配及 UI 验收待后续条件 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
@@ -116,7 +116,7 @@ A0/B0/C0 的材料已通过 PR #5/#8/#6 合入并纳入统一裁决。2026-10-09
 node --test tests/design-material.test.ts tests/design-draft.test.ts tests/design-checks.test.ts tests/design-projection.test.ts
 npm run typecheck
 ```
-这四组测试只使用合成对象，不建 A2 数据库、不启动业务服务；完整回归仍执行 `npm test`。当前没有可供浏览器调用的 A2 保存/确认/分配接口；真实授权、事务存储、不可变活动版本、分配/控制和 UI 验收待 S2/S3，不凭计算结果发保存 ACK。
+这四组测试只使用合成对象，不建 A2 数据库、不启动业务服务；完整回归仍执行 `npm test`。S1 本身只计算，不发保存 ACK。后续另批准的 S2 首批已接合成 Session 与实际事务存储（见下方）；当前仍没有可供浏览器调用的正式 A2 保存/确认/分配接口，不可变活动版本、分配/控制与 UI 验收待后续。
 
 A2 后续存储对象、独立新库范围、原子命令顺序及验证接缝已列为 [S2 待审方案](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#9-s2-首批持久化方案待负责人批准未执行)。该方案当时未获批准；后续负责人已另批准 A2 新临时库十表范围，最新实现/验证见下方独立记录，不改变原 A1 五表许可。
 
