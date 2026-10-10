@@ -30,10 +30,15 @@ async function fixture(transport?: RunnerTransport) {
     for (const [course, user, role] of [['course','teacher','teacher'],['course','student','student'],['course','other','student'],['foreign-course','foreign','teacher']]) tx.run('INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,?,?,1)', course!, user!, role!);
   });
   let ready = true, generation = runtime?.recoveryGeneration ?? 'generation', evidenceValid = true;
+  let runtimeGate: Promise<void> | undefined, releaseRuntime: (() => void) | undefined, runtimeEntered: (() => void) | undefined;
   const fingerprint = { kernel: 'synthetic', node: 'v24.21.0', engine: 'synthetic', cgroup: '2', seccomp: ['name=seccomp'], profile, sourceHash: 'd'.repeat(64) };
   const fingerprintHash = createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex');
   const secret = randomBytes(48).toString('hex');
-  const runner: RunnerTransport = transport ?? (async () => ({ data: { ready, ...profile, recoveryGeneration: generation, fingerprint, validation: { passed: true, fingerprintHash: evidenceValid ? fingerprintHash : '0'.repeat(64), validatedAt: new Date().toISOString() } } }));
+  const runner: RunnerTransport = transport ?? (async () => {
+    runtimeEntered?.();
+    await runtimeGate;
+    return { data: { ready, ...profile, recoveryGeneration: generation, fingerprint, validation: { passed: true, fingerprintHash: evidenceValid ? fingerprintHash : '0'.repeat(64), validatedAt: new Date().toISOString() } } };
+  });
   const options = () => ({ db, origin, signingSecret: secret, currentGeneration: () => generation, runner });
   let service = await createDesignApp(options());
   function register() {
@@ -82,6 +87,12 @@ async function fixture(transport?: RunnerTransport) {
     return { origin, cookie: res.cookies.filter(c => c.value).map(c => `${c.name}=${encodeURIComponent(c.value)}`).join('; '), 'x-csrf-token': res.json().data.csrfToken as string };
   }
   return { profile, signingSecret: secret, login, get app() { return service.app; }, get db() { return db; }, generation: () => generation,
+    hangRuntime() {
+      runtimeGate = new Promise<void>(resolve => { releaseRuntime = resolve; });
+      return new Promise<void>(resolve => { runtimeEntered = resolve; });
+    },
+    allowNewRuntimeQueries() { runtimeGate = undefined; },
+    releaseRuntime() { releaseRuntime?.(); runtimeGate = undefined; releaseRuntime = undefined; runtimeEntered = undefined; },
     corruptEvidence() { evidenceValid = false; },
     unavailable() { ready = false; }, restore() { generation = 'new-generation'; },
     async reopen() { const file = db.file; await service.app.close(); db.close(); db = openSyntheticDatabase(file); service = await createDesignApp(options()); register(); },
@@ -351,3 +362,127 @@ test('real authenticated C1 readiness supports the A2 checks-release-assignment-
       assert.equal((await f.app.inject({ url: `/api/assignments/${assignment}`, headers: student })).json().data.active, false);
     } finally { await f.close(); }
   });
+async function withoutRuntimeWait<T>(response: PromiseLike<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([Promise.resolve(response), new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('Committed command replay waited for a pending runtime query.')), 1000);
+    })]);
+  } finally { if (timer) clearTimeout(timer); }
+}
+
+test('committed release replays its exact receipt while runtime readiness remains pending', async () => {
+  const f = await fixture();
+  let retry: ReturnType<typeof command> | undefined;
+  try {
+    const teacher = await f.login(), initial = await draft(f, teacher);
+    const url = `/api/blueprints/${initial.id}/releases`, input = { expectedRevision: 1, confirmed: true };
+    const original = await command(f, teacher, url, input, 'release-pending');
+    assert.equal(original.statusCode, 200, original.body);
+    f.hangRuntime();
+    retry = command(f, teacher, url, input, 'release-pending');
+    const replay = await withoutRuntimeWait(retry);
+    assert.equal(replay.statusCode, 200, replay.body);
+    assert.deepEqual(replay.json().data, original.json().data);
+  } finally {
+    f.releaseRuntime();
+    if (retry) await retry;
+    await f.close();
+  }
+});
+
+test('committed checks replay their exact receipt while runtime readiness remains pending', async () => {
+  const f = await fixture();
+  let retry: ReturnType<typeof command> | undefined;
+  try {
+    const teacher = await f.login(), initial = await draft(f, teacher);
+    const url = `/api/blueprints/${initial.id}/checks`, input = { expectedRevision: 1 };
+    const original = await command(f, teacher, url, input, 'checks-pending');
+    assert.equal(original.statusCode, 200, original.body);
+    f.hangRuntime();
+    retry = command(f, teacher, url, input, 'checks-pending');
+    const replay = await withoutRuntimeWait(retry);
+    assert.equal(replay.statusCode, 200, replay.body);
+    assert.deepEqual(replay.json().data, original.json().data);
+  } finally {
+    f.releaseRuntime();
+    if (retry) await retry;
+    await f.close();
+  }
+});
+
+for (const operation of ['checks', 'releases'] as const) {
+  const input = operation === 'checks' ? { expectedRevision: 1 } : { expectedRevision: 1, confirmed: true };
+  test(`${operation} rejects current permission/generation/key conflicts without waiting for runtime`, async () => {
+    const f = await fixture();
+    try {
+      const teacher = await f.login(), student = await f.login('student'), initial = await draft(f, teacher);
+      const url = `/api/blueprints/${initial.id}/${operation}`;
+      const original = await command(f, teacher, url, input, 'guarded-replay');
+      assert.equal(original.statusCode, 200, original.body);
+      f.hangRuntime();
+      for (const [headers, payload, key, status, code] of [
+        [teacher, { ...input, expectedRevision: 2 }, 'guarded-replay', 409, 'IDEMPOTENCY_CONFLICT'],
+        [teacher, { ...input, recoveryGeneration: 'old-generation' }, 'guarded-replay', 409, 'RECOVERY_REQUIRED'],
+        [student, input, 'guarded-replay', 403, 'FORBIDDEN'],
+        [teacher, input, '', 400, 'INVALID_REQUEST'],
+      ] as const) {
+        const res = await withoutRuntimeWait(command(f, headers, url, payload, key));
+        assert.equal(res.statusCode, status, res.body); assert.equal(res.json().error.code, code);
+      }
+      f.db.withTransaction(tx => tx.run("UPDATE course_memberships SET active=0 WHERE course_id='course' AND user_id='teacher'"));
+      const revoked = await withoutRuntimeWait(command(f, teacher, url, input, 'guarded-replay'));
+      assert.equal(revoked.statusCode, 403, revoked.body); assert.equal(revoked.json().error.code, 'FORBIDDEN');
+    } finally { f.releaseRuntime(); await f.close(); }
+  });
+
+  test(`${operation} returns a concurrent committed receipt even if its earlier runtime query fails`, async () => {
+    const f = await fixture();
+    let pending: ReturnType<typeof command> | undefined;
+    try {
+      const teacher = await f.login(), initial = await draft(f, teacher);
+      const url = `/api/blueprints/${initial.id}/${operation}`, entered = f.hangRuntime();
+      pending = command(f, teacher, url, input, 'concurrent-receipt');
+      await withoutRuntimeWait(entered);
+      // The first query stays suspended; a new query may obtain valid readiness.
+      f.allowNewRuntimeQueries();
+      const winner = await withoutRuntimeWait(command(f, teacher, url, input, 'concurrent-receipt'));
+      assert.equal(winner.statusCode, 200, winner.body);
+      f.corruptEvidence();
+      f.releaseRuntime();
+      const replay = await pending;
+      assert.equal(replay.statusCode, 200, replay.body);
+      assert.deepEqual(replay.json().data, winner.json().data);
+      const invalidNew = await command(f, teacher, url, input, 'invalid-new');
+      assert.equal(invalidNew.statusCode, 422, invalidNew.body);
+      assert.equal(invalidNew.json().error.code, 'INVALID_REFERENCE');
+    } finally {
+      f.releaseRuntime(); if (pending) await pending; await f.close();
+    }
+  });
+
+  for (const change of ['permission', 'generation'] as const) {
+    test(`${operation} rechecks ${change} after the new command runtime wait`, async () => {
+      const f = await fixture();
+      let pending: ReturnType<typeof command> | undefined;
+      try {
+        const teacher = await f.login(), initial = await draft(f, teacher);
+        const url = `/api/blueprints/${initial.id}/${operation}`, entered = f.hangRuntime();
+        pending = command(f, teacher, url, input, 'changed-during-wait');
+        await withoutRuntimeWait(entered);
+        if (change === 'permission') f.db.withTransaction(tx => tx.run("UPDATE course_memberships SET active=0 WHERE course_id='course' AND user_id='teacher'"));
+        else f.restore();
+        f.releaseRuntime();
+        const refused = await pending;
+        assert.equal(refused.statusCode, change === 'permission' ? 403 : 409, refused.body);
+        assert.equal(refused.json().error.code, change === 'permission' ? 'FORBIDDEN' : 'RECOVERY_REQUIRED');
+        // Reauthorize only as test setup; the rejected request must not have created a receipt.
+        if (change === 'permission') f.db.withTransaction(tx => tx.run("UPDATE course_memberships SET active=1 WHERE course_id='course' AND user_id='teacher'"));
+        const accepted = await command(f, teacher, url, input, 'changed-during-wait');
+        assert.equal(accepted.statusCode, 200, accepted.body);
+      } finally {
+        f.releaseRuntime(); if (pending) await pending; await f.close();
+      }
+    });
+  }
+}
