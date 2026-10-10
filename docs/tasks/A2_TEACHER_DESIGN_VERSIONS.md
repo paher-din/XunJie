@@ -144,7 +144,7 @@ S1 工程通过仅对应 AC-01/02 确定性部分的预验证，不能记整个 
 
 ### 9.1 范围、依据与依赖
 
-依据 PRD §4.1/8/9、MVP M-01/M-02/M-10、AC-01/02 与 NFR-04、TECH §4.3/4.4/5/5.1/7.1/9/10.1，以及本文已批准 S1。2026-10-10 负责人在查看新 PR 后要求继续；本节把后续数据库对象和验证边界具体化，**不把“继续”解释成已批准这些新表**。A1 的同事务课程鉴权已在其既有合成库完成接缝实现，见 [A1 §10](A1_FOUNDATION_ACCESS_TRANSACTION.md#10-2026-10-10-c2-接缝推进既有合成鉴权与事务组合)。
+依据 PRD §4.1/8/9、MVP M-01/M-02/M-10、AC-01/02 与 NFR-04、TECH §4.3/4.4/5/5.1/7.1/7.5/9/10.1，以及本文已批准 S1。2026-10-10 负责人在查看新 PR 后要求继续；本节把后续数据库对象和验证边界具体化，**不把“继续”解释成已批准这些新表**。A1 的同事务课程鉴权已在其既有合成库完成接缝实现，见 [A1 §10](A1_FOUNDATION_ACCESS_TRANSACTION.md#10-2026-10-10-c2-接缝推进既有合成鉴权与事务组合)。
 
 拟先实现 S2 的教师持久化批次：材料导入、manual/copy 草稿创建、局部 PATCH、绑定 revision 的 checks、任课教师读取与三角色预览。继续使用 S1 内部类型；身份来自真实合成 Session 与课程成员查询，保存结果必须由 SQLite 实际提交产生。不等待 C2 的整个任务结束，但不将本批记为 S2 整体完成。ActivityVersion、分配/暂停/恢复、学生实际资料读取、A3 模型提案与正式 UI 属后续批次。
 
@@ -161,8 +161,8 @@ TECH §5 的上述四类变更路由已批准；本批拟仅在独立 app.inject
 | resource_versions | 服务端 resourceVersionId、courseId/创建者外键、格式/kind/标题、原正文/UTF-8 bytes/hash、student/tutor 可见性、获准 teacher_design 用途、版本内段落 JSON；段落含服务端 paragraphId、ordinal、原区间及 hash。正文版本只追加，私有答案/验证资产可见性恒 false；课程归属和用途由服务端设置/验证 |
 | competency_versions | (courseId, competencyId, competencyVersion) 唯一键；不可改写的 domain/title 语义。core 是草稿安排，不当全局能力语义。已存在版本须语义相同；新增版本高于该 ID 已登记最大版本，已有较旧确切版本仍可引用。跨草稿、移除后重加都查同一目录 |
 | blueprint_drafts | 服务端 blueprintId、courseId 外键、当前 revision、经 S1 校验的 content JSON、创建者/服务端时间；copy 记录确切 source ID/revision。仅当前草稿可 CAS 更新；不声称已保存所有历史草稿快照或冻结 ActivityVersion |
-| command_receipts | commandId/receiptId、账号外键、课程/稳定命令/目标作用域、Idempotency-Key、请求摘要、已提交结果 JSON、对应事件序号；账号+命令+目标+键唯一。保存旧业务 IDs/版本/结果以支持原样重放；不保存密码、Cookie、CSRF 或私有路径 |
-| audit_events | 数据库分配的单调 server_seq、唯一 eventId、服务端操作者/课程/命令/对象引用及时间；记录材料/草稿/checks 的命令事实，不造学习事件/模型推断。载荷不复制私有正文；receipt 的事件序号引用此表，同事务创建 |
+| command_receipts | commandId/receiptId、账号外键、课程/稳定命令/目标作用域、Idempotency-Key、请求摘要、已提交结果 JSON、recoveryGeneration、对应事件序号；账号+命令+目标+键唯一。保存旧业务 IDs/版本/结果以支持原样重放；不保存密码、Cookie、CSRF 或私有路径 |
+| audit_events | 数据库分配的单调 server_seq、唯一 eventId、服务端操作者/课程/命令/对象引用、recoveryGeneration 及时间；记录材料/草稿/checks 的命令事实，不造学习事件/模型推断。载荷不复制私有正文；receipt 的事件序号引用此表，同事务创建 |
 
 采用现有 approved SQLite 驱动和配置：foreign_keys=ON、WAL、synchronous=FULL、busy_timeout=1000，事务为同步 BEGIN IMMEDIATE。新增 JSON 读回必须按对应内部 schema 校验，不能直接把数据库行当可信 DTO。正文 bytes/hash 由实际原字节推导，不能采信请求自报。材料课程配额在持有同事务写锁后统计已保存正文并验证 256 KiB/2 MiB 上限，再插入；私有正文同样计数。本批不增加资料撤回/删除/可见性编辑命令；相应治理不因此被视为已实现。
 
@@ -171,17 +171,19 @@ TECH §5 的上述四类变更路由已批准；本批拟仅在独立 app.inject
 ### 9.3 原子命令顺序与读边界
 
 1. 在 HTTP 边界校验 Origin/CSRF 和严格输入格式；withAuthorizedCourse 在保存事务内重新核 Session/账号/当前课程教师角色。目标草稿/材料再核课程归属；不从 body role/studentId 或预览 audience 授权。
-2. 在当前授权成立后，按账号、稳定命令、服务端目标和键查 receipt。请求摘要由经验证的语义输入确定性编码并包含目标、expectedRevision 与确切 copy 来源；键自身不进摘要，JSON 键顺序差异不制造不同请求。同键同摘要返原结果；同键异摘要报既有 IDEMPOTENCY_CONFLICT/409。重放不新增业务对象/事件；当前授权撤销则拒绝重放。每次 HTTP requestId 可新。
+2. 当前授权成立后，先在事务内核请求携带的 recoveryGeneration 与服务端受信当前代际，缺失/旧值拒绝；旧代际用既有 RECOVERY_REQUIRED/409，不推进 Session 活跃时间或业务行。随后才按账号、稳定命令、服务端目标和键查 receipt；回执所属代际也必须是当前代际，不把旧结果改贴新代际。请求摘要由经验证的语义输入确定性编码并包含目标、expectedRevision、recoveryGeneration 与确切 copy 来源；键自身不进摘要，JSON 键顺序差异不制造不同请求。同键同摘要返原结果；同键异摘要报既有 IDEMPOTENCY_CONFLICT/409。重放不新增业务对象/事件；当前授权撤销则拒绝重放。每次 HTTP requestId 可新。
 3. 对新命令查确切目标/来源及 expectedRevision。PATCH 使用条件 UPDATE 并验证 changes=1；copy 只能复制同课程已授权来源的指定当前 revision，先取完整内容再创建新 ID/revision=1。没有历史快照的旧 source revision 拒绝，不拼出并不存在的历史内容。
 4. 调用 S1 核心，查资源归属与全局目标版本目录，再同事务写材料/草稿/目标目录、audit_event 和 receipt。跨课程引用拒绝；草稿的其他缺项/缺运行登记保留为 checks 阻断项，不阻止保存少量输入。checks 结果绑定确切 revision；无 C1 动态就绪与实际政策/规则目录的条件保持 unavailable/unverified，不用合成 ready 放行活动。
 5. 事务提交成功后才组装 HTTP 成功结果；约束/busy/提交故障不能 ACK。回执结果可保留原草稿/报告，但读取始终经当前授权和适当投影，不把原始 receipt 直接开放给学生或辅导。
 6. 教师读取/预览在同一短事务重查授权、读取草稿与确切资源，再用 S1 白名单投影。学生与辅导实际入口仍未注册，不向其授予草稿访问。同步回调不运行模型、HTTP、runner 或等待外部服务。
 
+受信当前代际拟由独立合成工厂的同步服务端登记读取边界提供，不能由请求体、草稿或可回退的业务库决定。合成测试由受控父进程持有明确登记值，关闭/重开业务库保持该值；旧备份场景在停止接纳窗口由夹具推进登记值，再提交原请求核拒绝。登记读取与提交间不得发生切换，提交前再次核一致性；模拟值只验证拒绝/重放顺序，不宣称可靠登记点或正式恢复流程已实现。真实入口必须等 A/C 批准并落实不随备份回退的持久登记、恢复接纳屏障和执行端确认；本批不创建该外部登记服务、不操作备份/VM或新增密钥。该同步登记读取纳入 §9.4 接缝提请，字段仍是任务内部适配，公共 HTTP 携带方式另会审。
+
 以上数据库事件/回执承载同事务语义，但尚未冒称已接通 C2 的记录组件。待 A/C 对齐 C0/C2 的 ID、scope、事件载荷、原结果编码与事务写入适配后，才将相应内部实现交共享集成；不另造队列或 Job 表。与 B 的帮助政策/目标字段同样以已批准基线和实际适配核对，未落实目录保持未知。
 
 ### 9.4 拟确认的测试接缝与完成条件
 
-提请同时确认两个接缝：独立合成工厂的 app.inject（上文四类教师变更命令）与实际数据库 withTransaction/关闭重开（包含同事务授权读/预览）。以外部 HTTP 结果、提交后读回、第二连接真实竞争及持久重放为证据；不通过替身 ACK、仅 pure plan 或 spy 调用次数冒充落库。未批准前**不编写/执行新增 A2 SQL 或该批测试**。
+提请同时确认两个接缝：独立合成工厂的 app.inject（上文四类教师变更命令）与实际数据库 withTransaction/关闭重开（包含同事务授权读/预览及同步受信代际登记读取）。以外部 HTTP 结果、提交后读回、第二连接真实竞争及持久重放为证据；不通过替身 ACK、仅 pure plan 或 spy 调用次数冒充落库。未批准前**不编写/执行新增 A2 SQL 或该批测试**。
 
 | 用例 | 成功/拒绝与观察结果 |
 | --- | --- |
@@ -189,6 +191,7 @@ TECH §5 的上述四类变更路由已批准；本批拟仅在独立 app.inject
 | 材料固定引用/隐私/配额 | 正文与 BOM/CRLF/Unicode 原 bytes/hash 可读回；paragraphId 固定且不跨版本替换；私有正文/敏感引用不进入 student/tutor 预览；第二连接竞争不能使课程总量超过 2 MiB |
 | 保存/复制/目标历史 | 少量输入可存；copy 新 ID 与独立 revision，修改不改变来源；旧来源/旧 PATCH revision 拒绝；不同草稿或移除重加不能替换已有目标版本语义 |
 | 幂等/冲突 | 提交后推进 revision，再重放旧合法键仍获原业务 IDs/结果；同键异摘要 409；同键并发只一组业务行/事件/receipt；当前越权无历史结果 |
+| 恢复代际 | 请求缺/旧代际拒绝；即使旧键与旧摘要匹配也先报 RECOVERY_REQUIRED，无 ACK/新行；代际推进后旧 receipt 不能改贴或重放；正常关闭重开保持原代际；当前代际合法请求保留原结果。真实旧备份/可靠登记/执行端恢复未执行 |
 | 同事务失败/恢复 | 制造实际约束/busy/数据库故障，前置业务行、目标目录、事件/receipt、Session 活跃时间全部不留下半批，不返成功；关闭重开保持对象、原结果/版本与唯一约束 |
 | checks/读取 | 绑定所读 revision，缺项可编辑、检查仍三类；真实规则/profile 缺口不伪造已验证；并发编辑时同事务读取与材料目录不拼出混合版本 |
 | 工程与交付 | typecheck、针对用例、完整 npm test/build、文档检查和双轴审查通过；失败/未执行如实记录，README/本文同步，并请求授权维护者汇总 MVP §10 |
