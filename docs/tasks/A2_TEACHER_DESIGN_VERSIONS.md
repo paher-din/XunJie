@@ -408,4 +408,4 @@ PR 采用依赖链 C1 #16→C2 #17→A1（base=codex/c2-workspace-core）→A2�
 
 [A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 已普通推送/创建，base=codex/c2-workspace-core；[A2 PR #19](https://github.com/paher-din/XunJie/pull/19) 已普通推送/创建并附到当前任务，base=codex/a1-complete、非 Draft/Open/未合并。A2 初次发布 head=`39213480b7c6a300db405ba899f8b8ce40e112a5`，回读为 28 文件，仅 A2 领域/测试/原证据/文档；A1 初次为 57 文件，包含准确授权的工程/权限/SQL适配及最小依赖修复。未合并/关闭 Issue/修改 main 或 C 远程分支；依赖顺序 C1 #16→C2 #17→A1 #18→A2 #19。
 
-连接器创建 API 返回 403，复用既有成功推送的 Git 身份后两项均创建成功，未修改或输出凭据。补记 PR URL 的后续提交/普通 merge 仅文档，业务源码仍等于本次 PAHER 已验源码 8421157；记录的是 PR 交付，不追加业务通过数。README 同一区段再次出现普通 merge 冲突，按 A1 完整入口+A2 最新独立区段保留原文解决，未在冲突中执行业务验收。最终链接/空白/证据摘要与远端 head/base/范围回读接着登记；保护基线仍待授权维护者汇总。
+连接器创建 API 返回 403，复用既有成功推送的 Git 身份后两项均创建成功，未修改或输出凭据。补记 PR URL 的后续提交/普通 merge 仅文档，业务源码仍等于本次 PAHER 已验源码 8421157；记录的是 PR 交付，不追加业务通过数。README 同一区段再次出现普通 merge 冲突，按 A1 完整入口+A2 最新独立区段保留原文解决，未在冲突中执行业务验收。最终链接/空白/证据摘要均通过；远端 A1/A2 的 head/base/完整文件清单与本地逐项相同（57/28 文件），正文与提交的描述逐字一致，远端与本地分支各 0 ahead/0 behind。已回读 A1=5b9d83e、A2=2abee6a，均 Open/未合并；后续补记仅本文，无业务源码变化。保护基线仍待授权维护者汇总。
