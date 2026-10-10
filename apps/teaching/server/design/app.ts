@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import type { FastifyRequest } from 'fastify';
 import { createVerificationApp, type VerificationOptions } from '../access/app.ts';
-import { finishRecordCommand } from '../db/records-adapter.ts';
+import { finishRecordCommand, readRecordCommand } from '../db/records-adapter.ts';
 import { resultSchema, validateReceiptScope } from './storage.ts';
 import { releaseContext } from './activities.ts';
-import { queryRuntime } from './readiness.ts';
+import { executeRuntimeCommand, type queryRuntime } from './readiness.ts';
 import type { RunnerTransport } from '../records/runner.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
@@ -48,7 +48,7 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
   function execute(request: FastifyRequest, scope: string | ((tx: Transaction) => string), operation: {
     name: string; target: string; input: { recoveryGeneration?: string | undefined };
     apply: (tx: Transaction, actor: { userId: string; courseId: string }, timestamp: number) => DesignResult;
-  }) {
+  }, replayOnly = false) {
     const key = parseRequest(keySchema, request.headers['idempotency-key']);
     const data = access.withAuthorizedCourse(request, scope, 'teacher', (tx, actor) => {
       const generation = requireGeneration(operation.input.recoveryGeneration), timestamp = now();
@@ -59,15 +59,17 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
         return parsed.data;
       };
       const apply = () => operation.apply(tx, actor, timestamp);
+      const identity = { actorId: actor.userId, command: operation.name, target: operation.target,
+        scope: { courseId: actor.courseId }, idempotencyKey: key, recoveryGeneration: generation };
       const result = options.completion
-        ? finishRecordCommand(tx, { actorId: actor.userId, command: operation.name, target: operation.target,
-          scope: { courseId: actor.courseId }, idempotencyKey: key, recoveryGeneration: generation }, operation.input, generation, timestamp, apply, validate)
+        ? replayOnly ? readRecordCommand(tx, identity, operation.input, generation, validate)
+          : finishRecordCommand(tx, identity, operation.input, generation, timestamp, apply, validate)
         : commitCommand(tx, actor, operation.name, operation.target, key, operation.input, generation, timestamp, apply);
-      validate(result.result);
+      if (result) validate(result.result);
       requireGeneration(generation);
       return result;
-    });
-    return { requestId: request.id, data };
+    }, !replayOnly);
+    return data === undefined ? undefined : { requestId: request.id, data };
   }
   app.post('/api/courses/:id/resources', request => {
     const courseId = parseRequest(paramsSchema, request.params).id;
@@ -91,22 +93,21 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
     const blueprintId = parseRequest(paramsSchema, request.params).id;
     const input = parseRequest(checksInput, request.body);
     let readiness: Awaited<ReturnType<typeof queryRuntime>> | undefined;
-    if (options.completion) {
-      access.inspectCourse(request, tx => draftCourse(tx, blueprintId), 'teacher');
-      requireGeneration(input.recoveryGeneration);
-      readiness = await queryRuntime(options.runner);
-    }
-    return execute(request, tx => draftCourse(tx, blueprintId), { name: 'draft.checks', target: blueprintId, input,
+    const checks = (replayOnly = false) => execute(request, tx => draftCourse(tx, blueprintId), { name: 'draft.checks', target: blueprintId, input,
       apply: (tx, actor) => {
         const concerns = input.concerns.map(({ resolution, ...concern }) => ({ ...concern, ...(resolution === undefined ? {} : { resolution }) }));
         if (!options.completion) return checkStoredDraft(tx, actor.courseId, blueprintId, input.expectedRevision, concerns);
-        if (readiness && !readiness.ok) throw readiness.error;
+        if (!readiness) throw new ApiError('PERSISTENCE_UNAVAILABLE');
+        if (!readiness.ok) throw readiness.error;
         const runtime = readiness?.ok ? readiness.runtime : undefined;
         if (runtime && runtime.recoveryGeneration !== input.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
         const context = releaseContext(tx, actor.courseId, blueprintId, concerns, runtime?.profile);
         if (context.draft.revision !== input.expectedRevision) throw new ApiError('VERSION_CONFLICT');
         return { kind: 'checks', report: context.report };
-      } });
+      } }, replayOnly);
+    return options.completion
+      ? executeRuntimeCommand(options.runner, () => checks(true), value => { readiness = value; return checks(); })
+      : checks();
   });
   const design = {
     readMaterial(request: FastifyRequest, courseId: string, resourceId: string) {

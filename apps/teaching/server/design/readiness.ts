@@ -35,3 +35,14 @@ export async function queryRuntime(runner?: RunnerTransport) {
     return { ok: false as const, error };
   }
 }
+
+// Both handlers probe a currently authorized receipt before any external wait.
+// The final callback rechecks authorization/generation/receipt competition in SQL.
+export async function executeRuntimeCommand<T>(runner: RunnerTransport | undefined,
+  replay: () => T | undefined, execute: (readiness: Awaited<ReturnType<typeof queryRuntime>> | undefined) => T | undefined): Promise<T> {
+  const previous = replay();
+  // Even a replay goes through the final authorized transaction to advance Session atomically.
+  const result = execute(previous === undefined ? await queryRuntime(runner) : undefined);
+  if (result === undefined) throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  return result;
+}
