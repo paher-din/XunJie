@@ -139,6 +139,10 @@ export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentit
   };
   if (identity.sync) throw new ApiError('INVALID_REQUEST'); // C2 owns sync-alias persistence, outside this approved seven-table batch.
   if (identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
+  const global = tx.get('SELECT course_id,recovery_generation FROM command_receipts WHERE actor_id=? AND command=? AND target=? AND idempotency_key=?',
+    identity.actorId, 'shared.' + identity.command, identity.target, identity.idempotencyKey);
+  if (global && global.recovery_generation !== generation) throw new ApiError('RECOVERY_REQUIRED');
+  if (global && global.course_id !== identity.scope.courseId) throw new ApiError('IDEMPOTENCY_CONFLICT');
   const records = readRecords(tx, identity.scope.courseId);
   const original = records.receipts.find(receipt => receipt.identity.actorId === identity.actorId && receipt.identity.command === identity.command
     && receipt.identity.target === identity.target && receipt.identity.idempotencyKey === identity.idempotencyKey);
