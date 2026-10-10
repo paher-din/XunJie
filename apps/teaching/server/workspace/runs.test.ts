@@ -4,7 +4,7 @@ import {setTimeout} from 'node:timers/promises';
 import {test} from 'node:test';
 import {sha256} from '../../runner/snapshot.ts';
 import {createAttempt,freezeSnapshot} from './snapshots.ts';
-import {runCommand,claimRun,reconcileRun,markRunUnknown,cancelRunCommand,confirmNodeCancellation,readWorkspace,readConfirmedSnapshot,readRunDiagnostics} from './commands.ts';
+import {runCommand,claimRun,reconcileRun,markRunUnknown,cancelRunCommand,confirmNodeCancellation,readWorkspace,readConfirmedSnapshot,readRunDiagnostics,controlCommand} from './commands.ts';
 import type {CommandContext,WorkspaceState,RuntimeConfiguration} from './commands.ts';
 import {readRuntime,sshRunner,dispatchOriginalRun,readOriginalResult,stopOriginalRun,validateRunResult} from '../records/runner.ts';
 import type {RunnerTransport} from '../records/runner.ts';
@@ -91,6 +91,7 @@ test('confirmed original facts reconcile expired/unknown leases and never become
   assert.throws(()=>readWorkspace(recovered,()=>false),/denied/);
   assert.throws(()=>reconcileRun(unknown,f.ids.jobId,result,'old-worker','gen',at(25000)),/lease/);
   assert.throws(()=>reconcileRun(unknown,f.ids.jobId,result,'lease','old-generation',at(25000)),/generation/);
+  assert.equal(readWorkspace(recovered,()=>true).runs[0].diagnostics.status,'available');
 });
 test('authorized diagnostic reads exclude other attempts and private check detail',()=>{
   const f=fixture();let planned=runCommand(f.state,f.context,{...f.request,mode:'course_check'},f.runtime,f.ids,at(100000)).state;
@@ -98,15 +99,52 @@ test('authorized diagnostic reads exclude other attempts and private check detai
   const submission=planned.runs[0].submission;
   const record={runId:f.ids.runId,snapshotId:f.request.snapshotId,snapshotHash:submission.identity.snapshotHash,inputHash:submission.identity.inputHash,
     runtimeProfileVersion:profile.runtimeProfileVersion,imageDigest:profile.imageDigest,unitTerminated:true,verdict:'failed',
-    phases:[{stdout:'synthetic private test detail',stderr:'synthetic private test detail'}]};
+    phases:[{stdout:'synthetic private test detail',stderr:'synthetic private test detail'}],
+    checkResults:[{detail:'synthetic private test detail'}]};
   const accepted=reconcileRun(planned,f.ids.jobId,{...validateRunResult(submission,record),resultRef:'ref'},'lease','gen',at(1000));
   assert(!JSON.stringify(readRunDiagnostics(accepted,f.ids.runId,()=>true)).includes('private test detail'));
+  const publicWorkspace=readWorkspace(accepted,()=>true);
+  assert(!JSON.stringify(publicWorkspace).includes('private test detail'));
+  const diagnostics=publicWorkspace.runs[0].diagnostics;
+  assert('verdict' in diagnostics);assert.equal(diagnostics.verdict,'failed');
+  assert(!Object.hasOwn(publicWorkspace.runs[0],'submission'));
+  assert.equal(publicWorkspace.runs[0].runId,f.ids.runId);
+  assert(JSON.stringify(accepted.runs[0].result).includes('private test detail'));
   const mixed={...accepted,files:[...accepted.files,{...accepted.files[0],fileId:'other',attemptId:'other',text:'other student'}]};
   assert(!JSON.stringify(readWorkspace(mixed,()=>true).files).includes('other student'));
   assert.equal(readConfirmedSnapshot(accepted,f.request.snapshotId,()=>true).hash,submission.snapshot.hash);
   assert.throws(()=>readConfirmedSnapshot(accepted,f.request.snapshotId,()=>false),/denied/);
   const poisoned=JSON.parse(JSON.stringify(f.request));poisoned.input.shell='arbitrary';
   assert.throws(()=>runCommand(f.state,f.context,poisoned,f.runtime,f.ids,at(100000)),/approved/);
+});
+
+test('pause queued run retains cancellation intent and prevents new execution until node confirmation',()=>{
+  const f=fixture();const planned=runCommand(f.state,f.context,f.request,f.runtime,f.ids,at(100000)).state;
+  const controlContext=(key:string):CommandContext=>({...f.context,identity:{...f.context.identity,command:'controls',
+    target:`/api/attempts/${f.state.attempt.attemptId}/controls`,idempotencyKey:key},receiptId:key,commandId:key,eventId:key});
+  const paused=controlCommand(planned,controlContext('pause'),planned.attempt.attemptRevision,{kind:'pause'}).state;
+  assert.equal(paused.records.jobs[0].status,'cancelling');assert.equal(paused.records.jobs[0].stopRequested,true);
+  const resumed=controlCommand(paused,controlContext('resume'),paused.attempt.attemptRevision,{kind:'resume'}).state;
+  const nextContext={...f.context,identity:{...f.context.identity,idempotencyKey:'next'},receiptId:'next',commandId:'next',eventId:'next'};
+  const nextRequest={...f.request,expectedAttemptRevision:resumed.attempt.attemptRevision};
+  assert.throws(()=>runCommand(resumed,nextContext,nextRequest,f.runtime,{jobId:'next',runId:'next'},at(100000)),/unsettled/);
+  const confirmed=confirmNodeCancellation(resumed,f.ids.jobId,{...fact(resumed.runs[0].submission),state:'cancelled',reserved:false,
+    stopRequested:true,pending:[]},'gen');
+  assert.equal(runCommand(confirmed,nextContext,nextRequest,f.runtime,{jobId:'next',runId:'next'},at(100000)).state.records.jobs[1].status,'queued');
+});
+
+test('stopping an already confirmed cancelled run under a new key preserves terminal state',()=>{
+  const f=fixture();const planned=runCommand(f.state,f.context,f.request,f.runtime,f.ids,at(100000)).state;
+  const cancelContext=(key:string):CommandContext=>({...f.context,identity:{...f.context.identity,command:'cancel',
+    target:`/api/jobs/${f.ids.jobId}/cancel`,idempotencyKey:key},receiptId:key,commandId:key,eventId:key});
+  const stopping=cancelRunCommand(planned,cancelContext('stop-first'),f.ids.jobId).state;
+  const confirmed=confirmNodeCancellation(stopping,f.ids.jobId,{...fact(stopping.runs[0].submission),state:'cancelled',reserved:false,
+    stopRequested:true,pending:[]},'gen');
+  const again=cancelRunCommand(confirmed,cancelContext('stop-again'),f.ids.jobId).state;
+  assert.equal(again.records.jobs[0].status,'cancelled');
+  const nextContext={...f.context,identity:{...f.context.identity,idempotencyKey:'next'},receiptId:'next',commandId:'next',eventId:'next'};
+  assert.equal(runCommand(again,nextContext,{...f.request,expectedAttemptRevision:again.attempt.attemptRevision},f.runtime,
+    {runId:'next',jobId:'next'},at(100000)).state.records.jobs[1].status,'queued');
 });
 
 test('C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel',

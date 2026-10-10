@@ -128,3 +128,17 @@ A1/A2 到位后按以下顺序继续同一 C2：
 PR 提交前独立工作树复验：C2 16/16（含真实 C1 SSH/容器）再次通过、0 跳过；strict TypeScript 7.0.2 noEmit、26 份文档/268 引用/27 正式接口、检查器 16/16、C2 白名单和暂存空白通过；原始代码/证据字节与 Git index 一致。C2 暂存增量 19 文件，仅本人领域、任务稿和 README，不含 C1/A/B/受保护基线或其他成员 G1 变更。
 
 实际交付：正文提交 `fcb0cac7971c67f1a84de0523f1ee9f86c8d2760` 已普通推送 `codex/c2-workspace-core`；[C2 PR #17](https://github.com/paher-din/XunJie/pull/17) 已创建并附到本任务，base=codex/c1-isolated-runner，依赖 [C1 PR #16](https://github.com/paher-din/XunJie/pull/16)，Open/非 Draft。远端 head 与本地、标题/完整正文/19 文件白名单回读一致；C1 和 A/B/G1/受保护文件不在本 PR 增量中。Refs #14 保持完整 Issue Open，尚未合并；后续按原决定等 A1/A2，不将发布首批 PR 当作完整 C2 验收。
+
+## 9. 2026-10-10 PR #17 审查修复
+
+负责人要求按 PR #16/#17 审查修复，沿用两项分支推送授权；修复 C2 固定 HEAD 84545ec 的三项意见（共享账号 COMMENT 技术审查，不称独立批准）。已重读 PRD 学生操作/结果边界、MVP §1.3/M-03/M-07/M-10、TECH §4.4/7.3/8.1/8.3、当前源码/调用方和任务记录。本次只改 C-owned workspace/records、对应反例/本文/README 必要状态；受保护基线、A/B/G1、SQL/凭据/CI/UI 保持原边界。
+
+| 意见 | 对应基线与修复计划 |
+| --- | --- |
+| [P1 私有检查输出泄漏](https://github.com/paher-din/XunJie/pull/17#discussion_r4236386161) | TECH §4.4/8.3：公开工作区运行仅返回原 ID/快照/profile/状态与已裁剪诊断，不透传内部 submission/result/phases/checkResults；内部原始结果/hash 保留，读取先授权。补同一私有 marker 的完整 workspace 载荷反例及普通 run 诊断可见 |
+| [P2 queued 运行暂停提前终结](https://github.com/paher-din/XunJie/pull/17#discussion_r4236386164) | TECH §8.1：共享 cancelJob 对非终态 student_run/teacher_sample 一律保存 cancelling，包含 queued；所有暂停/按用途停止调用方复用，原节点 intent/pending/完整终止确认后才 cancelled，补 pause→resume 前禁止新运行 |
+| [P2 再次停止复活 cancelled](https://github.com/paher-din/XunJie/pull/17#discussion_r4236386166) | TECH §7.3：去除显式运行停止的重复转换，已确认终态用新键停止仍保留；补已取消→再次停止→能创建新作业 |
+
+先用审查反例验证旧源码失败，再修复根因；本批验证不冒充真实 A1/A2/SQL 或浏览器完成。父 PR #16 修复后通过普通 merge 同步实际父分支（不重写历史），在新基线上复验 C2/真实 C1。原 16/16 与历史证据保留；新增修复结果另行追加。
+
+C2 反例结果：旧源码新增用例为 13 通过/4 失败/1 真实节点项跳过；失败分别为共享 queued 运行取消、完整工作区私有 marker、pause queued run、再次停止已确认 cancelled。修复后离线 17 通过/0 失败/1 跳过，strict TypeScript 7.0.2 noEmit 通过。共享取消统一处理运行用途，显式停止不再重复改变状态；公共运行投影复用裁剪诊断，内部原结果保持 hash/正文。父 C1 修复后的真实节点组合复验和新原始输出尚待后续执行，不把本次跳过计通过。

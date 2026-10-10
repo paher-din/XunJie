@@ -52,6 +52,11 @@ test('jobs retain bounded deadlines/call counts across leases and reject expired
   assert.throws(()=>claimJob(recoverJob(running,at(31000)),'new',at(44000),'gen',at(32000)),/dispatchable/);
 });
 test('cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy',()=>{
+  for(const purpose of ['student_run','teacher_sample'] as const){
+    const queued=job({purpose,scope:purpose==='teacher_sample'?{courseId:'course'}:scope,runId:'queued-run'});
+    assert.equal(cancelJob(queued).status,'cancelling');
+    assert.equal(confirmRunStopped(cancelJob(queued),'queued-run',true).status,'cancelled');
+  }
   const run=claimJob(job({purpose:'student_run',kind:'run',runId:'run'}),'lease',at(20000),'gen',now);
   const stopping=cancelJob(run);assert.equal(stopping.status,'cancelling');
   assert.throws(()=>confirmRunStopped(stopping,'run',false),/not confirmed/);
