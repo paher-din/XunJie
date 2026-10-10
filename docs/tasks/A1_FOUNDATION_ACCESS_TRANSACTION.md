@@ -314,3 +314,34 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 ## 11. A2 教师合成存储接缝使用
 
 负责人另批准 A2 新临时合成库十表与教师持久化验证。A1 内部 withAuthorizedCourse 接纳 string courseId 或可信同步 tx 定位器，先核 Session 后查询对象课程，再核当前角色并执行业务/读取回调；既有字符串调用不改。定位器只供服务端查询，不接受 body 角色或异步外部工作。A2 PATCH/checks/读取在同连接完成课程定位、授权、对象校验与保存/投影，见 [A2 §10](A2_TEACHER_DESIGN_VERSIONS.md#10-s2-教师持久化合成批次批准与实施记录)。新增物理存储仅 A2 独立批准范围，不宣称 C2 工作区/Job 或 A1 整体完成。
+
+## 12. A1 完整交付与独立 PR 收尾方案（待准确存储授权）
+
+2026-10-10，项目负责人要求完成 A1/A2 全部内容后分别提交 PR。授权包括既定 A 模块实现、验证、各自提交、普通推送及创建 PR；不得提前用首批 PR 冒充整体完成。原有合成库五表/十表授权保留，不扩展为生产建表或新对象许可。受保护基线仍只读，基线汇总由授权维护者处理。
+
+本次已重新读取 AGENTS、README、PRD §1/3/4/5/8/9、MVP M-01/M-02/M-10、状态/AC/NFR/G1、TECH §2/3/4/5/7/9/10/12、TEAM §5 和 Issue #10/#13。远程 main=54ca54c6f2d01d2875b80404a525ec5505da2eb1；C1 #16 / C2 #17 仍 Open，head 分别 7e4ef73ee1b9ee301b82beab809b54e18ffce3f7 / 84545ec4084aa9bdb29649ef4be21c28a6615d4d。已 fetch 到只读依赖引用，尚未合并或改写 C 文件。GitHub 连接器可读取仓库；本机 gh 查询返回 401，不能据此宣称推送权限已失效，实际推送时另核。
+
+### 12.1 A1 剩余实现与接口提案
+
+- 将现有 Session/课程鉴权组合提供为 A 的可复用业务工厂；追加 authorizeResource / withAuthorizedResource。服务端同步资源定位器接收同一 Transaction，核所属课程、studentId、用途、版本、可见性、活动/分配和阶段；身份只来自当前 Session/成员，不从 body/audience/模型构造。读/变更、原回执、Job 查询及模型读取复用；不存在与不可见对象同拒，不能靠 ID 授权。
+- 当前会话读取提案为 GET /api/session：返回当前 userId、有效课程成员列表与本会话 CSRF，不返 cookie token、密码/盐/摘要；读取不激活 Attempt。此确切路径/字段尚待确认，不自行成为已冻结共享契约。
+- 接 C2 现有 CommandIdentity/CommandReceipt/AuditEvent/Job 类型和 resolveCommandReceipt、finishCommand、enqueueJob、cancelByPurpose / invalidateInTransaction；A 仅在 server/db 提供持久适配，用同一 tx 保存计划，不代做 C 工作区/执行器。原 Session 活跃时间、业务/回执/事件/Job 全提交后才 ACK；网络/模型/runner 均事务外。
+- 保留认证限流/8h/30min、安全 cookie 与错误码；可重复运行的服务端工厂供 B/C 注册，不虚报 runner/model ready。真实账号、HTTPS/代理、密钥发放与生产初始化不属于合成交付许可；这些环境条件明确列入交接，不能用默认 health 服务冒充完整业务入口。
+
+### 12.2 合成存储操作待批范围
+
+准确共同范围见 [A2 §11.2](A2_TEACHER_DESIGN_VERSIONS.md#112-拟申请的准确数据库范围)。拟新建 xunjie-a12-completion-* 系统临时独占目录，固定 synthetic.sqlite；沿用 A1 五表与 A2 五表，另加七表，共十七张应用表。新增 attempts/jobs 仅承载既有 C 公共对象和 A2 同事务控制/失效适配，不是 C2 文件/快照/运行链实现。既有测试库不 ALTER/迁移/覆盖，SQL 初始化仅新库；现有 A1/A2 工厂维持原许可，不删除测试文件、不改变 .env/CI/凭据。
+
+C 公共回执/事件适配沿现有 command_receipts/audit_events 的独立索引与作用域列，result_json/object_ref_json 保存原 C 类型的完整 JSON；读取按命令类型严格校验，不能把 C 回执套成 A2 resultSchema 或返回任意 JSON。actor/命令/target/键全局约束及单调 serverSeq 复用；登录/退出不进回执。sync 别名/文件持久化等 C2 后续对象由 C 负责，不在此申请中新增。
+
+### 12.3 验证接缝与 A1 完成判据
+
+提请沿已批准 app.inject + 实际 withTransaction/关闭重开接缝，扩展到资源授权/当前会话/C2 Job-Receipt-Event 真实落库。新库内使用随机即时账号/签名材料、合成课程/对象；scope/currentGeneration 由服务端控制。核匿名、伪造身份、跨学生/课程、非任课教师、维护用途无正文权、私有资料、当前撤权后读/原回执拒绝；同键原结果/异摘要/并发唯一、真实 SQL 晚期失败/锁忙、Job/Event/业务/Session 全回滚、关闭重开和异步回调拒绝。日志/响应不含正文/凭据/私有路径。C 的原类型/函数是实际代码消费；不以 mock ACK 或作者报告代替 A 执行。
+
+A1 的既定服务端实现、原子适配、独立权限/持久测试与交接说明全部具备并完成两轴审查后才提交 A1 PR（Refs #10）。不把 A4/C3 教师纠正、C5 旧备份演练、最终 UI、真实凭据/公网部署计作本任务已执行；完整 AC/G1 仍依共同链路。若必要 C 接缝不符则记录具体差异，阻止对应集成，不将 C2 整任务作为前置。
+
+### 12.4 PR 拆分
+
+原混合工作分支与所有提交保留。A1 PR 只含批准工程/access/db 公共边界、其测试及 A1 任务稿/README；A2 PR 基于 A1 分支，只含 design/版本/分配、其测试及 A2 任务稿/README。从最新 main 构建新 codex/ 分支，顺序复制必要提交并处理 README 增量；不 force push、reset 或删除历史。若消费 C 公共文件需先交明确依赖/适配差异，不能把 C1/C2 的源码混进 A 的增量或修改其 PR。两份完成后分别普通推送、创建并附到当前任务，不自行合并/关闭其他 Issue。
+
+当前状态：收尾方案已形成；新增 schema、公共 GET/字段与新批业务测试未执行，等待本节和 A2 §11 的明确批准。此前 62/62 仅为旧批次，不计作本收尾完成。

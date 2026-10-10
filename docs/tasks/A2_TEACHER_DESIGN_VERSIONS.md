@@ -269,3 +269,53 @@ TECH §5 的上述四类变更路由已批准；本批拟仅在独立 app.inject
 Standards：**硬性违规 0、可操作判断性异味 0**。原 A1 五表工厂保留，A2 DDL 仅获准新临时库；文件、文档、日志与验证接缝符合边界。Spec：**未解决发现 0**。本批教师同事务授权/保存/读取、回执重放/CAS/代际、目标历史及角色投影符合 §9/10 范围，S2 整体/S3 后置条件没有被冒称完成。两位审查均只读，未复跑 SQL/runner/网络或作者测试；不将审查当额外通过数。
 
 本批已实现、验证并审查收口；最新实际全套 62/62、类型检查/build、文档检查与 16/16 检查器回归均通过。审查后仅同步任务/README 的当前状态与记录，不重复业务测试。提交仅本地 codex/a1-c2-seams，未推送、创建 PR 或关闭 #13；主工作副本已有草案不动。下一步对齐 A/C 共享记录/读接缝及 B 的获准读取，再按对应条件推进活动版本/分配/控制；无需等待整个 C2，但不跳过相关契约和验证。
+
+## 11. A2 全部服务端内容与独立 PR 收尾方案（待批准）
+
+项目负责人于 2026-10-10 要求完成 A1/A2 所有内容后分别提交 PR。本节给出剩余准确实现/存储/验证范围；已有 §10 十表合成批次保持已完成，新的 schema 与公共接口细化尚未批准，不以笼统任务授权越过 AGENTS 的红线。范围依据 PRD-01/02/10、M-01/02/10、AC-01/02/06/15、NFR-04、TECH §4/5/7/9/10/12、TEAM A1/A2 和 Issue #13。A3 的 Agent 根提案/局部 AI/试评/样例作业、C2 文件/运行、UI/真人由原主责/阶段交付，不顺带接管。
+
+### 11.1 剩余实现与公开读取提案
+
+1. contracts/design 交严格输入/结果与版本类型，沿 §10 已验证语义；public DTO 的确切字段由本提案批准后才落地。增加教师 GET /api/blueprints/:id 和 GET /api/blueprints/:id/previews?audience=student|tutor|teacher-validator，GET /api/resources/:id，以及固定 GET /api/activities/:id / GET /api/assignments/:id；用途/身份/课程/分配均服务端核验，audience 只用于已授权教师预览。学生与 B 只能读固定活动中获准正文/政策，不读教师草稿或私有验证资产；teacher_design 还需资料显式许可。
+2. 教师配置帮助政策/检查规则的不可变版本：先提供服务端维护者/教师授权写入的内部接口，严格保存实际完整内容/版本/课程，不新增网页或任意配置上传。政策不允许整份代做，不接受学生自报 ready/检查通过。C 的现有规则/Profile shape 原样消费；需要具体业务内容的模板由教师审阅，合成规则不写为正式课程已确认。
+3. POST /api/blueprints/:id/releases 输入 expectedRevision、recoveryGeneration、教师 concerns/resolutions 与明确确认，Idempotency-Key 沿用。检查读当前完整草稿/确切资源/政策/规则；C1 readiness 在事务外查询，事务内核对应版本/指纹/代际与有效结果后再确认。阻断拒绝，未处理设计疑点要求教师说明；效果/工作量保持 unknown。生成固定 activityVersionId，存草稿来源 revision、正文、目标/量规/资料引用及完整政策/规则/Profile 内容/摘要；活动控制与正文分离，没有原地编辑路由。没有实际就绪不能成功开放；仅合成守卫测试不记真实开放通过。
+4. POST /api/activities/:id/assignments 输入 studentIds 与 expectedActivityControlRevision/recoveryGeneration；当前成员逐一核，整批原子，旧控制版本/活动暂停拒绝；每份 assignment 固定 studentId/activityVersionId，assignmentRevision=1，新活动明确新分配，不改旧尝试引用。
+5. 两个 controls 路径沿 TECH §5：expectedActivityControlRevision 或 expectedAssignmentRevision、pause/resume、理由与代际；重放先于新 CAS，相同设值不反复增版本/epoch。活动暂停阻止新分配并暂停相关分配/失效；暂停来源分开持久化：activity pause 设置 paused_by_activity，assignment pause 设置 individual_paused；有效状态由二者和活动控制决定。恢复活动只清除活动暂停来源，不解除个人分配/Attempt 暂停、改学习阶段或复活旧 Job；解除某来源时仍保留另一来源及其理由。分配暂停与该范围 Attempt 的 epoch、相应用途 Job 持久停止及回执/事件同 tx；已生成/已执行事实保留，取消未确认不得伪称终止。
+6. 交 C2/B2 的同 tx 读取为当前分配与活动可用性、固定活动/可见材料/政策与确切版本；C 的原 Attempt/Job 数据由 A 的持久适配核 scope，授权后传可信 actor，不让 HTTP 构造 CommandContext.authorize 或 currentGeneration。涉及尚未交付 Action 的失效只记录真实已有对象，C3 接入时补齐 Action 最终投递，不补造消息或假成功。
+
+### 11.2 拟申请的准确数据库范围
+
+仅在系统临时目录独占新建 xunjie-a12-completion-* / synthetic.sqlite；复用十张既有定义，新增以下七张应用表（合计十七张；SQLite 内部 sqlite_sequence 不计）。新工厂不选择旧文件；初始化失败亦保留库，不自动清理。既有 A1 五表与 A2 十表工厂不扩权。
+
+| 新表 | 主要独立键/约束与正文 | 用途 |
+| --- | --- | --- |
+| help_policy_versions | id 主键、course_id FK、created_by FK、created_at_ms、完整严格 policy_json、content_hash；新版本新 ID，内容无更新接口 | 固定活动帮助政策与 B 获准读取 |
+| check_rule_versions | id 主键、course_id FK、created_by FK、created_at_ms、完整严格 rules_json、content_hash；不可变 | 教师/可信验证器检查版本，不向学生/tutor 下发私有内容 |
+| activity_versions | id 主键、course_id / blueprint_id FK、source_revision、created_by / created_at_ms、完整 activity_json / content_hash；正文不可原地更新 | 确切资源/目标/量规/政策/规则/Profile 与就绪来源固定 |
+| activity_controls | activity_id PK/FK、control_revision 正整数、status active/paused、reason / controlled_by / controlled_at_ms | 活动可用性 CAS，不改正文 |
+| assignments | id 主键、course_id/student_id/activity_id FK、assignment_revision 正整数、status active/paused、individual_paused/paused_by_activity 两个布尔来源、reason / controlled_by / controlled_at_ms；同活动/学生唯一 | 仅当前课程学生；分配暂停优先 |
+| attempts | attempt_id 主键、course_id/student_id/assignment_id/activity_id FK、attempt_revision / decision_epoch 独立列、严格 C Attempt JSON；归属/JSON 一致 | 仅 C 已交公共 Attempt 的读取/控制持久适配，不实现文件/快照/运行 |
+| jobs | job_id 主键、course_id/student_id/attempt_id 作用域、request_receipt_id FK、purpose/status/stop_requested/recovery_generation 与严格 C Job JSON、租约/epoch关联核验；teacher scope 可空学生/Attempt | C2 enqueueJob/cancelByPurpose 等实际同 tx 保存与拒绝 |
+
+沿用现有 audit_events / command_receipts 保存 C 公共事件/回执：现有独立作用域键、唯一键/serverSeq 与完整 JSON 不变，不 ALTER；具体按命令类型严格校验原结果与关联。新增内容只用于新合成库，原子 INSERT/UPDATE/SELECT；不 DROP/清理/迁移，不创建生产库、真实账号、.env/密钥/CI/付费模型或公开部署。没有运行配置就绪表：C1 Profile 与 readiness 通过既有受认证控制边界读取，活动固化完整确切版本/来源，不能让客户登记 ready。
+
+风险：新增临时库/正文会占磁盘，原生驱动/短写锁存在忙冲突，C 公共 JSON 需严格关联验证；活动控制影响同课程测试 Attempt/Job，必须事务回滚。失败保留合成库/证据。停止采用可在后续代码提交停用新工厂，不删文件/回退 Git 历史；不修改任何已有或生产数据库。
+
+### 11.3 拟沿用验证接缝与完成条件
+
+批准后沿已确认的 app.inject、实际 withTransaction、关闭重开与第二连接真实竞争，扩展到上述公开读/confirm/assign/control 与 C Job/Event/Receipt 实际适配；身份和恢复代际仍受信来源。Node24.21.0/原精确 lock，无新依赖；新库保留。先反例再逐片实现，不用存储 mock/纯 plan 代替实际 ACK。
+
+- 草稿→三类检查→固定版本→分配→暂停/恢复：缺项/未就绪拒绝，旧 revision 与控制 CAS 拒绝，人工修改及固定版本不变，新版本显式分配；重放原 IDs、同键异摘要、双连接竞争一胜一冲突。
+- 跨学生/课程、非任课教师、body 身份/ready 伪造、学生读取草稿、未分配活动、私有答案与敏感摘要/metadata、用途扩大均拒绝；GET/恢复不启动学习/模型/运行；撤权后旧回执不可返回。
+- 暂停与真实 Attempt epoch/Job 停止/回执/事件/Session 同提交或回滚；活动 pause 优先，activity resume 不解除 assignment/Attempt 个人暂停，旧 cancelled/stale 不复活；普通运行事实保留，节点未确认取消保持 cancelling/outcome_unknown，不释槽。
+- 实际 SQL 晚期失败/锁忙/关闭重开、读取损坏/作用域串线、提交前代际切换与旧请求拒绝。限定检查/private result 不经 C 已知有缺陷 readWorkspace 投影进入学生输出。
+- 实际 C1 readiness 的固定版本/指纹与代际对齐必须有真结果；无法访问节点或门禁缺陷未修复时标未执行/阻塞，不用 synthetic ready 计成功开放。C1/C2 两项已知缺陷见 §9.5，仍未修复，保持各自负责人处理，不静默代改 C。
+- typecheck/build/适当领域测试、完整回归、文档/链接/空白与 Standards/Spec 审查通过；更新本文/A1/README，提出基线汇总请求。实际课程内容教师审阅、UI/真人、C5 恢复/NFR 负载分别保留，不把服务端测试数当教学效果。
+
+A2 需上述固定版本/分配/控制及服务端交接全部完成后才建独立 PR（Refs #13，基于 A1 分支）。A3 Agent 接入和 C2 整工作区不是本次代做内容；必要同 tx 对象/接口缺口逐项列出。不提前交首批 PR、不标整个 AC/G1 或真人已完成。
+
+### 11.4 当前授权与执行状态
+
+已核对需求/远程 Issue/PR 与 C 当前代码，完成准确收尾方案。新七表/十七表工厂、上述新增公开 GET/DTO、活动版本/分配/控制及新批业务测试均未执行；需要负责人批准 §11.1～11.3 的接口细化、准确合成 schema/写库范围及测试接缝。请求不包含基线写入、真实数据库/凭据/生产部署或变更 C/B/UI 权限。授权一旦到位沿顺序推进，不逐步骤重复确认。
+
+方案静态验证：node tools/a0-review/check.mjs 通过（24 份文档/241 处仓库引用/27 条正式变更接口），git diff --check 通过。仅核链接/结构，不计新增业务通过；准确授权提请已发出，等待负责人答复。
