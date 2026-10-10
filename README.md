@@ -118,4 +118,18 @@ npm run typecheck
 ```
 这四组测试只使用合成对象，不建 A2 数据库、不启动业务服务；完整回归仍执行 `npm test`。当前没有可供浏览器调用的 A2 保存/确认/分配接口；真实授权、事务存储、不可变活动版本、分配/控制和 UI 验收待 S2/S3，不凭计算结果发保存 ACK。
 
-A2 后续存储对象、独立新库范围、原子命令顺序及验证接缝已列为 [S2 待审方案](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#9-s2-首批持久化方案待负责人批准未执行)。该方案尚未批准或执行；原 A1 五表合成库许可不覆盖新增 A2 表。
+A2 后续存储对象、独立新库范围、原子命令顺序及验证接缝已列为 [S2 待审方案](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#9-s2-首批持久化方案待负责人批准未执行)。该方案当时未获批准；后续负责人已另批准 A2 新临时库十表范围，最新实现/验证见下方独立记录，不改变原 A1 五表许可。
+
+## 教师设计持久化合成验证（A2-S2 首批）
+
+经负责人批准，[独立工厂](apps/teaching/server/design/app.ts) 已接通课程 Session 与 SQLite，支持教师材料/手工与复制草稿/PATCH/checks，提供授权后的内部读取和预览。当前授权/恢复代际先于幂等重放；业务内容、目标历史、事件/回执与 Session 活跃时间同事务。正文和段落 ID 固定；私有资料投影、旧 revision、并发与错误拒绝按 [任务记录](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#10-s2-教师持久化合成批次批准与实施记录) 验证。
+
+使用已批准运行时，在 apps/teaching 执行：
+```powershell
+node --test tests/design-storage.test.ts
+npm run typecheck
+npm test
+```
+测试仅在系统临时目录新建 xunjie-a2-s2-*/synthetic.sqlite，十张应用表（A1 原五表 + A2 五表），关闭后保留；不迁移既有库、不自动清理。进程竞争夹具只重开该合成库，通过 IPC 传递父进程即时签名材料/合成代际，不写配置/凭据日志。教师读/预览 GET 仅测试夹具注册；HTTP 内容是已解码文本，不新增 multipart/PDF/URL 导入。
+
+默认 main 不注册这些业务路由、不开放认证网络入口；ready 仍 503。该合成工厂不是生产部署，正式共享 DTO/读接口、A/C 记录适配、可靠恢复登记、活动版本/分配/控制、真实 C1 门禁、UI 与真人验收待后续。S2 首批通过不表示 A2 整体完成。

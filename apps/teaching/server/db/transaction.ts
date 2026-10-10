@@ -1,3 +1,4 @@
+import { designSchema } from './design-schema.ts';
 import { createRequire } from 'node:module';
 import { closeSync, lstatSync, mkdtempSync, openSync, realpathSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -52,7 +53,7 @@ CREATE TABLE login_attempt_windows (
 function validateSyntheticFile(file: string) {
   const directory = dirname(resolve(file));
   if (basename(file) !== 'synthetic.sqlite' || dirname(directory) !== realpathSync(tmpdir())
-    || !/^xunjie-a1-p2-[A-Za-z0-9]+$/.test(basename(directory))
+    || !/^xunjie-(?:a1-p2|a2-s2)-[A-Za-z0-9]+$/.test(basename(directory))
     || lstatSync(directory).isSymbolicLink() || realpathSync(directory) !== directory
     || lstatSync(file).isSymbolicLink() || !lstatSync(file).isFile()) {
     throw new Error('Invalid synthetic database target.');
@@ -117,14 +118,20 @@ export function openSyntheticDatabase(file: string) {
 export type SyntheticDatabase = ReturnType<typeof openSyntheticDatabase>;
 
 export function createSyntheticDatabase(): SyntheticDatabase {
-  const directory = mkdtempSync(join(realpathSync(tmpdir()), 'xunjie-a1-p2-'));
+  return createFreshDatabase(false);
+}
+export function createDesignDatabase(): SyntheticDatabase {
+  return createFreshDatabase(true);
+}
+function createFreshDatabase(design: boolean): SyntheticDatabase {
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), design ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
   const db = new Driver(file, { fileMustExist: true });
   try {
     db.exec('BEGIN IMMEDIATE');
-    try { db.exec(schema); db.exec('COMMIT'); }
+    try { db.exec(schema); if (design) db.exec(designSchema); db.exec('COMMIT'); }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   } finally { db.close(); }
   return openSyntheticDatabase(file);

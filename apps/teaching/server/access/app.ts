@@ -41,22 +41,25 @@ export async function createVerificationApp(options: VerificationOptions) {
     if (!row || row.user_id !== request.session.userId) throw new ApiError('UNAUTHENTICATED');
     return row;
   };
-  const withAuthorizedCourse = <T>(request: FastifyRequest, courseId: string,
+  const withAuthorizedCourse = <T>(request: FastifyRequest, courseId: string | ((tx: Transaction) => string),
     requiredRole: 'teacher' | 'student' | undefined,
     work: (tx: Transaction, actor: { userId: string; courseId: string; role: 'teacher' | 'student' }) => T): T => {
     return persisted(tx => {
       if (work.constructor.name === 'AsyncFunction') throw new Error('Synchronous authorized work required.');
       const current = activeSession(request, tx);
-      const membership = tx.get('SELECT role FROM course_memberships WHERE user_id=? AND course_id=? AND active=1', String(current.user_id), courseId);
+      if (typeof courseId === 'function' && courseId.constructor.name === 'AsyncFunction') throw new Error('Synchronous course locator required.');
+      const resolvedCourseId = typeof courseId === 'string' ? courseId : courseId(tx);
+      if (typeof resolvedCourseId !== 'string' || !resolvedCourseId) throw new Error('Invalid course locator.');
+      const membership = tx.get('SELECT role FROM course_memberships WHERE user_id=? AND course_id=? AND active=1', String(current.user_id), resolvedCourseId);
       const role = membership?.role;
       if ((role !== 'teacher' && role !== 'student') || (requiredRole && role !== requiredRole)) throw new ApiError('FORBIDDEN');
       tx.run('UPDATE sessions SET last_active_at_ms=? WHERE token_hash=?', now(), digest(request.session.sessionId));
-      return work(tx, { userId: String(current.user_id), courseId, role });
+      return work(tx, { userId: String(current.user_id), courseId: resolvedCourseId, role });
     });
   };
   const access = {
     withAuthorizedCourse,
-    authorizeCourse(request: FastifyRequest, courseId: string, requiredRole?: 'teacher' | 'student') {
+    authorizeCourse(request: FastifyRequest, courseId: string | ((tx: Transaction) => string), requiredRole?: 'teacher' | 'student') {
       return withAuthorizedCourse(request, courseId, requiredRole, (_tx, actor) => actor);
     },
   };

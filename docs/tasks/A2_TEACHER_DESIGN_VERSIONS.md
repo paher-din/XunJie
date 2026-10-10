@@ -2,7 +2,7 @@
 
 主责：A。任务：[Issue #13](https://github.com/paher-din/XunJie/issues/13)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)；上游：[A1 #10](https://github.com/paher-din/XunJie/issues/10)，合作：[C2 #14](https://github.com/paher-din/XunJie/issues/14)，活动开放条件：[C1 #12](https://github.com/paher-din/XunJie/issues/12)。建立日期：2026-10-10（Asia/Shanghai）。开始代码基线：9221370。
 
-状态：**S1 独立确定性核心已实现，18/18 独立测试、完整回归 46/46、类型检查/build 通过；双轴及增量审查通过。S2/S3 未实现，正式业务与产品验收未执行。** §1～6 保留批准前的方案/状态，最新批准与实际进度见 §7/8；S2 后续准确存储方案见 §9（待批准，未执行）。 项目负责人要求继续推进；依赖已有基线提出下述可提前实施批次，不将发起任务解释为批准新共享字段或数据库对象。A1 的独立合成库批准仅适用于其五表，不延伸到 A2。本文提出接口/验证边界确认事项，不修改产品基线。
+状态：**S1 独立确定性核心已实现，18/18 独立测试、完整回归 46/46、类型检查/build 通过；双轴及增量审查通过。S2 教师持久化合成批次已实现、完整回归 62/62 通过，审查收口中（§10）；S2 整体/S3 未完成，正式公共接口与产品验收未执行。** §1～6 保留批准前的方案/状态，最新批准与实际进度见 §7/8；S2 首批方案及审查历史见 §9，最新批准和实现见 §10。 项目负责人要求继续推进；依赖已有基线提出下述可提前实施批次，不将发起任务解释为批准新共享字段或数据库对象。A1 的独立合成库批准仅适用于其五表，不延伸到 A2。本文提出接口/验证边界确认事项，不修改产品基线。
 
 ## 1. 已读依据、负责文件与进入条件
 
@@ -209,3 +209,55 @@ TECH §5 的上述四类变更路由已批准；本批拟仅在独立 app.inject
 ### 9.6 方案审查事实
 
 本节仅方案审查：候选 8458e13 的 Standards 硬违规/异味 0/0；Spec 发现 1 项 P2，要求补齐 TECH §7.5 的恢复代际先拒后重放。纯文档修复 452d038 增加受信独立登记来源、receipt/event 代际、事务内守卫/提交前一致性与反例，Standards 增量 0/0，Spec 增量未解决 0。方案审查通过不等于实施批准；新增 A2 SQL/库/业务测试仍未执行。负责人需审阅 §9.2 的准确 10 表新临时库范围及 §9.3/9.4 的内部适配与验证接缝后决定是否实施。
+
+## 10. S2 教师持久化合成批次批准与实施记录
+
+项目负责人在审阅 §9 的准确新库/十表范围及测试接缝提请后明确要求“继续”，批准实施该独立合成批次。§9 的待批准/未执行保留当时事实，以本节较新状态为准；批准不延伸到生产 schema/迁移、真实数据/凭据、公开入口、共享 DTO、B/C/UI 或活动开放。
+
+本批沿 implement/tdd，以 §9.4 的 app.inject、同事务授权读取与真实 withTransaction/关闭重开接缝逐片实施。基线 0044a67；总审查仍沿已确认 92213700fb7da506adb1f8b6ac8868bc220c643f，新增单列 0044a67..候选。可写 A 自有 server/db、server/design、必要的 access/app.ts 内部组合、对应 tests/fixtures、README 和本任务稿；package/lock/保护基线只读。不执行 runner/模型、现有库迁移或清理。
+
+内部适配细化（仅本合成工厂，公共契约待共同会审）：
+- 资源 POST 输入为 recoveryGeneration 与 material（S1 原格式/标题/正文/kind/可见性），另可明确 teacherDesignAllowed；默认 false，不把导入或 tutor 可见性当成设计模型获准使用。创建者与 courseId 来自当前授权。
+- 草稿 POST manual 接 content，copy 接 sourceBlueprintId/expectedSourceRevision；PATCH 接 expectedRevision/patch；checks 接 expectedRevision 与明确的教师 concerns；都携带 recoveryGeneration、Idempotency-Key，不接受 role/studentId/ready 或自报摘要/ID。
+- 成功 data 是内部 commandId/receiptId/serverSeq/recoveryGeneration/result；receipt 保存同一结果，不包含 requestId。回放只更新单次 HTTP requestId，不改原业务 IDs/版本。
+- PATCH/checks 与内部读取只有 blueprintId：A1 内部课程鉴权组合增加可信同步课程定位器，由 tx 查询最小课程归属，先核身份，再核当前课程教师角色，回调重查对象归属。同一事务完成；定位器不向客户端返回对象是否存在，也不接受请求指定身份。现有 string courseId 调用保持行为。
+- 已存资源正文/段落/JSON、草稿、回执读回按内部 schema 校验，存储损坏走 PERSISTENCE_UNAVAILABLE，不把内部损坏报为客户输入错误。资源版本只由新增命令追加；无更新/删除公共操作。
+- 教师读/预览只提供服务端持有的同步函数，测试路由仅夹具注册；实际公共 GET/共享消费字段另对齐。checks 缺少真实政策/规则/profile 时保留阻断与未知，无 releases 路由。
+
+状态：已批准，编码已完成，验证/审查收口中。新增 schema 操作仅允许 xunjie-a2-s2-* 全新临时合成库十表；本批失败库也保留，旧 A1 工厂仍仅初始化原五表。
+
+确切资料引用输入仅接受本课程已保存资源：缺失与跨课程 ID 同报 FORBIDDEN，不通过错误差异泄露其他课程对象是否存在；空 resources/其他设计缺项仍可存草稿。已保存对象后续缺失的读取/检查保留 unavailable，不补造正文。
+
+### 10.1 实际代码与边界
+
+[新增五表定义](../../apps/teaching/server/db/design-schema.ts) 仅由 [createDesignDatabase](../../apps/teaching/server/db/transaction.ts) 在全新 xunjie-a2-s2-* 临时目录追加；A1 createSyntheticDatabase 仍只建原五表。开库复用原路径/符号链接校验、SQLite 实际版本与 PRAGMA 检查，事务不接纳 DDL。没有现有库迁移或数据库清理。
+
+[独立教师工厂](../../apps/teaching/server/design/app.ts) 注册既定 resources POST、blueprints POST（manual/copy）、blueprints PATCH 和 checks POST；只用于 app.inject，无监听入口。createVerificationApp 的当前 Session/Origin/CSRF/课程授权复用；可信课程定位器只在同一 tx 查询蓝图课程归属，之后重查角色和对象，不由 body role/studentId 授权。读/预览是工厂提供的授权函数，测试夹具才注册 GET；尚无正式公共读 DTO。
+
+[实际存储](../../apps/teaching/server/design/storage.ts) 参数绑定 SQL，材料正文/UTF-8 bytes/hash/段落 ID 固定保存，私有可见性拒绝；课程总量在同一 IMMEDIATE 事务统计并插入，默认 teacherDesignAllowed=false。草稿少量输入可保存，PATCH CAS、copy 确切当前来源与新身份，目标目录阻止全局同版本语义替换和新版本回退，允许确切已有旧版本继续引用。
+
+命令摘要规范化对象键但不改正文，当前授权/恢复代际先于回执重放，合法重放早于新请求 CAS；同键异摘要 409。业务内容/目标目录/audit_event/receipt/Session 活跃时间同提交或同回滚。事件只保留命令与对象引用，不复制私有正文；回执保留确切原结果，读回验证 schema、业务作用域与原关联 ID，不能将另一课程结果装入有效回执后返回。此校验不承诺数据库防篡改认证。
+
+三类检查保存绑定 revision 的报告；显式教师 concerns 保留判断/处理记录，效果与工作量 unknown。政策/规则目录和真实 profile 尚未接入，相关项保持阻断；无 releases/assignments/control 路由，不伪造 ready。授权教师预览复用 S1 白名单，student/tutor 无私有资产 ID/标题/hash/正文，audience 不授予草稿权限。真实学生读取/浏览器界面未接入。
+
+恢复登记仅受控父进程提供同步值，事务内先核、返回前再核；跨进程验证由同一受控父进程经 IPC 传入相同合成登记/签名材料，不写日志或配置。正常重开保持登记值，模拟推进代际用于拒绝反例；未执行旧备份恢复、不随备份回退的可靠持久登记或执行端恢复流程。
+
+### 10.2 实际验证记录
+
+接缝测试位于 [design-storage.test.ts](../../apps/teaching/tests/design-storage.test.ts)，真实第二连接/进程位于 [design-child.ts](../../apps/teaching/tests/fixtures/design-child.ts)。均仅合成课程/材料与随机即时账号凭据；测试库保留。父进程 app.inject 不发网络请求；子进程开同一已创建库，不初始化/迁移，不执行模型/容器。SQL 故障通过实际审计序号耗尽、竞争写锁、合法 JSON 但错误内容/关联的受控行制造，不替换内部事务/存储对象。
+
+已执行 Node 24.21.0/npm 11.19.0：
+- 独立 node --test tests/design-storage.test.ts：第 1～12 项 **12/12 通过**；追加第 13 项“形状合法但作用域错误的回执”先失败，再修复作用域复核，针对用例 **1/1 通过**。
+- npm run typecheck：最后一轮**通过**；曾发现 Zod optional resolution 与 S1 exactOptionalPropertyTypes、unverified code 类型不一致，按实际省略可选字段与结果 schema 验证修正，没有关闭检查或 any 绕过。
+- npm test（含 pretest build）：**62/62 通过，0 失败/跳过**（A1 31 + A2 S1 18 + 本批 13），build 通过；总耗时约 38.00 s，不计产品/NFR 性能。13 项存储用例均在这次完整回归执行并通过。
+- 仓库根目录 node tools/a0-review/check.mjs：**通过**（24 份文档/240 处仓库引用/27 条正式变更接口）；node --test tools/a0-review/check.test.mjs：**16/16 通过**；git diff --check：**通过**。静态脚本 businessTests=NOT_EXECUTED 仅说明该脚本不执行业务用例，实际结果以上方测试为准；两轴审查待实现候选。
+
+关键验证覆盖真实保存与关闭重开原结果/段落 ID；manual/PATCH/copy 和旧源拒绝；重放原 IDs/旧版本、不被已前进 CAS 拒绝；全局目标历史；当前角色/跨课程/身份伪造/CSRF/Origin；私有与未获准资料预览；当前/旧恢复代际及提交前切换回滚；真实晚期 SQL 失败无半批/ACK；两独立进程同键一组结果、CAS 一胜一冲突、2 MiB 配额原子；实际 busy 拒绝；并发读视图与确切资料一致；损坏 JSON/跨课程回执拒绝且响应/日志无私有正文、路径、cookie/CSRF。
+
+先失败再实现的实际记录：工厂缺模块；草稿/checks 路由缺失返回 400；全局目标目录缺失允许语义替换；未核资源引用导致 missing 写入后 foreign 请求见版本冲突；形状合法的外课程回执曾返回 200，补作用域后报 503。busy 验证初次因夹具等待了“释放”而不是“持锁”导致请求错过竞争窗口，改为 IPC 持锁/释放两个阶段后通过；并发读夹具初次键含空格违反既定合法键校验，修正夹具键后通过。一次修订命令工作目录错误未落盘，核错后在正确目录应用。以上失败未计通过，也未放宽规格。
+
+### 10.3 剩余工作与交接
+
+本批的十表/教师保存/检查/授权读合成链已实现；S2 整体与 S3 **仍未完成**。未执行：公共 DTO/GET 会审、A/C 共享 Receipt/Event 实际写入适配、A3/B 的获准读取、真实 HTTPS/凭据/可靠恢复登记、活动不可变版本/分配/控制/失效、C1 动态就绪/结果缺陷修复、浏览器/真人与完整 AC/NFR/G1～G4。当前原子回执不是 C2 的 Job/作品整链验收；完整 AC-02/NFR-04 不凭本批数量宣布通过。
+
+需获授权维护者汇总 MVP_SPEC §10：A2 S2 教师持久化合成批次及实际验证、本批内部读取与全局目标历史/幂等/代际守卫；S2/S3 与产品验收仍保留待办。**待授权维护者汇总**，本批未改产品/规划/参考基线、共享 contracts、依赖、B/C/UI。默认 main 仍健康入口、ready=503。仅本地交付，远程推送/PR/关闭 Issue 未执行。

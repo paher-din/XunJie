@@ -310,3 +310,7 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 沿批准总基线 92213700fb7da506adb1f8b6ac8868bc220c643f；新增候选 8458e13，git diff 59ddd79..8458e13。Standards：硬违规 0、可操作异味 0。Spec：代码增量 0；A2 待审方案有 1 项 P2（遗漏恢复代际先拒后重放），已以纯文档候选 452d038 补齐受信登记来源、旧回执守卫与反例。git diff 8458e13..452d038 两轴复核：Standards 0/0，Spec 未解决 0。审查未运行 DB/runner，沿用上述实际 49/49 证据；之后仅追加记录，不因文档变化重复业务回归。
 
 本批实现/提案/修订仅本地 codex/a1-c2-seams 提交；A2 建表仍待负责人批准，未推送/创建 PR。C1/C2 最新元数据再核仍 Open、head 未变化，原审查缺陷保留为接入前门禁。主工作副本原四份修改及 A_WORK_PLAN 未触碰。
+
+## 11. A2 教师合成存储接缝使用
+
+负责人另批准 A2 新临时合成库十表与教师持久化验证。A1 内部 withAuthorizedCourse 接纳 string courseId 或可信同步 tx 定位器，先核 Session 后查询对象课程，再核当前角色并执行业务/读取回调；既有字符串调用不改。定位器只供服务端查询，不接受 body 角色或异步外部工作。A2 PATCH/checks/读取在同连接完成课程定位、授权、对象校验与保存/投影，见 [A2 §10](A2_TEACHER_DESIGN_VERSIONS.md#10-s2-教师持久化合成批次批准与实施记录)。新增物理存储仅 A2 独立批准范围，不宣称 C2 工作区/Job 或 A1 整体完成。
