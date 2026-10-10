@@ -50,7 +50,7 @@ async function fixture() {
             requestReceiptId: receiptId, status: 'queued', stopRequested: false, expectedRevision: 2, decisionEpoch: 1, recoveryGeneration: 'generation',
             acceptedAt: new Date(now).toISOString(), deadline: new Date(now + 45000).toISOString(), attemptCount: 0 };
           return { jobId, attemptRevision: 2 };
-        });
+        }, value => z.strictObject({ jobId: z.string().min(1), attemptRevision: z.number().int().positive() }).parse(value));
         if (job) enqueueStoredJob(tx, job);
         if (input.fail) tx.run('INSERT INTO courses(id) VALUES (?)', 'course');
         return receipt;
@@ -129,4 +129,16 @@ test('current resource owner, generation and role are checked before stored C re
     assert.equal((await command(f, own, 'private')).statusCode, 403);
     assert.equal((await f.app.inject({ url: '/api/session' })).statusCode, 401);
   } finally { await f.close(); }
+});
+
+test('an asynchronous result validator is rejected before the command callback starts', () => {
+  const db = createCompletionDatabase();
+  let started = false;
+  try {
+    assert.throws(() => db.withTransaction(tx => finishRecordCommand<unknown>(tx, {
+      actorId: 'teacher', command: 'fixture.async', target: 'target', scope: { courseId: 'course' },
+      idempotencyKey: 'key', recoveryGeneration: 'generation',
+    }, {}, 'generation', Date.now(), () => { started = true; return { accepted: true }; }, async value => value)));
+    assert.equal(started, false);
+  } finally { db.close(); }
 });

@@ -49,22 +49,22 @@ export function matchesReport(text: string, expected: ReportExpectation): boolea
     const file = line.match(filePattern);
     if (file) {
       let path: string;
-      try { path = JSON.parse(file[1]); } catch { return false; }
+      try { path = JSON.parse(file[1]!); } catch { return false; }
       if (path.startsWith('/snapshot/')) path = path.slice('/snapshot/'.length);
       const values = numbers(file.slice(2));
       if (!values || files.has(path) || !expected.files.some(file => file.path === path)) return false;
-      files.set(path, [values[0], values[1], values[2]]);
+      files.set(path, [values[0]!, values[1]!, values[2]!]);
       continue;
     }
     const totalRow = line.match(/^TOTAL\s+(\d+)\s+(\d+)\s+(\d+)$/);
     if (totalRow) { if (total) return false; total = numbers(totalRow.slice(1)); if (!total) return false; continue; }
     const uniqueRow = line.match(/^UNIQUE\s+(\d+)$/);
-    if (uniqueRow) { if (unique !== undefined) return false; unique = numbers([uniqueRow[1]])?.[0]; if (unique === undefined) return false; continue; }
+    if (uniqueRow) { if (unique !== undefined) return false; unique = numbers([uniqueRow[1]!])?.[0]; if (unique === undefined) return false; continue; }
     const topRow = line.match(/^TOP\s+([a-z0-9]+)\s+(\d+)$/);
     if (!topRow) return false;
-    const count = numbers([topRow[2]])?.[0];
+    const count = numbers([topRow[2]!])?.[0];
     if (!count || top.some(item => item.word === topRow[1])) return false;
-    top.push({ word: topRow[1], count });
+    top.push({ word: topRow[1]!, count });
   }
   return files.size === expected.files.length && expected.files.every(file => {
     const actual = files.get(file.path);

@@ -11,7 +11,9 @@ export function rangeOffsets(text:string,range:Range):[number,number] {
   const lines=text.split('\n');
   const offset=(line:number,column:number)=>{
     if(line>lines.length)throw new RunnerError('INVALID_REFERENCE','Range line exceeds snapshot');
-    const visible=lines[line-1].endsWith('\r')?lines[line-1].slice(0,-1):lines[line-1];
+    const raw=lines[line-1];
+    if(raw===undefined)throw new RunnerError('INVALID_REFERENCE','Range line exceeds snapshot');
+    const visible=raw.endsWith('\r')?raw.slice(0,-1):raw;
     if(column>visible.length+1)throw new RunnerError('INVALID_REFERENCE','Range column exceeds snapshot');
     return lines.slice(0,line-1).reduce((sum,value)=>sum+value.length+1,0)+column-1;
   };
@@ -22,7 +24,7 @@ export function rangeOffsets(text:string,range:Range):[number,number] {
 export function applyChanges(text:string,changes:TextChange[]) {
   if(!Array.isArray(changes)||changes.length===0)throw new RunnerError('INVALID_REQUEST','Text changes required');
   const edits=changes.map(change=>{onlyFields(change,['range','text']);validateText(change.text);const [start,end]=rangeOffsets(text,change.range);return {start,end,text:change.text};}).sort((a,b)=>a.start-b.start||a.end-b.end);
-  for(let index=1;index<edits.length;index++)if(edits[index].start<edits[index-1].end||edits[index].start===edits[index-1].start)throw new RunnerError('INVALID_REQUEST','Overlapping text changes');
+  for(let index=1;index<edits.length;index++)if(edits[index]!.start<edits[index-1]!.end||edits[index]!.start===edits[index-1]!.start)throw new RunnerError('INVALID_REQUEST','Overlapping text changes');
   let result=text;
   for(const edit of edits.reverse())result=result.slice(0,edit.start)+edit.text+result.slice(edit.end);
   validateText(result);return result;

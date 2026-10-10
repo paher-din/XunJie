@@ -10,18 +10,18 @@ test('course rules bind selected snapshot inputs, records and approved error exi
   const cases=courseChecks(snapshot,{operation:'stats',fileIds:['input']},'textscope-core-v1');
   assert.equal(cases.length,5);
   assert.deepEqual(cases.map(item=>item.rule.expectedExitCode),[0,2,2,2,1]);
-  assert(matchesStdout('/snapshot/a space.txt\t2\t4\t20\nTOTAL\t2\t4\t20\n',cases[0].rule.stdoutRecords!));
-  assert(!matchesStdout('other/a space.txt\t2\t4\t20\nTOTAL\t2\t4\t20\n',cases[0].rule.stdoutRecords!));
+  assert(matchesStdout('/snapshot/a space.txt\t2\t4\t20\nTOTAL\t2\t4\t20\n',cases[0]!.rule.stdoutRecords!));
+  assert(!matchesStdout('other/a space.txt\t2\t4\t20\nTOTAL\t2\t4\t20\n',cases[0]!.rule.stdoutRecords!));
   const find=courseChecks(snapshot,{operation:'find',word:'c',fileIds:['input']},'textscope-core-v1');
-  assert(matchesStdout('a space.txt:1:C c!\n',find[0].rule.stdoutRecords!));
-  assert(!matchesStdout('a space.txt:1:c c!\n',find[0].rule.stdoutRecords!));
+  assert(matchesStdout('a space.txt:1:C c!\n',find[0]!.rule.stdoutRecords!));
+  assert(!matchesStdout('a space.txt:1:c c!\n',find[0]!.rule.stdoutRecords!));
   const top=courseChecks(snapshot,{operation:'top',count:'1',fileIds:['input']},'textscope-core-v1');
-  assert(matchesStdout('c 2\n',top[0].rule.stdoutRecords!));
-  assert(!matchesStdout('passed\n',top[0].rule.stdoutRecords!));
+  assert(matchesStdout('c 2\n',top[0]!.rule.stdoutRecords!));
+  assert(!matchesStdout('passed\n',top[0]!.rule.stdoutRecords!));
 });
 test('invalid course selection and profile cannot reach trusted oracle',()=>{
   assert.throws(()=>courseChecks(snapshot,{operation:'stats',fileIds:['missing']},'textscope-core-v1'),/approved/);
   assert.throws(()=>courseChecks(snapshot,{operation:'stats',fileIds:['input']},'textscope-report-v1'),/version/);
   const report=courseChecks(snapshot,{operation:'report',fileIds:['input'],resultFile:'report.txt'},'textscope-report-v1');
-  assert.equal(report[0].rule.expectedReport?.expectation.files[0].path,'a space.txt');
+  assert.equal(report[0]!.rule.expectedReport?.expectation.files[0]!.path,'a space.txt');
 });

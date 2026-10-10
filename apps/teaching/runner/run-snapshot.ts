@@ -113,8 +113,8 @@ export function buildRunWork(executor: DockerExecutor, root: string, identity: R
       }
       const caseName = checks ? `${name}-execute-${index}` : `${name}-execute`;
       const executed = await phase(caseName, () => executor.execute({ phase: 'execute', name: caseName,
-        image: profile.runtimeImage, sourceDirectory, workDirectory: caseWork, args: cases[index].args,
-        binaryPath: checks ? join(workDirectory, 'textscope') : undefined,
+        image: profile.runtimeImage, sourceDirectory, workDirectory: caseWork, args: cases[index]!.args,
+        ...(checks ? { binaryPath: join(workDirectory, 'textscope') } : {}),
         timeoutMs: Math.max(1, Math.floor(10000 - elapsedMs)), outputBudget: Math.max(0, 65536 - outputBytes), signal }, () => {}));
       executions.push(executed);
       elapsedMs += executed.durationMs;
@@ -123,7 +123,7 @@ export function buildRunWork(executor: DockerExecutor, root: string, identity: R
       failureKind = executed.failureKind;
       let resultFiles;
       try {
-        resultFiles = collectResultFiles(caseWork, checks && !cases[index].rule?.expectedReport ? [] : profile.approvedResultFiles,
+        resultFiles = collectResultFiles(caseWork, checks && !cases[index]!.rule?.expectedReport ? [] : profile.approvedResultFiles,
           Math.max(0, 65536 - outputBytes), executed.unitTerminated);
       } catch (error) {
         if (error instanceof RunnerError && error.code === 'CONTENT_LIMIT') failureKind = 'output_limit';
@@ -136,7 +136,7 @@ export function buildRunWork(executor: DockerExecutor, root: string, identity: R
           resultFileId: sha256(JSON.stringify([identity.runId, snapshot.snapshotId, index, file.relativeName, file.contentHash])),
           source: 'runner_result_file', caseIndex: index });
       }
-      if (checks) checkResults.push({ ...verifyCase('check', { ...executed, failureKind }, cases[index].rule, resultFiles),
+      if (checks) checkResults.push({ ...verifyCase('check', { ...executed, ...(failureKind ? { failureKind } : {}) }, cases[index]!.rule, resultFiles),
         runId: identity.runId, snapshotId: snapshot.snapshotId, snapshotHash: snapshot.hash, inputHash: identity.inputHash,
         imageDigest: profile.imageDigest, caseIndex: index, source: 'trusted_validator' });
       if (failureKind) break;

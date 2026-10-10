@@ -60,10 +60,10 @@ test('cancel and purpose invalidation preserve generated/ordinary-run facts and 
   assert.equal(cancelJob(completed).status,'succeeded');assert.equal(cancelJob(completed).stopRequested,true);
   const reminder=job({jobId:'reminder',purpose:'reminder'});
   const result=cancelByPurpose([job(),reminder,run],scope,['reminder']);
-  assert.deepEqual(result.jobIds,['reminder']);assert.equal(result.jobs[0].stopRequested,false);
+  assert.deepEqual(result.jobIds,['reminder']);assert.equal(result.jobs[0]!.stopRequested,false);
   const invalidated=invalidateInTransaction([job(),run,completed],{courseId:'course',studentId:'student',attemptIds:['attempt'],expectedEpochs:{attempt:0}},{attempt:0});
-  assert.equal(invalidated.epochs.attempt,1);assert.equal(invalidated.jobs[0].status,'stale');
-  assert.equal(invalidated.jobs[1].status,'running');assert.equal(invalidated.jobs[2].status,'succeeded');
-  assert.equal(invalidated.jobs[2].stopRequested,true);assert(invalidated.jobIds.includes(completed.jobId));
+  assert.equal(invalidated.epochs.attempt,1);assert.equal(invalidated.jobs[0]!.status,'stale');
+  assert.equal(invalidated.jobs[1]!.status,'running');assert.equal(invalidated.jobs[2]!.status,'succeeded');
+  assert.equal(invalidated.jobs[2]!.stopRequested,true);assert(invalidated.jobIds.includes(completed.jobId));
   assert.throws(()=>invalidateInTransaction([job()],{courseId:'course',studentId:'student',attemptIds:['attempt'],expectedEpochs:{attempt:9}},{attempt:0}),/epoch/);
 });

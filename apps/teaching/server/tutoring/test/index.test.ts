@@ -22,7 +22,7 @@ function context(purpose: TrustedModelContext["purpose"], overrides: Partial<Tru
   return {
     jobId: "job-1",
     purpose,
-    scope: { courseId: "course-1", userId: "user-1", attemptId: purpose === "student_help" ? "attempt-1" : undefined },
+    scope: { courseId: "course-1", userId: "user-1", ...(purpose === "student_help" ? { attemptId: "attempt-1" } : {}) },
     authorizedReferenceIds: ["resource-1", "evidence-1"],
     acceptedAtMs,
     deadlineAtMs: acceptedAtMs + 45_000,
