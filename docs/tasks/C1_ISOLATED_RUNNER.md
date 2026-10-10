@@ -409,3 +409,24 @@ PR 以当前范围/原始证据及实际限制描述，不自动安装节点、�
 PR 提交前在独立工作树复验：C1 核心 31 通过/0 失败/2 专用环境入口明确跳过，strict TypeScript 7.0.2 noEmit 通过；专用 guest 45/SSH 8/VM 重启使用前述原始实际证据，不把此次跳过计通过。文档检查 25 份/241 引用/27 正式接口及回归 16/16、暂存空白/白名单通过；Git index 中源码/证据字节与原验收完全一致，sourceHash 和两组原始输出摘要核对通过；只增加 LF 属性、文档及 README 交付说明，执行逻辑未变。
 
 实际交付：正文提交 `83f6086d6706f38bc1008af54a78b903c999c3d0` 已普通推送 `codex/c1-isolated-runner`；[C1 PR #16](https://github.com/paher-din/XunJie/pull/16) 已创建并附到本任务，base=main、Open/非 Draft。远端 head 与本地、标题/完整正文/39 文件白名单逐项回读一致；无受保护基线/A/B/G1/C2 实现差异。未合并或关闭 #12。最初 fetch 因 TLS 连接 reset 失败，但 GitHub API 回读 main 与已存在本地 origin/main 同为上述基点；没有把失败称成功，未改全局 Git/网络设置。
+
+## 16. 2026-10-10 PR #16 审查修复与 N 范围补充
+
+负责人要求按 PR #16/#17 审查修复，沿用两个 PR 的推送范围。C1 审查固定 HEAD 7e4ef73，有两项可信比较错误；已重读 MVP §1.3、TECH §4.1/8.1/8.3、批准 §13/14、源码及全部调用方。本次修改限 C-owned runner/tests/本文及真实新指纹验收，不改受保护基线、节点凭据、SQL 或其他成员记录。
+
+- [溢出 N 误判](https://github.com/paher-din/XunJie/pull/16#discussion_r4236385877)：当前无界正数字符串原样作为正常 top 参数，正常规则期待退出 0，符合课程溢出退出 2 的实现会被误判。原契约尚未明确 N 的 C 类型；推荐确认 C int 的 1～2,147,483,647，另一选择为 64 位 size_t。正常参数以精确整数比较拒绝超过已确认上限，受信溢出错误样例预期退出 2；待负责人确认范围后实施，不从平台宏自动推定批准。
+- [缺失文件错例碰撞](https://github.com/paher-din/XunJie/pull/16#discussion_r4236385879)：从完整快照所有路径及其目录前缀选择保证不存在的候选；不新增学生保留名称、不仅检查选中输入。补完整快照同名文件/目录碰撞反例，并通过可信比较/实际容器核对错误退出 1。
+
+原验收源码指纹和证据保持其历史事实；源码改变后旧 passed 不适用于新版本。新 guest/SSH/typecheck/ready 证据另存新文件，并 append 节点验收登记；不将旧日志改贴新指纹。原 AC/NFR、C17 镜像、两槽、整单元取消与后置 A1/A2/SQL/浏览器边界不降低。
+
+缺失输入反例已实际复现：旧源码 course 测试 2 通过/1 失败；保证不存在的完整路径选择修复后 3/3。当前 C1 离线 32 通过/0 失败/2 专用入口跳过，strict noEmit 通过；新增实际 SSH 同名文件/目录碰撞用例。N 类型确认仍待负责人回复；当前未实施任意范围，不写新整体 passed 或声称两项审查都已完成。
+
+项目负责人已明确选择“采用 C int 范围（推荐）”，确认本 profile 正常 top N 为 1～2,147,483,647。批准针对本项类型补充/正常输入边界/溢出退出 2 的修复，不授予产品基线写入权限；请求授权维护者后续汇总到 MVP §1.3/TECH §8 及对应验收。实现采用精确整数界限，argv 保留原十进制文本；更新 validatorVersion 为 textscope-validator-v2 区分本次实现/新增溢出覆盖，既有 course rule v1 的业务含义和旧结果不改写。原错误样例加一项上限+1，共六项，退出序列 0/2/2/2/2/1。
+
+四项独立修复阶段已有真实验证：同名文件/目录碰撞的实际 C1 SSH 检查通过，当前 RPC 全套 9/9；C2 在原父节点指纹上 18/18（含真实节点）通过。当前部署 collision 修复后旧 passed 与新源码不匹配，ready 应为 false；N 修复后再运行完整 guest/SSH/types 验收登记新指纹并复验 C2，不给原证据改贴版本。
+
+修复后完整新验收：专用 guest 48 通过/0 失败/1 guest 内 SSH 入口跳过；宿主真实 SSH 10/10（包括合法同名文件/目录碰撞、C int 最大值/溢出、原有 SIGKILL/恢复/限额）通过；strict noEmit 通过。GCC 固定镜像实际编译通过 `_Static_assert(INT_MAX==2147483647)`，未将平台宏当授权。新原始 [guest](../../apps/teaching/runner/acceptance.review1.guest.txt)、[SSH](../../apps/teaching/runner/acceptance.review1.ssh.txt)、[验收信封](../../apps/teaching/runner/acceptance.review1.evidence.json) 单独保存；原 acceptance.* 的历史证据字节保持。
+
+新登记时间 2026-10-10T06:58:22.323Z（Asia/Shanghai 2026-10-10 14:58），sourceHash=`0869fdbeb71287d22cfecaf6424abf4ed79db9a98ef687de91f7ff6ad2520e36`，fingerprintHash=`842fcd209bbb68503b7ff836be9e39a1df1269e97d002f336e31f7161a2acec9`。guest/SSH 输出 SHA-256 为 `783e279b23062168d856822b39831202579ae547cc7c32a8a2a7eb37c439eb3f` / `33b8eee93e934474ee338ddcb24c16517f7cc7c5b5e6c6c5e27a5872f7d7c812`。正常上限/明显溢出反例旧源码 5 通过/2 失败，修复后相同 7 项全部通过；缺失路径反例旧失败/新通过。两项审查根因均修正，不按 Number 的舍入或新增保留名称规避。
+
+审查修复实际发布：C1 碰撞修复 e49a79e 与 N/新指纹修复 `1c3f73cb0172ad445189908e28157e3ff3c9434d` 已非强制推送 PR #16；PR 正文按最终修复/48 guest/10 SSH/原始证据与后置范围重写，并与本地正文逐字回读一致。C2 已普通 merge 该父分支并在新指纹下 18/18 通过。两个 PR 均 Open，未合并/关闭 Issue/自签审查批准或替原审查者解决线程；五项作者修复完成，待原审查者复验。保护范围与新证据摘要检查通过，代码/截图/旧验收事实不覆盖。

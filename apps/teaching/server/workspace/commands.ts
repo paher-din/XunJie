@@ -113,8 +113,6 @@ export function cancelRunCommand(state:WorkspaceState,context:CommandContext,job
   if(previous)return completeCommand(state,context,hash,previous.result,'job_stop_requested');
   const {job:original}=ownRun(state,jobId);
   const cancelled=cancelJob(original);
-  // Even a queued business Job needs the node's cancel-before-submit tombstone before ending a check.
-  if(original.purpose==='student_run'&&cancelled.status==='cancelled')cancelled.status='cancelling';
   return completeCommand({...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?cancelled:row)}},context,hash,
     {jobId,status:cancelled.status,stopRequested:true},'job_stop_requested');
 }
@@ -144,7 +142,11 @@ export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
     jobs:own.map(job=>({jobId:job.jobId,kind:job.kind,purpose:job.purpose,scope:job.scope,requestReceiptId:job.requestReceiptId,
       status:job.status,stopRequested:job.stopRequested,expectedRevision:job.expectedRevision,decisionEpoch:job.decisionEpoch,
       recoveryGeneration:job.recoveryGeneration,acceptedAt:job.acceptedAt,deadline:job.deadline,attemptCount:job.attemptCount,
-      ...(job.runId?{runId:job.runId}:{})})),runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)).map(({result:_privateResult,resultHash:_privateHash,...row})=>row),checks:state.checks.filter(row=>own.some(job=>job.jobId===row.jobId))});
+      ...(job.runId?{runId:job.runId}:{})})),runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)).map(run=>{ownRun(state,run.jobId);return {
+      runId:run.runId,jobId:run.jobId,snapshotId:run.submission.identity.snapshotId,snapshotHash:run.submission.identity.snapshotHash,
+      mode:run.submission.mode,runtimeProfileVersion:run.submission.identity.runtimeProfileVersion,
+      imageDigest:run.submission.identity.imageDigest,diagnostics:runDiagnostics(run)};}),
+    checks:state.checks.filter(row=>own.some(job=>job.jobId===row.jobId))});
 }
 
 export function reconcileRun(state:WorkspaceState,jobId:string,result:{record:unknown;contentHash:string;resultRef:string},
@@ -188,11 +190,14 @@ export function readConfirmedSnapshot(state:WorkspaceState,snapshotId:string,aut
   validateSnapshot(snapshot);return structuredClone(snapshot);
 }
 export function readRunDiagnostics(state:WorkspaceState,runId:string,authorize:()=>boolean) {
-  const workspace=readWorkspace(state,authorize);
-  const visible=workspace.runs.find(row=>row.runId===runId);
-  if(!visible)throw new RunnerError('INVALID_REFERENCE','Authorized run unavailable');
-  const {run}=ownRun(state,visible.jobId);
-  const base={runId,snapshotId:run.submission.snapshot.snapshotId,snapshotHash:run.submission.snapshot.hash,source:'runner_diagnostics'};
+  if(authorize()!==true)throw new RunnerError('FORBIDDEN','Run diagnostics read denied');
+  const run=state.runs.find(row=>row.runId===runId);
+  if(!run)throw new RunnerError('INVALID_REFERENCE','Authorized run unavailable');
+  ownRun(state,run.jobId);
+  return structuredClone(runDiagnostics(run));
+}
+function runDiagnostics(run:WorkspaceState['runs'][number]) {
+  const base={runId:run.runId,snapshotId:run.submission.snapshot.snapshotId,snapshotHash:run.submission.snapshot.hash,source:'runner_diagnostics'};
   if(!run.result)return {...base,status:'unavailable'};
   const result=validateRunResult(run.submission,run.result).record;
   if(run.submission.mode==='check')return {...base,status:'available',verdict:result.verdict??'incomplete',failureKind:result.failureKind};

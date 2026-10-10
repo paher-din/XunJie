@@ -13,6 +13,7 @@ export type TextScopeInput = { operation: 'stats' | 'find' | 'top' | 'report'; f
   word?: string; count?: string; resultFile?: string };
 export type Profile = { runtimeProfileVersion: string; imageDigest: string; compilerImage: string;
   runtimeImage: string; approvedResultFiles: string[] };
+export const TOP_COUNT_MAX=2147483647n;
 
 export function textScopeArgs(snapshot: Snapshot, input: TextScopeInput, approvedResultFiles: string[]) {
   if (!input || !['stats', 'find', 'top', 'report'].includes(input.operation)
@@ -33,8 +34,9 @@ export function textScopeArgs(snapshot: Snapshot, input: TextScopeInput, approve
     return ['find', input.word, ...files];
   }
   if (input.operation === 'top') {
-    if (typeof input.count !== 'string' || !/^[1-9][0-9]*$/.test(input.count)) {
-      throw new RunnerError('INVALID_REQUEST', 'Top count must be a positive integer');
+    if (typeof input.count !== 'string' || input.count.length>TOP_COUNT_MAX.toString().length
+      || !/^[1-9][0-9]*$/.test(input.count) || BigInt(input.count)>TOP_COUNT_MAX) {
+      throw new RunnerError('INVALID_REQUEST', 'Top count must be a positive integer at most 2147483647');
     }
     return ['top', '-n', input.count, ...files];
   }

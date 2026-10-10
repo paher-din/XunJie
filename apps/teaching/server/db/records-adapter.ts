@@ -179,11 +179,6 @@ export function enqueueStoredJob(tx: Transaction, job: Job) {
 export function stopAttemptJobs(tx: Transaction, attempt: Attempt, purposes: Purpose[]) {
   const existing = readJobs(tx, attempt.courseId);
   const result = cancelByPurpose(existing, { courseId: attempt.courseId, studentId: attempt.studentId, attemptId: attempt.attemptId }, purposes);
-  for (const job of result.jobs) if (result.jobIds.includes(job.jobId)) {
-    // C2 requires a node tombstone even for a queued business run before confirming its termination.
-    const previous = existing.find(row => row.jobId === job.jobId)!;
-    saveJob(tx, job.purpose === 'student_run' && previous.status === 'queued' && job.status === 'cancelled'
-      ? { ...job, status: 'cancelling' } : job);
-  }
+  for (const job of result.jobs) if (result.jobIds.includes(job.jobId)) saveJob(tx, job);
   return result.jobIds;
 }

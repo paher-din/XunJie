@@ -56,7 +56,7 @@ export function finishJob(job:Job,completion:{leaseToken:string;generation:strin
 export function cancelJob(job:Job):Job {
   if(job.stopRequested)return structuredClone(job);
   return {...job,stopRequested:true,...(!terminal.has(job.status)?{status:
-    ['student_run','teacher_sample'].includes(job.purpose)&&job.status!=='queued'?'cancelling' as const:'cancelled' as const}:{})};
+    ['student_run','teacher_sample'].includes(job.purpose)?'cancelling' as const:'cancelled' as const}:{})};
 }
 export function confirmRunStopped(job:Job,runId:string,unitTerminated:boolean):Job {
   if(job.runId!==runId||!job.stopRequested||!unitTerminated||!['cancelling','outcome_unknown'].includes(job.status))throw new RunnerError('STATE_CONFLICT','Original run termination is not confirmed');
