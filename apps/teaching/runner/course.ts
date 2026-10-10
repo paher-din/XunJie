@@ -28,9 +28,13 @@ export function courseChecks(snapshot: Snapshot, input: TextScopeInput, version:
     rule = { ...base, stdoutRecords:{kind:'find',records:matches} };
   }
   const error = (code: number): TrustedCase => ({...base, expectedExitCode:code, requireDiagnostic:code===1?'stderr':'either'});
+  let missing='__xunjie_missing_input__';
+  for(let suffix=1;snapshot.files.some(file=>file.path===missing||file.path.startsWith(missing+'/'));suffix++) {
+    missing=`__xunjie_missing_input__.${suffix}`;
+  }
   return [{args,rule},
     {args:['__invalid_command__'],rule:error(2)},
     {args:['stats'],rule:error(2)},
     {args:['top','-n','0',...args.filter(arg=>arg.startsWith('/snapshot/'))],rule:error(2)},
-    {args:['stats','/snapshot/__xunjie_missing_input__'],rule:error(1)}];
+    {args:['stats',`/snapshot/${missing}`],rule:error(1)}];
 }
