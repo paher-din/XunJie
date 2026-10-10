@@ -39,7 +39,7 @@ int main(int n,char **v){
  if(n<2){fputs("usage\\n",stderr);return 2;}
  if(!strcmp(v[1],"stats")){
   if(n<3){fputs("usage\\n",stderr);return 2;}
-  if(!strcmp(v[2],"/snapshot/__xunjie_missing_input__")){fputs("cannot open\\n",stderr);return 1;}
+  for(int i=2;i<n;i++){FILE *f=fopen(v[i],"r");if(!f){fputs("cannot open\\n",stderr);return 1;}fclose(f);}
   puts("a.txt\\t3\\t8\\t37\\nb.txt\\t1\\t3\\t14\\nTOTAL\\t4\\t11\\t51");return 0;}
  if(!strcmp(v[1],"top")){if(n<5||!strcmp(v[3],"0")){fputs("usage\\n",stderr);return 2;}puts("c 3\\nis 2\\nmemory 2");return 0;}
  if(!strcmp(v[1],"find")){puts("a.txt:1:C is fun.\\na.txt:2:C is fast.\\nb.txt:1:C and memory.");return 0;}
@@ -98,6 +98,15 @@ test('authenticated dedicated VM control and supervision',{skip:!enabled},async 
     await submit(fake);assert.equal((await finished(fake)).verdict,'failed');
     const broken=submission('this is not C',undefined,'check');await submit(broken);
     assert.equal((await finished(broken)).failureKind,'compile_error');
+  });
+  await t.test('legal names colliding with missing-file sentinel still pass the trusted missing case',async()=>{
+    const item=submission(validSource,undefined,'check');
+    item.snapshot.files.push(...['__xunjie_missing_input__','__xunjie_missing_input__.1/child.txt'].map((path,index)=>({
+      fileId:`collision-${index}`,path,documentVersion:1,text:'legal student file',contentHash:sha256('legal student file')})));
+    item.snapshot.hash=manifestHash(item.snapshot.files);item.identity.snapshotHash=item.snapshot.hash;
+    item.identity.requestHash=sha256(JSON.stringify({snapshot:item.snapshot,input:item.input,mode:item.mode}));
+    await submit(item);const result=await finished(item);
+    assert.equal(result.verdict,'passed');assert.equal(result.phases.at(-1).exitCode,1);
   });
   await t.test('cancel before submit is durable; running cancellation waits for original units',async()=>{
     const pre=submission(spin);assert.equal((await rpc({op:'cancel',identity:pre.identity})).data.state,'cancelled');
