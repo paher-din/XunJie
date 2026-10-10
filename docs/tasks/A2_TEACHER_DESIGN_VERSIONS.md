@@ -2,7 +2,7 @@
 
 主责：A。任务：[Issue #13](https://github.com/paher-din/XunJie/issues/13)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)；上游：[A1 #10](https://github.com/paher-din/XunJie/issues/10)，合作：[C2 #14](https://github.com/paher-din/XunJie/issues/14)，活动开放条件：[C1 #12](https://github.com/paher-din/XunJie/issues/12)。建立日期：2026-10-10（Asia/Shanghai）。开始代码基线：9221370。
 
-状态：**§11 准确批准的完整服务端范围已实现、验证并审查收口。A 本机 typecheck/build/全量回归 151 通过、0 失败、6 跳过（157 项）；PAHER 对固定源码 8421157 执行本次真实 C1 正向联调 1 通过、0 失败、0 跳过，独立记录于 §12.6。两轴未解决 0；正在分别交付 A1/A2 PR。真实账号/课程审阅、浏览器/TCP/TLS、C2 整体作品链及完整 G1 保持各自后置条件；产品基线待授权维护者汇总。旧章节待批/未执行保留当时范围，现状以 §12.6 为准。**
+状态：**§11 准确批准的完整服务端范围已实现、验证并审查收口。A 本机 typecheck/build/全量回归 151 通过、0 失败、6 跳过（157 项）；PAHER 对固定源码 8421157 执行本次真实 C1 正向联调 1 通过、0 失败、0 跳过，独立记录于 §12.6。两轴未解决 0；A1 PR #18 与 [A2 PR #19](https://github.com/paher-din/XunJie/pull/19) 已分别交付，均 Open/未合并。真实账号/课程审阅、浏览器/TCP/TLS、C2 整体作品链及完整 G1 保持各自后置条件；产品基线待授权维护者汇总。旧章节待批/未执行保留当时范围，现状以 §12.6 为准。**
 
 ## 1. 已读依据、负责文件与进入条件
 
@@ -404,3 +404,8 @@ PR 采用依赖链 C1 #16→C2 #17→A1（base=codex/c2-workspace-core）→A2�
 最终交付增量检查：解决 README 冲突后，静态检查 29 文档/331 内部引用/27 基线路由和检查器 16/16 通过；两项 PR 精确差异 git diff --check 通过。Git 中保存的 TAP/信封摘要与收到附件原字节一致；与真实验证源码 8421157 比较，server/contracts/runner/业务测试/package/lock 无变化，不重复运行已通过业务回归。最终 Spec 增量未解决 0；Standards 发现 1 类 P3（授权者用聊天指代），已改为明确项目角色“项目负责人”，保留原话及范围，等待原审查者确认关闭。
 
 最终 Standards 原审查者已复核 b363ccd..d232bab：角色表述 P3 关闭，未解决硬性违规 0、可操作异味 0；Spec 本次证据增量未解决 0。A1 当前文档独立检查 27 文档/305 内部引用/27 路由通过；A2 29/331/27 通过，两分支精确差异空白通过。已核收到证据的 Git 原字节与摘要不变，开始已获授权的普通推送与两项 PR 创建。
+### 12.7 两项独立 PR 实际交付与回读
+
+[A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 已普通推送/创建，base=codex/c2-workspace-core；[A2 PR #19](https://github.com/paher-din/XunJie/pull/19) 已普通推送/创建并附到当前任务，base=codex/a1-complete、非 Draft/Open/未合并。A2 初次发布 head=`39213480b7c6a300db405ba899f8b8ce40e112a5`，回读为 28 文件，仅 A2 领域/测试/原证据/文档；A1 初次为 57 文件，包含准确授权的工程/权限/SQL适配及最小依赖修复。未合并/关闭 Issue/修改 main 或 C 远程分支；依赖顺序 C1 #16→C2 #17→A1 #18→A2 #19。
+
+连接器创建 API 返回 403，复用既有成功推送的 Git 身份后两项均创建成功，未修改或输出凭据。补记 PR URL 的后续提交/普通 merge 仅文档，业务源码仍等于本次 PAHER 已验源码 8421157；记录的是 PR 交付，不追加业务通过数。README 同一区段再次出现普通 merge 冲突，按 A1 完整入口+A2 最新独立区段保留原文解决，未在冲突中执行业务验收。最终链接/空白/证据摘要与远端 head/base/范围回读接着登记；保护基线仍待授权维护者汇总。

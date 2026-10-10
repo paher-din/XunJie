@@ -4,7 +4,7 @@
 
 ## 可运行源码
 
-固定 A2 联调候选：`8421157d7e917067b397d76378ed91096c4a8369`。该提交仅本地，尚未推送/创建 PR；包含 A1 `30fd2b1`、C1 `f8b6c6f`、C2 `64eaa958`。正式 A1/A2 PR 按项目负责人要求在 A2 真实联调补齐后分别提交，不把此候选称为已完成 PR。
+固定 A2 联调候选：`8421157d7e917067b397d76378ed91096c4a8369`。交接时该提交仅本地；真实联调通过后现已随 [A2 PR #19](https://github.com/paher-din/XunJie/pull/19) 推送（base=A1 #18，未合并）；包含 A1 `30fd2b1`、C1 `f8b6c6f`、C2 `64eaa958`。正式 A1/A2 PR 按项目负责人要求在 A2 真实联调补齐后分别提交，不把此候选称为已完成 PR。
 
 A 已生成仅含已提交 Git 对象的增量 bundle `a2-c1-8421157.bundle`，基于远端 main `54ca54c6f2d01d2875b80404a525ec5505da2eb1`；不含 node_modules、临时数据库、诊断日志或运行时凭据。`git bundle verify` 已通过；文件 SHA-256 为 `bab7703313e4abe3fe1b376f16f302bc6d18112deda57e68bfb8a7cb1d4b66dc`。bundle 经受控文件传递到 PAHER，在已有 XunJie 仓库导入，然后在新的工作副本执行；不切换/覆盖 C 当前工作副本：
 
