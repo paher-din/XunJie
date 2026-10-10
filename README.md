@@ -81,7 +81,7 @@ node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.
 
 ## 状态
 
-C1 已在本机 WSL2 内的专用 QEMU/KVM Ubuntu VM 交付 [runner](apps/teaching/runner/) 和 [节点契约](apps/teaching/contracts/runner/index.ts)：固定内容 ID、快照、受限编译/运行、原 ID/代际/两槽、持久取消/未知保槽/进程恢复、可信 Core/Report 与不可变产物均有实际合成验收。最终 guest 45 项通过，宿主受认证控制链 8 项通过，strict 类型检查通过；应用入口实际 ready=true，整台 VM 重启后原结果/代际和 ready 保留。guest 内跳过的 SSH 入口由宿主完整执行，不计为通过。准备/启动/复验、指纹/原始通过记录和下游责任见 [C1 第 14 节](docs/tasks/C1_ISOLATED_RUNNER.md#14-2026-10-10-收口方案批准与执行)。
+C1 已在本机 WSL2 内的专用 QEMU/KVM Ubuntu VM 交付 [runner](apps/teaching/runner/) 和 [节点契约](apps/teaching/contracts/runner/index.ts)：固定内容 ID、快照、受限编译/运行、原 ID/代际/两槽、持久取消/未知保槽/进程恢复、可信 Core/Report 与不可变产物均有实际合成验收。审查修复后 guest 48 项通过，宿主受认证控制链 10 项通过，strict 类型检查通过；应用入口实际 ready=true，整台 VM 重启后的原结果/代际保留有前次原始证明；本次新源码/指纹的 ready 已重新验收。guest 内跳过的 SSH 入口由宿主完整执行，不计为通过。top N 按已确认 C int 范围（1～2,147,483,647）；validator 为 v2。准备/启动/复验、历史/新指纹和下游责任见 [C1 第 14 节](docs/tasks/C1_ISOLATED_RUNNER.md#14-2026-10-10-收口方案批准与执行)。
 
 在获准且已准备的 Linux 宿主维护环境，从仓库根执行 `sh apps/teaching/runner/vm.sh start`，再按任务稿同步源码并运行 `/opt/xunjie-runner/node/bin/node apps/teaching/runner/acceptance.ts`；它包含合成故障注入/Engine 恢复/测试代际注册，仅用于无真实业务作业的维护窗口。停止 VM 用 `sh apps/teaching/runner/vm.sh stop`，不删除持久盘/密钥/账本；未准备的开发副本不能假定本机节点、权限或私钥已存在。学生仍只操作团队 Web UI。
 
@@ -95,7 +95,7 @@ C1 完成节点实现与独立验收；C2 已实现 [workspace](apps/teaching/se
 XUNJIE_C2_RUNTIME=1 /opt/xunjie-runner/node/bin/node --test apps/teaching/server/records/*.test.ts apps/teaching/server/workspace/*.test.ts
 ```
 
-不设置 XUNJIE_C2_RUNTIME 时，专用节点对接明确跳过，其余核心检查正常执行。实际 16 项通过、strict 类型检查和原始记录/下游 tx 要求见 [C2 交付记录](docs/tasks/C2_WORKSPACE_JOBS.md#6-验证与交付记录)；A3/B2/C3/C4 可复用首批核心，但真实存储/权限未接入前不能宣称完整服务端作品链通过。
+不设置 XUNJIE_C2_RUNTIME 时，专用节点对接明确跳过，其余核心检查正常执行。审查修复后实际 18 项通过、strict 类型检查和新原始记录/下游 tx 要求见 [C2 交付记录](docs/tasks/C2_WORKSPACE_JOBS.md#6-验证与交付记录)；A3/B2/C3/C4 可复用首批核心，但真实存储/权限未接入前不能宣称完整服务端作品链通过。
 
 三份产品文档已于 2026-10-09 更新为 v0.3：项目负责人统一批准 G0 的教学/模型/数据/技术契约和分段实施方案，并明确授权同步五份基线。裁决角色为负责人，A0/B0/C0 PR 作为输入，不记录三人逐一签字；正式应用与业务验收仍未完成。
 

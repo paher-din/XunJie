@@ -23,3 +23,9 @@ test('rejects unapproved files, command/word injection, zero count and output es
   assert.throws(() => textScopeArgs(snapshot, { operation: 'report', fileIds: ['input-1'], resultFile: '../a.txt' }, ['../a.txt']), /relative path/);
   assert.throws(() => textScopeArgs(snapshot, { operation: 'report', fileIds: ['input-1'], resultFile: 'other.txt' }, ['report.txt']), /not approved/);
 });
+test('top accepts the approved C int maximum and rejects overflow exactly',()=>{
+  assert.equal(textScopeArgs(snapshot,{operation:'top',fileIds:['input-1'],count:'2147483647'},[])[2],'2147483647');
+  for(const count of ['2147483648','9223372036854775807','9'.repeat(100)]) {
+    assert.throws(()=>textScopeArgs(snapshot,{operation:'top',fileIds:['input-1'],count},[]),/positive integer/);
+  }
+});
