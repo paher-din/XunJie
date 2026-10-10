@@ -117,7 +117,7 @@ A0/B0/C0 的材料已通过 PR #5/#8/#6 合入并纳入统一裁决。2026-10-09
 
 [A1 记录](docs/tasks/A1_FOUNDATION_ACCESS_TRANSACTION.md#13-已批准收尾批次实施记录进行中尚未-pr) 中的 createAccessApp 注册真实登录/退出与当前 Session 读取；withAuthorizedResource 使用当前 Session、课程成员和同 tx 可信资源定位器，提供用途/学生归属守卫。A 的 server/db/records-adapter 消费 C 已交公共类型/函数，把 Attempt/Job/Receipt/Event 与授权活跃时间同事务保存。C2 文件/别名/执行整链不因此已验收。
 
-准确批准的 createCompletionDatabase 仅新建系统临时 xunjie-a12-completion-*/synthetic.sqlite，共十七张应用表；旧五表/十表工厂保留范围，不迁移或清理现有库。应用调用方显式提供获准 HTTPS Origin、即时签名材料、实际 DB 和领域路由；不配置真实账号/密钥或替代 UI。默认 main 仍健康入口，ready=503。使用批准 Node 在 apps/teaching 执行 node --test tests/records-adapter.test.ts；全工程 npm run typecheck / npm test 仍必须通过后交付。A1 独立分支已吸收 C1/C2 新提交；完整类型检查（含 runner）、build 与本分支统一回归通过：117 项中 112 通过、0 失败、5 项 Linux/真实节点检查跳过。早期联合 A1/A2 的 144/149 为历史范围，见任务稿。两轴审查的幂等/记录范围问题已修正并增量复核关闭；PAHER 已另行完成 A2 指定真实 C1 联调 1/1，记录随 A2 交付；本 A1 分支独立结果不改写。准确批准范围正在交付 PR，完整 G1/浏览器/TLS/真实账号保持后置。
+准确批准的 createCompletionDatabase 仅新建系统临时 xunjie-a12-completion-*/synthetic.sqlite，共十七张应用表；旧五表/十表工厂保留范围，不迁移或清理现有库。应用调用方显式提供获准 HTTPS Origin、即时签名材料、实际 DB 和领域路由；不配置真实账号/密钥或替代 UI。默认 main 仍健康入口，ready=503。使用批准 Node 在 apps/teaching 执行 node --test tests/records-adapter.test.ts；全工程 npm run typecheck / npm test 仍必须通过后交付。A1 独立分支已吸收 C1/C2 新提交；完整类型检查（含 runner）、build 与本分支统一回归通过：117 项中 112 通过、0 失败、5 项 Linux/真实节点检查跳过。早期联合 A1/A2 的 144/149 为历史范围，见任务稿。两轴审查的幂等/记录范围问题已修正并增量复核关闭；PAHER 已另行完成 A2 指定真实 C1 联调 1/1，记录随 A2 交付；本 A1 分支独立结果不改写。准确批准范围已通过 [A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 交付（依赖 C2 #17，未合并），完整 G1/浏览器/TLS/真实账号保持后置。
 
 ## A2 固定活动、分配与控制（服务端验证已收口）
 

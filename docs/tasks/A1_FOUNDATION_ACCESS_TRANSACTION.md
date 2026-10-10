@@ -2,7 +2,7 @@
 
 主责：A。任务：[Issue #10](https://github.com/paher-din/XunJie/issues/10)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)，接缝：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。开始日期：2026-10-09，最新批次：2026-10-10（Asia/Shanghai）。开始基线：bc1d466a073521235e54cb6995bfcc476619fafd。
 
-状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。准确批准服务端范围已收口，正在分别交付 PR；较新真实联调接收事实见 §14.4。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
+状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。准确批准服务端范围已收口，[A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 已创建、Open/未合并；较新真实联调接收与交付事实见 §14.4/14.5。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
 
 ## 1. 已读依据与本批授权
 
@@ -289,7 +289,7 @@ withTransaction 候选以单个应用拥有的 better-sqlite3 连接、IMMEDIATE
 
 验证用例：合法身份与 SQL 写入同连接提交；授权/回调失败不能返回 ACK 或留下前置行，lastActive 不因失败推进；当前角色撤销后 callback 不执行；async callback 不开始、thenable/嵌套回调整批回滚、逃逸 tx 失效。它验证既有基础组合，不冒称 C2 的业务幂等、回执/Job/Event 落库或 A2 完成。固定开始提交 59ddd79；总审查沿已约定 9221370，新增部分单列 59ddd79..候选。
 
-状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。准确批准服务端范围已收口，正在分别交付 PR；较新真实联调接收事实见 §14.4。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
+状态：**§12～14 准确批准的工程、当前 Session/课程/资源授权、十七表新合成库、实际 C 记录同事务适配已实现；最新独立 typecheck/build/回归 112 通过、0 失败、5 跳过（117 项）。两轴审查各发现 1 项 P2，已修复、验证并增量复核关闭；当前 Standards 硬违规/可操作异味 0/0、Spec 未解决 0。真实账号/私有 HTTPS/生产初始化/可靠恢复和 UI/真人保持原后置条件；完整 G1 未完成。准确批准服务端范围已收口，[A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 已创建、Open/未合并；较新真实联调接收与交付事实见 §14.4/14.5。§8～13 原首批/待批/失败状态保留历史范围，以 §14 较新事实为准。**
 
 ### 10.1 实际实现与验证
 
@@ -402,3 +402,8 @@ A1 Spec 审查发现 P2：SQL 幂等唯一键为 actor/command/target/key 全局
 项目负责人交回 PAHER 对 A2 源码 `8421157d7e917067b397d76378ed91096c4a8369` 实际执行结果：Node24.21.0、npm ci/typecheck/build 通过；经真实应用 SSH readiness 与教师/学生 POST /api/sessions 登录，checks→release→assign→pause→assignment active=false 指定用例 1 通过、0 失败、0 跳过。A 已重算 TAP 摘要/节点指纹并核固定活动来源与 C 信封一致；原字节证据及消费详情随 A2 #13 分支交付，不属于 A1 diff。没有改 A1 业务源码或复跑/改写原独立 112/117（5 跳过）；A2 本机全量 151/157 与 PAHER 指定 1/1 分别保留。
 
 此前按项目负责人“完成 A1/A2 所有内容后分别提交 PR”等待的 A2 真实联调条件已补齐。准确批准的 A1 实现、验证、文档与两轴审查收口，开始普通推送/创建独立 PR；不合并、关闭 Issue、修改凭据/CI/既有 schema 或宣称完整 G1。当前 C1/C2 PR 尚未合入 main，A1 base 采用 codex/c2-workspace-core（C2 64eaa958），A2 base 采用 codex/a1-complete，只审各自实际增量；依赖 C1 #16→C2 #17→A1→A2。推送/PR URL/远端 SHA 将回读记录；产品基线仍待授权维护者汇总。
+### 14.5 远程独立 PR 实际交付
+
+分支 codex/a1-complete 已普通推送，初次发布 head=`ae9a2a99d1efb8c0199af835ef770f22afcee7e3`；[A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 已创建并附到当前任务，base=codex/c2-workspace-core、非 Draft/Open/未合并，回读 head/base/57 文件范围与本地一致。依赖 C2 #17/C1 #16；A2 [PR #19](https://github.com/paher-din/XunJie/pull/19) 以本分支为 base。A1 独立 112/117 五跳过与 A2 PAHER 1/1 分别保留，不自动关闭 #10/#9 或宣称 G1 已验收。
+
+GitHub 连接器创建请求返回 403（Resource not accessible by integration）；未变更权限/凭据，使用已有成功 Git 推送身份的 API 创建成功，认证仅进程内使用且未输出。远端元数据、实际增量与 PR 正文已回读；不修改 C1/C2 远程分支、main、保护基线或他人工作副本。后续本提交仅补充交付文档，业务源码/原验证范围不变。
