@@ -27,3 +27,11 @@ export async function availableRuntime(runner?: RunnerTransport) {
     return undefined;
   }
 }
+// Query outside SQL; only a new command applies the failure, after receipt replay.
+export async function queryRuntime(runner?: RunnerTransport) {
+  try {
+    return { ok: true as const, runtime: await availableRuntime(runner) };
+  } catch (error) {
+    return { ok: false as const, error };
+  }
+}

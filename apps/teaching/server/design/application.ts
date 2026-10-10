@@ -3,7 +3,7 @@ import type { FastifyRequest } from 'fastify';
 import { createDesignVerificationApp, type DesignVerificationOptions } from './app.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
-import { availableRuntime } from './readiness.ts';
+import { queryRuntime } from './readiness.ts';
 import { finishRecordCommand } from '../db/records-adapter.ts';
 import { releaseSchema, assignmentSchema, activityControlSchema, assignmentControlSchema, helpPolicySchema, checkRuleSchema, activityCommandResults, assignmentViewSchema } from '../../contracts/design/index.ts';
 import { activityCourse, assignmentCourse, readAssignment, confirmActivity, assignActivity, controlActivity, controlAssignment,
@@ -98,8 +98,10 @@ export async function createDesignApp(options: DesignAppOptions) {
     const blueprintId = parseRequest(params, request.params).id, input = parseRequest(releaseSchema, request.body);
     access.inspectCourse(request, tx => draftCourse(tx, blueprintId), 'teacher');
     generation(input.recoveryGeneration);
-    const runtime = await availableRuntime(options.runner);
+    const readiness = await queryRuntime(options.runner);
     return execute(request, tx => draftCourse(tx, blueprintId), 'activity.release', blueprintId, input, (tx, actor) => {
+      if (!readiness.ok) throw readiness.error;
+      const runtime = readiness.runtime;
       if (!runtime) throw new ApiError('RUNTIME_NOT_READY');
       if (runtime.recoveryGeneration !== input.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
       return confirmActivity(tx, actor, blueprintId, input.expectedRevision,

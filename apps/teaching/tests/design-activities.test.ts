@@ -116,7 +116,7 @@ test('teacher checks and fixes a version; only its assigned student reads approv
   try {
     const teacher = await f.login(), student = await f.login('student'), other = await f.login('other');
     const initial = await draft(f, teacher);
-    const checks = await command(f, teacher, `/api/blueprints/${initial.id}/checks`, { expectedRevision: 1 });
+    const checks = await command(f, teacher, `/api/blueprints/${initial.id}/checks`, { expectedRevision: 1 }, 'checks');
     assert.equal(checks.statusCode, 200); assert.deepEqual(checks.json().data.result.report.blocking, []);
     const input = { expectedRevision: 1, confirmed: true };
     const released = await command(f, teacher, `/api/blueprints/${initial.id}/releases`, input, 'release');
@@ -126,6 +126,9 @@ test('teacher checks and fixes a version; only its assigned student reads approv
     const assigned = await command(f, teacher, `/api/activities/${activityId}/assignments`, { expectedActivityControlRevision: 1, studentIds: ['student'] });
     assert.equal(assigned.statusCode, 200, assigned.body);
     assert.equal((await command(f, teacher, `/api/blueprints/${initial.id}`, { expectedRevision: 1, patch: { projectTitle: 'Later draft' } }, randomUUID(), 'PATCH')).statusCode, 200);
+    f.corruptEvidence();
+    assert.deepEqual((await command(f, teacher, `/api/blueprints/${initial.id}/releases`, input, 'release')).json().data, released.json().data);
+    assert.deepEqual((await command(f, teacher, `/api/blueprints/${initial.id}/checks`, { expectedRevision: 1 }, 'checks')).json().data, checks.json().data);
     f.unavailable();
     assert.deepEqual((await command(f, teacher, `/api/blueprints/${initial.id}/releases`, input, 'release')).json().data, released.json().data);
     await f.reopen();
@@ -314,6 +317,9 @@ test('a readiness response with an unbound validation fingerprint cannot open an
     assert.equal(rejected.statusCode, 422, rejected.body);
     assert.equal(rejected.json().error.code, 'INVALID_REFERENCE');
     assert.equal(rejected.json().data, undefined);
+    const checks = await command(f, teacher, `/api/blueprints/${initial.id}/checks`, { expectedRevision: 1 });
+    assert.equal(checks.statusCode, 422, checks.body);
+    assert.equal(checks.json().error.code, 'INVALID_REFERENCE');
   } finally { await f.close(); }
 });
 test('real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain',
@@ -328,7 +334,7 @@ test('real authenticated C1 readiness supports the A2 checks-release-assignment-
     const f = await fixture(sshRunner(config));
     try {
       const teacher = await f.login(), student = await f.login('student'), initial = await draft(f, teacher);
-      const checks = await command(f, teacher, `/api/blueprints/${initial.id}/checks`, { expectedRevision: 1 });
+      const checks = await command(f, teacher, `/api/blueprints/${initial.id}/checks`, { expectedRevision: 1 }, 'checks');
       assert.equal(checks.statusCode, 200, checks.body);
       assert.deepEqual(checks.json().data.result.report.blocking, []);
       const release = await command(f, teacher, `/api/blueprints/${initial.id}/releases`, { expectedRevision: 1, confirmed: true });

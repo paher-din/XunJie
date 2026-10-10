@@ -4,7 +4,7 @@ import { createVerificationApp, type VerificationOptions } from '../access/app.t
 import { finishRecordCommand } from '../db/records-adapter.ts';
 import { resultSchema, validateReceiptScope } from './storage.ts';
 import { releaseContext } from './activities.ts';
-import { availableRuntime } from './readiness.ts';
+import { queryRuntime } from './readiness.ts';
 import type { RunnerTransport } from '../records/runner.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
@@ -90,16 +90,18 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
   app.post('/api/blueprints/:id/checks', async request => {
     const blueprintId = parseRequest(paramsSchema, request.params).id;
     const input = parseRequest(checksInput, request.body);
-    let runtime: Awaited<ReturnType<typeof availableRuntime>>;
+    let readiness: Awaited<ReturnType<typeof queryRuntime>> | undefined;
     if (options.completion) {
       access.inspectCourse(request, tx => draftCourse(tx, blueprintId), 'teacher');
       requireGeneration(input.recoveryGeneration);
-      runtime = await availableRuntime(options.runner);
+      readiness = await queryRuntime(options.runner);
     }
     return execute(request, tx => draftCourse(tx, blueprintId), { name: 'draft.checks', target: blueprintId, input,
       apply: (tx, actor) => {
         const concerns = input.concerns.map(({ resolution, ...concern }) => ({ ...concern, ...(resolution === undefined ? {} : { resolution }) }));
         if (!options.completion) return checkStoredDraft(tx, actor.courseId, blueprintId, input.expectedRevision, concerns);
+        if (readiness && !readiness.ok) throw readiness.error;
+        const runtime = readiness?.ok ? readiness.runtime : undefined;
         if (runtime && runtime.recoveryGeneration !== input.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
         const context = releaseContext(tx, actor.courseId, blueprintId, concerns, runtime?.profile);
         if (context.draft.revision !== input.expectedRevision) throw new ApiError('VERSION_CONFLICT');
