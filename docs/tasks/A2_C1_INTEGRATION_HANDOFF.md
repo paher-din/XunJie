@@ -78,3 +78,7 @@ C 的 sshRunner 固定应用入口 `root@host xunjie-c1`，启用 StrictHostKeyC
 请交回源码 SHA、Node 版本、执行命令和实际测试结果；说明真实用例确已执行（不能 SKIP），记录对应 runtimeProfile/validation 状态及任何失败。无需提供配置、私钥、密码、token、原始 Session 或私有正文。成功预期为指定用例 1 通过/0 失败/0 跳过；失败保留库，交 A 修复。
 
 A 现有本机证据：typecheck/build 通过，统一 157 项中 151 通过/0 失败/6 跳过；A2 两轴审查未解决 0。真实 C1 用例本机未执行，仍是本次联调待补事实；不能将 C 的历史节点验收或 A 的合成通过计为本次正向结果。
+
+## 本次交回事实（2026-10-10）
+
+PAHER 已对上述固定候选和同摘要 bundle 实际完成 npm ci/typecheck/build、真实指定用例 1 通过/0 失败/0 跳过，原登录和 checks→release→assign→pause 链成立。A 已接收原字节输出/信封并重算指纹关联，详见 [A2 §12.6](A2_TEACHER_DESIGN_VERSIONS.md#126-paher-真实-c1-指定联调证据接收与完整服务端收口)。原请求/本机未执行状态保留其当时范围；本次未复跑全套 157 项或浏览器/TLS，不表示完整 C2/G1 通过。

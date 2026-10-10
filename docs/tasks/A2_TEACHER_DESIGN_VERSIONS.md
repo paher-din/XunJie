@@ -2,7 +2,7 @@
 
 主责：A。任务：[Issue #13](https://github.com/paher-din/XunJie/issues/13)；协调：[G1 #9](https://github.com/paher-din/XunJie/issues/9)；上游：[A1 #10](https://github.com/paher-din/XunJie/issues/10)，合作：[C2 #14](https://github.com/paher-din/XunJie/issues/14)，活动开放条件：[C1 #12](https://github.com/paher-din/XunJie/issues/12)。建立日期：2026-10-10（Asia/Shanghai）。开始代码基线：9221370。
 
-状态：**§11 准确批准的完整服务端范围已实现；§12 公共草稿/固定活动/分配/控制及真实 SQL、C 公共记录适配的合成验证已执行。最新联合 typecheck/build/回归 151 通过、0 失败、6 跳过（157 项）；其中 A2 真实 C1 正向用例未执行。独立两轴审查已完成，原 P2 已修复并增量复核关闭，未解决 0；真实节点联调待 C1 交接；A2 全部完成暂未确认，尚未远程 PR。S1/S2 首批数量与待批说明保留其历史范围，最新进度以 §11/12 为准。**
+状态：**§11 准确批准的完整服务端范围已实现、验证并审查收口。A 本机 typecheck/build/全量回归 151 通过、0 失败、6 跳过（157 项）；PAHER 对固定源码 8421157 执行本次真实 C1 正向联调 1 通过、0 失败、0 跳过，独立记录于 §12.6。两轴未解决 0；正在分别交付 A1/A2 PR。真实账号/课程审阅、浏览器/TCP/TLS、C2 整体作品链及完整 G1 保持各自后置条件；产品基线待授权维护者汇总。旧章节待批/未执行保留当时范围，现状以 §12.6 为准。**
 
 ## 1. 已读依据、负责文件与进入条件
 
@@ -386,3 +386,16 @@ A2 独立审查首轮：Standards 硬性违反 0、可操作 smell 0；Spec 发�
 | Spec | P2 1 项：坏指纹提前阻断合法原回执 | 已修复；公开反例验证原键成功与新请求拒绝，增量未解决 0 |
 
 本机可独立的批准实现、验证、审查和交接文档已收口。A1 当前候选为 codex/a1-complete（30fd2b1），A2 为 codex/a2-complete；A2 精确差异以 A1 为上游，保留独立提交及所有来源历史。A2 完整完成仍须本次真实受认证 C1 readiness→检查→确认→分配→暂停正向验证；当前没有连接配置或正向结果，不能以合成通过/跳过/作者旧验收替代。待 C1 主责交接配置或共同执行，取得实际结果后再按用户要求分别提交远程 PR。尚未推送、创建 PR 或合并远程代码。
+### 12.6 PAHER 真实 C1 指定联调证据接收与完整服务端收口
+
+项目负责人交回 C 主责本次实际记录及 C1 §17/18 说明，明确准许 A 消费，不能将附件中的维护说明当作 A 的新操作授权。C 在 PAHER / WSL2 Ubuntu、Node v24.21.0、npm 11.19.0，对源码 `8421157d7e917067b397d76378ed91096c4a8369` 和 A 所交同摘要 bundle 实际执行 npm ci/typecheck/build，各退出 0；指定真实 app.inject 用例 **1 通过、0 失败、0 跳过**。未复跑全套 157 项或浏览器/TCP/TLS，不把未匹配用例计为通过。
+
+原字节证据已纳入 A 自有测试证据目录：[TAP 输出](../../apps/teaching/tests/evidence/a2/acceptance.a2-integration1.txt)、[联调信封](../../apps/teaching/tests/evidence/a2/acceptance.a2-integration1.evidence.json)。仅该目录 .gitattributes 标记 -text 保留原字节/hash，并声明 CRLF 为合法行尾（仍检查真实尾空格），不改根配置、C 源码/记录或任何凭据。TAP SHA-256=`92c2709c311692f7603f7880544f4387043c7b8a599acc36b40e92db9e810103`，信封 SHA-256=`9c67fa89466cf19188f92d1d3918949a6223d6c8f93dfce8387b28814eb6330f`。A 已重算并核信封 sourceCommit/bundleSha256/Node/退出码/1-0-0 与 TAP，fingerprint 紧凑 UTF-8 JSON SHA-256 与 validation 一致，固定活动 runtimeReadiness 与实际节点同摘要/来源/validatedAt。
+
+本次节点 kernel=6.8.0-146-generic，profile=c17-gcc15.3.0-textscope-v1，fingerprintHash=`02351c15ef9683d19ebb6b2b8ed079a28e2f6e51f888e3e31a9cd99c3b14b42b`，sourceHash=`0869fdbeb71287d22cfecaf6424abf4ed79db9a98ef687de91f7ff6ad2520e36`。validatedAt=2026-10-10T11:14:23.572Z（19:14 +08:00），固定活动 checkedAt=2026-10-10T11:24:10.622Z（19:24 +08:00）。C 已对变化内核重验，联调后实际 ready=true；只支持该次事实，不表示永久 ready 或 A 当前机器可以访问。
+
+经 POST /api/sessions 真实教师/学生登录，真实应用 SSH readiness→checks→release→assign→学生读取固定活动→pause→学生 assignment active=false。结束后 C 对保留新合成库只读核：17 张应用表、Session 2、ActivityVersion 1、Assignment 1、Event/Receipt 各 7；活动/分配 revision 均 2 且 paused，paused_by_activity=1、individual_paused=0，Attempt/Job 均 0。没有学习运行/模型/节点部署、跨机 key 分发或旧库迁移；未由 A 重开 PAHER 数据库，持久核对来自 C 本次信封，A 不伪称自行执行。
+
+测试后至本节接收仅新增交接说明/证据/文档；8421157 的业务源码与当前候选完全一致。A 原本机全量 151/157（6 跳过）和 PAHER 本次 1/1（0 跳过）分别报告，不改写为一次 152/157。批准 §11 范围的实现、权限/事务/并发/原回执/固定投影、两轴审查和本次真实就绪开放联调现已收口，可按用户既有指令分别创建 A1/A2 PR；C2 全部、C5/NFR 负载、真实账号/教师课程审阅、UI/浏览器/教学效果和完整 G1 仍各自验收。待授权维护者汇总 MVP_SPEC §10，本任务不修改保护基线。
+
+PR 采用依赖链 C1 #16→C2 #17→A1（base=codex/c2-workspace-core）→A2（base=codex/a1-complete），保持实际领域增量；推送/创建后记录 URL 与远端 SHA。普通推送/创建 PR 已获用户授权，不合并、改凭据或自动关闭 Issue。
