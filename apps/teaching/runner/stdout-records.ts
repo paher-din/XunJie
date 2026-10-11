@@ -10,7 +10,7 @@ export function matchesStdout(text: string, expectation: StdoutRecords): boolean
     if (lines.length !== expectation.records.length) return false;
     return lines.every((line,index) => {
       const values = line.trim().match(/^([a-z0-9]+)\s+(\d+)$/);
-      return values?.[1]===expectation.records[index].word && Number(values[2])===expectation.records[index].count;
+      return values?.[1]===expectation.records[index]!.word && Number(values?.[2])===expectation.records[index]!.count;
     });
   }
   if (expectation.kind === 'find') {
@@ -32,7 +32,7 @@ export function matchesStdout(text: string, expectation: StdoutRecords): boolean
     const values=line.split('\t');
     if(values.length!==4)return false;
     const index=remaining.findIndex(record=>values[0]===record.path||values[0]===`/snapshot/${record.path}`);
-    if(index<0 || !values.slice(1).every((value,i)=>/^\d+$/.test(value)&&Number(value)===remaining[index].values[i]))return false;
+    if(index<0 || !values.slice(1).every((value,i)=>/^\d+$/.test(value)&&Number(value)===remaining[index]!.values[i]))return false;
     remaining.splice(index,1);
   }
   return remaining.length===0;

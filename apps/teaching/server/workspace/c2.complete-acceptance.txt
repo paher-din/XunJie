@@ -1,0 +1,35 @@
+✔ canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials (4.242078ms)
+✔ receipt plan binds both keys to original IDs and aliases cannot be reused for other payload (2.035283ms)
+✔ jobs retain bounded deadlines/call counts across leases and reject expired worker completion (3.316453ms)
+✔ cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy (2.557208ms)
+✔ real A1/A2 transactions persist double-key ACKs, whole files and original revisions (4218.873404ms)
+✔ late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches (3187.12916ms)
+✔ current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data (4634.571438ms)
+✔ two real processes share the original ACK, and acknowledged state survives process restart (6525.371166ms)
+✔ persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private (3961.822039ms)
+✔ unknown with no node fact never resubmits; failed result commit recovers the same immutable fact (4784.03323ms)
+✔ A2 pause stops a queued check through the original node cancellation; resume never resurrects it (3244.683271ms)
+✔ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (33593.743988ms)
+ℹ {"layers":["A1-real-session-sql","A2-fixed-activity-assignment","C1-authenticated-ssh-container"],"sqlite":{"sqliteVersion":"3.53.4","journalMode":"wal","foreignKeys":1,"synchronous":2,"busyTimeout":1000},"tables":22,"recoveryGeneration":"synthetic-generation-e5b86470-f907-48ce-9975-4793b8ac1cdd","runtimeProfileVersion":"c17-gcc15.3.0-textscope-v1","imageDigest":"sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5","fingerprintHash":"02351c15ef9683d19ebb6b2b8ed079a28e2f6e51f888e3e31a9cd99c3b14b42b","runnerSourceHash":"0869fdbeb71287d22cfecaf6424abf4ed79db9a98ef687de91f7ff6ad2520e36","originalRunId":"0dd33b65-bd32-423a-90aa-71f64659d487","oldSnapshotId":"278cce1f-6c59-434b-8a5d-9a1ef499a436","courseVerdict":"failed","checkFiles":"redacted","cancelledBeforeDispatch":true,"durableReopen":true,"readOnlyReport":true,"transportCalls":{"submits":3,"queries":19,"cancels":1}}
+✔ run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution (9.615462ms)
+✔ lost transport queries same original run and rechecks current authorization before submit (3.261018ms)
+✔ check cancellation keeps stage until the authenticated node confirms no pending units (2.075928ms)
+✔ confirmed original facts reconcile expired/unknown leases and never become current-code claims (5.095017ms)
+✔ authorized diagnostic reads exclude other attempts and private check detail (3.13966ms)
+✔ pause queued run retains cancellation intent and prevents new execution until node confirmation (4.67875ms)
+✔ stopping an already confirmed cancelled run under a new key preserves terminal state (1.644175ms)
+✔ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (17158.888508ms)
+✔ whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted (7.75337ms)
+✔ CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input (10.498938ms)
+✔ exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges (1.555564ms)
+✔ snapshot and ObjectRef bind old file instance/version/body rather than current paths (3.493702ms)
+✔ capture/reminder/lifecycle controls are separate and stale process does not block saving (1.176245ms)
+✔ unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely (1.827221ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 82749.41695

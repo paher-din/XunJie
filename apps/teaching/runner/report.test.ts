@@ -16,8 +16,8 @@ test('report oracle uses approved ASCII word/line/byte/tie semantics', () => {
     { word: 'c', count: 3 }, { word: 'is', count: 2 }, { word: 'memory', count: 2 },
     { word: 'and', count: 1 }, { word: 'fast', count: 1 },
   ]);
-  assert.equal(expectedReport([{path:'empty',text:''}]).files[0].lines, 0);
-  assert.equal(expectedReport([{path:'last',text:'one'}]).files[0].lines, 1);
+  assert.equal(expectedReport([{path:'empty',text:''}]).files[0]!.lines, 0);
+  assert.equal(expectedReport([{path:'last',text:'one'}]).files[0]!.lines, 1);
 });
 
 test('report verifies all semantics while accepting non-semantic whitespace and bound sandbox names', () => {

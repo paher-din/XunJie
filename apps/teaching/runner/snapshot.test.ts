@@ -10,7 +10,7 @@ function snapshot(text = 'int main(void) { return 0; }', path = 'main.c'): Snaps
 
 test('hashes exact UTF-8 content and byte-sorted compact manifests', () => {
   const value = snapshot('中文\r\n🙂\n');
-  value.files.push({ ...value.files[0], fileId: 'file-2', path: 'z.txt' });
+  value.files.push({ ...value.files[0]!, fileId: 'file-2', path: 'z.txt' });
   value.hash = manifestHash(value.files);
   validateSnapshot(value);
   assert.equal(value.hash, manifestHash([...value.files].reverse()));
@@ -27,13 +27,13 @@ test('rejects traversal, absolute, drive, UNC, backslash, NUL and empty componen
 
 test('rejects stale body and manifest hashes and duplicate file identities', () => {
   const value = snapshot();
-  value.files[0].text += '\n';
+  value.files[0]!.text += '\n';
   assert.throws(() => validateSnapshot(value), /content hash mismatch/);
   const duplicate = snapshot();
-  duplicate.files.push({ ...duplicate.files[0] });
+  duplicate.files.push({ ...duplicate.files[0]! });
   assert.throws(() => validateSnapshot(duplicate), /Duplicate/);
   const changedPath = snapshot();
-  changedPath.files[0].path = 'other.c';
+  changedPath.files[0]!.path = 'other.c';
   assert.throws(() => validateSnapshot(changedPath), /manifest hash mismatch/);
 });
 
@@ -43,14 +43,14 @@ test('enforces file count and UTF-8 byte budget including multibyte text', () =>
   assert.throws(() => validateSnapshot(snapshot('a'.repeat(1024 * 1024 + 1))), /1 MiB/);
   assert.throws(() => validateSnapshot(snapshot('中'.repeat(400000))), /1 MiB/);
   const many = snapshot();
-  many.files = Array.from({ length: 51 }, (_, i) => ({ ...many.files[0], fileId: `f${i}`, path: `f${i}.c` }));
+  many.files = Array.from({ length: 51 }, (_, i) => ({ ...many.files[0]!, fileId: `f${i}`, path: `f${i}.c` }));
   many.hash = manifestHash(many.files);
   assert.throws(() => validateSnapshot(many), /Too many/);
 });
 
 test('builds fixed compiler argv only from approved C sources', () => {
   const value = snapshot('int main(void) { return 0; }', '-fplugin=evil.c');
-  value.files.push({ ...value.files[0], fileId: 'file-2', path: 'Makefile', text: 'all: echo bad', contentHash: sha256('all: echo bad') });
+  value.files.push({ ...value.files[0]!, fileId: 'file-2', path: 'Makefile', text: 'all: echo bad', contentHash: sha256('all: echo bad') });
   value.hash = manifestHash(value.files);
   const args = compilerArgs(value, 'file-1');
   assert(args.includes('/snapshot/-fplugin=evil.c'));

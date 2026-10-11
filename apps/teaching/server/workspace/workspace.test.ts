@@ -20,7 +20,7 @@ const range=(startLine:number,startColumn:number,endLine:number,endColumn:number
 test('whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted',()=>{
   const original=state(),request=batch([{kind:'create',clientFileKey:'new',path:'main.c',text:'first'}]);
   const first=syncCommand(original,context(),request,{new:'file'});
-  assert.equal(original.files.length,0);assert.equal(first.state.files[0].documentVersion,1);
+  assert.equal(original.files.length,0);assert.equal(first.state.files[0]!.documentVersion,1);
   assert.equal(first.state.attempt.status,'active');assert.equal(first.state.attempt.workspaceRevision,1);
   const replay=syncCommand(first.state,context(),request,{new:'must-not-create'});
   assert.equal(replay.replayed,true);assert.deepEqual(replay.receipt,first.receipt);assert.equal(replay.state.records.events.length,1);
@@ -36,14 +36,14 @@ test('CAS conflicts, paused updates, recycle/recreate/restore and limits never m
   const recycled=syncFiles(current,files,batch([{kind:'recycle',fileId:'file',baseVersion:1}]),true,{});
   const rebuilt=syncFiles(recycled.attempt,recycled.files,batch([{kind:'create',clientFileKey:'new',path:'main.c',text:'new'}],1),true,{new:'new-instance'});
   assert.throws(()=>syncFiles(rebuilt.attempt,rebuilt.files,batch([{kind:'restore',fileId:'file',baseVersion:2}],2),true,{}),/occupied/);
-  assert.equal(rebuilt.files[0].fileId,'file');assert.equal(rebuilt.files[0].lifecycle,'recycled');
+  assert.equal(rebuilt.files[0]!.fileId,'file');assert.equal(rebuilt.files[0]!.lifecycle,'recycled');
   const paused={...current,status:'paused' as const};
-  assert.equal(syncFiles(paused,files,batch([{kind:'update',fileId:'file',baseVersion:1,text:'saved'}]),false,{}).files[0].text,'saved');
+  assert.equal(syncFiles(paused,files,batch([{kind:'update',fileId:'file',baseVersion:1,text:'saved'}]),false,{}).files[0]!.text,'saved');
   assert.throws(()=>syncFiles(paused,files,batch([{kind:'recycle',fileId:'file',baseVersion:1}]),false,{}),/Paused/);
   assert.throws(()=>syncFiles(current,files,batch([{kind:'update',fileId:'file',baseVersion:1,text:'x'.repeat(1048577)}]),true,{}),/limit/);
   const fifty=Array.from({length:50},(_,index)=>file(`f${index}`,`f${index}.txt`,''));
   assert.throws(()=>syncFiles(current,fifty,batch([{kind:'create',clientFileKey:'new',path:'51.txt',text:''}]),true,{new:'51'}),/limit/);
-  assert.equal(files[0].documentVersion,1);assert.equal(files[0].text,'int main(void){return 0;}');
+  assert.equal(files[0]!.documentVersion,1);assert.equal(files[0]!.text,'int main(void){return 0;}');
 });
 test('exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges',()=>{
   const text='😀a\r\n中文\n';
@@ -57,10 +57,10 @@ test('exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed range
 test('snapshot and ObjectRef bind old file instance/version/body rather than current paths',()=>{
   const current=attempt(),files=[file('file','main.c','😀a\r\n')];
   const snapshot=freezeSnapshot(current,files,0,'snapshot',now);
-  const reference={kind:'code' as const,attemptId:'attempt',snapshotId:'snapshot',fileId:'file',path:'main.c',documentVersion:1,contentHash:files[0].contentHash,range:range(1,1,1,3)};
+  const reference={kind:'code' as const,attemptId:'attempt',snapshotId:'snapshot',fileId:'file',path:'main.c',documentVersion:1,contentHash:files[0]!.contentHash,range:range(1,1,1,3)};
   const refs={snapshots:[snapshot],runs:[],resources:[]};
   assert.deepEqual(validateObjectRef(current,reference,refs),reference);
-  files[0].text='changed';assert.equal(snapshot.files[0].text,'😀a\r\n');
+  files[0]!.text='changed';assert.equal(snapshot.files[0]!.text,'😀a\r\n');
   assert.throws(()=>validateObjectRef(current,{...reference,fileId:'new-instance'},refs),/instance/);
   assert.throws(()=>validateObjectRef(current,{...reference,attemptId:'other'},refs),/scope/);
   assert.throws(()=>freezeSnapshot(current,[file()],1,'wrong',now),/version/);
@@ -77,7 +77,7 @@ test('capture/reminder/lifecycle controls are separate and stale process does no
   const resumed=controlAttempt(disabled.attempt,2,{kind:'capture',value:true},true);
   const request={...batch([{kind:'update',fileId:'file',baseVersion:1,text:'latest'}]),process:{captureRevision:0}};
   const saved=syncFiles(resumed.attempt,[file()],request,true,{});
-  assert.equal(saved.files[0].text,'latest');assert.equal(saved.process.reason,'stale_capture_revision');
+  assert.equal(saved.files[0]!.text,'latest');assert.equal(saved.process.reason,'stale_capture_revision');
   const started=beginExplicitOperation(current,1,true);const paused=controlAttempt(started,2,{kind:'pause'},true);
   assert.equal(paused.attempt.decisionEpoch,1);assert(paused.cancelPurposes.includes('student_run'));
   assert.throws(()=>controlAttempt(paused.attempt,3,{kind:'resume'},false),/overridden/);
@@ -90,6 +90,6 @@ test('unapproved fields, pre-ACK file operations and prototype-like client keys 
   assert.throws(()=>syncFiles(attempt(),[],batch([{kind:'create',clientFileKey:'new',path:'main.c',text:'first'},
     {kind:'update',fileId:'new-file',baseVersion:1,text:'not acknowledged'}]),true,{new:'new-file'}),/confirmed/);
   const poisoned=JSON.parse(JSON.stringify(batch([{kind:'create',clientFileKey:'new',path:'safe.c',text:'safe'}])));
-  poisoned.operations[0].shell='arbitrary';assert.throws(()=>syncFiles(attempt(),[],poisoned,true,{new:'new-file'}),/approved/);
+  poisoned.operations[0]!.shell='arbitrary';assert.throws(()=>syncFiles(attempt(),[],poisoned,true,{new:'new-file'}),/approved/);
   assert.throws(()=>snapshotCommand({...original,attempt:{...original.attempt,status:'submitted'}},context('snapshots'),0,'new'),/read-only/);
 });

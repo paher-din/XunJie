@@ -91,7 +91,8 @@ export function runCommand(state:WorkspaceState,context:CommandContext,request:R
   const checks=structuredClone(state.checks);
   if(request.mode==='course_check') {
     if(!runtime.policyVersion||!runtime.checkRuleVersion||checks.some(check=>check.state==='active'))throw new RunnerError('STATE_CONFLICT','Check policy or prior check termination unavailable');
-    attempt={...attempt,decisionEpoch:attempt.decisionEpoch+1};
+    attempt={...attempt,decisionEpoch:attempt.decisionEpoch+1,
+      attemptRevision:attempt.attemptRevision===state.attempt.attemptRevision?attempt.attemptRevision+1:attempt.attemptRevision};
     jobs=cancelByPurpose(jobs,context.identity.scope,runtime.checkCancelPurposes).jobs;
     checks.push({jobId:ids.jobId,runId:ids.runId,policyVersion:runtime.policyVersion,state:'active'});
   }
@@ -119,8 +120,9 @@ export function cancelRunCommand(state:WorkspaceState,context:CommandContext,job
 
 function ownRun(state:WorkspaceState,jobId:string) {
   const jobs=state.records.jobs.filter(row=>row.jobId===jobId),runs=state.runs.filter(row=>row.jobId===jobId);
-  if(jobs.length!==1||runs.length!==1)throw new RunnerError('INVALID_REFERENCE','Original run/job association unavailable');
-  const job=jobs[0],run=runs[0],scope=run.submission.identity.authorizedScope;
+  const [job]=jobs,[run]=runs;
+  if(jobs.length!==1||runs.length!==1||!job||!run)throw new RunnerError('INVALID_REFERENCE','Original run/job association unavailable');
+  const scope=run.submission.identity.authorizedScope;
   if(job.purpose!=='student_run'||job.scope.attemptId!==state.attempt.attemptId||job.scope.courseId!==state.attempt.courseId
     ||job.scope.studentId!==state.attempt.studentId||scope.attemptId!==state.attempt.attemptId||scope.courseId!==state.attempt.courseId
     ||scope.userId!==state.attempt.studentId||run.runId!==job.runId||run.submission.identity.runId!==run.runId)throw new RunnerError('FORBIDDEN','Original run scope mismatch');
@@ -132,16 +134,28 @@ export function claimRun(state:WorkspaceState,jobId:string,token:string,until:st
   const claimed=claimJob(job,token,until,generation,now);
   return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?claimed:row)}};
 }
+export function claimRunReconciliation(state:WorkspaceState,jobId:string,token:string,until:string,generation:string,now:string) {
+  const {job}=ownRun(state,jobId);
+  if(job.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Original reconciliation generation required');
+  if(!['running','outcome_unknown','cancelling'].includes(job.status)||(!job.stopRequested&&job.leaseUntil&&Date.parse(job.leaseUntil)>Date.parse(now)))throw new RunnerError('STATE_CONFLICT','Original run is already leased or terminal');
+  if(!token||!Number.isFinite(Date.parse(now))||!Number.isFinite(Date.parse(until))||Date.parse(until)<=Date.parse(now)
+    ||Date.parse(until)>Date.parse(now)+150000)throw new RunnerError('INVALID_REQUEST','Bounded reconciliation lease required');
+  const leased:Job={...job,leaseToken:token,leaseUntil:until,status:job.stopRequested?'cancelling':'outcome_unknown'};
+  return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?leased:row)}};
+}
 export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
   if(authorize()!==true)throw new RunnerError('FORBIDDEN','Workspace read denied');
   const own=state.records.jobs.filter(row=>row.scope.attemptId===state.attempt.attemptId
     &&row.scope.courseId===state.attempt.courseId&&row.scope.studentId===state.attempt.studentId);
   return structuredClone({attempt:state.attempt,files:state.files.filter(row=>row.attemptId===state.attempt.attemptId),
     snapshots:state.snapshots.filter(row=>row.attemptId===state.attempt.attemptId&&row.activityVersionId===state.attempt.activityVersionId),
-    jobs:own,runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)).map(run=>{ownRun(state,run.jobId);return {
+    jobs:own.map(job=>({jobId:job.jobId,kind:job.kind,purpose:job.purpose,scope:job.scope,requestReceiptId:job.requestReceiptId,
+      status:job.status,stopRequested:job.stopRequested,expectedRevision:job.expectedRevision,decisionEpoch:job.decisionEpoch,
+      recoveryGeneration:job.recoveryGeneration,acceptedAt:job.acceptedAt,deadline:job.deadline,attemptCount:job.attemptCount,
+      ...(job.runId?{runId:job.runId}:{})})),runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)).map(run=>{ownRun(state,run.jobId);return {
       runId:run.runId,jobId:run.jobId,snapshotId:run.submission.identity.snapshotId,snapshotHash:run.submission.identity.snapshotHash,
       mode:run.submission.mode,runtimeProfileVersion:run.submission.identity.runtimeProfileVersion,
-      imageDigest:run.submission.identity.imageDigest,resultHash:run.resultHash,diagnostics:runDiagnostics(run)};}),
+      imageDigest:run.submission.identity.imageDigest,diagnostics:runDiagnostics(run)};}),
     checks:state.checks.filter(row=>own.some(job=>job.jobId===row.jobId))});
 }
 
@@ -152,7 +166,8 @@ export function reconcileRun(state:WorkspaceState,jobId:string,result:{record:un
   const confirmed=validateRunResult(run.submission,result.record);
   if(confirmed.contentHash!==result.contentHash)throw new RunnerError('INVALID_REFERENCE','Run result hash mismatch');
   if(run.resultHash&&run.resultHash!==result.contentHash)throw new RunnerError('IDEMPOTENCY_CONFLICT','Original run result changed');
-  if(job.leaseToken&&job.leaseToken!==leaseToken)throw new RunnerError('STATE_CONFLICT','Current reconciliation lease required');
+  if(run.resultHash&&job.resultRef===result.resultRef&&['succeeded','cancelled'].includes(job.status))return structuredClone(state);
+  if(job.leaseToken&&(job.leaseToken!==leaseToken||!job.leaseUntil||Date.parse(job.leaseUntil)<=Date.parse(now)))throw new RunnerError('STATE_CONFLICT','Current reconciliation lease required');
   if(!result.resultRef||!Number.isFinite(Date.parse(now)))throw new RunnerError('INVALID_REFERENCE','Original result reference and trusted time required');
   if(run.resultHash&&job.resultRef!==result.resultRef)throw new RunnerError('IDEMPOTENCY_CONFLICT','Original result reference changed');
   if(!['running','outcome_unknown','cancelling','succeeded','cancelled'].includes(job.status))throw new RunnerError('STATE_CONFLICT','Run is not awaiting original reconciliation');
@@ -176,6 +191,18 @@ export function confirmNodeCancellation(state:WorkspaceState,jobId:string,nodeFa
   if(!fact||fact.state!=='cancelled'||fact.reserved||!fact.stopRequested||fact.pending.length)throw new RunnerError('STATE_CONFLICT','Full node cancellation is not confirmed');
   const confirmed=job.status==='cancelled'&&job.stopRequested?job:confirmRunStopped(job,run.runId,true);
   return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?confirmed:row)},
+    checks:state.checks.map(check=>check.jobId===jobId?{...check,state:'ended' as const}:check)};
+}
+export function confirmNodeFailure(state:WorkspaceState,jobId:string,nodeFact:unknown,leaseToken:string,generation:string,now:string) {
+  const {job,run}=ownRun(state,jobId);
+  if(job.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Original run generation required');
+  if(!Number.isFinite(Date.parse(now))||!leaseToken||job.leaseToken!==leaseToken||!job.leaseUntil||Date.parse(job.leaseUntil)<=Date.parse(now))throw new RunnerError('STATE_CONFLICT','Current failure reconciliation lease required');
+  const fact=validateRunFact(run.submission,nodeFact);
+  if(fact&&fact.identity.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Node failure generation reconciliation required');
+  if(!fact||fact.state!=='failed'||fact.reserved||fact.units.length||fact.pending.length
+    ||fact.resultRef!==undefined||fact.resultHash!==undefined||run.resultHash||!['running','outcome_unknown','cancelling','failed'].includes(job.status))throw new RunnerError('STATE_CONFLICT','Full node failure without a result is not confirmed');
+  return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?
+    {...row,status:'failed' as const,failure:'original_runner_failed_without_result'}:row)},
     checks:state.checks.map(check=>check.jobId===jobId?{...check,state:'ended' as const}:check)};
 }
 

@@ -192,7 +192,7 @@ export class DockerExecutor {
       if (disk.bavail === 0 && !failureKind) failureKind = 'temp_limit';
       return { phase: spec.phase, containerId, imageId: spec.image, exitCode: state.ExitCode,
         stdout: Buffer.concat(stdout).toString('utf8'), stderr: Buffer.concat(stderr).toString('utf8'),
-        outputBytes, durationMs: performance.now() - startedAt, pidsMaxEvents, cgroupLimits,
+        outputBytes, durationMs: performance.now() - startedAt, pidsMaxEvents, ...(cgroupLimits ? { cgroupLimits } : {}),
         unitTerminated: !state.Running && state.Status === 'exited' && !state.FinishedAt.startsWith('0001-'),
         ...(failureKind ? { failureKind } : {}) };
     } finally {

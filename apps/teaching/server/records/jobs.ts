@@ -82,7 +82,7 @@ export function invalidateInTransaction(jobs:Job[],request:{courseId:string;stud
   const epochs={...currentEpochs};
   for(const id of request.attemptIds) {
     if(!Number.isSafeInteger(request.expectedEpochs[id])||epochs[id]!==request.expectedEpochs[id])throw new RunnerError('VERSION_CONFLICT','Decision epoch mismatch');
-    epochs[id]++;
+    epochs[id]=request.expectedEpochs[id]!+1;
   }
   const jobIds:string[]=[];
   const next=jobs.map(job=>{

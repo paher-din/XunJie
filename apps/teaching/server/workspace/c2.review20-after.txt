@@ -1,0 +1,13 @@
+✔ review: late runs failure rolls back student session activity with Job, receipt and event (2869.502678ms)
+✔ review: original run ACK and conflicts return before pending readiness; authorization still applies (2622.947716ms)
+✔ review: concurrent new runs recheck the original receipt after readiness (2664.976141ms)
+✔ review: current teacher reads retained workspace, snapshot and run after student withdrawal (3289.096194ms)
+✔ review: real RunControl preparation failure ends check without fabricating a RunRecord (3485.333465ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15410.817286

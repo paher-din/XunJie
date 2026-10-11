@@ -5,7 +5,9 @@ import {nodeFingerprint} from './fingerprint.ts';
 import {readJson} from './node-files.ts';
 
 // Maintenance-only entry; evidence is created by acceptance.ts from actual child exit codes.
-const config=readJson(process.argv[2]);
+const configPath=process.argv[2];
+if(!configPath)throw Error('Runner configuration argument is required');
+const config=readJson(configPath);
 let text='';for await(const bytes of process.stdin)text+=bytes.toString('utf8');
 const evidence=JSON.parse(text);
 if(!Array.isArray(evidence)||evidence.length!==3||new Set(evidence.map(item=>item.suite)).size!==3||!evidence.every(item=>item.exitCode===0

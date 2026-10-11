@@ -30,7 +30,7 @@ export function collectResultFiles(workDirectory: string, names: string[], remai
       let current = root;
       const parts = relativeName.split('/');
       for (let index = 0; index < parts.length; index++) {
-        current = join(current, parts[index]);
+        current = join(current, parts[index]!);
         const status = lstatSync(current);
         if (status.isSymbolicLink() || (index < parts.length - 1 && !status.isDirectory())
           || (index === parts.length - 1 && !status.isFile())) {
@@ -51,7 +51,7 @@ export function collectResultFiles(workDirectory: string, names: string[], remai
       }
       let text: string;
       try {
-        text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
       } catch {
         return { relativeName, status: 'incomplete', bytes: bytes.length, contentHash: sha256(bytes) };
       }

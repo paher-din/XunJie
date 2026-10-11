@@ -16,6 +16,7 @@ import type {SubmitRun,RunnerCommand} from '../contracts/runner/index.ts';
 
 const exec=promisify(execFile);
 const configPath=process.argv[2];
+if(!configPath)throw new RunnerError('INVALID_REQUEST','Runner configuration argument is required');
 const config=readJson(configPath);
 mkdirSync(config.state,{recursive:true,mode:0o700});
 const ledger=join(config.state,'ledger.jsonl');
