@@ -88,6 +88,7 @@ export function syncFiles(attempt:Attempt,files:ProjectFile[],batch:SyncBatch,as
   }
   validateFiles(attempt,next);
   const nextAttempt=assignmentActive?activate(attempt):structuredClone(attempt);
+  if(nextAttempt.attemptRevision===attempt.attemptRevision)nextAttempt.attemptRevision++;
   nextAttempt.workspaceRevision++;
   const processAccepted=Boolean(batch.process&&attempt.collecting&&Number.isSafeInteger(batch.process.captureRevision)&&batch.process.captureRevision===attempt.captureRevision);
   return {attempt:nextAttempt,files:next,created,

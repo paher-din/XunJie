@@ -1,0 +1,40 @@
+✔ canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials (3.869948ms)
+✔ receipt plan binds both keys to original IDs and aliases cannot be reused for other payload (1.755079ms)
+✔ jobs retain bounded deadlines/call counts across leases and reject expired worker completion (2.348574ms)
+✔ cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy (2.562553ms)
+✔ real A1/A2 transactions persist double-key ACKs, whole files and original revisions (3779.708709ms)
+✔ late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches (2828.23033ms)
+✔ current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data (4038.917065ms)
+✔ two real processes share the original ACK, and acknowledged state survives process restart (5901.171859ms)
+✔ persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private (3261.213377ms)
+✔ unknown with no node fact never resubmits; failed result commit recovers the same immutable fact (3963.451627ms)
+✔ A2 pause stops a queued check through the original node cancellation; resume never resurrects it (2584.557548ms)
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (0.600078ms) # SKIP
+✔ review: late runs failure rolls back student session activity with Job, receipt and event (3057.346556ms)
+✔ review: original run ACK and conflicts return before pending readiness; authorization still applies (2697.570077ms)
+✔ review: concurrent new runs recheck the original receipt after readiness (2695.944495ms)
+✔ review: current teacher reads retained workspace, snapshot and run after student withdrawal (3410.362954ms)
+✔ review: real RunControl preparation failure ends check without fabricating a RunRecord (3641.757366ms)
+✔ run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution (8.91706ms)
+✔ lost transport queries same original run and rechecks current authorization before submit (3.207124ms)
+✔ check cancellation keeps stage until the authenticated node confirms no pending units (2.068964ms)
+✔ confirmed failure requires original identity, current lease/generation and no units or result (2.330751ms)
+✔ confirmed original facts reconcile expired/unknown leases and never become current-code claims (4.663867ms)
+✔ authorized diagnostic reads exclude other attempts and private check detail (3.872233ms)
+✔ pause queued run retains cancellation intent and prevents new execution until node confirmation (3.091097ms)
+✔ stopping an already confirmed cancelled run under a new key preserves terminal state (1.73409ms)
+﹣ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (0.332379ms) # SKIP
+✔ whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted (5.360515ms)
+✔ CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input (6.938484ms)
+✔ exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges (1.115819ms)
+✔ snapshot and ObjectRef bind old file instance/version/body rather than current paths (1.828536ms)
+✔ capture/reminder/lifecycle controls are separate and stale process does not block saving (0.767119ms)
+✔ unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely (1.234329ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 26914.607847

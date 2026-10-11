@@ -1,6 +1,10 @@
 # C2：学生工作区、固定快照与基础作业
 
-日期：2026-10-10（Asia/Shanghai）。主责：C；Issue：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。状态：批准的首批核心与实际 C1 对接验证已完成；真实 A1/A2/SQL 提供者尚未接入，完整 C2 未完成，Issue 保持 Open。
+日期：2026-10-10（Asia/Shanghai）。主责：C；Issue：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。状态：完整 C2 服务端已实现并通过真实 A1/A2/SQLite/C1 作品链验收，最终记录见 §11；工作分支 `codex/c2-complete` 已通过 [PR #20](https://github.com/paher-din/XunJie/pull/20) 提交审查，Open/非 Draft，尚未合并，Issue 保持 Open。浏览器、真人、业务负载与旧备份恢复分别后置，不计作完整产品/G1 通过。
+
+2026-10-11 最新修复：PR #20 四项 P2 已实现反例修复，C2 新组合 32/32（含原两项真实节点）通过；全工程复跑 177 通过/0 失败/5 跳过，首轮两项 A2 认证失败与仍存在的 WSL 墙钟回拨独立记录。当前修复事实/范围见 §13，等待审阅者复验，不自签独立批准；§11 原数字保留其历史时点。
+
+最新推进状态：A1/A2 已经由 PR #18/#19 合入 main，本任务从 `ac96cf6083b8f7b8403896e2a505b53e94c20d58` 的独立干净工作树完成完整 C2。旧章节保留各自时点；准确存储/最小 A 接缝的批准前提案与负责人批准记录见 §10/10.4，当前交付以 §11 为准。
 
 ## 1. 依据、批准与写入范围
 
@@ -150,3 +154,173 @@ C2 反例结果：旧源码新增用例为 13 通过/4 失败/1 真实节点项�
 新 C2 输出 SHA-256：77f155386618af34cb2521f3f01818541f4f7920dce011f76a42f18820d14563。
 
 审查修复实际发布：C2 根因修复 8bf2a5a、新父分支普通 merge 与新组合验证 `2bfaa65af90bc921b38d45b7451978e8b44c5f17` 已非强制推送 PR #17；最终正文/三项修复/18 项结果、base=codex/c1-isolated-runner 与远端 head/文件白名单逐项回读一致。仍只包含 C2 增量，未将父 C1、A/B/G1 或受保护基线作为 C2 差异。两个 PR/Issues 保持 Open，未合并或自签独立批准，审查线程留给原审查者复验；原“由 A 交 A1/A2 后接入”决定和完整 C2 关闭条件不变。
+
+## 10. A1/A2 合入后的完整 C2 收口方案（准确存储与最小接缝待批准）
+
+已重读当前 AGENTS/README、PRD §4.2/4.4/5/8、MVP M-03/M-05/M-07/M-09/M-10/§4～6、TECH §5/7.2.1/7.4/8、本文，核对 A1 的当前权限与同连接 Transaction、A2 固定活动/分配控制工厂及 [A2→C1 交接](A2_C1_INTEGRATION_HANDOFF.md)。验收对应 AC-03/04/06/12/15 的服务端部分与 NFR-04；浏览器、负载性能、旧备份恢复、真人和教学效果不提前计入。
+
+现有 `createCompletionDatabase` 只批准十七表，`attempt_json` 的严格结构不接纳文件/快照/运行数据，`finishRecordCommand` 明确拒绝 sync。不能把正文塞进共享 Attempt/Receipt 的未约定字段来绕过建表授权。保留 A 已交授权/事务/分配/公共工程，不建立第二个应用基础、DB 驱动或业务队列。
+
+### 10.1 最小准确存储提案
+
+新增独立 `createWorkspaceDatabase`，只在系统临时目录创建全新的 `xunjie-a12-completion-*/synthetic.sqlite`，沿用 A 的目标检查、独占创建、WAL/FULL、同步短事务与关闭重开入口。一次初始化原十七表加下列五表，共二十二表；原五/十/十七表工厂保持各自范围。**不升级、迁移、导入、清理或复用任何已有库；全部合成库关闭后保留。**
+
+| 新表 | 精确字段/约束与用途 |
+| --- | --- |
+| `workspace_files` | `file_id` 主键、`attempt_id` 外键、`path`、`document_version` 正整数、`lifecycle=active/recycled`、64 位 `content_hash`、合法 JSON `file_json`；同 Attempt 的 active path 部分唯一索引。当前确认文件可更新，回收不删除，快照保留历史正文 |
+| `artifact_snapshots` | `snapshot_id` 主键、`attempt_id` 外键、非负 `workspace_revision`、64 位 `content_hash`、合法 JSON `snapshot_json`；只追加完整 manifest-v1 快照，读取重验内容与实例/活动归属，不更新历史 |
+| `workspace_runs` | `run_id` 主键、`attempt_id` 外键、唯一 `job_id` 外键、`snapshot_id` 外键、合法 JSON `submission_json`；可空结果 JSON/hash；可空 `check_policy_version` 和 `check_state=active/ended`。原请求不可改，结果首次接纳后同 hash/引用，检查直到权威终止保持 active |
+| `workspace_command_bindings` | `(kind,key_json)` 主键，kind 为 public/sync，`receipt_id` 外键、合法 JSON `identity_json`。public 键为账号/command/target/key；sync 键为账号/Attempt/clientId/clientSeq。多公共键可指原回执，绑定只追加、不同原回执拒绝，恢复代际与当前权限先查 |
+| `workspace_process_records` | `receipt_id` 主键/外键、`attempt_id` 外键、非负 `capture_revision`、`kind=sync/coverage`、合法 JSON `record_json`。仅当前 collecting 区间接受同步过程正文；采集开关记录服务端覆盖边界/空窗；缺/旧 captureRevision 不写观察，不补造或重贴代际，功能作品正常保存 |
+
+同事务顺序：当前 A1 Session/成员/资源授权与 A2 分配 → 原回执/双键 → 新请求 CAS/完整变更计划 → Attempt/确认作品/不可变快照 → 原共享 Event/Receipt/Job 与绑定/必要过程 → commit → ACK。文件先解除将回收的 active 路径再保存最终文件；任何失败，包括后段外键/唯一约束，整批回滚，Session 活跃时间也不提前确认。
+
+### 10.2 最小接缝与实施文件提案
+
+主要写入 C 所有 `server/workspace/**`、`server/records/**`、`contracts/workspace/**`、对应测试/子进程夹具、本文和 README。为复用 A 的实际连接与记录校验，申请仅允许两项 A 文件的最小接缝调整：
+
+1. `server/db/transaction.ts`：新增上述新临时库工厂并引用 C 所有五表 schema，沿用已有目标/事务实现；旧工厂与事务权限不变。
+2. `server/db/records-adapter.ts`：导出已有受校验记录读取、提取原 Event/Receipt 写入为可复用同 tx 计划保存入口；原 finishRecordCommand 行为兼容。C 保存绑定/文件/快照/运行，不自行复制 A 的 SQL 记录格式或绕过严格校验。
+
+不改 A 的 Session/密码/分配算法、package/lock/tsconfig、公共状态/错误/基线或 UI。HTTP 工厂由 C 组合现有 createDesignApp，注册 TECH 已批准的 attempts/sync/snapshots/runs/controls/cancel 与受控读取；只接受当前登录身份，拒绝 body 冒充角色/学生、shell/profile 任意配置。工作区输入严格校验，UTF-8 字节/UTF-16 范围与首批核心保持一致。
+
+持久 Job 消费使用原 jobs 表和 C 租约能力，提供宿主可调用的 worker 接缝；不另建队列或默认监听。分派前与最终接纳短事务核成员/分配/Attempt/停止/代际，网络始终在事务外。ordinary run 保存原事实；限定检查取固定活动规则/政策，B2 受控读取当前检查阶段与允许帮助，不透传私有测试输出/hash。停止先持久 intent，worker 对原 runId 取消/查询，unknown 与重启仅对账原 ID，不能自动新建或重新提交。
+
+### 10.3 验证与操作风险
+
+复用准确 lock 与已批准 Node 24.21.0，npm ci/typecheck/build/统一回归；无需新依赖、密钥或环境文件。合成登录凭据/签名只在测试内存与获准进程 IPC 中使用，不打印或持久保存原值。实际节点仅复用 C 已有 application SSH key/known_hosts，通过 readiness/submit/query/cancel/result 完成合成学生链，不改节点配置、执行代际/维护验收或密钥。
+
+新增真实 SQLite 同事务成功/后段故障全回滚、双键原 ACK/异摘要/旧版本/跨范围、关库重开与子进程竞争/重启证据；A1/A2 实际教师登录确认/分配→学生创建 Attempt→整批同步→旧快照→C1 普通运行/可信课程检查，以及活动/个人/Attempt 暂停、采集空窗、停止、原 ID 失联对账反例。最终按层报告；未运行项保持未执行，受保护基线进度待授权维护者汇总。
+
+风险：会新增并保留含合成数据的临时 SQLite 文件，占用本机磁盘；两个共享 A 文件增加最小导出/工厂，须全工程兼容回归；真实 C1 合成运行占用既有两槽和固定资源。方案不处理真实学生/生产库、旧库迁移、删除、凭据/CI 修改、公开部署或合并。AGENTS 的“数据库 schema 变更或数据迁移”和“大改动先提出方案，经用户确认后实施”要求此准确新增范围先确认。当前仅方案准备，新增 schema/工厂和整链编码尚未执行。
+
+### 10.4 准确批准与实施起点
+
+项目负责人明确答复“批准第 10 节全部方案，继续完成 C2”，批准 §10.1～10.3 的全新二十二表合成库、两个 A 文件的最小接缝与完整 C2 验证。受保护基线、旧库/生产库、删除、凭据/CI 和发布边界保持；原方案中的待批准是批准前状态。
+
+接缝核查补充：A 的 saveAttempt 要求任何实际 Attempt JSON 变化递增 attemptRevision。C 同步递增 workspaceRevision 时同时推进 attemptRevision；active 的限定检查改变 decisionEpoch 时也推进 attemptRevision，保持同 tx CAS 单调而不修改 A 已交规则。普通执行事实仍绑定旧快照，后续文件编辑不改变原执行正文。实际实施/验证结果后续追加，不把本节计划写成通过。
+
+首轮真实集成 6 项中 5 通过、1 失败：A 的 Zod JSON 解析在读回 ACK 时丢弃合法 `__proto__` clientFileKey，造成同请求重放的 ID 映射缺失。已在批准的 records-adapter 接缝范围保留 JSON 校验、去除该字段的有损转换，原结果按原 JSON 读取；不通过禁用校验或拒绝既有合法 client key 迁就缺陷。第一轮夹具还因私有材料未获 teacherDesignAllowed 正确触发 A2 阻断，已修正合成教师配置后再验证，产品规则不变。
+
+## 11. 完整 C2 服务端交付与实际验收
+
+### 11.1 实现与交接入口
+
+| 位置 | 实际行为 |
+| --- | --- |
+| [application.ts](../../apps/teaching/server/workspace/application.ts) | createWorkspaceApp 组合真实 createDesignApp/A1；创建或返回当前 Attempt、sync/snapshot/run/control/cancel 与范围读取。账号/归属来自当前 Session/成员；提交前重查授权/分配/代际，不接受请求冒充教师/学生 |
+| [inputs.ts](../../apps/teaching/server/workspace/inputs.ts)、[files.ts](../../apps/teaching/server/workspace/files.ts) | 严格入口 DTO、全部字段/整批 CAS、UTF-16 编辑、Unicode/UTF-8 hash、50 active/1 MiB、回收/恢复路径；同步同时推进 Attempt/workspace revision。sync HTTP 上限 8 MiB 容纳 JSON 转义，业务源码限额仍 1 MiB |
+| [schema.ts](../../apps/teaching/server/workspace/schema.ts)、[storage.ts](../../apps/teaching/server/workspace/storage.ts) | 准确获准五表；文件/双键/不可变快照/原运行/限定阶段/过程与覆盖和 A 共享记录同 tx。只写变化文件，回收先释放路径；读回核 schema、正文 hash、实例/活动/Job/快照关联；不改历史快照/原请求/原结果 |
+| [worker.ts](../../apps/teaching/server/workspace/worker.ts)、[commands.ts](../../apps/teaching/server/workspace/commands.ts) | 原 jobs 表的领取/当前成员与分配/停止/代际/租约守卫；持久进展与 Event/Receipt 同 tx；网络在事务外。queued 首次分派先 query，已领取/unknown/重启仅查原 ID，空事实也不 resubmit；节点确认整个单元后结束取消/检查 |
+| [records/runner.ts](../../apps/teaching/server/records/runner.ts)、[result-files.ts](../../apps/teaching/server/workspace/result-files.ts) | 普通 application SSH/readiness/query/submit/cancel/readResult；旧快照/输入/profile/结果 hash 精确绑定。正常运行诊断和白名单只读产物按授权读取，私有 course_check stdout/文件/hash 不下发 |
+| [transaction.ts](../../apps/teaching/server/db/transaction.ts)、[records-adapter.ts](../../apps/teaching/server/db/records-adapter.ts) | 仅批准的两个 A 接缝：独立 createWorkspaceDatabase（二十二表新合成库），既有受校验读取/身份/计划保存导出。原五/十/十七表工厂、同步事务规则、Session/分配算法不变；JSON 校验保留原 ACK client key |
+| [integration.test.ts](../../apps/teaching/server/workspace/integration.test.ts)、[test-support.ts](../../apps/teaching/server/workspace/test-support.ts)、[test-child.ts](../../apps/teaching/server/workspace/test-child.ts) | 7 个真实 A1/A2/SQL/进程与确定性传输用例，1 个实际 C1 整链用例；独立合成数据、即时签名/密码与 IPC，关闭后保留库。夹具 policy/rule 通过 A2 当前教师授权，不进入产品路由 |
+
+HTTP 路径沿 TECH §5：POST `/api/assignments/:id/attempts`、`/api/attempts/:id/sync|snapshots|runs|controls`、`/api/jobs/:id/cancel`；GET `/api/attempts/:id`、`/api/jobs/:id`、`/api/attempts/:id/snapshots/:snapshotId`、`/api/attempts/:id/runs/:runId` 与其 `/files`。当前 cancel 路由接纳本人 student_run；教学 Action 的最终停止/投递由 A3/C3 接入已交用途核心，不声明 Action 已实现。
+
+调用方显式传 A 的实际 db/origin/signingSecret/currentGeneration 和 C RunnerTransport。该工厂不监听、不创建账号/长期凭据；默认 main 仍健康入口。A3 在获准业务宿主组装该工厂，按原 jobs 持续消费 `workspace.pendingJobs()` 并调用 `workspace.processJob(jobId)`；进展落库后，后续轮只对账原 ID。C1 的两个执行槽不是第二个业务队列。
+
+B2 使用 `workspace.readSnapshot` / `readDiagnostics` / `readTutorContext`，读取仍先核当前授权。readTutorContext 返回固定活动的 tutor 投影和当前 limitedCheck/helpAllowed，限定检查直到权威结束均不允许辅导；B2 入口/生成/投递须消费同一限制。C3 使用 `readProcessRecords` 的同范围原始记录/覆盖边界；仅当前 captureRevision 收过程，必要 confirmedBasis 解释后续编辑范围，不重建空窗观察。记录只证明获认证通道提交，不推定实际操作者或能力。C4 可复用 loadWorkspace/persistWorkspace 的同 tx 入口和不可变 snapshotId，不另复制提交前作品。
+
+### 11.2 验证命令、事实与证据
+
+使用已批准 Node **24.21.0**、精确 package-lock，未增加依赖或放行原生安装脚本；better-sqlite3 实际预构建模块可加载。新库实际读回 SQLite **3.53.4**、WAL、foreign_keys=1、synchronous=2、busy_timeout=1000，共 **22 表**。所有测试只创建新的系统临时合成库，未改/迁移/清理旧库。
+
+```bash
+# 在 Linux 文件系统中的相同源码/精确 lock 副本；apps/teaching 目录
+npm ci --no-audit --no-fund
+npm run typecheck
+npm test  # 含原 pretest build 和所有既有用例，未改变超时或跳过条件
+
+# 已准备且获准的合成 C1 环境；配置 JSON 只包含 endpoint 与原密钥/known_hosts 路径
+XUNJIE_C2_RUNTIME=1 XUNJIE_C2_SSH_CONFIG='<C 维护方提供的 SSH 配置 JSON>' \
+  node --test --test-concurrency=1 server/records/*.test.ts server/workspace/*.test.ts
+```
+
+SSH JSON 字段为 binary/host/port/keyFile/knownHostsFile，交给既有 sshRunner；仅使用 application key 和固定 xunjie-c1 入口。没有新建/替换密钥、改变代际、recover、维护验收、Docker 配置或节点部署。本批仅正常合成运行，不把维护能力暴露给学生。
+
+| 层次 | 最终实测与可核查入口 |
+| --- | --- |
+| 类型/build | 完整 TypeScript 7 strict typecheck 和 npm test 的 pretest build **通过**；[类型输出](../../apps/teaching/server/workspace/c2.complete-checks-native.txt) 与下行原日志。未关闭检查、忽略错误或改变 A 工程配置 |
+| 统一回归 | 原 npm test **176 项：171 通过、0 失败、0 cancelled、5 跳过**；[原始日志](../../apps/teaching/server/workspace/c2.complete-regression-native.txt)。5 项是显式 C1 Docker/SSH、C2 两项节点、A2 节点门禁；不是通过数 |
+| C2 最终组合 | **26/26 通过，0 失败/跳过**；[原始日志](../../apps/teaching/server/workspace/c2.complete-acceptance.txt)。其中 24 项确定性核心/真实授权/SQL/进程/受控故障，2 项实际 C1 SSH/容器；新 A1/A2/C1 完整链是其中 1 项，不虚增条数 |
+| SQL/ACK/引用 | 公共键与 sync 键/新别名都回原 receiptId/commandId/serverSeq/正文；异摘要、旧版本/代际、路径、超 50/1 MiB 整批拒绝。实际 UTF-16/CRLF/emoji 编辑、回收同名新实例、冲突恢复及原 ID 恢复、旧快照/range 和返回位置关闭重开后可读 |
+| 原子/恢复 | 同 tx 的文件/快照/Job/Receipt/Event/必要过程失败全回滚，Session 不先推进；尾段 SQL 失败无 ACK，原键可显式重试。两真实进程竞争不同公共键/同 clientSeq 回同 ACK；进程退出/再起和关闭重开读回原确认作品，不用内存计划计数 |
+| 原 ID/权限/检查 | 实际当前 Session/课程成员、教师只读学生作品、跨学生/课程与伪 CSRF 拒绝；撤权后原回执也拒绝。queued 检查经 A2 个人暂停保存 cancelling，恢复不复活，节点确认前阶段 active。失联/空事实不重发，结果 SQL 失败重开后接纳原事实；租约过期需新对账租约，过期 worker 不能接纳 |
+| 真实学生作品链 | 教师真实 A2 检查/确认/分配→学生正常登录创建 Attempt→完整同步/固定快照→后来改源码→C1 仍执行旧源码；同键返原 runId。真实 course_check 对自打印成功文本正确给 failed，私有 stdout/文件/hash 裁剪；停止未分派 run 节点确认 cancelled，未 submit。普通 Report 实际白名单文件正文/hash 可读，ProjectFile 仍两项、无自动写回；关闭重开仍保留原运行 |
+| 来源一致性 | 验证复制前后 **108 个源码/配置文件字节摘要完全一致**；[机器可核查清单](../../apps/teaching/server/workspace/c2.complete-source.evidence.json)。源码 manifest hash 为 e82c488448f0641da991637c082b623ec1832d3f8bb805be242205d6e696320a；lock hash 为 7d93afc2441eceff0ccd26a9cae981557a9f789021b40f079a70d4ea356d548e。此摘要用于执行源码核对，不代替 C1 就绪证据 |
+
+真实节点证据仍是 C1 已验收的 sourceHash `0869fdbeb71287d22cfecaf6424abf4ed79db9a98ef687de91f7ff6ad2520e36` / fingerprintHash `02351c15ef9683d19ebb6b2b8ed079a28e2f6e51f888e3e31a9cd99c3b14b42b`，固定 C17 profile/镜像与动态当前 generation 从正常 readiness 获得并在 A2 活动内冻结；原日志记录。当前 C2 代码没有改变 C1 指纹或拿历史其他指纹当当前 ready。
+
+### 11.3 失败记录、交付范围与后续
+
+保留失败事实：[Windows 挂载目录的原并行 npm test 日志](../../apps/teaching/server/workspace/c2.complete-regression.txt) 为 176 项、168 通过、1 失败、2 超时 cancelled、5 跳过，涉及 A 的原认证子进程 15 s 和入口 5/10 s 时限，C2 用例通过。相同源码/锁定依赖复制到 Linux 文件系统后，**原脚本、原并发、原时限**全部通过；启动从挂载目录的 5/10 s 超时降至原生目录约 0.5～0.6 s。验证处理的是本机文件系统开销，不通过调长时限、删用例或关闭检查收口。建议 WSL 下用 Linux 文件系统验证应用；不把这次合成测试耗时当 NFR 性能结果。
+
+前次 [整链初验](../../apps/teaching/server/workspace/c2.complete-runtime.txt) 与 [报告文件复验](../../apps/teaching/server/workspace/c2.complete-runtime-final.txt) 原样保留；最终以 26 项新组合为准。代码、文档与证据已同步，C2 服务端关闭条件有实际链支撑。最终文档链接/检查器、Git 范围/空白与本地提交核对追加于交付记录；尚未推送新的 PR 或关闭 #14。
+
+未执行：实际 Web UI/IndexedDB/账号切换/多标签/键盘、真实账号和私有 HTTPS/TLS、10 会话 NFR 负载、C5 业务备份/旧备份回退/RTO、真人/模型/教学效果。后续提交/正式评价/Action 与教师纠正仍由 C4/A4/C3/B 对应任务交付，不把这些范围列为 C2 已实现。临时合成库/验证副本保留，不执行删除或自动恢复旧实验。
+
+需获授权维护者汇总 MVP_SPEC §10：C2 完整服务端、二十二表新合成库/两个 A 最小接缝、26 项含真实 A1/A2/C1 的作品链，以及统一回归结果与上述未验收层。**待授权维护者汇总**；本任务没有修改 product/planning/reference/AGENTS，保护基线未同步。主工作副本的 G1 既有改动及其他成员记录保留；完整应用/G1 完成条件不改变。
+
+最终文档静态检查：30 份文档/355 处仓库引用/27 条正式变更接口，errors=[]；检查器回归 16/16，通过；Git 空白检查通过。C2 最终组合原始输出 SHA-256 为 `19b18e17eed2d768e8f72404b2a5e44bce4ec6893b7f9d415d86fc8474a0f0cb`，统一回归原始输出为 `f9d5a6356719284946ef2a65193ce1e41a31f803bdba1a14b325faeffbc29827`，LF 原字节保留。发布前的源清单/实际测试结果与范围复核一致；本地提交包含代码、反例、原始证据、本文和 README，无包/锁文件/CI/凭据或受保护基线改动。
+
+原始 npm stdout 的尾部空行、失败诊断空白行属于归档数据，保留原字节。暂存核对首次在两份新日志提示空白：仅这两份原始输出在 C 目录 .gitattributes 声明相应数据空白属性；代码/测试/文档仍用原空白规则，业务检查和超时不变。最终全暂存空白检查通过；没有修剪诊断来改变原始证据。
+
+本地实现/测试/证据/同步文档提交：`11622249bd6707dddc29f7c858f20d16c5259e3a`，位于 `codex/c2-complete`，25 文件增量仅 C 所有目录、两个准确获准 A 接缝、本文和 README。提交后工作树干净、静态检查仍通过；package/lock/tsconfig/access/design、保护基线与他人 G1 记录无增量。GitHub 回读 #14 当前 OPEN；本任务未推送新 PR、合并或关闭 Issue。最后仅追加本条交付事实，不因纯记录变更重复业务验证。
+
+## 12. 完整 C2 PR 发布授权与核对
+
+项目负责人明确要求“推送 pr”，授权完整 C2 的已有代码/测试/证据、本文和 README 通过 `codex/c2-complete` 普通推送并创建 PR；未授权合并、关闭 Issue、生产部署或其他红线操作。开始发布时主分支仍为 `ac96cf6083b8f7b8403896e2a505b53e94c20d58`，与实际验收基线相同；工作树干净，原实现 `1162224` 和收口记录 `151096f` 已保留。
+
+PR 以 main 为基线，引用 #14，范围为 C 所有 workspace/records、两个准确获准 A/db 最小接缝、C2 文档和 README。正文明确二十二表仅新临时合成库、原子 ACK/双键/当前授权、原 runId 对账/取消/只读产物、26/26 与统一 171 通过/5 跳过，以及 UI/真人/负载/旧备份的后置范围。仅发布记录变更，沿用 §11 最终源码/测试证据，不重复业务测试。实际远端 head、PR/body/文件范围及附加结果在成功后追加。
+
+发布实际结果：普通推送 `codex/c2-complete` 成功，初始远端/PR head=`01af933b8b956a9fe3fd9c1461c8ebbe84591b8c` 与本地一致；[PR #20](https://github.com/paher-din/XunJie/pull/20) 已创建并附到当前任务，base=main/ac96cf6，标题为“[C2] 完成持久工作区与 A1/A2/C1 真实作品链”，Open/非 Draft。PR 完整正文、25 文件增量及角色/数据/后置边界已回读一致，不含受保护基线、A/access/design/package/lock/tsconfig、CI/凭据或他人 G1 改动；没有合并/关闭 Issue。
+
+本条和 README 同步发布状态，收尾仅增加文档记录；源码清单/26 项节点组合/统一回归证据不变，后续仅核静态链接、空白与最终远端 head。此前 §11 的“未推送”保留本地交付时点，以本节实际发布状态为准。
+
+## 13. 2026-10-11 PR #20 审阅修复
+
+负责人要求处理 PR #20 审阅评论，沿用原 PR 的普通推送授权；不合并、关闭 Issue 或改变产品/共享契约。开始工作树干净，远端与本地 HEAD=`6603d05dd2ac2ea43bcf7babf5777b967c5d75f4`，base=ac96cf6。审阅为共用账号 paher-din 的 COMMENTED 技术意见，明确需修改，不作为独立批准；Copilot 配额提示不是代码审查结论。
+
+已重读 AGENTS/README、PRD PRD-03/07/09/10 与数据边界、MVP M-07/M-09/M-10/状态/NFR-04、TECH §4.4/5.1/7.4/8.3、本文 §10～12 及 C0 恢复 ADR。本次对应原子 ACK、当前访问者授权/历史引用、原回执和已确认执行事实，不新增状态/表/政策。可写仅 C 的 application/worker/commands、必要反例/夹具、本文/README 和 PR 正文；A/db/access/design、C1 源码、package/lock/tsconfig、受保护基线保持只读。合成验证复用已批准二十二表新库、即时凭据与既有 Node/依赖；真实节点复验仅复用普通 application 入口，不改密钥/代际或维护配置。
+
+| 审阅意见 | 修复计划与可复现边界 |
+| --- | --- |
+| [P2 运行预检先提交 Session 活跃时间](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093976) | 使用 A 已有 withAuthorizedCourse 的无活跃更新模式，在同 tx 核当前会话/成员/资源/代际；Session 更新只留最终接纳事务。真实 runs 尾段 SQL 失败后 Session/Job/Receipt/Event 全回滚 |
+| [P2 原运行回执等待 readiness](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093981) | 合法输入及当前授权/代际后先短事务查原摘要/回执；已成功立即返回原 ACK，不调用 readiness。只有新命令事务外查节点，最终接纳再查当前授权/代际/并发回执；补挂起 readiness、异摘要和并发重放反例 |
+| [P2 学生撤籍影响教师历史读取](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093984) | 读定位仅核持久作品归属，当前访问者仍经 A1 课程/资源授权；学生命令与辅导再用 A2 分配/在籍守卫。学生撤籍后教师保留历史读取，撤销教师本人课程权限或跨课程仍拒绝 |
+| [P2 无结果引用的节点 failed 不结束检查](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093986) | 在原身份/当前租约/代际下，仅接纳 failed 且没有保槽/units/pending/结果引用的权威终止事实，存 Job.failed 与缺失原因、结束检查；RunRecord/课程判定保持缺失。真实 RunControl 合成准备失败及非法/未终止事实反例，重复停止不复活 |
+
+先写并运行四个实际 HTTP/SQLite 反例，在旧代码观察各自失败，再修根因并复跑。四项审阅已提供明确触发路径，因此 diagnosis 不另做宽泛假设或大范围 instrumentation；原子性/网络等待/读定位/终态接纳分别隔离。所有新增验证事实、失败和时钟观测另存，不覆盖 §11 的历史输出；完整类型/build/C2 与统一回归按原脚本/时限执行，不通过修改时钟、放宽阈值或关闭检查迁就环境。
+
+### 13.1 根因修复与回归
+
+- application 的 runs 预检使用 A 已有同步 withAuthorizedCourse(..., false) 和 assertResourceUse：同 tx 重查当前 Session/学生成员/本人作品/代际/摘要，只读回原 Receipt；成功回执/异摘要冲突优先返回，不等待 readiness。新请求才查节点，最终 execute 仍重查当前授权/可用性/代际/并发回执并同 tx 提交，尾段失败不留下 Session 活跃更新。
+- 读定位不再检查作品所属学生的当前在籍/分配；当前访问者的 Session/课程/作品权限仍经 A1。学生写入/辅导用原 A2 assignmentAvailability，教师历史 workspace/snapshot/run/job/files 读取可在学生撤籍后继续；学生本人撤籍、教师本人撤权和跨课程仍拒绝。
+- commands/worker 新增 confirmNodeFailure：核原身份、Job 与节点代际、当前有效租约，仅接纳 failed/reserved=false/units=[]/pending=[] 且无结果引用/hash 的结束事实；保存 Job.failed/缺失原因、结束检查，RunRecord/CheckResult 保持缺失。非终止、旧 worker/代际、错身份或带未回取结果的事实拒绝，重复停止终态仍 failed。
+
+修复没有修改 A 的任何文件、数据库 schema 或 C1 源码；原二十二表工厂、Job 状态/错误/政策、权限和后置产品验收不变。新 [review.test.ts](../../apps/teaching/server/workspace/review.test.ts) 五项真实 HTTP/SQLite 用例覆盖四条意见及 readiness 期间的并发接纳，失败用例接真实 RunControl 仅制造合成准备故障；[runs.test.ts](../../apps/teaching/server/workspace/runs.test.ts) 补无结果失败的租约/代际/原身份/单元/缺失边界。
+
+| 验证 | 实际结果与原始证据 |
+| --- | --- |
+| 旧代码反例 | 5 项：1 通过/4 失败，准确对应 Session 提前推进、重放进入 readiness、教师历史 403、failed 被留为 unknown；[原输出](../../apps/teaching/server/workspace/c2.review20-before.txt) |
+| 根因初验 | 5/5 通过；[原输出](../../apps/teaching/server/workspace/c2.review20-after.txt)。初次类型检查发现新 RunControl 夹具恢复授权 callback 应返回 Promise<boolean>，改为 async 后完整 strict 检查通过，没有忽略类型错误 |
+| 完整类型/build | Node 24.21.0 / TypeScript 7.0.2 strict typecheck 通过，[类型输出](../../apps/teaching/server/workspace/c2.review20-checks.txt)；两轮原 npm test 的 pretest build 均通过，package/lock/tsconfig 未改 |
+| C2 离线专项 | 32 项：30 通过/0 失败/2 个节点专项跳过；[原输出](../../apps/teaching/server/workspace/c2.review20-focused.txt)；不把 RunControl 合成故障计为 SSH/容器验证 |
+| C2 实际节点组合 | **32/32 通过、0 失败/跳过**；[原输出](../../apps/teaching/server/workspace/c2.review20-acceptance.txt)。30 项确定性规则/真实授权/SQL/进程/受控故障 + 原两项真实 C1 SSH/容器，仍核旧快照/原 ID/可信课程判断/取消/只读 Report |
+| 全工程首轮 | 原 npm test 182 项：175 通过/2 失败/0 cancelled/5 跳过；两失败为已有 A2 认证 401，[原输出](../../apps/teaching/server/workspace/c2.review20-regression.txt)。没有因其失败扩大到 A 的 Session 实现 |
+| 全工程只读监测复跑 | 同源码、原脚本/并发/时限：**182 项：177 通过/0 失败/0 cancelled/5 跳过**；[原输出](../../apps/teaching/server/workspace/c2.review20-regression-retry.txt) |
+| 时钟观测 | 只读比较墙钟与 monotonic，1429 个样本、最小墙钟增量 -18701 ms、最大偏差 18752 ms，反复跳回/跳前，与审阅环境观测一致；[原输出](../../apps/teaching/server/workspace/c2.review20-clock.txt)。首轮认证失败与该环境问题相容，但没有将成功复跑解释为时钟异常已修复 |
+| 源码一致性 | 当前工作分支与原生 Linux 验证副本 **109 文件字节一致**；[清单](../../apps/teaching/server/workspace/c2.review20-source.evidence.json)，sourceHash=`5e46991fd94bf27267d1220165bd772a1880de4942034a7f2cadba7b18c52597`，精确 lock hash 与 §11 相同。历史清单/输出未覆盖 |
+
+### 13.2 边界与交付
+
+仅恢复已获准且已准备的专用 VM 正常启动以复验普通 application SSH；没有新建密钥、改变节点代际、recover、安装/部署源码或修改时钟/维护配置。采用无窗口的本机 WSL 保活及 Linux 原生缓存避免执行环境在工具调用之间退出；没有将其当作生产运维或恢复验证。验证库/缓存不由本任务清理；首个 /tmp 副本在 WSL 自动退出后不可用，原始测试输出已保存，后续缓存置于持久的 /var/tmp。
+
+四项修复有旧失败/新通过的反例，待原审阅者复验，不自签批准或自行关闭审查线程。当前 WSL 墙钟异常仍未修复；真实账号/HTTPS、UI/真人、10 会话负载、业务备份/旧备份恢复仍未执行。基线进度与环境观测待授权维护者汇总，不写入 product/planning/reference/AGENTS。新原始 stdout 的数据空白沿用本目录日志属性声明，代码/测试/文档检查与业务阈值仍按原规则。
+
+修复及同步记录将通过原 codex/c2-complete 普通提交/推送到 PR #20，保留旧提交和证据；发布后再核远端 head、正文、修复文件范围，未授权合并或关闭 #14。
+
+收尾静态检查：30 份文档/367 处内部引用/27 条正式变更接口，errors=[]；检查器 16/16 通过，代码/文档空白通过。32 项实际组合原始输出 SHA-256=`9779021d6a1002ba38fa57f800efa0281a78d66ab95965ae1b4e0b0343d7676d`。本文/README 已同步根因、结果和时钟限制，受保护文档/他人 G1/依赖及配置没有修复增量。
+
+实际发布：根因/六个增量用例/新证据/同步记录提交 `f220bef388a176f91158a61f6364c08da57388e4` 已普通推送到原 PR #20；正文已改为当前四项修复、32 项组合、177/5 回归与未修复时钟异常，PR 重新附到本任务。远端初次回读 head=f220bef、base=main、状态 OPEN，与本地一致。源码修复增量仅 C/workspace，原始审查/失败证据/旧提交保留；没有评论代审、关闭线程、合并或关闭 Issue。最后仅追加发布事实，收尾远端 head/正文/范围继续核对。

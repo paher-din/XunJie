@@ -1,0 +1,96 @@
+✖ review: late runs failure rolls back student session activity with Job, receipt and event (2933.437217ms)
+✖ review: original run ACK and conflicts return before pending readiness; authorization still applies (2690.307235ms)
+✔ review: concurrent new runs recheck the original receipt after readiness (2789.422144ms)
+✖ review: current teacher reads retained workspace, snapshot and run after student withdrawal (3387.087069ms)
+✖ review: real RunControl preparation failure ends check without fabricating a RunRecord (2763.077722ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 1
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15105.089635
+
+✖ failing tests:
+
+test at server/workspace/review.test.ts:39:1
+✖ review: late runs failure rolls back student session activity with Job, receipt and event (2933.437217ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   activity: 1791689829176,
+  -   activity: 1791689828176,
+      events: 9,
+      jobs: 0,
+      receipts: 9
+    }
+  
+      at TestContext.<anonymous> (file:///tmp/xunjie-c2-review1-eNLXLR/teaching/server/workspace/review.test.ts:49:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { activity: 1791689829176, jobs: 0, receipts: 9, events: 9 },
+    expected: { activity: 1791689828176, jobs: 0, receipts: 9, events: 9 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at server/workspace/review.test.ts:56:1
+✖ review: original run ACK and conflicts return before pending readiness; authorization still applies (2690.307235ms)
+  AssertionError [ERR_ASSERTION]: A committed ACK must not consult readiness.
+  
+  'readiness' !== 'ack'
+  
+      at TestContext.<anonymous> (file:///tmp/xunjie-c2-review1-eNLXLR/teaching/server/workspace/review.test.ts:66:14)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'readiness',
+    expected: 'ack',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server/workspace/review.test.ts:96:1
+✖ review: current teacher reads retained workspace, snapshot and run after student withdrawal (3387.087069ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"986d574e-a7e5-4cde-a98c-b660ffb32e31","error":{"code":"FORBIDDEN","message":"Access denied.","retryable":false,"recovery":"Use an account authorized for this resource."}}
+  
+  403 !== 200
+  
+      at TestContext.<anonymous> (file:///tmp/xunjie-c2-review1-eNLXLR/teaching/server/workspace/review.test.ts:109:77)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 403,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server/workspace/review.test.ts:118:1
+✖ review: real RunControl preparation failure ends check without fabricating a RunRecord (2763.077722ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'outcome_unknown'
+  - 'failed'
+  
+      at TestContext.<anonymous> (file:///tmp/xunjie-c2-review1-eNLXLR/teaching/server/workspace/review.test.ts:144:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'outcome_unknown',
+    expected: 'failed',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
