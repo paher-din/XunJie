@@ -95,4 +95,4 @@ A3/B2 只在 `outcome === "success"` 时消费已校验 body；C 保存该结果
 - 分支：`codex/b1-agent-core`；首轮审查修复提交 `52b8800`（`fix: address B1 review feedback`）已推送到 fork。
 - 上游 [PR #15](https://github.com/paher-din/XunJie/pull/15) 已审查合并；其 `Refs #11` 语义正确，合成首批交接没有提前关闭 Issue #11。
 - `.trae/` 保持原有未跟踪状态，未暂存、提交或推送。
-- 2026-10-11 的 SDK 收口工作在 `codex/b1-sdk-adapter` 分支进行；交付关联应使用 `Refs #11`，不得在真实模型关闭条件缺失时使用 `Closes #11`。
+- 2026-10-11 的 SDK 收口提交为 `fdd0c12`，分支 `codex/b1-sdk-adapter` 已推送到 fork，并建立上游 [PR #29](https://github.com/paher-din/XunJie/pull/29)。PR 正文使用 `Refs #11`，不在真实模型关闭条件缺失时使用 `Closes #11`。
