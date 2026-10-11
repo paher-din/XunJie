@@ -1,3 +1,7 @@
+import type { Job } from "../records/index.ts";
+import type { ActivityView } from "../design/results.ts";
+import type { ArtifactSnapshot, ObjectRef } from "../workspace/index.ts";
+
 export const teacherGenerationModes = [
   "candidates",
   "blueprint",
@@ -68,6 +72,94 @@ export type StudentHelpRequest = {
     wholeSolutionAllowed: false;
   };
   signal?: AbortSignal;
+};
+
+export type StudentHelpCommandInput = {
+  expectedAttemptRevision: number;
+  recoveryGeneration: string;
+  question: string;
+  objectRef?: ObjectRef;
+};
+
+export type StudentHelpCommandResult = {
+  jobId: string;
+  attemptRevision: number;
+  decisionEpoch: number;
+  replacedJobIds: readonly string[];
+  acceptedInputHash: string;
+};
+
+export type LearnerContextClaim = {
+  claimId: string;
+  claimRevision: number;
+  competencyId: string;
+  competencyVersion: number;
+  activityVersionId?: string;
+  statement: string;
+  state: "insufficient" | "supported_with_assistance" | "supported_in_check" | "conflicting";
+  validity: "active" | "contested" | "superseded" | "withdrawn";
+  evidenceIds: readonly string[];
+  counterEvidenceIds: readonly string[];
+  assistanceStatus: "observed_help" | "none_observed_in_system" | "unknown";
+  unresolved: boolean;
+};
+
+export type AssistanceContextRecord = {
+  actionId: string;
+  actionType: StudentActionType;
+  content: string;
+  status: "generated" | "received" | "displayed" | "acknowledged" | "cancelled" | "stale" | "failed";
+};
+
+export type AuthorizedStudentHelpContext = {
+  job: Job;
+  current: {
+    attemptRevision: number;
+    decisionEpoch: number;
+    activityVersionId: string;
+    helpPolicyVersionId: string;
+    attemptStatus: "ready" | "active" | "paused" | "submitted" | "reviewed";
+    assignmentActive: boolean;
+    limitedCheck: boolean;
+    recoveryGeneration: string;
+  };
+  activity: ActivityView;
+  question: string;
+  objectRef?: ObjectRef;
+  snapshots: readonly ArtifactSnapshot[];
+  diagnostics: readonly {
+    runId: string;
+    snapshotId: string;
+    status: "available" | "unavailable";
+    failureKind?: string;
+    stdout?: string;
+    stderr?: string;
+    verdict?: string;
+  }[];
+  learnerStateRevision: number;
+  learnerClaims: readonly LearnerContextClaim[];
+  assistanceHistory: readonly AssistanceContextRecord[];
+  budgetAvailable: boolean;
+  versions: TrustedModelContext["versions"];
+};
+
+export type StudentHelpExecutionResult = {
+  jobId: string;
+  requestReceiptId: string;
+  scope: {
+    courseId: string;
+    userId: string;
+    attemptId: string;
+  };
+  expectedAttemptRevision: number;
+  decisionEpoch: number;
+  activityVersionId: string;
+  helpPolicyVersionId: string;
+  learnerStateRevision: number;
+  objectRef?: ObjectRef;
+  authorizedReferenceIds: readonly string[];
+  versions: TrustedModelContext["versions"];
+  outcome: TutoringOutcome<StudentHelpBody>;
 };
 
 export type TeacherGenerationBody =
