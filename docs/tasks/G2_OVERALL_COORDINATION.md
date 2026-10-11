@@ -114,3 +114,79 @@ A3 教师链与 B2/C3 学生链分别推进；B2/C3 按契约并行，真实投�
 确认总协调稿在 main 可访问后，四个 Issue 均补上仓库跟踪入口。最终再次回读标题/完整正文，与四份发布文件逐字一致，均 Open/无 assignee/无已勾选项/无占位符，总/子和 B2/C3 关联、公开文档入口齐全；#11/#22/#23 仍 Open。完整发布正文可从各 Issue 独立查阅，临时正文与回读快照留存，不作为团队访问前提。
 
 本条实际发布记录随本文再次普通提交/推送，最终 SHA 以 main 的本地、origin/main 与远端引用回读为准；仅补充发布事实，不新增业务实现或验收通过项。受保护进度仍待授权维护者汇总。
+
+## 7. 2026-10-11 PR #28/#29 固定提交审查
+
+项目负责人要求处理当前两项 PR。本次按总协调职责完成只读两轴审查、原专项/组合复验和新增边界复现，不代 A/B 修代码，不合并或关闭任务。主副本处于 C3 分支且有其他成员未提交改动，完整保留；本文是本次主副本唯一写入的任务记录，README 不覆盖他人工作。
+
+### 7.1 范围与审查点
+
+| 对象 | 固定基线/候选 | 本批范围与保留条件 |
+| --- | --- | --- |
+| [PR #28](https://github.com/paher-din/XunJie/pull/28) | base `c42f356`，head `9d470940fd5eeff5ad7c0536a6152d57dcc54e00` | A3 教师命令/提案/明确采用的获准合成服务端；作者任务 §2～3/5 记录负责人批准 24 表全新临时合成库与验证接缝，未改既有库。真实模型、教师内容会审、UI/TLS 及 #25 完整条件保留 |
+| [PR #29](https://github.com/paher-din/XunJie/pull/29) | base `c42f356`，head `6f32c38dfe47a62f220ab12141045bde8b38caa0` | B1 实际 SDK/provider/Zod 适配、保守输入上限、修复及离线传输；真实 D-02/付费调用与 #11 关闭条件仍未完成 |
+
+依据为 PRD/MVP/TECH、TEAM 与 #25/#11 当前正文，作者批准方案仅适用于准确范围。按 code-review 的 Standards/Spec 两轴分别只读审查；原明确后置条件不算本批新增缺陷。两 PR 开始时 Open/Mergeable、无 CI 检查结果或现有审查意见，发布审查前再次核 head 未变。两个固定树与组合验证树均单独建立并附加到总协调工作项，不切换主副本分支或应用其他成员未提交代码。
+
+### 7.2 Standards
+
+PR #28：新增硬性规范问题 0，可操作异味 0。
+
+PR #29：新增硬性规范问题 1 项 P2，可操作异味 0。`server/tutoring/deepseek-sdk.ts:69～72` 在实际 SDK 的 `NoObjectGeneratedError` 带有已知 usage 时，因 JSON 正文不能解析而重抛，核心只保留 unknown，违反 TECH §10.3 对实际用量及错误成本的记录要求。实际受控响应为 HTTP 200、正文 `{"kind":`、usage=(23,11)，结果 unknown；SDK 源码与离线复现均核实该错误携带 usage。此根因同时涉及下方 Spec 修复路径，两轴分别计算，实际仅一处结构错误桥接问题。
+
+### 7.3 Spec
+
+| 编号/优先级 | 新增位置 | 具体复现与影响 | 修正边界 |
+| --- | --- | --- | --- |
+| A3-R01 / P2 | `server/design/teacher-agent.ts:290～294` | 合成 provider 将服务端时钟推进 45001ms 后返回 actual(10,4)；B outcome 为 timed_out 且含 actual，原 Job 为 timed_out 但 usages 仍 unknown。已得到的失败成本丢失 | 核原调用身份/代际后保存已知用量，保持 Job 终态并继续拒绝迟到教学正文 |
+| A3-R02 / P2 | `server/design/teacher-agent.ts:286～289` | provider 在真实发送前抛 InputLimitError(16001)；B 返回 needs_input/calls=0、outbound=0，Job 却 attemptCount=1/usages=[unknown]。未发送调用被扣占预算，持久计数与 B 结果不同 | 在预检前不扣计费调用，或对可证实未发送的原预留安全释放；不削弱跨 worker/已发起调用的持久上限 |
+| B1-R01 / P2 | `server/tutoring/deepseek-sdk.ts:69～72` | 实际 SDK 的内存 transport 第一次返回非法 JSON，第二次预设合法 body；只调用一次并返回 unavailable/unknown，未使用已承诺的格式修复 | 结构化生成失败返回无效 body 与错误携带的 usage，交既有核心在原 3 次/45 秒内执行一次修复；真实网络故障保留独立错误路径 |
+| B1-R02 / P3 | `server/tutoring/deepseek-sdk.ts:98` | 实际 SDK 接受合法教学 body 与 prompt_tokens=-23/completion_tokens=11，核心返回 success/actual(-23,11)。安全整数校验未排除非法负数，成本/配额与 A3 非负持久校验不能正确消费 | 两个 token 字段同时校验非负，非法用量保持 unknown |
+
+PR #28 的 blueprint/allowedFields 提案存在语义歧义，采用仍严格限字段，未作为确定阻塞发现；没有擅自修改批准接口。两轴汇总：Standards 1（最高 P2）；Spec 4（最高 P2，#28 两项 P2，#29 一项 P2/一项 P3），四个独立代码缺口。结论为先修正再复审，不合并。
+
+### 7.4 实际验证与交付状态
+
+| 检查 | 本次真实结果 |
+| --- | --- |
+| 精确 Node/依赖 | 使用已校验的 Node 24.21.0、原锁版本 TypeScript 7.0.2/ai 7.0.136/DeepSeek 3.0.63；复用既有批准 Windows 依赖，无新增依赖或 package/lock 修改 |
+| PR #28 typecheck/build、原 A3 专项 | 通过；20 通过、0 失败、0 跳过 |
+| PR #29 typecheck/build、原 B1 专项 | 通过；45 通过、0 失败、0 跳过；真实已安装 SDK/provider，供应商网络调用 0 |
+| 两 PR 本地组合 | 自动预合并无源码冲突，README 自动保留两侧；typecheck/build 通过，未提交该预合并或合入远端 |
+| 原完整组合 `npm test` | 210 项：202 通过、1 失败、7 原条件跳过；唯一失败为基线 `server/workspace/review.test.ts:118` 在 Windows 初始化 Linux-only RunControl，`runner/control.ts:48` 拒绝；两文件与 c42f356 无差异。未加 skip 或改检查，不宣称完整回归通过 |
+| 新增 A3 边界断言 | 2 项均失败：late usage 与 input preflight，均达到 §7.3 所列错误状态；新增合成库保留，不计原回归通过 |
+| 新增 SDK 边界断言 | 2 项均失败：malformed JSON 与 negative usage，均达到 §7.3 所列错误状态；只用内存 transport，无供应商网络 |
+| 初始复验环境失败 | Linux 布局缓存导致 tsc 入口不可用；外部 Windows 缓存 junction 导致既有 test-support 声明路径不可移植。均保留失败输出，随后把同版本依赖复制到各验证树，原命令通过；未改源码或关闭类型/声明检查 |
+| 当前文档/范围检查 | 主副本文档检查 33 份/446 处内部引用/27 条正式路由通过，`errors=[]`；本文增量空白通过。两个固定 PR 审查树的跟踪文件干净，未改变作者源码；主副本其他成员修改保留 |
+| 真实模型/节点/Linux/浏览器/真人 | 未执行；不发送真实学生或教师私有数据，不改凭据/CI/VM/节点，不扩大数据库操作授权 |
+
+四条行内意见与两份 Request Changes 正文已按固定 commit/新 diff 行号准备，并核公开 PR head 未变。本节记录授权前状态：当时仅本地审查稿，未提交 GitHub 审查、合并 PR、关闭 #25/#11 或推送记录；后续授权与发布事实见第 8 节。原文档/专项/组合结果和新增反例分别保存，不把已有测试通过或评审稿当完整 G2 验收。验证工作树、依赖副本、临时正文/反例/输出保留；团队核查入口为上述固定 PR、行号、输入与结果，无需访问个人临时目录。
+
+## 8. 2026-10-11 授权发布 PR 审查与总记录
+
+项目负责人在四个缺口、完整审查稿与验证结果可审阅后，明确选择“提交审查并推送总记录”。准确授权范围为向 PR #28/#29 公开提交两份 Request Changes 及四条行内意见，并仅提交/普通推送本文；两 PR 暂不合并，不代作者修复，不关闭任务，不提交主副本 README/C3/I0 等其他成员修改，不改受保护基线、凭据/CI、数据库或执行环境。
+
+### 8.1 已发布评审与回读
+
+| PR | 实际评审 | 固定 commit / 行内意见 |
+| --- | --- | --- |
+| #28 | [Review 5482880804](https://github.com/paher-din/XunJie/pull/28#pullrequestreview-5482880804)，CHANGES_REQUESTED | `9d470940`；[超时实际用量](https://github.com/paher-din/XunJie/pull/28#discussion_r4241172685)（teacher-agent.ts:290～294）、[预检调用预留](https://github.com/paher-din/XunJie/pull/28#discussion_r4241172687)（286～289） |
+| #29 | [Review 5482880928](https://github.com/paher-din/XunJie/pull/29#pullrequestreview-5482880928)，CHANGES_REQUESTED | `6f32c38d`；[结构错误修复/用量](https://github.com/paher-din/XunJie/pull/29#discussion_r4241172791)（deepseek-sdk.ts:69～72）、[非负 token](https://github.com/paher-din/XunJie/pull/29#discussion_r4241172794)（98） |
+
+发布前重新回读两 PR 的 Open/head/审查列表，固定 head 均未变、无既有评审；使用结构化 UTF-8 JSON 与 `gh api POST .../reviews --input` 分别提交，没有重复请求、额外评论或成员消息。发布身份为 paher-din，两 PR 作者为其他账号；实际平台状态为 CHANGES_REQUESTED，不伪称 Approved。
+
+独立回读两个 review：完整正文、commit_id、状态和发布账号均与准备稿一致。通过 PR 全量 comments 按 review ID 过滤，四条正文、path、RIGHT、line/start_line、commit_id 逐项一致，每份准确两条。首轮使用 review 专属 comments 接口缺 line/side，位置断言未通过；确认其返回字段范围后改用完整 PR comments 核对，不降低断言、不修改或重复发布意见。两 PR 仍 Open，reviewDecision=CHANGES_REQUESTED，head 仍为上述固定候选，原问题待作者修复/复审。
+
+### 8.2 单文件文档发布范围
+
+发布时远端 main 已由其他已授权任务更新为 `10281827164a1e61cb08c75c43a505476f4ee4ec`，其中本文与 c42f356 的原版本无差异。独立文档工作树以该最新 main 建立，仅复制本人第 7～8 节记录；保留新 main 的 README/I0 等既有交付，不将旧主副本覆盖远端新内容。验证后只暂存本文、普通提交/推送到 main；实际提交与远端回读结果随后追加。
+
+独立发布树实际静态检查通过：32 份文档、406 处内部引用、27 条正式路由，`errors=[]`；本文增量/末尾空白及精确单文件范围检查通过。主副本第 7 节的 33/446 统计包括其他成员未提交任务稿，不冒充本次远端交付树的文档数量。
+
+实际首次记录提交 `6619e65724740f57327c68739f82ea2ff884aa55`（`docs: publish P2 PR28 and PR29 review findings`）已从 `1028182` 普通推送到远端 main，仅本文 70 行新增。GitHub API 回读远端 main SHA 与独立树 HEAD 一致，本文远端 Git blob SHA 与本地提交一致，精确提交范围只有本文，独立树干净。主副本分支与其他成员未提交工作未暂存/提交；I0 及新 main 其他交付保留。
+
+发布后两 PR 再次回读仍 Open/CHANGES_REQUESTED，固定 head 未变；未合并、关闭任务或解决尚未修复的审查线程。本条真实发布记录随本文再次单文件普通提交/推送，最终 SHA 以独立树 HEAD、origin/main 与远端 main 回读为准，不新增业务/基线/配置改动。
+
+核对记录提交 `85bec2351c31f2268e4e1146ddae6e7d8fac2fa3` 的首次推送因 GitHub 443 连接失败（约 21 秒）未成功；API 确认远端仍为 6619e65 后，按相同单次网络参数普通重试成功，远端快进至 85bec23。失败保留，不伪称首次通过；未重复发布评审、改永久配置或强制推送。本段补充该真实网络结果，仍仅发布本文。
+
+本次不重复第 7 节业务测试，不将审查发布记为修复通过或产品验收。第 7 节原失败/跳过和真实模型/节点/UI/真人未执行继续保持；基线进度待授权维护者汇总。
