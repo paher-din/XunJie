@@ -38,6 +38,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B0 模型与预算复核](docs/tasks/B0_MODEL_VENDOR_RESEARCH.md) | 精确型号/区域/结构化方式、数据条款证据状态及预算/配额建议；D-02 待批准 |
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
 | [B1 合成 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、注入式 DeepSeek 适配边界及实际验证记录 |
+| [学生前端导入与 C 场景入口](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md) | 设计仓库固定提交导入 `apps/student/`、准备模式 fixture、窄读取客户端与最小浏览器检查；I0 学生纵向切片的第一张任务 |
+| [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；七张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
@@ -86,6 +88,27 @@ node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.
 ```
 
 该命令只验证 B1 合成领域逻辑和注入式适配边界，不是 TypeScript 7 静态 typecheck、Zod/AI SDK 实包兼容或真实 DeepSeek 调用。完整记录见 [B1 任务文档](docs/tasks/B1_AGENT_CORE.md)。
+
+## 学生前端（apps/student）
+
+学生端前端工程，首次内容由设计仓库 `XunJie_Design` 的固定提交 `a9bb1dd0` 导入，来源映射、许可与后续选择性同步办法见 [apps/student/IMPORT_SOURCE.md](apps/student/IMPORT_SOURCE.md)。它有独立的 `package.json` 与 lockfile，与 `apps/teaching` 后端互不依赖，启动不需要设计仓库的本地 checkout。需要 Node 24。
+
+```bash
+cd apps/student
+npm ci              # 按本目录 lockfile 安装
+npm run dev:prep    # http://127.0.0.1:5601  准备模式（可交互，带开发 fixture）
+npm run dev         # http://127.0.0.1:5180  真实模式（同源 /api）
+npm test            # Vitest 规则测试
+npm run typecheck   # 浏览器侧 + Node 侧（prep / e2e / vite.config）
+npm run build       # 产物构建，不含准备 fixture 端点与合成材料
+npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实模式检查
+```
+
+`dev:prep` 与 `test:e2e` 用固定端口加 `--strictPort`；端口被占时命令直接失败，先释放端口，不要改成自动换端口。首次跑 e2e 需 `npx playwright install chromium`。
+
+导航：准备模式下首页出现「I0 准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区（只读初始化：合成 Session、固定活动版本、按 visibility 裁剪的材料；编辑属 02、保存/快照属 03、运行属 06）。原数字逻辑演示 `/#/task/counter` 完整保留并带演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
+
+本目录当前只交付 I0-A 准备范围：导入、两种模式启动、初始化读取客户端、C 容器适配与最小浏览器检查。它不代表真实服务联调通过，也不构成任何 AC / NFR 或 G0～G4 验收；验证事实与未完成项见 [I0_UI_01 任务记录](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md)。
 
 ## 状态
 
