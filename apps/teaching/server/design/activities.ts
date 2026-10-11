@@ -134,17 +134,32 @@ export function assignActivity(tx: Transaction, actor: ActorContext, activityId:
   return { assignments: assignments.map(a => ({ assignmentId: a.id, studentId: a.student_id, activityVersionId: a.activity_id, assignmentRevision: a.assignment_revision, status: a.status })) };
 }
 const pausePurposes: Purpose[] = ['student_help', 'reminder', 'explicit_analysis', 'passive_analysis', 'student_run'];
+// C3 seam: A owns the pause decision; C owns the persistent stop and action invalidation performed inside the
+// same transaction. A rejected or asynchronous callback rolls the whole A2 command back with it.
+export type DesignTeachingStop = (tx: Transaction, actor: ActorContext, details: {courseId: string; reason: string;
+  controlledAt: number; generation: string; attemptIds: string[]; stoppedJobIds: string[]}) =>
+  {stoppedJobIds: string[];invalidatedActionIds: string[]};
 function invalidateAssignment(tx: Transaction, assignmentId: string) {
-  const affected: string[] = [], stopped: string[] = [];
+  const attemptIds: string[] = [], stoppedJobIds: string[] = [];
   for (const row of tx.all('SELECT attempt_id FROM attempts WHERE assignment_id=?', assignmentId)) {
     const attempt = readAttempt(tx, String(row.attempt_id));
     saveAttempt(tx, { ...attempt, attemptRevision: attempt.attemptRevision + 1, decisionEpoch: attempt.decisionEpoch + 1 });
-    affected.push(attempt.attemptId);
-    stopped.push(...stopAttemptJobs(tx, attempt, pausePurposes));
+    attemptIds.push(attempt.attemptId);
+    stoppedJobIds.push(...stopAttemptJobs(tx, attempt, pausePurposes));
   }
-  return { attemptIds: affected, stoppedJobIds: stopped };
+  return { attemptIds, stoppedJobIds };
 }
-export function controlAssignment(tx: Transaction, actor: ActorContext, assignmentId: string, expected: number, action: 'pause' | 'resume', reason: string, now: number) {
+function stopTeachingForAssignment(tx: Transaction, actor: ActorContext, courseId: string, reason: string, now: number,
+  generation: string, invalidated: {attemptIds: string[]; stoppedJobIds: string[]}, teachingStop?: DesignTeachingStop):
+  {stoppedJobIds: string[]; invalidatedActionIds: string[]} {
+  if (!teachingStop || !invalidated.stoppedJobIds.length) return { stoppedJobIds: invalidated.stoppedJobIds, invalidatedActionIds: [] };
+  const result = teachingStop(tx, actor, { courseId, reason, controlledAt: now, generation,
+    attemptIds: invalidated.attemptIds, stoppedJobIds: invalidated.stoppedJobIds });
+  if (result && typeof result === 'object' && 'then' in result) throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  return { stoppedJobIds: invalidated.stoppedJobIds, invalidatedActionIds: result.invalidatedActionIds };
+}
+export function controlAssignment(tx: Transaction, actor: ActorContext, assignmentId: string, expected: number, action: 'pause' | 'resume', reason: string, now: number,
+  generation: string, teachingStop?: DesignTeachingStop) {
   teacher(tx, actor);
   const assignment = readAssignment(tx, actor.courseId, assignmentId);
   if (assignment.assignment_revision !== expected) throw new ApiError('VERSION_CONFLICT');
@@ -157,10 +172,15 @@ export function controlAssignment(tx: Transaction, actor: ActorContext, assignme
   const changed = tx.run('UPDATE assignments SET assignment_revision=assignment_revision+1,status=?,individual_paused=?,individual_reason=?,controlled_by=?,controlled_at_ms=? WHERE id=? AND assignment_revision=?',
     status, desired, reason, actor.userId, now, assignmentId, expected);
   if (changed.changes !== 1) throw new ApiError('VERSION_CONFLICT');
-  const invalidated = action === 'pause' ? invalidateAssignment(tx, assignmentId) : { stoppedJobIds: [], attemptIds: [] };
-  return { assignmentId, assignmentRevision: expected + 1, status, ...invalidated };
+  const invalidated = action === 'pause' ? invalidateAssignment(tx, assignmentId) : { stoppedJobIds: [] as string[], attemptIds: [] as string[] };
+  const stopped = action === 'pause'
+    ? stopTeachingForAssignment(tx, actor, actor.courseId, reason, now, generation, invalidated, teachingStop)
+    : { stoppedJobIds: [] as string[], invalidatedActionIds: [] as string[] };
+  return { assignmentId, assignmentRevision: expected + 1, status, attemptIds: invalidated.attemptIds,
+    stoppedJobIds: stopped.stoppedJobIds };
 }
-export function controlActivity(tx: Transaction, actor: ActorContext, activityId: string, expected: number, action: 'pause' | 'resume', reason: string, now: number) {
+export function controlActivity(tx: Transaction, actor: ActorContext, activityId: string, expected: number, action: 'pause' | 'resume', reason: string, now: number,
+  generation: string, teachingStop?: DesignTeachingStop) {
   teacher(tx, actor); readActivity(tx, actor.courseId, activityId);
   const control = tx.get('SELECT * FROM activity_controls WHERE activity_id=?', activityId);
   if (control?.control_revision !== expected) throw new ApiError('VERSION_CONFLICT');
@@ -176,7 +196,11 @@ export function controlActivity(tx: Transaction, actor: ActorContext, activityId
     const status = pausedByActivity || assignment.individual_paused ? 'paused' : 'active';
     tx.run('UPDATE assignments SET assignment_revision=assignment_revision+1,status=?,paused_by_activity=?,activity_reason=?,controlled_by=?,controlled_at_ms=? WHERE id=?',
       status, pausedByActivity, reason, actor.userId, now, assignment.id);
-    if (action === 'pause') { const invalidated = invalidateAssignment(tx, assignment.id); attemptIds.push(...invalidated.attemptIds); stoppedJobIds.push(...invalidated.stoppedJobIds); }
+    if (action === 'pause') {
+      const invalidated = invalidateAssignment(tx, assignment.id);
+      attemptIds.push(...invalidated.attemptIds); stoppedJobIds.push(...invalidated.stoppedJobIds);
+      stopTeachingForAssignment(tx, actor, actor.courseId, reason, now, generation, invalidated, teachingStop);
+    }
   }
   return { activityVersionId: activityId, activityControlRevision: expected + 1, status: desired, attemptIds, stoppedJobIds };
 }
