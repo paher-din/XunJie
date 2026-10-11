@@ -308,3 +308,89 @@ PR #29 首个提交 `fdd0c12` 把 `createDeepSeekProvider` 从 `{ invoke, countT
 PR #29 合并后，PR #32 的堆叠父已进入 main：三点对比 `origin/main...fdec49d` 现为 8 文件、+1767 行，即纯 B2 增量，B1 部分不再重复计入。GitHub 侧 base 仍显示 `0afd008`、`mergeable=UNKNOWN`（平台重算中），文件计数 14/+2458/-52 属重算前的旧值；本节结论以本地三点对比为准。#32 仍为 Draft、未合并，§9.2 的 3 项 P2 与 #27 依赖不变。
 
 本节不改变 §9.2～§9.6 的审查结论，只补充发布后的真实平台状态与对 main 的复验；#25/#26/#11/#27 均未关闭，未解决任何审查线程，未代作者修改代码。
+
+## 10. 2026-10-11 PR #33 首审发布与 PR #28 阻塞解除后合并
+
+本节记录负责人两项指令的执行结果：先发布 PR #33 的 COMMENT 审查，再复审 PR #28；并在「如果 #28 做好了可以直接合并了」这一条件授权下，经复验确认条件成立后执行合并。全部事件发生在 2026-10-11（UTC），本文写于 2026-10-11T16:00Z（Asia/Shanghai 2026-10-12 00:00）。
+
+### 10.1 审查点与工作树
+
+| 对象 | 固定审查点 | 工作树 |
+| --- | --- | --- |
+| PR #33（C3 教学消息与回执） | merge-base `83e528e` → head `9fc9fae3`，19 文件 +2378/-56 | `p3-pr33-review` |
+| PR #28 复审 | 上轮 head `21a1b093` → 本次 head `26f37c52`，增量 4 提交（`161ffb3` 合并 main、`803c10e` 适配、`3b934c6`/`26f37c5` 记录） | `p3-pr28-v2`（head 单独）、`p3-pr28-onmain`（预合并到 main） |
+
+期间 main 两次前移：`83e528e` → `5901a8a` → `8a6c70cf`（`docs: integrate digital logic into post-P2 assignments`）。`8a6c70cf` 相对 `5901a8a` 只改 6 份文档（AGENTS.md、README.md、TEAM_WORK_PLAN.md、MVP_SPEC.md、TECH_DESIGN.md、DL-0），`git diff --stat 5901a8a 8a6c70cf -- apps/` 为空，且其正文明确「当前 P2 的 A3/B2/C3、任务记录与退出条件保持不变」，故 A3 的 M/AC 义务与本轮审查结论对新基线继续成立。主副本 `D:/XunJie` 未被本工作项改动；所有验证在独立工作树内进行。
+
+### 10.2 PR #33 首次人工审查与发布
+
+已发布评审 `5483853761`，state=COMMENTED，2026-10-11T15:30:34Z，账号 `paher-din`；行内意见 5 条：`4242122568`（`server/records/teaching.ts:414`）、`4242122569`（`server/records/application.ts:282`）、`4242122570`（任务稿:236）、`4242122573`（任务稿:237）、`4242122574`（任务稿:201）。发布后回读 PR #33 仍为 OPEN、非 Draft、head `9fc9fae3` 未变、reviewDecision 为空（COMMENT 不设决定）。
+
+**评审形式限制已如实写明：** PR #33 作者是 `paher-din`，与审查发布身份同一账号，GitHub 不允许对自己的 PR 提 APPROVE 或 REQUEST_CHANGES，因此只能以 COMMENT 记录。C3 是目前唯一由负责人账号交付的线（#28 作者 `czr112`、#29/#32 作者 `scy404`），**这条线结构上缺少独立审查**；该 COMMENT 不构成批准，合并决定与责任仍在负责人。
+
+结论要点：Standards 硬性违规 0；Spec 侧 5 项 P2、9 项 P3。5 项 P2 为（1）学生教学路径 3 次调用预算无人执行、`attemptCount` 以 `Math.max` 落库且持久 schema 封顶 3，跨 worker 累计计账结构上不可能；（2）`leaseToken` 可选且默认回填当前持有者 token，使 #27 要求的租约复查在省略字段时空转；（3）任务稿 §8.4 关于 `better-sqlite3@13.0.3` 无 Windows 预编译产物的断言不实（实测 `prebuilds/win32-x64.node` 存在，1,989,632 字节）且该断言承重；（4）§8.4「不是 C3 代码路径」的归因未被证明，其对照基线 `e13f12d` 本身已含 C3；（5）§8.2 三处描述了交付中不存在的改动（`access/app.ts`、事务白名单加 DELETE、公开 `invalidatedActionIds`）。
+
+其中第 1 项与 §9 记录的 A 侧发现是**同一个跨模块缺口，现已从 A 与 C 两侧同时确认**：上限只由 `records/jobs.ts` 的 `recordModelCall` 持有，而它在 main 上没有生产调用方；`db/records-adapter.ts:21` 把 `attemptCount` 约束为 `natural.max(3)`；`contracts/records` 未定义 `calls` 语义。需 A/B/C 共同裁定，不因任何单个 PR 合并而关闭。
+
+审查中也修正了自动子代理的两项过度断言：其声称的两项 P1 经核实存在缓解（`assertLease` 仍强制 `leaseUntil > now`、`claimJob` 要求 `status==='queued'`、`recoverJob` 只处理过期租约、`completeTeaching` 在 main 上无生产 HTTP 路由，只有 `test-support.ts:52` 的 `/fixture/complete/:id`），故降为 P2；其称 §11.2「全回滚」超出证据也不成立——`teaching-review.test.ts:44～47` 的 `snapshot()` 确实抓取并 `deepEqual` 比对全部 9 张表且要求 503，窄的只是 3 个注入点。
+
+未合并 PR #33、未关闭 #27、未解决任何审查线程、未代 C 改代码。
+
+### 10.3 PR #28 阻塞项解除与复验
+
+§9.3/§9.7 的合并阻塞项（#29 收窄 `createDeepSeekProvider` 为 `{ invoke }` 并移除 `TokenCounter`，使本 PR 两条 A3-R02 反例注入的 `countTokens` 报 `TS2353` 且 `InputLimitError` 不再抛出）已由 A 在 `803c10e` 按建议顺序（#29 先合）自行适配。改动仅限 A 的边界：`server/design/teacher-agent.ts` +1 行注释（即上轮 P3-2 建议的有意行为说明）与 `tests/design-agent.test.ts` 两条反例改为在外部 provider 边界脚本化预检失败；未触碰 B/C 源码、共享契约、受保护文档、凭据、CI 或 schema。
+
+反例证明力未被弱化：`input preflight rejection…` 改用真实输入使保守上界确实超限，断言 `rejectedInputTokens > 16000`、`outbound === 0`、`attemptCount === 0`、`usages` 为空、`proposalId` 未定义，并在 `f.reopen()` 后复验跨重启保持；`a second call rejected by preflight…` 断言 `preflights === 2`、`outbound === 1`、`calls === 1`，首次已发送调用的 `{status:'actual',inputTokens:10,outputTokens:4}` 完整保留。`records/jobs.ts` 的 `attemptCount >= 3` 上限、`receiveResult` 的迟到正文拒绝与过期 `timed_out/deadline` 均未放宽，A3-R01/A3-R02 本体代码未回退。新增 `acceptance.a3-b1-compat-red.windows.txt`（52 行）如实留档适配前的红运行；`acceptance.a3-b1-compat.evidence.json` 的 `boundary` 段明确写 `secondPreflight: "Scripted external ModelProvider preflight error after one synthetic sent call; no claim of two actual provider input sizes"`、`sharedReleaseApi: "Proposal only; pending A/C review"`，未把替身证明冒充真实 provider 证明。
+
+实际验证（Windows / Node 24.21.0 / TypeScript 7.0.2，两个独立工作树）：
+
+| 检查 | head `26f37c52` 单独 | 预合并到 main `8a6c70cf` |
+| --- | --- | --- |
+| 自动合并 | — | 0 冲突，README 自动合并，24 文件 +2683/-7 |
+| `npm run typecheck` / `npm run build` | 通过 / 通过 | 通过 / 通过（`EXIT_TYPECHECK=0`、`EXIT_BUILD=0`） |
+| `node --test tests/design-agent.test.ts` | 25 通过 / 0 失败 / 0 跳过 | 25 通过 / 0 失败 / 0 跳过 |
+| `npm test` | 217 项：209 通过 / 1 失败 / 7 跳过 | 第 1 次 217：208 通过 / **2 失败** / 7 跳过；第 2 次（同一棵树未改动）217：209 通过 / 1 失败 / 7 跳过 |
+| 文档检查 / 自测 | `errors=[]`，33 份 / 16 通过 | `errors=[]`，34 份、27 条正式路由 / 16 通过 |
+| 证据完整性 | 5 份 `.txt` 的 SHA-256 与字节数与清单逐一相符 | 同左 |
+
+对照 §9.7 组合树的 3 失败，本次稳定为 1 失败，2 项差值正是被修好的两条反例；`217/209/1/7` 与作者在 `acceptance.a3-b1-compat.evidence.json` 中声明的全量结果逐项一致（作者如实把全量标为 `status: failed`，因存在既有基线失败项）。
+
+### 10.4 合并授权、批准与合并结果
+
+负责人指令原文为「两个都做，如果#28做好了可以直接合并了」，即合并以「#28 做好了」为条件。§10.3 的复验确认该条件成立后执行合并，未扩大授权范围。
+
+- 合并前再次回读：head 仍为 `26f37c52b845f755b0afd5594b14b6523857b6e4`、`mergeable=MERGEABLE`、`mergeStateStatus=CLEAN`。
+- 提交 APPROVE 评审 `5483933168`（2026-10-11T15:55:50Z，`paher-din`），reviewDecision 由 `CHANGES_REQUESTED`（`5483718569`，14:45:28Z）转为 `APPROVED`。
+- 合并于 2026-10-11T15:56:08Z 由 `paher-din` 执行，PR #28 状态 MERGED，合并提交 `347dde1555f8635e9f5dae80aaa2a018f33e79c4`，parents 为 `8a6c70cfa582ef0f7a574a66729a97bc332f737a` + `26f37c52b845f755b0afd5594b14b6523857b6e4`，与 §9 建议的 merge commit 方式一致（对照 #29 的 `83e528e`）。
+- 远端 main 回读为 `347dde1`，`git fetch` 快进 `8a6c70c..347dde1`，未使用强制推送。
+- **树同一性核验：** 合并提交的 tree 为 `ba94c6681eb7229578990603943221e185edadab`，与我在 `p3-pr28-onmain` 中预合并后 `git write-tree` 得到的树哈希逐字节相同，即实际落地内容与我复验过的内容完全一致。
+
+### 10.5 合并后 main 复验
+
+在独立工作树检出真实合并提交 `347dde1`（tree `ba94c668`、0 个被跟踪文件修改、0 未合并项）后实测：
+
+| 检查 | main `347dde1` 结果 |
+| --- | --- |
+| `npm run typecheck` | 通过（`EXIT_TYPECHECK=0`） |
+| `npm run build` | 通过（`EXIT_BUILD=0`） |
+| `node --test tests/design-agent.test.ts` | 25 通过 / 0 失败 / 0 跳过 |
+| `npm test` | 217 项：209 通过 / 1 失败 / 7 跳过（60.6s） |
+| 唯一失败 | `review: real RunControl preparation failure ends check without fabricating a RunRecord` → `runner/control.ts:48` `Linux and trusted control context required`，Windows 上的既有基线项，与 §9.7 记录的 main 本体失败为同一条 |
+| `git diff --check 8a6c70cf 347dde1` | 无空白问题 |
+| 文档检查 / 自测 | `errors=[]`，34 份文档、27 条正式路由；检查器自测 16/16 |
+
+结论：**合并后 main 健康**，typecheck 阻塞已消除，唯一失败为既有的 Linux-only 基线项，非本次合并引入。
+
+### 10.6 新发现：既有 flaky 计时断言（属 B，本次未修）
+
+§10.3 预合并树的第 1 次全量运行多出 1 项失败：`server/tutoring/test/index.test.ts:361` `cancellation interrupts a provider that ignores AbortSignal`，失败点是 `:373` 的 `assert.ok(Date.now() - startedAt < 80)`，实测 105.04ms。**两条功能断言 `:371 result.outcome === "cancelled"` 与 `:372 result.calls === 1` 均通过**，即取消语义正确，只有墙钟阈值被突破。
+
+判定为负载敏感的既有 flaky，依据四点：该测试用 `setTimeout(() => controller.abort(), 5)` 对 `setTimeout(resolve, 100)` 的 provider 计时并断言总耗时 `< 80ms`，而同批全量运行中并发着多个 2.4s～7.5s 的真实 SQLite 用例，5ms 定时器被事件循环延后即可越界；`git diff --cached 8a6c70cf -- apps/teaching/server/tutoring apps/teaching/contracts/tutoring` 为空，预合并树的 tutoring 代码与新 main 逐字节相同，PR #28 只改 README、`contracts/design/proposals.ts`、`server/db/transaction.ts`、`server/design/*`、`tests/design-agent.test.ts`、`tests/evidence/a3/*` 与 A3 任务稿；`git blame` 显示该断言自 `cdc4ac4b`（2026-10-09，B 侧）即在 main 上，早于 PR #28 全部改动；单独运行该文件 6 次全部通过（14.5～15.9ms），随后在未改动的同一棵预合并树上重跑全量即回到 217/209/1/7。
+
+建议（属 B，不由 A 的 PR 修）：该断言把「取消是否抢在 provider 返回前」这一语义事实用墙钟阈值表达，在全量并发下不可靠，宜改为断言语义结果并用可控时钟或更宽阈值，或把计时断言移到隔离运行。此项应作为 main 基线的独立待办登记，不因 PR #28 合并而关闭；本次未修改该测试，也未通过跳过、注释或放宽断言掩盖它。
+
+### 10.7 边界与未执行
+
+本次未修改任何受保护文档（`docs/product/**`、`AGENTS.md`、`docs/planning/**`、`docs/reference/**`），未改 `.env`/密钥/CI/schema，未删除文件或 Git 历史，未强制推送，未代任何作者修改业务代码。本文是本轮唯一被提交的文件。
+
+未合并 PR #33、未合并 PR #32（仍为 Draft，§9.2 的 3 项 P2 与 #27 依赖不变）；#24/#25/#26/#27/#11 均未关闭；PR #28 的合并只关闭该 PR 本身，未解决 #33 的任何审查线程，也未关闭 A3 的后续义务。真实 provider 调用 / D-02 / 真实模型 / Linux 复验 / 教师内容会审 / 浏览器与实际 UI / 真人与负载 / C5 备份恢复 / 完整 G1～G4 与 MVP 验收均保持未执行；服务端通过、文档交付与本次合并均不构成产品验收或教学效果证据。MVP_SPEC §10 与 TEAM 的基线进度仍待授权维护者汇总，本文不直接修改受保护基线。
