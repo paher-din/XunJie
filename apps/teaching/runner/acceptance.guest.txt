@@ -1,0 +1,56 @@
+▶ node-local control synthetic checks
+  ✔ parallel identical submit starts once and asynchronous ACL cannot create a race (82.855516ms)
+  ✔ cancel-before-submit is durable and never creates a new unit (31.422779ms)
+  ✔ two slots and one attempt guard include unresolved create operations (154.572268ms)
+  ✔ ACL revoked while queued is checked again before dispatch (38.428987ms)
+  ✔ process crash keeps pending creation unknown and never releases its slot (237.527404ms)
+  ✔ corrupt/partial journal and different node generation stop admission (15.028042ms)
+  ✔ credentials or source bodies cannot be copied into control metadata (17.356485ms)
+  ✔ generation advance needs trusted registration, refuses rollback and survives ordinary restart (40.419271ms)
+  ✔ preparation failure before any unit intent does not occupy a phantom slot (41.496333ms)
+  ✔ confirmed recovery wins completion race and cancelled result remains readable (86.009656ms)
+  ✔ old queued work becomes stale after trusted generation registration (43.549342ms)
+✔ node-local control synthetic checks (793.766296ms)
+✔ course rules bind selected snapshot inputs, records and approved error exits (5.090561ms)
+✔ invalid course selection and profile cannot reach trusted oracle (1.483426ms)
+▶ dedicated Linux synthetic container execution and resource checks
+  ✔ fixed C17 static program runs non-root and can only read approved input (1504.823789ms)
+  ✔ stalled real GCC receives the fixed 30 second compile deadline (30528.831667ms)
+  ✔ root/source writes, Windows files, engine socket and external network are denied (1466.842609ms)
+  ✔ seccomp and no-new-privileges are effective; keys, verifier and other jobs are absent (1551.298859ms)
+  ✔ execution timeout stops the complete container (11367.170172ms)
+  ✔ over-output is terminated instead of only clipped (1670.90385ms)
+  ✔ 512 MiB OOM has engine evidence (2670.340711ms)
+  ✔ 128 MiB work limit is real and visible to the trusted host (1550.655558ms)
+  ✔ pids constraint refuses forks and cancellation leaves no live root process (2521.44879ms)
+  ✔ cancelled-before-start cannot execute a late-created unit (1087.4233ms)
+  ✔ cancellation around start request repeatedly stops a possibly late-starting unit (1696.84923ms)
+  ✔ report is collected only after termination and symlinks stay incomplete (1479.222115ms)
+  ✔ durable control uses actual fixed-snapshot containers and duplicate submit returns original results (1474.396511ms)
+✔ dedicated Linux synthetic container execution and resource checks (60579.396263ms)
+﹣ authenticated dedicated VM control and supervision (1.560644ms) # SKIP
+✔ report oracle uses approved ASCII word/line/byte/tie semantics (3.025765ms)
+✔ report verifies all semantics while accepting non-semantic whitespace and bound sandbox names (2.054235ms)
+✔ JSON path quoting preserves semantic spaces and escaped names (0.259435ms)
+✔ returns bound content facts, distinguishes missing and unsafe files (3.487045ms)
+✔ enforces combined byte budget and rejects invalid UTF-8 (3.432633ms)
+✔ rejects intermediate and final symlinks in Linux (1.380131ms)
+✔ maps four course operations to arrays and resolves files by immutable identity (2.680175ms)
+✔ rejects unapproved files, command/word injection, zero count and output escape (0.832847ms)
+✔ hashes exact UTF-8 content and byte-sorted compact manifests (2.373483ms)
+✔ rejects traversal, absolute, drive, UNC, backslash, NUL and empty components (0.841082ms)
+✔ rejects stale body and manifest hashes and duplicate file identities (0.467711ms)
+✔ enforces file count and UTF-8 byte budget including multibyte text (12.923731ms)
+✔ builds fixed compiler argv only from approved C sources (1.765773ms)
+✔ rejects malformed input at the runtime boundary (0.39396ms)
+✔ stdout passed and exit zero cannot claim course success (1.67954ms)
+✔ trusted expected exits one and two can pass error-handling checks (0.36219ms)
+✔ limits, tooling failures, unresolved termination and missing files remain incomplete (0.258272ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 45
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 63174.412603

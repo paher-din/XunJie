@@ -1,0 +1,111 @@
+{
+  "sourceCommit": "8421157d7e917067b397d76378ed91096c4a8369",
+  "bundleSha256": "bab7703313e4abe3fe1b376f16f302bc6d18112deda57e68bfb8a7cb1d4b66dc",
+  "host": "PAHER / WSL2 Ubuntu",
+  "node": "v24.21.0",
+  "npm": "11.19.0",
+  "dependencyInstall": {
+    "command": "npm ci",
+    "exitCode": 0,
+    "nativeSourceBuildExecuted": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "exitCode": 0
+  },
+  "build": {
+    "command": "npm run build",
+    "exitCode": 0
+  },
+  "realTest": {
+    "command": "XUNJIE_A2_RUNTIME=1 XUNJIE_A2_SSH_CONFIG=<controlled-local-file> node --test --test-reporter=tap --test-name-pattern='real authenticated C1 readiness' apps/teaching/tests/design-activities.test.ts",
+    "exitCode": 0,
+    "pass": 1,
+    "fail": 0,
+    "skipped": 0,
+    "outputSha256": "92c2709c311692f7603f7880544f4387043c7b8a599acc36b40e92db9e810103"
+  },
+  "runtime": {
+    "ready": true,
+    "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+    "kernel": "6.8.0-146-generic",
+    "validation": {
+      "passed": true,
+      "fingerprintHash": "02351c15ef9683d19ebb6b2b8ed079a28e2f6e51f888e3e31a9cd99c3b14b42b",
+      "fingerprint": {
+        "kernel": "6.8.0-146-generic",
+        "node": "v24.21.0",
+        "engine": "29.8.2",
+        "cgroup": "2",
+        "seccomp": [
+          "name=seccomp,profile=builtin"
+        ],
+        "profile": {
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+          "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+          "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+          "approvedResultFiles": [
+            "report.txt"
+          ]
+        },
+        "sourceHash": "0869fdbeb71287d22cfecaf6424abf4ed79db9a98ef687de91f7ff6ad2520e36"
+      },
+      "evidence": [
+        {
+          "suite": "guest",
+          "exitCode": 0,
+          "outputHash": "c26cdca46eca970ae20ae99aa9f508d7e815cce67af5a3f6f48da8ae0a6a4348"
+        },
+        {
+          "suite": "ssh",
+          "exitCode": 0,
+          "outputHash": "e784ac10dc8298b704522453669d348e11e05c2bbc4b1e184e110512970c0e80"
+        },
+        {
+          "suite": "types",
+          "exitCode": 0,
+          "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "validatedAt": "2026-10-10T11:14:23.572Z"
+    }
+  },
+  "persistedDatabase": {
+    "sqliteVersion": "3.53.4",
+    "applicationTables": 17,
+    "retainedSyntheticDirectory": "xunjie-a12-completion-XxbGXq",
+    "counts": {
+      "sessions": 2,
+      "activity_versions": 1,
+      "assignments": 1,
+      "attempts": 0,
+      "jobs": 0,
+      "audit_events": 7,
+      "command_receipts": 7
+    },
+    "control": {
+      "status": "paused",
+      "control_revision": 2
+    },
+    "assignment": {
+      "status": "paused",
+      "assignment_revision": 2,
+      "individual_paused": 0,
+      "paused_by_activity": 1
+    },
+    "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+    "runtimeReadiness": {
+      "fingerprintHash": "02351c15ef9683d19ebb6b2b8ed079a28e2f6e51f888e3e31a9cd99c3b14b42b",
+      "sourceHash": "0869fdbeb71287d22cfecaf6424abf4ed79db9a98ef687de91f7ff6ad2520e36",
+      "validatedAt": "2026-10-10T11:14:23.572Z",
+      "checkedAt": "2026-10-10T11:24:10.622Z"
+    }
+  },
+  "limits": [
+    "app.inject server integration; no browser/TCP/TLS acceptance",
+    "No learning Attempt, runner job, model call or node deployment",
+    "No cross-machine connection or credential distribution",
+    "Full A1/A2/C2/G1 completion remains with the respective owner and acceptance gates"
+  ]
+}

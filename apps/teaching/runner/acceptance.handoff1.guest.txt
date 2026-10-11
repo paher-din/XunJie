@@ -1,0 +1,59 @@
+▶ node-local control synthetic checks
+  ✔ parallel identical submit starts once and asynchronous ACL cannot create a race (95.009806ms)
+  ✔ cancel-before-submit is durable and never creates a new unit (33.582034ms)
+  ✔ two slots and one attempt guard include unresolved create operations (164.4155ms)
+  ✔ ACL revoked while queued is checked again before dispatch (41.411959ms)
+  ✔ process crash keeps pending creation unknown and never releases its slot (251.717108ms)
+  ✔ corrupt/partial journal and different node generation stop admission (17.654297ms)
+  ✔ credentials or source bodies cannot be copied into control metadata (18.97703ms)
+  ✔ generation advance needs trusted registration, refuses rollback and survives ordinary restart (44.349294ms)
+  ✔ preparation failure before any unit intent does not occupy a phantom slot (46.882969ms)
+  ✔ confirmed recovery wins completion race and cancelled result remains readable (97.591066ms)
+  ✔ old queued work becomes stale after trusted generation registration (40.528175ms)
+✔ node-local control synthetic checks (857.776894ms)
+✔ course rules bind selected snapshot inputs, records and approved error exits (4.2326ms)
+✔ invalid course selection and profile cannot reach trusted oracle (0.958694ms)
+✔ missing input case avoids every snapshot file and implied directory without reserving names (0.737191ms)
+✔ overflow is a trusted exit-2 case and maximum normal N still covers all words (0.840532ms)
+▶ dedicated Linux synthetic container execution and resource checks
+  ✔ fixed C17 static program runs non-root and can only read approved input (2286.920137ms)
+  ✔ stalled real GCC receives the fixed 30 second compile deadline (30549.278913ms)
+  ✔ root/source writes, Windows files, engine socket and external network are denied (1504.974394ms)
+  ✔ seccomp and no-new-privileges are effective; keys, verifier and other jobs are absent (1470.380531ms)
+  ✔ execution timeout stops the complete container (11363.700132ms)
+  ✔ over-output is terminated instead of only clipped (1705.176294ms)
+  ✔ 512 MiB OOM has engine evidence (3359.288324ms)
+  ✔ 128 MiB work limit is real and visible to the trusted host (1636.051458ms)
+  ✔ pids constraint refuses forks and cancellation leaves no live root process (2597.434188ms)
+  ✔ cancelled-before-start cannot execute a late-created unit (1167.105834ms)
+  ✔ cancellation around start request repeatedly stops a possibly late-starting unit (1875.004438ms)
+  ✔ report is collected only after termination and symlinks stay incomplete (1538.025406ms)
+  ✔ durable control uses actual fixed-snapshot containers and duplicate submit returns original results (1484.815943ms)
+✔ dedicated Linux synthetic container execution and resource checks (62551.430076ms)
+﹣ authenticated dedicated VM control and supervision (1.353498ms) # SKIP
+✔ report oracle uses approved ASCII word/line/byte/tie semantics (2.474567ms)
+✔ report verifies all semantics while accepting non-semantic whitespace and bound sandbox names (2.240353ms)
+✔ JSON path quoting preserves semantic spaces and escaped names (0.292135ms)
+✔ returns bound content facts, distinguishes missing and unsafe files (4.056246ms)
+✔ enforces combined byte budget and rejects invalid UTF-8 (4.256166ms)
+✔ rejects intermediate and final symlinks in Linux (1.528294ms)
+✔ maps four course operations to arrays and resolves files by immutable identity (2.780716ms)
+✔ rejects unapproved files, command/word injection, zero count and output escape (0.836918ms)
+✔ top accepts the approved C int maximum and rejects overflow exactly (0.324948ms)
+✔ hashes exact UTF-8 content and byte-sorted compact manifests (2.925295ms)
+✔ rejects traversal, absolute, drive, UNC, backslash, NUL and empty components (1.08175ms)
+✔ rejects stale body and manifest hashes and duplicate file identities (0.666558ms)
+✔ enforces file count and UTF-8 byte budget including multibyte text (12.321891ms)
+✔ builds fixed compiler argv only from approved C sources (1.627426ms)
+✔ rejects malformed input at the runtime boundary (0.405895ms)
+✔ stdout passed and exit zero cannot claim course success (1.508196ms)
+✔ trusted expected exits one and two can pass error-handling checks (0.245033ms)
+✔ limits, tooling failures, unresolved termination and missing files remain incomplete (0.484115ms)
+ℹ tests 49
+ℹ suites 0
+ℹ pass 48
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 65331.364582

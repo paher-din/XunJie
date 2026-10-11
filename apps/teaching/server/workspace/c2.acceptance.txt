@@ -1,0 +1,24 @@
+✔ canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials (4.851225ms)
+✔ receipt plan binds both keys to original IDs and aliases cannot be reused for other payload (2.729229ms)
+✔ jobs retain bounded deadlines/call counts across leases and reject expired worker completion (14.062606ms)
+✔ cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy (1.718762ms)
+✔ run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution (9.600796ms)
+✔ lost transport queries same original run and rechecks current authorization before submit (3.300885ms)
+✔ check cancellation keeps stage until the authenticated node confirms no pending units (2.146752ms)
+✔ confirmed original facts reconcile expired/unknown leases and never become current-code claims (3.748865ms)
+✔ authorized diagnostic reads exclude other attempts and private check detail (3.498548ms)
+✔ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (14270.851209ms)
+✔ whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted (6.580343ms)
+✔ CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input (10.244884ms)
+✔ exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges (1.471951ms)
+✔ snapshot and ObjectRef bind old file instance/version/body rather than current paths (2.542531ms)
+✔ capture/reminder/lifecycle controls are separate and stale process does not block saving (1.379539ms)
+✔ unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely (1.432259ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14918.786669
