@@ -152,4 +152,4 @@ A2 PR #19 合并后的 checks/release 慢节点回执问题已由 [PR #21](https
 
 负责人已批准独立 createTeacherDesignDatabase，仅新建保留的临时合成库，共 24 表（原 workspace 22 表＋教师请求/提案两表），不迁移已有库。使用批准 Node 24.21.0，在 apps/teaching 执行 node --test tests/design-agent.test.ts；合成 provider 是唯一外部替身，登录、CSRF、数据库、Job、回执与事务均真实。接入字段、私有资料/旧版本/取消/预算边界、原结果保存失败后安全重试见任务记录 §2、§5。
 
-只完成获准合成服务端范围。B1 真实 invoker/token counter、D-02、真实模型联调、教师内容会审与最终浏览器/TLS 未执行，不能据此宣称完整 A3/G2/MVP 通过。
+获准合成服务端已实现，A3 专项20/20通过、typecheck/build通过，两轴审查未解决0。Windows完整201项为193通过、1既有C2 Linux-only用例失败、7原条件跳过，全套未通过；原字节证据/失败复现及边界见任务记录第6节。B1 真实 invoker/token counter、D-02、真实模型联调、教师内容会审与最终浏览器/TLS 未执行，不能据此宣称完整 A3/G2/MVP 通过。

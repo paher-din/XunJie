@@ -6,7 +6,7 @@
 - 同步基线：`c42f356b6135ca9bb00c2e3c61c3d2aae713f602`（2026-10-11）；A2/C2 已合入。B1 #11 的真实 SDK/账号/模型调用及 D-02 仍未完成。
 - 已读：[PRD](../product/PRD.md) §4.1、PRD-01/02；[MVP_SPEC](../product/MVP_SPEC.md) M-01/M-02、AC-01/02、NFR-04；[TECH_DESIGN](../product/TECH_DESIGN.md) §4.3/4.4/5/6.2/7.2.1/9；[TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md) §6 A3；[G2](G2_OVERALL_COORDINATION.md)。
 - 负责：`apps/teaching/contracts/design`、`server/design`、必要 A 调用方/数据库工厂、本人测试、README 和本文。B 生成核心与 C Job/Receipt/Event 使用既有公共接口；不改 B/C 公共字段和状态，不实现 B2/C3，不制作 UI。
-- 当前状态：**§2–3 已获批准；合成服务端实施与验证进行中**。受保护文档只读，进度及契约补充 **待授权维护者汇总**。
+- 当前状态：**§2–3 获准合成服务端已实现，专项20/20；完整回归保留1项已有C2平台失败；真实模型/人工/UI未验收**。受保护文档只读，进度及契约补充 **待授权维护者汇总**。
 
 ## 2. 实施提案（2026-10-11 获批）
 
@@ -70,7 +70,7 @@ B 的候选/blueprint 使用文字数组，A 的能力/任务/观察/量规是�
 
 2026-10-11，项目负责人对 §2–3 的具体范围答复“批准该范围并继续”：24 表全新临时合成库、上述 A3 接口与真实 HTTP/公共 worker/事务测试获准。批准不延伸到现有数据库迁移、受保护基线写入、真实凭据/付费/数据、B/C 契约或 UI。
 
-当前已实现四种生成模式、持久请求/提案、教师采用、量规试评、原回执/结果重放及预算/取消/版本/课程权限守卫，正在最终验证和审查。代码位置：
+当前已实现四种生成模式、持久请求/提案、教师采用、量规试评、原回执/结果重放及预算/取消/版本/课程权限守卫，最终验证和审查结果见 §6。代码位置：
 
 - `apps/teaching/contracts/design/proposals.ts`：A3 严格输入与提案 body；沿用 B 的四种输出结构。
 - `apps/teaching/server/design/teacher-agent.ts`：A 会话路由、事务外 B 核心、C Job 生命周期、持久调用预留、结果同事务提交、显式采用。
@@ -85,6 +85,53 @@ B 的候选/blueprint 使用文字数组，A 的能力/任务/观察/量规是�
 
 结果落库失败时，worker 抛 TeacherResultCommitError，并仅向受信宿主附带原 delivery；宿主可在原 lease/deadline/generation 下调用 receiveResult 重试，不能重新付费生成。宿主丢失原 delivery 或 lease 过期时不能安全重发模型请求，C recoverJob 标记 outcome_unknown；由教师明确发起新请求。预算/失败不影响手动草稿。
 
-验证进展：A3 专项前 14 项通过；新增事务回滚、原结果重试、教师撤权、预算撤回、模型故障专项 4/4 通过；typecheck 通过。最终全套、文档检查和两轴审查尚未完成，最终结果将在下节记录。最初候选/局部路由缺失、取消未即时结束、蓝图 diff 缺失及扩字段拒绝未收口到 Job 失败由用例揭示，已修正并复验；不将早期失败统计为最终通过。
+验证进展：A3 专项前 14 项通过；新增事务回滚、原结果重试、教师撤权、预算撤回、模型故障专项 4/4 通过；typecheck 通过。这些为当时中间记录；最终全套、文档检查和两轴审查已执行，准确结果见 §6。最初候选/局部路由缺失、取消未即时结束、蓝图 diff 缺失及扩字段拒绝未收口到 Job 失败由用例揭示，已修正并复验；不将早期失败统计为最终通过。
 
 待授权维护者汇总：MVP_SPEC §10、TECH_DESIGN 的 A3 请求/采用 DTO 和原结果接缝，以及 TEAM 当前交接状态。本文仅保存已批准任务实现与证据，不写入受保护目录。
+
+## 6. 最终验证与审查（2026-10-11）
+
+获准合成服务端范围已实现并验证，代码提交 `b2a9f8efb3d32dbf6bde9c640578c50553c69666`（前置实现 `c2ac727`）。没有完成真实模型、教师会审或浏览器/TLS；Issue #25 保持开放，不以合成结果自动关闭。
+
+### 6.1 实际执行结果
+
+工具环境：Windows、Node 24.21.0、npm 11.19.0、TypeScript 7.0.2。所有 A3 数据为合成，测试临时库全部保留。没有运行真实网络模型/SSH、没有初始化真实账号或生产迁移。
+
+| 命令（apps/teaching，文档检查在根目录） | 实际结果 |
+| --- | --- |
+| `npm run typecheck` | 通过（最新代码含 A/B/C 全部 TypeScript）；未关闭或修改类型检查 |
+| `npm run build` / `npm test` 的 pretest build | 通过；默认启动行为保持健康入口 |
+| `node --test tests/design-agent.test.ts` | **20 通过、0 失败、0 跳过**；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-targeted.windows.txt) |
+| 首轮 `npm test` | **199 项：191 通过、1 失败、7 跳过**；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-synthetic.windows.txt) |
+| 时间/字节审查修复后 `npm test` | **201 项：193 通过、1 失败、7 跳过**；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-synthetic.final.windows.txt)；完整回归状态为失败，不能宣称全量通过 |
+| `node --test --test-name-pattern='real RunControl preparation' server/workspace/review.test.ts` | **1 失败**；[单项复现](../../apps/teaching/tests/evidence/a3/acceptance.preexisting-c2-windows.txt) |
+| `node tools/a0-review/check.mjs` | 通过；32 份文档、398 内部链接（首轮393，收口新增证据链接后398）、27 基线变更路径、errors=[]；此静态工具的 businessTests=NOT_EXECUTED 指它不执行业务测试，不覆盖本表真实业务结果 |
+| `node --test tools/a0-review/check.test.mjs` | 16/16 通过 |
+| `git diff --check` / 保护范围及远程基线检查 | 通过；未改 product/planning/reference/AGENTS、B/C 公共契约、凭据/CI/UI；原主副本未提交文件和独立工作副本旧 log 保留 |
+
+唯一全套失败是基线已有 `server/workspace/review.test.ts:118` 的真实 RunControl 准备失败用例：在 Windows 调用 C 的 Linux-only 构造器，初始化时即被 `runner/control.ts:48` 拒绝，发生于 A 应用 fixture 启动之前。两文件与同步基线 `c42f356` 无差异，独立用例复现同一 INVALID_CONFIGURATION；A3 的20项均通过。没有改 C 源码、增加 skip、屏蔽失败或重跑统计伪称通过。现有 Linux/真实节点条件跳过保持事实；本机 WSL Ubuntu 无 Linux Node 运行时，未执行 Linux 复验。需 C/受信 Linux 环境复跑原检查，并与 #23 环境稳定性单独交接。
+
+证据文件逐字节保存，目录内 .gitattributes 禁止换行转换；[证据清单](../../apps/teaching/tests/evidence/a3/acceptance.a3.evidence.json) 记录文件 SHA-256、命令、源码、结果和验收边界，不包含凭据。
+
+### 6.2 两轴审查
+
+#### Standards
+
+首轮硬性问题 1 项，可操作异味 0 项：acceptedAt/deadline 分别取时，可能超过45秒。修复为一次 acceptedAtMs 加45000，递增时钟用例先失败后通过。增量复核：该 P2 已关闭，当前新增硬性违规0、可操作异味0。审查只读，审查方未运行测试。
+
+#### Spec
+
+首轮问题 2 项，未发现范围扩大：上述时间边界，以及结果摘要未对应持久原 JSON 字节。原正文修复为 delivery.bodyJson 首次序列化并原样保存、直接 UTF-8 SHA-256、读时核验原字节及 body 关联；正文换行变化亦冲突，原版本/usage/提案 ID 重放不重写。两个反例先失败，再修复，连同原结果冲突/commit重试专项4/4通过。增量复核：两项均关闭，新增未解决规格问题0。审查方未运行测试，实际结果以 §6.1 为准。
+
+两轴分别收口：Standards 0 未解决；Spec 0 未解决。全套唯一既有 C2 平台失败仍保留。
+
+## 7. 后续交接与完成边界
+
+- A 的获准合成业务已交付：异步候选/蓝图/局部提案/量规试评、显式选择/PATCH-CAS、请求与原结果幂等、权限/资料/版本/停止/代际/租约/预算、短事务和回滚。
+- B1/#11 与 D-02：仍需真实 invoker/token counter、获准账号/API/配额/数据与实际模型联调；没有调用真实模型，本交付不完成这些前置条件。
+- 教师内容会审：候选适切性、量规歧义及教学意义仍未验证；B 候选文字不能直接替代 A 的三条版本化能力与证据关联，确认内容后现有确定性检查仍会报告缺口。
+- C：复用原 Job 公共状态和事务计划，未改 C 控制器；上述 Windows 用例需其受信 Linux 环境验收。
+- UI/#22、G2/#24：使用上述公共路由接实际界面，浏览器/TLS/人工以及完整 G1/G2/MVP 均未完成。
+- 基线同步：本文及 README 是当前任务交付；MVP_SPEC §10、TECH/TEAM 对应 DTO/状态 **待授权维护者汇总**，不擅自修改。
+
+PR 仅引用 #25，不使用 Closes #25，不合并/部署或删除源分支。最终 PR 链接和推送核验将在交付记录中补齐。
