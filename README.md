@@ -38,7 +38,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B0 模型、帮助与候选分析交接稿](docs/tasks/B0_模型帮助分析契约.md) | 三类输入/输出、可信来源、保存归属、拒绝与取消提案；待 A/C 会审 |
 | [B0 模型与预算复核](docs/tasks/B0_MODEL_VENDOR_RESEARCH.md) | 精确型号/区域/结构化方式、数据条款证据状态及预算/配额建议；D-02 待批准 |
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
-| [B1 合成 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、注入式 DeepSeek 适配边界及实际验证记录 |
+| [B1 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、实际 AI SDK/DeepSeek 适配与离线 transport 验证记录 |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
@@ -80,13 +80,15 @@ node --test tools/a0-review/check.test.mjs
 
 第一条检查项目文档的行内文件/目录引用、A0 既有编号/矩阵/JSON/映射与接口覆盖，兼容 G0 采纳后的 27 条变更接口；第二条检查路径、合法目录导航/错误目录锚点、旧提案兼容、必需接口缺失和未知接口反例，均只在内存构造。失败返回退出码 1。静态通过不校验业务/权限/状态语义、真实模型或执行隔离，不创建数据库或启动应用；skills 内示例不作为产品文档验收入口，正式应用仍未实现。
 
-B1 合成核心可在尚无共享 package/锁文件时使用 Node.js 24 的原生 TypeScript type-stripping 验证，不安装依赖：
+B1 核心已接入共享锁定的 Zod、AI SDK 和 DeepSeek provider。在 Node.js 24.21.0 与 `apps/teaching` 已按锁文件安装依赖的环境中，可单独执行：
 
 ```powershell
-node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.test.ts
+cd apps/teaching
+npm run typecheck
+node --test server/tutoring/test/*.test.ts
 ```
 
-该命令只验证 B1 合成领域逻辑和注入式适配边界，不是 TypeScript 7 静态 typecheck、Zod/AI SDK 实包兼容或真实 DeepSeek 调用。完整记录见 [B1 任务文档](docs/tasks/B1_AGENT_CORE.md)。
+领域测试同时通过实际 SDK/provider 和受控内存 transport，供应商网络调用为 0；它不代替待 D-02、凭据与付费授权后的真实 DeepSeek 验证。完整记录见 [B1 任务文档](docs/tasks/B1_AGENT_CORE.md)。
 
 ## 状态
 
@@ -143,6 +145,6 @@ A2 当前联合类型检查/build 与统一回归通过：157 项中 151 通过�
 
 A2 PR #19 合并后的 checks/release 慢节点回执问题已由 [PR #21](https://github.com/paher-din/XunJie/pull/21) 修复并合入 e401aac，原两条意见已解决；原针对性23/24、Windows完整161/167（6原条件跳过）及边界保留，作者交付时点记录见 [A2 §13](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#13-pr-19-合并后慢节点重放修复)。C2 #20 后续合入 2cfb61a，新组合同时保留 A2 回执优先和 C2 原 ACK/双键/原子保存。
 
-2026-10-11 总体核对：合并组合的 Node24.21.0/TypeScript7.0.2 typecheck/build、C2专项30通过/2节点项跳过、稳定 Windows A2/records/B1 59通过/1节点项跳过；作者 C1 48guest/10SSH、A2实际节点1/1、C2最终节点组合32/32的入库证据摘要核对一致，各自范围单列。Linux完整192项两轮仍有认证/限流/双进程失败且观测到约18.7秒墙钟跳变，未宣称全量通过或改变守卫，正式试点前在#23补验。B1当前为合成核心和注入式适配，实际invoker/token counter/模型与语义未完成，不用SDK导入/构造smoke冒充模型调用。
+2026-10-11 总体核对：合并组合的 Node24.21.0/TypeScript7.0.2 typecheck/build、C2专项30通过/2节点项跳过、稳定 Windows A2/records/B1 59通过/1节点项跳过；作者 C1 48guest/10SSH、A2实际节点1/1、C2最终节点组合32/32的入库证据摘要核对一致，各自范围单列。Linux完整192项两轮仍有认证/限流/双进程失败且观测到约18.7秒墙钟跳变，未宣称全量通过或改变守卫，正式试点前在#23补验。该段 B1 数字是合并时点记录；后续 `codex/b1-sdk-adapter` 已实现实际 AI SDK/DeepSeek/Zod invoker、保守 16K 输入上界及零供应商网络 transport 测试，真实模型与语义仍未完成，不用离线结果冒充模型调用。
 
 当前 `npm start` 仍只启动健康入口；业务宿主需显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。
