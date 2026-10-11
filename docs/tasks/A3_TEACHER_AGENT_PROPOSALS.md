@@ -144,7 +144,7 @@ PR 仅引用 #25，不使用 Closes #25，不合并/部署或删除源分支。�
 - 原 Windows CRLF 字节通过目录 .gitattributes 的 -text 保留；日志路径仍启用 blank-at-eol、blank-at-eof、space-before-tab，另识别 cr-at-eol。初次原字节日志以默认行尾规则检查时将 CR 误报为末尾空白，调整为正确识别保留的 CRLF 后全差异检查通过；没有改写原日志，也没有关闭源码/文档空白检查。
 - 主工作副本原有 README/product/planning/A_WORK_PLAN 未提交改动保持原状；独立副本旧 typecheck-a12-current.log 未暂存或提交。
 
-## 9. PR #28 外部审查修复（2026-10-11，实施中）
+## 9. PR #28 外部审查修复（2026-10-11）
 
 读取审查固定点 `9d470940` 的两条 P2 意见（[实际用量](https://github.com/paher-din/XunJie/pull/28#discussion_r4241172685)、[输入预检](https://github.com/paher-din/XunJie/pull/28#discussion_r4241172687)），核对 PRD §4.1、MVP M-01/M-02、TECH §6.2/10.3 与 B 的 InputLimitError 语义。远端 main 新增的五个提交均为其他任务/协调文档，不引入其未合并实现，本修复保持原代码基线。
 
@@ -155,3 +155,22 @@ PR 仅引用 #25，不使用 Closes #25，不合并/部署或删除源分支。�
 teacher-agent.ts 的原 provider 包装器已修正：实际 usage 只核验原 generation/lease/调用槽，不依据正文有效性跳过 accounting；progress 同事务保存原 Job（保留 status/stop/result）与 usage。InputLimitError 仅撤销同 lease、当前末槽、unknown 的未发送预留；之前实际/未知调用保持，其他异常继续占用。B/C 源码、接口、schema 和凭据无改动。
 
 两条外部反例分别先失败（超时实际 usage 被记成 unknown；零 outbound 的 attemptCount=1）后通过。新增停止后迟到 usage、第二次预检仅退末槽、旧恢复代际拒绝三项也通过；A3 全部 **25通过、0失败、0跳过**，typecheck通过。完整回归及两轴复核正在执行，最终结果将在 §9.2 补齐；原 §6 统计保留历史事实。
+
+### 9.2 本次实际验证
+
+源码固定为 `ff2f7da13c1a404916852aef750de6de63389ad9`；Windows / Node24.21.0 / npm11.19.0 / TypeScript7.0.2。
+
+- `npm run typecheck`：通过；`npm test` 的 pretest build：通过。
+- `node --test tests/design-agent.test.ts`：**25通过、0失败、0跳过**；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-review-targeted.windows.txt)。
+- `npm test`：**206项：198通过、1失败、7原条件跳过**；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-review-full.windows.txt)。全套状态为失败；唯一失败仍为 §6.1 已记录的 C2 Windows/Linux-only 初始化用例，与 `c42f356` 比对该测试与 RunControl 源码无差异。没有降低检查、增加跳过或改动 C 实现。
+- 新增独立[本次证据清单](../../apps/teaching/tests/evidence/a3/acceptance.a3-review.evidence.json)，记录固定源码、命令、实际结果和新日志原字节 hash；原四份输出及原证据清单保持不变。
+
+本次只修正两条审查发现的 A accounting 问题，之前已发送/usage缺失的保守 unknown、三次上限、45秒窗口与正文停止/版本/权限守卫均保留。真实 B1/D-02、教师内容会审、Linux复验、浏览器/TLS及完整 A3/G2 的原未完成条件不变，Issue #25 保持开放。基线进度仍待授权维护者汇总。
+
+### 9.3 两轴复核与交付状态
+
+**Standards：** 固定 `9d470940...ff2f7da` 增量复核，硬性违规0、可操作异味0；未扩大 schema/B/C/凭据/UI 或基线写入范围，真实接缝用例和文档记录一致。
+
+**Spec：** 两条外部 P2 均已修复，未解决0，范围扩大0；原身份/代际的 accounting 与正文有效性分开核验，仅证明未发送的末槽预留可释放。复核只读，没有运行测试；实际结果以 §9.2 为准。
+
+文档检查32份/402内部链接/27基线变更路径，errors=[]；检查器自测16/16通过；完整差异空白与保护范围检查通过。原四份日志及历史清单不变，本次两份新日志与本次清单逐字节核验。修复将普通推送同一 PR #28，不代替审查者批准、不自动解决会话或合并，不关闭 #25。
