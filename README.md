@@ -150,3 +150,15 @@ A2 PR #19 合并后的 checks/release 慢节点回执问题已由 [PR #21](https
 2026-10-11 总体核对：合并组合的 Node24.21.0/TypeScript7.0.2 typecheck/build、C2专项30通过/2节点项跳过、稳定 Windows A2/records/B1 59通过/1节点项跳过；作者 C1 48guest/10SSH、A2实际节点1/1、C2最终节点组合32/32的入库证据摘要核对一致，各自范围单列。Linux完整192项两轮仍有认证/限流/双进程失败且观测到约18.7秒墙钟跳变，未宣称全量通过或改变守卫，正式试点前在#23补验。该段 B1 数字是合并时点记录；后续 `codex/b1-sdk-adapter` 已实现实际 AI SDK/DeepSeek/Zod invoker、保守 16K 输入上界及零供应商网络 transport 测试，真实模型与语义仍未完成，不用离线结果冒充模型调用。
 
 当前 `npm start` 仍只启动健康入口；业务宿主需显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。
+
+## A3 教师 Agent 与提案（合成服务端）
+
+[A3 任务记录](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md) 对应 Issue #25。业务宿主可在 createDesignApp / createWorkspaceApp 的选项中显式传入 teacherAgent={provider, versions, budgetAvailable}；模型调用在短事务外，宿主驱动返回的 teacherAgent.processJob(jobId)。候选/蓝图生成只返回异步 Job，教师通过 design-proposals 查询/选择创建草稿；局部提案及量规试评的明确修改走现有 PATCH/CAS。默认 npm start 仍是健康入口。
+
+负责人已批准独立 createTeacherDesignDatabase，仅新建保留的临时合成库，共 24 表（原 workspace 22 表＋教师请求/提案两表），不迁移已有库。使用批准 Node 24.21.0，在 apps/teaching 执行 node --test tests/design-agent.test.ts；合成 provider 是唯一外部替身，登录、CSRF、数据库、Job、回执与事务均真实。接入字段、私有资料/旧版本/取消/预算边界、原结果保存失败后安全重试见任务记录 §2、§5。
+
+首批验证时点记录：获准合成服务端已实现，A3 专项20/20通过、typecheck/build通过，两轴审查未解决0。Windows完整201项为193通过、1既有C2 Linux-only用例失败、7原条件跳过，全套未通过；原字节证据/失败复现及边界见任务记录第6节。B1 真实 invoker/token counter、D-02、真实模型联调、教师内容会审与最终浏览器/TLS 未执行，不能据此宣称完整 A3/G2/MVP 通过。
+
+2026-10-11，PR #28 外部审查指出两项调用记账问题，修复与复现记录见 [A3 §9](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#9-pr-28-外部审查修复2026-10-11)：超时/停止后保存原调用实际 usage，InputLimitError 明确未发送时安全释放末尾预留。正文接收与采用守卫继续生效，其他未知调用保守占用。新增5项合成验证，A3专项25/25、typecheck/build通过；Windows完整206项：198通过、1既有C2平台失败、7原条件跳过，全套未通过。原始证据和复核结果见任务记录 §9，原 §6 统计保留历史事实。
+
+PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 §10](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#10-已合并-b1-新预检接缝适配2026-10-11)保留旧接口组合失败反例及修复说明。组合typecheck/build通过、A3专项25/25；完整217项：209通过、1既有C2平台失败、7原条件跳过，全套未通过。B1 SDK适配源码已接入，真实供应商网络调用及教师/UI验收仍未执行。

@@ -1,0 +1,69 @@
+{
+  "commands": [
+    {
+      "status": "passed",
+      "command": "npm run typecheck"
+    },
+    {
+      "passed": 25,
+      "failed": 0,
+      "tests": 25,
+      "skipped": 0,
+      "record": "acceptance.a3-review-targeted.windows.txt",
+      "status": "passed",
+      "command": "node --test tests/design-agent.test.ts"
+    },
+    {
+      "record": "acceptance.a3-review-full.windows.txt",
+      "skipped": 7,
+      "command": "npm test",
+      "buildStatus": "passed",
+      "failed": 1,
+      "passed": 198,
+      "tests": 206,
+      "status": "failed"
+    }
+  ],
+  "knownFailure": {
+    "reason": "Windows initializes Linux-only RunControl before app fixture",
+    "baselineFilesUnchanged": true,
+    "test": "server/workspace/review.test.ts:118"
+  },
+  "task": "A3 PR28 review fixes",
+  "sourceSha": "ff2f7da13c1a404916852aef750de6de63389ad9",
+  "authorization": {
+    "schemaChanged": false,
+    "databasesRetained": true,
+    "scope": "Existing approved temporary synthetic database and public HTTP/worker tests; A accounting fixes only",
+    "source": "docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md §5/9"
+  },
+  "environment": {
+    "npm": "11.19.0",
+    "node": "24.21.0",
+    "typescript": "7.0.2",
+    "platform": "win32"
+  },
+  "pr": "https://github.com/paher-din/XunJie/pull/28",
+  "reviewBaselineSha": "9d470940fd5eeff5ad7c0536a6152d57dcc54e00",
+  "issue": "https://github.com/paher-din/XunJie/issues/25",
+  "date": "2026-10-11",
+  "notExecuted": [
+    "Actual provider invocation / D-02 / B1 closure",
+    "Linux rerun",
+    "Teacher semantic review",
+    "Browser / TLS",
+    "Full A3/G1/G2/MVP completion"
+  ],
+  "files": [
+    {
+      "sha256": "6e53bfc46e2a5d826779c0ea7ddef9a8239888916a08b78d076ff1d8eb33e118",
+      "file": "acceptance.a3-review-targeted.windows.txt",
+      "bytes": 2794
+    },
+    {
+      "sha256": "e2f92cce4d634f3a7539f85556a75cedafb7c2346df8d2596c348c6dcd6bb27d",
+      "file": "acceptance.a3-review-full.windows.txt",
+      "bytes": 21908
+    }
+  ]
+}
