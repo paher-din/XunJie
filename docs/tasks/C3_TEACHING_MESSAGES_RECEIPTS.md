@@ -334,3 +334,21 @@ C3 编码、数据库新建/迁移、业务测试、B2 实际联调、模型/节
 本地主副本仍是 `c42f356`，临时 stash 基于 `e13f12d`，应用到 main 后产生修改/删除及内容冲突；G2/I0 已有工作与 `course_matrial/data_logic/` 新资料需保留。恢复顺序为：核修复已入 PR → 保存当前文件、索引、stash 身份和摘要 → 将 main 不应包含的 C3 文件保存在恢复目录 → 仅恢复明确冲突/修复路径的索引和 main 基线 → 快进至已发布 origin/main → 核对 G2/I0/新资料与 stash 保留。不得用 reset --hard、clean、stash drop/pop 或删除来“清理”现场，不把恢复目录作为团队查阅代码或验证的入口。
 
 PR 链接、推送回读、现场恢复与核验实际结果在执行后追加。上一节的 18 项 C3 通过、全量 1 项认证失败和未执行条件保持，不因发布或冲突处理宣称产品完成。
+
+### 12.1 发布事实与新 main 组合验证
+
+首轮普通推送因连接重置失败；同分支普通重试成功，没有强推或永久网络配置变更。发布候选为 `ea37814`。GitHub 连接器创建 PR 返回 403（integration 无创建权限）；回读确认无同 head PR 后，使用已登录 `gh pr create --body-file` 成功建立 [PR #33](https://github.com/paher-din/XunJie/pull/33)，Open，head=`codex/c3-review-fixes`、base=`main`，已附加至 C3 工作项。没有合并 PR、关闭 #27 或重复建立 PR。
+
+随后已发布 main 合入 B1 [PR #29](https://github.com/paher-din/XunJie/pull/29)，前进至 `83e528e`。main 与 C3 修复分支均正常同步该版本，保留作者 B1 实现/文档，不代改其源码。组合候选 `d15e5b5` 在新 Linux 验证目录复用 Node 24.21.0/精确 lock：`npm run typecheck`、`npm run build` 通过；`node --test server/records/teaching*.test.ts server/tutoring/test/*.test.ts` **65/65 通过、0 跳过**，其中 C3 18 项。供应商调用为离线 transport，真实模型调用 0；SDK 原兼容性警告保留，没有关闭日志或检查。
+
+这是同步新 B1 后的相关组合验证，没有把第 11 节的 210 项旧组合全量结果改写为新组合全量通过。本节发布/恢复记录完成后再普通提交/推送至同一 PR，最终 head 以本地、远端及 PR 回读一致为准。
+
+### 12.2 main 冲突与 stash 处理结果
+
+已先保存并核验 14 份现有文件、原 Git 索引和 stash 身份，并保存 4 份新课程资料的 SHA-256 清单。main 无对应路径的 C3 文件及新增回归用例保存在本机恢复目录，原 stash 和分支完整保留；未删除文件或 Git 历史。G2/I0 现有内容分别与已发布 blob `7775dce` / `b6add896` 一致，不存在需要重写的本地内容差异。
+
+首次 `git restore --staged` 对 main 不存在的修改/删除冲突路径拒绝，未宣称该步骤成功。文件已经保存移出主副本后，仅移除这些不存在于 main 的冲突索引项，再恢复 main 原跟踪路径；未执行文件删除、reset --hard、clean 或 stash drop/pop。随后 main 正常快进到已发布 main，最终核对 `83e528e` 与当前 origin/main 相同。
+
+核验通过：main 的跟踪文件与索引干净、未合并项为 0；G2/I0 原 blob 一致；`course_matrial/data_logic/` 四个文件 SHA-256 全部不变，仍是未跟踪资料，没有加入 PR 或发布。原 `stash@{0}` 仍为 `da0c0009fda44d5c16f02286aa072daea624b973`，标记为已核对的恢复备份：C3 修复在 PR #33，G2/I0 已在 main，不再重复应用到 main。
+
+main 文档检查通过（32 份文档、406 处内部引用、27 条正式路由，errors=[]）。恢复目录、原索引、stash、工作树和临时验证产物全部保留。main 同步不代表 C3 PR 已合入，原教学/UI/模型/全量环境限制继续保持。
