@@ -292,6 +292,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         if (error instanceof InputLimitError) persisted(tx => {
           const work = original(tx,jobId);
           // Only this provider's proven unsent, last reservation may be released.
+          // A lost lease/slot intentionally replaces InputLimitError with STATE_CONFLICT.
           if (work.job.leaseToken !== job.leaseToken || work.job.attemptCount !== callIndex+1
             || work.usages[callIndex]?.status !== 'unknown') throw new ApiError('STATE_CONFLICT');
           progress(tx,work,{...work.job,attemptCount:callIndex},() => saveUsages(tx,jobId,work.usages.slice(0,callIndex)));

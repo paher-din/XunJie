@@ -7,7 +7,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { createTeacherDesignDatabase, openSyntheticDatabase } from '../server/db/transaction.ts';
 import { createPasswordRecord } from '../server/access/password.ts';
 import { createDesignApp } from '../server/design/application.ts';
-import { SyntheticProvider, createDeepSeekProvider, type ModelProvider, type SyntheticStep } from '../server/tutoring/providers.ts';
+import { SyntheticProvider, createDeepSeekProvider, InputLimitError, type ModelProvider, type ProviderResponse, type SyntheticStep } from '../server/tutoring/providers.ts';
 
 const origin = 'https://synthetic.example';
 const candidate = { kind: 'candidates', candidates: [{ problem: 'Count words', audience: 'CS beginners',
@@ -154,11 +154,11 @@ test('teacher-approved private sample supports rubric trial and only explicit ru
   } finally { await f.close(); }
 });
 
-function gate() {
+function gate(response:ProviderResponse = {body:patchBody}) {
   let entered!:()=>void,release!:()=>void;
   const waiting = new Promise<void>(resolve => { release = resolve; });
   const started = new Promise<void>(resolve => { entered = resolve; });
-  return {started,release,step:async () => { entered(); await waiting; return {body:patchBody}; }};
+  return {started,release,step:async () => { entered(); await waiting; return response; }};
 }
 test('editing during generation preserves the manual revision and rejects the old result',async () => {
   const g = gate(),f = await fixture([g.step]);
@@ -424,11 +424,17 @@ test('actual usage returned after the deadline survives reopening without accept
 
 test('input preflight rejection records zero outbound calls and no billable reservation',async () => {
   let outbound = 0;
-  const provider = createDeepSeekProvider({countTokens:() => 16001,invoke:async () => { outbound++; return {body:candidate}; }});
+  let rejectedInputTokens = 0;
+  const bounded = createDeepSeekProvider({invoke:async () => { outbound++; return {body:candidate}; }});
+  const provider:ModelProvider = {generate:async request => {
+    try { return await bounded.generate(request); }
+    catch (error) { if (error instanceof InputLimitError) rejectedInputTokens = error.inputTokens; throw error; }
+  }};
   const f = await fixture([],provider);
   try {
-    const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
+    const headers = await f.login(),accepted = await start(f,headers,{request:'资料'.repeat(10000)}),jobId = accepted.json().data.result.jobId;
     const completed = await f.service.teacherAgent!.processJob(jobId);
+    assert.ok(rejectedInputTokens > 16000);
     assert.equal(completed?.delivery.outcome.outcome,'needs_input');
     assert.equal(completed?.delivery.outcome.calls,0); assert.equal(outbound,0);
     const job = await getJob(f,headers,jobId);
@@ -441,48 +447,46 @@ test('input preflight rejection records zero outbound calls and no billable rese
 });
 
 test('late actual usage updates a cancelled job without reviving its result',async () => {
-  let entered!:()=>void,release!:()=>void;
-  const started = new Promise<void>(resolve => { entered = resolve; });
-  const response = new Promise<void>(resolve => { release = resolve; });
-  const f = await fixture([async () => { entered(); await response; return {body:candidate,usage:{status:'actual',inputTokens:10,outputTokens:4}}; }]);
+  const g = gate({body:candidate,usage:{status:'actual',inputTokens:10,outputTokens:4}}),f = await fixture([g.step]);
   try {
     const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
-    const pending = f.service.teacherAgent!.processJob(jobId); await started;
+    const pending = f.service.teacherAgent!.processJob(jobId); await g.started;
     assert.equal((await command(f,headers,'/api/jobs/'+jobId+'/cancel',{},'cancel-before-usage')).statusCode,200);
     const completed = await pending; assert.equal(completed?.delivery.outcome.outcome,'cancelled');
     assert.deepEqual((await getJob(f,headers,jobId)).usages,[{status:'unknown'}]);
-    release(); await new Promise<void>(resolve => setImmediate(resolve));
+    g.release(); await new Promise<void>(resolve => setImmediate(resolve));
     const job = await getJob(f,headers,jobId);
     assert.equal(job.status,'cancelled'); assert.equal(job.stopRequested,true); assert.equal(job.attemptCount,1);
     assert.deepEqual(job.usages,[{status:'actual',inputTokens:10,outputTokens:4}]); assert.equal(job.proposalId,undefined);
     await f.reopen(); assert.deepEqual((await getJob(f,headers,jobId)).usages,job.usages);
     assert.equal(await f.service.teacherAgent!.processJob(jobId),undefined);
-  } finally { release(); await f.close(); }
+  } finally { g.release(); await f.close(); }
 });
 test('a second call rejected by preflight preserves the first sent call and its actual usage',async () => {
-  let counts = 0,outbound = 0;
-  const provider = createDeepSeekProvider({countTokens:() => ++counts === 1 ? 16000 : 16001,
-    invoke:async () => { outbound++; return {body:candidate,needsAnotherCall:true,usage:{status:'actual',inputTokens:10,outputTokens:4}}; }});
+  let preflights = 0,outbound = 0;
+  // Script only the external provider boundary: the second request is proven unsent.
+  const provider:ModelProvider = {generate:async () => {
+    if (++preflights === 2) throw new InputLimitError(16001);
+    outbound++;
+    return {body:candidate,needsAnotherCall:true,usage:{status:'actual',inputTokens:10,outputTokens:4}};
+  }};
   const f = await fixture([],provider);
   try {
     const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
     const completed = await f.service.teacherAgent!.processJob(jobId);
     assert.equal(completed?.delivery.outcome.outcome,'needs_input'); assert.equal(completed?.delivery.outcome.calls,1);
-    assert.equal(outbound,1); const job = await getJob(f,headers,jobId);
+    assert.equal(preflights,2); assert.equal(outbound,1); const job = await getJob(f,headers,jobId);
     assert.equal(job.attemptCount,1); assert.deepEqual(job.usages,[{status:'actual',inputTokens:10,outputTokens:4}]);
     assert.equal(job.proposalId,undefined); await f.reopen();
     assert.equal((await getJob(f,headers,jobId)).attemptCount,1);
   } finally { await f.close(); }
 });
 test('a response from an old recovery generation cannot update accounting or deliver a proposal',async () => {
-  let entered!:()=>void,release!:()=>void;
-  const started = new Promise<void>(resolve => { entered = resolve; });
-  const response = new Promise<void>(resolve => { release = resolve; });
-  const f = await fixture([async () => { entered(); await response; return {body:candidate,usage:{status:'actual',inputTokens:10,outputTokens:4}}; }]);
+  const g = gate({body:candidate,usage:{status:'actual',inputTokens:10,outputTokens:4}}),f = await fixture([g.step]);
   try {
     const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
-    const pending = f.service.teacherAgent!.processJob(jobId); await started;
-    f.restore(); release(); await assert.rejects(pending,{code:'RECOVERY_REQUIRED'});
+    const pending = f.service.teacherAgent!.processJob(jobId); await g.started;
+    f.restore(); g.release(); await assert.rejects(pending,{code:'RECOVERY_REQUIRED'});
     assert.equal((await f.service.app.inject({url:'/api/jobs/'+jobId,headers})).statusCode,409);
-  } finally { release(); await f.close(); }
+  } finally { g.release(); await f.close(); }
 });

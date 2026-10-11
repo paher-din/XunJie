@@ -1,1 +1,4 @@
 *.txt -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+acceptance.a3-b1-compat-red.windows.txt -diff
+acceptance.a3-b1-compat-typecheck-red.windows.txt -diff
+acceptance.a3-b1-compat-typecheck.windows.txt -diff

@@ -1,0 +1,52 @@
+✖ input preflight rejection records zero outbound calls and no billable reservation (2166.5568ms)
+✖ a second call rejected by preflight preserves the first sent call and its actual usage (1099.8866ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5100.0093
+
+✖ failing tests:
+
+test at tests\design-agent.test.ts:425:1
+✖ input preflight rejection records zero outbound calls and no billable reservation (2166.5568ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'success'
+  - 'needs_input'
+  
+      at TestContext.<anonymous> (file:///C:/Users/Noctis/.codex/worktrees/a0-contract-review/XunJie/apps/teaching/tests/design-agent.test.ts:432:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'success',
+    expected: 'needs_input',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\design-agent.test.ts:462:1
+✖ a second call rejected by preflight preserves the first sent call and its actual usage (1099.8866ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'unavailable'
+  - 'needs_input'
+  
+      at TestContext.<anonymous> (file:///C:/Users/Noctis/.codex/worktrees/a0-contract-review/XunJie/apps/teaching/tests/design-agent.test.ts:470:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'unavailable',
+    expected: 'needs_input',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
