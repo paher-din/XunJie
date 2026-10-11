@@ -16,9 +16,10 @@ import { readCoverageIntervals, readTeachingRecordsInTransaction, readTeachingJo
   saveTeachingJobInTransaction, completeTeachingInTransaction, deliverTeachingActionInTransaction,
   recordTeachingReceiptInTransaction, stopTeachingJobsInTransaction, teachingActionIsCurrent } from './teaching.ts';
 import { claimJob } from './jobs.ts';
+import type { TeachingStopHandler } from '../workspace/commands.ts';
 
-export type TeachingStopHandler = (tx: Transaction, courseId: string, studentId: string, jobIds: string[],
-  context: TeachingStopContext) => TeachingStopResult;
+// Single definition, shared with C2's control/cancel paths; re-exported for the B2/A4 callers of this composer.
+export type { TeachingStopHandler };
 export type TeachingRecordsOptions = Parameters<typeof createWorkspaceApp>[0] & { teaching?: { stop: TeachingStopHandler } };
 /** C's stop capability presented in A's design callback shape (activity/assignment pause). */
 export function designTeachingStop(stop: TeachingStopHandler): DesignTeachingStop {
@@ -49,7 +50,9 @@ const basisInput = z.strictObject({ attemptRevision: positive, decisionEpoch: na
 export const teachingQuestionInput = z.strictObject({ recoveryGeneration: id, expectedAttemptRevision: positive,
   question: z.string().min(1).max(16384), objectRef: objectRefInput.optional(), inputRefs: z.array(id).max(64).default([]),
   versions: versionsInput, deadlineSeconds: z.number().int().positive().max(45).default(45) });
-export const teachingCompleteInput = z.strictObject({ recoveryGeneration: id, jobId: id, leaseToken: id.optional(),
+// The worker presents the lease it holds (or will claim with); C never supplies one from the persisted job,
+// because a backfilled token would make the lease recheck in `completeTeachingInTransaction` vacuous.
+export const teachingCompleteInput = z.strictObject({ recoveryGeneration: id, jobId: id, leaseToken: id,
   bodyJson: z.string().min(2), resultRef: id.optional(), versions: versionsInput,
   usage: z.discriminatedUnion('status', [z.strictObject({ status: z.literal('actual'), inputTokens: natural, outputTokens: natural }),
     z.strictObject({ status: z.literal('unknown'), reason: id.optional() })]),
@@ -275,12 +278,11 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
         if (!job || job.purpose !== 'student_help') throw new ApiError('INVALID_REFERENCE');
         const now = timestamp();
         const claimed = job.status === 'queued'
-          ? claimJob(job, input.leaseToken ?? randomUUID(), new Date(Math.min(nowMs() + 150000, Date.parse(job.deadline))).toISOString(),
+          ? claimJob(job, input.leaseToken, new Date(Math.min(nowMs() + 150000, Date.parse(job.deadline))).toISOString(),
             input.recoveryGeneration, now)
           : job;
         if (claimed !== job) saveJob(tx, claimed);
-        const leaseToken = input.leaseToken ?? claimed.leaseToken ?? randomUUID();
-        const result = completeTeachingInTransaction(tx, { scope, jobId: input.jobId, leaseToken,
+        const result = completeTeachingInTransaction(tx, { scope, jobId: input.jobId, leaseToken: input.leaseToken,
           generation: input.recoveryGeneration, now, bodyJsonText: input.bodyJson,
           ...(input.resultRef === undefined ? {} : { resultRef: input.resultRef }), versions: input.versions,
           usage: input.usage, calls: input.calls, elapsedMs: input.elapsedMs, basis: input.basis,

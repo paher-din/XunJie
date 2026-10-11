@@ -153,6 +153,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   }
 
   app.post('/api/jobs/:id/cancel', request => {    const jobId = attemptId(request), input = parseRequest(cancelInput, request.body);
+    // Read-only preflight: `execute` below owns the session activity bump, so this one must not advance it.
     const purpose = access.withAuthorizedCourse(request, tx => {
       const row = tx.get('SELECT course_id,purpose FROM jobs WHERE job_id=?', jobId);
       if (!row || typeof row.course_id !== 'string') throw new ApiError('FORBIDDEN');
@@ -163,13 +164,14 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
         if (actor.role !== 'student' || row.student_id !== actor.userId) throw new ApiError('FORBIDDEN');
         return 'run' as const;
       }
-      // Teaching purposes stop through the persistent stop capability. Teacher-side design jobs stay owned by A3.
+      // With a teaching stop attached every non-run purpose takes this student-only branch, so a teacher's
+      // design job is refused here; teacher-side design cancellation stays with A3's own entry.
       if (teachingStop) {
         if (actor.role !== 'student' || row?.student_id !== actor.userId) throw new ApiError('FORBIDDEN');
         return 'teaching' as const;
       }
       return 'run' as const;
-    });
+    }, false);
     if (purpose === 'teaching') return execute(request, tx => jobAttempt(tx, jobId), 'job.cancel', input.recoveryGeneration,
       (_tx, state, context) => cancelTeachingJobCommand(state, { ...context,
         stopReason: input.reason ?? 'explicit_job_cancel' }, jobId, teachingStop));

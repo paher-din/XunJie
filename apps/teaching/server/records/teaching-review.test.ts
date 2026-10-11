@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { fixture, assigned, opened, files, view, command, type Fixture } from '../workspace/test-support.ts';
 import { sha256 } from '../../runner/snapshot.ts';
 import { readTeachingRecordsInTransaction, invalidateTeachingInTransaction } from './teaching.ts';
-import { readJobs, saveJob } from '../db/records-adapter.ts';
+import { enqueueStoredJob, readAttempt, readJobs, saveJob } from '../db/records-adapter.ts';
 import { claimJob } from './jobs.ts';
+import type { Purpose } from '../../contracts/records/index.ts';
 
 async function setup() {
   const f = await fixture(undefined, { teaching: true });
@@ -19,9 +21,9 @@ async function setup() {
     return command(f, student, `/fixture/help/${attemptId}`, { question, versions,
       expectedAttemptRevision: (await state()).attempt.attemptRevision, ...(objectRef ? { objectRef } : {}) }, key);
   }
-  async function complete(jobId: string, content = 'Review the scan loop.', raw?: string) {
+  async function complete(jobId: string, content = 'Review the scan loop.', raw?: string, leaseToken = 'worker-lease') {
     const attempt = (await state()).attempt;
-    return command(f, student, `/fixture/complete/${attemptId}`, { jobId, versions,
+    return command(f, student, `/fixture/complete/${attemptId}`, { jobId, leaseToken, versions,
       bodyJson: raw ?? JSON.stringify(body(content)), usage: { status: 'unknown' }, calls: 1, elapsedMs: 10,
       basis: { attemptRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch,
         captureRevision: attempt.captureRevision, relatedStateRevision: 0, inputRefs: [], assistanceRefs: [], coverageRefs: [] } });
@@ -44,7 +46,24 @@ function snapshot(f: Fixture) {
     attempts: tx.all('SELECT * FROM attempts'), jobs: tx.all('SELECT * FROM jobs'), actions: tx.all('SELECT * FROM teaching_actions'),
     messages: tx.all('SELECT * FROM teaching_messages'), deliveries: tx.all('SELECT * FROM teaching_deliveries'),
     actionReceipts: tx.all('SELECT * FROM teaching_action_receipts'), receipts: tx.all('SELECT * FROM command_receipts'),
-    events: tx.all('SELECT * FROM audit_events'), sessions: tx.all('SELECT user_id,last_active_at_ms FROM sessions ORDER BY user_id') }))));
+    events: tx.all('SELECT * FROM audit_events'), sessions: tx.all('SELECT user_id,last_active_at_ms FROM sessions ORDER BY user_id'),
+    activityControls: tx.all('SELECT * FROM activity_controls'), assignments: tx.all('SELECT * FROM assignments'),
+    bindings: tx.all('SELECT * FROM workspace_command_bindings'), processRecords: tx.all('SELECT * FROM workspace_process_records') }))));
+}
+/** A real persisted analysis job on the help command's receipt; only the executing side would enqueue one. */
+function queueAnalysis(s: {f: Fixture; attemptId: string}, purpose: Purpose) {
+  const jobId = randomUUID();
+  s.f.db.withTransaction(tx => {
+    const attempt = readAttempt(tx, s.attemptId);
+    const receipt = tx.get("SELECT receipt_id FROM command_receipts WHERE command='shared.help.request' ORDER BY server_seq DESC LIMIT 1");
+    enqueueStoredJob(tx, { jobId, kind: purpose, purpose,
+      scope: { courseId: attempt.courseId, studentId: attempt.studentId, attemptId: attempt.attemptId },
+      requestReceiptId: String(receipt!.receipt_id), status: 'queued', stopRequested: false,
+      expectedRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch,
+      recoveryGeneration: s.f.generation(), acceptedAt: new Date(s.f.timestamp()).toISOString(),
+      deadline: new Date(s.f.timestamp() + 120000).toISOString(), attemptCount: 0 });
+  });
+  return jobId;
 }
 
 test('review: a new help key creates a new round; original key returns the original IDs', async () => {
@@ -247,13 +266,19 @@ test('review: code changes suppress an old target and an obsolete worker lease c
       saveJob(tx, claimJob(job, 'current-lease', job.deadline, s.f.generation(), new Date(s.f.timestamp()).toISOString()));
     });
     const attempt = (await s.state()).attempt, before = snapshot(s.f);
-    const obsolete = await command(s.f, s.student, `/fixture/complete/${s.attemptId}`, { jobId, leaseToken: 'obsolete-lease',
-      versions: s.versions, bodyJson: JSON.stringify(body('An old worker result.')), usage: { status: 'unknown' }, calls: 1, elapsedMs: 1,
+    const staleWorker = { jobId, versions: s.versions, bodyJson: JSON.stringify(body('An old worker result.')),
+      usage: { status: 'unknown' }, calls: 1, elapsedMs: 1,
       basis: { attemptRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch, captureRevision: attempt.captureRevision,
-        relatedStateRevision: 0, inputRefs: [], assistanceRefs: [], coverageRefs: [] } });
+        relatedStateRevision: 0, inputRefs: [], assistanceRefs: [], coverageRefs: [] } };
+    const obsolete = await command(s.f, s.student, `/fixture/complete/${s.attemptId}`, { ...staleWorker, leaseToken: 'obsolete-lease' });
     assert.equal(obsolete.statusCode, 409, obsolete.body);
+    // Omitting the lease must fail outright; falling back to the persisted holder's token would make the
+    // lease recheck pass for a caller that never proved it holds the job.
+    const omitted = await command(s.f, s.student, `/fixture/complete/${s.attemptId}`, staleWorker);
+    assert.equal(omitted.statusCode, 400, omitted.body);
     assert.equal(snapshot(s.f), before);
-    const completed = await s.complete(jobId); assert.equal(completed.statusCode, 200, completed.body);
+    const completed = await s.complete(jobId, 'Review the scan loop.', undefined, 'current-lease');
+    assert.equal(completed.statusCode, 200, completed.body);
     const edited = await command(s.f, s.student, `/api/attempts/${s.attemptId}/sync`, { expectedWorkspaceRevision: 1,
       clientId: 'page-a', clientSeq: 25, operations: [{ kind: 'update', fileId: s.fileId, baseVersion: 1, text: 'New code.' }] });
     assert.equal(edited.statusCode, 200, edited.body);
@@ -266,7 +291,8 @@ test('review: A2 pause invalidates a generated Action atomically without extendi
   try {
     const asked = await s.ask(), completed = await s.complete(asked.json().data.jobId);
     assert.equal(completed.statusCode, 200, completed.body);
-    for (const statement of ['INSERT INTO teaching_actions', 'INSERT INTO audit_events', 'INSERT INTO command_receipts']) {
+    for (const statement of ['UPDATE activity_controls', 'UPDATE assignments', 'INSERT INTO attempts', 'INSERT INTO jobs',
+      'INSERT INTO teaching_actions', 'INSERT INTO audit_events', 'INSERT INTO command_receipts']) {
       const before = snapshot(s.f); s.f.injectFailure(statement);
       const failed = await command(s.f, s.teacher, `/api/activities/${s.activityId}/controls`,
         { expectedActivityControlRevision: 1, action: 'pause', reason: 'Teacher pause.' }, 'pause-activity');
@@ -281,6 +307,69 @@ test('review: A2 pause invalidates a generated Action atomically without extendi
     assert.equal(s.records().actions[0]!.disposition, 'cancelled');
     assert.equal((await s.state()).jobs[0].stopRequested, true);
     assert.equal((await s.page()).json().data.events.some((event: { payload?: { content?: string } }) => event.payload?.content), false);
+  } finally { await s.f.close(); }
+});
+
+test('review: pausing capture persistently stops passive analysis and a resume never revives it', async () => {
+  const s = await setup();
+  try {
+    const asked = await s.ask(); assert.equal(asked.statusCode, 200, asked.body);
+    const passiveJobId = queueAnalysis(s, 'passive_analysis');
+    const attempt = (await s.state()).attempt;
+    const paused = await command(s.f, s.student, `/api/attempts/${s.attemptId}/controls`,
+      { expectedAttemptRevision: attempt.attemptRevision, control: { kind: 'capture', value: false } });
+    assert.equal(paused.statusCode, 200, paused.body);
+    assert.deepEqual(paused.json().data.result.cancelledJobIds, [passiveJobId]);
+    const analysis = () => s.f.db.withTransaction(tx => readJobs(tx, 'course')).filter(job => job.purpose === 'passive_analysis')
+      .map(job => [job.stopRequested, job.status]);
+    // The stop is persisted rather than merely planned: the job row itself carries the intent and a terminal status.
+    assert.deepEqual(analysis(), [[true, 'cancelled']]);
+    // The explicit help round the capture switch never owned still completes and stays deliverable.
+    const completed = await s.complete(asked.json().data.jobId); assert.equal(completed.statusCode, 200, completed.body);
+    assert.equal(s.records().actions[0]!.disposition, 'pending');
+    const resumed = await command(s.f, s.student, `/api/attempts/${s.attemptId}/controls`,
+      { expectedAttemptRevision: (await s.state()).attempt.attemptRevision, control: { kind: 'capture', value: true } });
+    assert.equal(resumed.statusCode, 200, resumed.body);
+    // Resuming does not accept the old passive analysis: the stopped job keeps its intent and status.
+    assert.deepEqual(analysis(), [[true, 'cancelled']]);
+    assert.equal(s.records().actions[0]!.disposition, 'pending');
+  } finally { await s.f.close(); }
+});
+
+test('review: client cancelled/stale/failed reports need no delivery and erase no other fact', async () => {
+  const s = await setup();
+  try {
+    const asked = await s.ask(), completed = await s.complete(asked.json().data.jobId);
+    assert.equal(completed.statusCode, 200, completed.body);
+    const actionId = completed.json().data.actionId;
+    const sent = (await s.page()).json().data.events.find((event: { payload?: { deliveryId?: string } }) => event.payload?.deliveryId).payload;
+    const target = `/api/actions/${actionId}/receipts`;
+    const displayed = await command(s.f, s.student, target, { deliveryId: sent.deliveryId, contentHash: sent.contentHash,
+      clientId: 'page-a', receiptKind: 'displayed', clientReceiptId: 'shown-1', versions: s.versions });
+    assert.equal(displayed.statusCode, 200, displayed.body);
+    const before = (await s.state()).attempt;
+    for (const [receiptKind, clientReceiptId] of [['cancelled', 'client-1'], ['stale', 'client-2'], ['failed', 'client-3']] as const) {
+      const reported = await command(s.f, s.student, target, { contentHash: sent.contentHash, clientId: 'page-a',
+        receiptKind, clientReceiptId });
+      assert.equal(reported.statusCode, 200, `${receiptKind}: ${reported.body}`);
+      assert.equal(reported.json().data.receiptKind, receiptKind);
+    }
+    const action = s.records().actions[0]!;
+    assert.deepEqual(action.receipts.map(receipt => receipt.receiptKind), ['displayed', 'cancelled', 'stale', 'failed']);
+    // A client-side stop report is a channel fact: it neither revokes the display nor rolls back current control.
+    assert.equal(action.disposition, 'pending');
+    const after = (await s.state()).attempt;
+    assert.deepEqual([after.decisionEpoch, after.captureRevision, after.attemptRevision],
+      [before.decisionEpoch, before.captureRevision, before.attemptRevision]);
+    // The same client receipt id returns the original fact instead of appending a second one.
+    const replay = await command(s.f, s.student, target, { contentHash: sent.contentHash, clientId: 'page-a',
+      receiptKind: 'cancelled', clientReceiptId: 'client-1' });
+    assert.equal(replay.statusCode, 200, replay.body);
+    assert.equal(replay.json().data.replayed, true);
+    assert.equal(s.records().actions[0]!.receipts.length, 4);
+    // An already displayed action is not handed to another channel because a client reported a failure.
+    assert.equal((await s.page(0, 100, 'page-b')).json().data.events
+      .some((event: { payload?: { content?: string } }) => event.payload?.content), false);
   } finally { await s.f.close(); }
 });
 

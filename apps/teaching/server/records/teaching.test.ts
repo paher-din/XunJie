@@ -33,7 +33,7 @@ function basisOf(plan: {revision: number; epoch: number; captureRevision: number
     relatedStateRevision: 0, inputRefs: [], assistanceRefs: [], coverageRefs: [] };
 }
 function completeInput(plan: {versions: object; revision: number; epoch: number; captureRevision: number}, jobId: string, content: string) {
-  return { jobId, bodyJson: bodyJson(content), versions: plan.versions,
+  return { jobId, leaseToken: 'worker-lease', bodyJson: bodyJson(content), versions: plan.versions,
     usage: { status: 'actual', inputTokens: 120, outputTokens: 40 }, calls: 1, elapsedMs: 900, basis: basisOf(plan) };
 }
 /** The teacher-model basis must match the attempt as it stands now, so it is read instead of assumed. */

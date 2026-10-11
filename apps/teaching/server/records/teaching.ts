@@ -411,6 +411,8 @@ export function completeTeachingInTransaction(tx: Transaction, input: {scope: Te
     generation: input.generation, basisRevised: false, createdAt: now };
   saveMessage(tx, message);
   saveAction(tx, action);
+  // Reconciliation, not accounting: `input.calls` covers this execution only, while `attemptCount` is the
+  // cumulative ledger the executing side keeps through `recordModelCall`. Summing here would double-count.
   saveJob(tx, { ...finished, attemptCount: Math.max(job.attemptCount, input.calls) });
   appendTeachingEvent(tx, { ...input.scope }, input.scope.studentId, 'teaching.completed', now, input.generation, message.messageId);
   return { messageId: message.messageId, actionId: action.actionId, disposition: action.disposition, replayed: false, contentHash: message.contentHash };

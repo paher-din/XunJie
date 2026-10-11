@@ -7,6 +7,9 @@ export type CommandReceipt<T=unknown> = {receiptId:string;commandId:string;ident
   result:T;serverSeq:number;committedAt:string};
 export type AuditEvent = {eventId:string;serverSeq:number;scope:Scope;type:string;occurredAt:string;
   source:'student_command'|'trusted_service';payloadRef?:string};
+// `attemptCount` is the cumulative provider-call ledger for this job across workers, bounded by the approved
+// three-call budget. The executing side increments it through `recordModelCall` before every provider request;
+// it is never a per-round figure, and nothing else may raise it.
 export type Job = {jobId:string;kind:string;purpose:Purpose;scope:Scope;requestReceiptId:string;
   status:JobStatus;stopRequested:boolean;expectedRevision:number;decisionEpoch:number;
   recoveryGeneration:string;acceptedAt:string;deadline:string;attemptCount:number;
@@ -32,6 +35,9 @@ export type TeachingBasis = TeachingAttemptEpoch & {captureRevision:number;relat
   objectRef?:import('../workspace/index.ts').ObjectRef;inputRefs:string[];assistanceRefs:string[];coverageRefs:string[]};
 export type TeachingQuestionEnvelope = {kind:'student_question';question:string;
   objectRef?:import('../workspace/index.ts').ObjectRef;inputRefs:string[];versions:TeachingVersions};
+// `calls` counts the provider requests made inside the single execution that produced this body, from 0. It is
+// a per-execution fact, not the cross-worker total: that total is `Job.attemptCount`, which only the executing
+// side may raise through `recordModelCall`.
 export type TeachingMessageEnvelope = {kind:'student_help';body:unknown;bodyJsonText?:string;
   versions:TeachingVersions;usage:TeachingUsage;calls:number;elapsedMs:number;basis:TeachingBasis};
 export type TeachingMessage = {messageId:string;scope:TeachingScopeRef;jobId:string;requestReceiptId?:string;

@@ -2,7 +2,7 @@
 
 日期：2026-10-11（Asia/Shanghai）。任务编号：C3，主责：C，对应 [Issue #27](https://github.com/paher-din/XunJie/issues/27)，阶段关联 [G2 / P2 #24](https://github.com/paher-din/XunJie/issues/24)。
 
-**当前状态：原实施与授权追溯见第 8 节；独立审查的 14 项问题已按负责人“修复吧”要求修复，最新 18 项 C3 工程用例通过，验证与限制见第 11 节。最新全量仍有 1 项 A2 认证失败，不宣称全量通过；实际 B2 联调、浏览器与完整 G2 尚未验收。**
+**当前状态：原实施与授权追溯见第 8 节；第一轮独立审查的 14 项问题见第 11 节，[PR #33](https://github.com/paher-din/XunJie/pull/33) 首次人工审查的 5 项 P2 与 9 项 P3 见第 13 节。最新 C3 专项 20/20、C3+B1 组合 67/67 通过。Windows / Node 24.21.0 全量 212 项：204 通过、1 失败（`runner/control.ts` 的 Linux-only `RunControl`，属 #23 既有环境限制）、7 跳过，不宣称全量通过；§11.2 在 Linux 报的 A2 双进程 401 在 Windows 未复现、根因未定位。§8.2/§8.3/§8.4 原有的 `access/app.ts`、事务 `DELETE` 白名单、`invalidatedActionIds`、better-sqlite3 与失败归因等断言已按第 13 节修订或撤回。实际 B2 联调、浏览器与完整 G2 尚未验收。**
 
 ## 1. 依据、责任与写入范围
 
@@ -194,15 +194,14 @@ git diff --check
 | 文件 | 实际改动 |
 | --- | --- |
 | [records/schema.ts](../../apps/teaching/server/records/schema.ts) | 新增 `teaching_messages`/`teaching_actions`/`teaching_deliveries`/`teaching_action_receipts` 四表及约束/索引，仅由新工厂初始化 |
-| [db/transaction.ts](../../apps/teaching/server/db/transaction.ts) | 新增 `createTeachingDatabase()`；原 access/design/completion/workspace 工厂保持原表集合，不迁移、不打开旧库；事务语句白名单加入 C3 需要的 `DELETE`（仍拒绝事务控制与 DDL） |
-| [contracts/records/index.ts](../../apps/teaching/contracts/records/index.ts) | 新增 Message/Action/Delivery/Receipt/Coverage/Control/Event/分页 DTO；原 Scope/Purpose/JobStatus/CommandReceipt 含义未变 |
+| [db/transaction.ts](../../apps/teaching/server/db/transaction.ts) | 新增 `createTeachingDatabase()`；原 access/design/completion/workspace 工厂保持原表集合，不迁移、不打开旧库。事务语句白名单最终仍为 `SELECT|INSERT|UPDATE`（第 96 行），第 11 节已移除一度加入的 `DELETE`；本行原写法与 §11.2 自相矛盾，已按最终代码修订 |
+| [contracts/records/index.ts](../../apps/teaching/contracts/records/index.ts) | 新增 Message/Action/Delivery/Receipt/Coverage/Control/Event/分页 DTO；原 Scope/Purpose/JobStatus/CommandReceipt 含义未变。第 13 节补写 `Job.attemptCount`（跨 worker 累计台账）与 `TeachingMessageEnvelope.calls`（单次执行内计数）的语义 |
 | [records/teaching.ts](../../apps/teaching/server/records/teaching.ts) | `acceptStudentQuestionInTransaction`、`saveTeachingJobInTransaction`、`completeTeachingInTransaction`、`stopTeachingJobsInTransaction`、`invalidateTeachingInTransaction`、`deliverTeachingActionInTransaction`、`recordTeachingReceiptInTransaction`、`readCoverageIntervals`、`readTeachingRecordsInTransaction` 及严格读回校验 |
-| [db/records-adapter.ts](../../apps/teaching/server/db/records-adapter.ts) | `finishRecordCommand` 支持在收据/事件写完后运行依赖写入；新增 `saveRecordPlanWithReference`（事件 `payloadRef` 指向本条事实对象而非命令收据），并让 `readRecords` 校验这类行与其归属行一致 |
-| [access/app.ts](../../apps/teaching/server/access/app.ts) | 仅扩展 `access`：资源守卫允许教师以 `read` 用途访问学生作品的课程事件页（原契约已写“SSE/导出同一规则”，行为仍是教师只读） |
-| [records/application.ts](../../apps/teaching/server/records/application.ts) | `createTeachingRecordsApp`、`teachingStopHandler`、`designTeachingStop`、`GET /api/attempts/:id/events`、`POST /api/actions/:id/receipts` 与请求 schema |
+| [db/records-adapter.ts](../../apps/teaching/server/db/records-adapter.ts) | **共享事务语义变更，影响 A2/C2 全部 `finishRecordCommand` 调用方**：确认事件的 `serverSeq` 改为落库时读 `MAX(server_seq)+1`（原取调用前快照），新增 `receipt.receiptId===receiptId` 硬校验与可选 `afterCommit` 依赖写入钩子。另新增 `saveRecordPlanWithReference`（事件 `payloadRef` 指向本条事实对象而非命令收据），并让 `readRecords` 校验这类行与其归属行一致。`audit_events.server_seq` 全局 UNIQUE 且被 `command_receipts.server_seq` 外键引用，全局 `MAX+1` 成立，也避免与 `work` 内依赖写入争用；该变更属 §11.1 授权的 records-adapter「必要修复」，但此前未在本表登记，第 13 节补记 |
+| `server/access/**` | **无需改动，交付中也确实零改动**：A 的既有资源守卫已允许教师以 `read` 用途读取学生作品，事件路由正是以 `read` 用途授权（`records/application.ts` 的 `authorizeAttempt(request, attemptId, 'read', ...)`）。原表此行描述的 `access/app.ts` 守卫扩展不存在，第 13 节已删除该幽灵条目 |
+| [records/application.ts](../../apps/teaching/server/records/application.ts) | `createTeachingRecordsApp`、`teachingStopHandler`、`designTeachingStop`、`GET /api/attempts/:id/events`、`POST /api/actions/:id/receipts` 与请求 schema；`TeachingStopHandler` 复用 `workspace/commands.ts` 的唯一定义 |
 | [workspace/application.ts](../../apps/teaching/server/workspace/application.ts)、[commands.ts](../../apps/teaching/server/workspace/commands.ts)、[storage.ts](../../apps/teaching/server/workspace/storage.ts)、[inputs.ts](../../apps/teaching/server/workspace/inputs.ts) | 同 tx 停止接缝（`stopJobs`）、教学用途取消（`cancelTeachingJobCommand` + 可选 `reason`）、命令事件取当前 serverSeq、`GET /api/attempts/:id/teaching-records` 与 `GET /api/attempts/:id/coverage`、读取投影 |
-| [design/activities.ts](../../apps/teaching/server/design/activities.ts)、[design/application.ts](../../apps/teaching/server/design/application.ts) | 可选同 tx 教学停止回调；无回调时 A2 响应形状不变，回调返回时追加 `invalidatedActionIds` |
-| [contracts/design/results.ts](../../apps/teaching/contracts/design/results.ts) | 仅把 `invalidatedActionIds` 作为可选字段加入活动/分配控制结果 |
+| [design/activities.ts](../../apps/teaching/server/design/activities.ts)、[design/application.ts](../../apps/teaching/server/design/application.ts) | 可选同 tx 教学停止回调 `DesignTeachingStop` 与 `generation` 透传；Action 失效只在原事务内部完成，**公共活动/分配控制结果的形状未变、不追加任何字段** |
 | [workspace/test-support.ts](../../apps/teaching/server/workspace/test-support.ts)、[records/teaching.test.ts](../../apps/teaching/server/records/teaching.test.ts) | 夹具可选组合教学应用与夹具专用路由、C3-V01～V07 用例 |
 | [tools/wsl-verify.sh](../../apps/teaching/tools/wsl-verify.sh) | 本机验证入口脚本，仅在已批准的 Node 24.21.0 下同步源码到 WSL Linux 文件系统并运行测试；不进入应用运行时 |
 
@@ -217,7 +216,7 @@ git diff --check
 
 ### 8.3 本次验证与结果
 
-环境说明：本机 Windows 未安装已批准的 Node 24.21.0，且 `better-sqlite3@13.0.3` 在 Windows 上没有预编译产物（其 GitHub v13.0.3 release 仅含源码，需要 MSVC 现场编译）。为执行真实 SQLite 合成验证，使用本机已有的 WSL Ubuntu，并在其中安装官方 Node 24.21.0；[tools/wsl-verify.sh](../../apps/teaching/tools/wsl-verify.sh) 把源码同步到 Linux 文件系统后运行测试。该脚本只是本机验证入口，不进入应用运行时，也不改变仓库既有的启动/测试命令。
+环境说明（第 13 节修订）：本节结果在 WSL Ubuntu 内的官方 Node 24.21.0 下取得，[tools/wsl-verify.sh](../../apps/teaching/tools/wsl-verify.sh) 把源码同步到 Linux 文件系统后运行测试；该脚本只是本机验证入口，不进入应用运行时，也不改变仓库既有的启动/测试命令。原文称「本机 Windows 未安装已批准的 Node 24.21.0，且 `better-sqlite3@13.0.3` 在 Windows 上没有预编译产物（其 GitHub v13.0.3 release 仅含源码，需要 MSVC 现场编译）」，其中关于 better-sqlite3 的断言**不实且已撤回**：npm 包自带全平台 prebuilds，实测 `apps/teaching/node_modules/better-sqlite3/prebuilds/win32-x64.node` 存在（13.0.3，1,989,632 字节），GitHub Release 是否只含源码与此无关。当时改用 WSL 的真实原因没有留下可核查证据，本节不把它追认为某个具体原因；Windows 侧可复现的真实前置条件见 §8.4 第 1 条。
 
 | 验证项 | 命令 | 实际结果 |
 | --- | --- | --- |
@@ -233,22 +232,29 @@ C3-V01～V07 覆盖：原文/正文逐字节与两个 hash、同结果重放与�
 
 ### 8.4 未完成项与环境阻塞
 
-1. **Windows 宿主缺少已批准运行时的可编译依赖**：`better-sqlite3@13.0.3` 无 Windows 预编译产物，宿主未安装 MSVC，`npm ci` 在该机 Windows 上无法完成编译。未采用替代驱动、未更换依赖版本，也未放宽 `check-runtime`；因此 `npm test` 在宿主 Windows 上仍未跑通，C3 的运行结果来自 WSL 的已批准 Node 24.21.0。
-2. **共享测试夹具的会话时钟敏感性（未修复的既有抖动）**：`tests/design-activities.test.ts` 等 A2 套件把模拟时钟向后推进，导致跨套件一起跑时偶发一次 401 而失败；同一用例单独运行时通过。整包最好一次为 0 失败，多次重跑中约有半数出现 1 项 A2 失败，C3 用例在各次运行中均通过。这是既有夹具的会话/时钟交互，不是 C3 代码路径，本次未改动它；修复它需要先确认会话过期语义，属另行授权范围。
+1. **原「Windows 宿主缺少可编译依赖」的断言不实，已撤回**（第 13 节修订）。实测事实：`better-sqlite3@13.0.3` 的 npm 包自带 `prebuilds/win32-x64.node`（1,989,632 字节）与 `win32-arm64.node`，Windows 上无需 MSVC 现场编译即可跑真实 SQLite 测试；独立审查已在 Windows / Node 24.21.0 下跑通本 PR 全量，所以「`npm test` 在宿主 Windows 上仍未跑通」不成立。Windows 侧真实的前置条件是另外两条，与 better-sqlite3 无关：
+   - `tools/check-runtime.mjs` 要求 `process.version` 精确等于 `v24.21.0`；PATH 上是其它版本（该机曾为 v24.15.0）时，`npm run typecheck/build/test` 的 `&&` 链直接失败。
+   - 仓库既有 `apps/teaching/node_modules/@typescript/` 只有 `typescript-linux-x64`；TypeScript 7 是原生移植版，缺 `@typescript/typescript-win32-x64@7.0.2`（版本须与已装 typescript 一致）时 `tsc` 以 `Unable to resolve @typescript/typescript-win32-x64` 崩溃。
+
+   这两条属 [#23 环境稳定性](https://github.com/paher-din/XunJie/issues/23) 范围。本任务只在本文记录，未代为修改 #23、依赖清单或 `check-runtime`；第 13 节的 Windows 验证是在独立工作树内临时前置已批准 Node、并把该原生包只解压进工作树的 `node_modules` 副本完成的，`package.json`/`package-lock.json`/`tsconfig` 零改动。
+2. **A2 双进程认证失败：根因未定位，原归因不成立**（第 13 节修订）。原写法称该失败「是既有夹具的会话/时钟交互，不是 C3 代码路径」。但当时的对照基线 `e13f12d` 本身就是 C3 的实施提交、**已包含 C3**，两侧都有 C3，该对照只能说明失败在 C3 的两个版本之间稳定，**不能排除 C3**。从代码路径看同样不能排除：该用例打的 `/api/activities/:id/controls` 正好穿过本 PR 改动的两处共享代码——`finishRecordCommand`（serverSeq 改为落库时读 `MAX+1`、新增 `receiptId` 硬校验与 `afterCommit` 钩子）与 `controlActivity`（新增 `generation`、`teachingStop` 两个参数）。
+   独立审查在 Windows 上既不能复现也不能反驳：本 PR 全量 210 项的唯一失败是 `server/workspace/review.test.ts` → `runner/control.ts:48` 的 Linux-only `RunControl`，而 main `83e528e` 单独实测为 192 项/184 通过/**同一条**失败/7 跳过；§11.2 报的那条 401 在 Windows 上未出现。就 Windows 而言本 PR 未引入新失败。
+   要真正定位，最小充分实验是在同一 Linux 环境下对 `83e528e`（不含 C3）与本 head 各跑若干次、比较该用例失败率；在此之前不把它记为既有抖动。§11.2 已如实写明 2/2 选择性对照「不证明全量失败根因已定位」、也未宣称全量通过，该口径保留。
 3. 未执行：真实模型/B2 正式 help 联调（C3-V08）、浏览器与实际 UI 验收、真人与负载验收、备份恢复（C5）、Issue #27 关闭与推送。
-4. 下一步：B2 以 `workspace.teaching.acceptStudentQuestion`/`completeTeaching` 接入正式 help 与 worker 后执行 C3-V08；宿主 Windows 若要直接跑 `npm test`，需先安装 MSVC 生成工具（属环境变更，需项目负责人确认）。
+4. 下一步：B2 以 `workspace.teaching.acceptStudentQuestion`/`completeTeaching` 接入正式 help 与 worker 后执行 C3-V08。原「宿主 Windows 若要直接跑 `npm test` 需先安装 MSVC 生成工具」的要求随第 1 条一并撤回；Windows 直接跑只需满足第 1 条的两项前置（精确 Node 24.21.0、补齐 `@typescript/typescript-win32-x64`），第 13 节已按此在本机实测全量。
 
 ## 9. 待交接（B2 / A4 / 后续）
 
 | 交接对象 | 可调用入口 | 约定 |
 | --- | --- | --- |
 | B2 help 入口 | `createTeachingRecordsApp(...).workspace.teaching.acceptStudentQuestion(request, attemptId, input)` | B2 负责鉴权后的政策/上下文/ObjectRef 校验；C 存确切问题、有界 Job、Receipt 与事件 |
-| B2 worker | `workspace.teaching.completeTeaching(request, attemptId, input)` | 传入已校验的最终 `bodyJson`、租约/代际/依据与 usage；同 job 同 hash 返原 IDs，异 hash 409 |
+| B2 worker | `workspace.teaching.completeTeaching(request, attemptId, input)` | 传入已校验的最终 `bodyJson`、代际/依据/usage，以及**必填**的 `leaseToken`（第 13 节起不再从已持久作业回填，省略即 400）。作业仍为 `queued` 时 C 用该 token 领取有界租约；已 `running` 时必须与持有者 token 相符，否则 409。同 job 同 hash 返原 IDs，异 hash 409 |
+| B2 / A3 调用计账 | `records/jobs.ts` 的 `recordModelCall(job, token, generation, now)` | 按负责人选定的方案：`Job.attemptCount` 是**跨 worker 累计**台账，只由执行侧在每次 provider 调用前调 `recordModelCall` 递增（`>=3` 时拒绝）；`TeachingMessageEnvelope.calls` 只是**单次执行内**计数。C3 完成时的 `Math.max(job.attemptCount, input.calls)` 只是对账，不承担累计。B2 接线前该累计无人执行，缺口见 §13.2 |
 | A4 教师纠正 | `invalidateTeachingInTransaction(tx, ...)` | A4 先在同一事务写入教师决定；C 只做范围/epoch CAS、Job 与 Action 失效及原因事件 |
 | A2 控制 | `options.teaching.stop`（`teachingStopHandler`） | 活动/分配暂停在 A 的原事务内调用；异步或失败回调使整个事务回滚 |
 | 客户端 | `GET /api/attempts/:id/events`、`POST /api/actions/:id/receipts` | 需先同步 `recoveryGeneration`/`decisionEpoch`；游标与 hash 不授予权限 |
 | A2 同 tx 停止（C3-V06 已验证路径） | `options.teaching.stop` / `options.teaching.design` | 停止事实记录在发起命令自己的事件与回执里（`job.cancel` → `shared.teaching.stopped`；`attempt.control` 暂停 → 控制事件），停止例程本身不补写第二条审计行 |
-| 运行验证 | `bash apps/teaching/tools/wsl-verify.sh bash -c "npm test"` | 把源码同步到 WSL 后以已批准 Node 24.21.0 运行；只用于本机验证，不进入运行时 |
+| 运行验证 | Windows 宿主：`npm test`（apps/teaching，需先满足 §8.4 第 1 条的两项前置）；Linux：`bash apps/teaching/tools/wsl-verify.sh bash -c "npm test"` | 两条都只是本机验证入口，不进入运行时。第 13 节起 Windows 全量已实测可跑通，`wsl-verify.sh` 不再是验证前置，仅作为 Linux 侧可选入口按负责人决定保留 |
 
 ## 10. 本次准备验证与待交接（准备阶段原文）
 
@@ -352,3 +358,69 @@ PR 链接、推送回读、现场恢复与核验实际结果在执行后追加�
 核验通过：main 的跟踪文件与索引干净、未合并项为 0；G2/I0 原 blob 一致；`course_matrial/data_logic/` 四个文件 SHA-256 全部不变，仍是未跟踪资料，没有加入 PR 或发布。原 `stash@{0}` 仍为 `da0c0009fda44d5c16f02286aa072daea624b973`，标记为已核对的恢复备份：C3 修复在 PR #33，G2/I0 已在 main，不再重复应用到 main。
 
 main 文档检查通过（32 份文档、406 处内部引用、27 条正式路由，errors=[]）。恢复目录、原索引、stash、工作树和临时验证产物全部保留。main 同步不代表 C3 PR 已合入，原教学/UI/模型/全量环境限制继续保持。
+
+## 13. 2026-10-11 PR #33 首次人工审查的修复批次
+
+项目负责人以审查发布身份对 [PR #33](https://github.com/paher-din/XunJie/pull/33) 完成首次人工审查（merge-base `83e528e` → head `9fc9fae3`，19 文件 +2378/-56；因 PR 作者与审查发布为同一账号，GitHub 只允许 COMMENT，故该审查不构成批准），列出 5 项 P2 与 9 项 P3，随后指示按评论内容修复 C3。本节记录该批次的授权、实际改动与验证。§8.2/§8.3/§8.4 的就地修订均标注「第 13 节修订」，不倒写为当时已知。
+
+起点为 PR head `9fc9fae3`，全部操作在独立工作树 `codex/c3-review-fixes` 内完成；主工作树 `D:/XunJie` 的并行改动（`AGENTS.md`、`README.md`、`docs/product/**`、数字逻辑材料）未纳入、未暂存、未回退。执行期间 origin/main 前进到 `8a6c70c`（数字逻辑文档与课程材料），与本分支无源码交集，未代为合并。
+
+### 13.1 授权范围与负责人决定
+
+| 项目 | 记录 |
+| --- | --- |
+| 指示方 | 项目负责人 |
+| 指示原文 | 根据 pr#33 comment 的内容，修复一下 c3 |
+| 授权范围 | 审查报告的 5 项 P2 与 9 项 P3，含必需的调用方、测试与本任务稿修订 |
+| P2-1 决定 | 三个方案中选定**方案 1**：`calls` = 单次执行内计数、`Job.attemptCount` = 跨 worker 累计台账（只由执行侧 `recordModelCall` 递增），C3 保留 `Math.max` 作完成时对账。不改计账代码，不动 `records-adapter.ts` 的 `natural.max(3)` |
+| `wsl-verify.sh` 决定 | **保留脚本**，只修订文档说明；未执行删除（删除文件属 AGENTS 红线，本批未获该授权） |
+| Issue #23 决定 | Windows 验证的两条真实前置条件**只写进本文** §8.4，未代为评论或修改 #23 |
+| 未包含 | 受保护基线写入、schema 变更与迁移、旧库或生产操作、真实模型与凭据、真实学生数据、UI 替代实现、PR 合并与 Issue #27 关闭 |
+
+### 13.2 实际修复
+
+**P2-1（调用预算，按方案 1）**：在 [contracts/records/index.ts](../../apps/teaching/contracts/records/index.ts) 为 `Job.attemptCount` 与 `TeachingMessageEnvelope.calls` 补写语义（累计台账 vs 单次执行计数），并在 `teaching.ts` 的 `Math.max` 处注明它只是对账、求和会双算；§9 增列「B2 / A3 调用计账」交接行。**代码计账逻辑与 schema 上限未改**，因此审查指出的缺口按方案 1 的分工仍然存在：`recordModelCall` 在本 head 上没有生产调用方（A3 的调用方在未合并的 #28），B2 接线前跨 worker 累计无人执行，台账可能低于真实供应商用量。该项按负责人决定记为 B2 接线的前置条件，不由 C 单方冻结。
+
+**P2-2（leaseToken）**：`teachingCompleteInput.leaseToken` 由 `id.optional()` 改为**必填** `id`；删除 `input.leaseToken ?? claimed.leaseToken ?? randomUUID()` 的持有者回填与 `claimJob` 的 `?? randomUUID()`，改为直接使用调用方 token。补反例：省略 `leaseToken` 的完成请求返回 400 且数据库快照不变。**该反例已验证能捕获原症状**——临时回退修复后同一请求返回 **200 并真的写入 Message/Action/Job**，即审查所说的「租约复查在省略字段时空转」；随后恢复修复版并复验 20/20。
+
+**P2-3 / P2-4 / P2-5（记录准确性）**：就地修订 §8.2 与 §8.3/§8.4，逐条标注「第 13 节修订」——删除 `access/app.ts` 幽灵行（`server/access/**` 交付中零改动，A 的既有守卫已允许教师以 `read` 用途读学生作品）；事务白名单改为按最终代码 `SELECT|INSERT|UPDATE`（`db/transaction.ts` 第 96 行），消除与 §11.2「DELETE 已移除」的自相矛盾；删除 `contracts/design/results.ts` 行与「回调返回时追加 `invalidatedActionIds`」；补记 `finishRecordCommand` 的共享事务语义变更；撤回 better-sqlite3 的不实断言并写明 Windows 的两条真实前置条件；把「不是 C3 代码路径」改为「对照基线 `e13f12d` 已含 C3，本次对照不能排除 C3；根因未定位，Windows 侧未复现」。
+
+**P3（判断项）**：
+
+1. `contracts/design/results.ts` 恢复为 main 版本，本 PR 对 A 属契约文件不再有只剩行尾换行的无谓改动；
+2. `/api/jobs/:id/cancel` 的授权预检改为 `advanceActivity=false`，不再在 `execute(...)` 之前多写一次 `sessions.last_active_at_ms`、也不再拆成两个事务；
+3. 修正「Teacher-side design jobs stay owned by A3」注释：实际行为是接了 `teachingStop` 后所有非 run 用途都进入学生专用分支，教师的设计作业在此被 403 拒绝，教师侧设计取消仍由 A3 自己的入口负责；
+4. `TeachingStopHandler` 改为复用 `workspace/commands.ts` 的唯一定义并由 `records/application.ts` 再导出，消除双份类型；
+5. 新增 `passive_analysis` 用例：真实持久化一个被动分析作业后关闭采集，断言停止是**落库**的（作业行 `stopRequested=true`、`status='cancelled'`）、显式 help 不受影响、恢复采集不复活旧作业；
+6. 新增客户端 `cancelled`/`stale`/`failed` 回执用例：三种都不需要 Delivery 行即可记录、按序追加为四条事实、不撤销已有 `displayed`、不回滚当前控制（epoch/captureRevision/attemptRevision 不变）、同 `clientReceiptId` 重放返原回执；
+7. 尾段失败注入从 3 条扩到 7 条（增 `UPDATE activity_controls`、`UPDATE assignments`、`INSERT INTO attempts`、`INSERT INTO jobs`），`snapshot()` 同时纳入 `activity_controls`/`assignments`/`workspace_command_bindings`/`workspace_process_records`，使晚段失败也能证明设计侧写入一并回滚。
+
+未采纳并已说明理由的两项 P3：`records/application.ts` 与 `records/teaching.ts` 的 zod 形状重复保留，因为两者处于不同信任边界（前者校验未受信 HTTP 输入，后者校验已持久记录与受信信封），合并会让任一侧放宽都波及另一侧；`readRecords` 的 `(serverSeq, committedAt)` 位置关联保留，因 `audit_events.server_seq` 全局 UNIQUE，关联成立，仅不变量弱于 `payloadRef`。
+
+### 13.3 本次验证与结果
+
+环境：Windows 宿主，Node `v24.21.0`（临时前置于 PATH，未覆盖 `D:/nodejs`、未改永久 PATH）；`@typescript/typescript-win32-x64@7.0.2` 只解压进本工作树的 `node_modules` 副本，`package.json`/`package-lock.json`/`tsconfig` 零改动。真实 SQLite 由 `better-sqlite3@13.0.3` 自带的 `prebuilds/win32-x64.node` 提供，未编译、未换驱动。
+
+| 验证项 | 命令 | 实际结果 |
+| --- | --- | --- |
+| 类型检查 | `npm run typecheck` | 通过，退出码 0（`noUnusedLocals`/`noUnusedParameters` 均开启） |
+| 构建 | `npm run build` | 通过，退出码 0 |
+| C3 专项 | `node --test server/records/teaching.test.ts server/records/teaching-review.test.ts` | **20/20 通过、0 失败、0 跳过**（原 C3 7 组 + 修复回归 13 组，本批新增 2 组） |
+| C3+B1 组合 | `node --test server/records/teaching*.test.ts server/tutoring/test/*.test.ts` | **67/67 通过、0 失败、0 跳过**（§12.1 的 65 项 + 本批 2 项） |
+| records/workspace 组 | `node --test server/records/*.test.ts server/workspace/*.test.ts` | 52 项：49 通过、**1 失败**、2 跳过 |
+| 全量 | `npm test`（含 pretest build） | **212 项：204 通过、1 失败、7 跳过**，退出码 1；不宣称全量通过 |
+| 文档检查 | `node tools/a0-review/check.mjs` | 通过：33 份文档、446 处内部引用、27 条正式变更路由，`errors=[]` |
+| 检查器自测 | `node --test tools/a0-review/check.test.mjs` | 16/16 通过、0 失败、0 跳过 |
+| 空白 | `git diff --check` | 通过 |
+
+唯一失败项为 `server/workspace/review.test.ts` → `runner/control.ts:48` 的 `RunnerError: Linux and trusted control context required`（`code: INVALID_CONFIGURATION`），即 Linux-only `RunControl` 在 Windows 上不可用；这与独立审查在同一平台对 main `83e528e` 与本 PR head 测到的**同一条**失败一致，属 [#23](https://github.com/paher-din/XunJie/issues/23) 的既有环境限制，不是本批引入。212 = 审查时的 210 + 本批新增 2；204 对审查的 202、7 跳过对 7 跳过，差额即新增两项。
+
+§11.2 报的 A2 双进程 401 在 Windows 上仍未复现；本批未修改该用例，也未据本批结果宣布其根因已定位（见 §8.4 第 2 条）。
+
+### 13.4 未完成项与限制
+
+1. P2-1 的跨 worker 累计计账在 B2/A3 接线前无人执行，按方案 1 属执行侧职责；C3 侧只交付契约语义与对账，**不宣称 #26 的「换 worker 共用 3 次」已被强制**。
+2. `leaseToken` 改为必填是 B2 接缝的输入契约变化。B2 尚未接线（本 PR 不含任何 B2 接缝类型引用），实际联调时 B2 必须自带 token；C3-V08 仍未执行。
+3. 未执行：真实模型与 B2 正式 help 联调、浏览器与实际 UI、真人与负载、C5 备份恢复、完整教师判断链。
+4. 本批未合并 PR、未关闭 Issue #27、未改动受保护基线、未代为评论 #23。进度待授权维护者汇总。
+5. 结构性独立审查缺口保留：C3 线仍以负责人账号交付，本批修复由执行 Agent 完成，不构成独立复核。
