@@ -129,14 +129,7 @@ function readRecords(tx: Transaction, courseId: string): Records {
   return { receipts, events, jobs: readJobs(tx, courseId), commandAliases: [],
     serverSeq: Number(tx.get('SELECT COALESCE(MAX(server_seq),0) AS seq FROM audit_events')!.seq) };
 }
-export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentity, fields: unknown,
-  generation: string, now: number, work: (receiptId: string) => T, validateResult: (value: unknown) => T): CommandReceipt<T> {
-  if (work.constructor.name === 'AsyncFunction' || validateResult.constructor.name === 'AsyncFunction') throw new ApiError('PERSISTENCE_UNAVAILABLE');
-  const validatedResult = (value: unknown) => {
-    const result = validateResult(value);
-    if (result && (typeof result === 'object' || typeof result === 'function') && 'then' in result && typeof result.then === 'function') throw new ApiError('PERSISTENCE_UNAVAILABLE');
-    return result;
-  };
+function recordCommandState(tx: Transaction, identity: CommandIdentity, fields: unknown, generation: string) {
   if (identity.sync) throw new ApiError('INVALID_REQUEST'); // C2 owns sync-alias persistence, outside this approved seven-table batch.
   if (identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
   const global = tx.get('SELECT course_id,recovery_generation FROM command_receipts WHERE actor_id=? AND command=? AND target=? AND idempotency_key=?',
@@ -149,14 +142,30 @@ export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentit
   if (original && original.identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
   const hash = requestHash(identity.target, fields);
   const previous = resolveCommandReceipt(records, identity, hash, generation);
-  if (previous) {
-    if (previous.identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
-    return { ...previous, result: validatedResult(previous.result) };
-  }
+  if (previous && previous.identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
+  return { records, hash, previous };
+}
+
+function validateRecordResult<T>(validate: (value: unknown) => T, value: unknown): T {
+  if (validate.constructor.name === 'AsyncFunction') throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const result = validate(value);
+  if (result && (typeof result === 'object' || typeof result === 'function') && 'then' in result && typeof result.then === 'function') throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  return result;
+}
+export function readRecordCommand<T>(tx: Transaction, identity: CommandIdentity, fields: unknown,
+  generation: string, validateResult: (value: unknown) => T): CommandReceipt<T> | undefined {
+  const { previous } = recordCommandState(tx, identity, fields, generation);
+  return previous ? { ...previous, result: validateRecordResult(validateResult, previous.result) } : undefined;
+}
+export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentity, fields: unknown,
+  generation: string, now: number, work: (receiptId: string) => T, validateResult: (value: unknown) => T): CommandReceipt<T> {
+  if (work.constructor.name === 'AsyncFunction' || validateResult.constructor.name === 'AsyncFunction') throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const { records, hash, previous } = recordCommandState(tx, identity, fields, generation);
+  if (previous) return { ...previous, result: validateRecordResult(validateResult, previous.result) };
   const receiptId = randomUUID(), commandId = randomUUID();
   const candidate = work(receiptId);
   if (candidate && typeof candidate === 'object' && 'then' in candidate && typeof candidate.then === 'function') throw new ApiError('PERSISTENCE_UNAVAILABLE');
-  const result = validatedResult(candidate);
+  const result = validateRecordResult(validateResult, candidate);
 
   const timestamp = new Date(now).toISOString();
   const plan = finishCommand(records, { receiptId, commandId, identity, requestHash: hash, result, committedAt: timestamp },

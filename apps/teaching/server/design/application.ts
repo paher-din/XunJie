@@ -3,8 +3,8 @@ import type { FastifyRequest } from 'fastify';
 import { createDesignVerificationApp, type DesignVerificationOptions } from './app.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
-import { queryRuntime } from './readiness.ts';
-import { finishRecordCommand } from '../db/records-adapter.ts';
+import { executeRuntimeCommand, type queryRuntime } from './readiness.ts';
+import { finishRecordCommand, readRecordCommand } from '../db/records-adapter.ts';
 import { releaseSchema, assignmentSchema, activityControlSchema, assignmentControlSchema, helpPolicySchema, checkRuleSchema, activityCommandResults, assignmentViewSchema } from '../../contracts/design/index.ts';
 import { activityCourse, assignmentCourse, readAssignment, confirmActivity, assignActivity, controlActivity, controlAssignment,
   activityView, assignmentAvailability, storePolicy, storeRule, releaseContext, readActivity } from './activities.ts';
@@ -26,12 +26,11 @@ export async function createDesignApp(options: DesignAppOptions) {
     return current;
   }
   function execute(request: FastifyRequest, scope: string | ((tx: Transaction) => string), command: keyof typeof activityCommandResults, target: string,
-    input: { recoveryGeneration: string }, apply: (tx: Transaction, actor: ActorContext) => unknown) {
+    input: { recoveryGeneration: string }, apply: (tx: Transaction, actor: ActorContext) => unknown, replayOnly = false) {
     const key = parseRequest(keySchema, request.headers['idempotency-key']);
     const data = access.withAuthorizedCourse(request, scope, 'teacher', (tx, actor) => {
       const current = generation(input.recoveryGeneration);
-      const receipt = finishRecordCommand(tx, { actorId: actor.userId, command, target, scope: { courseId: actor.courseId },
-        idempotencyKey: key, recoveryGeneration: current }, input, current, now(), () => apply(tx, actor), value => {
+      const validate = (value: unknown) => {
         const parsed = activityCommandResults[command].safeParse(value);
         if (!parsed.success) throw new Error('Invalid persisted activity command result.');
         const result = parsed.data;
@@ -49,11 +48,14 @@ export async function createDesignApp(options: DesignAppOptions) {
           if ('assignmentId' in result && (result.assignmentId !== target || readAssignment(tx, actor.courseId, target).id !== target)) throw new Error('Invalid assignment control association.');
         } catch { throw new Error('Invalid persisted activity command scope.'); }
         return result;
-      });
+      };
+      const identity = { actorId: actor.userId, command, target, scope: { courseId: actor.courseId }, idempotencyKey: key, recoveryGeneration: current };
+      const receipt = replayOnly ? readRecordCommand(tx, identity, input, current, validate)
+        : finishRecordCommand(tx, identity, input, current, now(), () => apply(tx, actor), validate);
       generation(current);
       return receipt;
-    });
-    return { requestId: request.id, data };
+    }, !replayOnly);
+    return data === undefined ? undefined : { requestId: request.id, data };
   }
   app.get('/api/blueprints/:id', request => ({ requestId: request.id, data: design.readDraft(request, parseRequest(params, request.params).id) }));
   app.get('/api/blueprints/:id/previews', request => ({ requestId: request.id,
@@ -96,10 +98,9 @@ export async function createDesignApp(options: DesignAppOptions) {
   });
   app.post('/api/blueprints/:id/releases', async request => {
     const blueprintId = parseRequest(params, request.params).id, input = parseRequest(releaseSchema, request.body);
-    access.inspectCourse(request, tx => draftCourse(tx, blueprintId), 'teacher');
-    generation(input.recoveryGeneration);
-    const readiness = await queryRuntime(options.runner);
-    return execute(request, tx => draftCourse(tx, blueprintId), 'activity.release', blueprintId, input, (tx, actor) => {
+    let readiness: Awaited<ReturnType<typeof queryRuntime>> | undefined;
+    const release = (replayOnly = false) => execute(request, tx => draftCourse(tx, blueprintId), 'activity.release', blueprintId, input, (tx, actor) => {
+      if (!readiness) throw new ApiError('PERSISTENCE_UNAVAILABLE');
       if (!readiness.ok) throw readiness.error;
       const runtime = readiness.runtime;
       if (!runtime) throw new ApiError('RUNTIME_NOT_READY');
@@ -107,7 +108,8 @@ export async function createDesignApp(options: DesignAppOptions) {
       return confirmActivity(tx, actor, blueprintId, input.expectedRevision,
         input.concerns.map(({ resolution, ...item }) => ({ ...item, ...(resolution === undefined ? {} : { resolution }) })),
         runtime.profile, runtime.readiness, input.recoveryGeneration, now());
-    });
+    }, replayOnly);
+    return executeRuntimeCommand(options.runner, () => release(true), value => { readiness = value; return release(); });
   });
   app.post('/api/activities/:id/assignments', request => {
     const activityId = parseRequest(params, request.params).id, input = parseRequest(assignmentSchema, request.body);

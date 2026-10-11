@@ -409,3 +409,41 @@ PR 采用依赖链 C1 #16→C2 #17→A1（base=codex/c2-workspace-core）→A2�
 [A1 PR #18](https://github.com/paher-din/XunJie/pull/18) 已普通推送/创建，base=codex/c2-workspace-core；[A2 PR #19](https://github.com/paher-din/XunJie/pull/19) 已普通推送/创建并附到当前任务，base=codex/a1-complete、非 Draft/Open/未合并。A2 初次发布 head=`39213480b7c6a300db405ba899f8b8ce40e112a5`，回读为 28 文件，仅 A2 领域/测试/原证据/文档；A1 初次为 57 文件，包含准确授权的工程/权限/SQL适配及最小依赖修复。未合并/关闭 Issue/修改 main 或 C 远程分支；依赖顺序 C1 #16→C2 #17→A1 #18→A2 #19。
 
 连接器创建 API 返回 403，复用既有成功推送的 Git 身份后两项均创建成功，未修改或输出凭据。补记 PR URL 的后续提交/普通 merge 仅文档，业务源码仍等于本次 PAHER 已验源码 8421157；记录的是 PR 交付，不追加业务通过数。README 同一区段再次出现普通 merge 冲突，按 A1 完整入口+A2 最新独立区段保留原文解决，未在冲突中执行业务验收。最终链接/空白/证据摘要均通过；远端 A1/A2 的 head/base/完整文件清单与本地逐项相同（57/28 文件），正文与提交的描述逐字一致，远端与本地分支各 0 ahead/0 behind。已回读 A1=5b9d83e、A2=2abee6a，均 Open/未合并；后续补记仅本文，无业务源码变化。保护基线仍待授权维护者汇总。
+
+## 13. PR #19 合并后慢节点重放修复
+
+2026-10-10，项目负责人要求处理 A2 PR 的新增审查意见。原 PR #19 已合并；审查线程 [release](https://github.com/paher-din/XunJie/pull/19#discussion_r4238018769) 与 [checks](https://github.com/paher-din/XunJie/pull/19#discussion_r4238018774) 指向同一 P2：现有代码虽然将节点错误留到新业务回调，却在读取原回执前等待 readiness，慢查询仍阻塞已提交结果恢复。原 §12.4/12.5 的坏指纹反例和先前通过事实保留，不覆盖本次发现。
+
+已读 AGENTS/README、PRD §4.1/5（PRD-02/09/10）、MVP M-02/M-09/M-10、AC-02/06、NFR-04、TECH §5.1/7.5、本任务 §9.3/11.3/12.4。固定修复基线 main=`ac96cf6083b8f7b8403896e2a505b53e94c20d58`；新分支 codex/a2-replay-readiness-fix。可写 A 的 server/design、server/db/records-adapter、对应 tests、README 和本文；保护基线/其他成员任务/原证据只读，不改 schema/凭据/CI/依赖/UI 或真实节点。
+
+修复顺序沿既有同事务契约：严格输入/Origin/CSRF → 短事务重核当前 Session/课程教师权限、受信代际、摘要与原回执关联；合法回执立即返回。无回执的新命令才在事务外查询 C readiness；随后最终短事务重新核权限、代际和竞争者回执，再做新业务与原子提交。checks/release 共用此顺序，最终事务仍可接纳并发已提交的合法回执，节点失败不覆盖它。
+
+沿已批准 §11.3 app.inject + createCompletionDatabase 实际新临时合成库接缝，不再重复申请同一测试范围。测试以公共 HTTP 返回原 IDs/版本、当前越权/旧代际/异摘要拒绝、节点等待期间并发回执/撤权/代际变化为判据；受控 pending runner 仅替代外部节点，不替代 SQL/授权/回执。补 release 挂起恢复反例后最小修复，再补 checks 与竞态；不将网络等待移入事务、不放宽指纹/开放门禁。库和失败记录保留。
+
+§13 方案登记时，新反例/实现/验证/独立两轴审查均未执行；后续实际结果分别记录如下。完成后以新的修复 PR 交付（Refs #13 / #19），不重开或重写已合并 PR，不自动合并修复 PR 或关闭 Issue。进度待授权维护者汇总 MVP_SPEC §10。
+
+### 13.1 实际修复与针对性验证
+
+在实际 app.inject / 新十七表合成库先复现两个入口：release 原键 + 挂起 readiness **0/1 失败**，随后最小修复后 **1/1 通过**；checks 相同反例先 **0/1 失败**，修复后两个入口 **2/2 通过**。失败是“原回执等待 pending 查询”，没有解除节点等待后才计成功，也没有扩大 HTTP 性能验收阈值。
+
+records-adapter 抽取同一 recordCommandState，新增只读 readRecordCommand 与原 finishRecordCommand 共用全局键/摘要/代际/严格回执和事件关联检查。checks/release 共用 executeRuntimeCommand：预查事务不推进 Session 活跃时间；命中后不查询外部节点，最终授权短事务重查并提交 Session 活跃时间。无原回执才事务外等待；最终事务仍先解析竞争者已提交回执，再对确实的新业务应用 readiness/指纹/代际/CAS 守卫。没有网络等待进入 SQL 事务，失败仍整批回滚。
+
+实际执行 `node --test apps/teaching/tests/design-activities.test.ts apps/teaching/tests/records-adapter.test.ts`：**24 项，23 通过、0 失败、1 真实 C1 入口跳过**。新增 10 个用例覆盖两个 pending 重放入口，以及各自的当前权限/旧代际/异摘要/坏键拒绝、等待期间撤权/代际改变、竞争者提交后原查询坏指纹仍返原完整回执，新键继续拒绝坏指纹；等候中另一请求能实际保存，证明不占持有等待的 SQL 事务。typecheck 通过。未启用真实 SSH/VM/模型，不把 PAHER 原 1/1 改记本次真实复跑。
+
+针对性验证完成时，完整回归/构建、文档检查、独立两轴审查与新的修复 PR 尚待执行；较新结果见 §13.2/13.3。原审查线程保持待独立复核，源码修复不自行代签批准。
+
+### 13.2 完整本机验证
+
+同一修复候选在批准 Node 24.21.0 / 原精确依赖上执行 `npm run typecheck` 通过；`npm test`（含 pretest 的 `npm run build`）**167 项中 161 通过、0 失败、0 取消、6 跳过**，约 44.38 秒。相对原 157 项新增 10 个 pending 重放/当前守卫/等待竞态用例，没有重计 C 的原真实 1/1。六项仍为 Linux/受认证节点专属检查，未在本机启用。测试只使用既有批准工厂的全新临时合成库，保留文件；无真实课程/学生/模型/节点维护。
+
+`node tools/a0-review/check.mjs`：30 文档/334 内部引用/27 条批准变更接口，通过；其 businessTests=NOT_EXECUTED 是该静态工具的能力边界，不覆盖上述实际业务回归。`node --test tools/a0-review/check.test.mjs`：16/16、零失败/跳过。`git diff --check` 通过。README 已增加此修复导航；保护基线待授权维护者汇总。
+
+原 PR #19 已合并，两个新线程仍待该修复独立评审/合入；不通过重开、回滚或改写原历史处理。完整 C2/C5/G1、浏览器/TLS/真人未验收；本次真实 C1 正向复跑未执行。新 PR 的审查与交付状态待下方记录。
+
+### 13.3 独立审查与修复交付
+
+固定基线 ac96cf6083b8f7b8403896e2a505b53e94c20d58，Standards/Spec 两名审查者独立只读检查准确工作区增量；均未代跑业务测试或真实节点。Standards 硬性违规/可操作异味 **0/0**；Spec 未解决 **0**。确认两入口不再等待节点才读取原回执，探查与最终事务共用完整校验，原 Session/权限/代际/竞争和原子 ACK 语义保持。
+
+本次交付限七个文件：A 的 records-adapter、design app/application/readiness、design-activities 测试、README 与本文。原 #19 两线程保持待修复合入后的审查者确认；不修改原 PR head/合并历史或自动解决仍存在于 main 的缺陷。修复以新分支普通推送，建立基于 main 的独立 PR（Refs #13/#19），未自动合并、未关闭 Issue；实际 PR 链接后续补记。受保护基线仍待授权维护者汇总。
+
+实际交付：[修复 PR #21](https://github.com/paher-din/XunJie/pull/21) 已创建、base=main、非 Draft/Open、未合并，初始源码提交 `1481c79477208c2103f9ee2d7cfe90c9dd954521`。后续补记仅本文/README 链接，不改变已验证业务/测试源码或原始证据。原 #19 保持合并状态和两个待确认线程；未关闭 #13，未改 main。
