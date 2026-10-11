@@ -2,8 +2,8 @@ import { z } from 'zod';
 import type { Transaction } from '../db/transaction.ts';
 import { readAttempt, saveAttempt, readRecords, saveRecordPlan, saveJob, readCommandIdentity } from '../db/records-adapter.ts';
 import { canonical, sameScope } from '../records/commands.ts';
-import type { CommandIdentity, Records } from '../../contracts/records/index.ts';
-import type { WorkspaceState } from './commands.ts';
+import { readTeachingRecordsInTransaction, readCoverageIntervals } from '../records/teaching.ts';
+import type { CommandIdentity, Records, TeachingActionRecord, TeachingCoverage, TeachingMessage } from '../../contracts/records/index.ts';import type { WorkspaceState } from './commands.ts';
 import { validateFiles } from './files.ts';
 import { validateSnapshot } from '../../runner/snapshot.ts';
 import { validateRunResult } from '../records/runner.ts';
@@ -90,6 +90,7 @@ export function persistWorkspace(tx: Transaction, before: WorkspaceState, after:
   for (const event of after.records.events.filter(item => !before.records.events.some(old => old.eventId === item.eventId))) {
     const receipt = after.records.receipts.find(item => item.receiptId === event.payloadRef);
     if (!receipt) throw new ApiError('INVALID_REFERENCE');
+    // The initiating command owns this audit row, so a dependent stop never adds a second one.
     saveRecordPlan(tx, receipt, event);
   }
   for (const receipt of after.records.receipts.filter(item => !before.records.receipts.some(old => old.receiptId === item.receiptId))) bind(tx, receipt.identity, receipt.receiptId);
@@ -123,8 +124,7 @@ export function persistWorkspace(tx: Transaction, before: WorkspaceState, after:
     }
   }
 }
-function bind(tx: Transaction, identity: CommandIdentity, receiptId: string) {
-  for (const item of bindingKeys(identity)) {
+function bind(tx: Transaction, identity: CommandIdentity, receiptId: string) {  for (const item of bindingKeys(identity)) {
     const old = tx.get('SELECT receipt_id FROM workspace_command_bindings WHERE kind=? AND key_json=?', item.kind, item.key);
     if (old && old.receipt_id !== receiptId) throw new ApiError('IDEMPOTENCY_CONFLICT');
     if (!old) tx.run('INSERT INTO workspace_command_bindings(kind,key_json,receipt_id,identity_json) VALUES (?,?,?,?)', item.kind, item.key, receiptId, JSON.stringify(identity));
@@ -148,4 +148,15 @@ export function readProcessRecords(tx: Transaction, attemptId: string) {
     return { kind,receiptId: receipt.receiptId,serverSeq: receipt.serverSeq,captureRevision: Number(row.capture_revision),
       source: 'student_command' as const,record,ack: receipt.result };
   });
+}
+// C3 read projection: exact retrievable teaching text and the exact references/versions, already authorized by the caller.
+export function readTeachingRecords(tx: Transaction, attemptId: string): {messages: TeachingMessage[]; actions: TeachingActionRecord[]} {
+  const attempt = readAttempt(tx, attemptId);
+  const records = readTeachingRecordsInTransaction(tx, { courseId: attempt.courseId, attemptId, studentId: attempt.studentId });
+  return { messages: records.messages, actions: records.actions };
+}
+// C3 coverage projection: server-side boundaries only; a client clock never back-dates or refills a gap.
+export function readCoverage(tx: Transaction, attemptId: string): TeachingCoverage {
+  readAttempt(tx, attemptId);
+  return readCoverageIntervals(tx, attemptId);
 }

@@ -10,19 +10,25 @@ import { queryRuntime } from '../design/readiness.ts';
 import { canonical, requestHash, resolveCommandReceipt } from '../records/commands.ts';
 import { assertResourceUse } from '../access/resource.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
+import type { ActionDisposition, TeachingActionRecord, TeachingCoverage, TeachingMessage } from '../../contracts/records/index.ts';
+import type { DesignTeachingStop } from '../design/activities.ts';
 import { createAttempt } from './snapshots.ts';
-import { loadWorkspace, persistWorkspace, readProcessRecords } from './storage.ts';
-import { generationInput, params, key, syncInput, snapshotInput, controlInput, runInput, syncBatch, domainControl, domainRun } from './inputs.ts';
-import { syncCommand, snapshotCommand, controlCommand, runCommand, cancelRunCommand, readWorkspace, readConfirmedSnapshot, readRunDiagnostics } from './commands.ts';
-import type { CommandContext, WorkspaceState } from './commands.ts';
+import { loadWorkspace, persistWorkspace, readProcessRecords, readTeachingRecords, readCoverage } from './storage.ts';
+import { generationInput, cancelInput, params, key, syncInput, snapshotInput, controlInput, runInput, syncBatch, domainControl, domainRun } from './inputs.ts';
+import { syncCommand, snapshotCommand, controlCommand, runCommand, cancelRunCommand, cancelTeachingJobCommand,
+  readWorkspace, readConfirmedSnapshot, readRunDiagnostics } from './commands.ts';
+import type { CommandContext, TeachingStopHandler, WorkspaceState } from './commands.ts';
 import { createWorkspaceWorker } from './worker.ts';
 import { readResultFiles } from './result-files.ts';
 import { z } from 'zod';
 
+export type WorkspaceAppOptions = DesignAppOptions & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop}};
 const attemptResult = z.strictObject({ attemptId: z.string(), activityVersionId: z.string(), assignmentId: z.string() });
-export async function createWorkspaceApp(options: DesignAppOptions) {
-  const instance = await createDesignApp(options), { app, access } = instance;
+export async function createWorkspaceApp(options: WorkspaceAppOptions) {
+  const instance = await createDesignApp(options.teaching?.design ? { ...options, teaching: { stop: options.teaching.design } } : options);
+  const { app, access } = instance;
   const now = options.now ?? Date.now;
+  const teachingStop = options.teaching?.stop;
   const currentGeneration = (expected: string) => {
     if (!expected || options.currentGeneration() !== expected) throw new ApiError('RECOVERY_REQUIRED');
     return expected;
@@ -44,14 +50,16 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
     return access.withAuthorizedResource(request, tx => locate(tx, id), 'read', tx => work(tx, loadWorkspace(tx, id)));
   }
   function execute(request: FastifyRequest, target: string | ((tx: Transaction) => string), command: string, expectedGeneration: string,
-    apply: (tx: Transaction, state: WorkspaceState, context: CommandContext) => ReturnType<typeof syncCommand>) {
+    apply: (tx: Transaction, state: WorkspaceState, context: CommandContext) => ReturnType<typeof syncCommand>, stopReason = 'explicit_command',
+    runPurposes?: CommandContext['runPurposes']) {
     let id: string;
     const data = access.withAuthorizedResource(request, tx => { id = typeof target === 'string' ? target : target(tx); return locate(tx, id, true); }, 'write', (tx, actor, scope) => {
       const generation = currentGeneration(expectedGeneration);
       const identity = commandIdentity(request,actor,id,command,generation);
       const before = loadWorkspace(tx, id, identity);
       const context: CommandContext = { identity, generation, now: new Date(now()).toISOString(),
-        commandId: randomUUID(), receiptId: randomUUID(), eventId: randomUUID(), assignmentActive: scope.kind === 'student_work' && scope.assignmentActive, authorize: () => true };
+        commandId: randomUUID(), receiptId: randomUUID(), eventId: randomUUID(), assignmentActive: scope.kind === 'student_work' && scope.assignmentActive,
+        authorize: () => true, transaction: tx, stopReason, ...(runPurposes ? {runPurposes} : {}) };
       const plan = apply(tx, before, context);
       persistWorkspace(tx, before, plan.state);
       if (!plan.replayed && command === 'workspace.sync') {
@@ -113,8 +121,8 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
       const view = activityView(tx, { userId: context.identity.actorId, courseId: state.attempt.courseId, role: 'student' }, state.attempt.activityVersionId);
       const resources = view.content.materials.flatMap(item => item.status === 'available'
         ? item.paragraphs.filter(p => p.paragraphId).map(p => ({ resourceVersionId: item.resourceVersionId, paragraphId: p.paragraphId! })) : []);
-      return controlCommand(state, context, input.expectedAttemptRevision, domainControl(input.control), resources);
-    });
+      return controlCommand(state, context, input.expectedAttemptRevision, domainControl(input.control), resources, teachingStop);
+    }, `attempt_control_${domainControl(input.control).kind}`);
   });
   app.post('/api/attempts/:id/runs', async request => {
     const id = attemptId(request), input = parseRequest(runInput, request.body);
@@ -142,8 +150,28 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
     if (!row?.attempt_id) throw new ApiError('FORBIDDEN');
     return String(row.attempt_id);
   }
-  app.post('/api/jobs/:id/cancel', request => {
-    const jobId = attemptId(request), input = parseRequest(generationInput, request.body);
+
+  app.post('/api/jobs/:id/cancel', request => {    const jobId = attemptId(request), input = parseRequest(cancelInput, request.body);
+    const purpose = access.withAuthorizedCourse(request, tx => {
+      const row = tx.get('SELECT course_id,purpose FROM jobs WHERE job_id=?', jobId);
+      if (!row || typeof row.course_id !== 'string') throw new ApiError('FORBIDDEN');
+      return row.course_id;
+    }, undefined, (tx, actor) => {
+      const row = tx.get('SELECT purpose,student_id FROM jobs WHERE job_id=?', jobId);
+      if (row?.purpose === 'student_run' || row?.purpose === 'teacher_sample') {
+        if (actor.role !== 'student' || row.student_id !== actor.userId) throw new ApiError('FORBIDDEN');
+        return 'run' as const;
+      }
+      // Teaching purposes stop through the persistent stop capability. Teacher-side design jobs stay owned by A3.
+      if (teachingStop) {
+        if (actor.role !== 'student' || row?.student_id !== actor.userId) throw new ApiError('FORBIDDEN');
+        return 'teaching' as const;
+      }
+      return 'run' as const;
+    });
+    if (purpose === 'teaching') return execute(request, tx => jobAttempt(tx, jobId), 'job.cancel', input.recoveryGeneration,
+      (_tx, state, context) => cancelTeachingJobCommand(state, { ...context,
+        stopReason: input.reason ?? 'explicit_job_cancel' }, jobId, teachingStop));
     return execute(request, tx => jobAttempt(tx, jobId), 'job.cancel', input.recoveryGeneration, (_tx, state, context) => cancelRunCommand(state, context, jobId));
   });
   app.get('/api/jobs/:id', request => {
@@ -177,6 +205,32 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
     },
     ...createWorkspaceWorker(options),
   };
+  // C3 read/command seams. The teaching composer replaces these with real implementations; an unattached
+  // workspace never reports a teaching action invalidation it did not perform.
+  type WorkspaceTeachingSurface = {
+    acceptStudentQuestion: ((request: FastifyRequest, attemptId: string, input: unknown) =>
+      {messageId:string;jobId:string;contentHash:string;stoppedJobIds:string[]}) | undefined;
+    completeTeaching: ((request: FastifyRequest, attemptId: string, input: unknown) =>
+      {messageId:string;actionId:string;disposition:ActionDisposition;replayed:boolean;contentHash:string}) | undefined;
+    stopTeaching: TeachingStopHandler | undefined;
+    readTeachingRecords: (request: FastifyRequest, attemptId: string) => {messages:TeachingMessage[];actions:TeachingActionRecord[]};
+    readCoverage: (request: FastifyRequest, attemptId: string) => TeachingCoverage;
+  };
+  const teaching: WorkspaceTeachingSurface = {
+    acceptStudentQuestion: undefined,
+    completeTeaching: undefined,
+    stopTeaching: teachingStop,
+    readTeachingRecords(request: FastifyRequest, id: string) { return read(request, id, tx => readTeachingRecords(tx, id)); },
+    readCoverage(request: FastifyRequest, id: string) { return read(request, id, tx => readCoverage(tx, id)); },
+  };
+  app.get('/api/attempts/:id/teaching-records', request => {
+    const id = attemptId(request);
+    return { requestId: request.id, data: teaching.readTeachingRecords(request, id) };
+  });
+  app.get('/api/attempts/:id/coverage', request => {
+    const id = attemptId(request);
+    return { requestId: request.id, data: teaching.readCoverage(request, id) };
+  });
   app.get('/api/attempts/:id/snapshots/:snapshotId', request => {
     const value = parseRequest(params.extend({ snapshotId: params.shape.id }), request.params);
     return { requestId: request.id, data: workspace.readSnapshot(request, value.id, value.snapshotId) };
@@ -192,5 +246,5 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
     const value = parseRequest(params.extend({ runId: params.shape.id }),request.params);
     return { requestId: request.id,data: workspace.readResultFiles(request,value.id,value.runId) };
   });
-  return { ...instance, workspace };
+  return { ...instance, workspace: { ...workspace, teaching } };
 }

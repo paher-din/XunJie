@@ -1,18 +1,22 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { createWorkspaceDatabase, openSyntheticDatabase } from '../db/transaction.ts';
+import { createWorkspaceDatabase, createTeachingDatabase, openSyntheticDatabase } from '../db/transaction.ts';
 import type { SyntheticDatabase } from '../db/transaction.ts';
 import { createPasswordRecord } from '../access/password.ts';
 import { createWorkspaceApp } from './application.ts';
+import { createTeachingRecordsApp, teachingStopHandler, designTeachingStop } from '../records/application.ts';
 import { readRuntime } from '../records/runner.ts';
 import type { RunnerTransport } from '../records/runner.ts';
 
 export const origin = 'https://synthetic.example';
 export const syntheticProfile = { runtimeProfileVersion: 'runtime-v1', imageDigest: 'sha256:' + 'a'.repeat(64),
   compilerImage: 'sha256:' + 'b'.repeat(64), runtimeImage: 'sha256:' + 'c'.repeat(64), approvedResultFiles: ['report.txt'] };
-export async function fixture(transport?: RunnerTransport) {
+// The default fixture keeps C2's approved factory/table set; only the C3 teaching suite opts into the
+// four extra teaching tables and the composed teaching app.
+export async function fixture(transport?: RunnerTransport, configuration: {teaching?: boolean} = {}) {
   const runtime = transport ? await readRuntime(transport) : undefined, profile = runtime?.profile ?? syntheticProfile;
-  let db = createWorkspaceDatabase(), time = Date.now(), generation = runtime?.recoveryGeneration ?? 'generation', ready = true;
+  const createDatabase = configuration.teaching ? createTeachingDatabase : createWorkspaceDatabase;
+  let db = createDatabase(), time = Date.now(), generation = runtime?.recoveryGeneration ?? 'generation', ready = true;
   let failStatement = '';
   const password = randomBytes(32).toString('base64url'), signingSecret = randomBytes(48).toString('hex'), record = await createPasswordRecord(password);
   db.withTransaction(tx => {
@@ -33,13 +37,22 @@ export async function fixture(transport?: RunnerTransport) {
       if (failStatement && sql.includes(failStatement)) throw new Error('Synthetic late SQL failure.');
       return tx.run(sql, ...args);
     } })); } };
-  const options = () => ({ db: wrapped, origin, signingSecret, currentGeneration: () => generation, runner, now: () => time });
-  let service = await createWorkspaceApp(options());
+  const settings = { enabled: Boolean(configuration.teaching) };
+  const options = () => ({ db: wrapped, origin, signingSecret, currentGeneration: () => generation, runner, now: () => time,
+    ...(settings.enabled ? { teaching: { stop: teachingStopHandler, design: designTeachingStop(teachingStopHandler) } } : {}) }) as Parameters<typeof createWorkspaceApp>[0];
+  let service = settings.enabled ? await createTeachingRecordsApp(options()) : await createWorkspaceApp(options());
   function register() {
     service.app.post('/fixture/policy', request => ({ data: service.design.configurePolicy(request, 'course', request.body) }));
     service.app.post('/fixture/rule', request => ({ data: service.design.configureRule(request, 'course', request.body) }));
     service.app.get('/fixture/tutor/:id', request => ({ data: service.workspace.readTutorContext(request, (request.params as { id: string }).id) }));
     service.app.get('/fixture/process/:id', request => ({ data: service.workspace.readProcessRecords(request, (request.params as { id: string }).id) }));
+    // B2 owns the real help/worker entries; these synthetic routes only exercise C3's own seams.
+    if (settings.enabled) {
+      service.app.post('/fixture/help/:id', request => ({ data: service.workspace.teaching.acceptStudentQuestion!(request, (request.params as { id: string }).id, request.body) }));
+      service.app.post('/fixture/complete/:id', request => ({ data: service.workspace.teaching.completeTeaching!(request, (request.params as { id: string }).id, request.body) }));
+      service.app.get('/fixture/records/:id', request => ({ data: service.workspace.teaching.readTeachingRecords(request, (request.params as { id: string }).id) }));
+      service.app.get('/fixture/coverage/:id', request => ({ data: service.workspace.teaching.readCoverage(request, (request.params as { id: string }).id) }));
+    }
   }
   register();
   async function login(user = 'student') {
@@ -52,7 +65,8 @@ export async function fixture(transport?: RunnerTransport) {
     get db() { return db; }, get app() { return service.app; }, get workspace() { return service.workspace; },
     unavailable() { ready = false; }, restoreGeneration() { generation = 'new-generation'; }, advance(ms: number) { time += ms; },
     injectFailure(statement: string) { failStatement = statement; },
-    async reopen() { const file = db.file; await service.app.close(); db.close(); db = openSyntheticDatabase(file); service = await createWorkspaceApp(options()); register(); },
+    async reopen() { const file = db.file; await service.app.close(); db.close(); db = openSyntheticDatabase(file);
+      service = settings.enabled ? await createTeachingRecordsApp(options()) : await createWorkspaceApp(options()); register(); },
     async close() { await service.app.close(); db.close(); } };
 }
 export type Fixture = Awaited<ReturnType<typeof fixture>>;

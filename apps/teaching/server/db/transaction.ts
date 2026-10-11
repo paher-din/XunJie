@@ -1,5 +1,6 @@
 import { completionSchema } from './completion-schema.ts';
 import { workspaceSchema } from '../workspace/schema.ts';
+import { teachingSchema } from '../records/schema.ts';
 import { designSchema } from './design-schema.ts';
 import { createRequire } from 'node:module';
 import { closeSync, lstatSync, mkdtempSync, openSync, realpathSync } from 'node:fs';
@@ -92,7 +93,7 @@ export function openSyntheticDatabase(file: string) {
         const prepare = (sql: string) => {
           if (!active) throw new Error('Transaction capability expired.');
           // Transaction control and schema changes are never delegated to callbacks.
-          if (!/^\s*(SELECT|INSERT|UPDATE)\b/i.test(sql)) throw new Error('Approved data statements only.');
+          if (!/^\s*(SELECT|INSERT|UPDATE|DELETE)\b/i.test(sql)) throw new Error('Approved data statements only.');
           return db.prepare(sql);
         };
         const tx: Transaction = {
@@ -127,15 +128,18 @@ export function createDesignDatabase(): SyntheticDatabase {
 }
 export function createCompletionDatabase(): SyntheticDatabase { return createFreshDatabase('completion'); }
 export function createWorkspaceDatabase(): SyntheticDatabase { return createFreshDatabase('workspace'); }
-function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace'): SyntheticDatabase {
-  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
+// C3 adds the four teaching tables on the same approved path/transaction rules; older factories never gain them.
+export function createTeachingDatabase(): SyntheticDatabase { return createFreshDatabase('teaching'); }
+function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teaching'): SyntheticDatabase {
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teaching'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
   const db = new Driver(file, { fileMustExist: true });
   try {
     db.exec('BEGIN IMMEDIATE');
-    try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind === 'completion' || kind === 'workspace') db.exec(completionSchema); if (kind === 'workspace') db.exec(workspaceSchema); db.exec('COMMIT'); }
+    try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind !== 'design' && kind !== 'access') db.exec(completionSchema);
+      if (kind === 'workspace' || kind === 'teaching') db.exec(workspaceSchema); if (kind === 'teaching') db.exec(teachingSchema); db.exec('COMMIT'); }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   } finally { db.close(); }
   return openSyntheticDatabase(file);

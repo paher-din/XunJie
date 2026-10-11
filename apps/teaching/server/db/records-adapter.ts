@@ -122,7 +122,16 @@ export function readRecords(tx: Transaction, courseId: string): Records {
       if (event.eventId !== row.event_id || event.serverSeq !== row.server_seq || event.scope.courseId !== row.course_id
         || 'shared.' + event.type !== row.command || Date.parse(event.occurredAt) !== row.committed_at_ms) throw new Error('Invalid persisted event scope.');
       const receipt = receipts.find(item => item.receiptId === event.payloadRef);
-      if (!receipt || !sameScope(receipt.identity.scope, event.scope) || receipt.identity.actorId !== row.actor_id
+      // An event may reference the object it is about (a teaching delivery, receipt or stop request) instead of
+      // its command receipt; those rows still have to agree with the row that owns them.
+      if (!receipt) {
+        const owner = receipts.find(item => item.serverSeq === event.serverSeq && item.committedAt === event.occurredAt);
+        if (!owner || owner.identity.actorId !== row.actor_id || owner.commandId !== row.command_id
+          || owner.identity.target !== row.target || owner.identity.recoveryGeneration !== row.recovery_generation
+          || !sameScope(owner.identity.scope, event.scope)) throw new Error('Invalid persisted receipt/event association.');
+        return event;
+      }
+      if (!sameScope(receipt.identity.scope, event.scope) || receipt.identity.actorId !== row.actor_id
         || receipt.commandId !== row.command_id || receipt.identity.target !== row.target
         || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.serverSeq !== event.serverSeq
         || receipt.committedAt !== event.occurredAt) throw new Error('Invalid persisted receipt/event association.');
@@ -160,7 +169,8 @@ export function readRecordCommand<T>(tx: Transaction, identity: CommandIdentity,
   return previous ? { ...previous, result: validateRecordResult(validateResult, previous.result) } : undefined;
 }
 export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentity, fields: unknown,
-  generation: string, now: number, work: (receiptId: string) => T, validateResult: (value: unknown) => T): CommandReceipt<T> {
+  generation: string, now: number, work: (receiptId: string) => T, validateResult: (value: unknown) => T,
+  afterCommit?: (receiptId: string, result: T) => void): CommandReceipt<T> {
   if (work.constructor.name === 'AsyncFunction' || validateResult.constructor.name === 'AsyncFunction') throw new ApiError('PERSISTENCE_UNAVAILABLE');
   const { records, hash, previous } = recordCommandState(tx, identity, fields, generation);
   if (previous) return { ...previous, result: validateRecordResult(validateResult, previous.result) };
@@ -174,8 +184,15 @@ export function finishRecordCommand<T>(tx: Transaction, identity: CommandIdentit
     { eventId: randomUUID(), scope: identity.scope, type: identity.command, occurredAt: timestamp, source: identity.scope.studentId === identity.actorId ? 'student_command' : 'trusted_service', payloadRef: receiptId }, generation);
   const receipt = plan.receipt as CommandReceipt<T>;
   const event = plan.records.events[plan.records.events.length - 1]!;
-  saveRecordPlan(tx, receipt, event);
-  return receipt;
+  if (receipt.receiptId !== receiptId) throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  // The sampled snapshot may predate audit rows a dependent record wrote inside `work`, so the confirmed
+  // event moves to the next free sequence instead of colliding with them.
+  const free = Number(tx.get('SELECT COALESCE(MAX(server_seq),0) AS seq FROM audit_events')!.seq) + 1;
+  saveRecordPlan(tx, { ...receipt, serverSeq: free }, { ...event, serverSeq: free });
+  // Dependent shared records run after the receipt/event pair exists, so their foreign keys resolve and a
+  // failure still rolls the whole command back.
+  if (afterCommit) afterCommit(receiptId, result);
+  return { ...receipt, serverSeq: free };
 }
 // C's validated pure plan is persisted through the same format and connection as A's commands.
 export function saveRecordPlan(tx: Transaction, input: CommandReceipt, inputEvent: AuditEvent) {
@@ -191,6 +208,25 @@ export function saveRecordPlan(tx: Transaction, input: CommandReceipt, inputEven
   tx.run(`INSERT INTO command_receipts(receipt_id,command_id,actor_id,course_id,command,target,idempotency_key,request_hash,recovery_generation,server_seq,result_json)
     VALUES (?,?,?,?,?,?,?,?,?,?,?)`, receiptId, commandId, identity.actorId, identity.scope.courseId, 'shared.' + identity.command,
     identity.target, identity.idempotencyKey, hash, generation, receipt.serverSeq, JSON.stringify(receipt));
+}
+/**
+ * The same receipt/event pair, but the event's `payloadRef` names the object it is about (a delivery, a client
+ * receipt or a stop request) instead of the command receipt. C3's authorized event page resolves that reference
+ * back to a teaching action, so those events are not forced onto the workspace receipt convention.
+ */
+export function saveRecordPlanWithReference(tx: Transaction, input: CommandReceipt, inputEvent: AuditEvent, payloadRef: string) {
+  const receipt = persisted(receiptSchema, JSON.stringify(input)) as CommandReceipt;
+  const event = persisted(eventSchema, JSON.stringify({ ...inputEvent, payloadRef })) as AuditEvent;  const identity = receipt.identity, receiptId = receipt.receiptId, commandId = receipt.commandId;
+  const generation = identity.recoveryGeneration, hash = receipt.requestHash, now = Date.parse(receipt.committedAt);
+  if (!sameScope(event.scope, identity.scope) || event.serverSeq !== receipt.serverSeq
+    || event.occurredAt !== receipt.committedAt) throw new ApiError('INVALID_REFERENCE');
+  tx.run('INSERT INTO audit_events(server_seq,event_id,actor_id,course_id,command_id,command,target,object_ref_json,recovery_generation,committed_at_ms) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    receipt.serverSeq, event.eventId, identity.actorId, identity.scope.courseId, commandId, 'shared.' + event.type, identity.target,
+    JSON.stringify(event), generation, now);
+  tx.run('INSERT INTO command_receipts(receipt_id,command_id,actor_id,course_id,command,target,idempotency_key,request_hash,recovery_generation,server_seq,result_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+    receiptId, commandId, identity.actorId, identity.scope.courseId, 'shared.' + identity.command, identity.target,
+    identity.idempotencyKey, hash, generation, receipt.serverSeq, JSON.stringify(receipt));
+  return event;
 }
 export function enqueueStoredJob(tx: Transaction, job: Job) {
   if (job.scope.attemptId) {
