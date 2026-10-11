@@ -105,7 +105,7 @@ test('C3-V01 exact question/body bytes, trusted envelope, and same-result replay
     const different = await command(f, student, `/fixture/complete/${plan.attemptId}`, completeInput(plan, help.jobId, 'A different final body'));
     assert.equal(different.statusCode, 409, different.body);
 
-    const records = await recordsOf(f, student, plan.attemptId);
+    const records = await recordsOf(f, teacher, plan.attemptId);
     const model = records.messages.find(message => message.authorKind === 'model')!;
     // The persisted body is retrievable byte for byte and its hash covers those exact bytes.
     assert.equal(JSON.stringify(model.envelope.body), bodyJson(content));
@@ -165,7 +165,7 @@ test('C3-V02 receipts are idempotent, order-independent and never back-dated by 
       clientId: 'page-a', contentHash: delivered.contentHash, receiptKind: 'acknowledged', clientReceiptId: 'r-5' });
     assert.equal(impersonation.statusCode, 403, impersonation.body);
 
-    const records = await recordsOf(f, student, plan.attemptId);
+    const records = await recordsOf(f, teacher, plan.attemptId);
     const action = records.actions.find(row => row.actionId === actionId)!;
     assert.deepEqual(action.receipts.map(row => row.receiptKind), ['displayed', 'acknowledged']);
     // The declared client time is preserved as a claim; the server time stays the ordering fact.
@@ -206,9 +206,9 @@ test('C3-V03 scope, role trimming, cursor bounds and stale epoch resynchronizati
     const all = [...rest.events];
     assert.equal(new Set(all.map(event => event.serverSeq)).size, all.length);
     assert.ok(all.length >= 2, JSON.stringify(all));
-    assert.ok(all.some(event => event.payload?.content === 'Narrow the failing case.'), JSON.stringify(all));
+    assert.equal(all.some(event => event.payload?.content), false, 'old generation never regains delivery permission');
     // Re-reading the same page is stable and never re-delivers an action that still has its delivery.
-    const reread = pageOf(await f.app.inject({ url: eventsUrl(plan.attemptId, { limit: 50,
+    const reread = pageOf(await f.app.inject({ url: eventsUrl(plan.attemptId, { limit: 50, clientId: 'cursor-two',
       recoveryGeneration: f.generation(), decisionEpoch: plan.epoch }), headers: student }));
     assert.deepEqual(reread.events.map(event => event.serverSeq), all.map(event => event.serverSeq));
     // A teacher read keeps references only and creates no student delivery.
@@ -285,9 +285,9 @@ test('C3-V05 cancellation stops undisplays actions and never resurrects them', a
     assert.equal(cancelResult.stopRequested, true);
     assert.equal(cancelResult.status, 'succeeded');
     assert.deepEqual(cancelResult.invalidatedActionIds, [actionId]);
-    const records = await recordsOf(f, student, plan.attemptId);
+    const records = await recordsOf(f, teacher, plan.attemptId);
     assert.equal(records.actions[0]!.disposition, 'cancelled');
-    assert.equal(records.actions[0]!.basisRevised, true);
+    assert.equal(records.actions[0]!.basisRevised, false, 'student cancellation does not revise the historical basis');
     const before = await view(f, student, plan.attemptId);
 
     // A connected page never receives the stopped content again, and the stop adds no general teaching epoch.
@@ -322,29 +322,21 @@ test('C3-V06 the same-transaction stop rolls back with the caller and covers A2 
   try {
     const student = await f.login('student'), teacher = await f.login('teacher');
     const { plan, help } = await accepted(f, teacher, student);
+    const completed = await command(f, student, `/fixture/complete/${plan.attemptId}`, completeInput(plan, help.jobId, 'Check the current basis.'));
+    assert.equal(completed.statusCode, 200, completed.body);
     const before = await view(f, student, plan.attemptId);
-    const opened = await f.db.withTransaction(tx => tx.get('SELECT job_id FROM jobs WHERE job_id=?', help.jobId));
-    assert.equal(Boolean(opened), true);
-    // A rejected stop leaves no receipt, no stop intent and no epoch change. The synthetic late failure targets
-    // the stop's own job write; if that statement is not exercised the command must still be consistent.
-    f.injectFailure('ON CONFLICT(job_id) DO UPDATE SET status');
+    const originalAction = (await recordsOf(f, teacher, plan.attemptId)).actions[0]!;
+    // The real generated Action is changed before this tail failure; the entire command must roll back.
+    f.injectFailure('INSERT INTO audit_events');
     const failed = await command(f, student, `/api/attempts/${plan.attemptId}/controls`,
       { expectedAttemptRevision: before.attempt.attemptRevision, control: { kind: 'pause' } });
     f.injectFailure('');
     const after = await view(f, student, plan.attemptId);
-    if (failed.statusCode === 503) {
-      assert.equal(after.attempt.status, before.attempt.status);
-      assert.equal(after.attempt.decisionEpoch, before.attempt.decisionEpoch);
-      assert.equal(after.jobs.find((job: {jobId: string}) => job.jobId === help.jobId).stopRequested, false);
-      assert.equal((await recordsOf(f, student, plan.attemptId)).actions.length, 0);
-    } else {
-      assert.equal(failed.statusCode, 200, failed.body);
-      assert.equal(after.jobs.find((job: {jobId: string}) => job.jobId === help.jobId).stopRequested, true);
-    }
-    // A rollback leaves the original job pending, so the activity pause below still owns the same stop.
-    const resume = await command(f, student, `/api/attempts/${plan.attemptId}/controls`,
-      { expectedAttemptRevision: after.attempt.attemptRevision, control: { kind: 'resume' } });
-    if (after.attempt.status === 'paused') assert.equal(resume.statusCode, 200, resume.body);
+    assert.equal(failed.statusCode, 503, failed.body);
+    assert.equal(after.attempt.status, before.attempt.status);
+    assert.equal(after.attempt.decisionEpoch, before.attempt.decisionEpoch);
+    assert.equal(after.jobs.find((job: {jobId: string}) => job.jobId === help.jobId).stopRequested, false);
+    assert.deepEqual((await recordsOf(f, teacher, plan.attemptId)).actions[0], originalAction);
 
     // A2's activity pause stops the pending help job and invalidates its action inside A's own transaction.
     const control = await command(f, teacher, `/api/activities/${plan.activityId}/controls`,
@@ -353,9 +345,11 @@ test('C3-V06 the same-transaction stop rolls back with the caller and covers A2 
     const result = control.json().data.result as {stoppedJobIds: string[];invalidatedActionIds?: string[];attemptIds: string[]};
     assert.deepEqual(result.stoppedJobIds, [help.jobId]);
     assert.deepEqual(result.attemptIds, [plan.attemptId]);
-    assert.equal(Array.isArray(result.invalidatedActionIds), true);
+    assert.equal(Object.hasOwn(result, 'invalidatedActionIds'), false);
+    assert.equal((await recordsOf(f, teacher, plan.attemptId)).actions[0]!.disposition, 'cancelled');
     const state = await view(f, student, plan.attemptId);
-    assert.equal(state.jobs.find((job: {jobId: string}) => job.jobId === help.jobId).status, 'cancelled');
+    assert.equal(state.jobs.find((job: {jobId: string}) => job.jobId === help.jobId).status, 'succeeded');
+    assert.equal(state.jobs.find((job: {jobId: string}) => job.jobId === help.jobId).stopRequested, true);
   } finally { await f.close(); }
 });
 
@@ -370,7 +364,7 @@ test('C3-V07 durability: reconnect after a real reopen replays original ids and 
     const actionId = String(completed.json().data.actionId);    f.advance(1000);
     await f.reopen();
     const student2 = await f.login('student');
-    const records = await recordsOf(f, student2, plan.attemptId);
+    const records = await recordsOf(f, teacher, plan.attemptId);
     assert.equal(records.actions[0]!.actionId, actionId);
     assert.equal(JSON.stringify(records.messages.find(message => message.authorKind === 'model')!.envelope.body), bodyJson(content));
     // A reconnected page still receives the same content version through a new delivery attempt.
@@ -382,6 +376,14 @@ test('C3-V07 durability: reconnect after a real reopen replays original ids and 
     assert.equal(repeated.statusCode, 200, repeated.body);
     assert.equal(repeated.json().data.actionId, actionId);
     assert.equal(repeated.json().data.replayed, true);
-    assert.equal((await recordsOf(f, student2, plan.attemptId)).actions.length, 1);
+    assert.equal((await recordsOf(f, teacher, plan.attemptId)).actions.length, 1);
+    const stopped = await command(f, student2, `/api/jobs/${help.jobId}/cancel`, {});
+    assert.equal(stopped.statusCode, 200, stopped.body);
+    await f.reopen();
+    const reconnected = await f.login('student');
+    const hidden = await f.app.inject({ url: eventsUrl(plan.attemptId, { recoveryGeneration: f.generation(),
+      decisionEpoch: plan.epoch, clientId: 'page-d' }), headers: reconnected });
+    assert.equal(hidden.statusCode, 200, hidden.body);
+    assert.equal(pageOf(hidden).events.some(event => event.payload?.content), false);
   } finally { await f.close(); }
 });

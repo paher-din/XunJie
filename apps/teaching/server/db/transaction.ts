@@ -93,7 +93,7 @@ export function openSyntheticDatabase(file: string) {
         const prepare = (sql: string) => {
           if (!active) throw new Error('Transaction capability expired.');
           // Transaction control and schema changes are never delegated to callbacks.
-          if (!/^\s*(SELECT|INSERT|UPDATE|DELETE)\b/i.test(sql)) throw new Error('Approved data statements only.');
+          if (!/^\s*(SELECT|INSERT|UPDATE)\b/i.test(sql)) throw new Error('Approved data statements only.');
           return db.prepare(sql);
         };
         const tx: Transaction = {

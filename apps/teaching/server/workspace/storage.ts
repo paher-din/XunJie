@@ -150,9 +150,9 @@ export function readProcessRecords(tx: Transaction, attemptId: string) {
   });
 }
 // C3 read projection: exact retrievable teaching text and the exact references/versions, already authorized by the caller.
-export function readTeachingRecords(tx: Transaction, attemptId: string): {messages: TeachingMessage[]; actions: TeachingActionRecord[]} {
+export function readTeachingRecords(tx: Transaction, attemptId: string, audience: 'student'|'teacher'): {messages: TeachingMessage[]; actions: TeachingActionRecord[]} {
   const attempt = readAttempt(tx, attemptId);
-  const records = readTeachingRecordsInTransaction(tx, { courseId: attempt.courseId, attemptId, studentId: attempt.studentId });
+  const records = readTeachingRecordsInTransaction(tx, { courseId: attempt.courseId, attemptId, studentId: attempt.studentId }, audience);
   return { messages: records.messages, actions: records.actions };
 }
 // C3 coverage projection: server-side boundaries only; a client clock never back-dates or refills a gap.

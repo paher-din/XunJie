@@ -1,5 +1,5 @@
 import {RunnerError} from '../../runner/snapshot.ts';
-import {finishCommand,requestHash,resolveCommandReceipt,onlyFields} from '../records/commands.ts';
+import {finishCommand,requestHash,resolveCommandReceipt,onlyFields,sameScope} from '../records/commands.ts';
 import {activate,syncFiles} from './files.ts';
 import {freezeSnapshot,beginExplicitOperation,validateObjectRef} from './snapshots.ts';
 import {controlAttempt} from './controls.ts';
@@ -81,7 +81,7 @@ export function controlCommand(state:WorkspaceState,context:CommandContext,expec
   const stopped=stopJobs(state,context,plan.cancelPurposes,context.stopReason??'attempt_control',teachingStop);
   return completeCommand({...state,attempt:plan.attempt,records:{...state.records,jobs:stopped.jobs}},context,hash,
     {attemptRevision:plan.attempt.attemptRevision,decisionEpoch:plan.attempt.decisionEpoch,captureRevision:plan.attempt.captureRevision,
-      cancelledJobIds:stopped.jobIds,invalidatedActionIds:stopped.actionIds,captureChanged:plan.captureChanged},'attempt_controlled');
+      cancelledJobIds:stopped.jobIds,captureChanged:plan.captureChanged},'attempt_controlled');
 }
 // One capability for capture/reminder/lifecycle stops and teaching cancellation. The caller's own receipt
 // records the cause; the stop handler persists the intent and invalidates the related, not-yet-displayed actions.
@@ -154,20 +154,24 @@ export function cancelRunCommand(state:WorkspaceState,context:CommandContext,job
 }
 // C3: teaching jobs stop through the same persistent stop capability and invalidate their not-yet-displayed actions.
 export function cancelTeachingJobCommand(state:WorkspaceState,context:CommandContext,jobId:string,teachingStop?:TeachingStopHandler) {
-  guardCommand(state,context);const hash=requestHash(context.identity.target,{jobId});
+  guardCommand(state,context);const reason=context.stopReason??'explicit_job_cancel';
+  const hash=requestHash(context.identity.target,{jobId,reason});
   const previous=resolveCommandReceipt(state.records,context.identity,hash,context.generation);
   if(previous)return completeCommand(state,context,hash,previous.result,'job_stop_requested');
   const jobs=state.records.jobs.filter(row=>row.jobId===jobId);
   if(jobs.length!==1)throw new RunnerError('INVALID_REFERENCE','Original job association unavailable');
   const original=jobs[0]!;
+  if(!sameScope(original.scope,context.identity.scope))throw new RunnerError('FORBIDDEN','Original job scope mismatch');
   if(original.purpose==='student_run'||original.purpose==='teacher_sample')
     throw new RunnerError('STATE_CONFLICT','Ordinary runs stop through the original run unit');
-  if(!teachingStop)throw new ApiError('PERSISTENCE_UNAVAILABLE');
-  const stopped=stopJobs(state,context,[original.purpose],'explicit_job_cancel',teachingStop);
-  // The stop capability owns the persisted job status; the caller only learns it from the result.
-  const status=stopped.jobs.find(job=>job.jobId===jobId)?.status??original.status;
-  return completeCommand({...state,records:{...state.records,jobs:stopped.jobs}},context,hash,
-    {jobId,status,stopRequested:true,invalidatedActionIds:stopped.actionIds},'job_stop_requested');
+  if(!teachingStop||!context.transaction)throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const stopped=teachingStop(context.transaction,state.attempt.courseId,state.attempt.studentId,[jobId],
+    {reason,causeRef:context.receiptId,generation:context.generation,now:context.now});
+  const current=stopped.jobs.find(job=>job.jobId===jobId);
+  if(!current)throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const updated=state.records.jobs.map(job=>job.jobId===jobId?{...job,status:current.status,stopRequested:current.stopRequested}:job);
+  return completeCommand({...state,records:{...state.records,jobs:updated}},context,hash,
+    {jobId,status:current.status,stopRequested:current.stopRequested,invalidatedActionIds:stopped.invalidatedActionIds},'job_stop_requested');
 }
 
 function ownRun(state:WorkspaceState,jobId:string) {

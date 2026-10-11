@@ -22,10 +22,11 @@ import { createWorkspaceWorker } from './worker.ts';
 import { readResultFiles } from './result-files.ts';
 import { z } from 'zod';
 
-export type WorkspaceAppOptions = DesignAppOptions & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop}};
+export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop}};
 const attemptResult = z.strictObject({ attemptId: z.string(), activityVersionId: z.string(), assignmentId: z.string() });
 export async function createWorkspaceApp(options: WorkspaceAppOptions) {
-  const instance = await createDesignApp(options.teaching?.design ? { ...options, teaching: { stop: options.teaching.design } } : options);
+  const { teaching: extensions, ...designOptions } = options;
+  const instance = await createDesignApp({ ...designOptions, ...(extensions?.design ? { teaching: { stop: extensions.design } } : {}) });
   const { app, access } = instance;
   const now = options.now ?? Date.now;
   const teachingStop = options.teaching?.stop;
@@ -46,8 +47,8 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       idempotencyKey: parseRequest(key, request.headers['idempotency-key']), recoveryGeneration: generation,
       ...(command === 'workspace.sync' ? { sync: { clientId: parseRequest(syncInput, request.body).clientId, clientSeq: parseRequest(syncInput, request.body).clientSeq } } : {}) };
   }
-  function read<T>(request: FastifyRequest, id: string, work: (tx: Transaction, state: WorkspaceState) => T) {
-    return access.withAuthorizedResource(request, tx => locate(tx, id), 'read', tx => work(tx, loadWorkspace(tx, id)));
+  function read<T>(request: FastifyRequest, id: string, work: (tx: Transaction, state: WorkspaceState, actor: ActorContext) => T) {
+    return access.withAuthorizedResource(request, tx => locate(tx, id), 'read', (tx, actor) => work(tx, loadWorkspace(tx, id), actor));
   }
   function execute(request: FastifyRequest, target: string | ((tx: Transaction) => string), command: string, expectedGeneration: string,
     apply: (tx: Transaction, state: WorkspaceState, context: CommandContext) => ReturnType<typeof syncCommand>, stopReason = 'explicit_command',
@@ -203,7 +204,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
           limitedCheck, helpAllowed: activity.helpPolicy.helpAllowed && !limitedCheck };
       });
     },
-    ...createWorkspaceWorker(options),
+    ...createWorkspaceWorker(designOptions),
   };
   // C3 read/command seams. The teaching composer replaces these with real implementations; an unattached
   // workspace never reports a teaching action invalidation it did not perform.
@@ -220,7 +221,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     acceptStudentQuestion: undefined,
     completeTeaching: undefined,
     stopTeaching: teachingStop,
-    readTeachingRecords(request: FastifyRequest, id: string) { return read(request, id, tx => readTeachingRecords(tx, id)); },
+    readTeachingRecords(request: FastifyRequest, id: string) { return read(request, id, (tx, _state, actor) => readTeachingRecords(tx, id, actor.role)); },
     readCoverage(request: FastifyRequest, id: string) { return read(request, id, tx => readCoverage(tx, id)); },
   };
   app.get('/api/attempts/:id/teaching-records', request => {

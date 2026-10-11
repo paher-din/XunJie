@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { RunnerError, sha256 } from '../../runner/snapshot.ts';
-import { finishCommand, requestHash, sameScope } from './commands.ts';
+import { canonical, finishCommand, requestHash, sameScope } from './commands.ts';
 import { cancelByPurpose, enqueueJob, finishJob, invalidateInTransaction } from './jobs.ts';
-import { readAttempt, readJobs, saveJob, saveRecordPlan, saveRecordPlanWithReference } from '../db/records-adapter.ts';
+import { readAttempt, readJobs, readRecords, saveAttempt, saveJob, saveRecordPlan, saveRecordPlanWithReference } from '../db/records-adapter.ts';
+import { activityView, assignmentAvailability, readActivity } from '../design/activities.ts';
+import { beginExplicitOperation, validateObjectRef } from '../workspace/snapshots.ts';
+import { objectRef as objectRefSchema, snapshotSchema } from '../workspace/inputs.ts';
 import type { Transaction } from '../db/transaction.ts';
-import type { Attempt } from '../../contracts/workspace/index.ts';
+import type { ArtifactSnapshot, Attempt, ObjectRef } from '../../contracts/workspace/index.ts';
 import type { CommandIdentity, Job, Purpose, Scope, TeachingAction, TeachingActionReceipt, TeachingAttemptEpoch,
   TeachingBasis, TeachingDelivery, TeachingMessage, TeachingMessageEnvelope, TeachingQuestionEnvelope, TeachingScopeRef,
   TeachingUsage, TeachingVersions } from '../../contracts/records/index.ts';
@@ -24,14 +27,14 @@ const usageSchema = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('actual'), inputTokens: natural, outputTokens: natural }),
   z.strictObject({ status: z.literal('unknown'), reason: id.optional() })]);
 const basisSchema = z.strictObject({ attemptRevision: positive, decisionEpoch: natural, captureRevision: natural,
-  relatedStateRevision: natural, objectRef: z.unknown().optional(), inputRefs: z.array(id), assistanceRefs: z.array(id), coverageRefs: z.array(id) });
+  relatedStateRevision: natural, objectRef: objectRefSchema.optional(), inputRefs: z.array(id), assistanceRefs: z.array(id), coverageRefs: z.array(id) });
 const scopeSchema = z.strictObject({ courseId: id, studentId: id, attemptId: id });
 const messageSchema = z.strictObject({ messageId: id, scope: scopeSchema, jobId: id, requestReceiptId: id.optional(),
   authorKind: z.enum(['student','model']), contentHash: hash, resultHash: hash.optional(),
   envelope: z.union([
-    z.strictObject({ kind: z.literal('student_question'), question: z.string(), objectRef: z.unknown().optional(),
+    z.strictObject({ kind: z.literal('student_question'), question: z.string(), objectRef: objectRefSchema.optional(),
       inputRefs: z.array(id), versions: versionsSchema }),
-    z.strictObject({ kind: z.literal('student_help'), body: z.unknown(), versions: versionsSchema, usage: usageSchema,
+    z.strictObject({ kind: z.literal('student_help'), body: z.unknown(), bodyJsonText: z.string().optional(), versions: versionsSchema, usage: usageSchema,
       calls: natural, elapsedMs: natural, basis: basisSchema })]) });
 const actionSchema = z.strictObject({ actionId: id, scope: scopeSchema, jobId: id, messageId: id, contentHash: hash,
   disposition: z.enum(['pending','cancelled','stale','failed']), targetVersions: versionsSchema, basis: basisSchema,
@@ -104,11 +107,9 @@ function requireVersions(value: unknown, attempt: Attempt): TeachingVersions {
     schemaVersion: parsed.data.schemaVersion,
     ...(parsed.data.analysisVersion === undefined ? {} : { analysisVersion: parsed.data.analysisVersion }) };
 }
-function requireBasis(value: unknown, attempt: Attempt): TeachingBasis {
+function requireBasis(value: unknown): TeachingBasis {
   const parsed = basisSchema.safeParse(value);
   if (!parsed.success) throw new RunnerError('INVALID_REFERENCE', 'Trusted basis envelope required');
-  if (parsed.data.attemptRevision !== attempt.attemptRevision || parsed.data.decisionEpoch !== attempt.decisionEpoch
-    || parsed.data.captureRevision !== attempt.captureRevision) throw new RunnerError('STATE_CONFLICT', 'Teaching basis is not current');
   const basis: TeachingBasis = { attemptRevision: parsed.data.attemptRevision, decisionEpoch: parsed.data.decisionEpoch,
     captureRevision: parsed.data.captureRevision, relatedStateRevision: parsed.data.relatedStateRevision,
     inputRefs: [...parsed.data.inputRefs], assistanceRefs: [...parsed.data.assistanceRefs],
@@ -143,7 +144,20 @@ function readMessage(_tx: Transaction, row: Record<string, unknown>): TeachingMe
   const message = persisted(messageSchema, String(row.message_json), 'teaching message') as TeachingMessage;
   if (message.messageId !== row.message_id || message.scope.courseId !== row.course_id || message.scope.studentId !== row.student_id
     || message.scope.attemptId !== row.attempt_id || message.jobId !== row.job_id || message.authorKind !== row.author_kind
-    || message.contentHash !== row.content_hash) throw new Error('Invalid persisted teaching message scope.');
+    || message.contentHash !== row.content_hash || (message.resultHash ?? null) !== row.result_hash
+    || (message.requestReceiptId ?? null) !== row.request_receipt_id) throw new Error('Invalid persisted teaching message scope.');
+  if (message.authorKind === 'student') {
+    if (message.envelope.kind !== 'student_question' || contentHashOf(message.envelope.question) !== message.contentHash)
+      throw new Error('Invalid persisted student question.');
+  } else {
+    if (message.envelope.kind !== 'student_help') throw new Error('Invalid persisted teaching body.');
+    const body = studentHelpBodySchema.parse(message.envelope.body);
+    if (contentHashOf(body.content) !== message.contentHash) throw new Error('Invalid persisted teaching content hash.');
+    const raw = message.envelope.bodyJsonText;
+    // Older C3 records lost these bytes; do not manufacture them by serializing the parsed body.
+    if (raw !== undefined && (resultHashOf(raw) !== message.resultHash || canonical(JSON.parse(raw)) !== canonical(body)))
+      throw new Error('Invalid persisted teaching result bytes.');
+  }
   return message;
 }
 function saveMessage(tx: Transaction, message: TeachingMessage) {
@@ -227,9 +241,45 @@ function dispositionsFor(job: Job, attempt: Attempt, now: string): {disposition:
   if (job.stopRequested) return { disposition: 'cancelled', stopReason: job.failure ?? 'stop_requested' };
   if (job.status === 'failed') return { disposition: 'failed', stopReason: job.failure ?? 'job_failed' };
   if (job.status === 'stale' || job.decisionEpoch !== attempt.decisionEpoch) return { disposition: 'stale', stopReason: 'decision_epoch_changed' };
-  if (job.expectedRevision !== attempt.attemptRevision) return { disposition: 'stale', stopReason: 'attempt_revision_changed' };
   if (Date.parse(job.deadline) <= Date.parse(now)) return { disposition: 'stale', stopReason: 'deadline_exceeded' };
   return { disposition: 'pending' };
+}
+
+function assertTeachingContext(tx: Transaction, attempt: Attempt, versions: TeachingVersions, reference?: ObjectRef) {
+  if (!['ready','active'].includes(attempt.status)
+    || !assignmentAvailability(tx, attempt.courseId, attempt.assignmentId, attempt.studentId).active)
+    throw new RunnerError('STATE_CONFLICT', 'Teaching is paused or read-only');
+  const activity = readActivity(tx, attempt.courseId, attempt.activityVersionId);
+  if (versions.activityVersionId !== attempt.activityVersionId || versions.policyVersionId !== activity.helpPolicy.versionId
+    || !activity.helpPolicy.helpAllowed || (activity.checkRule.limitedHelp
+      && tx.get("SELECT run_id FROM workspace_runs WHERE attempt_id=? AND check_state='active'", attempt.attemptId)))
+    throw new RunnerError('STATE_CONFLICT', 'Current help policy forbids teaching');
+  if (!reference) return;
+  const snapshotRow = 'snapshotId' in reference
+    ? tx.get('SELECT snapshot_json FROM artifact_snapshots WHERE snapshot_id=? AND attempt_id=?', reference.snapshotId, attempt.attemptId) : undefined;
+  const snapshots: ArtifactSnapshot[] = snapshotRow ? [snapshotSchema.parse(JSON.parse(String(snapshotRow.snapshot_json)))] : [];
+  const run = reference.kind === 'run'
+    ? tx.get('SELECT run_id,snapshot_id,attempt_id FROM workspace_runs WHERE run_id=? AND attempt_id=?', reference.runId, attempt.attemptId) : undefined;
+  const materials = activityView(tx, { userId: attempt.studentId, courseId: attempt.courseId, role: 'student' }, attempt.activityVersionId, 'tutor').content.materials;
+  validateObjectRef(attempt, reference, { snapshots, runs: run ? [{ runId: String(run.run_id), snapshotId: String(run.snapshot_id), attemptId: String(run.attempt_id) }] : [],
+    resources: materials.flatMap(material => material.status === 'available'
+      ? material.paragraphs.flatMap(paragraph => paragraph.paragraphId ? [{ resourceVersionId: material.resourceVersionId, paragraphId: paragraph.paragraphId }] : []) : []) });
+  if (reference.kind === 'code') {
+    const file = tx.get("SELECT path,document_version,content_hash FROM workspace_files WHERE file_id=? AND attempt_id=? AND lifecycle='active'", reference.fileId, attempt.attemptId);
+    if (!file || file.path !== reference.path || file.document_version !== reference.documentVersion || file.content_hash !== reference.contentHash)
+      throw new RunnerError('STATE_CONFLICT', 'Teaching target changed');
+  }
+}
+
+export function teachingActionIsCurrent(tx: Transaction, action: TeachingAction, generation: string) {
+  const attempt = requireScope(tx, action.scope), job = jobOf(tx, action.scope, action.jobId);
+  if (action.disposition !== 'pending' || job.stopRequested || job.status !== 'succeeded'
+    || action.generation !== generation || job.recoveryGeneration !== generation
+    || action.basis.decisionEpoch !== attempt.decisionEpoch || job.decisionEpoch !== attempt.decisionEpoch
+    || (job.purpose === 'reminder' && !attempt.reminders)) return false;
+  try { assertTeachingContext(tx, attempt, action.targetVersions, action.basis.objectRef); }
+  catch (error) { if (error instanceof RunnerError) return false; throw error; }
+  return true;
 }
 
 export function readTeachingVersions(envelope: TeachingQuestionEnvelope | TeachingMessageEnvelope): TeachingVersions {
@@ -245,14 +295,18 @@ export function readTeachingVersions(envelope: TeachingQuestionEnvelope | Teachi
 export function acceptStudentQuestionInTransaction(tx: Transaction, input: {scope: TeachingScopeRef; receiptId?: string;
   now: string; generation: string; question: string; objectRef?: unknown;
   inputRefs?: string[]; versions: TeachingVersions; expectedRevision: number}) {
-  const attempt = requireScope(tx, input.scope);
+  let attempt = requireScope(tx, input.scope);
   const question = checkedText(input.question, 'question', 16384), now = checkedNow(input.now);
   const versions = requireVersions(input.versions, attempt);
   if (!Number.isSafeInteger(input.expectedRevision) || input.expectedRevision !== attempt.attemptRevision)
     throw new RunnerError('VERSION_CONFLICT', 'Attempt version conflict');
-  const objectRef = input.objectRef === undefined ? undefined : JSON.parse(JSON.stringify(input.objectRef));
-  if (objectRef !== undefined && (typeof objectRef !== 'object' || objectRef === null))
-    throw new RunnerError('INVALID_REFERENCE', 'Object reference required');
+  const objectRef = input.objectRef === undefined ? undefined : JSON.parse(JSON.stringify(objectRefSchema.parse(input.objectRef))) as ObjectRef;
+  assertTeachingContext(tx, attempt, versions, objectRef);
+  const hadHelp = readJobs(tx, attempt.courseId).some(job => sameScope(job.scope, input.scope) && job.purpose === 'student_help');
+  attempt = beginExplicitOperation(attempt, input.expectedRevision, true);
+  if (hadHelp) attempt = { ...attempt, decisionEpoch: attempt.decisionEpoch + 1,
+    attemptRevision: attempt.attemptRevision + (attempt.attemptRevision === input.expectedRevision ? 1 : 0) };
+  saveAttempt(tx, attempt);
   const envelope: TeachingQuestionEnvelope = { kind: 'student_question', question,
     ...(objectRef === undefined ? {} : { objectRef }), inputRefs: [...(input.inputRefs ?? [])], versions };
   const message: TeachingMessage = { messageId: randomUUID(), scope: structuredClone(input.scope), jobId: '',
@@ -302,10 +356,9 @@ export function enqueueTeachingJob(tx: Transaction, job: Job) {
  */
 export function completeTeachingInTransaction(tx: Transaction, input: {scope: TeachingScopeRef; jobId: string; leaseToken: string;
   generation: string; now: string; bodyJsonText: string; resultRef?: string; versions: TeachingVersions; usage: TeachingUsage;
-  calls: number; elapsedMs: number; basis: unknown; messageId: string; actionId: string; claimedJob?: Job}) {
+  calls: number; elapsedMs: number; basis: unknown; messageId: string; actionId: string}) {
   const attempt = requireScope(tx, input.scope);
-  // A caller that just claimed the lease supplies that in-memory job; otherwise the persisted row is the truth.
-  const job = input.claimedJob ?? jobOf(tx, input.scope, requireJobId(input.jobId));
+  const job = jobOf(tx, input.scope, requireJobId(input.jobId));
   if (!sameScope(job.scope, input.scope) || job.jobId !== input.jobId) throw new RunnerError('FORBIDDEN', 'Original job scope mismatch');
   if (job.purpose !== 'student_help') throw new RunnerError('INVALID_REFERENCE', 'Teaching job required');
   if (job.recoveryGeneration !== input.generation) throw new RunnerError('RECOVERY_REQUIRED', 'Stale teaching generation');
@@ -326,20 +379,39 @@ export function completeTeachingInTransaction(tx: Transaction, input: {scope: Te
     if (!action) throw new RunnerError('IDEMPOTENCY_CONFLICT', 'Original teaching action missing');
     return { messageId: message.messageId, actionId: action.actionId, disposition: action.disposition, replayed: true, contentHash: message.contentHash };
   }
-  const basis: TeachingBasis = { ...requireBasis(input.basis, attempt) };
-  const { disposition, stopReason } = dispositionsFor(job, attempt, now);
+  const basis = requireBasis(input.basis);
+  const questionRow = tx.get("SELECT * FROM teaching_messages WHERE job_id=? AND author_kind='student'", job.jobId);
+  if (!questionRow) throw new RunnerError('INVALID_REFERENCE', 'Original question required');
+  const question = readMessage(tx, questionRow).envelope;
+  if (question.kind !== 'student_question' || canonical(question.versions) !== canonical(versions)
+    || basis.decisionEpoch !== job.decisionEpoch) throw new RunnerError('INVALID_REFERENCE', 'Original teaching basis required');
+  if (question.objectRef) {
+    if (basis.objectRef && canonical(basis.objectRef) !== canonical(question.objectRef)) throw new RunnerError('INVALID_REFERENCE', 'Original target required');
+    basis.objectRef = question.objectRef;
+  }
+  let { disposition, stopReason } = dispositionsFor(job, attempt, now);
+  if (disposition === 'pending') {
+    try { assertTeachingContext(tx, attempt, versions, basis.objectRef); }
+    catch (error) { if (!(error instanceof RunnerError)) throw error; disposition = 'stale'; stopReason = error.code; }
+  }
+  if (job.leaseToken !== input.leaseToken || !job.leaseUntil || Date.parse(job.leaseUntil) <= Date.parse(now))
+    throw new RunnerError('STATE_CONFLICT', 'Current teaching lease required');
   const message: TeachingMessage = { messageId: input.messageId, scope: structuredClone(input.scope), jobId: job.jobId,
     requestReceiptId: job.requestReceiptId, authorKind: 'model', contentHash: contentHashOf(body.content), resultHash,
-    envelope: { kind: 'student_help', body, versions, usage, calls: input.calls, elapsedMs: input.elapsedMs, basis } };
+    envelope: { kind: 'student_help', body, bodyJsonText: input.bodyJsonText, versions, usage, calls: input.calls, elapsedMs: input.elapsedMs, basis } };
   // Same-job same-result replay returns the original IDs; an incomplete stop still records the real generation fact.
-  const finished = finishJob(job, { leaseToken: input.leaseToken, generation: input.generation, now,
-    resultRef: input.resultRef ?? `teaching:${message.messageId}`, resultHash }, { expectedRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch });
+  const completion = { leaseToken: input.leaseToken, generation: input.generation, now,
+    resultRef: input.resultRef ?? `teaching:${message.messageId}`, resultHash };
+  const finished = disposition === 'pending'
+    ? finishJob(job, completion, { expectedRevision: job.expectedRevision, decisionEpoch: attempt.decisionEpoch })
+    : { ...job, resultRef: completion.resultRef, resultHash, stopRequested: true,
+      status: ['succeeded','failed','cancelled','stale','timed_out'].includes(job.status) ? job.status : disposition === 'cancelled' ? 'cancelled' as const : 'stale' as const };
   const action: TeachingAction = { actionId: input.actionId, scope: structuredClone(input.scope), jobId: job.jobId, messageId: message.messageId,
     contentHash: message.contentHash, disposition, ...(stopReason ? { stopReason } : {}), targetVersions: versions, basis,
     generation: input.generation, basisRevised: false, createdAt: now };
   saveMessage(tx, message);
   saveAction(tx, action);
-  saveJob(tx, finished);
+  saveJob(tx, { ...finished, attemptCount: Math.max(job.attemptCount, input.calls) });
   appendTeachingEvent(tx, { ...input.scope }, input.scope.studentId, 'teaching.completed', now, input.generation, message.messageId);
   return { messageId: message.messageId, actionId: action.actionId, disposition: action.disposition, replayed: false, contentHash: message.contentHash };
 }
@@ -373,10 +445,10 @@ export function stopTeachingJobsInTransaction(tx: Transaction, input: {actorId: 
     saveJob(tx, next);
     if (jobIdsChanged(job, next)) stoppedIds.push(job.jobId);
     const attempt = requireAttempt(tx, String(next.scope.attemptId));
-    actionIds.push(...stopActionsForJob(tx, attempt, next, reason, input.causeRef));
+    actionIds.push(...stopActionsForJob(tx, attempt, next, reason, input.causeRef, 'cancelled'));
   }
   if (stoppedIds.length && input.audit !== false) appendTeachingEvent(tx, { ...input.scope }, input.actorId, 'teaching.stopped', now,
-    input.generation, input.causeRef ?? reason, input.causeRef);
+    input.generation, input.causeRef ?? reason);
   return { jobIds: stoppedIds, actionIds: [...new Set(actionIds)],
     jobs: selected.map(job => readStoredJob(tx, job.jobId)) };
 }
@@ -386,17 +458,14 @@ function readStoredJob(tx: Transaction, jobId: string) {
   return { jobId, status: String(row.status) as Job['status'], stopRequested: Number(row.stop_requested) === 1 };
 }
 function jobIdsChanged(before: Job, after: Job) { return !before.stopRequested && after.stopRequested; }
-function stopActionsForJob(tx: Transaction, attempt: Attempt, job: Job, reason: string, causeRef: string | undefined): string[] {
+function stopActionsForJob(tx: Transaction, attempt: Attempt, job: Job, reason: string, causeRef: string | undefined,
+  disposition: 'cancelled'|'stale'): string[] {
   const affected: string[] = [];
   for (const action of readActions(tx, attempt.attemptId)) {
-    if (action.jobId !== job.jobId || action.disposition !== 'pending') continue;
-    const receipts = readReceipts(tx, action.actionId);
-    const delivered = readDeliveries(tx, action.actionId);
-    const displayed = receipts.some(receipt => ['received','displayed','acknowledged'].includes(receipt.receiptKind)) || delivered.length > 0;
-    // A message already sent to a real client channel stays a real history fact; it only gains the
-    // revised-basis mark and is never queued for delivery again.
-    const disposition = displayed ? action.disposition : job.status === 'stale' ? 'stale' as const : 'cancelled' as const;
-    saveAction(tx, { ...action, disposition, stopReason: reason, ...(causeRef ? { causeRef } : {}), basisRevised: true });
+    if (action.jobId !== job.jobId || (action.disposition !== 'pending' && (disposition !== 'stale' || action.basisRevised))) continue;
+    // Disposition is permission to send again; the separate receipts keep every actual display fact.
+    saveAction(tx, { ...action, ...(action.disposition === 'pending' ? { disposition, stopReason: reason, ...(causeRef ? { causeRef } : {}) } : {}),
+      basisRevised: action.basisRevised || disposition === 'stale' });
     affected.push(action.actionId);
   }
   return affected;
@@ -411,12 +480,12 @@ export function invalidateTeachingInTransaction(tx: Transaction, input: {actorId
   if (!input.actorId || !input.courseId || !input.studentId) throw new RunnerError('INVALID_REQUEST', 'Trusted teaching scope required');
   const now = checkedNow(input.now), reason = checkedText(input.reason, 'reason', 512);
   const jobs = readJobs(tx, input.courseId);
-  const currentEpochs: Record<string, number> = {}, currentRevisions: Record<string, number> = {};
+  const currentEpochs: Record<string, number> = {};
   for (const attemptId of input.attemptIds) {
     const attempt = requireAttempt(tx, attemptId);
     if (attempt.courseId !== input.courseId || attempt.studentId !== input.studentId)
       throw new RunnerError('FORBIDDEN', 'Teaching invalidation scope mismatch');
-    currentEpochs[attemptId] = attempt.decisionEpoch; currentRevisions[attemptId] = attempt.attemptRevision;
+    currentEpochs[attemptId] = attempt.decisionEpoch;
   }
   const plan = invalidateInTransaction(jobs, { courseId: input.courseId, studentId: input.studentId, attemptIds: input.attemptIds,
     expectedEpochs: input.expectedEpochs }, currentEpochs);
@@ -426,22 +495,16 @@ export function invalidateTeachingInTransaction(tx: Transaction, input: {actorId
     saveJob(tx, next);
     const row = tx.get('SELECT attempt_id FROM jobs WHERE job_id=?', jobId);
     const attempt = readAttempt(tx, String(row!.attempt_id));
-    actionIds.push(...stopActionsForJob(tx, attempt, next, reason, input.causeRef));
+    actionIds.push(...stopActionsForJob(tx, attempt, next, reason, input.causeRef, 'stale'));
   }
   for (const attemptId of input.attemptIds) {
-    tx.run('UPDATE attempts SET decision_epoch=? WHERE attempt_id=?', plan.epochs[attemptId]!, attemptId);
-    const epoch: TeachingAttemptEpoch = { attemptRevision: currentRevisions[attemptId]!, decisionEpoch: plan.epochs[attemptId]! };
-    for (const action of readActions(tx, attemptId)) {
-      if (!plan.jobIds.includes(action.jobId) || action.disposition !== 'pending') continue;
-      saveAction(tx, { ...action, disposition: 'stale', stopReason: reason, ...(input.causeRef ? { causeRef: input.causeRef } : {}),
-        basisRevised: true, targetVersions: action.targetVersions, basis: { ...action.basis, ...epoch }, createdAt: action.createdAt, generation: action.generation });
-      actionIds.push(action.actionId);
-    }
+    const current = readAttempt(tx, attemptId);
+    saveAttempt(tx, { ...current, decisionEpoch: plan.epochs[attemptId]!, attemptRevision: current.attemptRevision + 1 });
     const saved = readAttempt(tx, attemptId);
     if (saved.decisionEpoch !== plan.epochs[attemptId]) throw new RunnerError('STATE_CONFLICT', 'Attempt epoch was not persisted');
+    appendTeachingEvent(tx, { courseId: input.courseId, studentId: input.studentId, attemptId },
+      input.actorId, 'teaching.invalidated', now, input.generation, input.causeRef ?? reason);
   }
-  if (plan.jobIds.length) appendTeachingEvent(tx, { courseId: input.courseId, studentId: input.studentId },
-    input.actorId, 'teaching.invalidated', now, input.generation, input.causeRef ?? reason);
   return { epochs: plan.epochs, jobIds: plan.jobIds, actionIds: [...new Set(actionIds)] };
 }
 
@@ -453,12 +516,9 @@ export function deliverTeachingActionInTransaction(tx: Transaction, input: {scop
   if (action.disposition !== 'pending') throw new RunnerError('STATE_CONFLICT', 'Action is not deliverable');
   if (!input.clientId) throw new RunnerError('INVALID_REQUEST', 'Authenticated target channel required');
   const now = checkedNow(input.now);
-  const message = readMessage(tx, tx.get('SELECT * FROM teaching_messages WHERE message_id=?', action.messageId) as Record<string, unknown>);
-  const envelope = message.envelope as TeachingMessageEnvelope;
-  if (envelope.kind !== 'student_help') throw new RunnerError('INVALID_REFERENCE', 'Deliverable teaching message required');
-  const basis = envelope.basis;
-  if (basis.decisionEpoch !== attempt.decisionEpoch || basis.captureRevision !== attempt.captureRevision
-    || basis.attemptRevision !== attempt.attemptRevision) throw new RunnerError('STATE_CONFLICT', 'Teaching basis is no longer current');
+  if (input.recoveryGeneration !== input.generation || !teachingActionIsCurrent(tx, action, input.generation)
+    || input.control.decisionEpoch !== attempt.decisionEpoch)
+    throw new RunnerError('STATE_CONFLICT', 'Teaching basis is no longer current');
   // One send attempt: the delivery ID is allocated first because it is the audit event's payload reference.
   const deliveryId = randomUUID();
   const event = appendTeachingEvent(tx, { ...input.scope }, input.scope.studentId, 'teaching.delivered', now, input.generation,
@@ -490,25 +550,29 @@ export function recordTeachingReceiptInTransaction(tx: Transaction, input: {scop
   if (contentHash !== action.contentHash) throw new RunnerError('VERSION_CONFLICT', 'Original action content version required');
   if (!input.clientReceiptId || !input.clientId) throw new RunnerError('INVALID_REQUEST', 'Client receipt identity required');
   if (input.clientDeclaredAt !== undefined && !validTime(input.clientDeclaredAt)) throw new RunnerError('INVALID_REQUEST', 'Declared client time is not a timestamp');
-  if (input.versions !== undefined) requireVersions(input.versions, attempt);
+  if (input.versions !== undefined && canonical(requireVersions(input.versions, attempt)) !== canonical(action.targetVersions))
+    throw new RunnerError('VERSION_CONFLICT', 'Original action versions required');
   const deliveries = readDeliveries(tx, action.actionId);
   const delivery = input.deliveryId === undefined ? undefined : deliveries.find(row => row.deliveryId === input.deliveryId);
   if (input.deliveryId !== undefined && (!delivery || delivery.recipientId !== input.scope.studentId
     || delivery.contentHash !== contentHash)) throw new RunnerError('INVALID_REFERENCE', 'Original delivery required');
-  if (!delivery && ['received','displayed'].includes(input.receiptKind))
+  if (delivery && (delivery.clientId !== input.clientId || delivery.contentHash !== action.contentHash))
+    throw new RunnerError('VERSION_CONFLICT', 'Original delivery client required');
+  if (!delivery && ['received','displayed','acknowledged'].includes(input.receiptKind))
     throw new RunnerError('INVALID_REFERENCE', 'A display report needs the original delivery');
   const duplicate = readReceipts(tx, action.actionId).find(row => row.contentHash === contentHash
     && row.receiptKind === input.receiptKind && row.clientReceiptId === input.clientReceiptId);
   if (duplicate) {
     if (duplicate.clientId !== input.clientId || (duplicate.deliveryId ?? undefined) !== input.deliveryId)
       throw new RunnerError('IDEMPOTENCY_CONFLICT', 'Original receipt mismatch');
+    if (canonical(duplicate.versions) !== canonical(input.versions ?? action.targetVersions))
+      throw new RunnerError('IDEMPOTENCY_CONFLICT', 'Original receipt report mismatch');
     return { receipt: duplicate, replayed: true };
   }
   const race: string[] = [];
   if (delivery && delivery.recoveryGeneration !== input.generation) race.push('recovery_generation_changed');
   if (action.disposition !== 'pending') race.push(`action_${action.disposition}`);
   if (action.basis.decisionEpoch !== attempt.decisionEpoch) race.push('decision_epoch_changed');
-  if (action.basis.attemptRevision !== attempt.attemptRevision) race.push('attempt_revision_changed');
   const versions = input.versions ?? action.targetVersions;
   const receiptId = input.receiptId ?? randomUUID();
   const receipt: TeachingActionReceipt = { receiptId, actionId: action.actionId,
@@ -534,48 +598,51 @@ export type CoverageInterval = {attemptId: string;captureRevision: number;state:
 export function readCoverageIntervals(tx: Transaction, attemptId: string): {attemptId: string;captureRevision: number;collecting: boolean;
   cutoffServerSeq: number;intervals: CoverageInterval[]} {
   const attempt = requireAttempt(tx, attemptId);
-  const rows = tx.all(`SELECT p.*,r.server_seq,r.result_json FROM workspace_process_records p
-    JOIN command_receipts r ON p.receipt_id=r.receipt_id WHERE p.attempt_id=? ORDER BY r.server_seq`, attemptId);
+  const receipts = readRecords(tx, attempt.courseId).receipts.filter(receipt => receipt.identity.actorId === attempt.studentId)
+    .sort((left, right) => left.serverSeq - right.serverSeq);
+  const controls = new Map(tx.all("SELECT * FROM workspace_process_records WHERE attempt_id=? AND kind='coverage'", attemptId)
+    .map(row => [String(row.receipt_id), { revision: Number(row.capture_revision),
+      record: persisted(z.strictObject({ collecting: z.boolean(), occurredAt: z.iso.datetime() }), String(row.record_json), 'coverage') }]));
   const intervals: CoverageInterval[] = [];
-  for (const row of rows) {
-    const seq = Number(row.server_seq);
-    const ack = JSON.parse(String(row.result_json)) as { result?: { process?: { status?: string; reason?: string } } };
-    const process = ack.result?.process;
-    const record = JSON.parse(String(row.record_json)) as { collecting?: boolean; occurredAt?: string };
-    const collecting = row.kind === 'coverage' ? record.collecting === true : attempt.collecting;
-    const occurredAt = typeof record.occurredAt === 'string' ? record.occurredAt : new Date(0).toISOString();
-    const previous = intervals[intervals.length - 1];
-    if (previous && previous.open) { previous.to = occurredAt; previous.toServerSeq = seq; previous.open = false; }
-    intervals.push({ attemptId, captureRevision: Number(row.capture_revision), state: collecting ? 'collecting' : 'paused',
-      fromServerSeq: seq, from: occurredAt, open: true, rejections: [] });
-    if (process && process.status === 'not_collected' && process.reason) {
-      const last = intervals[intervals.length - 1]!;
-      last.rejections.push({ receiptId: String(row.receipt_id), reason: process.reason });
+  for (const receipt of receipts) {
+    const ack = receipt.result as { attemptId?: string; captureChanged?: boolean; captureRevision?: number;
+      process?: { status?: string; reason?: string } };
+    const initial = !intervals.length && receipt.identity.command === 'attempt.create' && ack.attemptId === attemptId;
+    const inScope = sameScope(receipt.identity.scope, { courseId: attempt.courseId, studentId: attempt.studentId, attemptId });
+    if (!initial && !inScope) continue;
+    const control = controls.get(receipt.receiptId);
+    if (initial || (receipt.identity.command === 'attempt.control' && ack.captureChanged)) {
+      if (!initial && (!control || control.revision !== ack.captureRevision || control.record.occurredAt !== receipt.committedAt))
+        throw new Error('Invalid persisted coverage boundary.');
+      const previous = intervals.at(-1);
+      if (previous) { previous.to = receipt.committedAt; previous.toServerSeq = receipt.serverSeq; previous.open = false; }
+      // createAttempt's confirmed initial state is collecting/captureRevision=0; later boundaries are actual control records.
+      intervals.push({ attemptId, captureRevision: initial ? 0 : control!.revision,
+        state: initial || control!.record.collecting ? 'collecting' : 'paused',
+        fromServerSeq: receipt.serverSeq, from: receipt.committedAt, open: true, rejections: [] });
     }
-  }
-  // A partial/absent capture version is rejected independently and stays visible as a gap reason.
-  for (const row of tx.all(`SELECT p.*,r.server_seq,r.result_json FROM workspace_process_records p
-    JOIN command_receipts r ON p.receipt_id=r.receipt_id WHERE p.attempt_id=? AND p.capture_revision<>? ORDER BY r.server_seq`,
-    attemptId, attempt.captureRevision)) {
-    const ack = JSON.parse(String(row.result_json)) as { result?: { process?: { status?: string; reason?: string } } };
-    const target = intervals.find(item => item.fromServerSeq === Number(row.server_seq)) ?? intervals[intervals.length - 1];
-    if (target && !target.rejections.some(item => item.receiptId === String(row.receipt_id)))
-      target.rejections.push({ receiptId: String(row.receipt_id), reason: ack.result?.process?.reason ?? 'stale_capture_revision' });
+    if (receipt.identity.command === 'workspace.sync' && ack.process?.status === 'not_collected' && ack.process.reason) {
+      intervals.at(-1)?.rejections.push({ receiptId: receipt.receiptId, reason: ack.process.reason });
+    }
   }
   return { attemptId, captureRevision: attempt.captureRevision, collecting: attempt.collecting,
     cutoffServerSeq: readServerSeq(tx), intervals };
 }
 
 /** Teaching records that authorization already narrowed to this attempt or course. */
-export function readTeachingRecordsInTransaction(tx: Transaction, scope: {courseId: string; attemptId?: string; studentId?: string}) {
+export function readTeachingRecordsInTransaction(tx: Transaction, scope: {courseId: string; attemptId?: string; studentId?: string},
+  audience: 'student'|'teacher'|'trusted' = 'trusted') {
   const messages: TeachingMessage[] = tx.all('SELECT * FROM teaching_messages WHERE course_id=? ORDER BY message_id', scope.courseId)
     .filter(row => scope.attemptId === undefined || row.attempt_id === scope.attemptId)
     .filter(row => scope.studentId === undefined || row.student_id === scope.studentId)
     .map(row => readMessage(tx, row as Record<string, unknown>));
   const actions = messages.flatMap(message => readActions(tx, message.scope.attemptId).filter(action => action.messageId === message.messageId))
     .sort((left, right) => left.actionId.localeCompare(right.actionId));
-  return { messages, actions: actions.map(action => ({ ...action, deliveries: readDeliveries(tx, action.actionId),
+  const records = { messages, actions: actions.map(action => ({ ...action, deliveries: readDeliveries(tx, action.actionId),
     receipts: readReceipts(tx, action.actionId) })) };
+  if (audience !== 'student') return records;
+  const shown = records.actions.filter(action => action.receipts.some(receipt => ['displayed','acknowledged'].includes(receipt.receiptKind)));
+  return { messages: messages.filter(message => message.authorKind === 'student' || shown.some(action => action.messageId === message.messageId)), actions: shown };
 }
 export function readTeachingJob(tx: Transaction, courseId: string, jobId: string) {
   return readJobs(tx, courseId).find(job => job.jobId === jobId);

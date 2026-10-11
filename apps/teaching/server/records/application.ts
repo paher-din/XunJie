@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { FastifyRequest } from 'fastify';
 import { createWorkspaceApp } from '../workspace/application.ts';
 import type { DesignTeachingStop } from '../design/activities.ts';
-import { readAttempt, finishRecordCommand } from '../db/records-adapter.ts';
+import { readAttempt, readRecordCommand, finishRecordCommand, saveJob } from '../db/records-adapter.ts';
 import type { Transaction } from '../db/transaction.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
 import type { ActionDisposition, TeachingActionRecord, TeachingCoverage, TeachingEventPayload, TeachingEventView,
@@ -11,9 +11,11 @@ import type { ActionDisposition, TeachingActionRecord, TeachingCoverage, Teachin
 import type { StudentHelpBody } from '../../contracts/tutoring/index.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
+import { assertResourceUse } from '../access/resource.ts';
 import { readCoverageIntervals, readTeachingRecordsInTransaction, readTeachingJob, acceptStudentQuestionInTransaction,
   saveTeachingJobInTransaction, completeTeachingInTransaction, deliverTeachingActionInTransaction,
-  recordTeachingReceiptInTransaction, stopTeachingJobsInTransaction } from './teaching.ts';import { claimJob } from './jobs.ts';
+  recordTeachingReceiptInTransaction, stopTeachingJobsInTransaction, teachingActionIsCurrent } from './teaching.ts';
+import { claimJob } from './jobs.ts';
 
 export type TeachingStopHandler = (tx: Transaction, courseId: string, studentId: string, jobIds: string[],
   context: TeachingStopContext) => TeachingStopResult;
@@ -98,9 +100,8 @@ export function teachingStopHandler(tx: Transaction, courseId: string, studentId
  */
 export async function createTeachingRecordsApp(options: TeachingRecordsOptions) {
   // C2's control/cancel paths and A2's design controls call the same stop capability in their own transactions.
-  const instance = await createWorkspaceApp(options.teaching
-    ? { ...options, teaching: { stop: options.teaching.stop, design: designTeachingStop(options.teaching.stop) } }
-    : options);
+  const stop = options.teaching?.stop ?? teachingStopHandler;
+  const instance = await createWorkspaceApp({ ...options, teaching: { stop, design: designTeachingStop(stop) } });
   const { app, access, workspace } = instance;
   const now = options.now ?? Date.now;
   const nowMs = () => now();
@@ -143,52 +144,39 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
       generation: options.currentGeneration(), status: attempt.status };
     // An unsynchronized or stale epoch returns control only; displayable content waits for a real re-sync.
     if (!query.recoveryGeneration || query.recoveryGeneration !== options.currentGeneration()
-      || !Number.isSafeInteger(query.decisionEpoch) || query.decisionEpoch !== attempt.decisionEpoch)
+      || !Number.isSafeInteger(query.decisionEpoch) || query.decisionEpoch !== attempt.decisionEpoch || (isStudent && !query.clientId))
       return { control, resyncRequired: true, events: [], nextServerSeq: query.afterServerSeq, hasMore: false };
-    const records = readTeachingRecordsInTransaction(tx, scope);
-    const own = records.actions;
-    const deliveries = own.flatMap(action => action.deliveries);
-    const receipts = own.flatMap(action => action.receipts);
-    const deliveryIds = new Set(deliveries.map(delivery => delivery.deliveryId));
-    const receiptIds = new Set(receipts.map(receipt => receipt.receiptId));
-    const rows = tx.all(`SELECT server_seq,event_id,command,object_ref_json,committed_at_ms FROM audit_events
-      WHERE course_id=? AND server_seq>0 AND (object_ref_json LIKE ? OR object_ref_json LIKE ? OR command LIKE 'shared.teaching.%'
-        OR json_extract(object_ref_json,'$.payloadRef') IN (SELECT delivery_id FROM teaching_deliveries WHERE action_id IN
-        (SELECT action_id FROM teaching_actions WHERE attempt_id=?))
-        OR json_extract(object_ref_json,'$.payloadRef') IN (SELECT receipt_id FROM teaching_action_receipts WHERE action_id IN
-        (SELECT action_id FROM teaching_actions WHERE attempt_id=?)))
-      ORDER BY server_seq LIMIT ?`, scope.courseId, `%"attemptId":"${attemptId}"%`, `%"attempt_id":"${attemptId}"%`,
-      attemptId, attemptId, query.limit + 1);
-    const visible: TeachingEventView[] = [];
-    for (const row of rows) {
-      // Delivery/receipt events are readable inside the authorized attempt; unrelated page sizes stay bounded.
-      // The audit column stores the whole event JSON, so the payload reference is read from inside it.
-      const raw = row.object_ref_json === null ? '' : String(row.object_ref_json);
-      let reference = raw;
-      try { reference = String((JSON.parse(raw) as {payloadRef?: string}).payloadRef ?? ''); } catch { reference = ''; }
-      // A cursor skips what the page already returned, but the current delivery of an authorized action is
-      // still part of this attempt's timeline.
-      if (!deliveryIds.has(reference) && !receiptIds.has(reference) && Number(row.server_seq) <= query.afterServerSeq) continue;
-      const type = String(row.command).replace(/^shared\./, '');
-      // A student page never exposes internal job progress or another page's private content.
-      if (isStudent && type.startsWith('job.')) continue;
-      if (!deliveryIds.has(reference) && !receiptIds.has(reference)
-        && !['workspace.','snapshot.','attempt.','run.','job.','teaching.'].some(prefix => type.startsWith(prefix))) continue;
-      const action = own.find(item => item.deliveries.some(delivery => delivery.deliveryId === reference)
-        || item.receipts.some(receipt => receipt.receiptId === reference));
-      const delivery = deliveries.find(item => item.deliveryId === reference);
-      const occurredAt = delivery ? delivery.attemptedAt : action ? action.createdAt
-        : new Date(Number(row.committed_at_ms)).toISOString();
-      if (!action) { visible.push({ serverSeq: Number(row.server_seq), eventId: String(row.event_id), type, occurredAt }); continue; }
-      const payload = eventPayload(action, records.messages.find(item => item.messageId === action.messageId));
-      const scoped = { serverSeq: Number(row.server_seq), eventId: String(row.event_id), type, occurredAt,
-        payload: { ...payload, ...(delivery ? { deliveryId: delivery.deliveryId } : {}) } };
-      // Only the student's own channel receives displayable teaching content; a teacher read stays a reference.
-      visible.push(isStudent && delivery && delivery.recipientId === attempt.studentId ? scoped
-        : { serverSeq: scoped.serverSeq, eventId: scoped.eventId, type: scoped.type, occurredAt: scoped.occurredAt });
+    let records = readTeachingRecordsInTransaction(tx, scope);
+    const eligible = isStudent ? records.actions.filter(action => teachingActionIsCurrent(tx, action, control.generation)
+      && !action.receipts.some(receipt => ['displayed','acknowledged'].includes(receipt.receiptKind))
+      && !action.deliveries.some(delivery => delivery.clientId === query.clientId && delivery.recoveryGeneration === control.generation)) : [];
+    const readRows = () => tx.all(`SELECT e.* FROM audit_events e
+      WHERE e.course_id=? AND e.server_seq>? AND json_extract(e.object_ref_json,'$.scope.attemptId')=?
+      AND (?=0 OR e.command NOT LIKE 'shared.job.%')
+      AND (?=0 OR NOT EXISTS (SELECT 1 FROM teaching_deliveries d WHERE d.delivery_id=json_extract(e.object_ref_json,'$.payloadRef')
+        AND (d.client_id<>? OR d.recipient_id<>? OR d.recovery_generation<>?)))
+      ORDER BY e.server_seq LIMIT ?`, scope.courseId, query.afterServerSeq, attemptId, Number(isStudent), Number(isStudent),
+      query.clientId ?? '', attempt.studentId, control.generation, query.limit + 1);
+    let rows = readRows();
+    // Allocate a send attempt only when its content fits this response; older events must advance first.
+    const sending = eligible.slice(0, Math.max(0, query.limit - rows.length));
+    for (const action of sending) {
+      deliverTeachingActionInTransaction(tx, { scope, actionId: action.actionId, clientId: query.clientId!,
+        recoveryGeneration: control.generation, now: timestamp(), generation: control.generation,
+        control: { attemptRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch, captureRevision: attempt.captureRevision } });
     }
-    const hasMore = visible.length > query.limit;
-    const events = visible.slice(0, query.limit);
+    if (sending.length) { records = readTeachingRecordsInTransaction(tx, scope); rows = readRows(); }
+    const events: TeachingEventView[] = rows.slice(0, query.limit).map(row => {
+      const event = { serverSeq: Number(row.server_seq), eventId: String(row.event_id),
+        type: String(row.command).replace(/^shared\./, ''), occurredAt: new Date(Number(row.committed_at_ms)).toISOString() };
+      const reference = String((JSON.parse(String(row.object_ref_json)) as {payloadRef?: string}).payloadRef ?? '');
+      const action = records.actions.find(item => item.deliveries.some(delivery => delivery.deliveryId === reference));
+      if (!isStudent || !action || !teachingActionIsCurrent(tx, action, control.generation)) return event;
+      const delivery = action.deliveries.find(item => item.deliveryId === reference)!;
+      return { ...event, payload: { ...eventPayload(action, records.messages.find(item => item.messageId === action.messageId)), deliveryId: delivery.deliveryId } };
+    });
+    const hasMore = rows.length > query.limit || eligible.length > sending.length;
+    generation(control.generation);
     return { control, resyncRequired: false, events,
       nextServerSeq: events.length ? events[events.length - 1]!.serverSeq : query.afterServerSeq, hasMore,
       ...(isStudent ? { coverage: readCoverageIntervals(tx, attemptId) } : {}) };
@@ -196,25 +184,7 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
 
   app.get('/api/attempts/:id/events', request => {
     const attemptId = parseRequest(params, request.params).id;
-    const data = authorizeAttempt(request, attemptId, 'read', (tx, actor) => {
-      // A student read of a deliverable action is a real send attempt: it records a Delivery for this channel.
-      if (actor.userId === readAttempt(tx, attemptId).studentId) {
-        const query = parseRequest(teachingEventsQuery, request.query);
-        const attempt = readAttempt(tx, attemptId), scope = scopeOf(tx, attemptId);
-        if (query.recoveryGeneration && query.recoveryGeneration === options.currentGeneration()
-          && Number.isSafeInteger(query.decisionEpoch) && query.decisionEpoch === attempt.decisionEpoch) {
-          for (const action of readTeachingRecordsInTransaction(tx, scope).actions) {
-            // A delivery is recorded once per pending action and only until it has been reported to this client,
-            // so re-reading the page reports the existing attempt instead of appending an equivalent one.
-            if (action.disposition !== 'pending' || action.deliveries.some(row => row.serverSeq > query.afterServerSeq)) continue;
-            deliverTeachingActionInTransaction(tx, { scope, actionId: action.actionId, clientId: query.clientId ?? 'unidentified',
-              recoveryGeneration: query.recoveryGeneration, now: timestamp(), generation: options.currentGeneration(),
-              control: { attemptRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch, captureRevision: attempt.captureRevision } });
-          }
-        }
-      }
-      return readPage(tx, request, attemptId, actor);
-    });
+    const data = authorizeAttempt(request, attemptId, 'read', (tx, actor) => readPage(tx, request, attemptId, actor));
     return { requestId: request.id, data };
   });
 
@@ -227,9 +197,10 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
       const identity = { actorId: actor.userId, command: 'action.receipt', target: `/api/actions/${actionId}/receipts`,
         scope: { courseId: scope.courseId, studentId: scope.studentId, attemptId: scope.attemptId },
         idempotencyKey, recoveryGeneration: current };
-      // The receipt record is written after the command receipt/event pair, so it links to that audited report.
-      // The student receives the teaching receipt ID plus the complete decision, and a replay returns the same one.
-      let outcome: {receiptId: string; actionId: string; receiptKind: string; serverSeq: number; replayed: boolean; raceReason?: string | undefined} | undefined;
+      const validate = (value: unknown) => z.strictObject({ receiptId: id, actionId: id, receiptKind: id, serverSeq: z.number().int().positive(),
+        replayed: z.boolean(), raceReason: id.optional() }).parse(value);
+      const previous = readRecordCommand(tx, identity, input, current, validate);
+      if (previous) return { ...previous.result, replayed: true };
       const command = finishRecordCommand(tx, identity, input, current, now(), () => {
         const recorded = recordTeachingReceiptInTransaction(tx, { scope, actionId, clientId: input.clientId,
           clientReceiptId: input.clientReceiptId, ...(input.deliveryId === undefined ? {} : { deliveryId: input.deliveryId }),
@@ -241,12 +212,9 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
           serverSeq: recorded.receipt.serverSeq, replayed: recorded.replayed,
           ...(recorded.receipt.raceReason === undefined ? {} : { raceReason: recorded.receipt.raceReason }) };
         return result;
-      }, value => z.strictObject({ receiptId: id, actionId: id, receiptKind: id, serverSeq: z.number().int().positive(),
-        replayed: z.boolean(), raceReason: id.optional() }).parse(value),
-      (_receiptId, result) => { outcome = result; });
-      if (!outcome) throw new ApiError('PERSISTENCE_UNAVAILABLE');
-      // `replayed` is true when this command key already answered, whether that key or the client receipt matched.
-      return { ...outcome, replayed: outcome.replayed || String((command as {replayed?: boolean}).replayed) === 'true' };
+      }, validate);
+      generation(current);
+      return command.result;
     });
     return { requestId: request.id, data };
   });
@@ -264,18 +232,19 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
   const seams: TeachingSeams = {
     acceptStudentQuestion(request: FastifyRequest, attemptId: string, raw: unknown) {
       const input = parseRequest(teachingQuestionInput, raw);
-      return authorizeAttempt(request, attemptId, 'student_help', (tx, actor) => {
+      return authorizeAttempt(request, attemptId, 'read', (tx, actor) => {
         const current = generation(input.recoveryGeneration), scope = scopeOf(tx, attemptId);
         if (actor.userId !== scope.studentId) throw new ApiError('FORBIDDEN');
         const identity = { actorId: actor.userId, command: 'help.request', target: `/api/attempts/${attemptId}/help`,
-          scope, idempotencyKey: 'help.request', recoveryGeneration: current };
+          scope, idempotencyKey: parseRequest(key, request.headers['idempotency-key']), recoveryGeneration: current };
         const jobId = randomUUID();
         let queued: QuestionResult | undefined;
         let plannedMessage: TeachingMessage | undefined;
-        const receipt = finishRecordCommand(tx, identity, input, current, now(), () => {
+        const receipt = finishRecordCommand(tx, identity, input, current, now(), receiptId => {
+          assertResourceUse(actor, studentWork(tx, attemptId), 'student_help');
           // The accepted question is planned in this transaction; both the message row and the bounded job
           // reference the command receipt, so they are written once it exists (see `afterCommit`).
-          const question = acceptStudentQuestionInTransaction(tx, { scope, receiptId: '', now: timestamp(), generation: current,
+          const question = acceptStudentQuestionInTransaction(tx, { scope, receiptId, now: timestamp(), generation: current,
             question: input.question, ...(input.objectRef === undefined ? {} : { objectRef: input.objectRef }),
             inputRefs: input.inputRefs, versions: input.versions,
             expectedRevision: input.expectedAttemptRevision });
@@ -290,16 +259,18 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
           queued = result;
         });
         // A replay returns the original receipt result; a fresh command returns the same shape it persisted.
-        return queued ?? (receipt.result as QuestionResult);
+        generation(current);
+        return queued ?? receipt.result;
       });
     },
     completeTeaching(request: FastifyRequest, attemptId: string, raw: unknown) {
       const input = parseRequest(teachingCompleteInput, raw);
-      return authorizeAttempt(request, attemptId, 'student_help', tx => {
+      return authorizeAttempt(request, attemptId, 'read', (tx, actor) => {
         generation(input.recoveryGeneration);
         // C owns the job ledger: the worker claims a bounded lease before the completion guards run, and the
         // claim is persisted together with the accepted result in the same transaction.
         const scope = scopeOf(tx, attemptId);
+        if (actor.userId !== scope.studentId) throw new ApiError('FORBIDDEN');
         const job = readTeachingJob(tx, scope.courseId, input.jobId);
         if (!job || job.purpose !== 'student_help') throw new ApiError('INVALID_REFERENCE');
         const now = timestamp();
@@ -307,17 +278,19 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
           ? claimJob(job, input.leaseToken ?? randomUUID(), new Date(Math.min(nowMs() + 150000, Date.parse(job.deadline))).toISOString(),
             input.recoveryGeneration, now)
           : job;
+        if (claimed !== job) saveJob(tx, claimed);
         const leaseToken = input.leaseToken ?? claimed.leaseToken ?? randomUUID();
         const result = completeTeachingInTransaction(tx, { scope, jobId: input.jobId, leaseToken,
           generation: input.recoveryGeneration, now, bodyJsonText: input.bodyJson,
           ...(input.resultRef === undefined ? {} : { resultRef: input.resultRef }), versions: input.versions,
           usage: input.usage, calls: input.calls, elapsedMs: input.elapsedMs, basis: input.basis,
-          messageId: randomUUID(), actionId: randomUUID(), claimedJob: claimed });
+          messageId: randomUUID(), actionId: randomUUID() });
+        generation(input.recoveryGeneration);
         return result;
       });
     },
     readTeachingRecords(request: FastifyRequest, attemptId: string) {
-      return authorizeAttempt(request, attemptId, 'read', tx => readTeachingRecordsInTransaction(tx, scopeOf(tx, attemptId)));
+      return authorizeAttempt(request, attemptId, 'read', (tx, actor) => readTeachingRecordsInTransaction(tx, scopeOf(tx, attemptId), actor.role));
     },
     readCoverage(request: FastifyRequest, attemptId: string) {
       return authorizeAttempt(request, attemptId, 'read', tx => readCoverageIntervals(tx, attemptId));

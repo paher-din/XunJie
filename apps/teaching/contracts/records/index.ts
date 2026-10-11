@@ -32,7 +32,7 @@ export type TeachingBasis = TeachingAttemptEpoch & {captureRevision:number;relat
   objectRef?:import('../workspace/index.ts').ObjectRef;inputRefs:string[];assistanceRefs:string[];coverageRefs:string[]};
 export type TeachingQuestionEnvelope = {kind:'student_question';question:string;
   objectRef?:import('../workspace/index.ts').ObjectRef;inputRefs:string[];versions:TeachingVersions};
-export type TeachingMessageEnvelope = {kind:'student_help';body:unknown;
+export type TeachingMessageEnvelope = {kind:'student_help';body:unknown;bodyJsonText?:string;
   versions:TeachingVersions;usage:TeachingUsage;calls:number;elapsedMs:number;basis:TeachingBasis};
 export type TeachingMessage = {messageId:string;scope:TeachingScopeRef;jobId:string;requestReceiptId?:string;
   authorKind:TeachingAuthorKind;contentHash:string;resultHash?:string;envelope:TeachingQuestionEnvelope|TeachingMessageEnvelope};

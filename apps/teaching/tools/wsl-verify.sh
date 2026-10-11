@@ -1,33 +1,29 @@
 #!/usr/bin/env bash
-# Host-only verification entry. The approved Node runtime is not installed on Windows and
-# better-sqlite3@13.0.3 has no Windows prebuild, so this syncs the checkout to the WSL Linux
-# filesystem (native timestamps, as the README requires), installs the exact lock dependencies
-# and runs the command passed to it.
+# Verify a fresh Linux copy with an already prepared, approved runtime and exact dependencies.
 set -eu
-NODE_HOME="${XUNJIE_NODE_HOME:-$HOME/xunjie-node/node-v24.21.0-linux-x64}"
-if [ ! -x "$NODE_HOME/bin/node" ]; then
-  mkdir -p "$HOME/xunjie-node"
-  cd "$HOME/xunjie-node"
-  curl -sSL -o node.tar.xz https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz
-  tar -xf node.tar.xz
+source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+node_dir="${XUNJIE_NODE_HOME:-$HOME/xunjie-node/node-v24.21.0-linux-x64}"
+dependencies_dir="${XUNJIE_WSL_DEPENDENCIES:-$HOME/xunjie-c3}"
+if [ ! -x "$node_dir/bin/node" ] || [ ! -d "$dependencies_dir/node_modules" ]; then
+  echo "Prepare the approved Node runtime and exact lock dependencies before verification." >&2
+  exit 1
 fi
-export PATH="$NODE_HOME/bin:$PATH"
-export npm_config_userconfig="$HOME/.npmrc-xunjie-empty"
-: > "$npm_config_userconfig"
-SOURCE=/mnt/d/XunJie/apps/teaching
-TARGET="${XUNJIE_WSL_WORKDIR:-$HOME/xunjie-c3}"
-mkdir -p "$TARGET"
-tar -C "$SOURCE" --exclude=node_modules --exclude=dist -cf - . | tar -C "$TARGET" -xf -
-cd "$TARGET"
-if [ ! -d node_modules ]; then
-  npm ci --no-audit --no-fund
+export PATH="$node_dir/bin:$PATH"
+node "$source_dir/tools/check-runtime.mjs"
+cmp "$source_dir/package-lock.json" "$dependencies_dir/package-lock.json"
+if [ -n "${XUNJIE_WSL_WORKDIR:-}" ]; then
+  target_dir="$XUNJIE_WSL_WORKDIR"
+  if [ -e "$target_dir" ]; then
+    echo "Verification requires a new directory; existing results are preserved." >&2
+    exit 1
+  fi
+  mkdir "$target_dir"
+else
+  target_dir="$(mktemp -d "${TMPDIR:-/tmp}/xunjie-c3-verify-XXXXXX")"
 fi
-BINDING=node_modules/better-sqlite3/build/Release/better_sqlite3.node
-if [ ! -f "$BINDING" ]; then
-  # better-sqlite3 13.0.3 publishes no prebuild for this Node ABI, and its binding.gyp skips the
-  # real target unless force_build is set, so build it explicitly from source.
-  NODE_GYP="$NODE_HOME/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-  ( cd node_modules/better-sqlite3 && rm -rf build && node "$NODE_GYP" rebuild --release --force_build=1 )
-fi
-echo "node $(node --version) npm $(npm --version) cwd $TARGET binding=$([ -f "$BINDING" ] && echo yes || echo no)"
+tar -C "$source_dir" --exclude=node_modules --exclude=dist -cf - . | tar -C "$target_dir" -xf -
+cp -a "$dependencies_dir/node_modules" "$target_dir/node_modules"
+cd "$target_dir"
+node -e 'require("better-sqlite3")'
+echo "node $(node --version) cwd $target_dir"
 exec "$@"

@@ -164,7 +164,7 @@ export function controlAssignment(tx: Transaction, actor: ActorContext, assignme
   const assignment = readAssignment(tx, actor.courseId, assignmentId);
   if (assignment.assignment_revision !== expected) throw new ApiError('VERSION_CONFLICT');
   const desired = Number(action === 'pause');
-  if (assignment.individual_paused === desired) return { assignmentId, assignmentRevision: expected, status: assignment.status, stoppedJobIds: [], attemptIds: [], ...(teachingStop ? { invalidatedActionIds: [] } : {}) };
+  if (assignment.individual_paused === desired) return { assignmentId, assignmentRevision: expected, status: assignment.status, stoppedJobIds: [], attemptIds: [] };
   const control = tx.get('SELECT status FROM activity_controls WHERE activity_id=?', assignment.activity_id);
   if (!control) throw new Error('Missing activity control.');
   if (action === 'resume' && control.status !== 'active') throw new ApiError('STATE_CONFLICT');
@@ -177,7 +177,7 @@ export function controlAssignment(tx: Transaction, actor: ActorContext, assignme
     ? stopTeachingForAssignment(tx, actor, actor.courseId, reason, now, generation, invalidated, teachingStop)
     : { stoppedJobIds: [] as string[], invalidatedActionIds: [] as string[] };
   return { assignmentId, assignmentRevision: expected + 1, status, attemptIds: invalidated.attemptIds,
-    ...(teachingStop ? stopped : { stoppedJobIds: stopped.stoppedJobIds }) };
+    stoppedJobIds: stopped.stoppedJobIds };
 }
 export function controlActivity(tx: Transaction, actor: ActorContext, activityId: string, expected: number, action: 'pause' | 'resume', reason: string, now: number,
   generation: string, teachingStop?: DesignTeachingStop) {
@@ -185,11 +185,11 @@ export function controlActivity(tx: Transaction, actor: ActorContext, activityId
   const control = tx.get('SELECT * FROM activity_controls WHERE activity_id=?', activityId);
   if (control?.control_revision !== expected) throw new ApiError('VERSION_CONFLICT');
   const desired = action === 'pause' ? 'paused' : 'active';
-  if (control.status === desired) return { activityVersionId: activityId, activityControlRevision: expected, status: desired, stoppedJobIds: [], attemptIds: [], ...(teachingStop ? { invalidatedActionIds: [] } : {}) };
+  if (control.status === desired) return { activityVersionId: activityId, activityControlRevision: expected, status: desired, stoppedJobIds: [], attemptIds: [] };
   const changed = tx.run('UPDATE activity_controls SET control_revision=control_revision+1,status=?,reason=?,controlled_by=?,controlled_at_ms=? WHERE activity_id=? AND control_revision=?',
     desired, reason, actor.userId, now, activityId, expected);
   if (changed.changes !== 1) throw new ApiError('VERSION_CONFLICT');
-  const attemptIds: string[] = [], stoppedJobIds: string[] = [], invalidatedActionIds: string[] = [];
+  const attemptIds: string[] = [], stoppedJobIds: string[] = [];
   for (const row of tx.all('SELECT id FROM assignments WHERE activity_id=?', activityId)) {
     const assignment = readAssignment(tx, actor.courseId, String(row.id));
     const pausedByActivity = Number(action === 'pause');
@@ -199,12 +199,10 @@ export function controlActivity(tx: Transaction, actor: ActorContext, activityId
     if (action === 'pause') {
       const invalidated = invalidateAssignment(tx, assignment.id);
       attemptIds.push(...invalidated.attemptIds); stoppedJobIds.push(...invalidated.stoppedJobIds);
-      const stopped = stopTeachingForAssignment(tx, actor, actor.courseId, reason, now, generation, invalidated, teachingStop);
-      invalidatedActionIds.push(...stopped.invalidatedActionIds);
+      stopTeachingForAssignment(tx, actor, actor.courseId, reason, now, generation, invalidated, teachingStop);
     }
   }
-  return { activityVersionId: activityId, activityControlRevision: expected + 1, status: desired, attemptIds, stoppedJobIds,
-    ...(teachingStop ? { invalidatedActionIds } : {}) };
+  return { activityVersionId: activityId, activityControlRevision: expected + 1, status: desired, attemptIds, stoppedJobIds };
 }
 export function activityView(tx: Transaction, actor: ActorContext, activityId: string, audience: 'student' | 'tutor' | 'teacher-validator' = 'student') {
   const activity = readActivity(tx, actor.courseId, activityId);

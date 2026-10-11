@@ -33,9 +33,7 @@ export const resultSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('checks'), report: reportSchema }),
 ]);
 const resultId = z.string().min(1).max(128), revision = z.number().int().positive();
-// C3 adds the optional action-invalidation references only when the teaching stop capability is composed;
-// A's original control responses keep their exact shape when no teaching composer is attached.
-const stopped = { stoppedJobIds: z.array(resultId), attemptIds: z.array(resultId), invalidatedActionIds: z.array(resultId).optional() };
+const stopped = { stoppedJobIds: z.array(resultId), attemptIds: z.array(resultId) };
 export const activityCommandResults = {
   'activity.release': z.strictObject({ activityVersionId: resultId, sourceRevision: revision, activityControlRevision: revision,
     unverified: reportSchema.shape.unverified, checks: reportSchema }),
