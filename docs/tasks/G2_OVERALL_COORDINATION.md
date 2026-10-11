@@ -414,3 +414,89 @@ PR #29 合并后，PR #32 的堆叠父已进入 main：三点对比 `origin/main
 评论中除 §10.6 的事实与四点判定依据外，另补两项核实结果：`apps/teaching` 全范围的 `*.test.ts` 中，`Date.now() - startedAt` 及其他 elapsed/duration 形式的墙钟阈值断言只有 `index.test.ts:373` 这一处（`grep -rnE 'assert\.ok\([^)]*(Date\.now\(\)|elapsed|duration)[^)]*[<>]'` 命中 1 条）；#32 新增的 `deepseek-sdk.test.ts:298` `AI SDK adapter cancellation aborts a pending offline transport` 使用同样的 `setTimeout(() => controller.abort(), 5)` 排程，但只断言 `outcome === "cancelled"` 与 `calls === 1`，**没有墙钟阈值**，即新增测试未重复该问题。给出三种可选修法（去掉阈值只留语义断言 / 可控时钟 / 移到隔离运行或放宽阈值），并写明不要求在 #32 内修、可作为 main 基线独立待办。
 
 同时提醒 #32 的 base 仍为 `0afd008`，而 main 已是 `1b0fe66`（含 #29 与 #28），合并前需重新对齐。该评论不构成批准、不改变 §9.2 对 #32 的 3 项 P2 结论、未解决任何既有审查线程、未关闭 #27，也未由本工作项修改或放宽该测试。
+
+## 11. 2026-10-11/12 C3 修复复验、B2 审阅修订与 PR #33 合并
+
+负责人指令原文：「检查一下pr c3的修复结果，如果没问题，就先修改pr b2的审阅，然后合并c3」。本节记录三步的实际执行。事件时间为 UTC（2026-10-11T16:09Z～16:37Z），对应 Asia/Shanghai 2026-10-12 00:09～00:37。
+
+### 11.1 C3 修复复验：5 项 P2 全部处理，作者声明数字逐项复现
+
+PR #33 head 由 `9fc9fae3` 前移到 `5b76fc54`，单提交 `fix(C3): enforce the teaching lease and correct the delivery record`，9 文件 +207/-34。base 仍为 `83e528e`。
+
+| 原发现 | C3 的实际修复 | 本次核实 |
+| --- | --- | --- |
+| P2-1 3 次调用预算无人执行、`calls` 语义未定义 | 按负责人选定的**方案 1**：`contracts/records/index.ts` 写明 `Job.attemptCount` 是跨 worker 累计台账、只由执行侧经 `recordModelCall` 递增，`TeachingMessageEnvelope.calls` 只是单次执行内计数；`teaching.ts:414` 的 `Math.max` 处注明只是对账、求和会双算 | 语义已定义；`records-adapter.ts:21` 的 `natural.max(3)` 与「累计受 3 次预算约束」一致，不再矛盾。**代码计账未改**，任务稿 §13.2/§13.4 如实保留缺口并写明「不宣称 #26 的换 worker 共用 3 次已被强制」 |
+| P2-2 `leaseToken` 可选且回填持有者 token 使租约复查空转 | `teachingCompleteInput.leaseToken` 改必填 `id`，删除 `?? claimed.leaseToken ?? randomUUID()` 与 `claimJob` 的 `?? randomUUID()`；补反例：省略即 400 且快照不变 | 根因修复。反例有效（作者记录临时回退后同一请求返回 200 并真的写入 Message/Action/Job，随后恢复修复版复验 20/20）；`teaching.test.ts`/`teaching-review.test.ts` 的调用方均已补 `leaseToken` |
+| P2-3 §8.4 better-sqlite3 无 Windows 预编译产物的断言不实 | 就地撤回并标注「第 13 节修订」，改记实测事实 `prebuilds/win32-x64.node`（13.0.3，1,989,632 字节），并把 Windows 真实前置改为两条（精确 Node 24.21.0、缺 `@typescript/typescript-win32-x64`） | 与 §9.4 的独立实测一致；且如实写「当时改用 WSL 的真实原因没有留下可核查证据，本节不把它追认为某个具体原因」，未编造理由 |
+| P2-4 §8.4「不是 C3 代码路径」的归因未被证明 | 改为「对照基线 `e13f12d` 本身已含 C3，两侧都有 C3，该对照不能排除 C3」，并指出该用例正好穿过本 PR 改动的 `finishRecordCommand` 与 `controlActivity`；给出最小充分实验；明写根因未定位 | 归因已撤回，未倒填结论 |
+| P2-5 §8.2 三处描述交付中不存在的改动 | 删除 `access/app.ts` 幽灵行（改为「`server/access/**` 无需改动，交付中也确实零改动」并给出真实授权路径 `authorizeAttempt(request, attemptId, 'read', ...)`）；白名单改为按最终代码 `SELECT\|INSERT\|UPDATE`（第 96 行）并承认与 §11.2 自相矛盾；删除 `contracts/design/results.ts` 行与「追加 `invalidatedActionIds`」；补记 `finishRecordCommand` 的共享事务语义变更 | 三处均已修订，`finishRecordCommand` 的语义变更已按 AGENTS「事务语义不得单方变更/先提案」补记 |
+
+9 项 P3 中 7 项已修：`contracts/design/results.ts` 恢复为与 main 逐字节相同（`git diff origin/main..5b76fc54 -- 该文件` 为空）；`/api/jobs/:id/cancel` 的授权预检改 `advanceActivity=false`；误导性注释按实际 403 行为重写；`TeachingStopHandler` 改为复用 `workspace/commands.ts` 的唯一定义并再导出；新增 `passive_analysis` 用例（真实持久化作业后关闭采集，断言停止是落库的 `[true,'cancelled']`、显式 help 不受影响、恢复不复活）；新增客户端 `cancelled`/`stale`/`failed` 回执用例（按序四条事实、不撤销 `displayed`、不回滚 epoch/captureRevision/attemptRevision、同 id 重放返原回执）；尾段失败注入由 3 条扩到 7 条且 `snapshot()` 由 9 表扩到 13 表。2 项未采纳并给出理由（zod 形状重复保留，因两者处于不同信任边界；`readRecords` 的 `(serverSeq, committedAt)` 位置关联保留，因 `server_seq` 全局 UNIQUE），理由成立。
+
+本次实机复验（Windows / Node 24.21.0 / TypeScript 7.0.2，head `5b76fc54` 单独）：
+
+| 检查 | 本次真实结果 | 任务稿 §13.3 声明 |
+| --- | --- | --- |
+| `npm run typecheck` / `npm run build` | 通过（退出码 0 / 0） | 通过 |
+| C3 专项 `teaching.test.ts` + `teaching-review.test.ts` | 20 通过 / 0 失败 / 0 跳过 | 20/20 |
+| C3+B1 组合 | 67 通过 / 0 失败 / 0 跳过 | 67/67 |
+| `server/records/*.test.ts` + `server/workspace/*.test.ts` | 52 项：49 通过 / 1 失败 / 2 跳过 | 52：49/1/2 |
+| `npm test` 全量 | **212 项：204 通过 / 1 失败 / 7 跳过**（60.0s） | 212：204/1/7 |
+| 唯一失败 | `review: real RunControl preparation failure…` → `runner/control.ts:48` Linux-only，既有基线项 | 同一条 |
+| 文档检查 / 自测 | `errors=[]`，33 份文档、27 条正式路由 / 16 通过 | `errors=[]`，33 份 / 16 |
+| `git diff --check` | 无空白问题 | 通过 |
+
+作者声明的每一项数字本机逐项复现一致。
+
+### 11.2 更正 §10.2 中一处随 #28 合并而失效的表述
+
+§10.2 记录「上限只由 `records/jobs.ts` 的 `recordModelCall` 持有，而它在 main 上没有生产调用方」。该表述在 main 为 `83e528e`（#28 未合入）时成立，**#28 于 15:56Z 合并后已不成立**：`server/design/teacher-agent.ts:11` 导入 `recordModelCall`，`:286` 在每次 provider 调用前 `recordModelCall(work.job, job.leaseToken!, job.recoveryGeneration, timeString(now()))` 并经 `progress(...)` 落库；`teacher-storage.ts:55` 另有 `usages.length !== job.attemptCount` 的不变量校验。
+
+准确表述应为：**教师路径的 3 次上限已由 A3 经契约函数强制执行，学生路径（B2）仍缺**；「无人执行」只对 B2 成立。C3 任务稿 §13.2 写「A3 的调用方在未合并的 #28」在其写作时点准确，本条更正只针对本文 §10.2，不改写 C3 的记录。#28 审查中的 P3-1（释放预留用 `{...work.job, attemptCount:callIndex}` 直接改字段而非契约函数）仅涉及**释放**路径，与 `:286` 的**递增**路径不冲突，仍作为判断项开放。
+
+### 11.3 B2 审阅就地修订
+
+已就地修订 PR #32 的评审 `5483718927`（`PUT /pulls/32/reviews/5483718927`）：**原文 1～56 行完整保留未改写**，修订段自第 57 行起追加，`state` 仍为 COMMENTED、`submitted_at` 仍为原值 2026-10-11T14:45:34Z，正文由 4238 字符增至 7408 字符。采用「就地追加 + 标注日期」而非重写，遵循本仓库「不倒写为当时已知」的既有约定（C3 任务稿 §13 同一手法）。
+
+修订内容四项：方案 1 已选定故原「三选一待定」作废，B2 的具体义务改为「每次 provider 调用前调 `recordModelCall` 递增已持久 `attemptCount`，并以已持久 `attemptCount` 为本轮预算起点」，同时明确**缺陷未因 C3 修复而消失**（`service.ts:25～34` 仍不读 `input.job.attemptCount`、`core.ts` 仍每次从 `usages=[]` 起算）；新增 `leaseToken` 必填对 B2 的硬性影响（省略 400、`running` 时须与持有者相符否则 409，且与 `recordModelCall` 用的是同一个 token）；更正 §11.2 所述表述；写明生效时点（两项来自尚未合入的 #33 head）与 #32 base 需重新对齐。原审查的 P2-2、P2-3 与 10 项 P3 明写「保持有效、本次修订不涉及、也不减轻」。
+
+### 11.4 合并阻塞：`transaction.ts` 冲突与经授权的解决
+
+复验通过后合并未成，平台报 `mergeable=CONFLICTING` / `mergeStateStatus=DIRTY`。唯一冲突在 **A 属**文件 `apps/teaching/server/db/transaction.ts`：A3（#28）为 `createFreshDatabase` 新增 `'teacher-design'` 合成库种类，C3 新增 `'teaching'` 种类，两侧改的是同一处 kind 联合类型、`mkdtemp` 前缀列表与 schema 装配行；四个 schema 的 import 行自动合并成功，只有两个 hunk 冲突。成因与 §9.3 同类：C3 分支基于 `83e528e`，A3 在其后合入。
+
+因涉及 A 属共享文件且需推送到 C 的 PR 分支，本工作项**先停下并向负责人说明冲突位置、成因与已验证解法**，负责人选定「我推送解法后合并 #33」，据此执行：
+
+- 取两侧**并集**：kind 联合类型含 `teacher-design` 与 `teaching`；前缀列表为 `['completion','workspace','teacher-design','teaching']`；`workspaceSchema` 覆盖 `workspace`/`teacher-design`/`teaching`；`teacherDesignSchema` 只给 `teacher-design`；`teachingSchema` 只给 `teaching`；`completionSchema` 采用 C3 的 `kind !== 'design' && kind !== 'access'`——在六种 kind 上它等价于 A3 的正列表再加 `teaching`，即正确的并集。
+- 双向核对未丢任一侧改动：对 C3 父 `5b76fc54` 的差异**只**含 A3 的 `teacher-design` 相关行，对 main 父 `c5322c8` 的差异**只**含 C3 的 `teaching` 相关行与上述等价改写。任何既有 kind 的表集合、路径规则与事务语句白名单均未改变；未改 schema、未加迁移、未动受保护文档。
+- 先在临时工作树 `p3-pr28-onmain` 内解出并实机验证，固定树哈希 `c9beed244b1ef4523649fc6dda04e709894b11ff`；再在 PR 分支工作树重做同一合并，`git write-tree` 得到**完全相同**的树哈希后才提交，确保推送的就是验证过的那棵树。
+- 合并提交 `5943d05858a2604a42bb80cac393f26bbda80215`（parents `5b76fc54` + `c5322c8`，tree `c9beed24`），普通推送 `5b76fc5..5943d05` 到 `codex/c3-review-fixes`，未强制推送。
+
+对该合并提交的实机验证：typecheck / build 通过（退出码 0 / 0）；C3 专项 20/20、A3 专项 25/25、C3+B1 组合 67/67；全量 **237 项：229 通过 / 1 失败 / 7 跳过**，唯一失败仍是既有 Linux-only RunControl；`git diff --check c5322c8 HEAD` 无空白问题；文档检查 `errors=[]`（35 份文档、27 条正式路由）；检查器自测 16/16。237 = 合并前 main 的 217 + C3 的 20，与两侧单独结果自洽。
+
+仓库内 `stash@{0}` 仍为 `da0c0009fda44d5c16f02286aa072daea624b973`（C3 任务稿 §12.2 记录的已核对恢复备份），本节全程只读取其 SHA，未 apply、未 pop、未 drop。
+
+### 11.5 合并结果与合并后 main
+
+推送后平台重算为 `mergeable=MERGEABLE` / `mergeStateStatus=CLEAN`，head `5943d05`、base `c5322c8`，与本机一致。负责人于 2026-10-11T16:33:56Z 执行合并（`mergedBy: paher-din`），PR #33 状态 MERGED，合并提交 `e54e91c4d02c7734d100025fd40e522f27d38bfc`，parents `c5322c8` + `5943d05`。
+
+**树同一性核验：** `e54e91c4` 的 tree 为 `c9beed244b1ef4523649fc6dda04e709894b11ff`，与 §11.4 实机验证过的树逐字节相同，即落地内容就是验证过的内容。
+
+对真实合并提交 `e54e91c4` 检出后复验（0 个被跟踪文件修改、0 未合并项）：
+
+| 检查 | main `e54e91c4` 结果 |
+| --- | --- |
+| `npm run typecheck` / `npm run build` | 通过（退出码 0 / 0） |
+| C3 专项 / A3 专项 / B1 `server/tutoring/test/*.test.ts` | 20 通过 / 25 通过 / 47 通过，均 0 失败 0 跳过 |
+| `npm test` 全量 | **237 项：229 通过 / 1 失败 / 7 跳过**（61.4s） |
+| 唯一失败 | `review: real RunControl preparation failure ends check without fabricating a RunRecord` → `runner/control.ts:48`，Windows 上的既有 Linux-only 基线项，与 §10.5 同一条 |
+| 文档检查 / 自测 | `errors=[]`，35 份文档、27 条正式路由；检查器自测 16/16 |
+
+结论：**C3 合入后 main 健康**，A3/B1/C3 三条链的专项用例在同一棵树上同时通过，唯一失败为既有环境限制项。§10.6 的 flaky 计时断言本次未复现（未修改、未跳过、未放宽）。
+
+### 11.6 边界与未执行
+
+本次经负责人明确授权，向 C 的 PR 分支 `codex/c3-review-fixes` 推送了一个合并提交，并在其中解决了 A 属文件 `server/db/transaction.ts` 的冲突。这超出「只读审查 + 合并」的默认范围，属负责人个案授权，不构成后续同类操作的既有授权；解法为两侧并集，未采纳任一侧而丢弃另一侧，未改 schema、未加迁移、未改事务白名单、未动受保护文档（`docs/product/**`、`AGENTS.md`、`docs/planning/**`、`docs/reference/**`）、未改 `.env`/密钥/CI、未删除文件或 Git 历史、未强制推送、未动 stash。本文是本轮唯一由本工作项提交的仓库文件。
+
+未关闭 Issue #27、#26、#24、#25、#11、#23；未解决 PR #33 上我提出的 5 条行内审查线程（内容已由 C3 修复覆盖，但线程状态保持原样，未代为标记 resolved）；未修改 PR #32 的代码。P2-1 的跨 worker 累计计账在学生路径上仍缺，按方案 1 属 B2 接线的前置条件，已在 §11.3 的审阅修订中具体化。C3 线的结构性独立审查缺口保留：PR #33 作者与本审查发布为同一账号，本轮复验由执行 Agent 完成，不构成独立复核。
+
+未执行：真实模型与 B2 正式 help 联调（C3-V08）、真实 provider 调用 / D-02、Linux 复验、浏览器与实际 UI、真人与负载、C5 备份恢复、完整 G1～G4 与 MVP 验收。服务端通过、文档交付与本次合并均不构成产品验收或教学效果证据。MVP_SPEC §10 与 TEAM 的基线进度仍待授权维护者汇总。
