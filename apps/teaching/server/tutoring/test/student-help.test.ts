@@ -415,6 +415,30 @@ test("disabled policy and an active limited check reject help before a tutoring 
   } finally {
     await limited.close();
   }
+
+  const paused = await fixture();
+  try {
+    const setup = await setupProject(paused);
+    const start = await command(paused.service.app, setup.student, `/api/attempts/${setup.attemptId}/controls`, {
+      expectedAttemptRevision: 1,
+      control: { kind: "start" },
+    });
+    assert.equal(start.statusCode, 200, start.body);
+    const pause = await command(paused.service.app, setup.student, `/api/attempts/${setup.attemptId}/controls`, {
+      expectedAttemptRevision: 2,
+      control: { kind: "pause" },
+    });
+    assert.equal(pause.statusCode, 200, pause.body);
+    const response = await command(paused.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+      expectedAttemptRevision: 3,
+      question: "hint",
+    });
+    assert.equal(response.statusCode, 409, response.body);
+    const state = await attemptView(paused, setup.student, setup.attemptId);
+    assert.equal(state.jobs.filter((job: { purpose: string }) => job.purpose === "student_help").length, 0);
+  } finally {
+    await paused.close();
+  }
 });
 
 test("help rejects stale revisions, foreign object references, and unauthorized actors without model work", async () => {
@@ -422,6 +446,18 @@ test("help rejects stale revisions, foreign object references, and unauthorized 
   try {
     const setup = await setupProject(f);
     const other = await f.login("other");
+    const empty = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+      expectedAttemptRevision: 1,
+      question: "   ",
+    });
+    assert.equal(empty.statusCode, 400, empty.body);
+    const missingRevision = await f.service.app.inject({
+      method: "POST",
+      url: `/api/attempts/${setup.attemptId}/help`,
+      headers: { ...setup.student, "idempotency-key": randomUUID() },
+      payload: { recoveryGeneration: generation, question: "hint" },
+    });
+    assert.equal(missingRevision.statusCode, 400, missingRevision.body);
     const foreign = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
       expectedAttemptRevision: 1,
       question: "hint",
@@ -622,6 +658,10 @@ test("resource and unavailable-run references remain exact, scoped, and explaina
   assert.ok(runReference);
   assert.match(runReference.content, /environment_unavailable/);
   assert.match(runReference.content, /unavailable/);
+
+  const invalidState = authorizedContext();
+  invalidState.learnerStateRevision = -1;
+  assert.throws(() => assembleStudentHelpRequest(invalidState), /context is not current/);
 });
 
 test("current guard distinguishes cancellation from stale policy, version, and recovery state", async () => {

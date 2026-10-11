@@ -4,6 +4,7 @@ import type {
   StudentHelpRequest,
   UntrustedReference,
 } from "../../contracts/tutoring/index.ts";
+import { studentActionTypes } from "../../contracts/tutoring/index.ts";
 import { RunnerError } from "../../runner/snapshot.ts";
 import type { CurrentGuard, GuardState } from "./core.ts";
 import { rangeOffsets } from "../workspace/files.ts";
@@ -163,12 +164,34 @@ function assertAuthorizedContext(input: AuthorizedStudentHelpContext) {
     input.activity.status !== "active" ||
     !input.activity.helpPolicy.helpAllowed ||
     !input.question.trim() ||
+    !Number.isSafeInteger(input.learnerStateRevision) ||
+    input.learnerStateRevision < 0 ||
+    input.learnerClaims.some((claim) => !validLearnerClaim(claim)) ||
+    input.assistanceHistory.some((item) =>
+      !item.actionId ||
+      !studentActionTypes.includes(item.actionType) ||
+      typeof item.content !== "string" ||
+      !["generated", "received", "displayed", "acknowledged", "cancelled", "stale", "failed"].includes(item.status)) ||
     !Number.isFinite(Date.parse(job.acceptedAt)) ||
     !Number.isFinite(Date.parse(job.deadline)) ||
     Date.parse(job.deadline) <= Date.parse(job.acceptedAt)
   ) {
     throw new RunnerError("STATE_CONFLICT", "Student help context is not current");
   }
+}
+
+function validLearnerClaim(claim: LearnerContextClaim): boolean {
+  return Boolean(claim.claimId) &&
+    Number.isSafeInteger(claim.claimRevision) && claim.claimRevision > 0 &&
+    Boolean(claim.competencyId) &&
+    Number.isSafeInteger(claim.competencyVersion) && claim.competencyVersion > 0 &&
+    typeof claim.statement === "string" &&
+    ["insufficient", "supported_with_assistance", "supported_in_check", "conflicting"].includes(claim.state) &&
+    ["active", "contested", "superseded", "withdrawn"].includes(claim.validity) &&
+    claim.evidenceIds.every((value) => typeof value === "string") &&
+    claim.counterEvidenceIds.every((value) => typeof value === "string") &&
+    ["observed_help", "none_observed_in_system", "unknown"].includes(claim.assistanceStatus) &&
+    typeof claim.unresolved === "boolean";
 }
 
 function addObjectReference(
