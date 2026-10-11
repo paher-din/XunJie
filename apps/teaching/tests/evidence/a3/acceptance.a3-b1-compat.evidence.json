@@ -1,0 +1,109 @@
+{
+  "task": "A3 PR28 / merged PR29 compatibility",
+  "date": "2026-10-11",
+  "pr": "https://github.com/paher-din/XunJie/pull/28",
+  "issue": "https://github.com/paher-din/XunJie/issues/25",
+  "baselineSha": "161ffb3df0f5dd3539c806015cb417f88dcb9d56",
+  "upstreamMainSha": "83e528e",
+  "sourceSha": "803c10efd61824401a7ac0a9f69a6e7dada99da3",
+  "environment": {
+    "platform": "win32",
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "typescript": "7.0.2"
+  },
+  "authorization": {
+    "source": "docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md §5/10",
+    "databasesRetained": true,
+    "schemaChanged": false,
+    "paidCalls": 0
+  },
+  "commands": [
+    {
+      "command": "npm run typecheck (before adaptation)",
+      "sourceSha": "161ffb3df0f5dd3539c806015cb417f88dcb9d56",
+      "status": "failed",
+      "errors": [
+        "TS2353 tests/design-agent.test.ts:427",
+        "TS2353 tests/design-agent.test.ts:464"
+      ],
+      "record": "acceptance.a3-b1-compat-typecheck-red.windows.txt"
+    },
+    {
+      "command": "node --test --test-name-pattern=\"input preflight rejection records|a second call rejected by preflight\" tests/design-agent.test.ts (before adaptation)",
+      "sourceSha": "161ffb3df0f5dd3539c806015cb417f88dcb9d56",
+      "status": "failed",
+      "tests": 2,
+      "passed": 0,
+      "failed": 2,
+      "skipped": 0,
+      "record": "acceptance.a3-b1-compat-red.windows.txt"
+    },
+    {
+      "command": "npm run typecheck",
+      "sourceSha": "803c10efd61824401a7ac0a9f69a6e7dada99da3",
+      "status": "passed",
+      "record": "acceptance.a3-b1-compat-typecheck.windows.txt"
+    },
+    {
+      "command": "node --test tests/design-agent.test.ts",
+      "sourceSha": "803c10efd61824401a7ac0a9f69a6e7dada99da3",
+      "status": "passed",
+      "tests": 25,
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "record": "acceptance.a3-b1-compat-targeted.windows.txt"
+    },
+    {
+      "command": "npm test",
+      "sourceSha": "803c10efd61824401a7ac0a9f69a6e7dada99da3",
+      "buildStatus": "passed",
+      "status": "failed",
+      "tests": 217,
+      "passed": 209,
+      "failed": 1,
+      "skipped": 7,
+      "record": "acceptance.a3-b1-compat-full.windows.txt"
+    }
+  ],
+  "boundary": {
+    "firstPreflight": "Actual B preflight on long input; synthetic invoker not called",
+    "secondPreflight": "Scripted external ModelProvider preflight error after one synthetic sent call; no claim of two actual provider input sizes",
+    "knownFailure": "Preexisting C2 Windows test initializes Linux-only RunControl before app fixture",
+    "sharedReleaseApi": "Proposal only; pending A/C review"
+  },
+  "notExecuted": [
+    "Real supplier network / credentials / paid models / D-02",
+    "Teacher semantic review",
+    "Linux rerun / real runner integration",
+    "Browser / TLS / full A3 or G1/G2/MVP"
+  ],
+  "files": [
+    {
+      "file": "acceptance.a3-b1-compat-typecheck-red.windows.txt",
+      "sha256": "a375eb142cc411edcb66d4e6041798927d2d1f7c78270f3099d1450607cdd5f6",
+      "bytes": 430
+    },
+    {
+      "file": "acceptance.a3-b1-compat-red.windows.txt",
+      "sha256": "15c36258d1534a1e486d3e7257e957e99c78c44fa7759cdfd1f5008ed6649383",
+      "bytes": 1986
+    },
+    {
+      "file": "acceptance.a3-b1-compat-typecheck.windows.txt",
+      "sha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+      "bytes": 84
+    },
+    {
+      "file": "acceptance.a3-b1-compat-targeted.windows.txt",
+      "sha256": "7b5dc8f99ab63b9ff65c07c4aaeb9dedc58876b63e3c318dc1b81cb9194fd389",
+      "bytes": 2794
+    },
+    {
+      "file": "acceptance.a3-b1-compat-full.windows.txt",
+      "sha256": "f7e5dbea3912593a39766df17bfd285a65a8233c30e63ed896bf31f7ff364776",
+      "bytes": 25201
+    }
+  ]
+}

@@ -154,8 +154,8 @@ A2 PR #19 合并后的 checks/release 慢节点回执问题已由 [PR #21](https
 
 负责人已批准独立 createTeacherDesignDatabase，仅新建保留的临时合成库，共 24 表（原 workspace 22 表＋教师请求/提案两表），不迁移已有库。使用批准 Node 24.21.0，在 apps/teaching 执行 node --test tests/design-agent.test.ts；合成 provider 是唯一外部替身，登录、CSRF、数据库、Job、回执与事务均真实。接入字段、私有资料/旧版本/取消/预算边界、原结果保存失败后安全重试见任务记录 §2、§5。
 
-获准合成服务端已实现，A3 专项20/20通过、typecheck/build通过，两轴审查未解决0。Windows完整201项为193通过、1既有C2 Linux-only用例失败、7原条件跳过，全套未通过；原字节证据/失败复现及边界见任务记录第6节。B1 真实 invoker/token counter、D-02、真实模型联调、教师内容会审与最终浏览器/TLS 未执行，不能据此宣称完整 A3/G2/MVP 通过。
+首批验证时点记录：获准合成服务端已实现，A3 专项20/20通过、typecheck/build通过，两轴审查未解决0。Windows完整201项为193通过、1既有C2 Linux-only用例失败、7原条件跳过，全套未通过；原字节证据/失败复现及边界见任务记录第6节。B1 真实 invoker/token counter、D-02、真实模型联调、教师内容会审与最终浏览器/TLS 未执行，不能据此宣称完整 A3/G2/MVP 通过。
 
 2026-10-11，PR #28 外部审查指出两项调用记账问题，修复与复现记录见 [A3 §9](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#9-pr-28-外部审查修复2026-10-11)：超时/停止后保存原调用实际 usage，InputLimitError 明确未发送时安全释放末尾预留。正文接收与采用守卫继续生效，其他未知调用保守占用。新增5项合成验证，A3专项25/25、typecheck/build通过；Windows完整206项：198通过、1既有C2平台失败、7原条件跳过，全套未通过。原始证据和复核结果见任务记录 §9，原 §6 统计保留历史事实。
 
-PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 §10](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#10-已合并-b1-新预检接缝适配2026-10-11实施中)保留旧接口组合失败反例及修复说明。两条专项分别通过，组合typecheck通过，完整专项与回归结果将在该节收口。B1 SDK适配源码已接入，真实供应商网络调用及教师/UI验收仍未执行。
+PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 §10](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#10-已合并-b1-新预检接缝适配2026-10-11)保留旧接口组合失败反例及修复说明。组合typecheck/build通过、A3专项25/25；完整217项：209通过、1既有C2平台失败、7原条件跳过，全套未通过。B1 SDK适配源码已接入，真实供应商网络调用及教师/UI验收仍未执行。

@@ -6,7 +6,7 @@
 - 同步基线：`c42f356b6135ca9bb00c2e3c61c3d2aae713f602`（2026-10-11）；A2/C2 已合入。B1 #11 的真实 SDK/账号/模型调用及 D-02 仍未完成。
 - 已读：[PRD](../product/PRD.md) §4.1、PRD-01/02；[MVP_SPEC](../product/MVP_SPEC.md) M-01/M-02、AC-01/02、NFR-04；[TECH_DESIGN](../product/TECH_DESIGN.md) §4.3/4.4/5/6.2/7.2.1/9；[TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md) §6 A3；[G2](G2_OVERALL_COORDINATION.md)。
 - 负责：`apps/teaching/contracts/design`、`server/design`、必要 A 调用方/数据库工厂、本人测试、README 和本文。B 生成核心与 C Job/Receipt/Event 使用既有公共接口；不改 B/C 公共字段和状态，不实现 B2/C3，不制作 UI。
-- 当前状态：**§2–3 获准合成服务端已实现，专项20/20；完整回归保留1项已有C2平台失败；真实模型/人工/UI未验收**。受保护文档只读，进度及契约补充 **待授权维护者汇总**。
+- 当前状态：**§2–3 获准合成服务端已实现，专项25/25；已同步PR #29并修复组合阻塞；完整217项209通过/1既有C2平台失败/7跳过；真实模型/人工/UI未验收**。受保护文档只读，进度及契约补充 **待授权维护者汇总**。
 
 ## 2. 实施提案（2026-10-11 获批）
 
@@ -175,7 +175,7 @@ teacher-agent.ts 的原 provider 包装器已修正：实际 usage 只核验原 
 
 文档检查32份/402内部链接/27基线变更路径，errors=[]；检查器自测16/16通过；完整差异空白与保护范围检查通过。原四份日志及历史清单不变，本次两份新日志与本次清单逐字节核验。修复已普通推送同一 PR #28，并更新 PR 说明；回读远端代码/证据提交 `d25857fe82d041a0ed7c935db9bce60a6550d2bd` 与本地一致，PR仍Open。随后仅补本段交付事实。不代替审查者批准，不自动解决会话或合并，不关闭 #25。
 
-## 10. 已合并 B1 新预检接缝适配（2026-10-11，实施中）
+## 10. 已合并 B1 新预检接缝适配（2026-10-11）
 
 项目负责人要求解决[新复审](https://github.com/paher-din/XunJie/pull/28#pullrequestreview-5483718569)的组合 P2：A3 两条测试仍注入已被 PR #29 删除的 countTokens，组合树 typecheck 与这两条测试失败。已读取 PRD §4.1、MVP M-01/M-02、TECH §6.2/10.3、B1 §2.2/3/4 和新 providers 正文；远端 main `83e528e` 已合并 #29，当前 A3 同步提交 `161ffb3` 无源码冲突。
 
@@ -194,3 +194,27 @@ P3中的 helper、故意替换错误注释、自审标注已处理。releaseMode
 先前 §6/§9 的 invoker/token counter 未完成是各自提交时点事实；PR #29 已提供实际 SDK适配源码及保守输入上界，已在本分支同步。真实供应商网络/账号/数据/付费与教师语义仍未执行，不能据此宣称 #11 或完整 A3/G2 完成。
 
 本次红态原始断言输出含原生缩进空白行，绿色 typecheck 原始输出有结尾空行；按源码空白规则检查时确实报错。为保留逐字节证据，三份预检/typecheck终端记录以目录内精确文件名的 -diff 标识为不可改写证据附件，不转换换行、修剪输出或更改源码/测试空白规则。原有证据、其他日志、源码与文档检查保持；失败输出仍入库并在清单核验字节/hash，实际红态不改成通过。
+
+### 10.2 组合实际验证
+
+源码固定 `803c10efd61824401a7ac0a9f69a6e7dada99da3`，同步基线 `161ffb3` 含 main `83e528e` / 已合并 PR #29，Windows / Node24.21.0 / npm11.19.0 / TypeScript7.0.2。
+
+| 检查 | 实际结果 |
+| --- | --- |
+| 适配前 `npm run typecheck` | 失败，两处 TS2353；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-b1-compat-typecheck-red.windows.txt) |
+| 适配前两条预检反例 | 0通过、2失败、0跳过；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-b1-compat-red.windows.txt) |
+| 适配后 `npm run typecheck` | 通过；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-b1-compat-typecheck.windows.txt) |
+| 适配后 `node --test tests/design-agent.test.ts` | **25通过、0失败、0跳过**；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-b1-compat-targeted.windows.txt) |
+| 适配后 `npm test` / pretest build | build通过；**217项：209通过、1失败、7原条件跳过**；[原始输出](../../apps/teaching/tests/evidence/a3/acceptance.a3-b1-compat-full.windows.txt)；全套未通过 |
+
+唯一失败仍是原 C2 `server/workspace/review.test.ts:118` 在 Windows 初始化 Linux-only RunControl，错误发生于 A 应用 fixture 前；同步后的 C 测试/控制器无本次改动。没有新增跳过或关闭运行/类型检查。原 §6/§9 统计和六份历史原始输出继续保留；五份新记录有独立[证据清单](../../apps/teaching/tests/evidence/a3/acceptance.a3-b1-compat.evidence.json)。仅合成 invoker/provider，无付费或供应商网络调用，测试库保留。
+
+两条组合阻塞反例已恢复有效，真实模型/D-02、教师会审、Linux复验及浏览器/TLS的未执行条件保持。C releaseModelCall 待会审，不扩大共享接口；产品进度待授权维护者汇总。
+
+### 10.3 作者侧两轴自审与交付
+
+**Standards：** 固定同步提交 `161ffb3...803c10e` 增量自审，硬性违规0、可操作异味0。仅三份精确原生终端附件标为 -diff 保留字节，源码/测试规则及历史证据不变。
+
+**Spec：** 未解决0、范围扩大0，两条测试分别证明实际新 B 预检与合成 provider 第二次预检的 A 记账边界，C 公共 API 仍为待会审提案。以上为作者侧两轴自审，不代替外部审查者批准；审查仅只读，实际执行结果见 §10.2。
+
+文档检查33份/429内部链接/27基线路径，errors=[]；检查器自测16/16。全部11份已暂存原始记录与三个清单的 SHA-256/字节数一致，保护范围和空白检查通过。原独立副本 typecheck-a12-current.log 未暂存，主副本原有改动未触碰。本批将更新原 PR #28，由原审查者复审；不自动解决其意见、不合并、不关闭 #25。共享 releaseModelCall 提案等待 A/C 会审，真实模型/人工/UI及完整产品的未完成条件保留。
