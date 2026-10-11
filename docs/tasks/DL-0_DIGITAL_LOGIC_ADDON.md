@@ -132,8 +132,18 @@
 
 提交检查发现本机 `core.autocrlf=true` 将 XDC 从原始 19,888 字节转换为暂存区 19,623 字节，SHA-256 从 §2.3 的 `eac2...e859` 变为 `630fbdd059dc20f19827d02f328ed023715599b77dc4eece10ab851310e22f02`。为保证材料归档可核验，局部属性仅给 `Nexys4DDR_Master.xdc` 设置 `-text`，按 [Git 官方属性语义](https://git-scm.com/docs/gitattributes) 保留原始换行，不改材料、不将其标为 binary、不关闭 diff 或 whitespace。原始文件末尾空行等格式提示单独保留并报告；文档空白检查仍须通过。
 
-本批正在准备提交；实际提交、推送和远端核验结果在成功后追加。应用/引擎/模型/浏览器/真人验收仍未执行。
+本批文档与授权材料已提交并首次推送到 `codex/digital-logic-baseline`，未合并 main；实际记录如下。应用/引擎/模型/浏览器/真人验收仍未执行。
 
 暂存区验证：四份材料的 Git blob、工作树副本与负责人指定源文件逐字节一致，SHA-256 全部通过。设置属性后以 `git add --renormalize -- course_matrial/data_logic/Nexys4DDR_Master.xdc` 重新处理该暂存文件，未改原文件。全范围 `git diff --cached --check` 返回 2，仅原始 XDC 的 CRLF/末尾空行产生提示；`git diff --cached --check -- AGENTS.md README.md docs course_matrial/data_logic/.gitattributes` 通过。前述文档阶段的空白通过不覆盖后来新增原始材料的格式提示。
 
 发布前远端 main 已进入 `83e528ecd3d3de7a13e6addc57ba9111860b06f7`，B1 PR #29 已合并，真实供应商调用条件仍未完成。§3 的 Open/head 记录保留其核查时点；本发布将该上游更新合入文档分支并验证 README 双方内容，不改写其历史或将 SDK 适配计为真实模型验收。
+
+| 已执行事项 | 结果 |
+| --- | --- |
+| 文档/材料提交 | `b1a6cd3bf8a6c8a88ce10bf508117c07e39377e2`，十二份授权交付/控制文件；四份材料的提交字节/hash 与来源一致 |
+| 合入最新 main | `ba530f8ea0b3c7244b43e20badb11f2df3f4d83c`，正常 merge `83e528e`，README 自动合并，0 冲突；相对最新 main 的 apps/tools/skills 无本任务差异 |
+| 合并组合文档验证 | 33 份/448 引用/原 27 条接口通过；检查器 16/16、9 组范围断言与文档/局部属性空白检查通过；原 XDC 格式提示仍保留 |
+| 首次成果推送 | `git push --set-upstream origin HEAD:refs/heads/codex/digital-logic-baseline` 成功，新分支建立，上游跟踪设置成功 |
+| 远端回读 | `git ls-remote` 与 GitHub ref API 均返回 `ba530f8ea0b3c7244b43e20badb11f2df3f4d83c`，与本地一致；工作树干净 |
+
+上述为首次成果推送的已执行事实。本发布记录随后作为文档提交普通同步；不把记录提交的自身 SHA 回写为已完成的首次成果，也不自动创建 PR、发布 Issue 或合并 main。
