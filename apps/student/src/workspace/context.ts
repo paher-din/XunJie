@@ -39,22 +39,6 @@ export function nextLoadEpoch(): number {
   return epochSeq
 }
 
-export function identityOf(context: WorkspaceContext): WorkspaceIdentity {
-  const { mode, userId, assignmentId, activityVersionId, attemptId, preparationEpoch } = context
-  return { mode, userId, assignmentId, activityVersionId, attemptId, preparationEpoch }
-}
-
-export function sameIdentity(a: WorkspaceIdentity, b: WorkspaceIdentity): boolean {
-  return (
-    a.mode === b.mode &&
-    a.userId === b.userId &&
-    a.assignmentId === b.assignmentId &&
-    a.activityVersionId === b.activityVersionId &&
-    a.attemptId === b.attemptId &&
-    a.preparationEpoch === b.preparationEpoch
-  )
-}
-
 /**
  * 一次工作区载入的上下文守卫。
  *
@@ -107,9 +91,4 @@ export class ContextGuard {
     this.acceptedSeq.set(key, seq)
     return true
   }
-}
-
-/** 当前守卫；没有活跃工作区时为 null。测试与诊断用。 */
-export function activeContext(): WorkspaceContext | null {
-  return activeGuard && !activeGuard.stale ? activeGuard.context : null
 }

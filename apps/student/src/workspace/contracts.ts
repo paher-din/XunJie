@@ -210,26 +210,6 @@ export interface ResourceStudentView {
   paragraphs: MaterialParagraph[]
 }
 
-/* ---------- Attempt 只读（C2） ---------- */
-
-export type AttemptStatus = 'ready' | 'active' | 'paused' | 'submitted' | 'reviewed'
-
-/** GET `/api/attempts/:id` 的 `data.attempt`。01 只读、不创建（首次 Attempt 归 03）。 */
-export interface AttemptView {
-  attemptId: string
-  courseId: string
-  studentId: string
-  assignmentId: string
-  activityVersionId: string
-  status: AttemptStatus
-  attemptRevision: number
-  workspaceRevision: number
-  decisionEpoch: number
-  captureRevision: number
-  collecting: boolean
-  reminders: boolean
-}
-
 /* ---------- 准备 bootstrap（开发 fixture 专用，不是正式 API） ---------- */
 
 /**
@@ -239,7 +219,10 @@ export interface AttemptView {
  * GET Session / Assignment / Activity 的投影，真实初始化按 H-01～H-04 的已交接来源取得。
  */
 export interface PrepContextView {
-  /** 合成场景 ID；每个浏览器/测试上下文选独立场景，同一场景的多标签共享 authority。 */
+  /**
+   * 合成场景 ID。01 只有一个固定合成场景（每个开发进程一个），供准备入口与浏览器检查使用；
+   * 「每个测试/浏览器上下文选独立场景 ID」随 04 的故障与恢复脚本一并落地（见任务记录缺口）。
+   */
   scenarioId: string
   /** 开发进程重启即换代的准备 epoch。 */
   preparationEpoch: string

@@ -67,15 +67,10 @@ export function setCsrfToken(token: string | null): void {
   csrfToken = token
 }
 
-export function currentCsrfToken(): string | null {
-  return csrfToken
-}
-
 /* ---------- 请求 ---------- */
 
 export interface RequestOptions {
   mode: WorkspaceMode
-  signal?: AbortSignal
   /** 跳过按模式拼 base，直接用这个路径（准备 bootstrap 元信息端点用）。 */
   absolutePath?: string
 }
@@ -99,12 +94,9 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
       method,
       headers,
       credentials: 'same-origin',
-      signal: opts.signal,
       body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined,
     })
   } catch (e) {
-    // 中断不是失败分类里的一种业务结果：调用方按上下文失效处理，不当成服务不可用展示
-    if (e instanceof DOMException && e.name === 'AbortError') throw e
     const message = e instanceof Error ? e.message : String(e)
     throw new WorkspaceRequestError({ kind: 'transport', message }, method, url)
   }
@@ -133,7 +125,9 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
         url,
       )
     }
-    const requestId = envelope?.requestId ?? response.headers.get('x-request-id') ?? ''
+    // requestId 只取自信封：真实后端把同一个 request.id 写进 body，且不下发 requestId 响应头
+    // （apps/teaching/server/app.ts:21,53，requestIdHeader: false），不依赖头做回退。
+    const requestId = typeof envelope?.requestId === 'string' ? envelope.requestId : ''
     throw new WorkspaceRequestError(
       { kind: 'api', status: response.status, requestId, error },
       method,

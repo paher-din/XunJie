@@ -8694,20 +8694,20 @@ button.st-check.checked:hover {
   font-weight: 600;
 }
 .prep-entry h2 {
-  font-size: 16px;
+  font-size: 15px;
   margin: 0 0 6px;
   color: var(--ink);
 }
 .prep-entry-body > p {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
-  line-height: 1.65;
+  line-height: 1.7;
   margin: 0;
 }
-.prep-entry-note {
-  color: var(--tint-amber-fg) !important;
-  font-size: 11.5px !important;
-  margin-top: 6px !important;
+.prep-entry-body > p.prep-entry-note {
+  color: var(--tint-amber-fg);
+  font-size: 11px;
+  margin-top: 6px;
 }
 .prep-entry > button {
   flex: none;
@@ -8756,7 +8756,7 @@ button.st-check.checked:hover {
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
 }
@@ -8770,7 +8770,7 @@ button.st-check.checked:hover {
 }
 .ts-pane-lead {
   font-size: 13px;
-  line-height: 1.75;
+  line-height: 1.7;
   color: var(--ink-soft);
   margin: 0 0 18px;
   padding: 12px 14px;
@@ -8811,7 +8811,7 @@ button.st-check.checked:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ink-soft);
   padding: 7px 10px;
   background: var(--sunken);
@@ -8821,7 +8821,7 @@ button.st-check.checked:hover {
   margin-left: auto;
   font-weight: 500;
   color: var(--faint);
-  font-size: 11.5px;
+  font-size: 11px;
 }
 
 /* 左侧胶囊「任务信息」里的初始化读取结果 */
@@ -8838,7 +8838,7 @@ button.st-check.checked:hover {
   background: var(--tint-amber-bg);
   border: 1px solid var(--tint-amber-line);
   color: var(--tint-amber-fg);
-  font-size: 11.5px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .ts-section {
@@ -8861,7 +8861,7 @@ button.st-check.checked:hover {
 }
 .ts-block p {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--ink-soft);
 }
@@ -8882,8 +8882,8 @@ button.st-check.checked:hover {
   gap: 4px;
 }
 .ts-list li {
-  font-size: 12.5px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--ink-soft);
 }
 
@@ -8916,7 +8916,7 @@ button.st-check.checked:hover {
   margin-left: auto;
   padding: 1px 8px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -8954,14 +8954,14 @@ button.st-check.checked:hover {
 }
 .ts-material-meta {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--faint);
   word-break: break-all;
 }
 .ts-material-note {
   margin: 0;
-  font-size: 11.5px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--muted);
 }
 .ts-material-note.fail {
@@ -8986,21 +8986,21 @@ button.st-check.checked:hover {
 }
 .ts-unavailable-reason {
   margin: 0 0 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--ink-soft);
 }
 .ts-unavailable-detail {
   margin: 0 0 6px;
-  font-size: 11.5px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--muted);
   word-break: break-all;
 }
 .ts-unavailable-note {
   margin: 0 0 12px;
   font-size: 11px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--faint);
 }
 .ts-loading {
@@ -9008,7 +9008,7 @@ button.st-check.checked:hover {
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -9026,7 +9026,7 @@ button.st-check.checked:hover {
   background: var(--tint-amber-bg);
   border-bottom: 1px solid var(--tint-amber-line);
   color: var(--tint-amber-fg);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
 }
 .ws-editor-note {
@@ -9034,7 +9034,7 @@ button.st-check.checked:hover {
   padding-top: 10px;
   border-top: 1px solid var(--line);
   font-size: 11px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--faint);
   font-family: inherit;
 }

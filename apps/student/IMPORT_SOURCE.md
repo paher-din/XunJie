@@ -99,7 +99,7 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 | 资产 | 位置 | 许可 | 说明 |
 | --- | --- | --- | --- |
 | Solar 图标 | `src/icons/svg/*-linear.svg` 等 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 作者 480 Design；`file-presentation-linear.svg` 是保留 Solar 轮廓的衍生图形，同许可 |
-| OpenMoji 图标 | `src/icons/svg/emoji-*-native.svg` | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | 作者 HfG Schwäbisch Gmünd 与 OpenModi contributors；原路径保留 |
+| OpenMoji 图标 | `src/icons/svg/emoji-*-native.svg` | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | 作者 HfG Schwäbisch Gmünd 与 OpenMoji contributors；原路径保留 |
 | 霞鹜文楷 | `public/fonts/lxgw-wenkai-regular.woff2` | [SIL OFL 1.1](https://openfontlicense.org/) | 许可正文随资产存于 `public/fonts/OFL.txt` |
 | 项目自绘图形 | `learning-space`、`assistant-mark`、`virtual-board`、`digital-waveform`、`load-board`、`insert-prompt`、`unpin`、`analogy`、`sun` | 归属学习空间项目，未另行指定公共开源许可 | 见 `src/icons/ATTRIBUTION.md` |
 

@@ -58,12 +58,22 @@ const ERROR_DEFINITIONS = {
 
 type ErrorCode = keyof typeof ERROR_DEFINITIONS
 
-const PREP_ROOT = '/__i0prep'
+export const PREP_ROOT = '/__i0prep'
 
 /* ---------- 响应工具（信封形状见 contracts/common/http.ts:1,23-26） ---------- */
 
-function send(res: ServerResponse, status: number, body: unknown, extraHeaders?: Record<string, string>): void {
-  const requestId = randomUUID()
+/**
+ * 一次响应只用一个 requestId：响应头 `x-request-id` 与信封里的 `requestId` 同值。
+ * 真实后端也是同一个 `request.id`（apps/teaching/server/app.ts:21,53，`requestIdHeader: false`），
+ * 因此客户端只从信封取 requestId，不依赖响应头。
+ */
+function send(
+  res: ServerResponse,
+  status: number,
+  requestId: string,
+  body: unknown,
+  extraHeaders?: Record<string, string>,
+): void {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   res.setHeader('x-request-id', requestId)
@@ -72,13 +82,15 @@ function send(res: ServerResponse, status: number, body: unknown, extraHeaders?:
 }
 
 function ok(res: ServerResponse, data: unknown, extraHeaders?: Record<string, string>): void {
-  send(res, 200, { requestId: randomUUID(), data }, extraHeaders)
+  const requestId = randomUUID()
+  send(res, 200, requestId, { requestId, data }, extraHeaders)
 }
 
 function fail(res: ServerResponse, code: ErrorCode): void {
+  const requestId = randomUUID()
   const d = ERROR_DEFINITIONS[code]
-  send(res, d.status, {
-    requestId: randomUUID(),
+  send(res, d.status, requestId, {
+    requestId,
     error: { code, message: d.message, retryable: d.retryable, recovery: d.recovery },
   })
 }
@@ -310,18 +322,42 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   return fail(res, 'INVALID_REQUEST')
 }
 
+/** fixture 需要的最小日志面；Vite 的 `server.config.logger` 结构上满足它。 */
+export interface PrepFixtureLog {
+  info(message: string): void
+  error(message: string): void
+}
+
+/**
+ * 准备 fixture 的 middleware。
+ *
+ * 与 Vite 解耦，因此契约核对可以用 node 原生 http 直接挂载它（`prep/contract.test.ts`），
+ * 不必为了跑断言启动整个开发服务器；插件只是把它接到开发进程的 middleware 栈上。
+ */
+export function createPrepMiddleware(
+  log: PrepFixtureLog,
+): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
+  return (req, res, next) => {
+    const url = req.url ?? ''
+    if (!url.startsWith(PREP_ROOT)) return next()
+    if (!isLoopback(req)) return fail(res, 'FORBIDDEN')
+    void handle(req, res, url).catch((e: unknown) => {
+      // 不把根因吞成一个 400：原始错误（含栈）先进开发日志，再按客户端错误回应。
+      log.error(
+        `[i0-prep] 处理 ${url} 抛出未捕获错误：${e instanceof Error ? (e.stack ?? e.message) : String(e)}`,
+      )
+      if (!res.headersSent) fail(res, 'INVALID_REQUEST')
+    })
+  }
+}
+
 /** 准备 fixture 插件：只在开发进程注册，构建与预览不加载。 */
 export function i0PrepFixture(): Plugin {
   return {
     name: 'xunjie-i0-prep-fixture',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const url = req.url ?? ''
-        if (!url.startsWith(PREP_ROOT)) return next()
-        if (!isLoopback(req)) return fail(res, 'FORBIDDEN')
-        void handle(req, res, url).catch(() => fail(res, 'INVALID_REQUEST'))
-      })
+      server.middlewares.use(createPrepMiddleware(server.config.logger))
       server.config.logger.info(
         `[i0-prep] fixture 就绪 · scenario=${SCENARIO_ID} · epoch=${preparationEpoch} · 端点 ${PREP_ROOT}/context 与 ${PREP_ROOT}/api/*（仅 loopback，不进构建产物）`,
       )

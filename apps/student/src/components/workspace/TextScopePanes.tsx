@@ -2,7 +2,7 @@ import { Icon, IconText } from '../../icons'
 import type { ReactNode } from 'react'
 import { describeFailure } from '../../workspace/http'
 import type { MaterialRead, WorkspaceInit } from '../../workspace/init'
-import { PREP_ENTRY_NOTE } from '../../workspace/prepEntry'
+import { PREP_ENTRY_COURSE, PREP_ENTRY_NOTE } from '../../workspace/prepEntry'
 
 /**
  * I0-A 准备场景在既有中心容器与阅读位置里的内容块。
@@ -110,9 +110,12 @@ export function TextScopeRunCluster({ init }: { init: WorkspaceInit | null }) {
 /* ---------- 左侧胶囊「任务信息」 ---------- */
 
 export function PrepTaskInfo({ init, onReload }: { init: WorkspaceInit | null; onReload: () => void }) {
+  // 标题取自活动响应的 projectTitle；还没读到（载入中 / 不可用）时只显示导航用的准备入口名，
+  // 不预先写死活动内容。
+  const title = init?.kind === 'ready' ? init.activity.content.content.projectTitle : PREP_ENTRY_COURSE
   return (
     <div className="ws-taskinfo ts-taskinfo">
-      <h2>TextScope 文本统计工具</h2>
+      <h2>{title}</h2>
       <p className="ts-synth-flag">
         <Icon name="shield-check" size={14} tone="neutral" />
         {PREP_ENTRY_NOTE}
@@ -130,7 +133,7 @@ export function PrepTaskInfo({ init, onReload }: { init: WorkspaceInit | null; o
 
 function ReadyTaskInfo({ init }: { init: ReadyInit }) {
   const { session, assignment, activity, materials, prepContext } = init
-  const c = activity.content.content
+  const brief = activity.content.content
   return (
     <>
       <Section title="身份与会话（合成）">
@@ -166,20 +169,20 @@ function ReadyTaskInfo({ init }: { init: ReadyInit }) {
       </Section>
 
       <Section title="活动要求（student 视角）">
-        <Fact label="项目" value={c.projectTitle} />
-        <Block label="问题" text={c.problem} />
-        <Block label="交付物" text={c.artifact} />
-        <Block label="面向学生" text={c.audience} />
-        <Block label="已有基础" text={c.studentBackground} />
-        <Block label="时间约束" text={c.timeConstraints} />
-        <Fact label="可选路线" value={c.routes.join(' / ') || '(空)'} />
+        <Fact label="项目" value={brief.projectTitle} />
+        <Block label="问题" text={brief.problem} />
+        <Block label="交付物" text={brief.artifact} />
+        <Block label="面向学生" text={brief.audience} />
+        <Block label="已有基础" text={brief.studentBackground} />
+        <Block label="时间约束" text={brief.timeConstraints} />
+        <Fact label="可选路线" value={brief.routes.join(' / ') || '(空)'} />
         <Fact label="帮助策略" value={`${activity.helpPolicy.versionId} · helpAllowed=${String(activity.helpPolicy.helpAllowed)} · 不给整份实现=${String(activity.helpPolicy.wholeSolutionAllowed === false)}`} />
         <Fact label="运行时 profile" value={activity.runtimeProfileVersionId} />
-        <List title="能力目标（三条并列能力线）" items={c.goals.map((g) => `${g.title} · ${domainLabel(g.domain)}${g.core ? ' · 核心' : ''}`)} />
-        <List title="任务" items={c.tasks.map((t) => t.title)} />
-        <List title="里程碑" items={c.milestones.map((m) => m.title)} />
-        <List title="可观察表现" items={c.observations.map((o) => o.description)} />
-        <List title="评价标准" items={c.rubricCriteria.map((r) => r.description)} />
+        <List title="能力目标（三条并列能力线）" items={brief.goals.map((g) => `${g.title} · ${domainLabel(g.domain)}${g.core ? ' · 核心' : ''}`)} />
+        <List title="任务" items={brief.tasks.map((t) => t.title)} />
+        <List title="里程碑" items={brief.milestones.map((m) => m.title)} />
+        <List title="可观察表现" items={brief.observations.map((o) => o.description)} />
+        <List title="评价标准" items={brief.rubricCriteria.map((r) => r.description)} />
       </Section>
 
       <Section title={`材料（${materials.length} 条，按活动投影顺序）`}>

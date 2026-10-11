@@ -17,10 +17,6 @@ export const PREP_BUILD: boolean = import.meta.env.DEV && import.meta.env.MODE =
 
 export const workspaceMode: WorkspaceMode = PREP_BUILD ? 'preparation' : 'real'
 
-export function isPreparation(mode: WorkspaceMode = workspaceMode): boolean {
-  return mode === 'preparation'
-}
-
 /** 窄 HTTP 客户端的 base URL：准备走开发专用 fixture，真实走同源 `/api`。 */
 export function apiBase(mode: WorkspaceMode): string {
   if (import.meta.env.DEV && mode === 'preparation') return '/__i0prep/api'
@@ -34,9 +30,4 @@ export function apiBase(mode: WorkspaceMode): string {
  */
 export function prepContextUrl(mode: WorkspaceMode): string | null {
   return import.meta.env.DEV && mode === 'preparation' ? '/__i0prep/context' : null
-}
-
-/** 界面上统一使用的模式标识文案。 */
-export function modeLabel(mode: WorkspaceMode): string {
-  return mode === 'preparation' ? '准备场景（合成）' : '真实模式'
 }

@@ -98,7 +98,7 @@ cd apps/student
 npm ci              # 按本目录 lockfile 安装
 npm run dev:prep    # http://127.0.0.1:5601  准备模式（可交互，带开发 fixture）
 npm run dev         # http://127.0.0.1:5180  真实模式（同源 /api）
-npm test            # Vitest 规则测试
+npm test            # Vitest：导入来源的规则测试 + 准备 fixture 契约核对
 npm run typecheck   # 浏览器侧 + Node 侧（prep / e2e / vite.config）
 npm run build       # 产物构建，不含准备 fixture 端点与合成材料
 npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实模式检查

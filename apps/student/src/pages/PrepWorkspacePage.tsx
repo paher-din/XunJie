@@ -7,7 +7,7 @@ import { PrepTaskInfo, TextScopeBodyPane, TextScopeRunCluster } from '../compone
 import { workspaceMode } from '../workspace/mode'
 import { PREP_ENTRY_LABEL, PREP_TASK_ID } from '../workspace/prepEntry'
 import { signOut } from '../workspace/session'
-import { useWorkspaceInit } from '../workspace/useWorkspaceInit'
+import { useWorkspaceInit, type InitStatus } from '../workspace/useWorkspaceInit'
 
 /**
  * I0-A 准备场景的 C / TextScope 工作区。
@@ -116,7 +116,7 @@ function PrepBadge({
   signingOut,
   onSignOut,
 }: {
-  status: 'loading' | 'ready' | 'unavailable'
+  status: InitStatus
   loadEpoch: number
   signingOut: boolean
   onSignOut: () => void
@@ -135,7 +135,7 @@ function PrepBadge({
   )
 }
 
-function statusText(status: 'loading' | 'ready' | 'unavailable'): string {
+function statusText(status: InitStatus): string {
   if (status === 'loading') return '读取中'
   if (status === 'ready') return '就绪'
   return '不可用'

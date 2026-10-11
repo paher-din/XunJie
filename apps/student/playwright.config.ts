@@ -31,14 +31,15 @@ export default defineConfig({
     {
       command: 'npm run dev:prep',
       url: PREP_URL,
-      // 本地已有 dev:prep 在跑时复用它；fixture authority 是进程级共享状态，复用不影响断言
-      reuseExistingServer: true,
+      // 本机常已有一个 dev:prep 在跑（端口 strictPort，再起会直接失败），所以本地复用；
+      // CI 一律新起进程——fixture authority 是进程级状态，复用陈旧进程会让断言失去意义。
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
       command: 'npm run dev -- --port 5602 --strictPort',
       url: REAL_URL,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
   ],

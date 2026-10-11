@@ -33,10 +33,20 @@ test.describe('真实模式', () => {
       headers: { Accept: 'application/json' },
     })
     const body = await res.text()
-    // 既不是合法会话信封，也不曾回退成 fixture 或 Mock 成功
+    // 断言「拿不到可用会话」，不用「状态码 >= 400 或不是信封」这类恒真条件：
+    // 无论开发服务器落回 SPA HTML（200）还是真实后端回 401 信封，都不得出现可用的会话字段，
+    // 也不得出现准备 fixture 的合成身份或端点。
     expect(body).not.toContain('csrfToken')
+    expect(body).not.toContain('"userId"')
     expect(body).not.toContain('prep-student-01')
-    expect(res.status() >= 400 || !body.includes('"requestId"')).toBe(true)
+    expect(body).not.toContain('__i0prep')
+    expect(body).not.toContain('i0-prep-textscope-c')
+    if (res.status() === 200) {
+      // 200 只可能是 Vite 落回的 SPA HTML，不能是 JSON 会话信封
+      expect(res.headers()['content-type'] ?? '').not.toContain('application/json')
+    } else {
+      expect(res.status()).toBeGreaterThanOrEqual(400)
+    }
   })
 
   test('原数字逻辑演示在真实模式下同样保留', async ({ page }) => {

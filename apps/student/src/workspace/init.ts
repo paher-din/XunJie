@@ -23,7 +23,14 @@ import type {
   SessionView,
 } from './contracts'
 import { ContextGuard, type WorkspaceContext } from './context'
-import { apiGet, apiPost, setCsrfToken, type RequestFailure, WorkspaceRequestError } from './http'
+import {
+  apiGet,
+  apiPost,
+  setCsrfToken,
+  type RequestFailure,
+  type RequestOptions,
+  WorkspaceRequestError,
+} from './http'
 import { prepContextUrl, type WorkspaceMode } from './mode'
 
 export type InitStage = 'context' | 'session' | 'discovery' | 'assignment' | 'activity' | 'resource'
@@ -65,6 +72,34 @@ function unavailable(stage: InitStage, reason: string, e?: unknown): WorkspaceIn
   return { kind: 'unavailable', stage, reason: e === undefined ? reason : `${reason}：${messageOf(e)}`, failure: e === undefined ? null : failureOf(e) }
 }
 
+type GuardedRead<T> =
+  | { kind: 'stale' }
+  | { kind: 'failed'; error: unknown }
+  | { kind: 'read'; data: T }
+
+/**
+ * 一次带上下文守卫的 GET。
+ *
+ * 读取序号在 await 之前领取，返回之后先核对是否仍可接纳：较早发出、迟到返回的读取判为
+ * `stale`，调用方必须丢弃，不得覆盖已接受的权威状态（§3）。失败的读取不推进已接受序号——
+ * 它没有数据可写，接纳它只会让同键的后续读取被误判。
+ */
+async function guardedGet<T>(
+  guard: ContextGuard,
+  opts: RequestOptions,
+  key: string,
+  path: string,
+): Promise<GuardedRead<T>> {
+  const seq = guard.nextReadSeq(key)
+  let data: T
+  try {
+    data = await apiGet<T>(path, opts)
+  } catch (e) {
+    return guard.stale ? { kind: 'stale' } : { kind: 'failed', error: e }
+  }
+  return guard.acceptRead(key, seq) ? { kind: 'read', data } : { kind: 'stale' }
+}
+
 /**
  * 按当前守卫执行一次完整的初始化读取。
  *
@@ -72,50 +107,49 @@ function unavailable(stage: InitStage, reason: string, e?: unknown): WorkspaceIn
  */
 export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceInit> {
   const mode: WorkspaceMode = guard.context.mode
-  const opts = { mode }
+  const opts: RequestOptions = { mode }
 
   /* 0. 准备模式先取 bootstrap 元信息：合成账号与获准对象引用。真实模式没有这个入口。 */
   let prepContext: PrepContextView | null = null
   if (mode === 'preparation') {
     const url = prepContextUrl(mode)
     if (!url) return unavailable('context', '准备模式没有 bootstrap 端点')
-    const seq = guard.nextReadSeq('prep-context')
-    try {
-      prepContext = await apiGet<PrepContextView>('', { ...opts, absolutePath: url })
-    } catch (e) {
-      return guard.stale ? { kind: 'stale' } : unavailable('context', '准备 bootstrap 元信息不可用', e)
-    }
-    if (!guard.acceptRead('prep-context', seq)) return { kind: 'stale' }
+    const read = await guardedGet<PrepContextView>(guard, { ...opts, absolutePath: url }, 'prep-context', '')
+    if (read.kind === 'stale') return { kind: 'stale' }
+    if (read.kind === 'failed') return unavailable('context', '准备 bootstrap 元信息不可用', read.error)
+    prepContext = read.data
     if (!prepContext?.refs?.assignmentId || !prepContext.syntheticAccount?.loginName) {
       return unavailable('context', '准备 bootstrap 未给出获准的合成 Assignment 引用或合成账号')
     }
   }
 
   /* 1. 会话：身份只来自 Session，不从昵称或本地设置构造。 */
-  const sessionSeq = guard.nextReadSeq('session')
-  let session: SessionView
-  try {
-    if (mode === 'preparation') {
-      // 准备身份由 fixture 生成：用合成账号建立开发会话（U-07：不自建登录页面）
-      const account = prepContext!.syntheticAccount
+  if (mode === 'preparation') {
+    // 准备身份由 fixture 生成：用合成账号建立开发会话（U-07：不自建登录页面）
+    const account = prepContext!.syntheticAccount
+    try {
       await apiPost<SessionCreatedView>(
         '/sessions',
         { loginName: account.loginName, password: account.password },
         opts,
       )
+    } catch (e) {
+      if (guard.stale) return { kind: 'stale' }
+      return unavailable('session', '准备 fixture 未建立合成会话', e)
     }
-    session = await apiGet<SessionView>('/session', opts)
-  } catch (e) {
-    if (guard.stale) return { kind: 'stale' }
+  }
+  const sessionRead = await guardedGet<SessionView>(guard, opts, 'session', '/session')
+  if (sessionRead.kind === 'stale') return { kind: 'stale' }
+  if (sessionRead.kind === 'failed') {
     return unavailable(
       'session',
       mode === 'real'
         ? '真实模式取不到当前会话（正常业务宿主与同源 HTTPS 入口属交接项 H-01）'
         : '准备 fixture 未建立合成会话',
-      e,
+      sessionRead.error,
     )
   }
-  if (!guard.acceptRead('session', sessionSeq)) return { kind: 'stale' }
+  const session = sessionRead.data
   if (typeof session?.userId !== 'string' || !Array.isArray(session.courses)) {
     return unavailable('session', '会话响应缺少 userId / courses，无法确定身份归属')
   }
@@ -133,16 +167,15 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
   const assignmentId = prepContext!.refs.assignmentId
 
   /* 3. 分配：核对归属到当前 Session。 */
-  const assignmentKey = `assignment:${assignmentId}`
-  const asSeq = guard.nextReadSeq(assignmentKey)
-  let assignment: AssignmentView
-  try {
-    assignment = await apiGet<AssignmentView>(`/assignments/${encodeURIComponent(assignmentId)}`, opts)
-  } catch (e) {
-    if (guard.stale) return { kind: 'stale' }
-    return unavailable('assignment', '读取分配失败', e)
-  }
-  if (!guard.acceptRead(assignmentKey, asSeq)) return { kind: 'stale' }
+  const assignmentRead = await guardedGet<AssignmentView>(
+    guard,
+    opts,
+    `assignment:${assignmentId}`,
+    `/assignments/${encodeURIComponent(assignmentId)}`,
+  )
+  if (assignmentRead.kind === 'stale') return { kind: 'stale' }
+  if (assignmentRead.kind === 'failed') return unavailable('assignment', '读取分配失败', assignmentRead.error)
+  const assignment = assignmentRead.data
   if (assignment.studentId !== session.userId) {
     return unavailable(
       'assignment',
@@ -152,19 +185,15 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
 
   /* 4. 固定活动版本（student 视角）：核对版本 ID、视角与课程归属。 */
   const activityVersionId = assignment.activityVersionId
-  const activityKey = `activity:${activityVersionId}`
-  const avSeq = guard.nextReadSeq(activityKey)
-  let activity: ActivityView
-  try {
-    activity = await apiGet<ActivityView>(
-      `/activities/${encodeURIComponent(activityVersionId)}?audience=student`,
-      opts,
-    )
-  } catch (e) {
-    if (guard.stale) return { kind: 'stale' }
-    return unavailable('activity', '读取活动版本失败', e)
-  }
-  if (!guard.acceptRead(activityKey, avSeq)) return { kind: 'stale' }
+  const activityRead = await guardedGet<ActivityView>(
+    guard,
+    opts,
+    `activity:${activityVersionId}`,
+    `/activities/${encodeURIComponent(activityVersionId)}?audience=student`,
+  )
+  if (activityRead.kind === 'stale') return { kind: 'stale' }
+  if (activityRead.kind === 'failed') return unavailable('activity', '读取活动版本失败', activityRead.error)
+  const activity = activityRead.data
   if (activity.activityVersionId !== activityVersionId) {
     return unavailable(
       'activity',
@@ -191,42 +220,44 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
       continue
     }
     const resourceVersionId = m.resourceVersionId
-    const resourceKey = `resource:${resourceVersionId}`
-    const seq = guard.nextReadSeq(resourceKey)
-    try {
-      const view = await apiGet<ResourceStudentView>(`/resources/${encodeURIComponent(resourceVersionId)}`, opts)
-      if (!guard.acceptRead(resourceKey, seq)) return { kind: 'stale' }
-      if (view.resourceVersionId !== resourceVersionId || view.status !== 'available') {
-        materials.push({
-          index,
-          projectedStatus: m.status,
-          state: {
-            kind: 'failed',
-            resourceVersionId,
-            failure: {
-              kind: 'protocol',
-              status: 200,
-              message: `资源归属或状态不符（resourceVersionId=${view.resourceVersionId ?? '(缺)'}，status=${view.status ?? '(缺)'}）`,
-            },
-          },
-        })
-        continue
-      }
-      materials.push({ index, projectedStatus: m.status, state: { kind: 'loaded', view } })
-    } catch (e) {
-      if (guard.stale) return { kind: 'stale' }
+    const read = await guardedGet<ResourceStudentView>(
+      guard,
+      opts,
+      `resource:${resourceVersionId}`,
+      `/resources/${encodeURIComponent(resourceVersionId)}`,
+    )
+    if (read.kind === 'stale') return { kind: 'stale' }
+    if (read.kind === 'failed') {
       // 单条材料读取失败不推翻整个初始化：如实标失败，其余材料继续
-      guard.acceptRead(resourceKey, seq)
       materials.push({
         index,
         projectedStatus: m.status,
         state: {
           kind: 'failed',
           resourceVersionId,
-          failure: failureOf(e) ?? { kind: 'transport', message: messageOf(e) },
+          failure: failureOf(read.error) ?? { kind: 'transport', message: messageOf(read.error) },
         },
       })
+      continue
     }
+    const view = read.data
+    if (view.resourceVersionId !== resourceVersionId || view.status !== 'available') {
+      materials.push({
+        index,
+        projectedStatus: m.status,
+        state: {
+          kind: 'failed',
+          resourceVersionId,
+          failure: {
+            kind: 'protocol',
+            status: 200,
+            message: `资源归属或状态不符（resourceVersionId=${view.resourceVersionId ?? '(缺)'}，status=${view.status ?? '(缺)'}）`,
+          },
+        },
+      })
+      continue
+    }
+    materials.push({ index, projectedStatus: m.status, state: { kind: 'loaded', view } })
   }
 
   const context: WorkspaceContext = {

@@ -9,7 +9,8 @@ XunJie 主仓库的学生端前端工程。首次内容由设计仓库 `XunJie_D
 
 ## 运行
 
-需要 Node 24（本机：`export PATH="/opt/homebrew/Cellar/node@24/24.18.0/bin:$PATH"`）。
+需要 Node 24（与 `apps/teaching` 已批准的工具环境同一大版本）。本机默认 Node 更高时，
+自行把 Node 24 的可执行目录放到 `PATH` 前面——机器专有路径不写进仓库文件。
 本工程有独立的 `package.json` 与 `package-lock.json`，与 `apps/teaching` 的后端互不依赖，
 不需要设计仓库的本地 checkout。
 
@@ -18,7 +19,7 @@ cd apps/student
 npm ci               # 按本目录的 lockfile 安装
 npm run dev:prep     # http://127.0.0.1:5601  准备模式（可交互，带开发 fixture）
 npm run dev          # http://127.0.0.1:5180  真实模式（同源 /api）
-npm test             # Vitest：排序 / 逾期 / 继续任务选择等已确认规则
+npm test             # Vitest：已确认的领域规则 + 准备 fixture 契约核对
 npm run typecheck    # tsc：src（浏览器侧）+ prep / e2e / vite.config（Node 侧）
 npm run build        # 类型检查 + 产物构建（不含准备 fixture）
 npm run test:e2e     # Playwright：真实 Vite 页面上的准备模式与真实模式检查
@@ -93,11 +94,11 @@ public/       品牌 IP 与字体资产（导入来源）
 
 | 命令 | 范围 | 说明 |
 | --- | --- | --- |
-| `npm test` | Vitest（Node 环境） | 导入来源自带的领域规则、主题、IP 动作与回合状态机测试 |
+| `npm test` | Vitest（Node 环境） | 导入来源自带的领域规则、主题、IP 动作与回合状态机测试；`prep/contract.test.ts` 用 node 原生 http 挂载 fixture middleware，核对信封 / 错误码 / CSRF / 材料三态与零泄露 |
 | `npm run test:e2e` | Playwright（Chromium） | 启动 `dev:prep` 与 `dev`，在真实页面上断言可见正文、状态与实际请求 |
 
-`test:e2e` 会自动拉起两个 dev server（`reuseExistingServer: true`，已在跑则复用）。
-首次使用需安装浏览器：`npx playwright install chromium`。
+`test:e2e` 会自动拉起两个 dev server（`reuseExistingServer: !process.env.CI`：本地已在跑则复用，
+CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装浏览器：`npx playwright install chromium`。
 
 e2e 不拦截网络伪造成功响应，也不在测试内另建一套假业务：准备模式的响应来自开发进程的
 fixture authority，真实模式的断言是「如实没有可用初始化」。因此 e2e 通过只说明本批准备范围，
