@@ -513,7 +513,6 @@ test("a timed out second provider call makes aggregate usage unknown", async () 
 test("DeepSeek adapter fixes approved configuration and performs no implicit call", async () => {
   const invocations: DeepSeekInvocation[] = [];
   const provider = createDeepSeekProvider({
-    countTokens: () => 128,
     invoke: async (request) => {
       invocations.push(request);
       return { body: validHelpBody(), usage };
@@ -529,36 +528,44 @@ test("DeepSeek adapter fixes approved configuration and performs no implicit cal
       maxRetries: invocations[0]?.maxRetries,
       maxOutputTokens: invocations[0]?.maxOutputTokens,
       thinking: invocations[0]?.providerOptions.deepseek.thinking.type,
+      schemaKind: invocations[0]?.schemaKind,
+      repair: invocations[0]?.repair,
     },
-    { model: "deepseek-flash", maxRetries: 0, maxOutputTokens: 4096, thinking: "disabled" },
+    {
+      model: "deepseek-flash",
+      maxRetries: 0,
+      maxOutputTokens: 4096,
+      thinking: "disabled",
+      schemaKind: "student_help",
+      repair: false,
+    },
   );
+  assert.match(invocations[0]?.system ?? "", /Return exactly one JSON object/);
+  assert.match(invocations[0]?.prompt ?? "", /untrusted data/);
 });
 
 test("DeepSeek input budget rejects over 16K before injected SDK invocation", async () => {
   let invoked = false;
   const provider = createDeepSeekProvider({
-    countTokens: () => 16_001,
     invoke: async () => {
       invoked = true;
       return { body: validHelpBody() };
     },
   });
-  const result = await generateStudentHelp(helpRequest(), { provider });
+  const result = await generateStudentHelp(helpRequest({ question: "x".repeat(20_000) }), { provider });
   assert.equal(result.outcome, "needs_input");
   assert.equal(invoked, false);
 });
 
-test("a later DeepSeek input rejection preserves only completed call usage", async () => {
-  let counts = 0;
+test("the repair instruction is part of the shared input limit", async () => {
   let invocations = 0;
   const provider = createDeepSeekProvider({
-    countTokens: () => (++counts === 1 ? 128 : 16_001),
     invoke: async () => {
       invocations += 1;
-      return { body: {}, usage, needsAnotherCall: true };
+      return { body: {}, usage };
     },
   });
-  const result = await generateStudentHelp(helpRequest(), { provider });
+  const result = await generateStudentHelp(helpRequest({ question: "x".repeat(13_320) }), { provider });
   assert.equal(result.outcome, "needs_input");
   assert.equal(result.calls, 1);
   assert.equal(invocations, 1);
