@@ -135,3 +135,11 @@ B 的候选/blueprint 使用文字数组，A 的能力/任务/观察/量规是�
 - 基线同步：本文及 README 是当前任务交付；MVP_SPEC §10、TECH/TEAM 对应 DTO/状态 **待授权维护者汇总**，不擅自修改。
 
 PR 仅引用 #25，不使用 Closes #25，不合并/部署或删除源分支。最终 PR 链接和推送核验将在交付记录中补齐。
+
+## 8. PR 交付
+
+- 分支 `codex/a3-teacher-design-agent` 已普通推送，交付 [PR #28](https://github.com/paher-din/XunJie/pull/28)（Open，base=main）；已附加到 A 工作项。未合并、未关闭 Issue #25、未删除源分支。
+- 创建 PR 时远端 head 为 `afbe070c5ba6e7ca660ef2382094c32dc545781a`，代码验证对应 `b2a9f8e`；其后仅补本文交付状态，不改变已验证源码。
+- README、本文和四份原字节输出/证据 JSON 同任务提交；四份已暂存证据的 SHA-256 与长度均与清单一致。
+- 原 Windows CRLF 字节通过目录 .gitattributes 的 -text 保留；日志路径仍启用 blank-at-eol、blank-at-eof、space-before-tab，另识别 cr-at-eol。初次原字节日志以默认行尾规则检查时将 CR 误报为末尾空白，调整为正确识别保留的 CRLF 后全差异检查通过；没有改写原日志，也没有关闭源码/文档空白检查。
+- 主工作副本原有 README/product/planning/A_WORK_PLAN 未提交改动保持原状；独立副本旧 typecheck-a12-current.log 未暂存或提交。
