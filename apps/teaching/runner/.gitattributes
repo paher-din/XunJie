@@ -1,1 +1,3 @@
 * text eol=lf
+acceptance.handoff1.* -text whitespace=cr-at-eol
+acceptance.a2-integration1.* -text whitespace=cr-at-eol
