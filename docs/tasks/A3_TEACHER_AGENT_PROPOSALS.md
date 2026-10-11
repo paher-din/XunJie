@@ -143,3 +143,15 @@ PR 仅引用 #25，不使用 Closes #25，不合并/部署或删除源分支。�
 - README、本文和四份原字节输出/证据 JSON 同任务提交；四份已暂存证据的 SHA-256 与长度均与清单一致。
 - 原 Windows CRLF 字节通过目录 .gitattributes 的 -text 保留；日志路径仍启用 blank-at-eol、blank-at-eof、space-before-tab，另识别 cr-at-eol。初次原字节日志以默认行尾规则检查时将 CR 误报为末尾空白，调整为正确识别保留的 CRLF 后全差异检查通过；没有改写原日志，也没有关闭源码/文档空白检查。
 - 主工作副本原有 README/product/planning/A_WORK_PLAN 未提交改动保持原状；独立副本旧 typecheck-a12-current.log 未暂存或提交。
+
+## 9. PR #28 外部审查修复（2026-10-11，实施中）
+
+读取审查固定点 `9d470940` 的两条 P2 意见（[实际用量](https://github.com/paher-din/XunJie/pull/28#discussion_r4241172685)、[输入预检](https://github.com/paher-din/XunJie/pull/28#discussion_r4241172687)），核对 PRD §4.1、MVP M-01/M-02、TECH §6.2/10.3 与 B 的 InputLimitError 语义。远端 main 新增的五个提交均为其他任务/协调文档，不引入其未合并实现，本修复保持原代码基线。
+
+沿用已批准 §2–3 的 HTTP 登录、公共 worker、保留的真实合成库接缝及两张表，不扩展 schema 或 B/C 契约。先用超时实际 usage 反例验证，再修正原调用 accounting：以原 Job/generation/lease/调用槽核验身份，终态/停止/截止不阻止成本记录，但仍拒绝迟到正文。仅 InputLimitError 明确证明未发送时，在同事务安全撤销当前末尾调用预留；其他异常继续 unknown 保守占用。补停止后迟到、重启、已有已发送调用及 generation 恢复边界，保留持久三次上限。完整验证后更新本文及 README，进度待授权维护者汇总。
+
+### 9.1 实现与中间验证
+
+teacher-agent.ts 的原 provider 包装器已修正：实际 usage 只核验原 generation/lease/调用槽，不依据正文有效性跳过 accounting；progress 同事务保存原 Job（保留 status/stop/result）与 usage。InputLimitError 仅撤销同 lease、当前末槽、unknown 的未发送预留；之前实际/未知调用保持，其他异常继续占用。B/C 源码、接口、schema 和凭据无改动。
+
+两条外部反例分别先失败（超时实际 usage 被记成 unknown；零 outbound 的 attemptCount=1）后通过。新增停止后迟到 usage、第二次预检仅退末槽、旧恢复代际拒绝三项也通过；A3 全部 **25通过、0失败、0跳过**，typecheck通过。完整回归及两轴复核正在执行，最终结果将在 §9.2 补齐；原 §6 统计保留历史事实。

@@ -6,7 +6,7 @@ import type { createAccessApp } from '../access/app.ts';
 import type { Transaction } from '../db/transaction.ts';
 import type { Job } from '../../contracts/records/index.ts';
 import type { ModelUsage, TrustedModelContext, TutoringOutcome, TeacherGenerationBody } from '../../contracts/tutoring/index.ts';
-import type { ModelProvider } from '../tutoring/providers.ts';
+import { InputLimitError, type ModelProvider } from '../tutoring/providers.ts';
 import { generateTeacherProposal } from '../tutoring/core.ts';
 import { claimJob, recordModelCall, finishJob, cancelJob, recoverJob } from '../records/jobs.ts';
 import { canonical } from '../records/commands.ts';
@@ -286,10 +286,21 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         const next = recordModelCall(work.job,job.leaseToken!,job.recoveryGeneration,timeString(now()));
         progress(tx,work,next,() => saveUsages(tx,jobId,[...work.usages,{status:'unknown'}])); return next.attemptCount-1;
       });
-      const response = await config.provider.generate(request);
+      let response;
+      try { response = await config.provider.generate(request); }
+      catch (error) {
+        if (error instanceof InputLimitError) persisted(tx => {
+          const work = original(tx,jobId);
+          // Only this provider's proven unsent, last reservation may be released.
+          if (work.job.leaseToken !== job.leaseToken || work.job.attemptCount !== callIndex+1
+            || work.usages[callIndex]?.status !== 'unknown') throw new ApiError('STATE_CONFLICT');
+          progress(tx,work,{...work.job,attemptCount:callIndex},() => saveUsages(tx,jobId,work.usages.slice(0,callIndex)));
+        });
+        throw error;
+      }
       if (response.usage) persisted(tx => {
         const work = original(tx,jobId);
-        if (work.job.leaseToken !== job.leaseToken || work.job.status !== 'running' || work.job.stopRequested || now() >= Date.parse(work.job.deadline)) return;
+        if (work.job.leaseToken !== job.leaseToken || callIndex >= work.usages.length) throw new ApiError('STATE_CONFLICT');
         const usages = [...work.usages]; usages[callIndex] = response.usage!;
         progress(tx,work,work.job,() => saveUsages(tx,jobId,usages));
       });

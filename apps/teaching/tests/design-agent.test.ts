@@ -7,14 +7,14 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { createTeacherDesignDatabase, openSyntheticDatabase } from '../server/db/transaction.ts';
 import { createPasswordRecord } from '../server/access/password.ts';
 import { createDesignApp } from '../server/design/application.ts';
-import { SyntheticProvider, type SyntheticStep } from '../server/tutoring/providers.ts';
+import { SyntheticProvider, createDeepSeekProvider, type ModelProvider, type SyntheticStep } from '../server/tutoring/providers.ts';
 
 const origin = 'https://synthetic.example';
 const candidate = { kind: 'candidates', candidates: [{ problem: 'Count words', audience: 'CS beginners',
   artifact: 'A tested C program', routes: ['scan', 'tokenize'], goals: ['Compare two routes'],
   constraints: ['One week'], unresolved: ['Teacher must confirm three competency domains'], resourceRefs: [] }] };
 const versions = { modelConfig: 'synthetic-v1', prompt: 'teacher-v1', schema: 'teacher-v1', policy: 'teacher-v1' };
-async function fixture(steps: SyntheticStep[] = [{ body: candidate }]) {
+async function fixture(steps: SyntheticStep[] = [{ body: candidate }],suppliedProvider?:ModelProvider) {
   let db = createTeacherDesignDatabase(), time = Date.now(), generation = 'generation',clockStep = 0;
   const password = randomBytes(32).toString('hex'), secret = randomBytes(48).toString('hex');
   const record = await createPasswordRecord(password);
@@ -27,7 +27,7 @@ async function fixture(steps: SyntheticStep[] = [{ body: candidate }]) {
       ['course','colleague','teacher'],['foreign-course','foreign','teacher']])
       tx.run('INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,?,?,1)',course!,user!,role!);
   });
-  const provider = new SyntheticProvider(steps);
+  const provider = suppliedProvider ?? new SyntheticProvider(steps);
   let budget = true;
   let failResultWrite = false;
   const database = () => ({...db,withTransaction<T>(work:(tx:Transaction)=>T):T {
@@ -406,4 +406,83 @@ test('proposal result hash identifies the exact stored B body bytes and altered 
     assert.throws(() => f.service.teacherAgent!.receiveResult(altered),{code:'IDEMPOTENCY_CONFLICT'});
     await f.reopen(); assert.equal((await getJob(f,headers,jobId)).resultHash,job.resultHash);
   } finally { await f.close(); }
+});
+
+test('actual usage returned after the deadline survives reopening without accepting the late body',async () => {
+  let f!:Fixture;
+  f = await fixture([() => { f.advance(45001); return {body:candidate,usage:{status:'actual',inputTokens:10,outputTokens:4}}; }]);
+  try {
+    const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
+    const completed = await f.service.teacherAgent!.processJob(jobId);
+    assert.equal(completed?.delivery.outcome.outcome,'timed_out');
+    const job = await getJob(f,headers,jobId);
+    assert.equal(job.status,'timed_out'); assert.equal(job.attemptCount,1); assert.equal(job.proposalId,undefined);
+    assert.deepEqual(job.usages,[{status:'actual',inputTokens:10,outputTokens:4}]);
+    await f.reopen(); assert.deepEqual((await getJob(f,headers,jobId)).usages,job.usages);
+  } finally { await f.close(); }
+});
+
+test('input preflight rejection records zero outbound calls and no billable reservation',async () => {
+  let outbound = 0;
+  const provider = createDeepSeekProvider({countTokens:() => 16001,invoke:async () => { outbound++; return {body:candidate}; }});
+  const f = await fixture([],provider);
+  try {
+    const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
+    const completed = await f.service.teacherAgent!.processJob(jobId);
+    assert.equal(completed?.delivery.outcome.outcome,'needs_input');
+    assert.equal(completed?.delivery.outcome.calls,0); assert.equal(outbound,0);
+    const job = await getJob(f,headers,jobId);
+    assert.equal(job.status,'failed'); assert.equal(job.failure,'INPUT_LIMIT_EXCEEDED');
+    assert.equal(job.attemptCount,0); assert.deepEqual(job.usages,[]); assert.equal(job.proposalId,undefined);
+    await f.reopen(); assert.equal((await getJob(f,headers,jobId)).attemptCount,0);
+    assert.deepEqual((await getJob(f,headers,jobId)).usages,[]);
+    assert.equal((await command(f,headers,'/api/courses/course/blueprints',{mode:'manual',content:{problem:'Manual after preflight'}})).statusCode,200);
+  } finally { await f.close(); }
+});
+
+test('late actual usage updates a cancelled job without reviving its result',async () => {
+  let entered!:()=>void,release!:()=>void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const response = new Promise<void>(resolve => { release = resolve; });
+  const f = await fixture([async () => { entered(); await response; return {body:candidate,usage:{status:'actual',inputTokens:10,outputTokens:4}}; }]);
+  try {
+    const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
+    const pending = f.service.teacherAgent!.processJob(jobId); await started;
+    assert.equal((await command(f,headers,'/api/jobs/'+jobId+'/cancel',{},'cancel-before-usage')).statusCode,200);
+    const completed = await pending; assert.equal(completed?.delivery.outcome.outcome,'cancelled');
+    assert.deepEqual((await getJob(f,headers,jobId)).usages,[{status:'unknown'}]);
+    release(); await new Promise<void>(resolve => setImmediate(resolve));
+    const job = await getJob(f,headers,jobId);
+    assert.equal(job.status,'cancelled'); assert.equal(job.stopRequested,true); assert.equal(job.attemptCount,1);
+    assert.deepEqual(job.usages,[{status:'actual',inputTokens:10,outputTokens:4}]); assert.equal(job.proposalId,undefined);
+    await f.reopen(); assert.deepEqual((await getJob(f,headers,jobId)).usages,job.usages);
+    assert.equal(await f.service.teacherAgent!.processJob(jobId),undefined);
+  } finally { release(); await f.close(); }
+});
+test('a second call rejected by preflight preserves the first sent call and its actual usage',async () => {
+  let counts = 0,outbound = 0;
+  const provider = createDeepSeekProvider({countTokens:() => ++counts === 1 ? 16000 : 16001,
+    invoke:async () => { outbound++; return {body:candidate,needsAnotherCall:true,usage:{status:'actual',inputTokens:10,outputTokens:4}}; }});
+  const f = await fixture([],provider);
+  try {
+    const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
+    const completed = await f.service.teacherAgent!.processJob(jobId);
+    assert.equal(completed?.delivery.outcome.outcome,'needs_input'); assert.equal(completed?.delivery.outcome.calls,1);
+    assert.equal(outbound,1); const job = await getJob(f,headers,jobId);
+    assert.equal(job.attemptCount,1); assert.deepEqual(job.usages,[{status:'actual',inputTokens:10,outputTokens:4}]);
+    assert.equal(job.proposalId,undefined); await f.reopen();
+    assert.equal((await getJob(f,headers,jobId)).attemptCount,1);
+  } finally { await f.close(); }
+});
+test('a response from an old recovery generation cannot update accounting or deliver a proposal',async () => {
+  let entered!:()=>void,release!:()=>void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const response = new Promise<void>(resolve => { release = resolve; });
+  const f = await fixture([async () => { entered(); await response; return {body:candidate,usage:{status:'actual',inputTokens:10,outputTokens:4}}; }]);
+  try {
+    const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
+    const pending = f.service.teacherAgent!.processJob(jobId); await started;
+    f.restore(); release(); await assert.rejects(pending,{code:'RECOVERY_REQUIRED'});
+    assert.equal((await f.service.app.inject({url:'/api/jobs/'+jobId,headers})).statusCode,409);
+  } finally { release(); await f.close(); }
 });
