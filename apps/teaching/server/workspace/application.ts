@@ -7,7 +7,9 @@ import type { Transaction } from '../db/transaction.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
 import { queryRuntime } from '../design/readiness.ts';
-import { canonical } from '../records/commands.ts';
+import { canonical, requestHash, resolveCommandReceipt } from '../records/commands.ts';
+import { assertResourceUse } from '../access/resource.ts';
+import type { ActorContext } from '../../contracts/access/index.ts';
 import { createAttempt } from './snapshots.ts';
 import { loadWorkspace, persistWorkspace, readProcessRecords } from './storage.ts';
 import { generationInput, params, key, syncInput, snapshotInput, controlInput, runInput, syncBatch, domainControl, domainRun } from './inputs.ts';
@@ -26,24 +28,27 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
     return expected;
   };
   const attemptId = (request: FastifyRequest) => parseRequest(params, request.params).id;
-  function locate(tx: Transaction, id: string) {
+  function locate(tx: Transaction, id: string, studentCommand = false) {
     const attempt = readAttempt(tx, id);
-    const available = assignmentAvailability(tx, attempt.courseId, attempt.assignmentId, attempt.studentId);
+    const active = studentCommand && assignmentAvailability(tx, attempt.courseId, attempt.assignmentId, attempt.studentId).active;
     return { kind: 'student_work' as const, courseId: attempt.courseId, studentId: attempt.studentId,
-      stage: attempt.status, assignmentActive: available.active };
+      stage: attempt.status, assignmentActive: active };
+  }
+  function commandIdentity(request: FastifyRequest, actor: ActorContext, id: string, command: string, generation: string) {
+    return { actorId: actor.userId, command, target: request.url.split('?',1)[0]!,
+      scope: { courseId: actor.courseId, studentId: actor.userId, attemptId: id },
+      idempotencyKey: parseRequest(key, request.headers['idempotency-key']), recoveryGeneration: generation,
+      ...(command === 'workspace.sync' ? { sync: { clientId: parseRequest(syncInput, request.body).clientId, clientSeq: parseRequest(syncInput, request.body).clientSeq } } : {}) };
   }
   function read<T>(request: FastifyRequest, id: string, work: (tx: Transaction, state: WorkspaceState) => T) {
     return access.withAuthorizedResource(request, tx => locate(tx, id), 'read', tx => work(tx, loadWorkspace(tx, id)));
   }
   function execute(request: FastifyRequest, target: string | ((tx: Transaction) => string), command: string, expectedGeneration: string,
     apply: (tx: Transaction, state: WorkspaceState, context: CommandContext) => ReturnType<typeof syncCommand>) {
-    const idempotencyKey = parseRequest(key, request.headers['idempotency-key']);
     let id: string;
-    const data = access.withAuthorizedResource(request, tx => { id = typeof target === 'string' ? target : target(tx); return locate(tx, id); }, 'write', (tx, actor, scope) => {
+    const data = access.withAuthorizedResource(request, tx => { id = typeof target === 'string' ? target : target(tx); return locate(tx, id, true); }, 'write', (tx, actor, scope) => {
       const generation = currentGeneration(expectedGeneration);
-      const identity = { actorId: actor.userId, command, target: request.url.split('?',1)[0]!,
-        scope: { courseId: actor.courseId, studentId: actor.userId, attemptId: id }, idempotencyKey, recoveryGeneration: generation,
-        ...(command === 'workspace.sync' ? { sync: { clientId: parseRequest(syncInput, request.body).clientId, clientSeq: parseRequest(syncInput, request.body).clientSeq } } : {}) };
+      const identity = commandIdentity(request,actor,id,command,generation);
       const before = loadWorkspace(tx, id, identity);
       const context: CommandContext = { identity, generation, now: new Date(now()).toISOString(),
         commandId: randomUUID(), receiptId: randomUUID(), eventId: randomUUID(), assignmentActive: scope.kind === 'student_work' && scope.assignmentActive, authorize: () => true };
@@ -113,8 +118,15 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
   });
   app.post('/api/attempts/:id/runs', async request => {
     const id = attemptId(request), input = parseRequest(runInput, request.body);
-    // Authentication and generation precede network work; rechecked in the accepting transaction.
-    read(request, id, () => currentGeneration(input.recoveryGeneration));
+    // A committed ACK needs current read authority, never a new runtime dependency or session write.
+    const previous = access.withAuthorizedCourse(request,tx => readAttempt(tx,id).courseId,'student',(tx,actor) => {
+      assertResourceUse(actor,locate(tx,id),'read');
+      const generation = currentGeneration(input.recoveryGeneration), identity = commandIdentity(request,actor,id,'run.create',generation);
+      const state = loadWorkspace(tx,id,identity);
+      const receipt = resolveCommandReceipt(state.records,identity,requestHash(identity.target,domainRun(input)),generation);
+      currentGeneration(generation); return receipt;
+    },false);
+    if (previous) return { requestId: request.id,data: { ...previous,replayed: true } };
     const readiness = await queryRuntime(options.runner);
     return execute(request, id, 'run.create', input.recoveryGeneration, (tx, state, context) => {
       const activity = readActivity(tx, state.attempt.courseId, state.attempt.activityVersionId);
@@ -156,7 +168,7 @@ export async function createWorkspaceApp(options: DesignAppOptions) {
       return read(request, id, (tx, state) => readResultFiles(state,runId,readActivity(tx,state.attempt.courseId,state.attempt.activityVersionId).runtimeProfile.approvedResultFiles));
     },
     readTutorContext(request: FastifyRequest, id: string) {
-      return access.withAuthorizedResource(request, tx => locate(tx, id), 'student_help', (tx, actor) => {
+      return access.withAuthorizedResource(request, tx => locate(tx, id, true), 'student_help', (tx, actor) => {
         const state = loadWorkspace(tx, id), activity = readActivity(tx, actor.courseId, state.attempt.activityVersionId);
         const limitedCheck = activity.checkRule.limitedHelp && state.checks.some(check => check.state === 'active');
         return { attempt: state.attempt, activity: activityView(tx, actor, activity.activityVersionId, 'tutor'),

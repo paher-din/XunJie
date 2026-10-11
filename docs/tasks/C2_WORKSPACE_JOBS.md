@@ -2,6 +2,8 @@
 
 日期：2026-10-10（Asia/Shanghai）。主责：C；Issue：[C2 #14](https://github.com/paher-din/XunJie/issues/14)。状态：完整 C2 服务端已实现并通过真实 A1/A2/SQLite/C1 作品链验收，最终记录见 §11；工作分支 `codex/c2-complete` 已通过 [PR #20](https://github.com/paher-din/XunJie/pull/20) 提交审查，Open/非 Draft，尚未合并，Issue 保持 Open。浏览器、真人、业务负载与旧备份恢复分别后置，不计作完整产品/G1 通过。
 
+2026-10-11 最新修复：PR #20 四项 P2 已实现反例修复，C2 新组合 32/32（含原两项真实节点）通过；全工程复跑 177 通过/0 失败/5 跳过，首轮两项 A2 认证失败与仍存在的 WSL 墙钟回拨独立记录。当前修复事实/范围见 §13，等待审阅者复验，不自签独立批准；§11 原数字保留其历史时点。
+
 最新推进状态：A1/A2 已经由 PR #18/#19 合入 main，本任务从 `ac96cf6083b8f7b8403896e2a505b53e94c20d58` 的独立干净工作树完成完整 C2。旧章节保留各自时点；准确存储/最小 A 接缝的批准前提案与负责人批准记录见 §10/10.4，当前交付以 §11 为准。
 
 ## 1. 依据、批准与写入范围
@@ -275,3 +277,48 @@ PR 以 main 为基线，引用 #14，范围为 C 所有 workspace/records、两�
 发布实际结果：普通推送 `codex/c2-complete` 成功，初始远端/PR head=`01af933b8b956a9fe3fd9c1461c8ebbe84591b8c` 与本地一致；[PR #20](https://github.com/paher-din/XunJie/pull/20) 已创建并附到当前任务，base=main/ac96cf6，标题为“[C2] 完成持久工作区与 A1/A2/C1 真实作品链”，Open/非 Draft。PR 完整正文、25 文件增量及角色/数据/后置边界已回读一致，不含受保护基线、A/access/design/package/lock/tsconfig、CI/凭据或他人 G1 改动；没有合并/关闭 Issue。
 
 本条和 README 同步发布状态，收尾仅增加文档记录；源码清单/26 项节点组合/统一回归证据不变，后续仅核静态链接、空白与最终远端 head。此前 §11 的“未推送”保留本地交付时点，以本节实际发布状态为准。
+
+## 13. 2026-10-11 PR #20 审阅修复
+
+负责人要求处理 PR #20 审阅评论，沿用原 PR 的普通推送授权；不合并、关闭 Issue 或改变产品/共享契约。开始工作树干净，远端与本地 HEAD=`6603d05dd2ac2ea43bcf7babf5777b967c5d75f4`，base=ac96cf6。审阅为共用账号 paher-din 的 COMMENTED 技术意见，明确需修改，不作为独立批准；Copilot 配额提示不是代码审查结论。
+
+已重读 AGENTS/README、PRD PRD-03/07/09/10 与数据边界、MVP M-07/M-09/M-10/状态/NFR-04、TECH §4.4/5.1/7.4/8.3、本文 §10～12 及 C0 恢复 ADR。本次对应原子 ACK、当前访问者授权/历史引用、原回执和已确认执行事实，不新增状态/表/政策。可写仅 C 的 application/worker/commands、必要反例/夹具、本文/README 和 PR 正文；A/db/access/design、C1 源码、package/lock/tsconfig、受保护基线保持只读。合成验证复用已批准二十二表新库、即时凭据与既有 Node/依赖；真实节点复验仅复用普通 application 入口，不改密钥/代际或维护配置。
+
+| 审阅意见 | 修复计划与可复现边界 |
+| --- | --- |
+| [P2 运行预检先提交 Session 活跃时间](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093976) | 使用 A 已有 withAuthorizedCourse 的无活跃更新模式，在同 tx 核当前会话/成员/资源/代际；Session 更新只留最终接纳事务。真实 runs 尾段 SQL 失败后 Session/Job/Receipt/Event 全回滚 |
+| [P2 原运行回执等待 readiness](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093981) | 合法输入及当前授权/代际后先短事务查原摘要/回执；已成功立即返回原 ACK，不调用 readiness。只有新命令事务外查节点，最终接纳再查当前授权/代际/并发回执；补挂起 readiness、异摘要和并发重放反例 |
+| [P2 学生撤籍影响教师历史读取](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093984) | 读定位仅核持久作品归属，当前访问者仍经 A1 课程/资源授权；学生命令与辅导再用 A2 分配/在籍守卫。学生撤籍后教师保留历史读取，撤销教师本人课程权限或跨课程仍拒绝 |
+| [P2 无结果引用的节点 failed 不结束检查](https://github.com/paher-din/XunJie/pull/20#discussion_r4240093986) | 在原身份/当前租约/代际下，仅接纳 failed 且没有保槽/units/pending/结果引用的权威终止事实，存 Job.failed 与缺失原因、结束检查；RunRecord/课程判定保持缺失。真实 RunControl 合成准备失败及非法/未终止事实反例，重复停止不复活 |
+
+先写并运行四个实际 HTTP/SQLite 反例，在旧代码观察各自失败，再修根因并复跑。四项审阅已提供明确触发路径，因此 diagnosis 不另做宽泛假设或大范围 instrumentation；原子性/网络等待/读定位/终态接纳分别隔离。所有新增验证事实、失败和时钟观测另存，不覆盖 §11 的历史输出；完整类型/build/C2 与统一回归按原脚本/时限执行，不通过修改时钟、放宽阈值或关闭检查迁就环境。
+
+### 13.1 根因修复与回归
+
+- application 的 runs 预检使用 A 已有同步 withAuthorizedCourse(..., false) 和 assertResourceUse：同 tx 重查当前 Session/学生成员/本人作品/代际/摘要，只读回原 Receipt；成功回执/异摘要冲突优先返回，不等待 readiness。新请求才查节点，最终 execute 仍重查当前授权/可用性/代际/并发回执并同 tx 提交，尾段失败不留下 Session 活跃更新。
+- 读定位不再检查作品所属学生的当前在籍/分配；当前访问者的 Session/课程/作品权限仍经 A1。学生写入/辅导用原 A2 assignmentAvailability，教师历史 workspace/snapshot/run/job/files 读取可在学生撤籍后继续；学生本人撤籍、教师本人撤权和跨课程仍拒绝。
+- commands/worker 新增 confirmNodeFailure：核原身份、Job 与节点代际、当前有效租约，仅接纳 failed/reserved=false/units=[]/pending=[] 且无结果引用/hash 的结束事实；保存 Job.failed/缺失原因、结束检查，RunRecord/CheckResult 保持缺失。非终止、旧 worker/代际、错身份或带未回取结果的事实拒绝，重复停止终态仍 failed。
+
+修复没有修改 A 的任何文件、数据库 schema 或 C1 源码；原二十二表工厂、Job 状态/错误/政策、权限和后置产品验收不变。新 [review.test.ts](../../apps/teaching/server/workspace/review.test.ts) 五项真实 HTTP/SQLite 用例覆盖四条意见及 readiness 期间的并发接纳，失败用例接真实 RunControl 仅制造合成准备故障；[runs.test.ts](../../apps/teaching/server/workspace/runs.test.ts) 补无结果失败的租约/代际/原身份/单元/缺失边界。
+
+| 验证 | 实际结果与原始证据 |
+| --- | --- |
+| 旧代码反例 | 5 项：1 通过/4 失败，准确对应 Session 提前推进、重放进入 readiness、教师历史 403、failed 被留为 unknown；[原输出](../../apps/teaching/server/workspace/c2.review20-before.txt) |
+| 根因初验 | 5/5 通过；[原输出](../../apps/teaching/server/workspace/c2.review20-after.txt)。初次类型检查发现新 RunControl 夹具恢复授权 callback 应返回 Promise<boolean>，改为 async 后完整 strict 检查通过，没有忽略类型错误 |
+| 完整类型/build | Node 24.21.0 / TypeScript 7.0.2 strict typecheck 通过，[类型输出](../../apps/teaching/server/workspace/c2.review20-checks.txt)；两轮原 npm test 的 pretest build 均通过，package/lock/tsconfig 未改 |
+| C2 离线专项 | 32 项：30 通过/0 失败/2 个节点专项跳过；[原输出](../../apps/teaching/server/workspace/c2.review20-focused.txt)；不把 RunControl 合成故障计为 SSH/容器验证 |
+| C2 实际节点组合 | **32/32 通过、0 失败/跳过**；[原输出](../../apps/teaching/server/workspace/c2.review20-acceptance.txt)。30 项确定性规则/真实授权/SQL/进程/受控故障 + 原两项真实 C1 SSH/容器，仍核旧快照/原 ID/可信课程判断/取消/只读 Report |
+| 全工程首轮 | 原 npm test 182 项：175 通过/2 失败/0 cancelled/5 跳过；两失败为已有 A2 认证 401，[原输出](../../apps/teaching/server/workspace/c2.review20-regression.txt)。没有因其失败扩大到 A 的 Session 实现 |
+| 全工程只读监测复跑 | 同源码、原脚本/并发/时限：**182 项：177 通过/0 失败/0 cancelled/5 跳过**；[原输出](../../apps/teaching/server/workspace/c2.review20-regression-retry.txt) |
+| 时钟观测 | 只读比较墙钟与 monotonic，1429 个样本、最小墙钟增量 -18701 ms、最大偏差 18752 ms，反复跳回/跳前，与审阅环境观测一致；[原输出](../../apps/teaching/server/workspace/c2.review20-clock.txt)。首轮认证失败与该环境问题相容，但没有将成功复跑解释为时钟异常已修复 |
+| 源码一致性 | 当前工作分支与原生 Linux 验证副本 **109 文件字节一致**；[清单](../../apps/teaching/server/workspace/c2.review20-source.evidence.json)，sourceHash=`5e46991fd94bf27267d1220165bd772a1880de4942034a7f2cadba7b18c52597`，精确 lock hash 与 §11 相同。历史清单/输出未覆盖 |
+
+### 13.2 边界与交付
+
+仅恢复已获准且已准备的专用 VM 正常启动以复验普通 application SSH；没有新建密钥、改变节点代际、recover、安装/部署源码或修改时钟/维护配置。采用无窗口的本机 WSL 保活及 Linux 原生缓存避免执行环境在工具调用之间退出；没有将其当作生产运维或恢复验证。验证库/缓存不由本任务清理；首个 /tmp 副本在 WSL 自动退出后不可用，原始测试输出已保存，后续缓存置于持久的 /var/tmp。
+
+四项修复有旧失败/新通过的反例，待原审阅者复验，不自签批准或自行关闭审查线程。当前 WSL 墙钟异常仍未修复；真实账号/HTTPS、UI/真人、10 会话负载、业务备份/旧备份恢复仍未执行。基线进度与环境观测待授权维护者汇总，不写入 product/planning/reference/AGENTS。新原始 stdout 的数据空白沿用本目录日志属性声明，代码/测试/文档检查与业务阈值仍按原规则。
+
+修复及同步记录将通过原 codex/c2-complete 普通提交/推送到 PR #20，保留旧提交和证据；发布后再核远端 head、正文、修复文件范围，未授权合并或关闭 #14。
+
+收尾静态检查：30 份文档/367 处内部引用/27 条正式变更接口，errors=[]；检查器 16/16 通过，代码/文档空白通过。32 项实际组合原始输出 SHA-256=`9779021d6a1002ba38fa57f800efa0281a78d66ab95965ae1b4e0b0343d7676d`。本文/README 已同步根因、结果和时钟限制，受保护文档/他人 G1/依赖及配置没有修复增量。

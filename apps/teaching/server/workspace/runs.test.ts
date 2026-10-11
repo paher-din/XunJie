@@ -4,7 +4,7 @@ import {setTimeout} from 'node:timers/promises';
 import {test} from 'node:test';
 import {sha256} from '../../runner/snapshot.ts';
 import {createAttempt,freezeSnapshot} from './snapshots.ts';
-import {runCommand,claimRun,claimRunReconciliation,reconcileRun,markRunUnknown,cancelRunCommand,confirmNodeCancellation,readWorkspace,readConfirmedSnapshot,readRunDiagnostics,controlCommand} from './commands.ts';
+import {runCommand,claimRun,claimRunReconciliation,reconcileRun,markRunUnknown,cancelRunCommand,confirmNodeCancellation,confirmNodeFailure,readWorkspace,readConfirmedSnapshot,readRunDiagnostics,controlCommand} from './commands.ts';
 import type {CommandContext,WorkspaceState,RuntimeConfiguration} from './commands.ts';
 import {readRuntime,sshRunner,dispatchOriginalRun,readOriginalResult,stopOriginalRun,validateRunResult} from '../records/runner.ts';
 import type {RunnerTransport} from '../records/runner.ts';
@@ -72,6 +72,22 @@ test('check cancellation keeps stage until the authenticated node confirms no pe
   const ended=confirmNodeCancellation(cancelled,f.ids.jobId,{...fact(cancelled.runs[0]!.submission),state:'cancelled',reserved:false,stopRequested:true,pending:[]},'gen');
   assert.equal(ended.records.jobs[0]!.status,'cancelled');assert.equal(ended.checks[0]!.state,'ended');
   assert.equal(ended.runs[0]!.result,undefined);
+});
+test('confirmed failure requires original identity, current lease/generation and no units or result',()=>{
+  const f=fixture(),planned=runCommand(f.state,f.context,{...f.request,mode:'course_check'},f.runtime,f.ids,at(100000)).state;
+  const active=claimRun(planned,f.ids.jobId,'lease',at(90000),'gen',now);
+  const failed={identity:active.runs[0]!.submission.identity,state:'failed',reserved:false,stopRequested:false,units:[],pending:[]};
+  const confirmed=confirmNodeFailure(active,f.ids.jobId,failed,'lease','gen',at(1000));
+  assert.equal(confirmed.records.jobs[0]!.status,'failed');assert.equal(confirmed.checks[0]!.state,'ended');
+  assert.equal(confirmed.runs[0]!.result,undefined);assert.equal(confirmed.records.jobs[0]!.resultRef,undefined);
+  for(const partial of [{...failed,reserved:true},{...failed,units:['xunjie-unit']},{...failed,pending:['xunjie-unit']},
+    {...failed,state:'running'},{...failed,resultRef:'unread-result'},{...failed,resultHash:sha256('missing')}])
+    assert.throws(()=>confirmNodeFailure(active,f.ids.jobId,partial,'lease','gen',at(1000)),/not confirmed/);
+  assert.throws(()=>confirmNodeFailure(active,f.ids.jobId,failed,'old-worker','gen',at(1000)),/lease/);
+  assert.throws(()=>confirmNodeFailure(active,f.ids.jobId,failed,'lease','gen',at(90000)),/lease/);
+  assert.throws(()=>confirmNodeFailure(active,f.ids.jobId,failed,'lease','old-generation',at(1000)),/generation/);
+  assert.throws(()=>confirmNodeFailure(active,f.ids.jobId,{...failed,identity:{...failed.identity,recoveryGeneration:'old'}},'lease','gen',at(1000)),/generation/);
+  assert.throws(()=>confirmNodeFailure(active,f.ids.jobId,{...failed,identity:{...failed.identity,authorizedScope:{...failed.identity.authorizedScope,courseId:'foreign'}}},'lease','gen',at(1000)),/mismatch/);
 });
 test('confirmed original facts reconcile expired/unknown leases and never become current-code claims',()=>{
   const f=fixture();const planned=runCommand(f.state,f.context,f.request,f.runtime,f.ids,at(100000)).state;

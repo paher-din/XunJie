@@ -6,7 +6,7 @@ import { finishCommand, requestHash } from '../records/commands.ts';
 import { cancelJob } from '../records/jobs.ts';
 import { dispatchOriginalRun, queryOriginalRun, stopOriginalRun, readOriginalResult } from '../records/runner.ts';
 import { loadWorkspace, persistWorkspace } from './storage.ts';
-import { claimRun, claimRunReconciliation, markRunUnknown, reconcileRun, confirmNodeCancellation } from './commands.ts';
+import { claimRun, claimRunReconciliation, markRunUnknown, reconcileRun, confirmNodeCancellation, confirmNodeFailure } from './commands.ts';
 import type { WorkspaceState } from './commands.ts';
 import type { Job } from '../../contracts/records/index.ts';
 import { ApiError, domainError } from '../app/errors.ts';
@@ -89,6 +89,8 @@ export function createWorkspaceWorker(options: DesignAppOptions) {
         if (result) next = reconcileRun(next, jobId, result, lease, generation, timestamp());
         else if (fact?.state === 'cancelled' && fact.stopRequested && !fact.reserved && !fact.pending.length)
           next = confirmNodeCancellation(next, jobId, fact, generation);
+        else if (fact?.state === 'failed' && !fact.resultRef)
+          next = confirmNodeFailure(next,jobId,fact,lease,generation,timestamp());
         else if (!fact || fact.state === 'outcome_unknown') next = markRunUnknown(next, jobId, generation);
         else if (!next.records.jobs.find(item => item.jobId === jobId)!.stopRequested && fact.state === 'running') next = { ...next, records: { ...next.records,
           jobs: next.records.jobs.map(item => item.jobId === jobId ? { ...item, status: 'running' as const } : item) } };

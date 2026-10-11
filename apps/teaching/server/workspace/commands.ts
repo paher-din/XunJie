@@ -193,6 +193,18 @@ export function confirmNodeCancellation(state:WorkspaceState,jobId:string,nodeFa
   return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?confirmed:row)},
     checks:state.checks.map(check=>check.jobId===jobId?{...check,state:'ended' as const}:check)};
 }
+export function confirmNodeFailure(state:WorkspaceState,jobId:string,nodeFact:unknown,leaseToken:string,generation:string,now:string) {
+  const {job,run}=ownRun(state,jobId);
+  if(job.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Original run generation required');
+  if(!Number.isFinite(Date.parse(now))||!leaseToken||job.leaseToken!==leaseToken||!job.leaseUntil||Date.parse(job.leaseUntil)<=Date.parse(now))throw new RunnerError('STATE_CONFLICT','Current failure reconciliation lease required');
+  const fact=validateRunFact(run.submission,nodeFact);
+  if(fact&&fact.identity.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Node failure generation reconciliation required');
+  if(!fact||fact.state!=='failed'||fact.reserved||fact.units.length||fact.pending.length
+    ||fact.resultRef!==undefined||fact.resultHash!==undefined||run.resultHash||!['running','outcome_unknown','cancelling','failed'].includes(job.status))throw new RunnerError('STATE_CONFLICT','Full node failure without a result is not confirmed');
+  return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?
+    {...row,status:'failed' as const,failure:'original_runner_failed_without_result'}:row)},
+    checks:state.checks.map(check=>check.jobId===jobId?{...check,state:'ended' as const}:check)};
+}
 
 export function readConfirmedSnapshot(state:WorkspaceState,snapshotId:string,authorize:()=>boolean) {
   if(authorize()!==true)throw new RunnerError('FORBIDDEN','Snapshot read denied');
