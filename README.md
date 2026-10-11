@@ -2,7 +2,7 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
-当前仓库保存团队开发所需的产品规格、工作规范和必要参考，C1、C2 首批领域核心及 A1/A2 已批准服务端范围已合入 main；C2 完整服务端在 codex/c2-complete 完成实现与真实链验收，已通过 [PR #20](https://github.com/paher-din/XunJie/pull/20) 提交审查，尚未合并。完整正式应用尚未完成。Web UI 由团队成员负责，后台与 Agent 按其实际交付对接。
+当前 A1/A2/C1/C2 服务端与 B1 合成核心已合入 main，C2 [PR #20](https://github.com/paher-din/XunJie/pull/20) 的四项原审查意见已修复并合并。负责人确认 [G1 #9](https://github.com/paher-din/XunJie/issues/9) 按服务端预交付阶段收口；完整产品 G1/正式应用仍未验收：UI/AC/NFR 由 [#22](https://github.com/paher-din/XunJie/issues/22) 承接，环境稳定性由 [#23](https://github.com/paher-din/XunJie/issues/23) 跟踪，B1 实际 SDK/模型仍在 [#11](https://github.com/paher-din/XunJie/issues/11)。Web UI 由团队成员负责，按其实际交付接入。
 
 ## 文档
 
@@ -17,9 +17,9 @@
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
 | [G0 TextScope 参考与活动适配](docs/tasks/G0_TEXTSCOPE_ACTIVITY_SPEC.md) | 外部候选供追溯，Web 学生空间的 Core/Report 活动提案另列；不照搬本地开发/六阶段/评分要求 |
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
-| [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 整体 G1 的任务依赖、进入门禁、交接与验收账目；模块实现仍由 A/B/C 负责 |
+| [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 服务端交付/合并/分层证据与 #9 行政收口；原完整 G1 条件在 #22、时钟问题在 #23 保留，产品基线未改；模块仍由 A/B/C 负责 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
-| [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 完整服务端工作区/不可变快照/基础作业、真实 A1/A2 同事务授权与二十二表新合成库、C1 原 ID 执行/检查/产物和恢复验收；当前工作分支/26 项实测与 UI/负载/真人后置边界见第 11 节 |
+| [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 完整服务端工作区/快照/基础作业、A1/A2 同事务与批准新二十二表合成库、C1 原 ID 运行/检查/产物；四项审查修复与作者32项含节点组合见第13节，最新合并/组合验证见G1记录 |
 | [C1/C2/A1/A2 合并记录](docs/tasks/A1_A2_PR_MERGE.md) | 四项 PR 固定提交、旧审查关闭、依赖顺序合并和 main 验证；完整 C2/G1 与浏览器/TLS 仍分别验收 |
 | [C0 工作区、记录与执行交付稿](docs/tasks/C0_WORKSPACE_RECORDS_RUNNER.md) | 独立任务文档：StudentIDE 参考差异、接口提案、资源/恢复约定和验证方案；待 A/B 会审 |
 | [工作空间规范](AGENTS.md) | 已确认决定、协作分工、工程纪律与操作红线 |
@@ -133,4 +133,8 @@ A2 当前联合类型检查/build 与统一回归通过：157 项中 151 通过�
 
 2026-10-10，按项目负责人明确授权，C1 #16 → C2 #17 → A1 #18 → A2 #19 已依次合并到 main，源分支/原历史保留。最终合并代码树与已验证 A2 候选完全一致；五条旧审查已复核关闭，实际验证与合并 SHA 见 [合并记录](docs/tasks/A1_A2_PR_MERGE.md)。此状态不替代完整 C2/G1、浏览器/TLS/真人验收。
 
-A2 PR #19 合并后发现慢节点会阻塞 checks/release 原回执恢复，已按既有权限/代际/幂等契约修复候选：短事务先核合法回执，只有新命令才在 SQL 事务外查询 readiness，最终事务再核竞争与授权。针对性 24 项中 23 通过、0 失败、1 真实节点跳过；完整回归 167 项中 161 通过、0 失败、6 跳过，typecheck/build 和文档检查通过；两轴独立审查未解决 0，修复通过 [PR #21](https://github.com/paher-din/XunJie/pull/21) 交付、尚未合入 main，最新状态见 [A2 §13](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#13-pr-19-合并后慢节点重放修复)。
+A2 PR #19 合并后的 checks/release 慢节点回执问题已由 [PR #21](https://github.com/paher-din/XunJie/pull/21) 修复并合入 e401aac，原两条意见已解决；原针对性23/24、Windows完整161/167（6原条件跳过）及边界保留，作者交付时点记录见 [A2 §13](docs/tasks/A2_TEACHER_DESIGN_VERSIONS.md#13-pr-19-合并后慢节点重放修复)。C2 #20 后续合入 2cfb61a，新组合同时保留 A2 回执优先和 C2 原 ACK/双键/原子保存。
+
+2026-10-11 总体核对：合并组合的 Node24.21.0/TypeScript7.0.2 typecheck/build、C2专项30通过/2节点项跳过、稳定 Windows A2/records/B1 59通过/1节点项跳过；作者 C1 48guest/10SSH、A2实际节点1/1、C2最终节点组合32/32的入库证据摘要核对一致，各自范围单列。Linux完整192项两轮仍有认证/限流/双进程失败且观测到约18.7秒墙钟跳变，未宣称全量通过或改变守卫，正式试点前在#23补验。B1当前为合成核心和注入式适配，实际invoker/token counter/模型与语义未完成，不用SDK导入/构造smoke冒充模型调用。
+
+当前 `npm start` 仍只启动健康入口；业务宿主需显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。
