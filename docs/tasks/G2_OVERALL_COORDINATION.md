@@ -190,3 +190,121 @@ PR #28 的 blueprint/allowedFields 提案存在语义歧义，采用仍严格限
 核对记录提交 `85bec2351c31f2268e4e1146ddae6e7d8fac2fa3` 的首次推送因 GitHub 443 连接失败（约 21 秒）未成功；API 确认远端仍为 6619e65 后，按相同单次网络参数普通重试成功，远端快进至 85bec23。失败保留，不伪称首次通过；未重复发布评审、改永久配置或强制推送。本段补充该真实网络结果，仍仅发布本文。
 
 本次不重复第 7 节业务测试，不将审查发布记为修复通过或产品验收。第 7 节原失败/跳过和真实模型/节点/UI/真人未执行继续保持；基线进度待授权维护者汇总。
+
+## 9. 2026-10-11 PR #28/#29 修复复审与 PR #32 首审
+
+项目负责人要求处理当前三项 PR，并明确授权两项范围：安装批准运行时后执行真实验证；发布 PR review 并写本文记录。**未授权合并任何 PR、关闭 Issue、改动受保护基线、凭据/CI、schema 或他人文件**，本节全部动作均在该范围内。
+
+### 9.1 主副本状态与工作树隔离
+
+开始时主副本 `D:/XunJie` 处于 `main`，落后 `origin/main` 5 个提交，且索引含 11 条未合并项（`UU` 6 条、`DU` 5 条），来自一次在 `main` 上失败应用的 `git stash apply`；`stash@{0}`（`On codex/c3-teaching-records: Qoder 检出分支临时保存`，13 改 + 2 未跟踪）仍完整。该状态与本次任务无关，**未重置、未清理、未 drop**，C3 在制品保持可恢复。
+
+本轮全部工作在独立工作树完成，未切换主副本分支、未应用其他成员未提交改动：
+
+| 工作树 | 固定提交 | 用途 |
+| --- | --- | --- |
+| `p3-pr28-rereview` | `21a1b09` | PR #28 复审 |
+| `p3-pr29-rereview` | `de794ba` | PR #29 复审 |
+| `p3-pr32-review` | `fdec49d` | PR #32 首审 |
+| `p3-combined-2829` | `21a1b09` + `de794ba` 试合并 | 精确两两预合并 |
+| `p3-combined` | `21a1b09` + `fdec49d` 试合并 | 含 B2 的组合预合并 |
+| `p3-review-publication` | `origin/main 0afd008` | 本文单文件发布 |
+
+三个 PR 与 `origin/main` 的 merge-base 均为 `c42f356`，全部使用三点 diff；GitHub 报的 PR #32 base 为 `0afd008`，两点 diff 会把 main 独有的 I0/G2 文档误显示为删除，已避开。
+
+### 9.2 审查点与两轴结论
+
+| 对象 | 上轮固定 head → 本次 head | Standards | Spec |
+| --- | --- | --- | --- |
+| [PR #28](https://github.com/paher-din/XunJie/pull/28) | `9d470940` → `21a1b093`（3 提交、7 文件） | 硬性违规 0，P3 判断项 4 | 上轮 A3-R01/A3-R02 两项 P2 **均已按原边界真实修复**；新增 1 项 P2 合并阻塞（见 §9.3） |
+| [PR #29](https://github.com/paher-din/XunJie/pull/29) | `6f32c38` → `de794ba3`（2 提交、3 文件） | 硬性违规 0，原 §10.3 P2 已解决，P3 判断项 3 | 上轮 B1-R01（两轴同根因）与 B1-R02 **均已按根因修复**；无新增缺陷 |
+| [PR #32](https://github.com/paher-din/XunJie/pull/32) | 首审，基点 `de794ba` → `fdec49d`（8 文件、+1767） | 硬性违规 0，P2 1 项、P3 判断项多项 | 声明已完成项基本真实实现且有测试；P2 2 项（跨 worker 调用上限接缝、资料侧注入反例缺失） |
+
+A3-R01 修复实测边界正确：`teacher-agent.ts` 的用量守卫由 `status!=='running' || stopRequested || now>=deadline → return` 改为只核 `leaseToken` 与调用槽，用当前已持久 Job 保存用量、不改终态；迟到正文仍由 `receiveResult` 的 lease/status/stopRequested 与 deadline 分支拒绝，结果未被复活。A3-R02 修复只在 `leaseToken` 一致、`attemptCount === callIndex+1`、`usages[callIndex].status === 'unknown'` 三者同时成立时释放末槽，`records/jobs.ts` 的 3 次持久上限未改，已发送调用保留预留。
+
+B1 三项修复实测：`deepseek-sdk.ts` 删除 `if (body === undefined) throw error;`，`NoObjectGeneratedError` 不再在读取 usage 前重抛；`parseInvalidStructuredBody` 解析失败返回原文、无 text 返回 `null`，无效 body 交核心走修复路径；至多一次修复由 `core.ts:160～163` 的 `repairUsed || call === MAX_CALLS` 保证；`toModelUsage` 拒绝 `undefined`、非安全整数与负数。
+
+PR #32 的三项 P2：`service.ts:25～34` 的 `executeAuthorizedStudentHelp` 未读取 `input.job.attemptCount`，`core.ts` 每次从 `usages=[]`、`call=1..MAX_CALLS` 重新起算，C3 换 worker 重试会重获完整 3 次配额，与 #26「单轮/一次修复/换 worker 共用最多 3 次」冲突，且该缺口不能靠延后给 C3 自动解决（接缝既不接受先前调用数也不逐次回报用量）；`application.ts:176` 抛裸 `Error` 绕过错误码契约（同函数其余路径为 `ApiError("FORBIDDEN"/"STATE_CONFLICT"/"RECOVERY_REQUIRED")`）；`context.ts:215` 把资料段落原文送入模型，但 10 项测试的注入文本全在学生 question 内，缺 #26 明确要求的「资料指令注入 / 资料内容不能扩权」反例。
+
+### 9.3 新增合并阻塞：PR #28 与 PR #29 组合破坏 main 的 typecheck
+
+PR #29 首个提交 `fdd0c12` 把 `createDeepSeekProvider` 从 `{ invoke, countTokens }` 收窄为 `{ invoke }` 并移除 `TokenCounter` 导出，输入上限改由内部 `estimateDeepSeekInputTokenUpperBound(invocation) > 16_000 → throw InputLimitError`（`providers.ts:86～89`）强制。PR #28 为证明 A3-R02 新增的两条反例仍按旧签名注入计数器（`tests/design-agent.test.ts:427`、`:464`）。
+
+`21a1b09 + de794ba` 独立预合并实测：自动合并 0 源码冲突，但
+
+- `npm run typecheck` **失败**：`tests/design-agent.test.ts(427,44)` 与 `(464,44)` 各报 `TS2353: 'countTokens' does not exist in type '{ invoke: DeepSeekInvoker; }'`
+- `node --test tests/design-agent.test.ts` 25 项中 **2 项失败**：`input preflight rejection…` 实得 `success`、期望 `needs_input`；`a second call rejected by preflight…` 实得 `unavailable`、期望 `needs_input`
+- `npm test` 217 项：207 通过、**3 失败**、7 跳过（第 3 项为既有基线失败）
+- `npm run build` 仍通过（`tsconfig.build.json` 不含 tests），破坏只在 typecheck 与测试暴露
+- `21a1b09 + fdec49d`（含 B2）组合同样 0 冲突、同两处 `TS2353`，`npm test` 227 项：217 通过、3 失败、7 跳过，文档检查 `errors=[]`
+
+根因是 `countTokens` 被忽略后 `InputLimitError` 不再抛出，**A3-R02 的修复在代码层正确，但其证据会随 #29 落地而失效**。组合树中 `countTokens` 的残留依赖只有上述两行测试，无生产源码依赖。两个 PR 各自在自己的 base 上均干净，谁都看不到对方，属排序问题而非任一方实现错误。
+
+**修正边界与顺序：** 该两行属 A 的测试文件，B 不应修改。A 需按新机制重写——构造保守上界确实超过 16000 的实际输入（`estimateDeepSeekInputTokenUpperBound` 已导出），或注入发送前抛 `InputLimitError` 的 provider 替身，使 `needs_input`/`outbound=0`/`attemptCount=0` 与「首次已发送则保留 actual」两侧继续可证。**先合 #29，#28 适配复验后再合**；反序会把同样的 typecheck 失败留在 main。#32 堆叠在 #29 上且作者已声明不可先合，顺序不变。
+
+### 9.4 运行时环境处置与工程发现
+
+本机 PATH 上的 Node 为 v24.15.0，不符 `apps/teaching/tools/check-runtime.mjs` 要求的 v24.21.0；仓库既有 `node_modules` 只安装了 `@typescript/typescript-linux-x64`（7.0.2），Windows 上 `tsc` 根本无法启动（`Unable to resolve @typescript/typescript-win32-x64`）。按负责人授权处置如下，**未修改或绕过 `check-runtime.mjs`，未改任何被跟踪文件**：
+
+- 官方 `node-v24.21.0-win-x64.zip` 下载后按 nodejs.org `SHASUMS256.txt` 校验 SHA-256 `158f7685…f75de9e541` 通过，解压到用户本地目录；未覆盖 `D:/nodejs`、未改永久 PATH 或系统配置。
+- npm registry 取 `@typescript/typescript-win32-x64@7.0.2`，registry sha1 `cf3b7b0d…47ec3c` 与 SRI sha512 `0BQ3HkAH…ETMC4g==` 双验通过，仅解压进各审查工作树的 `node_modules` 副本；`package.json`、`package-lock.json`、`tsconfig` 零改动。
+- `better-sqlite3` 自带 `win32-x64` 预编译，测试原生运行；`.bin` 符号链接在 Windows 无法用 `cp -r` 复制，改写 npm 风格 shim（junction 与 `mklink` 两条路径均失败并保留记录）。
+
+**工程发现（交 A1/A 与 [#23](https://github.com/paher-din/XunJie/issues/23)）：** 当前锁定的安装对 TypeScript 7 只落 Linux 原生包，任何 Windows 侧验证都跑不了 typecheck/build。这解释了历史证据里 Windows 与 Linux 结果不一致的部分来源，建议在环境稳定性任务中明确 Windows 验证所需的平台包策略，不由本次审查单方改动依赖。
+
+### 9.5 实际验证结果
+
+全部在 Node v24.21.0 / TypeScript 7.0.2 / win32 下本机真实执行：
+
+| 检查 | PR #28 `21a1b09` | PR #29 `de794ba` | PR #32 `fdec49d` |
+| --- | --- | --- | --- |
+| `npm run typecheck` / `npm run build` / `git diff --check` | 通过 / 通过 / 通过 | 通过 / 通过 / 通过 | 通过 / 通过 / 通过 |
+| 模块专项 | `tests/design-agent.test.ts` 25 通过、0 失败、0 跳过 | `server/tutoring/test/*.test.ts` 47 通过、0 失败 | `student-help.test.ts` 10/10；`server/tutoring/test/*.test.ts` 57/57 |
+| 覆盖率 | 未声明，未单独执行 | all files line 98.38%、branch 87.05%、functions 100.00% | application 90.60、commands 95.87、service 100.00 与任务稿一致；**context.ts 实测 line 97.80，任务稿写 96.95** |
+| `npm test` | 206 项：198 通过、1 失败、7 跳过 | 192 项：184 通过、1 失败、7 跳过 | 202 项：194 通过、1 失败、7 跳过 |
+| 文档检查 / 检查器自测 | `errors=[]`，32 份、27 路由；16/16 | `errors=[]`，31 份；16/16 | `errors=[]`，32 份；16/16 |
+
+三者的唯一失败均为同一既有基线问题：`server/workspace/review.test.ts:120` → `runner/control.ts:48` 抛 `Linux and trusted control context required`；`git diff c42f356 <head> -- server/workspace/review.test.ts runner/control.ts` 在三个 head 上均为空，确非本轮任一 PR 引入。未加 `.skip`、未放宽断言、未改阈值。
+
+作者声明数字逐项核对结果：PR #28 的 25/25 与 206/198/1/7 **完全一致**，两份 `.txt` 的 SHA-256 与字节数（2794 / 21908）与 `acceptance.a3-review.evidence.json` 相符；PR #29 任务稿的 47/47、98.38/87.05/100、192=184+1+7 **完全一致**，但 **PR 正文仍写 45/45 与 98.17/86.16，已过期**（P3，建议同步）；PR #32 任务稿的 10/10、57/57、202=194+1+7 一致，覆盖率仅 context.ts 一处差异（P3，建议核对来源）。供应商网络调用实测为 0：SDK 测试全部注入内存 fetch、`baseURL=offline.invalid`；未发现凭据或 token 字面量进入代码与文档。
+
+真实 provider 调用、D-02 账号/条款/数据/配额与凭据付费授权、Linux 复验、教师内容会审、30 次性能、人工教学语义（B4）、浏览器/TLS 与完整 G1/G2/MVP **均未执行**；合成结果与离线 transport 不替代这些验收。
+
+### 9.6 已发布评审与回读
+
+| PR | 评审 | 平台状态 | 固定 commit | 行内意见 |
+| --- | --- | --- | --- | --- |
+| #28 | [5483718569](https://github.com/paher-din/XunJie/pull/28#pullrequestreview-5483718569) | CHANGES_REQUESTED | `21a1b09378` | [design-agent.test.ts:427](https://github.com/paher-din/XunJie/pull/28#discussion_r4241983436)、[:464](https://github.com/paher-din/XunJie/pull/28#discussion_r4241983442) |
+| #29 | [5483718753](https://github.com/paher-din/XunJie/pull/29#pullrequestreview-5483718753) | APPROVED | `de794ba38e` | 无 |
+| #32 | [5483718927](https://github.com/paher-din/XunJie/pull/32#pullrequestreview-5483718927) | COMMENTED | `fdec49d86d` | [service.ts:30](https://github.com/paher-din/XunJie/pull/32#discussion_r4241983813)、[application.ts:176](https://github.com/paher-din/XunJie/pull/32#discussion_r4241983816)、[context.ts:215](https://github.com/paher-din/XunJie/pull/32#discussion_r4241983820) |
+
+提交前后各回读一次 head，三个 PR 的 head 均未变。发布身份 `paher-din`，#28 作者 `czr112`、#29/#32 作者 `scy404`，均为其他账号。用结构化 UTF-8 JSON 经 `gh api POST .../reviews --input` 提交，无重复请求、无额外评论、无成员消息。独立回读三份 review 的 body 长度、`commit_id`、`state` 与发布账号，以及经完整 PR comments 接口逐条核对 5 条行内意见的 `path`、`line`、`side=RIGHT`、`commit_id`，全部与准备稿一致。
+
+发布后平台状态：#28 OPEN / reviewDecision=CHANGES_REQUESTED，#29 OPEN / reviewDecision=APPROVED，#32 OPEN / Draft（COMMENTED 不设 decision）。**三个 PR 均未合并，#25/#26/#11/#27 均未关闭，未解决任何审查线程，未代作者修改代码。**
+
+#29 转 Approve 的依据是其自身三项原发现已按根因修复且全部声明数字本机复现一致；该批准**不构成合并授权**，合并顺序按 §9.3 执行，且需负责人另行授权。#28 保留 Request Changes 是因为存在 §9.3 的合并阻塞项，非上轮两项未修复。#32 为 Draft、上游 #29 未合并、#27 未交付，作者已声明不可合并，故只记录发现不请求变更也不批准。
+
+本次不将审查发布记为修复通过或产品验收。第 7 节的原失败/跳过与真实模型/节点/UI/真人未执行继续保持；MVP_SPEC §10 与 TEAM 的基线进度待授权维护者汇总，本文不直接修改受保护基线。
+
+### 9.7 发布后状态变化：PR #29 已合并，§9.3 阻塞项已生效
+
+§9.6 的「三个 PR 均未合并」描述的是发布时刻（14:45Z）。**发布约两分钟后，项目负责人于 2026-10-11T14:47:35Z 合并了 PR #29**，合并提交 `83e528ecd3d3de7a13e6addc57ba9111860b06f7`（parents `0afd008` + `de794ba`），合并人 `paher-din`，平台状态 MERGED / reviewDecision=APPROVED。这与 §9.3 建议的顺序一致；合并由负责人执行，本次审查未合并任何 PR。
+
+对合并后的真实 main 重新实测（同一批准运行时，独立工作树）：
+
+| 检查 | main `83e528e` 本体 | main `83e528e` + PR #28 head `21a1b09` 试合并 |
+| --- | --- | --- |
+| 工作树 | 0 个被跟踪文件修改 | 自动合并 0 源码冲突（README 自动保留两侧） |
+| `npm run typecheck` | 通过 | **失败**：`tests/design-agent.test.ts(427,44)` 与 `(464,44)` 各报 `TS2353: 'countTokens' does not exist in type '{ invoke: DeepSeekInvoker; }'` |
+| `npm run build` | 通过 | 通过（`tsconfig.build.json` 不含 tests） |
+| 模块专项 | B1 `server/tutoring/test/*.test.ts` 47/47 | A3 `tests/design-agent.test.ts` 25 项：23 通过、**2 失败**（两条预检反例实得 `success` / `unavailable`，期望 `needs_input`） |
+| `npm test` | 192 项：184 通过、1 失败、7 跳过 | 217 项：207 通过、**3 失败**、7 跳过 |
+| 文档检查 | `errors=[]`，32 份 | 试合并后已 `git merge --abort`，工作树回到 `83e528e` |
+
+两侧的唯一既有失败仍为 `server/workspace/review.test.ts:120` → `runner/control.ts:48` 的 Linux-only RunControl，与 `c42f356` 无差异。**结论：main 本体健康；§9.3 的阻塞项已不再是推演，PR #28 按当前 head 合入即会让 main 的 typecheck 失败并使 A3-R02 的两条反例失效，必须先由 A 适配那两行再合并。**
+
+测量口径说明：本节 typecheck 结果以打印的 `TS2353` 错误行为准；该脚本把输出经管道交给 `tail`，`$?` 捕获的是 `tail` 而非 `npm` 的退出码，故不引用其 `EXIT_TYPECHECK`。§9.3 中 `21a1b09 + de794ba` 预合并树为无管道运行，捕获到 `EXIT_TYPECHECK=1`，与错误行一致。
+
+PR #29 合并后，PR #32 的堆叠父已进入 main：三点对比 `origin/main...fdec49d` 现为 8 文件、+1767 行，即纯 B2 增量，B1 部分不再重复计入。GitHub 侧 base 仍显示 `0afd008`、`mergeable=UNKNOWN`（平台重算中），文件计数 14/+2458/-52 属重算前的旧值；本节结论以本地三点对比为准。#32 仍为 Draft、未合并，§9.2 的 3 项 P2 与 #27 依赖不变。
+
+本节不改变 §9.2～§9.6 的审查结论，只补充发布后的真实平台状态与对 main 的复验；#25/#26/#11/#27 均未关闭，未解决任何审查线程，未代作者修改代码。
