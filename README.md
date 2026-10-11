@@ -2,6 +2,8 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
+2026-10-11，项目负责人批准保留 C17/GCC、TextScope Core→Report 与现有 Web/应用服务/执行隔离架构，新增「数字逻辑与部件设计」的一条本地真实演示链。首条实验采用课程题目 PDF 已定义的 4 位 ALU 范围与 Nexys4 DDR Rev. C；课件用于讲解，未定义组合和 Cout 暂不判分。范围、材料、待评审契约和 DL-A/C/B/UI/E2E 任务见 [DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)，分支发布记录见其第 6 节。当前交付为文档增量，数字逻辑应用、真实模型/浏览器 Demo 未实现或验收，启动命令待真实验证后填写。原正式 MVP/AC/NFR/真人条件保留。
+
 2026-10-11，项目负责人确认进入 P2（G2 服务端教学支持）。[P2 总协调记录](docs/tasks/G2_OVERALL_COORDINATION.md)负责阶段依赖、跨模块契约核对、集成审查与验收汇总；A3/B2/C3 仍由既定成员分别实现，A 保留公共契约与应用集成职责。P2 服务端预交付及完整 G2 尚未验收，B1 实际模型接入和原 #22/#23 后续条件继续保留。
 
 P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/24)、[A3 #25](https://github.com/paher-din/XunJie/issues/25)、[B2 #26](https://github.com/paher-din/XunJie/issues/26)、[C3 #27](https://github.com/paher-din/XunJie/issues/27)，均 Open；任务范围、依赖与分层验收见各 Issue，发布核对见总协调记录第 6 节。
@@ -17,7 +19,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [PRD](docs/product/PRD.md) | 为谁解决什么问题、产品原则、核心流程、成功标准 |
 | [MVP_SPEC](docs/product/MVP_SPEC.md) | 第一版做到哪里、业务行为、限额与验收 |
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
-| [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | A/B/C 的详细任务、并行与等待关系、交接和验收责任；UI 成员仅在最终接入阶段参与 |
+| [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 原 A/B/C/P5 分工与完整验收；数字逻辑增量按第 11 节提前准备 UI 并分批接入 |
+| [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、已批范围、共享契约/资源待评审项、增量任务和独立 Demo 验收；尚未发布新增 Issue |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -33,7 +36,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
 | [工程衔接说明](docs/reference/ENGINEERING_HANDOFF.md) | 可沿用的 IDE/记录/运行/诊断契约与历史试验限制 |
 | [工作区合并与 Issue 收口](docs/tasks/W2_WORKSPACE_MAIN_INTEGRATION.md) | 本地 skills/接入记录、授权教材与既有工作树的 main 集成及实际验证/关闭记录 |
-| [课程教材目录](course_matrial/) | 经负责人确认公开分发授权的课程参考 PDF；教材分发不扩大 MVP 的资料导入格式 |
+| [课程教材目录](course_matrial/) | C 教材的既有分发授权见 W2；数字逻辑四份参考材料于 2026-10-11 经负责人确认有分发权并授权公开推送，原样/hash 记录见 DL-0；资料导入仍按 TXT/Markdown |
 | [B0 模型、帮助与候选分析交接稿](docs/tasks/B0_模型帮助分析契约.md) | 三类输入/输出、可信来源、保存归属、拒绝与取消提案；待 A/C 会审 |
 | [B0 模型与预算复核](docs/tasks/B0_MODEL_VENDOR_RESEARCH.md) | 精确型号/区域/结构化方式、数据条款证据状态及预算/配额建议；D-02 待批准 |
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
@@ -41,7 +44,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
-安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：三人先按业务契约完成后台、Agent 与执行能力，再在最后接入团队实际 UI。服务端预交付与完整产品验收分别记录，不提前宣称浏览器流程通过。
+安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：原完整集成按 P5，数字逻辑新增批次按第 11 节提前准备状态/适配并分批接入实际 UI。服务端预交付、数字逻辑 Demo 与完整产品验收分别记录，不提前宣称浏览器流程通过。
 
 开发 Agent 必须遵守 [Agent 权限与项目边界](AGENTS.md#agent-权限与项目边界硬性要求)：`docs/product/` 整体默认只读，包括 MVP_SPEC 的进度记录；规范、共同计划和参考材料同样受保护。执行任务、完成 Issue 或要求“文档优先”不自动授予基线修改权限。边界需要调整时，先提出差异，再由项目负责人明确授权指定维护者修改对应文件。
 
