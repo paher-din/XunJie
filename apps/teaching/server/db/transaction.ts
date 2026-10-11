@@ -1,3 +1,4 @@
+import { teacherDesignSchema } from '../design/teacher-schema.ts';
 import { completionSchema } from './completion-schema.ts';
 import { workspaceSchema } from '../workspace/schema.ts';
 import { designSchema } from './design-schema.ts';
@@ -127,15 +128,16 @@ export function createDesignDatabase(): SyntheticDatabase {
 }
 export function createCompletionDatabase(): SyntheticDatabase { return createFreshDatabase('completion'); }
 export function createWorkspaceDatabase(): SyntheticDatabase { return createFreshDatabase('workspace'); }
-function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace'): SyntheticDatabase {
-  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
+export function createTeacherDesignDatabase(): SyntheticDatabase { return createFreshDatabase('teacher-design'); }
+function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design'): SyntheticDatabase {
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
   const db = new Driver(file, { fileMustExist: true });
   try {
     db.exec('BEGIN IMMEDIATE');
-    try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind === 'completion' || kind === 'workspace') db.exec(completionSchema); if (kind === 'workspace') db.exec(workspaceSchema); db.exec('COMMIT'); }
+    try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind === 'completion' || kind === 'workspace' || kind === 'teacher-design') db.exec(completionSchema); if (kind === 'workspace' || kind === 'teacher-design') db.exec(workspaceSchema); if (kind === 'teacher-design') db.exec(teacherDesignSchema); db.exec('COMMIT'); }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   } finally { db.close(); }
   return openSyntheticDatabase(file);
