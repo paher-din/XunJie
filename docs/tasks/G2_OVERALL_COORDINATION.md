@@ -394,3 +394,11 @@ PR #29 合并后，PR #32 的堆叠父已进入 main：三点对比 `origin/main
 本次未修改任何受保护文档（`docs/product/**`、`AGENTS.md`、`docs/planning/**`、`docs/reference/**`），未改 `.env`/密钥/CI/schema，未删除文件或 Git 历史，未强制推送，未代任何作者修改业务代码。本文是本轮唯一被提交的文件。
 
 未合并 PR #33、未合并 PR #32（仍为 Draft，§9.2 的 3 项 P2 与 #27 依赖不变）；#24/#25/#26/#27/#11 均未关闭；PR #28 的合并只关闭该 PR 本身，未解决 #33 的任何审查线程，也未关闭 A3 的后续义务。真实 provider 调用 / D-02 / 真实模型 / Linux 复验 / 教师内容会审 / 浏览器与实际 UI / 真人与负载 / C5 备份恢复 / 完整 G1～G4 与 MVP 验收均保持未执行；服务端通过、文档交付与本次合并均不构成产品验收或教学效果证据。MVP_SPEC §10 与 TEAM 的基线进度仍待授权维护者汇总，本文不直接修改受保护基线。
+
+### 10.8 本节推送的真实网络结果
+
+本节记录提交 `5b5d790f91730bbe658bdc1d2d3eb24b28b04430` 的**首次推送失败**：`git push origin HEAD:main` 返回 `fatal: unable to access 'https://github.com/paher-din/XunJie.git/': Recv failure: Connection was reset`。因该命令把输出经管道交给 `tail`，`$?` 捕获的是 `tail` 的退出码而非 `git` 的，故不引用其显示的 `push_exit=0`；判定以 `fatal:` 行为准。经 GitHub API 确认远端 main 仍为 `347dde1`（推送未落地）后，按相同参数原样重试一次即成功快进到 `5b5d790`，未强制推送、未修改任何网络或 Git 配置、未重复提交。
+
+推送后回读：远端 main 为 `5b5d790`，该提交只含 1 个文件、86 行新增、0 行删除，parent 为 `347dde1`；`5b5d790` 中本文的远端 Git blob SHA 与本地一致（`5aa13406b4db51ee613eb6882e224e6563efadd8`，53600 字节），换行为 LF、`git diff --check` 无空白问题。同一 443/连接重置在本轮 `git fetch`、`git ls-remote` 上也出现过并同样以原样重试恢复；`gh api` 全程可用。
+
+本小节自身随本文再次单文件普通提交/推送，故无法在正文内记录自己的提交与 blob SHA；其最终值以独立工作树 HEAD、`origin/main` 与远端 main 回读为准。本小节只补充真实网络结果，不改变 §10.2～§10.7 的任何结论，也不将本节记录记为修复通过或产品验收。
