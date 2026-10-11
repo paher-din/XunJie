@@ -2,6 +2,10 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
+2026-10-11，项目负责人确认进入 P2（G2 服务端教学支持）。[P2 总协调记录](docs/tasks/G2_OVERALL_COORDINATION.md)负责阶段依赖、跨模块契约核对、集成审查与验收汇总；A3/B2/C3 仍由既定成员分别实现，A 保留公共契约与应用集成职责。P2 服务端预交付及完整 G2 尚未验收，B1 实际模型接入和原 #22/#23 后续条件继续保留。
+
+P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/24)、[A3 #25](https://github.com/paher-din/XunJie/issues/25)、[B2 #26](https://github.com/paher-din/XunJie/issues/26)、[C3 #27](https://github.com/paher-din/XunJie/issues/27)，均 Open；任务范围、依赖与分层验收见各 Issue，发布核对见总协调记录第 6 节。
+
 当前 A1/A2/C1/C2 服务端与 B1 合成核心已合入 main，C2 [PR #20](https://github.com/paher-din/XunJie/pull/20) 的四项原审查意见已修复并合并。[G1 #9](https://github.com/paher-din/XunJie/issues/9) 已按负责人确认的服务端预交付阶段关闭为 Completed；完整产品 G1/正式应用仍未验收：UI/AC/NFR 由 [#22](https://github.com/paher-din/XunJie/issues/22) 承接，环境稳定性由 [#23](https://github.com/paher-din/XunJie/issues/23) 跟踪，B1 实际 SDK/模型仍在 [#11](https://github.com/paher-din/XunJie/issues/11)。Web UI 由团队成员负责，按其实际交付接入。
 
 2026-10-11，项目负责人要求关闭 A1/A2/C1/C2 后先整合全部本地分支与工作树。A1 #10、A2 #13、C1 #12、C2 #14 已回读 Closed / Completed；B1 #11、完整 G1 UI/AC/NFR #22 和环境稳定性 #23 保持 Open。各任务旧 Open 表述保留其日期，当前管理状态见 [G1 第 19 节](docs/tasks/G1_OVERALL_COORDINATION.md#19-2026-10-11-执行-issue-关闭与本地全部工作整合)。12 个原有分支、9 个工作树 HEAD 和主副本未提交文件已整合到本地 main，逐项祖先关系与原始证据摘要核对通过。全部分支、工作树和备份保留；负责人随后授权推送并拉取，整合成果已普通推送至远端 main，快进拉取后两端提交一致、工作区干净，发布事实见 G1 第 19.4 节。
@@ -20,6 +24,7 @@
 | [G0 TextScope 参考与活动适配](docs/tasks/G0_TEXTSCOPE_ACTIVITY_SPEC.md) | 外部候选供追溯，Web 学生空间的 Core/Report 活动提案另列；不照搬本地开发/六阶段/评分要求 |
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 服务端交付/合并/分层证据与 #9 行政收口；原完整 G1 条件在 #22、时钟问题在 #23 保留，产品基线未改；模块仍由 A/B/C 负责 |
+| [G2 / P2 总协调与教学支持交付跟踪](docs/tasks/G2_OVERALL_COORDINATION.md) | 教师生成/采用、学生辅导/取消与消息采集两条链的依赖、交接和分层验收；不代做 A3/B2/C3 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
 | [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 完整服务端工作区/快照/基础作业、A1/A2 同事务与批准新二十二表合成库、C1 原 ID 运行/检查/产物；四项审查修复与作者32项含节点组合见第13节，最新合并/组合验证见G1记录 |
 | [C1/C2/A1/A2 合并记录](docs/tasks/A1_A2_PR_MERGE.md) | 四项 PR 固定提交、旧审查关闭、依赖顺序合并和 main 验证；完整 C2/G1 与浏览器/TLS 仍分别验收 |
