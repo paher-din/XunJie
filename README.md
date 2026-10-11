@@ -2,7 +2,7 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
-2026-10-11，项目负责人批准保留 C17/GCC、TextScope Core→Report 与现有 Web/应用服务/执行隔离架构，新增「数字逻辑与部件设计」的一条本地真实演示链。首条实验采用课程题目 PDF 已定义的 4 位 ALU 范围与 Nexys4 DDR Rev. C；课件用于讲解，未定义组合和 Cout 暂不判分。范围、材料、待评审契约和 DL-A/C/B/UI/E2E 任务见 [DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)，分支发布记录见其第 6 节。当前交付为文档增量，数字逻辑应用、真实模型/浏览器 Demo 未实现或验收，启动命令待真实验证后填写。原正式 MVP/AC/NFR/真人条件保留。
+2026-10-11，项目负责人批准保留 C17/GCC、TextScope Core→Report 与现有 Web/应用服务/执行隔离架构，新增「数字逻辑与部件设计」的一条本地真实演示链。首条实验采用课程题目 PDF 已定义的 4 位 ALU 范围与 Nexys4 DDR Rev. C；课件用于讲解，未定义组合和 Cout 暂不判分。具体分工已纳入 [TEAM 的 P3～P5](docs/planning/TEAM_WORK_PLAN.md)：P3 的 DL-A/DL-C/DL-B 分别由 A/C/B 负责，P4 的 A6/B4/C5 验证两课程，P5 完成整体 UI 与应用验收。当前 P2 的 A3/B2/C3 继续原范围；数字逻辑评审/开发从 P2 原预交付确认后开始。材料、决定和交付证据见 [DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)，数字逻辑应用/真实模型/浏览器 Demo 尚未验收，原正式条件保留。
 
 2026-10-11，项目负责人确认进入 P2（G2 服务端教学支持）。[P2 总协调记录](docs/tasks/G2_OVERALL_COORDINATION.md)负责阶段依赖、跨模块契约核对、集成审查与验收汇总；A3/B2/C3 仍由既定成员分别实现，A 保留公共契约与应用集成职责。P2 服务端预交付及完整 G2 尚未验收，B1 实际模型接入和原 #22/#23 后续条件继续保留。
 
@@ -19,8 +19,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [PRD](docs/product/PRD.md) | 为谁解决什么问题、产品原则、核心流程、成功标准 |
 | [MVP_SPEC](docs/product/MVP_SPEC.md) | 第一版做到哪里、业务行为、限额与验收 |
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
-| [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 原 A/B/C/P5 分工与完整验收；数字逻辑增量按第 11 节提前准备 UI 并分批接入 |
-| [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、已批范围、共享契约/资源待评审项、增量任务和独立 Demo 验收；尚未发布新增 Issue |
+| [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
+| [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -44,7 +44,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
-安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：原完整集成按 P5，数字逻辑新增批次按第 11 节提前准备状态/适配并分批接入实际 UI。服务端预交付、数字逻辑 Demo 与完整产品验收分别记录，不提前宣称浏览器流程通过。
+安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：先完成当前 P2 原预交付，P3 的 A/C/B 接数字逻辑并分批联调，同时保留原反馈闭环；P4 的 A6/B4/C5 验证两课程，P5 完成整体集成与正式验收。服务端预交付、数字逻辑 Demo 与完整产品验收分别记录。
 
 开发 Agent 必须遵守 [Agent 权限与项目边界](AGENTS.md#agent-权限与项目边界硬性要求)：`docs/product/` 整体默认只读，包括 MVP_SPEC 的进度记录；规范、共同计划和参考材料同样受保护。执行任务、完成 Issue 或要求“文档优先”不自动授予基线修改权限。边界需要调整时，先提出差异，再由项目负责人明确授权指定维护者修改对应文件。
 
