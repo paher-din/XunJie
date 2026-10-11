@@ -32,8 +32,8 @@ B 的候选/blueprint 使用文字数组，A 的能力/任务/观察/量规是�
 
 新增独立 `createTeacherDesignDatabase()`，**仅创建全新临时合成 SQLite 数据库，共 24 表**：既有 22 表 + 以下 2 表。旧工厂不改变 schema，不迁移或修改已有/生产数据库；测试库保留。
 
-- `teacher_design_requests`：job_id 主键/外键 jobs；course_id、actor_id 外键；blueprint_id 可空；base_revision；request_json 保存已验证输入、草稿和授权段落快照、服务端版本/预算许可；usage_json 保存按调用预留的 actual/unknown usage。Job.attemptCount 复用 C recordModelCall，调用前持久预留 unknown，收到实际 usage 才更新，不把 unknown 算作 0。
-- `teacher_design_proposals`：proposal_id 主键；job_id 唯一/外键请求；course_id、blueprint_id、base_revision；result_hash；proposal_json 保存规范化提案/diff/理由/影响引用/原始结果引用；raw_result_json 保存 B 的原始校验结果（正文，不保存 provider 附加字段或内部思维链）；created_at_ms。JSON、revision、hash 长度及关联约束在 SQL/读取校验两层检查。
+- `teacher_design_requests`：job_id 主键/外键 jobs；course_id、actor_id 外键；blueprint_id 可空；base_revision；request_json 保存已验证输入、草稿和授权段落快照、服务端版本；预算许可由当前服务端钩子逐次复核；usage_json 保存按调用预留的 actual/unknown usage。Job.attemptCount 复用 C recordModelCall，调用前持久预留 unknown，收到实际 usage 才更新，不把 unknown 算作 0。
+- `teacher_design_proposals`：proposal_id 主键；job_id 唯一/外键请求；course_id、blueprint_id、base_revision；result_hash；proposal_json 保存规范化提案/diff/理由/影响引用/原始结果引用；raw_result_json 保存 B 合法 body 首次序列化的原 UTF-8 JSON 正文字节；B 的调用/usage/版本保存在 proposal_json.modelResult，不保存 provider 附加字段或内部思维链；created_at_ms。JSON、revision、hash 长度及关联约束在 SQL/读取校验两层检查。
 
 不新增队列表、重写 C Receipt/Job 或自动迁移入口。若之后需要正式数据库接入，另行评审授权。
 
@@ -81,7 +81,7 @@ B 的候选/blueprint 使用文字数组，A 的能力/任务/观察/量规是�
 
 服务端注入 teacherAgent={provider, versions, budgetAvailable}；预算钩子只接受服务端构造的 courseId/actorId/持久 usages，必须同步返回 boolean。没有预设正式配额、金额或真实 provider。业务宿主显式驱动 processJob，不新增后台监听或私自启动真实模型。公共结果接收 receiveResult 只供受信 worker，HTTP 不接受模型结果或 leaseToken。
 
-持久 raw_result_json 保存 **B 原始校验结果（TutoringOutcome）**，包括合法 body/usage/版本；不保存 provider 附加字段或内部思维链。rawResultRef 对应同库原 B 结果；hash 基于不可变合法 body，重放保持原版本/usage/提案 ID，不用重复投递改写。B 的 candidates/blueprint/rubric_trial 没有独立 rationale 字段，A 保留为空表示原输出未提供；patch 原理由原样保存，不为模型补造解释。结构化 diff 中 suggestions.* 表示文字建议，不是可自动执行的 contentPatch。
+持久 raw_result_json 保存 **B 合法 body 首次序列化的原 UTF-8 JSON 正文字节**；模型调用数、elapsedMs、usage 和版本在 proposal_json.modelResult 保存。worker 在拿到 B 对象后只序列化一次并把 bodyJson 纳入受信 delivery，接收端校验其合法结构与 B body 一致，直接对 bodyJson 字节计算 SHA-256 并原样保存。读取同时核验原字节摘要和解析 body 的对应关系，不对重排/重序列化的正文计算“原结果 hash”。rawResultRef 对应同库原 B 正文；同 Job 同摘要回放保留原版本/usage/提案 ID，不用重复投递改写。这里的原正文是 B 公共对象边界的首次持久序列化，不伪称上游 provider 的原始 HTTP 响应。B 的 candidates/blueprint/rubric_trial 没有独立 rationale 字段，A 保留为空表示原输出未提供；patch 原理由原样保存，不为模型补造解释。结构化 diff 中 suggestions.* 表示文字建议，不是可自动执行的 contentPatch。
 
 结果落库失败时，worker 抛 TeacherResultCommitError，并仅向受信宿主附带原 delivery；宿主可在原 lease/deadline/generation 下调用 receiveResult 重试，不能重新付费生成。宿主丢失原 delivery 或 lease 过期时不能安全重发模型请求，C recoverJob 标记 outcome_unknown；由教师明确发起新请求。预算/失败不影响手动草稿。
 

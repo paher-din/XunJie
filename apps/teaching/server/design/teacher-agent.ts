@@ -17,7 +17,7 @@ import { contentPatchSchema } from '../../contracts/design/draft.ts';
 import { agentCreateSchema, adoptProposalSchema, teacherBodySchema, proposalRequestSchema, rubricTrialRequestSchema } from '../../contracts/design/proposals.ts';
 import { readDraft, createStoredDraft, resultSchema, draftCourse } from './storage.ts';
 import { loadTeacherRequest, saveTeacherRequest, saveUsages, selectReferences, teacherContextCurrent,
-  proposalForJob, readProposal, saveProposal, hashBody, simpleContent, modelVersionsSchema,
+  proposalForJob, readProposal, saveProposal, hashResultBytes, simpleContent, modelVersionsSchema,
   type StoredTeacherRequest, type DesignProposal } from './teacher-storage.ts';
 
 export interface TeacherAgentOptions {
@@ -25,7 +25,7 @@ export interface TeacherAgentOptions {
   budgetAvailable: (context:{courseId:string;actorId:string;usages:readonly ModelUsage[]}) => boolean;
 }
 export interface TeacherResultDelivery {
-  jobId:string; leaseToken:string; recoveryGeneration:string; outcome:TutoringOutcome<TeacherGenerationBody>;
+  jobId:string; leaseToken:string; recoveryGeneration:string; outcome:TutoringOutcome<TeacherGenerationBody>; bodyJson?:string;
 }
 export class TeacherResultCommitError extends ApiError {
   readonly delivery:TeacherResultDelivery;
@@ -93,9 +93,10 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
           sampleReferenceIds,baseline:draft?.content ?? null,versions};
         if (new Set(requestData.allowedFields).size !== requestData.allowedFields.length) throw new ApiError('INVALID_REQUEST');
         if (!budget(requestData,[])) throw new ApiError('BUDGET_EXHAUSTED');
+        const acceptedAtMs = now();
         const job:Job = {jobId:requestData.jobId,kind:requestData.mode,purpose:'teacher_design',scope,
           requestReceiptId:receiptId,status:'queued',stopRequested:false,expectedRevision:requestData.baseRevision,decisionEpoch:0,recoveryGeneration:current,
-          acceptedAt:timeString(now()),deadline:timeString(now()+45000),attemptCount:0};
+          acceptedAt:timeString(acceptedAtMs),deadline:timeString(acceptedAtMs+45000),attemptCount:0};
         created = {request:requestData,job}; return {jobId:job.jobId,status:'queued' as const};
       },value => acceptedSchema.parse(value));
       if (created) { enqueueStoredJob(tx,created.job); saveTeacherRequest(tx,created.request); }
@@ -198,12 +199,20 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
       generation(delivery.recoveryGeneration);
       const work = original(tx,delivery.jobId),{job,input} = work;
       if (delivery.outcome.outcome === 'success') {
-        const body = validateBody(work,delivery.outcome.body),existing = proposalForJob(tx,job.jobId);
+        if (typeof delivery.bodyJson !== 'string') throw new ApiError('INVALID_REFERENCE');
+        let rawBody:unknown;
+        try { rawBody = JSON.parse(delivery.bodyJson); } catch { throw new ApiError('INVALID_REFERENCE'); }
+        const parsed = parseRequest(teacherBodySchema,rawBody);
+        if (canonical(parsed) !== canonical(delivery.outcome.body)) throw new ApiError('INVALID_REFERENCE');
+      }
+      if (delivery.outcome.outcome === 'success') {
+        validateBody(work,delivery.outcome.body);
+        const existing = proposalForJob(tx,job.jobId);
         if (existing) {
           const member = tx.get("SELECT user_id FROM course_memberships WHERE user_id=? AND course_id=? AND role='teacher' AND active=1",input.actorId,input.courseId);
           const user = tx.get('SELECT disabled_at_ms FROM users WHERE id=?',input.actorId);
           if (!member || !user || user.disabled_at_ms !== null) throw new ApiError('FORBIDDEN');
-          if (existing.resultHash !== hashBody(body)) throw new ApiError('IDEMPOTENCY_CONFLICT');
+          if (existing.resultHash !== hashResultBytes(delivery.bodyJson!)) throw new ApiError('IDEMPOTENCY_CONFLICT');
           return {proposalId:existing.proposalId,resultHash:existing.resultHash};
         }
       }
@@ -218,7 +227,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         progress(tx,work,{...job,status,failure:outcome.code}); return undefined;
       }
       if (canonical(outcome.versions) !== canonical(input.versions)) throw new ApiError('INVALID_REFERENCE');
-      const body = validateBody(work,outcome.body),resultHash = hashBody(body),proposalId = randomUUID(),rawResultRef = 'teacher-result:'+job.jobId;
+      const body = validateBody(work,outcome.body),resultHash = hashResultBytes(delivery.bodyJson!),proposalId = randomUUID(),rawResultRef = 'teacher-result:'+job.jobId;
       const before = input.baseline as Record<string,unknown>|null;
       const diff = body.kind === 'patch'
         ? body.changes.map(change => ({path:change.field,before:before?.[change.field] ?? null,after:change.value}))
@@ -232,7 +241,9 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
           }));
 
       const proposal:DesignProposal = {proposalId,jobId:job.jobId,courseId:input.courseId,blueprintId:input.blueprintId,baseRevision:input.baseRevision,
-        body,resultHash,rawResultRef,diff:diff as DesignProposal['diff'],
+        body,resultHash,rawResultRef,
+        modelResult:{calls:outcome.calls,elapsedMs:outcome.elapsedMs,usage:outcome.usage,versions:outcome.versions},
+        diff:diff as DesignProposal['diff'],
         rationale:body.kind === 'patch' ? body.rationale : '',affectedReferences:body.kind === 'patch' ? [...body.resourceRefs,...body.affectedLinks]
           : body.kind === 'rubric_trial' ? body.sampleRefs : body.kind === 'blueprint' ? [...body.resources,...body.goalEvidenceLinks] : body.candidates.flatMap(item => item.resourceRefs),
         createdAt:timeString(now())};
@@ -240,7 +251,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         {expectedRevision:input.blueprintId ? readDraft(tx,input.courseId,input.blueprintId).revision : 0,decisionEpoch:0});
       finishRecordCommand(tx,{actorId:input.actorId,command:'teacher-design.result',target:job.jobId,scope:job.scope,
         idempotencyKey:job.jobId,recoveryGeneration:job.recoveryGeneration},{resultHash},job.recoveryGeneration,now(),() => {
-        saveJob(tx,next); saveProposal(tx,proposal,outcome); return {proposalId,resultHash};
+        saveJob(tx,next); saveProposal(tx,proposal,delivery.bodyJson!); return {proposalId,resultHash};
       },value => z.strictObject({proposalId:id,resultHash:z.string().length(64)}).parse(value));
       generation(delivery.recoveryGeneration); return {proposalId,resultHash};
     });
@@ -301,7 +312,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         outcome = {outcome:'rejected',code:error.code,retryable:false,calls:outcome.calls,usage:outcome.usage};
       }
     }
-    const delivery:TeacherResultDelivery = {jobId,leaseToken:job.leaseToken!,recoveryGeneration:job.recoveryGeneration,outcome};
+    const delivery:TeacherResultDelivery = {jobId,leaseToken:job.leaseToken!,recoveryGeneration:job.recoveryGeneration,outcome,...(outcome.outcome === 'success' ? {bodyJson:JSON.stringify(outcome.body)} : {})};
     try { const result = receiveResult(delivery); return {delivery,result}; }
     catch (error) {
       if (error instanceof ApiError && error.code === 'PERSISTENCE_UNAVAILABLE') throw new TeacherResultCommitError(delivery);

@@ -29,10 +29,11 @@ export const proposalSchema = z.strictObject({
   proposalId:id, jobId:id, courseId:id, blueprintId:id.nullable(), baseRevision:z.number().int().nonnegative(),
   body:teacherBodySchema, resultHash:z.string().regex(/^[a-f0-9]{64}$/), rawResultRef:id,
   diff:z.array(z.strictObject({ path:id, before:z.json(), after:z.json() })),
+  modelResult:z.strictObject({calls:z.number().int().min(1).max(3),elapsedMs:z.number().nonnegative(),usage:usageSchema,versions:modelVersionsSchema}),
   rationale:z.string(), affectedReferences:z.array(z.string()), createdAt:z.string(),
 });
 export type DesignProposal = z.infer<typeof proposalSchema>;
-export const hashBody = (body:unknown) => createHash('sha256').update(canonical(body)).digest('hex');
+export const hashResultBytes = (bodyJson:string) => createHash('sha256').update(bodyJson,'utf8').digest('hex');
 function persisted<S extends z.ZodType>(schema:S,value:unknown):z.output<S> {
   const result = schema.safeParse(value);
   if (!result.success) throw new Error('Invalid persisted teacher design data.');
@@ -94,9 +95,11 @@ export function readProposal(tx:Transaction,proposalId:string) {
   const row = tx.get('SELECT * FROM teacher_design_proposals WHERE proposal_id=?',proposalId);
   if (!row) throw new ApiError('FORBIDDEN');
   const proposal = persisted(proposalSchema,JSON.parse(String(row.proposal_json)));
+  const rawBody = persisted(teacherBodySchema,JSON.parse(String(row.raw_result_json)));
+  if (canonical(rawBody) !== canonical(proposal.body)) throw new Error('Original body mismatch.');
   if (proposal.proposalId !== row.proposal_id || proposal.jobId !== row.job_id || proposal.courseId !== row.course_id
     || proposal.blueprintId !== row.blueprint_id || proposal.baseRevision !== row.base_revision
-    || proposal.resultHash !== row.result_hash || proposal.resultHash !== hashBody(proposal.body)
+    || proposal.resultHash !== row.result_hash || proposal.resultHash !== hashResultBytes(String(row.raw_result_json))
     || Date.parse(proposal.createdAt) !== row.created_at_ms) throw new Error('Invalid persisted proposal scope.');
   const { input,job } = loadTeacherRequest(tx,proposal.jobId);
   if (input.courseId !== proposal.courseId || input.blueprintId !== proposal.blueprintId || input.baseRevision !== proposal.baseRevision
@@ -107,10 +110,12 @@ export function proposalForJob(tx:Transaction,jobId:string) {
   const row = tx.get('SELECT proposal_id FROM teacher_design_proposals WHERE job_id=?',jobId);
   return row ? readProposal(tx,String(row.proposal_id)) : undefined;
 }
-export function saveProposal(tx:Transaction,proposal:DesignProposal,rawResult:unknown) {
+export function saveProposal(tx:Transaction,proposal:DesignProposal,rawBodyJson:string) {
   const p = persisted(proposalSchema,proposal);
+  const rawBody = persisted(teacherBodySchema,JSON.parse(rawBodyJson));
+  if (p.resultHash !== hashResultBytes(rawBodyJson) || canonical(rawBody) !== canonical(p.body)) throw new ApiError('INVALID_REFERENCE');
   tx.run('INSERT INTO teacher_design_proposals(proposal_id,job_id,course_id,blueprint_id,base_revision,result_hash,proposal_json,raw_result_json,created_at_ms) VALUES (?,?,?,?,?,?,?,?,?)',
-    p.proposalId,p.jobId,p.courseId,p.blueprintId,p.baseRevision,p.resultHash,JSON.stringify(p),JSON.stringify(rawResult),Date.parse(p.createdAt));
+    p.proposalId,p.jobId,p.courseId,p.blueprintId,p.baseRevision,p.resultHash,JSON.stringify(p),rawBodyJson,Date.parse(p.createdAt));
 }
 export function simpleContent(body:{problem:string;audience:string;artifact:string;routes:string[]},resourceVersionIds:string[]):Partial<BlueprintContent> {
   return { problem:body.problem,audience:body.audience,artifact:body.artifact,routes:body.routes,

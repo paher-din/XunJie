@@ -6,7 +6,7 @@ export const referenceSelectionSchema = z.strictObject({
   resourceVersionId: id, paragraphId: id, contentHash: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export const designGenerationFields = {
-  recoveryGeneration: id, request: z.string().min(1).max(32000),
+  recoveryGeneration: id, request: z.string().min(1).max(32000).refine(value => value.trim().length > 0),
   references: z.array(referenceSelectionSchema).max(64).default([]),
 };
 export const agentCreateSchema = z.strictObject({

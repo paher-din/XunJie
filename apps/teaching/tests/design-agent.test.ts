@@ -15,7 +15,7 @@ const candidate = { kind: 'candidates', candidates: [{ problem: 'Count words', a
   constraints: ['One week'], unresolved: ['Teacher must confirm three competency domains'], resourceRefs: [] }] };
 const versions = { modelConfig: 'synthetic-v1', prompt: 'teacher-v1', schema: 'teacher-v1', policy: 'teacher-v1' };
 async function fixture(steps: SyntheticStep[] = [{ body: candidate }]) {
-  let db = createTeacherDesignDatabase(), time = Date.now(), generation = 'generation';
+  let db = createTeacherDesignDatabase(), time = Date.now(), generation = 'generation',clockStep = 0;
   const password = randomBytes(32).toString('hex'), secret = randomBytes(48).toString('hex');
   const record = await createPasswordRecord(password);
   db.withTransaction(tx => {
@@ -38,7 +38,7 @@ async function fixture(steps: SyntheticStep[] = [{ body: candidate }]) {
       return tx.run(sql,...params);
     }}));
   }});
-  const options = () => ({ db:database(), origin, signingSecret: secret, currentGeneration: () => generation, now: () => time,
+  const options = () => ({ db:database(), origin, signingSecret: secret, currentGeneration: () => generation, now: () => { const current=time; time+=clockStep; return current; },
     teacherAgent: { provider, versions, budgetAvailable: () => budget } });
   let service = await createDesignApp(options());
   async function login(user = 'teacher') {
@@ -48,6 +48,7 @@ async function fixture(steps: SyntheticStep[] = [{ body: candidate }]) {
       'x-csrf-token':res.json().data.csrfToken as string };
   }
   return { login,provider,
+    tickingClock() { clockStep = 1; },
     failResult() { failResultWrite = true; },
     revokeTeacher() { db.withTransaction(tx => tx.run("UPDATE course_memberships SET active=0 WHERE course_id='course' AND user_id='teacher'")); },get service() { return service; },get db() { return db; },generation: () => generation,
     advance(ms:number) { time += ms; },restore() { generation = 'new-generation'; },noBudget() { budget = false; },
@@ -190,7 +191,10 @@ test('original request and result replay survive edits, while conflicting keys o
     assert.equal(proposal.applicable,false);
     assert.equal((await command(f,headers,'/api/blueprints/'+draft.blueprintId,{expectedRevision:2,proposalId:original!.proposalId,patch:{problem:'Old AI edit'}},'old-adopt','PATCH')).statusCode,409);
     const changed = structuredClone(completed.delivery);
-    if (changed.outcome.outcome === 'success' && changed.outcome.body.kind === 'patch') changed.outcome.body.rationale = 'Different immutable result';
+    if (changed.outcome.outcome === 'success' && changed.outcome.body.kind === 'patch') {
+      changed.outcome.body.rationale = 'Different immutable result';
+      changed.bodyJson = JSON.stringify(changed.outcome.body);
+    }
     assert.throws(() => f.service.teacherAgent!.receiveResult(changed),{code:'IDEMPOTENCY_CONFLICT'});
   } finally { await f.close(); }
 });
@@ -375,5 +379,31 @@ test('provider failure with missing usage keeps unknown reservations and does no
     assert.equal(job.status,'failed'); assert.deepEqual(job.usages,[{status:'unknown'}]);
     const res = await command(f,headers,'/api/blueprints/'+draft.blueprintId,{expectedRevision:1,patch:{problem:'Manual fallback'}},'manual-fallback','PATCH');
     assert.equal(res.statusCode,200);
+  } finally { await f.close(); }
+});
+
+
+test('a ticking service clock keeps the accepted job window exactly 45 seconds',async () => {
+  const f = await fixture();
+  try {
+    const headers = await f.login(); f.tickingClock();
+    const accepted = await start(f,headers); assert.equal(accepted.statusCode,200);
+    const job = await getJob(f,headers,accepted.json().data.result.jobId);
+    assert.equal(Date.parse(job.deadline)-Date.parse(job.acceptedAt),45000);
+  } finally { await f.close(); }
+});
+test('proposal result hash identifies the exact stored B body bytes and altered bytes conflict',async () => {
+  const f = await fixture();
+  try {
+    const headers = await f.login(),accepted = await start(f,headers),jobId = accepted.json().data.result.jobId;
+    const completed = await f.service.teacherAgent!.processJob(jobId);
+    assert.ok(completed);
+    const expectedJson = '{"kind":"candidates","candidates":[{"problem":"Count words","audience":"CS beginners","artifact":"A tested C program","routes":["scan","tokenize"],"goals":["Compare two routes"],"constraints":["One week"],"unresolved":["Teacher must confirm three competency domains"],"resourceRefs":[]}]}';
+    assert.equal(completed.delivery.bodyJson,expectedJson);
+    const job = await getJob(f,headers,jobId);
+    assert.equal(job.resultHash,'59def8d4fc025c3596cf4865b2e534bb8419392294a9ac7a11029daa83b18f80');
+    const altered = {...completed.delivery,bodyJson:expectedJson+'\n'};
+    assert.throws(() => f.service.teacherAgent!.receiveResult(altered),{code:'IDEMPOTENCY_CONFLICT'});
+    await f.reopen(); assert.equal((await getJob(f,headers,jobId)).resultHash,job.resultHash);
   } finally { await f.close(); }
 });
