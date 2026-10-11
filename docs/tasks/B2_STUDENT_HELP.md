@@ -41,7 +41,7 @@
 
 ## 4. 已知依赖与未完成项
 
-- B1 SDK 收口位于 [PR #29](https://github.com/paher-din/XunJie/pull/29)；本分支将以已推送的首轮审查修复提交为父提交。PR #29 合并前，B2 交付是显式堆叠依赖。
+- B1 SDK 收口位于 [PR #29](https://github.com/paher-din/XunJie/pull/29)；本分支已合并其首轮审查修复提交 `5aa77a0`/`de794ba`。PR #29 合并前，B2 交付是显式堆叠依赖。
 - A2/C2 已合入 main，可提供固定活动/政策、确认快照/诊断、ObjectRef、Job/Receipt/Event 和短事务基础。
 - C3 #27 尚未交付，阻塞 Message/Action 持久化、实际取消投递、回执/补取和重启代际联调；本批次只提供可复用接缝和隔离证据。
 - A4/B3 尚未交付时，无学习状态按空状态工作；相关/无关/撤回/反证使用固定可信 fixture 验证筛选，不能冒充真实状态链联调。
@@ -63,13 +63,18 @@
 | --- | --- |
 | `npm run typecheck`（Node 24.21.0 / TypeScript 7.0.2） | 通过 |
 | `node --test server/tutoring/test/student-help.test.ts` | 10/10 通过 |
+| `node --test server/tutoring/test/*.test.ts` | B1+B2 57/57 通过；供应商网络调用 0 |
+| 同命令增加 `--experimental-test-coverage` | 57/57 通过；B2 line：application 90.60%、commands 95.87%、context 96.95%、service 100% |
+| `npm test` | build 通过；统一回归 202 项中 194 通过、1 失败、7 跳过。唯一失败为既有 Windows 缺 Linux/trusted runner context；B1/B2 57 项全部通过 |
+| `node tools/a0-review/check.mjs` / `node --test tools/a0-review/check.test.mjs` | 文档检查 `errors=[]`；检查器回归 16/16 通过 |
+| `git diff --check` / 范围检查 | 通过；未修改 product/planning/reference/AGENTS、package/锁文件/tsconfig、数据库 schema 或 CI/CD，`.trae/` 未纳入 |
 | help 接纳/幂等/替换 | ready 激活、问题/绑定/Receipt/Event/Job 原子保存；重放不重复；新求助取消旧 help 并递增 epoch |
 | 权限/政策/ObjectRef | 当前学生/课程/分配、禁用帮助、限定检查、旧 hash/外部 Attempt、代码/运行/资料/项目精确引用均有正反例 |
 | 上下文 | 私有资料不进入模型；相关 active/contested、反证、无关/withdrawn、unknown、实际显示帮助和环境 unavailable 分层 |
 | 控制权/当前性 | reminder/capture 不误杀主动求助；问题变更拒绝旧绑定；停止、新 epoch、政策、对象、状态 revision、代际在模型前后守卫 |
 | B1→C3 接缝 | 成功信封记录 scope/回执/版本/引用/actual usage；模型后状态变化返回 stale 且不产生可消费 body |
 
-尚未执行：统一 `npm test`、覆盖率、文档检查和最终分支组合回归；完成后追加本节。真实 DeepSeek、30 次性能、人工教学语义、浏览器和真人均保持未执行。
+真实 DeepSeek、30 次性能、人工教学语义、C3 联调、浏览器和真人均保持未执行；离线 provider 与测试客户端不能替代这些验收。
 
 ## 7. C3 交接与剩余阻塞
 
@@ -79,3 +84,11 @@
 - A4/B3 有效状态尚未交付时继续按 revision 0/unknown 工作；后续接入不得让空状态阻止主动求助。
 
 待授权维护者汇总：MVP_SPEC §10 与 TEAM 可记录“B2 不依赖 C3 的 help 接纳、真实上下文、B1 执行与当前性守卫批次已实现并完成合成专项验证；C3 Message/Action/回执/持久取消及真实投递链仍未联调，Issue #26 保持 Open”。本文不直接修改受保护基线。
+
+## 8. Git 交付状态
+
+- B2 实现提交：`97aa6a6`（`feat: add B2 student help service seam`）。
+- B1 PR #29 审查修复已通过合并提交 `c74f3ab` 纳入当前 `codex/b2-student-help`。
+- B2 上下文运行时校验与暂停/缺输入反例提交：`cf6f2c7`（`test: harden B2 context validation`）。
+- README 已随实现提交；本文最终验证记录待作为独立文档提交。`.trae/` 保持未跟踪，不纳入交付。
+- PR 正文应使用 `Refs #26`：当前是可独立交接批次，C3 真实消息/取消/投递链未完成，不使用 `Closes #26`。
