@@ -79,6 +79,15 @@ function sdkProvider(
 }
 
 function completion(body: unknown, includeUsage = true): Response {
+  return completionText(JSON.stringify(body), includeUsage
+    ? { promptTokens: 23, completionTokens: 11 }
+    : undefined);
+}
+
+function completionText(
+  content: string,
+  usage: { promptTokens: number; completionTokens: number } | undefined,
+): Response {
   return Response.json({
     id: "offline-completion",
     created: 1,
@@ -86,19 +95,19 @@ function completion(body: unknown, includeUsage = true): Response {
     object: "chat.completion",
     choices: [{
       index: 0,
-      message: { role: "assistant", content: JSON.stringify(body) },
+      message: { role: "assistant", content },
       finish_reason: "stop",
       logprobs: null,
     }],
-    ...(includeUsage ? {
+    ...(usage === undefined ? {} : {
       usage: {
-        prompt_tokens: 23,
-        completion_tokens: 11,
-        total_tokens: 34,
+        prompt_tokens: usage.promptTokens,
+        completion_tokens: usage.completionTokens,
+        total_tokens: usage.promptTokens + usage.completionTokens,
         prompt_cache_hit_tokens: 0,
-        prompt_cache_miss_tokens: 23,
+        prompt_cache_miss_tokens: usage.promptTokens,
       },
-    } : {}),
+    }),
   });
 }
 
@@ -169,6 +178,41 @@ test("invalid structured policy output reaches the one permitted repair request"
     .join("\n");
   assert.doesNotMatch(firstSystem, /single permitted repair attempt/);
   assert.match(repairedSystem, /single permitted repair attempt/);
+});
+
+test("malformed SDK JSON preserves usage and reaches the one permitted repair", async () => {
+  const requestBodies: Record<string, unknown>[] = [];
+  const responses = [
+    completionText('{"kind":', { promptTokens: 23, completionTokens: 11 }),
+    completion(validBody()),
+  ];
+  const provider = sdkProvider(async (_input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    const response = responses.shift();
+    assert.ok(response);
+    return response;
+  });
+
+  const result = await generateStudentHelp(request(), { provider });
+  assert.equal(result.outcome, "success");
+  assert.equal(result.calls, 2);
+  assert.deepEqual(result.usage, { status: "actual", inputTokens: 46, outputTokens: 22 });
+  assert.equal(requestBodies.length, 2);
+  const repairedSystem = (requestBodies[1]?.messages as { role: string; content: string }[])
+    .filter((message) => message.role === "system")
+    .map((message) => message.content)
+    .join("\n");
+  assert.match(repairedSystem, /single permitted repair attempt/);
+});
+
+test("negative SDK token usage is kept unknown", async () => {
+  const provider = sdkProvider(async () =>
+    completionText(JSON.stringify(validBody()), { promptTokens: -23, completionTokens: 11 }));
+
+  const result = await generateStudentHelp(request(), { provider });
+  assert.equal(result.outcome, "success");
+  assert.equal(result.calls, 1);
+  assert.deepEqual(result.usage, { status: "unknown" });
 });
 
 test("SDK-valid but unauthorized references are repaired by the B1 whitelist", async () => {

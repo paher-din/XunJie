@@ -5,7 +5,7 @@ import { createDeepSeekProvider, type ModelProvider } from "./providers.ts";
 import { getTutoringOutputSchema } from "./schemas.ts";
 
 type SdkUsage = { inputTokens: number | undefined; outputTokens: number | undefined };
-type SdkStructuredOutputError = Error & { text?: string; usage: SdkUsage };
+type SdkStructuredOutputError = Error & { text?: string; usage: SdkUsage | undefined };
 type DeepSeekFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 const require = createRequire(import.meta.url);
@@ -68,7 +68,6 @@ export function createAiSdkDeepSeekInvoker(options: AiSdkDeepSeekInvokerOptions)
     } catch (error) {
       if (!NoObjectGeneratedError.isInstance(error)) throw error;
       const body = parseInvalidStructuredBody(error.text);
-      if (body === undefined) throw error;
       const usage = toModelUsage(error.usage);
       return {
         body,
@@ -82,20 +81,23 @@ export function createAiSdkDeepSeekProvider(options: AiSdkDeepSeekInvokerOptions
   return createDeepSeekProvider({ invoke: createAiSdkDeepSeekInvoker(options) });
 }
 
-function parseInvalidStructuredBody(text: string | undefined): unknown | undefined {
-  if (text === undefined) return undefined;
+function parseInvalidStructuredBody(text: string | undefined): unknown {
+  if (text === undefined) return null;
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return undefined;
+    return text;
   }
 }
 
-function toModelUsage(usage: {
-  inputTokens: number | undefined;
-  outputTokens: number | undefined;
-}): Extract<ModelUsage, { status: "actual" }> | undefined {
-  if (!Number.isSafeInteger(usage.inputTokens) || !Number.isSafeInteger(usage.outputTokens)) {
+function toModelUsage(usage: SdkUsage | undefined): Extract<ModelUsage, { status: "actual" }> | undefined {
+  if (
+    usage === undefined ||
+    !Number.isSafeInteger(usage.inputTokens) ||
+    !Number.isSafeInteger(usage.outputTokens) ||
+    (usage.inputTokens as number) < 0 ||
+    (usage.outputTokens as number) < 0
+  ) {
     return undefined;
   }
   return {
