@@ -402,3 +402,15 @@ PR #29 合并后，PR #32 的堆叠父已进入 main：三点对比 `origin/main
 推送后回读：远端 main 为 `5b5d790`，该提交只含 1 个文件、86 行新增、0 行删除，parent 为 `347dde1`；`5b5d790` 中本文的远端 Git blob SHA 与本地一致（`5aa13406b4db51ee613eb6882e224e6563efadd8`，53600 字节），换行为 LF、`git diff --check` 无空白问题。同一 443/连接重置在本轮 `git fetch`、`git ls-remote` 上也出现过并同样以原样重试恢复；`gh api` 全程可用。
 
 本小节自身随本文再次单文件普通提交/推送，故无法在正文内记录自己的提交与 blob SHA；其最终值以独立工作树 HEAD、`origin/main` 与远端 main 回读为准。本小节只补充真实网络结果，不改变 §10.2～§10.7 的任何结论，也不将本节记录记为修复通过或产品验收。
+
+### 10.9 §10.6 的 flaky 发现已按模块归属告知 B
+
+负责人指示把 §10.6 的发现写到 B2 的 PR 上。已发布为 PR #32 的普通评论 `6110959932`（2026-10-11T16:08:00Z，账号 `paher-din`，2651 字节），发布后回读确认存在；PR #32 状态未变，仍为 OPEN / Draft、head `fdec49d8`、reviewDecision 为空。
+
+路由依据：`git blame` 显示 `index.test.ts:361～374` 出自 `cdc4ac4b703e8d0bcec5b4a33c6b2d480cee9cda`（`feat: add B1 synthetic tutoring core`，scy404，2026-10-09），该提交是 `origin/main` 的祖先；`server/tutoring/**` 属 B 模块，#32 作者与 B1 作者同为 `scy404`，故记在 #32 而非 A 的 PR。
+
+形式说明：未用行内意见，因为 #32 对 `index.test.ts` 的改动集中在 513～570 行（移除 `countTokens` 注入、改用真实超长输入触发预检），`:361～374` 不在任何 diff hunk 内，GitHub 不允许对 hunk 外的未改动行提交行内评论。
+
+评论中除 §10.6 的事实与四点判定依据外，另补两项核实结果：`apps/teaching` 全范围的 `*.test.ts` 中，`Date.now() - startedAt` 及其他 elapsed/duration 形式的墙钟阈值断言只有 `index.test.ts:373` 这一处（`grep -rnE 'assert\.ok\([^)]*(Date\.now\(\)|elapsed|duration)[^)]*[<>]'` 命中 1 条）；#32 新增的 `deepseek-sdk.test.ts:298` `AI SDK adapter cancellation aborts a pending offline transport` 使用同样的 `setTimeout(() => controller.abort(), 5)` 排程，但只断言 `outcome === "cancelled"` 与 `calls === 1`，**没有墙钟阈值**，即新增测试未重复该问题。给出三种可选修法（去掉阈值只留语义断言 / 可控时钟 / 移到隔离运行或放宽阈值），并写明不要求在 #32 内修、可作为 main 基线独立待办。
+
+同时提醒 #32 的 base 仍为 `0afd008`，而 main 已是 `1b0fe66`（含 #29 与 #28），合并前需重新对齐。该评论不构成批准、不改变 §9.2 对 #32 的 3 项 P2 结论、未解决任何既有审查线程、未关闭 #27，也未由本工作项修改或放宽该测试。
