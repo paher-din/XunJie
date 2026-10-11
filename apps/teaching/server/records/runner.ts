@@ -63,6 +63,11 @@ export async function stopOriginalRun(submission:SubmitRun,transport:RunnerTrans
   authorize(checkCurrent);
   return validateRunFact(submission,data(await transport({op:'cancel',identity:submission.identity})));
 }
+export async function queryOriginalRun(submission:SubmitRun,transport:RunnerTransport,checkCurrent:()=>boolean) {
+  authorize(checkCurrent);
+  const fact=validateRunFact(submission,data(await transport({op:'query',identity:submission.identity})));
+  authorize(checkCurrent);return fact;
+}
 export function validateRunResult(submission:SubmitRun,value:unknown) {
   const record=object(value);
   if(['runId','snapshotId','snapshotHash','inputHash','runtimeProfileVersion','imageDigest'].some(key=>record[key]!==submission.identity[key as keyof typeof submission.identity])
