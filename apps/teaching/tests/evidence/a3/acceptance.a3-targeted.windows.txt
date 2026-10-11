@@ -1,0 +1,28 @@
+✔ teacher selects an asynchronous candidate and the editable draft survives reopening (2379.4723ms)
+✔ local proposal saves its original diff and adoption uses the existing PATCH CAS (1107.9434ms)
+✔ teacher-approved private sample supports rubric trial and only explicit rubric PATCH revises it (1560.2455ms)
+✔ editing during generation preserves the manual revision and rejects the old result (1314.0106ms)
+✔ original request and result replay survive edits, while conflicting keys or result bodies are refused (1201.8569ms)
+✔ durable cancellation promptly ends a pending round and a late result cannot create a proposal (1552.9892ms)
+✔ teacher job ownership, role and course checks reject students, other teachers and forged identity (3199.5662ms)
+✔ only explicitly approved course paragraphs and matching hashes enter generation or rubric trials (1519.5685ms)
+✔ a model cannot expand requested fields or smuggle unapproved resources through patch values (2234.404ms)
+✔ a fresh blueprint proposal retains unresolved structure and teacher confirmation forms a draft (1179.4127ms)
+✔ three reserved calls and unknown usage remain durable and manual creation works after budget denial (1462.148ms)
+✔ queueing counts toward the 45-second deadline and expired jobs cannot generate (1161.5236ms)
+✔ concurrent workers cannot claim the same round and an expired original lease is not retried (1115.5963ms)
+✔ restored recovery generation refuses an old round before another model call (1080.6233ms)
+✔ result commit failure rolls back and the original delivery can be retried without another generation (1728.1178ms)
+✔ revoked teacher access invalidates an in-flight result and stops read or receipt replay (1312.1862ms)
+✔ durable call reservations stop additional paid attempts when the trusted budget is withdrawn (1161.7502ms)
+✔ provider failure with missing usage keeps unknown reservations and does not affect manual edits (1172.8194ms)
+✔ a ticking service clock keeps the accepted job window exactly 45 seconds (1203.528ms)
+✔ proposal result hash identifies the exact stored B body bytes and altered bytes conflict (1574.1478ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30790.9939

@@ -2,6 +2,8 @@
 
 项目制教学 Agent：教师与 Agent 共同设计项目，学生在真实动手、试验与修订中学习，教师依据具体表现改进后续教学。首版是面向高校 CS 课程的独立 Web 应用。
 
+2026-10-11，项目负责人批准保留 C17/GCC、TextScope Core→Report 与现有 Web/应用服务/执行隔离架构，新增「数字逻辑与部件设计」的一条本地真实演示链。首条实验采用课程题目 PDF 已定义的 4 位 ALU 范围与 Nexys4 DDR Rev. C；课件用于讲解，未定义组合和 Cout 暂不判分。具体分工已纳入 [TEAM 的 P3～P5](docs/planning/TEAM_WORK_PLAN.md)：P3 的 DL-A/DL-C/DL-B 分别由 A/C/B 负责，P4 的 A6/B4/C5 验证两课程，P5 完成整体 UI 与应用验收。当前 P2 的 A3/B2/C3 继续原范围；数字逻辑评审/开发从 P2 原预交付确认后开始。材料、决定和交付证据见 [DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)，数字逻辑应用/真实模型/浏览器 Demo 尚未验收，原正式条件保留。
+
 2026-10-11，项目负责人确认进入 P2（G2 服务端教学支持）。[P2 总协调记录](docs/tasks/G2_OVERALL_COORDINATION.md)负责阶段依赖、跨模块契约核对、集成审查与验收汇总；A3/B2/C3 仍由既定成员分别实现，A 保留公共契约与应用集成职责。P2 服务端预交付及完整 G2 尚未验收，B1 实际模型接入和原 #22/#23 后续条件继续保留。
 
 P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/24)、[A3 #25](https://github.com/paher-din/XunJie/issues/25)、[B2 #26](https://github.com/paher-din/XunJie/issues/26)、[C3 #27](https://github.com/paher-din/XunJie/issues/27)，均 Open；任务范围、依赖与分层验收见各 Issue，发布核对见总协调记录第 6 节。
@@ -17,7 +19,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [PRD](docs/product/PRD.md) | 为谁解决什么问题、产品原则、核心流程、成功标准 |
 | [MVP_SPEC](docs/product/MVP_SPEC.md) | 第一版做到哪里、业务行为、限额与验收 |
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
-| [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | A/B/C 的详细任务、并行与等待关系、交接和验收责任；UI 成员仅在最终接入阶段参与 |
+| [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
+| [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -34,7 +37,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [产品研究依据](docs/reference/PRODUCT_RESEARCH.md) | 影响首版的研究结论、证据边界与公开来源 |
 | [工程衔接说明](docs/reference/ENGINEERING_HANDOFF.md) | 可沿用的 IDE/记录/运行/诊断契约与历史试验限制 |
 | [工作区合并与 Issue 收口](docs/tasks/W2_WORKSPACE_MAIN_INTEGRATION.md) | 本地 skills/接入记录、授权教材与既有工作树的 main 集成及实际验证/关闭记录 |
-| [课程教材目录](course_matrial/) | 经负责人确认公开分发授权的课程参考 PDF；教材分发不扩大 MVP 的资料导入格式 |
+| [课程教材目录](course_matrial/) | C 教材的既有分发授权见 W2；数字逻辑四份参考材料于 2026-10-11 经负责人确认有分发权并授权公开推送，原样/hash 记录见 DL-0；资料导入仍按 TXT/Markdown |
 | [B0 模型、帮助与候选分析交接稿](docs/tasks/B0_模型帮助分析契约.md) | 三类输入/输出、可信来源、保存归属、拒绝与取消提案；待 A/C 会审 |
 | [B0 模型与预算复核](docs/tasks/B0_MODEL_VENDOR_RESEARCH.md) | 精确型号/区域/结构化方式、数据条款证据状态及预算/配额建议；D-02 待批准 |
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
@@ -42,7 +45,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
-安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：三人先按业务契约完成后台、Agent 与执行能力，再在最后接入团队实际 UI。服务端预交付与完整产品验收分别记录，不提前宣称浏览器流程通过。
+安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：先完成当前 P2 原预交付，P3 的 A/C/B 接数字逻辑并分批联调，同时保留原反馈闭环；P4 的 A6/B4/C5 验证两课程，P5 完成整体集成与正式验收。服务端预交付、数字逻辑 Demo 与完整产品验收分别记录。
 
 开发 Agent 必须遵守 [Agent 权限与项目边界](AGENTS.md#agent-权限与项目边界硬性要求)：`docs/product/` 整体默认只读，包括 MVP_SPEC 的进度记录；规范、共同计划和参考材料同样受保护。执行任务、完成 Issue 或要求“文档优先”不自动授予基线修改权限。边界需要调整时，先提出差异，再由项目负责人明确授权指定维护者修改对应文件。
 
@@ -148,3 +151,15 @@ A2 PR #19 合并后的 checks/release 慢节点回执问题已由 [PR #21](https
 2026-10-11 总体核对：合并组合的 Node24.21.0/TypeScript7.0.2 typecheck/build、C2专项30通过/2节点项跳过、稳定 Windows A2/records/B1 59通过/1节点项跳过；作者 C1 48guest/10SSH、A2实际节点1/1、C2最终节点组合32/32的入库证据摘要核对一致，各自范围单列。Linux完整192项两轮仍有认证/限流/双进程失败且观测到约18.7秒墙钟跳变，未宣称全量通过或改变守卫，正式试点前在#23补验。该段 B1 数字是合并时点记录；后续 `codex/b1-sdk-adapter` 已实现实际 AI SDK/DeepSeek/Zod invoker、保守 16K 输入上界及零供应商网络 transport 测试，真实模型与语义仍未完成，不用离线结果冒充模型调用。
 
 当前 `npm start` 仍只启动健康入口；业务宿主需显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。
+
+## A3 教师 Agent 与提案（合成服务端）
+
+[A3 任务记录](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md) 对应 Issue #25。业务宿主可在 createDesignApp / createWorkspaceApp 的选项中显式传入 teacherAgent={provider, versions, budgetAvailable}；模型调用在短事务外，宿主驱动返回的 teacherAgent.processJob(jobId)。候选/蓝图生成只返回异步 Job，教师通过 design-proposals 查询/选择创建草稿；局部提案及量规试评的明确修改走现有 PATCH/CAS。默认 npm start 仍是健康入口。
+
+负责人已批准独立 createTeacherDesignDatabase，仅新建保留的临时合成库，共 24 表（原 workspace 22 表＋教师请求/提案两表），不迁移已有库。使用批准 Node 24.21.0，在 apps/teaching 执行 node --test tests/design-agent.test.ts；合成 provider 是唯一外部替身，登录、CSRF、数据库、Job、回执与事务均真实。接入字段、私有资料/旧版本/取消/预算边界、原结果保存失败后安全重试见任务记录 §2、§5。
+
+首批验证时点记录：获准合成服务端已实现，A3 专项20/20通过、typecheck/build通过，两轴审查未解决0。Windows完整201项为193通过、1既有C2 Linux-only用例失败、7原条件跳过，全套未通过；原字节证据/失败复现及边界见任务记录第6节。B1 真实 invoker/token counter、D-02、真实模型联调、教师内容会审与最终浏览器/TLS 未执行，不能据此宣称完整 A3/G2/MVP 通过。
+
+2026-10-11，PR #28 外部审查指出两项调用记账问题，修复与复现记录见 [A3 §9](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#9-pr-28-外部审查修复2026-10-11)：超时/停止后保存原调用实际 usage，InputLimitError 明确未发送时安全释放末尾预留。正文接收与采用守卫继续生效，其他未知调用保守占用。新增5项合成验证，A3专项25/25、typecheck/build通过；Windows完整206项：198通过、1既有C2平台失败、7原条件跳过，全套未通过。原始证据和复核结果见任务记录 §9，原 §6 统计保留历史事实。
+
+PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 §10](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#10-已合并-b1-新预检接缝适配2026-10-11)保留旧接口组合失败反例及修复说明。组合typecheck/build通过、A3专项25/25；完整217项：209通过、1既有C2平台失败、7原条件跳过，全套未通过。B1 SDK适配源码已接入，真实供应商网络调用及教师/UI验收仍未执行。

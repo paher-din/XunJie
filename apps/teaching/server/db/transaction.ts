@@ -1,3 +1,4 @@
+import { teacherDesignSchema } from '../design/teacher-schema.ts';
 import { completionSchema } from './completion-schema.ts';
 import { workspaceSchema } from '../workspace/schema.ts';
 import { teachingSchema } from '../records/schema.ts';
@@ -128,10 +129,11 @@ export function createDesignDatabase(): SyntheticDatabase {
 }
 export function createCompletionDatabase(): SyntheticDatabase { return createFreshDatabase('completion'); }
 export function createWorkspaceDatabase(): SyntheticDatabase { return createFreshDatabase('workspace'); }
+export function createTeacherDesignDatabase(): SyntheticDatabase { return createFreshDatabase('teacher-design'); }
 // C3 adds the four teaching tables on the same approved path/transaction rules; older factories never gain them.
 export function createTeachingDatabase(): SyntheticDatabase { return createFreshDatabase('teaching'); }
-function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teaching'): SyntheticDatabase {
-  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teaching'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
+function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching'): SyntheticDatabase {
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
@@ -139,7 +141,8 @@ function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspa
   try {
     db.exec('BEGIN IMMEDIATE');
     try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind !== 'design' && kind !== 'access') db.exec(completionSchema);
-      if (kind === 'workspace' || kind === 'teaching') db.exec(workspaceSchema); if (kind === 'teaching') db.exec(teachingSchema); db.exec('COMMIT'); }
+      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching') db.exec(workspaceSchema);
+      if (kind === 'teacher-design') db.exec(teacherDesignSchema); if (kind === 'teaching') db.exec(teachingSchema); db.exec('COMMIT'); }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   } finally { db.close(); }
   return openSyntheticDatabase(file);
