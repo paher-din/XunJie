@@ -328,10 +328,12 @@ Node 测试失败输出自带空格行与命令输出的 EOF 空行会触发 Git
 | 同上 | `node --test runner/hdl-profile.test.ts server/workspace/hdl.test.ts` | 9 项 9 通过 0 失败 0 跳过，用例名重复 0 |
 | 同上 | `node --test runner/node-files.test.ts` | win32 上 `writeImmutable` 因目录 `fsyncSync` 返回 EPERM 根本无法运行，这正是原用例加 Linux 门的原因；新用例同门，win32 计为跳过，不作为验证 |
 | 同上 | `node tools/a0-review/check.mjs` | 退出码 0，`errors: []` |
+| win32 x64，同上环境，本文与 README 改完之后 | `node --test tools/a0-review/check.test.mjs` | 16 项 16 通过 0 失败 0 跳过（该检查不在 `apps/teaching` 的 `npm test` glob 内，单独跑） |
+| 同上 | `git diff --check` | 退出码 0，无空白错误 |
 | WSL2 Ubuntu，Node `v24.21.0` | `node --test runner/node-files.test.ts` | **2 项 2 通过 0 失败 0 跳过**——原原子性用例与新增的不留暂存名用例都通过，即审查要求的 P2-1 Linux 侧实跑记录 |
 | 同上 | 三棵树全量对照 | 见 12.3 表 |
 
-`node tools/a0-review/check.test.mjs` 本轮未重跑：它在发布 PR #48 前已跑过 16/16，本轮改动只涉及 `apps/teaching` 源码与本文，未触碰 `docs/product/**` 或该检查器读取的路由集合。
+上表的 win32 全量与文档检查均在本文与 README 改完之后重跑，不是沿用发布 PR #48 前的结果。`check.test.mjs` 不在 `apps/teaching` 的 `npm test` glob 内，单独跑；本轮改动未触碰 `docs/product/**` 或该检查器读取的路由集合，`baselineMutationRoutes` 仍为 27、`additionalProposedRoutes` 仍为空。
 
 ### 12.5 边界与状态
 
