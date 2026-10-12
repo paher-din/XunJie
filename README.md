@@ -131,6 +131,8 @@ node --test server/tutoring/test/student-help.test.ts
 
 2026-10-12，已准备教师候选/明确采用/局部 PATCH 与学生获准求助/原文/未展示取消的验证入口，默认跳过。账号/API、条款/数据范围、额度及付费合成请求必须先按 D-02 落实；代码准备和内存重放不等于真实模型通过，具体边界见 [G2 第 17 节](docs/tasks/G2_OVERALL_COORDINATION.md#17-p2-真实模型接口验证准备2026-10-12)。
 
+2026-10-12，验证入口已按负责人授权公开至 [Draft PR #36](https://github.com/paher-din/XunJie/pull/36)，尚未合并；仅合成材料的限定实际调用已获条件许可，安全凭据入口和账号条件仍待落实，真实调用未执行，见 [G2 第 17.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#174-验证入口发布与条件调用授权)。
+
 下列命令仅供已获上述授权、批准安全通道已提供本机凭据、Node 24.21.0/精确 lock 就绪的环境执行；在仓库根进入应用目录后串行运行，最多三个 Job/九次模型请求，失败不自动重跑，不写凭据或预算金额。
 
 ```powershell

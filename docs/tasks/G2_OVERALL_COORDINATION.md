@@ -810,3 +810,13 @@ PR #35 固定 head=`ab6d5eafa7cc98a76e253d3c82b09efe6cfc71de`，base=`aee1777`�
 测试只标明工作流和软件守卫，不证明当前供应商已生成适切内容；真实模型、人工语义、教师/UI/真人和 NFR 条件仍未执行。独立分支先在本地提交，公开推送/新 PR 与实际合成数据发送/付费调用的具体范围在代码和验证就绪后确认；不把完成 P2 的普通指示当成凭据/付费授权，不因两个新增 SKIP 关闭 #11/#26/#24。
 
 B1 #11 已追加合并后离线完成复核与真实验证准备状态，完整正文回读一致且保持 Open。第 16 节的 main 文档提交为 `876035d25efce73b777d3770f1813473eeb192dc`，主副本已正常快进、干净；PR #35 MERGED/`5d725ba`、#25/#27 Closed/Completed、#11/#24/#26 Open 和原修复源分支仍在 `ab6d5ea` 均已独立回读。本验证分支尚未推送，不能把其本地入口说成已合入 main。
+
+### 17.4 验证入口发布与条件调用授权
+
+项目负责人针对固定本地提交 `73523dd20709596f1b948a3f63a9aef24ac6354f` 明确选择“发布入口并批准合成调用（推荐）”，允许普通推送 `codex/p2-real-model-validation`、创建 Draft PR，并在账号和安全凭据就绪后仅按第 17.1 节的三个 Job/最多九次请求执行。该条件授权不批准读取未知凭据来源、充值/修改 key、发送真实数据、改 schema、合并新 PR 或宣称人工语义通过。
+
+发布前 head/分支准确、工作树干净、无同 head 既有 PR；普通推送成功，远端 head 已回读与 `73523dd` 一致。已建立 [Draft PR #36](https://github.com/paher-din/XunJie/pull/36)，base=main、head=codex/p2-real-model-validation，标题 `test(P2): gate real-model interface validation and evidence`；完整正文（规范化末尾换行）、固定 head、Draft/Open 和无 mergeCommit 均已回读一致，并已附加到总协调工作项。正文 Refs #11/#24/#26，不自动关闭 Issue。
+
+安全凭据入口与具体账号/API/条款/额度确认的问题仍待答复；先前已知进程/用户/系统范围的标准 key 变量均不存在。条件未落实前不打开运行开关，也未发出真实供应商请求。实际模型、B2 人工语义和 P2 原出口继续待完成，不重复请求已取得的发布/限定合成调用授权。
+
+本段与 README 发布状态另随同一分支普通提交/推送，仅文档增量；最终远端 branch/PR head、正文/文档、未合并及 Issue 状态在发布后核对。原 main 与修复源分支保留，不把 Draft PR 建立当作实际调用结果。
