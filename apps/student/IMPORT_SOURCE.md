@@ -125,7 +125,7 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 
 | 日期 | 上次已接收来源 | 新来源 | 合入范围 | 验证 |
 | --- | --- | --- | --- | --- |
-| — | — | — | 尚未发生首次同步 | — |
+| 2026-10-12 | `a9bb1dd` | `238d3c3`（`feat(workspace): 代码工具包多文件编辑区与本机草稿（I0-02 设计基线）`） | 新增：`src/bridge/projects.ts`、`src/components/workspace/{CodeEditorHost,CodeWorkspace,FileStrip,monacoSetup,useProjectWorkspace}`、`src/lib/{draftStore,projectFiles,projectFiles.test}`；纯追加：`src/bridge/types.ts`（项目作品/草稿类型）、`src/styles/app.css`（末尾 `.cw-*` 分节）；整文件接收：`src/lib/wsLayout.ts`（基线逐字节一致）、`src/pages/WorkspacePage.tsx`（设计版 + 恢复 01 的 `ws-demo-flag` 一行）；逐项合并：`src/components/workspace/CenterToolArea.tsx`（保留 01 的 `variant`/演示横幅/运行簇注入与静态代码注记，接收设计的 `tools`/`knownTools`/`defaultLayout(toolKeys)`/`runCluster` 缺省回退）；依赖：`monaco-editor@0.57.0`（P-03 已批准，精确锁定） | `npx tsc --noEmit` 通过；vitest 9 文件 104 例通过；`npm run build` 成功；01 e2e 见任务记录 |
 
 ## 5. 导入后本目录的改动
 
@@ -136,5 +136,6 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 | 2026-10-11 | I0_UI_01 | 新增本文件、`.gitignore`（Playwright 产物）、`tsconfig.node.json`、`playwright.config.ts`、`e2e/`、`prep/`（fixture）、`src/workspace/`（模式/契约投影/窄 HTTP 客户端/上下文与 loadEpoch/初始化读取/会话/准备入口常量）、`src/pages/PrepWorkspacePage.tsx`、`src/pages/TaskRoute.tsx`、`src/components/workspace/TextScopePanes.tsx` |
 | 2026-10-11 | I0_UI_01 | 修改导入文件：`vite.config.ts`（按模式挂 fixture）、`package.json`（`dev:prep` / `test:e2e` 脚本与两个开发依赖）、`main.tsx`（任务入口分发）、`pages/HomePage.tsx`（准备入口卡片）、`pages/WorkspacePage.tsx`（任务信息加演示标识）、`components/workspace/CenterToolArea.tsx`（C 变体：正文与运行簇注入、board/wave 演示横幅、静态代码演示注记）、`lib/connectionTest.ts`（准备模式不外发、学校测试标模拟）、`styles/app.css`（末尾追加准备场景分节样式）、本 README 与 `src/icons/README.md`（失效链接改固定来源） |
 | 2026-10-11 | I0_UI_01 | 依赖差异：新增开发依赖 `@playwright/test@1.64.0`（P-03 已批准）与 `@types/node@24.19.2`（后者超出 P-03 字面清单：vite 的可选 peer、fixture 与 Playwright 配置为 Node 侧代码，需要它才能被 typecheck 覆盖；types-only，无运行时影响）。运行依赖未变；`monaco-editor` 属 02，未安装。`@types/node` 于 2026-10-12 获前端接入成员追认保留，见 [01 任务记录](../../docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md) |
+| 2026-10-12 | I0_UI_02 | 设计同步 `a9bb1dd → 238d3c3`（见第 4 节同步记录）之后的本仓库业务改动：`src/lib/originalText.ts(+test)` 原文保真纯函数、`src/workspace/draftDb.ts` 新库 v1 实现、`src/lib/draftStore.ts` 改写为存储契约 + CAS 判定（+test，替换设计基线的 localStorage 演示实现）、`src/components/workspace/{CodeEditorHost,useProjectWorkspace}.tsx/ts` 接原文权威与 CAS 写入、`src/pages/WorkspacePage.tsx` 传 scope 与 idb 仓库、`e2e/editor.spec.ts` 新增 4 例浏览器验证；依赖新增运行依赖 `monaco-editor@0.57.0`（P-03 已批准，精确锁定） |
 
 未回写设计仓库；上述修改只存在于本仓库。

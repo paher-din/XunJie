@@ -39,8 +39,12 @@ function nid(): string {
   return `n${Date.now().toString(36)}${++seq}`
 }
 
-export function defaultLayout(): LayoutNode {
-  return { kind: 'pane', id: nid(), tabs: ['design', 'board', 'wave'], active: 'board' }
+/** 数字逻辑工具包的三个核心工具；其他课程由各自的工具包声明（见 bridge/projects.ts）。 */
+export const DEFAULT_TOOLS: CoreToolKey[] = ['design', 'board', 'wave']
+
+export function defaultLayout(tools: CoreToolKey[] = DEFAULT_TOOLS, active: CoreToolKey = 'board'): LayoutNode {
+  const current = tools.includes(active) ? active : tools[0]
+  return { kind: 'pane', id: nid(), tabs: [...tools], active: current }
 }
 
 export function panes(node: LayoutNode): PaneNode[] {
@@ -140,8 +144,7 @@ export function serialize(node: LayoutNode): string {
   return `s(${node.dir},${node.ratio.toFixed(2)},${serialize(node.a)},${serialize(node.b)})`
 }
 
-const DEFAULT_SERIAL = serialize({ kind: 'pane', id: '-', tabs: ['design', 'board', 'wave'], active: 'board' })
-
-export function isDefaultShape(node: LayoutNode): boolean {
-  return serialize(node) === DEFAULT_SERIAL
+/** 是否还是该工具包声明的默认布局（单窗格、标签就是工具包那几枚）。 */
+export function isDefaultShape(node: LayoutNode, tools: CoreToolKey[] = DEFAULT_TOOLS): boolean {
+  return serialize(node) === serialize({ kind: 'pane', id: '-', tabs: [...tools], active: tools[0] })
 }

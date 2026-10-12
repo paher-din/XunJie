@@ -1,5 +1,5 @@
 import { Icon, IconText } from '../icons'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { learningApi } from '../bridge/mockAdapter'
@@ -10,7 +10,12 @@ import { buildTurnScript } from '../bridge/turnScript'
 import { AgentMessage } from '../components/chat/AgentMessage'
 import { GenCard } from '../components/chat/GenCard'
 import { QUEUE_TIP } from '../components/chat/copy'
-import { CenterToolArea, type CenterToolAreaHandle, type ToolKey } from '../components/workspace/CenterToolArea'
+import { CODE_TOOLS, CenterToolArea, type CenterToolAreaHandle, type ToolKey } from '../components/workspace/CenterToolArea'
+import { CodeRunCluster, CodeWorkspace } from '../components/workspace/CodeWorkspace'
+import { useProjectWorkspace } from '../components/workspace/useProjectWorkspace'
+import { demoProjects, toolkitOf } from '../bridge/projects'
+import { scopeKey, type DraftScope } from '../lib/draftStore'
+import { idbDraftRepository } from '../workspace/draftDb'
 import { GuideLayer, type GuideStep } from '../components/workspace/GuideLayer'
 import { SideDock } from '../components/workspace/SideDock'
 import { CARDS } from '../components/workspace/cards'
@@ -47,6 +52,16 @@ const GENERIC_GUIDE: GuideStep[] = [
   {
     at: 'dock',
     text: '欢迎来到任务工作区！\n\n任务信息收在左边胶囊的「任务信息」里。这门课的工具包还在接入中，先对照任务目标动手吧。',
+  },
+]
+
+/** 程序设计课程的开场引导：核心工具是多文件代码编辑区，草稿与确认保存分开说。 */
+const CODE_GUIDE: GuideStep[] = [
+  {
+    at: 'editor',
+    below: true,
+    tool: 'design',
+    text: '欢迎来到任务工作区！\n\n任务信息收在左边胶囊的「任务信息」里。中间是这门课的代码工具：可以编辑多个文件、切换标签、新建文件。改动先落在本机草稿，确认保存由你自己发起。',
   },
 ]
 
@@ -104,7 +119,18 @@ export default function WorkspacePage() {
   const snapshot = useQuery({ queryKey: ['home'], queryFn: () => learningApi.getHomeSnapshot() })
 
   const task = snapshot.data?.tasks.find((t) => t.id === taskId) ?? null
-  const guide = task?.id === 'counter' ? COUNTER_GUIDE : GENERIC_GUIDE
+  /**
+   * 程序设计课程的核心工具是多文件代码编辑：作品集合由课程包 mock 声明，
+   * 没有声明的任务（例如数据结构那两门）继续显示「工具包接入中」，不用别门课的工具顶替。
+   */
+  const projectSeed = task !== null && toolkitOf(task.course) === 'code' ? (demoProjects[task.id] ?? null) : null
+  /** 草稿与 model 的隔离命名空间：模式 / 账号 / Attempt 三段（mock 下 Attempt 按任务计）。 */
+  const draftScope = useMemo<DraftScope>(
+    () => ({ mode: 'demo', account: 'local', attemptKey: `task:${taskId}` }),
+    [taskId],
+  )
+  const project = useProjectWorkspace(projectSeed, idbDraftRepository, draftScope)
+  const guide = task?.id === 'counter' ? COUNTER_GUIDE : projectSeed !== null ? CODE_GUIDE : GENERIC_GUIDE
 
   const seenKey = `ws-seen:${taskId}`
   const stepKey = `ws-guide:${taskId}`
@@ -117,6 +143,10 @@ export default function WorkspacePage() {
     return Number.isFinite(saved) && saved > 0 ? saved : 0
   })
   const [tool, setTool] = useState<ToolKey>('board')
+  // 代码工具包只有「代码」一枚核心工具：外部聚焦请求落在别的工具上时收回代码标签
+  useEffect(() => {
+    if (projectSeed !== null && tool !== 'design') setTool('design')
+  }, [projectSeed, tool])
   const [chatOpen, setChatOpen] = useState(false)
   const [docked, setDocked] = useState(false)
   /** 工作区会话按任务持久化（ws-conv:<taskId>，第 19 条）：先从适配层恢复，改动后覆盖写回。 */
@@ -488,6 +518,27 @@ export default function WorkspacePage() {
             onGenStateSync={syncGenState}
             tabsSlot={tabsSlot}
             runSlot={runSlot}
+          />
+        ) : projectSeed !== null ? (
+          <CenterToolArea
+            taskId={task.id}
+            tools={CODE_TOOLS}
+            tool={tool}
+            onToolChange={setTool}
+            onToast={showToast}
+            genCards={genCards}
+            onGenTabsChange={setOpenGenTabs}
+            onGenCollect={collectGenTab}
+            onGenStateSync={syncGenState}
+            tabsSlot={tabsSlot}
+            runSlot={runSlot}
+            designBody={<CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} />}
+            runCluster={
+              <CodeRunCluster
+                ws={project}
+                onSave={() => showToast('确认保存还没有接入：现在只有本机草稿（模拟）')}
+              />
+            }
           />
         ) : (
           <div className="ws-center">

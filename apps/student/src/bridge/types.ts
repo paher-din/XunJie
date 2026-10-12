@@ -286,3 +286,38 @@ export interface ConversationSummary {
   /** 归档标记（2026-10-11 确认）：界面据此把它移出主列表、收进归档箱；搜索跨两组命中，归档命中标灰并可「恢复」。 */
   archived: boolean
 }
+
+/* ---------- 项目作品与本机草稿（多文件编辑） ---------- */
+
+/**
+ * 作品文件实例。稳定身份是 `fileId`，不是路径：路径只是当前占用的名字，
+ * 实例被回收后同名路径可以被新实例占用，而旧实例的身份与历史不变。
+ */
+export interface ProjectFile {
+  fileId: string
+  path: string
+  lifecycle: 'active' | 'recycled'
+  /**
+   * 已确认的正文与版本；本机新建、还没确认保存的文件为 null。
+   * 草稿与它比较得出「未确认修改」——本机草稿与确认作品是两份内容，不共用一个值。
+   */
+  confirmed: { text: string; version: number } | null
+}
+
+/**
+ * 工作区可写性。正式版由 Attempt 状态与分配状态决定（暂停时只能继续编辑已有 active 文件，
+ * 终态只读）；mock 里逐项目声明，界面按 kind 与 reason 如实显示，不从昵称或本地设置推断权限。
+ */
+export type ProjectAccess =
+  | { kind: 'editable' }
+  | { kind: 'paused'; reason: string }
+  | { kind: 'read-only'; reason: string }
+
+/** 一个任务的初始作品集合（mock 数据；正式版来自服务端确认作品 + 本机草稿）。 */
+export interface ProjectSeed {
+  taskId: string
+  files: ProjectFile[]
+  access: ProjectAccess
+  /** 已确认作品的工作区版本，用于「确认作品 vN」读数。 */
+  confirmedRevision: number
+}

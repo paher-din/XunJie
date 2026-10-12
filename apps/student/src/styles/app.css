@@ -9047,3 +9047,399 @@ button.st-check.checked:hover {
   font-size: 11px;
   line-height: 1.55;
 }
+
+/* ==========================================================================
+   代码工具包：多文件编辑区（程序设计课程的核心工具）
+   取值全部走 tokens.css 与 DESIGN.md 阶梯：控件高 28 / 32、圆角 6 / 8 / 12、
+   字号 11 / 12 / 13、时长 150 / 240、S 曲线；状态一律「亮底深字 + 文字」。
+   ========================================================================== */
+
+.cw {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ---------- 可写性提示：暂停 / 终态只读 ---------- */
+.cw-access {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--sunken);
+  font-size: 12px;
+  color: var(--muted);
+}
+.cw-access b {
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.cw-access[data-kind='read-only'] {
+  background: var(--tint-amber-bg);
+  color: var(--tint-amber-fg);
+  border-bottom-color: var(--tint-amber-line);
+}
+.cw-access[data-kind='read-only'] b {
+  color: var(--tint-amber-fg);
+}
+
+/* ---------- 文件条 ---------- */
+.cw-filestrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  flex: none;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.cw-filelist {
+  position: relative;
+  flex: none;
+}
+.cw-stripbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  transition: background 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.cw-stripbtn:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+.cw-stripbtn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.cw-stripbtn b {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* 全部文件列表（浮层中档：白卡 12px 圆角 + S 曲线 scale+fade） */
+.cw-filemenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 300px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-menu);
+  transform-origin: top left;
+  animation: cw-menu-in 0.24s cubic-bezier(0.3, 1, 0.35, 1);
+}
+@keyframes cw-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.cw-filemenu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.cw-filemenu-row:hover {
+  background: var(--hover-bg);
+}
+.cw-filemenu-row.active {
+  background: var(--chip-bg);
+  color: var(--ink);
+}
+.cw-filemenu-path {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cw-filemenu-empty {
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* 列表底部的新建入口：点它就地变成命名框，不弹模态窗 */
+.cw-filemenu-foot {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.cw-filemenu-add {
+  color: var(--ink-soft);
+}
+.cw-filemenu-new {
+  padding: 6px 8px 8px;
+}
+.cw-name-input {
+  width: 100%;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--raised);
+  transition: border-color 0.15s cubic-bezier(0.3, 1, 0.35, 1), box-shadow 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.cw-name-input::placeholder {
+  color: var(--faint);
+}
+.cw-name-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-glow);
+}
+.cw-name-input.invalid {
+  border-color: var(--danger);
+}
+.cw-name-input.invalid:focus {
+  box-shadow: var(--danger-glow);
+}
+.cw-name-quota,
+.cw-name-error {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.cw-name-error {
+  color: var(--danger-deep);
+}
+
+/* 已打开文件的标签：盒子里是「激活」与「关闭」两个平级按钮，不做嵌套交互元素 */
+.cw-filetabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.cw-filetab {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  transition: background 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.cw-filetab:hover {
+  background: var(--hover-bg);
+}
+.cw-filetab.active {
+  background: var(--chip-bg);
+}
+.cw-filetab-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 2px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cw-filetab.active .cw-filetab-main {
+  color: var(--ink);
+  font-weight: 500;
+}
+.cw-filetab-dir {
+  font-size: 12px;
+  color: var(--faint);
+}
+.cw-filetab-x {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  border-radius: 4px;
+  color: var(--faint);
+}
+.cw-filetab-x:hover {
+  background: var(--chip-active);
+  color: var(--ink);
+}
+.cw-filetabs-empty {
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 未确认修改的琥珀点（--indicator-amber 的登记用途就是草稿提示）与「新建」标记 */
+.cw-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--indicator-amber);
+}
+.cw-tag-new {
+  flex: none;
+  font-size: 11px;
+  color: var(--indicator-amber-ink);
+}
+
+/* ---------- 编辑器 ---------- */
+.cw-editor-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.cw-editor {
+  flex: 1;
+  min-width: 0;
+}
+.cw-editor-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  font-size: 13px;
+  color: var(--muted);
+}
+.cw-editor-failed {
+  flex: 1;
+  padding: 26px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.cw-editor-failed p:first-child {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--danger-deep);
+}
+.cw-editor-failed-detail {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.cw-editor-failed-note {
+  color: var(--muted);
+}
+
+.cw-empty {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  justify-items: center;
+  padding: 26px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cw-empty-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- 状态行：文件级事实 + 本机草稿保护状态 ---------- */
+.cw-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  flex: none;
+  padding: 0 12px;
+  border-top: 1px solid var(--line);
+  background: var(--sunken);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cw-status-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cw-status-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.cw-status-sep {
+  color: var(--line-faint);
+}
+.cw-status-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex: none;
+}
+.cw-unconfirmed {
+  font-weight: 500;
+  color: var(--indicator-amber-ink);
+}
+.cw-protect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--chip-bg);
+  color: var(--ink-soft);
+}
+.cw-protect i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot-ok);
+}
+.cw-protect[data-status='saving'] i {
+  background: var(--indicator-amber);
+}
+.cw-protect[data-status='failed'] {
+  background: var(--status-overdue-bg);
+  color: var(--status-overdue-fg);
+}
+.cw-protect[data-status='failed'] i {
+  background: var(--danger);
+}
+
+/* ---------- 顶栏运行簇：非编辑态不点绿灯 ---------- */
+.ws-run-state[data-state='locked'] i {
+  background: var(--faint);
+  animation: none;
+  box-shadow: none;
+}
+.ws-run-state[data-state='locked'] {
+  color: var(--muted);
+}
+
+/* 禁用态：主 / 次按钮与运行簇按钮共用一档透明度，避免「看着能点」 */
+.st-dialog-foot .primary:disabled,
+.st-dialog-foot .outline:disabled,
+.ws-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}

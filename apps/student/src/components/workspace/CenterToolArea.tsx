@@ -22,6 +22,7 @@ import {
   panes,
   resizeSplit,
   splitTab,
+  type CoreToolKey,
   type LayoutNode,
   type PaneNode,
   type ToolKey,
@@ -34,7 +35,7 @@ export type { ToolKey }
 /**
  * 中心容器变体。
  * - `digital-logic`（默认）：原数字逻辑演示，静态代码 + 虚拟板 + 波形 + 模拟构建/烧录。
- * - `textscope-c`：I0-A 的 C 准备工作区。正文与顶栏运行簇由页面注入（02 / 06 接入），
+ * - `textscope-c`：I0-A 的 C 准备工作区。正文与顶栏运行簇由页面注入，
  *   board / wave 保留为数字逻辑演示并明确标注，不提供模拟构建入口。
  */
 export type CenterVariant = 'digital-logic' | 'textscope-c'
@@ -131,9 +132,7 @@ function EditorPane() {
           <span className={`code ${cls}`}>{text || ' '}</span>
         </span>
       ))}
-      <p className="ws-editor-note">
-        静态演示代码 · 不可编辑，也不代表已保存的作品（多文件编辑属数字逻辑之外的 I0 任务）
-      </p>
+      <p className="ws-editor-note">静态演示代码 · 不可编辑，也不代表已保存的作品</p>
     </div>
   )
 }
@@ -230,25 +229,53 @@ function BoardPane({
   )
 }
 
-const TOOLS: Array<[ToolKey, string]> = [
-  ['design', '设计'],
-  ['board', '虚拟板'],
-  ['wave', '波形'],
+/**
+ * 一枚核心工具标签的声明。工具集由学科工具包给出（docs/home-design.md Q3）：
+ * 数字逻辑是设计 / 虚拟板 / 波形，程序设计是代码；标签文案随课程变，
+ * 但布局树里的 key 仍是 wsLayout 的那几个核心工具，不新增布局概念。
+ */
+export interface ToolSpec {
+  key: CoreToolKey
+  label: string
+  icon: IconName
+}
+
+export const DIGITAL_LOGIC_TOOLS: ToolSpec[] = [
+  { key: 'design', label: '设计', icon: 'code-square' },
+  { key: 'board', label: '虚拟板', icon: 'virtual-board' },
+  { key: 'wave', label: '波形', icon: 'digital-waveform' },
 ]
-const TOOL_ICON: Record<string, IconName> = { design: 'code-square', board: 'virtual-board', wave: 'digital-waveform' }
-const TOOL_NAME = Object.fromEntries(TOOLS) as Record<string, string>
+
+export const CODE_TOOLS: ToolSpec[] = [{ key: 'design', label: '代码', icon: 'code-square' }]
+
 const GEN_TAB_ICON: IconName = 'play-circle'
 
-/** 标签展示元数据：核心工具查表，生成卡标签用存储里的标题。 */
-function toolMeta(k: ToolKey, genCards: StoredGenCard[]): { icon: IconName; name: string; gen: boolean } {
+/** 标签展示元数据：核心工具查工具包声明，生成卡标签用存储里的标题。 */
+function toolMeta(k: ToolKey, tools: ToolSpec[], genCards: StoredGenCard[]): { icon: IconName; name: string; gen: boolean } {
   const cardId = genCardIdOf(k)
   if (cardId) {
     return { icon: GEN_TAB_ICON, name: genCards.find((c) => c.cardId === cardId)?.title ?? '生成卡', gen: true }
   }
-  return { icon: TOOL_ICON[k], name: TOOL_NAME[k], gen: false }
+  const spec = tools.find((t) => t.key === k)
+  return { icon: spec?.icon ?? 'code-square', name: spec?.label ?? k, gen: false }
 }
 
 type DropZone = 'left' | 'right' | 'top' | 'bottom' | 'center'
+
+/**
+ * 持久化布局是否还认得当前工具包：每个窗格至少一个标签、标签都是当前核心工具或生成卡、
+ * active 在其中。课程换工具包后旧布局不再适用，直接回默认，不留下空白窗格。
+ */
+function knownTools(node: LayoutNode, toolKeys: CoreToolKey[]): boolean {
+  const list = panes(node)
+  if (list.length === 0) return false
+  return list.every(
+    (pane) =>
+      pane.tabs.length > 0 &&
+      pane.tabs.every((tab) => genCardIdOf(tab) !== null || toolKeys.includes(tab as CoreToolKey)) &&
+      pane.tabs.includes(pane.active),
+  )
+}
 
 function Divider({ horiz, onResize }: { horiz: boolean; onResize: (ratio: number) => void }) {
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
@@ -273,6 +300,7 @@ function Divider({ horiz, onResize }: { horiz: boolean; onResize: (ratio: number
 /** 分段控件式工具标签：滑动高亮跟随激活项；拖到标签栏 = 并入该窗格。生成卡标签带 ×（只关视图）。 */
 function ToolTabs({
   pane,
+  tools,
   allowDrop,
   genCards,
   onActivate,
@@ -282,6 +310,8 @@ function ToolTabs({
   onClose,
 }: {
   pane: PaneNode
+  /** 当前课程工具包声明的核心工具（标签文案与图标）。 */
+  tools: ToolSpec[]
   allowDrop: boolean
   genCards: StoredGenCard[]
   onActivate: (k: ToolKey) => void
@@ -315,7 +345,7 @@ function ToolTabs({
     >
       <span className="ws-tabglider" style={{ transform: `translateX(${glider.x}px)`, width: glider.w }} />
       {pane.tabs.map((k) => {
-        const meta = toolMeta(k, genCards)
+        const meta = toolMeta(k, tools, genCards)
         return (
           <button
             key={k}
@@ -360,6 +390,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   tabsSlot,
   runSlot,
   variant = 'digital-logic',
+  tools = DIGITAL_LOGIC_TOOLS,
   designBody,
   runCluster,
 }: {
@@ -383,24 +414,31 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   runSlot?: HTMLElement | null
   /** 中心容器变体；缺省是原数字逻辑演示。 */
   variant?: CenterVariant
-  /** `textscope-c` 下「设计」标签的正文（02 接编辑器前是明确的待接入说明）。 */
+  /** 学科工具包声明的核心工具；缺省是数字逻辑那三枚。 */
+  tools?: ToolSpec[]
+  /** 「设计 / 代码」标签的正文：课程工具包自己给（缺省是数字逻辑的静态代码演示）。 */
   designBody?: ReactNode
-  /** `textscope-c` 下顶栏运行簇的内容（06 接运行前是不可用状态，不提供模拟构建）。 */
+  /** 顶栏运行簇内容：状态与操作由学科工具包声明（缺省是虚拟板的状态与烧录）。 */
   runCluster?: ReactNode
 }, ref: React.Ref<CenterToolAreaHandle>) {
   const [count, setCount] = useState(3)
   const [sw, setSw] = useState([true, false, true, false])
   const [loaded, setLoaded] = useState('v3')
 
+  const toolKeys = tools.map((t) => t.key)
   const storeKey = `ws-layout:${taskId}`
   const [layout, setLayout] = useState<LayoutNode>(() => {
     try {
       const raw = localStorage.getItem(storeKey)
-      if (raw) return JSON.parse(raw) as LayoutNode
+      if (raw) {
+        const stored = JSON.parse(raw) as LayoutNode
+        // 工具包换过之后，旧布局里的标签可能已经不是当前课程的工具：只接受仍然认识的标签
+        if (knownTools(stored, toolKeys)) return stored
+      }
     } catch {
       // 损坏的持久化布局回退默认
     }
-    return defaultLayout()
+    return defaultLayout(toolKeys)
   })
   const [dragTool, setDragTool] = useState<ToolKey | null>(null)
   const [dropHint, setDropHint] = useState<string | null>(null)
@@ -458,13 +496,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
         />
       )
     }
-    if (k === 'design') {
-      return isTextScopeC ? (
-        designBody
-      ) : (
-        <EditorPane />
-      )
-    }
+    if (k === 'design') return designBody ?? (isTextScopeC ? null : <EditorPane />)
     if (k === 'wave') return withDemoBanner(<WavePane />)
     return withDemoBanner(
       <BoardPane
@@ -500,6 +532,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
     const tabs = (
       <ToolTabs
         pane={p}
+        tools={tools}
         allowDrop={dragTool != null}
         genCards={genCards}
         onActivate={onToolChange}
@@ -574,57 +607,29 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
       {runSlot &&
         createPortal(
           <>
+            {!isDefaultShape(layout, toolKeys) && (
+              <span className="ws-run-actions">
+                <button className="ws-btn ghost" onClick={() => setLayout(defaultLayout(toolKeys))}>
+                  <IconText name="restart">默认布局</IconText>
+                </button>
+              </span>
+            )}
             {isTextScopeC ? (
               // C 准备工作区：顶栏运行簇由页面注入（06 接入前是不可用状态，不提供模拟构建/烧录）
               runCluster
             ) : (
-              <>
-                <span className="ws-run-state">
-                  <i />
-                  <span>虚拟板运行中</span>
-                </span>
-                {dirty ? (
-                  <span className="ws-flow" title="草稿 v4 尚未烧录，虚拟板仍在运行 v3">
-                    <span className="ws-flow-node draft">
-                      <i />
-                      草稿 v4
-                    </span>
-                    <span className="ws-flow-link">▸</span>
-                    <span className="ws-flow-node loaded">板载 v3</span>
-                  </span>
-                ) : (
-                  <span className="ws-flow synced">
-                    <b>✓</b>
-                    板载 v4 · 与草稿同步
-                  </span>
-                )}
-              </>
+              runCluster ?? (
+                <DigitalLogicRunCluster
+                  dirty={dirty}
+                  onBuild={() => onToast('构建通过 · 0 错误 1 警告（模拟）')}
+                  onLoad={() => {
+                    setLoaded('v4')
+                    if (dirty) onDesignLoaded?.()
+                    onToast('已装载设计 v4 到虚拟板（模拟）')
+                  }}
+                />
+              )
             )}
-            <span className="ws-run-actions">
-              {!isDefaultShape(layout) && (
-                <button className="ws-btn ghost" onClick={() => setLayout(defaultLayout())}>
-                  <IconText name="restart">默认布局</IconText>
-                </button>
-              )}
-              {!isTextScopeC && (
-                <>
-                  <button className="ws-btn ghost" onClick={() => onToast('构建通过 · 0 错误 1 警告（模拟）')}>
-                    <IconText name="checklist">检查并构建</IconText>
-                  </button>
-                  <button
-                    className="ws-btn solid"
-                    onClick={() => {
-                      setLoaded('v4')
-                      if (dirty) onDesignLoaded?.()
-                      onToast('已装载设计 v4 到虚拟板（模拟）')
-                    }}
-                  >
-                    <IconText name="load-board">烧录到虚拟板</IconText>
-                    {dirty && <i className="ws-btn-dot" title="有未装载的草稿" />}
-                  </button>
-                </>
-              )}
-            </span>
           </>,
           runSlot,
         )}
@@ -632,4 +637,40 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
     </div>
   )
 })
+
+/** 数字逻辑工具包的运行簇：板状态 + 草稿/板载版本流 + 检查构建与烧录（均为课程包级模拟）。 */
+function DigitalLogicRunCluster({ dirty, onBuild, onLoad }: { dirty: boolean; onBuild: () => void; onLoad: () => void }) {
+  return (
+    <>
+      <span className="ws-run-state">
+        <i />
+        <span>虚拟板运行中</span>
+      </span>
+      {dirty ? (
+        <span className="ws-flow" title="草稿 v4 尚未烧录，虚拟板仍在运行 v3">
+          <span className="ws-flow-node draft">
+            <i />
+            草稿 v4
+          </span>
+          <span className="ws-flow-link">▸</span>
+          <span className="ws-flow-node loaded">板载 v3</span>
+        </span>
+      ) : (
+        <span className="ws-flow synced">
+          <b>✓</b>
+          板载 v4 · 与草稿同步
+        </span>
+      )}
+      <span className="ws-run-actions">
+        <button className="ws-btn ghost" onClick={onBuild}>
+          <IconText name="checklist">检查并构建</IconText>
+        </button>
+        <button className="ws-btn solid" onClick={onLoad}>
+          <IconText name="load-board">烧录到虚拟板</IconText>
+          {dirty && <i className="ws-btn-dot" title="有未装载的草稿" />}
+        </button>
+      </span>
+    </>
+  )
+}
 
