@@ -8,6 +8,8 @@ export const id = z.string().min(1).max(128);
 const natural = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const revision = natural.min(1), hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const generationInput = z.strictObject({ recoveryGeneration: id });
+// C3: a teaching stop carries an optional reason; an ordinary C2 run cancel keeps its original shape.
+export const cancelInput = generationInput.extend({ reason: z.string().min(1).max(512).optional() });
 export const params = z.strictObject({ id });
 export const key = id.regex(/^[\x21-\x7e]+$/);
 const range = z.strictObject({ startLine: revision, startColumn: revision, endLine: revision, endColumn: revision });

@@ -1,3 +1,5 @@
+import { agentCreateSchema } from '../../contracts/design/proposals.ts';
+import { registerTeacherAgent, type TeacherAgentOptions } from './teacher-agent.ts';
 import { z } from 'zod';
 import type { FastifyRequest } from 'fastify';
 import { createVerificationApp, type VerificationOptions } from '../access/app.ts';
@@ -13,7 +15,7 @@ import { projectDraftPreview } from './projection.ts';
 import { contentPatchSchema, versionSchema } from './model.ts';
 import { commitCommand, readMaterial, saveMaterial, draftCourse, readDraft, createStoredDraft, patchStoredDraft, checkStoredDraft, draftMaterials, teacherConcernSchema, type DesignResult } from './storage.ts';
 
-export interface DesignVerificationOptions extends VerificationOptions { currentGeneration: () => string; completion?: boolean; runner?: RunnerTransport }
+export interface DesignVerificationOptions extends VerificationOptions { currentGeneration: () => string; completion?: boolean; runner?: RunnerTransport; teacherAgent?: TeacherAgentOptions }
 const id = z.string().min(1).max(128);
 const paramsSchema = z.strictObject({ id });
 const keySchema = z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/);
@@ -25,16 +27,18 @@ const materialInput = z.strictObject({
     visibility: z.strictObject({ student: z.boolean(), tutor: z.boolean() }).optional() }),
 });
 const createInput = z.discriminatedUnion('mode', [
+  agentCreateSchema,
   z.strictObject({ mode: z.literal('manual'), recoveryGeneration: generationSchema, content: contentPatchSchema.default({}) }),
   z.strictObject({ mode: z.literal('copy'), recoveryGeneration: generationSchema, sourceBlueprintId: id, expectedSourceRevision: versionSchema }),
 ]);
-const patchInput = z.strictObject({ recoveryGeneration: generationSchema, expectedRevision: versionSchema, patch: contentPatchSchema });
+const patchInput = z.strictObject({ recoveryGeneration: generationSchema, expectedRevision: versionSchema, patch: contentPatchSchema, proposalId: id.optional() });
 
 const checksInput = z.strictObject({ recoveryGeneration: generationSchema, expectedRevision: versionSchema, concerns: z.array(teacherConcernSchema).default([]) });
 
 export async function createDesignVerificationApp(options: DesignVerificationOptions) {
   const { app, access } = await createVerificationApp(options);
   const now = options.now ?? Date.now;
+  const teacherAgent = options.teacherAgent ? registerTeacherAgent(app, access, options, options.teacherAgent) : undefined;
   function currentGeneration() {
     const value = options.currentGeneration();
     if (!id.safeParse(value).success) throw new ApiError('DEPENDENCY_UNAVAILABLE');
@@ -80,6 +84,10 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
   app.post('/api/courses/:id/blueprints', request => {
     const courseId = parseRequest(paramsSchema, request.params).id;
     const input = parseRequest(createInput, request.body);
+    if (input.mode === 'agent') {
+      if (!teacherAgent) throw new ApiError('DEPENDENCY_UNAVAILABLE');
+      return teacherAgent.enqueue(request, courseId, input);
+    }
     return execute(request, courseId, { name: 'draft.create', target: courseId, input,
       apply: (tx, actor, timestamp) => createStoredDraft(tx, actor, input, timestamp) });
   });
@@ -87,7 +95,13 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
     const blueprintId = parseRequest(paramsSchema, request.params).id;
     const input = parseRequest(patchInput, request.body);
     return execute(request, tx => draftCourse(tx, blueprintId), { name: 'draft.patch', target: blueprintId, input,
-      apply: (tx, actor) => patchStoredDraft(tx, actor.courseId, blueprintId, input.expectedRevision, input.patch) });
+      apply: (tx, actor) => {
+        if (input.proposalId) {
+          if (!teacherAgent) throw new ApiError('DEPENDENCY_UNAVAILABLE');
+          teacherAgent.assertPatch(tx, actor, blueprintId, input.expectedRevision, input.proposalId, input.patch);
+        }
+        return patchStoredDraft(tx, actor.courseId, blueprintId, input.expectedRevision, input.patch);
+      } });
   });
   app.post('/api/blueprints/:id/checks', async request => {
     const blueprintId = parseRequest(paramsSchema, request.params).id;
@@ -126,5 +140,5 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
         (tx, actor) => readDraft(tx, actor.courseId, blueprintId));
     },
   };
-  return { app, access, design };
+  return { app, access, design, teacherAgent };
 }

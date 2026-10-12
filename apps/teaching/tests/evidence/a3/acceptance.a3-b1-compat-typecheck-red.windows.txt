@@ -1,0 +1,6 @@
+
+> @xunjie/teaching@0.0.0 typecheck
+> node tools/check-runtime.mjs && tsc --noEmit
+
+tests/design-agent.test.ts(427,44): error TS2353: Object literal may only specify known properties, and 'countTokens' does not exist in type '{ invoke: DeepSeekInvoker; }'.
+tests/design-agent.test.ts(464,44): error TS2353: Object literal may only specify known properties, and 'countTokens' does not exist in type '{ invoke: DeepSeekInvoker; }'.
