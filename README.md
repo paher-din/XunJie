@@ -47,7 +47,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
-| [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 已核 DL-C PR #48；A/C 接缝与 33 表首批方案待批准，B/UI 最小交接按原任务列明 |
+| [DL-A：课程与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 已批准 A/C 首批、本地实现与验证；B/UI 对应任务交接、真实联调及整卡剩余条件 |
 | [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 获准 31 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；专项 43/43、两轴未解决 0；完整回归环境失败及后置项单列 |
 | [DL-C 隔离 HDL 构建与持续仿真](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) | 已授权 C 侧引擎/会话/三表合成服务端与真实目标验证；HDL 14/14、C 节点 50/51、认证 SSH 10/10，DL-A/UI/整卡与完整 NFR 保留 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
@@ -175,6 +175,17 @@ node --test tests/review.test.ts
 npm run typecheck
 npm test
 ```
+### DL-A A/C 首批检查
+
+在 `apps/teaching`、Node 24.21.0 和现有依赖下运行；负责人已批准新建保留的 33 表合成库及公共验证。正常宿主配置、启动与初始化步骤见 [DL-A §13](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#13-正常宿主启动与合成初始化)，真实节点材料须已有授权。
+
+```powershell
+npm run typecheck
+npm run build
+node --test tests/dl-a-app.test.ts server/workspace/hdl.test.ts
+npm test
+```
+
 ## 阶段状态记录
 
 ### G0 基线批准、门禁与任务发布
@@ -279,26 +290,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 
 2026-10-13，DL-C 最后权限撤回/受信终止反例修正后，接口专项 9/9、typecheck/build 通过；同一源码的 C/HDL 均经原认证入口读回 ready=true，原始成功/失败日志及当前 C 三套验收记录已纳入 [DL-C 第 11.4 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#114-2026-10-13-原始证据与最终核对)。这是 C 独立工程批次，#39、DL-A/UI/完整 NFR 与 C4 状态保持上段边界，未公开发布或代写产品基线。
 
+2026-10-13，负责人已批准 DL-A §10 A/C 首批并完成本地接入：固定 HDL 活动、两课程正常宿主、原消费者与事务授权/停止。专项、全量及两轴审查正在收尾，当前真实节点认证材料不齐，实际联调未执行；ALU 行为/C4/B/UI 与浏览器验收仍单列未完成，#38 保持 Open。最新实现、验证和启动说明见 [DL-A §12–13](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#12-ac-第一批实际实现与验证进行中)。
+
 ### 当前整体状态与后置验收
 
 未提供受控配置时 `npm start` 只启动健康入口；历史业务工厂使用方式为显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。
-
-
-### DL-A 已批准 A/C 首批正常宿主（本地集成进行中）
-
-[DL-A §11–12](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#11-批次接缝落实) 消费 C PR #48 固定源码，增加 HDL 固定配置、正常两课程宿主、原消费者与事务授权/停止组合。Node **24.21.0** 与现有 lock 不变。在 `apps/teaching`：
-
-```powershell
-npm run typecheck
-npm run build
-node --test tests/dl-a-app.test.ts server/workspace/hdl.test.ts
-npm test
-```
-
-正常业务使用 `server/app/config.ts` 定义的外部受控 JSON，字段为 `databaseFile`、`origin`（精确 HTTPS origin）、`tls.keyFile/certFile`、`signingSecretFile`、`ssh.binary/keyFile/knownHostsFile/host/port`、`approvedHdlRuntimes`、`recoveryGeneration`、`consumerIntervalMs`。文件路径需绝对且已存在；不在仓库放配置或认证材料，不修改 `.env`。设置 `XUNJIE_APP_CONFIG` 指向该外部文件后执行 `npm start`；应用只监听 localhost，TLS 直接使用已有证书，Secure Cookie/Origin/CSRF 保留。不接受任意代理头或自动生成代际。无配置维持 health-only，ready=503；缺文件/节点不 ready/代际不一致启动安全失败，不自动安装或启动节点。
-
-全新合成库只通过 `node server/app/initialize.ts <外部受控 bootstrap JSON>` 初始化：bootstrap 字段 `ssh`、`approvedHdlRuntimes`、`manifest`；manifest 含 `synthetic=true`、当前 `recoveryGeneration`、`accounts[{id,loginName,password}]`、`courses[]`、`memberships[{courseId,userId,role}]`。ID/loginName 必须 `synthetic-` 前缀，每课程至少教师/学生，至少两课程；密码仅在外部受控文件保管，不进入代码/日志。初始化先实读 C/HDL ready 与代际，再新建保留的 33 表 tmp 合成库，stdout 只给新库路径。将该路径用于上面的配置；不读/迁移/重置旧库。原五/十/十七/二十二/二十四/二十六/二十九/三十一表工厂保持原范围。
-
-教师用原 `/api/sessions` 正常登录；两课程读取入口 `/api/courses` 和 `/api/courses/:id/assignments`。既有政策初始化为 `<courseId>-help` 和原 TextScope core rule。HDL 教师 `POST /api/courses/:id/hdl-configurations` 保存明确配置，用 `digitalLogicConfigVersionId` 引用它、`runtimeProfileVersionId` 引用真实 C runtime，并按原 checks→release→assign 流程开放。配置和 C API 的字段、原 Job/停止/Trace 及私有结果边界见任务稿。HDL 结构检查不宣称 ALU 行为通过。
-
-正常宿主定时消费原 C/HDL 和教师设计 Job；当前本批未配模型，学生帮助返回原 DEPENDENCY_UNAVAILABLE，教师生成使用预算拒绝，不调用真实模型。B/UI 接入不因此完成。真实节点入口本机材料缺失，A/C 真实链、ALU 行为/C4/浏览器/TLS 仍未执行；最终专项、回归和两轴审查结果见任务稿，不把本文运行说明当已验收。

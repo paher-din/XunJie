@@ -34,7 +34,7 @@ test('fixed configuration rejects unknown runtime, client role, overlap and chan
  assert.equal((await command(f,teacher,'/api/courses/logic-course/hdl-configurations',{configuration:{...configuration(),alu:{...configuration().alu,switchMapping:configuration().alu.switchMapping.map(m=>({...m,offset:0}))}}})).statusCode,400);
  const first=await command(f,teacher,'/api/courses/logic-course/hdl-configurations',payload,'config');assert.equal(first.statusCode,200,first.body);
  const replay=await command(f,teacher,'/api/courses/logic-course/hdl-configurations',payload,'config');assert.deepEqual(replay.json().data,first.json().data);
- const changed={configuration:{...configuration(),signals:{...configuration().signals,segmentsActive:'high'}}};assert.equal((await command(f,teacher,'/api/courses/logic-course/hdl-configurations',changed,'config')).statusCode,409);assert.equal((await command(f,teacher,'/api/courses/logic-course/hdl-configurations',changed,'new-config')).statusCode,409);
+ const changed={configuration:{...configuration(),board:{...configuration().board,topModule:'changed_top'}}};assert.equal((await command(f,teacher,'/api/courses/logic-course/hdl-configurations',changed,'config')).statusCode,409);assert.equal((await command(f,teacher,'/api/courses/logic-course/hdl-configurations',changed,'new-config')).statusCode,409);
  assert.equal((await command(f,teacher,'/api/courses/course/hdl-configurations',payload)).statusCode,403);
  }finally{await f.close();}
 });
@@ -126,4 +126,25 @@ test('fresh initializer creates two normal courses and rejects mismatched recove
  assert.equal(db.withTransaction(()=>host.currentGeneration()),'generation');const login=await host.app.inject({method:'POST',url:'/api/sessions',headers:{origin:'https://synthetic.example'},payload:{loginName:'synthetic-student',password}});assert.equal(login.statusCode,200,login.body);const cookie=login.cookies.filter(c=>c.value).map(c=>`${c.name}=${encodeURIComponent(c.value)}`).join('; ');const courses=await host.app.inject({url:'/api/courses',headers:{cookie}});assert.equal(courses.json().data.length,2);
  }finally{await host.shutdown();}
  }finally{db?.close();await f.close();}
+});
+
+test('fixed ALU rejects out-of-course definitions and accepts another legal SW layout',async()=>{
+ const f=await fixture();try{const teacher=await f.login('teacher');
+ const bad=configuration('out-of-course');const payload=JSON.parse(JSON.stringify(bad));payload.alu.operations[0].meaning='shift_left';
+ assert.equal((await command(f,teacher,'/api/courses/logic-course/hdl-configurations',{configuration:payload})).statusCode,400);
+ for(const change of [(c:any)=>{c.alu.operandWidth=8;},(c:any)=>{c.alu.switchMapping=c.alu.switchMapping.filter((m:any)=>m.semantic!=='carry_in');},(c:any)=>{c.alu.operations[0].meaning='add_with_carry';},(c:any)=>{c.signals.anodesActive='high';}]){
+ const invalid=JSON.parse(JSON.stringify(configuration()));change(invalid);assert.equal((await command(f,teacher,'/api/courses/logic-course/hdl-configurations',{configuration:invalid})).statusCode,400);}
+ const alternate=configuration('other-legal-map');alternate.alu.switchMapping=[{semantic:'operand_a',offset:8,width:4},{semantic:'operand_b',offset:0,width:4},{semantic:'mode',offset:4,width:1},{semantic:'select',offset:5,width:2},{semantic:'carry_in',offset:7,width:1}];
+ const accepted=await command(f,teacher,'/api/courses/logic-course/hdl-configurations',{configuration:alternate});assert.equal(accepted.statusCode,200,accepted.body);
+ }finally{await f.close();}
+});
+
+test('withdrawal stops original C Run and marks teacher course assignment inactive',async()=>{
+ const f=await fixture();try{const teacher=await f.login('teacher'),student=await f.login(),item=await allocate(f,teacher,student,false),state=await view(f,student,item.attemptId);
+ const accepted=await command(f,student,`/api/attempts/${item.attemptId}/runs`,{expectedAttemptRevision:state.attempt.attemptRevision,snapshotId:item.snapshotId,runtimeProfileVersion:'runtime-v1',entryFileId:state.files[0].fileId,input:{operation:'stats',fileIds:[state.files[0].fileId]},mode:'run'});assert.equal(accepted.statusCode,200,accepted.body);const run=accepted.json().data.result;await f.host.consumeOnce();
+ f.db.withTransaction(tx=>f.host.management.deactivateMembershipInTransaction(tx,'course','student'));
+ const list=await f.app.inject({url:'/api/courses/course/assignments',headers:teacher});assert.equal(list.json().data.find((a:{assignmentId:string})=>a.assignmentId===item.assignmentId).active,false);
+ await f.host.consumeOnce();const job=await f.app.inject({url:`/api/jobs/${run.jobId}`,headers:teacher});assert.equal(job.statusCode,200,job.body);assert.equal(job.json().data.stopRequested,true);assert.equal(job.json().data.status,'cancelled');
+ assert.equal((await f.app.inject({url:`/api/jobs/${run.jobId}`,headers:student})).statusCode,403);
+ }finally{await f.close();}
 });

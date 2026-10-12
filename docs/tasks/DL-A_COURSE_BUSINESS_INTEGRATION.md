@@ -1,6 +1,6 @@
 # DL-A：数字逻辑课程、共享契约与业务接入
 
-日期：2026-10-12（Asia/Shanghai）。主责：A；对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。状态：2026-10-12 已获准提前评审准备；2026-10-13 已核 DL-C PR #48，A/C 逐调用差异、B/UI 任务对应和首批 33 表实施提案见 §8～10。共享消费/首批实施待批准；源码与业务验证未执行。本文提案不是已批准共享契约，旧记录保留其创建时点。
+日期：2026-10-12（Asia/Shanghai）。主责：A；对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。当前状态：2026-10-13 负责人已批准 §10 A/C 首批；本地实现已提交，验证与代码审查收尾中，详见 §12。真实节点联调尚未执行，ALU 行为/C4/B/UI 等整卡条件仍未完成。旧提案与历史验证保留其创建时点。
 
 ## 1. 基线、同步与写入范围
 
@@ -287,3 +287,32 @@ HDL 草稿使用加法式 `digitalLogicConfigVersionId` 引用独立不可变配
 本批 protected product/planning/reference/AGENTS 仍只读，汇总维护请求：MVP §10 登记此代码位置/实际专项、全量结果与下述未完成项；TECH 增加 fixed HDL 配置/runtime 分流、借用 TX 会话授权、pending Trace 游标及控制停止语义；不得将本批状态写成完整 G3/MVP 通过。
 
 剩余整卡条件：真实获准 C 节点 A/C 指定业务联调、ALU 行为 validator、C4 提交组合、B 的 #40 上下文/过时/真实模型与人工语义、UI 的课程/工作区/装载/信号/恢复及同浏览器 DL-E2E、原 NFR/真人/TLS/浏览器。B/UI 具体对应原任务与要交字段见 §9。#38/#39/#41 等卡不据此关闭。
+
+### 12.1 审查修复依据与计划
+
+2026-10-13，Spec 审查发现固定 ALU 配置错误接受其他位宽/移位等操作，偏离 [DL-0 §2.3](DL-0_DIGITAL_LOGIC_ADDON.md) 与 MVP §1.4；本次修正实现以符合已有批准范围，不增加 ALU 行为评分器。冻结 unsigned A/B/F 为 4 位、Cin/Cout 各 1 位；M=0 的 S=00/01/10/11 对应 NOT A/AND/OR/XOR，M=1 的 S=00 为 A+B+Cin、01 仅 A>B 时为 A-B-Cin。M=1 的 S=10/11、A≤B 的减法、减法/位运算的 Cout 不评分。配置完整保存六个已定义项及明确的不评分策略，拒绝额外项和错义；SW 必须包含 A/B 4 位、M 1 位、S 2 位、Cin 1 位，允许任意 16 位内不重叠合法布局。Nexys4 DDR Rev.C 的 AN/CA–CG/DP 固定低有效，既有 C BoardProfile 端口名可变。公共 HTTP 验证越界拒绝及替代合法映射接纳。
+
+Standards 审查发现 README 当前状态未及时更新，运行细节位于末节之后且命令混入散文；将操作细节放到本文 §13，README 保留检查入口与日期状态，末节恢复固定位置。全量首次运行失败记录保留。启动入口将按配置按需导入业务组合，未配置时不加载模型 SDK/业务工厂；保持原启动测试时间门槛及认证边界。
+
+## 13. 正常宿主启动与合成初始化
+
+本文 §11–12 消费 C PR #48 固定源码，增加 HDL 固定配置、正常两课程宿主、原消费者与事务授权/停止组合。Node **24.21.0** 与现有 lock 不变。在 `apps/teaching`：
+
+```powershell
+npm run typecheck
+npm run build
+node --test tests/dl-a-app.test.ts server/workspace/hdl.test.ts
+npm test
+```
+
+正常业务使用 `server/app/config.ts` 定义的外部受控 JSON，字段为 `databaseFile`、`origin`（精确 HTTPS origin）、`tls.keyFile/certFile`、`signingSecretFile`、`ssh.binary/keyFile/knownHostsFile/host/port`、`approvedHdlRuntimes`、`recoveryGeneration`、`consumerIntervalMs`。文件路径需绝对且已存在；不在仓库放配置或认证材料，不修改 `.env`。设置 `XUNJIE_APP_CONFIG` 指向该外部文件后执行 `npm start`；应用只监听 localhost，TLS 直接使用已有证书，Secure Cookie/Origin/CSRF 保留。不接受任意代理头或自动生成代际。无配置维持 health-only，ready=503；缺文件/节点不 ready/代际不一致启动安全失败，不自动安装或启动节点。
+
+全新合成库只通过 `node server/app/initialize.ts <外部受控 bootstrap JSON>` 初始化：bootstrap 字段 `ssh`、`approvedHdlRuntimes`、`manifest`；manifest 含 `synthetic=true`、当前 `recoveryGeneration`、`accounts[{id,loginName,password}]`、`courses[]`、`memberships[{courseId,userId,role}]`。ID/loginName 必须 `synthetic-` 前缀，每课程至少教师/学生，至少两课程；密码仅在外部受控文件保管，不进入代码/日志。初始化先实读 C/HDL ready 与代际，再新建保留的 33 表 tmp 合成库，stdout 只给新库路径。将该路径用于上面的配置；不读/迁移/重置旧库。原五/十/十七/二十二/二十四/二十六/二十九/三十一表工厂保持原范围。
+
+教师用原 `/api/sessions` 正常登录；两课程读取入口 `/api/courses` 和 `/api/courses/:id/assignments`。既有政策初始化为 `<courseId>-help` 和原 TextScope core rule。HDL 教师 `POST /api/courses/:id/hdl-configurations` 保存明确配置，用 `digitalLogicConfigVersionId` 引用它、`runtimeProfileVersionId` 引用真实 C runtime，并按原 checks→release→assign 流程开放。配置和 C API 的字段、原 Job/停止/Trace 及私有结果边界见任务稿。HDL 结构检查不宣称 ALU 行为通过。
+
+正常宿主定时消费原 C/HDL 和教师设计 Job；当前本批未配模型，学生帮助返回原 DEPENDENCY_UNAVAILABLE，教师生成使用预算拒绝，不调用真实模型。B/UI 接入不因此完成。真实节点入口本机材料缺失，A/C 真实链、ALU 行为/C4/浏览器/TLS 仍未执行；最终专项、回归和两轴审查结果见任务稿，不把本文运行说明当已验收。
+
+受控撤权还须覆盖同宿主的原 C 执行 Job，不能只停止 HDL。补正常 TextScope Run 经原消费者接纳后撤权的 HTTP 读取反例：教师读回停止意图与真实退出，学生被拒；教师课程分配列表同时以当前学生账号/成员状态计算 active。复用原 stopAttemptJobs/C3 stopTeaching，不增加 B 接口或 schema。
+
+2026-10-13，审查修正后的 ALU 公共反例已从 200≠400 的红灯转为通过，保留替代合法映射。撤权原 C/分配 active 反例已从 true≠false 转为通过。Node 24.21.0 typecheck/build 通过；原启动单独 4/4，多进程耐久性 2/2；A/C HTTP＋原 HDL 专项共 26/26，0 失败/0 取消/0 跳过。静态文档 40 份/702 引用 errors=[]、工具 16/16；固定源码全量重新验证及两轴复核进行中。首轮全量 341 项为 326 通过、2 失败、2 取消、11 跳过（RunControl 平台失败、启动超时及耐久性超时），原日志保留，不能因此称全量通过。

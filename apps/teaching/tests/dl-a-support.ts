@@ -8,7 +8,7 @@ import {createDigitalLogicApplicationDatabase} from '../server/db/transaction.ts
 import {createPasswordRecord} from '../server/access/password.ts';
 import {createDigitalLogicApplication} from '../server/app/digital-logic.ts';
 import {storePolicy,storeRule} from '../server/design/activities.ts';
-import type {HdlConfiguration} from '../contracts/design/hdl.ts';
+import {definedAluOperations,type HdlConfiguration} from '../contracts/design/hdl.ts';
 export const origin='https://synthetic.example';
 export const runtime={runtimeProfileVersion:'hdl-test-v1',engineVersion:'iverilog-test',buildImage:'sha256:'+'a'.repeat(64),runtimeImage:'sha256:'+'b'.repeat(64),sourceHash:'c'.repeat(64)};
 export const profile={runtimeProfileVersion:'runtime-v1',imageDigest:'sha256:'+'a'.repeat(64),compilerImage:'sha256:'+'b'.repeat(64),runtimeImage:'sha256:'+'c'.repeat(64),approvedResultFiles:['report.txt']};
@@ -44,7 +44,7 @@ export function syntheticNode(){const builds=new Map<string,HdlBuild>(),sessions
     const fingerprint={profile:runtime,sourceHash:runtime.sourceHash};const fingerprintHash=sha256(JSON.stringify(fingerprint));return {data:{ready,profile:runtime,recoveryGeneration:'generation',fingerprint,fingerprintHash,validation:{passed:true,fingerprintHash,validatedAt:new Date().toISOString()}}};
   };return {transport,loseNext(){lost=true;},calls:()=>calls,unavailable(){ready=false;},available(){ready=true;},waitForStop(callback:()=>Promise<void>){stopWait=callback;}};
 }
-export function configuration(versionId='fixed-hdl-v1'):HdlConfiguration{return {versionId,board:structuredClone(board),runtime,signals:{bitOrder:'msb_first',clockHz:100000000,initialClock:'0',initialSwitches:'0000000000000000',initialButtons:'00000',initialResetN:'1',stableSampling:'low_phase',anodesActive:'low',segmentsActive:'low',dpActive:'low'},alu:{operandWidth:4,operations:[{code:'00',meaning:'add'},{code:'01',meaning:'subtract'}],switchMapping:[{semantic:'operand_a',offset:0,width:4},{semantic:'operand_b',offset:4,width:4},{semantic:'operation',offset:8,width:2}]},structuralCoverage:'board_bindings_and_defined_alu_domain'};}
+export function configuration(versionId='fixed-hdl-v1'):HdlConfiguration{return {versionId,board:structuredClone(board),runtime,signals:{bitOrder:'msb_first',clockHz:100000000,initialClock:'0',initialSwitches:'0000000000000000',initialButtons:'00000',initialResetN:'1',stableSampling:'low_phase',anodesActive:'low',segmentsActive:'low',dpActive:'low'},alu:{operandWidth:4,resultWidth:4,carryWidth:1,signedness:'unsigned',operations:definedAluOperations.map(op=>({...op})),subtractionOperandDomain:'a_gt_b',undefinedArithmeticSelectors:'ungraded',subtractionOutsideDomain:'ungraded',nonAdditionCout:'ungraded',switchMapping:[{semantic:'operand_a',offset:0,width:4},{semantic:'operand_b',offset:4,width:4},{semantic:'mode',offset:15,width:1},{semantic:'select',offset:13,width:2},{semantic:'carry_in',offset:8,width:1}]},structuralCoverage:'board_bindings_and_defined_alu_domain'};}
 function controlledRunner() {
   const accepted = new Map<string,SubmitRun>(), facts = new Map<string,RunFact>();
   const results = new Map<string,object>(); let submits = 0, queries = 0, lose = false, loseQuery = false;
