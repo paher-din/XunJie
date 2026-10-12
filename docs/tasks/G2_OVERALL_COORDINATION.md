@@ -721,3 +721,15 @@ G2-R02：C3 的 unresolved 改为现有 StudentHelpBody 定义的文字数组，
 G2-R01/R02 的本地修复和反例已收口，现有公开 Issue 的失败记录保留原时点事实，待实际交付后追加修复证据。README 只按固定章节追加日期状态，不改写历史段落。产品/规划基线进度仍待授权维护者汇总；不关闭真实模型条件尚未满足的 #11，也不把这两项修复单独记为 P2/G2/MVP 完成。
 
 本修复在本地分支提交，原 main 和其他工作树不改变。公开分支推送/PR 尚未执行，按 AGENTS 公开发布红线，在具体代码、验证及 PR 说明准备齐备后确认发布范围；该确认不延伸到合并、schema/迁移、生产部署或真实调用。最终本地提交 SHA 以 Git 核对为准。
+
+### 15.4 公开分支与 Draft PR 交付
+
+项目负责人对固定修复提交 `981d055ea9ba48492569612ad48368a48474fda6` 的发布范围明确选择“推送并创建 Draft PR（推荐）”，授权普通推送 `codex/p2-integration-fixes` 并在公开仓库创建 Draft PR。本次不合并 PR、关闭 Issue、删除源分支或扩大真实模型/schema/生产授权。
+
+发布前工作树干净、分支与固定 head 完全一致，未发现同 head 的现有 PR。首次 Git 远端只读核查遇连接重置，未登记为推送失败或成功；随后 GitHub API 回读 main=`aee1777`，普通推送以单次 OpenSSL/HTTP 1.1/低速超时参数成功建立远端分支。远端 branch SHA 已独立回读与 `981d055` 完全一致，无强推、永久配置修改或历史删除。
+
+使用已经准备的 UTF-8 PR 说明，通过 `gh pr create --draft --body-file` 建立 [PR #35](https://github.com/paher-din/XunJie/pull/35)，标题为 `fix(P2): compose job routes and preserve unresolved teaching text`，base=`main`、head=`codex/p2-integration-fixes`，状态 Open/Draft，并已附加到总协调工作项。回读核对固定 head、完整正文（只规范化末尾换行）、Draft/Open 与无 mergeCommit 均一致；正文使用 Refs #24/#25/#26/#27，不设置自动关闭。
+
+#11/#24/#25/#26/#27 均已回读 Open。本次只有代码/任务记录的公开交付，不登记独立评审、完整回归通过或 P2 阶段通过；第 15.3 节的 260=252通过+1既有失败+7跳过及模型/教师/UI未验收继续保持。原 main/主工作副本与其他工作树不变，源分支保留。
+
+本段发布事实与 README 的 PR 导航另随同一分支提交；只有文档增量，不改变已验证应用源码，不重复登记业务测试。文档/空白、最终远端 branch/PR head、正文与 Issue 状态在提交后核对，最终 head 以实际远端回读为准。
