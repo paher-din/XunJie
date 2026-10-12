@@ -139,6 +139,10 @@ export const idbDraftRepository: DraftRepository = {
     return decision
   },
 
+  async loadInstance(key) {
+    return getRecord<InstanceRecord>(await openWorkspaceDb(), 'instances', key)
+  },
+
   async saveInstance(record: InstanceRecord) {
     await putRecord(await openWorkspaceDb(), 'instances', record)
   },

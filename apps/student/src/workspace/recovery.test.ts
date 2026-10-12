@@ -5,7 +5,9 @@ import {
   canReplay,
   classifyWriteFailure,
   comparableOutcome,
+  codeOfOutcome,
   diagnosticText,
+  outcomeOfCode,
   reconcileStoredCommand,
   studentHint,
   summarizeOriginalRequest,
@@ -13,7 +15,7 @@ import {
 import { CommandConfirmedError, CommandRejectedError, LeaseHeldError } from './confirmationDb'
 import { WorkspaceRequestError } from './http'
 import type { ApiErrorCode } from './contracts'
-import type { CommandContext, FrozenCommand, OutboxRecord } from './frozenCommand'
+import { isTerminalRejection, type CommandContext, type FrozenCommand, type OutboxRecord } from './frozenCommand'
 
 const context: CommandContext = { mode: 'preparation', userId: 'student-1', assignmentId: 'assignment-1',
   activityVersionId: 'activity-1', attemptId: 'attempt-1', preparationEpoch: 'epoch-1', loadEpoch: 1,
@@ -189,6 +191,27 @@ describe('原命令核对结论', () => {
       .toEqual({ action: 'stop', outcome: { kind: 'historical' } })
     expect(blocksNewSave({ kind: 'historical' })).toBe(false)
     expect(studentHint({ kind: 'historical' })).toContain('没有生效')
+  })
+})
+
+describe('05：服务明确拒绝但整批未生效的结论（STATE_CONFLICT）', () => {
+  it('映射为 state-conflict：不重放、不挡新保存、提示指向重新读取', () => {
+    // 恢复时路径已被占用、生命周期迁移非法等：重放同一份命令拿到的是同一个拒绝
+    expect(outcomeOfCode('STATE_CONFLICT')).toEqual({ kind: 'state-conflict' })
+    expect(codeOfOutcome({ kind: 'state-conflict' })).toBe('STATE_CONFLICT')
+    expect(isTerminalRejection('STATE_CONFLICT')).toBe(true)
+    expect(canReplay({ kind: 'state-conflict' })).toBe(false)
+    // 与 historical 同族：整批原子、确定没有生效，所以不能把学生锁在「只能重试」里
+    expect(blocksNewSave({ kind: 'state-conflict' })).toBe(false)
+    expect(studentHint({ kind: 'state-conflict' })).toContain('没有生效')
+    expect(studentHint({ kind: 'state-conflict' })).toContain('重新读取')
+    expect(diagnosticText({ kind: 'state-conflict' })).toContain('STATE_CONFLICT')
+  })
+
+  it('落盘的拒绝事实刷新后仍是同一结论，且不阻塞用新命令重新保存', () => {
+    const rejected = record({ rejected: { code: 'STATE_CONFLICT', at: 5 } })
+    expect(reconcileStoredCommand(rejected, context)).toEqual({ action: 'stop', outcome: { kind: 'state-conflict' } })
+    expect(blocksNewSave({ kind: 'state-conflict' })).toBe(false)
   })
 })
 

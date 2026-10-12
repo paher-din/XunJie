@@ -14,16 +14,20 @@ export function projectSeedOf(state: ConfirmationState, instances: InstanceRecor
     const instance = localInstanceOf(f, instances, claimed)
     const localId = instance ? localFileIdOf(instance.clientFileKey) : f.fileId
     if (instance) claimed.add(localId)
-    return { fileId: localId, serverFileId: f.fileId, path: f.path, lifecycle: f.lifecycle,
-      confirmed: { text: f.text, version: f.documentVersion } }
+    // 权威清单给的是「已确认的生命周期」；本机实例记录里的才是学生**当前意图**（05）：
+    // 学生点过回收/恢复、但还没确认保存时，这里必须如实显示意图，不能拿权威值把它抹平。
+    return { fileId: localId, serverFileId: f.fileId, path: f.path,
+      lifecycle: instance?.lifecycle ?? f.lifecycle,
+      confirmed: { text: f.text, version: f.documentVersion, lifecycle: f.lifecycle } }
   })
-  // 恢复可移除曾确认的实例，但本机实例和草稿仍须可打开。保留原 serverFileId，
-  // freezeSync 将拒绝不在当前权威清单的旧实例，不把它自动当 create 补发。
+  // 权威清单里已经没有的实例（回收后从 active 清单消失的同名旧实例、还没确认过的本机新建）
+  // 仍须可打开、可恢复：保留原 serverFileId，freezeSync 按当前确认清单决定生成 restore 还是拒绝，
+  // 不把它自动当 create 补发，也不会把同名新实例当旧引用。
   for (const instance of instances) {
     const localId = localFileIdOf(instance.clientFileKey)
-    if (instance.lifecycle !== 'active' || files.some(f => f.fileId === localId)) continue
+    if (files.some(f => f.fileId === localId)) continue
     files.push({ fileId: localId, serverFileId: instance.fileId === localId ? undefined : instance.fileId,
-      path: instance.path, lifecycle: 'active', confirmed: null })
+      path: instance.path, lifecycle: instance.lifecycle, confirmed: null })
   }
   return { taskId, confirmedRevision: state.workspace.workspaceRevision,
     access: !state.attempt || ['submitted', 'reviewed'].includes(state.attempt.status)
@@ -32,7 +36,7 @@ export function projectSeedOf(state: ConfirmationState, instances: InstanceRecor
     files }
 }
 const idle: ConfirmationState = { phase: 'idle', workspace: null, attempt: null, snapshot: null, pending: null,
-  outcome: null, error: null, comparison: null }
+  outcome: null, error: null, comparison: null, snapshots: [] }
 
 /** 绑定一次 bootstrap；重新加载/退出/切换令旧客户端立即失效，页面不复用另一份确认状态。 */
 export function useConfirmationWorkspace(init: WorkspaceInit | null, taskId: string) {

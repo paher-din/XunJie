@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Icon } from '../../icons'
 import type { ProjectFile } from '../../bridge/types'
 import { eolLabel, eolOf, hasBom, languageLabel, languageOf } from '../../lib/projectFiles'
+import { activeFiles, isLifecyclePending, lifecycleProblemMessage, recycleProblem, restoreProblem } from '../../workspace/fileLifecycle'
 import { CodeEditorHost, type CodeEditorHandle } from './CodeEditorHost'
 import { FileStrip, type FileStripHandle } from './FileStrip'
 import type { ProjectWorkspace } from './useProjectWorkspace'
@@ -30,6 +31,9 @@ export function CodeWorkspace({ ws, workspaceKey }: CodeWorkspaceProps) {
   const [cursor, setCursor] = useState<{ line: number; column: number } | null>(null)
 
   const active = ws.activeFile
+  // 已回收的实例不继续编辑：草稿留着，但编辑区换成明确说明（同一个空态容器，不新造页面）。
+  const recycledActive = active !== null && active.lifecycle === 'recycled'
+  const activeList = useMemo(() => activeFiles(ws.files), [ws.files])
   const readOnly = ws.access.kind === 'read-only'
   const readOnlyReason = accessReason(ws)
   const activeText = active === null ? '' : ws.draftText(active.fileId)
@@ -46,13 +50,26 @@ export function CodeWorkspace({ ws, workspaceKey }: CodeWorkspaceProps) {
 
       <FileStrip
         ref={stripRef}
-        files={ws.files.filter((file) => file.lifecycle === 'active')}
+        files={activeList}
+        recycledFiles={ws.files.filter((file) => file.lifecycle === 'recycled')}
         openFiles={ws.openFiles}
         activeFileId={active?.fileId ?? null}
         isDirty={ws.isDirty}
         isCreated={ws.isCreated}
+        lifecyclePending={isLifecyclePending}
         canCreate={ws.access.kind === 'editable'}
         createBlockedReason={ws.access.kind === 'editable' ? null : ws.access.reason}
+        canManage={ws.access.kind === 'editable'}
+        manageBlockedReason={ws.access.kind === 'editable' ? null : ws.access.reason}
+        recycleBlockedReason={(file) => {
+          const problem = recycleProblem(file, ws.access)
+          return problem === null ? null : lifecycleProblemMessage(problem, file.path, null)
+        }}
+        restoreBlockedReason={(file) => {
+          const { problem, occupant } = restoreProblem(file, ws.files, ws.access)
+          return problem === null ? null : lifecycleProblemMessage(problem, file.path, occupant?.path ?? null)
+        }}
+        restoreOccupant={(file) => restoreProblem(file, ws.files, ws.access).occupant}
         usage={ws.usage}
         menuOpen={menuOpen}
         onMenuOpenChange={setMenuOpen}
@@ -63,20 +80,21 @@ export function CodeWorkspace({ ws, workspaceKey }: CodeWorkspaceProps) {
           if (outcome.ok) editorRef.current?.focus()
           return outcome
         }}
+        onRecycle={ws.recycle}
+        onRestore={ws.restore}
       />
 
-      {active === null ? (
+      {active === null || recycledActive ? (
         <div className="cw-empty">
-          <p>编辑区没有打开的文件。</p>
+          <p>{recycledActive ? '这个实例已回收，草稿保留。' : '编辑区没有打开的文件。'}</p>
           <div className="cw-empty-actions">
             <button
               type="button"
               className="outline"
               onClick={() => {
-                const first = ws.files.find((file) => file.lifecycle === 'active')
-                if (first) ws.open(first.fileId)
+                if (activeList[0]) ws.open(activeList[0].fileId)
               }}
-              disabled={ws.files.length === 0}
+              disabled={activeList.length === 0}
             >
               打开项目里的文件
             </button>
@@ -167,6 +185,12 @@ function StatusBar({
             )}
           </span>
         )}
+        {/* 未确认的回收/恢复自成一句：它改的是实例的生命周期，不是正文，不和「有未确认修改」合并表述。 */}
+        {file !== null && file.confirmed !== null && file.confirmed.lifecycle !== file.lifecycle && (
+          <b className="cw-unconfirmed cw-lifecycle-pending" data-lifecycle={file.lifecycle}>
+            {file.lifecycle === 'recycled' ? '待确认回收' : '待确认恢复'}
+          </b>
+        )}
         {ws.loaded && <ProtectionChip status={ws.protection.status} reason={ws.protection.reason} />}
       </span>
     </div>
@@ -202,6 +226,15 @@ export function CodeRunCluster({ ws, onSave }: { ws: ProjectWorkspace; onSave: (
         <i />
         <span>{ws.access.kind === 'read-only' ? '作品只读' : ws.access.kind === 'paused' ? '分配已暂停' : '编辑中'}</span>
       </span>
+      {ws.lifecyclePendingCount > 0 && (
+        // 生命周期意图与正文修改是两件事：正文可能一个字没改，回收/恢复也要学生点确认保存才生效。
+        <span className="ws-flow" title="回收/恢复改的是实例的生命周期，随下一次确认保存一并发出">
+          <span className="ws-flow-node draft">
+            <i />
+            {ws.lifecyclePendingCount} 个实例待确认回收或恢复
+          </span>
+        </span>
+      )}
       {ws.unconfirmedCount > 0 ? (
         <span className="ws-flow" title="本机草稿不等于已保存的作品；确认保存由学生发起">
           <span className="ws-flow-node draft">

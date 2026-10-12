@@ -14,6 +14,13 @@ import {
   type CreateOutcome,
   type WorkspaceUsage,
 } from '../../lib/projectFiles'
+import {
+  activeFiles,
+  mergedLifecycle,
+  recycleProblem,
+  restoreProblem,
+  type LifecycleProblem,
+} from '../../workspace/fileLifecycle'
 
 /**
  * 一个任务的多文件作品工作区：文件实例、已打开标签、活动文件、本机草稿与草稿保护状态。
@@ -41,8 +48,10 @@ export interface ProjectWorkspace {
   access: ProjectAccess
   confirmedRevision: number
   protection: { status: ProtectionStatus; reason: string | null }
-  /** 有未确认内容的文件数（含本机新建）。 */
+  /** 有未确认内容的文件数（含本机新建，以及未确认的回收/恢复）。 */
   unconfirmedCount: number
+  /** 「确认保存」时一并发出的生命周期意图数（未确认的回收/恢复）。 */
+  lifecyclePendingCount: number
   usage: WorkspaceUsage
   draftText: (fileId: string) => string
   isCreated: (file: ProjectFile) => boolean
@@ -62,6 +71,10 @@ export interface ProjectWorkspace {
    * 则失败并保留新候选）；`stored` 载入库中正文。两种选择都不会覆盖成第三份正文。
    */
   resolveConflict: (fileId: string, choice: 'mine' | 'stored') => Promise<'resolved' | 'conflict-again'>
+  /** 学生明确回收这个实例（本机意图；随下一次确认保存发出）。 */
+  recycle: (fileId: string) => void
+  /** 学生明确恢复这个实例；路径被别的实例占用时拒绝并返回占用者，不做任何改动。 */
+  restore: (fileId: string) => { ok: true } | { ok: false; problem: LifecycleProblem; occupant: ProjectFile | null }
 }
 
 export function useProjectWorkspace(
@@ -143,13 +156,22 @@ export function useProjectWorkspace(
           confirmed: null,
         }))
         const known = new Set(current.files.map((f) => f.fileId))
-        const merged = [...current.files, ...created.filter((f) => !known.has(f.fileId))]
+        // 先复制一层再改生命周期：seed 的 file 对象属于上游，载入不能就地改写它。
+        const merged: ProjectFile[] = [
+          ...current.files.map((f) => ({ ...f })),
+          ...created.filter((f) => !known.has(f.fileId)),
+        ]
 
         const nextDrafts: Record<string, string> = {}
         const nextRevisions: Record<string, number | null> = {}
         const writtenDrafts: Record<string, string> = {}
         for (const file of merged) {
-          const record = await repo.loadDraft(clientFileKey(currentScope, file.fileId))
+          const instanceKey = clientFileKey(currentScope, file.fileId)
+          // 这个实例的生命周期以本机记录为准（学生明确表达过的意图）；没有本机记录才用权威 head 的值。
+          const instance = await repo.loadInstance(instanceKey)
+          if (cancelled) return
+          if (instance) file.lifecycle = instance.lifecycle
+          const record = await repo.loadDraft(instanceKey)
           if (cancelled) return
           if (record === null) continue
           nextDrafts[file.fileId] = record.text
@@ -180,10 +202,23 @@ export function useProjectWorkspace(
     // scope 以 scopeKey 字符串进依赖：页面每次渲染的新对象不能触发重读（重读会冲掉刚建的实例）
   }, [key, seed?.taskId, repo])
 
-  // 同一 Attempt 的权威确认头推进只更新确认基线/映射，保留较新草稿和已打开 model。
+  /**
+   * 同一 Attempt 的权威确认头推进只更新确认基线/映射，保留较新草稿和已打开 model。
+   *
+   * 生命周期取哪一侧取决于**权威值有没有变**，不取决于本机记过什么：
+   * - 权威值变了（另一标签回收/恢复并确认，或本机这次确认刚落地）：以权威为准。否则本机残留的旧意图
+   *   会把别处刚生效的变更顶回去，学生按「确认保存」就会静默把它撤销；
+   * - 权威值没变：保留本页正在表达的生命周期。学生点过回收/恢复但本机记录还没写完的窗口里，
+   *   这次 head 推进读到的仍是旧权威，不能拿它把意图抹掉。
+   */
   useEffect(() => {
     if (!loaded || !seed) return
-    setFiles(old => [...seed.files, ...old.filter(f => f.confirmed === null && !seed.files.some(s => s.fileId === f.fileId))])
+    setFiles(old => {
+      const before = new Map(old.map(f => [f.fileId, f]))
+      // 权威清单里没有、且从未确认过的本机实例（草稿与未发出的回收/恢复意图）继续保留在列表里
+      return [...seed.files, ...old.filter(f => f.confirmed === null && !seed.files.some(s => s.fileId === f.fileId))]
+        .map(f => ({ ...f, lifecycle: mergedLifecycle(before.get(f.fileId), f) }))
+    })
   }, [loaded, seed?.files])
 
   const draftText = useCallback(
@@ -194,25 +229,43 @@ export function useProjectWorkspace(
     [drafts, files],
   )
 
+  const access = useMemo<ProjectAccess>(
+    () => seed?.access ?? { kind: 'read-only', reason: '这门课还没有接入代码工具包' },
+    [seed?.access],
+  )
+
   const usage = useMemo<WorkspaceUsage>(() => {
-    const active = files.filter((f) => f.lifecycle === 'active')
+    // 只统计期望 active 的实例：回收意图（含待确认）不占 active 名额，也不该污染读数。
+    const active = activeFiles(files)
     return {
       activeFiles: active.length,
       activeBytes: active.reduce((sum, f) => sum + utf8Bytes(draftText(f.fileId)), 0),
     }
   }, [files, draftText])
 
+  const lifecyclePendingCount = useMemo(
+    () => files.filter((f) => f.confirmed !== null && f.confirmed.lifecycle !== f.lifecycle).length,
+    [files],
+  )
+
   const unconfirmedCount = useMemo(
-    () => files.filter((f) => f.lifecycle === 'active' && (f.confirmed === null || draftText(f.fileId) !== f.confirmed.text)).length,
+    () => files.filter((f) =>
+      // 期望 active 的正文意图：本机新建，或草稿与确认正文不同。
+      (f.lifecycle === 'active' && (f.confirmed === null || draftText(f.fileId) !== f.confirmed.text)) ||
+      // 未确认的回收/恢复：期望生命周期与最近确认不一致。已回收且与确认一致的不算。
+      (f.confirmed !== null && f.confirmed.lifecycle !== f.lifecycle),
+    ).length,
     [files, draftText],
   )
 
   const protect = useCallback(async (): Promise<FrozenDraft[]> => {
     const currentScope = scopeRef.current
     if (!key || !currentScope || !loaded) throw new Error('本机草稿尚未载入')
-    const captured = files.filter(f => f.lifecycle === 'active').map(f => ({
+    // 生命周期意图也随这次确认发出：回收/恢复的草稿同样要有基线，恢复后才谈得上继续改。
+    const captured = files.map(f => ({
       localId: f.fileId, serverFileId: f.serverFileId ?? (f.confirmed ? f.fileId : undefined),
       path: f.path, text: draftText(f.fileId), draftRevision: revisions.current[f.fileId] ?? null,
+      lifecycle: f.lifecycle,
     }))
     const ui = uiRecordOf(activeFileId, openFileIds, files)
     const serialized = JSON.stringify(ui), seq = ++saveSeq.current
@@ -309,7 +362,8 @@ export function useProjectWorkspace(
   const create = useCallback(
     (path: string, text: string): CreateOutcome => {
       if (seed?.access.kind !== 'editable' || scope === null) return { ok: false, problem: 'not-allowed' }
-      const existing = files.filter((f) => f.lifecycle === 'active').map((f) => f.path)
+      // 路径占用按「期望 active」的实例算：已回收实例的路径是空的，可以同名重建。
+      const existing = activeFiles(files).map((f) => f.path)
       const problem = pathProblem(path, existing) ?? createLimitProblem(text, usage)
       if (problem) return { ok: false, problem }
       const fileId = `local-${crypto.randomUUID()}`
@@ -418,6 +472,58 @@ export function useProjectWorkspace(
     [key, loaded, repo, draftText, markSaving],
   )
 
+  /**
+   * 把生命周期意图写进本机实例记录（与草稿同一个库，无新 store）。
+   * 写失败保留内存意图——学生这次明确点过，界面必须如实说它还没保护住。
+   */
+  const persistLifecycle = useCallback(async (file: ProjectFile, lifecycle: 'active' | 'recycled') => {
+    const currentScope = scopeRef.current
+    if (!key || currentScope === null) return
+    const instanceKey = clientFileKey(currentScope, file.fileId)
+    try {
+      const stored = await repo.loadInstance(instanceKey)
+      await repo.saveInstance({
+        clientFileKey: instanceKey,
+        fileId: stored?.fileId ?? file.fileId,
+        path: stored?.path ?? file.path,
+        createdAt: stored?.createdAt ?? Date.now(),
+        lifecycle,
+      })
+    } catch (error: unknown) {
+      if (liveKey.current !== key) return
+      setProtection({
+        status: 'failed',
+        reason: `生命周期意图未保护：${error instanceof Error ? error.message : String(error)}`,
+      })
+    }
+  }, [key, repo])
+
+  const recycle = useCallback(
+    (fileId: string) => {
+      const file = files.find((f) => f.fileId === fileId)
+      // 不能回收时一个字节都不改：拒绝不是「先记下来再说」。
+      if (!file || recycleProblem(file, access) !== null) return
+      markSaving()
+      setFiles((rows) => rows.map((f) => (f.fileId === fileId ? { ...f, lifecycle: 'recycled' } : f)))
+      void persistLifecycle(file, 'recycled')
+    },
+    [files, access, markSaving, persistLifecycle],
+  )
+
+  const restore = useCallback(
+    (fileId: string): { ok: true } | { ok: false; problem: LifecycleProblem; occupant: ProjectFile | null } => {
+      const file = files.find((f) => f.fileId === fileId)
+      if (!file) return { ok: false, problem: 'not-allowed', occupant: null }
+      const { problem, occupant } = restoreProblem(file, files, access)
+      if (problem !== null) return { ok: false, problem, occupant }
+      markSaving()
+      setFiles((rows) => rows.map((f) => (f.fileId === fileId ? { ...f, lifecycle: 'active' } : f)))
+      void persistLifecycle(file, 'active')
+      return { ok: true }
+    },
+    [files, access, markSaving, persistLifecycle],
+  )
+
   const openFiles = useMemo(
     () => openFileIds.map((id) => files.find((f) => f.fileId === id)).filter((f): f is ProjectFile => f !== undefined),
     [openFileIds, files],
@@ -429,10 +535,11 @@ export function useProjectWorkspace(
     files,
     openFiles,
     activeFile,
-    access: seed?.access ?? { kind: 'read-only', reason: '这门课还没有接入代码工具包' },
+    access,
     confirmedRevision: seed?.confirmedRevision ?? 0,
     protection,
     unconfirmedCount,
+    lifecyclePendingCount,
     usage,
     draftText,
     isCreated: (file) => file.confirmed === null && !file.serverFileId,
@@ -445,6 +552,8 @@ export function useProjectWorkspace(
     conflictedFileIds: conflictIds,
     loadStoredDraftText,
     resolveConflict,
+    recycle,
+    restore,
   }
 }
 

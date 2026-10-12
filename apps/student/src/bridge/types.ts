@@ -298,12 +298,16 @@ export interface ProjectFile {
   /** 服务实例映射；fileId 继续是稳定本机身份，以保留 model/草稿/视图。 */
   serverFileId?: string
   path: string
+  /**
+   * 学生当前**意图**的生命周期（05）：本机实例记录优先，没有本机记录时取权威 head。
+   * 「与最近确认的不一致」就是未确认的回收/恢复，界面如实标注，不冒充已生效。
+   */
   lifecycle: 'active' | 'recycled'
   /**
-   * 已确认的正文与版本；本机新建、还没确认保存的文件为 null。
+   * 已确认的正文、版本与生命周期；本机新建、还没确认保存的文件为 null。
    * 草稿与它比较得出「未确认修改」——本机草稿与确认作品是两份内容，不共用一个值。
    */
-  confirmed: { text: string; version: number } | null
+  confirmed: { text: string; version: number; lifecycle: 'active' | 'recycled' } | null
 }
 
 /**

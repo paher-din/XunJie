@@ -28,6 +28,14 @@ export type CommandOutcome =
   | { kind: 'rejected'; code: ApiErrorCode }
   | { kind: 'conflict' }
   | { kind: 'recovery-required' }
+  /**
+   * 05：服务以 STATE_CONFLICT 拒绝（例如恢复时该路径已被另一个实例占用）。
+   *
+   * 与 `historical` 同族——整批原子，确定没有生效——但原因不同：不是代际过期，而是学生这边
+   * 看到的作品状态和服务端当前状态对不上（路径占用、生命周期迁移非法）。重放同一份命令不可能
+   * 解决，必须先按当前权威状态重新读取、再由学生用新的命令保存。
+   */
+  | { kind: 'state-conflict' }
   /** 业务键冲突（IDEMPOTENCY_CONFLICT）：同一保存标识已被不同输入占用，单列结论。 */
   | { kind: 'key-conflict' }
   | { kind: 'lease-held' }
@@ -42,16 +50,20 @@ export type CommandOutcome =
  *
  * - `historical`（旧代际且服务已明确拒绝）：结果是确定的——没有生效；再挡着只会让学生既不能重放也不能
  *   保存，所以只留事实，允许用新键在当前代际重新保存；
+ * - `state-conflict`（服务明确拒绝，整批原子未生效）：同理只留事实。挡着没有意义——重放同一份命令
+ *   拿到的是同一个拒绝，学生要做的是按当前权威状态重新读取后用**新的**命令保存；
  * - 其余未决结论（未知、本机未确认、租约、版本冲突、待重读）都保留阻塞：结果未知或有待比较，
  *   再发一条新命令可能重复生效或绕过比较。
  */
+const NOT_APPLIED: ReadonlySet<CommandOutcome['kind']> = new Set(['historical', 'state-conflict'])
+
 export function blocksNewSave(outcome: CommandOutcome | null): boolean {
   if (!outcome) return false
-  return outcome.kind !== 'historical'
+  return !NOT_APPLIED.has(outcome.kind)
 }
 
-// 只有「确定没有生效」的历史事实才放行新保存；`superseded`（服务已接收、本机没记录）必须先重新读取，
-// 否则学生会在已生效的作品上再保存一次。
+// 只有「确定没有生效」的事实（`historical`、`state-conflict`）才放行新保存；`superseded`（服务已接收、
+// 本机没记录）必须先重新读取，否则学生会在已生效的作品上再保存一次。
 
 /** 能否重新核对原命令：未知、本机未确认、租约占用以及可重试的服务拒绝都可以。 */
 export function canReplay(outcome: CommandOutcome | null): boolean {
@@ -104,6 +116,8 @@ export function studentHint(outcome: CommandOutcome | null): string {
       return '这次保存的标识已被另一个请求占用，可能是重复发起。草稿已保留，请重新读取后再保存。'
     case 'historical':
       return '上一次保存没有生效，草稿还在，可以重新保存。'
+    case 'state-conflict':
+      return '这次操作和服务器上的作品状态对不上（例如这个路径已经被占用），没有生效；两份内容都保留着。请先重新读取，再决定怎么做。'
     case 'superseded':
       return '上一次保存服务已经接收，只是本机没记下。请重新读取作品，再决定怎么保存。'
     case 'rejected':
@@ -121,6 +135,7 @@ export function diagnosticText(outcome: CommandOutcome): string {
     case 'lease-held': return 'another tab holds the send lease'
     case 'confirmed': return 'original command already confirmed'
     case 'historical': return 'original command rejected before commit; retired with an older recovery generation'
+    case 'state-conflict': return 'service rejected the original command with STATE_CONFLICT; the batch is atomic and definitively not applied'
     case 'superseded': return 'verified receipt exists but the local record was retired: service accepted this command'
     case 'conflict': return 'service rejected the original command with VERSION_CONFLICT'
     case 'recovery-required': return 'service rejected the original command with RECOVERY_REQUIRED'
@@ -134,6 +149,7 @@ export function outcomeOfCode(code: ApiErrorCode): CommandOutcome {
   if (code === 'VERSION_CONFLICT') return { kind: 'conflict' }
   if (code === 'RECOVERY_REQUIRED') return { kind: 'recovery-required' }
   if (code === 'IDEMPOTENCY_CONFLICT') return { kind: 'key-conflict' }
+  if (code === 'STATE_CONFLICT') return { kind: 'state-conflict' }
   return { kind: 'rejected', code }
 }
 
@@ -142,6 +158,7 @@ export function codeOfOutcome(outcome: CommandOutcome): ApiErrorCode | null {
   if (outcome.kind === 'conflict') return 'VERSION_CONFLICT'
   if (outcome.kind === 'recovery-required') return 'RECOVERY_REQUIRED'
   if (outcome.kind === 'key-conflict') return 'IDEMPOTENCY_CONFLICT'
+  if (outcome.kind === 'state-conflict') return 'STATE_CONFLICT'
   return outcome.kind === 'rejected' ? outcome.code : null
 }
 

@@ -76,6 +76,8 @@ export interface DraftRepository {
   loadDraft(clientFileKey: string): Promise<DraftRecord | null>
   saveDraft(record: DraftRecord, expectedRevision: number | null): Promise<SaveDraftResult>
   saveInstance(record: InstanceRecord): Promise<void>
+  /** 读这个文件实例的本机记录（05 的生命周期意图、本机新建的路径与创建时间都在这里）。 */
+  loadInstance(clientFileKey: string): Promise<InstanceRecord | null>
   /** 败方正文的保留处：不覆盖赢方，也不丢学生的字。 */
   keepCandidate(clientFileKey: string, text: string, reason: string): Promise<void>
 }
@@ -105,6 +107,10 @@ export function memoryDraftRepository(): DraftRepository {
     },
     async saveInstance(record) {
       instances.set(record.clientFileKey, { ...record })
+    },
+    async loadInstance(key) {
+      const record = instances.get(key)
+      return record ? { ...record } : null
     },
     async keepCandidate(clientFileKey, text, reason) {
       candidates.push({ clientFileKey, text, reason })

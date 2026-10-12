@@ -16,7 +16,7 @@ function instance(overrides: Partial<InstanceRecord> = {}): InstanceRecord {
 }
 function state(files: WorkspaceFile[], workspaceRevision = 1): ConfirmationState {
   return { phase: 'ready', workspace: { attemptId: 'attempt-1', workspaceRevision, files }, attempt: null,
-    snapshot: null, pending: null, outcome: null, error: null, comparison: null }
+    snapshot: null, pending: null, outcome: null, error: null, comparison: null, snapshots: [] }
 }
 
 describe('恢复草稿的实例关联', () => {
@@ -26,7 +26,7 @@ describe('恢复草稿的实例关联', () => {
     // 身份仍是本机实例（草稿按它保存），服务端 fileId 单独保留，不冒充已映射
     expect(seed.files[0]!.fileId).toBe('local-1')
     expect(seed.files[0]!.serverFileId).toBe('server-1')
-    expect(seed.files[0]!.confirmed).toEqual({ text: 'int main(void)\n', version: 1 })
+    expect(seed.files[0]!.confirmed).toEqual({ text: 'int main(void)\n', version: 1, lifecycle: 'active' })
   })
 
   it('已映射的实例按 fileId 关联，不受同路径影响', () => {
@@ -48,7 +48,7 @@ describe('恢复草稿的实例关联', () => {
     const seed = projectSeedOf(state([file()]), [first, second], 'task-1', true)!
     // 确认正文按服务端 fileId 打开；两个本机实例仍作为各自的草稿保留，谁都不吞掉谁
     expect(seed.files.map(f => f.fileId)).toEqual(['server-1', 'local-1', 'local-2'])
-    expect(seed.files[0]!.confirmed).toEqual({ text: 'int main(void)\n', version: 1 })
+    expect(seed.files[0]!.confirmed).toEqual({ text: 'int main(void)\n', version: 1, lifecycle: 'active' })
     expect(seed.files[1]!.confirmed).toBeNull()
   })
 

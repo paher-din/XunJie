@@ -6,7 +6,10 @@ import { SideDock } from '../components/workspace/SideDock'
 import { PrepTaskInfo, TextScopeBodyPane } from '../components/workspace/TextScopePanes'
 import { ConfirmationCluster } from '../components/workspace/ConfirmationCluster'
 import { ConflictCompare } from '../components/workspace/ConflictCompare'
+import { VersionCompare } from '../components/workspace/VersionCompare'
 import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
+import { buildVersionComparison } from '../workspace/comparison'
+import { defaultVersionPair, isSnapshotSource, versionSourceOptions } from '../workspace/versionSources'
 import { useProjectWorkspace } from '../components/workspace/useProjectWorkspace'
 import { useConfirmationWorkspace } from '../workspace/useConfirmationWorkspace'
 import { canReplay, comparableOutcome } from '../workspace/recovery'
@@ -53,15 +56,42 @@ export default function PrepWorkspacePage() {
   const comparison = confirmation.state.comparison
   const [compareBusy, setCompareBusy] = useState(false)
 
+  /* ---------- 05：只读版本比较（快照 × 快照 / 草稿 × 确认作品） ---------- */
+  /**
+   * 比较来源全部来自已经在内存里的已核验事实（确认头、head.snapshots、本机草稿），
+   * 打开、切换、离开都只改页面状态：**不发任何请求**，因此不存在隐式写副作用。
+   */
+  const versionOptions = useMemo(
+    () => confirmation.state.workspace === null ? [] : versionSourceOptions({
+      snapshots: confirmation.state.snapshots, workspace: confirmation.state.workspace,
+      files: project.files, draftText: project.draftText,
+    }),
+    [confirmation.state.snapshots, confirmation.state.workspace, project.files, project.draftText],
+  )
+  const [versionSelection, setVersionSelection] = useState<{ left: string; right: string } | null>(null)
+  const versionComparison = useMemo(() => {
+    if (versionSelection === null) return null
+    const left = versionOptions.find(option => option.id === versionSelection.left)
+    const right = versionOptions.find(option => option.id === versionSelection.right)
+    if (!left || !right) return null
+    const bothSnapshots = isSnapshotSource(left.id) && isSnapshotSource(right.id)
+    return buildVersionComparison(bothSnapshots ? 'snapshots' : 'draft-confirmed', left.side, right.side)
+  }, [versionSelection, versionOptions])
+  const versionChoices = useMemo(() => versionOptions.map(({ id, label }) => ({ id, label })), [versionOptions])
+  const compareOpen = comparison !== null || versionComparison !== null
+
   /** Esc 关闭比较：只在比较视图打开期间挂监听，行为与「返回编辑」一致。 */
   useEffect(() => {
-    if (comparison === null) return
+    if (!compareOpen) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') confirmation.client?.closeComparison()
+      if (event.key !== 'Escape') return
+      // 服务版本冲突的比较（04A）优先；它没开时才关版本比较。
+      if (comparison !== null) confirmation.client?.closeComparison()
+      else setVersionSelection(null)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [comparison === null, confirmation.client])
+  }, [compareOpen, comparison !== null, confirmation.client])
 
   /** 打开比较：从落盘原命令与重读 head 构造比较；内部失败已发布为 state.error，这里兜 toast。 */
   async function onOpenComparison() {
@@ -204,7 +234,17 @@ export default function PrepWorkspacePage() {
           tool={tool}
           onToolChange={setTool}
           onToast={showToast}
-          designBody={comparison !== null
+          designBody={versionComparison !== null && versionSelection !== null
+            ? <VersionCompare
+                comparison={versionComparison}
+                options={versionChoices}
+                leftId={versionSelection.left}
+                rightId={versionSelection.right}
+                onSelect={(side, id) => setVersionSelection(current => current === null ? current
+                  : side === 'left' ? { ...current, left: id } : { ...current, right: id })}
+                onReturn={() => setVersionSelection(null)}
+              />
+            : comparison !== null
             ? <ConflictCompare
                 comparison={comparison}
                 busy={compareBusy}
@@ -229,14 +269,17 @@ export default function PrepWorkspacePage() {
             unconfirmedCount={project.unconfirmedCount}
             workspaceRevision={confirmation.state.workspace?.workspaceRevision ?? null}
             snapshot={confirmation.state.snapshot}
+            // 暂停期间服务端只接受已有 active 文件的 update：本机新建与未确认的回收/恢复都发不出去，
+            // 客户端不提供这个按钮，而不是让服务端整批拒绝后再解释（理由与确认客户端同一处判定）。
             canSave={project.loaded && project.unconfirmedCount > 0 && project.access.kind !== 'read-only' &&
-              !(project.access.kind === 'paused' && project.files.some(f => f.confirmed === null))}
+              !(project.access.kind === 'paused' && (project.files.some(f => f.confirmed === null) || project.lifecyclePendingCount > 0))}
             canSnapshot={!!confirmation.state.attempt && project.access.kind !== 'read-only'}
             // 恢复结论态（拒绝/版本冲突/换代）的说明由 state.error 呈现，这里不重复同一句话。
             // 结论态（拒绝/冲突/过期/已接收）的具体说明由 state.error 给出，这里只放与状态无关的写入限制，
             // 避免同一张提示卡里两句话互相顶掉。
             blockedReason={!c?.trustedRecoveryGeneration ? '现在还不能保存这件作品。' :
-              project.access.kind === 'paused' && project.files.some(f => f.confirmed === null) ? '暂停期间只能保存已有文件的修改。' : null}
+              project.access.kind === 'paused' && (project.files.some(f => f.confirmed === null) || project.lifecyclePendingCount > 0)
+                ? '暂停期间只能保存已有文件的修改。' : null}
             error={confirmation.state.error}
             canRetry={canReplay(confirmation.state.outcome)}
             onOpen={() => { void confirmation.client?.openAttempt() }}
@@ -251,10 +294,12 @@ export default function PrepWorkspacePage() {
             onSnapshot={() => { void confirmation.client?.snapshot() }}
             onRetry={() => { void confirmation.client?.retry() }}
             onReload={init.reload}
+            canCompareVersions={project.loaded && versionOptions.length > 0 && !compareOpen}
+            onCompareVersions={() => setVersionSelection(defaultVersionPair(versionOptions))}
           />
             {/* 04A 比较入口：只在比较有意义的结论（版本冲突/待重读/业务键冲突/历史）出现；
                 其余结论的重试与重读动作在 ConfirmationCluster 里，不提供丢弃比较 */}
-            {comparison === null && confirmation.state.pending && confirmation.state.outcome &&
+            {comparison === null && versionComparison === null && confirmation.state.pending && confirmation.state.outcome &&
               comparableOutcome(confirmation.state.outcome) && confirmation.state.phase !== 'saving' && (
               <span className="ws-run-actions">
                 <button

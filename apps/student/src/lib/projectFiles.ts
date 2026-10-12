@@ -156,7 +156,7 @@ export function problemMessage(problem: PathProblem | LimitProblem | 'not-allowe
     case 'duplicate':
       return '已有文件占用这个路径；换个路径，或打开已有的那个'
     case 'file-count':
-      return `active 文件已达 ${WORKSPACE_LIMITS.maxActiveFiles} 个上限，本版本还不能回收实例，暂时无法再新建`
+      return `active 文件已达 ${WORKSPACE_LIMITS.maxActiveFiles} 个上限；先回收不用的实例再新建`
     case 'total-bytes':
       return `超出 ${formatBytes(WORKSPACE_LIMITS.maxActiveBytes)} 的正文总量上限`
     case 'invalid-unicode':

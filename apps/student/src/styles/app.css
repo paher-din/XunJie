@@ -9579,3 +9579,183 @@ button.st-check.checked:hover {
   padding: 0 10px;
   font-size: 12px;
 }
+
+/* ---------- 05：只读版本比较（快照 × 快照 / 草稿 × 确认作品） ---------- */
+.ws-compare-sources {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: none;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 12px;
+  color: var(--muted);
+}
+.ws-compare-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-compare-side-label {
+  color: var(--faint);
+}
+.ws-compare-cycle {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--ink-soft);
+  font-size: 12px;
+  transition: background 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.ws-compare-cycle:hover {
+  background: var(--hover-bg);
+}
+.ws-compare-cycle:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-glow);
+}
+.ws-compare-sources select {
+  height: 28px;
+  max-width: 240px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--ink);
+  font-size: 12px;
+}
+.ws-compare-sources select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-glow);
+}
+/* 有来源选择行时说明行不再吸顶：两行都粘住会互相盖住 */
+.ws-compare[data-source='snapshots'] .ws-compare-note,
+.ws-compare[data-source='draft-confirmed'] .ws-compare-note {
+  position: static;
+}
+.ws-compare-file-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--faint);
+  overflow-wrap: anywhere;
+}
+.ws-compare-file-versions {
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.ws-compare-file-lifecycle {
+  flex: none;
+  font-size: 11px;
+  color: var(--indicator-amber-ink);
+}
+
+/* ---------- 05：文件实例的回收与恢复 ---------- */
+/* 行容器（div）自己不承担内边距与悬停：里面是「打开」与「回收」两个平级按钮 */
+.cw-filemenu div.cw-filemenu-row {
+  padding: 0;
+  gap: 2px;
+}
+.cw-filemenu div.cw-filemenu-row:hover {
+  background: transparent;
+}
+.cw-filemenu-open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.cw-filemenu-open:hover {
+  background: var(--hover-bg);
+}
+.cw-filemenu-row.active .cw-filemenu-open {
+  color: var(--ink);
+}
+.cw-filemenu-recycle {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  margin-right: 4px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  transition: background 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.cw-filemenu-recycle:hover:not(:disabled) {
+  background: var(--chip-active);
+  color: var(--ink);
+}
+.cw-filemenu-recycle:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* 已回收实例：与活动文件分开一段，恢复入口在行内，占用者说明整行换行显示 */
+.cw-filerecycled {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line-strong);
+}
+.cw-filerecycled-title {
+  margin: 2px 8px 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.cw-filerecycled-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cw-filerecycled-row:hover {
+  background: var(--hover-bg);
+}
+.cw-filerecycled-restore {
+  flex: none;
+  margin-left: auto;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  transition: background 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.cw-filerecycled-restore:hover:not(:disabled) {
+  background: var(--chip-active);
+  color: var(--ink);
+}
+.cw-filerecycled-restore:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.cw-lifecycle-blocked {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--indicator-amber-ink);
+}
+.cw-tag-pending {
+  flex: none;
+  font-size: 11px;
+  color: var(--indicator-amber-ink);
+}

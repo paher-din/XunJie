@@ -21,9 +21,16 @@ export interface WorkspaceHead {
   attempt: AttemptView; files: WorkspaceFile[]; snapshots: SnapshotView[]
   jobs: unknown[]; runs: unknown[]; checks: unknown[]
 }
+/**
+ * 单个文件操作。字段与顺序对齐 `server/workspace/inputs.ts` 的 `fileOperationSchema`：
+ * `create` 由服务端分配 fileId；`recycle`/`restore` 是生命周期状态迁移，不带正文——
+ * 恢复带回的是**已确认**正文，本机后续修改由学生再确认保存一次（TECH §7.4 同实例每批一个操作）。
+ */
 export type SyncOperation =
   | { kind: 'create'; clientFileKey: string; path: string; text: string }
   | { kind: 'update'; fileId: string; baseVersion: number; text: string }
+  | { kind: 'recycle'; fileId: string; baseVersion: number }
+  | { kind: 'restore'; fileId: string; baseVersion: number }
 export interface SyncInput {
   recoveryGeneration: string; expectedWorkspaceRevision: number; clientId: string; clientSeq: number
   operations: SyncOperation[]

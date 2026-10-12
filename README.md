@@ -41,6 +41,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [学生前端导入与 C 场景入口](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md) | 设计仓库固定提交导入 `apps/student/`、准备模式 fixture、窄读取客户端与最小浏览器检查；I0 学生纵向切片的第一张任务 |
 | [学生确认保存与不可变快照](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) | 学生主动创建 Attempt、原命令持久化与重放、原子确认和快照回取；准备范围验证及真实服务交接限制 |
 | [断线与原保存请求恢复](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md) | 断线继续编辑、刷新保留草稿、重连只核或重放原保存命令；未知/拒绝/版本冲突/旧代际的分流与准备范围验证 |
+| [文件实例回收恢复与只读版本比较](docs/tasks/I0_UI_05_FILE_HISTORY.md) | 回收/恢复文件实例（同名重建是新实例、恢复路径被占用先显式处理占用者）、两快照或草稿与确认作品的只读比较；准备范围验证及真实服务交接限制 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；七张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
@@ -112,9 +113,11 @@ npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实
 
 **学生界面只保留必要信息**（确认工作区与顶栏）：不出现错误码、原命令键、clientId/clientSeq、受信代际、预期版本、接口路径、服务原文或快照 ID/hash，也不出现冻结正文摘要。这些事实改由 `src/workspace/diagnostics.ts` 以 `console.info('[i0-workspace] <event>', detail)` 输出到浏览器控制台，事件覆盖 `context.loaded` / `command.sent` / `command.acknowledged` / `command.failed` / `command.abandoned` / `command.reconciled` / `command.historical` / `snapshot.frozen` / `workspace.read-failed` / `workspace.initialize-failed`，内容包括命令身份与冻结输入摘要（路径、字节数、sha256）、回执 ID 与服务序号、HTTP 失败体、快照 ID/hash 与上下文归属；**不含**会话 cookie、CSRF token 或作品正文。排障时打开 DevTools 控制台即可核对原命令身份与结论；工作区左侧「任务信息」面板仍按 01 的交付显示合成身份与对象引用（属于「明确标识合成场景」的一部分，2026-10-12 决定暂不收敛）。
 
+文件回收/恢复与只读版本比较可以手动复现：学生先在文件列表里对某个实例点「回收」，再点「确认保存」，服务端把该实例标为 `recycled`（正文与 fileId 不变）；用同名路径新建会得到**新实例**；此时在「已回收的实例」里点「恢复」会被拒绝并说明该路径被哪个实例占用——先在占用者那一行回收它，再用一次新的「确认保存」恢复旧实例，旧实例回到自己的 fileId 与原文。运行簇的「比较版本」打开只读比较：左侧/右侧各自可切换到「本机草稿」「当前确认作品」或任一已冻结快照，同一路径的不同实例按身份分行，正文差异用 Monaco diff 显示，整个比较过程不发任何写请求。准备范围内的暂停/终态不可操作由开发专用 `POST /__i0prep/attempt-state`（body `{"attemptId":"…","status":"paused"}`，同样需要 `x-csrf-token` 与 `x-i0prep-scenario`）切换后重新读取核对，该端点只存在于 `dev:prep`。
+
 断线恢复可以手动复现：`dev:prep` 进程提供开发专用 `POST /__i0prep/fault`（body `{"kind":"drop-ack"}` 或 `{"kind":"fail-write"}`，需开发会话的 `x-csrf-token` 与 `x-i0prep-scenario` 头；`{"kind":"none"}` 清除）。`drop-ack` 让写命令照常提交到进程内 authority 但不下发响应，界面显示「保存结果待确认」，继续编辑并刷新后可用「重试上次保存」以同键同正文重放；`fail-write` 不提交命令并返回 503 `PERSISTENCE_UNAVAILABLE`，界面显示「保存未成功」，正文与原命令保留、仍可明确重试。服务明确拒绝且重放不能解决时（版本冲突、登录状态变化等）停止重放并提示先重新读取，不会自动改键重做。该端点只存在于 `npm run dev:prep`，`npm run build` 的产物不含它，也不会把拒绝伪装成丢失。
 
-本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照，以及 04 断线恢复的准备范围，使用同一客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) 与 [04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
+本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照、04 断线恢复与 05 文件回收恢复/只读版本比较的准备范围，使用同一客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)、[04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md) 与 [05 任务记录](docs/tasks/I0_UI_05_FILE_HISTORY.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
 
 ## 状态
 

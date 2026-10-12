@@ -17,6 +17,8 @@ export type ConfirmationPhase =
   | 'recovery-required'
   /** 上一次保存属于旧代际且已被服务拒绝：不会生效，学生可以重新保存。 */
   | 'stale'
+  /** 服务明确拒绝且整批未生效（例如恢复时路径已被占用）：先重新读取，再用新命令保存。 */
+  | 'not-applied'
 
 /** 学生只需要知道「冻结了哪一版」；快照 ID/hash 由调用方写进控制台。 */
 export interface ConfirmationSnapshot {
@@ -44,6 +46,9 @@ export interface ConfirmationClusterProps {
   onReload: () => void
   /** 上一次保存是否仍可重放；false 时只显示下一步，不提供重放按钮。 */
   canRetry?: boolean
+  /** 05：存在可比较的版本（快照或本机草稿）时才给入口；比较本身是只读的。 */
+  canCompareVersions?: boolean
+  onCompareVersions?: () => void
 }
 
 /**
@@ -65,6 +70,7 @@ const phaseLabels: Record<ConfirmationPhase, string> = {
   conflict: '作品有更新',
   'recovery-required': '需要重新读取',
   stale: '上一次保存已过期',
+  'not-applied': '上一次操作没有生效',
 }
 
 const compactControl = { padding: '0 10px', fontSize: 12 }
@@ -100,12 +106,15 @@ export function ConfirmationCluster({
   onRetry,
   onReload,
   canRetry,
+  canCompareVersions,
+  onCompareVersions,
 }: ConfirmationClusterProps) {
   const busy = phase === 'loading' || phase === 'saving'
-  // stale 不阻塞：它只说明上一次保存没生效，学生可以立刻重新保存。
-  const needsReconciliation = (hasPending ?? (phase === 'unknown' || phase === 'local-failed')) && phase !== 'stale'
+  // stale / not-applied 都不阻塞：它们只说明上一次操作没有生效，学生可以立刻用新的命令重新保存。
+  const notApplied = phase === 'stale' || phase === 'not-applied'
+  const needsReconciliation = (hasPending ?? (phase === 'unknown' || phase === 'local-failed')) && !notApplied
   const hasConfirmedHead = hasAttempt && workspaceRevision !== null
-  const canWrite = (phase === 'ready' || phase === 'stale') && hasConfirmedHead
+  const canWrite = (phase === 'ready' || notApplied) && hasConfirmedHead
   const confirmed = canWrite && unconfirmedCount === 0
   // 只有上一次保存仍可原样重放时才给按钮；需要先读取或重新开始时只给「重新读取」。
   const replayable = canRetry ?? true
@@ -182,6 +191,18 @@ export function ConfirmationCluster({
       {snapshot && (
         <span className="ws-btn ghost" style={{ ...compactControl, cursor: 'default' }} title="本次冻结的是当时已确认的作品版本">
           已冻结快照 v{snapshot.workspaceRevision}
+        </span>
+      )}
+
+      {/* 05：只读版本比较入口。放在既有「已冻结快照」位置，不新造版本面板；
+          打开后只消费已核验的快照与确认头，不发任何写请求。 */}
+      {canCompareVersions && onCompareVersions && (
+        <span className="ws-run-actions">
+          <button type="button" className="ws-btn ghost" style={compactControl} disabled={busy}
+            title={busy ? '正在读取或保存，稍后再比较' : '只读比较本机草稿、确认作品与已冻结快照'}
+            onClick={onCompareVersions}>
+            比较版本
+          </button>
         </span>
       )}
 

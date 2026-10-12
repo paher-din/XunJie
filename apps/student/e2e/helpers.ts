@@ -99,6 +99,56 @@ export async function syntheticUpdate(page: Page, text: string) {
   }, text)
 }
 
+/** 读取 fixture 权威 Attempt（不经页面状态），用于核对服务端事实而不是界面自述。 */
+export interface ServerHead { attempt: { workspaceRevision: number; status: string; attemptRevision: number }
+  files: Array<{ fileId: string; path: string; text: string; lifecycle: 'active' | 'recycled'; documentVersion: number; contentHash: string }>
+  snapshots: Array<{ snapshotId: string; workspaceRevision: number; createdAt: string
+    files: Array<{ fileId: string; path: string; text: string; contentHash: string; documentVersion: number }> }> }
+
+export async function serverHead(page: Page): Promise<ServerHead> {
+  return page.evaluate(async () => {
+    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
+    const data = (await (await fetch('/__i0prep/context', { headers })).json()).data
+    return (await (await fetch(`/__i0prep/api/attempts/${data.refs.attemptId}`, { headers })).json()).data
+  })
+}
+
+/**
+ * 开发专用：把准备 authority 里的 Attempt 切到暂停或终态。
+ *
+ * 05 要求「暂停/终态不可操作」，而准备 authority 只会把 Attempt 变成 ready/active；
+ * 这里用同一个 dev-only 契约（POST /__i0prep/attempt-state）改状态，客户端仍必须经 GET 才看到。
+ */
+export async function setAttemptState(page: Page, status: 'active' | 'paused' | 'submitted' | 'reviewed') {
+  return page.evaluate(async status => {
+    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
+    const data = (await (await fetch('/__i0prep/context', { headers })).json()).data
+    const session = (await (await fetch('/__i0prep/api/session', { headers })).json()).data
+    const response = await fetch('/__i0prep/attempt-state', { method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json', 'x-csrf-token': session.csrfToken },
+      body: JSON.stringify({ attemptId: data.refs.attemptId, status }) })
+    return { status: response.status, body: (await response.json()).data }
+  }, status)
+}
+
+/** 打开文件列表浮层（回收/恢复/新建入口都在里面）。 */
+export async function openFileMenu(page: Page) {
+  const menu = page.locator('.cw-filemenu')
+  if (!(await menu.isVisible())) await page.locator('.cw-stripbtn').click()
+  await expect(menu).toBeVisible()
+}
+
+/**
+ * 点「确认保存」并等确认头推进到指定版本。
+ *
+ * 版本读数只说明服务端已接纳的这一版；它不是「本机草稿已上传」的同义词，
+ * 所以断言的是工作区版本而不是按钮状态。
+ */
+export async function confirmSave(page: Page, revision: number) {
+  await page.getByRole('button', { name: '确认保存', exact: true }).click()
+  await expect(page.locator('.ws-flow')).toContainText(`确认作品 v${revision}`)
+}
+
 /** 记录业务保存请求（幂等键 + 正文），用于核对命令身份。 */
 export function trackSync(page: Page) {
   const posts: Array<{ key: string; body: string }> = []

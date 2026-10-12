@@ -21,6 +21,8 @@ export type ConfirmationPhase =
   | 'recovery-required'
   /** 04：上一次保存属于旧代际且已被服务拒绝：不会生效，学生可以重新保存。 */
   | 'stale'
+  /** 05：服务明确拒绝且整批未生效（例如恢复时路径已被占用）：先重新读取，再用新命令保存。 */
+  | 'not-applied'
 
 /**
  * 学生可见状态。\`error\` 只放学生能懂、能行动的一句话；技术事实（错误码、命令键、代际、ID/hash、
@@ -33,8 +35,15 @@ export interface ConfirmationState {
   outcome: CommandOutcome | null
   /** 04A：当前打开的只读比较（本机原文/原确认基线/新服务正文）；null = 没有打开。 */
   comparison: WorkspaceComparison | null
+  /**
+   * 05：当前权威 head 里已核验的全部快照（`verifyHead` 已逐个核验清单与摘要）。
+   *
+   * 只读版本比较直接用这份已核验投影，不再另发请求：比较因此不可能产生写副作用，
+   * 也不会因为多读一次而改变任何摘要。
+   */
+  snapshots: SnapshotView[]
 }
-const initialState = (): ConfirmationState => ({ phase: 'idle', workspace: null, attempt: null, snapshot: null, pending: null, outcome: null, error: null, comparison: null })
+const initialState = (): ConfirmationState => ({ phase: 'idle', workspace: null, attempt: null, snapshot: null, pending: null, outcome: null, error: null, comparison: null, snapshots: [] })
 
 /**
  * 当前工作区该展示哪一条未决原命令。
@@ -71,6 +80,8 @@ export function phaseFor(outcome: CommandOutcome): ConfirmationPhase {
     // 已确认通常由 acceptLocal/reconcile 直接处理；这里保留分支是为了让映射对整个结论集完备。
     case 'confirmed': return 'ready'
     case 'historical': return 'stale'
+    // 确定没有生效，路径/状态要对齐的是服务端当前事实：与 historical 一样放行新保存。
+    case 'state-conflict': return 'not-applied'
     // 服务已接收、本机没记录：需要先重新读取，学生对它的动作与「工作区过期」一样。
     case 'superseded': return 'recovery-required'
     // 业务键冲突是终态拒绝的一种，但结论单列；界面沿用「保存未成功」状态，区别在提示文案。
@@ -206,7 +217,7 @@ export class ConfirmationWorkspace {
       // C2 清单按 ID 排列，不代表创建先后；同时间时保留本次明确冻结的选择。
       const latest = [...head.snapshots].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
         (a.snapshotId === this.state.snapshot?.snapshotId ? -1 : b.snapshotId === this.state.snapshot?.snapshotId ? 1 : a.snapshotId.localeCompare(b.snapshotId)))[0] ?? null
-      this.publish({ workspace, attempt: head.attempt, snapshot: latest,
+      this.publish({ workspace, attempt: head.attempt, snapshot: latest, snapshots: head.snapshots,
         phase: this.state.pending ? this.state.phase : ['submitted', 'reviewed'].includes(head.attempt.status) ? 'readonly' : 'ready' })
       return head
     } catch (e) {
@@ -304,8 +315,15 @@ export class ConfirmationWorkspace {
     // 旧代际且已明确被拒的原命令不挡新保存：学生用新键在当前代际重新保存，不是迁旧请求。
     if (this.busy || blocksNewSave(this.state.outcome) || !this.state.workspace || !this.state.attempt || this.guard.stale) return
     if (['submitted', 'reviewed'].includes(this.state.attempt.status)) return
-    if (this.state.attempt.status === 'paused' && drafts.some(d => !d.serverFileId)) {
-      this.publish({ phase: 'error', error: '暂停期间只能保存已有文件的修改。' }); return
+    // 暂停期间服务端只接受已有 active 文件的 update：新建与回收/恢复都会被整批拒绝，客户端先挡下来，
+    // 否则学生会看到一条注定失败的「上一次操作没有生效」。判定用**确认清单里的生命周期**，
+    // 与草稿带的学生意图比对——恢复意图同样发不出去。
+    if (this.state.attempt.status === 'paused') {
+      const wantsLifecycleChange = drafts.some(d =>
+        (d.lifecycle ?? 'active') !== (this.state.workspace!.files.find(f => f.fileId === d.serverFileId)?.lifecycle ?? 'active'))
+      if (drafts.some(d => !d.serverFileId) || wantsLifecycleChange) {
+        this.publish({ phase: 'error', error: '暂停期间只能保存已有文件的修改。' }); return
+      }
     }
     const guard = this.guard
     this.busy = true; this.publish({ phase: 'saving', error: null })
@@ -391,6 +409,9 @@ export class ConfirmationWorkspace {
     const message = e instanceof Error ? e.message : String(e)
     if (message.includes('没有需要确认的修改')) return '没有需要保存的修改。'
     if (message.includes('需要重新比较') || message.includes('不在当前确认清单')) return '这件作品已经在别处更新，请重新读取后再保存。'
+    // 05：两种只发生在冻结阶段、学生能直接处理的拒绝，必须给具体说法（见任务文档设计决定第 5 条）。
+    if (message.includes('恢复路径被占用')) return '这个路径现在被另一个文件实例占用；先在它那一行回收，才能恢复这个实例。'
+    if (message.includes('不能回收')) return '这个文件还没有确认保存过，不能回收。'
     // 正文与上限问题沿用编辑器里的同一套说法，学生改完就能保存。
     for (const problem of ['invalid-unicode', 'total-bytes', 'file-count', 'duplicate', 'separator', 'segment', 'drive', 'empty', 'not-allowed']) {
       if (message.includes(problem)) return `作品还不符合保存条件，请先按编辑器提示修改。`

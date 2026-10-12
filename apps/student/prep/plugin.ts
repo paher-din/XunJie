@@ -48,7 +48,7 @@ import {
   sha256Hex,
 } from './scenario'
 import { createPrepAttempt, readPrepAttempt, syncPrepWorkspace, freezePrepSnapshot, readPrepSnapshot, recoverPrepWorkspace,
-  PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
+  setPrepAttemptState, PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
 import { isPrepFault, prepFaultOf, setPrepFault } from './faults'
 
 /** 与 `apps/teaching/contracts/common/http.ts:3-19` 的 errorDefinitions 对应条目逐字一致。 */
@@ -335,6 +335,19 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
     const kind = (body as { kind?: unknown }).kind
     if (!isPrepFault(kind)) return fail(res, 'INVALID_REQUEST')
     return ok(res, { scenarioId: scenarioOf(req), fault: setPrepFault(scenarioOf(req), kind) })
+  }
+
+  // 05：开发专用 Attempt 状态开关（暂停 / 终态），只用于核对「不可操作」的门控。
+  if (path === `${PREP_ROOT}/attempt-state` && method === 'POST') {
+    const session = requireSession(req, res)
+    if (!session) return
+    if (csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
+    let body: unknown
+    try { body = await readBody(req) } catch { return fail(res, 'INVALID_REQUEST') }
+    try { return ok(res, setPrepAttemptState(scenarioOf(req), session, body)) } catch (error) {
+      if (error instanceof PrepWorkspaceError) return fail(res, error.code)
+      throw error
+    }
   }
 
   if (path === `${PREP_ROOT}/recover` && method === 'POST') {

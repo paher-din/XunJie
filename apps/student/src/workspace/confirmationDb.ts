@@ -202,6 +202,10 @@ export const confirmationRepository = {
    * 与回执互斥：已经拿到回执的原命令只保留回执事实，不被拒绝记录覆盖。断线、超时这类
    * 拿不到信封的失败不写这里，避免把「未知」写成「拒绝」。
    *
+   * STATE_CONFLICT 例外地**同时**退役为历史（见下）：它确定没有生效且没有留给学生的动作，
+   * 而 VERSION_CONFLICT / RECOVERY_REQUIRED / IDEMPOTENCY_CONFLICT 都有明确出口（比较后选择、
+   * 重读换代际、换新键），继续留在 pending 是有意义的。
+   *
    * `owner` 是写入方的发送租约：只有仍持有该租约的调用者（或记录当前无租约）才能落笔，
    * 避免过期持有者把结论盖到另一标签已经推进的事实上；不满足条件时静默跳过是预期行为，
    * 因为它只影响是否多写一条事实，不影响已经得出的结论。
@@ -211,7 +215,12 @@ export const confirmationRepository = {
       reads(tx, [['outbox', key]], safe, ([value]) => {
         const row = value as OutboxRecord | undefined
         if (row && !row.receipt && (!owner || !row.lease || row.lease.owner === owner)) {
-          tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() } })
+          // STATE_CONFLICT（05）：整批原子、确定没有生效，而且没有可比较或可重放的动作
+          // （comparableOutcome 为 false、claim 也拒绝重放）。留在 pending 只会让这条已经了结的
+          // 失败在每次刷新时重新变成「未决」状态——事实仍保留在记录的 rejected 字段里。
+          const retired = code === 'STATE_CONFLICT'
+          tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() },
+            ...(retired ? { state: 'historical' as const, lease: undefined } : {}) })
         }
         result(undefined)
       }))

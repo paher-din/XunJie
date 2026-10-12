@@ -256,7 +256,7 @@ function seed(
       fileId: `${taskId}-f${index + 1}`,
       path,
       lifecycle: 'active' as const,
-      confirmed: { text, version: 1 },
+      confirmed: { text, version: 1, lifecycle: 'active' as const },
     })),
   }
 }

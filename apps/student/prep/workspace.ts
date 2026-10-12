@@ -36,7 +36,9 @@ function canonical(value: unknown): string {
 
 interface Attempt {
   attemptId: string; courseId: string; studentId: string; assignmentId: string; activityVersionId: string
-  status: 'ready' | 'active'; attemptRevision: number; workspaceRevision: number
+  /** 与公开投影一致：ready/active 可写；paused 只允许更新已有 active 文件；终态只读。 */
+  status: 'ready' | 'active' | 'paused' | 'submitted' | 'reviewed'
+  attemptRevision: number; workspaceRevision: number
   decisionEpoch: number; captureRevision: number; collecting: boolean; reminders: boolean
 }
 interface File {
@@ -213,6 +215,10 @@ export function syncPrepWorkspace(scenario: string, session: PrepSession, attemp
   const previous = original(scene, command, hash)
   if (previous) return { ...structuredClone(previous), replayed: true }
   if (expectedRevision !== head.attempt.workspaceRevision) reject('VERSION_CONFLICT')
+  // 与真实服务同语义（server/workspace/files.ts:57-61）：终态只读；暂停只允许 update。
+  // fixture 以前不校验这一层，浏览器就无法证明「暂停不可操作」是客户端挡下的还是服务端拒绝的。
+  if (!['ready', 'active', 'paused'].includes(head.attempt.status)) reject('STATE_CONFLICT')
+  if (head.attempt.status === 'paused' && operations.some(operation => operation.kind !== 'update')) reject('STATE_CONFLICT')
   const next = structuredClone(head), created: Record<string, string> = Object.create(null)
   const createKeys = new Set<string>(), seen = new Set<string>()
   for (const operation of operations) {
@@ -242,7 +248,9 @@ export function syncPrepWorkspace(scenario: string, session: PrepSession, attemp
     }
   }
   validateActiveFiles(next.files)
-  next.attempt.status = 'active'; next.attempt.attemptRevision++; next.attempt.workspaceRevision++
+  // 与真实服务 activate() 同语义：只有 ready 会推进到 active，暂停状态不被一次保存悄悄改回。
+  if (next.attempt.status === 'ready') next.attempt.status = 'active'
+  next.attempt.attemptRevision++; next.attempt.workspaceRevision++
   const eligible = Boolean(process && head.attempt.collecting && process.captureRevision === head.attempt.captureRevision)
   const result = { workspaceRevision: next.attempt.workspaceRevision,
     files: next.files.map(({ fileId, path, documentVersion, contentHash, lifecycle }) => ({ fileId, path, documentVersion, contentHash, lifecycle })), created,
@@ -280,6 +288,27 @@ export function readPrepSnapshot(scenario: string, session: PrepSession, attempt
   const snapshot = head.snapshots.find(snapshot => snapshot.snapshotId === snapshotId)
   if (!snapshot) reject('INVALID_REFERENCE')
   return structuredClone(snapshot)
+}
+
+/**
+ * Dev-only state script: POST /__i0prep/attempt-state { attemptId, status }.
+ *
+ * 05 的验收要求「暂停/终态不可操作」。准备 authority 只会把 Attempt 变成 ready/active，
+ * 没有控制端点就无法在浏览器里复现暂停与终态，因此这里给一个**开发专用**的状态开关：
+ * 只改 status（与真实控制命令一样不推进 workspaceRevision），不伪造回执、不产生学习记录。
+ * 客户端仍然必须通过 GET 权威 Attempt 才看到它。
+ */
+export function setPrepAttemptState(scenario: string, session: PrepSession, value: unknown) {
+  const input = object(value, ['attemptId', 'status'])
+  const attemptId = id(input.attemptId)
+  const status = String(input.status)
+  if (!['ready', 'active', 'paused', 'submitted', 'reviewed'].includes(status)) reject('INVALID_REQUEST')
+  const scene = sceneOf(scenario), head = authorizedHead(scene, session, attemptId)
+  const next = structuredClone(head)
+  next.attempt.status = status as Attempt['status']
+  scene.head = next
+  checkpoint(scene)
+  return { attemptId, status }
 }
 
 /** Dev-only rollback script: POST /__i0prep/recover { attemptId, workspaceRevision }.
