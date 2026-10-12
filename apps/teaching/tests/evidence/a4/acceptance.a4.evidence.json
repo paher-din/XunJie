@@ -111,7 +111,10 @@
       "unresolved": 0,
       "scopeCreep": 0
     },
-    "method": "Independent read-only agents; test results reported separately"
+    "method": "Independent read-only agents; test results reported separately",
+    "finalDocumentHead": "034dc79f25596fa495df889902265e95e3629b03",
+    "finalDocumentStandardsUnresolved": 0,
+    "finalDocumentSpecUnresolved": 0
   },
   "redGreen": [
     {
@@ -241,5 +244,18 @@
     "foreignKeyErrors": 0,
     "retained": true,
     "note": "Observed on the pre-review approved fresh schema; schema files unchanged by 2f4114a boundary fixes"
+  },
+  "recordValidation": {
+    "status": "passed",
+    "records": 5,
+    "methods": "SHA-256 and byte count; spec/TAP reporter counters; actual skipped-test list; recorded schema diagnostics"
+  },
+  "documentValidation": {
+    "command": "node tools/a0-review/check.mjs",
+    "directory": "repository root",
+    "status": "passed",
+    "documents": 39,
+    "internalLinks": 610,
+    "errors": []
   }
 }
