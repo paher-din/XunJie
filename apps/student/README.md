@@ -33,8 +33,20 @@ npm run test:e2e     # Playwright：真实 Vite 页面上的准备模式与真�
 XUNJIE_E2E_PREP_PORT=5603 XUNJIE_E2E_REAL_PORT=5604 CI=1 npm run test:e2e
 ```
 
-两个覆盖值仅影响测试，范围为 1024～65535，仍严格使用指定端口；`dev:prep` 默认 5601 不变。
+三个覆盖值仅影响测试，范围为 1024～65535，仍严格使用指定端口且互不相同；`dev:prep` 默认 5601 不变。
 两个 mode 使用独立 Vite 预优化缓存，避免同一次 harness 中互相替换依赖清单。
+
+`XUNJIE_E2E_RESTART_PORT`（默认 5611）是 [07](../../docs/tasks/I0_UI_07_BROWSER_HANDOFF.md) 的
+「准备进程重启」用例独占的端口：那条用例自己拉起并**杀掉**一个 dev:prep 来复现换 epoch，
+所以不能复用 playwright.config 里那两个全程存活的 webServer。
+
+要在**本机安装的真实 Chrome**（而不是 Playwright 自带 Chromium）上取证：
+
+```sh
+XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
+```
+
+只换浏览器实现，不换用例、不换断言；不设该变量时仍是自带 Chromium，保证任何人跑同一道门禁。
 
 ## 两种模式
 

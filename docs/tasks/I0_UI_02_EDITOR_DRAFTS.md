@@ -4,7 +4,7 @@
 
 **Blocked by:** [01 固定版本导入、C 容器与初始化读取](I0_UI_01_IMPORT_C_ENTRY.md)。
 
-**Document status:** `document-revised`，未实施。
+**Document status:** `implemented`（2026-10-12 开工并交付；2026-10-13 经 [07](I0_UI_07_BROWSER_HANDOFF.md) 全量 e2e 复核，AC 复选框已勾选并注明依据）。
 
 **Status:** `implemented-pending-review`（2026-10-12 开工并交付；待 code-review 与基线汇总）。前置已落实：P-03 批准 `monaco-editor@0.57.0` 精确锁定（已安装）；P-02 批准新库 `xunjie-i0-workspace` v1（已建，未迁移旧数据、未改服务端 schema）；U-02/P-04 经项目负责人确认走「设计仓库先行 → 确认 → 提交推送 → 搬入主仓库」，设计基线为 `XunJie_Design@238d3c3`（已推送 origin/main），主仓库按 [IMPORT_SOURCE.md](../../apps/student/IMPORT_SOURCE.md) 第 4 节同步。
 
@@ -42,15 +42,17 @@
 ## Acceptance criteria
 
 - [ ] 实际编辑 C、头文件与 ASCII 测试文本；新建/切换、选择、查找、undo/redo、中文输入和键盘可用。折叠/切换保留正文与视图状态。
-- [ ] model 以模式/账号/Attempt/稳定文件实例隔离；clientFileKey 映射后保留同一草稿/视图。路径和 editor version 不充当服务身份/版本。
-- [ ] 精确 Monaco 版本先证明 LF/CRLF/混合 EOL/裸 CR/BOM/末尾空行/非 BMP/中文未编辑往返完全相等；显示投影不造成 dirty、hash 或原文变化。
-- [ ] 原文边界映射驱动实际局部/多范围编辑，未碰区域 EOL 不变，新增换行依既定规则。跨行删除/undo/redo/分支编辑恢复原分隔符和 BOM；不能靠统一换行过关。
-- [ ] 引用坐标从原快照计算，覆盖裸 CR 与 BOM 导致的显示/服务行列差异；不能表达时明确不可用。整 text 保存仍保真。
-- [ ] P-02 批准后才建立规定的新库。草稿写事务 complete 才显示“本机草稿已保护”；刷新恢复正文/活动文件，失败保留内存正文并显示未保护。
-- [ ] 同一实例草稿以 draftRevision 做事务 CAS；拒绝旧修订写入不覆盖新正文，败方文本作为冲突候选保存或在存储失败时留内存。完整比较选择由 04A 交付。
-- [ ] active 50 文件/1 MiB 按原 UTF-8 字节计；拒绝非法/重复路径、无效 Unicode，失败不破坏已有正文。限额由真实服务最终校验。
+- [x] model 以模式/账号/Attempt/稳定文件实例隔离；clientFileKey 映射后保留同一草稿/视图。路径和 editor version 不充当服务身份/版本。
+- [x] 精确 Monaco 版本先证明 LF/CRLF/混合 EOL/裸 CR/BOM/末尾空行/非 BMP/中文未编辑往返完全相等；显示投影不造成 dirty、hash 或原文变化。
+- [x] 原文边界映射驱动实际局部/多范围编辑，未碰区域 EOL 不变，新增换行依既定规则。跨行删除/undo/redo/分支编辑恢复原分隔符和 BOM；不能靠统一换行过关。
+- [x] 引用坐标从原快照计算，覆盖裸 CR 与 BOM 导致的显示/服务行列差异；不能表达时明确不可用。整 text 保存仍保真。
+- [x] P-02 批准后才建立规定的新库。草稿写事务 complete 才显示“本机草稿已保护”；刷新恢复正文/活动文件，失败保留内存正文并显示未保护。
+- [x] 同一实例草稿以 draftRevision 做事务 CAS；拒绝旧修订写入不覆盖新正文，败方文本作为冲突候选保存或在存储失败时留内存。完整比较选择由 04A 交付。
+- [x] active 50 文件/1 MiB 按原 UTF-8 字节计；拒绝非法/重复路径、无效 Unicode，失败不破坏已有正文。限额由真实服务最终校验。
 - [ ] 草稿/确认版本分开，布局/缓存重置不清本库。暂停仅编辑已有 active 文件，终态只读；不把本机昵称当权限。
-- [ ] 真实浏览器验证多文件/中文/键盘/刷新/写失败及字节边界；原文适配用最少必要反例。typecheck/test/build 与本切片检查记录准确结果。
+- [x] 真实浏览器验证多文件/中文/键盘/刷新/写失败及字节边界；原文适配用最少必要反例。typecheck/test/build 与本切片检查记录准确结果。
+
+> **勾选口径（2026-10-13，[07](I0_UI_07_BROWSER_HANDOFF.md) 复核）**：只勾「本票验证事实 + 07 全量 e2e（真实 Chrome 102 例）」完整覆盖的项。仍留空两项的缺口指名如下，不冒充已验：第 1 项的**折叠状态保留**未单独浏览器验证（见「缺口与待决」）；第 9 项的**布局/缓存重置不清本库**未验证（暂停/终态部分已由 05 的 `fileHistory.spec.ts` 与 07 的 `stateGuards.spec.ts` 覆盖）。
 
 ## 交接与状态
 

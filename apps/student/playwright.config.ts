@@ -26,7 +26,15 @@ export default defineConfig({
   use: {
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{
+    name: 'chromium',
+    // 默认用 Playwright 自带的 Chromium，保证任何人 `npm run test:e2e` 都能复现同一道门禁。
+    // 验收要在**真实 Chrome** 上取证时设 XUNJIE_E2E_BROWSER_CHANNEL=chrome（本机安装的 Google Chrome），
+    // 只换浏览器实现，不换用例、不换断言。
+    use: { ...devices['Desktop Chrome'], ...(process.env.XUNJIE_E2E_BROWSER_CHANNEL
+      ? { channel: process.env.XUNJIE_E2E_BROWSER_CHANNEL }
+      : {}) },
+  }],
   webServer: [
     {
       command: `npm run dev:prep -- --port ${PREP_PORT}`,

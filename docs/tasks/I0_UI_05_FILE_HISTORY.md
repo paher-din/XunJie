@@ -171,7 +171,7 @@ export interface ConfirmationState {
 ## Acceptance criteria
 
 - [x] **学生明确 recycle/restore，沿用 fileId/baseVersion/CAS/原幂等语义及 03 的原命令/ACK 事务；拒绝不丢草稿、不假成功。**
-  → 生命周期操作由「确认保存」按 03 的冻结 outbox 发出：`freezeSync` 按「期望生命周期 × 当前确认清单」生成 `recycle`/`restore`（[frozenCommand.ts:64-121](../../apps/student/src/components/workspace/../workspace/frozenCommand.ts#L64-L121)），业务键/CAS/`expectedWorkspaceRevision`/幂等语义与 02/03 完全一致；服务拒绝（含 `STATE_CONFLICT`）后草稿与意图都保留，只把事实写回原命令并显示「上一次操作没有生效」。纯函数 24 例、浏览器用例 1/2。
+  → 生命周期操作由「确认保存」按 03 的冻结 outbox 发出：`freezeSync` 按「期望生命周期 × 当前确认清单」生成 `recycle`/`restore`（[frozenCommand.ts:74-121](../../apps/student/src/workspace/frozenCommand.ts)），业务键/CAS/`expectedWorkspaceRevision`/幂等语义与 02/03 完全一致；服务拒绝（含 `STATE_CONFLICT`）后草稿与意图都保留，只把事实写回原命令并显示「上一次操作没有生效」。纯函数 24 例、浏览器用例 1/2。
 - [x] **同路径重建是新实例；旧快照/运行保留旧 fileId，草稿/model/历史按实例隔离。**
   → 服务端 `UNIQUE(attempt_id,path) WHERE lifecycle='active'` 只约束 active；本机身份始终是 `localId`/`clientFileKey`，路径不参与。用例 1 断言重建后服务端有两个实例、旧实例 fileId 与 `contentHash` 不变；用例 4 断言比较里同路径两实例分两行。
 - [x] **恢复路径被占用时保留双方，不覆盖/擅自 rename；学生显式处理当前占用后才能用新的命令恢复。暂停/终态/无权限不可操作。**

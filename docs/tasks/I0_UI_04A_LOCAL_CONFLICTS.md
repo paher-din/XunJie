@@ -4,7 +4,7 @@
 
 **Blocked by:** [03 确认保存与不可变快照](I0_UI_03_CONFIRM_SNAPSHOT.md)。
 
-**Document status:** `document-revised`，已实施（准备范围，2026-10-12）。
+**Document status:** `implemented`（准备范围，2026-10-12；记号于 2026-10-13 经 [07](I0_UI_07_BROWSER_HANDOFF.md) 统一）。
 
 **Status:** `implemented`：03 已交付；P-01 由项目负责人 2026-10-12 的 implement 指令落实；U-04 冲突比较按 03/04 先例在主仓库组合现有槽位实现（本次无设计仓库同步，见 [IMPORT_SOURCE §5](../../apps/student/IMPORT_SOURCE.md#5-导入后本目录的改动)）。实现与验证记录见下，基线汇总待授权维护者处理。
 

@@ -159,6 +159,23 @@ export function trackSync(page: Page) {
 }
 
 /**
+ * 记录全部业务写命令（创建 Attempt / sync / snapshot / run / cancel）。
+ *
+ * 与 `trackSync` 的区别：状态闸类用例要证明的是「一条业务写命令都没离开浏览器」，
+ * 所以范围是全部非 GET 业务路径；准备模式的登录 POST /sessions 是会话建立，不算业务命令。
+ */
+export function trackBusinessWrites(page: Page) {
+  const writes: string[] = []
+  page.on('request', request => {
+    if (request.method() === 'GET') return
+    const path = new URL(request.url()).pathname
+    if (path.endsWith('/sessions')) return
+    writes.push(`${request.method()} ${path}`)
+  })
+  return writes
+}
+
+/**
  * 业务命令身份（业务键 + 正文）。同一原命令在传输层重试、或被学生明确重放，
  * 身份都必须完全相同；只有出现第二条身份才说明客户端新建了命令。
  */
