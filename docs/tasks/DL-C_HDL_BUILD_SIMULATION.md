@@ -340,3 +340,75 @@ Node 测试失败输出自带空格行与命令输出的 EOF 空行会触发 Git
 本轮未修改 `AGENTS.md`、`docs/product/**`、`docs/planning/**`、`docs/reference/**`、他人任务稿、`package.json`、`package-lock.json`、`tsconfig*.json`、依赖、凭据、CI/CD；未做数据库迁移或真实库操作；未删除文件或 Git 历史；未连接目标 guest、认证 SSH 宿主、真实供应商或真实师生数据；未启动容器。文档改动只有本文与 README 的一段日期状态。
 
 Issue #39 保持 Open，DL-AC-02～07 不整条勾选，C4 未开始，DL-A/B/UI 与 C5 未完成条件按第 11.3 节交接，产品基线仍待授权维护者汇总。审查结论中的合并前必修项状态：P2-1 已修并有 Linux 实跑记录；P2-2 已归因为环境级非确定性、根因与目标 guest 复跑仍未执行；P1-1 按定序等 #47 落地后执行三项。合并不由本轮触发，仍由负责人执行。
+
+## 13. 2026-10-13 负责人四项裁决与本轮修复
+
+本节就地追加，第 1～12 节原文逐字保留、不倒写。负责人对 PR #48 审查留下的四项待决问题作出裁决，并维持 #47 先合、#48 后合的顺序。本节记录裁决要点、实际改动、核实结果与仍未执行项。**本次裁决不等于批准立即合并，也不代表 DL-AC-02～07 已验收通过。**
+
+### 13.1 裁决 1：A 属数据库工厂种类红线，批准
+
+负责人确认 `createDigitalLogicDatabase` 的当前实现处于此前已批准范围内：只增加 `digital-logic` 合成工厂与三张 HDL 表，不改变原有六种工厂的建表集合，不迁移或修改现有数据库；该确认不延伸至生产建库、迁移或 DL-A 的正式业务库整合。
+
+本轮**未改动** [transaction.ts](../../apps/teaching/server/db/transaction.ts)，第 12.1 节与审查核实的「六种既有工厂 exec 序列一字未动」仍成立。PR #48 正文测试计划第 1 项据此可勾。长期业务库整合仍由 DL-A 提案并经授权，本裁决不构成该授权，也不构成生产建库或迁移的授权。
+
+### 13.2 裁决 2：既有 C 指纹失效，接受
+
+负责人允许新增运行源码、契约与隔离配置导致原 C 指纹变化，并要求：不得保留旧指纹兼容通道；必须按当前部署版本重新验证并登记指纹与代际；历史验证记录保留；验证未通过时不得沿用旧 readiness。
+
+**核实结果：四条要求在现有代码里已经成立，本轮无需改动，也不存在可移除的兼容通道。**
+
+| 要求 | 代码事实 |
+| --- | --- |
+| 无旧指纹兼容通道 | [hdl-node.ts](../../apps/teaching/runner/hdl-node.ts) 的 `readiness()` 每次调用都用当前部署源码重算 `nodeFingerprint`，`ready` 同时要求 `fingerprint.sourceHash===config.hdl.sourceHash` 与 `validation.fingerprintHash===hash`（`hash` 为本次重算值）；C 侧 [controller.ts](../../apps/teaching/runner/controller.ts) 的 readiness 同形；应用侧 [design/readiness.ts](../../apps/teaching/server/design/readiness.ts) 也重新派生 `fingerprintHash` 后比对。三处均为精确相等，无任何接受历史值的分支 |
+| 验证未通过不得沿用旧 readiness | [hdl-node.ts](../../apps/teaching/runner/hdl-node.ts) 中非 maintenance 的每个 HDL 命令先 `await this.readiness()`，不 ready 即抛 `RUNTIME_NOT_READY('Current HDL validation required')`；maintenance 通道保留，正是重新验证与登记的入口 |
+| 历史记录保留 | [hdl-acceptance.ts](../../apps/teaching/runner/hdl-acceptance.ts) 与 [record-validation.ts](../../apps/teaching/runner/record-validation.ts) 都以 `appendFileSync` / `O_APPEND` 追加并 fsync，`readiness()` 用 `.at(-1)` 只读最新一条，旧记录不被覆盖或截断 |
+| 按当前部署版本重新登记 | [hdl-acceptance.ts](../../apps/teaching/runner/hdl-acceptance.ts) 写新记录前先断言 `fingerprint.sourceHash===config.hdl.sourceHash`，源码与已准备 profile 不一致直接失败，不能登记过期版本 |
+
+**本轮产生的直接后果，属必须执行的运维项：** 本轮修改了 [node-files.ts](../../apps/teaching/runner/node-files.ts) 与 [fingerprint.ts](../../apps/teaching/runner/fingerprint.ts)，两者都在 `sources` 的收编范围内（`.ts` 且非 `.test.ts`），因此 `sourceHash` 与指纹值已再次改变。第 11.2 节记录的 `sourceHash=5ff1d225…`、HDL fingerprint `7e6a4954…` 与第 11.4 节的 C fingerprint `1dbbf2db…` **自此过期**；节点在下一次按当前部署版本重新验证并登记之前会正确地报 `ready=false`。这是裁决 2 要求的语义而非缺陷。本轮**未在任何目标环境执行重新验证或登记**，该项保持未执行，历史 `validation.jsonl` 记录未被改动。
+
+第 12.1 节 P3-4 的说明在此确认无误：`contractHash` 只改错误类型，`sources` 数组逐字不变，故该项本身不移动指纹值；移动指纹的是本轮对 `node-files.ts` 的修改，以及 `dfb06cd` 原本纳入的四个新文件。
+
+### 13.3 裁决 3：`LIKE 'hdl_%'` 批准修复，合并前完成
+
+负责人指出 `_` 的 SQL 通配语义与 `startsWith('hdl_')` 不一致，要求同步修复 [hdl.ts](../../apps/teaching/server/workspace/hdl.ts) 与 [worker.ts](../../apps/teaching/server/workspace/worker.ts)，推荐 `substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)` 做精确前缀比较，并补 HDL 正常 kind、非 HDL 近似前缀、大小写与 NULL 四类测试，保持已有 Job、权限与事务语义不变。
+
+已按推荐形式修复两处：HDL 侧 `pendingJobs` 用 `substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)='hdl_'`；C worker 侧用同一表达式取 `<>`，与 HDL 侧构成精确互斥，`COALESCE` 保留第 12.1 节 P3-2 的失败安全语义（缺 `kind` 或 JSON null 的行仍由原 C worker 领取）。JS 侧 6 处 `startsWith('hdl_')`（[controller.ts](../../apps/teaching/runner/controller.ts) 一处、[application.ts](../../apps/teaching/server/workspace/application.ts) 两处、[hdl.ts](../../apps/teaching/server/workspace/hdl.ts) 三处）本就是字面量比较，无需改动，修复后 SQL 与 JS 对齐。
+
+**核实中发现旧写法比审查描述的更宽一处，已一并修掉：** SQLite 的 `LIKE` 对 ASCII **默认大小写不敏感**，所以旧写法不仅因 `_` 通配误收 `hdlXbuild`，还会把 `HDL_build` 判成 HDL 作业，而 JS 侧 `startsWith` 不会——这是审查未点出的第二类 SQL↔JS 不一致。新用例把两类都锁住。
+
+新增用例 `job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind`（[hdl.test.ts](../../apps/teaching/server/workspace/hdl.test.ts)），5 行样本覆盖裁决要求的四类：`hdl_build`（正常）、`hdlXbuild`（近似前缀）、`HDL_build`（大小写）、缺 `kind` 键与 `kind` 为 JSON null（NULL 两种形态）。断言四条：HDL 侧 `pendingJobs` 只认领 `job-hdl`；合成入口 `composed.workspace.pendingJobs()`（[application.ts](../../apps/teaching/server/workspace/application.ts) 把两个 worker 合成一处）仍认领全部 5 个；两个前缀谓词互斥、无作业被认领两次；SQL 与 JS 对每个样本分类一致。
+
+**该用例经反证确认有判别力**：把两个站点临时换回 `dfb06cd` 的 `LIKE` 版本后，HDL 侧实际返回 `['job-hdl','job-near','job-case']` 而非 `['job-hdl']`，用例失败；换回 `substr` 版本后该文件 6/6 通过。近似前缀与大小写两个缺陷同时暴露。
+
+未改动 Job 状态机、权限判定与事务边界：两处仍只是 `pendingJobs` 的 `WHERE` 子句，`purpose` 与 `status` 条件、`ORDER BY`、返回形状逐字保留；未新增公共 HTTP 路径，未扩 B 属 `ObjectRef`。
+
+### 13.4 裁决 4：`hdl-install.sh` 暂不纳入运行时指纹
+
+负责人认定该脚本属安装维护工具、不直接构成运行时代码，要求保持现有指纹输入范围，安装版本与应用结果由维护记录追踪，实际 systemd/AppArmor 配置由 readiness 或目标环境验收核查，且不得把脚本哈希当作配置已生效的证明。
+
+本轮**未改动** [fingerprint.ts](../../apps/teaching/runner/fingerprint.ts) 的过滤条件，收编范围仍是 `.ts`（非 `.test.ts`）、`hdl-*.c`、`hdl.Dockerfile`、`hdl.apparmor`；`hdl-install.sh` 与 `import-hdl-base.ps1` 均不入指纹。第 12.2 节把它列为待判断提案，现按裁决收口为「暂不纳入」。
+
+与此一致的两条既有事实：AppArmor 是否真正 enforce 由 `readiness()` 每次读 `/sys/kernel/security/apparmor/profiles` 核查，不依赖脚本是否跑过；systemd 单元的实际生效由 readiness 与目标环境验收核查。本轮未新增任何以脚本哈希推断配置生效的代码，也没有把安装脚本的执行当作验收证据。
+
+### 13.5 顺序、未执行项与本节边界
+
+**#47 先合、#48 后合的顺序维持不变**，第 12.2 节的三项延后事项一字不动：#47 落地后必须在组合代码上处理 31 表断言、`application.ts` 的 controls 路由合并（同时保住 #47 的 `use` 实参与本轮的 `pause` 停止钩子和 `reconcileStops`）、以及双方关键回归测试。本轮已核实 `origin/main` 仍为 `37849f4`、#47 仍 OPEN，故 29 表断言仍正确、未提前改。
+
+**Linux 宿主完整回归保持未执行，不因本次裁决勾选。** 第 12.3 节的 WSL 归因只证明「净 +5 是两次噪声采样之差、与共享 `writeImmutable` 无关」，既未查明非确定性根因，也未在目标 guest 或认证 SSH 宿主复跑全量，[#23](https://github.com/paher-din/XunJie/issues/23) 仍开放。本轮验证同样只在 win32 与 WSL 完成，见 13.6；目标环境的 14/14、50/51、10/10 仍是 C 的原始记录，本轮未重跑。
+
+本轮未修改 `AGENTS.md`、`docs/product/**`、`docs/planning/**`、`docs/reference/**`、他人任务稿、`package.json`、`package-lock.json`、`tsconfig*.json`、依赖、凭据、CI/CD；未做数据库迁移或真实库操作；未删除文件或 Git 历史；未连接目标 guest、认证 SSH 宿主、真实供应商或真实师生数据；未启动容器；未合并任何 PR。文档改动只有本文与 README 一段。Issue #39 保持 Open，DL-AC-02～07 不勾选，C4 未开始，产品基线仍待授权维护者汇总。
+
+### 13.6 本轮验证记录
+
+| 环境 | 命令 | 结果 |
+| --- | --- | --- |
+| win32 x64，Node `v24.21.0`，TypeScript `7.0.2`，原 lock | `npm run typecheck` | 退出码 0 |
+| 同上 | `npm test`（含 `npm run build`） | 构建通过；**277 项：264 通过、1 失败、12 跳过**。唯一失败仍是 `server/workspace/review.test.ts:118` → `runner/control.ts:48` `Linux and trusted control context required`，本 PR 未修改这两个文件，即 **win32 零新增失败** |
+| 同上，与第 12.4 节本轮前一次全量对照 | 276/263/1/12 → 277/264/1/12 | 差 +1 项 +1 通过，即新增的 kind 分类用例；失败数与跳过数不变 |
+| 同上 | `node --test server/workspace/hdl.test.ts` | 6 项 6 通过 0 失败 0 跳过（原 5 项领域用例 + 新增 1 项） |
+| 同上 | 反证：两个站点临时换回 `dfb06cd` 的 `LIKE` 版本 | 新用例失败，HDL 侧返回 `['job-hdl','job-near','job-case']`；随后无条件还原为 `substr` 版本并复核 6/6 通过 |
+| 同上 | `node tools/a0-review/check.mjs` | 退出码 0、`errors: []` |
+| 同上 | `node --test tools/a0-review/check.test.mjs` | 16 项 16 通过 0 失败 0 跳过 |
+| 同上 | `git diff --check` | 退出码 0，无空白错误 |
+
+第 12.3 节的 WSL 三棵树对照与 Linux 侧 `node-files` 2/2 记录属上一轮，本节未重跑；本轮改动集中在 `server/workspace/` 的两个 SQL 谓词与一个新用例，未触及 `runner/` 的不可变文件写入路径，故不改变该节结论。按第 12.3 节的口径，任何 WSL 全量数字都不得当作确定性指标使用。

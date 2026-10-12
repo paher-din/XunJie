@@ -113,3 +113,20 @@ test('revoked membership cannot read or interact, while the trusted worker still
     assert.equal(s.f.db.withTransaction(tx=>tx.get('SELECT termination_confirmed FROM hdl_sessions WHERE session_id=?',p.result.sessionId)!.termination_confirmed),1);
   }finally{await s.f.close();}
 });
+test('job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind',async()=>{
+  const s=await setup();let composed:Awaited<ReturnType<typeof createWorkspaceApp>>|undefined;
+  try{
+    composed=await createWorkspaceApp({db:s.f.db,origin,signingSecret:s.f.signingSecret,currentGeneration:s.f.generation,now:s.f.timestamp,hdl:s.service});
+    const receipt=String(s.f.db.withTransaction(tx=>tx.get('SELECT receipt_id FROM command_receipts LIMIT 1')!.receipt_id));
+    // '_' is a LIKE wildcard and LIKE ignores ASCII case, so the near-prefix and upper-case kinds used to be claimed as HDL jobs.
+    const sampled:[string,string|null|undefined][]=[['job-hdl','hdl_build'],['job-near','hdlXbuild'],['job-case','HDL_build'],['job-absent',undefined],['job-json-null',null]];
+    for(const [jobId,kind] of sampled)
+      s.f.db.withTransaction(tx=>tx.run('INSERT INTO jobs(job_id,course_id,student_id,attempt_id,request_receipt_id,purpose,status,stop_requested,recovery_generation,job_json) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        jobId,'course','student',null,receipt,'student_run','queued',0,s.f.generation(),kind===undefined?'{}':JSON.stringify({kind})));
+    assert.deepEqual(s.service.pendingJobs().filter(id=>id.startsWith('job-')),['job-hdl'],'only the literal hdl_ prefix is an HDL job');
+    const claimed=composed.workspace.pendingJobs().filter(id=>id.startsWith('job-'));
+    assert.deepEqual([...claimed].sort(),['job-absent','job-case','job-hdl','job-json-null','job-near'],'the two workers together must still claim every pending job');
+    assert.equal(new Set(claimed).size,claimed.length,'the two prefix predicates must stay exact negations, so no job is claimed twice');
+    for(const [jobId,kind] of sampled)assert.equal((kind??'').startsWith('hdl_'),jobId==='job-hdl','SQL and JS must classify every sampled kind the same way');
+  }finally{await composed?.app.close();await s.f.close();}
+});

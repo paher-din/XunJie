@@ -292,6 +292,7 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
     return {operation:{operationId:String(row.operation_id),sequence:Number(row.sequence),status:String(row.status),result:body},nextSequence:Number(row.sequence)};
   }
   return {build,program,interact,processJob,readTrace,cancelInTransaction,reconcileStops,databaseFile:options.db.file,
-    pendingJobs:()=>options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE json_extract(job_json,'$.kind') LIKE 'hdl_%' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id))),
+    // '_' is a LIKE wildcard and LIKE ignores ASCII case, so compare the literal prefix to agree with startsWith('hdl_').
+    pendingJobs:()=>options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)='hdl_' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id))),
     stopInTransaction:stopHdlInTransaction,readBuild:readHdlBuild,readSession:readHdlSession};
 }

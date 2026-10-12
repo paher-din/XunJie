@@ -115,9 +115,8 @@ export function createWorkspaceWorker(options: DesignAppOptions) {
   return {
     processJob,
     pendingJobs() {
-      // COALESCE keeps the filter fail-safe: a row whose kind is missing or null must stay claimable by the original C worker
-      // instead of being dropped by SQL's NULL NOT LIKE, which evaluates to NULL rather than TRUE.
-      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND COALESCE(json_extract(job_json,'$.kind'),'') NOT LIKE 'hdl_%' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
+      // Literal prefix comparison, the exact negation of the HDL side; COALESCE keeps a row with a missing or null kind claimable here.
+      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)<>'hdl_' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
     },
   };
 }
