@@ -35,7 +35,7 @@ export function verifyRun(value: unknown, runId: string, jobId: string, command?
     if (run.mode === 'run' && (typeof diagnostics.stdout !== 'string' || typeof diagnostics.stderr !== 'string')) throw new Error('可用诊断缺少输出')
     if (run.mode === 'check' && typeof diagnostics.verdict !== 'string') throw new Error('可用检查缺少公开 verdict')
     if (diagnostics.failureKind !== undefined && typeof diagnostics.failureKind !== 'string') throw new Error('诊断故障类型不符')
-    if (new TextEncoder().encode(`${diagnostics.stdout ?? ''}${diagnostics.stderr ?? ''}`).byteLength > 65536) throw new Error('公开诊断超过输出限额')
+    if (run.mode === 'run' && new TextEncoder().encode(`${diagnostics.stdout ?? ''}${diagnostics.stderr ?? ''}`).byteLength > 65536) throw new Error('公开诊断超过输出限额')
   }
   if (command) {
     const receipt = verifyRunReceipt(command, command.receipt), input = JSON.parse(command.wireJson) as RunInput
@@ -43,7 +43,13 @@ export function verifyRun(value: unknown, runId: string, jobId: string, command?
       input.runtimeProfileVersion !== run.runtimeProfileVersion || run.mode !== 'run' ||
       command.runSnapshot?.hash !== run.snapshotHash) throw new Error('Run 与本机原请求绑定不符')
   }
-  return structuredClone(run) as unknown as RunView
+  const base = { runId, snapshotId: run.snapshotId as string, snapshotHash: run.snapshotHash as string, source: 'runner_diagnostics' as const }
+  return { runId, jobId, snapshotId: run.snapshotId as string, snapshotHash: run.snapshotHash as string,
+    mode: run.mode as RunView['mode'], runtimeProfileVersion: run.runtimeProfileVersion as string, imageDigest: run.imageDigest as string,
+    diagnostics: diagnostics.status === 'unavailable' ? { ...base, status: 'unavailable' } : { ...base, status: 'available',
+      ...(run.mode === 'check' ? { verdict: diagnostics.verdict as string }
+        : { stdout: diagnostics.stdout as string, stderr: diagnostics.stderr as string }),
+      ...(diagnostics.failureKind !== undefined ? { failureKind: diagnostics.failureKind as string } : {}) } }
 }
 export function displayRun(run: RunView | null, job: JobView | null, command: OutboxRecord | null,
   workspaceRevision?: number): CoreResultDisplay | null {

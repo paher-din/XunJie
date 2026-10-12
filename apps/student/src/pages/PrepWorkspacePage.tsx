@@ -10,6 +10,9 @@ import { VersionCompare } from '../components/workspace/VersionCompare'
 import { RunPanel, CoreRunEntry, type CoreSelection } from '../components/workspace/RunPanel'
 import { settledJob } from '../workspace/runResults'
 import { useRunWorkspace } from '../workspace/useRunWorkspace'
+import { RunHistoryPanel, type HistorySideDisplay } from '../components/workspace/RunHistoryPanel'
+import { useRunHistory } from '../workspace/useRunHistory'
+import { historyLabel } from '../workspace/runHistory'
 import type { CoreInput } from '../workspace/runRequest'
 import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
 import { buildVersionComparison } from '../workspace/comparison'
@@ -40,10 +43,13 @@ export default function PrepWorkspacePage() {
   const confirmation = useConfirmationWorkspace(init.init, PREP_TASK_ID)
   const run = useRunWorkspace(confirmation.client, init.init)
   const [runOpen, setRunOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const history = useRunHistory(confirmation.client, runOpen && historyOpen)
   const [runSelection, setRunSelection] = useState<CoreSelection>({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
   const c = confirmation.client?.context
   useEffect(() => {
     setRunOpen(false)
+    setHistoryOpen(false)
     setRunSelection({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
   }, [c])
   const draftScope = useMemo<DraftScope | null>(() => c?.attemptId && c.userId
@@ -94,6 +100,15 @@ export default function PrepWorkspacePage() {
     label: `确认作品 v${snapshot.workspaceRevision} · ${new Date(snapshot.createdAt).toLocaleTimeString()}`,
     files: snapshot.files.map(file => ({ id: file.fileId, path: file.path, ascii: /^[\x00-\x7f]*$/.test(file.text) })) }))
   const runBusy = run.state.phase === 'submitting' || run.state.phase === 'reading' || run.state.controlBusy
+  const historySides = history.state.sides.map(side => {
+    const detail = side.detail
+    return { runId: side.runId, busy: side.busy, notice: side.notice,
+      result: detail ? { ...detail.result, jobId: detail.job.jobId, profile: detail.run.runtimeProfileVersion,
+        image: detail.run.imageDigest, mode: detail.run.mode, filesNotice: detail.filesNotice,
+        files: detail.files?.status === 'available' ? { status: 'available', files: detail.files.files.map(f => ({
+          id: f.resultFileId, name: f.relativeName, status: f.status, contentHash: f.contentHash, bytes: f.bytes, text: f.text,
+        })) } : detail.files } : null }
+  }) as [HistorySideDisplay, HistorySideDisplay]
   const canRun = run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
     runSelection.fileIds.length > 0 && !confirmation.client?.commandInFlight
 
@@ -273,7 +288,13 @@ export default function PrepWorkspacePage() {
                 onAdoptServer={() => { void onAdoptServer() }}
               />
             : runOpen
-              ? <RunPanel snapshots={runSnapshots} selection={runSelection} result={run.result}
+              ? historyOpen
+                ? <RunHistoryPanel options={history.state.jobs.map(j => ({ id: j.runId, label: historyLabel(j) }))}
+                    sides={historySides} busy={history.state.busy} notice={history.state.notice} synthetic={c?.mode === 'preparation'}
+                    onSelect={(side, id) => { void history.client?.select(side, id) }}
+                    onRead={() => { void history.client?.initialize() }} onReturn={() => setHistoryOpen(false)}
+                    onDownload={(side, id) => { void history.download(side, id) }} />
+                : <RunPanel snapshots={runSnapshots} selection={runSelection} result={run.result}
                   busy={runBusy} canRun={canRun} notice={run.state.notice} synthetic={c?.mode === 'preparation'}
                   control={{ canStop: !!run.state.job && !settledJob(run.state.job.status) && !run.state.job.stopRequested && !run.state.pending,
                     canReconcile: run.state.pending || run.state.phase === 'read-unknown' ||
@@ -281,6 +302,7 @@ export default function PrepWorkspacePage() {
                     busy: run.state.controlBusy, onStop: () => { void run.client?.cancel() },
                     onReconcile: () => { void run.client?.reconcile() } }}
                   onSelect={setRunSelection} onReturn={() => setRunOpen(false)} onRead={run.read}
+                  onOpenHistory={() => setHistoryOpen(true)}
                   onRun={() => {
                     const input: CoreInput = runSelection.operation === 'find'
                       ? { operation: 'find', fileIds: runSelection.fileIds, word: runSelection.word }
@@ -295,7 +317,7 @@ export default function PrepWorkspacePage() {
                 </>
               : <TextScopeBodyPane init={init.init} onReload={init.reload} />}
           runCluster={<>
-            {c?.attemptId && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setRunOpen(true) }} />}
+            {c?.attemptId && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
             <ConfirmationCluster
             phase={init.status !== 'ready' ? 'loading' : confirmation.state.phase}
             hasAttempt={!!c?.attemptId}

@@ -8,6 +8,7 @@ import type { ApiErrorCode } from '../src/workspace/contracts'
 import { preparationEpoch, syntheticRecoveryGeneration, type PrepSession } from './authority'
 import { REFS, sha256Hex } from './scenario'
 import type { JobView, RunView } from '../src/workspace/runContracts'
+import type { RunFiles, ResultFile } from '../src/workspace/runContracts'
 
 export class PrepWorkspaceError extends Error {
   constructor(readonly code: ApiErrorCode) { super(code) }
@@ -404,6 +405,50 @@ export function readPrepRun(scenario: string, session: PrepSession, attemptId: s
   const run = head.runs.find(r => r.runId === id(runId))
   if (!run) reject('FORBIDDEN')
   return structuredClone(run)
+}
+
+const fileSamples = new Map<string, RunFiles>()
+/** 同一 authority 的公开 files 路由；来源 server/workspace/result-files.ts。 */
+export function readPrepRunFiles(scenario: string, session: PrepSession, attemptId: string, runId: string): RunFiles {
+  const run = readPrepRun(scenario, session, attemptId, runId)
+  if (run.mode === 'check') return { status: 'redacted' }
+  return structuredClone(fileSamples.get(`${scenario}:${runId}`) ??
+    (run.diagnostics.status === 'available' ? { status: 'available', files: [] } : { status: 'unavailable' }))
+}
+
+/** 06B dev-only 公开历史样例。check 与文件形状来自 readWorkspace/result-files；不增加创建能力。
+ * report.txt 是仓库 test-support/实际 profile 的 approvedResultFiles 示例；不是 Core→Report 教学交付。
+ */
+export function seedPrepHistory(scenario: string, session: PrepSession, value: unknown) {
+  const input = object(value, ['attemptId', 'snapshotId', 'sample'])
+  const scene = sceneOf(scenario), head = authorizedHead(scene, session, id(input.attemptId))
+  const snapshot = head.snapshots.find(s => s.snapshotId === id(input.snapshotId))
+  if (!snapshot) reject('INVALID_REFERENCE')
+  if (!['check', 'complete', 'missing', 'incomplete', 'unavailable', 'unknown'].includes(String(input.sample))) reject('INVALID_REQUEST')
+  const runId = randomUUID(), jobId = randomUUID(), mode = input.sample === 'check' ? 'check' : 'run'
+  const now = new Date().toISOString()
+  head.jobs.push({ jobId, runId, kind: mode === 'check' ? 'course_check' : 'run', purpose: 'student_run',
+    scope: { courseId: session.courseId, studentId: session.userId, attemptId: head.attempt.attemptId },
+    requestReceiptId: randomUUID(), status: input.sample === 'unknown' ? 'outcome_unknown' : 'succeeded', stopRequested: false,
+    expectedRevision: head.attempt.attemptRevision, decisionEpoch: head.attempt.decisionEpoch, recoveryGeneration: scene.generation,
+    acceptedAt: now, deadline: new Date(Date.now() + 120_000).toISOString(), attemptCount: 1 })
+  head.runs.push({ runId, jobId, snapshotId: snapshot.snapshotId, snapshotHash: snapshot.hash, mode,
+    runtimeProfileVersion: REFS.runtimeProfileVersionId, imageDigest: `sha256:${'a'.repeat(64)}`,
+    diagnostics: { runId, snapshotId: snapshot.snapshotId, snapshotHash: snapshot.hash, source: 'runner_diagnostics',
+      ...(input.sample === 'unavailable' || input.sample === 'unknown' ? { status: 'unavailable' as const }
+        : mode === 'check' ? { status: 'available' as const, verdict: 'failed', failureKind: 'mismatch' }
+          : { status: 'available' as const, stdout: 'SYNTHETIC historical public output\n', stderr: '' }) } })
+  if (['complete', 'missing', 'incomplete'].includes(String(input.sample))) {
+    const text = '\ufeffSYNTHETIC public result\r\n<script>window.__artifactExecuted=true</script>\n', contentHash = sha256Hex(text)
+    const missing = input.sample === 'missing'
+    const f: ResultFile = { relativeName: 'report.txt', status: input.sample as ResultFile['status'],
+      runId, snapshotId: snapshot.snapshotId, resultFileId: sha256Hex(JSON.stringify([runId, snapshot.snapshotId, 0, 'report.txt', missing ? undefined : contentHash])),
+      source: 'runner_result_file', caseIndex: 0,
+      ...(!missing ? { text, contentHash, bytes: Buffer.byteLength(text) } : {}) }
+    fileSamples.set(`${scenario}:${runId}`, { status: 'available', files: [f] })
+  }
+  checkpoint(scene)
+  return { runId, jobId, snapshotId: snapshot.snapshotId }
 }
 
 /**

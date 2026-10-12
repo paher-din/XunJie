@@ -79,7 +79,14 @@ C / TextScope 活动，**不是正式 Assignment**，不写入学习记录。
   见 [06 交付记录](../../docs/tasks/I0_UI_06_RUN_RESULTS.md)。
 - 运行中的改稿只进入当前草稿；结果绑定旧快照。刷新只读已有结果，本机原请求参数标来源，另一浏览器
   缺缓存显示“历史运行参数不可回取”。ACK 丢失保留原请求并阻止重复运行，保存重试不处理运行命令；
-  未知核对/取消已由 [06A](../../docs/tasks/I0_UI_06A_RUN_CONTROL.md) 接入，历史列表/产物仍归 06B。
+  未知核对/取消已由 [06A](../../docs/tasks/I0_UI_06A_RUN_CONTROL.md) 接入。
+- 运行面板点击“历史运行与产物”后可选择两条已有记录，分别保留 run/job、固定 snapshot/hash、profile/image、模式、状态和公开输出。
+  参数只来自经过原回执、请求摘要与快照实例核验的本机冻结请求；缺缓存或关联损坏时仍可读公开结果，显示“历史运行参数不可回取”。
+  历史选择/主动重读只 GET，挂起时仍可切换；迟到响应不覆盖新选择。课程检查仅显示公开 verdict/failureKind，产物保持 redacted。
+  完整公开文件经 run/snapshot/稳定 ID/hash/UTF-8 bytes 核验后可以展开只读文本、下载原字节；missing/incomplete/unavailable 分别提示，校验失败不能下载。
+  当前活动没有 Report 创建能力，历史读取不扩课程、不自动写回文件。详见 [06B](../../docs/tasks/I0_UI_06B_RUN_HISTORY.md)。
+- 06B 的开发专用 `POST /__i0prep/history-sample`（带开发 Session CSRF 与场景头）接收 `attemptId`、已有 `snapshotId` 和 `sample`：
+  `check`/`complete`/`missing`/`incomplete`/`unavailable`/`unknown`。这些来自公开契约的隔离合成历史样例只用于读取验收；`report.txt` 是批准文件白名单的样例，不代表 Core 已实现 Report，也不产生正式教学记录。
 - 手动复现停止进度可使用同一开发故障入口 `POST /__i0prep/run-script`（带开发 Session 的 CSRF 与场景头）：先设 `{"outcome":"running"}` 再主动运行/停止，设 `{"outcome":"cancelled"}` 后重新读取才能看到合成停止确认；`outcome_unknown`/`stale` 用于原结果未知场景。这些脚本只在 `dev:prep` 中可用。
 - Job/Run 读取可见 1s、隐藏 10s、离线暂停，单次自动读取最多 60 轮；暂停后可主动重新读取。
 - 保留的 board / wave 标签是**数字逻辑演示**，与当前 C 活动无关，已明确标注。

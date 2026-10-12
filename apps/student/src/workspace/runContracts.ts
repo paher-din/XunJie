@@ -15,3 +15,10 @@ export interface RunView {
   runId: string; jobId: string; snapshotId: string; snapshotHash: string
   mode: 'run' | 'check'; runtimeProfileVersion: string; imageDigest: string; diagnostics: RunDiagnostics
 }
+/** server/workspace/result-files.ts 的公开投影；没有 snapshotHash 字段。 */
+export interface ResultFile {
+  relativeName: string; status: 'complete' | 'incomplete' | 'missing'
+  text?: string; contentHash?: string; bytes?: number
+  runId: string; snapshotId: string; resultFileId: string; source: 'runner_result_file'; caseIndex: number
+}
+export type RunFiles = { status: 'redacted' | 'unavailable' } | { status: 'available'; files: ResultFile[] }

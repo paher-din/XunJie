@@ -42,8 +42,9 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [学生确认保存与不可变快照](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) | 学生主动创建 Attempt、原命令持久化与重放、原子确认和快照回取；准备范围验证及真实服务交接限制 |
 | [断线与原保存请求恢复](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md) | 断线继续编辑、刷新保留草稿、重连只核或重放原保存命令；未知/拒绝/版本冲突/旧代际的分流与准备范围验证 |
 | [文件实例回收恢复与只读版本比较](docs/tasks/I0_UI_05_FILE_HISTORY.md) | 回收/恢复文件实例（同名重建是新实例、恢复路径被占用先显式处理占用者）、两快照或草稿与确认作品的只读比较；准备范围验证及真实服务交接限制 |
-| [固定快照 Core 运行与基础结果](docs/tasks/I0_UI_06_RUN_RESULTS.md) | 学生主动选择快照与 stats/find/top 参数、持久化原命令、只读公开 Job/Run 与诊断；准备范围验证；停止/未知核对见 06A，历史产物仍后置 |
+| [固定快照 Core 运行与基础结果](docs/tasks/I0_UI_06_RUN_RESULTS.md) | 学生主动选择快照与 stats/find/top 参数、持久化原命令、只读公开 Job/Run 与诊断；准备范围验证；停止/未知核对见 06A |
 | [运行停止与原请求核对](docs/tasks/I0_UI_06A_RUN_CONTROL.md) | 学生显式停止、等待权威确认，丢回执后原键核对；准备实现与验证，真实停止/恢复交接仍后置 |
+| [历史运行比较与公开产物](docs/tasks/I0_UI_06B_RUN_HISTORY.md) | 只读比较已有运行，区分本机参数与缺项、检查裁剪与产物可用性；完整公开文本经来源/ID/hash/bytes 校验后查看和下载；真实交接仍后置 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；七张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
@@ -119,7 +120,7 @@ npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实
 
 断线恢复可以手动复现：`dev:prep` 进程提供开发专用 `POST /__i0prep/fault`（body `{"kind":"drop-ack"}` 或 `{"kind":"fail-write"}`，需开发会话的 `x-csrf-token` 与 `x-i0prep-scenario` 头；`{"kind":"none"}` 清除）。`drop-ack` 让写命令照常提交到进程内 authority 但不下发响应，界面显示「保存结果待确认」，继续编辑并刷新后可用「重试上次保存」以同键同正文重放；`fail-write` 不提交命令并返回 503 `PERSISTENCE_UNAVAILABLE`，界面显示「保存未成功」，正文与原命令保留、仍可明确重试。服务明确拒绝且重放不能解决时（版本冲突、登录状态变化等）停止重放并提示先重新读取，不会自动改键重做。该端点只存在于 `npm run dev:prep`，`npm run build` 的产物不含它，也不会把拒绝伪装成丢失。
 
-本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照、04 断线恢复、05 文件回收恢复/只读版本比较、06 固定快照 Core 运行/基础结果与 06A 运行停止/原请求核对的准备范围，使用同一确认客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)、[04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md)、[05 任务记录](docs/tasks/I0_UI_05_FILE_HISTORY.md)、[06 任务记录](docs/tasks/I0_UI_06_RUN_RESULTS.md) 与 [06A 任务记录](docs/tasks/I0_UI_06A_RUN_CONTROL.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
+本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照、04 断线恢复、05 文件回收恢复/只读版本比较、06 固定快照 Core 运行/基础结果与 06A 运行停止/原请求核对的准备范围，使用同一确认客户端与 IndexedDB。06B 已接入运行面板的“历史运行与产物”：选择两次已有运行，缺本机参数仍可读公开结果；完整公开文本经校验后只读查看/下载，不写回作品，不开放 Report 创建。未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)、[04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md)、[05 任务记录](docs/tasks/I0_UI_05_FILE_HISTORY.md)、[06 任务记录](docs/tasks/I0_UI_06_RUN_RESULTS.md)、[06A 任务记录](docs/tasks/I0_UI_06A_RUN_CONTROL.md) 与 [06B 任务记录](docs/tasks/I0_UI_06B_RUN_HISTORY.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
 
 ## 状态
 

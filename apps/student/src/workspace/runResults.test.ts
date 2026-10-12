@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { displayRun, verifyJob } from './runResults'
+import { displayRun, verifyJob, verifyRun } from './runResults'
 import type { CommandContext } from './frozenCommand'
 import type { JobView, RunView } from './runContracts'
 
@@ -21,4 +21,16 @@ it('调度 succeeded 配有编译失败诊断时，学生结果同时区分调�
     diagnostics: { runId: 'run', snapshotId: 'snapshot', snapshotHash: 'a'.repeat(64), source: 'runner_diagnostics',
       status: 'available', stdout: '', stderr: 'compiler message', failureKind: 'compile_error' } }
   expect(displayRun(run, job, null)!.statusLabel).toBe('运行完成 · 编译失败')
+})
+it('公开 check 仅投影 verdict/failureKind，丢弃意外的私有 stdout、输入和答案', () => {
+  const value = { runId: 'run', jobId: 'job', snapshotId: 'snapshot', snapshotHash: 'a'.repeat(64), mode: 'check',
+    runtimeProfileVersion: 'profile', imageDigest: `sha256:${'b'.repeat(64)}`, input: 'PRIVATE',
+    diagnostics: { runId: 'run', snapshotId: 'snapshot', snapshotHash: 'a'.repeat(64), source: 'runner_diagnostics',
+      status: 'available', verdict: 'failed', failureKind: 'mismatch', stdout: 'PRIVATE', stderr: 'ANSWER' } }
+  const publicRun = verifyRun(value, 'run', 'job')
+  expect(publicRun).not.toHaveProperty('input')
+  expect(publicRun.diagnostics).not.toHaveProperty('stdout')
+  expect(publicRun.diagnostics).not.toHaveProperty('stderr')
+  expect(displayRun(publicRun, { ...job, kind: 'course_check' }, null)!.diagnostics).toEqual({
+    stdout: undefined, stderr: undefined, verdict: 'failed', failureKind: 'mismatch' })
 })

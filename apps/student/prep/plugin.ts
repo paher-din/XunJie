@@ -49,7 +49,7 @@ import {
 } from './scenario'
 import { createPrepAttempt, readPrepAttempt, syncPrepWorkspace, freezePrepSnapshot, readPrepSnapshot, recoverPrepWorkspace,
   setPrepAttemptState, PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
-import { createPrepRun, readPrepJob, readPrepRun, setPrepRunScript, cancelPrepRun } from './workspace'
+import { createPrepRun, readPrepJob, readPrepRun, setPrepRunScript, cancelPrepRun, readPrepRunFiles, seedPrepHistory } from './workspace'
 import { isPrepFault, prepFaultOf, setPrepFault } from './faults'
 
 /** 与 `apps/teaching/contracts/common/http.ts:3-19` 的 errorDefinitions 对应条目逐字一致。 */
@@ -338,7 +338,20 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
     return ok(res, { scenarioId: scenarioOf(req), fault: setPrepFault(scenarioOf(req), kind) })
   }
 
-  // 05：开发专用 Attempt 状态开关（暂停 / 终态），只用于核对「不可操作」的门控。
+  // 06B：开发专用公开历史样例，不增加 Core 的 Report/课程检查创建能力。
+  if (path === `${PREP_ROOT}/history-sample` && method === 'POST') {
+    const session = requireSession(req, res)
+    if (!session) return
+    if (csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
+    let body: unknown
+    try { body = await readBody(req) } catch { return fail(res, 'INVALID_REQUEST') }
+    try { return ok(res, seedPrepHistory(scenarioOf(req), session, body)) } catch (error) {
+      if (error instanceof PrepWorkspaceError) return fail(res, error.code)
+      throw error
+    }
+  }
+
+  // 06：开发专用运行状态脚本。
   if (path === `${PREP_ROOT}/run-script` && method === 'POST') {
     const session = requireSession(req, res)
     if (!session) return
@@ -395,11 +408,12 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   const snapshotRead = route.match(/^\/attempts\/([^/]+)\/snapshots\/([^/]+)$/)
   const runCreate = route.match(/^\/attempts\/([^/]+)\/runs$/)
   const runRead = route.match(/^\/attempts\/([^/]+)\/runs\/([^/]+)$/)
+  const runFiles = route.match(/^\/attempts\/([^/]+)\/runs\/([^/]+)\/files$/)
   const jobRead = route.match(/^\/jobs\/([^/]+)$/)
   const jobCancel = route.match(/^\/jobs\/([^/]+)\/cancel$/)
   if ((attemptCreate && method === 'POST') || (attemptRead && method === 'GET') || (sync && method === 'POST')
     || (snapshotCreate && method === 'POST') || (snapshotRead && method === 'GET') || (runCreate && method === 'POST')
-    || (runRead && method === 'GET') || (jobRead && method === 'GET') || (jobCancel && method === 'POST')) {
+    || (runRead && method === 'GET') || (runFiles && method === 'GET') || (jobRead && method === 'GET') || (jobCancel && method === 'POST')) {
     const session = requireSession(req, res)
     if (!session) return
     if (method === 'POST' && csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
@@ -420,6 +434,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
     try {
       if (jobCancel) return respond(cancelPrepRun(scenario, session, decodeURIComponent(jobCancel[1]!), body, req.headers['idempotency-key']))
       if (jobRead) return ok(res, readPrepJob(scenario, session, decodeURIComponent(jobRead[1]!)))
+      if (runFiles) return ok(res, readPrepRunFiles(scenario, session, decodeURIComponent(runFiles[1]!), decodeURIComponent(runFiles[2]!)))
       if (runRead) return ok(res, readPrepRun(scenario, session, decodeURIComponent(runRead[1]!), decodeURIComponent(runRead[2]!)))
       if (runCreate) return respond(createPrepRun(scenario, session, decodeURIComponent(runCreate[1]!), body, req.headers['idempotency-key']))
       if (snapshotRead) return ok(res, readPrepSnapshot(scenario, session, decodeURIComponent(snapshotRead[1]!), decodeURIComponent(snapshotRead[2]!)))

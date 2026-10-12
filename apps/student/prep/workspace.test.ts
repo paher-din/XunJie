@@ -54,6 +54,37 @@ async function createAttempt() {
   return result.envelope.data.result.attemptId as string
 }
 
+it('06B 公开历史及文件 HTTP 样例只保留既有投影，check 裁剪且 GET 不新增命令', async () => {
+  const attemptId = await createAttempt()
+  await call('POST', `/api/attempts/${attemptId}/sync`, batch([{ kind: 'create', clientFileKey: 'main', path: 'main.c', text: 'int main(void){return 0;}' }]), randomUUID())
+  const frozen = await call('POST', `/api/attempts/${attemptId}/snapshots`, { recoveryGeneration: generation, expectedWorkspaceRevision: 1 }, randomUUID())
+  const snapshotId = frozen.envelope.data.result.snapshotId
+  for (const sample of ['check', 'complete', 'missing', 'incomplete', 'unavailable', 'unknown']) {
+    const seeded = await call('POST', '/history-sample', { attemptId, snapshotId, sample })
+    expect(seeded.status).toBe(200)
+    const runId = seeded.envelope.data.runId
+    const read = await call('GET', `/api/attempts/${attemptId}/runs/${runId}`)
+    for (const privateField of ['input', 'entryFileId', 'inputHash']) expect(read.envelope.data).not.toHaveProperty(privateField)
+    const files = await call('GET', `/api/attempts/${attemptId}/runs/${runId}/files`)
+    expect(files.status).toBe(200)
+    if (sample === 'check') {
+      expect(files.envelope.data).toEqual({ status: 'redacted' })
+      expect(read.envelope.data.diagnostics).toMatchObject({ verdict: 'failed', failureKind: 'mismatch' })
+      expect(read.envelope.data.diagnostics).not.toHaveProperty('stdout')
+    }
+    if (sample === 'complete') {
+      const f = files.envelope.data.files[0]
+      expect(f.contentHash).toBe(createHash('sha256').update(f.text).digest('hex'))
+      expect(f.bytes).toBe(Buffer.byteLength(f.text))
+      expect(f.resultFileId).toBe(createHash('sha256').update(JSON.stringify([runId, snapshotId, 0, 'report.txt', f.contentHash])).digest('hex'))
+    }
+  }
+  const head = (await call('GET', `/api/attempts/${attemptId}`)).envelope.data
+  expect(head.jobs).toHaveLength(6)
+  expect(head.runs).toHaveLength(6)
+  expect(head.attempt.workspaceRevision).toBe(1)
+})
+
 it('GET does not create; explicit creation yields one readable Attempt and a stable receipt', async () => {
   const missing = await call('GET', '/api/attempts/not-created')
   expect(missing.status).toBe(403)

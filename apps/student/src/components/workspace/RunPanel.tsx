@@ -36,6 +36,7 @@ export interface RunPanelProps {
   onRun: () => void
   onRead: () => void
   onReturn: () => void
+  onOpenHistory?: () => void
 }
 
 /** 顶栏入口沿用既有运行簇；类名只为窄屏下保持标签、身份标识和操作互不遮挡。 */
@@ -47,7 +48,7 @@ export function CoreRunEntry({ onOpen }: { onOpen: () => void }) {
 
 /** 06 设计交付：纯受控 Core 参数与只读结果。请求、身份、限额和确认由业务调用方负责。 */
 export function RunPanel({ snapshots, selection, result, busy, canRun, notice, synthetic, control,
-  onSelect, onRun, onRead, onReturn }: RunPanelProps) {
+  onSelect, onRun, onRead, onReturn, onOpenHistory }: RunPanelProps) {
   const fixed = snapshots.find(s => s.id === selection.snapshotId)
   const change = (patch: Partial<CoreSelection>) => onSelect({ ...selection, ...patch })
   return <section className="core-run" aria-label="Core 运行与结果">
@@ -99,6 +100,9 @@ export function RunPanel({ snapshots, selection, result, busy, canRun, notice, s
       </div>
     </form>
     {notice && <p className="core-run-notice" role="status">{notice}</p>}
+    {onOpenHistory && <div className="core-run-actions">
+      <button type="button" className="ws-btn ghost" onClick={onOpenHistory}>历史运行与产物</button>
+    </div>}
     {result && <section className="core-run-result" aria-label="固定快照结果"
       data-run-id={result.runId} data-snapshot-id={result.snapshotId} data-snapshot-hash={result.snapshotHash}>
       <h3>{result.snapshotLabel}</h3>

@@ -125,6 +125,7 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 
 | 日期 | 上次已接收来源 | 新来源 | 合入范围 | 验证 |
 | --- | --- | --- | --- | --- |
+| 2026-10-12 | `a124fee`（06A 已接收组件） | `16558426ce70524218eacbf7ce8fde35681c0503`（06B，仅本地提交） | 仅接收纯受控 `RunHistoryPanel.tsx/.css` 和 `RunPanel.tsx` 可选历史入口；逐字节一致，主仓库页面接线与业务读取/校验/下载独立维护，不同步设计演示页面 | 设计 Node 24 下 106 项测试、含 tsc 构建与 props/SSR 通过；主仓库专项 Chromium 10/10、1280px 浅深截图与来源核对通过；最终工程检查见 [06B](../../docs/tasks/I0_UI_06B_RUN_HISTORY.md) |
 | 2026-10-12 | `ad89519`（已有 05 接收范围） | `b4b857d6ec39f10be8112afaa6e9769dc6cb0e27` → `0e9d0af3e029d8c3611515ac1ce1e6936033e148`（06 设计先行，均仅本地提交，未推送） | 只审阅并逐字节接收 `app/src/components/workspace/RunPanel.tsx` 与 `RunPanel.css`，包含纯 props Core 入口/参数/只读结果及仅存在 Core 入口时的顶栏间距修正；业务传输、原请求/确认及存储在主仓库 workspace 维护，未接收其他来源文件 | 设计 `npm run build`（含 tsc）通过；主仓库 Chromium 1280px 浅/深色与交互、最终检查见 [06 任务记录](../../docs/tasks/I0_UI_06_RUN_RESULTS.md)；两文件来源一致性另核 sha256 |
 | 2026-10-12 | `0e9d0af`（06 接收组件） | `a124fee8422bf2ca940ddc807344ae7936d7dac7`（06A，仅本地提交） | 仅接收 `app/src/components/workspace/RunPanel.tsx` 的可选纯 props 停止/核对控件；现有页面/样式/其余来源不变 | 设计 typecheck/build 通过；主仓库逐字节核对和浏览器/工程结果见 [06A](../../docs/tasks/I0_UI_06A_RUN_CONTROL.md) |
 | 2026-10-12 | `a9bb1dd` | `238d3c3`（`feat(workspace): 代码工具包多文件编辑区与本机草稿（I0-02 设计基线）`） | 新增：`src/bridge/projects.ts`、`src/components/workspace/{CodeEditorHost,CodeWorkspace,FileStrip,monacoSetup,useProjectWorkspace}`、`src/lib/{draftStore,projectFiles,projectFiles.test}`；纯追加：`src/bridge/types.ts`（项目作品/草稿类型）、`src/styles/app.css`（末尾 `.cw-*` 分节）；整文件接收：`src/lib/wsLayout.ts`（基线逐字节一致）、`src/pages/WorkspacePage.tsx`（设计版 + 恢复 01 的 `ws-demo-flag` 一行）；逐项合并：`src/components/workspace/CenterToolArea.tsx`（保留 01 的 `variant`/演示横幅/运行簇注入与静态代码注记，接收设计的 `tools`/`knownTools`/`defaultLayout(toolKeys)`/`runCluster` 缺省回退）；依赖：`monaco-editor@0.57.0`（P-03 已批准，精确锁定） | `npx tsc --noEmit` 通过；vitest 9 文件 104 例通过；`npm run build` 成功；01 e2e 见任务记录 |
@@ -155,4 +156,6 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 
 | 2026-10-12 | I0_UI_06A | `runControl.ts(+test)` 对齐 cancel wire/摘要/回执；`runWorkspace.ts` 停止与显式原请求核对，唯一 outbox/租约/ACK 事务与迟到守卫；确认保存排除取消命令；同一 prep fixture 停止/未知脚本及 `e2e/runControl.spec.ts`，06/06A 共用 `runHelpers.ts`。无 schema/依赖/服务端/产品基线变化 |
 
-这些业务改动只在主仓库维护；06/06A 的纯设计组件先行交付与接收范围单列在第 4 节，不将主仓库 HTTP/存储或准备 authority 回写设计仓库。
+06B 的设计接收范围见第 4 节。主仓库独立维护 `runHistory.ts`/`useRunHistory.ts` 公开历史读取与下载、`runFiles.ts(+test)` 完整性校验、`runResults.ts(+test)` check 白名单投影、同一 prep authority 的 files/历史样例和 `e2e/runHistory.spec.ts`。无 schema、依赖或服务端变更；验证事实见 [06B 任务](../../docs/tasks/I0_UI_06B_RUN_HISTORY.md)。
+
+这些业务改动只在主仓库维护；06/06A 的纯设计组件先行交付与接收范围单列在第 4 节，不将主仓库 HTTP/存储或准备 authority 回写设计仓库。06B 固定来源为 [设计交付记录](https://github.com/wubq511/XunJie_Design/blob/16558426ce70524218eacbf7ce8fde35681c0503/docs/i0-06b-run-history-delivery.md)，仅本地提交，公开链接待该来源提交推送后可用；团队当前运行与验收无需来源 checkout，必要契约与记录在主仓库任务中完整保存。
