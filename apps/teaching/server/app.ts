@@ -1,14 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import Fastify, { LogController } from 'fastify';
 import { errorDefinitions } from '../contracts/common/http.ts';
-import { ApiError, errorResponse } from './app/errors.ts';
+import { RunnerError } from '../runner/snapshot.ts';
+import { ApiError, errorResponse, domainError } from './app/errors.ts';
 
 export interface AppOptions {
+  https?: {key:Buffer;cert:Buffer};
+  checkReadiness?:()=>boolean|Promise<boolean>;
   logDestination?: { write(message: string): void };
 }
 
 export function createApp(options: AppOptions = {}) {
   const app = Fastify({
+    ...(options.https?{https:options.https}:{}),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } },
     logger: options.logDestination ? {
       stream: options.logDestination,
@@ -25,7 +29,7 @@ export function createApp(options: AppOptions = {}) {
 
   app.setErrorHandler((error, request, reply) => {
     const frameworkCode = typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
-    const code = error instanceof ApiError ? error.code
+    const code = error instanceof ApiError ? error.code : error instanceof RunnerError ? domainError(error,'DEPENDENCY_UNAVAILABLE').code
       : frameworkCode === 'FST_ERR_CTP_BODY_TOO_LARGE' ? 'CONTENT_LIMIT'
       : frameworkCode === 'FST_ERR_CTP_INVALID_JSON_BODY' || frameworkCode === 'FST_ERR_CTP_EMPTY_JSON_BODY'
         || frameworkCode === 'FST_ERR_CTP_INVALID_MEDIA_TYPE' || frameworkCode === 'FST_ERR_VALIDATION'
@@ -40,7 +44,8 @@ export function createApp(options: AppOptions = {}) {
     throw new ApiError('INVALID_REQUEST');
   });
 
-  app.get('/health/ready', async () => {
+  app.get('/health/ready', async request => {
+    if(await options.checkReadiness?.())return {requestId:request.id,data:{status:'ready'}};
     throw new ApiError('DEPENDENCY_UNAVAILABLE');
   });
 

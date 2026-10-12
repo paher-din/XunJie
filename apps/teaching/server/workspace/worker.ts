@@ -115,7 +115,7 @@ export function createWorkspaceWorker(options: DesignAppOptions) {
   return {
     processJob,
     pendingJobs() {
-      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
+      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND json_extract(job_json,'$.kind') NOT LIKE 'hdl_%' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
     },
   };
 }

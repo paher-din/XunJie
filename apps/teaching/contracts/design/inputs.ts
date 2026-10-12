@@ -1,3 +1,4 @@
+import {hdlActivityRuntimeSchema,hdlCheckRuleSchema} from './hdl.ts';
 import { z } from 'zod';
 import { draftSchema, versionSchema } from './draft.ts';
 export type { BlueprintDraft, BlueprintContent, GoalRef } from './draft.ts';
@@ -17,9 +18,11 @@ export const assignmentSchema = z.strictObject({ studentIds: z.array(id).min(1).
   expectedActivityControlRevision: versionSchema, recoveryGeneration: id });
 export const activityControlSchema = z.strictObject({ expectedActivityControlRevision: versionSchema, action: z.enum(['pause', 'resume']), reason: z.string().trim().min(1), recoveryGeneration: id });
 export const assignmentControlSchema = z.strictObject({ expectedAssignmentRevision: versionSchema, action: z.enum(['pause', 'resume']), reason: z.string().trim().min(1), recoveryGeneration: id });
+export const activityRuntimeSchema=z.union([runtimeSchema,hdlActivityRuntimeSchema]);
+export const activityCheckRuleSchema=z.union([checkRuleSchema,hdlCheckRuleSchema]);
 export const frozenActivityShape = {
   activityVersionId: id, courseId: id, sourceBlueprintId: id, sourceRevision: versionSchema,
-  draft: draftSchema, helpPolicy: helpPolicySchema, checkRule: checkRuleSchema, runtimeProfile: runtimeSchema, runtimeReadiness: runtimeReadinessSchema,
+  draft: draftSchema, helpPolicy: helpPolicySchema, checkRule: activityCheckRuleSchema, runtimeProfile: activityRuntimeSchema, runtimeReadiness: runtimeReadinessSchema,
   recoveryGeneration: id, confirmedBy: id, confirmedAt: z.number().int().nonnegative(),
 };
 export type HelpPolicyVersion = z.infer<typeof helpPolicySchema>;

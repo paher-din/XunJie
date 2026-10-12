@@ -1,3 +1,5 @@
+import { digitalLogicSchema } from './digital-logic-schema.ts';
+import { hdlSchema } from '../workspace/hdl-schema.ts';
 import { reviewSchema } from './review-schema.ts';
 import { teacherDesignSchema } from '../design/teacher-schema.ts';
 import { completionSchema } from './completion-schema.ts';
@@ -134,8 +136,10 @@ export function createTeacherDesignDatabase(): SyntheticDatabase { return create
 // C3 adds the four teaching tables on the same approved path/transaction rules; older factories never gain them.
 export function createTeachingDatabase(): SyntheticDatabase { return createFreshDatabase('teaching'); }
 export function createReviewDatabase(): SyntheticDatabase { return createFreshDatabase('review'); }
-function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'review'): SyntheticDatabase {
-  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching','review'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
+export function createDigitalLogicDatabase(): SyntheticDatabase { return createFreshDatabase('digital-logic'); }
+export function createDigitalLogicApplicationDatabase(): SyntheticDatabase { return createFreshDatabase('digital-logic-application'); }
+function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'review' | 'digital-logic' | 'digital-logic-application'): SyntheticDatabase {
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching','review','digital-logic','digital-logic-application'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
@@ -143,8 +147,8 @@ function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspa
   try {
     db.exec('BEGIN IMMEDIATE');
     try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind !== 'design' && kind !== 'access') db.exec(completionSchema);
-      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching' || kind === 'review') db.exec(workspaceSchema);
-      if (kind === 'teacher-design') db.exec(teacherDesignSchema); if (kind === 'teaching' || kind === 'review') db.exec(teachingSchema); if (kind === 'review') db.exec(reviewSchema); db.exec('COMMIT'); }
+      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application') db.exec(workspaceSchema);
+      if (kind === 'teacher-design' || kind === 'digital-logic-application') db.exec(teacherDesignSchema); if (kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application') db.exec(teachingSchema); if (kind === 'review') db.exec(reviewSchema); if (kind === 'digital-logic' || kind === 'digital-logic-application') db.exec(hdlSchema); if (kind === 'digital-logic-application') db.exec(digitalLogicSchema); db.exec('COMMIT'); }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   } finally { db.close(); }
   return openSyntheticDatabase(file);

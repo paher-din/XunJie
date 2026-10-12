@@ -178,7 +178,7 @@ PR #48 作者报告目标 HDL 14/14、目标 C 50/51（1 跳过）、认证 SSH 
 
 B 可先回复一张「引用对象/必须字段/读取范围/当前性规则」表；UI 可先回复一张「现有操作/请求字段/结果状态/缺项」表，并给本人任务稿/提交位置。尚不要求真实模型、最终页面或录制视频，也不要求他们替 A 实现课程授权。
 
-## 10. A/C 第一实施批次（待负责人批准）
+## 10. A/C 第一实施批次（2026-10-13 已批准）
 
 ### 10.1 具体范围与文件
 
@@ -245,7 +245,7 @@ CREATE TABLE application_control (
 
 单文件/类型检查随每个实际改动执行，最终完整回归一次；没有新变更不无理由重复全套。实际模型/浏览器/TLS 未执行不能填通过；DL-AC-01/03/07/09 只登记本批覆盖，不整条勾选。新合成库保留，接口/共享差异和真实结果在本文同步，产品基线只提交汇总请求。
 
-### 10.5 本次完成与待授权动作
+### 10.5 方案提交时完成项与待授权动作
 
 本次完成：C 固定提交逐调用核对、A/C 事务授权/配置/停止及 Trace 游标差异、B/UI 原任务对应交接表，以及可批准的 33 表第一实施方案。源码接入、建库、业务测试、目标节点和浏览器均未执行。没有将 C 作者报告计为 A 验收，也没有发送团队消息或公开发布。
 
@@ -256,3 +256,34 @@ CREATE TABLE application_control (
 2026-10-13，本批只改本人任务稿与 README。`node tools/a0-review/check.mjs` 通过：39 份文档、613 内部引用、errors=[]；`node --test tools/a0-review/check.test.mjs` 16/16、0 失败/0 跳过；`git diff --check` 通过。独立只读提取原 schema/C schema：28＋3＋2＝33、唯一表名 33，没有建库。文档工具使用本机 Node，仅用于静态检查，不计 Node 24.21.0 应用验收。
 
 code-review 两轴：Standards 硬违反/判断建议 0；Spec 初审 1 项 Trace 未完成结果游标竞态，已补入最小 C 修复和公共测试方案，复核未解决 0/新增 0。这是方案问题关闭，源码缺陷仍待本批实施修复，业务、目标环境、TLS/浏览器测试均未执行。主工作区既有文档改动及独立工作树的原 typecheck 日志未改/未提交。
+
+### 10.7 负责人批准实施（2026-10-13）
+
+负责人明确答复“批准该具体范围并继续”，批准 §10 的固定 HDL 活动、33 表 fresh-only、正常宿主/原消费者、事务内授权与停止组合、Trace 游标最小修复及真实登录 HTTP/原 worker/事务验证。真实联调限已存在且获准 C 节点，不启动/维护节点；不迁移旧库、不改 B/UI/凭据/CI/受保护基线、不作真实模型调用/公开推送。ALU 行为 validator、C4 提交组合与浏览器保留独立未完成项。以下按该范围连续实施，预定公共测试接缝已同时批准。
+
+## 11. 批次接缝落实
+
+HDL 草稿使用加法式 `digitalLogicConfigVersionId` 引用独立不可变配置；`runtimeProfileVersionId` 继续表示 C 实际 runtime，不用配置 ID 冒充 runtime。发布后的 `runtimeProfile.kind=hdl_board` 包含完整配置、contentHash 与真实 runtimeProfileVersion。公开检查结果附 `execution: {kind: hdl_board, structural: validated, behavior: unverified}`；这里的结构验证仅指配置约束，端口实际 elaboration 在 C Build 执行，不宣称 ALU 行为通过。原 C JSON 和读取形状不新增默认字段。
+
+正常宿主读取持久 application_control 后提供同步 currentGeneration；只读受控配置、existing synthetic DB 和认证材料。无配置的 main 保留原 health-only 入口且 readiness=503。配置好的宿主启用原业务工厂、Workspace/HDL Job 消费者。未提供模型执行配置的学生求助沿 B 原 budget-denied 降级，不接新增 HDL ObjectRef。所有新合成库保留，初始化材料禁止写入日志或仓库。
+
+## 12. A/C 第一批实际实现与验证（进行中）
+
+2026-10-13，独立 `codex/dl-a-ac-integration` 从方案提交 1d71698 消费 DL-C 固定 dfb06cd7e78dffae681c4a42979bc2624178043a，以本地 merge 保留 C 来源；A4 PR #49 不改，未公开推送、合并远端 PR 或关闭 Issue。C 引擎/安装/维护原字节保留；A/C 修改仅落实本批接口和最小事务接缝。
+
+| 实际代码 | 状态与行为 |
+| --- | --- |
+| [配置契约](../../apps/teaching/contracts/design/hdl.ts)、[配置保存/readiness](../../apps/teaching/server/design/hdl-configurations.ts) | 已实现独立配置 ID、白名单 runtime、板绑定/ALU 定义域与合法 SW 映射；不可变正文/hash。固定活动含配置全文与释放当次指纹。检查明确配置结构已验证、ALU 行为未验证；实际端口检查仍在 C Build |
+| [认证能力](../../apps/teaching/server/access/app.ts)、[原 HDL 服务](../../apps/teaching/server/workspace/hdl.ts) | 已实现借用当前 TX 的真实 Session/课程/学生用途授权；新接纳重新验证，回执重放先于新 readiness。重装外部 stop 等待后重新授权；登出/撤权拒绝新接纳，可信清理保留原退出事实。未完成 Trace 不推进消费游标 |
+| [原活动发布/控制](../../apps/teaching/server/design/application.ts)、[原 Workspace](../../apps/teaching/server/workspace/application.ts) | 已按固定执行种类分流，HDL 不进入 TextScope Run；活动/分配/个人暂停的同 TX 停止意图，经 C reconcileStops 对账，已完成 Session 也可停止 |
+| [正常宿主](../../apps/teaching/server/app/digital-logic.ts)、[正常 main](../../apps/teaching/server/main.ts)、[受控配置](../../apps/teaching/server/app/config.ts) | 已组合原 A3/C3/Workspace/B 工厂与 HDL，共用唯一 Job 接口；持久代际启动校验、同步 callback、定时原消费者、关停持久停止再对账。无配置维持 health-only；配置后只读已有 TLS/SSH/签名材料，不采信代理头 |
+| [fresh-only 初始化](../../apps/teaching/server/app/initialize.ts)、[工厂](../../apps/teaching/server/db/transaction.ts) | 仅新建保留 33 表临时合成库；明确 synthetic 标志与合成 ID，按实际两课程/成员 manifest 初始化、密码只存原 scrypt；当前 C/HDL readiness 和代际必须一致。没有迁移/删除旧库 |
+| [公共专项](../../apps/teaching/tests/dl-a-app.test.ts) | 真实登录/CSRF/HTTP/原 worker/SQLite TX；仅外部 transport 合成，覆盖两课程与原 C/HDL Job、固定快照、私有资产、权限、幂等/冲突、Trace、交互、新草稿、撤权并发与 rollback、停止/正常定时消费/重启读取。专项验证持续中，最终数字后补 |
+
+模型配置未接本批正常进程。学生 help 沿原错误契约返回 DEPENDENCY_UNAVAILABLE，不创建无人消费的 Job；教师 Agent 用原预算守卫拒绝调用。没有付费调用、供应商网络或 B 新 HDL ObjectRef。撤权/账号停用只暴露受控管理事务能力，公共 CAS 成员管理端点仍未实现。
+
+本机只读核查 WSL Ubuntu 的既有 `/opt/xunjie-runner/vm/keys/application` 与 `known_hosts`：所需材料不齐，输出为 Authorized application material unavailable，未发起认证 SSH。真实 readiness→发布→Build/program/interact/暂停链未执行；未启动 VM、安装/维护节点或改变代际。不用 C 作者已有真实记录替本批 A 通过。
+
+本批 protected product/planning/reference/AGENTS 仍只读，汇总维护请求：MVP §10 登记此代码位置/实际专项、全量结果与下述未完成项；TECH 增加 fixed HDL 配置/runtime 分流、借用 TX 会话授权、pending Trace 游标及控制停止语义；不得将本批状态写成完整 G3/MVP 通过。
+
+剩余整卡条件：真实获准 C 节点 A/C 指定业务联调、ALU 行为 validator、C4 提交组合、B 的 #40 上下文/过时/真实模型与人工语义、UI 的课程/工作区/装载/信号/恢复及同浏览器 DL-E2E、原 NFR/真人/TLS/浏览器。B/UI 具体对应原任务与要交字段见 §9。#38/#39/#41 等卡不据此关闭。

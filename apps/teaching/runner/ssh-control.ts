@@ -16,7 +16,7 @@ try {request=JSON.parse(body);} catch {
   process.stdout.write(JSON.stringify({error:{code:'INVALID_REQUEST',message:'A JSON command is required'}})+'\n');process.exit(1);
 }
 if(!request || typeof request!=='object' || Array.isArray(request) || ['actor','role','peer'].some(key=>key in request)
-  || (peer==='application'&&!['submit','query','cancel','readResult','readiness'].includes(request.op))) {
+  || (peer==='application'&&!['submit','query','cancel','readResult','readiness','hdl_readiness','hdl_build','hdl_program','hdl_interact','hdl_query','hdl_stop','hdl_result'].includes(request.op))) {
   process.stdout.write(JSON.stringify({error:{code:'FORBIDDEN',message:'Runner command or identity field denied'}})+'\n');process.exit(1);
 }
 const socket=connect('/run/xunjie-c1/control.sock');
