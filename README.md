@@ -127,6 +127,26 @@ node --test server/tutoring/test/student-help.test.ts
 
 该批次验证显式求助同事务接纳、精确 ObjectRef/资料与状态过滤、无历史降级、跨 worker 三次调用台账、替换/停止/版本守卫，以及 B1 教学 body 经 C3 Message/TeachingAction/Delivery/Receipt 的持久接纳与补取。测试只使用合成账号、数据和 provider；真实模型网络调用、实际浏览器显示、真人接棒与教学语义仍未验收，详见 [B2 任务文档](docs/tasks/B2_STUDENT_HELP.md)。
 
+### P2 真实模型接口核验（显式授权后）
+
+2026-10-12，已准备教师候选/明确采用/局部 PATCH 与学生获准求助/原文/未展示取消的验证入口，默认跳过。账号/API、条款/数据范围、额度及付费合成请求必须先按 D-02 落实；代码准备和内存重放不等于真实模型通过，具体边界见 [G2 第 17 节](docs/tasks/G2_OVERALL_COORDINATION.md#17-p2-真实模型接口验证准备2026-10-12)。
+
+下列命令仅供已获上述授权、批准安全通道已提供本机凭据、Node 24.21.0/精确 lock 就绪的环境执行；在仓库根进入应用目录后串行运行，最多三个 Job/九次模型请求，失败不自动重跑，不写凭据或预算金额。
+
+```powershell
+cd apps/teaching
+# DEEPSEEK_API_KEY 必须已由批准的安全通道提供；不要将值写入此文件或日志。
+$env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+try {
+    node --test --test-name-pattern='P2 real-model' tests/design-agent.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Teacher model validation failed; inspect its evidence before retrying.' }
+    node --test --test-name-pattern='P2 real-model' server/tutoring/test/student-help.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Student model validation failed; inspect its evidence before retrying.' }
+} finally {
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL
+}
+```
+
 ## 阶段状态记录
 
 ### G0 基线批准、门禁与任务发布
