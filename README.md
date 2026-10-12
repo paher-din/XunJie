@@ -61,7 +61,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 服务端交付/合并/分层证据与 #9 行政收口；原完整 G1 条件在 #22、时钟问题在 #23 保留，产品基线未改；模块仍由 A/B/C 负责 |
 | [G2 / P2 总协调与教学支持交付跟踪](docs/tasks/G2_OVERALL_COORDINATION.md) | 教师生成/采用、学生辅导/取消与消息采集两条链的依赖、交接和分层验收；不代做 A3/B2/C3 |
 | [G3 / P3 总协调、数字逻辑增量与反馈闭环](docs/tasks/G3_OVERALL_COORDINATION.md) | P2 遗留、P3 任务依赖/评审、两条集成链与分层验收；不代做 A/B/C/UI，原预交付和实施门禁保留 |
-| [C4 固定提交、学生修订与闭环恢复](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md) | 学生固定提交、教师复核阶段推进、重开许可与学生本人 `resume_revision`、闭环恢复读取的服务端实现与 AC-06/08/09/12 确定性验证；改动全在 C 属，新增两表只写 C 属合成 schema，不迁移既有库。交 A5 的事务接缝与恢复反馈接缝已给出，真实浏览器/执行节点/备份恢复与 A4/A5 联合验证未执行，第 6 节四项解释与跨属提案待负责人确认 |
+| [C4 固定提交、学生修订与闭环恢复](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md) | 学生固定提交、教师复核阶段推进、重开许可与学生本人 `resume_revision`、闭环恢复读取的服务端实现与 AC-06/08/09/12 确定性验证；代码改动全在 C 属，新增两表只写 C 属合成 schema，不迁移既有库。合成 schema 与第 6 节四项解释/跨属提案已于 2026-10-12 经负责人批准，三条读法已写回 TECH_DESIGN；交 A5 的事务接缝与恢复反馈接缝已给出，真实浏览器/执行节点/备份恢复与 A4/A5 联合验证未执行 |
 | [C3 教学消息、回执、采集控制与作业失效](docs/tasks/C3_TEACHING_MESSAGES_RECEIPTS.md) | 两轮审查问题已修复（首轮 14 项 + PR #33 的 5 项 P2/9 项 P3），C3 专项 20/20、C3+B1 组合 67/67 通过；Windows 全量 212 项中唯一失败是 Linux-only `RunControl`，属 #23 既有环境限制，完整 G2/B2/UI 未验收。实现与交接见第 8～9 节，两轮修复与真实验证见第 11、13 节 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
 | [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 完整服务端工作区/快照/基础作业、A1/A2 同事务与批准新二十二表合成库、C1 原 ID 运行/检查/产物；四项审查修复与作者32项含节点组合见第13节，最新合并/组合验证见G1记录 |
@@ -276,6 +276,8 @@ node --test server/workspace/submissions.test.ts
 2026-10-12，项目负责人批准上文请其复核的合成库 schema 追加与任务稿第 6 节的四项解释与跨属提案，据此收口：两张表保留在 C 属 `workspaceSchema`，A 属 `server/db/transaction.ts` 零改动，合成库表数断言 24 为已批准事实；提交只取消教学类用途，不取消在途 `student_run`，已发生的执行事实与原始引用保留；短反思与可信检查引用不强制，只校验形状、边界与引用匹配，缺省不视为违规；`resume_revision` 保持 `read` 用途授权加 C 属阶段、分配与许可守卫，A 属权限文件不增列用途；`transitionAttemptInTransaction`、`planReopenGrant` 与 `writeReopenGrant` 的现有签名即为交 A5 的契约形状。批准不改动任何代码，不改变上文任何未执行项与通过统计，也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案，需负责人另行明确文件与范围才能实施。产品基线汇总待授权维护者处理，逐项落地含义见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
 
 2026-10-12，负责人授权后基线汇总已完成：PRD 与 MVP_SPEC 经核对无需改动，只在 TECH_DESIGN 三处既有行与既有段内追加上述三条读法，未改名标题、未增删路由、未放宽验收门槛，`node tools/a0-review/check.mjs` 退出码 0 且 `baselineMutationRoutes` 与 `internalLinks` 计数与改动前一致。AC-06/08/09/12 的判据未变，因此无需同步任何验收条目；上文全部未执行项与通过统计不受影响。逐处位置与授权范围见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
+
+2026-10-12 审查修订，上一段关于文档检查计数的记录有一半说反了，原文保留不倒写。`internalLinks` 并非与改动前一致：逐提交实测为 `37849f4` 551、`13172cb` 578、`e14d2ee` 585、`f600c99` 585，`documents` 由 37 变为 38，也就是该计数在写下那句话的 `e14d2ee` 自身就从 578 变为 585。成立的一半是 `baselineMutationRoutes` 全程 27、`errors` 全程为空数组、`additionalProposedRoutes` 全程为空、已批准路由集合未变，所以没有任何检查真的被破坏，问题纯在记录，而这恰好是一条关于受保护文档写入的验证结论。四个数字由本任务在一棵不装依赖的临时工作树上逐提交实跑得到，与负责人审查给出的表逐项一致。此后凡声称某个计数「与改动前一致」，改动前后两侧都必须实测。逐提交表、错误归因的更正与教训见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
 
 ### 当前整体状态与后置验收
 

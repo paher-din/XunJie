@@ -63,7 +63,9 @@ const grantOf = (f: Planned, submissionId: string, attemptRevision: number, stat
   ({ grantId: `grant-${randomUUID()}`, attemptId: f.id, courseId: 'synthetic-course', studentId: 'synthetic-student',
     submissionId, attemptRevision, state, reason: 'Revise the report coverage', grantedBy: 'synthetic-teacher',
     grantedAt: at(3000), receiptId: 'receipt-grant',
-    ...(state === 'valid' ? {} : { consumedReceiptId: 'receipt-old', consumedAt: at(3500) }) });
+    // Only a consumed grant carries consumption facts: the DDL CHECK and `readGrants` both bind
+    // `state='consumed'` to the presence of a consuming receipt, so a superseded row must not have one.
+    ...(state === 'consumed' ? { consumedReceiptId: 'receipt-old', consumedAt: at(3500) } : {}) });
 
 test('C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating', () => {
   const f = planned();
@@ -194,15 +196,53 @@ test('C4-V03 resume_revision consumes only a current grant on the latest submiss
     /reopen permission/i);
   assert.equal(planResumeRevision(basis(f, { attempt: reviewedSecond, submissions: both,
     grants: [grantOf(f, 'submission-2', reviewedSecond.attemptRevision)] }), reviewedSecond.attemptRevision, reopen).attempt.status, 'active');
-  // `reopenView` reports only what the student may actually act on.
-  assert.deepEqual(reopenView(reviewedBasis()), { state: 'none' });
-  assert.equal(reopenView(reviewedBasis({ grants: [grant] })).state, 'valid');
-  assert.equal(reopenView(basis(f, { attempt: resumed.attempt, submissions: [submitted.submission],
-    grants: [resumed.grant] })).state, 'consumed');
-  assert.equal(reopenView(reviewedBasis({ grants: [grantOf(f, 'submission-1', reviewedAttempt.attemptRevision, 'superseded'), grant] })).state, 'valid');
-  // A valid grant that does not name the latest submission is reported as the history it is, not as permission.
-  assert.equal(reopenView(basis(f, { attempt: reviewedSecond, submissions: both,
-    grants: [resumed.grant, grantOf(f, 'submission-1', reviewedSecond.attemptRevision)] })).state, 'consumed');
+  // `reopenView` reports the most recently saved grant as its own persisted fact, and separately whether the
+  // student can consume it. A real `valid` row is therefore never folded into `none` and never attributed to an
+  // older grant the teacher has already replaced.
+  assert.deepEqual(reopenView(reviewedBasis()), { state: 'none', actionable: false });
+  const actionable = reopenView(reviewedBasis({ grants: [grant] }));
+  assert.deepEqual({ state: actionable.state, actionable: actionable.actionable, grantId: actionable.grantId,
+    submissionId: actionable.submissionId },
+    { state: 'valid', actionable: true, grantId: grant.grantId, submissionId: 'submission-1' });
+  const consumed = reopenView(basis(f, { attempt: resumed.attempt, submissions: [submitted.submission],
+    grants: [resumed.grant] }));
+  assert.equal(consumed.state, 'consumed');
+  assert.equal(consumed.actionable, false);
+  assert.equal(consumed.consumedAt, resumed.grant.consumedAt);
+  // An older superseded grant must not hide the newer `valid` one: the attempt revision moved on after the teacher
+  // issued it, which is what an ordinary assignment pause does.
+  const movedAttempt = { ...reviewedAttempt, attemptRevision: reviewedAttempt.attemptRevision + 1,
+    decisionEpoch: reviewedAttempt.decisionEpoch + 1 };
+  const afterSupersede = reopenView(basis(f, { attempt: movedAttempt, submissions: [submitted.submission],
+    grants: [grantOf(f, 'submission-1', reviewedAttempt.attemptRevision, 'superseded'), grant] }));
+  assert.equal(afterSupersede.grantId, grant.grantId);
+  assert.equal(afterSupersede.state, 'valid');
+  assert.equal(afterSupersede.actionable, false);
+  // A lone `valid` row whose revision moved is granted-but-spent, not "never granted". The student's page has to be
+  // able to tell those apart, so this may not collapse to `none`.
+  const lone = reopenView(basis(f, { attempt: movedAttempt, submissions: [submitted.submission], grants: [grant] }));
+  assert.deepEqual({ state: lone.state, actionable: lone.actionable, grantId: lone.grantId },
+    { state: 'valid', actionable: false, grantId: grant.grantId });
+  assert.notEqual(lone.state, 'none');
+  // A grant naming an older submission reports itself rather than the settled grant that came before it.
+  const olderSubmission = reopenView(basis(f, { attempt: reviewedSecond, submissions: both,
+    grants: [resumed.grant, grantOf(f, 'submission-1', reviewedSecond.attemptRevision)] }));
+  assert.equal(olderSubmission.state, 'valid');
+  assert.equal(olderSubmission.actionable, false);
+  assert.equal(olderSubmission.submissionId, 'submission-1');
+  assert.notEqual(olderSubmission.grantId, resumed.grant.grantId);
+  // The projection and the consuming command share one predicate, so a view claiming `actionable` is a view the
+  // command accepts, and every view denying it is one the command refuses for a stated reason.
+  for (const row of [reviewedBasis(), reviewedBasis({ grants: [grant] }),
+    basis(f, { attempt: movedAttempt, submissions: [submitted.submission], grants: [grant] }),
+    basis(f, { attempt: resumed.attempt, submissions: [submitted.submission], grants: [resumed.grant] }),
+    basis(f, { attempt: reviewedSecond, submissions: both,
+      grants: [resumed.grant, grantOf(f, 'submission-1', reviewedSecond.attemptRevision)] })]) {
+    const view = reopenView(row);
+    if (view.actionable) assert.equal(planResumeRevision(row, row.attempt.attemptRevision, reopen).grant.grantId, view.grantId);
+    else assert.throws(() => planResumeRevision(row, row.attempt.attemptRevision, reopen),
+      /reopen permission|reviewed attempt|version conflict|pause cannot be overridden/i);
+  }
 });
 
 test('C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt', () => {
@@ -224,7 +264,7 @@ test('C4-V04 recovery separates confirmed, unknown and in-flight outcomes withou
   assert.equal(unknown.files.length, 2);
   assert.deepEqual(unknown.files.map(row => row.path).sort(), ['a.txt','main.c']);
   assert.equal(unknown.submissions.length, 0);
-  assert.deepEqual(unknown.reopen, { state: 'none' });
+  assert.deepEqual(unknown.reopen, { state: 'none', actionable: false });
   assert.throws(() => readRecovery(f.state, context, () => false), /denied/i);
   assert.deepEqual(readRecovery(f.state, context, () => true).runs.map(run => run.outcome), ['confirmed']);
   assert.equal(readRecovery(f.state, { ...context, resyncRequired: true,
@@ -347,6 +387,7 @@ test('C4-V06 teacher review, reopen grant and the student own resume_revision fo
     assert.deepEqual(grantResult.supersededGrantIds, []);
     assert.equal((await view(f, student, id)).attempt.status, 'reviewed');
     assert.equal((await view(f, student, id)).reopen.state, 'valid');
+    assert.equal((await view(f, student, id)).reopen.actionable, true);
     // A replay of the same teacher command returns the original grant instead of creating a second one.
     const replayed = await grantReopen(f, teacher, id, submissionId, reviewedRevision, 'Revise the report coverage', 'grant-key');
     assert.equal(replayed.statusCode, 200, replayed.body);
@@ -396,6 +437,7 @@ test('C4-V06 teacher review, reopen grant and the student own resume_revision fo
     assert.equal(restored.latestSubmissionId, String(second.json().data.result.submissionId));
     assert.equal(restored.latestSnapshotId, secondSnapshot);
     assert.equal(restored.reopen.state, 'consumed');
+    assert.equal(restored.reopen.actionable, false);
     assert.equal(restored.submissions.length, 2);
     assert.equal(restored.attempt.status, 'submitted');
     assert.equal(restored.feedback.status, 'unavailable');
@@ -435,6 +477,15 @@ test('C4-V07 stale revisions, old submissions, paused assignments and foreign ac
     assert.equal(pausedRevision, Number(second.json().data.result.attemptRevision) + 1);
     assert.equal((await resumeRevision(f, student, id, pausedRevision)).json().error.code, 'STATE_CONFLICT');
     assert.equal(validGrants(), 1);
+    // The pause made the grant unspendable, not absent. The recovery read still has to show it, so the student's
+    // page can tell "teacher granted it, a pause voided it, the teacher must grant again" from "never granted" —
+    // and it must point at the grant the teacher actually issued last, not the one that grant superseded.
+    const pausedView = await recovery(f, student, id, { recoveryGeneration: f.generation(),
+      decisionEpoch: (await view(f, student, id)).attempt.decisionEpoch });
+    assert.equal(pausedView.reopen.state, 'valid');
+    assert.equal(pausedView.reopen.actionable, false);
+    assert.equal(pausedView.reopen.grantId, String(second.json().data.result.grantId));
+    assert.equal(pausedView.reopen.submissionId, chain.submissionId);
     assert.equal((await command(f, teacher, `/api/assignments/${allocation.assignmentId}/controls`,
       { expectedAssignmentRevision: 2, action: 'resume', reason: 'Course resumed' })).statusCode, 200);
     // Resuming the assignment does not restore the grant the pause made stale: the permission was issued against a
@@ -474,6 +525,7 @@ test('C4-V07 stale revisions, old submissions, paused assignments and foreign ac
       decisionEpoch: (await view(f, student, id)).attempt.decisionEpoch });
     assert.equal(restored.submissions.length, 2);
     assert.equal(restored.reopen.state, 'valid');
+    assert.equal(restored.reopen.actionable, true);
     assert.equal(restored.reopen.submissionId, nextSubmissionId);
     assert.equal(restored.attempt.status, 'reviewed');
   } finally { await f.close(); }
@@ -592,6 +644,8 @@ test('C4-V09 submissions, grants and recovery survive a restart, and a late fail
     assert.equal(counts().grants, 1);
     assert.equal((await view(f, student, id)).attempt.status, 'reviewed');
     assert.equal((await view(f, student, id)).reopen.state, 'valid');
+    // The actionable computation is derived from persisted rows only, so it survives the restart unchanged.
+    assert.equal((await view(f, student, id)).reopen.actionable, true);
     f.injectFailure('');
     // AC-12: an application restart keeps the confirmed submission, the grant and the reviewed stage.
     await f.reopen();

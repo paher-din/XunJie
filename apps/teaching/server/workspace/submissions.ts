@@ -9,7 +9,7 @@ import {artifactSubmissionSchema,domainReopenGrant,domainSubmissionRecord,reopen
 import type {Transaction} from '../db/transaction.ts';
 import type {Purpose} from '../../contracts/records/index.ts';
 import type {SubmitRun} from '../../contracts/runner/index.ts';
-import type {ArtifactSnapshot,Attempt,AttemptRecovery,ReopenGrant,Submission,SubmissionCheckRef} from '../../contracts/workspace/index.ts';
+import type {ArtifactSnapshot,Attempt,ReopenGrant,ReopenView,Submission,SubmissionCheckRef} from '../../contracts/workspace/index.ts';
 
 export type SubmissionRequest={expectedAttemptRevision:number;snapshotId:string;reflection?:string;checkRunIds:string[]};
 // The narrow slice C4's pure plans read. A full WorkspaceState satisfies it structurally, so the plans stay
@@ -35,23 +35,30 @@ export function latestSubmission(basis:{submissions:Submission[]}):Submission|un
   return basis.submissions[basis.submissions.length-1];
 }
 /**
- * The reopen state a resuming client acts on. Only a grant that `planResumeRevision` would actually accept is
- * reported as actionable; everything else is reported as the history it is, so a consumed or superseded grant is
- * never presented as permission to keep revising.
+ * The one grant `planResumeRevision` would accept right now, or undefined. Both the consuming command and the
+ * recovery projection go through this, so the view can never offer a permission the command would then refuse.
  */
-export function reopenView(basis:{attempt:Attempt;submissions:Submission[];grants:ReopenGrant[]}):AttemptRecovery['reopen'] {
+function currentGrant(basis:{attempt:Attempt;submissions:Submission[];grants:ReopenGrant[]}):ReopenGrant|undefined {
+  if(basis.attempt.status!=='reviewed')return undefined;
   const latest=latestSubmission(basis);
-  const actionable=latest===undefined?undefined:basis.grants.find(row=>row.state==='valid'
+  if(!latest)return undefined;
+  return basis.grants.find(row=>row.state==='valid'&&row.attemptId===basis.attempt.attemptId
     &&row.submissionId===latest.submissionId&&row.attemptRevision===basis.attempt.attemptRevision);
-  if(actionable)return {state:'valid',grantId:actionable.grantId,submissionId:actionable.submissionId,
-    reason:actionable.reason,grantedAt:actionable.grantedAt};
-  // No permission the student can act on. The most recent settled grant is reported so the client can explain
-  // why the artifact is writable or read-only; a `valid` row that does not name the latest submission at the
-  // current revision is unreachable through the seams, and is never surfaced as permission to keep revising.
-  const settled=[...basis.grants].reverse().find(row=>row.state!=='valid');
-  if(!settled)return {state:'none'};
-  return {state:settled.state,grantId:settled.grantId,submissionId:settled.submissionId,
-    ...(settled.consumedAt===undefined?{}:{consumedAt:settled.consumedAt})};
+}
+/**
+ * The reopen state a resuming client acts on. It reports the most recently *saved* grant as its own persisted fact
+ * and separately says whether the student can consume it. Superseding always inserts, so the last row is the one the
+ * teacher's latest decision produced; reporting an older settled row instead would point the student at a grant the
+ * teacher has already replaced, and collapsing a still-`valid` row into `none` would hide a real persisted fact —
+ * an assignment pause alone produces exactly that row, so it is an ordinary chain rather than a corner case.
+ */
+export function reopenView(basis:{attempt:Attempt;submissions:Submission[];grants:ReopenGrant[]}):ReopenView {
+  const newest=basis.grants[basis.grants.length-1];
+  if(!newest)return {state:'none',actionable:false};
+  const actionable=currentGrant(basis);
+  return {state:newest.state,actionable:actionable?.grantId===newest.grantId,
+    grantId:newest.grantId,submissionId:newest.submissionId,reason:newest.reason,grantedAt:newest.grantedAt,
+    ...(newest.consumedAt===undefined?{}:{consumedAt:newest.consumedAt})};
 }
 
 function matchCheckRefs(basis:SubmissionBasis,snapshot:ArtifactSnapshot,checkRunIds:string[]) {
@@ -126,19 +133,21 @@ export function planResumeRevision(basis:SubmissionBasis,expectedRevision:number
   if(!context.assignmentActive)throw new RunnerError('STATE_CONFLICT','Assignment pause cannot be overridden');
   if(basis.attempt.attemptRevision!==expectedRevision)throw new RunnerError('VERSION_CONFLICT','Attempt version conflict');
   if(basis.attempt.status!=='reviewed')throw new RunnerError('STATE_CONFLICT','Only a reviewed attempt resumes revision');
-  const latest=latestSubmission(basis);
-  if(!latest)throw new RunnerError('STATE_CONFLICT','No fixed submission to revise');
-  const grant=basis.grants.find(row=>row.state==='valid');
-  if(!grant||grant.attemptId!==basis.attempt.attemptId||grant.submissionId!==latest.submissionId
-    ||grant.attemptRevision!==basis.attempt.attemptRevision)throw new RunnerError('STATE_CONFLICT','Current teacher reopen permission required');
+  if(!latestSubmission(basis))throw new RunnerError('STATE_CONFLICT','No fixed submission to revise');
+  // The same predicate the recovery projection reports through, so a view claiming `actionable` is a view this
+  // command will actually accept.
+  const grant=currentGrant(basis);
+  if(!grant)throw new RunnerError('STATE_CONFLICT','Current teacher reopen permission required');
   const attempt:Attempt={...structuredClone(basis.attempt),status:'active',
     attemptRevision:basis.attempt.attemptRevision+1,decisionEpoch:basis.attempt.decisionEpoch+1};
   const consumed:ReopenGrant={...grant,state:'consumed',consumedReceiptId:context.receiptId,consumedAt:context.now};
   return {attempt,grant:consumed,cancelPurposes:revisionCancelPurposes};
 }
 
-export function readSubmissions(tx:Transaction,attemptId:string):Submission[] {
-  const attempt=readAttempt(tx,attemptId);
+// The immutable ownership slice both readers cross-check persisted rows against. Callers pass the attempt they
+// already read, so loading a workspace reads and validates that row once instead of three times.
+export type SubmissionOwner={courseId:string;studentId:string;assignmentId:string;activityVersionId:string};
+export function readSubmissions(tx:Transaction,attemptId:string,owner:SubmissionOwner):Submission[] {
   return tx.all('SELECT * FROM workspace_submissions WHERE attempt_id=? ORDER BY server_seq,submission_id',attemptId).map(row=>{
     const submission=domainSubmissionRecord(persisted(artifactSubmissionSchema,String(row.submission_json)));
     if(submission.submissionId!==row.submission_id||submission.attemptId!==attemptId||submission.courseId!==row.course_id
@@ -148,13 +157,12 @@ export function readSubmissions(tx:Transaction,attemptId:string):Submission[] {
       ||Date.parse(submission.submittedAt)!==row.submitted_at_ms)throw new Error('Invalid persisted submission scope.');
     // A submission stays fixed to the attempt it was made from, so the immutable ownership references must still
     // agree with the attempt row rather than with whatever the request claimed.
-    if(submission.studentId!==attempt.studentId||submission.courseId!==attempt.courseId
-      ||submission.assignmentId!==attempt.assignmentId||submission.activityVersionId!==attempt.activityVersionId)throw new Error('Invalid persisted submission scope.');
+    if(submission.studentId!==owner.studentId||submission.courseId!==owner.courseId
+      ||submission.assignmentId!==owner.assignmentId||submission.activityVersionId!==owner.activityVersionId)throw new Error('Invalid persisted submission scope.');
     return submission;
   });
 }
-export function readGrants(tx:Transaction,attemptId:string):ReopenGrant[] {
-  const attempt=readAttempt(tx,attemptId);
+export function readGrants(tx:Transaction,attemptId:string,owner:SubmissionOwner):ReopenGrant[] {
   // Insertion order, not the granted-at timestamp: the fixture clock can be frozen, and "the most recent grant"
   // must stay unambiguous for the supersede/consume history the recovery view reports.
   return tx.all('SELECT * FROM workspace_reopen_grants WHERE attempt_id=? ORDER BY rowid',attemptId).map(row=>{
@@ -164,7 +172,7 @@ export function readGrants(tx:Transaction,attemptId:string):ReopenGrant[] {
       ||grant.state!==row.state||grant.attemptRevision!==row.attempt_revision||grant.grantedBy!==row.granted_by
       ||grant.reason!==row.reason||grant.receiptId!==row.receipt_id||Date.parse(grant.grantedAt)!==row.granted_at_ms
       ||(grant.consumedReceiptId??null)!==row.consumed_receipt_id||consumedAt!==(row.consumed_at_ms??null))throw new Error('Invalid persisted reopen grant.');
-    if(grant.courseId!==attempt.courseId||grant.studentId!==attempt.studentId)throw new Error('Invalid persisted reopen grant scope.');
+    if(grant.courseId!==owner.courseId||grant.studentId!==owner.studentId)throw new Error('Invalid persisted reopen grant scope.');
     if((grant.state==='consumed')!==(grant.consumedReceiptId!==undefined))throw new Error('Invalid persisted reopen grant state.');
     return grant;
   });
@@ -200,13 +208,17 @@ export function planReopenGrant(tx:Transaction,input:{attemptId:string;courseId:
   // Saving the permission keeps the artifact read-only: the attempt stays `reviewed` and only the student's own
   // resume_revision later consumes the grant.
   if(attempt.status!=='reviewed')throw new ApiError('STATE_CONFLICT');
-  const latest=latestSubmission({submissions:readSubmissions(tx,input.attemptId)});
+  const latest=latestSubmission({submissions:readSubmissions(tx,input.attemptId,attempt)});
   if(!latest||latest.submissionId!==input.submissionId)throw new ApiError('INVALID_REFERENCE');
   if(tx.get('SELECT grant_id FROM workspace_reopen_grants WHERE grant_id=?',input.grantId))throw new ApiError('IDEMPOTENCY_CONFLICT');
   // A newer permission supersedes the older one on the same submission; superseding is a state change, never a
   // deletion, so the record of what the teacher granted and when survives.
-  const superseded=readGrants(tx,input.attemptId).filter(row=>row.state==='valid');
-  const next:Attempt={...attempt,attemptRevision:attempt.attemptRevision+1};
+  const superseded=readGrants(tx,input.attemptId,attempt).filter(row=>row.state==='valid');
+  // The epoch advances with the permission, as it does for submission, review and resume_revision, so a page
+  // holding the pre-grant state is told to re-synchronize instead of only finding out when its own resume_revision
+  // fails the CAS. Nothing can be in flight to invalidate: reaching `reviewed` already advanced the epoch, and a
+  // new student_help job is refused at that stage.
+  const next:Attempt={...attempt,attemptRevision:attempt.attemptRevision+1,decisionEpoch:attempt.decisionEpoch+1};
   const grant:ReopenGrant={grantId:input.grantId,attemptId:attempt.attemptId,courseId:attempt.courseId,
     studentId:attempt.studentId,submissionId:latest.submissionId,attemptRevision:next.attemptRevision,state:'valid',
     reason:input.reason,grantedBy:input.grantedBy,grantedAt:input.now,receiptId:''};
@@ -222,7 +234,7 @@ export function writeReopenGrant(tx:Transaction,plan:ReturnType<typeof planReope
   tx.run(`INSERT INTO workspace_reopen_grants(grant_id,attempt_id,submission_id,state,attempt_revision,granted_by,reason,granted_at_ms,receipt_id,grant_json)
     VALUES (?,?,?,?,?,?,?,?,?,?)`,grant.grantId,grant.attemptId,grant.submissionId,grant.state,grant.attemptRevision,
     grant.grantedBy,grant.reason,Date.parse(grant.grantedAt),grant.receiptId,JSON.stringify(grant));
-  const saved=readGrants(tx,grant.attemptId).find(row=>row.grantId===grant.grantId);
+  const saved=readGrants(tx,grant.attemptId,plan.attempt).find(row=>row.grantId===grant.grantId);
   if(!saved||JSON.stringify(saved)!==JSON.stringify(grant))throw new ApiError('PERSISTENCE_UNAVAILABLE');
   return {grantId:grant.grantId,submissionId:grant.submissionId,attemptRevision:plan.attempt.attemptRevision,
     status:'reviewed' as const,supersededGrantIds:plan.superseded.map(row=>row.grantId)};

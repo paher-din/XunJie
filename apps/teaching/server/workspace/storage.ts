@@ -64,7 +64,7 @@ export function loadWorkspace(tx: Transaction, attemptId: string, identity?: Com
     validateSnapshot(snapshot); return snapshot;
   });
   const state: WorkspaceState = { attempt, files, snapshots, records, runs: [], checks: [],
-    submissions: readSubmissions(tx, attemptId), grants: readGrants(tx, attemptId) };
+    submissions: readSubmissions(tx, attemptId, attempt), grants: readGrants(tx, attemptId, attempt) };
   for (const row of tx.all('SELECT * FROM workspace_runs WHERE attempt_id=? ORDER BY run_id', attemptId)) {
     const submission = domainSubmission(checked(submissionSchema, String(row.submission_json)));
     const job = records.jobs.find(item => item.jobId === row.job_id), scope = submission.identity.authorizedScope;

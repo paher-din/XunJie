@@ -45,6 +45,13 @@ export type RecoveryRun = {runId:string;jobId:string;mode:'run'|'check';snapshot
 export type RecoveryFeedback = {status:'unavailable'}
   | {status:'available';feedbackRevision:number;
     entries:{feedbackId:string;kind:string;revision:number;submissionId?:string;createdAt:string}[]};
+// The reopen permission as a resuming client acts on it. `state` is the most recently saved grant's own persisted
+// state, so a `valid` row is never folded into `none`; `actionable` says whether the student's own resume_revision
+// would be accepted right now. A grant whose revision an assignment pause moved, or which names an older
+// submission, reports `valid` with `actionable:false` — granted but spent, which the student must be able to tell
+// apart from never having been granted anything.
+export type ReopenView = {state:'none'|ReopenGrantState;actionable:boolean;grantId?:string;submissionId?:string;
+  reason?:string;grantedAt?:string;consumedAt?:string};
 export type AttemptRecovery = {attempt:Attempt;recoveryGeneration:string;resyncRequired:boolean;
   files:{fileId:string;path:string;documentVersion:number;contentHash:string;lifecycle:'active'|'recycled'}[];
   latestSnapshotId?:string;
@@ -52,8 +59,7 @@ export type AttemptRecovery = {attempt:Attempt;recoveryGeneration:string;resyncR
     attemptRevision:number;serverSeq:number;submittedAt:string;hasReflection:boolean;
     checkRefs:SubmissionCheckRef[]}[];
   latestSubmissionId?:string;
-  reopen:{state:'none'|ReopenGrantState;grantId?:string;submissionId?:string;reason?:string;
-    grantedAt?:string;consumedAt?:string};
+  reopen:ReopenView;
   runs:RecoveryRun[];pendingQuestions:{jobId:string;jobStatus:import('../records/index.ts').JobStatus;
     acceptedAt:string;deadline:string}[];
   coverage?:import('../records/index.ts').TeachingCoverage;feedback:RecoveryFeedback};

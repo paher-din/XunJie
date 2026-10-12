@@ -54,7 +54,9 @@ C 提供两个同连接、同事务的能力供 A5 调用，与 [TECH §7.2.1](.
 
 ### 4.3 闭环恢复读取
 
-`GET /api/attempts/:id/recovery`，发起者为所属学生或任课教师，按角色裁剪。该入口只读，不激活学习、不排模型或运行作业、不改变阶段，符合 [TECH §5.1](../product/TECH_DESIGN.md#51-请求摘要响应与拒绝) 对读接口的要求。查询参数可带客户端持有的 `recoveryGeneration` 与 `decisionEpoch`；缺失或不等于服务端当前值时返回 `resyncRequired` 为真，客户端必须先重新同步再展示待投递内容。
+`GET /api/attempts/:id/recovery`，发起者为所属学生或任课教师，两种角色拿到同一份投影，不做角色裁剪（见下方勘误）。该入口只读，不激活学习、不排模型或运行作业、不改变阶段，符合 [TECH §5.1](../product/TECH_DESIGN.md#51-请求摘要响应与拒绝) 对读接口的要求。查询参数可带客户端持有的 `recoveryGeneration` 与 `decisionEpoch`；缺失或不等于服务端当前值时返回 `resyncRequired` 为真，客户端必须先重新同步再展示待投递内容。
+
+2026-10-12 审查勘误（P3-5）：本节原文写「按角色裁剪」，实现里并没有裁剪，两种角色经同一个 `read` 门得到完全相同的投影。这不构成新增泄露：同一批数据早已由 `GET /api/attempts/:id` 以同样的 `read` 门暴露给同一批发起者，且投影本身不含作品正文、运行诊断正文或反思正文（反思只报 `hasReflection` 布尔值，正文由工作区视图提供，见第 8.5 节第五项）。原文属说过头，此处按实际实现更正为不做角色裁剪，原判断不倒写。若负责人或 A5 需要恢复视图对教师与学生给出不同投影，那是新增需求，需另行明确后再实现，C4 不据此自行加裁剪。
 
 返回内容覆盖 M-09 的恢复要求：活动版本与尝试的完整生命周期字段，含 `returnPosition`、`route`、`question`；确认作品的文件实例、路径、版本、内容哈希与生命周期，使服务器已确认版本与本机未同步草稿可区分；提交列表与其快照、哈希、检查引用和最新提交标识；重开许可状态；最近运行的运行标识、作业标识、模式、绑定快照、作业状态与结论分类；待处理问题；采集覆盖区间与缺口。
 
@@ -65,6 +67,12 @@ C 提供两个同连接、同事务的能力供 A5 调用，与 [TECH §7.2.1](.
 ## 5. 与 A4/A5/B3/C5 的分批交接
 
 按 [TEAM §7 的 P3 联调顺序](../planning/TEAM_WORK_PLAN.md)，C4 先交固定提交、许可消费与恢复读取，不等 A4/A5 整项完成。C4 交给 A5 的首批能力是 `transitionAttemptInTransaction`、`grantReopenInTransaction` 与恢复读取中的提交、许可、反馈接缝；A5 的 `POST /api/attempts/:id/reopen` 与 `POST /api/attempts/:id/feedback` 在自己的教师授权事务中调用这两个能力，双方按本节契约各自实现后再联合验证。A4 的教师纠正与状态失效经 C3 已交付的 `teachingStop` 与 `cancelByPurpose` 传播，C4 不新增失效通道，也不改写已有普通运行事实与历史引用。B3 的候选分析只读 C 保存的原始引用与覆盖区间，C4 的提交记录为其提供确切快照与检查引用。
+
+2026-10-12 审查修复带来两处接缝变更，A5 与 UI 按此对接。
+
+其一，`AttemptRecovery['reopen']` 增加 `actionable` 布尔字段，形状抽为 `contracts/workspace/index.ts` 新导出的 `ReopenView`。`state` 现在始终是**最近保存的那条许可**自身的持久状态，因此在数据库存在 `valid` 行时永不返回 `none`；学生此刻能否消费由 `actionable` 单独表达。教师发放后又被分配暂停作废的许可报 `{state:'valid',actionable:false}`，UI 据此可区分「教师从未发放」与「教师发放过、已作废、需重新发放」——这两者此前都折叠成 `none`，是审查 P2-1 指出的缺陷。投影与消费命令现在共用同一个 `currentGrant` 判定，因此视图声称 `actionable` 时 `planResumeRevision` 必定接受，C4-V03 对五种状态逐一走查了这条一致性。该改动属 C 属 `contracts/workspace`，未跨属授权；若 A5 已按旧形状准备，按本节记为接缝变更。
+
+其二，`planReopenGrant`/`writeReopenGrant` 现在同时递增 `decisionEpoch`，此前只递增 `attemptRevision`，是提交、复核、重开、消费四个尝试迁移里唯一的例外。后果是发放许可后，持有旧 `decisionEpoch` 的学生页面在 `GET /api/attempts/:id/recovery` 上会先得到 `resyncRequired` 为真，而不是要等到自己的 `resume_revision` 撞 CAS 才知道有新许可。`writeReopenGrant` 的返回形状未变（仍不含 `decisionEpoch`），因为发起发放的是教师、需要重新同步的是学生页面，学生侧从恢复读取取当前值；`transitionAttemptInTransaction` 的返回形状本就含 `decisionEpoch`，也未改。没有可被这次递增置为 stale 的在途作业：到达 `reviewed` 本身已经递增过一次 epoch，而该阶段起不了新的 `student_help`。
 
 交 C5 的未验项：完整备份恢复与实际 RPO/RTO、真实执行节点掉线与重启后的对账演练、真实负载下的保存与运行表现、以及本任务在第 6 节列出的解释项复核。上述项在本任务全部标为未执行，不以合成夹具的通过数替代。
 
@@ -103,6 +111,25 @@ schema 追加据此收口：`workspace_submissions` 与 `workspace_reopen_grants
 另有一条 C4 验证中确认的行为**未**写入基线：分配暂停会加一 `attemptRevision` 与 `decisionEpoch`，因此使已发放的重开许可失效，且恢复分配不会让它复活。它不属于上述三条读法，超出本次授权范围，故只保留在第 8.5 节与 PR 正文作为交 A5/UI 的事实。若负责人认为它也需要写回 TECH 第 5 节的 reopen 行或第 7.2.1 节，请另行明确文件与范围。
 
 基线改动后的文档验证补记：除 `node tools/a0-review/check.mjs` 外，README「文档验证」一节还要求单独运行 `node --test tools/a0-review/check.test.mjs`，该测试不在 `apps/teaching` 的 `npm test` glob 内，容易被漏跑。它在基线改动后 16 项全部通过、0 失败、0 跳过，其中「current repository passes structural checks」「existing repository directory links remain valid」「rejects missing approved route …」等用例直接依赖 `docs/product/**` 正文，因此这三处追加没有破坏文档检查器的任何断言。加入本任务稿与 README 的追加段落后，`check.mjs` 复跑退出码 0、`errors` 为空、`internalLinks` 为 585、`baselineMutationRoutes` 仍为 27、`additionalProposedRoutes` 仍为空数组。基线改动只涉及文档，未触碰任何源码，故 `npm run typecheck`、`npm test` 与第 8.3 节的全部通过统计不受影响，无需重跑。
+
+2026-10-12 审查修订（对应审查 P2-2）：上文两处关于文档检查计数的记录说反了。按负责人独立审查的指正逐提交实测更正如下，原文逐字保留，不倒写为当时已知。
+
+| 提交 | documents | internalLinks | baselineMutationRoutes |
+| --- | --- | --- | --- |
+| `37849f4`（origin/main） | 37 | 551 | 27 |
+| `13172cb`（基线改动前一个提交） | 38 | 578 | 27 |
+| `e14d2ee`（TECH_DESIGN 基线汇总提交） | 38 | 585 | 27 |
+| `f600c99`（当时的 head） | 38 | 585 | 27 |
+
+成立的一半：`baselineMutationRoutes` 全程 27，`errors` 全程为空数组，`additionalProposedRoutes` 全程为空，已批准路由集合未变，**没有任何检查被破坏**。上文这一点说得对。
+
+不成立的一半：`internalLinks` 并非「与改动前一致」。它在 `e14d2ee`——也就是写下那句话的那个提交本身——从 578 变为 585，相对 `origin/main` 则是 551 → 585。上文「实际核对结果」一段称改动前后计数一致，错了；「文档验证补记」一段把 578→585 归给「加入本任务稿与 README 的追加段落后」，也错了：实测 `e14d2ee..f600c99` 只给本任务稿加了 2 行、计数保持 585，那 +7 条链接来自 `e14d2ee` 自己在 README 与本任务稿里新增的 `[PRD]`、`[MVP_SPEC]`、`[TECH_DESIGN]`、`[C4 第 6 节]` 等行内引用。
+
+上表四个数字由本任务在一棵不装依赖的临时工作树上逐提交实跑 `check.mjs` 得到（该脚本不需要 node_modules），与负责人审查给出的表逐项一致，不是照抄。教训如实记下：这是一条关于受保护文档写入的验证结论，恰恰是最需要准确的一处，而我在写下它时只跑了改动之后的一次检查、没有跑改动之前的那一次，就把「没有报错」当成了「计数没有变」。此后凡声称某个计数「与改动前一致」，必须两侧都实测。
+
+2026-10-12 审查修订（对应审查 P3-1 的记录部分）：上文「实际核对结果」一段称三处基线改动「都是在既有行或既有段内追加文字」，对第 7.2.1 节那一处不成立。该处原文是「暂停/限定检查/**提交**控制相应用途和执行」，修改后「提交」被移出这个枚举，语义收窄为「提交与学生主动重开只控制教学类用途、不取消在途 `student_run`」，属删词而非纯追加；同一句里的「暂停/限定检查」及其余分句逐字保留。controls 行与 submissions 行两处确为纯追加，原分句逐字保留，审查已核对无误。「拆开」这一措辞如实披露了收窄，但「都是追加」与它自相矛盾，此处更正为：两处纯追加、一处含删词。
+
+**「从第 7.2.1 节该句删去『提交』是否在授权范围内」属负责人裁决，本任务不自行认定。** 若负责人认为超出授权，回退范围限于第 7.2.1 节这一句，controls 行与 submissions 行两处不受影响；代码侧不受任何一种裁决影响，因为 `revisionCancelPurposes` 的行为从一开始就是不取消在途 `student_run`，并已由 C4-V08 固定。
 
 ## 7. 验证计划与分层完成条件
 
@@ -169,3 +196,25 @@ schema 追加据此收口：`workspace_submissions` 与 `workspace_reopen_grants
 以下各项本任务全部标未执行，不以合成夹具通过数替代：真实浏览器与 UI 接入验收；真人教师与学生的实际使用与教学收益；真实模型语义与预算门禁；真实执行节点掉线、重启与迟到结果的对账演练（C2 的真实 SSH 用例在 win32 上跳过）；完整备份恢复与实际 RPO/RTO（交 C5）；真实数据库建表、迁移与生产部署（按红线另行授权）；A4/A5 实际路由接入后的联合验证（本任务只用 `test-support.ts` 中模拟 A5 的教师路由验证接缝）。
 
 2026-10-12，第 3 节的合成库 schema 追加与第 6 节四项解释与跨属提案已经项目负责人批准，批准范围与逐项落地含义见第 6 节的批准记录。该批准不改变上述任何未执行项，上述分层验收仍全部未执行；批准也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案。
+
+### 8.7 审查修复记录（2026-10-12）
+
+负责人在 head `f600c99` 上做了独立两轴审查加本机实跑复验，结论为 Standards 2 项 P2 + 5 项 P3、Spec 0 项；因作者与审查者同账号，GitHub 不允许落 APPROVE/REQUEST_CHANGES，故状态为 COMMENT，阻塞判断写在其结论节。审查逐项复现了本任务声明的 274/264/1/9、基线 264/254/1/9、C4 专项 10/10、归属边界与红线明示，并另建 `origin/main + #47 + #46` 试合并树核对无跨 PR 破坏；审查也如实更正了它自身首轮把两棵树并发跑测造成的假失败。以下按项记录修法与实际位置。
+
+**P2-1（阻塞，已修，属 C）** `reopenView` 会把重开状态报成另一条许可，或报成「没有许可」。原实现先找可执行许可，找不到就反向找最近一条**已结**许可，于是 G1 `superseded` 加 G2 `valid`（因分配暂停而 `attemptRevision` 落后）会返回 G1，单条失效的 `valid` 会返回 `none`。原注释断言「这样的 `valid` 行经接缝不可达」，**该前提不成立**：C4-V07 自己就用一次普通分配暂停构造出这条行，是本 PR 已固定下来的正常链条而非理论边角，影响落在 M-09/AC-12 的恢复路径上。修法：契约 `AttemptRecovery['reopen']` 抽为 `contracts/workspace/index.ts:53` 的 `ReopenView` 并增加 `actionable` 布尔；`submissions.ts:55` 的 `reopenView` 改为按插入序取最近保存的一条许可，`state` 报它自身的持久状态、`actionable` 单独报此刻能否消费，因此数据库存在 `valid` 行时永不返回 `none`；`submissions.ts:41` 抽出 `currentGrant` 作为投影与 `planResumeRevision` 共用的唯一判定，两者不可能漂移。C4-V03 新增审查指出的两种状态并保留原有三种，且对五种状态逐一走查「视图称 `actionable` ⟺ 命令接受」；C4-V07 在暂停后新增 HTTP 级断言，要求恢复读取报 `state:'valid'`、`actionable:false`、`grantId` 为教师最后发放的那条、`submissionId` 为最新提交。这是接缝变更，已记入第 5 节。
+
+**P2-2（阻塞，已修，属记录不属代码）** README 与本任务稿就基线改动记了一条不实的验证结论：称 `internalLinks` 与改动前一致，实测它在写下那句话的 `e14d2ee` 自身就从 578 变为 585，相对 `origin/main` 是 551 → 585；后一段把该变化归给后续追加段落，也不成立。`baselineMutationRoutes` 全程 27、`errors` 全程为空、`additionalProposedRoutes` 全程为空这半句成立，没有任何检查真的被破坏。已按就地修订约定在 README 与本任务稿第 6 节各追加一段标注日期的修订，原文逐字保留、不倒写为当时已知，并给出本任务在一棵不装依赖的临时工作树上逐提交实测的四行表。
+
+**P3-2（已修）** README `## 文档` 表的 C4 行仍以「第 6 节四项解释与跨属提案待负责人确认」结尾，在同一 PR 内已过期。审查指出「追加不改写既有段落」约束的是阶段状态记录段落，文档表属导航、应保持当前状态；已按此更新该行，阶段状态记录段落未改写。
+
+**P3-3（已修）** `planReopenGrant` 只递增 `attemptRevision`、不递增 `decisionEpoch`，是提交、复核、重开、消费四个尝试迁移里唯一的例外，导致两处 `resyncRequired` 计算都察觉不到新发放的许可，客户端只能靠 `resume_revision` 的 VERSION_CONFLICT 报错得知。已改为同时递增（`submissions.ts:221`）；「没有在途作业可被这次递增置为 stale」的论证写在代码注释与第 5 节，`writeReopenGrant` 的返回形状未变。
+
+**P3-4（已修）** `loadWorkspace` 把 attempt 读了三遍：自己一次，`readSubmissions` 与 `readGrants` 各一次，使每个工作区命令（含 `sync` 热路径）多两次 SELECT 加 JSON 解析与校验。两个读取函数改为接收调用方已读出的归属切片 `SubmissionOwner`（`submissions.ts:149`），三个调用点全部传入已有对象，重复读取消除；跨核对逻辑本身未放宽。
+
+**P3-5（已修，属记录）** 第 4.3 节原文称恢复入口「按角色裁剪」，实现里两种角色经同一 `read` 门拿到完全相同的投影。已在第 4.3 节就地追加勘误：说明为何这不构成新增泄露，按实际实现更正为不做角色裁剪，并写明若需要按角色给出不同投影属新增需求、须另行明确后再实现。
+
+**P3-1（未处理，属负责人裁决）** 审查指出第 7.2.1 节那处基线改动是删词而非纯追加——原文枚举中的「提交」被移出——而本任务稿同段称三处「都是在既有行或既有段内追加文字」，对该处不成立。记录部分已在第 6 节就地更正为「两处纯追加、一处含删词」；**「从该句删去『提交』是否在授权范围内」本任务不自行认定**，留负责人裁决。若认定超出授权，回退范围限于第 7.2.1 节该句，controls 行与 submissions 行两处纯追加不受影响，代码侧也不受任一裁决影响，因为 `revisionCancelPurposes` 的行为从一开始就是不取消在途 `student_run` 并已由 C4-V08 固定。
+
+**顺带修正的一处夹具缺陷** `submissions.test.ts` 的 `grantOf` 原先对 `superseded` 状态也塞 `consumedReceiptId` 与 `consumedAt`，而 DDL 的 `CHECK((state='consumed')=(consumed_receipt_id IS NOT NULL))` 与 `readGrants` 的加载期复核都要求两者同真同假，即该夹具在建模一个持久层会拒绝的状态。P2-1 修复后 `reopenView` 会把 `consumedAt` 透传进视图，这个不一致会变得可见，故改为只有 `consumed` 携带消费事实。
+
+**修复后验证**（win32 x64，Node v24.21.0，同一工作树）：`npm run typecheck` 退出码 0；`npm test`（含 `npm run build`）274 项中 264 通过、1 失败、9 跳过，与修复前及审查复现的数字逐项一致，唯一失败仍是 `review.test.ts:118` 经 `runner/control.ts:48` 的 Linux-only 既有失败；C 属模块 63 项中 60 通过、1 失败、2 跳过；C4 专项 10 项全部通过，测试项数未变、新增的是断言。`node tools/a0-review/check.mjs` 退出码 0、`errors` 为空、38 文档、586 内链、`baselineMutationRoutes` 仍 27、`additionalProposedRoutes` 仍为空数组；`node --test tools/a0-review/check.test.mjs` 16 项全部通过。第 8.6 节的全部未执行项不因本轮审查修复而改变。
