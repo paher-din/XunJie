@@ -1,9 +1,34 @@
-import { clientFileKey, scopeKey, type DraftRecord, type InstanceRecord } from '../lib/draftStore'
+import { clientFileKey, localFileIdOf, scopeKey, type DraftRecord, type InstanceRecord } from '../lib/draftStore'
+import type { ApiErrorCode } from './contracts'
 import { sameWorkspace } from './confirmation'
 import { openWorkspaceDb } from './draftDb'
-import type { CommandContext, FrozenCommand, OutboxRecord } from './frozenCommand'
+import { isTerminalRejection, type CommandContext, type FrozenCommand, type OutboxRecord } from './frozenCommand'
 import type { ConfirmedWorkspace, Receipt, SnapshotView } from './workspaceContracts'
 import { PREP_BUILD } from './mode'
+
+/** 另一标签持有未过期发送租约：不是原请求失败，也不产生新命令。 */
+export class LeaseHeldError extends Error {
+  constructor() {
+    super('另一标签正在核对原请求，请稍后重试')
+    this.name = 'LeaseHeldError'
+  }
+}
+
+/** 同一原命令已由本机或另一标签确认（发生在核对与领取租约之间）：只能重读，不能重发。 */
+export class CommandConfirmedError extends Error {
+  constructor() {
+    super('原命令已确认，不得重发；改为重读当前权威作品')
+    this.name = 'CommandConfirmedError'
+  }
+}
+
+/** 同一原命令已被服务明确拒绝：不能靠重放消除，只能保留事实。 */
+export class CommandRejectedError extends Error {
+  constructor(readonly code: ApiErrorCode) {
+    super(`原请求已被服务拒绝（${code}），停止重放并保留事实`)
+    this.name = 'CommandRejectedError'
+  }
+}
 
 export type AckStage = 'mapping' | 'head' | 'drafts' | 'outbox'
 let abortStage: AckStage | null = null
@@ -23,6 +48,27 @@ interface HeadRecord { key: string; context: CommandContext; workspace: Confirme
 // 代际是不可排序的 opaque 值；记录已被权威重读替代的代际，防止旧标签 GET 再安装它。
 const generationKey = (c: CommandContext) => JSON.stringify([c.trustedRecoveryGeneration, c.preparationEpoch, c.scenarioId ?? null])
 interface RefRecord { key: string; context: CommandContext; attemptId: string; retiredGenerations?: string[] }
+/**
+ * 确认文件由哪个本机实例承载：先按已落库的 fileId 映射；丢 ACK 后刷新时映射还没写，
+ * 就用同一路径、尚未被占用的活动实例继续承载这份正文（只影响可打开性，**不建立映射**）。
+ *
+ * 这里与 `acknowledge()` 写入 `instances` 的规则是同一份契约，因此放在同一文件里维护。
+ */
+export function localInstanceOf(
+  file: { fileId: string; path: string; lifecycle: 'active' | 'recycled' },
+  instances: InstanceRecord[],
+  claimed: Set<string>,
+): InstanceRecord | undefined {
+  const mapped = instances.find(i => i.fileId === file.fileId && i.path === file.path)
+  if (mapped) return mapped
+  if (file.lifecycle !== 'active') return undefined
+  // 同路径可能同时存在多个未映射实例（回收后同名重建）：只有唯一候选才敢关联，
+  // 否则宁可让这份确认正文按服务端 fileId 打开，也不能把草稿挂到别人的实例上。
+  const candidates = instances.filter(i => i.lifecycle === 'active' && i.path === file.path &&
+    i.fileId === localFileIdOf(i.clientFileKey) && !claimed.has(localFileIdOf(i.clientFileKey)))
+  return candidates.length === 1 ? candidates[0] : undefined
+}
+
 export interface LocalConfirmationState {
   workspace: ConfirmedWorkspace | null; instances: InstanceRecord[]; drafts: DraftRecord[]; commands: OutboxRecord[]
   candidates: Array<{ id?: number; clientFileKey: string; text: string; reason: string; createdAt: number }>
@@ -127,12 +173,17 @@ export const confirmationRepository = {
         if (!valid()) throw new Error('工作区上下文已失效')
         const row = value as OutboxRecord | undefined
         if (!row) throw new Error('原命令没有落盘，禁止发送')
-        if (row.lease && row.lease.owner !== owner && row.lease.until > now) throw new Error('另一标签正在核对原请求，请稍后重试')
+        // 已确认的原命令只能重读当前 head；终态拒绝不能靠重放消除；可重试拒绝在本次重试时清掉旧事实。
+        if (row.receipt) throw new CommandConfirmedError()
+        if (row.rejected && isTerminalRejection(row.rejected.code)) throw new CommandRejectedError(row.rejected.code)
+        if (row.lease && row.lease.owner !== owner && row.lease.until > now) throw new LeaseHeldError()
         reads(tx, [['metadata', headKey(row.context)], ['metadata', referenceKey(row.context)]], safe, ([head, ref]) => {
           if (!valid()) throw new Error('工作区上下文已失效')
           if (head && !sameGeneration((head as HeadRecord).context, row.context)) throw new Error('另一标签已切换受信代际，需要重新读取')
           if (ref && !sameAuthority((ref as RefRecord).context, row.context)) throw new Error('另一标签已切换受信代际，需要重新读取')
-          const leased = { ...row, lease: { owner, until: now + 30_000 } }
+          const leased: OutboxRecord = { ...row, lease: { owner, until: now + 30_000 } }
+          // 明确重试可重试的拒绝：旧事实不删除（仍在原命令历史里），但不阻挡这次发送。
+          if (leased.rejected && !isTerminalRejection(leased.rejected.code)) delete leased.rejected
           tx.objectStore('outbox').put(leased); result(leased)
         })
       }))
@@ -142,6 +193,26 @@ export const confirmationRepository = {
       reads(tx, [['outbox', key]], safe, ([value]) => {
         const row = value as OutboxRecord | undefined
         if (row?.lease?.owner === owner) { delete row.lease; tx.objectStore('outbox').put(row) }
+        result(undefined)
+      }))
+  },
+  /**
+   * 记录服务对**这条**原命令的明确拒绝（RECOVERY_REQUIRED / VERSION_CONFLICT / 其它错误码）。
+   *
+   * 与回执互斥：已经拿到回执的原命令只保留回执事实，不被拒绝记录覆盖。断线、超时这类
+   * 拿不到信封的失败不写这里，避免把「未知」写成「拒绝」。
+   *
+   * `owner` 是写入方的发送租约：只有仍持有该租约的调用者（或记录当前无租约）才能落笔，
+   * 避免过期持有者把结论盖到另一标签已经推进的事实上；不满足条件时静默跳过是预期行为，
+   * 因为它只影响是否多写一条事实，不影响已经得出的结论。
+   */
+  async noteRejection(key: string, code: ApiErrorCode, owner?: string): Promise<void> {
+    await transaction<void>(await openWorkspaceDb(), ['outbox'], 'readwrite', (tx, result, safe) =>
+      reads(tx, [['outbox', key]], safe, ([value]) => {
+        const row = value as OutboxRecord | undefined
+        if (row && !row.receipt && (!owner || !row.lease || row.lease.owner === owner)) {
+          tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() } })
+        }
         result(undefined)
       }))
   },
@@ -217,7 +288,8 @@ export const confirmationRepository = {
             rows.push(['metadata', { key: headKey(c), context: c, workspace, retiredGenerations: oldHead?.retiredGenerations } satisfies HeadRecord])
             for (const file of workspace.files) {
               const localId = Object.keys(mappings).find(id => mappings[id] === file.fileId) ??
-                instances.find(f => f.fileId === file.fileId && f.clientFileKey.startsWith(`${scopeKey(draftScope(c))}\0`))?.clientFileKey.split('\0').at(-1) ?? file.fileId
+                localFileIdOf(instances.find(f => f.fileId === file.fileId &&
+                  f.clientFileKey.startsWith(`${scopeKey(draftScope(c))}\0`))?.clientFileKey ?? file.fileId)
               rows.push(['confirmed', { clientFileKey: clientFileKey(draftScope(c), localId), context: c, ...file }])
             }
           }

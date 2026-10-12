@@ -59,6 +59,8 @@ interface RawResponse {
   headers: Headers
   text: string
   json: unknown
+  /** 请求没拿到任何 HTTP 信封（断线 / 丢 ACK）时置 true，此时 status 为 0。 */
+  dropped?: boolean
 }
 
 function portOf(): number {
@@ -68,17 +70,24 @@ function portOf(): number {
 async function call(
   method: 'GET' | 'POST',
   path: string,
-  init?: { cookie?: string; csrf?: string; body?: string },
+  init?: { cookie?: string; csrf?: string; body?: string; key?: string; scenario?: string },
 ): Promise<RawResponse> {
-  const headers: Record<string, string> = { Accept: 'application/json', 'x-i0prep-scenario': scenario }
+  const headers: Record<string, string> = { Accept: 'application/json', 'x-i0prep-scenario': init?.scenario ?? scenario }
   if (method === 'POST') headers['Content-Type'] = 'application/json'
   if (init?.cookie) headers.Cookie = init.cookie
   if (init?.csrf) headers['x-csrf-token'] = init.csrf
-  const res = await fetch(base + path, {
-    method,
-    headers,
-    body: method === 'POST' ? (init?.body ?? '{}') : undefined,
-  })
+  if (init?.key) headers['Idempotency-Key'] = init.key
+  let res: Response
+  try {
+    res = await fetch(base + path, {
+      method,
+      headers,
+      body: method === 'POST' ? (init?.body ?? '{}') : undefined,
+    })
+  } catch {
+    // 服务已提交但连接被断开：客户端拿不到任何信封，这本身就是要断言的事实。
+    return { status: 0, headers: new Headers(), text: '', json: null, dropped: true }
+  }
   const text = await res.text()
   let json: unknown = null
   try {
@@ -353,5 +362,127 @@ describe('准备 fixture 契约核对', () => {
     const newLogs = logs.slice(before).join('\n')
     expect(newLogs).toContain('未捕获错误')
     expect(newLogs).toContain('URIError')
+  })
+})
+
+describe('准备 fixture 的丢 ACK 故障（I0_UI_04）', () => {
+  const newKey = () => crypto.randomUUID()
+
+  function syncBody(expectedWorkspaceRevision: number, text: string) {
+    return JSON.stringify({
+      recoveryGeneration: syntheticRecoveryGeneration,
+      expectedWorkspaceRevision,
+      clientId: crypto.randomUUID(),
+      clientSeq: 1,
+      operations: [{ kind: 'create', clientFileKey: 'local-1', path: 'main.c', text }],
+    })
+  }
+
+  it('丢 ACK 的写命令已提交，客户端只看到没有信封', async () => {
+    const { cookie, csrf } = await signIn()
+
+    // 故障入口本身受 CSRF 与取值约束
+    const noCsrf = await call('POST', `${PREP_ROOT}/fault`, { cookie, body: JSON.stringify({ kind: 'drop-ack' }) })
+    expect(noCsrf.status).toBe(403)
+    const badKind = await call('POST', `${PREP_ROOT}/fault`, { cookie, csrf, body: JSON.stringify({ kind: 'nope' }) })
+    expect(badKind.status).toBe(400)
+    expect(errorOf(badKind).code).toBe('INVALID_REQUEST')
+
+    const set = await call('POST', `${PREP_ROOT}/fault`, { cookie, csrf, body: JSON.stringify({ kind: 'drop-ack' }) })
+    expect(set.status).toBe(200)
+    expect(envelopeOf(set).data).toEqual({ scenarioId: scenario, fault: 'drop-ack' })
+
+    // 创建 Attempt：命令提交成功，但响应被丢弃
+    const created = await call('POST', `${PREP_ROOT}/api/assignments/${REFS.assignmentId}/attempts`, {
+      cookie, csrf, key: newKey(), body: JSON.stringify({ recoveryGeneration: syntheticRecoveryGeneration }),
+    })
+    expect(created.dropped).toBe(true)
+
+    // 服务端确实提交了：bootstrap 与 GET 都能读到同一 Attempt（客户端侧是「结果未知」，不是失败）
+    const context = await call('GET', `${PREP_ROOT}/context`, { cookie })
+    const attemptId = (envelopeOf(context).data as PrepContextView).refs.attemptId
+    expect(typeof attemptId).toBe('string')
+    const head = await call('GET', `${PREP_ROOT}/api/attempts/${attemptId}`, { cookie })
+    expect(head.status).toBe(200)
+
+    // sync 同样「已提交、无响应」：GET 读得到正文，客户端没有任何信封可用
+    const droppedKey = newKey()
+    const droppedBody = syncBody(0, 'int main(void) { return 0; }\n')
+    const droppedSync = await call('POST', `${PREP_ROOT}/api/attempts/${attemptId}/sync`, {
+      cookie, csrf, key: droppedKey, body: droppedBody,
+    })
+    expect(droppedSync.dropped).toBe(true)
+    const after = await call('GET', `${PREP_ROOT}/api/attempts/${attemptId}`, { cookie })
+    const afterHead = envelopeOf(after).data as { files: Array<{ path: string; text: string }>; attempt: { workspaceRevision: number } }
+    expect(afterHead.files).toHaveLength(1)
+    expect(afterHead.files[0]!.text).toBe('int main(void) { return 0; }\n')
+    expect(afterHead.attempt.workspaceRevision).toBe(1)
+
+    // 清掉故障后重放**同一条原命令**（同键、同正文）：拿到原回执且不产生第二次创建；
+    // 再放一次仍然幂等，这是客户端「只核或重放原保存命令」所依赖的服务端事实。
+    await call('POST', `${PREP_ROOT}/fault`, { cookie, csrf, body: JSON.stringify({ kind: 'none' }) })
+    const replay = await call('POST', `${PREP_ROOT}/api/attempts/${attemptId}/sync`, { cookie, csrf, key: droppedKey, body: droppedBody })
+    expect(replay.status).toBe(200)
+    expect((envelopeOf(replay).data as { replayed?: boolean }).replayed).toBe(true)
+    const replayAgain = await call('POST', `${PREP_ROOT}/api/attempts/${attemptId}/sync`, { cookie, csrf, key: droppedKey, body: droppedBody })
+    expect(replayAgain.status).toBe(200)
+    expect((envelopeOf(replayAgain).data as { replayed?: boolean }).replayed).toBe(true)
+    // 改正文复用同一业务键被服务拒绝：不允许悄悄替换输入再重发
+    const rekeyed = await call('POST', `${PREP_ROOT}/api/attempts/${attemptId}/sync`, {
+      cookie, csrf, key: droppedKey, body: syncBody(0, 'int other(void) { return 0; }\n'),
+    })
+    expect(rekeyed.status).toBe(409)
+    expect(errorOf(rekeyed).code).toBe('IDEMPOTENCY_CONFLICT')
+    const final = await call('GET', `${PREP_ROOT}/api/attempts/${attemptId}`, { cookie })
+    const finalHead = envelopeOf(final).data as { files: Array<{ text: string }> }
+    expect(finalHead.files).toHaveLength(1)
+    expect(finalHead.files[0]!.text).toBe('int main(void) { return 0; }\n')
+  })
+
+  it('fail-write 故障不提交任何命令，并返回服务端真实存在的暂时不可用错误', async () => {
+    const { cookie, csrf } = await signIn()
+    const set = await call('POST', `${PREP_ROOT}/fault`, { cookie, csrf, body: JSON.stringify({ kind: 'fail-write' }) })
+    expect(set.status).toBe(200)
+
+    const failed = await call('POST', `${PREP_ROOT}/api/assignments/${REFS.assignmentId}/attempts`, {
+      cookie, csrf, key: newKey(), body: JSON.stringify({ recoveryGeneration: syntheticRecoveryGeneration }),
+    })
+    expect(failed.status).toBe(503)
+    expect(errorOf(failed).code).toBe('PERSISTENCE_UNAVAILABLE')
+    expect(errorOf(failed).retryable).toBe(false)
+    expect(errorOf(failed).recovery).toContain('original request')
+
+    // 命令没有提交：清掉故障后 bootstrap 里仍没有 Attempt
+    await call('POST', `${PREP_ROOT}/fault`, { cookie, csrf, body: JSON.stringify({ kind: 'none' }) })
+    const context = await call('GET', `${PREP_ROOT}/context`, { cookie })
+    expect((envelopeOf(context).data as PrepContextView).refs.attemptId).toBeUndefined()
+  })
+
+  it('故障按合成场景隔离，不波及其它场景，也不把拒绝伪装成丢 ACK', async () => {
+    const { cookie, csrf } = await signIn()
+    const other = `other-${crypto.randomUUID()}`
+    const set = await call('POST', `${PREP_ROOT}/fault`, { cookie, csrf, body: JSON.stringify({ kind: 'drop-ack' }) })
+    expect(set.status).toBe(200)
+
+    const otherLogin = await call('POST', `${PREP_ROOT}/api/sessions`, {
+      scenario: other,
+      body: JSON.stringify({ loginName: SYNTHETIC_ACCOUNT.loginName, password: SYNTHETIC_ACCOUNT.password }),
+    })
+    const otherCookie = sessionCookieOf(otherLogin)
+    const otherCsrf = (envelopeOf(otherLogin).data as SessionCreatedView).csrfToken
+    const created = await call('POST', `${PREP_ROOT}/api/assignments/${REFS.assignmentId}/attempts`, {
+      scenario: other, cookie: otherCookie, csrf: otherCsrf, key: newKey(),
+      body: JSON.stringify({ recoveryGeneration: syntheticRecoveryGeneration }),
+    })
+    expect(created.status).toBe(200)
+
+    const dropped = await call('POST', `${PREP_ROOT}/api/assignments/${REFS.assignmentId}/attempts`, {
+      cookie, csrf, key: newKey(), body: JSON.stringify({ recoveryGeneration: syntheticRecoveryGeneration }),
+    })
+    expect(dropped.dropped).toBe(true)
+    // 错误响应照常下发：缺 CSRF 的写命令仍然是 403
+    const forbidden = await call('POST', `${PREP_ROOT}/api/attempts/whatever/sync`, { cookie, key: newKey(), body: '{}' })
+    expect(forbidden.status).toBe(403)
+    expect(errorOf(forbidden).code).toBe('FORBIDDEN')
   })
 })

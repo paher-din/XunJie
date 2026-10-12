@@ -49,6 +49,7 @@ import {
 } from './scenario'
 import { createPrepAttempt, readPrepAttempt, syncPrepWorkspace, freezePrepSnapshot, readPrepSnapshot, recoverPrepWorkspace,
   PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
+import { isPrepFault, prepFaultOf, setPrepFault } from './faults'
 
 /** 与 `apps/teaching/contracts/common/http.ts:3-19` 的 errorDefinitions 对应条目逐字一致。 */
 const ERROR_DEFINITIONS = {
@@ -325,6 +326,17 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
     return ok(res, contextPayload(req))
   }
 
+  if (path === `${PREP_ROOT}/fault` && method === 'POST') {
+    const session = requireSession(req, res)
+    if (!session) return
+    if (csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
+    let body: unknown
+    try { body = await readBody(req) } catch { return fail(res, 'INVALID_REQUEST') }
+    const kind = (body as { kind?: unknown }).kind
+    if (!isPrepFault(kind)) return fail(res, 'INVALID_REQUEST')
+    return ok(res, { scenarioId: scenarioOf(req), fault: setPrepFault(scenarioOf(req), kind) })
+  }
+
   if (path === `${PREP_ROOT}/recover` && method === 'POST') {
     const session = requireSession(req, res)
     if (!session) return
@@ -363,11 +375,21 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
     if (method === 'POST') {
       try { body = await readBody(req) } catch { return fail(res, 'INVALID_REQUEST') }
     }
+    // 写命令故障（仅 prep 开发/测试进程）：
+    // - fail-write：命令不提交，返回服务端真实存在的一类暂时不可用，用于核对「可重试的拒绝」；
+    // - drop-ack：命令照常提交，但不下发响应并断开连接，用于核对「服务已提交、ACK 丢失」。
+    // 错误响应走 fail()，因此服务拒绝不会被伪装成「结果未知」。
+    if (method === 'POST' && prepFaultOf(scenario) === 'fail-write') return fail(res, 'PERSISTENCE_UNAVAILABLE')
+    const dropAck = method === 'POST' && prepFaultOf(scenario) === 'drop-ack'
+    const respond = (data: unknown): void => {
+      if (dropAck) { req.socket.destroy(); return }
+      ok(res, data)
+    }
     try {
       if (snapshotRead) return ok(res, readPrepSnapshot(scenario, session, decodeURIComponent(snapshotRead[1]!), decodeURIComponent(snapshotRead[2]!)))
-      if (snapshotCreate) return ok(res, freezePrepSnapshot(scenario, session, decodeURIComponent(snapshotCreate[1]!), body, req.headers['idempotency-key']))
-      if (sync) return ok(res, syncPrepWorkspace(scenario, session, decodeURIComponent(sync[1]!), body, req.headers['idempotency-key']))
-      if (attemptCreate) return ok(res, createPrepAttempt(scenario, session, decodeURIComponent(attemptCreate[1]!), body, req.headers['idempotency-key']))
+      if (snapshotCreate) return respond(freezePrepSnapshot(scenario, session, decodeURIComponent(snapshotCreate[1]!), body, req.headers['idempotency-key']))
+      if (sync) return respond(syncPrepWorkspace(scenario, session, decodeURIComponent(sync[1]!), body, req.headers['idempotency-key']))
+      if (attemptCreate) return respond(createPrepAttempt(scenario, session, decodeURIComponent(attemptCreate[1]!), body, req.headers['idempotency-key']))
       return ok(res, readPrepAttempt(scenario, session, decodeURIComponent(attemptRead![1]!)))
     } catch (error) {
       if (error instanceof PrepWorkspaceError) return fail(res, error.code)

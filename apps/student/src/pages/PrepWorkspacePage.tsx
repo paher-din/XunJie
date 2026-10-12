@@ -8,6 +8,7 @@ import { ConfirmationCluster } from '../components/workspace/ConfirmationCluster
 import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
 import { useProjectWorkspace } from '../components/workspace/useProjectWorkspace'
 import { useConfirmationWorkspace } from '../workspace/useConfirmationWorkspace'
+import { canReplay } from '../workspace/recovery'
 import { idbDraftRepository } from '../workspace/draftDb'
 import { scopeKey, type DraftScope } from '../lib/draftStore'
 import { workspaceMode } from '../workspace/mode'
@@ -108,9 +109,12 @@ export default function PrepWorkspacePage() {
             canSave={project.loaded && project.unconfirmedCount > 0 && project.access.kind !== 'read-only' &&
               !(project.access.kind === 'paused' && project.files.some(f => f.confirmed === null))}
             canSnapshot={!!confirmation.state.attempt && project.access.kind !== 'read-only'}
+            // 恢复结论态（拒绝/版本冲突/换代）的说明由 state.error 呈现，这里不重复同一句话。
             blockedReason={!c?.trustedRecoveryGeneration ? '缺少受信代际，禁止写入（H-03）' :
               project.access.kind === 'paused' && project.files.some(f => f.confirmed === null) ? '暂停期间只可确认已有文件正文' : null}
             error={confirmation.state.error}
+            originalRequest={confirmation.state.original}
+            canRetry={canReplay(confirmation.state.outcome)}
             onOpen={() => { void confirmation.client?.openAttempt() }}
             onSave={() => {
               const current = confirmation.client

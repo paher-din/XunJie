@@ -26,6 +26,11 @@ export function clientFileKey(scope: DraftScope, fileId: string): string {
   return `${scopeKey(scope)}\u0000${fileId}`
 }
 
+/** 从落库键取回本机文件实例 ID（`clientFileKey` 的最后一段）。 */
+export function localFileIdOf(clientFileKey: string): string {
+  return clientFileKey.split('\u0000').at(-1)!
+}
+
 export interface DraftRecord {
   clientFileKey: string
   fileId: string

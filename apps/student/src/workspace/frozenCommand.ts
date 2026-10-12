@@ -1,5 +1,6 @@
 import { createLimitProblem, pathProblem } from '../lib/projectFiles'
 import { record, requiredId, revision, textHash, verifySnapshot } from './confirmation'
+import type { ApiErrorCode } from './contracts'
 import type { WorkspaceContext } from './context'
 import type { ConfirmedWorkspace, Receipt, SyncInput, SyncResult, SnapshotResult, AttemptResult, SnapshotView, WorkspaceFile } from './workspaceContracts'
 
@@ -15,6 +16,24 @@ export interface FrozenCommand {
 export interface OutboxRecord extends FrozenCommand {
   state: 'pending' | 'confirmed' | 'historical'
   receipt?: Receipt; lease?: { owner: string; until: number }
+  /**
+   * 服务对**这条**原命令的明确拒绝（04 新增的同一 outbox 字段，不新建 store）：
+   * 有它就不再重放，刷新后仍是同一事实；未送达/丢 ACK 不写这个字段，保持「未知」。
+   */
+  rejected?: { code: ApiErrorCode; at: number }
+}
+
+/**
+ * 服务拒绝里属于「重放不能解决」的码：只有这些停止发送原命令。
+ *
+ * 版本冲突要改基础版本、代际变化要先重读受信上下文、业务键冲突不能改输入重发同一键——三者都不可能
+ * 靠重放同一份 wireJson 解决。其余拒绝（限流、持久化/依赖不可用、未认证等）只是「这次没被接受」：
+ * 服务端自己的 recovery 提示就是「先核对原请求再显式重试」，客户端不能把它变成永久封禁。
+ */
+const TERMINAL_REJECTIONS: ReadonlySet<ApiErrorCode> = new Set(['IDEMPOTENCY_CONFLICT'])
+
+export function isTerminalRejection(code: ApiErrorCode): boolean {
+  return TERMINAL_REJECTIONS.has(code) || code === 'VERSION_CONFLICT' || code === 'RECOVERY_REQUIRED'
 }
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`

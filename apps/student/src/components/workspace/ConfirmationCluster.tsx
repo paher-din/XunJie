@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 export type ConfirmationPhase =
   | 'idle'
   | 'loading'
@@ -7,11 +9,33 @@ export type ConfirmationPhase =
   | 'unknown'
   | 'error'
   | 'readonly'
+  /** 服务明确拒绝原命令：正文保留，停止自动重做。 */
+  | 'rejected'
+  /** 服务端确认版本已变化：明确比较与选择由后续比较能力提供。 */
+  | 'conflict'
+  /** 受信代际已变化：停止旧重试，先重读受信上下文。 */
+  | 'recovery-required'
 
 export interface ConfirmationSnapshot {
   snapshotId: string
   hash: string
   workspaceRevision: number
+}
+
+/** 冻结原请求的可核对事实；由调用方从原命令记录生成，不含当前草稿与任何凭据。 */
+export interface OriginalRequestSummary {
+  commandKey: string
+  kind: string
+  target: string
+  recoveryGeneration: string
+  createdAt: number
+  /** sync / 快照命令冻结的预期确认版本。 */
+  expectedWorkspaceRevision?: number
+  /** sync 的公开幂等输入；其它命令没有。 */
+  clientId?: string
+  clientSeq?: number
+  /** 冻结正文的摘要：与编辑器正文比对的是这份值，不是当前草稿。 */
+  files: Array<{ label: string; bytes: number; hash: string }>
 }
 
 export interface ConfirmationClusterProps {
@@ -33,6 +57,10 @@ export interface ConfirmationClusterProps {
   /** 核对或重放原命令，不能换键创建替代请求。 */
   onRetry: () => void
   onReload: () => void
+  /** 冻结原请求事实；有它才提供「原请求详情」供核对。 */
+  originalRequest?: OriginalRequestSummary | null
+  /** 原命令是否仍可原样重放；false 时只显示停止原因与下一步，不提供重放按钮。 */
+  canRetry?: boolean
 }
 
 const phaseLabels: Record<ConfirmationPhase, string> = {
@@ -44,8 +72,26 @@ const phaseLabels: Record<ConfirmationPhase, string> = {
   unknown: '原请求结果未知',
   error: '操作未完成',
   readonly: '作品只读',
+  rejected: '原请求已被服务拒绝',
+  conflict: '确认版本冲突',
+  'recovery-required': '受信代际已变化',
 }
+
 const compactControl = { padding: '0 10px', fontSize: 12 }
+const relativeBox = { position: 'relative' as const }
+const popcard = {
+  position: 'absolute' as const,
+  top: '100%',
+  right: 0,
+  maxWidth: '80vw',
+  margin: '8px 0 0',
+  padding: 16,
+  boxSizing: 'border-box' as const,
+  fontSize: 13,
+  color: 'var(--ink-soft)',
+  overflowWrap: 'anywhere' as const,
+}
+const shortHash = (hash: string) => (hash.length > 16 ? `${hash.slice(0, 16)}…` : hash)
 
 /** 直接放入已有顶栏运行簇；所有业务事实、权限和请求均由调用方提供。 */
 export function ConfirmationCluster({
@@ -64,12 +110,18 @@ export function ConfirmationCluster({
   onSnapshot,
   onRetry,
   onReload,
+  originalRequest,
+  canRetry,
 }: ConfirmationClusterProps) {
+  const [showOriginal, setShowOriginal] = useState(false)
   const busy = phase === 'loading' || phase === 'saving'
   const needsReconciliation = hasPending ?? (phase === 'unknown' || phase === 'local-failed')
   const hasConfirmedHead = hasAttempt && workspaceRevision !== null
   const canWrite = phase === 'ready' && hasConfirmedHead
   const confirmed = canWrite && unconfirmedCount === 0
+  // 未决原命令只有在仍可原样重放时才给按钮；拒绝/冲突/换代只显示停止原因，不诱导重发。
+  const replayable = canRetry ?? true
+  const reloadLabel = phase === 'recovery-required' ? '重读受信上下文' : '重新读取'
 
   return (
     <>
@@ -127,34 +179,20 @@ export function ConfirmationCluster({
         >
           冻结确认作品
         </button>
-        {needsReconciliation && (
+        {needsReconciliation && replayable && (
           <button type="button" className="ws-btn solid" style={compactControl} onClick={onRetry}>
             核对原请求并重试
           </button>
         )}
         <button type="button" className="ws-btn ghost" style={compactControl} disabled={phase === 'loading'} onClick={onReload}>
-          重新读取
+          {reloadLabel}
         </button>
       </span>
 
       {snapshot && (
-        <details style={{ position: 'relative' }}>
+        <details style={relativeBox}>
           <summary className="ws-btn ghost" style={compactControl}>快照详情 v{snapshot.workspaceRevision}</summary>
-          <dl
-            className="ws-popcard"
-            style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              maxWidth: '80vw',
-              margin: '8px 0 0',
-              padding: 16,
-              boxSizing: 'border-box',
-              fontSize: 13,
-              color: 'var(--ink-soft)',
-              overflowWrap: 'anywhere',
-            }}
-          >
+          <dl className="ws-popcard" style={popcard}>
             <dt>快照 ID</dt>
             <dd style={{ margin: '0 0 12px' }}><code>{snapshot.snapshotId}</code></dd>
             <dt>内容 hash</dt>
@@ -165,13 +203,60 @@ export function ConfirmationCluster({
         </details>
       )}
 
-      {(blockedReason || error) && (
-        <span style={{ position: 'relative' }}><span className="ws-popcard" role={error ? 'alert' : undefined}
+      {(blockedReason || error || originalRequest) && (
+        <span style={relativeBox}><span className="ws-popcard"
           style={{ position: 'absolute', top: 20, right: 0, width: 360, maxWidth: '80vw', padding: 12,
             whiteSpace: 'normal', overflowWrap: 'anywhere', fontSize: 13, color: 'var(--ink-soft)' }}>
-          {blockedReason}
-          {blockedReason && error && ' · '}
-          {error}
+          {(blockedReason || error) && <span role={error ? 'alert' : undefined}>
+            {blockedReason}
+            {blockedReason && error && ' · '}
+            {error}
+          </span>}
+          {originalRequest && (
+            <span style={{ display: 'block', marginTop: error || blockedReason ? 8 : 0 }}>
+              <button
+                type="button"
+                className="textbtn"
+                style={compactControl}
+                aria-expanded={showOriginal}
+                onClick={() => setShowOriginal(open => !open)}
+              >
+                {showOriginal ? '收起原请求详情' : '原请求详情'}
+              </button>
+              {showOriginal && (
+                <dl className="ws-request-detail" style={{ margin: '8px 0 0' }}>
+                  <dt>原命令</dt>
+                  <dd style={{ margin: '0 0 8px' }}><code>{originalRequest.kind}</code> · <code>{originalRequest.commandKey}</code></dd>
+                  <dt>目标</dt>
+                  <dd style={{ margin: '0 0 8px' }}><code>{originalRequest.target}</code></dd>
+                  <dt>受信代际</dt>
+                  <dd style={{ margin: '0 0 8px' }}><code>{originalRequest.recoveryGeneration || '(缺)'}</code></dd>
+                  {originalRequest.clientId && (
+                    <>
+                      <dt>clientId / clientSeq</dt>
+                      <dd style={{ margin: '0 0 8px' }}><code>{originalRequest.clientId}</code> · #{originalRequest.clientSeq ?? '(缺)'}</dd>
+                    </>
+                  )}
+                  {originalRequest.expectedWorkspaceRevision !== undefined && (
+                    <>
+                      <dt>冻结时的预期确认版本</dt>
+                      <dd style={{ margin: '0 0 8px' }}>v{originalRequest.expectedWorkspaceRevision}</dd>
+                    </>
+                  )}
+                  <dt>冻结正文（与当前草稿分开）</dt>
+                  <dd style={{ margin: 0 }}>
+                    {originalRequest.files.length === 0
+                      ? '此命令没有文件正文'
+                      : originalRequest.files.map(file => (
+                        <div key={file.label} style={{ margin: '4px 0' }}>
+                          <code>{file.label}</code> · {file.bytes} B · <code>{shortHash(file.hash)}</code>
+                        </div>
+                      ))}
+                  </dd>
+                </dl>
+              )}
+            </span>
+          )}
         </span></span>
       )}
     </>

@@ -540,7 +540,8 @@ test('首次创建 ACK 未绑定 Attempt 时也不能覆盖另一标签已接纳
   release()
   await expect.poll(async () => (await localState(other)).commands.find((c: { kind: string }) => c.kind === 'attempt.create').state).toBe('historical')
   expect((await localState(other)).workspace.workspaceRevision).toBe(0)
-  await other.getByRole('button', { name: '重新读取', exact: true }).click()
+  // 旧代际原命令属 04 的恢复结论态，重读按钮在该态下显示为「重读受信上下文」；动作与断言不变。
+  await other.getByRole('button', { name: /^(重新读取|重读受信上下文)$/ }).click()
   await expect(other.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(other.locator('.ws-head-run [role=alert]')).toHaveCount(0)
 })
@@ -576,7 +577,8 @@ test('创建事务已提交但 UI 还在 await 时切换 g2，旧后续读取不
   await page.evaluate(() => (window as unknown as { releaseAck: () => void }).releaseAck())
   await expect(page.locator('.ws-head-run [role=alert]')).toBeVisible()
   expect((await localState(other)).workspace.workspaceRevision).toBe(0)
-  await other.getByRole('button', { name: '重新读取', exact: true }).click()
+  // 旧代际原命令属 04 的恢复结论态，重读按钮在该态下显示为「重读受信上下文」；动作与断言不变。
+  await other.getByRole('button', { name: /^(重新读取|重读受信上下文)$/ }).click()
   await expect(other.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(other.locator('.ws-head-run [role=alert]')).toHaveCount(0)
 })

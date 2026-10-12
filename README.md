@@ -40,6 +40,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B1 合成 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、注入式 DeepSeek 适配边界及实际验证记录 |
 | [学生前端导入与 C 场景入口](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md) | 设计仓库固定提交导入 `apps/student/`、准备模式 fixture、窄读取客户端与最小浏览器检查；I0 学生纵向切片的第一张任务 |
 | [学生确认保存与不可变快照](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) | 学生主动创建 Attempt、原命令持久化与重放、原子确认和快照回取；准备范围验证及真实服务交接限制 |
+| [断线与原保存请求恢复](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md) | 断线继续编辑、刷新保留草稿、重连只核或重放原保存命令；未知/拒绝/版本冲突/旧代际的分流与准备范围验证 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；七张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
@@ -107,9 +108,11 @@ npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实
 
 `dev:prep` 与 `test:e2e` 用固定端口加 `--strictPort`；端口被占时命令直接失败，不自动漂移。首次跑 e2e 需 `npx playwright install chromium`。已有开发服务需要保留时，可明确设置测试端口，例如 `XUNJIE_E2E_PREP_PORT=5603 XUNJIE_E2E_REAL_PORT=5604 CI=1 npm run test:e2e`；这只覆盖测试 harness，仍严格使用指定端口。
 
-导航：准备模式下首页出现「I0 准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区。载入仅初始化合成 Session、固定活动版本及按 visibility 裁剪的材料；学生点击「开始 Attempt」后可以多文件编辑、主动「确认保存」和「冻结确认作品」，快照详情显示核验后的 ID/hash/确认版本。刷新读取同一开发进程保存的作品和快照；本机新编辑独立保留。结果未明或本机确认失败时先「核对原请求并重试」。fixture 重启或恢复代际变化时保留草稿并要求重新比较，不把旧缓存当当前作品。运行仍属后续 06。原数字逻辑演示 `/#/task/counter` 保留演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
+导航：准备模式下首页出现「I0 准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区。载入仅初始化合成 Session、固定活动版本及按 visibility 裁剪的材料；学生点击「开始 Attempt」后可以多文件编辑、主动「确认保存」和「冻结确认作品」，快照详情显示核验后的 ID/hash/确认版本。刷新读取同一开发进程保存的作品和快照；本机新编辑独立保留。结果未明或本机确认失败时先「核对原请求并重试」，「原请求详情」显示冻结命令的键、序号、代际、预期版本与正文摘要，用于核对而不重发；服务拒绝（含 VERSION_CONFLICT）或受信代际已变化时停止重放旧请求，只保留草稿与事实，并提示重读受信上下文/明确比较。fixture 重启或恢复代际变化时保留草稿并要求重新比较，不把旧缓存当当前作品。运行仍属后续 06。原数字逻辑演示 `/#/task/counter` 保留演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
 
-本目录已交付 01 导入/初始化、02 编辑/草稿，以及 03 确认/快照的准备范围，使用同一客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
+断线恢复可以手动复现：`dev:prep` 进程提供开发专用 `POST /__i0prep/fault`（body `{"kind":"drop-ack"}` 或 `{"kind":"fail-write"}`，需开发会话的 `x-csrf-token` 与 `x-i0prep-scenario` 头；`{"kind":"none"}` 清除）。`drop-ack` 让写命令照常提交到进程内 authority 但不下发响应，界面显示「原请求结果未知」，继续编辑并刷新后可用「核对原请求并重试」以同键同正文重放；`fail-write` 不提交命令并返回 503 `PERSISTENCE_UNAVAILABLE`，界面显示「原请求已被服务拒绝」，正文与原命令保留、仍可明确重试。服务明确拒绝且重放不能解决时（版本冲突、受信代际已变化等）停止重放并提示下一步，不会自动改键重做。该端点只存在于 `npm run dev:prep`，`npm run build` 的产物不含它，也不会把拒绝伪装成丢失。
+
+本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照，以及 04 断线恢复的准备范围，使用同一客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) 与 [04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
 
 ## 状态
 
