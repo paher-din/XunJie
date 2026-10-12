@@ -8,13 +8,14 @@ import { createTeacherDesignDatabase, openSyntheticDatabase } from '../server/db
 import { createPasswordRecord } from '../server/access/password.ts';
 import { createDesignApp } from '../server/design/application.ts';
 import { SyntheticProvider, createDeepSeekProvider, InputLimitError, type ModelProvider, type ProviderResponse, type SyntheticStep } from '../server/tutoring/providers.ts';
+import { realModelEnabled, realModelProbe, writeRealModelEvidence } from '../server/tutoring/test/real-model-support.ts';
 
 const origin = 'https://synthetic.example';
 const candidate = { kind: 'candidates', candidates: [{ problem: 'Count words', audience: 'CS beginners',
   artifact: 'A tested C program', routes: ['scan', 'tokenize'], goals: ['Compare two routes'],
   constraints: ['One week'], unresolved: ['Teacher must confirm three competency domains'], resourceRefs: [] }] };
 const versions = { modelConfig: 'synthetic-v1', prompt: 'teacher-v1', schema: 'teacher-v1', policy: 'teacher-v1' };
-async function fixture(steps: SyntheticStep[] = [{ body: candidate }],suppliedProvider?:ModelProvider) {
+async function fixture(steps: SyntheticStep[] = [{ body: candidate }],suppliedProvider?:ModelProvider,liveClock=false) {
   let db = createTeacherDesignDatabase(), time = Date.now(), generation = 'generation',clockStep = 0;
   const password = randomBytes(32).toString('hex'), secret = randomBytes(48).toString('hex');
   const record = await createPasswordRecord(password);
@@ -38,8 +39,8 @@ async function fixture(steps: SyntheticStep[] = [{ body: candidate }],suppliedPr
       return tx.run(sql,...params);
     }}));
   }});
-  const options = () => ({ db:database(), origin, signingSecret: secret, currentGeneration: () => generation, now: () => { const current=time; time+=clockStep; return current; },
-    teacherAgent: { provider, versions, budgetAvailable: () => budget } });
+  const options = () => ({ db:database(), origin, signingSecret: secret, currentGeneration: () => generation, now: () => { if (liveClock) return Date.now(); const current=time; time+=clockStep; return current; },
+    teacherAgent: { provider, versions: liveClock ? { ...versions, modelConfig: 'deepseek-flash-p2-real-v1' } : versions, budgetAvailable: () => budget } });
   let service = await createDesignApp(options());
   async function login(user = 'teacher') {
     const res = await service.app.inject({ method:'POST',url:'/api/sessions',headers:{origin},payload:{loginName:user,password} });
@@ -489,4 +490,57 @@ test('a response from an old recovery generation cannot update accounting or del
     f.restore(); g.release(); await assert.rejects(pending,{code:'RECOVERY_REQUIRED'});
     assert.equal((await f.service.app.inject({url:'/api/jobs/'+jobId,headers})).statusCode,409);
   } finally { g.release(); await f.close(); }
+});
+
+test('P2 real-model teacher generation, explicit adoption and local PATCH', { skip: !realModelEnabled }, async t => {
+  const probe = realModelProbe(), f = await fixture([], probe.provider, true);
+  const evidence: Record<string, unknown> = {};
+  try {
+    const headers = await f.login();
+    const imported = await command(f, headers, '/api/courses/course/resources', { teacherDesignAllowed: true,
+      material: { format: 'txt', title: 'Synthetic TextScope brief', content:
+        '合成工程样例：高校C课程，先备函数、数组与指针。学生实现公开ASCII文本的统计和完整词检索，比较数组/链表方案，自行核查边界。仅生成供教师审阅的候选，不提供完整代码，不作正式评价。' } });
+    assert.equal(imported.statusCode, 200, imported.body);
+    const resource = imported.json().data.result.resourceVersion, paragraph = resource.material.paragraphs[0];
+    const references = [{ resourceVersionId: resource.resourceVersionId, paragraphId: paragraph.paragraphId, contentHash: paragraph.contentHash }];
+    evidence.input = { material: resource.material, references, request: '据获准资料提出一个小项目候选，关键目标保持待教师确认。' };
+    const accepted = await start(f, headers, { references, request: '据获准资料提出一个小项目候选，关键目标保持待教师确认。' });
+    assert.equal(accepted.statusCode, 200, accepted.body);
+    const generated = await f.service.teacherAgent!.processJob(String(accepted.json().data.result.jobId));
+    evidence.generation = generated ? { outcome: generated.delivery.outcome, result: generated.result } : null;
+    const job = await getJob(f, headers, String(accepted.json().data.result.jobId));
+    evidence.generationJob = job;
+    assert.equal(job.status, 'succeeded');
+    assert.ok(job.attemptCount >= 1 && job.attemptCount <= 3);
+    const proposal = await f.service.app.inject({ url: `/api/design-proposals/${job.proposalId}`, headers });
+    assert.equal(proposal.statusCode, 200, proposal.body);
+    evidence.proposal = proposal.json().data;
+    const adopted = await command(f, headers, `/api/design-proposals/${job.proposalId}/adopt`, { candidateIndex: 0,
+      content: { projectTitle: 'Synthetic TextScope' } });
+    assert.equal(adopted.statusCode, 200, adopted.body);
+    const draft = adopted.json().data.result.draft;
+    const localJobId = await propose(f, headers, draft, { references,
+      request: '只在problem字段补充一句要求学生自行检查ASCII文本边界，不改变其他字段，不提供完整实现。' });
+    const local = await f.service.teacherAgent!.processJob(localJobId);
+    evidence.local = local ? { outcome: local.delivery.outcome, result: local.result } : null;
+    const localJob = await getJob(f, headers, localJobId);
+    evidence.localJob = localJob;
+    assert.equal(localJob.status, 'succeeded');
+    const localProposal = await f.service.app.inject({ url: `/api/design-proposals/${localJob.proposalId}`, headers });
+    assert.equal(localProposal.statusCode, 200, localProposal.body);
+    evidence.localProposal = localProposal.json().data;
+    const body = localProposal.json().data.body;
+    assert.equal(body.kind, 'patch');
+    const applied = await command(f, headers, `/api/blueprints/${draft.blueprintId}`, {
+      expectedRevision: draft.revision, proposalId: localJob.proposalId,
+      patch: Object.fromEntries(body.changes.map((item: { field: string; value: unknown }) => [item.field, item.value])),
+    }, 'real-model-local-adopt', 'PATCH');
+    assert.equal(applied.statusCode, 200, applied.body);
+    evidence.adopted = applied.json().data.result.draft;
+    assert.equal(applied.json().data.result.draft.revision, draft.revision + 1);
+    assert.ok(probe.http.length <= 6);
+  } finally {
+    try { t.diagnostic(`Synthetic-data model evidence: ${writeRealModelEvidence('teacher_design', evidence, probe.http)}`); }
+    finally { await f.close(); }
+  }
 });

@@ -28,6 +28,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，负责人授权的 P3 总协调记录与 README 已普通提交/推送到 main，首发提交为 `1b2bd10`；远端引用与两份文档 blob 回读一致，文档/空白/写入范围检查通过。总协调 Issue #37 已补公开文档入口，原任务状态与 P2/P3 实施/验收门禁保留；推送及记录同步见 [G3 第 9 节](docs/tasks/G3_OVERALL_COORDINATION.md#9-2026-10-12-本地总协调文档推送)。
 
+2026-10-12，项目负责人决定收口本次 P2 工程审查，并将 B1/B2 的未完成模型接入、真实调用和人工语义补验集中到 [B 后续 #45](https://github.com/paher-din/XunJie/issues/45)，主责为 B；账号与真实调用继续暂缓。总协调正提交剩余验证入口并执行旧 Issue 关闭，实际结果见 [G2 第 18 节](docs/tasks/G2_OVERALL_COORDINATION.md#18-2026-10-12-p2-工程审查收口与-b-后续交付)，B 交付后再复审，原完整产品验收条件保留。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -134,6 +136,28 @@ node --test server/tutoring/test/student-help.test.ts
 
 该批次验证显式求助同事务接纳、精确 ObjectRef/资料与状态过滤、无历史降级、跨 worker 三次调用台账、替换/停止/版本守卫，以及 B1 教学 body 经 C3 Message/TeachingAction/Delivery/Receipt 的持久接纳与补取。测试只使用合成账号、数据和 provider；真实模型网络调用、实际浏览器显示、真人接棒与教学语义仍未验收，详见 [B2 任务文档](docs/tasks/B2_STUDENT_HELP.md)。
 
+### P2 真实模型接口核验（显式授权后）
+
+2026-10-12，已准备教师候选/明确采用/局部 PATCH 与学生获准求助/原文/未展示取消的验证入口，默认跳过。账号/API、条款/数据范围、额度及付费合成请求必须先按 D-02 落实；代码准备和内存重放不等于真实模型通过，具体边界见 [G2 第 17 节](docs/tasks/G2_OVERALL_COORDINATION.md#17-p2-真实模型接口验证准备2026-10-12)。
+
+2026-10-12，验证入口已按负责人授权公开至 [Draft PR #36](https://github.com/paher-din/XunJie/pull/36)，尚未合并；仅合成材料的限定实际调用已获条件许可，安全凭据入口和账号条件仍待落实，真实调用未执行，见 [G2 第 17.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#174-验证入口发布与条件调用授权)。
+
+下列命令仅供已获上述授权、批准安全通道已提供本机凭据、Node 24.21.0/精确 lock 就绪的环境执行；在仓库根进入应用目录后串行运行，最多三个 Job/九次模型请求，失败不自动重跑，不写凭据或预算金额。
+
+```powershell
+cd apps/teaching
+# DEEPSEEK_API_KEY 必须已由批准的安全通道提供；不要将值写入此文件或日志。
+$env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+try {
+    node --test --test-name-pattern='P2 real-model' tests/design-agent.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Teacher model validation failed; inspect its evidence before retrying.' }
+    node --test --test-name-pattern='P2 real-model' server/tutoring/test/student-help.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Student model validation failed; inspect its evidence before retrying.' }
+} finally {
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL
+}
+```
+
 ## 阶段状态记录
 
 ### G0 基线批准、门禁与任务发布
@@ -210,6 +234,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，整体复验确认上文的 Workspace 加 teacherAgent 组合目前无法构造，会因重复 Job/cancel 路由报错；独立 Design 工厂验证不受该组合问题影响。A 需统一公共路由后复验，当前失败事实及学生正文接缝问题见 [G2 第 14 节](docs/tasks/G2_OVERALL_COORDINATION.md#14-2026-10-12-p2-整体复验与-issue-关闭核对)，不将该组合说明视为已可用。
 
 2026-10-12，本地修复候选由 Workspace 唯一公共 Job 路由按持久 purpose 调用原教师/学生处理器，独立 Design 默认路由保留；教师/学生权限、取消、重放和重启回归通过。C3 长未知文字保存与原结果重放亦已验证，公开交付仍待发布确认，见 [G2 第 15 节](docs/tasks/G2_OVERALL_COORDINATION.md#15-2026-10-12-g2-r01r02-最小修复)。
+
+2026-10-12，B1/B2 未验条件已逐项保留在 [#45](https://github.com/paher-din/XunJie/issues/45)，工程审查收口与旧卡关闭按负责人决定执行；合成/离线、真实模型、人工语义和浏览器/真人分别计账，具体交接与实际结果见 [G2 第 18 节](docs/tasks/G2_OVERALL_COORDINATION.md#18-2026-10-12-p2-工程审查收口与-b-后续交付)。
 
 ### G3 / P3 启动与总协调
 
