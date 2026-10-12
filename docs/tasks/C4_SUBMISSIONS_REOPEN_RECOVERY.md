@@ -102,6 +102,8 @@ schema 追加据此收口：`workspace_submissions` 与 `workspace_reopen_grants
 
 另有一条 C4 验证中确认的行为**未**写入基线：分配暂停会加一 `attemptRevision` 与 `decisionEpoch`，因此使已发放的重开许可失效，且恢复分配不会让它复活。它不属于上述三条读法，超出本次授权范围，故只保留在第 8.5 节与 PR 正文作为交 A5/UI 的事实。若负责人认为它也需要写回 TECH 第 5 节的 reopen 行或第 7.2.1 节，请另行明确文件与范围。
 
+基线改动后的文档验证补记：除 `node tools/a0-review/check.mjs` 外，README「文档验证」一节还要求单独运行 `node --test tools/a0-review/check.test.mjs`，该测试不在 `apps/teaching` 的 `npm test` glob 内，容易被漏跑。它在基线改动后 16 项全部通过、0 失败、0 跳过，其中「current repository passes structural checks」「existing repository directory links remain valid」「rejects missing approved route …」等用例直接依赖 `docs/product/**` 正文，因此这三处追加没有破坏文档检查器的任何断言。加入本任务稿与 README 的追加段落后，`check.mjs` 复跑退出码 0、`errors` 为空、`internalLinks` 为 585、`baselineMutationRoutes` 仍为 27、`additionalProposedRoutes` 仍为空数组。基线改动只涉及文档，未触碰任何源码，故 `npm run typecheck`、`npm test` 与第 8.3 节的全部通过统计不受影响，无需重跑。
+
 ## 7. 验证计划与分层完成条件
 
 服务端确定性验证在本任务完成，使用隔离合成数据，不进入真实学生学习记录，不恢复 Round 0。实际 UI、真人教师与学生、真实模型语义、真实执行节点与完整备份恢复分别报告，本任务全部标未执行。
