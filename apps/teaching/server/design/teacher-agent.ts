@@ -43,7 +43,7 @@ const progressSchema = z.strictObject({jobId:id,status:z.string(),attemptCount:z
 const knownFields = Object.keys(contentPatchSchema.shape);
 const timeString = (now:number) => new Date(now).toISOString();
 
-export function registerTeacherAgent(app:FastifyInstance,access:Access,options:DesignVerificationOptions,config:TeacherAgentOptions) {
+export function registerTeacherAgent(app:FastifyInstance,access:Access,options:DesignVerificationOptions,config:TeacherAgentOptions,registerJobRoutes=true) {
   const now = options.now ?? Date.now, versions = parseRequest(modelVersionsSchema,config.versions);
   const inFlight = new Map<string,AbortController>();
   const persisted = <T>(work:(tx:Transaction) => T) => {
@@ -131,14 +131,14 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
   function applicable(tx:Transaction,input:StoredTeacherRequest,job:Job) {
     return !job.stopRequested && job.status === 'succeeded' && teacherContextCurrent(tx,input,versions);
   }
-  app.get('/api/jobs/:id',request => ({requestId:request.id,data:readAuthorized(request,parseRequest(params,request.params).id,(tx,work) => {
+  function readJobRequest(request:FastifyRequest) { return {requestId:request.id,data:readAuthorized(request,parseRequest(params,request.params).id,(tx,work) => {
     const proposal = proposalForJob(tx,work.job.jobId);
     return {jobId:work.job.jobId,status:work.job.status,stopRequested:work.job.stopRequested,
       acceptedAt:work.job.acceptedAt,deadline:work.job.deadline,attemptCount:work.job.attemptCount,
       usages:work.usages,...(work.job.failure ? {failure:work.job.failure} : {}),
       ...(proposal ? {proposalId:proposal.proposalId,resultHash:proposal.resultHash} : {})};
-  })}));
-  app.post('/api/jobs/:id/cancel',request => {
+  })}; }
+  function cancelJobRequest(request:FastifyRequest) {
     const jobId = parseRequest(params,request.params).id,input = parseRequest(generationInput,request.body),
       idempotencyKey = parseRequest(key,request.headers['idempotency-key']);
     const data = readAuthorized(request,jobId,(tx,work) => {
@@ -150,7 +150,11 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
     },true);
     if (data.result.jobId === jobId) inFlight.get(jobId)?.abort();
     return {requestId:request.id,data};
-  });
+  }
+  if (registerJobRoutes) {
+    app.get('/api/jobs/:id',readJobRequest);
+    app.post('/api/jobs/:id/cancel',cancelJobRequest);
+  }
   app.get('/api/design-proposals/:id',request => {
     const proposalId = parseRequest(params,request.params).id;
     const data = access.withAuthorizedCourse(request,tx => readProposal(tx,proposalId).courseId,'teacher',(tx,actor) => {
@@ -332,5 +336,5 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
     }
     } finally { inFlight.delete(jobId); }
   }
-  return {enqueue,processJob,receiveResult,assertPatch};
+  return {enqueue,processJob,receiveResult,assertPatch,readJob:readJobRequest,cancelJob:cancelJobRequest};
 }

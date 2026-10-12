@@ -676,3 +676,60 @@ Git取回合并后main的首轮因30秒低速超时失败，第二轮因443连�
 GitHub #11 已更新实际 SDK/provider 装配和离线完成清单，真实模型关闭条件仍未勾选；#24 原完成条件完整保留，仅追加本次失败、模块状态与修复归属。两次正文更新的返回值逐字核对与准备稿相同，均 Open。#25/#26/#27 已分别发布 [G2-R01 评论](https://github.com/paher-din/XunJie/issues/25#issuecomment-6121090568)、[B2 交接评论](https://github.com/paher-din/XunJie/issues/26#issuecomment-6121091504)、[G2-R02 评论](https://github.com/paher-din/XunJie/issues/27#issuecomment-6121092149)，返回的完整正文与准备稿一致。没有改变标题、分工、关闭状态或其他 Issue，也没有代发成员任务消息。
 
 发布前首次两次 GraphQL 读取遇 TLS 握手超时，中断后只读核对现场，再以 gh 的 REST 读取成功后才发布；失败没有被登记为已更新，也没有重复创建评论。正文变更前逐字比对最新 Issue 与准备起点，检测到变更则不覆盖；评论发布前查重。本段实际回读事实随本文单文件追加，最终远端 SHA 以发布核对为准，不将记录推送误称 P2 完成。
+
+## 15. 2026-10-12 G2-R01/R02 最小修复
+
+项目负责人在第 14 节明确两项缺口后指示“你来修复一下吧”，授权总协调完成这两项缺陷必需的 A/C 实现、调用方和测试；不据此重分团队职责、修改受保护基线或扩大 P2 验收。本批起点为 main `aee1777`，独立现有工作树的 `codex/p2-integration-fixes` 分支，开始时干净，其他工作树与主工作副本保留。
+
+已读 AGENTS/README，沿 PRD-01/04/09/10 → MVP M-01/04/05 → TECH §2/5/6.1/7.3/9 的单应用、原 Job/取消、合法正文与权限契约，以及 TEAM §6、A3/B2/C3 作者稿。第 14 节的真实模型/教师/UI/环境未验收继续保留。
+
+### 15.1 实施与验证范围
+
+G2-R01：提取 A3 原 Job 读取/取消为同一内部处理器，独立 Design 工厂默认继续注册原路径；Workspace 组合时由其唯一公共路由按数据库中原 Job purpose 分发 teacher_design，其余沿原运行/教学路径。原当前教师/发起者/课程、学生归属、CSRF、代际、幂等、停止/终态与事务守卫不改。工厂内部注册开关仅用于已有两种组合，不新增 HTTP 参数、状态或队列。
+
+G2-R02：C3 的 unresolved 改为现有 StudentHelpBody 定义的文字数组，仍保留严格 body 白名单、引用 ID 长度、政策、原正文/hash、租约和代际校验。修复是与现行 B1 契约一致，不新增未经批准的正文限额。
+
+预计可写：`apps/teaching/server/design/{app,application,teacher-agent}.ts`、`server/workspace/application.ts`、`server/records/teaching.ts`，必要的现有 Workspace/B2 测试辅助与回归文件、README 的追加状态及本文。产品/规划/参考/AGENTS、作者任务稿、package/lock、CI/凭据和数据库 schema 均只读。
+
+验证先固定原失败期望：组合工厂应可构造、教师/学生 Job 查询和取消正确分发、原发起者与跨角色/课程拒绝、同键重放；129 字符及正常未知文字经 B1→C3 保存/重读/原结果重放。只复用已有 24 表 TeacherDesign 临时工厂验证教师与学生运行的公共路由，已有 Teaching 临时工厂验证 B2/C3 组合启动与学生消息链；不把两个 schema 合并、不迁移旧库、不初始化新的统一数据库。随后运行相关专项、原 typecheck/build/完整回归与文档/空白/写入范围检查。
+
+实现、红绿结果与最终交付事实在执行后追加；当前本节是明确授权范围内的修复计划，不是新产品/共享契约批准或验收通过。
+
+### 15.2 实际修复与新增回归
+
+`design/teacher-agent.ts` 的原 Job HTTP 回调成为同一 `readJob`/`cancelJob` 内部能力，独立工厂仍默认注册；`design/app.ts`、`design/application.ts` 传递内部注册开关，Workspace 显式接管共享路径。`workspace/application.ts` 的只读鉴权预检从原持久 Job 获取 purpose，teacher_design 调用上述原能力，运行/学生教学继续使用原处理器；预检不增加会话活跃时间，真正业务仍在原短事务提交。C3 `records/teaching.ts` 仅把 unresolved 的元素校验从 ID 改为 string，其余严格结构与原结果校验无增量。
+
+新增回归实际从失败转为通过：`workspace/job-composition.test.ts` 通过现有 TeacherDesign 临时库和真实登录/HTTP，覆盖教师与学生运行共用路径、课程/学生/非原教师拒绝、旧代际拒绝、两种取消同键回放、重启重读；B2 原 fixture 的两项新增分别验证附加 teacherAgent 后学生 Message/Action/取消仍可用，以及 129 字符/长中文未知说明经 C3 保存、原文重读、同结果回放和异结果 409 拒绝。
+
+修复前上述三项均失败：两项 `FST_ERR_DUPLICATED_ROUTE`，一项 422 INVALID_REFERENCE。首轮修复后两项通过，运行取消测试误把未获执行器终止 ACK 的状态期待为 cancelled，实际为正确的 cancelling；核对 TECH §5/8.1 的原终止确认规则后只纠正该测试期望，未修改运行取消实现或制造终止事实。最终原缺陷期望保持，3/3 通过、0 跳过，typecheck 通过；原全量与交付核对继续执行后登记。
+
+测试辅助只选择既有获准工厂与内存 provider，node_modules 仅复制已有验证副本的原锁定安装至本修复副本；未下载或升级依赖、改变原工厂表集合、合并 schema、删除库/日志或设置真实凭据。两个数据库层的结果分别记录，不宣称已得到新的统一业务数据库或真实模型链验收。
+
+### 15.3 最终验证与交付边界
+
+| 检查 | 实际结果 |
+| --- | --- |
+| 新增回归 | 3/3 通过、0 跳过：同宿主教师/学生运行路由与鉴权/取消，附加教师配置的 B2/C3 学生链，长未知文字持久原文/同结果重放/异结果拒绝 |
+| 原独立反例 | 第 14 节保存的反例仅换源码路径、输入与期望不改：组合 actual=started；普通正文 200/succeeded/1 条模型消息；129 字符正文 200/succeeded/1 条模型消息 |
+| `npm run typecheck` | Node 24.21.0 / TypeScript 7.0.2 / 原锁依赖通过，退出码 0 |
+| `npm test`（含 pretest build） | build 通过；260 项：252 通过、1 失败、7 跳过，原 A3/B1/B2/C3 112 项及新 3 项通过，不称完整回归通过 |
+| 唯一完整回归失败 | 与第 14 节相同，`server/workspace/review.test.ts:118/120` → `runner/control.ts:48`；Windows 缺 Linux/trusted runner context，相关两文件无改动，仍属 #23 环境限制 |
+| 文档/空白/边界 | 最终文档静态 36 份/529 内部引用/27 正式路由、errors=[]；空白通过，受保护目录/AGENTS、原 schema 工厂、依赖、CI/凭据均无差异 |
+| 复核层次 | 修复者静态检查工厂调用方、原处理器权限/回执/事务和本次 diff；未登记新增独立 Agent 审查通过 |
+| 未执行 | 真实模型/D-02/付费、Linux 节点、教师内容审阅、浏览器/真人、B4 30 次性能、统一业务数据库/生产 worker/备份恢复 |
+
+G2-R01/R02 的本地修复和反例已收口，现有公开 Issue 的失败记录保留原时点事实，待实际交付后追加修复证据。README 只按固定章节追加日期状态，不改写历史段落。产品/规划基线进度仍待授权维护者汇总；不关闭真实模型条件尚未满足的 #11，也不把这两项修复单独记为 P2/G2/MVP 完成。
+
+本修复在本地分支提交，原 main 和其他工作树不改变。公开分支推送/PR 尚未执行，按 AGENTS 公开发布红线，在具体代码、验证及 PR 说明准备齐备后确认发布范围；该确认不延伸到合并、schema/迁移、生产部署或真实调用。最终本地提交 SHA 以 Git 核对为准。
+
+### 15.4 公开分支与 Draft PR 交付
+
+项目负责人对固定修复提交 `981d055ea9ba48492569612ad48368a48474fda6` 的发布范围明确选择“推送并创建 Draft PR（推荐）”，授权普通推送 `codex/p2-integration-fixes` 并在公开仓库创建 Draft PR。本次不合并 PR、关闭 Issue、删除源分支或扩大真实模型/schema/生产授权。
+
+发布前工作树干净、分支与固定 head 完全一致，未发现同 head 的现有 PR。首次 Git 远端只读核查遇连接重置，未登记为推送失败或成功；随后 GitHub API 回读 main=`aee1777`，普通推送以单次 OpenSSL/HTTP 1.1/低速超时参数成功建立远端分支。远端 branch SHA 已独立回读与 `981d055` 完全一致，无强推、永久配置修改或历史删除。
+
+使用已经准备的 UTF-8 PR 说明，通过 `gh pr create --draft --body-file` 建立 [PR #35](https://github.com/paher-din/XunJie/pull/35)，标题为 `fix(P2): compose job routes and preserve unresolved teaching text`，base=`main`、head=`codex/p2-integration-fixes`，状态 Open/Draft，并已附加到总协调工作项。回读核对固定 head、完整正文（只规范化末尾换行）、Draft/Open 与无 mergeCommit 均一致；正文使用 Refs #24/#25/#26/#27，不设置自动关闭。
+
+#11/#24/#25/#26/#27 均已回读 Open。本次只有代码/任务记录的公开交付，不登记独立评审、完整回归通过或 P2 阶段通过；第 15.3 节的 260=252通过+1既有失败+7跳过及模型/教师/UI未验收继续保持。原 main/主工作副本与其他工作树不变，源分支保留。
+
+本段发布事实与 README 的 PR 导航另随同一分支提交；只有文档增量，不改变已验证应用源码，不重复登记业务测试。文档/空白、最终远端 branch/PR head、正文与 Issue 状态在提交后核对，最终 head 以实际远端回读为准。

@@ -12,6 +12,10 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，A3/B1 SDK/C3/B2 的 PR #28/#29/#33/#32 均已合入；P2 整体复验仍有两项已复现阻塞：教师与学生能力同时装配时重复 Job 路由导致启动失败，C3 将合法长未知说明当作 ID 拒收。#24/#25/#26/#27 及真实模型待验的 #11 保持 Open，服务端预交付与完整 G2 尚未通过；验证事实、修复归属和关闭核对见 [G2 第 14 节](docs/tasks/G2_OVERALL_COORDINATION.md#14-2026-10-12-p2-整体复验与-issue-关闭核对)。
 
+2026-10-12，负责人授权总协调修复上述两项缺口，本地修复候选已通过新增三项回归、原独立反例、typecheck/build；完整 260 项为 252 通过、1 个既有环境失败、7 跳过。公开推送/PR 尚未执行，Issue 状态与真实模型/教师/UI门禁保留；具体实现、验证和交付边界见 [G2 第 15 节](docs/tasks/G2_OVERALL_COORDINATION.md#15-2026-10-12-g2-r01r02-最小修复)。
+
+2026-10-12，负责人已批准公开推送上述修复，`codex/p2-integration-fixes` 已推送并建立 [Draft PR #35](https://github.com/paher-din/XunJie/pull/35)，尚未合并，#11/#24/#25/#26/#27 保持 Open。固定修复 `981d055` 的验证结果不变，发布核对见 [G2 第 15.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#154-公开分支与-draft-pr-交付)，真实模型/教师/UI等原关闭条件保留。
+
 当前 A1/A2/C1/C2 服务端与 B1 合成核心已合入 main，C2 [PR #20](https://github.com/paher-din/XunJie/pull/20) 的四项原审查意见已修复并合并。[G1 #9](https://github.com/paher-din/XunJie/issues/9) 已按负责人确认的服务端预交付阶段关闭为 Completed；完整产品 G1/正式应用仍未验收：UI/AC/NFR 由 [#22](https://github.com/paher-din/XunJie/issues/22) 承接，环境稳定性由 [#23](https://github.com/paher-din/XunJie/issues/23) 跟踪，B1 实际 SDK/模型仍在 [#11](https://github.com/paher-din/XunJie/issues/11)。Web UI 由团队成员负责，按其实际交付接入。
 
 2026-10-11，项目负责人要求关闭 A1/A2/C1/C2 后先整合全部本地分支与工作树。A1 #10、A2 #13、C1 #12、C2 #14 已回读 Closed / Completed；B1 #11、完整 G1 UI/AC/NFR #22 和环境稳定性 #23 保持 Open。各任务旧 Open 表述保留其日期，当前管理状态见 [G1 第 19 节](docs/tasks/G1_OVERALL_COORDINATION.md#19-2026-10-11-执行-issue-关闭与本地全部工作整合)。12 个原有分支、9 个工作树 HEAD 和主副本未提交文件已整合到本地 main，逐项祖先关系与原始证据摘要核对通过。全部分支、工作树和备份保留；负责人随后授权推送并拉取，整合成果已普通推送至远端 main，快进拉取后两端提交一致、工作区干净，发布事实见 G1 第 19.4 节。
@@ -195,6 +199,8 @@ A2 PR #19 合并后的 checks/release 慢节点回执问题已由 [PR #21](https
 PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 §10](docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md#10-已合并-b1-新预检接缝适配2026-10-11)保留旧接口组合失败反例及修复说明。组合typecheck/build通过、A3专项25/25；完整217项：209通过、1既有C2平台失败、7原条件跳过，全套未通过。B1 SDK适配源码已接入，真实供应商网络调用及教师/UI验收仍未执行。
 
 2026-10-12，整体复验确认上文的 Workspace 加 teacherAgent 组合目前无法构造，会因重复 Job/cancel 路由报错；独立 Design 工厂验证不受该组合问题影响。A 需统一公共路由后复验，当前失败事实及学生正文接缝问题见 [G2 第 14 节](docs/tasks/G2_OVERALL_COORDINATION.md#14-2026-10-12-p2-整体复验与-issue-关闭核对)，不将该组合说明视为已可用。
+
+2026-10-12，本地修复候选由 Workspace 唯一公共 Job 路由按持久 purpose 调用原教师/学生处理器，独立 Design 默认路由保留；教师/学生权限、取消、重放和重启回归通过。C3 长未知文字保存与原结果重放亦已验证，公开交付仍待发布确认，见 [G2 第 15 节](docs/tasks/G2_OVERALL_COORDINATION.md#15-2026-10-12-g2-r01r02-最小修复)。
 
 ### 当前整体状态与后置验收
 

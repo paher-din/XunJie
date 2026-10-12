@@ -18,8 +18,8 @@ export type DesignAppOptions = Omit<DesignVerificationOptions, 'completion'> & {
 const params = z.strictObject({ id: z.string().min(1).max(128) });
 const keySchema = z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/);
 const audienceSchema = z.strictObject({ audience: z.enum(['student', 'tutor', 'teacher-validator']).default('student') });
-export async function createDesignApp(options: DesignAppOptions) {
-  const instance = await createDesignVerificationApp({ ...options, completion: true });
+export async function createDesignApp(options: DesignAppOptions, registerTeacherJobRoutes = true) {
+  const instance = await createDesignVerificationApp({ ...options, completion: true }, registerTeacherJobRoutes);
   const { app, access, design } = instance;
   const now = options.now ?? Date.now;
   function generation(expected: string) {
