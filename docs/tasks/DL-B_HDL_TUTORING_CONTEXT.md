@@ -205,6 +205,7 @@ B 复用 B1/B2 的 `CurrentGuard` 和绝对截止时间。A/C 的 current reader
 | 文档静态检查 | `node tools/a0-review/check.mjs` 通过：38 份文档、551 处内部引用、27 条正式基线变更路由，`errors=[]`；业务测试字段为 `NOT_EXECUTED` |
 | 检查器回归 | `node --test tools/a0-review/check.test.mjs`：16/16 通过，0 失败、0 跳过；本机 Node v24.14.1 |
 | `git diff --check` 与写入范围 | 通过；增量仅本文，受保护路径/共享配置/源码无改动，`.trae/` 未纳入 |
+| Git 交付 | 首批提交 `3a3f965` 已推送至 fork 分支 `codex/dl-b-hdl-tutoring`；当前环境未安装 `gh`，Draft PR 未创建 |
 | TypeScript/typecheck/业务测试 | 未执行；本批无代码且正式 DTO 未批准 |
 | HDL 引擎/真实上下文 | 未执行；等待 #38/#39 |
 | 实际 DeepSeek/人工语义 | 未执行；等待 #45 的对应许可及 B4 |
