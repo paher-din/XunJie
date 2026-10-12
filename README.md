@@ -34,6 +34,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，P3 的 [C4 #43](https://github.com/paher-din/XunJie/issues/43) 已由 C 在分支 `codex/c4-submissions-recovery`（`7063fd2`）交付服务端实现并建立 [PR #47](https://github.com/paher-din/XunJie/pull/47)，尚未合并，#43 保持 Open。改动全在 C 属，A 属与 B 属文件零改动；新增两张表只写 C 属合成 schema，属红线内的 schema 追加，已在任务稿与 PR 正文明示并请负责人复核。任务稿第 6 节的四项解释与跨属提案待负责人裁决，A4/A5 实际路由接入后的联合验证、真实浏览器/执行节点/备份恢复均未执行，分层结果见 [C4 第 8 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#8-实现记录)。
 
+2026-10-12，项目负责人批准 C4 的合成库 schema 追加与任务稿第 6 节的四项解释与跨属提案，[PR #47](https://github.com/paher-din/XunJie/pull/47) 据此继续审查，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。批准按任务稿原文字面，只覆盖已实现的读法与 C 属两张合成表，不覆盖真实数据库建表迁移与生产部署，也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案。批准不改动任何代码。四条读法若需写回 PRD/MVP_SPEC/TECH_DESIGN，按文档优先规则交由授权维护者汇总，当前状态为待授权维护者汇总；浏览器、真人师生、真实模型与完整 G3 的验收条件不变，逐项落地含义见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -268,6 +270,8 @@ node --test server/workspace/submissions.test.ts
 2026-10-12，验证结果为服务端确定性验证通过、其余分层未执行。C4 专项 10/10 通过；全工程 typecheck 与 build 通过；完整套件 274 项中 264 通过、1 失败、9 跳过，同一命令在基线 37849f4 的独立工作树实测 264 项中 254 通过、1 失败、9 跳过，即净增 10 项测试与 10 项通过，失败数与跳过数不变。唯一失败项在两侧完全相同，是 `review.test.ts` 经 `control.ts` 要求 Linux 的既有平台失败，C4 未修改这两个文件；9 项跳过全部来自既有的平台与环境门，C4 新增测试文件不含任何跳过。真实浏览器与 UI 接入、真人教师与学生、真实模型语义、真实执行节点掉线与迟到结果对账、完整备份恢复与实际 RPO/RTO、真实数据库建表迁移与生产部署均未执行；A4/A5 实际路由接入后的联合验证同样未执行，本任务只用测试支撑中模拟 A5 的教师路由验证接缝形状。任务稿第 6 节的四项解释与跨属提案仍待负责人确认，未获确认前不是已批准契约。实际代码位置、命令、原始结果、验证中修正的两处缺陷与未执行清单见 [C4 第 8 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#8-实现记录)。
 
 2026-10-12，C4 已按普通推送交付分支 `codex/c4-submissions-recovery`（`7063fd2`）并建立 [PR #47](https://github.com/paher-din/XunJie/pull/47)，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。合并由负责人执行，本任务不代签、不自行合并，也不把 PR 建立当作应用验收。
+
+2026-10-12，项目负责人批准上文请其复核的合成库 schema 追加与任务稿第 6 节的四项解释与跨属提案，据此收口：两张表保留在 C 属 `workspaceSchema`，A 属 `server/db/transaction.ts` 零改动，合成库表数断言 24 为已批准事实；提交只取消教学类用途，不取消在途 `student_run`，已发生的执行事实与原始引用保留；短反思与可信检查引用不强制，只校验形状、边界与引用匹配，缺省不视为违规；`resume_revision` 保持 `read` 用途授权加 C 属阶段、分配与许可守卫，A 属权限文件不增列用途；`transitionAttemptInTransaction`、`planReopenGrant` 与 `writeReopenGrant` 的现有签名即为交 A5 的契约形状。批准不改动任何代码，不改变上文任何未执行项与通过统计，也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案，需负责人另行明确文件与范围才能实施。产品基线汇总待授权维护者处理，逐项落地含义见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
 
 ### 当前整体状态与后置验收
 
