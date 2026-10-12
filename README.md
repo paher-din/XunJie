@@ -42,6 +42,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B0 模型与预算复核](docs/tasks/B0_MODEL_VENDOR_RESEARCH.md) | 精确型号/区域/结构化方式、数据条款证据状态及预算/配额建议；D-02 待批准 |
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
 | [B1 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、实际 AI SDK/DeepSeek 适配与离线 transport 验证记录 |
+| [B2 学生辅导与控制权](docs/tasks/B2_STUDENT_HELP.md) | 显式 help 接纳、真实 ObjectRef/上下文、动态预算与当前性守卫、B1 执行，以及 C3 Message/Action/Delivery/Receipt 服务端合成联调；实际 UI/真人仍未验收 |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
@@ -92,6 +93,15 @@ node --test server/tutoring/test/*.test.ts
 ```
 
 领域测试同时通过实际 SDK/provider 和受控内存 transport，供应商网络调用为 0；它不代替待 D-02、凭据与付费授权后的真实 DeepSeek 验证。完整记录见 [B1 任务文档](docs/tasks/B1_AGENT_CORE.md)。
+
+B2 当前可独立交付的学生辅导服务端批次可执行：
+
+```powershell
+cd apps/teaching
+node --test server/tutoring/test/student-help.test.ts
+```
+
+该批次验证显式求助同事务接纳、精确 ObjectRef/资料与状态过滤、无历史降级、跨 worker 三次调用台账、替换/停止/版本守卫，以及 B1 教学 body 经 C3 Message/TeachingAction/Delivery/Receipt 的持久接纳与补取。测试只使用合成账号、数据和 provider；真实模型网络调用、实际浏览器显示、真人接棒与教学语义仍未验收，详见 [B2 任务文档](docs/tasks/B2_STUDENT_HELP.md)。
 
 ## 状态
 
