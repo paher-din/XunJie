@@ -43,6 +43,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
+| [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 已同步 main 并核查能力；A 域提案待评审，P2 进入门禁与 C/B/UI 输入、配置/运行授权保留 |
+| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 独立五表合成库、受控接口、C3 同事务纠正与 B2 状态读取方案；实施和公共测试接缝待批准 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -216,6 +218,10 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，P3 总协调已启动，当前只建立任务/依赖/评审与验收跟踪；数字逻辑 Demo、原服务端反馈闭环与完整 G3 均未验收。P2 的 #11/#26/#24 保持 Open，原 #22/#23/#30 继续各自范围；具体证据、放行条件、模块交接与待授权维护者汇总事项见 [G3 总协调记录](docs/tasks/G3_OVERALL_COORDINATION.md)。
 
 2026-10-12，P3 总协调 #37 与七个 A/B/C 执行 Issue #38～44 已发布并核对，任务/依赖和分层关闭条件见各正文；UI 分批接入与 DL-E2E 由总任务跟踪既定责任。原 P2/模型/UI/环境 Issue 未修改或关闭，发布不算应用验收；详细记录见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)。
+
+### A4 有效学习状态与教师纠正
+
+2026-10-12，A 已基于最新 main 建立 [DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) 的能力差异/共享输入提案，再按等待 DL 批次可推进独立 A4 的顺序建立 [A4 实施方案](docs/tasks/A4_LEARNER_STATE_REVIEW.md)。DL 正式评审仍等待 P2 原预交付确认和 C/B/UI 消费输入；A4 的五表 fresh-only 合成库、受控接口与公共验证接缝待批准。两项源码/业务验收均未执行，#38/#41 保持 Open，进度待授权维护者汇总。
 
 ### 当前整体状态与后置验收
 
