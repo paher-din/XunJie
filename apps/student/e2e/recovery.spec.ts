@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import { PREP_TASK_PATH, PREP_URL } from './env'
+import { create, edit, holdAck, identities, localState, newestSync, setFault, start, syntheticUpdate, trackSync } from './helpers'
 
 /**
  * I0_UI_04：断线重连只核或重放**原保存命令**。
@@ -9,110 +9,6 @@ import { PREP_TASK_PATH, PREP_URL } from './env'
  * 丢 ACK 由 fixture 的 `/__i0prep/fault` 复现（服务照常提交，只是不下发响应），
  * 断线用浏览器离线复现；不另造假业务、不把超时当拒绝或成功。
  */
-const sceneUrl = (name: string) => `${PREP_URL}/?scenario=${name}-${crypto.randomUUID()}${PREP_TASK_PATH}`
-
-async function start(page: Page, name: string) {
-  await page.goto(sceneUrl(name))
-  await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
-  await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
-  await expect(page.locator('.cw')).toBeVisible()
-}
-
-async function create(page: Page, name = 'main.c') {
-  await page.getByRole('button', { name: '新建文件', exact: true }).first().click()
-  const input = page.getByRole('textbox', { name: '新文件名' })
-  await input.fill(name)
-  await input.press('Enter')
-  await expect(page.locator('.monaco-editor textarea').first()).toBeAttached()
-}
-
-async function edit(page: Page, text: string) {
-  await page.locator('.monaco-editor textarea').first().focus()
-  await page.keyboard.insertText(text)
-  await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
-}
-
-/** 设置/清除开发故障；只作用于当前合成场景。 */
-async function setFault(page: Page, kind: 'none' | 'drop-ack' | 'fail-write') {
-  return page.evaluate(async kind => {
-    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
-    const session = (await (await fetch('/__i0prep/api/session', { headers })).json()).data
-    const response = await fetch('/__i0prep/fault', { method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json', 'x-csrf-token': session.csrfToken },
-      body: JSON.stringify({ kind }) })
-    return response.status
-  }, kind)
-}
-
-interface LocalCommand { kind: string; state: string; createdAt: number; commandKey: string; wireJson: string
-  rejected?: { code: string } | null }
-interface LocalSummary { workspace: { workspaceRevision: number; files: Array<{ fileId: string; text: string }> } | null
-  instances: Array<{ fileId: string }>; drafts: Array<{ text: string }>; commands: LocalCommand[] }
-
-async function localState(page: Page): Promise<LocalSummary> {
-  return page.evaluate(async () => {
-    const { confirmationRepository } = await import('/src/workspace/confirmationDb.ts' as string)
-    const scenarioId = new URLSearchParams(location.search).get('scenario')!
-    const data = (await (await fetch('/__i0prep/context', { headers: { 'x-i0prep-scenario': scenarioId } })).json()).data
-    return confirmationRepository.read({
-      mode: 'preparation', userId: data.syntheticAccount.userId, courseId: data.syntheticAccount.courseId,
-      assignmentId: data.refs.assignmentId, activityVersionId: data.refs.activityVersionId,
-      attemptId: data.refs.attemptId, loadEpoch: 0, preparationEpoch: data.preparationEpoch,
-      trustedRecoveryGeneration: data.recoveryGeneration, scenarioId,
-    })
-  })
-}
-
-/** 最新的原保存命令（同一测试里可能先有成功保存、再有被拒绝的保存）。 */
-function newestSync(state: LocalSummary): LocalCommand {
-  return state.commands.filter(c => c.kind === 'workspace.sync').sort((a, b) => b.createdAt - a.createdAt)[0]!
-}
-
-/** 用 fixture 的合成身份从页面内直接推进权威作品（模拟另一处已保存）。 */
-async function syntheticUpdate(page: Page, text: string) {
-  return page.evaluate(async text => {
-    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
-    const context = (await (await fetch('/__i0prep/context', { headers })).json()).data
-    const session = (await (await fetch('/__i0prep/api/session', { headers })).json()).data
-    const head = (await (await fetch(`/__i0prep/api/attempts/${context.refs.attemptId}`, { headers })).json()).data
-    const file = head.files[0]
-    const response = await fetch(`/__i0prep/api/attempts/${context.refs.attemptId}/sync`, { method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json', 'x-csrf-token': session.csrfToken, 'Idempotency-Key': crypto.randomUUID() },
-      body: JSON.stringify({ recoveryGeneration: context.recoveryGeneration,
-        expectedWorkspaceRevision: head.attempt.workspaceRevision, clientId: crypto.randomUUID(), clientSeq: 1,
-        operations: [{ kind: 'update', fileId: file.fileId, baseVersion: file.documentVersion, text }] }) })
-    return response.status
-  }, text)
-}
-
-function trackSync(page: Page) {
-  const posts: Array<{ key: string; body: string }> = []
-  page.on('request', r => {
-    if (r.method() === 'POST' && r.url().endsWith('/sync')) posts.push({ key: r.headers()['idempotency-key']!, body: r.postData()! })
-  })
-  return posts
-}
-
-/**
- * 业务命令身份（业务键 + 正文）。同一原命令在传输层被浏览器重试、或被学生明确重放，
- * 身份都必须完全相同；只有出现第二条身份才说明客户端新建了命令。
- */
-function identities(posts: Array<{ key: string; body: string }>) {
-  return new Set(posts.map(p => `${p.key}\n${p.body}`))
-}
-
-/** 按住一次写命令的响应：请求已发出（因此租约与在途状态真实存在），回执尚未到达。 */
-async function holdAck(page: Page) {
-  let release!: () => void, arrived!: () => void
-  const wait = new Promise<void>(r => { release = r }), ready = new Promise<void>(r => { arrived = r })
-  await page.route('**/api/attempts/*/sync', async route => {
-    const response = await route.fetch()
-    arrived()
-    await wait
-    await route.fulfill({ response })
-  })
-  return { ready, release }
-}
 
 test('丢 ACK 后继续编辑、刷新，重放原命令只创建一次并恢复同一 fileId', async ({ page }) => {
   await start(page, 'recovery-drop-ack')

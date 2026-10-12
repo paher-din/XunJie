@@ -1,0 +1,130 @@
+import { expect, type Page } from '@playwright/test'
+import { PREP_TASK_PATH, PREP_URL } from './env'
+
+/**
+ * I0 e2e 共享操作与核验 helper。
+ *
+ * 此前 sceneUrl/start/create/输入、setFault/localState/newestSync/syntheticUpdate/
+ * trackSync/identities/holdAck 在 compare/recovery/confirmation/draftConflict 各 spec
+ * 里逐份拷贝（04A 复审登记为工程债），现收拢到本模块；各 spec 只保留自己的场景组装。
+ *
+ * 约定与原各 spec 实现一致：全部走真实 dev:prep 进程、真实浏览器与 IndexedDB；
+ * helper 只做「操作 + 等待可见状态 / 读取落盘事实」，不造业务响应。
+ */
+
+/** 每个用例一个全新合成场景（scenario），fixture 状态不跨用例共享。 */
+export const sceneUrl = (name: string) => `${PREP_URL}/?scenario=${name}-${crypto.randomUUID()}${PREP_TASK_PATH}`
+
+/** 进入准备场景并开始 Attempt，等编辑区可见。 */
+export async function start(page: Page, name: string) {
+  await page.goto(sceneUrl(name))
+  await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
+  await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
+  await expect(page.locator('.cw')).toBeVisible()
+}
+
+/** 新建文件并等编辑器挂载。 */
+export async function create(page: Page, name = 'main.c') {
+  await page.getByRole('button', { name: '新建文件', exact: true }).first().click()
+  const input = page.getByRole('textbox', { name: '新文件名' })
+  await input.fill(name)
+  await input.press('Enter')
+  await expect(page.locator('.monaco-editor textarea').first()).toBeAttached()
+}
+
+/** 输入正文但不等待落盘；落盘结果（保护/冲突条）由调用方用 expect 等待。 */
+export async function typeIn(page: Page, text: string) {
+  await page.locator('.monaco-editor textarea').first().focus()
+  await page.keyboard.insertText(text)
+}
+
+/** 输入正文并等待本机草稿写入完成（保护状态恢复）。 */
+export async function edit(page: Page, text: string) {
+  await typeIn(page, text)
+  await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
+}
+
+/** 设置/清除开发故障；只作用于当前合成场景。 */
+export async function setFault(page: Page, kind: 'none' | 'drop-ack' | 'fail-write') {
+  return page.evaluate(async kind => {
+    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
+    const session = (await (await fetch('/__i0prep/api/session', { headers })).json()).data
+    const response = await fetch('/__i0prep/fault', { method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json', 'x-csrf-token': session.csrfToken },
+      body: JSON.stringify({ kind }) })
+    return response.status
+  }, kind)
+}
+
+export interface LocalCommand { kind: string; state: string; createdAt: number; commandKey: string; wireJson: string
+  rejected?: { code: string } | null; context: Record<string, unknown> }
+export interface LocalSummary { workspace: { workspaceRevision: number; files: Array<{ fileId: string; text: string; contentHash?: string }> } | null
+  instances: Array<{ fileId: string; clientFileKey?: string }>; drafts: Array<{ text: string }>
+  commands: LocalCommand[]; candidates: Array<{ text: string; reason: string }> }
+
+/** 读取页面同源的本地落盘全量事实（确认头、草稿、实例、原命令、候选）。 */
+export async function localState(page: Page): Promise<LocalSummary> {
+  return page.evaluate(async () => {
+    const { confirmationRepository } = await import('/src/workspace/confirmationDb.ts' as string)
+    const scenarioId = new URLSearchParams(location.search).get('scenario')!
+    const data = (await (await fetch('/__i0prep/context', { headers: { 'x-i0prep-scenario': scenarioId } })).json()).data
+    return confirmationRepository.read({
+      mode: 'preparation', userId: data.syntheticAccount.userId, courseId: data.syntheticAccount.courseId,
+      assignmentId: data.refs.assignmentId, activityVersionId: data.refs.activityVersionId,
+      attemptId: data.refs.attemptId, loadEpoch: 0, preparationEpoch: data.preparationEpoch,
+      trustedRecoveryGeneration: data.recoveryGeneration, scenarioId,
+    })
+  })
+}
+
+/** 最新的原保存命令（同一测试里可能先有成功保存、再有被拒绝的保存）。 */
+export function newestSync(state: LocalSummary): LocalCommand {
+  return state.commands.filter(c => c.kind === 'workspace.sync').sort((a, b) => b.createdAt - a.createdAt)[0]!
+}
+
+/** 用 fixture 的合成身份从页面内直接推进权威作品（模拟另一处已保存）。 */
+export async function syntheticUpdate(page: Page, text: string) {
+  return page.evaluate(async text => {
+    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
+    const context = (await (await fetch('/__i0prep/context', { headers })).json()).data
+    const session = (await (await fetch('/__i0prep/api/session', { headers })).json()).data
+    const head = (await (await fetch(`/__i0prep/api/attempts/${context.refs.attemptId}`, { headers })).json()).data
+    const file = head.files[0]
+    const response = await fetch(`/__i0prep/api/attempts/${context.refs.attemptId}/sync`, { method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json', 'x-csrf-token': session.csrfToken, 'Idempotency-Key': crypto.randomUUID() },
+      body: JSON.stringify({ recoveryGeneration: context.recoveryGeneration,
+        expectedWorkspaceRevision: head.attempt.workspaceRevision, clientId: crypto.randomUUID(), clientSeq: 1,
+        operations: [{ kind: 'update', fileId: file.fileId, baseVersion: file.documentVersion, text }] }) })
+    return response.status
+  }, text)
+}
+
+/** 记录业务保存请求（幂等键 + 正文），用于核对命令身份。 */
+export function trackSync(page: Page) {
+  const posts: Array<{ key: string; body: string }> = []
+  page.on('request', r => {
+    if (r.method() === 'POST' && r.url().endsWith('/sync')) posts.push({ key: r.headers()['idempotency-key']!, body: r.postData()! })
+  })
+  return posts
+}
+
+/**
+ * 业务命令身份（业务键 + 正文）。同一原命令在传输层重试、或被学生明确重放，
+ * 身份都必须完全相同；只有出现第二条身份才说明客户端新建了命令。
+ */
+export function identities(posts: Array<{ key: string; body: string }>) {
+  return new Set(posts.map(p => `${p.key}\n${p.body}`))
+}
+
+/** 按住一次写命令的响应：请求已发出（因此租约与在途状态真实存在），回执尚未到达。 */
+export async function holdAck(page: Page) {
+  let release!: () => void, arrived!: () => void
+  const wait = new Promise<void>(r => { release = r }), ready = new Promise<void>(r => { arrived = r })
+  await page.route('**/api/attempts/*/sync', async route => {
+    const response = await route.fetch()
+    arrived()
+    await wait
+    await route.fulfill({ response })
+  })
+  return { ready, release }
+}

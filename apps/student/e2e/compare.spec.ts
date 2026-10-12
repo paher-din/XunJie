@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { PREP_TASK_PATH, PREP_URL } from './env'
+import { create, edit, identities, localState, newestSync, sceneUrl, setFault, start, syntheticUpdate, trackSync, typeIn } from './helpers'
 
 /**
  * I0_UI_04A：多标签与服务版本冲突的比较与选择。
@@ -20,101 +20,6 @@ import { PREP_TASK_PATH, PREP_URL } from './env'
  * 全部走同一个 `npm run dev:prep` 进程与真实浏览器（Monaco、IndexedDB、HTTP）；不造假业务，
  * 「另一处」一律由第二标签或 fixture 的合成接口充当。
  */
-const sceneUrl = (name: string) => `${PREP_URL}/?scenario=${name}-${crypto.randomUUID()}${PREP_TASK_PATH}`
-
-async function start(page: Page, name: string) {
-  await page.goto(sceneUrl(name))
-  await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
-  await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
-  await expect(page.locator('.cw')).toBeVisible()
-}
-
-async function create(page: Page, name = 'main.c') {
-  await page.getByRole('button', { name: '新建文件', exact: true }).first().click()
-  const input = page.getByRole('textbox', { name: '新文件名' })
-  await input.fill(name)
-  await input.press('Enter')
-  await expect(page.locator('.monaco-editor textarea').first()).toBeAttached()
-}
-
-/** 输入正文但不等待落盘；落盘结果（保护/冲突条）由调用方用 expect 等待。 */
-async function type(page: Page, text: string) {
-  await page.locator('.monaco-editor textarea').first().focus()
-  await page.keyboard.insertText(text)
-}
-
-/** 输入正文并等待本机草稿写入完成（保护状态恢复）。 */
-async function edit(page: Page, text: string) {
-  await type(page, text)
-  await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
-}
-
-/** 设置/清除开发故障；只作用于当前合成场景。 */
-async function setFault(page: Page, kind: 'none' | 'drop-ack' | 'fail-write') {
-  return page.evaluate(async kind => {
-    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
-    const session = (await (await fetch('/__i0prep/api/session', { headers })).json()).data
-    const response = await fetch('/__i0prep/fault', { method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json', 'x-csrf-token': session.csrfToken },
-      body: JSON.stringify({ kind }) })
-    return response.status
-  }, kind)
-}
-
-interface LocalCommand { kind: string; state: string; createdAt: number; commandKey: string; wireJson: string
-  rejected?: { code: string } | null }
-interface LocalSummary { workspace: { workspaceRevision: number; files: Array<{ fileId: string; text: string }> } | null
-  instances: Array<{ fileId: string }>; drafts: Array<{ text: string }>
-  commands: LocalCommand[]; candidates: Array<{ text: string; reason: string }> }
-
-async function localState(page: Page): Promise<LocalSummary> {
-  return page.evaluate(async () => {
-    const { confirmationRepository } = await import('/src/workspace/confirmationDb.ts' as string)
-    const scenarioId = new URLSearchParams(location.search).get('scenario')!
-    const data = (await (await fetch('/__i0prep/context', { headers: { 'x-i0prep-scenario': scenarioId } })).json()).data
-    return confirmationRepository.read({
-      mode: 'preparation', userId: data.syntheticAccount.userId, courseId: data.syntheticAccount.courseId,
-      assignmentId: data.refs.assignmentId, activityVersionId: data.refs.activityVersionId,
-      attemptId: data.refs.attemptId, loadEpoch: 0, preparationEpoch: data.preparationEpoch,
-      trustedRecoveryGeneration: data.recoveryGeneration, scenarioId,
-    })
-  })
-}
-
-/** 最新的原保存命令（同一测试里可能先有成功保存、再有被拒绝的保存）。 */
-function newestSync(state: LocalSummary): LocalCommand {
-  return state.commands.filter(c => c.kind === 'workspace.sync').sort((a, b) => b.createdAt - a.createdAt)[0]!
-}
-
-/** 用 fixture 的合成身份从页面内直接推进权威作品（模拟另一处已保存）。 */
-async function syntheticUpdate(page: Page, text: string) {
-  return page.evaluate(async text => {
-    const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
-    const context = (await (await fetch('/__i0prep/context', { headers })).json()).data
-    const session = (await (await fetch('/__i0prep/api/session', { headers })).json()).data
-    const head = (await (await fetch(`/__i0prep/api/attempts/${context.refs.attemptId}`, { headers })).json()).data
-    const file = head.files[0]
-    const response = await fetch(`/__i0prep/api/attempts/${context.refs.attemptId}/sync`, { method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json', 'x-csrf-token': session.csrfToken, 'Idempotency-Key': crypto.randomUUID() },
-      body: JSON.stringify({ recoveryGeneration: context.recoveryGeneration,
-        expectedWorkspaceRevision: head.attempt.workspaceRevision, clientId: crypto.randomUUID(), clientSeq: 1,
-        operations: [{ kind: 'update', fileId: file.fileId, baseVersion: file.documentVersion, text }] }) })
-    return response.status
-  }, text)
-}
-
-function trackSync(page: Page) {
-  const posts: Array<{ key: string; body: string }> = []
-  page.on('request', r => {
-    if (r.method() === 'POST' && r.url().endsWith('/sync')) posts.push({ key: r.headers()['idempotency-key']!, body: r.postData()! })
-  })
-  return posts
-}
-
-/** 同一原命令在传输层重试时身份必须完全相同；出现第二条身份才说明客户端新建了命令。 */
-function identities(posts: Array<{ key: string; body: string }>) {
-  return new Set(posts.map(p => `${p.key}\n${p.body}`))
-}
 
 /** 服务版本冲突的公共前置：v1 已确认 → 另一处推进权威 → 本页再编辑（尚未保存）。 */
 async function conflictSetup(page: Page, name: string) {
@@ -207,7 +112,7 @@ test('服务版本冲突：采用服务端正文写回本页草稿，原命令�
 })
 
 test('两标签本机草稿冲突：冲突条选择、选择期间另一处又写入、再次选择后保存', async ({ page, context }) => {
-  const url = `${PREP_URL}/?scenario=compare-draft-conflict-${crypto.randomUUID()}${PREP_TASK_PATH}`
+  const url = sceneUrl('compare-draft-conflict')
   await page.goto(url)
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
@@ -227,7 +132,7 @@ test('两标签本机草稿冲突：冲突条选择、选择期间另一处又�
   await expect(other.locator('.cw-protect')).toHaveAttribute('data-status', 'protected')
 
   // A 再编辑：CAS 落后于 B 的新修订 → 冲突条出现；库中草稿仍是赢家，败方正文留候选
-  await type(page, '// this-tab-loser\n')
+  await typeIn(page, '// this-tab-loser\n')
   await expect(page.locator('.ws-draft-conflicts')).toBeVisible()
   await expect(page.locator('.ws-draft-conflict[data-fileid]')).toHaveCount(1)
   await expect(page.locator('.ws-draft-conflict-path')).toHaveText('main.c')
@@ -249,7 +154,7 @@ test('两标签本机草稿冲突：冲突条选择、选择期间另一处又�
   // B 又写入一次新赢家修订（先等 B 落盘，再让 A 编辑，冲突再现是确定性的）
   await edit(other, '// b2\n')
   await expect(other.locator('.cw-protect')).toHaveAttribute('data-status', 'protected')
-  await type(page, '// a2\n')
+  await typeIn(page, '// a2\n')
   await expect(page.locator('.ws-draft-conflicts')).toBeVisible()
   await expect(page.locator('.cw-protect')).toHaveAttribute('data-status', 'failed')
 
@@ -278,7 +183,7 @@ test('两标签本机草稿冲突：冲突条选择、选择期间另一处又�
   expect(again.candidates.some(c => c.text.includes('a2'))).toBe(true)
 
   // A 再改一次文本后再选「用本页正文继续」：对库中最新修订重新 CAS 成功 → resolved
-  await type(page, '// final answer\n')
+  await typeIn(page, '// final answer\n')
   await page.getByRole('button', { name: '用本页正文继续' }).click()
   await expect(page.locator('.toast')).toHaveText('已按你的选择更新了草稿。')
   await expect(page.locator('.ws-draft-conflicts')).toHaveCount(0)

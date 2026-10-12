@@ -50,7 +50,7 @@
 1. **resolveConflict 原实现绕过 writing.current 串行写入边界**（Spec 轴，最重）：与 400ms 防抖 persist 交错时，stored 选择可能把库中正文 CAS 回写成选择前旧文，mine 选择可能产生虚假「再次冲突」。已把写段挂入同一条串行链，并在抛错时如实置为未保护。
 2. **比较入口原对任意未决结论显示**（Spec 轴）：RATE_LIMITED、unresolved、lease-held 等场景规格未要求比较，且同代际一律标 version-conflict 对非冲突拒绝失真。新增 comparableOutcome（conflict/recovery-required/key-conflict/historical），入口与选择按钮共用；openComparison 的 source 改按「旧代际是否有拒绝事实」区分 recovery/unresolved。
 3. **两处注释失真**（Spec 轴）：conflictIds 注释误写为驱动比较入口、conflicts 注释残留「比较尚未交付」，已修正。
-4. Standards 轴判断题登记（本次不实施）：ConflictCompare 内 DiffText/ReadOnlyText 的 effect 骨架可抽共享 hook；e2e helper（localState 等）已是第四份拷贝，建议抽共享模块（涉及改动其他 spec，超出本任务范围）；retireResolved 的可退役码与 comparableOutcome 是「DB 退役政策」与「界面选择入口」两套相关但不同的策略，未强行合并。
+4. Standards 轴判断题登记：ConflictCompare 内 DiffText/ReadOnlyText 的 effect 骨架可抽共享 hook（未实施）；e2e helper（localState 等）当时已是第四份拷贝——已按负责人 2026-10-12 指派收口为 [e2e/helpers.ts](../../apps/student/e2e/helpers.ts)（见「工程债收口」）；retireResolved 的可退役码与 comparableOutcome 是「DB 退役政策」与「界面选择入口」两套相关但不同的策略，未强行合并。
 
 ## 差异登记（待负责人确认/知悉）
 
@@ -61,7 +61,26 @@
 
 ## 待决策项处置
 
-无新增冻结项。差异登记第 1、2 条请负责人知悉/确认；e2e helper 抽共享模块作为工程债提议，不在本任务实施。
+无新增冻结项。差异登记第 1、2 条请负责人知悉/确认；e2e helper 抽共享模块与 vite optimizeDeps 预热两项工程债已由负责人 2026-10-12 指派实施，见下节「工程债收口」。
+
+## 工程债收口（2026-10-12，负责人指派）
+
+负责人选中上文登记的两项工程债提议并指派实施（完成后连同本任务改动一并提交推送）。均为仓库内测试/构建设施：无产品行为、共享契约或设计仓库组件改动，不触碰受保护文档。
+
+| 模块 | 内容 |
+| --- | --- |
+| e2e/helpers.ts（新增） | 收拢 compare/recovery/confirmation/draftConflict 四份 spec 的逐份拷贝：sceneUrl/start/create/typeIn（输入不等待落盘）/edit（输入并等待保护恢复）/setFault/localState（含 LocalCommand/LocalSummary 类型）/newestSync/syntheticUpdate/trackSync/identities/holdAck；实现与各 spec 原拷贝逐行为同一语义 |
+| e2e/compare、recovery、confirmation、draftConflict 四个 spec | 删除本地拷贝改导入共享模块；draftConflict 原「不等待落盘」的本地 edit 改用共享 typeIn；confirmation 的 localState 原为无类型，接入共享类型后按落盘实况补空值断言（workspace 为可空、find 结果可能不存在处加 `!`） |
+| vite.config.ts | optimizeDeps.include 预打 react、react-dom/client、react-router-dom、@tanstack/react-query、@radix-ui/react-dialog、marked、remend（后三者只在懒加载页面引用、此前会中途触发重优化），首轮优化即覆盖全部裸依赖 |
+
+验证（2026-10-12，全部实际执行）：
+
+- `npm run typecheck`（tsconfig.node.json 覆盖 e2e 与 vite.config）：通过。
+- `npx vitest run`：16 文件 190 例通过。
+- `npm run build`：成功（Monaco chunk 警告为既有）。
+- `npm run test:e2e`：运行前端口 5601/5602 空闲，dev server 全新冷启动（正是此前复现竞态的场景），52 例通过（2.0m），无 `504 Outdated Optimize Dep`。
+
+未执行：多次独立冷启动重复采样。单次冷启动通过不能数学证明竞态彻底消除；消除依据是机制性的——首轮优化覆盖全部裸依赖后，会话中不再发现新依赖、不再触发中途重优化。
 
 ## 交接与状态
 
@@ -75,7 +94,7 @@
 - `npm run build`：成功（Monaco 体积 chunk 警告为既有）。
 - `npm run test:e2e`：52 例通过，其中 compare.spec.ts 5 例新增；recovery/confirmation/draftConflict 三文件共 13 行旧断言/注释更新。
 
-环境观察（如实记录）：一次全量 e2e 曾出现首例启动失败，复跑通过；失败 trace 的浏览器 console 为 Vite 冷启动依赖重优化竞态（`504 Outdated Optimize Dep`，react-dom/@radix-ui），与业务代码无关。开发期间有热着的 dev server 可复用掩盖了该既有现象；建议后续在 vite.config 增加 optimizeDeps.include 预热或测试前预热（提案，未实施）。
+环境观察（如实记录）：一次全量 e2e 曾出现首例启动失败，复跑通过；失败 trace 的浏览器 console 为 Vite 冷启动依赖重优化竞态（`504 Outdated Optimize Dep`，react-dom/@radix-ui），与业务代码无关。开发期间有热着的 dev server 可复用掩盖了该既有现象；当时作为提案未实施，现已由负责人指派落实为 optimizeDeps 预热并通过冷启动全量验证（见「工程债收口」）。
 
 未执行：真实服务联调、真实恢复与教学效果（AC 明确不记）；设计仓库同步（本次无视觉改动）。
 
