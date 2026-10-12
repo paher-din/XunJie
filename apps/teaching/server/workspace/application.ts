@@ -21,11 +21,13 @@ import type { CommandContext, TeachingStopHandler, WorkspaceState } from './comm
 import { createWorkspaceWorker } from './worker.ts';
 import { readResultFiles } from './result-files.ts';
 import { z } from 'zod';
+import type { createHdlWorkspace } from './hdl.ts';
 
-export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop}};
+export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop};hdl?:ReturnType<typeof createHdlWorkspace>};
 const attemptResult = z.strictObject({ attemptId: z.string(), activityVersionId: z.string(), assignmentId: z.string() });
 export async function createWorkspaceApp(options: WorkspaceAppOptions) {
-  const { teaching: extensions, ...designOptions } = options;
+  const { teaching: extensions, hdl, ...designOptions } = options;
+  if(hdl&&hdl.databaseFile!==options.db.file)throw new ApiError('INVALID_CONFIGURATION');
   // Workspace owns the shared Job paths and dispatches each purpose to its original handler.
   const instance = await createDesignApp({ ...designOptions, ...(extensions?.design ? { teaching: { stop: extensions.design } } : {}) }, false);
   const { app, access } = instance;
@@ -117,14 +119,17 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     return execute(request, attemptId(request), 'snapshot.create', input.recoveryGeneration,
       (_tx, state, context) => snapshotCommand(state, context, input.expectedWorkspaceRevision, randomUUID()));
   });
-  app.post('/api/attempts/:id/controls', request => {
+  app.post('/api/attempts/:id/controls', async request => {
     const input = parseRequest(controlInput, request.body);
-    return execute(request, attemptId(request), 'attempt.control', input.recoveryGeneration, (tx, state, context) => {
+    const response=execute(request, attemptId(request), 'attempt.control', input.recoveryGeneration, (tx, state, context) => {
       const view = activityView(tx, { userId: context.identity.actorId, courseId: state.attempt.courseId, role: 'student' }, state.attempt.activityVersionId);
       const resources = view.content.materials.flatMap(item => item.status === 'available'
         ? item.paragraphs.filter(p => p.paragraphId).map(p => ({ resourceVersionId: item.resourceVersionId, paragraphId: p.paragraphId! })) : []);
-      return controlCommand(state, context, input.expectedAttemptRevision, domainControl(input.control), resources, teachingStop);
+      const result=controlCommand(state, context, input.expectedAttemptRevision, domainControl(input.control), resources, teachingStop);
+      if(input.control.kind==='pause')hdl?.stopInTransaction(tx,state.attempt.attemptId,'attempt_paused',input.recoveryGeneration);
+      return result;
     }, `attempt_control_${domainControl(input.control).kind}`);
+    await hdl?.reconcileStops();return response;
   });
   app.post('/api/attempts/:id/runs', async request => {
     const id = attemptId(request), input = parseRequest(runInput, request.body);
@@ -158,10 +163,14 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     return row.course_id;
   }
 
-  app.post('/api/jobs/:id/cancel', request => {    const jobId = attemptId(request), input = parseRequest(cancelInput, request.body);
+  app.post('/api/jobs/:id/cancel', async request => {    const jobId = attemptId(request), input = parseRequest(cancelInput, request.body);
     // Read-only preflight: `execute` below owns the session activity bump, so this one must not advance it.
     const purpose = access.withAuthorizedCourse(request, tx => jobCourse(tx, jobId), undefined, (tx, actor) => {
-      const row = tx.get('SELECT purpose,student_id FROM jobs WHERE job_id=?', jobId);
+      const row = tx.get('SELECT purpose,student_id,job_json FROM jobs WHERE job_id=?', jobId);
+      if(String(JSON.parse(String(row?.job_json??'{}')).kind??'').startsWith('hdl_')){
+        if(actor.role!=='student'||row?.student_id!==actor.userId)throw new ApiError('FORBIDDEN');
+        if(!hdl)throw new ApiError('RUNTIME_NOT_READY');return 'hdl' as const;
+      }
       if (row?.purpose === 'teacher_design') {
         if (!instance.teacherAgent) throw new ApiError('FORBIDDEN');
         return 'teacher_design' as const;
@@ -176,6 +185,11 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       }
       return 'run' as const;
     }, false);
+    if(purpose==='hdl'){
+      const data=access.withAuthorizedResource(request,tx=>locate(tx,jobAttempt(tx,jobId)),'write',(tx,actor)=>
+        hdl!.cancelInTransaction(tx,actor,jobId,parseRequest(key,request.headers['idempotency-key']),input.recoveryGeneration,input.reason));
+      await hdl!.reconcileStops();return {requestId:request.id,data};
+    }
     if (purpose === 'teacher_design') return instance.teacherAgent!.cancelJob(request);
     if (purpose === 'teaching') return execute(request, tx => jobAttempt(tx, jobId), 'job.cancel', input.recoveryGeneration,
       (_tx, state, context) => cancelTeachingJobCommand(state, { ...context,
@@ -193,6 +207,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     });
     return { requestId: request.id, data };
   });
+  const runWorker=createWorkspaceWorker(designOptions);
   const workspace = {
     readSnapshot(request: FastifyRequest, id: string, snapshotId: string) {
       return read(request, id, (_tx, state) => readConfirmedSnapshot(state, snapshotId, () => true));
@@ -214,7 +229,13 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
           limitedCheck, helpAllowed: activity.helpPolicy.helpAllowed && !limitedCheck };
       });
     },
-    ...createWorkspaceWorker(designOptions),
+    pendingJobs:()=>[...runWorker.pendingJobs(),...(hdl?.pendingJobs()??[])],
+    async processJob(jobId:string){
+      const kind=options.db.withTransaction(tx=>tx.get('SELECT job_json FROM jobs WHERE job_id=?',jobId));
+      if(String(JSON.parse(String(kind?.job_json??'{}')).kind??'').startsWith('hdl_')){
+        if(!hdl)throw new ApiError('RUNTIME_NOT_READY');await hdl.processJob(jobId);await hdl.reconcileStops();
+      }else await runWorker.processJob(jobId);
+    },
   };
   // C3 read/command seams. The teaching composer replaces these with real implementations; an unattached
   // workspace never reports a teaching action invalidation it did not perform.

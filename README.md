@@ -47,6 +47,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
+| [DL-C 隔离 HDL 构建与持续仿真](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) | 已授权 C 侧引擎/会话/三表合成服务端与真实目标验证；HDL 14/14、C 节点 50/51、认证 SSH 10/10，DL-A/UI/整卡与完整 NFR 保留 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -248,6 +249,12 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，P3 总协调已启动，当前只建立任务/依赖/评审与验收跟踪；数字逻辑 Demo、原服务端反馈闭环与完整 G3 均未验收。P2 的 #11/#26/#24 保持 Open，原 #22/#23/#30 继续各自范围；具体证据、放行条件、模块交接与待授权维护者汇总事项见 [G3 总协调记录](docs/tasks/G3_OVERALL_COORDINATION.md)。
 
 2026-10-12，P3 总协调 #37 与七个 A/B/C 执行 Issue #38～44 已发布并核对，任务/依赖和分层关闭条件见各正文；UI 分批接入与 DL-E2E 由总任务跟踪既定责任。原 P2/模型/UI/环境 Issue 未修改或关闭，发布不算应用验收；详细记录见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)。
+
+2026-10-12，C 按个人顺序先领取 DL-C #39，已交首批 [C 侧实施提案](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md)：复用/目标环境核查、引擎与板卡配置、Build/Session/顺序恢复、三表合成存储、独立限额与验证计划。具体方案与运行/schema 操作待负责人批准，共享契约待 DL-A 汇总；未实现 HDL、未启动节点或执行数字逻辑验收，C4 尚未开始，原 C 与完整产品条件保留。
+
+2026-10-12，负责人批准 DL-C C 侧方案、三表新合成库及原 VM 维护；独立实现已交目标真实构建/会话/信号与同事务服务端，typecheck/build、HDL 14/14、C 节点 50/51（1 宿主项跳过）和认证 SSH 10/10 通过，C/workspace/records 最终 59/61（2 未启用节点项跳过）。WSL 全量仍有原认证相关失败，完整回归未通过；DL-A 共享课程/接口与实际 UI 尚未接入，#39 不关闭、C4 未开始，产品基线待授权维护者汇总；实现、验证口径、故障与交接见 [DL-C 第 11 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#11-c-侧实际实现验证与交接)。
+
+2026-10-13，DL-C 最后权限撤回/受信终止反例修正后，接口专项 9/9、typecheck/build 通过；同一源码的 C/HDL 均经原认证入口读回 ready=true，原始成功/失败日志及当前 C 三套验收记录已纳入 [DL-C 第 11.4 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#114-2026-10-13-原始证据与最终核对)。这是 C 独立工程批次，#39、DL-A/UI/完整 NFR 与 C4 状态保持上段边界，未公开发布或代写产品基线。
 
 ### 当前整体状态与后置验收
 

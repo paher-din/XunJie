@@ -1,0 +1,19 @@
+▶ authenticated dedicated VM control and supervision
+  ✔ SSH application entry rejects shell, role injection, maintenance and unknown credential (3429.537652ms)
+  ✔ trusted Core and Report check real output, error exits and immutable original results (56761.175721ms)
+  ✔ legal names colliding with missing-file sentinel still pass the trusted missing case (16465.27991ms)
+  ✔ C int maximum is normal, while overflow is rejected or checked as expected exit two (10200.49235ms)
+  ✔ cancel before submit is durable; running cancellation waits for original units (7824.414934ms)
+  ✔ multiple checks share ten seconds and stdout plus report share 64 KiB (18942.103525ms)
+  ✔ controller crash preserves independent timeout, original identity and queued work (20311.574359ms)
+  ✔ worker crash keeps unknown reserved until authenticated Engine recovery barrier (17471.615269ms)
+  ✔ registered new generation rejects old control and never reruns original ID (7436.659749ms)
+✔ authenticated dedicated VM control and supervision (168777.511037ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 169009.643198

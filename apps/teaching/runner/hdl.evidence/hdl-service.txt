@@ -1,0 +1,17 @@
+✔ HDL board validation refuses executable mappings, missing bits and duplicates (3.348125ms)
+✔ elaborated widths/directions and all input bits must match, including ascending buses (1.667496ms)
+✔ four-value frames preserve X/Z and reject missing width or forged time (0.940963ms)
+✔ HDL interaction keeps input/cycle trust boundaries and the independent container limits (1.179204ms)
+✔ DL-C synthetic schema is exactly 29 tables; authenticated .sv ACK and immutable build survive retries (3101.444398ms)
+✔ DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram (3179.448784ms)
+✔ DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state (2949.571434ms)
+✔ existing authenticated Job paths dispatch HDL and stop its original session after a completed program (4182.143129ms)
+✔ revoked membership cannot read or interact, while the trusted worker still stops original resources (2817.048077ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16860.395286
