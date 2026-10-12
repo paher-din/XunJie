@@ -22,6 +22,12 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-11，项目负责人要求关闭 A1/A2/C1/C2 后先整合全部本地分支与工作树。A1 #10、A2 #13、C1 #12、C2 #14 已回读 Closed / Completed；B1 #11、完整 G1 UI/AC/NFR #22 和环境稳定性 #23 保持 Open。各任务旧 Open 表述保留其日期，当前管理状态见 [G1 第 19 节](docs/tasks/G1_OVERALL_COORDINATION.md#19-2026-10-11-执行-issue-关闭与本地全部工作整合)。12 个原有分支、9 个工作树 HEAD 和主副本未提交文件已整合到本地 main，逐项祖先关系与原始证据摘要核对通过。全部分支、工作树和备份保留；负责人随后授权推送并拉取，整合成果已普通推送至远端 main，快进拉取后两端提交一致、工作区干净，发布事实见 G1 第 19.4 节。
 
+2026-10-12，项目负责人确认启动 P3 总协调，并保留未完成的 P2 工作。[P3 总协调记录](docs/tasks/G3_OVERALL_COORDINATION.md)跟踪数字逻辑增量与原反馈闭环的依赖、评审、集成和分层验收，DL-A/DL-C/DL-B 与 A4/A5/B3/C4 仍由 A/B/C 按既定职责交付。A3/C3 已收口，B1 真实模型、B2 人工语义及 P2 #24 仍待完成；P3 启动不表示 P2 预交付或完整 G2 通过，数字逻辑具体评审/实施仍保留原预交付确认与契约/运行授权条件。P3 两个出口与完整 G3 尚未验收，原 P4/P5、M/AC/NFR 和真人门槛保持有效。
+
+2026-10-12，P3 总/子任务已发布：[总协调 #37](https://github.com/paher-din/XunJie/issues/37)、[DL-A #38](https://github.com/paher-din/XunJie/issues/38)、[DL-C #39](https://github.com/paher-din/XunJie/issues/39)、[DL-B #40](https://github.com/paher-din/XunJie/issues/40)、[A4 #41](https://github.com/paher-din/XunJie/issues/41)、[B3 #42](https://github.com/paher-din/XunJie/issues/42)、[C4 #43](https://github.com/paher-din/XunJie/issues/43)、[A5 #44](https://github.com/paher-din/XunJie/issues/44)，均 Open，完整正文与依赖链接已回读核对。P2 遗留与原实施/验收门禁保留；发布事实见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)，本地总协调记录尚未提交/推送，公开 Issue 不依赖未发布文档。
+
+2026-10-12，负责人授权的 P3 总协调记录与 README 已普通提交/推送到 main，首发提交为 `1b2bd10`；远端引用与两份文档 blob 回读一致，文档/空白/写入范围检查通过。总协调 Issue #37 已补公开文档入口，原任务状态与 P2/P3 实施/验收门禁保留；推送及记录同步见 [G3 第 9 节](docs/tasks/G3_OVERALL_COORDINATION.md#9-2026-10-12-本地总协调文档推送)。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -44,6 +50,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [G0 缺口收敛与批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md) | 已获负责人统一批准的教学/模型/数据/技术/首批进入方案及五份文件授权；正式契约以产品基线为准，未实施应用 |
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 服务端交付/合并/分层证据与 #9 行政收口；原完整 G1 条件在 #22、时钟问题在 #23 保留，产品基线未改；模块仍由 A/B/C 负责 |
 | [G2 / P2 总协调与教学支持交付跟踪](docs/tasks/G2_OVERALL_COORDINATION.md) | 教师生成/采用、学生辅导/取消与消息采集两条链的依赖、交接和分层验收；不代做 A3/B2/C3 |
+| [G3 / P3 总协调、数字逻辑增量与反馈闭环](docs/tasks/G3_OVERALL_COORDINATION.md) | P2 遗留、P3 任务依赖/评审、两条集成链与分层验收；不代做 A/B/C/UI，原预交付和实施门禁保留 |
 | [C3 教学消息、回执、采集控制与作业失效](docs/tasks/C3_TEACHING_MESSAGES_RECEIPTS.md) | 两轮审查问题已修复（首轮 14 项 + PR #33 的 5 项 P2/9 项 P3），C3 专项 20/20、C3+B1 组合 67/67 通过；Windows 全量 212 项中唯一失败是 Linux-only `RunControl`，属 #23 既有环境限制，完整 G2/B2/UI 未验收。实现与交接见第 8～9 节，两轮修复与真实验证见第 11、13 节 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
 | [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 完整服务端工作区/快照/基础作业、A1/A2 同事务与批准新二十二表合成库、C1 原 ID 运行/检查/产物；四项审查修复与作者32项含节点组合见第13节，最新合并/组合验证见G1记录 |
@@ -225,6 +232,12 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，整体复验确认上文的 Workspace 加 teacherAgent 组合目前无法构造，会因重复 Job/cancel 路由报错；独立 Design 工厂验证不受该组合问题影响。A 需统一公共路由后复验，当前失败事实及学生正文接缝问题见 [G2 第 14 节](docs/tasks/G2_OVERALL_COORDINATION.md#14-2026-10-12-p2-整体复验与-issue-关闭核对)，不将该组合说明视为已可用。
 
 2026-10-12，本地修复候选由 Workspace 唯一公共 Job 路由按持久 purpose 调用原教师/学生处理器，独立 Design 默认路由保留；教师/学生权限、取消、重放和重启回归通过。C3 长未知文字保存与原结果重放亦已验证，公开交付仍待发布确认，见 [G2 第 15 节](docs/tasks/G2_OVERALL_COORDINATION.md#15-2026-10-12-g2-r01r02-最小修复)。
+
+### G3 / P3 启动与总协调
+
+2026-10-12，P3 总协调已启动，当前只建立任务/依赖/评审与验收跟踪；数字逻辑 Demo、原服务端反馈闭环与完整 G3 均未验收。P2 的 #11/#26/#24 保持 Open，原 #22/#23/#30 继续各自范围；具体证据、放行条件、模块交接与待授权维护者汇总事项见 [G3 总协调记录](docs/tasks/G3_OVERALL_COORDINATION.md)。
+
+2026-10-12，P3 总协调 #37 与七个 A/B/C 执行 Issue #38～44 已发布并核对，任务/依赖和分层关闭条件见各正文；UI 分批接入与 DL-E2E 由总任务跟踪既定责任。原 P2/模型/UI/环境 Issue 未修改或关闭，发布不算应用验收；详细记录见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)。
 
 ### 当前整体状态与后置验收
 
