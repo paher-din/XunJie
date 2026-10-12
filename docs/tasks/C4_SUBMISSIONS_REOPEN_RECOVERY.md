@@ -74,6 +74,14 @@ C 提供两个同连接、同事务的能力供 A5 调用，与 [TECH §7.2.1](.
 
 其二，`planReopenGrant`/`writeReopenGrant` 现在同时递增 `decisionEpoch`，此前只递增 `attemptRevision`，是提交、复核、重开、消费四个尝试迁移里唯一的例外。后果是发放许可后，持有旧 `decisionEpoch` 的学生页面在 `GET /api/attempts/:id/recovery` 上会先得到 `resyncRequired` 为真，而不是要等到自己的 `resume_revision` 撞 CAS 才知道有新许可。`writeReopenGrant` 的返回形状未变（仍不含 `decisionEpoch`），因为发起发放的是教师、需要重新同步的是学生页面，学生侧从恢复读取取当前值；`transitionAttemptInTransaction` 的返回形状本就含 `decisionEpoch`，也未改。没有可被这次递增置为 stale 的在途作业：到达 `reviewed` 本身已经递增过一次 epoch，而该阶段起不了新的 `student_help`。
 
+2026-10-13 跨 PR 撞点实测，交负责人与 DL-C 协调，本任务不修改他人分支。当前开放 PR 为 #46、#47（本任务）、#48（DL-C）、#49（A4）；负责人的审查只组合验证了 #47 与 #46，本任务另建隔离工作树实测 #47 与 #48 的组合，发现两类问题。
+
+其一是**静默破坏 #48 的表数硬断言**。#48 的 `server/workspace/hdl.test.ts:50` 对 `createDigitalLogicDatabase()` 硬断言 29 张表，而该工厂 exec 的正是本任务改动的同一个 `workspaceSchema` 字符串。实测：#48 单独跑 `node --test apps/teaching/server/workspace/hdl.test.ts` 为 9 项全通过；把本任务 `dcf51bf` 的 `schema.ts` 单独叠到 #48 的树上后变为 8 通过 1 失败，失败项 `actual: 31, expected: 29`。这一处**没有文本冲突**，git 不会提示，只有在合并后的树上跑 #48 的 HDL 测试才看得见。
+
+其二是 **`/api/attempts/:id/controls` 的真实文本冲突**。#48 把同一处 handler 改成 `async request =>`、把 `return execute(...)` 改为 `const response=execute(...)`，并在 apply 回调里插入 `hdl?.stopInTransaction(...)`；本任务在同一 handler 内提出 `const control = domainControl(input.control)`，并给 `execute(...)` 追加第 6、7 个实参（`runPurposes`、`use`）。`git merge --no-commit --no-ff` 实测在 `README.md` 与 `apps/teaching/server/workspace/application.ts` 两处报 CONFLICT。冲突本身是响的，但**解决方式的失效是静默的**：若解冲突时整段采用 #48 一侧，本任务的 `use` 实参会被丢掉，`resume_revision` 随之退回 `'write'` 用途、在 `reviewed` 阶段被 `assertResourceUse` 拒为 STATE_CONFLICT，表现为「命令被拒」而不是报错，只有重跑 C4-V03/V06/V07 才能发现。`integration.test.ts` 的表数断言不冲突，#48 未改该行，合并后取本任务的 24。
+
+建议不在本任务实施：把这类「合成库恰好 N 表」的硬断言改成不随他人漂移的形式，例如「等于既有工厂表数加本域新表数」；`hdl.test.ts` 与 `integration.test.ts` 都属 C，可在 #48 侧一次改齐。合并顺序上无论谁先合，后合的一方都必须在合并后的树上重跑对方的表数断言与 C4-V03/V06/V07，并核对 `execute(...)` 的 `use` 实参仍在。
+
 交 C5 的未验项：完整备份恢复与实际 RPO/RTO、真实执行节点掉线与重启后的对账演练、真实负载下的保存与运行表现、以及本任务在第 6 节列出的解释项复核。上述项在本任务全部标为未执行，不以合成夹具的通过数替代。
 
 ## 6. 待确认的解释项与跨属提案
