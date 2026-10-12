@@ -600,3 +600,5 @@ Approve评审全文已按固定45c70f1准备，本次不需要新增行内缺陷
 实际合并提交为 [bb07197ad4cba35e5776ce76bdd9e0b9c78cbd44](https://github.com/paher-din/XunJie/commit/bb07197ad4cba35e5776ce76bdd9e0b9c78cbd44)，时间2026-10-12 13:49:40（Asia/Shanghai）。API核实际tree与预览完全一致，parents准确为fa0b6bc + 45c70f1；PR #32回读MERGED/APPROVED，#26仍Open。实际源分支位于作者fork `scy404/XunJie` 的 `codex/b2-student-help`，已回读仍为45c70f1；未执行分支删除/强推/历史改写。不能以base仓库的同名分支404认定作者源分支被删除。
 
 Git取回合并后main的首轮因30秒低速超时失败，第二轮因443连接超时失败，均保留；没有用未获取的本地commit冒充已同步。实际官方tree/parents已由API核实，与已验证的本地预览完全一致。因Git传输不可用，改用GitHub单文件Contents接口在旧blob SHA守卫下提交本文至最新main，仍在负责人批准的同一文件/发布范围内，不改已合并代码、保护基线或验收结果。第12节最新已发布历史完整保留；实际文档提交与远端核对结果完成后追加。
+
+总记录已通过单文件接口提交为 `1cf57b41e2363e91b170c6a82d95a66ddf72d75c`，parent为实际合并bb07197；API回读files仅本文、39行新增/0删除，旧已发布历史完整前缀未变，远端blob与待发布正文原UTF-8字节摘要一致。任务文档保持仓库LF文本形式，未改任何原字节证据。文档静态36份/525内部引用/27正式路由、空白与单文件范围通过。此回读事实另随本文提交，最终main SHA以远端引用为准；不将合并或文档交付记为完整G2验收，#26与原真实模型/运行环境/UI等门禁继续保留。
