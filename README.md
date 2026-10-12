@@ -42,7 +42,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [学生确认保存与不可变快照](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) | 学生主动创建 Attempt、原命令持久化与重放、原子确认和快照回取；准备范围验证及真实服务交接限制 |
 | [断线与原保存请求恢复](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md) | 断线继续编辑、刷新保留草稿、重连只核或重放原保存命令；未知/拒绝/版本冲突/旧代际的分流与准备范围验证 |
 | [文件实例回收恢复与只读版本比较](docs/tasks/I0_UI_05_FILE_HISTORY.md) | 回收/恢复文件实例（同名重建是新实例、恢复路径被占用先显式处理占用者）、两快照或草稿与确认作品的只读比较；准备范围验证及真实服务交接限制 |
-| [固定快照 Core 运行与基础结果](docs/tasks/I0_UI_06_RUN_RESULTS.md) | 学生主动选择快照与 stats/find/top 参数、持久化原命令、只读公开 Job/Run 与诊断；准备范围验证，未知核对/取消和历史产物后置 |
+| [固定快照 Core 运行与基础结果](docs/tasks/I0_UI_06_RUN_RESULTS.md) | 学生主动选择快照与 stats/find/top 参数、持久化原命令、只读公开 Job/Run 与诊断；准备范围验证；停止/未知核对见 06A，历史产物仍后置 |
+| [运行停止与原请求核对](docs/tasks/I0_UI_06A_RUN_CONTROL.md) | 学生显式停止、等待权威确认，丢回执后原键核对；准备实现与验证，真实停止/恢复交接仍后置 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；七张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
@@ -110,7 +111,7 @@ npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实
 
 `dev:prep` 与 `test:e2e` 用固定端口加 `--strictPort`；端口被占时命令直接失败，不自动漂移。首次跑 e2e 需 `npx playwright install chromium`。已有开发服务需要保留时，可明确设置测试端口，例如 `XUNJIE_E2E_PREP_PORT=5603 XUNJIE_E2E_REAL_PORT=5604 CI=1 npm run test:e2e`；这只覆盖测试 harness，仍严格使用指定端口。
 
-导航：准备模式下首页出现「准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区。载入仅初始化合成 Session、固定活动版本及按 visibility 裁剪的材料；学生点击「开始 Attempt」后可以多文件编辑、主动「确认保存」和「冻结确认作品」，已冻结的快照在顶栏显示为「已冻结快照 vN」。刷新读取同一开发进程保存的作品和快照；本机新编辑独立保留。上一次保存结果不确定时，界面只给一句学生能读的提示（草稿是否还在、能不能重试）和「重试上次保存」，重放的是**原样冻结的那次请求**，不会换键或把新编辑塞进旧请求；服务拒绝或工作区过期时停止重放，只保留草稿并提示先重新读取。重新读取后，已经被服务明确拒绝过的旧代际请求只留历史事实（顶栏显示「上一次保存已过期」），学生可以用新的请求重新保存；结果仍然未知的旧请求继续阻塞，等待 04A 的比较能力。fixture 重启或恢复代际变化时保留草稿并要求重新读取，不把旧缓存当当前作品。冻结后可进入顶栏「Core 运行」，明确选择快照、C 入口和输入文件及 stats/find/top 参数；准备模式仅返回合成诊断，不连接执行节点或模型。原运行请求未知时保留并阻止再次运行，核对/取消由 06A 交付；详见 [06 记录](docs/tasks/I0_UI_06_RUN_RESULTS.md)。原数字逻辑演示 `/#/task/counter` 保留演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
+导航：准备模式下首页出现「准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区。载入仅初始化合成 Session、固定活动版本及按 visibility 裁剪的材料；学生点击「开始 Attempt」后可以多文件编辑、主动「确认保存」和「冻结确认作品」，已冻结的快照在顶栏显示为「已冻结快照 vN」。刷新读取同一开发进程保存的作品和快照；本机新编辑独立保留。上一次保存结果不确定时，界面只给一句学生能读的提示（草稿是否还在、能不能重试）和「重试上次保存」，重放的是**原样冻结的那次请求**，不会换键或把新编辑塞进旧请求；服务拒绝或工作区过期时停止重放，只保留草稿并提示先重新读取。重新读取后，已经被服务明确拒绝过的旧代际请求只留历史事实（顶栏显示「上一次保存已过期」），学生可以用新的请求重新保存；结果仍然未知的旧请求继续阻塞，等待 04A 的比较能力。fixture 重启或恢复代际变化时保留草稿并要求重新读取，不把旧缓存当当前作品。冻结后可进入顶栏「Core 运行」，明确选择快照、C 入口和输入文件及 stats/find/top 参数；准备模式仅返回合成诊断，不连接执行节点或模型。运行中学生可点击“停止此运行”，等待原 Job 的权威停止确认；原运行或停止请求未知时保留原请求并阻止再次运行，丢回执后主动“核对原运行请求”只重放同代际的冻结原键/正文，旧代际保持恢复核对不可用。详见 [06 记录](docs/tasks/I0_UI_06_RUN_RESULTS.md) 与 [06A 记录](docs/tasks/I0_UI_06A_RUN_CONTROL.md)。原数字逻辑演示 `/#/task/counter` 保留演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
 
 **学生界面只保留必要信息**（确认工作区与顶栏）：不出现错误码、原命令键、clientId/clientSeq、受信代际、预期版本、接口路径、服务原文或快照 ID/hash，也不出现冻结正文摘要。这些事实改由 `src/workspace/diagnostics.ts` 以 `console.info('[i0-workspace] <event>', detail)` 输出到浏览器控制台，事件覆盖 `context.loaded` / `command.sent` / `command.acknowledged` / `command.failed` / `command.abandoned` / `command.reconciled` / `command.historical` / `snapshot.frozen` / `workspace.read-failed` / `workspace.initialize-failed`，内容包括命令身份与冻结输入摘要（路径、字节数、sha256）、回执 ID 与服务序号、HTTP 失败体、快照 ID/hash 与上下文归属；**不含**会话 cookie、CSRF token 或作品正文。排障时打开 DevTools 控制台即可核对原命令身份与结论；工作区左侧「任务信息」面板仍按 01 的交付显示合成身份与对象引用（属于「明确标识合成场景」的一部分，2026-10-12 决定暂不收敛）。
 
@@ -118,7 +119,7 @@ npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实
 
 断线恢复可以手动复现：`dev:prep` 进程提供开发专用 `POST /__i0prep/fault`（body `{"kind":"drop-ack"}` 或 `{"kind":"fail-write"}`，需开发会话的 `x-csrf-token` 与 `x-i0prep-scenario` 头；`{"kind":"none"}` 清除）。`drop-ack` 让写命令照常提交到进程内 authority 但不下发响应，界面显示「保存结果待确认」，继续编辑并刷新后可用「重试上次保存」以同键同正文重放；`fail-write` 不提交命令并返回 503 `PERSISTENCE_UNAVAILABLE`，界面显示「保存未成功」，正文与原命令保留、仍可明确重试。服务明确拒绝且重放不能解决时（版本冲突、登录状态变化等）停止重放并提示先重新读取，不会自动改键重做。该端点只存在于 `npm run dev:prep`，`npm run build` 的产物不含它，也不会把拒绝伪装成丢失。
 
-本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照、04 断线恢复、05 文件回收恢复/只读版本比较与 06 固定快照 Core 运行/基础结果的准备范围，使用同一确认客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)、[04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md)、[05 任务记录](docs/tasks/I0_UI_05_FILE_HISTORY.md) 与 [06 任务记录](docs/tasks/I0_UI_06_RUN_RESULTS.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
+本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照、04 断线恢复、05 文件回收恢复/只读版本比较、06 固定快照 Core 运行/基础结果与 06A 运行停止/原请求核对的准备范围，使用同一确认客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)、[04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md)、[05 任务记录](docs/tasks/I0_UI_05_FILE_HISTORY.md)、[06 任务记录](docs/tasks/I0_UI_06_RUN_RESULTS.md) 与 [06A 任务记录](docs/tasks/I0_UI_06A_RUN_CONTROL.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
 
 ## 状态
 

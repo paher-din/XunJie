@@ -8,6 +8,7 @@ import { ConfirmationCluster } from '../components/workspace/ConfirmationCluster
 import { ConflictCompare } from '../components/workspace/ConflictCompare'
 import { VersionCompare } from '../components/workspace/VersionCompare'
 import { RunPanel, CoreRunEntry, type CoreSelection } from '../components/workspace/RunPanel'
+import { settledJob } from '../workspace/runResults'
 import { useRunWorkspace } from '../workspace/useRunWorkspace'
 import type { CoreInput } from '../workspace/runRequest'
 import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
@@ -92,7 +93,7 @@ export default function PrepWorkspacePage() {
   const runSnapshots = confirmation.state.snapshots.map(snapshot => ({ id: snapshot.snapshotId,
     label: `确认作品 v${snapshot.workspaceRevision} · ${new Date(snapshot.createdAt).toLocaleTimeString()}`,
     files: snapshot.files.map(file => ({ id: file.fileId, path: file.path, ascii: /^[\x00-\x7f]*$/.test(file.text) })) }))
-  const runBusy = run.state.phase === 'submitting' || run.state.phase === 'reading'
+  const runBusy = run.state.phase === 'submitting' || run.state.phase === 'reading' || run.state.controlBusy
   const canRun = run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
     runSelection.fileIds.length > 0 && !confirmation.client?.commandInFlight
 
@@ -274,6 +275,11 @@ export default function PrepWorkspacePage() {
             : runOpen
               ? <RunPanel snapshots={runSnapshots} selection={runSelection} result={run.result}
                   busy={runBusy} canRun={canRun} notice={run.state.notice} synthetic={c?.mode === 'preparation'}
+                  control={{ canStop: !!run.state.job && !settledJob(run.state.job.status) && !run.state.job.stopRequested && !run.state.pending,
+                    canReconcile: run.state.pending || run.state.phase === 'read-unknown' ||
+                      run.state.job?.status === 'outcome_unknown' || run.state.job?.status === 'stale',
+                    busy: run.state.controlBusy, onStop: () => { void run.client?.cancel() },
+                    onReconcile: () => { void run.client?.reconcile() } }}
                   onSelect={setRunSelection} onReturn={() => setRunOpen(false)} onRead={run.read}
                   onRun={() => {
                     const input: CoreInput = runSelection.operation === 'find'

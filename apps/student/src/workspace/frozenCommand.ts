@@ -11,11 +11,13 @@ export interface FrozenDraft {
   lifecycle?: 'active' | 'recycled'
 }
 export interface FrozenCommand {
-  commandKey: string; context: CommandContext; kind: 'attempt.create' | 'workspace.sync' | 'snapshot.create' | 'run.create'
+  commandKey: string; context: CommandContext; kind: 'attempt.create' | 'workspace.sync' | 'snapshot.create' | 'run.create' | 'job.cancel'
   path: string; target: string; wireJson: string; requestHash: string; createdAt: number
   before: ConfirmedWorkspace | null; drafts: FrozenDraft[]
   /** 06 本机来源标签：经回执关联后才展示，不补入 GET Run 或 POST wire。 */
   runSnapshot?: { hash: string; workspaceRevision: number; files: Array<{ fileId: string; path: string }> }
+  /** 06A 本机原停止对象；不扩充 POST cancel 的 wire。 */
+  cancelRun?: { runId: string; jobId: string }
 }
 export interface OutboxRecord extends FrozenCommand {
   state: 'pending' | 'confirmed' | 'historical'

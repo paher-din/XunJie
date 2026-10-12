@@ -292,17 +292,17 @@ export function readPrepSnapshot(scenario: string, session: PrepSession, attempt
 }
 
 /** 06 脚本结果；没有 GCC/worker/runner，输出从固定公开形状脚本取，不评判作品正确性。 */
-export type PrepRunScript = 'success' | 'compile_failed' | 'runtime_failed' | 'timed_out' | 'output_limit' | 'running' | 'unavailable' | 'node_failed' | 'not_ready'
+export type PrepRunScript = 'success' | 'compile_failed' | 'runtime_failed' | 'timed_out' | 'output_limit' | 'running' | 'unavailable' | 'node_failed' | 'not_ready' | 'outcome_unknown' | 'stale' | 'cancelled'
 const scripts = new Map<string, PrepRunScript>()
 const polls = new Map<string, number>()
 const runScripts = new Map<string, PrepRunScript>()
 export function setPrepRunScript(scenario: string, value: unknown) {
   const input = object(value, ['outcome'])
-  if (!['success', 'compile_failed', 'runtime_failed', 'timed_out', 'output_limit', 'running', 'unavailable', 'node_failed', 'not_ready'].includes(String(input.outcome))) reject('INVALID_REQUEST')
+  if (!['success', 'compile_failed', 'runtime_failed', 'timed_out', 'output_limit', 'running', 'unavailable', 'node_failed', 'not_ready', 'outcome_unknown', 'stale', 'cancelled'].includes(String(input.outcome))) reject('INVALID_REQUEST')
   scripts.set(scenario, input.outcome as PrepRunScript)
   // 同一开发脚本可推进尚未结束的原 Job；不会新建运行或改变快照/公开 wire。
   for (const job of sceneOf(scenario).head?.jobs ?? []) {
-    if (['queued', 'running'].includes(job.status)) runScripts.set(`${scenario}:${job.runId}`, input.outcome as PrepRunScript)
+    if (!['succeeded', 'failed', 'cancelled', 'timed_out'].includes(job.status)) runScripts.set(`${scenario}:${job.runId}`, input.outcome as PrepRunScript)
   }
   return { outcome: input.outcome }
 }
@@ -356,6 +356,17 @@ export function readPrepJob(scenario: string, session: PrepSession, jobId: strin
   const job = head.jobs.find(j => j.jobId === id(jobId))
   if (!job) reject('FORBIDDEN')
   const key = `${scenario}:${job.runId}`, script = runScripts.get(key) ?? 'running'
+  if (['succeeded', 'failed', 'cancelled', 'timed_out'].includes(job.status)) return structuredClone(job)
+  // 06A：停止意图与整个单元停止确认分开。脚本是合成外部事实，GET 才返回权威状态。
+  if (job.stopRequested) {
+    if (script === 'cancelled' && ['cancelling', 'outcome_unknown'].includes(job.status)) job.status = 'cancelled'
+    return structuredClone(job)
+  }
+  if (script === 'outcome_unknown' || script === 'stale') {
+    job.status = script
+    return structuredClone(job)
+  }
+  if (script === 'cancelled') return structuredClone(job)
   const count = (polls.get(key) ?? 0) + 1
   polls.set(key, count)
   if (count >= 2 && job.status === 'queued') { job.status = 'running'; job.attemptCount = 1 }
@@ -369,6 +380,24 @@ export function readPrepJob(scenario: string, session: PrepSession, jobId: strin
       ...(script !== 'success' ? { failureKind: script === 'compile_failed' ? 'compile_error' : script === 'runtime_failed' ? 'program_error' : script === 'timed_out' ? 'timeout' : 'output_limit' } : {}) }
   }
   return structuredClone(job)
+}
+/** cancelRunCommand/cancelJob 的公开行为；不执行真实节点取消或证明槽位释放。 */
+export function cancelPrepRun(scenario: string, session: PrepSession, jobId: string, value: unknown, key: unknown) {
+  const scene = sceneOf(scenario), head = scene.head
+  if (!head) reject('FORBIDDEN')
+  authorizedHead(scene, session, head.attempt.attemptId)
+  const input = object(value, ['recoveryGeneration']), generation = trustedGeneration(scene, input.recoveryGeneration)
+  const command = identity(session, 'job.cancel', `/api/jobs/${jobId}/cancel`, key, generation, head.attempt.attemptId)
+  const hash = sha256Hex(canonical({ target: command.target, fields: { jobId } }))
+  const previous = original(scene, command, hash)
+  if (previous) return { ...structuredClone(previous), replayed: true }
+  const job = head.jobs.find(j => j.jobId === id(jobId))
+  if (!job) reject('FORBIDDEN')
+  job.stopRequested = true
+  if (!['succeeded', 'failed', 'cancelled', 'timed_out', 'stale'].includes(job.status)) job.status = 'cancelling'
+  const ack = receipt(scene, command, hash, { jobId, status: job.status, stopRequested: true })
+  checkpoint(scene)
+  return { ...ack, replayed: false }
 }
 export function readPrepRun(scenario: string, session: PrepSession, attemptId: string, runId: string): RunView {
   const head = authorizedHead(sceneOf(scenario), session, id(attemptId))

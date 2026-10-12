@@ -30,6 +30,8 @@ export interface RunPanelProps {
   canRun: boolean
   notice: string | null
   synthetic: boolean
+  /** 06A 纯受控停止/核对：显示条件与异步状态由业务客户端提供。 */
+  control?: { canStop: boolean; canReconcile: boolean; busy: boolean; onStop: () => void; onReconcile: () => void }
   onSelect: (selection: CoreSelection) => void
   onRun: () => void
   onRead: () => void
@@ -44,7 +46,7 @@ export function CoreRunEntry({ onOpen }: { onOpen: () => void }) {
 }
 
 /** 06 设计交付：纯受控 Core 参数与只读结果。请求、身份、限额和确认由业务调用方负责。 */
-export function RunPanel({ snapshots, selection, result, busy, canRun, notice, synthetic,
+export function RunPanel({ snapshots, selection, result, busy, canRun, notice, synthetic, control,
   onSelect, onRun, onRead, onReturn }: RunPanelProps) {
   const fixed = snapshots.find(s => s.id === selection.snapshotId)
   const change = (patch: Partial<CoreSelection>) => onSelect({ ...selection, ...patch })
@@ -90,6 +92,10 @@ export function RunPanel({ snapshots, selection, result, busy, canRun, notice, s
       <div className="core-run-actions">
         <button type="submit" className="ws-btn solid" disabled={!canRun || busy}>{busy ? '正在提交' : '运行此快照'}</button>
         <button type="button" className="ws-btn ghost" onClick={onRead} disabled={busy}>重新读取结果</button>
+        {control?.canStop && <button type="button" className="ws-btn ghost" onClick={control.onStop}
+          disabled={busy || control.busy}>停止此运行</button>}
+        {control?.canReconcile && <button type="button" className="ws-btn ghost" onClick={control.onReconcile}
+          disabled={busy || control.busy}>核对原运行请求</button>}
       </div>
     </form>
     {notice && <p className="core-run-notice" role="status">{notice}</p>}

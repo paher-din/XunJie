@@ -49,7 +49,7 @@ import {
 } from './scenario'
 import { createPrepAttempt, readPrepAttempt, syncPrepWorkspace, freezePrepSnapshot, readPrepSnapshot, recoverPrepWorkspace,
   setPrepAttemptState, PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
-import { createPrepRun, readPrepJob, readPrepRun, setPrepRunScript } from './workspace'
+import { createPrepRun, readPrepJob, readPrepRun, setPrepRunScript, cancelPrepRun } from './workspace'
 import { isPrepFault, prepFaultOf, setPrepFault } from './faults'
 
 /** 与 `apps/teaching/contracts/common/http.ts:3-19` 的 errorDefinitions 对应条目逐字一致。 */
@@ -396,9 +396,10 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   const runCreate = route.match(/^\/attempts\/([^/]+)\/runs$/)
   const runRead = route.match(/^\/attempts\/([^/]+)\/runs\/([^/]+)$/)
   const jobRead = route.match(/^\/jobs\/([^/]+)$/)
+  const jobCancel = route.match(/^\/jobs\/([^/]+)\/cancel$/)
   if ((attemptCreate && method === 'POST') || (attemptRead && method === 'GET') || (sync && method === 'POST')
     || (snapshotCreate && method === 'POST') || (snapshotRead && method === 'GET') || (runCreate && method === 'POST')
-    || (runRead && method === 'GET') || (jobRead && method === 'GET')) {
+    || (runRead && method === 'GET') || (jobRead && method === 'GET') || (jobCancel && method === 'POST')) {
     const session = requireSession(req, res)
     if (!session) return
     if (method === 'POST' && csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
@@ -417,6 +418,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
       ok(res, data)
     }
     try {
+      if (jobCancel) return respond(cancelPrepRun(scenario, session, decodeURIComponent(jobCancel[1]!), body, req.headers['idempotency-key']))
       if (jobRead) return ok(res, readPrepJob(scenario, session, decodeURIComponent(jobRead[1]!)))
       if (runRead) return ok(res, readPrepRun(scenario, session, decodeURIComponent(runRead[1]!), decodeURIComponent(runRead[2]!)))
       if (runCreate) return respond(createPrepRun(scenario, session, decodeURIComponent(runCreate[1]!), body, req.headers['idempotency-key']))

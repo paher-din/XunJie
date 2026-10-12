@@ -140,8 +140,11 @@ export const confirmationRepository = {
         if (old && JSON.stringify((old as OutboxRecord).wireJson) !== JSON.stringify(command.wireJson)) throw new Error('原命令不能修改')
         // 06 两标签在同一个 readwrite 事务争用原请求槽；旧代际未知也不能换键重跑。
         if (command.kind === 'run.create' && (all as OutboxRecord[]).some(r => r.commandKey !== command.commandKey &&
-          r.kind === 'run.create' && r.state === 'pending' && sameOwner(r.context, command.context) &&
+          (r.kind === 'run.create' || r.kind === 'job.cancel') && r.state === 'pending' && sameOwner(r.context, command.context) &&
           r.context.attemptId === command.context.attemptId)) throw new Error('上次运行请求仍需核对，不能再次发起。')
+        if (command.kind === 'job.cancel' && (all as OutboxRecord[]).some(r => r.commandKey !== command.commandKey &&
+          r.kind === 'job.cancel' && r.state === 'pending' && r.target === command.target &&
+          sameOwner(r.context, command.context) && r.context.attemptId === command.context.attemptId)) throw new Error('原停止请求仍需核对')
         if (!old) tx.objectStore('outbox').put({ ...command, state: 'pending' } satisfies OutboxRecord)
         result(undefined)
       })
@@ -222,7 +225,7 @@ export const confirmationRepository = {
           // STATE_CONFLICT（05）：整批原子、确定没有生效，而且没有可比较或可重放的动作
           // （comparableOutcome 为 false、claim 也拒绝重放）。留在 pending 只会让这条已经了结的
           // 失败在每次刷新时重新变成「未决」状态——事实仍保留在记录的 rejected 字段里。
-          const retired = code === 'STATE_CONFLICT'
+          const retired = code === 'STATE_CONFLICT' && row.kind !== 'run.create' && row.kind !== 'job.cancel'
           tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() },
             ...(retired ? { state: 'historical' as const, lease: undefined } : {}) })
         }
@@ -234,7 +237,7 @@ export const confirmationRepository = {
     await transaction<void>(await openWorkspaceDb(), ['outbox'], 'readwrite', (tx, result, safe) =>
       reads(tx, [['outbox', key]], safe, ([value]) => {
         const row = value as OutboxRecord | undefined
-        if (row?.kind === 'run.create' && !row.receipt && row.lease?.owner === owner) {
+        if (row && (row.kind === 'run.create' || row.kind === 'job.cancel') && !row.receipt && row.lease?.owner === owner) {
           tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() }, state: 'historical', lease: undefined })
         }
         result(undefined)

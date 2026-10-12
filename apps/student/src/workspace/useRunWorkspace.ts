@@ -40,7 +40,7 @@ export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: W
   }, [])
   useEffect(() => {
     const job = state.job
-    if (!client || !job || settledJob(job.status) || state.phase === 'submitting' || !online) return
+    if (!client || !job || settledJob(job.status) || state.phase === 'submitting' || state.controlBusy || !online) return
     if (ticks.current.runId !== job.runId) ticks.current = { runId: job.runId, count: 0 }
     if (ticks.current.count >= 60) { client.pollingExhausted(); return }
     const timer = window.setTimeout(() => {
