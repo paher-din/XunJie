@@ -500,3 +500,62 @@ PR #33 head 由 `9fc9fae3` 前移到 `5b76fc54`，单提交 `fix(C3): enforce th
 未关闭 Issue #27、#26、#24、#25、#11、#23；未解决 PR #33 上我提出的 5 条行内审查线程（内容已由 C3 修复覆盖，但线程状态保持原样，未代为标记 resolved）；未修改 PR #32 的代码。P2-1 的跨 worker 累计计账在学生路径上仍缺，按方案 1 属 B2 接线的前置条件，已在 §11.3 的审阅修订中具体化。C3 线的结构性独立审查缺口保留：PR #33 作者与本审查发布为同一账号，本轮复验由执行 Agent 完成，不构成独立复核。
 
 未执行：真实模型与 B2 正式 help 联调（C3-V08）、真实 provider 调用 / D-02、Linux 复验、浏览器与实际 UI、真人与负载、C5 备份恢复、完整 G1～G4 与 MVP 验收。服务端通过、文档交付与本次合并均不构成产品验收或教学效果证据。MVP_SPEC §10 与 TEAM 的基线进度仍待授权维护者汇总。
+
+## 12. 2026-10-12 B2 PR #32 复审与 C3 接入核对
+
+项目负责人要求处理 B2 当前 PR。本次负责 G2 固定提交审查、旧意见核对、服务端合成复验与总记录，不代 B 修代码。可写仅本文；产品/规范/规划/参考、A/B/C 源码与作者任务稿只读，不改共享契约、依赖/锁文件、schema、凭据/CI 或 UI，不提前开展数字逻辑任务。
+
+### 12.1 依据与固定点
+
+重新读取 AGENTS/README，按 PRD → MVP_SPEC → TECH_DESIGN 核对 PRD-04/05/09/10、M-04/M-05、AC-04/05/06/07/11/12/15/16、NFR-02/06、TECH 第 4～7/9/10.3 节，以及 TEAM 第 6 节、#26、B2 当前任务稿和 C3 最新接缝/批准记录。数字逻辑新增排程不改变 P2。
+
+[PR #32](https://github.com/paher-din/XunJie/pull/32) 固定 head=`2e821d5b9fdc6e588dd30a1bf10227208d408c84`，真实 base=`6914fb9c9f121e8c2036cb2060f90e95030ec0c7`，`git diff 6914fb9...2e821d5` 为 10 个 B2 文件、+2436/-4；base 已合入 A3/B1/C3 修复。主副本启动时 main=8a6c70c、干净但较旧，未以其较大差异冒充 B2 增量，也未改该主副本。独立审查树固定候选，本文以其最新 base 全部第 9～11 节记录为基础追加，不覆盖已发布历史。
+
+首审 `5483718927` 原三项 P2 均已有对应修正，静态与原专项核对可收口：持久 claim/attemptCount/recordModelCall 与 B1 priorCalls；损坏绑定统一 STATE_CONFLICT；获准资料正文指令注入直接反例。成功路径已持同一 lease 调用 C3 completeTeaching。原线程 `4241983813/16/20` 仍未解决，本次未改线程或原审查历史。
+
+### 12.2 Standards
+
+新增硬性问题 2 项 P2，可操作异味 0：`application.ts:295～299` 固化预算布尔值，逐次调用不重查账号/课程预算，违反 TECH §10.3；`application.ts:142～143` 两次取时产生大于 45 秒的窗口，违反 TECH §6.2。均已实际复现，结果见 Spec。
+
+非阻塞状态差异：PR 正文仍声称 Draft/等待 #29 与 C3，实际非 Draft且两依赖已合入；README 第 45 行导航仍称持久消息等待 C3，与作者最新任务稿不一致。应同步当前交付，并保留生产宿主编排、实际 UI/真人/教学语义的后置层，不用改文案消除代码缺口。
+
+### 12.3 Spec
+
+| 编号/优先级 | 新增位置 | 实际复现 | 修正边界 |
+| --- | --- | --- | --- |
+| B2-R01 / P1 | `context.ts:257/295`、`application.ts:384` | 实际 UUID 代码/资料引用长 145/147，超过 C3 的 128 上限；接纳/prepare 成功、合法 provider 已执行一次，但 complete 均 HTTP400 INVALID_REQUEST，Job running/attemptCount=1，无获准 Message/Action | B2 构造长度合规、稳定且可追溯的引用，保留完整对象/版本/hash；补两条完整成功链，不放宽 C 共享上限 |
+| B2-R02 / P2 | `application.ts:295～299`、`service.ts` 逐次预留 | 原宿主预算钩子先 true，首个合法响应改为 false 并要求继续；第二次仍发出，calls=2/success 且保存 C3 Action | 每次发送前重查可信当前预算；拒绝不消耗未发送预留，保留原计数/时限/实际或 unknown 记录 |
+| B2-R03 / P2 | `application.ts:142～143` | 原真实 fixture 仅令 now 每次增加 1ms；窗口为 45001ms，C3 enqueue 正确拒绝，合法 help 整事务返回 HTTP422 INVALID_CONFIGURATION | 单次 acceptedAtMs 派生接受及 +45000 截止，不改 C 严格窗口 |
+
+实际三个根因；预算/取时同时涉及两轴，分别登记但不虚增为五个缺陷。政策 description、有效状态/实际帮助输入、宿主取消及失败 Job 编排为后续交接项，未把明确后置的宿主/模型/UI算成本批新增缺陷。结论为 Request Changes，暂不合并或关闭 #26。
+
+### 12.4 实际验证与发布状态
+
+| 检查 | 结果 |
+| --- | --- |
+| 环境 / typecheck / build | Node 24.21.0、TypeScript 7.0.2、原锁版本；两命令均通过，无源码/检查调整 |
+| 原 B1+B2+C3 专项 | `node --test server/tutoring/test/*.test.ts server/records/teaching.test.ts server/records/teaching-review.test.ts`：83 通过、0 失败、0 跳过，其中 B2 原 16 项通过 |
+| 原完整 `npm test` | 253 项：245 通过、1 失败、7 原条件跳过；唯一失败仍为 Windows 初始化基线 Linux-only RunControl，不在 B2 diff。作者的两条回环限制失败本次未出现，不宣称全量通过 |
+| 新增正确性反例 | 最终 4 项均失败：代码/资料完整接纳各一条、预算撤回、递增时钟；达到 §12.3 错误状态，复现三个缺口；真实 HTTP/SQL/C3 + 合成 provider，供应商网络 0 |
+| 审查 fixture 初次错误 | 预算路由首次在 Fastify ready 后注册，未执行预算场景；仅修审查 fixture 注册顺序再测，最终四项均到达业务断言，不把 fixture 错误列为生产缺陷 |
+| 环境初次失败 | 旧解压 Node 不在，v24.15.0 被原检查拒绝；保留的已验证官方 ZIP 与 SHASUMS 校验一致后重新解压。缓存 tsc shim 指向失效目录，仅修独立依赖副本的 npm shim，不改永久 PATH、源码、package/lock 或 tsconfig |
+| 文档/空白 | 写记录前 36 份/525 内部引用/27 正式路由、errors=[]；固定 diff 空白通过。本文追加后核链接/空白与单文件写入范围 |
+| 未执行 | 真实模型/D-02/付费、Linux 节点、浏览器/真人/B4 语义性能、生产 worker；不是完整 G2 或教学效果验收 |
+
+三条行内意见和 Request Changes 全文已按固定 commit/新 diff 行号准备；候选再回读仍 Open/非 Draft、无 CI 检查、head 未变。本段为授权前准备状态：当时仅本地稿，未公开发布、解决线程、合并、关闭或推送；后续授权与发布事实见下节。验证树、临时合成库和输出保留，团队依据固定 PR、行号、输入/结果核查，不依赖个人临时目录。
+
+### 12.5 负责人授权、公开评审与旧线程收口
+
+项目负责人在三项新发现、实测结果和完整审查稿可审阅后，明确选择“提交审查并同步记录”。授权范围是 PR #32 一份 Request Changes 和三条行内意见、原三条已修复线程的 resolved 状态，以及本文的单文件普通推送；PR 暂不合并、#26 不关闭，不代 B 修改实现或扩大其他文档/源码/服务操作权限。
+
+[Review 5486344428](https://github.com/paher-din/XunJie/pull/32#pullrequestreview-5486344428) 已在固定 `2e821d5` 提交，平台状态 CHANGES_REQUESTED，发布身份 paher-din，PR 作者 scy404。三条意见为 [引用长度接入](https://github.com/paher-din/XunJie/pull/32#discussion_r4244493733)（application.ts:384）、[逐调用预算](https://github.com/paher-din/XunJie/pull/32#discussion_r4244493736)（295～299）、[单次取时](https://github.com/paher-din/XunJie/pull/32#discussion_r4244493737)（142～143）。使用结构化 UTF-8 JSON 提交；独立回读 review 完整正文、commit_id、state、发布账号及三条评论的 path/RIGHT/line/start_line/commit_id/正文，逐字逐项与准备稿一致，无重复评审或额外评论/成员消息。
+
+原 `4241983813/4241983816/4241983820` 对应线程 PRRT_kwDOVA3Qmc6rOhVy / PRRT_kwDOVA3Qmc6rOhV0 / PRRT_kwDOVA3Qmc6rOhV3 已逐项设为 resolved。GraphQL 再回读：原三条全部 true，新三条全部 false，不把新缺陷标为解决。首个更新请求因参数序列化错误被平台拒绝、未改变线程；重读状态并使用已核验的明确 thread ID 后成功，没有重复发布意见或处理其他线程。
+
+发布后 PR #32 仍 Open/非 Draft/CHANGES_REQUESTED，head 未变；#26 仍 Open。未合并、关闭任务、修改作者代码或改变原 AC/NFR 完成标准。
+
+### 12.6 总记录单文件发布
+
+复用本工作项已有干净文档工作树，从 0afd008 快进到发布时最新 main `6914fb9`；提前核祖先关系和删除清单，未移除文件或重写历史。本文在 PR head 与 main 的原始 blob 相同，发布树只复制本文追加记录，不复制未合并的 B2 源码/README/作者稿，不丢第 9～11 节或其他已发布交付。验证后仅暂存本文、普通提交/推送；实际提交与远端核对结果随后记录。
+
+独立发布树验证通过：35 份文档、518 内部引用、27 正式路由、errors=[]；空白及精确单文件范围通过。审查树 36/525 另含未合入的 B2 作者任务稿，不冒称发布树也有该交付。此次仅记录发布事实，不重复业务测试、修改实现或将失败反例标为通过。
