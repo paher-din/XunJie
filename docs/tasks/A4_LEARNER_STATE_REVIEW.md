@@ -1,6 +1,6 @@
 # A4：有效学习状态、异议与教师纠正事务
 
-日期：2026-10-12（Asia/Shanghai）。主责：A；对应 [Issue #41](https://github.com/paher-din/XunJie/issues/41)。状态：2026-10-12 负责人已批准 §2～6 的具体实施、fresh-only 31 表与公共测试接缝；正在实施，业务验证尚未完成。DL-A 前置准备见 [DL-A](DL-A_COURSE_BUSINESS_INTEGRATION.md)，等待 DL 批次时可推进本任务独立部分。
+日期：2026-10-12（Asia/Shanghai）。主责：A；对应 [Issue #41](https://github.com/paher-din/XunJie/issues/41)。状态：2026-10-12 负责人已批准 §2～6 的具体实施、fresh-only 31 表与公共测试接缝；已实现本批服务端能力，公共专项 40/40 与类型/构建通过，完整回归结果及审查状态见 §8.3；不宣称完整产品验收。DL-A 前置准备见 [DL-A](DL-A_COURSE_BUSINESS_INTEGRATION.md)，等待 DL 批次时可推进本任务独立部分。
 
 ## 1. 基线、范围与现有接缝
 
@@ -8,7 +8,7 @@
 
 固定基线为 `origin/main=a4e54c70734ce37aca24feac6d106ea7d9f21b2d`。原 A1/A2 授权、固定活动/成员/目标版本、命令回执和 C2 原事实可复用；C3 已交 `invalidateTeachingInTransaction(tx, …)`，能同事务保存 Attempt JSON/epoch/revision、相关教学/分析 Job、未展示 Action 的失效及原因事件。普通 Run/快照不被此接口抹除，已显示帮助保留并标 basisRevised。
 
-当前尚无 A 的持久 LearnerStateRevision、TeacherDecision、自述/异议或 C 原分析表；B2 的 PreparationOptions 目前由调用方传 learnerStateRevision/learnerClaims，尚未自动读 A 的真实状态。本任务不得把客户端、候选 body 或任意调用方提供的 stateRevision 当有效状态。
+编码前尚无 A 的持久 LearnerStateRevision、TeacherDecision、自述/异议或 C 原分析表；B2 的 PreparationOptions 目前由调用方传 learnerStateRevision/learnerClaims，尚未自动读 A 的真实状态。本任务不得把客户端、候选 body 或任意调用方提供的 stateRevision 当有效状态。
 
 | 预计可写 | 必要改动 |
 | --- | --- |
@@ -16,7 +16,7 @@
 | `apps/teaching/contracts/review/`（新） | 自述/确切主张、教师决定/异议、候选信封/接纳结果和公共能力类型；版本与权限沿现有基线 |
 | `apps/teaching/server/review/`（新） | 同事务有效投影、依据展开与守卫、授权 HTTP 组合和 B3 受控提交/查询能力 |
 | `apps/teaching/server/db/review-schema.ts`（新）、`transaction.ts` | 仅新增独立 fresh review 工厂及下表五张表；旧工厂/旧数据库不变 |
-| `apps/teaching/server/records/analysis.ts`（新）、`records/application.ts`（最小接缝） | C 原分析/拒绝原因的同 tx 保存和原 Job/hash 重放；教学最终接纳/重投前的可选同 tx 状态版本读取守卫；A 汇总并交 C 审查 |
+| `apps/teaching/server/records/analysis.ts`（新）、`records/application.ts` / `records/teaching.ts`（最小同事务守卫接缝） | C 原分析/拒绝原因的同 tx 保存和原 Job/hash 重放；教学最终接纳/重投前的可选同 tx 状态版本读取守卫；A 汇总并交 C 审查 |
 | `apps/teaching/server/tutoring/application.ts` | 最小集成：可选受信同 Transaction 状态读取能力；装配时覆盖任意 PreparationOptions 状态注入；不改 B 教学策略/模型格式 |
 | `apps/teaching/tests/review*.test.ts`（新） | 下列批准后的公共 HTTP/worker/读取接缝和真实事务验证 |
 
@@ -44,7 +44,7 @@ product/planning/reference/AGENTS、他人任务稿只读；不改 UI、依赖/�
 | --- | --- | --- |
 | `PATCH /api/courses/:id/my-context`（既有批准路由，本批实现） | expectedContextRevision、个人 goals/constraints，自述追加版本；相关教学上下文失效 | 当前学生角色/本人；不接受 role/studentId/能力/教师字段；首次 0；幂等回执 |
 | `GET /api/courses/:id/my-context`（新增只读提案） | 本人当前自述及 contextRevision | 当前课程学生；教师通过受控复核读取关联自述，无跨学生 GET 参数提权 |
-| `GET /api/attempts/:id/learner-state`（新增只读提案） | learnerStateRevision、当前范围的确切主张、分层自述/判定引用；不可见引用 unavailable，不补正文 | 所属学生或任课教师，按固定活动目标/适用 scope 裁剪；原始未接纳模型正文不发给学生 |
+| `GET /api/attempts/:id/learner-state`（新增只读提案） | learnerStateRevision、当前范围的确切主张、分层自述/判定引用；不可见或旧底层引用逐项 references.status=unavailable / basisAvailable=false，不补正文；B2 不消费此类主张 | 所属学生或任课教师，按固定活动目标/适用 scope 裁剪；原始未接纳模型正文不发给学生 |
 | `POST /api/attempts/:id/disputes`（既有批准路由，本批实现） | targetRef=确切 claim/feedback 版本、reason，当前目标另核 expectedStateRevision；当前 basis contested 并传播依赖，历史异议仅追加 | 所属学生；不能修改教师决定/作品。Feedback 解析走 A5 受信 resolver 接缝，未落地对象返回 INVALID_REFERENCE，不虚构正式反馈 |
 | `POST /api/attempts/:id/reviews`（既有批准路由，本批实现） | expectedStateRevision、确切 claimRef，confirm/correct/defer、reason/获准 evidence；correct 可撤回或给经核验 replacement | 任课教师；学生即使请求 body 带 teacher 也拒绝；新状态/决定/C3 失效/事件/回执同事务 |
 | `review.readCurrentInTransaction(tx, scope)` | 真实最新 stateRevision、适用主张/依据有效性，给 B3/B2/A5/C4 | 非浏览器任意 scope 入口；宿主先经过 A 当前授权，服务再核课程/学生/目标/范围 |
@@ -60,8 +60,8 @@ HTTP 输入严格结构验证；身份来自当前 Session 与课程成员，cou
 1. 受控分析排队先在真实授权/固定活动下冻结本次 learnerStateRevision、decisionEpoch、context/captureRevision、collectionPurpose、模型/提示/schema/analysis 版本、获准输入/帮助/覆盖引用；保留原 Job 的 expectedRevision、deadline 和用途。被动分析在采集暂停时不得排队；显式分析也不能解除 Attempt/Assignment 暂停或限定帮助政策。
 2. 完成时从原 Job/Receipt 取 scope 和绑定，核原 purpose、停止/终态、即时 membership/可用性、leaseToken/leaseUntil、deadline、恢复 generation、固定活动/政策、expectedStateRevision/epoch 和原输入引用的范围/版本。B 仅交 bodyJson；SHA-256 对实际持久 UTF-8 原文字节计算，不重序列化后冒称原 hash。
 3. 同一短事务保存 C 原分析/接受或拒绝 reason 与原 Job 结果，原文使用不受 json_valid 约束的 raw_body_text，非法 JSON 也保存原 UTF-8 hash 与拒绝原因；结构化 result_json 独立验证。接受才追加 A 新 LearnerStateRevision/候选 IDs；拒绝是可核查事实而不是先抛错回滚掉拒绝记录。无效结构/引用不进入学生投影。已完成同 Job/hash 返回原 analysisId/claimIds/revision/处置，无再次接纳；异 hash 返回 IDEMPOTENCY_CONFLICT，保留原结果。
-4. 主张引用解析到最底层原依据并保留依赖。教师纠正/学生当前异议在新状态中标记确切依据的 invalidity；相关派生主张 contested/superseded/withdrawn，留理由与原 ID。新 claimId、措辞或 analysisVersion 仍引用同一被撤回/争议依据时拒绝接纳，不能只检查旧 claimId。真正不同的新获准依据可另提出候选，不无限封禁整个目标。
-5. 同一 Attempt 的观察作为一组，重复运行或模型摘要不产生额外独立证明；帮助/空窗/工具故障/矛盾/unknown 保留，工具失败不推出知识错误，self-report 不自动成为 supported 主张。`supported_in_check` 要有真实匹配课程检查依据，stdout/exit=0 或自述不替代可信判据；帮助状态不因新分析被抹成独立掌握。
+4. 主张与教师判断引用解析到最底层原依据并保留依赖；新的 decisionId 不能成为独立观察，旧判断依据变更后不能继续作为当前依据。固定快照的依据指纹按同 Attempt 的文件路径/实际内容 hash 归一，重复 snapshotId 或仅改变 documentVersion 不产生不同原依据；原精确 snapshotId/版本仍作为 refs 保留。教师纠正/学生当前异议在新状态中标记确切依据的 invalidity；相关派生主张 contested/superseded/withdrawn，留理由与原 ID。新 claimId、措辞或 analysisVersion 仍引用同一被撤回/争议依据时拒绝接纳，不能只检查旧 claimId。真正不同的新获准依据可另提出候选，不无限封禁整个目标。
+5. 同一 Attempt 的观察作为一组，重复运行或模型摘要不产生额外独立证明；Run 依据按该 Attempt 的固定作品内容、输入文件的实际路径/内容顺序、入口路径/模式/规则/指纹与实际输出/逐项判据归一，排除新 Run/命令 ID、时长和仅展示元数据；归一结果只存 hash，不把私有检查正文带入状态；帮助/空窗/工具故障/矛盾/unknown 保留，工具失败不推出知识错误，self-report 不自动成为 supported 主张。`supported_in_check` 要有真实匹配课程检查依据，stdout/exit=0 或自述不替代可信判据；匹配固定规则/validator 版本、预期 case 数与确切 Run/快照/input/image 的 trusted_validator 逐项结果，裸 verdict 不充分；帮助状态不因新分析被抹成独立掌握。
 
 ## 5. 教师纠正、自述与学生异议事务
 
@@ -88,7 +88,7 @@ HTTP 输入严格结构验证；身份来自当前 Session 与课程成员，cou
 
 候选工程样例明确标记 synthetic，模型调用为 0；真实 Fastify 登录/CSRF、SQLite Transaction 与原 Job/C3 持久能力不用替身。runner/provider 在不运行实际节点/模型的用例可用已有受控替身，不能把它计为 Linux隔离/实际模型通过。
 
-获准 Node 24.21.0/既有 lock 依赖、获准 fresh-only 数据库环境中，工作目录 `apps/teaching`；下列是计划命令，当前未执行：
+获准 Node 24.21.0/既有 lock 依赖、获准 fresh-only 数据库环境中，工作目录 `apps/teaching`；下列是编码前计划命令，实际执行结果见 §8.3：
 
 ```powershell
 node --test tests/review.test.ts
@@ -128,3 +128,55 @@ Standards 轴只读审查：硬违反 0、判断性建议 0，保护范围、REA
 ### 8.2 负责人实施批准（2026-10-12）
 
 负责人明确答复“批准该具体范围并继续”，批准 §2～6：全新保留的 31 表合成库（C3 原26+本任务5）、受控接口、C3 同事务纠正与可选最终状态守卫、B2 最小状态读取、真实登录 HTTP/原 Job/worker/真实事务的公共验证。既有库、凭据/CI/UI/真实模型/运行资源与受保护基线仍不在写入范围；无需为已批准范围重复确认。批准后先实施独立 A4；DL-A 提前评审的准确范围单独记载。
+### 8.3 当前实现与工程验证（2026-10-12）
+
+再次同步的 main 为 `37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`，已正常合入本工作分支；编码前起点、未执行记录和 §8.1 方案审查保留其时点。§2～6 的批准已按 §8.2 实施。新增 Review 工厂仅初始化新的 31 表合成库，不扩旧工厂、不迁移旧库；所有测试库保留。
+
+实现位置见 §9。当前已完成自述/有效状态/异议/教师复核的受控接口、原分析 Job 的接纳与拒绝事实、原文 hash/幂等、引用范围/版本/最底层依据防复活、C3 同事务失效及 B2 实际状态读取。学生读取不包含原分析正文；旧引用明确 unavailable，原观察/Run/已显示帮助回执保留。持久化故障回滚而不冒充模型拒绝；领取租约也复用原完整回执/事件校验。
+
+| 实际命令（工作目录 `apps/teaching`，Node 24.21.0/锁定依赖） | 实际结果 | 边界 |
+| --- | --- | --- |
+| `node --test tests/review.test.ts` | 40 通过、0 失败、0 跳过 | 32 个顶层用例及 8 个当前性子用例；真实 Fastify 登录/路由处理链、原 Job/worker、SQLite 事务；runner/provider 用明确合成替身 |
+| `npm run typecheck` | 通过 | 包含 A4 新源码/测试及原 B/C 接缝 |
+| `npm test`（含 `pretest` 的 build） | build 通过；304 项，293 通过、2 失败、9 跳过 | 失败为既有 Windows/Linux `RunControl` 环境限制，以及并行全量中的启动子进程 5 秒超时；不宣称全量通过 |
+| `node --test tests/startup.test.ts` | 4 通过、0 失败、0 跳过 | 原启动检查不改代码/超时；该次单独复跑未复现超时，不覆盖或抹去上一行失败 |
+
+真实模型/真实 C 节点开关未开启，供应商调用为 0；9 项跳过涉及实际模型、Linux/隔离节点和真实 C 链门禁，分别保留原后置条件。socket/TLS/浏览器、真实学生/人工语义与教学效果未执行；Fastify inject 不能代替浏览器或真实 TLS 验收。
+
+| 已验证行为 | 代码/公共接缝 | 对应条件 |
+| --- | --- | --- |
+| 自述独立 revision；严格身份字段、当前 Session/成员、跨课程/学生/教师权限与私有资料拒绝 | my-context / learner-state、queueAnalysis、真实登录 | AC-07、NFR-04 |
+| 原 UTF-8 文本（含 CRLF/非法 JSON）与 SHA-256 保存；无效 UTF-16 标量输入拒绝；同 Job/hash/命令回执返原 IDs，异结果冲突、旧代际拒绝 | queue/claim/complete/readAnalysis | AC-07/08 |
+| deadline、模型/提示/schema/analysis 配置、state/context/capture、Assignment、membership、generation 在完成时重查 | 原分析当前性 8 子用例 | AC-08 |
+| 教师先纠正旧候选拒绝；候选先提交旧表单 CAS 拒绝；新确切证据可替换、暂缓保留 unknown | reviews / worker / learner-state | AC-08 |
+| 教师事务 7 写入点、分析事务 5 写入点、自述回执和异议晚写入点故障；另核原证据读取故障/损坏原回执；公共状态/Job/epoch/Action/事件不半提交，可重试原身份 | 真实 SQLite Transaction + 显式故障注入 | AC-08 |
+| 新 claimId/措辞/analysisVersion、重复快照、新 Run/文件 ID 不复活原争议/撤回依据；真正不同作品允许新候选；依赖主张传播且同 Attempt 不虚增观察组 | 原公开 C2 保存/快照/Run + 新分析/异议 | AC-07/08/16 |
+| trusted_validator 的原 Run/快照/输入/镜像/规则/判据与 case 数；stdout/裸 passed、自述、旧目标版本不替代可信检查；工具故障/采集暂停/unknown 不抹平 | C2 原 processJob + 分析完成 | AC-07 |
+| B2 初始/运行读取 A 实际 revision；末次 guard 后 C3 接纳前竞态与重投前守卫；旧帮助无投递，已显示帮助保留真实回执/标 basisRevised；普通 Run 原事实不撤销 | 真实 B2 executeStudentHelp + C3 /events/receipts | AC-08/16 |
+
+TDD 按单个公共行为推进，实际 red→green 包括防旧依据复活、可信检查来源、工具故障缺口、原引用不可用、unknown 保留、context 返回停止身份、原证据存储故障、损坏原队列回执与新文件身份的 Run 归一。复用既有行为的验证直接 green，不把它们记为曾有红灯；类型错误与夹具可见性/错误码修正不算产品行为反例。编码结束固定源码后进行 Standards/Spec 两轴审查，实际结果另记。
+
+## 9. 实际接口与分批交接
+
+| 实际文件 | 已交能力 |
+| --- | --- |
+| [review contracts](../../apps/teaching/contracts/review/index.ts) | 严格输入、确切引用、主张/状态/决定/异议、分析绑定/结果和引用可用性结构 |
+| [review application](../../apps/teaching/server/review/application.ts) | `createReviewApp(options)` 装配 HTTP/受信能力并与原 Tutoring/Teaching 工厂组合；身份来自 Access |
+| [storage](../../apps/teaching/server/review/storage.ts)、[projection](../../apps/teaching/server/review/projection.ts)、[evidence](../../apps/teaching/server/review/evidence.ts) | 追加 revision、适用范围、引用有效性、最底层原依据/观察分组与帮助/缺口守卫 |
+| [decisions](../../apps/teaching/server/review/decisions.ts)、[disputes](../../apps/teaching/server/review/disputes.ts) | 教师 confirm/correct/defer、本人当前/历史异议、依据传播、C3 同事务失效、A5 FeedbackTargetResolver 类型 |
+| [analysis](../../apps/teaching/server/review/analysis.ts)、[C 原分析存储](../../apps/teaching/server/records/analysis.ts) | 原 Job/Receipt/租约/当前性、接受/拒绝与 exact raw/hash、原结果重放，拒绝不建立状态 |
+| [review schema](../../apps/teaching/server/db/review-schema.ts)、[transaction](../../apps/teaching/server/db/transaction.ts) | 获准的 fresh-only 31 表 `createReviewDatabase()`；没有迁移命令 |
+| [B2 application](../../apps/teaching/server/tutoring/application.ts)、[C3 application](../../apps/teaching/server/records/application.ts)、[C3 teaching](../../apps/teaching/server/records/teaching.ts) | 可选 trusted state reader / TeachingBasisCurrent、原接纳与重投前同 tx 守卫；未装配时原行为保留 |
+| [A4 tests](../../apps/teaching/tests/review.test.ts)、[合成支持](../../apps/teaching/tests/review-support.ts) | 实际登录/公共能力、真实数据库与原 worker；`/fixture/*` 只存在于测试，未注册到产品路由 |
+
+B3 使用工厂返回的 `review.queueAnalysis(request, attemptId, input)`，输入为 recoveryGeneration、expectedStateRevision、expectedAttemptRevision、purpose、inputRefs、assistanceRefs、coverageRefs。request 必须来自已有真实授权请求链；scope、固定活动/政策/分析版本、epoch/context/capture 与 45 秒 deadline 由服务反查/冻结，不由候选 body 赋权。显式/被动用途分开，采集暂停不允许新被动分析；本批没有无人授权的任意后台排队入口。
+
+公共 `review.claimAnalysis(jobId)` 返回原 Job/binding/leaseToken；B 仅对 binding 指定的获准描述符产生候选。`review.completeAnalysis({jobId, leaseToken, recoveryGeneration, bodyJson})` 同事务提交原文本/结果和有效 revision；第一次需原有效租约，同 Job/hash 已提交后不要求新执行租约，不再生成模型结果。错误结构/当前性/引用拒绝被持久化为 rejected/reason；存储故障/恢复代际错误抛出并回滚。`review.readAnalysis(request, attemptId, jobId)` 在当前授权下查询，教师可见原文、学生仅 metadata。
+
+B2 无需再次手工注入 learnerStateRevision：A4 组合自动安装 `studentHelp.readLearnerState(tx, scope)` 并返回实际有效投影。B2 原 DTO/策略/模型格式保持已有约定；完整分层主张与引用可用性供 B3/A5/C4 走 `review.readCurrentInTransaction(tx, scope)`。该能力的 tx/scope 必须来自宿主当前授权，不能在浏览器接受任意 courseId/studentId。C3 同 tx 状态守卫匹配原 basis.relatedStateRevision，旧 Action 标 stale/basisRevised，原 ID/hash 重放仍保持。
+
+A5 可消费当前主张/教师 decisions/disputes，并实现 `review.feedbackTarget(tx, scope, exactFeedbackRef)`，返回 current 与确切 claimRefs；本批不造 Feedback，未装配返回 INVALID_REFERENCE。C4/A5 同事务消费 `review.readCurrentInTransaction` 与原控制/失效能力，reviews/disputes/context 的结果含 stoppedJobIds/affectedAttemptIds；宿主在提交成功后通知停止，网络失败不撤回已持久意图。正式 Feedback 采用、作品恢复和该两域完整业务未执行。
+
+`createReviewApp` 是可组合服务端工厂；普通 `npm start` 仍为既有 health 宿主，本批没有把测试夹具当正常入口。DL-A 的共用正常宿主/完整表集合/消费者与实际 C/B/UI 接入仍按其独立提案/精确授权推进。产品/计划/参考/AGENTS 未修改；TECH 契约与 MVP 第10节真实实现/结果仍待获授权维护者汇总。
+
+2026-10-12，专项汇总后新增教师决定引用防复活反例，先红后绿：该引用须继承当前确切教师主张的原依据/观察组，后续撤回时跨目标派生主张 contested，旧判断引用不可再排队。此时完整回归尚未复跑；上一段 40/40 与 304 项统计保留其测试源码时点。最终验证及固定源码两轴审查将另记，不提前将新增反例计入原通过数。独立新库诊断实际为 31 表、SQLite 3.53.4、WAL/FULL、外键开启、integrity=ok/外键错误0；这项 schema 诊断不代替公共业务测试。
