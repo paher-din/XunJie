@@ -52,7 +52,7 @@ export class ContextGuard {
   private disposed = false
 
   constructor(context: WorkspaceContext) {
-    this.context = context
+    this.context = Object.freeze({ ...context })
     activeGuard?.dispose()
     activeGuard = this
   }
@@ -90,5 +90,10 @@ export class ContextGuard {
     if (seq <= accepted) return false
     this.acceptedSeq.set(key, seq)
     return true
+  }
+
+  /** 接纳后还有本机事务 await，期间较新读取/ACK 也能使本次结果失效。 */
+  isAcceptedRead(key: string, seq: number): boolean {
+    return !this.stale && this.acceptedSeq.get(key) === seq
   }
 }

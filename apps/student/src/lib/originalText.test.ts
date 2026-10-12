@@ -213,3 +213,9 @@ describe('服务端行列语义与代码引用可用性', () => {
     expect(serverRange(text, p, 1, 2)).toBeNull()
   })
 })
+
+// Monaco 的新增正文可携带 CRLF；它仍是显示投影输入，只按原文件规则新增换行。
+it('新增 CRLF 显示输入采用原文首个 EOL，无原 EOL 则 LF', () => {
+  const p = projectOriginal('start')
+  expect(applyModelEdits('start', p, [{ start: 5, end: 5, text: '\r\nnext' }])).toBe('start\nnext')
+})

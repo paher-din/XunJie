@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { PREP_URL, REAL_URL } from './e2e/env'
+import { PREP_URL, REAL_URL, PREP_PORT, REAL_PORT } from './e2e/env'
 
 /**
  * I0-A 准备检查的最小浏览器 harness。
@@ -29,7 +29,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      command: 'npm run dev:prep',
+      command: `npm run dev:prep -- --port ${PREP_PORT}`,
       url: PREP_URL,
       // 本机常已有一个 dev:prep 在跑（端口 strictPort，再起会直接失败），所以本地复用；
       // CI 一律新起进程——fixture authority 是进程级状态，复用陈旧进程会让断言失去意义。
@@ -37,7 +37,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: 'npm run dev -- --port 5602 --strictPort',
+      command: `npm run dev -- --port ${REAL_PORT} --strictPort`,
       url: REAL_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

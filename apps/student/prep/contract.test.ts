@@ -10,8 +10,9 @@
  */
 
 import { createServer, request as httpRequest, type Server } from 'node:http'
+import { randomUUID } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type {
   ActivityView,
   AssignmentView,
@@ -24,7 +25,7 @@ import type {
 } from '../src/workspace/contracts'
 import { SESSION_COOKIE, preparationEpoch, syntheticRecoveryGeneration } from './authority'
 import { PREP_ROOT, createPrepMiddleware } from './plugin'
-import { MATERIALS, REFS, SCENARIO_ID, SYNTHETIC_ACCOUNT, projectMaterials, sha256Hex } from './scenario'
+import { MATERIALS, REFS, SYNTHETIC_ACCOUNT, projectMaterials, sha256Hex } from './scenario'
 
 const logs: string[] = []
 const log = {
@@ -34,6 +35,8 @@ const log = {
 
 let server: Server
 let base = ''
+let scenario = ''
+beforeEach(() => { scenario = randomUUID() })
 
 beforeAll(async () => {
   const middleware = createPrepMiddleware(log)
@@ -67,7 +70,7 @@ async function call(
   path: string,
   init?: { cookie?: string; csrf?: string; body?: string },
 ): Promise<RawResponse> {
-  const headers: Record<string, string> = { Accept: 'application/json' }
+  const headers: Record<string, string> = { Accept: 'application/json', 'x-i0prep-scenario': scenario }
   if (method === 'POST') headers['Content-Type'] = 'application/json'
   if (init?.cookie) headers.Cookie = init.cookie
   if (init?.csrf) headers['x-csrf-token'] = init.csrf
@@ -90,7 +93,7 @@ async function call(
 function rawGet(path: string, hostHeader: string): Promise<{ status: number; text: string }> {
   return new Promise((resolve, reject) => {
     const req = httpRequest(
-      { host: '127.0.0.1', port: portOf(), path, method: 'GET', headers: { Host: hostHeader } },
+      { host: '127.0.0.1', port: portOf(), path, method: 'GET', headers: { Host: hostHeader, 'x-i0prep-scenario': scenario } },
       (res) => {
         const chunks: Buffer[] = []
         res.on('data', (c: Buffer) => chunks.push(c))
@@ -140,10 +143,10 @@ describe('准备 fixture 契约核对', () => {
     expect(res.headers.get('x-request-id')).toBe(envelope.requestId)
 
     const data = envelope.data as PrepContextView
-    expect(data.scenarioId).toBe(SCENARIO_ID)
+    expect(data.scenarioId).toBe(scenario)
     expect(data.preparationEpoch).toBe(preparationEpoch)
     expect(data.recoveryGeneration).toBe(syntheticRecoveryGeneration)
-    expect(data.capabilities).toEqual({ attemptCreate: false, workspaceSync: false, snapshot: false, run: false })
+    expect(data.capabilities).toEqual({ attemptCreate: true, workspaceSync: true, snapshot: true, run: false })
     expect(typeof data.authority.activeSessions).toBe('number')
     expect(data.refs.assignmentId).toBe(REFS.assignmentId)
     expect(data.refs.activityVersionId).toBe(REFS.activityVersionId)
@@ -173,8 +176,8 @@ describe('准备 fixture 契约核对', () => {
     expect(errorOf(malformedJson).code).toBe('INVALID_REQUEST')
 
     const unknown = await call('GET', `${PREP_ROOT}/api/attempts/whatever`)
-    expect(unknown.status).toBe(400)
-    expect(errorOf(unknown).code).toBe('INVALID_REQUEST')
+    expect(unknown.status).toBe(401)
+    expect(errorOf(unknown).code).toBe('UNAUTHENTICATED')
   })
 
   it('不接管非准备路径，也不对非 loopback Host 放行', async () => {

@@ -30,7 +30,7 @@ export function CodeWorkspace({ ws, workspaceKey }: CodeWorkspaceProps) {
   const [cursor, setCursor] = useState<{ line: number; column: number } | null>(null)
 
   const active = ws.activeFile
-  const readOnly = ws.access.kind !== 'editable'
+  const readOnly = ws.access.kind === 'read-only'
   const readOnlyReason = accessReason(ws)
   const activeText = active === null ? '' : ws.draftText(active.fileId)
 
@@ -157,6 +157,8 @@ function StatusBar({
           <span className="cw-confirmed">
             {ws.isCreated(file) ? (
               '本机新建 · 还没有确认作品'
+            ) : file.confirmed === null ? (
+              '确认实例已不可用 · 草稿保留待比较'
             ) : (
               <>
                 文件版本 v{file.confirmed?.version}

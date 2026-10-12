@@ -2,8 +2,9 @@
  * I0-A 准备场景：固定的合成 C / TextScope 活动与合成身份。
  *
  * 只存在于开发进程的 fixture 里（`npm run dev:prep`），**不进生产 bundle、不进真实模式**。
- * 所有 ID 都带 `prep-` 前缀，明确是合成对象，不与任何正式 Assignment / ActivityVersion /
- * Resource 混称，也不能被当成正式对象硬编码进客户端。
+ * 固定 bootstrap 引用带 `prep-` 前缀；03 的 Attempt/文件/快照使用进程内随机 UUID。
+ * 这些合成对象不与任何正式 Assignment / ActivityVersion / Resource 混称，
+ * 也不能被当成正式对象硬编码进客户端。
  *
  * 响应形状照抄主仓库现有契约与 integration 测试样例，来源在 `prep/plugin.ts` 的路由处逐项标注：
  * - 信封与错误码：`apps/teaching/contracts/common/http.ts`

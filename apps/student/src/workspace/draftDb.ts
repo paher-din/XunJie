@@ -8,21 +8,20 @@ import {
 } from '../lib/draftStore'
 
 /**
- * P-02 批准的新库 `xunjie-i0-workspace` v1 的唯一访问实现。
+ * P-02 批准的新库 `xunjie-i0-workspace` 的共享连接。
  *
- * 五个 store 一次建齐（草案即批准的 schema）：drafts / ui / instances / confirmed /
- * candidates。02 只写前三个与 candidates；confirmed 留给 03 的确认回执，不提前塞数据。
+ * 02 的五个 store 保留；03 经负责人明确批准升 v2，只新增 outbox / metadata。
  * 草稿写入在单个 readwrite 事务里「读修订 → CAS 判定 → 写」，事务 complete 才算保护成功；
  * 冲突不写、不覆盖赢方，败方正文进 candidates。
  */
 
 const DB_NAME = 'xunjie-i0-workspace'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let opening: Promise<IDBDatabase> | null = null
 let connectionClosed = false
 
-function openDb(): Promise<IDBDatabase> {
+export function openWorkspaceDb(): Promise<IDBDatabase> {
   if (opening === null) opening = startOpen()
   // 连接被关掉（版本升级让连接、外部删库）后重新开，不让一次失败把整个会话楔死
   return opening.then((db) => {
@@ -62,6 +61,8 @@ function openFresh(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('candidates')) {
         db.createObjectStore('candidates', { keyPath: 'id', autoIncrement: true })
       }
+      if (!db.objectStoreNames.contains('outbox')) db.createObjectStore('outbox', { keyPath: 'commandKey' })
+      if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata', { keyPath: 'key' })
     }
     request.onsuccess = () => {
       const db = request.result
@@ -80,7 +81,7 @@ function openFresh(): Promise<IDBDatabase> {
   })
 }
 
-function txDone(tx: IDBTransaction): Promise<void> {
+export function txDone(tx: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve()
     tx.onabort = () => reject(tx.error ?? new Error('写入事务被中止'))
@@ -105,19 +106,19 @@ function putRecord(db: IDBDatabase, store: string, value: unknown): Promise<void
 
 export const idbDraftRepository: DraftRepository = {
   async loadUi(key) {
-    return getRecord<WorkspaceUiRecord>(await openDb(), 'ui', key)
+    return getRecord<WorkspaceUiRecord>(await openWorkspaceDb(), 'ui', key)
   },
 
   async saveUi(record) {
-    await putRecord(await openDb(), 'ui', record)
+    await putRecord(await openWorkspaceDb(), 'ui', record)
   },
 
   async loadDraft(key) {
-    return getRecord<DraftRecord>(await openDb(), 'drafts', key)
+    return getRecord<DraftRecord>(await openWorkspaceDb(), 'drafts', key)
   },
 
   async saveDraft(record, expectedRevision) {
-    const db = await openDb()
+    const db = await openWorkspaceDb()
     const tx = db.transaction('drafts', 'readwrite')
     const store = tx.objectStore('drafts')
     const decision = await new Promise<SaveDraftResult>((resolve) => {
@@ -139,10 +140,10 @@ export const idbDraftRepository: DraftRepository = {
   },
 
   async saveInstance(record: InstanceRecord) {
-    await putRecord(await openDb(), 'instances', record)
+    await putRecord(await openWorkspaceDb(), 'instances', record)
   },
 
   async keepCandidate(clientFileKey, text, reason) {
-    await putRecord(await openDb(), 'candidates', { clientFileKey, text, reason, createdAt: Date.now() })
+    await putRecord(await openWorkspaceDb(), 'candidates', { clientFileKey, text, reason, createdAt: Date.now() })
   },
 }

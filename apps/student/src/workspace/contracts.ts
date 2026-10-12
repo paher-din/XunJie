@@ -235,12 +235,14 @@ export interface PrepContextView {
     assignmentId: string
     activityVersionId: string
     resourceVersionIds: string[]
+    /** 开发 authority 已有尝试的获准引用；缺省表示尚未创建。不是正式发现 API。 */
+    attemptId?: string
   }
   /** 准备 fixture 声明的能力边界，供界面如实显示「待接入」。 */
   capabilities: {
-    attemptCreate: false
-    workspaceSync: false
-    snapshot: false
+    attemptCreate: boolean
+    workspaceSync: boolean
+    snapshot: boolean
     run: false
   }
   /** 开发进程当前 authority 状态；进程重启即换代，用于核对迟到响应与旧缓存。 */

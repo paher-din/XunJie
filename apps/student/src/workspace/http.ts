@@ -73,19 +73,27 @@ export interface RequestOptions {
   mode: WorkspaceMode
   /** 跳过按模式拼 base，直接用这个路径（准备 bootstrap 元信息端点用）。 */
   absolutePath?: string
+  idempotencyKey?: string
+  /** 仅开发准备 fixture 的场景隔离，不进入业务正文或真实请求。 */
+  scenarioId?: string
 }
 
 function urlOf(path: string, opts: RequestOptions): string {
   return opts.absolutePath ?? `${apiBase(opts.mode)}${path}`
 }
 
-async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, opts: RequestOptions): Promise<T> {
+async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, opts: RequestOptions, wireJson?: string): Promise<T> {
   const url = urlOf(path, opts)
   const headers: Record<string, string> = { Accept: 'application/json' }
+  if (import.meta.env.DEV && opts.mode === 'preparation') {
+    const scenario = opts.scenarioId ?? new URLSearchParams(globalThis.location?.search ?? '').get('scenario')
+    if (scenario) headers['x-i0prep-scenario'] = scenario
+  }
   if (method === 'POST') {
     headers['Content-Type'] = 'application/json'
     // POST sessions 本身豁免 CSRF（服务端据此下发 token）；其余写请求必须带。
     if (path !== '/sessions' && csrfToken) headers['x-csrf-token'] = csrfToken
+    if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey
   }
 
   let response: Response
@@ -94,7 +102,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
       method,
       headers,
       credentials: 'same-origin',
-      body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined,
+      body: method === 'POST' ? (wireJson ?? JSON.stringify(body ?? {})) : undefined,
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
@@ -152,4 +160,9 @@ export function apiGet<T>(path: string, opts: RequestOptions): Promise<T> {
 
 export function apiPost<T>(path: string, body: unknown, opts: RequestOptions): Promise<T> {
   return request<T>('POST', path, body, opts)
+}
+
+/** 只发送已经持久化的原 JSON 字节；Session/CSRF 仍在发送时取得。 */
+export function apiPostFrozen<T>(path: string, wireJson: string, opts: RequestOptions): Promise<T> {
+  return request<T>('POST', path, undefined, opts, wireJson)
 }

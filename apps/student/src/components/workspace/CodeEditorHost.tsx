@@ -226,6 +226,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       const original = initialTextRef.current
       const projection = projectOriginal(original)
       model = monaco.editor.getModel(uri) ?? monaco.editor.createModel(projection.modelText, language, uri)
+      model.setEOL(monaco.editor.EndOfLineSequence.LF)
       originals.set(key, { history: new OriginalEditHistory(original), projection })
       models.set(key, model)
     }
@@ -237,6 +238,18 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     if (saved) editor.restoreViewState(saved)
     cursorRef.current(null)
   }, [status, workspaceKey, fileId, language])
+
+  // 调用方保留脏草稿；只在其权威原文确实改变时更新同一 model，避免显示陈旧正文却标为一致。
+  useEffect(() => {
+    if (status !== 'ready' || fileId === null) return
+    const key = keyOf(workspaceKey, fileId), model = models.get(key), state = originals.get(key)
+    const monaco = monacoRef.current
+    if (!model || !state || !monaco || state.history.current === initialText) return
+    const projection = projectOriginal(initialText)
+    originals.set(key, { history: new OriginalEditHistory(initialText), projection })
+    model.setValue(projection.modelText)
+    model.setEOL(monaco.editor.EndOfLineSequence.LF)
+  }, [status, workspaceKey, fileId, initialText])
 
   /* 3. 只读态跟随工作区可写性变化 */
   useEffect(() => {

@@ -295,6 +295,8 @@ export interface ConversationSummary {
  */
 export interface ProjectFile {
   fileId: string
+  /** 服务实例映射；fileId 继续是稳定本机身份，以保留 model/草稿/视图。 */
+  serverFileId?: string
   path: string
   lifecycle: 'active' | 'recycled'
   /**

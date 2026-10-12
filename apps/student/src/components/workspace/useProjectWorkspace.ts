@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectAccess, ProjectFile, ProjectSeed } from '../../bridge/types'
+import type { FrozenDraft } from '../../workspace/frozenCommand'
 import {
   clientFileKey,
   scopeKey,
@@ -50,6 +51,8 @@ export interface ProjectWorkspace {
   closeTab: (fileId: string) => void
   create: (path: string, text: string) => CreateOutcome
   setDraft: (fileId: string, text: string) => void
+  /** 冻结点击时原文并先保护草稿；失败不允许发送业务命令。 */
+  prepareSave: () => Promise<FrozenDraft[]>
 }
 
 export function useProjectWorkspace(
@@ -73,6 +76,8 @@ export function useProjectWorkspace(
   const revisions = useRef<Record<string, number | null>>({})
   // 已留过候选的败方正文：同一份字不重复堆候选行
   const lastCandidate = useRef<Record<string, string>>({})
+  // 04A 比较尚未交付：CAS 冲突锁存于本次载入，不能吸收赢家修订后重试覆写。
+  const conflicts = useRef(new Set<string>())
   // 写入序号：只有最新一次写入的结果才能改可见状态，迟到的成功/失败不覆盖当前判断
   const saveSeq = useRef(0)
   const lastWritten = useRef<{ ui: string; drafts: Record<string, string> } | null>(null)
@@ -80,6 +85,9 @@ export function useProjectWorkspace(
   const pendingWrite = useRef(false)
   const seedRef = useRef(seed)
   const scopeRef = useRef(scope)
+  const liveKey = useRef(key)
+  liveKey.current = key
+  const writing = useRef<Promise<unknown>>(Promise.resolve())
 
   useEffect(() => {
     seedRef.current = seed
@@ -88,6 +96,8 @@ export function useProjectWorkspace(
 
   /* 载入：确认作品来自 seed，本机草稿来自新库；两边按 fileId 对齐，对不上的一律丢弃 */
   useEffect(() => {
+    conflicts.current = new Set()
+    lastCandidate.current = {}
     if (key === null) return
     let cancelled = false
     setLoaded(false)
@@ -158,6 +168,12 @@ export function useProjectWorkspace(
     // scope 以 scopeKey 字符串进依赖：页面每次渲染的新对象不能触发重读（重读会冲掉刚建的实例）
   }, [key, seed?.taskId, repo])
 
+  // 同一 Attempt 的权威确认头推进只更新确认基线/映射，保留较新草稿和已打开 model。
+  useEffect(() => {
+    if (!loaded || !seed) return
+    setFiles(old => [...seed.files, ...old.filter(f => f.confirmed === null && !seed.files.some(s => s.fileId === f.fileId))])
+  }, [loaded, seed?.files])
+
   const draftText = useCallback(
     (fileId: string): string => {
       if (Object.hasOwn(drafts, fileId)) return drafts[fileId]!
@@ -175,87 +191,82 @@ export function useProjectWorkspace(
   }, [files, draftText])
 
   const unconfirmedCount = useMemo(
-    () => files.filter((f) => f.confirmed === null || draftText(f.fileId) !== f.confirmed.text).length,
+    () => files.filter((f) => f.lifecycle === 'active' && (f.confirmed === null || draftText(f.fileId) !== f.confirmed.text)).length,
     [files, draftText],
   )
 
-  /* 落盘：学生动过内容或标签才写；写事务 complete 才把状态改成「已保护」 */
-  useEffect(() => {
+  const protect = useCallback(async (): Promise<FrozenDraft[]> => {
     const currentScope = scopeRef.current
-    if (key === null || currentScope === null || !loaded || !pendingWrite.current) return
-    const uiRecord = uiRecordOf(activeFileId, openFileIds, files)
-    const uiSerialized = JSON.stringify(uiRecord)
-    const dirtyDrafts = Object.entries(drafts).filter(
-      ([fileId, text]) => lastWritten.current?.drafts[fileId] !== text,
-    )
-    if (uiSerialized === lastWritten.current?.ui && dirtyDrafts.length === 0) {
-      pendingWrite.current = false
-      setProtection({ status: 'protected', reason: null })
-      return
+    if (!key || !currentScope || !loaded) throw new Error('本机草稿尚未载入')
+    const captured = files.filter(f => f.lifecycle === 'active').map(f => ({
+      localId: f.fileId, serverFileId: f.serverFileId ?? (f.confirmed ? f.fileId : undefined),
+      path: f.path, text: draftText(f.fileId), draftRevision: revisions.current[f.fileId] ?? null,
+    }))
+    const ui = uiRecordOf(activeFileId, openFileIds, files)
+    const serialized = JSON.stringify(ui), seq = ++saveSeq.current
+    const loadConflicts = conflicts.current
+    const valid = () => liveKey.current === key && conflicts.current === loadConflicts
+    const conflictMessage = '与另一处写入冲突：败方正文已留作候选，当前加载禁止保存；请明确刷新载入库中版本后再编辑'
+    const keepCandidate = async (item: typeof captured[number]) => {
+      if (lastCandidate.current[item.localId] === item.text) return
+      await repo.keepCandidate(clientFileKey(currentScope, item.localId), item.text, 'draftRevision 冲突')
+      if (!valid()) throw new Error('草稿上下文已失效')
+      lastCandidate.current[item.localId] = item.text
     }
-    const timer = window.setTimeout(() => {
-      const seq = ++saveSeq.current
-      void (async () => {
-        try {
-          await repo.saveUi({ ...uiRecord, scopeKey: key })
-          for (const [fileId, text] of dirtyDrafts) {
-            const expected = revisions.current[fileId] ?? null
-            const result = await repo.saveDraft(
-              {
-                clientFileKey: clientFileKey(currentScope, fileId),
-                fileId,
-                text,
-                draftRevision: expected === null ? 1 : expected + 1,
-                updatedAt: Date.now(),
-              },
-              expected,
-            )
-            // 库事实按实际写入结果记：迟到的 seq 不能把修订冻住，否则下一轮必带旧期望修订而冲突
-            if (result.ok) {
-              revisions.current[fileId] = result.draftRevision
-              if (lastWritten.current !== null) lastWritten.current.drafts[fileId] = text
-              continue
-            }
-            if (result.reason === 'conflict') {
-              const stored = await repo.loadDraft(clientFileKey(currentScope, fileId))
-              // 同一份败方正文只留一次候选；同步到赢方修订后不再无限重试，
-              // 学生继续编辑时按新修订写入（完整比较选择由 04A 交付）
-              if (lastCandidate.current[fileId] !== text) {
-                await repo.keepCandidate(
-                  clientFileKey(currentScope, fileId),
-                  text,
-                  'draftRevision 冲突：库中已有更新修订',
-                )
-                lastCandidate.current[fileId] = text
-              }
-              revisions.current[fileId] = stored?.draftRevision ?? null
-              if (lastWritten.current !== null) lastWritten.current.drafts[fileId] = text
-              if (seq !== saveSeq.current) return
-              setProtection({ status: 'failed', reason: '与另一处写入冲突：本次正文已留作冲突候选，未覆盖库中更新版本' })
-              return
-            }
-            if (seq !== saveSeq.current) return
-            setProtection({ status: 'failed', reason: result.message ?? '本机草稿写入失败' })
-            return
-          }
-          if (seq !== saveSeq.current) return
-          lastWritten.current = { ui: uiSerialized, drafts: { ...lastWritten.current?.drafts, ...Object.fromEntries(dirtyDrafts) } }
-          pendingWrite.current = false
-          setProtection({ status: 'protected', reason: null })
-        } catch (error: unknown) {
-          if (seq !== saveSeq.current) return
-          // 正文仍在内存里，学生可以继续编辑；只是刷新会丢，必须说清楚
-          setProtection({
-            status: 'failed',
-            reason: error instanceof Error ? error.message : String(error),
-          })
+    const persist = async () => {
+      if (!valid()) throw new Error('草稿上下文已失效')
+      if (loadConflicts.size > 0) {
+        for (const item of captured) if (loadConflicts.has(item.localId)) await keepCandidate(item)
+        throw new Error(conflictMessage)
+      }
+      await repo.saveUi({ ...ui, scopeKey: key })
+      if (!valid()) throw new Error('草稿上下文已失效')
+      for (const item of captured) {
+        if (lastWritten.current?.drafts[item.localId] === item.text) {
+          item.draftRevision = revisions.current[item.localId] ?? null
+          continue
         }
-      })()
-    }, SAVE_DEBOUNCE_MS)
+        const expected = revisions.current[item.localId] ?? null
+        const result = await repo.saveDraft({ clientFileKey: clientFileKey(currentScope, item.localId),
+          fileId: item.serverFileId ?? item.localId, text: item.text,
+          draftRevision: (expected ?? 0) + 1, updatedAt: Date.now() }, expected)
+        if (!valid()) throw new Error('草稿上下文已失效')
+        if (!result.ok) {
+          if (result.reason === 'conflict') {
+            loadConflicts.add(item.localId)
+            await keepCandidate(item)
+            throw new Error(conflictMessage)
+          }
+          throw new Error(result.message ?? '本机草稿写入失败')
+        }
+        revisions.current[item.localId] = result.draftRevision
+        item.draftRevision = result.draftRevision
+        if (lastWritten.current) lastWritten.current.drafts[item.localId] = item.text
+      }
+      if (valid() && seq === saveSeq.current) {
+        lastWritten.current = { ui: serialized, drafts: { ...lastWritten.current?.drafts } }
+        pendingWrite.current = false
+        setProtection({ status: 'protected', reason: null })
+      }
+      return captured
+    }
+    const operation = writing.current.catch(() => {}).then(persist)
+    writing.current = operation
+    try { return await operation } catch (error) {
+      if (valid() && seq === saveSeq.current) setProtection({ status: 'failed', reason: error instanceof Error ? error.message : String(error) })
+      throw error
+    }
+  }, [key, loaded, files, draftText, activeFileId, openFileIds, repo])
+
+  /* 只有实际操作产生落盘；确认保存调用同一串行写入边界，不另开覆盖通道。 */
+  useEffect(() => {
+    if (!key || !loaded || !pendingWrite.current) return
+    const timer = window.setTimeout(() => { void protect().catch(() => {}) }, SAVE_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [loaded, key, repo, activeFileId, openFileIds, drafts, files])
+  }, [key, loaded, protect])
 
   const markSaving = useCallback(() => {
+    saveSeq.current++
     pendingWrite.current = true
     setProtection({ status: 'saving', reason: null })
   }, [])
@@ -339,12 +350,13 @@ export function useProjectWorkspace(
     unconfirmedCount,
     usage,
     draftText,
-    isCreated: (file) => file.confirmed === null,
+    isCreated: (file) => file.confirmed === null && !file.serverFileId,
     isDirty: (file) => file.confirmed !== null && draftText(file.fileId) !== file.confirmed.text,
     open,
     closeTab,
     create,
     setDraft,
+    prepareSave: protect,
   }
 }
 

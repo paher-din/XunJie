@@ -1,9 +1,15 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolKey } from '../components/workspace/CenterToolArea'
 import { SideDock } from '../components/workspace/SideDock'
-import { PrepTaskInfo, TextScopeBodyPane, TextScopeRunCluster } from '../components/workspace/TextScopePanes'
+import { PrepTaskInfo, TextScopeBodyPane } from '../components/workspace/TextScopePanes'
+import { ConfirmationCluster } from '../components/workspace/ConfirmationCluster'
+import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
+import { useProjectWorkspace } from '../components/workspace/useProjectWorkspace'
+import { useConfirmationWorkspace } from '../workspace/useConfirmationWorkspace'
+import { idbDraftRepository } from '../workspace/draftDb'
+import { scopeKey, type DraftScope } from '../lib/draftStore'
 import { workspaceMode } from '../workspace/mode'
 import { PREP_ENTRY_LABEL, PREP_TASK_ID } from '../workspace/prepEntry'
 import { signOut } from '../workspace/session'
@@ -21,6 +27,12 @@ import { useWorkspaceInit, type InitStatus } from '../workspace/useWorkspaceInit
 export default function PrepWorkspacePage() {
   const navigate = useNavigate()
   const init = useWorkspaceInit()
+  const confirmation = useConfirmationWorkspace(init.init, PREP_TASK_ID)
+  const c = confirmation.client?.context
+  const draftScope = useMemo<DraftScope | null>(() => c?.attemptId && c.userId
+    ? { mode: c.mode, account: c.userId, attemptKey: c.attemptId } : null,
+  [c?.mode, c?.userId, c?.attemptId])
+  const project = useProjectWorkspace(confirmation.seed, idbDraftRepository, draftScope)
   const [tool, setTool] = useState<ToolKey>('design')
   const [tabsSlot, setTabsSlot] = useState<HTMLElement | null>(null)
   const [runSlot, setRunSlot] = useState<HTMLElement | null>(null)
@@ -38,6 +50,8 @@ export default function PrepWorkspacePage() {
   async function onSignOut() {
     if (signingOut) return
     setSigningOut(true)
+    confirmation.client?.dispose()
+    init.invalidate()
     try {
       await signOut(workspaceMode)
       showToast('已结束准备会话')
@@ -81,8 +95,32 @@ export default function PrepWorkspacePage() {
           tool={tool}
           onToolChange={setTool}
           onToast={showToast}
-          designBody={<TextScopeBodyPane init={init.init} onReload={init.reload} />}
-          runCluster={<TextScopeRunCluster init={init.init} />}
+          designBody={confirmation.seed && draftScope
+            ? <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} />
+            : <TextScopeBodyPane init={init.init} onReload={init.reload} />}
+          runCluster={<ConfirmationCluster
+            phase={init.status !== 'ready' ? 'loading' : confirmation.state.phase}
+            hasAttempt={!!c?.attemptId}
+            hasPending={!!confirmation.state.pending}
+            unconfirmedCount={project.unconfirmedCount}
+            workspaceRevision={confirmation.state.workspace?.workspaceRevision ?? null}
+            snapshot={confirmation.state.snapshot}
+            canSave={project.loaded && project.unconfirmedCount > 0 && project.access.kind !== 'read-only' &&
+              !(project.access.kind === 'paused' && project.files.some(f => f.confirmed === null))}
+            canSnapshot={!!confirmation.state.attempt && project.access.kind !== 'read-only'}
+            blockedReason={!c?.trustedRecoveryGeneration ? '缺少受信代际，禁止写入（H-03）' :
+              project.access.kind === 'paused' && project.files.some(f => f.confirmed === null) ? '暂停期间只可确认已有文件正文' : null}
+            error={confirmation.state.error}
+            onOpen={() => { void confirmation.client?.openAttempt() }}
+            onSave={() => {
+              const current = confirmation.client
+              void project.prepareSave().then(drafts => current?.save(drafts)).catch(e =>
+                showToast(`草稿未能保护，未发送保存请求：${e instanceof Error ? e.message : String(e)}`))
+            }}
+            onSnapshot={() => { void confirmation.client?.snapshot() }}
+            onRetry={() => { void confirmation.client?.retry() }}
+            onReload={init.reload}
+          />}
           tabsSlot={tabsSlot}
           runSlot={runSlot}
         />

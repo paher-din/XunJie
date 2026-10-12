@@ -130,7 +130,7 @@ export function applyModelEdits(original: string, projection: OriginalProjection
       idx,
       start: projection.toOriginalOffset(edit.start),
       end: projection.toOriginalOffset(edit.end),
-      text: edit.text.replace(/\n/g, nl),
+      text: edit.text.replace(/\r\n|\r|\n/g, nl),
     }))
     .sort((a, b) => b.start - a.start || b.idx - a.idx)
   let out = original

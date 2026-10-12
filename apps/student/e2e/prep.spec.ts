@@ -37,9 +37,9 @@ test.describe('准备入口与模式', () => {
     await expect(page.locator('.ws-toolkit-pending')).toHaveCount(0)
     await expect(page.getByRole('tablist', { name: '工具' })).toBeVisible()
     await expect(page.locator('.ts-pane-head')).toContainText('C 正文区')
-    await expect(page.locator('.ts-pending-pill')).toHaveText('编辑待 02 接入')
+    await expect(page.locator('.ts-pending-pill')).toHaveText('先开始 Attempt')
     // 正文区不假称已可保存
-    await expect(page.locator('.ts-pane-lead')).toContainText('还没有任何保存能力')
+    await expect(page.locator('.ts-pane-lead')).toContainText('不会自动创建作品或发送保存请求')
 
     // 初始化确实打了准备 fixture 的读取端点
     expect(urls.some((u) => u.includes('/__i0prep/context'))).toBe(true)
@@ -151,9 +151,9 @@ test.describe('C 场景不触发模拟构建与主动教学', () => {
 
     // 顶栏运行簇如实说明只读边界与后续归属
     const run = page.locator('.ws-head-run')
-    await expect(run).toContainText('只读载入')
-    await expect(run).toContainText('保存待 03')
-    await expect(run).toContainText('运行待 06')
+    await expect(run).toContainText('尚未开始')
+    await expect(run.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
+    await expect(run.getByRole('button', { name: '冻结确认作品', exact: true })).toBeDisabled()
   })
 
   test('C 容器里保留的 board / wave 明确标为数字逻辑演示', async ({ page }) => {

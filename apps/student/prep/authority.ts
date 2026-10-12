@@ -12,7 +12,7 @@
  */
 
 import { createHmac, randomBytes, randomUUID } from 'node:crypto'
-import { SYNTHETIC_ACCOUNT } from './scenario'
+import { SCENARIO_ID, SYNTHETIC_ACCOUNT } from './scenario'
 
 const bootSecret = randomBytes(32)
 const bootId = randomBytes(6).toString('hex')
@@ -27,6 +27,7 @@ export const syntheticRecoveryGeneration = `prep-gen-${bootId}`
 export const SESSION_COOKIE = 'i0prep_session'
 
 export interface PrepSession {
+  scenarioId: string
   sessionId: string
   csrfToken: string
   userId: string
@@ -41,9 +42,10 @@ function csrfOf(sessionId: string): string {
   return createHmac('sha256', bootSecret).update(`xunjie-csrf\0${sessionId}`).digest('base64url')
 }
 
-export function createSession(loginName: string): PrepSession {
+export function createSession(loginName: string, scenarioId = SCENARIO_ID): PrepSession {
   const sessionId = randomUUID()
   const session: PrepSession = {
+    scenarioId,
     sessionId,
     csrfToken: csrfOf(sessionId),
     userId: SYNTHETIC_ACCOUNT.userId,
@@ -54,9 +56,10 @@ export function createSession(loginName: string): PrepSession {
   return session
 }
 
-export function sessionOf(sessionId: string | undefined): PrepSession | null {
+export function sessionOf(sessionId: string | undefined, scenarioId = SCENARIO_ID): PrepSession | null {
   if (!sessionId) return null
-  return sessions.get(sessionId) ?? null
+  const session = sessions.get(sessionId)
+  return session?.scenarioId === scenarioId ? session : null
 }
 
 export function destroySession(sessionId: string | undefined): void {
@@ -64,12 +67,12 @@ export function destroySession(sessionId: string | undefined): void {
 }
 
 /** 当前 authority 的活跃会话数；诊断与测试用，不含任何正文或凭据。 */
-export function authoritySummary() {
+export function authoritySummary(scenarioId = SCENARIO_ID) {
   return {
-    scenarioId: 'i0-prep-textscope-c',
+    scenarioId,
     preparationEpoch,
     recoveryGeneration: syntheticRecoveryGeneration,
-    activeSessions: sessions.size,
+    activeSessions: [...sessions.values()].filter(session => session.scenarioId === scenarioId).length,
   }
 }
 

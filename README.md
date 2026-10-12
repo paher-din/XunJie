@@ -39,6 +39,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
 | [B1 合成 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、注入式 DeepSeek 适配边界及实际验证记录 |
 | [学生前端导入与 C 场景入口](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md) | 设计仓库固定提交导入 `apps/student/`、准备模式 fixture、窄读取客户端与最小浏览器检查；I0 学生纵向切片的第一张任务 |
+| [学生确认保存与不可变快照](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) | 学生主动创建 Attempt、原命令持久化与重放、原子确认和快照回取；准备范围验证及真实服务交接限制 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；七张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
@@ -104,11 +105,11 @@ npm run build       # 产物构建，不含准备 fixture 端点与合成材料
 npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实模式检查
 ```
 
-`dev:prep` 与 `test:e2e` 用固定端口加 `--strictPort`；端口被占时命令直接失败，先释放端口，不要改成自动换端口。首次跑 e2e 需 `npx playwright install chromium`。
+`dev:prep` 与 `test:e2e` 用固定端口加 `--strictPort`；端口被占时命令直接失败，不自动漂移。首次跑 e2e 需 `npx playwright install chromium`。已有开发服务需要保留时，可明确设置测试端口，例如 `XUNJIE_E2E_PREP_PORT=5603 XUNJIE_E2E_REAL_PORT=5604 CI=1 npm run test:e2e`；这只覆盖测试 harness，仍严格使用指定端口。
 
-导航：准备模式下首页出现「I0 准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区（只读初始化：合成 Session、固定活动版本、按 visibility 裁剪的材料；编辑属 02、保存/快照属 03、运行属 06）。原数字逻辑演示 `/#/task/counter` 完整保留并带演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
+导航：准备模式下首页出现「I0 准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区。载入仅初始化合成 Session、固定活动版本及按 visibility 裁剪的材料；学生点击「开始 Attempt」后可以多文件编辑、主动「确认保存」和「冻结确认作品」，快照详情显示核验后的 ID/hash/确认版本。刷新读取同一开发进程保存的作品和快照；本机新编辑独立保留。结果未明或本机确认失败时先「核对原请求并重试」。fixture 重启或恢复代际变化时保留草稿并要求重新比较，不把旧缓存当当前作品。运行仍属后续 06。原数字逻辑演示 `/#/task/counter` 保留演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
 
-本目录当前只交付 I0-A 准备范围：导入、两种模式启动、初始化读取客户端、C 容器适配与最小浏览器检查。它不代表真实服务联调通过，也不构成任何 AC / NFR 或 G0～G4 验收；验证事实与未完成项见 [I0_UI_01 任务记录](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md)。
+本目录已交付 01 导入/初始化、02 编辑/草稿，以及 03 确认/快照的准备范围，使用同一客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
 
 ## 状态
 

@@ -10,7 +10,7 @@
  *   因此 `npm run build` 的正式产物与 `npm run preview` 都不含这些端点；
  * - 只接受 loopback 请求，不对局域网开放；
  * - 不导入 `apps/teaching` 的任何模块（前后端独立构建），需要的契约表在本地复制并逐项标注来源；
- * - 只实现 01 需要的读取能力与一个开发会话；不实现真实鉴权、GCC、调度、模型或完整后台，
+ * - 实现 01 的读取/开发会话和 03 的保存/快照/恢复脚本；不实现真实鉴权、GCC、调度、模型或完整后台，
  *   其状态转换不能用来验证服务端业务正确性。
  */
 
@@ -34,7 +34,6 @@ import {
   preparationEpoch,
   readSessionCookie,
   sessionOf,
-  syntheticRecoveryGeneration,
   type PrepSession,
 } from './authority'
 import {
@@ -48,12 +47,26 @@ import {
   projectMaterials,
   sha256Hex,
 } from './scenario'
+import { createPrepAttempt, readPrepAttempt, syncPrepWorkspace, freezePrepSnapshot, readPrepSnapshot, recoverPrepWorkspace,
+  PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
 
 /** 与 `apps/teaching/contracts/common/http.ts:3-19` 的 errorDefinitions 对应条目逐字一致。 */
 const ERROR_DEFINITIONS = {
   INVALID_REQUEST: { status: 400, message: 'Invalid request.', retryable: false, recovery: 'Correct the request before retrying.' },
   UNAUTHENTICATED: { status: 401, message: 'Authentication required.', retryable: false, recovery: 'Sign in using a valid account.' },
   FORBIDDEN: { status: 403, message: 'Access denied.', retryable: false, recovery: 'Use an account authorized for this resource.' },
+  VERSION_CONFLICT: { status: 409, message: 'Version conflict.', retryable: false, recovery: 'Read the current authorized version before retrying.' },
+  IDEMPOTENCY_CONFLICT: { status: 409, message: 'Request key conflict.', retryable: false, recovery: 'Do not reuse a request key with different input.' },
+  STATE_CONFLICT: { status: 409, message: 'Operation unavailable in the current state.', retryable: false, recovery: 'Read the current state before acting.' },
+  RECOVERY_REQUIRED: { status: 409, message: 'Recovery required.', retryable: false, recovery: 'Synchronize the current recovery generation before acting.' },
+  CONTENT_LIMIT: { status: 413, message: 'Request content exceeds the limit.', retryable: false, recovery: 'Reduce the request content.' },
+  INVALID_REFERENCE: { status: 422, message: 'Invalid reference.', retryable: false, recovery: 'Use an authorized confirmed reference.' },
+  INVALID_CONFIGURATION: { status: 422, message: 'Invalid configuration.', retryable: false, recovery: 'Correct the approved configuration.' },
+  RUNTIME_NOT_READY: { status: 422, message: 'Runtime is not ready.', retryable: false, recovery: 'Wait for verified runtime readiness.' },
+  RATE_LIMITED: { status: 429, message: 'Request rate limit reached.', retryable: false, recovery: 'Wait before explicitly retrying.' },
+  BUDGET_EXHAUSTED: { status: 429, message: 'Model budget is unavailable.', retryable: false, recovery: 'Use the manual workflow or obtain approved quota.' },
+  DEPENDENCY_UNAVAILABLE: { status: 503, message: 'Required capability is unavailable.', retryable: false, recovery: 'Use the manual workflow while unavailable; check the original request before explicitly retrying.' },
+  PERSISTENCE_UNAVAILABLE: { status: 503, message: 'Persistence is unavailable.', retryable: false, recovery: 'Check the original request before explicitly retrying.' },
 } as const
 
 type ErrorCode = keyof typeof ERROR_DEFINITIONS
@@ -131,18 +144,30 @@ function sessionCookieOf(req: IncomingMessage): string | undefined {
   return readSessionCookie(Array.isArray(header) ? header.join('; ') : header)
 }
 
+function scenarioOf(req: IncomingMessage): string {
+  const value = req.headers['x-i0prep-scenario']
+  return typeof value === 'string' ? value : SCENARIO_ID
+}
+
 function requireSession(req: IncomingMessage, res: ServerResponse): PrepSession | null {
-  const session = sessionOf(sessionCookieOf(req))
+  const session = sessionOf(sessionCookieOf(req), scenarioOf(req))
   if (!session) fail(res, 'UNAUTHENTICATED')
   return session
 }
 
 /** 准备 bootstrap 元信息：开发 fixture 的配置入口，不是拟定的正式 API。 */
-function contextPayload(): PrepContextView {
+type WorkspacePrepContext = Omit<PrepContextView, 'capabilities' | 'refs'> & {
+  refs: PrepContextView['refs'] & { attemptId?: string }
+  capabilities: { attemptCreate: boolean; workspaceSync: boolean; snapshot: boolean; run: false }
+}
+function contextPayload(req: IncomingMessage): WorkspacePrepContext {
+  const scenarioId = scenarioOf(req)
+  const generation = recoveryGenerationOf(scenarioId)
+  const attemptId = existingPrepAttemptId(scenarioId, sessionOf(sessionCookieOf(req), scenarioId))
   return {
-    scenarioId: SCENARIO_ID,
+    scenarioId,
     preparationEpoch,
-    recoveryGeneration: syntheticRecoveryGeneration,
+    recoveryGeneration: generation,
     syntheticAccount: {
       loginName: SYNTHETIC_ACCOUNT.loginName,
       password: SYNTHETIC_ACCOUNT.password,
@@ -153,9 +178,10 @@ function contextPayload(): PrepContextView {
       assignmentId: REFS.assignmentId,
       activityVersionId: REFS.activityVersionId,
       resourceVersionIds: MATERIALS.map((m) => m.resourceVersionId),
+      ...(attemptId ? { attemptId } : {}),
     },
-    capabilities: { attemptCreate: false, workspaceSync: false, snapshot: false, run: false },
-    authority: authoritySummary(),
+    capabilities: { attemptCreate: true, workspaceSync: true, snapshot: true, run: false },
+    authority: { ...authoritySummary(scenarioId), recoveryGeneration: generation },
   }
 }
 
@@ -177,7 +203,7 @@ async function handleLogin(req: IncomingMessage, res: ServerResponse): Promise<v
     fail(res, 'UNAUTHENTICATED')
     return
   }
-  const session = createSession(b.loginName)
+  const session = createSession(b.loginName, scenarioOf(req))
   const data: SessionCreatedView = { csrfToken: session.csrfToken }
   // 开发专用 cookie：无 Secure（http://127.0.0.1 上无法下发 `__Host-`），见 authority.ts 文件头
   ok(res, data, {
@@ -296,7 +322,19 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
 
   if (path === `${PREP_ROOT}/context`) {
     if (method !== 'GET') return fail(res, 'INVALID_REQUEST')
-    return ok(res, contextPayload())
+    return ok(res, contextPayload(req))
+  }
+
+  if (path === `${PREP_ROOT}/recover` && method === 'POST') {
+    const session = requireSession(req, res)
+    if (!session) return
+    if (csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
+    let body: unknown
+    try { body = await readBody(req) } catch { return fail(res, 'INVALID_REQUEST') }
+    try { return ok(res, recoverPrepWorkspace(scenarioOf(req), session, body)) } catch (error) {
+      if (error instanceof PrepWorkspaceError) return fail(res, error.code)
+      throw error
+    }
   }
 
   if (!path.startsWith(`${PREP_ROOT}/api/`)) {
@@ -309,6 +347,33 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   if (route === '/sessions' && method === 'POST') return void (await handleLogin(req, res))
   if (route === '/session' && method === 'GET') return handleSession(req, res)
   if (route === '/logout' && method === 'POST') return handleLogout(req, res)
+
+  const scenario = scenarioOf(req)
+  const attemptCreate = route.match(/^\/assignments\/([^/]+)\/attempts$/)
+  const attemptRead = route.match(/^\/attempts\/([^/]+)$/)
+  const sync = route.match(/^\/attempts\/([^/]+)\/sync$/)
+  const snapshotCreate = route.match(/^\/attempts\/([^/]+)\/snapshots$/)
+  const snapshotRead = route.match(/^\/attempts\/([^/]+)\/snapshots\/([^/]+)$/)
+  if ((attemptCreate && method === 'POST') || (attemptRead && method === 'GET') || (sync && method === 'POST')
+    || (snapshotCreate && method === 'POST') || (snapshotRead && method === 'GET')) {
+    const session = requireSession(req, res)
+    if (!session) return
+    if (method === 'POST' && csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
+    let body: unknown
+    if (method === 'POST') {
+      try { body = await readBody(req) } catch { return fail(res, 'INVALID_REQUEST') }
+    }
+    try {
+      if (snapshotRead) return ok(res, readPrepSnapshot(scenario, session, decodeURIComponent(snapshotRead[1]!), decodeURIComponent(snapshotRead[2]!)))
+      if (snapshotCreate) return ok(res, freezePrepSnapshot(scenario, session, decodeURIComponent(snapshotCreate[1]!), body, req.headers['idempotency-key']))
+      if (sync) return ok(res, syncPrepWorkspace(scenario, session, decodeURIComponent(sync[1]!), body, req.headers['idempotency-key']))
+      if (attemptCreate) return ok(res, createPrepAttempt(scenario, session, decodeURIComponent(attemptCreate[1]!), body, req.headers['idempotency-key']))
+      return ok(res, readPrepAttempt(scenario, session, decodeURIComponent(attemptRead![1]!)))
+    } catch (error) {
+      if (error instanceof PrepWorkspaceError) return fail(res, error.code)
+      throw error
+    }
+  }
 
   const segments = route.split('/').filter((s) => s.length > 0)
   if (segments.length === 2 && method === 'GET') {
@@ -341,6 +406,8 @@ export function createPrepMiddleware(
     const url = req.url ?? ''
     if (!url.startsWith(PREP_ROOT)) return next()
     if (!isLoopback(req)) return fail(res, 'FORBIDDEN')
+    const scenario = req.headers['x-i0prep-scenario']
+    if (scenario !== undefined && (typeof scenario !== 'string' || !scenario.length || scenario.length > 128)) return fail(res, 'INVALID_REQUEST')
     void handle(req, res, url).catch((e: unknown) => {
       // 不把根因吞成一个 400：原始错误（含栈）先进开发日志，再按客户端错误回应。
       log.error(

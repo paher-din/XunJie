@@ -30,11 +30,11 @@ export function TextScopeBodyPane({ init, onReload }: { init: WorkspaceInit | nu
     <div className="ts-pane">
       <header className="ts-pane-head">
         <IconText name="code-square" tone="neutral">C 正文区</IconText>
-        <span className="ts-pending-pill">编辑待 02 接入</span>
+        <span className="ts-pending-pill">先开始 Attempt</span>
       </header>
       <p className="ts-pane-lead">
-        这里将接入 <code>monaco-editor</code> 的多文件编辑（任务 02）。当前只做只读的初始化读取，
-        <b>还没有任何保存能力</b>：不要把这屏内容当成已保存的作品。
+        点击顶栏“开始 Attempt”进入多文件编辑。载入只读取活动与资料，
+        <b>不会自动创建作品或发送保存请求</b>。
       </p>
       <dl className="ts-facts">
         <Fact label="活动版本 ID" value={activity.activityVersionId} />
@@ -42,7 +42,7 @@ export function TextScopeBodyPane({ init, onReload }: { init: WorkspaceInit | nu
         <Fact label="课程" value={activity.courseId} />
         <Fact label="活动状态" value={`${activity.status} · 控制版本 ${activity.activityControlRevision}`} />
         <Fact label="分配状态" value={`${init.assignment.status} · active=${String(init.assignment.active)} · 分配版本 ${init.assignment.assignmentRevision}`} />
-        <Fact label="Attempt" value="未创建（载入不创建 Attempt、不开始学习；首次创建属 03）" />
+        <Fact label="Attempt" value="尚未进入（由学生明确开始或恢复）" />
         <Fact label="受信 recoveryGeneration" value={context.trustedRecoveryGeneration ?? '缺失（不得发送写命令，H-03）'} />
         <Fact label="loadEpoch" value={String(context.loadEpoch)} />
       </dl>

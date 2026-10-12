@@ -14,6 +14,8 @@ export interface WorkspaceInitState {
   loadEpoch: number
   /** 主动重新加载：换新的 loadEpoch 与上下文，旧上下文的在途响应立即失效。 */
   reload: () => void
+  /** 退出开始时立即失效并清除旧展示，不提前建立下一会话。 */
+  invalidate: () => void
 }
 
 /**
@@ -64,6 +66,10 @@ export function useWorkspaceInit(): WorkspaceInitState {
   }, [nonce])
 
   const reload = useCallback(() => setNonce((n) => n + 1), [])
+  const invalidate = useCallback(() => {
+    guardRef.current?.dispose()
+    setState({ status: 'loading', init: null, loadEpoch: nextLoadEpoch() })
+  }, [])
 
-  return { ...state, reload }
+  return { ...state, reload, invalidate }
 }
