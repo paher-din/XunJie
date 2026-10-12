@@ -1,5 +1,5 @@
 import {RunnerError} from '../../runner/snapshot.ts';
-import {finishCommand,requestHash,resolveCommandReceipt,onlyFields} from '../records/commands.ts';
+import {finishCommand,requestHash,resolveCommandReceipt,onlyFields,sameScope} from '../records/commands.ts';
 import {activate,syncFiles} from './files.ts';
 import {freezeSnapshot,beginExplicitOperation,validateObjectRef} from './snapshots.ts';
 import {controlAttempt} from './controls.ts';
@@ -8,7 +8,11 @@ import {cancelByPurpose,cancelJob,claimJob,enqueueJob,confirmRunStopped} from '.
 import {compilerArgs,sha256,validateSnapshot} from '../../runner/snapshot.ts';
 import {textScopeArgs} from '../../runner/run-snapshot.ts';
 import {validateRunFact,validateRunResult} from '../records/runner.ts';
-import type {Records,CommandIdentity,Job,Purpose} from '../../contracts/records/index.ts';
+import {ApiError} from '../app/errors.ts';
+import type {Records,CommandIdentity,Job,Purpose,TeachingActionRecord,TeachingCoverage,TeachingMessage,
+  TeachingStopContext,TeachingStopResult} from '../../contracts/records/index.ts';
+import type {FastifyRequest} from 'fastify';
+import type {Transaction} from '../db/transaction.ts';
 import type {SubmitRun,Profile,TextScopeInput} from '../../contracts/runner/index.ts';
 import type {Attempt,ProjectFile,ArtifactSnapshot,SyncBatch} from '../../contracts/workspace/index.ts';
 
@@ -16,14 +20,28 @@ export type WorkspaceState = {attempt:Attempt;files:ProjectFile[];snapshots:Arti
   checks:{jobId:string;runId:string;policyVersion:string;state:'active'|'ended'}[];
   runs:{runId:string;jobId:string;submission:SubmitRun;result?:unknown;resultHash?:string}[]};
 export type CommandContext = {identity:CommandIdentity;generation:string;now:string;commandId:string;receiptId:string;eventId:string;
-  assignmentActive:boolean;authorize:()=>boolean};
+  assignmentActive:boolean;authorize:()=>boolean;transaction?:Transaction;stopReason?:string;runPurposes?:Purpose[]};
+// C3 seam: A's design/control paths and C's own control/cancel paths call the same synchronous stop capability
+// inside their current transaction. A missing handler never pretends the action invalidation happened.
+export type TeachingStopHandler = (tx:Transaction,courseId:string,studentId:string,jobIds:string[],
+  context:TeachingStopContext)=>TeachingStopResult;
+export type TeachingWorkspaceExtensions = {
+  acceptStudentQuestion(request:FastifyRequest,attemptId:string,input:unknown):{messageId:string;jobId:string;contentHash:string;stoppedJobIds:string[]};
+  completeTeaching(attemptId:string,input:unknown):{messageId:string;actionId:string;disposition:'pending'|'cancelled'|'stale'|'failed';replayed:boolean;contentHash:string};
+  readTeachingRecords(attemptId:string):{messages:TeachingMessage[];actions:TeachingActionRecord[]};
+  readCoverage(attemptId:string):TeachingCoverage;
+};
 export function guardCommand(state:WorkspaceState,context:CommandContext) {
   if(context.authorize()!==true||context.identity.actorId!==state.attempt.studentId
     ||context.identity.scope.courseId!==state.attempt.courseId||context.identity.scope.studentId!==state.attempt.studentId
     ||context.identity.scope.attemptId!==state.attempt.attemptId)throw new RunnerError('FORBIDDEN','Authorized student command required');
 }
 export function completeCommand(state:WorkspaceState,context:CommandContext,hash:string,result:unknown,type:string) {
-  const finished=finishCommand(state.records,{receiptId:context.receiptId,commandId:context.commandId,identity:context.identity,
+  // A dependent record (a teaching stop) may already hold the next audit slot, so the command event is
+  // planned from the current server sequence rather than the pre-command snapshot.
+  const sequence=Number(context.transaction?.get('SELECT COALESCE(MAX(server_seq),0) AS seq FROM audit_events')?.seq??0);
+  const planned=sequence>0?{...state.records,serverSeq:sequence}:state.records;
+  const finished=finishCommand(planned,{receiptId:context.receiptId,commandId:context.commandId,identity:context.identity,
     requestHash:hash,result,committedAt:context.now},{eventId:context.eventId,scope:context.identity.scope,type,
     occurredAt:context.now,source:'student_command',payloadRef:context.receiptId},context.generation);
   return {state:{...state,records:finished.records},receipt:finished.receipt,replayed:finished.replayed};
@@ -53,17 +71,34 @@ export function snapshotCommand(state:WorkspaceState,context:CommandContext,expe
 }
 
 export function controlCommand(state:WorkspaceState,context:CommandContext,expectedRevision:number,control:Control,
-  resources:{resourceVersionId:string;paragraphId:string}[]=[]) {
+  resources:{resourceVersionId:string;paragraphId:string}[]=[],teachingStop?:TeachingStopHandler) {
   guardCommand(state,context);const hash=requestHash(context.identity.target,{expectedRevision,control});
   const previous=resolveCommandReceipt(state.records,context.identity,hash,context.generation);
   if(previous)return completeCommand(state,context,hash,previous.result,'attempt_controlled');
   if(control.kind==='position'&&control.returnPosition)validateObjectRef(state.attempt,control.returnPosition,
     {snapshots:state.snapshots,runs:state.runs.map(row=>({runId:row.runId,snapshotId:row.submission.snapshot.snapshotId,attemptId:state.attempt.attemptId})),resources});
   const plan=controlAttempt(state.attempt,expectedRevision,control,context.assignmentActive);
-  const cancellation=cancelByPurpose(state.records.jobs,context.identity.scope,plan.cancelPurposes);
-  return completeCommand({...state,attempt:plan.attempt,records:{...state.records,jobs:cancellation.jobs}},context,hash,
+  const stopped=stopJobs(state,context,plan.cancelPurposes,context.stopReason??'attempt_control',teachingStop);
+  return completeCommand({...state,attempt:plan.attempt,records:{...state.records,jobs:stopped.jobs}},context,hash,
     {attemptRevision:plan.attempt.attemptRevision,decisionEpoch:plan.attempt.decisionEpoch,captureRevision:plan.attempt.captureRevision,
-      cancelledJobIds:cancellation.jobIds,captureChanged:plan.captureChanged},'attempt_controlled');
+      cancelledJobIds:stopped.jobIds,captureChanged:plan.captureChanged},'attempt_controlled');
+}
+// One capability for capture/reminder/lifecycle stops and teaching cancellation. The caller's own receipt
+// records the cause; the stop handler persists the intent and invalidates the related, not-yet-displayed actions.
+function stopJobs(state:WorkspaceState,context:CommandContext,purposes:Purpose[],reason:string,teachingStop?:TeachingStopHandler) {
+  const cancellation=cancelByPurpose(state.records.jobs,context.identity.scope,purposes);
+  if(!cancellation.jobIds.length)return {jobs:cancellation.jobs,jobIds:[] as string[],actionIds:[] as string[]};
+  // A teaching stop must also invalidate the action store, so it is refused without an attached
+  // transaction instead of being reported as a completed cancellation. C2's ordinary stop stays an
+  // in-memory plan for pure callers and is persisted by persistWorkspace.
+  const transaction=context.transaction;
+  if(!teachingStop||!transaction) {
+    if(teachingStop)throw new ApiError('PERSISTENCE_UNAVAILABLE');
+    return {jobs:cancellation.jobs,jobIds:cancellation.jobIds,actionIds:[] as string[]};
+  }
+  const stopped=teachingStop(transaction,state.attempt.courseId,state.attempt.studentId,cancellation.jobIds,
+    {reason,causeRef:context.receiptId,generation:context.generation,now:context.now});
+  return {jobs:cancellation.jobs,jobIds:cancellation.jobIds,actionIds:stopped.invalidatedActionIds};
 }
 
 export type RunRequest = {expectedAttemptRevision:number;snapshotId:string;runtimeProfileVersion:string;entryFileId:string;
@@ -116,6 +151,27 @@ export function cancelRunCommand(state:WorkspaceState,context:CommandContext,job
   const cancelled=cancelJob(original);
   return completeCommand({...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?cancelled:row)}},context,hash,
     {jobId,status:cancelled.status,stopRequested:true},'job_stop_requested');
+}
+// C3: teaching jobs stop through the same persistent stop capability and invalidate their not-yet-displayed actions.
+export function cancelTeachingJobCommand(state:WorkspaceState,context:CommandContext,jobId:string,teachingStop?:TeachingStopHandler) {
+  guardCommand(state,context);const reason=context.stopReason??'explicit_job_cancel';
+  const hash=requestHash(context.identity.target,{jobId,reason});
+  const previous=resolveCommandReceipt(state.records,context.identity,hash,context.generation);
+  if(previous)return completeCommand(state,context,hash,previous.result,'job_stop_requested');
+  const jobs=state.records.jobs.filter(row=>row.jobId===jobId);
+  if(jobs.length!==1)throw new RunnerError('INVALID_REFERENCE','Original job association unavailable');
+  const original=jobs[0]!;
+  if(!sameScope(original.scope,context.identity.scope))throw new RunnerError('FORBIDDEN','Original job scope mismatch');
+  if(original.purpose==='student_run'||original.purpose==='teacher_sample')
+    throw new RunnerError('STATE_CONFLICT','Ordinary runs stop through the original run unit');
+  if(!teachingStop||!context.transaction)throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const stopped=teachingStop(context.transaction,state.attempt.courseId,state.attempt.studentId,[jobId],
+    {reason,causeRef:context.receiptId,generation:context.generation,now:context.now});
+  const current=stopped.jobs.find(job=>job.jobId===jobId);
+  if(!current)throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  const updated=state.records.jobs.map(job=>job.jobId===jobId?{...job,status:current.status,stopRequested:current.stopRequested}:job);
+  return completeCommand({...state,records:{...state.records,jobs:updated}},context,hash,
+    {jobId,status:current.status,stopRequested:current.stopRequested,invalidatedActionIds:stopped.invalidatedActionIds},'job_stop_requested');
 }
 
 function ownRun(state:WorkspaceState,jobId:string) {

@@ -1,0 +1,130 @@
+{
+  "task": "A3",
+  "issue": "https://github.com/paher-din/XunJie/issues/25",
+  "date": "2026-10-11",
+  "baselineSha": "c42f356b6135ca9bb00c2e3c61c3d2aae713f602",
+  "sourceSha": "b2a9f8efb3d32dbf6bde9c640578c50553c69666",
+  "environment": {
+    "platform": "win32",
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "typescript": "7.0.2"
+  },
+  "authorization": {
+    "source": "docs/tasks/A3_TEACHER_AGENT_PROPOSALS.md §5",
+    "scope": "Fresh temporary synthetic 24-table databases; A3 API/worker/transaction integration; no existing migrations, credentials, paid models, CI, B/C contract or UI changes",
+    "databasesRetained": true
+  },
+  "commands": [
+    {
+      "command": "npm run typecheck",
+      "status": "passed"
+    },
+    {
+      "command": "npm test (pretest npm run build)",
+      "buildStatus": "passed",
+      "status": "failed",
+      "tests": 201,
+      "passed": 193,
+      "failed": 1,
+      "skipped": 7,
+      "record": "acceptance.a3-synthetic.final.windows.txt"
+    },
+    {
+      "command": "npm test (initial)",
+      "status": "failed",
+      "tests": 199,
+      "passed": 191,
+      "failed": 1,
+      "skipped": 7,
+      "record": "acceptance.a3-synthetic.windows.txt"
+    },
+    {
+      "command": "node --test tests/design-agent.test.ts",
+      "status": "passed",
+      "tests": 20,
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "record": "acceptance.a3-targeted.windows.txt"
+    },
+    {
+      "command": "node --test --test-name-pattern='real RunControl preparation' server/workspace/review.test.ts",
+      "status": "failed",
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "record": "acceptance.preexisting-c2-windows.txt"
+    },
+    {
+      "command": "node tools/a0-review/check.mjs",
+      "status": "passed",
+      "documents": 32,
+      "internalLinks": 398,
+      "errors": []
+    },
+    {
+      "command": "node --test tools/a0-review/check.test.mjs",
+      "status": "passed",
+      "tests": 16,
+      "passed": 16,
+      "failed": 0
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    }
+  ],
+  "preexistingFailure": {
+    "test": "review: real RunControl preparation failure ends check without fabricating a RunRecord",
+    "file": "apps/teaching/server/workspace/review.test.ts",
+    "line": 118,
+    "error": "INVALID_CONFIGURATION: Linux and trusted control context required",
+    "failureBeforeAAppFixture": true,
+    "filesUnchangedFromBaseline": [
+      "apps/teaching/server/workspace/review.test.ts",
+      "apps/teaching/runner/control.ts"
+    ],
+    "guardsAndSkipsNotChanged": true
+  },
+  "reviews": {
+    "Standards": {
+      "initialFindings": 1,
+      "unresolved": 0
+    },
+    "Spec": {
+      "initialFindings": 2,
+      "unresolved": 0
+    }
+  },
+  "notExecuted": [
+    "Actual model invocation / B1 closure / D-02",
+    "Linux rerun",
+    "Real C1 / SSH integration",
+    "Teacher semantic review",
+    "Browser / TLS acceptance",
+    "Full G1/G2/MVP completion"
+  ],
+  "files": [
+    {
+      "file": "acceptance.a3-synthetic.final.windows.txt",
+      "sha256": "7905cab2bcb4c6cb56a081abf565f71176e226c14ab028624a88f2e7e0b14e92",
+      "bytes": 21648
+    },
+    {
+      "file": "acceptance.a3-synthetic.windows.txt",
+      "sha256": "dccd50c5428e8c02d34720ae10a15e20296769dfbd0aa653a5fa8c12bf80c122",
+      "bytes": 21424
+    },
+    {
+      "file": "acceptance.a3-targeted.windows.txt",
+      "sha256": "d1dfbf7ce1405ec632467e7c65d0dff1fa9eeb8e3e8f8573991db09200701da3",
+      "bytes": 2310
+    },
+    {
+      "file": "acceptance.preexisting-c2-windows.txt",
+      "sha256": "d1bd722678872bad7c0b9abee31e58e8633ddea38be4aab0c4f0fc733dc63c7f",
+      "bytes": 1054
+    }
+  ]
+}

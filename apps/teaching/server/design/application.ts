@@ -8,16 +8,18 @@ import { finishRecordCommand, readRecordCommand } from '../db/records-adapter.ts
 import { releaseSchema, assignmentSchema, activityControlSchema, assignmentControlSchema, helpPolicySchema, checkRuleSchema, activityCommandResults, assignmentViewSchema } from '../../contracts/design/index.ts';
 import { activityCourse, assignmentCourse, readAssignment, confirmActivity, assignActivity, controlActivity, controlAssignment,
   activityView, assignmentAvailability, storePolicy, storeRule, releaseContext, readActivity } from './activities.ts';
+import type { DesignTeachingStop } from './activities.ts';
 import { readMaterial, draftCourse, readDraft, draftMaterials } from './storage.ts';
 import type { Transaction } from '../db/transaction.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
 
-export type DesignAppOptions = Omit<DesignVerificationOptions, 'completion'>;
+// C3 adds only this optional same-transaction callback; A's control results and algorithms stay unchanged.
+export type DesignAppOptions = Omit<DesignVerificationOptions, 'completion'> & { teaching?: { stop: DesignTeachingStop } };
 const params = z.strictObject({ id: z.string().min(1).max(128) });
 const keySchema = z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/);
 const audienceSchema = z.strictObject({ audience: z.enum(['student', 'tutor', 'teacher-validator']).default('student') });
-export async function createDesignApp(options: DesignAppOptions) {
-  const instance = await createDesignVerificationApp({ ...options, completion: true });
+export async function createDesignApp(options: DesignAppOptions, registerTeacherJobRoutes = true) {
+  const instance = await createDesignVerificationApp({ ...options, completion: true }, registerTeacherJobRoutes);
   const { app, access, design } = instance;
   const now = options.now ?? Date.now;
   function generation(expected: string) {
@@ -119,12 +121,12 @@ export async function createDesignApp(options: DesignAppOptions) {
   app.post('/api/activities/:id/controls', request => {
     const activityId = parseRequest(params, request.params).id, input = parseRequest(activityControlSchema, request.body);
     return execute(request, tx => activityCourse(tx, activityId), 'activity.control', activityId, input,
-      (tx, actor) => controlActivity(tx, actor, activityId, input.expectedActivityControlRevision, input.action, input.reason, now()));
+      (tx, actor) => controlActivity(tx, actor, activityId, input.expectedActivityControlRevision, input.action, input.reason, now(), input.recoveryGeneration, options.teaching?.stop));
   });
   app.post('/api/assignments/:id/controls', request => {
     const assignmentId = parseRequest(params, request.params).id, input = parseRequest(assignmentControlSchema, request.body);
     return execute(request, tx => assignmentCourse(tx, assignmentId), 'assignment.control', assignmentId, input,
-      (tx, actor) => controlAssignment(tx, actor, assignmentId, input.expectedAssignmentRevision, input.action, input.reason, now()));
+      (tx, actor) => controlAssignment(tx, actor, assignmentId, input.expectedAssignmentRevision, input.action, input.reason, now(), input.recoveryGeneration, options.teaching?.stop));
   });
   return { ...instance, design: { ...design,
     configurePolicy(request: FastifyRequest, courseId: string, input: unknown) {

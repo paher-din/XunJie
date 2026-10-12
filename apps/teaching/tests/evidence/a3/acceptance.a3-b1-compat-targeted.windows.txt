@@ -1,0 +1,33 @@
+✔ teacher selects an asynchronous candidate and the editable draft survives reopening (3111.0078ms)
+✔ local proposal saves its original diff and adoption uses the existing PATCH CAS (1153.946ms)
+✔ teacher-approved private sample supports rubric trial and only explicit rubric PATCH revises it (1512.9273ms)
+✔ editing during generation preserves the manual revision and rejects the old result (1158.3639ms)
+✔ original request and result replay survive edits, while conflicting keys or result bodies are refused (1161.008ms)
+✔ durable cancellation promptly ends a pending round and a late result cannot create a proposal (1546.4942ms)
+✔ teacher job ownership, role and course checks reject students, other teachers and forged identity (2522.1843ms)
+✔ only explicitly approved course paragraphs and matching hashes enter generation or rubric trials (1572.6701ms)
+✔ a model cannot expand requested fields or smuggle unapproved resources through patch values (2294.8729ms)
+✔ a fresh blueprint proposal retains unresolved structure and teacher confirmation forms a draft (1138.3928ms)
+✔ three reserved calls and unknown usage remain durable and manual creation works after budget denial (1419.3553ms)
+✔ queueing counts toward the 45-second deadline and expired jobs cannot generate (1059.6009ms)
+✔ concurrent workers cannot claim the same round and an expired original lease is not retried (1168.5204ms)
+✔ restored recovery generation refuses an old round before another model call (1117.9122ms)
+✔ result commit failure rolls back and the original delivery can be retried without another generation (1525.6893ms)
+✔ revoked teacher access invalidates an in-flight result and stops read or receipt replay (1109.5092ms)
+✔ durable call reservations stop additional paid attempts when the trusted budget is withdrawn (1164.2362ms)
+✔ provider failure with missing usage keeps unknown reservations and does not affect manual edits (1125.0432ms)
+✔ a ticking service clock keeps the accepted job window exactly 45 seconds (1094.4658ms)
+✔ proposal result hash identifies the exact stored B body bytes and altered bytes conflict (1487.4753ms)
+✔ actual usage returned after the deadline survives reopening without accepting the late body (1506.2562ms)
+✔ input preflight rejection records zero outbound calls and no billable reservation (1441.2113ms)
+✔ late actual usage updates a cancelled job without reviving its result (1485.3002ms)
+✔ a second call rejected by preflight preserves the first sent call and its actual usage (1553.4543ms)
+✔ a response from an old recovery generation cannot update accounting or deliver a proposal (1113.1753ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37705.1467

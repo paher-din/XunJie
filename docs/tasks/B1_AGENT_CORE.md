@@ -1,8 +1,8 @@
 # B1：教师生成与学生辅导合成核心
 
-日期：2026-10-09（Asia/Shanghai），2026-10-10 完成 PR #15 首轮审查修复。任务编号：B1。主责：B。关联 [Issue #11](https://github.com/paher-din/XunJie/issues/11)、[G1 #9](https://github.com/paher-din/XunJie/issues/9) 与 [PR #15](https://github.com/paher-din/XunJie/pull/15)。
+日期：2026-10-09（Asia/Shanghai），2026-10-11 按 Issue #11 最新收口要求补齐实际 SDK 适配并处理 [PR #29](https://github.com/paher-din/XunJie/pull/29) 审查。任务编号：B1。主责：B。关联 [Issue #11](https://github.com/paher-din/XunJie/issues/11)、[G1 #9](https://github.com/paher-din/XunJie/issues/9) 与已合并 [PR #15](https://github.com/paher-din/XunJie/pull/15)。
 
-状态：**合成首批已实现，PR #15 首轮 Request Changes 的 4 项问题已修复并通过领域测试，等待负责人复审；真实 DeepSeek 调用、统一工程 typecheck、Zod/AI SDK 实包兼容、A3/B2/C2 联调、浏览器及人工语义验收未执行。** 本状态不表示完整 B1、完整教学链、B4 或 G1 已完成，Issue #11 保持开放。
+状态：**合成核心、PR #15 与 PR #29 审查修复、实际 AI SDK/DeepSeek provider/Zod 适配、最终请求输入上界、repair 指令和零供应商网络的受控 transport 测试已实现。** 共享锁定依赖的 TypeScript 7 类型检查已通过。D-02 实际 API/账号/条款/数据/配额、凭据与付费调用尚未授权，因此真实 DeepSeek 记录未执行，Issue #11 仍不能关闭；30 次性能和人工教学语义仍属 B4。
 
 ## 1. 依据、范围与文件边界
 
@@ -38,7 +38,11 @@ A3/B2 负责传入 A/C 构造的可信信封与获准正文。B 只产经校验�
 - 单轮最多 3 次，接受起最长 45 秒；provider 与当前性守卫共享取消信号和绝对截止边界，守卫完成后再次核验取消与截止，迟到结果不能成功返回。
 - 每次已发起 provider 调用先预留 unknown usage，只有收到实际 usage 才更新；任一次已发起调用缺 usage 时整轮保持 unknown，不按零计。输入超限发生在实际 invoker 前，不计为已发送调用。
 
-`server/tutoring/providers.ts` 提供确定性 `SyntheticProvider` 和注入式 DeepSeek adapter。适配器固定 `deepseek-flash`、`maxRetries=0`、显式 `thinking.type=disabled`、16,000 输入 token、4,096 输出 token，并透传 AbortSignal/剩余时限。实际 AI SDK invoker 与 token counter 由 A1 依赖到位后注入；当前测试供应商网络调用为零。
+`server/tutoring/providers.ts` 提供确定性 `SyntheticProvider` 和 DeepSeek 调用边界；`schemas.ts` 为四种教师模式及学生辅导定义 Zod 结构；`deepseek-sdk.ts` 实际调用锁定的 `ai@7.0.136` 与 `@ai-sdk/deepseek@3.0.63`。适配器固定 `deepseek-flash`、`maxRetries=0`、显式 `thinking.type=disabled`、4,096 输出 token，透传 AbortSignal/剩余时限，不注册 tool、联网、文件、代码执行、发布或评价能力。AI SDK 的 `NoObjectGeneratedError` 被桥接为带该次实际 usage 的无效候选 body，使既有核心能在共享预算内执行唯一一次格式修复；网络或供应商错误仍走不可用路径。只有非负安全整数 token 才能转换为 `actual`，缺失、非整数或负数均保持 `unknown`。
+
+输入限制不再使用测试计数器或未说明的字符长度。代码重建实际 SDK/provider 最终线上投影（包含 JSON Schema 兼容系统消息、固定政策、不可信输入、repair 指令及消息模板），以 UTF-8 字节数加 256 个模板 token 保留位作为保守 token 上界。普通 tokenizer token 不会多于对应 UTF-8 字节数，因此该方案只会提前拒绝，不会低估后发送；超限不静默截断。供应商返回 usage 仍是实际计费 token 的权威值，缺失时保持 `unknown`。
+
+repair 不只是内部布尔值：首次结构/引用/政策校验失败后，第二次实际 SDK 系统指令会明确要求修复这三类问题；它与其他 provider 调用共享最多 3 次和接受起 45 秒。
 
 ## 3. 合成样例与验证结果
 
@@ -46,33 +50,50 @@ A3/B2 负责传入 A/C 构造的可信信封与获准正文。B 只产经校验�
 
 | 检查 | 实际结果 |
 | --- | --- |
-| `node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.test.ts` | 36/36 通过；本机 Node v24.14.1 原生 type-stripping，合成 provider；真实网络调用 0。批准的精确 Node 24.21.0 仍待 A1 统一环境核验 |
-| 同命令增加 `--experimental-test-coverage` | 36/36 通过；合计 line 97.64%、branch 84.39%、functions 100% |
-| `node --experimental-strip-types --check`（contracts、core、providers、测试入口） | 4/4 通过；仅为 Node 原生语法检查，不替代 TypeScript 7 静态 typecheck |
-| `node tools/a0-review/check.mjs` | 通过；24 份文档、197 个内部链接、27 条基线变更路径，`errors=[]` |
-| `node --test tools/a0-review/check.test.mjs` | 16/16 通过 |
-| `git diff --check` 与保护范围检查 | 通过；修复仅涉及 B1 core、领域测试和本文，`.trae/` 未纳入 |
+| `npm run typecheck` | 通过；精确 Node 24.21.0、TypeScript 7.0.2，包含实际 Zod/AI SDK/DeepSeek 适配源码 |
+| `node --test server/tutoring/test/*.test.ts` | 47/47 通过；其中 11 项通过实际 SDK/provider 的受控 transport，供应商网络调用 0 |
+| 同命令增加 `--experimental-test-coverage` | 47/47 通过；合计 line 98.38%、branch 87.05%、functions 100% |
+| `npm test` | PR #29 审查修复后 build 通过；统一回归 192 项中 184 通过、1 失败、7 跳过。唯一失败不在 B1：Windows 缺 Linux/trusted runner context；B1 47 项在同一回归内全部通过，宿主 loopback 测试也已通过 |
 | 首次领域测试 | 14/17，通过测试发现禁止能力扫描把值为 false 的政策声明误判为能力；修正为仅拒绝启用的禁止能力后复跑通过，并新增忽略 AbortSignal provider 的即时取消用例 |
 | PR #15 首轮审查修复 | 负责人在固定提交 `d82f540` 提出 2 项 P1、2 项 P2；已修复守卫边界、逐调用 usage、未知字段重建和 Issue 关联语义，新增反例均通过，等待复审 |
-| TypeScript 7 静态 typecheck | 未执行；仓库尚无 A1 package/锁文件/tsconfig，未伪造命令 |
-| Zod/AI SDK/@ai-sdk/deepseek 实包兼容 | 未执行；依赖安装归 A1，共享文件未越权创建 |
+| PR #29 首轮审查修复 | 负责人在固定提交 `6f32c38` 提出 2 项 P2、1 项 P3：非法 JSON 绕过一次修复并丢失错误 usage，负 token 被转换为 actual。已统一桥接 `NoObjectGeneratedError`、保留可用 usage、拒绝负 token；新增真实 SDK 内存 transport 反例 2 项均通过，等待复审 |
+| Zod/AI SDK/@ai-sdk/deepseek 实包兼容 | 通过；验证模型构造、JSON 对象兼容模式/Zod 解析、实际请求映射、repair、引用白名单、usage/故障/取消/迟到/上限，自定义 transport 调用 13 次均在内存中完成 |
 | 真实 DeepSeek、30 次性能、人工语义 | 未执行；账号/API/条款/数据/凭据/付费条件未落实，B4 后置 |
 | 服务端、浏览器、真人 | 未执行；等待 A3/B2/C2 与最终 UI 接入 |
 
-## 4. 交接与剩余限制
+## 4. A3/B2/C 接入样例与交接
 
-- **给 A1：** 在共享 package/锁文件/tsconfig 中纳入批准版本，并以 TypeScript 7、Zod 4、AI SDK 7、DeepSeek provider 3 对本模块执行静态和实包兼容检查；若实际 API 不兼容，先报告差异，不静默换栈。
+业务调用方从已授权的运行配置取得凭据（不写入源码、日志或 Job），构造一个 provider，再与 C 提供的当前性守卫一起传给核心：
+
+```ts
+const provider = createAiSdkDeepSeekProvider({ apiKey, baseURL });
+
+const teacher = await generateTeacherProposal(trustedTeacherRequest, {
+  provider,
+  checkCurrent: currentGenerationGuard,
+});
+const student = await generateStudentHelp(trustedStudentRequest, {
+  provider,
+  checkCurrent: currentAttemptGuard,
+});
+```
+
+A3/B2 只在 `outcome === "success"` 时消费已校验 body；C 保存该结果携带的 calls/usage/版本与可信 Job 信封。`stale/cancelled/timed_out` 及迟到完成不得投递。实际路由、作业持久化、回执/事件与消息保存仍归 A/C，B 不建立替代实现。
+
+## 5. 剩余限制
+
+- **A1 交接已消费：** 本次没有修改 A 负责的 package/锁文件/tsconfig；使用现有精确版本完成了静态和离线 SDK 兼容检查。
 - **给 A3：** 调用 `generateTeacherProposal`，保存 proposal/applicability；采用仍走 A 的 PATCH/CAS，B 不覆盖蓝图或发布活动。
 - **给 B2：** 调用 `generateStudentHelp`，接入真实 ObjectRef、帮助政策和有效状态；无历史不阻止求助。
 - **给 C2/C3：** 提供可信上下文、当前性守卫、持久取消与 usage/Job/Action 保存；本模块不另造队列、回执或事件表。
 - **验收边界：** schema/标志只能证明确定性结构约束，不能证明普通语言输出的教学适切性；人工语义审阅保留给 B4。
 
-待授权维护者汇总：MVP_SPEC §10 和 TEAM 的当前状态可登记“B1 合成核心、公开契约、合成 provider 与注入式 DeepSeek 适配边界已实现，PR #15 首轮审查问题已修复，Node 原生领域测试 36/36；共享依赖/typecheck、真实模型和跨模块/浏览器/真人验收未执行”。本文不直接修改受保护基线。
+待授权维护者汇总：MVP_SPEC §10 和 TEAM 可登记“B1 合成核心、实际 SDK/DeepSeek/Zod 适配、保守 16K 输入上界、repair 指令与零供应商网络离线验证已完成，B1 领域测试 45/45、typecheck 通过；真实 DeepSeek 因 D-02/凭据/付费授权未执行，Issue #11 保持开放”。本文不直接修改受保护基线。
 
-## 5. Git 交付状态
+## 6. Git 交付状态
 
 - 实现提交：`cdc4ac4`（`feat: add B1 synthetic tutoring core`）。
 - 分支：`codex/b1-agent-core`；首轮审查修复提交 `52b8800`（`fix: address B1 review feedback`）已推送到 fork。
-- 上游 PR：[PR #15](https://github.com/paher-din/XunJie/pull/15) 保持开放，正文已改为 `Refs #11`，并已发布修复及复验摘要请求负责人复审。合成首批交接不改变 Issue #11 的真实 SDK/typecheck/model 验证等关闭条件。
-- 审查线程由负责人复核后处理，提交方不自行标记解决。
+- 上游 [PR #15](https://github.com/paher-din/XunJie/pull/15) 已审查合并；其 `Refs #11` 语义正确，合成首批交接没有提前关闭 Issue #11。
 - `.trae/` 保持原有未跟踪状态，未暂存、提交或推送。
+- 2026-10-11 的 SDK 收口提交为 `fdd0c12`，分支 `codex/b1-sdk-adapter` 已推送到 fork，并建立上游 [PR #29](https://github.com/paher-din/XunJie/pull/29)。PR 正文使用 `Refs #11`，不在真实模型关闭条件缺失时使用 `Closes #11`。PR #29 首轮审查修复代码提交为 `5aa77a0`，已完成离线复验；本文与该提交一并在当前分支交付，等待负责人复审。

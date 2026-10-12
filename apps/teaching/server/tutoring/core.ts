@@ -10,7 +10,12 @@ import {
   type TutoringOutcome,
   type UntrustedReference,
 } from "../../contracts/tutoring/index.ts";
-import { InputLimitError, type ModelProvider, type ProviderRequest } from "./providers.ts";
+import {
+  InputLimitError,
+  ProviderCallNotStartedError,
+  type ModelProvider,
+  type ProviderRequest,
+} from "./providers.ts";
 
 export type GuardState = "current" | "stale" | "cancelled";
 export type CurrentGuard = (signal: AbortSignal) => GuardState | Promise<GuardState>;
@@ -18,6 +23,7 @@ export type CurrentGuard = (signal: AbortSignal) => GuardState | Promise<GuardSt
 export type TutoringRuntime = {
   provider: ModelProvider;
   checkCurrent?: CurrentGuard;
+  priorCalls?: number;
   now?: () => number;
 };
 
@@ -103,8 +109,15 @@ async function execute<TBody>(
   const startedAt = now();
   const usages: ModelUsage[] = [];
   let repairUsed = false;
+  const priorCalls = runtime.priorCalls ?? 0;
+  if (!Number.isSafeInteger(priorCalls) || priorCalls < 0 || priorCalls > MAX_CALLS) {
+    return failure("unavailable", "DEPENDENCY_UNAVAILABLE", true);
+  }
+  if (priorCalls === MAX_CALLS) {
+    return failure("budget_exhausted", "CALL_LIMIT_EXCEEDED", false);
+  }
 
-  for (let call = 1; call <= MAX_CALLS; call += 1) {
+  for (let call = 1; call <= MAX_CALLS - priorCalls; call += 1) {
     const before = await guardFailure(
       externalSignal,
       runtime.checkCurrent,
@@ -140,7 +153,7 @@ async function execute<TBody>(
         return failure("timed_out", "DEADLINE_EXCEEDED", false, call, aggregateUsage(usages));
       }
       if (response.needsAnotherCall) {
-        if (call === MAX_CALLS) {
+        if (priorCalls + call === MAX_CALLS) {
           return failure("unavailable", "CALL_LIMIT_EXCEEDED", false, call, aggregateUsage(usages));
         }
         continue;
@@ -157,11 +170,28 @@ async function execute<TBody>(
           versions: context.versions,
         };
       }
-      if (repairUsed || call === MAX_CALLS) {
+      if (repairUsed || priorCalls + call === MAX_CALLS) {
         return failure("rejected", "INVALID_MODEL_OUTPUT", false, call, aggregateUsage(usages));
       }
       repairUsed = true;
     } catch (error) {
+      if (error instanceof ProviderCallNotStartedError) {
+        usages.splice(usageIndex, 1);
+        const calls = call - 1;
+        if (error.outcome === "budget_exhausted") {
+          return failure("budget_exhausted", "CALL_LIMIT_EXCEEDED", false, calls, aggregateUsage(usages));
+        }
+        if (error.outcome === "cancelled") {
+          return failure("cancelled", "CANCELLED", false, calls, aggregateUsage(usages));
+        }
+        if (error.outcome === "stale") {
+          return failure("stale", "STALE_CONTEXT", false, calls, aggregateUsage(usages));
+        }
+        if (error.outcome === "timed_out") {
+          return failure("timed_out", "DEADLINE_EXCEEDED", false, calls, aggregateUsage(usages));
+        }
+        return failure("unavailable", "DEPENDENCY_UNAVAILABLE", true, calls, aggregateUsage(usages));
+      }
       if (error instanceof InputLimitError) {
         usages.splice(usageIndex, 1);
         return failure("needs_input", "INPUT_LIMIT_EXCEEDED", false, call - 1, aggregateUsage(usages));
