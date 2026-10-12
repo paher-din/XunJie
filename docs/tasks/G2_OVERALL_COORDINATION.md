@@ -4,7 +4,9 @@
 
 关联：[总协调 #24](https://github.com/paher-din/XunJie/issues/24)、[A3 #25](https://github.com/paher-din/XunJie/issues/25)、[B2 #26](https://github.com/paher-din/XunJie/issues/26)、[C3 #27](https://github.com/paher-din/XunJie/issues/27)。
 
-**项目负责人已明确进入 P2，并指定本工作项负责阶段总协调。阶段协调已启动；A3/B2/C3 尚无本次交付或验收结果，P2 服务端预交付与完整 G2 均未完成。** 本文汇总既定范围、依赖和证据，不新增产品或共享技术契约。
+2026-10-11 启动时：**项目负责人已明确进入 P2，并指定本工作项负责阶段总协调。阶段协调已启动；A3/B2/C3 尚无本次交付或验收结果，P2 服务端预交付与完整 G2 均未完成。** 本文汇总既定范围、依赖和证据，不新增产品或共享技术契约。
+
+2026-10-12 最新核对：A3、B1 SDK、C3、B2 的 PR 均已合入；整体复验新增一项 P1 组合启动问题和一项 P2 正文交接问题，均已实际复现。#24/#25/#26/#27 保持 Open，B1 #11 的离线交付已完成、真实模型门禁仍未完成。当前不满足关闭条件，详见第 14 节；不将模块合并记为 P2 服务端预交付或完整 G2 通过。
 
 ## 1. 依据、职责与写入范围
 
@@ -602,3 +604,71 @@ Approve评审全文已按固定45c70f1准备，本次不需要新增行内缺陷
 Git取回合并后main的首轮因30秒低速超时失败，第二轮因443连接超时失败，均保留；没有用未获取的本地commit冒充已同步。实际官方tree/parents已由API核实，与已验证的本地预览完全一致。因Git传输不可用，改用GitHub单文件Contents接口在旧blob SHA守卫下提交本文至最新main，仍在负责人批准的同一文件/发布范围内，不改已合并代码、保护基线或验收结果。第12节最新已发布历史完整保留；实际文档提交与远端核对结果完成后追加。
 
 总记录已通过单文件接口提交为 `1cf57b41e2363e91b170c6a82d95a66ddf72d75c`，parent为实际合并bb07197；API回读files仅本文、39行新增/0删除，旧已发布历史完整前缀未变，远端blob与待发布正文原UTF-8字节摘要一致。任务文档保持仓库LF文本形式，未改任何原字节证据。文档静态36份/525内部引用/27正式路由、空白与单文件范围通过。此回读事实另随本文提交，最终main SHA以远端引用为准；不将合并或文档交付记为完整G2验收，#26与原真实模型/运行环境/UI等门禁继续保留。
+
+## 14. 2026-10-12 P2 整体复验与 Issue 关闭核对
+
+项目负责人要求整体审阅已交付的 A3/C3/B2 与 B1 部分，无问题后关闭已完成 Issue 并完成 P2。本次沿总协调职责审阅、复验和同步记录，不代 A/C 修复实现，不改变共享契约或原关闭条件。可写本文、README 的真实状态/导航及相关 Issue 的交付核对；产品、规划、参考、AGENTS、成员任务稿及应用源码保持只读。
+
+### 14.1 固定源码与交付核对
+
+实现前固定点为 `c42f356b6135ca9bb00c2e3c61c3d2aae713f602`，审查候选为 `960b7e69b8d8a71a5d516abeb5e0b449adcbfa40`。审阅依据为 PRD-01/02/04/05/09/10，M-01/04/05，TECH §5/6/7/10.3，TEAM §6，#24/#25/#26/#27/#11 正文，以及四份作者任务记录。实现 diff 使用 `git diff c42f356...960b7e6 -- apps/teaching`，不把数字逻辑文档增量算作 P2 实现。
+
+| 模块 | 已合并交付 | 实际已完成层次 |
+| --- | --- | --- |
+| A3 | PR #28，merge `347dde1`，head `26f37c5` | 独立设计工厂的异步提案、采用/CAS、量规试评与调用记账；原 25 项用例通过 |
+| B1 SDK | PR #29，merge `83e528e`，head `de794ba` | 真实 SDK 的离线配置/结构/输入上界/修复/取消/usage 适配；原 47 项用例通过，供应商网络调用为 0 |
+| C3 | PR #33，merge `e54e91c`，head `5943d05` | 教学原文、Action/Delivery/Receipt、采集与失效接缝；原 20 项用例通过 |
+| B2 | PR #32，merge `bb07197`，head `45c70f1` | 获准上下文、持久调用台账/预算与 C3 合成成功链；原 20 项用例通过 |
+
+复验期间 main 新增 `4f2b2f4ea0de8b2b739ad89c8c5198f4cd62878e`，只调整 AGENTS/README。总协调发布副本已正常快进并读取新的 README 编辑规范；`git diff 960b7e6..4f2b2f4 -- apps/teaching` 为空，故应用验证结论仍适用于该最新 main。主工作副本的其他工作未覆盖。
+
+### 14.2 Standards
+
+已确认一项 P2 文档一致性问题：README 的 A3 接入段宣称 `createWorkspaceApp` 可传 `teacherAgent`，但该组合在注册阶段失败，违反 AGENTS 文档优先第 6 条要求的代码与操作说明一致。README 本次追加失败事实及总记录入口，保留原日期和历史段落，不用改说明代替修复代码。
+
+两位独立审查 Agent 已分别给出候选与授权/原修复核对，但完整最终报告因工具用量限制中断；不登记为“两轴完整审查通过”。总协调随后独立阅读交接源码并实际复现以下两项；其他未确认候选不作为阻塞发现。未发现需重新认定为未授权的历史 schema/事务修改；作者任务稿已有对应准确授权记录。
+
+### 14.3 Spec：新增两项可复现阻塞
+
+| 编号 | 优先级/位置 | 反例与影响 | 原依据与修复归属 |
+| --- | --- | --- | --- |
+| G2-R01 | P1；`server/design/teacher-agent.ts:134/141` 与 `server/workspace/application.ts:155/180` | 向当前 `createTutoringApp` 同时传入获准 `teacherAgent`，沿 C3→Workspace→Design 装配；A3 和 Workspace 重复注册同一 GET Job / POST cancel 路由，构造即抛 `FST_ERR_DUPLICATED_ROUTE`。独立 A3 与不装 A3 的 B2 用例均通过，不能证明同应用组合可用 | TECH §2 的单应用模块结构、§5 的原 Job 查询/取消；A3 §2.1.4 明确“不抢占其他 purpose”，README 当前明确给出组合用法。A 按既有 Job purpose 汇总唯一公共路由并保留各自授权；C 配合 Workspace 接线。不是要求 P2 提前新建 P3 业务宿主或 UI |
+| G2-R02 | P2；`server/records/teaching.ts:53` | B1/B2 的 `StudentHelpBody.unresolved` 是自然语言 `string[]`，C3 却用 `z.array(id)`，每项最多 128 字符。同一个现有真实 HTTP/SQLite B2 fixture，普通正文返回 200/Job succeeded/1 条模型消息；只增加一条 129 字符 unresolved，返回 422 INVALID_REFERENCE，Job running/attemptCount=1/模型消息=0。合法未知说明因此无法保存 | M-04/05、TECH §6.1 的合法正文接纳与§7.3 的内容保存；B1 `schemas.ts:76`/`contracts/tutoring/index.ts:228` 为文字数组。C 修正自由文本与 ID 的类型混用，B 配合现有 fixture 做长未知说明的 C3 完成/重读反例，不单方新增文本限额 |
+
+新增反例复用原 `server/tutoring/test/student-help.test.ts` 的 `fixture`、`setupProject`、`command`、`validBody` 和 `/fixture/execute`：启动反例仅增 `teacherAgent={provider,versions,budgetAvailable}`；正文反例仅把 provider 的 `validBody` 扩展为 `unresolved:["u".repeat(129)]`，身份、政策、对象、租约和数据库均不替换。模型为内存 provider，供应商网络调用 0；未修改仓库测试或降低期望。
+
+实际观测如下，预期为同宿主可构造且合法正文可完成；这些行是失败证据，不统计为新增业务通过：
+
+```json
+{"case":"combined-host","actual":"FST_ERR_DUPLICATED_ROUTE","message":"Method 'POST' already declared for route '/api/jobs/:id/cancel'","expected":"started"}
+{"case":"baseline","expectedStatus":200,"status":200,"outcome":"success","jobStatus":"succeeded","calls":1,"modelMessages":1}
+{"case":"long-unresolved","expectedStatus":200,"status":422,"error":"INVALID_REFERENCE","jobStatus":"running","calls":1,"modelMessages":0}
+```
+
+### 14.4 本次实际验证与关闭决定
+
+| 检查 | 实际结果 |
+| --- | --- |
+| 源码与运行时 | 应用树与已保留的 `45c70f1` 验证副本完全一致；Node 24.21.0 / TypeScript 7.0.2 / 原精确锁依赖，未安装或改依赖 |
+| 首次发布副本 typecheck/build | 失败：该副本缺可执行 tsc shim，报 `tsc is not recognized`，未视为应用错误或绕过检查；改在上述源码完全相同、已有批准依赖的验证副本执行 |
+| `npm run typecheck` | 通过，退出码 0 |
+| `npm test`（含原 pretest build） | build 通过；257 项：249 通过、1 失败、7 跳过。A3 25、B1 47、B2 20、C3 20 共 112 项在该完整回归中通过 |
+| 唯一完整回归失败 | 原 `server/workspace/review.test.ts:118/120` → `runner/control.ts:48`，Windows 缺 Linux/trusted runner context；与 `c42f356` 无源码差异，归 #23 既有环境限制，不称全量通过 |
+| 新组合边界反例 | 上述 1 项启动失败、1 项正文拒收及 1 项普通正文对照均实际执行；新增缺口仍未修复 |
+| 文档/空白 | 追加前静态检查 36 份文档/525 内部引用/27 正式路由、errors=[]；记录和 README 追加后重新检查再发布 |
+| 未执行 | 真实 DeepSeek/D-02/付费、Linux 节点、浏览器/教师内容审阅/真人、B4 30 次性能和教学语义、生产 worker/备份恢复；不改变这些层次的验收条件 |
+
+| Issue | 当前决定 | 下一步与原门禁 |
+| --- | --- | --- |
+| A3 #25 | 保持 Open | 独立合成层通过，但 G2-R01 的已公开组合方式不可用；A 修复唯一 Job 路由并复验教师/学生两种 purpose，原真实模型/教师/UI结果单列 |
+| B2 #26 | 保持 Open | 两轮原修复通过；新增 G2-R02 的 C3 合法正文交接尚失败，B 配合 C 回归，模型/语义/UI条件保留 |
+| C3 #27 | 保持 Open | 原专项通过，但 G2-R02 的正文契约不兼容阻塞真实接缝；C 修复并核原文/重放/取消/回执 |
+| B1 #11 | 保持 Open；记录已完成离线部分 | SDK/invoker/输入上界/repair/离线验证已完成；#11 明确要求获准真实模型记录，D-02/凭据/付费条件尚未落实，不用行政关闭替代 |
+| G2/P2 #24 | 保持 Open，服务端预交付未通过 | 修复两项确定缺口后，再按原出口核两条链及实际模型状态；完整 G2 的 AC-01/05/06/11、教师/UI验收和 NFR 不省略 |
+| #22/#23/#30 | 保持原 Open | 分别保留完整作品/UI、环境稳定性与 I0；本次不修改其范围或正文 |
+
+本次条件审阅没有满足“无问题后关闭”，因此未关闭任何 Issue、未宣告进入 P3。修复建议是现行规格内的最小对接路径，未代为批准新共享契约、schema、真实模型或界面实现。MVP_SPEC §10 与 TEAM 的进度仍待授权维护者汇总；实际发布/回读结果在下节记录。
+
+### 14.5 交付记录
+
+本节与 README 的最新失败状态一并提交，原作者记录与历史证据不改写；向 #24/#25/#26/#27 同步已确认问题与复验边界，并更新 #11 的离线完成状态和真实模型待办。发布完成后核对远端文件、Issue 状态与正文/评论，不用准备稿冒充已发布结果。
