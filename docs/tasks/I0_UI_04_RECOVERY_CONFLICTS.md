@@ -7,7 +7,11 @@
 **Document status:** `implemented`（2026-10-12 准备范围交付）。
 
 **Status:** `implemented`（准备范围）：03 已交付（`68a7711`），P-01 由项目负责人 2026-10-12 的「/implement 开始 docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md」指令落实。
-**未落实项如实保留在这里，不等同已确认**：P-04（缺 UI 成员对新增恢复交互的组件/槽位确认，本次只在 03 已交付的受控组件上做最小扩展）；U-04/冲突比较（属 [04A](I0_UI_04A_LOCAL_CONFLICTS.md)，本任务在 VERSION_CONFLICT 后只保留正文并阻止自动覆盖）；真实服务联调（H-01～H-04）。下面「待决策项」列了本次引入的两处增量。
+
+- **P-04：已由 UI 成员确认（2026-10-12）**。项目负责人即本项目的 UI 成员，确认「设计仓库做 UI 改动 → 我确认没问题后提交推送 → 再搬入主仓库」的流程，并在看过四态实拍与文案整改后口头确认推送；设计仓库 `7c0cd64`、`e933b69`、`40bf631`、`7ee7036` 已推送到 `origin/main`（`0c18739..7ee7036`），主仓库接收组件与该提交逐字节一致（sha256 `efe29091050942f6…`）。
+- **U-04/冲突比较：未落实**，属 [04A](I0_UI_04A_LOCAL_CONFLICTS.md)；本任务在 VERSION_CONFLICT 后只保留正文并阻止自动覆盖。
+- **真实服务联调（H-01～H-04）：未执行**，属交接项，不在本任务的准备范围。
+- 下面「待决策项」保留了仍待负责人决定的两处增量（outbox 拒绝字段、终态/可重试划分依据）与两个 UI 细节问题（任务信息面板原值、快照可核对入口）。
 
 ## 依据与范围
 
@@ -79,6 +83,7 @@
 - **Standards 硬性（已修复）**：同步记录只写了 `7c0cd64`，实际接收字节来自 `e933b69`；验证数字与实测不符。均已按实际更正（见 [IMPORT_SOURCE §4](../../apps/student/IMPORT_SOURCE.md) 与下方验证事实）。
 - **Standards 质量项（已处理）**：结论映射统一为 `outcomeOfCode`/`codeOfOutcome`（原为三处）；未决原命令的展示收敛为 `publishPending`/`currentPendingRow`（原为两段重复）；`localFileIdOf` 与 `localInstanceOf` 收拢到存储层，视图不再自行重推映射规则；`noteRejection` 的租约门与 `phaseFor` 的完备分支已写明理由；fixture 去掉 `res.end` 猴补，改为显式 `respond()`。
 - **Standards 未处理项（记录为后续）**：e2e 的 `localState`/`holdAck` 在多个 spec 中各有副本；提取共享 helper 需要改动 03 的测试文件，超出本任务写集，留给后续收口任务。
+- **文案整改这一轮的独立复审**：两轴审查覆盖到 `c9a9fdd` 之前的修订；文案整改（`2bde95e` / 设计仓库 `7ee7036`）另起一轮只读复审，结论与本轮处理记录见该轮复审回执（如有发现，按同一条原则修复后再收口）。
 
 ## 待决策项（需项目负责人确认，本任务不自行认定）
 
@@ -107,6 +112,12 @@
 - 真实业务宿主/同源 HTTPS/本人 Assignment 发现与首次受信代际（H-01～H-04）的联调；真实后端保存失败、真实 RECOVERY_REQUIRED 与真实 VERSION_CONFLICT 的浏览器验证。
 - 04A 的冲突比较与明确选择（本任务在 VERSION_CONFLICT 后只保留正文并阻止自动覆盖）。
 - 准备通过不计真实读写交接、正式 AC/NFR、G0～G4 或教学效果通过。
+
+### 交付与同步状态（2026-10-12 收口）
+
+- 主仓库（分支 `i0/ui-frontend`，本地未推送）：`c9a9fdd` 断线恢复与原命令核对、`2bde95e` 学生端文案整改与开发者诊断分离、`146b6ea` 同步基准记录。
+- 设计仓库（`origin/main`，已推送）：`7c0cd64` → `e933b69` → `40bf631` → `7ee7036`；主仓库接收的 `ConfirmationCluster.tsx` 与 `7ee7036` 的同一文件 sha256 相同。
+- 文案整改后的最终一轮验证：typecheck 两个配置通过、vitest 15 文件 184 例通过、`npm run build` 成功、`CI=1 npm run test:e2e` 47 例通过。
 
 ### 基线汇总请求
 
