@@ -108,9 +108,11 @@ npm run test:e2e    # Playwright：真实 Vite 页面上的准备模式与真实
 
 `dev:prep` 与 `test:e2e` 用固定端口加 `--strictPort`；端口被占时命令直接失败，不自动漂移。首次跑 e2e 需 `npx playwright install chromium`。已有开发服务需要保留时，可明确设置测试端口，例如 `XUNJIE_E2E_PREP_PORT=5603 XUNJIE_E2E_REAL_PORT=5604 CI=1 npm run test:e2e`；这只覆盖测试 harness，仍严格使用指定端口。
 
-导航：准备模式下首页出现「I0 准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区。载入仅初始化合成 Session、固定活动版本及按 visibility 裁剪的材料；学生点击「开始 Attempt」后可以多文件编辑、主动「确认保存」和「冻结确认作品」，快照详情显示核验后的 ID/hash/确认版本。刷新读取同一开发进程保存的作品和快照；本机新编辑独立保留。结果未明或本机确认失败时先「核对原请求并重试」，「原请求详情」显示冻结命令的键、序号、代际、预期版本与正文摘要，用于核对而不重发；服务拒绝（含 VERSION_CONFLICT）或受信代际已变化时停止重放旧请求，只保留草稿与事实，并提示重读受信上下文/明确比较。fixture 重启或恢复代际变化时保留草稿并要求重新比较，不把旧缓存当当前作品。运行仍属后续 06。原数字逻辑演示 `/#/task/counter` 保留演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
+导航：准备模式下首页出现「准备场景（合成）」卡片，进入 `/#/task/i0-prep-textscope-c` 的 C / TextScope 准备工作区。载入仅初始化合成 Session、固定活动版本及按 visibility 裁剪的材料；学生点击「开始 Attempt」后可以多文件编辑、主动「确认保存」和「冻结确认作品」，已冻结的快照在顶栏显示为「已冻结快照 vN」。刷新读取同一开发进程保存的作品和快照；本机新编辑独立保留。上一次保存结果不确定时，界面只给一句学生能读的提示（草稿是否还在、能不能重试）和「重试上次保存」，重放的是**原样冻结的那次请求**，不会换键或把新编辑塞进旧请求；服务拒绝或登录状态变化时停止重放，只保留草稿并提示重新读取。fixture 重启或恢复代际变化时保留草稿并要求重新读取，不把旧缓存当当前作品。运行仍属后续 06。原数字逻辑演示 `/#/task/counter` 保留演示标识。真实模式不显示准备入口；正常业务宿主与本人分配发现入口（H-01 / H-02）交接前，真实初始化如实显示不可用，不回退到 fixture 或 Mock。
 
-断线恢复可以手动复现：`dev:prep` 进程提供开发专用 `POST /__i0prep/fault`（body `{"kind":"drop-ack"}` 或 `{"kind":"fail-write"}`，需开发会话的 `x-csrf-token` 与 `x-i0prep-scenario` 头；`{"kind":"none"}` 清除）。`drop-ack` 让写命令照常提交到进程内 authority 但不下发响应，界面显示「原请求结果未知」，继续编辑并刷新后可用「核对原请求并重试」以同键同正文重放；`fail-write` 不提交命令并返回 503 `PERSISTENCE_UNAVAILABLE`，界面显示「原请求已被服务拒绝」，正文与原命令保留、仍可明确重试。服务明确拒绝且重放不能解决时（版本冲突、受信代际已变化等）停止重放并提示下一步，不会自动改键重做。该端点只存在于 `npm run dev:prep`，`npm run build` 的产物不含它，也不会把拒绝伪装成丢失。
+**学生界面只保留必要信息**：错误码、原命令键、clientId/clientSeq、受信代际、预期版本、HTTP 状态、服务原文、快照 ID/hash、冻结正文摘要等技术事实不在页面上出现，改由 `src/workspace/diagnostics.ts` 以 `console.info('[i0-workspace] <event>', detail)` 输出到浏览器控制台（不含凭据与作品正文，只有路径、字节数与 sha256）。排障时打开 DevTools 控制台即可核对原命令身份与结论。
+
+断线恢复可以手动复现：`dev:prep` 进程提供开发专用 `POST /__i0prep/fault`（body `{"kind":"drop-ack"}` 或 `{"kind":"fail-write"}`，需开发会话的 `x-csrf-token` 与 `x-i0prep-scenario` 头；`{"kind":"none"}` 清除）。`drop-ack` 让写命令照常提交到进程内 authority 但不下发响应，界面显示「保存结果待确认」，继续编辑并刷新后可用「重试上次保存」以同键同正文重放；`fail-write` 不提交命令并返回 503 `PERSISTENCE_UNAVAILABLE`，界面显示「保存未成功」，正文与原命令保留、仍可明确重试。服务明确拒绝且重放不能解决时（版本冲突、登录状态变化等）停止重放并提示先重新读取，不会自动改键重做。该端点只存在于 `npm run dev:prep`，`npm run build` 的产物不含它，也不会把拒绝伪装成丢失。
 
 本目录已交付 01 导入/初始化、02 编辑/草稿、03 确认/快照，以及 04 断线恢复的准备范围，使用同一客户端与 IndexedDB；未完成项和实际验证见 [03 任务记录](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) 与 [04 任务记录](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md)。准备 fixture 不具备生产数据库、模型或执行沙箱能力；浏览器合成检查不代表真实服务联调、AC/NFR、G0～G4 或教学效果通过。
 

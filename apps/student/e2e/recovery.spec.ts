@@ -120,12 +120,24 @@ test('丢 ACK 后继续编辑、刷新，重放原命令只创建一次并恢复
   const frozenText = 'int main(void) { return 0; }\n'
   await edit(page, frozenText)
   const posts = trackSync(page)
+  // 控制台诊断：学生界面不显示的技术事实在这里排障（第一条参数是事件名，第二条是结构化事实）
+  // 页面会在测试中途刷新，句柄必须当场解析：事件到达时立刻取结构化事实。
+  const diagnostics: Array<{ text: string; detail: Promise<Record<string, unknown>> }> = []
+  page.on('console', message => {
+    if (!message.text().includes('[i0-workspace]')) return
+    const handle = message.args()[1]
+    const detail = handle
+      ? handle.jsonValue().then(value => value as Record<string, unknown>).catch(() => ({}))
+      : Promise.resolve({} as Record<string, unknown>)
+    diagnostics.push({ text: message.text(), detail })
+  })
 
   expect(await setFault(page, 'drop-ack')).toBe(200)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  // 拿不到信封只能说「结果未知」，不是拒绝、也不是成功
-  await expect(page.locator('.ws-run-state')).toHaveText('原请求结果未知')
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('可能尚未送达')
+  // 学生只看到一句话：结果未确认、草稿还在、可以重试；拿不到信封不等于拒绝或成功
+  await expect(page.locator('.ws-run-state')).toHaveText('保存结果待确认')
+  await expect(page.locator('.ws-head-run [role=alert]'))
+    .toHaveText('这次保存的结果还没确认，草稿已保留。可以重试。')
   // 本机确认头仍停在上次已接受的 v0：丢 ACK 不能被当成保存成功
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(page.locator('.ws-flow')).not.toContainText('与草稿一致')
@@ -142,28 +154,33 @@ test('丢 ACK 后继续编辑、刷新，重放原命令只创建一次并恢复
   await page.reload()
   await expect(page.locator('.cw')).toBeVisible()
   await expect(page.locator('.view-lines')).toContainText('offline edit')
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toBeVisible()
   expect(posts.length).toBe(afterDrop)
 
-  // 核对原请求：显示冻结命令的键/序号/代际/预期版本与冻结正文摘要（不是当前草稿）
+  // 排障需要的事实（命令键、clientId/seq、代际、冻结正文摘要）只在控制台，不进学生界面
   const pending = newestSync(await localState(page))
   const body = JSON.parse(pending.wireJson)
-  await page.getByRole('button', { name: '原请求详情' }).click()
-  const detail = await page.locator('.ws-head-run .ws-request-detail').innerText()
-  expect(detail).toContain('workspace.sync')
-  expect(detail).toContain(pending.commandKey)
-  expect(detail).toContain(body.clientId)
-  expect(detail).toContain(`#${body.clientSeq}`)
-  expect(detail).toContain(body.recoveryGeneration)
-  expect(detail).toContain('main.c')
-  expect(detail).toContain(createHash('sha256').update(frozenText, 'utf8').digest('hex').slice(0, 16))
-  expect(detail).not.toContain('csrf')
+  const sentEvent = diagnostics.filter(entry => entry.text.includes('command.sent'))
+  expect(sentEvent.length).toBeGreaterThan(0)
+  const sent = await sentEvent[sentEvent.length - 1]!.detail
+  expect(sent.commandKey).toBe(pending.commandKey)
+  expect(sent.clientId).toBe(body.clientId)
+  expect(sent.clientSeq).toBe(body.clientSeq)
+  expect(sent.recoveryGeneration).toBe(body.recoveryGeneration)
+  expect(sent.files).toEqual([{ label: 'main.c', bytes: 29,
+    hash: createHash('sha256').update(frozenText, 'utf8').digest('hex') }])
+
+  // 学生界面不得出现任何技术事实
+  const visible = await page.locator('.ws-head').innerText()
+  for (const leaked of [pending.commandKey, body.clientId, body.recoveryGeneration, '/api/', 'sync', 'hash']) {
+    expect(visible).not.toContain(leaked)
+  }
 
   // 重放：同键、同正文、同代际，服务返回原回执，不产生第二次创建
   expect(await setFault(page, 'none')).toBe(200)
-  await page.getByRole('button', { name: '核对原请求并重试' }).click()
+  await page.getByRole('button', { name: '重试上次保存' }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   expect(posts.length).toBeGreaterThan(afterDrop)
   expect(posts[posts.length - 1]).toEqual(posts[0])
   expect(identities(posts).size).toBe(1)
@@ -185,7 +202,7 @@ test('浏览器断线时保存不冒充拒绝或成功，重连后只重放原�
 
   await context.setOffline(true)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-run-state')).toHaveText('原请求结果未知')
+  await expect(page.locator('.ws-run-state')).toHaveText('保存结果待确认')
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(page.locator('.ws-flow')).not.toContainText('与草稿一致')
   // 断线时继续编辑仍写入本机草稿
@@ -197,11 +214,11 @@ test('浏览器断线时保存不冒充拒绝或成功，重连后只重放原�
   await page.reload()
   await expect(page.locator('.cw')).toBeVisible()
   await expect(page.locator('.view-lines')).toContainText('still editing')
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toBeVisible()
   // 断线期间请求根本没有离开浏览器；重连读回后也不自动补发
   expect(posts).toHaveLength(0)
 
-  await page.getByRole('button', { name: '核对原请求并重试' }).click()
+  await page.getByRole('button', { name: '重试上次保存' }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
   expect(posts).toHaveLength(1)
   expect(identities(posts).size).toBe(1)
@@ -218,7 +235,7 @@ test('原命令在另一标签已确认时，本标签停止重发并重读当�
 
   expect(await setFault(page, 'drop-ack')).toBe(200)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-run-state')).toHaveText('原请求结果未知')
+  await expect(page.locator('.ws-run-state')).toHaveText('保存结果待确认')
   const afterDrop = posts.length
   expect(afterDrop).toBeGreaterThan(0)
   expect(identities(posts).size).toBe(1)
@@ -251,7 +268,7 @@ test('原命令在另一标签已确认时，本标签停止重发并重读当�
   expect(await setFault(page, 'none')).toBe(200)
   const other = await context.newPage()
   await other.goto(page.url())
-  await other.getByRole('button', { name: '核对原请求并重试' }).click()
+  await other.getByRole('button', { name: '重试上次保存' }).click()
   await expect.poll(async () => newestSync(await localState(other)).state).toBe('confirmed')
 
   // 本标签再核对：已确认的原命令不重发，只重新接纳同一回执并重读当前 head
@@ -288,9 +305,9 @@ test('另一标签持有原命令租约时不重发也不产生新命令', async
   other.on('request', r => { if (r.method() === 'POST' && r.url().includes('/api/attempts')) otherPosts.push(r.url()) })
   await other.goto(page.url())
   // 入口保持可见（租约只说明「现在抢不到」，过期后仍应能核对），点击后由本机事务给出结论
-  await expect(other.getByRole('button', { name: '核对原请求并重试' })).toBeVisible()
-  await other.getByRole('button', { name: '核对原请求并重试' }).click()
-  await expect(other.locator('.ws-head-run [role=alert]')).toContainText('另一标签正在核对同一原请求')
+  await expect(other.getByRole('button', { name: '重试上次保存' })).toBeVisible()
+  await other.getByRole('button', { name: '重试上次保存' }).click()
+  await expect(other.locator('.ws-head-run [role=alert]')).toHaveText('另一个标签页正在处理这次保存，请稍后再试。')
   await expect(other.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
   expect(otherPosts).toEqual([])
 
@@ -300,7 +317,7 @@ test('另一标签持有原命令租约时不重发也不产生新命令', async
   expect(posts).toHaveLength(1)
 })
 
-test('RECOVERY_REQUIRED 停止旧重试，重读受信上下文后仍保留草稿与旧事实', async ({ page }) => {
+test('RECOVERY_REQUIRED 停止旧重试，重新读取后仍保留草稿与旧事实', async ({ page }) => {
   await start(page, 'recovery-required')
   await create(page)
   await edit(page, 'gen1 body\n')
@@ -308,7 +325,7 @@ test('RECOVERY_REQUIRED 停止旧重试，重读受信上下文后仍保留草�
 
   expect(await setFault(page, 'drop-ack')).toBe(200)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-run-state')).toHaveText('原请求结果未知')
+  await expect(page.locator('.ws-run-state')).toHaveText('保存结果待确认')
   expect(await setFault(page, 'none')).toBe(200)
 
   // 服务端恢复脚本换代际并回退作品（原命令所属代际随即失效）
@@ -324,22 +341,22 @@ test('RECOVERY_REQUIRED 停止旧重试，重读受信上下文后仍保留草�
   expect(rotated.status).toBe(200)
   expect(rotated.after).not.toBe(rotated.before)
 
-  // 核对原请求：服务拒绝 RECOVERY_REQUIRED → 停止旧重试，只提示重读受信上下文
-  await page.getByRole('button', { name: '核对原请求并重试' }).click()
-  await expect(page.locator('.ws-run-state')).toHaveText('受信代际已变化')
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('停止重放旧原请求')
-  await expect(page.getByRole('button', { name: '重读受信上下文' })).toBeVisible()
+  // 核对原请求：服务拒绝 RECOVERY_REQUIRED → 停止旧重试，只提示重新读取
+  await page.getByRole('button', { name: '重试上次保存' }).click()
+  await expect(page.locator('.ws-run-state')).toHaveText('需要重新读取')
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('登录状态已更新。请重新读取后再保存。')
+  await expect(page.getByRole('button', { name: '重新读取' })).toBeVisible()
   await expect(page.locator('.view-lines')).toContainText('gen1 body')
   expect(identities(posts).size).toBe(1)
   expect(newestSync(await localState(page)).rejected?.code).toBe('RECOVERY_REQUIRED')
 
-  // 重读受信上下文：代际换了，但旧原请求仍然只能作为事实保留，草稿继续可编辑
+  // 重新读取：代际换了，但旧原请求仍然只能作为事实保留，草稿继续可编辑
   const beforeReload = posts.length
-  await page.getByRole('button', { name: '重读受信上下文' }).click()
+  await page.getByRole('button', { name: '重新读取' }).click()
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
-  await expect(page.locator('.ws-run-state')).toHaveText('受信代际已变化')
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+  await expect(page.locator('.ws-run-state')).toHaveText('需要重新读取')
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await expect(page.locator('.view-lines')).toContainText('gen1 body')
   await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
   expect(posts.length).toBe(beforeReload)
@@ -347,7 +364,7 @@ test('RECOVERY_REQUIRED 停止旧重试，重读受信上下文后仍保留草�
   // 刷新后结论与正文都不变：不自动补发、不改业务键
   await page.reload()
   await expect(page.locator('.view-lines')).toContainText('gen1 body')
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   expect(posts.length).toBe(beforeReload)
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
 })
@@ -364,13 +381,11 @@ test('VERSION_CONFLICT 保留正文、阻止自动覆盖，并把拒绝事实留
   await edit(page, '// mine\n')
   const posts = trackSync(page)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-run-state')).toHaveText('确认版本冲突')
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('VERSION_CONFLICT')
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('04A')
-  // 结论只解释一次：同一句中文说明不重复出现（错误码本身来自结论与服务消息两处）
-  const conflictText = await page.locator('.ws-head-run [role=alert]').innerText()
-  expect(conflictText.split('服务端确认版本已变化').length - 1).toBe(1)
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+  await expect(page.locator('.ws-run-state')).toHaveText('作品有更新')
+  // 学生只看到「作品在别处有更新，先重新读取」；VERSION_CONFLICT / 04A 之类的内部说法不得出现
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('作品在别处有了新的版本。请先重新读取，再决定怎么保存。')
+  expect(await page.locator('.ws-head').innerText()).not.toContain('VERSION_CONFLICT')
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
   await expect(page.locator('.view-lines')).toContainText('// mine')
   expect(posts).toHaveLength(1)
@@ -387,8 +402,8 @@ test('VERSION_CONFLICT 保留正文、阻止自动覆盖，并把拒绝事实留
 
   // 刷新后仍是同一结论：正文保留、不自动重发、也不自动覆盖
   await page.reload()
-  await expect(page.locator('.ws-run-state')).toHaveText('确认版本冲突')
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+  await expect(page.locator('.ws-run-state')).toHaveText('作品有更新')
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await expect(page.locator('.view-lines')).toContainText('// mine')
   expect(posts).toHaveLength(1)
 })
@@ -402,9 +417,8 @@ test('暂时性服务拒绝不封死工作区：保留原命令，明确重试�
   // 服务端真实的暂时不可用（503）：命令没有提交，但客户端不能把它当成功，也不能当永久拒绝
   expect(await setFault(page, 'fail-write')).toBe(200)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-run-state')).toHaveText('原请求已被服务拒绝')
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('PERSISTENCE_UNAVAILABLE')
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('可先核对再明确重试')
+  await expect(page.locator('.ws-run-state')).toHaveText('保存未成功')
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('服务暂时没能保存，草稿已保留。可以稍后重试。')
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
   const rejected = newestSync(await localState(page))
   expect(rejected.rejected?.code).toBe('PERSISTENCE_UNAVAILABLE')
@@ -412,7 +426,7 @@ test('暂时性服务拒绝不封死工作区：保留原命令，明确重试�
 
   // 故障排除后由学生明确核对：同键同正文，且服务端只创建一次
   expect(await setFault(page, 'none')).toBe(200)
-  await page.getByRole('button', { name: '核对原请求并重试' }).click()
+  await page.getByRole('button', { name: '重试上次保存' }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
   expect(identities(posts).size).toBe(1)
   const accepted = newestSync(await localState(page))
@@ -428,12 +442,12 @@ test('重放期间主动重读工作区，旧加载的回执不回灌当前工�
   const posts = trackSync(page)
   expect(await setFault(page, 'drop-ack')).toBe(200)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-run-state')).toHaveText('原请求结果未知')
+  await expect(page.locator('.ws-run-state')).toHaveText('保存结果待确认')
   expect(await setFault(page, 'none')).toBe(200)
 
   // 按住重放响应，在等待期间主动重读工作区（新 loadEpoch，旧客户端立即失效）
   const held = await holdAck(page)
-  await page.getByRole('button', { name: '核对原请求并重试' }).click()
+  await page.getByRole('button', { name: '重试上次保存' }).click()
   await held.ready
   await edit(page, '// edited during replay\n')
   await page.getByRole('button', { name: '重新读取', exact: true }).click()

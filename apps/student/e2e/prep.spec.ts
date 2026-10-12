@@ -27,8 +27,8 @@ test.describe('准备入口与模式', () => {
     const entry = page.locator('.prep-entry')
     await expect(entry).toBeVisible()
     await expect(entry.locator('.prep-entry-flag')).toContainText('准备场景（合成）')
-    await expect(entry.locator('.prep-entry-note')).toContainText('不是正式分配')
-    await expect(entry.locator('.prep-entry-note')).toContainText('不写入学习记录')
+    await expect(entry.locator('.prep-entry-note')).toContainText('材料与身份都是模拟的')
+    await expect(entry.locator('.prep-entry-note')).toContainText('不会写入学习记录')
 
     await entry.getByRole('button', { name: '进入准备工作区' }).click()
     await expect(page).toHaveURL(/#\/task\/i0-prep-textscope-c$/)
@@ -60,13 +60,15 @@ test.describe('准备入口与模式', () => {
     const badge = page.locator('.ts-badge')
     await expect(badge).toHaveAttribute('data-status', 'ready')
     await expect(badge).toContainText('准备场景（合成）')
-    await expect(badge.locator('.ts-badge-meta')).toContainText(/loadEpoch \d+/)
+    // 顶栏只给学生看的：当前是准备场景、是否就绪；loadEpoch 这类排障值不上屏
+    await expect(badge.locator('.ts-badge-meta')).toHaveText('就绪')
+    await expect(badge).not.toContainText('loadEpoch')
 
     await page.getByRole('button', { name: '任务信息' }).click()
     const info = page.locator('.ts-taskinfo')
     // preparation epoch 在阅读位置完整展示（顶栏不重复，避免窄视口溢出）
     await expect(info).toContainText(/prep-epoch-[0-9a-f]+/)
-    await expect(info).toContainText('合成身份与合成材料，不是正式分配，不写入学习记录')
+    await expect(info).toContainText('合成场景：材料与身份都是模拟的，不会写入学习记录')
     // 身份来自合成 Session，不是设置页昵称
     await expect(info).toContainText('prep-student-01')
     await expect(info).toContainText('prep-course-c17（student）')

@@ -3,8 +3,9 @@ import { createHash } from 'node:crypto'
 import {
   canReplay,
   classifyWriteFailure,
-  outcomeMessage,
+  diagnosticText,
   reconcileStoredCommand,
+  studentHint,
   summarizeOriginalRequest,
 } from './recovery'
 import { CommandConfirmedError, CommandRejectedError, LeaseHeldError } from './confirmationDb'
@@ -80,15 +81,27 @@ describe('重试许可', () => {
     ]) expect(canReplay(outcome)).toBe(false)
     expect(canReplay(null)).toBe(false)
   })
-  it('每种结论都给出可核对的下一步说明，可重试与终态说清区别', () => {
-    for (const outcome of [{ kind: 'unresolved' as const }, { kind: 'local-failed' as const }, { kind: 'conflict' as const },
+  it('学生提示只说结果、草稿与下一步，不出现错误码、命令键、代际或接口路径', () => {
+    const outcomes = [{ kind: 'unresolved' as const }, { kind: 'local-failed' as const }, { kind: 'conflict' as const },
       { kind: 'recovery-required' as const }, { kind: 'rejected' as const, code: 'FORBIDDEN' as const },
       { kind: 'rejected' as const, code: 'IDEMPOTENCY_CONFLICT' as const },
-      { kind: 'lease-held' as const }, { kind: 'confirmed' as const }, { kind: 'historical' as const }]) {
-      expect(outcomeMessage(outcome).length).toBeGreaterThan(8)
+      { kind: 'lease-held' as const }, { kind: 'confirmed' as const }, { kind: 'historical' as const }]
+    for (const outcome of outcomes) {
+      const text = studentHint(outcome)
+      expect(text.length).toBeGreaterThanOrEqual(8)
+      // 技术事实一个都不许出现在学生文案里
+      for (const forbidden of ['VERSION_CONFLICT', 'RECOVERY_REQUIRED', 'IDEMPOTENCY', 'HTTP', '/api', 'commandKey',
+        'clientId', 'clientSeq', 'generation', '代际', 'hash', '快照 ID']) {
+        expect(text).not.toContain(forbidden)
+      }
+      expect(text).toMatch(/保存|读取|作品|标签页/)
     }
-    expect(outcomeMessage({ kind: 'rejected', code: 'RATE_LIMITED' })).toContain('明确重试')
-    expect(outcomeMessage({ kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' })).toContain('同一键')
+    // 可重试的拒绝说「可以重试」，终态拒绝给「重新读取」而不是诱导重发
+    expect(studentHint({ kind: 'rejected', code: 'RATE_LIMITED' })).toContain('可以稍后重试')
+    expect(studentHint({ kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' })).toContain('重新读取')
+    expect(diagnosticText({ kind: 'rejected', code: 'RATE_LIMITED' })).toContain('RATE_LIMITED')
+    expect(diagnosticText({ kind: 'rejected', code: 'RATE_LIMITED' })).toContain('retryable')
+    expect(diagnosticText({ kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' })).toContain('terminal')
   })
 })
 

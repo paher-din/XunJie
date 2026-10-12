@@ -32,7 +32,7 @@ export function projectSeedOf(state: ConfirmationState, instances: InstanceRecor
     files }
 }
 const idle: ConfirmationState = { phase: 'idle', workspace: null, attempt: null, snapshot: null, pending: null,
-  outcome: null, original: null, error: null }
+  outcome: null, error: null }
 
 /** 绑定一次 bootstrap；重新加载/退出/切换令旧客户端立即失效，页面不复用另一份确认状态。 */
 export function useConfirmationWorkspace(init: WorkspaceInit | null, taskId: string) {

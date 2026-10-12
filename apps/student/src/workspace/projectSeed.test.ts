@@ -16,7 +16,7 @@ function instance(overrides: Partial<InstanceRecord> = {}): InstanceRecord {
 }
 function state(files: WorkspaceFile[], workspaceRevision = 1): ConfirmationState {
   return { phase: 'ready', workspace: { attemptId: 'attempt-1', workspaceRevision, files }, attempt: null,
-    snapshot: null, pending: null, outcome: null, original: null, error: null }
+    snapshot: null, pending: null, outcome: null, error: null }
 }
 
 describe('恢复草稿的实例关联', () => {

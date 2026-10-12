@@ -110,10 +110,9 @@ export default function PrepWorkspacePage() {
               !(project.access.kind === 'paused' && project.files.some(f => f.confirmed === null))}
             canSnapshot={!!confirmation.state.attempt && project.access.kind !== 'read-only'}
             // 恢复结论态（拒绝/版本冲突/换代）的说明由 state.error 呈现，这里不重复同一句话。
-            blockedReason={!c?.trustedRecoveryGeneration ? '缺少受信代际，禁止写入（H-03）' :
-              project.access.kind === 'paused' && project.files.some(f => f.confirmed === null) ? '暂停期间只可确认已有文件正文' : null}
+            blockedReason={!c?.trustedRecoveryGeneration ? '现在还不能保存这件作品。' :
+              project.access.kind === 'paused' && project.files.some(f => f.confirmed === null) ? '暂停期间只能保存已有文件的修改。' : null}
             error={confirmation.state.error}
-            originalRequest={confirmation.state.original}
             canRetry={canReplay(confirmation.state.outcome)}
             onOpen={() => { void confirmation.client?.openAttempt() }}
             onSave={() => {
@@ -164,14 +163,15 @@ function PrepBadge({
   onSignOut: () => void
 }) {
   return (
-    <span className="ts-badge" data-status={status}>
+    <span className="ts-badge" data-status={status} style={{ flex: '0 0 auto' }}>
       <Icon name="shield-check" size={15} tone="neutral" />
       <b>{PREP_ENTRY_LABEL}</b>
-      <span className="ts-badge-meta">
-        {statusText(status)} · loadEpoch {loadEpoch || '—'}
+      {/* 学生只需要知道当前是合成准备场景、是否就绪；loadEpoch 等排障值进控制台。 */}
+      <span className="ts-badge-meta" data-load-epoch={loadEpoch || undefined}>
+        {statusText(status)}
       </span>
       <button type="button" className="textbtn" disabled={signingOut} onClick={onSignOut}>
-        <IconText name="logout-2" position="end">{signingOut ? '结束中…' : '结束准备会话'}</IconText>
+        <IconText name="logout-2" position="end">{signingOut ? '结束中…' : '退出'}</IconText>
       </button>
     </span>
   )

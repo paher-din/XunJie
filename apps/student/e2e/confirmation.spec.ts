@@ -31,15 +31,21 @@ test('学生主动创建、保存、冻结与刷新读回同一作品和快照',
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1 · 与草稿一致')
   await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
-  await expect(page.locator('.ws-head-run summary')).toContainText('快照详情 v1')
-  await page.locator('.ws-head-run summary').click()
-  const detail = await page.locator('.ws-head-run details').innerText()
+  // 学生只看到「已冻结快照 vN」；快照 ID/hash 只进控制台诊断
+  await expect(page.getByText('已冻结快照 v1')).toBeVisible()
   await type(page, '// newer draft\n')
   await page.waitForTimeout(550)
   await page.reload()
-  await expect(page.locator('.ws-head-run summary')).toContainText('快照详情 v1')
-  await page.locator('.ws-head-run summary').click()
-  expect(await page.locator('.ws-head-run details').innerText()).toBe(detail)
+  await expect(page.getByText('已冻结快照 v1')).toBeVisible()
+  // 刷新后仍是同一快照（索引库里的冻结记录不变，界面只显示它冻结的作品版本）
+  const afterReload = await page.evaluate(async () => {
+    const scenarioId = new URLSearchParams(location.search).get('scenario')!
+    const headers = { 'x-i0prep-scenario': scenarioId }
+    const data = (await (await fetch('/__i0prep/context', { headers })).json()).data
+    const head = (await (await fetch(`/__i0prep/api/attempts/${data.refs.attemptId}`, { headers })).json()).data
+    return { count: head.snapshots.length, id: head.snapshots[0].snapshotId }
+  })
+  expect(afterReload.count).toBe(1)
   await expect(page.locator('.view-lines')).toContainText('newer draft')
   await expect(page.locator('.ws-flow')).toContainText('1 个文件未确认')
   expect(posts.filter(u => /\/attempts$/.test(u))).toHaveLength(1)
@@ -116,7 +122,9 @@ for (const stage of ['mapping', 'head', 'drafts', 'outbox'] as const) {
     await type(page, 'kept after send\n')
     await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
     held.release()
-    await expect(page.locator('.ws-head-run [role=alert]')).toContainText('本机确认记录未完成')
+    // 学生只看到「已发出、本地没记完、可以重试」；四阶段事务名与回执事实只在控制台
+    await expect(page.locator('.ws-head-run [role=alert]'))
+      .toHaveText('保存已经发出，但本地还没记完，草稿已保留。可以重试。')
     const failed = await localState(page)
     expect(failed.workspace.workspaceRevision).toBe(0)
     expect(failed.instances.every((i: { fileId: string }) => i.fileId.startsWith('local-'))).toBe(true)
@@ -126,10 +134,10 @@ for (const stage of ['mapping', 'head', 'drafts', 'outbox'] as const) {
     expect(JSON.stringify(failed.commands)).not.toContain('csrfToken')
     await page.unroute('**/api/attempts/*/sync')
     await page.reload()
-    await expect(page.getByRole('button', { name: '核对原请求并重试' })).toBeVisible()
-    await page.getByRole('button', { name: '核对原请求并重试' }).click()
+    await expect(page.getByRole('button', { name: '重试上次保存' })).toBeVisible()
+    await page.getByRole('button', { name: '重试上次保存' }).click()
     await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
-    await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
     await expect(page.locator('.cw-filetab-main')).toHaveCount(1)
     await expect(page.locator('.view-lines')).toContainText('kept after send')
     expect(originalRequests).toHaveLength(2)
@@ -175,7 +183,7 @@ test('混合 EOL/BOM/非 BMP 草稿经真实保存与 snapshot GET 字节不变'
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1 · 与草稿一致')
   await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
-  await expect(page.locator('.ws-head-run summary')).toContainText('快照详情 v1')
+  await expect(page.getByText('已冻结快照 v1')).toBeVisible()
   const state = await localState(page)
   expect(state.workspace.files[0].text).toBe(raw)
   const snapshot = await page.evaluate(async () => {
@@ -200,7 +208,7 @@ test('另一标签推进 head 后迟到旧 ACK 只记历史，不回退头或映
   await other.goto(page.url())
   // 新标签读取确认 head，不把尚未落本机的旧 ACK 当最新状态；原请求仍只能重放。
   await expect(other.locator('.cw')).toBeVisible()
-  await expect(other.getByRole('button', { name: '核对原请求并重试' })).toBeVisible()
+  await expect(other.getByRole('button', { name: '重试上次保存' })).toBeVisible()
   // 在另一标签通过公开客户端核原命令（同键服务端幂等）；测试仅释放 lease，模拟原标签崩溃失去发件租约。
   await other.evaluate(async () => {
     const db = await import('/src/workspace/confirmationDb.ts' as string)
@@ -209,14 +217,14 @@ test('另一标签推进 head 后迟到旧 ACK 只记历史，不回退头或映
     const original = rows.find((r: { kind: string; state: string }) => r.kind === 'workspace.sync' && r.state === 'pending')
     await db.confirmationRepository.release(original.commandKey, original.lease.owner)
   })
-  await other.getByRole('button', { name: '核对原请求并重试' }).click()
-  await expect(other.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+  await other.getByRole('button', { name: '重试上次保存' }).click()
+  await expect(other.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await type(other, '// second head\n')
   await other.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(other.locator('.ws-flow')).toContainText('确认作品 v2')
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v2')
   held.release()
-  await expect(page.getByRole('button', { name: '核对原请求并重试' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v2')
   const local = await localState(page)
   expect(local.workspace.workspaceRevision).toBe(2)
@@ -245,7 +253,7 @@ test('g2 回退头读取后 g1 ACK 到达，只保留旧请求事实与草稿', 
   expect(rotated.status).toBe(200); expect(rotated.after).not.toBe(rotated.before)
   await page.getByRole('button', { name: '重新读取', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('须重新比较')
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('登录状态已更新。请重新读取后再保存。')
   held.release()
   await expect.poll(async () => (await localState(page)).commands.find((r: { kind: string }) => r.kind === 'workspace.sync').state).toBe('historical')
   const local = await localState(page)
@@ -262,7 +270,7 @@ test('同身份退出再进入后迟到 ACK 不接纳到当前加载', async ({ 
   const held = await holdAck(page)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await held.ready
-  await page.getByRole('button', { name: '结束准备会话', exact: true }).click()
+  await page.getByRole('button', { name: '退出', exact: true }).click()
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
   held.release()
@@ -285,8 +293,9 @@ test('摘要不符的 snapshot GET 不显示快照成功，原请求保留', asy
     await route.fulfill({ response, json: body })
   })
   await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('摘要不符')
-  await expect(page.locator('.ws-head-run summary')).toHaveCount(0)
+  await expect(page.locator('.ws-head-run [role=alert]'))
+    .toHaveText('服务返回的快照没有通过核验，作品本身没有改动。可以重试。')
+  await expect(page.getByText(/已冻结快照/)).toHaveCount(0)
   expect((await localState(page)).commands.find((r: { kind: string }) => r.kind === 'snapshot.create').state).toBe('pending')
 })
 
@@ -400,7 +409,8 @@ test('整批保存被拒绝时服务端不部分创建，草稿和原命令保�
     await route.continue({ postData: JSON.stringify(body) })
   })
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('VERSION_CONFLICT')
+  await expect(page.locator('.ws-head-run [role=alert]'))
+    .toHaveText('作品在别处有了新的版本。请先重新读取，再决定怎么保存。')
   const authoritative = await page.evaluate(async () => {
     const scenario = new URLSearchParams(location.search).get('scenario')!, headers = { 'x-i0prep-scenario': scenario }
     const context = (await (await fetch('/__i0prep/context', { headers })).json()).data
@@ -431,7 +441,8 @@ test('同 revision 的不同确认摘要不可按到达顺序接纳', async ({ p
     await route.fulfill({ response, json: body })
   })
   await page.getByRole('button', { name: '重新读取', exact: true }).click()
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('同版本确认清单冲突')
+  // 学生只看到「没读成功、请重读」；同版本清单冲突这类原因进控制台
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('作品没有读取成功，请重新读取。')
   const local = await localState(page)
   expect(local.workspace.workspaceRevision).toBe(1)
   expect(local.workspace.files[0].text).toBe('original\n')
@@ -490,7 +501,8 @@ test('已确认文件在 g2 回退后仍可打开原草稿，不能当新文件�
   const posts: string[] = []
   page.on('request', r => { if (r.method() === 'POST' && r.url().endsWith('/sync')) posts.push(r.url()) })
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.locator('.ws-head-run [role=alert]')).toContainText('需要重新比较')
+  await expect(page.locator('.ws-head-run [role=alert]'))
+    .toHaveText('这件作品已经在别处更新，请重新读取后再保存。')
   expect(posts).toEqual([])
 })
 
@@ -500,7 +512,7 @@ test('快照 GET 清单的 ID 顺序不覆盖刚冻结的快照', async ({ page 
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1 · 与草稿一致')
   await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
-  await expect(page.locator('.ws-head-run summary')).toContainText('快照详情 v1')
+  await expect(page.getByText('已冻结快照 v1')).toBeVisible()
   await type(page, 'v2\n')
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v2 · 与草稿一致')
@@ -510,9 +522,9 @@ test('快照 GET 清单的 ID 顺序不覆盖刚冻结的快照', async ({ page 
     await route.fulfill({ response, json: body })
   })
   await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
-  await expect(page.locator('.ws-head-run summary')).toContainText('快照详情 v2')
+  await expect(page.getByText('已冻结快照 v2')).toBeVisible()
   await page.reload()
-  await expect(page.locator('.ws-head-run summary')).toContainText('快照详情 v2')
+  await expect(page.getByText('已冻结快照 v2')).toBeVisible()
 })
 
 test('首次创建 ACK 未绑定 Attempt 时也不能覆盖另一标签已接纳 g2', async ({ page, context }) => {
@@ -540,8 +552,7 @@ test('首次创建 ACK 未绑定 Attempt 时也不能覆盖另一标签已接纳
   release()
   await expect.poll(async () => (await localState(other)).commands.find((c: { kind: string }) => c.kind === 'attempt.create').state).toBe('historical')
   expect((await localState(other)).workspace.workspaceRevision).toBe(0)
-  // 旧代际原命令属 04 的恢复结论态，重读按钮在该态下显示为「重读受信上下文」；动作与断言不变。
-  await other.getByRole('button', { name: /^(重新读取|重读受信上下文)$/ }).click()
+  await other.getByRole('button', { name: '重新读取', exact: true }).click()
   await expect(other.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(other.locator('.ws-head-run [role=alert]')).toHaveCount(0)
 })
@@ -577,8 +588,7 @@ test('创建事务已提交但 UI 还在 await 时切换 g2，旧后续读取不
   await page.evaluate(() => (window as unknown as { releaseAck: () => void }).releaseAck())
   await expect(page.locator('.ws-head-run [role=alert]')).toBeVisible()
   expect((await localState(other)).workspace.workspaceRevision).toBe(0)
-  // 旧代际原命令属 04 的恢复结论态，重读按钮在该态下显示为「重读受信上下文」；动作与断言不变。
-  await other.getByRole('button', { name: /^(重新读取|重读受信上下文)$/ }).click()
+  await other.getByRole('button', { name: '重新读取', exact: true }).click()
   await expect(other.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(other.locator('.ws-head-run [role=alert]')).toHaveCount(0)
 })

@@ -10,10 +10,10 @@ export const PREP_TASK_ID = 'i0-prep-textscope-c'
 
 export const PREP_TASK_ROUTE = `/task/${PREP_TASK_ID}`
 
-export const PREP_ENTRY_LABEL = 'I0 准备场景（合成）'
+export const PREP_ENTRY_LABEL = '准备场景（合成）'
 
 export const PREP_ENTRY_COURSE = 'C / TextScope · 准备工作区'
 
-export const PREP_ENTRY_GOAL = '读取合成会话、固定活动要求与材料，进入 C 中心容器。'
+export const PREP_ENTRY_GOAL = '在这里写 C 程序、确认保存作品，并冻结可回取的快照。'
 
-export const PREP_ENTRY_NOTE = '合成身份与合成材料，不是正式分配，不写入学习记录。'
+export const PREP_ENTRY_NOTE = '合成场景：材料与身份都是模拟的，不会写入学习记录。'

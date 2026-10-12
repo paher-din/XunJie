@@ -5,10 +5,14 @@
  * 命令」，不得自动换键、改输入或把超时当拒绝/成功。这里把判定收成纯函数，UI 只负责展示结论，
  * 客户端只按结论行动；不新建第二份确认状态，事实仍留在 03 的 outbox 与确认头里。
  *
+ * 结论分成两层文案，**不要混用**：
+ * - \`studentHint\`：学生界面唯一可见的一句话——发生了什么、草稿还在不在、下一步做什么；
+ * - \`diagnosticText\`：只进浏览器控制台的排障文本（错误码、原请求事实在 \`diagnostics.ts\` 里一并上报）。
+ *
  * 三种「没有确认回执」的事实必须分开：
- * - `unresolved`：没拿到服务端信封（断线/超时/丢 ACK），可能未送达也可能已被接受；
- * - `local-failed`：回执到了，本机确认事务没提交，可重新接纳同一回执；
- * - `rejected`/`conflict`/`recovery-required`：服务明确拒绝、版本冲突或代际已变，停止旧重试。
+ * - \`unresolved\`：没拿到服务端信封（断线/超时/丢 ACK），可能未送达也可能已被接受；
+ * - \`local-failed\`：回执到了，本机确认事务没提交，可重新接纳同一回执；
+ * - \`rejected\`/\`conflict\`/\`recovery-required\`：服务明确拒绝、版本冲突或代际已变，停止旧重试。
  */
 
 import type { ApiErrorCode } from './contracts'
@@ -42,30 +46,48 @@ export function canReplay(outcome: CommandOutcome | null): boolean {
   }
 }
 
-/** 面向学生的下一步说明；不含任何「已保存」或「已失败」的越界承诺。 */
-export function outcomeMessage(outcome: CommandOutcome | null): string {
+/**
+ * 学生界面唯一可见的一句提示。
+ *
+ * 只回答学生真正需要的三件事：这次保存成没成、我的字还在不在、我现在能做什么。
+ * 不出现错误码、命令键、代际、HTTP 状态、接口路径或服务原文——那些进控制台（\`diagnostics.ts\`）。
+ */
+export function studentHint(outcome: CommandOutcome | null): string {
   switch (outcome?.kind) {
     case undefined:
     case null:
-      return '当前没有待核对的原请求。'
+    case 'confirmed':
+      return '这次保存已完成。'
     case 'unresolved':
-      return '原请求结果未知：可能尚未送达，也可能已被服务接受但回执丢失。核对原命令后可原样重放，不会自动重发。'
+      return '这次保存的结果还没确认，草稿已保留。可以重试。'
     case 'local-failed':
-      return '服务回执已收到，本机确认记录未完成。核对原请求可重新接纳同一回执，不产生第二次创建。'
+      return '保存已经发出，但本地还没记完，草稿已保留。可以重试。'
+    case 'lease-held':
+      return '另一个标签页正在处理这次保存，请稍后再试。'
+    case 'conflict':
+      return '作品在别处有了新的版本。请先重新读取，再决定怎么保存。'
+    case 'recovery-required':
+      return '登录状态已更新。请重新读取后再保存。'
+    case 'historical':
+      return '这是较早的一次保存，已过有效期。请重新读取当前作品。'
     case 'rejected':
       return isTerminalRejection(outcome.code)
-        ? `服务拒绝了原请求（${outcome.code}）：正文已保留，业务键冲突不能靠改输入重发同一键解决。`
-        : `服务拒绝了原请求（${outcome.code}）：正文与原命令已保留，可先核对再明确重试，不会自动重发。`
-    case 'conflict':
-      return '服务端确认版本已变化（VERSION_CONFLICT）：本机正文已保留，不能自动覆盖；明确比较与选择由 04A 提供。'
-    case 'recovery-required':
-      return '受信恢复代际已变化：停止重放旧原请求，重读受信上下文后再比较；草稿保留，不换代际或业务键续写。'
-    case 'lease-held':
-      return '另一标签正在核对同一原请求：本标签不会重发或新建命令，稍后重新核对即可。'
-    case 'confirmed':
-      return '原请求已确认：不重发，改为重读当前权威作品。'
-    case 'historical':
-      return '该原请求属于旧代际，只保留历史事实；不迁代际、不改业务键补做。'
+        ? '这次保存没能完成，草稿已保留。请重新读取后再保存。'
+        : '服务暂时没能保存，草稿已保留。可以稍后重试。'
+  }
+}
+
+/** 只进开发者控制台的诊断结论；学生界面不显示。 */
+export function diagnosticText(outcome: CommandOutcome): string {
+  switch (outcome.kind) {
+    case 'unresolved': return 'no service envelope: request may be un-delivered or ACK lost'
+    case 'local-failed': return 'receipt received, local confirmation transaction failed'
+    case 'lease-held': return 'another tab holds the send lease'
+    case 'confirmed': return 'original command already confirmed'
+    case 'historical': return 'original command retired with an older recovery generation'
+    case 'conflict': return 'service rejected the original command with VERSION_CONFLICT'
+    case 'recovery-required': return 'service rejected the original command with RECOVERY_REQUIRED'
+    case 'rejected': return `service rejected the original command with ${outcome.code}${isTerminalRejection(outcome.code) ? ' (terminal)' : ' (retryable)'}`
   }
 }
 
@@ -83,7 +105,7 @@ export function codeOfOutcome(outcome: CommandOutcome): ApiErrorCode | null {
   return outcome.kind === 'rejected' ? outcome.code : null
 }
 
-/** 一次写请求失败的分类；`receiptReceived` 说明是否已核对到服务回执。 */
+/** 一次写请求失败的分类；\`receiptReceived\` 说明是否已核对到服务回执。 */
 export function classifyWriteFailure(error: unknown, options: { receiptReceived: boolean }): CommandOutcome {
   if (error instanceof LeaseHeldError) return { kind: 'lease-held' }
   // 本机事务里读到的事实优先于网络结论：核对与领取租约之间另一标签可能已确认或记录拒绝。
@@ -105,11 +127,11 @@ export type Reconciliation =
 /**
  * 按原命令的本机事实决定下一步：重放、只在本机重新接纳回执、或停止。
  *
- * 判定只看落盘事实（回执/状态/代际/已记录的拒绝），不看内存里的当前草稿，
+ * 判定只看落盘事实（回执、状态、代际、已记录的拒绝），不看内存里的当前草稿，
  * 因此刷新、换标签、重连后得到同一结论。
  *
- * 只有调用方声明自己的发送身份时（`options.owner`，即真正要重放的那一刻）才判定发送租约：
- * 租约是有期限的，用它提前隐藏「核对原请求」入口会让别的标签在租约到期后无从重试；
+ * 只有调用方声明自己的发送身份时（\`options.owner\`，即真正要重放的那一刻）才判定发送租约：
+ * 租约是有期限的，用它提前隐藏「重试上次保存」会让别的标签在租约到期后无从重试；
  * 抢租约的最终拦截仍由本机事务（claim）执行。
  */
 export function reconcileStoredCommand(
@@ -133,7 +155,7 @@ export function reconcileStoredCommand(
   return { action: 'replay' }
 }
 
-/** 「核对原请求」要展示的冻结事实：键、序号、代际、预期版本与冻结正文摘要。 */
+/** 控制台诊断用的冻结事实：命令身份、冻结输入与逐文件摘要（不含 Session/CSRF，也不含作品全文）。 */
 export interface OriginalRequestSummary {
   commandKey: string
   kind: FrozenCommand['kind']
@@ -147,9 +169,9 @@ export interface OriginalRequestSummary {
 }
 
 /**
- * 从冻结命令本身（不是当前草稿）生成可核对事实。
+ * 从冻结命令本身（不是当前草稿）生成诊断事实。
  *
- * 只读 wireJson 与冻结的 drafts：正文摘要用于和编辑器里的正文比对，不重新序列化业务输入，
+ * 只读 wireJson 与冻结的 drafts；正文摘要用于和编辑器里的正文比对，不重新序列化业务输入，
  * 也不把 Session/CSRF 带进来（它们从不进 outbox）。
  */
 export async function summarizeOriginalRequest(command: FrozenCommand): Promise<OriginalRequestSummary> {
