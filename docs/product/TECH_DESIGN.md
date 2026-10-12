@@ -229,7 +229,7 @@ teacher_design 仅用 A 明确批准的资料；student_help/analysis 不含私�
 | POST /api/attempts/:id/disputes | 所属学生 | targetRef 指确切 claim/feedback 版本及理由；改变有效投影时 expectedStateRevision，当前依据 contested/依赖失效同事务；历史异议不覆盖新判断 |
 | PATCH /api/courses/:id/my-context | 所属学生 | expectedContextRevision，修改个人目标/约束自述；不写能力或教师字段，相关辅导上下文失效 |
 | POST /api/attempts/:id/reviews | 任课教师 | expectedStateRevision + 决定、引用、理由；事务内纠正和失效 |
-| POST /api/attempts/:id/reopen | 任课教师 | reviewed、expectedAttemptRevision/最新 submissionId/理由，保存许可仍是 reviewed；学生主动 resume_revision 消费许可，旧提交不变 |
+| POST /api/attempts/:id/reopen | 任课教师 | reviewed、expectedAttemptRevision/最新 submissionId/理由，保存许可仍是 reviewed；学生主动 resume_revision 消费许可，旧提交不变。发放同时递增 attemptRevision 与 decisionEpoch，故分配暂停（它同样递增两者）会使已发放的许可失效、且恢复分配不使其复活，教师须按当前版本重新发放；许可行保持 valid 不被静默消费，恢复读取以 actionable=false 报出该状态，学生界面据此区分「从未发放」与「发放过但已作废」 |
 | POST /api/attempts/:id/feedback | 任课教师 | kind=formative 或 submission_review；feedbackId（修订）/expectedFeedbackRevision/expectedStateRevision/固定对象或最新提交；改变阶段另核 expectedAttemptRevision，正式反馈/reviewed 同事务；B 只起草 |
 | GET /api/attempts/:id/events | 所属学生/任课教师 | 经过角色裁剪的 SSE 或游标分页 |
 | GET /api/courses/:id/exports | 任课教师 | 课程范围导出；学生通过个人导出入口仅获取自己的可见记录 |
