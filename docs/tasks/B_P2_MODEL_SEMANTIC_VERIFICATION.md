@@ -74,7 +74,7 @@ B 负责组织 B0 E1～E10/T1 中属于 B1/B2 的固定工程材料和实际输�
 | 证据观测与安全回归 | 8/8 通过：响应元数据/延迟、网络失败、取消、超时、递归敏感字段拒绝及精确运行时门禁；纯内存，供应商请求 0 |
 | typecheck/build/教师与学生专项 | typecheck/build 通过；修复后 66 通过、0 失败、2 个真实模型入口按门禁跳过 |
 | `npm test` 完整回归 | 修复后 build 通过；270 项中 260 通过、1 个既有 Windows/Linux `RunControl` 环境失败、9 跳过。新增证据/可信提示/运行时门禁测试通过；两个真实模型用例默认跳过 |
-| 真实教师/学生接口验证 | 阻塞于 §2.2；未执行，不以 SKIP 记通过 |
+| 真实教师/学生接口验证 | 教师链在修复提交 `a2acba0`、Node 24.21.0 下通过；学生链因调用者使用了不存在的旧路径而未启动，供应商请求 0，待用正式入口执行 |
 | 人工语义审阅 | 材料框架已建立；真人结论待执行 |
 | B4 至少 30 次实际样本 | 未获扩大许可，未执行；不能用九次上限冒充 |
 
@@ -112,3 +112,14 @@ B 负责组织 B0 E1～E10/T1 中属于 B1/B2 的固定工程材料和实际输�
 实际修复与离线复验：可信引用/PATCH 指令已加入且没有放宽服务端校验；可见输出证据只提取 `message.content`，测试确认同一响应的 `reasoning_content` 不落盘。新增指令使原 16K repair 边界夹具首轮提前拒绝，使用正式估算器重新测得 13,100 字符仍保持“首轮实际发送、修复轮调用前拒绝”的原语义，未扩大输入上限。最终 typecheck、build、66 项 B 专项通过；证据/SDK 组合专项 20/20 通过；完整 270 项为 260 通过、1 个既有 Linux-only 环境失败、9 跳过。文档结构检查及其 16 项回归通过，`git diff --check` 通过。
 
 首次调用使用 Node 24.14.1 还表明原 README 只有文字前提、没有联网前强制门禁。`realModelProbe()` 现先要求精确 Node 24.21.0，README 命令也先执行 `tools/check-runtime.mjs`；错误运行时必须在 provider/key 使用和供应商请求前失败。
+
+## 9. 修复后教师真实链复验
+
+账号负责人在提交 `a2acba0`、Node `24.21.0` 下明确使用本批剩余额度复验，教师用例 1/1 通过，证据文件由调用者本机临时目录保存。证据核对如下：
+
+- 候选与局部 PATCH 各发起一次真实 HTTP 请求，均返回 200；型号为 `deepseek-flash`，fingerprint 一致。候选请求为 601 input / 608 output、4,647ms；PATCH 为 909 input / 151 output、1,401ms；本轮合计 1,510 input、759 output、2,269 total tokens。
+- 候选 Job 和 PATCH Job 均为 `succeeded`、`attemptCount=1`，usage 为 actual；候选提案已持久保存并由教师明确采用，PATCH 只修改允许的 `problem` 字段，最终蓝图 revision 为 2。
+- 输出引用仅使用获准 paragraph ID；没有完整代码、自动发布、学生作品操作或正式评价。修复后的可信白名单/PATCH 字段说明解决了首次失败，未观察到第二次修复调用。
+- 证据 `sourceCommit` 精确为 `a2acba055d41bd4d1c02be19a659d8a11dc82b07`；`sourceDirty=true` 来自工作区原有未跟踪 `.trae/`，本任务没有纳入或修改该目录。
+
+随后学生命令使用了不存在的 `tests/student-help.test.ts`，Node 在测试发现阶段即退出，没有创建学生 Job 或发起供应商请求。仓库 README 中的正式入口为 `server/tutoring/test/student-help.test.ts`；这属于调用命令错误，不是学生模型验证失败。学生真实链仍待账号负责人决定使用本批剩余调用执行，失败不自动重跑。
