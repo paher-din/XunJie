@@ -239,7 +239,10 @@ export function CodeRunCluster({ ws, onSave }: { ws: ProjectWorkspace; onSave: (
         <span className="ws-flow" title="本机草稿不等于已保存的作品；确认保存由学生发起">
           <span className="ws-flow-node draft">
             <i />
-            {ws.unconfirmedCount} 个文件未确认
+            {/* 只报「正文或新建」这一部分：生命周期意图上面已经单独说过，同一件事不报两遍 */}
+            {ws.unconfirmedCount - ws.lifecyclePendingCount > 0
+              ? `${ws.unconfirmedCount - ws.lifecyclePendingCount} 个文件未确认`
+              : '有未确认的实例状态'}
           </span>
           <span className="ws-flow-link">▸</span>
           <span className="ws-flow-node loaded">确认作品 v{ws.confirmedRevision}</span>
