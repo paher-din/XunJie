@@ -565,7 +565,7 @@ test("the repair instruction is part of the shared input limit", async () => {
       return { body: {}, usage };
     },
   });
-  const result = await generateStudentHelp(helpRequest({ question: "x".repeat(13_320) }), { provider });
+  const result = await generateStudentHelp(helpRequest({ question: "x".repeat(13_100) }), { provider });
   assert.equal(result.outcome, "needs_input");
   assert.equal(result.calls, 1);
   assert.equal(invocations, 1);

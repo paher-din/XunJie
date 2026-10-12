@@ -151,6 +151,8 @@ node --test server/tutoring/test/student-help.test.ts
 ```powershell
 cd apps/teaching
 # DEEPSEEK_API_KEY 必须已由批准的安全通道提供；不要将值写入此文件或日志。
+node tools/check-runtime.mjs
+if ($LASTEXITCODE -ne 0) { throw 'Node 24.21.0 is required; no model request was sent.' }
 $env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
 try {
     node --test --test-name-pattern='P2 real-model' tests/design-agent.test.ts

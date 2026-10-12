@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
-import { assertSafeEvidence, createObservedModelFetch, type HttpFact } from './real-model-support.ts';
+import { assertRealModelRuntime, assertSafeEvidence, createObservedModelFetch, type HttpFact } from './real-model-support.ts';
 
 for (const [authorization, message] of [
   ['', 'Explicit P2 synthetic-data model authorization is required.'],
@@ -27,6 +27,7 @@ test('P2 model evidence observes bounded response metadata and latency', async (
   const ticks = [1_000, 1_025];
   const observed = createObservedModelFetch(http, async () => new Response(JSON.stringify({
     model: 'deepseek-flash-test', system_fingerprint: 'fp_test',
+    choices: [{ message: { content: '{"kind":"patch"}', reasoning_content: 'must not be captured' } }],
     usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, negative_tokens: -1 },
   }), { status: 200, headers: { 'content-type': 'application/json' } }), () => ticks.shift()!);
 
@@ -41,7 +42,9 @@ test('P2 model evidence observes bounded response metadata and latency', async (
     model: 'deepseek-flash-test',
     fingerprint: 'fp_test',
     tokens: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    visibleOutput: '{"kind":"patch"}',
   }]);
+  assert.equal(JSON.stringify(http).includes('must not be captured'), false);
 });
 
 for (const [name, error, signal, expected] of [
@@ -75,4 +78,11 @@ test('P2 model evidence rejects credential, lease and reasoning fields recursive
   assert.doesNotThrow(() => assertSafeEvidence({
     outcome: 'success', authorizedReferenceIds: ['resource:sha256'], usage: { totalTokens: 15 },
   }));
+});
+
+test('P2 real-model runtime gate rejects a non-locked Node before provider setup', () => {
+  assert.throws(() => assertRealModelRuntime('24.14.1'), {
+    message: 'P2 real-model validation requires Node 24.21.0; received 24.14.1.',
+  });
+  assert.doesNotThrow(() => assertRealModelRuntime('24.21.0'));
 });

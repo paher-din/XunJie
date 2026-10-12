@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createAiSdkDeepSeekProvider } from '../deepseek-sdk.ts';
 
 export const realModelEnabled = process.env.XUNJIE_P2_REAL_MODEL === 'approved-synthetic';
+const requiredNodeVersion = '24.21.0';
 type HttpOutcome = 'response' | 'cancelled' | 'timed_out' | 'network_error';
 export type HttpFact = {
   startedAt: string;
@@ -16,6 +17,7 @@ export type HttpFact = {
   model?: string;
   fingerprint?: string;
   tokens?: Record<string, number>;
+  visibleOutput?: string;
 };
 
 const sensitiveEvidenceKey = /^(?:authorization|proxy-authorization|api[_-]?key|cookie|set-cookie|csrf(?:[_-]?token)?|password|lease[_-]?token|reasoning(?:_content)?)$/i;
@@ -60,6 +62,17 @@ export function createObservedModelFetch(
           const fields = raw as Record<string, unknown>;
           if (typeof fields.model === 'string') fact.model = fields.model;
           if (typeof fields.system_fingerprint === 'string') fact.fingerprint = fields.system_fingerprint;
+          const choices = fields.choices;
+          if (Array.isArray(choices)) {
+            const first = choices[0];
+            if (first && typeof first === 'object') {
+              const message = (first as Record<string, unknown>).message;
+              if (message && typeof message === 'object') {
+                const content = (message as Record<string, unknown>).content;
+                if (typeof content === 'string') fact.visibleOutput = content.slice(0, 65_536);
+              }
+            }
+          }
           if (fields.usage && typeof fields.usage === 'object') {
             const usage = fields.usage as Record<string, unknown>;
             const tokens: Record<string, number> = {};
@@ -83,7 +96,14 @@ export function createObservedModelFetch(
   }) as typeof fetch;
 }
 
+export function assertRealModelRuntime(version = process.versions.node): void {
+  if (version !== requiredNodeVersion) {
+    throw new Error(`P2 real-model validation requires Node ${requiredNodeVersion}; received ${version}.`);
+  }
+}
+
 export function realModelProbe() {
+  assertRealModelRuntime();
   if (!realModelEnabled) throw new Error('Explicit P2 synthetic-data model authorization is required.');
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey?.trim()) throw new Error('DEEPSEEK_API_KEY is not configured through the approved local channel.');
