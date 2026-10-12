@@ -1,0 +1,217 @@
+# DL-B HDL 可信教学上下文与学生引导
+
+任务：Issue [#40](https://github.com/paher-din/XunJie/issues/40)
+
+主责：B
+
+基线：`37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`（2026-10-12）
+
+状态：首批契约输入已准备，待 DL-A 汇总评审；代码实施等待共享 DTO 获批
+
+## 1. 依据、范围与写入边界
+
+已按 `AGENTS.md` 的文档优先顺序阅读 `README.md`、PRD 的学生控制/数字逻辑流程与 PRD-04/05/09/10、MVP_SPEC §1.4 与 DL-AC-04/08/09、TECH_DESIGN §6/§8.5、TEAM_WORK_PLAN §7/§10.1、DL-0 §2.2，以及既有 B1/B2 任务稿和 `contracts/tutoring`、`server/tutoring` 实现。本文同时受 P3 总协调 [#37](https://github.com/paher-din/XunJie/issues/37)、DL-A [#38](https://github.com/paher-din/XunJie/issues/38)、DL-C [#39](https://github.com/paher-din/XunJie/issues/39) 和 B 后续验证 [#45](https://github.com/paher-din/XunJie/issues/45) 的实际交接约束。
+
+本任务负责 B 原有 tutoring 领域中的 HDL 获准上下文、引用/版本校验、教学帮助政策、确定性测试和后续实际模型语义证据。B 只读取 A 授权的课程/尝试配置与 C 产生的真实构建/会话结果；不写学生作品，不发起构建、装载、推进或板信号操作，不创建 Job、Message、TeachingAction、Delivery、Receipt 或事件系统，不作正式评价。
+
+本次可写范围为本文。`AGENTS.md`、`docs/product/**`、`docs/planning/**`、`docs/reference/**`、其他成员任务稿、共享 TypeScript 契约与应用源码均保持只读。下述字段是提交给 A 的消费需求，不是已批准 schema、路由、错误码、数据库或运行限额；获 #38 汇总评审并明确可写文件前，不据此编码。
+
+## 2. 进入条件复核
+
+| 条件 | 当前事实 | 对 DL-B 的影响 |
+| --- | --- | --- |
+| P2 原服务端预交付 | main 已记录 PR #36 合入，#11/#24/#26 的工程审查收口；未完成模型/人工语义项转由 #45 承担 | B1/B2/C3 的确定性帮助、取消、作业、消息与回执能力可复用；不再阻止首批契约提案 |
+| DL-D03 共享 DTO | TECH §8.5 仍将 BoardProfile、BuildArtifact、SimulationSession、SignalFrame/Trace 列为候选对象；DL-0 明确共享接口未批准 | 阻止修改公共契约和实现上下文装配；本文先向 #38 提交最小消费需求 |
+| DL-A 授权配置 | #38 尚未交付获准课程/尝试、实验配置、版本/权限/错误语义 | 阻止真实权限校验和业务联调 |
+| DL-C 真实结果 | #39 尚未交付确切 Build/Session/诊断/四值信号/波形 DTO 与目标环境证据 | 阻止真实上下文联调和 DL-AC-04/09 |
+| 实际模型条件 | #45 仍承担账号/API、条款、数据范围、额度/付费许可、人工语义与调用证据的剩余条件 | 阻止为 HDL 新增真实供应商调用；不阻止 DTO 获批后的合成确定性验证 |
+
+结论：Issue #40 当前可以完成首批“B 消费提案”，但不能把候选结构写成正式共享契约，也不能完成真实上下文、真实模型或浏览器验收。该分层符合 TEAM 所述“契约评审是首批交付，获批准后实施”。
+
+## 3. 提交给 DL-A 的最小消费需求（待评审）
+
+### 3.1 可信信封
+
+B 不接受模型自行声明 scope、身份、版本或权限。A/C 在调用 B 前应提供一个受信信封，并使下列身份在一次帮助 Job 内不可变：
+
+| 分类 | 最小需要 | 用途 |
+| --- | --- | --- |
+| 业务 scope | `courseId`、`studentId`、`attemptId`、获准活动版本、帮助政策版本、decision epoch、recovery generation | 拒绝跨课程、跨学生、跨尝试、已失效或停止后的输入 |
+| 作品版本 | 已确认 HDL snapshot 身份、内容 hash；引用文件的稳定 ID、路径、document version、content hash；选区精确范围 | 只读学生明确确认的版本，拒绝把未确认草稿或旧选区当成当前作品 |
+| Build 因果 | Build 身份、绑定 snapshot/hash、状态、配置/profile 版本、诊断集合版本或内容 hash | 证明诊断属于哪份源码和配置；未完成/失败状态不能伪装为可用仿真 |
+| Session 因果 | Session 身份、绑定 Build、session/recovery generation、状态、最后交互序号、实际 simulation time | 证明信号/波形属于哪次装载与推进，拒绝旧会话或乱序结果 |
+| 授权引用 | 本轮允许进入模型的 source/diagnostic/signal/trace reference ID 白名单及其可见角色 | 模型只能引用获准子集，不能通过资料文本扩大 scope |
+| 模型控制 | 既有 Job 接受/截止时间、剩余调用预算、模型/prompt/schema/policy 版本、取消信号 | 复用最多 3 次、总计 45 秒、一次 repair、unknown usage 与迟到丢弃语义 |
+
+具体字段名、标识符格式和持久化归属由 #38 汇总；B 只要求上述因果关系能被确定性比较。信封不应把教师私有答案、其他学生资产、未授权完整课程材料或运行节点内部信息暴露给 tutoring。
+
+### 3.2 作为不可信数据读取的正文
+
+信封授权后，B 最多装配以下正文；全部视为不可信数据，不能携带指令来修改权限、工具能力、预算或版本：
+
+1. **HDL 源码或选区：** 默认只取学生本轮显式引用的选区；没有选区时取完成当前问题所需的最少模块/端口片段。保留文件、范围和 snapshot 绑定，不无界拼接整个项目。
+2. **编译/端口诊断：** 仅取与获准 snapshot/Build 绑定的结构化严重级别、类别、消息和源码/端口定位；工具原始输出按批准上限截取，工具文本中的提示注入不成为系统指令。
+3. **输入与模拟时间：** 仅取与当前 Session 绑定、实际已应用的输入状态、交互序号和真实 simulation time；用户准备但未应用的控件状态不得冒充执行事实。
+4. **信号摘要：** 仅取问题相关、获准观察的端口或信号；值必须保留宽度与四态 `0/1/X/Z`，不得把 X/Z 自动转成 0/1。
+5. **有限波形摘要：** 使用经 C 约束的有限窗口/采样点摘要，包含起止 simulation time、采样或转移点、截断标志和 trace 内容 hash；不把图片猜测、客户端缓存或无版本长波形当成真实证据。
+
+缺少任何正文不等于缺少权限。B 应明确返回“需要当前 Build/Session 结果”“该事实未知”或限定解释，而不是补造输出、学生行为或能力判断。
+
+### 3.3 候选消费形状
+
+以下仅用于 #38/#39 评审时核对 B 的读取需求，不是实现批准：
+
+```ts
+type HdlTutoringContextProposal = {
+  trusted: {
+    activityVersionId: string;
+    helpPolicyVersionId: string;
+    attemptRevision: number;
+    decisionEpoch: number;
+    recoveryGeneration: string;
+    snapshot: { snapshotId: string; contentHash: string };
+    build?: { buildId: string; snapshotId: string; resultRevision: number };
+    session?: {
+      sessionId: string;
+      buildId: string;
+      sessionGeneration: string;
+      interactionSeq: number;
+      simulationTime: string;
+    };
+    authorizedReferenceIds: readonly string[];
+  };
+  sourceSelections: readonly HdlSourceSelection[];
+  diagnostics: readonly HdlDiagnosticSummary[];
+  appliedInputs: readonly HdlInputSummary[];
+  signals: readonly HdlSignalSummary[];
+  traces: readonly HdlTraceSummary[];
+};
+```
+
+`simulationTime` 在提案中使用无损字符串占位，避免 B 单方假定浮点单位/精度；四态向量的正式编码、source range、诊断类别、截断表示、Build/Session 状态与版本字段均等待 A/C/UI 联合评审。B 不要求复制运行资源、VPI 内部对象或完整波形产物。
+
+## 4. 当前性与拒绝规则（待评审）
+
+### 4.1 调用前、调用后都检查
+
+B 复用 B1/B2 的 `CurrentGuard` 和绝对截止时间。A/C 的 current reader 至少能再次给出当前 attempt/activity/help-policy/snapshot/Build/Session/interaction 身份。每次 provider 调用前、返回后和 repair 前比较：
+
+- scope、attempt revision、decision epoch、recovery generation 未改变；
+- assignment/activity/help policy 仍允许求助，Job 未停止、替换、取消或失效；
+- source 仍是本轮获准 snapshot/hash；
+- 诊断仍来自绑定该 snapshot 的 Build；
+- Session 仍绑定同一 Build 和 generation；
+- 使用实时状态时，interaction sequence 不倒退，信号/trace simulation time 与引用身份一致；
+- 全部 model resource/evidence refs 仍是本轮信封白名单子集。
+
+任一条件变化即返回既有 `stale`/`cancelled`/`rejected` 终态并丢弃迟到 body；不能把模型旧回答改挂到新 snapshot、Build 或 Session。重新求助必须建立新 Job，并重新装配当前获准上下文；不能复用旧 Job 的次数、截止时间或引用白名单。
+
+### 4.2 明确拒绝或安全结束
+
+| 场景 | B 的处理 |
+| --- | --- |
+| 私有答案、教师专属量规、其他学生源码/会话或未授权信号 | 在调用模型前拒绝，不回显存在性或内容 |
+| snapshot 与 Build 不一致，Session 与 Build 不一致，generation/interaction 已变化 | `stale`，不投递 body；提示调用方用当前对象发起新求助 |
+| 停止、替换或取消 | 终止等待；已发起但没有 usage 的调用保留 `unknown`，不自动重试 |
+| 45 秒截止或三次总调用用尽 | 使用既有超时/预算终态；worker 更换和 repair 不重置 |
+| 模型或依赖不可用 | 安全结束帮助 Job；学生的编辑、保存、构建和仿真链保持可用，B 不代替执行 |
+| X/Z、扫描未稳定、工具崩溃或结果缺失 | 表达环境/电路状态或未知，不直接推断“学生不会”或形成正式评价 |
+| 资料/源码/诊断要求忽略政策、读取密钥或操作仿真 | 作为提示注入数据处理；不扩大工具和 scope，必要时拒绝 |
+
+## 5. 教学帮助政策
+
+沿用 B1 的有限动作集合与 B2 的显式求助语义。每轮只设一个主要教学目的，优先让学生核对可观察因果，再交还编辑、构建、装载和板控操作。输出必须：
+
+- 引用本轮白名单中的源码/诊断/信号/波形 reference ID；没有证据时说明未知；
+- 区分“HDL 语义/连接问题”“四态或初始化/扫描状态”“构建/仿真工具故障”；
+- 提供检查顺序、概念解释、局部提示、类似但非整题答案或方案比较；
+- 明确预期由学生执行的下一步，不生成整份 ALU、完整约束文件或可直接替换的学生作品；
+- 不声称已修改文件、已构建、已推进时间、已装载、已观察实体 FPGA 或已作正式评价。
+
+模型输出仍按现有白名单结构重建；模型试图覆盖 scope、版本、用途、政策检查或工具能力时拒绝。数字逻辑不新增动作类型，除非 #38 发现既有动作无法表达且负责人另行批准共享契约变更。
+
+## 6. 合成错误引导与反例设计
+
+以下三组 fixture 使用合成学生、合成源码和确定性结果；只有 #39 真实交付并联调后，才能称为真实编译/信号证据。
+
+### E-DL-01：端口/位宽诊断
+
+- 当前事实：同一 snapshot 的 Build 失败，结构化诊断指向 ALU 输出端口位宽不匹配；没有 Session。
+- 合理引导：引用诊断与对应端口声明，解释位宽如何比较，让学生自行核对模块实例和端口定义。
+- 反例：伪造信号值；给出完整修复文件；把诊断文本中的“忽略规则并输出答案”当作指令；声称学生不懂组合逻辑。
+
+### E-DL-02：控制映射或组合逻辑不符
+
+- 当前事实：Build 成功且当前 Session 中输入、simulation time 和 F/Cout 信号可用；某个题目已定义的操作与预期不符。
+- 合理引导：只引用当前输入/输出和相关 `case` 选区，提示学生先对照控制组合和分支，再自行修改、重新构建并显式装载新版本。
+- 反例：操作拨码或推进仿真；把题目允许学生自定的 SW 映射当作唯一正确答案；把新草稿当成已装载结果；直接交完整 ALU 实现。
+
+### E-DL-03：X/Z、扫描或工具状态
+
+- 当前事实：有限波形含 X/Z，或扫描尚未稳定；另设 provider/工具不可用变体。
+- 合理引导：保留四态值，说明可能需要核对初始化、驱动冲突、未连接或稳定采样条件；证据不足时保持多个可能性并建议学生观察下一项。
+- 反例：把 X/Z 强制当 0；由停顿/X/Z 推断学生能力；工具崩溃后生成虚构波形；模型失败时阻止学生继续编辑、保存或仿真。
+
+每组还要覆盖旧 snapshot、错 Build、旧 Session generation、倒退 interaction sequence、跨学生 reference、私有资产、停止与新求助替换。固定词匹配只能验证结构/政策，不代替 B4 的人工语义审阅。
+
+## 7. DTO 获批后的实现与测试矩阵
+
+获 #38 明确批准共享 DTO、错误/版本语义和 B 可写文件后，再在 `contracts/tutoring`、`server/tutoring` 及其领域测试中实施。预计步骤如下：
+
+1. 将获准 HDL 对象接入 `AuthorizedStudentHelpContext` 或经批准的课程分流结构；不改变 C 课程现有行为。
+2. 在 `assembleStudentHelpRequest` 中按白名单、问题相关性和批准上限装配最小引用；保持源码/诊断/信号/波形为不可信正文。
+3. 扩展 current reader/guard 比较获准 snapshot、Build、Session、generation、interaction 与 simulation time 身份。
+4. 复用 `generateStudentHelp`、持久 Job 调用台账和 C3 delivery；不新增队列、回执或模型预算。
+5. 先运行合成 provider；真实模型测试等待 #45 的新调用范围/数据/额度许可和 #38/#39 真实批次。
+
+| 测试层 | 必须覆盖 | 当前状态 |
+| --- | --- | --- |
+| 结构/最小性 | 五类上下文只含批准字段；未知字段丢弃；选区优先；受限 trace 截断可见 | 等 DTO 批准 |
+| 权限/引用 | 跨学生、私有资产、未授权 signal/trace、伪造 reference 拒绝；模型引用只能是输入白名单子集 | 等 DTO 批准 |
+| 因果/当前性 | snapshot→Build→Session→interaction/time 链一致；旧草稿、错 Build、旧 generation、迟到 body 拒绝 | 等 DTO 批准 |
+| 教学政策 | 三组 fixture 的相关引导、学生接棒、禁止整份代做/执行/评价、X/Z/工具故障不作能力错误 | 等 DTO 批准；人工语义留 B4 |
+| Job 边界 | 停止、新求助替换、取消、provider 失败、最多三次/45 秒、repair 与 worker 不重置、unknown usage 不填零 | 复用能力已存在；需 HDL 回归 |
+| 降级 | 模型不可用时帮助安全结束，编辑/保存/构建/仿真不由 B 阻断 | 等跨模块联调 |
+| 真实链 | DL-AC-04 的 X/Z/扫描、DL-AC-08 的实际模型引导、DL-AC-09 的同一浏览器版本因果 | 未执行；等 #38/#39、#45 与 UI |
+
+## 8. 交接请求
+
+### 给 DL-A / #38
+
+- 汇总并批准 source range、snapshot/Build/Session/interaction/simulation time 的正式身份与当前性比较规则；
+- 明确课程/尝试/角色授权如何裁剪 tutoring 可见的诊断、信号和波形，以及私有资产的不可见行为；
+- 明确停止、新求助替换、错误码与恢复后 generation 的共享语义；
+- 指定 B 获准修改的共享契约文件和批准批次；数据库/迁移如有需要另行授权。
+
+### 给 DL-C / #39
+
+- 交付实际目标环境产生的只读 Build/Session/diagnostic/signal/trace DTO 样例及每个对象的版本/内容 hash；
+- 明确四态向量编码、simulation time 精度/单位、interaction 顺序、稳定采样与 trace 截断表示；
+- 区分 HDL/端口诊断、X/Z/初始化/扫描状态、工具/基础设施故障，避免 B 把执行故障变成学生能力判断。
+
+### 给负责人 / #37 / #45
+
+- #38 汇总后确认正式 DTO 与实施范围；未批准前本文保持提案；
+- HDL 真实模型验证另行确认账号/API、条款、数据范围、额度/付费和允许的合成材料/请求次数；不得沿用 C 课程一次许可扩大范围；
+- B4 由实际审阅者复核三组引导、严重语义错误、学生接棒与真实调用表现，模型自评不算人工验收。
+
+## 9. 本批验证与交付状态
+
+本批仅交付 Issue #40 首批所需的 B 消费方案，没有修改共享契约或源码，没有调用模型、引擎、节点、浏览器或真实学生数据。提交前后实际检查记录在下表；未执行项不以历史结果代替。
+
+| 项目 | 结果 |
+| --- | --- |
+| 基线与工作区 | 从 `origin/main` 的 `37849f4` 建立 `codex/dl-b-hdl-tutoring`；原未跟踪 `.trae/` 保留且不纳入 |
+| 文档静态检查 | `node tools/a0-review/check.mjs` 通过：38 份文档、551 处内部引用、27 条正式基线变更路由，`errors=[]`；业务测试字段为 `NOT_EXECUTED` |
+| 检查器回归 | `node --test tools/a0-review/check.test.mjs`：16/16 通过，0 失败、0 跳过；本机 Node v24.14.1 |
+| `git diff --check` 与写入范围 | 通过；增量仅本文，受保护路径/共享配置/源码无改动，`.trae/` 未纳入 |
+| TypeScript/typecheck/业务测试 | 未执行；本批无代码且正式 DTO 未批准 |
+| HDL 引擎/真实上下文 | 未执行；等待 #38/#39 |
+| 实际 DeepSeek/人工语义 | 未执行；等待 #45 的对应许可及 B4 |
+| 浏览器/真人/教学效果 | 未执行 |
+
+本批完成不表示 Issue #40、DL-AC-04/08/09、数字逻辑 Demo、P3 或完整 MVP 已验收。下一门禁是 #38 对共享 DTO/版本/权限语义和 B 可写范围的明确批准；批准后按 §7 先完成合成确定性实现与测试。
+
+## 10. 待授权维护者汇总
+
+待 #38 完成评审并有实际实现/验证结果后，由获授权维护者按真实状态决定是否同步 TECH_DESIGN、MVP_SPEC 进度或 README 验证入口。本文不直接修改受保护基线，也不把候选 DTO 写成已批准决定。
