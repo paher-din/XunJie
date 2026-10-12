@@ -269,6 +269,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 
 2026-10-13，A4 获准服务端批次已完成代码与两轴审查，专项 43/43、typecheck/build 通过；固定源码全量 307 项为 297 通过、1 个既有 Windows/Linux RunControl 环境失败、9 跳过，历史失败保留。验收记录、原日志摘要、消费接缝与后置项见 [A4 最终记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#11-最终固定源码验收证据与交付边界2026-10-13)；[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#74-2026-10-13-远端复核与本批交接) 的 A 域提前评审准备已交，仍缺 C/B/UI 具体契约和实施授权。远端新增 PR #46/#47 尚未合入本源码，#38/#41 未关闭，基线待授权维护者汇总。
 
+2026-10-13，负责人批准公开推送与创建 A4 PR，已交付 [PR #49](https://github.com/paher-din/XunJie/pull/49)；创建时无合并冲突，#38/#41 保留 Open。公开交付不改变上述验收结果或 DL-A 待决条件，实际发布记录见 [A4 §11.4](docs/tasks/A4_LEARNER_STATE_REVIEW.md#114-负责人批准的公开交付2026-10-13)。
+
 ### 当前整体状态与后置验收
 
 当前 `npm start` 仍只启动健康入口；业务宿主需显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。

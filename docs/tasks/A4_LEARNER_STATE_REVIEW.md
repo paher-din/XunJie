@@ -225,3 +225,9 @@ Standards：固定基线→`0073fa6` 发现 1 个 README 运行目录 P3；`0073
 2026-10-13 远端 main 未变；新增 Open [P2 PR #46](https://github.com/paher-din/XunJie/pull/46) 与 [C4 PR #47](https://github.com/paher-din/XunJie/pull/47)，均未合入本源码。#47 在 workspaceSchema 追加两表，若后续合入 A4 将形成 33 表（不含 A3 两表）；当前 31 表批准/验证不延伸为该联合 schema 或迁移许可，后续精确表集合、授权和联合回归须另行登记。本批不代 C 实现作品恢复，不因 B 报告真实调用而自动启用本机真实模型。
 
 待获授权维护者汇总到 MVP 第 10 节：§9 的实际代码/受控接口、上述固定源码与真实命令/结果、唯一环境失败、9 跳过和本节后置项；到 TECH 汇总获准自述/状态/决定/异议/原分析持久化、确切引用可用性、原 Job 最终接纳/C3 同事务纠正/B2 trusted state reader 的实际签名与用途守卫。product/planning/reference/AGENTS 在本批保持只读，未宣称已完成该汇总。B3/C4/A5 各域依 §9 复核消费，原 G0～G4 和正式验收条件保留。
+
+### 11.4 负责人批准的公开交付（2026-10-13）
+
+负责人明确答复“批准推送并创建 PR”，批准公开交付已验证的 `codex/a4-learner-state-review` 分支（创建时 head=`2afff290ef96519f1cade819256aa7c4449b3734`）、A4 代码/合成验收证据与 DL-A 评审准备，#38/#41 保留 Open。已推送该分支并创建 [A4 PR #49](https://github.com/paher-din/XunJie/pull/49)，目标 main，创建后核对 state=OPEN、isDraft=false、mergeable=MERGEABLE、mergeStateStatus=CLEAN；未合并 PR、关闭 Issue 或执行部署。GitHub 连接器创建接口返回集成权限 403，改用本机已授权 GitHub CLI 的同一正文成功创建，PR 已附到任务。
+
+本节及 README 为公开交付事实同步，不改变固定源码 `2f4114a`、§11.1 的测试结果或后置条件。#38/#41 的 Open 状态已从远端核对，DL-A 缺 C/B/UI 输入和其他实施门禁保留；无关工作未纳入提交。§11 首段“待公开交付”是本节创建之前的时点记录，现转为已公开交付、待负责人审阅接收。
