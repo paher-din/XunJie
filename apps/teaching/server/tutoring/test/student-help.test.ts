@@ -27,7 +27,7 @@ const versions = {
   policy: "help-v1",
 };
 
-async function fixture() {
+async function fixture(teacherAgent = false) {
   const db = createTeachingDatabase();
   let time = Date.now();
   let clockStepMs = 0;
@@ -61,6 +61,7 @@ async function fixture() {
       return current;
     },
     studentHelp: { versions, budgetAvailable: () => budgetAvailable },
+    ...(teacherAgent ? { teacherAgent: { provider: new SyntheticProvider([]), versions, budgetAvailable: () => true } } : {}),
     runner: async (command) => {
       if (command.op !== "readiness") throw new Error("Synthetic runner operation unavailable");
       return { data: {
@@ -97,16 +98,18 @@ async function fixture() {
     const control = request.body as {
       withdrawBudgetAfterFirst?: boolean;
       unknownUsageBeforeBudgetWithdrawal?: boolean;
+      unresolved?: string[];
     };
     let providerCalls = 0;
     const provider: ModelProvider = {
       async generate(modelRequest) {
         providerCalls += 1;
         const untrusted = modelRequest.untrustedInput as { references?: { id: string }[] };
+        const body = { ...validBody(untrusted.references?.[0]?.id ?? "missing"), unresolved: control.unresolved ?? [] };
         if (control.withdrawBudgetAfterFirst && providerCalls === 1) {
           budgetAvailable = false;
           return {
-            body: validBody(untrusted.references?.[0]?.id ?? "missing"),
+            body,
             needsAnotherCall: true,
             ...(control.unknownUsageBeforeBudgetWithdrawal
               ? {}
@@ -114,7 +117,7 @@ async function fixture() {
           };
         }
         return {
-          body: validBody(untrusted.references?.[0]?.id ?? "missing"),
+          body,
           usage: { status: "actual", inputTokens: 17, outputTokens: 9 },
         };
       },
@@ -1072,6 +1075,69 @@ test("authorized execution persists one C3 message/action with the held lease an
   } finally {
     await f.close();
   }
+});
+
+test("tutoring composer can attach the teacher agent without taking over student jobs", async () => {
+  const f = await fixture(true);
+  try {
+    const setup = await setupProject(f);
+    const accepted = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+      expectedAttemptRevision: 1, question: "Give me a bounded hint.",
+    });
+    assert.equal(accepted.statusCode, 200, accepted.body);
+    const jobId = String(accepted.json().data.result.jobId);
+    const executed = await f.service.app.inject({ method: "POST", url: `/fixture/execute/${setup.attemptId}/${jobId}`,
+      headers: setup.student, payload: {} });
+    assert.equal(executed.statusCode, 200, executed.body);
+    const stopped = await command(f.service.app, setup.student, `/api/jobs/${jobId}/cancel`, {});
+    assert.equal(stopped.statusCode, 200, stopped.body);
+    const records = await f.service.app.inject({ url: `/api/attempts/${setup.attemptId}/teaching-records`, headers: setup.teacher });
+    assert.equal(records.statusCode, 200, records.body);
+    assert.equal(records.json().data.actions[0].disposition, "cancelled");
+  } finally { await f.close(); }
+});
+
+test("long unresolved teaching text survives C3 persistence and exact result replay", async () => {
+  const f = await fixture();
+  f.service.app.post("/fixture/complete/:attempt", request => ({ data: f.service.workspace.teaching.completeTeaching!(
+    request, (request.params as { attempt: string }).attempt, request.body) }));
+  try {
+    const setup = await setupProject(f);
+    const accepted = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+      expectedAttemptRevision: 1, question: "Give me a bounded hint.",
+    });
+    assert.equal(accepted.statusCode, 200, accepted.body);
+    const jobId = String(accepted.json().data.result.jobId);
+    const unresolved = ["u".repeat(129), "缺少相关的实际表现，无法确认独立掌握。".repeat(12)];
+    const executed = await f.service.app.inject({ method: "POST", url: `/fixture/execute/${setup.attemptId}/${jobId}`,
+      headers: setup.student, payload: { unresolved } });
+    assert.equal(executed.statusCode, 200, executed.body);
+    const execution = executed.json().data;
+    assert.deepEqual(execution.outcome.body.unresolved, unresolved);
+    const input = { jobId, leaseToken: `lease-${jobId}`, bodyJson: JSON.stringify(execution.outcome.body),
+      versions: { activityVersionId: setup.activityId, policyVersionId: "help-v1", modelConfigVersion: versions.modelConfig,
+        promptVersion: versions.prompt, schemaVersion: versions.schema }, usage: execution.outcome.usage,
+      calls: execution.outcome.calls, elapsedMs: execution.outcome.elapsedMs,
+      basis: { attemptRevision: 2, decisionEpoch: 0, captureRevision: 0, relatedStateRevision: 0,
+        inputRefs: execution.authorizedReferenceIds, assistanceRefs: [], coverageRefs: [] } };
+    const replay = await command(f.service.app, setup.student, `/fixture/complete/${setup.attemptId}`, input);
+    assert.equal(replay.statusCode, 200, replay.body);
+    assert.equal(replay.json().data.replayed, true);
+    assert.equal(replay.json().data.messageId, execution.delivery.messageId);
+    const changed = await command(f.service.app, setup.student, `/fixture/complete/${setup.attemptId}`, {
+      ...input, bodyJson: JSON.stringify({ ...execution.outcome.body, unresolved: ["Changed text"] }),
+    });
+    assert.equal(changed.statusCode, 409, changed.body);
+    const records = await f.service.app.inject({ url: `/api/attempts/${setup.attemptId}/teaching-records`, headers: setup.teacher });
+    assert.equal(records.statusCode, 200, records.body);
+    const modelMessages = records.json().data.messages.filter((message: { authorKind: string }) => message.authorKind === "model");
+    assert.equal(modelMessages.length, 1);
+    assert.deepEqual(modelMessages[0].envelope.body.unresolved, unresolved);
+    assert.equal(modelMessages[0].envelope.bodyJsonText, input.bodyJson);
+    assert.equal(records.json().data.actions.length, 1);
+    const state = await attemptView(f, setup.student, setup.attemptId);
+    assert.equal(state.jobs.find((job: { jobId: string }) => job.jobId === jobId).status, "succeeded");
+  } finally { await f.close(); }
 });
 
 test("a withdrawn trusted budget blocks the next provider call before reservation", async () => {

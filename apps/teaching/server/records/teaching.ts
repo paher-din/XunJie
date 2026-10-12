@@ -50,7 +50,7 @@ const receiptSchema = z.strictObject({ receiptId: id, actionId: id, deliveryId: 
 const studentHelpBodySchema = z.strictObject({ kind: z.literal('student_help'),
   actionType: z.enum(['plan','clarify','hint','explain','compare','verify_suggestion','reflect','extend','handoff_teacher','no_action']),
   content: z.string().min(1), rationale: z.string().min(1), expectedStudentAction: z.string().min(1),
-  evidenceIds: z.array(id), resourceRefs: z.array(id), assistanceContext: z.string().min(1), unresolved: z.array(id),
+  evidenceIds: z.array(id), resourceRefs: z.array(id), assistanceContext: z.string().min(1), unresolved: z.array(z.string()),
   policyChecks: z.strictObject({ containsWholeSolution: z.literal(false), writesStudentWork: z.literal(false),
     runsCode: z.literal(false), makesFormalEvaluation: z.literal(false) }) });
 

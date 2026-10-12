@@ -26,7 +26,8 @@ export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?
 const attemptResult = z.strictObject({ attemptId: z.string(), activityVersionId: z.string(), assignmentId: z.string() });
 export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   const { teaching: extensions, ...designOptions } = options;
-  const instance = await createDesignApp({ ...designOptions, ...(extensions?.design ? { teaching: { stop: extensions.design } } : {}) });
+  // Workspace owns the shared Job paths and dispatches each purpose to its original handler.
+  const instance = await createDesignApp({ ...designOptions, ...(extensions?.design ? { teaching: { stop: extensions.design } } : {}) }, false);
   const { app, access } = instance;
   const now = options.now ?? Date.now;
   const teachingStop = options.teaching?.stop;
@@ -151,27 +152,31 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     if (!row?.attempt_id) throw new ApiError('FORBIDDEN');
     return String(row.attempt_id);
   }
+  function jobCourse(tx: Transaction, jobId: string) {
+    const row = tx.get('SELECT course_id FROM jobs WHERE job_id=?', jobId);
+    if (!row || typeof row.course_id !== 'string') throw new ApiError('FORBIDDEN');
+    return row.course_id;
+  }
 
   app.post('/api/jobs/:id/cancel', request => {    const jobId = attemptId(request), input = parseRequest(cancelInput, request.body);
     // Read-only preflight: `execute` below owns the session activity bump, so this one must not advance it.
-    const purpose = access.withAuthorizedCourse(request, tx => {
-      const row = tx.get('SELECT course_id,purpose FROM jobs WHERE job_id=?', jobId);
-      if (!row || typeof row.course_id !== 'string') throw new ApiError('FORBIDDEN');
-      return row.course_id;
-    }, undefined, (tx, actor) => {
+    const purpose = access.withAuthorizedCourse(request, tx => jobCourse(tx, jobId), undefined, (tx, actor) => {
       const row = tx.get('SELECT purpose,student_id FROM jobs WHERE job_id=?', jobId);
+      if (row?.purpose === 'teacher_design') {
+        if (!instance.teacherAgent) throw new ApiError('FORBIDDEN');
+        return 'teacher_design' as const;
+      }
       if (row?.purpose === 'student_run' || row?.purpose === 'teacher_sample') {
         if (actor.role !== 'student' || row.student_id !== actor.userId) throw new ApiError('FORBIDDEN');
         return 'run' as const;
       }
-      // With a teaching stop attached every non-run purpose takes this student-only branch, so a teacher's
-      // design job is refused here; teacher-side design cancellation stays with A3's own entry.
       if (teachingStop) {
         if (actor.role !== 'student' || row?.student_id !== actor.userId) throw new ApiError('FORBIDDEN');
         return 'teaching' as const;
       }
       return 'run' as const;
     }, false);
+    if (purpose === 'teacher_design') return instance.teacherAgent!.cancelJob(request);
     if (purpose === 'teaching') return execute(request, tx => jobAttempt(tx, jobId), 'job.cancel', input.recoveryGeneration,
       (_tx, state, context) => cancelTeachingJobCommand(state, { ...context,
         stopReason: input.reason ?? 'explicit_job_cancel' }, jobId, teachingStop));
@@ -179,6 +184,9 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   });
   app.get('/api/jobs/:id', request => {
     const jobId = attemptId(request);
+    if (instance.teacherAgent && access.withAuthorizedCourse(request, tx => jobCourse(tx, jobId), undefined,
+      tx => tx.get('SELECT purpose FROM jobs WHERE job_id=?', jobId)?.purpose === 'teacher_design', false))
+      return instance.teacherAgent.readJob(request);
     const data = access.withAuthorizedResource(request, tx => locate(tx, jobAttempt(tx, jobId)), 'read', tx => {
       const state = loadWorkspace(tx, jobAttempt(tx, jobId));
       return readWorkspace(state, () => true).jobs.find(job => job.jobId === jobId);

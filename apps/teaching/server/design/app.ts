@@ -35,10 +35,10 @@ const patchInput = z.strictObject({ recoveryGeneration: generationSchema, expect
 
 const checksInput = z.strictObject({ recoveryGeneration: generationSchema, expectedRevision: versionSchema, concerns: z.array(teacherConcernSchema).default([]) });
 
-export async function createDesignVerificationApp(options: DesignVerificationOptions) {
+export async function createDesignVerificationApp(options: DesignVerificationOptions, registerTeacherJobRoutes = true) {
   const { app, access } = await createVerificationApp(options);
   const now = options.now ?? Date.now;
-  const teacherAgent = options.teacherAgent ? registerTeacherAgent(app, access, options, options.teacherAgent) : undefined;
+  const teacherAgent = options.teacherAgent ? registerTeacherAgent(app, access, options, options.teacherAgent, registerTeacherJobRoutes) : undefined;
   function currentGeneration() {
     const value = options.currentGeneration();
     if (!id.safeParse(value).success) throw new ApiError('DEPENDENCY_UNAVAILABLE');

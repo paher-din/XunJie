@@ -1,21 +1,22 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { createWorkspaceDatabase, createTeachingDatabase, openSyntheticDatabase } from '../db/transaction.ts';
+import { createWorkspaceDatabase, createTeachingDatabase, createTeacherDesignDatabase, openSyntheticDatabase } from '../db/transaction.ts';
 import type { SyntheticDatabase } from '../db/transaction.ts';
 import { createPasswordRecord } from '../access/password.ts';
 import { createWorkspaceApp } from './application.ts';
 import { createTeachingRecordsApp, teachingStopHandler, designTeachingStop } from '../records/application.ts';
 import { readRuntime } from '../records/runner.ts';
 import type { RunnerTransport } from '../records/runner.ts';
+import type { TeacherAgentOptions } from '../design/teacher-agent.ts';
 
 export const origin = 'https://synthetic.example';
 export const syntheticProfile = { runtimeProfileVersion: 'runtime-v1', imageDigest: 'sha256:' + 'a'.repeat(64),
   compilerImage: 'sha256:' + 'b'.repeat(64), runtimeImage: 'sha256:' + 'c'.repeat(64), approvedResultFiles: ['report.txt'] };
 // The default fixture keeps C2's approved factory/table set; only the C3 teaching suite opts into the
 // four extra teaching tables and the composed teaching app.
-export async function fixture(transport?: RunnerTransport, configuration: {teaching?: boolean} = {}) {
+export async function fixture(transport?: RunnerTransport, configuration: {teaching?: boolean; teacherAgent?: TeacherAgentOptions} = {}) {
   const runtime = transport ? await readRuntime(transport) : undefined, profile = runtime?.profile ?? syntheticProfile;
-  const createDatabase = configuration.teaching ? createTeachingDatabase : createWorkspaceDatabase;
+  const createDatabase = configuration.teacherAgent ? createTeacherDesignDatabase : configuration.teaching ? createTeachingDatabase : createWorkspaceDatabase;
   let db = createDatabase(), time = Date.now(), generation = runtime?.recoveryGeneration ?? 'generation', ready = true;
   let failStatement = '';
   const password = randomBytes(32).toString('base64url'), signingSecret = randomBytes(48).toString('hex'), record = await createPasswordRecord(password);
@@ -39,6 +40,7 @@ export async function fixture(transport?: RunnerTransport, configuration: {teach
     } })); } };
   const settings = { enabled: Boolean(configuration.teaching) };
   const options = () => ({ db: wrapped, origin, signingSecret, currentGeneration: () => generation, runner, now: () => time,
+    ...(configuration.teacherAgent ? { teacherAgent: configuration.teacherAgent } : {}),
     ...(settings.enabled ? { teaching: { stop: teachingStopHandler, design: designTeachingStop(teachingStopHandler) } } : {}) }) as Parameters<typeof createWorkspaceApp>[0];
   let service = settings.enabled ? await createTeachingRecordsApp(options()) : await createWorkspaceApp(options());
   function register() {
