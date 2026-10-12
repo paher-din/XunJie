@@ -32,6 +32,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，剩余验证入口 [PR #36](https://github.com/paher-din/XunJie/pull/36) 已合入 main（`46617a2`），本次 P2 工程审查通过，[#24](https://github.com/paher-din/XunJie/issues/24)、B1 #11、B2 #26 已关闭；全部 B 侧未完成项由 [#45](https://github.com/paher-din/XunJie/issues/45) 继续承担。typecheck/build 与 49 项专项验证通过，2 项真实模型测试按门禁跳过；真实调用及人工语义仍待完成，B 交付后由负责人通知复审，不自动跟进，见 [G2 第 18.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#184-已完成收口与最终交付)。
 
+2026-10-12，P3 的 [C4 #43](https://github.com/paher-din/XunJie/issues/43) 已由 C 在分支 `codex/c4-submissions-recovery`（`7063fd2`）交付服务端实现并建立 [PR #47](https://github.com/paher-din/XunJie/pull/47)，尚未合并，#43 保持 Open。改动全在 C 属，A 属与 B 属文件零改动；新增两张表只写 C 属合成 schema，属红线内的 schema 追加，已在任务稿与 PR 正文明示并请负责人复核。任务稿第 6 节的四项解释与跨属提案待负责人裁决，A4/A5 实际路由接入后的联合验证、真实浏览器/执行节点/备份恢复均未执行，分层结果见 [C4 第 8 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#8-实现记录)。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -264,6 +266,8 @@ node --test server/workspace/submissions.test.ts
 ```
 
 2026-10-12，验证结果为服务端确定性验证通过、其余分层未执行。C4 专项 10/10 通过；全工程 typecheck 与 build 通过；完整套件 274 项中 264 通过、1 失败、9 跳过，同一命令在基线 37849f4 的独立工作树实测 264 项中 254 通过、1 失败、9 跳过，即净增 10 项测试与 10 项通过，失败数与跳过数不变。唯一失败项在两侧完全相同，是 `review.test.ts` 经 `control.ts` 要求 Linux 的既有平台失败，C4 未修改这两个文件；9 项跳过全部来自既有的平台与环境门，C4 新增测试文件不含任何跳过。真实浏览器与 UI 接入、真人教师与学生、真实模型语义、真实执行节点掉线与迟到结果对账、完整备份恢复与实际 RPO/RTO、真实数据库建表迁移与生产部署均未执行；A4/A5 实际路由接入后的联合验证同样未执行，本任务只用测试支撑中模拟 A5 的教师路由验证接缝形状。任务稿第 6 节的四项解释与跨属提案仍待负责人确认，未获确认前不是已批准契约。实际代码位置、命令、原始结果、验证中修正的两处缺陷与未执行清单见 [C4 第 8 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#8-实现记录)。
+
+2026-10-12，C4 已按普通推送交付分支 `codex/c4-submissions-recovery`（`7063fd2`）并建立 [PR #47](https://github.com/paher-din/XunJie/pull/47)，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。合并由负责人执行，本任务不代签、不自行合并，也不把 PR 建立当作应用验收。
 
 ### 当前整体状态与后置验收
 

@@ -88,7 +88,7 @@ C 提供两个同连接、同事务的能力供 A5 调用，与 [TECH §7.2.1](.
 
 ## 8. 实现记录
 
-2026-10-12 在独立工作树 `codex/c4-submissions-recovery`（基线 `origin/main` 37849f4）完成实现与服务端验证。
+2026-10-12 在独立工作树 `codex/c4-submissions-recovery`（基线 `origin/main` 37849f4）完成实现与服务端验证，提交为 `7063fd2`，已普通推送并以 [PR #47](https://github.com/paher-din/XunJie/pull/47) 交付审查，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。合并由负责人执行，本任务不代签、不自行合并，也不把建立 PR 当作应用验收。主工作树的既有未提交改动与未跟踪文件全程未被触碰，本任务不使用个人目录作为文档、源码或证据入口。
 
 ### 8.1 实际代码位置
 
@@ -119,6 +119,8 @@ C 提供两个同连接、同事务的能力供 A5 调用，与 [TECH §7.2.1](.
 同一命令在基线 37849f4 的独立临时工作树上实测：264 项，254 通过、1 失败、9 跳过；C 属模块基线为 53 项，50 通过、1 失败、2 跳过。即 C4 净增 10 项测试与 10 项通过，失败数与跳过数不变。
 
 唯一失败项在两侧完全相同：`server/workspace/review.test.ts:118` 经 `runner/control.ts:48` 抛 `RunnerError: Linux and trusted control context required`（`INVALID_CONFIGURATION`）。C4 未修改这两个文件，该失败是 win32 平台的既有基线失败，不是本任务引入。9 项跳过全部来自既有的平台与环境门（如 `runs.test.ts` 中 `skip:process.platform!=='linux'||process.env.XUNJIE_C2_RUNTIME!=='1'` 的真实 C1 SSH 用例），C4 新增测试文件不含任何 `skip`。
+
+按 README 编辑规范，改动 README 与本任务稿后从仓库根执行 `node tools/a0-review/check.mjs`，退出码 0，`errors` 为空数组，校验覆盖 38 份文档与 571 条行内引用；输出中的 `additionalProposedRoutes` 为空，说明本任务使用的 `POST /api/attempts/:id/submissions` 与 `GET /api/attempts/:id/recovery` 都在已批准路由集合内，没有引入未批准的新增路由提案。基线核对用的临时工作树与 `node_modules` 目录联接已在测量后删除，删除前先移除联接再删目录，复制来的真实 `node_modules` 经核对完整保留。
 
 ### 8.4 验证中发现并修正的实际缺陷
 
