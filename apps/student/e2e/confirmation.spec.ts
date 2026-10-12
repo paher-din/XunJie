@@ -252,8 +252,10 @@ test('g2 回退头读取后 g1 ACK 到达，只保留旧请求事实与草稿', 
   })
   expect(rotated.status).toBe(200); expect(rotated.after).not.toBe(rotated.before)
   await page.getByRole('button', { name: '重新读取', exact: true }).click()
-  await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
-  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('登录状态已更新。请重新读取后再保存。')
+  // 这条旧代际原命令尚未被服务拒绝，因此仍要求先重新读取（结论与操作都在可见处）
+  await expect(page.locator('.ws-head-run [role=alert]'))
+    .toHaveText('这里的工作区已经过期，草稿已保留。请先重新读取，再决定怎么保存。')
+  await expect(page.locator('.ws-flow')).toBeHidden()
   held.release()
   await expect.poll(async () => (await localState(page)).commands.find((r: { kind: string }) => r.kind === 'workspace.sync').state).toBe('historical')
   const local = await localState(page)
@@ -410,7 +412,7 @@ test('整批保存被拒绝时服务端不部分创建，草稿和原命令保�
   })
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-head-run [role=alert]'))
-    .toHaveText('作品在别处有了新的版本。请先重新读取，再决定怎么保存。')
+    .toHaveText('作品在别处有了新的版本，草稿已保留。请先重新读取，再决定怎么保存。')
   const authoritative = await page.evaluate(async () => {
     const scenario = new URLSearchParams(location.search).get('scenario')!, headers = { 'x-i0prep-scenario': scenario }
     const context = (await (await fetch('/__i0prep/context', { headers })).json()).data

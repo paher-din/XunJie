@@ -1,6 +1,7 @@
 import { Icon, IconText } from '../../icons'
 import type { ReactNode } from 'react'
 import { describeFailure } from '../../workspace/http'
+import { reportDiagnostic } from '../../workspace/diagnostics'
 import type { MaterialRead, WorkspaceInit } from '../../workspace/init'
 import { PREP_ENTRY_COURSE, PREP_ENTRY_NOTE } from '../../workspace/prepEntry'
 
@@ -211,10 +212,8 @@ function MaterialList({ materials }: { materials: MaterialRead[] }) {
             <>
               <p className="ts-material-title">{m.state.view.title}</p>
               <pre className="ts-material-text">{m.state.view.text}</pre>
-              <p className="ts-material-meta">
-                resourceVersionId <code>{m.state.view.resourceVersionId}</code> · {m.state.view.paragraphs.length} 段 ·
-                sha256 <code>{m.state.view.contentHash.slice(0, 16)}…</code>
-              </p>
+              {/* 材料版本 ID 与内容摘要留在 HTTP 响应里排障，不给学生看。 */}
+              <p className="ts-material-meta">共 {m.state.view.paragraphs.length} 段</p>
             </>
           )}
           {m.state.kind === 'not-readable' && (
@@ -225,9 +224,7 @@ function MaterialList({ materials }: { materials: MaterialRead[] }) {
             </p>
           )}
           {m.state.kind === 'failed' && (
-            <p className="ts-material-note fail">
-              读取 <code>{m.state.resourceVersionId}</code> 失败 · {describeFailure(m.state.failure)}
-            </p>
+            <p className="ts-material-note fail">这份材料没有读取成功，请重新读取。</p>
           )}
         </li>
       ))}
@@ -247,7 +244,7 @@ function InitLoading() {
   return (
     <p className="ts-loading" role="status">
       <Icon name="refresh" size={14} tone="neutral" />
-      正在按 HTTP 信封读取会话、分配、活动与材料…
+      正在读取任务与材料…
     </p>
   )
 }
@@ -255,19 +252,18 @@ function InitLoading() {
 export function InitUnavailable({ init, onReload }: { init: WorkspaceInit; onReload: () => void }) {
   if (init.kind === 'stale') return null
   if (init.kind !== 'unavailable') return null
+  // 阶段码与失败体只进控制台：学生看到的是「为什么进不去 + 能做什么」。
+  reportDiagnostic('workspace.initialize-failed', { stage: init.stage, reason: init.reason,
+    failure: init.failure ? describeFailure(init.failure) : null })
   return (
     <div className="ts-unavailable" role="status">
       <p className="ts-unavailable-head">
         <Icon name="danger-triangle" size={16} tone="neutral" />
-        初始化不可用 · 阶段 <code>{init.stage}</code>
+        现在还不能进入工作区
       </p>
       <p className="ts-unavailable-reason">{init.reason}</p>
-      {init.failure && <p className="ts-unavailable-detail">{describeFailure(init.failure)}</p>}
-      <p className="ts-unavailable-note">
-        真实失败不回退到 Mock 成功，也不用准备常量顶替正式对象。缺口按 H-01～H-06 交接。
-      </p>
       <button type="button" className="outline" onClick={onReload}>
-        <IconText name="refresh">重新读取（换新的 loadEpoch）</IconText>
+        <IconText name="refresh">重新读取</IconText>
       </button>
     </div>
   )

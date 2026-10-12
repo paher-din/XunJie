@@ -31,9 +31,9 @@
 ## Acceptance criteria
 
 - [x] 断线编辑/刷新仍有原文草稿；未发草稿、在途未知命令、已确认正文分开，不把超时当拒绝/成功。`recovery.ts` 把「没拿到信封」定级为 `unresolved`（未知），只有拿到服务端错误信封才定级为拒绝；`useConfirmationWorkspace.projectSeedOf` 让确认头已含服务端实例、但本机映射尚未落库时，同一路径的未映射本机实例仍继续承载草稿；e2e 覆盖丢 ACK 与浏览器离线两条路径。
-- [x] ACK 丢失后核或重放原完整业务输入，键/seq/代际/正文不变；新编辑不能挂旧键。重放只发送冻结的 `wireJson` 与 `commandKey`；`原请求详情` 展示冻结命令的键、clientId/clientSeq、代际、预期版本与逐文件字节数/摘要；存在未决原命令时不允许发起新保存；e2e 逐条断言请求身份（键+正文）完全相同、未自动补发。
+- [x] ACK 丢失后核或重放原完整业务输入，键/seq/代际/正文不变；新编辑不能挂旧键。重放只发送冻结的 `wireJson` 与 `commandKey`；冻结命令的键、clientId/clientSeq、代际、预期版本与逐文件字节数/摘要**改由控制台诊断输出**（2026-10-12 文案整改，原「原请求详情」面板已移除）；存在未决原命令时不允许发起新保存；e2e 逐条断言请求身份（键+正文）完全相同、未自动补发，并从控制台取回原命令身份事实。
 - [x] 多标签抢原命令 lease 不导致新命令，重复重放仍是同键同正文；原命令已确认时停止重发，当前 head 需重读。发送租约仍由本机事务（`claim`）执行，抢租约只是拒绝本次发送且不产生任何命令；`reconcileStoredCommand` 发现记录已确认时走 `accept-local`：只在本机重新接纳同一回执并重读 head，不发请求。
-- [x] RECOVERY_REQUIRED 停旧重试，重读受信上下文；保持草稿并提示比较，不换代际/业务键续写。这两种终态结论下 `canReplay` 为假、重放按钮消失，重读按钮显示为「重读受信上下文」（复用 `init.reload` 的同一动作），并在原命令上留下拒绝事实，刷新后结论不变。VERSION_CONFLICT 转 04A 的明确选择，未交付时保留正文且阻止自动覆盖：`conflict` 态不提供重放、不允许新保存，服务端正文不被覆盖。非终态拒绝（限流/依赖或持久化不可用/未认证等）保留原命令与事实，但仍允许学生明确重试，不把暂时不可用变成永久封禁。
+- [x] RECOVERY_REQUIRED 停旧重试，重读受信上下文；保持草稿并提示比较，不换代际/业务键续写。该结论下 `canReplay` 为假、重放按钮消失，重读按钮显示为「重新读取」（复用 `init.reload` 的同一动作），并在原命令上留下拒绝事实，刷新后结论不变。`VERSION_CONFLICT` 同理停手。**版本比较与明确选择仍未交付（属 04A）**：学生被引导「先重新读取，再决定怎么保存」，比较入口随 04A 提供，本任务不伪造该能力。**2026-10-12 补充**：重新读取之后不再让旧代际原命令挡路——服务已明确拒绝过的那条原命令只留历史事实（`stale` 态：「上一次保存已过期」），学生可用**新的键与序号**在当前代际重新保存；结果未知的旧代际原命令仍然阻塞（防止重复生效），其比较由 04A 处理。VERSION_CONFLICT 转 04A 的明确选择，未交付时保留正文且阻止自动覆盖：`conflict` 态不提供重放、不允许新保存，服务端正文不被覆盖。非终态拒绝（限流/依赖或持久化不可用/未认证等）保留原命令与事实，但仍允许学生明确重试，不把暂时不可用变成永久封禁。
 - [x] 复用 03 的 loadEpoch/代际守卫；账号/模式/Attempt 切换后旧重连结果不回灌。`valid(guard)`、`sameGeneration` 与既有权威重核全部保留；`reconcileStoredCommand` 对换账号/模式/Assignment/Attempt 的旧记录一律 `stop`（新增单测），且当前工作区选未决原命令时只认同一 Attempt（同代际优先，其次同 Attempt 的旧代际），不回退到别处的工作区（两轴审查发现后修复）。暂停/终态仍按权威 Attempt 状态只读，不上传编辑过程（`sync` 输入不含 `process`）。
 - [x] 在普通 dev:prep 和实际浏览器测试复现丢 ACK→继续编辑→刷新→原请求重放，检查请求身份/数量、同 fileId 和正文保留；旧代际/存储失败也保留事实。fixture 新增开发专用 `POST /__i0prep/fault`：`drop-ack`（命令提交但不下发响应）与 `fail-write`（命令不提交、返回 503 `PERSISTENCE_UNAVAILABLE`），浏览器用例走同一 HTTP 与 IndexedDB；旧代际事实、终态拒绝事实、暂时拒绝事实、历史事实分别有断言。
 - [x] 跑相应工程及浏览器检查，记录准备范围；真实恢复没有执行就保持未执行。见下方验证记录；真实服务交接与 04A 比较仍未执行。
@@ -48,7 +48,7 @@
 | 拒绝事实 | `OutboxRecord.rejected?: { code, at }`：同一 outbox 记录的可选字段，不新增 store、不升库版本；`confirmationRepository.noteRejection` 只在没有回执时写入；`claim` 对已确认或已拒绝的原命令一律拒绝发送 |
 | 客户端 | `confirmationWorkspace` 新增 `outcome`/`original` 状态与 `rejected`/`conflict`/`recovery-required` 阶段；`send` 失败按结论分类并落盘事实；`retry` 先按落盘记录判定（已确认→本机重新接纳、已拒绝/换代→停止、租约被占→不发送、否则原样重放）；`refreshPending` 在另一标签通知后只刷新原命令事实 |
 | 草稿与实例关联 | `useConfirmationWorkspace.projectSeedOf`：fileId 映射优先；没有映射时，同一路径、尚未映射的活动本机实例继续作为该正文来源（只影响可见性，不建立映射，原请求仍待核对） |
-| 恢复交互 UI | `ConfirmationCluster.tsx`（设计仓库先行、主仓库逐字节一致）：三种新结论态；不可重放时只给「重新读取」；恢复态下隐藏草稿流与「恢复 Attempt」，避免顶栏被挤爆。页面只传 `state.outcome` 与 `canReplay` |
+| 恢复交互 UI | `ConfirmationCluster.tsx`（设计仓库先行、主仓库逐字节一致）：四种新结论态（含 `stale`）；不可重放时只给「重新读取」；恢复态下隐藏草稿流与「恢复 Attempt」，避免顶栏被挤爆；`stale` 不阻塞保存。页面只传 `state.outcome` 与 `canReplay` |
 | 学生文案与技术事实分离 | `recovery.ts` 分两层：`studentHint` 是界面唯一可见的一句话（结果 / 草稿是否保留 / 能做什么），`diagnosticText` 只进控制台；`src/workspace/diagnostics.ts` 以 `console.info('[i0-workspace] <event>', detail)` 输出命令身份、冻结输入摘要、错误码、代际、HTTP 失败体与快照 ID/hash（不含凭据与作品正文）。学生界面不出现错误码、命令键、clientId/seq、代际、接口路径、快照 ID/hash |
 | fixture 故障 | `prep/faults.ts` + `prep/plugin.ts`：`POST /__i0prep/fault`（按场景、需 CSRF、仅 prep 开发进程）；`drop-ack` 让写命令照常提交但不写响应并断开连接；`fail-write` 不提交命令并返回 503 `PERSISTENCE_UNAVAILABLE`。错误响应（401/403/409/503）照常下发，避免把服务拒绝伪装成丢失 |
 | 测试 | `recovery.test.ts`（17 例）、`projectSeed.test.ts`（5 例）、`prep/contract.test.ts` 新增 3 例、`e2e/recovery.spec.ts` 8 例；`e2e/confirmation.spec.ts` 1 处定位改为两种文案之一（动作与断言不变，见下） |
@@ -83,7 +83,27 @@
 - **Standards 硬性（已修复）**：同步记录只写了 `7c0cd64`，实际接收字节来自 `e933b69`；验证数字与实测不符。均已按实际更正（见 [IMPORT_SOURCE §4](../../apps/student/IMPORT_SOURCE.md) 与下方验证事实）。
 - **Standards 质量项（已处理）**：结论映射统一为 `outcomeOfCode`/`codeOfOutcome`（原为三处）；未决原命令的展示收敛为 `publishPending`/`currentPendingRow`（原为两段重复）；`localFileIdOf` 与 `localInstanceOf` 收拢到存储层，视图不再自行重推映射规则；`noteRejection` 的租约门与 `phaseFor` 的完备分支已写明理由；fixture 去掉 `res.end` 猴补，改为显式 `respond()`。
 - **Standards 未处理项（记录为后续）**：e2e 的 `localState`/`holdAck` 在多个 spec 中各有副本；提取共享 helper 需要改动 03 的测试文件，超出本任务写集，留给后续收口任务。
+
+### 文案整改轮的独立复审（2026-10-12，Standards / Spec 两轴）
+
+复审覆盖 `c9a9fdd..146b6ea`。发现与处理：
+
+- **Spec P1（已修复）**：RECOVERY_REQUIRED 之后点「重新读取」仍显示同一结论、保存仍被禁用——照做之后什么也没变。修复：服务已明确拒绝过的旧代际原命令只留历史事实，新增 `stale`（「上一次保存已过期」）非阻塞结论，学生可用新键在当前代际重新保存；结果未知的旧代际命令仍然阻塞。
+- **Spec/Spec-AC（已修复）**：`conflict`/`recovery-required` 的提示漏掉「草稿已保留」；recovery-required 文案自造成因（「登录状态已更新」）。改为「这里的工作区已经过期，草稿已保留。请先重新读取，再决定怎么保存。」，并去掉自造成因。
+- **Spec（已修复）**：`studentHint(null)` 返回「这次保存已完成。」（越界承诺）→ 改为「当前没有待处理的保存。」。
+- **Spec（已修复）**：恢复态把 `.ws-flow` 隐藏后，e2e 仍用 `toContainText` 断言隐藏文本 → 全部改成可见状态断言（`toBeHidden` + 按钮状态 + 落盘事实）。
+- **Spec（已修复）**：01 遗留的学生可见技术信息——材料面板的 `resourceVersionId`/sha256、「正在按 HTTP 信封读取…」、不可用面板的阶段码与失败体；改为学生结论，技术事实进 `workspace.initialize-failed` 控制台事件。「任务信息」面板原值按负责人要求保留。
+- **Standards（已修复）**：README 对控制台内容的描述与实现不符（现已列明包含命令身份、错误码、HTTP 失败体、快照 ID/hash，并限定「学生界面不出现」的范围）；`contextNotice` 字段降为局部；诊断事件改名并补齐（`workspace.read-failed`/`workspace.initialize-failed`/`context.loaded`/`command.abandoned`，静默返回也留痕）；`freezeHint` 按真实原因分类，不再对结构性失败承诺「稍后重试」；状态词区分（`保存待重试` vs `保存结果待确认`）；组件 `ConfirmationSnapshot` 只留 `workspaceRevision`。
+- **Standards（登记为后续）**：`describeError` 尚未替换 `init.ts`/`http.ts`/`useProjectWorkspace.ts` 里的内联写法；`lib/connectionTest.ts`（设置页连接测试）仍显示 HTTP 状态码——属设置页诊断入口，是否收敛由负责人决定。
 - **文案整改这一轮的独立复审**：两轴审查覆盖到 `c9a9fdd` 之前的修订；文案整改（`2bde95e` / 设计仓库 `7ee7036`）另起一轮只读复审，结论与本轮处理记录见该轮复审回执（如有发现，按同一条原则修复后再收口）。
+
+## 与既有契约/文档的差异（登记，不自行改基线）
+
+| 对象 | 差异 | 处理 |
+| --- | --- | --- |
+| [客户端约束](I0_UI_CLIENT_CONTRACT.md) §5 的状态文案 | 契约写明页面显示「服务回执已收到，本机确认记录未完成」；本次按负责人「学生端只留必要信息」的要求改为一句「保存待重试」+「保存已经发出，但本地还没记完，草稿已保留。可以重试。」 | 语义（已收到回执、本机未完成、草稿保留）不变，只在任务文档登记；契约正文属受保护文档，等负责人决定是否同步 |
+| [客户端约束](I0_UI_CLIENT_CONTRACT.md) §5 的快照展示 | 契约与 03 记录里的「快照详情（ID/hash/版本）」改为「已冻结快照 vN」，ID/hash 进控制台 | 同上，见待决策项 3 |
+| 01 的准备场景标识与任务信息 | 顶栏标识去掉 `loadEpoch`（进 `data-` 属性与控制台）；「结束准备会话」改为「退出」；材料与不可用面板的技术原值（resourceVersionId/sha256/阶段码/失败体）改为学生结论 + 控制台诊断 | 已按负责人要求执行；「任务信息」面板内的合成账号/课程/活动版本原值**保留**（负责人 2026-10-12 明确「小问题先不管」），因此文档中「学生界面不出现技术事实」的范围限定为**确认工作区与顶栏**，不含该面板 |
 
 ## 待决策项（需项目负责人确认，本任务不自行认定）
 

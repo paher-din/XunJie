@@ -4,8 +4,8 @@ import { confirmationRepository, sameGeneration } from './confirmationDb'
 import { freezeAttempt, freezeSnapshot, freezeSync, verifyAttemptReceipt, verifySyncReceipt, verifyReceipt, verifySnapshotReceipt,
   type CommandContext, type FrozenCommand, type FrozenDraft, type OutboxRecord } from './frozenCommand'
 import { apiGet, apiPostFrozen, setCsrfToken, type RequestOptions } from './http'
-import { classifyWriteFailure, codeOfOutcome, diagnosticText, reconcileStoredCommand, studentHint, summarizeOriginalRequest,
-  type CommandOutcome } from './recovery'
+import { blocksNewSave, classifyWriteFailure, codeOfOutcome, diagnosticText, reconcileStoredCommand, studentHint,
+  summarizeOriginalRequest, type CommandOutcome } from './recovery'
 import { describeError, reportDiagnostic } from './diagnostics'
 import type { SessionView } from './contracts'
 import type { AttemptView, ConfirmedWorkspace, Receipt, SnapshotResult, SnapshotView, WorkspaceHead } from './workspaceContracts'
@@ -18,6 +18,8 @@ export type ConfirmationPhase =
   | 'conflict'
   /** 04：受信代际已变化，停止旧重试并重读受信上下文。 */
   | 'recovery-required'
+  /** 04：上一次保存属于旧代际且已被服务拒绝：不会生效，学生可以重新保存。 */
+  | 'stale'
 
 /**
  * 学生可见状态。\`error\` 只放学生能懂、能行动的一句话；技术事实（错误码、命令键、代际、ID/hash、
@@ -65,7 +67,7 @@ export function phaseFor(outcome: CommandOutcome): ConfirmationPhase {
     case 'recovery-required': return 'recovery-required'
     // 已确认通常由 acceptLocal/reconcile 直接处理；这里保留分支是为了让映射对整个结论集完备。
     case 'confirmed': return 'ready'
-    case 'historical': return 'error'
+    case 'historical': return 'stale'
   }
 }
 
@@ -76,8 +78,6 @@ export class ConfirmationWorkspace {
   private readonly clientId = crypto.randomUUID()
   private readonly leaseOwner = crypto.randomUUID()
   private busy = false
-  /** 本次载入发现的上下文变化提示（例如准备进程换代际）；学生只看到一句「请重新读取」。 */
-  private contextNotice: string | null = null
   private channel: BroadcastChannel | null = null
   private readonly listeners = new Set<(state: ConfirmationState) => void>()
   constructor(context: CommandContext) {
@@ -110,7 +110,6 @@ export class ConfirmationWorkspace {
   private opts(): RequestOptions { return { mode: this.context.mode, scenarioId: this.context.scenarioId } }
   private bindAttempt(attemptId: string): void {
     this.guard = new ContextGuard({ ...this.context, attemptId, loadEpoch: nextLoadEpoch() })
-    this.contextNotice = null
     this.state = initialState()
   }
   /**
@@ -153,12 +152,19 @@ export class ConfirmationWorkspace {
     try {
       const reference = await confirmationRepository.reference(this.context)
       if (!this.valid(guard)) return
+      // 成功载入的上下文也要留痕：刷新后控制台只剩本次载入事实，落盘事实仍在 outbox 里。
+      reportDiagnostic('context.loaded', { mode: this.context.mode, userId: this.context.userId,
+        assignmentId: this.context.assignmentId, activityVersionId: this.context.activityVersionId,
+        attemptId: this.context.attemptId, recoveryGeneration: this.context.trustedRecoveryGeneration,
+        preparationEpoch: this.context.preparationEpoch, loadEpoch: this.context.loadEpoch,
+        referenceChanged: reference.changed === true,
+        missingTrustedGeneration: !this.context.trustedRecoveryGeneration })
       if (reference.changed) {
-        this.contextNotice = '工作区已重新加载，草稿保留；请重新读取后再保存。'
+        // 没有更具体的未决原命令时，学生至少要知道「草稿还在、要先重新读取」。
         reportDiagnostic('context.changed', { reason: 'local attempt reference belongs to another recovery generation',
           attemptId: this.context.attemptId, recoveryGeneration: this.context.trustedRecoveryGeneration,
           preparationEpoch: this.context.preparationEpoch })
-        this.publish({ error: this.contextNotice })
+        this.publish({ error: '工作区已重新加载，草稿保留；请重新读取后再保存。' })
       }
       if (!this.context.attemptId && reference.attemptId) { this.bindAttempt(reference.attemptId); guard = this.guard }
       if (this.context.attemptId) await this.readHead()
@@ -170,7 +176,7 @@ export class ConfirmationWorkspace {
       const row = currentPendingRow(commands.filter(r => r.state === 'pending'), this.context)
       if (row) await this.publishPending(row)
     } catch (e) {
-      reportDiagnostic('context.changed', { reason: 'workspace initialize failed', error: describeError(e) })
+      reportDiagnostic('workspace.initialize-failed', { reason: 'workspace initialize failed', error: describeError(e) })
       if (this.valid(guard)) this.publish({ phase: 'error', error: '工作区没有读取成功，请重新读取。' })
     }
   }
@@ -197,7 +203,7 @@ export class ConfirmationWorkspace {
         phase: this.state.pending ? this.state.phase : ['submitted', 'reviewed'].includes(head.attempt.status) ? 'readonly' : 'ready' })
       return head
     } catch (e) {
-      reportDiagnostic('command.failed', { reason: 'authority attempt read failed', attemptId: c.attemptId, error: describeError(e) })
+      reportDiagnostic('workspace.read-failed', { reason: 'authority attempt read failed', attemptId: c.attemptId, error: describeError(e) })
       if (this.valid(guard) && (guard.isAcceptedRead('workspace-head', seq) || guard.acceptRead('workspace-head', seq))) {
         this.publish({ error: '作品没有读取成功，请重新读取。', phase: 'error', attempt: null })
       }
@@ -205,7 +211,7 @@ export class ConfirmationWorkspace {
     }
   }
   async openAttempt(): Promise<void> {
-    if (this.busy || this.state.pending || this.guard.stale) return
+    if (this.busy || blocksNewSave(this.state.outcome) || this.guard.stale) return
     if (this.context.attemptId) { await this.readHead(); return }
     const guard = this.guard
     this.busy = true; this.publish({ phase: 'saving', error: null })
@@ -230,7 +236,8 @@ export class ConfirmationWorkspace {
     return this.valid(guard) && guard.acceptRead(key, seq) ? snapshot : null
   }
   async save(drafts: FrozenDraft[]): Promise<void> {
-    if (this.busy || this.state.pending || !this.state.workspace || !this.state.attempt || this.guard.stale) return
+    // 旧代际且已明确被拒的原命令不挡新保存：学生用新键在当前代际重新保存，不是迁旧请求。
+    if (this.busy || blocksNewSave(this.state.outcome) || !this.state.workspace || !this.state.attempt || this.guard.stale) return
     if (['submitted', 'reviewed'].includes(this.state.attempt.status)) return
     if (this.state.attempt.status === 'paused' && drafts.some(d => !d.serverFileId)) {
       this.publish({ phase: 'error', error: '暂停期间只能保存已有文件的修改。' }); return
@@ -249,7 +256,7 @@ export class ConfirmationWorkspace {
     finally { this.busy = false }
   }
   async snapshot(): Promise<void> {
-    if (this.busy || this.state.pending || !this.state.workspace || !this.state.attempt || this.guard.stale) return
+    if (this.busy || blocksNewSave(this.state.outcome) || !this.state.workspace || !this.state.attempt || this.guard.stale) return
     if (['submitted', 'reviewed'].includes(this.state.attempt.status)) return
     const guard = this.guard
     this.busy = true; this.publish({ phase: 'saving', error: null })
@@ -309,13 +316,22 @@ export class ConfirmationWorkspace {
     reportDiagnostic('command.failed', { reason, error: describeError(e) })
     if (this.valid(guard)) this.publish({ phase: 'error', error: hint })
   }
-  /** 冻结原命令时的业务问题：学生只看到结论，具体原因进控制台。 */
+  /**
+   * 冻结原命令失败时给学生的归因（原因原文进控制台）。
+   *
+   * 这些失败都发生在**发出请求之前**，所以不能承诺「稍后重试一定行」：
+   * 内容/路径问题要学生自己改，状态过期要重新读取，内部核验失败则只能重新读取后再说。
+   */
   private freezeHint(e: unknown, action: '保存' | '冻结'): string {
     const message = e instanceof Error ? e.message : String(e)
     if (message.includes('没有需要确认的修改')) return '没有需要保存的修改。'
     if (message.includes('需要重新比较') || message.includes('不在当前确认清单')) return '这件作品已经在别处更新，请重新读取后再保存。'
-    if (message.includes('作品不能确认') || message.includes('限额') || message.includes('超过')) return '作品不符合课程要求，这次保存没有发出。'
-    return `这次${action}没有发出，请稍后重试。`
+    // 正文与上限问题沿用编辑器里的同一套说法，学生改完就能保存。
+    for (const problem of ['invalid-unicode', 'total-bytes', 'file-count', 'duplicate', 'separator', 'segment', 'drive', 'empty', 'not-allowed']) {
+      if (message.includes(problem)) return `作品还不符合保存条件，请先按编辑器提示修改。`
+    }
+    if (message.includes('缺少身份或受信代际') || message.includes('H-03')) return '现在还不能保存这件作品。'
+    return `这次${action}没有发出，请重新读取后再试。`
   }
   /** 原命令已由本机或另一标签确认：不重发，只在本机重新接纳同一回执并重读当前 head。 */
   private async acceptLocal(record: OutboxRecord, captured: ContextGuard): Promise<void> {
@@ -352,6 +368,14 @@ export class ConfirmationWorkspace {
     /** 回执已到、但回执/快照核验不通过：与学生可见的「本机没记完」分开表述。 */
     let verificationFailed = false
     const valid = () => this.valid(captured) && sameGeneration(command.context, this.context)
+    /** 静默中止也要留痕：否则控制台只有 command.sent 而没有下文，无法判因。 */
+    const abandon = (reason: string) => reportDiagnostic('command.abandoned',
+      { reason, commandKey: command.commandKey, kind: command.kind, loadEpoch: this.guard.loadEpoch })
+    const guardValid = (label: string): boolean => {
+      if (valid()) return true
+      abandon(label)
+      return false
+    }
     if (this.guard.stale) return
     // 学生只看一句话；命令身份与冻结输入进控制台。
     reportDiagnostic('command.sent', await summarizeOriginalRequest(command))
@@ -359,10 +383,10 @@ export class ConfirmationWorkspace {
       phase: 'saving', error: null })
     try {
       const stored = await confirmationRepository.claim(command.commandKey, this.leaseOwner, valid)
-      if (!valid()) return
+      if (!guardValid('context changed while claiming the lease')) return
       // 每次发送读取当前有效 Session/CSRF；原正文和业务键保持不变。
       const session = await apiGet<SessionView>('/session', this.opts())
-      if (!valid()) return
+      if (!guardValid('context changed while reading the session')) return
       if (session.userId !== command.context.userId || !session.courses.some(c => c.courseId === command.context.courseId && c.role === 'student') || !session.csrfToken) {
         throw new Error('当前 Session 与原命令身份不符，停止发送')
       }
@@ -377,17 +401,21 @@ export class ConfirmationWorkspace {
         return
       }
       let workspace: ConfirmedWorkspace | null = null, mappings: Record<string, string> = {}, snapshot: SnapshotView | null = null
+      const retire = async (reason: string) => {
+        await confirmationRepository.acknowledge(command, receipt!, null, {}, null, () => false)
+        reportDiagnostic('command.abandoned', { reason, commandKey: command.commandKey, kind: command.kind })
+      }
       if (command.kind === 'workspace.sync') {
         const verified = await verifySyncReceipt(command, receipt)
-        if (!valid()) { await confirmationRepository.acknowledge(command, receipt, null, {}, null, () => false); return }
+        if (!valid()) { await retire('context changed while verifying the sync receipt'); return }
         workspace = verified.workspace; mappings = verified.mappings
       } else if (command.kind === 'snapshot.create') {
         try {
           const r = verifyReceipt<SnapshotResult>(command, receipt)
           const value = await this.readSnapshot(r.result.snapshotId)
-          if (!valid()) { await confirmationRepository.acknowledge(command, receipt, null, {}, null, () => false); return }
+          if (!valid()) { await retire('context changed while reading the frozen snapshot'); return }
           snapshot = (await verifySnapshotReceipt(command, receipt, value)).snapshot
-          if (!valid()) { await confirmationRepository.acknowledge(command, receipt, null, {}, null, () => false); return }
+          if (!valid()) { await retire('context changed while verifying the snapshot receipt'); return }
         } catch (error) {
           // 回执到了但拿不到可核验的快照：不当成功、也不当成「本机没记完」。
           verificationFailed = true
@@ -397,13 +425,13 @@ export class ConfirmationWorkspace {
       // ACK 是新的权威接纳点，屏蔽此前启动但尚未返回的 GET。
       captured.acceptRead('workspace-head', captured.nextReadSeq('workspace-head'))
       const confirmed = await confirmationRepository.acknowledge(command, receipt, workspace, mappings, snapshot, valid)
-      if (!valid()) return
+      if (!guardValid('context changed while committing the acknowledgement')) return
       const accepted = await confirmationRepository.command(command.commandKey)
-      if (!valid()) return
+      if (!guardValid('context changed while re-reading the command fact')) return
       const acceptedContext = command.kind === 'attempt.create'
         ? { ...command.context, attemptId: verifyAttemptReceipt(command, receipt).result.attemptId } : command.context
       const authorityCurrent = await confirmationRepository.isCurrentAuthority(acceptedContext)
-      if (!valid()) return
+      if (!guardValid('context changed while checking the trusted authority')) return
       if ((accepted?.state === 'historical' && confirmed === null) || !authorityCurrent) {
         reportDiagnostic('command.historical', { commandKey: command.commandKey, kind: command.kind, receiptId: receipt.receiptId,
           reason: 'another tab advanced the trusted generation before this receipt was bound' })
@@ -438,6 +466,7 @@ export class ConfirmationWorkspace {
         if (stored?.receipt) { await this.acceptLocal(stored, captured); return }
         outcome = { kind: 'unresolved' }
       }
+      // 上面分支已各自上报；这里只补「核对期间被取代」这一类静默路径。
       // 服务明确拒绝的事实写回原命令：刷新、换标签后仍是同一结论，不靠内存记忆。
       // 写失败只是少一条本机事实，不影响已经得出的结论，因此不让它掩盖原始错误。
       const code = codeOfOutcome(outcome)

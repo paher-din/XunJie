@@ -15,11 +15,11 @@ export type ConfirmationPhase =
   | 'conflict'
   /** 受信代际已变化：停止旧重试，先重读受信上下文。 */
   | 'recovery-required'
+  /** 上一次保存属于旧代际且已被服务拒绝：不会生效，学生可以重新保存。 */
+  | 'stale'
 
+/** 学生只需要知道「冻结了哪一版」；快照 ID/hash 由调用方写进控制台。 */
 export interface ConfirmationSnapshot {
-  /** 只用于调用方内部核验与日志；不在学生界面展示。 */
-  snapshotId: string
-  hash: string
   workspaceRevision: number
 }
 
@@ -57,13 +57,14 @@ const phaseLabels: Record<ConfirmationPhase, string> = {
   loading: '正在读取',
   ready: '编辑中',
   saving: '正在保存',
-  'local-failed': '保存待核对',
+  'local-failed': '保存待重试',
   unknown: '保存结果待确认',
   error: '操作未完成',
   readonly: '作品只读',
   rejected: '保存未成功',
   conflict: '作品有更新',
   'recovery-required': '需要重新读取',
+  stale: '上一次保存已过期',
 }
 
 const compactControl = { padding: '0 10px', fontSize: 12 }
@@ -101,9 +102,10 @@ export function ConfirmationCluster({
   canRetry,
 }: ConfirmationClusterProps) {
   const busy = phase === 'loading' || phase === 'saving'
-  const needsReconciliation = hasPending ?? (phase === 'unknown' || phase === 'local-failed')
+  // stale 不阻塞：它只说明上一次保存没生效，学生可以立刻重新保存。
+  const needsReconciliation = (hasPending ?? (phase === 'unknown' || phase === 'local-failed')) && phase !== 'stale'
   const hasConfirmedHead = hasAttempt && workspaceRevision !== null
-  const canWrite = phase === 'ready' && hasConfirmedHead
+  const canWrite = (phase === 'ready' || phase === 'stale') && hasConfirmedHead
   const confirmed = canWrite && unconfirmedCount === 0
   // 只有上一次保存仍可原样重放时才给按钮；需要先读取或重新开始时只给「重新读取」。
   const replayable = canRetry ?? true

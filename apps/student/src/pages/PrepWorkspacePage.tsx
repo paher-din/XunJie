@@ -9,6 +9,7 @@ import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
 import { useProjectWorkspace } from '../components/workspace/useProjectWorkspace'
 import { useConfirmationWorkspace } from '../workspace/useConfirmationWorkspace'
 import { canReplay } from '../workspace/recovery'
+import { describeError, reportDiagnostic } from '../workspace/diagnostics'
 import { idbDraftRepository } from '../workspace/draftDb'
 import { scopeKey, type DraftScope } from '../lib/draftStore'
 import { workspaceMode } from '../workspace/mode'
@@ -55,10 +56,11 @@ export default function PrepWorkspacePage() {
     init.invalidate()
     try {
       await signOut(workspaceMode)
-      showToast('已结束准备会话')
+      showToast('已退出')
       init.reload()
     } catch (e) {
-      showToast(`结束会话失败：${e instanceof Error ? e.message : String(e)}`)
+      reportDiagnostic('command.failed', { reason: 'sign out failed', error: describeError(e) })
+      showToast('退出没有成功，请稍后再试。')
     } finally {
       setSigningOut(false)
     }
@@ -117,8 +119,10 @@ export default function PrepWorkspacePage() {
             onOpen={() => { void confirmation.client?.openAttempt() }}
             onSave={() => {
               const current = confirmation.client
-              void project.prepareSave().then(drafts => current?.save(drafts)).catch(e =>
-                showToast(`草稿未能保护，未发送保存请求：${e instanceof Error ? e.message : String(e)}`))
+              void project.prepareSave().then(drafts => current?.save(drafts)).catch(e => {
+                reportDiagnostic('command.failed', { reason: 'draft not protected before saving', error: describeError(e) })
+                showToast('草稿没有保存到本机，这次没有发送；请稍后重试。')
+              })
             }}
             onSnapshot={() => { void confirmation.client?.snapshot() }}
             onRetry={() => { void confirmation.client?.retry() }}

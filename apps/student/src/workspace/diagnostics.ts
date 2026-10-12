@@ -22,6 +22,14 @@ export type DiagnosticEvent =
   | 'command.historical'
   /** 原命令失败或其结论发生变化。 */
   | 'command.failed'
+  /** 原命令已发出但没有下文就被放弃（上下文变化、身份不符等）。 */
+  | 'command.abandoned'
+  /** 权威 Attempt / 快照读取失败。 */
+  | 'workspace.read-failed'
+  /** 工作区初始化失败。 */
+  | 'workspace.initialize-failed'
+  /** 工作区载入成功：模式、归属、受信代际与本机载入代次。 */
+  | 'context.loaded'
   /** 学生对原命令做的核对动作与结果。 */
   | 'command.reconciled'
   /** 准备/工作区上下文变化（换代际、重载）。 */

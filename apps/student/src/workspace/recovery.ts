@@ -32,6 +32,19 @@ export type CommandOutcome =
   | { kind: 'confirmed' }
   | { kind: 'historical' }
 
+/**
+ * 是否还要挡着新的保存。
+ *
+ * - `historical`（旧代际且服务已明确拒绝）：结果是确定的——没有生效；再挡着只会让学生既不能重放也不能
+ *   保存，所以只留事实，允许用新键在当前代际重新保存；
+ * - 其余未决结论（未知、本机未确认、租约、版本冲突、待重读）都保留阻塞：结果未知或有待比较，
+ *   再发一条新命令可能重复生效或绕过比较。
+ */
+export function blocksNewSave(outcome: CommandOutcome | null): boolean {
+  if (!outcome) return false
+  return outcome.kind !== 'historical'
+}
+
 /** 能否重新核对原命令：未知、本机未确认、租约占用以及可重试的服务拒绝都可以。 */
 export function canReplay(outcome: CommandOutcome | null): boolean {
   switch (outcome?.kind) {
@@ -54,8 +67,10 @@ export function canReplay(outcome: CommandOutcome | null): boolean {
  */
 export function studentHint(outcome: CommandOutcome | null): string {
   switch (outcome?.kind) {
+    // 没有结论不等于保存成功：这一支只用于「当前没有待处理的保存」。
     case undefined:
     case null:
+      return '当前没有待处理的保存。'
     case 'confirmed':
       return '这次保存已完成。'
     case 'unresolved':
@@ -65,11 +80,11 @@ export function studentHint(outcome: CommandOutcome | null): string {
     case 'lease-held':
       return '另一个标签页正在处理这次保存，请稍后再试。'
     case 'conflict':
-      return '作品在别处有了新的版本。请先重新读取，再决定怎么保存。'
+      return '作品在别处有了新的版本，草稿已保留。请先重新读取，再决定怎么保存。'
     case 'recovery-required':
-      return '登录状态已更新。请重新读取后再保存。'
+      return '这里的工作区已经过期，草稿已保留。请先重新读取，再决定怎么保存。'
     case 'historical':
-      return '这是较早的一次保存，已过有效期。请重新读取当前作品。'
+      return '上一次保存没有生效，草稿还在，可以重新保存。'
     case 'rejected':
       return isTerminalRejection(outcome.code)
         ? '这次保存没能完成，草稿已保留。请重新读取后再保存。'
@@ -142,7 +157,12 @@ export function reconcileStoredCommand(
   if (!record) return { action: 'none' }
   if (record.state === 'confirmed') return record.receipt ? { action: 'accept-local' } : { action: 'none' }
   if (record.state === 'historical') return { action: 'stop', outcome: { kind: 'historical' } }
-  if (!sameGeneration(record.context, context)) return { action: 'stop', outcome: { kind: 'recovery-required' } }
+  if (!sameGeneration(record.context, context)) {
+    // 服务已经明确拒绝过（例如换代际）：这条原命令不会生效，只留事实；
+    // 学生随后用**新的键与序号**在当前代际重新保存，不是把旧请求迁到新代际。
+    if (record.rejected?.code === 'RECOVERY_REQUIRED') return { action: 'stop', outcome: { kind: 'historical' } }
+    return { action: 'stop', outcome: { kind: 'recovery-required' } }
+  }
   if (record.rejected) {
     const outcome = outcomeOfCode(record.rejected.code)
     // 可重试的拒绝只是「这次没被接受」的事实：允许学生明确重试；终态拒绝才停手。

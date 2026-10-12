@@ -138,9 +138,11 @@ test('丢 ACK 后继续编辑、刷新，重放原命令只创建一次并恢复
   await expect(page.locator('.ws-run-state')).toHaveText('保存结果待确认')
   await expect(page.locator('.ws-head-run [role=alert]'))
     .toHaveText('这次保存的结果还没确认，草稿已保留。可以重试。')
-  // 本机确认头仍停在上次已接受的 v0：丢 ACK 不能被当成保存成功
-  await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
-  await expect(page.locator('.ws-flow')).not.toContainText('与草稿一致')
+  // 恢复态顶栏只留结论与操作（草稿流隐藏）；本机确认头仍停在上次已接受的 v0：
+  // 断言可见状态与落盘事实，而不是被 display:none 藏起来的文本。
+  await expect(page.locator('.ws-flow')).toBeHidden()
+  expect((await localState(page)).workspace!.workspaceRevision).toBe(0)
+  await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
   const afterDrop = posts.length
   expect(afterDrop).toBeGreaterThan(0)
   expect(identities(posts).size).toBe(1)
@@ -203,8 +205,7 @@ test('浏览器断线时保存不冒充拒绝或成功，重连后只重放原�
   await context.setOffline(true)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-run-state')).toHaveText('保存结果待确认')
-  await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
-  await expect(page.locator('.ws-flow')).not.toContainText('与草稿一致')
+  await expect(page.locator('.ws-flow')).toBeHidden()
   // 断线时继续编辑仍写入本机草稿
   await page.locator('.monaco-editor textarea').first().focus()
   await page.keyboard.insertText('// still editing\n')
@@ -345,28 +346,38 @@ test('RECOVERY_REQUIRED 停止旧重试，重新读取后仍保留草稿与旧�
   await page.getByRole('button', { name: '重试上次保存' }).click()
   await expect(page.locator('.ws-run-state')).toHaveText('需要重新读取')
   await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
-  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('登录状态已更新。请重新读取后再保存。')
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('这里的工作区已经过期，草稿已保留。请先重新读取，再决定怎么保存。')
   await expect(page.getByRole('button', { name: '重新读取' })).toBeVisible()
   await expect(page.locator('.view-lines')).toContainText('gen1 body')
   expect(identities(posts).size).toBe(1)
   expect(newestSync(await localState(page)).rejected?.code).toBe('RECOVERY_REQUIRED')
 
-  // 重新读取：代际换了，但旧原请求仍然只能作为事实保留，草稿继续可编辑
+  // 重新读取：服务已经明确拒绝过这条旧代际原命令 → 只留事实，不再要求重读、也不再挡新保存
   const beforeReload = posts.length
   await page.getByRole('button', { name: '重新读取' }).click()
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
-  await expect(page.locator('.ws-run-state')).toHaveText('需要重新读取')
+  await expect(page.locator('.ws-run-state')).toHaveText('上一次保存已过期')
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('上一次保存没有生效，草稿还在，可以重新保存。')
   await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await expect(page.locator('.view-lines')).toContainText('gen1 body')
-  await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeEnabled()
   expect(posts.length).toBe(beforeReload)
 
-  // 刷新后结论与正文都不变：不自动补发、不改业务键
+  // 用**新的键与序号**在当前代际重新保存：服务端接受，旧原命令保持历史事实
+  await page.getByRole('button', { name: '确认保存', exact: true }).click()
+  await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
+  expect(posts.length).toBe(beforeReload + 1)
+  expect(identities(posts).size).toBe(2)
+  const syncRows = (await localState(page)).commands.filter(c => c.kind === 'workspace.sync')
+  expect(syncRows.some(r => r.state === 'pending')).toBe(true)
+  expect(syncRows.some(r => r.state === 'confirmed')).toBe(true)
+
+  // 刷新后结论与正文都不变：旧命令不会复活，也不自动补发
   await page.reload()
   await expect(page.locator('.view-lines')).toContainText('gen1 body')
   await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
-  expect(posts.length).toBe(beforeReload)
-  await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
+  expect(posts.length).toBe(beforeReload + 1)
+  await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
 })
 
 test('VERSION_CONFLICT 保留正文、阻止自动覆盖，并把拒绝事实留在原命令上', async ({ page }) => {
@@ -383,7 +394,7 @@ test('VERSION_CONFLICT 保留正文、阻止自动覆盖，并把拒绝事实留
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-run-state')).toHaveText('作品有更新')
   // 学生只看到「作品在别处有更新，先重新读取」；VERSION_CONFLICT / 04A 之类的内部说法不得出现
-  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('作品在别处有了新的版本。请先重新读取，再决定怎么保存。')
+  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('作品在别处有了新的版本，草稿已保留。请先重新读取，再决定怎么保存。')
   expect(await page.locator('.ws-head').innerText()).not.toContain('VERSION_CONFLICT')
   await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
@@ -419,7 +430,8 @@ test('暂时性服务拒绝不封死工作区：保留原命令，明确重试�
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-run-state')).toHaveText('保存未成功')
   await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('服务暂时没能保存，草稿已保留。可以稍后重试。')
-  await expect(page.locator('.ws-flow')).toContainText('确认作品 v0')
+  await expect(page.locator('.ws-flow')).toBeHidden()
+  expect((await localState(page)).workspace!.workspaceRevision).toBe(0)
   const rejected = newestSync(await localState(page))
   expect(rejected.rejected?.code).toBe('PERSISTENCE_UNAVAILABLE')
   expect(rejected.state).toBe('pending')

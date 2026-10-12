@@ -66,7 +66,8 @@ for (const reload of ['page', 'workspace'] as const) {
       await expect.poll(async () => (await page.locator('.toast').count()) > 0 ||
         (await page.locator('.cw-protect').getAttribute('data-status')) === 'protected').toBe(true)
       expect((await localState(page)).drafts[0]).toEqual(winner)
-      await expect(page.locator('.toast')).toContainText('未发送保存请求')
+      // 学生看到的是「草稿没保存到本机、这次没发送」；CAS 冲突这一层原因只进控制台
+      await expect(page.locator('.toast')).toContainText('这次没有发送')
       expect(posts).toEqual([])
     }
     const retained = await localState(page)
