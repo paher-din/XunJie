@@ -30,6 +30,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，项目负责人决定收口本次 P2 工程审查，并将 B1/B2 的未完成模型接入、真实调用和人工语义补验集中到 [B 后续 #45](https://github.com/paher-din/XunJie/issues/45)，主责为 B；账号与真实调用继续暂缓。总协调正提交剩余验证入口并执行旧 Issue 关闭，实际结果见 [G2 第 18 节](docs/tasks/G2_OVERALL_COORDINATION.md#18-2026-10-12-p2-工程审查收口与-b-后续交付)，B 交付后再复审，原完整产品验收条件保留。
 
+2026-10-12，剩余验证入口 [PR #36](https://github.com/paher-din/XunJie/pull/36) 已合入 main（`46617a2`），本次 P2 工程审查通过，[#24](https://github.com/paher-din/XunJie/issues/24)、B1 #11、B2 #26 已关闭；全部 B 侧未完成项由 [#45](https://github.com/paher-din/XunJie/issues/45) 继续承担。typecheck/build 与 49 项专项验证通过，2 项真实模型测试按门禁跳过；真实调用及人工语义仍待完成，B 交付后由负责人通知复审，不自动跟进，见 [G2 第 18.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#184-已完成收口与最终交付)。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -142,6 +144,8 @@ node --test server/tutoring/test/student-help.test.ts
 
 2026-10-12，验证入口已按负责人授权公开至 [Draft PR #36](https://github.com/paher-din/XunJie/pull/36)，尚未合并；仅合成材料的限定实际调用已获条件许可，安全凭据入口和账号条件仍待落实，真实调用未执行，见 [G2 第 17.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#174-验证入口发布与条件调用授权)。
 
+2026-10-12，验证入口已随 PR #36 合入 main；负责人暂缓账号和真实调用，当前不执行下列命令。B 的进入条件、实际结果和人工语义补验集中在 [#45](https://github.com/paher-din/XunJie/issues/45)，恢复实际调用须按原条件落实，工程审查收口不代替模型验收。
+
 下列命令仅供已获上述授权、批准安全通道已提供本机凭据、Node 24.21.0/精确 lock 就绪的环境执行；在仓库根进入应用目录后串行运行，最多三个 Job/九次模型请求，失败不自动重跑，不写凭据或预算金额。
 
 ```powershell
@@ -236,6 +240,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，本地修复候选由 Workspace 唯一公共 Job 路由按持久 purpose 调用原教师/学生处理器，独立 Design 默认路由保留；教师/学生权限、取消、重放和重启回归通过。C3 长未知文字保存与原结果重放亦已验证，公开交付仍待发布确认，见 [G2 第 15 节](docs/tasks/G2_OVERALL_COORDINATION.md#15-2026-10-12-g2-r01r02-最小修复)。
 
 2026-10-12，B1/B2 未验条件已逐项保留在 [#45](https://github.com/paher-din/XunJie/issues/45)，工程审查收口与旧卡关闭按负责人决定执行；合成/离线、真实模型、人工语义和浏览器/真人分别计账，具体交接与实际结果见 [G2 第 18 节](docs/tasks/G2_OVERALL_COORDINATION.md#18-2026-10-12-p2-工程审查收口与-b-后续交付)。
+
+2026-10-12，PR #36 已合入，本次 P2 工程审查及 #24 已收口；B1/B2 已交工程批次关闭，全部 B 侧未验项继续在 #45，B 完成后由负责人通知复审。完整 G2、教师/UI/真人、NFR 与环境失败分别保留原账目，最终交付和核对见 [G2 第 18.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#184-已完成收口与最终交付)。
 
 ### G3 / P3 启动与总协调
 
