@@ -115,7 +115,9 @@ export function createWorkspaceWorker(options: DesignAppOptions) {
   return {
     processJob,
     pendingJobs() {
-      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND json_extract(job_json,'$.kind') NOT LIKE 'hdl_%' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
+      // COALESCE keeps the filter fail-safe: a row whose kind is missing or null must stay claimable by the original C worker
+      // instead of being dropped by SQL's NULL NOT LIKE, which evaluates to NULL rather than TRUE.
+      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND COALESCE(json_extract(job_json,'$.kind'),'') NOT LIKE 'hdl_%' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
     },
   };
 }

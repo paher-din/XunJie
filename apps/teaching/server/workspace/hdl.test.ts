@@ -4,7 +4,7 @@ import {fixture,assigned,opened,command,snapshot,view} from './test-support.ts';
 import {createHdlWorkspace,readHdlBuild,readHdlSession} from './hdl.ts';
 import {sha256} from '../../runner/snapshot.ts';
 import type {HdlCommand,HdlBuild,HdlSession,HdlOperationResult} from '../../contracts/runner/hdl.ts';
-import {board} from '../../runner/hdl-profile.test.ts';
+import {board} from '../../tests/fixtures/hdl-board.ts';
 import {readAttempt} from '../db/records-adapter.ts';
 import {createWorkspaceApp} from './application.ts';
 import {origin} from './test-support.ts';

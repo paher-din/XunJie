@@ -256,6 +256,10 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 
 2026-10-13，DL-C 最后权限撤回/受信终止反例修正后，接口专项 9/9、typecheck/build 通过；同一源码的 C/HDL 均经原认证入口读回 ready=true，原始成功/失败日志及当前 C 三套验收记录已纳入 [DL-C 第 11.4 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#114-2026-10-13-原始证据与最终核对)。这是 C 独立工程批次，#39、DL-A/UI/完整 NFR 与 C4 状态保持上段边界，未公开发布或代写产品基线。
 
+2026-10-13，负责人指示发布，DL-C 分支已公开推送并建 [PR #48](https://github.com/paher-din/XunJie/pull/48)（base `37849f4`、head `dfb06cd`、53 文件），上段「未公开发布」按时点保留、不倒写；同段 #39 保持 Open 与不代写产品基线两点仍成立。独立审查给出 Spec 1 项 P1、Standards 1 项 P2 与 6 项 P3，负责人指示按审查修复，本轮已修 `writeImmutable` 的 `.pending-<uuid>` 无界泄漏（含 Linux 侧 2/2 实跑记录）、`pendingJobs` 的 NULL 失败安全、测试文件被当夹具导入导致的用例重复注册与专项计数漂移、指纹缺 contracts 时的裸 ENOENT，并把停止理由的接缝覆盖范围、提交后 `reconcileStops` 失败的对外表现与发布事实就地追加进任务稿；win32 全量 276 项 263 通过 1 失败 12 跳过，唯一失败是既有 `review.test.ts` 的 Linux-only 项，零新增失败。审查定的 #47 先合、#48 后合顺序未变，故 29→31 表数断言、`application.ts` 人工解冲突与组合树重测三项本轮一律未做。修复明细与验证见 [DL-C 第 12 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#12-2026-10-13-公开发布与按审查修复)。
+
+2026-10-13，审查要求优先排查的「WSL 净 +5 失败与共享 `writeImmutable` 改动相关」假设经三棵树对照实跑后**不成立**：完全不含该改动的基线 `37849f4` 自身即不稳定（`design-activities` 单跑连跑两次为 2 失败、3 失败；全量本轮 3 失败而原记录 4 失败，项数同为 275），未修改的 head 同一文件连跑两次失败在不同用例，head 与修复后两次全量的失败集合零交集，全量中失败的 `student-help`/`records-adapter` 单跑即全过，两侧错误类别相同而落点不同。原「净 +5」是两次不稳定采样相减的结果，本轮不宣称修好 #23；WSL 非确定性的根因、以及目标 guest 与认证宿主上的全量复跑均未执行，第 11.2 节的 14/14、50/51、10/10 仍是 C 的原始记录、本轮未在任何目标环境重跑。归因矩阵见 [DL-C 第 12.3 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#123-p2-2-归因wsl-失败是环境级非确定性不支持与-writeimmutable-的关联)。
+
 ### 当前整体状态与后置验收
 
 当前 `npm start` 仍只启动健康入口；业务宿主需显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。

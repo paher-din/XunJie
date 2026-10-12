@@ -176,6 +176,8 @@ P3/DL-C 尚未完成；批准后的实际代码位置、验证命令/结果、�
 
 实现分支为 `codex/dl-c-hdl`，起点保持 `37849f4`。准备阶段 README/本文复制到独立工作树，主副本既有准备改动保留，没有覆盖他人改动。未修改 AGENTS、product/planning/reference、课程原材料、依赖/锁文件、凭据或 CI/CD；未公开推送、建 PR 或关闭 Issue，C4 未开始。
 
+> **2026-10-13 补正：上段「未公开推送、建 PR」在当前 head 上已不成立。** 负责人 2026-10-13 指示发布后，本分支已公开推送并建 [PR #48](https://github.com/paher-din/XunJie/pull/48)（base `main`=`37849f4`，head `dfb06cd`，53 文件 +2902/−22）。原文按时点逐字保留、不倒写；同段「Issue #39 未关闭、C4 未开始」两点经复核仍属实。主副本的准备阶段改动经逐字比对确认为本文与 README 已提交内容的早期子集（只差 1 行旧状态与 1 行旧导航措辞），按负责人决定丢弃，未推 main——推上去会使 README 出现内容冲突、本文出现 add/add 冲突，实测见第 12 节。发布与修复详情见第 12 节。
+
 | 位置 | 实际交付 |
 | --- | --- |
 | [C 领域协议](../../apps/teaching/contracts/runner/hdl.ts) | Build/Session/原身份/顺序/四值帧/有限波形类型与节点命令；原 Purpose、JobStatus、C RunRecord 含义不变，未新建公共 HTTP 路径或扩 B ObjectRef |
@@ -255,3 +257,84 @@ Node 测试失败输出自带空格行与命令输出的 EOF 空行会触发 Git
 2026-10-13，同一源码下原 C 的 guest/SSH/实际全应用 strict 类型检查三个执行结果均为退出 0，以原 `record-validation` 维护入口追加[当前 C 验收记录](../../apps/teaching/runner/hdl.evidence/c-validation.json)，经 application SSH 读回 C ready=true、HDL ready=true。C fingerprint=`1dbbf2dbb9730b0121518d114a457f27282baad1e391253c93804c57e831edba`，sourceHash 与第 11.2 节相同。guest 历史 typecheck 安装路径当前缺失的首次尝试失败也已确认；使用本次精确 Node/lock/相同源码的已执行 WSL 全应用 strict 类型检查证据，不伪造该 guest 命令成功。
 
 本地分支可审阅，发布仍未授权；Issue #39 保持 Open，DL-A/B/UI 与 C5 未完成条件按第 11.3 节交接。当前没有修改受保护文档或安排自动跟进，也没有以本域验收关闭原 C、P2/P3、#22/#23/#45 或正式产品条件。
+
+## 12. 2026-10-13 公开发布与按审查修复
+
+本节就地追加，第 1～11 节原文逐字保留、不倒写。上段「发布仍未授权」与第 11.1 节「未公开推送、建 PR」两句在本节时点均已不成立：负责人 2026-10-13 指示发布，分支已公开推送并建 [PR #48](https://github.com/paher-din/XunJie/pull/48)（base `main`=`37849f4`，head `dfb06cd`，53 文件 +2902/−22）。同段的「Issue #39 保持 Open、不代写产品基线、不以本域验收关闭原 C 与 P2/P3/#22/#23/#45」全部仍然成立，本节没有任何一项改变它。
+
+负责人另指示按 [PR #48 的独立审查](https://github.com/paher-din/XunJie/pull/48)修复。审查两轴为 Spec 1 项 P1（合并定序）、Standards 1 项 P2 + 1 项承正文自报的 P2 + 6 项 P3。本节记录本轮实际做了什么、验证到什么程度、以及哪些**没做**和为什么。
+
+### 12.1 本轮实际修复
+
+| 审查项 | 实际改动 | 验证 |
+| --- | --- | --- |
+| P2-1 `.pending-<uuid>` 无界泄漏 | [node-files.ts](../../apps/teaching/runner/node-files.ts) 把写入与 `linkSync` 包进同一 `try`，`finally` 中 `if(existsSync(pending))unlinkSync(pending)`。成功、写入失败、`linkSync` 抛 EEXIST 三条路径都不再留暂存名；`openSync` 本身失败时 pending 未创建，`existsSync` 守卫避免 ENOENT 掩盖原错误。删的是名字不是 inode，已发布事实仍在 `path` 下 | Linux 侧实跑见 12.3；新增用例 `publication leaves no staging name behind, on success and on a refused overwrite` 连写三次断言目录内无 `.pending-`，再断言拒绝覆盖后仍无残留且原文不变 |
+| P3-2 `pendingJobs` 对 NULL 不失败安全 | [worker.ts](../../apps/teaching/server/workspace/worker.ts) 改为 `COALESCE(json_extract(job_json,'$.kind'),'') NOT LIKE 'hdl_%'`，缺 `kind` 的行留在原 C worker 可领取集合内 | 未新增用例：`jobSchema` 的 `kind: id` 与 [records/jobs.ts](../../apps/teaching/server/records/jobs.ts) 的 `!job.kind` 拒绝使该状态今天不可达，属防御性修正；typecheck 与两侧全量未引入新失败 |
+| P3-3 测试文件被当夹具导入 | `board` 从 [hdl-profile.test.ts](../../apps/teaching/runner/hdl-profile.test.ts) 移到新的 [tests/fixtures/hdl-board.ts](../../apps/teaching/tests/fixtures/hdl-board.ts)，三处导入改指该文件。放 `tests/fixtures/` 的理由：`npm test` 的 glob 只收 `*.test.ts` 故不会被当套件跑，且在 `runner/` 之外故不进 [fingerprint.ts](../../apps/teaching/runner/fingerprint.ts) 的 `sources` | `node --test runner/hdl-profile.test.ts server/workspace/hdl.test.ts` 由审查实测的 13 项回到 **9 项 9 通过 0 失败 0 跳过**，用例名重复 0，与 [hdl-service.txt](../../apps/teaching/runner/hdl.evidence/hdl-service.txt) 的 `ℹ tests 9` 一致 |
+| P3-4 缺 contracts 时抛裸 ENOENT | [fingerprint.ts](../../apps/teaching/runner/fingerprint.ts) 两处 contracts 读取收敛到 `contractHash`，ENOENT 转 `RunnerError('RUNTIME_NOT_READY', …)`，其余错误原样抛出。`sources` 数组内容逐字不变，故本项**不改变指纹值** | typecheck 退出 0；未新增用例（需伪造 DockerExecutor 才能走到该分支，超出本轮范围） |
+| P3-1 两个停止理由只到接缝层 | 不改代码，本节记明事实：生产触发方只有 [application.ts](../../apps/teaching/server/workspace/application.ts) 个人暂停一处；`assignment_paused` 与 `membership_revoked` 仅出现在 [hdl.test.ts](../../apps/teaching/server/workspace/hdl.test.ts) 的两个用例里，**覆盖到接缝为止，不代表已接通**。A 属分配暂停与成员资格撤回发生时，HDL 会话目前不会被记停止意图、也没有人调 `reconcileStops`，只能等自身空闲守卫回收，期间继续占用两实例配额。接通属 DL-A | — |
+| P3-6 提交后 `reconcileStops` 失败 | 不改代码，本节记明这是**有意的对外表现**：`stopInTransaction` 在事务内，`reconcileStops` 在事务提交后，故它抛错时暂停/取消已落库而 HTTP 返回错误。客户端按同幂等键重试会拿到重放回执，这正是「丢响应按原操作对账」设计的场景。A5/UI 不得把它读成命令未生效 | — |
+| P3-5 §11.1 表述过期 | 已在第 11.1 节原段后就地追加标注日期的补正引用块，原文逐字保留 | — |
+
+### 12.2 未做的三件事（P1-1 定序）与两项留作提案
+
+审查已把合并顺序定死为 **#47 先合、#48 后合**，因此下列三项**本轮一律未做**，等 #47 落地后执行：
+
+1. `hdl.test.ts` 的 `createDigitalLogicDatabase()` 表数由 29 改 31（#47 给 `workspaceSchema` 加两张表，本域工厂 exec 同一字符串），用例名里的「exactly 29 tables」同步改，并建议改成「既有 workspace 工厂表数 + 本域 3 表」的派生形式。**在 #47 合并前，29 是正确断言，提前改会引入假失败**——本轮 `origin/main` 仍为 `37849f4`、#47 仍 OPEN，已核实。
+2. `application.ts` 的 `/api/attempts/:id/controls` 冲突必须人工解，同时保住 #47 的第 6、7 个实参（`runPurposes=undefined`、`use = control.kind === 'resume_revision' ? 'read' : 'write'`）与本轮的 `async` 化、`pause` 停止钩子、`await hdl?.reconcileStops()`。丢掉 `use` 实参会让 `resume_revision` 静默退回 `'write'`，在 `reviewed` 阶段变成 STATE_CONFLICT，且失效方式是命令被拒而非报错。
+3. 组合树上重测 `submissions.test.ts` 的 C4-V03/V06/V07、`hdl.test.ts` 全套与组合树全量；README 按追加不改写处理，两个 PR 的段落都保留，`### 当前整体状态与后置验收` 仍在末节。
+
+留作提案、本轮未改（超出审查划定范围）：`LIKE 'hdl_%'` 中的 `_` 是 SQL 单字符通配，任何 `hdl` + 任意字符开头的 `kind` 都会被误分类，[hdl.ts](../../apps/teaching/server/workspace/hdl.ts) 与 `worker.ts` 两侧同此写法，需要时统一用 `ESCAPE` 或前缀比较；`hdl-install.sh` 会改物理节点的 systemd/AppArmor 但不入指纹（过滤只收 `hdl-*.c`、`hdl.Dockerfile`、`hdl.apparmor`），是否纳入由负责人判断。
+
+主工作树残留的准备阶段改动经逐字比对确认为本文与 README 已提交内容的早期子集——本文只差 1 行旧状态、README 只差 1 行旧导航措辞，状态段逐字相同——按负责人决定丢弃，未推 main。实测依据：以 `37849f4` 加这两处改动构成的临时提交与 `codex/dl-c-hdl` 做 `git merge-tree`，报 `README.md` 内容冲突与本文 add/add 冲突；而 `37849f4` 直接与分支合并是干净的。
+
+### 12.3 P2-2 归因：WSL 失败是环境级非确定性，不支持与 `writeImmutable` 的关联
+
+审查要求「在获准 Linux 宿主逐项归因，优先查它与共享 `writeImmutable` 改动的关联」。本轮在 WSL 做了三棵树的对照实跑，**结论是该假设不成立**，但根因本身未查明。
+
+环境：WSL2 Ubuntu，kernel `6.6.87.2-microsoft-standard-WSL2`，Node `v24.21.0`（linux-x64），原 lock 依赖。**这不是第 11.2 节的目标 guest（kernel `6.8.0-146-generic`），也不是认证 SSH 宿主**，只是与既有 `wsl-full-failed.txt`/`baseline-full-failed.txt` 同类的普通 WSL 环境。三棵树在跑之前逐文件核过身份：head 副本与 `dfb06cd` 的 `contracts`/`runner`/`server`/`tests`/`tools` 源码差异 0 个文件（排除本轮改动的 8 个），基线副本的 `runner/node-files.ts` 不含 `linkSync`，即确为改动前状态。
+
+全量命令统一为 `node --test tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts`（`node --test` 直接跑 `.ts`，不需 `pretest` 的 build；`tests/startup.test.ts` 需要 `dist`，三棵树均已具备）。
+
+| 树 | 全量项数 | 通过 | 失败 | 跳过 | 失败用例 |
+| --- | --- | --- | --- | --- | --- |
+| 基线 `37849f4`（C 记录） | 275 | 264 | 4 | 7 | 见 `baseline-full-failed.txt` |
+| 基线 `37849f4`（本轮） | 275 | 265 | **3** | 7 | `student-help:530`、`design-activities:166`、`design-activities:394` |
+| head `dfb06cd`（C 记录） | 291 | 274 | 9 | 8 | 见 `wsl-full-failed.txt` |
+| head `dfb06cd`（本轮） | 294 | 283 | **3** | 8 | `student-help:293`、`student-help:360`、`design-activities:394` |
+| 本轮修复后 第 1 次 | 287 | 271 | **5** | 8 | `student-help:343`、`student-help:530`、`student-help:1102`、`design-activities:311`、`records-adapter:129` |
+| 本轮修复后 第 2 次 | 287 | 275 | **4** | 8 | `student-help:293`、`design-activities:311`、`design-activities:374`、`design-activities:416` |
+
+关键事实四条：
+
+1. **同一份未修改代码连跑两次，失败点会移动。** 基线 `design-activities.test.ts` 单跑第 1 次 2 失败（`:125`、`:203`）、第 2 次 3 失败（`:125`、`:203`、`:272`）。head 同一文件单跑第 1 次失败 `:293`、第 2 次失败 `:238`，两次互不相同。修复后同一文件第 1 次 0 失败、第 2 次 1 失败。
+2. **head 与修复后两次全量的失败集合零交集**（3 项对 5 项，无一同名）；修复后自己两次全量也只重合 1 项（`design-activities:311`）。
+3. **全量里失败的用例单跑即通过。** 修复后树上 `student-help.test.ts` 单跑 23 项 22 通过 0 失败 1 跳过，`records-adapter.test.ts` 单跑 5/5 通过。三文件合跑 47 项 1 失败。
+4. **两侧失败的错误类别相同、落点不同**：都是 `INVALID_REFERENCE` 422 与认证 401（`actual: 401, expected: 200` / `expected: 403`），指向并行执行下的跨文件状态或时序干扰，而不是某条断言被代码改坏。
+
+因此审查正文里「净 +5」是把两次不稳定采样相减得到的差值：基线自身在本轮与 C 记录之间就从 4 失败变成 3 失败（项数同为 275、跳过同为 7），head 自身从 9 失败变成 3 失败。**基线完全不含 `linkSync` 与本域任何代码，却同样不稳定**，这直接否证了「7 项与共享 `writeImmutable` 改动相关」的优先假设。C 原文「未逐项证明九项同根因，不宣称修好 #23，也没有修改认证或时限来迁就结果」的判断是对的，本轮不改变它。
+
+项数差异的说明：本轮 head 全量为 294 项、C 记录为 291 项，差 3 项，本轮**未查明原因**；较可能的解释是 `wsl-full-failed.txt` 采样于第 11.4 节那次新增领域用例之前的时点（该节已写明「前表的 8/8 和 61 项是各自已执行时点范围」），但这是推断不是证明。修复后 287 = 294 − 7，与 P3-3 的账逐项吻合：移除 `hdl.runtime.test.ts` 与 `hdl.test.ts` 各 4 项重复注册共 −8，新增 1 项 `node-files` 用例 +1（Linux 门在 WSL 生效，故计入通过而非跳过）。
+
+**仍未做的部分，明确列为未执行**：WSL 非确定性的根因未查明（候选包括并行执行下的墙钟阈值、回环端口与共享临时目录争用，受影响用例多为 19～22 秒的长用例，与既有记录的 `<80ms` 墙钟断言同类），属 [#23](https://github.com/paher-din/XunJie/issues/23) 环境稳定性范围；**目标 guest 与认证 SSH 宿主上的全量复跑本轮未执行**，第 11.2 节的 14/14、50/51、10/10 仍是 C 的原始记录，本轮未在任何目标环境重跑，也未改动 `hdl.evidence/` 内任何既有日志或清单。本轮四份 WSL 原始日志未纳入仓库，可复现入口是上表的树身份核验方法加同一条命令，不以个人目录作为团队证据入口。
+
+### 12.4 本轮验证记录
+
+| 环境 | 命令 | 结果 |
+| --- | --- | --- |
+| win32 x64，Node `v24.21.0`，TypeScript `7.0.2`，原 lock | `npm run typecheck` | 退出码 0 |
+| 同上 | `npm test`（含 `npm run build`） | 构建通过；**276 项：263 通过、1 失败、12 跳过**。唯一失败为 `server/workspace/review.test.ts:118` → `runner/control.ts:48` `Linux and trusted control context required`，与审查在 head 上实测的失败项逐字相同，本 PR 未修改这两个文件，即 **win32 零新增失败** |
+| 同上，与审查记录的 head win32 全量对照 | 283 项/271 通过/1 失败/11 跳过 → 276/263/1/12 | 差 −7 项 = −8 重复注册 +1 新增 Linux 门用例；通过 −8（移除的 8 项原本都通过）；跳过 +1（新用例在 win32 跳过）；**失败数不变** |
+| 同上 | `node --test runner/hdl-profile.test.ts server/workspace/hdl.test.ts` | 9 项 9 通过 0 失败 0 跳过，用例名重复 0 |
+| 同上 | `node --test runner/node-files.test.ts` | win32 上 `writeImmutable` 因目录 `fsyncSync` 返回 EPERM 根本无法运行，这正是原用例加 Linux 门的原因；新用例同门，win32 计为跳过，不作为验证 |
+| 同上 | `node tools/a0-review/check.mjs` | 退出码 0，`errors: []` |
+| WSL2 Ubuntu，Node `v24.21.0` | `node --test runner/node-files.test.ts` | **2 项 2 通过 0 失败 0 跳过**——原原子性用例与新增的不留暂存名用例都通过，即审查要求的 P2-1 Linux 侧实跑记录 |
+| 同上 | 三棵树全量对照 | 见 12.3 表 |
+
+`node tools/a0-review/check.test.mjs` 本轮未重跑：它在发布 PR #48 前已跑过 16/16，本轮改动只涉及 `apps/teaching` 源码与本文，未触碰 `docs/product/**` 或该检查器读取的路由集合。
+
+### 12.5 边界与状态
+
+本轮未修改 `AGENTS.md`、`docs/product/**`、`docs/planning/**`、`docs/reference/**`、他人任务稿、`package.json`、`package-lock.json`、`tsconfig*.json`、依赖、凭据、CI/CD；未做数据库迁移或真实库操作；未删除文件或 Git 历史；未连接目标 guest、认证 SSH 宿主、真实供应商或真实师生数据；未启动容器。文档改动只有本文与 README 的一段日期状态。
+
+Issue #39 保持 Open，DL-AC-02～07 不整条勾选，C4 未开始，DL-A/B/UI 与 C5 未完成条件按第 11.3 节交接，产品基线仍待授权维护者汇总。审查结论中的合并前必修项状态：P2-1 已修并有 Linux 实跑记录；P2-2 已归因为环境级非确定性、根因与目标 guest 复跑仍未执行；P1-1 按定序等 #47 落地后执行三项。合并不由本轮触发，仍由负责人执行。
