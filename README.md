@@ -36,6 +36,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，项目负责人批准 C4 的合成库 schema 追加与任务稿第 6 节的四项解释与跨属提案，[PR #47](https://github.com/paher-din/XunJie/pull/47) 据此继续审查，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。批准按任务稿原文字面，只覆盖已实现的读法与 C 属两张合成表，不覆盖真实数据库建表迁移与生产部署，也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案。批准不改动任何代码。四条读法若需写回 PRD/MVP_SPEC/TECH_DESIGN，按文档优先规则交由授权维护者汇总，当前状态为待授权维护者汇总；浏览器、真人师生、真实模型与完整 G3 的验收条件不变，逐项落地含义见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
 
+2026-10-12，项目负责人进一步授权把 C4 的三条已批准读法写回产品基线，汇总已完成。核对后 [PRD](docs/product/PRD.md) 与 [MVP_SPEC](docs/product/MVP_SPEC.md) 无需改动，M-07 原文「仅对课程明确要求的目标补充短解释、预测或变式检查」本身已是该读法，缺的是技术侧活动版本字段而非产品要求；实际只在 [TECH_DESIGN](docs/product/TECH_DESIGN.md) 三处既有行与既有段内追加文字：controls 行的 `resume_revision` 授权用途、submissions 行的说明与检查引用校验范围及活动版本字段缺口、以及「失效按用途」一段中暂停与提交/重开的取消范围拆分。未改名任何标题、未增删任何路由、未放宽任何验收，文档检查退出码 0 且各项计数与改动前一致。授权范围仅限这三条读法；「分配暂停使已发放的重开许可失效、恢复分配不使其复活」一条不在其中，仍只作为交 A5/UI 的事实保留在任务稿，未写入基线。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -272,6 +274,8 @@ node --test server/workspace/submissions.test.ts
 2026-10-12，C4 已按普通推送交付分支 `codex/c4-submissions-recovery`（`7063fd2`）并建立 [PR #47](https://github.com/paher-din/XunJie/pull/47)，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。合并由负责人执行，本任务不代签、不自行合并，也不把 PR 建立当作应用验收。
 
 2026-10-12，项目负责人批准上文请其复核的合成库 schema 追加与任务稿第 6 节的四项解释与跨属提案，据此收口：两张表保留在 C 属 `workspaceSchema`，A 属 `server/db/transaction.ts` 零改动，合成库表数断言 24 为已批准事实；提交只取消教学类用途，不取消在途 `student_run`，已发生的执行事实与原始引用保留；短反思与可信检查引用不强制，只校验形状、边界与引用匹配，缺省不视为违规；`resume_revision` 保持 `read` 用途授权加 C 属阶段、分配与许可守卫，A 属权限文件不增列用途；`transitionAttemptInTransaction`、`planReopenGrant` 与 `writeReopenGrant` 的现有签名即为交 A5 的契约形状。批准不改动任何代码，不改变上文任何未执行项与通过统计，也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案，需负责人另行明确文件与范围才能实施。产品基线汇总待授权维护者处理，逐项落地含义见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
+
+2026-10-12，负责人授权后基线汇总已完成：PRD 与 MVP_SPEC 经核对无需改动，只在 TECH_DESIGN 三处既有行与既有段内追加上述三条读法，未改名标题、未增删路由、未放宽验收门槛，`node tools/a0-review/check.mjs` 退出码 0 且 `baselineMutationRoutes` 与 `internalLinks` 计数与改动前一致。AC-06/08/09/12 的判据未变，因此无需同步任何验收条目；上文全部未执行项与通过统计不受影响。逐处位置与授权范围见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
 
 ### 当前整体状态与后置验收
 
