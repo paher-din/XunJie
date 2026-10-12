@@ -1,6 +1,6 @@
 # A4：有效学习状态、异议与教师纠正事务
 
-日期：2026-10-12（Asia/Shanghai）。主责：A；对应 [Issue #41](https://github.com/paher-din/XunJie/issues/41)。状态：2026-10-12 负责人已批准 §2～6 的具体实施、fresh-only 31 表与公共测试接缝；已实现本批服务端能力，公共专项 40/40 与类型/构建通过，完整回归结果及审查状态见 §8.3；不宣称完整产品验收。DL-A 前置准备见 [DL-A](DL-A_COURSE_BUSINESS_INTEGRATION.md)，等待 DL 批次时可推进本任务独立部分。
+日期：2026-10-12（Asia/Shanghai）。主责：A；对应 [Issue #41](https://github.com/paher-din/XunJie/issues/41)。状态：2026-10-12 负责人已批准 §2～6 的具体实施、fresh-only 31 表与公共测试接缝；已完成获准服务端批次和两轴代码审查；最新专项 43/43 与类型/构建通过，全量仍有 1 个既有 Windows/Linux 环境失败；2026-10-13 最终结果见 §11，历史记录保留在 §8.3；不宣称完整产品验收。DL-A 前置准备见 [DL-A](DL-A_COURSE_BUSINESS_INTEGRATION.md)，等待 DL 批次时可推进本任务独立部分。
 
 ## 1. 基线、范围与现有接缝
 
@@ -192,3 +192,34 @@ A5 可消费当前主张/教师 decisions/disputes，并实现 `review.feedbackT
 两个新增公共用例分别按 red→最小修复→green 验证：在途显式请求经历 capture off/on，原 Job 未停且 epoch 不变，修复前拒绝、修复后接受并保留原 capture binding 与 paused 覆盖区间；received 无 displayed 的真实 C3 帮助，原 observed_help 候选正确拒绝（审查原第一条为误报），但 none_observed_in_system/unresolved=false 修复前错误接受、修复后拒绝，unknown/unresolved=true 则接受，原 received 事实保留。
 
 修复后 `node --test --test-reporter=tap tests/review.test.ts`：43 项（35 顶层+8 子用例），43 通过、0 失败、0 跳过；`npm run typecheck` 通过。未改既有检查阈值、平台门禁或产品/共享契约。修复前固定源码 `0073fa6` 的最终串行全量为 305 项、295 通过、1 失败、9 跳过，build 通过，41 项 A4 全通过，原启动 5 秒超时未复现；唯一失败为既有 Windows 的 Linux-only RunControl 配置。本段是该时点记录；修复后固定源码的全量和增量两轴结果随后追加。
+
+## 11. 最终固定源码、验收证据与交付边界（2026-10-13）
+
+源码固定为 `2f4114a4a08754f742295db0d193963e7414693c`，基线 `37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`。获准 §2～6 的 A4 服务端批次已实现、验证并完成代码审查；实际公共能力和消费签名见 §9。#41 仍 Open，待公开交付和负责人接收；本文不代替受保护基线汇总或完整产品验收。DL-A 的 A 域提前评审准备已完成，正式跨域契约仍缺输入，#38 不关闭。
+
+### 11.1 最终实际验证
+
+以下已执行命令使用批准 Node 24.21.0/锁定依赖，目录为 `apps/teaching`。完整套件与 npm test 使用相同文件集合，只将文件并发设置为 1；各用例内部并发、原 5 秒启动阈值、平台/节点/模型门禁均未改，未删除或跳过失败用例。
+
+| 实际命令 | 实际结果 | 可查记录 |
+| --- | --- | --- |
+| `npm run typecheck` | 通过 | 新 A4 及原 B/C 完整类型检查 |
+| `npm run build` | 通过 | [build](../../apps/teaching/tests/evidence/a4/acceptance.a4-postreview-build.windows.txt) |
+| `node --test --test-reporter=tap tests/review.test.ts` | 43 项，43 通过、0 失败、0 跳过；35 顶层+8 子用例 | [A4 专项](../../apps/teaching/tests/evidence/a4/acceptance.a4-postreview-targeted.windows.txt) |
+| `node tools/check-runtime.mjs && node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts` | 307 项，297 通过、1 失败、9 跳过；A4 43 项全部通过 | [最终全量](../../apps/teaching/tests/evidence/a4/acceptance.a4-postreview-full-serial.windows.txt) |
+
+唯一失败仍为 `server/workspace/review.test.ts:118` 的真实 RunControl 准备失败用例，在 Windows 初始化 Linux-only control 时抛 `INVALID_CONFIGURATION: Linux and trusted control context required`。本批未改该用例或 runner/control；启动超时在两次文件串行全量均未复现，首轮并行失败仍保留。9 项实际模型、Linux/隔离节点及真实 C 链门禁跳过的名称见 [证据索引](../../apps/teaching/tests/evidence/a4/acceptance.a4.evidence.json)。WSL 中所需批准 Node/锁定依赖尚未配置；未安装或自动启动新资源，A4 Linux 全量未执行。
+
+fresh 工厂实际检查为 31 表、SQLite 3.53.4、WAL、foreign_keys=1、synchronous=2、busy_timeout=1000，integrity_check=ok、foreign_key_check=0；该 schema 在边界修复前后未改变。全部合成库和原本机日志保留。验收记录只归一仓库/临时目录路径与 CRLF，保留原日志 SHA-256 及入库记录 SHA-256，团队不需个人目录即可核查。早期 [304 项并行回归](../../apps/teaching/tests/evidence/a4/acceptance.a4-initial-full.windows.txt) 和固定 `0073fa6` 的 [305 项串行回归](../../apps/teaching/tests/evidence/a4/acceptance.a4-prereview-full-serial.windows.txt) 单列历史，不改写通过数。
+
+### 11.2 两轴审查收口
+
+Standards：固定基线→`0073fa6` 发现 1 个 README 运行目录 P3；`0073fa6`→`2f4114a` 已修正并增量复核关闭，未解决硬规范问题 0、可操作判断建议 0。Spec：初报的“pending 被计 observed”已核 C3 过滤后撤回；实际核实的在途显式请求采集切换误拒绝和已发送/received 缺展示的 unknown 缺口各有公共 red→green，增量复核两项有效 P2 均关闭，未解决 0、新规格问题/范围扩大 0。两轴是独立只读代码审查，实际测试结果另在 §11.1 登记。
+
+### 11.3 明确未完成项与维护者汇总请求
+
+真实 B3 模型候选与人工语义、A5 feedback 目标与教师正式反馈、C4 完整恢复/联合接入、正常共同业务宿主初始化、socket/TLS/实际 UI/真人与教学效果未执行。合成外部 provider/runner 不能记为实际模型或 Linux 隔离证据。本批没有产品监听入口；原 main 仍为健康入口，C4/A5 宿主按 §9 真实受控签名组合后另验。
+
+2026-10-13 远端 main 未变；新增 Open [P2 PR #46](https://github.com/paher-din/XunJie/pull/46) 与 [C4 PR #47](https://github.com/paher-din/XunJie/pull/47)，均未合入本源码。#47 在 workspaceSchema 追加两表，若后续合入 A4 将形成 33 表（不含 A3 两表）；当前 31 表批准/验证不延伸为该联合 schema 或迁移许可，后续精确表集合、授权和联合回归须另行登记。本批不代 C 实现作品恢复，不因 B 报告真实调用而自动启用本机真实模型。
+
+待获授权维护者汇总到 MVP 第 10 节：§9 的实际代码/受控接口、上述固定源码与真实命令/结果、唯一环境失败、9 跳过和本节后置项；到 TECH 汇总获准自述/状态/决定/异议/原分析持久化、确切引用可用性、原 Job 最终接纳/C3 同事务纠正/B2 trusted state reader 的实际签名与用途守卫。product/planning/reference/AGENTS 在本批保持只读，未宣称已完成该汇总。B3/C4/A5 各域依 §9 复核消费，原 G0～G4 和正式验收条件保留。

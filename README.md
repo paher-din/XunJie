@@ -48,7 +48,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
 | [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 获准提前评审准备，A 域输入已交；仍待 C/B/UI 具体提案、配置/schema/运行授权 |
-| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 获准 31 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；专项 40/40，完整回归失败及后置项单列 |
+| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 获准 31 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；专项 43/43、两轴未解决 0；完整回归环境失败及后置项单列 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -266,6 +266,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，A 已基于最新 main 建立 [DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) 的能力差异/共享输入提案，再按等待 DL 批次可推进独立 A4 的顺序建立 [A4 实施方案](docs/tasks/A4_LEARNER_STATE_REVIEW.md)。DL 正式评审仍等待 P2 原预交付确认和 C/B/UI 消费输入；A4 的五表 fresh-only 合成库、受控接口与公共验证接缝待批准。两项源码/业务验收均未执行，#38/#41 保持 Open，进度待授权维护者汇总。
 
 2026-10-12，负责人已批准 DL-A 提前评审准备和 A4 §2～6 的具体实施；A4 公共专项 40/40、typecheck/build 通过，Windows 全量 304 项为 293 通过、2 失败、9 跳过，原启动测试单独复跑 4/4。实现/交接与真实失败、未执行项见 [A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md#83-当前实现与工程验证2026-10-12)；[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#73-最新工程收口与早期评审准备2026-10-12) 的 A 域输入已准备，仍缺 C/B/UI 提案及精确实施授权。代码审查尚待完成，#38/#41 未关闭，产品基线待授权维护者汇总。
+
+2026-10-13，A4 获准服务端批次已完成代码与两轴审查，专项 43/43、typecheck/build 通过；固定源码全量 307 项为 297 通过、1 个既有 Windows/Linux RunControl 环境失败、9 跳过，历史失败保留。验收记录、原日志摘要、消费接缝与后置项见 [A4 最终记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#11-最终固定源码验收证据与交付边界2026-10-13)；[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#74-2026-10-13-远端复核与本批交接) 的 A 域提前评审准备已交，仍缺 C/B/UI 具体契约和实施授权。远端新增 PR #46/#47 尚未合入本源码，#38/#41 未关闭，基线待授权维护者汇总。
 
 ### 当前整体状态与后置验收
 
