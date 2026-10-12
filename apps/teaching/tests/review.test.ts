@@ -784,3 +784,64 @@ test('A4: a teacher decision reference inherits its primitive basis and cannot l
     assert.equal(oldDecision.statusCode,422,oldDecision.body);assert.equal(oldDecision.json().error.code,'INVALID_REFERENCE');
   } finally {await s.f.close();}
 });
+
+test('A4: an in-flight explicit analysis survives capture changes and retains the original binding and real coverage gap',async () => {
+  const {setup,candidate} = await import('./review-support.ts');const s = await setup({process: true});
+  try {
+    const queued = await s.queue(),lease = s.f.review.claimAnalysis(queued.jobId)!;
+    const before = (await s.attempt()).attempt;
+    for (const value of [false,true]) {
+      const changed = await command(s.f,s.student,`/api/attempts/${s.attemptId}/controls`,{expectedAttemptRevision: (await s.attempt()).attempt.attemptRevision,control: {kind: 'capture',value}});
+      assert.equal(changed.statusCode,200,changed.body);
+    }
+    const control = (await s.attempt()).attempt;
+    assert.equal(control.decisionEpoch,before.decisionEpoch);assert.equal(control.collecting,true);assert.equal(control.captureRevision,before.captureRevision+2);
+    const job = (await s.attempt()).jobs.find((value: {jobId:string}) => value.jobId === queued.jobId);
+    assert.equal(job.status,'running');assert.equal(job.stopRequested,false);
+    const raw = JSON.stringify(candidate(s.snapshotId,s.activityId,{unknown: ['Collection was paused while the explicit request was running']}));
+    const completed = s.f.review.completeAnalysis({jobId: queued.jobId,leaseToken: lease.leaseToken,recoveryGeneration: s.f.generation(),bodyJson: raw});
+    assert.equal(completed.disposition,'accepted');assert.equal(completed.learnerStateRevision,1);
+    const claim = (await s.state()).claims[0];assert.equal(claim.assistanceStatus,'unknown');assert.equal(claim.unresolved,true);
+    const coverage = await s.f.app.inject({url: `/api/attempts/${s.attemptId}/coverage`,headers: s.student});
+    assert.equal(coverage.statusCode,200,coverage.body);assert.ok(coverage.json().data.intervals.some((value: {state:string}) => value.state === 'paused'));
+    const archived = await s.f.app.inject({url: `/fixture/analysis/${s.attemptId}/${queued.jobId}`,headers: s.teacher});
+    assert.equal(archived.statusCode,200,archived.body);assert.equal(archived.json().data.rawBodyText,raw);
+    assert.equal(queued.binding.captureRevision,before.captureRevision);
+  } finally {await s.f.close();}
+});
+
+test('A4: received help without a display receipt remains an unresolved assistance gap',async () => {
+  const {setup,candidate} = await import('./review-support.ts');const s = await setup({process: true});
+  try {
+    const help = await command(s.f,s.student,`/api/attempts/${s.attemptId}/help`,{question: 'Explain the approach',expectedAttemptRevision: (await s.attempt()).attempt.attemptRevision});
+    assert.equal(help.statusCode,200,help.body);
+    const executed = await command(s.f,s.student,`/fixture/execute/${s.attemptId}/${help.json().data.result.jobId}`,{});
+    assert.equal(executed.statusCode,200,executed.body);const action = executed.json().data.delivery,control = (await s.attempt()).attempt;
+    assert.equal(action.disposition,'pending');
+    const events = await s.f.app.inject({url: `/api/attempts/${s.attemptId}/events?clientId=page&recoveryGeneration=generation&decisionEpoch=${control.decisionEpoch}&limit=100`,headers: s.student});
+    assert.equal(events.statusCode,200,events.body);
+    const delivered = events.json().data.events.find((value: {payload?: {actionId:string}}) => value.payload?.actionId === action.actionId)?.payload;
+    assert.ok(delivered);
+    const received = await command(s.f,s.student,`/api/actions/${action.actionId}/receipts`,{deliveryId: delivered.deliveryId,clientId: 'page',contentHash: action.contentHash,
+      receiptKind: 'received',clientReceiptId: 'received-'+action.actionId});assert.equal(received.statusCode,200,received.body);
+    const records = await s.f.app.inject({url: `/api/attempts/${s.attemptId}/teaching-records`,headers: s.student});
+    assert.equal(records.statusCode,200,records.body);assert.deepEqual(records.json().data.actions,[]);
+    const coverage = await s.f.app.inject({url: `/api/attempts/${s.attemptId}/coverage`,headers: s.student});
+    assert.equal(coverage.statusCode,200,coverage.body);assert.equal(coverage.json().data.collecting,true);
+    assert.ok(coverage.json().data.intervals.every((value: {state:string;rejections:unknown[]}) => value.state !== 'paused' && value.rejections.length === 0));
+    const observed = await s.queue(),observedLease = s.f.review.claimAnalysis(observed.jobId)!;
+    const wrongObservation = s.f.review.completeAnalysis({jobId: observed.jobId,leaseToken: observedLease.leaseToken,recoveryGeneration: s.f.generation(),
+      bodyJson: JSON.stringify(candidate(s.snapshotId,s.activityId,{assistanceStatus: 'observed_help'}))});
+    assert.equal(wrongObservation.disposition,'rejected');assert.equal(wrongObservation.reason,'INVALID_REFERENCE');
+    const none = await s.queue(),noneLease = s.f.review.claimAnalysis(none.jobId)!;
+    const missingDisplay = s.f.review.completeAnalysis({jobId: none.jobId,leaseToken: noneLease.leaseToken,recoveryGeneration: s.f.generation(),
+      bodyJson: JSON.stringify(candidate(s.snapshotId,s.activityId,{assistanceStatus: 'none_observed_in_system',unknown: [],unresolved: false}))});
+    assert.equal(missingDisplay.disposition,'rejected');assert.equal(missingDisplay.reason,'INVALID_REFERENCE');assert.equal((await s.state()).learnerStateRevision,0);
+    const unknown = await s.queue(),unknownLease = s.f.review.claimAnalysis(unknown.jobId)!;
+    const accepted = s.f.review.completeAnalysis({jobId: unknown.jobId,leaseToken: unknownLease.leaseToken,recoveryGeneration: s.f.generation(),
+      bodyJson: JSON.stringify(candidate(s.snapshotId,s.activityId,{unknown: ['The client received help but has not reported it displayed']}))});
+    assert.equal(accepted.disposition,'accepted');const claim = (await s.state()).claims[0];assert.equal(claim.assistanceStatus,'unknown');assert.equal(claim.unresolved,true);
+    const history = await s.f.app.inject({url: `/api/attempts/${s.attemptId}/teaching-records`,headers: s.teacher});
+    assert.equal(history.statusCode,200,history.body);assert.equal(history.json().data.actions[0].receipts[0].receiptKind,'received');
+  } finally {await s.f.close();}
+});

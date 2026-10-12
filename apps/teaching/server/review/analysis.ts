@@ -39,7 +39,8 @@ export function assertAnalysisCurrent(tx: Transaction,job: Job,binding: Analysis
     || (job.purpose === 'passive_analysis' && !attempt.collecting) || job.stopRequested || !['queued','running'].includes(job.status)
     || Date.parse(job.deadline) <= now) throw new ApiError('STATE_CONFLICT');
   if (attempt.decisionEpoch !== binding.decisionEpoch || readState(tx,binding.scope).learnerStateRevision !== binding.expectedStateRevision
-    || readContext(tx,binding.scope).contextRevision !== binding.contextRevision || attempt.captureRevision !== binding.captureRevision) throw new ApiError('VERSION_CONFLICT');
+    || readContext(tx,binding.scope).contextRevision !== binding.contextRevision
+    || (job.purpose === 'passive_analysis' && attempt.captureRevision !== binding.captureRevision)) throw new ApiError('VERSION_CONFLICT');
   if (attempt.activityVersionId !== binding.activityVersionId || activity.helpPolicy.versionId !== binding.policyVersionId
     || canonical(binding.versions) !== canonical(versions)) throw new ApiError('STATE_CONFLICT');
   for (const ref of [...binding.inputRefs,...binding.assistanceRefs,...binding.coverageRefs]) resolveEvidence(tx,binding.scope,ref);

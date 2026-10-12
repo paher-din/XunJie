@@ -166,7 +166,7 @@ try {
 
 ### A4 有效学习状态与纠正事务
 
-2026-10-12，负责人已批准 A4 的 fresh-only 31 表和公共验证范围。工作目录为 `apps/teaching`，使用 Node 24.21.0 与锁定依赖；以下验证创建并保留合成库，不迁移已有库，真实模型/执行节点开关保持关闭，详见 [A4 记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#83-当前实现与工程验证2026-10-12)。
+2026-10-12，负责人已批准 A4 的 fresh-only 31 表和公共验证范围。以下命令从仓库根目录执行，进入 `apps/teaching` 后使用 Node 24.21.0 与锁定依赖；验证创建并保留合成库，不迁移已有库，真实模型/执行节点开关保持关闭，详见 [A4 记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#83-当前实现与工程验证2026-10-12)。
 
 ```powershell
 cd apps/teaching

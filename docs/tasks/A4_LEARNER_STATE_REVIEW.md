@@ -180,3 +180,15 @@ A5 可消费当前主张/教师 decisions/disputes，并实现 `review.feedbackT
 `createReviewApp` 是可组合服务端工厂；普通 `npm start` 仍为既有 health 宿主，本批没有把测试夹具当正常入口。DL-A 的共用正常宿主/完整表集合/消费者与实际 C/B/UI 接入仍按其独立提案/精确授权推进。产品/计划/参考/AGENTS 未修改；TECH 契约与 MVP 第10节真实实现/结果仍待获授权维护者汇总。
 
 2026-10-12，专项汇总后新增教师决定引用防复活反例，先红后绿：该引用须继承当前确切教师主张的原依据/观察组，后续撤回时跨目标派生主张 contested，旧判断引用不可再排队。此时完整回归尚未复跑；上一段 40/40 与 304 项统计保留其测试源码时点。最终验证及固定源码两轴审查将另记，不提前将新增反例计入原通过数。独立新库诊断实际为 31 表、SQLite 3.53.4、WAL/FULL、外键开启、integrity=ok/外键错误0；这项 schema 诊断不代替公共业务测试。
+
+## 10. 固定提交审查后的边界修复（2026-10-12）
+
+固定提交 `0073fa6509445407b6e6060e3ce391021be948ea` 的 Spec 审查发现显式分析对 captureRevision 无条件比较，与 TECH §7.2.1 的“暂停采集仅停过程/在途被动分析”不符。在既有 §3～6 授权和公共接缝内补测并修正：被动分析继续核当前采集版本/开关；显式请求的固定引用与原 binding 保留，不因单独采集开关变化拒绝，最终仍读取当前真实覆盖空窗并保留 unknown/unresolved，不改贴原结果版本。
+
+展示回执审查更正：C3 的 student 记录读取已过滤 displayed/acknowledged，pending 本来不算 observed_help；原“pending 被算作已观察”意见撤回。仍需验证已发送/received 但没有展示回执时的解释缺口，按 TECH §4.2 保留 unknown/unresolved；本批不据发送/received 推断学生阅读、理解或掌握。结果在下文按实际 red/green 追加。
+
+### 10.1 反例与修复的实际结果
+
+两个新增公共用例分别按 red→最小修复→green 验证：在途显式请求经历 capture off/on，原 Job 未停且 epoch 不变，修复前拒绝、修复后接受并保留原 capture binding 与 paused 覆盖区间；received 无 displayed 的真实 C3 帮助，原 observed_help 候选正确拒绝（审查原第一条为误报），但 none_observed_in_system/unresolved=false 修复前错误接受、修复后拒绝，unknown/unresolved=true 则接受，原 received 事实保留。
+
+修复后 `node --test --test-reporter=tap tests/review.test.ts`：43 项（35 顶层+8 子用例），43 通过、0 失败、0 跳过；`npm run typecheck` 通过。未改既有检查阈值、平台门禁或产品/共享契约。修复前固定源码 `0073fa6` 的最终串行全量为 305 项、295 通过、1 失败、9 跳过，build 通过，41 项 A4 全通过，原启动 5 秒超时未复现；唯一失败为既有 Windows 的 Linux-only RunControl 配置。本段是该时点记录；修复后固定源码的全量和增量两轴结果随后追加。

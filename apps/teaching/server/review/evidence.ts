@@ -151,9 +151,13 @@ export function validateClaim(tx: Transaction,scope: LearnerScope & {attemptId: 
   if (state.blockedBases.some(blocked => sameTarget(body,blocked) && blocked.atoms.some(atom => atoms.includes(atom)))) throw new ApiError('STATE_CONFLICT');
   const attemptIds = [...new Set([scope.attemptId,...facts.flatMap(value => value.groupIds)])];
   const coverages = attemptIds.map(value => readCoverageIntervals(tx,value));
-  const observed = facts.some(value => value.helpObserved) || attemptIds.some(attemptId =>
-    readTeachingRecordsInTransaction(tx,{courseId: scope.courseId,studentId: scope.studentId,attemptId},'student').actions.length > 0);
-  const gap = facts.some(value => value.gap || value.toolFailure) || coverages.some(value => !value.collecting
+  const actions = attemptIds.flatMap(attemptId =>
+    readTeachingRecordsInTransaction(tx,{courseId: scope.courseId,studentId: scope.studentId,attemptId},'trusted').actions);
+  const wasShown = (action: typeof actions[number]) => action.receipts.some(receipt => ['displayed','acknowledged'].includes(receipt.receiptKind));
+  const observed = facts.some(value => value.helpObserved) || actions.some(wasShown);
+  // Sending or receiving help without a display receipt leaves its actual assistance unknown.
+  const displayGap = actions.some(action => action.deliveries.length > 0 && !wasShown(action));
+  const gap = displayGap || facts.some(value => value.gap || value.toolFailure) || coverages.some(value => !value.collecting
     || value.intervals.some(interval => interval.state === 'paused' || interval.rejections.length > 0));
   if ((body.assistanceStatus === 'observed_help' && !observed) || (body.assistanceStatus === 'none_observed_in_system' && (observed || gap))
     || (observed && body.assistanceStatus !== 'observed_help') || ((gap || body.unknown.length > 0) && !body.unresolved)) throw new ApiError('INVALID_REFERENCE');
