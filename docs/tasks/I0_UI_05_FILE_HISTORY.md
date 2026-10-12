@@ -281,4 +281,4 @@ export interface ConfirmationState {
 
 03/04/04A 已交付的共同边界全部复用：本任务没有第二份确认状态、没有新 IndexedDB store、没有新依赖、没有改服务端。06/06A/06B 可直接复用 `readSnapshot`/`state.snapshots` 与 `buildVersionComparison`（例如运行快照之间的比较），不需要另建比较实现；生命周期意图与确认头的边界保持在 `useProjectWorkspace` 与 03 的 outbox 里。
 
-状态：**已实现（准备范围）、已通过工程与浏览器验证**；两轴审查发现与修复见下节。本次改动已提交到本地分支 `i0/ui-frontend`（未推送、未部署）；开工前已存在的未跟踪 `.zcodeignore` 未纳入提交。基线汇总请求：请授权维护者把本文件范围汇总到 [MVP_SPEC §10](../product/MVP_SPEC.md#10-实现进展与验证记录)；本文件即该范围的实施记录，未改动 `docs/product/**` 任何内容（`git status -- docs/product docs/planning docs/reference AGENTS.md` 为空）。
+状态：**已实现（准备范围）、已通过工程与浏览器验证**；两轴审查发现与修复见下节。本次改动已提交并推送到 `i0/ui-frontend`（`git ls-remote` 核对 `refs/heads/i0/ui-frontend` = `6dfc9231f53bf30e919aef93e88d8f20abf40792`）；设计仓库 `718f2ae`、`ad89519` 已推送到其 `origin/main`（核对 = `ad89519eff7673c399b3dfcbf521cf0363b31b40`）。两者均未部署；开工前已存在的未跟踪 `.zcodeignore` 未纳入提交。推送后仅文档记录变化，代码不再改动。基线汇总请求：请授权维护者把本文件范围汇总到 [MVP_SPEC §10](../product/MVP_SPEC.md#10-实现进展与验证记录)；本文件即该范围的实施记录，未改动 `docs/product/**` 任何内容（`git status -- docs/product docs/planning docs/reference AGENTS.md` 为空）。
