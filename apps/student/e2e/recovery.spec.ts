@@ -394,7 +394,10 @@ test('VERSION_CONFLICT 保留正文、阻止自动覆盖，并把拒绝事实留
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-run-state')).toHaveText('作品有更新')
   // 学生只看到「作品在别处有更新，先重新读取」；VERSION_CONFLICT / 04A 之类的内部说法不得出现
-  await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('作品在别处有了新的版本，草稿已保留。请先重新读取，再决定怎么保存。')
+  await expect(page.locator('.ws-head-run [role=alert]'))
+    .toHaveText('作品在别处有了新的版本，草稿已保留。比较后再保存的能力还没有提供，请先重新读取当前作品。')
+  // 04A 未交付：保存被明确挡住，并且说清原因，不让学生以为按了就能覆盖
+  await expect(page.locator('.ws-head-run [role=alert]')).toBeVisible()
   expect(await page.locator('.ws-head').innerText()).not.toContain('VERSION_CONFLICT')
   await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()

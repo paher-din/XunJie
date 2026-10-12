@@ -56,7 +56,7 @@ export default function PrepWorkspacePage() {
     init.invalidate()
     try {
       await signOut(workspaceMode)
-      showToast('已退出')
+      showToast('已退出准备场景')
       init.reload()
     } catch (e) {
       reportDiagnostic('command.failed', { reason: 'sign out failed', error: describeError(e) })
@@ -112,6 +112,8 @@ export default function PrepWorkspacePage() {
               !(project.access.kind === 'paused' && project.files.some(f => f.confirmed === null))}
             canSnapshot={!!confirmation.state.attempt && project.access.kind !== 'read-only'}
             // 恢复结论态（拒绝/版本冲突/换代）的说明由 state.error 呈现，这里不重复同一句话。
+            // 结论态（拒绝/冲突/过期/已接收）的具体说明由 state.error 给出，这里只放与状态无关的写入限制，
+            // 避免同一张提示卡里两句话互相顶掉。
             blockedReason={!c?.trustedRecoveryGeneration ? '现在还不能保存这件作品。' :
               project.access.kind === 'paused' && project.files.some(f => f.confirmed === null) ? '暂停期间只能保存已有文件的修改。' : null}
             error={confirmation.state.error}
@@ -121,7 +123,8 @@ export default function PrepWorkspacePage() {
               const current = confirmation.client
               void project.prepareSave().then(drafts => current?.save(drafts)).catch(e => {
                 reportDiagnostic('command.failed', { reason: 'draft not protected before saving', error: describeError(e) })
-                showToast('草稿没有保存到本机，这次没有发送；请稍后重试。')
+                // 草稿 CAS 冲突这条路径重试不会成功，可操作的做法是重载后按赢家继续（原因在保护状态里）。
+                showToast('草稿没有保存到本机，这次没有发送。请重新读取后再试。')
               })
             }}
             onSnapshot={() => { void confirmation.client?.snapshot() }}

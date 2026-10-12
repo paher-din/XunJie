@@ -252,9 +252,9 @@ function InitLoading() {
 export function InitUnavailable({ init, onReload }: { init: WorkspaceInit; onReload: () => void }) {
   if (init.kind === 'stale') return null
   if (init.kind !== 'unavailable') return null
-  // 阶段码与失败体只进控制台：学生看到的是「为什么进不去 + 能做什么」。
+  // 阶段码、失败体与不可用原因原文只进控制台：学生看到的是「为什么进不去 + 能做什么」。
   reportDiagnostic('workspace.initialize-failed', { stage: init.stage, reason: init.reason,
-    failure: init.failure ? describeFailure(init.failure) : null })
+    technical: init.failure ? describeFailure(init.failure) : null })
   return (
     <div className="ts-unavailable" role="status">
       <p className="ts-unavailable-head">

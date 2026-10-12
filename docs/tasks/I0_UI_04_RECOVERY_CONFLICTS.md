@@ -42,9 +42,9 @@
 
 | 边界 | 代码与实际行为 |
 | --- | --- |
-| 核对结论（纯函数） | `src/workspace/recovery.ts`：`classifyWriteFailure` 把写失败分成未知/本机未确认/拒绝/版本冲突/代际已变/租约占用/已确认；`reconcileStoredCommand` 只按落盘事实（回执、状态、代际、已记录拒绝）决定重放 / 本机重新接纳 / 停止；`canReplay` 允许未知、本机未确认、租约占用与**可重试**拒绝，终态拒绝（VERSION_CONFLICT / RECOVERY_REQUIRED / IDEMPOTENCY_CONFLICT，规则在 `frozenCommand.isTerminalRejection`）才停手；`outcomeMessage` 给出面向学生的下一步 |
+| 核对结论（纯函数） | `src/workspace/recovery.ts`：`classifyWriteFailure` 把写失败分成未知/本机未确认/拒绝/版本冲突/代际已变/租约占用/已确认；`reconcileStoredCommand` 只按落盘事实（回执、状态、代际、已记录拒绝）决定重放 / 本机重新接纳 / 停止；`canReplay` 允许未知、本机未确认、租约占用与**可重试**拒绝，终态拒绝（VERSION_CONFLICT / RECOVERY_REQUIRED / IDEMPOTENCY_CONFLICT，规则在 `frozenCommand.isTerminalRejection`）才停手；`studentHint` 给出面向学生的下一步（整改前叫 `outcomeMessage`，逐态中文与结论一一对应） |
 | 拒绝的分流 | 只有「重放不能解决」的拒绝才停止重放并在原命令上留永久事实；限流、依赖/持久化不可用、未认证等按服务端 recovery 提示处理为「保留原命令 + 学生明确重试」，不把暂时不可用变成永久封禁（服务端未在 `retryable` 之外给出更细的语义，客户端不自行猜测它） |
-| 原命令事实 | `summarizeOriginalRequest` 只读 `wireJson` 与冻结 `drafts` 生成键/序号/代际/预期版本/逐文件字节数与 sha256；不重新序列化业务输入，也不带 Session/CSRF。UI 用 `ws-request-detail` 只读呈现 |
+| 原命令事实（2026-10-12 文案整改后） | `summarizeOriginalRequest` 只读 `wireJson` 与冻结 `drafts` 生成键/序号/代际/预期版本/逐文件字节数与 sha256；不重新序列化业务输入，也不带 Session/CSRF。这些事实经 `reportDiagnostic('command.*')` 进控制台，学生界面不再有 `ws-request-detail` 面板（原实现行保留在下方整改表中）。未采用的旧写法：UI 用 `ws-request-detail` 只读呈现 |
 | 拒绝事实 | `OutboxRecord.rejected?: { code, at }`：同一 outbox 记录的可选字段，不新增 store、不升库版本；`confirmationRepository.noteRejection` 只在没有回执时写入；`claim` 对已确认或已拒绝的原命令一律拒绝发送 |
 | 客户端 | `confirmationWorkspace` 新增 `outcome`/`original` 状态与 `rejected`/`conflict`/`recovery-required` 阶段；`send` 失败按结论分类并落盘事实；`retry` 先按落盘记录判定（已确认→本机重新接纳、已拒绝/换代→停止、租约被占→不发送、否则原样重放）；`refreshPending` 在另一标签通知后只刷新原命令事实 |
 | 草稿与实例关联 | `useConfirmationWorkspace.projectSeedOf`：fileId 映射优先；没有映射时，同一路径、尚未映射的活动本机实例继续作为该正文来源（只影响可见性，不建立映射，原请求仍待核对） |
@@ -94,6 +94,14 @@
 - **Spec（已修复）**：恢复态把 `.ws-flow` 隐藏后，e2e 仍用 `toContainText` 断言隐藏文本 → 全部改成可见状态断言（`toBeHidden` + 按钮状态 + 落盘事实）。
 - **Spec（已修复）**：01 遗留的学生可见技术信息——材料面板的 `resourceVersionId`/sha256、「正在按 HTTP 信封读取…」、不可用面板的阶段码与失败体；改为学生结论，技术事实进 `workspace.initialize-failed` 控制台事件。「任务信息」面板原值按负责人要求保留。
 - **Standards（已修复）**：README 对控制台内容的描述与实现不符（现已列明包含命令身份、错误码、HTTP 失败体、快照 ID/hash，并限定「学生界面不出现」的范围）；`contextNotice` 字段降为局部；诊断事件改名并补齐（`workspace.read-failed`/`workspace.initialize-failed`/`context.loaded`/`command.abandoned`，静默返回也留痕）；`freezeHint` 按真实原因分类，不再对结构性失败承诺「稍后重试」；状态词区分（`保存待重试` vs `保存结果待确认`）；组件 `ConfirmationSnapshot` 只留 `workspaceRevision`。
+### 第三轮复审（2026-10-12，针对复审修复提交 `7ed684f`）
+
+- **P1（已修复）**：`blocksNewSave` 的例外覆盖了整个 `historical`，但该结论有两个来源——「旧代际 + 服务已明确拒绝（未生效）」与「回执已到、本机记录被退役（`confirmationDb` 只在回执已核验时写入）」。后者服务**接受过**这条命令，用「上一次保存没有生效」安慰学生与事实相反，且放行保存可能在已生效的作品上再存一次。现在按有无回执拆成两个结论：`historical`（未生效，放行新保存）与 `superseded`（服务已接收，阻塞并提示重新读取），单测固定这两条语义。
+- **P2（已修复）**：`init.reason` 仍可能把 `GET /api/… 失败 · HTTP 401`、`H-01/H-02`、真实 userId/courseId 带上屏——源头在 `init.ts` 的 `unavailable()` 拼接异常原文。现在 `reason` 只留学生结论，异常原文与失败体走 `workspace.initialize-failed` 控制台事件。
+- **P2（已修复）**：草稿 CAS 冲突的 toast 曾写「请稍后重试」，但这条路径重试不会成功（可操作做法是重载后按赢家继续，原文在保护状态的 title 里）；改为「草稿没有保存到本机，这次没有发送。请重新读取后再试。」。「已退出」补回对象：「已退出准备场景」。
+- **判断性（按规格保留，文案说清）**：`VERSION_CONFLICT` 与「旧代际结果未知」在校验失败后仍无出口，这是 04 的有意边界（比较与明确选择属 04A）。因此冲突提示不再承诺「再决定怎么保存」，改为「比较后再保存的能力还没有提供，请先重新读取当前作品。」；同一张提示卡里 `blockedReason` 与结论提示不再互相顶掉。
+- **已核实**：新命令用新的 `commandKey`/`clientSeq` 与重读后的预期版本（服务端 CAS 仍然生效），未发现写安全或凭据/正文泄露问题。
+
 - **Standards（登记为后续）**：`describeError` 尚未替换 `init.ts`/`http.ts`/`useProjectWorkspace.ts` 里的内联写法；`lib/connectionTest.ts`（设置页连接测试）仍显示 HTTP 状态码——属设置页诊断入口，是否收敛由负责人决定。
 - **文案整改这一轮的独立复审**：两轴审查覆盖到 `c9a9fdd` 之前的修订；文案整改（`2bde95e` / 设计仓库 `7ee7036`）另起一轮只读复审，结论与本轮处理记录见该轮复审回执（如有发现，按同一条原则修复后再收口）。
 

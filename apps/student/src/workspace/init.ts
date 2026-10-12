@@ -68,8 +68,14 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
+/**
+ * 构造不可用状态。
+ *
+ * `reason` 是给学生的结论（为什么进不去、还能做什么），**不带**接口路径、HTTP 状态或错误码；
+ * 异常的原文与失败体放在 `failure` 里，由界面写进控制台诊断（`workspace.initialize-failed`）。
+ */
 function unavailable(stage: InitStage, reason: string, e?: unknown): WorkspaceInit {
-  return { kind: 'unavailable', stage, reason: e === undefined ? reason : `${reason}：${messageOf(e)}`, failure: e === undefined ? null : failureOf(e) }
+  return { kind: 'unavailable', stage, reason, failure: e === undefined ? null : failureOf(e) }
 }
 
 type GuardedRead<T> =

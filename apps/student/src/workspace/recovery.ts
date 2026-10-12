@@ -30,7 +30,10 @@ export type CommandOutcome =
   | { kind: 'recovery-required' }
   | { kind: 'lease-held' }
   | { kind: 'confirmed' }
+  /** 旧代际且服务已明确拒绝：确定没有生效，只留事实。 */
   | { kind: 'historical' }
+  /** 回执已经到过（服务已接收），只是本机没能记录：不能用「没有生效」来安慰学生。 */
+  | { kind: 'superseded' }
 
 /**
  * 是否还要挡着新的保存。
@@ -44,6 +47,9 @@ export function blocksNewSave(outcome: CommandOutcome | null): boolean {
   if (!outcome) return false
   return outcome.kind !== 'historical'
 }
+
+// 只有「确定没有生效」的历史事实才放行新保存；`superseded`（服务已接收、本机没记录）必须先重新读取，
+// 否则学生会在已生效的作品上再保存一次。
 
 /** 能否重新核对原命令：未知、本机未确认、租约占用以及可重试的服务拒绝都可以。 */
 export function canReplay(outcome: CommandOutcome | null): boolean {
@@ -80,11 +86,13 @@ export function studentHint(outcome: CommandOutcome | null): string {
     case 'lease-held':
       return '另一个标签页正在处理这次保存，请稍后再试。'
     case 'conflict':
-      return '作品在别处有了新的版本，草稿已保留。请先重新读取，再决定怎么保存。'
+      return '作品在别处有了新的版本，草稿已保留。比较后再保存的能力还没有提供，请先重新读取当前作品。'
     case 'recovery-required':
       return '这里的工作区已经过期，草稿已保留。请先重新读取，再决定怎么保存。'
     case 'historical':
       return '上一次保存没有生效，草稿还在，可以重新保存。'
+    case 'superseded':
+      return '上一次保存服务已经接收，只是本机没记下。请重新读取作品，再决定怎么保存。'
     case 'rejected':
       return isTerminalRejection(outcome.code)
         ? '这次保存没能完成，草稿已保留。请重新读取后再保存。'
@@ -99,7 +107,8 @@ export function diagnosticText(outcome: CommandOutcome): string {
     case 'local-failed': return 'receipt received, local confirmation transaction failed'
     case 'lease-held': return 'another tab holds the send lease'
     case 'confirmed': return 'original command already confirmed'
-    case 'historical': return 'original command retired with an older recovery generation'
+    case 'historical': return 'original command rejected before commit; retired with an older recovery generation'
+    case 'superseded': return 'verified receipt exists but the local record was retired: service accepted this command'
     case 'conflict': return 'service rejected the original command with VERSION_CONFLICT'
     case 'recovery-required': return 'service rejected the original command with RECOVERY_REQUIRED'
     case 'rejected': return `service rejected the original command with ${outcome.code}${isTerminalRejection(outcome.code) ? ' (terminal)' : ' (retryable)'}`
@@ -156,7 +165,10 @@ export function reconcileStoredCommand(
 ): Reconciliation {
   if (!record) return { action: 'none' }
   if (record.state === 'confirmed') return record.receipt ? { action: 'accept-local' } : { action: 'none' }
-  if (record.state === 'historical') return { action: 'stop', outcome: { kind: 'historical' } }
+  // 带已核验回执的历史记录说明服务**接受过**这条命令：不是「没有生效」，学生要重新读取后才知道结果。
+  if (record.state === 'historical') {
+    return { action: 'stop', outcome: record.receipt ? { kind: 'superseded' } : { kind: 'historical' } }
+  }
   if (!sameGeneration(record.context, context)) {
     // 服务已经明确拒绝过（例如换代际）：这条原命令不会生效，只留事实；
     // 学生随后用**新的键与序号**在当前代际重新保存，不是把旧请求迁到新代际。

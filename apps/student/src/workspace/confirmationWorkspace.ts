@@ -68,6 +68,8 @@ export function phaseFor(outcome: CommandOutcome): ConfirmationPhase {
     // 已确认通常由 acceptLocal/reconcile 直接处理；这里保留分支是为了让映射对整个结论集完备。
     case 'confirmed': return 'ready'
     case 'historical': return 'stale'
+    // 服务已接收、本机没记录：需要先重新读取，学生对它的动作与「工作区过期」一样。
+    case 'superseded': return 'recovery-required'
   }
 }
 

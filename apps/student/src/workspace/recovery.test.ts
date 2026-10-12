@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
 import {
+  blocksNewSave,
   canReplay,
   classifyWriteFailure,
   diagnosticText,
@@ -150,9 +151,21 @@ describe('原命令核对结论', () => {
         .toEqual({ action: 'stop', outcome: { kind: 'recovery-required' } })
     }
   })
-  it('旧代际回执只留历史事实', () => {
-    expect(reconcileStoredCommand(record({ state: 'historical', receipt: { receiptId: 'r1' } as never }), context, { owner: 'tab-a', now: 10 }))
+  it('旧代际历史记录按「是否收到过回执」分开：收到过 ≠ 没有生效', () => {
+    // 带已核验回执：服务接受过这条命令，学生必须重新读取后才知道结果，且此时不许再发新保存
+    const superseded = record({ state: 'historical', receipt: { receiptId: 'r1' } as never })
+    expect(reconcileStoredCommand(superseded, context, { owner: 'tab-a', now: 10 }))
+      .toEqual({ action: 'stop', outcome: { kind: 'superseded' } })
+    expect(blocksNewSave({ kind: 'superseded' })).toBe(true)
+    expect(canReplay({ kind: 'superseded' })).toBe(false)
+    expect(studentHint({ kind: 'superseded' })).toContain('服务已经接收')
+
+    // 没有回执的历史记录：确定没有生效，只留事实并允许用新键重新保存
+    const retired = record({ state: 'historical' })
+    expect(reconcileStoredCommand(retired, context, { owner: 'tab-a', now: 10 }))
       .toEqual({ action: 'stop', outcome: { kind: 'historical' } })
+    expect(blocksNewSave({ kind: 'historical' })).toBe(false)
+    expect(studentHint({ kind: 'historical' })).toContain('没有生效')
   })
 })
 
