@@ -10,6 +10,7 @@ import { assembleStudentHelpRequest, createStudentHelpCurrentGuard } from "../co
 import { generateStudentHelp } from "../core.ts";
 import { InputLimitError, SyntheticProvider, type ModelProvider } from "../providers.ts";
 import { executeAuthorizedStudentHelp } from "../service.ts";
+import { realModelEnabled, realModelProbe, writeRealModelEvidence } from "./real-model-support.ts";
 
 const origin = "https://synthetic.example";
 const generation = "generation";
@@ -27,7 +28,7 @@ const versions = {
   policy: "help-v1",
 };
 
-async function fixture(teacherAgent = false) {
+async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, liveClock = false) {
   const db = createTeachingDatabase();
   let time = Date.now();
   let clockStepMs = 0;
@@ -56,6 +57,7 @@ async function fixture(teacherAgent = false) {
     signingSecret: randomBytes(48).toString("hex"),
     currentGeneration: () => generation,
     now: () => {
+      if (liveClock) return Date.now();
       const current = time;
       time += clockStepMs;
       return current;
@@ -101,7 +103,7 @@ async function fixture(teacherAgent = false) {
       unresolved?: string[];
     };
     let providerCalls = 0;
-    const provider: ModelProvider = {
+    const provider: ModelProvider = suppliedProvider ?? {
       async generate(modelRequest) {
         providerCalls += 1;
         const untrusted = modelRequest.untrustedInput as { references?: { id: string }[] };
@@ -1254,6 +1256,57 @@ function claim(claimId: string, competencyId: string, validity: "active" | "cont
     unresolved: false,
   };
 }
+
+test("P2 real-model student help, persisted content and undisplayed cancellation", { skip: !realModelEnabled }, async t => {
+  const probe = realModelProbe(), f = await fixture(false, probe.provider, true);
+  const evidence: Record<string, unknown> = {};
+  try {
+    const setup = await setupProject(f);
+    const input = { expectedAttemptRevision: 1, question: "仅基于数组边界资料给一个概念提示，交还我自行试验；不要给完整可提交代码。",
+      objectRef: { kind: "resource", attemptId: setup.attemptId, resourceVersionId: setup.resourceId, paragraphId: setup.paragraphId } };
+    evidence.input = input;
+    const accepted = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, input);
+    assert.equal(accepted.statusCode, 200, accepted.body);
+    const jobId = String(accepted.json().data.result.jobId);
+    const executed = await f.service.app.inject({ method: "POST", url: `/fixture/execute/${setup.attemptId}/${jobId}`,
+      headers: setup.student, payload: {} });
+    evidence.executionStatus = executed.statusCode;
+    const execution = executed.json().data;
+    evidence.outcome = execution?.outcome ?? executed.json().error;
+    evidence.references = execution?.authorizedReferenceIds;
+    assert.equal(executed.statusCode, 200, executed.body);
+    assert.equal(execution.outcome.outcome, "success");
+    const state = await attemptView(f, setup.student, setup.attemptId);
+    const events = await f.service.app.inject({
+      url: `/api/attempts/${setup.attemptId}/events?afterServerSeq=0&limit=100&clientId=p2-real-probe&recoveryGeneration=${generation}&decisionEpoch=${state.attempt.decisionEpoch}`,
+      headers: setup.student,
+    });
+    assert.equal(events.statusCode, 200, events.body);
+    const delivery = events.json().data.events.find((event: { payload?: { actionId?: string } }) =>
+      event.payload?.actionId === execution.delivery.actionId);
+    assert.ok(delivery?.payload?.deliveryId);
+    const received = await command(f.service.app, setup.student, `/api/actions/${execution.delivery.actionId}/receipts`, {
+      deliveryId: delivery.payload.deliveryId, clientId: "p2-real-probe", contentHash: execution.delivery.contentHash,
+      receiptKind: "received", clientReceiptId: "p2-real-received",
+    });
+    assert.equal(received.statusCode, 200, received.body);
+    const stopped = await command(f.service.app, setup.student, `/api/jobs/${jobId}/cancel`, {});
+    assert.equal(stopped.statusCode, 200, stopped.body);
+    const records = await f.service.app.inject({ url: `/api/attempts/${setup.attemptId}/teaching-records`, headers: setup.teacher });
+    assert.equal(records.statusCode, 200, records.body);
+    evidence.records = records.json().data;
+    const message = records.json().data.messages.find((item: { authorKind: string }) => item.authorKind === "model");
+    assert.deepEqual(message?.envelope.body, execution.outcome.body);
+    const action = records.json().data.actions.find((item: { actionId: string }) => item.actionId === execution.delivery.actionId);
+    assert.equal(action?.disposition, "cancelled");
+    assert.ok(action.receipts.some((receipt: { receiptKind: string }) => receipt.receiptKind === "received"));
+    assert.equal(action.receipts.some((receipt: { receiptKind: string }) => receipt.receiptKind === "displayed"), false);
+    assert.ok(probe.http.length >= 1 && probe.http.length <= 3);
+  } finally {
+    try { t.diagnostic(`Synthetic-data model evidence: ${writeRealModelEvidence("student_help", evidence, probe.http)}`); }
+    finally { await f.close(); }
+  }
+});
 
 function validBody(referenceId: string) {
   return {
