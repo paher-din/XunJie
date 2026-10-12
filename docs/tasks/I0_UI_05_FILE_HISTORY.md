@@ -216,10 +216,10 @@ export interface ConfirmationState {
 | `src/components/workspace/CompareText.tsx`、`VersionCompare.tsx`(新) | 只读正文面板与版本比较视图（左右来源、键盘「换一版」、身份/版本/回收读数、Esc 返回） |
 | `FileStrip.tsx`、`CodeWorkspace.tsx` | 行内「回收」、已回收实例区「恢复」+ 占用者说明、待确认标记、已回收实例的编辑区说明、运行簇比较入口 |
 | `useProjectWorkspace.ts`、`draftStore.ts`、`bridge/types.ts`、`bridge/projects.ts` | 本机生命周期意图随草稿同一条记录落盘（刷新不丢）、`confirmed.lifecycle` |
-| `pages/WorkspacePage.tsx` | 比较视图接线（演示来源：本机草稿 × 已确认作品） |
+| `pages/WorkspacePage.tsx`、`bridge/types.ts` | 比较视图接线；演示数据补两个**历史版本**（wordfreq v1/v2，身份与当前作品同 fileId），默认打开即比最近两版，来源列表里另有「确认作品 vN」与「本机草稿」可切换 |
 | `styles/app.css` | 05 两个分节，按 `docs/DESIGN.md` 取值（辅助信息 `muted`、琥珀文字 `--tint-amber-fg` 满足 AA、圆角 6/8、150ms S 曲线） |
 
-设计侧验证：`npx tsc --noEmit` 通过；`npm test` 10 文件 **104 例**通过（含新增 10 例）；`npm run build` 通过；dev 实屏核对五种状态并用断言确认：恢复被占用时按钮禁用且标题为「main.c 现在被另一个文件实例占用；先在它那一行回收，才能恢复这个实例。」、比较行显示「右侧已回收」、终态下回收按钮禁用且标题为「当前作品状态不允许回收或恢复文件实例。」、同名重建在比较里是两行（6 行 = 5 个演示文件 + 1 个新建）。截图留在本地（`/tmp/i005-design-*.png`，不纳入版本库）。
+设计侧验证：`npx tsc --noEmit` 通过；`npm test` 10 文件 **106 例**通过（含新增 12 例）；`npm run build` 通过；dev 实屏核对五种状态并用断言确认：恢复被占用时按钮禁用且标题为「main.c 现在被另一个文件实例占用；先在它那一行回收，才能恢复这个实例。」、比较行显示「右侧已回收」、终态下回收按钮禁用且标题为「当前作品状态不允许回收或恢复文件实例。」、同名重建在比较里是两行（6 行 = 5 个演示文件 + 1 个新建）；历史版本比较默认打开即 v1 × v2（4 行，其中 2 行「只有右侧有这个文件实例」——v1 还没有 words.c 与 sample.txt），来源列表给出四个可切换来源。截图留在本地（`/tmp/i005-design-*.png`，不纳入版本库）。
 
 同步关系（详见 `IMPORT_SOURCE §4`）：主仓库接收 `fileLifecycle`/`fileComparison`/两个比较组件/文件条与工作区接线/CSS 分节；`VersionCompare.tsx` 两仓库是同一份组件（只差数据模块 import 路径），`CompareText.tsx` 主仓库多一层 `projectOriginal` 正文投影；设计仓库的页面接线、演示存储与 `mergedLifecycle`（多标签口径）不进主仓库；主仓库的 IndexedDB 事务、原文保真与确认 outbox 不进设计仓库。
 
