@@ -4,6 +4,7 @@ import { confirmationRepository, sameGeneration } from './confirmationDb'
 import { freezeAttempt, freezeSnapshot, freezeSync, verifyAttemptReceipt, verifySyncReceipt, verifyReceipt, verifySnapshotReceipt,
   type CommandContext, type FrozenCommand, type FrozenDraft, type OutboxRecord } from './frozenCommand'
 import { apiGet, apiPostFrozen, setCsrfToken, type RequestOptions } from './http'
+import { buildWorkspaceComparison, type WorkspaceComparison } from './comparison'
 import { blocksNewSave, classifyWriteFailure, codeOfOutcome, diagnosticText, reconcileStoredCommand, studentHint,
   summarizeOriginalRequest, type CommandOutcome } from './recovery'
 import { describeError, reportDiagnostic } from './diagnostics'
@@ -30,8 +31,10 @@ export interface ConfirmationState {
   snapshot: SnapshotView | null; pending: OutboxRecord | null; error: string | null
   /** 原命令的核对结论（未知/已拒绝/版本冲突/代际已变/已确认/历史），决定能否重放。 */
   outcome: CommandOutcome | null
+  /** 04A：当前打开的只读比较（本机原文/原确认基线/新服务正文）；null = 没有打开。 */
+  comparison: WorkspaceComparison | null
 }
-const initialState = (): ConfirmationState => ({ phase: 'idle', workspace: null, attempt: null, snapshot: null, pending: null, outcome: null, error: null })
+const initialState = (): ConfirmationState => ({ phase: 'idle', workspace: null, attempt: null, snapshot: null, pending: null, outcome: null, error: null, comparison: null })
 
 /**
  * 当前工作区该展示哪一条未决原命令。
@@ -70,6 +73,8 @@ export function phaseFor(outcome: CommandOutcome): ConfirmationPhase {
     case 'historical': return 'stale'
     // 服务已接收、本机没记录：需要先重新读取，学生对它的动作与「工作区过期」一样。
     case 'superseded': return 'recovery-required'
+    // 业务键冲突是终态拒绝的一种，但结论单列；界面沿用「保存未成功」状态，区别在提示文案。
+    case 'key-conflict': return 'rejected'
   }
 }
 
@@ -210,6 +215,64 @@ export class ConfirmationWorkspace {
         this.publish({ error: '作品没有读取成功，请重新读取。', phase: 'error', attempt: null })
       }
       return null
+    }
+  }
+  /**
+   * 04A：打开只读比较。先重读当前获准 head，再从落盘原命令（本机原文 + 原确认基线）与
+   * 重读结果（新服务正文）构造比较；head 读不到就如实不可用，不拿旧缓存冒充。
+   */
+  async openComparison(commandKey: string): Promise<void> {
+    if (this.busy || this.guard.stale) return
+    const guard = this.guard
+    this.busy = true
+    try {
+      // commands() 已按归属过滤，避免把别的账号/模式的记录拿来比较。
+      const stored = (await confirmationRepository.commands(this.context)).find(c => c.commandKey === commandKey)
+      if (!this.valid(guard)) return
+      if (!stored) {
+        this.publish({ error: '这条保存记录在本机读不到了，请重新读取。', comparison: null })
+        return
+      }
+      const head = await this.readHead()
+      if (!this.valid(guard)) return
+      if (!head || !this.state.workspace) {
+        this.publish({ error: '当前作品没有读取成功，暂时不能比较。请重新读取后再试。', comparison: null })
+        return
+      }
+      // 旧代际且已有拒绝事实的，结果是已知的恢复比较；没有拒绝事实的才是「结果未知」。
+      const source = sameGeneration(stored.context, this.context) ? 'version-conflict'
+        : stored.rejected ? 'recovery' : 'unresolved'
+      reportDiagnostic('comparison.opened', { commandKey, source, files: stored.drafts.map(d => d.path) })
+      this.publish({ comparison: buildWorkspaceComparison(stored, this.state.workspace, source), error: null })
+    } catch (e) {
+      reportDiagnostic('command.failed', { reason: 'comparison failed', error: describeError(e) })
+      if (this.valid(guard)) this.publish({ error: '比较没有准备好，请重新读取后再试。', comparison: null })
+    } finally { this.busy = false }
+  }
+  closeComparison(): void {
+    if (this.state.comparison) this.publish({ comparison: null })
+  }
+  /**
+   * 04A：学生已在比较中明确选择。退役这条冲突原命令（拒绝/旧事实保留在记录上），
+   * 不迁代际、不换键补发；新的保存由学生随后以新键与当前权威预期版本发起。
+   */
+  async resolveConflict(commandKey: string): Promise<'retired' | 'unchanged'> {
+    if (this.guard.stale) return 'unchanged'
+    const guard = this.guard
+    try {
+      const result = await confirmationRepository.retireResolved(commandKey, this.context, this.leaseOwner)
+      if (!this.valid(guard)) return 'unchanged'
+      reportDiagnostic('command.resolved', { commandKey, result })
+      if (result === 'retired') {
+        this.publish({ comparison: null, pending: null, outcome: null, error: null,
+          phase: this.state.workspace ? 'ready' : this.state.phase })
+        this.channel?.postMessage(this.context)
+      }
+      return result
+    } catch (e) {
+      reportDiagnostic('command.failed', { reason: 'conflict resolution failed', error: describeError(e) })
+      if (this.valid(guard)) this.publish({ error: '这次处理没有完成，请重新读取后再试。' })
+      return 'unchanged'
     }
   }
   async openAttempt(): Promise<void> {

@@ -4,6 +4,7 @@ import {
   blocksNewSave,
   canReplay,
   classifyWriteFailure,
+  comparableOutcome,
   diagnosticText,
   reconcileStoredCommand,
   studentHint,
@@ -34,6 +35,23 @@ const apiError = (code: ApiErrorCode) => new WorkspaceRequestError(
   { kind: 'api', status: 409, requestId: 'request-1', error: { code, message: code, retryable: false, recovery: 'x' } },
   'POST', '/api/attempts/attempt-1/sync')
 
+describe('04A 比较选择许可', () => {
+  it('版本冲突、待重读、业务键冲突与历史结论可以比较后明确选择；其余结论只能核对或重读', () => {
+    expect(comparableOutcome({ kind: 'conflict' })).toBe(true)
+    expect(comparableOutcome({ kind: 'recovery-required' })).toBe(true)
+    expect(comparableOutcome({ kind: 'key-conflict' })).toBe(true)
+    expect(comparableOutcome({ kind: 'historical' })).toBe(true)
+    for (const outcome of [
+      { kind: 'unresolved' as const },
+      { kind: 'local-failed' as const },
+      { kind: 'lease-held' as const },
+      { kind: 'confirmed' as const },
+      { kind: 'superseded' as const },
+      { kind: 'rejected' as const, code: 'RATE_LIMITED' as const },
+    ]) expect(comparableOutcome(outcome)).toBe(false)
+  })
+})
+
 describe('写失败分类：不把超时当拒绝或成功', () => {
   it('拿不到服务端信封是「未知」而不是拒绝', () => {
     expect(classifyWriteFailure(new WorkspaceRequestError({ kind: 'transport', message: 'Failed to fetch' }, 'POST', '/x'), { receiptReceived: false }))
@@ -41,12 +59,12 @@ describe('写失败分类：不把超时当拒绝或成功', () => {
     expect(classifyWriteFailure(new WorkspaceRequestError({ kind: 'protocol', status: 502, message: '不是 JSON' }, 'POST', '/x'), { receiptReceived: false }))
       .toEqual({ kind: 'unresolved' })
   })
-  it('VERSION_CONFLICT 与 RECOVERY_REQUIRED 各自单列，其余错误码如实保留', () => {
+  it('VERSION_CONFLICT、RECOVERY_REQUIRED 与业务键冲突各自单列，其余错误码如实保留', () => {
     expect(classifyWriteFailure(apiError('VERSION_CONFLICT'), { receiptReceived: false })).toEqual({ kind: 'conflict' })
     expect(classifyWriteFailure(apiError('RECOVERY_REQUIRED'), { receiptReceived: false })).toEqual({ kind: 'recovery-required' })
     expect(classifyWriteFailure(apiError('FORBIDDEN'), { receiptReceived: false })).toEqual({ kind: 'rejected', code: 'FORBIDDEN' })
     expect(classifyWriteFailure(apiError('IDEMPOTENCY_CONFLICT'), { receiptReceived: false }))
-      .toEqual({ kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' })
+      .toEqual({ kind: 'key-conflict' })
   })
   it('已收到回执之后的失败只算本机确认未完成', () => {
     expect(classifyWriteFailure(new Error('本机确认事务中断：head'), { receiptReceived: true })).toEqual({ kind: 'local-failed' })
@@ -59,7 +77,7 @@ describe('写失败分类：不把超时当拒绝或成功', () => {
     expect(classifyWriteFailure(new CommandRejectedError('VERSION_CONFLICT'), { receiptReceived: false })).toEqual({ kind: 'conflict' })
     expect(classifyWriteFailure(new CommandRejectedError('RECOVERY_REQUIRED'), { receiptReceived: false })).toEqual({ kind: 'recovery-required' })
     expect(classifyWriteFailure(new CommandRejectedError('IDEMPOTENCY_CONFLICT'), { receiptReceived: false }))
-      .toEqual({ kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' })
+      .toEqual({ kind: 'key-conflict' })
   })
 })
 
@@ -76,7 +94,7 @@ describe('重试许可', () => {
     for (const outcome of [
       { kind: 'conflict' as const },
       { kind: 'recovery-required' as const },
-      { kind: 'rejected' as const, code: 'IDEMPOTENCY_CONFLICT' as const },
+      { kind: 'key-conflict' as const },
       { kind: 'confirmed' as const },
       { kind: 'historical' as const },
     ]) expect(canReplay(outcome)).toBe(false)
@@ -85,7 +103,7 @@ describe('重试许可', () => {
   it('学生提示只说结果、草稿与下一步，不出现错误码、命令键、代际或接口路径', () => {
     const outcomes = [{ kind: 'unresolved' as const }, { kind: 'local-failed' as const }, { kind: 'conflict' as const },
       { kind: 'recovery-required' as const }, { kind: 'rejected' as const, code: 'FORBIDDEN' as const },
-      { kind: 'rejected' as const, code: 'IDEMPOTENCY_CONFLICT' as const },
+      { kind: 'key-conflict' as const },
       { kind: 'lease-held' as const }, { kind: 'confirmed' as const }, { kind: 'historical' as const }]
     for (const outcome of outcomes) {
       const text = studentHint(outcome)
@@ -99,10 +117,13 @@ describe('重试许可', () => {
     }
     // 可重试的拒绝说「可以重试」，终态拒绝给「重新读取」而不是诱导重发
     expect(studentHint({ kind: 'rejected', code: 'RATE_LIMITED' })).toContain('可以稍后重试')
-    expect(studentHint({ kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' })).toContain('重新读取')
+    expect(studentHint({ kind: 'key-conflict' })).toContain('重新读取')
+    // 版本冲突指向比较，而不是让新旧版本静默互相覆盖
+    expect(studentHint({ kind: 'conflict' })).toContain('比较')
     expect(diagnosticText({ kind: 'rejected', code: 'RATE_LIMITED' })).toContain('RATE_LIMITED')
     expect(diagnosticText({ kind: 'rejected', code: 'RATE_LIMITED' })).toContain('retryable')
-    expect(diagnosticText({ kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' })).toContain('terminal')
+    expect(diagnosticText({ kind: 'key-conflict' })).toContain('IDEMPOTENCY_CONFLICT')
+    expect(diagnosticText({ kind: 'key-conflict' })).not.toContain('terminal')
   })
 })
 
@@ -136,7 +157,9 @@ describe('原命令核对结论', () => {
     expect(reconcileStoredCommand(record({ rejected: { code: 'RECOVERY_REQUIRED', at: 1 } }), context, { owner: 'tab-a', now: 10 }))
       .toEqual({ action: 'stop', outcome: { kind: 'recovery-required' } })
     expect(reconcileStoredCommand(record({ rejected: { code: 'IDEMPOTENCY_CONFLICT', at: 1 } }), context, { owner: 'tab-a', now: 10 }))
-      .toEqual({ action: 'stop', outcome: { kind: 'rejected', code: 'IDEMPOTENCY_CONFLICT' } })
+      .toEqual({ action: 'stop', outcome: { kind: 'key-conflict' } })
+    // 业务键冲突是终态结论：不允许换输入后重发同键，只留事实
+    expect(blocksNewSave({ kind: 'key-conflict' })).toBe(true)
     // 暂时性拒绝（限流/依赖不可用/未认证）不能把工作区永久封死：保留事实但可明确重试。
     for (const code of ['RATE_LIMITED', 'DEPENDENCY_UNAVAILABLE', 'UNAUTHENTICATED'] as const) {
       expect(reconcileStoredCommand(record({ rejected: { code, at: 1 } }), context, { owner: 'tab-a', now: 10 }))

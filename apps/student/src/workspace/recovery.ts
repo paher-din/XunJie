@@ -28,6 +28,8 @@ export type CommandOutcome =
   | { kind: 'rejected'; code: ApiErrorCode }
   | { kind: 'conflict' }
   | { kind: 'recovery-required' }
+  /** 业务键冲突（IDEMPOTENCY_CONFLICT）：同一保存标识已被不同输入占用，单列结论。 */
+  | { kind: 'key-conflict' }
   | { kind: 'lease-held' }
   | { kind: 'confirmed' }
   /** 旧代际且服务已明确拒绝：确定没有生效，只留事实。 */
@@ -66,6 +68,15 @@ export function canReplay(outcome: CommandOutcome | null): boolean {
 }
 
 /**
+ * 04A：该结论下学生可以在只读比较里明确选择保留哪份正文；比较入口与比较中的选择按钮共用此判定。
+ * 其余结论（未知、租约、本机未完成、可重试拒绝、已接收待重读、已确认）必须走核对或重读，比较不提供丢弃入口。
+ */
+export function comparableOutcome(outcome: CommandOutcome): boolean {
+  return outcome.kind === 'conflict' || outcome.kind === 'recovery-required' ||
+    outcome.kind === 'key-conflict' || outcome.kind === 'historical'
+}
+
+/**
  * 学生界面唯一可见的一句提示。
  *
  * 只回答学生真正需要的三件事：这次保存成没成、我的字还在不在、我现在能做什么。
@@ -86,9 +97,11 @@ export function studentHint(outcome: CommandOutcome | null): string {
     case 'lease-held':
       return '另一个标签页正在处理这次保存，请稍后再试。'
     case 'conflict':
-      return '作品在别处有了新的版本，草稿已保留。比较后再保存的能力还没有提供，请先重新读取当前作品。'
+      return '作品在别处有了新的版本，草稿已保留。请比较两个版本后再决定怎么保存。'
     case 'recovery-required':
       return '这里的工作区已经过期，草稿已保留。请先重新读取，再决定怎么保存。'
+    case 'key-conflict':
+      return '这次保存的标识已被另一个请求占用，可能是重复发起。草稿已保留，请重新读取后再保存。'
     case 'historical':
       return '上一次保存没有生效，草稿还在，可以重新保存。'
     case 'superseded':
@@ -111,14 +124,16 @@ export function diagnosticText(outcome: CommandOutcome): string {
     case 'superseded': return 'verified receipt exists but the local record was retired: service accepted this command'
     case 'conflict': return 'service rejected the original command with VERSION_CONFLICT'
     case 'recovery-required': return 'service rejected the original command with RECOVERY_REQUIRED'
+    case 'key-conflict': return 'service rejected the original command with IDEMPOTENCY_CONFLICT (business key already used with different input)'
     case 'rejected': return `service rejected the original command with ${outcome.code}${isTerminalRejection(outcome.code) ? ' (terminal)' : ' (retryable)'}`
   }
 }
 
-/** 服务错误码到核对结论：版本冲突与代际变化各自单列，其余如实保留错误码。 */
+/** 服务错误码到核对结论：版本冲突、代际变化与业务键冲突各自单列，其余如实保留错误码。 */
 export function outcomeOfCode(code: ApiErrorCode): CommandOutcome {
   if (code === 'VERSION_CONFLICT') return { kind: 'conflict' }
   if (code === 'RECOVERY_REQUIRED') return { kind: 'recovery-required' }
+  if (code === 'IDEMPOTENCY_CONFLICT') return { kind: 'key-conflict' }
   return { kind: 'rejected', code }
 }
 
@@ -126,6 +141,7 @@ export function outcomeOfCode(code: ApiErrorCode): CommandOutcome {
 export function codeOfOutcome(outcome: CommandOutcome): ApiErrorCode | null {
   if (outcome.kind === 'conflict') return 'VERSION_CONFLICT'
   if (outcome.kind === 'recovery-required') return 'RECOVERY_REQUIRED'
+  if (outcome.kind === 'key-conflict') return 'IDEMPOTENCY_CONFLICT'
   return outcome.kind === 'rejected' ? outcome.code : null
 }
 

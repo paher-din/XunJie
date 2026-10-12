@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { PREP_TASK_PATH, PREP_URL } from './env'
 
-/** I0_UI_03 CAS 修复：真实 UI/IndexedDB/HTTP；04A 尚未交付，冲突锁存到明确刷新。 */
+/**
+ * I0_UI_03 CAS 修复：真实 UI/IndexedDB/HTTP。04A 已交付冲突条与「载入另一处正文/用本页正文继续」选择，
+ * 本用例保留「学生明确刷新/重新读取后载入赢家正文」路径的回归验证（冲突条的出现不改变这条路径的结论）。
+ */
 async function edit(page: Page, text: string) {
   await page.locator('.monaco-editor textarea').first().focus()
   await page.keyboard.insertText(text)

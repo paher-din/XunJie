@@ -53,6 +53,15 @@ export interface ProjectWorkspace {
   setDraft: (fileId: string, text: string) => void
   /** 冻结点击时原文并先保护草稿；失败不允许发送业务命令。 */
   prepareSave: () => Promise<FrozenDraft[]>
+  /** 04A：本机草稿 CAS 冲突尚未解决的文件实例。 */
+  conflictedFileIds: string[]
+  /** 04A：库中（另一处写入的赢方）草稿正文；没有落库记录时为 null。 */
+  loadStoredDraftText: (fileId: string) => Promise<string | null>
+  /**
+   * 04A：明确处理本机草稿冲突。`mine` 用当前内存正文对库中最新修订重新 CAS（期间别处又写入
+   * 则失败并保留新候选）；`stored` 载入库中正文。两种选择都不会覆盖成第三份正文。
+   */
+  resolveConflict: (fileId: string, choice: 'mine' | 'stored') => Promise<'resolved' | 'conflict-again'>
 }
 
 export function useProjectWorkspace(
@@ -71,12 +80,14 @@ export function useProjectWorkspace(
     status: 'protected',
     reason: null,
   })
+  // 04A：conflicts ref 的可见镜像，驱动编辑区上方的草稿冲突条
+  const [conflictIds, setConflictIds] = useState<string[]>([])
 
   // 每个实例当前已知的库中修订；写入带期望修订做 CAS，成功才推进
   const revisions = useRef<Record<string, number | null>>({})
   // 已留过候选的败方正文：同一份字不重复堆候选行
   const lastCandidate = useRef<Record<string, string>>({})
-  // 04A 比较尚未交付：CAS 冲突锁存于本次载入，不能吸收赢家修订后重试覆写。
+  // 04A：CAS 冲突锁存到学生在冲突条明确选择为止，不能吸收赢家修订后重试覆写。
   const conflicts = useRef(new Set<string>())
   // 写入序号：只有最新一次写入的结果才能改可见状态，迟到的成功/失败不覆盖当前判断
   const saveSeq = useRef(0)
@@ -98,6 +109,7 @@ export function useProjectWorkspace(
   useEffect(() => {
     conflicts.current = new Set()
     lastCandidate.current = {}
+    setConflictIds([])
     if (key === null) return
     let cancelled = false
     setLoaded(false)
@@ -206,7 +218,7 @@ export function useProjectWorkspace(
     const serialized = JSON.stringify(ui), seq = ++saveSeq.current
     const loadConflicts = conflicts.current
     const valid = () => liveKey.current === key && conflicts.current === loadConflicts
-    const conflictMessage = '与另一处写入冲突：败方正文已留作候选，当前加载禁止保存；请明确刷新载入库中版本后再编辑'
+    const conflictMessage = '与另一处写入冲突：败方正文已留作候选，本页已禁止直接保存；请比较双方正文后明确选择，或刷新重新载入'
     const keepCandidate = async (item: typeof captured[number]) => {
       if (lastCandidate.current[item.localId] === item.text) return
       await repo.keepCandidate(clientFileKey(currentScope, item.localId), item.text, 'draftRevision 冲突')
@@ -234,6 +246,7 @@ export function useProjectWorkspace(
         if (!result.ok) {
           if (result.reason === 'conflict') {
             loadConflicts.add(item.localId)
+            setConflictIds([...loadConflicts])
             await keepCandidate(item)
             throw new Error(conflictMessage)
           }
@@ -333,6 +346,78 @@ export function useProjectWorkspace(
     [markSaving],
   )
 
+  /* 04A：比较视图只读，落库读取也只读；学生明确选择后才写回。 */
+  const loadStoredDraftText = useCallback(async (fileId: string): Promise<string | null> => {
+    const currentScope = scopeRef.current
+    if (!currentScope) return null
+    return (await repo.loadDraft(clientFileKey(currentScope, fileId)))?.text ?? null
+  }, [repo])
+
+  const resolveConflict = useCallback(
+    async (fileId: string, choice: 'mine' | 'stored'): Promise<'resolved' | 'conflict-again'> => {
+      const currentScope = scopeRef.current
+      if (!key || !currentScope || !loaded) throw new Error('本机草稿尚未载入')
+      markSaving()
+      // 与防抖落盘同一条串行写入边界：选择不能与在途 persist 交错出虚假 CAS 冲突，
+      // 更不能把库中正文回写成选择前的旧文。
+      const operation = writing.current.catch(() => {}).then(async (): Promise<'resolved' | 'conflict-again'> => {
+        const stored = await repo.loadDraft(clientFileKey(currentScope, fileId))
+        if (!stored) throw new Error('本机草稿记录不存在，请刷新重新载入')
+        const memoryText = draftText(fileId)
+        if (choice === 'stored') {
+          // 采用库中赢方：本页正文若与它不同，先留底成候选，不丢学生文字
+          if (memoryText !== stored.text && lastCandidate.current[fileId] !== memoryText) {
+            await repo.keepCandidate(clientFileKey(currentScope, fileId), memoryText, '比较选择：本页正文先留底')
+            lastCandidate.current[fileId] = memoryText
+          }
+          conflicts.current.delete(fileId)
+          setConflictIds([...conflicts.current])
+          revisions.current[fileId] = stored.draftRevision
+          setDrafts((rows) => ({ ...rows, [fileId]: stored.text }))
+          if (lastWritten.current) lastWritten.current.drafts[fileId] = stored.text
+          setProtection({ status: 'protected', reason: null })
+          return 'resolved'
+        }
+        // 采用本页正文：对库中最新修订重新 CAS；期间别处又写入则再次冲突并保留新候选
+        const result = await repo.saveDraft({ clientFileKey: clientFileKey(currentScope, fileId),
+          fileId: stored.fileId, text: memoryText, draftRevision: stored.draftRevision + 1,
+          updatedAt: Date.now() }, stored.draftRevision)
+        if (!result.ok) {
+          if (result.reason === 'conflict') {
+            if (lastCandidate.current[fileId] !== memoryText) {
+              await repo.keepCandidate(clientFileKey(currentScope, fileId), memoryText, '比较选择后再次冲突：败方正文')
+              lastCandidate.current[fileId] = memoryText
+            }
+            setProtection({ status: 'failed', reason: '再次冲突：另一处又写入了新修订，败方正文已留作候选，可重新比较' })
+            return 'conflict-again'
+          }
+          throw new Error(result.message ?? '本机草稿写入失败')
+        }
+        conflicts.current.delete(fileId)
+        setConflictIds([...conflicts.current])
+        revisions.current[fileId] = result.draftRevision
+        if (stored.text !== memoryText && lastCandidate.current[fileId] !== stored.text) {
+          await repo.keepCandidate(clientFileKey(currentScope, fileId), stored.text, '比较选择：已保存正文让位')
+          lastCandidate.current[fileId] = stored.text
+        }
+        if (lastWritten.current) lastWritten.current.drafts[fileId] = memoryText
+        setProtection({ status: 'protected', reason: null })
+        return 'resolved'
+      })
+      writing.current = operation
+      try {
+        return await operation
+      } catch (error) {
+        // 抛出即「这次选择没有完成」：如实显示未保护，让学生重试或刷新
+        if (liveKey.current === key) {
+          setProtection({ status: 'failed', reason: error instanceof Error ? error.message : String(error) })
+        }
+        throw error
+      }
+    },
+    [key, loaded, repo, draftText, markSaving],
+  )
+
   const openFiles = useMemo(
     () => openFileIds.map((id) => files.find((f) => f.fileId === id)).filter((f): f is ProjectFile => f !== undefined),
     [openFileIds, files],
@@ -357,6 +442,9 @@ export function useProjectWorkspace(
     create,
     setDraft,
     prepareSave: protect,
+    conflictedFileIds: conflictIds,
+    loadStoredDraftText,
+    resolveConflict,
   }
 }
 

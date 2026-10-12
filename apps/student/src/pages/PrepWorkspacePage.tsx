@@ -1,14 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolKey } from '../components/workspace/CenterToolArea'
 import { SideDock } from '../components/workspace/SideDock'
 import { PrepTaskInfo, TextScopeBodyPane } from '../components/workspace/TextScopePanes'
 import { ConfirmationCluster } from '../components/workspace/ConfirmationCluster'
+import { ConflictCompare } from '../components/workspace/ConflictCompare'
 import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
 import { useProjectWorkspace } from '../components/workspace/useProjectWorkspace'
 import { useConfirmationWorkspace } from '../workspace/useConfirmationWorkspace'
-import { canReplay } from '../workspace/recovery'
+import { canReplay, comparableOutcome } from '../workspace/recovery'
 import { describeError, reportDiagnostic } from '../workspace/diagnostics'
 import { idbDraftRepository } from '../workspace/draftDb'
 import { scopeKey, type DraftScope } from '../lib/draftStore'
@@ -47,6 +48,111 @@ export default function PrepWorkspacePage() {
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(null), 2600)
   }, [])
+
+  /* ---------- 04A：服务版本冲突的只读比较 ---------- */
+  const comparison = confirmation.state.comparison
+  const [compareBusy, setCompareBusy] = useState(false)
+
+  /** Esc 关闭比较：只在比较视图打开期间挂监听，行为与「返回编辑」一致。 */
+  useEffect(() => {
+    if (comparison === null) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') confirmation.client?.closeComparison()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [comparison === null, confirmation.client])
+
+  /** 打开比较：从落盘原命令与重读 head 构造比较；内部失败已发布为 state.error，这里兜 toast。 */
+  async function onOpenComparison() {
+    const pending = confirmation.state.pending
+    if (!pending || !confirmation.client) return
+    try {
+      await confirmation.client.openComparison(pending.commandKey)
+    } catch (e) {
+      showToast(describeError(e))
+    }
+  }
+
+  /** 保留本页正文：草稿不动，退役冲突原命令，之后学生重新发起保存。 */
+  async function onKeepMine() {
+    if (comparison === null || compareBusy) return
+    setCompareBusy(true)
+    try {
+      const result = await confirmation.client?.resolveConflict(comparison.commandKey)
+      showToast(result === 'retired' ? '已保留本页正文，可以重新保存了。' : '这次处理没有完成，请重新读取后再试。')
+    } catch (e) {
+      showToast(describeError(e))
+    } finally {
+      setCompareBusy(false)
+    }
+  }
+
+  /** 采用服务端正文：先把服务正文写回对应草稿实例，再退役冲突原命令。 */
+  async function onAdoptServer() {
+    if (comparison === null || compareBusy) return
+    setCompareBusy(true)
+    try {
+      for (const file of comparison.files) {
+        if (file.theirs !== null && file.theirs !== file.mine) project.setDraft(file.localId, file.theirs)
+      }
+      const result = await confirmation.client?.resolveConflict(comparison.commandKey)
+      showToast(result === 'retired' ? '已采用当前作品的正文，可以重新保存了。' : '这次处理没有完成，请重新读取后再试。')
+    } catch (e) {
+      showToast(describeError(e))
+    } finally {
+      setCompareBusy(false)
+    }
+  }
+
+  /* ---------- 04A：本机草稿 CAS 冲突条（与比较视图相互独立） ---------- */
+  const [draftConflictBusy, setDraftConflictBusy] = useState(false)
+
+  /** 学生明确选择保留哪一份正文；同一时间只允许一个在途处理。 */
+  async function onResolveDraftConflict(fileId: string, choice: 'mine' | 'stored') {
+    if (draftConflictBusy) return
+    setDraftConflictBusy(true)
+    try {
+      const result = await project.resolveConflict(fileId, choice)
+      showToast(result === 'resolved' ? '已按你的选择更新了草稿。' : '选择期间另一处又写入了新的修订，请重新选择。')
+    } catch (e) {
+      showToast(describeError(e))
+    } finally {
+      setDraftConflictBusy(false)
+    }
+  }
+
+  /** 编辑区上方的冲突条：每个冲突文件一行，两个按钮各选一份正文。 */
+  const draftConflictBar = project.conflictedFileIds.length > 0 ? (
+    <div className="ws-draft-conflicts">
+      <p className="ws-draft-conflicts-note">这份草稿在另一处也被修改过，请选择保留哪一份正文。</p>
+      {project.conflictedFileIds.map((fileId) => (
+        <div key={fileId} className="ws-draft-conflict" data-fileid={fileId}>
+          <span className="ws-draft-conflict-path">
+            {project.files.find((f) => f.fileId === fileId)?.path ?? fileId}
+          </span>
+          <span className="ws-draft-conflict-actions">
+            <button
+              type="button"
+              className="outline"
+              disabled={draftConflictBusy}
+              onClick={() => { void onResolveDraftConflict(fileId, 'mine') }}
+            >
+              用本页正文继续
+            </button>
+            <button
+              type="button"
+              className="outline"
+              disabled={draftConflictBusy}
+              onClick={() => { void onResolveDraftConflict(fileId, 'stored') }}
+            >
+              载入另一处正文
+            </button>
+          </span>
+        </div>
+      ))}
+    </div>
+  ) : null
 
   /** 结束准备会话（学生明确发起）：POST logout 后重读，会建立新的合成会话与新的 loadEpoch。 */
   async function onSignOut() {
@@ -98,10 +204,25 @@ export default function PrepWorkspacePage() {
           tool={tool}
           onToolChange={setTool}
           onToast={showToast}
-          designBody={confirmation.seed && draftScope
-            ? <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} />
-            : <TextScopeBodyPane init={init.init} onReload={init.reload} />}
-          runCluster={<ConfirmationCluster
+          designBody={comparison !== null
+            ? <ConflictCompare
+                comparison={comparison}
+                busy={compareBusy}
+                // 未决（未知结果）、租约占用、本机未完成与可重试拒绝只能核对，不能在这里丢弃；
+                // 只有 comparableOutcome 圈定的结论才由学生明确选择退役。
+                resolvable={confirmation.state.outcome !== null && comparableOutcome(confirmation.state.outcome)}
+                onReturn={() => confirmation.client?.closeComparison()}
+                onKeepMine={() => { void onKeepMine() }}
+                onAdoptServer={() => { void onAdoptServer() }}
+              />
+            : confirmation.seed && draftScope
+              ? <>
+                  {draftConflictBar}
+                  <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} />
+                </>
+              : <TextScopeBodyPane init={init.init} onReload={init.reload} />}
+          runCluster={<>
+            <ConfirmationCluster
             phase={init.status !== 'ready' ? 'loading' : confirmation.state.phase}
             hasAttempt={!!c?.attemptId}
             hasPending={!!confirmation.state.pending}
@@ -123,14 +244,30 @@ export default function PrepWorkspacePage() {
               const current = confirmation.client
               void project.prepareSave().then(drafts => current?.save(drafts)).catch(e => {
                 reportDiagnostic('command.failed', { reason: 'draft not protected before saving', error: describeError(e) })
-                // 草稿 CAS 冲突这条路径重试不会成功，可操作的做法是重载后按赢家继续（原因在保护状态里）。
-                showToast('草稿没有保存到本机，这次没有发送。请重新读取后再试。')
+                // 草稿 CAS 冲突这条路径重试不会成功：冲突条已出现，学生明确选择后才能继续保存。
+                showToast('草稿没有保存到本机，这次没有发送。如有冲突提示，请先选择保留哪一份正文。')
               })
             }}
             onSnapshot={() => { void confirmation.client?.snapshot() }}
             onRetry={() => { void confirmation.client?.retry() }}
             onReload={init.reload}
-          />}
+          />
+            {/* 04A 比较入口：只在比较有意义的结论（版本冲突/待重读/业务键冲突/历史）出现；
+                其余结论的重试与重读动作在 ConfirmationCluster 里，不提供丢弃比较 */}
+            {comparison === null && confirmation.state.pending && confirmation.state.outcome &&
+              comparableOutcome(confirmation.state.outcome) && confirmation.state.phase !== 'saving' && (
+              <span className="ws-run-actions">
+                <button
+                  type="button"
+                  className="ws-btn ghost"
+                  style={{ padding: '0 10px', fontSize: 12 }}
+                  onClick={() => { void onOpenComparison() }}
+                >
+                  比较双方正文
+                </button>
+              </span>
+            )}
+          </>}
           tabsSlot={tabsSlot}
           runSlot={runSlot}
         />

@@ -412,7 +412,7 @@ test('整批保存被拒绝时服务端不部分创建，草稿和原命令保�
   })
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-head-run [role=alert]'))
-    .toHaveText('作品在别处有了新的版本，草稿已保留。比较后再保存的能力还没有提供，请先重新读取当前作品。')
+    .toHaveText('作品在别处有了新的版本，草稿已保留。请比较两个版本后再决定怎么保存。')
   const authoritative = await page.evaluate(async () => {
     const scenario = new URLSearchParams(location.search).get('scenario')!, headers = { 'x-i0prep-scenario': scenario }
     const context = (await (await fetch('/__i0prep/context', { headers })).json()).data

@@ -216,6 +216,31 @@ export const confirmationRepository = {
         result(undefined)
       }))
   },
+  /**
+   * 学生在比较后明确处理了这条冲突原命令（04A）：把它退役为只读历史事实。
+   *
+   * 只允许两类行退役：同一代际且被服务以 VERSION_CONFLICT 明确拒绝的行；归属同一 Attempt 的
+   * 旧代际未决行（重读新上下文并由学生比较后再决定，是它唯一的出口）。有回执、租约被他人
+   * 持有或归属不符的行一律不动。退役不是删除：`rejected` 事实与冻结输入保留在原记录上，
+   * 它也不会再被重放（claim 对终态拒绝依旧拦截）。
+   */
+  async retireResolved(key: string, context: CommandContext, owner: string, now = Date.now()): Promise<'retired' | 'unchanged'> {
+    return transaction(await openWorkspaceDb(), ['outbox'], 'readwrite', (tx, result, safe) =>
+      reads(tx, [['outbox', key]], safe, ([value]) => {
+        const row = value as OutboxRecord | undefined
+        if (!row || row.state !== 'pending' || row.receipt) { result('unchanged'); return }
+        if (row.lease && row.lease.owner !== owner && row.lease.until > now) throw new LeaseHeldError()
+        // 同代际：只有终态拒绝可以退役——版本冲突（比较后明确选择）与业务键冲突（同一键已被
+        // 不同输入占用，重发同键被禁止）。拒绝事实保留在记录上，只是不再阻塞新的保存；
+        // 未决与可重试的拒绝必须走核对，不能在这里被丢弃。
+        const retirable = sameGeneration(row.context, context)
+          ? row.rejected?.code === 'VERSION_CONFLICT' || row.rejected?.code === 'IDEMPOTENCY_CONFLICT'
+          : sameOwner(row.context, context) && row.context.attemptId === context.attemptId
+        if (!retirable) { result('unchanged'); return }
+        tx.objectStore('outbox').put({ ...row, state: 'historical', lease: undefined })
+        result('retired')
+      }))
+  },
   async read(c: CommandContext): Promise<LocalConfirmationState> {
     return transaction(await openWorkspaceDb(), ['metadata', 'instances', 'drafts', 'outbox', 'candidates'], 'readonly', (tx, result, safe) =>
       reads(tx, [['metadata', headKey(c)], ['instances', null], ['drafts', null], ['outbox', null], ['candidates', null]], safe, ([h, i, d, o, candidates]) => {

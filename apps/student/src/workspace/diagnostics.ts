@@ -32,6 +32,10 @@ export type DiagnosticEvent =
   | 'context.loaded'
   /** 学生对原命令做的核对动作与结果。 */
   | 'command.reconciled'
+  /** 04A：学生明确处理了冲突原命令（退役或保留）。 */
+  | 'command.resolved'
+  /** 04A：冲突比较打开（来源与涉及文件，只进控制台）。 */
+  | 'comparison.opened'
   /** 准备/工作区上下文变化（换代际、重载）。 */
   | 'context.changed'
   /** 快照冻结与核验结果。 */

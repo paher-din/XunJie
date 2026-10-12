@@ -9443,3 +9443,139 @@ button.st-check.checked:hover {
   opacity: 0.38;
   cursor: not-allowed;
 }
+
+/* ---------- 04A：服务版本冲突的只读比较视图 ---------- */
+.ws-compare {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ws-compare-note {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--sunken);
+  font-size: 12px;
+  color: var(--muted);
+}
+.ws-compare-file {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.ws-compare-file:last-child {
+  border-bottom: none;
+}
+.ws-compare-file-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 14px 4px;
+  min-width: 0;
+}
+.ws-compare-file-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.ws-compare-file-base {
+  font-size: 12px;
+  color: var(--faint);
+}
+.ws-compare-missing {
+  padding: 0 14px 2px;
+  font-size: 12px;
+  color: var(--indicator-amber-ink);
+}
+.ws-compare-diff-legend {
+  display: flex;
+  gap: 16px;
+  padding: 2px 14px 6px;
+  font-size: 11px;
+  color: var(--faint);
+}
+.ws-compare-diff {
+  position: relative;
+  margin: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ws-compare-diff-host {
+  height: 320px;
+}
+.ws-compare-read {
+  position: relative;
+  margin: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ws-compare-read-host {
+  height: 260px;
+}
+.ws-compare-failed {
+  margin: 0 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.ws-compare-failed p:first-child {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--danger-deep);
+}
+.ws-compare-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+/* ---------- 04A：本机草稿冲突条（编辑区上方，与比较视图相互独立） ---------- */
+.ws-draft-conflicts {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--tint-amber-line);
+  background: var(--tint-amber-bg);
+  color: var(--tint-amber-fg);
+  font-size: 12px;
+}
+.ws-draft-conflict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.ws-draft-conflict-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ws-draft-conflict-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.ws-draft-conflict-actions .outline {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
