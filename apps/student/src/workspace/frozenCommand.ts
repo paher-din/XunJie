@@ -11,9 +11,11 @@ export interface FrozenDraft {
   lifecycle?: 'active' | 'recycled'
 }
 export interface FrozenCommand {
-  commandKey: string; context: CommandContext; kind: 'attempt.create' | 'workspace.sync' | 'snapshot.create'
+  commandKey: string; context: CommandContext; kind: 'attempt.create' | 'workspace.sync' | 'snapshot.create' | 'run.create'
   path: string; target: string; wireJson: string; requestHash: string; createdAt: number
   before: ConfirmedWorkspace | null; drafts: FrozenDraft[]
+  /** 06 本机来源标签：经回执关联后才展示，不补入 GET Run 或 POST wire。 */
+  runSnapshot?: { hash: string; workspaceRevision: number; files: Array<{ fileId: string; path: string }> }
 }
 export interface OutboxRecord extends FrozenCommand {
   state: 'pending' | 'confirmed' | 'historical'
@@ -44,7 +46,7 @@ function canonical(value: unknown): string {
   if (value && typeof value === 'object') return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonical((value as Record<string, unknown>)[k])}`).join(',')}}`
   return JSON.stringify(value)
 }
-async function freeze(context: CommandContext, kind: FrozenCommand['kind'], path: string, body: object,
+export async function freeze(context: CommandContext, kind: FrozenCommand['kind'], path: string, body: object,
   before: ConfirmedWorkspace | null, drafts: FrozenDraft[]): Promise<FrozenCommand> {
   if (!context.userId || !context.assignmentId || !context.activityVersionId || !context.trustedRecoveryGeneration) throw new Error('缺少身份或受信代际，禁止写入（H-03）')
   const wireJson = JSON.stringify(body), fields = JSON.parse(wireJson) as Record<string, unknown>

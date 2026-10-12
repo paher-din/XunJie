@@ -40,6 +40,7 @@ export type DiagnosticEvent =
   | 'context.changed'
   /** 快照冻结与核验结果。 */
   | 'snapshot.frozen'
+  | 'run.read-failed'
 
 /** 上报一条诊断。detail 只放可序列化的排障字段，不放正文与凭据。 */
 export function reportDiagnostic(event: DiagnosticEvent, detail: object): void {

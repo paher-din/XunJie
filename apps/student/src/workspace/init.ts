@@ -170,7 +170,17 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
     )
   }
 
-  const assignmentId = prepContext!.refs.assignmentId
+  // 登录前 context 不会暴露已有 Attempt 引用；另一浏览器登录后只读恢复原作品。
+  const authorizedContext = await guardedGet<PrepContextView>(guard,
+    { ...opts, absolutePath: prepContextUrl(mode)! }, 'prep-context', '')
+  if (authorizedContext.kind === 'stale') return { kind: 'stale' }
+  if (authorizedContext.kind === 'failed') return unavailable('context', '准备工作区引用没有读取成功', authorizedContext.error)
+  if (authorizedContext.data.preparationEpoch !== prepContext!.preparationEpoch ||
+    authorizedContext.data.recoveryGeneration !== prepContext!.recoveryGeneration ||
+    authorizedContext.data.syntheticAccount.userId !== session.userId ||
+    authorizedContext.data.refs.assignmentId !== prepContext!.refs.assignmentId) return unavailable('context', '准备工作区已变化，请重新读取。')
+  prepContext = authorizedContext.data
+  const assignmentId = prepContext.refs.assignmentId
 
   /* 3. 分配：核对归属到当前 Session。 */
   const assignmentRead = await guardedGet<AssignmentView>(

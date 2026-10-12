@@ -7,6 +7,9 @@ import { PrepTaskInfo, TextScopeBodyPane } from '../components/workspace/TextSco
 import { ConfirmationCluster } from '../components/workspace/ConfirmationCluster'
 import { ConflictCompare } from '../components/workspace/ConflictCompare'
 import { VersionCompare } from '../components/workspace/VersionCompare'
+import { RunPanel, CoreRunEntry, type CoreSelection } from '../components/workspace/RunPanel'
+import { useRunWorkspace } from '../workspace/useRunWorkspace'
+import type { CoreInput } from '../workspace/runRequest'
 import { CodeWorkspace } from '../components/workspace/CodeWorkspace'
 import { buildVersionComparison } from '../workspace/comparison'
 import { defaultVersionPair, isSnapshotSource, versionSourceOptions } from '../workspace/versionSources'
@@ -34,7 +37,14 @@ export default function PrepWorkspacePage() {
   const navigate = useNavigate()
   const init = useWorkspaceInit()
   const confirmation = useConfirmationWorkspace(init.init, PREP_TASK_ID)
+  const run = useRunWorkspace(confirmation.client, init.init)
+  const [runOpen, setRunOpen] = useState(false)
+  const [runSelection, setRunSelection] = useState<CoreSelection>({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
   const c = confirmation.client?.context
+  useEffect(() => {
+    setRunOpen(false)
+    setRunSelection({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
+  }, [c])
   const draftScope = useMemo<DraftScope | null>(() => c?.attemptId && c.userId
     ? { mode: c.mode, account: c.userId, attemptKey: c.attemptId } : null,
   [c?.mode, c?.userId, c?.attemptId])
@@ -79,6 +89,12 @@ export default function PrepWorkspacePage() {
   }, [versionSelection, versionOptions])
   const versionChoices = useMemo(() => versionOptions.map(({ id, label }) => ({ id, label })), [versionOptions])
   const compareOpen = comparison !== null || versionComparison !== null
+  const runSnapshots = confirmation.state.snapshots.map(snapshot => ({ id: snapshot.snapshotId,
+    label: `确认作品 v${snapshot.workspaceRevision} · ${new Date(snapshot.createdAt).toLocaleTimeString()}`,
+    files: snapshot.files.map(file => ({ id: file.fileId, path: file.path, ascii: /^[\x00-\x7f]*$/.test(file.text) })) }))
+  const runBusy = run.state.phase === 'submitting' || run.state.phase === 'reading'
+  const canRun = run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
+    runSelection.fileIds.length > 0 && !confirmation.client?.commandInFlight
 
   /** Esc 关闭比较：只在比较视图打开期间挂监听，行为与「返回编辑」一致。 */
   useEffect(() => {
@@ -255,6 +271,17 @@ export default function PrepWorkspacePage() {
                 onKeepMine={() => { void onKeepMine() }}
                 onAdoptServer={() => { void onAdoptServer() }}
               />
+            : runOpen
+              ? <RunPanel snapshots={runSnapshots} selection={runSelection} result={run.result}
+                  busy={runBusy} canRun={canRun} notice={run.state.notice} synthetic={c?.mode === 'preparation'}
+                  onSelect={setRunSelection} onReturn={() => setRunOpen(false)} onRead={run.read}
+                  onRun={() => {
+                    const input: CoreInput = runSelection.operation === 'find'
+                      ? { operation: 'find', fileIds: runSelection.fileIds, word: runSelection.word }
+                      : runSelection.operation === 'top' ? { operation: 'top', fileIds: runSelection.fileIds, count: runSelection.count }
+                        : { operation: 'stats', fileIds: runSelection.fileIds }
+                    void run.client?.run(runSelection.snapshotId, runSelection.entryFileId, input)
+                  }} />
             : confirmation.seed && draftScope
               ? <>
                   {draftConflictBar}
@@ -262,6 +289,7 @@ export default function PrepWorkspacePage() {
                 </>
               : <TextScopeBodyPane init={init.init} onReload={init.reload} />}
           runCluster={<>
+            {c?.attemptId && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setRunOpen(true) }} />}
             <ConfirmationCluster
             phase={init.status !== 'ready' ? 'loading' : confirmation.state.phase}
             hasAttempt={!!c?.attemptId}

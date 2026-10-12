@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import type { ApiErrorCode } from '../src/workspace/contracts'
 import { preparationEpoch, syntheticRecoveryGeneration, type PrepSession } from './authority'
 import { REFS, sha256Hex } from './scenario'
+import type { JobView, RunView } from '../src/workspace/runContracts'
 
 export class PrepWorkspaceError extends Error {
   constructor(readonly code: ApiErrorCode) { super(code) }
@@ -49,7 +50,7 @@ interface Snapshot {
   snapshotId: string; hashFormat: 'sha256-manifest-v1'; hash: string; files: Omit<File, 'attemptId' | 'lifecycle'>[]
   attemptId: string; activityVersionId: string; workspaceRevision: number; createdAt: string
 }
-interface Head { attempt: Attempt; files: File[]; snapshots: Snapshot[]; jobs: never[]; runs: never[]; checks: never[] }
+interface Head { attempt: Attempt; files: File[]; snapshots: Snapshot[]; jobs: JobView[]; runs: RunView[]; checks: never[] }
 interface Identity {
   actorId: string; command: string; target: string
   scope: { courseId: string; studentId: string; attemptId?: string }
@@ -288,6 +289,92 @@ export function readPrepSnapshot(scenario: string, session: PrepSession, attempt
   const snapshot = head.snapshots.find(snapshot => snapshot.snapshotId === snapshotId)
   if (!snapshot) reject('INVALID_REFERENCE')
   return structuredClone(snapshot)
+}
+
+/** 06 脚本结果；没有 GCC/worker/runner，输出从固定公开形状脚本取，不评判作品正确性。 */
+export type PrepRunScript = 'success' | 'compile_failed' | 'runtime_failed' | 'timed_out' | 'output_limit' | 'running' | 'unavailable' | 'node_failed' | 'not_ready'
+const scripts = new Map<string, PrepRunScript>()
+const polls = new Map<string, number>()
+const runScripts = new Map<string, PrepRunScript>()
+export function setPrepRunScript(scenario: string, value: unknown) {
+  const input = object(value, ['outcome'])
+  if (!['success', 'compile_failed', 'runtime_failed', 'timed_out', 'output_limit', 'running', 'unavailable', 'node_failed', 'not_ready'].includes(String(input.outcome))) reject('INVALID_REQUEST')
+  scripts.set(scenario, input.outcome as PrepRunScript)
+  // 同一开发脚本可推进尚未结束的原 Job；不会新建运行或改变快照/公开 wire。
+  for (const job of sceneOf(scenario).head?.jobs ?? []) {
+    if (['queued', 'running'].includes(job.status)) runScripts.set(`${scenario}:${job.runId}`, input.outcome as PrepRunScript)
+  }
+  return { outcome: input.outcome }
+}
+export function createPrepRun(scenario: string, session: PrepSession, attemptId: string, value: unknown, key: unknown) {
+  const input = object(value, ['recoveryGeneration', 'expectedAttemptRevision', 'snapshotId', 'runtimeProfileVersion', 'entryFileId', 'input', 'mode'])
+  const scene = sceneOf(scenario), head = authorizedHead(scene, session, id(attemptId))
+  const generation = trustedGeneration(scene, input.recoveryGeneration)
+  const command = identity(session, 'run.create', `/api/attempts/${attemptId}/runs`, key, generation, attemptId)
+  const { recoveryGeneration: _generation, ...fields } = input
+  const hash = sha256Hex(canonical({ target: command.target, fields }))
+  const previous = original(scene, command, hash)
+  if (previous) return { ...structuredClone(previous), replayed: true }
+  const script = scripts.get(scenario) ?? 'success'
+  if (script === 'not_ready' || input.runtimeProfileVersion !== REFS.runtimeProfileVersionId || input.mode !== 'run') reject('RUNTIME_NOT_READY')
+  if (natural(input.expectedAttemptRevision) !== head.attempt.attemptRevision) reject('VERSION_CONFLICT')
+  if (!['ready', 'active'].includes(head.attempt.status) || head.jobs.some(j => !['succeeded', 'failed', 'cancelled', 'timed_out'].includes(j.status))) reject('STATE_CONFLICT')
+  const snapshot = head.snapshots.find(s => s.snapshotId === id(input.snapshotId))
+  if (!snapshot || !snapshot.files.some(f => f.fileId === input.entryFileId && f.path.endsWith('.c'))) reject('INVALID_REFERENCE')
+  const core = object(input.input, ['operation', 'fileIds', 'word', 'count'])
+  const operation = core.operation
+  if (!['stats', 'find', 'top'].includes(String(operation)) || Object.keys(core).some(k => !['operation', 'fileIds', ...(operation === 'find' ? ['word'] : operation === 'top' ? ['count'] : [])].includes(k))) reject('INVALID_REQUEST')
+  if (!Array.isArray(core.fileIds) || core.fileIds.length < 1 || core.fileIds.length > 50 || new Set(core.fileIds).size !== core.fileIds.length) reject('INVALID_REQUEST')
+  for (const fileId of core.fileIds) {
+    const file = snapshot.files.find(f => f.fileId === id(fileId))
+    if (!file || !/^[\x00-\x7f]*$/.test(file.text)) reject('INVALID_REFERENCE')
+  }
+  if (operation === 'find' && (typeof core.word !== 'string' || !/^[A-Za-z0-9]+$/.test(core.word))) reject('INVALID_REQUEST')
+  if (operation === 'top' && (typeof core.count !== 'string' || !/^[1-9][0-9]{0,9}$/.test(core.count) || BigInt(core.count) > 2147483647n)) reject('INVALID_REQUEST')
+  const next = structuredClone(head), runId = randomUUID(), jobId = randomUUID(), requestReceiptId = randomUUID()
+  if (next.attempt.status === 'ready') { next.attempt.status = 'active'; next.attempt.attemptRevision++ }
+  const now = new Date().toISOString()
+  next.jobs.push({ jobId, runId, kind: 'run', purpose: 'student_run', scope: { courseId: session.courseId, studentId: session.userId, attemptId },
+    requestReceiptId, status: 'queued', stopRequested: false, expectedRevision: next.attempt.attemptRevision,
+    decisionEpoch: next.attempt.decisionEpoch, recoveryGeneration: generation, acceptedAt: now,
+    deadline: new Date(Date.now() + 120_000).toISOString(), attemptCount: 0 })
+  next.runs.push({ runId, jobId, snapshotId: snapshot.snapshotId, snapshotHash: snapshot.hash, mode: 'run',
+    runtimeProfileVersion: REFS.runtimeProfileVersionId, imageDigest: `sha256:${'a'.repeat(64)}`,
+    diagnostics: { runId, snapshotId: snapshot.snapshotId, snapshotHash: snapshot.hash, source: 'runner_diagnostics', status: 'unavailable' } })
+  scene.head = next
+  runScripts.set(`${scenario}:${runId}`, script)
+  const ack = receipt(scene, command, hash, { runId, jobId, snapshotId: snapshot.snapshotId })
+  // requestReceiptId 必须关联实际回执，与真实 readWorkspace 投影一致。
+  next.jobs[next.jobs.length - 1]!.requestReceiptId = ack.receiptId
+  checkpoint(scene)
+  return { ...ack, replayed: false }
+}
+export function readPrepJob(scenario: string, session: PrepSession, jobId: string): JobView {
+  const scene = sceneOf(scenario), head = scene.head
+  if (!head) reject('FORBIDDEN')
+  authorizedHead(scene, session, head.attempt.attemptId)
+  const job = head.jobs.find(j => j.jobId === id(jobId))
+  if (!job) reject('FORBIDDEN')
+  const key = `${scenario}:${job.runId}`, script = runScripts.get(key) ?? 'running'
+  const count = (polls.get(key) ?? 0) + 1
+  polls.set(key, count)
+  if (count >= 2 && job.status === 'queued') { job.status = 'running'; job.attemptCount = 1 }
+  if (count >= 3 && script !== 'running') {
+    // reconcileRun 回取到结果即调度 succeeded；程序错误仅由公开诊断表达。
+    job.status = script === 'node_failed' ? 'failed' : 'succeeded'
+    const run = head.runs.find(r => r.runId === job.runId)!
+    if (script !== 'unavailable' && script !== 'node_failed') run.diagnostics = { ...run.diagnostics, status: 'available',
+      stdout: script === 'success' ? 'SYNTHETIC Core result\n' : '',
+      stderr: script === 'compile_failed' ? 'SYNTHETIC compiler diagnostic\n' : script === 'runtime_failed' ? 'SYNTHETIC execution diagnostic\n' : '',
+      ...(script !== 'success' ? { failureKind: script === 'compile_failed' ? 'compile_error' : script === 'runtime_failed' ? 'program_error' : script === 'timed_out' ? 'timeout' : 'output_limit' } : {}) }
+  }
+  return structuredClone(job)
+}
+export function readPrepRun(scenario: string, session: PrepSession, attemptId: string, runId: string): RunView {
+  const head = authorizedHead(sceneOf(scenario), session, id(attemptId))
+  const run = head.runs.find(r => r.runId === id(runId))
+  if (!run) reject('FORBIDDEN')
+  return structuredClone(run)
 }
 
 /**

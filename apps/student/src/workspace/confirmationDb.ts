@@ -133,11 +133,15 @@ export const confirmationRepository = {
   async persist(command: FrozenCommand, valid: () => boolean): Promise<void> {
     const db = await openWorkspaceDb()
     await transaction<void>(db, ['outbox', 'metadata'], 'readwrite', (tx, result, safe) => {
-      reads(tx, [['outbox', command.commandKey], ['metadata', headKey(command.context)], ['metadata', referenceKey(command.context)]], safe, ([old, head, ref]) => {
+      reads(tx, [['outbox', command.commandKey], ['metadata', headKey(command.context)], ['metadata', referenceKey(command.context)], ['outbox', null]], safe, ([old, head, ref, all]) => {
         if (!valid()) throw new Error('工作区上下文已失效')
         if (head && !sameGeneration((head as HeadRecord).context, command.context)) throw new Error('另一标签已切换受信代际，需要重新读取')
         if (ref && !sameAuthority((ref as RefRecord).context, command.context)) throw new Error('另一标签已切换受信代际，需要重新读取')
         if (old && JSON.stringify((old as OutboxRecord).wireJson) !== JSON.stringify(command.wireJson)) throw new Error('原命令不能修改')
+        // 06 两标签在同一个 readwrite 事务争用原请求槽；旧代际未知也不能换键重跑。
+        if (command.kind === 'run.create' && (all as OutboxRecord[]).some(r => r.commandKey !== command.commandKey &&
+          r.kind === 'run.create' && r.state === 'pending' && sameOwner(r.context, command.context) &&
+          r.context.attemptId === command.context.attemptId)) throw new Error('上次运行请求仍需核对，不能再次发起。')
         if (!old) tx.objectStore('outbox').put({ ...command, state: 'pending' } satisfies OutboxRecord)
         result(undefined)
       })
@@ -221,6 +225,17 @@ export const confirmationRepository = {
           const retired = code === 'STATE_CONFLICT'
           tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() },
             ...(retired ? { state: 'historical' as const, lease: undefined } : {}) })
+        }
+        result(undefined)
+      }))
+  },
+  /** 06 明确未接受的运行请求保留拒绝事实；未知/键冲突不调用此入口。 */
+  async rejectRun(key: string, code: ApiErrorCode, owner: string): Promise<void> {
+    await transaction<void>(await openWorkspaceDb(), ['outbox'], 'readwrite', (tx, result, safe) =>
+      reads(tx, [['outbox', key]], safe, ([value]) => {
+        const row = value as OutboxRecord | undefined
+        if (row?.kind === 'run.create' && !row.receipt && row.lease?.owner === owner) {
+          tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() }, state: 'historical', lease: undefined })
         }
         result(undefined)
       }))

@@ -243,7 +243,7 @@ export interface PrepContextView {
     attemptCreate: boolean
     workspaceSync: boolean
     snapshot: boolean
-    run: false
+    run: boolean
   }
   /** 开发进程当前 authority 状态；进程重启即换代，用于核对迟到响应与旧缓存。 */
   authority: {

@@ -52,7 +52,7 @@ const initialState = (): ConfirmationState => ({ phase: 'idle', workspace: null,
  * 仍是本 Attempt 的事实）。绝不回退到别的 Attempt 或别的账号：那会把别处的工作区锁住并展示错误事实。
  */
 function currentPendingRow(rows: OutboxRecord[], context: CommandContext): OutboxRecord | null {
-  const ordered = [...rows].sort((a, b) => b.createdAt - a.createdAt)
+  const ordered = rows.filter(r => r.kind !== 'run.create').sort((a, b) => b.createdAt - a.createdAt)
   return ordered.find(r => sameGeneration(r.context, context)) ??
     ordered.find(r => r.context.attemptId === context.attemptId) ?? null
 }
@@ -114,6 +114,9 @@ export class ConfirmationWorkspace {
   }
   get context(): CommandContext { return this.guard.context as CommandContext }
   get current(): ConfirmationState { return this.state }
+  /** 06 复用这个上下文守卫，不新建会使确认客户端失效的第二个 guard。 */
+  isCurrent(context: CommandContext): boolean { return this.context === context && !this.guard.stale }
+  get commandInFlight(): boolean { return this.busy }
   subscribe(listener: (state: ConfirmationState) => void): () => void {
     this.listeners.add(listener); listener(this.state)
     return () => { this.listeners.delete(listener) }

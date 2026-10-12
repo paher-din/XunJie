@@ -49,6 +49,7 @@ import {
 } from './scenario'
 import { createPrepAttempt, readPrepAttempt, syncPrepWorkspace, freezePrepSnapshot, readPrepSnapshot, recoverPrepWorkspace,
   setPrepAttemptState, PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
+import { createPrepRun, readPrepJob, readPrepRun, setPrepRunScript } from './workspace'
 import { isPrepFault, prepFaultOf, setPrepFault } from './faults'
 
 /** 与 `apps/teaching/contracts/common/http.ts:3-19` 的 errorDefinitions 对应条目逐字一致。 */
@@ -159,7 +160,7 @@ function requireSession(req: IncomingMessage, res: ServerResponse): PrepSession 
 /** 准备 bootstrap 元信息：开发 fixture 的配置入口，不是拟定的正式 API。 */
 type WorkspacePrepContext = Omit<PrepContextView, 'capabilities' | 'refs'> & {
   refs: PrepContextView['refs'] & { attemptId?: string }
-  capabilities: { attemptCreate: boolean; workspaceSync: boolean; snapshot: boolean; run: false }
+  capabilities: { attemptCreate: boolean; workspaceSync: boolean; snapshot: boolean; run: boolean }
 }
 function contextPayload(req: IncomingMessage): WorkspacePrepContext {
   const scenarioId = scenarioOf(req)
@@ -181,7 +182,7 @@ function contextPayload(req: IncomingMessage): WorkspacePrepContext {
       resourceVersionIds: MATERIALS.map((m) => m.resourceVersionId),
       ...(attemptId ? { attemptId } : {}),
     },
-    capabilities: { attemptCreate: true, workspaceSync: true, snapshot: true, run: false },
+    capabilities: { attemptCreate: true, workspaceSync: true, snapshot: true, run: true },
     authority: { ...authoritySummary(scenarioId), recoveryGeneration: generation },
   }
 }
@@ -338,6 +339,19 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   }
 
   // 05：开发专用 Attempt 状态开关（暂停 / 终态），只用于核对「不可操作」的门控。
+  if (path === `${PREP_ROOT}/run-script` && method === 'POST') {
+    const session = requireSession(req, res)
+    if (!session) return
+    if (csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
+    let body: unknown
+    try { body = await readBody(req) } catch { return fail(res, 'INVALID_REQUEST') }
+    try { return ok(res, setPrepRunScript(scenarioOf(req), body)) } catch (error) {
+      if (error instanceof PrepWorkspaceError) return fail(res, error.code)
+      throw error
+    }
+  }
+
+  // 05：开发专用 Attempt 状态开关（暂停 / 终态），只用于核对「不可操作」的门控。
   if (path === `${PREP_ROOT}/attempt-state` && method === 'POST') {
     const session = requireSession(req, res)
     if (!session) return
@@ -379,8 +393,12 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   const sync = route.match(/^\/attempts\/([^/]+)\/sync$/)
   const snapshotCreate = route.match(/^\/attempts\/([^/]+)\/snapshots$/)
   const snapshotRead = route.match(/^\/attempts\/([^/]+)\/snapshots\/([^/]+)$/)
+  const runCreate = route.match(/^\/attempts\/([^/]+)\/runs$/)
+  const runRead = route.match(/^\/attempts\/([^/]+)\/runs\/([^/]+)$/)
+  const jobRead = route.match(/^\/jobs\/([^/]+)$/)
   if ((attemptCreate && method === 'POST') || (attemptRead && method === 'GET') || (sync && method === 'POST')
-    || (snapshotCreate && method === 'POST') || (snapshotRead && method === 'GET')) {
+    || (snapshotCreate && method === 'POST') || (snapshotRead && method === 'GET') || (runCreate && method === 'POST')
+    || (runRead && method === 'GET') || (jobRead && method === 'GET')) {
     const session = requireSession(req, res)
     if (!session) return
     if (method === 'POST' && csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
@@ -399,6 +417,9 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
       ok(res, data)
     }
     try {
+      if (jobRead) return ok(res, readPrepJob(scenario, session, decodeURIComponent(jobRead[1]!)))
+      if (runRead) return ok(res, readPrepRun(scenario, session, decodeURIComponent(runRead[1]!), decodeURIComponent(runRead[2]!)))
+      if (runCreate) return respond(createPrepRun(scenario, session, decodeURIComponent(runCreate[1]!), body, req.headers['idempotency-key']))
       if (snapshotRead) return ok(res, readPrepSnapshot(scenario, session, decodeURIComponent(snapshotRead[1]!), decodeURIComponent(snapshotRead[2]!)))
       if (snapshotCreate) return respond(freezePrepSnapshot(scenario, session, decodeURIComponent(snapshotCreate[1]!), body, req.headers['idempotency-key']))
       if (sync) return respond(syncPrepWorkspace(scenario, session, decodeURIComponent(sync[1]!), body, req.headers['idempotency-key']))

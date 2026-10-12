@@ -34,6 +34,7 @@ XUNJIE_E2E_PREP_PORT=5603 XUNJIE_E2E_REAL_PORT=5604 CI=1 npm run test:e2e
 ```
 
 两个覆盖值仅影响测试，范围为 1024～65535，仍严格使用指定端口；`dev:prep` 默认 5601 不变。
+两个 mode 使用独立 Vite 预优化缓存，避免同一次 harness 中互相替换依赖清单。
 
 ## 两种模式
 
@@ -72,8 +73,13 @@ C / TextScope 活动，**不是正式 Assignment**，不写入学习记录。
   使用原键和完整输入。fixture 重启或恢复代际变化会保留草稿并提示重新比较，旧 outbox 不自动补发。
 - 草稿 CAS 冲突后保留败方候选，当前加载禁止重复覆盖或上传；明确刷新或工作区重新读取会载入赢家正文。
   已确认实例被恢复移除时，其草稿仍可打开，不能自动当新文件补发。完整比较/选择界面属于 04A。
-- 运行与结果属于后续 06，准备 fixture 不连接执行节点或模型。真实服务联调未执行，见
-  [03 交付记录](../../docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md)。
+- 冻结后进入顶栏「Core 运行」，明确选择快照、C 入口和输入文件，使用 stats/find/top 并点击「运行此快照」。
+  06 准备 fixture 仅返回合成状态与诊断，不编译/执行 C、不连接节点或模型；真实服务/readiness 未交接，
+  见 [06 交付记录](../../docs/tasks/I0_UI_06_RUN_RESULTS.md)。
+- 运行中的改稿只进入当前草稿；结果绑定旧快照。刷新只读已有结果，本机原请求参数标来源，另一浏览器
+  缺缓存显示“历史运行参数不可回取”。ACK 丢失保留原请求并阻止重复运行，保存重试不处理运行命令；
+  未知核对/取消归 06A，历史列表/产物归 06B。
+- Job/Run 读取可见 1s、隐藏 10s、离线暂停，单次自动读取最多 60 轮；暂停后可主动重新读取。
 - 保留的 board / wave 标签是**数字逻辑演示**，与当前 C 活动无关，已明确标注。
 - C 场景不提供模拟构建 / 烧录入口，也不自动触发引导层与浮动 IP 教学。
 
@@ -106,8 +112,8 @@ public/       品牌 IP 与字体资产（导入来源）
 
 | 命令 | 范围 | 说明 |
 | --- | --- | --- |
-| `npm test` | Vitest（Node 环境） | 导入来源规则、原文保真、冻结回执与摘要；fixture HTTP 验证会话/权限/双键/拒绝原子性/持久读取与快照 |
-| `npm run test:e2e` | Playwright（Chromium） | 启动 `dev:prep` 与 `dev`，在真实页面上断言可见正文、状态与实际请求 |
+| `npm test` | Vitest（Node 环境） | 导入来源规则、原文保真、冻结回执与摘要/Core 输入/公开结果；fixture HTTP 验证会话/权限/双键/拒绝原子性/持久读取与快照 |
+| `npm run test:e2e` | Playwright（Chromium） | 启动 `dev:prep` 与 `dev`，在真实页面上断言可见正文、状态、真实 IndexedDB 与实际请求；含 06 运行结果与轮询边界 |
 
 `test:e2e` 会自动拉起两个 dev server（`reuseExistingServer: !process.env.CI`：本地已在跑则复用，
 CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装浏览器：`npx playwright install chromium`。

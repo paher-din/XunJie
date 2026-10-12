@@ -155,7 +155,7 @@ describe('准备 fixture 契约核对', () => {
     expect(data.scenarioId).toBe(scenario)
     expect(data.preparationEpoch).toBe(preparationEpoch)
     expect(data.recoveryGeneration).toBe(syntheticRecoveryGeneration)
-    expect(data.capabilities).toEqual({ attemptCreate: true, workspaceSync: true, snapshot: true, run: false })
+    expect(data.capabilities).toEqual({ attemptCreate: true, workspaceSync: true, snapshot: true, run: true })
     expect(typeof data.authority.activeSessions).toBe('number')
     expect(data.refs.assignmentId).toBe(REFS.assignmentId)
     expect(data.refs.activityVersionId).toBe(REFS.activityVersionId)

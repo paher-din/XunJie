@@ -7,6 +7,8 @@ import { i0PrepFixture } from './prep/plugin'
  * `vite build` 与 `vite preview` 都不加载它，正式产物因此不含准备端点与合成材料。
  */
 export default defineConfig(({ command, mode }) => ({
+  // 同时启动的 prep/real 开发进程不能互相替换预优化 manifest（会产生 504）。
+  cacheDir: `node_modules/.vite-${mode}`,
   plugins: [react(), ...(mode === 'prep' && command === 'serve' ? [i0PrepFixture()] : [])],
   optimizeDeps: {
     // e2e 冷启动竞态（04A 首跑复现）：首轮优化完成后，懒加载路由再发现新依赖会触发整轮重优化，
