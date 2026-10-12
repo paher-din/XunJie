@@ -26,6 +26,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，P3 总/子任务已发布：[总协调 #37](https://github.com/paher-din/XunJie/issues/37)、[DL-A #38](https://github.com/paher-din/XunJie/issues/38)、[DL-C #39](https://github.com/paher-din/XunJie/issues/39)、[DL-B #40](https://github.com/paher-din/XunJie/issues/40)、[A4 #41](https://github.com/paher-din/XunJie/issues/41)、[B3 #42](https://github.com/paher-din/XunJie/issues/42)、[C4 #43](https://github.com/paher-din/XunJie/issues/43)、[A5 #44](https://github.com/paher-din/XunJie/issues/44)，均 Open，完整正文与依赖链接已回读核对。P2 遗留与原实施/验收门禁保留；发布事实见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)，本地总协调记录尚未提交/推送，公开 Issue 不依赖未发布文档。
 
+2026-10-12，负责人授权的 P3 总协调记录与 README 已普通提交/推送到 main，首发提交为 `1b2bd10`；远端引用与两份文档 blob 回读一致，文档/空白/写入范围检查通过。总协调 Issue #37 已补公开文档入口，原任务状态与 P2/P3 实施/验收门禁保留；推送及记录同步见 [G3 第 9 节](docs/tasks/G3_OVERALL_COORDINATION.md#9-2026-10-12-本地总协调文档推送)。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
