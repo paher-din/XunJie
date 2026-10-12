@@ -16,6 +16,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，负责人已批准公开推送上述修复，`codex/p2-integration-fixes` 已推送并建立 [Draft PR #35](https://github.com/paher-din/XunJie/pull/35)，尚未合并，#11/#24/#25/#26/#27 保持 Open。固定修复 `981d055` 的验证结果不变，发布核对见 [G2 第 15.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#154-公开分支与-draft-pr-交付)，真实模型/教师/UI等原关闭条件保留。
 
+2026-10-12，PR #35 已合并为 `5d725ba`，合并树与已验证修复一致；A3 #25、C3 #27 按原服务端批次条件关闭为 Completed。B2 #26 的确定性部分已完成，人工语义未验收；B1 #11 离线部分已完成，真实模型门禁未落实，两项与 P2 #24 保持 Open。P2 继续准备显式获准的真实模型验证，原完整 G2/教师/UI条件保留，见 [G2 第 16 节](docs/tasks/G2_OVERALL_COORDINATION.md#16-2026-10-12-pr-35-合并模块关闭核对与-p2-下一步)。
+
 当前 A1/A2/C1/C2 服务端与 B1 合成核心已合入 main，C2 [PR #20](https://github.com/paher-din/XunJie/pull/20) 的四项原审查意见已修复并合并。[G1 #9](https://github.com/paher-din/XunJie/issues/9) 已按负责人确认的服务端预交付阶段关闭为 Completed；完整产品 G1/正式应用仍未验收：UI/AC/NFR 由 [#22](https://github.com/paher-din/XunJie/issues/22) 承接，环境稳定性由 [#23](https://github.com/paher-din/XunJie/issues/23) 跟踪，B1 实际 SDK/模型仍在 [#11](https://github.com/paher-din/XunJie/issues/11)。Web UI 由团队成员负责，按其实际交付接入。
 
 2026-10-11，项目负责人要求关闭 A1/A2/C1/C2 后先整合全部本地分支与工作树。A1 #10、A2 #13、C1 #12、C2 #14 已回读 Closed / Completed；B1 #11、完整 G1 UI/AC/NFR #22 和环境稳定性 #23 保持 Open。各任务旧 Open 表述保留其日期，当前管理状态见 [G1 第 19 节](docs/tasks/G1_OVERALL_COORDINATION.md#19-2026-10-11-执行-issue-关闭与本地全部工作整合)。12 个原有分支、9 个工作树 HEAD 和主副本未提交文件已整合到本地 main，逐项祖先关系与原始证据摘要核对通过。全部分支、工作树和备份保留；负责人随后授权推送并拉取，整合成果已普通推送至远端 main，快进拉取后两端提交一致、工作区干净，发布事实见 G1 第 19.4 节。
