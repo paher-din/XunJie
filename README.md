@@ -28,6 +28,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，负责人授权的 P3 总协调记录与 README 已普通提交/推送到 main，首发提交为 `1b2bd10`；远端引用与两份文档 blob 回读一致，文档/空白/写入范围检查通过。总协调 Issue #37 已补公开文档入口，原任务状态与 P2/P3 实施/验收门禁保留；推送及记录同步见 [G3 第 9 节](docs/tasks/G3_OVERALL_COORDINATION.md#9-2026-10-12-本地总协调文档推送)。
 
+2026-10-12，项目负责人决定收口本次 P2 工程审查，并将 B1/B2 的未完成模型接入、真实调用和人工语义补验集中到 [B 后续 #45](https://github.com/paher-din/XunJie/issues/45)，主责为 B；账号与真实调用继续暂缓。总协调正提交剩余验证入口并执行旧 Issue 关闭，实际结果见 [G2 第 18 节](docs/tasks/G2_OVERALL_COORDINATION.md#18-2026-10-12-p2-工程审查收口与-b-后续交付)，B 交付后再复审，原完整产品验收条件保留。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -232,6 +234,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，整体复验确认上文的 Workspace 加 teacherAgent 组合目前无法构造，会因重复 Job/cancel 路由报错；独立 Design 工厂验证不受该组合问题影响。A 需统一公共路由后复验，当前失败事实及学生正文接缝问题见 [G2 第 14 节](docs/tasks/G2_OVERALL_COORDINATION.md#14-2026-10-12-p2-整体复验与-issue-关闭核对)，不将该组合说明视为已可用。
 
 2026-10-12，本地修复候选由 Workspace 唯一公共 Job 路由按持久 purpose 调用原教师/学生处理器，独立 Design 默认路由保留；教师/学生权限、取消、重放和重启回归通过。C3 长未知文字保存与原结果重放亦已验证，公开交付仍待发布确认，见 [G2 第 15 节](docs/tasks/G2_OVERALL_COORDINATION.md#15-2026-10-12-g2-r01r02-最小修复)。
+
+2026-10-12，B1/B2 未验条件已逐项保留在 [#45](https://github.com/paher-din/XunJie/issues/45)，工程审查收口与旧卡关闭按负责人决定执行；合成/离线、真实模型、人工语义和浏览器/真人分别计账，具体交接与实际结果见 [G2 第 18 节](docs/tasks/G2_OVERALL_COORDINATION.md#18-2026-10-12-p2-工程审查收口与-b-后续交付)。
 
 ### G3 / P3 启动与总协调
 
