@@ -55,6 +55,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 服务端交付/合并/分层证据与 #9 行政收口；原完整 G1 条件在 #22、时钟问题在 #23 保留，产品基线未改；模块仍由 A/B/C 负责 |
 | [G2 / P2 总协调与教学支持交付跟踪](docs/tasks/G2_OVERALL_COORDINATION.md) | 教师生成/采用、学生辅导/取消与消息采集两条链的依赖、交接和分层验收；不代做 A3/B2/C3 |
 | [G3 / P3 总协调、数字逻辑增量与反馈闭环](docs/tasks/G3_OVERALL_COORDINATION.md) | P2 遗留、P3 任务依赖/评审、两条集成链与分层验收；不代做 A/B/C/UI，原预交付和实施门禁保留 |
+| [C4 固定提交、学生修订与闭环恢复](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md) | 学生固定提交、教师复核阶段推进、重开许可与学生本人 `resume_revision`、闭环恢复读取的服务端实现与 AC-06/08/09/12 确定性验证；改动全在 C 属，新增两表只写 C 属合成 schema，不迁移既有库。交 A5 的事务接缝与恢复反馈接缝已给出，真实浏览器/执行节点/备份恢复与 A4/A5 联合验证未执行，第 6 节四项解释与跨属提案待负责人确认 |
 | [C3 教学消息、回执、采集控制与作业失效](docs/tasks/C3_TEACHING_MESSAGES_RECEIPTS.md) | 两轮审查问题已修复（首轮 14 项 + PR #33 的 5 项 P2/9 项 P3），C3 专项 20/20、C3+B1 组合 67/67 通过；Windows 全量 212 项中唯一失败是 Linux-only `RunControl`，属 #23 既有环境限制，完整 G2/B2/UI 未验收。实现与交接见第 8～9 节，两轮修复与真实验证见第 11、13 节 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
 | [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 完整服务端工作区/快照/基础作业、A1/A2 同事务与批准新二十二表合成库、C1 原 ID 运行/检查/产物；四项审查修复与作者32项含节点组合见第13节，最新合并/组合验证见G1记录 |
@@ -248,6 +249,21 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，P3 总协调已启动，当前只建立任务/依赖/评审与验收跟踪；数字逻辑 Demo、原服务端反馈闭环与完整 G3 均未验收。P2 的 #11/#26/#24 保持 Open，原 #22/#23/#30 继续各自范围；具体证据、放行条件、模块交接与待授权维护者汇总事项见 [G3 总协调记录](docs/tasks/G3_OVERALL_COORDINATION.md)。
 
 2026-10-12，P3 总协调 #37 与七个 A/B/C 执行 Issue #38～44 已发布并核对，任务/依赖和分层关闭条件见各正文；UI 分批接入与 DL-E2E 由总任务跟踪既定责任。原 P2/模型/UI/环境 Issue 未修改或关闭，发布不算应用验收；详细记录见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)。
+
+### C4 固定提交、学生修订与闭环恢复
+
+2026-10-12，C4 已在分支 `codex/c4-submissions-recovery` 交付 [#43](https://github.com/paher-din/XunJie/issues/43) 的服务端实现：学生固定提交、教师复核阶段推进、重开许可与学生本人主动 `resume_revision`、以及闭环恢复读取。契约、领域计划、存储、命令与只读投影全部落在 C 属的 [contracts/workspace](apps/teaching/contracts/workspace/) 与 [server/workspace](apps/teaching/server/workspace/)，A 属与 B 属文件零改动。新增的 `workspace_submissions` 与 `workspace_reopen_grants` 两张表写进 C 属 `workspaceSchema` 字符串，延续 C2/C3 已批准的做法，只新建临时合成库，不迁移既有库，也不做真实数据库建表或备份操作。交 A5 的接缝是 `transitionAttemptInTransaction`、`planReopenGrant`/`writeReopenGrant` 与恢复读取中的反馈接缝；C4 不为教师复核与重开发放发布替代产品路由，正式反馈仍归 A5。
+
+在已批准 Node 24.21.0 工具环境、`apps/teaching` 目录执行，只用临时合成库，不连接真实执行节点、真实模型或真实账号：
+
+```bash
+npm ci --no-audit --no-fund
+npm run typecheck
+npm test
+node --test server/workspace/submissions.test.ts
+```
+
+2026-10-12，验证结果为服务端确定性验证通过、其余分层未执行。C4 专项 10/10 通过；全工程 typecheck 与 build 通过；完整套件 274 项中 264 通过、1 失败、9 跳过，同一命令在基线 37849f4 的独立工作树实测 264 项中 254 通过、1 失败、9 跳过，即净增 10 项测试与 10 项通过，失败数与跳过数不变。唯一失败项在两侧完全相同，是 `review.test.ts` 经 `control.ts` 要求 Linux 的既有平台失败，C4 未修改这两个文件；9 项跳过全部来自既有的平台与环境门，C4 新增测试文件不含任何跳过。真实浏览器与 UI 接入、真人教师与学生、真实模型语义、真实执行节点掉线与迟到结果对账、完整备份恢复与实际 RPO/RTO、真实数据库建表迁移与生产部署均未执行；A4/A5 实际路由接入后的联合验证同样未执行，本任务只用测试支撑中模拟 A5 的教师路由验证接缝形状。任务稿第 6 节的四项解释与跨属提案仍待负责人确认，未获确认前不是已批准契约。实际代码位置、命令、原始结果、验证中修正的两处缺陷与未执行清单见 [C4 第 8 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#8-实现记录)。
 
 ### 当前整体状态与后置验收
 

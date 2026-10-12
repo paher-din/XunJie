@@ -8,6 +8,7 @@ import { validateFiles } from './files.ts';
 import { validateSnapshot } from '../../runner/snapshot.ts';
 import { validateRunResult } from '../records/runner.ts';
 import { fileSchema, snapshotSchema, submissionSchema, domainSubmission, fileOperationSchema } from './inputs.ts';
+import { readGrants, readSubmissions } from './submissions.ts';
 import { ApiError } from '../app/errors.ts';
 
 function checked<Schema extends z.ZodType>(schema: Schema, json: string): z.output<Schema> {
@@ -62,7 +63,8 @@ export function loadWorkspace(tx: Transaction, attemptId: string, identity?: Com
       || snapshot.workspaceRevision !== row.workspace_revision || snapshot.hash !== row.content_hash) throw new Error('Invalid persisted snapshot scope.');
     validateSnapshot(snapshot); return snapshot;
   });
-  const state: WorkspaceState = { attempt, files, snapshots, records, runs: [], checks: [] };
+  const state: WorkspaceState = { attempt, files, snapshots, records, runs: [], checks: [],
+    submissions: readSubmissions(tx, attemptId), grants: readGrants(tx, attemptId) };
   for (const row of tx.all('SELECT * FROM workspace_runs WHERE attempt_id=? ORDER BY run_id', attemptId)) {
     const submission = domainSubmission(checked(submissionSchema, String(row.submission_json)));
     const job = records.jobs.find(item => item.jobId === row.job_id), scope = submission.identity.authorizedScope;
@@ -83,6 +85,20 @@ export function loadWorkspace(tx: Transaction, attemptId: string, identity?: Com
       state.checks.push({ jobId: job.jobId, runId: run.runId, policyVersion: String(row.check_policy_version), state: row.check_state as 'active'|'ended' });
     } else if (submission.mode === 'check') throw new Error('Missing persisted check stage.');
   }
+  // C4: a fixed submission keeps pointing at the snapshot and the trusted checks it named, so the matching
+  // reference invariant is re-checked on load rather than trusted from the persisted JSON alone. A reference
+  // recorded before its run produced a result stays verdict-free instead of being backfilled here.
+  for (const submission of state.submissions) {
+    if (!snapshots.some(row => row.snapshotId === submission.snapshotId)) throw new Error('Invalid persisted submission snapshot.');
+    for (const ref of submission.checkRefs) {
+      const run = state.runs.find(row => row.runId === ref.runId);
+      if (!run || run.submission.mode !== 'check' || run.submission.identity.snapshotId !== submission.snapshotId
+        || ref.snapshotId !== submission.snapshotId || (ref.resultHash !== undefined && run.resultHash !== ref.resultHash))
+        throw new Error('Invalid persisted submission check reference.');
+    }
+  }
+  for (const grant of state.grants) if (!state.submissions.some(row => row.submissionId === grant.submissionId))
+    throw new Error('Invalid persisted reopen grant reference.');
   return state;
 }
 export function persistWorkspace(tx: Transaction, before: WorkspaceState, after: WorkspaceState) {
@@ -122,6 +138,32 @@ export function persistWorkspace(tx: Transaction, before: WorkspaceState, after:
         tx.run('UPDATE workspace_runs SET result_json=?,result_hash=?,check_state=? WHERE run_id=? AND job_id=?',
           run.result === undefined ? null : JSON.stringify(run.result), run.resultHash ?? null, check?.state ?? null, run.runId, run.jobId);
     }
+  }
+  // C4: submissions and grant consumption are written last, after the receipt/audit pair that owns them exists, so
+  // their foreign keys resolve and any failure still rolls the whole command back.
+  for (const submission of after.submissions.filter(item => !before.submissions.some(old => old.submissionId === item.submissionId))) {
+    const receipt = after.records.receipts.find(item => item.receiptId === submission.receiptId);
+    if (!receipt) throw new ApiError('INVALID_REFERENCE');
+    const saved = tx.run(`INSERT INTO workspace_submissions(submission_id,attempt_id,course_id,student_id,snapshot_id,workspace_revision,
+      attempt_revision,receipt_id,server_seq,recovery_generation,submitted_at_ms,submission_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      submission.submissionId, submission.attemptId, submission.courseId, submission.studentId, submission.snapshotId,
+      submission.workspaceRevision, submission.attemptRevision, submission.receiptId, receipt.serverSeq,
+      submission.recoveryGeneration, Date.parse(submission.submittedAt), JSON.stringify(submission));
+    if (saved.changes !== 1) throw new ApiError('IDEMPOTENCY_CONFLICT');
+  }
+  for (const grant of after.grants) {
+    const old = before.grants.find(item => item.grantId === grant.grantId);
+    // Only the student's own resume_revision changes a grant through this plan diff, and only forward to consumed.
+    // A5 writes and supersedes grants through `grantReopenInTransaction`, never here.
+    if (!old) throw new ApiError('INVALID_REFERENCE');
+    if (canonical(old) === canonical(grant)) continue;
+    if (old.state !== 'valid' || grant.state !== 'consumed' || old.submissionId !== grant.submissionId
+      || old.attemptRevision !== grant.attemptRevision || old.grantedBy !== grant.grantedBy || old.reason !== grant.reason
+      || old.grantedAt !== grant.grantedAt || old.consumedReceiptId !== undefined || !grant.consumedReceiptId || !grant.consumedAt)
+      throw new ApiError('IDEMPOTENCY_CONFLICT');
+    const consumed = tx.run('UPDATE workspace_reopen_grants SET state=?,consumed_receipt_id=?,consumed_at_ms=?,grant_json=? WHERE grant_id=? AND state=?',
+      grant.state, grant.consumedReceiptId, Date.parse(grant.consumedAt), JSON.stringify(grant), grant.grantId, old.state);
+    if (consumed.changes !== 1) throw new ApiError('IDEMPOTENCY_CONFLICT');
   }
 }
 function bind(tx: Transaction, identity: CommandIdentity, receiptId: string) {  for (const item of bindingKeys(identity)) {

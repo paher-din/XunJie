@@ -20,3 +20,40 @@ export type FileOperation = {kind:'create';clientFileKey:string;path:string;text
 export type SyncBatch = {expectedWorkspaceRevision:number;clientId:string;clientSeq:number;operations:FileOperation[];
   process?:{captureRevision:number}};
 export type ArtifactSnapshot = Snapshot & {attemptId:string;activityVersionId:string;workspaceRevision:number;createdAt:string};
+
+// C4 fixed artifact submission. It freezes one already confirmed snapshot together with the student's own short
+// reflection and the trusted check references matching that exact snapshot. A submission never rewrites the
+// artifact, the runs or the checks it points at, and it never requires the artifact to be correct.
+export type SubmissionCheckRef = {runId:string;snapshotId:string;resultHash?:string;verdict?:string};
+export type Submission = {submissionId:string;attemptId:string;courseId:string;studentId:string;assignmentId:string;
+  activityVersionId:string;snapshotId:string;snapshotHash:string;workspaceRevision:number;attemptRevision:number;
+  decisionEpoch:number;recoveryGeneration:string;receiptId:string;submittedAt:string;
+  reflection?:string;checkRefs:SubmissionCheckRef[]};
+// C4 reopen permission. A saves it through C's same-transaction capability on the latest submission only; saving it
+// keeps the attempt `reviewed`. Only the student's own explicit resume_revision consumes it, so the system never
+// continues revising on the student's behalf.
+export type ReopenGrantState = 'valid'|'consumed'|'superseded';
+export type ReopenGrant = {grantId:string;attemptId:string;courseId:string;studentId:string;submissionId:string;
+  attemptRevision:number;state:ReopenGrantState;reason:string;grantedBy:string;grantedAt:string;receiptId:string;
+  consumedReceiptId?:string;consumedAt?:string};
+// C4 recovery outcome classes. `unknown` is an executor-disconnect fact and is never folded into `confirmed`.
+export type RecoveryRunOutcome = 'confirmed'|'incomplete'|'unknown'|'failed'|'cancelled'|'in_flight'|'stale'|'timed_out';
+export type RecoveryRun = {runId:string;jobId:string;mode:'run'|'check';snapshotId:string;
+  jobStatus:import('../records/index.ts').JobStatus;outcome:RecoveryRunOutcome};
+// Formal feedback belongs to A5. C4 carries only what an attached A5 seam returns, so an unattached recovery view
+// reports `unavailable` instead of reconstructing feedback text from hashes, digests or submission rows.
+export type RecoveryFeedback = {status:'unavailable'}
+  | {status:'available';feedbackRevision:number;
+    entries:{feedbackId:string;kind:string;revision:number;submissionId?:string;createdAt:string}[]};
+export type AttemptRecovery = {attempt:Attempt;recoveryGeneration:string;resyncRequired:boolean;
+  files:{fileId:string;path:string;documentVersion:number;contentHash:string;lifecycle:'active'|'recycled'}[];
+  latestSnapshotId?:string;
+  submissions:{submissionId:string;snapshotId:string;snapshotHash:string;workspaceRevision:number;
+    attemptRevision:number;serverSeq:number;submittedAt:string;hasReflection:boolean;
+    checkRefs:SubmissionCheckRef[]}[];
+  latestSubmissionId?:string;
+  reopen:{state:'none'|ReopenGrantState;grantId?:string;submissionId?:string;reason?:string;
+    grantedAt?:string;consumedAt?:string};
+  runs:RecoveryRun[];pendingQuestions:{jobId:string;jobStatus:import('../records/index.ts').JobStatus;
+    acceptedAt:string;deadline:string}[];
+  coverage?:import('../records/index.ts').TeachingCoverage;feedback:RecoveryFeedback};

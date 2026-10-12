@@ -3,7 +3,9 @@ import type {Attempt,ObjectRef} from '../../contracts/workspace/index.ts';
 import type {Purpose} from '../../contracts/records/index.ts';
 import {onlyFields} from '../records/commands.ts';
 
-export type Control = {kind:'start'|'pause'|'resume'}|{kind:'capture'|'reminders';value:boolean}
+// `resume_revision` is declared here so the approved control route carries it, but its guards live in the
+// submission domain: it consumes a teacher grant rather than flipping a lifecycle flag.
+export type Control = {kind:'start'|'pause'|'resume'}|{kind:'resume_revision'}|{kind:'capture'|'reminders';value:boolean}
   |{kind:'position';route?:string;question?:string;returnPosition?:ObjectRef};
 export function controlAttempt(attempt:Attempt,expectedRevision:number,control:Control,assignmentActive:boolean) {
   if(expectedRevision!==attempt.attemptRevision)throw new RunnerError('VERSION_CONFLICT','Attempt version conflict');

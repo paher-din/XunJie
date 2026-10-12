@@ -20,7 +20,7 @@ function fixture(generation='gen',source='#include <stdio.h>\nint main(void){put
   const files=[{fileId:'source',attemptId:id,path:'main.c',text:source,documentVersion:1,contentHash:sha256(source),lifecycle:'active' as const},
     {fileId:'input',attemptId:id,path:'a.txt',text:'C and memory.\n',documentVersion:1,contentHash:sha256('C and memory.\n'),lifecycle:'active' as const}];
   const snapshot=freezeSnapshot(attempt,files,0,`snapshot-${id}`,clock);
-  const state:WorkspaceState={attempt,files,snapshots:[snapshot],checks:[],runs:[],records:{receipts:[],commandAliases:[],events:[],jobs:[],serverSeq:0}};
+  const state:WorkspaceState={attempt,files,snapshots:[snapshot],checks:[],runs:[],submissions:[],grants:[],records:{receipts:[],commandAliases:[],events:[],jobs:[],serverSeq:0}};
   const context:CommandContext={identity:{actorId:attempt.studentId,command:'runs',target:`/api/attempts/${id}/runs`,
     scope:{courseId:attempt.courseId,studentId:attempt.studentId,attemptId:id},idempotencyKey:'synthetic-request',recoveryGeneration:generation},
     generation,now:clock,commandId:`command-${id}`,receiptId:`receipt-${id}`,eventId:`event-${id}`,assignmentActive:true,authorize:()=>true};
