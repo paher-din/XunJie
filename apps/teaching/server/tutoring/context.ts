@@ -4,6 +4,7 @@ import type {
   StudentHelpRequest,
   UntrustedReference,
 } from "../../contracts/tutoring/index.ts";
+import type { JobStatus } from "../../contracts/records/index.ts";
 import { studentActionTypes } from "../../contracts/tutoring/index.ts";
 import { RunnerError } from "../../runner/snapshot.ts";
 import type { CurrentGuard, GuardState } from "./core.ts";
@@ -13,7 +14,7 @@ export type StudentHelpCurrentState = AuthorizedStudentHelpContext["current"] & 
   helpAllowed: boolean;
   learnerStateRevision: number;
   objectAvailable: boolean;
-  jobStatus: "queued" | "running" | "succeeded" | "failed" | "cancelling" | "cancelled" | "stale" | "timed_out" | "outcome_unknown";
+  jobStatus: JobStatus;
   stopRequested: boolean;
 };
 
@@ -22,6 +23,9 @@ export function assembleStudentHelpRequest(
   signal?: AbortSignal,
 ): StudentHelpRequest {
   assertAuthorizedContext(input);
+  const studentId = input.job.scope.studentId;
+  const attemptId = input.job.scope.attemptId;
+  if (!studentId || !attemptId) throw new RunnerError("FORBIDDEN", "Student help scope required");
   const references: UntrustedReference[] = [];
   const add = (reference: UntrustedReference) => {
     if (references.some((item) => item.id === reference.id)) return;
@@ -42,7 +46,19 @@ export function assembleStudentHelpRequest(
   });
 
   if (input.objectRef) addObjectReference(input, add);
-  for (const reference of selectResourceParagraphs(input)) add(reference);
+  const selectedResources = selectResourceParagraphs(input);
+  if (selectedResources.length === 0) {
+    add({
+      id: "course-resources:unavailable",
+      content: JSON.stringify({
+        source: "approved_course_resource",
+        status: "unavailable",
+        reason: "No approved relevant course paragraph is available for this question.",
+      }),
+    });
+  } else {
+    for (const reference of selectedResources) add(reference);
+  }
 
   const relevantClaims = input.learnerClaims.filter((claim) => relevantClaim(input, claim));
   if (relevantClaims.length === 0) {
@@ -96,8 +112,8 @@ export function assembleStudentHelpRequest(
       purpose: "student_help",
       scope: {
         courseId: input.job.scope.courseId,
-        userId: input.job.scope.studentId!,
-        attemptId: input.job.scope.attemptId!,
+        userId: studentId,
+        attemptId,
       },
       authorizedReferenceIds: references.map((reference) => reference.id),
       acceptedAtMs: Date.parse(input.job.acceptedAt),

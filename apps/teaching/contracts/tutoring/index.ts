@@ -116,6 +116,7 @@ export type AuthorizedStudentHelpContext = {
   current: {
     attemptRevision: number;
     decisionEpoch: number;
+    captureRevision: number;
     activityVersionId: string;
     helpPolicyVersionId: string;
     attemptStatus: "ready" | "active" | "paused" | "submitted" | "reviewed";
@@ -160,6 +161,13 @@ export type StudentHelpExecutionResult = {
   authorizedReferenceIds: readonly string[];
   versions: TrustedModelContext["versions"];
   outcome: TutoringOutcome<StudentHelpBody>;
+  delivery?: {
+    messageId: string;
+    actionId: string;
+    disposition: "pending" | "cancelled" | "stale" | "failed";
+    replayed: boolean;
+    contentHash: string;
+  };
 };
 
 export type TeacherGenerationBody =

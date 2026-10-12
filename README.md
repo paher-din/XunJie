@@ -101,7 +101,7 @@ cd apps/teaching
 node --test server/tutoring/test/student-help.test.ts
 ```
 
-该批次验证显式求助同事务接纳、精确 ObjectRef/资料与状态过滤、无历史降级、替换/停止/版本守卫及 B1 教学 body 交接。测试只使用合成账号、数据和 provider；C3 Message/TeachingAction 持久接纳、实际投递/回执、浏览器与真人语义仍未完成，详见 [B2 任务文档](docs/tasks/B2_STUDENT_HELP.md)。
+该批次验证显式求助同事务接纳、精确 ObjectRef/资料与状态过滤、无历史降级、跨 worker 三次调用台账、替换/停止/版本守卫，以及 B1 教学 body 经 C3 Message/TeachingAction/Delivery/Receipt 的持久接纳与补取。测试只使用合成账号、数据和 provider；真实模型网络调用、实际浏览器显示、真人接棒与教学语义仍未验收，详见 [B2 任务文档](docs/tasks/B2_STUDENT_HELP.md)。
 
 ## 状态
 

@@ -11,16 +11,28 @@ import type {
 import { ApiError } from "../app/errors.ts";
 import { parseRequest } from "../app/validation.ts";
 import { assignmentAvailability, activityView, readActivity } from "../design/activities.ts";
-import { readAttempt } from "../db/records-adapter.ts";
+import {
+  finishRecordCommand,
+  readAttempt,
+  readRecordCommand,
+  saveJob,
+} from "../db/records-adapter.ts";
 import type { Transaction } from "../db/transaction.ts";
-import type { DesignAppOptions } from "../design/application.ts";
-import { createWorkspaceApp } from "../workspace/application.ts";
+import {
+  createTeachingRecordsApp,
+  type TeachingRecordsOptions,
+} from "../records/application.ts";
+import {
+  acceptStudentQuestionInTransaction,
+  readTeachingJob,
+  readTeachingMessageByJob,
+  saveTeachingJobInTransaction,
+  stopTeachingJobsInTransaction,
+} from "../records/teaching.ts";
 import { readRunDiagnostics } from "../workspace/commands.ts";
-import type { CommandContext } from "../workspace/commands.ts";
 import { requestHash } from "../records/commands.ts";
-import { loadWorkspace, persistWorkspace } from "../workspace/storage.ts";
+import { loadWorkspace } from "../workspace/storage.ts";
 import { id, key, objectRef, params } from "../workspace/inputs.ts";
-import { acceptStudentHelpCommand } from "./commands.ts";
 import { assembleStudentHelpRequest } from "./context.ts";
 import {
   executeAuthorizedStudentHelp,
@@ -43,18 +55,36 @@ const studentHelpCommandResultSchema = z.strictObject({
   acceptedInputHash: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
-export type TutoringAppOptions = DesignAppOptions;
+function teachingVersions(
+  activityVersionId: string,
+  policyVersionId: string,
+  versions: TrustedModelContext["versions"],
+) {
+  return {
+    activityVersionId,
+    policyVersionId,
+    modelConfigVersion: versions.modelConfig,
+    promptVersion: versions.prompt,
+    schemaVersion: versions.schema,
+  };
+}
+
+export type TutoringAppOptions = TeachingRecordsOptions & {
+  studentHelp: {
+    versions: TrustedModelContext["versions"];
+    budgetAvailable: (scope: { courseId: string; studentId: string; attemptId: string }) => boolean;
+  };
+};
 export type StudentHelpPreparationOptions = {
   learnerStateRevision?: number;
   learnerClaims?: readonly LearnerContextClaim[];
   assistanceHistory?: readonly AssistanceContextRecord[];
-  budgetAvailable: boolean;
-  versions: TrustedModelContext["versions"];
   signal?: AbortSignal;
 };
 
 export async function createTutoringApp(options: TutoringAppOptions) {
-  const instance = await createWorkspaceApp(options);
+  const { studentHelp, ...recordsOptions } = options;
+  const instance = await createTeachingRecordsApp(recordsOptions);
   const { app, access } = instance;
   const now = options.now ?? Date.now;
   const attemptId = (request: FastifyRequest) => parseRequest(params, request.params).id;
@@ -83,69 +113,96 @@ export async function createTutoringApp(options: TutoringAppOptions) {
     const idValue = attemptId(request);
     const parsed = parseRequest(studentHelpCommandSchema, request.body);
     const input = JSON.parse(JSON.stringify(parsed)) as StudentHelpCommandInput;
+    if (!input.question.trim()) throw new ApiError("INVALID_REQUEST");
     const idempotencyKey = parseRequest(key, request.headers["idempotency-key"]);
     const data = access.withAuthorizedResource(
       request,
       (tx) => locate(tx, idValue),
       "student_help",
-      (tx, actor, scope) => {
+      (tx, actor) => {
         const generation = currentGeneration(input.recoveryGeneration);
-        const before = loadWorkspace(tx, idValue, {
+        const target = request.url.split("?", 1)[0]!;
+        const identity = {
           actorId: actor.userId,
           command: "student_help.create",
-          target: request.url.split("?", 1)[0]!,
-          scope: {
-            courseId: actor.courseId,
-            studentId: actor.userId,
-            attemptId: idValue,
-          },
+          target,
+          scope: { courseId: actor.courseId, studentId: actor.userId, attemptId: idValue },
           idempotencyKey,
           recoveryGeneration: generation,
-        });
-        const context: CommandContext = {
-          identity: {
-            actorId: actor.userId,
-            command: "student_help.create",
-            target: request.url.split("?", 1)[0]!,
-            scope: {
-              courseId: actor.courseId,
-              studentId: actor.userId,
-              attemptId: idValue,
-            },
-            idempotencyKey,
-            recoveryGeneration: generation,
-          },
-          generation,
-          now: new Date(now()).toISOString(),
-          commandId: randomUUID(),
-          receiptId: randomUUID(),
-          eventId: randomUUID(),
-          assignmentActive: scope.kind === "student_work" && scope.assignmentActive,
-          authorize: () => true,
         };
-        const activity = readActivity(tx, actor.courseId, before.attempt.activityVersionId);
-        const limitedCheck = activity.checkRule.limitedHelp && before.checks.some((check) => check.state === "active");
-        const projected = activityView(tx, actor, activity.activityVersionId, "tutor");
-        const resources = projected.content.materials.flatMap((material) => material.status === "available"
-          ? material.paragraphs.flatMap((paragraph) => paragraph.paragraphId
-            ? [{ resourceVersionId: material.resourceVersionId, paragraphId: paragraph.paragraphId }]
-            : [])
-          : []);
-        const plan = acceptStudentHelpCommand(
-          before,
-          context,
+        const previous = readRecordCommand(
+          tx,
+          identity,
           input,
-          {
-            helpAllowed: activity.helpPolicy.helpAllowed,
-            limitedCheck,
-            resources,
-          },
-          randomUUID(),
-          new Date(now() + 45_000).toISOString(),
+          generation,
+          (value) => studentHelpCommandResultSchema.parse(value),
         );
-        persistWorkspace(tx, before, plan.state);
+        if (previous) return { ...previous, replayed: true };
+
+        const acceptedAt = new Date(now()).toISOString();
+        const deadline = new Date(now() + 45_000).toISOString();
+        const jobId = randomUUID();
+        let plannedMessage: ReturnType<typeof acceptStudentQuestionInTransaction>["message"] | undefined;
+        const receipt = finishRecordCommand(
+          tx,
+          identity,
+          input,
+          generation,
+          now(),
+          (receiptId) => {
+            const before = readAttempt(tx, idValue);
+            const activity = readActivity(tx, actor.courseId, before.activityVersionId);
+            const versions = teachingVersions(activity.activityVersionId, activity.helpPolicy.versionId, studentHelp.versions);
+            const accepted = acceptStudentQuestionInTransaction(tx, {
+              scope: identity.scope,
+              receiptId,
+              now: acceptedAt,
+              generation,
+              question: input.question,
+              ...(input.objectRef ? { objectRef: input.objectRef } : {}),
+              inputRefs: [],
+              versions,
+              expectedRevision: input.expectedAttemptRevision,
+            });
+            plannedMessage = accepted.message;
+            const reminders = stopTeachingJobsInTransaction(tx, {
+              actorId: actor.userId,
+              scope: identity.scope,
+              purposes: ["reminder"],
+              reason: "replaced_by_explicit_help",
+              causeRef: receiptId,
+              generation,
+              now: acceptedAt,
+              audit: false,
+            });
+            const acceptedAttempt = readAttempt(tx, idValue);
+            return {
+              jobId,
+              attemptRevision: acceptedAttempt.attemptRevision,
+              decisionEpoch: acceptedAttempt.decisionEpoch,
+              replacedJobIds: [...new Set([...accepted.stoppedJobIds, ...reminders.jobIds])],
+              acceptedInputHash: requestHash("student_help.accepted_input", {
+                question: input.question,
+                objectRef: input.objectRef ?? null,
+              }),
+            };
+          },
+          (value) => studentHelpCommandResultSchema.parse(value),
+          (receiptId) => {
+            if (!plannedMessage) throw new ApiError("PERSISTENCE_UNAVAILABLE");
+            saveTeachingJobInTransaction(tx, {
+              message: plannedMessage,
+              jobId,
+              receiptId,
+              now: acceptedAt,
+              generation,
+              deadline,
+              kind: "student_help",
+            });
+          },
+        );
         currentGeneration(generation);
-        return { ...plan.receipt, replayed: plan.replayed };
+        return { ...receipt, replayed: false };
       },
     );
     return { requestId: request.id, data };
@@ -173,11 +230,16 @@ export async function createTutoringApp(options: TutoringAppOptions) {
             receipt.identity.command !== "student_help.create" ||
             receipt.identity.scope.attemptId !== idValue ||
             receipt.identity.scope.studentId !== actor.userId) {
-            throw new Error("Invalid persisted student help request binding.");
+            throw new ApiError("STATE_CONFLICT");
+          }
+          const questionMessage = readTeachingMessageByJob(tx, actor.courseId, job.jobId);
+          if (!questionMessage || questionMessage.authorKind !== "student" ||
+            questionMessage.envelope.kind !== "student_question") {
+            throw new ApiError("STATE_CONFLICT");
           }
           const acceptedInput = {
-            question: state.attempt.question ?? "",
-            ...(state.attempt.returnPosition ? { objectRef: state.attempt.returnPosition } : {}),
+            question: questionMessage.envelope.question,
+            ...(questionMessage.envelope.objectRef ? { objectRef: questionMessage.envelope.objectRef } : {}),
           };
           if (accepted.data.acceptedInputHash !== requestHash("student_help.accepted_input", {
             question: acceptedInput.question,
@@ -212,6 +274,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
             current: {
               attemptRevision: state.attempt.attemptRevision,
               decisionEpoch: state.attempt.decisionEpoch,
+              captureRevision: state.attempt.captureRevision,
               activityVersionId: state.attempt.activityVersionId,
               helpPolicyVersionId: activity.helpPolicy.versionId,
               attemptStatus: state.attempt.status,
@@ -229,8 +292,15 @@ export async function createTutoringApp(options: TutoringAppOptions) {
             learnerStateRevision: preparation.learnerStateRevision ?? 0,
             learnerClaims: preparation.learnerClaims ?? [],
             assistanceHistory: preparation.assistanceHistory ?? [],
-            budgetAvailable: preparation.budgetAvailable,
-            versions: preparation.versions,
+            budgetAvailable: studentHelp.budgetAvailable({
+              courseId: actor.courseId,
+              studentId: actor.userId,
+              attemptId: idValue,
+            }),
+            versions: {
+              ...studentHelp.versions,
+              policy: activity.helpPolicy.versionId,
+            },
           };
           return context;
         },
@@ -248,17 +318,75 @@ export async function createTutoringApp(options: TutoringAppOptions) {
         preparation.signal,
       );
     },
-    executeStudentHelp(
+    async executeStudentHelp(
       request: FastifyRequest,
       idValue: string,
       jobId: string,
       preparation: StudentHelpPreparationOptions,
-      runtime: AuthorizedStudentHelpRuntime,
+      runtime: Omit<AuthorizedStudentHelpRuntime, "updateJob">,
     ) {
-      return executeAuthorizedStudentHelp(
-        authorizeStudentHelp(request, idValue, jobId, preparation),
-        runtime,
-      );
+      const authorized = authorizeStudentHelp(request, idValue, jobId, preparation);
+      const updateJob: AuthorizedStudentHelpRuntime["updateJob"] = (expectedJobId, update) =>
+        options.db.withTransaction((tx) => {
+          currentGeneration(authorized.job.recoveryGeneration);
+          const current = readTeachingJob(tx, authorized.job.scope.courseId, expectedJobId);
+          if (!current || current.scope.studentId !== authorized.job.scope.studentId ||
+            current.scope.attemptId !== authorized.job.scope.attemptId) {
+            throw new ApiError("STATE_CONFLICT");
+          }
+          const next = update(current);
+          saveJob(tx, next);
+          currentGeneration(authorized.job.recoveryGeneration);
+          return next;
+        });
+      const readCurrent: AuthorizedStudentHelpRuntime["readCurrent"] = async (signal) => {
+        const state = await runtime.readCurrent(signal);
+        const job = options.db.withTransaction((tx) =>
+          readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId));
+        if (!job) throw new ApiError("STATE_CONFLICT");
+        return {
+          ...state,
+          jobStatus: job.status,
+          stopRequested: job.stopRequested,
+          recoveryGeneration: job.recoveryGeneration,
+        };
+      };
+      const execution = await executeAuthorizedStudentHelp(authorized, {
+        ...runtime,
+        readCurrent,
+        updateJob,
+      });
+      if (execution.outcome.outcome !== "success") return execution;
+      const bodyJson = JSON.stringify(execution.outcome.body);
+      const completeTeaching = instance.workspace.teaching.completeTeaching;
+      if (!completeTeaching) throw new ApiError("DEPENDENCY_UNAVAILABLE");
+      const delivery = completeTeaching(request, idValue, {
+        recoveryGeneration: authorized.job.recoveryGeneration,
+        jobId: authorized.job.jobId,
+        leaseToken: runtime.leaseToken,
+        bodyJson,
+        versions: teachingVersions(
+          authorized.activity.activityVersionId,
+          authorized.activity.helpPolicy.versionId,
+          execution.versions,
+        ),
+        usage: execution.outcome.usage.status === "actual"
+          ? execution.outcome.usage
+          : { status: "unknown" as const, reason: "provider_status_unknown" },
+        calls: execution.outcome.calls,
+        elapsedMs: execution.outcome.elapsedMs,
+        basis: {
+          attemptRevision: authorized.job.expectedRevision,
+          decisionEpoch: authorized.job.decisionEpoch,
+          captureRevision: authorized.current.captureRevision,
+          relatedStateRevision: authorized.learnerStateRevision,
+          ...(authorized.objectRef ? { objectRef: authorized.objectRef } : {}),
+          inputRefs: execution.authorizedReferenceIds.filter((referenceId) => !referenceId.startsWith("assistance:")),
+          assistanceRefs: execution.authorizedReferenceIds.filter((referenceId) => referenceId.startsWith("assistance:")),
+          coverageRefs: [],
+        },
+      });
+      return { ...execution, delivery };
     },
   };
 

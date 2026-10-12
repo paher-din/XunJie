@@ -156,3 +156,16 @@ export class InputLimitError extends Error {
     this.inputTokens = inputTokens;
   }
 }
+
+export class ProviderCallNotStartedError extends Error {
+  readonly outcome: "budget_exhausted" | "cancelled" | "stale" | "timed_out" | "unavailable";
+
+  constructor(
+    outcome: "budget_exhausted" | "cancelled" | "stale" | "timed_out" | "unavailable",
+    message: string,
+  ) {
+    super(message);
+    this.name = "ProviderCallNotStartedError";
+    this.outcome = outcome;
+  }
+}
