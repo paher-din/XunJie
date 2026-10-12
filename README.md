@@ -42,7 +42,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B0 模型与预算复核](docs/tasks/B0_MODEL_VENDOR_RESEARCH.md) | 精确型号/区域/结构化方式、数据条款证据状态及预算/配额建议；D-02 待批准 |
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
 | [B1 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、实际 AI SDK/DeepSeek 适配与离线 transport 验证记录 |
-| [B2 学生辅导与控制权](docs/tasks/B2_STUDENT_HELP.md) | 显式 help 接纳、真实 ObjectRef/上下文、当前性守卫、B1 执行与 C3 交接；持久消息/投递仍等待 C3 |
+| [B2 学生辅导与控制权](docs/tasks/B2_STUDENT_HELP.md) | 显式 help 接纳、真实 ObjectRef/上下文、动态预算与当前性守卫、B1 执行，以及 C3 Message/Action/Delivery/Receipt 服务端合成联调；实际 UI/真人仍未验收 |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 

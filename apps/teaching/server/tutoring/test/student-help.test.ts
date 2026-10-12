@@ -30,6 +30,8 @@ const versions = {
 async function fixture() {
   const db = createTeachingDatabase();
   let time = Date.now();
+  let clockStepMs = 0;
+  let budgetAvailable = true;
   const password = randomBytes(32).toString("base64url");
   const record = await createPasswordRecord(password);
   db.withTransaction((tx) => {
@@ -53,8 +55,12 @@ async function fixture() {
     origin,
     signingSecret: randomBytes(48).toString("hex"),
     currentGeneration: () => generation,
-    now: () => time,
-    studentHelp: { versions, budgetAvailable: () => true },
+    now: () => {
+      const current = time;
+      time += clockStepMs;
+      return current;
+    },
+    studentHelp: { versions, budgetAvailable: () => budgetAvailable },
     runner: async (command) => {
       if (command.op !== "readiness") throw new Error("Synthetic runner operation unavailable");
       return { data: {
@@ -88,9 +94,25 @@ async function fixture() {
     const attemptId = (request.params as { attempt: string }).attempt;
     const jobId = (request.params as { job: string }).job;
     const preparation = {};
+    const control = request.body as {
+      withdrawBudgetAfterFirst?: boolean;
+      unknownUsageBeforeBudgetWithdrawal?: boolean;
+    };
+    let providerCalls = 0;
     const provider: ModelProvider = {
       async generate(modelRequest) {
+        providerCalls += 1;
         const untrusted = modelRequest.untrustedInput as { references?: { id: string }[] };
+        if (control.withdrawBudgetAfterFirst && providerCalls === 1) {
+          budgetAvailable = false;
+          return {
+            body: validBody(untrusted.references?.[0]?.id ?? "missing"),
+            needsAnotherCall: true,
+            ...(control.unknownUsageBeforeBudgetWithdrawal
+              ? {}
+              : { usage: { status: "actual" as const, inputTokens: 17, outputTokens: 9 } }),
+          };
+        }
         return {
           body: validBody(untrusted.references?.[0]?.id ?? "missing"),
           usage: { status: "actual", inputTokens: 17, outputTokens: 9 },
@@ -134,6 +156,7 @@ async function fixture() {
     service,
     login,
     advance(ms: number) { time += ms; },
+    setClockStep(ms: number) { clockStepMs = ms; },
     async close() { await service.app.close(); db.close(); },
   };
 }
@@ -307,6 +330,23 @@ test("help acceptance activates ready attempt and atomically stores question, re
     const replayedState = await attemptView(f, setup.student, setup.attemptId);
     assert.equal(replayedState.jobs.length, 1);
     assert.equal(replayedState.attempt.decisionEpoch, 0);
+  } finally {
+    await f.close();
+  }
+});
+
+test("help acceptance derives its exact 45-second deadline from one clock reading", async () => {
+  const f = await fixture();
+  try {
+    const setup = await setupProject(f);
+    f.setClockStep(1);
+    const response = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+      expectedAttemptRevision: 1,
+      question: "Give me one bounded hint.",
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    const state = await attemptView(f, setup.student, setup.attemptId);
+    assert.equal(Date.parse(state.jobs[0].deadline) - Date.parse(state.jobs[0].acceptedAt), 45_000);
   } finally {
     await f.close();
   }
@@ -685,6 +725,119 @@ test("empty learner history stays explicit unknown and does not block help", asy
   }
 });
 
+test("bounded resource reference IDs complete the real C3 message and action chain", async () => {
+  const f = await fixture();
+  try {
+    const setup = await setupProject(f);
+    const accepted = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+      expectedAttemptRevision: 1,
+      question: "数组边界资料如何使用？",
+      objectRef: {
+        kind: "resource",
+        attemptId: setup.attemptId,
+        resourceVersionId: setup.resourceId,
+        paragraphId: setup.paragraphId,
+      },
+    });
+    assert.equal(accepted.statusCode, 200, accepted.body);
+    const jobId = String(accepted.json().data.result.jobId);
+    const prepared = await f.service.app.inject({
+      method: "POST",
+      url: `/fixture/prepare/${setup.attemptId}/${jobId}`,
+      headers: setup.student,
+      payload: {},
+    });
+    assert.equal(prepared.statusCode, 200, prepared.body);
+    const references = prepared.json().data.references as { id: string; content: string }[];
+    const resourceReference = references.find((reference) => reference.content.includes(setup.resourceId));
+    assert.match(resourceReference?.id ?? "", /^resource:[a-f0-9]{64}$/);
+    assert.ok(references.every((reference) => reference.id.length <= 128));
+    assert.match(resourceReference?.content ?? "", new RegExp(setup.paragraphId));
+
+    const executed = await f.service.app.inject({
+      method: "POST",
+      url: `/fixture/execute/${setup.attemptId}/${jobId}`,
+      headers: setup.student,
+      payload: {},
+    });
+    assert.equal(executed.statusCode, 200, executed.body);
+    assert.equal(executed.json().data.outcome.outcome, "success");
+    assert.equal(executed.json().data.delivery.disposition, "pending");
+  } finally {
+    await f.close();
+  }
+});
+
+test("bounded code reference IDs complete the real C3 message and action chain", async () => {
+  const f = await fixture();
+  try {
+    const setup = await setupProject(f);
+    const sync = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/sync`, {
+      expectedWorkspaceRevision: 0,
+      clientId: "bounded-code",
+      clientSeq: 1,
+      operations: [{
+        kind: "create",
+        clientFileKey: "source",
+        path: "main.c",
+        text: "int main(void) { return 0; }\n",
+      }],
+    });
+    assert.equal(sync.statusCode, 200, sync.body);
+    const fileId = String(sync.json().data.result.created.source);
+    const frozen = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/snapshots`, {
+      expectedWorkspaceRevision: 1,
+    });
+    assert.equal(frozen.statusCode, 200, frozen.body);
+    const snapshotId = String(frozen.json().data.result.snapshotId);
+    const snapshot = await f.service.app.inject({
+      url: `/api/attempts/${setup.attemptId}/snapshots/${snapshotId}`,
+      headers: setup.student,
+    });
+    assert.equal(snapshot.statusCode, 200, snapshot.body);
+    const file = snapshot.json().data.files[0];
+    const accepted = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+      expectedAttemptRevision: 2,
+      question: "检查这段代码的边界。",
+      objectRef: {
+        kind: "code",
+        attemptId: setup.attemptId,
+        snapshotId,
+        fileId,
+        path: file.path,
+        documentVersion: file.documentVersion,
+        contentHash: file.contentHash,
+      },
+    });
+    assert.equal(accepted.statusCode, 200, accepted.body);
+    const jobId = String(accepted.json().data.result.jobId);
+    const prepared = await f.service.app.inject({
+      method: "POST",
+      url: `/fixture/prepare/${setup.attemptId}/${jobId}`,
+      headers: setup.student,
+      payload: {},
+    });
+    assert.equal(prepared.statusCode, 200, prepared.body);
+    const references = prepared.json().data.references as { id: string; content: string }[];
+    const codeReference = references.find((reference) => reference.content.includes(fileId));
+    assert.match(codeReference?.id ?? "", /^code:[a-f0-9]{64}$/);
+    assert.ok(references.every((reference) => reference.id.length <= 128));
+    assert.match(codeReference?.content ?? "", new RegExp(snapshotId));
+
+    const executed = await f.service.app.inject({
+      method: "POST",
+      url: `/fixture/execute/${setup.attemptId}/${jobId}`,
+      headers: setup.student,
+      payload: {},
+    });
+    assert.equal(executed.statusCode, 200, executed.body);
+    assert.equal(executed.json().data.outcome.outcome, "success");
+    assert.equal(executed.json().data.delivery.disposition, "pending");
+  } finally {
+    await f.close();
+  }
+});
+
 test("resource and unavailable-run references remain exact, scoped, and explainable", () => {
   const resourceInput = authorizedContext();
   resourceInput.objectRef = {
@@ -710,8 +863,10 @@ test("resource and unavailable-run references remain exact, scoped, and explaina
     },
   } as never;
   const resourceRequest = assembleStudentHelpRequest(resourceInput);
-  assert.ok(resourceRequest.references.some((reference) =>
-    reference.id === `resource:resource-v1:paragraph-1:${"a".repeat(64)}`));
+  const approvedResource = resourceRequest.references.find((reference) =>
+    reference.content.includes('"resourceVersionId":"resource-v1"'));
+  assert.match(approvedResource?.id ?? "", /^resource:[a-f0-9]{64}$/);
+  assert.match(approvedResource?.content ?? "", /"paragraphId":"paragraph-1"/);
 
   const runInput = authorizedContext();
   runInput.objectRef = { kind: "run", attemptId: "attempt", runId: "run-1", snapshotId: "snapshot-1" };
@@ -919,6 +1074,52 @@ test("authorized execution persists one C3 message/action with the held lease an
   }
 });
 
+test("a withdrawn trusted budget blocks the next provider call before reservation", async () => {
+  for (const usage of ["actual", "unknown"] as const) {
+    const f = await fixture();
+    try {
+      const setup = await setupProject(f);
+      const accepted = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+        expectedAttemptRevision: 1,
+        question: "Give me one bounded starting hint.",
+      });
+      assert.equal(accepted.statusCode, 200, accepted.body);
+      const jobId = String(accepted.json().data.result.jobId);
+      const executed = await f.service.app.inject({
+        method: "POST",
+        url: `/fixture/execute/${setup.attemptId}/${jobId}`,
+        headers: setup.student,
+        payload: {
+          withdrawBudgetAfterFirst: true,
+          unknownUsageBeforeBudgetWithdrawal: usage === "unknown",
+        },
+      });
+      assert.equal(executed.statusCode, 200, executed.body);
+      assert.equal(executed.json().data.outcome.outcome, "budget_exhausted");
+      assert.equal(executed.json().data.outcome.calls, 1);
+      assert.deepEqual(executed.json().data.outcome.usage, usage === "actual"
+        ? { status: "actual", inputTokens: 17, outputTokens: 9 }
+        : { status: "unknown" });
+      assert.equal(executed.json().data.delivery, undefined);
+
+      const state = await attemptView(f, setup.student, setup.attemptId);
+      const job = state.jobs.find((candidate: { jobId: string }) => candidate.jobId === jobId);
+      assert.equal(job.status, "running");
+      assert.equal(job.attemptCount, 1);
+      const records = await f.service.app.inject({
+        url: `/api/attempts/${setup.attemptId}/teaching-records`,
+        headers: setup.teacher,
+      });
+      assert.equal(records.statusCode, 200, records.body);
+      assert.equal(records.json().data.messages.filter((message: { authorKind: string }) =>
+        message.authorKind === "model").length, 0);
+      assert.equal(records.json().data.actions.length, 0);
+    } finally {
+      await f.close();
+    }
+  }
+});
+
 test("persisted call budget is shared across workers and reserves before provider invocation", async () => {
   const expected = authorizedContext();
   expected.job.attemptCount = 2;
@@ -1082,6 +1283,7 @@ function persistedRuntime(
     runtime: {
       provider,
       leaseToken: "lease",
+      budgetAvailable: () => true,
       updateJob(jobId: string, update: (current: typeof job) => typeof job) {
         assert.equal(jobId, job.jobId);
         job = update(structuredClone(job));

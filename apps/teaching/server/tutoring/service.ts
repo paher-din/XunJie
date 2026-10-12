@@ -25,6 +25,7 @@ export type StudentHelpJobUpdater = (
 export type AuthorizedStudentHelpRuntime = {
   provider: ModelProvider;
   leaseToken: string;
+  budgetAvailable: () => boolean;
   updateJob: StudentHelpJobUpdater;
   readCurrent: (signal: AbortSignal) => StudentHelpCurrentState | Promise<StudentHelpCurrentState>;
   signal?: AbortSignal;
@@ -143,6 +144,15 @@ function persistedCallProvider(
   return {
     async generate(request) {
       let reservedCount = -1;
+      let budgetAvailable: boolean;
+      try {
+        budgetAvailable = runtime.budgetAvailable();
+      } catch {
+        throw new ProviderCallNotStartedError("unavailable", "Unable to read the current model budget");
+      }
+      if (!budgetAvailable) {
+        throw new ProviderCallNotStartedError("budget_exhausted", "Student help model budget is exhausted");
+      }
       try {
         const reserved = await updateJob(runtime, input.job.jobId, (current) => {
           assertSameJob(input.job, current);

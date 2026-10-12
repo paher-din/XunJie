@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
   AuthorizedStudentHelpContext,
   LearnerContextClaim,
@@ -254,7 +255,12 @@ function addObjectReference(
     text = text.slice(start, end);
   }
   add({
-    id: `code:${reference.snapshotId}:${reference.fileId}:${reference.documentVersion}:${reference.contentHash}`,
+    id: boundedReferenceId("code", [
+      reference.snapshotId,
+      reference.fileId,
+      reference.documentVersion,
+      reference.contentHash,
+    ]),
     content: JSON.stringify({
       source: "confirmed_snapshot",
       snapshotId: reference.snapshotId,
@@ -292,7 +298,11 @@ function availableParagraphs(input: AuthorizedStudentHelpContext) {
     if (material.status !== "available") return [];
     return material.paragraphs.flatMap((paragraph) => {
       if (!paragraph.paragraphId) return [];
-      const id = `resource:${material.resourceVersionId}:${paragraph.paragraphId}:${paragraph.contentHash}`;
+      const id = boundedReferenceId("resource", [
+        material.resourceVersionId,
+        paragraph.paragraphId,
+        paragraph.contentHash,
+      ]);
       const content = JSON.stringify({
         source: "approved_course_resource",
         resourceVersionId: material.resourceVersionId,
@@ -311,6 +321,11 @@ function availableParagraphs(input: AuthorizedStudentHelpContext) {
       }];
     });
   });
+}
+
+function boundedReferenceId(kind: "code" | "resource", identity: readonly (string | number)[]): string {
+  const digest = createHash("sha256").update(JSON.stringify(identity)).digest("hex");
+  return `${kind}:${digest}`;
 }
 
 function searchTerms(value: string): string[] {

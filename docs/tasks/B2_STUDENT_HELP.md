@@ -2,7 +2,7 @@
 
 日期：2026-10-11（Asia/Shanghai）。任务编号：B2。主责：B。关联 [Issue #26](https://github.com/paher-din/XunJie/issues/26)、[P2 总协调 #24](https://github.com/paher-din/XunJie/issues/24)、[B1 #11](https://github.com/paher-din/XunJie/issues/11) 与 [C3 #27](https://github.com/paher-din/XunJie/issues/27)。
 
-状态：**PR #32 首审的三项 P2 已修复，C3 服务端持久链已完成合成联调并通过专项验证；等待复审与合并。** 已完成显式 help 接纳、原请求绑定、真实 ObjectRef/获准上下文、无历史降级、跨 worker 三次调用台账、B1 执行、双侧当前性守卫，以及成功正文经 C3 Message/TeachingAction/Delivery/Receipt 的持久接纳与补取。真实模型、实际浏览器、真人接棒和教学语义仍分别未执行，不能据此宣称完整产品或教学效果验收。
+状态：**PR #32 两轮审查提出的代码缺口均已修复，C3 服务端持久链已完成合成联调并通过专项验证；等待负责人复审与合并。** 已完成显式 help 接纳、原请求绑定、真实 ObjectRef/获准上下文、长度合规引用、无历史降级、逐调用动态预算、跨 worker 三次调用台账、严格 45 秒窗口、B1 执行、双侧当前性守卫，以及成功正文经 C3 Message/TeachingAction/Delivery/Receipt 的持久接纳与补取。真实模型、实际浏览器、真人接棒和教学语义仍分别未执行，不能据此宣称完整产品或教学效果验收。
 
 ## 1. 基线、范围与权限
 
@@ -62,10 +62,10 @@
 | 检查 | 结果 |
 | --- | --- |
 | `npm run typecheck`（Node 24.21.0 / TypeScript 7.0.2） | 通过 |
-| `node --test server/tutoring/test/student-help.test.ts` | 16/16 通过 |
-| `node --test server/tutoring/test/*.test.ts server/records/teaching.test.ts server/records/teaching-review.test.ts` | B1+B2+C3 83/83 通过；供应商网络调用 0 |
-| `node --test --experimental-test-coverage server/tutoring/test/*.test.ts` | B1+B2 63/63 通过；line：application 95.18%、context 97.90%、core 93.95%、service 90.27% |
-| `npm test` | typecheck/build 通过；统一回归 253 项中 243 通过、3 失败、7 跳过。失败为既有 Windows 缺 Linux/trusted runner context 1 项及当前环境禁止回环端口连接 2 项；B1/B2/C3 相关测试全部通过 |
+| `node --test server/tutoring/test/student-help.test.ts` | 20/20 通过 |
+| `node --test server/tutoring/test/*.test.ts server/records/teaching.test.ts server/records/teaching-review.test.ts` | B1+B2+C3 87/87 通过；供应商网络调用 0 |
+| `node --test --experimental-test-coverage server/tutoring/test/*.test.ts` | B1+B2 67/67 通过；line：application 95.29%、context 97.99%、core 97.29%、service 89.83% |
+| `npm test`（放宽沙箱以实际执行 loopback） | typecheck/build 通过；统一回归 257 项中 249 通过、1 失败、7 跳过。唯一失败为既有 Windows 缺 Linux/trusted runner context；loopback 两项真实通过，B1/B2/C3 相关测试全部通过 |
 | `node tools/a0-review/check.mjs` / `node --test tools/a0-review/check.test.mjs` | 文档检查 `errors=[]`；检查器回归 16/16 通过 |
 | `git diff --check` / 范围检查 | 通过；未修改 product/planning/reference/AGENTS、package/锁文件/tsconfig、数据库 schema 或 CI/CD，`.trae/` 未纳入 |
 | help 接纳/幂等/替换 | ready 激活、问题/绑定/Receipt/Event/Job 原子保存；重放不重复；新求助取消旧 help 并递增 epoch |
@@ -108,3 +108,15 @@ PR #32 首审的三项 P2 均在本轮处理：
 3. 新增“获准课程资料段落本身包含越权指令”的直接反例，证明正文仍作为不可信数据，不能扩大引用、动作、工具或整份代做权限。
 
 同时推进 C3 联调：B2 只通过已合入的 C3 Message/TeachingAction 完成接缝保存成功正文、实际或 unknown usage、单次 calls、版本与 basis；不另建消息、回执或队列。实际浏览器投递/展示/确认和真人语义仍分别验收。首审 P3 中与本轮直接相关的 JobStatus 复用、非空 scope 收窄、GET 不激活专项、缺资料显式降级、覆盖率数字和过期表述一并核对；其他非阻塞重构不扩大本轮范围。
+
+## 10. PR #32 第二轮审查修复方案
+
+2026-10-12，负责人在固定 head `2e821d5` 完成第二轮审查。首轮三项 P2 已确认收口；新发现三个独立代码缺口，本轮按 TECH §6.2、§10.3 与已合入 C3 的 128 字符共享契约修复，不放宽 C 的 schema：
+
+1. **P1 引用长度：** 代码和资料引用不再把多个 UUID、版本与 64 位 hash 直接拼入 ID；改为带来源类别的稳定 SHA-256 派生 ID，完整 snapshot/file/resource/paragraph/version/contentHash 继续保留在获准引用正文和 ObjectRef 中，可由原可信对象重算并追溯。新增真实 UUID 代码与资料 ObjectRef 经 Fastify/SQLite/C3 完成 Message/Action 的反例，并断言所有交接引用不超过 128 字符。
+2. **P2 动态预算：** `budgetAvailable` 仍由应用宿主的可信配置提供，但执行服务在每次真实 provider 发送前重新读取。预算撤回发生在上一调用之后时，下一调用在持久预留前返回 `budget_exhausted`，不增加 `attemptCount`，并保留此前调用的 actual/unknown usage 与原 45 秒边界。
+3. **P2 时间快照：** help 接纳只读取一次毫秒时间，`acceptedAt` 与 `deadline=acceptedAt+45_000` 由同一值派生；递增时钟不得制造 45,001ms 窗口。
+
+同时修正 README 中“持久消息/投递仍等待 C3”的过期导航。PR #29 与 C3 已合入且本分支已完成服务端合成联调；失败 Job 的生产宿主编排、实际 UI/真人、D-02 真实模型和 B4 性能/教学语义继续作为后置条件，不把合成 `displayed` 回执写成产品完成。
+
+实际结果：三项新增正确性场景全部由失败转为通过。真实 UUID 的资料和代码 ObjectRef 均生成 `resource:<sha256>` / `code:<sha256>`，每项少于 128 字符，引用正文保留原资源/段落或快照/文件/版本/hash，并成功完成 C3 Message/Action；预算在首次响应后撤回时不发送或预留第二次调用，`calls=1`、`attemptCount=1`，首次 actual 与 unknown usage 分别原样保留；每次前进 1ms 的时钟下 help 仍返回 200，Job 窗口精确为 45,000ms。专项和完整回归数字见第 6 节，文档检查与差异检查结果随本轮提交记录。
