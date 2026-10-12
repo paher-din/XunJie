@@ -46,6 +46,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [运行停止与原请求核对](docs/tasks/I0_UI_06A_RUN_CONTROL.md) | 学生显式停止、等待权威确认，丢回执后原键核对；准备实现与验证，真实停止/恢复交接仍后置 |
 | [历史运行比较与公开产物](docs/tasks/I0_UI_06B_RUN_HISTORY.md) | 只读比较已有运行，区分本机参数与缺项、检查裁剪与产物可用性；完整公开文本经来源/ID/hash/bytes 校验后查看和下载；真实交接仍后置 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；七张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
+| [I0-UI 准备批次收尾与真实接入交接](docs/tasks/I0_UI_CLOSEOUT.md) | 十张票准备交付、07 提交/远端核查、Draft PR 方案与 A/C/B 逐能力交接；真实 I0 与完整产品仍未验收 |
 
 阅读顺序：PRD → MVP_SPEC → TECH_DESIGN。文档间冲突的处理规则见 PRD 1.2。
 
@@ -96,6 +97,8 @@ node --experimental-strip-types --test apps/teaching/server/tutoring/test/index.
 该命令只验证 B1 合成领域逻辑和注入式适配边界，不是 TypeScript 7 静态 typecheck、Zod/AI SDK 实包兼容或真实 DeepSeek 调用。完整记录见 [B1 任务文档](docs/tasks/B1_AGENT_CORE.md)。
 
 ## 学生前端（apps/student）
+
+2026-10-13，十张本地 I0-UI ticket 均有准备范围交付记录，[07](docs/tasks/I0_UI_07_BROWSER_HANDOFF.md) 已本地提交；核查时尚未推送、未建立 PR。真实服务与节点接入仍待 A/C 逐能力交接，前端随后需要真实入口/初始化接线；当前 main 整合在 README/AGENTS 存在冲突。最新收尾事实、PR 草稿与成员交付清单见[收尾记录](docs/tasks/I0_UI_CLOSEOUT.md)，2026-10-11 的规格/准备文档保留其规划时点。准备通过不关闭 #30/#22，也不替代真实 I0 或完整产品验收。
 
 学生端前端工程，首次内容由设计仓库 `XunJie_Design` 的固定提交 `a9bb1dd0` 导入，来源映射、许可与后续选择性同步办法见 [apps/student/IMPORT_SOURCE.md](apps/student/IMPORT_SOURCE.md)。它有独立的 `package.json` 与 lockfile，与 `apps/teaching` 后端互不依赖，启动不需要设计仓库的本地 checkout。需要 Node 24。
 
