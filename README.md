@@ -47,7 +47,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
-| [DL-A：课程与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 已批准 A/C 首批、本地实现与验证；B/UI 对应任务交接、真实联调及整卡剩余条件 |
+| [DL-A：课程与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | A/C 首批本地实现与专项26/26；全量1项平台失败，B/UI交接、真实节点与整卡后置条件保留 |
 | [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 获准 31 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；专项 43/43、两轴未解决 0；完整回归环境失败及后置项单列 |
 | [DL-C 隔离 HDL 构建与持续仿真](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) | 已授权 C 侧引擎/会话/三表合成服务端与真实目标验证；HDL 14/14、C 节点 50/51、认证 SSH 10/10，DL-A/UI/整卡与完整 NFR 保留 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
@@ -290,7 +290,9 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 
 2026-10-13，DL-C 最后权限撤回/受信终止反例修正后，接口专项 9/9、typecheck/build 通过；同一源码的 C/HDL 均经原认证入口读回 ready=true，原始成功/失败日志及当前 C 三套验收记录已纳入 [DL-C 第 11.4 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#114-2026-10-13-原始证据与最终核对)。这是 C 独立工程批次，#39、DL-A/UI/完整 NFR 与 C4 状态保持上段边界，未公开发布或代写产品基线。
 
-2026-10-13，负责人已批准 DL-A §10 A/C 首批并完成本地接入：固定 HDL 活动、两课程正常宿主、原消费者与事务授权/停止。专项、全量及两轴审查正在收尾，当前真实节点认证材料不齐，实际联调未执行；ALU 行为/C4/B/UI 与浏览器验收仍单列未完成，#38 保持 Open。最新实现、验证和启动说明见 [DL-A §12–13](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#12-ac-第一批实际实现与验证进行中)。
+2026-10-13，负责人已批准 DL-A §10 A/C 首批并完成本地接入：固定 HDL 活动、两课程正常宿主、原消费者与事务授权/停止。专项、全量及两轴审查正在收尾，当前真实节点认证材料不齐，实际联调未执行；ALU 行为/C4/B/UI 与浏览器验收仍单列未完成，#38 保持 Open。最新实现、验证和启动说明见 [DL-A §12–13](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#12-ac-第一批实际实现与验证记录)。
+
+2026-10-13，DL-A 获准 A/C 首批本地实现与两轴审查完成，专项26/26、typecheck/build、原启动4/4、耐久性2/2通过；原完整回归343项为331通过、1项既有RunControl Linux环境失败、11项原条件跳过，全套未通过。真实节点联调未执行，ALU行为/C4/B/UI及浏览器后置条件保留，未公开推送或关闭#38；原始证据和具体交接见 [DL-A §14](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#14-固定源码验收与交付边界)。
 
 ### 当前整体状态与后置验收
 
