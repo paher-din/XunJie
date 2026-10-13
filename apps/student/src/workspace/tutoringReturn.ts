@@ -37,8 +37,8 @@ export function resolveTutoringResource(resourceVersionId: string, activity: Act
   }
   const synthetic = import.meta.env.DEV && mode === 'preparation' && resourceVersionId === 'prep-resource-adjacent-example-01'
   return { kind: 'ready', resource: structuredClone(view), nature: synthetic ? 'synthetic-example' : 'course-material',
-    sourceLabel: synthetic ? '合成准备相邻例子 · 非教师真实批准材料 · 不是 TextScope 答案'
-      : import.meta.env.DEV && mode === 'preparation' ? '合成准备课程资料 · 未核验为类似例子' : '当前活动公开课程资料 · 未核验为类似例子' }
+    sourceLabel: synthetic ? '共同设计的相邻例子 · 合成准备材料 · 不是 TextScope 答案'
+      : import.meta.env.DEV && mode === 'preparation' ? '合成准备课程资料' : '当前活动公开课程资料' }
 }
 
 /** Stable local model identity and the exact original draft, NOT an editor internal version. */

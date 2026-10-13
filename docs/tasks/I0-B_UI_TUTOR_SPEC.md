@@ -106,3 +106,5 @@ UI-TUTOR-09 的两类真实求助→真实学生自主修订→保存新快照�
 原 3 次调用、最多一次修复、接受起含排队 45 秒、每 Attempt 一个有效帮助 Job 不变；由服务端守卫，前端不重置预算或自行补算未知 usage。
 
 规格依据是 [PRD](../product/PRD.md)、[MVP_SPEC](../product/MVP_SPEC.md)、[TECH_DESIGN](../product/TECH_DESIGN.md)、[TEAM](../planning/TEAM_WORK_PLAN.md) 与[客户端约束](I0_UI_CLIENT_CONTRACT.md)。原前端词汇见[术语](I0_UI_GLOSSARY.md)，来源/选择性同步规则见[ADR](I0_UI_ADR_0001_DESIGN_IMPORT.md)及[IMPORT_SOURCE](../../apps/student/IMPORT_SOURCE.md)。阅读章节、确切源码和当前批准状态见批次计划，不以外部交接摘要取代正文。
+
+2026-10-14较新负责人决定：本批相邻例子由Robert与Agent共同设计，不需要外部教师批准；保留来源、合成性质和原作品/返回判据。06交付控制UI，不包含逐次编辑上传及被动分析/提醒后台调度；这些不得笼统当作UI的待实现义务。源码现状、前端接入所需C/A契约与职责复核见[批次§12](I0-B_UI_TUTOR_PLAN.md#12-2026-10-14-负责人纠正与前端职责复核)，产品/TEAM仍只读。

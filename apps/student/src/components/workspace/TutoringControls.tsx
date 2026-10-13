@@ -84,14 +84,15 @@ export function TutoringControls({ confirmation, activity, assignment, onAssignm
       <button type="button" className="ws-action" role="switch" aria-label="里程碑提醒" aria-checked={attempt.reminders}
         disabled={busy || !controlAllowed(attempt, authoritativeAssignment, { kind: 'reminders', value: !attempt.reminders })}
         onClick={() => { void client?.set({ kind: 'reminders', value: !attempt.reminders }) }}>里程碑提醒：{attempt.reminders ? '开启' : '关闭'}</button>
-      <p>{attempt.collecting ? '当前采集后续过程。' : '当前停止逐次过程上传和被动分析；暂停期间是采集空窗。'} 恢复仅记录后续过程，不补发空窗事件。</p>
+      <p>{attempt.collecting ? '过程采集开关已开启，服务端允许接收当前区间的过程数据。' : '过程采集开关已暂停，暂停期间保持采集空窗。'} 恢复不补发空窗事件。</p>
     </>}
     <p>作品保存、主动求助及必要上下文、运行和提交属于功能数据，暂停采集后仍按获准范围保存。模型故障或预算不可用不阻断获准保存。</p>
+    <p>当前页面尚未自动上传逐次编辑过程，也不会主动生成里程碑提醒。</p>
     <p>尝试暂停、过程采集、里程碑提醒彼此独立。关闭提醒取消待投递提醒，主动求助仍按当前政策可用；再开启不会复活旧提醒。</p>
     {coverage && attempt && coverage.attemptId===attempt.attemptId && coverage.captureRevision===attempt.captureRevision
       ? <div data-testid="tutor-coverage"><p>服务公开的采集覆盖区间：</p>
           {coverage.intervals.map(row=><p key={`${row.captureRevision}:${row.fromServerSeq}`}>
-            {row.state==='paused'?'采集空窗':'采集中'} · 版本 {row.captureRevision} · {row.from} → {row.open?'当前':row.to??'结束时间缺失'}
+            {row.state==='paused'?'采集空窗':'允许采集区间'} · 版本 {row.captureRevision} · {row.from} → {row.open?'当前':row.to??'结束时间缺失'}
           </p>)}
         </div>
       : <p>覆盖区间详情尚未从公开来源回取；上述空窗说明不补造区间或时间。</p>}

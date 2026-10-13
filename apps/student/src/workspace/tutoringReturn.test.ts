@@ -24,7 +24,8 @@ describe('only authorized public resources become passive reading content', () =
     expect(result.kind).toBe('ready')
     if (result.kind !== 'ready') throw new Error('expected loaded material')
     expect(result.nature).toBe('synthetic-example')
-    expect(result.sourceLabel).toContain('非教师真实批准材料')
+    expect(result.sourceLabel).toContain('共同设计的相邻例子')
+    expect(result.sourceLabel).toContain('合成准备材料')
     reads[0]!.state = { kind: 'not-readable', reason: 'redacted' }
     expect(result.resource.text).toBe(resource.text)
   })
@@ -33,7 +34,7 @@ describe('only authorized public resources become passive reading content', () =
     const act = { ...activity, content: { ...activity.content, materials: [generic] } }
     expect(resolveTutoringResource('course-brief', act,
       [{ index: 0, projectedStatus: 'available', state: { kind: 'loaded', view: generic } }], 'real')).toMatchObject({
-      kind: 'ready', nature: 'course-material', sourceLabel: expect.stringContaining('未核验为类似例子'),
+      kind: 'ready', nature: 'course-material', sourceLabel: '当前活动公开课程资料',
     })
     expect(resolveTutoringResource(id, activity, materials(), 'real')).toMatchObject({ kind: 'ready', nature: 'course-material' })
   })

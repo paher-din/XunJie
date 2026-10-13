@@ -39,7 +39,7 @@ test('键盘看合成相邻例子→返回同一编辑器视图，草稿/undo保
   await open.focus(); await page.keyboard.press('Enter')
   const reading = page.getByTestId('tutoring-example')
   await expect(reading).toBeVisible()
-  await expect(reading.getByTestId('tutoring-example-source')).toContainText('非教师真实批准材料')
+  await expect(reading.getByTestId('tutoring-example-source')).toContainText('共同设计的相邻例子')
   await expect(reading).toContainText('29、30、31')
   await expect(page.locator('.monaco-editor[data-original-reader-test="retained"]')).toHaveCount(1)
   await reading.getByRole('button', { name: '返回原作品', exact: true }).focus()
