@@ -385,3 +385,16 @@ node --test server/tutoring/test/index.test.ts server/tutoring/test/student-help
 当前状态：授权已取得，先实现独立入口并完成零供应商请求的门禁、fixture、类型与回归验证。只有这些检查通过后才执行一次真实批次；实际结果产生前不得把 HR-03/05/06/07/10 的修复记为真实复验通过。
 
 独立入口与 README 安全命令已经实现。Node 24.21.0 下，门禁/fixture 定向测试为 4 项：3 通过、0 失败、1 个真实入口按预期跳过；TypeScript 静态检查退出码 0。B 四文件完整领域套件为 94 项：91 通过、0 失败、3 个真实入口按门禁跳过。文档静态检查无错误，检查器回归 16/16，`git diff --check` 通过，受保护产品/计划/参考文档及 `AGENTS.md` 无改动。上述预检没有设置真实授权变量、没有读取 key、供应商请求为 0。
+
+### 17.1 实际两 Job 复验结果
+
+账号负责人在固定提交 `a82978bacc656d89a8125825477f3605cc06ba26`、Node 24.21.0 下执行唯一一次获准批次。测试 1/1 通过，总墙钟约 10,641ms，没有自动重跑。两个 Job 均使用固定合成数据、一次 provider 调用即成功，实际外部请求为 2，低于授权上限 6；两次均为 HTTP 200、usage `actual`，没有触发 repair。
+
+| 样本 | 结果 | Job / HTTP 延迟 | usage | 语义修复核对 |
+| --- | --- | --- | --- | --- |
+| `relevant-3` | `success`，`hint`，calls=1 | 4,161ms / 2,808ms | input 1,369、output 352、total 1,721 | 正文与学生下一步为中文；自然语言不含获准引用原值、内部 ID、UUID 或长哈希；结构化 claim、assistance 与 resource 引用保持非空且均在白名单内 |
+| `filtered-3` | `success`，`reflect`，calls=1 | 3,160ms / 2,065ms | input 1,271、output 296、total 1,567 | 正文与学生下一步为中文；自然语言不含获准引用原值、内部 ID、UUID 或长哈希；结构化 resource 引用保持非空且在白名单内 |
+
+批次合计 input 2,640、output 648、total 3,288 tokens；prompt cache hit 512、miss 2,128。证据标记 `purpose=student_help_two_job_semantic_fix`、`completedJobs=2`、`externalRequests=2`、`providerAttempts=2`、`completedAuthorizedBatch=true`，模型/提示/schema/政策版本分别为 `deepseek-flash-v1`、`student-help-v1`、`student-help-v1`、`help-v1`。证据写入调用者本机权限受限临时目录并通过既有敏感字段审计；任务稿不记录个人绝对路径、key、请求头、内部思维链或原始 provider 错误。
+
+至此第 15 节要求的语言对齐与内部标识过滤已同时取得离线回归和新的真实模型证据，HR-03/05/06/07/10 的共同修复门禁可交 P2 总协调复审。该结果不代替负责人对早期五 Job/三 Job 口径偏差、批次级 D-02 记录及 Issue #45 全部关闭条件的最终裁决，也不冒充浏览器 `displayed`、真实学生接棒或完整 G2/MVP 验收。

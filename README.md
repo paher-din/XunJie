@@ -227,6 +227,8 @@ try {
 }
 ```
 
+2026-10-13，该两 Job 批次已在固定提交 `a82978b` 与 Node 24.21.0 下执行一次：2/2 `success`，实际两次 HTTP 200、每 Job 一次调用、usage 均为 `actual`，没有 repair 或自动重跑；中文语言对齐、学生可见内部标识过滤及结构化引用保留均通过。完整证据摘要和剩余复审项见 [B/P2-F 任务文档第 17.1 节](docs/tasks/B_P2_MODEL_SEMANTIC_VERIFICATION.md#171-实际两-job-复验结果)。
+
 ## 阶段状态记录
 
 ### G0 基线批准、门禁与任务发布
