@@ -301,7 +301,7 @@ PORT=3443 XUNJIE_I0_CONFIG=/controlled/i0-host.json npm start
       "assignmentRevision": 1,
       "active": true,
       "status": "active",
-      "reasons": {"individual": null, "activity": null},
+      "reasons": {"individual": "", "activity": ""},
       "activityControlRevision": 1
     },
     "recoveryGeneration": "<current controlled C generation>"
@@ -336,3 +336,146 @@ HTTP 认证/SQLite 事务/原 worker 真实，仅外部 transport 合成。所�
 TDD红轮保留：bootstrap/初始化模块缺失、静态路由缺失、自动消费者缺失均先失败后实现；关停 readiness 并发原会200接受新 Job，反例先失败后修复。验证中先后发现测试时钟不一致、构建路径层级错误、fetch严格类型，以及原暂停快照/停止未知投影的预期误差；按原正文/HTTP契约校正测试，未改 C或放宽业务守卫。最新相关专项通过；下列完整回归/最终审查尚待执行，未提前宣称全量通过。
 
 宿主还校验当前库为获准24表的精确表集合，拒绝其他组合，不执行迁移。现有旧日志/主副本未动。新库由原工厂保留，记录不输出凭据。真实 TLS/C1最新指纹/代际/节点端到端、浏览器、模型、完整产品与教学验收未执行；#30/#22保持Open。共享字段/bootstrap与MVP§10进度待授权维护者汇总。
+
+### 13.1 完整回归与最终核对
+
+2026-10-13，WSL2 Ubuntu / Node24.21.0，独立保留源码副本（业务源码 b0030c7）：原 lock npm ci、typecheck、build 均通过；完整教学回归明确包含新增宿主专项，394项，382通过、0失败、0取消、12跳过，163.018秒。原始日志终端统计节选如下；不是382项全部原始正文。12跳过均不计通过：4个容器/HDL时钟/目标VM/监督，5个真实模型/提供商批次，3个真实C1/SSH业务链。本次未提供那些环境开关，未运行真实模型或物理节点。
+
+~~~text
+ℹ tests 394
+ℹ suites 0
+ℹ pass 382
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 12
+ℹ todo 0
+ℹ duration_ms 163018.414143
+~~~
+
+原日志中的完整跳过项：
+
+~~~text
+﹣ dedicated Linux synthetic container execution and resource checks (14.9803ms) # SKIP
+﹣ the platform clock and delayed RTL keep picosecond semantics under finer student time precision (10.458727ms) # SKIP
+﹣ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (6.740628ms) # SKIP
+﹣ authenticated dedicated VM control and supervision (2.573709ms) # SKIP
+﹣ P2 real-provider cancellation, timeout and HTTP failure probes (1.784972ms) # SKIP
+﹣ P2 real-model student help, persisted content and undisplayed cancellation (0.078338ms) # SKIP
+﹣ P2 authorized two-job real student-help semantic-fix batch (0.0859ms) # SKIP
+﹣ P2 authorized 30-job real student-help performance batch (0.084877ms) # SKIP
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (1.144459ms) # SKIP
+﹣ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (0.394982ms) # SKIP
+﹣ real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain (0.522102ms) # SKIP
+﹣ P2 real-model teacher generation, explicit adoption and local PATCH (0.376535ms) # SKIP
+~~~
+
+完整回归后仅按 Standards 建议在 A 自有测试文件提取 syntheticReadiness helper，业务源码未变；Windows 重新执行新增专项10/10、0失败/跳过，typecheck通过。原启动+宿主最近联合14/14通过。文档检查64份/921内链 errors=[]，工具反例16/16通过，git diff --check通过；最终交付再核新增链接与具体写集。
+
+### 13.2 本次实际合成 HTTP 公开回交
+
+另经实际原登录会话/SQLite事务重放下列公开读取；仅外部 transport 合成。全部账号/作品为隔离合成数据，新库保留。未记录会话、CSRF、密码或私有答案。这是本次请求/响应记录，不是占位模板；H-05 head 重读亦实际返回 workspaceRevision=1/attemptRevision=2。相同 Assignment 随后教师原控制接口暂停，bootstrap active=false/assignmentRevision=2。该 record 的 source 标识业务源码，后续仅测试提取/交付文档提交。
+
+~~~json
+{
+  "synthetic": true,
+  "externalTransport": "synthetic only",
+  "node": "v24.21.0",
+  "source": "b0030c7 business sources",
+  "steps": [
+    {
+      "H": "H-03",
+      "request": {
+        "method": "GET",
+        "url": "/api/assignments/54ab32f3-a5c5-4f0e-b3cf-c62e371c2923/bootstrap"
+      },
+      "status": 200,
+      "response": {
+        "requestId": "e3cb73e3-5abc-452a-a15e-4ff81ba73279",
+        "data": {
+          "assignment": {
+            "assignmentId": "54ab32f3-a5c5-4f0e-b3cf-c62e371c2923",
+            "activityVersionId": "814a4972-8613-40e2-a26a-b0a64dc00b22",
+            "studentId": "student",
+            "assignmentRevision": 1,
+            "active": true,
+            "status": "active",
+            "reasons": {
+              "individual": "",
+              "activity": ""
+            },
+            "activityControlRevision": 1
+          },
+          "recoveryGeneration": "generation"
+        }
+      }
+    },
+    {
+      "H": "H-02 cross-student",
+      "request": {
+        "method": "GET",
+        "url": "/api/assignments/54ab32f3-a5c5-4f0e-b3cf-c62e371c2923/bootstrap"
+      },
+      "status": 403,
+      "response": {
+        "requestId": "30079568-47aa-47de-8552-8fa28cb42cee",
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Access denied.",
+          "retryable": false,
+          "recovery": "Use an account authorized for this resource."
+        }
+      }
+    },
+    {
+      "H": "H-02 anonymous",
+      "status": 401,
+      "response": {
+        "requestId": "2f633d3b-a2aa-45fe-9d0a-cd10bb123147",
+        "error": {
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required.",
+          "retryable": false,
+          "recovery": "Sign in using a valid account."
+        }
+      }
+    },
+    {
+      "H": "H-05 paused allocation",
+      "request": {
+        "method": "GET",
+        "url": "/api/assignments/54ab32f3-a5c5-4f0e-b3cf-c62e371c2923/bootstrap"
+      },
+      "status": 200,
+      "response": {
+        "requestId": "ad9f2980-7738-4e64-bb7b-51482cc8da6a",
+        "data": {
+          "assignment": {
+            "assignmentId": "54ab32f3-a5c5-4f0e-b3cf-c62e371c2923",
+            "activityVersionId": "814a4972-8613-40e2-a26a-b0a64dc00b22",
+            "studentId": "student",
+            "assignmentRevision": 2,
+            "active": false,
+            "status": "paused",
+            "reasons": {
+              "individual": "Synthetic review",
+              "activity": ""
+            },
+            "activityControlRevision": 1
+          },
+          "recoveryGeneration": "generation"
+        }
+      }
+    }
+  ]
+}
+~~~
+
+## Standards
+
+独立 Standards 审查未发现书面规范硬性违规：写集符合 §10.1/11，未改 B/C/UI、受保护基线、schema、凭据或 CI；README 与任务记录同步，区分合成 HTTP 与真实 TLS/节点/浏览器未执行。唯一启发式为测试 readiness 响应重复构造，已在本文件提取 helper，transport 行为/断言不变，复跑10/10通过。
+
+## Spec
+
+独立 Spec 审查0项阻断：bootstrap 复用当前 Session/课程/本人分配，原 AssignmentView，缺代际拒绝，GET不创建/激活；正常 main 组合 TLS/UI build/原 worker，关停核原身份，静态/24表初始化范围相符，无越界实现。提出的完整回归与公开回交待办已分别执行/继续交付；真实 C/TLS/浏览器条件仍由原角色回交。模板 reasons 的 null 已校正为原空字符串，不改代码契约。
+
+两轴合计：Standards 硬性违规0、启发式1已处理；Spec 阻断0。没有将合成工程通过写为节点/产品验收。公开推送/Draft PR 依据 §11 授权执行，交付 URL 与最终源码回读后记录于下一节；不自动合并或部署。

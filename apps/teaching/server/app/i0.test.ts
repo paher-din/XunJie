@@ -4,6 +4,12 @@ import assert from 'node:assert/strict';
 import { fixture, assigned, opened, files, snapshot, view, command, syntheticProfile } from '../workspace/test-support.ts';
 import { createI0App } from './i0.ts';
 
+function syntheticReadiness() {
+  const fingerprint={profile:syntheticProfile,sourceHash:'d'.repeat(64)};
+  return {data:{ready:true,...syntheticProfile,recoveryGeneration:'generation',fingerprint,
+    validation:{passed:true,fingerprintHash:createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex'),validatedAt:new Date().toISOString()}}};
+}
+
 test('student bootstraps own assignment with trusted generation and no attempt side effect', async () => {
   const f = await fixture();
   const student = await f.login(), teacher = await f.login('teacher');
@@ -53,14 +59,11 @@ test('normal host serves only built public assets and rejects escaped or hidden 
 
 
 test('normal consumer runs original job without manual worker calls and shutdown confirms its stop', async () => {
-  const { createHash } = await import('node:crypto');
   const { setTimeout: delay } = await import('node:timers/promises');
   const facts = new Map<string,object>();
   const runner: import('../records/runner.ts').RunnerTransport = async request => {
     if (request.op === 'readiness') {
-      const fingerprint = {profile:syntheticProfile,sourceHash:'d'.repeat(64)};
-      return {data:{ready:true,...syntheticProfile,recoveryGeneration:'generation',fingerprint,
-        validation:{passed:true,fingerprintHash:createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex'),validatedAt:new Date().toISOString()}}};
+      return syntheticReadiness();
     }
     const identity = request.op === 'submit' ? request.submission.identity : request.identity;
     if (request.op === 'submit') facts.set(identity.runId,{identity,state:'running',reserved:true,stopRequested:false,units:['synthetic-unit'],pending:[]});
@@ -144,9 +147,7 @@ test('normal host keeps original sync replay, current revision and paused assign
   const service=await createI0App({db:f.db,origin:'https://synthetic.example',signingSecret:f.signingSecret,
     now:f.timestamp,currentGeneration:f.generation,runner:async request=>{
       if (!ready || request.op!=='readiness') throw new Error('Synthetic offline');
-      const fingerprint={profile:syntheticProfile,sourceHash:'d'.repeat(64)};
-      return {data:{ready:true,...syntheticProfile,recoveryGeneration:'generation',fingerprint,
-        validation:{passed:true,fingerprintHash:createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex'),validatedAt:new Date().toISOString()}}};
+      return syntheticReadiness();
     }});
   const post=(url:string,payload:object,key:string)=>service.app.inject({method:'POST',url,
     headers:{...student,'idempotency-key':key},payload:{recoveryGeneration:'generation',...payload}});
@@ -216,9 +217,7 @@ test('unknown original job survives host restart and is reconciled without a rep
   const facts=new Map<string,object>(); let confirms=false,submits=0;
   const runner:import('../records/runner.ts').RunnerTransport=async request=>{
     if (request.op==='readiness') {
-      const fingerprint={profile:syntheticProfile,sourceHash:'d'.repeat(64)};
-      return {data:{ready:true,...syntheticProfile,recoveryGeneration:'generation',fingerprint,
-        validation:{passed:true,fingerprintHash:createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex'),validatedAt:new Date().toISOString()}}};
+      return syntheticReadiness();
     }
     const identity=request.op==='submit'?request.submission.identity:request.identity;
     if (request.op==='submit') {
@@ -314,9 +313,7 @@ test('shutdown refuses a new run whose readiness request was already in flight',
         runtimeProfileVersion:syntheticProfile.runtimeProfileVersion,entryFileId:ids.source,input:{operation:'stats',fileIds:[ids.input]},mode:'run'}});
     await started;
     const closing=service.close();
-    const fingerprint={profile:syntheticProfile,sourceHash:'d'.repeat(64)};
-    release({data:{ready:true,...syntheticProfile,recoveryGeneration:'generation',fingerprint,
-      validation:{passed:true,fingerprintHash:createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex'),validatedAt:new Date().toISOString()}}});
+    release(syntheticReadiness());
     const response=await pending;
     assert.notEqual(response.statusCode,200,response.body);
     await closing;
