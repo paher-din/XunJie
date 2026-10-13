@@ -187,3 +187,11 @@ CI=1 XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_E2E_PREP_PORT=5661 XUNJIE_E2E_REAL
 
 
 远端回读已完成：PR 正文及两条评论与发布正文逐字一致，PR base/head 和 Open/Draft 状态正确，两父卡 Open、hosted checks=0。最后仅提交本文与 README 的实际发布记录并普通推送；源码/测试相对验证提交 df7ce3c 无差异，不重复跑应用套件。最终文档检查 55/752、errors=[]；最终记录空白检查通过，已跟踪工作区交付后应无残留改动。
+
+### 8.4 协作方式与合并确认
+
+2026-10-13，负责人 Robert 要求将分支协作方式写入 #30，并询问 UI 合并时机。已发布 [分支协作补充评论](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137712134)：A/C 在各自模块任务分支和独立工作副本开发；UI 分支供检出/核对前端；未合 main 时由 A 协调组合固定 UI/A/C 提交的联调分支；修复回到归属模块，交付 PR 不混入整批 UI 导入。UI 合入 main 后成员更新基线继续，保持既定 A/B/C/UI 分工，不改共享契约或工作空间规范。
+
+合并评估时 origin/main 仍为 `37849f4`，PR #50 Open/Draft、MERGEABLE/CLEAN，源码相对已验证 df7ce3c 无差异。GitHub reviews/status checks 均为空；分支规则查询未返回有效规则，不冒称 hosted CI 或团队已签认。四项问题已修复并完成独立增量复审，238 单测/104 Chrome/typecheck/build/文档通过，本批准备工程可作为协作基线合入，无需等待 H 回交或真实产品完成。
+
+Robert 随后明确回复“确认”，批准将 PR #50 转为可审查状态、以 merge commit 合入 main，保留 UI 分支和 #30/#22。此次仅补本人任务记录；不修改受保护基线，不关闭父卡、部署或替代真实验收。合并前后续提交仅为记录同步，应用源码/测试保持 df7ce3c 已验证内容；实际 merge SHA 和远端/评论回读在下文追加。
