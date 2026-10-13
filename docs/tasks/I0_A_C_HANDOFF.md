@@ -527,3 +527,53 @@ C 本次测试归属保留：第一组20总/19通过/1跳过，records 4/4；第
 4. 当前真实 C1/HTTPS/浏览器联调仍未执行；#30/#22 保持 Open，完整 AC/NFR/真人/教学验收保留。TECH §4.3/bootstrap 及 MVP §10 待授权维护者汇总，不修改受保护基线。
 
 本次材料增量验证：node tools/a0-review/check.mjs 为64份文档/924条内链/errors=[]；git diff --check 通过。写集仅本文，业务测试、节点、TLS/浏览器本次均未执行；既有业务验证仍按 §13 的固定源码和范围报告。
+
+## 16. 接收 C 当前重验，继续 A 正常宿主收尾（2026-10-13）
+
+负责人明确要求继续完成 #30 中 A 的剩余要求。沿 §11 原批准范围接收 C 当前材料、核实后接现有 SSH/generationFile、启动获准正常宿主并验证原消费者；不新增节点维护、跨机网络、凭据生成/分发或 schema 权限。当前写集仍为本人任务记录；没有因为环境缺口改业务契约、TLS 校验或 UI。
+
+### 16.1 新回交替代哪些旧状态
+
+已完整阅读 [C 的 C/TextScope 当前重验回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6142794517)（更新于2026-10-13T09:44:08Z）及 [HDL 补验回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6143063168)（更新于2026-10-13T10:00:04Z）。以下是 **C 实测回交**，不是 A 此次独立节点复测：
+
+- C 当前固定部署 cde69ccbd763c3c0ab381a809b750b951f195f64，sourceHash 与 A §15.1 复算一致。C 新 fingerprintHash 为 b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a，validatedAt 为2026-10-13T09:29:47.600Z，ready=true。
+- 当前代际来自原控制账本/认证 SSH 验收，C/HDL 同为 synthetic-generation-5944e790-6182-4807-bf21-52534b16271b；synthetic 前缀本身不表示 UI 生成，C 已说明原受控账本来源。A 不把评论中的字符串硬编码进应用，须读取受认证交接并核当前值。
+- C 回交原受控宿主已存在的 current-readiness.json、connection.json、runtime-evidence.json；目录/文件权限0700/0600，connection 只引用原 application key/known_hosts。generationFile 用 current-readiness.json 原 data.recoveryGeneration；维护换代后需重新读回，不把文件快照永久视作当前值。
+- C 新 Linux 原 lock/npm ci/native SQLite rebuild/typecheck/build 通过；guest58总/55通过/3跳过、认证SSH10/10、HTTP/SQLite36总/34通过/2跳过，再指定真实C1补验2/2无跳过；33份 HTTP 样例来自 app.inject/Session/SQLite，故障transport为合成。原Windows失败保留为历史，不能重复计数或把故障替身叫物理节点。
+- HDL 于2026-10-13T09:51:51.930Z追加登记，fingerprintHash 为 ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386；HDL10/10无失败/跳过、C52总/51通过/1跳过，认证汇总 hdlReady/cReady 为true。仅 C 节点验收范围，不等于 A/DL-A 或 UI 正常宿主验收。
+- 新完整输出/33份JSON与登记材料尚未推送，C 已给原受控位置和公开摘要。A 收到材料说明，尚未从 PAHER 读取原文件；不能写“原始文件/hash 已独立核验”。不要求将凭据或受控运行配置公开入库。
+
+§15 的“C 本次节点不可达、缺当前代际/重验、HTTP依赖失败”保留其早先时点；作为当前交接状态已被新回交替代。新材料不改变 A §13 的源码/统计，也不宣称旧完整产品验收通过。
+
+### 16.2 A 此次实际检查与执行入口缺口
+
+已 fetch origin；远端 main 仍 cde69cc，PR #53 仍为原 A 独立模块。只读检查 A 当前工具可见环境：wsl --list --verbose 显示 Ubuntu/WSL2 Stopped；Python socket 以3秒上限连接127.0.0.1:2222得到 ConnectionRefusedError。未启动 WSL/VM、未维护节点、未读或复制任何私钥。
+
+这是 **A 当前执行入口的检查**，不推翻 C 在 PAHER 的上述实测，也不能据此认定 PAHER 节点再次停止。现有交接为 PAHER 本机 loopback，无法直接在其他执行环境使用。当前未收到可在 A 工具环境执行的 PAHER 入口、已有正常 XUNJIE_I0_CONFIG 文件位置/精确 HTTPS Origin，及 TLS/签名引用、受控合成账号使用入口。A 已向负责人请求实际执行入口或明确由 C 在 PAHER 代跑，以及既有宿主配置位置；这属于缺失信息，不重复请求原范围实施许可，不请求秘密正文。
+
+真实宿主/自动消费者、浏览器HTTPS和账号交接依赖这些实际材料；不为绕过阻塞创建凭据、启用跨机访问、复制 maintenance key 或忽略证书。其他材料接收、逐 H 汇总和文档/公开回交继续执行。
+
+### 16.3 获得入口后按原批准范围执行
+
+1. 在指定 PAHER 获准运行窗口核 sourceCommit/sourceHash、原 profile、指纹/validation、当前认证 readiness 与原身份 query；对照 C 完整原输出/登记。generationFile 原 data.recoveryGeneration 必须与当前认证响应一致，原 query 不改 identity、不 submit 补跑。
+2. 由原受控配置引用已有 TLS/签名/SSH 文件、现有 UI real dist 与当前代际；核精确 HTTPS Origin/PORT、证书主机与有效期/信任、密钥配对及受控文件权限。账号材料仅走原安全通道，公开只给登录入口和使用方式。
+3. 仅用 §11 获准的新保留24表合成库，教师经真实 Session/Origin/CSRF 完成检查→确认→分配；记录本人、未分配、暂停、跨学生/课程入口和去敏响应，GET不创建 Attempt。
+4. 学生 bootstrap→显式创建→sync→GET权威head→snapshot→run；保持自动消费者运行，确认无需手工 processJob、固定 Run/Job/快照/指纹、原结果/产物。暂停/停止与未知按原 ID 对账，不换键补跑。
+5. UI/Robert 消费同一正常 HTTPS 地址、账号安全使用方式与合法 Assignment 深链，先验身份/读取/保存，再验运行/停止/产物；浏览器结果归 UI，不由服务端通过替代。
+
+目前第1～4项 **未执行**；启动命令仍沿 §12 的受控配置方式，占位模板不是实际已存在地址。A 不因 C 已通过而提前勾选这些要求。
+
+### 16.4 当前逐 H 交付状态
+
+| H | 已完成的 A 交付 | A 收尾未完成项 |
+| --- | --- | --- |
+| H-01 | 正常宿主实现、Session/CSRF与 real dist 合成验证、启动方式 | 实际 HTTPS/现有配置/账号使用入口交付及正常宿主验证 |
+| H-02 | 原 Assignment 与 bootstrap、权限/空态合成接口验证 | 实际正常环境的合法分配深链及账号使用交接 |
+| H-03 | bootstrap/恢复来源说明；已接收 C 当前受控代际材料 | A 从 PAHER 核原文件和当前认证值，再接正常宿主 |
+| H-04 | 原持续消费者/关停对账实现与合成验证；已接收 C/HDL 当前验收 | 正常宿主自动消费者与当前真实 C 节点的组合验证 |
+| H-05 | A 版本/暂停合成样例、差异汇总；已接收 C 新实测样例 | TECH §4.3 基线更新待授权维护者，不单方更改 |
+| H-06 | A 原公开样例及 C 新33份/真实指定联调摘要已接收并按批汇总 | 取得实际文件后核完整输出，补 A 正常宿主链路样例；浏览器由 UI |
+
+A 在 #30 原回复追加本节最新回交，明确替代早先“C未就绪”当前状态，保留历史。此轮纯交接增量不复跑既有全套业务，不合并/部署；PR #53 仍 Draft，#30/#22 保持 Open。受保护基线与 MVP§10 仍待授权维护者汇总。
+
+本轮文档验证：node tools/a0-review/check.mjs 为64份/924内链/errors=[]，git diff --check 通过；没有源码、依赖、受保护基线、schema、凭据或CI变更。A 当前节点连接检查失败，正常宿主组合/HTTPS业务验证未执行，不能写为已通过。
