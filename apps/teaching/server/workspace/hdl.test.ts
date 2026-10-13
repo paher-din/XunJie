@@ -133,3 +133,26 @@ test('job kind prefix classification matches startsWith for near prefixes, ASCII
     for(const [jobId,kind] of sampled)assert.equal((kind??'').startsWith('hdl_'),jobId==='job-hdl','SQL and JS must classify every sampled kind the same way');
   }finally{await composed?.app.close();await s.f.close();}
 });
+
+test('Trace polling retains its cursor until the original program or interaction result is available',async()=>{
+  const s=await setup();try{
+    const read=(sessionId:string,after=-1)=>s.f.db.withTransaction(tx=>s.service.readTrace(tx,actor,sessionId,after));
+    const built=s.service.build(actor,s.attemptId,'build',s.f.generation(),{expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId});
+    await s.service.processJob(built.result.jobId);
+    const program=await s.service.program(actor,s.attemptId,'program',s.f.generation(),{expectedAttemptRevision:s.revision(),buildId:built.result.buildId});
+    const waiting=read(program.result.sessionId);
+    assert.equal(waiting.operation?.sequence,0);assert.equal(waiting.operation?.result,null);assert.equal(waiting.nextSequence,-1);
+    await s.service.processJob(program.result.jobId);
+    const initial=read(program.result.sessionId,waiting.nextSequence);
+    assert.equal(initial.operation?.result?.sequence,0);assert.equal(initial.operation?.result?.snapshotId,s.snapshotId);assert.equal(initial.nextSequence,0);
+    const input={expectedAttemptRevision:s.revision(),sessionId:program.result.sessionId,expectedSessionRevision:1,expectedSequence:1,
+      inputs:{switches:'0'.repeat(16),buttons:'00001',resetN:'1'},advanceCycles:1};
+    const step=s.service.interact(actor,s.attemptId,'step',s.f.generation(),input);
+    const pending=read(program.result.sessionId,initial.nextSequence);
+    assert.equal(pending.operation?.sequence,1);assert.equal(pending.operation?.result,null);assert.equal(pending.nextSequence,0);
+    await s.service.processJob(step.result.jobId);
+    const confirmed=read(program.result.sessionId,pending.nextSequence);
+    assert.equal(confirmed.operation?.result?.sequence,1);assert.equal(confirmed.operation?.result?.finalFrame.simTimePs,'10000');assert.equal(confirmed.nextSequence,1);
+    assert.deepEqual(read(program.result.sessionId,confirmed.nextSequence),{operation:null,nextSequence:1});
+  }finally{await s.f.close();}
+});

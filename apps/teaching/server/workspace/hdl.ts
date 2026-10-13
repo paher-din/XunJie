@@ -289,7 +289,7 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
     if(!row)return {operation:null,nextSequence:afterSequence};
     const body=row.result_json===null?null:hdlResult.parse(JSON.parse(String(row.result_json)));
     if(body&&(sha256(String(row.result_json))!==row.result_hash||body.sessionId!==sessionId||body.sequence!==row.sequence))throw new ApiError('INVALID_REFERENCE');
-    return {operation:{operationId:String(row.operation_id),sequence:Number(row.sequence),status:String(row.status),result:body},nextSequence:Number(row.sequence)};
+    return {operation:{operationId:String(row.operation_id),sequence:Number(row.sequence),status:String(row.status),result:body},nextSequence:body?Number(row.sequence):afterSequence};
   }
   return {build,program,interact,processJob,readTrace,cancelInTransaction,reconcileStops,databaseFile:options.db.file,
     // '_' is a LIKE wildcard and LIKE ignores ASCII case, so compare the literal prefix to agree with startsWith('hdl_').
