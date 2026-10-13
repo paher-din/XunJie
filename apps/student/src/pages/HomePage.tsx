@@ -1,0 +1,361 @@
+import { Icon, IconText, type IconName } from '../icons'
+import { useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { learningApi } from '../bridge/mockAdapter'
+import type { ProjectTask, TaskStatus } from '../bridge/types'
+import { DashboardSection } from '../components/dashboard/DashboardSection'
+import { FluidHighlight } from '../components/FluidHighlight'
+import { ProgressBar } from '../components/ProgressBar'
+import { StatusChip } from '../components/StatusChip'
+import { useFluidHover, useRegisterFluidHoverItem } from '../lib/fluidHover'
+import {
+  filterTasks,
+  formatDeadline,
+  isOverdue,
+  pendingCount,
+  progressPercent,
+  selectContinueTask,
+  sortTasks,
+} from '../lib/tasks'
+import { PREP_BUILD } from '../workspace/mode'
+import { PREP_ENTRY_COURSE, PREP_ENTRY_GOAL, PREP_ENTRY_LABEL, PREP_ENTRY_NOTE, PREP_TASK_ROUTE } from '../workspace/prepEntry'
+
+const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
+const COURSE_ICONS: IconName[] = ['virtual-board', 'code-square', 'structure']
+
+/** 课程封面插画（动画风），放在 app/public/courses/ 下；缺图时回退课程色占位块。 */
+const COURSE_COVERS: Record<string, string> = {
+  数字逻辑与部件设计: '/courses/digital-logic.png',
+  程序设计基础: '/courses/programming-basics.png',
+  数据结构: '/courses/data-structures.png',
+}
+
+/**
+ * 首页（已确认结构 A + 课程/任务形式 B）：
+ * 学习看板（整宽，可个性化编辑；任务完成卡下半部分内嵌继续任务入口）→ 课程卡片（仅名称、待完成数、入口）→ 课程内任务卡片（截止时间优先）。
+ */
+export default function HomePage() {
+  const snapshot = useQuery({
+    queryKey: ['home'],
+    queryFn: () => learningApi.getHomeSnapshot(),
+  })
+  const navigate = useNavigate()
+  // 选中课程放在 URL 查询串里：工作区返回（历史回退）时能恢复到课程任务视图
+  const [searchParams, setSearchParams] = useSearchParams()
+  const setCourse = (c: string | null) => setSearchParams(c ? { course: c } : {})
+  const [statusFilter, setStatusFilter] = useState<'全部' | TaskStatus>('全部')
+  const [query, setQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  if (!snapshot.data) return null
+  const { tasks, dashboard } = snapshot.data
+  const now = new Date(snapshot.data.now)
+
+  const courses = [...new Set(tasks.map((t) => t.course))]
+  const courseParam = searchParams.get('course')
+  const course = courseParam && courses.includes(courseParam) ? courseParam : null
+  // 零待完成课程保留显示，排在有待完成任务的课程之后；同组保持原顺序。
+  const sortedCourses = [...courses].sort(
+    (a, b) => Number(pendingCount(tasks, a) === 0) - Number(pendingCount(tasks, b) === 0),
+  )
+  const hour = now.getHours()
+  const greeting = hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好'
+  const continueTask = selectContinueTask(tasks)
+
+  const visibleTasks = course
+    ? sortTasks(filterTasks(tasks.filter((t) => t.course === course), statusFilter, query))
+    : []
+
+  return (
+    <div className="content">
+      <div className="intro">
+        <h1>{greeting}，Robert</h1>
+        <span className="date">
+          {now.getMonth() + 1} 月 {now.getDate()} 日
+        </span>
+      </div>
+
+      {PREP_BUILD && (
+        <section className="prep-entry">
+          <div className="prep-entry-body">
+            <p className="prep-entry-flag">
+              <Icon name="shield-check" size={15} tone="neutral" />
+              {PREP_ENTRY_LABEL}
+            </p>
+            <h2>{PREP_ENTRY_COURSE}</h2>
+            <p>{PREP_ENTRY_GOAL}</p>
+            <p className="prep-entry-note">{PREP_ENTRY_NOTE}</p>
+          </div>
+          <button className="primary" onClick={() => navigate(PREP_TASK_ROUTE)}>
+            <IconText name="arrow-right" position="end">进入准备工作区</IconText>
+          </button>
+        </section>
+      )}
+
+      <DashboardSection
+        data={dashboard}
+        tasks={tasks}
+        now={now}
+        continueSlot={
+          continueTask && (
+            <div className="db-continue">
+              <span className="course-tag">
+                <i className="dot" />
+                {continueTask.mode === 'resume' ? '继续学习' : '建议开始'} ·{' '}
+                {continueTask.task.course}
+              </span>
+              <h3>{continueTask.task.name}</h3>
+              <p>
+                {continueTask.mode === 'resume' ? continueTask.task.last : continueTask.task.goal}
+              </p>
+              <div className="db-continue-foot">
+                <span className="pct">{progressPercent(continueTask.task)}%</span>
+                <button
+                  className="primary"
+                  onClick={() => navigate('/task/' + continueTask.task.id)}
+                >
+                  <IconText name="arrow-right" position="end">{continueTask.mode === 'resume' ? '继续任务' : '开始任务'}</IconText>
+                </button>
+              </div>
+            </div>
+          )
+        }
+      />
+
+      <div>
+        <div className="sectionhead">
+          <h2>
+            {course ? '课程与任务' : '我的课程'}
+            <small>
+              {course
+                ? tasks.filter((t) => t.course === course).length + ' 个任务'
+                : courses.length + ' 门'}
+            </small>
+          </h2>
+        </div>
+
+        {course === null ? (
+          <CourseTiles
+            courses={sortedCourses}
+            toneOf={(c) => courses.indexOf(c)}
+            tasks={tasks}
+            onOpen={setCourse}
+          />
+        ) : (
+          <>
+            <div className="course-breadcrumb">
+              <button onClick={() => setCourse(null)}><IconText name="alt-arrow-left">全部课程</IconText></button>
+              <span>/</span>
+              <strong>{course}</strong>
+            </div>
+            <div className="task-toolbar">
+              <div className="filters">
+                {STATUS_FILTERS.map((f) => (
+                  <button
+                    key={f}
+                    className={statusFilter === f ? 'filter active' : 'filter'}
+                    onClick={() => setStatusFilter(f)}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+              <label className="search">
+                <Icon name="minimalistic-magnifier" size={14} />
+                <input
+                  ref={searchRef}
+                  aria-label="搜索任务"
+                  placeholder="搜索任务或课程…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {query !== '' && (
+                  <button
+                    type="button"
+                    className="search-clear"
+                    aria-label="清除搜索"
+                    onClick={() => {
+                      setQuery('')
+                      searchRef.current?.focus()
+                    }}
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                )}
+              </label>
+            </div>
+            {visibleTasks.length > 0 ? (
+              <TaskCards
+                tasks={visibleTasks}
+                now={now}
+                onOpen={(t) => navigate('/task/' + t.id)}
+              />
+            ) : (
+              <div className="empty">
+                {/* b2（2026-10-10 定稿）：I024 落地——任务无结果配 folder-search 小图标 */}
+                <Icon name="folder-search" size={22} />
+                此课程没有匹配的任务
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 课程卡片组（参考 fluidfunctionalism Card 的 2-D fluid hover）：整组共享一块
+ * 高亮，弹性滑向指针最近的卡片；卡片 = 封面图 + 名称 + 待完成数 +「查看任务」。
+ */
+function CourseTiles({
+  courses,
+  toneOf,
+  tasks,
+  onOpen,
+}: {
+  courses: string[]
+  toneOf: (course: string) => number
+  tasks: ProjectTask[]
+  onOpen: (course: string) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const hover = useFluidHover(ref)
+  return (
+    <div className="course-tiles" ref={ref} {...hover.handlers}>
+      <FluidHighlight
+        activeIndex={hover.activeIndex}
+        rects={hover.itemRects}
+        className="card-grid-highlight"
+      />
+      {courses.map((c, i) => (
+        <CourseTile
+          key={c}
+          course={c}
+          index={i}
+          tone={toneOf(c)}
+          pending={pendingCount(tasks, c)}
+          onOpen={() => onOpen(c)}
+          registerItem={hover.registerItem}
+        />
+      ))}
+    </div>
+  )
+}
+
+function CourseTile({
+  course,
+  index,
+  tone,
+  pending,
+  onOpen,
+  registerItem,
+}: {
+  course: string
+  index: number
+  tone: number
+  pending: number
+  onOpen: () => void
+  registerItem: (index: number, el: HTMLElement | null) => void
+}) {
+  const tileRef = useRef<HTMLButtonElement>(null)
+  useRegisterFluidHoverItem(registerItem, index, tileRef)
+  const [imgFailed, setImgFailed] = useState(false)
+  const cover = COURSE_COVERS[course]
+  return (
+    <button ref={tileRef} className="course-tile" onClick={onOpen}>
+      {cover && !imgFailed ? (
+        <img className="course-cover" src={cover} alt="" onError={() => setImgFailed(true)} />
+      ) : (
+        <span className={`course-cover-ph course-${tone}`} aria-hidden>
+          <Icon name={COURSE_ICONS[tone] ?? 'virtual-board'} size={48} />
+        </span>
+      )}
+      <span className="course-tile-body">
+        <h3>{course}</h3>
+        <p>{pending > 0 ? pending + ' 个待完成' : '暂无待完成任务'}</p>
+        <span className="course-tile-foot">
+          <span className="cb-primary">查看任务</span>
+        </span>
+      </span>
+    </button>
+  )
+}
+
+/**
+ * 课程内任务卡片组：与课程卡片组共用同一套 2-D fluid hover——整组共享一块高亮，
+ * 弹性滑向指针最近的卡片；卡片自身不做位移 / 描边 hover，反馈交给高亮。
+ */
+function TaskCards({
+  tasks,
+  now,
+  onOpen,
+}: {
+  tasks: ProjectTask[]
+  now: Date
+  onOpen: (task: ProjectTask) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const hover = useFluidHover(ref)
+  return (
+    <div className="task-card-grid" ref={ref} {...hover.handlers}>
+      <FluidHighlight
+        activeIndex={hover.activeIndex}
+        rects={hover.itemRects}
+        className="card-grid-highlight"
+      />
+      {tasks.map((t, i) => (
+        <TaskCard
+          key={t.id}
+          task={t}
+          index={i}
+          now={now}
+          onOpen={() => onOpen(t)}
+          registerItem={hover.registerItem}
+        />
+      ))}
+    </div>
+  )
+}
+
+function TaskCard({
+  task,
+  index,
+  now,
+  onOpen,
+  registerItem,
+}: {
+  task: ProjectTask
+  index: number
+  now: Date
+  onOpen: () => void
+  registerItem: (index: number, el: HTMLElement | null) => void
+}) {
+  const cardRef = useRef<HTMLButtonElement>(null)
+  useRegisterFluidHoverItem(registerItem, index, cardRef)
+  const percent = progressPercent(task)
+  const action =
+    task.status === '未开始' ? '开始任务' : task.status === '进行中' ? '继续任务' : '查看任务'
+  return (
+    <button ref={cardRef} className="task-card" onClick={onOpen}>
+      <div>
+        <StatusChip status={task.status} />
+        {isOverdue(task, now) && <span className="status overdue">已逾期</span>}
+      </div>
+      <h3>{task.name}</h3>
+      <p>{task.goal}</p>
+      <div className="progresslabel">
+        <span>任务进度</span>
+        <span>{percent}%</span>
+      </div>
+      <ProgressBar percent={percent} done={task.status === '已完成'} />
+      <div className="card-foot">
+        <span className="deadline">
+          {task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : ''}
+        </span>
+        <span className="action"><IconText name="arrow-right" position="end">{action}</IconText></span>
+      </div>
+    </button>
+  )
+}

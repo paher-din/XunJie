@@ -79,6 +79,15 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
 | [B1 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、实际 AI SDK/DeepSeek 适配与离线 transport 验证记录 |
 | [B2 学生辅导与控制权](docs/tasks/B2_STUDENT_HELP.md) | 显式 help 接纳、真实 ObjectRef/上下文、动态预算与当前性守卫、B1 执行，以及 C3 Message/Action/Delivery/Receipt 服务端合成联调；实际 UI/真人仍未验收 |
+| [学生前端导入与 C 场景入口](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md) | 设计仓库固定提交导入 `apps/student/`、准备模式 fixture、窄读取客户端与最小浏览器检查；I0 学生纵向切片的第一张任务 |
+| [学生确认保存与不可变快照](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) | 学生主动创建 Attempt、原命令持久化与重放、原子确认和快照回取；准备范围验证及真实服务交接限制 |
+| [断线与原保存请求恢复](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md) | 断线继续编辑、刷新保留草稿、重连只核或重放原保存命令；未知/拒绝/版本冲突/旧代际的分流与准备范围验证 |
+| [文件实例回收恢复与只读版本比较](docs/tasks/I0_UI_05_FILE_HISTORY.md) | 回收/恢复文件实例（同名重建是新实例、恢复路径被占用先显式处理占用者）、两快照或草稿与确认作品的只读比较；准备范围验证及真实服务交接限制 |
+| [固定快照 Core 运行与基础结果](docs/tasks/I0_UI_06_RUN_RESULTS.md) | 学生主动选择快照与 stats/find/top 参数、持久化原命令、只读公开 Job/Run 与诊断；准备范围验证；停止/未知核对见 06A |
+| [运行停止与原请求核对](docs/tasks/I0_UI_06A_RUN_CONTROL.md) | 学生显式停止、等待权威确认，丢回执后原键核对；准备实现与验证，真实停止/恢复交接仍后置 |
+| [历史运行比较与公开产物](docs/tasks/I0_UI_06B_RUN_HISTORY.md) | 只读比较已有运行，区分本机参数与缺项、检查裁剪与产物可用性；完整公开文本经来源/ID/hash/bytes 校验后查看和下载；真实交接仍后置 |
+| [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；十张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
+| [I0-UI 准备批次收尾与真实接入交接](docs/tasks/I0_UI_CLOSEOUT.md) | 十张票准备交付、main 整合/修复与 104 项 Chrome 回归、已合并 PR #50 和 A/C/B 逐能力交接；真实 I0 与完整产品仍未验收 |
 
 安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：先完成当前 P2 原预交付，P3 的 A/C/B 接数字逻辑并分批联调，同时保留原反馈闭环；P4 的 A6/B4/C5 验证两课程，P5 完成整体集成与正式验收。服务端预交付、数字逻辑 Demo 与完整产品验收分别记录。
 
@@ -169,6 +178,22 @@ try {
 } finally {
     Remove-Item Env:XUNJIE_P2_REAL_MODEL
 }
+```
+
+### 学生前端（apps/student）
+
+2026-10-13，学生前端使用独立 lockfile，在 apps/student 目录以 Node 24 执行准备检查；不依赖 Design checkout。准备模式使用隔离合成数据，正常模式不回退。来源、完整启动说明、端口与故障回放见 [学生 README](apps/student/README.md) 和 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。
+
+```bash
+npm ci
+npm run dev:prep
+npm run dev
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+# 已安装真实 Chrome 时使用同一套浏览器检查
+XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 ```
 
 ## 阶段状态记录
@@ -284,6 +309,13 @@ node --test server/workspace/submissions.test.ts
 2026-10-13，负责人授权后审查 P3-1 的授权疑问关闭：从 TECH_DESIGN 第 7.2.1 节该句删去「提交」在授权范围内，不回退。同一次授权把「分配暂停使已发放的重开许可失效、恢复分配不使其复活」写入产品基线，落在第 5 节 `POST /api/attempts/:id/reopen` 一行，同行一并记入发放许可递增 `attemptRevision` 与 `decisionEpoch`、许可行保持 `valid` 不被静默消费、恢复读取以 `actionable=false` 让学生界面区分「从未发放」与「发放过但已作废」。改动在既有表格行内追加文字，原分句逐字保留，未改名标题、未增删路由、未放宽验收门槛，PRD 与 MVP_SPEC 经核对仍无需改动。与 #48 的表数撞点实测数据、先合 #47 再合 #48 的顺序建议，以及本任务未改 #48 分支的理由，见 [C4 第 5 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#5-与-a4a5b3c5-的分批交接)。
 
 2026-10-13，按负责人要求进入 C4 → A4 → DL-C 顺序审阅与合并。C4 本轮新发现的两项 P2 已修复：暂停期间发放许可的工作区及恢复投影读取真实可用性；请求文档勘误明确 checkRunIds 输入与 checkRefs 输出。类型检查、构建与公开接口专项验证通过（21 项中 20 通过、0 失败、1 跳过），两轴增量复审各 0 项；完整源码回归及远程合并结果在 [顺序集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md) 追加。其余产品与浏览器后置验收不变。
+### I0-UI 准备批次与真实接入交接
+
+2026-10-13，十张本地 I0-UI ticket 已交付准备工程，07 记录真实 Chrome 手动链及 102 项准备浏览器检查；本批正在整合最新 main 并准备 Draft PR。真实服务、节点、模型、完整 AC/NFR 与教学效果未验收，#30/#22 保持 Open；A/C 按能力交接，B 真实模型/语义余项沿 #45。当前状态、组合验证与交接入口见 [I0-UI 收尾记录](docs/tasks/I0_UI_CLOSEOUT.md)，启动/来源与故障细节见学生 README，规划文档保留其有日期的原快照。
+
+2026-10-13，main 已普通合入 UI 分支，准备批次已推送并发布 [Draft PR #50](https://github.com/paher-din/XunJie/pull/50)，尚未合并。四项审查问题已修复，最终 typecheck/build、Vitest 238 项、真实 Chrome 104 项与文档检查通过；[#30 交接清单](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137496293) 已发布，成员按 H 编号回交，完整验收未覆盖项登记在 [#22 证据索引](https://github.com/paher-din/XunJie/issues/22#issuecomment-6137502504)。真实接线/节点/模型/完整 AC/NFR 与教学效果未验收。
+
+2026-10-13，负责人 Robert 明确批准合并后，[PR #50](https://github.com/paher-din/XunJie/pull/50) 已以 merge commit 合入 main（`69a26d5`），合并树与已验证交付完全一致，UI 分支保留。[#30 协作评论](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137712134) 已同步结果；A/C 可更新 main 后在各自任务分支继续按 H 编号回交。#30/#22 保持 Open，真实接入与完整产品验收仍待完成；实际提交与核对见 [I0 收尾 §8.4](docs/tasks/I0_UI_CLOSEOUT.md#84-协作方式与合并确认)。
 
 ### 当前整体状态与后置验收
 
