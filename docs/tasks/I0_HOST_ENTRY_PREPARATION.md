@@ -2,7 +2,7 @@
 
 日期：2026-10-13。关联 [Issue #30](https://github.com/paher-din/XunJie/issues/30)、[A Draft PR #53](https://github.com/paher-din/XunJie/pull/53)，对应 H-01，给 H-02～H-06 的正常宿主联调提供先行条件。
 
-状态：2026-10-14，C @paher-din 已在 PR #55 交付 C-ENTRY-02/03 的具体现场方案、非秘密成员输入和完整去敏原证据。A 已完成两轴实审、修正本手册的归档/政策标识，并以原初始化入口和正常登录公共接口独立验证21/21；见 §9。现场执行仍由C负责；新增凭据及单客户端证书信任待负责人精确授权，实际正常HTTPS/真实C Job链和UI浏览器验收尚未执行。
+状态：2026-10-14，C @paher-din 的PR #55现场方案已通过A实审；A归档/政策说明修正与原入口21/21验证已交b64ebe1。负责人现已明确批准§9.3现场新增TLS/签名/五密码及严格单Node客户端信任，交C连续执行C-ENTRY-04～07，见§10。实际正常HTTPS/真实C Job链仍待C执行回交，UI浏览器信任/验收单列未授权/未执行。
 
 ## 1. 目标、依据与范围
 
@@ -314,7 +314,7 @@ C沿已批准的原24表fresh-only initializer新建并保留合成库，i0-host
 
 | 编号 | A已交/已核 | 完成仍缺 / 下一负责人 |
 | --- | --- | --- |
-| H-01 | 原正常HTTPS宿主/会话/CSRF实现、固定执行包；C具体材料方案已实审，独立5登录/授权验证通过 | 精确凭据授权→C实际HTTPS入口/账号领取→UI真实信任与页面验收 |
+| H-01 | 原正常HTTPS宿主/会话/CSRF实现、固定执行包；C具体材料方案已实审，独立5登录/授权验证通过 | 精确凭据授权已取得→C实际HTTPS入口/账号领取→UI真实信任与页面验收 |
 | H-02 | 原只读Assignment/bootstrap与空态边界已交，不创建Attempt | C正常教师流程产生合法本人Assignment并回交深链；UI读取 |
 | H-03 | 受控generationFile及无副作用bootstrap来源明确；C认证/指纹材料可核 | C运行时重核当前代际、正常宿主首次创建/恢复重读；UI真实恢复 |
 | H-04 | 原自动消费者实现/既有验证；C原节点证据摘要/指纹已实审 | C正常HTTPS宿主与当前C1组合，证明仅轮询仍自动消费；A核原Job/Run |
@@ -324,3 +324,30 @@ C沿已批准的原24表fresh-only initializer新建并保留合成库，i0-host
 “已交/已核”不等于完整H完成，准备与独立合成验证不替代正常宿主的真实链。B模型不阻塞本批。
 
 本批交付复查：node tools/a0-review/check.mjs 为65份文档/955内链/errors=[]；git diff --check通过。10份原Git blob摘要逐项匹配，固定源至当前HEAD的teaching/student代码差异为空。新增3份JSON可解析，验证脚本Node24.21.0语法有效；仅本任务文件纳入提交，无公开现场秘密。
+
+## 10. 精确授权已取得：交 C 连续执行（2026-10-14）
+
+负责人对固定[b64ebe1的§9.3范围](https://github.com/paher-din/XunJie/blob/b64ebe15007e4b209e3e5fd208f7ecc1389c2fd1/docs/tasks/I0_HOST_ENTRY_PREPARATION.md#93-待负责人授权的可执行精确方案)明确答复，原文：“批准该精确范围，交 C 连续执行”。这是新增现场凭据与单Node客户端信任的精确许可；§9中“待授权”保留审批前历史，本节为当前状态。原24表合成初始化/原Job联调沿既有授权，不重复申请。
+
+执行及新增材料保管人为C @paher-din，在PAHER/WSL Ubuntu原root身份完成：独占新目录 /opt/xunjie-runner/tests/i0-entry-20261013-01（0700）；server.key.pem/server.cert.pem/signing-secret.txt/initializer.json/i0-host.json为0600、不覆盖。原OpenSSL生成30天RSA2048/SHA256自签server TLS，CA:false/serverAuth、SAN 127.0.0.1/localhost/::1；Node随机32字节base64url签名、五账号各24字节base64url密码。秘密仅本机受控文件/内存使用，不进CLI参数/Git/公开日志，不复制到新跨机通道。
+
+C沿原24表fresh-only initializer生成并保留新库，配置使用实际databaseFile、正确LF2 student/dist及原generationFile/connectionFile/originalEvidence/application key/pinned known_hosts。固定运行源仍9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77，Node24.21.0；Origin=https://127.0.0.1:3443、PORT=3443、bind127.0.0.1、consumerIntervalMs=250。Node客户端只对此次证书显式ca信任，rejectUnauthorized=true、默认主机核验；不改系统或浏览器证书库。
+
+### 10.1 C 连续执行及出口
+
+| 顺序 | C须完成 | 去敏回交/判据 |
+| --- | --- | --- |
+| C-ENTRY-04 | 核当前受控条件，按上述许可生成新增材料、原初始化器保留新库；原只读预检核当前指纹/validation/代际/原identity及证书SAN/期限/key配对 | 原配置/新库来源、模式/属主、证书公开指纹、当前预检输出及失败记录，不交秘密值 |
+| C-ENTRY-05 | 启动原正常HTTPS main/real dist，严格Node HTTPS验证页面/资产、匿名拒绝、五账号登录与两课程归属 | 精确Origin/端口、启动命令/本人进程/运行窗口，正常会话与Origin/CSRF拒绝去敏证据 |
+| C-ENTRY-06 | 按[I0-A/C §17.5](I0_A_C_HANDOFF.md#175-真实-https-公共接口执行清单)原20项链逐项执行；只通过公共接口发起并轮询，由原消费者处理原Job | H-01～H-06、原Assignment/Attempt/Snapshot/Job/Run、三版本/代际、重放/冲突/裁剪/停止事实及实际统计；不手工processJob、不改造执行协议 |
+| C-ENTRY-07 | 保留库/受控原输出，交可复核去敏JSON/摘要和UI操作材料，澄清原P3日志计数 | 正常本人Assignment入口、原证据来源/摘要、当前运行窗口/停止方式；账号仅沿本机既有受控方式领取，公开评论不附秘密 |
+
+目录/目标已存在、端口占用、当前认证/代际/原identity不一致、TLS严格验证失败或原初始化/业务失败时，保存事实并停止依赖步骤，回交具体错误/归属。不得删除/覆盖、替换路径、随机补代际、放宽校验或启动节点维护来继续；不受影响的非秘密整理可以继续。结束或失败按原正常宿主关闭/停止规则收束本人应用进程，保留停止未确认为cancelling/outcome_unknown，不强改Job状态、不广泛kill其他服务。未执行写未执行，失败写失败，不用历史C重验/合成transport替代本次。
+
+### 10.2 A/UI 与保留门禁
+
+A已实审并提供具体授权，继续承担身份/权限/宿主/契约与集成质量：C真实回交后核原ID/原输出与统计，按H回交并修A模块缺陷。当前授权不等于C已接收或执行，实际现场结果仍待C确认/回交，A没有自行访问PAHER执行。
+
+UI @wubq511 与C并行明确实际同机访问位置、账号安全领取和具体浏览器信任方案；系统CA/浏览器信任、安装工具、跨机通道仍未授权，Node通过不等于浏览器通过。既有SSH凭据、.env/CI、旧库迁移/删除、节点维护、35表/HDL/ALU、真实模型及生产部署不在本许可中。PR #53/#55不自动合并，#30/#22仍Open；产品/分工基线及MVP_SPEC §10待授权维护者汇总。
+
+本批仅授权/执行交接文档：静态复查65份文档/957内链/errors=[]，git diff --check通过；业务、现场初始化/HTTPS/节点测试未执行，原21/21结果不重复计数。
