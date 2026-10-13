@@ -2,7 +2,7 @@
 
 日期：2026-10-13（Asia/Shanghai）。任务编号：B3。主责：B。关联 [Issue #42](https://github.com/paher-din/XunJie/issues/42)、[P3 总协调 #37](https://github.com/paher-din/XunJie/issues/37)、[A4 #41](https://github.com/paher-din/XunJie/issues/41) 与 [C4 #43](https://github.com/paher-din/XunJie/issues/43)。
 
-状态：**独立合成核心、固定 fixture 和 Issue 评论指定的 A4/B2 接缝复核已实现并通过专项验证；已从最新 `main`（`cde69cc`，A4 #49 / C4 #47 / DL-C #48 / PR #46 等已合入）重放并通过，真实输入链与后置验收仍待办。** 本分支原显式堆叠于 A4 PR #49 固定 head；#49 已合入 `main`，本批已 rebase 到 `main` 顶端（`9aa4e83`）并复验。Issue #42 评论新增的 B2 可选状态读取接缝复核已纳入并留下实际命令/结果。
+状态：**独立合成核心、固定 fixture、Issue 评论指定的 A4/B2 接缝复核、一次固定合成材料的真实 DeepSeek 候选及教师角色人工语义审阅均已实现或验证通过；已从最新 `main`（`cde69cc`，A4 #49 / C4 #47 / DL-C #48 / PR #46 等已合入）重放并通过。C2/C3/C4 实际引用链、A5 消费交接及 P5 浏览器/真人验收仍待后续批次。** 本分支原显式堆叠于 A4 PR #49 固定 head；#49 已合入 `main`，本批已 rebase 到 `main` 顶端（`9aa4e83`）并复验。Issue #42 评论新增的 B2 可选状态读取接缝复核已纳入并留下实际命令/结果。
 
 ## 1. 基线、依据与边界
 
@@ -126,9 +126,9 @@ B3 请求由受信宿主提供：A4 原 `job`/`binding`、固定活动的三条�
 
 - A4 PR #49 合入后的重放已于 2026-10-13 完成（见 §6.5）：从 `main` 顶端 rebase、typecheck 与完整测试套件复验通过，A4 `80a2721` 接口差异经 typecheck 核无漂移。
 - 接 C2/C3/C4 的实际原始分析/提交/覆盖引用，验证 E-B3-02～07 对真实引用语义的 A4 接纳；当前只有 E-B3-01 经真实 A4 事务接纳，其余为严格合成策略/反例。
-- 真实 DeepSeek 候选、actual/unknown usage 和失败证据需新的 B3 调用范围与合成数据/费用授权；本批没有沿用 #45 已消费授权。
-- 固定工程样例的严重语义问题仍需教师/项目推进者人工审阅；浏览器、真人反馈与教学收益未执行。
-- 待授权维护者汇总：可记录“B3 合成核心、固定 fixture 和 A4/B2 消费接缝复核已完成，并从最新 `main`（A4 #49 已合入）重放通过；真实输入链、真实模型/人工语义和 UI/真人仍未验收”。本文不直接修改产品/计划基线。
+- 一次固定合成材料的真实 DeepSeek 候选、actual usage 和教师角色人工语义审阅已于 2026-10-13 完成，见 §6.8～6.9；provider 失败、取消、预算、过时和 unknown usage 仍由合成自动测试覆盖，不把本次单次成功调用扩大成所有真实故障路径均已外部触发。
+- 与 A5 的反馈草稿实际消费交接尚未执行；浏览器 displayed、真人学生接棒和教学收益等待 UI/P5 与真实参与者条件，不在本批创建替代 UI 或代签。
+- 待授权维护者汇总：可记录“B3 合成核心、固定 fixture、A4/B2 消费接缝、一次固定合成材料的真实 DeepSeek 候选及教师角色人工语义审阅已完成，并从最新 `main`（A4 #49 已合入）重放通过；C2/C3/C4 实际引用链、A5 消费交接和 UI/P5 真人验收仍未完成”。本文不直接修改产品/计划基线。
 
 ### 6.5 A4 #49 合入后的重放（2026-10-13）
 
@@ -180,7 +180,7 @@ A4 PR #49（含 C4 #47、DL-C #48）已合入上游 `main`（`1cd43f8`）。本�
 
 `real-model-support.ts` 新增独立 `XUNJIE_B3_REAL_MODEL=approved-synthetic` 门禁，与 P2 历史开关分离；`learner-analysis.test.ts` 新增默认跳过的真实候选入口。入口走真实 A4 queue/claim/current/complete 事务、固定合成 snapshot、B3 严格 schema 和真实 AI SDK DeepSeek provider，并只把脱敏 HTTP 元数据、候选 body、调用次数、usage、版本及接纳结果写到权限收紧的临时证据文件。未设置独立授权或安全 `DEEPSEEK_API_KEY` 时在网络前失败。
 
-当前受控进程已确认 Node 24.21.0，但 `DEEPSEEK_API_KEY` 和 `XUNJIE_B3_REAL_MODEL` 均未设置，因此本批真实请求数仍为 0。代码与离线门禁验证完成后，由持有凭据的负责人只运行一次下述名称匹配测试；失败批次不自动重跑，先保存并回传证据路径与完整测试摘要：
+入口实现时的受控进程已确认 Node 24.21.0，但当时 `DEEPSEEK_API_KEY` 和 `XUNJIE_B3_REAL_MODEL` 均未设置，因此该阶段真实请求数为 0。代码与离线门禁验证完成后，由持有凭据的负责人只运行一次下述名称匹配测试；实际执行结果见 §6.9：
 
 ```powershell
 $env:XUNJIE_B3_REAL_MODEL = 'approved-synthetic'
@@ -193,7 +193,7 @@ node --test --test-name-pattern='B3 authorized real-model' server/tutoring/test/
 
 本次调用授权仍不足以发送真实学生或教师私有材料。PRD §8/§9 与 MVP_SPEC §5 明确开发仅用合成数据、真实用户项由真人完成；发送真实材料前仍需确定材料来源、参与者同意/告知、去标识结果、教师/A/C 的访问与处理范围以及 DeepSeek 外发范围。当前仓库也没有 B3 的浏览器界面；A4 只有服务端 learner-state/review API，B 不得越权创建替代 UI。因此浏览器 displayed、真人教师决定、学生接棒及教学效果观察必须由 P5 实际 UI、获准账号和真实参与者完成，当前只能保留验收表，不能由本测试代签或宣称通过。
 
-### 6.9 B3 真实模型执行结果与人工审阅待办（2026-10-13）
+### 6.9 B3 真实模型执行与人工审阅结果（2026-10-13）
 
 项目负责人按 §6.8 的固定边界使用 Node 24.21.0 完成一次真实 DeepSeek 调用。临时证据记录的源码提交为 `84572022ea2bbf2b151219846313ffb5b74a0eb5`；执行时 `sourceDirty=true`，执行后仓库状态复核只发现既有未跟踪 `.trae/`，未将其纳入 B3 交付。证据仍明确标记 `synthetic-only`、`realStudentOrTeacherMaterial=false`，因此本次结果不能表述为真实学生或教师私有材料验证。
 
