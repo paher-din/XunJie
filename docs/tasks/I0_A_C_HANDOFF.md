@@ -487,3 +487,43 @@ TDD红轮保留：bootstrap/初始化模块缺失、静态路由缺失、自动�
 H回交沿 [#30同一条A回复](https://github.com/paher-din/XunJie/issues/30#issuecomment-6139828933) 补充最新可运行代码/PR、精确命令与实际结果，保留初始材料核查的历史范围。交付时回读该卡仍只有UI与A评论，未收到C当前节点证据，不能写成已联调。下一步 C 回交获准当前节点的受控连接/代际JSON、当前固定源码/profile/validation和重验结果；A核实后进行对应真实联调，UI/Robert按 H能力接正常身份/分配/首次代际及保存/运行。无需等待 B 模型，读取/保存也不统一等待 HDL。
 
 PR保持Draft，未合并/部署；#30/#22保持Open。真实TLS/浏览器/当前C1端到端仍未执行，产品基线/bootstrap契约及MVP§10汇总待授权维护者；不改受保护文档。主副本既有修改与本工作树无关原日志均保留。
+
+## 15. C 回交接收与逐 H 核对（2026-10-13）
+
+A 已收到并核对 [C 在 #30 的回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6142231833)，来源更新时间 2026-10-13T09:10:58Z；本文 §14 的“交付时未收到”保留为先前时点事实。本次仅更新本人交接记录，不修改共享契约、代码、schema、配置或凭据；依 §11 完成同一分支和 #30 的交付更新。
+
+**接收结论：材料回交已接收，当前真实节点联调条件仍未齐。** C 本次在 PAHER 实读 Ubuntu/WSL2 为 Stopped、原获准 loopback TCP 不可达；这是 C 回交的连接失败事实，不是 A 本机复测，也不是节点返回 ready=false。当前部署 SHA、readiness/profile/validation/recoveryGeneration、原 RunIdentity 查询和 generationFile 均未取得。跨机 localhost 不能替代 PAHER 目标；本次不启动/维护节点、不新增网络或凭据分发。
+
+| H / 能力 | A 核材料结论 | 当前验证边界 / 下一责任 |
+| --- | --- | --- |
+| H-01 正常宿主、身份与 HTTPS | A 的 PR #53 已交宿主、真实 Session/CSRF、TLS 配置与启动方式；C 已给现有连接来源 | 尚无可核实正常 HTTPS URL、现有 TLS/签名配置及账号使用交接。A 与环境维护者落实已有获准受控材料，UI 再验真实浏览器登录；启动模板不是可访问入口 |
+| H-02 本人分配与空态 | A §13.2 的 bootstrap 本人/跨学生/匿名/暂停合成 HTTP 已验证；C 没有另交当前分配实读 | UI 可按原 AssignmentView 与 bootstrap 材料准备接线；正常入口具备后验证实际登录、分配引用及空态，不从 GET 创建 Attempt |
+| H-03 首次代际与恢复 | C 确认 controller 当前代际 → 受认证响应 → A 受控 generationFile → 授权 bootstrap；已有 Attempt 走 recovery 重读 | 尚缺当前受认证实读及 generationFile。C 在获准运行窗口回交当前值/来源，A 核实后引用；不填历史、测试、随机值或旧 Job |
+| H-04 原 Job 与当前节点 | A 原消费者/关停对账已合成验证；C 已给固定源码/profile/历史验收与只读命令 | 旧 validation 与候选 sourceHash 不同，当前最新指纹重验/登记未执行。C/负责人确定原获准节点运行窗口，C 回交当前部署与完整 readiness/validation/profile；A 再联调原 worker，不用旧 ready 放行 |
+| H-05 版本、暂停、恢复 | C 的 1/0/0 → 2/1/0 → 3/2/0、ACK 后 GET head 与暂停规则符合 A 当前接线材料 | C 本次仅领域函数合成，HTTP/SQLite 复验因依赖加载失败；A §13 合成接口/事务结果独立保留。UI 不推算 attemptRevision；TECH §4.3 差异待授权维护者汇总 |
+| H-06 分批公开样例 | C 已交读取/保存/快照、原运行/停止/未知、历史/产物模板及函数层样例 | 本次 C 未采集当前 HTTP/真实节点/UI 输出。UI 可按材料分批准备，A/C 在真实条件具备后补对应链路；缺失正文不补写、不自动下载/写回、不换键重跑 |
+
+### 15.1 独立核查与测试归属
+
+A 使用固定 main cde69ccbd763c3c0ab381a809b750b951f195f64 的 Git blob 原字节，按 [fingerprint.ts](../../apps/teaching/runner/fingerprint.ts) 的排序、逐文件 SHA-256 与 JSON 摘要规则独立计算 34 项（含两份 runner 契约），sourceHash 为：
+
+~~~text
+7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852
+~~~
+
+与 C 回交一致；不对 Windows 工作副本 CRLF 求部署指纹。完整 fingerprint 还依赖当前节点 kernel/Node/Engine/profile，本次未取得，离线 sourceHash 一致不表示当前节点已部署或已通过验收。旧 c-validation sourceHash 为 5ff1d2257ec5164e3e6deef503df44c2c55362dd240e5e2a44dfb4e663278d6f，不能替代当前验收。
+
+执行 git diff --stat 26e5b840270cbf489cb21e23d1d4ee2f3ad30998 cde69cc -- apps/teaching/runner apps/teaching/server/workspace apps/teaching/server/records，输出为空，确认该 C 写集与历史记录无源码差异；不是当前节点部署证明。对 C 的合成 report 文本 TOTAL、4、11、51（制表符分隔、末尾 LF）独立计算 UTF-8 字节为14，SHA-256 为 a712e934544c90229ac74e3f1dd495ff23209961c5bc11430d46e6da233ed335，与回交一致；不将该 collector 样例说成 HTTP/真实节点输出。
+
+已读 [readRuntime](../../apps/teaching/server/records/runner.ts)、[产物投影](../../apps/teaching/server/workspace/result-files.ts)。H-06 外层 /files 的 status 为 available、redacted、unavailable；available.files 逐项 status 才是 complete、missing、incomplete。私有 check 返回 redacted；无确认结果返回 unavailable。§7 中各状态的处理保留，但 UI 应按这两层解析，available 不保证每项完整。正式批准白名单仍为 report.txt，C 的 missing.txt/directory 只作收集器反例。
+
+C 本次测试归属保留：第一组20总/19通过/1跳过，records 4/4；第三组7 TAP 条目/3通过/3文件加载失败/1跳过（缺 zod），随后原 lock 安装因 Node launcher/Windows MSVC 条件失败。不能标为业务断言通过。A §13 已在独立 Linux Node24.21.0 环境按原 lock 通过 typecheck/build 及394总/382通过/12跳过全量，覆盖同一 C 源码；这说明 A 验证环境的组合结果，不覆盖 C 此次本机失败，不证明 PAHER 当前节点或 HTTPS 可用。纯材料增量不重复全套业务测试。
+
+### 15.2 分批推进与剩余条件
+
+1. A 在原 #30 回复按本节回交，PR #53 保持 Draft；UI/Robert 可立即核代码、响应层级、权威重读和分配入口材料，正常入口具备后先验身份/读取/保存，再验运行/停止/产物。
+2. C/负责人落实原批准节点的运行窗口；C 在可达后回交当前部署 SHA、受认证 readiness/profile/validation、最新指纹重验/登记结果及受控 generationFile 的使用位置。A 仅在来源核实后接入，不承担未经授权节点维护。
+3. A 与环境维护者落实原获准正常 HTTPS/签名/SSH 配置引用及合成账号安全交接；公开回复只放命令、去敏样例和状态，不放 key/cookie/CSRF/密码。当前缺口不推给 UI 伪造入口。
+4. 当前真实 C1/HTTPS/浏览器联调仍未执行；#30/#22 保持 Open，完整 AC/NFR/真人/教学验收保留。TECH §4.3/bootstrap 及 MVP §10 待授权维护者汇总，不修改受保护基线。
+
+本次材料增量验证：node tools/a0-review/check.mjs 为64份文档/924条内链/errors=[]；git diff --check 通过。写集仅本文，业务测试、节点、TLS/浏览器本次均未执行；既有业务验证仍按 §13 的固定源码和范围报告。
