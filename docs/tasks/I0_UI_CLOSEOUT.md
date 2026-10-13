@@ -2,7 +2,7 @@
 
 日期：2026-10-13（Asia/Shanghai）。负责角色：前端接入成员 Robert；A 保留业务宿主与集成协调，C 保留作品/执行服务，B 保留真实模型与教学语义职责。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。
 
-**结论：** 十张本地 ticket 均有准备范围交付记录。负责人已批准 main 整合、内容保留式规范消冲突、组合验证、普通推送/Draft PR 与成员交接发布，最新执行结果集中在第 8 节；第 1～7 节保留首次核查与方案来源。真实前端接线、真实服务/节点/模型、完整 AC/NFR 与教学效果仍未验收，#30 保持 Open。
+**结论：** 十张本地 ticket 均有准备范围交付记录。负责人已批准 main 整合、内容保留式规范消冲突、组合验证、普通推送/Draft PR 与成员交接发布，并明确批准 PR #50 合并；已合入 main，最新执行结果集中在第 8 节；第 1～7 节保留首次核查与方案来源。真实前端接线、真实服务/节点/模型、完整 AC/NFR 与教学效果仍未验收，#30/#22 保持 Open。
 
 ## 1. 授权、阅读与写集
 
@@ -195,3 +195,9 @@ CI=1 XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_E2E_PREP_PORT=5661 XUNJIE_E2E_REAL
 合并评估时 origin/main 仍为 `37849f4`，PR #50 Open/Draft、MERGEABLE/CLEAN，源码相对已验证 df7ce3c 无差异。GitHub reviews/status checks 均为空；分支规则查询未返回有效规则，不冒称 hosted CI 或团队已签认。四项问题已修复并完成独立增量复审，238 单测/104 Chrome/typecheck/build/文档通过，本批准备工程可作为协作基线合入，无需等待 H 回交或真实产品完成。
 
 Robert 随后明确回复“确认”，批准将 PR #50 转为可审查状态、以 merge commit 合入 main，保留 UI 分支和 #30/#22。此次仅补本人任务记录；不修改受保护基线，不关闭父卡、部署或替代真实验收。合并前后续提交仅为记录同步，应用源码/测试保持 df7ce3c 已验证内容；实际 merge SHA 和远端/评论回读在下文追加。
+
+实际执行：2026-10-13 11:46（Asia/Shanghai），PR #50 已转为 Ready 并以 merge commit 合入 main，GitHub 回读为 Closed/Merged、draft=false。合并提交 `69a26d513f7c58027f4bf23381a70ed915609fe7`，父提交分别为原 main `37849f4fa2fd4cc1e058fb8559b33a89a60ceed2` 与 PR head `8fdea7e33ef73e0ea105ebab604ee224e25be029`。fetch 后 origin/main 为该提交；合并树与 PR head 均为 `702f5e87e4e27c30cd52e96a9ddc0fab6d9eb037`，没有额外应用差异。远端 `i0/ui-frontend` 保留于 PR head，本地 main 已从原 `0afd008` 正常快进；没有重置、强推或删除分支。
+
+已更新同一条 #30 协作评论为实际合并结果，长期收尾入口改为 main。A/C 更新 main 后在各自模块任务分支继续 H 回交；UI 后续接线仍按已有分工与批准写集实施。#30/#22 保持 Open，无部署；真实服务、节点、模型、完整 AC/NFR、真人与教学效果未执行。应用源码/测试与 df7ce3c 的验证内容保持一致，合并后只同步 README 与本文，不重复跑已通过的应用套件。记录同步提交的文档检查、空白检查、远端与评论回读结果在交付前核对。
+
+合并后记录验证：`node tools/a0-review/check.mjs` 55 文档/753 内链、errors=[]；`git diff --check` 退出 0；`git diff df7ce3c -- apps/student` 无输出。仅 README 与本文两文件在写集。#30 协作评论已与更新正文逐字回读一致，#30/#22 的 REST 状态均 Open。记录同步普通提交/推送至 main，交付核对以远端 main 与本地 HEAD 相同、两个文档 blob 相同、已跟踪工作区无残留为判据；保留既有未跟踪 .zcodeignore。
