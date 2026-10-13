@@ -234,6 +234,14 @@
     "specOpenFindings": 0,
     "standardsInitialP3": 1,
     "correction": "Use project lead instead of chat user identity for recorded authorization",
-    "correctionRecheck": "pending"
+    "correctionRecheck": {
+      "fixedFrom": "e15e8659d66b01a8cca5fa048dfdcb1efffbf231",
+      "fixedTo": "1942e9a0b7aa86ea9191504363e03453f9fbf1e9",
+      "standardsOriginalP3": "closed",
+      "standardsOpenFindings": 0,
+      "standardsNewFindings": 0,
+      "specOpenOrNewFindings": 0,
+      "mode": "independent read-only agents; no business rerun"
+    }
   }
 }
