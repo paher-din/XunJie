@@ -25,4 +25,24 @@ CREATE TABLE workspace_process_records (
  capture_revision INTEGER NOT NULL CHECK(capture_revision>=0), kind TEXT NOT NULL CHECK(kind IN ('sync','coverage')),
  record_json TEXT NOT NULL CHECK(json_valid(record_json)));
 CREATE INDEX process_attempt ON workspace_process_records(attempt_id);
+CREATE TABLE workspace_submissions (
+ submission_id TEXT PRIMARY KEY NOT NULL, attempt_id TEXT NOT NULL REFERENCES attempts(attempt_id),
+ course_id TEXT NOT NULL REFERENCES courses(id), student_id TEXT NOT NULL REFERENCES users(id),
+ snapshot_id TEXT NOT NULL REFERENCES artifact_snapshots(snapshot_id),
+ workspace_revision INTEGER NOT NULL CHECK(workspace_revision>=0), attempt_revision INTEGER NOT NULL CHECK(attempt_revision>0),
+ receipt_id TEXT NOT NULL REFERENCES command_receipts(receipt_id), server_seq INTEGER NOT NULL REFERENCES audit_events(server_seq),
+ recovery_generation TEXT NOT NULL, submitted_at_ms INTEGER NOT NULL,
+ submission_json TEXT NOT NULL CHECK(json_valid(submission_json)));
+CREATE INDEX submissions_attempt ON workspace_submissions(attempt_id,server_seq);
+CREATE TABLE workspace_reopen_grants (
+ grant_id TEXT PRIMARY KEY NOT NULL, attempt_id TEXT NOT NULL REFERENCES attempts(attempt_id),
+ submission_id TEXT NOT NULL REFERENCES workspace_submissions(submission_id),
+ state TEXT NOT NULL CHECK(state IN ('valid','consumed','superseded')),
+ attempt_revision INTEGER NOT NULL CHECK(attempt_revision>0), granted_by TEXT NOT NULL REFERENCES users(id),
+ reason TEXT NOT NULL, granted_at_ms INTEGER NOT NULL, receipt_id TEXT NOT NULL REFERENCES command_receipts(receipt_id),
+ consumed_receipt_id TEXT REFERENCES command_receipts(receipt_id), consumed_at_ms INTEGER,
+ grant_json TEXT NOT NULL CHECK(json_valid(grant_json)),
+ CHECK((consumed_receipt_id IS NULL)=(consumed_at_ms IS NULL)),
+ CHECK((state='consumed')=(consumed_receipt_id IS NOT NULL)));
+CREATE INDEX reopen_grants_attempt ON workspace_reopen_grants(attempt_id,submission_id);
 `;

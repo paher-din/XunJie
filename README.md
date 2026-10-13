@@ -32,6 +32,14 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 
 2026-10-12，剩余验证入口 [PR #36](https://github.com/paher-din/XunJie/pull/36) 已合入 main（`46617a2`），本次 P2 工程审查通过，[#24](https://github.com/paher-din/XunJie/issues/24)、B1 #11、B2 #26 已关闭；全部 B 侧未完成项由 [#45](https://github.com/paher-din/XunJie/issues/45) 继续承担。typecheck/build 与 49 项专项验证通过，2 项真实模型测试按门禁跳过；真实调用及人工语义仍待完成，B 交付后由负责人通知复审，不自动跟进，见 [G2 第 18.4 节](docs/tasks/G2_OVERALL_COORDINATION.md#184-已完成收口与最终交付)。
 
+2026-10-12，P3 的 [C4 #43](https://github.com/paher-din/XunJie/issues/43) 已由 C 在分支 `codex/c4-submissions-recovery`（`7063fd2`）交付服务端实现并建立 [PR #47](https://github.com/paher-din/XunJie/pull/47)，尚未合并，#43 保持 Open。改动全在 C 属，A 属与 B 属文件零改动；新增两张表只写 C 属合成 schema，属红线内的 schema 追加，已在任务稿与 PR 正文明示并请负责人复核。任务稿第 6 节的四项解释与跨属提案待负责人裁决，A4/A5 实际路由接入后的联合验证、真实浏览器/执行节点/备份恢复均未执行，分层结果见 [C4 第 8 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#8-实现记录)。
+
+2026-10-12，项目负责人批准 C4 的合成库 schema 追加与任务稿第 6 节的四项解释与跨属提案，[PR #47](https://github.com/paher-din/XunJie/pull/47) 据此继续审查，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。批准按任务稿原文字面，只覆盖已实现的读法与 C 属两张合成表，不覆盖真实数据库建表迁移与生产部署，也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案。批准不改动任何代码。四条读法若需写回 PRD/MVP_SPEC/TECH_DESIGN，按文档优先规则交由授权维护者汇总，当前状态为待授权维护者汇总；浏览器、真人师生、真实模型与完整 G3 的验收条件不变，逐项落地含义见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
+
+2026-10-12，项目负责人进一步授权把 C4 的三条已批准读法写回产品基线，汇总已完成。核对后 [PRD](docs/product/PRD.md) 与 [MVP_SPEC](docs/product/MVP_SPEC.md) 无需改动，M-07 原文「仅对课程明确要求的目标补充短解释、预测或变式检查」本身已是该读法，缺的是技术侧活动版本字段而非产品要求；实际只在 [TECH_DESIGN](docs/product/TECH_DESIGN.md) 三处既有行与既有段内追加文字：controls 行的 `resume_revision` 授权用途、submissions 行的说明与检查引用校验范围及活动版本字段缺口、以及「失效按用途」一段中暂停与提交/重开的取消范围拆分。未改名任何标题、未增删任何路由、未放宽任何验收，文档检查退出码 0 且各项计数与改动前一致。授权范围仅限这三条读法；「分配暂停使已发放的重开许可失效、恢复分配不使其复活」一条不在其中，仍只作为交 A5/UI 的事实保留在任务稿，未写入基线。
+
+2026-10-13，项目负责人一并授权 C4 审查留下的两项裁决：从 TECH_DESIGN 第 7.2.1 节该句删去「提交」在授权范围内、不回退；「分配暂停使已发放的重开许可失效、恢复分配不使其复活」写入产品基线，已落在第 5 节 reopen 行。授权按字面只覆盖这两项，不含合并任何 PR、不含修改 #48（DL-C）分支，也不改变任何未执行项。#47 与 #48 的合成库表数撞点已实测并记录，顺序建议先合 #47 再合 #48，合并仍由负责人执行。
+
 ## 首版范围
 
 首发为 C 程序设计/C、函数/数组/指针先备及指定教材；学生只在 Web 工作区完成 TextScope Core（stats/find/top）→教师反馈→Report，不需要本地工具链或终端。后台 Linux/容器归 C，UI 由成员最后交付。DeepSeek/deepseek-flash 配置、合成开发/预置账号/私有试点/90 天复核不自动删除及数据责任已批准；预算金额和投入/交付日期不入文档，原外部项目门槛仅作参考。教材 PDF 本次经负责人确认公开分发授权后纳入仓库，MVP 资料导入仍按 TXT/Markdown 范围。
@@ -55,6 +63,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [G1 总协调与作品链交付跟踪](docs/tasks/G1_OVERALL_COORDINATION.md) | 服务端交付/合并/分层证据与 #9 行政收口；原完整 G1 条件在 #22、时钟问题在 #23 保留，产品基线未改；模块仍由 A/B/C 负责 |
 | [G2 / P2 总协调与教学支持交付跟踪](docs/tasks/G2_OVERALL_COORDINATION.md) | 教师生成/采用、学生辅导/取消与消息采集两条链的依赖、交接和分层验收；不代做 A3/B2/C3 |
 | [G3 / P3 总协调、数字逻辑增量与反馈闭环](docs/tasks/G3_OVERALL_COORDINATION.md) | P2 遗留、P3 任务依赖/评审、两条集成链与分层验收；不代做 A/B/C/UI，原预交付和实施门禁保留 |
+| [C4 固定提交、学生修订与闭环恢复](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md) | 学生固定提交、教师复核阶段推进、重开许可与学生本人 `resume_revision`、闭环恢复读取的服务端实现与 AC-06/08/09/12 确定性验证；代码改动全在 C 属，新增两表只写 C 属合成 schema，不迁移既有库。合成 schema 与第 6 节四项解释/跨属提案已于 2026-10-12 经负责人批准，三条读法已写回 TECH_DESIGN；交 A5 的事务接缝与恢复反馈接缝已给出，真实浏览器/执行节点/备份恢复与 A4/A5 联合验证未执行 |
 | [C3 教学消息、回执、采集控制与作业失效](docs/tasks/C3_TEACHING_MESSAGES_RECEIPTS.md) | 两轮审查问题已修复（首轮 14 项 + PR #33 的 5 项 P2/9 项 P3），C3 专项 20/20、C3+B1 组合 67/67 通过；Windows 全量 212 项中唯一失败是 Linux-only `RunControl`，属 #23 既有环境限制，完整 G2/B2/UI 未验收。实现与交接见第 8～9 节，两轮修复与真实验证见第 11、13 节 |
 | [C1 专用隔离执行与可信检查](docs/tasks/C1_ISOLATED_RUNNER.md) | 专用 KVM Ubuntu VM、受认证原 ID 控制/取消/恢复、固定 C17 profile、Core/Report 可信检查、全部限额与真实 ready；节点验收已通过，业务与 UI 接入属后续任务 |
 | [C2 工作区、快照与基础作业](docs/tasks/C2_WORKSPACE_JOBS.md) | 完整服务端工作区/快照/基础作业、A1/A2 同事务与批准新二十二表合成库、C1 原 ID 运行/检查/产物；四项审查修复与作者32项含节点组合见第13节，最新合并/组合验证见G1记录 |
@@ -274,6 +283,32 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 
 2026-10-12，P3 总协调 #37 与七个 A/B/C 执行 Issue #38～44 已发布并核对，任务/依赖和分层关闭条件见各正文；UI 分批接入与 DL-E2E 由总任务跟踪既定责任。原 P2/模型/UI/环境 Issue 未修改或关闭，发布不算应用验收；详细记录见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)。
 
+### C4 固定提交、学生修订与闭环恢复
+
+2026-10-12，C4 已在分支 `codex/c4-submissions-recovery` 交付 [#43](https://github.com/paher-din/XunJie/issues/43) 的服务端实现：学生固定提交、教师复核阶段推进、重开许可与学生本人主动 `resume_revision`、以及闭环恢复读取。契约、领域计划、存储、命令与只读投影全部落在 C 属的 [contracts/workspace](apps/teaching/contracts/workspace/) 与 [server/workspace](apps/teaching/server/workspace/)，A 属与 B 属文件零改动。新增的 `workspace_submissions` 与 `workspace_reopen_grants` 两张表写进 C 属 `workspaceSchema` 字符串，延续 C2/C3 已批准的做法，只新建临时合成库，不迁移既有库，也不做真实数据库建表或备份操作。交 A5 的接缝是 `transitionAttemptInTransaction`、`planReopenGrant`/`writeReopenGrant` 与恢复读取中的反馈接缝；C4 不为教师复核与重开发放发布替代产品路由，正式反馈仍归 A5。
+
+在已批准 Node 24.21.0 工具环境、`apps/teaching` 目录执行，只用临时合成库，不连接真实执行节点、真实模型或真实账号：
+
+```bash
+npm ci --no-audit --no-fund
+npm run typecheck
+npm test
+node --test server/workspace/submissions.test.ts
+```
+
+2026-10-12，验证结果为服务端确定性验证通过、其余分层未执行。C4 专项 10/10 通过；全工程 typecheck 与 build 通过；完整套件 274 项中 264 通过、1 失败、9 跳过，同一命令在基线 37849f4 的独立工作树实测 264 项中 254 通过、1 失败、9 跳过，即净增 10 项测试与 10 项通过，失败数与跳过数不变。唯一失败项在两侧完全相同，是 `review.test.ts` 经 `control.ts` 要求 Linux 的既有平台失败，C4 未修改这两个文件；9 项跳过全部来自既有的平台与环境门，C4 新增测试文件不含任何跳过。真实浏览器与 UI 接入、真人教师与学生、真实模型语义、真实执行节点掉线与迟到结果对账、完整备份恢复与实际 RPO/RTO、真实数据库建表迁移与生产部署均未执行；A4/A5 实际路由接入后的联合验证同样未执行，本任务只用测试支撑中模拟 A5 的教师路由验证接缝形状。任务稿第 6 节的四项解释与跨属提案仍待负责人确认，未获确认前不是已批准契约。实际代码位置、命令、原始结果、验证中修正的两处缺陷与未执行清单见 [C4 第 8 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#8-实现记录)。
+
+2026-10-12，C4 已按普通推送交付分支 `codex/c4-submissions-recovery`（`7063fd2`）并建立 [PR #47](https://github.com/paher-din/XunJie/pull/47)，尚未合并，[#43](https://github.com/paher-din/XunJie/issues/43) 保持 Open。合并由负责人执行，本任务不代签、不自行合并，也不把 PR 建立当作应用验收。
+
+2026-10-12，项目负责人批准上文请其复核的合成库 schema 追加与任务稿第 6 节的四项解释与跨属提案，据此收口：两张表保留在 C 属 `workspaceSchema`，A 属 `server/db/transaction.ts` 零改动，合成库表数断言 24 为已批准事实；提交只取消教学类用途，不取消在途 `student_run`，已发生的执行事实与原始引用保留；短反思与可信检查引用不强制，只校验形状、边界与引用匹配，缺省不视为违规；`resume_revision` 保持 `read` 用途授权加 C 属阶段、分配与许可守卫，A 属权限文件不增列用途；`transitionAttemptInTransaction`、`planReopenGrant` 与 `writeReopenGrant` 的现有签名即为交 A5 的契约形状。批准不改动任何代码，不改变上文任何未执行项与通过统计，也不构成对 A 属新增活动版本字段或新增权限用途的授权，那两部分仍只是提案，需负责人另行明确文件与范围才能实施。产品基线汇总待授权维护者处理，逐项落地含义见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
+
+2026-10-12，负责人授权后基线汇总已完成：PRD 与 MVP_SPEC 经核对无需改动，只在 TECH_DESIGN 三处既有行与既有段内追加上述三条读法，未改名标题、未增删路由、未放宽验收门槛，`node tools/a0-review/check.mjs` 退出码 0 且 `baselineMutationRoutes` 与 `internalLinks` 计数与改动前一致。AC-06/08/09/12 的判据未变，因此无需同步任何验收条目；上文全部未执行项与通过统计不受影响。逐处位置与授权范围见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
+
+2026-10-12 审查修订，上一段关于文档检查计数的记录有一半说反了，原文保留不倒写。`internalLinks` 并非与改动前一致：逐提交实测为 `37849f4` 551、`13172cb` 578、`e14d2ee` 585、`f600c99` 585，`documents` 由 37 变为 38，也就是该计数在写下那句话的 `e14d2ee` 自身就从 578 变为 585。成立的一半是 `baselineMutationRoutes` 全程 27、`errors` 全程为空数组、`additionalProposedRoutes` 全程为空、已批准路由集合未变，所以没有任何检查真的被破坏，问题纯在记录，而这恰好是一条关于受保护文档写入的验证结论。四个数字由本任务在一棵不装依赖的临时工作树上逐提交实跑得到，与负责人审查给出的表逐项一致。此后凡声称某个计数「与改动前一致」，改动前后两侧都必须实测。逐提交表、错误归因的更正与教训见 [C4 第 6 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#6-待确认的解释项与跨属提案)。
+
+2026-10-13，负责人授权后审查 P3-1 的授权疑问关闭：从 TECH_DESIGN 第 7.2.1 节该句删去「提交」在授权范围内，不回退。同一次授权把「分配暂停使已发放的重开许可失效、恢复分配不使其复活」写入产品基线，落在第 5 节 `POST /api/attempts/:id/reopen` 一行，同行一并记入发放许可递增 `attemptRevision` 与 `decisionEpoch`、许可行保持 `valid` 不被静默消费、恢复读取以 `actionable=false` 让学生界面区分「从未发放」与「发放过但已作废」。改动在既有表格行内追加文字，原分句逐字保留，未改名标题、未增删路由、未放宽验收门槛，PRD 与 MVP_SPEC 经核对仍无需改动。与 #48 的表数撞点实测数据、先合 #47 再合 #48 的顺序建议，以及本任务未改 #48 分支的理由，见 [C4 第 5 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#5-与-a4a5b3c5-的分批交接)。
+
+2026-10-13，按负责人要求进入 C4 → A4 → DL-C 顺序审阅与合并。C4 本轮新发现的两项 P2 已修复：暂停期间发放许可的工作区及恢复投影读取真实可用性；请求文档勘误明确 checkRunIds 输入与 checkRefs 输出。类型检查、构建与公开接口专项验证通过（21 项中 20 通过、0 失败、1 跳过），两轴增量复审各 0 项；完整源码回归及远程合并结果在 [顺序集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md) 追加。其余产品与浏览器后置验收不变。
 ### I0-UI 准备批次与真实接入交接
 
 2026-10-13，十张本地 I0-UI ticket 已交付准备工程，07 记录真实 Chrome 手动链及 102 项准备浏览器检查；本批正在整合最新 main 并准备 Draft PR。真实服务、节点、模型、完整 AC/NFR 与教学效果未验收，#30/#22 保持 Open；A/C 按能力交接，B 真实模型/语义余项沿 #45。当前状态、组合验证与交接入口见 [I0-UI 收尾记录](docs/tasks/I0_UI_CLOSEOUT.md)，启动/来源与故障细节见学生 README，规划文档保留其有日期的原快照。
