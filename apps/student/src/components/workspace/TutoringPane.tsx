@@ -5,6 +5,7 @@ import { Icon, IconText } from '../../icons'
 import type { TutoringState, TutoringWorkspace } from '../../workspace/tutoringWorkspace'
 import type { TutorMessage } from '../../workspace/tutoringStore'
 import type { TutorObject } from '../../workspace/tutoringContracts'
+import type { TutorHistoryEntry } from '../../workspace/tutoringContracts'
 
 /** Reuses WorkspacePage's existing ws-chatpop/ws-chatpane and AgentMessage slots. */
 export function TutoringPane({ client, state, open, onClose, objectRef, objectLabel, onClearObject,
@@ -15,7 +16,7 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
   const scroller = useRef<HTMLDivElement>(null)
   const ledger = state.ledger
   useEffect(()=> { setDraft('') }, [client])
-  if (!open) return null
+  if (!open || client&&!client.confirmation.isCurrent(client.context)) return null
   const job = ledger?.job, pending = ledger?.commands.some(c=>c.state==='pending')
   const running = !!job && !job.stopRequested && (!job.status || ['queued','running','cancelling','outcome_unknown'].includes(job.status))
   return <div className="ws-chatpop" data-testid="tutoring-pane">
@@ -32,7 +33,19 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
         {ledger?.messages.filter(m=>m.shown || (m.valid && state.synchronized && !ledger.blocked)).map(m=>
           <TutorMessageView key={m.payload.actionId} message={m} client={client} synchronized={state.synchronized}
             scroller={scroller.current} onExample={onExample} />)}
-        <p className="ts-pane-lead">只显示本尝试公开内容；回答与具体问题/代码/运行的完整关联尚待交接。另一客户端历史不可回取时保持缺项。</p>
+        <p className="ts-pane-lead">当前投递正文与具体问题/代码/运行的完整关联尚待交接；下方历史保留原服务记录。</p>
+        <section aria-label="已获准教学历史" data-testid="tutor-history">
+          <p>已获准教学历史 · 只读原记录，不代表当前建议，也不新增收到、展示或回应回执。</p>
+          <button type="button" disabled={!client||state.history?.phase==='loading'} onClick={()=>void client?.readHistory()}>刷新教学历史</button>
+          {state.history?.phase==='loading'&&<p role="status">正在核对历史读取权限…</p>}
+          {state.history?.notice&&<p role="status">{state.history.notice}</p>}
+          {state.history?.phase==='ready'&&state.history.data.questions.filter(q=>!state.history!.data.entries.some(e=>e.question?.messageId===q.messageId)).map(q=>
+            <div className="chat-message user" key={q.messageId} data-testid="tutor-history-question"><div className="bubble">{q.envelope.question}</div>
+              <small>原已接纳问题 · 尚无可回取回答</small></div>)}
+          {state.history?.phase==='ready'&&!state.history.data.entries.length&&<p>暂无可回取的已展示或已明确回应内容；缺项保持未知。</p>}
+          {state.history?.phase==='ready'&&state.history.data.entries.map(entry=><TutorHistoryView key={entry.action.actionId}
+            entry={entry} preparation={client?.context.mode==='preparation'}/>)}
+        </section>
       </div>
       <div className="ws-chatbind" role="status">
         {job && <span data-testid="tutor-job">{job.stopRequested ? `已请求停止 · ${job.status ?? '状态待读'}` : `帮助状态 · ${job.status ?? '已受理，状态待读'}`} · {job.jobId}</span>}
@@ -51,6 +64,21 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
       </form>
     </div>
   </div>
+}
+function TutorHistoryView({entry,preparation}:{entry:TutorHistoryEntry;preparation:boolean}) {
+  const {action,message,question}=entry,body=message.envelope.body
+  return <article data-testid="tutor-history-message" data-action-id={action.actionId}>
+    {question&&<div className="chat-message user"><div className="bubble">{question.envelope.question}</div><small>原已接纳问题</small></div>}
+    <AgentMessage message={{role:'agent',text:body.content,phase:'settled'}} sourceLabel={preparation?'学习助手 · 合成历史记录':'学习助手 · 获准历史记录'}>
+      <p>原 Job：{action.jobId} · 原 Message：{action.messageId}</p>
+      {action.basis.objectRef&&<p data-testid="tutor-history-object">原对象：{JSON.stringify(action.basis.objectRef)}（仅核对来源，不定位当前作品）</p>}
+      <p>原帮助政策：{action.targetVersions.policyVersionId} · 原 epoch：{action.basis.decisionEpoch}</p>
+      <p>原状态：{action.disposition}{action.basisRevised?' · 依据后来修订':''}{action.stopReason?` · ${action.stopReason}`:''}</p>
+      <p>下一步：{body.expectedStudentAction}</p><p>帮助条件：{body.assistanceContext}</p>
+      <p>原回执：{action.receipts.some(r=>r.receiptKind==='displayed')?'曾报告展示':'没有展示回执'} · {action.receipts.some(r=>r.receiptKind==='acknowledged')?'曾明确回应':'没有明确回应回执'}；不证明阅读、理解或采纳。</p>
+      {!!body.unresolved.length&&<p>原未解决项：{body.unresolved.join('；')}</p>}
+    </AgentMessage>
+  </article>
 }
 function TutorMessageView({ message, client, synchronized, scroller, onExample }: {
   message: TutorMessage; client: TutoringWorkspace | null; synchronized: boolean; scroller: HTMLElement | null

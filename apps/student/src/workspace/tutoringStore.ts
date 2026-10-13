@@ -1,6 +1,6 @@
 import { openWorkspaceDb, txDone } from './draftDb'
 import type { CommandContext } from './frozenCommand'
-import type { TutorControl, TutorJob, TutorPayload, TutorReceiptKind, TutorCoverage } from './tutoringContracts'
+import type { TutorControl, TutorJob, TutorPayload, TutorReceiptKind, TutorCoverage, TutorHistory } from './tutoringContracts'
 
 export interface TutorCommand { key: string; path: string; wireJson: string; kind: 'receipt' | 'help' | 'cancel'
   state: 'pending' | 'confirmed' | 'rejected'; result?: unknown; error?: string; question?: string; issuedStopVersion?:number }
@@ -11,6 +11,15 @@ export interface TutorLedger { key: string; clientId: string; cursor: number; co
 export const tutorScope = (c: CommandContext) => JSON.stringify([c.mode, c.userId, c.courseId, c.assignmentId,
   c.activityVersionId, c.attemptId, c.trustedRecoveryGeneration, c.preparationEpoch, c.scenarioId ?? null])
 export const tutorLedgerKey = (c: CommandContext, clientId: string) => `tutor:ledger:${tutorScope(c)}:${clientId}`
+/** Separate account/attempt/generation namespace; never loaded as display or delivery authority. */
+export const tutorHistoryKey = (c:CommandContext) => `tutor:history:${tutorScope(c)}`
+export async function writeTutorHistoryCache(c:CommandContext,data:TutorHistory,valid:()=>boolean):Promise<void> {
+  const db=await openWorkspaceDb()
+  if(!valid())throw new Error('教学历史上下文已改变')
+  const tx=db.transaction('metadata','readwrite'),done=txDone(tx)
+  tx.objectStore('metadata').put({key:tutorHistoryKey(c),data:structuredClone(data)})
+  await done
+}
 export async function readTutorLedger(key: string): Promise<TutorLedger | undefined> {
   const db = await openWorkspaceDb(), tx = db.transaction('metadata', 'readonly'), done = txDone(tx)
   const value = await new Promise<TutorLedger | undefined>((resolve, reject) => {

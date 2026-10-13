@@ -2,20 +2,24 @@ import { requiredId, record, revision } from './confirmation'
 import type { ConfirmationWorkspace } from './confirmationWorkspace'
 import type { CommandContext } from './frozenCommand'
 import { apiGet, apiPostFrozen, WorkspaceRequestError } from './http'
-import { type TutorJob, type TutorObject, type TutorReceiptKind } from './tutoringContracts'
+import { type TutorJob, type TutorObject, type TutorReceiptKind, type TutorHistoryState } from './tutoringContracts'
 import { verifyTutorContent, verifyTutorPage } from './tutoringEvents'
-import { readTutorLedger, tutorChannel, tutorLedgerKey, writeTutorLedger, type TutorCommand, type TutorLedger, type TutorMessage } from './tutoringStore'
+import { readTutorLedger, tutorChannel, tutorLedgerKey, writeTutorLedger, writeTutorHistoryCache, type TutorCommand, type TutorLedger, type TutorMessage } from './tutoringStore'
+import { emptyTutorHistory, verifyTutorHistory } from './tutoringHistory'
 import { verifyTutorCommandReceipt } from './tutoringCommand'
 import { confirmationRepository } from './confirmationDb'
 import { tutoringRequest } from './tutoringTransport'
 
-export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null }
+export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState }
 /** One owner serializes durable facts. Never create another global ContextGuard. */
 export class TutoringWorkspace {
-  private state: TutoringState = { ledger: null, busy: false, synchronized: false, notice: null }
+  private state: TutoringState = { ledger: null, busy: false, synchronized: false, notice: null,
+    history:{phase:'unavailable',data:emptyTutorHistory(),notice:null} }
   private readonly listeners = new Set<(s: TutoringState) => void>()
   private alive = true
   private sequence = 0
+  private historySequence = 0
+  private historyPending = false
   private closeChannel?: () => void
   private chain: Promise<void> = Promise.resolve()
   private displayFence = false
@@ -27,7 +31,9 @@ export class TutoringWorkspace {
   private valid = () => this.alive && this.confirmation.isCurrent(this.context)
   private opts() { return { mode: this.context.mode, scenarioId: this.context.scenarioId } }
   subscribe(fn: (s: TutoringState) => void) { this.listeners.add(fn); fn(this.state); return () => { this.listeners.delete(fn) } }
-  dispose() { this.alive = false; this.sequence++; this.closeChannel?.(); this.listeners.clear() }
+  dispose() { this.alive = false; this.sequence++; this.historySequence++
+    this.state={...this.state,history:{phase:'unavailable',data:emptyTutorHistory(),notice:null}}
+    this.closeChannel?.(); this.listeners.clear() }
   private protectLedger(ledger: TutorLedger) {
     ledger.stopVersion=this.stopVersion
     const latest=this.confirmation.current.attempt
@@ -83,10 +89,36 @@ export class TutoringWorkspace {
       // A cache is historical only until the original channel is revalidated from zero.
       ledger.messages.forEach(m => { m.valid = false })
       await this.persist(ledger)
+      void this.readHistory()
       await this.read(true)
     } catch (e) { this.publish({ notice: `辅导本机存储不可用：${e instanceof Error ? e.message : e}` }) }
   }
   read(revalidate = false) { return this.enqueue(() => this.readNow(revalidate)) }
+  /** Authorizes a historical view on every HTTP read; never calls fact(), updates the cursor or releases a fence. */
+  async readHistory() {
+    if(!this.valid()||!this.context.attemptId)return
+    const seq=++this.historySequence,isCurrent=()=>this.valid()&&seq===this.historySequence
+    this.historyPending=true
+    // Cached or previously authorized text does not survive this fresh authorization boundary.
+    this.publish({history:{phase:'loading',data:emptyTutorHistory(),notice:null}})
+    try {
+      const raw=await tutoringRequest(apiGet<unknown>(`/attempts/${encodeURIComponent(this.context.attemptId)}/teaching-records`,this.opts()))
+      if(!isCurrent())return
+      const data=await verifyTutorHistory(raw,this.context)
+      if(!isCurrent())return
+      const authority=await confirmationRepository.isCurrentAuthority(this.context)
+      if(!isCurrent())return
+      if(!authority)throw new Error('原历史读取代际已退役，请重新载入')
+      let notice:string|null=null
+      try {await writeTutorHistoryCache(this.context,data,isCurrent)}
+      catch(e){notice=`已核对公开历史，本机副本未保存：${e instanceof Error?e.message:String(e)}`}
+      if(!isCurrent())return
+      this.publish({history:{phase:'ready',data,notice}})
+    } catch(e) {
+      if(isCurrent())this.publish({history:{phase:'unavailable',data:emptyTutorHistory(),
+        notice:`教学历史不可回取：${e instanceof Error?e.message:String(e)}`}})
+    } finally {if(seq===this.historySequence)this.historyPending=false}
+  }
   private async readNow(revalidate: boolean) {
     const current = this.state.ledger
     if (!current) return
@@ -152,8 +184,14 @@ export class TutoringWorkspace {
       this.requiresRevalidation=false
       this.publish({ synchronized: true })
       await this.flushReceipts()
-    } catch (e) { this.publish({ synchronized: false, notice: `辅导读取未完成：${e instanceof Error ? e.message : String(e)}` }) }
-    finally { this.publish({ busy: false }) }
+    } catch (e) {
+      if(e instanceof WorkspaceRequestError&&e.failure.kind==='api'&&['UNAUTHENTICATED','FORBIDDEN','RECOVERY_REQUIRED'].includes(e.failure.error.code)) {
+        this.historySequence++;this.historyPending=false
+        this.publish({history:{phase:'unavailable',data:emptyTutorHistory(),notice:'当前授权或代际已失效，请重新载入。'}})
+      }
+      this.publish({ synchronized: false, notice: `辅导读取未完成：${e instanceof Error ? e.message : String(e)}` })
+    }
+    finally { this.publish({ busy: false }); if(revalidate&&!this.historyPending)void this.readHistory() }
   }
   private receiptCommand(ledger: TutorLedger, message: TutorMessage, kind: TutorReceiptKind): TutorCommand {
     return { key: crypto.randomUUID(), kind: 'receipt', state: 'pending', path: `/actions/${encodeURIComponent(message.payload.actionId)}/receipts`,

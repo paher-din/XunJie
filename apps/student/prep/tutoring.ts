@@ -1,21 +1,32 @@
 // Synthetic completed B2/C3 public projections, following application.ts and teaching.ts.
 // Imported only by dev:prep plugin; no supplier, runner, real account or backend import.
 import { randomUUID } from 'node:crypto'
-import { sha256Hex } from './scenario'
+import { sha256Hex, REFS } from './scenario'
 import type { PrepSession } from './authority'
 import { PrepWorkspaceError, readPrepAttempt, recoveryGenerationOf, prepTeachingCommand } from './workspace'
-import type { TutorJob, TutorPage, TutorPayload, TutorCoverage } from '../src/workspace/tutoringContracts'
-interface Action { payload: TutorPayload; jobId: string; epoch: number; clients: Map<string, { deliveryId: string; seq: number }>; shown: boolean }
-interface Scene { seq: number; jobs: TutorJob[]; actions: Action[]; coverage?:TutorCoverage; receipts: Array<{ actionId: string; kind: string; clientId: string; key: string; wire: string; result: unknown }> }
+import type { TutorJob, TutorPage, TutorPayload, TutorCoverage, TutorHistoryQuestion, TutorBasis, TutorVersions,
+  TutorHistoryAction, TutorHistoryReply, TutorHistoryBody, TutorObject } from '../src/workspace/tutoringContracts'
+interface Action { payload: TutorPayload; jobId: string; epoch: number; clients: Map<string, { deliveryId: string; seq: number }>; shown: boolean
+  record:TutorHistoryAction;message:TutorHistoryReply }
+interface Scene { seq: number; jobs: TutorJob[]; actions: Action[]; questions:TutorHistoryQuestion[];bases:Map<string,TutorBasis>
+  coverage?:TutorCoverage; receipts: Array<{ actionId: string; kind: string; clientId: string; key: string; wire: string; result: unknown }> }
 const scenes = new Map<string, Scene>()
 const scripts = new Map<string, 'normal' | 'running' | 'failed' | 'timed_out' | 'budget'>()
 export function setPrepTutorScript(scenario: string, body: unknown) {
   const value=object(body,['kind']).kind
+  if(value==='history-revised') {
+    for(const action of sceneOf(scenario).actions) {
+      action.payload.basisRevised=true;action.payload.disposition='stale'
+      action.record.stopReason='synthetic_teacher_revision'
+      const job=sceneOf(scenario).jobs.find(j=>j.jobId===action.jobId);if(job)job.stopRequested=true
+    }
+    return {kind:value}
+  }
   if (!['normal','running','failed','timed_out','budget'].includes(String(value))) reject('INVALID_REQUEST')
   scripts.set(scenario,value as 'normal'|'running'|'failed'|'timed_out'|'budget')
   return {kind:value}
 }
-const sceneOf = (id: string) => { if (!scenes.has(id)) scenes.set(id, { seq: 0, jobs: [], actions: [], receipts: [] }); return scenes.get(id)! }
+const sceneOf = (id: string) => { if (!scenes.has(id)) scenes.set(id, { seq: 0, jobs: [], actions: [], receipts: [],questions:[],bases:new Map() }); return scenes.get(id)! }
 function reject(code: ConstructorParameters<typeof PrepWorkspaceError>[0]): never { throw new PrepWorkspaceError(code) }
 function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`
@@ -55,7 +66,7 @@ export function createPrepHelp(scenario: string, session: PrepSession, attemptId
   const body = object(value, ['question','expectedAttemptRevision','recoveryGeneration','objectRef'])
   if (typeof body.question !== 'string' || !body.question.trim() || body.question.length > 16384) reject('INVALID_REQUEST')
   const scene = sceneOf(scenario)
-  return prepTeachingCommand(scenario, session, attemptId, 'student_help.create', `/api/attempts/${attemptId}/help`, body, key, head => {
+  const receipt=prepTeachingCommand(scenario, session, attemptId, 'student_help.create', `/api/attempts/${attemptId}/help`, body, key, head => {
     if (body.expectedAttemptRevision !== head.attempt.attemptRevision) reject('VERSION_CONFLICT')
     if (!['ready','active'].includes(head.attempt.status)) reject('STATE_CONFLICT')
     if (scripts.get(scenario)==='budget') reject('BUDGET_EXHAUSTED')
@@ -78,9 +89,20 @@ export function createPrepHelp(scenario: string, session: PrepSession, attemptId
     scene.jobs.push({ jobId, purpose: 'student_help', status: 'queued', stopRequested: false,
       scope: { courseId: session.courseId, studentId: session.userId, attemptId }, decisionEpoch: head.attempt.decisionEpoch,
       recoveryGeneration: recoveryGenerationOf(scenario), acceptedAt: now, deadline: new Date(Date.now()+45000).toISOString() })
+    const versions:TutorVersions={activityVersionId:head.attempt.activityVersionId,policyVersionId:REFS.helpPolicyVersionId,
+      modelConfigVersion:'prep-model-v1',promptVersion:'prep-prompt-v1',schemaVersion:'prep-schema-v1'}
+    scene.questions.push({messageId:randomUUID(),jobId,scope:{courseId:session.courseId,studentId:session.userId,attemptId},
+      authorKind:'student',contentHash:sha256Hex(body.question as string),envelope:{kind:'student_question',question:body.question as string,
+        inputRefs:[],versions,...(body.objectRef?{objectRef:structuredClone(body.objectRef) as TutorObject}:{})}})
+    scene.bases.set(jobId,{attemptRevision:head.attempt.attemptRevision,decisionEpoch:head.attempt.decisionEpoch,
+      captureRevision:head.attempt.captureRevision,relatedStateRevision:0,inputRefs:[],assistanceRefs:[],coverageRefs:[],
+      ...(body.objectRef?{objectRef:structuredClone(body.objectRef) as TutorObject}:{})})
     return { jobId, attemptRevision: head.attempt.attemptRevision, decisionEpoch: head.attempt.decisionEpoch,
       replacedJobIds, acceptedInputHash: sha256Hex(canonical({target:'student_help.accepted_input',fields:{question:body.question,objectRef:body.objectRef??null}})) }
   })
+  const question=scene.questions.find(q=>q.jobId===(receipt.result as {jobId:string}).jobId)
+  if(question)question.requestReceiptId=receipt.receiptId
+  return receipt
 }
 export function readPrepTutorJob(scenario: string, session: PrepSession, id: string) {
   const scene = sceneOf(scenario), job = scene.jobs.find(j => j.jobId === id)
@@ -94,15 +116,27 @@ export function readPrepTutorJob(scenario: string, session: PrepSession, id: str
     } else if (scripts.get(scenario)!=='running') {
       job.status = 'succeeded'
       const content = '合成准备内容：先选一个最小输入，手算预期输出，再检查程序中的判断条件。'
-      scene.actions.push({ jobId: id, epoch: job.decisionEpoch, clients: new Map(), shown: false,
-        payload: { actionId: randomUUID(), contentHash: sha256Hex(content), disposition: 'pending', createdAt: new Date().toISOString(),
+      const question=scene.questions.find(q=>q.jobId===id)!,basis=scene.bases.get(id)!
+      const payload:TutorPayload={ actionId: randomUUID(), contentHash: sha256Hex(content), disposition: 'pending', createdAt: new Date().toISOString(),
           basisRevised: false, actionType: 'hint', content, rationale: '合成项目级支持，不包含代码定位。',
           expectedStudentAction: '自己构造一个反例并检查。', assistanceContext: '合成准备场景，非实际模型输出。',
-          evidenceIds: [], resourceRefs: ['prep-resource-adjacent-example-01'], unresolved: ['对象关联与跨客户端历史尚未交接'] } })
+          evidenceIds: [], resourceRefs: ['prep-resource-adjacent-example-01'], unresolved: ['首次投递对象关联尚未交接'] }
+      const body:TutorHistoryBody={kind:'student_help',actionType:payload.actionType!,content,rationale:payload.rationale!,
+        expectedStudentAction:payload.expectedStudentAction!,assistanceContext:payload.assistanceContext!,evidenceIds:[],
+        resourceRefs:payload.resourceRefs!,unresolved:payload.unresolved!,policyChecks:{containsWholeSolution:false,writesStudentWork:false,runsCode:false,makesFormalEvaluation:false}}
+      const bodyJsonText=JSON.stringify(body),messageId=randomUUID()
+      const message:TutorHistoryReply={messageId,jobId:id,scope:question.scope,authorKind:'model',requestReceiptId:question.requestReceiptId,
+        contentHash:payload.contentHash,resultHash:sha256Hex(bodyJsonText),envelope:{kind:'student_help',body,bodyJsonText,
+          versions:question.envelope.versions,usage:{status:'unknown',reason:'synthetic_provider_not_called'},calls:0,elapsedMs:0,basis}}
+      scene.actions.push({jobId:id,epoch:job.decisionEpoch,clients:new Map(),shown:false,payload,message,
+        record:{actionId:payload.actionId,scope:question.scope,jobId:id,messageId,contentHash:payload.contentHash,
+          disposition:'pending',targetVersions:question.envelope.versions,basis,generation:job.recoveryGeneration,
+          basisRevised:false,createdAt:payload.createdAt,deliveries:[],receipts:[]}})
     }
   }
   if (head.attempt.decisionEpoch !== job.decisionEpoch && !job.stopRequested) job.status = 'stale'
-  return structuredClone({ ...job, kind: 'tutoring', requestReceiptId: `synthetic-${id}`, expectedRevision: head.attempt.attemptRevision, attemptCount: 0 })
+  return structuredClone({ ...job, kind: 'tutoring', requestReceiptId: scene.questions.find(q=>q.jobId===id)!.requestReceiptId!,
+    expectedRevision:scene.bases.get(id)!.attemptRevision, attemptCount: 0 })
 }
 export function cancelPrepHelp(scenario: string, session: PrepSession, id: string, value: unknown, key: unknown) {
   const scene = sceneOf(scenario), job = scene.jobs.find(j => j.jobId === id)
@@ -125,7 +159,13 @@ export function readPrepTutorEvents(scenario: string, session: PrepSession, atte
   if (!clientId || query.get('recoveryGeneration') !== control.generation || Number(query.get('decisionEpoch')) !== a.decisionEpoch)
     return { control, resyncRequired: true, events: [], nextServerSeq: cursor, hasMore: false }
   const candidates = scene.actions.filter(action => action.epoch === a.decisionEpoch && action.payload.disposition === 'pending')
-  for (const action of candidates) if (!action.shown && !action.clients.has(clientId)) action.clients.set(clientId, { deliveryId: randomUUID(), seq: ++scene.seq })
+  for (const action of candidates) if (!action.shown && !action.clients.has(clientId)) {
+    const deliveryId=randomUUID(),seq=++scene.seq
+    action.clients.set(clientId,{deliveryId,seq})
+    action.record.deliveries.push({deliveryId,actionId:action.payload.actionId,recipientId:session.userId,clientId,
+      contentHash:action.payload.contentHash,recoveryGeneration:control.generation,serverSeq:seq,attemptedAt:new Date().toISOString(),
+      eventId:deliveryId,control:{attemptRevision:a.attemptRevision,decisionEpoch:a.decisionEpoch,captureRevision:a.captureRevision}})
+  }
   const rows = scene.actions.flatMap(action => {
     const delivery = action.clients.get(clientId)
     if (!delivery || delivery.seq <= cursor) return []
@@ -152,6 +192,21 @@ export function recordPrepTutorReceipt(scenario: string, session: PrepSession, i
   const result = { receiptId: randomUUID(), actionId: id, receiptKind: body.receiptKind, serverSeq: ++scene.seq, replayed: false,
     ...(action.payload.disposition !== 'pending' ? { raceReason: 'synthetic_late_receipt' } : {}) }
   scene.receipts.push({ actionId: id, kind: String(body.receiptKind), clientId, key, wire, result })
+  action.record.receipts.push({receiptId:result.receiptId,actionId:id,deliveryId:delivery.deliveryId,clientId,
+    contentHash:action.payload.contentHash,receiptKind:body.receiptKind as 'received'|'displayed'|'acknowledged',
+    clientReceiptId:body.clientReceiptId as string,serverSeq:result.serverSeq,serverReceivedAt:new Date().toISOString(),
+    versions:action.record.targetVersions,...(body.clientDeclaredAt?{clientDeclaredAt:body.clientDeclaredAt as string}:{}),
+    ...(result.raceReason?{raceReason:result.raceReason}:{})})
   if (['displayed','acknowledged'].includes(String(body.receiptKind))) action.shown = true
   return result
+}
+
+/** Existing student projection; no Delivery allocation, Job processing, control or cutoff envelope. */
+export function readPrepTutorHistory(scenario:string,session:PrepSession,attemptId:string) {
+  readPrepAttempt(scenario,session,attemptId)
+  const scene=sceneOf(scenario),shown=scene.actions.filter(a=>a.record.scope.attemptId===attemptId
+    &&a.record.receipts.some(r=>r.receiptKind==='displayed'||r.receiptKind==='acknowledged'))
+  return structuredClone({messages:[...scene.questions.filter(q=>q.scope.attemptId===attemptId),...shown.map(a=>a.message)]
+    .sort((a,b)=>a.messageId.localeCompare(b.messageId)),actions:shown.map(a=>({...a.record,
+      disposition:a.payload.disposition,basisRevised:a.payload.basisRevised})).sort((a,b)=>a.actionId.localeCompare(b.actionId))})
 }
