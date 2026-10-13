@@ -124,7 +124,7 @@ test('阅读期间另一标签回收并同名重建：明确返回只保留原�
   } finally { await other.close() }
 })
 
-test('未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo保留', async ({ page }) => {
+test('未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留', async ({ page }) => {
   await start(page, 'tutor-example-pending-original')
   await create(page)
   await expect.poll(async () => (await localState(page)).drafts.length).toBe(1)
@@ -185,18 +185,35 @@ test('未确认作品命令跨只读资料返回保持原字节，混合EOL/非B
   const tail = page.locator('.view-lines .view-line').last()
   const tailText = async () => (await tail.textContent())!.replace(/\u00a0/g, ' ')
   const originalTail = '// tail 😀'
-  let rendered = await tailText()
-  for (let step = 0; step < ' // pending suffix 😀'.length && rendered !== originalTail; step++) {
-    await page.keyboard.press('ControlOrMeta+z')
-    await expect.poll(tailText).not.toBe(rendered)
-    const next = await tailText()
-    expect(next.startsWith(originalTail)).toBe(true)
-    expect(rendered.startsWith(next)).toBe(true)
-    rendered = next
+  const restoreTail = async (direction: 'undo' | 'redo', target: string) => {
+    let rendered = await tailText()
+    for (let step = 0; step < ' // pending suffix 😀'.length && rendered !== target; step++) {
+      await page.keyboard.press(direction === 'undo' ? 'ControlOrMeta+z' : 'ControlOrMeta+Shift+z')
+      await expect.poll(tailText).not.toBe(rendered)
+      const next = await tailText()
+      expect(next.startsWith(originalTail)).toBe(true)
+      expect(direction === 'undo' ? rendered.startsWith(next) : next.startsWith(rendered)).toBe(true)
+      // Every actual native group must agree with raw storage, including unchanged BOM/mixed EOL.
+      await expect.poll(async () => (await localState(page)).drafts[0]!.text)
+        .toBe(raw + next.slice(originalTail.length))
+      rendered = next
+    }
+    expect(rendered).toBe(target)
   }
-  expect(rendered).toBe(originalTail)
+  await restoreTail('undo', originalTail)
   await expect.poll(async () => (await localState(page)).drafts[0]!.text).toBe(raw)
   expect(newestSync(await localState(page))).toEqual(pending)
+  await restoreTail('redo', originalTail + ' // pending suffix 😀')
+  expect(newestSync(await localState(page))).toEqual(pending)
+  await restoreTail('undo', originalTail)
+  const branch = ' // new branch 😀'
+  await page.keyboard.insertText(branch)
+  await expect.poll(async () => (await localState(page)).drafts[0]!.text).toBe(raw + branch)
+  await page.keyboard.press('ControlOrMeta+Shift+z')
+  await expect(tail).toHaveText(originalTail + branch)
+  await expect.poll(async () => (await localState(page)).drafts[0]!.text).toBe(raw + branch)
+  expect(newestSync(await localState(page))).toEqual(pending)
+  expect(writes).toEqual([])
   await page.keyboard.press('ControlOrMeta+Home')
   await expect(page.locator('.monaco-editor .codicon-folding-collapsed')).toHaveCount(1)
   await expect(page.locator('.view-lines')).not.toContainText('中文😀')

@@ -105,3 +105,36 @@ Robert明确授权在已有`codex/i0-b-closeout-results-return@cc72891`工作树
 未执行断言明确保留：刷新/重建用例在首个降级说明断言失败，后续原引用身份、草稿/命令与零写请求断言尚未执行；pending用例的返回前后保持/零写断言实际通过，最终原文undo失败后，后续原命令再次核对与折叠保持尚未执行。不能把失败前的部分证据计成整条通过。
 
 提交前根静态检查`node tools/a0-review/check.mjs`：77文档/1140内链、errors=[]；`git diff --check`退出0。本人写集严格四文件，未修改主页面、编辑器、原文工具、fixture、父PLAN或后台。失败trace/error-context保留在忽略的Playwright结果目录供主核对，不纳入提交；本次未生成其他无用脚本或日志。
+
+## 2026-10-14 原文撤销组根因修复：追加授权与精确方案
+
+Robert在`codex/i0-b-closeout-results-return@17de077`追加授权修复原文undo，仅可写[CodeEditorHost.tsx](../../apps/student/src/components/workspace/CodeEditorHost.tsx)、必要的[originalText.ts](../../apps/student/src/lib/originalText.ts)与[originalText.test.ts](../../apps/student/src/lib/originalText.test.ts)、本文及已持有的[tutoringReturn.spec.ts](../../apps/student/e2e/tutoringReturn.spec.ts)。开工工作区干净。规则/单测确实必要：现有OriginalEditHistory以内容事件为步长，不能表达一次原生undo跳过多个步，也不能可靠定位redo/新分支；只改宿主调用次数会继续丢失原文/模型组关联。检索确认该类只有此宿主及原文单测调用，不扩公共业务协议。
+
+沿用上一节已读PRD/MVP/TECH、SPEC/PLAN及客户端原文/视图边界，另核固定Monaco依赖的`textModel._applyUndoRedoEdits`：先安装结果alternativeVersionId，再发延迟内容事件；原生editStack保存组前/后版本。因此方案为每个文件model登记`alternativeVersionId → 原文状态`，每次实际内容变更记录精确原文，undo/redo恢复模型当前可回退版本的原文；新分支只丢弃不可达的redo原文记录，不改变原生undo组。初始和合法外部新正文安装完成后才绑定其实际版本。
+
+宿主继续按旧投影映射编辑并保留BOM/CRLF/CR/LF/非BMP；`getValue()`仅核显示投影一致性，不能重建原文。未知/冲突历史明确不可用并保留已知草稿，不猜正文、不清空原生undo。必要单测验证跨多个内容事件的原生组跳转、redo/分支失效、未知/重复版本；保留原语料与跨行删除判据。实际回归为pending资料返回（含原字节/命令/视图/撤销）、editor.spec与editorProtection；独立CI Chrome端口5671/5672。不改主页面/fixture/状态机/父PLAN/后台/schema/依赖，刷新及回收原引用提示由主修复，本Agent不取代其写集。实际结果完成后追加，不预写通过。
+
+### 本机视图捕获接缝追加授权
+
+Robert随后明确授权仍只改本写集内的`CodeEditorHost.tsx`：既有`CodeEditorHandle.saveViewState()`返回这次实际保存的Monaco本机view；尚未加载或没有model返回`null`，旧调用忽略返回值仍兼容。导出`CodeEditorViewState = ReturnType<MonacoEditor['saveViewState']>`，不把服务端`CodeRange`充作本机视图。主负责页面anchor泛型和捕获调用接线，本Agent不写主页面。返回资料时继续保留同一编辑器实例/原生undo；本机view不持久化进刷新marker，刷新只留原实例/版本与缺位置的可见说明。此为原只读视图适配，不新增服务端坐标/协议/字段。
+
+实际探针补充：编辑器`onDidChangeModelContent`会排队转发，普通事件versionId为2～21时，回调读到的model版本已全部为21，第一版直接取alternativeVersionId因此误绑。仅记录数值版本的探针确认后，改为随当前model挂载/移除`model.onDidChangeContent`订阅，在模型的延迟内容事务结束时读取确切结果版本；不改变原生undo组、不改模型正文。探针将在交付前移除。
+
+### 原文修复实际交付与未完成接线
+
+根因修复已完成：`OriginalEditHistory`以实际alternativeVersionId登记精确原文，原生undo/redo按结果版本跳转；新编辑仅清除不可达的原文redo映射。宿主订阅当前model并在切换/卸载时移除订阅；首次model与合法外部新正文安装后绑定实际版本。未用`setValue`处理undo、未覆盖原文换行、未清原生撤销栈、未改组边界。`getValue()`只核对显示一致性，未知/冲突版本不发正文回调，已有落盘草稿保持。既有外部正文替换路径保留，普通编辑/undo与父组件原文一致时不会进入该路径。
+
+保留失败链：原`17de077`浏览器实际显示已撤销到原尾行、落盘仍残留`pending suff`的事实与上节失败命令保持；新版本规则测试先31项中25通过/6失败，失败为尚无`restore` API，是新规则接缝的红灯，不能取代原浏览器复现。第一版规则31/31与typecheck通过，但pending浏览器在首次编辑157行失败；数值探针再次复现并定位编辑器事件排队导致重复绑定版本21。改为模型订阅后，普通事件/model/alternative版本逐项一致，实际undo的alternative版本按21→19→12→4→1恢复，redo再按1→4→12→19→21恢复；每组的原文字节随实际DOM同步。以上探针已从源码和测试移除。
+
+| 本次真实执行 | 命令与结果 | 证据边界 |
+| --- | --- | --- |
+| 原文规则 | 学生目录`rtk npm test -- originalText.test.ts`：31/31，退出0 | 保留投影/分隔符/原文映射/跨行删除语料，新增多事件组跳转、相同显示不同原文、redo分支与未知/重复版本；纯规则证据单列 |
+| 探针辅助原文浏览器 | 同目录、CI/Chrome/5671/5672：`rtk npm run test:e2e -- tutoringReturn.spec.ts --grep '未确认作品命令' --workers=1`：1/1，14.5秒，退出0 | 实际Monaco、IndexedDB和隔离authority HTTP，含原生undo/redo及新分支；随后移除探针再核最终源码 |
+| 最终相称Chrome组合 | 同环境：`npm run test:e2e -- editor.spec.ts editorProtection.spec.ts tutoringReturn.spec.ts --grep-invert '实际打开资料后刷新\|阅读期间另一标签' --workers=2`：10/10，0失败/0skip，41.8秒，退出0 | `editor.spec`4项、`editorProtection`4项、基本资料返回1项、pending原文返回1项（13.8秒）。仅两项主负责的刷新/同名重建未选入本次运行，不以跳过计通过；没有新增skip |
+| 本机view API类型接线 | `rtk npm run typecheck`：追加API后退出1，唯一错误`CodeWorkspace.tsx:47 TS2322` | 转发层的可选调用可能返回undefined，与新的Monaco view/null类型不符；本文件写集外，未修改。主整合时需将该行改为`saveViewState: () => editorRef.current?.saveViewState() ?? null`，并将页面anchor改用本机view返回值 |
+
+最终pending用例不弱化原断言，反而逐组比较真实DOM尾行与完整原文；实际阅读/返回前后BOM、CRLF/CR/LF、非BMP、光标/滚动、草稿与pending原wire命令相同，零自动业务写入；undo/redo、新分支废弃旧redo后继续逐字节一致，pending原命令仍原样，折叠保持。editor八项额外覆盖文件切换、卸载重挂、中文输入/撤销重做/刷新、保护失败和布局/缓存重置保留数据。普通真实模式的编辑器用例仍用既有设计mock，准备模式仍为隔离合成authority；这些页面链不冒充实际HTTPS业务宿主、真实学生学习或教学效果。
+
+主反馈其两项刷新/同名重建与其他HTTPS/controls检查通过，此为主提供的独立证据，本Agent没有在此工作树重跑或改动页面。本切片原文缺口已修，但整票仍待主合入本机view页面/转发接线、统一最终浏览器和逐AC汇总；不凭本次10项就标全票/全产品完成。正式build因明确的转发层类型缺口未执行，供应商/节点/真人、无关全量与后台均未执行；未改Vite/共享依赖配置。
+
+根静态检查`node tools/a0-review/check.mjs`：77文档/1144内链、errors=[]；`git diff --check`退出0，待提交写集仅上述精确五文件。探针已移除，未留临时源码/日志。只本地提交、不推送；产品基线/MVP_SPEC §10仍待授权维护者汇总。

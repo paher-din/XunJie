@@ -26,7 +26,7 @@ import { codeRangeModelOffsets, codeSelectionRange,
  * 路径不参与身份——同名路径被回收后由新实例占用时，旧实例的 model 不会串。
  *
  * 原文权威（契约 §4）：model 只持有 LF 显示投影；BOM 与每个换行分隔符留在 original 里。
- * 每次内容变更用旧投影把显示范围映回原文打补丁，undo/redo 走可逆原文历史，
+ * 每次内容变更用旧投影把显示范围映回原文打补丁，undo/redo 按模型实际历史版本恢复原文，
  * `onTextChange` 报出的是原文而不是 model.getValue()。
  */
 
@@ -64,12 +64,15 @@ function resetRegistryFor(workspaceKey: string): void {
 export interface CodeEditorHandle {
   focus(): void
   /** 记下当前文件的视图状态（光标 / 滚动 / 折叠），切换与卸载时调用。 */
-  saveViewState(): void
+  saveViewState(): CodeEditorViewState
   /** 只读捕获当前单选区与原文，不暴露 Monaco model 作为服务端身份。 */
   captureSelection(): CodeSelectionResult
   /** 仅定位当前同一实例/原文；不打开别的文件，不修改正文或保存。 */
   revealOriginalRange(location: CodeEditorLocation): { ok: true } | { ok: false; reason: string }
 }
+
+/** Monaco 的本机视图，与服务端代码范围无关；无 model 时为 null。 */
+export type CodeEditorViewState = ReturnType<MonacoEditor['saveViewState']>
 
 export interface CodeEditorLocation {
   workspaceKey: string
@@ -149,8 +152,10 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     saveViewState: () => {
       const editor = editorRef.current
       const model = editor?.getModel()
-      if (!editor || !model) return
-      viewStates.set(keyOf(workspaceKey, fileOf(model.uri.path)), editor.saveViewState())
+      if (!editor || !model) return null
+      const view = editor.saveViewState()
+      viewStates.set(keyOf(workspaceKey, fileOf(model.uri.path)), view)
+      return view
     },
     captureSelection,
     revealOriginalRange: (location) => {
@@ -185,33 +190,49 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
         editor = monaco.editor.create(hostRef.current, editorOptions(ro, reason))
         editorRef.current = editor
 
-        disposables.push(
-          editor.onDidChangeModelContent((event) => {
-            const model = editor?.getModel()
-            if (!model || event.isFlush) return
+        let contentSubscription: { dispose(): void } | null = null
+        const watchModel = () => {
+          contentSubscription?.dispose()
+          const model = editor?.getModel()
+          contentSubscription = model?.onDidChangeContent((event) => {
+            if (editor?.getModel() !== model || event.isFlush) return
             const key = keyOf(workspaceKey, fileOf(model.uri.path))
             const state = originals.get(key)
             if (!state) return
-            if (event.isUndoing) {
-              state.history.undo()
-            } else if (event.isRedoing) {
-              state.history.redo()
-            } else {
-              const next = applyModelEdits(
-                state.history.current,
-                state.projection,
-                event.changes.map((change) => ({
-                  start: change.rangeOffset,
-                  end: change.rangeOffset + change.rangeLength,
-                  text: change.text,
-                })),
-              )
-              state.history.push(next)
+            try {
+              // 订阅模型：编辑器会排队转发多条事件，届时读取版本可能已越过当前事件。
+              // 模型先安装组的结果版本，再发内容事件；一次 undo 不等于一次普通编辑。
+              const version = model.getAlternativeVersionId()
+              if (event.isUndoing || event.isRedoing) {
+                if (!state.history.restore(version)) throw new Error('原文历史版本缺失，已保护的草稿保留，请重新进入编辑器。')
+              } else {
+                const next = applyModelEdits(
+                  state.history.current,
+                  state.projection,
+                  event.changes.map((change) => ({
+                    start: change.rangeOffset,
+                    end: change.rangeOffset + change.rangeLength,
+                    text: change.text,
+                  })),
+                )
+                state.history.push(next, version)
+              }
+              state.projection = projectOriginal(state.history.current)
+              // 仅核对显示投影；模型的 LF 正文绝不能覆盖权威原文的 BOM/混合 EOL。
+              if (model.getValue() !== state.projection.modelText) throw new Error('编辑器与原文历史不一致，已保护的草稿保留，请重新进入编辑器。')
+            } catch (error: unknown) {
+              setFailure(error instanceof Error ? error.message : String(error))
+              setStatus('failed')
+              selectionRef.current?.({ ok: false, reason: '原文历史尚不可用，请重新进入编辑器后选择。' })
+              return
             }
-            state.projection = projectOriginal(state.history.current)
             textChangeRef.current(fileOf(model.uri.path), state.history.current)
             notifySelection()
-          }),
+          }) ?? null
+        }
+        disposables.push(
+          editor.onDidChangeModel(watchModel),
+          { dispose: () => contentSubscription?.dispose() },
         )
         disposables.push(editor.onDidChangeCursorSelection(notifySelection))
         disposables.push(
@@ -290,7 +311,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       const projection = projectOriginal(original)
       model = monaco.editor.getModel(uri) ?? monaco.editor.createModel(projection.modelText, language, uri)
       model.setEOL(monaco.editor.EndOfLineSequence.LF)
-      originals.set(key, { history: new OriginalEditHistory(original), projection })
+      originals.set(key, { history: new OriginalEditHistory(original, model.getAlternativeVersionId()), projection })
       models.set(key, model)
     }
     if (model.getLanguageId() !== language) {
@@ -316,9 +337,9 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     const monaco = monacoRef.current
     if (!model || !state || !monaco || state.history.current === initialText) return
     const projection = projectOriginal(initialText)
-    originals.set(key, { history: new OriginalEditHistory(initialText), projection })
     model.setValue(projection.modelText)
     model.setEOL(monaco.editor.EndOfLineSequence.LF)
+    originals.set(key, { history: new OriginalEditHistory(initialText, model.getAlternativeVersionId()), projection })
     notifySelection()
   }, [status, workspaceKey, fileId, initialText])
 
@@ -330,10 +351,10 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
   if (status === 'failed') {
     return (
       <div className="cw-editor-failed" role="alert">
-        <p>代码编辑器加载失败</p>
+        <p>代码编辑器不可用</p>
         <p className="cw-editor-failed-detail">{failure}</p>
         <p className="cw-editor-failed-note">
-          正文没有被改动，也不会用降级编辑器顶替：修复加载问题后重新进入即可继续。
+          已保护的正文保留，不会用降级编辑器顶替：排除问题后重新进入即可继续。
         </p>
       </div>
     )
