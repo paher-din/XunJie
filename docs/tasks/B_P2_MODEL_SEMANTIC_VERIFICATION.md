@@ -398,3 +398,15 @@ node --test server/tutoring/test/index.test.ts server/tutoring/test/student-help
 批次合计 input 2,640、output 648、total 3,288 tokens；prompt cache hit 512、miss 2,128。证据标记 `purpose=student_help_two_job_semantic_fix`、`completedJobs=2`、`externalRequests=2`、`providerAttempts=2`、`completedAuthorizedBatch=true`，模型/提示/schema/政策版本分别为 `deepseek-flash-v1`、`student-help-v1`、`student-help-v1`、`help-v1`。证据写入调用者本机权限受限临时目录并通过既有敏感字段审计；任务稿不记录个人绝对路径、key、请求头、内部思维链或原始 provider 错误。
 
 至此第 15 节要求的语言对齐与内部标识过滤已同时取得离线回归和新的真实模型证据，HR-03/05/06/07/10 的共同修复门禁可交 P2 总协调复审。该结果不代替负责人对早期五 Job/三 Job 口径偏差、批次级 D-02 记录及 Issue #45 全部关闭条件的最终裁决，也不冒充浏览器 `displayed`、真实学生接棒或完整 G2/MVP 验收。
+
+## 18. 2026-10-13 PR #46 最新复审与收窄方案
+
+负责人 A 在固定 base `37849f4`、head `5cc707f` 上完成新一轮 Request Changes；此前 B-F-R01/R02 两项统计问题确认已解决。本轮新增四项 P2：README 的故障探针与 30 Job 一次性许可已经使用但历史命令未显式防止再次执行；PR 正文尚未同步故障探针、30 Job、真人审阅、修复和授权信息；内部标识校验把合法 C 标签 `resource:printf("x");` 或仅包含引用 ID 子串的文件名误判为泄漏；语言校验把任意汉字误当主要语言，导致英文问题中的中文引文被误判，同时允许英文正文只添加“提示/下一步”绕过中文门禁。
+
+修复不改变学生辅导公开契约、引用白名单、一次 repair、三次调用、45 秒截止或 usage 台账。README 在已执行批次命令前增加“仅作历史复现说明，再运行须另获明确授权”和实际结果链接。内部标识规则改为识别仓库实际内部 ID 形状及带边界的完整获准引用，不拒绝普通 C 标签或较长自然文件名中的子串。主要语言按去除引号/代码片段后的汉字数量与拉丁词数量判定；已判定的中文或英文问题分别要求 `content` 和 `expectedStudentAction` 使用相同主要语言，无法可靠判定时不凭单字强制分类。
+
+离线反例必须直接覆盖负责人给出的两侧：合法 `resource:printf("x");` 概念说明和引用 ID 子串文件名一次成功，真正内部 ID 仍进入 repair/失败闭合；英文问题 `Why does strcmp(s, "中文") return zero?` 的正常英文回答一次成功，中文问题对应的英文正文/下一步即使分别添加“提示/下一步”也不得通过。PR 正文与复审评论在最终 head、验证计数和剩余裁决项确定后由 PR 作者同步；本任务稿不把页面文字更新冒充代码修复。
+
+修复完成后，负责人给出的原始反例及相邻守卫定向测试共 11 项全部通过；其中还覆盖中文主问题后追加英文提示注入的既有上下文链。Node 24.21.0 下 B 四文件完整领域套件共 97 项：94 通过、0 失败、3 个真实入口按门禁跳过；TypeScript 静态检查退出码 0。文档静态检查无错误，检查器回归 16/16，`git diff --check` 通过，受保护产品/计划/参考文档与 `AGENTS.md` 无改动。本轮没有设置任何真实调用开关、没有读取 key，供应商请求为 0；第 17.1 节的历史真实证据不因本轮离线收窄而被重新执行或扩大。
+
+同一工作树的 `npm test` 在受限沙箱中共 290 项：275 通过、3 失败、12 跳过。一项仍是既有 Windows/Linux `RunControl` 配置失败；另外两项是本机 loopback 连接被沙箱以 `EACCES` 拒绝。随后只在沙箱外复跑 `tests/startup.test.ts`，4/4 通过，确认两个 startup 失败属于执行环境限制而非本次回归；未在沙箱外重跑整套，故保留原始 290 项统计，不将组合结果改写成一次全套通过。

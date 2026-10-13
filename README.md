@@ -164,7 +164,7 @@ try {
 }
 ```
 
-2026-10-13，#45 的真实 provider 取消、超时和失败探针已获得账号负责人对合成数据、最多三次串行请求、可能费用及 `unknown` usage 的明确授权。该授权不包含 30 次性能采样；探针默认跳过且任一非预期结果都会停止后续请求。仅在 Node 24.21.0、当前安全输入 key 和准确授权范围下，于 `apps/teaching` 执行：
+2026-10-13，#45 的真实 provider 取消、超时和失败探针已执行完毕，实际结果见 [B/P2-F 任务文档第 13.1 节](docs/tasks/B_P2_MODEL_SEMANTIC_VERIFICATION.md#131-实际执行结果)。以下命令只保留为历史复现说明；一次性授权已经使用，再运行须另获明确授权。原授权仅覆盖合成数据、最多三次串行请求、可能费用及 `unknown` usage，不包含 30 次性能采样；探针默认跳过且任一非预期结果都会停止后续请求。
 
 ```powershell
 $secureKey = Read-Host 'DeepSeek API key' -AsSecureString
@@ -185,7 +185,7 @@ try {
 }
 ```
 
-2026-10-13，账号负责人另行批准一次 30 个固定合成 `student_help` Job 的真实模型批次及其费用/unknown usage。该批固定 `deepseek-flash`、thinking disabled、SDK `maxRetries=0`，每 Job 最多三次调用/一次修复/45 秒，严格串行且全批最多 90 次外部请求；失败不自动重跑，既有三个故障探针不计入样本。只在 Node 24.21.0 下于 `apps/teaching` 执行一次：
+2026-10-13，30 个固定合成 `student_help` Job 的真实模型批次已执行完毕，实际结果见 [B/P2-F 任务文档第 14.1 节](docs/tasks/B_P2_MODEL_SEMANTIC_VERIFICATION.md#141-实际三十-job-结果)。以下命令只保留为历史复现说明；一次性授权已经使用，再运行须另获明确授权。原授权包含该批费用/unknown usage，并固定 `deepseek-flash`、thinking disabled、SDK `maxRetries=0`，每 Job 最多三次调用/一次修复/45 秒，严格串行且全批最多 90 次外部请求；失败不自动重跑，既有三个故障探针不计入样本。
 
 ```powershell
 node tools/check-runtime.mjs
@@ -206,7 +206,7 @@ try {
 }
 ```
 
-2026-10-13，账号负责人在 30 Job 批次完成后独立批准一次两 Job 真实语义修复复验及其费用/unknown usage。该批只验证中文语言对齐与内部标识过滤，使用固定合成数据，最多六次外部请求，严格串行且失败不自动重跑；原 30 Job 授权不延用。只在 Node 24.21.0 下于 `apps/teaching` 执行一次：
+2026-10-13，两 Job 真实语义修复复验已执行完毕，实际结果见 [B/P2-F 任务文档第 17.1 节](docs/tasks/B_P2_MODEL_SEMANTIC_VERIFICATION.md#171-实际两-job-复验结果)。以下命令只保留为历史复现说明；一次性授权已经使用，再运行须另获明确授权。原授权包含该批费用/unknown usage，只覆盖中文语言对齐与内部标识过滤的固定合成数据，最多六次外部请求，严格串行且失败不自动重跑；原 30 Job 授权未延用。
 
 ```powershell
 node tools/check-runtime.mjs

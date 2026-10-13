@@ -440,8 +440,8 @@ function validateStudentBody(
   };
 }
 
-const hanText = /\p{Script=Han}/u;
-const opaqueIdentifier = /(?:\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b|\b[0-9a-f]{40,64}\b|\b(?:claim|assistance|resource|project|learner-state):[A-Za-z0-9:_.-]+)/i;
+const opaqueIdentifier = /(?:\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b|\b[0-9a-f]{40,64}\b|\bclaim:[A-Za-z0-9_.-]+:\d+\b|\bassistance:[A-Za-z0-9_.-]+-\d+\b|\bresource:[0-9a-f]{40,64}\b|\bproject:[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b|\blearner-state:\d+:[A-Za-z0-9_.-]+\b)/i;
+const identifierBoundaryCharacter = /[A-Za-z0-9:_./-]/;
 
 function studentVisibleTextIsSafe(
   value: Record<string, unknown>,
@@ -450,7 +450,9 @@ function studentVisibleTextIsSafe(
 ): boolean {
   const content = value.content as string;
   const expectedStudentAction = value.expectedStudentAction as string;
-  if (hanText.test(question) && (!hanText.test(content) || !hanText.test(expectedStudentAction))) return false;
+  const questionLanguage = primaryLanguage(question);
+  if (questionLanguage &&
+    (primaryLanguage(content) !== questionLanguage || primaryLanguage(expectedStudentAction) !== questionLanguage)) return false;
   const visibleText = [
     content,
     value.rationale as string,
@@ -459,7 +461,39 @@ function studentVisibleTextIsSafe(
     ...(value.unresolved as string[]),
   ].join("\n");
   if (opaqueIdentifier.test(visibleText)) return false;
-  return authorizedReferenceIds.every((referenceId) => !visibleText.includes(referenceId));
+  return authorizedReferenceIds.every((referenceId) => !containsCompleteReferenceId(visibleText, referenceId));
+}
+
+function primaryLanguage(text: string): "en" | "zh" | undefined {
+  const prose = text.replace(/`[^`]*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, " ");
+  for (const segment of prose.split(/[。！？!?;\n]+/u)) {
+    const language = classifyLanguageSegment(segment);
+    if (language) return language;
+  }
+  return classifyLanguageSegment(prose);
+}
+
+function classifyLanguageSegment(text: string): "en" | "zh" | undefined {
+  const hanCharacters = text.match(/\p{Script=Han}/gu)?.length ?? 0;
+  const latinWords = text.match(/\p{Script=Latin}[\p{Script=Latin}\p{Number}_-]*/gu)?.length ?? 0;
+  if (hanCharacters >= 2 && hanCharacters >= latinWords * 2) return "zh";
+  if (latinWords >= 2 && latinWords * 2 > hanCharacters) return "en";
+  return undefined;
+}
+
+function containsCompleteReferenceId(text: string, referenceId: string): boolean {
+  let offset = 0;
+  while (offset <= text.length - referenceId.length) {
+    const index = text.indexOf(referenceId, offset);
+    if (index < 0) return false;
+    const before = index > 0 ? text[index - 1] : undefined;
+    const afterIndex = index + referenceId.length;
+    const after = afterIndex < text.length ? text[afterIndex] : undefined;
+    if ((!before || !identifierBoundaryCharacter.test(before)) &&
+      (!after || !identifierBoundaryCharacter.test(after))) return true;
+    offset = index + 1;
+  }
+  return false;
 }
 
 function hasForbiddenCapability(value: unknown): boolean {
