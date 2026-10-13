@@ -1,0 +1,5 @@
+# Playwright 运行产物：不进版本库
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/
