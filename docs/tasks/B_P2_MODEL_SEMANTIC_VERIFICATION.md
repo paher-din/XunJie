@@ -142,3 +142,27 @@ B 负责组织 B0 E1～E10/T1 中属于 B1/B2 的固定工程材料和实际输�
 2. B2 固定工程样例的实际人工语义审阅尚未由真人填写角色、结论、理由和反例；上述内容核对只是工程证据整理，不代签教师判断。
 3. B4 至少 30 次实际延迟/用量样本尚未获得扩大请求/费用许可，也未执行；本次 6 次不能充当 30 次样本。
 4. 完成交付后仍须提交 PR/交接包，并由 P2 总协调按 Issue #45 复审；新完成声明不自动通过或关闭。
+
+## 11. 2026-10-13 PR #46 审查统计更正
+
+负责人在固定 base `37849f4`、head `65305833f680e12974764a82514e92349aa95846` 上复验后指出，第 5 节与第 8 节记录的“66 项 B 专项”和“270 项中 260 通过”无法从任何已提交固定点复现。上述段落保留其形成时的历史记录，本节以锁定 Node.js 24.21.0 对同一 head 的重新执行结果作最新更正；不倒写原记录，也不把既有平台失败表述为全量通过。
+
+在 `apps/teaching` 目录执行 B 四文件专项：
+
+```powershell
+node --test tests/design-agent.test.ts server/tutoring/test/student-help.test.ts server/tutoring/test/deepseek-sdk.test.ts server/tutoring/test/real-model-support.test.ts
+```
+
+实际结果为 69 项：67 通过、0 失败、2 跳过。两个跳过均为默认关闭的教师/学生真实模型入口；本次复验未提供 key、未开启真实模型门禁、供应商请求为 0。原“66 通过、0 失败、2 跳过”不是固定提交上的可复现结果，后续引用应使用本节的命令和计数。
+
+同目录执行完整套件：
+
+```powershell
+npm test
+```
+
+实际结果为 271 项：261 通过、1 失败、9 跳过；build 通过。唯一失败仍为 `server/workspace/review.test.ts:118` 经 `runner/control.ts:48` 抛出的 `Linux and trusted control context required`，与基线相同且 PR 未修改这两个文件。最终记录来自允许本机 loopback 的运行环境；受限沙箱曾额外以 `EACCES 127.0.0.1` 阻止两项启动测试，该次环境性结果不作为固定 head 的项目统计。
+
+本次审查修复只更正任务记录和 PR 说明，不改生产代码、测试、公开契约、Node 运行时门禁或 README 命令。第 7 节描述的是首次实现记录；后续第 8 节已经如实记录 `server/tutoring/core.ts` 的可信 system 提示变更和 README 真实模型命令门禁，因此不能再把第 7 节的“没有改变生产 provider/README 命令”当作当前 PR 总结。准确边界是：`providers.ts` 与 `deepseek-sdk.ts` 未改，生产 `core.ts` 的提示内容和 README 验证命令确有改动，服务端引用/字段/政策校验及公开请求响应契约未放宽。
+
+最新审查明确撤回此前移动 `assertRealModelRuntime()` 的阻塞要求：仓库只支持 Node 24.21.0，批准运行时下授权门测试通过，运行时检查保持现状。本次没有借统计更正调整该安全边界，也没有发起新的真实模型调用。Issue #45 的五 Job 范围偏差、D-02 可复审确认、真人语义、B4 至少 30 次样本、真实 provider 取消/超时、浏览器与真人条件继续保持未完成。
