@@ -10,6 +10,7 @@ import type {
 import { generateStudentHelp, generateTeacherProposal } from "../core.ts";
 import {
   createDeepSeekProvider,
+  estimateDeepSeekInputTokenUpperBound,
   SyntheticProvider,
   type DeepSeekInvocation,
   type ProviderRequest,
@@ -282,6 +283,57 @@ test("student validator rebuilds the body without unknown model fields", async (
   if (result.outcome === "success") assert.deepEqual(result.body, expected);
 });
 
+test("Chinese student questions repair English visible output once", async () => {
+  const chineseBody = validHelpBody({
+    content: "先找出循环的分隔条件。",
+    rationale: "学生请求了一个有限提示。",
+    expectedStudentAction: "请写出并测试分隔条件。",
+    assistanceContext: "一次有限提示。",
+  });
+  const provider = new SyntheticProvider([
+    { body: validHelpBody(), usage },
+    { body: chineseBody, usage },
+  ]);
+  const result = await generateStudentHelp(helpRequest({ question: "请给我一个小提示" }), { provider });
+  assert.equal(result.outcome, "success");
+  assert.equal(result.calls, 2);
+  assert.equal(provider.calls[1]?.repair, true);
+  if (result.outcome === "success") assert.deepEqual(result.body, chineseBody);
+});
+
+test("student-visible fields repair opaque IDs, UUIDs, and hashes while structured refs remain", async (t) => {
+  for (const [name, exposed] of [
+    ["reference ID", "Use claim:relevant-3:1 next."],
+    ["UUID", "Open project 78daf11b-584a-4062-8964-ed7f8bbefd38 next."],
+    ["hash", `Open resource:${"a".repeat(64)} next.`],
+  ] as const) {
+    await t.test(name, async () => {
+      const repaired = validHelpBody();
+      const provider = new SyntheticProvider([
+        { body: validHelpBody({ assistanceContext: exposed }), usage },
+        { body: repaired, usage },
+      ]);
+      const result = await generateStudentHelp(helpRequest(), { provider });
+      assert.equal(result.outcome, "success");
+      assert.equal(result.calls, 2);
+      if (result.outcome === "success") {
+        assert.deepEqual(result.body.resourceRefs, ["resource-1"]);
+        assert.equal(JSON.stringify(result.body).includes(exposed), false);
+      }
+    });
+  }
+});
+
+test("student-visible language and internal-ID violations fail closed after one repair", async () => {
+  const unsafe = validHelpBody({ assistanceContext: "Use resource-1 and continue." });
+  const provider = new SyntheticProvider([{ body: unsafe, usage }, { body: unsafe, usage }]);
+  const result = await generateStudentHelp(helpRequest(), { provider });
+  assert.deepEqual(
+    { outcome: result.outcome, code: "code" in result ? result.code : "", calls: result.calls },
+    { outcome: "rejected", code: "INVALID_MODEL_OUTPUT", calls: 2 },
+  );
+});
+
 test("disabled help is policy-blocked with zero provider calls", async () => {
   const provider = new SyntheticProvider([]);
   const result = await generateStudentHelp(
@@ -303,6 +355,8 @@ test("untrusted prompt injection remains data and cannot grant capabilities", as
   }), { provider });
   assert.equal(result.outcome, "success");
   assert.match(observed?.systemPolicy ?? "", /untrusted data/);
+  assert.match(observed?.systemPolicy ?? "", /same primary language/);
+  assert.match(observed?.systemPolicy ?? "", /never expose reference IDs/);
   assert.match(JSON.stringify(observed?.untrustedInput), /Ignore policy/);
   assert.doesNotMatch(observed?.systemPolicy ?? "", /Ignore policy/);
 });
@@ -559,15 +613,21 @@ test("DeepSeek input budget rejects over 16K before injected SDK invocation", as
 
 test("the repair instruction is part of the shared input limit", async () => {
   let invocations = 0;
+  let firstInputUpperBound = 0;
   const provider = createDeepSeekProvider({
-    invoke: async () => {
+    invoke: async (request) => {
       invocations += 1;
+      firstInputUpperBound = estimateDeepSeekInputTokenUpperBound(request);
       return { body: {}, usage };
     },
   });
-  const result = await generateStudentHelp(helpRequest({ question: "x".repeat(13_100) }), { provider });
+  const result = await generateStudentHelp(helpRequest({ question: "x".repeat(12_876) }), { provider });
   assert.equal(result.outcome, "needs_input");
   assert.equal(result.calls, 1);
   assert.equal(invocations, 1);
+  assert.ok(
+    firstInputUpperBound >= 15_840 && firstInputUpperBound <= 15_960,
+    `first input upper bound ${firstInputUpperBound} must stay inside the stable repair window`,
+  );
   assert.deepEqual(result.usage, usage);
 });

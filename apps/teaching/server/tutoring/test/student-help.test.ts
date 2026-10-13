@@ -113,8 +113,9 @@ async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, l
     const provider: ModelProvider = suppliedProvider ?? {
       async generate(modelRequest) {
         providerCalls += 1;
-        const untrusted = modelRequest.untrustedInput as { references?: { id: string }[] };
-        const body = { ...validBody(untrusted.references?.[0]?.id ?? "missing"), unresolved: control.unresolved ?? [] };
+        const untrusted = modelRequest.untrustedInput as { question?: string; references?: { id: string }[] };
+        const language = /\p{Script=Han}/u.test(untrusted.question ?? "") ? "zh" : "en";
+        const body = { ...validBody(untrusted.references?.[0]?.id ?? "missing", language), unresolved: control.unresolved ?? [] };
         if (control.withdrawBudgetAfterFirst && providerCalls === 1) {
           budgetAvailable = false;
           return {
@@ -708,7 +709,7 @@ test("context assembly exposes only the selected snapshot, relevant claims, actu
       attemptId: setup.attemptId,
     });
 
-    const provider = new SyntheticProvider([{ body: validBody(request.context.authorizedReferenceIds[0]) }]);
+    const provider = new SyntheticProvider([{ body: validBody(request.context.authorizedReferenceIds[0], "zh") }]);
     const outcome = await generateStudentHelp(request, { provider });
     assert.equal(outcome.outcome, "success");
     assert.equal(provider.calls.length, 1);
@@ -1582,16 +1583,17 @@ test("P2 authorized 30-job real student-help performance batch", {
   }
 });
 
-function validBody(referenceId: string) {
+function validBody(referenceId: string, language: "en" | "zh" = "en") {
+  const chinese = language === "zh";
   return {
     kind: "student_help",
     actionType: "hint",
-    content: "Check the loop bound before changing the pointer.",
-    rationale: "One bounded hint preserves student control.",
-    expectedStudentAction: "Inspect and test the loop condition.",
+    content: chinese ? "修改指针前先检查循环边界。" : "Check the loop bound before changing the pointer.",
+    rationale: chinese ? "一个有限提示可以保留学生的控制权。" : "One bounded hint preserves student control.",
+    expectedStudentAction: chinese ? "请检查并测试循环条件。" : "Inspect and test the loop condition.",
     evidenceIds: [referenceId],
     resourceRefs: [],
-    assistanceContext: "No prior applicable state was assumed.",
+    assistanceContext: chinese ? "未假定存在先前适用状态。" : "No prior applicable state was assumed.",
     unresolved: [],
     policyChecks: {
       containsWholeSolution: false,
