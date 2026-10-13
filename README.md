@@ -55,6 +55,8 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
+| [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 获准提前评审准备，A 域输入已交；仍待 C/B/UI 具体提案、配置/schema/运行授权 |
+| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | C4 合并后获准精确 33 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；PR修复专项51/51、两轴未解决0；默认/串行全量失败与后置项单列 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -180,6 +182,20 @@ try {
 }
 ```
 
+### A4 有效学习状态与纠正事务
+
+2026-10-12，负责人已批准 A4 的 fresh-only 31 表和公共验证范围。以下命令从仓库根目录执行，进入 `apps/teaching` 后使用 Node 24.21.0 与锁定依赖；验证创建并保留合成库，不迁移已有库，真实模型/执行节点开关保持关闭，详见 [A4 记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#83-当前实现与工程验证2026-10-12)。
+
+2026-10-13，当前源码已纳入 C4，以下同一验证入口现按负责人批准创建并保留精确33表合成库（原31表加两张C4表），在初始化前核完整表集合；旧31表批次记录保留。范围与实际组合结果见 [A4 §14](docs/tasks/A4_LEARNER_STATE_REVIEW.md#14-c4-合并后-33-表集成2026-10-13)，不迁移既有库、不修改凭据/CI/UI，真实节点与模型仍不启用。
+
+```powershell
+cd apps/teaching
+node --test tests/review.test.ts
+npm run typecheck
+npm test
+```
+
+
 ### 学生前端（apps/student）
 
 2026-10-13，学生前端使用独立 lockfile，在 apps/student 目录以 Node 24 执行准备检查；不依赖 Design checkout。准备模式使用隔离合成数据，正常模式不回退。来源、完整启动说明、端口与故障回放见 [学生 README](apps/student/README.md) 和 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。
@@ -282,6 +298,22 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，P3 总协调已启动，当前只建立任务/依赖/评审与验收跟踪；数字逻辑 Demo、原服务端反馈闭环与完整 G3 均未验收。P2 的 #11/#26/#24 保持 Open，原 #22/#23/#30 继续各自范围；具体证据、放行条件、模块交接与待授权维护者汇总事项见 [G3 总协调记录](docs/tasks/G3_OVERALL_COORDINATION.md)。
 
 2026-10-12，P3 总协调 #37 与七个 A/B/C 执行 Issue #38～44 已发布并核对，任务/依赖和分层关闭条件见各正文；UI 分批接入与 DL-E2E 由总任务跟踪既定责任。原 P2/模型/UI/环境 Issue 未修改或关闭，发布不算应用验收；详细记录见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)。
+
+### A4 有效学习状态与教师纠正
+
+2026-10-12，A 已基于最新 main 建立 [DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) 的能力差异/共享输入提案，再按等待 DL 批次可推进独立 A4 的顺序建立 [A4 实施方案](docs/tasks/A4_LEARNER_STATE_REVIEW.md)。DL 正式评审仍等待 P2 原预交付确认和 C/B/UI 消费输入；A4 的五表 fresh-only 合成库、受控接口与公共验证接缝待批准。两项源码/业务验收均未执行，#38/#41 保持 Open，进度待授权维护者汇总。
+
+2026-10-12，负责人已批准 DL-A 提前评审准备和 A4 §2～6 的具体实施；A4 公共专项 40/40、typecheck/build 通过，Windows 全量 304 项为 293 通过、2 失败、9 跳过，原启动测试单独复跑 4/4。实现/交接与真实失败、未执行项见 [A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md#83-当前实现与工程验证2026-10-12)；[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#73-最新工程收口与早期评审准备2026-10-12) 的 A 域输入已准备，仍缺 C/B/UI 提案及精确实施授权。代码审查尚待完成，#38/#41 未关闭，产品基线待授权维护者汇总。
+
+2026-10-13，A4 获准服务端批次已完成代码与两轴审查，专项 43/43、typecheck/build 通过；固定源码全量 307 项为 297 通过、1 个既有 Windows/Linux RunControl 环境失败、9 跳过，历史失败保留。验收记录、原日志摘要、消费接缝与后置项见 [A4 最终记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#11-最终固定源码验收证据与交付边界2026-10-13)；[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#74-2026-10-13-远端复核与本批交接) 的 A 域提前评审准备已交，仍缺 C/B/UI 具体契约和实施授权。远端新增 PR #46/#47 尚未合入本源码，#38/#41 未关闭，基线待授权维护者汇总。
+
+2026-10-13，负责人批准公开推送与创建 A4 PR，已交付 [PR #49](https://github.com/paher-din/XunJie/pull/49)；创建时无合并冲突，#38/#41 保留 Open。公开交付不改变上述验收结果或 DL-A 待决条件，实际发布记录见 [A4 §11.4](docs/tasks/A4_LEARNER_STATE_REVIEW.md#114-负责人批准的公开交付2026-10-13)。
+
+2026-10-13，A4 PR #49 新审查修复已实现，含真实版本读取、31表初始化范围守卫、证据勘误和原停止原因保全；局部反例/typecheck通过，本轮完整回归和两轴审查待执行，详情见 [A4修复记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#12-pr-49-新审查意见修复2026-10-13)。C试合并复核及审计归因待裁决项分别登记，不宣称实际联合验收已完成。
+
+2026-10-13，A4 PR #49 本轮修复专项51/51、typecheck/build通过；默认全量315项为304通过/2失败/9跳过，SDK单独11/11，串行同全集305通过/1个既有Windows/Linux环境失败/9跳过，历史失败完整保留。实现、两轴0项、原日志勘误与审计归因待裁决见[A4修复最终记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#13-pr-49-修复最终结果2026-10-13)；C4联合范围授权、实际合并后复确认与B消费验收继续单列。
+
+2026-10-13，C4 已先行合入 main，负责人批准的 A4 合成库精确33表守卫及公共工厂断言已实施；更新主线后的 A4/C4/C3 组合81项为80通过、0失败、1环境跳过，typecheck/build通过。旧31表证据保留，实际远程合并结果及两轴审查见 [顺序集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)；B消费、审计归因裁决及正式产品后置项仍分别跟踪。
 
 ### C4 固定提交、学生修订与闭环恢复
 
