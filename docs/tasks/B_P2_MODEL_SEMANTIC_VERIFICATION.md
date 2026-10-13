@@ -281,3 +281,22 @@ npm test
 当前状态：授权、固定 fixture、独立门禁、请求上限和证据格式已实现；**真实 30-Job 批次尚未执行**。当前主工作区 Node 为 24.14.1，仓库门禁按预期拒绝正式 `npm run typecheck` 和真实入口；直接调用已安装 TypeScript 编译器的 `tsc --noEmit` 通过。Node 24.14.1 下学生领域测试的新增 fixture 数量/分布、百分位与默认跳过测试通过；同批 `real-model-support.test.ts` 的两个既有门禁断言因精确运行时先行而失败，属于错误 Node 环境结果，不记作 24.21.0 复验。真实执行必须由账号负责人切回 Node 24.21.0 后使用 README 的一次性命令，结果产生前不得把 30 次样本标为通过。
 
 账号负责人首次执行时，预检准确报告当前 Node 为 24.14.1 并抛出“no model request was sent”。随后仍直接开启两个授权环境变量运行批次入口，测试内部第二道 `assertRealModelRuntime()` 在约 3ms 内再次拒绝，结果为 0 通过、1 失败，没有建立 provider、没有创建 30 个 Job、没有产生证据文件或外部 HTTP 请求。该次是零调用的运行环境失败，不计入获准批次，也不属于真实批次失败后的自动重跑；在切换至精确 Node 24.21.0 前不得继续调用。
+
+### 14.1 实际三十 Job 结果
+
+账号负责人随后使用官方 Node 24.21.0 便携运行时，在固定提交 `d2283f4a282578390d5023c73f81afbbb30e3295` 上执行唯一一次获准批次。测试 1/1 通过，总墙钟约 149,077ms，30 个 `student_help` Job 全部完成；没有重跑。证据写入调用者本机权限受限临时目录并完成脱敏字段核对，不在仓库记录个人绝对路径。
+
+| 指标 | 实际结果 |
+| --- | --- |
+| Job | 30/30 `success`；每项 `calls=1`，没有触发修复轮 |
+| 外部请求 | 30 次，全部 HTTP 200/`response`；低于授权上限 90 |
+| usage | 30/30 `actual`；input 36,993、output 10,511、total 47,504 tokens |
+| cache | prompt cache hit 7,680、miss 29,313 tokens |
+| Job 延迟 | min 3,002ms、p50 3,958ms、p95 4,802ms、max 5,151ms |
+| 版本 | 30 项均为 `deepseek-flash-v1` / `student-help-v1` prompt / `student-help-v1` schema / `help-v1` policy |
+| 固定场景 | 空历史 5；相关历史 3；反证/未知 2；无关/撤回 4；合成环境故障表达 4；资料指令注入 4；整份答案请求 4；限定帮助/相邻例子/接棒 4 |
+| 边界校验 | 未发现越出 `authorizedReferenceIds` 的引用；30 项四个 policyChecks 均为 false |
+
+证据顶层为 `purpose=student_help_30_job_performance`、`model=deepseek-flash`、`dataScope=synthetic-only`、`completedAuthorizedBatch=true`。`sourceDirty=true` 仍来自工作区原有未跟踪 `.trae/`；本任务未读取、修改或提交该目录。证据没有 Authorization、key、请求头、cookie、CSRF、密码、lease token、内部思维链或原始 provider 错误正文。AI SDK 的 JSON schema compatibility warning 只说明 schema 被注入可信 system message，不是失败，30 项实际响应均通过服务端结构、政策和引用校验。
+
+该批满足 Issue #45 的“至少 30 次实际延迟/usage 样本”工程证据，但不自动满足真人教学语义：人工整理发现中文问题 `filtered-3`、`filtered-4`、`whole-solution-1` 的可见正文仍为英文，复现了 HR-03 的语言对齐缺口；部分资料注入/整份答案样本直接提示 `index < length` 与 `index <= length` 的差异，虽未形成整份作品且结构政策校验通过，帮助强度是否适合仍须真人判定。反证/未知、环境故障、注入、整份答案和接棒类别均已有真实模型正文，可进入第二批真人审阅；本节只记录工程事实和待审重点，不替审阅者判为教学通过。
