@@ -47,6 +47,8 @@ export type ClaimedLearnerAnalysisRuntime = {
   now?: () => number;
 };
 
+const MAX_LEARNER_ANALYSIS_MS = 45_000;
+
 export function prepareLearnerAnalysisRequest(input: {
   claimed: ClaimedLearnerAnalysis;
   targets: readonly LearnerAnalysisTarget[];
@@ -79,13 +81,21 @@ export function prepareLearnerAnalysisRequest(input: {
     throw new Error("Claimed learner analysis does not match its trusted binding");
   }
 
-  const allowed = new Set([
+  const boundReferenceIds = [
     ...binding.inputRefs,
     ...binding.assistanceRefs,
     ...binding.coverageRefs,
-  ].map((reference) => reference.id));
-  if (input.references.some((reference) => !allowed.has(reference.id))) {
-    throw new Error("Learner analysis reference is outside the trusted binding");
+  ].map((reference) => reference.id);
+  const suppliedReferenceIds = input.references.map((reference) => reference.id);
+  const bound = new Set(boundReferenceIds);
+  const supplied = new Set(suppliedReferenceIds);
+  if (
+    bound.size !== boundReferenceIds.length ||
+    supplied.size !== suppliedReferenceIds.length ||
+    supplied.size !== bound.size ||
+    boundReferenceIds.some((referenceId) => !supplied.has(referenceId))
+  ) {
+    throw new Error("Learner analysis references must exactly match the trusted binding");
   }
 
   return {
@@ -161,6 +171,12 @@ export async function executeClaimedLearnerAnalysis(
   },
   runtime: ClaimedLearnerAnalysisRuntime,
 ): Promise<TutoringOutcome<LearnerAnalysisBody>> {
+  const now = runtime.now ?? Date.now;
+  const effectiveDeadline = Math.min(
+    Date.parse(input.claimed.job.deadline),
+    Date.parse(input.claimed.job.acceptedAt) + MAX_LEARNER_ANALYSIS_MS,
+  );
+  const checkCurrent = createLearnerAnalysisCurrentGuard(input.claimed, runtime.readCurrent, now);
   const request = prepareLearnerAnalysisRequest({
     ...input,
     budgetAvailable: runtime.budgetAvailable(),
@@ -176,24 +192,57 @@ export async function executeClaimedLearnerAnalysis(
         if (error instanceof ProviderCallNotStartedError) throw error;
         throw new ProviderCallNotStartedError("unavailable", "Unable to persist learner analysis call reservation");
       }
+
+      let notStarted: ProviderCallNotStartedError | undefined;
+      try {
+        if (providerRequest.signal.aborted) {
+          notStarted = new ProviderCallNotStartedError("cancelled", "Learner analysis was cancelled before provider invocation");
+        } else if (now() >= effectiveDeadline) {
+          notStarted = new ProviderCallNotStartedError("timed_out", "Learner analysis expired before provider invocation");
+        } else {
+          const current = await checkCurrent(providerRequest.signal);
+          if (providerRequest.signal.aborted || current === "cancelled") {
+            notStarted = new ProviderCallNotStartedError("cancelled", "Learner analysis was cancelled before provider invocation");
+          } else if (now() >= effectiveDeadline) {
+            notStarted = new ProviderCallNotStartedError("timed_out", "Learner analysis expired before provider invocation");
+          } else if (current === "stale") {
+            notStarted = new ProviderCallNotStartedError("stale", "Learner analysis became stale before provider invocation");
+          } else if (!runtime.budgetAvailable()) {
+            notStarted = new ProviderCallNotStartedError("budget_exhausted", "Learner analysis budget was withdrawn before provider invocation");
+          }
+        }
+      } catch (error) {
+        notStarted = error instanceof ProviderCallNotStartedError
+          ? error
+          : new ProviderCallNotStartedError("unavailable", "Unable to revalidate learner analysis before provider invocation");
+      }
+      if (notStarted) {
+        await releaseUnsentModelCall(runtime);
+        throw notStarted;
+      }
+
       try {
         return await runtime.provider.generate(providerRequest);
       } catch (error) {
         if (!(error instanceof InputLimitError)) throw error;
-        try {
-          await runtime.releaseModelCall(providerRequest.signal);
-        } catch (releaseError) {
-          if (releaseError instanceof ProviderCallNotStartedError) throw releaseError;
-          throw new ProviderCallNotStartedError("unavailable", "Unable to release an unsent learner analysis call");
-        }
+        await releaseUnsentModelCall(runtime);
         throw error;
       }
     },
   };
   return generateLearnerAnalysis(request, {
     provider,
-    checkCurrent: createLearnerAnalysisCurrentGuard(input.claimed, runtime.readCurrent, runtime.now),
+    checkCurrent,
     priorCalls: input.claimed.job.attemptCount,
     ...(runtime.now ? { now: runtime.now } : {}),
   });
+}
+
+async function releaseUnsentModelCall(runtime: ClaimedLearnerAnalysisRuntime): Promise<void> {
+  try {
+    await runtime.releaseModelCall(new AbortController().signal);
+  } catch (error) {
+    if (error instanceof ProviderCallNotStartedError) throw error;
+    throw new ProviderCallNotStartedError("unavailable", "Unable to release an unsent learner analysis call");
+  }
 }

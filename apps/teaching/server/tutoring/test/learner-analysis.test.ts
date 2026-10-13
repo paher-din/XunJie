@@ -213,7 +213,13 @@ test("B3 review of the A4 optional B2 state seam uses real transactions and igno
     const claimReference = references.find((reference) => reference.id === `claim:${claim.claimId}:1`);
     assert.ok(claimReference);
     assert.equal(JSON.parse(claimReference.content).learnerStateRevision, 1);
-    assert.ok(!JSON.stringify(references).includes("900"));
+    assert.equal(references.some((reference) => {
+      try {
+        return (JSON.parse(reference.content) as { learnerStateRevision?: number }).learnerStateRevision === 900;
+      } catch {
+        return false;
+      }
+    }), false);
 
     let calls = 0;
     const later = await s.queue();
@@ -245,6 +251,31 @@ test("B3 review of the A4 optional B2 state seam uses real transactions and igno
   } finally {
     await s.f.close();
   }
+});
+
+test("B3 rejects a model input that omits any reference frozen in the analysis binding", async () => {
+  const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+  claimed.binding.assistanceRefs = [{ kind: "message", id: "assistance", attemptId: "attempt" }];
+  claimed.binding.coverageRefs = [{
+    kind: "coverage",
+    id: "coverage",
+    attemptId: "attempt",
+    captureRevision: 1,
+    fromServerSeq: 1,
+  }];
+  const provider = new SyntheticProvider([]);
+  await assert.rejects(
+    executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+      provider,
+      budgetAvailable: () => true,
+      recordModelCall: () => assert.fail("an incomplete frozen reference set must not reserve a call"),
+      releaseModelCall: () => assert.fail("an incomplete frozen reference set has no reservation to release"),
+      readCurrent: () => syntheticCurrent(claimed),
+      now: () => 1_000,
+    }),
+    /references must exactly match the trusted binding/,
+  );
+  assert.equal(provider.calls.length, 0);
 });
 
 test("B3 shares the three-call, deadline, cancellation, usage, lease, and currentness boundaries", async (t) => {
@@ -365,6 +396,62 @@ test("B3 shares the three-call, deadline, cancellation, usage, lease, and curren
     assert.equal(outcome.outcome, "needs_input");
     assert.equal(outcome.calls, 0);
     assert.equal(reservations, 0);
+  });
+
+  await t.test("reservation completion rechecks cancellation, deadline, currentness, and dynamic budget before sending", async (race) => {
+    const cases = [
+      { name: "cancelled", expected: "cancelled" },
+      { name: "deadline", expected: "timed_out" },
+      { name: "state revision", expected: "stale" },
+      { name: "budget withdrawal", expected: "budget_exhausted" },
+    ] as const;
+    for (const scenario of cases) await race.test(scenario.name, async () => {
+      const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      const controller = new AbortController();
+      let current = syntheticCurrent(claimed);
+      let budget = true;
+      let now = 1_000;
+      let reservations = 0;
+      let finishReservation!: () => void;
+      let announceReservation!: () => void;
+      let announceRelease!: () => void;
+      const reservationStarted = new Promise<void>((resolve) => { announceReservation = resolve; });
+      const reservationGate = new Promise<void>((resolve) => { finishReservation = resolve; });
+      const reservationReleased = new Promise<void>((resolve) => { announceRelease = resolve; });
+      const execution = executeClaimedLearnerAnalysis(
+        { ...syntheticExecution(claimed), signal: controller.signal },
+        {
+          provider,
+          budgetAvailable: () => budget,
+          async recordModelCall() {
+            announceReservation();
+            await reservationGate;
+            reservations += 1;
+          },
+          releaseModelCall(signal) {
+            assert.equal(signal.aborted, false, "cleanup uses an independent signal after request cancellation");
+            reservations -= 1;
+            announceRelease();
+          },
+          readCurrent: () => current,
+          now: () => now,
+        },
+      );
+
+      await reservationStarted;
+      if (scenario.name === "cancelled") controller.abort();
+      if (scenario.name === "deadline") now = 46_000;
+      if (scenario.name === "state revision") current = { ...current, learnerStateRevision: 1 };
+      if (scenario.name === "budget withdrawal") budget = false;
+      finishReservation();
+
+      const outcome = await execution;
+      await reservationReleased;
+      assert.equal(outcome.outcome, scenario.expected);
+      assert.equal(provider.calls.length, 0, "no real provider invocation may cross the post-reservation guard");
+      assert.equal(reservations, 0, "the unsent persistent reservation is released exactly once");
+    });
   });
 });
 
