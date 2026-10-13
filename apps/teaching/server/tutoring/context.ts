@@ -1,11 +1,14 @@
 import { createHash } from "node:crypto";
 import type {
   AuthorizedStudentHelpContext,
+  AuthorizedHdlHelpContext,
+  HdlHelpCurrentState,
   LearnerContextClaim,
   StudentHelpRequest,
   UntrustedReference,
 } from "../../contracts/tutoring/index.ts";
 import type { JobStatus } from "../../contracts/records/index.ts";
+import type { SignalFrame } from "../../contracts/runner/hdl.ts";
 import { studentActionTypes } from "../../contracts/tutoring/index.ts";
 import { RunnerError } from "../../runner/snapshot.ts";
 import type { CurrentGuard, GuardState } from "./core.ts";
@@ -17,7 +20,29 @@ export type StudentHelpCurrentState = AuthorizedStudentHelpContext["current"] & 
   objectAvailable: boolean;
   jobStatus: JobStatus;
   stopRequested: boolean;
+  hdl?: HdlHelpCurrentState;
 };
+
+export function projectHdlHelpCurrentState(hdl: AuthorizedHdlHelpContext): HdlHelpCurrentState {
+  return {
+    snapshotId: hdl.snapshotId,
+    snapshotHash: hdl.snapshotHash,
+    buildId: hdl.build.buildId,
+    buildStatus: hdl.build.status,
+    ...(hdl.session ? {
+      sessionId: hdl.session.sessionId,
+      sessionRevision: hdl.session.sessionRevision,
+      sessionStatus: hdl.session.status,
+      sessionGeneration: hdl.session.identity.recoveryGeneration,
+      confirmedSequence: hdl.session.confirmedSequence,
+      simTimePs: hdl.session.simTimePs,
+    } : {}),
+    ...(hdl.operation ? {
+      operationId: hdl.operation.operationId,
+      resultHash: hdl.operation.resultHash,
+    } : {}),
+  };
+}
 
 export function assembleStudentHelpRequest(
   input: AuthorizedStudentHelpContext,
@@ -47,6 +72,7 @@ export function assembleStudentHelpRequest(
   });
 
   if (input.objectRef) addObjectReference(input, add);
+  if (input.hdl) addHdlReferences(input, add);
   const selectedResources = selectResourceParagraphs(input);
   if (selectedResources.length === 0) {
     add({
@@ -123,6 +149,7 @@ export function assembleStudentHelpRequest(
       versions: input.versions,
     },
     question: input.question,
+    ...(input.hdl ? { domain: "hdl" as const } : {}),
     ...(input.objectRef ? { objectRef: structuredClone(input.objectRef) } : {}),
     references,
     policy: {
@@ -155,6 +182,7 @@ export function createStudentHelpCurrentGuard(
       !current.assignmentActive ||
       current.limitedCheck ||
       !current.helpAllowed
+      || !sameHdlCurrent(expected, current.hdl)
     ) {
       return "stale";
     }
@@ -189,12 +217,232 @@ function assertAuthorizedContext(input: AuthorizedStudentHelpContext) {
       !studentActionTypes.includes(item.actionType) ||
       typeof item.content !== "string" ||
       !["generated", "received", "displayed", "acknowledged", "cancelled", "stale", "failed"].includes(item.status)) ||
+    !validHdlContext(input) ||
     !Number.isFinite(Date.parse(job.acceptedAt)) ||
     !Number.isFinite(Date.parse(job.deadline)) ||
     Date.parse(job.deadline) <= Date.parse(job.acceptedAt)
   ) {
     throw new RunnerError("STATE_CONFLICT", "Student help context is not current");
   }
+}
+
+function validHdlContext(input: AuthorizedStudentHelpContext): boolean {
+  const hdl = input.hdl;
+  if (!hdl) return true;
+  const attemptId = input.job.scope.attemptId;
+  const studentId = input.job.scope.studentId;
+  if (!attemptId || !studentId) return false;
+  const snapshot = input.snapshots.find((item) =>
+    item.snapshotId === hdl.snapshotId &&
+    item.hash === hdl.snapshotHash &&
+    item.attemptId === attemptId &&
+    item.activityVersionId === input.current.activityVersionId);
+  const build = hdl.build;
+  if (
+    !snapshot ||
+    build.buildId !== build.identity.id ||
+    build.snapshotId !== hdl.snapshotId ||
+    build.snapshotHash !== hdl.snapshotHash ||
+    !validHash(hdl.snapshotHash) ||
+    !validHash(build.configurationHash) ||
+    build.identity.recoveryGeneration !== input.current.recoveryGeneration ||
+    !sameHdlScope(input, build.identity.scope) ||
+    !["succeeded", "failed"].includes(build.status) ||
+    !build.terminationConfirmed ||
+    build.diagnostics.length > 100 ||
+    !build.diagnostics.every((diagnostic) => {
+      if (diagnostic.location === "unavailable") return true;
+      return Number.isSafeInteger(diagnostic.line) &&
+        (diagnostic.line ?? 0) > 0 &&
+        snapshot.files.some((file) => file.fileId === diagnostic.fileId && file.path === diagnostic.path);
+    })
+  ) return false;
+  if (input.objectRef?.kind === "code" && input.objectRef.snapshotId !== hdl.snapshotId) return false;
+  if (input.objectRef?.kind === "run") return false;
+
+  const session = hdl.session;
+  const operation = hdl.operation;
+  if (!session) return operation === undefined;
+  if (
+    build.status !== "succeeded" ||
+    session.buildId !== build.buildId ||
+    session.snapshotId !== hdl.snapshotId ||
+    session.snapshotHash !== hdl.snapshotHash ||
+    session.boardProfileVersion !== build.board.boardProfileVersion ||
+    session.mappingVersion !== build.board.mappingVersion ||
+    session.engineVersion !== build.engineVersion ||
+    session.runtimeProfileVersion !== build.runtimeProfileVersion ||
+    session.identity.recoveryGeneration !== input.current.recoveryGeneration ||
+    !sameHdlScope(input, session.identity.scope) ||
+    session.status !== "active" ||
+    session.stopRequested ||
+    session.terminationConfirmed ||
+    !Number.isSafeInteger(session.sessionRevision) ||
+    session.sessionRevision < 1 ||
+    !Number.isSafeInteger(session.confirmedSequence) ||
+    session.confirmedSequence < 0 ||
+    !validSimTime(session.simTimePs)
+  ) return false;
+  if (!operation) return true;
+  const lastFrame = operation.frames.at(-1);
+  return operation.sessionId === session.sessionId &&
+    operation.buildId === build.buildId &&
+    operation.snapshotId === hdl.snapshotId &&
+    operation.snapshotHash === hdl.snapshotHash &&
+    operation.boardProfileVersion === session.boardProfileVersion &&
+    operation.mappingVersion === session.mappingVersion &&
+    operation.engineVersion === session.engineVersion &&
+    operation.sessionRevision === session.sessionRevision &&
+    operation.sequence === session.confirmedSequence &&
+    validHash(operation.resultHash) &&
+    Number.isSafeInteger(operation.sessionRevision) &&
+    operation.sessionRevision > 0 &&
+    Number.isSafeInteger(operation.sequence) &&
+    operation.sequence >= 0 &&
+    Number.isSafeInteger(operation.sampleCount) &&
+    operation.sampleCount >= 0 &&
+    Number.isSafeInteger(operation.droppedFrames) &&
+    operation.droppedFrames >= 0 &&
+    operation.sampleCount >= operation.frames.length &&
+    (operation.coverage !== "complete" || operation.droppedFrames === 0) &&
+    operation.frames.length > 0 &&
+    operation.frames.length <= 4096 &&
+    Boolean(lastFrame) &&
+    operation.frames.every(validHdlFrame) &&
+    lastFrame!.simTimePs === session.simTimePs &&
+    sameHdlFrame(lastFrame!, operation.finalFrame) &&
+    operation.frames.every((frame, index) =>
+      index === 0 || BigInt(frame.simTimePs) >= BigInt(operation.frames[index - 1]!.simTimePs));
+}
+
+function validSimTime(value: string): boolean {
+  return /^\d{1,32}$/.test(value);
+}
+
+function validHash(value: string): boolean {
+  return /^[a-f0-9]{64}$/.test(value);
+}
+
+function validHdlFrame(frame: SignalFrame): boolean {
+  return validSimTime(frame.simTimePs) &&
+    /^[01xz]{16}$/.test(frame.switches) &&
+    /^[01xz]{5}$/.test(frame.buttons) &&
+    /^[01xz]$/.test(frame.resetN) &&
+    /^[01xz]{16}$/.test(frame.leds) &&
+    /^[01xz]{8}$/.test(frame.anodes) &&
+    /^[01xz]{7}$/.test(frame.segments) &&
+    /^[01xz]$/.test(frame.dp);
+}
+
+function sameHdlFrame(left: SignalFrame, right: SignalFrame): boolean {
+  return left.simTimePs === right.simTimePs &&
+    left.switches === right.switches &&
+    left.buttons === right.buttons &&
+    left.resetN === right.resetN &&
+    left.leds === right.leds &&
+    left.anodes === right.anodes &&
+    left.segments === right.segments &&
+    left.dp === right.dp;
+}
+
+function sameHdlScope(
+  input: AuthorizedStudentHelpContext,
+  scope: { courseId: string; studentId: string; attemptId: string; activityVersionId: string },
+): boolean {
+  return scope.courseId === input.job.scope.courseId &&
+    scope.studentId === input.job.scope.studentId &&
+    scope.attemptId === input.job.scope.attemptId &&
+    scope.activityVersionId === input.current.activityVersionId;
+}
+
+function sameHdlCurrent(
+  expected: AuthorizedStudentHelpContext,
+  current: HdlHelpCurrentState | undefined,
+): boolean {
+  const hdl = expected.hdl;
+  if (!hdl) return true;
+  if (!current) return false;
+  const session = hdl.session;
+  const operation = hdl.operation;
+  return current.snapshotId === hdl.snapshotId &&
+    current.snapshotHash === hdl.snapshotHash &&
+    current.buildId === hdl.build.buildId &&
+    current.buildStatus === hdl.build.status &&
+    current.sessionId === session?.sessionId &&
+    current.sessionRevision === session?.sessionRevision &&
+    current.sessionStatus === session?.status &&
+    current.sessionGeneration === session?.identity.recoveryGeneration &&
+    current.confirmedSequence === session?.confirmedSequence &&
+    current.simTimePs === session?.simTimePs &&
+    current.operationId === operation?.operationId &&
+    current.resultHash === operation?.resultHash;
+}
+
+function addHdlReferences(
+  input: AuthorizedStudentHelpContext,
+  add: (reference: UntrustedReference) => void,
+) {
+  const hdl = input.hdl!;
+  const build = hdl.build;
+  add({
+    id: boundedReferenceId("hdl-build", [build.buildId, build.snapshotHash, build.configurationHash]),
+    content: JSON.stringify({
+      source: "authorized_hdl_build",
+      snapshotId: build.snapshotId,
+      snapshotHash: build.snapshotHash,
+      buildId: build.buildId,
+      status: build.status,
+      boardProfileVersion: build.board.boardProfileVersion,
+      mappingVersion: build.board.mappingVersion,
+      runtimeProfileVersion: build.runtimeProfileVersion,
+      engineVersion: build.engineVersion,
+      failureKind: build.failureKind ?? null,
+      diagnostics: build.diagnostics.slice(0, 8).map((diagnostic) => ({
+        severity: diagnostic.severity,
+        message: diagnostic.message.slice(0, 1024),
+        fileId: diagnostic.location === "line-only" ? diagnostic.fileId ?? null : null,
+        path: diagnostic.location === "line-only" ? diagnostic.path ?? null : null,
+        line: diagnostic.location === "line-only" ? diagnostic.line ?? null : null,
+        location: diagnostic.location,
+      })),
+      omittedDiagnosticCount: Math.max(0, build.diagnostics.length - 8),
+    }),
+  });
+  const session = hdl.session;
+  const operation = hdl.operation;
+  if (!session || !operation) return;
+  add({
+    id: boundedReferenceId("hdl-signal", [operation.operationId, operation.resultHash, session.simTimePs]),
+    content: JSON.stringify({
+      source: "authorized_hdl_signal_frame",
+      sessionId: session.sessionId,
+      buildId: session.buildId,
+      sessionRevision: session.sessionRevision,
+      sequence: operation.sequence,
+      simulationTimePs: session.simTimePs,
+      frame: operation.finalFrame,
+    }),
+  });
+  const frames = operation.frames.slice(-32);
+  add({
+    id: boundedReferenceId("hdl-trace", [operation.operationId, operation.resultHash, frames[0]!.simTimePs, frames.at(-1)!.simTimePs]),
+    content: JSON.stringify({
+      source: "authorized_hdl_trace_summary",
+      sessionId: session.sessionId,
+      buildId: session.buildId,
+      sessionRevision: session.sessionRevision,
+      sequence: operation.sequence,
+      fromSimulationTimePs: frames[0]!.simTimePs,
+      toSimulationTimePs: frames.at(-1)!.simTimePs,
+      frames,
+      returnedFrameCount: frames.length,
+      originalFrameCount: operation.frames.length,
+      sampleCount: operation.sampleCount,
+      droppedFrames: operation.droppedFrames,
+      coverage: operation.coverage,
+      locallyTruncated: operation.frames.length > frames.length,
+    }),
+  });
 }
 
 function validLearnerClaim(claim: LearnerContextClaim): boolean {
@@ -323,7 +571,10 @@ function availableParagraphs(input: AuthorizedStudentHelpContext) {
   });
 }
 
-function boundedReferenceId(kind: "code" | "resource", identity: readonly (string | number)[]): string {
+function boundedReferenceId(
+  kind: "code" | "resource" | "hdl-build" | "hdl-signal" | "hdl-trace",
+  identity: readonly (string | number)[],
+): string {
   const digest = createHash("sha256").update(JSON.stringify(identity)).digest("hex");
   return `${kind}:${digest}`;
 }

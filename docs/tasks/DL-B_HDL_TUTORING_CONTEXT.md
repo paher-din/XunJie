@@ -4,9 +4,9 @@
 
 主责：B
 
-基线：`37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`（2026-10-12）
+基线：初始提案 `37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`；本批重放 `cde69ccbd763c3c0ab381a809b750b951f195f64`（2026-10-13）
 
-状态：首批契约输入已准备，待 DL-A 汇总评审；代码实施等待共享 DTO 获批
+状态：首批消费提案与 B 域合成实现已完成并通过专项和回归验证；共享契约评审、A/C 真实授权读取、真实模型/人工语义及浏览器交付未完成
 
 ## 1. 依据、范围与写入边界
 
@@ -216,3 +216,40 @@ B 复用 B1/B2 的 `CurrentGuard` 和绝对截止时间。A/C 的 current reader
 ## 10. 待授权维护者汇总
 
 待 #38 完成评审并有实际实现/验证结果后，由获授权维护者按真实状态决定是否同步 TECH_DESIGN、MVP_SPEC 进度或 README 验证入口。本文不直接修改受保护基线，也不把候选 DTO 写成已批准决定。
+
+## 11. 2026-10-13 最新 main 重放与 B 域实施批次
+
+### 11.1 同步、上游变化与实施边界
+
+负责人提供的同步结果确认 `HEAD`、`origin/main`、`fork/main` 均为 `cde69ccbd763c3c0ab381a809b750b951f195f64`，工作区干净；本 DL-B 分支保留原提案提交并合并该 main。Issue #40 公开页仍为 Open、0 条评论、正文更新时间仍为 2026-10-12；没有新增的共享 DTO 批准。main 已合入 DL-C PR #48 的 C 域 HDL Build/Session/SignalFrame/OperationResult 类型、真实执行与顺序集成修复，原“没有 C 交付”的阻塞事实已经过期；DL-A 任务稿仍明确其跨域契约是待评审提案，正式 A 业务接线和完整 DL-AC 未完成。
+
+本批因此只实施不改变 A/C 语义的 B 域消费边界：`contracts/tutoring` 引用已合入的 C 类型并定义可选 `AuthorizedHdlHelpContext`，`server/tutoring` 校验和缩减这些已授权对象，领域测试使用精确 C DTO 形状和隔离合成数据。不得修改 `contracts/runner`、`server/workspace`、数据库、A 应用工厂或受保护基线，也不得把本批写成 #38 已批准、真实跨域联调或 Issue #40 已关闭。
+
+### 11.2 本批接口与验证方案
+
+- 可信链固定为当前学生/课程/Attempt/Activity、已确认 snapshot/hash、终态 Build；可选活动 Session 与最新 OperationResult 必须逐项绑定 Build/snapshot/board/mapping/engine/recovery generation、session revision、confirmed sequence、simulation time 和 result hash。
+- 模型正文只接收问题相关源码选区、最多 8 条结构化诊断、当前 final frame 和最多 32 个有限 trace frame；保留原 sampleCount/droppedFrames/coverage，四态 `0/1/x/z` 不转换。stdout/stderr、节点路径、镜像、命令和完整无限波形不送模。
+- HDL current guard 在每次 provider 调用前后比较上述因果链；旧 snapshot/Build/Session/generation/sequence/time/result、停止或缺失对象均返回 stale/cancelled，不把迟到帮助交给 C3。
+- provider 系统政策明确区分 HDL 语义、四态/初始化/扫描状态和工具故障，只允许一个教学目的并要求学生自行编辑、构建和装载；不新增学生操作能力。
+- 固定 E-DL-01～03 覆盖端口/位宽诊断、控制逻辑与当前信号、X/Z/有限波形或工具故障；同时覆盖跨学生、错 Build、旧 Session、私有/未知引用、一次 repair、三次/45 秒/unknown usage 的既有回归。
+
+实施后运行 Node 24.21.0 下的 typecheck/build、DL-B 专项、全部 tutoring 回归、相关 HDL workspace/runner 回归、文档检查、检查器回归和 `git diff --check`。真实 DeepSeek、A 正式业务工厂接线、C 目标环境到 B 的授权读取、实际 C3 delivery、浏览器 displayed、人工语义与真人接棒继续分别报告为未执行；真实模型不能沿用已消费的 #45 调用授权。
+
+### 11.3 实际实现与验证结果
+
+2026-10-13，本批在 `contracts/tutoring` 增加可选 HDL 获准上下文和当前性投影，在 `server/tutoring/context.ts` 实现 snapshot/Build/Session/OperationResult 因果链校验、有限诊断与波形装配及调用前后当前性守卫，在 `server/tutoring/core.ts` 增加 HDL 四态、工具失败和学生操作边界政策。固定 E-DL-01～03 fixture 及专项测试同时验证诊断限额、stdout/stderr 排除、40 帧缩减为最后 32 帧且保留覆盖缺口、X/Z 原样保留、跨学生/错版本/迟到结果拒绝、伪造引用一次修复和 unknown usage 聚合。B 没有写学生作品、运行 HDL、改变 A/C DTO，供应商网络调用为 0。
+
+验证环境为 Node.js 24.21.0，结果如下：
+
+| 验证 | 结果 |
+| --- | --- |
+| `npx tsc --noEmit` | 通过 |
+| `npx tsc -p tsconfig.build.json` | 通过 |
+| `node --test server/tutoring/test/hdl-help.test.ts` | 12/12 通过，0 失败 |
+| `node --test server/tutoring/test/index.test.ts server/tutoring/test/student-help.test.ts server/tutoring/test/authorized-runner.test.ts server/tutoring/test/hdl-help.test.ts` | 112 项：108 通过、4 项按真实模型授权门禁跳过、0 失败 |
+| `node --test server/workspace/hdl.test.ts runner/hdl-profile.test.ts runner/hdl-clock.test.ts runner/hdl.runtime.test.ts` | 13 项：11 通过、2 项按目标 VM/平台时钟环境门禁跳过、0 失败 |
+| `node tools/a0-review/check.mjs` | 通过；64 份文档、911 条内部链接、0 错误 |
+| `node --test tools/a0-review/check.test.mjs` | 16/16 通过，0 失败 |
+| `git diff --check` | 通过 |
+
+当前 B 域合成消费能力可交给 DL-A/C3 接线，但 Issue #40 尚不能关闭：#38 仍需确认共享消费边界和 A 侧获准上下文构造，C 目标环境结果还没有经 A/C 的真实读取链送入 B，真实 DeepSeek HDL 样例、人工语义审阅、C3 message/delivery/receipt、浏览器 displayed 和真人接棒均未执行。上述事项不得沿用 #45 已消费完毕的外部调用授权，也不得用本批合成通过替代。
