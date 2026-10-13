@@ -866,3 +866,245 @@ B1 #11 已追加合并后离线完成复核与真实验证准备状态，完整�
 2026-10-12，P2 #24 已关闭为 Closed / Completed，完整关闭正文及状态回读一致：本次 P2 工程审查通过，原未勾的真实模型与完整 G2 条件逐字保留，B 侧由 #45 继续承担；不把迁移待办写成实际验收通过。A3 #25、C3 #27、B1 #11、B2 #26 的已交工程批次已关闭，#45 继续 Open，#22/#23/#30 和 P3 #37～44 保留原范围。B 完成后由负责人通知总协调重新固定交付版本并复审，不自动监听、合并或关闭后续卡。
 
 本次已交付四个测试文件、README 验证入口和本任务记录；typecheck/build、49 项专项通过和 2 项默认跳过的结果见第 18.3 节。合并后应用树与已测试候选相同，不重复全量测试；真实模型、人工语义、浏览器/真人及原 NFR 均未因工程收口而新增通过。最终 README/任务文档的链接、空白、保护范围检查完成后随收口记录提交；产品/计划基线仍待授权维护者汇总。
+
+## 19. 2026-10-13 B 后续 PR #46 复审
+
+### 19.1 范围与固定提交
+
+项目负责人要求处理 [PR #46](https://github.com/paher-din/XunJie/pull/46)，本次执行第 18 节约定的 B 交付复审，仅检查原 B/P2-F 的代码、交付记录和证据边界，不恢复自动跟进。总协调可写本文及公开审查意见；B 的实现和作者任务稿、产品/规范/计划/参考材料、依赖/schema/凭据/CI 均只读，不代 B 修改，不处理其他开放 PR。
+
+已读 AGENTS、README、PRD-01/04/05/07/09/10、MVP M-01/04/05 与相关 AC/NFR、TECH §6/7/9/10.3、TEAM B1/B2/B4、第 17～18 节、Issue #45 和 B/P2-F 交付正文。固定 base=`37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`、head=`65305833f680e12974764a82514e92349aa95846`，审查命令为 `git diff 37849f4...6530583`，7 个文件、347 行新增/15 行删除；生产变化仅原教学 core 的可信引用白名单与 PATCH 字段提示，其余为证据辅助、测试和文档。调用方仍为原 A3/B2，公开契约和服务端字段/引用/政策校验未放宽。
+
+PR 当时为 Draft/Open/CHANGES_REQUESTED；原 [Review 5493573630](https://github.com/paher-din/XunJie/pull/46#pullrequestreview-5493573630)也固定相同 head，其后没有新提交。两轴独立复核与本次实跑分列，不把旧审查数字、作者真实调用自述或离线响应直接当作新通过。
+
+### 19.2 Standards
+
+| 编号 | 位置与问题 | 本次核对及最小修正 |
+| --- | --- | --- |
+| B-F-R01 / P2 | B/P2-F 任务稿第 5/8 节与 PR 正文写完整 270 项、260 通过 | 固定 head 本次实际为 271 项、261 通过、1 既有环境失败、9 跳过；B 追加带日期、SHA、准确命令的更正记录并同步 PR 正文，保留历史，不宣称全套通过 |
+| B-F-R02 / P2 | B/P2-F 第 5/8 节写 66 项 B 专项，未给可复现命令 | 本次四文件专项为 69 项、67 通过、0 失败、2 真实入口跳过；B 写明具体文件集合/命令和对应数字，并追加最新状态摘要，区分最初零请求与后续调用自述 |
+
+两项均属于 AGENTS 的验证命令/结果与交付一致性要求，没有新增生产实现阻塞或可操作的代码异味。旧审查 P2-3 不作为本次合并阻塞：package/README 明确仅支持 Node 24.21.0，不支持版本先拒绝符合运行时契约；批准运行时的授权门用例通过，不为非支持环境移动先于 provider/key 使用的运行时门禁。第 7 节修复前描述与第 8～10 节后续变化按历史阶段理解，以追加最新状态澄清，不改写旧事实。
+
+### 19.3 实际验证
+
+批准 Node 24.21.0/原锁依赖下，typecheck 通过；四文件专项在 `apps/teaching` 目录执行以下命令，69 项中 67 通过、0 失败、2 真实入口默认跳过，供应商请求为 0：
+
+```powershell
+node --test tests/design-agent.test.ts server/tutoring/test/student-help.test.ts server/tutoring/test/deepseek-sdk.test.ts server/tutoring/test/real-model-support.test.ts
+```
+
+测试统计核对原拟仅发现测试，名称过滤在实际运行中未生效，故实际执行了全套；没有将它报告为只读发现或全套通过。实际命令如下，271 项中 261 通过、1 失败、9 跳过；唯一失败仍为 `RunControl` 的 Windows/Linux 既有环境限制，位置与原固定点审查相同，未改测试、跳过标记或检查以消除失败：
+
+```powershell
+node --test --test-name-pattern '^$' tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts
+```
+
+原 PR 文档检查 38 份、559 内部引用、27 正式路由，errors=[]；diff 空白检查通过，作者工作树源码无新增修改。原 build 已实际执行并通过，使用同一批准运行时和原锁依赖，没有修改构建或检查配置。
+
+### 19.4 证据限制与后续条件
+
+B 自述首次失败 3 次、修复后教师 2 次、学生 1 次，合计 6 次请求/5 个合成 Job；5 Job 超出原 3 Job 口径，首次运行时亦不符合锁定版本。本次没有调用供应商或读取凭据，实际原文/账目仍在调用者本机临时目录，未独立取得可审阅脱敏证据包；不能认定原许可覆盖该偏差，不能凭 `sourceDirty=true` 的自述直接确认源码与实际调用一致。B 应交付完整脱敏证据和相关确认，项目负责人处理范围/数据/付费决定，总协调不代为批准。
+
+当前作者已提交任务稿到 PR，不再沿第 18.2 节的历史“尚未交付”状态判断本次交付；该稿尚未合入 main。D-02、实际人工语义、B4 至少 30 次样本、真实 provider 取消/超时、浏览器/真人和完整 G2 条件仍未完成，#45 保持 Open。两项记录修正和证据/进入条件分别追踪；本次代码结构复核不代签人工判断、不自动关闭 #45，不授权更多真实调用或修改受保护基线。
+
+### 19.5 公开审查与交付状态
+
+2026-10-13，[Review 5494564011](https://github.com/paher-din/XunJie/pull/46#pullrequestreview-5494564011)已在固定 head 公开提交为 CHANGES_REQUESTED，完整正文、提交 ID 和状态回读一致。两条行内意见分别针对 B 任务稿第 76 行的完整统计与第 75 行的专项入口，评论 ID 为 4251120237/4251120246；要求 B 追加准确更正并同步 PR 正文，不代改 B 作者记录。旧运行时意见已在本次审查中澄清，不要求为非批准 Node 放宽门禁。
+
+Standards 共 2 项 P2，最高 P2；Spec 新增阻塞 0 项。PR #46 保持 Draft/Open/CHANGES_REQUESTED，#45 保持 Open，未合并、未关闭或发起真实模型调用。本文在独立本地协调分支保存，主副本 main 和作者树不改动；本次没有推送协调分支或同步受保护基线，基线进度仍待授权维护者汇总。
+
+## 20. 2026-10-13 PR #46 新交付与教学文本校验复审
+
+### 20.1 范围与固定点
+
+项目负责人再次要求审阅 PR #46。本次继续原两轴只读审查，沿第 19 节的需求/规范/验收依据，读取 B 新任务记录第 11～16 节及实际调用方；只写本文与公开审查，不修改 B 的实现/作者记录或受保护基线，不发起真实模型、故障探针或采样，不合并/关闭后续卡。独立 checkout 固定 head=`5cc707f6a85ba2f9f109eb44f71c68d4120c93de`，base 仍 `37849f4`；增量命令 `git diff 6530583...5cc707f`，9 个新提交、8 文件、817 行新增/27 行删除。
+
+B 第 11 节已按固定旧 head、准确命令和日期追加更正，PR 正文亦更正该批旧统计，上轮 B-F-R01/R02 已解决。此次另有故障探针、30-Job 采样/真人矩阵与语言/内部标识校验，不能沿旧 head 的“无生产阻塞”结论直接通过。新授权和人工判断按作者记录报告，审查不将任务文字自动当成批准或独立实证。
+
+### 20.2 Standards
+
+| 编号 | 问题 | 最小处理 |
+| --- | --- | --- |
+| B-F-R03 / P2 | README 第 167/188 行仍用“已授权、执行一次”介绍可直接联网的入口；B 第 13.1/14.1 节已记录执行，第 15.5/16 节明确一次性采样许可不能延用 | 在两段命令前追加该批已执行、仅为历史复现说明、再运行需另获明确授权，链接对应结果；保留历史命令，不新增机制 |
+| B-F-R04 / P2 | PR 正文停留在旧交付，仍称真人语义/30 样本/真实取消超时未执行；B 第 14 节明确要求在 PR 正文及复审通知中原样告知 A 的 30-Job/90 请求/费用授权，尚未完成该交接 | 同步最终 head 的实现、当前验证、作者报告的授权/已执行结果、真人有条件结论和待真实复验；不抹去原 5 Job 偏差或代批 D-02 |
+
+两项属于 AGENTS 的前置授权、操作说明及当前状态一致性要求；没有新增可操作代码异味。
+
+### 20.3 Spec 与原核心反例
+
+| 编号 | 位置与实际复现 | 对应要求及修正边界 |
+| --- | --- | --- |
+| B-F-R05 / P2 | core 第 444/461～462 行将合法 C 标签 `resource:printf("x");` 当作内部 ID；同一合法 body 在旧 head 一次成功，新 head 两次后 INVALID_MODEL_OUTPUT | M-04 允许概念解释与相邻示例；内部标识过滤应区分真正内部引用与必要课程内容，并补无网络合法标签/边界反例 |
+| B-F-R06 / P2 | core 第 453 行用“含任意汉字”判断语言：英文问题引用 `"中文"` 时正常英文回答旧 head 成功、新 head 两次拒绝；中文问题的英文正文/下一步加中文标签却一次成功 | B 第 15.5/16 节要求中文输出且英文问题仍可返回英文；依据问题/正文主要语言而非任意汉字，覆盖代码/引文含汉字和主要英文带中文标签的反例 |
+
+上述三组均经原导出 `generateStudentHelp` 和 SyntheticProvider 在旧/新固定源码运行，不只执行私有校验函数。复现脚本禁止 fetch，供应商请求为 0；旧/新均保留相同 body、合法引用/政策及 45 秒上下文，仅切换源码。新语言/标识问题不会由现有全套通过数证明正确；未为修复这些问题放宽原引用子集、政策、唯一 repair、3 次调用或 usage 规则。
+
+### 20.4 实际验证与环境事实
+
+精确 Node 24.21.0/原锁依赖下，原 typecheck 和 build 通过；原 `npm test` 实际 284 项：272 通过、1 个既有 Windows/Linux RunControl 环境失败、11 跳过。两个新增真实批次入口默认关闭，供应商请求为 0；没有删除跳过项或绕过失败。PR 文档检查 38 份/559 内部引用/27 正式路由，errors=[]；检查器自测 16/16，diff 空白和保护范围通过。
+
+最初验证树误用了未安装依赖的主副本缓存，npm 及直接编译均未执行成功；改用旧审查缓存 junction 后，typecheck 通过但声明构建因外部缓存路径触发既有 test-support 的 TS2883。两次任务创建的 junction 原样移入本任务临时证据目录保留，再将已有精确锁依赖复制到隔离树本地；未安装/改版依赖或修改源码，原 npm typecheck/build 才通过并执行上述全套。前述环境失败保留，不算 PR 新回归，也不将首次失败记为通过；没有删除文件、分支、工作树或修改凭据/CI/schema。
+
+### 20.5 真实证据与交付条件
+
+B 第 13～15 节已记录真实探针、30 个串行样本和项目推进者的人工判断，但原始脱敏证据仍未在本次审查独立核验；新语言/标识修复的真实复验仍按第 16 节另待授权，不能消耗已完成的一次性许可。30-Job 的 jobLatency 从项目准备前计时，混入接纳前开销，且没有实际展示或 10 活跃会话负载，不能据其 p95 宣称完整 NFR-02 通过。取消/超时的开始事实来自 transport 前的本机记录，只证明本机请求通道中断；HTTP 400 才证明收到供应商响应，缺 usage 仍为 unknown。
+
+当前结论：Standards 新增 2 项 P2，Spec 新增 2 项 P2，两轴最高均 P2；等待 B 修复并重新交付，#45 保持 Open，不因上轮计数解决而关闭。公开审查、旧线程处理及本地记录提交的实际结果在完成后追加；本次没有自动跟进或为更多实际调用取得/认定许可。
+
+### 20.6 公开复审与记录交付
+
+2026-10-13，[Review 5498528826](https://github.com/paher-din/XunJie/pull/46#pullrequestreview-5498528826)已公开提交为 CHANGES_REQUESTED，固定 head、完整正文和状态回读一致；四项问题各有一条行内意见。上轮已修正计数的两个自有线程已按第 11 节事实收口，未删除旧意见或改写旧 Review。PR #46 仍 Draft/Open/CHANGES_REQUESTED，#45 仍 Open；本次没有合并或新发起真实调用。
+
+本文追加记录在原本地协调分支提交，主副本 main 与作者提交不改动，原记录和所有验证/缓存证据保留。文档、空白及单文件范围检查通过后交付；本次不推送协调分支、不改受保护基线，也不恢复自动跟进。新生产修复与真实复验继续由 B 按审查意见和原授权边界交付。
+
+## 21. 2026-10-13 负责人裁决与 PR #46 最终集成
+
+### 21.1 负责人裁决原文与确认
+
+针对 B/P2-F（Issue #45 / PR #46），负责人裁决如下：
+
+1. **Job 数量偏差：接受有记录的历史偏差。** 原批次实际执行 5 个合成 Job、6 次外部请求，超过原 3 Job 范围但未超过 9 次请求上限。允许将实际证据纳入复审，但不追认为事前授权，不改变后续必须严格遵守 Job 和请求双重上限的要求。
+2. **D-02：有条件认可。** 在 API 账号负责人确认已记录的条款接受、合成数据处理与留存、费用及配额事实准确后，认可已执行批次的 D-02 记录。原有一次性授权均已使用，不允许据此继续发送真实请求、扩大数据范围、充值或变更凭据。
+3. **语义门禁：同意进入最终复审。** 最新 `108e5ff` 的修复方向符合要求，须由总协调复核原始反例、相邻正常输入、真实内部标识拒绝、语言错配失败闭合及引用/预算守卫。历史真实模型证据与最新离线修复证据分别记录，不混同为最新真实模型复验。
+4. **合并与关闭：附条件批准。** 总协调固定最新 head 完成 Standards/Spec 两轴复审，并在 PR #47 已合入的最新 main 上完成冲突处理和必要组合回归。确认没有新增阻塞项后，允许合并 #46。合并后核对实际提交与证据范围，再关闭 #45。
+
+浏览器 displayed、真实学生接棒、完整 G2/MVP 和 NFR 验收仍由原任务跟踪，不因本次裁决判定为通过。未经新增授权，不要求或执行额外供应商调用。
+
+2026-10-13，项目负责人随后明确确认“已取得账号负责人确认，记录准确”，第 2 条条件已落实。本次继续零供应商请求，不索取/读取 key、不将既有一次性许可用于新的探针、采样或语义复验。
+
+### 21.2 固定点、写集与集成计划
+
+原作者最新 head 固定为 `108e5fff63f55524ce5d5f04c7f86f3d233135b2`。开始集成时远端 main=`94ad99c6344fb230406f904cf944d534d2e2ed0f`，已包含 PR #47 合并 `44d3102800bd8ea0319e4eb94d3195f873f48a74` 及其后 A4/UI 的已交成果。总协调已读取该 main 的最新 AGENTS/README、相关 PRD/MVP/TECH/TEAM 与原 B 交付第 11～18 节；沿 M-01/04/05、AC-01/04/05/06/07/15/16 和原 NFR/权限/预算契约验证。
+
+独立集成分支保留作者提交和前两次总协调记录，只可处理 README 的实际冲突、本文的决定/验证记录与必要交接；作者源码、受保护基线及他人任务记录不自行修改。预合并仅 README 冲突，按两方已交事实保留并检查链接/章节；在当前 main 上复核原反例、相邻正常输入、内部标识与语言失败闭合、引用/取消/预算/租约及新增 A4/C4 的组合。实际结果未取得前不记审查通过、合并或关闭。
+
+### 21.3 两轴结论与残留相邻反例
+
+Standards 新增阻塞 0 项，原四项指定说明/反例已修：历史命令的已用许可、完整 PR 交接、合法 C 标签/引用子串、英文问题中的中文引文及原冒号短标签反例均符合要求，真实内部标识和语言错配的既有拒绝/唯一 repair 保留。
+
+Spec 仍有 1 项 P2（B-F-R07，core 第 469～471 行）：可见正文只需把短中文标题与英文内容用句号或换行隔开，就会把第一个短中文分句当作整段主要语言。原 `generateStudentHelp` + SyntheticProvider 对同一中文问题的三组对照为：冒号“提示: English / 下一步: English”两次后 INVALID_MODEL_OUTPUT；句号“提示。 English / 下一步。 English”一次 success；换行形式同样一次 success。后三者没有供应商请求，后两项没有进入 repair，故原语言错配的相邻门禁仍未闭合。应让可见输出按整段主要语言判断，同时保留问题尾部注入和代码/引文的既有处理，补对应原核心回归；不要求额外真实调用。
+
+历史真实模型证据仍绑定原运行提交，`108e5ff` 及本次反例/组合测试均是离线证据。第 21.1 节已落实的偏差/D-02裁决不撤销，但第 4 条“没有新增阻塞”条件尚不满足，不能合并 #46 或关闭 #45。
+
+### 21.4 最新 main 的冲突处理与组合结果
+
+已正常整合原作者 head、既有本地协调记录和最新 main，唯一 README 冲突保留 B 的三批历史命令及 A4/UI 的独立验证章节，未改写任何一方历史事实。组合候选提交为 `5ad72f5e9ea496b5417f96a2c5653ef19449f882`；B 核心与领域测试逐文件和 `108e5ff` 相同，规范/product/planning/reference 与最新 main 相同，无删除文件、迁移、凭据/CI或 UI 设计变更。候选仅在本地准备，未推送作者分支或合入 main。
+
+批准 Node 24.21.0/原锁依赖下，原 typecheck 和 build 通过；最新 main（含 #47/#49）组合 `npm test` 为 356 项：343 通过、1 个既有 Windows/Linux RunControl 环境失败、12 跳过。原指定反例/相邻正常、真正内部标识/引用子集、原语错闭合和预算/取消守卫通过，但没有覆盖 B-F-R07 的句号/换行残余；独立反例已在同一组合源码复现，不能用全套计数抹去该阻塞。
+
+组合文档检查 60 份、875 内部引用、27 正式路由，errors=[]；检查器 16/16、PR/协调增量空白与保护范围通过。首次对全部入站 main 的暂存差异执行空白检查，报告了已合入学生 UI/OFL 许可的 10 处既有尾随空白/空行；未为本任务修改这些文件，随后核本任务相对最新 main 的差异无新增空白问题，不宣称全仓空白无错误。当前一次性调用开关均关闭，供应商请求为 0。
+
+### 21.5 公开最终复审与未合并交付
+
+2026-10-13，[Review 5498873776](https://github.com/paher-din/XunJie/pull/46#pullrequestreview-5498873776)已在作者固定 `108e5ff` 上公开提交 CHANGES_REQUESTED，完整正文、提交与状态回读一致。标准轴为 0 新阻塞，规格轴仅 B-F-R07/P2；该相邻反例的行内意见为 4254778557。上一轮四条指定说明/原始反例线程已按实际修复收口，新残留线程保持未解决，不删除旧意见或宣称整个语言门禁已通过。
+
+Issue #45 已追加负责人裁决、账号事实确认、组合结果及新残留状态，完整正文与 Open 状态回读一致；已落实的 D-02/历史偏差裁决保持有效。因为附条件合并门禁尚未满足，PR #46 未合并、#45 未关闭，作者分支未改动；README 冲突和裁决/证据仅随本地集成候选保存，未推送。下一步由 B 仅修输出主要语言判断及句号/换行离线回归，总协调在负责人通知后再次固定交付复核，不自动跟进或请求额外供应商调用。
+## 22. 2026-10-13 PR #46 放行复审与合并准备
+
+### 22.1 固定点与持续授权
+
+项目负责人通知 PR #46 有新提交，继续第 21.1 节的明确裁决与已取得账号事实确认，不重复请求批准，不发起任何供应商请求。作者固定 head 为 0bbaee8580660ca4b0024ad502b424717c7ac390，仅修改可见输出的整段语言判定、两条回归和 B 的阶段记录；问题端首段判定、引用/内部标识、一次 repair、3 次调用、45 秒及 usage 守卫不变。
+
+本轮 Standards 与 Spec 两轴均为 0 新增阻塞，B-F-R07 的冒号、句号、换行反例均两次后 INVALID_MODEL_OUTPUT；一次修复成功、相邻正常输入、真实 ID/越权引用、预算耗尽、期限及用量汇总保持。历史真实结果仍绑定原提交，最新修复和本次验证均为离线，不伪装新真实模型复验。
+
+### 22.2 最新 main 组合验证与入口冲突
+
+测试候选 763266c664f9747f8918326e659512e0747fede4 已合入 main 1cd43f82a5681ac66cf268a3dbc1425223068444，覆盖原 #47/#49 及 #48/DL-C。精确 Node 24.21.0/原锁依赖下，原 typecheck/build 通过；原 npm test 为 373 项：356 通过、1 个既有 Windows/Linux RunControl 环境失败、16 跳过。文档 61 份/987 内部引用/27 正式路由，errors=[]；检查器 16/16、本任务增量空白和保护范围通过，不宣称全量通过，真实调用开关均未开启。
+
+测试期间 main 更新为 c437ef269407b71bbed26d105e3e8b98ab71bbab，包含 #51 的 UI 补验及负责人批准的 W4 规范/入口重写。教学服务文件相对已测试 main 无差异，未重复无变化的后台全量；UI 的原检查与后置浏览器/真人条件沿其任务，不计本次新通过。当前只调整 README 的入口冲突并更新本文，不改 protected 规范/基线或 B 作者记录。
+
+遵循新 AGENTS 的“README只做项目入口、启动与任务导航”，使用最新 main 的导航结构，加入 B/P2-F 和历史入口的相对链接；原作者 README 的模型批次授权说明及命令在下节逐字保存。三批及原最小链的一次性许可均已使用，保存只为历史复现说明；无新明确许可不得执行。不是为了合并删去历史或继续延用付费许可。
+
+### 22.3 已用模型批次的历史命令保存
+
+下列正文来自原作者固定 0bbaee8 的 README 模型验证节，原段落、命令和日期保留，仅把链接目标调整为当前任务目录的相对路径。其“允许执行”描述属于原阶段；当前以第 21.1 节及前段的已用许可边界为准，不读取 key 或执行命令。
+
+2026-10-12，已准备教师候选/明确采用/局部 PATCH 与学生获准求助/原文/未展示取消的验证入口，默认跳过。账号/API、条款/数据范围、额度及付费合成请求必须先按 D-02 落实；代码准备和内存重放不等于真实模型通过，具体边界见 [G2 第 17 节](G2_OVERALL_COORDINATION.md#17-p2-真实模型接口验证准备2026-10-12)。
+
+2026-10-12，验证入口已按负责人授权公开至 [Draft PR #36](https://github.com/paher-din/XunJie/pull/36)，尚未合并；仅合成材料的限定实际调用已获条件许可，安全凭据入口和账号条件仍待落实，真实调用未执行，见 [G2 第 17.4 节](G2_OVERALL_COORDINATION.md#174-验证入口发布与条件调用授权)。
+
+2026-10-12，验证入口已随 PR #36 合入 main；负责人暂缓账号和真实调用，当前不执行下列命令。B 的进入条件、实际结果和人工语义补验集中在 [#45](https://github.com/paher-din/XunJie/issues/45)，恢复实际调用须按原条件落实，工程审查收口不代替模型验收。
+
+下列命令仅供已获上述授权、批准安全通道已提供本机凭据、Node 24.21.0/精确 lock 就绪的环境执行；在仓库根进入应用目录后串行运行，最多三个 Job/九次模型请求，失败不自动重跑，不写凭据或预算金额。
+
+```powershell
+cd apps/teaching
+# DEEPSEEK_API_KEY 必须已由批准的安全通道提供；不要将值写入此文件或日志。
+node tools/check-runtime.mjs
+if ($LASTEXITCODE -ne 0) { throw 'Node 24.21.0 is required; no model request was sent.' }
+$env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+try {
+    node --test --test-name-pattern='P2 real-model' tests/design-agent.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Teacher model validation failed; inspect its evidence before retrying.' }
+    node --test --test-name-pattern='P2 real-model' server/tutoring/test/student-help.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Student model validation failed; inspect its evidence before retrying.' }
+} finally {
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL
+}
+```
+
+2026-10-13，#45 的真实 provider 取消、超时和失败探针已执行完毕，实际结果见 [B/P2-F 任务文档第 13.1 节](B_P2_MODEL_SEMANTIC_VERIFICATION.md#131-实际执行结果)。以下命令只保留为历史复现说明；一次性授权已经使用，再运行须另获明确授权。原授权仅覆盖合成数据、最多三次串行请求、可能费用及 `unknown` usage，不包含 30 次性能采样；探针默认跳过且任一非预期结果都会停止后续请求。
+
+```powershell
+$secureKey = Read-Host 'DeepSeek API key' -AsSecureString
+$keyPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+try {
+    $env:DEEPSEEK_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($keyPtr)
+    $env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+    $env:XUNJIE_P2_REAL_FAILURES = 'approved-synthetic'
+    node tools/check-runtime.mjs
+    if ($LASTEXITCODE -ne 0) { throw 'Node 24.21.0 is required; no model request was sent.' }
+    node --test server/tutoring/test/real-provider-failures.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Provider failure probe stopped; do not automatically retry.' }
+} finally {
+    Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_FAILURES -ErrorAction SilentlyContinue
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($keyPtr)
+}
+```
+
+2026-10-13，30 个固定合成 `student_help` Job 的真实模型批次已执行完毕，实际结果见 [B/P2-F 任务文档第 14.1 节](B_P2_MODEL_SEMANTIC_VERIFICATION.md#141-实际三十-job-结果)。以下命令只保留为历史复现说明；一次性授权已经使用，再运行须另获明确授权。原授权包含该批费用/unknown usage，并固定 `deepseek-flash`、thinking disabled、SDK `maxRetries=0`，每 Job 最多三次调用/一次修复/45 秒，严格串行且全批最多 90 次外部请求；失败不自动重跑，既有三个故障探针不计入样本。
+
+```powershell
+node tools/check-runtime.mjs
+if ($LASTEXITCODE -ne 0) { throw 'Node 24.21.0 is required; no model request was sent.' }
+$secureKey = Read-Host 'DeepSeek API key' -AsSecureString
+$keyPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+try {
+    $env:DEEPSEEK_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($keyPtr)
+    $env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+    $env:XUNJIE_P2_REAL_PERFORMANCE = 'approved-synthetic'
+    node --test --test-name-pattern='P2 authorized 30-job' server/tutoring/test/student-help.test.ts
+    if ($LASTEXITCODE -ne 0) { throw '30-job batch stopped; inspect partial evidence and do not automatically retry.' }
+} finally {
+    Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_PERFORMANCE -ErrorAction SilentlyContinue
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($keyPtr)
+}
+```
+
+2026-10-13，两 Job 真实语义修复复验已执行完毕，实际结果见 [B/P2-F 任务文档第 17.1 节](B_P2_MODEL_SEMANTIC_VERIFICATION.md#171-实际两-job-复验结果)。以下命令只保留为历史复现说明；一次性授权已经使用，再运行须另获明确授权。原授权包含该批费用/unknown usage，只覆盖中文语言对齐与内部标识过滤的固定合成数据，最多六次外部请求，严格串行且失败不自动重跑；原 30 Job 授权未延用。
+
+```powershell
+node tools/check-runtime.mjs
+if ($LASTEXITCODE -ne 0) { throw 'Node 24.21.0 is required; no model request was sent.' }
+$secureKey = Read-Host 'DeepSeek API key' -AsSecureString
+$keyPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+try {
+    $env:DEEPSEEK_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($keyPtr)
+    $env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+    $env:XUNJIE_P2_REAL_SEMANTIC_FIXES = 'approved-synthetic'
+    node --test --test-name-pattern='P2 authorized two-job' server/tutoring/test/student-help.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Two-job semantic-fix batch stopped; inspect evidence and do not automatically retry.' }
+} finally {
+    Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_SEMANTIC_FIXES -ErrorAction SilentlyContinue
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($keyPtr)
+}
+```
+
+2026-10-13，该两 Job 批次已在固定提交 `a82978b` 与 Node 24.21.0 下执行一次：2/2 `success`，实际两次 HTTP 200、每 Job 一次调用、usage 均为 `actual`，没有 repair 或自动重跑；中文语言对齐、学生可见内部标识过滤及结构化引用保留均通过。完整证据摘要和剩余复审项见 [B/P2-F 任务文档第 17.1 节](B_P2_MODEL_SEMANTIC_VERIFICATION.md#171-实际两-job-复验结果)。

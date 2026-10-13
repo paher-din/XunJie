@@ -269,6 +269,39 @@ test("AI SDK adapter selects the teacher mode schema and returns a proposal body
     .map((message) => message.content)
     .join("\n");
   assert.match(systemText, /"const":"candidates"/);
+  assert.match(systemText, /Allowed reference IDs: \["resource-1"\]/);
+});
+
+test("teacher patch sends trusted reference and exact allowed-field guidance", async () => {
+  let invocation: DeepSeekInvocation | undefined;
+  const provider = sdkProvider(async () => completion({
+    kind: "patch",
+    changes: [{ field: "problem", value: "Check ASCII boundaries explicitly." }],
+    rationale: "Keep the change local and teacher-reviewable.",
+    resourceRefs: ["resource-1"],
+    affectedLinks: [],
+    unresolved: [],
+  }), value => { invocation = value; });
+  const teacherContext: TrustedModelContext = {
+    ...context(),
+    purpose: "teacher_design",
+    scope: { courseId: "course-1", userId: "teacher-1" },
+  };
+
+  const result = await generateTeacherProposal({
+    context: teacherContext,
+    mode: "patch",
+    request: JSON.stringify({ teacherRequest: "Improve only the problem", allowedFields: ["problem"] }),
+    references: [{ id: "resource-1", content: "Approved material" }],
+    blueprintId: "blueprint-1",
+    baseRevision: 1,
+  }, { provider });
+
+  assert.equal(result.outcome, "success");
+  assert.ok(invocation);
+  assert.match(invocation.system, /Allowed reference IDs: \["resource-1"\]/);
+  assert.match(invocation.system, /PATCH changes\[\]\.field: exact allowedFields item only/);
+  assert.match(invocation.system, /allowedFields/);
 });
 
 test("AI SDK adapter keeps missing vendor usage unknown", async () => {
