@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
   assertRealFailureProbeAuthorization,
   assertRealModelRuntime,
+  assertRealPerformanceBatchAuthorization,
   assertSafeEvidence,
   createObservedModelFetch,
   type HttpFact,
@@ -112,6 +113,16 @@ test('P2 real-provider failure probes require their own explicit authorization',
   } else {
     assert.throws(() => assertRealFailureProbeAuthorization(), {
       message: 'Explicit P2 real-provider failure-probe authorization is required.',
+    });
+  }
+});
+
+test('P2 30-job performance batch requires its own explicit authorization', () => {
+  if (process.env.XUNJIE_P2_REAL_PERFORMANCE === 'approved-synthetic') {
+    assert.doesNotThrow(() => assertRealPerformanceBatchAuthorization());
+  } else {
+    assert.throws(() => assertRealPerformanceBatchAuthorization(), {
+      message: 'Explicit P2 30-job synthetic performance authorization is required.',
     });
   }
 });

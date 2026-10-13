@@ -260,3 +260,22 @@ npm test
 证据标记 `purpose=provider_failure_probes`、`model=deepseek-flash`、`dataScope=synthetic-only`、`maximumExternalRequests=3`、`retries=0`，实际 HTTP 事实恰为三项。递归检查确认序列化证据不含 Authorization、API key、reasoning 或 provider 错误正文；没有记录请求头或凭据。`sourceDirty=true` 仍由工作区原有未跟踪 `.trae/` 导致，本任务未读取、修改或提交该目录。
 
 至此 Issue #45 的“真实 provider 取消、超时和失败证据”已有一次受控实际批次，可交总协调复审；离线反例与本节真实结果继续分列。本批三个 unknown usage 按事实保留，不折为零。该结果不授权或替代 30 次模型求助性能样本，也不满足浏览器 `displayed`、真人接棒或完整人工语义审阅。
+
+## 14. 2026-10-13 三十个真实 student_help Job 授权与入口
+
+项目推进者兼 API 账号负责人明确批准 B 使用仓库固定合成数据执行一次 30 个 `student_help` Job 的真实模型批次，并批准该范围内产生的费用和 `unknown` usage。该决定必须在 PR #46 正文和复审评论中原样告知负责人 A；仅写入本任务稿不视为已完成告知。
+
+授权边界固定如下：
+
+1. 模型固定为 `deepseek-flash`，Node.js 固定为 24.21.0，thinking disabled，AI SDK `maxRetries=0`。
+2. 每个 Job 最多三次 provider 调用、最多一次修复、从请求接受起共享 45 秒截止；30 个 Job 的最坏上限为 90 次外部请求。
+3. 全批严格串行，只执行一次；失败批次不自动重跑。任一越权数据、凭据风险、请求上限异常或未分类失败立即停止后续 Job，并保留已完成的部分证据。
+4. key 只通过现有本机安全进程环境提供，不写入 `.env`、源码、日志、任务稿或证据；不发送真实学生数据、教师私有材料、私有答案或凭据。
+5. 每个 Job 记录固定场景、Job 延迟、provider 调用次数、actual/unknown usage、结构化结果、获准引用及模型/版本事实；证据继续拒绝请求头、Authorization、key、cookie、CSRF、密码、lease token、内部思维链和原始错误对象。
+6. 2026-10-13 已完成的三个取消/超时/HTTP 失败探针不计入这 30 个模型求助样本，也不消耗本批 90 次上限。
+
+固定样本分布为：空历史 5；相关历史 3 加反证/未知 2；无关/撤回历史 4；合成环境故障表达 4；资料指令注入 4；整份答案请求 4；限定帮助/相邻例子/学生接棒 4。环境故障四项使用获准合成资料明确声明“编译器不可用是基础设施事实，不能作为学生能力证据”；它验证真实模型的教学表达，但不冒充真实 `RunRecord` 浏览器链。禁用帮助入口的零调用已有自动测试，因不会产生模型调用，单列验证而不占 30 个实际模型 Job。
+
+实现新增独立 `XUNJIE_P2_REAL_PERFORMANCE=approved-synthetic` 门禁。只有它与既有 `XUNJIE_P2_REAL_MODEL=approved-synthetic` 同时存在时批次才执行；默认测试继续跳过。批次在 provider 外再加 90 次保守调用上限，按顺序逐 Job 建立合成课程、资源、活动、求助 Job 和 C3 持久链；每项只允许已知 B outcome，单项 HTTP 必须为 1～3 次。完成后输出 30 项明细、请求总数、actual/unknown usage 状态及 Job 延迟的 min/p50/p95/max，证据写入调用者临时目录。
+
+当前状态：授权、固定 fixture、独立门禁、请求上限和证据格式已实现；**真实 30-Job 批次尚未执行**。当前主工作区 Node 为 24.14.1，仓库门禁按预期拒绝正式 `npm run typecheck` 和真实入口；直接调用已安装 TypeScript 编译器的 `tsc --noEmit` 通过。Node 24.14.1 下学生领域测试的新增 fixture 数量/分布、百分位与默认跳过测试通过；同批 `real-model-support.test.ts` 的两个既有门禁断言因精确运行时先行而失败，属于错误 Node 环境结果，不记作 24.21.0 复验。真实执行必须由账号负责人切回 Node 24.21.0 后使用 README 的一次性命令，结果产生前不得把 30 次样本标为通过。
