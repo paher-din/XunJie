@@ -14,13 +14,14 @@ import { parseRequest } from '../app/validation.ts';
 import { assertResourceUse } from '../access/resource.ts';
 import { readCoverageIntervals, readTeachingRecordsInTransaction, readTeachingJob, acceptStudentQuestionInTransaction,
   saveTeachingJobInTransaction, completeTeachingInTransaction, deliverTeachingActionInTransaction,
-  recordTeachingReceiptInTransaction, stopTeachingJobsInTransaction, teachingActionIsCurrent } from './teaching.ts';
+  recordTeachingReceiptInTransaction, stopTeachingJobsInTransaction, teachingActionIsCurrent,reconcileTeachingBasisInTransaction } from './teaching.ts';
+import type { TeachingBasisCurrent } from './teaching.ts';
 import { claimJob } from './jobs.ts';
 import type { TeachingStopHandler } from '../workspace/commands.ts';
 
 // Single definition, shared with C2's control/cancel paths; re-exported for the B2/A4 callers of this composer.
 export type { TeachingStopHandler };
-export type TeachingRecordsOptions = Parameters<typeof createWorkspaceApp>[0] & { teaching?: { stop: TeachingStopHandler } };
+export type TeachingRecordsOptions = Parameters<typeof createWorkspaceApp>[0] & { teaching?: { stop: TeachingStopHandler };isTeachingBasisCurrent?: TeachingBasisCurrent };
 /** C's stop capability presented in A's design callback shape (activity/assignment pause). */
 export function designTeachingStop(stop: TeachingStopHandler): DesignTeachingStop {
   return (tx, actor, details) => stop(tx, details.courseId, actor.userId, details.stoppedJobIds,
@@ -150,7 +151,12 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
       || !Number.isSafeInteger(query.decisionEpoch) || query.decisionEpoch !== attempt.decisionEpoch || (isStudent && !query.clientId))
       return { control, resyncRequired: true, events: [], nextServerSeq: query.afterServerSeq, hasMore: false };
     let records = readTeachingRecordsInTransaction(tx, scope);
-    const eligible = isStudent ? records.actions.filter(action => teachingActionIsCurrent(tx, action, control.generation)
+    if (options.isTeachingBasisCurrent) {
+      for (const action of records.actions) reconcileTeachingBasisInTransaction(tx,{scope,actionId: action.actionId,
+        actorId: actor.userId,generation: control.generation,now: timestamp()},options.isTeachingBasisCurrent);
+      records = readTeachingRecordsInTransaction(tx,scope);
+    }
+    const eligible = isStudent ? records.actions.filter(action => teachingActionIsCurrent(tx, action, control.generation,options.isTeachingBasisCurrent)
       && !action.receipts.some(receipt => ['displayed','acknowledged'].includes(receipt.receiptKind))
       && !action.deliveries.some(delivery => delivery.clientId === query.clientId && delivery.recoveryGeneration === control.generation)) : [];
     const readRows = () => tx.all(`SELECT e.* FROM audit_events e
@@ -166,7 +172,8 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
     for (const action of sending) {
       deliverTeachingActionInTransaction(tx, { scope, actionId: action.actionId, clientId: query.clientId!,
         recoveryGeneration: control.generation, now: timestamp(), generation: control.generation,
-        control: { attemptRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch, captureRevision: attempt.captureRevision } });
+        control: { attemptRevision: attempt.attemptRevision, decisionEpoch: attempt.decisionEpoch, captureRevision: attempt.captureRevision },
+        ...(options.isTeachingBasisCurrent ? {isBasisCurrent: options.isTeachingBasisCurrent} : {}) });
     }
     if (sending.length) { records = readTeachingRecordsInTransaction(tx, scope); rows = readRows(); }
     const events: TeachingEventView[] = rows.slice(0, query.limit).map(row => {
@@ -174,7 +181,7 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
         type: String(row.command).replace(/^shared\./, ''), occurredAt: new Date(Number(row.committed_at_ms)).toISOString() };
       const reference = String((JSON.parse(String(row.object_ref_json)) as {payloadRef?: string}).payloadRef ?? '');
       const action = records.actions.find(item => item.deliveries.some(delivery => delivery.deliveryId === reference));
-      if (!isStudent || !action || !teachingActionIsCurrent(tx, action, control.generation)) return event;
+      if (!isStudent || !action || !teachingActionIsCurrent(tx, action, control.generation,options.isTeachingBasisCurrent)) return event;
       const delivery = action.deliveries.find(item => item.deliveryId === reference)!;
       return { ...event, payload: { ...eventPayload(action, records.messages.find(item => item.messageId === action.messageId)), deliveryId: delivery.deliveryId } };
     });
@@ -286,7 +293,8 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
           generation: input.recoveryGeneration, now, bodyJsonText: input.bodyJson,
           ...(input.resultRef === undefined ? {} : { resultRef: input.resultRef }), versions: input.versions,
           usage: input.usage, calls: input.calls, elapsedMs: input.elapsedMs, basis: input.basis,
-          messageId: randomUUID(), actionId: randomUUID() });
+          messageId: randomUUID(), actionId: randomUUID(),
+          ...(options.isTeachingBasisCurrent ? {isBasisCurrent: options.isTeachingBasisCurrent} : {}) });
         generation(input.recoveryGeneration);
         return result;
       });

@@ -1,0 +1,51 @@
+{
+  "check": "A0 static document review",
+  "documents": 39,
+  "internalLinks": 619,
+  "commands": 24,
+  "recoveryRows": 24,
+  "readGroups": 19,
+  "dataParameters": 12,
+  "decisions": 12,
+  "plannedCases": 20,
+  "syntheticExamples": 15,
+  "jsonExamples": 4,
+  "traceabilityRows": 20,
+  "handoffQuestions": 12,
+  "independentDeliverables": 8,
+  "firstBatches": 3,
+  "baselineMutationRoutes": 27,
+  "additionalProposedRoutes": [],
+  "g0Approved": true,
+  "approvedG0Extensions": [
+    "POST /api/activities/:id/controls",
+    "POST /api/blueprints/:id/sample-runs",
+    "POST /api/attempts/:id/snapshots"
+  ],
+  "businessTests": "NOT_EXECUTED",
+  "errors": []
+}
+✔ current repository passes structural checks (149.6309ms)
+✔ encoded relative paths remain valid (129.1891ms)
+✔ existing repository directory links remain valid (326.6881ms)
+✔ directory links cannot claim a document heading (156.4369ms)
+✔ rejects absolute path (152.313ms)
+✔ rejects encoded absolute path inside repository (142.806ms)
+✔ rejects encoded file URL (148.3448ms)
+✔ rejects encoded parent traversal (160.3111ms)
+✔ rejects malformed encoding (163.7255ms)
+✔ legacy proposal routes remain valid before G0 adoption (155.6145ms)
+✔ rejects missing approved route POST /api/attempts/:id/feedback (153.6761ms)
+✔ rejects missing approved route POST /api/blueprints/:id/rubric-trials (152.597ms)
+✔ rejects missing approved route POST /api/activities/:id/controls (148.7559ms)
+✔ rejects missing approved route POST /api/blueprints/:id/sample-runs (157.4313ms)
+✔ rejects missing approved route POST /api/attempts/:id/snapshots (154.9091ms)
+✔ G0 adoption does not allow arbitrary command additions (129.3298ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2721.7229

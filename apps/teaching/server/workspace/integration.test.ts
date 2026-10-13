@@ -19,7 +19,7 @@ test('real A1/A2 transactions persist double-key ACKs, whole files and original 
     const teacher = await f.login('teacher'), student = await f.login(), allocation = await assigned(f,teacher);
     const id = await opened(f,student,allocation.assignmentId);
     const counts = f.db.withTransaction(tx => tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"));
-    assert.equal(counts.length,22);
+    assert.equal(counts.length,24);
     assert.equal((await view(f,student,id)).attempt.status,'ready');
     assert.equal((await opened(f,student,allocation.assignmentId)),id);
     const body = { expectedWorkspaceRevision: 0,clientId: 'page',clientSeq: 91,

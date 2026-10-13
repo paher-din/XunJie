@@ -1,0 +1,330 @@
+{
+  "task": "A4 #41 approved synthetic service batch and DL-A #38 preparation",
+  "date": "2026-10-13",
+  "timezone": "Asia/Shanghai",
+  "issue": "https://github.com/paher-din/XunJie/issues/41",
+  "reviewBaselineSha": "37849f4fa2fd4cc1e058fb8559b33a89a60ceed2",
+  "sourceSha": "2f4114a4a08754f742295db0d193963e7414693c",
+  "environment": {
+    "platform": "win32",
+    "node": "24.21.0",
+    "typescript": "7.0.2",
+    "sqlite": "3.53.4",
+    "dependencies": "Existing locked dependencies; no new dependencies"
+  },
+  "authorization": {
+    "source": "docs/tasks/A4_LEARNER_STATE_REVIEW.md §8.2; approved §2–6",
+    "freshSyntheticTables": 31,
+    "databasesRetained": true,
+    "existingDatabasesMigrated": false,
+    "realModelCalls": 0,
+    "realRunnerCalls": 0,
+    "scope": "Controlled A4 HTTP/services, original Job/worker, real SQLite transactions and approved minimal B2/C3 seams"
+  },
+  "publicSeams": [
+    "Actual Fastify login/Origin/CSRF request pipeline via inject",
+    "Authorized public queue/claim/complete/read wrappers on original Job",
+    "Actual B2/C3 composition and SQLite transaction; synthetic external provider/runner only"
+  ],
+  "commands": [
+    {
+      "command": "npm run typecheck",
+      "status": "passed"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "record": "acceptance.a4-postreview-build.windows.txt"
+    },
+    {
+      "command": "node --test --test-reporter=tap tests/review.test.ts",
+      "status": "passed",
+      "tests": 43,
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "record": "acceptance.a4-postreview-targeted.windows.txt"
+    },
+    {
+      "command": "node tools/check-runtime.mjs && node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
+      "status": "failed",
+      "tests": 307,
+      "passed": 297,
+      "failed": 1,
+      "skipped": 9,
+      "durationMs": 310542.4945,
+      "record": "acceptance.a4-postreview-full-serial.windows.txt",
+      "note": "Same full collection as npm test; files run serially, existing test thresholds/platform/runtime gates unchanged"
+    }
+  ],
+  "historicalRuns": [
+    {
+      "sourceSha": "0073fa6509445407b6e6060e3ce391021be948ea",
+      "tests": 305,
+      "passed": 295,
+      "failed": 1,
+      "skipped": 9,
+      "record": "acceptance.a4-prereview-full-serial.windows.txt",
+      "note": "A4 41/41; before two Spec boundary fixes"
+    },
+    {
+      "sourceSha": null,
+      "tests": 304,
+      "passed": 293,
+      "failed": 2,
+      "skipped": 9,
+      "record": "acceptance.a4-initial-full.windows.txt",
+      "note": "Approved uncommitted A4 tree before teacher_decision reference case. Existing Linux-only failure plus startup 5-second timeout under parallel full load. Original startup rerun 4/4; later serial full runs did not reproduce timeout."
+    }
+  ],
+  "knownFailure": {
+    "test": "server/workspace/review.test.ts:118",
+    "name": "review: real RunControl preparation failure ends check without fabricating a RunRecord",
+    "code": "INVALID_CONFIGURATION",
+    "reason": "Linux and trusted control context required; win32 platform limitation",
+    "baselineCodeUnchanged": true
+  },
+  "skippedTests": [
+    "ok 1 - node-local control synthetic checks # SKIP",
+    "ok 6 - dedicated Linux synthetic container execution and resource checks # SKIP",
+    "ok 7 - authenticated dedicated VM control and supervision # SKIP",
+    "ok 13 - rejects intermediate and final symlinks in Linux # SKIP",
+    "ok 115 - P2 real-model student help, persisted content and undisplayed cancellation # SKIP",
+    "ok 123 - real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen # SKIP",
+    "ok 138 - C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel # SKIP",
+    "ok 169 - real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain # SKIP",
+    "ok 205 - P2 real-model teacher generation, explicit adoption and local PATCH # SKIP"
+  ],
+  "review": {
+    "fixedSourceSha": "2f4114a4a08754f742295db0d193963e7414693c",
+    "standards": {
+      "initialP3": 1,
+      "resolved": 1,
+      "unresolvedHardViolations": 0,
+      "actionableSmells": 0
+    },
+    "spec": {
+      "initialReportedP2": 2,
+      "validP2Findings": 2,
+      "resolved": 2,
+      "withdrawnFalsePositives": 1,
+      "unresolved": 0,
+      "scopeCreep": 0
+    },
+    "method": "Independent read-only agents; test results reported separately",
+    "finalDocumentHead": "034dc79f25596fa495df889902265e95e3629b03",
+    "finalDocumentStandardsUnresolved": 0,
+    "finalDocumentSpecUnresolved": 0
+  },
+  "redGreen": [
+    {
+      "case": "In-flight explicit analysis with capture off/on",
+      "red": "Rejected despite unchanged teaching epoch and live explicit Job",
+      "green": "Accepted original fixed binding and raw result; current paused coverage and unknown/unresolved preserved"
+    },
+    {
+      "case": "Received help without displayed/acknowledged",
+      "red": "none_observed_in_system with unresolved=false incorrectly accepted",
+      "green": "Rejected; unknown/unresolved accepted; observed_help without display already rejected"
+    }
+  ],
+  "notExecuted": [
+    "A4 on Linux",
+    "Actual B3 model generation and human semantic review",
+    "C4 recovery integration and joint fresh schema",
+    "A5 feedback target implementation",
+    "Normal shared production/business host initialization",
+    "Socket/TLS/browser and real student/teacher acceptance",
+    "Full G3/MVP or educational benefit"
+  ],
+  "dlA": {
+    "status": "Early A-domain review preparation completed; issue remains open",
+    "implementation": "not_started",
+    "missing": [
+      "C exact BoardProfile/Build/Session DTOs, persistence/readiness and runtime profile",
+      "B and UI HDL consumption proposal",
+      "Owner shared-field decisions, exact DDL authorization and controlled runtime/normal host"
+    ],
+    "latestMain": "37849f4fa2fd4cc1e058fb8559b33a89a60ceed2",
+    "openRelatedPrs": [
+      46,
+      47
+    ],
+    "note": "These PRs are P2 model/C4 delivery and do not constitute DL-C/DL-B/UI HDL proposals; neither merged into this A4 snapshot"
+  },
+  "files": [
+    {
+      "file": "acceptance.a4-postreview-targeted.windows.txt",
+      "sourceSha": "2f4114a4a08754f742295db0d193963e7414693c",
+      "bytes": 10511,
+      "sha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
+      "originalLogSha256": "51c8d4fac2920b2a39ba507cc055c1494d453db51f875af86547e18f3ebd2a67",
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-postreview-targeted.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
+      "previousBlobBytes": 10511
+    },
+    {
+      "file": "acceptance.a4-postreview-build.windows.txt",
+      "sourceSha": "2f4114a4a08754f742295db0d193963e7414693c",
+      "bytes": 92,
+      "sha256": "e0d5ae7023a95c2a78db7ee7381b8bddccf2435be4367056eba16c3d15f67f8b",
+      "originalLogSha256": "d3faf36909dc9afa8615e1bd5b02a92522c9add763024278e24446a7f471e798",
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-postreview-build.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "previousBlobBytes": 94
+    },
+    {
+      "file": "acceptance.a4-postreview-full-serial.windows.txt",
+      "sourceSha": "2f4114a4a08754f742295db0d193963e7414693c",
+      "bytes": 75335,
+      "sha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
+      "originalLogSha256": "bd2b56a3926e653a3db6145ce990b44940a893a04254ddc1641971a4f8570425",
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-postreview-full-serial.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
+      "previousBlobBytes": 75335
+    },
+    {
+      "file": "acceptance.a4-prereview-full-serial.windows.txt",
+      "sourceSha": "0073fa6509445407b6e6060e3ce391021be948ea",
+      "bytes": 74792,
+      "sha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
+      "originalLogSha256": "790011ef0353a55229052180425fa3ce30b676356ba3b54d175eea6d4c7a32d3",
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-prereview-full-serial.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
+      "previousBlobBytes": 74792
+    },
+    {
+      "file": "acceptance.a4-initial-full.windows.txt",
+      "sourceSha": null,
+      "bytes": 36587,
+      "sha256": "082df259afeebb903cc8d09e87d084d3013aae420809e429f01bb46a608e2a0e",
+      "originalLogSha256": "f4136d9ff40e640fa736363060e86ba19fd19c502cac66dbddc215a0990abbf6",
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-initial-full.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "b15dbcee06e71022089b2edbf7d5f4f552b587aea61e3e561ca2a3af89a3bf76",
+      "previousBlobBytes": 36592
+    }
+  ],
+  "syntheticSchemaSmoke": {
+    "tableCount": 31,
+    "tables": [
+      "activity_controls",
+      "activity_versions",
+      "analysis_results",
+      "artifact_snapshots",
+      "assignments",
+      "attempts",
+      "audit_events",
+      "blueprint_drafts",
+      "check_rule_versions",
+      "command_receipts",
+      "competency_versions",
+      "course_memberships",
+      "courses",
+      "help_policy_versions",
+      "jobs",
+      "learner_context_revisions",
+      "learner_disputes",
+      "learner_state_revisions",
+      "login_attempt_windows",
+      "resource_versions",
+      "sessions",
+      "teacher_decisions",
+      "teaching_action_receipts",
+      "teaching_actions",
+      "teaching_deliveries",
+      "teaching_messages",
+      "users",
+      "workspace_command_bindings",
+      "workspace_files",
+      "workspace_process_records",
+      "workspace_runs"
+    ],
+    "diagnostics": {
+      "sqliteVersion": "3.53.4",
+      "journalMode": "wal",
+      "foreignKeys": 1,
+      "synchronous": 2,
+      "busyTimeout": 1000
+    },
+    "integrity": [
+      {
+        "integrity_check": "ok"
+      }
+    ],
+    "foreignKeyErrors": 0,
+    "retained": true,
+    "note": "Observed on the pre-review approved fresh schema; schema files unchanged by 2f4114a boundary fixes"
+  },
+  "recordValidation": {
+    "status": "passed",
+    "records": 5,
+    "methods": "SHA-256 and byte count; spec/TAP reporter counters; actual skipped-test list; recorded schema diagnostics"
+  },
+  "documentValidation": {
+    "command": "node tools/a0-review/check.mjs",
+    "directory": "repository root",
+    "status": "passed",
+    "documents": 39,
+    "internalLinks": 610,
+    "errors": []
+  },
+  "reviewCorrection": {
+    "originalPrHead": "6a4361b9e59227b8b5410c164656dc7dd7f178d8",
+    "date": "2026-10-13",
+    "normalization": "Removed display trailing whitespace and outer/EOF blank lines; text attributes prevent checkout conversion. Exact previous committed blobs retained as gzip. originalLogSha256 remains the historical author-log digest, not these gzip blobs.",
+    "files": [
+      {
+        "file": "acceptance.a4-initial-full.windows.txt",
+        "previousBlobGzip": "acceptance.a4-initial-full.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "b15dbcee06e71022089b2edbf7d5f4f552b587aea61e3e561ca2a3af89a3bf76",
+        "previousBlobBytes": 36592,
+        "sha256": "082df259afeebb903cc8d09e87d084d3013aae420809e429f01bb46a608e2a0e",
+        "bytes": 36587
+      },
+      {
+        "file": "acceptance.a4-postreview-build.windows.txt",
+        "previousBlobGzip": "acceptance.a4-postreview-build.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+        "previousBlobBytes": 94,
+        "sha256": "e0d5ae7023a95c2a78db7ee7381b8bddccf2435be4367056eba16c3d15f67f8b",
+        "bytes": 92
+      },
+      {
+        "file": "acceptance.a4-postreview-full-serial.windows.txt",
+        "previousBlobGzip": "acceptance.a4-postreview-full-serial.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
+        "previousBlobBytes": 75335,
+        "sha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
+        "bytes": 75335
+      },
+      {
+        "file": "acceptance.a4-postreview-targeted.windows.txt",
+        "previousBlobGzip": "acceptance.a4-postreview-targeted.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
+        "previousBlobBytes": 10511,
+        "sha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
+        "bytes": 10511
+      },
+      {
+        "file": "acceptance.a4-prereview-full-serial.windows.txt",
+        "previousBlobGzip": "acceptance.a4-prereview-full-serial.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
+        "previousBlobBytes": 74792,
+        "sha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
+        "bytes": 74792
+      }
+    ],
+    "historicalValidationCorrection": {
+      "atPrHead": "6a4361b9e59227b8b5410c164656dc7dd7f178d8",
+      "documents": 39,
+      "internalLinks": 611,
+      "diffCheckStatus": "failed",
+      "note": "Prior documentValidation/internalLinks=610 and task section 11.2 diff-check passed claim are historical inaccurate statements; corrected here without replacing prior run counters."
+    }
+  }
+}
