@@ -1,6 +1,6 @@
 # DL-A：数字逻辑课程、共享契约与业务接入
 
-日期：2026-10-12（Asia/Shanghai）。责任：A。对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。当前状态（2026-10-13）：当前35表去重联合收尾见 §16：服务端批次已实现/验证，专项53/53；最终全量419总/408通过/0失败/11跳过，两轴复核0；§12/14保留此前33表批次历史结果。整卡仍等待实际获准宿主联调及 B/UI/ALU 等输入，#38未完成。
+日期：2026-10-12（Asia/Shanghai）。责任：A。对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。当前状态（2026-10-14）：A独立会审/固定执行包见 §18，C现场输入与证据实审见 §19；当前35表去重联合收尾见 §16：服务端批次已实现/验证，专项53/53；最终全量419总/408通过/0失败/11跳过，两轴复核0；§12/14保留此前33表批次历史结果。整卡仍等待实际获准宿主联调及 B/UI/ALU 等输入，#38未完成。
 
 ## 1. 基线、同步与写入范围
 
@@ -727,6 +727,8 @@ C真实DL-A增量按以下次序回交：
 1. HTTPS登录/CSRF→两课程/本人分配与空态→教师固定HDL配置→原check/confirm/assign/bootstrap。当前真实C runtime及各课程-help，记录activity/configuration/assignment/代际；bootstrap GET不创建Attempt。
 2. 学生显式创建Attempt、确认保存.sv/.v/固定快照→Build/位置诊断→装载→SW/button/reset/显式推进→真实frame/有限Trace。正常HTTP发起、host原worker消费，交snapshot/hash/Build/Session/revision/sequence/simTime/resultHash。
 3. C4固定作品提交→教师重开→学生显式修订；补暂停、撤权/停用、重复/冲突/终止确认，不新建Job/Session绕开组合。
+撤权/账号停用当前只有获准受控事务能力，没有公共CAS管理HTTP入口；现场调用方式须先给A核对。若沿受控事务验证，单列其真实渠道/身份/日志，不伪称正常HTTP撤权，不让C自行加端点或直接改SQL绕过原授权/停止组合。
+
 4. 交正常URL、受控配置引用/账号安全取得方式、原始去敏日志/hash、35表核对、停止/剩余占用/库保留记录供A审查/UI消费。ALU/H4help/浏览器未执行逐项列，不能总结为全部通过。
 
 此固定源码帮助仍DEPENDENCY_UNAVAILABLE、教师模型预算关闭；不把未接PR54或ALU加入本轮期待。I0基础输入/HTTPS先具备，DL-A真实HDL链随后；H3/H4会审可并行，UI浏览器另计。
@@ -758,3 +760,42 @@ A已完成可独立项：H3边界/结果/验证提案，H4两轴复核/真实事
 沿负责人此前“推送在dla这个issue下”的授权，原位更新[本人既有#38交接评论](https://github.com/paher-din/XunJie/issues/38#issuecomment-6145619173)，本次未新建派工或发送私信。更新时核原作者/旧正文SHA防覆盖，PATCH后回读完全一致；时间 2026-10-13T15:52:58Z，正文SHA-256 5d5f85a128e7765702659299f4990decee97c3741cdb7d1e3dd1dfa559e3fcfe。已说明H3/H4首批收到、B越界诊断修复、A源码包准备和#30最新C现场职责；不重复索取旧节点/I0接收证据。
 
 分支/源码包与本批仓库材料仍未公开推送；评论更新不是代码交付。待精确发布许可后可交可取得的固定源/完整记录；未迁移库、修改凭据/CI/B/C/UI、维护节点、调用模型或进行浏览器验收。实际业务与整卡剩余项沿§18.5；MVP §10/技术基线待授权维护者汇总。
+
+
+## 19. C新交付的A实质审查（2026-10-14）
+
+### 19.1 固定来源与本批范围
+
+本轮A收尾期间新发现 [C Draft PR #55](https://github.com/paher-din/XunJie/pull/55)，base cde69cc、head ea5a6523245ef25e2ab15712fa5aae5fc182deb8，以及 [C-ENTRY-02/03实审请求](https://github.com/paher-din/XunJie/issues/30#issuecomment-6148913087)。已读该PR两份C任务（I0_C_HANDOFF、DLA_C_CLOSEOUT_HANDOFF）及原始JSON/日志、固定I0运行源9fa76ad的initializer/config/身份权限与storePolicy/storeRule。沿§18相同产品/技术依据完成A身份、权限、宿主、接口和业务语义审查；不合并PR、不改C文件/源/环境，不转移A模块和集成质量责任。
+
+本人写集为本节及本验收目录c-entry-a-review.json；可追加#38既有获准交接评论中的审查结论。C原文件只读，以固定PR链接可独立获取。未批准/执行凭据生成、CA/网络变更、建库、正常HTTPS、模型或节点维护；准备/历史节点/真实业务/浏览器分层记账。
+
+### 19.2 逐项实审结论
+
+| 审查项 | A结论及依据 | 实施/验收边界 |
+| --- | --- | --- |
+| 五账号/两课程身份 | 五个synthetic用户/login唯一；课程a教师/学生/同课peer，课程b教师/学生关系与原initializer一致。实际users只含id/loginName/password，courses含teacherId/studentIds；role/courseId/passwordSource是计划元数据，必须在materialize时剥离 | 身份只来自正常Session和服务端course_memberships。student-b是跨课程拒绝测试读者，不能赋予reader或跨课程实际成员权限；角色/本人归属拒绝必须用真实HTTP验证 |
+| 政策标识 | 同意采用course-a的help-v1及course-b的help-v1-course-b作为与原契约兼容的I0合成配置。原storePolicy的id全库唯一，同ID跨课程会FORBIDDEN；不同ID避免碰撞，不更改存储或权限。原storeRule按[courseId,versionId]存储，两课程可共用textscope-core-v1 | 两政策helpAllowed=true、wholeSolutionAllowed=false、limitedCheckHelpAllowed=false；规则textscope-validator-v2、limitedHelp=true。是原行为配置，不能在受限检查中开放帮助。DL-A35表仍使用各课程-help，不复制I0标识/库 |
+| 宿主/接口 | PAHER同机origin https://127.0.0.1:3443、PORT3443、原main绑定127.0.0.1、250ms原消费者与9fa76ad真实dist符合现有配置。bootstrap/读取不产生Attempt；学生显式保存/运行/提交，身份不来自请求体 | SAN含localhost/::1不授权改origin、增加监听或跨机访问。原Secure/HttpOnly/__Host Cookie、Origin/CSRF、Session过期/撤销和课程归属保持；页/资产TLS和匿名401不能代替登录/业务链 |
+| 初始化/代际 | I0严格输入{synthetic:true,users,courses}、原fresh-only24表；actual databaseFile取原initializer输出且保留tmp位置，generationFile读原data.recoveryGeneration。当前认证profile/validation/sourceHash/代际与原身份在执行前复核 | 本次未建库/读取PAHER实时节点；不猜库路径、不搬库绕守卫、不迁移旧库、不把24/35表混用或用I0就绪代替HDL活动 |
+| 本地凭据方案 | C提案新独占目录0700，key/cert/signing/initializer/host文件0600，原WSL root；现有OpenSSL生成30天RSA2048自签serverAuth，SAN固定三项；Node随机32字节签名与每账号24字节密码，base64url长度43/32，满足原secret≥32与password≥16 | 与原服务端契约兼容，可进入准确授权。新增材料生成/保管人为C仅本批范围，wx/新目录防覆盖；秘密只进受控文件/内存，不进CLI、Git、普通日志或MSI通道。A实审不替负责人批准C新增秘密操作 |
+| 严格客户端TLS | 单客户端提供本开发证书ca，rejectUnauthorized=true、默认主机核验，与[Node官方TLS契约](https://github.com/nodejs/node/blob/main/doc/api/tls.md)和[HTTPS客户端契约](https://github.com/nodejs/node/blob/main/doc/api/https.md)兼容 | 浏览工具未能打开v24 HTML，依据为Node官方源码文档；本机未生成证书或执行TLS。实际C必须核SAN/有效期/公钥配对及错误CA/主机拒绝，不能用关验证/忽略错误替代 |
+| 浏览器/安全领取 | 当前方案没有已验证的PAHER同机浏览器信任路径，不能判H-01完整；Node专用ca不传给浏览器Cookie/会话。保管方案只解决现场受控输入，不代表UI已取得可用账号 | UI需给实际PAHER浏览器/版本/用户或独立profile、同机访问路径、准确证书信任存储与可用操作；C/UI给安全本地账号领取方式。新安装/CA导入/系统信任/跨机通道均不由A会审批准；警告点击绕过不计通过 |
+| 原Job/暂停/撤权 | C需执行固定20项公共链，保留原Job/Run/receipt/snapshot与hash/代际，证明normal main自动消费、停止/unknown对账及私有结果裁剪 | 不能用直接processJob、app.inject、模板或node query代替正常HTTPS/自动消费。C-ENTRY-06若出现A身份/权限/业务宿主/契约问题，由A修复并补验证；C执行责任不转移A技术/质量责任 |
+
+### 19.3 接收字节补正与原证据核验
+
+接受C对旧“754份与Git blob一致”表述的补正：旧tar --compare只证明副本与Windows已转换归档一致。原CRLF构建/读取的通过仍限当时副本；新单次core.autocrlf=false归档及754普通文件/0差异记录另列，不用旧通过冒充新字节。A原10份摘要与9fa76ad实际Git原始字节逐项一致，C新manifest核查报告全部匹配。首次LF副本symlink依赖的TS2883失败和错误摘要保留，最终lf2物理复用原依赖的四组typecheck/build输出单列；未为此改A类型或依赖。
+
+A实际只读核验：14份JSON可解析；17份内嵌接收/准备输出的UTF-8字节数与SHA-256全部自洽；A清单副本10项与固定Git原始字节相同；五用户/两课程/成员引用/两个唯一政策ID及帮助检查语义匹配；33份HTTP样例明确为app.inject+Session/SQLite、部分合成transport，不是normal HTTPS或物理故障证明。核验记录见 [c-entry-a-review.json](../../apps/teaching/tests/evidence/dl-a-closeout/c-entry-a-review.json)。未亲自读取PAHER754文件或重跑这些命令，C的现场结果仍按原来源计，不增加A业务通过数。
+
+本节替代§18中“C现场方案仍未回交”的当前状态；历史核查/评论不删除。C-ENTRY-02/03材料已交且A业务实审完成；仍剩具体C凭据/客户端信任授权、浏览器方案、现场正常HTTPS/原Job链及A实际证据复核。ALU/H4仍沿§18，不被本I0准备覆盖；#30/#38/#22保持Open。
+
+
+### 19.4 两轴结果、本批检查与回交
+
+固定PR55的16文件两轴：Standards硬规范违反0/可操作判断性异味0，Spec可操作偏差0。Spec独立核全套27段内嵌日志摘要与25段声明字节，均一致；父Agent的17段接收/准备核验单独保留，数量口径不混计。仅静态审查原输出，未现场重验/执行凭据、DB、节点、正常HTTPS或浏览器。
+
+本地原文档工具检查64份/962条内链/errors=[]/exit0，git diff --check通过；新写集仅本人任务、README导航与c-entry-a-review.json。原实现/锁/保护基线/C文件不变，MVP §10/技术基线待授权维护者汇总。
+
+依原#38发布授权，再次原位更新本人既有交接评论，说明PR55材料已经回交且A实审完成、I0两政策配置兼容、字节补正和剩余准入，不向其他任务私信或代批C红线。作者/旧正文摘要先核，更新后回读完全一致：2026-10-13T16:10:39Z，正文SHA-256 0fea7b9ea3bd4955783acc29e7f04fdb1f98f9069cb59980c3f95139a6aa3d2a。未推送源码、合并PR或关闭卡。
