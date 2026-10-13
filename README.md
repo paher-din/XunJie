@@ -283,6 +283,8 @@ node --test server/workspace/submissions.test.ts
 
 2026-10-13，负责人授权后审查 P3-1 的授权疑问关闭：从 TECH_DESIGN 第 7.2.1 节该句删去「提交」在授权范围内，不回退。同一次授权把「分配暂停使已发放的重开许可失效、恢复分配不使其复活」写入产品基线，落在第 5 节 `POST /api/attempts/:id/reopen` 一行，同行一并记入发放许可递增 `attemptRevision` 与 `decisionEpoch`、许可行保持 `valid` 不被静默消费、恢复读取以 `actionable=false` 让学生界面区分「从未发放」与「发放过但已作废」。改动在既有表格行内追加文字，原分句逐字保留，未改名标题、未增删路由、未放宽验收门槛，PRD 与 MVP_SPEC 经核对仍无需改动。与 #48 的表数撞点实测数据、先合 #47 再合 #48 的顺序建议，以及本任务未改 #48 分支的理由，见 [C4 第 5 节](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md#5-与-a4a5b3c5-的分批交接)。
 
+2026-10-13，按负责人要求进入 C4 → A4 → DL-C 顺序审阅与合并。C4 本轮新发现的两项 P2 已修复：暂停期间发放许可的工作区及恢复投影读取真实可用性；请求文档勘误明确 checkRunIds 输入与 checkRefs 输出。类型检查、构建与公开接口专项验证通过（21 项中 20 通过、0 失败、1 跳过），两轴增量复审各 0 项；完整源码回归及远程合并结果在 [顺序集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md) 追加。其余产品与浏览器后置验收不变。
+
 ### 当前整体状态与后置验收
 
 当前 `npm start` 仍只启动健康入口；业务宿主需显式组装 `createWorkspaceApp`/`createDesignApp`、传获准数据库/Origin/签名与 runner 并消费原 jobs。工厂验证只用批准的新临时合成库，不是生产迁移/长期账号/HTTPS/TLS配置。实际 UI 与原 AC/NFR、B2/C3 的辅导/回执/限制仍按#22及TEAM阶段接入；不创建替代界面，也不因#9按服务端阶段关闭而宣称完整G1/MVP/教学效果通过。最新授权、真实状态与未执行项见 [G1收口记录](docs/tasks/G1_OVERALL_COORDINATION.md)。

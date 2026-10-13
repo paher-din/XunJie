@@ -770,3 +770,24 @@ test('C4-V11 grants issued during assignment or activity pause are not actionabl
     } finally { await f.close(); }
   });
 });
+
+test('C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant', async () => {
+  const f = await fixture();
+  try {
+    const teacher = await f.login('teacher'), student = await f.login();
+    const allocation = await assigned(f, teacher), id = await opened(f, student, allocation.assignmentId);
+    await files(f, student, id);
+    const chain = await reviewed(f, student, teacher, id);
+    const granted = await grantReopen(f, teacher, id, chain.submissionId, chain.reviewedRevision);
+    assert.equal(granted.statusCode, 200, granted.body);
+    f.db.withTransaction(tx => tx.run("UPDATE course_memberships SET active=0 WHERE user_id='student'"));
+    for (const projection of [await view(f, teacher, id), await recovery(f, teacher, id)]) {
+      assert.equal(projection.reopen.state, 'valid');
+      assert.equal(projection.reopen.actionable, false);
+      assert.equal(projection.submissions.length, 1);
+    }
+    for (const suffix of ['', '/recovery']) {
+      assert.equal((await f.app.inject({ url: '/api/attempts/' + id + suffix, headers: student })).statusCode, 403);
+    }
+  } finally { await f.close(); }
+});

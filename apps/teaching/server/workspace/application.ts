@@ -106,9 +106,14 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     });
     return { requestId: request.id, data };
   });
-  // Use the attempt owner's actual assignment/activity availability for either authorized reader.
+  // A current teacher may read retained facts after student withdrawal. The student's ability to consume
+  // a grant is false in that case; it is separate from the reader's resource authorization above.
+  const assignmentActionable = (tx: Transaction, state: WorkspaceState) => Boolean(tx.get(
+    "SELECT user_id FROM course_memberships WHERE course_id=? AND user_id=? AND role='student' AND active=1",
+    state.attempt.courseId, state.attempt.studentId))
+    && assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active;
   const workspaceProjection = (tx: Transaction, state: WorkspaceState) => readWorkspace(state, () => true,
-    assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active);
+    assignmentActionable(tx, state));
   app.get('/api/attempts/:id', request => ({ requestId: request.id, data: read(request, attemptId(request), (tx, state) => workspaceProjection(tx, state)) }));
   app.post('/api/attempts/:id/sync', { bodyLimit: 8 * 1024 * 1024 }, request => {
     const input = parseRequest(syncInput, request.body), batch = syncBatch(input);
@@ -296,7 +301,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       const resyncRequired = query.recoveryGeneration !== generation || !Number.isSafeInteger(query.decisionEpoch)
         || query.decisionEpoch !== state.attempt.decisionEpoch;
       return readRecovery(state, { recoveryGeneration: generation, resyncRequired,
-        assignmentActive: assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active,
+        assignmentActive: assignmentActionable(tx, state),
         feedback: recovery.readFeedback(request, id), coverage: readCoverage(tx, id) }, () => true);
     }) };
   });
