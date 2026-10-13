@@ -9,7 +9,8 @@ import type { TutorHistoryEntry } from '../../workspace/tutoringContracts'
 
 /** Reuses WorkspacePage's existing ws-chatpop/ws-chatpane and AgentMessage slots. */
 export function TutoringPane({ client, state, open, onClose, objectRef, objectLabel, onClearObject,
-  onExample, objectCurrent, objectError }: { client: TutoringWorkspace | null; state: TutoringState; open: boolean; onClose: () => void
+  onExample, objectCurrent, objectError, helpAllowed, assignmentActive, sourceStatus }: { client: TutoringWorkspace | null; state: TutoringState; open: boolean; onClose: () => void
+  helpAllowed?:boolean; assignmentActive?:boolean; sourceStatus?:(ref:TutorObject)=>string
   objectCurrent?: () => boolean; objectError?: string
   objectRef?: TutorObject; objectLabel?: string; onClearObject?: () => void; onExample?: (message: TutorMessage) => void }) {
   const [draft, setDraft] = useState('')
@@ -18,7 +19,14 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
   useEffect(()=> { setDraft('') }, [client])
   if (!open || client&&!client.confirmation.isCurrent(client.context)) return null
   const job = ledger?.job, pending = ledger?.commands.some(c=>c.state==='pending')
+  const unknownHelp=ledger?.commands.some(c=>c.kind==='help'&&c.state==='pending')
   const running = !!job && !job.stopRequested && (!job.status || ['queued','running','cancelling','outcome_unknown'].includes(job.status))
+  const attempt=client?.confirmation.current.attempt
+  const unavailable=helpAllowed!==true?'固定帮助政策未允许求助。':assignmentActive!==true?'当前分配未允许求助。'
+    :!attempt||!['ready','active'].includes(attempt.status)?'当前尝试不允许新求助。'
+    :state.limitedCheck===true?'限定检查进行中，当前不能发送辅导问题。'
+    :state.limitedCheck!==false?'限定检查状态尚未确认，请重新读取后再求助。':null
+  const canSend=!!client&&!!ledger&&!state.busy&&!pending&&!!draft.trim()&&!objectError&&!unavailable
   return <div className="ws-chatpop" data-testid="tutoring-pane">
     <div className="ws-chatpop-head"><IconText name="assistant-mark">学习助手 · 当前尝试</IconText>
       <button type="button" onClick={onClose}><IconText name="close" position="end">收起辅导</IconText></button></div>
@@ -30,10 +38,10 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
         {ledger?.commands.filter(c=>c.kind==='help').map(c=><div className="chat-message user" key={c.key}>
           <div className="bubble">{c.question}</div><small>{c.state==='confirmed' ? '已受理' : c.state==='pending' ? '原请求待核对' : '服务未接纳'}</small>
           {c.error && <p role="status">{c.error}</p>}</div>)}
-        {ledger?.messages.filter(m=>m.shown || (m.valid && state.synchronized && !ledger.blocked)).map(m=>
+        {attempt&&ledger?.messages.filter(m=>m.shown || (m.valid && state.synchronized && !ledger.blocked)).map(m=>
           <TutorMessageView key={m.payload.actionId} message={m} client={client} synchronized={state.synchronized}
-            scroller={scroller.current} onExample={onExample} />)}
-        <p className="ts-pane-lead">当前投递正文与具体问题/代码/运行的完整关联尚待交接；下方历史保留原服务记录。</p>
+            scroller={scroller.current} onExample={onExample} sourceStatus={sourceStatus} />)}
+        <p className="ts-pane-lead">回答保留原问题、快照或运行来源；后续编辑不会改变该来源。下方历史保留原服务记录。</p>
         <section aria-label="已获准教学历史" data-testid="tutor-history">
           <p>已获准教学历史 · 只读原记录，不代表当前建议，也不新增收到、展示或回应回执。</p>
           <button type="button" disabled={!client||state.history?.phase==='loading'} onClick={()=>void client?.readHistory()}>刷新教学历史</button>
@@ -52,18 +60,28 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
         {state.notice && <p>{state.notice}</p>}
         {pending && <button type="button" disabled={state.busy} onClick={()=>void client?.retry()}>核对原辅导请求</button>}
         <button type="button" disabled={state.busy} onClick={()=>void client?.read(true)}>重新读取辅导</button>
-        {job && !job.stopRequested && <button type="button" onClick={()=>void client?.stop()}>停止这次帮助</button>}
+        {(job&&!job.stopRequested||unknownHelp&&!ledger?.blocked) && <button type="button" onClick={()=>void client?.stop()}>停止这次帮助</button>}
       </div>
       {objectRef && <div className="ws-chatbind" data-testid="tutor-object">所指对象：{objectLabel ?? JSON.stringify(objectRef)}
         <button type="button" onClick={onClearObject}>改为项目问题</button>{objectError && <p role="status">{objectError}</p>}</div>}
-      <form className="ws-chatinput" onSubmit={e=> { e.preventDefault(); if (!running && !objectError) void client?.send(draft, objectRef, false, objectCurrent) }}>
+      {unavailable&&<p className="ws-chatbind" role="status" data-testid="tutor-help-limit">{unavailable}</p>}
+      <form className="ws-chatinput" onSubmit={e=> { e.preventDefault(); if (!running && canSend) void client?.send(draft, objectRef, false, objectCurrent) }}>
         <input aria-label="就这个任务提问" autoComplete="off" placeholder="就这个任务提问…" value={draft} onChange={e=>setDraft(e.target.value)} />
         <button type={running ? 'button' : 'submit'} className={running?'ws-action':'send'} aria-label={running ? '替换并发送' : '发送辅导问题'} title={running?'替换并发送新问题':'发送辅导问题'}
-          disabled={!client || !ledger || state.busy || pending || !draft.trim() || !!objectError}
-          onClick={running ? ()=>void client?.send(draft, objectRef, true, objectCurrent) : undefined}>{running ? '替换并发送' : <Icon name="arrow-up" size={18}/>}</button>
+          disabled={!canSend}
+          onClick={running ? ()=>{if(canSend)void client?.send(draft, objectRef, true, objectCurrent)} : undefined}>{running ? '替换并发送' : <Icon name="arrow-up" size={18}/>}</button>
       </form>
     </div>
   </div>
+}
+function objectDescription(ref:TutorObject) {
+  if(ref.kind==='code') {
+    const range=ref.range as {startLine:number;startColumn:number;endLine:number;endColumn:number}|undefined
+    return `${ref.path} · 文件版本 ${ref.documentVersion} · 原快照 ${ref.snapshotId}${range?` · 行列 ${range.startLine}:${range.startColumn}–${range.endLine}:${range.endColumn}`:' · 整个文件'}`
+  }
+  if(ref.kind==='run')return `原运行 ${ref.runId} · 原快照 ${ref.snapshotId}`
+  if(ref.kind==='project')return `原项目活动 ${ref.activityVersionId}`
+  return `原资料 ${ref.resourceVersionId} · 段落 ${ref.paragraphId}`
 }
 function TutorHistoryView({entry,preparation}:{entry:TutorHistoryEntry;preparation:boolean}) {
   const {action,message,question}=entry,body=message.envelope.body
@@ -80,9 +98,9 @@ function TutorHistoryView({entry,preparation}:{entry:TutorHistoryEntry;preparati
     </AgentMessage>
   </article>
 }
-function TutorMessageView({ message, client, synchronized, scroller, onExample }: {
+function TutorMessageView({ message, client, synchronized, scroller, onExample, sourceStatus }: {
   message: TutorMessage; client: TutoringWorkspace | null; synchronized: boolean; scroller: HTMLElement | null
-  onExample?: (message: TutorMessage) => void }) {
+  onExample?: (message: TutorMessage) => void; sourceStatus?:(ref:TutorObject)=>string }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(()=> {
     const el = ref.current
@@ -98,6 +116,11 @@ function TutorMessageView({ message, client, synchronized, scroller, onExample }
   const p = message.payload
   return <div ref={ref} data-testid="tutor-message" data-action-id={p.actionId}>
     <AgentMessage message={{ role: 'agent', text: p.content!, phase: 'settled' }} sourceLabel={client?.context.mode==='preparation' ? '学习助手 · 合成准备内容' : '学习助手 · 获准完整正文'}>
+      {p.jobId&&p.messageId&&p.basis&&p.targetVersions?<div data-testid="tutor-source">
+        <p>原 Job：{p.jobId} · 原 Message：{p.messageId}</p>
+        <p>回答来源：{p.basis.objectRef?objectDescription(p.basis.objectRef):'原尝试的项目问题'} · 原政策：{p.targetVersions.policyVersionId}</p>
+        {p.basis.objectRef&&<p>{sourceStatus?.(p.basis.objectRef)??'只核对原对象，不定位或替换当前作品。'}</p>}
+      </div>:<p>当前公开结果缺少原始对象关联，不能确定对应的代码或运行。</p>}
       <p><b>下一步：</b>{p.expectedStudentAction ?? '公开结果未提供下一步。'}</p>
       {p.rationale && <p>支持目的：{p.rationale}</p>}
       {p.assistanceContext && <p>帮助条件：{p.assistanceContext}</p>}
@@ -107,7 +130,7 @@ function TutorMessageView({ message, client, synchronized, scroller, onExample }
       {(!message.valid || p.basisRevised) && <p>原客户端已展示的历史；当前依据已变或尚未核验。</p>}
       <p data-testid="tutor-facts">收到：{message.facts.received?.state==='confirmed' ? '已确认' : '待确认'} · 展示：{message.facts.displayed ? '本机已发生' : '未发生'} · 回应：{message.facts.acknowledged ? '明确回应' : '未回应'}</p>
       <button type="button" disabled={!message.shown || !!message.facts.acknowledged} onClick={()=>void client?.fact(p.actionId,'acknowledged')}>我先试试</button>
-      {onExample && !!p.resourceRefs?.length && <button type="button" onClick={()=>onExample(message)}>查看获准类似例子</button>}
+      {onExample && !!p.resourceRefs?.length && <button type="button" onClick={()=>onExample(message)}>{client?.context.mode==='preparation'?'查看获准类似例子':'查看引用资料'}</button>}
     </AgentMessage>
   </div>
 }

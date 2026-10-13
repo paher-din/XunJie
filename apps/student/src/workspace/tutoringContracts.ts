@@ -4,7 +4,7 @@ import type { JobStatus } from './runContracts'
 // C3 application.ts public projections only. No inferred Job/ObjectRef association.
 export interface TutorControl extends Pick<AttemptView, 'status' | 'attemptRevision' | 'decisionEpoch' | 'captureRevision' | 'collecting' | 'reminders'> { generation: string }
 export type TutorReceiptKind = 'received' | 'displayed' | 'acknowledged'
-export interface TutorPayload {
+export interface TutorPayload extends Partial<TutorSource> {
   actionId: string; contentHash: string; disposition: 'pending' | 'cancelled' | 'stale' | 'failed'
   createdAt: string; basisRevised: boolean; deliveryId?: string
   actionType?: string; content?: string; rationale?: string; expectedStudentAction?: string
@@ -27,6 +27,9 @@ export interface TutorVersions { activityVersionId:string;policyVersionId:string
 export interface TutorHistoryScope { courseId:string;studentId:string;attemptId:string }
 export interface TutorBasis { attemptRevision:number;decisionEpoch:number;captureRevision:number;relatedStateRevision:number
   objectRef?:TutorObject;inputRefs:string[];assistanceRefs:string[];coverageRefs:string[] }
+// C3 authorized event body association. The original basis is immutable provenance, not the current head.
+export interface TutorSource { scope:TutorHistoryScope;jobId:string;messageId:string;generation:string;targetVersions:TutorVersions
+  basis:Pick<TutorBasis,'attemptRevision'|'decisionEpoch'|'captureRevision'|'relatedStateRevision'|'objectRef'> }
 export interface TutorHistoryBody { kind:'student_help';actionType:string;content:string;rationale:string
   expectedStudentAction:string;evidenceIds:string[];resourceRefs:string[];assistanceContext:string;unresolved:string[]
   policyChecks:{containsWholeSolution:false;writesStudentWork:false;runsCode:false;makesFormalEvaluation:false} }

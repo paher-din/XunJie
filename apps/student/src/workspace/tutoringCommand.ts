@@ -11,7 +11,8 @@ export async function verifyTutorCommandReceipt(context: CommandContext, command
   const r = record(value), i = record(r.identity), scope=record(i.scope), body=JSON.parse(command.wireJson)
   const target=`/api${command.path}`
   const fields=command.kind==='cancel' ? {jobId:decodeURIComponent(command.path.split('/')[2]!),reason:body.reason??'explicit_job_cancel'} : {...body}
-  delete fields.recoveryGeneration
+  // B2 hashes its validated help input including recoveryGeneration. C's cancel
+  // command instead hashes {jobId, reason}; do not apply the workspace sync rule here.
   requiredId(r.receiptId);requiredId(r.commandId);revision(r.serverSeq,1)
   if (i.command!==(command.kind==='help'?'student_help.create':'job.cancel') || i.actorId!==context.userId || i.target!==target
     || i.idempotencyKey!==command.key || i.recoveryGeneration!==context.trustedRecoveryGeneration

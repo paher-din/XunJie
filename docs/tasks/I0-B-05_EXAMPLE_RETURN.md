@@ -4,7 +4,9 @@
 
 **Blocked by:** [I0-B-01 消息与回执](I0-B-01_MESSAGES_RECEIPTS.md)。D-05最小例子/返回入口已在规划中定稿，由本票实现；不依赖02/03/04，可用获准合成材料独立验只读查看→返回，精确编辑器定位与03共享适配须协调。
 
-**Status:** prepared-verified / pending-real（合成相邻资料及原编辑器返回通过；真实教师例子/许可仍需核）。
+**Status:** implemented / prepared-verified（获准公开资料读取、原实例/视图返回已交；合成相邻例子已验，真实教师例子批准与真人接棒仍分列）。
+
+2026-10-14收尾：正常模式资料动作准确标“查看引用资料”，公开可读材料不被叫成教师批准例子；只有开发合成场景保留相邻例子标识。只读覆盖槽、原editor/model/草稿/undo/视图返回与拒绝改贴边界在2项浏览器和25项规则中通过，正式dist已排除合成材料标识；当前教师审批/真人接棒不从测试材料推断。最终构建/检查与限制见[批次§11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划](I0-B_UI_TUTOR_PLAN.md)。覆盖UI-TUTOR-07，M-03/M-04/M-09，AC-04/05/06/12、NFR-05。
 

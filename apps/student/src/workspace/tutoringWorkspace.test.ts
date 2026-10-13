@@ -15,7 +15,7 @@ function deferred<T>() {let resolve!:(value:T)=>void;const promise=new Promise<T
 const control={attemptRevision:1,decisionEpoch:1,captureRevision:0,collecting:true,reminders:false,generation:'g',status:'active' as const}
 async function fixture() {
   const payload={actionId:'a',deliveryId:'d',content:'完整合成正文',contentHash:await textHash('完整合成正文'),actionType:'hint',createdAt:new Date().toISOString(),basisRevised:false,disposition:'pending' as const}
-  const attempt={...control,attemptId:'attempt'}, confirmation={context,current:{attempt},isCurrent:()=>true,readHead:vi.fn(async()=>({attempt}))}
+  const attempt={...control,attemptId:'attempt'}, confirmation={context,current:{attempt},isCurrent:()=>true,readHead:vi.fn(async()=>({attempt,limitedCheck:false as boolean|undefined}))}
   const page={control,resyncRequired:false,events:[{serverSeq:3,eventId:'e',type:'teaching.delivery',occurredAt:new Date().toISOString(),payload}],nextServerSeq:3,hasMore:false}
   let stored:TutorLedger|undefined
   mocked.read.mockImplementation(async()=>stored)
@@ -27,6 +27,35 @@ async function fixture() {
 }
 beforeEach(()=>{vi.clearAllMocks();vi.stubGlobal('document',{visibilityState:'visible'})})
 describe('tutoring stop/display/control interleavings',()=> {
+  it('retiring the context while the help command is persisted prevents its POST',async()=> {
+    const f=await fixture();await f.client.initialize();mocked.post.mockClear()
+    let current=true;f.confirmation.isCurrent=()=>current
+    mocked.write.mockImplementation(async(row:TutorLedger)=>{if(row.commands.some(c=>c.kind==='help'))queueMicrotask(()=>{current=false})})
+    await f.client.send('原上下文问题')
+    expect(mocked.post).not.toHaveBeenCalled()
+    f.client.dispose()
+  })
+  it('a stop during the preflight read prevents the earlier help POST',async()=> {
+    const f=await fixture();await f.client.initialize();mocked.post.mockClear()
+    const gate=deferred<{attempt:typeof f.confirmation.current.attempt;limitedCheck:boolean|undefined}>(),reached=deferred<void>()
+    f.confirmation.readHead.mockImplementationOnce(()=>{reached.resolve();return gate.promise})
+    const send=f.client.send('原问题');await reached.promise
+    const stop=f.client.stop();gate.resolve({attempt:f.confirmation.current.attempt,limitedCheck:false})
+    await send;await stop
+    expect(mocked.post).not.toHaveBeenCalled()
+    expect(f.client.current.ledger?.commands).toEqual([])
+    expect(f.client.current.ledger?.blocked).toBe(true)
+    f.client.dispose()
+  })
+  it.each([true,undefined])('fresh limitedCheck=%s blocks help even after an unrestricted cached read',async limitedCheck=> {
+    const f=await fixture();await f.client.initialize();mocked.post.mockClear()
+    f.confirmation.readHead.mockResolvedValue({attempt:f.confirmation.current.attempt,limitedCheck})
+    await f.client.send('应保持未发送')
+    expect(mocked.post).not.toHaveBeenCalled()
+    expect(f.client.current.ledger?.commands).toEqual([])
+    expect(f.client.current.notice).toContain(limitedCheck?'限定检查进行中':'状态尚未确认')
+    f.client.dispose()
+  })
   it('a stop during page persistence cannot release the synchronous display fence',async()=> {
     const f=await fixture(), gate=deferred<void>(), reached=deferred<void>()
     let once=false

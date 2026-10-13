@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import { chromium, test, expect, type Page } from '@playwright/test'
+import { createServer } from 'node:net'
 import { start, setFault } from './helpers'
 async function ask(page: Page, question='帮我找到一个起点') {
   await page.getByRole('button',{name:'就项目求助',exact:true}).click()
@@ -164,4 +165,85 @@ test('受控可见性反例：隐藏时收到正文不报展示，恢复后才�
   })
   await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+})
+
+test('原生后台标签收到正文不报展示；实际切回前台后仅报一次displayed',async({},testInfo)=> {
+  // Normal Playwright connections emulate focus. CDP without defaults preserves
+  // the existing native context and trusted browser visibility transitions.
+  const port=await new Promise<number>((resolve,reject)=> {
+    const listener=createServer();listener.on('error',reject)
+    listener.listen(0,'127.0.0.1',()=> {
+      const address=listener.address()
+      if(!address||typeof address==='string') {listener.close();reject(new Error('No CDP port'));return}
+      listener.close(error=>error?reject(error):resolve(address.port))
+    })
+  })
+  const server=await chromium.launchServer({headless:false,args:[`--remote-debugging-port=${port}`],
+    ...(process.env.XUNJIE_E2E_BROWSER_CHANNEL?{channel:process.env.XUNJIE_E2E_BROWSER_CHANNEL}:{})})
+  let release:(()=>void)|undefined
+  try {
+    const browser=await chromium.connectOverCDP(`http://127.0.0.1:${port}`,{noDefaults:true})
+    const context=browser.contexts()[0]!,page=await context.newPage()
+    const receipts:Array<{at:number;path:string;contentHash:string;receiptKind:string}>=[]
+    const responses:Array<{status:number;receiptKind:string}>=[],reads:Promise<void>[]=[]
+    page.on('request',r=> {
+      if(r.method()==='POST'&&/\/actions\/[^/]+\/receipts$/.test(new URL(r.url()).pathname)) {
+        const body=r.postDataJSON() as {contentHash:string;receiptKind:string}
+        receipts.push({at:Date.now(),path:new URL(r.url()).pathname,contentHash:body.contentHash,receiptKind:body.receiptKind})
+      }
+    })
+    page.on('response',r=> {
+      if(r.request().method()==='POST'&&/\/actions\/[^/]+\/receipts$/.test(new URL(r.url()).pathname))
+        reads.push(r.json().then(body=> {responses.push({status:r.status(),receiptKind:body.data.receiptKind})}))
+    })
+    await start(page,'tutor-native-hidden')
+    await page.evaluate(()=> {
+      const events:Array<{state:string;trusted:boolean;at:number}>=[]
+      Object.assign(window,{i0NativeVisibility:events})
+      document.addEventListener('visibilitychange',event=>events.push({state:document.visibilityState,trusted:event.isTrusted,at:Date.now()}))
+    })
+    const visibility=()=>page.evaluate(()=>({state:document.visibilityState,hidden:document.hidden,
+      events:(window as typeof window&{i0NativeVisibility:Array<{state:string;trusted:boolean;at:number}>}).i0NativeVisibility}))
+    let held=false,payload!:{actionId:string;contentHash:string}
+    const hold=new Promise<void>(r=> {release=r})
+    await page.route('**/__i0prep/api/attempts/*/events?*',async route=> {
+      const response=await route.fetch(),body=await response.json()
+      const message=body.data.events.find((e:{payload?:unknown})=>!!e.payload)
+      if(!held&&message) {held=true;payload=message.payload;await hold}
+      await route.fulfill({response})
+    })
+    await ask(page);await expect.poll(()=>held).toBe(true)
+    const other=await context.newPage();await other.goto('about:blank');await other.bringToFront()
+    await expect.poll(async()=> (await visibility()).state).toBe('hidden')
+    expect((await visibility()).events.some(e=>e.state==='hidden'&&e.trusted)).toBe(true)
+    const windowId=async(target:Page)=> {
+      const session=await context.newCDPSession(target),root=await browser.newBrowserCDPSession()
+      const info=await session.send('Target.getTargetInfo')
+      const window=await root.send('Browser.getWindowForTarget',{targetId:info.targetInfo.targetId})
+      await session.detach();await root.detach();return window.windowId
+    }
+    expect(await windowId(page)).toBe(await windowId(other));release!()
+    await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[0]?.facts.received?.state).toBe('confirmed')
+    expect(await page.getByTestId('tutor-message').count()).toBe(1)
+    // Cross a polling interval while the actual tab is hidden; no synthetic events.
+    await new Promise(resolve=>setTimeout(resolve,3100))
+    const hidden=await visibility(),hiddenMessage=(await tutorLedger(page))[0]!.messages[0]!
+    expect(hidden.state).toBe('hidden');expect(hidden.hidden).toBe(true)
+    expect(hiddenMessage.facts.displayed).toBeUndefined();expect(hiddenMessage.facts.acknowledged).toBeUndefined()
+    expect(receipts.map(r=>r.receiptKind)).toEqual(['received'])
+    await page.bringToFront();await expect.poll(async()=> (await visibility()).state).toBe('visible')
+    await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+    await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[0]?.facts.displayed?.state).toBe('confirmed')
+    const visible=await visibility(),transition=[...visible.events].reverse().find(e=>e.state==='visible'&&e.trusted)
+    expect(transition).toBeDefined()
+    const displayed=receipts.filter(r=>r.receiptKind==='displayed');expect(displayed).toHaveLength(1)
+    expect(displayed[0]!.at).toBeGreaterThanOrEqual(transition!.at)
+    expect(displayed[0]!.contentHash).toBe(payload.contentHash)
+    expect(displayed[0]!.path).toContain(`/actions/${encodeURIComponent(payload.actionId)}/receipts`)
+    expect((await tutorLedger(page))[0]!.messages[0]!.facts.acknowledged).toBeUndefined()
+    await Promise.all(reads);expect(responses).toHaveLength(2)
+    expect(responses.every(r=>r.status===200||r.status===201)).toBe(true)
+    await testInfo.attach('native-visibility-and-receipts.json',{contentType:'application/json',
+      body:Buffer.from(JSON.stringify({browser:browser.version(),hidden,visible,payload,receipts,responses},null,2))})
+  } finally {release?.();await server.close()}
 })

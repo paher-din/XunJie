@@ -111,6 +111,17 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     return !!current && current.workspaceKey===codeBasis.workspaceKey && current.serverFileId===codeBasis.serverFileId &&
       current.lifecycle==='active' && current.text===codeBasis.text && current.confirmed?.version===codeBasis.confirmed?.version
   }
+  function messageSourceStatus(ref:TutorObject) {
+    if(ref.kind!=='code')return '只核对原对象，不定位或替换当前作品。'
+    const file=projectLive.current.files.find(f=>f.serverFileId===ref.fileId)
+    const draft=file?projectLive.current.readCodeDraft(file.fileId):null
+    const confirmed=confirmation.client?.current.workspace?.files.find(f=>f.fileId===ref.fileId)
+    if(!draft||draft.lifecycle!=='active')return '原文件当前不可用；同名文件不承接这份回答。'
+    if(!draft.confirmed||draft.path!==ref.path||draft.confirmed.version!==ref.documentVersion||confirmed?.contentHash!==ref.contentHash)
+      return '当前文件或确认版本已改变；回答仍依据原快照。'
+    if(draft.text!==draft.confirmed.text)return '本机草稿已修改；回答仍依据原快照，不代表当前草稿。'
+    return '当前文件仍对应该确认版本；回答依据原快照，不自动定位或修改。'
+  }
   async function onCodeHelp(intent:'file'|'selection') {
     const client=confirmation.client, context=client?.context, localId=projectLive.current.activeFile?.fileId
     if(!client || !context?.attemptId || !context.activityVersionId || !draftScope || !localId) {showToast('请先打开一个已确认文件。');return}
@@ -486,6 +497,8 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
         />
 
         <TutoringPane client={tutor.client} state={tutor.state} open={tutorOpen} onClose={()=>setTutorOpen(false)}
+          helpAllowed={init.init?.kind==='ready'&&init.init.activity.helpPolicy.helpAllowed}
+          assignmentActive={init.init?.kind==='ready'&&(assignment??init.init.assignment).active} sourceStatus={messageSourceStatus}
           objectRef={tutorObject} objectLabel={tutorObjectLabel} objectCurrent={codeObjectCurrent}
           objectError={!codeObjectCurrent()?'所指代码或草稿已改变，请重新核对对象；不会自动保存。':undefined}
           onClearObject={()=>{setTutorObject(undefined);setCodeBasis(null)}} onExample={onExample} />

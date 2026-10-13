@@ -4,7 +4,9 @@
 
 **Blocked by:** [I0-B-02 求助与停止](I0-B-02_HELP_STOP_REPLACE.md)；完整回答关联依赖D-01。与03独立，无需先交代码选区票。真实运行求助另需I0-A对应运行/结果交接，准备链可消费已有合成Run。
 
-**Status:** prepared-verified / blocked-contract（原运行选择/核对及显式help准备发送链通过；D-01回答关联仍阻塞完整验收）。
+**Status:** implemented / engineering-verified（D-01原Job/Run/snapshot来源已接入并通过准备浏览器；实际节点/模型/真人仍分层验收，结果见批次§11）。
+
+2026-10-14较新收尾：[D-01](I0-B-01A_EVENT_PROJECTION.md)投影与页面校验已交，准备浏览器明确核回复原runId/snapshotId，不从当前控件或最近Job推断来源；原结果未知/诊断缺项仍可只读核对象，求助不重跑。正常C/教学消费者已组合，物理SSH节点与真实模型运行求助仍需原受控条件。相关3项运行浏览器在组合中通过，精确统计与分层见[批次§11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)；后文D-01未交为历史时点。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划](I0-B_UI_TUTOR_PLAN.md)、[Run公开约束](I0_UI_CLIENT_CONTRACT.md)。覆盖UI-TUTOR-03，M-04/相关M-03，AC-02/04/06/07/15、NFR-04。
 

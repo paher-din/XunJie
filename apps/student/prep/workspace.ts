@@ -51,7 +51,7 @@ interface Snapshot {
   snapshotId: string; hashFormat: 'sha256-manifest-v1'; hash: string; files: Omit<File, 'attemptId' | 'lifecycle'>[]
   attemptId: string; activityVersionId: string; workspaceRevision: number; createdAt: string
 }
-interface Head { attempt: Attempt; files: File[]; snapshots: Snapshot[]; jobs: JobView[]; runs: RunView[]; checks: never[] }
+interface Head { attempt: Attempt; files: File[]; snapshots: Snapshot[]; jobs: JobView[]; runs: RunView[]; checks: never[]; limitedCheck:boolean }
 interface Identity {
   actorId: string; command: string; target: string
   scope: { courseId: string; studentId: string; attemptId?: string }
@@ -123,6 +123,12 @@ function checkpoint(scene: Scene): void {
 export function readPrepAttempt(scenario: string, session: PrepSession, attemptId: string): Head {
   return structuredClone(authorizedHead(sceneOf(scenario), session, id(attemptId)))
 }
+/** Dev-only synthetic check condition on the same authority, never a formal check result. */
+export function setPrepLimitedCheck(scenario:string,value:boolean) {
+  const head=sceneOf(scenario).head
+  if(!head)reject('STATE_CONFLICT')
+  head.limitedCheck=value
+}
 /** Internal dev-authority seam, not a new public contract or a separate fixture database. */
 export function prepTeachingCommand(scenario: string, session: PrepSession, attemptId: string, name: string,
   target: string, body: Record<string, unknown>, key: unknown, work: (head: Head) => unknown, digestFields?: unknown): Receipt {
@@ -151,7 +157,7 @@ export function createPrepAttempt(scenario: string, session: PrepSession, assign
     attemptId: randomUUID(), courseId: session.courseId, studentId: session.userId, assignmentId,
     activityVersionId: REFS.activityVersionId, status: 'ready', attemptRevision: 1, workspaceRevision: 0,
     decisionEpoch: 0, captureRevision: 0, collecting: true, reminders: false,
-  }, files: [], snapshots: [], jobs: [], runs: [], checks: [] }
+  }, files: [], snapshots: [], jobs: [], runs: [], checks: [], limitedCheck:false }
   const attempt = scene.head.attempt
   return receipt(scene, command, hash, { attemptId: attempt.attemptId, assignmentId, activityVersionId: attempt.activityVersionId })
 }

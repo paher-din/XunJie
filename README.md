@@ -30,7 +30,12 @@ npm run build
 npm run test:e2e
 ```
 
-教学服务的精确 Node/依赖要求见 [package.json](apps/teaching/package.json)。默认 `npm start` 只提供健康入口；业务宿主、数据库、Origin、签名与 runner 须按 A/C 交接组装。模块专项命令与合成库/真实节点/模型门禁在相应任务中，启动健康入口不表示完整应用可用。
+教学服务的精确 Node/依赖要求见 [package.json](apps/teaching/package.json)。默认 `npm start` 只提供健康入口；
+维护者提供已有受控 `XUNJIE_I0_CONFIG` 文件引用时，可启动同源 HTTPS、授权分配 bootstrap、作品与运行消费者；
+配置的可选 `tutoring` 组合已有 B2/C3 和持久教学消费者，模型调用默认关闭。
+配置、数据库、Origin、TLS、签名、代际与 runner 的实际交接及验证见
+[正常辅导宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)，学生深链与隔离服务专项见[学生说明](apps/student/README.md)。
+启动健康入口、合成库检查及受控节点/模型验收分别记录。
 
 规范或入口文档修改后，从仓库根检查引用与标题锚点：
 
@@ -52,7 +57,7 @@ node tools/a0-review/check.mjs
 | P3 数字逻辑与反馈闭环 | [G3 总协调](docs/tasks/G3_OVERALL_COORDINATION.md)、[DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)、[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) |
 | C4 → A4 → DL-C 顺序集成 | [集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)、[C4](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md)、[A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md)、[DL-C](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) |
 | 学生 UI 准备交付与真实接入 | [I0 收尾](docs/tasks/I0_UI_CLOSEOUT.md)、[接入规格](docs/tasks/I0_UI_SPEC.md)、[准备票索引](docs/tasks/I0_UI_PREPARATION.md)；H-01～H-06 回交在 [#30](https://github.com/paher-din/XunJie/issues/30) |
-| I0-B 学生辅导准备接线 | [六票执行与交接](docs/tasks/I0-B_UI_TUTOR_PLAN.md)、[完整30项清单](docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)；项目/代码/原运行求助、消息回执、停止、返回与独立控制，真实范围按各票外部交接条件验收 |
+| I0-B 学生辅导接线与宿主组合 | [六票执行与交接](docs/tasks/I0-B_UI_TUTOR_PLAN.md)、[正常宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)、[完整30项清单](docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)；准备、实际 HTTPS 服务链、受控节点/模型与真人证据分开记录 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
 | 其他模块与历史交付 | [全部任务记录](docs/tasks/)；按模块/编号查实现、批准范围、实际命令与原始证据 |

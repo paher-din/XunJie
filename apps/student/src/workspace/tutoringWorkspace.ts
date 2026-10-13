@@ -5,15 +5,16 @@ import { apiGet, apiPostFrozen, WorkspaceRequestError } from './http'
 import { type TutorJob, type TutorObject, type TutorReceiptKind, type TutorHistoryState } from './tutoringContracts'
 import { verifyTutorContent, verifyTutorPage } from './tutoringEvents'
 import { readTutorLedger, tutorChannel, tutorLedgerKey, writeTutorLedger, writeTutorHistoryCache, type TutorCommand, type TutorLedger, type TutorMessage } from './tutoringStore'
-import { emptyTutorHistory, verifyTutorHistory } from './tutoringHistory'
+import { emptyTutorHistory, verifyTutorHistory, verifyTutorSource, sameTutorSource } from './tutoringHistory'
+import { limitedCheckFromHead } from './tutoringControls'
 import { verifyTutorCommandReceipt } from './tutoringCommand'
 import { confirmationRepository } from './confirmationDb'
 import { tutoringRequest } from './tutoringTransport'
 
-export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState }
+export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState; limitedCheck?:boolean|null }
 /** One owner serializes durable facts. Never create another global ContextGuard. */
 export class TutoringWorkspace {
-  private state: TutoringState = { ledger: null, busy: false, synchronized: false, notice: null,
+  private state: TutoringState = { ledger: null, busy: false, synchronized: false, notice: null, limitedCheck:null,
     history:{phase:'unavailable',data:emptyTutorHistory(),notice:null} }
   private readonly listeners = new Set<(s: TutoringState) => void>()
   private alive = true
@@ -133,11 +134,13 @@ export class TutoringWorkspace {
       const head = await tutoringRequest(this.confirmation.readHead())
       if (!this.valid() || seq !== this.sequence) return
       if(!head) {
+        this.publish({limitedCheck:null})
         // ConfirmationWorkspace catches failed HTTP reads and clears its Attempt instead of throwing.
         // A superseded read with a still-verified Attempt does not revoke a separately authorized history.
         if(!this.confirmation.current.attempt)this.clearHistory('当前工作区读取未获确认，教学历史需重新授权。')
         return
       }
+      this.publish({limitedCheck:limitedCheckFromHead(head)})
       refreshHistory=true
       // Learn durable remote stop before allowing any previously retrieved candidate to render.
       if (this.state.ledger?.job) await this.readJobNow()
@@ -169,10 +172,16 @@ export class TutoringWorkspace {
           if (!event.payload) continue
           try {
             const p = await verifyTutorContent(event.payload)
+            const source = verifyTutorSource(p, this.context, epoch)
             if (!this.valid() || seq !== this.sequence) return
             const old = ledger.messages.find(m => m.payload.actionId === p.actionId)
             if (old && (old.payload.contentHash !== p.contentHash || old.payload.content !== p.content)) { old.valid = false; throw new Error('同一教学动作的正文发生冲突') }
-            if (old) { old.valid = !ledger.blocked && ['ready','active'].includes(page.control.status); old.payload.basisRevised = p.basisRevised }
+            if (old) {
+              const previous=verifyTutorSource(old.payload,this.context,epoch)
+              if(previous && (!source || !sameTutorSource(previous,source))) {old.valid=false;throw new Error('同一教学动作的原始来源发生冲突')}
+              if(source)Object.assign(old.payload,source)
+              old.valid = !ledger.blocked && ['ready','active'].includes(page.control.status); old.payload.basisRevised = p.basisRevised
+            }
             else if (!ledger.blocked && ['ready', 'active'].includes(page.control.status)) {
               const message: TutorMessage = { payload: p, epoch, valid: true, shown: false, facts: {} }
               message.facts.received = this.receiptCommand(ledger, message, 'received')
@@ -199,6 +208,7 @@ export class TutoringWorkspace {
     } catch (e) {
       if(e instanceof WorkspaceRequestError&&e.failure.kind==='api'&&['UNAUTHENTICATED','FORBIDDEN','RECOVERY_REQUIRED'].includes(e.failure.error.code)) {
         refreshHistory=false
+        this.publish({limitedCheck:null})
         this.clearHistory('当前授权或代际已失效，请重新载入。')
       }
       this.publish({ synchronized: false, notice: `辅导读取未完成：${e instanceof Error ? e.message : String(e)}` })
@@ -254,7 +264,11 @@ export class TutoringWorkspace {
       await this.persist(ledger)
     }
   }
-  send(question: string, objectRef?: TutorObject, replace = false, objectCurrent: () => boolean = () => true) { return this.enqueue(async () => {
+  send(question: string, objectRef?: TutorObject, replace = false, objectCurrent: () => boolean = () => true) {
+    // Capture intent before the queue or HTTP wait; a later stop must fence this older send.
+    const issuedStopVersion=this.stopVersion, originalObject=objectRef?structuredClone(objectRef):undefined
+    return this.enqueue(async () => {
+    if(issuedStopVersion!==this.stopVersion) {this.publish({notice:'等待期间已停止帮助，原问题未发送。'});return}
     if (!question.trim() || !this.state.ledger) return
     if (this.state.ledger.commands.some(c => c.state === 'pending')) { this.publish({ notice: '先核对原求助或停止请求，再发送新问题。' }); return }
     if (this.state.ledger.job && !this.state.ledger.job.stopRequested && (!this.state.ledger.job.status || ['queued', 'running', 'cancelling', 'outcome_unknown'].includes(this.state.ledger.job.status)) && !replace) {
@@ -263,19 +277,36 @@ export class TutoringWorkspace {
     this.publish({ busy: true, notice: null })
     try {
       const head = await tutoringRequest(this.confirmation.readHead())
-      if (!this.valid() || !head) throw new Error('当前尝试未读取，问题未发送')
+      if(!this.valid())return
+      if(!head) {
+        this.publish({limitedCheck:null})
+        if(!this.confirmation.current.attempt)this.clearHistory('当前工作区读取未获确认，教学历史需重新授权。')
+        throw new Error('当前尝试未读取，问题未发送')
+      }
+      this.publish({limitedCheck:limitedCheckFromHead(head)})
+      if(issuedStopVersion!==this.stopVersion)throw new Error('等待期间已停止帮助，原问题未发送。')
+      if(limitedCheckFromHead(head)!==false)throw new Error(head.limitedCheck===true?'限定检查进行中，当前不能发送辅导问题。':'限定检查状态尚未确认，请重新读取后再求助。')
       if (!objectCurrent()) throw new Error('所指代码或原对象已改变，问题未发送；请重新核对')
       if (!['ready', 'active'].includes(head.attempt.status)) throw new Error('当前尝试不允许新求助')
-      if (objectRef && objectRef.attemptId !== this.context.attemptId) throw new Error('求助对象不属于当前尝试')
+      if (originalObject && originalObject.attemptId !== this.context.attemptId) throw new Error('求助对象不属于当前尝试')
       const ledger = structuredClone(this.state.ledger!)
       const command: TutorCommand = { key: crypto.randomUUID(), kind: 'help', state: 'pending', question,
-        issuedStopVersion:this.stopVersion,
+        issuedStopVersion,
         path: `/attempts/${encodeURIComponent(this.context.attemptId!)}/help`,
         wireJson: JSON.stringify({ question, expectedAttemptRevision: head.attempt.attemptRevision,
-          recoveryGeneration: this.context.trustedRecoveryGeneration, ...(objectRef ? { objectRef } : {}) }) }
+          recoveryGeneration: this.context.trustedRecoveryGeneration, ...(originalObject ? { objectRef:originalObject } : {}) }) }
       ledger.commands.push(command); await this.persist(ledger)
+      if(!this.valid())return
+      if(issuedStopVersion!==this.stopVersion) {
+        command.state='rejected';command.error='等待期间已停止帮助，原问题未发送。'
+        await this.persist(ledger);throw new Error(command.error)
+      }
       await this.executeCommand(command.key)
-    } catch (e) { this.publish({ notice: e instanceof Error ? e.message : String(e) }) }
+    } catch (e) {
+      if(e instanceof WorkspaceRequestError&&e.failure.kind==='api'&&['UNAUTHENTICATED','FORBIDDEN','RECOVERY_REQUIRED'].includes(e.failure.error.code))
+        this.clearHistory('当前授权或代际已失效，请重新载入。')
+      this.publish({ notice: e instanceof Error ? e.message : String(e) })
+    }
     finally { this.publish({ busy: false }) }
   }) }
   retry() { return this.enqueue(async () => {
@@ -288,14 +319,20 @@ export class TutoringWorkspace {
     this.sequence++
     this.stopVersion++
     this.displayFence=true
-    this.publish({ synchronized: false })
+    const stopped=this.state.ledger?structuredClone(this.state.ledger):null
+    if(stopped) {stopped.blocked=true;stopped.messages.forEach(m=>{if(!m.shown)m.valid=false})}
+    this.publish({ ledger:stopped, synchronized: false })
     return this.enqueue(async () => {
       const ledger = structuredClone(this.state.ledger)
-      if (!ledger?.job) return
+      if (!ledger) return
+      if(!ledger.job) {
+        await this.persist(ledger)
+        this.publish({notice:'已保留停止意图；原求助尚待核对，取得原 Job 后再确认取消。'})
+        return
+      }
+      if(ledger.job.stopRequested) {await this.persist(ledger);return}
       ledger.blocked = true; ledger.messages.forEach(m => { if (!m.shown) m.valid = false })
-      const command: TutorCommand = { key: crypto.randomUUID(), kind: 'cancel', state: 'pending',
-        path: `/jobs/${encodeURIComponent(ledger.job.jobId)}/cancel`,
-        wireJson: JSON.stringify({ recoveryGeneration: this.context.trustedRecoveryGeneration, reason: 'student_stop' }) }
+      const command=this.cancelCommand(ledger.job.jobId)
       if (!ledger.commands.some(c => c.kind === 'cancel' && c.state === 'pending')) ledger.commands.push(command)
       await this.persist(ledger)
       this.publish({ busy: true, notice: '本页已暂停展示，正在核对服务端停止结果。' })
@@ -304,26 +341,42 @@ export class TutoringWorkspace {
       this.publish({ busy: false })
     })
   }
+  private cancelCommand(jobId:string):TutorCommand {
+    return {key:crypto.randomUUID(),kind:'cancel',state:'pending',path:`/jobs/${encodeURIComponent(jobId)}/cancel`,
+      wireJson:JSON.stringify({recoveryGeneration:this.context.trustedRecoveryGeneration,reason:'student_stop'})}
+  }
   private async executeCommand(key: string) {
+    if(!this.valid())return
     const ledger = structuredClone(this.state.ledger!), command = ledger.commands.find(c => c.key === key)!
     try {
       const raw = await tutoringRequest(apiPostFrozen<unknown>(command.path, command.wireJson, { ...this.opts(), idempotencyKey: key }))
       if (!this.valid()) return
       const result = await verifyTutorCommandReceipt(this.context, command, raw)
       if (!this.valid()) return
+      let inheritedStop:string|undefined
       if (command.kind === 'help') {
         const id = requiredId(result.jobId); revision(result.decisionEpoch); revision(result.attemptRevision)
         if (!Array.isArray(result.replacedJobIds) || typeof result.acceptedInputHash !== 'string') throw new Error('求助接纳结果不完整')
         ledger.job = { jobId: id } as TutorJob
         if((command.issuedStopVersion??0)===this.stopVersion) {this.displayFence=false;ledger.blocked=false}
+        else {
+          // A later explicit stop also covers this original help whose acceptance was unknown.
+          // Cancel only after its original ACK identifies the Job, before reading any new delivery.
+          const cancel=this.cancelCommand(id)
+          const pending=ledger.commands.find(c=>c.kind==='cancel'&&c.path===cancel.path&&c.state==='pending')
+          if(!pending)ledger.commands.push(cancel)
+          inheritedStop=pending?.key??cancel.key
+        }
         ledger.messages.forEach(m => { m.valid = false })
       } else {
-        if (!ledger.job || result.jobId !== ledger.job.jobId || result.stopRequested !== true || !Array.isArray(result.invalidatedActionIds)) throw new Error('停止结果不完整')
-        ledger.job.stopRequested = true
+        const originalJobId=decodeURIComponent(command.path.split('/')[2]!)
+        if (result.jobId !== originalJobId || result.stopRequested !== true || !Array.isArray(result.invalidatedActionIds)) throw new Error('停止结果不完整')
+        if(ledger.job?.jobId===originalJobId)ledger.job.stopRequested = true
         ledger.messages.forEach(m => { if ((result.invalidatedActionIds as unknown[]).includes(m.payload.actionId)) m.valid = false })
         this.publish({ notice: '服务端已保存停止请求；原生成与已展示历史保留。' })
       }
       command.state = 'confirmed'; command.result = raw; await this.persist(ledger)
+      if(inheritedStop) {await this.executeCommand(inheritedStop);return}
       await this.readJobNow()
       await this.readNow(true)
     } catch (e) {

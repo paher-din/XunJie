@@ -35,10 +35,10 @@ export function resolveTutoringResource(resourceVersionId: string, activity: Act
     !view.contentHash || !Array.isArray(view.paragraphs) || view.contentHash !== source.contentHash || view.text !== source.text) {
     return unavailable('projection-mismatch', '资料版本或正文与当前活动投影不符；不展示未核对的内容。')
   }
-  const synthetic = mode === 'preparation' && resourceVersionId === 'prep-resource-adjacent-example-01'
+  const synthetic = import.meta.env.DEV && mode === 'preparation' && resourceVersionId === 'prep-resource-adjacent-example-01'
   return { kind: 'ready', resource: structuredClone(view), nature: synthetic ? 'synthetic-example' : 'course-material',
     sourceLabel: synthetic ? '合成准备相邻例子 · 非教师真实批准材料 · 不是 TextScope 答案'
-      : mode === 'preparation' ? '合成准备课程资料 · 未核验为类似例子' : '当前活动公开课程资料 · 未核验为类似例子' }
+      : import.meta.env.DEV && mode === 'preparation' ? '合成准备课程资料 · 未核验为类似例子' : '当前活动公开课程资料 · 未核验为类似例子' }
 }
 
 /** Stable local model identity and the exact original draft, NOT an editor internal version. */

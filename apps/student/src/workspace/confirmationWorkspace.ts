@@ -187,7 +187,7 @@ export class ConfirmationWorkspace {
           attemptId: this.context.attemptId, recoveryGeneration: this.context.trustedRecoveryGeneration,
           preparationEpoch: this.context.preparationEpoch })
         this.publish({ error: '工作区已重新加载，草稿保留；请重新读取后再保存。' })
-        if (this.context.mode === 'preparation' && !this.context.attemptId) {
+        if (import.meta.env.DEV && this.context.mode === 'preparation' && !this.context.attemptId) {
           const c = this.context
           await confirmationRepository.acceptPreparationEpoch(c, () => this.valid(guard), async () => {
             const latest = await apiGet<PrepContextView>('', { ...this.opts(), absolutePath: prepContextUrl(c.mode)! })
@@ -222,6 +222,23 @@ export class ConfirmationWorkspace {
       const head = await verifyHead(value, c, c.courseId)
       if (!guard.acceptRead('workspace-head', seq) || !this.valid(guard)) return null
       const current = () => this.valid(guard) && guard.isAcceptedRead('workspace-head', seq)
+      // GET 能读到远端已提交的作品，但不能代替原 sync ACK 的原子映射/草稿/outbox 接纳。
+      // 核当前已绑定的原 pending 及其落盘事实。新的初始化仍可合法读取服务确认头，
+      // 不能用前一次已退役加载的请求阻断退出后重新授权的 GET。
+      const local = await confirmationRepository.read(c)
+      if (!current()) return null
+      const unresolvedSync = local.commands.some(command => command.kind === 'workspace.sync' &&
+        command.commandKey === this.state.pending?.commandKey &&
+        command.state === 'pending' && !command.rejected && sameGeneration(command.context, c) &&
+        command.before !== null && head.attempt.workspaceRevision > command.before.workspaceRevision)
+      if (unresolvedSync) {
+        // 控制事实仍须及时生效，尤其暂停/epoch/限定检查；只延后作品与快照的接纳。
+        // 完整 head 可供控制/既有运行记录读取，不能借此宣称原保存已在本机确认。
+        const workspace = !this.state.workspace || (local.workspace &&
+          local.workspace.workspaceRevision > this.state.workspace.workspaceRevision) ? local.workspace : this.state.workspace
+        this.publish({ workspace, attempt: head.attempt })
+        return head
+      }
       const workspace = await confirmationRepository.installHead(c, workspaceOf(head), current)
       if (!current()) return null
       if (workspace.workspaceRevision !== head.attempt.workspaceRevision) {

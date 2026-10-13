@@ -2,7 +2,7 @@ import { record, requiredId, revision, textHash } from './confirmation'
 import { pathProblem } from '../lib/projectFiles'
 import { tutorActions } from './tutoringEvents'
 import type { CommandContext } from './frozenCommand'
-import type { TutorHistory, TutorHistoryAction, TutorHistoryQuestion, TutorHistoryReply } from './tutoringContracts'
+import type { TutorHistory, TutorHistoryAction, TutorHistoryQuestion, TutorHistoryReply, TutorSource } from './tutoringContracts'
 
 export const emptyTutorHistory = ():TutorHistory => ({questions:[],entries:[]})
 function fail():never { throw new Error('教学历史字段、归属或原始关联不完整') }
@@ -59,6 +59,40 @@ function basis(v:unknown,c:CommandContext) {
   revision(r.attemptRevision,1);for(const k of ['decisionEpoch','captureRevision','relatedStateRevision'])revision(r[k])
   for(const k of ['inputRefs','assistanceRefs','coverageRefs'])strings(r[k],true)
   if(r.objectRef!==undefined)objectRef(r.objectRef,c)
+}
+const sourceFields = ['scope','jobId','messageId','generation','targetVersions','basis'] as const
+function freezeSource<T>(value:T):T {
+  if(value&&typeof value==='object') {
+    for(const nested of Object.values(value))freezeSource(nested)
+    Object.freeze(value)
+  }
+  return value
+}
+/** Validate only the published Action association; absence is legacy, never an inferred Job or object. */
+export function verifyTutorSource(payload:unknown,c:CommandContext,epoch:number):TutorSource|null {
+  try {
+    const raw=record(payload),present=sourceFields.filter(key=>Object.hasOwn(raw,key))
+    if(!present.length)return null
+    if(present.length!==sourceFields.length)fail()
+    // Copy the six association fields only, keeping unrelated/unvalidated body bytes out of error handling.
+    const source=structuredClone(Object.fromEntries(sourceFields.map(key=>[key,raw[key]])))
+    scope(source.scope,c);versions(source.targetVersions,c)
+    requiredId(source.jobId);requiredId(source.messageId);requiredId(source.generation)
+    if(source.generation!==c.trustedRecoveryGeneration)fail()
+    const b=shape(source.basis,['attemptRevision','decisionEpoch','captureRevision','relatedStateRevision','objectRef'])
+    revision(b.attemptRevision,1)
+    for(const key of ['decisionEpoch','captureRevision','relatedStateRevision'])revision(b[key])
+    if(b.decisionEpoch!==revision(epoch))fail()
+    if(b.objectRef!==undefined)objectRef(b.objectRef,c)
+    return freezeSource(source as unknown as TutorSource)
+  } catch {
+    throw new Error('教学消息来源字段、归属或原始关联不完整')
+  }
+}
+/** Compare the normalized immutable origin, not a Delivery, body, arrival order, or later basis-revision flag. */
+export function sameTutorSource(a:TutorSource,b:TutorSource):boolean {
+  const tuple=(s:TutorSource)=>[s.scope,s.jobId,s.messageId,s.generation,s.targetVersions,s.basis]
+  return same(tuple(a),tuple(b))
 }
 function body(v:unknown) {
   const r=shape(v,['kind','actionType','content','rationale','expectedStudentAction','evidenceIds','resourceRefs','assistanceContext','unresolved','policyChecks'])

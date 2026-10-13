@@ -3,7 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { sha256Hex, REFS } from './scenario'
 import type { PrepSession } from './authority'
-import { PrepWorkspaceError, readPrepAttempt, recoveryGenerationOf, prepTeachingCommand } from './workspace'
+import { PrepWorkspaceError, readPrepAttempt, recoveryGenerationOf, prepTeachingCommand, setPrepLimitedCheck } from './workspace'
 import type { TutorJob, TutorPage, TutorPayload, TutorCoverage, TutorHistoryQuestion, TutorBasis, TutorVersions,
   TutorHistoryAction, TutorHistoryReply, TutorHistoryBody, TutorObject } from '../src/workspace/tutoringContracts'
 interface Action { payload: TutorPayload; jobId: string; epoch: number; clients: Map<string, { deliveryId: string; seq: number }>; shown: boolean
@@ -14,6 +14,9 @@ const scenes = new Map<string, Scene>()
 const scripts = new Map<string, 'normal' | 'running' | 'failed' | 'timed_out' | 'budget'>()
 export function setPrepTutorScript(scenario: string, body: unknown) {
   const value=object(body,['kind']).kind
+  if(value==='limited-check'||value==='check-ended') {
+    setPrepLimitedCheck(scenario,value==='limited-check');return{kind:value}
+  }
   if(value==='history-revised') {
     for(const action of sceneOf(scenario).actions) {
       action.payload.basisRevised=true;action.payload.disposition='stale'
@@ -69,6 +72,7 @@ export function createPrepHelp(scenario: string, session: PrepSession, attemptId
   const receipt=prepTeachingCommand(scenario, session, attemptId, 'student_help.create', `/api/attempts/${attemptId}/help`, body, key, head => {
     if (body.expectedAttemptRevision !== head.attempt.attemptRevision) reject('VERSION_CONFLICT')
     if (!['ready','active'].includes(head.attempt.status)) reject('STATE_CONFLICT')
+    if(head.limitedCheck)reject('STATE_CONFLICT')
     if (scripts.get(scenario)==='budget') reject('BUDGET_EXHAUSTED')
     if (body.objectRef) {
       const ref = object(body.objectRef, ['kind','attemptId','activityVersionId','snapshotId','fileId','path','documentVersion','contentHash','range','runId','source'])
@@ -99,7 +103,7 @@ export function createPrepHelp(scenario: string, session: PrepSession, attemptId
       ...(body.objectRef?{objectRef:structuredClone(body.objectRef) as TutorObject}:{})})
     return { jobId, attemptRevision: head.attempt.attemptRevision, decisionEpoch: head.attempt.decisionEpoch,
       replacedJobIds, acceptedInputHash: sha256Hex(canonical({target:'student_help.accepted_input',fields:{question:body.question,objectRef:body.objectRef??null}})) }
-  })
+  },body)
   const question=scene.questions.find(q=>q.jobId===(receipt.result as {jobId:string}).jobId)
   if(question)question.requestReceiptId=receipt.receiptId
   return receipt
@@ -120,11 +124,15 @@ export function readPrepTutorJob(scenario: string, session: PrepSession, id: str
       const payload:TutorPayload={ actionId: randomUUID(), contentHash: sha256Hex(content), disposition: 'pending', createdAt: new Date().toISOString(),
           basisRevised: false, actionType: 'hint', content, rationale: '合成项目级支持，不包含代码定位。',
           expectedStudentAction: '自己构造一个反例并检查。', assistanceContext: '合成准备场景，非实际模型输出。',
-          evidenceIds: [], resourceRefs: ['prep-resource-adjacent-example-01'], unresolved: ['首次投递对象关联尚未交接'] }
+          evidenceIds: [], resourceRefs: ['prep-resource-adjacent-example-01'], unresolved: [] }
       const body:TutorHistoryBody={kind:'student_help',actionType:payload.actionType!,content,rationale:payload.rationale!,
         expectedStudentAction:payload.expectedStudentAction!,assistanceContext:payload.assistanceContext!,evidenceIds:[],
         resourceRefs:payload.resourceRefs!,unresolved:payload.unresolved!,policyChecks:{containsWholeSolution:false,writesStudentWork:false,runsCode:false,makesFormalEvaluation:false}}
       const bodyJsonText=JSON.stringify(body),messageId=randomUUID()
+      Object.assign(payload,{scope:structuredClone(question.scope),jobId:id,messageId,generation:job.recoveryGeneration,
+        targetVersions:structuredClone(question.envelope.versions),basis:{attemptRevision:basis.attemptRevision,
+          decisionEpoch:basis.decisionEpoch,captureRevision:basis.captureRevision,relatedStateRevision:basis.relatedStateRevision,
+          ...(basis.objectRef?{objectRef:structuredClone(basis.objectRef)}:{})}})
       const message:TutorHistoryReply={messageId,jobId:id,scope:question.scope,authorKind:'model',requestReceiptId:question.requestReceiptId,
         contentHash:payload.contentHash,resultHash:sha256Hex(bodyJsonText),envelope:{kind:'student_help',body,bodyJsonText,
           versions:question.envelope.versions,usage:{status:'unknown',reason:'synthetic_provider_not_called'},calls:0,elapsedMs:0,basis}}

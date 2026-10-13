@@ -287,7 +287,7 @@ describe('same-authority prep control contract cases', () => {
   })
   it('routes control through the owner command, adapts only internal digest fields and preserves terminal job facts', () => {
     const a = attempt(), calls: unknown[][] = []
-    const h: ReturnType<typeof readPrepAttempt> = { attempt: a, files: [], snapshots: [], runs: [], checks: [], jobs: [
+    const h: ReturnType<typeof readPrepAttempt> = { attempt: a, limitedCheck:false, files: [], snapshots: [], runs: [], checks: [], jobs: [
       { jobId: 'running', kind: 'run', purpose: 'student_run', scope: { courseId: 'course', studentId: 'student', attemptId: 'attempt' },
         requestReceiptId: 'r', status: 'outcome_unknown', stopRequested: false, expectedRevision: 7, decisionEpoch: 2,
         recoveryGeneration: 'g1', acceptedAt: '2026-10-13T00:00:00Z', deadline: '2026-10-13T00:10:00Z', attemptCount: 1, runId: 'run1' },

@@ -2,9 +2,9 @@
 
 **What to build:** 学生在现有工作区对话容器收到一条获准完整教学内容，查看主要下一步并明确回应；收到、可见展示和明确回应分别记账。断线补取及重复投递不重复呈现，缺项与历史不可回取准确表达。
 
-**Blocked by:** 无前置ticket；规划/最小UI写集与测试接缝已按Robert委托定稿。D-01阻塞对象定位，D-02阻塞换客户端/失效历史的完整回取；它们不阻塞无代码/运行定位的准备消息路径，不能因此标整项真实验收通过。
+**Blocked by:** 当前代码前置已满足：D-01原关联投影与D-02已有授权历史接线已交，原生后台专项已补验。受控部署、模型与真人的完整验收条件另列，不把准备或隔离服务通过计作全AC。
 
-**Status:** prepared-verified / pending-real（准备消息与回执专项通过；真实宿主、D-01/D-02及原生后台标签补验未完成）。
+**Status:** implemented / engineering-verified（准备、授权历史、原生后台及实际HTTPS合成服务已验证；完整受控真实验收分列）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[本批规格](I0-B_UI_TUTOR_SPEC.md)、[计划/写集/缺口](I0-B_UI_TUTOR_PLAN.md)。覆盖 UI-TUTOR-04/05，M-05/相关 M-09，AC-06/07/12、NFR-04/05；对象版本部分须连同03/04验收，不能称整项通过。
 
@@ -40,3 +40,9 @@
 [消息浏览器检查](../../apps/student/e2e/tutoringMessages.spec.ts)累计8项通过，包含实际收起/滚动、刷新、另一标签、复制sessionStorage的通道、丢ACK及已观察displayed迟到后停止；最后一项为明确的可见性注入反例。原生后台标签实测未产生hidden条件，失败已在[批次记录](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)保存，不能计原生后台通过。3项纯内存交错规则与实际迟到页/新暂停反例通过。
 
 正式build/typecheck、320项全量规则及77项不同浏览器检查的分层/重复计数见批次记录。D-01/02、真实宿主和原生后台环境补验仍未完成；本票完整AC不因准备交付勾成通过。受保护基线与MVP_SPEC§10“待授权维护者汇总”。
+
+## 2026-10-14 补齐与收尾
+
+上述未完成为旧时点。D-01首次投递原关联已按追加授权交付，并严格核原scope/Job/Message/代际/版本/basis，不猜最近Job；[D-02](I0-B-01H_HISTORY_READ.md)消费已有公开授权历史，另一client只读shown记录，不生成新Delivery/三类回执，失败清可见缓存。原生native hidden→visible1项通过，受控可见性反例另列。
+
+[实际HTTPS专项](../../apps/student/e2e/tutoringService.spec.ts)正常dist/Session/CSRF/SQLite/原worker验证双求助、原对象/回执、跨标签只读历史；offline合成provider与测试自签名TLS明确。最终33文件456项规则、类型/build及91项不同浏览器检查的精确范围/失败修复见[批次§11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)。本票代码与已授权工程检查完成；受控节点、真实模型/真人及全AC不自动勾过，基线待授权维护者汇总。

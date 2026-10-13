@@ -4,7 +4,9 @@
 
 **Blocked by:** [I0-B-02 求助与停止](I0-B-02_HELP_STOP_REPLACE.md)；完整回答归属/展示依赖D-01获准关联来源。D-05最小选择/定位方案已定稿，由本票实现，不再待Robert确认；不依赖04或真实运行节点，不受缺口影响的引用构造可先准备。
 
-**Status:** prepared-verified / blocked-contract（代码/选区准备发送链通过；D-01回答对象关联仍阻塞完整验收）。
+**Status:** implemented / engineering-verified（D-01原关联投影、页面消费和实际HTTPS代码求助已验；原快照/选区及改稿后提示结果见批次§11）。
+
+2026-10-14较新收尾：[D-01](I0-B-01A_EVENT_PROJECTION.md)已交首次获准正文的原Action关联，客户端严格核scope/代际/Job/Message/固定版本/basis；代码与选区显示原快照、文件版本和UTF-16行列，本机后续改稿明确标仍依据原快照，同名新实例不承接旧来源。实际HTTPS保存/冻结→显式代码求助→原文件/快照来源与历史通过，不自动保存、重跑或定位新草稿。78项来源校验及对应浏览器结果包含在[批次§11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)，后文D-01未交是历史状态，完整真人/语义验收未执行。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划/D-01/D-05](I0-B_UI_TUTOR_PLAN.md)。覆盖 UI-TUTOR-02，M-03/M-04，AC-02/04/06/15、NFR-04/05。
 

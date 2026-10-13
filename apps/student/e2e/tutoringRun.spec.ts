@@ -32,6 +32,8 @@ test('运行控件改变后原结果的求助动作仍可用，选择本身没�
   await expect.poll(()=>helpBodies.length).toBe(1)
   expect(helpBodies[0]!.objectRef).toEqual({kind:'run',attemptId:head.attempt.attemptId,runId,snapshotId:snapshot.snapshotId})
   await expect(page.getByTestId('tutor-message')).toHaveCount(1)
+  await expect(page.getByTestId('tutor-source')).toContainText(`原运行 ${runId}`)
+  await expect(page.getByTestId('tutor-source')).toContainText(`原快照 ${snapshot.snapshotId}`)
   expect(writes.some(url=>/\/(runs|sync|snapshots)$/.test(url))).toBe(false)
 })
 

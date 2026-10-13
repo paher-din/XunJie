@@ -19,11 +19,16 @@ test('确认文件/精确选区核对后显式求助，修改草稿后阻止旧�
   const ref=writes.find(r=>r.path.endsWith('/help'))!.body.objectRef
   expect(ref).toEqual({kind:'code',attemptId:head.attempt.attemptId,snapshotId:snapshot.snapshotId,fileId:file.fileId,path:file.path,
     documentVersion:file.documentVersion,contentHash:file.contentHash,range:{startLine:1,startColumn:1,endLine:2,endColumn:1}})
+  await expect(page.getByTestId('tutor-source')).toContainText(`原快照 ${snapshot.snapshotId}`)
+  await expect(page.getByTestId('tutor-source')).toContainText('行列 1:1–2:1')
   await page.getByRole('button',{name:'收起辅导'}).click()
   await editor.focus();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText('// unconfirmed')
   await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
   await page.getByRole('button',{name:'就所选代码求助'}).click()
   await expect(page.getByRole('status')).toContainText('草稿有未确认修改')
+  await page.getByRole('button',{name:'就项目求助'}).click()
+  await expect(page.getByTestId('tutor-source')).toContainText('本机草稿已修改')
+  await expect(page.getByTestId('tutor-source')).toContainText(`原快照 ${snapshot.snapshotId}`)
   expect(writes.filter(r=>!r.path.endsWith('/help'))).toEqual([])
   expect((await serverHead(page)).files).toEqual(head.files)
 })

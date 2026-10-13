@@ -1,6 +1,6 @@
 # I0-B：辅导链前端批次计划与 ticket 索引
 
-日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：`prepared-verified / pending-real`，六票准备实现已整合并完成对应检查；真实范围仍受外部交接条件约束。入口：[I0-B SPEC](I0-B_UI_TUTOR_SPEC.md)、[完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)。本文件记录范围、来源、写集与执行事实；不代替产品基线、A/B/C任务或成员交接。
+日期：2026-10-13；更新：2026-10-14（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。当前实现已补齐六票及获准公共投影、历史、正常宿主和真实入口；准备/实际HTTPS合成服务、受控节点/模型/真人检查分列，最终检查结果见§11。入口：[I0-B SPEC](I0-B_UI_TUTOR_SPEC.md)、[完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)。本文件记录范围、来源、写集与执行事实；不代替产品基线、A/B/C任务或成员交接。
 
 ## 1. 当前决定与授权
 
@@ -48,7 +48,7 @@
 
 ## 4. 当前公开 HTTP 能力映射
 
-以下是当前 main 已读源码中的实际形状；不把后台内部函数当公共路由。
+以下保留2026-10-13规划时点 main 已读形状；D-01/02/03的后续核查、纠正、授权及实现见§10–11，不把该历史表当当前未完成状态。
 
 | 用户操作 | 已有公共来源/输入 | 不能擅自补充的内容 |
 | --- | --- | --- |
@@ -74,7 +74,7 @@
 | D-05 | 现有C准备页未接工作区对话面板；CodeEditorHandle只给focus/saveViewState，没有公开选区/定位；三控制、显式确认与返回操作也未全部交付 | 实际操作落点、精确选区与返回交互，仍待实现验证 | 最小方案已在Robert委托核查范围内定稿：仅提取复用既有对话容器，当前编辑器增加最小只读选择/定位适配，在既有任务/消息槽接必要操作。不另造页面；实施与来源同步记录仍由相应票维护 |
 | D-06 | 原 I0-A 已记 sync 推进 attemptRevision 与 TECH §4.3 的差异 | help/control 发起前权威版本来源 | UI 继续原 GET Attempt 重读，不计算 revision；差异待 C/授权维护者汇总，不在本批改基线 |
 
-这些差异分别记录规划决定与实际交接，D-05已定最小前端方案，其余公共能力/环境及基线差异仍待对应角色落实，没有批准新共享契约。只阻塞对应行为；可独立完成的准备读取、收到/展示回执、控制、引用构造与失败展示继续纳入票内计划。未满足整张票AC时不把票标完成。
+此表为原规划差异：D-02“仅内部接缝”判断已由§10.2纠正；D-01/03和D-04代码组合已获§10.3较新授权并实施，最终结果见§11。受控运行环境、真人与基线汇总仍分开记录；未满足完整AC不标整体验收通过。
 
 ## 6. 六张本地 tickets
 
@@ -218,3 +218,121 @@ rtk git status --short --branch
 RTK 丢失必要诊断时改用原命令。应用检查不得采用默认 `npm test` 外的真实模型/故障探针历史入口；全部新业务检查均保持供应商请求为0。最终组合检查范围由实际改动和遗留疑点决定，未改变的服务端全量不重跑。
 
 最终文档检查：仓库根 node tools/a0-review/check.mjs 为72份文档/1052条内链、errors=[]，差异空白检查通过。已清理本次临时命令日志；保留可复用源码、任务记录与原分支/工作树。
+
+## 10. 2026-10-13 继续核查真实验收缺口
+
+Robert针对上次交付中的未完成项询问“为什么不完成？”。主Agent继续原六票，不将准备检查等同真实验收，也不将旧计划中的“待交接”作为停止调查的理由。本次原生后台标签补验与D-01/02/03公开能力审计可独立进行；正常宿主/入口组合由主Agent核查。只读审计不代发成员消息；实际追加实现仍在原UI写集内，不扩大共享字段、受保护文档、后台/数据库或凭据权限。
+
+本轮开工：`i0/ui-frontend@cbb5824270c7216714b7cd1f0ec7c4deb8e15c8f`，跟踪文件无差异，仅原有未跟踪`.zcodeignore`。正常fetch后`origin/main=cde69ccbd763c3c0ab381a809b750b951f195f64`；[PR #53](https://github.com/paher-din/XunJie/pull/53)仍OPEN/Draft，head=`c071b4d0874c8cb1e8b83c95108fda2519a30cf0`。按仓库入口、当前AGENTS、PRD §4.2/5/8、MVP_SPEC M-04/M-05与TECH §7.3/7.5正文重新核对相关要求；C在#30回交的当前HDL/节点证据不等于已提供正常HTTPS或本批辅导入口。
+
+### 10.1 D-04宿主的具体缺口
+
+已只读核查[固定A任务§12](https://github.com/paher-din/XunJie/blob/c071b4d0874c8cb1e8b83c95108fda2519a30cf0/docs/tasks/I0_A_C_HANDOFF.md#12-本批实现与运行交接)及其源码。候选`createI0App`组合的是原`createWorkspaceApp`，精确要求原24表；其消费者仅调用原C `pendingJobs/processJob`。候选没有组合本仓库已交的`createTutoringApp`、C3事件/回执路由或B2教学worker，任务也明确不装配模型队列。因而不能把“合入PR #53”写成“六票辅导真实宿主已就绪”。B2沿`createTeachingRecordsApp`/`createTutoringApp`运行，原`createTeachingDatabase`比作品工厂多四个已有教学表；共享正常宿主的组合需要对应批准与A/B/C协作，不由UI暗中更换库。
+
+当前前端实际限制是[TaskRoute](../../apps/student/src/pages/TaskRoute.tsx)仅在准备构建进入C页面、[init](../../apps/student/src/workspace/init.ts)真实读取到Session后停在discovery。A已交的合法分配深链和bootstrap可以作为后续接线依据，不需要先新增分配列表；但其bootstrap当前只存在于上述Draft候选。新接口、正常入口和受控运行环境三项分别核对，不以fixture或客户端随机代际替代。
+
+后续组合方案（提案，未批准/未实现）：A从固定候选组合原B2/C3服务和原worker；原教学工厂仅用于独立合成新库，不迁移或重置旧库，不新增schema。UI在原任务深链读取合法Assignment bootstrap，复用原Session/CSRF/确认/作品/运行/辅导客户端，不新建替代界面、不自动创建Attempt。环境维护者交现有HTTPS Origin、配置文件引用、合成账号安全入口和当前C代际来源；不在文档/代码记录密码或签名内容，不复用已用历史模型许可。现有后端服务本机没有`apps/teaching/node_modules`，当前Node v24.15.0也不符合教学服务固定24.21.0；这些是本机运行准备事实，不能绕过版本/lock门禁。
+
+本节为真实原因与可审查组合方案；不自动合并他人Draft、启动受控宿主、安装服务依赖、初始化数据库、写配置/凭据或调用供应商。没有把该提案登记为正式架构决定，产品基线及MVP_SPEC §10仍为“待授权维护者汇总”。
+
+若负责人批准补入真实入口，UI拟写集限定为`TaskRoute.tsx`、现有`PrepWorkspacePage.tsx`、`TextScopePanes.tsx`、`workspace/init.ts`、`useWorkspaceInit.ts`、`contracts.ts`及对应初始化/真实入口检查：保留原任务路由与数字逻辑演示，把获准深链引用交给原初始化，准备场景标识按实际模式显示；不写静态正式ID或合成身份。先验证匿名/跨学生/暂停/无代际/迟到初始化拒绝，再验证学生显式创建与原保存/求助。正常host未实际可用时仍报告不可用，不能用路由拦截成功标真实服务通过。首次创建与已有Attempt恢复分开；bootstrap不含Attempt引用，不据此承诺跨设备恢复，已有Attempt必须沿获准交接/原可信引用读取，缺项单列。
+
+### 10.2 公开能力审计纠正与继续写集
+
+D-02规划判断有误：`GET /api/attempts/:id/teaching-records`已在[原作品路由](../../apps/teaching/server/workspace/application.ts)注册，[C3组合](../../apps/teaching/server/records/application.ts)保留它。学生投影返回本人问题及存在`displayed`或`acknowledged`回执的Action/模型正文，不按clientId过滤，不因Action后来失效删除已展示历史。此前“readTeachingRecords仅内部接缝”的说法不能继续作为阻塞依据；§5/§9中的旧判断以本节源码核查为准。
+
+现有六票授权足以补接此已有公共读取。01拟新增`workspace/tutoringHistory.ts`及必要测试，适配原`tutoringContracts/tutoringStore/tutoringWorkspace/TutoringPane`与同一`prep/tutoring/plugin`合成反例；只消费公开字段、不新增共享字段/读路由。历史按原Action→messageId/jobId→Message/basis ObjectRef关联，作为历史单独呈现，不能放行当前投递、生成新Delivery或用另一通道旧deliveryId补报回执。仅received、未展示/未明确回应的内容仍不允许跨通道回取。当前响应没有control/generation/cutoff信封，历史不当作当前建议；重新授权失败时清除本轮可见历史，缓存不冒充许可。主Agent负责整合验证与本票记录，独立工作树负责该窄读取实现。
+
+D-03审计确认`checks`只有jobId/runId/policyVersion/state，而服务端限制条件是`activity.checkRule.limitedHelp && checks.some(state==='active')`；公开Activity没有limitedHelp。不能把所有active检查当受限检查。最小提案为在现有GET Attempt中同事务增加`limitedCheck:boolean`，仍由现有固定helpPolicy、阶段与分配守卫独立判断许可。字段待负责人批准；至少验证受限/非受限active、执行失联保持限制、权威ended后解除，以及直接HTTP绕过按钮仍拒绝。
+
+原生后台补验采用实际Chrome同一原生窗口和标签切换，通过`chromium.launchServer`/`connectOverCDP(...,{noDefaults:true})`避免Playwright默认焦点模拟；不覆盖visibilityState或注入visibilitychange。主Agent将在原消息spec追加一个独立窄检查，保留先前受控反例与失败历史，不修改Playwright全局配置/依赖。探针已观察可信hidden→visible事件与原始HTTP回执，正式测试结果随后记录。
+
+### 10.3 需要负责人确认的最小跨模块方案
+
+以下为可审查提案，尚未批准。已有历史读取与原生后台检查无需扩大授权，继续实施；首次展示前关联与限定检查字段不绕过当前AGENTS“共享字段、状态、错误码、版本、权限和事务语义先提案并确认”的要求。
+
+| 对象/拟写集 | 具体变更 | 保持的边界与验收 |
+| --- | --- | --- |
+| D-01：`apps/teaching/contracts/records/index.ts`、`server/records/application.ts`与相关C3投影反例 | 仅在已有事件正文可投递分支，附原持久Action的`scope/jobId/messageId/generation/targetVersions`和`basis`中的`attemptRevision/decisionEpoch/captureRevision/relatedStateRevision/objectRef`。不新增读路由，不猜关联 | 当前Session/成员/本人Attempt/Delivery/代际/epoch/对象/停止守卫不放宽；不暴露lease、模型原JSON或私有材料。两个求助正文相同仍按原Job/Action分开，编辑/同名重建/换Run/停止/纠正/换代际均不误绑或复活。不能先伪报displayed解锁关联 |
+| D-03：`apps/teaching/server/workspace/application.ts`、对应公开类型及工作区/辅导反例 | 在已有GET Attempt中，同授权事务根据原固定checkRule和持久checks返回`limitedCheck:boolean`；不把固定政策或active检查单独当答案 | false不表示所有帮助都许可；阶段/分配暂停/固定helpPolicy继续独立核对。受限和非受限active、失联/取消未确认、确实ended与直接HTTP拒绝分开验 |
+| D-04：固定PR #53候选的`server/app/i0.ts`及其配置/初始化/专项，原`server/tutoring/application.ts`和`server/records/application.ts`必要组合接缝与专项 | 从原B2/C3工厂组合正常业务路由、原教学worker与原C运行消费者，共用既有Session/授权/事务；只使用已有精确依赖和原教学28表工厂进行独立合成验证 | 不新增schema/迁移/重置旧库，不自动合并他人Draft或main，不改受保护文档/凭据/CI，不自动调用供应商。消费者沿原Job/停止意图/代际，不用学生会话伪造worker身份；需要核清受信worker入口后才实施 |
+| UI：§10.1真实入口写集，以及已有01/03/04/06辅导模块及必要反例 | 消费已获准投影，保留原作品/消息容器，准确区分历史与当前候选。真实请求仅同源`/api` | 不更换UI/导航/框架；授权前不编造字段。准备、真实HTTP、正常TLS/节点、模型/真人分别计数。环境维护者交原受控配置文件引用，缺环境仍列具体未验，不以合成回放冒充真实服务 |
+
+建议批准上述限定代码范围由当前Agent实施，并由A负责最终共享契约汇总；受保护产品/计划/参考仍只读。若正常宿主必须补新worker授权接口、产生新schema或改变事务/权限规则，先记录新差异再请求该具体决定，不将本提案视为无限后台授权。真实供应商新增请求、配置/密钥/证书写入、旧库变更、节点维护、公开发布仍未列入提案。
+
+2026-10-13，Robert对本节具体方案表示“你自己看吧。如果是真的需要做的你就做”，将必要性判断及上述限定补齐实施委托当前Agent。主Agent核查认为D-01首次展示前对象来源、D-03实时检查限制、D-04原服务/消费者及真实入口组合均为完整辅导链所必需，按本节限定写集继续。此为较新授权，前文提案状态保留原时点；已授权项不重复请求。受保护基线/计划/参考、凭据/CI、旧库/schema变更、真实供应商新增请求及公开部署仍未扩大。
+
+## 11. 授权后实施与验证记录
+
+主负责原生后台专项、正常宿主组合、真实入口和最终整合；D-02历史读取在`codex/i0-b-history`，D-01公共关联在`codex/i0-b-projection`，D-03同事务投影在`codex/i0-b-limited-check`分别实施。独立补充记录随各自commit提交，仍属于原六票，不增加横向tickets。当前实现结果逐项追加，不预写完成。
+
+原生后台正式Chrome专项已通过1/1：`npm run test:e2e -- tutoringMessages.spec.ts -g 原生后台 --workers=1`，准备/普通开发端口5601/5602。沿同一实际DOM、HTTP authority、IndexedDB与原回执，可信隐藏事件后持续超过一个轮询间隔，received确认且displayed=0；实际切回前台后仅一个displayed确认，无acknowledged。测试随结果附可见性/正文身份/去敏回执JSON，不覆盖原生API。早期普通Playwright连接无法产生hidden的失败仍保留§9.2；不再把原生补验列未完成。
+
+教学服务运行检查拟使用本机既有WSL2 Ubuntu与校验官方SHA-256的Node24.21.0，运行时和npm缓存放D盘，只按原lock安装教学应用已有精确依赖；不改package/lock/系统Node。该安装是已批准技术栈的本机运行准备，不当作业务或节点验证。实际命令结果随后补录。
+
+### 11.1 当前代码交付与差异落实
+
+2026-10-14，原UI分支基线`cb652c6`已整合真实入口`6194e63`、D-01投影`cad0126`、D-03投影/控制`96f4b2a`和D-02历史`c50cc5a`/授权失败清理`cb652c6`。独立工作树/分支保留，当前主负责最后页面消费、正常宿主、失败根因与最终验证，不重开六票或迁移整合分支。
+
+| 差异 | 当前交付 | 验证边界 |
+| --- | --- | --- |
+| D-01 | [公共关联](I0-B-01A_EVENT_PROJECTION.md)来自原持久Action；客户端严格核scope、原Job/Message、代际、固定版本和basis对象，同动作来源冲突拒绝，旧缺关联保持未知 | 原正文/hash/Job不同即使内容相同也分开；代码页显示原快照/版本/选区，本机改稿或同名重建不承接旧位置；原Run/snapshot来源只读 |
+| D-02 | [已有授权历史](I0-B-01H_HISTORY_READ.md)GET接线；另client合法只读shown记录，不分配Delivery、不补回执；取消或依据修订仍保留原历史 | received-only正文不跨通道回取；每次重新授权，失败清可见历史/作废旧读，不用缓存冒充许可。send的head失败也沿同一清理边界 |
+| D-03 | [同事务limitedCheck](I0-B-06A_LIMITED_CHECK.md)由固定checkRule及持久check状态计算；页面与发送前新GET都守卫，unknown/true不放行 | false只排除这一项限制，固定政策/阶段/分配仍独立；失联/取消未确认不解除，服务端直接HTTP绕过仍拒绝 |
+| D-04代码 | [正常宿主](I0-B_HOST_COMPOSITION.md)选择性复用固定A交付，组合原B2/C3/28表/消费者及[真实分配深链](I0-B_REAL_ENTRY.md) | 不Git merge他人Draft、不新建schema/HTTP执行接口/模拟学生Session；受控部署证书/节点/真实模型/真人另列 |
+| D-05/06 | 原工作区容器、editor只读选择与返回、任务信息三个控制已交；求助/control继续权威重读revision | 公开引用资料不自动叫教师批准例子；不改保护基线，原sync版本差异“待授权维护者汇总” |
+
+当前源码：[消息状态机](../../apps/student/src/workspace/tutoringWorkspace.ts)、[关联/历史校验](../../apps/student/src/workspace/tutoringHistory.ts)、[消息槽](../../apps/student/src/components/workspace/TutoringPane.tsx)、[原工作区](../../apps/student/src/pages/PrepWorkspacePage.tsx)、[确认客户端](../../apps/student/src/workspace/confirmationWorkspace.ts)、[正常宿主](../../apps/teaching/server/app/i0.ts)、[受信worker](../../apps/teaching/server/tutoring/application.ts)。真实模式仍同源`/api`，载入零业务写入，学生显式创建/保存/冻结/求助。分配列表和跨设备Attempt发现未扩范围。
+
+### 11.2 组合复核发现与修复
+
+记录确定问题及根因，不删历史失败、不迁就断言：
+
+- C运行在途等待阻塞教学消费者，以及内部worker最后完成遗漏组合learner revision守卫，已按宿主记录修复；新增两项宿主专项通过。
+- B2 help回执hash包含验证输入的recoveryGeneration，原客户端错误应用workspace的删代际规则，导致实际服务虽接纳并生成正文，本机help仍pending。客户端与准备摘要现按原B2契约核，取消继续原C摘要；固定后端向量3项与实际HTTPS双求助通过。
+- 新限定检查控制轮询读到远端已提交作品，会在原sync ACK原子接纳中断时提前install较新确认头，3项旧浏览器断言实际失败（mapping/drafts/outbox的本机revision 1而非0）。确认客户端现同时核当前已绑定pending及其落盘原命令，保持原作品/映射/草稿/outbox基线，仍接纳当前暂停、epoch及limitedCheck；新的授权初始化先合法GET，不拿上一加载的请求阻断读取。原四项断言保持，通过原“重读学习控制”的真实GET与完成后DOM状态核验；原键刷新恢复和迟到读序仍验。
+- 求助在队列/head读取或落盘等待中遭明确停止、上下文退役，较旧意图不得发新POST或解除屏障；已捕获操作发起时stopVersion，发送前再次核上下文，独立微任务反例通过。
+- 未知help尚无Job时只屏蔽展示不足以落实远端停止。现保留同一停止意图，原键核对取得原Job后先发该Job取消再读投递；未确认时只报未知，不编造已停、不创建替代help。实际dev HTTP反例核同原key、一个原Job取消、零正文/displayed。
+- 替换help(B)与旧cancel(A)都丢ACK时，核对B后的当前Job已变；A的合法取消回执须按自身命令原路径确认，不与最新B比较或覆盖B。已按原命令校验，避免旧cancel永久pending阻塞新求助；同一实际authority下保留原A读响应并丢两类ACK的反例另补。
+
+原单测整头fixture和控制浏览器文案断言曾不匹配获准新limitedCheck投影，已按新真实契约补false/unknown判据；没有把所有active检查当受限检查。原生后台早期焦点模拟失败、受控可见性注入和后来实际native hidden检查仍分层保存。
+
+### 11.3 验证入口与证据层次
+
+学生仍用Node24.15.0 / TS5.9.3 / Vitest3.2.7 / Vite7.3.6 / Playwright1.64.0 / Chrome155.0.8059.40；教学使用WSL2 Ubuntu与固定Node24.21.0、原lock/native依赖。新的本机运行时/缓存只放D盘，不入commit；包/lock、配置、凭据与系统Node未改。官方Linux Node包SHA-256 `fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6` 已核。
+
+学生目录实际命令：
+
+```powershell
+rtk npm run typecheck
+rtk npm test
+rtk npm run build
+$env:XUNJIE_E2E_BROWSER_CHANNEL = 'chrome'
+$env:XUNJIE_E2E_PREP_PORT = '5601'
+$env:XUNJIE_E2E_REAL_PORT = '5602'
+# 指向执行环境中已就绪的 Node 24.21.0；Windows harness使用WSL2 Ubuntu路径。
+$env:XUNJIE_E2E_SERVICE_NODE = '<执行环境内的 Node 24.21.0 可执行路径>'
+npm run test:e2e -- tutoring prep.spec.ts editor.spec.ts confirmation.spec.ts runResults.spec.ts real-mode.spec.ts --workers=2
+```
+
+类型检查与正式build退出0；全量规则33文件/456项通过、零失败。正式dist逐项扫描准备端点、合成账号/固定对象ID和syntheticAccount无命中。新增DEV守卫仅保护合成准备引用，正常产物不含准备authority、材料或凭据。既有大chunk与品牌public资源导入提示保留，没有改依赖/构建配置来掩盖。
+
+教学目录在精确24.21.0环境执行`npm run typecheck`、`npm run build`和默认`npm test`均退出0；默认399项中387通过/12跳过/零失败。宿主原10项与新增6项另为16/16；同次加投影9/limitedCheck6共31/31，后两组已在默认集内不重复累计。节点/VM/容器、真实SDK/模型门禁的skip不计通过。首次默认集有一次startup 5秒超时，原限时/断言未改，main先校验端口再载入HTTP宿主后重建/专项/默认集通过，细节见宿主记录。
+
+Chrome检查过程：前次89项组合85通过/4失败（上述原ACK回滚3项和help digest服务专项1项），失败未记通过。下一轮90项为85通过/5失败：四项新原型观察counter未取得实际客户端、以及新守卫过严导致同身份退出后合法GET未接纳；改用原控制UI实际读取核验，并将守卫限定到当前已绑定的原pending。没有删除原回滚/退出/迟到断言，失败均保留。实际HTTPS双求助扩展专项修digest后独立1/1通过，90项中该项又通过（18.5秒）；正常dist→实际Session/CSRF/SQLite/原worker→原Job/对象/回执/历史，离线合成provider及临时自签名TLS条件明确。native后台1项与可见性注入1项分别记录；协议替身4项不等同实际服务。
+
+收尾只复跑受影响原`confirmation.spec.ts`和`tutoringHelpStop.spec.ts`，新增双未知Job反例后26/26通过、59.6秒，零失败/跳过；其中20项原确认与6项求助/停止。保留前轮未受影响的65项通过证据，最终不同浏览器检查合计91项通过，不把重复运行累加，也不声称一次91项全量运行。原四阶段ACK回滚、同身份退出后新读、两代际/旧页顺序、停止/原键/原Job与新增限定检查均已验。
+
+```powershell
+npm run test:e2e -- confirmation.spec.ts tutoringHelpStop.spec.ts --workers=2
+```
+
+末次源码收尾后重新typecheck、33文件456项规则及正式build退出0；根文档检查与差异空白结果在提交前核，实际值追加于交付段。
+
+### 11.4 交付与外部验收边界
+
+本批六票的代码、调用方、反例与可复用服务检查已补齐；完整真实教学验收的未执行项是受控部署证书/实际SSH节点与隔离运行、新供应商语义批次、真实教师例子批准、真实学生自主修改/保存/重跑和UI-TUTOR-09，不是继续声称D-01/02/03公共能力缺失。没有使用真实学生数据或教师私有材料，供应商新增请求为0；工程/合成验证不写成教学效果、完整AC/NFR或G阶段通过，不关闭父Issue。
+
+最终本地提交仍在`i0/ui-frontend`，写集包括本记录/六票/清单及必要源码/专项/真实入口说明；原`.zcodeignore`不暂存，不推送、合并或发布。生成探针在正式检查和文档保留证据后清理，独立分支/工作树和原工厂合成库保留；回退需按提交顺序审查，不重置、删除历史或覆盖他人记录。产品基线与MVP_SPEC§10“待授权维护者汇总”。
+
+提交前仓库根`node tools/a0-review/check.mjs`：77份文档/1137条内链、errors=[]；差异空白检查退出0。静态输出的businessTests标签不代替上文实际运行证据。已移除本次临时`.i0-b-visibility-probe.cjs`，正式native专项和结果记录保留；写集不含规范、产品/计划/参考、包/lock、真实凭据/配置、CI、数据库schema或合成库产物。

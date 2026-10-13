@@ -4,7 +4,9 @@
 
 **Blocked by:** [I0-B-01 消息与回执](I0-B-01_MESSAGES_RECEIPTS.md)。本批写集/测试接缝已按Robert委托定稿；真实接线需对应I0-A/正常宿主/B2-C3交接，准备路径不等新的供应商请求。
 
-**Status:** prepared-verified / pending-real（显式项目求助、停止与替换准备链通过；真实服务未验）。
+**Status:** implemented / engineering-verified（显式求助、停止/替换与原宿主已接线并验证；实际服务及分层结果见批次§11）。
+
+2026-10-14较新收尾：正常B2/C3宿主已组合，实际HTTPS双求助/原Job/历史通过。help摘要按原B2完整输入（含代际），取消按原C Job/原因核对。等待head/落盘时停止或上下文退役不发较旧意图；未知help无Job可明确停止，原键核对取得原Job后取消，双未知旧/新Job取消按各自原命令确认，不改贴当前Job或永久阻塞。6项求助/停止浏览器专项收尾通过；完整91项不同浏览器/456项规则及失败过程见[批次§11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)。后文旧“真实服务未验”保留原时点，受控节点/模型/真人仍未执行。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划](I0-B_UI_TUTOR_PLAN.md)。覆盖 UI-TUTOR-01/06，M-04/M-05，AC-05/06/07/12/15、NFR-01/02/04/06 的前端责任。
 
