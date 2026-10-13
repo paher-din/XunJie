@@ -159,3 +159,5 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 06B 的设计接收范围见第 4 节。主仓库独立维护 `runHistory.ts`/`useRunHistory.ts` 公开历史读取与下载、`runFiles.ts(+test)` 完整性校验、`runResults.ts(+test)` check 白名单投影、同一 prep authority 的 files/历史样例和 `e2e/runHistory.spec.ts`。无 schema、依赖或服务端变更；验证事实见 [06B 任务](../../docs/tasks/I0_UI_06B_RUN_HISTORY.md)。
 
 这些业务改动只在主仓库维护；06/06A 的纯设计组件先行交付与接收范围单列在第 4 节，不将主仓库 HTTP/存储或准备 authority 回写设计仓库。06B 固定来源为 [设计交付记录](https://github.com/wubq511/XunJie_Design/blob/16558426ce70524218eacbf7ce8fde35681c0503/docs/i0-06b-run-history-delivery.md)，仅本地提交，公开链接待该来源提交推送后可用；团队当前运行与验收无需来源 checkout，必要契约与记录在主仓库任务中完整保存。
+
+2026-10-13，[I0-UI-BV 浏览器补验](../../docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)新增 `e2e/editorProtection.spec.ts`，核对折叠/文件及中心工具切换、设置清理后本机草稿/确认记录/快照/原命令保留。主仓库 `CodeEditorHost.tsx` 最小修复恢复视图后无条件清空状态栏行列的偏差，使用当前 model 位置映射原文坐标；不改 UI、存储 schema、依赖或后台，不回写 Design。清缓存/重置布局原实现未改。

@@ -139,6 +139,14 @@ public/       品牌 IP 与字体资产（导入来源）
 `test:e2e` 会自动拉起两个 dev server（`reuseExistingServer: !process.env.CI`：本地已在跑则复用，
 CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装浏览器：`npx playwright install chromium`。
 
+默认两个 worker 并行独立 spec，文件内仍顺序执行；每项保留独立浏览器上下文，写场景用 UUID
+隔离 fixture。重启用例独占第三端口，剪贴板用例保持同文件顺序。资源有限时可用
+`npm run test:e2e -- --workers=1`；不增加 retries 或缩减反例。
+
+开发时按受影响行为选择 spec，例如编辑器改动先跑
+`npm run test:e2e -- editor.spec.ts editorProtection.spec.ts confirmation.spec.ts`。
+最终提交候选再跑完整 `npm run test:e2e`；专项通过与全量通过分别记录，不重复跑无新增疑点的全量。
+
 e2e 的成功响应来自同一开发进程 fixture；故障用例延迟真实回执、注入本机事务 abort 或损坏读取摘要，
 核对拒绝/保留行为，不伪造成功路径。真实模式断言「如实没有可用初始化」。因此 e2e 通过只说明本批准备范围，
 不代表真实服务联调通过，也不代表任何 AC / NFR 或 G0～G4 条件已验收。

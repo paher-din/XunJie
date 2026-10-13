@@ -18,7 +18,8 @@ test('学生主动创建、保存、冻结与刷新读回同一作品和快照',
   // 学生只看到「已冻结快照 vN」；快照 ID/hash 只进控制台诊断
   await expect(page.getByText('已冻结快照 v1')).toBeVisible()
   await typeIn(page, '// newer draft\n')
-  await page.waitForTimeout(550)
+  // 等实际草稿落盘再刷新，避免固定时长既浪费时间又可能早于慢机器写入。
+  await expect.poll(async () => (await localState(page)).drafts.some(d => d.text.includes('// newer draft'))).toBe(true)
   await page.reload()
   await expect(page.getByText('已冻结快照 v1')).toBeVisible()
   // 刷新后仍是同一快照（索引库里的冻结记录不变，界面只显示它冻结的作品版本）

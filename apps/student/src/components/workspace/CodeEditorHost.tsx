@@ -236,7 +236,13 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     editor.setModel(model)
     const saved = viewStates.get(key)
     if (saved) editor.restoreViewState(saved)
-    cursorRef.current(null)
+    // restoreViewState 可能已发光标事件；不能随后清空刚恢复的行列读数。
+    // 首次挂载和位置未变时也主动报告，状态栏与编辑器当前原文位置保持一致。
+    const position = editor.getPosition()
+    const original = originals.get(key)
+    cursorRef.current(position && original
+      ? serverPosition(original.history.current, original.projection.toOriginalOffset(model.getOffsetAt(position)))
+      : null)
   }, [status, workspaceKey, fileId, language])
 
   // 调用方保留脏草稿；只在其权威原文确实改变时更新同一 model，避免显示陈旧正文却标为一致。

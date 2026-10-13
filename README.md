@@ -79,6 +79,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [历史运行比较与公开产物](docs/tasks/I0_UI_06B_RUN_HISTORY.md) | 只读比较已有运行，区分本机参数与缺项、检查裁剪与产物可用性；完整公开文本经来源/ID/hash/bytes 校验后查看和下载；真实交接仍后置 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；十张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
 | [I0-UI 准备批次收尾与真实接入交接](docs/tasks/I0_UI_CLOSEOUT.md) | 十张票准备交付、main 整合/修复与 104 项 Chrome 回归、已合并 PR #50 和 A/C/B 逐能力交接；真实 I0 与完整产品仍未验收 |
+| [编辑器状态与本机作品保护浏览器补验](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md) | 四项新增保护检查与行列修复；保留全部 108 项的测试调度/等待优化，本机全量从 7:20 降至 3:39；分层结果与交付状态单列 |
 
 安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：先完成当前 P2 原预交付，P3 的 A/C/B 接数字逻辑并分批联调，同时保留原反馈闭环；P4 的 A6/B4/C5 验证两课程，P5 完成整体集成与正式验收。服务端预交付、数字逻辑 Demo 与完整产品验收分别记录。
 
@@ -281,6 +282,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-13，main 已普通合入 UI 分支，准备批次已推送并发布 [Draft PR #50](https://github.com/paher-din/XunJie/pull/50)，尚未合并。四项审查问题已修复，最终 typecheck/build、Vitest 238 项、真实 Chrome 104 项与文档检查通过；[#30 交接清单](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137496293) 已发布，成员按 H 编号回交，完整验收未覆盖项登记在 [#22 证据索引](https://github.com/paher-din/XunJie/issues/22#issuecomment-6137502504)。真实接线/节点/模型/完整 AC/NFR 与教学效果未验收。
 
 2026-10-13，负责人 Robert 明确批准合并后，[PR #50](https://github.com/paher-din/XunJie/pull/50) 已以 merge commit 合入 main（`69a26d5`），合并树与已验证交付完全一致，UI 分支保留。[#30 协作评论](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137712134) 已同步结果；A/C 可更新 main 后在各自任务分支继续按 H 编号回交。#30/#22 保持 Open，真实接入与完整产品验收仍待完成；实际提交与核对见 [I0 收尾 §8.4](docs/tasks/I0_UI_CLOSEOUT.md#84-协作方式与合并确认)。
+
+2026-10-13，负责人批准的两项 UI 浏览器缺口已补验，恢复后行列读数已修复；追加的测试优化保留全部 108 项，用两个 worker 并行独立文件，刷新前等待真实草稿落盘，并修正本机 blob 被误算外发的测试判断。有效 Chrome 全量 108/108 通过，本机从 7:20 降至 3:39（约 50%）；238 单测、typecheck/build 通过。休眠失败轮次与最终证据见 [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)。当前本地 `codex/i0-editor-browser-verification` 准备提交，尚未推送/合并；原真实接入和完整验收范围保留。
 
 ### 当前整体状态与后置验收
 
