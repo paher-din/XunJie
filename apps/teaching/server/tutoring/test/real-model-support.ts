@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createAiSdkDeepSeekProvider } from '../deepseek-sdk.ts';
 
 export const realModelEnabled = process.env.XUNJIE_P2_REAL_MODEL === 'approved-synthetic';
+export const b3RealModelEnabled = process.env.XUNJIE_B3_REAL_MODEL === 'approved-synthetic';
 const requiredNodeVersion = '24.21.0';
 type HttpOutcome = 'response' | 'provider_error' | 'cancelled' | 'timed_out' | 'network_error';
 export type HttpFact = {
@@ -129,6 +130,16 @@ export function assertRealSemanticFixBatchAuthorization(): void {
 export function realModelProbe(options: { onRequestStart?: (attemptIndex: number) => void } = {}) {
   assertRealModelRuntime();
   if (!realModelEnabled) throw new Error('Explicit P2 synthetic-data model authorization is required.');
+  return createRealModelProbe(options);
+}
+
+export function b3RealModelProbe(options: { onRequestStart?: (attemptIndex: number) => void } = {}) {
+  assertRealModelRuntime();
+  if (!b3RealModelEnabled) throw new Error('Explicit B3 synthetic-data model authorization is required.');
+  return createRealModelProbe(options);
+}
+
+function createRealModelProbe(options: { onRequestStart?: (attemptIndex: number) => void }) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey?.trim()) throw new Error('DEEPSEEK_API_KEY is not configured through the approved local channel.');
   const http: HttpFact[] = [];

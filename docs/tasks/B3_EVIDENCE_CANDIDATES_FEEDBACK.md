@@ -173,3 +173,22 @@ A4 PR #49（含 C4 #47、DL-C #48）已合入上游 `main`（`1cd43f8`）。本�
 - 同时把原接缝测试中对整段随机 JSON 搜索 `900` 的宽泛断言收窄为结构化检查 `learnerStateRevision === 900`，避免随机哈希片段导致误报，不改变业务行为。
 
 修复后的验证环境为 Node 24.21.0、仓库锁定依赖，供应商网络调用为 0：`tsc --noEmit` 与 `tsc -p tsconfig.build.json` 通过；B3 专项 23/23 通过；B1/B2/B3 tutoring 聚合回归退出码 0；A4 `tests/review.test.ts` 51/51 通过；文档检查通过（64 份文档、910 条内部链接、`errors=[]`）；检查器回归 16/16 通过；`git diff --check` 通过。真实模型与后置人工验收仍不计入本次审查修复。
+
+### 6.8 B3 真实模型与真人后置验收入口（2026-10-13）
+
+项目负责人明确批准继续执行 B3 的真实 DeepSeek 调用及相应费用和可能出现的 `unknown usage`。为避免把概括性授权变成无界请求，本批固定为仓库合成材料的 1 个串行 `learner_analysis` Job，最多 3 次外部请求、最多一次 repair、从 Job 接受起 45 秒、AI SDK `maxRetries=0`、不自动重跑；不沿用或消耗 #45 已使用的历史授权。授权和真实结果需要在后续 PR 正文/评论中原样告知负责人。
+
+`real-model-support.ts` 新增独立 `XUNJIE_B3_REAL_MODEL=approved-synthetic` 门禁，与 P2 历史开关分离；`learner-analysis.test.ts` 新增默认跳过的真实候选入口。入口走真实 A4 queue/claim/current/complete 事务、固定合成 snapshot、B3 严格 schema 和真实 AI SDK DeepSeek provider，并只把脱敏 HTTP 元数据、候选 body、调用次数、usage、版本及接纳结果写到权限收紧的临时证据文件。未设置独立授权或安全 `DEEPSEEK_API_KEY` 时在网络前失败。
+
+当前受控进程已确认 Node 24.21.0，但 `DEEPSEEK_API_KEY` 和 `XUNJIE_B3_REAL_MODEL` 均未设置，因此本批真实请求数仍为 0。代码与离线门禁验证完成后，由持有凭据的负责人只运行一次下述名称匹配测试；失败批次不自动重跑，先保存并回传证据路径与完整测试摘要：
+
+```powershell
+$env:XUNJIE_B3_REAL_MODEL = 'approved-synthetic'
+node --test --test-name-pattern='B3 authorized real-model' server/tutoring/test/learner-analysis.test.ts
+```
+
+入口实现后的离线结果：`tsc --noEmit` 与 build 通过；B3/真实门禁组合 38 项中 37 通过、1 项真实模型用例按默认门禁跳过、0 失败；B1/B2/B3 tutoring 聚合回归退出码 0；文档检查 64 份/910 条内部链接/`errors=[]`，检查器回归 16/16，`git diff --check` 通过。该结果只证明默认关闭和离线兼容，不是实际模型通过。
+
+真人语义审阅使用该次真实候选，审阅者逐项记录：目标/版本是否匹配；每个结论是否能回指获准证据；帮助、限定检查、反证、工具故障和覆盖缺口是否保留；三条能力线是否分开；unknown/unresolved 是否忠实；`feedbackDraft` 是否只是草稿且可供教师采用。任一项不能由模型自评替代。
+
+本次调用授权仍不足以发送真实学生或教师私有材料。PRD §8/§9 与 MVP_SPEC §5 明确开发仅用合成数据、真实用户项由真人完成；发送真实材料前仍需确定材料来源、参与者同意/告知、去标识结果、教师/A/C 的访问与处理范围以及 DeepSeek 外发范围。当前仓库也没有 B3 的浏览器界面；A4 只有服务端 learner-state/review API，B 不得越权创建替代 UI。因此浏览器 displayed、真人教师决定、学生接棒及教学效果观察必须由 P5 实际 UI、获准账号和真实参与者完成，当前只能保留验收表，不能由本测试代签或宣称通过。

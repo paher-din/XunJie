@@ -13,6 +13,11 @@ import { readActivity } from "../../design/activities.ts";
 import { readContext } from "../../review/storage.ts";
 import { setup, command, helpBody } from "../../../tests/review-support.ts";
 import { learnerAnalysisFixtures } from "./learner-analysis.fixtures.ts";
+import {
+  b3RealModelEnabled,
+  b3RealModelProbe,
+  writeRealModelEvidence,
+} from "./real-model-support.ts";
 
 test("B3 fixed synthetic fixture matrix keeps all eight evidence and feedback boundaries explicit", () => {
   assert.deepEqual(learnerAnalysisFixtures.map((fixture) => fixture.id), [
@@ -480,6 +485,81 @@ test("B3 uses the approved DeepSeek analysis schema through an injected offline 
   assert.equal(invocation.maxOutputTokens, 4096);
   assert.deepEqual(invocation.providerOptions, { deepseek: { thinking: { type: "disabled" } } });
   assert.equal(invocation.purpose, "learner_analysis");
+});
+
+test("B3 authorized real-model learner-analysis candidate uses one synthetic A4 job", {
+  skip: !b3RealModelEnabled,
+}, async t => {
+  const probe = b3RealModelProbe();
+  const s = await setup();
+  const maximumExternalRequests = 3;
+  let providerAttempts = 0;
+  const boundedProvider: ModelProvider = {
+    async generate(request) {
+      if (providerAttempts >= maximumExternalRequests) {
+        throw new Error("B3 real-model validation stopped before exceeding its three-request ceiling");
+      }
+      providerAttempts += 1;
+      return probe.provider.generate(request);
+    },
+  };
+  const evidence: Record<string, unknown> = {
+    approvedScope: {
+      jobs: 1,
+      maximumExternalRequests,
+      execution: "serial",
+      automaticReruns: 0,
+      perJob: { maximumProviderCalls: 3, maximumRepairs: 1, deadlineMs: 45_000 },
+      model: "deepseek-flash",
+      thinking: "disabled",
+      sdkMaxRetries: 0,
+      data: "repository-fixed-synthetic-only",
+      realStudentOrTeacherMaterial: false,
+    },
+  };
+  try {
+    const queued = await s.queue();
+    const claimed = s.f.review.claimAnalysis(queued.jobId) as ClaimedLearnerAnalysis;
+    const targets = s.content.goals.map((goal: {
+      competencyId: string;
+      competencyVersion: number;
+      domain: "domain" | "project" | "ai_collaboration";
+    }) => ({
+      competencyId: goal.competencyId,
+      competencyVersion: goal.competencyVersion,
+      domain: goal.domain,
+      scope: { kind: "activity" as const, activityVersionId: s.activityId },
+    }));
+    const outcome = await executeClaimedLearnerAnalysis({
+      claimed,
+      targets,
+      references: [{ id: s.snapshotId, content: "Synthetic confirmed snapshot; no independent explanation or course check is available." }],
+    }, analysisRuntime(s, claimed, boundedProvider));
+    evidence.outcome = outcome;
+    evidence.providerAttempts = providerAttempts;
+    evidence.httpRequests = probe.http.length;
+    assert.equal(outcome.outcome, "success", JSON.stringify(outcome));
+    assert.ok(providerAttempts >= 1 && providerAttempts <= maximumExternalRequests);
+    assert.equal(probe.http.length, providerAttempts);
+    if (outcome.outcome !== "success") return;
+    assert.equal(outcome.body.kind, "learner_analysis");
+    assert.ok(outcome.body.claims.length <= 64);
+    assert.ok(outcome.body.claims.every((claim) => !("claimId" in claim)));
+    const accepted = s.f.review.completeAnalysis({
+      jobId: queued.jobId,
+      leaseToken: claimed.leaseToken,
+      recoveryGeneration: s.f.generation(),
+      bodyJson: JSON.stringify(outcome.body),
+    });
+    evidence.acceptance = accepted;
+    assert.equal(accepted.disposition, "accepted");
+  } finally {
+    try {
+      t.diagnostic(`Synthetic-data B3 model evidence: ${writeRealModelEvidence("learner_analysis", evidence, probe.http)}`);
+    } finally {
+      await s.f.close();
+    }
+  }
 });
 
 function analysisRuntime(
