@@ -192,3 +192,24 @@ node --test --test-name-pattern='B3 authorized real-model' server/tutoring/test/
 真人语义审阅使用该次真实候选，审阅者逐项记录：目标/版本是否匹配；每个结论是否能回指获准证据；帮助、限定检查、反证、工具故障和覆盖缺口是否保留；三条能力线是否分开；unknown/unresolved 是否忠实；`feedbackDraft` 是否只是草稿且可供教师采用。任一项不能由模型自评替代。
 
 本次调用授权仍不足以发送真实学生或教师私有材料。PRD §8/§9 与 MVP_SPEC §5 明确开发仅用合成数据、真实用户项由真人完成；发送真实材料前仍需确定材料来源、参与者同意/告知、去标识结果、教师/A/C 的访问与处理范围以及 DeepSeek 外发范围。当前仓库也没有 B3 的浏览器界面；A4 只有服务端 learner-state/review API，B 不得越权创建替代 UI。因此浏览器 displayed、真人教师决定、学生接棒及教学效果观察必须由 P5 实际 UI、获准账号和真实参与者完成，当前只能保留验收表，不能由本测试代签或宣称通过。
+
+### 6.9 B3 真实模型执行结果与人工审阅待办（2026-10-13）
+
+项目负责人按 §6.8 的固定边界使用 Node 24.21.0 完成一次真实 DeepSeek 调用。临时证据记录的源码提交为 `84572022ea2bbf2b151219846313ffb5b74a0eb5`；执行时 `sourceDirty=true`，执行后仓库状态复核只发现既有未跟踪 `.trae/`，未将其纳入 B3 交付。证据仍明确标记 `synthetic-only`、`realStudentOrTeacherMaterial=false`，因此本次结果不能表述为真实学生或教师私有材料验证。
+
+本次批次实际发起 1 次 provider/HTTP 请求，状态 200，无 SDK retry、自动重跑或 repair；模型为 `deepseek-flash`，响应指纹为 `aeb56401ca74e127821c4f9126dcb669`，HTTP 延迟 3283 ms。usage 为 `actual`：输入 903 tokens、输出 511 tokens、合计 1414 tokens，其中 cache hit 0、cache miss 903。测试摘要为 1 项通过、0 失败，测试耗时 6128.9913 ms、总进程耗时 7060.7401 ms。
+
+严格解析后的 `learner_analysis` 包含 domain、project、ai_collaboration 三条分离能力线，均引用同一条获准合成 snapshot，状态均为 `insufficient`、`assistanceStatus=unknown`、`unresolved=true`；模型明确保留缺少独立解释、课程检查、snapshot 内容描述以及 AI 协作线缺少 assistance 记录等未知项，没有输出正式评价或 `feedbackDraft`。A4 事务把该候选接纳为 revision 1，并生成 3 个 claim；这里的 `accepted` 只表示候选通过结构、引用和当前性边界进入 A4 learner-state，不等于教师正式采用或教学效果成立。
+
+项目负责人已指定由本人以教师审阅角色完成该候选的人工语义审阅，并确认浏览器界面等待 UI/P5 接入，本批不创建替代 UI、不执行浏览器 displayed 或真人接棒。2026-10-13，项目负责人依据临时证据文件中 `data.outcome.body.claims` 的完整候选完成审阅，结果如下：
+
+| 审阅项 | 结果 | 审阅范围 |
+| --- | --- | --- |
+| B3-HR-01 学科知识候选 | 通过 | 学科知识候选与目标/版本匹配，有限证据结论可接受 |
+| B3-HR-02 项目能力候选 | 通过 | 项目能力候选保持独立能力线，未扩张证据含义 |
+| B3-HR-03 AI 协作候选 | 通过 | 缺少 assistance 记录时保持 unknown/insufficient，未作猜测 |
+| B3-HR-04 证据与未知项忠实性 | 通过 | 引用限制在获准 snapshot，unknown/unresolved 表达可接受 |
+| B3-HR-05 教师可读性和可采用性 | 通过 | 候选内容可供教师理解并决定后续证据收集 |
+| B3-HR-06 非正式评价边界 | 通过 | 未把证据不足改写为能力结论，未输出正式评价 |
+
+人工整体结论为“通过”，没有提出条件或修改项。至此，本批固定合成材料上的 B3 真实 DeepSeek 候选已完成技术调用、严格解析、A4 候选接纳及教师角色人工语义审阅。该结论不扩展为真实参与者材料、浏览器 displayed、学生接棒或教学效果通过；真实参与者材料与教学效果仍需要参与者同意、去标识、处理范围、观察周期和教师判断，浏览器链等待 UI/P5 接入。
