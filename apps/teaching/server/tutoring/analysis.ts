@@ -200,7 +200,12 @@ export async function executeClaimedLearnerAnalysis(
         } else if (now() >= effectiveDeadline) {
           notStarted = new ProviderCallNotStartedError("timed_out", "Learner analysis expired before provider invocation");
         } else {
-          const current = await checkCurrent(providerRequest.signal);
+          const current = await revalidateReservedModelCall(
+            checkCurrent,
+            providerRequest.signal,
+            effectiveDeadline,
+            now,
+          );
           if (providerRequest.signal.aborted || current === "cancelled") {
             notStarted = new ProviderCallNotStartedError("cancelled", "Learner analysis was cancelled before provider invocation");
           } else if (now() >= effectiveDeadline) {
@@ -236,6 +241,43 @@ export async function executeClaimedLearnerAnalysis(
     priorCalls: input.claimed.job.attemptCount,
     ...(runtime.now ? { now: runtime.now } : {}),
   });
+}
+
+async function revalidateReservedModelCall(
+  checkCurrent: CurrentGuard,
+  signal: AbortSignal,
+  effectiveDeadline: number,
+  now: () => number,
+): Promise<Awaited<ReturnType<CurrentGuard>>> {
+  if (signal.aborted) {
+    throw new ProviderCallNotStartedError("cancelled", "Learner analysis was cancelled before provider invocation");
+  }
+  const remainingMs = effectiveDeadline - now();
+  if (remainingMs <= 0) {
+    throw new ProviderCallNotStartedError("timed_out", "Learner analysis expired before provider invocation");
+  }
+
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let removeAbort: (() => void) | undefined;
+  const boundary = new Promise<never>((_, reject) => {
+    const onAbort = () => reject(new ProviderCallNotStartedError(
+      "cancelled",
+      "Learner analysis was cancelled before provider invocation",
+    ));
+    signal.addEventListener("abort", onAbort, { once: true });
+    removeAbort = () => signal.removeEventListener("abort", onAbort);
+    timeout = setTimeout(() => reject(new ProviderCallNotStartedError(
+      "timed_out",
+      "Learner analysis expired before provider invocation",
+    )), remainingMs);
+  });
+
+  try {
+    return await Promise.race([checkCurrent(signal), boundary]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+    removeAbort?.();
+  }
 }
 
 async function releaseUnsentModelCall(runtime: ClaimedLearnerAnalysisRuntime): Promise<void> {

@@ -7,6 +7,7 @@ import {
   type ClaimedLearnerAnalysis,
   type LearnerAnalysisCurrentState,
 } from "../analysis.ts";
+import { generateLearnerAnalysis } from "../core.ts";
 import { recordModelCall } from "../../records/jobs.ts";
 import { readAttempt, readRecords, saveJob } from "../../db/records-adapter.ts";
 import { readActivity } from "../../design/activities.ts";
@@ -283,6 +284,35 @@ test("B3 rejects a model input that omits any reference frozen in the analysis b
   assert.equal(provider.calls.length, 0);
 });
 
+test("B3 core rejects an authorized reference set that omits a frozen binding reference", async () => {
+  const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+  claimed.binding.assistanceRefs = [{ kind: "message", id: "assistance", attemptId: "attempt" }];
+  const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+  const execution = syntheticExecution(claimed);
+  const outcome = await generateLearnerAnalysis({
+    context: {
+      jobId: claimed.job.jobId,
+      purpose: "learner_analysis",
+      scope: { courseId: "course", userId: "student", attemptId: "attempt" },
+      authorizedReferenceIds: ["snapshot"],
+      acceptedAtMs: 1_000,
+      deadlineAtMs: 46_000,
+      budgetAvailable: true,
+      versions: { modelConfig: "model", prompt: "prompt", schema: "schema", policy: "policy" },
+    },
+    binding: claimed.binding,
+    targets: execution.targets,
+    references: execution.references,
+  }, {
+    provider,
+    checkCurrent: () => "current",
+    now: () => 1_000,
+  });
+  assert.equal(outcome.outcome, "rejected");
+  assert.equal(outcome.code, "INVALID_ANALYSIS_CONTEXT");
+  assert.equal(provider.calls.length, 0);
+});
+
 test("B3 shares the three-call, deadline, cancellation, usage, lease, and currentness boundaries", async (t) => {
   await t.test("dynamic budget stops before a second provider call and preserves first usage", async () => {
     const claimed = syntheticClaimed();
@@ -456,6 +486,52 @@ test("B3 shares the three-call, deadline, cancellation, usage, lease, and curren
       assert.equal(outcome.outcome, scenario.expected);
       assert.equal(provider.calls.length, 0, "no real provider invocation may cross the post-reservation guard");
       assert.equal(reservations, 0, "the unsent persistent reservation is released exactly once");
+    });
+  });
+
+  await t.test("a hanging post-reservation current read releases the reservation on cancellation or deadline", async (race) => {
+    for (const scenario of ["cancelled", "timed_out"] as const) await race.test(scenario, async () => {
+      const startedAt = Date.now();
+      const claimed = syntheticClaimed({
+        purpose: "explicit_analysis",
+        acceptedAt: new Date(startedAt).toISOString(),
+        deadline: new Date(startedAt + 500).toISOString(),
+        leaseUntil: new Date(startedAt + 1_000).toISOString(),
+      });
+      const controller = new AbortController();
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      let reservations = 0;
+      let currentReads = 0;
+      let announceRead!: () => void;
+      let announceRelease!: () => void;
+      const readStarted = new Promise<void>((resolve) => { announceRead = resolve; });
+      const reservationReleased = new Promise<void>((resolve) => { announceRelease = resolve; });
+      const execution = executeClaimedLearnerAnalysis(
+        { ...syntheticExecution(claimed), signal: controller.signal },
+        {
+          provider,
+          budgetAvailable: () => true,
+          recordModelCall() { reservations += 1; },
+          releaseModelCall() {
+            reservations -= 1;
+            announceRelease();
+          },
+          readCurrent() {
+            currentReads += 1;
+            if (currentReads === 1) return syntheticCurrent(claimed);
+            announceRead();
+            return new Promise<LearnerAnalysisCurrentState>(() => {});
+          },
+        },
+      );
+
+      await readStarted;
+      if (scenario === "cancelled") controller.abort();
+      const outcome = await execution;
+      await reservationReleased;
+      assert.equal(outcome.outcome, scenario);
+      assert.equal(provider.calls.length, 0);
+      assert.equal(reservations, 0, "the hanging recheck cannot strand its unsent reservation");
     });
   });
 });

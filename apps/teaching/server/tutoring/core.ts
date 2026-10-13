@@ -563,12 +563,16 @@ function validAnalysisEnvelope(request: LearnerAnalysisRequest): boolean {
     ...binding.coverageRefs,
   ].map((reference) => reference.id));
   const authorized = context.authorizedReferenceIds;
+  const authorizedIds = new Set(authorized);
   const supplied = new Set(references.map((reference) => reference.id));
   if (
-    new Set(authorized).size !== authorized.length ||
+    bindingIds.size !== binding.inputRefs.length + binding.assistanceRefs.length + binding.coverageRefs.length ||
+    authorizedIds.size !== authorized.length ||
     supplied.size !== references.length ||
+    bindingIds.size !== authorized.length ||
     authorized.length !== references.length ||
-    authorized.some((referenceId) => !bindingIds.has(referenceId) || !supplied.has(referenceId))
+    [...bindingIds].some((referenceId) => !authorizedIds.has(referenceId)) ||
+    authorized.some((referenceId) => !supplied.has(referenceId))
   ) return false;
 
   const targetKeys = targets.map(targetKey);
