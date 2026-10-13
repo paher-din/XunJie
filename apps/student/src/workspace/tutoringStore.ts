@@ -37,7 +37,12 @@ export async function writeTutorLedger(ledger: TutorLedger, valid: () => boolean
 /** Same tab refresh keeps identity; native origin locks distinguish copied sessionStorage atomically. */
 export async function tutorChannel(c: CommandContext): Promise<{ clientId: string; close: () => void }> {
   const key = `tutor:channel:${tutorScope(c)}`
-  let clientId = sessionStorage.getItem(key) ?? crypto.randomUUID()
+  const savedClientId = sessionStorage.getItem(key)
+  // A sessionStorage identity alone cannot resume a lost delivery journal.
+  // Read failure stays unavailable; only an absent ledger starts a fresh channel.
+  const savedLedger = savedClientId ? await readTutorLedger(tutorLedgerKey(c, savedClientId)) : undefined
+  let clientId = savedClientId && savedLedger?.clientId === savedClientId && savedLedger.key === tutorLedgerKey(c, savedClientId)
+    ? savedClientId : crypto.randomUUID()
   if(!navigator.locks) return {clientId:crypto.randomUUID(),close:()=>{}}
   const reserve = (id:string) => new Promise<(() => void)|null>(resolve=> {
     void navigator.locks.request(`${key}:${id}`,{ifAvailable:true},async lock=> {
