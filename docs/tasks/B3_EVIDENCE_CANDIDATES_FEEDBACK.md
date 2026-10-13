@@ -2,7 +2,7 @@
 
 日期：2026-10-13（Asia/Shanghai）。任务编号：B3。主责：B。关联 [Issue #42](https://github.com/paher-din/XunJie/issues/42)、[P3 总协调 #37](https://github.com/paher-din/XunJie/issues/37)、[A4 #41](https://github.com/paher-din/XunJie/issues/41) 与 [C4 #43](https://github.com/paher-din/XunJie/issues/43)。
 
-状态：**独立合成核心、固定 fixture 和 Issue 评论指定的 A4/B2 接缝复核已实现并通过专项验证；已从最新 `main`（`1cd43f8`，A4 #49 / C4 #47 / DL-C #48 已合入）重放并通过，真实输入链与后置验收仍待办。** 本分支原显式堆叠于 A4 PR #49 固定 head `6a4361b9e59227b8b5410c164656dc7dd7f178d8`；#49 已合入 `main`，本批已 rebase 到 `main` 顶端（`17e61ae`）并复验。Issue #42 评论新增的 B2 可选状态读取接缝复核已纳入并留下实际命令/结果。
+状态：**独立合成核心、固定 fixture 和 Issue 评论指定的 A4/B2 接缝复核已实现并通过专项验证；已从最新 `main`（`cde69cc`，A4 #49 / C4 #47 / DL-C #48 / PR #46 等已合入）重放并通过，真实输入链与后置验收仍待办。** 本分支原显式堆叠于 A4 PR #49 固定 head；#49 已合入 `main`，本批已 rebase 到 `main` 顶端（`9aa4e83`）并复验。Issue #42 评论新增的 B2 可选状态读取接缝复核已纳入并留下实际命令/结果。
 
 ## 1. 基线、依据与边界
 
@@ -140,5 +140,25 @@ A4 PR #49（含 C4 #47、DL-C #48）已合入上游 `main`（`1cd43f8`）。本�
 | `tsc --noEmit` | 通过；A4 `80a2721` 对 `server/tutoring/application.ts` 等接缝的修复未破坏 B3 类型 |
 | 完整测试套件（`npm test`） | 362 tests：348 pass / 1 fail / 13 skipped |
 | 唯一失败 `server/workspace/review.test.ts:118` | `review: real RunControl preparation failure ends check without fabricating a RunRecord`；`RunControl` 构造器要求 `process.platform === 'linux'`（`runner/control.ts:46-48`），Windows 下必然失败，属 A4 引入的 Linux 专属测试，非 B3 回归 |
+
+重放未引入新的 B3 失败；真实输入链、真实模型、人工语义与浏览器/真人验收保持 §6.4 的待办口径。
+
+### 6.6 上游再次推进后的重放（2026-10-13）
+
+上游 `main` 在首次重放后继续推进到 `cde69cc`（含 PR #46「B/P2 模型语义验证」与 W4「仓库入口与规则重写」等 26 个提交）。本分支再次 rebase 到该 `main` 顶端，提交重放为 `89e0f91`（feat）与 `9aa4e83`（docs）。重放结果（Node 24.21.0、仓库锁定依赖、供应商网络调用 0）：
+
+| 命令/检查 | 实际结果 |
+| --- | --- |
+| `git rebase main` | 成功；冲突为 `README.md` 与 `server/tutoring/core.ts` 两处 |
+| `README.md` 冲突 | main 已由 W4 重构（删除「文档」表格与「文档验证」章节，改为「任务与交接入口」），B3 原两处 README 改动针对已删除旧结构，故采用 main 版本（`git checkout --ours`），B3 任务文档入口经 G3 与「全部任务记录」可达 |
+| `server/tutoring/core.ts` 冲突 | 两处均为「main 与 B3 在同一位置各自新增函数」：`trustedReferencePolicy` 与 `generateLearnerAnalysis`，以及 `containsCompleteReferenceId` 等与 `validAnalysisEnvelope`/`validateLearnerAnalysisBody`/`suppliedReferenceIds` 等，均双向保留并补全闭括号 |
+| `tsc --noEmit` | 通过；main 新增的 P2 语义校验函数与 B3 候选校验函数共存，无类型漂移 |
+| B3 专项 `node --test server/tutoring/test/learner-analysis.test.ts` | 17/17 通过 |
+| 完整测试套件（`npm test`） | 372 pass / 2 fail / 16 skipped |
+
+两项失败均为环境相关、非 B3 回归：
+
+- `server/workspace/review.test.ts:118`（Linux 专属 `RunControl`）：`process.platform === 'linux'` 强制，Windows 下必然失败。
+- `server/tutoring/test/index.test.ts:503`「cancellation interrupts a provider that ignores AbortSignal」：完整套件高负载下的时序 flaky（断言 80ms 内取消），单独运行该文件 47/47 通过，非 B3 回归。
 
 重放未引入新的 B3 失败；真实输入链、真实模型、人工语义与浏览器/真人验收保持 §6.4 的待办口径。
