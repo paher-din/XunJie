@@ -311,6 +311,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 
 2026-10-13，A4 PR #49 本轮修复专项51/51、typecheck/build通过；默认全量315项为304通过/2失败/9跳过，SDK单独11/11，串行同全集305通过/1个既有Windows/Linux环境失败/9跳过，历史失败完整保留。实现、两轴0项、原日志勘误与审计归因待裁决见[A4修复最终记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#13-pr-49-修复最终结果2026-10-13)；C4联合范围授权、实际合并后复确认与B消费验收继续单列。
 
+2026-10-13，C4 已先行合入 main，负责人批准的 A4 合成库精确33表守卫及公共工厂断言已实施；更新主线后的 A4/C4/C3 组合81项为80通过、0失败、1环境跳过，typecheck/build通过。旧31表证据保留，实际远程合并结果及两轴审查见 [顺序集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)；B消费、审计归因裁决及正式产品后置项仍分别跟踪。
+
 ### C4 固定提交、学生修订与闭环恢复
 
 2026-10-12，C4 已在分支 `codex/c4-submissions-recovery` 交付 [#43](https://github.com/paher-din/XunJie/issues/43) 的服务端实现：学生固定提交、教师复核阶段推进、重开许可与学生本人主动 `resume_revision`、以及闭环恢复读取。契约、领域计划、存储、命令与只读投影全部落在 C 属的 [contracts/workspace](apps/teaching/contracts/workspace/) 与 [server/workspace](apps/teaching/server/workspace/)，A 属与 B 属文件零改动。新增的 `workspace_submissions` 与 `workspace_reopen_grants` 两张表写进 C 属 `workspaceSchema` 字符串，延续 C2/C3 已批准的做法，只新建临时合成库，不迁移既有库，也不做真实数据库建表或备份操作。交 A5 的接缝是 `transitionAttemptInTransaction`、`planReopenGrant`/`writeReopenGrant` 与恢复读取中的反馈接缝；C4 不为教师复核与重开发放发布替代产品路由，正式反馈仍归 A5。
