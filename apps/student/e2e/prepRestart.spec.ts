@@ -22,36 +22,54 @@ const STUDENT_ROOT = fileURLToPath(new URL('..', import.meta.url))
 interface PrepServer { readonly epoch: string; stop(): Promise<void> }
 
 /** 直接跑 vite 而不是 `npm run`：只留一个可杀进程，避免 npm 包装进程被杀后 vite 变成孤儿。 */
-function startPrepServer(): Promise<PrepServer> {
+function startPrepServer(servers: PrepServer[], readyTimeoutMs = 60_000): Promise<PrepServer> {
   const child: ChildProcess = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--mode', 'prep',
     '--port', RESTART_PORT, '--strictPort'], { cwd: STUDENT_ROOT, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] })
-  let log = ''
+  let log = '', epoch = '', stopping: Promise<void> | null = null
   child.stdout?.on('data', chunk => { log += String(chunk) })
   child.stderr?.on('data', chunk => { log += String(chunk) })
+  const server: PrepServer = {
+    get epoch() { return epoch },
+    stop: () => stopping ??= new Promise<void>(done => {
+      if (!child.pid || child.exitCode !== null || child.signalCode !== null) { done(); return }
+      const killTimer = setTimeout(() => child.kill('SIGKILL'), 10_000)
+      killTimer.unref()
+      child.once('exit', () => { clearTimeout(killTimer); done() })
+      child.kill('SIGTERM')
+    }),
+  }
+  // spawn 后立即登记：就绪失败或断言中断也必须回收这个进程。
+  servers.push(server)
   return new Promise<PrepServer>((resolve, reject) => {
-    const timer = setInterval(async () => {
+    let settled = false
+    let pollTimer: ReturnType<typeof setTimeout> | undefined
+    const cleanup = () => {
+      clearTimeout(pollTimer); clearTimeout(deadline)
+      child.off('exit', onExit); child.off('error', onError)
+    }
+    const fail = async (message: string) => {
+      if (settled) return
+      settled = true; cleanup()
+      await server.stop()
+      reject(new Error(`${message}\n${log.slice(-2000)}`))
+    }
+    const onExit = (code: number | null) => { void fail(`dev:prep 在 ${RESTART_PORT} 上退出（code=${code}）。端口可能被占用。`) }
+    const onError = (error: Error) => { void fail(`dev:prep 启动失败：${error.message}`) }
+    const deadline = setTimeout(() => { void fail(`dev:prep ${readyTimeoutMs}ms 内没在 ${RESTART_PORT} 就绪。`) }, readyTimeoutMs)
+    child.once('exit', onExit); child.once('error', onError)
+    const poll = async () => {
       try {
-        const response = await fetch(`${RESTART_URL}/__i0prep/context`)
-        if (!response.ok) return
-        clearInterval(timer)
-        const epoch = ((await response.json()) as { data: { preparationEpoch: string } }).data.preparationEpoch
-        resolve({
-          epoch,
-          stop: () => new Promise<void>(done => {
-            if (child.exitCode !== null || child.signalCode !== null) { done(); return }
-            child.once('exit', () => done())
-            child.kill('SIGTERM')
-            // Vite 偶发不把 SIGTERM 转成退出；超时后强杀，避免占住 strictPort 让后续用例全红。
-            setTimeout(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL') }, 10_000).unref()
-          }),
-        })
+        const response = await fetch(`${RESTART_URL}/__i0prep/context`, { signal: AbortSignal.timeout(2000) })
+        if (response.ok) {
+          const data = ((await response.json()) as { data: { preparationEpoch: string } }).data
+          if (settled) return
+          epoch = data.preparationEpoch
+          settled = true; cleanup(); resolve(server); return
+        }
       } catch { /* 端口还没起来，继续轮询 */ }
-    }, 250)
-    child.once('exit', code => {
-      clearInterval(timer)
-      reject(new Error(`dev:prep 在 ${RESTART_PORT} 上退出（code=${code}）。端口可能被占用。\n${log.slice(-2000)}`))
-    })
-    setTimeout(() => { clearInterval(timer); reject(new Error(`dev:prep 60s 内没在 ${RESTART_PORT} 就绪。\n${log.slice(-2000)}`)) }, 60_000).unref()
+      if (!settled) pollTimer = setTimeout(() => { void poll() }, 250)
+    }
+    pollTimer = setTimeout(() => { void poll() }, 250)
   })
 }
 
@@ -103,10 +121,21 @@ function readReference(page: Page, context: PrepContextView) {
   }, commandContextOf(context))
 }
 
+test('启动超时回收子进程，随后可以在同一 strictPort 启动', async () => {
+  const servers: PrepServer[] = []
+  try {
+    await expect(startPrepServer(servers, 1)).rejects.toThrow('就绪')
+    expect(servers).toHaveLength(1)
+    expect((await startPrepServer(servers)).epoch).toBeTruthy()
+  } finally {
+    await Promise.all(servers.map(server => server.stop()))
+  }
+})
+
 test('准备进程重启后旧确认缓存不装成新 head，草稿保留且原命令不自动迁代际', async ({ page }) => {
   const scenario = `restart-${crypto.randomUUID()}`
   const servers: PrepServer[] = []
-  const start = async (): Promise<PrepServer> => { const server = await startPrepServer(); servers.push(server); return server }
+  const start = () => startPrepServer(servers)
   try {
     const first = await start()
     await page.goto(`${RESTART_URL}/?scenario=${scenario}${PREP_TASK_PATH}`)
@@ -162,14 +191,103 @@ test('准备进程重启后旧确认缓存不装成新 head，草稿保留且原
     expect(commandAfter.context.preparationEpoch).toBe(contextBefore.preparationEpoch)
     expect(commandAfter.context.trustedRecoveryGeneration).toBe(contextBefore.recoveryGeneration)
     // 换 epoch 后旧 Attempt 引用不再可用：必须重读，不能拿旧 attemptId 继续发命令。
-    expect(await readReference(page, contextAfter)).toEqual({ attemptId: null, changed: true })
-    expect(await readReference(page, contextBefore)).toEqual({ attemptId: contextBefore.refs.attemptId, changed: false })
+    expect(await readReference(page, contextAfter)).toEqual({ attemptId: null, changed: false })
+    expect(await readReference(page, contextBefore)).toEqual({ attemptId: null, changed: true })
 
     // 本机草稿保留：换 epoch 不清空学生没确认的正文，旧 attempt 的草稿仍可按旧上下文读回。
     const draftsAfter = (await readLocalWith(page, contextBefore)).drafts.map(d => d.text)
     expect(draftsAfter.some(text => text.includes('pending across restart'))).toBe(true)
+
+    // 受信重读后可以继续学习：学生主动创建新 Attempt 并保存，不被旧引用永久锁住。
+    await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
+    await expect(page.locator('.cw')).toBeVisible()
+    await create(page, 'main.c')
+    await edit(page, 'new epoch work\n')
+    await confirmSave(page, 1)
+    const current = await readContext(page)
+    const newLocal = await readLocalWith(page, current)
+    expect(newLocal.workspace?.files[0]?.text).toBe('new epoch work\n')
+    expect(await readReference(page, current)).toEqual({ attemptId: current.refs.attemptId, changed: false })
+    const retained = await readLocalWith(page, contextBefore)
+    expect(retained.commands.find(c => c.commandKey === commandBefore.commandKey)).toEqual(commandAfter)
+    expect(retained.drafts.map(d => d.text)).toEqual(draftsAfter)
+
+    // 旧标签迟到 GET 也不能把旧引用重新装回来（直接用旧已确认头尝试安装）。
+    const lateRead = await page.evaluate(async ({ ctx, workspace }) => {
+      const { confirmationRepository } = await import('/src/workspace/confirmationDb.ts' as string)
+      try { await confirmationRepository.installHead(ctx, workspace!, () => true); return 'accepted' }
+      catch (error) { return String(error) }
+    }, { ctx: commandContextOf(contextBefore), workspace: localBefore.workspace })
+    expect(lateRead).toContain('代际')
+    expect(await readReference(page, current)).toEqual({ attemptId: current.refs.attemptId, changed: false })
+
   } finally {
     // 断言失败也要回收：端口被占会让后续整轮 e2e 起不来。
+    await Promise.all(servers.map(server => server.stop()))
+  }
+})
+
+test('双标签逆序接纳 epoch：迟到旧初始化不能退役已接纳的新引用', async ({ page, context }) => {
+  const servers: PrepServer[] = [], scenario = `epoch-cas-${crypto.randomUUID()}`
+  try {
+    // 此反例需要旧文档存活：隔断 Vite HMR 的自动整页重载，不拦截业务 HTTP。
+    await page.routeWebSocket('**', () => {})
+    const first = await startPrepServer(servers)
+    await page.goto(`${RESTART_URL}/?scenario=${scenario}${PREP_TASK_PATH}`)
+    await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
+    await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
+    await expect(page.locator('.cw')).toBeVisible()
+    await first.stop()
+    const second = await startPrepServer(servers)
+    const delayedContext = commandContextOf(await readContext(page))
+    expect(delayedContext.attemptId).toBeNull()
+    const delayed = page.evaluate(async ctx => {
+      const { confirmationRepository } = await import('/src/workspace/confirmationDb.ts' as string)
+      const testWindow = window as unknown as { epochReadHeld: boolean; releaseEpochRead: () => void }
+      try {
+        await confirmationRepository.acceptPreparationEpoch(ctx, () => true, async () => {
+          // g2 读取已成功但后续延迟；本机有效 guard 不能感知另一标签已接纳 g3。
+          testWindow.epochReadHeld = true
+          await new Promise<void>(resolve => { testWindow.releaseEpochRead = resolve })
+          return true
+        })
+        return 'accepted'
+      } catch (error) { return String(error) }
+    }, delayedContext)
+    await expect.poll(() => page.evaluate(() => (window as unknown as { epochReadHeld: boolean }).epochReadHeld)).toBe(true)
+    await second.stop()
+    await startPrepServer(servers)
+    const newer = await context.newPage()
+    await newer.goto(`${RESTART_URL}/?scenario=${scenario}${PREP_TASK_PATH}`)
+    await expect(newer.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
+    await newer.getByRole('button', { name: '开始 Attempt', exact: true }).click()
+    await expect(newer.locator('.cw')).toBeVisible()
+    const current = await readContext(newer)
+    await page.evaluate(() => (window as unknown as { releaseEpochRead: () => void }).releaseEpochRead())
+    expect(await delayed).toContain('另一标签已更新受信引用')
+
+    // g2 从未入库，不能仅靠 retired 集合排除它；当前 bootstrap 重读同样必须挡住。
+    const stale = await page.evaluate(async ctx => {
+      const { confirmationRepository } = await import('/src/workspace/confirmationDb.ts' as string)
+      const { apiGet } = await import('/src/workspace/http.ts' as string)
+      try {
+        await confirmationRepository.acceptPreparationEpoch(ctx, () => true, async () => {
+          const latest = await apiGet('', {
+            mode: 'preparation', absolutePath: '/__i0prep/context', scenarioId: ctx.scenarioId,
+          })
+          return latest.preparationEpoch === ctx.preparationEpoch && latest.recoveryGeneration === ctx.trustedRecoveryGeneration
+        })
+        return 'accepted'
+      } catch (error) { return String(error) }
+    }, delayedContext)
+    expect(stale).toContain('准备工作区已变化')
+    expect(await readReference(newer, current)).toEqual({ attemptId: current.refs.attemptId, changed: false })
+    await create(newer, 'main.c')
+    await edit(newer, 'current epoch remains writable\n')
+    await confirmSave(newer, 1)
+    expect((await readLocalWith(newer, current)).workspace?.files[0]?.text).toBe('current epoch remains writable\n')
+    await newer.close()
+  } finally {
     await Promise.all(servers.map(server => server.stop()))
   }
 })

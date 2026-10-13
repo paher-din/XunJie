@@ -8,7 +8,8 @@ import { buildWorkspaceComparison, type WorkspaceComparison } from './comparison
 import { blocksNewSave, classifyWriteFailure, codeOfOutcome, diagnosticText, reconcileStoredCommand, studentHint,
   summarizeOriginalRequest, type CommandOutcome } from './recovery'
 import { describeError, reportDiagnostic } from './diagnostics'
-import type { SessionView } from './contracts'
+import type { PrepContextView, SessionView } from './contracts'
+import { prepContextUrl } from './mode'
 import type { AttemptView, ConfirmedWorkspace, Receipt, SnapshotResult, SnapshotView, WorkspaceHead } from './workspaceContracts'
 
 export type ConfirmationPhase =
@@ -186,6 +187,16 @@ export class ConfirmationWorkspace {
           attemptId: this.context.attemptId, recoveryGeneration: this.context.trustedRecoveryGeneration,
           preparationEpoch: this.context.preparationEpoch })
         this.publish({ error: '工作区已重新加载，草稿保留；请重新读取后再保存。' })
+        if (this.context.mode === 'preparation' && !this.context.attemptId) {
+          const c = this.context
+          await confirmationRepository.acceptPreparationEpoch(c, () => this.valid(guard), async () => {
+            const latest = await apiGet<PrepContextView>('', { ...this.opts(), absolutePath: prepContextUrl(c.mode)! })
+            return this.valid(guard) && latest.preparationEpoch === c.preparationEpoch &&
+              latest.recoveryGeneration === c.trustedRecoveryGeneration && latest.syntheticAccount.userId === c.userId &&
+              latest.refs.assignmentId === c.assignmentId && latest.refs.activityVersionId === c.activityVersionId
+          })
+          if (!this.valid(guard)) return
+        }
       }
       if (!this.context.attemptId && reference.attemptId) { this.bindAttempt(reference.attemptId); guard = this.guard }
       if (this.context.attemptId) await this.readHead()

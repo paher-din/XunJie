@@ -70,7 +70,6 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [B0 合成工程样例](docs/tasks/B0_TEACHING_EXAMPLES.md) | E1～E10 的具体输入/时序、确定性与人工判据，补教师/候选实例；业务验收未执行 |
 | [B1 Agent 核心](docs/tasks/B1_AGENT_CORE.md) | 教师生成、无历史学生辅导、合成 provider、实际 AI SDK/DeepSeek 适配与离线 transport 验证记录 |
 | [B2 学生辅导与控制权](docs/tasks/B2_STUDENT_HELP.md) | 显式 help 接纳、真实 ObjectRef/上下文、动态预算与当前性守卫、B1 执行，以及 C3 Message/Action/Delivery/Receipt 服务端合成联调；实际 UI/真人仍未验收 |
-
 | [学生前端导入与 C 场景入口](docs/tasks/I0_UI_01_IMPORT_C_ENTRY.md) | 设计仓库固定提交导入 `apps/student/`、准备模式 fixture、窄读取客户端与最小浏览器检查；I0 学生纵向切片的第一张任务 |
 | [学生确认保存与不可变快照](docs/tasks/I0_UI_03_CONFIRM_SNAPSHOT.md) | 学生主动创建 Attempt、原命令持久化与重放、原子确认和快照回取；准备范围验证及真实服务交接限制 |
 | [断线与原保存请求恢复](docs/tasks/I0_UI_04_RECOVERY_CONFLICTS.md) | 断线继续编辑、刷新保留草稿、重连只核或重放原保存命令；未知/拒绝/版本冲突/旧代际的分流与准备范围验证 |

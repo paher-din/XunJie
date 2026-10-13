@@ -47,7 +47,7 @@ export const sameGeneration = (a: CommandContext, b: CommandContext) => sameAuth
 interface HeadRecord { key: string; context: CommandContext; workspace: ConfirmedWorkspace; retiredGenerations?: string[] }
 // 代际是不可排序的 opaque 值；记录已被权威重读替代的代际，防止旧标签 GET 再安装它。
 const generationKey = (c: CommandContext) => JSON.stringify([c.trustedRecoveryGeneration, c.preparationEpoch, c.scenarioId ?? null])
-interface RefRecord { key: string; context: CommandContext; attemptId: string; retiredGenerations?: string[] }
+interface RefRecord { key: string; context: CommandContext; attemptId: string | null; retiredGenerations?: string[] }
 /**
  * 确认文件由哪个本机实例承载：先按已落库的 fileId 映射；丢 ACK 后刷新时映射还没写，
  * 就用同一路径、尚未被占用的活动实例继续承载这份正文（只影响可打开性，**不建立映射**）。
@@ -164,6 +164,30 @@ export const confirmationRepository = {
         const ref = value as RefRecord | undefined
         const changed = !!ref && (ref.context.trustedRecoveryGeneration !== c.trustedRecoveryGeneration || ref.context.preparationEpoch !== c.preparationEpoch)
         result({ attemptId: changed ? null : ref?.attemptId ?? null, changed })
+      }))
+  },
+  /** 仅在准备初始化受信重读后接受新进程；保留旧作品和命令，围住迟到旧 ACK/GET。 */
+  async acceptPreparationEpoch(c: CommandContext, valid: () => boolean, currentAuthority: () => Promise<boolean>): Promise<void> {
+    if (!PREP_BUILD || c.mode !== 'preparation' || !c.preparationEpoch || !c.trustedRecoveryGeneration || c.attemptId) {
+      throw new Error('只有受信准备初始化可以切换空 Attempt 引用')
+    }
+    const db = await openWorkspaceDb()
+    const observed = await transaction<RefRecord | undefined>(db, ['metadata'], 'readonly', (tx, result, safe) =>
+      reads(tx, [['metadata', referenceKey(c)]], safe, ([value]) => result(value as RefRecord | undefined)))
+    // 代际不可排序：本页的旧初始化不能退休另一标签更晚接纳的权威代际。
+    if (!valid() || !await currentAuthority()) throw new Error('准备工作区已变化，请重新读取')
+    await transaction<void>(db, ['metadata'], 'readwrite', (tx, result, safe) =>
+      reads(tx, [['metadata', referenceKey(c)]], safe, ([value]) => {
+        if (!valid()) throw new Error('工作区上下文已失效')
+        const ref = value as RefRecord | undefined
+        if (JSON.stringify(ref) !== JSON.stringify(observed)) throw new Error('另一标签已更新受信引用，需要重新读取')
+        if (!ref || sameAuthority(ref.context, c)) { result(undefined); return }
+        const retired = ref.retiredGenerations ?? []
+        if (retired.includes(generationKey(c))) throw new Error('此代际已被权威重读替代，需要重新读取')
+        if (ref.context.preparationEpoch === c.preparationEpoch) throw new Error('恢复代际变化需要重读原 Attempt')
+        tx.objectStore('metadata').put({ key: referenceKey(c), context: c, attemptId: null,
+          retiredGenerations: [...new Set([...retired, generationKey(ref.context)])] } satisfies RefRecord)
+        result(undefined)
       }))
   },
   async isCurrentAuthority(c: CommandContext): Promise<boolean> {
