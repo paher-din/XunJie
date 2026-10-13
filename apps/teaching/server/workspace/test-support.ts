@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { createWorkspaceDatabase, createTeachingDatabase, createTeacherDesignDatabase, openSyntheticDatabase } from '../db/transaction.ts';
+import { createWorkspaceDatabase, createTeachingDatabase, createTeacherDesignDatabase, createDigitalLogicDatabase, openSyntheticDatabase } from '../db/transaction.ts';
 import type { SyntheticDatabase } from '../db/transaction.ts';
 import { createPasswordRecord } from '../access/password.ts';
 import { createWorkspaceApp } from './application.ts';
@@ -14,9 +14,10 @@ export const syntheticProfile = { runtimeProfileVersion: 'runtime-v1', imageDige
   compilerImage: 'sha256:' + 'b'.repeat(64), runtimeImage: 'sha256:' + 'c'.repeat(64), approvedResultFiles: ['report.txt'] };
 // The default fixture keeps C2's approved factory/table set; only the C3 teaching suite opts into the
 // four extra teaching tables and the composed teaching app.
-export async function fixture(transport?: RunnerTransport, configuration: {teaching?: boolean; teacherAgent?: TeacherAgentOptions} = {}) {
+export async function fixture(transport?: RunnerTransport, configuration: {teaching?: boolean; teacherAgent?: TeacherAgentOptions;digitalLogic?:boolean} = {}) {
   const runtime = transport ? await readRuntime(transport) : undefined, profile = runtime?.profile ?? syntheticProfile;
-  const createDatabase = configuration.teacherAgent ? createTeacherDesignDatabase : configuration.teaching ? createTeachingDatabase : createWorkspaceDatabase;
+  if(configuration.teacherAgent&&configuration.digitalLogic)throw new Error('Separate authorized synthetic schemas required.');
+  const createDatabase = configuration.digitalLogic ? createDigitalLogicDatabase : configuration.teacherAgent ? createTeacherDesignDatabase : configuration.teaching ? createTeachingDatabase : createWorkspaceDatabase;
   let db = createDatabase(), time = Date.now(), generation = runtime?.recoveryGeneration ?? 'generation', ready = true;
   let failStatement = '';
   const password = randomBytes(32).toString('base64url'), signingSecret = randomBytes(48).toString('hex'), record = await createPasswordRecord(password);

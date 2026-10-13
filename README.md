@@ -55,6 +55,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [TECH_DESIGN](docs/product/TECH_DESIGN.md) | 后台、Agent 与 UI 对接的结构和契约 |
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
+| [DL-C 隔离 HDL 构建与持续仿真](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) | 已授权 C 侧引擎/会话/三表合成服务端与真实目标验证；HDL 14/14、C 节点 50/51、认证 SSH 10/10，DL-A/UI/整卡与完整 NFR 保留 |
 | [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 获准提前评审准备，A 域输入已交；仍待 C/B/UI 具体提案、配置/schema/运行授权 |
 | [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | C4 合并后获准精确 33 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；PR修复专项51/51、两轴未解决0；默认/串行全量失败与后置项单列 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
@@ -298,6 +299,20 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-12，P3 总协调已启动，当前只建立任务/依赖/评审与验收跟踪；数字逻辑 Demo、原服务端反馈闭环与完整 G3 均未验收。P2 的 #11/#26/#24 保持 Open，原 #22/#23/#30 继续各自范围；具体证据、放行条件、模块交接与待授权维护者汇总事项见 [G3 总协调记录](docs/tasks/G3_OVERALL_COORDINATION.md)。
 
 2026-10-12，P3 总协调 #37 与七个 A/B/C 执行 Issue #38～44 已发布并核对，任务/依赖和分层关闭条件见各正文；UI 分批接入与 DL-E2E 由总任务跟踪既定责任。原 P2/模型/UI/环境 Issue 未修改或关闭，发布不算应用验收；详细记录见 [G3 第 8 节](docs/tasks/G3_OVERALL_COORDINATION.md#8-2026-10-12-p3-总子-issue-发布)。
+
+2026-10-12，C 按个人顺序先领取 DL-C #39，已交首批 [C 侧实施提案](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md)：复用/目标环境核查、引擎与板卡配置、Build/Session/顺序恢复、三表合成存储、独立限额与验证计划。具体方案与运行/schema 操作待负责人批准，共享契约待 DL-A 汇总；未实现 HDL、未启动节点或执行数字逻辑验收，C4 尚未开始，原 C 与完整产品条件保留。
+
+2026-10-12，负责人批准 DL-C C 侧方案、三表新合成库及原 VM 维护；独立实现已交目标真实构建/会话/信号与同事务服务端，typecheck/build、HDL 14/14、C 节点 50/51（1 宿主项跳过）和认证 SSH 10/10 通过，C/workspace/records 最终 59/61（2 未启用节点项跳过）。WSL 全量仍有原认证相关失败，完整回归未通过；DL-A 共享课程/接口与实际 UI 尚未接入，#39 不关闭、C4 未开始，产品基线待授权维护者汇总；实现、验证口径、故障与交接见 [DL-C 第 11 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#11-c-侧实际实现验证与交接)。
+
+2026-10-13，DL-C 最后权限撤回/受信终止反例修正后，接口专项 9/9、typecheck/build 通过；同一源码的 C/HDL 均经原认证入口读回 ready=true，原始成功/失败日志及当前 C 三套验收记录已纳入 [DL-C 第 11.4 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#114-2026-10-13-原始证据与最终核对)。这是 C 独立工程批次，#39、DL-A/UI/完整 NFR 与 C4 状态保持上段边界，未公开发布或代写产品基线。
+
+2026-10-13，负责人指示发布，DL-C 分支已公开推送并建 [PR #48](https://github.com/paher-din/XunJie/pull/48)（base `37849f4`、head `dfb06cd`、53 文件），上段「未公开发布」按时点保留、不倒写；同段 #39 保持 Open 与不代写产品基线两点仍成立。独立审查给出 Spec 1 项 P1、Standards 1 项 P2 与 6 项 P3，负责人指示按审查修复，本轮已修 `writeImmutable` 的 `.pending-<uuid>` 无界泄漏（含 Linux 侧 2/2 实跑记录）、`pendingJobs` 的 NULL 失败安全、测试文件被当夹具导入导致的用例重复注册与专项计数漂移、指纹缺 contracts 时的裸 ENOENT，并把停止理由的接缝覆盖范围、提交后 `reconcileStops` 失败的对外表现与发布事实就地追加进任务稿；win32 全量 276 项 263 通过 1 失败 12 跳过，唯一失败是既有 `review.test.ts` 的 Linux-only 项，零新增失败。审查定的 #47 先合、#48 后合顺序未变，故 29→31 表数断言、`application.ts` 人工解冲突与组合树重测三项本轮一律未做。修复明细与验证见 [DL-C 第 12 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#12-2026-10-13-公开发布与按审查修复)。
+
+2026-10-13，审查要求优先排查的「WSL 净 +5 失败与共享 `writeImmutable` 改动相关」假设经三棵树对照实跑后**不成立**：完全不含该改动的基线 `37849f4` 自身即不稳定（`design-activities` 单跑连跑两次为 2 失败、3 失败；全量本轮 3 失败而原记录 4 失败，项数同为 275），未修改的 head 同一文件连跑两次失败在不同用例，head 与修复后两次全量的失败集合零交集，全量中失败的 `student-help`/`records-adapter` 单跑即全过，两侧错误类别相同而落点不同。原「净 +5」是两次不稳定采样相减的结果，本轮不宣称修好 #23；WSL 非确定性的根因、以及目标 guest 与认证宿主上的全量复跑均未执行，第 11.2 节的 14/14、50/51、10/10 仍是 C 的原始记录、本轮未在任何目标环境重跑。归因矩阵见 [DL-C 第 12.3 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#123-p2-2-归因wsl-失败是环境级非确定性不支持与-writeimmutable-的关联)。
+
+2026-10-13，负责人对 PR #48 审查留下的四项待决问题作出裁决：A 属 `createDigitalLogicDatabase` 合成工厂种类在已批准范围内（不延伸至生产建库、迁移或 DL-A 正式业务库整合）；接受既有 C 指纹失效，但不得保留旧指纹兼容通道、必须按当前部署版本重新验证并登记指纹与代际、历史记录保留、验证未通过不得沿用旧 readiness；批准修复合并前完成 SQL `LIKE 'hdl_%'` 与 `startsWith('hdl_')` 的语义不一致；`hdl-install.sh` 暂不纳入运行时指纹，安装版本由维护记录追踪、实际 systemd/AppArmor 由 readiness 或目标环境验收核查。据此本轮按推荐的 `substr(COALESCE(...),1,4)` 精确前缀比较同步修复 `hdl.ts` 与 `worker.ts` 两处，并补 5 行样本用例覆盖正常 kind、近似前缀、大小写与 NULL；核实中还发现旧写法因 SQLite 的 `LIKE` 对 ASCII 大小写不敏感而额外误收 `HDL_build`，已一并修掉，新用例经反证确认能抓到旧缺陷。裁决 2 的四条要求经核实已在现有代码成立、无可移除的兼容通道，但本轮改了两个 runner 源文件，故第 11.2/11.4 节记录的 sourceHash 与两个指纹值自此过期，节点须重新验证登记，本轮未在任何目标环境执行。#47 先合、#48 后合的顺序不变，31 表断言、`application.ts` 的 controls 路由合并与组合树回归仍延后；Linux 宿主完整回归保持未执行、不因本次裁决勾选。win32 全量 277 项 264 通过 1 失败 12 跳过，唯一失败仍是既有 Linux-only 项，零新增失败。本次裁决不等于批准立即合并，也不代表 DL-AC-02～07 已验收通过；#39 保持 Open，裁决原文要点、核实事实与验证记录见 [DL-C 第 13 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#13-2026-10-13-负责人四项裁决与本轮修复)。
+
+2026-10-13，按负责人要求在C4/A4实际合并后审阅DL-C，精确31表联合范围已获批准并验证；本轮Trace在途游标与VPI时间精度两项P2已红绿修复，真实Icarus合成时钟反例5/5通过，规范与需求两轴各0项。新Linux原生目录下typecheck/build通过，组合93项91通过0失败2跳过，串行完整源码360项352通过0失败0取消8跳过，Windows首轮失败/取消及历史记录保留。完整组合回归与合并结论在 [顺序集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md) 追加；目标节点新指纹登记、容器/浏览器/TLS及DL-A/B/UI后置验收仍未执行。
 
 ### A4 有效学习状态与教师纠正
 

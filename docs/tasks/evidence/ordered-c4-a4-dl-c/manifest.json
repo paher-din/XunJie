@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-13",
+  "repository": "paher-din/XunJie",
+  "base": "94ad99c6344fb230406f904cf944d534d2e2ed0f",
+  "source": "26e5b840270cbf489cb21e23d1d4ee2f3ad30998",
+  "linuxSourceArchiveSha256": "38907018e46941046dc54f9e663b1cde4aaea4e9fe489a47fb35dbd495a8f971",
+  "environment": {
+    "node": "24.21.0",
+    "linux": "WSL2 Ubuntu, native Linux filesystem, retained isolated source and native dependencies",
+    "icarus": "Ubuntu 12.0-2build2 amd64, extracted temporary package; no system installation",
+    "icarusPackageSha256": "f19394cee05ad526e0eb3873bc6c17a5828f56df17fbe2db40cb66513a2d4667",
+    "nodeArchiveSha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6"
+  },
+  "normalization": "UTF-8, CRLF to LF, trim trailing whitespace and EOF blank lines, replace personal absolute diagnostic paths and their file URI prefixes with placeholders; all test names, counts, outcomes and error messages retained. Original raw bytes are locally retained; checksums below do not substitute for reproduction.",
+  "notExecuted": [
+    "current target node validation/fingerprint registration",
+    "physical node maintenance/containers/AppArmor/TLS/browser acceptance",
+    "paid models or actual teacher/student teaching effectiveness"
+  ],
+  "files": [
+    {
+      "file": "windows-initial-full.txt",
+      "source": "316ba6b1915bb6a29455a14bbde6236656b4ba83",
+      "command": "npm test",
+      "result": "failed; 343 tests / 327 pass / 2 fail / 2 cancelled / 12 skipped",
+      "originalSha256": "05cbe969b1e71742756af00ba92ff99a9e7fab0f4e57faa9642da8d26fa1da71",
+      "originalBytes": 42265,
+      "displaySha256": "eaba7b15e6a29ae03a421eb55162a323d83e8d725ab095185c245568606012af",
+      "displayBytes": 41119
+    },
+    {
+      "file": "trace-red.txt",
+      "source": "7c114b2 plus the subsequently committed Trace fixture",
+      "command": "node --test --test-name-pattern='Trace polling' --test-reporter=tap server/workspace/hdl.test.ts",
+      "result": "failed; 1 test / 0 pass / 1 fail",
+      "originalSha256": "86c6a7f4450270d05b1c5279962ab7879152e510a24ae4e9a1c1aaf63fd86b21",
+      "originalBytes": 1138,
+      "displaySha256": "5af3074e240a89bfaecb74d3ea33c1a2d1ed5338283be844b1c1655272709ad0",
+      "displayBytes": 987
+    },
+    {
+      "file": "trace-green.txt",
+      "source": "26e5b840270cbf489cb21e23d1d4ee2f3ad30998",
+      "command": "node --test --test-name-pattern='Trace polling' --test-reporter=tap server/workspace/hdl.test.ts",
+      "result": "passed; 1 test / 1 pass",
+      "originalSha256": "88e8d4b395418be0ff37f92e623612c3851dd4ba2b6d281582c8d266f508bfc7",
+      "originalBytes": 393,
+      "displaySha256": "ada45473e12e5d5cd1d1cc00add8c09441763283205d937c105fcd6844c66f42",
+      "displayBytes": 377
+    },
+    {
+      "file": "clock-red.txt",
+      "source": "7c114b2 bridge with the subsequently committed clock fixture",
+      "command": "XUNJIE_DLC_TOOLCHAIN=<extracted approved package> node --test --test-reporter=tap runner/hdl-clock.test.ts",
+      "result": "failed; 5 tests / 1 pass / 4 fail",
+      "originalSha256": "2656a9e634e1d8dd152227c2a2f38b4dd8814eafb9d82ea8af16213dfa489264",
+      "originalBytes": 4727,
+      "displaySha256": "d7b8b4b847d816cf2e2e8125108fb37f29142fe53d0a8cfc1aee7c4881b1e0c2",
+      "displayBytes": 4267
+    },
+    {
+      "file": "clock-green.txt",
+      "source": "26e5b840270cbf489cb21e23d1d4ee2f3ad30998",
+      "command": "XUNJIE_DLC_TOOLCHAIN=<extracted approved package> node --test --test-reporter=tap runner/hdl-clock.test.ts",
+      "result": "passed; 5 tests / 5 pass",
+      "originalSha256": "2d33d217feae7ce64a3f3611edc99cf2dee67116dc4b1c79a8e1bab6a2d7a45a",
+      "originalBytes": 932,
+      "displaySha256": "2d33d217feae7ce64a3f3611edc99cf2dee67116dc4b1c79a8e1bab6a2d7a45a",
+      "displayBytes": 932
+    },
+    {
+      "file": "linux-typecheck.txt",
+      "source": "26e5b840270cbf489cb21e23d1d4ee2f3ad30998",
+      "command": "npm run typecheck",
+      "result": "passed; exit 0",
+      "originalSha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+      "originalBytes": 84,
+      "displaySha256": "1f4a5d4d333059f21cf60c8d75f14160b234067286489c846a4ab7a00e0e6b10",
+      "displayBytes": 83
+    },
+    {
+      "file": "linux-build.txt",
+      "source": "26e5b840270cbf489cb21e23d1d4ee2f3ad30998",
+      "command": "npm run build",
+      "result": "passed; exit 0",
+      "originalSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "originalBytes": 94,
+      "displaySha256": "a5db58e8e37a4ad75ff9763c8d3649c5e7065f8ff9c03e2610a75466af7e7a60",
+      "displayBytes": 93
+    },
+    {
+      "file": "linux-combined.txt",
+      "source": "26e5b840270cbf489cb21e23d1d4ee2f3ad30998",
+      "command": "node --test --test-concurrency=1 --test-reporter=tap tests/review.test.ts server/workspace/submissions.test.ts server/workspace/integration.test.ts server/workspace/hdl.test.ts runner/hdl-profile.test.ts runner/hdl.runtime.test.ts runner/hdl-clock.test.ts runner/node-files.test.ts",
+      "result": "passed; 93 tests / 91 pass / 0 fail / 0 cancelled / 2 skipped",
+      "originalSha256": "1ae905a8fb533fe4d809c22db28a48b692568e9716e6caa56b47c81bf01d6d17",
+      "originalBytes": 22830,
+      "displaySha256": "1ae905a8fb533fe4d809c22db28a48b692568e9716e6caa56b47c81bf01d6d17",
+      "displayBytes": 22830
+    },
+    {
+      "file": "linux-full-serial.txt",
+      "source": "26e5b840270cbf489cb21e23d1d4ee2f3ad30998",
+      "command": "node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
+      "result": "passed; 360 tests / 352 pass / 0 fail / 0 cancelled / 8 skipped",
+      "originalSha256": "2f7dc2a26950cb6f06f081ead7a9a5866834b45ca3409dcc552bc5c023c3e58d",
+      "originalBytes": 87785,
+      "displaySha256": "2f7dc2a26950cb6f06f081ead7a9a5866834b45ca3409dcc552bc5c023c3e58d",
+      "displayBytes": 87785
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+TAP version 13
+# Subtest: the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+    # Subtest: 1ps
+    ok 1 - 1ps
+      ---
+      duration_ms: 115.633104
+      type: 'test'
+      ...
+    # Subtest: 100fs
+    ok 2 - 100fs
+      ---
+      duration_ms: 40.170067
+      type: 'test'
+      ...
+    # Subtest: 1fs
+    ok 3 - 1fs
+      ---
+      duration_ms: 70.035357
+      type: 'test'
+      ...
+    # Subtest: fine precision advances beyond the low 32 bits of simulation ticks
+    ok 4 - fine precision advances beyond the low 32 bits of simulation ticks
+      ---
+      duration_ms: 59.007908
+      type: 'test'
+      ...
+    1..4
+ok 1 - the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+  ---
+  duration_ms: 1181.629651
+  type: 'test'
+  ...
+1..1
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1447.785806

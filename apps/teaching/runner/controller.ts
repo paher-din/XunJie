@@ -13,6 +13,7 @@ import {nodeFingerprint} from './fingerprint.ts';
 import {readJson,readEnvelope,writeImmutable,envelope} from './node-files.ts';
 import type {RunIdentity} from './control.ts';
 import type {SubmitRun,RunnerCommand} from '../contracts/runner/index.ts';
+import {HdlNode} from './hdl-node.ts';
 
 const exec=promisify(execFile);
 const configPath=process.argv[2];
@@ -33,6 +34,7 @@ const stopJob=async(name:string)=>{
 };
 const control=new RunControl(config.state,lastGeneration??config.generation,
   actor=>actor==='application'||actor==='maintenance',stopJob,actor=>actor==='maintenance');
+const hdl=config.hdl?new HdlNode(config,configPath,()=>control.currentGeneration()):undefined;
 
 async function reconcile(peer:string,id:RunIdentity) {
   return control.reconcileRun(peer,id,async()=>{
@@ -67,13 +69,19 @@ function workFor(submission:SubmitRun) {
 async function dispatch(peer:string,request:RunnerCommand) {
   if(!['application','maintenance'].includes(peer))throw new RunnerError('UNAUTHENTICATED','Authenticated service peer required');
   if(!request||typeof request!=='object'||'actor' in request||'role' in request||'peer' in request)throw new RunnerError('INVALID_REQUEST','Client identity fields are forbidden');
+  if(request.op.startsWith('hdl_')){
+    if(!hdl)throw new RunnerError('RUNTIME_NOT_READY','HDL runtime is not configured');
+    return hdl.dispatch(request as import('../contracts/runner/hdl.ts').HdlCommand,peer==='maintenance');
+  }
   if(request.op==='advanceGeneration') {
     if(peer!=='maintenance')throw new RunnerError('FORBIDDEN','Recovery is maintenance-only');
-    await control.advanceGeneration(peer,request.generation);return {generation:request.generation};
+    await hdl?.generationBarrier();
+    await control.advanceGeneration(peer,request.generation);if(hdl)hdl.paused=false;return {generation:request.generation};
   }
   if(request.op==='recover') {
     if(peer!=='maintenance')throw new RunnerError('FORBIDDEN','Recovery is maintenance-only');
     control.setDispatchPaused(true);
+    await hdl?.pause();
     try {
       const identities=control.unsettledIdentities();
       for(const id of identities) {
@@ -92,6 +100,7 @@ async function dispatch(peer:string,request:RunnerCommand) {
         try {await executor.command(['info']);available=true;break;}catch {await setTimeout(100);}
       }
       if(!available)throw new RunnerError('DEPENDENCY_UNAVAILABLE','Replacement Engine did not become ready');
+      await hdl?.afterEngineBarrier();
       for(const id of identities) {
         const path=directory(id.runId);
         const journal=join(path,'phases.jsonl');
