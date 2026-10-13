@@ -1,0 +1,33 @@
+{
+  "kind": "proposal enumeration only; no student HDL executed or judged",
+  "logic": 2048,
+  "addition": 512,
+  "subtraction": 240,
+  "defined": 2800,
+  "excluded": 1296,
+  "total": 4096,
+  "examples": [
+    {
+      "operation": "NOT",
+      "a": 1,
+      "f": 14,
+      "cout": "not scored"
+    },
+    {
+      "operation": "ADD",
+      "a": 15,
+      "b": 15,
+      "cin": 1,
+      "f": 15,
+      "cout": 1
+    },
+    {
+      "operation": "SUB",
+      "a": 1,
+      "b": 0,
+      "cin": 1,
+      "f": 0,
+      "cout": "not scored"
+    }
+  ]
+}

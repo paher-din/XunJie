@@ -1,0 +1,96 @@
+{
+  "formatVersion": 1,
+  "purpose": "Non-secret proposed execution scope; not runnable host configuration",
+  "status": "pending A substantive review and explicit C credential/client-trust authorization",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "sourceReceiver": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013",
+  "responsible": {
+    "onsiteExecutor": "C (paher-din)",
+    "proposedNewMaterialCustodian": "C (paher-din), only these newly created demo materials",
+    "identityAccessHostContractsIntegrationOwner": "A (czr112)",
+    "browserAccessAcceptanceOwner": "UI (Robert)"
+  },
+  "localOrigin": "https://127.0.0.1:3443",
+  "port": 3443,
+  "bindAddress": "127.0.0.1",
+  "access": "PAHER same-machine only; no new cross-machine route or public listener",
+  "controlledDirectory": "/opt/xunjie-runner/tests/i0-entry-20261013-01",
+  "directoryMode": "0700",
+  "fileMode": "0600",
+  "owner": "WSL Ubuntu/root (uid=0)",
+  "proposedMaterials": [
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/server.key.pem",
+      "kind": "new demo TLS private key",
+      "creation": "existing OpenSSL 3.0.13, RSA 2048, exclusive new directory; never stdout"
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/server.cert.pem",
+      "kind": "new self-signed demo server certificate",
+      "sans": [
+        "IP:127.0.0.1",
+        "DNS:localhost",
+        "IP:::1"
+      ],
+      "days": 30,
+      "use": "serverAuth; no production"
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/signing-secret.txt",
+      "kind": "new application signing secret",
+      "creation": "Node crypto.randomBytes(32).toString('base64url'), file-only"
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/initializer.json",
+      "kind": "new controlled synthetic initializer input including five demo passwords",
+      "creation": "each password randomBytes(24).toString('base64url'); original users/courses schema; no command-line secret"
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host.json",
+      "kind": "new non-secret reference configuration",
+      "creation": "only after original initializer returns the actual fresh databaseFile"
+    }
+  ],
+  "clientTrust": {
+    "proposal": "strict Node HTTPS client uses only the proposed local certificate as its per-client trust anchor",
+    "rejectUnauthorized": true,
+    "hostnameVerification": "default Node verification; not overridden",
+    "systemTrustChanged": false,
+    "browserTrustApproved": false,
+    "browserTrust": "A/UI must substantively review an exact browser trust/access path; no system CA import, ignore-certificate-errors or click-through counted as pass"
+  },
+  "existingReferences": {
+    "generationFile": "/opt/xunjie-runner/tests/i0-c-revalidation-cde69cc-20261013/handoff/current-readiness.json",
+    "originalEvidence": "/opt/xunjie-runner/tests/i0-c-revalidation-cde69cc-20261013/handoff/runtime-evidence.json",
+    "connectionFile": "/opt/xunjie-runner/tests/i0-c-revalidation-cde69cc-20261013/handoff/connection.json",
+    "staticDirectory": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/student/dist",
+    "consumerIntervalMs": 250,
+    "databaseFile": "actual path returned by original fresh-only initializer; no guessed path"
+  },
+  "sharing": {
+    "secrets": "WSL root controlled files on PAHER only; no Git/comments/logs/cross-machine copies",
+    "public": "IDs, result codes, certificate public fingerprint, origin, sanitized evidence"
+  },
+  "exclusions": [
+    "credential generation before authorization",
+    "system CA/browser trust modification before exact approval",
+    "new public/cross-machine routes",
+    "CI/.env/production credentials",
+    "node maintenance/acceptance reruns",
+    "DL-A 35-table/HDL/ALU integration",
+    "old database migration/deletion"
+  ],
+  "acceptance": [
+    "current runtime/profile/generation/original identity preflight",
+    "certificate SAN/validity/key match and strict HTTPS verified",
+    "real pages/assets and anonymous session 401",
+    "five original logins and course memberships; wrong-origin/CSRF denial",
+    "20 original normal API steps and automatic C worker",
+    "A substantive evidence/config/module review",
+    "UI exact browser path and verified page access"
+  ],
+  "knownLimits": [
+    "Strict Node HTTPS acceptance does not establish browser certificate trust or UI acceptance.",
+    "Full H-01 requires A review and UI page acceptance even after C execution succeeds."
+  ]
+}
