@@ -1,0 +1,121 @@
+{
+  "checkedAt": "2026-10-13T17:57:24.208Z",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "entries": [
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/preparation-metadata.json",
+      "publicFile": "preparation.json",
+      "originalBytes": 1943,
+      "originalSha256": "e297a554885819a7f66c6128f0bbcb601a1b1f24a6a4555332c52aba4b433aad",
+      "publicBytes": 1943,
+      "publicSha256": "e297a554885819a7f66c6128f0bbcb601a1b1f24a6a4555332c52aba4b433aad",
+      "projection": "unchanged JSON data; formatting explicit"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence/verification.json",
+      "publicFile": "verification-first.json",
+      "originalBytes": 5162,
+      "originalSha256": "eef8b076d5665b1b46fbc8e4149f1ef091d9a299d8c7b0cf1dd8a6229218f237",
+      "publicBytes": 5162,
+      "publicSha256": "eef8b076d5665b1b46fbc8e4149f1ef091d9a299d8c7b0cf1dd8a6229218f237",
+      "projection": "unchanged JSON data; formatting explicit"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-resume/verification.json",
+      "publicFile": "verification-resume.json",
+      "originalBytes": 7416,
+      "originalSha256": "27140238cc06944837c68b49a2f74de1731bf3242da0a21eb80a07a0b069a8d7",
+      "publicBytes": 7416,
+      "publicSha256": "27140238cc06944837c68b49a2f74de1731bf3242da0a21eb80a07a0b069a8d7",
+      "projection": "unchanged JSON data; formatting explicit"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-public-material/verification.json",
+      "publicFile": "verification-final.json",
+      "originalBytes": 8484,
+      "originalSha256": "ef651d54e00ff836c9df2b2e4f60688b3651e9eaea4fb18eb35c1244135e34d2",
+      "publicBytes": 8484,
+      "publicSha256": "ef651d54e00ff836c9df2b2e4f60688b3651e9eaea4fb18eb35c1244135e34d2",
+      "projection": "unchanged JSON data; formatting explicit"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/ui-handoff.json",
+      "publicFile": "ui-handoff-first.json",
+      "originalBytes": 222,
+      "originalSha256": "13f0a9d182c05a1d4173b01b3fefcd175319dc63470a51d83a160f6e62564c2b",
+      "publicBytes": 222,
+      "publicSha256": "13f0a9d182c05a1d4173b01b3fefcd175319dc63470a51d83a160f6e62564c2b",
+      "projection": "unchanged JSON data; formatting explicit"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/ui-handoff-final.json",
+      "publicFile": "ui-handoff.json",
+      "originalBytes": 2151,
+      "originalSha256": "3889a567ec8c95996a0ec50f4a3ef19c826700e266ced3cac431344915cb134c",
+      "publicBytes": 2151,
+      "publicSha256": "3889a567ec8c95996a0ec50f4a3ef19c826700e266ced3cac431344915cb134c",
+      "projection": "unchanged JSON data; formatting explicit"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence/http-public-samples.json",
+      "publicFile": "http-first.json",
+      "originalBytes": 1334453,
+      "originalSha256": "bec06f884c272e89056d4fdac5add0d88d34242a61e9205e57a4533614a78519",
+      "publicBytes": 90719,
+      "publicSha256": "3ae72e9348adc8930b12c3384608b31f9c8154ab9b4605e44c0dc0603994bb50",
+      "projection": "omit generated asset rawBody; retain exact response bytes/hash and JSON protocol records"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-resume/http-public-samples.json",
+      "publicFile": "http-resume.json",
+      "originalBytes": 768982,
+      "originalSha256": "50e9a29adfabb4372fa8aa089a9d87ff84980f52acab98b726e1630c247e3993",
+      "publicBytes": 768982,
+      "publicSha256": "50e9a29adfabb4372fa8aa089a9d87ff84980f52acab98b726e1630c247e3993",
+      "projection": "omit generated asset rawBody; retain exact response bytes/hash and JSON protocol records"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-public-material/http-public-samples.json",
+      "publicFile": "http-final.json",
+      "originalBytes": 740025,
+      "originalSha256": "2469d850deaf5345bfd4127d619d4f4d1b133bb2f1786fd072588358434e5cc0",
+      "publicBytes": 740025,
+      "publicSha256": "2469d850deaf5345bfd4127d619d4f4d1b133bb2f1786fd072588358434e5cc0",
+      "projection": "omit generated asset rawBody; retain exact response bytes/hash and JSON protocol records"
+    }
+  ],
+  "logs": [
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence/server-log.ndjson",
+      "bytes": 115,
+      "sha256": "ed2158b1be2ee47c1ac5b720087e0584dedecdbc9cd622fc897026e60a3c0079",
+      "output": "{\"level\":30,\"time\":1791911518269,\"pid\":6375,\"hostname\":\"Paher\",\"msg\":\"Server listening at https://127.0.0.1:3443\"}\n"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-resume/server-log.ndjson",
+      "bytes": 115,
+      "sha256": "81dd7b78811382b4e45509237c3fd9f4c153d4333b19fe9badf67f06bb767b57",
+      "output": "{\"level\":30,\"time\":1791912990043,\"pid\":6704,\"hostname\":\"Paher\",\"msg\":\"Server listening at https://127.0.0.1:3443\"}\n"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-public-material/server-log.ndjson",
+      "bytes": 115,
+      "sha256": "c55eec82a7d1230d1d1a2ed753c0bc2ff8b0725b492904e58f25e97a795e4f3b",
+      "output": "{\"level\":30,\"time\":1791913624897,\"pid\":6912,\"hostname\":\"Paher\",\"msg\":\"Server listening at https://127.0.0.1:3443\"}\n"
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/ui-handoff-server-log.ndjson",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output": ""
+    },
+    {
+      "sourceReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/ui-handoff-final-server-log.ndjson",
+      "bytes": 115,
+      "sha256": "4027c995bdb5f6e3caf3270c9e5518c1142a3e3962aff8471303852a0d9f5d08",
+      "output": "{\"level\":30,\"time\":1791914043883,\"pid\":7132,\"hostname\":\"Paher\",\"msg\":\"Server listening at https://127.0.0.1:3443\"}\n"
+    }
+  ],
+  "secretValueScan": "no actual generated password/signing/private-key values present",
+  "scope": "synthetic actual HTTPS evidence; auth/cookie/CSRF and private material never published; assets omitted explicitly; failed runs retained"
+}

@@ -1,0 +1,300 @@
+{
+  "startedAt": "2026-10-13T17:47:01.482Z",
+  "finishedAt": "2026-10-13T17:47:34.398Z",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "origin": "https://127.0.0.1:3443",
+  "databaseFile": "/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite",
+  "node": "v24.21.0",
+  "cases": [
+    {
+      "id": 1,
+      "title": "Strict HTTPS pages/assets, anonymous401 and five real sessions",
+      "status": "passed",
+      "elapsedMs": 2969
+    },
+    {
+      "id": 2,
+      "title": "Normal teacher creates public and private resource versions",
+      "status": "passed",
+      "elapsedMs": 77
+    },
+    {
+      "id": 3,
+      "title": "Normal manual blueprint uses own policy and immutable resource refs",
+      "status": "passed",
+      "elapsedMs": 38
+    },
+    {
+      "id": 4,
+      "title": "Normal teacher check consumes current authenticated runtime",
+      "status": "passed",
+      "elapsedMs": 1537
+    },
+    {
+      "id": 5,
+      "title": "Teacher confirms a fixed activity and role previews are scoped",
+      "status": "passed",
+      "elapsedMs": 594
+    },
+    {
+      "id": 6,
+      "title": "Normal teacher assigns only the intended synthetic student",
+      "status": "passed",
+      "elapsedMs": 36
+    },
+    {
+      "id": 7,
+      "title": "Read-only bootstrap, anonymous/cross-student/course refusals",
+      "status": "passed",
+      "elapsedMs": 31
+    },
+    {
+      "id": 8,
+      "title": "Explicit student attempt creation starts with confirmed empty workspace",
+      "status": "passed",
+      "elapsedMs": 43
+    },
+    {
+      "id": 9,
+      "title": "Sync ACK, original-key replay/conflict and stale workspace refusal",
+      "status": "passed",
+      "elapsedMs": 82
+    },
+    {
+      "id": 10,
+      "title": "Authoritative attempt/workspace/decision versions are reread after ACK",
+      "status": "passed",
+      "elapsedMs": 22
+    },
+    {
+      "id": 11,
+      "title": "Explicit frozen snapshot binds confirmed files and manifest hash",
+      "status": "passed",
+      "elapsedMs": 78
+    },
+    {
+      "id": 12,
+      "title": "Original main consumer runs real C1 job without manual processJob",
+      "status": "passed",
+      "elapsedMs": 5738
+    },
+    {
+      "id": 13,
+      "title": "A new acknowledged draft never changes the old run/snapshot",
+      "status": "passed",
+      "elapsedMs": 110
+    },
+    {
+      "id": 14,
+      "title": "Original run key/body replays the same receipt/job/run after head changes",
+      "status": "passed",
+      "elapsedMs": 25
+    },
+    {
+      "id": 15,
+      "title": "Trusted course check fails incomplete TextScope and redacts private artifacts",
+      "status": "passed",
+      "elapsedMs": 8980
+    },
+    {
+      "id": 16,
+      "title": "Real report result file has original run/snapshot, bytes/hash and complete status",
+      "status": "passed",
+      "elapsedMs": 5477
+    },
+    {
+      "id": 17,
+      "title": "Explicit cancel preserves original identity and waits for confirmed terminal state",
+      "status": "passed",
+      "elapsedMs": 2343
+    },
+    {
+      "id": 18,
+      "title": "Teacher pause permits existing saves/snapshot but rejects create/recycle/restore/run",
+      "status": "passed",
+      "elapsedMs": 950
+    },
+    {
+      "id": 19,
+      "title": "Old generation is rejected and recovery GET has no execution side effects",
+      "status": "passed",
+      "elapsedMs": 79
+    },
+    {
+      "id": 20,
+      "title": "Origin/CSRF/ownership/private/static refusals and explicit unexecuted fault gaps",
+      "status": "passed",
+      "elapsedMs": 54
+    }
+  ],
+  "references": {
+    "origin": "https://127.0.0.1:3443",
+    "generation": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "serverPid": 6912,
+    "accounts": [
+      {
+        "userId": "synthetic-i0-teacher-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "teacher"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-peer",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-teacher-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "teacher"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "student"
+          }
+        ]
+      }
+    ],
+    "publicResourceId": "e7155401-f51b-4782-afc2-e71f29dfedbf",
+    "privateResourceId": "ef694d84-2b3f-4555-9497-f8509888c39a",
+    "blueprintId": "9ee37e5f-38a6-496a-969a-19e11ab14bb3",
+    "blueprintRevision": 1,
+    "activityVersionId": "ef2137d8-641d-480f-b1c1-9c60d3c5975a",
+    "activityControlRevision": 1,
+    "assignmentId": "9906a7af-a43e-44da-a395-db8491c4cbbf",
+    "attemptId": "e284d4ab-29b3-49fb-ac3e-5d2b35e2fb17",
+    "afterSync": {
+      "attemptId": "e284d4ab-29b3-49fb-ac3e-5d2b35e2fb17",
+      "courseId": "synthetic-i0-course-a",
+      "studentId": "synthetic-i0-student-a",
+      "assignmentId": "9906a7af-a43e-44da-a395-db8491c4cbbf",
+      "activityVersionId": "ef2137d8-641d-480f-b1c1-9c60d3c5975a",
+      "status": "active",
+      "attemptRevision": 2,
+      "workspaceRevision": 1,
+      "decisionEpoch": 0,
+      "captureRevision": 0,
+      "collecting": true,
+      "reminders": false
+    },
+    "oldSnapshotId": "4cc9b295-2aaf-418a-9125-c6636d0b375a",
+    "originalRunId": "867304ef-d760-4188-90b6-ba630eb24a2b",
+    "originalJobId": "cba4053d-c65c-4afc-a43a-66cdecf26fec",
+    "jobTransitions": [
+      {
+        "jobId": "cba4053d-c65c-4afc-a43a-66cdecf26fec",
+        "seen": [
+          "queued",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "succeeded"
+        ],
+        "terminal": "succeeded"
+      },
+      {
+        "jobId": "5f26d931-26fd-4147-9554-d49d19000eb8",
+        "seen": [
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "succeeded"
+        ],
+        "terminal": "succeeded"
+      },
+      {
+        "jobId": "8124101e-c55a-4463-8021-b27eaf39ac5e",
+        "seen": [
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "succeeded"
+        ],
+        "terminal": "succeeded"
+      },
+      {
+        "jobId": "b24e49e6-ca8f-46c8-914b-78cfbee78efe",
+        "seen": [
+          "cancelling",
+          "cancelled"
+        ],
+        "terminal": "cancelled"
+      }
+    ],
+    "checkRunId": "9b79a7ff-c719-4607-af51-7687d22c0395",
+    "reportRunId": "71750fdd-c5f3-4712-9955-ee9a08342e1b",
+    "cancelRunId": "4c2857c7-1075-4d9a-9787-6ea6f3063622",
+    "pausedAssignment": {
+      "assignmentId": "9906a7af-a43e-44da-a395-db8491c4cbbf",
+      "activityVersionId": "ef2137d8-641d-480f-b1c1-9c60d3c5975a",
+      "studentId": "synthetic-i0-student-a",
+      "assignmentRevision": 2,
+      "active": false,
+      "status": "paused",
+      "reasons": {
+        "individual": "Synthetic handoff pause",
+        "activity": ""
+      },
+      "activityControlRevision": 1
+    },
+    "unexecuted": [
+      "real transport disconnect/outcome_unknown injection",
+      "browser certificate trust and UI workflow",
+      "system CA changes",
+      "node maintenance",
+      "HDL/ALU and model",
+      "full NFR/human/teaching acceptance"
+    ]
+  },
+  "requestCount": 174,
+  "tlsVerifiedResponses": 174,
+  "serverPid": 6912,
+  "serverExitCode": 0,
+  "shutdownObserved": true,
+  "passed": 20,
+  "failed": 0,
+  "previousPassed": [],
+  "distinctPassingCaseCoverage": 20,
+  "remainingCasesUnexecuted": [],
+  "scope": "Authorized synthetic real HTTPS/main/original automatic worker; no fixture transport or manual processJob; browser acceptance separate"
+}

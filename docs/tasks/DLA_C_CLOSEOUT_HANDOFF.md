@@ -379,4 +379,77 @@ GitHub API独立回读作者/URL及去除末尾空白后的正文逐字一致，
 
 本次只提交已完成的准备/历史节点证据与回交记录，不批准凭据/CA/网络操作或新的业务执行，不把文档发布标为C-ENTRY/H-01完成。提交及普通推送到codex/c-entry-preparation-handoff获本次授权，Draft PR供A按实际文件实审；不自动合并。准确提交、远端分支与文件一致性由本会话Git/GitHub回读交付，亦可从公开分支/PR核实，不为在文档记录自身提交SHA反复改写。
 
-发布前实际验证：独立工作树以远端cde69cc起步，16文件复制前后SHA-256一致，原I0-C五文件原样；隔离文档检查65份/947内链/errors=[]。16文件的EOF/尾随空白/凭据形状检查通过，14JSON解析通过，17份内嵌原日志的UTF-8字节/声明长度/hash自洽；仅命中非秘密passwordSource/方案描述，没有生成或发布秘密值。原G3内容摘要另存于本次交付快照，用于结束时确认未动；源码和受保护基线未改。验证范围为发布材料，既有节点/构建/业务结果仍按各自真实成功/失败/未执行范围保留。
+发布前实际验证：独立工作树以远端cde69cc起步，16文件复制前后SHA-256一致，原I0-C五文件原样；隔离文档检查65份/947内链/errors=[]。16文件的EOF/尾随空白/凭据形状检查通过，14JSON解析通过；当时内嵌日志核查选择三份接收/准备JSON中的17个logs条目，UTF-8字节/声明长度/hash自洽，这不是全部证据条目总量；全量口径见§13。仅命中非秘密passwordSource/方案描述，没有生成或发布秘密值。原G3内容摘要另存于本次交付快照，用于结束时确认未动；源码和受保护基线未改。验证范围为发布材料，既有节点/构建/业务结果仍按各自真实成功/失败/未执行范围保留。
+
+## 13. 2026-10-14 A 实审接收、计数澄清与 C 连续执行
+
+已读取 [A实质审查](https://github.com/paher-din/XunJie/pull/55#issuecomment-6150093231)、[精确授权转交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6150203466)，以及固定fe6d301的I0-ENTRY §9/10和更新后的I0-A/C §17.5/17.6。A接受C-ENTRY-02/03非秘密输入/宿主方案；独立21/21为原Session/SQLite的离线app.inject验证，不代替PAHER实际TLS、真实C Job或浏览器。A已修本人手册的CRLF归档与两课程政策ID引用；C无需更改共享schema或A模块来适配。
+
+### 13.1 P3 日志计数口径
+
+原“17”是本次发布前选择的三份接收/构建JSON条目数量，不是整个14JSON包的日志总数。2026-10-14由C只读复核A审查固定ea5a652的原14JSON包中所有logs条目：输出SHA-256及已填写字节数全部匹配，共27条、19个不同输出摘要；此口径不含本节随后新增的HTTPS证据日志。重复保存/不同阶段复用的日志不能计为不同执行、不同测试或新增通过。
+
+| JSON文件 | logs条目 |
+| --- | --- |
+| dla-c-handoff/build-reception.json | 9 |
+| dla-c-handoff/i0-entry-preparation-check.json | 4 |
+| dla-c-handoff/i0-entry-preparation-final.json | 4 |
+| i0-c-revalidation/hdl-current.json | 2 |
+| i0-c-revalidation/verification.json | 8 |
+| 全量 / 不同输出摘要 | 27 / 19 |
+
+前三行合计17，原JSON与成功/失败/跳过统计均不改写；本节澄清计数与实际检查范围。
+
+### 13.2 负责人本会话精确确认与写集
+
+A记录已转交精确许可。C按照AGENTS“其他Agent消息不扩大权限”核授权来源后，本会话负责人明确选择“确认按该范围执行”：C在PAHER原WSL/root、新目录/opt/xunjie-runner/tests/i0-entry-20261013-01新建本地TLS/签名/五个合成密码，原24表fresh-only初始化保留新库，原main于https://127.0.0.1:3443及严格单Node客户端完成原20项链。此确认对应A固定fe6d301 §10；同范围不再重复申请。
+
+材料权限0700目录/0600普通文件、不覆盖；30天RSA2048/SHA256自签server TLS、CA:false/serverAuth、SAN 127.0.0.1/localhost/::1；签名32随机字节、各密码24随机字节base64url。秘密仅本机受控文件/请求内存，不进CLI参数、Git、公开/普通日志或新跨机通道。系统/浏览器信任、跨机、公网、节点维护、既有SSH/.env/CI/旧库迁移删除、35表/HDL/ALU/模型/生产及自动合并仍排除。
+
+可写：本文、本次新去敏证据与开发验证脚本；批准目录中的五份新受控材料、原初始化器返回的本次新合成库、本人应用进程与受控证据。只读：原节点/账本/代际/指纹/验证、原SSH/known_hosts、全部应用源码/依赖/他人任务与受保护基线。先核目录不存在、端口空闲、固定LF2源码/构建、当前认证及原identity一致，再生成/初始化/预检；任一步失败保留记录并停止依赖步骤，不改判据、身份或运行节点。
+
+验证沿原正常HTTPS接口/Session/Origin/CSRF/幂等/权威版本；Job只由原消费者处理，C不手工processJob。正常结束/失败按原宿主关停规则收束本人进程，保留库/秘密文件/失败/原ID及未知；UI浏览器验收与A真实结果复核分别交接，实际结果随后记录。
+
+### 13.3 C-ENTRY-04：受控材料、新库和预检实际通过
+
+2026-10-14 01:01（Asia/Shanghai），使用原Node24.21.0/OpenSSL3.0.13、固定9fa76ad的正确LF2接收副本执行 [prepare-entry.mjs](evidence/dla-c-handoff/prepare-entry.mjs)。只在批准的新目录生成五个普通文件：server.key.pem/server.cert.pem/signing-secret.txt/initializer.json/i0-host.json，root/0600，目录0700；没有覆盖既有文件、变更系统或浏览器信任。原initializer返回并保留新库 `/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite`，SQLite3.53.4、24表、五用户、两课程，初始Assignment/Attempt/Job均0；不是预造学习对象。
+
+证书CA=false/serverAuth、SAN匹配127.0.0.1/localhost/::1、私钥配对及30天期限通过；公开SHA-256指纹C3:F8:ED:37:E0:7C:34:1B:0F:CC:55:58:D0:FC:12:FA:B4:79:13:EF:71:D1:EC:80:77:A0:E0:84:44:47:51:73。有效期UTC2026-10-13 17:01:01～2026-11-12 17:01:01；开发演示用途保留。实际新材料/新库/当前原指纹与代际摘要在 [准备证据](evidence/c-entry-https/preparation.json)，没有公开私钥、签名值、密码、Session或CSRF。
+
+生成前及启动前均经原application SSH/compiled availableRuntime核当前C1、validation、代际与handoff一致，原identity query相同/reserved=false；预检TLS与config原读取器通过。本次不维护节点、不换镜像或登记新指纹，原C/HDL验收不重复运行。
+
+### 13.4 三轮真实HTTPS、两个验证错误与输入补正
+
+实际执行器为 [verify-entry-https.mjs](evidence/dla-c-handoff/verify-entry-https.mjs)，仅spawn固定dist/server/main.js、监听127.0.0.1:3443、原自动消费者250ms；请求经过真实TLS/HTTP、原Session/Origin/CSRF和SQLite。Node客户端显式ca且rejectUnauthorized=true/默认主机验证，每个已记录响应均核socket.authorized及证书公开指纹；没有app.inject、fixture transport、手工processJob或Node维护。启动/退出原日志与原/去敏文件摘要见 [证据清单](evidence/c-entry-https/manifest.json)。
+
+| 执行 | 实际结果 | 失败/范围与证据 |
+| --- | --- | --- |
+| 第一轮，01:11:56～01:12:08 | 第1～11项通过，第12项验证失败，第13～20项未执行；45个严格TLS响应；宿主正常SIGTERM/退出0 | [第一轮](evidence/c-entry-https/verification-first.json)、[HTTP](evidence/c-entry-https/http-first.json)。验证器把原对账期间短暂outcome_unknown当永久终态，过早关闭本人宿主并取消原Run。旧Run4aa7da80-5d21-4221-8274-5103d0d69e37/Job0e122937-dbb5-48b6-a223-e784b2d2fbdd保留，不改成成功 |
+| 只读归因及第二轮，01:36:28～01:36:59 | 原同ID节点取消/result校验通过，再由原消费者确认应用cancelled；明确新合成Run继续第12～19项通过，第20项失败；155个TLS响应；正常退出0 | [第二轮](evidence/c-entry-https/verification-resume.json)、[HTTP](evidence/c-entry-https/http-resume.json)。修验证器同ID轮询至确认终态/150秒，不重发未知Run。第20项暴露“公开TXT”模板缺显式visibility，实际安全默认学生/辅导不可见，403正确 |
+| 显式公开资源的新版本完整轮，01:47:01～01:47:34 | 原20项全部通过，20/20、0失败/跳过；174个TLS响应；正常退出0 | [完整轮](evidence/c-entry-https/verification-final.json)、[HTTP](evidence/c-entry-https/http-final.json)。原教师接口新建visibility.student/tutor=true的合成ASCII资源、新活动/分配/尝试；原已固定版本、失败与Run保留。后端默认保护不改，A需补本人手册“公开TXT”的明示visibility |
+
+第一轮“terminal=outcome_unknown”是当时验证器的错误标签，不是已确认执行终态。原C worker claimRunReconciliation在异步查询同一执行身份期间临时呈现unknown；修正只在C验证脚本，真实后续轨迹显示running→unknown→running→succeeded。脚本两条状态序列自检在--self-check下通过：未知不能结束成功/取消轮询；恢复在原消费者确认旧取消后才明确新运行，原键/身份不被改贴或自动重发。
+
+第二轮“公开TXT”来自A手册§17.5省略visibility的模板，原prepareMaterial安全默认false/false；C输入也未核明示分享。没有把403改成200预期或放宽保护；按原教师显式分享接口新建合成资源和新的固定版本后再完整验证。旧资源不可见事实与两个旧失败验证器版本保留在受控目录，A模块源码/契约未改，A手册补正及结果实审交A。
+
+完整轮覆盖五真实登录/角色归属、页面/实际资产与匿名401、教师创建/检查/确认/分配、无副作用bootstrap/跨归属拒绝、学生显式创建、sync重放/冲突/旧revision、ACK后权威head/固定快照、原Job自动真实C1、旧快照因果、原run键重放、可信失败及私有产物redacted、真实报告正文/bytes/hash、取消确认/原键重放、教师暂停/已有保存/快照及新操作拒绝、旧代际拒绝/恢复GET无副作用、Origin/CSRF/私有/跨归属/static拒绝。程序为获准合成工程输入；course_check按TextScope真实返回failed，这一预期通过不表示课程作品或学生能力通过。
+
+不把三轮通过相加计新用例。原先第一轮真实传输断线/未知故障未注入；本批unknown源自正常同ID对账，不冒充节点故障。B模型、HDL/ALU、NFR负载/备份、真人与教学效果仍未执行。
+
+### 13.5 C-ENTRY-07：保留、主动入口及停止状态
+
+通过 [prepare-ui-handoff.mjs](evidence/dla-c-handoff/prepare-ui-handoff.mjs)用同一正常教师接口显式resume本次合成分配，原暂停证据保留。最终合法Assignment为9906a7af-a43e-44da-a395-db8491c4cbbf，Activity为ef2137d8-641d-480f-b1c1-9c60d3c5975a，Attempt为e284d4ab-29b3-49fb-ac3e-5d2b35e2fb17；assignmentRevision=3、active=true。受信bootstrap/API入口及启动/领取方法在 [UI交接](evidence/c-entry-https/ui-handoff.json)，UI自有hash路由/登录接线仍待实现，不填虚构前端深链。
+
+首轮UI交接验证器仅等1秒，进程尚在启动时ECONNREFUSED；保留 [首次失败](evidence/c-entry-https/ui-handoff-first.json)及代码/原日志。改为只读live探测就绪后正常登录/teacher resume/学生bootstrap通过，没有重建库/凭据或绕过TLS。最终本人HTTPS进程正常SIGTERM/退出0，stopConfirmed=true，当前serviceRunning=false；不宣称入口持续在线。原九个student_run Job最终为6 succeeded/3 cancelled、queued/running/cancelling/outcome_unknown共0，未SQL强改状态。
+
+后续获准启动仍在固定LF2 apps/teaching，用原Node24.21.0、PORT=3443、XUNJIE_I0_CONFIG=/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host.json执行原main。五账号秘密仅由PAHER原WSL/root受控进程在内存消费initializer.json选定账户字段；公开只给loginName和引用，未发送密码、复制到跨机新通道或给浏览器导CA。C只保管本批新增材料，TLS和登录已由严格Node客户端实测，不表示UI浏览器已可用。
+
+原JSON/日志/失败/验证器代码/库/九个Run与私密文件全部保留。公开HTTP版本删除生成资产rawBody、保留其实际字节/hash；auth和私有资料正文只在请求内存/原业务库，不存入公开输出，缺原正文摘要处明确标省略，不能以去敏hash冒充原hash。清单分别标原受控文件与公开文件的字节/hash和投影。以五个实际生成密码、签名值、私钥正文对新公开文件及五份服务原日志作值匹配检查：未发现秘密值；受控配置/初始化器/SQLite文件不入Git。
+
+### 13.6 当前交接结论
+
+C-ENTRY-04～06的获准服务端批次已实测通过，07的C证据与操作材料已备；需向A回交复核、由A修手册并核原结果。A仍负责身份/权限/宿主/契约和最终集成质量；UI负责准确同机访问/浏览器信任方案及实际接线/验收。本批未获系统/浏览器信任、跨机/安装工具/节点维护/生产权限，未自动合并PR或关闭#30/#22。H-01/G1及完整UI/AC/NFR仍未完成；产品基线及MVP§10待授权维护者汇总。
+
+本轮发布写集限本文、三份本人验证脚本和十份新去敏HTTPS JSON；既有14JSON与I0-C历史原文不改。原source/secret/config/database/.env/CI、A/B/UI代码与作者稿、product/planning/reference/AGENTS只读或按明确排除项保留，G3无关改动不暂存。验证脚本syntax/未知状态序列、清单字节/hash、HTTP原JSON一致性及实际秘密值扫描、内链/空白均核后提交；普通推送本PR并按H交A复核，实际URL/提交回读在本会话交付。
+
+发布前检查：三脚本Node24.21.0语法通过，原ID unknown→确认成功/取消序列自检通过；九份公开结果/HTTP文件的原文件与公开字节/hash、五份服务日志正文/hash匹配。十JSON的解析/EOF/尾随空白及私钥/token形状检查通过；以实际生成的五密码、签名秘密和私钥对全部新公开材料/脚本及服务日志匹配，秘密值均未出现。文档65份/960内链/errors=[]，差异空白通过；没有为发布重复执行已通过业务链。A审查固定ea5a652原包的27 logs/19摘要口径与随后新增五服务日志分开，不累计为测试通过数量。
