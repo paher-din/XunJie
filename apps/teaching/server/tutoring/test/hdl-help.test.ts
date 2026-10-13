@@ -82,13 +82,19 @@ test("DL-B preserves current four-state signal and bounded trace facts without t
   assert.equal(traceReference.body.droppedFrames, 10);
   assert.equal(traceReference.body.coverage, "incomplete");
 
-  const provider = new SyntheticProvider([{
-    body: helpBody({
-      content: "当前信号仍含 X/Z，而且采样不完整；这只能说明驱动、连接或稳定时机仍需核对，不能据此判断你的掌握情况。",
-      expectedStudentAction: "请你先检查相关信号是否有唯一驱动，再自行推进到稳定采样点观察一次。",
-      evidenceIds: [signalReference.id, traceReference.id],
-      unresolved: ["有限波形不能区分未初始化、驱动冲突或未连接。"],
-    }),
+  const provider = new SyntheticProvider([({ systemPolicy }) => {
+    assert.match(systemPolicy, /assignment sizing and extension rules/);
+    assert.match(systemPolicy, /narrower assigned expression alone does not prove/);
+    assert.match(systemPolicy, /one frame, or a limited trace/);
+    assert.match(systemPolicy, /keep the cause unresolved/);
+    return {
+      body: helpBody({
+        content: "当前信号仍含 X/Z，而且采样不完整；这只能说明驱动、连接、映射或稳定时机仍需核对，现有证据不足以锁定原因。",
+        expectedStudentAction: "请你先检查相关信号的驱动与映射，再自行推进到稳定采样点观察一次。",
+        evidenceIds: [signalReference.id, traceReference.id],
+        unresolved: ["有限波形不能区分未初始化、驱动冲突、映射问题或其他未提供的连接。"],
+      }),
+    };
   }]);
   const outcome = await generateStudentHelp(request, {
     provider,
@@ -332,7 +338,7 @@ function authorizedHdlContext(
       ...(kind === "diagnostic" ? {} : { session: structuredClone(activeSession), operation }),
     },
     budgetAvailable: true,
-    versions: { modelConfig: "model-v1", prompt: "prompt-hdl-v1", schema: "schema-v1", policy: "help-hdl-v1" },
+    versions: { modelConfig: "model-v1", prompt: "prompt-hdl-v2", schema: "schema-v1", policy: "help-hdl-v1" },
   };
 }
 
