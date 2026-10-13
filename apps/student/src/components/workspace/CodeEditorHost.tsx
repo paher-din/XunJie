@@ -14,6 +14,8 @@ import {
   type MonacoModel,
   type MonacoViewState,
 } from './monacoSetup'
+import { codeRangeModelOffsets, codeSelectionRange,
+  type CodeRange, type CodeSelectionResult } from '../../workspace/tutoringObject'
 
 /**
  * 多文件代码编辑器的宿主：一个编辑器实例 + 每个文件实例一个 model。
@@ -63,6 +65,17 @@ export interface CodeEditorHandle {
   focus(): void
   /** 记下当前文件的视图状态（光标 / 滚动 / 折叠），切换与卸载时调用。 */
   saveViewState(): void
+  /** 只读捕获当前单选区与原文，不暴露 Monaco model 作为服务端身份。 */
+  captureSelection(): CodeSelectionResult
+  /** 仅定位当前同一实例/原文；不打开别的文件，不修改正文或保存。 */
+  revealOriginalRange(location: CodeEditorLocation): { ok: true } | { ok: false; reason: string }
+}
+
+export interface CodeEditorLocation {
+  workspaceKey: string
+  fileId: string
+  originalText: string
+  range: CodeRange
 }
 
 export interface CodeEditorHostProps {
@@ -77,10 +90,11 @@ export interface CodeEditorHostProps {
   readOnlyReason: string | null
   onTextChange: (fileId: string, text: string) => void
   onCursorChange: (position: { line: number; column: number } | null) => void
+  onSelectionChange?: (result: CodeSelectionResult) => void
 }
 
 export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(function CodeEditorHost(
-  { workspaceKey, fileId, language, initialText, readOnly, readOnlyReason, onTextChange, onCursorChange },
+  { workspaceKey, fileId, language, initialText, readOnly, readOnlyReason, onTextChange, onCursorChange, onSelectionChange },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -94,12 +108,41 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
   const cursorRef = useRef(onCursorChange)
   const initialTextRef = useRef(initialText)
   const readOnlyRef = useRef({ readOnly, readOnlyReason })
+  const selectionRef = useRef(onSelectionChange)
+  const identityRef = useRef({ workspaceKey, fileId })
+  identityRef.current = { workspaceKey, fileId }
   useEffect(() => {
     textChangeRef.current = onTextChange
     cursorRef.current = onCursorChange
     initialTextRef.current = initialText
     readOnlyRef.current = { readOnly, readOnlyReason }
+    selectionRef.current = onSelectionChange
   })
+
+  const currentOriginal = () => {
+    const editor = editorRef.current, model = editor?.getModel()
+    const identity = identityRef.current
+    if (!editor || !model || registryKey !== identity.workspaceKey || identity.fileId === null ||
+      fileOf(model.uri.path) !== identity.fileId) return null
+    const key = keyOf(identity.workspaceKey, identity.fileId), state = originals.get(key)
+    if (!state || models.get(key) !== model || model.getValue() !== state.projection.modelText) return null
+    return { editor, model, state, identity }
+  }
+  const captureSelection = (): CodeSelectionResult => {
+    const current = currentOriginal()
+    if (!current) return { ok: false, reason: '编辑器或原文件实例尚不可用，请重新选择。' }
+    const selections = current.editor.getSelections()
+    if (!selections || selections.length !== 1) return { ok: false, reason: '请明确选择一个连续选区，多选区不能合并成一次代码引用。' }
+    const selected = selections[0]
+    const modelStart = current.model.getOffsetAt(selected.getStartPosition())
+    const modelEnd = current.model.getOffsetAt(selected.getEndPosition())
+    const originalText = current.state.history.current
+    if (!codeSelectionRange(originalText, modelStart, modelEnd))
+      return { ok: false, reason: '这个选区无法精确对应原文，请重新选择；原文保持不变。' }
+    return { ok: true, selection: Object.freeze({ workspaceKey: current.identity.workspaceKey,
+      fileId: current.identity.fileId!, originalText, modelStart, modelEnd }) }
+  }
+  const notifySelection = () => selectionRef.current?.(captureSelection())
 
   useImperativeHandle(ref, () => ({
     focus: () => editorRef.current?.focus(),
@@ -108,6 +151,22 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       const model = editor?.getModel()
       if (!editor || !model) return
       viewStates.set(keyOf(workspaceKey, fileOf(model.uri.path)), editor.saveViewState())
+    },
+    captureSelection,
+    revealOriginalRange: (location) => {
+      const current = currentOriginal()
+      if (!current || location.workspaceKey !== current.identity.workspaceKey ||
+        location.fileId !== current.identity.fileId || location.originalText !== current.state.history.current)
+        return { ok: false, reason: '原文件或正文已改变，不能把旧位置定位到当前代码。' }
+      const offsets = codeRangeModelOffsets(location.originalText, location.range)
+      if (!offsets) return { ok: false, reason: '原位置无法在编辑器中精确表示，原文保持不变。' }
+      const start = current.model.getPositionAt(offsets[0]), end = current.model.getPositionAt(offsets[1])
+      const range = { startLineNumber: start.lineNumber, startColumn: start.column,
+        endLineNumber: end.lineNumber, endColumn: end.column }
+      current.editor.setSelection(range)
+      current.editor.revealRangeInCenter(range)
+      current.editor.focus()
+      return { ok: true }
     },
   }))
 
@@ -151,8 +210,10 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
             }
             state.projection = projectOriginal(state.history.current)
             textChangeRef.current(fileOf(model.uri.path), state.history.current)
+            notifySelection()
           }),
         )
+        disposables.push(editor.onDidChangeCursorSelection(notifySelection))
         disposables.push(
           editor.onDidChangeCursorPosition((event) => {
             const model = editor?.getModel()
@@ -194,6 +255,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       editor?.dispose()
       editorRef.current = null
       monacoRef.current = null
+      selectionRef.current?.({ ok: false, reason: '编辑器已离开原文件，请重新选择。' })
     }
   }, [workspaceKey])
 
@@ -211,6 +273,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     if (fileId === null) {
       editor.setModel(null)
       cursorRef.current(null)
+      notifySelection()
       return
     }
 
@@ -243,6 +306,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     cursorRef.current(position && original
       ? serverPosition(original.history.current, original.projection.toOriginalOffset(model.getOffsetAt(position)))
       : null)
+    notifySelection()
   }, [status, workspaceKey, fileId, language])
 
   // 调用方保留脏草稿；只在其权威原文确实改变时更新同一 model，避免显示陈旧正文却标为一致。
@@ -255,6 +319,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     originals.set(key, { history: new OriginalEditHistory(initialText), projection })
     model.setValue(projection.modelText)
     model.setEOL(monaco.editor.EndOfLineSequence.LF)
+    notifySelection()
   }, [status, workspaceKey, fileId, initialText])
 
   /* 3. 只读态跟随工作区可写性变化 */
