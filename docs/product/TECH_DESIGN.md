@@ -222,14 +222,14 @@ teacher_design 仅用 A 明确批准的资料；student_help/analysis 不含私�
 | POST /api/attempts/:id/snapshots | 所属学生 | expectedWorkspaceRevision 冻结完整确认清单，返 snapshotId/hash；学生显式保存/求助/运行/提交也可同事务冻结，模型/被动分析不触发 |
 | POST /api/attempts/:id/help | 所属学生 | ready/active、分配和政策允许；expectedAttemptRevision、ObjectRef/问题，ready 同事务激活并创建有界 Job |
 | POST /api/attempts/:id/runs | 所属学生 | ready/active 且分配 active；expectedAttemptRevision、确认 snapshotId、批准 profile/操作参数/输入、mode=run 或 course_check；ready 同事务激活，固定 runId/jobId |
-| POST /api/attempts/:id/controls | 所属学生 | expectedAttemptRevision；start=ready、pause=active、resume=paused、resume_revision=reviewed+有效许可；采集/提醒独立设值，不激活尝试或复活旧 Job |
+| POST /api/attempts/:id/controls | 所属学生 | expectedAttemptRevision；start=ready、pause=active、resume=paused、resume_revision=reviewed+有效许可；采集/提醒独立设值，不激活尝试或复活旧 Job。resume_revision 在 reviewed 只读阶段按学生本人对自己尝试的 read 用途授权，仍核课程成员与尝试归属，由 C 的阶段/分配/许可守卫决定，教师账号被命令发起者比对拒绝；不为此新增权限用途 |
 | POST /api/jobs/:id/cancel | 有权发起该作业的用户 | 持久停止意图/事件/回执同事务；教学 Job 即使 succeeded 也停止关联未展示 Action，保留终态/生成/展示事实；运行取消按整个单元确认，未确认不释放槽位 |
-| POST /api/attempts/:id/submissions | 所属学生 | ready/active、分配 active；expectedAttemptRevision、固定快照/说明/匹配检查引用，阶段/教学失效同事务，不要求作品必须答对 |
+| POST /api/attempts/:id/submissions | 所属学生 | ready/active、分配 active；expectedAttemptRevision、固定快照/说明/匹配检查引用，阶段/教学失效同事务，不要求作品必须答对。说明与检查引用只校验形状/边界/引用匹配：M-07 的强制性来自课程要求，而固定活动版本契约尚无承载「本活动要求说明或课程检查」的字段，故缺省不视为违规；改为按活动强制须先增列该字段，属共享契约变更 |
 | POST /api/actions/:id/receipts | 所属学生客户端 | 回传实际展示/取消/确认状态，校验接收对象与 action 内容版本 |
 | POST /api/attempts/:id/disputes | 所属学生 | targetRef 指确切 claim/feedback 版本及理由；改变有效投影时 expectedStateRevision，当前依据 contested/依赖失效同事务；历史异议不覆盖新判断 |
 | PATCH /api/courses/:id/my-context | 所属学生 | expectedContextRevision，修改个人目标/约束自述；不写能力或教师字段，相关辅导上下文失效 |
 | POST /api/attempts/:id/reviews | 任课教师 | expectedStateRevision + 决定、引用、理由；事务内纠正和失效 |
-| POST /api/attempts/:id/reopen | 任课教师 | reviewed、expectedAttemptRevision/最新 submissionId/理由，保存许可仍是 reviewed；学生主动 resume_revision 消费许可，旧提交不变 |
+| POST /api/attempts/:id/reopen | 任课教师 | reviewed、expectedAttemptRevision/最新 submissionId/理由，保存许可仍是 reviewed；学生主动 resume_revision 消费许可，旧提交不变。发放同时递增 attemptRevision 与 decisionEpoch，故分配暂停（它同样递增两者）会使已发放的许可失效、且恢复分配不使其复活，教师须按当前版本重新发放；许可行保持 valid 不被静默消费，恢复读取以 actionable=false 报出该状态，学生界面据此区分「从未发放」与「发放过但已作废」 |
 | POST /api/attempts/:id/feedback | 任课教师 | kind=formative 或 submission_review；feedbackId（修订）/expectedFeedbackRevision/expectedStateRevision/固定对象或最新提交；改变阶段另核 expectedAttemptRevision，正式反馈/reviewed 同事务；B 只起草 |
 | GET /api/attempts/:id/events | 所属学生/任课教师 | 经过角色裁剪的 SSE 或游标分页 |
 | GET /api/courses/:id/exports | 任课教师 | 课程范围导出；学生通过个人导出入口仅获取自己的可见记录 |
@@ -315,7 +315,7 @@ A 提供 authorizeResource/withTransaction；C 提供同连接/同 tx 的 resolv
 
 教师先纠正则旧候选拒绝；候选先提交则旧教师表单 CAS 冲突。被撤回的同一依据不能换 claimId/措辞/分析版本复活。原始事实、模型候选、自述和正式教师判断分层；环境故障不是知识错误，缺数据保留未知。
 
-失效按用途：教师纠正/当前依据争议使同课程同学生相关未展示教学/分析/反馈依赖失效，保留普通运行事实；新帮助替换旧帮助增 epoch；暂停/限定检查/提交控制相应用途和执行；关闭提醒仅停 reminder，暂停采集仅停过程/在途被动分析，不增加通用教学 epoch；相关自述/正式反馈变化使依赖的教学上下文失效。
+失效按用途：教师纠正/当前依据争议使同课程同学生相关未展示教学/分析/反馈依赖失效，保留普通运行事实；新帮助替换旧帮助增 epoch；暂停/限定检查控制相应用途和执行，其中暂停含 student_run；提交与学生主动重开只控制教学类用途（student_help/reminder/explicit_analysis/passive_analysis），不取消在途 student_run——新运行已被阶段规则阻止，取消在途运行会销毁学生已发生的执行事实，而作品/运行/检查的原始引用须保持可追溯；已结作业自身的停止事实不被改写，只列真正未结的作业；关闭提醒仅停 reminder，暂停采集仅停过程/在途被动分析，不增加通用教学 epoch；相关自述/正式反馈变化使依赖的教学上下文失效。
 
 ### 7.3 投递与回执
 

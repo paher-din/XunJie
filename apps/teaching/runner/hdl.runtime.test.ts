@@ -7,7 +7,7 @@ import {HdlNode} from './hdl-node.ts';
 import {sha256,manifestHash} from './snapshot.ts';
 import type {HdlNodeConfig} from './hdl-executor.ts';
 import type {HdlIdentity,HdlSession,HdlBuild,HdlOperationResult,HdlOperation} from '../contracts/runner/hdl.ts';
-import {board} from './hdl-profile.test.ts';
+import {board} from '../tests/fixtures/hdl-board.ts';
 
 const path=process.env.XUNJIE_DLC_CONFIG;
 const source=`module top(input clk,input [15:0] sw,input [4:0] btn,output [15:0] led,output [7:0] an,output [6:0] seg,output dp);

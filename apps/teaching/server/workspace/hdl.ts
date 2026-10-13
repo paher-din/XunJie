@@ -297,11 +297,10 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
     if(!row)return {operation:null,nextSequence:afterSequence};
     const body=row.result_json===null?null:hdlResult.parse(JSON.parse(String(row.result_json)));
     if(body&&(sha256(String(row.result_json))!==row.result_hash||body.sessionId!==sessionId||body.sequence!==row.sequence))throw new ApiError('INVALID_REFERENCE');
-    const job=readJobs(tx,actor.courseId).find(item=>item.jobId===row.job_id);if(!job)throw new ApiError('INVALID_REFERENCE');
-    const consumable=body!==null||session.terminationConfirmed&&terminal.has(job.status);
-    return {operation:{operationId:String(row.operation_id),sequence:Number(row.sequence),status:job.status,result:body},nextSequence:consumable?Number(row.sequence):afterSequence};
+    return {operation:{operationId:String(row.operation_id),sequence:Number(row.sequence),status:String(row.status),result:body},nextSequence:body?Number(row.sequence):afterSequence};
   }
   return {build,program,interact,processJob,readTrace,cancelInTransaction,reconcileStops,databaseFile:options.db.file,
-    pendingJobs:()=>persisted(tx=>tx.all("SELECT job_id FROM jobs WHERE json_extract(job_json,'$.kind') LIKE 'hdl_%' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id))),
+    // '_' is a LIKE wildcard and LIKE ignores ASCII case, so compare the literal prefix to agree with startsWith('hdl_').
+    pendingJobs:()=>persisted(tx=>tx.all("SELECT job_id FROM jobs WHERE substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)='hdl_' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id))),
     stopInTransaction:stopHdlInTransaction,readBuild:readHdlBuild,readSession:readHdlSession};
 }

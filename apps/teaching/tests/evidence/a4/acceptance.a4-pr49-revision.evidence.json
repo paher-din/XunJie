@@ -1,0 +1,247 @@
+{
+  "task": "A4 PR #49 review revision",
+  "date": "2026-10-13",
+  "timezone": "Asia/Shanghai",
+  "issue": 41,
+  "pr": 49,
+  "reviewedPrHead": "6a4361b9e59227b8b5410c164656dc7dd7f178d8",
+  "sourceSha": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+  "baseSha": "37849f4fa2fd4cc1e058fb8559b33a89a60ceed2",
+  "environment": {
+    "platform": "Windows x64",
+    "node": "24.21.0"
+  },
+  "authorization": {
+    "freshOnlyTables": 31,
+    "optionalReadLearnerStateRevision": "explicitly approved by project lead",
+    "combinedC4Tables33": "not approved/not initialized",
+    "oldDatabaseMigration": false,
+    "realModelsOrNodes": false
+  },
+  "checks": {
+    "typecheck": "passed",
+    "build": "passed as npm test pretest",
+    "targeted": {
+      "command": "node --test --test-reporter=tap tests/review.test.ts",
+      "exitCode": 0,
+      "tests": 51,
+      "pass": 51,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "defaultFull": {
+      "command": "npm test",
+      "exitCode": 1,
+      "tests": 315,
+      "pass": 304,
+      "fail": 2,
+      "skipped": 9,
+      "cancelled": 0
+    },
+    "sdkIsolated": {
+      "command": "node --test --test-reporter=tap server/tutoring/test/deepseek-sdk.test.ts",
+      "exitCode": 0,
+      "tests": 11,
+      "pass": 11,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "serialFull": {
+      "command": "node tools/check-runtime.mjs; node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
+      "exitCode": 1,
+      "tests": 315,
+      "pass": 305,
+      "fail": 1,
+      "skipped": 9,
+      "cancelled": 0
+    }
+  },
+  "failures": [
+    {
+      "test": "review: real RunControl preparation failure ends check without fabricating a RunRecord",
+      "location": "server/workspace/review.test.ts:118",
+      "scope": "default and serial full",
+      "error": "INVALID_CONFIGURATION: Linux and trusted control context required",
+      "status": "unchanged Windows environment failure"
+    },
+    {
+      "test": "late SDK transport completion is discarded after the shared deadline",
+      "location": "server/tutoring/test/deepseek-sdk.test.ts:315",
+      "scope": "default full only",
+      "error": "Expected calls=1, actual=0; timed_out passed",
+      "status": "isolated SDK 11/11 and serial full passed; related core/provider/test files unchanged; first failure retained"
+    }
+  ],
+  "skippedTests": [
+    {
+      "test": "node-local control synthetic checks",
+      "reason": null
+    },
+    {
+      "test": "dedicated Linux synthetic container execution and resource checks",
+      "reason": null
+    },
+    {
+      "test": "authenticated dedicated VM control and supervision",
+      "reason": null
+    },
+    {
+      "test": "rejects intermediate and final symlinks in Linux",
+      "reason": null
+    },
+    {
+      "test": "P2 real-model student help, persisted content and undisplayed cancellation",
+      "reason": null
+    },
+    {
+      "test": "real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen",
+      "reason": null
+    },
+    {
+      "test": "C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel",
+      "reason": null
+    },
+    {
+      "test": "real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain",
+      "reason": null
+    },
+    {
+      "test": "P2 real-model teacher generation, explicit adoption and local PATCH",
+      "reason": null
+    }
+  ],
+  "codeReview": {
+    "fixedFrom": "6a4361b9e59227b8b5410c164656dc7dd7f178d8",
+    "fixedTo": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+    "standards": {
+      "hardViolations": 0,
+      "actionableSmells": 0
+    },
+    "spec": {
+      "missingOrPartial": 0,
+      "wrongImplementation": 0,
+      "scopeExpansion": 0
+    },
+    "mode": "independent read-only agents; no tests run by reviewers"
+  },
+  "resolvedP2": [
+    "P2-1 whitespace",
+    "P2-2 evidence checkout hashes",
+    "P2-3 exact approved table scope",
+    "P2-4 cheap revision guard",
+    "C-P2-1 preserved non-pending stopReason"
+  ],
+  "remaining": [
+    "C-P3-1 audit actor/time attribution pending owner decision",
+    "C-P3-2 consumers must not infer historical impact from newly invalidatedActionIds",
+    "C4 combined schema authorization and actual merged-tree revalidation",
+    "B actual A4 consumption/review",
+    "normal learner_analysis host/consumer, real model/node, A5 feedback, browser/TLS/human/product acceptance",
+    "protected product baselines await authorized maintainer summary"
+  ],
+  "historicalEvidence": "acceptance.a4.evidence.json retains original counters and originalLogSha256; reviewCorrection records display normalization and exact old Git blobs compressed separately",
+  "files": [
+    {
+      "file": "acceptance.a4-pr49-revision-targeted.windows.txt",
+      "sourceSha": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+      "sha256": "9c4b6e2425c273dac8e893f81215073fdca79622d0654491e7932188f7409a22",
+      "bytes": 12369,
+      "rawLogSha256": "cd9e5d7a27518ba3aac38b8c0e685357f5b33d67e8120ee461646857a14c898b",
+      "normalization": "Repository/temp paths, ANSI display codes, CRLF and trailing/outer blank whitespace only. Original local log retained; outcomes unchanged."
+    },
+    {
+      "file": "acceptance.a4-pr49-revision-typecheck.windows.txt",
+      "sourceSha": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+      "sha256": "9e1069614a5375475b25014632a096a13efc4207587881c6d2746fdd0f33e90f",
+      "bytes": 82,
+      "rawLogSha256": "df01ad9d808d6ac476d75ade2bd58603edeeeb159e32bf8cb7549e090d6eb0ac",
+      "normalization": "Repository/temp paths, ANSI display codes, CRLF and trailing/outer blank whitespace only. Original local log retained; outcomes unchanged."
+    },
+    {
+      "file": "acceptance.a4-pr49-revision-documents.windows.txt",
+      "sourceSha": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+      "sha256": "14ee5328848773aa5456f6439f3b55788486e021d66740f5d142332e62829e69",
+      "bytes": 660,
+      "rawLogSha256": "cae21bcd0a773068b37a7ba9f032068b67944ab87a9dc2bb213e0e70731e46ed",
+      "normalization": "Repository/temp paths, ANSI display codes, CRLF and trailing/outer blank whitespace only. Original local log retained; outcomes unchanged."
+    },
+    {
+      "file": "acceptance.a4-pr49-revision-full.windows.txt",
+      "sourceSha": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+      "sha256": "7f889248709a17a224768a95b63c942e0f8bd5927d7f95bfd02cc51bdcba6b44",
+      "bytes": 35594,
+      "rawLogSha256": "a0d41b6ae9b3f017d2a763bfc84dae918026a195b33af782860602019d8d70f8",
+      "normalization": "Repository/temp paths, ANSI display codes, CRLF and trailing/outer blank whitespace only. Original local log retained; outcomes unchanged."
+    },
+    {
+      "file": "acceptance.a4-pr49-revision-sdk-isolated.windows.txt",
+      "sourceSha": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+      "sha256": "f759ac424e4bbc0efca09737f2d4a134d243574edf12cae88f683ca242d11d02",
+      "bytes": 4737,
+      "rawLogSha256": "25fc146352be48bf3343ba65c6b7ee722cdb04eb8f92aa3e6af7d6a455c6402b",
+      "normalization": "Repository/temp paths, ANSI display codes, CRLF and trailing/outer blank whitespace only. Original local log retained; outcomes unchanged."
+    },
+    {
+      "file": "acceptance.a4-pr49-revision-full-serial.windows.txt",
+      "sourceSha": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+      "sha256": "0ac3f5f567a221340ef163d34d5f45f3b092306c7d407648ff3beed6a2b39df7",
+      "bytes": 77222,
+      "rawLogSha256": "2afba2c10271df0404274f40c3cdb6abf85eaefbf6da39025628dcf4582f4e73",
+      "normalization": "Repository/temp paths, ANSI display codes, CRLF and trailing/outer blank whitespace only. Original local log retained; outcomes unchanged."
+    },
+    {
+      "file": "acceptance.a4-pr49-revision-final-documents.windows.txt",
+      "sourceSha": null,
+      "snapshot": "final documentation on top of 80a2721",
+      "sha256": "cd356788804d48700eaa6fd42e88253c251e1af905a19a413c3e17bc05e56cf3",
+      "bytes": 1817,
+      "rawLogSha256": "d6a32f3f7233db6b67ca174f245b0433f071fce861868096e1cf866c15774343",
+      "normalization": "CRLF, ANSI and outer blank display whitespace only"
+    },
+    {
+      "file": "acceptance.a4-pr49-revision-delivery-documents.windows.txt",
+      "sourceSha": null,
+      "snapshot": "delivery documentation on top of 80a2721",
+      "sha256": "5c8682092d6059d2ed350096737867b556b722f13554720b2b1d4d000e7ed15d",
+      "bytes": 660,
+      "rawLogSha256": "e94e8271a33b7d66eb2f6eb6b39a15d378b88f6770a1d53795fa3732f365d184",
+      "normalization": "CRLF and display outer blank whitespace only"
+    }
+  ],
+  "documentValidation": {
+    "command": "node tools/a0-review/check.mjs; node --test tools/a0-review/check.test.mjs",
+    "snapshot": "before adding the final-documents log link; checker self-tests also executed",
+    "documents": 39,
+    "internalLinks": 619,
+    "errors": [],
+    "checkerSelfTests": {
+      "tests": 16,
+      "pass": 16,
+      "fail": 0
+    }
+  },
+  "deliveryDocumentValidation": {
+    "command": "node tools/a0-review/check.mjs",
+    "documents": 39,
+    "internalLinks": 620,
+    "errors": []
+  },
+  "documentationReview": {
+    "fixedFrom": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+    "fixedTo": "e15e8659d66b01a8cca5fa048dfdcb1efffbf231",
+    "specOpenFindings": 0,
+    "standardsInitialP3": 1,
+    "correction": "Use project lead instead of chat user identity for recorded authorization",
+    "correctionRecheck": {
+      "fixedFrom": "e15e8659d66b01a8cca5fa048dfdcb1efffbf231",
+      "fixedTo": "1942e9a0b7aa86ea9191504363e03453f9fbf1e9",
+      "standardsOriginalP3": "closed",
+      "standardsOpenFindings": 0,
+      "standardsNewFindings": 0,
+      "specOpenOrNewFindings": 0,
+      "mode": "independent read-only agents; no business rerun"
+    }
+  }
+}

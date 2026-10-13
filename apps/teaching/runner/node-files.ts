@@ -1,4 +1,4 @@
-import {constants,openSync,closeSync,fsyncSync,writeSync,readFileSync,fstatSync,linkSync} from 'node:fs';
+import {constants,openSync,closeSync,fsyncSync,writeSync,readFileSync,fstatSync,linkSync,unlinkSync,existsSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {dirname} from 'node:path';
 import {RunnerError,sha256} from './snapshot.ts';
@@ -6,10 +6,15 @@ import {RunnerError,sha256} from './snapshot.ts';
 export function writeImmutable(path:string,value:unknown) {
   const bytes=Buffer.from(JSON.stringify(value));
   const pending=path+'.pending-'+randomUUID();
-  const fd=openSync(pending,constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o600);
-  try {let offset=0;while(offset<bytes.length)offset+=writeSync(fd,bytes,offset,bytes.length-offset);fsyncSync(fd);} finally {closeSync(fd);}
-  // Publish the fully synced inode atomically; readers cannot see the empty or partial JSON file.
-  linkSync(pending,path);
+  try {
+    const fd=openSync(pending,constants.O_CREAT|constants.O_EXCL|constants.O_WRONLY|constants.O_NOFOLLOW,0o600);
+    try {let offset=0;while(offset<bytes.length)offset+=writeSync(fd,bytes,offset,bytes.length-offset);fsyncSync(fd);} finally {closeSync(fd);}
+    // Publish the fully synced inode atomically; readers cannot see the empty or partial JSON file.
+    linkSync(pending,path);
+  } finally {
+    // Dropping the staging name cannot lose the fact: it is the same inode, now published under `path`.
+    if(existsSync(pending))unlinkSync(pending);
+  }
   const directory=openSync(dirname(path),constants.O_RDONLY|constants.O_DIRECTORY);
   try {fsyncSync(directory);} finally {closeSync(directory);}
 }

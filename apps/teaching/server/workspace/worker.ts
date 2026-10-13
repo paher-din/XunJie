@@ -115,7 +115,8 @@ export function createWorkspaceWorker(options: DesignAppOptions) {
   return {
     processJob,
     pendingJobs() {
-      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND json_extract(job_json,'$.kind') NOT LIKE 'hdl_%' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
+      // Literal prefix comparison, the exact negation of the HDL side; COALESCE keeps a row with a missing or null kind claimable here.
+      return persisted(tx => tx.all("SELECT job_id FROM jobs WHERE purpose='student_run' AND substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)<>'hdl_' AND status IN ('queued','running','outcome_unknown','cancelling') ORDER BY job_id").map(row => String(row.job_id)));
     },
   };
 }

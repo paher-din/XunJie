@@ -845,3 +845,105 @@ test('A4: received help without a display receipt remains an unresolved assistan
     assert.equal(history.statusCode,200,history.body);assert.equal(history.json().data.actions[0].receipts[0].receiptKind,'received');
   } finally {await s.f.close();}
 });
+
+test('A4: event delivery checks current revision without requiring the full evidence projection',async()=>{
+ const {setup,candidate}=await import('./review-support.ts');const s=await setup();
+ try{const queued=await s.queue(),lease=s.f.review.claimAnalysis(queued.jobId)!;s.f.review.completeAnalysis({jobId:queued.jobId,leaseToken:lease.leaseToken,recoveryGeneration:s.f.generation(),bodyJson:JSON.stringify(candidate(s.snapshotId,s.activityId))});
+ const help=await command(s.f,s.student,`/api/attempts/${s.attemptId}/help`,{question:'Explain this',expectedAttemptRevision:(await s.attempt()).attempt.attemptRevision});assert.equal(help.statusCode,200,help.body);
+ const executed=await command(s.f,s.student,`/fixture/execute/${s.attemptId}/${help.json().data.result.jobId}`,{});assert.equal(executed.statusCode,200,executed.body);const control=(await s.attempt()).attempt;
+ s.f.injectReadFailure('artifact_snapshots');const unavailable=await s.f.app.inject({url:`/api/attempts/${s.attemptId}/learner-state`,headers:s.student});assert.equal(unavailable.statusCode,503,unavailable.body);
+ const events=await s.f.app.inject({url:`/api/attempts/${s.attemptId}/events?clientId=revision-page&recoveryGeneration=generation&decisionEpoch=${control.decisionEpoch}&limit=100`,headers:s.student});assert.equal(events.statusCode,200,events.body);assert(events.json().data.events.some((event:{payload?:{actionId:string}})=>event.payload?.actionId===executed.json().data.delivery.actionId));assert(events.body.includes('Synthetic hint: explain the approach'));
+ }finally{await s.f.close();}
+});
+
+test('A4: review and dispute receipts distinguish first commit and replay without another state change',async()=>{
+ const {setup,candidate}=await import('./review-support.ts');const s=await setup();
+ try{const queued=await s.queue(),lease=s.f.review.claimAnalysis(queued.jobId)!;s.f.review.completeAnalysis({jobId:queued.jobId,leaseToken:lease.leaseToken,recoveryGeneration:s.f.generation(),bodyJson:JSON.stringify(candidate(s.snapshotId,s.activityId))});const claim=(await s.state()).claims[0];
+ const input={targetRef:{kind:'claim',id:claim.claimId,revision:claim.claimRevision},expectedStateRevision:1,decision:'defer',reason:'More evidence needed',evidenceRefs:[]};
+ const first=await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/reviews`,input,'review-flag');assert.equal(first.statusCode,200,first.body);assert.equal(first.json().data.replayed,false);
+ const replay=await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/reviews`,input,'review-flag');assert.equal(replay.json().data.replayed,true);assert.deepEqual(replay.json().data.result,first.json().data.result);
+ const state=await s.state(),current=state.claims[0],disputeInput={targetRef:{kind:'claim',id:current.claimId,revision:current.claimRevision},expectedStateRevision:state.learnerStateRevision,reason:'I have a different explanation'};
+ const dispute=await command(s.f,s.student,`/api/attempts/${s.attemptId}/disputes`,disputeInput,'dispute-flag');assert.equal(dispute.statusCode,200,dispute.body);assert.equal(dispute.json().data.replayed,false);
+ const repeated=await command(s.f,s.student,`/api/attempts/${s.attemptId}/disputes`,disputeInput,'dispute-flag');assert.equal(repeated.json().data.replayed,true);assert.deepEqual(repeated.json().data.result,dispute.json().data.result);assert.equal((await s.state()).learnerStateRevision,dispute.json().data.result.learnerStateRevision);
+ }finally{await s.f.close();}
+});
+
+test('A4: independent fresh factory stays within the approved 33-table scope and retains its database',async()=>{
+ const {createReviewDatabase,openSyntheticDatabase}=await import('../server/db/transaction.ts');let db=createReviewDatabase();const file=db.file;
+ try{const tables=db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"));assert.equal(tables.length,33);for(const name of ['workspace_submissions','workspace_reopen_grants'])assert(tables.some(row=>row.name===name));db.close();db=openSyntheticDatabase(file);assert.equal(db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")).length,33);
+ }finally{db.close();}
+});
+
+test('A4: one authorized projection reuses workspace reads but the next read sees corrected state',async()=>{
+ const {setup,candidate}=await import('./review-support.ts');const s=await setup();
+ try{const base=candidate(s.snapshotId,s.activityId),body={...base,claims:[base.claims[0],{...base.claims[0],competencyId:'p',domain:'project'},{...base.claims[0],competencyId:'a',domain:'ai_collaboration'}]};
+ const q=await s.queue(),lease=s.f.review.claimAnalysis(q.jobId)!;const result=s.f.review.completeAnalysis({jobId:q.jobId,leaseToken:lease.leaseToken,recoveryGeneration:s.f.generation(),bodyJson:JSON.stringify(body)});assert.equal(result.disposition,'accepted');
+ s.f.resetReadMeasurements();const state=await s.state();assert.equal(state.claims.length,3);assert(state.claims.every((c:{basisAvailable:boolean})=>c.basisAvailable));const reads=s.f.snapshotReads();assert(reads<=1,`Single projection repeated the same workspace ${reads} times`);
+ const target=state.claims[0];const correction=await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/reviews`,{targetRef:{kind:'claim',id:target.claimId,revision:target.claimRevision},expectedStateRevision:state.learnerStateRevision,decision:'correct',reason:'Withdraw this basis',evidenceRefs:[]});assert.equal(correction.statusCode,200,correction.body);
+ const changed=await s.state();assert(changed.learnerStateRevision>state.learnerStateRevision);assert.equal(changed.claims.find((c:{claimId:string})=>c.claimId===target.claimId).validity,'withdrawn');
+ console.info(`A4 projection measurement: 3 claims sharing one workspace, snapshot reads=${reads}; next authorized read observes correction.`);
+ }finally{await s.f.close();}
+});
+
+
+test('A4: missing persisted Run input or entry files reject analysis as an invalid reference',async t => {
+  const {setup}=await import('./review-support.ts');
+  for(const missing of ['input','entry'] as const) await t.test(missing,async()=>{
+    const s=await setup();
+    try {
+      const before=await s.attempt(),file=before.files[0];
+      const accepted=await command(s.f,s.student,`/api/attempts/${s.attemptId}/runs`,{
+        expectedAttemptRevision:before.attempt.attemptRevision,snapshotId:s.snapshotId,
+        runtimeProfileVersion:s.f.profile.runtimeProfileVersion,entryFileId:file.fileId,
+        input:{operation:'stats',fileIds:[file.fileId]},mode:'run'});
+      assert.equal(accepted.statusCode,200,accepted.body);
+      const runId=accepted.json().data.result.runId,attemptRevision=(await s.attempt()).attempt.attemptRevision;
+      // Fault injection changes retained data only; assertions use the authenticated public analysis seam.
+      s.f.db.withTransaction(tx=>{
+        const row=tx.get('SELECT submission_json FROM workspace_runs WHERE run_id=?',runId)!;
+        const submission=JSON.parse(String(row.submission_json));
+        if(missing==='input')submission.input.fileIds=['missing-file'];
+        else submission.entryFileId='missing-file';
+        tx.run('UPDATE workspace_runs SET submission_json=? WHERE run_id=?',JSON.stringify(submission),runId);
+      });
+      const response=await command(s.f,s.student,`/fixture/analysis/${s.attemptId}`,{
+        expectedAttemptRevision:attemptRevision,expectedStateRevision:0,purpose:'explicit_analysis',
+        inputRefs:[{kind:'run',id:runId,attemptId:s.attemptId}],assistanceRefs:[],coverageRefs:[]});
+      assert.equal(response.statusCode,422,response.body);
+      assert.equal(response.json().error.code,'INVALID_REFERENCE');
+      assert.equal((await s.state()).learnerStateRevision,0);
+    } finally {await s.f.close();}
+  });
+});
+
+
+test('A4: reconciling a revised basis preserves the original student cancellation reason',async()=>{
+  const {setup,candidate}=await import('./review-support.ts');const s=await setup();
+  try {
+    const help=await command(s.f,s.student,`/api/attempts/${s.attemptId}/help`,{
+      question:'Explain the approach',expectedAttemptRevision:(await s.attempt()).attempt.attemptRevision});
+    assert.equal(help.statusCode,200,help.body);const jobId=help.json().data.result.jobId;
+    const executed=await command(s.f,s.student,`/fixture/execute/${s.attemptId}/${jobId}`,{});
+    assert.equal(executed.statusCode,200,executed.body);const original=executed.json().data.delivery;
+    const cancelled=await command(s.f,s.student,`/api/jobs/${jobId}/cancel`,{reason:'student_stopped'});
+    assert.equal(cancelled.statusCode,200,cancelled.body);
+    const history=async()=>{
+      const response=await s.f.app.inject({url:`/api/attempts/${s.attemptId}/teaching-records`,headers:s.teacher});
+      assert.equal(response.statusCode,200,response.body);
+      return response.json().data.actions.find((a:{actionId:string})=>a.actionId===original.actionId);
+    };
+    const before=await history();assert.equal(before.disposition,'cancelled');assert.equal(before.stopReason,'student_stopped');
+    const queued=await s.queue(),lease=s.f.review.claimAnalysis(queued.jobId)!;
+    const analysis=s.f.review.completeAnalysis({jobId:queued.jobId,leaseToken:lease.leaseToken,recoveryGeneration:s.f.generation(),
+      bodyJson:JSON.stringify(candidate(s.snapshotId,s.activityId))});assert.equal(analysis.disposition,'accepted');
+    const attempt=(await s.attempt()).attempt;
+    const poll=await s.f.app.inject({url:`/api/attempts/${s.attemptId}/events?clientId=page&recoveryGeneration=generation&decisionEpoch=${attempt.decisionEpoch}&limit=100`,headers:s.student});
+    assert.equal(poll.statusCode,200,poll.body);
+    const after=await history();assert.equal(after.basisRevised,true);
+    assert.equal(after.disposition,'cancelled');assert.equal(after.stopReason,'student_stopped');
+    assert.equal(after.actionId,before.actionId);assert.equal(after.contentHash,before.contentHash);
+    assert.deepEqual(after.receipts,before.receipts);
+    const repeat=await command(s.f,s.student,`/api/jobs/${jobId}/cancel`,{reason:'student_stopped'});
+    assert.equal(repeat.statusCode,200,repeat.body);assert.deepEqual((await history()),after);
+  } finally {await s.f.close();}
+});

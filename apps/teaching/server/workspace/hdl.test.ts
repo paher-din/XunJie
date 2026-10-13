@@ -1,11 +1,10 @@
-import {ApiError} from '../app/errors.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixture,assigned,opened,command,snapshot,view} from './test-support.ts';
 import {createHdlWorkspace,readHdlBuild,readHdlSession} from './hdl.ts';
 import {sha256} from '../../runner/snapshot.ts';
 import type {HdlCommand,HdlBuild,HdlSession,HdlOperationResult} from '../../contracts/runner/hdl.ts';
-import {board} from '../../runner/hdl-profile.test.ts';
+import {board} from '../../tests/fixtures/hdl-board.ts';
 import {readAttempt} from '../db/records-adapter.ts';
 import {createWorkspaceApp} from './application.ts';
 import {origin} from './test-support.ts';
@@ -46,9 +45,12 @@ async function setup(){const f=await fixture(undefined,{digitalLogic:true}),teac
   const service=createHdlWorkspace({db:f.db,currentGeneration:f.generation,transport:node.transport,approvedProfile:()=>({board,runtime})});
   const revision=()=>f.db.withTransaction(tx=>readAttempt(tx,attemptId).attemptRevision);
   return {f,attemptId,snapshotId,node,service,revision,student};}
-test('DL-C synthetic schema is exactly 29 tables; authenticated .sv ACK and immutable build survive retries',async()=>{
+test('DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries',async()=>{
   const s=await setup();try{
-    assert.equal(s.f.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").length),29);
+    assert.equal(s.f.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").length),31);
+    const tables=s.f.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").map(row=>String(row.name)));
+    for(const name of ['workspace_submissions','workspace_reopen_grants','hdl_builds','hdl_sessions','hdl_operations'])assert(tables.includes(name));
+    assert(!tables.includes('learner_state_revisions'),'the HDL factory must not silently include A4 extension tables');
     const input={expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId},accepted=s.service.build(actor,s.attemptId,'build',s.f.generation(),input);
     assert.equal(s.service.build(actor,s.attemptId,'build',s.f.generation(),input).result.buildId,accepted.result.buildId);
     assert.throws(()=>s.service.build(actor,s.attemptId,'build',s.f.generation(),{...input,snapshotId:'other'}));
@@ -114,20 +116,46 @@ test('revoked membership cannot read or interact, while the trusted worker still
     assert.equal(s.f.db.withTransaction(tx=>tx.get('SELECT termination_confirmed FROM hdl_sessions WHERE session_id=?',p.result.sessionId)!.termination_confirmed),1);
   }finally{await s.f.close();}
 });
-test('queued trace never consumes the cursor before its original result becomes readable',async()=>{
-  const s=await setup();try{
-    const build=s.service.build(actor,s.attemptId,'cursor-build',s.f.generation(),{expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId});
-    await s.service.processJob(build.result.jobId);
-    const program=await s.service.program(actor,s.attemptId,'cursor-program',s.f.generation(),{expectedAttemptRevision:s.revision(),buildId:build.result.buildId});
-    const pending=s.f.db.withTransaction(tx=>s.service.readTrace(tx,actor,program.result.sessionId,-1));
-    assert.equal(pending.operation?.result,null);assert.equal(pending.nextSequence,-1);
-    await s.service.processJob(program.result.jobId);
-    const complete=s.f.db.withTransaction(tx=>s.service.readTrace(tx,actor,program.result.sessionId,pending.nextSequence));
-    assert.equal(complete.operation?.operationId,program.result.operationId);
-    assert.equal(complete.operation?.result?.snapshotId,s.snapshotId);assert.equal(complete.nextSequence,0);
-  }finally{await s.f.close();}
+test('job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind',async()=>{
+  const s=await setup();let composed:Awaited<ReturnType<typeof createWorkspaceApp>>|undefined;
+  try{
+    composed=await createWorkspaceApp({db:s.f.db,origin,signingSecret:s.f.signingSecret,currentGeneration:s.f.generation,now:s.f.timestamp,hdl:s.service});
+    const receipt=String(s.f.db.withTransaction(tx=>tx.get('SELECT receipt_id FROM command_receipts LIMIT 1')!.receipt_id));
+    // '_' is a LIKE wildcard and LIKE ignores ASCII case, so the near-prefix and upper-case kinds used to be claimed as HDL jobs.
+    const sampled:[string,string|null|undefined][]=[['job-hdl','hdl_build'],['job-near','hdlXbuild'],['job-case','HDL_build'],['job-absent',undefined],['job-json-null',null]];
+    for(const [jobId,kind] of sampled)
+      s.f.db.withTransaction(tx=>tx.run('INSERT INTO jobs(job_id,course_id,student_id,attempt_id,request_receipt_id,purpose,status,stop_requested,recovery_generation,job_json) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        jobId,'course','student',null,receipt,'student_run','queued',0,s.f.generation(),kind===undefined?'{}':JSON.stringify({kind})));
+    assert.deepEqual(s.service.pendingJobs().filter(id=>id.startsWith('job-')),['job-hdl'],'only the literal hdl_ prefix is an HDL job');
+    const claimed=composed.workspace.pendingJobs().filter(id=>id.startsWith('job-'));
+    assert.deepEqual([...claimed].sort(),['job-absent','job-case','job-hdl','job-json-null','job-near'],'the two workers together must still claim every pending job');
+    assert.equal(new Set(claimed).size,claimed.length,'the two prefix predicates must stay exact negations, so no job is claimed twice');
+    for(const [jobId,kind] of sampled)assert.equal((kind??'').startsWith('hdl_'),jobId==='job-hdl','SQL and JS must classify every sampled kind the same way');
+  }finally{await composed?.app.close();await s.f.close();}
 });
 
+test('Trace polling retains its cursor until the original program or interaction result is available',async()=>{
+  const s=await setup();try{
+    const read=(sessionId:string,after=-1)=>s.f.db.withTransaction(tx=>s.service.readTrace(tx,actor,sessionId,after));
+    const built=s.service.build(actor,s.attemptId,'build',s.f.generation(),{expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId});
+    await s.service.processJob(built.result.jobId);
+    const program=await s.service.program(actor,s.attemptId,'program',s.f.generation(),{expectedAttemptRevision:s.revision(),buildId:built.result.buildId});
+    const waiting=read(program.result.sessionId);
+    assert.equal(waiting.operation?.sequence,0);assert.equal(waiting.operation?.result,null);assert.equal(waiting.nextSequence,-1);
+    await s.service.processJob(program.result.jobId);
+    const initial=read(program.result.sessionId,waiting.nextSequence);
+    assert.equal(initial.operation?.result?.sequence,0);assert.equal(initial.operation?.result?.snapshotId,s.snapshotId);assert.equal(initial.nextSequence,0);
+    const input={expectedAttemptRevision:s.revision(),sessionId:program.result.sessionId,expectedSessionRevision:1,expectedSequence:1,
+      inputs:{switches:'0'.repeat(16),buttons:'00001',resetN:'1'},advanceCycles:1};
+    const step=s.service.interact(actor,s.attemptId,'step',s.f.generation(),input);
+    const pending=read(program.result.sessionId,initial.nextSequence);
+    assert.equal(pending.operation?.sequence,1);assert.equal(pending.operation?.result,null);assert.equal(pending.nextSequence,0);
+    await s.service.processJob(step.result.jobId);
+    const confirmed=read(program.result.sessionId,pending.nextSequence);
+    assert.equal(confirmed.operation?.result?.sequence,1);assert.equal(confirmed.operation?.result?.finalFrame.simTimePs,'10000');assert.equal(confirmed.nextSequence,1);
+    assert.deepEqual(read(program.result.sessionId,confirmed.nextSequence),{operation:null,nextSequence:1});
+  }finally{await s.f.close();}
+});
 test('replacement rechecks the supplied transaction authority after its external stop wait',async()=>{
  const s=await setup();try{
   const b=s.service.build(actor,s.attemptId,'guard-build',s.f.generation(),{expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId});await s.service.processJob(b.result.jobId);

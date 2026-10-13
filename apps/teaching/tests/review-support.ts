@@ -12,7 +12,7 @@ export const origin = 'https://synthetic.example';
 export const versions = { modelConfigVersion: 'synthetic-model-v1', promptVersion: 'review-prompt-v1',
   schemaVersion: 'review-schema-v1', analysisVersion: 'synthetic-analysis-v1' };
 export async function fixture() {
-  let db = createReviewDatabase(), now = Date.now(), generation = 'generation', failure = '', readFailure = '';
+  let db = createReviewDatabase(), now = Date.now(), generation = 'generation', failure = '', readFailure = '',snapshotReads=0;
   const analysisVersions = {...versions};
   let provider: ModelProvider|undefined,beforeTeachingComplete: (() => void)|undefined,transport: RunnerTransport|undefined;
   const password = randomBytes(32).toString('base64url'), signingSecret = randomBytes(48).toString('hex');
@@ -34,6 +34,7 @@ export async function fixture() {
       if (readFailure && sql.includes(readFailure)) throw new ApiError('PERSISTENCE_UNAVAILABLE');
       return tx.get(sql,...values);
     },all(sql,...values) {
+      if(sql.includes('FROM artifact_snapshots'))snapshotReads++;
       if (readFailure && sql.includes(readFailure)) throw new ApiError('PERSISTENCE_UNAVAILABLE');
       return tx.all(sql,...values);
     } })); } };
@@ -75,6 +76,7 @@ export async function fixture() {
     advance(ms: number) { now += ms; },restoreGeneration() { generation = 'generation-after-recovery'; },
     injectFailure(statement: string) { failure = statement; },
     injectReadFailure(statement: string) {readFailure = statement;},
+    resetReadMeasurements() {snapshotReads=0;},snapshotReads:()=>snapshotReads,
     async login(id = 'student') {
       const response = await service.app.inject({ method: 'POST',url: '/api/sessions',headers: { origin },payload: { loginName: id,password } });
       assert.equal(response.statusCode,200,response.body);

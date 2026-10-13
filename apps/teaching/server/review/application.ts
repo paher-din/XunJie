@@ -22,6 +22,11 @@ const params = z.strictObject({ id });
 const key = id.regex(/^[\x21-\x7e]+$/);
 export async function createReviewApp(options: ReviewAppOptions) {
   const instance = await createTutoringApp({...options,studentHelp: {...options.studentHelp,
+    readLearnerStateRevision: (tx,scope) => {
+      const attempt=readAttempt(tx,scope.attemptId);
+      if(attempt.courseId!==scope.courseId || attempt.studentId!==scope.studentId)throw new ApiError('FORBIDDEN');
+      return readState(tx,scope).learnerStateRevision;
+    },
     readLearnerState: (tx,scope) => {
       const current = readCurrentInTransaction(tx,scope);
       return {learnerStateRevision: current.learnerStateRevision,learnerClaims: current.claims
@@ -87,9 +92,11 @@ export async function createReviewApp(options: ReviewAppOptions) {
     const data = authorizeAttempt(request,attemptId,'teacher',(tx,actor) => {
       const currentGeneration = generation(input.recoveryGeneration),scope = attemptScope(tx,attemptId);
       const identity = {actorId: actor.userId,command: 'learner.review',target: '/api/attempts/'+attemptId+'/reviews',scope,idempotencyKey,recoveryGeneration: currentGeneration};
+      const previous=readRecordCommand(tx,identity,input,currentGeneration,value=>reviewResultSchema.parse(value));
+      if(previous)return {...previous,replayed:true};
       const result = finishRecordCommand(tx,identity,input,currentGeneration,now(),
         () => reviewInTransaction(tx,scope,actor.userId,input,currentGeneration,new Date(now()).toISOString()),value => reviewResultSchema.parse(value));
-      generation(currentGeneration);return result;
+      generation(currentGeneration);return {...result,replayed:false};
     });
     return {requestId: request.id,data};
   });
@@ -99,9 +106,11 @@ export async function createReviewApp(options: ReviewAppOptions) {
     const data = authorizeAttempt(request,attemptId,'student',(tx,actor) => {
       const currentGeneration = generation(input.recoveryGeneration),scope = attemptScope(tx,attemptId);
       const identity = {actorId: actor.userId,command: 'learner.dispute',target: '/api/attempts/'+attemptId+'/disputes',scope,idempotencyKey,recoveryGeneration: currentGeneration};
+      const previous=readRecordCommand(tx,identity,input,currentGeneration,value=>disputeResultSchema.parse(value));
+      if(previous)return {...previous,replayed:true};
       const result = finishRecordCommand(tx,identity,input,currentGeneration,now(),
         () => disputeInTransaction(tx,scope,input,currentGeneration,new Date(now()).toISOString(),options.review.feedbackTarget),value => disputeResultSchema.parse(value));
-      generation(currentGeneration);return result;
+      generation(currentGeneration);return {...result,replayed:false};
     });
     return {requestId: request.id,data};
   });

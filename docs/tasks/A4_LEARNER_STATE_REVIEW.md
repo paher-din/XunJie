@@ -231,3 +231,99 @@ Standards：固定基线→`0073fa6` 发现 1 个 README 运行目录 P3；`0073
 负责人明确答复“批准推送并创建 PR”，批准公开交付已验证的 `codex/a4-learner-state-review` 分支（创建时 head=`2afff290ef96519f1cade819256aa7c4449b3734`）、A4 代码/合成验收证据与 DL-A 评审准备，#38/#41 保留 Open。已推送该分支并创建 [A4 PR #49](https://github.com/paher-din/XunJie/pull/49)，目标 main，创建后核对 state=OPEN、isDraft=false、mergeable=MERGEABLE、mergeStateStatus=CLEAN；未合并 PR、关闭 Issue 或执行部署。GitHub 连接器创建接口返回集成权限 403，改用本机已授权 GitHub CLI 的同一正文成功创建，PR 已附到任务。
 
 本节及 README 为公开交付事实同步，不改变固定源码 `2f4114a`、§11.1 的测试结果或后置条件。#38/#41 的 Open 状态已从远端核对，DL-A 缺 C/B/UI 输入和其他实施门禁保留；无关工作未纳入提交。§11 首段“待公开交付”是本节创建之前的时点记录，现转为已公开交付、待负责人审阅接收。
+
+## 12. PR #49 新审查意见修复（2026-10-13）
+
+本次读取 [PR #49 的审查](https://github.com/paher-din/XunJie/pull/49)，固定作者 head=`6a4361b9e59227b8b5410c164656dc7dd7f178d8`、base=`37849f4`。审查为 CHANGES_REQUESTED，Standards 4项P2/6项P3、Spec 0项；独立复验307/297/1/9与作者一致。以下先记录方案再修复，旧§11事实原文保留，不能以历史审查0项覆盖新增发现。产品基线/其他成员任务稿/凭据/CI/UI保持只读。
+
+| 意见 | 本批修正与验收 | 边界 |
+| --- | --- | --- |
+| P2-1/2 证据空白和Windows哈希漂移 | 入库现有证据blob原字节保存为gzip并记hash；显示日志仅去尾随空白/EOF空行，同步新摘要与保留旧摘要；本目录txt/json设置-text防自动换行，不关闭whitespace检查。核提交blob与Windows检出字节、完整base→HEAD diff --check | 原作者originalLogSha256保留其旧含义，不能把保留blob假称原作者未规范化原日志；旧验证声明在本节追加更正 |
+| P2-3 C4联合范围漂移 | 保持批准的精确31表集合，初始化前核准表名集合，不一致时在建库前拒绝；公共工厂回归断言31表及关闭后保留。C4未来33表须另获准确批准，当前不合#47、不改变schema | 不将31改成自动跟随teaching表数的开放授权，不迁移旧库 |
+| P2-4 热路径完整投影 | 增加可选同tx readLearnerStateRevision；A4实现只查真实最新revision；B2守卫优先廉价读取并与原额外守卫AND，未提供时回退旧完整读取；求助仍完整投影。原事件/投递/并发纠正用例验证，完整投影存储故障不能阻塞只需版本的事件轮询 | 负责人已明确批准该最小共享修复；不改模型格式、B教学策略或共享状态语义 |
+| P3-1/3 记录和README格式 | 追加更正固定旧head静态内链611（原写610）、原diff --check失败；补围栏后空行，本轮计数另记 | 保留历史统计与日期 |
+| P3-2 回执可辨 | reviews/disputes按原同key/hash回执预检，返回顶层replayed；相同结果/IDs与CAS/权限保留，异摘要冲突 | 仅加已有命令回执标志，不重复动作 |
+| P3-4 宿主与受信服务说明 | 明确当前learner_analysis无人自动消费；queue/read需要真实请求授权，claim/complete属于受信宿主服务，原Job/成员/lease/代际守卫不能绕过；本批不接宿主或模型 | 正常消费者/B3/C4在其原批次交付 |
+| P3-5/6 引用与重复展开 | run缺失输入/入口文件显式INVALID_REFERENCE；证据一次同步展开内复用同Attempt的Workspace，投影/主张校验共用，调用间无缓存，避免纠正后复用旧结果；保留原引用不可用/防复活/工具故障回归 | 不减少依据、权限或当前性核验 |
+
+### 12.1 负责人批准与后续复核登记
+
+2026-10-13，负责人答复“批准该最小共享修复并继续”，批准上述可选readLearnerStateRevision同tx能力，事件/投递只取真实版本，求助完整主张不变，未装配仍沿旧行为/原额外守卫。此前批准的§2～6、31表fresh-only和公共测试接缝继续有效；本轮不请求或执行C4联合33表初始化。
+
+PR审查修订登记的负责人指派如下，仅同步A交接待办，不向成员发送消息，不把Pending改为通过：
+
+| 域/责任人 | 挂靠与触发阶段 | 复核与证据要求 | 当前状态 |
+| --- | --- | --- | --- |
+| C / @paher-din | #43，C4/A4实际合并集成批次 | 原分析存储、Job幂等、状态版本守卫和同事务接纳/重投，不破坏C3原路径；给消费提交与真实验证 | Pending |
+| B / @scy404 | #42，B3消费A4状态时 | tutoring最小状态读取、版本守卫、历史兼容和教学上下文；包含本轮已批准的廉价revision接缝，给消费提交与真实验证 | Pending |
+| A / @czr112 | #41与本文；C/B交结论后协调 | 本节已登记责任/触发/要求；收到各域实际结论后核对收口，不能替其签收 | 登记已完成；跨域收口Pending |
+
+A4独立合成批次与后续C/B消费验收分别计账，不自动关闭#41/#42/#43、不宣称完整G3。公开PR待办/Issue同步属于外部交付记录，实际更新另记，本文登记不冒充远端已更新。
+
+
+### 12.2 追加 C 域试合并复核与本批处理
+
+2026-10-13，再次读取 PR 审查时已有负责人追加的 C 域复核：对象是旧 A4 head `6a4361b` + C4 head `3f51da2` 的试合并树 `e1bef102`，不是已合并结果；C 四套件 29/29、组合 61 项为 60 通过/0失败/1跳过，review/teaching/workspace 实测33/28/24表。此为 C 提供的指定范围证据，本批不冒称自行执行；实际合并和批准表集合仍需落地后复确认。§12.1 原 Pending 是此前时点记录，现 C 已提前执行并提出1项C-P2/4项C-P3，正式触发后复确认仍Pending，B/A跨域收口仍Pending。
+
+C-P2-1：原 `reconcileTeachingBasisInTransaction` 对非 pending Action 无条件覆盖 stopReason。按 C3 既有纪律补公共反例：真实学生求助/原worker完成/显式取消后接纳分析，再轮询事件，教师公开记录必须保留 cancelled/student_stopped 与原ID/hash/回执，仅 basisRevised 变 true；pending 才写 stale/learner_state_revised。这是原获准 C3 同事务接缝的事实保全修复，不加字段或改变共享格式。
+
+C-P3-3/4：把 C3-V01/V05 注释放回完成函数；原分析读取/重放签名收窄为必含 attemptId，与两个实际调用方及存储侧一致。`server/records/analysis.ts` 是 C 原事实持久化接缝，调用方均在 A review；A 公共验收覆盖 admission/读取/幂等，C 后续集成负责原 Job/事务纪律复核，不据目录归属冒称已有 C 专用消费或用例。
+
+C-P3-1（待裁决）：懒协调失效审计的 actor/time 目前记录实际轮询触发者/执行时刻，不能据此认定该人是导致状态改变者，也不是原修订时刻。建议由负责人确认归因语义：在原状态变更事务记录，或由受信服务标识并关联原 cause/time；需要与 C 统一审计约定，本轮不单方改字段或挪用教师身份，不将此判断项标已解决。
+
+C-P3-2（消费说明）：轮询已将原 Job stopRequested 置 true 后，后续显式取消仍返回200并写原取消审计，但 invalidatedActionIds 可能为空、没有新的 teaching.stopped；空数组只代表本命令新增传播集合，不代表此前没有受影响Action。宿主/UI不得以该数组反推历史影响；本批不增加字段或额外事件，待实际消费方结合原 Action/Job/事件验证。
+
+
+### 12.3 固定源码前已执行验证与历史勘误
+
+2026-10-13，本批完成上述实现：公共事件守卫在原证据读取故障下不展开完整状态；reviews/disputes 原回执含 replayed；独立初始化在建库前对精确31表组成 fail closed；单次投影三条主张只读取一次工作区、下一次读取看见教师纠正；损坏 Run 输入/入口各从503修为422 INVALID_REFERENCE；已取消Action原停止原因从被覆盖修为保留。原输入/入口两子用例3/3、C停止原因1/1各有真实 red→green，最新 typecheck 通过；本轮全部专项、最终完整回归与两轴审查尚未执行，不把局部结果当收口。
+
+历史勘误：固定旧head `6a4361b` 的静态检查为39文档/611内链，§11.2写610不准确；该head相对于base的 `git diff --check` 实际失败（尾随空白/EOF空行），§11.2“通过”声明不成立。旧声明原文保留供核查；本轮去显示日志空白、保留旧blob并使用-text，当前未提交差异对完整base的空白检查通过。五份压缩档解压后逐字等于旧head Git blob，当前显示记录及 files/reviewCorrection 索引SHA-256/字节数逐项一致；原作者未归一日志摘要与旧blob摘要分别保留，不混称。
+
+A4廉价版本读取仍核真实 Attempt course/student 和真实状态记录的scope/revision一致性，解析状态记录而不解析引用可用性/展开workspace；不是信任请求体revision。完整求助继续使用获准投影，未装配revision能力回退完整reader并保留已有附加守卫AND；没有状态reader时保持原C3语义。
+
+当前 learner_analysis 没有正常宿主自动消费者；排队/读取需原真实授权请求，claim/complete只供受信宿主服务调用，不能将其注册为客户端可直接调用的任意jobId/lease接口。宿主应保护能力引用/调用者，并遵守原成员、Job、lease、代际、用途/版本守卫；本批仅通过获准测试宿主消费，不宣称生产worker已装配。待授权维护者汇总MVP§10/TECH时同时纳入本轮revision接口、31表范围守卫、回执标志及引用/停止事实修复，产品基线仍只读。
+
+
+### 12.4 修复源码两轴审查（2026-10-13）
+
+固定 `6a4361b9e59227b8b5410c164656dc7dd7f178d8` → `80a2721815bdc9ba43a33bb85b39fd60ee0e8298`，Standards 独立只读审查：硬规范违反0、可操作异味0；Spec独立只读审查：缺失/部分、错误实现、范围扩大均0。两轴核对真实版本scope/旧fallback/附加AND守卫、单调用缓存、建库前精确31表守卫、非pending Action原停止原因事实保全；没有执行测试或节点，不代替以下最终回归。
+
+固定该源码的 A4 公共专项51项（41顶层+10子用例）为51通过、0失败、0跳过，typecheck通过；正常 `npm test` 含build的全量正在执行。本轮审计归因C-P3-1待裁决、实际合并/C/B消费接收与正式产品后置项仍保留，不以两轴0项宣称全部跨域待办关闭。
+
+
+2026-10-13，固定 `80a2721` 的默认 `npm test`（含build通过）实际315项：304通过、2失败、9跳过，A4的51项全部通过。除原Windows/Linux RunControl环境失败外，`server/tutoring/test/deepseek-sdk.test.ts:315` 的10ms截止时间用例预期calls=1实际0；timed_out断言已通过，未进入预期的延迟传输。该SDK/provider/核心文件本批未改，单独复跑整个SDK文件11/11通过；与并发负载下在调用前期限已过一致，不能将局部通过改写成首轮全量通过。保留本轮首轮失败，正对同一文件全集串行复验，原10ms/5秒阈值、平台门禁与用例均不变，最终结果另记。
+
+
+## 13. PR #49 修复最终结果（2026-10-13）
+
+修复源码固定 `80a2721815bdc9ba43a33bb85b39fd60ee0e8298`，原审查head `6a4361b`、产品代码基线 `37849f4`。本批原4项P2及追加C-P2-1已修，原6项P3按§12修复/澄清，C-P3-3/4代码/归属说明已处理；C-P3-1审计归因仍待负责人裁决，C-P3-2消费限制保留。此为A4独立31表修复批次，不是C4/A4已合并树，不合并其他PR、不关闭#41/#42/#43，不宣称完整G3。
+
+| 已执行命令（apps/teaching，Node24.21.0） | 实际结果 | 证据 |
+| --- | --- | --- |
+| `npm run typecheck` | 通过 | [完整类型](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-typecheck.windows.txt) |
+| `node --test --test-reporter=tap tests/review.test.ts` | 51项（41顶层+10子用例），51通过/0失败/0跳过 | [A4专项](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-targeted.windows.txt) |
+| `npm test`（原默认文件并发，含build） | build通过；315项，304通过/2失败/9跳过；A4全部通过 | [默认全集](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-full.windows.txt) |
+| `node --test --test-reporter=tap server/tutoring/test/deepseek-sdk.test.ts` | 11通过/0失败/0跳过 | [SDK单文件](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-sdk-isolated.windows.txt) |
+| `node tools/check-runtime.mjs; node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts` | 315项，305通过/1失败/9跳过；A4全部通过，SDK时间失败未复现 | [串行全集](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-full-serial.windows.txt) |
+
+默认完整失败原样保留：Windows/Linux RunControl既有环境失败，以及未改SDK的10ms时间敏感用例calls=0（timed_out断言通过）。单独SDK与串行完整均未复现后者；串行仅余原RunControl失败。未改用例、阈值、文件集合或平台/模型门禁；9个实际跳过及所有摘要见[新证据索引](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision.evidence.json)。不能把串行通过数回填到默认全集或宣称全部通过。
+
+新验收与旧§11按源码时点分开，旧5份Git blob各已精确保留gzip。提交`80a2721`后验证5/5当前Windows工作树日志字节等于HEAD blob、与清单SHA-256/字节数一致，text属性均unset；完整base→HEAD空白检查通过。获准合成库保留；本轮工厂公共用例验证真实31表和关闭后可重新打开，未初始化C4联合33表。两轴固定修复源码未解决均0，后续文档/证据审查另记。
+
+原正常learner_analysis消费者、C4联合提交/恢复、B真实消费与人工语义、A5正式反馈、Linux完整测试、真实节点/模型、浏览器/TLS/真人/教学效果未执行；C提前试合并结论须在实际合并并批准联合范围后重新确认。待授权维护者把§12～13真实实现/结果、已批准revision签名、回执标志和以上边界汇总MVP§10/TECH，当前受保护文档仍只读。修复交付沿用[A4 PR #49](https://github.com/paher-din/XunJie/pull/49)，源码与最终验收文档分开提交，PR继续交负责人复审。
+
+
+最终文档静态检查 39文档/619内链/errors=[]，原检查器自测16/16；当前base→未提交修复差异空白检查通过。原源码时点静态记录612内链单列为历史；最终数按本段新检查，不回写旧610/611计数。[最终文档日志](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-final-documents.windows.txt)的文件入口追加后内链再验并在交付核对中登记。
+
+最终文件入口追加后的交付再验：39文档/620内链/errors=[]；前述619是该入口追加前的实际时点，新索引分别保留两次结果。末次代码/证据差异空白检查及文档/证据两轴增量结果随后核对。
+
+
+2026-10-13，`80a2721`→`e15e865` 最终文档/证据独立复核：Spec未解决/新增0；Standards发现1项P3（新JSON授权者以聊天身份user表述，不符AGENTS项目角色规范），已改为project lead，与§12.1负责人批准一致。8份新日志摘要/字节、实际计数和时点均经两轴核对；此称谓修正不改变授权内容、源码或任何日志，增量复核结果随后登记。交付前另核当前13份日志均等于提交blob/Windows检出摘要，旧5份blob精确保留，完整base差异空白检查通过。
+
+
+2026-10-13，固定`e15e865`→`1942e9a`称谓修正独立增量复核：Standards原项目角色P3已关闭，未解决硬违规0、新增0、可操作异味0；Spec未解决/新增0。8份新日志和业务源码未改，未重复业务测试。源码及最终文档/证据两轴当前均已收口；C-P3-1负责人待裁决、跨域验收/联合授权与产品后置项仍按§12～13保留。完整base空白检查通过，13份日志提交/Windows检出字节及摘要已经逐项核对一致；本轮使用原PR #49交回负责人复审，不自行认定批准合并。
+
+## 14. C4 合并后 33 表集成（2026-10-13）
+
+C4 已实际合入 main，负责人批准 A4 新建并保留精确33表合成库：原31表加 workspace_submissions、workspace_reopen_grants，同步初始化前守卫与公共工厂断言。旧31表结果保留其原时点；不迁移旧库，不扩其他工厂契约。当前正常宿主、B消费/人工语义、审计归因裁决与产品后置项保持各自状态，不据本次合并代签。公共反例、组合验证与远程事实见 [顺序集成记录](ORDERED_C4_A4_DL_C_INTEGRATION.md)。

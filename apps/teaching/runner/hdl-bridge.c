@@ -7,16 +7,17 @@
 
 static const char *names[]={"clock","switches","buttons","resetN","leds","anodes","segments","dp"};
 static vpiHandle signals[8];static unsigned cycles,advanced,changes,dropped;
-static int high=0;static char inputs[3][32],previous[160];static uint64_t sample_count;
+static int high=0;static char inputs[3][32],previous[160];static uint64_t sample_count,ticks_per_ps=1;
 static void later(PLI_INT32 (*callback)(p_cb_data),unsigned delay){
-  s_vpi_time time={.type=vpiSimTime,.high=0,.low=delay};
+  uint64_t ticks=(uint64_t)delay*ticks_per_ps;
+  s_vpi_time time={.type=vpiSimTime,.high=(PLI_UINT32)(ticks>>32),.low=(PLI_UINT32)ticks};
   s_cb_data cb={.reason=cbAfterDelay,.cb_rtn=callback,.time=&time};vpi_register_cb(&cb);
 }
 static void readonly(PLI_INT32 (*callback)(p_cb_data)){
   s_vpi_time time={.type=vpiSimTime};s_cb_data cb={.reason=cbReadOnlySynch,.cb_rtn=callback,.time=&time};vpi_register_cb(&cb);
 }
 static void put(unsigned index,const char *bits){s_vpi_value value={.format=vpiIntVal};value.value.integer=(PLI_INT32)strtoul(bits,NULL,2);vpi_put_value(signals[index],&value,NULL,vpiNoDelay);}
-static uint64_t now(void){s_vpi_time time={.type=vpiSimTime};vpi_get_time(NULL,&time);return ((uint64_t)time.high<<32)|time.low;}
+static uint64_t now(void){s_vpi_time time={.type=vpiSimTime};vpi_get_time(NULL,&time);return (((uint64_t)time.high<<32)|time.low)/ticks_per_ps;}
 static void frame(int force){
   char body[160]="",row[256];
   for(unsigned i=1;i<8;i++){s_vpi_value value={.format=vpiBinStrVal};vpi_get_value(signals[i],&value);strcat(body,"\t");strcat(body,value.value.str);}
@@ -50,6 +51,10 @@ static PLI_INT32 initialize(p_cb_data unused){(void)unused;
   put(0,"0");put(1,"0000000000000000");put(2,"00000");put(3,"1");readonly(sample);return 0;
 }
 static PLI_INT32 start(p_cb_data unused){(void)unused;
+  /* SimTime callbacks use the design's global precision, which student RTL may make finer than the board's 1ps. */
+  int precision=vpi_get(vpiTimePrecision,NULL);
+  if(precision> -12||precision< -15){vpi_printf("Unsupported platform time precision\n");vpi_control(vpiFinish,1);return 0;}
+  for(int exponent=precision;exponent< -12;exponent++)ticks_per_ps*=10;
   for(unsigned i=0;i<8;i++){char path[80];snprintf(path,sizeof(path),"xunjie_board.%s",names[i]);signals[i]=vpi_handle_by_name(path,NULL);if(!signals[i]){vpi_printf("Platform signal unavailable: %s\n",names[i]);vpi_control(vpiFinish,1);return 0;}}
   /* Icarus's initialization queue has already drained at StartOfSim; drive only in the running RW phase. */
   s_vpi_time time={.type=vpiSimTime};s_cb_data cb={.reason=cbReadWriteSynch,.cb_rtn=initialize,.time=&time};vpi_register_cb(&cb);return 0;

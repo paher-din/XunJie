@@ -289,8 +289,8 @@ export function reconcileTeachingBasisInTransaction(tx: Transaction,input: {scop
   if (!sameScope(action.scope,input.scope)) throw new RunnerError('FORBIDDEN','Action scope mismatch');
   if (action.basisRevised || isBasisCurrent(tx,input.scope,action.basis)) return action;
   const job = jobOf(tx,input.scope,action.jobId);
-  saveAction(tx,{...action,disposition: action.disposition === 'pending' ? 'stale' : action.disposition,
-    basisRevised: true,stopReason: 'learner_state_revised'});
+  saveAction(tx,{...action,basisRevised: true,
+    ...(action.disposition === 'pending' ? {disposition: 'stale',stopReason: 'learner_state_revised'} : {})});
   saveJob(tx,{...job,stopRequested: true});
   appendTeachingEvent(tx,{...input.scope},input.actorId,'teaching.invalidated',checkedNow(input.now),input.generation,'learner_state_revised');
   return readAction(tx,input.actionId);
@@ -364,12 +364,12 @@ export function enqueueTeachingJob(tx: Transaction, job: Job) {
   return { jobId: job.jobId, status: job.status };
 }
 
+export type TeachingBasisCurrent = (tx: Transaction,scope: TeachingScopeRef,basis: TeachingBasis) => boolean;
+
 /**
  * C3-V01/V05 seam: persists the approved final body with its trusted envelope, or archives a late body as a
  * non-deliverable generated fact when the stop already committed. Existing Action/Message IDs are replayed.
  */
-export type TeachingBasisCurrent = (tx: Transaction,scope: TeachingScopeRef,basis: TeachingBasis) => boolean;
-
 export function completeTeachingInTransaction(tx: Transaction, input: {scope: TeachingScopeRef; jobId: string; leaseToken: string;
   generation: string; now: string; bodyJsonText: string; resultRef?: string; versions: TeachingVersions; usage: TeachingUsage;
   calls: number; elapsedMs: number; basis: unknown; messageId: string; actionId: string; isBasisCurrent?: TeachingBasisCurrent}) {
