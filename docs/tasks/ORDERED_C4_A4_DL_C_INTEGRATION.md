@@ -84,13 +84,17 @@ Linux运行时首次脚本因Windows换行写入失败，错误下载/展开产�
 
 本次是精确运行时、原lock与新Linux原生目录、串行条件下的单次完整通过；不据此声称旧WSL随机失败根因已解决，也不是目标guest/认证宿主全量复跑。Windows首轮343项中的2失败/2取消/12跳过及Trace/clock红测完整保留。展示日志只规范换行/尾空白并替换个人诊断路径与file URI前缀，原始字节保留且单独记录摘要，测试名称、结果和失败信息不删改。证据可独立从仓库读取，不依赖个人目录。
 
-从仓库根使用获准Node24.21.0执行文档检查；从apps/teaching执行应用验证，Linux时钟夹具的环境变量仅指向获准包的临时解包目录，不使用真实节点配置：
+从仓库根使用获准Node24.21.0执行文档检查；从apps/teaching执行应用验证，Linux时钟夹具的XUNJIE_DLC_TOOLCHAIN必须设置为获准Icarus12.0-2build2包的临时解包根目录（其下含usr/bin、usr/include/iverilog与usr/lib/x86_64-linux-gnu/ivl），下面以交互输入实际路径，不使用真实节点配置；未设置会跳过时钟夹具，不能复现本轮93/360项范围：
 
 ```sh
 node tools/a0-review/check.mjs
 ```
 
 ```sh
+printf 'Approved Icarus 12.0-2build2 extracted directory: '
+IFS= read -r approvedIcarusPackageDir
+test -f "$approvedIcarusPackageDir/usr/include/iverilog/vpi_user.h"
+export XUNJIE_DLC_TOOLCHAIN="$approvedIcarusPackageDir"
 npm run typecheck
 npm run build
 node --test --test-concurrency=1 --test-reporter=tap tests/review.test.ts server/workspace/submissions.test.ts server/workspace/integration.test.ts server/workspace/hdl.test.ts runner/hdl-profile.test.ts runner/hdl.runtime.test.ts runner/hdl-clock.test.ts runner/node-files.test.ts
