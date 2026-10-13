@@ -1,0 +1,1008 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createDeepSeekProvider, InputLimitError, ProviderCallNotStartedError, SyntheticProvider } from "../providers.ts";
+import type { ModelProvider } from "../providers.ts";
+import {
+  executeClaimedLearnerAnalysis,
+  type ClaimedLearnerAnalysis,
+  type LearnerAnalysisCurrentState,
+} from "../analysis.ts";
+import { generateLearnerAnalysis } from "../core.ts";
+import { recordModelCall } from "../../records/jobs.ts";
+import { readAttempt, readRecords, saveJob } from "../../db/records-adapter.ts";
+import { readActivity } from "../../design/activities.ts";
+import { readContext } from "../../review/storage.ts";
+import { setup, command, helpBody } from "../../../tests/review-support.ts";
+import { learnerAnalysisFixtures } from "./learner-analysis.fixtures.ts";
+import {
+  b3RealModelEnabled,
+  b3RealModelProbe,
+  writeRealModelEvidence,
+} from "./real-model-support.ts";
+
+test("B3 fixed synthetic fixture matrix keeps all eight evidence and feedback boundaries explicit", () => {
+  assert.deepEqual(learnerAnalysisFixtures.map((fixture) => fixture.id), [
+    "E-B3-01", "E-B3-02", "E-B3-03", "E-B3-04",
+    "E-B3-05", "E-B3-06", "E-B3-07", "E-B3-08",
+  ]);
+  assert.equal(new Set(learnerAnalysisFixtures.map((fixture) => fixture.id)).size, 8);
+  assert.equal(learnerAnalysisFixtures.find((fixture) => fixture.id === "E-B3-04")?.expected.state, "insufficient");
+  assert.match(learnerAnalysisFixtures.find((fixture) => fixture.id === "E-B3-06")!.forbidden, /revive/);
+  assert.match(learnerAnalysisFixtures.find((fixture) => fixture.id === "E-B3-08")!.forbidden, /formal Feedback/);
+});
+
+test("B3 produces a strict evidence-grounded body and A4 accepts it through the real analysis transaction", async () => {
+  const s = await setup();
+  try {
+    const queued = await s.queue();
+    const claimed = s.f.review.claimAnalysis(queued.jobId) as ClaimedLearnerAnalysis;
+    const targets = s.content.goals.map((goal: { competencyId: string; competencyVersion: number; domain: "domain" | "project" | "ai_collaboration" }) => ({
+      competencyId: goal.competencyId,
+      competencyVersion: goal.competencyVersion,
+      domain: goal.domain,
+      scope: { kind: "activity" as const, activityVersionId: s.activityId },
+    }));
+    const validBody = {
+      kind: "learner_analysis",
+      claims: [{
+        competencyId: "k",
+        competencyVersion: 1,
+        domain: "domain",
+        scope: { kind: "activity", activityVersionId: s.activityId },
+        statement: "The current snapshot does not yet include an observed explanation.",
+        state: "insufficient",
+        evidenceIds: [s.snapshotId],
+        counterEvidenceIds: [],
+        assistanceStatus: "unknown",
+        unresolved: true,
+        unknown: ["No independent explanation or trusted check is available."],
+      }],
+      feedbackDraft: "Draft: ask the student to explain the choice before making a formal judgment.",
+    };
+    const provider = new SyntheticProvider([
+      { body: { ...validBody, forgedScope: "foreign-course" } },
+      { body: validBody, usage: { status: "actual", inputTokens: 31, outputTokens: 17 } },
+    ]);
+    const outcome = await executeClaimedLearnerAnalysis({
+      claimed,
+      targets,
+      references: [{ id: s.snapshotId, content: "Synthetic confirmed snapshot" }],
+    }, analysisRuntime(s, claimed, provider));
+    assert.equal(outcome.outcome, "success");
+    assert.equal(outcome.calls, 2, "one strict-schema repair shares the original call budget");
+    assert.deepEqual(outcome.usage, { status: "unknown" }, "a repair with missing first-call usage remains unknown");
+    assert.deepEqual(
+      (provider.calls[0]?.untrustedInput as { referenceRoles: unknown }).referenceRoles,
+      { input: [s.snapshotId], assistance: [], coverage: [] },
+      "the model sees trusted reference roles instead of inferring assistance or coverage from prose",
+    );
+    if (outcome.outcome !== "success") return;
+    assert.deepEqual(outcome.body, validBody);
+    assert.ok(!("forgedScope" in outcome.body));
+
+    const accepted = s.f.review.completeAnalysis({
+      jobId: queued.jobId,
+      leaseToken: claimed.leaseToken,
+      recoveryGeneration: s.f.generation(),
+      bodyJson: JSON.stringify(outcome.body),
+    });
+    assert.equal(accepted.disposition, "accepted");
+    const current = s.f.db.withTransaction((tx) => s.f.review.readCurrentInTransaction(tx, {
+      courseId: "course",
+      studentId: "student",
+      attemptId: s.attemptId,
+    }));
+    assert.equal(current.learnerStateRevision, 1);
+    assert.equal(current.claims.length, 1);
+    const stored = current.claims[0];
+    assert.ok(stored);
+    assert.equal(stored.source, "model_candidate");
+    assert.equal(stored.assistanceStatus, "unknown");
+    assert.equal(stored.unresolved, true);
+  } finally {
+    await s.f.close();
+  }
+});
+
+test("B3 rejects unsupported targets, fabricated references, and policy-invalid evidence semantics", async (t) => {
+  const cases = [
+    {
+      name: "unknown target",
+      change: { competencyId: "not-authorized" },
+    },
+    {
+      name: "fabricated reference",
+      change: { evidenceIds: ["foreign-reference"] },
+    },
+    {
+      name: "assisted state without observed help",
+      change: { state: "supported_with_assistance", assistanceStatus: "unknown" },
+    },
+    {
+      name: "checked state without supporting evidence",
+      change: { state: "supported_in_check", evidenceIds: [] },
+    },
+    {
+      name: "conflict without counter-evidence",
+      change: { state: "conflicting", counterEvidenceIds: [] },
+    },
+    {
+      name: "unknown discarded by resolved flag",
+      change: { unresolved: false, unknown: ["Collection gap remains"] },
+    },
+  ];
+  for (const item of cases) await t.test(item.name, async () => {
+    const s = await setup();
+    try {
+      const queued = await s.queue();
+      const claimed = s.f.review.claimAnalysis(queued.jobId) as ClaimedLearnerAnalysis;
+      const claim = {
+        competencyId: "k",
+        competencyVersion: 1,
+        domain: "domain",
+        scope: { kind: "activity", activityVersionId: s.activityId },
+        statement: "Synthetic candidate",
+        state: "insufficient",
+        evidenceIds: [s.snapshotId],
+        counterEvidenceIds: [],
+        assistanceStatus: "unknown",
+        unresolved: true,
+        unknown: ["No independent check"],
+        ...item.change,
+      };
+      const provider = new SyntheticProvider([
+        { body: { kind: "learner_analysis", claims: [claim] } },
+        { body: { kind: "learner_analysis", claims: [claim] } },
+      ]);
+      const outcome = await executeClaimedLearnerAnalysis({
+        claimed,
+        targets: [{ competencyId: "k", competencyVersion: 1, domain: "domain", scope: { kind: "activity", activityVersionId: s.activityId } }],
+        references: [{ id: s.snapshotId, content: "Synthetic snapshot" }],
+      }, analysisRuntime(s, claimed, provider));
+      assert.equal(outcome.outcome, "rejected");
+      assert.equal(outcome.code, "INVALID_MODEL_OUTPUT");
+      assert.equal(outcome.calls, 2);
+      assert.equal((await s.state()).learnerStateRevision, 0);
+    } finally {
+      await s.f.close();
+    }
+  });
+});
+
+test("B3 review of the A4 optional B2 state seam uses real transactions and ignores injected revisions", async () => {
+  const s = await setup();
+  try {
+    const queued = await s.queue();
+    const claimed = s.f.review.claimAnalysis(queued.jobId) as ClaimedLearnerAnalysis;
+    const provider = new SyntheticProvider([{ body: {
+      kind: "learner_analysis",
+      claims: [{
+        competencyId: "k",
+        competencyVersion: 1,
+        domain: "domain",
+        scope: { kind: "activity", activityVersionId: s.activityId },
+        statement: "An explanation is still needed.",
+        state: "insufficient",
+        evidenceIds: [s.snapshotId],
+        counterEvidenceIds: [],
+        assistanceStatus: "unknown",
+        unresolved: true,
+        unknown: ["No explanation observed"],
+      }],
+    } }]);
+    const generated = await executeClaimedLearnerAnalysis({
+      claimed,
+      targets: [{ competencyId: "k", competencyVersion: 1, domain: "domain", scope: { kind: "activity", activityVersionId: s.activityId } }],
+      references: [{ id: s.snapshotId, content: "Synthetic snapshot" }],
+    }, analysisRuntime(s, claimed, provider));
+    assert.equal(generated.outcome, "success");
+    if (generated.outcome !== "success") return;
+    s.f.review.completeAnalysis({
+      jobId: queued.jobId,
+      leaseToken: claimed.leaseToken,
+      recoveryGeneration: s.f.generation(),
+      bodyJson: JSON.stringify(generated.body),
+    });
+    const state = await s.state();
+    const claim = state.claims[0];
+
+    const help = await command(s.f, s.student, `/api/attempts/${s.attemptId}/help`, {
+      question: "Explain the approach",
+      expectedAttemptRevision: (await s.attempt()).attempt.attemptRevision,
+    });
+    assert.equal(help.statusCode, 200, help.body);
+    const jobId = help.json().data.result.jobId;
+    const prepared = await s.f.app.inject({
+      method: "POST",
+      url: `/fixture/prepare/${s.attemptId}/${jobId}`,
+      headers: s.student,
+      payload: { learnerStateRevision: 900, learnerClaims: [] },
+    });
+    assert.equal(prepared.statusCode, 200, prepared.body);
+    const references = prepared.json().data.references as { id: string; content: string }[];
+    const claimReference = references.find((reference) => reference.id === `claim:${claim.claimId}:1`);
+    assert.ok(claimReference);
+    assert.equal(JSON.parse(claimReference.content).learnerStateRevision, 1);
+    assert.equal(references.some((reference) => {
+      try {
+        return (JSON.parse(reference.content) as { learnerStateRevision?: number }).learnerStateRevision === 900;
+      } catch {
+        return false;
+      }
+    }), false);
+
+    let calls = 0;
+    const later = await s.queue();
+    const laterLease = s.f.review.claimAnalysis(later.jobId) as ClaimedLearnerAnalysis;
+    s.f.setProvider({ async generate() {
+      calls += 1;
+      s.f.review.completeAnalysis({
+        jobId: later.jobId,
+        leaseToken: laterLease.leaseToken,
+        recoveryGeneration: s.f.generation(),
+        bodyJson: JSON.stringify({
+          kind: "learner_analysis",
+          claims: [{
+            competencyId: "p", competencyVersion: 1, domain: "project",
+            scope: { kind: "activity", activityVersionId: s.activityId },
+            statement: "A project decision is still unexplained.", state: "insufficient",
+            evidenceIds: [s.snapshotId], counterEvidenceIds: [], assistanceStatus: "unknown",
+            unresolved: true, unknown: ["No explanation observed"],
+          }],
+        }),
+      });
+      return { body: helpBody(), usage: { status: "actual", inputTokens: 13, outputTokens: 8 } };
+    } });
+    const execution = await command(s.f, s.student, `/fixture/execute/${s.attemptId}/${jobId}`, {});
+    assert.equal(execution.statusCode, 200, execution.body);
+    assert.equal(execution.json().data.outcome.outcome, "stale");
+    assert.equal(execution.json().data.delivery, undefined);
+    assert.equal(calls, 1);
+  } finally {
+    await s.f.close();
+  }
+});
+
+test("B3 rejects a model input that omits any reference frozen in the analysis binding", async () => {
+  const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+  claimed.binding.assistanceRefs = [{ kind: "message", id: "assistance", attemptId: "attempt" }];
+  claimed.binding.coverageRefs = [{
+    kind: "coverage",
+    id: "coverage",
+    attemptId: "attempt",
+    captureRevision: 1,
+    fromServerSeq: 1,
+  }];
+  const provider = new SyntheticProvider([]);
+  await assert.rejects(
+    executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+      provider,
+      budgetAvailable: () => true,
+      recordModelCall: () => assert.fail("an incomplete frozen reference set must not reserve a call"),
+      releaseModelCall: () => assert.fail("an incomplete frozen reference set has no reservation to release"),
+      readCurrent: () => syntheticCurrent(claimed),
+      now: () => 1_000,
+    }),
+    /references must exactly match the trusted binding/,
+  );
+  assert.equal(provider.calls.length, 0);
+});
+
+test("B3 core rejects an authorized reference set that omits a frozen binding reference", async () => {
+  const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+  claimed.binding.assistanceRefs = [{ kind: "message", id: "assistance", attemptId: "attempt" }];
+  const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+  const execution = syntheticExecution(claimed);
+  const outcome = await generateLearnerAnalysis({
+    context: {
+      jobId: claimed.job.jobId,
+      purpose: "learner_analysis",
+      scope: { courseId: "course", userId: "student", attemptId: "attempt" },
+      authorizedReferenceIds: ["snapshot"],
+      acceptedAtMs: 1_000,
+      deadlineAtMs: 46_000,
+      budgetAvailable: true,
+      versions: { modelConfig: "model", prompt: "prompt", schema: "schema", policy: "policy" },
+    },
+    binding: claimed.binding,
+    targets: execution.targets,
+    references: execution.references,
+  }, {
+    provider,
+    checkCurrent: () => "current",
+    now: () => 1_000,
+  });
+  assert.equal(outcome.outcome, "rejected");
+  assert.equal(outcome.code, "INVALID_ANALYSIS_CONTEXT");
+  assert.equal(provider.calls.length, 0);
+});
+
+test("B3 shares the three-call, deadline, cancellation, usage, lease, and currentness boundaries", async (t) => {
+  await t.test("dynamic budget stops before a second provider call and preserves first usage", async () => {
+    const claimed = syntheticClaimed();
+    let budget = true;
+    let recorded = 0;
+    const provider = new SyntheticProvider([() => {
+      budget = false;
+      return { body: null, needsAnotherCall: true, usage: { status: "actual", inputTokens: 7, outputTokens: 3 } };
+    }]);
+    const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+      provider,
+      budgetAvailable: () => budget,
+      recordModelCall: () => { recorded += 1; },
+      releaseModelCall: () => { recorded -= 1; },
+      readCurrent: () => syntheticCurrent(claimed),
+      now: () => 1_000,
+    });
+    assert.equal(outcome.outcome, "budget_exhausted");
+    assert.equal(outcome.calls, 1);
+    assert.deepEqual(outcome.usage, { status: "actual", inputTokens: 7, outputTokens: 3 });
+    assert.equal(recorded, 1);
+    assert.equal(provider.calls.length, 1);
+  });
+
+  await t.test("an already exhausted cross-worker ledger makes no provider call", async () => {
+    const claimed = syntheticClaimed({ attemptCount: 3 });
+    const provider = new SyntheticProvider([]);
+    const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+      provider,
+      budgetAvailable: () => true,
+      recordModelCall: () => assert.fail("no call may be recorded"),
+      releaseModelCall: () => assert.fail("no call may be released"),
+      readCurrent: () => syntheticCurrent(claimed),
+      now: () => 1_000,
+    });
+    assert.equal(outcome.outcome, "budget_exhausted");
+    assert.equal(outcome.calls, 0);
+    assert.equal(provider.calls.length, 0);
+  });
+
+  await t.test("stale lease and passive capture changes stop before the provider", async () => {
+    for (const changed of [
+      { leaseToken: "different-lease" },
+      { captureRevision: 2 },
+    ]) {
+      const claimed = syntheticClaimed();
+      const provider = new SyntheticProvider([]);
+      const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+        provider,
+        budgetAvailable: () => true,
+        recordModelCall: () => assert.fail("no call may be recorded"),
+        releaseModelCall: () => assert.fail("no call may be released"),
+        readCurrent: () => ({ ...syntheticCurrent(claimed), ...changed }),
+        now: () => 1_000,
+      });
+      assert.equal(outcome.outcome, "stale");
+      assert.equal(outcome.calls, 0);
+    }
+  });
+
+  await t.test("explicit analysis survives a capture-only change while preserving unknown", async () => {
+    const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+    const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+    const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+      provider,
+      budgetAvailable: () => true,
+      recordModelCall() {},
+      releaseModelCall() {},
+      readCurrent: () => ({ ...syntheticCurrent(claimed), captureRevision: 9 }),
+      now: () => 1_000,
+    });
+    assert.equal(outcome.outcome, "success");
+  });
+
+  await t.test("provider failure keeps unknown usage and cancellation sends nothing", async () => {
+    const failed = syntheticClaimed({ purpose: "explicit_analysis" });
+    const failure = await executeClaimedLearnerAnalysis(syntheticExecution(failed), {
+      provider: new SyntheticProvider([new Error("synthetic provider failure")]),
+      budgetAvailable: () => true,
+      recordModelCall() {},
+      releaseModelCall() {},
+      readCurrent: () => syntheticCurrent(failed),
+      now: () => 1_000,
+    });
+    assert.equal(failure.outcome, "unavailable");
+    assert.equal(failure.calls, 1);
+    assert.deepEqual(failure.usage, { status: "unknown" });
+
+    const cancelled = syntheticClaimed({ purpose: "explicit_analysis" });
+    const controller = new AbortController();
+    controller.abort();
+    const provider = new SyntheticProvider([]);
+    const outcome = await executeClaimedLearnerAnalysis({ ...syntheticExecution(cancelled), signal: controller.signal }, {
+      provider,
+      budgetAvailable: () => true,
+      recordModelCall: () => assert.fail("no call may be recorded"),
+      releaseModelCall: () => assert.fail("no call may be released"),
+      readCurrent: () => syntheticCurrent(cancelled),
+      now: () => 1_000,
+    });
+    assert.equal(outcome.outcome, "cancelled");
+    assert.equal(provider.calls.length, 0);
+  });
+
+  await t.test("an input preflight rejection releases the unsent persistent reservation", async () => {
+    const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+    let reservations = 0;
+    const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+      provider: { async generate() { throw new InputLimitError(16_001); } },
+      budgetAvailable: () => true,
+      recordModelCall: () => { reservations += 1; },
+      releaseModelCall: () => { reservations -= 1; },
+      readCurrent: () => syntheticCurrent(claimed),
+      now: () => 1_000,
+    });
+    assert.equal(outcome.outcome, "needs_input");
+    assert.equal(outcome.calls, 0);
+    assert.equal(reservations, 0);
+  });
+
+  await t.test("reservation completion rechecks cancellation, deadline, currentness, and dynamic budget before sending", async (race) => {
+    const cases = [
+      { name: "cancelled", expected: "cancelled" },
+      { name: "deadline", expected: "timed_out" },
+      { name: "state revision", expected: "stale" },
+      { name: "budget withdrawal", expected: "budget_exhausted" },
+    ] as const;
+    for (const scenario of cases) await race.test(scenario.name, async () => {
+      const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      const controller = new AbortController();
+      let current = syntheticCurrent(claimed);
+      let budget = true;
+      let now = 1_000;
+      let reservations = 0;
+      let finishReservation!: () => void;
+      let announceReservation!: () => void;
+      let announceRelease!: () => void;
+      const reservationStarted = new Promise<void>((resolve) => { announceReservation = resolve; });
+      const reservationGate = new Promise<void>((resolve) => { finishReservation = resolve; });
+      const reservationReleased = new Promise<void>((resolve) => { announceRelease = resolve; });
+      const execution = executeClaimedLearnerAnalysis(
+        { ...syntheticExecution(claimed), signal: controller.signal },
+        {
+          provider,
+          budgetAvailable: () => budget,
+          async recordModelCall() {
+            announceReservation();
+            await reservationGate;
+            reservations += 1;
+          },
+          releaseModelCall(signal) {
+            assert.equal(signal.aborted, false, "cleanup uses an independent signal after request cancellation");
+            reservations -= 1;
+            announceRelease();
+          },
+          readCurrent: () => current,
+          now: () => now,
+        },
+      );
+
+      await reservationStarted;
+      if (scenario.name === "cancelled") controller.abort();
+      if (scenario.name === "deadline") now = 46_000;
+      if (scenario.name === "state revision") current = { ...current, learnerStateRevision: 1 };
+      if (scenario.name === "budget withdrawal") budget = false;
+      finishReservation();
+
+      const outcome = await execution;
+      await reservationReleased;
+      assert.equal(outcome.outcome, scenario.expected);
+      assert.equal(outcome.calls, 0, "a provably unsent call does not consume the per-Job call budget");
+      assert.deepEqual(outcome.usage, { status: "unknown" });
+      assert.equal(provider.calls.length, 0, "no real provider invocation may cross the post-reservation guard");
+      assert.equal(reservations, 0, "the unsent persistent reservation is released exactly once");
+    });
+  });
+
+  await t.test("a hanging post-reservation current read releases the reservation on cancellation or deadline", async (race) => {
+    for (const scenario of ["cancelled", "timed_out"] as const) await race.test(scenario, async () => {
+      const startedAt = Date.now();
+      const claimed = syntheticClaimed({
+        purpose: "explicit_analysis",
+        acceptedAt: new Date(startedAt).toISOString(),
+        deadline: new Date(startedAt + 500).toISOString(),
+        leaseUntil: new Date(startedAt + 1_000).toISOString(),
+      });
+      const controller = new AbortController();
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      let reservations = 0;
+      let currentReads = 0;
+      let announceRead!: () => void;
+      let announceRelease!: () => void;
+      const readStarted = new Promise<void>((resolve) => { announceRead = resolve; });
+      const reservationReleased = new Promise<void>((resolve) => { announceRelease = resolve; });
+      const execution = executeClaimedLearnerAnalysis(
+        { ...syntheticExecution(claimed), signal: controller.signal },
+        {
+          provider,
+          budgetAvailable: () => true,
+          recordModelCall() { reservations += 1; },
+          releaseModelCall() {
+            reservations -= 1;
+            announceRelease();
+          },
+          readCurrent() {
+            currentReads += 1;
+            if (currentReads === 1) return syntheticCurrent(claimed);
+            announceRead();
+            return new Promise<LearnerAnalysisCurrentState>(() => {});
+          },
+        },
+      );
+
+      await readStarted;
+      if (scenario === "cancelled") controller.abort();
+      const outcome = await execution;
+      await reservationReleased;
+      assert.equal(outcome.outcome, scenario);
+      assert.equal(outcome.calls, 0, "the hanging recheck cannot bill a call that never reached the provider");
+      assert.equal(provider.calls.length, 0);
+      assert.equal(reservations, 0, "the hanging recheck cannot strand its unsent reservation");
+    });
+  });
+});
+
+test("B3 bills only the provider calls that actually left the process", async (t) => {
+  // The request boundary settles the race; these cases pin down which side decides the call count.
+  function hangingRecheck(claimed: ClaimedLearnerAnalysis) {
+    let currentReads = 0;
+    let announceRead!: () => void;
+    const readStarted = new Promise<void>((resolve) => { announceRead = resolve; });
+    return {
+      readStarted,
+      readCurrent() {
+        currentReads += 1;
+        if (currentReads === 1) return syntheticCurrent(claimed);
+        announceRead();
+        return new Promise<LearnerAnalysisCurrentState>(() => {});
+      },
+    };
+  }
+
+  await t.test("an outer cancellation settling before a delayed release still bills zero calls", async () => {
+    const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+    const controller = new AbortController();
+    const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+    const recheck = hangingRecheck(claimed);
+    let reservations = 0;
+    let releases = 0;
+    let openRelease!: () => void;
+    const releaseGate = new Promise<void>((resolve) => { openRelease = resolve; });
+    const execution = executeClaimedLearnerAnalysis(
+      { ...syntheticExecution(claimed), signal: controller.signal },
+      {
+        provider,
+        budgetAvailable: () => true,
+        recordModelCall() { reservations += 1; },
+        async releaseModelCall() {
+          releases += 1;
+          await releaseGate;
+          reservations -= 1;
+        },
+        readCurrent: recheck.readCurrent,
+        now: () => 1_000,
+      },
+    );
+
+    await recheck.readStarted;
+    controller.abort();
+    setTimeout(openRelease, 20);
+    const outcome = await execution;
+    assert.equal(outcome.outcome, "cancelled");
+    assert.equal(outcome.calls, 0, "the confirmed release, not the loop counter, decides the bill");
+    assert.deepEqual(outcome.usage, { status: "unknown" });
+    assert.equal(provider.calls.length, 0);
+    assert.equal(releases, 1);
+    assert.equal(reservations, 0);
+  });
+
+  await t.test("a cancellation after the request was sent keeps the call and its unknown usage", async () => {
+    const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+    const controller = new AbortController();
+    let sent = 0;
+    let announceSent!: () => void;
+    const sentStarted = new Promise<void>((resolve) => { announceSent = resolve; });
+    let reservations = 0;
+    let releases = 0;
+    const provider: ModelProvider = {
+      async generate(request) {
+        sent += 1;
+        announceSent();
+        await new Promise<void>((resolve) => {
+          if (request.signal.aborted) { resolve(); return; }
+          request.signal.addEventListener("abort", () => resolve(), { once: true });
+        });
+        throw new Error("synthetic provider interrupted after the request was sent");
+      },
+    };
+    const execution = executeClaimedLearnerAnalysis(
+      { ...syntheticExecution(claimed), signal: controller.signal },
+      {
+        provider,
+        budgetAvailable: () => true,
+        recordModelCall() { reservations += 1; },
+        releaseModelCall() { releases += 1; reservations -= 1; },
+        readCurrent: () => syntheticCurrent(claimed),
+        now: () => 1_000,
+      },
+    );
+
+    await sentStarted;
+    controller.abort();
+    const outcome = await execution;
+    assert.equal(outcome.outcome, "cancelled");
+    assert.equal(outcome.calls, 1, "a request that was sent stays billed");
+    assert.deepEqual(outcome.usage, { status: "unknown" }, "unknown usage is never fabricated as zero");
+    assert.equal(sent, 1);
+    assert.equal(releases, 0, "a sent call must not return its reservation");
+    assert.equal(reservations, 1);
+  });
+
+  await t.test("a release that fails or meets a concurrent recovery keeps the reservation and the count", async (group) => {
+    const cases = [
+      { name: "storage failure", error: new Error("synthetic ledger unavailable") },
+      {
+        name: "concurrent recovery",
+        error: new ProviderCallNotStartedError("stale", "Cannot release a changed model call reservation"),
+      },
+    ] as const;
+    for (const item of cases) await group.test(item.name, async () => {
+      const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+      const controller = new AbortController();
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      const recheck = hangingRecheck(claimed);
+      let reservations = 0;
+      let releases = 0;
+      const execution = executeClaimedLearnerAnalysis(
+        { ...syntheticExecution(claimed), signal: controller.signal },
+        {
+          provider,
+          budgetAvailable: () => true,
+          recordModelCall() { reservations += 1; },
+          releaseModelCall() { releases += 1; throw item.error; },
+          readCurrent: recheck.readCurrent,
+          now: () => 1_000,
+        },
+      );
+
+      await recheck.readStarted;
+      controller.abort();
+      const outcome = await execution;
+      assert.equal(outcome.outcome, "cancelled");
+      assert.equal(outcome.calls, 1, "an unconfirmed release must not return budget it still holds");
+      assert.deepEqual(outcome.usage, { status: "unknown" });
+      assert.equal(provider.calls.length, 0);
+      assert.equal(releases, 1, "a failed release is not retried into a double release");
+      assert.equal(reservations, 1, "the reservation stays held for the existing reconciliation flow");
+    });
+
+    await group.test("a stale recheck whose release fails keeps the count without any cancellation", async () => {
+      const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      let currentReads = 0;
+      let reservations = 0;
+      let releases = 0;
+      const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+        provider,
+        budgetAvailable: () => true,
+        recordModelCall() { reservations += 1; },
+        releaseModelCall() { releases += 1; throw new Error("synthetic ledger unavailable"); },
+        readCurrent() {
+          currentReads += 1;
+          return currentReads === 1
+            ? syntheticCurrent(claimed)
+            : { ...syntheticCurrent(claimed), learnerStateRevision: 1 };
+        },
+        now: () => 1_000,
+      });
+      assert.equal(outcome.outcome, "unavailable", "a failed release enters the existing unknown-result flow");
+      assert.equal(outcome.code, "DEPENDENCY_UNAVAILABLE");
+      assert.equal(outcome.retryable, true);
+      assert.equal(outcome.calls, 1, "the reservation is still held, so the call stays billed");
+      assert.deepEqual(outcome.usage, { status: "unknown" });
+      assert.equal(provider.calls.length, 0);
+      assert.equal(releases, 1);
+      assert.equal(reservations, 1);
+    });
+  });
+
+  await t.test("a provably unsent cancellation leaves the next worker the full three-call budget", async () => {
+    let attemptCount = 0;
+    // Mirrors the persistent ledger reconciliation in server/records/teaching.ts: the reported call
+    // count is a floor for attemptCount, so a wrongly billed cancellation burns a real budget slot.
+    const reconcile = (calls: number) => { attemptCount = Math.max(attemptCount, calls); };
+    const first = syntheticClaimed({ purpose: "explicit_analysis" });
+    const controller = new AbortController();
+    const recheck = hangingRecheck(first);
+    const unsent = executeClaimedLearnerAnalysis(
+      { ...syntheticExecution(first), signal: controller.signal },
+      {
+        provider: new SyntheticProvider([{ body: syntheticBody() }]),
+        budgetAvailable: () => true,
+        recordModelCall() { attemptCount += 1; },
+        releaseModelCall() { attemptCount -= 1; },
+        readCurrent: recheck.readCurrent,
+        now: () => 1_000,
+      },
+    );
+
+    await recheck.readStarted;
+    controller.abort();
+    const cancelled = await unsent;
+    assert.equal(cancelled.outcome, "cancelled");
+    assert.equal(cancelled.calls, 0);
+    reconcile(cancelled.calls);
+    assert.equal(attemptCount, 0, "the persistent ledger returns to zero after a confirmed release");
+
+    const reclaimed = syntheticClaimed({ purpose: "explicit_analysis", attemptCount });
+    const provider = new SyntheticProvider([
+      { body: null, needsAnotherCall: true },
+      { body: null, needsAnotherCall: true },
+      { body: syntheticBody() },
+    ]);
+    const second = await executeClaimedLearnerAnalysis(syntheticExecution(reclaimed), {
+      provider,
+      budgetAvailable: () => true,
+      recordModelCall() { attemptCount += 1; },
+      releaseModelCall() { attemptCount -= 1; },
+      readCurrent: () => syntheticCurrent(reclaimed),
+      now: () => 1_000,
+    });
+    assert.equal(second.outcome, "success");
+    assert.equal(second.calls, 3, "all three calls remain available to the worker that reclaims the job");
+    assert.equal(provider.calls.length, 3);
+  });
+});
+
+test("B3 uses the approved DeepSeek analysis schema through an injected offline invoker", async () => {
+  const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+  let invocation: Parameters<Parameters<typeof createDeepSeekProvider>[0]["invoke"]>[0] | undefined;
+  const provider = createDeepSeekProvider({
+    async invoke(request) {
+      invocation = request;
+      return { body: syntheticBody(), usage: { status: "actual", inputTokens: 19, outputTokens: 11 } };
+    },
+  });
+  const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+    provider,
+    budgetAvailable: () => true,
+    recordModelCall() {},
+    releaseModelCall() {},
+    readCurrent: () => syntheticCurrent(claimed),
+    now: () => 1_000,
+  });
+  assert.equal(outcome.outcome, "success");
+  assert.ok(invocation);
+  assert.equal(invocation.schemaKind, "learner_analysis");
+  assert.equal(invocation.model, "deepseek-flash");
+  assert.equal(invocation.maxRetries, 0);
+  assert.equal(invocation.maxOutputTokens, 4096);
+  assert.deepEqual(invocation.providerOptions, { deepseek: { thinking: { type: "disabled" } } });
+  assert.equal(invocation.purpose, "learner_analysis");
+});
+
+test("B3 authorized real-model learner-analysis candidate uses one synthetic A4 job", {
+  skip: !b3RealModelEnabled,
+}, async t => {
+  const probe = b3RealModelProbe();
+  const s = await setup();
+  const maximumExternalRequests = 3;
+  let providerAttempts = 0;
+  const boundedProvider: ModelProvider = {
+    async generate(request) {
+      if (providerAttempts >= maximumExternalRequests) {
+        throw new Error("B3 real-model validation stopped before exceeding its three-request ceiling");
+      }
+      providerAttempts += 1;
+      return probe.provider.generate(request);
+    },
+  };
+  const evidence: Record<string, unknown> = {
+    approvedScope: {
+      jobs: 1,
+      maximumExternalRequests,
+      execution: "serial",
+      automaticReruns: 0,
+      perJob: { maximumProviderCalls: 3, maximumRepairs: 1, deadlineMs: 45_000 },
+      model: "deepseek-flash",
+      thinking: "disabled",
+      sdkMaxRetries: 0,
+      data: "repository-fixed-synthetic-only",
+      realStudentOrTeacherMaterial: false,
+    },
+  };
+  try {
+    const queued = await s.queue();
+    const claimed = s.f.review.claimAnalysis(queued.jobId) as ClaimedLearnerAnalysis;
+    const targets = s.content.goals.map((goal: {
+      competencyId: string;
+      competencyVersion: number;
+      domain: "domain" | "project" | "ai_collaboration";
+    }) => ({
+      competencyId: goal.competencyId,
+      competencyVersion: goal.competencyVersion,
+      domain: goal.domain,
+      scope: { kind: "activity" as const, activityVersionId: s.activityId },
+    }));
+    const outcome = await executeClaimedLearnerAnalysis({
+      claimed,
+      targets,
+      references: [{ id: s.snapshotId, content: "Synthetic confirmed snapshot; no independent explanation or course check is available." }],
+    }, analysisRuntime(s, claimed, boundedProvider));
+    evidence.outcome = outcome;
+    evidence.providerAttempts = providerAttempts;
+    evidence.httpRequests = probe.http.length;
+    assert.equal(outcome.outcome, "success", JSON.stringify(outcome));
+    assert.ok(providerAttempts >= 1 && providerAttempts <= maximumExternalRequests);
+    assert.equal(probe.http.length, providerAttempts);
+    if (outcome.outcome !== "success") return;
+    assert.equal(outcome.body.kind, "learner_analysis");
+    assert.ok(outcome.body.claims.length <= 64);
+    assert.ok(outcome.body.claims.every((claim) => !("claimId" in claim)));
+    const accepted = s.f.review.completeAnalysis({
+      jobId: queued.jobId,
+      leaseToken: claimed.leaseToken,
+      recoveryGeneration: s.f.generation(),
+      bodyJson: JSON.stringify(outcome.body),
+    });
+    evidence.acceptance = accepted;
+    assert.equal(accepted.disposition, "accepted");
+  } finally {
+    try {
+      t.diagnostic(`Synthetic-data B3 model evidence: ${writeRealModelEvidence("learner_analysis", evidence, probe.http)}`);
+    } finally {
+      await s.f.close();
+    }
+  }
+});
+
+function analysisRuntime(
+  s: Awaited<ReturnType<typeof setup>>,
+  claimed: ClaimedLearnerAnalysis,
+  provider: ModelProvider,
+) {
+  return {
+    provider,
+    budgetAvailable: () => true,
+    now: () => s.f.timestamp(),
+    recordModelCall() {
+      s.f.db.withTransaction((tx) => {
+        const job = readRecords(tx, claimed.binding.scope.courseId).jobs.find((item) => item.jobId === claimed.job.jobId);
+        assert.ok(job);
+        saveJob(tx, recordModelCall(job, claimed.leaseToken, claimed.job.recoveryGeneration, new Date(s.f.timestamp()).toISOString()));
+      });
+    },
+    releaseModelCall() {
+      s.f.db.withTransaction((tx) => {
+        const job = readRecords(tx, claimed.binding.scope.courseId).jobs.find((item) => item.jobId === claimed.job.jobId);
+        assert.ok(job);
+        assert.equal(job.leaseToken, claimed.leaseToken);
+        assert.ok(job.attemptCount > 0);
+        saveJob(tx, { ...job, attemptCount: job.attemptCount - 1 });
+      });
+    },
+    readCurrent(): LearnerAnalysisCurrentState {
+      return s.f.db.withTransaction((tx) => {
+        const scope = claimed.binding.scope;
+        const job = readRecords(tx, scope.courseId).jobs.find((item) => item.jobId === claimed.job.jobId);
+        assert.ok(job);
+        const attempt = readAttempt(tx, scope.attemptId);
+        const state = s.f.review.readCurrentInTransaction(tx, scope);
+        const context = readContext(tx, scope);
+        const activity = readActivity(tx, scope.courseId, attempt.activityVersionId);
+        return {
+          jobStatus: job.status,
+          stopRequested: job.stopRequested,
+          ...(job.leaseToken ? { leaseToken: job.leaseToken } : {}),
+          ...(job.leaseUntil ? { leaseUntil: job.leaseUntil } : {}),
+          recoveryGeneration: job.recoveryGeneration,
+          attemptRevision: attempt.attemptRevision,
+          decisionEpoch: attempt.decisionEpoch,
+          learnerStateRevision: state.learnerStateRevision,
+          contextRevision: context.contextRevision,
+          captureRevision: attempt.captureRevision,
+          activityVersionId: attempt.activityVersionId,
+          policyVersionId: activity.helpPolicy.versionId,
+          versions: structuredClone(claimed.binding.versions),
+        };
+      });
+    },
+  };
+}
+
+function syntheticClaimed(overrides: Partial<ClaimedLearnerAnalysis["job"]> = {}): ClaimedLearnerAnalysis {
+  const purpose = overrides.purpose ?? "passive_analysis";
+  const job = {
+    jobId: "analysis-job",
+    kind: "learner_analysis",
+    purpose,
+    scope: { courseId: "course", studentId: "student", attemptId: "attempt" },
+    requestReceiptId: "receipt",
+    status: "running" as const,
+    stopRequested: false,
+    expectedRevision: 1,
+    decisionEpoch: 2,
+    recoveryGeneration: "generation",
+    acceptedAt: new Date(1_000).toISOString(),
+    deadline: new Date(46_000).toISOString(),
+    attemptCount: 0,
+    leaseToken: "lease",
+    leaseUntil: new Date(46_000).toISOString(),
+    ...overrides,
+  };
+  return {
+    job,
+    leaseToken: "lease",
+    binding: {
+      scope: { courseId: "course", studentId: "student", attemptId: "attempt" },
+      expectedStateRevision: 0,
+      expectedAttemptRevision: 1,
+      decisionEpoch: 2,
+      contextRevision: 0,
+      captureRevision: 1,
+      activityVersionId: "activity",
+      policyVersionId: "policy",
+      collectionPurpose: purpose as "explicit_analysis" | "passive_analysis",
+      versions: {
+        modelConfigVersion: "model",
+        promptVersion: "prompt",
+        schemaVersion: "schema",
+        analysisVersion: "analysis",
+      },
+      inputRefs: [{ kind: "snapshot", id: "snapshot", attemptId: "attempt" }],
+      assistanceRefs: [],
+      coverageRefs: [],
+    },
+  };
+}
+
+function syntheticCurrent(claimed: ClaimedLearnerAnalysis): LearnerAnalysisCurrentState {
+  return {
+    jobStatus: "running",
+    stopRequested: false,
+    leaseToken: claimed.leaseToken,
+    leaseUntil: claimed.job.leaseUntil!,
+    recoveryGeneration: "generation",
+    attemptRevision: 1,
+    decisionEpoch: 2,
+    learnerStateRevision: 0,
+    contextRevision: 0,
+    captureRevision: 1,
+    activityVersionId: "activity",
+    policyVersionId: "policy",
+    versions: structuredClone(claimed.binding.versions),
+  };
+}
+
+function syntheticExecution(claimed: ClaimedLearnerAnalysis) {
+  return {
+    claimed,
+    targets: [{
+      competencyId: "k",
+      competencyVersion: 1,
+      domain: "domain" as const,
+      scope: { kind: "activity" as const, activityVersionId: "activity" },
+    }],
+    references: [{ id: "snapshot", content: "Synthetic untrusted snapshot" }],
+  };
+}
+
+function syntheticBody() {
+  return {
+    kind: "learner_analysis",
+    claims: [{
+      competencyId: "k",
+      competencyVersion: 1,
+      domain: "domain",
+      scope: { kind: "activity", activityVersionId: "activity" },
+      statement: "An explanation is not yet observed.",
+      state: "insufficient",
+      evidenceIds: ["snapshot"],
+      counterEvidenceIds: [],
+      assistanceStatus: "unknown",
+      unresolved: true,
+      unknown: ["No independent explanation"],
+    }],
+  };
+}
