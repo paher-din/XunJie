@@ -94,6 +94,10 @@ export class TutoringWorkspace {
     } catch (e) { this.publish({ notice: `辅导本机存储不可用：${e instanceof Error ? e.message : e}` }) }
   }
   read(revalidate = false) { return this.enqueue(() => this.readNow(revalidate)) }
+  private clearHistory(notice:string) {
+    this.historySequence++;this.historyPending=false
+    this.publish({history:{phase:'unavailable',data:emptyTutorHistory(),notice}})
+  }
   /** Authorizes a historical view on every HTTP read; never calls fact(), updates the cursor or releases a fence. */
   async readHistory() {
     if(!this.valid()||!this.context.attemptId)return
@@ -124,9 +128,17 @@ export class TutoringWorkspace {
     if (!current) return
     this.publish({ busy: true, synchronized: false, notice: null })
     const seq = ++this.sequence
+    let refreshHistory=false
     try {
       const head = await tutoringRequest(this.confirmation.readHead())
-      if (!this.valid() || !head || seq !== this.sequence) return
+      if (!this.valid() || seq !== this.sequence) return
+      if(!head) {
+        // ConfirmationWorkspace catches failed HTTP reads and clears its Attempt instead of throwing.
+        // A superseded read with a still-verified Attempt does not revoke a separately authorized history.
+        if(!this.confirmation.current.attempt)this.clearHistory('当前工作区读取未获确认，教学历史需重新授权。')
+        return
+      }
+      refreshHistory=true
       // Learn durable remote stop before allowing any previously retrieved candidate to render.
       if (this.state.ledger?.job) await this.readJobNow()
       if (!this.valid() || seq !== this.sequence) return
@@ -186,12 +198,12 @@ export class TutoringWorkspace {
       await this.flushReceipts()
     } catch (e) {
       if(e instanceof WorkspaceRequestError&&e.failure.kind==='api'&&['UNAUTHENTICATED','FORBIDDEN','RECOVERY_REQUIRED'].includes(e.failure.error.code)) {
-        this.historySequence++;this.historyPending=false
-        this.publish({history:{phase:'unavailable',data:emptyTutorHistory(),notice:'当前授权或代际已失效，请重新载入。'}})
+        refreshHistory=false
+        this.clearHistory('当前授权或代际已失效，请重新载入。')
       }
       this.publish({ synchronized: false, notice: `辅导读取未完成：${e instanceof Error ? e.message : String(e)}` })
     }
-    finally { this.publish({ busy: false }); if(revalidate&&!this.historyPending)void this.readHistory() }
+    finally { this.publish({ busy: false }); if(revalidate&&refreshHistory&&!this.historyPending)void this.readHistory() }
   }
   private receiptCommand(ledger: TutorLedger, message: TutorMessage, kind: TutorReceiptKind): TutorCommand {
     return { key: crypto.randomUUID(), kind: 'receipt', state: 'pending', path: `/actions/${encodeURIComponent(message.payload.actionId)}/receipts`,

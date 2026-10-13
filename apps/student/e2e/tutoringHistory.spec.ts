@@ -128,6 +128,8 @@ test('刷新缓存待重新授权；正常回取后退出账号，真实401清�
     const session=(await(await fetch('/__i0prep/api/session',{headers})).json()).data
     return (await fetch('/__i0prep/api/logout',{method:'POST',headers:{...headers,'x-csrf-token':session.csrfToken}})).status
   });expect(logout).toBe(200)
+  // The normal workspace poll observes the real 401; history must disappear before its own manual read.
+  await expect(other.getByTestId('tutor-history-message')).toHaveCount(0)
   await other.getByRole('button',{name:'刷新教学历史'}).click()
   await expect(other.getByTestId('tutor-history')).toContainText('UNAUTHENTICATED')
   await expect(other.getByTestId('tutor-history-message')).toHaveCount(0)

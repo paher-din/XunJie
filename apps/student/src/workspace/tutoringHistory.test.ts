@@ -7,7 +7,8 @@ import type {TutorHistoryAction,TutorHistoryQuestion,TutorHistoryReply} from './
 const mocks=vi.hoisted(()=>({get:vi.fn(),post:vi.fn(),cache:vi.fn(),authority:vi.fn()}))
 vi.mock('./http',async original=>({...await original<object>(),apiGet:mocks.get,apiPostFrozen:mocks.post}))
 vi.mock('./confirmationDb',()=>({confirmationRepository:{isCurrentAuthority:mocks.authority}}))
-vi.mock('./tutoringStore',async original=>({...await original<object>(),writeTutorHistoryCache:mocks.cache}))
+vi.mock('./tutoringStore',async original=>({...await original<object>(),writeTutorHistoryCache:mocks.cache,
+  readTutorLedger:async()=>undefined,writeTutorLedger:async()=>undefined,tutorChannel:async()=>({clientId:'channel',close:()=>{}})}))
 import {TutoringWorkspace} from './tutoringWorkspace'
 const context:CommandContext={mode:'preparation',userId:'u',courseId:'c',assignmentId:'assignment',activityVersionId:'activity',
   attemptId:'attempt',preparationEpoch:'prep',trustedRecoveryGeneration:'current-g',loadEpoch:1}
@@ -98,6 +99,17 @@ function client() {
   return {workspace,revoke:()=>{active=false}}
 }
 describe('authorized history lifecycle',()=> {
+  async function loaded() {
+    const raw=await fixture(),attempt={attemptRevision:2,decisionEpoch:2,captureRevision:0,status:'active',collecting:true,reminders:false}
+    let readable=true
+    const confirmation={isCurrent:()=>true,current:{attempt:attempt as typeof attempt|null},
+      readHead:async()=>{if(!readable){confirmation.current.attempt=null;return null}return{attempt}}}
+    mocks.get.mockImplementation(async(path:string)=>path.endsWith('teaching-records')?raw:{control:{...attempt,generation:'current-g'},
+      resyncRequired:false,events:[],nextServerSeq:0,hasMore:false})
+    const workspace=new TutoringWorkspace(confirmation as unknown as ConfirmationWorkspace,context)
+    await workspace.initialize();await workspace.readHistory()
+    return {workspace,failHead:()=>{readable=false},raw}
+  }
   it('uses only original HTTP GET and separate cache; cannot change the current ledger or issue receipts',async()=> {
     mocks.get.mockResolvedValue(await fixture());const {workspace}=client()
     await workspace.readHistory()
@@ -127,5 +139,20 @@ describe('authorized history lifecycle',()=> {
   it('disposal after a valid read removes all visible history',async()=> {
     mocks.get.mockResolvedValue(await fixture());const {workspace}=client();await workspace.readHistory();workspace.dispose()
     expect(workspace.current.history?.data.entries).toEqual([])
+  })
+  it('a swallowed failed workspace read revokes visible history without requiring manual history refresh',async()=> {
+    const f=await loaded();expect(f.workspace.current.history?.data.entries).toHaveLength(1)
+    mocks.get.mockClear();f.failHead();await f.workspace.read(true)
+    expect(f.workspace.current.history?.phase).toBe('unavailable')
+    expect(f.workspace.current.history?.data.entries).toEqual([])
+    expect(mocks.get).not.toHaveBeenCalled();expect(mocks.post).not.toHaveBeenCalled();f.workspace.dispose()
+  })
+  it('a held successful history response cannot restore text after a swallowed failed head read',async()=> {
+    const f=await loaded();let release!:(v:unknown)=>void
+    mocks.get.mockImplementationOnce(()=>new Promise(r=>{release=r}))
+    const pending=f.workspace.readHistory(),cached=mocks.cache.mock.calls.length
+    f.failHead();await f.workspace.read();release(f.raw);await pending
+    expect(f.workspace.current.history?.data.entries).toEqual([])
+    expect(mocks.cache).toHaveBeenCalledTimes(cached);f.workspace.dispose()
   })
 })
