@@ -4,7 +4,7 @@
 
 **Blocked by:** [I0-B-01 消息与回执](I0-B-01_MESSAGES_RECEIPTS.md)。D-05最小例子/返回入口已在规划中定稿，由本票实现；不依赖02/03/04，可用获准合成材料独立验只读查看→返回，精确编辑器定位与03共享适配须协调。
 
-**Status:** planned（规划已定稿；前置未实施，未编码、未验证）。
+**Status:** independent-implemented（独立纯逻辑/只读槽已实现，单测与类型检查通过；主接线、浏览器与完整票验收未完成）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划](I0-B_UI_TUTOR_PLAN.md)。覆盖UI-TUTOR-07，M-03/M-04/M-09，AC-04/05/06/12、NFR-05。
 
@@ -27,4 +27,47 @@
 
 ## 交付与未完成
 
-写集按计划05；不得增加新的学习阶段、例子API或自定义执行工具。当前01/D-05与实现/应用验证未完成。真实相邻样例来源、原作返回和真人接棒分开验，准备只读返回不算UI-TUTOR-09完成。
+写集按计划05；不得增加新的学习阶段、例子API或自定义执行工具。05独立部分已实现，01消息接线和D-05中心槽/编辑器返回组合验收仍待主Agent完成。真实相邻样例来源、原作返回和真人接棒分开验，准备只读返回不算UI-TUTOR-09完成。
+
+## 2026-10-13 独立切片范围与依据
+
+Robert授权05执行Agent在既有`codex/i0-b-05-return`工作树完成独立纯逻辑、可复用只读槽、必要单测、待统一执行的浏览器专项和本票记录；仅本地提交本人文件。主Agent独占PrepWorkspacePage/TutoringPane/fixture/http/storage及中心overlay接线，03独占CodeEditorHost/CodeWorkspace/useProjectWorkspace，04独占RunPanel/RunHistoryPanel；05均只读。教学后台、受保护文档、DB schema、CI/env/package/依赖不改，无供应商或真人操作。此次实施授权覆盖独立切片，不将整票AC改为已通过。
+
+已读正文：README与根AGENTS；PRD §3/4.2的学生控制、相邻例子和原任务返回；MVP M-03/M-04/M-05及AC-04/05/06的作品保留、一次支持后接棒、回执分层；TECH §4.1的实例/版本引用和UTF-16边界、§7.3的完整内容与确认边界；I0-B SPEC实施决定、PLAN §4～7、本文全部验收；I0_UI_SPEC实施决定、客户端约束§2～4及资料读取部分；IMPORT_SOURCE的固定导入/选择性同步和本仓库独立业务维护边界。主仓未提交TutoringPane只读核对`onExample(message: TutorMessage)`与公开ID列表`resourceRefs`。已有init逐条核活动学生视角、可读投影、资源ID及available状态；本切片使用同一初始化结果，不另建读取API。
+
+本次实际五文件写集：[纯逻辑](../../apps/student/src/workspace/tutoringReturn.ts)、[必要单测](../../apps/student/src/workspace/tutoringReturn.test.ts)、[只读组件](../../apps/student/src/components/workspace/TutoringExample.tsx)、[浏览器专项](../../apps/student/e2e/tutoringReturn.spec.ts)、本文。未改其他共享文件，也不移入或提交主仓未完成源码。
+
+## 接线接口与来源
+
+`TutoringExampleProps`包含`resource: TutoringResourceResult`、`onReturn: () => void`、可选`returnNotice: string`。组件仅安全阅读，返回按钮仅调用主Agent提供的callback；不请求HTTP、不写控制/作品/回执、不自动求助/运行。它复用现有Markdown的React词法渲染，HTML按转义文本显示，危险协议不成链接。
+
+纯函数接口如下，类型定义与实现以纯逻辑文件为准：
+
+```typescript
+resolveTutoringResource(resourceVersionId: string, activity: ActivityView,
+  materials: readonly MaterialRead[], mode: WorkspaceMode): TutoringResourceResult
+captureTutoringReturn<V>(context: WorkspaceContext, file: TutoringReturnFile,
+  view: V | null): TutoringReturnAnchor<V>
+validateTutoringReturn<V>(anchor: TutoringReturnAnchor<V>, context: WorkspaceContext,
+  files: readonly TutoringReturnFile[]): TutoringReturnResult<V>
+```
+
+主调用方从消息的`resourceRefs`选明确ID，使用当前有效上下文的init.activity/materials；不从自由文字抽取交互卡。resolver要求ID在活动学生可读列表唯一出现、相应MaterialRead已加载、公开资源ID/status/text/contentHash与活动投影一致；裁剪、无权限/读取失败、缺项和错配明确不可用，不补正文。activity没有公开“教师批准的例子”标志，不能把所有learning_material叫例子。
+
+负责人明确主Agent在同一prep/scenario追加`prep-resource-adjacent-example-01`，公开kind为learning_material、format为markdown，内容是温度阈值29/30/31的相邻小练习，非TextScope答案；该ID仅在preparation模式标“合成准备相邻例子·非教师真实批准材料”。实际材料/教学事件由主Agent交付，本工作树未修改fixture。其他准备资料标“合成准备课程资料”，真实可读资料标“当前活动公开课程资料”，两者均注明“未核验为类似例子”；没有真实教师批准事实就不作此断言。已有资料可只读查看，其性质保持准确。
+
+`TutoringReturnFile`包含稳定本机`fileId`、可选`serverFileId`、`path`、`lifecycle`、`documentVersion: number | null`、`contentHash: string | null`、`draftText`原文。anchor分别克隆当前WorkspaceContext、原文件与可序列化本机`view`，不建立新的服务端ObjectRef/快照，也不重算版本。V可为既有编辑器光标/滚动/折叠视图；model/undo栈继续归现有编辑器，不进入anchor。
+
+validate核mode/user/assignment/activity/attempt/preparationEpoch/loadEpoch/受信代际、稳定实例/映射/path/lifecycle/版本/hash和逐字草稿；仅成功时返回`{ kind: 'ready', fileId, view }`。失败返回`{ kind: 'unavailable', reason, notice }`且不带view；同名重建不匹配，版本或草稿变更不套旧位置。刷新后loadEpoch变化会拒绝旧精确位置，本切片不虚构跨刷新/设备恢复。view未保留时明示不能精确定位，主调用方可关闭阅读保留当前作品，不猜行号。
+
+主接线须在进入资料前捕获原文件/视图，在同一中心容器叠加阅读槽且保持CodeWorkspace及model挂载；退出前再次校验，成功才交03只读定位接口。失败显示notice并由学生明确选择当前对象。普通关闭/返回不写controls/acknowledged，不自动保存/生成/运行；“我先试试”由01原显式回执动作负责。05函数不会替主调用方维持挂载或读取编辑器状态，不能据纯函数通过宣称草稿/undo浏览器链已验。
+
+## 验证与待交付
+
+2026-10-13，Node v24.15.0、RTK 0.48.0，在学生工程运行`rtk npm test -- tutoringReturn`：Vitest 3.2.7，1文件25例通过；`rtk npm run typecheck`：src与tsconfig.node两层tsc通过。反例覆盖不可读/缺项/失败/错配资源、非学生投影、准确合成/课程资料性质、HTML与危险链接不执行、原BOM/混合EOL/非BMP草稿和视图克隆、身份/代际/加载变化、回收/同名重建/版本与草稿变化、缺视图及本机未确认实例。
+
+浏览器文件提供两项待主统一执行的检查：键盘打开相邻例子/返回，原Monaco DOM保留、位置/草稿/undo保留、无help/run/sync/snapshot/control或acknowledged副作用；以及同一authority公开活动/资源读取与返回拒绝反例。文件已加入类型检查范围，但没有启动浏览器或执行Playwright，没有将编写用例记为通过。主中心接线未在本工作树实现，fold精确恢复、刷新后实际显示和完整AC-05语义仍待组合/正式验收。
+
+本切片不依赖主prep新增接缝运行单测或typecheck，未复制公共文件。build、完整浏览器、正常业务宿主/公开真实例子、供应商、教师语义抽查、真人学生接棒全部未执行。整票AC保留未勾选，01/D-05组合与真实资料批准事实未交；产品基线及MVP_SPEC§10仍为“待授权维护者汇总”。本地提交后交主Agent按五文件整合，不推送。
+
+静态文档检查`node tools/a0-review/check.mjs`通过：72文档/1004内链、errors=[]；差异空白检查通过。此次仅五个授权文件，未留临时文件，独立分支提交保持与主共享状态分离。
