@@ -1,5 +1,6 @@
 import type { Job } from "../records/index.ts";
 import type { ActivityView } from "../design/results.ts";
+import type { AnalysisBinding, ClaimBody } from "../review/index.ts";
 import type { ArtifactSnapshot, ObjectRef } from "../workspace/index.ts";
 
 export const teacherGenerationModes = [
@@ -25,7 +26,7 @@ export const studentActionTypes = [
 ] as const;
 
 export type StudentActionType = (typeof studentActionTypes)[number];
-export type TutoringPurpose = "teacher_design" | "student_help";
+export type TutoringPurpose = "teacher_design" | "student_help" | "learner_analysis";
 
 export type TrustedModelContext = {
   jobId: string;
@@ -71,6 +72,27 @@ export type StudentHelpRequest = {
     helpAllowed: boolean;
     wholeSolutionAllowed: false;
   };
+  signal?: AbortSignal;
+};
+
+export type LearnerAnalysisTarget = Pick<
+  ClaimBody,
+  "competencyId" | "competencyVersion" | "domain" | "scope"
+>;
+
+export type LearnerAnalysisClaim = Omit<ClaimBody, "claimId">;
+
+export type LearnerAnalysisBody = {
+  kind: "learner_analysis";
+  claims: readonly LearnerAnalysisClaim[];
+  feedbackDraft?: string;
+};
+
+export type LearnerAnalysisRequest = {
+  context: TrustedModelContext;
+  binding: AnalysisBinding;
+  targets: readonly LearnerAnalysisTarget[];
+  references: readonly UntrustedReference[];
   signal?: AbortSignal;
 };
 

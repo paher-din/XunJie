@@ -1,0 +1,131 @@
+# B3：有依据的候选分析与反馈草稿
+
+日期：2026-10-13（Asia/Shanghai）。任务编号：B3。主责：B。关联 [Issue #42](https://github.com/paher-din/XunJie/issues/42)、[P3 总协调 #37](https://github.com/paher-din/XunJie/issues/37)、[A4 #41](https://github.com/paher-din/XunJie/issues/41) 与 [C4 #43](https://github.com/paher-din/XunJie/issues/43)。
+
+状态：**独立合成核心、固定 fixture 和 Issue 评论指定的 A4/B2 接缝复核已实现并通过专项验证；等待 A4 PR #49 合入后的重放、真实输入链与后置验收。** 本分支显式堆叠于 A4 PR #49 固定 head `6a4361b9e59227b8b5410c164656dc7dd7f178d8`；该提交尚未合入 `main`，不能把堆叠验证写成上游已合并。Issue #42 评论新增的 B2 可选状态读取接缝复核已纳入并留下实际命令/结果。
+
+## 1. 基线、依据与边界
+
+已按 `AGENTS.md` 的文档优先顺序阅读 `README.md`、PRD 的三条能力线及 PRD-06/07/08、MVP_SPEC M-06/07/08/09 与 AC-07/08/16、TECH_DESIGN §4.2/4.3/6.3/7.2.1、TEAM_WORK_PLAN B3/P3、G3 总协调记录、B0 候选分析提案、B1/B2 任务记录、Issue #42 正文及 2026-10-13 负责人评论，并核对 A4 PR #49 的实际接口和任务记录 §3/§7/§9。
+
+本任务负责 B 所属的候选生成核心、反馈草稿、合成 fixture、领域测试，以及实际消费 A4 接缝的复核。B 只产生严格校验的 `learner_analysis` body；A/C 负责从真实授权请求反查 scope、冻结版本/引用、持久 Job/租约/原文/接纳或拒绝，A 负责有效状态与教师决定。B 不直接写 LearnerState、Feedback、作品或正式评价，不新建 HTTP 路由、数据库、Job、Message、Receipt、事件或 UI。
+
+预计可写文件：
+
+- `apps/teaching/contracts/tutoring/**`：B3 生成请求、可信目标/引用和结果类型；复用 A4 已批准的 `AnalysisBinding`/`ClaimBody`，不复制或改变其共享语义。
+- `apps/teaching/server/tutoring/**`：候选上下文最小化、结构/引用/政策校验、最多三次/一次修复/45 秒执行边界，以及供受信 worker 调用的组合函数。
+- `apps/teaching/server/tutoring/test/**`：固定合成场景、A4/B2 真实事务接缝复核和 B3 领域反例。
+- 本文；若新增独立验证命令，再按真实结果同步 README。
+
+`AGENTS.md`、`docs/product/**`、`docs/planning/**`、`docs/reference/**`、A4/C4 等他人任务稿、package/锁文件/tsconfig、数据库 schema 与 UI 保持只读。开发只使用隔离合成账号和内容；不调用真实模型，不读取真实学生或教师私有材料，不修改 `.env`、密钥、CI/CD 或部署。
+
+## 2. 接口与实现方案
+
+### 2.1 可信输入与不可信正文
+
+A4 `review.queueAnalysis` 继续从真实已授权请求冻结 course/student/attempt、固定活动/政策、state/attempt/epoch/context/capture、分析版本、用途和 45 秒 deadline；`claimAnalysis` 返回绑定及租约。B3 不接受候选 body 自报这些字段。
+
+B3 请求由受信宿主提供：A4 原 `job`/`binding`、固定活动的三条能力目标、与 binding 描述符一一对应的最少正文，以及从 binding 派生的 input/assistance/coverage 引用角色。源码、运行、消息、帮助、覆盖和资料正文全部是不可信数据；它们不能扩大 scope、目标、用途、引用白名单、引用角色、工具或权限。反馈草稿只作为可选草稿正文返回，不是正式 Feedback。
+
+### 2.2 输出与校验
+
+输出沿用 A4 `analysisBodySchema`：`kind=learner_analysis`、0～64 条 claims 和可选 `feedbackDraft`。每条 claim 必须：
+
+- 只指向当前固定活动/课程内获准的 competencyId/version/domain/scope；
+- evidenceIds/counterEvidenceIds 只取本 Job 获准引用，支持与反证不得重叠；
+- 保留 `insufficient | supported_with_assistance | supported_in_check | conflicting`、帮助条件、unknown 和 unresolved；
+- 工具故障、覆盖空窗、缺消息或缺独立检查只能形成未知/未解决，不直接形成知识错误或独立掌握；
+- 不输出掌握百分比、正式分数、教师决定、作品修改或执行动作。
+
+模型返回的根级、claim 级未知字段拒绝，不进入已校验 body。成功结果只携带重建后的 body、调用次数、延迟、actual/unknown usage 和 A4 固定版本。
+
+### 2.3 有界执行与当前性
+
+复用 B1 的统一执行边界：从原 Job 接受时间起最多 45 秒，最多 3 次 provider 调用，最多一次结构/政策修复；worker 更换、repair 和 SDK 重试不得重置。每次调用前后使用 A4 实际 current reader 检查 Job/停止、租约/恢复代际、state/attempt/epoch/context/capture、活动/政策和分析版本。迟到、过时、取消、超时或失败结果不得交给 `completeAnalysis`。
+
+合成首批提供确定性 provider；实际 DeepSeek 适配复用 B1 固定配置并留到获准真实模型批次。模型不可用时只安全结束候选 Job，不阻止教师直接读取原始依据、人工复核和反馈。
+
+## 3. 固定合成 fixture 与验收矩阵
+
+固定场景覆盖三条能力线及共同边界：
+
+| 场景 | 可信事实 | 必须保留的结论 |
+| --- | --- | --- |
+| E-B3-01 空历史/缺消息 | 只有当前作品快照，没有帮助或限定检查 | 可输出证据不足/unknown；不得补造独立掌握或失败 |
+| E-B3-02 受助表现 | 当前作品表现与已 displayed/acknowledged 帮助同组 | 可输出 `supported_with_assistance`；不得抹去帮助条件 |
+| E-B3-03 限定检查 | 可信课程检查与固定目标匹配 | 可输出 `supported_in_check`；stdout、自述 passed 或普通运行不可替代 |
+| E-B3-04 工具故障/覆盖空窗 | 编译或执行基础设施失败，或采集暂停/拒收 | 记录 unknown/unresolved；不得当作知识错误或补传空窗 |
+| E-B3-05 冲突/反证 | 同一证据组内有支持与反证 | 保留 `conflicting`；不平均成掌握率 |
+| E-B3-06 无关/撤回历史 | 目标版本或活动不适用，或依据已 contested/withdrawn | 不进入新候选；不得换 claimId/措辞/analysisVersion 复活 |
+| E-B3-07 重复运行 | 同 Attempt 同证据组重复运行 | 不累积为多次独立观察或掌握率 |
+| E-B3-08 反馈草稿 | 作品结果、三条能力线、帮助/反证/未知齐备 | 只产 `draft` 语义，不冒充教师正式评价 |
+
+自动验证还覆盖：越权/未知引用、错目标、重复支持/反证、未知字段、一次修复、三次上限、取消、截止、provider 失败、旧 state/epoch/generation/lease、actual/unknown usage，以及 A4 拒绝/回滚/幂等由真实 `queue/claim/complete/readCurrentInTransaction` 保持。
+
+## 4. Issue #42 评论指派：A4/B2 接缝复核
+
+负责人要求在 B3 消费 A4 状态能力时复核 `apps/teaching/server/tutoring/application.ts` 的可选 `readLearnerState`，不采信作者声明。复核必须使用 A4 PR #49 固定提交、真实临时 SQLite 事务和真实 B2 `executeStudentHelp`：
+
+1. 工厂未装配 reader 时仍兼容 revision 0/空历史。
+2. `createReviewApp` 自动装配后，preparation/runtime 手工 `learnerStateRevision` 与 claims 不能覆盖 A4 当前有效投影。
+3. 初始装配、provider 前后 current guard、C3 接纳前以及重投前均使用真实 revision；状态改变后旧帮助不得投递。
+4. 已显示帮助保留历史并标 `basisRevised`；未显示帮助不得冒充已观察。
+5. B3 通过真实授权 request 调用 `review.queueAnalysis`，再以真实租约 `claimAnalysis`、`completeAnalysis` 接纳严格 body，并在同一事务能力 `readCurrentInTransaction` 中读到新 revision；浏览器不能传任意 courseId/studentId 提权。
+
+复核结论必须记录命令、通过/失败数量和未执行项。发现 B 域问题只提交最小修复；需要改变 A4/C4 共享契约时停止并请求对应授权。
+
+## 5. 依赖、交付与未完成项
+
+- 当前分支基于尚未合入的 A4 PR #49，后续 PR 必须声明堆叠依赖；#49 变化后重新同步并复验，不能把当前结果外推到未知合并树。
+- C2/C3 已提供实际引用/覆盖基础；C4 分支和 A4/C4 合并集成仍未成为 `main`，真实提交/恢复链另行联调。
+- B3 合成核心、fixture 和 A4/B2 接缝可在本批完成；真实 DeepSeek 候选、真实学生/教师材料、教师人工语义、浏览器与真人反馈分别等待明确条件和授权。
+- #40 的首批 HDL 消费提案已在独立分支交付；共享 DTO 未经 #38 冻结前不编码。等待 #40 上游期间推进 #42 符合 TEAM 个人顺序例外，不表示 DL-B 已完成。
+- 待实现与验证后，向 A4/A5/B4 交严格 body、引用/版本接缝、命令结果与未执行项；需要同步受保护基线时仅在本文提出“待授权维护者汇总”。
+
+## 6. 实际结果
+
+### 6.1 实现位置
+
+- `contracts/tutoring/index.ts`：新增 `learner_analysis` purpose、严格候选/目标/请求类型，直接复用 A4 的 `AnalysisBinding`/`ClaimBody`。
+- `server/tutoring/core.ts`：新增候选生成入口；核可信 scope/版本/目标与“送模正文 = 可引用白名单”，拒绝 provider claimId、未知字段、重复目标、伪造/重叠引用、缺依据支持、无反证冲突、帮助条件错配和丢弃 unknown。
+- `server/tutoring/analysis.ts`：把 A4 的真实 Job/binding/lease 组装为 B 请求；调用前后核 state/attempt/epoch/context/capture/活动/政策/配置/租约；显式分析不因单独 capture 变化失效，被动分析保持 capture 守卫；动态预算、跨 worker 累计次数和未发送输入预检释放均由持久 callback 明确处理。
+- `server/tutoring/providers.ts`、`schemas.ts`：实际 AI SDK/DeepSeek 注入边界支持严格 `learner_analysis` schema，仍固定 `deepseek-flash`、thinking disabled、`maxRetries=0`、16K 输入预检和 4096 输出。
+- `server/tutoring/test/learner-analysis.fixtures.ts`：E-B3-01～08 固定合成工程样例。
+- `server/tutoring/test/learner-analysis.test.ts`：B3 核心、A4 真实事务、B2 可选状态读取评论复核、调用/故障边界与离线 SDK 参数测试。
+
+### 6.2 实际验证
+
+运行环境均为 Node 24.21.0、仓库锁定依赖；供应商网络调用为 0。
+
+| 命令/检查 | 实际结果 |
+| --- | --- |
+| `node tools/check-runtime.mjs` | 通过 |
+| `tsc --noEmit` | 通过 |
+| `tsc -p tsconfig.build.json` | 通过 |
+| `node --test server/tutoring/test/learner-analysis.test.ts` | 17/17 通过，0 失败、0 跳过；含八组 fixture、一次 repair、动态预算、三次累计上限、取消/过时/租约、unknown usage、16K 预检释放及 DeepSeek 离线 invoker |
+| `node --test --test-reporter=dot server/tutoring/test/*.test.ts` | 退出码 0；B1/B2/B3 tutoring 回归全部通过 |
+| `node --test --test-reporter=dot tests/review.test.ts` | 退出码 0；A4 专项回归全部通过 |
+| 应用统一测试集合 | 退出码 1：仅 3 项环境失败；1 项是 Windows 缺 Linux/trusted `RunControl` 的既有限制，2 项是沙箱拒绝 127.0.0.1 loopback |
+| 沙箱外复跑 `node --test tests/startup.test.ts tests/app.test.ts` | 7/7 通过，证明上述 2 项 loopback 为沙箱限制；Linux 专用项仍失败并保留 |
+| `node tools/a0-review/check.mjs` | 通过：40 份文档、613 处内部引用、`errors=[]`；业务测试字段仍为 `NOT_EXECUTED` |
+| `node --test tools/a0-review/check.test.mjs` | 16/16 通过 |
+| `git diff --check`、相对 A4 固定 head 的写入范围 | 通过；没有修改 product/planning/reference/AGENTS、数据库、package/锁文件/tsconfig/CI/CD，`.trae/` 未纳入 |
+
+### 6.3 Issue #42 评论指派复核结论
+
+复核结论为 **通过（限 A4 PR #49 固定 head 与本次合成事务）**：
+
+- 真实授权学生 Session 通过 A4 `review.queueAnalysis` 冻结 scope/版本/引用，真实 `claimAnalysis` 取得租约；B3 只产严格 body，`completeAnalysis` 在真实 SQLite 事务接纳，`readCurrentInTransaction` 读到 revision 1 的 `model_candidate`。
+- A4 工厂装配后，向 B2 preparation 手工注入 revision 900/空 claims 无法覆盖真实 revision 1/当前 claim；获准引用来自真实投影。
+- provider 返回期间 A4 状态推进后，B2 运行守卫返回 `stale`，没有 delivery；原 A4 回归继续覆盖最终接纳与重投前同事务守卫、已显示历史的 `basisRevised`。
+- 未装配 A4 reader 的 B1/B2 原路径由完整 tutoring 回归保持兼容；本批没有修改 B2 DTO、策略或模型格式。
+
+这项通过不等于 A4 PR #49 已合并，也不替代 A4 作者独立验收、C 域接缝复核、真实模型候选或教师人工语义。
+
+### 6.4 未完成与下一步
+
+- A4 PR #49 合入后从最新 `main` 重放 B3 专项、A4 review、tutoring 和应用回归；若 A4 合并树变化，先核接口差异。
+- 接 C2/C3/C4 的实际原始分析/提交/覆盖引用，验证 E-B3-02～07 对真实引用语义的 A4 接纳；当前只有 E-B3-01 经真实 A4 事务接纳，其余为严格合成策略/反例。
+- 真实 DeepSeek 候选、actual/unknown usage 和失败证据需新的 B3 调用范围与合成数据/费用授权；本批没有沿用 #45 已消费授权。
+- 固定工程样例的严重语义问题仍需教师/项目推进者人工审阅；浏览器、真人反馈与教学收益未执行。
+- 待授权维护者汇总：可记录“B3 合成核心、固定 fixture 和 A4/B2 消费接缝复核已完成；A4 合入重放、真实输入链、真实模型/人工语义和 UI/真人仍未验收”。本文不直接修改产品/计划基线。

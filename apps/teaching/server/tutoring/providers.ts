@@ -113,6 +113,7 @@ function buildUntrustedPrompt(purpose: TutoringPurpose, untrustedInput: unknown)
 
 function selectSchemaKind(purpose: TutoringPurpose, untrustedInput: unknown): TutoringSchemaKind {
   if (purpose === "student_help") return "student_help";
+  if (purpose === "learner_analysis") return "learner_analysis";
   if (typeof untrustedInput === "object" && untrustedInput !== null && "mode" in untrustedInput) {
     const mode = (untrustedInput as { mode?: unknown }).mode;
     if (typeof mode === "string" && tutoringSchemaKinds.slice(0, 4).includes(mode as never)) {
