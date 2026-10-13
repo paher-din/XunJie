@@ -107,3 +107,13 @@ npm run build
 已 fetch 并回读远端 main 为 `94ad99c6344fb230406f904cf944d534d2e2ed0f`（已合并 A4 #49）。相对本任务的初始基线，main 无 apps/student 改动；共同修改文件只有根 README。`git merge-tree --write-tree --messages origin/main bde0999` 退出 0，README 自动合并，预测合并树为 `c38f313dd5b3d994ff2defe30239f43a29082256`。该树的 apps/student 与本人任务文档逐字等于已验证工程提交；提取这棵树后直接调用其 `checkRepository`，60 文档/870 内链、errors=[]。因此该准备工程候选可以干净合入此次核对的 main，不需要重写 A4/C4 的记录或重新运行未变化的前端源码。
 
 GitHub main 回读 protected=false，仓库没有已跟踪 CI workflow；本任务没有远端分支或 PR，因此不存在本任务的 hosted checks / review 通过结论。Robert 的本次指令为完成后提交并判断能否合并；已完成本地提交与具体合并核对，没有推送、创建 PR、更新 Issue 评论或实际合并。准备范围回归通过不关闭 #30/#22，也不代替真实服务集成或正式产品验收。最后的文档状态收尾与工程提交在同一分支交付。
+
+## 6. 追加公开交付与交接同步授权（2026-10-13）
+
+负责人 Robert 明确要求执行推送/合并、同步此前交接说明，并批准重写根 AGENTS.md 与 README.md 后一并交付。此前第 5.4 节为当时仅本地提交的事实，后续实际状态以本节为准。规范/入口重写由 [W4](W4_REPO_ENTRYPOINT_REWRITE.md) 承载，I0 交接由本人 [收尾 §8.5](I0_UI_CLOSEOUT.md#85-编辑器补验测试优化与入口重写2026-10-13)承载；不修改其他作者任务或产品/规划/参考基线，不关闭 #30/#22。
+
+普通合并 origin/main 94ad99c 已完成，未发生冲突，apps/student 与工程提交 bde0999 完全一致。因为耗时对照为 Node 26，而学生入口要求 Node 24，当前补跑 Node 24.18.0 下的最终 108 项真实 Chrome、Vitest、typecheck/build；这组作为运行兼容性验收，不与 Node 26 基线比较提速。实际结果、固定交付与合并信息完成后追加。
+
+最终 Node 24.18.0 / npm 11.16.0 / Google Chrome 155.0.8059.40 复验：默认 2 worker 的 108/108 全量通过，218707.897ms（3:38.71），0 失败/跳过/flaky；Vitest 22 文件/238 项通过（1.01s）、typecheck 通过、build 通过（3.40s，既有大 chunk 提示保留）。未改应用源码/依赖；该结果验证入口要求的 Node 24，不与 Node 26 基线作跨版本提速比较。
+
+这次复验第一次启动漏设 Chrome/CI/端口覆盖，默认 Chromium 运行 16.66s 后主动中止（7 通过，101 未执行，退出 130），没有作为全量验收。随后使用第 5.3 节同一 CI/Chrome/5671～5673 环境并将 Node 24 目录放到 PATH 前重新完整执行，上述结果为最终有效运行。
