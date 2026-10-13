@@ -106,7 +106,10 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     });
     return { requestId: request.id, data };
   });
-  app.get('/api/attempts/:id', request => ({ requestId: request.id, data: read(request, attemptId(request), (_tx, state) => readWorkspace(state, () => true)) }));
+  // Use the attempt owner's actual assignment/activity availability for either authorized reader.
+  const workspaceProjection = (tx: Transaction, state: WorkspaceState) => readWorkspace(state, () => true,
+    assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active);
+  app.get('/api/attempts/:id', request => ({ requestId: request.id, data: read(request, attemptId(request), (tx, state) => workspaceProjection(tx, state)) }));
   app.post('/api/attempts/:id/sync', { bodyLimit: 8 * 1024 * 1024 }, request => {
     const input = parseRequest(syncInput, request.body), batch = syncBatch(input);
     return execute(request, attemptId(request), 'workspace.sync', input.recoveryGeneration, (_tx, state, context) => {
@@ -216,7 +219,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       return instance.teacherAgent.readJob(request);
     const data = access.withAuthorizedResource(request, tx => locate(tx, jobAttempt(tx, jobId)), 'read', tx => {
       const state = loadWorkspace(tx, jobAttempt(tx, jobId));
-      return readWorkspace(state, () => true).jobs.find(job => job.jobId === jobId);
+      return workspaceProjection(tx, state).jobs.find(job => job.jobId === jobId);
     });
     return { requestId: request.id, data };
   });
@@ -275,8 +278,8 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   });
   app.get('/api/attempts/:id/runs/:runId', request => {
     const value = parseRequest(params.extend({ runId: params.shape.id }), request.params);
-    return { requestId: request.id, data: read(request, value.id, (_tx, state) => {
-      const run = readWorkspace(state, () => true).runs.find(item => item.runId === value.runId);
+    return { requestId: request.id, data: read(request, value.id, (tx, state) => {
+      const run = workspaceProjection(tx, state).runs.find(item => item.runId === value.runId);
       if (!run) throw new ApiError('FORBIDDEN'); return run;
     }) };
   });
@@ -293,6 +296,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       const resyncRequired = query.recoveryGeneration !== generation || !Number.isSafeInteger(query.decisionEpoch)
         || query.decisionEpoch !== state.attempt.decisionEpoch;
       return readRecovery(state, { recoveryGeneration: generation, resyncRequired,
+        assignmentActive: assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active,
         feedback: recovery.readFeedback(request, id), coverage: readCoverage(tx, id) }, () => true);
     }) };
   });

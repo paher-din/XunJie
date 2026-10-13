@@ -40,6 +40,8 @@
 
 请求体经 `submissionInput` 严格校验，只接受 `recoveryGeneration`、`expectedAttemptRevision`、`snapshotId`、`reflection`、`checkRefs`；`reflection` 为不超过 4096 字符的可选文本并按 `validateText` 拒绝孤立代理对；`checkRefs` 为不超过 16 项的 `runId` 数组。领域层再核：命令身份与尝试的学生、课程、分配一致；`expectedAttemptRevision` 与当前值相等，否则 `VERSION_CONFLICT`；分配未暂停，否则 `STATE_CONFLICT`，分配暂停不能被个人提交绕过；`snapshotId` 必须是本尝试、本活动版本下已确认的快照，否则 `INVALID_REFERENCE`；每个检查引用必须指向本尝试的真实运行、其模式为课程检查、且绑定的快照正是本次提交的快照，否则 `INVALID_REFERENCE`。检查结论按运行事实原样记录，`verdict` 为失败或不完整同样接受提交，这直接落实「不要求作品必须答对」。
 
+2026-10-13 顺序集成审查勘误：上段请求描述的校验器与引用字段名称有误，实际严格请求校验器为 artifactSubmissionInput，请求字段是 checkRunIds（最多 16 个 runId），不是 checkRefs。持久化提交与响应中的 checkRefs 仍为检查事实对象数组，不能作为请求字段发送。此勘误修正文档，不更改接口、数据或历史验证统计。
+
 提交成功后尝试进入 `submitted`，`attemptRevision` 相对持久值恰好加一以满足 `saveAttempt` 的比较写，`decisionEpoch` 加一，并按用途取消 `student_help`/`reminder`/`explicit_analysis`/`passive_analysis`；取消经 C3 的 `teachingStop` 在同一事务持久化停止意图并把尚未展示的动作标为失效。普通运行作业不在此取消：其事实与原始引用必须保留，且 `beginExplicitOperation` 已使 `submitted` 阶段不能再发起新运行，在途运行继续按原有对账路径得到确认、未知或失败结论。该取舍在第 6 节列为需要 A5/C5 复核的解释项。
 
 幂等沿用既有语义：同账号、同命令、同目标、同 `Idempotency-Key` 且请求摘要相同返回原提交与原回执并标 `replayed`；摘要不同返回 `IDEMPOTENCY_CONFLICT`；`recoveryGeneration` 过期返回 `RECOVERY_REQUIRED`。旧提交、旧作品快照、旧运行与旧检查引用一律不改写，新提交只追加新行。

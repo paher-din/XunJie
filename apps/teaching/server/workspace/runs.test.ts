@@ -107,10 +107,10 @@ test('confirmed original facts reconcile expired/unknown leases and never become
   const stopped=cancelRunCommand(recovered,stopContext,f.ids.jobId).state;
   assert.equal(reconcileRun(stopped,f.ids.jobId,result,'lease','gen',at(26000)).records.jobs[0]!.status,'succeeded');
   assert.throws(()=>reconcileRun(unknown,f.ids.jobId,{...result,contentHash:sha256('different')},'lease','gen',at(25000)),/hash/);
-  assert.throws(()=>readWorkspace(recovered,()=>false),/denied/);
+  assert.throws(()=>readWorkspace(recovered,()=>false,true),/denied/);
   assert.throws(()=>reconcileRun(unknown,f.ids.jobId,result,'old-worker','gen',at(25000)),/lease/);
   assert.throws(()=>reconcileRun(unknown,f.ids.jobId,result,'lease','old-generation',at(25000)),/generation/);
-  assert.equal(readWorkspace(recovered,()=>true).runs[0]!.diagnostics.status,'available');
+  assert.equal(readWorkspace(recovered,()=>true,true).runs[0]!.diagnostics.status,'available');
 });
 test('authorized diagnostic reads exclude other attempts and private check detail',()=>{
   const f=fixture();let planned=runCommand(f.state,f.context,{...f.request,mode:'course_check'},f.runtime,f.ids,at(100000)).state;
@@ -122,7 +122,7 @@ test('authorized diagnostic reads exclude other attempts and private check detai
     checkResults:[{detail:'synthetic private test detail'}]};
   const accepted=reconcileRun(planned,f.ids.jobId,{...validateRunResult(submission,record),resultRef:'ref'},'lease','gen',at(1000));
   assert(!JSON.stringify(readRunDiagnostics(accepted,f.ids.runId,()=>true)).includes('private test detail'));
-  const publicWorkspace=readWorkspace(accepted,()=>true);
+  const publicWorkspace=readWorkspace(accepted,()=>true,true);
   assert(!JSON.stringify(publicWorkspace).includes('private test detail'));
   assert(!JSON.stringify(publicWorkspace).includes(accepted.runs[0]!.resultHash!));
   const diagnostics=publicWorkspace.runs[0]!.diagnostics;
@@ -132,7 +132,7 @@ test('authorized diagnostic reads exclude other attempts and private check detai
   assert.equal(publicWorkspace.runs[0]!.runId,f.ids.runId);
   assert(JSON.stringify(accepted.runs[0]!.result).includes('private test detail'));
   const mixed={...accepted,files:[...accepted.files,{...accepted.files[0]!,fileId:'other',attemptId:'other',text:'other student'}]};
-  assert(!JSON.stringify(readWorkspace(mixed,()=>true).files).includes('other student'));
+  assert(!JSON.stringify(readWorkspace(mixed,()=>true,true).files).includes('other student'));
   assert.equal(readConfirmedSnapshot(accepted,f.request.snapshotId,()=>true).hash,submission.snapshot.hash);
   assert.throws(()=>readConfirmedSnapshot(accepted,f.request.snapshotId,()=>false),/denied/);
   const poisoned=JSON.parse(JSON.stringify(f.request));poisoned.input.shell='arbitrary';

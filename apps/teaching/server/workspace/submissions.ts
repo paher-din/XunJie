@@ -38,8 +38,8 @@ export function latestSubmission(basis:{submissions:Submission[]}):Submission|un
  * The one grant `planResumeRevision` would accept right now, or undefined. Both the consuming command and the
  * recovery projection go through this, so the view can never offer a permission the command would then refuse.
  */
-function currentGrant(basis:{attempt:Attempt;submissions:Submission[];grants:ReopenGrant[]}):ReopenGrant|undefined {
-  if(basis.attempt.status!=='reviewed')return undefined;
+function currentGrant(basis:{attempt:Attempt;submissions:Submission[];grants:ReopenGrant[]},assignmentActive:boolean):ReopenGrant|undefined {
+  if(!assignmentActive||basis.attempt.status!=='reviewed')return undefined;
   const latest=latestSubmission(basis);
   if(!latest)return undefined;
   return basis.grants.find(row=>row.state==='valid'&&row.attemptId===basis.attempt.attemptId
@@ -52,10 +52,10 @@ function currentGrant(basis:{attempt:Attempt;submissions:Submission[];grants:Reo
  * teacher has already replaced, and collapsing a still-`valid` row into `none` would hide a real persisted fact —
  * an assignment pause alone produces exactly that row, so it is an ordinary chain rather than a corner case.
  */
-export function reopenView(basis:{attempt:Attempt;submissions:Submission[];grants:ReopenGrant[]}):ReopenView {
+export function reopenView(basis:{attempt:Attempt;submissions:Submission[];grants:ReopenGrant[]},assignmentActive:boolean):ReopenView {
   const newest=basis.grants[basis.grants.length-1];
   if(!newest)return {state:'none',actionable:false};
-  const actionable=currentGrant(basis);
+  const actionable=currentGrant(basis,assignmentActive);
   return {state:newest.state,actionable:actionable?.grantId===newest.grantId,
     grantId:newest.grantId,submissionId:newest.submissionId,reason:newest.reason,grantedAt:newest.grantedAt,
     ...(newest.consumedAt===undefined?{}:{consumedAt:newest.consumedAt})};
@@ -136,7 +136,7 @@ export function planResumeRevision(basis:SubmissionBasis,expectedRevision:number
   if(!latestSubmission(basis))throw new RunnerError('STATE_CONFLICT','No fixed submission to revise');
   // The same predicate the recovery projection reports through, so a view claiming `actionable` is a view this
   // command will actually accept.
-  const grant=currentGrant(basis);
+  const grant=currentGrant(basis,context.assignmentActive);
   if(!grant)throw new RunnerError('STATE_CONFLICT','Current teacher reopen permission required');
   const attempt:Attempt={...structuredClone(basis.attempt),status:'active',
     attemptRevision:basis.attempt.attemptRevision+1,decisionEpoch:basis.attempt.decisionEpoch+1};

@@ -236,7 +236,7 @@ export function claimRunReconciliation(state:WorkspaceState,jobId:string,token:s
   const leased:Job={...job,leaseToken:token,leaseUntil:until,status:job.stopRequested?'cancelling':'outcome_unknown'};
   return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?leased:row)}};
 }
-export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
+export function readWorkspace(state:WorkspaceState,authorize:()=>boolean,assignmentActive:boolean) {
   if(authorize()!==true)throw new RunnerError('FORBIDDEN','Workspace read denied');
   const own=state.records.jobs.filter(row=>row.scope.attemptId===state.attempt.attemptId
     &&row.scope.courseId===state.attempt.courseId&&row.scope.studentId===state.attempt.studentId);
@@ -256,7 +256,7 @@ export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
       snapshotHash:submission.snapshotHash,workspaceRevision:submission.workspaceRevision,attemptRevision:submission.attemptRevision,
       decisionEpoch:submission.decisionEpoch,submittedAt:submission.submittedAt,receiptId:submission.receiptId,
       checkRefs:structuredClone(submission.checkRefs),...(submission.reflection===undefined?{}:{reflection:submission.reflection})})),
-    reopen:reopenView(state)});
+    reopen:reopenView(state,assignmentActive)});
 }
 
 // C4 recovery projection. Read-only: it never activates the attempt, enqueues work, repeats a side effect or moves
@@ -273,7 +273,7 @@ function recoveryOutcome(run:WorkspaceState['runs'][number],job:Job):RecoveryRun
   if(job.status==='queued'||job.status==='running'||job.status==='cancelling')return 'in_flight';
   return run.resultHash?'confirmed':'incomplete';
 }
-export function readRecovery(state:WorkspaceState,context:{recoveryGeneration:string;resyncRequired:boolean;
+export function readRecovery(state:WorkspaceState,context:{recoveryGeneration:string;resyncRequired:boolean;assignmentActive:boolean;
   feedback:RecoveryFeedback;coverage?:TeachingCoverage},authorize:()=>boolean):AttemptRecovery {
   if(authorize()!==true)throw new RunnerError('FORBIDDEN','Recovery read denied');
   const own=state.records.jobs.filter(row=>row.scope.attemptId===state.attempt.attemptId
@@ -296,7 +296,7 @@ export function readRecovery(state:WorkspaceState,context:{recoveryGeneration:st
       serverSeq:receiptSequence(state,submission.receiptId),submittedAt:submission.submittedAt,
       hasReflection:submission.reflection!==undefined,checkRefs:submission.checkRefs})),
     ...(newestSubmission===undefined?{}:{latestSubmissionId:newestSubmission.submissionId}),
-    reopen:reopenView(state),runs,
+    reopen:reopenView(state,context.assignmentActive),runs,
     // A pending question is the student's own help request whose job has not reached a terminal fact yet.
     pendingQuestions:own.filter(job=>job.purpose==='student_help'&&['queued','running','cancelling'].includes(job.status))
       .map(job=>({jobId:job.jobId,jobStatus:job.status,acceptedAt:job.acceptedAt,deadline:job.deadline})),
