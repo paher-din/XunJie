@@ -56,7 +56,6 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
 | [DL-C 隔离 HDL 构建与持续仿真](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) | 已授权 C 侧引擎/会话/三表合成服务端与真实目标验证；HDL 14/14、C 节点 50/51、认证 SSH 10/10，DL-A/UI/整卡与完整 NFR 保留 |
-
 | [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 获准提前评审准备，A 域输入已交；仍待 C/B/UI 具体提案、配置/schema/运行授权 |
 | [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | C4 合并后获准精确 33 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；PR修复专项51/51、两轴未解决0；默认/串行全量失败与后置项单列 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
