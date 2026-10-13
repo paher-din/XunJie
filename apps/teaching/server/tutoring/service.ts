@@ -198,8 +198,10 @@ function persistedCallProvider(
               return { ...current, attemptCount: current.attemptCount - 1 };
             });
           } catch (releaseError) {
-            if (releaseError instanceof ProviderCallNotStartedError) throw releaseError;
-            throw new ProviderCallNotStartedError("unavailable", "Unable to release unsent model call reservation");
+            // The reservation survived this release attempt, so the call keeps its budget slot; a
+            // changed lease or attemptCount means someone else already reconciled it.
+            if (releaseError instanceof ProviderCallNotStartedError) throw releaseError.withReservation("held");
+            throw new ProviderCallNotStartedError("unavailable", "Unable to release unsent model call reservation", "held");
           }
         }
         throw error;

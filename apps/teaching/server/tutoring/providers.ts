@@ -158,15 +158,28 @@ export class InputLimitError extends Error {
   }
 }
 
+// Whether the persistent per-Job reservation for this call is still holding budget. Only a confirmed
+// release lets an unsent call leave the call count; a release that did not complete must keep it.
+export type ModelCallReservation = "none" | "released" | "held";
+
 export class ProviderCallNotStartedError extends Error {
   readonly outcome: "budget_exhausted" | "cancelled" | "stale" | "timed_out" | "unavailable";
+  readonly reservation: ModelCallReservation;
 
   constructor(
     outcome: "budget_exhausted" | "cancelled" | "stale" | "timed_out" | "unavailable",
     message: string,
+    reservation: ModelCallReservation = "none",
   ) {
     super(message);
     this.name = "ProviderCallNotStartedError";
     this.outcome = outcome;
+    this.reservation = reservation;
+  }
+
+  withReservation(reservation: ModelCallReservation): ProviderCallNotStartedError {
+    return this.reservation === reservation
+      ? this
+      : new ProviderCallNotStartedError(this.outcome, this.message, reservation);
   }
 }

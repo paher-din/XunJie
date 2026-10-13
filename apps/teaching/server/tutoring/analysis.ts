@@ -7,7 +7,7 @@ import type {
   LearnerAnalysisBody,
   UntrustedReference,
 } from "../../contracts/tutoring/index.ts";
-import { generateLearnerAnalysis, type CurrentGuard } from "./core.ts";
+import { CALL_VERDICT_WINDOW_MS, generateLearnerAnalysis, type CurrentGuard } from "./core.ts";
 import {
   InputLimitError,
   ProviderCallNotStartedError,
@@ -223,7 +223,7 @@ export async function executeClaimedLearnerAnalysis(
       }
       if (notStarted) {
         await releaseUnsentModelCall(runtime);
-        throw notStarted;
+        throw notStarted.withReservation("released");
       }
 
       try {
@@ -239,6 +239,9 @@ export async function executeClaimedLearnerAnalysis(
     provider,
     checkCurrent,
     priorCalls: input.claimed.job.attemptCount,
+    // This wrapper reserves a persistent call before sending, so the loop may wait for its verdict
+    // instead of billing a cancellation that provably never reached the provider.
+    callVerdictWindowMs: CALL_VERDICT_WINDOW_MS,
     ...(runtime.now ? { now: runtime.now } : {}),
   });
 }
@@ -284,7 +287,9 @@ async function releaseUnsentModelCall(runtime: ClaimedLearnerAnalysisRuntime): P
   try {
     await runtime.releaseModelCall(new AbortController().signal);
   } catch (error) {
-    if (error instanceof ProviderCallNotStartedError) throw error;
-    throw new ProviderCallNotStartedError("unavailable", "Unable to release an unsent learner analysis call");
+    // An unconfirmed release leaves the reservation holding budget, so the call must stay counted
+    // and enter the existing unknown-result reconciliation instead of returning budget it still owes.
+    if (error instanceof ProviderCallNotStartedError) throw error.withReservation("held");
+    throw new ProviderCallNotStartedError("unavailable", "Unable to release an unsent learner analysis call", "held");
   }
 }

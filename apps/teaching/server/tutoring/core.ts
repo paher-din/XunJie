@@ -18,6 +18,7 @@ import {
   ProviderCallNotStartedError,
   type ModelProvider,
   type ProviderRequest,
+  type ProviderResponse,
 } from "./providers.ts";
 
 export type GuardState = "current" | "stale" | "cancelled";
@@ -28,10 +29,16 @@ export type TutoringRuntime = {
   checkCurrent?: CurrentGuard;
   priorCalls?: number;
   now?: () => number;
+  callVerdictWindowMs?: number;
 };
 
 const MAX_CALLS = 3;
 const MAX_REQUEST_MS = 45_000;
+// The request boundary can settle before the provider wrapper reports whether a request ever left the
+// process. This bounds how long the loop waits for that verdict before billing conservatively. Only
+// wrappers that reserve a call before sending opt in, so a provider that ignores AbortSignal still
+// gets cancelled promptly.
+export const CALL_VERDICT_WINDOW_MS = 250;
 const forbiddenCapabilityKeys = new Set([
   "writeFiles",
   "runsCode",
@@ -181,12 +188,13 @@ async function execute<TBody>(
 
     const usageIndex = usages.length;
     usages.push({ status: "unknown" });
+    let inFlight: Promise<ProviderResponse> | undefined;
     try {
       const response = await callWithDeadline(runtime.provider, {
         ...baseProviderRequest,
         repair: repairUsed,
         remainingMs,
-      }, externalSignal, remainingMs);
+      }, externalSignal, remainingMs, (started) => { inFlight = started; });
       usages[usageIndex] = response.usage ?? { status: "unknown" };
 
       const after = await guardFailure(
@@ -225,40 +233,81 @@ async function execute<TBody>(
       repairUsed = true;
     } catch (error) {
       if (error instanceof ProviderCallNotStartedError) {
-        usages.splice(usageIndex, 1);
-        const calls = call - 1;
-        if (error.outcome === "budget_exhausted") {
-          return failure("budget_exhausted", "CALL_LIMIT_EXCEEDED", false, calls, aggregateUsage(usages));
-        }
-        if (error.outcome === "cancelled") {
-          return failure("cancelled", "CANCELLED", false, calls, aggregateUsage(usages));
-        }
-        if (error.outcome === "stale") {
-          return failure("stale", "STALE_CONTEXT", false, calls, aggregateUsage(usages));
-        }
-        if (error.outcome === "timed_out") {
-          return failure("timed_out", "DEADLINE_EXCEEDED", false, calls, aggregateUsage(usages));
-        }
-        return failure("unavailable", "DEPENDENCY_UNAVAILABLE", true, calls, aggregateUsage(usages));
+        return notStartedFailure(error, call, usages, usageIndex);
       }
       if (error instanceof InputLimitError) {
         usages.splice(usageIndex, 1);
         return failure("needs_input", "INPUT_LIMIT_EXCEEDED", false, call - 1, aggregateUsage(usages));
       }
-      if (externalSignal?.aborted) {
-        return failure("cancelled", "CANCELLED", false, call, aggregateUsage(usages));
-      }
-      if (error instanceof CancellationError) {
-        return failure("cancelled", "CANCELLED", false, call, aggregateUsage(usages));
+      // The boundary decides why the execution stopped; only the wrapper's verdict may decide whether a
+      // request was ever sent. Waiting for that verdict is opt-in, because a provider that ignores
+      // AbortSignal would otherwise turn a prompt cancellation into a stall.
+      const verdict = inFlight === undefined || runtime.callVerdictWindowMs === undefined
+        ? undefined
+        : await unsentCallVerdict(inFlight, runtime.callVerdictWindowMs);
+      const billed = billCall(verdict, call, usages, usageIndex);
+      if (externalSignal?.aborted || error instanceof CancellationError) {
+        return failure("cancelled", "CANCELLED", false, billed.calls, billed.usage);
       }
       if (error instanceof DeadlineError) {
-        return failure("timed_out", "DEADLINE_EXCEEDED", false, call, aggregateUsage(usages));
+        return failure("timed_out", "DEADLINE_EXCEEDED", false, billed.calls, billed.usage);
       }
-      return failure("unavailable", "PROVIDER_UNAVAILABLE", true, call, aggregateUsage(usages));
+      return failure("unavailable", "PROVIDER_UNAVAILABLE", true, billed.calls, billed.usage);
     }
   }
 
   return failure("unavailable", "CALL_LIMIT_EXCEEDED", false, MAX_CALLS, aggregateUsage(usages));
+}
+
+type CallBilling = { calls: number; usage: ModelUsage };
+
+// A confirmed release is the only evidence that lets this call leave the ledger. A reservation that is
+// still held — or a verdict that never arrived — keeps both the count and the unknown usage, so budget
+// is never returned for a call that may already have been sent.
+function billCall(
+  verdict: ProviderCallNotStartedError | undefined,
+  call: number,
+  usages: ModelUsage[],
+  usageIndex: number,
+): CallBilling {
+  if (verdict === undefined || verdict.reservation === "held") {
+    return { calls: call, usage: aggregateUsage(usages) };
+  }
+  usages.splice(usageIndex, 1);
+  return { calls: call - 1, usage: aggregateUsage(usages) };
+}
+
+function notStartedFailure(
+  error: ProviderCallNotStartedError,
+  call: number,
+  usages: ModelUsage[],
+  usageIndex: number,
+): TutoringFailure {
+  const { calls, usage } = billCall(error, call, usages, usageIndex);
+  if (error.outcome === "budget_exhausted") return failure("budget_exhausted", "CALL_LIMIT_EXCEEDED", false, calls, usage);
+  if (error.outcome === "cancelled") return failure("cancelled", "CANCELLED", false, calls, usage);
+  if (error.outcome === "stale") return failure("stale", "STALE_CONTEXT", false, calls, usage);
+  if (error.outcome === "timed_out") return failure("timed_out", "DEADLINE_EXCEEDED", false, calls, usage);
+  return failure("unavailable", "DEPENDENCY_UNAVAILABLE", true, calls, usage);
+}
+
+async function unsentCallVerdict(
+  inFlight: Promise<ProviderResponse>,
+  windowMs: number,
+): Promise<ProviderCallNotStartedError | undefined> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<undefined>((resolve) => {
+    timeout = setTimeout(() => resolve(undefined), Math.max(0, windowMs));
+  });
+  try {
+    const settled = await Promise.race([
+      inFlight.then(() => undefined, (error: unknown) => error),
+      expired,
+    ]);
+    return settled instanceof ProviderCallNotStartedError ? settled : undefined;
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
 }
 
 async function callWithDeadline(
@@ -266,11 +315,13 @@ async function callWithDeadline(
   request: Omit<ProviderRequest, "signal">,
   externalSignal: AbortSignal | undefined,
   remainingMs: number,
+  captureInFlight?: (inFlight: Promise<ProviderResponse>) => void,
 ) {
   return runWithinRequestBoundary(
     (signal) => provider.generate({ ...request, signal }),
     externalSignal,
     remainingMs,
+    captureInFlight,
   );
 }
 
@@ -278,6 +329,7 @@ async function runWithinRequestBoundary<T>(
   operation: (signal: AbortSignal) => T | Promise<T>,
   externalSignal: AbortSignal | undefined,
   remainingMs: number,
+  captureInFlight?: (inFlight: Promise<T>) => void,
 ): Promise<T> {
   if (remainingMs <= 0) throw new DeadlineError();
   if (externalSignal?.aborted) throw new CancellationError();
@@ -305,11 +357,9 @@ async function runWithinRequestBoundary<T>(
     removeExternalAbort = () => externalSignal.removeEventListener("abort", onAbort);
   });
   try {
-    return await Promise.race([
-      Promise.resolve().then(() => operation(signal)),
-      deadline,
-      cancellation,
-    ]);
+    const inFlight = Promise.resolve().then(() => operation(signal));
+    captureInFlight?.(inFlight);
+    return await Promise.race([inFlight, deadline, cancellation]);
   } finally {
     if (timeout !== undefined) clearTimeout(timeout);
     removeExternalAbort?.();

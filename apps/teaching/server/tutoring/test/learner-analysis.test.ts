@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createDeepSeekProvider, InputLimitError, SyntheticProvider } from "../providers.ts";
+import { createDeepSeekProvider, InputLimitError, ProviderCallNotStartedError, SyntheticProvider } from "../providers.ts";
 import type { ModelProvider } from "../providers.ts";
 import {
   executeClaimedLearnerAnalysis,
@@ -488,6 +488,8 @@ test("B3 shares the three-call, deadline, cancellation, usage, lease, and curren
       const outcome = await execution;
       await reservationReleased;
       assert.equal(outcome.outcome, scenario.expected);
+      assert.equal(outcome.calls, 0, "a provably unsent call does not consume the per-Job call budget");
+      assert.deepEqual(outcome.usage, { status: "unknown" });
       assert.equal(provider.calls.length, 0, "no real provider invocation may cross the post-reservation guard");
       assert.equal(reservations, 0, "the unsent persistent reservation is released exactly once");
     });
@@ -534,9 +536,222 @@ test("B3 shares the three-call, deadline, cancellation, usage, lease, and curren
       const outcome = await execution;
       await reservationReleased;
       assert.equal(outcome.outcome, scenario);
+      assert.equal(outcome.calls, 0, "the hanging recheck cannot bill a call that never reached the provider");
       assert.equal(provider.calls.length, 0);
       assert.equal(reservations, 0, "the hanging recheck cannot strand its unsent reservation");
     });
+  });
+});
+
+test("B3 bills only the provider calls that actually left the process", async (t) => {
+  // The request boundary settles the race; these cases pin down which side decides the call count.
+  function hangingRecheck(claimed: ClaimedLearnerAnalysis) {
+    let currentReads = 0;
+    let announceRead!: () => void;
+    const readStarted = new Promise<void>((resolve) => { announceRead = resolve; });
+    return {
+      readStarted,
+      readCurrent() {
+        currentReads += 1;
+        if (currentReads === 1) return syntheticCurrent(claimed);
+        announceRead();
+        return new Promise<LearnerAnalysisCurrentState>(() => {});
+      },
+    };
+  }
+
+  await t.test("an outer cancellation settling before a delayed release still bills zero calls", async () => {
+    const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+    const controller = new AbortController();
+    const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+    const recheck = hangingRecheck(claimed);
+    let reservations = 0;
+    let releases = 0;
+    let openRelease!: () => void;
+    const releaseGate = new Promise<void>((resolve) => { openRelease = resolve; });
+    const execution = executeClaimedLearnerAnalysis(
+      { ...syntheticExecution(claimed), signal: controller.signal },
+      {
+        provider,
+        budgetAvailable: () => true,
+        recordModelCall() { reservations += 1; },
+        async releaseModelCall() {
+          releases += 1;
+          await releaseGate;
+          reservations -= 1;
+        },
+        readCurrent: recheck.readCurrent,
+        now: () => 1_000,
+      },
+    );
+
+    await recheck.readStarted;
+    controller.abort();
+    setTimeout(openRelease, 20);
+    const outcome = await execution;
+    assert.equal(outcome.outcome, "cancelled");
+    assert.equal(outcome.calls, 0, "the confirmed release, not the loop counter, decides the bill");
+    assert.deepEqual(outcome.usage, { status: "unknown" });
+    assert.equal(provider.calls.length, 0);
+    assert.equal(releases, 1);
+    assert.equal(reservations, 0);
+  });
+
+  await t.test("a cancellation after the request was sent keeps the call and its unknown usage", async () => {
+    const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+    const controller = new AbortController();
+    let sent = 0;
+    let announceSent!: () => void;
+    const sentStarted = new Promise<void>((resolve) => { announceSent = resolve; });
+    let reservations = 0;
+    let releases = 0;
+    const provider: ModelProvider = {
+      async generate(request) {
+        sent += 1;
+        announceSent();
+        await new Promise<void>((resolve) => {
+          if (request.signal.aborted) { resolve(); return; }
+          request.signal.addEventListener("abort", () => resolve(), { once: true });
+        });
+        throw new Error("synthetic provider interrupted after the request was sent");
+      },
+    };
+    const execution = executeClaimedLearnerAnalysis(
+      { ...syntheticExecution(claimed), signal: controller.signal },
+      {
+        provider,
+        budgetAvailable: () => true,
+        recordModelCall() { reservations += 1; },
+        releaseModelCall() { releases += 1; reservations -= 1; },
+        readCurrent: () => syntheticCurrent(claimed),
+        now: () => 1_000,
+      },
+    );
+
+    await sentStarted;
+    controller.abort();
+    const outcome = await execution;
+    assert.equal(outcome.outcome, "cancelled");
+    assert.equal(outcome.calls, 1, "a request that was sent stays billed");
+    assert.deepEqual(outcome.usage, { status: "unknown" }, "unknown usage is never fabricated as zero");
+    assert.equal(sent, 1);
+    assert.equal(releases, 0, "a sent call must not return its reservation");
+    assert.equal(reservations, 1);
+  });
+
+  await t.test("a release that fails or meets a concurrent recovery keeps the reservation and the count", async (group) => {
+    const cases = [
+      { name: "storage failure", error: new Error("synthetic ledger unavailable") },
+      {
+        name: "concurrent recovery",
+        error: new ProviderCallNotStartedError("stale", "Cannot release a changed model call reservation"),
+      },
+    ] as const;
+    for (const item of cases) await group.test(item.name, async () => {
+      const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+      const controller = new AbortController();
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      const recheck = hangingRecheck(claimed);
+      let reservations = 0;
+      let releases = 0;
+      const execution = executeClaimedLearnerAnalysis(
+        { ...syntheticExecution(claimed), signal: controller.signal },
+        {
+          provider,
+          budgetAvailable: () => true,
+          recordModelCall() { reservations += 1; },
+          releaseModelCall() { releases += 1; throw item.error; },
+          readCurrent: recheck.readCurrent,
+          now: () => 1_000,
+        },
+      );
+
+      await recheck.readStarted;
+      controller.abort();
+      const outcome = await execution;
+      assert.equal(outcome.outcome, "cancelled");
+      assert.equal(outcome.calls, 1, "an unconfirmed release must not return budget it still holds");
+      assert.deepEqual(outcome.usage, { status: "unknown" });
+      assert.equal(provider.calls.length, 0);
+      assert.equal(releases, 1, "a failed release is not retried into a double release");
+      assert.equal(reservations, 1, "the reservation stays held for the existing reconciliation flow");
+    });
+
+    await group.test("a stale recheck whose release fails keeps the count without any cancellation", async () => {
+      const claimed = syntheticClaimed({ purpose: "explicit_analysis" });
+      const provider = new SyntheticProvider([{ body: syntheticBody() }]);
+      let currentReads = 0;
+      let reservations = 0;
+      let releases = 0;
+      const outcome = await executeClaimedLearnerAnalysis(syntheticExecution(claimed), {
+        provider,
+        budgetAvailable: () => true,
+        recordModelCall() { reservations += 1; },
+        releaseModelCall() { releases += 1; throw new Error("synthetic ledger unavailable"); },
+        readCurrent() {
+          currentReads += 1;
+          return currentReads === 1
+            ? syntheticCurrent(claimed)
+            : { ...syntheticCurrent(claimed), learnerStateRevision: 1 };
+        },
+        now: () => 1_000,
+      });
+      assert.equal(outcome.outcome, "unavailable", "a failed release enters the existing unknown-result flow");
+      assert.equal(outcome.code, "DEPENDENCY_UNAVAILABLE");
+      assert.equal(outcome.retryable, true);
+      assert.equal(outcome.calls, 1, "the reservation is still held, so the call stays billed");
+      assert.deepEqual(outcome.usage, { status: "unknown" });
+      assert.equal(provider.calls.length, 0);
+      assert.equal(releases, 1);
+      assert.equal(reservations, 1);
+    });
+  });
+
+  await t.test("a provably unsent cancellation leaves the next worker the full three-call budget", async () => {
+    let attemptCount = 0;
+    // Mirrors the persistent ledger reconciliation in server/records/teaching.ts: the reported call
+    // count is a floor for attemptCount, so a wrongly billed cancellation burns a real budget slot.
+    const reconcile = (calls: number) => { attemptCount = Math.max(attemptCount, calls); };
+    const first = syntheticClaimed({ purpose: "explicit_analysis" });
+    const controller = new AbortController();
+    const recheck = hangingRecheck(first);
+    const unsent = executeClaimedLearnerAnalysis(
+      { ...syntheticExecution(first), signal: controller.signal },
+      {
+        provider: new SyntheticProvider([{ body: syntheticBody() }]),
+        budgetAvailable: () => true,
+        recordModelCall() { attemptCount += 1; },
+        releaseModelCall() { attemptCount -= 1; },
+        readCurrent: recheck.readCurrent,
+        now: () => 1_000,
+      },
+    );
+
+    await recheck.readStarted;
+    controller.abort();
+    const cancelled = await unsent;
+    assert.equal(cancelled.outcome, "cancelled");
+    assert.equal(cancelled.calls, 0);
+    reconcile(cancelled.calls);
+    assert.equal(attemptCount, 0, "the persistent ledger returns to zero after a confirmed release");
+
+    const reclaimed = syntheticClaimed({ purpose: "explicit_analysis", attemptCount });
+    const provider = new SyntheticProvider([
+      { body: null, needsAnotherCall: true },
+      { body: null, needsAnotherCall: true },
+      { body: syntheticBody() },
+    ]);
+    const second = await executeClaimedLearnerAnalysis(syntheticExecution(reclaimed), {
+      provider,
+      budgetAvailable: () => true,
+      recordModelCall() { attemptCount += 1; },
+      releaseModelCall() { attemptCount -= 1; },
+      readCurrent: () => syntheticCurrent(reclaimed),
+      now: () => 1_000,
+    });
+    assert.equal(second.outcome, "success");
+    assert.equal(second.calls, 3, "all three calls remain available to the worker that reclaims the job");
+    assert.equal(provider.calls.length, 3);
   });
 });
 
