@@ -246,3 +246,17 @@ npm test
 三项共用现有脱敏证据写入、精确 Node 24.21.0 门禁和安全 key 通道。`createObservedModelFetch` 新增非 2xx 的 `provider_error` 分类及请求开始观察钩子；生产 provider 配置、公开 tutoring 契约、调用/修复/45 秒预算均未改变。README 已增加一次性安全执行命令。
 
 当前状态：代码入口已准备，真实供应商探针**尚未执行**。先运行普通 typecheck、领域回归、证据安全测试、文档检查和默认跳过断言；这些离线结果不替代三个真实 outcome。实际执行后须记录固定提交、每次开始/结束/延迟、HTTP outcome/status、usage actual/unknown、证据文件摘要和是否停止后续探针；失败时不得自动重跑。
+
+### 13.1 实际执行结果
+
+账号负责人在固定提交 `d048d5b000276847c8b2fe8726c97d395f56f9dd`、Node 24.21.0 下执行一次授权探针，测试 1/1 通过，没有重跑。首次误在不含新测试文件的旧工作树执行时于测试发现阶段退出，供应商请求为 0；随后切换到本任务主工作区才执行以下三次真实请求。
+
+| 探针 | HTTP 结果 | 延迟 | usage | 结论 |
+| --- | --- | ---: | --- | --- |
+| 请求开始后取消 | `cancelled`，无 HTTP 状态 | 46ms | `unknown` | 实际 SDK/fetch 已开始后取消，安全结束 |
+| 受控短截止 | `timed_out`，无 HTTP 状态 | 101ms | `unknown` | 实际请求按超时信号结束 |
+| 预期无效 provider 请求 | `provider_error`，HTTP 400 | 349ms | `unknown` | 真实供应商返回非成功状态，未保存错误正文 |
+
+证据标记 `purpose=provider_failure_probes`、`model=deepseek-flash`、`dataScope=synthetic-only`、`maximumExternalRequests=3`、`retries=0`，实际 HTTP 事实恰为三项。递归检查确认序列化证据不含 Authorization、API key、reasoning 或 provider 错误正文；没有记录请求头或凭据。`sourceDirty=true` 仍由工作区原有未跟踪 `.trae/` 导致，本任务未读取、修改或提交该目录。
+
+至此 Issue #45 的“真实 provider 取消、超时和失败证据”已有一次受控实际批次，可交总协调复审；离线反例与本节真实结果继续分列。本批三个 unknown usage 按事实保留，不折为零。该结果不授权或替代 30 次模型求助性能样本，也不满足浏览器 `displayed`、真人接棒或完整人工语义审阅。
