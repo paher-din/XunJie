@@ -45,9 +45,12 @@ async function setup(){const f=await fixture(undefined,{digitalLogic:true}),teac
   const service=createHdlWorkspace({db:f.db,currentGeneration:f.generation,transport:node.transport,approvedProfile:()=>({board,runtime})});
   const revision=()=>f.db.withTransaction(tx=>readAttempt(tx,attemptId).attemptRevision);
   return {f,attemptId,snapshotId,node,service,revision,student};}
-test('DL-C synthetic schema is exactly 29 tables; authenticated .sv ACK and immutable build survive retries',async()=>{
+test('DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries',async()=>{
   const s=await setup();try{
-    assert.equal(s.f.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").length),29);
+    assert.equal(s.f.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").length),31);
+    const tables=s.f.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").map(row=>String(row.name)));
+    for(const name of ['workspace_submissions','workspace_reopen_grants','hdl_builds','hdl_sessions','hdl_operations'])assert(tables.includes(name));
+    assert(!tables.includes('learner_state_revisions'),'the HDL factory must not silently include A4 extension tables');
     const input={expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId},accepted=s.service.build(actor,s.attemptId,'build',s.f.generation(),input);
     assert.equal(s.service.build(actor,s.attemptId,'build',s.f.generation(),input).result.buildId,accepted.result.buildId);
     assert.throws(()=>s.service.build(actor,s.attemptId,'build',s.f.generation(),{...input,snapshotId:'other'}));

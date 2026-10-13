@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>循阶</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%brand/xunjie-logo/favicon-32.png" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="%BASE_URL%brand/xunjie-logo/mark-color.svg" />
+    <script>
+      // 深色模式：在首屏绘制前写入实际主题，避免刷新时闪白。
+      // 判定逻辑与 src/lib/theme.ts 的 parseThemePreference / resolveTheme 一致（键 theme.v1）。
+      ;(function () {
+        var pref = 'system'
+        try {
+          var raw = localStorage.getItem('theme.v1')
+          if (raw === 'light' || raw === 'dark' || raw === 'system') pref = raw
+        } catch (e) {
+          /* 存储不可用：按跟随系统处理 */
+        }
+        var theme =
+          pref === 'system'
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+            : pref
+        var el = document.documentElement
+        el.setAttribute('data-theme', theme)
+        el.setAttribute('data-theme-pref', pref)
+        el.style.colorScheme = theme
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

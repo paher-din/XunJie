@@ -69,9 +69,15 @@ function teachingVersions(
   };
 }
 
+export type LearnerStateReader = (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => {
+  learnerStateRevision: number;learnerClaims: readonly LearnerContextClaim[];
+};
+
 export type TutoringAppOptions = TeachingRecordsOptions & {
   studentHelp: {
     versions: TrustedModelContext["versions"];
+    readLearnerState?: LearnerStateReader;
+    readLearnerStateRevision?: (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => number;
     budgetAvailable: (scope: { courseId: string; studentId: string; attemptId: string }) => boolean;
   };
 };
@@ -84,7 +90,14 @@ export type StudentHelpPreparationOptions = {
 
 export async function createTutoringApp(options: TutoringAppOptions) {
   const { studentHelp, ...recordsOptions } = options;
-  const instance = await createTeachingRecordsApp(recordsOptions);
+  const readLearnerRevision = studentHelp.readLearnerStateRevision ?? (studentHelp.readLearnerState
+    ? (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => studentHelp.readLearnerState!(tx,scope).learnerStateRevision
+    : undefined);
+  const instance = await createTeachingRecordsApp({...recordsOptions,
+    ...(readLearnerRevision ? {isTeachingBasisCurrent: (tx,scope,basis) =>
+      readLearnerRevision(tx,scope) === basis.relatedStateRevision
+        && (recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis) ?? true)} : {}),
+  });
   const { app, access } = instance;
   const now = options.now ?? Date.now;
   const attemptId = (request: FastifyRequest) => parseRequest(params, request.params).id;
@@ -270,6 +283,9 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               ...(typeof optional.verdict === "string" ? { verdict: optional.verdict } : {}),
             };
           });
+          const learner = studentHelp.readLearnerState?.(tx,{
+            courseId: actor.courseId,studentId: actor.userId,attemptId: idValue,
+          });
           const context: AuthorizedStudentHelpContext = {
             job,
             current: {
@@ -290,8 +306,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               : {}),
             snapshots: state.snapshots,
             diagnostics,
-            learnerStateRevision: preparation.learnerStateRevision ?? 0,
-            learnerClaims: preparation.learnerClaims ?? [],
+            learnerStateRevision: learner?.learnerStateRevision ?? preparation.learnerStateRevision ?? 0,
+            learnerClaims: learner?.learnerClaims ?? preparation.learnerClaims ?? [],
             assistanceHistory: preparation.assistanceHistory ?? [],
             budgetAvailable: studentHelp.budgetAvailable({
               courseId: actor.courseId,
@@ -342,14 +358,20 @@ export async function createTutoringApp(options: TutoringAppOptions) {
         });
       const readCurrent: AuthorizedStudentHelpRuntime["readCurrent"] = async (signal) => {
         const state = await runtime.readCurrent(signal);
-        const job = options.db.withTransaction((tx) =>
-          readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId));
-        if (!job) throw new ApiError("STATE_CONFLICT");
+        const current = options.db.withTransaction((tx) => {
+          const job = readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId);
+          if (!job || !job.scope.studentId || !job.scope.attemptId) throw new ApiError("STATE_CONFLICT");
+          const learner = studentHelp.readLearnerState?.(tx,{
+            courseId: job.scope.courseId,studentId: job.scope.studentId,attemptId: job.scope.attemptId,
+          });
+          return {job,learner};
+        });
         return {
           ...state,
-          jobStatus: job.status,
-          stopRequested: job.stopRequested,
-          recoveryGeneration: job.recoveryGeneration,
+          ...(current.learner ? {learnerStateRevision: current.learner.learnerStateRevision} : {}),
+          jobStatus: current.job.status,
+          stopRequested: current.job.stopRequested,
+          recoveryGeneration: current.job.recoveryGeneration,
         };
       };
       const studentId = authorized.job.scope.studentId;

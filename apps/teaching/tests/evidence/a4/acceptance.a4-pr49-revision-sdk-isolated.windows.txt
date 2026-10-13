@@ -1,0 +1,89 @@
+TAP version 13
+# (node:57128) Warning: AI SDK Warning System: To turn off warning logging, set the AI_SDK_LOG_WARNINGS global to false.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# Subtest: AI SDK adapter maps approved DeepSeek settings through an offline transport
+ok 1 - AI SDK adapter maps approved DeepSeek settings through an offline transport
+  ---
+  duration_ms: 56.7921
+  type: 'test'
+  ...
+# Subtest: invalid structured policy output reaches the one permitted repair request
+ok 2 - invalid structured policy output reaches the one permitted repair request
+  ---
+  duration_ms: 7.5947
+  type: 'test'
+  ...
+# Subtest: malformed SDK JSON preserves usage and reaches the one permitted repair
+ok 3 - malformed SDK JSON preserves usage and reaches the one permitted repair
+  ---
+  duration_ms: 5.3414
+  type: 'test'
+  ...
+# Subtest: negative SDK token usage is kept unknown
+ok 4 - negative SDK token usage is kept unknown
+  ---
+  duration_ms: 2.286
+  type: 'test'
+  ...
+# Subtest: SDK-valid but unauthorized references are repaired by the B1 whitelist
+ok 5 - SDK-valid but unauthorized references are repaired by the B1 whitelist
+  ---
+  duration_ms: 3.9471
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter selects the teacher mode schema and returns a proposal body
+ok 6 - AI SDK adapter selects the teacher mode schema and returns a proposal body
+  ---
+  duration_ms: 3.764
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter keeps missing vendor usage unknown
+ok 7 - AI SDK adapter keeps missing vendor usage unknown
+  ---
+  duration_ms: 2.7758
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter reports vendor failure without retrying
+ok 8 - AI SDK adapter reports vendor failure without retrying
+  ---
+  duration_ms: 2.7591
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter cancellation aborts a pending offline transport
+ok 9 - AI SDK adapter cancellation aborts a pending offline transport
+  ---
+  duration_ms: 7.5073
+  type: 'test'
+  ...
+# Subtest: late SDK transport completion is discarded after the shared deadline
+ok 10 - late SDK transport completion is discarded after the shared deadline
+  ---
+  duration_ms: 13.3218
+  type: 'test'
+  ...
+# Subtest: 16K preflight rejects the complete final SDK input before transport
+ok 11 - 16K preflight rejects the complete final SDK input before transport
+  ---
+  duration_ms: 1.3907
+  type: 'test'
+  ...
+# (node:57128) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 594.7763

@@ -1,8 +1,9 @@
+import { hdlSchema } from '../workspace/hdl-schema.ts';
+import { reviewSchema } from './review-schema.ts';
 import { teacherDesignSchema } from '../design/teacher-schema.ts';
 import { completionSchema } from './completion-schema.ts';
 import { workspaceSchema } from '../workspace/schema.ts';
 import { teachingSchema } from '../records/schema.ts';
-import { hdlSchema } from '../workspace/hdl-schema.ts';
 import { designSchema } from './design-schema.ts';
 import { createRequire } from 'node:module';
 import { closeSync, lstatSync, mkdtempSync, openSync, realpathSync } from 'node:fs';
@@ -133,9 +134,24 @@ export function createWorkspaceDatabase(): SyntheticDatabase { return createFres
 export function createTeacherDesignDatabase(): SyntheticDatabase { return createFreshDatabase('teacher-design'); }
 // C3 adds the four teaching tables on the same approved path/transaction rules; older factories never gain them.
 export function createTeachingDatabase(): SyntheticDatabase { return createFreshDatabase('teaching'); }
-export function createDigitalLogicDatabase(): SyntheticDatabase { return createFreshDatabase('digital-logic'); }
-function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'digital-logic'): SyntheticDatabase {
-  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching','digital-logic'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
+// Exact scope approved for this independent A4 batch; detect composition drift before creating a file.
+export function createReviewDatabase(): SyntheticDatabase {
+  const approvedTables = ['activity_controls', 'activity_versions', 'analysis_results', 'artifact_snapshots', 'assignments', 'attempts', 'audit_events', 'blueprint_drafts', 'check_rule_versions', 'command_receipts', 'competency_versions', 'course_memberships', 'courses', 'help_policy_versions', 'jobs', 'learner_context_revisions', 'learner_disputes', 'learner_state_revisions', 'login_attempt_windows', 'resource_versions', 'sessions', 'teacher_decisions', 'teaching_action_receipts', 'teaching_actions', 'teaching_deliveries', 'teaching_messages', 'users', 'workspace_command_bindings', 'workspace_files', 'workspace_process_records', 'workspace_reopen_grants', 'workspace_runs', 'workspace_submissions'];
+  assertApprovedScope(approvedTables,[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,reviewSchema],'Review');
+  return createFreshDatabase('review');
+}
+export function createDigitalLogicDatabase(): SyntheticDatabase {
+  const approvedTables = ['activity_controls', 'activity_versions', 'artifact_snapshots', 'assignments', 'attempts', 'audit_events', 'blueprint_drafts', 'check_rule_versions', 'command_receipts', 'competency_versions', 'course_memberships', 'courses', 'hdl_builds', 'hdl_operations', 'hdl_sessions', 'help_policy_versions', 'jobs', 'login_attempt_windows', 'resource_versions', 'sessions', 'teaching_action_receipts', 'teaching_actions', 'teaching_deliveries', 'teaching_messages', 'users', 'workspace_command_bindings', 'workspace_files', 'workspace_process_records', 'workspace_reopen_grants', 'workspace_runs', 'workspace_submissions'];
+  assertApprovedScope(approvedTables,[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,hdlSchema],'Digital logic');
+  return createFreshDatabase('digital-logic');
+}
+function assertApprovedScope(approvedTables:string[],schemas:string[],name:string) {
+  const declaredTables = schemas.flatMap(sql=>[...sql.matchAll(/CREATE TABLE\s+([a-z_][a-z0-9_]*)/gi)].map(match=>match[1]!)).sort();
+  if(JSON.stringify(declaredTables)!==JSON.stringify(approvedTables))
+    throw new Error(name+' initialization requires the approved '+approvedTables.length+'-table scope; authorize a changed composition before creating a database.');
+}
+function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'review' | 'digital-logic'): SyntheticDatabase {
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching','review','digital-logic'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
@@ -143,9 +159,8 @@ function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspa
   try {
     db.exec('BEGIN IMMEDIATE');
     try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind !== 'design' && kind !== 'access') db.exec(completionSchema);
-      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching' || kind === 'digital-logic') db.exec(workspaceSchema);
-      if (kind === 'teacher-design') db.exec(teacherDesignSchema); if (kind === 'teaching' || kind === 'digital-logic') db.exec(teachingSchema);
-      if (kind === 'digital-logic') db.exec(hdlSchema); db.exec('COMMIT'); }
+      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching' || kind === 'review' || kind === 'digital-logic') db.exec(workspaceSchema);
+      if (kind === 'teacher-design') db.exec(teacherDesignSchema); if (kind === 'teaching' || kind === 'review' || kind === 'digital-logic') db.exec(teachingSchema); if (kind === 'review') db.exec(reviewSchema); if (kind === 'digital-logic') db.exec(hdlSchema); db.exec('COMMIT'); }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   } finally { db.close(); }
   return openSyntheticDatabase(file);
