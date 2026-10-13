@@ -107,9 +107,9 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     return { requestId: request.id, data };
   });
   // A current teacher may read retained facts after student withdrawal. The student's ability to consume
-  // a grant is false in that case; it is separate from the reader's resource authorization above.
+  // a grant is false in that case or when the account is disabled; reader authorization remains separate.
   const assignmentActionable = (tx: Transaction, state: WorkspaceState) => Boolean(tx.get(
-    "SELECT user_id FROM course_memberships WHERE course_id=? AND user_id=? AND role='student' AND active=1",
+    "SELECT m.user_id FROM course_memberships m JOIN users u ON u.id=m.user_id WHERE m.course_id=? AND m.user_id=? AND m.role='student' AND m.active=1 AND u.disabled_at_ms IS NULL",
     state.attempt.courseId, state.attempt.studentId))
     && assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active;
   const workspaceProjection = (tx: Transaction, state: WorkspaceState) => readWorkspace(state, () => true,

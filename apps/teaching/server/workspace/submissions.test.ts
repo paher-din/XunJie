@@ -791,3 +791,22 @@ test('C4-V12 current teacher retains recovery history after student withdrawal b
     }
   } finally { await f.close(); }
 });
+
+test('C4-V13 disabled student account makes the retained grant non-actionable for a current teacher', async () => {
+  const f = await fixture();
+  try {
+    const teacher = await f.login('teacher'), student = await f.login();
+    const allocation = await assigned(f, teacher), id = await opened(f, student, allocation.assignmentId);
+    await files(f, student, id);
+    const chain = await reviewed(f, student, teacher, id);
+    const granted = await grantReopen(f, teacher, id, chain.submissionId, chain.reviewedRevision);
+    assert.equal(granted.statusCode, 200, granted.body);
+    f.db.withTransaction(tx => tx.run("UPDATE users SET disabled_at_ms=? WHERE id='student'", Date.now()));
+    for (const projection of [await view(f, teacher, id), await recovery(f, teacher, id)]) {
+      assert.equal(projection.reopen.state, 'valid');
+      assert.equal(projection.reopen.actionable, false);
+      assert.equal(projection.submissions.length, 1);
+    }
+    assert.equal((await resumeRevision(f, student, id, Number(granted.json().data.result.attemptRevision))).statusCode, 401);
+  } finally { await f.close(); }
+});
