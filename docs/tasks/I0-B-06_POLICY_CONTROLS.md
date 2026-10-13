@@ -4,7 +4,7 @@
 
 **Blocked by:** 无前置ticket；规格/最小UI写集与测试接缝已按Robert委托定稿。D-03仍阻塞限定检查实时UI状态，D-05最小控制落点由本票实现；其余原控制与保存反例可独立准备，不依赖代码/运行求助或真实节点。
 
-**Status:** planned（规划已定稿；完整限定检查UI仍需D-03，未编码、未验证）。
+**Status:** implementation-ready-for-integration（独立模块已实现并完成typecheck/15项规则测试；主页面与同一fixture的接线、浏览器及限定检查D-03尚未完成，不表示整票验收）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划/D-03/D-05/D-06](I0-B_UI_TUTOR_PLAN.md)。覆盖UI-TUTOR-08，M-04/M-05/相关M-03，AC-05/07/11/12/15、NFR-01/04/05/06。
 
@@ -31,4 +31,40 @@
 
 ## 交付与未完成
 
-写集按计划06，前端不改捕获协议、帮助政策模型或服务端控制状态。当前D-03/D-05、实现及应用测试未完成。D-06继续权威重读，基线差异为待授权维护者汇总。
+写集按计划06，前端不改捕获协议、帮助政策模型或服务端控制状态。2026-10-13的独立实现与验证见下方记录；D-03、D-05实际主接线/浏览器与完整覆盖读取尚未完成。D-06继续权威重读，基线差异为待授权维护者汇总。
+
+## 2026-10-13 独立实现与主接线交接
+
+Robert授权本批六票并行开发，06执行Agent在独立工作树与`codex/i0-b-06-controls`分支只交付本票模块、测试和记录，不推送。已读仓库README/AGENTS、PRD§3/4.2/8、MVP_SPEC M-03/04/05及§4/5/6、TECH_DESIGN§4.3/5/5.1/7.1/7.2.1/7.3/7.4，I0_UI_SPEC与客户端约束正文、IMPORT_SOURCE、本批SPEC/PLAN与本票正文；控制wire与实际语义回源`server/workspace/inputs.ts`、`controls.ts`、`commands.ts`、`application.ts`、`server/records/jobs.ts`、`commands.ts`。适用PRD-09、M-03/04/05、AC-05/07/11/12/15及NFR-01/04/05/06，原判据不降低。
+
+写集限定下表五份新增源码/测试与本记录。主Agent独占PrepWorkspacePage、prep/plugin/workspace、公共http/storage；apps/teaching、产品/排程/参考/规范、package/lock/Vite/DB_VERSION/store/index/.env/CI均只读。未安装依赖，沿用主仓既有依赖的工作树junction；未修改旧原命令或创建另一服务器/authority/回放账本。
+
+| 文件 | 实际交付 |
+| --- | --- |
+| [控制模块](../../apps/student/src/workspace/tutoringControls.ts) | 固定政策说明；四种原wire操作；权威Attempt/Assignment读取、冻结/落盘/原HTTP/回执核验/重读；独立metadata namespace的原命令及标签发送租约，不混入旧保存outbox |
+| [控制组件](../../apps/student/src/components/workspace/TutoringControls.tsx) | 既有任务/消息槽中的固定政策、暂停/恢复尝试、采集与提醒；键盘原生按钮/switch、未知/拒绝/重读/原键核对；不建立页面、模型调用或采集队列 |
+| [同authority fixture扩展](../../apps/student/prep/tutoringControls.ts) | 严格解析本票四种控制；按原控制规则计算版本与用途取消；调用主提供的prepTeachingCommand，使用原head/回执/代际/原键重放 |
+| [规则反例](../../apps/student/src/workspace/tutoringControls.test.ts) | 15项：落盘顺序、存储失败零发送、缺代际、丢ACK原键、CAS拒绝、教师暂停、迟到旧账号、旧代际不重放、错回执、确认后读失败、命名空间、同值/独立epoch、暂停用途、严格wire、内部摘要与Job终态 |
+| [浏览器专项](../../apps/student/e2e/tutoringControls.spec.ts) | 6项已编写未执行：默认提醒/键盘、不激活ready、采集与保存/旧过程拒收、尝试暂停保留保存、丢ACK刷新原键重放、教师暂停公开投影、服务拒绝仍保存；后两类响应注入只证明UI消费，不替代服务授权证明 |
+
+原命令记录放在v2既有`metadata`的`tutor-controls:`命名空间，按mode/account/course/Assignment/activity/Attempt/scenario隔离，原记录保留受信generation/preparationEpoch；loadEpoch只作当前页面守卫，不改变刷新后的业务身份。原JSON与键先完成事务再发送，CSRF仍由原HTTP层在发送时内存取得。未知只允许明确原键核对，不自动排队、改revision、换键重做或给旧队列贴新代际；控制存储失败不接触草稿与保存outbox。
+
+每次操作重读权威Attempt与分配；本次控制ACK不直接翻开关，而是核actor/scope/target/key/generation/hash/result后重读。旧响应不能覆盖失效页面；另一标签发送由metadata事务租约协调。确认后的读失败保留已确认事实；控制或模型故障不清理草稿、不禁用原获准保存。固定政策不推断限定检查，三控制不互相代替；相同设值不增通用epoch或采集代际，采集/提醒不激活ready，教师暂停优先。
+
+### 主Agent接线步骤
+
+组件导出`TutoringControls`及`TutoringControlsProps`：`confirmation: ConfirmationWorkspace | null`、`activity: ActivityView`、`assignment: AssignmentView`，可选`onAssignmentChange: (assignment: AssignmentView) => void`。主页面放入现有taskInfo/消息槽；使用回调中重读的权威分配更新现有文件/保存/新建/运行/求助守卫，不能持续用旧init.assignment.active。原ConfirmationWorkspace的权威head更新会触发控制重读，跨标签控制广播只通知重读，不发送命令或广播政策正文。
+
+fixture导出`createPrepControlHandler(ports)`，返回`(scenario, session, attemptId, value, key) => Receipt`。ports为主同authority的`prepTeachingCommand`、`assignmentActive(scenario, session, attemptId): boolean`及`stopTeaching(scenario, attemptId, purposes): string[]`。stopTeaching接主已有教学Job/未展示Action的用途取消，保留已生成/已展示/原终态；未接该回调不能把教学取消标通过。插件接原`POST /api/attempts/:id/controls`，保留session/Origin/CSRF/错误信封与故障注入；不得把开发脚本的直接status设置冒充控制。
+
+HTTP正文仍为`{recoveryGeneration, expectedAttemptRevision, control}`；内部handler传给共享helper的摘要对象为`{recoveryGeneration, expectedRevision, control}`，共享helper去generation后的canonical摘要与真实controlCommand一致。这一转换仅在fixture内部，不增加公共字段。主共享helper返回真实`replayed: true/false`（原键命中/首次完成分别返回），与现有控制HTTP实际投影一致；当前主未提交helper早期正文尚不返回该标记，主接线须补齐，本模块不伪造重放事实。
+
+当前教学事件分页已有公共coverage来源，完整采集区间详情由主组合时消费该页，沿用原事件客户端/控制来源，不增加endpoint或用客户端时间补造区间。本组件目前仅展示服务已读collecting状态、功能数据例外及恢复不回填规则，并明确详情未回取；尚未把完整覆盖读取标验收通过。
+
+### 实际检查与限制
+
+2026-10-13，在学生目录沿用现有Node v24.15.0运行`rtk npm run typecheck`（src及node配置）退出码0；`rtk npm test -- tutoringControls`为1文件/15项通过、零失败。`rtk npm run build`退出码0（Vite既有大chunk提示保留，不改构建配置）；该构建在最后的确认客户端订阅适配前执行，末次适配另完成typecheck与15项专项，不把尚未挂主页面的模块计成浏览器接线证明。
+
+未运行Playwright、真实教学HTTP/数据库/节点、供应商或真人。六项浏览器专项统一交主Agent组合接线后执行；当前脚本的教师暂停投影和拒绝信封注入不代表真实教师权限/控制传播已验证。限定检查D-03仍未完成；覆盖详情、真实活动/分配暂停传播、后台被动分析取消/不回填、实际提醒与02求助组合、跨标签/账号/换代浏览器事实与全AC/NFR均未计通过。产品基线及MVP_SPEC§10为“待授权维护者汇总”。本地提交仅本票六文件，Git实际SHA由提交后的交接报告给出；未推送、合并或发布。
+
+2026-10-13，末次源码适配后typecheck与15项专项再次退出码0；仓库根`node tools/a0-review/check.mjs`为72份文档/1005条内链/errors=[]，`git diff --check`退出码0。提交前复查只暂存本票六文件，不夹带主Agent未提交接缝、依赖junction或构建产物。
