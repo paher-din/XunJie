@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { freezeTutoringControl, TutoringControlsWorkspace, verifyControlReceipt, controlAllowed,
-  controlJournalKey, type ControlCommand, type ControlJournal } from './tutoringControls'
+  controlJournalKey, limitedCheckFromHead, type ControlCommand, type ControlJournal } from './tutoringControls'
 import type { CommandContext } from './frozenCommand'
 import type { AssignmentView } from './contracts'
 import type { AttemptView, WorkspaceHead } from './workspaceContracts'
@@ -30,6 +30,7 @@ function harness() {
   const c = context(), rows: ControlCommand[] = [], requests: ControlCommand[] = [], events: string[] = []
   let current = true, rejectStore = false, assignmentState = assignment()
   let authority = attempt()
+  let getAssignment = async (): Promise<AssignmentView> => structuredClone(assignmentState)
   let post = async (command: ControlCommand): Promise<unknown> => {
     authority = planPrepControl(authority, JSON.parse(command.wireJson).expectedAttemptRevision,
       JSON.parse(command.wireJson).control, assignmentState.active).attempt
@@ -50,15 +51,16 @@ function harness() {
   }
   const confirmation = { context: c, commandInFlight: false, isCurrent: (value: CommandContext) => current && value === c,
     readHead: async (): Promise<WorkspaceHead> => {
-      events.push('read'); return { attempt: structuredClone(authority), files: [], snapshots: [], jobs: [], runs: [], checks: [] }
+      events.push('read'); return { attempt: structuredClone(authority), files: [], snapshots: [], jobs: [], runs: [], checks: [], limitedCheck: false }
     } }
   const client = new TutoringControlsWorkspace(confirmation, journal, {
-    getAssignment: async () => structuredClone(assignmentState), authorityCurrent: async () => true,
+    getAssignment: () => getAssignment(), authorityCurrent: async () => true,
     post: async command => { events.push('post'); requests.push(structuredClone(command)); return post(command) },
   })
   return { c, client, rows, requests, events, confirmation, journal,
     setPost: (value: typeof post) => { post = value }, setCurrent: (value: boolean) => { current = value },
     setStoreFailure: () => { rejectStore = true }, setAuthority: (value: AttemptView) => { authority = value },
+    setGetAssignment: (value: typeof getAssignment) => { getAssignment = value },
     setAssignment: (value: AssignmentView) => { assignmentState = value } }
 }
 
@@ -161,6 +163,94 @@ describe('student controls command boundaries', () => {
     for (const changed of [{ userId: 'other' }, { attemptId: 'other' }, { scenarioId: 'other' }, { mode: 'real' as const }]) {
       expect(controlJournalKey({ ...context(), ...changed })).not.toBe(controlJournalKey(context()))
     }
+  })
+})
+
+describe('authorized limited-check projection', () => {
+  it('consumes the explicit flag and does not mistake a non-limited active check for a restriction', async () => {
+    const h = harness(), read = h.confirmation.readHead
+    h.confirmation.readHead = async () => ({ ...await read(), limitedCheck: false,
+      checks: [{ jobId: 'check-job', runId: 'check-run', policyVersion: 'policy', state: 'active' }] })
+    await h.client.refresh()
+    expect(h.client.current.limitedCheck).toBe(false)
+    expect(h.requests).toEqual([])
+    expect(h.rows).toEqual([])
+  })
+  it('missing or non-boolean fields remain unknown while independent capture control is still available', async () => {
+    const h = harness(), read = h.confirmation.readHead
+    for (const value of [undefined, null, 'false', 0, {}]) {
+      h.confirmation.readHead = async () => {
+        const head = await read()
+        if (value === undefined) delete head.limitedCheck
+        else Object.assign(head, { limitedCheck: value })
+        return head
+      }
+      await h.client.refresh()
+      expect(h.client.current.limitedCheck).toBeNull()
+      expect(h.client.current.phase).toBe('ready')
+    }
+    await h.client.set({ kind: 'capture', value: false })
+    expect(h.requests).toHaveLength(1)
+    expect(h.client.current.attempt?.collecting).toBe(false)
+    expect(h.client.current.limitedCheck).toBeNull()
+    expect(limitedCheckFromHead({ limitedCheck: true })).toBe(true)
+  })
+  it('rereads a confirmed check ending even when Attempt revision and epoch have not changed', async () => {
+    const h = harness(), read = h.confirmation.readHead
+    let limited = true
+    h.confirmation.readHead = async () => ({ ...await read(), limitedCheck: limited })
+    await h.client.refresh()
+    const before = structuredClone(h.client.current.attempt)
+    expect(h.client.current.limitedCheck).toBe(true)
+    limited = false
+    await h.client.refresh()
+    expect(h.client.current.limitedCheck).toBe(false)
+    expect(h.client.current.attempt).toEqual(before)
+    expect(h.requests).toEqual([])
+  })
+  it('reads the check flag after a delayed Assignment instead of publishing an earlier flag with unchanged revisions', async () => {
+    const h = harness(), read = h.confirmation.readHead
+    let limited = false, release!: (value: AssignmentView) => void
+    h.confirmation.readHead = async () => ({ ...await read(), limitedCheck: limited })
+    const pendingAssignment = new Promise<AssignmentView>(resolve => { release = resolve })
+    h.setGetAssignment(() => pendingAssignment)
+    const refreshed = h.client.refresh()
+    await Promise.resolve()
+    limited = true; release(assignment())
+    await refreshed
+    expect(h.client.current.limitedCheck).toBe(true)
+    expect(h.client.current.attempt?.attemptRevision).toBe(7)
+    expect(h.client.current.attempt?.decisionEpoch).toBe(2)
+    expect(h.requests).toEqual([])
+  })
+  it('a failed read clears an earlier known flag instead of claiming that a restriction has ended', async () => {
+    const h = harness(), read = h.confirmation.readHead
+    h.confirmation.readHead = async () => ({ ...await read(), limitedCheck: true })
+    await h.client.refresh()
+    expect(h.client.current.limitedCheck).toBe(true)
+    h.confirmation.readHead = async () => { throw new Error('head unavailable') }
+    await h.client.refresh()
+    expect(h.client.current.phase).toBe('unavailable')
+    expect(h.client.current.limitedCheck).toBeNull()
+    expect(h.requests).toEqual([])
+  })
+  it('false neither resumes a paused attempt nor overrides a teacher-paused assignment', async () => {
+    const h = harness()
+    h.setAuthority({ ...attempt(), status: 'paused' })
+    h.setAssignment({ ...assignment(), active: false, status: 'paused' })
+    await h.client.refresh()
+    expect(h.client.current.limitedCheck).toBe(false)
+    expect(controlAllowed(h.client.current.attempt, h.client.current.assignment, { kind: 'resume' })).toBe(false)
+    await h.client.set({ kind: 'resume' })
+    expect(h.requests).toEqual([])
+    expect(h.client.current.attempt?.status).toBe('paused')
+  })
+  it('a retired account/context cannot publish a delayed check flag', async () => {
+    const h = harness(), read = h.confirmation.readHead
+    h.confirmation.readHead = async () => { const head = await read(); h.setCurrent(false); return { ...head, limitedCheck: false } }
+    await h.client.refresh()
+    expect(h.client.current.limitedCheck).toBeNull()
+    expect(h.requests).toEqual([])
   })
 })
 

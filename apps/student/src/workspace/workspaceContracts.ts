@@ -20,6 +20,8 @@ export interface SnapshotView {
 export interface WorkspaceHead {
   attempt: AttemptView; files: WorkspaceFile[]; snapshots: SnapshotView[]
   jobs: unknown[]; runs: unknown[]; checks: unknown[]
+  /** GET Attempt同授权事务的当前限定检查状态；旧响应缺字段为未知，false不是总帮助许可。 */
+  limitedCheck?: boolean
 }
 /**
  * 单个文件操作。字段与顺序对齐 `server/workspace/inputs.ts` 的 `fileOperationSchema`：

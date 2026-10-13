@@ -37,7 +37,10 @@ export function TutoringControls({ confirmation, activity, assignment, onAssignm
       if (previous === 'sending' && state.phase === 'ready') channel?.postMessage({ changed: true })
       previous = state.phase
     })
-    return () => { broadcast(); observeConfirmation(); unsubscribe(); client.dispose(); channel?.close() }
+    // Ending a check does not necessarily change Attempt revisions. Re-read its public flag rather than
+    // infer completion from elapsed time or a Job status; paused attempts remain readable.
+    const timer = window.setInterval(() => { void client.refresh() }, 2500)
+    return () => { clearInterval(timer); broadcast(); observeConfirmation(); unsubscribe(); client.dispose(); channel?.close() }
   }, [confirmation, context])
   const current = binding?.client.context === context ? binding : null
   const state = current?.state, client = current?.client, attempt = state?.attempt ?? null
@@ -58,7 +61,13 @@ export function TutoringControls({ confirmation, activity, assignment, onAssignm
     <p>政策版本：{policy.version}</p>
     <p>{policy.description}</p>
     <p>{policy.help} 不提供整份可直接提交的答案。</p>
-    <p>限定检查的当前状态尚无公开依据，不能由固定帮助政策推断；发送时仍需服务核验。</p>
+    <p role="status" data-testid="limited-check-state" data-state={state?.limitedCheck === true ? 'limited' : state?.limitedCheck === false ? 'not-limited' : 'unknown'}>
+      {state?.limitedCheck === true
+        ? '当前处于限定帮助检查，系统内辅导暂不可用；执行失联或取消未确认不会自行解除。'
+        : state?.limitedCheck === false
+          ? '当前未处于限定帮助检查；主动求助仍须符合活动政策、尝试阶段和教师分配状态。'
+          : '限定检查状态尚未核对，不能视为允许求助；作品保存和独立控制按各自权限继续。'}
+    </p>
     {!confirmation?.context.attemptId && <p>开始尝试并读回当前状态后，可分别调整以下控制。里程碑提醒默认关闭。</p>}
     {attempt && <>
       <p>尝试：{attempt.status === 'paused' ? '已暂停' : attempt.status === 'active' ? '进行中' : attempt.status === 'ready' ? '未开始学习' : '作品只读'}</p>

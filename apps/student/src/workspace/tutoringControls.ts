@@ -24,6 +24,8 @@ export interface ControlCommand {
 export interface ControlsState {
   phase: 'idle' | 'reading' | 'ready' | 'sending' | 'unknown' | 'rejected' | 'unavailable'
   attempt: AttemptView | null; assignment: AssignmentView | null
+  /** 只来自本轮获准GET Attempt；null表示未知，不能用固定政策或raw checks推断。 */
+  limitedCheck: boolean | null
   pending: ControlCommand | null; notice: string | null
 }
 type ConfirmationPort = Pick<ConfirmationWorkspace, 'context' | 'isCurrent' | 'readHead' | 'commandInFlight'> &
@@ -120,6 +122,10 @@ export function describeTutoringPolicy(activity: ActivityView): { version: strin
   return { version: activity.helpPolicy.versionId, description: activity.helpPolicy.description,
     help: activity.helpPolicy.helpAllowed ? '活动政策允许主动求助，发送时仍由服务核验当前条件。' : '活动政策不允许主动求助。' }
 }
+/** 供当前Controls及主求助守卫消费；false只排除这一项限制，不授予求助权限。 */
+export function limitedCheckFromHead(head: Pick<WorkspaceHead, 'limitedCheck'>): boolean | null {
+  return typeof head.limitedCheck === 'boolean' ? head.limitedCheck : null
+}
 interface ControlIo {
   getAssignment(c: CommandContext): Promise<AssignmentView>
   post(command: ControlCommand): Promise<unknown>
@@ -131,7 +137,7 @@ const defaultIo: ControlIo = {
     scenarioId: command.context.scenarioId, idempotencyKey: command.commandKey }),
   authorityCurrent: c => confirmationRepository.isCurrentAuthority(c),
 }
-const initial = (): ControlsState => ({ phase: 'idle', attempt: null, assignment: null, pending: null, notice: null })
+const initial = (): ControlsState => ({ phase: 'idle', attempt: null, assignment: null, limitedCheck: null, pending: null, notice: null })
 const refusal = (code: ApiErrorCode): string => {
   if (code === 'VERSION_CONFLICT') return '控制版本已变化；原请求未生效，请重读后明确选择。'
   if (code === 'RECOVERY_REQUIRED') return '恢复代际已变化；旧控制请求不会改贴新代际，请重新载入。'
@@ -159,14 +165,19 @@ export class TutoringControlsWorkspace {
   private valid = (): boolean => !this.disposed && this.confirmation.isCurrent(this.c)
   private publish(change: Partial<ControlsState>): void {
     if (!this.valid()) return
-    this.state = { ...this.state, ...change }; this.listeners.forEach(fn => fn(this.state))
+    this.state = { ...this.state, ...change }
+    if (change.phase === 'unavailable') this.state.limitedCheck = null
+    this.listeners.forEach(fn => fn(this.state))
   }
   private async readAuthority(): Promise<WorkspaceHead | null> {
     const seq = ++this.readSeq
-    const head = await tutoringRequest(this.confirmation.readHead())
-    if (!this.valid() || seq !== this.readSeq || !head) return null
+    this.publish({ limitedCheck: null })
     const assignment = await tutoringRequest(this.io.getAssignment(this.c))
     if (!this.valid() || seq !== this.readSeq) return null
+    // Read head last: check completion need not advance attemptRevision/epoch. Do not publish an older
+    // check flag after waiting for Assignment; the original confirmation client owns head read ordering.
+    const head = await tutoringRequest(this.confirmation.readHead())
+    if (!this.valid() || seq !== this.readSeq || !head) return null
     const latest = this.confirmation.current?.attempt
     if (latest && (latest.attemptRevision > head.attempt.attemptRevision || latest.decisionEpoch > head.attempt.decisionEpoch ||
       latest.captureRevision > head.attempt.captureRevision)) return null
@@ -174,7 +185,7 @@ export class TutoringControlsWorkspace {
       assignment.studentId !== this.c.userId || typeof assignment.active !== 'boolean' ||
       !['active', 'paused'].includes(assignment.status)) throw new Error('分配控制投影不符')
     revision(assignment.assignmentRevision, 1); revision(assignment.activityControlRevision, 1)
-    this.publish({ attempt: head.attempt, assignment })
+    this.publish({ attempt: head.attempt, assignment, limitedCheck: limitedCheckFromHead(head) })
     return head
   }
   async refresh(): Promise<void> {
