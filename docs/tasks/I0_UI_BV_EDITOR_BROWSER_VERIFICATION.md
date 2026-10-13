@@ -1,6 +1,6 @@
 # I0-UI-BV：编辑器状态与本机作品保护浏览器补验
 
-日期：2026-10-13（Asia/Shanghai）。负责角色：UI / 前端接入成员 Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：两项补验与测试耗时优化已验证，准备本地提交；尚未推送/合并。
+日期：2026-10-13（Asia/Shanghai）。负责角色：UI / 前端接入成员 Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：两项补验与测试耗时优化已验证并本地提交；与最新 main 的合并模拟无冲突，尚未推送/实际合并。
 
 ## 1. 范围、授权与依据
 
@@ -99,3 +99,11 @@ npm run build
 ```
 
 最终 Vitest 22 文件/238 项通过（926ms）、typecheck 通过、build 通过（2.64s）。既有大 chunk 提示与开发 public JSON 提示保留；Node 26 的 localStorage ExperimentalWarning 如实保留，未关闭检查或改构建阈值。真实服务、执行节点、模型、完整 AC/NFR、真人与教学效果仍未验证；本节是准备工程的完整浏览器回归。
+
+### 5.4 本地提交与合并核对
+
+工程提交 `bde0999c9cf273a11cc1ead9e3258d40365242f8`（`fix(student): preserve editor state and halve browser regression time`）包含本任务 10 文件：根 README、学生 IMPORT_SOURCE/README、CodeEditorHost、playwright.config、confirmation/env/prep 的 e2e 调整、新 editorProtection.spec 与本文；没有提交既有 .zcodeignore，没有产品/规划/参考/规范、后台/schema、依赖/lock、CI 或凭据改动。
+
+已 fetch 并回读远端 main 为 `94ad99c6344fb230406f904cf944d534d2e2ed0f`（已合并 A4 #49）。相对本任务的初始基线，main 无 apps/student 改动；共同修改文件只有根 README。`git merge-tree --write-tree --messages origin/main bde0999` 退出 0，README 自动合并，预测合并树为 `c38f313dd5b3d994ff2defe30239f43a29082256`。该树的 apps/student 与本人任务文档逐字等于已验证工程提交；提取这棵树后直接调用其 `checkRepository`，60 文档/870 内链、errors=[]。因此该准备工程候选可以干净合入此次核对的 main，不需要重写 A4/C4 的记录或重新运行未变化的前端源码。
+
+GitHub main 回读 protected=false，仓库没有已跟踪 CI workflow；本任务没有远端分支或 PR，因此不存在本任务的 hosted checks / review 通过结论。Robert 的本次指令为完成后提交并判断能否合并；已完成本地提交与具体合并核对，没有推送、创建 PR、更新 Issue 评论或实际合并。准备范围回归通过不关闭 #30/#22，也不代替真实服务集成或正式产品验收。最后的文档状态收尾与工程提交在同一分支交付。
