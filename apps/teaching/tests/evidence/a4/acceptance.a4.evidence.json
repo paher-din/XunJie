@@ -159,15 +159,21 @@
       "bytes": 10511,
       "sha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
       "originalLogSha256": "51c8d4fac2920b2a39ba507cc055c1494d453db51f875af86547e18f3ebd2a67",
-      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output."
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-postreview-targeted.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
+      "previousBlobBytes": 10511
     },
     {
       "file": "acceptance.a4-postreview-build.windows.txt",
       "sourceSha": "2f4114a4a08754f742295db0d193963e7414693c",
-      "bytes": 94,
-      "sha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "bytes": 92,
+      "sha256": "e0d5ae7023a95c2a78db7ee7381b8bddccf2435be4367056eba16c3d15f67f8b",
       "originalLogSha256": "d3faf36909dc9afa8615e1bd5b02a92522c9add763024278e24446a7f471e798",
-      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output."
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-postreview-build.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "previousBlobBytes": 94
     },
     {
       "file": "acceptance.a4-postreview-full-serial.windows.txt",
@@ -175,7 +181,10 @@
       "bytes": 75335,
       "sha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
       "originalLogSha256": "bd2b56a3926e653a3db6145ce990b44940a893a04254ddc1641971a4f8570425",
-      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output."
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-postreview-full-serial.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
+      "previousBlobBytes": 75335
     },
     {
       "file": "acceptance.a4-prereview-full-serial.windows.txt",
@@ -183,15 +192,21 @@
       "bytes": 74792,
       "sha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
       "originalLogSha256": "790011ef0353a55229052180425fa3ce30b676356ba3b54d175eea6d4c7a32d3",
-      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output."
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-prereview-full-serial.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
+      "previousBlobBytes": 74792
     },
     {
       "file": "acceptance.a4-initial-full.windows.txt",
       "sourceSha": null,
-      "bytes": 36592,
-      "sha256": "b15dbcee06e71022089b2edbf7d5f4f552b587aea61e3e561ca2a3af89a3bf76",
+      "bytes": 36587,
+      "sha256": "082df259afeebb903cc8d09e87d084d3013aae420809e429f01bb46a608e2a0e",
       "originalLogSha256": "f4136d9ff40e640fa736363060e86ba19fd19c502cac66dbddc215a0990abbf6",
-      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output."
+      "normalization": "Only repository/temp paths and CRLF normalized; original local logs retained. No credential output.",
+      "previousBlobGzip": "acceptance.a4-initial-full.windows.txt.previous-blob.gz",
+      "previousBlobSha256": "b15dbcee06e71022089b2edbf7d5f4f552b587aea61e3e561ca2a3af89a3bf76",
+      "previousBlobBytes": 36592
     }
   ],
   "syntheticSchemaSmoke": {
@@ -257,5 +272,59 @@
     "documents": 39,
     "internalLinks": 610,
     "errors": []
+  },
+  "reviewCorrection": {
+    "originalPrHead": "6a4361b9e59227b8b5410c164656dc7dd7f178d8",
+    "date": "2026-10-13",
+    "normalization": "Removed display trailing whitespace and outer/EOF blank lines; text attributes prevent checkout conversion. Exact previous committed blobs retained as gzip. originalLogSha256 remains the historical author-log digest, not these gzip blobs.",
+    "files": [
+      {
+        "file": "acceptance.a4-initial-full.windows.txt",
+        "previousBlobGzip": "acceptance.a4-initial-full.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "b15dbcee06e71022089b2edbf7d5f4f552b587aea61e3e561ca2a3af89a3bf76",
+        "previousBlobBytes": 36592,
+        "sha256": "082df259afeebb903cc8d09e87d084d3013aae420809e429f01bb46a608e2a0e",
+        "bytes": 36587
+      },
+      {
+        "file": "acceptance.a4-postreview-build.windows.txt",
+        "previousBlobGzip": "acceptance.a4-postreview-build.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+        "previousBlobBytes": 94,
+        "sha256": "e0d5ae7023a95c2a78db7ee7381b8bddccf2435be4367056eba16c3d15f67f8b",
+        "bytes": 92
+      },
+      {
+        "file": "acceptance.a4-postreview-full-serial.windows.txt",
+        "previousBlobGzip": "acceptance.a4-postreview-full-serial.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
+        "previousBlobBytes": 75335,
+        "sha256": "3d1b74a016addf258f3cb217363ffd0260c719fdc0ee9939cba5192de30008c5",
+        "bytes": 75335
+      },
+      {
+        "file": "acceptance.a4-postreview-targeted.windows.txt",
+        "previousBlobGzip": "acceptance.a4-postreview-targeted.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
+        "previousBlobBytes": 10511,
+        "sha256": "88418a7414e42bba88e1ce93d7031b0c7f0c7b32b3f3283437fe4aad14640d03",
+        "bytes": 10511
+      },
+      {
+        "file": "acceptance.a4-prereview-full-serial.windows.txt",
+        "previousBlobGzip": "acceptance.a4-prereview-full-serial.windows.txt.previous-blob.gz",
+        "previousBlobSha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
+        "previousBlobBytes": 74792,
+        "sha256": "36557e8da87e464d3d554f486ee6b3825d4fd5602b3aa597d3fce1a0f6437497",
+        "bytes": 74792
+      }
+    ],
+    "historicalValidationCorrection": {
+      "atPrHead": "6a4361b9e59227b8b5410c164656dc7dd7f178d8",
+      "documents": 39,
+      "internalLinks": 611,
+      "diffCheckStatus": "failed",
+      "note": "Prior documentValidation/internalLinks=610 and task section 11.2 diff-check passed claim are historical inaccurate statements; corrected here without replacing prior run counters."
+    }
   }
 }

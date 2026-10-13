@@ -77,6 +77,7 @@ export type TutoringAppOptions = TeachingRecordsOptions & {
   studentHelp: {
     versions: TrustedModelContext["versions"];
     readLearnerState?: LearnerStateReader;
+    readLearnerStateRevision?: (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => number;
     budgetAvailable: (scope: { courseId: string; studentId: string; attemptId: string }) => boolean;
   };
 };
@@ -89,9 +90,12 @@ export type StudentHelpPreparationOptions = {
 
 export async function createTutoringApp(options: TutoringAppOptions) {
   const { studentHelp, ...recordsOptions } = options;
+  const readLearnerRevision = studentHelp.readLearnerStateRevision ?? (studentHelp.readLearnerState
+    ? (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => studentHelp.readLearnerState!(tx,scope).learnerStateRevision
+    : undefined);
   const instance = await createTeachingRecordsApp({...recordsOptions,
-    ...(studentHelp.readLearnerState ? {isTeachingBasisCurrent: (tx,scope,basis) =>
-      studentHelp.readLearnerState!(tx,scope).learnerStateRevision === basis.relatedStateRevision
+    ...(readLearnerRevision ? {isTeachingBasisCurrent: (tx,scope,basis) =>
+      readLearnerRevision(tx,scope) === basis.relatedStateRevision
         && (recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis) ?? true)} : {}),
   });
   const { app, access } = instance;

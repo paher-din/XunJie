@@ -25,8 +25,22 @@ function normalizedRunResult(result: Record<string,unknown>|undefined) {
     checks: Array.isArray(result.checkResults) ? result.checkResults.map(value => pick(value,['caseIndex','checkRuleVersion','validatorVersion','source','verdict'])) : [],
     resultFiles: Array.isArray(result.resultFiles) ? result.resultFiles.map(value => pick(value,['relativeName','caseIndex','contentHash','status'])) : []};
 }
+type WorkspaceCache = Map<string,ReturnType<typeof loadWorkspace>>;
+function readEvidenceWorkspace(tx: Transaction,attemptId: string,cache: WorkspaceCache) {
+  let workspace=cache.get(attemptId);
+  if(!workspace){workspace=loadWorkspace(tx,attemptId);cache.set(attemptId,workspace);}
+  return workspace;
+}
+/** A resolver belongs to one synchronous authorized projection/validation; never retain it across calls. */
+export function createEvidenceResolver(tx: Transaction,scope: LearnerScope,state=readState(tx,scope)) {
+  const cache:WorkspaceCache=new Map();
+  return (ref:EvidenceRef)=>resolveEvidenceWithCache(tx,scope,ref,state,cache);
+}
+export function resolveEvidence(tx: Transaction,scope: LearnerScope,ref: EvidenceRef,state=readState(tx,scope)):EvidenceFact {
+  return createEvidenceResolver(tx,scope,state)(ref);
+}
 export const evidenceKey = (scope: LearnerScope,ref: EvidenceRef) => canonical([scope.courseId,scope.studentId,ref]);
-function verifyClaimDependencies(tx: Transaction,scope: LearnerScope,root: EvidenceRef,state: LearnerState) {
+function verifyClaimDependencies(tx: Transaction,scope: LearnerScope,root: EvidenceRef,state: LearnerState,cache:WorkspaceCache) {
   const current = new Map(latestClaims(state).map(claim => [claim.claimId,claim]));
   const checked = new Set<string>(),active = new Set<string>(),stack: {ref: EvidenceRef;leave?: true}[] = [{ref: root}];
   while (stack.length) {
@@ -34,35 +48,39 @@ function verifyClaimDependencies(tx: Transaction,scope: LearnerScope,root: Evide
     if (leave) {active.delete(key);checked.add(key);continue;}
     if (active.has(key)) throw new ApiError('INVALID_REFERENCE');
     if (checked.has(key)) continue;
-    if (ref.kind !== 'claim') {resolveEvidence(tx,scope,ref,state);checked.add(key);continue;}
+    if (ref.kind !== 'claim') {resolveEvidenceWithCache(tx,scope,ref,state,cache);checked.add(key);continue;}
     const claim = current.get(ref.id);
     if (!claim || claim.claimRevision !== ref.revision || !['active','contested'].includes(claim.validity)) throw new ApiError('INVALID_REFERENCE');
     active.add(key);stack.push({ref,leave: true});
     for (const dependency of [...claim.refs].reverse()) stack.push({ref: dependency});
   }
 }
-export function resolveEvidence(tx: Transaction,scope: LearnerScope,ref: EvidenceRef,state = readState(tx,scope)): EvidenceFact {
+function resolveEvidenceWithCache(tx: Transaction,scope: LearnerScope,ref: EvidenceRef,state:LearnerState,cache:WorkspaceCache): EvidenceFact {
   const fact: EvidenceFact = {atoms: [evidenceKey(scope,ref)],groupIds: [],source: 'observation',checked: false,toolFailure: false,helpObserved: false,gap: false};
   if ('attemptId' in ref) {
     const attempt = readAttempt(tx,ref.attemptId);
     if (attempt.courseId !== scope.courseId || attempt.studentId !== scope.studentId) throw new ApiError('INVALID_REFERENCE');
     fact.groupIds = [attempt.attemptId];
     if (ref.kind === 'snapshot') {
-      const workspace = loadWorkspace(tx,ref.attemptId);
+      const workspace = readEvidenceWorkspace(tx,ref.attemptId,cache);
       const snapshot = workspace.snapshots.find(value => value.snapshotId === ref.id);
       if (!snapshot) throw new ApiError('INVALID_REFERENCE');
       const content = snapshot.files.map(file => ({path: file.path,contentHash: file.contentHash})).sort((a,b) => Buffer.compare(Buffer.from(a.path),Buffer.from(b.path)));
       fact.atoms = [canonical([scope.courseId,scope.studentId,'snapshot',ref.attemptId,sha256(canonical(content))])];
     } else if (ref.kind === 'run') {
-      const workspace = loadWorkspace(tx,ref.attemptId),run = workspace.runs.find(value => value.runId === ref.id);
+      const workspace = readEvidenceWorkspace(tx,ref.attemptId,cache),run = workspace.runs.find(value => value.runId === ref.id);
       if (!run) throw new ApiError('INVALID_REFERENCE');
       const result = run.result ? validateRunResult(run.submission,run.result).record : undefined;
       const content = run.submission.snapshot.files.map(file => ({path: file.path,contentHash: file.contentHash})).sort((a,b) => Buffer.compare(Buffer.from(a.path),Buffer.from(b.path)));
       const {fileIds,...parameters} = run.submission.input;
       const input = {...parameters,files: fileIds.map(id => {
-        const file = run.submission.snapshot.files.find(value => value.fileId === id)!;return {path: file.path,contentHash: file.contentHash};
+        const file = run.submission.snapshot.files.find(value => value.fileId === id);
+        if (!file) throw new ApiError('INVALID_REFERENCE');
+        return {path: file.path,contentHash: file.contentHash};
       })};
-      const entryPath = run.submission.snapshot.files.find(value => value.fileId === run.submission.entryFileId)!.path;
+      const entryFile = run.submission.snapshot.files.find(value => value.fileId === run.submission.entryFileId);
+      if (!entryFile) throw new ApiError('INVALID_REFERENCE');
+      const entryPath = entryFile.path;
       fact.atoms = [canonical([scope.courseId,scope.studentId,'run',ref.attemptId,sha256(canonical({content,input,entryPath,mode: run.submission.mode,
         checkRuleVersion: run.submission.checkRuleVersion ?? null,runtimeProfileVersion: run.submission.identity.runtimeProfileVersion,
         imageDigest: run.submission.identity.imageDigest,result: normalizedRunResult(result)}))])];
@@ -104,7 +122,7 @@ export function resolveEvidence(tx: Transaction,scope: LearnerScope,ref: Evidenc
     const claim = state.claims.find(value => value.claimId === ref.id && value.claimRevision === ref.revision);
     if (!claim || !['active','contested'].includes(claim.validity)
       || latestClaims(state).find(value => value.claimId === ref.id)?.claimRevision !== ref.revision) throw new ApiError('INVALID_REFERENCE');
-    verifyClaimDependencies(tx,scope,ref,state);
+    verifyClaimDependencies(tx,scope,ref,state,cache);
     fact.atoms = [...claim.basisAtoms];fact.groupIds = [...claim.evidenceGroupIds];fact.source = claim.source;
     fact.helpObserved = claim.assistanceStatus === 'observed_help';fact.gap = claim.assistanceStatus === 'unknown' || claim.validity === 'contested';
   } else if (ref.kind === 'teacher_decision') {
@@ -113,7 +131,7 @@ export function resolveEvidence(tx: Transaction,scope: LearnerScope,ref: Evidenc
     const judgments = current.claims.filter(claim => claim.source === 'teacher_judgment' && claim.sourceId === ref.id
       && ['active','contested'].includes(claim.validity));
     if (!decision || !judgments.length) throw new ApiError('INVALID_REFERENCE');
-    for (const claim of judgments) verifyClaimDependencies(tx,scope,{kind: 'claim',id: claim.claimId,revision: claim.claimRevision},state);
+    for (const claim of judgments) verifyClaimDependencies(tx,scope,{kind: 'claim',id: claim.claimId,revision: claim.claimRevision},state,cache);
     fact.atoms = [...new Set(judgments.flatMap(claim => claim.basisAtoms))];
     fact.groupIds = [...new Set(judgments.flatMap(claim => claim.evidenceGroupIds))];
     fact.source = 'teacher_judgment';fact.helpObserved = judgments.some(claim => claim.assistanceStatus === 'observed_help');
@@ -140,7 +158,8 @@ export function validateClaim(tx: Transaction,scope: LearnerScope & {attemptId: 
     || !activity.draft.content.goals.some(goal => goal.competencyId === body.competencyId && goal.competencyVersion === body.competencyVersion && goal.domain === body.domain)) throw new ApiError('INVALID_REFERENCE');
   const ids = [...body.evidenceIds,...body.counterEvidenceIds];
   if (ids.some(value => !refs.some(ref => ref.id === value))) throw new ApiError('INVALID_REFERENCE');
-  const used = refs.filter(ref => ids.includes(ref.id)),facts = used.map(ref => resolveEvidence(tx,scope,ref,state));
+  const readEvidence=createEvidenceResolver(tx,scope,state);
+  const used = refs.filter(ref => ids.includes(ref.id)),facts = used.map(ref => readEvidence(ref));
   for (const attemptId of new Set(facts.flatMap(value => value.groupIds))) {
     const sourceAttempt = readAttempt(tx,attemptId),sourceActivity = readActivity(tx,scope.courseId,sourceAttempt.activityVersionId);
     if ((body.scope.kind === 'activity' && sourceActivity.activityVersionId !== body.scope.activityVersionId)

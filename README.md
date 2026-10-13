@@ -174,6 +174,7 @@ node --test tests/review.test.ts
 npm run typecheck
 npm test
 ```
+
 ## 阶段状态记录
 
 ### G0 基线批准、门禁与任务发布
@@ -270,6 +271,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-13，A4 获准服务端批次已完成代码与两轴审查，专项 43/43、typecheck/build 通过；固定源码全量 307 项为 297 通过、1 个既有 Windows/Linux RunControl 环境失败、9 跳过，历史失败保留。验收记录、原日志摘要、消费接缝与后置项见 [A4 最终记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#11-最终固定源码验收证据与交付边界2026-10-13)；[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#74-2026-10-13-远端复核与本批交接) 的 A 域提前评审准备已交，仍缺 C/B/UI 具体契约和实施授权。远端新增 PR #46/#47 尚未合入本源码，#38/#41 未关闭，基线待授权维护者汇总。
 
 2026-10-13，负责人批准公开推送与创建 A4 PR，已交付 [PR #49](https://github.com/paher-din/XunJie/pull/49)；创建时无合并冲突，#38/#41 保留 Open。公开交付不改变上述验收结果或 DL-A 待决条件，实际发布记录见 [A4 §11.4](docs/tasks/A4_LEARNER_STATE_REVIEW.md#114-负责人批准的公开交付2026-10-13)。
+
+2026-10-13，A4 PR #49 新审查修复已实现，含真实版本读取、31表初始化范围守卫、证据勘误和原停止原因保全；局部反例/typecheck通过，本轮完整回归和两轴审查待执行，详情见 [A4修复记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#12-pr-49-新审查意见修复2026-10-13)。C试合并复核及审计归因待裁决项分别登记，不宣称实际联合验收已完成。
 
 ### 当前整体状态与后置验收
 
