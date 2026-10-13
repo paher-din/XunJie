@@ -75,3 +75,28 @@ Linux运行时首次脚本因Windows换行写入失败，错误下载/展开产�
 2026-10-13，Trace反例红测1项失败（未完成program游标0≠-1），最小修复后program/interact共用反例1/1通过。真实Ubuntu Icarus12.0-2build2临时解包工具与官方校验Node24.21.0的时钟红测5项中1通过、4失败（父项及100fs/1fs/高32位子项），修复后5/5通过。原代码对更细精度实际少推进电路，却回报同样ps标签；按全局精度换算后1ns延迟寄存器与450周期预期成立。此仅证明桥接器时钟/电路行为，不是目标容器、AppArmor或ready验收。Node、工具、源码、日志、合成库在新目录保留；原npm ci未运行原生模块安装脚本，按原lock执行better-sqlite3 rebuild返回0，未改包清单/锁或全局配置。
 
 首轮Windows默认完整源码轮次准确统计为343项、327通过、2失败、2取消、12跳过：失败为既有Linux RunControl平台门及启动子进程ETIMEDOUT；事务进程测试15秒、编译入口10秒超时计入取消。原始日志保留，后续Linux同文件串行组合完整复验另记，不放宽任何超时或检查门槛。审批工具曾因审核用量限制拒绝执行一次修复命令（不是安全性判断），重试正常审批后才执行该修复；未绕过审批。
+
+### 4.3 DL-C 当前源码完整验证与合并结论
+
+2026-10-13，最终源码26e5b840270cbf489cb21e23d1d4ee2f3ad30998，固定点为已实际合入C4/A4的main 94ad99c。通过git archive构造完整隔离源码副本，归档SHA-256与 [证据索引](evidence/ordered-c4-a4-dl-c/manifest.json) 一致；Node24.21.0官方归档及Ubuntu Icarus12.0-2build2软件包摘要核验通过，原lock依赖在新Linux原生文件系统准备，原生SQLite可用。无全局安装、旧库迁移或实际节点操作。
+
+规范轴与需求轴完整复审各0项，README表格P3与两项需求P2均关闭。typecheck/build退出码0；A4/C4/HDL/profile/runtime/clock/node-files八文件组合93项：91通过、0失败、0取消、2环境跳过，C4-V03/V06/V07公开链和Linux不可变发布/暂存清理均通过。按package规定五组源码文件串行全套360项：352通过、0失败、0取消、8跳过。完整跳过包括专用容器、目标HDL节点、认证控制VM、两类真实模型和三条真实C1链，均保持未执行。
+
+本次是精确运行时、原lock与新Linux原生目录、串行条件下的单次完整通过；不据此声称旧WSL随机失败根因已解决，也不是目标guest/认证宿主全量复跑。Windows首轮343项中的2失败/2取消/12跳过及Trace/clock红测完整保留。展示日志只规范换行/尾空白并替换个人诊断路径与file URI前缀，原始字节保留且单独记录摘要，测试名称、结果和失败信息不删改。证据可独立从仓库读取，不依赖个人目录。
+
+从仓库根使用获准Node24.21.0执行文档检查；从apps/teaching执行应用验证，Linux时钟夹具的环境变量仅指向获准包的临时解包目录，不使用真实节点配置：
+
+```sh
+node tools/a0-review/check.mjs
+```
+
+```sh
+npm run typecheck
+npm run build
+node --test --test-concurrency=1 --test-reporter=tap tests/review.test.ts server/workspace/submissions.test.ts server/workspace/integration.test.ts server/workspace/hdl.test.ts runner/hdl-profile.test.ts runner/hdl.runtime.test.ts runner/hdl-clock.test.ts runner/node-files.test.ts
+node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts
+```
+
+负责人已明确授权按顺序推送并合并这三个PR，不再重复请示。此前两个已合并，本候选满足DL-C已批准批次的合并检查；最终远程提交与合并事实以PR #48为准。分支保留，#38/#39/#41/#43不因源码合并关闭，#46不纳入本次。当前部署的新指纹登记、实际隔离节点、浏览器/TLS、DL-A/B/UI和完整产品/教学验收仍未执行；旧ready不可沿用。受保护进度基线仍交授权维护者汇总。
+
+2026-10-13，最终文档检查60文档、973内链、errors=[]；全DL-C差异与新增展示日志空白检查通过，9份新展示证据逐一核字节数/摘要和结果，个人路径/密钥标记扫描无命中。源码保持26e5b84，仅随附上述结果、证据与README状态，不据文档提交重复运行已通过的业务全套。

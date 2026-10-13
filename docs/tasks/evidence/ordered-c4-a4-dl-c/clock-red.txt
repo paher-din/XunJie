@@ -1,0 +1,117 @@
+TAP version 13
+# Subtest: the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+    # Subtest: 1ps
+    ok 1 - 1ps
+      ---
+      duration_ms: 27.529571
+      type: 'test'
+      ...
+    # Subtest: 100fs
+    not ok 2 - 100fs
+      ---
+      duration_ms: 16.665768
+      type: 'test'
+      location: '<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:39:56'
+      failureType: 'testCodeFailure'
+      error: |-
+        both 1ns delayed updates must settle before the complete cycle sample
+        + actual - expected
+
+        + '0000000000000001'
+        - '0000000000000010'
+                         ^
+
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: '0000000000000010'
+      actual: '0000000000000001'
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:43:12)
+        Test.runInAsyncScope (node:async_hooks:227:14)
+        Test.run (node:internal/test_runner/test:1402:25)
+        Test.start (node:internal/test_runner/test:1262:17)
+        TestContext.test (node:internal/test_runner/test:400:20)
+        TestContext.<anonymous> (<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:39:56)
+        async Test.run (node:internal/test_runner/test:1409:7)
+        async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+      ...
+    # Subtest: 1fs
+    not ok 3 - 1fs
+      ---
+      duration_ms: 16.93092
+      type: 'test'
+      location: '<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:39:56'
+      failureType: 'testCodeFailure'
+      error: |-
+        both 1ns delayed updates must settle before the complete cycle sample
+        + actual - expected
+
+        + '0000000000000000'
+        - '0000000000000010'
+                         ^
+
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: '0000000000000010'
+      actual: '0000000000000000'
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:43:12)
+        Test.runInAsyncScope (node:async_hooks:227:14)
+        Test.run (node:internal/test_runner/test:1402:25)
+        Test.start (node:internal/test_runner/test:1262:17)
+        TestContext.test (node:internal/test_runner/test:400:20)
+        TestContext.<anonymous> (<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:39:56)
+        async Test.run (node:internal/test_runner/test:1409:7)
+        async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+      ...
+    # Subtest: fine precision advances beyond the low 32 bits of simulation ticks
+    not ok 4 - fine precision advances beyond the low 32 bits of simulation ticks
+      ---
+      duration_ms: 20.000635
+      type: 'test'
+      location: '<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:45:11'
+      failureType: 'testCodeFailure'
+      error: |-
+        Expected values to be strictly equal:
+        + actual - expected
+
+        + '0000000000000100'
+        - '0000000111000010'
+                  ^
+
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: '0000000111000010'
+      actual: '0000000000000100'
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:48:12)
+        Test.runInAsyncScope (node:async_hooks:227:14)
+        Test.run (node:internal/test_runner/test:1402:25)
+        Test.start (node:internal/test_runner/test:1262:17)
+        TestContext.test (node:internal/test_runner/test:400:20)
+        TestContext.<anonymous> (<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:45:11)
+        async Test.run (node:internal/test_runner/test:1409:7)
+        async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+      ...
+    1..4
+not ok 1 - the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+  ---
+  duration_ms: 642.082435
+  type: 'test'
+  location: '<LINUX_SOURCE>/apps/teaching/runner/hdl-clock.test.ts:16:1'
+  failureType: 'subtestsFailed'
+  error: '3 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..1
+# tests 5
+# suites 0
+# pass 1
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 996.339159

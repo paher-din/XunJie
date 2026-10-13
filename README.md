@@ -312,6 +312,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 
 2026-10-13，负责人对 PR #48 审查留下的四项待决问题作出裁决：A 属 `createDigitalLogicDatabase` 合成工厂种类在已批准范围内（不延伸至生产建库、迁移或 DL-A 正式业务库整合）；接受既有 C 指纹失效，但不得保留旧指纹兼容通道、必须按当前部署版本重新验证并登记指纹与代际、历史记录保留、验证未通过不得沿用旧 readiness；批准修复合并前完成 SQL `LIKE 'hdl_%'` 与 `startsWith('hdl_')` 的语义不一致；`hdl-install.sh` 暂不纳入运行时指纹，安装版本由维护记录追踪、实际 systemd/AppArmor 由 readiness 或目标环境验收核查。据此本轮按推荐的 `substr(COALESCE(...),1,4)` 精确前缀比较同步修复 `hdl.ts` 与 `worker.ts` 两处，并补 5 行样本用例覆盖正常 kind、近似前缀、大小写与 NULL；核实中还发现旧写法因 SQLite 的 `LIKE` 对 ASCII 大小写不敏感而额外误收 `HDL_build`，已一并修掉，新用例经反证确认能抓到旧缺陷。裁决 2 的四条要求经核实已在现有代码成立、无可移除的兼容通道，但本轮改了两个 runner 源文件，故第 11.2/11.4 节记录的 sourceHash 与两个指纹值自此过期，节点须重新验证登记，本轮未在任何目标环境执行。#47 先合、#48 后合的顺序不变，31 表断言、`application.ts` 的 controls 路由合并与组合树回归仍延后；Linux 宿主完整回归保持未执行、不因本次裁决勾选。win32 全量 277 项 264 通过 1 失败 12 跳过，唯一失败仍是既有 Linux-only 项，零新增失败。本次裁决不等于批准立即合并，也不代表 DL-AC-02～07 已验收通过；#39 保持 Open，裁决原文要点、核实事实与验证记录见 [DL-C 第 13 节](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md#13-2026-10-13-负责人四项裁决与本轮修复)。
 
+2026-10-13，按负责人要求在C4/A4实际合并后审阅DL-C，精确31表联合范围已获批准并验证；本轮Trace在途游标与VPI时间精度两项P2已红绿修复，真实Icarus合成时钟反例5/5通过，规范与需求两轴各0项。新Linux原生目录下typecheck/build通过，组合93项91通过0失败2跳过，串行完整源码360项352通过0失败0取消8跳过，Windows首轮失败/取消及历史记录保留。完整组合回归与合并结论在 [顺序集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md) 追加；目标节点新指纹登记、容器/浏览器/TLS及DL-A/B/UI后置验收仍未执行。
+
 ### A4 有效学习状态与教师纠正
 
 2026-10-12，A 已基于最新 main 建立 [DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) 的能力差异/共享输入提案，再按等待 DL 批次可推进独立 A4 的顺序建立 [A4 实施方案](docs/tasks/A4_LEARNER_STATE_REVIEW.md)。DL 正式评审仍等待 P2 原预交付确认和 C/B/UI 消费输入；A4 的五表 fresh-only 合成库、受控接口与公共验证接缝待批准。两项源码/业务验收均未执行，#38/#41 保持 Open，进度待授权维护者汇总。

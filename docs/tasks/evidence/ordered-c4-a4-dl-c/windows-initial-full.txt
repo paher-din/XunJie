@@ -1,0 +1,456 @@
+
+> @xunjie/teaching@0.0.0 pretest
+> npm run build
+
+
+> @xunjie/teaching@0.0.0 build
+> node tools/check-runtime.mjs && tsc -p tsconfig.build.json
+
+
+> @xunjie/teaching@0.0.0 test
+> node tools/check-runtime.mjs && node --test tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts
+
+﹣ node-local control synthetic checks (4.2352ms) # SKIP
+✔ course rules bind selected snapshot inputs, records and approved error exits (17.2152ms)
+✔ invalid course selection and profile cannot reach trusted oracle (3.1041ms)
+✔ missing input case avoids every snapshot file and implied directory without reserving names (1.7993ms)
+✔ overflow is a trusted exit-2 case and maximum normal N still covers all words (1.1975ms)
+﹣ dedicated Linux synthetic container execution and resource checks (2.6464ms) # SKIP
+✔ HDL board validation refuses executable mappings, missing bits and duplicates (4.7975ms)
+✔ elaborated widths/directions and all input bits must match, including ascending buses (2.8107ms)
+✔ four-value frames preserve X/Z and reject missing width or forged time (1.5447ms)
+✔ HDL interaction keeps input/cycle trust boundaries and the independent container limits (1.8405ms)
+﹣ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (2.3673ms) # SKIP
+﹣ immutable node files become visible only after a complete fsynced write (3.092ms) # SKIP
+﹣ publication leaves no staging name behind, on success and on a refused overwrite (0.4495ms) # SKIP
+﹣ authenticated dedicated VM control and supervision (1.6683ms) # SKIP
+✔ report oracle uses approved ASCII word/line/byte/tie semantics (4.1337ms)
+✔ report verifies all semantics while accepting non-semantic whitespace and bound sandbox names (3.0151ms)
+✔ JSON path quoting preserves semantic spaces and escaped names (0.3967ms)
+✔ returns bound content facts, distinguishes missing and unsafe files (17.2559ms)
+✔ enforces combined byte budget and rejects invalid UTF-8 (30.1881ms)
+﹣ rejects intermediate and final symlinks in Linux (0.2939ms) # SKIP
+✔ UTF-8 BOM remains in confirmed result text, byte count and checksum (9.621ms)
+✔ maps four course operations to arrays and resolves files by immutable identity (5.5731ms)
+✔ rejects unapproved files, command/word injection, zero count and output escape (2.1219ms)
+✔ top accepts the approved C int maximum and rejects overflow exactly (0.9668ms)
+✔ hashes exact UTF-8 content and byte-sorted compact manifests (11.5306ms)
+✔ rejects traversal, absolute, drive, UNC, backslash, NUL and empty components (4.189ms)
+✔ rejects stale body and manifest hashes and duplicate file identities (1.253ms)
+✔ enforces file count and UTF-8 byte budget including multibyte text (22.0389ms)
+✔ builds fixed compiler argv only from approved C sources (2.9741ms)
+✔ rejects malformed input at the runtime boundary (0.7875ms)
+✔ stdout passed and exit zero cannot claim course success (3.1135ms)
+✔ trusted expected exits one and two can pass error-handling checks (0.4582ms)
+✔ limits, tooling failures, unresolved termination and missing files remain incomplete (0.524ms)
+✔ canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials (5.2423ms)
+✔ receipt plan binds both keys to original IDs and aliases cannot be reused for other payload (4.4509ms)
+✔ jobs retain bounded deadlines/call counts across leases and reject expired worker completion (4.3959ms)
+✔ cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy (2.6972ms)
+✔ review: a new help key creates a new round; original key returns the original IDs (7578.3242ms)
+✔ review: original body JSON bytes survive persistence and a real reopen (6125.1606ms)
+✔ review: limit-one cursor pages progress, stay in scope and do not repeat deliveries (6694.0396ms)
+✔ review: a send without displayed does not survive cancellation or leak through raw reads (8013.1013ms)
+✔ review: a client report binds delivery and versions, and same HTTP key retries succeed (5140.5051ms)
+✔ review: capture controls preserve explicit help and historical coverage/real rejection reasons (4628.4902ms)
+✔ review: A4 epoch/JSON/Job/Action invalidation commits together and stale CAS rolls back (5195.2365ms)
+✔ review: cancelling an old help Job leaves the new help Job usable (4188.1447ms)
+✔ review: code changes suppress an old target and an obsolete worker lease cannot complete (3989.1103ms)
+✔ review: A2 pause invalidates a generated Action atomically without extending its public result (4323.0192ms)
+✔ review: pausing capture persistently stops passive analysis and a resume never revives it (4105.3713ms)
+✔ review: client cancelled/stale/failed reports need no delivery and erase no other fact (3998.04ms)
+✔ review: verification script has no automatic deletion or toolchain installation (6.9319ms)
+✔ C3-V01 exact question/body bytes, trusted envelope, and same-result replay (7212.7813ms)
+✔ C3-V02 receipts are idempotent, order-independent and never back-dated by a client clock (5631.5743ms)
+✔ C3-V03 scope, role trimming, cursor bounds and stale epoch resynchronization (6990.2411ms)
+✔ C3-V04 capture pause keeps functional data, records the gap and never refills it (6058.6831ms)
+✔ C3-V05 cancellation stops undisplays actions and never resurrects them (5638.8504ms)
+✔ C3-V06 the same-transaction stop rolls back with the caller and covers A2 pause (5093.2594ms)
+✔ C3-V07 durability: reconnect after a real reopen replays original ids and hides stopped actions (8708.0656ms)
+(node:49228) Warning: AI SDK Warning System: To turn off warning logging, set the AI_SDK_LOG_WARNINGS global to false.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:49228) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+✔ AI SDK adapter maps approved DeepSeek settings through an offline transport (202.2166ms)
+✔ invalid structured policy output reaches the one permitted repair request (20.4745ms)
+✔ malformed SDK JSON preserves usage and reaches the one permitted repair (57.3223ms)
+✔ negative SDK token usage is kept unknown (8.0171ms)
+✔ SDK-valid but unauthorized references are repaired by the B1 whitelist (13.0372ms)
+✔ AI SDK adapter selects the teacher mode schema and returns a proposal body (8.4521ms)
+✔ AI SDK adapter keeps missing vendor usage unknown (6.9956ms)
+✔ AI SDK adapter reports vendor failure without retrying (10.5686ms)
+✔ AI SDK adapter cancellation aborts a pending offline transport (22.8782ms)
+✔ late SDK transport completion is discarded after the shared deadline (69.2033ms)
+✔ 16K preflight rejects the complete final SDK input before transport (2.6826ms)
+✔ teacher candidates accept one to three items and aggregate actual usage (12.0004ms)
+▶ blueprint, patch, and rubric trial remain teacher-reviewable proposals
+  ✔ blueprint (1.0493ms)
+  ✔ patch (0.7482ms)
+  ✔ rubric_trial (0.8668ms)
+✔ blueprint, patch, and rubric trial remain teacher-reviewable proposals (4.9412ms)
+▶ teacher validators rebuild every body mode without unknown model fields
+  ✔ candidates (1.9299ms)
+  ✔ blueprint (0.9787ms)
+  ✔ patch (5.5632ms)
+  ✔ rubric_trial (0.8787ms)
+✔ teacher validators rebuild every body mode without unknown model fields (12.4932ms)
+✔ teacher candidates reject an oversized list after one repair (2.3973ms)
+✔ patch requires a blueprint and base revision without calling the provider (0.4231ms)
+✔ unauthorized references are rejected before provider invocation (0.5772ms)
+✔ student help works with no learner history and returns control (1.6031ms)
+✔ student validator rebuilds the body without unknown model fields (1.61ms)
+✔ disabled help is policy-blocked with zero provider calls (0.3825ms)
+✔ untrusted prompt injection remains data and cannot grant capabilities (1.6622ms)
+✔ whole-solution and student-operation flags fail closed (1.1131ms)
+✔ tool-loop requests cannot exceed three provider calls (2.4484ms)
+✔ deadline aborts a slow provider and late output is not accepted (63.3077ms)
+✔ explicit cancellation before work prevents provider invocation (1.0485ms)
+✔ cancellation interrupts a provider that ignores AbortSignal (13.9302ms)
+✔ cancellation interrupts a current guard that never settles (14.4404ms)
+✔ deadline interrupts a current guard that never settles (15.5252ms)
+✔ current guard result is discarded when cancellation happens before it returns (1.0515ms)
+✔ deadline interrupts a post-provider current guard (13.2446ms)
+✔ post-call current guard discards stale output (0.9135ms)
+✔ missing provider usage remains unknown rather than zero (0.9757ms)
+✔ exhausted budget preserves the request without provider invocation (0.3251ms)
+✔ provider failure is explicit and retryable without hidden retries (0.4772ms)
+✔ a failed second provider call makes aggregate usage unknown (0.9004ms)
+✔ a cancelled second provider call makes aggregate usage unknown (7.4075ms)
+✔ a timed out second provider call makes aggregate usage unknown (25.2685ms)
+✔ DeepSeek adapter fixes approved configuration and performs no implicit call (22.6255ms)
+✔ DeepSeek input budget rejects over 16K before injected SDK invocation (2.079ms)
+✔ the repair instruction is part of the shared input limit (3.2603ms)
+✔ P2 model gate rejects missing authorization without network (2282.0126ms)
+✔ P2 model gate rejects missing credentials without network (5385.9073ms)
+✔ help acceptance activates ready attempt and atomically stores question, receipt, event, and job (8415.1389ms)
+✔ help acceptance derives its exact 45-second deadline from one clock reading (4993.2058ms)
+✔ new help replaces the old help job and increments the shared epoch once (5241.4982ms)
+✔ capture and reminder controls preserve the original accepted help input (6455.2329ms)
+✔ disabled policy and an active limited check reject help before a tutoring job is created (15129.2162ms)
+✔ help rejects stale revisions, foreign object references, and unauthorized actors without model work (5052.8794ms)
+✔ a corrupted persisted request binding returns a typed state conflict (3841.4764ms)
+✔ context assembly exposes only the selected snapshot, relevant claims, actual help, and approved paragraphs (3906.6336ms)
+✔ empty learner history stays explicit unknown and does not block help (3980.4784ms)
+✔ bounded resource reference IDs complete the real C3 message and action chain (3955.0909ms)
+✔ bounded code reference IDs complete the real C3 message and action chain (3978.626ms)
+✔ resource and unavailable-run references remain exact, scoped, and explainable (3.1603ms)
+✔ instructions inside an approved resource remain untrusted and cannot expand help capabilities (1.6223ms)
+✔ current guard distinguishes cancellation from stale policy, version, and recovery state (1.1633ms)
+✔ authorized execution returns a traceable C3 handoff and discards a post-model stale result (3.8243ms)
+✔ authorized execution persists one C3 message/action with the held lease and cumulative call ledger (4006.3415ms)
+✔ tutoring composer can attach the teacher agent without taking over student jobs (3894.4651ms)
+✔ long unresolved teaching text survives C3 persistence and exact result replay (3621.0604ms)
+✔ a withdrawn trusted budget blocks the next provider call before reservation (7841.921ms)
+✔ persisted call budget is shared across workers and reserves before provider invocation (2.593ms)
+✔ cancelled and expired jobs end before claim without invoking the provider (1.1101ms)
+✔ an input-limit rejection before the invoker releases only its unsent persisted reservation (1.2015ms)
+﹣ P2 real-model student help, persisted content and undisplayed cancellation (0.1433ms) # SKIP
+✔ DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries (7841.9906ms)
+✔ DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram (5296.5679ms)
+✔ DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state (5625.9406ms)
+✔ existing authenticated Job paths dispatch HDL and stop its original session after a completed program (9628.7541ms)
+✔ revoked membership cannot read or interact, while the trusted worker still stops original resources (5773.3508ms)
+✔ job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind (6046.3597ms)
+✔ real A1/A2 transactions persist double-key ACKs, whole files and original revisions (9311.9284ms)
+✔ late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches (5508.8294ms)
+✔ current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data (7622.49ms)
+✔ two real processes share the original ACK, and acknowledged state survives process restart (25031.5477ms)
+✔ persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private (5119.6863ms)
+✔ unknown with no node fact never resubmits; failed result commit recovers the same immutable fact (6456.2031ms)
+✔ A2 pause stops a queued check through the original node cancellation; resume never resurrects it (3993.6801ms)
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (1.5252ms) # SKIP
+✔ composed teacher and workspace jobs share routes while retaining their authorization and cancellation (11940.6547ms)
+✔ review: late runs failure rolls back student session activity with Job, receipt and event (8797.4283ms)
+✔ review: original run ACK and conflicts return before pending readiness; authorization still applies (4748.9601ms)
+✔ review: concurrent new runs recheck the original receipt after readiness (4756.9582ms)
+✔ review: current teacher reads retained workspace, snapshot and run after student withdrawal (8000.2247ms)
+✖ review: real RunControl preparation failure ends check without fabricating a RunRecord (4.5845ms)
+✔ run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution (17.5682ms)
+✔ lost transport queries same original run and rechecks current authorization before submit (5.0508ms)
+✔ check cancellation keeps stage until the authenticated node confirms no pending units (7.4626ms)
+✔ confirmed failure requires original identity, current lease/generation and no units or result (4.3112ms)
+✔ confirmed original facts reconcile expired/unknown leases and never become current-code claims (10.7658ms)
+✔ authorized diagnostic reads exclude other attempts and private check detail (9.8412ms)
+✔ pause queued run retains cancellation intent and prevents new execution until node confirmation (5.851ms)
+✔ stopping an already confirmed cancelled run under a new key preserves terminal state (7.9622ms)
+﹣ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (0.3904ms) # SKIP
+✔ C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating (22.8477ms)
+✔ C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check (28.6533ms)
+✔ C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself (7.2504ms)
+✔ C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt (4.6761ms)
+✔ C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect (9962.5878ms)
+✔ C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain (5597.2721ms)
+✔ C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused (8682.375ms)
+✔ C4-V08 submission invalidates in-flight teaching in the same short transaction (5200.214ms)
+✔ C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back (7030.4583ms)
+✔ C4-V10 the submission command plan is replayable and guards the authorized student scope (6.7515ms)
+▶ C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+  ✔ assignment (4746.1789ms)
+  ✔ activity (4162.1626ms)
+✔ C4-V11 grants issued during assignment or activity pause are not actionable in either public view (8910.663ms)
+✔ C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant (3926.701ms)
+✔ C4-V13 disabled student account makes the retained grant non-actionable for a current teacher (4087.1989ms)
+✔ whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted (13.1505ms)
+✔ CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input (23.8028ms)
+✔ exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges (1.9929ms)
+✔ snapshot and ObjectRef bind old file instance/version/body rather than current paths (3.8193ms)
+✔ capture/reminder/lifecycle controls are separate and stale process does not block saving (1.7603ms)
+✔ unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely (1.4522ms)
+✔ login persists a Secure session and server-side course identity; logout revokes it (5999.6272ms)
+✔ account window admits ten total attempts, concurrent hashing admits two, and expiry resets the window (16711.2792ms)
+✔ IP throttling covers unknown accounts and survives application recreation with the same signing material (52877.7708ms)
+✔ a real database failure during password verification cannot ACK a session or expose sensitive diagnostics (2349.0873ms)
+✔ the mature session plugin propagates a real store save failure before an HTTP acknowledgement (2842.9559ms)
+✔ session identity and reserved account attempts survive an actual process restart using IPC-only signing material (4792.5099ms)
+✔ credentials and role spoofing are rejected; current course role is reread on every request (3994.7537ms)
+✔ Origin, JSON and session-bound CSRF are required; relogin rotates both tokens (3148.8284ms)
+✔ idle and absolute deadlines reject at the exact boundary; forbidden requests do not extend activity (3308.8825ms)
+✔ course authorization and a SQL command share the same atomic transaction (2282.1897ms)
+✔ authorized SQL failure rolls back session activity and revoked roles cannot enter the callback (2621.1427ms)
+✔ authorized transactions reject async and nested work and expire escaped SQL capability (2535.6338ms)
+✔ resource authorization denies another student and private material before reading or committing work (2931.4236ms)
+✔ liveness responds without claiming that teaching dependencies are ready (977.0588ms)
+✔ readiness stays unavailable while database, model and runner are not implemented (16.6339ms)
+✔ each response uses a new server request ID even when the client supplies one (16.0585ms)
+✔ teacher checks and fixes a version; only its assigned student reads approved material after reopen (10631.504ms)
+✔ activity pause atomically stops teaching jobs and requests run cancellation; resume retains individual and Attempt pauses (7048.5478ms)
+✔ release rejects missing readiness, unresolved concerns, stale revisions and forged authorization; batch assignment is atomic (12425.5338ms)
+✔ late audit SQL failure leaves activity, assignment, Attempt, Job, receipts and Session unchanged (4549.2297ms)
+✔ two independent processes serialize identical receipts, reject competing control CAS and preserve state on lock busy (11389.0012ms)
+✔ paused assignments block tutor input and queued runs retain cancellation intent until the node confirms (3973.5087ms)
+✔ a replaced material version cannot silently change the fixed activity projection (3960.312ms)
+✔ a readiness response with an unbound validation fingerprint cannot open an activity (2878.5767ms)
+﹣ real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain (1.1804ms) # SKIP
+✔ committed release replays its exact receipt while runtime readiness remains pending (2889.3598ms)
+✔ committed checks replay their exact receipt while runtime readiness remains pending (2922.2279ms)
+✔ checks rejects current permission/generation/key conflicts without waiting for runtime (3845.9407ms)
+✔ checks returns a concurrent committed receipt even if its earlier runtime query fails (2885.6274ms)
+✔ checks rechecks permission after the new command runtime wait (2755.1662ms)
+✔ checks rechecks generation after the new command runtime wait (2818.1404ms)
+✔ releases rejects current permission/generation/key conflicts without waiting for runtime (3950.6363ms)
+✔ releases returns a concurrent committed receipt even if its earlier runtime query fails (2798.5783ms)
+✔ releases rechecks permission after the new command runtime wait (2303.7468ms)
+✔ releases rechecks generation after the new command runtime wait (2477.8646ms)
+✔ teacher selects an asynchronous candidate and the editable draft survives reopening (10245.9679ms)
+✔ local proposal saves its original diff and adoption uses the existing PATCH CAS (4015.487ms)
+✔ teacher-approved private sample supports rubric trial and only explicit rubric PATCH revises it (5683.2831ms)
+✔ editing during generation preserves the manual revision and rejects the old result (4436.684ms)
+✔ original request and result replay survive edits, while conflicting keys or result bodies are refused (3549.0714ms)
+✔ durable cancellation promptly ends a pending round and a late result cannot create a proposal (4846.4202ms)
+✔ teacher job ownership, role and course checks reject students, other teachers and forged identity (6755.4455ms)
+✔ only explicitly approved course paragraphs and matching hashes enter generation or rubric trials (3696.6005ms)
+✔ a model cannot expand requested fields or smuggle unapproved resources through patch values (5988.5749ms)
+✔ a fresh blueprint proposal retains unresolved structure and teacher confirmation forms a draft (2934.9558ms)
+✔ three reserved calls and unknown usage remain durable and manual creation works after budget denial (3855.5234ms)
+✔ queueing counts toward the 45-second deadline and expired jobs cannot generate (2827.1505ms)
+✔ concurrent workers cannot claim the same round and an expired original lease is not retried (3087.027ms)
+✔ restored recovery generation refuses an old round before another model call (2752.5309ms)
+✔ result commit failure rolls back and the original delivery can be retried without another generation (3641.8512ms)
+✔ revoked teacher access invalidates an in-flight result and stops read or receipt replay (3088.9772ms)
+✔ durable call reservations stop additional paid attempts when the trusted budget is withdrawn (2939.3956ms)
+✔ provider failure with missing usage keeps unknown reservations and does not affect manual edits (2706.159ms)
+✔ a ticking service clock keeps the accepted job window exactly 45 seconds (2314.6265ms)
+✔ proposal result hash identifies the exact stored B body bytes and altered bytes conflict (3337.9198ms)
+✔ actual usage returned after the deadline survives reopening without accepting the late body (3180.4904ms)
+✔ input preflight rejection records zero outbound calls and no billable reservation (3386.9909ms)
+✔ late actual usage updates a cancelled job without reviving its result (3173.309ms)
+✔ a second call rejected by preflight preserves the first sent call and its actual usage (3401.2958ms)
+✔ a response from an old recovery generation cannot update accounting or deliver a proposal (3236.2861ms)
+﹣ P2 real-model teacher generation, explicit adoption and local PATCH (0.4081ms) # SKIP
+✔ partial drafts remain editable while checks separately report blockers, teacher concerns and unknown effects (51.6126ms)
+✔ valid linked synthetic design passes structure while effects remain unknown and teacher concerns persist (14.1495ms)
+✔ missing observations, duplicate IDs, old goal versions and broken task/rubric links are blockers (7.4897ms)
+✔ cross-course, withdrawn, unauthorized, ambiguous resources and unavailable policy versions are blocked (3.3461ms)
+✔ blank solution routes block confirmation without preventing a partial draft edit (4.1496ms)
+✔ a teacher can start a partial draft and edit one field without losing other manual content (83.182ms)
+✔ stale revisions and identity/role injection fail without changing manual edits (5.6466ms)
+✔ copy creates a new draft at revision one and keeps an independent source reference (3.3932ms)
+✔ goal semantics cannot silently change while retaining the same competency version (4.3315ms)
+✔ an edit cannot reuse a lower competency version for changed goal semantics (0.8251ms)
+✔ UTF-8 material preserves the original text and produces its known SHA-256 reference (14.5711ms)
+✔ BOM, CRLF, Chinese, astral characters and trailing spaces retain exact paragraph boundaries (72.4329ms)
+✔ material rejects malformed UTF-8, unsupported formats, forged fields and private audience exposure (4.2023ms)
+✔ material byte limits count UTF-8 bytes and course usage, allowing the exact maximum (5.7486ms)
+✔ student and tutor previews omit all private asset identifiers, titles, hashes and content (140.6096ms)
+✔ preview audiences cannot grant teacher authorization or bypass a denied course (11.3841ms)
+✔ visibility is purpose-specific and ambiguous, withdrawn or foreign materials expose no metadata (5.3277ms)
+✔ preview rejects unknown draft fields, whitelists material metadata and returns independent content (20.4029ms)
+✔ teacher material is committed with a fixed paragraph reference and survives database reopening (9117.8954ms)
+✔ manual drafts retain teacher edits, copy independently, and replay original results before revision CAS (5016.4159ms)
+✔ competency meaning is immutable across drafts and remove-readd history, while known older versions remain usable (3963.7913ms)
+✔ stored checks bind revisions and teacher previews redact private and unapproved materials without granting audience access (4792.2222ms)
+✔ current session roles protect commands, reads and copy sources; hidden and missing references are indistinguishable (5823.0707ms)
+✔ recovery generation is checked before replay and a generation change before commit rolls back the entire command (3860.0417ms)
+✔ a real late SQL failure rolls back draft, competency, audit, receipt and session activity without an ACK (2802.6647ms)
+✔ independent processes commit one receipt per key, arbitrate revision CAS and enforce the course quota atomically (10539.781ms)
+✔ a competing SQL writer reports persistence failure without advancing session or acknowledging a command (9053.1815ms)
+✔ corrupt persisted JSON cannot produce a read or replay ACK and diagnostics reveal no private content (3215.2923ms)
+✔ authorization-consistent previews remain fixed to the revision observed during concurrent edits (5524.3885ms)
+✔ material rejection preserves the committed catalog and does not issue receipts for invalid or oversized inputs (2928.4794ms)
+✔ a structurally valid but foreign result in a receipt is refused instead of leaking another course material (3703.3923ms)
+✖ committed rows survive forced process exit; busy writers and an interrupted transaction leave no partial rows (15816.172ms)
+✔ competing CAS updates observe the committed value; a loser rolls back all preceding writes (75.3838ms)
+✔ malformed JSON returns a safe format error rather than an internal failure (1155.5115ms)
+✔ oversized input is rejected with CONTENT_LIMIT without exposing content (320.3767ms)
+✔ unknown routes return the common error envelope without reflecting the URL (39.2998ms)
+✔ unexpected failures produce only sanitized diagnostics and do not expose exception or request data (2338.7816ms)
+✔ unsupported media types and trusted schema validation use safe INVALID_REQUEST errors (750.6893ms)
+✔ domain conflicts retain their status and require explicit authorized re-reading (40.3548ms)
+✔ shared C records commit once with actual Session, Attempt and Job, replay before CAS, and survive reopen (7261.1233ms)
+✔ late actual SQL failure rolls back Attempt, Job, C receipt/event and Session; failed command can explicitly retry (4289.4532ms)
+✔ current resource owner, generation and role are checked before stored C results (6408.0448ms)
+✔ an asynchronous result validator is rejected before the command callback starts (297.692ms)
+✔ a global idempotency key conflicts across authorized courses before running new business work (3809.7873ms)
+✔ A4: authenticated self-report has its own revision and never manufactures a claim (11439.5705ms)
+✔ A4: original analysis bytes and IDs survive replay and reopening without becoming teacher judgment (6865.6587ms)
+✔ A4: teacher withdrawal is versioned, stops old analysis, and blocks renamed reuse of the same basis (5221.2749ms)
+✔ A4: student dispute contests the current basis while historical disputes cannot overwrite later judgment (6086.3976ms)
+✔ A4: B2 preparation automatically reads the real current learner state and ignores injected preparation state (4042.094ms)
+✔ A4: C3 final transaction archives an old learner-state help result with original IDs and prevents delivery (4157.6898ms)
+✔ A4: undelivered pending help is rechecked against A before first delivery and marked as revised (4154.7644ms)
+✔ A4: B2 running guard uses persisted A revision even when the external current reader is stale (4046.629ms)
+✔ A4: actual B2 worker to C3 composition closes the last-guard-to-commit race (4141.111ms)
+✔ A4: any late teacher transaction failure rolls back decision, state, epochs, stopped jobs, actions, events, and receipt (4723.2773ms)
+✔ A4: completed analysis replays by original Job and exact hash rather than an expired execution lease (3622.1242ms)
+✔ A4: original analysis, Job completion, state, event, and receipt are one real transaction (4468.4629ms)
+✔ A4: invalid raw analyses and forged target versions remain archived rejections, never effective claims or student raw text (4293.1061ms)
+✔ A4: duplicate snapshot IDs cannot resurrect a withdrawn basis, but genuinely changed work can provide a new basis (3448.3728ms)
+✔ A4: transitive claim dependencies are contested and a changed analysis version cannot revive their primitive basis (3843.1807ms)
+✔ A4: evidence queues enforce real membership, owner, course, and visible exact resource scope (4854.5669ms)
+✔ A4: stdout and a bare passed verdict cannot replace exact trusted course-check provenance (3613.7875ms)
+✔ A4: an actual stored compiler failure remains a tool gap instead of unsupported certainty about the learner (3855.5304ms)
+✔ A4: repeating the same checked work under a new Run ID does not revive a withdrawn basis or create another observation group (4127.7979ms)
+✔ A4: stale underlying context is unavailable in the current projection and cannot be laundered through a claim reference (2752.2088ms)
+✔ A4: self-report invalidation returns committed stop identities and rolls back entirely on a late failure (2373.1482ms)
+✔ A4: teacher correction preserves original ordinary runs and displayed-help receipts while new B2 context excludes withdrawn claims (2202.2312ms)
+✔ A4: declared unknowns cannot be discarded by an unresolved=false flag (1510.415ms)
+▶ A4: original analysis currentness gates are checked again at completion
+  ✔ deadline (1551.1048ms)
+  ✔ configuration (1559.6005ms)
+  ✔ state (1570.4173ms)
+  ✔ context (1565.6188ms)
+  ✔ capture (1580.1825ms)
+  ✔ assignment (1566.1783ms)
+  ✔ membership (1531.8383ms)
+  ✔ generation (1637.0124ms)
+✔ A4: original analysis currentness gates are checked again at completion (12564.3915ms)
+✔ A4: an old goal version check cannot establish a claim for a new fixed activity goal version (1707.3479ms)
+✔ A4: non-UTF8 scalar text cannot occupy the original analysis slot or be silently normalized (1582.969ms)
+✔ A4: teacher replacement requires a new verified basis and defer preserves uncertainty and decision history (1610.8413ms)
+✔ A4: a late dispute write failure restores the prior basis, epochs, Job, events, and retry identity (1684.0912ms)
+✔ A4: paused collection blocks a new passive analysis and explicit analysis cannot erase its assistance gap (1578.5914ms)
+✔ A4: candidate admission wins before an old teacher form and the stale form cannot overwrite it (1634.1571ms)
+✔ A4: an evidence storage outage rolls back analysis rather than becoming a model rejection (1602.171ms)
+✔ A4: a damaged original queue receipt cannot grant an analysis execution lease (1546.3914ms)
+✔ A4: a teacher decision reference inherits its primitive basis and cannot launder a later withdrawal (1636.5177ms)
+✔ A4: an in-flight explicit analysis survives capture changes and retains the original binding and real coverage gap (1570.3212ms)
+✔ A4: received help without a display receipt remains an unresolved assistance gap (1721.4057ms)
+✔ A4: event delivery checks current revision without requiring the full evidence projection (1565.6825ms)
+✔ A4: review and dispute receipts distinguish first commit and replay without another state change (1588.9776ms)
+✔ A4: independent fresh factory stays within the approved 33-table scope and retains its database (34.5847ms)
+A4 projection measurement: 3 claims sharing one workspace, snapshot reads=1; next authorized read observes correction.
+✔ A4: one authorized projection reuses workspace reads but the next read sees corrected state (1789.2437ms)
+▶ A4: missing persisted Run input or entry files reject analysis as an invalid reference
+  ✔ input (1567.0346ms)
+  ✔ entry (1515.7634ms)
+✔ A4: missing persisted Run input or entry files reject analysis as an invalid reference (3083.6318ms)
+✔ A4: reconciling a revised basis preserves the original student cancellation reason (1741.5491ms)
+✔ persistent store cannot revive revoked/expired sessions or persist untrusted identities (624.1094ms)
+✔ startup port accepts only an explicit valid TCP port or the default (17.8427ms)
+✖ the entry process refuses invalid configuration without logging its value (5574.6897ms)
+✖ the compiled entry listens on the configured loopback port (10065.2376ms)
+✔ the real HTTP listener responds locally and releases its port on close (811.9387ms)
+✔ fresh synthetic database enforces configuration, foreign keys and atomic rollback (92.0169ms)
+✔ transaction rejects async, thenables, nesting and escaped capability; uniqueness rolls back (45.9525ms)
+✔ shared parsing validates input and rejects undeclared identity fields without echoing data (921.3586ms)
+ℹ tests 343
+ℹ suites 0
+ℹ pass 327
+ℹ fail 2
+ℹ cancelled 2
+ℹ skipped 12
+ℹ todo 0
+ℹ duration_ms 163085.1969
+
+✖ failing tests:
+
+test at server\workspace\review.test.ts:118:1
+✖ review: real RunControl preparation failure ends check without fabricating a RunRecord (4.5845ms)
+  Error [RunnerError]: Linux and trusted control context required
+      at new RunControl (<WORKTREE>/apps/teaching/runner/control.ts:48:13)
+      at TestContext.<anonymous> (<WORKTREE>/apps/teaching/server/workspace/review.test.ts:120:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'INVALID_CONFIGURATION'
+  }
+
+test at tests\durability.test.ts:8:1
+✖ committed rows survive forced process exit; busy writers and an interrupted transaction leave no partial rows (15816.172ms)
+  'test timed out after 15000ms'
+
+test at tests\startup.test.ts:20:1
+✖ the entry process refuses invalid configuration without logging its value (5574.6897ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + Error: spawnSync <TEMP>\node-v24.21.0-win-x64\node.exe ETIMEDOUT
+  +     at Object.spawnSync (node:internal/child_process:1160:20)
+  +     at spawnSync (node:child_process:928:24)
+  +     at TestContext.<anonymous> (<WORKTREE>/apps/teaching/tests/startup.test.ts:21:18)
+  +     at Test.runInAsyncScope (node:async_hooks:227:14)
+  +     at Test.run (node:internal/test_runner/test:1402:25)
+  +     at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+  +     at Test.postRun (node:internal/test_runner/test:1542:19)
+  +     at Test.run (node:internal/test_runner/test:1467:12)
+  +     at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+  +   code: 'ETIMEDOUT',
+  +   errno: -4039,
+  +   path: '<TEMP>\\node-v24.21.0-win-x64\\node.exe',
+  +   spawnargs: [
+  +     '<WORKTREE>\\apps\\teaching\\dist\\server\\main.js'
+  +   ],
+  +   syscall: 'spawnSync <TEMP>\\node-v24.21.0-win-x64\\node.exe'
+  + }
+  - undefined
+
+      at TestContext.<anonymous> (<WORKTREE>/apps/teaching/tests/startup.test.ts:24:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: spawnSync <TEMP>\node-v24.21.0-win-x64\node.exe ETIMEDOUT
+        at Object.spawnSync (node:internal/child_process:1160:20)
+        at spawnSync (node:child_process:928:24)
+        at TestContext.<anonymous> (<WORKTREE>/apps/teaching/tests/startup.test.ts:21:18)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12)
+        at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3),
+    expected: undefined,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\startup.test.ts:31:1
+✖ the compiled entry listens on the configured loopback port (10065.2376ms)
+  'test timed out after 10000ms'
