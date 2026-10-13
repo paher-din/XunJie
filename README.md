@@ -30,7 +30,7 @@ npm run build
 npm run test:e2e
 ```
 
-教学服务的精确 Node/依赖要求见 [package.json](apps/teaching/package.json)。默认 `npm start` 只提供健康入口；I0 C 业务模式通过 XUNJIE_I0_CONFIG 引用受控配置，装配原 Workspace、同源 HTTPS、现有 UI dist 与原 Job 消费；初始化、字段、启动与验证命令见 [I0-A/C §12](docs/tasks/I0_A_C_HANDOFF.md#12-本批实现与运行交接)。配置、TLS、签名和 C 节点材料由原授权通道交接。DL-A 的两课程 HDL 模式通过 XUNJIE_APP_CONFIG 引用受控配置，与 C 模式共用原 bootstrap、静态服务、Job 消费和关停；当前35表合成初始化、配置差异和联合验证见 [DL-A §16](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#16-35表去重联合收尾实现与验证)。模块专项命令与合成库/真实节点/模型门禁在相应任务中，启动健康入口不表示完整应用可用。
+教学服务的精确 Node/依赖要求见 [package.json](apps/teaching/package.json)。默认 `npm start` 只提供健康入口；I0 C 业务模式通过 XUNJIE_I0_CONFIG 引用受控配置，装配原 Workspace、同源 HTTPS、现有 UI dist 与原 Job 消费；初始化、字段、启动与验证命令见 [I0-A/C §12](docs/tasks/I0_A_C_HANDOFF.md#12-本批实现与运行交接)。配置、TLS、签名和 C 节点材料由原授权通道交接。DL-A 的两课程 HDL 模式通过 XUNJIE_APP_CONFIG 引用受控配置，与 C 模式共用原 bootstrap、静态服务、Job 消费和关停；当前35表合成初始化、配置差异和联合验证见 [DL-A §16](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#16-35表去重联合收尾实现与验证)。A 的 ALU/HDL求助会审、固定源码包清单及 C 接收说明见 [DL-A §18](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#18-a可独立推进的会审与固定执行包2026-10-13)。模块专项命令与合成库/真实节点/模型门禁在相应任务中，启动健康入口不表示完整应用可用。
 
 规范或入口文档修改后，从仓库根检查引用与标题锚点：
 

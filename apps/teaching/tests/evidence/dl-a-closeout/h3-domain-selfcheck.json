@@ -1,0 +1,33 @@
+{
+  "kind": "offline proposal arithmetic enumeration only",
+  "date": "2026-10-13",
+  "source": "PRD/MVP defined 4-bit unsigned ALU domain; C issue38 H3 proposal",
+  "totalInputs": 4096,
+  "definedInputs": 2800,
+  "excludedInputs": 1296,
+  "counts": {
+    "not_a": 512,
+    "and": 512,
+    "or": 512,
+    "xor": 512,
+    "add_with_carry": 512,
+    "subtract_with_borrow": 240,
+    "undefined_selectors": 1024,
+    "subtraction_outside_domain": 272
+  },
+  "additionCarryCounts": {
+    "0": 256,
+    "1": 256
+  },
+  "subtractionResultRange": [
+    0,
+    15
+  ],
+  "gradedOutputs": {
+    "logic": "F only",
+    "addition": "F and Cout",
+    "subtraction_A_gt_B": "F only"
+  },
+  "hdlExecution": false,
+  "businessPassCountAdded": 0
+}

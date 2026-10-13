@@ -606,3 +606,155 @@ PR #53 本次 head 已变为 `c071b4d0874c8cb1e8b83c95108fda2519a30cf0`，保持
 | DLA-H5 | 登录、通用编辑/ACK/快照和一般错误恢复可以复用I0 | UI沿既有工程增加HDL构建/装载、真实板信号/波形、HDL停止/unknown的请求与状态消费，增量浏览器证据仍须实测 |
 
 2026-10-13T12:48:57Z，已在获授权的#38原交接评论新增“与#30最新A收尾的去重边界”，将基础H1/H2回交统一指向#30，#38引用固定回复/结果；更新PR #53引用到当前§16，避免旧“C未就绪”摘要引起重复派工。回读正文一致，摘要27039d0012039958da075409fc4e7c587764136db08d1a2fbcaa6b5ddb3115eb。没有发#30新评论、修改他人任务、实现/运行新业务、推送分支或扩大任何授权。本稿§17.2的原交接范围继续适用，责任以§17.4、去重路径以本节为准；历史发布/修改摘要保留。
+
+
+## 18. A可独立推进的会审与固定执行包（2026-10-13）
+
+### 18.1 本批依据、范围与去重
+
+负责人本次指令为“你先推进a可以完成的部分”。已读 AGENTS/README、PRD §4.5/5/6、MVP §1.4（DL-AC-01/03/07/08/09）、TECH §3.3/6/7.2.1/7.3/8.5/9、TEAM 的 DL-A/B/C 与交接分工、本文 §15–17，以及 H3/H4 实际回交正文。沿文档优先与当前分工，仅完成 A 会审、明确接线提案、固定源码执行包及本人交付记录。
+
+固定输入：main cde69ccbd763c3c0ab381a809b750b951f195f64；已验证 DL-A 实现 89c85ed04db5a55ddebdc95c27303f0ff76fa31c；B [PR #54](https://github.com/paher-din/XunJie/pull/54) head ba39e6aa04e679d5f661fa6c44f1bcd72c3e9bb3（仅会审，未合入）；I0 [PR #53](https://github.com/paher-din/XunJie/pull/53) 文档交付 23bccc796d6b5913f670097bcf729246af9ccab9、运行实现 9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77。
+
+本批可写本人任务稿、DL-A 验收目录中的本批会审/执行清单以及 README 导航；只读产品/规划/参考/AGENTS、I0/B/C/UI 的任务和实现。归档输出放全新保留临时目录，不带数据库、依赖、受控认证材料或用户私有数据。归档/清单核对不运行新业务、节点或模型。新共享字段、ALU 引擎/规则、运行参数、schema/凭据及公开代码推送均不由本批会审自动授权，提案与实施明确分开。MVP §10/TECH 等基线仍待授权维护者汇总。
+
+最新 [C现场接收](https://github.com/paher-din/XunJie/issues/30#issuecomment-6147353266)已确认 I0 固定源接收、运行窗口及原受控连接文件可用；这解决“无人接收/文件不存在”的历史缺口，不代表 A 正常 HTTPS/35表HDL链通过。[#30最新A→C分派](https://github.com/paher-din/XunJie/issues/30#issuecomment-6147767208)把现场 TLS/签名/账号输入方案与获批后的受控执行交给 C。A 保留代码/执行说明、业务边界、方案和原始证据审查、授权协调与最终交接；本批不重新准备或派发同一现场任务。此职责更新以本节为准，§17的历史发布记录保留。
+
+H3 输入为 [C首批方案](https://github.com/paher-din/XunJie/issues/38#issuecomment-6147371151)，H4 输入为 [B首批回交](https://github.com/paher-din/XunJie/issues/38#issuecomment-6148072076)。两者均已收到，可立即会审；“等待提案”不再是当前缺项。
+
+
+### 18.2 H3：ALU可信行为检查的A会审结论与待确认提案
+
+**结论：C方案可进入精确契约确认，尚未批准实施，行为检查仍未实现/未验证。** 现有 contracts/design/hdl.ts 固定SW语义、题目域和结构检查版本，没有 ALU实例内 A/B/Cin/M/S/F/Cout 可采样绑定。board profile/VPI只取得板信号，不能从LED/段码推定F/Cout。学生合法拨码布局和模块命名选择保留；板信号10/10和构建成功不能代替行为通过。
+
+| 提案项 | A建议的精确边界 | 责任/确认点 |
+| --- | --- | --- |
+| 语义绑定 | 冻结snapshotId/hash、成功Build/buildId/artifactHash、configurationHash。学生显式提交该快照的ALU实例及A/B/Cin/M/S/F/Cout引用，教师确认后形成不可变bindingVersionId/bindingHash。宽度4/4/1/1/2/4/1，核实际层级/方向/范围；SW沿学生无重叠的自选映射。确认引用不代表功能正确 | A课程/确认接缝；C交层级引用语法、编译后解析与窄白名单，不接受任意VPI脚本/路径/额外文件 |
+| 发起/对象 | 学生显式对确认快照发起；仅本人active Attempt、有效分配/成员/会话、当前活动与代际接纳。独立检查Session复用成功Build，沿原限额，不装载/推进/替换学生板卡Session | A接纳/Job，C独立Session；不借后台回执自动发起学生操作 |
+| 规则版本 | 建议加法式配置 behaviorCheck={ruleVersionId:'hdl-alu-behavior-v1',validatorVersion:'hdl-alu-validator-v1',bindingVersionId,bindingHash,vectorSetHash,samplingProfileVersion}。固定活动冻结完整对象；旧活动保持结构检查及unverified，不自动升级 | 待负责人确认共享配置/规则；C先交精确samplingProfile，本提案不批准运行参数 |
+| 可信采样 | VPI沿既有SW映射施加输入，在获准100MHz低相位与C明确稳定条件后读实际A/B/Cin/M/S/F/Cout及模拟时间，验证施加与观察输入一致。定义域稳定且被评分信号X/Z为失败；无可信稳定样本为incomplete/unknown | C交稳定条件及原限额内2800向量实测；stdout/学生自报/界面代算不能判分 |
+| 帮助/隐私 | 私有输入集、比较器资产、全量答案/失败样本不进入学生或B上下文。学生投影仅绑定引用、规则/版本、状态、coverage、去敏错误类别；教师按课程权限读私有结果。受限检查期间不求助，沿帮助政策 | A公开/私有投影，C资产隔离；不默认给旧活动启用行为检查 |
+| 并发/生命周期 | 接纳同事务重授权，冻结scope/活动/快照/Build/配置/binding/规则/代际；派发与结果提交前复核真实权限、活动/分配/Attempt、decisionEpoch/代际。暂停/撤权/提交/重开阻止旧结果成为当前passed。同键同摘要复用原Job，冲突拒绝；停止按原身份确认终止 | A/C沿TECH §7.2.1、C4与原Job/回执；精确接缝待确认 |
+| 持久化 | 优先复用jobs/command_receipts/hdl_sessions/hdl_operations既有JSON与停止机制，不预先加表。command kind、检查Session用途、JSON验证和提交SQL须C列准确写集；现有会话占用约束可能不允许独立检查 | C交DDL/占用约束影响，A复核。若需DDL另提精确schema，不以“无新表”掩盖约束变化 |
+
+结果最小字段建议：scope={courseId,studentId,attemptId,activityVersionId}、recoveryGeneration/decisionEpoch、checkId/jobId/sessionId、snapshotId/hash、buildId/artifactHash、configurationHash、boardProfileVersion/mappingVersion/runtimeProfileVersion/engineVersion/buildImage/runtimeImage/sourceHash、ruleVersionId/validatorVersion/bindingVersionId/bindingHash/vectorSetHash/samplingProfileVersion、coverage={expected:2800,sampled,compared,excluded:1296,complete}、status/terminationConfirmed/resultHash。私有领域status建议passed/failed/incomplete/outcome_unknown/cancelled，需映射原Job状态，不能直接改公共集合。只有完整可信比较、绑定一致、终止确认、定义域无不符才passed；工具/超时/缺样本/丢帧/未确认终止不能passed。过期结果保留历史归属和原因，不覆盖证据。
+
+离线题目域：4种逻辑各512、合2048；加法512评F/Cout；A>B减法240只评F。未定义算术选择1024及A≤B减法272不评；4096=2800+1296，非加法Cout不评。该自检只证明枚举/边界，不是HDL执行证据；[h3-domain-selfcheck.json](../../apps/teaching/tests/evidence/dl-a-closeout/h3-domain-selfcheck.json)记录标准库全枚举及进位/减法边界。
+
+验证矩阵已准备：正确六操作、错误逻辑/进位/借位、不同合法SW/模块/层级、A>B边界及未定义域、评分X/Z与缺样本区分、伪造stdout/passed、错误Build/hash/binding/配置/旧代际、跨课程/学生/私有资产、重复/冲突、检查中暂停/撤权/提交、迟到结果/停止未确认、原限额完整2800覆盖。共享配置、准确运行计划与维护窗口批准且C实现后执行；本批该业务矩阵全部未执行。
+
+### 18.3 H4：两轴复核与A/C真实接线提案
+
+固定base cde69cc…head ba39e6a，全部10个变更文件。两轴独立记录见 [h3-h4-a-review.md](../../apps/teaching/tests/evidence/dl-a-closeout/h3-h4-a-review.md)。Standards硬规范违反0、判断性Duplicated Code建议1；Spec实际偏差1。首批提案已交齐，无须重交；真实授权/C3投递/浏览器是已披露未执行项。
+
+B须修：context.ts:253–257仅核诊断正整数/文件归属，:400–405仍送模，未核确认源码行范围；任务稿:351承诺越界定位不送模，测试三行源码却接受第12行。建议基于冻结源码核实际范围，越界拒绝或降为定位不可用，补反例并同步夹具/期望。修复前不称会审无问题。real-model-support.ts:156/167公共装配重复是非强制维护建议。
+
+A/C接线提案（未修改B/C、未批准内部DTO为正式契约）：
+
+1. **选择/冻结：** 原ObjectRef只有code/run/resource/project，不把runId偷换buildId，也不静默选“最新Session”。建议原StudentHelpCommandInput可选hdlSelection={snapshotId,buildId,sessionId?,operationId?}；operationId要求sessionId。仅显式选定引用，scope/hash/配置/状态由服务端读；code/选区必须同固定快照。原C3 student_question及accepted_input_hash完整冻结选择，同键不同选择冲突，旧请求沿原行为。该字段及C3 JSON/哈希改动先确认后各角色接入。
+2. **同事务授权：** 原authorizeStudentHelp/access.withAuthorizedResource读正常Session/课程成员、本人Attempt/Assignment、活动帮助政策/受限检查、原Job/已接纳问题。原hdl.readBuild(tx,actor,id)返回request/result/status，readSession读持久Session；核同Attempt/snapshot/hash/Build/board/mapping/runtime/engine/configuration/generation，无可信结果不合成HdlBuild。资料用Activity tutor视图，私有答案/教师资料/stdout/stderr/节点路径不送B。
+3. **Operation/当前性：** 原readTrace是分页，不冒充operationId读取。建议C新增只读readOperation(tx,actor,operationId)，复用Session授权、hash/绑定校验，核所属Session/Build/snapshot/sequence/finalFrame。另读pendingOperationId/stopRequested/terminationConfirmed；待交互或替换期间旧帧不当当前输入。A current reader每次从同一SQL事务取授权、分配/活动/Attempt、原Job、固定选择对象及当前Session/Operation；模型/网络在事务外，不信外部role或缓存权限声明。
+4. **最小接缝：** B保留内部AuthorizedHdlHelpContext/HdlHelpCurrentState；建议A原studentHelp装配可选同步事务钩子readAuthorizedHdlContext(tx,scope,selection)、readHdlCurrent(tx,scope,selection)。返回投影，不向模型开放SQL/节点；C负责读取。缺装配保持DEPENDENCY_UNAVAILABLE，不去掉digital-logic.ts的help门禁。pending/停止投影与共享error/status映射先确认，不能声称B现类型已涵盖完整当前性。
+5. **提交/投递：** 调用前、返回后、C3 completeTeaching候选提交及Delivery/Receipt消费前，按真实权限、原Job/decisionEpoch/learnerStateRevision/代际及冻结HDL链复核。暂停/撤权/停止、替换、pending交互、新sequence/版本不能让旧候选当当前帮助；历史保留拒绝原因，不覆盖首次冻结对象。沿原B预算/故障边界，本批不启真实模型。
+6. **模型最小材料：** 保留B的选中源码/选区、最多8条去敏诊断各1024字符、已应用输入/finalFrame、最近最多32帧Trace（accepted上限4096），保留X/Z/simTime/sampleCount/dropped/coverage/截断。版本用于guard，镜像/命令/运行路径及ALU私有资产不当教学上下文。
+
+联合矩阵：正常登录HTTP→原student_question/Job→公共worker→候选/C3投递→回执；错scope/hash/Build/Session/Operation、诊断越界、四态/丢帧/截断、pending/替换/新快照/旧revision、私有资料、重复/冲突、暂停/撤权/停止、模型迟到/故障。35表许可不自动批准新共享接缝；确认后才实施/运行。本次静态只读，PR54测试未由A复跑；B原28通过/2门禁跳过按作者记录引用。
+
+### 18.4 固定源码执行包与C接收说明
+
+固定实现 **89c85ed04db5a55ddebdc95c27303f0ff76fa31c** 与§16验收相同。GitHub按SHA仍不能取得，不能要求C检出未发布提交。已制备本地保留zip，773个Git跟踪文件、26,018,680字节，逐文件回读与固定Git原始blob一致。源码包不带本次新会审文档，接收时另附本节/清单；公开分支/PR待具体发布许可，本地包完成不等于C已收到。
+
+- [a-execution-manifest.json](../../apps/teaching/tests/evidence/dl-a-closeout/a-execution-manifest.json)：固定源/归档摘要、34文件runner指纹、原四份package/lock摘要、35表全集、入口/未执行项。
+- [a-source-package-files.json](../../apps/teaching/tests/evidence/dl-a-closeout/a-source-package-files.json)：773相对路径/Git blob/字节数/SHA-256/Unix mode。
+- zip SHA-256：26ada290c37539375107795251b289fae0d6f3d5e75350f80a556efd0fe01764；共同runner sourceHash：7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852。
+- 首次Windows git archive在.gitignore因行尾转换不符，失败产物保留、不交用；最终按原始blob重归档，773项通过。不能用CRLF转换改变C登记指纹。
+
+C接收（原获准PAHER/WSL，不启动/维护节点）：在新保留目录核zip摘要后解包；不覆盖旧源码/库。源码根XunJie/。
+
+```bash
+sha256sum xunjie-dla-89c85ed-source.zip
+node --version  # v24.21.0
+cd XunJie/apps/student
+npm ci
+npm run build
+cd ../teaching
+npm ci
+npm run typecheck
+npm run build
+```
+
+
+收到源包之外的本批 a-source-package-files.json 后，用标准库只读核全部文件（paths均相对于XunJie/，摘要按原始字节，不转换行尾）：
+
+```bash
+python3 - '<path to a-source-package-files.json>' '<absolute XunJie source root>' <<'PY'
+import hashlib, json, pathlib, sys
+manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+root = pathlib.Path(sys.argv[2]).resolve(strict=True)
+assert manifest['sourceCommit'] == '89c85ed04db5a55ddebdc95c27303f0ff76fa31c'
+for item in manifest['files']:
+    target = root / item['path']
+    assert not target.is_symlink() and target.resolve(strict=True).is_relative_to(root)
+    data = target.read_bytes()
+    assert len(data) == item['bytes'] and hashlib.sha256(data).hexdigest() == item['sha256'], item['path']
+print('fixed-source files verified:', len(manifest['files']))
+PY
+```
+
+先核773文件及原四份package/lock。runner34文件指纹须匹配当前节点；不符则回交差异，不更新节点或沿用旧ready。C既有readiness/connection/runtime-evidence引用沿#30，不分发私钥。真实只读C/HDL必须ready、批准profile/images/validation/fingerprint/代际一致；A审查实际返回，不拿旧文本当当前。
+
+**DL-A初始化专用35表，不是I024表。** 外部受控bootstrap JSON严格为ssh、approvedHdlRuntimes、manifest。ssh沿原binary/keyFile/knownHostsFile/host/port；runtime每项runtimeProfileVersion/engineVersion/buildImage/runtimeImage/sourceHash取实际获准配置，不填假摘要。manifest含synthetic=true、当前recoveryGeneration、accounts[{id,loginName,password}]、courses[]、memberships[{courseId,userId,role}]。沿#30交C准备，两课程、synthetic-前缀、每课程教师/学生齐全；真实密码只存受控文件，本包不生成/读取。
+
+```bash
+cd XunJie/apps/teaching
+node server/app/initialize.ts '<approved absolute bootstrap JSON path>'
+# 仅返回新databaseFile，保留原tmp目录，不搬到/opt或给旧库换名绕过守卫
+```
+
+初始化先实读C/HDL/代际，再建35表新保留库。打开守卫要求原tmp父目录、xunjie-a12-completion-*目录及synthetic.sqlite；输出路径原样用于配置，不复制I0库/SQL或迁移旧表。当前政策为各课程 **<courseId>-help**（不能直接套I0 help-v1），规则textscope-core-v1/textscope-validator-v2；A据此审查C输入。
+
+外部application JSON：databaseFile（原新库路径）、origin（精确https origin）、tls={keyFile,certFile}、signingSecretFile、ssh、approvedHdlRuntimes、recoveryGeneration、可选staticDirectory（本源构建apps/student/dist绝对路径）、consumerIntervalMs（沿原值/缺省250）。文件存在/受控/非symlink，Linux不允许组/其他可写。C沿#30准备host/origin/SAN/端口/保管人/UI访问及信任具体方案并在获批后落实，A审查引用；本批不重做。
+
+```bash
+cd XunJie/apps/teaching
+# 仅一个模式，PORT等于精确origin端口，原main监听127.0.0.1
+PORT='<approved origin port>' XUNJIE_APP_CONFIG='<approved application JSON path>' npm start
+```
+
+XUNJIE_I0_CONFIG与XUNJIE_APP_CONFIG不能同时设置。无配置仅health；TLS缺失、代际/35表/节点不符安全失败。正常host自动启原C/HDL消费者，SIGINT/SIGTERM原关停对账；直接测试调用processJob不能替代host自动消费证据。
+
+C真实DL-A增量按以下次序回交：
+1. HTTPS登录/CSRF→两课程/本人分配与空态→教师固定HDL配置→原check/confirm/assign/bootstrap。当前真实C runtime及各课程-help，记录activity/configuration/assignment/代际；bootstrap GET不创建Attempt。
+2. 学生显式创建Attempt、确认保存.sv/.v/固定快照→Build/位置诊断→装载→SW/button/reset/显式推进→真实frame/有限Trace。正常HTTP发起、host原worker消费，交snapshot/hash/Build/Session/revision/sequence/simTime/resultHash。
+3. C4固定作品提交→教师重开→学生显式修订；补暂停、撤权/停用、重复/冲突/终止确认，不新建Job/Session绕开组合。
+4. 交正常URL、受控配置引用/账号安全取得方式、原始去敏日志/hash、35表核对、停止/剩余占用/库保留记录供A审查/UI消费。ALU/H4help/浏览器未执行逐项列，不能总结为全部通过。
+
+此固定源码帮助仍DEPENDENCY_UNAVAILABLE、教师模型预算关闭；不把未接PR54或ALU加入本轮期待。I0基础输入/HTTPS先具备，DL-A真实HDL链随后；H3/H4会审可并行，UI浏览器另计。
+
+### 18.5 本批完成与下一责任
+
+A已完成可独立项：H3边界/结果/验证提案，H4两轴复核/真实事务接线提案，固定35表源码包/清单、C执行说明及职责去重。无新业务实现/节点/模型执行。
+
+| 下一责任 | 尚需的具体交付 |
+| --- | --- |
+| 负责人/维护者 | H3共享配置/语义绑定/结果与准确运行方案确认；H4选择/哈希/事务读接缝确认；对应模块实施授权；产品/技术基线待授权维护者汇总。C未给的解析/采样/占用约束/写集先补，不请求笼统批准 |
+| B #40/PR54 | 修越界诊断反例；按确认的A/C接缝适配。首批表格已收到，无需重交 |
+| C #30/#39 | 沿原分派准备TLS/签名/账号输入方案、获批现场执行；补H3精确执行约束、H4真实Build/Session/Operation样例/读法。取得本源码/基础入口后执行35表增量、回交原始证据 |
+| A | 取得精确公开推送许可后交可从仓库获取的固定代码/清单；审查C输入/证据，确认共享方案后接线验收。原仅本地/不得推送范围不因本次推进自动扩大 |
+| UI | 沿DL-UI交操作→请求→结果/状态差异表；基础浏览器沿I0，真实HDL/DL-E2E在对应批次具备后验收 |
+
+#38仍Open，既有53/53和419总/408通过/11跳过不因文档/归档自检增加。本批业务测试、真实C/HDL、付费模型、ALU及浏览器/TLS均未执行。
+
+
+### 18.6 本批实际核验、审查与发布记录
+
+本批文档/归档准备核验：
+- 固定Git原始blob→zip回读→manifest的773文件字节、SHA-256/Git blob与Unix mode全部一致；原四份package/lock未改。34文件runner指纹匹配既有7f4ec4…来源，未查询节点。
+- 标准库枚举4096输入，定义2800、排除1296；加法Cout=0/1各256，减法F范围0～15。只算提案数学，不计HDL/业务通过。
+- 原文档工具 node tools/a0-review/check.mjs：64份文档、960条内链、errors=[]、exit0；git diff --check通过。只变本人任务/README及本批清单，无代码、保护基线或其他任务改动。
+- 本批A材料两轴独立复核：Standards硬违反0/可操作异味0，Spec可操作偏差0；限定README、任务§18及四份会审/执行/源清单/域自检。后加[a-handoff-validation.json](../../apps/teaching/tests/evidence/dl-a-closeout/a-handoff-validation.json)为父Agent按实际命令生成的核验收据，不冒充子Agent已审该第五文件。
+- 初次Windows git archive字节核验失败与最终修正保留在执行manifest；未通过删除失败记录或放宽原字节判据处理。
+
+沿负责人此前“推送在dla这个issue下”的授权，原位更新[本人既有#38交接评论](https://github.com/paher-din/XunJie/issues/38#issuecomment-6145619173)，本次未新建派工或发送私信。更新时核原作者/旧正文SHA防覆盖，PATCH后回读完全一致；时间 2026-10-13T15:52:58Z，正文SHA-256 5d5f85a128e7765702659299f4990decee97c3741cdb7d1e3dd1dfa559e3fcfe。已说明H3/H4首批收到、B越界诊断修复、A源码包准备和#30最新C现场职责；不重复索取旧节点/I0接收证据。
+
+分支/源码包与本批仓库材料仍未公开推送；评论更新不是代码交付。待精确发布许可后可交可取得的固定源/完整记录；未迁移库、修改凭据/CI/B/C/UI、维护节点、调用模型或进行浏览器验收。实际业务与整卡剩余项沿§18.5；MVP §10/技术基线待授权维护者汇总。
