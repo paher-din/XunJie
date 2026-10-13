@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
-import { assertRealModelRuntime, assertSafeEvidence, createObservedModelFetch, type HttpFact } from './real-model-support.ts';
+import {
+  assertRealFailureProbeAuthorization,
+  assertRealModelRuntime,
+  assertSafeEvidence,
+  createObservedModelFetch,
+  type HttpFact,
+} from './real-model-support.ts';
 
 for (const [authorization, message] of [
   ['', 'Explicit P2 synthetic-data model authorization is required.'],
@@ -47,6 +53,19 @@ test('P2 model evidence observes bounded response metadata and latency', async (
   assert.equal(JSON.stringify(http).includes('must not be captured'), false);
 });
 
+test('P2 model evidence classifies a non-success HTTP response without persisting its error body', async () => {
+  const http: HttpFact[] = [];
+  const observed = createObservedModelFetch(http, async () => new Response(JSON.stringify({
+    error: { message: 'synthetic provider detail must not be persisted' },
+  }), { status: 400, headers: { 'content-type': 'application/json' } }));
+
+  const response = await observed('https://synthetic.invalid');
+  assert.equal(response.status, 400);
+  assert.equal(http[0]?.outcome, 'provider_error');
+  assert.equal(http[0]?.status, 400);
+  assert.equal(JSON.stringify(http).includes('synthetic provider detail'), false);
+});
+
 for (const [name, error, signal, expected] of [
   ['network failure', new TypeError('synthetic network failure'), undefined, 'network_error'],
   ['cancellation', new DOMException('synthetic cancellation', 'AbortError'), AbortSignal.abort(), 'cancelled'],
@@ -85,4 +104,14 @@ test('P2 real-model runtime gate rejects a non-locked Node before provider setup
     message: 'P2 real-model validation requires Node 24.21.0; received 24.14.1.',
   });
   assert.doesNotThrow(() => assertRealModelRuntime('24.21.0'));
+});
+
+test('P2 real-provider failure probes require their own explicit authorization', () => {
+  if (process.env.XUNJIE_P2_REAL_FAILURES === 'approved-synthetic') {
+    assert.doesNotThrow(() => assertRealFailureProbeAuthorization());
+  } else {
+    assert.throws(() => assertRealFailureProbeAuthorization(), {
+      message: 'Explicit P2 real-provider failure-probe authorization is required.',
+    });
+  }
 });

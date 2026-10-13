@@ -164,6 +164,27 @@ try {
 }
 ```
 
+2026-10-13，#45 的真实 provider 取消、超时和失败探针已获得账号负责人对合成数据、最多三次串行请求、可能费用及 `unknown` usage 的明确授权。该授权不包含 30 次性能采样；探针默认跳过且任一非预期结果都会停止后续请求。仅在 Node 24.21.0、当前安全输入 key 和准确授权范围下，于 `apps/teaching` 执行：
+
+```powershell
+$secureKey = Read-Host 'DeepSeek API key' -AsSecureString
+$keyPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+try {
+    $env:DEEPSEEK_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($keyPtr)
+    $env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+    $env:XUNJIE_P2_REAL_FAILURES = 'approved-synthetic'
+    node tools/check-runtime.mjs
+    if ($LASTEXITCODE -ne 0) { throw 'Node 24.21.0 is required; no model request was sent.' }
+    node --test server/tutoring/test/real-provider-failures.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Provider failure probe stopped; do not automatically retry.' }
+} finally {
+    Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_FAILURES -ErrorAction SilentlyContinue
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($keyPtr)
+}
+```
+
 ## 阶段状态记录
 
 ### G0 基线批准、门禁与任务发布

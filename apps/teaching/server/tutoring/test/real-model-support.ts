@@ -7,7 +7,7 @@ import { createAiSdkDeepSeekProvider } from '../deepseek-sdk.ts';
 
 export const realModelEnabled = process.env.XUNJIE_P2_REAL_MODEL === 'approved-synthetic';
 const requiredNodeVersion = '24.21.0';
-type HttpOutcome = 'response' | 'cancelled' | 'timed_out' | 'network_error';
+type HttpOutcome = 'response' | 'provider_error' | 'cancelled' | 'timed_out' | 'network_error';
 export type HttpFact = {
   startedAt: string;
   finishedAt?: string;
@@ -47,15 +47,17 @@ export function createObservedModelFetch(
   http: HttpFact[],
   transport: typeof fetch = fetch,
   now: () => number = Date.now,
+  onStart?: (attemptIndex: number) => void,
 ): typeof fetch {
   return (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
     const startedAtMs = now();
     const fact: HttpFact = { startedAt: new Date(startedAtMs).toISOString() };
     http.push(fact);
+    onStart?.(http.length - 1);
     try {
       const response = await transport(input, init);
       fact.status = response.status;
-      fact.outcome = 'response';
+      fact.outcome = response.ok ? 'response' : 'provider_error';
       try {
         const raw: unknown = await response.clone().json();
         if (raw && typeof raw === 'object') {
@@ -102,15 +104,34 @@ export function assertRealModelRuntime(version = process.versions.node): void {
   }
 }
 
-export function realModelProbe() {
+export const realFailureProbeEnabled = process.env.XUNJIE_P2_REAL_FAILURES === 'approved-synthetic';
+
+export function assertRealFailureProbeAuthorization(): void {
+  if (!realFailureProbeEnabled) {
+    throw new Error('Explicit P2 real-provider failure-probe authorization is required.');
+  }
+}
+
+export function realModelProbe(options: { onRequestStart?: (attemptIndex: number) => void } = {}) {
   assertRealModelRuntime();
   if (!realModelEnabled) throw new Error('Explicit P2 synthetic-data model authorization is required.');
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey?.trim()) throw new Error('DEEPSEEK_API_KEY is not configured through the approved local channel.');
   const http: HttpFact[] = [];
-  const provider = createAiSdkDeepSeekProvider({ apiKey, baseURL: 'https://api.deepseek.com',
-    fetch: createObservedModelFetch(http) });
-  return { provider, http };
+  const baseURL = 'https://api.deepseek.com';
+  const observedFetch = createObservedModelFetch(http, fetch, Date.now, options.onRequestStart);
+  const provider = createAiSdkDeepSeekProvider({ apiKey, baseURL, fetch: observedFetch });
+  const requestExpectedProviderFailure = (signal: AbortSignal) => observedFetch(`${baseURL}/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: 'deepseek-flash',
+      messages: [{ role: 'user', content: 'Synthetic failure probe; do not process real data.' }],
+      max_tokens: 0,
+    }),
+    signal,
+  });
+  return { provider, http, requestExpectedProviderFailure };
 }
 
 export function writeRealModelEvidence(purpose: string, data: Record<string, unknown>, http: readonly HttpFact[]) {

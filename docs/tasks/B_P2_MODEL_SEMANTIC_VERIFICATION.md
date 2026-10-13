@@ -232,3 +232,17 @@ npm test
 本批可覆盖教师候选/局部 PATCH，以及 B0 E1 空历史、限定概念帮助和学生接棒点的一部分。它没有真实输出覆盖 E2 相关历史、E3 无关历史、E4 撤回、E5 空窗/缺回执、E6 环境失败、E7 资料注入、E8 整份答案请求和 E9 禁用/越界输出；这些场景现有自动测试只能证明上下文、权限、政策和结构边界，不能证明真实模型教学语义。没有新增调用许可前，缺口保持未审，不以合成 provider 输出补算真人语义通过。
 
 2026-10-13，项目推进者完成首批三项审阅：HR-01、HR-02 通过，HR-03 有条件通过，严重语义问题 0 项。HR-03 的语言对齐问题保留为待改进/复验项，不以结构校验或模型自述补成通过。至此只能称“真人语义审阅已开始，首批 3 项有结果”；完整固定工程样例审阅仍需覆盖上述缺口或由负责人明确裁定可接受的取样范围。
+
+## 13. 2026-10-13 真实 provider 故障探针授权与入口
+
+项目推进者随后批准 Issue #45 中真实 provider 取消、超时和失败探针可能产生的费用与 `unknown` usage，并确认代表 API 账号负责人接受当前账号条款、合成数据处理/留存条件及最多三次请求所需余额/配额。本授权只覆盖三个串行合成探针，每类最多一次，`maxRetries=0`，任一非预期结果即停止；不覆盖 30 次性能采样、真实学生/教师私有数据、自动重跑、充值、凭据落盘或其他模型调用。
+
+新增 `server/tutoring/test/real-provider-failures.test.ts`，默认跳过，只有 `XUNJIE_P2_REAL_MODEL=approved-synthetic` 与 `XUNJIE_P2_REAL_FAILURES=approved-synthetic` 同时存在才执行：
+
+1. 在实际 SDK fetch 已开始后主动取消，要求观测结果为 `cancelled`，没有 usage 时记录 `unknown`。
+2. 使用 100ms 受控截止触发真实请求超时，要求观测结果为 `timed_out`，没有 usage 时记录 `unknown`。
+3. 向真实 DeepSeek chat completions 入口发送只含合成文本、固定 `deepseek-flash` 且 `max_tokens=0` 的预期无效请求，要求非成功 HTTP，并只记录 `provider_error`、状态码、延迟和 unknown usage，不保存响应错误正文或请求头。
+
+三项共用现有脱敏证据写入、精确 Node 24.21.0 门禁和安全 key 通道。`createObservedModelFetch` 新增非 2xx 的 `provider_error` 分类及请求开始观察钩子；生产 provider 配置、公开 tutoring 契约、调用/修复/45 秒预算均未改变。README 已增加一次性安全执行命令。
+
+当前状态：代码入口已准备，真实供应商探针**尚未执行**。先运行普通 typecheck、领域回归、证据安全测试、文档检查和默认跳过断言；这些离线结果不替代三个真实 outcome。实际执行后须记录固定提交、每次开始/结束/延迟、HTTP outcome/status、usage actual/unknown、证据文件摘要和是否停止后续探针；失败时不得自动重跑。
