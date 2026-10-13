@@ -15,6 +15,8 @@ import { SyntheticProvider } from "../providers.ts";
 import {
   dlBRealModelEnabled,
   dlBRealModelProbe,
+  dlBRealSemanticFixEnabled,
+  dlBRealSemanticFixProbe,
   writeRealModelEvidence,
 } from "./real-model-support.ts";
 import {
@@ -248,6 +250,62 @@ test("DL-B authorized three-job real HDL guidance batch", {
     evidence.providerAttempts = probe.http.length;
     evidence.httpRequests = probe.http.length;
     t.diagnostic(`Synthetic-data DL-B model evidence: ${writeRealModelEvidence("hdl_student_help", evidence, probe.http)}`);
+  }
+});
+
+test("DL-B authorized HR-DL-03 real semantic-fix batch", {
+  skip: !dlBRealSemanticFixEnabled,
+}, async (t) => {
+  const probe = dlBRealSemanticFixProbe();
+  const maximumExternalRequests = 3;
+  const acceptedAt = Date.now();
+  const input = authorizedHdlContext("xz", {
+    acceptedAtMs: acceptedAt,
+    deadlineAtMs: acceptedAt + 45_000,
+  });
+  const request = assembleStudentHelpRequest(input);
+  const evidence: Record<string, unknown> = {
+    approvedScope: {
+      jobs: 1,
+      fixture: "xz",
+      reviewId: "HR-DL-03",
+      maximumExternalRequests,
+      automaticReruns: 0,
+      maximumRepairs: 1,
+      deadlineMs: 45_000,
+      model: "deepseek-flash",
+      promptVersion: request.context.versions.prompt,
+      thinking: "disabled",
+      sdkMaxRetries: 0,
+      data: "repository-fixed-synthetic-hdl-only",
+      realStudentOrTeacherMaterial: false,
+    },
+    question: request.question,
+    authorizedReferenceIds: request.context.authorizedReferenceIds,
+  };
+  try {
+    const outcome = await generateStudentHelp(request, {
+      provider: probe.provider,
+      checkCurrent: createStudentHelpCurrentGuard(input, () => currentState(input)),
+    });
+    evidence.outcome = outcome;
+    assert.ok(probe.http.length >= 1 && probe.http.length <= maximumExternalRequests);
+    assert.equal(outcome.outcome, "success");
+    if (outcome.outcome !== "success") return;
+    assert.equal(outcome.versions.prompt, "prompt-hdl-v2");
+    assert.ok(outcome.body.evidenceIds.length > 0);
+    assert.ok(outcome.body.evidenceIds.every((id) => request.context.authorizedReferenceIds.includes(id)));
+    assert.equal(outcome.body.policyChecks.containsWholeSolution, false);
+    assert.equal(outcome.body.policyChecks.writesStudentWork, false);
+    assert.equal(outcome.body.policyChecks.runsCode, false);
+    assert.equal(outcome.body.policyChecks.makesFormalEvaluation, false);
+  } finally {
+    evidence.providerAttempts = probe.http.length;
+    evidence.httpRequests = probe.http.length;
+    evidence.requiresHumanSemanticReview = true;
+    t.diagnostic(`Synthetic-data DL-B HR-DL-03 semantic-fix evidence: ${writeRealModelEvidence(
+      "hdl_student_help_hr_dl_03_semantic_fix", evidence, probe.http,
+    )}`);
   }
 });
 

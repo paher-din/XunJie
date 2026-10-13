@@ -320,3 +320,11 @@ B 复用 B1/B2 的 `CurrentGuard` 和绝对截止时间。A/C 的 current reader
 同日，B 将 HR-DL-03 的条件落实到 `server/tutoring/core.ts` 实际 system policy：明确应用 HDL assignment sizing/extension 规则，窄表达式本身不能证明目标高位未驱动；不得仅凭宽度差异、单帧或有限 trace 断言未驱动、初始化状态或 X/Z 根因；缺驱动、映射或完整观察时必须保留未知并让学生核对。HDL 合成测试直接观察 provider 收到的 policy，并将安全示例改为只陈述“驱动、连接、映射或稳定时机仍需核对”。fixture 的 prompt 证据版本从 `prompt-hdl-v1` 更新为 `prompt-hdl-v2`，共享 schema、policy、A/C DTO 和错误语义未改变。
 
 Node.js 24.21.0 下离线复验：TypeScript `--noEmit` 通过；DL-B 专项 13 项中 12 通过、1 项真实批次按默认门禁跳过、0 失败；全部 `server/tutoring/test/*.test.ts` 退出码 0；文档检查 65 份文档、913 条内部链接、0 错误；检查器回归 16/16 通过；`git diff --check` 通过。该复验没有设置 `XUNJIE_DL_B_REAL_MODEL`，供应商网络调用为 0。条件的代码侧修复和离线证据已完成，但原真实输出不会被事后改写；是否要求 `prompt-hdl-v2` 的新真实复验仍待负责人决定，不能复用 §12.4 已消费授权。
+
+### 12.8 HR-DL-03 独立真实复验授权与入口
+
+2026-10-13，项目负责人明确批准一次 `prompt-hdl-v2` 的 HR-DL-03 单 Job 真实复验：只使用仓库固定合成 X/Z 场景，最多 3 次 DeepSeek 外部请求，并批准相应费用及可能出现的 `unknown` usage。执行条件为 Node.js 24.21.0、`deepseek-flash`、thinking disabled、AI SDK `maxRetries=0`、最多一次 repair、从接受起 45 秒截止；失败不自动重跑，不发送真实学生数据、教师私有材料、私有答案或凭据。该授权只覆盖一次单 Job 批次，不扩展到原三 Job 重跑或其他场景。
+
+B 增加独立 `XUNJIE_DL_B_REAL_SEMANTIC_FIX=approved-synthetic` 门禁和单 Job 测试入口；它不接受旧 `XUNJIE_DL_B_REAL_MODEL` 作为授权，也不会默认运行。入口记录实际 body、获准引用、请求数、usage、延迟和脱敏 HTTP 事实，最多 3 次 provider 请求；结构和政策通过后仍需项目推进者复核模型是否停止把宽度扩展误述成高位未驱动，以及是否把有限 X/Z 证据错误锁定为单一原因。先完成缺授权/缺 key 均不触网的离线门禁测试和全部回归，再由凭据持有人安全注入 key 执行唯一一次获批批次。
+
+离线入口验证已完成：Node.js 24.21.0 下 TypeScript `--noEmit` 与 build 均通过；`real-model-support.test.ts` 与 `hdl-help.test.ts` 共 30 项，28 通过、原三 Job 与新单 Job 两项按默认真实授权门禁跳过、0 失败；新增两项子进程测试分别证明缺独立授权和授权后缺 key 均在网络前拒绝。文档检查为 65 份文档、913 条内部链接、0 错误，检查器回归 16/16 通过，`git diff --check` 通过。上述命令主动清除了相关授权变量和 key，供应商请求为 0。
