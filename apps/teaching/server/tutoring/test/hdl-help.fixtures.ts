@@ -54,7 +54,7 @@ export const failedBuild: HdlBuild = {
     message: "Port F expects 4 bits, but the connected expression has 1 bit.",
     fileId: "file-top",
     path: "top.sv",
-    line: 12,
+    line: 2,
     location: "line-only",
   }],
   failureKind: "compile_error",

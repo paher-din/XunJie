@@ -6,7 +6,7 @@
 
 基线：初始提案 `37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`；本批重放 `cde69ccbd763c3c0ab381a809b750b951f195f64`（2026-10-13）
 
-状态：首批消费提案、B 域合成实现、固定合成材料的真实模型调用与人工语义复验均已完成；本任务已按 #38 的 DLA-H4 清单补充当前最小上下文/当前性交接表。A/C 真实授权读取与正常业务构造、C3 投递、浏览器和真人交付仍未完成
+状态：首批消费提案、B 域合成实现和固定合成材料的真实模型调用已完成；HR-DL-03 的真实复验已通过，但 PR #54 审查发现 HR-DL-02 输入摘要与固定帧不一致，该项等待原审阅者按勘误重核，因此当前不能宣称整批人工语义复验完成。本任务已按 #38 的 DLA-H4 清单补充当前最小上下文/当前性交接表。A/C 真实授权读取与正常业务构造、C3 投递、浏览器和真人交付仍未完成
 
 ## 1. 依据、范围与写入边界
 
@@ -374,3 +374,13 @@ B 增加独立 `XUNJIE_DL_B_REAL_SEMANTIC_FIX=approved-synthetic` 门禁和单 J
 - **待授权维护者汇总：** #38 负责人完成会审后，如需改变共享契约或受保护产品/技术基线，由对应获授权维护者按 PRD → MVP_SPEC → TECH_DESIGN 路径同步；B 不直接修改受保护文件。
 
 本次交付开始时通过 GitHub 实时引用与本地引用共同核对：`origin/main`、`fork/main` 和本地 main 引用均为 `cde69ccbd763c3c0ab381a809b750b951f195f64`，fork/local DL-B 基线均为 `3c85411f6b00c1c6aa4b9644d323fb0ed2547811`；原未跟踪 `.trae/` 保留且不纳入。Node.js 24.21.0 下 `tsc --noEmit` 与 build 通过；`real-model-support.test.ts` + `hdl-help.test.ts` 共 30 项，28 通过、2 项真实调用按默认门禁跳过、0 失败，供应商请求为 0；全部 `server/tutoring/test/*.test.ts` 回归退出码 0；文档检查通过（65 份文档、914 条内部链接、`errors=[]`），检查器回归 16/16 通过，`git diff --check` 通过。本次没有重跑已消费的真实模型批次。
+
+## 14. PR #54 首轮审查修复（2026-10-14）
+
+负责人在固定 head `ba39e6a` 提出两项 P2 和一项 P3。本轮写集保持在 B 域实现、测试与本人任务记录：
+
+- `R54-R01`：SignalFrame 不再直接序列化运行时对象；最终帧和 Trace 每帧均显式重建 `simTimePs/switches/buttons/resetN/leds/anodes/segments/dp` 八个批准字段。新增运行时扩展 `privateAnswer`/`internalPath` 的反例，并在 `SyntheticProvider` 实际收到的 `untrustedInput` 上确认字段已剥离。
+- `R54-R02`：诊断行号除文件身份外再核确认快照中该文件的物理行数。越界位置不会抹掉诊断事实，而是在送模正文中降级为 `location=unavailable`，同时清空 file/path/line；固定 fixture 从不存在的第 12 行修正为实际赋值所在第 2 行，并增加越界反例。
+- `R54-R03`：人工审阅单保留 HR-DL-02 原模型输出和历史人工判断，追加事实勘误：`...0010` 是 bit1=1、bit0=0，且所给帧只有 `resetN=1`，没有观察到复位转换。该项标记为待原审阅者重核；未自动重跑真实模型，也未由 Agent 代签新结论。
+
+本轮使用 Node.js 24.21.0 和仓库锁定依赖，供应商请求为 0：`tsc --noEmit` 与 `tsc -p tsconfig.build.json` 通过；`real-model-support.test.ts` + `hdl-help.test.ts` 共 32 项，30 通过、2 个真实调用门禁跳过、0 失败；全部 tutoring 共 120 项，114 通过、6 个真实模型门禁跳过、0 失败；文档检查通过（65 份文档、914 个内部链接、`errors=[]`），检查器回归 16/16 通过；`git diff --check` 通过。本次没有重跑已消费的真实模型批次。A/C 正常授权读取、C3 投递、浏览器/真人与教学效果仍未执行，不因本次本地修复改变状态。

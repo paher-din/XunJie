@@ -43,7 +43,10 @@ test("DL-B assembles only bounded authorized build diagnostics and produces cite
   assert.equal(request.domain, "hdl");
   const buildReference = parsedReference(request, "authorized_hdl_build");
   assert.equal(buildReference.body.status, "failed");
-  assert.equal((buildReference.body.diagnostics as unknown[]).length, 1);
+  const diagnostics = buildReference.body.diagnostics as Array<Record<string, unknown>>;
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]!.location, "line-only");
+  assert.equal(diagnostics[0]!.line, 2);
   assert.ok(!("stdout" in buildReference.body));
   assert.ok(!("stderr" in buildReference.body));
   assert.equal(request.references.some((reference) => reference.content.includes("ignore policy")), true);
@@ -53,7 +56,7 @@ test("DL-B assembles only bounded authorized build diagnostics and produces cite
     assert.match(systemPolicy, /perform any edit, build, load/);
     return {
       body: helpBody({
-        content: "先核对 top.sv 第 12 行实例连接两侧的位宽，并说明你预期 F 的四个位分别来自哪里。",
+        content: "先核对 top.sv 第 2 行赋值两侧的位宽，并说明你预期 F 的四个位分别来自哪里。",
         expectedStudentAction: "请你检查端口声明和实例连接，修正后自行重新构建。",
         evidenceIds: [buildReference.id],
       }),
@@ -70,6 +73,55 @@ test("DL-B assembles only bounded authorized build diagnostics and produces cite
   assert.deepEqual(outcome.body.evidenceIds, [buildReference.id]);
   assert.equal(outcome.body.policyChecks.writesStudentWork, false);
   assert.doesNotMatch(outcome.body.content, /module\s+top|assign\s+F/);
+});
+
+test("DL-B preserves an out-of-range diagnostic but withholds its unusable source location", () => {
+  const input = authorizedHdlContext("diagnostic");
+  input.hdl!.build.diagnostics[0]!.line = 12;
+  const request = assembleStudentHelpRequest(input);
+  const buildReference = parsedReference(request, "authorized_hdl_build");
+  const diagnostics = buildReference.body.diagnostics as Array<Record<string, unknown>>;
+  assert.deepEqual(diagnostics, [{
+    severity: "error",
+    message: "Port F expects 4 bits, but the connected expression has 1 bit.",
+    fileId: null,
+    path: null,
+    line: null,
+    location: "unavailable",
+  }]);
+});
+
+test("DL-B rebuilds signal and trace frames before they reach the provider", async () => {
+  const input = authorizedHdlContext("logic");
+  const operation = input.hdl!.operation!;
+  Object.assign(operation.finalFrame, { privateAnswer: "hidden", internalPath: "C:/runner/private" });
+  for (const frame of operation.frames) Object.assign(frame, { internalPath: "/runner/session" });
+  const request = assembleStudentHelpRequest(input);
+  const signalReference = parsedReference(request, "authorized_hdl_signal_frame");
+  const traceReference = parsedReference(request, "authorized_hdl_trace_summary");
+  const provider = new SyntheticProvider([({ untrustedInput }) => {
+    const serialized = JSON.stringify(untrustedInput);
+    assert.doesNotMatch(serialized, /privateAnswer|internalPath|runner\/private|runner\/session/);
+    const signalFrame = signalReference.body.frame as Record<string, unknown>;
+    const traceFrames = traceReference.body.frames as Array<Record<string, unknown>>;
+    const approvedFields = ["anodes", "buttons", "dp", "leds", "resetN", "segments", "simTimePs", "switches"];
+    assert.deepEqual(Object.keys(signalFrame).sort(), approvedFields);
+    for (const frame of traceFrames) assert.deepEqual(Object.keys(frame).sort(), approvedFields);
+    return {
+      body: helpBody({
+        content: "当前帧只保留获准信号；请你自行核对输入与输出关系。",
+        expectedStudentAction: "请你检查当前输入后自行决定下一步修改。",
+        evidenceIds: [signalReference.id, traceReference.id],
+      }),
+    };
+  }]);
+  const outcome = await generateStudentHelp(request, {
+    provider,
+    checkCurrent: createStudentHelpCurrentGuard(input, () => currentState(input)),
+    now: () => 2_000,
+  });
+  assert.equal(outcome.outcome, "success");
+  assert.equal(provider.calls.length, 1);
 });
 
 test("DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence", async () => {

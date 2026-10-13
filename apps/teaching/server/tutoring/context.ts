@@ -8,7 +8,7 @@ import type {
   UntrustedReference,
 } from "../../contracts/tutoring/index.ts";
 import type { JobStatus } from "../../contracts/records/index.ts";
-import type { SignalFrame } from "../../contracts/runner/hdl.ts";
+import type { HdlDiagnostic, SignalFrame } from "../../contracts/runner/hdl.ts";
 import { studentActionTypes } from "../../contracts/tutoring/index.ts";
 import { RunnerError } from "../../runner/snapshot.ts";
 import type { CurrentGuard, GuardState } from "./core.ts";
@@ -384,6 +384,11 @@ function addHdlReferences(
 ) {
   const hdl = input.hdl!;
   const build = hdl.build;
+  const snapshot = input.snapshots.find((item) =>
+    item.snapshotId === hdl.snapshotId &&
+    item.hash === hdl.snapshotHash &&
+    item.attemptId === input.job.scope.attemptId &&
+    item.activityVersionId === input.current.activityVersionId)!;
   add({
     id: boundedReferenceId("hdl-build", [build.buildId, build.snapshotHash, build.configurationHash]),
     content: JSON.stringify({
@@ -397,14 +402,8 @@ function addHdlReferences(
       runtimeProfileVersion: build.runtimeProfileVersion,
       engineVersion: build.engineVersion,
       failureKind: build.failureKind ?? null,
-      diagnostics: build.diagnostics.slice(0, 8).map((diagnostic) => ({
-        severity: diagnostic.severity,
-        message: diagnostic.message.slice(0, 1024),
-        fileId: diagnostic.location === "line-only" ? diagnostic.fileId ?? null : null,
-        path: diagnostic.location === "line-only" ? diagnostic.path ?? null : null,
-        line: diagnostic.location === "line-only" ? diagnostic.line ?? null : null,
-        location: diagnostic.location,
-      })),
+      diagnostics: build.diagnostics.slice(0, 8).map((diagnostic) =>
+        visibleHdlDiagnostic(diagnostic, snapshot)),
       omittedDiagnosticCount: Math.max(0, build.diagnostics.length - 8),
     }),
   });
@@ -420,7 +419,7 @@ function addHdlReferences(
       sessionRevision: session.sessionRevision,
       sequence: operation.sequence,
       simulationTimePs: session.simTimePs,
-      frame: operation.finalFrame,
+      frame: visibleHdlFrame(operation.finalFrame),
     }),
   });
   const frames = operation.frames.slice(-32);
@@ -434,7 +433,7 @@ function addHdlReferences(
       sequence: operation.sequence,
       fromSimulationTimePs: frames[0]!.simTimePs,
       toSimulationTimePs: frames.at(-1)!.simTimePs,
-      frames,
+      frames: frames.map(visibleHdlFrame),
       returnedFrameCount: frames.length,
       originalFrameCount: operation.frames.length,
       sampleCount: operation.sampleCount,
@@ -443,6 +442,47 @@ function addHdlReferences(
       locallyTruncated: operation.frames.length > frames.length,
     }),
   });
+}
+
+function visibleHdlDiagnostic(
+  diagnostic: HdlDiagnostic,
+  snapshot: AuthorizedStudentHelpContext["snapshots"][number],
+) {
+  const file = diagnostic.location === "line-only"
+    ? snapshot.files.find((item) => item.fileId === diagnostic.fileId && item.path === diagnostic.path)
+    : undefined;
+  const lineAvailable = file !== undefined &&
+    Number.isSafeInteger(diagnostic.line) &&
+    (diagnostic.line ?? 0) > 0 &&
+    (diagnostic.line ?? 0) <= physicalLineCount(file.text);
+  return {
+    severity: diagnostic.severity,
+    message: diagnostic.message.slice(0, 1024),
+    fileId: lineAvailable ? diagnostic.fileId ?? null : null,
+    path: lineAvailable ? diagnostic.path ?? null : null,
+    line: lineAvailable ? diagnostic.line ?? null : null,
+    location: lineAvailable ? "line-only" : "unavailable",
+  };
+}
+
+function physicalLineCount(text: string): number {
+  if (text.length === 0) return 0;
+  const lines = text.split(/\r\n|\n|\r/);
+  if (lines.at(-1) === "") lines.pop();
+  return lines.length;
+}
+
+function visibleHdlFrame(frame: SignalFrame): SignalFrame {
+  return {
+    simTimePs: frame.simTimePs,
+    switches: frame.switches,
+    buttons: frame.buttons,
+    resetN: frame.resetN,
+    leds: frame.leds,
+    anodes: frame.anodes,
+    segments: frame.segments,
+    dp: frame.dp,
+  };
 }
 
 function validLearnerClaim(claim: LearnerContextClaim): boolean {
