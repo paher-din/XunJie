@@ -12,6 +12,25 @@ import {
 } from './real-model-support.ts';
 
 for (const [authorization, message] of [
+  ['', 'Explicit DL-B synthetic HDL model authorization is required.'],
+  ['approved-synthetic', 'DEEPSEEK_API_KEY is not configured through the approved local channel.'],
+] as const) {
+  test(`DL-B model gate rejects ${authorization ? 'missing credentials' : 'missing authorization'} without network`, () => {
+    const source = `
+      import assert from 'node:assert/strict';
+      import { dlBRealModelProbe } from ${JSON.stringify(new URL('./real-model-support.ts', import.meta.url).href)};
+      globalThis.fetch = () => { throw new Error('Unexpected network access'); };
+      assert.throws(() => dlBRealModelProbe(), { message: ${JSON.stringify(message)} });
+      process.stdout.write('gate-closed');
+    `;
+    const output = execFileSync(process.execPath, ['--input-type=module', '-e', source], {
+      env: { ...process.env, DEEPSEEK_API_KEY: '', XUNJIE_DL_B_REAL_MODEL: authorization }, encoding: 'utf8',
+    });
+    assert.equal(output, 'gate-closed');
+  });
+}
+
+for (const [authorization, message] of [
   ['', 'Explicit P2 synthetic-data model authorization is required.'],
   ['approved-synthetic', 'DEEPSEEK_API_KEY is not configured through the approved local channel.'],
 ] as const) {

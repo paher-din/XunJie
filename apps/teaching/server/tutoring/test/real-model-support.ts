@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createAiSdkDeepSeekProvider } from '../deepseek-sdk.ts';
 
 export const realModelEnabled = process.env.XUNJIE_P2_REAL_MODEL === 'approved-synthetic';
+export const dlBRealModelEnabled = process.env.XUNJIE_DL_B_REAL_MODEL === 'approved-synthetic';
 const requiredNodeVersion = '24.21.0';
 type HttpOutcome = 'response' | 'provider_error' | 'cancelled' | 'timed_out' | 'network_error';
 export type HttpFact = {
@@ -146,6 +147,17 @@ export function realModelProbe(options: { onRequestStart?: (attemptIndex: number
     signal,
   });
   return { provider, http, requestExpectedProviderFailure };
+}
+
+export function dlBRealModelProbe(options: { onRequestStart?: (attemptIndex: number) => void } = {}) {
+  assertRealModelRuntime();
+  if (!dlBRealModelEnabled) throw new Error('Explicit DL-B synthetic HDL model authorization is required.');
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey?.trim()) throw new Error('DEEPSEEK_API_KEY is not configured through the approved local channel.');
+  const http: HttpFact[] = [];
+  const observedFetch = createObservedModelFetch(http, fetch, Date.now, options.onRequestStart);
+  const provider = createAiSdkDeepSeekProvider({ apiKey, baseURL: 'https://api.deepseek.com', fetch: observedFetch });
+  return { provider, http };
 }
 
 export function writeRealModelEvidence(purpose: string, data: Record<string, unknown>, http: readonly HttpFact[]) {

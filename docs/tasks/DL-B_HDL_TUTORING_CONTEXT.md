@@ -253,3 +253,36 @@ B 复用 B1/B2 的 `CurrentGuard` 和绝对截止时间。A/C 的 current reader
 | `git diff --check` | 通过 |
 
 当前 B 域合成消费能力可交给 DL-A/C3 接线，但 Issue #40 尚不能关闭：#38 仍需确认共享消费边界和 A 侧获准上下文构造，C 目标环境结果还没有经 A/C 的真实读取链送入 B，真实 DeepSeek HDL 样例、人工语义审阅、C3 message/delivery/receipt、浏览器 displayed 和真人接棒均未执行。上述事项不得沿用 #45 已消费完毕的外部调用授权，也不得用本批合成通过替代。
+
+## 12. 2026-10-13 最新同步与 DL-B 真实模型入口批次
+
+### 12.1 最新依据与可继续范围
+
+本地 `main`、`origin/main` 与 `fork/main` 已同步到 `cde69ccbd763c3c0ab381a809b750b951f195f64`；Issue #40 公开页仍为 Open，除分配事件外没有新增评论。README 已记录 #45 验证合入和关闭，B1/B2 的真实 SDK 通道可复用；#45 已消费的模型批次授权不能自动扩展到本 Issue。DL-C 的共享 HDL DTO 和服务实现已经进入 main，但 DL-A 任务稿仍明确正式跨域契约、A 侧获准上下文构造、正常业务宿主和完整 DL-AC 未完成，B 不代替 A/C 实现或批准这些能力。
+
+因此本批不改变现有 `AuthorizedHdlHelpContext`、A/C DTO、数据库或应用装配接口，只增加 DL-B 专用、默认关闭的真实模型验证入口和离线门禁测试。入口固定使用 E-DL-01～03 三个仓库合成场景，串行执行；每个 Job 沿既有 `deepseek-flash`、thinking disabled、AI SDK `maxRetries=0`、最多 3 次 provider 调用、最多一次 repair 和接受起 45 秒，整批最坏 9 次外部请求，不自动重跑。证据仅保存脱敏 HTTP 元数据、严格 body、引用 ID、调用次数、actual/unknown usage、版本和场景结果，不写 API key、租约、reasoning 或真实学生/教师材料。
+
+### 12.2 授权与验收边界
+
+实现和离线验证不发起供应商请求。实际执行前仍需项目负责人针对 Issue #40 明确批准：一次三 Job 固定合成 HDL 批次、最多 9 次 DeepSeek 请求、相应费用与可能的 unknown usage；由凭据持有人通过安全本地通道提供 key，失败批次不自动重跑。实际结果须逐场景记录引导正文、可查引用、语言、学生接棒、调用次数、usage 和延迟，再由教师/项目推进者人工审阅 E-DL-01～03 的适切性；schema、关键词和模型自评不作为语义通过。
+
+即使真实模型和人工语义通过，Issue #40 仍需 DL-A 的正式授权构造、真实 C 结果经 A/C 读取进入 B、C3 message/delivery/receipt，以及后续 UI/P5 displayed 与真人接棒证据。浏览器和教学效果分别报告，不由本批代签。
+
+### 12.3 实现与离线验证结果
+
+`real-model-support.ts` 增加独立 `XUNJIE_DL_B_REAL_MODEL=approved-synthetic` 门禁和 DL-B provider probe；它复用已经验证的 AI SDK DeepSeek 适配、脱敏 HTTP 观察和临时证据写入，但不复用 P2 历史授权开关。`real-model-support.test.ts` 分别证明缺独立授权、授权后缺安全 key 均在网络前失败。`hdl-help.test.ts` 增加默认跳过的三 Job 串行入口，逐场景使用现有严格上下文装配、current guard、引用白名单、政策校验、最多三次/一次 repair/45 秒边界；失败时也先保留该场景 outcome 与 HTTP 事实再停止，不自动重跑。
+
+验证环境为 Node 24.21.0、仓库锁定依赖，供应商网络调用为 0：
+
+| 验证 | 实际结果 |
+| --- | --- |
+| `node node_modules/typescript/bin/tsc --noEmit` | 通过 |
+| `node node_modules/typescript/bin/tsc -p tsconfig.build.json` | 通过 |
+| `node --test server/tutoring/test/real-model-support.test.ts server/tutoring/test/hdl-help.test.ts` | 27 项：26 通过、1 项真实 DL-B 批次按默认门禁跳过、0 失败 |
+| `node --test --test-reporter=dot server/tutoring/test/*.test.ts` | 退出码 0；全部 tutoring 回归通过或按各自真实授权门禁跳过 |
+| `node --test server/workspace/hdl.test.ts runner/hdl-profile.test.ts runner/hdl-clock.test.ts runner/hdl.runtime.test.ts` | 13 项：11 通过、2 项按目标 VM/平台时钟门禁跳过、0 失败 |
+| `node tools/a0-review/check.mjs` | 通过；64 份文档、911 条内部链接、0 错误 |
+| `node --test tools/a0-review/check.test.mjs` | 16/16 通过，0 失败 |
+| `git diff --check` | 通过 |
+
+本批只证明真实入口默认关闭、独立授权和离线回归兼容；实际 DeepSeek 请求、三组语义结果与人工审阅仍为未执行。A/C 真实授权读取、C3 投递、浏览器与真人条件没有因新增测试入口而解除。
