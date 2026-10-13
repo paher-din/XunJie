@@ -1,3 +1,5 @@
+import {assertDigitalLogicApplicationDatabase} from '../db/transaction.ts';
+import {attachOriginalJobHost} from './original-job-host.ts';
 import {z} from 'zod';
 import type {FastifyRequest} from 'fastify';
 import {createTutoringApp,type TutoringAppOptions} from '../tutoring/application.ts';
@@ -19,8 +21,9 @@ const buildInput=z.strictObject({...basis,snapshotId:id});
 const programInput=z.strictObject({...basis,buildId:id,replaceSessionId:id.optional(),expectedSessionRevision:revision.optional()}).refine(value=>(value.replaceSessionId===undefined)===(value.expectedSessionRevision===undefined));
 const operationInput=z.strictObject({...basis,sessionId:id,expectedSessionRevision:revision,expectedSequence:revision,inputs:z.strictObject({switches:z.string().regex(/^[01]{16}$/),buttons:z.string().regex(/^[01]{5}$/),resetN:z.string().regex(/^[01]$/)}),advanceCycles:z.number().int().min(1).max(5000000)});
 const stopInput=z.strictObject({...basis,action:z.literal('stop'),reason:z.string().trim().min(1).max(1024)});
-export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'> & {hdlTransport:HdlTransport;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[]};
+export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'> & {hdlTransport:HdlTransport;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number};
 export async function createDigitalLogicApplication(options:DigitalLogicApplicationOptions){
+ assertDigitalLogicApplicationDatabase(options.db);
  const now=options.now??Date.now;
  // Read exactly once before any composed business transaction; callbacks never open nested SQL.
  const control=options.db.withTransaction(tx=>tx.get('SELECT * FROM application_control WHERE singleton=1'));
@@ -28,19 +31,26 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  const generation=control.recovery_generation,currentGeneration=()=>generation;
  const approved=options.approvedHdlRuntimes.map(value=>hdlRuntimeSchema.parse(value));
  if(!approved.length)throw new ApiError('INVALID_CONFIGURATION');
- let accepting=true,latest:Awaited<ReturnType<typeof availableHdlRuntime>>|undefined;
- async function refresh(){latest=undefined;const result=await availableHdlRuntime(options.hdlTransport,approved);if(result.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');latest=result;}
+ const admission={accepting:true};
+ let latest:Awaited<ReturnType<typeof availableHdlRuntime>>|undefined;
+ async function refresh(){latest=undefined;if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');const result=await availableHdlRuntime(options.hdlTransport,approved);if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');if(result.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');latest=result;}
  await refresh();
  const cReady=await availableRuntime(options.runner);if(options.runner&&(!cReady||cReady.recoveryGeneration!==generation))throw new ApiError('RECOVERY_REQUIRED');
  const hdl=createHdlWorkspace({db:options.db,currentGeneration,transport:options.hdlTransport,...(options.now?{now:options.now}:{}),refreshProfile:refresh,
- approvedProfile(tx,attemptId){if(!accepting||!latest)return undefined;const attempt=readAttempt(tx,attemptId),runtime=readActivity(tx,attempt.courseId,attempt.activityVersionId).runtimeProfile;
+ approvedProfile(tx,attemptId){if(!admission.accepting||!latest)return undefined;const attempt=readAttempt(tx,attemptId),runtime=readActivity(tx,attempt.courseId,attempt.activityVersionId).runtimeProfile;
  if(!('kind' in runtime)||canonical(runtime.configuration.runtime)!==canonical(latest.profile)||runtime.contentHash!==configurationHash(runtime.configuration))return undefined;
  return {board:runtime.configuration.board,runtime:runtime.configuration.runtime};}});
- const instance=await createTutoringApp({...options,currentGeneration,hdl,checkReadiness:async()=>{if(!accepting)return false;try{await refresh();const c=await availableRuntime(options.runner);return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
+ const runner:typeof options.runner=options.runner?async command=>{
+  if(!admission.accepting&&['submit','readiness'].includes(command.op))throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  const response=await options.runner!(command);
+  if(!admission.accepting&&command.op==='readiness')throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  return response;
+ }:undefined;
+ const instance=await createTutoringApp({...options,...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{if(!admission.accepting)return false;try{await refresh();const c=await availableRuntime(runner);return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
  const fixed=instance.access.withAuthorizedCourse(request,tx=>draftCourse(tx,blueprintId),'teacher',(tx,actor)=>{
   const draft=readDraft(tx,actor.courseId,blueprintId);return draft.content.digitalLogicConfigVersionId?fixedHdlRuntime(tx,actor.courseId,draft.content.digitalLogicConfigVersionId):undefined;
  },false);
- if(!fixed)return queryRuntime(options.runner);
+ if(!fixed)return queryRuntime(runner);
  try{const ready=await availableHdlRuntime(options.hdlTransport,approved);if(ready.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');
  if(canonical(fixed.configuration.runtime)!==canonical(ready.profile))throw new ApiError('INVALID_REFERENCE');return {ok:true as const,runtime:{...ready,profile:fixed}};
  }catch(error){return {ok:false as const,error};}
@@ -49,10 +59,10 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  const locate=(tx:Transaction,attemptId:string)=>{const attempt=readAttempt(tx,attemptId);return {kind:'student_work' as const,courseId:attempt.courseId,studentId:attempt.studentId,stage:attempt.status,assignmentActive:false};};
  const scope=(request:FastifyRequest,attemptId:string)=>access.withAuthorizedResource(request,tx=>locate(tx,attemptId),'read',(_tx,actor)=>actor);
  const guard=(request:FastifyRequest,attemptId:string)=>(tx:Transaction,use:'read'|'write')=>{
- if(!accepting&&use==='write')throw new ApiError('DEPENDENCY_UNAVAILABLE');return access.authorizeResourceInTransaction(request,tx,t=>locate(t,attemptId),use);
+ if(!admission.accepting&&use==='write')throw new ApiError('DEPENDENCY_UNAVAILABLE');return access.authorizeResourceInTransaction(request,tx,t=>locate(t,attemptId),use);
  };
  const requireGeneration=(expected:string)=>{if(expected!==generation)throw new ApiError('RECOVERY_REQUIRED');return generation;};
- app.addHook('preHandler',async request=>{if(request.method==='POST'&&/^\/api\/attempts\/[^/]+\/help$/.test(request.url.split('?',1)[0]!))throw new ApiError('DEPENDENCY_UNAVAILABLE');if(!accepting&&!['GET','HEAD','OPTIONS'].includes(request.method))throw new ApiError('DEPENDENCY_UNAVAILABLE');});
+ app.addHook('preHandler',async request=>{if(request.method==='POST'&&/^\/api\/attempts\/[^/]+\/help$/.test(request.url.split('?',1)[0]!))throw new ApiError('DEPENDENCY_UNAVAILABLE');if(!admission.accepting&&!['GET','HEAD','OPTIONS'].includes(request.method))throw new ApiError('DEPENDENCY_UNAVAILABLE');});
  app.get('/api/courses',request=>({requestId:request.id,data:options.db.withTransaction(tx=>{
  const userId=access.authenticatedUserInTransaction(request,tx);
  return tx.all('SELECT course_id,role FROM course_memberships WHERE user_id=? AND active=1 ORDER BY course_id',userId).map(row=>({courseId:String(row.course_id),role:row.role}));
@@ -92,23 +102,26 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  function disableUser(tx:Transaction,userId:string){if(!tx.get('SELECT id FROM users WHERE id=?',userId))throw new ApiError('FORBIDDEN');tx.run('UPDATE users SET disabled_at_ms=? WHERE id=?',now(),userId);
  for(const row of tx.all('SELECT course_id FROM course_memberships WHERE user_id=?',userId))deactivateMembership(tx,String(row.course_id),userId);
  }
- let consuming:Promise<void>|undefined,timer:ReturnType<typeof setInterval>|undefined;
- async function consumeOnce(){if(consuming)return consuming;consuming=(async()=>{for(const jobId of instance.workspace.pendingJobs())await instance.workspace.processJob(jobId);
- if(instance.teacherAgent){const jobs=options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE purpose='teacher_design' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id)));for(const jobId of jobs)await instance.teacherAgent.processJob(jobId);}
- await hdl.reconcileStops();})();try{await consuming;}finally{consuming=undefined;}}
- function startConsumer(intervalMs=250){if(!Number.isInteger(intervalMs)||intervalMs<50||intervalMs>10000)throw new ApiError('INVALID_CONFIGURATION');if(timer)return;if(!accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');timer=setInterval(()=>{void consumeOnce().catch(()=>{accepting=false;});},intervalMs);timer.unref();}
- async function shutdown(){
-  accepting=false;if(timer){clearInterval(timer);timer=undefined;}
-  try{
-   options.db.withTransaction(tx=>{
-    const ids=new Set([...tx.all('SELECT DISTINCT attempt_id FROM hdl_sessions WHERE termination_confirmed=0'),...tx.all("SELECT DISTINCT attempt_id FROM jobs WHERE purpose='student_run' AND status IN ('queued','running','outcome_unknown','cancelling')")].map(row=>String(row.attempt_id)));
-    for(const id of ids){const attempt=readAttempt(tx,id);stopAttemptJobs(tx,attempt,['student_run']);hdl.stopInTransaction(tx,id,'application_shutdown',generation);saveAttempt(tx,{...attempt,attemptRevision:attempt.attemptRevision+1,decisionEpoch:attempt.decisionEpoch+1});}
-   });
-   await hdl.reconcileStops();if(consuming)await consuming;
-   await consumeOnce();await hdl.reconcileStops();
-  }finally{await app.close();}
- }
 
- app.addHook('onReady',async()=>{await consumeOnce();});
- return {...instance,hdl,currentGeneration,consumeOnce,startConsumer,shutdown,management:{deactivateMembershipInTransaction:deactivateMembership,disableUserInTransaction:disableUser},isAccepting:()=>accepting};
+ let host:ReturnType<typeof attachOriginalJobHost>;
+ try {host=attachOriginalJobHost(instance,{...options,currentGeneration},{
+  admission,
+  async consumeAdditional(){
+   if(instance.teacherAgent){
+    const jobs=options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE purpose='teacher_design' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id)));
+    for(const jobId of jobs)await instance.teacherAgent.processJob(jobId);
+   }
+  },
+  stopInTransaction(tx){
+   for(const row of tx.all('SELECT DISTINCT attempt_id FROM hdl_sessions WHERE termination_confirmed=0')){
+    const attempt=readAttempt(tx,String(row.attempt_id));
+    hdl.stopInTransaction(tx,attempt.attemptId,'application_shutdown',generation);
+    saveAttempt(tx,{...attempt,attemptRevision:attempt.attemptRevision+1,decisionEpoch:attempt.decisionEpoch+1});
+   }
+  },
+  reconcile:()=>hdl.reconcileStops(),
+ });} catch(error) {await app.close();throw error;}
+ app.addHook('onReady',async()=>{await host.consumeOnce();});
+ return {...instance,hdl,currentGeneration,consumeOnce:host.consumeOnce,startConsumer:host.startConsumer,shutdown:host.close,
+   management:{deactivateMembershipInTransaction:deactivateMembership,disableUserInTransaction:disableUser},isAccepting:host.isAccepting};
 }

@@ -146,7 +146,15 @@ export function createDigitalLogicDatabase(): SyntheticDatabase {
   assertApprovedScope(approvedTables,[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,hdlSchema],'Digital logic');
   return createFreshDatabase('digital-logic');
 }
-export function createDigitalLogicApplicationDatabase(): SyntheticDatabase { return createFreshDatabase('digital-logic-application'); }
+const digitalLogicApplicationTables = ['activity_controls', 'activity_versions', 'application_control', 'artifact_snapshots', 'assignments', 'attempts', 'audit_events', 'blueprint_drafts', 'check_rule_versions', 'command_receipts', 'competency_versions', 'course_memberships', 'courses', 'digital_logic_config_versions', 'hdl_builds', 'hdl_operations', 'hdl_sessions', 'help_policy_versions', 'jobs', 'login_attempt_windows', 'resource_versions', 'sessions', 'teacher_design_proposals', 'teacher_design_requests', 'teaching_action_receipts', 'teaching_actions', 'teaching_deliveries', 'teaching_messages', 'users', 'workspace_command_bindings', 'workspace_files', 'workspace_process_records', 'workspace_reopen_grants', 'workspace_runs', 'workspace_submissions'];
+export function assertDigitalLogicApplicationDatabase(db:SyntheticDatabase) {
+ const names=db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").map(row=>String(row.name)));
+ if(JSON.stringify(names)!==JSON.stringify(digitalLogicApplicationTables))throw new Error('Digital logic application requires the approved 35-table scope.');
+}
+export function createDigitalLogicApplicationDatabase(): SyntheticDatabase {
+ assertApprovedScope(digitalLogicApplicationTables,[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,teacherDesignSchema,hdlSchema,digitalLogicSchema],'Digital logic application');
+ return createFreshDatabase('digital-logic-application');
+}
 function assertApprovedScope(approvedTables:string[],schemas:string[],name:string) {
   const declaredTables = schemas.flatMap(sql=>[...sql.matchAll(/CREATE TABLE\s+([a-z_][a-z0-9_]*)/gi)].map(match=>match[1]!)).sort();
   if(JSON.stringify(declaredTables)!==JSON.stringify(approvedTables))

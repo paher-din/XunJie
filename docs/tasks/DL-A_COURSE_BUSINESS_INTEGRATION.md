@@ -412,3 +412,71 @@ node server/app/initialize.ts '<existing absolute controlled bootstrap JSON path
 ### 15.7 负责人批准精确联合收尾范围
 
 2026-10-13，负责人明确答复“批准该35表去重收尾范围并继续”，批准§15的PR #53固定交付复用、35表fresh-only精确工厂/守卫/断言、HDL配置/授权及C4组合、原已批准公共HTTP/worker/事务验证。仅新建并保留临时合成库，不迁移旧库、不改凭据/CI/UI/B或运行参数、不维护节点、不调用模型、不推送或合并远程PR。以下按该具体范围继续实施；真实节点、B/UI/ALU信息缺口及产品基线汇总边界保留。
+
+
+## 16. 35表去重联合收尾实现与验证
+
+### 16.1 固定来源与实际变更
+
+2026-10-13，按 §15.7 的明确授权，仅在本地组合 main `cde69ccbd763c3c0ab381a809b750b951f195f64` 与 PR #53 的固定 head `e3e3486d7ec636836c892433c953eb303a64eb6a`。本地 merge 为 `05eabd7`、`df92ed5`；未推送或合并远程 PR。复用了 #30 已交 H 材料，不重做 I0 HTTPS/静态/原 bootstrap 或另一队列，不要求 UI 重做准备票。
+
+| 代码位置（apps/teaching/ 下） | 实际结果 |
+| --- | --- |
+| `server/app/original-job-host.ts`、`server/app/i0.ts`、`server/app/digital-logic.ts` | 两条真实调用路径共用原 AssignmentView bootstrap、同源静态服务、pendingJobs/processJob、定时消费和关停；HDL 仅提供其真实停止/对账及原教师 Job 消费接缝，保留原 ID 和未知退出事实 |
+| `server/main.ts`、`server/app/config.ts` | 单一监听入口按受控变量选 C 或 HDL 模式，同时设置两者明确拒绝；C-only 继续独立24表且无需 HDL readiness；HDL 可选 staticDirectory 复用 I0 定义及受控文件检查 |
+| `server/db/transaction.ts` | fresh-only DL-A 工厂在建库前核35表精确 DDL 集合，应用装配再核35表实际表名；新增范围仅 C4 两表，其他工厂沿各自集合；不含 A4 五表、不迁移旧库 |
+| `server/workspace/application.ts` | 原 submission.create 首次成功命令在同一事务保存提交/Attempt后停止该 Attempt 的原 HDL Session；回执重放不重复停止，拒绝或回滚不留下半个提交 |
+| `server/workspace/hdl.ts`、`server/access/app.ts` 与原 design 控制 | 保留真实 Session/课程/归属的最终事务授权、暂停/撤权及原停止对账；不采信客户端 role/studentId，不增加 C 执行 DTO 或 B/UI 字段 |
+| `tests/dl-a-app.test.ts` 与原 app/HDL/C4 测试 | 新增真实登录 bootstrap 读取、固定提交停止/重放/冲突/旧 Trace、教师合法重开与学生 resume_revision 不复活旧 Session 的组合验证 |
+
+C4 教师 review/grant 目前沿原 `workspace.reopen` 接缝验证；组合测试只在隔离 fixture 挂原受控 HTTP 辅助路由，与既有 C4 验证方式相同，不把它写成生产 A5 教师接口。停止 ACK 表示意图，退出仍由原 worker/reconcile 确认。实际 C/HDL 构建在原 Job 消费器运行，测试 transport 为隔离合成替身，不声称已连接真实 C1 节点。
+
+Trace 语义按已合入 main 的更强判据：只有已校验的原 result 正文存在才推进 nextSequence；排队、unknown 或无正文终态均保留原游标，真实 Job/Session 终态如实读取。此记录明确取代 §8.2 第5项历史提案中“无正文终态允许越过”的部分，不伪造 Trace 正文或重新运行。原主线 program/interact 等待正文测试保留。
+
+### 16.2 当前运行方式（取代 §13 的33表数量）
+
+Node **24.21.0**、原 lockfile 及执行参数不变。在仓库根分别按原 lock 安装并构建实际学生 UI 和教学服务：
+
+```sh
+cd apps/student
+npm ci
+npm run build
+cd ../teaching
+npm ci
+npm run typecheck
+npm run build
+```
+
+C-only 的 XUNJIE_I0_CONFIG 字段与24表入口沿 [I0-A/C §12](I0_A_C_HANDOFF.md#12-本批实现与运行交接)。HDL 的 XUNJIE_APP_CONFIG 字段沿本文 §13，新增可选 staticDirectory（实际已构建 UI dist 的绝对目录，缺省只装业务 API）；两模式不能同时设置，PORT 必须与精确 HTTPS origin 的端口一致。原签名材料、TLS、SSH 和 known_hosts 只引用既有受控文件，不建立或改变凭据。
+
+HDL 初始化仍为 §13 的原 server/app/initialize.ts 命令与 synthetic manifest，但当前工厂精确为**35表**。只在授权的全新保留临时合成库执行；当前 C/HDL 实时 ready、批准 runtime/指纹/validation/代际必须先满足，旧33表库不能直接当作此入口或自动迁移。验证中的新库均保留，不能据此批准部署到已有库。
+
+```powershell
+# apps/teaching；使用既有获准外部配置，按 origin 设置 PORT
+$env:XUNJIE_APP_CONFIG = '<existing absolute controlled application JSON path>'
+npm start
+```
+
+原 /api/sessions 登录后，GET /api/assignments/:id/bootstrap 返回 recoveryGeneration 与原 AssignmentView，不新建 Attempt；Attempt 仍由学生显式创建。HDL 操作与 C4 提交沿 §10/原 C4 契约，GET 不推进仿真。未配置模型保持原降级，ALU 行为仍为 unverified。
+
+### 16.3 本批实际验证记录
+
+本节只计当前固定组合源码，不累计 §12/14 的旧通过数或 PR #53 作者统计。原始日志保留；最终固定源码全量和两轴审查完成后在本节追加结果。
+
+- Windows Node24.21.0：教学 npm ci/typecheck、学生原 npm ci/build 均通过；未修改 UI 源码或 lock。第一次 typecheck 失败（合并遗漏 ApiError import 与旧未使用变量），已修复并通过。
+- bootstrap 新反例先失败（缺原 route，400≠200），复用 I0 后通过；提交停止先失败（Session 未停止，false≠true），同事务组合后通过。教师重开/学生修订原逻辑验证首次通过，未重复实现 C4 grants。
+- 初次四文件组合失败1项：当前副本未构建 apps/student/dist，原 I0 真实 loopback 静态测试找不到 UI dist。随后按原学生 lock 构建；五文件组合**52项、52通过、0失败、0取消、0跳过**。这项是实际 HTTP loopback 与真实静态产物检查，不是 TLS/浏览器验收。
+- 五文件命令（apps/teaching）：`node --test server/app/i0.test.ts server/app/digital-logic.test.ts tests/dl-a-app.test.ts server/workspace/hdl.test.ts server/workspace/submissions.test.ts`。
+- 下一步固定源码在 WSL2 Ubuntu、Node24.21.0、已获准的保留 Icarus 包运行完整六组（显式纳入 server/app）；付费模型、真实节点/TLS/浏览器未执行。完整回归与最终源码两轴审查尚未完成，此时不称最终联合回归通过。
+
+### 16.4 整卡尚缺信息与维护交接
+
+沿 §15.5 的现有 #30/#39/#40 请求，不重复派工。负责人已批准35表，不再等待同一授权。尚需：
+
+1. **C / #30 H-03、H-04及 DL-C #39：** 当前实际部署 SHA，C 与 HDL 当前 profile、fingerprint/hash、validation、recoveryGeneration 的重验/登记记录；既有受控连接配置的引用位置。最新主线已改 HDL VPI/源码指纹，旧 ready 不可沿用；A 不维护节点。
+2. **环境维护者 / #30 H-01：** 既有获准 HTTPS origin、TLS/签名/应用连接受控配置引用、获准合成账号与 Assignment 的交接方式。只交位置/引用，不在聊天或公开 Issue 粘贴秘密。用于真实 A/C 指定联调及后续浏览器/TLS。
+3. **C/课程检查交接：** ALU 行为检查器实际入口、已定义域覆盖和未定义域不评分证据；若未实现需明确原任务中的负责人/方案。结构检查不得写成 ALU 行为通过。
+4. **B / DL-B #40 首批：** 源码/诊断/信号/Trace 引用的对象、必需 ID/hash/sequence/版本、读取范围与当前性拒绝规则表，附提案/提交。无需等待完整 DL-B；具体对应 §9 的上下文与过时规则、错误引导/反例。
+5. **UI / DL-UI：** 现有 HDL 操作—请求—结果/状态—缺项表及固定前端来源，覆盖构建/装载/替换、SW/按钮/reset/推进、Trace/unknown/恢复；具体对应 §9 的命令状态和板卡波形，并复用既有 I0。
+
+收到上述实际交付后才能完成 A/B/UI 会审、真实节点和同浏览器 DL-E2E；NFR、真人及教学效果仍沿原完整判据。产品 MVP_SPEC §10/TECH_DESIGN 汇总**待授权维护者汇总**，当前仅同步本人任务与 README。#38 保持未完成；当前授权不含远程推送、PR 合并或 Issue 关闭。

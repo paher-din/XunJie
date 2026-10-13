@@ -291,7 +291,7 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
         if(current.leaseToken===work.job.leaseToken&&!terminal.has(current.status))saveJob(tx,{...current,status:'outcome_unknown',leaseUntil:new Date(now()).toISOString()});});}
   }
   function readTrace(tx:Transaction,actor:ActorContext,sessionId:string,afterSequence=-1){
-    const session=readHdlSession(tx,actor,sessionId);
+    readHdlSession(tx,actor,sessionId);
     if(!Number.isSafeInteger(afterSequence)||afterSequence< -1)throw new ApiError('INVALID_REQUEST');
     const row=tx.get('SELECT * FROM hdl_operations WHERE session_id=? AND sequence>? ORDER BY sequence LIMIT 1',sessionId,afterSequence);
     if(!row)return {operation:null,nextSequence:afterSequence};

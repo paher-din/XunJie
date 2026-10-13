@@ -148,3 +148,79 @@ test('withdrawal stops original C Run and marks teacher course assignment inacti
  assert.equal((await f.app.inject({url:`/api/jobs/${run.jobId}`,headers:student})).statusCode,403);
  }finally{await f.close();}
 });
+
+test('HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView',async()=>{
+ const f=await fixture();try{
+  const teacher=await f.login('teacher'),student=await f.login(),other=await f.login('other'),item=await allocate(f,teacher,student);
+  const before=await view(f,student,item.attemptId);
+  const assignment=await f.app.inject({url:'/api/assignments/'+item.assignmentId,headers:student});
+  const response=await f.app.inject({url:'/api/assignments/'+item.assignmentId+'/bootstrap',headers:student});
+  assert.equal(response.statusCode,200,response.body);
+  assert.deepEqual(response.json().data,{assignment:assignment.json().data,recoveryGeneration:'generation'});
+  assert.equal(response.headers['cache-control'],'no-store');
+  assert.deepEqual(await view(f,student,item.attemptId),before);
+  assert.equal((await f.app.inject({url:'/api/assignments/'+item.assignmentId+'/bootstrap',headers:other})).statusCode,403);
+ }finally{await f.close();}
+});
+
+test('C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable',async()=>{
+ const f=await fixture();try{
+  const teacher=await f.login('teacher'),student=await f.login(),item=await allocate(f,teacher,student),p=await programmed(f,student,item);
+  const input={expectedAttemptRevision:(await view(f,student,item.attemptId)).attempt.attemptRevision,snapshotId:item.snapshotId,reflection:'Synthetic own explanation'};
+  const response=await command(f,student,'/api/attempts/'+item.attemptId+'/submissions',input,'submit-hdl');
+  assert.equal(response.statusCode,200,response.body);
+  assert.equal((await view(f,student,item.attemptId)).attempt.status,'submitted');
+  await f.host.consumeOnce();
+  const session=await f.app.inject({url:'/api/hdl/sessions/'+p.program.sessionId,headers:student});
+  assert.equal(session.statusCode,200,session.body);
+  assert.equal(session.json().data.stopRequested,true);
+  assert.equal(session.json().data.terminationConfirmed,true);
+  const replay=await command(f,student,'/api/attempts/'+item.attemptId+'/submissions',input,'submit-hdl');
+  assert.equal(replay.statusCode,200,replay.body);
+  assert.deepEqual(replay.json().data.result,response.json().data.result);
+  assert.equal((await view(f,student,item.attemptId)).submissions.length,1);
+  const changed=await command(f,student,'/api/attempts/'+item.attemptId+'/submissions',{...input,reflection:'Different'},'submit-hdl');
+  assert.equal(changed.statusCode,409,changed.body);
+  const trace=await f.app.inject({url:'/api/hdl/sessions/'+p.program.sessionId+'/trace?afterSequence=-1',headers:student});
+  assert.equal(trace.statusCode,200,trace.body);
+  assert.equal(trace.json().data.operation.result.snapshotId,item.snapshotId);
+ }finally{await f.close();}
+});
+
+test('C4 teacher grant and student revision resume never revive the stopped original HDL Session',async()=>{
+ const f=await fixture();
+ // Adapt the existing C4 public teacher seam only in the synthetic harness; this is not an A5 product route.
+ f.app.post('/fixture/reviewed/:id',request=>f.host.workspace.reopen.markReviewed(request,(request.params as {id:string}).id,request.body));
+ f.app.post('/fixture/reopen/:id',request=>f.host.workspace.reopen.grant(request,(request.params as {id:string}).id,request.body));
+ try{
+  const teacher=await f.login('teacher'),student=await f.login(),item=await allocate(f,teacher,student),p=await programmed(f,student,item);
+  const submitted=await command(f,student,'/api/attempts/'+item.attemptId+'/submissions',{
+   expectedAttemptRevision:(await view(f,student,item.attemptId)).attempt.attemptRevision,snapshotId:item.snapshotId},'submit-for-revision');
+  assert.equal(submitted.statusCode,200,submitted.body);await f.host.consumeOnce();
+  const reviewed=await command(f,teacher,'/fixture/reviewed/'+item.attemptId,{
+   expectedAttemptRevision:(await view(f,student,item.attemptId)).attempt.attemptRevision,to:'reviewed'},'review-for-revision');
+  assert.equal(reviewed.statusCode,200,reviewed.body);
+  const granted=await command(f,teacher,'/fixture/reopen/'+item.attemptId,{
+   expectedAttemptRevision:(await view(f,student,item.attemptId)).attempt.attemptRevision,
+   submissionId:submitted.json().data.result.submissionId,reason:'Synthetic teacher permits revision'},'grant-revision');
+  assert.equal(granted.statusCode,200,granted.body);
+  const resumed=await command(f,student,'/api/attempts/'+item.attemptId+'/controls',{
+   expectedAttemptRevision:(await view(f,student,item.attemptId)).attempt.attemptRevision,control:{kind:'resume_revision'}},'resume-revision');
+  assert.equal(resumed.statusCode,200,resumed.body);
+  const old=await f.app.inject({url:'/api/hdl/sessions/'+p.program.sessionId,headers:student});
+  assert.equal(old.json().data.terminationConfirmed,true);assert.equal(old.json().data.status,'stopped');
+  const revision=(await view(f,student,item.attemptId)).attempt.attemptRevision;
+  const interaction=await command(f,student,'/api/attempts/'+item.attemptId+'/hdl/interactions',{
+   expectedAttemptRevision:revision,sessionId:p.program.sessionId,expectedSessionRevision:old.json().data.sessionRevision,
+   expectedSequence:1,inputs:{switches:'0'.repeat(16),buttons:'00000',resetN:'1'},advanceCycles:1},'old-session-after-resume');
+  assert.equal(interaction.statusCode,409,interaction.body);
+  const next=await command(f,student,'/api/attempts/'+item.attemptId+'/hdl/programs',{
+   expectedAttemptRevision:revision,buildId:p.build.buildId},'new-explicit-program');
+  assert.equal(next.statusCode,200,next.body);assert.notEqual(next.json().data.result.sessionId,p.program.sessionId);
+  await f.host.consumeOnce();
+  const current=await f.app.inject({url:'/api/hdl/sessions/'+next.json().data.result.sessionId,headers:student});
+  assert.equal(current.json().data.status,'active');
+  const history=await view(f,student,item.attemptId);
+  assert.equal(history.submissions.length,1);assert.equal(history.submissions[0].snapshotId,item.snapshotId);
+ }finally{await f.close();}
+});

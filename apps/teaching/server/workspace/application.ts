@@ -75,6 +75,10 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
         authorize: () => true, transaction: tx, stopReason, ...(runPurposes ? {runPurposes} : {}) };
       const plan = apply(tx, before, context);
       persistWorkspace(tx, before, plan.state);
+      // Submission fixes the artifact and stops its loaded design atomically. Completed HDL program jobs
+      // may leave an active Session, so cancelling pending Workspace jobs alone cannot stop it.
+      if (!plan.replayed && command === 'submission.create')
+        hdl?.stopInTransaction(tx,id,'submission_confirmed',generation);
       if (!plan.replayed && command === 'workspace.sync') {
         const batch = syncBatch(parseRequest(syncInput, request.body));
         if (batch.process && before.attempt.collecting && batch.process.captureRevision === before.attempt.captureRevision)
