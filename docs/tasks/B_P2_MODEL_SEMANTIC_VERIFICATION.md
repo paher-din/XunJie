@@ -279,3 +279,5 @@ npm test
 实现新增独立 `XUNJIE_P2_REAL_PERFORMANCE=approved-synthetic` 门禁。只有它与既有 `XUNJIE_P2_REAL_MODEL=approved-synthetic` 同时存在时批次才执行；默认测试继续跳过。批次在 provider 外再加 90 次保守调用上限，按顺序逐 Job 建立合成课程、资源、活动、求助 Job 和 C3 持久链；每项只允许已知 B outcome，单项 HTTP 必须为 1～3 次。完成后输出 30 项明细、请求总数、actual/unknown usage 状态及 Job 延迟的 min/p50/p95/max，证据写入调用者临时目录。
 
 当前状态：授权、固定 fixture、独立门禁、请求上限和证据格式已实现；**真实 30-Job 批次尚未执行**。当前主工作区 Node 为 24.14.1，仓库门禁按预期拒绝正式 `npm run typecheck` 和真实入口；直接调用已安装 TypeScript 编译器的 `tsc --noEmit` 通过。Node 24.14.1 下学生领域测试的新增 fixture 数量/分布、百分位与默认跳过测试通过；同批 `real-model-support.test.ts` 的两个既有门禁断言因精确运行时先行而失败，属于错误 Node 环境结果，不记作 24.21.0 复验。真实执行必须由账号负责人切回 Node 24.21.0 后使用 README 的一次性命令，结果产生前不得把 30 次样本标为通过。
+
+账号负责人首次执行时，预检准确报告当前 Node 为 24.14.1 并抛出“no model request was sent”。随后仍直接开启两个授权环境变量运行批次入口，测试内部第二道 `assertRealModelRuntime()` 在约 3ms 内再次拒绝，结果为 0 通过、1 失败，没有建立 provider、没有创建 30 个 Job、没有产生证据文件或外部 HTTP 请求。该次是零调用的运行环境失败，不计入获准批次，也不属于真实批次失败后的自动重跑；在切换至精确 Node 24.21.0 前不得继续调用。
