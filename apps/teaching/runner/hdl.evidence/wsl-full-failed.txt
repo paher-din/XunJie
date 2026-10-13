@@ -1,0 +1,491 @@
+
+> @xunjie/teaching@0.0.0 pretest
+> npm run build
+
+
+> @xunjie/teaching@0.0.0 build
+> node tools/check-runtime.mjs && tsc -p tsconfig.build.json
+
+
+> @xunjie/teaching@0.0.0 test
+> node tools/check-runtime.mjs && node --test tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts
+
+▶ node-local control synthetic checks
+  ✔ parallel identical submit starts once and asynchronous ACL cannot create a race (1077.131671ms)
+  ✔ cancel-before-submit is durable and never creates a new unit (626.406601ms)
+  ✔ two slots and one attempt guard include unresolved create operations (1401.530409ms)
+  ✔ ACL revoked while queued is checked again before dispatch (141.037876ms)
+  ✔ process crash keeps pending creation unknown and never releases its slot (825.556862ms)
+  ✔ corrupt/partial journal and different node generation stop admission (136.051313ms)
+  ✔ credentials or source bodies cannot be copied into control metadata (74.00101ms)
+  ✔ generation advance needs trusted registration, refuses rollback and survives ordinary restart (161.560287ms)
+  ✔ preparation failure before any unit intent does not occupy a phantom slot (448.506725ms)
+  ✔ confirmed recovery wins completion race and cancelled result remains readable (410.803517ms)
+  ✔ old queued work becomes stale after trusted generation registration (233.175215ms)
+✔ node-local control synthetic checks (5544.515387ms)
+✔ course rules bind selected snapshot inputs, records and approved error exits (44.866271ms)
+✔ invalid course selection and profile cannot reach trusted oracle (1.521864ms)
+✔ missing input case avoids every snapshot file and implied directory without reserving names (1.02041ms)
+✔ overflow is a trusted exit-2 case and maximum normal N still covers all words (0.760456ms)
+﹣ dedicated Linux synthetic container execution and resource checks (12.662994ms) # SKIP
+✔ HDL board validation refuses executable mappings, missing bits and duplicates (2.869835ms)
+✔ elaborated widths/directions and all input bits must match, including ascending buses (2.111873ms)
+✔ four-value frames preserve X/Z and reject missing width or forged time (0.897742ms)
+✔ HDL interaction keeps input/cycle trust boundaries and the independent container limits (1.311442ms)
+✔ HDL board validation refuses executable mappings, missing bits and duplicates (3.857213ms)
+✔ elaborated widths/directions and all input bits must match, including ascending buses (3.44694ms)
+✔ four-value frames preserve X/Z and reject missing width or forged time (3.47351ms)
+✔ HDL interaction keeps input/cycle trust boundaries and the independent container limits (4.158471ms)
+﹣ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (0.782547ms) # SKIP
+﹣ authenticated dedicated VM control and supervision (4.342527ms) # SKIP
+✔ report oracle uses approved ASCII word/line/byte/tie semantics (4.450505ms)
+✔ report verifies all semantics while accepting non-semantic whitespace and bound sandbox names (15.743825ms)
+✔ JSON path quoting preserves semantic spaces and escaped names (1.21912ms)
+✔ returns bound content facts, distinguishes missing and unsafe files (214.371804ms)
+✔ enforces combined byte budget and rejects invalid UTF-8 (12.306053ms)
+✔ rejects intermediate and final symlinks in Linux (7.31184ms)
+✔ UTF-8 BOM remains in confirmed result text, byte count and checksum (7.786748ms)
+✔ maps four course operations to arrays and resolves files by immutable identity (6.256633ms)
+✔ rejects unapproved files, command/word injection, zero count and output escape (2.955094ms)
+✔ top accepts the approved C int maximum and rejects overflow exactly (0.869389ms)
+✔ hashes exact UTF-8 content and byte-sorted compact manifests (82.017306ms)
+✔ rejects traversal, absolute, drive, UNC, backslash, NUL and empty components (7.182327ms)
+✔ rejects stale body and manifest hashes and duplicate file identities (2.104499ms)
+✔ enforces file count and UTF-8 byte budget including multibyte text (37.178292ms)
+✔ builds fixed compiler argv only from approved C sources (3.405012ms)
+✔ rejects malformed input at the runtime boundary (1.08408ms)
+✔ stdout passed and exit zero cannot claim course success (5.652406ms)
+✔ trusted expected exits one and two can pass error-handling checks (0.863067ms)
+✔ limits, tooling failures, unresolved termination and missing files remain incomplete (1.07396ms)
+✔ canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials (11.952632ms)
+✔ receipt plan binds both keys to original IDs and aliases cannot be reused for other payload (2.329098ms)
+✔ jobs retain bounded deadlines/call counts across leases and reject expired worker completion (8.723827ms)
+✔ cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy (3.894774ms)
+✔ review: a new help key creates a new round; original key returns the original IDs (9329.250248ms)
+✔ review: original body JSON bytes survive persistence and a real reopen (9534.472896ms)
+✔ review: limit-one cursor pages progress, stay in scope and do not repeat deliveries (6916.976213ms)
+✔ review: a send without displayed does not survive cancellation or leak through raw reads (6079.63732ms)
+✔ review: a client report binds delivery and versions, and same HTTP key retries succeed (4143.959406ms)
+✔ review: capture controls preserve explicit help and historical coverage/real rejection reasons (4716.352863ms)
+✔ review: A4 epoch/JSON/Job/Action invalidation commits together and stale CAS rolls back (4119.462611ms)
+✔ review: cancelling an old help Job leaves the new help Job usable (3606.920962ms)
+✔ review: code changes suppress an old target and an obsolete worker lease cannot complete (3696.874743ms)
+✔ review: A2 pause invalidates a generated Action atomically without extending its public result (6084.108749ms)
+✔ review: pausing capture persistently stops passive analysis and a resume never revives it (6226.995141ms)
+✔ review: client cancelled/stale/failed reports need no delivery and erase no other fact (5991.79538ms)
+✔ review: verification script has no automatic deletion or toolchain installation (2.799885ms)
+✔ C3-V01 exact question/body bytes, trusted envelope, and same-result replay (9450.239691ms)
+✔ C3-V02 receipts are idempotent, order-independent and never back-dated by a client clock (8206.152415ms)
+✔ C3-V03 scope, role trimming, cursor bounds and stale epoch resynchronization (8303.208502ms)
+✔ C3-V04 capture pause keeps functional data, records the gap and never refills it (5216.147352ms)
+✔ C3-V05 cancellation stops undisplays actions and never resurrects them (4406.351065ms)
+✔ C3-V06 the same-transaction stop rolls back with the caller and covers A2 pause (4586.634696ms)
+✔ C3-V07 durability: reconnect after a real reopen replays original ids and hides stopped actions (7453.672987ms)
+(node:4962) Warning: AI SDK Warning System: To turn off warning logging, set the AI_SDK_LOG_WARNINGS global to false.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+✔ AI SDK adapter maps approved DeepSeek settings through an offline transport (322.48258ms)
+✔ invalid structured policy output reaches the one permitted repair request (108.625777ms)
+✔ malformed SDK JSON preserves usage and reaches the one permitted repair (23.631767ms)
+✔ negative SDK token usage is kept unknown (22.123215ms)
+✔ SDK-valid but unauthorized references are repaired by the B1 whitelist (38.375533ms)
+✔ AI SDK adapter selects the teacher mode schema and returns a proposal body (21.998638ms)
+✔ AI SDK adapter keeps missing vendor usage unknown (36.367346ms)
+✔ AI SDK adapter reports vendor failure without retrying (10.519313ms)
+✔ AI SDK adapter cancellation aborts a pending offline transport (71.965381ms)
+✔ late SDK transport completion is discarded after the shared deadline (29.794065ms)
+✔ 16K preflight rejects the complete final SDK input before transport (2.354799ms)
+(node:4962) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+✔ teacher candidates accept one to three items and aggregate actual usage (11.557433ms)
+▶ blueprint, patch, and rubric trial remain teacher-reviewable proposals
+  ✔ blueprint (1.181338ms)
+  ✔ patch (1.171239ms)
+  ✔ rubric_trial (0.763967ms)
+✔ blueprint, patch, and rubric trial remain teacher-reviewable proposals (6.333391ms)
+▶ teacher validators rebuild every body mode without unknown model fields
+  ✔ candidates (9.790687ms)
+  ✔ blueprint (2.72438ms)
+  ✔ patch (0.928597ms)
+  ✔ rubric_trial (12.456586ms)
+✔ teacher validators rebuild every body mode without unknown model fields (29.153411ms)
+✔ teacher candidates reject an oversized list after one repair (30.253048ms)
+✔ patch requires a blueprint and base revision without calling the provider (0.657377ms)
+✔ unauthorized references are rejected before provider invocation (0.444101ms)
+✔ student help works with no learner history and returns control (2.987622ms)
+✔ student validator rebuilds the body without unknown model fields (18.87192ms)
+✔ disabled help is policy-blocked with zero provider calls (0.825103ms)
+✔ untrusted prompt injection remains data and cannot grant capabilities (10.241813ms)
+✔ whole-solution and student-operation flags fail closed (1.125742ms)
+✔ tool-loop requests cannot exceed three provider calls (138.957119ms)
+✔ deadline aborts a slow provider and late output is not accepted (210.327161ms)
+✔ explicit cancellation before work prevents provider invocation (0.799743ms)
+✔ cancellation interrupts a provider that ignores AbortSignal (7.077672ms)
+✔ cancellation interrupts a current guard that never settles (6.208489ms)
+✔ deadline interrupts a current guard that never settles (15.968656ms)
+✔ current guard result is discarded when cancellation happens before it returns (1.329688ms)
+✔ deadline interrupts a post-provider current guard (33.205208ms)
+✔ post-call current guard discards stale output (0.925479ms)
+✔ missing provider usage remains unknown rather than zero (0.848844ms)
+✔ exhausted budget preserves the request without provider invocation (0.323122ms)
+✔ provider failure is explicit and retryable without hidden retries (0.45245ms)
+✔ a failed second provider call makes aggregate usage unknown (0.676248ms)
+✔ a cancelled second provider call makes aggregate usage unknown (19.495515ms)
+✔ a timed out second provider call makes aggregate usage unknown (18.093707ms)
+✔ DeepSeek adapter fixes approved configuration and performs no implicit call (9.33582ms)
+✔ DeepSeek input budget rejects over 16K before injected SDK invocation (2.131742ms)
+✔ the repair instruction is part of the shared input limit (2.465484ms)
+✔ P2 model gate rejects missing authorization without network (2259.017831ms)
+✔ P2 model gate rejects missing credentials without network (1290.413477ms)
+✖ help acceptance activates ready attempt and atomically stores question, receipt, event, and job (8951.155243ms)
+✔ help acceptance derives its exact 45-second deadline from one clock reading (8482.485341ms)
+✔ new help replaces the old help job and increments the shared epoch once (6544.150617ms)
+✔ capture and reminder controls preserve the original accepted help input (5169.425452ms)
+✔ disabled policy and an active limited check reject help before a tutoring job is created (13275.109105ms)
+✔ help rejects stale revisions, foreign object references, and unauthorized actors without model work (4339.015789ms)
+✖ a corrupted persisted request binding returns a typed state conflict (3349.358559ms)
+✔ context assembly exposes only the selected snapshot, relevant claims, actual help, and approved paragraphs (4091.037093ms)
+✔ empty learner history stays explicit unknown and does not block help (6910.699439ms)
+✔ bounded resource reference IDs complete the real C3 message and action chain (5848.892749ms)
+✔ bounded code reference IDs complete the real C3 message and action chain (5668.801097ms)
+✔ resource and unavailable-run references remain exact, scoped, and explainable (5.47107ms)
+✔ instructions inside an approved resource remain untrusted and cannot expand help capabilities (1.631729ms)
+✔ current guard distinguishes cancellation from stale policy, version, and recovery state (1.118543ms)
+✔ authorized execution returns a traceable C3 handoff and discards a post-model stale result (10.627756ms)
+✔ authorized execution persists one C3 message/action with the held lease and cumulative call ledger (4248.92244ms)
+✔ tutoring composer can attach the teacher agent without taking over student jobs (3959.719703ms)
+✖ long unresolved teaching text survives C3 persistence and exact result replay (3495.191237ms)
+✖ a withdrawn trusted budget blocks the next provider call before reservation (6218.622106ms)
+✔ persisted call budget is shared across workers and reserves before provider invocation (2.693069ms)
+✔ cancelled and expired jobs end before claim without invoking the provider (1.111349ms)
+✔ an input-limit rejection before the invoker releases only its unsent persisted reservation (1.510835ms)
+﹣ P2 real-model student help, persisted content and undisplayed cancellation (0.113141ms) # SKIP
+✔ HDL board validation refuses executable mappings, missing bits and duplicates (8.567987ms)
+✔ elaborated widths/directions and all input bits must match, including ascending buses (3.26765ms)
+✔ four-value frames preserve X/Z and reject missing width or forged time (1.496568ms)
+✔ HDL interaction keeps input/cycle trust boundaries and the independent container limits (1.812217ms)
+✔ DL-C synthetic schema is exactly 29 tables; authenticated .sv ACK and immutable build survive retries (11304.878367ms)
+✔ DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram (10278.928501ms)
+✔ DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state (5191.90878ms)
+✔ real A1/A2 transactions persist double-key ACKs, whole files and original revisions (11288.007631ms)
+✔ late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches (7380.088899ms)
+✔ current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data (7810.325042ms)
+✔ two real processes share the original ACK, and acknowledged state survives process restart (10016.847698ms)
+✔ persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private (6071.245108ms)
+✔ unknown with no node fact never resubmits; failed result commit recovers the same immutable fact (5731.221212ms)
+✔ A2 pause stops a queued check through the original node cancellation; resume never resurrects it (3767.679652ms)
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (1.851855ms) # SKIP
+✔ composed teacher and workspace jobs share routes while retaining their authorization and cancellation (15864.459448ms)
+✔ review: late runs failure rolls back student session activity with Job, receipt and event (9220.445364ms)
+✔ review: original run ACK and conflicts return before pending readiness; authorization still applies (7961.670351ms)
+✔ review: concurrent new runs recheck the original receipt after readiness (6019.430392ms)
+✔ review: current teacher reads retained workspace, snapshot and run after student withdrawal (6285.48651ms)
+✔ review: real RunControl preparation failure ends check without fabricating a RunRecord (5769.877049ms)
+✔ run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution (16.189265ms)
+✔ lost transport queries same original run and rechecks current authorization before submit (7.028841ms)
+✔ check cancellation keeps stage until the authenticated node confirms no pending units (10.029013ms)
+✔ confirmed failure requires original identity, current lease/generation and no units or result (8.789873ms)
+✔ confirmed original facts reconcile expired/unknown leases and never become current-code claims (17.384941ms)
+✔ authorized diagnostic reads exclude other attempts and private check detail (4.838329ms)
+✔ pause queued run retains cancellation intent and prevents new execution until node confirmation (6.477558ms)
+✔ stopping an already confirmed cancelled run under a new key preserves terminal state (5.903385ms)
+﹣ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (5.668788ms) # SKIP
+✔ whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted (94.355123ms)
+✔ CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input (334.329262ms)
+✔ exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges (4.211241ms)
+✔ snapshot and ObjectRef bind old file instance/version/body rather than current paths (5.079841ms)
+✔ capture/reminder/lifecycle controls are separate and stale process does not block saving (2.30676ms)
+✔ unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely (5.049916ms)
+✔ login persists a Secure session and server-side course identity; logout revokes it (8013.117632ms)
+✔ account window admits ten total attempts, concurrent hashing admits two, and expiry resets the window (20136.382567ms)
+✔ IP throttling covers unknown accounts and survives application recreation with the same signing material (55558.781934ms)
+✔ a real database failure during password verification cannot ACK a session or expose sensitive diagnostics (1727.760467ms)
+✔ the mature session plugin propagates a real store save failure before an HTTP acknowledgement (2210.795871ms)
+✔ session identity and reserved account attempts survive an actual process restart using IPC-only signing material (3655.567993ms)
+✔ credentials and role spoofing are rejected; current course role is reread on every request (3616.83506ms)
+✔ Origin, JSON and session-bound CSRF are required; relogin rotates both tokens (2905.230793ms)
+✔ idle and absolute deadlines reject at the exact boundary; forbidden requests do not extend activity (3030.044592ms)
+✔ course authorization and a SQL command share the same atomic transaction (2217.893497ms)
+✔ authorized SQL failure rolls back session activity and revoked roles cannot enter the callback (2181.703931ms)
+✔ authorized transactions reject async and nested work and expire escaped SQL capability (2111.101738ms)
+✔ resource authorization denies another student and private material before reading or committing work (2112.717721ms)
+✔ liveness responds without claiming that teaching dependencies are ready (844.840116ms)
+✔ readiness stays unavailable while database, model and runner are not implemented (34.70449ms)
+✔ each response uses a new server request ID even when the client supplies one (57.479507ms)
+✖ teacher checks and fixes a version; only its assigned student reads approved material after reopen (11007.259482ms)
+✖ activity pause atomically stops teaching jobs and requests run cancellation; resume retains individual and Attempt pauses (8101.348066ms)
+✔ release rejects missing readiness, unresolved concerns, stale revisions and forged authorization; batch assignment is atomic (11415.362788ms)
+✔ late audit SQL failure leaves activity, assignment, Attempt, Job, receipts and Session unchanged (4138.569359ms)
+✔ two independent processes serialize identical receipts, reject competing control CAS and preserve state on lock busy (8615.108566ms)
+✖ paused assignments block tutor input and queued runs retain cancellation intent until the node confirms (3338.472188ms)
+✔ a replaced material version cannot silently change the fixed activity projection (3379.038079ms)
+✔ a readiness response with an unbound validation fingerprint cannot open an activity (3208.162184ms)
+﹣ real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain (0.588456ms) # SKIP
+✔ committed release replays its exact receipt while runtime readiness remains pending (5188.277347ms)
+✔ committed checks replay their exact receipt while runtime readiness remains pending (4789.404743ms)
+✔ checks rejects current permission/generation/key conflicts without waiting for runtime (5654.428973ms)
+✔ checks returns a concurrent committed receipt even if its earlier runtime query fails (3857.343601ms)
+✔ checks rechecks permission after the new command runtime wait (3047.374692ms)
+✔ checks rechecks generation after the new command runtime wait (2587.316509ms)
+✖ releases rejects current permission/generation/key conflicts without waiting for runtime (3934.388517ms)
+✔ releases returns a concurrent committed receipt even if its earlier runtime query fails (2623.736708ms)
+✔ releases rechecks permission after the new command runtime wait (2310.408402ms)
+✔ releases rechecks generation after the new command runtime wait (2357.498567ms)
+✔ teacher selects an asynchronous candidate and the editable draft survives reopening (8716.403293ms)
+✔ local proposal saves its original diff and adoption uses the existing PATCH CAS (5799.843634ms)
+✔ teacher-approved private sample supports rubric trial and only explicit rubric PATCH revises it (6458.946785ms)
+✔ editing during generation preserves the manual revision and rejects the old result (3600.034727ms)
+✔ original request and result replay survive edits, while conflicting keys or result bodies are refused (3607.37367ms)
+✔ durable cancellation promptly ends a pending round and a late result cannot create a proposal (4305.01438ms)
+✔ teacher job ownership, role and course checks reject students, other teachers and forged identity (7183.619986ms)
+✔ only explicitly approved course paragraphs and matching hashes enter generation or rubric trials (3786.210956ms)
+✔ a model cannot expand requested fields or smuggle unapproved resources through patch values (5127.126475ms)
+✔ a fresh blueprint proposal retains unresolved structure and teacher confirmation forms a draft (2631.934005ms)
+✔ three reserved calls and unknown usage remain durable and manual creation works after budget denial (5701.139087ms)
+✔ queueing counts toward the 45-second deadline and expired jobs cannot generate (4677.10401ms)
+✔ concurrent workers cannot claim the same round and an expired original lease is not retried (4030.76645ms)
+✔ restored recovery generation refuses an old round before another model call (4116.234397ms)
+✔ result commit failure rolls back and the original delivery can be retried without another generation (4637.395247ms)
+✔ revoked teacher access invalidates an in-flight result and stops read or receipt replay (2500.057268ms)
+✔ durable call reservations stop additional paid attempts when the trusted budget is withdrawn (2964.554049ms)
+✔ provider failure with missing usage keeps unknown reservations and does not affect manual edits (2712.24009ms)
+✔ a ticking service clock keeps the accepted job window exactly 45 seconds (2427.694024ms)
+✔ proposal result hash identifies the exact stored B body bytes and altered bytes conflict (3007.932115ms)
+✔ actual usage returned after the deadline survives reopening without accepting the late body (2992.928536ms)
+✔ input preflight rejection records zero outbound calls and no billable reservation (2932.185092ms)
+✔ late actual usage updates a cancelled job without reviving its result (2883.254667ms)
+✔ a second call rejected by preflight preserves the first sent call and its actual usage (2931.310948ms)
+✔ a response from an old recovery generation cannot update accounting or deliver a proposal (2223.775438ms)
+﹣ P2 real-model teacher generation, explicit adoption and local PATCH (0.64416ms) # SKIP
+✔ partial drafts remain editable while checks separately report blockers, teacher concerns and unknown effects (41.923896ms)
+✔ valid linked synthetic design passes structure while effects remain unknown and teacher concerns persist (29.073618ms)
+✔ missing observations, duplicate IDs, old goal versions and broken task/rubric links are blockers (34.171387ms)
+✔ cross-course, withdrawn, unauthorized, ambiguous resources and unavailable policy versions are blocked (44.000389ms)
+✔ blank solution routes block confirmation without preventing a partial draft edit (4.556165ms)
+✔ a teacher can start a partial draft and edit one field without losing other manual content (26.064465ms)
+✔ stale revisions and identity/role injection fail without changing manual edits (9.012988ms)
+✔ copy creates a new draft at revision one and keeps an independent source reference (11.867003ms)
+✔ goal semantics cannot silently change while retaining the same competency version (7.618849ms)
+✔ an edit cannot reuse a lower competency version for changed goal semantics (0.727885ms)
+✔ UTF-8 material preserves the original text and produces its known SHA-256 reference (39.387066ms)
+✔ BOM, CRLF, Chinese, astral characters and trailing spaces retain exact paragraph boundaries (4.900752ms)
+✔ material rejects malformed UTF-8, unsupported formats, forged fields and private audience exposure (12.190063ms)
+✔ material byte limits count UTF-8 bytes and course usage, allowing the exact maximum (34.675541ms)
+✔ student and tutor previews omit all private asset identifiers, titles, hashes and content (66.604535ms)
+✔ preview audiences cannot grant teacher authorization or bypass a denied course (4.270092ms)
+✔ visibility is purpose-specific and ambiguous, withdrawn or foreign materials expose no metadata (3.722124ms)
+✔ preview rejects unknown draft fields, whitelists material metadata and returns independent content (4.989382ms)
+✔ teacher material is committed with a fixed paragraph reference and survives database reopening (6944.827931ms)
+✔ manual drafts retain teacher edits, copy independently, and replay original results before revision CAS (5847.815904ms)
+✔ competency meaning is immutable across drafts and remove-readd history, while known older versions remain usable (5076.051683ms)
+✔ stored checks bind revisions and teacher previews redact private and unapproved materials without granting audience access (5266.951244ms)
+✔ current session roles protect commands, reads and copy sources; hidden and missing references are indistinguishable (5724.317141ms)
+✔ recovery generation is checked before replay and a generation change before commit rolls back the entire command (3987.23736ms)
+✔ a real late SQL failure rolls back draft, competency, audit, receipt and session activity without an ACK (2763.564963ms)
+✔ independent processes commit one receipt per key, arbitrate revision CAS and enforce the course quota atomically (7684.416818ms)
+✔ a competing SQL writer reports persistence failure without advancing session or acknowledging a command (7049.434976ms)
+✔ corrupt persisted JSON cannot produce a read or replay ACK and diagnostics reveal no private content (5293.532923ms)
+✔ authorization-consistent previews remain fixed to the revision observed during concurrent edits (7724.936079ms)
+✔ material rejection preserves the committed catalog and does not issue receipts for invalid or oversized inputs (5047.524846ms)
+✔ a structurally valid but foreign result in a receipt is refused instead of leaking another course material (4566.695369ms)
+✔ committed rows survive forced process exit; busy writers and an interrupted transaction leave no partial rows (3414.618779ms)
+✔ competing CAS updates observe the committed value; a loser rolls back all preceding writes (1108.489683ms)
+✔ malformed JSON returns a safe format error rather than an internal failure (240.003004ms)
+✔ oversized input is rejected with CONTENT_LIMIT without exposing content (19.229373ms)
+✔ unknown routes return the common error envelope without reflecting the URL (24.516542ms)
+✔ unexpected failures produce only sanitized diagnostics and do not expose exception or request data (161.823855ms)
+✔ unsupported media types and trusted schema validation use safe INVALID_REQUEST errors (303.775364ms)
+✔ domain conflicts retain their status and require explicit authorized re-reading (38.51525ms)
+✖ shared C records commit once with actual Session, Attempt and Job, replay before CAS, and survive reopen (9260.165011ms)
+✔ late actual SQL failure rolls back Attempt, Job, C receipt/event and Session; failed command can explicitly retry (4950.823161ms)
+✔ current resource owner, generation and role are checked before stored C results (6574.635049ms)
+✔ an asynchronous result validator is rejected before the command callback starts (107.559569ms)
+✔ a global idempotency key conflicts across authorized courses before running new business work (3486.90548ms)
+✔ persistent store cannot revive revoked/expired sessions or persist untrusted identities (771.63217ms)
+✔ startup port accepts only an explicit valid TCP port or the default (10.184113ms)
+✔ the entry process refuses invalid configuration without logging its value (948.165745ms)
+✔ the compiled entry listens on the configured loopback port (1126.070668ms)
+✔ the real HTTP listener responds locally and releases its port on close (310.226407ms)
+✔ fresh synthetic database enforces configuration, foreign keys and atomic rollback (255.69183ms)
+✔ transaction rejects async, thenables, nesting and escaped capability; uniqueness rolls back (169.090973ms)
+✔ shared parsing validates input and rejects undeclared identity fields without echoing data (291.608303ms)
+ℹ tests 291
+ℹ suites 0
+ℹ pass 274
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 8
+ℹ todo 0
+ℹ duration_ms 113571.213762
+
+✖ failing tests:
+
+test at server/tutoring/test/student-help.test.ts:293:1
+✖ help acceptance activates ready attempt and atomically stores question, receipt, event, and job (8951.155243ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"993702c2-9d7c-4905-8277-7da6e816b52f","error":{"code":"INVALID_REFERENCE","message":"Invalid reference.","retryable":false,"recovery":"Use an authorized confirmed reference."}}
+
+  422 !== 200
+
+      at setupProject (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:267:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:296:19)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server/tutoring/test/student-help.test.ts:573:1
+✖ a corrupted persisted request binding returns a typed state conflict (3349.358559ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"03c8d9ec-a923-4b72-bb65-9bae855caa6c","error":{"code":"INVALID_REFERENCE","message":"Invalid reference.","retryable":false,"recovery":"Use an authorized confirmed reference."}}
+
+  422 !== 200
+
+      at setupProject (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:267:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:576:19)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server/tutoring/test/student-help.test.ts:1102:1
+✖ long unresolved teaching text survives C3 persistence and exact result replay (3495.191237ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"d10ee68e-c2a2-4412-adf2-c8b4f17c3f25","error":{"code":"INVALID_REFERENCE","message":"Invalid reference.","retryable":false,"recovery":"Use an authorized confirmed reference."}}
+
+  422 !== 200
+
+      at setupProject (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:267:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:1107:19)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server/tutoring/test/student-help.test.ts:1145:1
+✖ a withdrawn trusted budget blocks the next provider call before reservation (6218.622106ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"372fb0cf-557c-47a9-8600-df85201d9138","error":{"code":"INVALID_REFERENCE","message":"Invalid reference.","retryable":false,"recovery":"Use an authorized confirmed reference."}}
+
+  422 !== 200
+
+      at setupProject (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:267:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/server/tutoring/test/student-help.test.ts:1149:21)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 422,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/design-activities.test.ts:125:1
+✖ teacher checks and fixes a version; only its assigned student reads approved material after reopen (11007.259482ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  401 !== 200
+
+      at draft (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:107:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:129:21)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 401,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/design-activities.test.ts:166:1
+✖ activity pause atomically stops teaching jobs and requests run cancellation; resume retains individual and Attempt pauses (8101.348066ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  401 !== 200
+
+      at draft (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:107:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async releaseAndAssign (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:157:19)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:170:22)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 401,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/design-activities.test.ts:293:1
+✖ paused assignments block tutor input and queued runs retain cancellation intent until the node confirms (3338.472188ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  401 !== 200
+
+      at draft (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:121:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async releaseAndAssign (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:157:19)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:297:22)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 401,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/design-activities.test.ts:416:3
+✖ releases rejects current permission/generation/key conflicts without waiting for runtime (3934.388517ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  401 !== 200
+
+      at draft (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:107:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/paher/xunjie-dlc/tests/design-activities.test.ts:419:86)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 401,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/records-adapter.test.ts:92:1
+✖ shared C records commit once with actual Session, Attempt and Job, replay before CAS, and survive reopen (9260.165011ms)
+  TypeError: Cannot read properties of undefined (reading 'length')
+      at TestContext.<anonymous> (file:///home/paher/xunjie-dlc/tests/records-adapter.test.ts:104:112)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

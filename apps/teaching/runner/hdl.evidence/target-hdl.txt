@@ -1,0 +1,23 @@
+✔ HDL board validation refuses executable mappings, missing bits and duplicates (4.127089ms)
+✔ elaborated widths/directions and all input bits must match, including ascending buses (2.226063ms)
+✔ four-value frames preserve X/Z and reject missing width or forged time (0.823504ms)
+✔ HDL interaction keeps input/cycle trust boundaries and the independent container limits (1.853657ms)
+▶ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination
+  ✔ same vvp session preserves registers and an exact duplicate never advances (168.410511ms)
+  ✔ wrong port width and syntax are actual build failures (1822.289731ms)
+  ✔ wrong segment output, repaired output and X/Z are sampled from HDL (6241.470648ms)
+  ✔ untrusted stdout, proc fd and shell cannot forge the signal channel (3056.284631ms)
+  ✔ unsupported shell invocation fails without creating a forged frame (2913.964645ms)
+  ✔ original scope and generation are mandatory after stopping (1.04545ms)
+  ✔ two real instances keep independent registers and exhaust the session pool (8814.615001ms)
+  ✔ real scan samples keep the selected digit and NBA state with explicit finite coverage (3408.724059ms)
+  ✔ a zero-time loop cannot progress and is terminated, not reported as a successful frame (5108.336913ms)
+✔ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (35067.292356ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35354.616206

@@ -17,4 +17,5 @@ export type RunnerCommand =
   | {op:'query'|'cancel'|'readResult';identity:RunIdentity}
   | {op:'readiness'}
   | {op:'recover'}
-  | {op:'advanceGeneration';generation:string};
+  | {op:'advanceGeneration';generation:string}
+  | import('./hdl.ts').HdlCommand;
