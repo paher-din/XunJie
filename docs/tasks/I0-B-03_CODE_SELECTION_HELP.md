@@ -109,3 +109,42 @@ rtk npm run typecheck
 独立提交`67507a2`已以`76547ee`整合回`i0/ui-frontend`。主页面在原正文辅导槽接明确快照选择、整份文件/精确选区、对象核对与02发送；发送前核当前原文，dirty/无快照/失效选区不自动保存。编辑器和纯构造器仍沿上述接口，无回答驱动的自动定位。
 
 新增[代码浏览器检查](../../apps/student/e2e/tutoringCode.spec.ts)2项通过，核Monaco实际选择→原help ObjectRef/range/body、选择零写入、草稿变更后不发旧对象、无快照不偷偷保存/冻结及开放项目问题。原编辑4项与确认20项回归通过，包含BOM/混合EOL/非BMP字节、undo/redo、刷新/晚ACK/代际。正式build/typecheck及组合统计见[批次结果](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)。D-01回答关联、真实对象权限/服务仍未交；完整AC-04和整票不勾通过，基线待授权维护者汇总。
+
+## 2026-10-14 AC7 独立浏览器补验范围
+
+Robert明确授权在独立工作树的`codex/i0-b-closeout-code`（开工基线`cc7289180e6ff407c2ae4c97913768a0a534603d`，工作区干净）补验并本地提交；后续由主Agent整合回原`i0/ui-frontend`。本次负责03 AC7的代码来源/实例与迟到回答隔离，只可写[代码浏览器检查](../../apps/student/e2e/tutoringCode.spec.ts)及本文。页面、消息状态机/Pane、helpStop/controls归主Agent；messages、run/return归其他worker；这些源码、共享helper、后台、fixture、保护文档、schema、依赖与配置均只读。发现实现错误回交主Agent具体最小修复建议，不修改实现或弱化断言。
+
+已读正文：README/AGENTS；PRD §3.2/4.2/8（学生控制、原对象与数据边界）；MVP M-03/04/05、§4/5/6（AC-03/04/06/12、NFR-04/05）；TECH §4.1、§7.1～7.5（ObjectRef、一基UTF-16、同名新实例、已显示历史与投递/代际）；I0-B PLAN §1/2/5/6/7/9/11/12、SPEC全文、03全票；I0-A SPEC实施/测试/范围、客户端约束§1～9（尤其§2～4）、IMPORT_SOURCE固定来源/许可/选择性同步边界、TEAM §1/2/2.1及I1～I3。较新D-01已交事实以PLAN §11为准，保留上方历史记录。
+
+实施方案与验收：沿同一authority和真实Chrome操作确认作品→代码/选区求助→实际显示→回收原实例并确认→同路径新建并确认，核原回答file/snapshot来源及原实例不可用提示持续可见，新实例不承接旧回答，正文/位置不被回答修改。另保留authority实际返回的原教学事件，待当前Attempt或受信代际切换并重读后才释放，核旧正文/来源/回执不能混入当前会话。原消息/历史已验的暂停、账号授权失败等反例只引用既有证据，不重复全部组合；不伪造成功payload或新协议。
+
+验证仅运行`tutoringCode.spec.ts`和必要typecheck，使用`CI=1`、Chrome与独立端口5681/5682；复用已有Node/依赖junction，不安装。执行结果、失败与剩余项在本节后续追加；本次不推送、模型调用、真实数据或执行节点。产品基线及MVP_SPEC §10仍为“待授权维护者汇总”。
+
+### 实际验证与交接
+
+2026-10-14，在既有Node v24.15.0、依赖junction环境执行以下命令（前两项在`apps/student`，后两项在仓库根）：
+
+```powershell
+$env:CI='1'
+$env:XUNJIE_E2E_BROWSER_CHANNEL='chrome'
+$env:XUNJIE_E2E_PREP_PORT='5681'
+$env:XUNJIE_E2E_REAL_PORT='5682'
+rtk npm run test:e2e -- tutoringCode.spec.ts --workers=1
+rtk npm run typecheck
+node tools/a0-review/check.mjs
+rtk git diff --check
+```
+
+Chrome专项首轮5/5通过、零失败/跳过、50.8秒；收尾在两项迟到反例补DOM插入观察（防止漏检短暂闪现），原专项复跑仍5/5、零失败/跳过、49.3秒，typecheck再次退出0。不同用例仍只计5项：保留原2项，新补3项。新增证据如下：
+
+| AC7反例 | 实际浏览器/来源核验 |
+| --- | --- |
+| 已显示回答→回收→同名重建 | 真实文件菜单回收/确认、同路径新建/确认后，两实例fileId不同；旧实例仍recycled且原正文/hash保留。原回答Action和完整ObjectRef不变；可见来源仍显示原path/documentVersion/snapshot，并明确“原文件当前不可用；同名文件不承接这份回答”。打开/收起回答不改新正文、草稿、光标和服务作品，不产生保存/冻结/新求助/运行/控制命令 |
+| 原正文跨Attempt迟到 | 扣住同一authority已产生的真实代码事件，不改响应；另一独立场景提供实际新Attempt。原页面仅切开发场景参数并走“重新读取”，保留旧HTTP promise；新Attempt/历史读取就绪后释放旧页，随后新显式代码求助正常显示。DOM插入观察只出现新Action，旧Action/快照/正文未混入新会话或ledger，也无旧Action回执 |
+| 原正文跨代际迟到 | 复用既有`recoverRunContext`故障脚本换受信代际并用原UI重读，再释放旧完整代码事件；DOM插入观察只出现新Action，旧Action不展示、不入ledger、不补回执。新代际显式求助正常显示同一确认快照，payload代际为新值，作品未改 |
+
+复用证据：[messages专项](../../apps/student/e2e/tutoringMessages.spec.ts)的“已重读的新暂停优先于迟到旧教学页”覆盖当前控制/epoch，[history专项](../../apps/student/e2e/tutoringHistory.spec.ts)的“刷新缓存待重新授权…真实401清空历史”及跨client/失效shown原历史覆盖账号授权失效和合法历史边界；本次未重跑这两个他人独占文件，也未新增账号切换的全组合检查。各既有实际通过范围见[PLAN §11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)。
+
+失败记录：首次typecheck退出1，新测试直接导入`TutorLedger`令Node侧检查递归引入浏览器`mode.ts`，产生4条`ImportMeta.env`类型错误；已在本spec改为只读核验所需的字段类型，未改应用/tsconfig/依赖。随后原`npm run typecheck`完整退出0。浏览器运行无失败；既有public品牌资源导入提示和NO_COLOR/FORCE_COLOR提示保留，未改配置掩盖。文档检查77份文档、errors=[]；差异空白检查退出0。
+
+本次未发现需回交主Agent的实现错误，未修改或弱化原2项断言。只交本文与`tutoringCode.spec.ts`的本地提交；主Agent后续cherry-pick到原`i0/ui-frontend`并记录组合结果。本次没有重新运行Vitest/build、实际HTTPS服务、节点/模型或真人验收；上述5项仅为实际Chrome上的隔离合成工程证据，不新增整项AC/NFR/教学效果结论。尚余主分支集成和原真实验收门禁，产品基线及MVP_SPEC §10“待授权维护者汇总”。
