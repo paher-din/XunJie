@@ -12,9 +12,11 @@ import { InputLimitError, SyntheticProvider, type ModelProvider } from "../provi
 import { executeAuthorizedStudentHelp } from "../service.ts";
 import {
   assertRealPerformanceBatchAuthorization,
+  assertRealSemanticFixBatchAuthorization,
   realModelEnabled,
   realModelProbe,
   realPerformanceBatchEnabled,
+  realSemanticFixBatchEnabled,
   writeRealModelEvidence,
 } from "./real-model-support.ts";
 
@@ -1433,6 +1435,13 @@ function performanceScenarios(): PerformanceScenario[] {
   return scenarios;
 }
 
+function semanticFixScenarios(): PerformanceScenario[] {
+  const selected = new Set(["filtered-3", "relevant-3"]);
+  const scenarios = performanceScenarios().filter((scenario) => selected.has(scenario.id));
+  assert.deepEqual(scenarios.map((scenario) => scenario.id), ["relevant-3", "filtered-3"]);
+  return scenarios;
+}
+
 function nearestRank(values: readonly number[], percentile: number): number | undefined {
   if (values.length === 0) return undefined;
   const sorted = [...values].sort((left, right) => left - right);
@@ -1461,6 +1470,141 @@ test("P2 performance fixture fixes 30 authorized scenarios without model access"
     whole_solution_request: 4,
     limited_help_adjacent_example_handoff: 4,
   });
+});
+
+test("P2 semantic-fix fixture fixes two authorized scenarios without model access", () => {
+  assert.deepEqual(semanticFixScenarios().map(({ id, category }) => ({ id, category })), [
+    { id: "relevant-3", category: "relevant_history" },
+    { id: "filtered-3", category: "unrelated_withdrawn_history" },
+  ]);
+});
+
+test("P2 authorized two-job real student-help semantic-fix batch", {
+  skip: !(realModelEnabled && realSemanticFixBatchEnabled),
+}, async t => {
+  assertRealSemanticFixBatchAuthorization();
+  const probe = realModelProbe();
+  const scenarios = semanticFixScenarios();
+  const samples: Record<string, unknown>[] = [];
+  let providerAttempts = 0;
+  const maximumExternalRequests = 6;
+  const opaqueIdentifier = /(?:\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b|\b[0-9a-f]{40,64}\b|\b(?:claim|assistance|resource|project|learner-state):[A-Za-z0-9:_.-]+)/i;
+  const boundedProvider: ModelProvider = {
+    async generate(request) {
+      if (providerAttempts >= maximumExternalRequests) {
+        throw new Error("P2 two-job semantic-fix batch stopped before exceeding its six-request ceiling.");
+      }
+      providerAttempts += 1;
+      return probe.provider.generate(request);
+    },
+  };
+  const evidence: Record<string, unknown> = {
+    approvedScope: {
+      jobs: 2,
+      maximumExternalRequests,
+      execution: "serial",
+      automaticReruns: 0,
+      perJob: { maximumProviderCalls: 3, maximumRepairs: 1, deadlineMs: 45_000 },
+      model: "deepseek-flash",
+      thinking: "disabled",
+      sdkMaxRetries: 0,
+      versions,
+      data: "repository-fixed-synthetic-only",
+      priorPerformanceAuthorizationReused: false,
+    },
+    samples,
+  };
+  try {
+    for (const scenario of scenarios) {
+      const beforeHttp = probe.http.length;
+      const f = await fixture(false, boundedProvider, true);
+      const startedAt = Date.now();
+      try {
+        const setup = await setupProject(f, true, scenario.material);
+        const accepted = await command(f.service.app, setup.student, `/api/attempts/${setup.attemptId}/help`, {
+          expectedAttemptRevision: 1,
+          question: scenario.question,
+          objectRef: {
+            kind: "resource",
+            attemptId: setup.attemptId,
+            resourceVersionId: setup.resourceId,
+            paragraphId: setup.paragraphId,
+          },
+        });
+        assert.equal(accepted.statusCode, 200, accepted.body);
+        const jobId = String(accepted.json().data.result.jobId);
+        const executed = await f.service.app.inject({
+          method: "POST",
+          url: `/fixture/execute/${setup.attemptId}/${jobId}`,
+          headers: setup.student,
+          payload: { preparation: scenario.preparation ?? {} },
+        });
+        assert.equal(executed.statusCode, 200, executed.body);
+        const execution = executed.json().data;
+        assert.equal(execution.outcome?.outcome, "success", JSON.stringify(execution.outcome));
+        const body = execution.outcome.body as {
+          content: string;
+          rationale: string;
+          expectedStudentAction: string;
+          assistanceContext: string;
+          unresolved: string[];
+          evidenceIds: string[];
+          resourceRefs: string[];
+        };
+        const visibleText = [
+          body.content,
+          body.rationale,
+          body.expectedStudentAction,
+          body.assistanceContext,
+          ...body.unresolved,
+        ].join("\n");
+        assert.match(body.content, /\p{Script=Han}/u, `${scenario.id} content must use Chinese`);
+        assert.match(body.expectedStudentAction, /\p{Script=Han}/u, `${scenario.id} action must use Chinese`);
+        assert.doesNotMatch(visibleText, opaqueIdentifier, `${scenario.id} exposed an opaque internal identifier`);
+        assert.ok(
+          execution.authorizedReferenceIds.every((referenceId: string) => !visibleText.includes(referenceId)),
+          `${scenario.id} exposed an authorized reference ID in visible text`,
+        );
+        const structuredRefs = [...body.evidenceIds, ...body.resourceRefs];
+        assert.ok(structuredRefs.length > 0, `${scenario.id} must retain at least one structured reference`);
+        assert.ok(
+          structuredRefs.every((referenceId) => execution.authorizedReferenceIds.includes(referenceId)),
+          `${scenario.id} returned a structured reference outside the authorized set`,
+        );
+        const jobHttp = probe.http.slice(beforeHttp);
+        assert.ok(jobHttp.length >= 1 && jobHttp.length <= 3, `${scenario.id} used ${jobHttp.length} HTTP requests`);
+        samples.push({
+          scenarioId: scenario.id,
+          category: scenario.category,
+          question: scenario.question,
+          jobLatencyMs: Math.max(0, Date.now() - startedAt),
+          externalRequests: jobHttp.length,
+          outcome: execution.outcome,
+          authorizedReferenceIds: execution.authorizedReferenceIds,
+          visibleChecks: {
+            chineseContent: true,
+            chineseExpectedStudentAction: true,
+            opaqueIdentifiersAbsent: true,
+            authorizedReferenceIdsAbsent: true,
+            structuredReferencesRetained: true,
+          },
+          providerFacts: jobHttp,
+        });
+      } finally {
+        await f.close();
+      }
+    }
+    assert.equal(samples.length, 2);
+    assert.ok(probe.http.length <= maximumExternalRequests);
+  } finally {
+    evidence.final = {
+      completedJobs: samples.length,
+      externalRequests: probe.http.length,
+      providerAttempts,
+      completedAuthorizedBatch: samples.length === 2,
+    };
+    t.diagnostic(`Synthetic-data two-job semantic-fix evidence: ${writeRealModelEvidence("student_help_two_job_semantic_fix", evidence, probe.http)}`);
+  }
 });
 
 test("P2 authorized 30-job real student-help performance batch", {

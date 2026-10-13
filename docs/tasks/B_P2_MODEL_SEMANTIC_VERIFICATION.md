@@ -375,3 +375,13 @@ node --test server/tutoring/test/index.test.ts server/tutoring/test/student-help
 静态类型检查退出码为 0；领域套件共 91 项，89 项通过、0 项失败、2 项真实模型测试按门禁跳过。输入预算定向测试通过。该结果完成代码和离线回归，不把 HR-05/06/07/10 自动改记为真实模型复验通过。
 
 新的真实复验仍待独立授权：建议只运行两个串行合成 `student_help` Job，一个覆盖中文语言对齐，一个覆盖内部标识自然语言过滤；沿用 `deepseek-flash`、`maxRetries=0`、每 Job 最多 3 次调用和 45 秒截止，最坏 6 次外部请求，不自动重跑。需由 API 账号负责人明确批准该新增调用、费用与可能的 `unknown` usage 后方可执行；此前 30-Job 授权已执行完毕，不能延用。
+
+## 17. 2026-10-13 两 Job 真实语义修复复验授权与入口
+
+项目推进者兼 API 账号负责人明确批准使用仓库固定合成数据执行一次两 Job 真实语义复验，并批准该范围内的费用及可能出现的 `unknown` usage。授权固定为两个串行 `student_help` Job、最多六次 DeepSeek 外部请求；模型为 `deepseek-flash`，Node.js 为 24.21.0，thinking disabled，AI SDK `maxRetries=0`，每 Job 最多三次调用、最多一次 repair、接受起共享 45 秒截止。批次不自动重跑，不发送真实学生数据、教师私有材料、私有答案或凭据；任一越权数据风险、请求上限异常或未分类失败立即停止。此前 30-Job 授权已经执行完毕，本节为独立新增授权。
+
+固定样本仅覆盖第 15 节的两个必修问题：中文问题样本验证 `content` 与 `expectedStudentAction` 使用中文；相关历史样本验证所有学生可见自然语言字段不包含获准引用原值、claim/action/resource/project ID、UUID 或长哈希，同时 `evidenceIds`/`resourceRefs` 保持非空并且仍是获准引用子集。入口使用独立 `XUNJIE_P2_REAL_SEMANTIC_FIXES=approved-synthetic` 门禁，默认测试保持跳过；证据沿用现有脱敏、限长可见输出和临时目录策略。
+
+当前状态：授权已取得，先实现独立入口并完成零供应商请求的门禁、fixture、类型与回归验证。只有这些检查通过后才执行一次真实批次；实际结果产生前不得把 HR-03/05/06/07/10 的修复记为真实复验通过。
+
+独立入口与 README 安全命令已经实现。Node 24.21.0 下，门禁/fixture 定向测试为 4 项：3 通过、0 失败、1 个真实入口按预期跳过；TypeScript 静态检查退出码 0。B 四文件完整领域套件为 94 项：91 通过、0 失败、3 个真实入口按门禁跳过。文档静态检查无错误，检查器回归 16/16，`git diff --check` 通过，受保护产品/计划/参考文档及 `AGENTS.md` 无改动。上述预检没有设置真实授权变量、没有读取 key、供应商请求为 0。

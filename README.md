@@ -206,6 +206,27 @@ try {
 }
 ```
 
+2026-10-13，账号负责人在 30 Job 批次完成后独立批准一次两 Job 真实语义修复复验及其费用/unknown usage。该批只验证中文语言对齐与内部标识过滤，使用固定合成数据，最多六次外部请求，严格串行且失败不自动重跑；原 30 Job 授权不延用。只在 Node 24.21.0 下于 `apps/teaching` 执行一次：
+
+```powershell
+node tools/check-runtime.mjs
+if ($LASTEXITCODE -ne 0) { throw 'Node 24.21.0 is required; no model request was sent.' }
+$secureKey = Read-Host 'DeepSeek API key' -AsSecureString
+$keyPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+try {
+    $env:DEEPSEEK_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($keyPtr)
+    $env:XUNJIE_P2_REAL_MODEL = 'approved-synthetic'
+    $env:XUNJIE_P2_REAL_SEMANTIC_FIXES = 'approved-synthetic'
+    node --test --test-name-pattern='P2 authorized two-job' server/tutoring/test/student-help.test.ts
+    if ($LASTEXITCODE -ne 0) { throw 'Two-job semantic-fix batch stopped; inspect evidence and do not automatically retry.' }
+} finally {
+    Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:XUNJIE_P2_REAL_SEMANTIC_FIXES -ErrorAction SilentlyContinue
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($keyPtr)
+}
+```
+
 ## 阶段状态记录
 
 ### G0 基线批准、门禁与任务发布

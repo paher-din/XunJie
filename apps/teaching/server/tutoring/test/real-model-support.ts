@@ -106,6 +106,7 @@ export function assertRealModelRuntime(version = process.versions.node): void {
 
 export const realFailureProbeEnabled = process.env.XUNJIE_P2_REAL_FAILURES === 'approved-synthetic';
 export const realPerformanceBatchEnabled = process.env.XUNJIE_P2_REAL_PERFORMANCE === 'approved-synthetic';
+export const realSemanticFixBatchEnabled = process.env.XUNJIE_P2_REAL_SEMANTIC_FIXES === 'approved-synthetic';
 
 export function assertRealFailureProbeAuthorization(): void {
   if (!realFailureProbeEnabled) {
@@ -116,6 +117,12 @@ export function assertRealFailureProbeAuthorization(): void {
 export function assertRealPerformanceBatchAuthorization(): void {
   if (!realPerformanceBatchEnabled) {
     throw new Error('Explicit P2 30-job synthetic performance authorization is required.');
+  }
+}
+
+export function assertRealSemanticFixBatchAuthorization(): void {
+  if (!realSemanticFixBatchEnabled) {
+    throw new Error('Explicit P2 two-job synthetic semantic-fix authorization is required.');
   }
 }
 

@@ -5,6 +5,7 @@ import {
   assertRealFailureProbeAuthorization,
   assertRealModelRuntime,
   assertRealPerformanceBatchAuthorization,
+  assertRealSemanticFixBatchAuthorization,
   assertSafeEvidence,
   createObservedModelFetch,
   type HttpFact,
@@ -123,6 +124,16 @@ test('P2 30-job performance batch requires its own explicit authorization', () =
   } else {
     assert.throws(() => assertRealPerformanceBatchAuthorization(), {
       message: 'Explicit P2 30-job synthetic performance authorization is required.',
+    });
+  }
+});
+
+test('P2 two-job semantic-fix batch requires its own explicit authorization', () => {
+  if (process.env.XUNJIE_P2_REAL_SEMANTIC_FIXES === 'approved-synthetic') {
+    assert.doesNotThrow(() => assertRealSemanticFixBatchAuthorization());
+  } else {
+    assert.throws(() => assertRealSemanticFixBatchAuthorization(), {
+      message: 'Explicit P2 two-job synthetic semantic-fix authorization is required.',
     });
   }
 });
