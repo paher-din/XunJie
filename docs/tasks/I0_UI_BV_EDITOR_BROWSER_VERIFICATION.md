@@ -117,3 +117,9 @@ GitHub main 回读 protected=false，仓库没有已跟踪 CI workflow；本任�
 最终 Node 24.18.0 / npm 11.16.0 / Google Chrome 155.0.8059.40 复验：默认 2 worker 的 108/108 全量通过，218707.897ms（3:38.71），0 失败/跳过/flaky；Vitest 22 文件/238 项通过（1.01s）、typecheck 通过、build 通过（3.40s，既有大 chunk 提示保留）。未改应用源码/依赖；该结果验证入口要求的 Node 24，不与 Node 26 基线作跨版本提速比较。
 
 这次复验第一次启动漏设 Chrome/CI/端口覆盖，默认 Chromium 运行 16.66s 后主动中止（7 通过，101 未执行，退出 130），没有作为全量验收。随后使用第 5.3 节同一 CI/Chrome/5671～5673 环境并将 Node 24 目录放到 PATH 前重新完整执行，上述结果为最终有效运行。
+
+实际交付已完成：2026-10-13 14:14（Asia/Shanghai），[PR #51](https://github.com/paher-din/XunJie/pull/51) 以 merge commit `8d395d32a1645aad1859e36ced407410b54816e8` 合入 main；base 为 `1cd43f82a5681ac66cf268a3dbc1425223068444`，固定 head 为 `1fe6c960602679d8bd5f95af46ace14930cda0df`。合并前 MERGEABLE/CLEAN、Ready，reviews/status checks 为空；不宣称 hosted CI 通过。合并树与 head 均为 `b52e6c82310f8c3a3c69cf56d840584e3cbf1319`，应用源码与已验证 bde0999 无差异。源分支与旧 i0/ui-frontend 均保留，本地 main 正常快进，无强推/重置/删除。
+
+已更新并逐字回读三条原评论：[H 交接清单](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137496293)、[分支协作](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137712134)、[完整验收证据索引](https://github.com/paher-din/XunJie/issues/22#issuecomment-6137502504)。当前入口改为最新 main/PR #51，旧 PR #50 的 104 项证据明确历史范围；H 复选框逐行保持不变，UI 后续从最新 main 建立任务分支。02 两项补验单列，03/真实接入/完整验收条件继续保留；#30/#22 仍 Open，无部署或成员代签。
+
+合并后仅同步本人三份交付记录，完成文档/空白检查与普通提交推送，不重复运行未变化的应用。测试/构建与本次正文临时产物已清理，5601/5602/5611/5671/5672/5673 无残留监听；既有未跟踪 .zcodeignore 保留且未提交。最终 Git 交付判据为本地 main 与 origin/main 相同、已跟踪工作区干净，具体最终提交由 Git/交付报告核对。
