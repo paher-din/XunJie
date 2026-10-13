@@ -4,15 +4,17 @@ import { errorDefinitions } from '../contracts/common/http.ts';
 import { RunnerError } from '../runner/snapshot.ts';
 import { ApiError, errorResponse, domainError } from './app/errors.ts';
 
+import type { ServerOptions } from 'node:https';
+
 export interface AppOptions {
-  https?: {key:Buffer;cert:Buffer};
+  https?:Pick<ServerOptions,'key'|'cert'>;
   checkReadiness?:()=>boolean|Promise<boolean>;
   logDestination?: { write(message: string): void };
 }
 
 export function createApp(options: AppOptions = {}) {
   const app = Fastify({
-    ...(options.https?{https:options.https}:{}),
+    ...(options.https ? {https:options.https} : {}),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } },
     logger: options.logDestination ? {
       stream: options.logDestination,
