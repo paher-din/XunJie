@@ -1,0 +1,29 @@
+✖ C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable (1989.1767ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2751.321
+
+✖ failing tests:
+
+test at tests\dl-a-app.test.ts:166:1
+✖ C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable (1989.1767ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  false !== true
+
+      at TestContext.<anonymous> (file:///[WORKTREE]/apps/teaching/tests/dl-a-app.test.ts:176:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

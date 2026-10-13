@@ -1,0 +1,2 @@
+v24.21.0
+Linux 6.6.87.2-microsoft-standard-WSL2 x86_64

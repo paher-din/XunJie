@@ -1,6 +1,6 @@
 # DL-A：数字逻辑课程、共享契约与业务接入
 
-日期：2026-10-12（Asia/Shanghai）。责任：A。对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。当前状态（2026-10-13）：当前35表去重联合收尾见 §16，修复后53项组合专项已通过，完整回归与最终审查修复进行中；§12/14保留此前33表批次历史结果。整卡仍等待实际获准宿主联调及 B/UI/ALU 等输入，#38未完成。
+日期：2026-10-12（Asia/Shanghai）。责任：A。对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。当前状态（2026-10-13）：当前35表去重联合收尾见 §16：服务端批次已实现/验证，专项53/53；最终全量419总/408通过/0失败/11跳过，两轴复核0；§12/14保留此前33表批次历史结果。整卡仍等待实际获准宿主联调及 B/UI/ALU 等输入，#38未完成。
 
 ## 1. 基线、同步与写入范围
 
@@ -473,7 +473,7 @@ npm start
 
 沿 §15.5 的现有 #30/#39/#40 请求，不重复派工。负责人已批准35表，不再等待同一授权。尚需：
 
-1. **C / #30 H-03、H-04及 DL-C #39：** 当前实际部署 SHA，C 与 HDL 当前 profile、fingerprint/hash、validation、recoveryGeneration 的重验/登记记录；既有受控连接配置的引用位置。最新主线已改 HDL VPI/源码指纹，旧 ready 不可沿用；A 不维护节点。
+1. **A/C 执行入口 / #30 H-03、H-04及 DL-C #39：** C已回交当前节点重验与受控文件引用，见 §16.6；无需重复该验收。仍须确定如何在现有获准 PAHER 上执行本 A 固定源码的真实业务联调并回交证据，或交既有已授权、可供本机访问的受控入口引用。本机 MSI 无该目录；实际联调开始前重读当前 profile/指纹/validation/代际。
 2. **环境维护者 / #30 H-01：** 既有获准 HTTPS origin、TLS/签名/应用连接受控配置引用、获准合成账号与 Assignment 的交接方式。只交位置/引用，不在聊天或公开 Issue 粘贴秘密。用于真实 A/C 指定联调及后续浏览器/TLS。
 3. **C/课程检查交接：** ALU 行为检查器实际入口、已定义域覆盖和未定义域不评分证据；若未实现需明确原任务中的负责人/方案。结构检查不得写成 ALU 行为通过。
 4. **B / DL-B #40 首批：** 源码/诊断/信号/Trace 引用的对象、必需 ID/hash/sequence/版本、读取范围与当前性拒绝规则表，附提案/提交。无需等待完整 DL-B；具体对应 §9 的上下文与过时规则、错误引导/反例。
@@ -501,3 +501,42 @@ C 最新评论仍明确正常 HTTPS/TLS、实际UI/最终消费者组合未执�
 
 
 2026-10-13，审查修复后 Windows 五文件组合 **53总/53通过/0失败/0取消/0跳过**（包含真实HTTP等待期关停反例），typecheck通过。已获准 Icarus 包路径修正为 extracted 后，原 Linux 时钟专项**5/5通过**，包括1ps/100fs/1fs与超过低32位tick；只验证真实引擎时基，不替代目标节点隔离验收。静态文档 errors=[]、差异空白检查通过。下一步重新固定源码执行完整六组，并复核两轴发现的修复。
+
+
+### 16.7 固定源码最终审查与证据入口
+
+审查固定源码为 `89c85ed04db5a55ddebdc95c27303f0ff76fa31c`，基线 `cde69ccbd763c3c0ab381a809b750b951f195f64`。两独立 Agent 最终复核：Standards 硬规范违反0、可操作判断性异味0；Spec 可操作问题0。最初发现与修复仍完整保留在 §16.5；审查为只读，不计执行测试。逐轴报告：[review.md](../../apps/teaching/tests/evidence/dl-a-closeout/review.md)。
+
+按原 runner/fingerprint.ts 的34文件清单，对最终 Linux git archive 源码字节离线核算 sourceHash，与 C 新报告的7f4ec4f3…7852一致。只说明源码未因 A 变更再次漂移，不核 kernel/engine/policy/current readiness，也不冒充认证节点查询：[source-alignment.json](../../apps/teaching/tests/evidence/dl-a-closeout/source-alignment.json)。C 原批报告和本机可用性分列：[c-handoff-summary.json](../../apps/teaching/tests/evidence/dl-a-closeout/c-handoff-summary.json)。
+
+本批22份已有日志（含 red、失败、取消、改正后的专项及安装/build/typecheck）原字节gzip与hash、规范化展示分别保留：[logs-manifest.json](../../apps/teaching/tests/evidence/dl-a-closeout/logs-manifest.json)。仓库相对入口不依赖个人目录；两轮Linux安装/类型/build/environment/full另10份，加最终静态检查合计33份日志，完整回归最终计数和命令见下文。
+
+
+### 16.8 最终固定源码验证与本地交付
+
+2026-10-13，固定源码 `89c85ed04db5a55ddebdc95c27303f0ff76fa31c`，WSL2 Ubuntu / MSI、Node **24.21.0**、原lock，使用原已获准且保留的 Icarus12.0-2build2 extracted 包。npm ci、完整 typecheck、build 均退出0；实际学生UI按原lock在Windows构建，将同一dist用于Linux实际loopback静态服务测试；UI源码未改。当前源码、命令、范围、原日志及hash见 [acceptance.json](../../apps/teaching/tests/evidence/dl-a-closeout/acceptance.json) / [完整输出](../../apps/teaching/tests/evidence/dl-a-closeout/linux-final-full.txt)。
+
+完整命令在 apps/teaching 执行，明确包含原 npm test glob 未覆盖的 server/app；仅设置获准工具包/保留临时目录引用，未启用真实节点或付费模型测试开关：
+
+```sh
+XUNJIE_DLC_TOOLCHAIN="$APPROVED_EXTRACTED_ICARUS_DIR" TMPDIR="$RETAINED_SYNTHETIC_TEST_DIR" node --test --test-concurrency=1 tests/*.test.ts server/app/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts
+```
+
+| 当前固定源码检查 | 实际结果 |
+| --- | --- |
+| Windows真实登录/HTTP/原worker/事务五文件组合 | 53总/53通过/0失败/0取消/0跳过 |
+| Linux完整六组（包含时钟与关停反例） | **419总/408通过/0失败/0取消/11跳过**，退出0 |
+| Linux原工具包时基 | 原完整回归包含1ps/100fs/1fs及低32位tick跨越；独立修正路径验证5/5不额外累计 |
+| typecheck/build及依赖安装 | Windows typecheck与原UI安装/build；Linux教学npm ci/typecheck/build均通过 |
+| Standards / Spec 最终复核 | 硬违反0、可操作异味0 / 可操作Spec问题0；审查与执行分开 |
+
+11项跳过为**6项真实节点门禁、5项真实/付费模型门禁**，逐项 [skips.txt](../../apps/teaching/tests/evidence/dl-a-closeout/skips.txt)；不计通过、不用C报告覆盖本A未执行的测试。首轮414/402通过/1失败/11跳过及所有red/测试接线失败/取消保留，错误路径未通过修改判据绕过。两轮 Linux 保留临时目录实查各有227/228个.sqlite文件；各模块各自fresh-only工厂创建，当前 DL-A精确35表，不将所有库说成35表，也不提交带合成账户数据的SQLite文件。
+
+本次从固定main核diff：产品/规划/参考/AGENTS、B/tutoring、UI、C runner/引擎、凭据和CI无本域改动；PR #53的I0任务稿按固定来源原样复用。代码止于固定89c85ed，后续仅追加本人任务/README导航和相对证据。当前**服务端获准批次**可以交接；完整DL-A #38仍未完成，真实PAHER业务链/HTTPS/TLS/浏览器未执行。实际整卡继续条件以 §16.4/16.6 为准：C已重验，不重复派该工作；A执行入口、已有TLS/合成分配交接、ALU行为、B #40表和实际HDL UI表尚缺。
+
+产品 MVP_SPEC §10 和 TECH_DESIGN 当前接口/授权/停止/Trace 汇总**待授权维护者汇总**。本次仅本地提交，不推送、不合并远程PR、不关闭#38；已有授权边界保留。回退策略为保留本地分支及来源提交，从固定main另建隔离副本；旧库未迁移，无需数据库逆迁移，不使用reset/删除恢复。
+
+
+交付前最终静态检查 node tools/a0-review/check.mjs：64份文档/951内链，errors=[]；差异空白检查通过。完整原日志与hash加入同一证据manifest（33份），未修改受保护基线或合成库。最终文档/证据提交只登记上述固定源码结果，不引入新业务代码。
+
+首次暂存新证据的空白检查失败（Node原输出的堆栈空行带空格及多余EOF空行）；仅规范展示.txt空白，原始gzip及33份raw/hash逐一复核均不变。修复展示格式后重新检查，不改测试输出事实、源码或判据。

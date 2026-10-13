@@ -1,0 +1,8 @@
+
+> @xunjie/teaching@0.0.0 typecheck
+> node tools/check-runtime.mjs && tsc --noEmit
+
+server/workspace/hdl.test.ts(164,186): error TS2304: Cannot find name 'ApiError'.
+server/workspace/hdl.test.ts(165,260): error TS2304: Cannot find name 'ApiError'.
+server/workspace/hdl.test.ts(165,270): error TS18046: 'error' is of type 'unknown'.
+server/workspace/hdl.ts(294,11): error TS6133: 'session' is declared but its value is never read.

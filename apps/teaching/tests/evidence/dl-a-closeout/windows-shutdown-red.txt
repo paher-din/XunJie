@@ -1,0 +1,29 @@
+✖ shutdown blocks new HDL dispatch while a real HTTP readiness request drains (2166.8437ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3191.4751
+
+✖ failing tests:
+
+test at tests\dl-a-app.test.ts:229:1
+✖ shutdown blocks new HDL dispatch while a real HTTP readiness request drains (2166.8437ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"10dde020-301f-4036-abf6-5826b10d063a","error":{"code":"STATE_CONFLICT","message":"Operation unavailable in the current state.","retryable":false,"recovery":"Read the current state before acting."}}
+
+  409 !== 200
+
+      at TestContext.<anonymous> (file:///[WORKTREE]/apps/teaching/tests/dl-a-app.test.ts:246:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 409,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

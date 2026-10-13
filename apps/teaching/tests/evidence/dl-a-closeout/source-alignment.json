@@ -1,0 +1,21 @@
+{
+  "sourceCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+  "scope": "offline source bytes only; no node query",
+  "algorithm": "runner/fingerprint.ts source list + contracts/runner/index.ts and hdl.ts",
+  "files": 34,
+  "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+  "matchesCReportedSource": true,
+  "cReport": "https://github.com/paher-din/XunJie/issues/30#issuecomment-6143063168",
+  "controlledFilesLocalReadability": {
+    "host": "MSI",
+    "current-readiness.json": false,
+    "connection.json": false,
+    "runtime-evidence.json": false,
+    "serviceDirectoryExists": false
+  },
+  "notExecuted": [
+    "authenticated physical node query from A",
+    "PAHER A business chain",
+    "HTTPS/TLS/browser"
+  ]
+}
