@@ -56,7 +56,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
 | [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 获准提前评审准备，A 域输入已交；仍待 C/B/UI 具体提案、配置/schema/运行授权 |
-| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 获准 31 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；PR修复专项51/51、两轴未解决0；默认/串行全量失败与后置项单列 |
+| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | C4 合并后获准精确 33 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；PR修复专项51/51、两轴未解决0；默认/串行全量失败与后置项单列 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -185,6 +185,8 @@ try {
 ### A4 有效学习状态与纠正事务
 
 2026-10-12，负责人已批准 A4 的 fresh-only 31 表和公共验证范围。以下命令从仓库根目录执行，进入 `apps/teaching` 后使用 Node 24.21.0 与锁定依赖；验证创建并保留合成库，不迁移已有库，真实模型/执行节点开关保持关闭，详见 [A4 记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#83-当前实现与工程验证2026-10-12)。
+
+2026-10-13，当前源码已纳入 C4，以下同一验证入口现按负责人批准创建并保留精确33表合成库（原31表加两张C4表），在初始化前核完整表集合；旧31表批次记录保留。范围与实际组合结果见 [A4 §14](docs/tasks/A4_LEARNER_STATE_REVIEW.md#14-c4-合并后-33-表集成2026-10-13)，不迁移既有库、不修改凭据/CI/UI，真实节点与模型仍不启用。
 
 ```powershell
 cd apps/teaching

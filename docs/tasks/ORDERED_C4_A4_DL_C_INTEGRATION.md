@@ -49,3 +49,5 @@ A4 与当前 main 的冲突仅 README，需逐字保留 A4、C4、I0 各自历�
 ### 3.1 A4 实际合并候选验证
 
 候选源码 c169c14ac6281c43f494e755195bc6fc5f2a281e，固定 main 44d3102。公共33表用例先在旧31表守卫上失败（建库前明确拒绝），更新精确表集合后通过；原31表证据未改。Node24.21.0，apps/teaching：typecheck/build均通过；tests/review.test.ts、server/workspace/submissions.test.ts、server/workspace/integration.test.ts、server/records/teaching.test.ts 组合共81项，80通过、0失败、1环境跳过。包含A4的51项全通过、C4全部新反例与既有C3事实保全；跳过的真实节点链未执行。文档检查59文档/861内链/errors=[]，完整A4差异空白检查通过。未复跑这一候选完整套件；三PR最终组合另行完整回归，不用原A4独立315项记录冒称本组合通过。
+
+2026-10-13，A4 完整需求轴审查0项；规范轴提出1项P3入口仍写当前31表，已更新导航为33表，并在原有运行说明后追加当前33表执行边界/§14链接，不回写历史日期记录。规范复核逐份核13份日志与5份gzip的索引摘要/字节一致；旧失败和审计归因限制保留。
