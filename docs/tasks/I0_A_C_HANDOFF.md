@@ -733,10 +733,10 @@ npm start
 | 次序 / H | 正常请求与输入 | 必须保存的结果 / 判据 |
 | --- | --- | --- |
 | 1 / H-01 | 各获准合成角色POST /api/sessions，GET /api/session | 真实身份/课程/角色匹配；公开删cookie/CSRF/密码。匿名401 |
-| 2 / H-02/06 | 教师POST /api/courses/:courseId/resources 两次：公开TXT、私有answer，均带G | data.result.resourceVersion.resourceVersionId；私有资源student/tutor不可见 |
+| 2 / H-02/06 | 教师POST /api/courses/:courseId/resources 两次，均带G：公开TXT明示material.visibility={student:true,tutor:true}；私有answer明示material.kind=private_answer及visibility={student:false,tutor:false}，完整正文见下方 | data.result.resourceVersion.resourceVersionId；公开学习资源可读，私有资源student/tutor不可见 |
 | 3 / H-02 | 教师POST /api/courses/:courseId/blueprints（下方完整manual模板） | data.result.draft.blueprintId/revision，资源ID取第2步；原政策/规则已由initializer存入 |
 | 4 / H-04 | 教师POST /api/blueprints/B/checks，body={recoveryGeneration:G,expectedRevision:实际revision} | data.result.report.blocking为空；需人工concern处理时如实交回，不删除检查 |
-| 5 / H-02/04 | 教师POST /api/blueprints/B/releases，body={recoveryGeneration:G,expectedRevision:实际revision,confirmed:true,concerns:实际已处理项} | data.result.activityVersionId=V；GET /api/activities/V核固定profile/readiness/资源裁剪，与当前C核对 |
+| 5 / H-02/04 | 教师POST /api/blueprints/B/releases，body={recoveryGeneration:G,expectedRevision:实际revision,confirmed:true,concerns:实际已处理项} | data.result.activityVersionId=V；GET /api/activities/V逐项核ID/课程/源revision/控制revision/profile/资源投影；readiness另按下方已有证据映射核对，不假设GET存在未公开字段 |
 | 6 / H-02 | 教师POST /api/activities/V/assignments，body={recoveryGeneration:G,expectedActivityControlRevision:当前值,studentIds:[实际本人学生ID]} | data.result.assignments[0].assignmentId=A。先只分配本人，另一个学生用于未分配/跨学生拒绝 |
 | 7 / H-02/03 | 学生GET /api/assignments/A/bootstrap；另会话/匿名重复读；未分配角色按UI原空态处理 | data.assignment原视图 + data.recoveryGeneration=G；本人200/匿名401/跨学生或跨课程403；GET无Attempt副作用 |
 | 8 / H-03 | 学生显式POST /api/assignments/A/attempts，body={recoveryGeneration:G} | data.result.attemptId=T；GET /api/attempts/T应ready、files/jobs为空 |
@@ -754,6 +754,18 @@ npm start
 | 20 / H-06 | 缺CSRF/跨归属读取、私有资源、static路径反例；本批未真实触发的断线/unknown列未执行 | 成功/拒绝/未知分开；不擅自注入节点故障；UI浏览器验收另记 |
 
 同课程未分配角色没有新增列表API可列空清单；UI使用原选定合法Assignment引用，未授权引用403，不能自造“空列表接口”。读取/保存批次通过即可先交UI，运行/停止/产物后交。计数不把重复轮询或两次环境执行算新用例。
+
+第5步的已有字段与证据映射（2026-10-14按外部审查R3补正；仅执行说明，不改共享接口）：
+
+| 必核内容 | 已有来源 | 具体判据 |
+| --- | --- | --- |
+| 活动与课程、固定源版本 | 发布回执 `data.result`、checks回执及教师GET活动的 `data` | GET的activityVersionId等于发布回执V，courseId等于当前课程，sourceRevision等于本次expectedRevision及发布checks.revision，checks.blueprintId等于B；GET的activityControlRevision与发布回执一致，首次发布status=active。sourceRevision仅教师投影存在，学生GET不要求该字段；不得只assert(activity)或只核POST版本 |
+| 运行配置标识与政策 | GET活动的runtimeProfileVersionId/helpPolicy；本次manual蓝图及已核C预检 | profile标识等于蓝图配置及C预检runtime.runtimeProfileVersion；本批为c17-gcc15.3.0-textscope-v1。helpPolicy.versionId属于当前课程，wholeSolutionAllowed/limitedCheckHelpAllowed仍为false |
+| 学生/辅导资料裁剪 | 教师GET `/api/activities/V?audience=student` 与 `?audience=tutor` 的content；响应的content.audience、content.materials | 两种投影分别核audience；公开resourceVersionId/正文/contentHash与第2步实际公开回执一致，私有位置为redacted且不附私有正文/摘要/资源ID。已有teacher默认GET只证明student投影，不计tutor投影已执行；学生不能通过audience参数提权 |
+| 就绪与验证依据 | 原受控预检输出及[C准备记录的runtime](https://github.com/paher-din/XunJie/blob/d86e51e8b09f283e9249d0e85e70cc4df873aff9/docs/tasks/evidence/c-entry-https/preparation.json)；checks/release公共回执 | 核profile/sourceHash/fingerprintHash/validatedAt/checkedAt与受控代际来源；checks的blueprintId/revision及blocking为空，release回执的checks关联一致。预检时间与发布时核查时间分别记录，不把先前预检当发布时冻结的完整readiness原值 |
+| 冻结的镜像/运行配置与readiness | 原发布服务的availableRuntime→confirmActivity路径及受控保留的固定ActivityVersion记录 | 原服务发布前重新认证查询，冻结runtimeProfile/runtimeReadiness/recoveryGeneration；公开GET只返回profile标识，不返回imageDigest/compilerImage/runtimeImage或runtimeReadiness。需要独立核冻结原值时，由C沿已有受控只读证据回交去敏记录，关联V/课程/B/sourceRevision/G与原字节摘要；缺记录标“未独立核验”，不补造GET字段或修改API |
+
+映射代码为 [application.ts](../../apps/teaching/server/design/application.ts) 的release与GET、[readiness.ts](../../apps/teaching/server/design/readiness.ts) 的认证指纹/validation核验、[activities.ts](../../apps/teaching/server/design/activities.ts) 的confirmActivity/activityView、[results.ts](../../apps/teaching/contracts/design/results.ts) 的activityViewSchema。checks/release公开回执不含完整readiness，成功接纳与独立核冻结原记录是不同证据。固定C完整轮第5步归档中的student投影可用于离线补核，新增离线检查单独记账；tutor投影或发布冻结原值缺证不写成已补验，旧JSON与失败历史保留。
 
 manual蓝图完整模板（将G和两个资源ID替换为真实回执；以下用于course-a，政策versionId为help-v1；若验证course-b，必须改为该课程help-v1-course-b。课程规则都为textscope-core-v1，其存储按课程隔离）：
 
@@ -882,7 +894,39 @@ manual蓝图完整模板（将G和两个资源ID替换为真实回执；以下�
 }
 ~~~
 
-公开资源正文：{recoveryGeneration:G,teacherDesignAllowed:true,material:{format:txt,title:Synthetic reading,content:ASCII words}}；私有正文另加material.kind=private_answer、visibility={student:false,tutor:false}。这是JSON字段说明，字符串需正常JSON编码，不直接作为shell对象展开。
+第2步的公开学习资源完整正文（将 `<G>` 替换为受控来源核实的当前代际）：
+
+~~~json
+{
+  "recoveryGeneration": "<G>",
+  "teacherDesignAllowed": true,
+  "material": {
+    "format": "txt",
+    "kind": "learning_material",
+    "title": "Synthetic reading",
+    "content": "ASCII words",
+    "visibility": {"student": true, "tutor": true}
+  }
+}
+~~~
+
+私有答案完整正文（仅合成验证材料）：
+
+~~~json
+{
+  "recoveryGeneration": "<G>",
+  "teacherDesignAllowed": true,
+  "material": {
+    "format": "txt",
+    "kind": "private_answer",
+    "title": "Synthetic private validation",
+    "content": "Synthetic private validation asset.",
+    "visibility": {"student": false, "tutor": false}
+  }
+}
+~~~
+
+`visibility` 位于 `material` 内。省略它时，原 `prepareMaterial` 安全默认为 student=false/tutor=false；标题写“公开”或设置 `teacherDesignAllowed=true` 都不会向学生/辅导分享。`teacherDesignAllowed` 仅控制教师设计用途。教师专属学习资料也须明示 false/false；`private_answer`/`validation_asset` 不可开放 student/tutor，原保护逻辑保持不变。资源 ID 取各次真实回执后填入蓝图；若旧活动已固定不可见资源，沿原教师 API 新建显式公开资源及新活动版本，不改写旧版本或放宽读取权限。
 
 sync请求完整模板：
 
@@ -1005,6 +1049,14 @@ A已将C精确TLS/签名/五密码、127.0.0.1:3443、原24表/原worker与严�
 ## 23. I0-ENTRY 精确授权落实与 C 执行交接（2026-10-14）
 
 负责人对b64ebe1/I0-ENTRY §9.3原文答复：“批准该精确范围，交 C 连续执行”。原24表授权保持有效，本次补齐C现场TLS/签名/五合成密码与严格单Node客户端信任许可；具体对象/生成/文件权限、原固定源及C-ENTRY-04～07连续出口/停止条件已写入[I0-ENTRY §10](I0_HOST_ENTRY_PREPARATION.md#10-精确授权已取得交-c-连续执行2026-10-14)。
+
+## 24. Robert 代接手册补正与外部审查结果（2026-10-14）
+
+Robert因czr112暂时无空，明确委托本聊天代完成[PR #55指定任务](https://github.com/paher-din/XunJie/pull/55#issuecomment-6152088547)，并指定采用「审查PR反馈方式」的已完成审查，不重复审查。具体授权、固定head、外部发现/边界与本批检查见[I0-A55记录](I0-A55_REVIEW_FOLLOWUP.md)。执行者为Robert委托的Agent，不冒充czr112本人签认。
+
+§17.5已补公开学习资源与私有答案的完整合法JSON：visibility显式写在material内，公开true/true、私有false/false；原安全默认与应用源码不变。同时按外部R3明确第5步GET实际字段、student/tutor投影与预检/发布/冻结原记录的核对位置，缺证不补造字段或扩共享接口。
+
+外部审查提出R1异常绕过清理、R2停止未确认仍标已停止、R3第5步断言不足，共3个P2。Robert随后提供完整交付包并授权“一并完成问题修复”；C验证器修复另在基于PR #55的独立`codex/c55-review-fixes`分支开发，A补正保持本分支，避免两份未合并模块混交。原C成功/失败JSON、原ID和受控材料保留，新离线验证不计为现场20/20重跑。正常HTTPS/C1、浏览器与新head最终接收仍按实际证据分别报告；#30/#22及完整H/AC/NFR门禁不因文档补正关闭。产品基线及MVP_SPEC §10待授权维护者汇总。
 
 A向C @paher-din交精确授权与执行顺序，C实际确认/预检/初始化/正常HTTPS/原20项真实链及去敏原证据尚未回交；不把授权或公开分派记为执行。A收到后按H核原事实并修本人模块，UI/C具体浏览器信任与访问仍单列未授权，不代替浏览器验收。不改源码/schema/凭据/CI或受保护基线，本机未生成现场秘密/新库/启动宿主。#53/#55保留Draft，#30/#22 Open；产品进度待授权维护者汇总。纯授权交接文档，不复跑业务。
 
