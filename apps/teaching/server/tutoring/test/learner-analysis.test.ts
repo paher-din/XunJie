@@ -119,6 +119,10 @@ test("B3 rejects unsupported targets, fabricated references, and policy-invalid 
       change: { state: "supported_with_assistance", assistanceStatus: "unknown" },
     },
     {
+      name: "checked state without supporting evidence",
+      change: { state: "supported_in_check", evidenceIds: [] },
+    },
+    {
       name: "conflict without counter-evidence",
       change: { state: "conflicting", counterEvidenceIds: [] },
     },

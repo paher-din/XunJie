@@ -49,16 +49,16 @@ B3 请求由受信宿主提供：A4 原 `job`/`binding`、固定活动的三条�
 
 固定场景覆盖三条能力线及共同边界：
 
-| 场景 | 可信事实 | 必须保留的结论 |
-| --- | --- | --- |
-| E-B3-01 空历史/缺消息 | 只有当前作品快照，没有帮助或限定检查 | 可输出证据不足/unknown；不得补造独立掌握或失败 |
-| E-B3-02 受助表现 | 当前作品表现与已 displayed/acknowledged 帮助同组 | 可输出 `supported_with_assistance`；不得抹去帮助条件 |
-| E-B3-03 限定检查 | 可信课程检查与固定目标匹配 | 可输出 `supported_in_check`；stdout、自述 passed 或普通运行不可替代 |
-| E-B3-04 工具故障/覆盖空窗 | 编译或执行基础设施失败，或采集暂停/拒收 | 记录 unknown/unresolved；不得当作知识错误或补传空窗 |
-| E-B3-05 冲突/反证 | 同一证据组内有支持与反证 | 保留 `conflicting`；不平均成掌握率 |
-| E-B3-06 无关/撤回历史 | 目标版本或活动不适用，或依据已 contested/withdrawn | 不进入新候选；不得换 claimId/措辞/analysisVersion 复活 |
-| E-B3-07 重复运行 | 同 Attempt 同证据组重复运行 | 不累积为多次独立观察或掌握率 |
-| E-B3-08 反馈草稿 | 作品结果、三条能力线、帮助/反证/未知齐备 | 只产 `draft` 语义，不冒充教师正式评价 |
+| 场景 | 可信事实 | 必须保留的结论 | 行为验证追溯 |
+| --- | --- | --- | --- |
+| E-B3-01 空历史/缺消息 | 只有当前作品快照，没有帮助或限定检查 | 可输出证据不足/unknown；不得补造独立掌握或失败 | B3 `learner-analysis.test.ts:34-105` 驱动 `executeClaimedLearnerAnalysis` 并经真实 A4 事务接纳 `insufficient`/unknown；A4 `review.test.ts:556-564` 拒绝丢弃 unknown |
+| E-B3-02 受助表现 | 当前作品表现与已 displayed/acknowledged 帮助同组 | 可输出 `supported_with_assistance`；不得抹去帮助条件 | B3 `learner-analysis.test.ts:107-170` 拒绝“受助状态但非 observed help”；A4 `review.test.ts:519-552`、`:813-846` 验证 displayed 与仅 received 的真实回执边界 |
+| E-B3-03 限定检查 | 可信课程检查与固定目标匹配 | 可输出 `supported_in_check`；stdout、自述 passed 或普通运行不可替代 | B3 `learner-analysis.test.ts:107-170` 拒绝无支持引用的 checked 状态；A4 `review.test.ts:405-419` 以真实 stored Run 区分伪造 passed 与可信课程检查 |
+| E-B3-04 工具故障/覆盖空窗 | 编译或执行基础设施失败，或采集暂停/拒收 | 记录 unknown/unresolved；不得当作知识错误或补传空窗 | A4 `review.test.ts:422-438` 验证编译故障只形成 unknown；`:695-712` 验证采集暂停阻止被动分析且显式分析不能抹掉缺口 |
+| E-B3-05 冲突/反证 | 同一证据组内有支持与反证 | 保留 `conflicting`；不平均成掌握率 | B3 `learner-analysis.test.ts:107-170` 直接驱动生成器，拒绝没有反证引用的 `conflicting` 输出；不实现掌握率字段 |
+| E-B3-06 无关/撤回历史 | 目标版本或活动不适用，或依据已 contested/withdrawn | 不进入新候选；不得换 claimId/措辞/analysisVersion 复活 | A4 `review.test.ts:52-110`、`:319-370`、`:474-493` 验证撤回、改 claimId/analysisVersion 与过时上下文不能复活依据 |
+| E-B3-07 重复运行 | 同 Attempt 同证据组重复运行 | 不累积为多次独立观察或掌握率 | A4 `review.test.ts:441-470` 以三个真实 Run 验证同 Attempt 证据组不累积、改 Run ID 不复活主张 |
+| E-B3-08 反馈草稿 | 作品结果、三条能力线、帮助/反证/未知齐备 | 只产 `draft` 语义，不冒充教师正式评价 | B3 `learner-analysis.test.ts:34-105` 驱动生成器并验证 `feedbackDraft` 保持候选 body；正式 Feedback 仍由 A 负责且本写集无写入入口 |
 
 自动验证还覆盖：越权/未知引用、错目标、重复支持/反证、未知字段、一次修复、三次上限、取消、截止、provider 失败、旧 state/epoch/generation/lease、actual/unknown usage，以及 A4 拒绝/回滚/幂等由真实 `queue/claim/complete/readCurrentInTransaction` 保持。
 
@@ -93,7 +93,7 @@ B3 请求由受信宿主提供：A4 原 `job`/`binding`、固定活动的三条�
 - `server/tutoring/test/learner-analysis.fixtures.ts`：E-B3-01～08 固定合成工程样例。
 - `server/tutoring/test/learner-analysis.test.ts`：B3 核心、A4 真实事务、B2 可选状态读取评论复核、调用/故障边界与离线 SDK 参数测试。
 
-### 6.2 实际验证
+### 6.2 初始实现验证（历史快照，2026-10-13；已被 §6.7、§6.10 取代）
 
 运行环境均为 Node 24.21.0、仓库锁定依赖；供应商网络调用为 0。
 
@@ -223,3 +223,14 @@ node --test --test-name-pattern='B3 authorized real-model' server/tutoring/test/
 - 同步 §5 的当前事实：一次固定合成材料的真实 DeepSeek 候选和教师角色人工语义审阅已经完成；真实参与者材料、C2/C3/C4 实际输入链、A5、浏览器/真人与教学效果仍按原后置边界，不列作本次修复通过。
 
 修复验证使用 Node 24.21.0、仓库锁定依赖，供应商网络调用为 0：B3 专项 28 项中 27 通过、1 个真实模型项按默认门禁跳过、0 失败；`tsc --noEmit` 与 `tsc -p tsconfig.build.json` 通过；B1/B2/B3 tutoring 聚合回归和 A4 `tests/review.test.ts` 均退出码 0；文档检查通过（64 份文档、910 条内部链接、`errors=[]`）；检查器回归 16/16 通过；`git diff --check` 通过。C2/C3/C4 实际输入链、A5、完整应用/Linux 节点、浏览器、真人和教学效果未执行。
+
+### 6.11 PR #52 第三轮复审跟进（2026-10-13）
+
+负责人在固定 head `807be6b` 的第三轮复审中确认 `R52-R03`、`R52-R04` 两项 P2 均已关闭，PR 获批；本轮继续处理审查列出的两项非阻断 P3：
+
+- `R52-S02`：PR 正文验证数字改用第三轮固定 head 实测口径；本文 §6.2 明确标为初始实现历史快照，最新 head 以 §6.10 及本节复验为准，避免旧数字被抄入 README/G3。
+- `R52-R05`：§3 为 E-B3-01～08 逐项补充行为测试追溯。真实证据来源、帮助回执、可信检查、工具故障、撤回与重复运行由 A4 真实 SQLite/记录事务测试强制；B3 保持自身较弱的生成前预筛，并新增“`supported_in_check` 无支持引用”负例直接驱动生成器，确认模型输出被拒绝而不进入 A4。
+
+审查另指出预留后状态重查由外层边界先结束时，保守 `calls: 1` 可能与实际 provider 0 次不一致，并可能影响未来持久 `attemptCount`。这属于 A/B/C 的共享调用计数与预算语义；当前审查明确要求负责人裁决且不作为本 PR 合并阻断，本批不擅自改变契约，待负责人决定“保守计数”或“仅已发送计数”后由对应维护者同步契约、持久实现与调用方。
+
+本轮验证使用 Node 24.21.0 和仓库锁定依赖，供应商网络调用为 0：`tsc --noEmit`、`tsc -p tsconfig.build.json` 均通过；B3 专项 29 项中 28 通过、1 个真实模型门禁跳过、0 失败；B1/B2/B3 tutoring 聚合 131 项中 126 通过、5 个门禁项跳过、0 失败；A4 `tests/review.test.ts` 退出码 0（该文件未修改，仍为第三轮审查固定的 51/51）；文档检查通过（64 份文档、910 个内部链接、`errors=[]`）；检查器回归 16/16 通过；`git diff --check` 通过。不重新调用真实模型，不使用真实学生/教师材料，不改变此前人工语义审阅结论。
