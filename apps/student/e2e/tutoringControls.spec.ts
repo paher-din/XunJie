@@ -1,7 +1,13 @@
 import { test, expect, type Page } from '@playwright/test'
-import { create, edit, start, sceneUrl, localState } from './helpers'
+import { create, edit, openFileMenu, start as startWorkspace, sceneUrl, localState } from './helpers'
 
 const panel = (page: Page) => page.getByTestId('tutoring-controls')
+const closePanel = (page:Page) => page.getByRole('button',{name:'关闭',exact:true}).click()
+async function start(page:Page,name:string) {
+  await startWorkspace(page,name)
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
+  await expect(panel(page)).toBeVisible()
+}
 async function head(page: Page) {
   return page.evaluate(async () => {
     const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
@@ -19,18 +25,24 @@ function requests(page: Page) {
   return posts
 }
 async function saveFile(page: Page, text = 'int main(void) { return 0; }\n') {
+  await closePanel(page)
   await create(page); await edit(page, text)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
 }
 
 test('固定帮助政策和三个控制分别可查，默认提醒关闭，键盘操作不激活 ready', async ({ page }) => {
   const posts = requests(page)
   await page.goto(sceneUrl('controls-defaults'))
+  await expect(page.locator('.ts-badge')).toHaveAttribute('data-status','ready')
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
   await expect(panel(page)).toContainText('不提供整份可直接提交的答案')
   await expect(panel(page)).toContainText('限定检查的当前状态尚无公开依据')
   expect(posts).toHaveLength(0)
+  await closePanel(page)
   await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
   await expect(panel(page).getByRole('switch', { name: '里程碑提醒', exact: true })).toHaveAttribute('aria-checked', 'false')
   const before = await head(page)
   const capture = panel(page).getByRole('switch', { name: '过程采集', exact: true })
@@ -54,12 +66,15 @@ test('关闭采集仍确认作品；恢复不追认暂停期间的旧过程', as
   await panel(page).getByRole('switch', { name: '过程采集', exact: true }).click()
   await expect(panel(page).getByRole('switch', { name: '过程采集', exact: true })).toHaveAttribute('aria-checked', 'false')
   await expect(panel(page)).toContainText('属于功能数据')
+  await closePanel(page)
   await edit(page, '// paused capture save\n')
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v2')
   expect((await localState(page)).workspace!.files[0]!.text).toContain('paused capture save')
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
   await panel(page).getByRole('switch', { name: '过程采集', exact: true }).click()
   await expect(panel(page).getByRole('switch', { name: '过程采集', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await expect(panel(page).getByTestId('tutor-coverage')).toContainText('采集空窗')
   // Synthetic stale process arrives through the original sync HTTP, not a fabricated UI coverage fact.
   const result = await page.evaluate(async oldCaptureRevision => {
     const headers = { 'x-i0prep-scenario': new URLSearchParams(location.search).get('scenario')! }
@@ -83,11 +98,15 @@ test('暂停尝试保留已有文件保存，个人恢复不改变采集或提�
   const before = await head(page)
   await panel(page).getByRole('button', { name: '暂停尝试', exact: true }).click()
   await expect(panel(page).getByRole('button', { name: '恢复尝试', exact: true })).toBeEnabled()
-  await expect(page.getByRole('button', { name: '新建文件', exact: true }).first()).toBeDisabled()
+  await closePanel(page)
+  await openFileMenu(page)
+  await expect(page.getByRole('menuitem',{name:'新建文件',exact:true})).toBeDisabled()
+  await page.keyboard.press('Escape')
   await edit(page, '// save while paused\n')
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v2')
   expect((await head(page)).attempt.status).toBe('paused')
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
   await panel(page).getByRole('button', { name: '恢复尝试', exact: true }).click()
   await expect(panel(page).getByRole('button', { name: '暂停尝试', exact: true })).toBeEnabled()
   const after = await head(page)
@@ -116,6 +135,8 @@ test('丢控制ACK后刷新不自动发送，明确核对原键原文且只增�
   expect(persisted.filter(row => row.key.startsWith('tutor-controls:'))[0]?.commands?.[0]).toMatchObject({ wireJson: posts[0]!.body, state: 'pending' })
   await page.unroute('**/api/attempts/*/controls')
   await page.reload()
+  await expect(page.locator('.cw')).toBeVisible()
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
   await expect(panel(page).getByRole('button', { name: '核对原控制请求' })).toBeEnabled()
   expect(posts).toHaveLength(1)
   await panel(page).getByRole('button', { name: '核对原控制请求' }).click()
@@ -155,9 +176,23 @@ test('服务拒绝原控制仍保护草稿，不显示假成功且不自动重�
   await expect(panel(page)).toContainText('当前阶段或教师暂停不允许')
   await expect(panel(page).getByRole('button', { name: '暂停尝试', exact: true })).toBeEnabled()
   expect(posts).toHaveLength(1)
+  await closePanel(page)
   await edit(page, '// still editable\n')
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v2')
   expect((await localState(page)).workspace!.files[0]!.text).toContain('still editable')
   expect(posts).toHaveLength(1)
+})
+test('实际关闭采集和提醒后仍可主动求助，帮助失败不会切换三个控制',async({page})=> {
+  await start(page,'controls-explicit-help')
+  await panel(page).getByRole('switch',{name:'过程采集',exact:true}).click()
+  await expect(panel(page).getByRole('switch',{name:'过程采集',exact:true})).toHaveAttribute('aria-checked','false')
+  await expect(panel(page).getByRole('switch',{name:'里程碑提醒',exact:true})).toHaveAttribute('aria-checked','false')
+  await closePanel(page)
+  await page.getByRole('button',{name:'就项目求助'}).click()
+  await page.getByRole('textbox',{name:'就这个任务提问'}).fill('我先自行尝试，只给一点提示')
+  await page.getByRole('button',{name:'发送辅导问题'}).click()
+  await expect(page.getByTestId('tutor-message')).toHaveCount(1)
+  const after=await head(page)
+  expect(after.attempt.collecting).toBe(false);expect(after.attempt.reminders).toBe(false)
 })

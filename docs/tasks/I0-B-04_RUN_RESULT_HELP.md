@@ -4,7 +4,7 @@
 
 **Blocked by:** [I0-B-02 求助与停止](I0-B-02_HELP_STOP_REPLACE.md)；完整回答关联依赖D-01。与03独立，无需先交代码选区票。真实运行求助另需I0-A对应运行/结果交接，准备链可消费已有合成Run。
 
-**Status:** partial-implementation（原运行引用规则与两个结果面板的可选求助动作已实现；规则单测/typecheck通过，主页面接入、Playwright及完整回答链未完成，D-01仍阻塞回答关联）。
+**Status:** prepared-verified / blocked-contract（原运行选择/核对及显式help准备发送链通过；D-01回答关联仍阻塞完整验收）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划](I0-B_UI_TUTOR_PLAN.md)、[Run公开约束](I0_UI_CLIENT_CONTRACT.md)。覆盖UI-TUTOR-03，M-04/相关M-03，AC-02/04/06/07/15、NFR-04。
 
@@ -65,3 +65,9 @@ Robert明确授权本批实现/并行，并将04可独立部分分配至`codex/i
 Playwright按分工暂未运行，build、真实HTTP/节点、模型供应商、真人语义/学生接棒均未执行。Node v24.15.0不作为教学服务精确运行门禁验证。完整AC、应用浏览器验收、教学效果与整票状态不宣称通过；产品基线及MVP_SPEC§10为“待授权维护者汇总”。
 
 仓库根`node tools/a0-review/check.mjs`检查72份文档/1005条内链，errors=[]、退出码0；`git diff --check`通过。只对上述六文件进行本地提交，未推送/合并/发布；实际SHA由最终Git结果回交，不在自身提交正文写未来SHA。没有本次无用临时文件。
+
+## 2026-10-13 主页面组合结果
+
+独立提交`fedd0c3`已以`5ee90ba`整合回原UI分支。主页面从当前Run或历史所选detail的公开Job/Run核引用，打开明确原run/snapshot表单，再由学生发送02原help；不是从当前运行控件推参数，也不因选原运行创建新run/sync。
+
+[本票浏览器](../../apps/student/e2e/tutoringRun.spec.ts)3项通过：改运行控件后原结果选择零写入、新浏览器缺参数/环境诊断仍能选择原结果、公开Job/Run构造与快照错配拒绝。主最后扩展第一项，实际从核对表单发送原run/snapshot ObjectRef，获准合成正文出现，验证没有新run/sync/snapshot副作用；3项重新通过。原运行14项回归通过，原诊断/未知/取消/来源语义保留。实际build/typecheck与[组合记录](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)另列。准备发送不冒充D-01回答归属或真实节点/模型/真人接棒；完整票及正式AC-04仍未完成。

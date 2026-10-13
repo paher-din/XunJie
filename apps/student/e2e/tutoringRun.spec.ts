@@ -17,13 +17,22 @@ test('运行控件改变后原结果的求助动作仍可用，选择本身没�
   await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('find')
   await page.getByRole('textbox', { name: '查找词', exact: true }).fill('different-controls')
   const before = await localState(page), writes: string[] = []
+  const helpBodies:Array<{objectRef:unknown}>=[]
   page.on('request', request => { if (request.method() !== 'GET') writes.push(request.url()) })
+  page.on('request', request => {if(request.method()==='POST'&&request.url().endsWith('/help'))helpBodies.push(JSON.parse(request.postData()!))})
   await expect(result.getByRole('button', { name: '就这次运行求助', exact: true })).toBeEnabled()
   await result.getByRole('button', { name: '就这次运行求助', exact: true }).click()
   expect(writes).toEqual([])
   expect((await localState(page)).commands).toEqual(before.commands)
   expect((await serverHead(page)).files).toEqual(head.files)
   expect(runId).toBeTruthy()
+  await expect(page.getByTestId('tutor-object')).toContainText(runId!)
+  await page.getByRole('textbox',{name:'就这个任务提问'}).fill('核查这次原运行，保留其原快照。')
+  await page.getByRole('button',{name:'发送辅导问题'}).click()
+  await expect.poll(()=>helpBodies.length).toBe(1)
+  expect(helpBodies[0]!.objectRef).toEqual({kind:'run',attemptId:head.attempt.attemptId,runId,snapshotId:snapshot.snapshotId})
+  await expect(page.getByTestId('tutor-message')).toHaveCount(1)
+  expect(writes.some(url=>/\/(runs|sync|snapshots)$/.test(url))).toBe(false)
 })
 
 test('没有原参数且环境诊断不可回取时历史仍可选择求助，不自动重跑', async ({ page, browser }) => {

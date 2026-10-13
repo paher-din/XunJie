@@ -4,7 +4,7 @@
 
 **Blocked by:** 无前置ticket；规格/最小UI写集与测试接缝已按Robert委托定稿。D-03仍阻塞限定检查实时UI状态，D-05最小控制落点由本票实现；其余原控制与保存反例可独立准备，不依赖代码/运行求助或真实节点。
 
-**Status:** implementation-ready-for-integration（独立模块已实现并完成typecheck/15项规则测试；主页面与同一fixture的接线、浏览器及限定检查D-03尚未完成，不表示整票验收）。
+**Status:** prepared-verified / blocked-contract（政策/独立控制/覆盖准备链通过；D-03限定检查实时状态仍阻塞完整验收）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划/D-03/D-05/D-06](I0-B_UI_TUTOR_PLAN.md)。覆盖UI-TUTOR-08，M-04/M-05/相关M-03，AC-05/07/11/12/15、NFR-01/04/05/06。
 
@@ -68,3 +68,11 @@ HTTP正文仍为`{recoveryGeneration, expectedAttemptRevision, control}`；内�
 未运行Playwright、真实教学HTTP/数据库/节点、供应商或真人。六项浏览器专项统一交主Agent组合接线后执行；当前脚本的教师暂停投影和拒绝信封注入不代表真实教师权限/控制传播已验证。限定检查D-03仍未完成；覆盖详情、真实活动/分配暂停传播、后台被动分析取消/不回填、实际提醒与02求助组合、跨标签/账号/换代浏览器事实与全AC/NFR均未计通过。产品基线及MVP_SPEC§10为“待授权维护者汇总”。本地提交仅本票六文件，Git实际SHA由提交后的交接报告给出；未推送、合并或发布。
 
 2026-10-13，末次源码适配后typecheck与15项专项再次退出码0；仓库根`node tools/a0-review/check.mjs`为72份文档/1005条内链/errors=[]，`git diff --check`退出码0。提交前复查只暂存本票六文件，不夹带主Agent未提交接缝、依赖junction或构建产物。
+
+## 2026-10-13 主页面组合结果
+
+独立`43ee0c2`已以`da443af`整合。主在现有任务信息槽接三个控制、固定政策、权威分配回读和已有作品守卫，原authority handler返回正确replayed/摘要并取消未展示教学动作。原事件页coverage经同一教学客户端校验归属/控制版本后展示，空窗不按浏览器时钟补造。所有源码/handler仅准备/客户端范围，真实后台事实不由fixture证明。
+
+[控制浏览器](../../apps/student/e2e/tutoringControls.spec.ts)7项通过：键盘/ready不激活、采集暂停仍确认保存/旧过程拒收、尝试暂停允许已有文件保存及独立恢复、丢ACK刷新沿原键、教师暂停公开投影、明确服务拒绝仍保存、实际关闭采集/提醒后仍主动求助。最后这项与02实际组件组合，覆盖区间读取含真实HTTP来源的合成空窗。教师暂停/拒绝为明确注入反例，不宣称真实教师授权已验。
+
+15项规则及[build/typecheck/全批组合](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)通过。D-03限定检查当前公开状态、真实后台采集/提醒取消、全部跨账号/代际真实控制与整票AC/NFR仍未完成；不把禁用按钮当服务端安全边界，产品基线及MVP_SPEC§10“待授权维护者汇总”。

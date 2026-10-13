@@ -1,6 +1,6 @@
 # I0-B：学生辅导链前端接入规格
 
-日期：2026-10-13（Asia/Shanghai）。任务编号：I0-B。主责：UI / Robert；A 负责应用与公共契约协调，B 负责辅导与语义，C 负责作品、消息、回执和控制。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：`finalized-plan`，Robert委托规划Agent复核并定稿；仅交付规格、清单与本地tickets，辅导链实现/验证未执行。
+日期：2026-10-13（Asia/Shanghai）。任务编号：I0-B。主责：UI / Robert；A 负责应用与公共契约协调，B 负责辅导与语义，C 负责作品、消息、回执和控制。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：`finalized-plan`，规格按Robert委托复核定稿；Robert随后授权实施及并行推进，当前代码/验证/缺口见[执行记录](I0-B_UI_TUTOR_PLAN.md)。规格定稿状态不表示所有真实验收已通过。
 
 本批覆盖[完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)中的UI-TUTOR-01～08；这些编号不是团队A/B/C任务编号。实施写集、阅读依据、六张ticket、依赖、缺口和验证记录见[批次计划](I0-B_UI_TUTOR_PLAN.md)。继续使用 `i0/ui-frontend`，基线为main `cde69ccbd763c3c0ab381a809b750b951f195f64`。本文是已定稿的增量任务方案，原I0-A规格仍保留原范围，不改写产品基线或原任务的Out of Scope；未交接共享契约不因定稿获准修改。
 
@@ -91,7 +91,7 @@
 - 每票跑必要前端 typecheck、相关 Vitest、build 和对应浏览器 spec；有新失败或未解疑点才扩大。最终组合核保留的作品链与数字逻辑演示，准备通过不复算原 AC/NFR 全项通过。
 - 真正的 B2/C3 HTTP 集成使用成员已有工厂与合成验证方式；UI 不因写规格自行建库或装配新宿主。真实内容/已准历史材料的浏览器回放与新供应商请求分开，新增请求需新许可。
 
-上述测试接缝已按Robert委托复核定稿，实际业务/浏览器测试均未执行。附件逐项条件的核对与定稿理由见批次计划§8.2。
+上述测试接缝已按Robert委托复核定稿；规划交付时实际业务/浏览器测试均未执行，后续实际结果另记批次计划。附件逐项条件的核对与定稿理由见批次计划§8.2。
 
 ## Out of Scope
 

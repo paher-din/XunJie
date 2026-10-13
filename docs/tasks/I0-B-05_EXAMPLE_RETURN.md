@@ -4,7 +4,7 @@
 
 **Blocked by:** [I0-B-01 消息与回执](I0-B-01_MESSAGES_RECEIPTS.md)。D-05最小例子/返回入口已在规划中定稿，由本票实现；不依赖02/03/04，可用获准合成材料独立验只读查看→返回，精确编辑器定位与03共享适配须协调。
 
-**Status:** independent-implemented（独立纯逻辑/只读槽已实现，单测与类型检查通过；主接线、浏览器与完整票验收未完成）。
+**Status:** prepared-verified / pending-real（合成相邻资料及原编辑器返回通过；真实教师例子/许可仍需核）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划](I0-B_UI_TUTOR_PLAN.md)。覆盖UI-TUTOR-07，M-03/M-04/M-09，AC-04/05/06/12、NFR-05。
 
@@ -63,6 +63,10 @@ validate核mode/user/assignment/activity/attempt/preparationEpoch/loadEpoch/受�
 主接线须在进入资料前捕获原文件/视图，在同一中心容器叠加阅读槽且保持CodeWorkspace及model挂载；退出前再次校验，成功才交03只读定位接口。失败显示notice并由学生明确选择当前对象。普通关闭/返回不写controls/acknowledged，不自动保存/生成/运行；“我先试试”由01原显式回执动作负责。05函数不会替主调用方维持挂载或读取编辑器状态，不能据纯函数通过宣称草稿/undo浏览器链已验。
 
 ## 验证与待交付
+
+2026-10-13较新主整合：独立`4eb02cf`已以`8d21154`合回原UI分支。主将只读资料覆盖在原工具区上方，保留CodeWorkspace/Monaco挂载和原草稿/undo；返回核当前context/实例/映射/版本/原文，不写position控制或自动求助。明确合成相邻资料由原activity/resource投影读取，kind不被猜成真实教师审批。
+
+本票[浏览器检查](../../apps/student/e2e/tutoringReturn.spec.ts)2项通过：键盘查看/返回、同一编辑器实例/光标/草稿与undo保留且零保存/求助/运行/确认副作用；公开资料及同名重建/代际变化拒贴旧位置。25项独立规则和[全批build/typecheck/组合结果](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)通过。真实教师例子许可、真实服务/真人/全AC仍未验；以下原独立工作树记录保留其时点。
 
 2026-10-13，Node v24.15.0、RTK 0.48.0，在学生工程运行`rtk npm test -- tutoringReturn`：Vitest 3.2.7，1文件25例通过；`rtk npm run typecheck`：src与tsconfig.node两层tsc通过。反例覆盖不可读/缺项/失败/错配资源、非学生投影、准确合成/课程资料性质、HTML与危险链接不执行、原BOM/混合EOL/非BMP草稿和视图克隆、身份/代际/加载变化、回收/同名重建/版本与草稿变化、缺视图及本机未确认实例。
 

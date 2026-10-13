@@ -27,6 +27,18 @@ import { workspaceMode } from '../workspace/mode'
 import { PREP_ENTRY_LABEL, PREP_TASK_ID } from '../workspace/prepEntry'
 import { signOut } from '../workspace/session'
 import { useWorkspaceInit, type InitStatus } from '../workspace/useWorkspaceInit'
+import { useTutoringWorkspace } from '../workspace/useTutoringWorkspace'
+import { TutoringPane } from '../components/workspace/TutoringPane'
+import { createRunHelpObjectRef, type RunHelpTarget } from '../workspace/tutoringRun'
+import type { TutorObject } from '../workspace/tutoringContracts'
+import { TutoringControls } from '../components/workspace/TutoringControls'
+import type { AssignmentView } from '../workspace/contracts'
+import type { CodeEditorHandle } from '../components/workspace/CodeEditorHost'
+import { createCodeObjectRef, verifyCodeTarget, codeSelectionRange as createReturnRange, type CodeDraft, type CodeRange } from '../workspace/tutoringObject'
+import { TutoringExample } from '../components/workspace/TutoringExample'
+import { resolveTutoringResource, captureTutoringReturn, validateTutoringReturn,
+  type TutoringResourceResult, type TutoringReturnAnchor, type TutoringReturnFile } from '../workspace/tutoringReturn'
+import type { TutorMessage } from '../workspace/tutoringStore'
 
 /**
  * I0-A 准备场景的 C / TextScope 工作区。
@@ -40,22 +52,35 @@ import { useWorkspaceInit, type InitStatus } from '../workspace/useWorkspaceInit
 export default function PrepWorkspacePage() {
   const navigate = useNavigate()
   const init = useWorkspaceInit()
-  const confirmation = useConfirmationWorkspace(init.init, PREP_TASK_ID)
+  const [assignment, setAssignment] = useState<AssignmentView | null>(null)
+  const confirmation = useConfirmationWorkspace(init.init, PREP_TASK_ID, assignment?.active)
   const run = useRunWorkspace(confirmation.client, init.init)
   const [runOpen, setRunOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const history = useRunHistory(confirmation.client, runOpen && historyOpen)
   const [runSelection, setRunSelection] = useState<CoreSelection>({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
   const c = confirmation.client?.context
+  const tutor = useTutoringWorkspace(confirmation.client)
+  const [tutorOpen, setTutorOpen] = useState(false)
+  const [tutorObject, setTutorObject] = useState<TutorObject | undefined>(undefined)
+  const [tutorObjectLabel, setTutorObjectLabel] = useState('')
+  const [codeBasis, setCodeBasis] = useState<CodeDraft | null>(null)
+  const [codeSnapshotId, setCodeSnapshotId] = useState('')
+  const editorHandle = useRef<CodeEditorHandle>(null)
   useEffect(() => {
     setRunOpen(false)
     setHistoryOpen(false)
     setRunSelection({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
+    setTutorObject(undefined); setCodeBasis(null); setCodeSnapshotId(''); setExample(null)
   }, [c])
+  useEffect(()=> { setAssignment(null) }, [init.init])
   const draftScope = useMemo<DraftScope | null>(() => c?.attemptId && c.userId
     ? { mode: c.mode, account: c.userId, attemptKey: c.attemptId } : null,
   [c?.mode, c?.userId, c?.attemptId])
   const project = useProjectWorkspace(confirmation.seed, idbDraftRepository, draftScope)
+  const projectLive = useRef(project)
+  projectLive.current = project
+  const [example, setExample] = useState<{ resource: TutoringResourceResult; anchor: TutoringReturnAnchor<CodeRange> | null } | null>(null)
   const [tool, setTool] = useState<ToolKey>('design')
   const [tabsSlot, setTabsSlot] = useState<HTMLElement | null>(null)
   const [runSlot, setRunSlot] = useState<HTMLElement | null>(null)
@@ -68,6 +93,67 @@ export default function PrepWorkspacePage() {
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(null), 2600)
   }, [])
+  function onRunHelp(target: RunHelpTarget) {
+    if (!confirmation.client) return
+    const detail = history.state.sides.find(s=>s.detail?.run.runId===target.runId)?.detail
+    const job = target.runId===run.state.run?.runId ? run.state.job : detail?.job
+    const originalRun = target.runId===run.state.run?.runId ? run.state.run : detail?.run
+    try {
+      const ref = createRunHelpObjectRef(confirmation.client.context, target, job, originalRun)
+      setCodeBasis(null)
+      setTutorObject({ ...ref }); setTutorObjectLabel(`原运行 ${ref.runId} · 原快照 ${ref.snapshotId}（不重跑）`); setTutorOpen(true)
+    } catch(e) { showToast(describeError(e)) }
+  }
+  function codeObjectCurrent() {
+    if (!codeBasis) return true
+    const current=projectLive.current.readCodeDraft(codeBasis.fileId)
+    return !!current && current.workspaceKey===codeBasis.workspaceKey && current.serverFileId===codeBasis.serverFileId &&
+      current.lifecycle==='active' && current.text===codeBasis.text && current.confirmed?.version===codeBasis.confirmed?.version
+  }
+  async function onCodeHelp(intent:'file'|'selection') {
+    const client=confirmation.client, context=client?.context, localId=projectLive.current.activeFile?.fileId
+    if(!client || !context?.attemptId || !context.activityVersionId || !draftScope || !localId) {showToast('请先打开一个已确认文件。');return}
+    const before=projectLive.current.readCodeDraft(localId), selected=intent==='selection'?editorHandle.current?.captureSelection():null
+    if(!before?.serverFileId) {showToast('请先自主确认作品并冻结快照，求助不会自动保存。');return}
+    if(intent==='selection' && !selected?.ok) {showToast(selected && !selected.ok?selected.reason:'请明确选择代码。');return}
+    const snapshot=confirmation.state.snapshots.find(s=>s.snapshotId===(codeSnapshotId||confirmation.state.snapshot?.snapshotId))
+    if(!snapshot) {showToast('请先自主冻结并选择已确认快照。');return}
+    try {
+      const target=await verifyCodeTarget(snapshot,{workspaceKey:scopeKey(draftScope),attemptId:context.attemptId,activityVersionId:context.activityVersionId},before.serverFileId)
+      if(!client.isCurrent(context)) return
+      const current=projectLive.current.readCodeDraft(localId), selection=intent==='selection'?editorHandle.current?.captureSelection():null
+      if(selected?.ok && (!selection?.ok || JSON.stringify(selection.selection)!==JSON.stringify(selected.selection))) {showToast('选区已改变，请重新核对。');return}
+      const result=createCodeObjectRef({workspaceKey:scopeKey(draftScope),target,draft:current,intent,selection:selected?.ok?selected.selection:null})
+      if(!result.ok) {showToast(result.reason);return}
+      setCodeBasis(current);setTutorObject({...result.objectRef});setTutorObjectLabel(`${result.objectRef.path} · 文件版本 ${result.objectRef.documentVersion} · 快照 ${result.objectRef.snapshotId}${result.objectRef.range?` · 行 ${result.objectRef.range.startLine}–${result.objectRef.range.endLine}`:' · 整个文件'}`);setTutorOpen(true)
+    }catch(e) {if(client.isCurrent(context))showToast(describeError(e))}
+  }
+  function returnFiles():TutoringReturnFile[] {
+    return projectLive.current.files.map(f=>({fileId:f.fileId,serverFileId:f.serverFileId,path:f.path,lifecycle:f.lifecycle,
+      documentVersion:f.confirmed?.version??null,contentHash:confirmation.client?.current.workspace?.files.find(s=>s.fileId===f.serverFileId)?.contentHash??null,
+      draftText:projectLive.current.draftText(f.fileId)}))
+  }
+  function onExample(message:TutorMessage) {
+    if(init.init?.kind!=='ready' || !c || !confirmation.client?.isCurrent(c)) return
+    const resource=resolveTutoringResource(message.payload.resourceRefs?.[0]??'',init.init.activity,init.init.materials,c.mode)
+    const file=returnFiles().find(f=>f.fileId===projectLive.current.activeFile?.fileId)
+    const selected=editorHandle.current?.captureSelection()
+    const range=selected?.ok ? createReturnRange(selected.selection.originalText,selected.selection.modelStart,selected.selection.modelEnd):null
+    editorHandle.current?.saveViewState()
+    setExample({resource,anchor:file?captureTutoringReturn(c,file,range):null});setTutorOpen(false)
+  }
+  function onReturnExample() {
+    if(!example) return
+    const checked=example.anchor && c ? validateTutoringReturn(example.anchor,c,returnFiles()):null
+    setExample(null)
+    if(checked?.kind==='ready' && example.anchor && draftScope) {
+      project.open(checked.fileId)
+      // The editor and its saved scroll/fold/undo state remained mounted: focus does not move the view.
+      if(projectLive.current.activeFile?.fileId===checked.fileId) editorHandle.current?.focus()
+    } else if(checked?.kind==='unavailable') showToast(checked.notice)
+    else showToast('未保留精确文件位置，返回当前作品继续自主操作。')
+    setTutorOpen(true)
+  }
 
   /* ---------- 04A：服务版本冲突的只读比较 ---------- */
   const comparison = confirmation.state.comparison
@@ -266,7 +352,21 @@ export default function PrepWorkspacePage() {
           tool={tool}
           onToolChange={setTool}
           onToast={showToast}
-          designBody={versionComparison !== null && versionSelection !== null
+          designBody={<div style={{position:'relative',height:'100%',width:'100%',display:'flex',flexDirection:'column'}}>
+            {c?.attemptId && <div className="ws-chatbind" style={{display:'flex',gap:8,flexWrap:'wrap',flexShrink:0}}>
+            {c?.attemptId && <button type="button" className="ws-btn ghost" onClick={()=>{ setTutorObject(undefined);setCodeBasis(null); setTutorOpen(true) }}>就项目求助</button>}
+            {c?.attemptId && !runOpen && <>
+              <select aria-label="代码求助快照" value={codeSnapshotId||confirmation.state.snapshot?.snapshotId||''} onChange={e=>setCodeSnapshotId(e.target.value)}>
+                {!confirmation.state.snapshots.length && <option value="">尚无确认快照</option>}
+                {confirmation.state.snapshots.map(s=><option key={s.snapshotId} value={s.snapshotId}>求助快照 v{s.workspaceRevision}</option>)}
+              </select>
+              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('file')}>就这个文件求助</button>
+              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('selection')}>就所选代码求助</button>
+            </>}
+            {!tutorOpen && tutor.state.ledger?.job && !tutor.state.ledger.job.stopRequested && <button type="button" className="ws-btn ghost" onClick={()=>void tutor.client?.stop()}>停止这次帮助</button>}
+            </div>}
+            <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}} inert={!!example} aria-hidden={!!example}>
+            {versionComparison !== null && versionSelection !== null
             ? <VersionCompare
                 comparison={versionComparison}
                 options={versionChoices}
@@ -290,11 +390,13 @@ export default function PrepWorkspacePage() {
             : runOpen
               ? historyOpen
                 ? <RunHistoryPanel options={history.state.jobs.map(j => ({ id: j.runId, label: historyLabel(j) }))}
+                    onHelp={onRunHelp}
                     sides={historySides} busy={history.state.busy} notice={history.state.notice} synthetic={c?.mode === 'preparation'}
                     onSelect={(side, id) => { void history.client?.select(side, id) }}
                     onRead={() => { void history.client?.initialize() }} onReturn={() => setHistoryOpen(false)}
                     onDownload={(side, id) => { void history.download(side, id) }} />
                 : <RunPanel snapshots={runSnapshots} selection={runSelection} result={run.result}
+                  onHelp={onRunHelp}
                   busy={runBusy} canRun={canRun} notice={run.state.notice} synthetic={c?.mode === 'preparation'}
                   control={{ canStop: !!run.state.job && !settledJob(run.state.job.status) && !run.state.job.stopRequested && !run.state.pending,
                     canReconcile: run.state.pending || run.state.phase === 'read-unknown' ||
@@ -313,9 +415,13 @@ export default function PrepWorkspacePage() {
             : confirmation.seed && draftScope
               ? <>
                   {draftConflictBar}
-                  <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} />
+                  <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} />
                 </>
-              : <TextScopeBodyPane init={init.init} onReload={init.reload} />}
+              : <TextScopeBodyPane init={init.init} onReload={init.reload} />}</div>
+              {example && <div style={{position:'absolute',inset:0,zIndex:4,overflow:'auto',background:'var(--paper)'}}>
+                <TutoringExample resource={example.resource} onReturn={onReturnExample}/>
+              </div>}
+            </div>}
           runCluster={<>
             {c?.attemptId && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
             <ConfirmationCluster
@@ -373,8 +479,14 @@ export default function PrepWorkspacePage() {
           runSlot={runSlot}
         />
 
+        <TutoringPane client={tutor.client} state={tutor.state} open={tutorOpen} onClose={()=>setTutorOpen(false)}
+          objectRef={tutorObject} objectLabel={tutorObjectLabel} objectCurrent={codeObjectCurrent}
+          objectError={!codeObjectCurrent()?'所指代码或草稿已改变，请重新核对对象；不会自动保存。':undefined}
+          onClearObject={()=>{setTutorObject(undefined);setCodeBasis(null)}} onExample={onExample} />
         <SideDock
-          taskInfo={<PrepTaskInfo init={init.init} onReload={init.reload} />}
+          taskInfo={<><PrepTaskInfo init={init.init} onReload={init.reload} />
+            {init.init?.kind==='ready' && <TutoringControls confirmation={confirmation.client} activity={init.init.activity}
+              assignment={assignment??init.init.assignment} coverage={tutor.state.ledger?.coverage} onAssignmentChange={setAssignment}/>}</>}
           stash={[]}
           onPin={() => {
             // 准备场景没有可收纳的课程卡片；生成卡属 I0-B，不在 01 范围

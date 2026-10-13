@@ -2,16 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import type { ActivityView, AssignmentView } from '../../workspace/contracts'
 import type { ConfirmationWorkspace } from '../../workspace/confirmationWorkspace'
 import { describeTutoringPolicy, controlAllowed, TutoringControlsWorkspace, type ControlsState } from '../../workspace/tutoringControls'
+import type { TutorCoverage } from '../../workspace/tutoringContracts'
 
 export interface TutoringControlsProps {
   confirmation: ConfirmationWorkspace | null
   activity: ActivityView
   assignment: AssignmentView
+  coverage?: TutorCoverage
   /** 主页面用权威分配更新已有保存/新建/运行守卫，不能以旧 init.active 代替。 */
   onAssignmentChange?: (assignment: AssignmentView) => void
 }
 /** 插入既有任务/消息槽；自身不创建页面、布局、模型请求或后台采集。 */
-export function TutoringControls({ confirmation, activity, assignment, onAssignmentChange }: TutoringControlsProps) {
+export function TutoringControls({ confirmation, activity, assignment, onAssignmentChange, coverage }: TutoringControlsProps) {
   const [binding, setBinding] = useState<{ client: TutoringControlsWorkspace; state: ControlsState } | null>(null)
   const onAssignmentRef = useRef(onAssignmentChange)
   onAssignmentRef.current = onAssignmentChange
@@ -77,7 +79,13 @@ export function TutoringControls({ confirmation, activity, assignment, onAssignm
     </>}
     <p>作品保存、主动求助及必要上下文、运行和提交属于功能数据，暂停采集后仍按获准范围保存。模型故障或预算不可用不阻断获准保存。</p>
     <p>尝试暂停、过程采集、里程碑提醒彼此独立。关闭提醒取消待投递提醒，主动求助仍按当前政策可用；再开启不会复活旧提醒。</p>
-    <p>覆盖区间详情尚未从公开来源回取；上述空窗说明不补造区间或时间。</p>
+    {coverage && attempt && coverage.attemptId===attempt.attemptId && coverage.captureRevision===attempt.captureRevision
+      ? <div data-testid="tutor-coverage"><p>服务公开的采集覆盖区间：</p>
+          {coverage.intervals.map(row=><p key={`${row.captureRevision}:${row.fromServerSeq}`}>
+            {row.state==='paused'?'采集空窗':'采集中'} · 版本 {row.captureRevision} · {row.from} → {row.open?'当前':row.to??'结束时间缺失'}
+          </p>)}
+        </div>
+      : <p>覆盖区间详情尚未从公开来源回取；上述空窗说明不补造区间或时间。</p>}
     {state?.notice && <p role="status" aria-live="polite">{state.notice}</p>}
     {state?.pending && <button type="button" className="ws-action" disabled={state.phase === 'sending' || state.phase === 'reading'}
       onClick={() => { void client?.retry() }}>核对原控制请求</button>}

@@ -59,7 +59,7 @@ interface Identity {
 }
 interface Receipt {
   receiptId: string; commandId: string; identity: Identity; requestHash: string
-  result: unknown; serverSeq: number; committedAt: string
+  result: unknown; serverSeq: number; committedAt: string; replayed?: boolean
 }
 interface Checkpoint { head: Head; receipts: Receipt[]; aliases: Map<string, string>; serverSeq: number }
 interface Scene { generation: string; head?: Head; receipts: Receipt[]; aliases: Map<string, string>; serverSeq: number; checkpoints: Map<number, Checkpoint> }
@@ -122,6 +122,21 @@ function checkpoint(scene: Scene): void {
 }
 export function readPrepAttempt(scenario: string, session: PrepSession, attemptId: string): Head {
   return structuredClone(authorizedHead(sceneOf(scenario), session, id(attemptId)))
+}
+/** Internal dev-authority seam, not a new public contract or a separate fixture database. */
+export function prepTeachingCommand(scenario: string, session: PrepSession, attemptId: string, name: string,
+  target: string, body: Record<string, unknown>, key: unknown, work: (head: Head) => unknown, digestFields?: unknown): Receipt {
+  const scene = sceneOf(scenario)
+  authorizedHead(scene, session, attemptId)
+  const generation = trustedGeneration(scene, body.recoveryGeneration)
+  const command = identity(session, name, target, key, generation, attemptId)
+  const fields = { ...body }; delete fields.recoveryGeneration
+  const hash = sha256Hex(canonical({ target, fields: digestFields ?? fields }))
+  const previous = original(scene, command, hash)
+  if (previous) return { ...structuredClone(previous), replayed: true }
+  const next = structuredClone(scene.head!), result = work(next)
+  scene.head = next
+  return { ...receipt(scene, command, hash, result), replayed: false }
 }
 export function createPrepAttempt(scenario: string, session: PrepSession, assignmentId: string, value: unknown, key: unknown): Receipt {
   id(assignmentId)

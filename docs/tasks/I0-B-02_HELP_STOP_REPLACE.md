@@ -4,7 +4,7 @@
 
 **Blocked by:** [I0-B-01 消息与回执](I0-B-01_MESSAGES_RECEIPTS.md)。本批写集/测试接缝已按Robert委托定稿；真实接线需对应I0-A/正常宿主/B2-C3交接，准备路径不等新的供应商请求。
 
-**Status:** planned（规划已定稿；前置未实施，未编码、未验证）。
+**Status:** prepared-verified / pending-real（显式项目求助、停止与替换准备链通过；真实服务未验）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划](I0-B_UI_TUTOR_PLAN.md)。覆盖 UI-TUTOR-01/06，M-04/M-05，AC-05/06/07/12/15、NFR-01/02/04/06 的前端责任。
 
@@ -33,3 +33,11 @@
 ## 交付与未完成
 
 拟写集为批次计划02；原运行取消的冻结/摘要语义保留，教学取消按自己的 wire/回执实现。当前前置票、真实宿主接线及本票实现/应用验证均未执行。实现记录分别报告准备、真实服务、实际模型、真人，父卡不关闭。
+
+## 2026-10-13 主整合结果
+
+上述为规划交付时点。随后实施复用01状态机、[冻结/回执核验](../../apps/student/src/workspace/tutoringCommand.ts)及[8秒有界连接等待](../../apps/student/src/workspace/tutoringTransport.ts)。问题、原正文/键先保留到原metadata命名空间，再发help或教学cancel；权威Attempt重读、scope/generation/摘要/acceptedInputHash核验，失败保留原问题，页面读/编辑不自动求助。
+
+[停止/替换专项](../../apps/student/e2e/tutoringHelpStop.spec.ts)3项通过：显式新键替换与原取消丢ACK核对、非法正文/模型失败不阻断保存、替换help迟到ACK跨明确停止不释放屏障。01另验证已succeeded停止未展示、真实displayed在received排队中发生后仍保留、新暂停挡旧页。停止代次持久化，较早help不能解除后来的屏障，已展示历史保留；不以浏览器abort/本机等待截止当远端终态。
+
+06实际关闭采集/提醒后仍能明确求助的组合通过，规则与正式build/typecheck见[批次实际结果](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)。预算/限定检查/各种超时的完整真实服务条件、真实宿主/模型/真人仍未验；D-01不猜Action到最近问题。完整票AC未全部通过，父卡不关闭，基线汇总待授权维护者。

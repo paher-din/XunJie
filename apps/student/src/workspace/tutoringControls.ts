@@ -6,6 +6,7 @@ import type { ActivityView, AssignmentView, ApiErrorCode } from './contracts'
 import { openWorkspaceDb } from './draftDb'
 import { apiGet, apiPostFrozen, WorkspaceRequestError } from './http'
 import type { AttemptView, Receipt, WorkspaceHead } from './workspaceContracts'
+import { tutoringRequest } from './tutoringTransport'
 
 /** server/workspace/inputs.ts controlInput 中本票的四个操作；不增加 wire 字段。 */
 export type TutoringControl = { kind: 'pause' } | { kind: 'resume' } | { kind: 'capture'; value: boolean } | { kind: 'reminders'; value: boolean }
@@ -162,9 +163,9 @@ export class TutoringControlsWorkspace {
   }
   private async readAuthority(): Promise<WorkspaceHead | null> {
     const seq = ++this.readSeq
-    const head = await this.confirmation.readHead()
+    const head = await tutoringRequest(this.confirmation.readHead())
     if (!this.valid() || seq !== this.readSeq || !head) return null
-    const assignment = await this.io.getAssignment(this.c)
+    const assignment = await tutoringRequest(this.io.getAssignment(this.c))
     if (!this.valid() || seq !== this.readSeq) return null
     const latest = this.confirmation.current?.attempt
     if (latest && (latest.attemptRevision > head.attempt.attemptRevision || latest.decisionEpoch > head.attempt.decisionEpoch ||
@@ -243,7 +244,7 @@ export class TutoringControlsWorkspace {
     if (claimed.state !== 'pending') { this.publish({ pending: null, phase: 'ready' }); return }
     this.publish({ pending: claimed, phase: 'sending' })
     try {
-      const value = await this.io.post(claimed)
+      const value = await tutoringRequest(this.io.post(claimed))
       if (!this.valid()) return
       if (!await this.io.authorityCurrent(this.c) || !this.valid()) {
         this.publish({ phase: 'unavailable', notice: '控制响应属于已失效的恢复代际，请重新载入后核对原记录。' }); return

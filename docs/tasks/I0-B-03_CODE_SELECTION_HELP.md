@@ -4,7 +4,7 @@
 
 **Blocked by:** [I0-B-02 求助与停止](I0-B-02_HELP_STOP_REPLACE.md)；完整回答归属/展示依赖D-01获准关联来源。D-05最小选择/定位方案已定稿，由本票实现，不再待Robert确认；不依赖04或真实运行节点，不受缺口影响的引用构造可先准备。
 
-**Status:** independent-slice-verified（2026-10-13，对象构造与编辑器适配已实现，相关单测/typecheck通过；完整票未完成，页面/浏览器链及D-01仍待交接）。
+**Status:** prepared-verified / blocked-contract（代码/选区准备发送链通过；D-01回答对象关联仍阻塞完整验收）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[规格](I0-B_UI_TUTOR_SPEC.md)、[计划/D-01/D-05](I0-B_UI_TUTOR_PLAN.md)。覆盖 UI-TUTOR-02，M-03/M-04，AC-02/04/06/15、NFR-04/05。
 
@@ -101,3 +101,9 @@ rtk npm run typecheck
 票内所有完整Acceptance criteria仍未勾：对象/范围纯函数部分已验证，实际确认UI、02命令链、01回执、D-01对象关联、真实权限及浏览器全链未验证。产品基线及MVP_SPEC§10“待授权维护者汇总”。本次仅六文件本地提交；提交SHA由Git交付结果报告，未推送、合并或发布。独立切片可通过其提交集撤回；不得用reset/delete覆盖其他并行改动。
 
 收尾静态检查：仓库根`node tools/a0-review/check.mjs`检查72份文档/1005条内链，errors=[]、退出码0；`git diff --check`通过。写集复核为上述六文件。主共享prep接缝后续交付不影响当前纯对象/编辑器接口，未临时复制或提交共享源码；无本次临时文件。
+
+## 2026-10-13 主页面组合结果
+
+独立提交`67507a2`已以`76547ee`整合回`i0/ui-frontend`。主页面在原正文辅导槽接明确快照选择、整份文件/精确选区、对象核对与02发送；发送前核当前原文，dirty/无快照/失效选区不自动保存。编辑器和纯构造器仍沿上述接口，无回答驱动的自动定位。
+
+新增[代码浏览器检查](../../apps/student/e2e/tutoringCode.spec.ts)2项通过，核Monaco实际选择→原help ObjectRef/range/body、选择零写入、草稿变更后不发旧对象、无快照不偷偷保存/冻结及开放项目问题。原编辑4项与确认20项回归通过，包含BOM/混合EOL/非BMP字节、undo/redo、刷新/晚ACK/代际。正式build/typecheck及组合统计见[批次结果](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)。D-01回答关联、真实对象权限/服务仍未交；完整AC-04和整票不勾通过，基线待授权维护者汇总。

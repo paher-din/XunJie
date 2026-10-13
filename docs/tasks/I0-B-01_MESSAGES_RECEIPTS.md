@@ -4,7 +4,7 @@
 
 **Blocked by:** 无前置ticket；规划/最小UI写集与测试接缝已按Robert委托定稿。D-01阻塞对象定位，D-02阻塞换客户端/失效历史的完整回取；它们不阻塞无代码/运行定位的准备消息路径，不能因此标整项真实验收通过。
 
-**Status:** planned（规划已定稿；未编码、未验证，外部完整交接仍保留）。
+**Status:** prepared-verified / pending-real（准备消息与回执专项通过；真实宿主、D-01/D-02及原生后台标签补验未完成）。
 
 日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。依据：[本批规格](I0-B_UI_TUTOR_SPEC.md)、[计划/写集/缺口](I0-B_UI_TUTOR_PLAN.md)。覆盖 UI-TUTOR-04/05，M-05/相关 M-09，AC-06/07/12、NFR-04/05；对象版本部分须连同03/04验收，不能称整项通过。
 
@@ -32,3 +32,11 @@
 ## 交付与未完成
 
 写集按批次计划01，服务端/基线/依赖/schema只读。实现后记录固定commit、实际文件、命令/版本、准备/真实/失败/未执行，保留原I0-A作品边界。当前规划已定稿；真实宿主/身份、公共历史能力和本票所有应用验证未执行。
+
+## 2026-10-13 主整合结果
+
+上述为规划交付时点。后续Robert授权实施，主Agent在原UI分支接入[状态机](../../apps/student/src/workspace/tutoringWorkspace.ts)、[事件](../../apps/student/src/workspace/tutoringEvents.ts)、[metadata journal](../../apps/student/src/workspace/tutoringStore.ts)和[原对话槽](../../apps/student/src/components/workspace/TutoringPane.tsx)。完整正文/hash、分页控制、收到/展示/明确回应、原回执核对、缓存历史与新通道缺项均在同一authority验证，不演token或补Job/对象关联。
+
+[消息浏览器检查](../../apps/student/e2e/tutoringMessages.spec.ts)累计8项通过，包含实际收起/滚动、刷新、另一标签、复制sessionStorage的通道、丢ACK及已观察displayed迟到后停止；最后一项为明确的可见性注入反例。原生后台标签实测未产生hidden条件，失败已在[批次记录](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)保存，不能计原生后台通过。3项纯内存交错规则与实际迟到页/新暂停反例通过。
+
+正式build/typecheck、320项全量规则及77项不同浏览器检查的分层/重复计数见批次记录。D-01/02、真实宿主和原生后台环境补验仍未完成；本票完整AC不因准备交付勾成通过。受保护基线与MVP_SPEC§10“待授权维护者汇总”。

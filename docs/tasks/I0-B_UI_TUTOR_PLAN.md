@@ -1,6 +1,6 @@
 # I0-B：辅导链前端批次计划与 ticket 索引
 
-日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：`finalized-plan`，规划已复核定稿，应用未实施。入口：[I0-B SPEC](I0-B_UI_TUTOR_SPEC.md)、[完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)。本文件记录范围、来源、写集与执行事实；不代替产品基线、A/B/C任务或成员交接。
+日期：2026-10-13（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：`prepared-verified / pending-real`，六票准备实现已整合并完成对应检查；真实范围仍受外部交接条件约束。入口：[I0-B SPEC](I0-B_UI_TUTOR_SPEC.md)、[完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)。本文件记录范围、来源、写集与执行事实；不代替产品基线、A/B/C任务或成员交接。
 
 ## 1. 当前决定与授权
 
@@ -13,6 +13,10 @@
 本地Markdown tickets沿用[I0准备记录](I0_UI_PREPARATION.md)的一票一文件方式，存放在当前任务目录；不另建.scratch副本或远端票。本次未创建/修改GitHub Issue、标签或PR，父卡不关闭。首稿核查GitHub无ready-for-agent标签；后续如改用远端tracker再确认发布形态与标签。六票当前为planned，前置票/外部交接另列，未执行项目不标完成。
 
 ## 2. 已读正文与依据
+
+2026-10-13，Robert明确要求“开始完成这批任务”，并要求为可并行部分建立工作树和分支。授权本批前端实施与隔离合成验证；整合分支仍为`i0/ui-frontend`。01/02及共享页面、HTTP、准备authority由主Agent串行负责；06在`codex/i0-b-06-controls`独立实现政策/控制，03在`codex/i0-b-03-code`独立实现快照/选区适配，04在`codex/i0-b-04-run`独立实现原运行引用/动作槽。03/04完整发送链等02接缝交付后集成，05等01正文接缝后开展。各工作树仅提交各自写集；主Agent复查后整合、统一运行浏览器检查。外部D-01/02/03/04继续保留，不授权共享后台契约、数据库schema、凭据、供应商请求或部署。
+
+开工核对：原分支提交`ee95dcf`，工作区仅有原未跟踪`.zcodeignore`，不暂存它。远端回读PR #53仍为OPEN/Draft，head更新为`c071b4d0874c8cb1e8b83c95108fda2519a30cf0`；#30新增C的HDL节点回交，不能替代正常HTTPS和本批辅导浏览器验收。此处记录新时点，保留下文规划时点事实。
 
 | 材料 | 已读章节/用途 | 本批依据 |
 | --- | --- | --- |
@@ -130,16 +134,6 @@ $env:XUNJIE_E2E_BROWSER_CHANNEL = 'chrome'
 rtk npm run test:e2e -- tutoringMessages.spec.ts
 ```
 
-文档检查在仓库根运行，静态工具可用当前 Node v24.15.0；这是本次已有实际结果的入口。空白检查同时覆盖新未跟踪文档，Git 检查不单独替代它。
-
-```powershell
-node tools/a0-review/check.mjs
-git diff --check
-rtk git status --short --branch
-```
-
-RTK 丢失必要诊断时改用原命令。应用检查不得采用默认 `npm test` 外的真实模型/故障探针历史入口；全部新业务检查均保持供应商请求为0。最终组合检查范围由实际改动和遗留疑点决定，未改变的服务端全量不重跑。
-
 ### 8.2 2026-10-13 委托复核与定稿
 
 Robert在可审阅规格和六票齐备后授权规划Agent判断检查、没有问题就定稿并提交，同时要求完整30项清单入仓库。本次直接读取新附件业务正文/源稿，逐项核对UI-TUTOR-01～08、进入条件和UI-TUTOR-09边界；来源SHA-256及完整30项保存在仓库清单，不再依赖Mac绝对路径。
@@ -155,3 +149,72 @@ Robert在可审阅规格和六票齐备后授权规划Agent判断检查、没有
 最终文档/编号/依赖/暂存范围检查完成后，将九份文档作为一条本地commit提交到i0/ui-frontend；实际commit由Git结果核对。本记录包含该提交的定稿依据，不写未来提交SHA，不宣称推送或应用验证。
 
 最终检查实际结果：Node v24.15.0下，`node tools/a0-review/check.mjs`检查72份文档/1000条内链，errors=[]、退出码0；九份新文档空白/标题/无本机路径、六票模板/无误勾验收和完整30个唯一清单编号核对通过。六票依赖人工核查无环，未丢原清单进入条件。没有源码/依赖/受保护文档改动、供应商请求或应用测试；九份文档以外文件不纳入本地提交，既有.zcodeignore保留。
+
+## 9. 2026-10-13 准备实现整合与实际交付
+
+本节为Robert随后授权实施后的较新事实，§1～8保留规划交付历史。六票均已接入同一C准备工作区，状态为`prepared-verified`及各自真实/契约未完成边界；没有把未交D-01/02/03/04改成已解决，也没有勾选整票正式AC/NFR。
+
+### 9.1 并行写集与整合
+
+| 支线 | 独立提交 | `i0/ui-frontend`整合提交 | 实际责任 |
+| --- | --- | --- | --- |
+| `codex/i0-b-04-run` | `fedd0c3` | `5ee90ba` | [原运行引用](../../apps/student/src/workspace/tutoringRun.ts)、原结果/历史面板动作和3项浏览器检查 |
+| `codex/i0-b-06-controls` | `43ee0c2` | `da443af` | [政策/控制](../../apps/student/src/workspace/tutoringControls.ts)、独立journal/租约、组件与同authority handler |
+| `codex/i0-b-03-code` | `67507a2` | `76547ee` | [代码引用](../../apps/student/src/workspace/tutoringObject.ts)、精确原文映射及编辑器只读handle |
+| `codex/i0-b-05-return` | `4eb02cf` | `8d21154` | [资料/返回规则](../../apps/student/src/workspace/tutoringReturn.ts)、安全只读槽及原实例校验 |
+
+以上工作树从`ee95dcf`建立，复用已安装依赖，不安装或改锁文件。主Agent复查写集并逐提交cherry-pick到原UI分支；独立分支/工作树保留供追溯，子Agent已结束。主负责01/02、共享[页面](../../apps/student/src/pages/PrepWorkspacePage.tsx)、[同一准备插件](../../apps/student/prep/plugin.ts)、原authority接缝与组合浏览器验证，避免多人改这些共享文件。
+
+主新增[教学状态机](../../apps/student/src/workspace/tutoringWorkspace.ts)、[原命令校验](../../apps/student/src/workspace/tutoringCommand.ts)、[事件核验](../../apps/student/src/workspace/tutoringEvents.ts)、[本机journal](../../apps/student/src/workspace/tutoringStore.ts)、[有界等待](../../apps/student/src/workspace/tutoringTransport.ts)和[对话槽](../../apps/student/src/components/workspace/TutoringPane.tsx)。journal写入原v2 metadata的命名空间记录；原保存outbox/旧kind过滤不变，不改DB_VERSION/store/index。CSRF只在原HTTP发送时取得，不落journal。
+
+消息按完整正文hash/Action/Delivery核验、先落received事实和游标，再依据实际DOM/页面/区域可见性报告displayed；“我先试试”才产生acknowledged。收到、展示、回应分开，缓存仅代表原客户端历史。原标签身份通过浏览器原生同源锁独占，刷新延续；复制sessionStorage的标签领取新通道。锁不可用时作为新通道，不用旧游标补出历史。
+
+问题与原help/cancel命令持久化后发送，回执核原scope/target/command/key/generation/摘要及acceptedInputHash。求助不自动保存、运行或排队。停止有同步展示屏障和本机停止代次，较早help的迟到ACK不能解除后来的停止；仅明确的新求助能重开。8秒本机连接等待超限保留未知/原键，不改写服务端45秒截止或Job终态。已succeeded仍可停止未展示内容，已发生展示保留。
+
+代码入口只从明确选择的已核验快照/原实例构造ObjectRef；dirty/无快照/无选区拒绝且零写入，发送前再核当前原文。原运行入口核公开Job/Run/snapshot，缺本机参数不补控件、不重跑。D-01缺关联时正文保持本尝试来源，不猜回答归属或自动定位。相邻资料仅从当前活动公开投影取正文；合成温度阈值样例明确非真实教师审批，不含TextScope答案，原编辑器挂载、草稿与undo保留。
+
+政策和三个控制在现有任务信息槽；回复/对象操作在原工作区对话与正文槽。组合布局回归发现顶栏挤压后，将新增辅导操作移到正文槽，保留原工具导航、状态徽标、运行/确认簇和布局判据。三个开关独立，控制权威重读；采集区间来自同一事件页coverage，缺项明确。后台采集/实际提醒/教师暂停的服务端证明仍由原C/A能力验收，UI准备handler不代替它们。
+
+### 9.2 验证、失败修复与证据分层
+
+实际环境：Node v24.15.0、TypeScript 5.9.3、Vitest 3.2.7、Vite 7.3.6、Playwright 1.64.0、Google Chrome 155.0.8059.40。仅证明学生工程检查，不作为教学服务精确Node版本的运行验收。
+
+在学生目录执行：
+
+```powershell
+rtk npm run typecheck
+rtk npm test
+rtk npm run build
+$env:XUNJIE_E2E_BROWSER_CHANNEL = 'chrome'
+$env:XUNJIE_E2E_PREP_PORT = '5621'
+$env:XUNJIE_E2E_REAL_PORT = '5622'
+rtk npm run test:e2e -- tutoring prep.spec.ts editor.spec.ts confirmation.spec.ts runResults.spec.ts real-mode.spec.ts --workers=2
+```
+
+全量单测29文件/320项通过，零失败；typecheck与正式build退出0。组合浏览器最终75/75通过、零失败/跳过，约2.7分钟：原52项覆盖编辑/确认/C运行/准备隔离及原数字逻辑演示，新增23项覆盖本批六票。最后通道完善另跑82项辅导规则和7项消息浏览器检查，新增复制标签一项；受控可见性反例另通过。不同浏览器检查合计77项（重复运行不重复计数），其中可见性注入与教师暂停/拒绝/网络故障注入均按隔离反例记录，不当作后台或真人事实。
+
+纯内存复核发现4个确定交错：停止跨旧页落盘、实际displayed排队后停止、已知新暂停跨旧页，以及替换help迟到ACK跨后续停止。主已按独立屏障、即时观察事实、最新控制/读轮次和停止代次修复；3项交错单测通过，实际Chrome补received迟到/暂停旧页/迟到help停止反例通过。此处区分模型复核、替身交错与真实浏览器HTTP/DOM事实。
+
+中间失败如实保留：早期准备命令缺replayed标识，收紧回执校验后拒绝，已按公开响应补齐；素材空行不符合旧fixture段落断言，修正新合成材料而保留原规则；新按钮导致顶栏标签/徽标重叠，已修原布局而未降低断言；旧材料数量断言随新增合成材料同步为5条，原裁剪/泄露检查保留。中间未完成组合和受影响检查不计通过，最终上述独立组合完成后才记75项。
+
+原生后台标签补验在本自动化Chrome中（含headed尝试）仍返回visibilityState=visible，未产生所需hidden条件；该实测尝试失败，不能标原生后台展示验收通过。另用明确的visibilityState/visibilitychange注入，在实际DOM、IntersectionObserver、同一HTTP正文和原回执请求上验证隐藏时零displayed、恢复后displayed。原生后台条件仍待可产生该状态的环境补验，不以注入结果替代。收起面板、滚动进入区域、明确回应和刷新/复制通道是实际UI操作证据。
+
+构建保留既有大chunk提示；开发浏览器保留既有品牌public资源导入提示，不关闭检查或改Vite/依赖。RTK不能干净代理带管道符的正则筛选时，回退原npm运行，未把工具解析失败当应用检查通过。
+
+### 9.3 尚未完成与继续入口
+
+六票的准备实现/对应检查已交，不宣称真实host/browser服务链、实际模型、真人语义/自主接棒、整体AC/NFR或教学效果通过。完整任务仍需A汇总D-01公开Action到原Job/ObjectRef/版本的获准来源；C/A交D-02授权历史回取；A/B/C交D-03实时限定检查状态；I0-A及正常宿主/身份/TLS接线落实D-04。D-06继续权威重读，基线差异“待授权维护者汇总”。05真实资料仅为公开课程材料时不自动称教师批准例子；UI-TUTOR-09保持范围外。
+
+继续开发在`i0/ui-frontend`；不得自动合并他人Draft PR、代实现共享后台契约或复用历史供应商许可。下一批收到对应能力后，在本票追加实际接线与反例，按原条件补真实验收。当前仅本地提交，未推送/合并PR/部署；原未跟踪`.zcodeignore`保留且不提交。本批不改受保护文档、AGENTS、apps/teaching、package/lock、凭据、CI或数据库schema。
+
+文档检查在仓库根运行，静态工具可用当前 Node v24.15.0；这是本次已有实际结果的入口。空白检查同时覆盖新未跟踪文档，Git 检查不单独替代它。
+
+```powershell
+node tools/a0-review/check.mjs
+git diff --check
+rtk git status --short --branch
+```
+
+RTK 丢失必要诊断时改用原命令。应用检查不得采用默认 `npm test` 外的真实模型/故障探针历史入口；全部新业务检查均保持供应商请求为0。最终组合检查范围由实际改动和遗留疑点决定，未改变的服务端全量不重跑。
+
+最终文档检查：仓库根 node tools/a0-review/check.mjs 为72份文档/1052条内链、errors=[]，差异空白检查通过。已清理本次临时命令日志；保留可复用源码、任务记录与原分支/工作树。

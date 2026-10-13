@@ -50,6 +50,10 @@ import {
 import { createPrepAttempt, readPrepAttempt, syncPrepWorkspace, freezePrepSnapshot, readPrepSnapshot, recoverPrepWorkspace,
   setPrepAttemptState, PrepWorkspaceError, recoveryGenerationOf, existingPrepAttemptId } from './workspace'
 import { createPrepRun, readPrepJob, readPrepRun, setPrepRunScript, cancelPrepRun, readPrepRunFiles, seedPrepHistory } from './workspace'
+import { createPrepHelp, ownsPrepTutorJob, readPrepTutorJob, cancelPrepHelp, readPrepTutorEvents, recordPrepTutorReceipt, setPrepTutorScript, stopPrepTutoring, recordPrepTutorCoverage } from './tutoring'
+import { prepTeachingCommand } from './workspace'
+import { createPrepControlHandler } from './tutoringControls'
+const prepTutorControls=createPrepControlHandler({prepTeachingCommand,assignmentActive:()=>true,stopTeaching:stopPrepTutoring})
 import { isPrepFault, prepFaultOf, setPrepFault } from './faults'
 
 /** 与 `apps/teaching/contracts/common/http.ts:3-19` 的 errorDefinitions 对应条目逐字一致。 */
@@ -352,6 +356,17 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   }
 
   // 06：开发专用运行状态脚本。
+  if (path === `${PREP_ROOT}/tutor-script` && method === 'POST') {
+    const session=requireSession(req,res)
+    if (!session) return
+    if (csrfHeader(req)!==session.csrfToken) return fail(res,'FORBIDDEN')
+    let body:unknown
+    try {body=await readBody(req)} catch {return fail(res,'INVALID_REQUEST')}
+    try {return ok(res,setPrepTutorScript(scenarioOf(req),body))} catch(error) {
+      if (error instanceof PrepWorkspaceError) return fail(res,error.code)
+      throw error
+    }
+  }
   if (path === `${PREP_ROOT}/run-script` && method === 'POST') {
     const session = requireSession(req, res)
     if (!session) return
@@ -411,9 +426,14 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
   const runFiles = route.match(/^\/attempts\/([^/]+)\/runs\/([^/]+)\/files$/)
   const jobRead = route.match(/^\/jobs\/([^/]+)$/)
   const jobCancel = route.match(/^\/jobs\/([^/]+)\/cancel$/)
+  const tutorHelp = route.match(/^\/attempts\/([^/]+)\/help$/)
+  const tutorEvents = route.match(/^\/attempts\/([^/]+)\/events$/)
+  const tutorReceipt = route.match(/^\/actions\/([^/]+)\/receipts$/)
+  const tutorControl = route.match(/^\/attempts\/([^/]+)\/controls$/)
   if ((attemptCreate && method === 'POST') || (attemptRead && method === 'GET') || (sync && method === 'POST')
     || (snapshotCreate && method === 'POST') || (snapshotRead && method === 'GET') || (runCreate && method === 'POST')
-    || (runRead && method === 'GET') || (runFiles && method === 'GET') || (jobRead && method === 'GET') || (jobCancel && method === 'POST')) {
+    || (runRead && method === 'GET') || (runFiles && method === 'GET') || (jobRead && method === 'GET') || (jobCancel && method === 'POST')
+    || (tutorHelp && method === 'POST') || (tutorEvents && method === 'GET') || (tutorReceipt && method === 'POST') || (tutorControl && method === 'POST')) {
     const session = requireSession(req, res)
     if (!session) return
     if (method === 'POST' && csrfHeader(req) !== session.csrfToken) return fail(res, 'FORBIDDEN')
@@ -432,6 +452,16 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
       ok(res, data)
     }
     try {
+      if (tutorControl) {
+        const id=decodeURIComponent(tutorControl[1]!),result=prepTutorControls(scenario,session,id,body,req.headers['idempotency-key'])
+        recordPrepTutorCoverage(scenario,session,id,result.serverSeq)
+        return respond(result)
+      }
+      if (tutorHelp) return respond(createPrepHelp(scenario, session, decodeURIComponent(tutorHelp[1]!), body, req.headers['idempotency-key']))
+      if (tutorEvents) return ok(res, readPrepTutorEvents(scenario, session, decodeURIComponent(tutorEvents[1]!), query))
+      if (tutorReceipt) return respond(recordPrepTutorReceipt(scenario, session, decodeURIComponent(tutorReceipt[1]!), body, req.headers['idempotency-key']))
+      if (jobCancel && ownsPrepTutorJob(scenario, decodeURIComponent(jobCancel[1]!))) return respond(cancelPrepHelp(scenario, session, decodeURIComponent(jobCancel[1]!), body, req.headers['idempotency-key']))
+      if (jobRead && ownsPrepTutorJob(scenario, decodeURIComponent(jobRead[1]!))) return ok(res, readPrepTutorJob(scenario, session, decodeURIComponent(jobRead[1]!)))
       if (jobCancel) return respond(cancelPrepRun(scenario, session, decodeURIComponent(jobCancel[1]!), body, req.headers['idempotency-key']))
       if (jobRead) return ok(res, readPrepJob(scenario, session, decodeURIComponent(jobRead[1]!)))
       if (runFiles) return ok(res, readPrepRunFiles(scenario, session, decodeURIComponent(runFiles[1]!), decodeURIComponent(runFiles[2]!)))
