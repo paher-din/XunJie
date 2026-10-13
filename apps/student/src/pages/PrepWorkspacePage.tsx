@@ -23,7 +23,7 @@ import { canReplay, comparableOutcome } from '../workspace/recovery'
 import { describeError, reportDiagnostic } from '../workspace/diagnostics'
 import { idbDraftRepository } from '../workspace/draftDb'
 import { scopeKey, type DraftScope } from '../lib/draftStore'
-import { workspaceMode } from '../workspace/mode'
+import { PREP_BUILD, workspaceMode } from '../workspace/mode'
 import { PREP_ENTRY_LABEL, PREP_TASK_ID } from '../workspace/prepEntry'
 import { signOut } from '../workspace/session'
 import { useWorkspaceInit, type InitStatus } from '../workspace/useWorkspaceInit'
@@ -41,7 +41,7 @@ import { resolveTutoringResource, captureTutoringReturn, validateTutoringReturn,
 import type { TutorMessage } from '../workspace/tutoringStore'
 
 /**
- * I0-A 准备场景的 C / TextScope 工作区。
+ * 同一 C / TextScope 工作区按启动模式读取准备场景或获准真实分配。
  *
  * 复用原设计的页面骨架与容器：顶栏（标签槽 + 运行簇槽）、左侧胶囊「任务信息」、中心工具区
  * （胶囊标签 + 分屏）。不新造页面或导航，不接原数字逻辑的模拟构建与主动教学引导。
@@ -49,11 +49,12 @@ import type { TutorMessage } from '../workspace/tutoringStore'
  * 01 的范围是只读初始化与可用容器：编辑属 02，保存/快照属 03，运行属 06。
  * 载入不创建 Attempt、不开始学习、不写学习记录。
  */
-export default function PrepWorkspacePage() {
+export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: string }) {
   const navigate = useNavigate()
-  const init = useWorkspaceInit()
+  const init = useWorkspaceInit(assignmentId)
+  const taskId = PREP_BUILD ? PREP_TASK_ID : assignmentId ?? ''
   const [assignment, setAssignment] = useState<AssignmentView | null>(null)
-  const confirmation = useConfirmationWorkspace(init.init, PREP_TASK_ID, assignment?.active)
+  const confirmation = useConfirmationWorkspace(init.init, taskId, assignment?.active)
   const run = useRunWorkspace(confirmation.client, init.init)
   const [runOpen, setRunOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -302,7 +303,7 @@ export default function PrepWorkspacePage() {
     </div>
   ) : null
 
-  /** 结束准备会话（学生明确发起）：POST logout 后重读，会建立新的合成会话与新的 loadEpoch。 */
+  /** 学生明确退出：立即失效旧展示，准备重建合成会话，真实模式只重读已有 Session。 */
   async function onSignOut() {
     if (signingOut) return
     setSigningOut(true)
@@ -310,7 +311,7 @@ export default function PrepWorkspacePage() {
     init.invalidate()
     try {
       await signOut(workspaceMode)
-      showToast('已退出准备场景')
+      showToast(PREP_BUILD ? '已退出准备场景' : '已退出当前会话')
       init.reload()
     } catch (e) {
       reportDiagnostic('command.failed', { reason: 'sign out failed', error: describeError(e) })
@@ -347,7 +348,7 @@ export default function PrepWorkspacePage() {
 
       <div className="ws-body">
         <CenterToolArea
-          taskId={PREP_TASK_ID}
+          taskId={taskId}
           variant="textscope-c"
           tool={tool}
           onToolChange={setTool}
@@ -425,7 +426,8 @@ export default function PrepWorkspacePage() {
           runCluster={<>
             {c?.attemptId && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
             <ConfirmationCluster
-            phase={init.status !== 'ready' ? 'loading' : confirmation.state.phase}
+            phase={init.status !== 'ready' ? 'loading' : !confirmation.state.attempt && !(assignment ?? (init.init?.kind === 'ready' ? init.init.assignment : null))?.active
+              ? 'readonly' : confirmation.state.phase}
             hasAttempt={!!c?.attemptId}
             hasPending={!!confirmation.state.pending}
             unconfirmedCount={project.unconfirmedCount}
@@ -444,7 +446,11 @@ export default function PrepWorkspacePage() {
                 ? '暂停期间只能保存已有文件的修改。' : null}
             error={confirmation.state.error}
             canRetry={canReplay(confirmation.state.outcome)}
-            onOpen={() => { void confirmation.client?.openAttempt() }}
+            onOpen={() => {
+              if (init.init?.kind !== 'ready') return
+              if (!confirmation.state.attempt && !(assignment ?? init.init.assignment).active) return
+              void confirmation.client?.openAttempt()
+            }}
             onSave={() => {
               const current = confirmation.client
               void project.prepareSave().then(drafts => current?.save(drafts)).catch(e => {
@@ -505,7 +511,7 @@ export default function PrepWorkspacePage() {
 }
 
 /**
- * 顶栏准备标识：模式与载入代次。preparation epoch 在左侧「任务信息」里完整展示，
+ * 顶栏模式标识与载入代次。preparation epoch 仅准备模式在「任务信息」展示，
  * 顶栏不重复，避免窄视口下指挥栏溢出。
  */
 function PrepBadge({
@@ -522,8 +528,8 @@ function PrepBadge({
   return (
     <span className="ts-badge" data-status={status} style={{ flex: '0 0 auto' }}>
       <Icon name="shield-check" size={15} tone="neutral" />
-      <b>{PREP_ENTRY_LABEL}</b>
-      {/* 学生只需要知道当前是合成准备场景、是否就绪；loadEpoch 等排障值进控制台。 */}
+      <b>{PREP_BUILD ? PREP_ENTRY_LABEL : '真实分配'}</b>
+      {/* 模式与就绪状态可见；loadEpoch 排障值不充当服务端版本。 */}
       <span className="ts-badge-meta" data-load-epoch={loadEpoch || undefined}>
         {statusText(status)}
       </span>
