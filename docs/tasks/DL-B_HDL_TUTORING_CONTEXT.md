@@ -6,7 +6,7 @@
 
 基线：初始提案 `37849f4fa2fd4cc1e058fb8559b33a89a60ceed2`；本批重放 `cde69ccbd763c3c0ab381a809b750b951f195f64`（2026-10-13）
 
-状态：首批消费提案与 B 域合成实现已完成并通过专项和回归验证；共享契约评审、A/C 真实授权读取、真实模型/人工语义及浏览器交付未完成
+状态：首批消费提案、B 域合成实现、固定合成材料的真实模型调用与人工语义复验均已完成；本任务已按 #38 的 DLA-H4 清单补充当前最小上下文/当前性交接表。A/C 真实授权读取与正常业务构造、C3 投递、浏览器和真人交付仍未完成
 
 ## 1. 依据、范围与写入边界
 
@@ -338,3 +338,39 @@ B 增加独立 `XUNJIE_DL_B_REAL_SEMANTIC_FIX=approved-synthetic` 门禁和单 J
 自动证据显示原关键错误没有复现，但人工语义仍须确认：是否正确保留 SystemVerilog 宽度扩展边界和有限证据未知，观察步骤是否聚焦且可由学生执行。完整复验正文已追加至 [人工语义审阅单](DL-B_HDL_TUTORING_HUMAN_REVIEW.md)；在项目推进者填写最终结论前，HR-DL-03 条件仍未正式解除。
 
 同日，项目推进者完成 HR-DL-03-R1 人工审阅并判定通过，确认原错误已纠正、事实忠实性通过、提示围绕一个主要教学目的且学生保留操作控制权，解除原 HR-DL-03 条件。Issue #40 的固定合成 E-DL-01～03 真实模型人工语义证据至此为：E-DL-01/02 使用原 prompt 通过，E-DL-03 使用修复后的 `prompt-hdl-v2` 复验通过。该结论不回写原错误输出，也不替代 A/C 真实授权读取、C3 投递、浏览器 displayed、真人接棒或教学效果验收，因此 Issue #40 仍不能仅凭本节关闭。
+
+## 13. DLA-H4：HDL 最小上下文与当前性交接（2026-10-13）
+
+本节响应 DL-A Issue [#38 的 DLA-H4 清单](https://github.com/paher-din/XunJie/issues/38#issuecomment-6145619173)。该清单当前只要求 B 先交可会审的最小提案表与固定提交；下表同时核对现有 B 域实现，便于 A 区分“已经可消费的 B 内部边界”和“仍需 A/C 真实接线或共同决定的共享语义”。它不新增或批准 A/C schema、数据库、路由、错误码、运行资源或模型调用。
+
+### 13.1 最小读取与因果绑定表
+
+| 上下文 | B 实际读取的最小正文 | 必须绑定的可信身份/版本 | 拒绝、缩减与未知规则 | 当前交付状态 |
+| --- | --- | --- | --- | --- |
+| 获准 HDL 源码/选区 | 学生本轮显式 `ObjectRef(kind=code)` 对应的确认快照文件；有 range 时只取精确选区 | course/student/attempt/activity、snapshotId/hash、fileId/path、documentVersion/contentHash、range | 跨 Attempt/活动、文件版本或 hash 不一致在送模前拒绝；不读取未确认草稿、其他学生源码、教师私有答案或整库源码 | B 已实现引用校验与最小选区装配；A 仍需从正常业务授权请求构造真实上下文 |
+| 编译/端口诊断 | 终态 Build 的结构化 severity/message/location，最多 8 条；单条 message 最多 1024 字符并记录省略数 | buildId、snapshotId/hash、configurationHash、boardProfileVersion、mappingVersion、runtimeProfileVersion、engineVersion、Build scope/recovery generation、终止确认 | 仅接受 `succeeded`/`failed` 且已确认终止的 Build；stdout/stderr、节点路径、镜像/命令和越界定位不送模；工具失败保持工具事实，不推断能力 | B 已实现；真实 C 结果经 A/C 读取进入 B 尚未联调 |
+| 已应用输入与模拟时间 | 当前 final frame 中的 switches/buttons/resetN 与 `simulationTimePs`；只表示已确认操作结果，不读取 UI 尚未应用的控件准备值 | sessionId/buildId、sessionRevision、session recovery generation、confirmed sequence、operationId/resultHash、无损 ps 时间 | Session 非 active、stopRequested、已确认终止、旧 revision/generation/sequence/time 或 Operation 不一致均拒绝/判 stale；不能用浏览器时钟或模型估计替代 | B 已按 C DTO 的 final frame 消费；A/C 正常业务 current reader 尚未接入 |
+| 当前信号 | 同一 final frame 的 leds/anodes/segments/dp 及输入字段，保留固定宽度四态 `0/1/x/z` | 与当前 Session/Operation 相同的 Build、board/mapping/engine、revision、sequence、simTimePs、resultHash | 非法宽度/字符、错映射、错 Build、伪造 result 或过时帧在送模前拒绝；X/Z 不转为 0/1，也不单凭单帧锁定根因 | B 已实现并有 E-DL-02/03 合成与真实模型语义证据；不等于真实浏览器链通过 |
+| 有限 Trace | 当前 Operation 最后最多 32 帧，附起止 simTimePs、returned/original frame count、sampleCount、droppedFrames、coverage 和本地截断标志 | operationId/resultHash、sessionId/buildId、sessionRevision、confirmed sequence、每帧单调 simulation time 与 final frame 一致性 | 原结果最多接受 4096 帧；coverage/droppedFrames/截断显式保留，不补造缺帧、不读取无限波形、不把有限窗口当完整覆盖 | B 已实现 40→32 截断与 coverage 缺口回归；真实 C→A→B 输入链未执行 |
+
+所有送模正文仍是不可信数据；其内容不能改变 scope、引用白名单、预算、工具能力、模型/prompt/schema/policy 版本或学生操作边界。B 只生成有限教学帮助，不写作品、不构建、不装载、不推进仿真、不操作板信号，也不作正式评价。
+
+### 13.2 当前性、停止与故障规则
+
+| 场景 | B 的固定处理 | 需要 A/C 提供或确认的接缝 |
+| --- | --- | --- |
+| 跨学生、跨课程、跨 Attempt、私有或未授权引用 | `sameHdlScope`、snapshot/file 与引用白名单在 provider 前拒绝，不回显不可见对象的存在或正文 | A 从认证 Session、课程成员、资源归属和当前阶段构造上下文；不得接受浏览器自报 scope |
+| snapshot→Build→Session→Operation 因果断裂，或 revision/generation/sequence/time/result 已变化 | 装配时拒绝；调用前后 current guard 返回 `stale`，丢弃迟到 body，不把旧回答改挂到新对象 | A/C current reader 需从真实持久事实重读同一投影；正式错误映射与读取事务边界由 A 汇总会审 |
+| 停止、暂停、撤权、取消或新求助替换旧 Job | stop/cancelling/cancelled 返回 `cancelled`，其他状态或权限变化返回 `stale`；新求助使用新 Job、引用白名单、次数和绝对截止，不复用旧请求 | A/C 传播 Attempt/Assignment/Session 的暂停、撤权和停止事实；C3 只投递仍 current 的 body |
+| 模型/provider/依赖失败 | 帮助 Job 安全结束；actual usage 记录实际值，拿不到时保持 `unknown`；不自动重跑，不阻断学生编辑、保存、构建和仿真 | A 保持原业务链可用并呈现可恢复状态；任何新真实调用仍按独立授权和额度执行 |
+| 最多三次、一次 repair、接受起 45 秒截止 | worker 更换、repair 或恢复不重置；超过边界使用既有预算/超时终态，迟到结果不投递 | A 的持久 Job 台账提供累计调用与接受/截止事实，C3 投递前继续核当前性 |
+
+### 13.3 固定交付、已验证与待会审项
+
+- **B 已交：** `AuthorizedHdlHelpContext`/`HdlHelpCurrentState` 的 B 域消费边界、最小引用装配、调用前后 current guard、E-DL-01～03 确定性反例、固定合成材料真实模型与人工语义复验。固定提交在本节提交并推送后回填 #38 回复；已有实现位置和历史证据保留在 §11～§12。
+- **请 A 会审：** 复用现有活动/权限和 C DTO，确认正常业务由谁、在哪个事务中构造 `AuthorizedStudentHelpContext` 与 current reader；确认 shared error/status 的映射是否只需适配而无需新增字段；把本表作为 DLA-H4 输入，不将 B 内部类型自动升级为跨模块正式契约。
+- **请 C 交接：** 提供目标环境只读 Build/Session/Operation 样例及其真实 current/read 取得方式；若后续 ALU 可信行为检查产生新结果，只在 A 批准的帮助可见范围内提供结构化摘要，不把私有判定输入或完整答案送给 B。
+- **未执行：** A/C 正常宿主的真实授权读取、实际 C3 Message/TeachingAction/Delivery/Receipt、同浏览器错误→引导→学生自行修改→新快照/重装→输出改变、真实参与者与教学效果。上述未执行项不因本表、合成测试或真实模型固定样例而通过。
+- **待授权维护者汇总：** #38 负责人完成会审后，如需改变共享契约或受保护产品/技术基线，由对应获授权维护者按 PRD → MVP_SPEC → TECH_DESIGN 路径同步；B 不直接修改受保护文件。
+
+本次交付开始时通过 GitHub 实时引用与本地引用共同核对：`origin/main`、`fork/main` 和本地 main 引用均为 `cde69ccbd763c3c0ab381a809b750b951f195f64`，fork/local DL-B 基线均为 `3c85411f6b00c1c6aa4b9644d323fb0ed2547811`；原未跟踪 `.trae/` 保留且不纳入。Node.js 24.21.0 下 `tsc --noEmit` 与 build 通过；`real-model-support.test.ts` + `hdl-help.test.ts` 共 30 项，28 通过、2 项真实调用按默认门禁跳过、0 失败，供应商请求为 0；全部 `server/tutoring/test/*.test.ts` 回归退出码 0；文档检查通过（65 份文档、914 条内部链接、`errors=[]`），检查器回归 16/16 通过，`git diff --check` 通过。本次没有重跑已消费的真实模型批次。
