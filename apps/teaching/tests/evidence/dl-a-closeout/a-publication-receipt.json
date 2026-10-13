@@ -1,0 +1,62 @@
+{
+  "version": "dla-publication-v1",
+  "date": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "authorization": "Human approved push of codex/dl-a-mainline-closeout at 0256384 and creation of a Draft PR; publishing own delivery records is part of this scope.",
+  "repository": "https://github.com/paher-din/XunJie",
+  "visibility": "public",
+  "branch": "codex/dl-a-mainline-closeout",
+  "approvedDeliveryCommit": "025638412c1e3da90077f07a3d30fadb9b737e35",
+  "fixedRuntimeSource": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+  "testedMainBaseline": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+  "mainAtCreation": "0e683251031f28b3d2458e9f9093c8d92aa859b3",
+  "push": {
+    "command": "git push --set-upstream origin codex/dl-a-mainline-closeout",
+    "exitCode": 0,
+    "forced": false
+  },
+  "pullRequest": {
+    "number": 56,
+    "url": "https://github.com/paher-din/XunJie/pull/56",
+    "draft": true,
+    "state": "OPEN",
+    "initialHead": "025638412c1e3da90077f07a3d30fadb9b737e35",
+    "attachedToTask": true,
+    "mergeableAtInitialRead": "MERGEABLE",
+    "merged": false
+  },
+  "fixedRuntimeSourceLookup": {
+    "command": "gh api repos/paher-din/XunJie/commits/89c85ed04db5a55ddebdc95c27303f0ff76fa31c --jq .sha",
+    "exitCode": 0,
+    "matches": true
+  },
+  "preparedManifest": "a-execution-manifest.json",
+  "preparedManifestPublicationFields": "Historical pre-publication state, superseded for current publication status by this separate receipt; original archive and manifest hashes preserved.",
+  "zipUploaded": false,
+  "newBusinessTestsExecuted": false,
+  "latestMainIntegrationVerified": false,
+  "latestPr54FixVerified": false,
+  "credentialsAndClientTrustApproved": false,
+  "issue38": "Open",
+  "followup": "C can receive fixed runtime/source manifests now; exact credential/client authorization and H3/H4/C/UI gates remain pending.",
+  "documentationCheck": {
+    "command": "node tools/a0-review/check.mjs",
+    "exitCode": 0,
+    "documents": 64,
+    "internalLinks": 964,
+    "errors": [],
+    "businessTests": "NOT_EXECUTED"
+  },
+  "whitespaceCheck": {
+    "command": "git diff --check",
+    "exitCode": 0
+  },
+  "issueCommentUpdate": {
+    "id": 6145619173,
+    "url": "https://github.com/paher-din/XunJie/issues/38#issuecomment-6145619173",
+    "updatedAt": "2026-10-13T16:24:53Z",
+    "sha256": "5795865bdb87e67a59a4dfd29ede7a4e1ff85f2b462a229766b6eca177e15ec3",
+    "verified": true,
+    "oldBodySha256": "0fea7b9ea3bd4955783acc29e7f04fdb1f98f9069cb59980c3f95139a6aa3d2a"
+  }
+}
