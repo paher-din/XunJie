@@ -13,7 +13,7 @@
   },
   "authorization": {
     "freshOnlyTables": 31,
-    "optionalReadLearnerStateRevision": "explicitly approved by user",
+    "optionalReadLearnerStateRevision": "explicitly approved by project lead",
     "combinedC4Tables33": "not approved/not initialized",
     "oldDatabaseMigration": false,
     "realModelsOrNodes": false
@@ -227,5 +227,13 @@
     "documents": 39,
     "internalLinks": 620,
     "errors": []
+  },
+  "documentationReview": {
+    "fixedFrom": "80a2721815bdc9ba43a33bb85b39fd60ee0e8298",
+    "fixedTo": "e15e8659d66b01a8cca5fa048dfdcb1efffbf231",
+    "specOpenFindings": 0,
+    "standardsInitialP3": 1,
+    "correction": "Use project lead instead of chat user identity for recorded authorization",
+    "correctionRecheck": "pending"
   }
 }
