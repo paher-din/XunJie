@@ -21,6 +21,7 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
   const job = ledger?.job, pending = ledger?.commands.some(c=>c.state==='pending')
   const unknownHelp=ledger?.commands.some(c=>c.kind==='help'&&c.state==='pending')
   const running = !!job && !job.stopRequested && (!job.status || ['queued','running','cancelling','outcome_unknown'].includes(job.status))
+  const waitExceeded=running && Number.isFinite(Date.parse(job!.deadline)) && Date.now()>=Date.parse(job!.deadline)
   const attempt=client?.confirmation.current.attempt
   const unavailable=helpAllowed!==true?'固定帮助政策未允许求助。':assignmentActive!==true?'当前分配未允许求助。'
     :!attempt||!['ready','active'].includes(attempt.status)?'当前尝试不允许新求助。'
@@ -36,7 +37,8 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
         <MessageRail scrollerRef={scroller} onJump={el=>el.scrollIntoView({ block: 'center' })} />
         {!ledger?.messages.length && <p>暂无已取得的教学内容。可以直接问项目问题。</p>}
         {ledger?.commands.filter(c=>c.kind==='help').map(c=><div className="chat-message user" key={c.key}>
-          <div className="bubble">{c.question}</div><small>{c.state==='confirmed' ? '已受理' : c.state==='pending' ? '原请求待核对' : '服务未接纳'}</small>
+          <div className="bubble">{c.question}</div><small data-testid="tutor-question-status">{c.state==='confirmed' ? '已受理' : c.state==='pending'
+            ? state.sendingKey===c.key ? '发送中' : c.error ? '结果未知 · 原请求待核对' : '原请求已保存，等待发送' : '服务未接纳'}</small>
           {c.error && <p role="status">{c.error}</p>}</div>)}
         {attempt&&ledger?.messages.filter(m=>m.shown || (m.valid && state.synchronized && !ledger.blocked)).map(m=>
           <TutorMessageView key={m.payload.actionId} message={m} client={client} synchronized={state.synchronized}
@@ -57,6 +59,7 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
       </div>
       <div className="ws-chatbind" role="status">
         {job && <span data-testid="tutor-job">{job.stopRequested ? `已请求停止 · ${job.status ?? '状态待读'}` : `帮助状态 · ${job.status ?? '已受理，状态待读'}`} · {job.jobId}</span>}
+        {waitExceeded && <p data-testid="tutor-wait-limit">已超过服务端给出的等待截止时间，终态尚未确认；原 Job 状态保持 {job!.status}。可以停止或主动重新读取，不会自动发起新求助。</p>}
         {state.notice && <p>{state.notice}</p>}
         {pending && <button type="button" disabled={state.busy} onClick={()=>void client?.retry()}>核对原辅导请求</button>}
         <button type="button" disabled={state.busy} onClick={()=>void client?.read(true)}>重新读取辅导</button>

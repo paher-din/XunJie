@@ -11,7 +11,7 @@ import { verifyTutorCommandReceipt } from './tutoringCommand'
 import { confirmationRepository } from './confirmationDb'
 import { tutoringRequest } from './tutoringTransport'
 
-export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState; limitedCheck?:boolean|null }
+export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState; limitedCheck?:boolean|null; sendingKey?:string|null }
 /** One owner serializes durable facts. Never create another global ContextGuard. */
 export class TutoringWorkspace {
   private state: TutoringState = { ledger: null, busy: false, synchronized: false, notice: null, limitedCheck:null,
@@ -131,7 +131,7 @@ export class TutoringWorkspace {
     const seq = ++this.sequence
     let refreshHistory=false
     try {
-      const head = await tutoringRequest(this.confirmation.readHead())
+      const head = await tutoringRequest(this.confirmation.readHead({controlsOnly:true}))
       if (!this.valid() || seq !== this.sequence) return
       if(!head) {
         this.publish({limitedCheck:null})
@@ -276,7 +276,7 @@ export class TutoringWorkspace {
     }
     this.publish({ busy: true, notice: null })
     try {
-      const head = await tutoringRequest(this.confirmation.readHead())
+      const head = await tutoringRequest(this.confirmation.readHead({controlsOnly:true}))
       if(!this.valid())return
       if(!head) {
         this.publish({limitedCheck:null})
@@ -348,6 +348,7 @@ export class TutoringWorkspace {
   private async executeCommand(key: string) {
     if(!this.valid())return
     const ledger = structuredClone(this.state.ledger!), command = ledger.commands.find(c => c.key === key)!
+    this.publish({sendingKey:key})
     try {
       const raw = await tutoringRequest(apiPostFrozen<unknown>(command.path, command.wireJson, { ...this.opts(), idempotencyKey: key }))
       if (!this.valid()) return
@@ -375,7 +376,7 @@ export class TutoringWorkspace {
         ledger.messages.forEach(m => { if ((result.invalidatedActionIds as unknown[]).includes(m.payload.actionId)) m.valid = false })
         this.publish({ notice: '服务端已保存停止请求；原生成与已展示历史保留。' })
       }
-      command.state = 'confirmed'; command.result = raw; await this.persist(ledger)
+      command.state = 'confirmed'; command.result = raw; delete command.error; await this.persist(ledger)
       if(inheritedStop) {await this.executeCommand(inheritedStop);return}
       await this.readJobNow()
       await this.readNow(true)
@@ -385,7 +386,11 @@ export class TutoringWorkspace {
       command.error = e instanceof Error ? e.message : String(e)
       if (e instanceof WorkspaceRequestError && e.failure.kind === 'api' && !e.failure.error.retryable) command.state = 'rejected'
       await this.persist(ledger)
-      this.publish({ notice: `请求尚未确认：${command.error}。保留原问题/请求，先核对。` })
+      this.publish({ notice: command.state==='rejected'
+        ? `服务未接纳：${command.error}。原问题保留，可以明确发起新问题。`
+        : `请求结果未知：${command.error}。保留原问题/请求，先核对。` })
+    } finally {
+      if(this.state.sendingKey===key)this.publish({sendingKey:null})
     }
   }
   private async readJobNow() {

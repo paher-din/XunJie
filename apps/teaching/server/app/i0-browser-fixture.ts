@@ -5,7 +5,7 @@ import { mkdtempSync,readFileSync,rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join,resolve } from 'node:path';
 import { z } from 'zod';
-import { fixture,assigned } from '../workspace/test-support.ts';
+import { fixture,assigned,command } from '../workspace/test-support.ts';
 import { createPasswordRecord } from '../access/password.ts';
 import { createI0App } from './i0.ts';
 import type { ModelProvider } from '../tutoring/providers.ts';
@@ -21,8 +21,12 @@ try {
   const f=await fixture(undefined,{teaching:true});
   close=()=>f.close();
   const teacher=await f.login('teacher'),allocation=await assigned(f,teacher);
+  const other=await command(f,teacher,`/api/activities/${allocation.activityId}/assignments`,{
+    expectedActivityControlRevision:1,studentIds:['other']});
+  if(other.statusCode!==200)throw new Error('Synthetic second allocation unavailable');
+  const otherAssignmentId=String(other.json().data.result.assignments[0].assignmentId);
   const password=await createPasswordRecord(input.password);
-  f.db.withTransaction(tx=>tx.run("UPDATE users SET password_hash=?,salt=? WHERE id='student'",password.hash,password.salt));
+  f.db.withTransaction(tx=>tx.run("UPDATE users SET password_hash=?,salt=? WHERE id IN ('student','other')",password.hash,password.salt));
   certDirectory=mkdtempSync(join(tmpdir(),'xunjie-i0-browser-tls-'));
   const keyFile=join(certDirectory,'key.pem'),certFile=join(certDirectory,'cert.pem');
   execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',keyFile,'-out',certFile,
@@ -42,7 +46,7 @@ try {
   close=async()=>{await service.close();await f.close();};
   await service.app.listen({host:'127.0.0.1',port:input.port});service.startConsumer();
   // Public references only. Synthetic passwords are private IPC input, never output.
-  process.stdout.write(JSON.stringify({synthetic:true,base,assignmentId:allocation.assignmentId})+'\n');
+  process.stdout.write(JSON.stringify({synthetic:true,base,assignmentId:allocation.assignmentId,otherAssignmentId})+'\n');
   for await(const line of lines) if(line==='stop') break;
 } catch {
   process.stderr.write('Isolated I0 browser service failed.\n');process.exitCode=1;

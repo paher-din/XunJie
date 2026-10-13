@@ -26,7 +26,7 @@ test('正常构建连接实际教学HTTPS/SQLite/原worker，公开求助正文�
     ?spawn('wsl.exe',['-d','Ubuntu','--cd',linuxPath,'--',node,'server/app/i0-browser-fixture.ts'],{stdio:'pipe',windowsHide:true})
     :spawn(node,['server/app/i0-browser-fixture.ts'],{cwd:teaching,stdio:'pipe'})
   const closed=new Promise<number|null>(r=>child.on('close',r))
-  const ready=new Promise<{synthetic:true;base:string;assignmentId:string}>((accept,reject)=> {
+  const ready=new Promise<{synthetic:true;base:string;assignmentId:string;otherAssignmentId:string}>((accept,reject)=> {
     let output=''
     child.on('error',reject);child.on('close',()=>reject(new Error('Isolated service exited before readiness')))
     child.stdout.on('data',(chunk:Buffer)=> {
@@ -122,6 +122,55 @@ test('正常构建连接实际教学HTTPS/SQLite/原worker，公开求助正文�
     expect(writes.filter(row=>row.path.endsWith('/help'))).toHaveLength(2)
     expect(writes.some(row=>row.path.startsWith('/__i0prep/'))).toBe(false)
     expect(await page.locator('body').textContent()).not.toContain('PRIVATE_BODY')
+    await page.getByRole('button',{name:'收起辅导',exact:true}).click()
+    let release!:()=>void,arrived!:()=>void,delivered!:()=>void,held=false
+    const hold=new Promise<void>(r=>{release=r}),atAuthority=new Promise<void>(r=>{arrived=r}),finished=new Promise<void>(r=>{delivered=r})
+    await page.route(`**/api/attempts/${attemptId}/controls`,async route=> {
+      const response=await route.fetch()
+      if(!held){held=true;arrived();await hold}
+      await route.fulfill({response});delivered()
+    })
+    try {
+      await page.getByRole('button',{name:'任务信息',exact:true}).click()
+      await page.getByRole('switch',{name:'过程采集',exact:true}).click()
+      await atAuthority
+      const nextLogin=await page.context().request.post(service.base+'/api/sessions',{
+        headers:{Origin:service.base},data:{loginName:'other',password},
+      })
+      expect(nextLogin.status()).toBe(200)
+      expect((await page.context().request.get(`${service.base}/api/attempts/${attemptId}`)).status()).toBe(403)
+      // Keep this document and the original pending HTTP promise alive across the real account switch.
+      await page.evaluate(id=>{location.hash=`/task/${id}`},service.otherAssignmentId)
+      await expect(page.locator('.ts-badge')).toHaveAttribute('data-status','ready')
+      if(await page.getByRole('button',{name:'关闭',exact:true}).count()) {
+        await page.getByRole('button',{name:'关闭',exact:true}).click()
+        await expect(page.getByTestId('tutoring-controls')).toHaveCount(0)
+      }
+      await page.getByRole('button',{name:'开始 Attempt',exact:true}).click()
+      await expect(page.locator('.cw')).toBeVisible()
+      await page.getByRole('button',{name:'任务信息',exact:true}).click()
+      const capture=page.getByRole('switch',{name:'过程采集',exact:true})
+      await expect(capture).toHaveAttribute('aria-checked','true')
+      release();await finished
+      await expect(capture).toHaveAttribute('aria-checked','true')
+      await capture.click();await expect(capture).toHaveAttribute('aria-checked','false')
+      await expect(page.getByTestId('tutoring-controls')).toContainText('控制已确认')
+      const controls=writes.filter(row=>row.path.endsWith('/controls'))
+      expect(controls).toHaveLength(2)
+      expect(controls[0]!.path).toBe(`/api/attempts/${attemptId}/controls`)
+      expect(controls[1]!.path).not.toBe(controls[0]!.path)
+      const nextAttemptId=controls[1]!.path.split('/')[3]!
+      const nextHead=(await(await page.context().request.get(`${service.base}/api/attempts/${nextAttemptId}`)).json()).data
+      const nextAssignment=(await(await page.context().request.get(`${service.base}/api/assignments/${service.otherAssignmentId}`)).json()).data
+      expect(nextAssignment.studentId).toBe('other')
+      expect(nextHead.attempt.assignmentId).toBe(service.otherAssignmentId);expect(nextHead.files).toEqual([])
+      await page.getByRole('button',{name:'关闭',exact:true}).click()
+      await expect(page.getByTestId('tutoring-controls')).toHaveCount(0)
+      await page.getByRole('button',{name:'就项目求助',exact:true}).click()
+      await expect(page.getByTestId('tutor-history')).toContainText('暂无可回取')
+      await expect(page.getByTestId('tutor-message')).toHaveCount(0)
+      expect(writes.filter(row=>row.path.endsWith('/help'))).toHaveLength(2)
+    } finally {release()}
   } finally {
     child.stdin.end('stop\n')
     await Promise.race([closed,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Isolated service shutdown timeout')),15000))])

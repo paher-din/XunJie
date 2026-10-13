@@ -8,12 +8,17 @@ import type { TutorJob, TutorPage, TutorPayload, TutorCoverage, TutorHistoryQues
   TutorHistoryAction, TutorHistoryReply, TutorHistoryBody, TutorObject } from '../src/workspace/tutoringContracts'
 interface Action { payload: TutorPayload; jobId: string; epoch: number; clients: Map<string, { deliveryId: string; seq: number }>; shown: boolean
   record:TutorHistoryAction;message:TutorHistoryReply }
-interface Scene { seq: number; jobs: TutorJob[]; actions: Action[]; questions:TutorHistoryQuestion[];bases:Map<string,TutorBasis>
+type PrepTeachingJob=Omit<TutorJob,'purpose'> & {purpose:'student_help'|'reminder';requestReceiptId?:string}
+interface Scene { seq: number; jobs: PrepTeachingJob[]; actions: Action[]; questions:TutorHistoryQuestion[];bases:Map<string,TutorBasis>
   coverage?:TutorCoverage; receipts: Array<{ actionId: string; kind: string; clientId: string; key: string; wire: string; result: unknown }> }
 const scenes = new Map<string, Scene>()
 const scripts = new Map<string, 'normal' | 'running' | 'failed' | 'timed_out' | 'budget'>()
-export function setPrepTutorScript(scenario: string, body: unknown) {
+export function setPrepTutorScript(scenario: string, body: unknown, session?:PrepSession) {
   const value=object(body,['kind']).kind
+  if(value==='pending-reminder') {
+    if(!session)reject('FORBIDDEN')
+    return seedPrepReminder(scenario,session)
+  }
   if(value==='limited-check'||value==='check-ended') {
     setPrepLimitedCheck(scenario,value==='limited-check');return{kind:value}
   }
@@ -56,14 +61,44 @@ export function recordPrepTutorCoverage(scenario:string,session:PrepSession,atte
   return structuredClone(coverage)
 }
 export function stopPrepTutoring(scenario: string, attemptId: string, purposes: string[]) {
-  if(!purposes.includes('student_help')) return []
   const scene=sceneOf(scenario), ids:string[]=[]
-  for(const job of scene.jobs) if(job.scope.attemptId===attemptId && !job.stopRequested) {
+  for(const job of scene.jobs) if(job.scope.attemptId===attemptId && purposes.includes(job.purpose) && !job.stopRequested) {
     job.stopRequested=true
     if(['queued','running'].includes(job.status)) {job.status='cancelled';ids.push(job.jobId)}
     for(const action of scene.actions) if(action.jobId===job.jobId&&!action.shown)action.payload.disposition='cancelled'
   }
   return ids
+}
+/** Explicit dev-only public sample. No milestone observation or production scheduling occurs. */
+function seedPrepReminder(scenario:string,session:PrepSession) {
+  const scene=sceneOf(scenario),template=scene.actions.find(a=>a.record.scope.studentId===session.userId &&
+    (!a.record.basis.objectRef || a.record.basis.objectRef.kind==='project'))
+  if(!template)reject('STATE_CONFLICT')
+  const scope=structuredClone(template.record.scope),a=readPrepAttempt(scenario,session,scope.attemptId).attempt
+  if(!a.reminders || a.status!=='active')reject('STATE_CONFLICT')
+  const jobId=randomUUID(),actionId=randomUUID(),messageId=randomUUID(),createdAt=new Date().toISOString()
+  const content='合成里程碑提醒：可以回顾已提交的里程碑，也可以忽略。'
+  const basis:TutorBasis={attemptRevision:a.attemptRevision,decisionEpoch:a.decisionEpoch,captureRevision:a.captureRevision,
+    relatedStateRevision:0,inputRefs:[],assistanceRefs:[],coverageRefs:[],objectRef:{kind:'project',attemptId:a.attemptId,activityVersionId:a.activityVersionId}}
+  const body:TutorHistoryBody={...structuredClone(template.message.envelope.body),actionType:'reflect',content,
+    rationale:'只验证提醒控制的前端消费。',expectedStudentAction:'可选择回顾，也可忽略。',
+    assistanceContext:'明确合成的已提交里程碑样例；不是实际采集或模型结果。',evidenceIds:[],resourceRefs:[],unresolved:['合成开发样例，不记真实学习行为。']}
+  const bodyJsonText=JSON.stringify(body),contentHash=sha256Hex(content),generation=recoveryGenerationOf(scenario)
+  const targetVersions=structuredClone(template.record.targetVersions)
+  const payload:TutorPayload={actionId,jobId,messageId,scope,generation,targetVersions,
+    basis:{attemptRevision:basis.attemptRevision,decisionEpoch:basis.decisionEpoch,captureRevision:basis.captureRevision,
+      relatedStateRevision:basis.relatedStateRevision,objectRef:basis.objectRef},contentHash,disposition:'pending',createdAt,basisRevised:false,
+    actionType:body.actionType,content,rationale:body.rationale,expectedStudentAction:body.expectedStudentAction,
+    assistanceContext:body.assistanceContext,evidenceIds:[],resourceRefs:[],unresolved:body.unresolved}
+  scene.jobs.push({jobId,purpose:'reminder',status:'succeeded',stopRequested:false,scope,decisionEpoch:a.decisionEpoch,
+    recoveryGeneration:generation,acceptedAt:createdAt,deadline:new Date(Date.now()+45000).toISOString(),requestReceiptId:randomUUID()})
+  scene.bases.set(jobId,basis)
+  scene.actions.push({jobId,epoch:a.decisionEpoch,clients:new Map(),shown:false,payload,
+    message:{messageId,jobId,scope,authorKind:'model',contentHash,resultHash:sha256Hex(bodyJsonText),
+      envelope:{kind:'student_help',body,bodyJsonText,versions:targetVersions,usage:{status:'unknown',reason:'synthetic_provider_not_called'},calls:0,elapsedMs:0,basis}},
+    record:{actionId,jobId,messageId,scope,contentHash,disposition:'pending',targetVersions,basis,generation,
+      basisRevised:false,createdAt,deliveries:[],receipts:[]}})
+  return{kind:'pending-reminder',jobId,actionId,content}
 }
 export function createPrepHelp(scenario: string, session: PrepSession, attemptId: string, value: unknown, key: unknown) {
   const body = object(value, ['question','expectedAttemptRevision','recoveryGeneration','objectRef'])
@@ -143,7 +178,7 @@ export function readPrepTutorJob(scenario: string, session: PrepSession, id: str
     }
   }
   if (head.attempt.decisionEpoch !== job.decisionEpoch && !job.stopRequested) job.status = 'stale'
-  return structuredClone({ ...job, kind: 'tutoring', requestReceiptId: scene.questions.find(q=>q.jobId===id)!.requestReceiptId!,
+  return structuredClone({ ...job, kind: 'tutoring', requestReceiptId: scene.questions.find(q=>q.jobId===id)?.requestReceiptId??job.requestReceiptId,
     expectedRevision:scene.bases.get(id)!.attemptRevision, attemptCount: 0 })
 }
 export function cancelPrepHelp(scenario: string, session: PrepSession, id: string, value: unknown, key: unknown) {

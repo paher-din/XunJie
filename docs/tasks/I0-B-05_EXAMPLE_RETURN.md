@@ -4,7 +4,7 @@
 
 **Blocked by:** [I0-B-01 消息与回执](I0-B-01_MESSAGES_RECEIPTS.md)。D-05最小例子/返回入口已在规划中定稿，由本票实现；不依赖02/03/04，可用获准合成材料独立验只读查看→返回，精确编辑器定位与03共享适配须协调。
 
-**Status:** implemented / browser-closeout-blocked（基本只读阅读已验；2026-10-14实际新增链复现刷新/失效返回原引用与原文undo三项缺口，见末节，不能关闭本票；例子共同设计，不等外部教师批准；真人接棒另属UI-TUTOR-09）。
+**Status:** frontend-engineering-complete（本批获准前端实现与最终门禁已完成；逐条证据见[批次§13](I0-B_UI_TUTOR_PLAN.md#13-2026-10-14-六票逐项收尾审查)，跨模块/受控节点/模型/真人与完整产品验收分列）。
 
 2026-10-14收尾：正常模式资料动作准确标“查看引用资料”，公开可读材料不被叫成教师批准例子；只有开发合成场景保留相邻例子标识。只读覆盖槽、原editor/model/草稿/undo/视图返回与拒绝改贴边界在2项浏览器和25项规则中通过，正式dist已排除合成材料标识；当前教师审批/真人接棒不从测试材料推断。最终构建/检查与限制见[批次§11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)。
 
@@ -12,16 +12,18 @@
 
 ## Acceptance criteria
 
-- [ ] 复用实际消息正文/概念/只读阅读容器；本批样例由Robert与Agent共同设计，或使用已有合法教学正文，有可核来源，不以外部教师批准作为本票前置。缺正式例子DTO时用只读正文，不从模型文字补交互卡、可执行HTML/波形。
-- [ ] 例子与学生作品清楚区分，打开、折叠和关闭不产生作品变更、自动保存、快照、help或run；没有获准示例时说明不可用。
-- [ ] 进入例子前保留模式/账号/Attempt/原文件实例、原对象版本及本机视图状态；业务返回引用与本机光标/滚动/折叠分别表达。
-- [ ] 学生明确返回时恢复原实例的可核位置与现有撤销状态，草稿和未确认命令不被例子覆盖；不以同路径替代实例身份。
-- [ ] 原实例回收、同名新建、版本已变、跨Attempt或代际变化时不定位新实例；保留原引用、显示缺项/过时并让学生选择获准当前对象。
-- [ ] 刷新后的返回只依已有可信引用和本机确实保留的状态；精确位置未保存或无法回取如实说明，不猜旧行号/捏造跨设备恢复。
-- [ ] 需要服务端恢复位置时使用现有position控制及原命令/权威revision；必须由学生明确动作发起，查看例子不隐式start/写位置。
-- [ ] 明确“我先试试”/回应才记相应acknowledged；关闭阅读或普通点击不推断采纳/掌握。返回不会自动续答、改代码或运行。
-- [ ] 从键盘打开只读例子、返回作品、继续学生编辑的浏览器链可回放，覆盖混合EOL/非BMP位置、重挂载/刷新/同名重建与零业务副作用。
-- [ ] typecheck、相关Vitest/build/浏览器专项有实际结果，样例来源与不支持项记录；D-05未交清时精确返回不标完成。
+勾选仅对应本票获准的前端工程责任或已明确保留的后置条件，不表示引用的全部M/AC/NFR、节点、模型或真人验收通过。
+
+- [x] 复用实际消息正文/概念/只读阅读容器；本批样例由Robert与Agent共同设计，或使用已有合法教学正文，有可核来源，不以外部教师批准作为本票前置。缺正式例子DTO时用只读正文，不从模型文字补交互卡、可执行HTML/波形。
+- [x] 例子与学生作品清楚区分，打开、折叠和关闭不产生作品变更、自动保存、快照、help或run；没有获准示例时说明不可用。
+- [x] 进入例子前保留模式/账号/Attempt/原文件实例、原对象版本及本机视图状态；业务返回引用与本机光标/滚动/折叠分别表达。
+- [x] 学生明确返回时恢复原实例的可核位置与现有撤销状态，草稿和未确认命令不被例子覆盖；不以同路径替代实例身份。
+- [x] 原实例回收、同名新建、版本已变、跨Attempt或代际变化时不定位新实例；保留原引用、显示缺项/过时并让学生选择获准当前对象。
+- [x] 刷新后的返回只依已有可信引用和本机确实保留的状态；精确位置未保存或无法回取如实说明，不猜旧行号/捏造跨设备恢复。
+- [x] 需要服务端恢复位置时使用现有position控制及原命令/权威revision；必须由学生明确动作发起，查看例子不隐式start/写位置。
+- [x] 明确“我先试试”/回应才记相应acknowledged；关闭阅读或普通点击不推断采纳/掌握。返回不会自动续答、改代码或运行。
+- [x] 从键盘打开只读例子、返回作品、继续学生编辑的浏览器链可回放，覆盖混合EOL/非BMP位置、重挂载/刷新/同名重建与零业务副作用。
+- [x] typecheck、相关Vitest/build/浏览器专项有实际结果，样例来源与不支持项记录；D-05未交清时精确返回不标完成。
 
 ## Testing Decisions
 
@@ -108,7 +110,7 @@ Robert明确授权在已有`codex/i0-b-closeout-results-return@cc72891`工作树
 
 ## 2026-10-14 原文撤销组根因修复：追加授权与精确方案
 
-Robert在`codex/i0-b-closeout-results-return@17de077`追加授权修复原文undo，仅可写[CodeEditorHost.tsx](../../apps/student/src/components/workspace/CodeEditorHost.tsx)、必要的[originalText.ts](../../apps/student/src/lib/originalText.ts)与[originalText.test.ts](../../apps/student/src/lib/originalText.test.ts)、本文及已持有的[tutoringReturn.spec.ts](../../apps/student/e2e/tutoringReturn.spec.ts)。开工工作区干净。规则/单测确实必要：现有OriginalEditHistory以内容事件为步长，不能表达一次原生undo跳过多个步，也不能可靠定位redo/新分支；只改宿主调用次数会继续丢失原文/模型组关联。检索确认该类只有此宿主及原文单测调用，不扩公共业务协议。
+主Agent依Robert“完整完成本批、不扩大范围”的原指令，在`codex/i0-b-closeout-results-return@17de077`委派必要原文undo修复，仅可写[CodeEditorHost.tsx](../../apps/student/src/components/workspace/CodeEditorHost.tsx)、必要的[originalText.ts](../../apps/student/src/lib/originalText.ts)与[originalText.test.ts](../../apps/student/src/lib/originalText.test.ts)、本文及已持有的[tutoringReturn.spec.ts](../../apps/student/e2e/tutoringReturn.spec.ts)。这是主Agent在原前端范围内的具体分工，不是负责人新增的产品决定。开工工作区干净。规则/单测确实必要：现有OriginalEditHistory以内容事件为步长，不能表达一次原生undo跳过多个步，也不能可靠定位redo/新分支；只改宿主调用次数会继续丢失原文/模型组关联。检索确认该类只有此宿主及原文单测调用，不扩公共业务协议。
 
 沿用上一节已读PRD/MVP/TECH、SPEC/PLAN及客户端原文/视图边界，另核固定Monaco依赖的`textModel._applyUndoRedoEdits`：先安装结果alternativeVersionId，再发延迟内容事件；原生editStack保存组前/后版本。因此方案为每个文件model登记`alternativeVersionId → 原文状态`，每次实际内容变更记录精确原文，undo/redo恢复模型当前可回退版本的原文；新分支只丢弃不可达的redo原文记录，不改变原生undo组。初始和合法外部新正文安装完成后才绑定其实际版本。
 
@@ -116,7 +118,7 @@ Robert在`codex/i0-b-closeout-results-return@17de077`追加授权修复原文und
 
 ### 本机视图捕获接缝追加授权
 
-Robert随后明确授权仍只改本写集内的`CodeEditorHost.tsx`：既有`CodeEditorHandle.saveViewState()`返回这次实际保存的Monaco本机view；尚未加载或没有model返回`null`，旧调用忽略返回值仍兼容。导出`CodeEditorViewState = ReturnType<MonacoEditor['saveViewState']>`，不把服务端`CodeRange`充作本机视图。主负责页面anchor泛型和捕获调用接线，本Agent不写主页面。返回资料时继续保留同一编辑器实例/原生undo；本机view不持久化进刷新marker，刷新只留原实例/版本与缺位置的可见说明。此为原只读视图适配，不新增服务端坐标/协议/字段。
+主Agent随后在同一前端范围明确仍只改本写集内的`CodeEditorHost.tsx`：既有`CodeEditorHandle.saveViewState()`返回这次实际保存的Monaco本机view；尚未加载或没有model返回`null`，旧调用忽略返回值仍兼容。导出`CodeEditorViewState = ReturnType<MonacoEditor['saveViewState']>`，不把服务端`CodeRange`充作本机视图。主负责页面anchor泛型和捕获调用接线，本Agent不写主页面。返回资料时继续保留同一编辑器实例/原生undo；本机view不持久化进刷新marker，刷新只留原实例/版本与缺位置的可见说明。此为原只读视图适配，不新增服务端坐标/协议/字段。
 
 实际探针补充：编辑器`onDidChangeModelContent`会排队转发，普通事件versionId为2～21时，回调读到的model版本已全部为21，第一版直接取alternativeVersionId因此误绑。仅记录数值版本的探针确认后，改为随当前model挂载/移除`model.onDidChangeContent`订阅，在模型的延迟内容事务结束时读取确切结果版本；不改变原生undo组、不改模型正文。探针将在交付前移除。
 
@@ -138,3 +140,9 @@ Robert随后明确授权仍只改本写集内的`CodeEditorHost.tsx`：既有`Co
 主反馈其两项刷新/同名重建与其他HTTPS/controls检查通过，此为主提供的独立证据，本Agent没有在此工作树重跑或改动页面。本切片原文缺口已修，但整票仍待主合入本机view页面/转发接线、统一最终浏览器和逐AC汇总；不凭本次10项就标全票/全产品完成。正式build因明确的转发层类型缺口未执行，供应商/节点/真人、无关全量与后台均未执行；未改Vite/共享依赖配置。
 
 根静态检查`node tools/a0-review/check.mjs`：77文档/1144内链、errors=[]；`git diff --check`退出0，待提交写集仅上述精确五文件。探针已移除，未留临时源码/日志。只本地提交、不推送；产品基线/MVP_SPEC §10仍待授权维护者汇总。
+
+## 2026-10-14 主分支接线与缺口修复
+
+`17de077`/`2ed0b76`分别以`1d024f5`/`f3d2b7f`整合，主将CodeWorkspace的view转发补`?? null`并用实际CodeEditorViewState捕获anchor，已消除上述TS2322；完整类型、34文件464项规则与正式build通过。原三个浏览器缺口在前一完整Chrome同次全通过，本票4/4：实际刷新保留原实例/版本引用并持续说明精确位置未保留；另一标签回收同名重建后保留旧引用、不套旧位置；pending原wire与草稿字节不变、每个原生undo/redo组及新分支与DOM/落盘全文一致，折叠/滚动保留。
+
+刷新marker仅在原账号/模式/课程/Assignment/Attempt/代际命名空间保原文件ID/path/documentVersion，不存正文或精确view，不当跨设备恢复或当前授权。查看/返回不写作品/位置/新帮助/运行，也不推断acknowledged；原文undo使用本机model alternativeVersionId，与服务端documentVersion区分。原10条逐项核对和最终候选Chrome见[批次§13](I0-B_UI_TUTOR_PLAN.md#13-2026-10-14-六票逐项收尾审查)。共同设计样例满足本批来源决定，外部教师审批不作为本票门禁；真人接棒仍属UI-TUTOR-09。

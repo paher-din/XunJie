@@ -362,7 +362,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, url: string): P
     if (csrfHeader(req)!==session.csrfToken) return fail(res,'FORBIDDEN')
     let body:unknown
     try {body=await readBody(req)} catch {return fail(res,'INVALID_REQUEST')}
-    try {return ok(res,setPrepTutorScript(scenarioOf(req),body))} catch(error) {
+    try {return ok(res,setPrepTutorScript(scenarioOf(req),body,session))} catch(error) {
       if (error instanceof PrepWorkspaceError) return fail(res,error.code)
       throw error
     }

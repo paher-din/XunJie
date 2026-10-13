@@ -44,7 +44,7 @@ export function CodeWorkspace({ ws, workspaceKey, editorHandleRef, onSelectionCh
 
   useImperativeHandle(editorHandleRef, () => ({
     focus: () => editorRef.current?.focus(),
-    saveViewState: () => editorRef.current?.saveViewState(),
+    saveViewState: () => editorRef.current?.saveViewState() ?? null,
     captureSelection: () => editorRef.current?.captureSelection() ?? { ok: false, reason: '没有可用的代码编辑器。' },
     revealOriginalRange: (location) => editorRef.current?.revealOriginalRange(location) ?? { ok: false, reason: '没有可用的代码编辑器。' },
   }))

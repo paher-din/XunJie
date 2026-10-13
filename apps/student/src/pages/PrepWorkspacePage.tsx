@@ -33,12 +33,19 @@ import { createRunHelpObjectRef, type RunHelpTarget } from '../workspace/tutorin
 import type { TutorObject } from '../workspace/tutoringContracts'
 import { TutoringControls } from '../components/workspace/TutoringControls'
 import type { AssignmentView } from '../workspace/contracts'
-import type { CodeEditorHandle } from '../components/workspace/CodeEditorHost'
-import { createCodeObjectRef, verifyCodeTarget, codeSelectionRange as createReturnRange, type CodeDraft, type CodeRange } from '../workspace/tutoringObject'
+import type { CodeEditorHandle, CodeEditorViewState } from '../components/workspace/CodeEditorHost'
+import { createCodeObjectRef, verifyCodeTarget, type CodeDraft } from '../workspace/tutoringObject'
 import { TutoringExample } from '../components/workspace/TutoringExample'
 import { resolveTutoringResource, captureTutoringReturn, validateTutoringReturn,
   type TutoringResourceResult, type TutoringReturnAnchor, type TutoringReturnFile } from '../workspace/tutoringReturn'
 import type { TutorMessage } from '../workspace/tutoringStore'
+import type { CommandContext } from '../workspace/frozenCommand'
+
+type ReturnOrigin={fileId:string;path:string;documentVersion:number|null}
+const readingMarkerKey=(c:CommandContext)=>`tutor:return:${JSON.stringify([c.mode,c.userId,c.courseId,c.assignmentId,
+  c.activityVersionId,c.attemptId,c.trustedRecoveryGeneration,c.preparationEpoch,c.scenarioId??null])}`
+const returnOrigin=(file:TutoringReturnFile):ReturnOrigin=>({fileId:file.serverFileId??file.fileId,path:file.path,documentVersion:file.documentVersion})
+function clearReadingMarker(c:CommandContext) {try {sessionStorage.removeItem(readingMarkerKey(c))} catch { /* Current-page return remains usable. */ }}
 
 /**
  * 同一 C / TextScope 工作区按启动模式读取准备场景或获准真实分配。
@@ -81,7 +88,26 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   const project = useProjectWorkspace(confirmation.seed, idbDraftRepository, draftScope)
   const projectLive = useRef(project)
   projectLive.current = project
-  const [example, setExample] = useState<{ resource: TutoringResourceResult; anchor: TutoringReturnAnchor<CodeRange> | null } | null>(null)
+  const [example, setExample] = useState<{ resource: TutoringResourceResult; anchor: TutoringReturnAnchor<NonNullable<CodeEditorViewState>> | null } | null>(null)
+  const [returnNotice,setReturnNotice]=useState<{notice:string;origin?:ReturnOrigin}|null>(null)
+  useEffect(()=> {
+    setReturnNotice(null)
+    if(!c?.attemptId || !c.userId)return
+    const key=readingMarkerKey(c)
+    try {
+      const raw=sessionStorage.getItem(key)
+      if(!raw)return
+      const value=JSON.parse(raw),origin=value?.origin
+      if(value?.key===key && typeof origin?.fileId==='string' && origin.fileId && typeof origin.path==='string' && origin.path &&
+        (origin.documentVersion===null || Number.isSafeInteger(origin.documentVersion)&&origin.documentVersion>=1))
+        setReturnNotice({notice:'上次阅读的精确位置未保留；原引用仅供核对，请明确选择当前作品。',origin})
+      else setReturnNotice({notice:'上次阅读的本机引用不可用，精确位置未保留；请明确选择当前作品。'})
+      clearReadingMarker(c)
+    } catch {
+      setReturnNotice({notice:'本机阅读引用不可回取，无法确认旧精确位置；请明确选择当前作品。'})
+      clearReadingMarker(c)
+    }
+  },[c])
   const [tool, setTool] = useState<ToolKey>('design')
   const [tabsSlot, setTabsSlot] = useState<HTMLElement | null>(null)
   const [runSlot, setRunSlot] = useState<HTMLElement | null>(null)
@@ -149,21 +175,27 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     if(init.init?.kind!=='ready' || !c || !confirmation.client?.isCurrent(c)) return
     const resource=resolveTutoringResource(message.payload.resourceRefs?.[0]??'',init.init.activity,init.init.materials,c.mode)
     const file=returnFiles().find(f=>f.fileId===projectLive.current.activeFile?.fileId)
-    const selected=editorHandle.current?.captureSelection()
-    const range=selected?.ok ? createReturnRange(selected.selection.originalText,selected.selection.modelStart,selected.selection.modelEnd):null
-    editorHandle.current?.saveViewState()
-    setExample({resource,anchor:file?captureTutoringReturn(c,file,range):null});setTutorOpen(false)
+    const view=editorHandle.current?.saveViewState()??null
+    const anchor=file?captureTutoringReturn(c,file,view):null
+    if(resource.kind==='ready' && anchor) {
+      try {sessionStorage.setItem(readingMarkerKey(c),JSON.stringify({key:readingMarkerKey(c),origin:returnOrigin(anchor.file)}))}
+      catch {setReturnNotice({notice:'本机阅读引用未保留；刷新后不能恢复原精确位置。',origin:returnOrigin(anchor.file)})}
+    }
+    setExample({resource,anchor});setTutorOpen(false)
   }
   function onReturnExample() {
     if(!example) return
     const checked=example.anchor && c ? validateTutoringReturn(example.anchor,c,returnFiles()):null
     setExample(null)
+    if(c)clearReadingMarker(c)
     if(checked?.kind==='ready' && example.anchor && draftScope) {
+      setReturnNotice(null)
       project.open(checked.fileId)
       // The editor and its saved scroll/fold/undo state remained mounted: focus does not move the view.
       if(projectLive.current.activeFile?.fileId===checked.fileId) editorHandle.current?.focus()
-    } else if(checked?.kind==='unavailable') showToast(checked.notice)
-    else showToast('未保留精确文件位置，返回当前作品继续自主操作。')
+    } else if(checked?.kind==='unavailable') setReturnNotice({notice:checked.notice,
+      ...(example.anchor?{origin:returnOrigin(example.anchor.file)}:{})})
+    else setReturnNotice({notice:'未保留精确文件位置，返回当前作品继续自主操作。'})
     setTutorOpen(true)
   }
 
@@ -207,7 +239,9 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           id: f.resultFileId, name: f.relativeName, status: f.status, contentHash: f.contentHash, bytes: f.bytes, text: f.text,
         })) } : detail.files } : null }
   }) as [HistorySideDisplay, HistorySideDisplay]
-  const canRun = run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
+  const runPermitted=(assignment??(init.init?.kind==='ready'?init.init.assignment:null))?.active===true &&
+    !!confirmation.state.attempt && ['ready','active'].includes(confirmation.state.attempt.status)
+  const canRun = runPermitted && run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
     runSelection.fileIds.length > 0 && !confirmation.client?.commandInFlight
 
   /** Esc 关闭比较：只在比较视图打开期间挂监听，行为与「返回编辑」一致。 */
@@ -513,9 +547,13 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           onToast={showToast}
         />
 
-        {toast && (
+        {(toast || returnNotice&&confirmation.state.attempt) && (
           <div className="toast" role="status">
             {toast}
+            {returnNotice&&confirmation.state.attempt && <><p data-testid="tutor-return-notice">{returnNotice.notice}</p>
+              {returnNotice.origin && <p data-testid="tutor-return-origin" data-file-id={returnNotice.origin.fileId}>
+                本机保留的原引用：{returnNotice.origin.path} · {returnNotice.origin.documentVersion===null?'本机未确认实例':`原文件版本 ${returnNotice.origin.documentVersion}`}
+              </p>}</>}
           </div>
         )}
       </div>

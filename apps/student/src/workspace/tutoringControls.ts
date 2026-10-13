@@ -176,7 +176,7 @@ export class TutoringControlsWorkspace {
     if (!this.valid() || seq !== this.readSeq) return null
     // Read head last: check completion need not advance attemptRevision/epoch. Do not publish an older
     // check flag after waiting for Assignment; the original confirmation client owns head read ordering.
-    const head = await tutoringRequest(this.confirmation.readHead())
+    const head = await tutoringRequest(this.confirmation.readHead({ controlsOnly: true }))
     if (!this.valid() || seq !== this.readSeq || !head) return null
     const latest = this.confirmation.current?.attempt
     if (latest && (latest.attemptRevision > head.attempt.attemptRevision || latest.decisionEpoch > head.attempt.decisionEpoch ||

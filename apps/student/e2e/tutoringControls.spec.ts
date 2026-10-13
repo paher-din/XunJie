@@ -1,8 +1,12 @@
 import { test, expect, type Page } from '@playwright/test'
 import { create, edit, openFileMenu, start as startWorkspace, sceneUrl, localState } from './helpers'
+import { fixedProject, selectRun, recoverRunContext } from './runHelpers'
 
 const panel = (page: Page) => page.getByTestId('tutoring-controls')
-const closePanel = (page:Page) => page.getByRole('button',{name:'关闭',exact:true}).click()
+async function closePanel(page:Page) {
+  await page.getByRole('button',{name:'关闭',exact:true}).click()
+  await expect(panel(page)).toHaveCount(0)
+}
 async function start(page:Page,name:string) {
   await startWorkspace(page,name)
   await page.getByRole('button',{name:'任务信息',exact:true}).click()
@@ -116,6 +120,33 @@ test('暂停尝试保留已有文件保存，个人恢复不改变采集或提�
   expect(after.attempt.decisionEpoch).toBe(before.attempt.decisionEpoch + 1)
 })
 
+test('当前尝试或分配暂停立即禁用已配置的运行按钮，恢复后按当前许可再开放',async({page})=> {
+  const saved=await fixedProject(page,'controls-current-run-permission'),snapshot=saved.snapshots[0]!
+  await selectRun(page,snapshot.snapshotId,snapshot.files.find(f=>f.path==='main.c')!.fileId,'')
+  const run=page.getByRole('button',{name:'运行此快照',exact:true}),runs:string[]=[]
+  page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/runs'))runs.push(r.postData()!)})
+  await expect(run).toBeEnabled()
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
+  await panel(page).getByRole('button',{name:'暂停尝试',exact:true}).click()
+  await expect(panel(page).getByRole('button',{name:'恢复尝试',exact:true})).toBeEnabled()
+  await expect(run).toBeDisabled()
+  await closePanel(page)
+  await page.getByRole('checkbox',{name:'sample.txt',exact:true}).focus();await page.keyboard.press('Enter')
+  expect(runs).toEqual([])
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
+  await panel(page).getByRole('button',{name:'恢复尝试',exact:true}).click()
+  await expect(run).toBeEnabled()
+  // Published assignment pause is a UI-consumer negative case, not a teacher authorization proof.
+  await page.route('**/api/assignments/*',async route=> {
+    const response=await route.fetch(),envelope=await response.json()
+    envelope.data.active=false;envelope.data.status='paused';envelope.data.assignmentRevision++
+    await route.fulfill({response,json:envelope})
+  })
+  await panel(page).getByRole('button',{name:'重读学习控制',exact:true}).click()
+  await expect(run).toBeDisabled()
+  expect(runs).toEqual([])
+})
+
 test('丢控制ACK后刷新不自动发送，明确核对原键原文且只增加一次采集代际', async ({ page }) => {
   await start(page, 'controls-lost-ack')
   const posts = requests(page), before = await head(page)
@@ -196,4 +227,130 @@ test('实际关闭采集和提醒后仍可主动求助，帮助失败不会切�
   await expect(page.getByTestId('tutor-message')).toHaveCount(1)
   const after=await head(page)
   expect(after.attempt.collecting).toBe(false);expect(after.attempt.reminders).toBe(false)
+})
+
+test('已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留',async({page})=> {
+  await start(page,'controls-cancel-old-reminder');await closePanel(page)
+  await page.getByRole('button',{name:'就项目求助',exact:true}).click()
+  await page.getByRole('textbox',{name:'就这个任务提问'}).fill('先给一个项目提示，提醒样例另属合成准备数据')
+  await page.getByRole('button',{name:'发送辅导问题',exact:true}).click()
+  await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+  const original=await page.getByTestId('tutor-message').getAttribute('data-action-id')
+  await page.getByRole('button',{name:'收起辅导',exact:true}).click()
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
+  const toggle=panel(page).getByRole('switch',{name:'里程碑提醒',exact:true})
+  await toggle.click();await expect(toggle).toHaveAttribute('aria-checked','true')
+  const seeded=await page.evaluate(async()=> {
+    const headers={'x-i0prep-scenario':new URLSearchParams(location.search).get('scenario')!}
+    const session=(await(await fetch('/__i0prep/api/session',{headers})).json()).data
+    const response=await fetch('/__i0prep/tutor-script',{method:'POST',headers:{...headers,'Content-Type':'application/json','x-csrf-token':session.csrfToken},
+      body:JSON.stringify({kind:'pending-reminder'})})
+    if(!response.ok)throw new Error('Synthetic reminder sample unavailable')
+    return (await response.json()).data as {jobId:string;actionId:string;content:string}
+  })
+  const facts=()=>page.evaluate(async actionId=> {
+    const db=await new Promise<IDBDatabase>((r,j)=>{const q=indexedDB.open('xunjie-i0-workspace',2);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)})
+    try {
+      const rows=await new Promise<Array<{key:string;messages?:Array<{payload:{actionId:string};shown:boolean;facts:{received?:{state:string};displayed?:unknown}}> }>>((r,j)=>{
+        const q=db.transaction('metadata').objectStore('metadata').getAll();q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)
+      })
+      return rows.filter(row=>row.key.startsWith('tutor:ledger:')).flatMap(row=>row.messages??[]).find(m=>m.payload.actionId===actionId)
+    } finally {db.close()}
+  },seeded.actionId)
+  await expect.poll(async()=> (await facts())?.facts.received?.state).toBe('confirmed')
+  expect((await facts())?.shown).toBe(false);expect((await facts())?.facts.displayed).toBeUndefined()
+  const receipts:string[]=[]
+  page.on('request',r=>{if(r.method()==='POST'&&r.url().includes(`/actions/${seeded.actionId}/receipts`))receipts.push(r.postData()!)})
+  const before=await head(page)
+  await toggle.click();await expect(toggle).toHaveAttribute('aria-checked','false')
+  const stopped=await page.evaluate(async jobId=> {
+    const headers={'x-i0prep-scenario':new URLSearchParams(location.search).get('scenario')!}
+    return (await(await fetch(`/__i0prep/api/jobs/${jobId}`,{headers})).json()).data
+  },seeded.jobId)
+  expect(stopped.purpose).toBe('reminder');expect(stopped.stopRequested).toBe(true);expect(stopped.status).toBe('succeeded')
+  await toggle.click();await expect(toggle).toHaveAttribute('aria-checked','true')
+  expect((await head(page)).attempt.decisionEpoch).toBe(before.attempt.decisionEpoch)
+  await closePanel(page)
+  await page.getByRole('button',{name:'就项目求助',exact:true}).click()
+  await page.getByRole('button',{name:'重新读取辅导',exact:true}).click()
+  await expect(page.getByTestId('tutor-message')).toHaveCount(1)
+  await expect(page.getByTestId('tutor-message')).toHaveAttribute('data-action-id',original!)
+  await expect(page.getByTestId('tutoring-pane')).not.toContainText(seeded.content)
+  expect(receipts.some(body=>/displayed|acknowledged/.test(body))).toBe(false)
+})
+
+test('另一标签基于旧显示再次设相同采集值，发送前用新revision且不新增采集代际',async({page,context})=> {
+  await start(page,'controls-two-tabs-same-value')
+  const other=await context.newPage()
+  try {
+    await other.goto(page.url());await expect(other.locator('.cw')).toBeVisible()
+    await other.getByRole('button',{name:'任务信息',exact:true}).click()
+    const second=panel(other).getByRole('switch',{name:'过程采集',exact:true})
+    await expect(second).toHaveAttribute('aria-checked','true')
+    // Prep initialization creates a fresh synthetic session for the new tab. Align the first
+    // tab's in-memory CSRF with that actual shared cookie before exercising the control path.
+    await page.evaluate(async()=> {
+      const headers={'x-i0prep-scenario':new URLSearchParams(location.search).get('scenario')!}
+      const session=(await(await fetch('/__i0prep/api/session',{headers})).json()).data
+      const {setCsrfToken}=await import('/src/workspace/http.ts' as string)
+      setCsrfToken(session.csrfToken)
+    })
+    const before=await head(other),firstPosts=requests(page),secondPosts=requests(other)
+    let live=false
+    // Preserve an actual older public projection on the second page. Its explicit command must still re-read authority.
+    await other.route('**/__i0prep/api/attempts/*',async route=> {
+      if(route.request().method()!=='GET')return route.continue()
+      const response=await route.fetch(),envelope=await response.json()
+      if(!live)envelope.data=before
+      await route.fulfill({response,json:envelope})
+    })
+    const first=panel(page).getByRole('switch',{name:'过程采集',exact:true})
+    await first.click();await expect(first).toHaveAttribute('aria-checked','false')
+    const changed=await head(page)
+    await expect(second).toHaveAttribute('aria-checked','true')
+    live=true;await second.click()
+    await expect(second).toHaveAttribute('aria-checked','false')
+    await expect(panel(other)).toContainText('控制已确认')
+    expect(firstPosts).toHaveLength(1);expect(secondPosts).toHaveLength(1)
+    expect(JSON.parse(firstPosts[0]!.body).control).toEqual({kind:'capture',value:false})
+    expect(JSON.parse(secondPosts[0]!.body).control).toEqual({kind:'capture',value:false})
+    expect(JSON.parse(secondPosts[0]!.body).expectedAttemptRevision).toBe(changed.attempt.attemptRevision)
+    expect(secondPosts[0]!.key).not.toBe(firstPosts[0]!.key)
+    const after=await head(other)
+    expect(after.attempt.captureRevision).toBe(changed.attempt.captureRevision)
+    expect(after.attempt.decisionEpoch).toBe(before.attempt.decisionEpoch)
+  } finally {await other.close()}
+})
+
+test('旧代际控制ACK晚于恢复和新控制，不改新值、不重贴旧键或清除新确认',async({page})=> {
+  await fixedProject(page,'controls-generation-held-ack')
+  await page.getByRole('button',{name:'任务信息',exact:true}).click()
+  const posts=requests(page)
+  let held=false,release!:()=>void,arrived!:()=>void,delivered!:()=>void
+  const hold=new Promise<void>(r=>{release=r}),ready=new Promise<void>(r=>{arrived=r}),finished=new Promise<void>(r=>{delivered=r})
+  await page.route('**/__i0prep/api/attempts/*/controls',async route=> {
+    const response=await route.fetch()
+    if(!held){held=true;arrived();await hold;await route.fulfill({response});delivered()}
+    else await route.fulfill({response})
+  })
+  try {
+    await panel(page).getByRole('switch',{name:'过程采集',exact:true}).click()
+    await ready
+    const rotated=await recoverRunContext(page);expect(rotated.status).toBe(200);expect(rotated.after).not.toBe(rotated.before)
+    await closePanel(page)
+    await page.getByRole('button',{name:'重新读取',exact:true}).click()
+    await expect(page.locator('.cw')).toBeVisible()
+    await page.getByRole('button',{name:'任务信息',exact:true}).click()
+    const current=panel(page).getByRole('switch',{name:'过程采集',exact:true})
+    await expect(current).toHaveAttribute('aria-checked','false')
+    await current.click();await expect(current).toHaveAttribute('aria-checked','true')
+    await expect(panel(page)).toContainText('控制已确认')
+    release();await finished
+    await expect(current).toHaveAttribute('aria-checked','true')
+    expect(posts).toHaveLength(2)
+    expect(JSON.parse(posts[0]!.body).recoveryGeneration).toBe(rotated.before)
+    expect(JSON.parse(posts[1]!.body).recoveryGeneration).toBe(rotated.after)
+    expect(posts[1]!.key).not.toBe(posts[0]!.key)
+    await expect(panel(page).getByRole('button',{name:'核对原控制请求',exact:true})).toHaveCount(0)
+  } finally {release()}
 })
