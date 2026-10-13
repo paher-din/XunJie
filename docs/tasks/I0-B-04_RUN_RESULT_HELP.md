@@ -73,3 +73,21 @@ Playwright按分工暂未运行，build、真实HTTP/节点、模型供应商、
 独立提交`fedd0c3`已以`5ee90ba`整合回原UI分支。主页面从当前Run或历史所选detail的公开Job/Run核引用，打开明确原run/snapshot表单，再由学生发送02原help；不是从当前运行控件推参数，也不因选原运行创建新run/sync。
 
 [本票浏览器](../../apps/student/e2e/tutoringRun.spec.ts)3项通过：改运行控件后原结果选择零写入、新浏览器缺参数/环境诊断仍能选择原结果、公开Job/Run构造与快照错配拒绝。主最后扩展第一项，实际从核对表单发送原run/snapshot ObjectRef，获准合成正文出现，验证没有新run/sync/snapshot副作用；3项重新通过。原运行14项回归通过，原诊断/未知/取消/来源语义保留。实际build/typecheck与[组合记录](I0-B_UI_TUTOR_PLAN.md#92-验证失败修复与证据分层)另列。准备发送不冒充D-01回答归属或真实节点/模型/真人接棒；完整票及正式AC-04仍未完成。
+
+## 2026-10-14 浏览器覆盖收口：范围与依据
+
+Robert明确授权在已有工作树、分支`codex/i0-b-closeout-results-return`、基线`cc72891`补04/05的实际页面检查；开工工作区干净。仅可写本票、05票与`e2e/tutoringRun.spec.ts`、`e2e/tutoringReturn.spec.ts`。主Agent独占PrepWorkspacePage、教学状态机/Pane与06；父PLAN、后台、fixture、存储schema、依赖及受保护文档只读。本Agent不新建工作树/分支、不推送、不调用模型/节点，不操作真实学习记录。
+
+已按README/AGENTS入口读取PRD §3.2/4.2/8，MVP M-03/04/05与§6，TECH §4.1/6.1/7.3/7.4；本批SPEC实施/测试/排除、PLAN §6/7/11/12与04全文，沿用已读I0_UI_SPEC、客户端约束§3～6、IMPORT_SOURCE及TEAM职责。适用本票验收第7/9条、UI-TUTOR-03、AC-04/06及NFR-04；不把运行和工程合成检查计作课程、节点或教学效果验收。
+
+实施方案：在同一准备authority实际选择原运行、显式提问和展示后，继续编辑草稿，再自行确认/冻结并发起另一Run；逐步核原回答仍保留原Run/snapshot/Job/Action，新增运行只来自明确运行动作，求助/阅读不另写作品。必要反例只操作页面与有来源传输，不用浏览器调用纯构造器替代用户链。独立CI Chrome端口5671/5672；实际命令、失败、通过及剩余项在下方完成后追加，当前不预写通过。
+
+### 实际结果与回交
+
+最终同次Chrome组合中本票4/4通过：原回答展示后实际改稿/确认新快照/发起另一Run，Action/Job/原Run/原快照来源不变，只有明确保存/冻结/运行各一次；原回答HTTP页被按住后实际改稿并完成另一Run，放行后只呈现原来源；缺本机参数/环境诊断仍可选择原结果且不重跑；原公开引用规则检查保留，明确不替代前两条页面链。前两条分别13.1秒、13.9秒；规则构造项不计实际用户链。
+
+学生目录实际命令：`rtk npm run typecheck`两份TS配置退出0；`CI=1 XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_E2E_PREP_PORT=5671 XUNJIE_E2E_REAL_PORT=5672`下执行`rtk npm run test:e2e -- tutoringRun.spec.ts tutoringReturn.spec.ts --workers=2`，最终8项为5通过/3失败/0跳过，退出1，三失败属于05并在其记录精确保留。首轮4通过/4失败中的本票失败是用innerText快照和textContent匹配器混用，现统一真实DOM文本口径后原来源/Action/请求断言全部保留并通过；不能把首轮记为通过。
+
+此次只改浏览器检查与本人记录，不重跑未变业务规则、正式build或后端/节点/模型；已有通过记录保持原时点。原运行来源的前端新增缺口已补证，完整课程/AC/NFR、节点和真实模型不据此关闭。静态检查与最终SHA在提交结果回交，只本地提交本人四文件，不推送；产品基线/MVP_SPEC §10待授权维护者汇总。
+
+提交前根静态检查`node tools/a0-review/check.mjs`：77文档/1140内链、errors=[]；`git diff --check`退出0。未生成额外临时脚本/日志；Playwright失败诊断仅为05交接所需忽略产物，不提交。

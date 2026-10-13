@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { localState, serverHead } from './helpers'
+import { confirmSave, edit, localState, serverHead } from './helpers'
 import { fixedProject, selectRun, setRunScript } from './runHelpers'
 
 /**
- * 主 Agent 接入两个面板的 onHelp 后统一执行：选原结果只开核对表单，不发送 help/run/sync。
- * 不约定未交付求助表单的标签，也不伪造 D-01 教学 Action→Job/Run 关系。
- * 实际发送/冻结问题/晚到回答边界由 02 接入后另补；本文件没有跳过这些缺口并称整票通过。
+ * 原结果选择、发送、继续编辑及另一运行全部走当前页面；来源核实际 D-01 公开投影。
+ * 保留最后的独立公开引用规则检查，但它不替代前面的真实 DOM/请求链。
  */
-test('运行控件改变后原结果的求助动作仍可用，选择本身没有写请求', async ({ page }) => {
+test('原运行求助后继续编辑并启动另一Run，旧回答仍保留原Run/快照且不自动重跑', async ({ page }) => {
   const head = await fixedProject(page, 'tutor-original-run'), snapshot = head.snapshots[0]!
   await selectRun(page, snapshot.snapshotId, snapshot.files.find(f => f.path === 'main.c')!.fileId, '')
   await page.getByRole('button', { name: '运行此快照', exact: true }).click()
@@ -35,6 +34,100 @@ test('运行控件改变后原结果的求助动作仍可用，选择本身没�
   await expect(page.getByTestId('tutor-source')).toContainText(`原运行 ${runId}`)
   await expect(page.getByTestId('tutor-source')).toContainText(`原快照 ${snapshot.snapshotId}`)
   expect(writes.some(url=>/\/(runs|sync|snapshots)$/.test(url))).toBe(false)
+  const actionId = await page.getByTestId('tutor-message').getAttribute('data-action-id')
+  const originalSource = (await page.getByTestId('tutor-source').textContent())!
+
+  await page.getByRole('button', { name: '收起辅导', exact: true }).click()
+  await page.getByRole('button', { name: '返回编辑', exact: true }).click()
+  await page.locator('.cw-filetab-main', { hasText: 'main.c' }).click()
+  await page.locator('.monaco-editor textarea').first().focus()
+  await page.keyboard.press('ControlOrMeta+End')
+  await edit(page, '// revised after original help 😀')
+  await expect(page.locator('.ws-flow')).toContainText('1 个文件未确认')
+  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await expect(page.getByTestId('tutor-source')).toHaveText(originalSource)
+  await expect(page.getByTestId('tutor-message')).toHaveAttribute('data-action-id', actionId!)
+  expect(writes.some(url=>/\/(runs|sync|snapshots)$/.test(url))).toBe(false)
+
+  await page.getByRole('button', { name: '收起辅导', exact: true }).click()
+  await confirmSave(page, 2)
+  await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
+  await expect(page.getByText('已冻结快照 v2', { exact: true })).toBeVisible()
+  const updated = await serverHead(page)
+  const nextSnapshot = updated.snapshots.find(item => item.workspaceRevision === 2)!
+  expect(nextSnapshot.snapshotId).not.toBe(snapshot.snapshotId)
+  await selectRun(page, nextSnapshot.snapshotId, nextSnapshot.files.find(f => f.path === 'main.c')!.fileId, '')
+  await page.getByRole('combobox', { name: 'Core 操作', exact: true }).selectOption('stats')
+  await page.getByRole('button', { name: '运行此快照', exact: true }).click()
+  await expect.poll(async () => {
+    const id = await result.getAttribute('data-run-id')
+    return !!id && id !== runId
+  }).toBe(true)
+  await expect(result).toContainText('运行完成')
+  const nextRunId = await result.getAttribute('data-run-id')
+  expect(nextRunId).toBeTruthy(); expect(nextRunId).not.toBe(runId)
+  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await expect(page.getByTestId('tutor-source')).toHaveText(originalSource)
+  await expect(page.getByTestId('tutor-source')).not.toContainText(nextRunId!)
+  await expect(page.getByTestId('tutor-source')).not.toContainText(nextSnapshot.snapshotId)
+  await expect(page.getByTestId('tutor-message')).toHaveAttribute('data-action-id', actionId!)
+  expect(helpBodies).toHaveLength(1)
+  expect(writes.filter(url => /\/runs$/.test(url))).toHaveLength(1)
+  expect(writes.filter(url => /\/sync$/.test(url))).toHaveLength(1)
+  expect(writes.filter(url => /\/snapshots$/.test(url))).toHaveLength(1)
+})
+
+test('原运行回答的HTTP页晚到，学生已改稿并完成另一Run仍只显示原来源', async ({ page }) => {
+  const head = await fixedProject(page, 'tutor-late-original-run'), snapshot = head.snapshots[0]!
+  await selectRun(page, snapshot.snapshotId, snapshot.files.find(f => f.path === 'main.c')!.fileId, '')
+  await page.getByRole('button', { name: '运行此快照', exact: true }).click()
+  const result = page.getByRole('region', { name: '固定快照结果', exact: true })
+  await expect(result).toContainText('运行完成')
+  const runId = (await result.getAttribute('data-run-id'))!
+  let release!: () => void, arrived!: () => void, held = false
+  const waiting = new Promise<void>(resolve => { release = resolve })
+  const ready = new Promise<void>(resolve => { arrived = resolve })
+  await page.route('**/api/attempts/*/events?*', async route => {
+    const response = await route.fetch(), envelope = await response.json()
+    if (!held && envelope.data.events.some((event: { payload?: { basis?: { objectRef?: { runId?: string } } } }) =>
+      event.payload?.basis?.objectRef?.runId === runId)) {
+      held = true; arrived(); await waiting
+    }
+    await route.fulfill({ response })
+  })
+  try {
+    await result.getByRole('button', { name: '就这次运行求助', exact: true }).click()
+    await page.getByRole('textbox', { name: '就这个任务提问' }).fill('请只核查原运行，传输晚到也保留来源。')
+    await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
+    await ready
+    await expect(page.getByTestId('tutor-message')).toHaveCount(0)
+    await page.getByRole('button', { name: '收起辅导', exact: true }).click()
+    await page.getByRole('button', { name: '返回编辑', exact: true }).click()
+    await page.locator('.cw-filetab-main', { hasText: 'main.c' }).click()
+    await page.locator('.monaco-editor textarea').first().focus()
+    await page.keyboard.press('ControlOrMeta+End')
+    await edit(page, '// changed before delivery 😀')
+    await confirmSave(page, 2)
+    await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
+    await expect(page.getByText('已冻结快照 v2', { exact: true })).toBeVisible()
+    const next = (await serverHead(page)).snapshots.find(item => item.workspaceRevision === 2)!
+    await selectRun(page, next.snapshotId, next.files.find(f => f.path === 'main.c')!.fileId, '')
+    await page.getByRole('button', { name: '运行此快照', exact: true }).click()
+    await expect.poll(async () => {
+      const id = await result.getAttribute('data-run-id')
+      return !!id && id !== runId
+    }).toBe(true)
+    await expect(result).toContainText('运行完成')
+    const nextRunId = (await result.getAttribute('data-run-id'))!
+    expect(nextRunId).not.toBe(runId)
+    release()
+    await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+    await expect(page.getByTestId('tutor-message')).toHaveCount(1)
+    await expect(page.getByTestId('tutor-source')).toContainText(`原运行 ${runId}`)
+    await expect(page.getByTestId('tutor-source')).toContainText(`原快照 ${snapshot.snapshotId}`)
+    await expect(page.getByTestId('tutor-source')).not.toContainText(nextRunId)
+    await expect(page.getByTestId('tutor-source')).not.toContainText(next.snapshotId)
+  } finally { release(); await page.unroute('**/api/attempts/*/events?*') }
 })
 
 test('没有原参数且环境诊断不可回取时历史仍可选择求助，不自动重跑', async ({ page, browser }) => {

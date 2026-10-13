@@ -4,7 +4,7 @@
 
 **Blocked by:** [I0-B-01 消息与回执](I0-B-01_MESSAGES_RECEIPTS.md)。D-05最小例子/返回入口已在规划中定稿，由本票实现；不依赖02/03/04，可用获准合成材料独立验只读查看→返回，精确编辑器定位与03共享适配须协调。
 
-**Status:** implemented / prepared-verified（获准公开资料读取、原实例/视图返回已交；Robert明确本批例子由双方共同设计，不需要外部教师批准；真人接棒另属UI-TUTOR-09）。
+**Status:** implemented / browser-closeout-blocked（基本只读阅读已验；2026-10-14实际新增链复现刷新/失效返回原引用与原文undo三项缺口，见末节，不能关闭本票；例子共同设计，不等外部教师批准；真人接棒另属UI-TUTOR-09）。
 
 2026-10-14收尾：正常模式资料动作准确标“查看引用资料”，公开可读材料不被叫成教师批准例子；只有开发合成场景保留相邻例子标识。只读覆盖槽、原editor/model/草稿/undo/视图返回与拒绝改贴边界在2项浏览器和25项规则中通过，正式dist已排除合成材料标识；当前教师审批/真人接棒不从测试材料推断。最终构建/检查与限制见[批次§11](I0-B_UI_TUTOR_PLAN.md#11-授权后实施与验证记录)。
 
@@ -79,3 +79,29 @@ validate核mode/user/assignment/activity/attempt/preparationEpoch/loadEpoch/受�
 本切片不依赖主prep新增接缝运行单测或typecheck，未复制公共文件。build、完整浏览器、正常业务宿主/公开真实例子、供应商、教师语义抽查、真人学生接棒全部未执行。整票AC保留未勾选，01/D-05组合与真实资料批准事实未交；产品基线及MVP_SPEC§10仍为“待授权维护者汇总”。本地提交后交主Agent按五文件整合，不推送。
 
 静态文档检查`node tools/a0-review/check.mjs`通过：72文档/1004内链、errors=[]；差异空白检查通过。此次仅五个授权文件，未留临时文件，独立分支提交保持与主共享状态分离。
+
+## 2026-10-14 浏览器覆盖收口：范围与依据
+
+Robert明确授权在已有`codex/i0-b-closeout-results-return@cc72891`工作树补04/05浏览器链；开工工作区干净。仅写本票、04票与`e2e/tutoringReturn.spec.ts`、`e2e/tutoringRun.spec.ts`。主页面、教学状态机/Pane和06由主Agent独占；若检查揭示页面缺口，给主具体最小建议，不越过其写集。必要return规则/只读组件变更须先提出确切范围，本次尚未追加。父PLAN、后台、fixture、schema、依赖及受保护文档只读；不推送、模型/节点或真实用户操作。
+
+已读README/AGENTS；按PRD §3.2/4.2/8 → MVP M-03/04/05与§6 → TECH §4.1/6.1/7.3/7.4读取正文，再读本批SPEC/PLAN相关范围、当前两票，沿用客户端约束§3～6、I0_UI_SPEC、IMPORT_SOURCE与TEAM职责。适用本票验收第4～6/9条、UI-TUTOR-07、AC-03/04/05/06/12与NFR-05。样例仍按Robert与Agent共同设计的温度边界材料，不等待外部教师批准；UI-TUTOR-09/模型语义/真人及全产品门禁保持独立。
+
+实施方案：实际打开资料后刷新，检查可信原引用与缺精确位置时的诚实降级；另一标签经原UI回收原实例并同名新建后，本页重读再明确返回，检查原引用没有贴到新实例；在实际资料打开/返回链核未确认作品原命令、BOM/混合EOL/非BMP正文、视图及undo保持且零自动保存/help/run/acknowledged。现有纯规则反例保留，但不代替上述页面链。使用独立CI Chrome端口5671/5672与既有依赖/authority；实际结果完成后追加，当前不预写通过。
+
+### 实际结果、确定缺口与最小页面建议
+
+最终同次Chrome组合8项为5通过/3失败/0跳过、退出1；04为4/4通过，05为1通过/3失败。原基本键盘阅读/返回/草稿/undo与零业务副作用通过。三条新增检查确实操作当前页面，未调用return纯构造器；仅不可可靠键入的初始BOM/混合EOL数据通过原draft repository设置，然后刷新加载，后续全部为页面操作、真实IndexedDB/HTTP事实。纯规则反例继续由已有25项规则承担，本次用实际页面链替代原浏览器内构造检查。
+
+| 当前未完成项 | 实际已取得证据与失败位置 | 主Agent最小后续 |
+| --- | --- | --- |
+| 阅读刷新后的诚实降级/原引用（本票第6/9条） | 实际打开资料再刷新，编辑器恢复但无持久缺位置说明；`tutor-return-notice`缺失，70行断言失败。当前example/anchor仅React state，刷新即丢失 | 在原页面按标签/账号/Attempt/代际隔离保留只含原实例/版本的本机引用，刷新仅显示“精确位置未保留，请重新选择文件”；不存坐标/草稿，不自动重开/定位或发命令 |
+| 实例回收/同名重建后的原引用（第5/9条） | 另一标签实际通过原文件菜单回收、确认v2、同名新建并确认v3；原文件recycled、新fileId不同。本页只重读当前head后明确返回；无持久原引用/说明，117行断言失败 | `onReturnExample`拒绝时保留原引用和可见说明，而非清anchor后仅2.6秒toast。建议原槽`data-testid=tutor-return-notice/tutor-return-origin`，origin的`data-file-id`为原serverFileId，未确认实例用原本机ID；不改贴新实例 |
+| 原文undo与可见模型不同步（第4/9条） | 丢保存ACK形成实际pending原命令，阅读/返回前后原命令、草稿原字节、滚动和位置均相同且零自动写入；按真实DOM撤销到原尾行后，IndexedDB仍保留`// pending suff`，198行精确原文断言失败 | 根因在`CodeEditorHost.tsx`的isUndoing/isRedoing每事件只移动一条`OriginalEditHistory`，Monaco一轮可跨多个内容变更。主按实际Monaco可恢复版本关联原文状态；本Agent没有该编辑器/原文工具写集，未修代码或降低字节断言 |
+
+实际学生命令与环境：Node24.15.0、既有junction/依赖、CI新起authority，Chrome端口5671/5672；最终`rtk npm run typecheck`退出0，`rtk npm run test:e2e -- tutoringRun.spec.ts tutoringReturn.spec.ts --workers=2`得到上表结果。首轮4通过/4失败包括DOM文本口径和未等初始草稿落盘两个测试问题，已修；撤销最初假设一个insertText等于一个undo、再假设固定两步，后按实际DOM撤销边界取证才确认显示/原文不同步，保留失败，不将其归为纯测试问题。RTK含管道正则筛选发生shell解析错误，未启动浏览器，不记作业务失败；后回退原npm的`--grep '[旧未]'`执行。
+
+三条失败保留为可回放回归，不skip、不加sleep/force/关闭动画，不写主页面/规则/组件或后台。主修复后必须重跑这三条，之后再决定本票工程完成；当前不能关闭本票。没有供应商/节点/真人操作，未重跑未变业务规则或正式build。只本地提交本人四文件，不推送；最终静态结果/SHA由实际提交回交，产品基线/MVP_SPEC §10待授权维护者汇总。
+
+未执行断言明确保留：刷新/重建用例在首个降级说明断言失败，后续原引用身份、草稿/命令与零写请求断言尚未执行；pending用例的返回前后保持/零写断言实际通过，最终原文undo失败后，后续原命令再次核对与折叠保持尚未执行。不能把失败前的部分证据计成整条通过。
+
+提交前根静态检查`node tools/a0-review/check.mjs`：77文档/1140内链、errors=[]；`git diff --check`退出0。本人写集严格四文件，未修改主页面、编辑器、原文工具、fixture、父PLAN或后台。失败trace/error-context保留在忽略的Playwright结果目录供主核对，不纳入提交；本次未生成其他无用脚本或日志。
