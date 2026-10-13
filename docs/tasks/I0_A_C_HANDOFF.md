@@ -210,3 +210,129 @@ assignment 字段沿 GET assignments 原投影，含 active/status/revisions；�
 预定公共验证：真实 Session/Origin/CSRF + Fastify HTTP/SQLite 事务 + 原 Job/worker；仅外部 transport 合成。核合法 Assignment/空态/越权、bootstrap 无副作用、首次代际/旧代际、原 sync 重放/冲突及权威 head 重读、暂停后读/既有文件保存与新运行拒绝、连续消费、cancel/unknown/重启读取、结果裁剪和静态路径逃逸拒绝。固定 Node 24.21.0/原 lock，逐相关专项、typecheck/build、最后一次全量，失败/跳过分别登记；不降低原守卫/门槛。所有新合成库保留，不把 transport 合成通过记真实节点或 UI 通过。
 
 实施后在本任务回交 H 编号、固定源码、启动/初始化命令、公开 HTTP 样例和结果。若负责人同时批准公开交付，则只普通推送 codex/i0-a-c-handoff 并建立本模块 Draft PR，公开内容仅代码与去敏合成验收；不自动合并/部署，保留 #30/#22。当前仅接收/协调授权不宣称已有这项代码推送授权。
+
+## 11. 本批实施授权与开工
+
+2026-10-13，负责人明确批准 §10 的具体范围并要求继续，包括原24表全新保留合成库、正常 C/HTTPS 宿主、现有 real build、原 Job 消费、授权 bootstrap，以及验证审查后普通推送并建立 Draft PR。此授权不包含 B/C/UI 源码、受保护基线、凭据/CI、节点维护、自动合并或部署。远程 main 已同步至 cde69cc；具体基线差异为 B 模型验证和 G2 记录，保留原职责。
+
+本次公共测试接缝为真实 Session/Origin/CSRF、HTTP、SQLite 事务和原 worker，仅外部 transport 使用合成替身。先逐行为红→绿，再类型/构建、相关专项和完整回归。实现与验证结果待下文记录，不提前写为通过；TECH_DESIGN 与 MVP_SPEC §10 的 bootstrap/进度汇总待授权维护者汇总。
+
+## 12. 本批实现与运行交接
+
+2026-10-13，本批 A 源码已实现，审查/完整回归/公开 PR 状态在 §13 记录，不把实现自动写成真实环境已部署。
+
+| H | 代码交付 | 当前证据与下一角色 |
+| --- | --- | --- |
+| H-01 | 原 main 的可选 C 业务模式、原真实 Session/CSRF、TLS 监听和现有 UI dist；未配置仍健康入口 | 正常宿主合成 HTTP 和 real build 已验证；现有 TLS/认证配置与实际浏览器登录等待环境维护者/UI |
+| H-02 | 原 Assignment/Activity/Resource 路由复用，既有合法深链，无分配仍拒绝 | 本人/教师读取、未分配/跨学生/跨课程/匿名拒绝已验证；UI 接正常入口/空态 |
+| H-03 | contracts/design/i0.ts 与 server/app/i0.ts 的 GET bootstrap；原 AssignmentView + 受控代际，不创建/激活 Attempt | 无可信代际/旧代际写入 RECOVERY_REQUIRED；真实 C 代际文件仍由 C 回交 |
+| H-04 | startConsumer 调用原 pendingJobs/processJob；普通重启沿原 ID/租约对账；关停持久停止意图并核原执行 | 自动消费、停止确认、unknown/停止未知与重启无替代执行的合成 HTTP 已验证；真实 C1 当前指纹/就绪未执行 |
+| H-05 | 原 sync 回执、权威 head 重读、分配暂停规则 | 重放/异正文冲突、旧 revision、暂停后更新/快照与拒绝新运行已验证；§5 版本差异仍交原 C/授权维护者 |
+| H-06 | 原作品、快照、运行、取消、历史/产物路由不变 | 本批补作品与停止/未知；原 C 专项结果在 §13；UI 分批真实接线，真实节点样例待 C |
+
+### 12.1 初始化与启动
+
+Node 固定24.21.0；沿各应用原 lock，不修改依赖/CI。从仓库根先构建现有 UI real 产物，不挂 dev:prep：
+
+~~~sh
+cd apps/student
+npm ci
+npm run build
+cd ../teaching
+npm ci
+npm run typecheck
+npm run build
+~~~
+
+维护者引用已有受控初始化 JSON：
+
+~~~sh
+XUNJIE_I0_INITIALIZE_CONFIG=/controlled/i0-initialize.json node dist/server/app/i0-initialize.js
+~~~
+
+PowerShell 设置同名环境变量后执行该 node 命令。仅调用 createWorkspaceDatabase 新建/保留原24表临时库，打印新 synthetic.sqlite 位置；不接收目标数据库、迁移/重置旧库，不创建 Assignment/Attempt/Job。失败亦保留新库。输入是 synthetic=true，users 每项含 synthetic- 前缀 id/loginName 和受控 password；courses 每项含 synthetic- 前缀 id/teacherId/studentIds 及原 helpPolicy/checkRule 对象。只初始化成员和原政策/规则；教师仍走原 HTTP 检查→确认→分配。密码不进仓库/公开记录；CLI 不打印输入/异常正文。
+
+配置引用现有文件，不生成/改写凭据、证书、known_hosts 或节点代际：
+
+~~~json
+{
+  "synthetic": true,
+  "databaseFile": "<initializer returned retained synthetic.sqlite>",
+  "origin": "https://<approved host>:3443",
+  "tls": {"keyFile": "<existing absolute key path>", "certFile": "<existing absolute certificate path>"},
+  "signingSecretFile": "<existing controlled signing file>",
+  "generationFile": "<C handed-off controlled readiness/identity JSON path>",
+  "ssh": {
+    "binary": "<existing absolute ssh executable>",
+    "keyFile": "<existing application key path>",
+    "knownHostsFile": "<existing controlled known_hosts path>",
+    "host": "<approved C1 host>",
+    "port": 2222
+  },
+  "staticDirectory": "<absolute apps/student/dist path>",
+  "consumerIntervalMs": 250
+}
+~~~
+
+占位模板不是已存在的入口。配置须绝对普通文件，拒绝符号链接，POSIX 拒绝组/其他用户可写文件；Windows 由受控目录 ACL 维护。JSON 最大1 MiB，签名长度32～4096，不打印内容。Origin 为精确 HTTPS Origin，端口与 PORT 对应；监听127.0.0.1，不新增代理信任/证书忽略。
+
+generationFile 来自 C 已获准受控交接 JSON，读取原 data.recoveryGeneration，保留原指纹/验收资料，不要求 C 改线协议。缺省/缺字段使当前代际为空，bootstrap/首次创建拒绝；文件错误使启动失败。普通重启沿同一来源，不生成代际。SSH readiness 代际与配置不一致拒绝；runner 不 ready 不阻止合法读取/保存，新开放/新运行沿原 readiness。文件存在不证明来源核实，维护者须沿 H-03/H-04 核当前 C 固定源码/输出；恢复换代仍按维护授权对账，不自动写文件或启动节点。
+
+~~~sh
+PORT=3443 XUNJIE_I0_CONFIG=/controlled/i0-host.json npm start
+~~~
+
+未配置仍健康模式；/health/ready 保留未装配的拒绝，不恒定成功。学生深链沿现有 hash router，读取/保存后分批接运行；只服务 dist 内白名单普通文件（含 Monaco 字体），不提供配置、DB、目录枚举、源码映射或路径逃逸。持续消费原 C Job，无需维护者 processJob；不装配 B/A3/HDL 扩展或模型队列。
+
+关停停止新接纳和新执行 dispatch/readiness，等待已接纳 HTTP 收束，再持久停止原 Job 并核原身份；未确认仍 cancelling/outcome_unknown，不写已停止。已进入 readiness 等待的并发请求不会补建 Job。正常 main 在关停流程后关闭并保留库。
+
+### 12.2 公共 bootstrap 与样例
+
+真实 Session + 当前课程成员 + 真实 Assignment；学生仅本人，教师沿原课程读取。GET 无 body 身份字段，响应 Cache-Control: no-store；不创建 Attempt/回执/Job，不激活。原 Access/C 事务和权限复用，新增 schema 校验结果。
+
+~~~json
+{
+  "requestId": "<server request UUID>",
+  "data": {
+    "assignment": {
+      "assignmentId": "<authorized assignment>",
+      "activityVersionId": "<fixed activity>",
+      "studentId": "<session-owned student>",
+      "assignmentRevision": 1,
+      "active": true,
+      "status": "active",
+      "reasons": {"individual": null, "activity": null},
+      "activityControlRevision": 1
+    },
+    "recoveryGeneration": "<current controlled C generation>"
+  }
+}
+~~~
+
+此为契约节选模板；完整信封沿 common/http，不公开 cookie/CSRF/密码。测试代际 generation 仅测试输入，正常 main 无默认值。首次 POST assignments/:id/attempts 回带 bootstrap 代际；ACK 后仍按原 Attempt/recovery 与版本规则。
+
+专项命令包含 real build 读取，先完成 UI build：
+
+~~~sh
+cd apps/teaching
+node --test server/app/i0.test.ts
+node --test server/workspace/integration.test.ts server/workspace/runs.test.ts tests/startup.test.ts
+~~~
+
+原 npm test 不含新增 server/app glob，完整教学回归须明确纳入本文件：
+
+~~~sh
+npm run build
+node --test tests/*.test.ts server/app/i0.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts
+~~~
+
+HTTP 认证/SQLite 事务/原 worker 真实，仅外部 transport 合成。所有新库保留；失败/跳过与平台在 §13 独立记录，不补写 TLS/节点/浏览器/教学结果。
+
+
+## 13. 本批验证与审查记录
+
+2026-10-13，Windows Node24.21.0：新增正常宿主专项10/10通过、0失败/跳过；教学 typecheck/build通过，原启动专项4/4通过。学生原 lock 的 npm ci、real build通过，未改 UI 源码/lock；安装审计报告6项（2 low/1 moderate/1 high/2 critical）与原构建 chunk 警告保留，交 UI 依赖负责人，不自动升级。真实 loopback HTTP读取原 UI构建/会话已通过；这不包含 HTTPS真实证书、浏览器接线或 C物理节点验收。
+
+TDD红轮保留：bootstrap/初始化模块缺失、静态路由缺失、自动消费者缺失均先失败后实现；关停 readiness 并发原会200接受新 Job，反例先失败后修复。验证中先后发现测试时钟不一致、构建路径层级错误、fetch严格类型，以及原暂停快照/停止未知投影的预期误差；按原正文/HTTP契约校正测试，未改 C或放宽业务守卫。最新相关专项通过；下列完整回归/最终审查尚待执行，未提前宣称全量通过。
+
+宿主还校验当前库为获准24表的精确表集合，拒绝其他组合，不执行迁移。现有旧日志/主副本未动。新库由原工厂保留，记录不输出凭据。真实 TLS/C1最新指纹/代际/节点端到端、浏览器、模型、完整产品与教学验收未执行；#30/#22保持Open。共享字段/bootstrap与MVP§10进度待授权维护者汇总。

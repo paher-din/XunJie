@@ -3,12 +3,16 @@ import Fastify, { LogController } from 'fastify';
 import { errorDefinitions } from '../contracts/common/http.ts';
 import { ApiError, errorResponse } from './app/errors.ts';
 
+import type { ServerOptions } from 'node:https';
+
 export interface AppOptions {
+  https?:Pick<ServerOptions,'key'|'cert'>;
   logDestination?: { write(message: string): void };
 }
 
 export function createApp(options: AppOptions = {}) {
   const app = Fastify({
+    ...(options.https ? {https:options.https} : {}),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } },
     logger: options.logDestination ? {
       stream: options.logDestination,
