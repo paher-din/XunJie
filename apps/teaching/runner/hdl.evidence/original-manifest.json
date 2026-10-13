@@ -1,0 +1,37 @@
+[
+  {
+    "File": "baseline-full-failed.txt",
+    "OriginalArchive": "baseline-full-failed.txt.gz",
+    "OriginalSha256": "365823b9207d518049f383fb7b8c6a010c670556a9e0496edb461e219aa9afef",
+    "DisplaySha256": "008b462a9e738f7b94d17a14b68214c07dd1b2965f5a823ef6a2590cb3c525ab",
+    "DisplayChange": "Only trailing spaces and EOF blank lines normalized"
+  },
+  {
+    "File": "wsl-full-failed.txt",
+    "OriginalArchive": "wsl-full-failed.txt.gz",
+    "OriginalSha256": "cdbc1332787d46e111dcd9e14f90e7d6664d5c10516b140edfe146dd4506f784",
+    "DisplaySha256": "765ca988d361d5fbccf457e748d7717b7b03f58557839f72be1a33e7af2cc5ab",
+    "DisplayChange": "Only trailing spaces and EOF blank lines normalized"
+  },
+  {
+    "File": "build.txt",
+    "OriginalArchive": "build.txt.gz",
+    "OriginalSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+    "DisplaySha256": "a5db58e8e37a4ad75ff9763c8d3649c5e7065f8ff9c03e2610a75466af7e7a60",
+    "DisplayChange": "Only trailing spaces and EOF blank lines normalized"
+  },
+  {
+    "File": "typecheck.txt",
+    "OriginalArchive": "typecheck.txt.gz",
+    "OriginalSha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+    "DisplaySha256": "1f4a5d4d333059f21cf60c8d75f14160b234067286489c846a4ab7a00e0e6b10",
+    "DisplayChange": "Only trailing spaces and EOF blank lines normalized"
+  },
+  {
+    "File": "c-validation.json",
+    "OriginalArchive": "c-validation.json.gz",
+    "OriginalSha256": "5da94f33b8393e06d5131b85c20541734b36f4fa0f3e6c7bdbb7e64feb62dea2",
+    "DisplaySha256": "940ff085c5feeda97b66d045889584f5cc6245451269ac9263c3892790ce546c",
+    "DisplayChange": "Only trailing spaces and EOF blank lines normalized"
+  }
+]

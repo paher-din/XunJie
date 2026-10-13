@@ -4,6 +4,8 @@ import {activate,syncFiles} from './files.ts';
 import {freezeSnapshot,beginExplicitOperation,validateObjectRef} from './snapshots.ts';
 import {controlAttempt} from './controls.ts';
 import type {Control} from './controls.ts';
+import {latestSubmission,planResumeRevision,planSubmission,reopenView} from './submissions.ts';
+import type {SubmissionRequest} from './submissions.ts';
 import {cancelByPurpose,cancelJob,claimJob,enqueueJob,confirmRunStopped} from '../records/jobs.ts';
 import {compilerArgs,sha256,validateSnapshot} from '../../runner/snapshot.ts';
 import {textScopeArgs} from '../../runner/run-snapshot.ts';
@@ -14,11 +16,15 @@ import type {Records,CommandIdentity,Job,Purpose,TeachingActionRecord,TeachingCo
 import type {FastifyRequest} from 'fastify';
 import type {Transaction} from '../db/transaction.ts';
 import type {SubmitRun,Profile,TextScopeInput} from '../../contracts/runner/index.ts';
-import type {Attempt,ProjectFile,ArtifactSnapshot,SyncBatch} from '../../contracts/workspace/index.ts';
+import type {Attempt,ArtifactSnapshot,AttemptRecovery,ProjectFile,RecoveryFeedback,RecoveryRunOutcome,ReopenGrant,
+  Submission,SyncBatch} from '../../contracts/workspace/index.ts';
 
 export type WorkspaceState = {attempt:Attempt;files:ProjectFile[];snapshots:ArtifactSnapshot[];records:Records;
   checks:{jobId:string;runId:string;policyVersion:string;state:'active'|'ended'}[];
-  runs:{runId:string;jobId:string;submission:SubmitRun;result?:unknown;resultHash?:string}[]};
+  runs:{runId:string;jobId:string;submission:SubmitRun;result?:unknown;resultHash?:string}[];
+  // C4: fixed submissions in ascending commit order and the reopen grants saved against them. Both are append-only
+  // history; neither is rewritten by a later submission, review or reopen.
+  submissions:Submission[];grants:ReopenGrant[]};
 export type CommandContext = {identity:CommandIdentity;generation:string;now:string;commandId:string;receiptId:string;eventId:string;
   assignmentActive:boolean;authorize:()=>boolean;transaction?:Transaction;stopReason?:string;runPurposes?:Purpose[]};
 // C3 seam: A's design/control paths and C's own control/cancel paths call the same synchronous stop capability
@@ -70,11 +76,42 @@ export function snapshotCommand(state:WorkspaceState,context:CommandContext,expe
     snapshotHash:snapshot.hash,workspaceRevision:snapshot.workspaceRevision},'snapshot_confirmed');
 }
 
+// C4: the student's fixed submission. The receipt, the stage change and the invalidation of the teaching purposes
+// that depended on a workable attempt are one plan, so the caller persists them in a single short transaction.
+// A replay returns the original submission and receipt; a differing digest conflicts in `resolveCommandReceipt`.
+export function submitCommand(state:WorkspaceState,context:CommandContext,request:SubmissionRequest,
+  ids:{submissionId:string},teachingStop?:TeachingStopHandler) {
+  guardCommand(state,context);
+  const hash=requestHash(context.identity.target,request);
+  const previous=resolveCommandReceipt(state.records,context.identity,hash,context.generation);
+  if(previous)return completeCommand(state,context,hash,previous.result,'submission_confirmed');
+  const plan=planSubmission(state,request,ids,{assignmentActive:context.assignmentActive,now:context.now,
+    generation:context.generation,receiptId:context.receiptId});
+  const stopped=stopJobs(state,context,plan.cancelPurposes,context.stopReason??'submission_confirmed',teachingStop);
+  return completeCommand({...state,attempt:plan.attempt,checks:plan.checks,
+    submissions:[...state.submissions,plan.submission],records:{...state.records,jobs:stopped.jobs}},context,hash,
+    {submissionId:plan.submission.submissionId,snapshotId:plan.submission.snapshotId,snapshotHash:plan.submission.snapshotHash,
+      workspaceRevision:plan.submission.workspaceRevision,attemptRevision:plan.attempt.attemptRevision,
+      decisionEpoch:plan.attempt.decisionEpoch,status:plan.attempt.status,checkRefs:plan.submission.checkRefs,
+      cancelledJobIds:stopped.jobIds},'submission_confirmed');
+}
+
 export function controlCommand(state:WorkspaceState,context:CommandContext,expectedRevision:number,control:Control,
   resources:{resourceVersionId:string;paragraphId:string}[]=[],teachingStop?:TeachingStopHandler) {
   guardCommand(state,context);const hash=requestHash(context.identity.target,{expectedRevision,control});
   const previous=resolveCommandReceipt(state.records,context.identity,hash,context.generation);
   if(previous)return completeCommand(state,context,hash,previous.result,'attempt_controlled');
+  // C4: reopening for revision is the student's own explicit consumption of a current teacher grant, so it is
+  // guarded by the submission domain instead of the lifecycle flags. It never rewrites the fixed submission.
+  if(control.kind==='resume_revision') {
+    const plan=planResumeRevision(state,expectedRevision,{assignmentActive:context.assignmentActive,now:context.now,receiptId:context.receiptId});
+    const stopped=stopJobs(state,context,plan.cancelPurposes,context.stopReason??'attempt_control_resume_revision',teachingStop);
+    return completeCommand({...state,attempt:plan.attempt,grants:state.grants.map(row=>row.grantId===plan.grant.grantId?plan.grant:row),
+      records:{...state.records,jobs:stopped.jobs}},context,hash,
+      {attemptRevision:plan.attempt.attemptRevision,decisionEpoch:plan.attempt.decisionEpoch,captureRevision:plan.attempt.captureRevision,
+        status:plan.attempt.status,grantId:plan.grant.grantId,submissionId:plan.grant.submissionId,
+        cancelledJobIds:stopped.jobIds,captureChanged:false},'attempt_controlled');
+  }
   if(control.kind==='position'&&control.returnPosition)validateObjectRef(state.attempt,control.returnPosition,
     {snapshots:state.snapshots,runs:state.runs.map(row=>({runId:row.runId,snapshotId:row.submission.snapshot.snapshotId,attemptId:state.attempt.attemptId})),resources});
   const plan=controlAttempt(state.attempt,expectedRevision,control,context.assignmentActive);
@@ -199,7 +236,7 @@ export function claimRunReconciliation(state:WorkspaceState,jobId:string,token:s
   const leased:Job={...job,leaseToken:token,leaseUntil:until,status:job.stopRequested?'cancelling':'outcome_unknown'};
   return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?leased:row)}};
 }
-export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
+export function readWorkspace(state:WorkspaceState,authorize:()=>boolean,assignmentActive:boolean) {
   if(authorize()!==true)throw new RunnerError('FORBIDDEN','Workspace read denied');
   const own=state.records.jobs.filter(row=>row.scope.attemptId===state.attempt.attemptId
     &&row.scope.courseId===state.attempt.courseId&&row.scope.studentId===state.attempt.studentId);
@@ -212,7 +249,69 @@ export function readWorkspace(state:WorkspaceState,authorize:()=>boolean) {
       runId:run.runId,jobId:run.jobId,snapshotId:run.submission.identity.snapshotId,snapshotHash:run.submission.identity.snapshotHash,
       mode:run.submission.mode,runtimeProfileVersion:run.submission.identity.runtimeProfileVersion,
       imageDigest:run.submission.identity.imageDigest,diagnostics:runDiagnostics(run)};}),
-    checks:state.checks.filter(row=>own.some(job=>job.jobId===row.jobId))});
+    checks:state.checks.filter(row=>own.some(job=>job.jobId===row.jobId)),
+    // C4: the fixed submission history and the reopen permission the student needs in order to act. Older
+    // submissions stay listed after a reopen, so a new submission never hides the one the teacher reviewed.
+    submissions:state.submissions.map(submission=>({submissionId:submission.submissionId,snapshotId:submission.snapshotId,
+      snapshotHash:submission.snapshotHash,workspaceRevision:submission.workspaceRevision,attemptRevision:submission.attemptRevision,
+      decisionEpoch:submission.decisionEpoch,submittedAt:submission.submittedAt,receiptId:submission.receiptId,
+      checkRefs:structuredClone(submission.checkRefs),...(submission.reflection===undefined?{}:{reflection:submission.reflection})})),
+    reopen:reopenView(state,assignmentActive)});
+}
+
+// C4 recovery projection. Read-only: it never activates the attempt, enqueues work, repeats a side effect or moves
+// the learning stage. `resyncRequired` is decided by the caller from the client's own generation/epoch, so a stale
+// page is told to re-synchronize instead of being handed content it may not display.
+const recoveryRunLimit=20;
+function recoveryOutcome(run:WorkspaceState['runs'][number],job:Job):RecoveryRunOutcome {
+  // An executor disconnect stays unknown. It is never folded into `confirmed`, and nothing here re-runs it.
+  if(job.status==='outcome_unknown')return 'unknown';
+  if(job.status==='failed')return 'failed';
+  if(job.status==='cancelled')return 'cancelled';
+  if(job.status==='stale')return 'stale';
+  if(job.status==='timed_out')return 'timed_out';
+  if(job.status==='queued'||job.status==='running'||job.status==='cancelling')return 'in_flight';
+  return run.resultHash?'confirmed':'incomplete';
+}
+export function readRecovery(state:WorkspaceState,context:{recoveryGeneration:string;resyncRequired:boolean;assignmentActive:boolean;
+  feedback:RecoveryFeedback;coverage?:TeachingCoverage},authorize:()=>boolean):AttemptRecovery {
+  if(authorize()!==true)throw new RunnerError('FORBIDDEN','Recovery read denied');
+  const own=state.records.jobs.filter(row=>row.scope.attemptId===state.attempt.attemptId
+    &&row.scope.courseId===state.attempt.courseId&&row.scope.studentId===state.attempt.studentId);
+  const runs=state.runs.filter(run=>own.some(job=>job.jobId===run.jobId)).map(run=>{
+    const job=own.find(row=>row.jobId===run.jobId)!;
+    return {runId:run.runId,jobId:run.jobId,mode:run.submission.mode,snapshotId:run.submission.identity.snapshotId,
+      jobStatus:job.status,outcome:recoveryOutcome(run,job),acceptedAt:job.acceptedAt};
+  // Run rows carry no timestamp of their own, so recency comes from the trusted job acceptance time.
+  }).sort((a,b)=>Date.parse(b.acceptedAt)-Date.parse(a.acceptedAt)).slice(0,recoveryRunLimit)
+    .map(({acceptedAt:_acceptedAt,...run})=>run);
+  const newestSnapshot=latestSnapshot(state),newestSubmission=latestSubmission(state);
+  return structuredClone({attempt:state.attempt,recoveryGeneration:context.recoveryGeneration,
+    resyncRequired:context.resyncRequired,
+    files:state.files.filter(row=>row.attemptId===state.attempt.attemptId)
+      .map(({fileId,path,documentVersion,contentHash,lifecycle})=>({fileId,path,documentVersion,contentHash,lifecycle})),
+    ...(newestSnapshot===undefined?{}:{latestSnapshotId:newestSnapshot.snapshotId}),
+    submissions:state.submissions.map(submission=>({submissionId:submission.submissionId,snapshotId:submission.snapshotId,
+      snapshotHash:submission.snapshotHash,workspaceRevision:submission.workspaceRevision,attemptRevision:submission.attemptRevision,
+      serverSeq:receiptSequence(state,submission.receiptId),submittedAt:submission.submittedAt,
+      hasReflection:submission.reflection!==undefined,checkRefs:submission.checkRefs})),
+    ...(newestSubmission===undefined?{}:{latestSubmissionId:newestSubmission.submissionId}),
+    reopen:reopenView(state,context.assignmentActive),runs,
+    // A pending question is the student's own help request whose job has not reached a terminal fact yet.
+    pendingQuestions:own.filter(job=>job.purpose==='student_help'&&['queued','running','cancelling'].includes(job.status))
+      .map(job=>({jobId:job.jobId,jobStatus:job.status,acceptedAt:job.acceptedAt,deadline:job.deadline})),
+    feedback:context.feedback,...(context.coverage===undefined?{}:{coverage:context.coverage})});
+}
+function receiptSequence(state:WorkspaceState,receiptId:string) {
+  const receipt=state.records.receipts.find(row=>row.receiptId===receiptId);
+  if(!receipt)throw new RunnerError('INVALID_REFERENCE','Original submission receipt unavailable');
+  return receipt.serverSeq;
+}
+// Snapshot rows are keyed by an unordered identifier, so the newest confirmed snapshot is the one freezing the
+// highest workspace revision, tie-broken by its trusted creation time.
+function latestSnapshot(state:WorkspaceState) {
+  return state.snapshots.filter(row=>row.attemptId===state.attempt.attemptId&&row.activityVersionId===state.attempt.activityVersionId)
+    .slice().sort((a,b)=>b.workspaceRevision-a.workspaceRevision||Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
 }
 
 export function reconcileRun(state:WorkspaceState,jobId:string,result:{record:unknown;contentHash:string;resultRef:string},

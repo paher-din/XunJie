@@ -1,0 +1,20 @@
+/* I0-06 · 复用中心容器、控件与主题 token，不改变页面布局。 */
+.ws-head:has(.core-run-entry) { gap: 8px; padding-inline: 12px; }
+.ws-head:has(.core-run-entry) .ws-head-run { gap: 8px; }
+.ws-head:has(.core-run-entry) .ws-run-actions { margin-left: 0; }
+.core-run { height: 100%; overflow: auto; padding: 16px; color: var(--ink); font-size: 13px; }
+.core-run-head, .core-run-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.core-run-head { justify-content: space-between; }
+.core-run h2, .core-run h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.core-run-note { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.core-run-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; max-width: 960px; }
+.core-run-form > label { display: flex; flex-direction: column; gap: 6px; }
+.core-run-form select, .core-run-form input:not([type="checkbox"]) { width: 100%; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
+.core-run input:focus-visible, .core-run select:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.core-run-inputs { grid-column: 1 / -1; margin: 0; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.core-run-inputs label { display: flex; align-items: center; gap: 8px; min-height: 32px; overflow-wrap: anywhere; }
+.core-run-inputs input { accent-color: var(--accent-deep); }
+.core-run-actions { grid-column: 1 / -1; }
+.core-run-notice { color: var(--ink-soft); overflow-wrap: anywhere; }
+.core-run-result { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+.core-run-result pre { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--hover-bg); color: var(--ink); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }

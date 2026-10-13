@@ -12,7 +12,7 @@ const now='2026-10-10T00:00:00.000Z';
 const attempt=():Attempt=>createAttempt([],{attemptId:'attempt',courseId:'course',studentId:'student',assignmentId:'assignment',activityVersionId:'activity'},true);
 const file=(id='file',path='main.c',text='int main(void){return 0;}'):ProjectFile=>({fileId:id,attemptId:'attempt',path,documentVersion:1,text,contentHash:sha256(text),lifecycle:'active'});
 const batch=(operations:SyncBatch['operations'],revision=0):SyncBatch=>({clientId:'page',clientSeq:400,expectedWorkspaceRevision:revision,operations});
-const state=():WorkspaceState=>({attempt:attempt(),files:[],snapshots:[],checks:[],runs:[],records:{receipts:[],commandAliases:[],events:[],jobs:[],serverSeq:0}});
+const state=():WorkspaceState=>({attempt:attempt(),files:[],snapshots:[],checks:[],runs:[],submissions:[],grants:[],records:{receipts:[],commandAliases:[],events:[],jobs:[],serverSeq:0}});
 const context=(command='sync'):CommandContext=>({identity:{actorId:'student',scope:{courseId:'course',studentId:'student',attemptId:'attempt'},command,target:`/api/attempts/attempt/${command}`,
   idempotencyKey:'key',recoveryGeneration:'gen',...(command==='sync'?{sync:{clientId:'page',clientSeq:400}}:{})},generation:'gen',now,commandId:'command',receiptId:'receipt',eventId:'event',assignmentActive:true,authorize:()=>true});
 const range=(startLine:number,startColumn:number,endLine:number,endColumn:number):Range=>({startLine,startColumn,endLine,endColumn});

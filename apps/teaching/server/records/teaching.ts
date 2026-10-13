@@ -271,7 +271,7 @@ function assertTeachingContext(tx: Transaction, attempt: Attempt, versions: Teac
   }
 }
 
-export function teachingActionIsCurrent(tx: Transaction, action: TeachingAction, generation: string) {
+export function teachingActionIsCurrent(tx: Transaction, action: TeachingAction, generation: string, isBasisCurrent?: TeachingBasisCurrent) {
   const attempt = requireScope(tx, action.scope), job = jobOf(tx, action.scope, action.jobId);
   if (action.disposition !== 'pending' || job.stopRequested || job.status !== 'succeeded'
     || action.generation !== generation || job.recoveryGeneration !== generation
@@ -279,7 +279,21 @@ export function teachingActionIsCurrent(tx: Transaction, action: TeachingAction,
     || (job.purpose === 'reminder' && !attempt.reminders)) return false;
   try { assertTeachingContext(tx, attempt, action.targetVersions, action.basis.objectRef); }
   catch (error) { if (error instanceof RunnerError) return false; throw error; }
-  return true;
+  return isBasisCurrent?.(tx,action.scope,action.basis) ?? true;
+}
+
+/** The same transaction that prepares delivery reconciles an A basis change without erasing displayed facts. */
+export function reconcileTeachingBasisInTransaction(tx: Transaction,input: {scope: TeachingScopeRef;actionId: string;actorId: string;generation: string;now: string},
+  isBasisCurrent: TeachingBasisCurrent) {
+  requireScope(tx,input.scope);const action = readAction(tx,input.actionId);
+  if (!sameScope(action.scope,input.scope)) throw new RunnerError('FORBIDDEN','Action scope mismatch');
+  if (action.basisRevised || isBasisCurrent(tx,input.scope,action.basis)) return action;
+  const job = jobOf(tx,input.scope,action.jobId);
+  saveAction(tx,{...action,basisRevised: true,
+    ...(action.disposition === 'pending' ? {disposition: 'stale',stopReason: 'learner_state_revised'} : {})});
+  saveJob(tx,{...job,stopRequested: true});
+  appendTeachingEvent(tx,{...input.scope},input.actorId,'teaching.invalidated',checkedNow(input.now),input.generation,'learner_state_revised');
+  return readAction(tx,input.actionId);
 }
 
 export function readTeachingVersions(envelope: TeachingQuestionEnvelope | TeachingMessageEnvelope): TeachingVersions {
@@ -350,13 +364,15 @@ export function enqueueTeachingJob(tx: Transaction, job: Job) {
   return { jobId: job.jobId, status: job.status };
 }
 
+export type TeachingBasisCurrent = (tx: Transaction,scope: TeachingScopeRef,basis: TeachingBasis) => boolean;
+
 /**
  * C3-V01/V05 seam: persists the approved final body with its trusted envelope, or archives a late body as a
  * non-deliverable generated fact when the stop already committed. Existing Action/Message IDs are replayed.
  */
 export function completeTeachingInTransaction(tx: Transaction, input: {scope: TeachingScopeRef; jobId: string; leaseToken: string;
   generation: string; now: string; bodyJsonText: string; resultRef?: string; versions: TeachingVersions; usage: TeachingUsage;
-  calls: number; elapsedMs: number; basis: unknown; messageId: string; actionId: string}) {
+  calls: number; elapsedMs: number; basis: unknown; messageId: string; actionId: string; isBasisCurrent?: TeachingBasisCurrent}) {
   const attempt = requireScope(tx, input.scope);
   const job = jobOf(tx, input.scope, requireJobId(input.jobId));
   if (!sameScope(job.scope, input.scope) || job.jobId !== input.jobId) throw new RunnerError('FORBIDDEN', 'Original job scope mismatch');
@@ -389,7 +405,9 @@ export function completeTeachingInTransaction(tx: Transaction, input: {scope: Te
     if (basis.objectRef && canonical(basis.objectRef) !== canonical(question.objectRef)) throw new RunnerError('INVALID_REFERENCE', 'Original target required');
     basis.objectRef = question.objectRef;
   }
+  const basisRevised = input.isBasisCurrent ? !input.isBasisCurrent(tx,input.scope,basis) : false;
   let { disposition, stopReason } = dispositionsFor(job, attempt, now);
+  if (basisRevised && disposition === 'pending') { disposition = 'stale';stopReason = 'learner_state_revised'; }
   if (disposition === 'pending') {
     try { assertTeachingContext(tx, attempt, versions, basis.objectRef); }
     catch (error) { if (!(error instanceof RunnerError)) throw error; disposition = 'stale'; stopReason = error.code; }
@@ -408,7 +426,7 @@ export function completeTeachingInTransaction(tx: Transaction, input: {scope: Te
       status: ['succeeded','failed','cancelled','stale','timed_out'].includes(job.status) ? job.status : disposition === 'cancelled' ? 'cancelled' as const : 'stale' as const };
   const action: TeachingAction = { actionId: input.actionId, scope: structuredClone(input.scope), jobId: job.jobId, messageId: message.messageId,
     contentHash: message.contentHash, disposition, ...(stopReason ? { stopReason } : {}), targetVersions: versions, basis,
-    generation: input.generation, basisRevised: false, createdAt: now };
+    generation: input.generation, basisRevised, createdAt: now };
   saveMessage(tx, message);
   saveAction(tx, action);
   // Reconciliation, not accounting: `input.calls` covers this execution only, while `attemptCount` is the
@@ -512,13 +530,13 @@ export function invalidateTeachingInTransaction(tx: Transaction, input: {actorId
 
 /** C3-V05 seam: records one real send attempt. A network failure can never be reported as received. */
 export function deliverTeachingActionInTransaction(tx: Transaction, input: {scope: TeachingScopeRef; actionId: string; clientId: string;
-  recoveryGeneration: string; now: string; generation: string; control: TeachingAttemptEpoch & {captureRevision: number}}) {
+  recoveryGeneration: string; now: string; generation: string; control: TeachingAttemptEpoch & {captureRevision: number}; isBasisCurrent?: TeachingBasisCurrent}) {
   const attempt = requireScope(tx, input.scope), action = readAction(tx, input.actionId);
   if (!sameScope(action.scope, input.scope)) throw new RunnerError('FORBIDDEN', 'Action scope mismatch');
   if (action.disposition !== 'pending') throw new RunnerError('STATE_CONFLICT', 'Action is not deliverable');
   if (!input.clientId) throw new RunnerError('INVALID_REQUEST', 'Authenticated target channel required');
   const now = checkedNow(input.now);
-  if (input.recoveryGeneration !== input.generation || !teachingActionIsCurrent(tx, action, input.generation)
+  if (input.recoveryGeneration !== input.generation || !teachingActionIsCurrent(tx, action, input.generation,input.isBasisCurrent)
     || input.control.decisionEpoch !== attempt.decisionEpoch)
     throw new RunnerError('STATE_CONFLICT', 'Teaching basis is no longer current');
   // One send attempt: the delivery ID is allocated first because it is the audit event's payload reference.

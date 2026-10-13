@@ -9,23 +9,28 @@ import { parseRequest } from '../app/validation.ts';
 import { queryRuntime } from '../design/readiness.ts';
 import { canonical, requestHash, resolveCommandReceipt } from '../records/commands.ts';
 import { assertResourceUse } from '../access/resource.ts';
-import type { ActorContext } from '../../contracts/access/index.ts';
-import type { ActionDisposition, TeachingActionRecord, TeachingCoverage, TeachingMessage } from '../../contracts/records/index.ts';
+import type { ActorContext, ResourceUse } from '../../contracts/access/index.ts';
+import type { ActionDisposition, CommandReceipt, TeachingActionRecord, TeachingCoverage, TeachingMessage } from '../../contracts/records/index.ts';
+import type { RecoveryFeedback } from '../../contracts/workspace/index.ts';
 import type { DesignTeachingStop } from '../design/activities.ts';
 import { createAttempt } from './snapshots.ts';
 import { loadWorkspace, persistWorkspace, readProcessRecords, readTeachingRecords, readCoverage } from './storage.ts';
-import { generationInput, cancelInput, params, key, syncInput, snapshotInput, controlInput, runInput, syncBatch, domainControl, domainRun } from './inputs.ts';
-import { syncCommand, snapshotCommand, controlCommand, runCommand, cancelRunCommand, cancelTeachingJobCommand,
-  readWorkspace, readConfirmedSnapshot, readRunDiagnostics } from './commands.ts';
+import { planReopenGrant, transitionAttemptInTransaction, writeReopenGrant } from './submissions.ts';
+import { generationInput, cancelInput, params, key, syncInput, snapshotInput, controlInput, runInput, syncBatch, domainControl, domainRun,
+  artifactSubmissionInput, domainArtifactSubmission, recoveryQuery, reopenGrantInput, reviewTransitionInput } from './inputs.ts';
+import { syncCommand, snapshotCommand, controlCommand, runCommand, cancelRunCommand, cancelTeachingJobCommand, submitCommand,
+  readWorkspace, readRecovery, readConfirmedSnapshot, readRunDiagnostics } from './commands.ts';
 import type { CommandContext, TeachingStopHandler, WorkspaceState } from './commands.ts';
 import { createWorkspaceWorker } from './worker.ts';
 import { readResultFiles } from './result-files.ts';
 import { z } from 'zod';
+import type { createHdlWorkspace } from './hdl.ts';
 
-export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop}};
+export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop};hdl?:ReturnType<typeof createHdlWorkspace>};
 const attemptResult = z.strictObject({ attemptId: z.string(), activityVersionId: z.string(), assignmentId: z.string() });
 export async function createWorkspaceApp(options: WorkspaceAppOptions) {
-  const { teaching: extensions, ...designOptions } = options;
+  const { teaching: extensions, hdl, ...designOptions } = options;
+  if(hdl&&hdl.databaseFile!==options.db.file)throw new ApiError('INVALID_CONFIGURATION');
   // Workspace owns the shared Job paths and dispatches each purpose to its original handler.
   const instance = await createDesignApp({ ...designOptions, ...(extensions?.design ? { teaching: { stop: extensions.design } } : {}) }, false);
   const { app, access } = instance;
@@ -53,9 +58,9 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   }
   function execute(request: FastifyRequest, target: string | ((tx: Transaction) => string), command: string, expectedGeneration: string,
     apply: (tx: Transaction, state: WorkspaceState, context: CommandContext) => ReturnType<typeof syncCommand>, stopReason = 'explicit_command',
-    runPurposes?: CommandContext['runPurposes']) {
+    runPurposes?: CommandContext['runPurposes'], use: ResourceUse = 'write') {
     let id: string;
-    const data = access.withAuthorizedResource(request, tx => { id = typeof target === 'string' ? target : target(tx); return locate(tx, id, true); }, 'write', (tx, actor, scope) => {
+    const data = access.withAuthorizedResource(request, tx => { id = typeof target === 'string' ? target : target(tx); return locate(tx, id, true); }, use, (tx, actor, scope) => {
       const generation = currentGeneration(expectedGeneration);
       const identity = commandIdentity(request,actor,id,command,generation);
       const before = loadWorkspace(tx, id, identity);
@@ -103,7 +108,15 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     });
     return { requestId: request.id, data };
   });
-  app.get('/api/attempts/:id', request => ({ requestId: request.id, data: read(request, attemptId(request), (_tx, state) => readWorkspace(state, () => true)) }));
+  // A current teacher may read retained facts after student withdrawal. The student's ability to consume
+  // a grant is false in that case or when the account is disabled; reader authorization remains separate.
+  const assignmentActionable = (tx: Transaction, state: WorkspaceState) => Boolean(tx.get(
+    "SELECT m.user_id FROM course_memberships m JOIN users u ON u.id=m.user_id WHERE m.course_id=? AND m.user_id=? AND m.role='student' AND m.active=1 AND u.disabled_at_ms IS NULL",
+    state.attempt.courseId, state.attempt.studentId))
+    && assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active;
+  const workspaceProjection = (tx: Transaction, state: WorkspaceState) => readWorkspace(state, () => true,
+    assignmentActionable(tx, state));
+  app.get('/api/attempts/:id', request => ({ requestId: request.id, data: read(request, attemptId(request), (tx, state) => workspaceProjection(tx, state)) }));
   app.post('/api/attempts/:id/sync', { bodyLimit: 8 * 1024 * 1024 }, request => {
     const input = parseRequest(syncInput, request.body), batch = syncBatch(input);
     return execute(request, attemptId(request), 'workspace.sync', input.recoveryGeneration, (_tx, state, context) => {
@@ -117,14 +130,41 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     return execute(request, attemptId(request), 'snapshot.create', input.recoveryGeneration,
       (_tx, state, context) => snapshotCommand(state, context, input.expectedWorkspaceRevision, randomUUID()));
   });
-  app.post('/api/attempts/:id/controls', request => {
-    const input = parseRequest(controlInput, request.body);
-    return execute(request, attemptId(request), 'attempt.control', input.recoveryGeneration, (tx, state, context) => {
+  app.post('/api/attempts/:id/controls', async request => {
+    const input = parseRequest(controlInput, request.body), control = domainControl(input.control);
+    // `resume_revision` is issued while the artifact is read-only at `reviewed`, where the shared resource gate
+    // refuses a student write. It is authorized as a read of the student's own attempt — which still enforces
+    // course membership and attempt ownership — and C's own stage, assignment and grant guards decide the
+    // transition. A teacher account is rejected by `guardCommand`'s actor comparison. A's `contracts/access` and
+    // `assertResourceUse` are unchanged; see the task record §6 for the proposed dedicated use.
+    const response=execute(request, attemptId(request), 'attempt.control', input.recoveryGeneration, (tx, state, context) => {
       const view = activityView(tx, { userId: context.identity.actorId, courseId: state.attempt.courseId, role: 'student' }, state.attempt.activityVersionId);
       const resources = view.content.materials.flatMap(item => item.status === 'available'
         ? item.paragraphs.filter(p => p.paragraphId).map(p => ({ resourceVersionId: item.resourceVersionId, paragraphId: p.paragraphId! })) : []);
-      return controlCommand(state, context, input.expectedAttemptRevision, domainControl(input.control), resources, teachingStop);
-    }, `attempt_control_${domainControl(input.control).kind}`);
+      const result=controlCommand(state, context, input.expectedAttemptRevision, control, resources, teachingStop);
+      if(control.kind==='pause')hdl?.stopInTransaction(tx,state.attempt.attemptId,'attempt_paused',input.recoveryGeneration);
+      return result;
+    }, `attempt_control_${control.kind}`, undefined, control.kind === 'resume_revision' ? 'read' : 'write');
+    await hdl?.reconcileStops();return response;
+  });
+  app.post('/api/attempts/:id/submissions', request => {
+    const id = attemptId(request), input = parseRequest(artifactSubmissionInput, request.body);
+    const submission = domainArtifactSubmission(input);
+    // A committed ACK needs current read authority, never a second business action. The attempt is already
+    // read-only at `submitted`, so a client retry is resolved from the original receipt before the write gate can
+    // turn an idempotent replay into a state conflict.
+    const previous = access.withAuthorizedCourse(request, tx => readAttempt(tx, id).courseId, 'student', (tx, actor) => {
+      assertResourceUse(actor, locate(tx, id), 'read');
+      const generation = currentGeneration(input.recoveryGeneration);
+      const identity = commandIdentity(request, actor, id, 'submission.create', generation);
+      const state = loadWorkspace(tx, id, identity);
+      const receipt = resolveCommandReceipt(state.records, identity, requestHash(identity.target, submission), generation);
+      currentGeneration(generation); return receipt;
+    }, false);
+    if (previous) return { requestId: request.id, data: { ...previous, replayed: true } };
+    return execute(request, id, 'submission.create', input.recoveryGeneration,
+      (_tx, state, context) => submitCommand(state, context, submission, { submissionId: randomUUID() }, teachingStop),
+      'submission_confirmed');
   });
   app.post('/api/attempts/:id/runs', async request => {
     const id = attemptId(request), input = parseRequest(runInput, request.body);
@@ -158,10 +198,14 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     return row.course_id;
   }
 
-  app.post('/api/jobs/:id/cancel', request => {    const jobId = attemptId(request), input = parseRequest(cancelInput, request.body);
+  app.post('/api/jobs/:id/cancel', async request => {    const jobId = attemptId(request), input = parseRequest(cancelInput, request.body);
     // Read-only preflight: `execute` below owns the session activity bump, so this one must not advance it.
     const purpose = access.withAuthorizedCourse(request, tx => jobCourse(tx, jobId), undefined, (tx, actor) => {
-      const row = tx.get('SELECT purpose,student_id FROM jobs WHERE job_id=?', jobId);
+      const row = tx.get('SELECT purpose,student_id,job_json FROM jobs WHERE job_id=?', jobId);
+      if(String(JSON.parse(String(row?.job_json??'{}')).kind??'').startsWith('hdl_')){
+        if(actor.role!=='student'||row?.student_id!==actor.userId)throw new ApiError('FORBIDDEN');
+        if(!hdl)throw new ApiError('RUNTIME_NOT_READY');return 'hdl' as const;
+      }
       if (row?.purpose === 'teacher_design') {
         if (!instance.teacherAgent) throw new ApiError('FORBIDDEN');
         return 'teacher_design' as const;
@@ -176,6 +220,11 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       }
       return 'run' as const;
     }, false);
+    if(purpose==='hdl'){
+      const data=access.withAuthorizedResource(request,tx=>locate(tx,jobAttempt(tx,jobId)),'write',(tx,actor)=>
+        hdl!.cancelInTransaction(tx,actor,jobId,parseRequest(key,request.headers['idempotency-key']),input.recoveryGeneration,input.reason));
+      await hdl!.reconcileStops();return {requestId:request.id,data};
+    }
     if (purpose === 'teacher_design') return instance.teacherAgent!.cancelJob(request);
     if (purpose === 'teaching') return execute(request, tx => jobAttempt(tx, jobId), 'job.cancel', input.recoveryGeneration,
       (_tx, state, context) => cancelTeachingJobCommand(state, { ...context,
@@ -189,10 +238,11 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       return instance.teacherAgent.readJob(request);
     const data = access.withAuthorizedResource(request, tx => locate(tx, jobAttempt(tx, jobId)), 'read', tx => {
       const state = loadWorkspace(tx, jobAttempt(tx, jobId));
-      return readWorkspace(state, () => true).jobs.find(job => job.jobId === jobId);
+      return workspaceProjection(tx, state).jobs.find(job => job.jobId === jobId);
     });
     return { requestId: request.id, data };
   });
+  const runWorker=createWorkspaceWorker(designOptions);
   const workspace = {
     readSnapshot(request: FastifyRequest, id: string, snapshotId: string) {
       return read(request, id, (_tx, state) => readConfirmedSnapshot(state, snapshotId, () => true));
@@ -214,7 +264,13 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
           limitedCheck, helpAllowed: activity.helpPolicy.helpAllowed && !limitedCheck };
       });
     },
-    ...createWorkspaceWorker(designOptions),
+    pendingJobs:()=>[...runWorker.pendingJobs(),...(hdl?.pendingJobs()??[])],
+    async processJob(jobId:string){
+      const kind=options.db.withTransaction(tx=>tx.get('SELECT job_json FROM jobs WHERE job_id=?',jobId));
+      if(String(JSON.parse(String(kind?.job_json??'{}')).kind??'').startsWith('hdl_')){
+        if(!hdl)throw new ApiError('RUNTIME_NOT_READY');await hdl.processJob(jobId);await hdl.reconcileStops();
+      }else await runWorker.processJob(jobId);
+    },
   };
   // C3 read/command seams. The teaching composer replaces these with real implementations; an unattached
   // workspace never reports a teaching action invalidation it did not perform.
@@ -248,8 +304,8 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   });
   app.get('/api/attempts/:id/runs/:runId', request => {
     const value = parseRequest(params.extend({ runId: params.shape.id }), request.params);
-    return { requestId: request.id, data: read(request, value.id, (_tx, state) => {
-      const run = readWorkspace(state, () => true).runs.find(item => item.runId === value.runId);
+    return { requestId: request.id, data: read(request, value.id, (tx, state) => {
+      const run = workspaceProjection(tx, state).runs.find(item => item.runId === value.runId);
       if (!run) throw new ApiError('FORBIDDEN'); return run;
     }) };
   });
@@ -257,5 +313,88 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     const value = parseRequest(params.extend({ runId: params.shape.id }),request.params);
     return { requestId: request.id,data: workspace.readResultFiles(request,value.id,value.runId) };
   });
-  return { ...instance, workspace: { ...workspace, teaching } };
+  // C4 recovery read. Read-only: it never activates the attempt, enqueues a job, repeats a side effect or moves
+  // the learning stage, and a page that has not synchronized is told to re-sync instead of being handed content.
+  app.get('/api/attempts/:id/recovery', request => {
+    const id = attemptId(request), query = parseRequest(recoveryQuery, request.query);
+    return { requestId: request.id, data: read(request, id, (tx, state) => {
+      const generation = options.currentGeneration();
+      const resyncRequired = query.recoveryGeneration !== generation || !Number.isSafeInteger(query.decisionEpoch)
+        || query.decisionEpoch !== state.attempt.decisionEpoch;
+      return readRecovery(state, { recoveryGeneration: generation, resyncRequired,
+        assignmentActive: assignmentActionable(tx, state),
+        feedback: recovery.readFeedback(request, id), coverage: readCoverage(tx, id) }, () => true);
+    }) };
+  });
+  // C4 recovery surface. A5 owns formal feedback; an unattached view reports it unavailable rather than
+  // reconstructing feedback text from hashes, digests or submission rows.
+  type WorkspaceRecoverySurface = { readFeedback: (request: FastifyRequest, attemptId: string) => RecoveryFeedback };
+  const recovery: WorkspaceRecoverySurface = {
+    readFeedback: (_request: FastifyRequest, _attemptId: string): RecoveryFeedback => ({ status: 'unavailable' }),
+  };
+  // C4 seams for A5's teacher routes, the `transitionAttempt/grantReopen` pair TECH §7.2.1 assigns to C. A5 owns
+  // the HTTP surface, the feedback record and the permission decision; C owns the same-transaction stage move and
+  // the grant storage, so an artifact can never be reopened behind the student's back. C publishes no substitute
+  // product route of its own for either command.
+  const reviewedResult = z.strictObject({ attemptId: z.string(), status: z.literal('reviewed'),
+    attemptRevision: z.number().int().positive(), decisionEpoch: z.number().int().nonnegative() });
+  const grantResult = z.strictObject({ grantId: z.string(), submissionId: z.string(), attemptRevision: z.number().int().positive(),
+    status: z.literal('reviewed'), supersededGrantIds: z.array(z.string()) });
+  type WorkspaceReopenSurface = {
+    markReviewed: (request: FastifyRequest, attemptId: string, raw: unknown) =>
+      {requestId:string;data:CommandReceipt<z.infer<typeof reviewedResult>> & {replayed:boolean}};
+    grant: (request: FastifyRequest, attemptId: string, raw: unknown) =>
+      {requestId:string;data:CommandReceipt<z.infer<typeof grantResult>> & {replayed:boolean}};
+  };
+  const reopen: WorkspaceReopenSurface = {
+    markReviewed(request: FastifyRequest, id: string, raw: unknown) {
+      const input = parseRequest(reviewTransitionInput, raw);
+      const idempotencyKey = parseRequest(key, request.headers['idempotency-key']);
+      const data = access.withAuthorizedCourse(request, tx => readAttempt(tx, id).courseId, 'teacher', (tx, actor) => {
+        const generation = currentGeneration(input.recoveryGeneration), studentId = readAttempt(tx, id).studentId;
+        // `work` only runs for a fresh command, so a replay is reported as one instead of looking like a second
+        // stage change. The persisted receipt is returned unchanged in both cases.
+        let applied = false;
+        const receipt = finishRecordCommand(tx, { actorId: actor.userId, command: 'attempt.reviewed',
+          target: `/api/attempts/${id}/reviews`, scope: { courseId: actor.courseId, studentId, attemptId: id },
+          idempotencyKey, recoveryGeneration: generation }, input, generation, now(), () => {
+          applied = true;
+          return transitionAttemptInTransaction(tx, { attemptId: id, courseId: actor.courseId,
+            expectedAttemptRevision: input.expectedAttemptRevision, to: input.to });
+        }, value => reviewedResult.parse(value));
+        currentGeneration(generation); return { ...receipt, replayed: !applied };
+      });
+      return { requestId: request.id, data };
+    },
+    grant(request: FastifyRequest, id: string, raw: unknown) {
+      const input = parseRequest(reopenGrantInput, raw);
+      const idempotencyKey = parseRequest(key, request.headers['idempotency-key']);
+      const data = access.withAuthorizedCourse(request, tx => readAttempt(tx, id).courseId, 'teacher', (tx, actor) => {
+        const generation = currentGeneration(input.recoveryGeneration), studentId = readAttempt(tx, id).studentId;
+        // The guards and the CAS run while the command is planned; the grant row names the receipt that authorized
+        // it, so it is written once that receipt exists. A replay returns the original receipt result unchanged.
+        let pending: ReturnType<typeof planReopenGrant> | undefined, written = false;
+        const receipt = finishRecordCommand(tx, { actorId: actor.userId, command: 'attempt.reopen',
+          target: `/api/attempts/${id}/reopen`, scope: { courseId: actor.courseId, studentId, attemptId: id },
+          idempotencyKey, recoveryGeneration: generation }, input, generation, now(), () => {
+          pending = planReopenGrant(tx, { attemptId: id, courseId: actor.courseId, grantedBy: actor.userId,
+            expectedAttemptRevision: input.expectedAttemptRevision, submissionId: input.submissionId,
+            reason: input.reason, grantId: randomUUID(), now: new Date(now()).toISOString() });
+          return { grantId: pending.grant.grantId, submissionId: pending.grant.submissionId,
+            attemptRevision: pending.attempt.attemptRevision, status: 'reviewed' as const,
+            supersededGrantIds: pending.superseded.map(row => row.grantId) };
+        }, value => grantResult.parse(value), (receiptId, result) => {
+          if (!pending) throw new Error('Missing planned reopen grant.');
+          const granted = writeReopenGrant(tx, pending, receiptId);
+          if (granted.grantId !== result.grantId || granted.submissionId !== result.submissionId
+            || granted.attemptRevision !== result.attemptRevision || granted.status !== result.status)
+            throw new ApiError('PERSISTENCE_UNAVAILABLE');
+          written = true;
+        });
+        currentGeneration(generation); return { ...receipt, replayed: !written };
+      });
+      return { requestId: request.id, data };
+    },
+  };
+  return { ...instance, workspace: { ...workspace, teaching, recovery, reopen } };
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { createWorkspaceDatabase, createTeachingDatabase, createTeacherDesignDatabase, openSyntheticDatabase } from '../db/transaction.ts';
+import { createWorkspaceDatabase, createTeachingDatabase, createTeacherDesignDatabase, createDigitalLogicDatabase, openSyntheticDatabase } from '../db/transaction.ts';
 import type { SyntheticDatabase } from '../db/transaction.ts';
 import { createPasswordRecord } from '../access/password.ts';
 import { createWorkspaceApp } from './application.ts';
@@ -14,9 +14,10 @@ export const syntheticProfile = { runtimeProfileVersion: 'runtime-v1', imageDige
   compilerImage: 'sha256:' + 'b'.repeat(64), runtimeImage: 'sha256:' + 'c'.repeat(64), approvedResultFiles: ['report.txt'] };
 // The default fixture keeps C2's approved factory/table set; only the C3 teaching suite opts into the
 // four extra teaching tables and the composed teaching app.
-export async function fixture(transport?: RunnerTransport, configuration: {teaching?: boolean; teacherAgent?: TeacherAgentOptions} = {}) {
+export async function fixture(transport?: RunnerTransport, configuration: {teaching?: boolean; teacherAgent?: TeacherAgentOptions;digitalLogic?:boolean} = {}) {
   const runtime = transport ? await readRuntime(transport) : undefined, profile = runtime?.profile ?? syntheticProfile;
-  const createDatabase = configuration.teacherAgent ? createTeacherDesignDatabase : configuration.teaching ? createTeachingDatabase : createWorkspaceDatabase;
+  if(configuration.teacherAgent&&configuration.digitalLogic)throw new Error('Separate authorized synthetic schemas required.');
+  const createDatabase = configuration.digitalLogic ? createDigitalLogicDatabase : configuration.teacherAgent ? createTeacherDesignDatabase : configuration.teaching ? createTeachingDatabase : createWorkspaceDatabase;
   let db = createDatabase(), time = Date.now(), generation = runtime?.recoveryGeneration ?? 'generation', ready = true;
   let failStatement = '';
   const password = randomBytes(32).toString('base64url'), signingSecret = randomBytes(48).toString('hex'), record = await createPasswordRecord(password);
@@ -48,6 +49,11 @@ export async function fixture(transport?: RunnerTransport, configuration: {teach
     service.app.post('/fixture/rule', request => ({ data: service.design.configureRule(request, 'course', request.body) }));
     service.app.get('/fixture/tutor/:id', request => ({ data: service.workspace.readTutorContext(request, (request.params as { id: string }).id) }));
     service.app.get('/fixture/process/:id', request => ({ data: service.workspace.readProcessRecords(request, (request.params as { id: string }).id) }));
+    // A5 owns the real teacher routes for formal feedback and reopen permission. These synthetic routes drive C4's
+    // same-transaction seams exactly the way A5 will, so the student-side consumption is verifiable before A5 lands;
+    // they are not a substitute product path.
+    service.app.post('/fixture/reviewed/:id', request => service.workspace.reopen.markReviewed(request, (request.params as { id: string }).id, request.body));
+    service.app.post('/fixture/reopen/:id', request => service.workspace.reopen.grant(request, (request.params as { id: string }).id, request.body));
     // B2 owns the real help/worker entries; these synthetic routes only exercise C3's own seams.
     if (settings.enabled) {
       service.app.post('/fixture/help/:id', request => ({ data: service.workspace.teaching.acceptStudentQuestion!(request, (request.params as { id: string }).id, request.body) }));
@@ -118,4 +124,34 @@ export async function snapshot(f: Fixture, student: Headers, id: string) {
   const state = await view(f,student,id);
   const response = await command(f,student,`/api/attempts/${id}/snapshots`,{ expectedWorkspaceRevision: state.attempt.workspaceRevision });
   assert.equal(response.statusCode,200,response.body); return String(response.json().data.result.snapshotId);
+}
+// C4 helpers. Each returns the raw response so a test can assert the accepted status code or the exact rejection
+// code, and read the revision the next command in the chain must present.
+export function submit(f: Fixture, student: Headers, id: string, payload: object, key: string = randomUUID()) {
+  return command(f, student, `/api/attempts/${id}/submissions`, payload, key);
+}
+export function markReviewed(f: Fixture, teacher: Headers, id: string, expectedAttemptRevision: number, key: string = randomUUID()) {
+  return command(f, teacher, `/fixture/reviewed/${id}`, { expectedAttemptRevision, to: 'reviewed' }, key);
+}
+export function grantReopen(f: Fixture, teacher: Headers, id: string, submissionId: string, expectedAttemptRevision: number,
+  reason = 'Revise the report coverage', key: string = randomUUID()) {
+  return command(f, teacher, `/fixture/reopen/${id}`, { expectedAttemptRevision, submissionId, reason }, key);
+}
+export function resumeRevision(f: Fixture, student: Headers, id: string, expectedAttemptRevision: number, key: string = randomUUID()) {
+  return command(f, student, `/api/attempts/${id}/controls`, { expectedAttemptRevision, control: { kind: 'resume_revision' } }, key);
+}
+export async function recovery(f: Fixture, headers: Headers, id: string, query: {recoveryGeneration?: string; decisionEpoch?: number} = {}) {
+  const search = Object.entries(query).filter(([, value]) => value !== undefined).map(([name, value]) => `${name}=${encodeURIComponent(String(value))}`).join('&');
+  const response = await f.app.inject({ url: `/api/attempts/${id}/recovery${search ? `?${search}` : ''}`, headers });
+  assert.equal(response.statusCode,200,response.body); return response.json().data;
+}
+/** The full C4 chain up to a reviewed attempt: submit, teacher review, and the resulting revision. */
+export async function reviewed(f: Fixture, student: Headers, teacher: Headers, id: string, payload: object = {}) {
+  const state = await view(f,student,id), snapshotId = await snapshot(f,student,id);
+  const submitted = await submit(f,student,id,{ expectedAttemptRevision: state.attempt.attemptRevision, snapshotId, ...payload });
+  assert.equal(submitted.statusCode,200,submitted.body);
+  const submissionId = String(submitted.json().data.result.submissionId), revision = Number(submitted.json().data.result.attemptRevision);
+  const reviewedResponse = await markReviewed(f,teacher,id,revision);
+  assert.equal(reviewedResponse.statusCode,200,reviewedResponse.body);
+  return { submissionId, snapshotId, reviewedRevision: Number(reviewedResponse.json().data.result.attemptRevision) };
 }
