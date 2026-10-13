@@ -2,7 +2,7 @@
 
 日期：2026-10-13（Asia/Shanghai）。任务编号：B3。主责：B。关联 [Issue #42](https://github.com/paher-din/XunJie/issues/42)、[P3 总协调 #37](https://github.com/paher-din/XunJie/issues/37)、[A4 #41](https://github.com/paher-din/XunJie/issues/41) 与 [C4 #43](https://github.com/paher-din/XunJie/issues/43)。
 
-状态：**独立合成核心、固定 fixture 和 Issue 评论指定的 A4/B2 接缝复核已实现并通过专项验证；等待 A4 PR #49 合入后的重放、真实输入链与后置验收。** 本分支显式堆叠于 A4 PR #49 固定 head `6a4361b9e59227b8b5410c164656dc7dd7f178d8`；该提交尚未合入 `main`，不能把堆叠验证写成上游已合并。Issue #42 评论新增的 B2 可选状态读取接缝复核已纳入并留下实际命令/结果。
+状态：**独立合成核心、固定 fixture 和 Issue 评论指定的 A4/B2 接缝复核已实现并通过专项验证；已从最新 `main`（`1cd43f8`，A4 #49 / C4 #47 / DL-C #48 已合入）重放并通过，真实输入链与后置验收仍待办。** 本分支原显式堆叠于 A4 PR #49 固定 head `6a4361b9e59227b8b5410c164656dc7dd7f178d8`；#49 已合入 `main`，本批已 rebase 到 `main` 顶端（`17e61ae`）并复验。Issue #42 评论新增的 B2 可选状态读取接缝复核已纳入并留下实际命令/结果。
 
 ## 1. 基线、依据与边界
 
@@ -76,7 +76,7 @@ B3 请求由受信宿主提供：A4 原 `job`/`binding`、固定活动的三条�
 
 ## 5. 依赖、交付与未完成项
 
-- 当前分支基于尚未合入的 A4 PR #49，后续 PR 必须声明堆叠依赖；#49 变化后重新同步并复验，不能把当前结果外推到未知合并树。
+- 本分支原基于尚未合入的 A4 PR #49；#49（含 C4 #47、DL-C #48）已合入 `main`，本批已 rebase 到 `main` 顶端（`17e61ae`）并复验，后续 PR 不再声明堆叠依赖。
 - C2/C3 已提供实际引用/覆盖基础；C4 分支和 A4/C4 合并集成仍未成为 `main`，真实提交/恢复链另行联调。
 - B3 合成核心、fixture 和 A4/B2 接缝可在本批完成；真实 DeepSeek 候选、真实学生/教师材料、教师人工语义、浏览器与真人反馈分别等待明确条件和授权。
 - #40 的首批 HDL 消费提案已在独立分支交付；共享 DTO 未经 #38 冻结前不编码。等待 #40 上游期间推进 #42 符合 TEAM 个人顺序例外，不表示 DL-B 已完成。
@@ -124,8 +124,21 @@ B3 请求由受信宿主提供：A4 原 `job`/`binding`、固定活动的三条�
 
 ### 6.4 未完成与下一步
 
-- A4 PR #49 合入后从最新 `main` 重放 B3 专项、A4 review、tutoring 和应用回归；若 A4 合并树变化，先核接口差异。
+- A4 PR #49 合入后的重放已于 2026-10-13 完成（见 §6.5）：从 `main` 顶端 rebase、typecheck 与完整测试套件复验通过，A4 `80a2721` 接口差异经 typecheck 核无漂移。
 - 接 C2/C3/C4 的实际原始分析/提交/覆盖引用，验证 E-B3-02～07 对真实引用语义的 A4 接纳；当前只有 E-B3-01 经真实 A4 事务接纳，其余为严格合成策略/反例。
 - 真实 DeepSeek 候选、actual/unknown usage 和失败证据需新的 B3 调用范围与合成数据/费用授权；本批没有沿用 #45 已消费授权。
 - 固定工程样例的严重语义问题仍需教师/项目推进者人工审阅；浏览器、真人反馈与教学收益未执行。
-- 待授权维护者汇总：可记录“B3 合成核心、固定 fixture 和 A4/B2 消费接缝复核已完成；A4 合入重放、真实输入链、真实模型/人工语义和 UI/真人仍未验收”。本文不直接修改产品/计划基线。
+- 待授权维护者汇总：可记录“B3 合成核心、固定 fixture 和 A4/B2 消费接缝复核已完成，并从最新 `main`（A4 #49 已合入）重放通过；真实输入链、真实模型/人工语义和 UI/真人仍未验收”。本文不直接修改产品/计划基线。
+
+### 6.5 A4 #49 合入后的重放（2026-10-13）
+
+A4 PR #49（含 C4 #47、DL-C #48）已合入上游 `main`（`1cd43f8`）。本分支由固定 head `6a4361b` rebase 到 `main` 顶端，提交 `17e61ae`；README 导航表冲突按“B3 行紧跟 B2、保留 I0_UI 行”双向合并，无内容丢失。重放结果（Node 24.21.0、仓库锁定依赖、供应商网络调用 0）：
+
+| 命令/检查 | 实际结果 |
+| --- | --- |
+| `git rebase main` | 成功，唯一冲突为 `README.md`（B3 行与 I0_UI 行同点插入），已双向保留 |
+| `tsc --noEmit` | 通过；A4 `80a2721` 对 `server/tutoring/application.ts` 等接缝的修复未破坏 B3 类型 |
+| 完整测试套件（`npm test`） | 362 tests：348 pass / 1 fail / 13 skipped |
+| 唯一失败 `server/workspace/review.test.ts:118` | `review: real RunControl preparation failure ends check without fabricating a RunRecord`；`RunControl` 构造器要求 `process.platform === 'linux'`（`runner/control.ts:46-48`），Windows 下必然失败，属 A4 引入的 Linux 专属测试，非 B3 回归 |
+
+重放未引入新的 B3 失败；真实输入链、真实模型、人工语义与浏览器/真人验收保持 §6.4 的待办口径。
