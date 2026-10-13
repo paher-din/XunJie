@@ -48,7 +48,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [三人分工与交付顺序](docs/planning/TEAM_WORK_PLAN.md) | 当前 P2 保持原范围；P3 的 A/C/B 数字逻辑任务卡、P4 两课程验证、P5 整体接入及个人执行顺序 |
 | [DL-0 数字逻辑课程增量](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md) | ALU/板卡材料、决定、授权与分工/验证记录；具体执行任务以 TEAM 的 P3～P5 为准 |
 | [DL-A 课程、共享契约与业务接入](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) | 获准提前评审准备，A 域输入已交；仍待 C/B/UI 具体提案、配置/schema/运行授权 |
-| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 获准 31 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；专项 43/43、两轴未解决 0；完整回归环境失败及后置项单列 |
+| [A4 有效学习状态与教师纠正](docs/tasks/A4_LEARNER_STATE_REVIEW.md) | 获准 31 表合成库、受控状态/纠正接口、C3 同事务失效与 B2 读取；PR修复专项51/51、两轴未解决0；默认/串行全量失败与后置项单列 |
 | [A0 业务权限与公共契约评审稿](docs/tasks/A0_BUSINESS_CONTRACT_REVIEW.md) | Issue #2 的权限、状态、逐命令与短事务提案、D-03、验证方案和待会审差异；未成为正式契约 |
 | [G0 Issue 跟踪](docs/planning/G0_ISSUES.md) | 已发布的统筹 Issue 与 A0/B0/C0 三个执行 Issue，任务正文、交付和关闭条件 |
 | [G0 交付核对与实施门禁](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) | 三项 PR、差异与真实验证，以及负责人统一裁决/准备门禁记录；不代签或计作产品验收 |
@@ -273,6 +273,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 2026-10-13，负责人批准公开推送与创建 A4 PR，已交付 [PR #49](https://github.com/paher-din/XunJie/pull/49)；创建时无合并冲突，#38/#41 保留 Open。公开交付不改变上述验收结果或 DL-A 待决条件，实际发布记录见 [A4 §11.4](docs/tasks/A4_LEARNER_STATE_REVIEW.md#114-负责人批准的公开交付2026-10-13)。
 
 2026-10-13，A4 PR #49 新审查修复已实现，含真实版本读取、31表初始化范围守卫、证据勘误和原停止原因保全；局部反例/typecheck通过，本轮完整回归和两轴审查待执行，详情见 [A4修复记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#12-pr-49-新审查意见修复2026-10-13)。C试合并复核及审计归因待裁决项分别登记，不宣称实际联合验收已完成。
+
+2026-10-13，A4 PR #49 本轮修复专项51/51、typecheck/build通过；默认全量315项为304通过/2失败/9跳过，SDK单独11/11，串行同全集305通过/1个既有Windows/Linux环境失败/9跳过，历史失败完整保留。实现、两轴0项、原日志勘误与审计归因待裁决见[A4修复最终记录](docs/tasks/A4_LEARNER_STATE_REVIEW.md#13-pr-49-修复最终结果2026-10-13)；C4联合范围授权、实际合并后复确认与B消费验收继续单列。
 
 ### 当前整体状态与后置验收
 

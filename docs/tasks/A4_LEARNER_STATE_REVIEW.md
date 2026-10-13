@@ -283,3 +283,37 @@ C-P3-2（消费说明）：轮询已将原 Job stopRequested 置 true 后，后�
 A4廉价版本读取仍核真实 Attempt course/student 和真实状态记录的scope/revision一致性，解析状态记录而不解析引用可用性/展开workspace；不是信任请求体revision。完整求助继续使用获准投影，未装配revision能力回退完整reader并保留已有附加守卫AND；没有状态reader时保持原C3语义。
 
 当前 learner_analysis 没有正常宿主自动消费者；排队/读取需原真实授权请求，claim/complete只供受信宿主服务调用，不能将其注册为客户端可直接调用的任意jobId/lease接口。宿主应保护能力引用/调用者，并遵守原成员、Job、lease、代际、用途/版本守卫；本批仅通过获准测试宿主消费，不宣称生产worker已装配。待授权维护者汇总MVP§10/TECH时同时纳入本轮revision接口、31表范围守卫、回执标志及引用/停止事实修复，产品基线仍只读。
+
+
+### 12.4 修复源码两轴审查（2026-10-13）
+
+固定 `6a4361b9e59227b8b5410c164656dc7dd7f178d8` → `80a2721815bdc9ba43a33bb85b39fd60ee0e8298`，Standards 独立只读审查：硬规范违反0、可操作异味0；Spec独立只读审查：缺失/部分、错误实现、范围扩大均0。两轴核对真实版本scope/旧fallback/附加AND守卫、单调用缓存、建库前精确31表守卫、非pending Action原停止原因事实保全；没有执行测试或节点，不代替以下最终回归。
+
+固定该源码的 A4 公共专项51项（41顶层+10子用例）为51通过、0失败、0跳过，typecheck通过；正常 `npm test` 含build的全量正在执行。本轮审计归因C-P3-1待裁决、实际合并/C/B消费接收与正式产品后置项仍保留，不以两轴0项宣称全部跨域待办关闭。
+
+
+2026-10-13，固定 `80a2721` 的默认 `npm test`（含build通过）实际315项：304通过、2失败、9跳过，A4的51项全部通过。除原Windows/Linux RunControl环境失败外，`server/tutoring/test/deepseek-sdk.test.ts:315` 的10ms截止时间用例预期calls=1实际0；timed_out断言已通过，未进入预期的延迟传输。该SDK/provider/核心文件本批未改，单独复跑整个SDK文件11/11通过；与并发负载下在调用前期限已过一致，不能将局部通过改写成首轮全量通过。保留本轮首轮失败，正对同一文件全集串行复验，原10ms/5秒阈值、平台门禁与用例均不变，最终结果另记。
+
+
+## 13. PR #49 修复最终结果（2026-10-13）
+
+修复源码固定 `80a2721815bdc9ba43a33bb85b39fd60ee0e8298`，原审查head `6a4361b`、产品代码基线 `37849f4`。本批原4项P2及追加C-P2-1已修，原6项P3按§12修复/澄清，C-P3-3/4代码/归属说明已处理；C-P3-1审计归因仍待负责人裁决，C-P3-2消费限制保留。此为A4独立31表修复批次，不是C4/A4已合并树，不合并其他PR、不关闭#41/#42/#43，不宣称完整G3。
+
+| 已执行命令（apps/teaching，Node24.21.0） | 实际结果 | 证据 |
+| --- | --- | --- |
+| `npm run typecheck` | 通过 | [完整类型](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-typecheck.windows.txt) |
+| `node --test --test-reporter=tap tests/review.test.ts` | 51项（41顶层+10子用例），51通过/0失败/0跳过 | [A4专项](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-targeted.windows.txt) |
+| `npm test`（原默认文件并发，含build） | build通过；315项，304通过/2失败/9跳过；A4全部通过 | [默认全集](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-full.windows.txt) |
+| `node --test --test-reporter=tap server/tutoring/test/deepseek-sdk.test.ts` | 11通过/0失败/0跳过 | [SDK单文件](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-sdk-isolated.windows.txt) |
+| `node tools/check-runtime.mjs; node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts` | 315项，305通过/1失败/9跳过；A4全部通过，SDK时间失败未复现 | [串行全集](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-full-serial.windows.txt) |
+
+默认完整失败原样保留：Windows/Linux RunControl既有环境失败，以及未改SDK的10ms时间敏感用例calls=0（timed_out断言通过）。单独SDK与串行完整均未复现后者；串行仅余原RunControl失败。未改用例、阈值、文件集合或平台/模型门禁；9个实际跳过及所有摘要见[新证据索引](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision.evidence.json)。不能把串行通过数回填到默认全集或宣称全部通过。
+
+新验收与旧§11按源码时点分开，旧5份Git blob各已精确保留gzip。提交`80a2721`后验证5/5当前Windows工作树日志字节等于HEAD blob、与清单SHA-256/字节数一致，text属性均unset；完整base→HEAD空白检查通过。获准合成库保留；本轮工厂公共用例验证真实31表和关闭后可重新打开，未初始化C4联合33表。两轴固定修复源码未解决均0，后续文档/证据审查另记。
+
+原正常learner_analysis消费者、C4联合提交/恢复、B真实消费与人工语义、A5正式反馈、Linux完整测试、真实节点/模型、浏览器/TLS/真人/教学效果未执行；C提前试合并结论须在实际合并并批准联合范围后重新确认。待授权维护者把§12～13真实实现/结果、已批准revision签名、回执标志和以上边界汇总MVP§10/TECH，当前受保护文档仍只读。修复交付沿用[A4 PR #49](https://github.com/paher-din/XunJie/pull/49)，源码与最终验收文档分开提交，PR继续交负责人复审。
+
+
+最终文档静态检查 39文档/619内链/errors=[]，原检查器自测16/16；当前base→未提交修复差异空白检查通过。原源码时点静态记录612内链单列为历史；最终数按本段新检查，不回写旧610/611计数。[最终文档日志](../../apps/teaching/tests/evidence/a4/acceptance.a4-pr49-revision-final-documents.windows.txt)的文件入口追加后内链再验并在交付核对中登记。
+
+最终文件入口追加后的交付再验：39文档/620内链/errors=[]；前述619是该入口追加前的实际时点，新索引分别保留两次结果。末次代码/证据差异空白检查及文档/证据两轴增量结果随后核对。
