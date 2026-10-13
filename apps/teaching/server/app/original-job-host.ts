@@ -10,6 +10,18 @@ import { registerI0Static } from './i0-static.ts';
 import type { Transaction } from '../db/transaction.ts';
 
 export type HostAdmission = { accepting:boolean };
+export function guardHostTransport<Command extends {op:string}>(
+  transport:(command:Command)=>Promise<unknown>,admission:HostAdmission,
+  operations:{dispatch:readonly Command['op'][];readiness:Command['op']},
+) {
+  return async(command:Command)=>{
+    if(!admission.accepting&&(operations.dispatch.includes(command.op)||command.op===operations.readiness))
+      throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    const response=await transport(command);
+    if(!admission.accepting&&command.op===operations.readiness)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    return response;
+  };
+}
 type OriginalService = Pick<Awaited<ReturnType<typeof createWorkspaceApp>>, 'app'|'access'|'workspace'>;
 type HostOptions = Pick<WorkspaceAppOptions,'db'|'currentGeneration'> & {staticDirectory?:string;consumerIntervalMs?:number};
 type ExecutionHooks = {admission:HostAdmission;consumeAdditional?:()=>Promise<void>;

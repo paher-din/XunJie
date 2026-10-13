@@ -1,6 +1,6 @@
 # DL-A：数字逻辑课程、共享契约与业务接入
 
-日期：2026-10-12（Asia/Shanghai）。主责：A；对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。当前状态：2026-10-13 负责人已批准 §10 A/C 首批；本地实现、A/C 专项及两轴审查已完成；完整回归仍有 1 项既有 Windows/Linux 环境失败，详见 §12/14。真实节点联调尚未执行，ALU 行为/C4/B/UI 等整卡条件仍未完成。旧提案与历史验证保留其创建时点。
+日期：2026-10-12（Asia/Shanghai）。责任：A。对应 [Issue #38](https://github.com/paher-din/XunJie/issues/38)。当前状态（2026-10-13）：当前35表去重联合收尾见 §16，修复后53项组合专项已通过，完整回归与最终审查修复进行中；§12/14保留此前33表批次历史结果。整卡仍等待实际获准宿主联调及 B/UI/ALU 等输入，#38未完成。
 
 ## 1. 基线、同步与写入范围
 
@@ -480,3 +480,24 @@ npm start
 5. **UI / DL-UI：** 现有 HDL 操作—请求—结果/状态—缺项表及固定前端来源，覆盖构建/装载/替换、SW/按钮/reset/推进、Trace/unknown/恢复；具体对应 §9 的命令状态和板卡波形，并复用既有 I0。
 
 收到上述实际交付后才能完成 A/B/UI 会审、真实节点和同浏览器 DL-E2E；NFR、真人及教学效果仍沿原完整判据。产品 MVP_SPEC §10/TECH_DESIGN 汇总**待授权维护者汇总**，当前仅同步本人任务与 README。#38 保持未完成；当前授权不含远程推送、PR 合并或 Issue 关闭。
+
+
+### 16.5 最终审查发现与修复安排
+
+固定源码 §16.1 的 d868637 初审：Standards 硬违反1（任务入口摘要仍指历史33表批次）、判断性重复1（两宿主 C transport 关停守卫重复）；Spec 1（等待在途HTTP收束时 HDL queued Job 仍可新 dispatch）。入口摘要更新至当前 §16；两真实宿主共用 C/HDL transport 接纳门禁；停止接纳后拒绝新 build/program/interact/readiness，原 query/result/stop 对账保留。先以真实 loopback HTTP 等待、原消费者/真实SQLite与合成transport补反例，再修门禁并重新固定源码回归。此时不得把初审写成0问题。
+
+### 16.6 C 最新回交吸收（不重复重验）
+
+2026-10-13，回读 [C C/TextScope 回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6142794517) 及 [C HDL 当前补验](https://github.com/paher-din/XunJie/issues/30#issuecomment-6143063168)。同一 main cde69cc 的 C/HDL 当前重验与登记**已由 C 报告完成**：HDL10/10、C52总/51通过/0失败/1跳过；认证readiness汇总 C/HDL ready=true、sourceHash=7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852、HDL fingerprintHash=ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386，validatedAt=2026-10-13T09:51:51.930Z，C/HDL代际一致。它们是 C 原批实际结果，不计入本次 A 回归。
+
+原受控交接文件 current-readiness.json/connection.json/runtime-evidence.json 位于 **PAHER** 的服务控制目录，loopback2222也仅限该宿主。当前执行机与WSL hostname均为 **MSI**；只读 stat 确认本机 /opt/xunjie-runner 不存在，三项指定文件可读检查均退出1；没有发起SSH或维护节点。故 §15.5/16.4 中“C尚缺当前重验/登记记录”已补齐，不再请求 C 重复同一验收。尚缺的是：**在现有获准 PAHER 上执行本 A 固定源码的真实业务联调并回交证据的实际接收方式，或既有已授权、可供本机访问的受控入口引用**。新建跨机网络/凭据分发不在本次范围。
+
+C 最新评论仍明确正常 HTTPS/TLS、实际UI/最终消费者组合未执行；这些缺口以及ALU/B/UI表继续保留。开始实际联调前须实读当前ready/profile/指纹/validation/代际，不把一次历史true写成长期开放授权。本稿前文“未收到C回交”等为当时检查事实，以本节当前状态为准。
+
+
+关停反例经历两次测试接线失败，均保留日志：同 Attempt 不允许同时排第二个 Build（409）；改为两个真实分配后曾误用 /api/health/ready，未进入等待，超时取消该本任务测试进程。修正为既有 /health/ready 后，真实反例以 **2≠1** 失败，证明关停等待期确实新派发第二项 HDL Build。两宿主原 C 守卫与 HDL 新 dispatch/readiness 现在统一放在原 transport 调用边界；query/result/stop 保留原身份对账，不另造执行状态。修复后该反例 **1/1通过**，typecheck退出0。
+
+首轮固定 d868637 的WSL2完整六组：**414总、402通过、1失败、0取消、11跳过**。唯一失败为本次 XUNJIE_DLC_TOOLCHAIN 指向已获准包目录的上一级，vpi_user.h 找不到；实际头文件在该包 extracted/usr/include/iverilog。此为测试工具路径接线错误，未改源码/引擎/限额或放宽测试。修正路径并完成上述审查修复后重新固定源码，旧全量失败仍保留。
+
+
+2026-10-13，审查修复后 Windows 五文件组合 **53总/53通过/0失败/0取消/0跳过**（包含真实HTTP等待期关停反例），typecheck通过。已获准 Icarus 包路径修正为 extracted 后，原 Linux 时钟专项**5/5通过**，包括1ps/100fs/1fs与超过低32位tick；只验证真实引擎时基，不替代目标节点隔离验收。静态文档 errors=[]、差异空白检查通过。下一步重新固定源码执行完整六组，并复核两轴发现的修复。

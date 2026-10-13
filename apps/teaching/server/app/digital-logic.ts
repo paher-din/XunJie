@@ -1,5 +1,5 @@
 import {assertDigitalLogicApplicationDatabase} from '../db/transaction.ts';
-import {attachOriginalJobHost} from './original-job-host.ts';
+import {attachOriginalJobHost,guardHostTransport} from './original-job-host.ts';
 import {z} from 'zod';
 import type {FastifyRequest} from 'fastify';
 import {createTutoringApp,type TutoringAppOptions} from '../tutoring/application.ts';
@@ -32,26 +32,22 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  const approved=options.approvedHdlRuntimes.map(value=>hdlRuntimeSchema.parse(value));
  if(!approved.length)throw new ApiError('INVALID_CONFIGURATION');
  const admission={accepting:true};
+ const hdlTransport=guardHostTransport(options.hdlTransport,admission,{dispatch:['hdl_build','hdl_program','hdl_interact'],readiness:'hdl_readiness'});
  let latest:Awaited<ReturnType<typeof availableHdlRuntime>>|undefined;
- async function refresh(){latest=undefined;if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');const result=await availableHdlRuntime(options.hdlTransport,approved);if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');if(result.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');latest=result;}
+ async function refresh(){latest=undefined;if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');const result=await availableHdlRuntime(hdlTransport,approved);if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');if(result.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');latest=result;}
  await refresh();
  const cReady=await availableRuntime(options.runner);if(options.runner&&(!cReady||cReady.recoveryGeneration!==generation))throw new ApiError('RECOVERY_REQUIRED');
- const hdl=createHdlWorkspace({db:options.db,currentGeneration,transport:options.hdlTransport,...(options.now?{now:options.now}:{}),refreshProfile:refresh,
+ const hdl=createHdlWorkspace({db:options.db,currentGeneration,transport:hdlTransport,...(options.now?{now:options.now}:{}),refreshProfile:refresh,
  approvedProfile(tx,attemptId){if(!admission.accepting||!latest)return undefined;const attempt=readAttempt(tx,attemptId),runtime=readActivity(tx,attempt.courseId,attempt.activityVersionId).runtimeProfile;
  if(!('kind' in runtime)||canonical(runtime.configuration.runtime)!==canonical(latest.profile)||runtime.contentHash!==configurationHash(runtime.configuration))return undefined;
  return {board:runtime.configuration.board,runtime:runtime.configuration.runtime};}});
- const runner:typeof options.runner=options.runner?async command=>{
-  if(!admission.accepting&&['submit','readiness'].includes(command.op))throw new ApiError('DEPENDENCY_UNAVAILABLE');
-  const response=await options.runner!(command);
-  if(!admission.accepting&&command.op==='readiness')throw new ApiError('DEPENDENCY_UNAVAILABLE');
-  return response;
- }:undefined;
+ const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
  const instance=await createTutoringApp({...options,...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{if(!admission.accepting)return false;try{await refresh();const c=await availableRuntime(runner);return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
  const fixed=instance.access.withAuthorizedCourse(request,tx=>draftCourse(tx,blueprintId),'teacher',(tx,actor)=>{
   const draft=readDraft(tx,actor.courseId,blueprintId);return draft.content.digitalLogicConfigVersionId?fixedHdlRuntime(tx,actor.courseId,draft.content.digitalLogicConfigVersionId):undefined;
  },false);
  if(!fixed)return queryRuntime(runner);
- try{const ready=await availableHdlRuntime(options.hdlTransport,approved);if(ready.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');
+ try{const ready=await availableHdlRuntime(hdlTransport,approved);if(ready.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');
  if(canonical(fixed.configuration.runtime)!==canonical(ready.profile))throw new ApiError('INVALID_REFERENCE');return {ok:true as const,runtime:{...ready,profile:fixed}};
  }catch(error){return {ok:false as const,error};}
  }});

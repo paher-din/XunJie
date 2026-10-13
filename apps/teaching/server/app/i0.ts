@@ -1,6 +1,6 @@
 import { createWorkspaceApp, type WorkspaceAppOptions } from '../workspace/application.ts';
 import { ApiError } from './errors.ts';
-import { attachOriginalJobHost } from './original-job-host.ts';
+import { attachOriginalJobHost,guardHostTransport } from './original-job-host.ts';
 
 export type I0AppOptions = WorkspaceAppOptions & {staticDirectory?:string;consumerIntervalMs?:number};
 export async function createI0App(options:I0AppOptions) {
@@ -11,13 +11,8 @@ export async function createI0App(options:I0AppOptions) {
   const tables=options.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").map(row=>String(row.name)));
   if (JSON.stringify(tables)!==JSON.stringify(approvedTables)) throw new ApiError('INVALID_CONFIGURATION');
   const admission={accepting:true};
-  const transport=options.runner;
-  const service = await createWorkspaceApp({...options,...(transport ? {runner:async command=>{
-    if (!admission.accepting && ['submit','readiness'].includes(command.op)) throw new ApiError('DEPENDENCY_UNAVAILABLE');
-    const response=await transport(command);
-    if (!admission.accepting && command.op==='readiness') throw new ApiError('DEPENDENCY_UNAVAILABLE');
-    return response;
-  }} : {})});
+  const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
+  const service=await createWorkspaceApp({...options,...(runner?{runner}:{})});
 
   try {
     const host=attachOriginalJobHost(service,options,{admission});

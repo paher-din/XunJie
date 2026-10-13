@@ -224,3 +224,37 @@ test('C4 teacher grant and student revision resume never revive the stopped orig
   assert.equal(history.submissions.length,1);assert.equal(history.submissions[0].snapshotId,item.snapshotId);
  }finally{await f.close();}
 });
+
+
+test('shutdown blocks new HDL dispatch while a real HTTP readiness request drains', {timeout:30000}, async()=>{
+ let holdReadiness=false,buildCalls=0;
+ let releaseBuild!:()=>void,releaseReadiness!:()=>void,markBuild!:()=>void,markReadiness!:()=>void;
+ const buildStarted=new Promise<void>(resolve=>{markBuild=resolve;});
+ const readinessStarted=new Promise<void>(resolve=>{markReadiness=resolve;});
+ const buildWait=new Promise<void>(resolve=>{releaseBuild=resolve;});
+ const readinessWait=new Promise<void>(resolve=>{releaseReadiness=resolve;});
+ const f=await fixture(async packet=>{
+  if(packet.op==='hdl_build'&&++buildCalls===1){markBuild();await buildWait;}
+  if(packet.op==='hdl_readiness'&&holdReadiness){markReadiness();await readinessWait;}
+ });
+ let consuming:Promise<void>|undefined,closing:Promise<void>|undefined,http:Promise<Response>|undefined;
+ try{
+  const teacher=await f.login('teacher'),student=await f.login();
+  for(let n=0;n<2;n++){
+   const item=await allocate(f,teacher,student);
+   const accepted=await command(f,student,'/api/attempts/'+item.attemptId+'/hdl/builds',{
+    expectedAttemptRevision:(await view(f,student,item.attemptId)).attempt.attemptRevision,snapshotId:item.snapshotId});
+   assert.equal(accepted.statusCode,200,accepted.body);
+  }
+  const address=await f.app.listen({host:'127.0.0.1',port:0});
+  holdReadiness=true;http=fetch(address+'/health/ready');await readinessStarted;
+  consuming=f.host.consumeOnce();await buildStarted;
+  closing=f.host.shutdown();assert.equal(f.host.isAccepting(),false);
+  releaseBuild();await consuming;
+  assert.equal(buildCalls,1,'shutdown must not dispatch the next queued HDL build while app.close waits for HTTP');
+  releaseReadiness();assert.equal((await http).status,503);await closing;
+ }finally{
+  releaseBuild();releaseReadiness();
+  await http;await consuming;await closing;await f.close();
+ }
+});
