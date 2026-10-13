@@ -868,9 +868,9 @@ test('A4: review and dispute receipts distinguish first commit and replay withou
  }finally{await s.f.close();}
 });
 
-test('A4: independent fresh factory stays within the approved 31-table scope and retains its database',async()=>{
+test('A4: independent fresh factory stays within the approved 33-table scope and retains its database',async()=>{
  const {createReviewDatabase,openSyntheticDatabase}=await import('../server/db/transaction.ts');let db=createReviewDatabase();const file=db.file;
- try{const tables=db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"));assert.equal(tables.length,31);assert(!tables.some(row=>['workspace_submissions','workspace_reopen_grants'].includes(String(row.name))));db.close();db=openSyntheticDatabase(file);assert.equal(db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")).length,31);
+ try{const tables=db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"));assert.equal(tables.length,33);for(const name of ['workspace_submissions','workspace_reopen_grants'])assert(tables.some(row=>row.name===name));db.close();db=openSyntheticDatabase(file);assert.equal(db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")).length,33);
  }finally{db.close();}
 });
 

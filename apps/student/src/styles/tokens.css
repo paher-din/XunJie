@@ -1,0 +1,314 @@
+/*
+ * 语义令牌：中性基底 + 少量语义色。浅色为 DESIGN.md 定稿值，深色是同一角色的深色对应值。
+ * 主题由 <html data-theme="dark"> 切换，偏好（浅色 / 深色 / 跟随系统）见 app/src/lib/theme.ts。
+ * 组件不要直接写色值：新角色先在这里登记两套值，再在 app.css 引用。
+ */
+:root {
+  /* ── 文字四级 ───────────────────────────── */
+  --ink: #1f2328;
+  --ink-soft: #42474d;
+  --muted: #656d76;
+  --faint: #9ca0a6;
+
+  /* ── 面与线 ─────────────────────────────── */
+  --shell-bg: #f9f9f8; /* 外壳底色，侧栏透明透出 */
+  --paper: #ffffff; /* 主画布 / 面板 / 卡片 */
+  --raised: #ffffff; /* 浮层：菜单 / 弹窗 / 悬浮输入框 */
+  --sunken: #f7f8fa; /* 内嵌面：代码块 / 表头 / 次级底 */
+  --hover-bg: #f4f4f2; /* 悬停填充 */
+  --chip-bg: #f1f1ef; /* 次级填充（悬停 / 选中 pill / 分组高亮） */
+  --chip-active: #e5e5e9; /* 按下 / 打开态：比 --chip-bg 重半档，保住按压反馈 */
+  --chip-on: #ffffff; /* 选中项的亮面（分段控件当前项 / 浅底上的 pill） */
+  --line: #e8e8e6; /* hairline */
+  --line-strong: #e0e0de; /* 控件描边，比 hairline 深半档（①角色表保留档） */
+  --line-faint: #c9cac8; /* 更弱的线：字段下划线悬停 / 装饰点 */
+  --veil: rgba(37, 39, 44, 0.07); /* 图片等浅底上的半透明按压层 */
+  --veil-strong: rgba(37, 39, 44, 0.14);
+  --veil-page: #fbfcfacc; /* 页面级白色布幕（工作区首次进入的任务卡） */
+  --dialog-rim: rgba(255, 255, 255, 0.8); /* 对话框外缘亮边（压在遮罩上） */
+  --outline-soft: rgba(0, 0, 0, 0.08);
+
+  /* ── 实底与反白 ─────────────────────────── */
+  --primary: #1f2328; /* 主按钮底 */
+  --primary-hover: #3a3e47; /* 实底按钮悬停（浅色下变亮，深色下变暗） */
+  --on-primary: #ffffff; /* 主按钮字 */
+  --inverse: #1a1d23; /* 深色实底：提示气泡 / toast / 深色浮层（深色下仍保持深） */
+  --on-inverse: #ffffff;
+  --mosaic-bg: #1a1d23; /* 构成图深底（⑨有意例外，不并入数据蓝） */
+
+  /* ── 遮罩 / 滚动条 / 焦点 ────────────────── */
+  --overlay: rgba(31, 35, 40, 0.35);
+  --scroll-thumb: rgba(37, 39, 44, 0.16);
+  --scroll-thumb-hover: rgba(37, 39, 44, 0.24);
+  --focus-ring: #7ab3ff;
+
+  /* ── 强调与危险 ─────────────────────────── */
+  --accent: #007aff; /* Apple 系统蓝，同时是图表数据蓝第 3 档 */
+  --accent-deep: #0059d0; /* 强调的深一档：环形描边 / 链接态 */
+  --accent-soft: #eef3fd; /* 强调浅底（次级按钮 / 取用块） */
+  --accent-soft-hover: #dfe8fb;
+  --accent-line: rgba(0, 122, 255, 0.22); /* 强调描边（收纳按钮 / 放置区标签） */
+  --danger: #d5443e;
+  --danger-deep: #c1352d; /* 危险悬停档 */
+  --danger-soft: rgba(213, 68, 62, 0.08);
+
+  /* ── 进度 ───────────────────────────────── */
+  --progress-bg: #ededec;
+  --progress-fill: #007aff;
+  --progress-fill-done: #36875f;
+
+  /* ── 状态语义（浅色 = 亮底深字 · 轻盈档） ── */
+  --status-progress-bg: #cffafe;
+  --status-progress-fg: #155e75;
+  --status-pending-bg: #fef9c3;
+  --status-pending-fg: #854d0e;
+  --status-done-bg: #ecfccb;
+  --status-done-fg: #3f6212;
+  --status-overdue-bg: #ffe4e6;
+  --status-overdue-fg: #9f1239;
+
+  /* ── 分区浅底（擅长 / 待加强 / 判定 / 材料） ── */
+  --tint-green-bg: #f3f8f5;
+  --tint-green-fg: #4e715e;
+  --tint-green-line: #eaf1ec;
+  --tint-amber-bg: #fcf8f1;
+  --tint-amber-fg: #876b41;
+  --tint-amber-line: #f4edde;
+  --tint-rose-bg: #fff3f1;
+  --tint-rose-fg: #b0453a;
+  --tint-rose-line: #f0dedb;
+  --tint-blue-bg: #f0f5fd;
+  --tint-blue-fg: #5271a0;
+  --tint-blue-line: #dde5f0;
+  --tint-blue-mark: #587cb8; /* 测验「答对」左竖线 / 选项徽标 */
+  --tint-rose-solid: #8c3f38; /* 失败卡主按钮 / 标题 */
+  --tint-rose-mark: #c05f5f; /* 测验「答错」左竖线 / 选项徽标 */
+  --tint-rose-icon: #e8a49d; /* 失败卡图标圆底 */
+  --tint-amber-mark: #c8b98a; /* 概念卡要点前的圆点 */
+
+  /* ── 状态指示与仪器读数（小面积、只表状态） ── */
+  --indicator-green: #5aa77c; /* 运行中脉冲点 */
+  --indicator-green-ring: rgba(90, 167, 124, 0.45);
+  --indicator-green-ring-fade: rgba(90, 167, 124, 0);
+  --indicator-amber: #d9a545; /* 草稿 / 未装载提示点 */
+  --indicator-amber-ink: #b58b42; /* 版本节点「草稿」文字 */
+  --dot-ok: #3f7d5f; /* 小圆点：在线 / 已启用 */
+  --dot-warn: #96702f;
+  --orb-hi: #cfd8ea; /* 思考指示小球 */
+  --orb-lo: #9aa6bd;
+  --steel-1: #7ba0e8; /* 工作区任务进度环（钢蓝双色渐变，2026-10-10 已确认，不并入图表蓝） */
+  --steel-2: #4a6daf;
+  --steel-3: #3f5f96; /* 进度环百分比文字 */
+  --steel-ok: #5cb98d; /* 进度环完成态渐变起点（终点复用 --progress-fill-done） */
+  --seg-lit: #3b5bdb; /* 教学卡上的七段数码管点亮色 */
+  --ws-tint-weak: rgba(82, 118, 177, 0.06); /* 工作区分屏放置区 */
+  --ws-tint-soft: rgba(82, 118, 177, 0.15);
+  --ws-tint-line: rgba(82, 118, 177, 0.2);
+  --ws-tint-strong: rgba(82, 118, 177, 0.4);
+
+  /* ── 图表用色（⑨：Apple 蓝五档 + 中性两档） ── */
+  --chart-blue-0: #d9ebff;
+  --chart-blue-1: #a6ccff;
+  --chart-blue-2: #409cff;
+  --chart-blue-3: #007aff;
+  --chart-blue-4: #0059d0;
+  --chart-neut-0: #f0f1f4; /* 槽底：热力空格 / 进度轨道 / 技能条 */
+  --chart-neut-1: #e8e8e6; /* 描线：网格 / 环形轨道 / 时间线竖线 */
+  --data-now: #0059d0; /* 「现在 / 今天」五处统一 */
+  --mosaic-0: #4f6ef7;
+  --mosaic-1: #a9befc;
+  --mosaic-2: #2b3a8f;
+  --mosaic-3: #ffb347;
+
+  /* ── 课程色 ─────────────────────────────── */
+  --course-0-bg: #eff3fb;
+  --course-0-fg: #5b7bb5;
+  --course-1-bg: #fbf4ea;
+  --course-1-fg: #9c7f52;
+  --course-2-bg: #f2f0f9;
+  --course-2-fg: #8776a8;
+
+  /* ── 代码与 markdown ────────────────────── */
+  --code-bg: #f7f8fa;
+  --code-border: #e6e8ee;
+  --code-inline-bg: #eef0f4;
+  --tok-k: #587cb8;
+  --tok-c: #9aa3b2;
+  --tok-s: #6f8565;
+  --tok-n: #a06a4a;
+  --tok-f: #8a6d9b;
+
+  /* ── 图标语义色（内容类型，⑧） ──────────── */
+  --icon-blue: #3268ca;
+  --icon-green: #25805c;
+  --icon-orange: #bc6424;
+  --icon-violet: #7752ba;
+  --icon-rose: #b64e79;
+  --icon-teal: #197f90;
+  --icon-amber: #a87519;
+
+  /* ── 分层：l2 描边微阴影 + o2 浮层三档 ───── */
+  --panel-shadow: 0 1px 2px rgba(24, 34, 57, 0.05);
+  --shadow-control: 0 1px 3px rgba(24, 34, 57, 0.16); /* 控件自身浮起（实底按钮 / 滑杆拇指） */
+  --shadow-tip: 0 4px 12px rgba(28, 36, 48, 0.1);
+  --shadow-menu: 0 12px 32px rgba(28, 36, 48, 0.14);
+  --shadow-tray: 0 20px 56px rgba(28, 36, 48, 0.18);
+  --shadow-dialog: 0 28px 90px rgba(24, 31, 45, 0.2), 0 4px 14px rgba(24, 31, 45, 0.07);
+  --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.07);
+  --now-glow: 0 0 0 4px rgba(0, 89, 208, 0.15); /* 时间线「今天」光晕 */
+  --focus-glow: 0 0 0 3px rgba(0, 122, 255, 0.14); /* 输入框聚焦柔光 */
+  --danger-glow: 0 0 0 3px rgba(213, 68, 62, 0.12);
+
+  /* ── 尺寸与字体 ─────────────────────────── */
+  --panel-radius: 12px;
+  --panel-border: var(--line);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 深色：中性炭灰。层级靠「面比底亮 + hairline 描边」，阴影只做补强；
+ * 状态色改为同色相暗底亮字；实底（主按钮 / 深色浮层）整体反转。
+ * 对比度（正文 ≥ 7:1、辅助小字 ≥ 4.5:1、控件标识 ≥ 3:1）已在 docs/DESIGN.md 记录。
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --ink: #ededed;
+  --ink-soft: #c8c8c8;
+  --muted: #acacac;
+  --faint: #999999;
+
+  --shell-bg: #181818;
+  --paper: #1f1f1f;
+  --raised: #2b2b2b;
+  --sunken: #262626;
+  --hover-bg: #303030;
+  --chip-bg: #343434;
+  --chip-active: #454545;
+  --chip-on: #474747;
+  --line: #3a3a3a;
+  --line-strong: #4a4a4a;
+  --line-faint: #5a5a5a;
+  --veil: rgba(0, 0, 0, 0.32);
+  --veil-strong: rgba(0, 0, 0, 0.48);
+  --veil-page: rgba(24, 24, 24, 0.86);
+  --dialog-rim: rgba(255, 255, 255, 0.12);
+  --outline-soft: rgba(255, 255, 255, 0.12);
+
+  --primary: #ededed;
+  --primary-hover: #d5d5d5;
+  --on-primary: #1f1f1f;
+  --inverse: #343a41;
+  --on-inverse: #f5f5f5;
+  --mosaic-bg: #2b2b2b;
+
+  --overlay: rgba(0, 0, 0, 0.6);
+  --scroll-thumb: rgba(255, 255, 255, 0.16);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.26);
+  --focus-ring: #7ab3ff;
+
+  --accent: #409cff;
+  --accent-deep: #6cb2ff;
+  --accent-soft: #22303f;
+  --accent-soft-hover: #2c3d51;
+  --accent-line: rgba(64, 156, 255, 0.3);
+  --danger: #ff6b61;
+  --danger-deep: #ff857c;
+  --danger-soft: rgba(255, 107, 97, 0.14);
+
+  --progress-bg: #333333;
+  --progress-fill: #409cff;
+  --progress-fill-done: #4e9d77;
+
+  --status-progress-bg: #16343d;
+  --status-progress-fg: #67e8f9;
+  --status-pending-bg: #3b3215;
+  --status-pending-fg: #fde047;
+  --status-done-bg: #29371b;
+  --status-done-fg: #bef264;
+  --status-overdue-bg: #411f2b;
+  --status-overdue-fg: #fda4af;
+
+  --tint-green-bg: #1e2a24;
+  --tint-green-fg: #8fd0ae;
+  --tint-green-line: #2c3f35;
+  --tint-amber-bg: #2c2619;
+  --tint-amber-fg: #e0c07e;
+  --tint-amber-line: #40382a;
+  --tint-rose-bg: #331f1e;
+  --tint-rose-fg: #f0a099;
+  --tint-rose-line: #4a2c2a;
+  --tint-blue-bg: #1e2836;
+  --tint-blue-fg: #9db6dd;
+  --tint-blue-line: #2c3a4d;
+  --tint-blue-mark: #8ab4f8;
+  --tint-rose-solid: #c25f55;
+  --tint-rose-mark: #e08b8b;
+  --tint-rose-icon: #6b3a36;
+  --tint-amber-mark: #8a7448;
+
+  --indicator-green: #71c6a1;
+  --indicator-green-ring: rgba(113, 198, 161, 0.45);
+  --indicator-green-ring-fade: rgba(113, 198, 161, 0);
+  --indicator-amber: #e8c35c;
+  --indicator-amber-ink: #e0b45f;
+  --dot-ok: #4e9d77;
+  --dot-warn: #e0b45f;
+  --orb-hi: #6d7d9c;
+  --orb-lo: #4a5670;
+  --steel-1: #93b3f0;
+  --steel-2: #6f92cf;
+  --steel-3: #a8c2ee;
+  --steel-ok: #7fd0a8;
+  --seg-lit: #7aa2ff;
+  --ws-tint-weak: rgba(143, 179, 230, 0.08);
+  --ws-tint-soft: rgba(143, 179, 230, 0.14);
+  --ws-tint-line: rgba(143, 179, 230, 0.22);
+  --ws-tint-strong: rgba(143, 179, 230, 0.4);
+
+  --chart-blue-0: #23344a;
+  --chart-blue-1: #2d5480;
+  --chart-blue-2: #3673b8;
+  --chart-blue-3: #409cff;
+  --chart-blue-4: #7cc0ff;
+  --chart-neut-0: #2e2e2e;
+  --chart-neut-1: #3a3a3a;
+  --data-now: #7cc0ff;
+  /* 构成图与火焰是记录在案的有意例外，四格保持现状色值 */
+
+  --course-0-bg: #1f2b3d;
+  --course-0-fg: #8fb3e6;
+  --course-1-bg: #322a1f;
+  --course-1-fg: #d0b083;
+  --course-2-bg: #2a2735;
+  --course-2-fg: #b3a3d9;
+
+  --code-bg: #262626;
+  --code-border: #3a3a3a;
+  --code-inline-bg: #303030;
+  --tok-k: #8ab4f8;
+  --tok-c: #8b93a1;
+  --tok-s: #a5c98f;
+  --tok-n: #e0a37a;
+  --tok-f: #c9a8dd;
+
+  --icon-blue: #8aaff5;
+  --icon-green: #71c6a1;
+  --icon-orange: #e9ae7c;
+  --icon-violet: #b8a0e9;
+  --icon-rose: #e49bb7;
+  --icon-teal: #77c7d4;
+  --icon-amber: #dfba71;
+
+  --panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-tip: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-menu: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-tray: 0 20px 56px rgba(0, 0, 0, 0.55);
+  --shadow-dialog: 0 28px 90px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --now-glow: 0 0 0 4px rgba(124, 192, 255, 0.2);
+  --focus-glow: 0 0 0 3px rgba(64, 156, 255, 0.22);
+  --danger-glow: 0 0 0 3px rgba(255, 107, 97, 0.2);
+}
