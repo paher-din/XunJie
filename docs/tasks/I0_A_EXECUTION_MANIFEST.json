@@ -68,5 +68,10 @@
     "application signing secret",
     "authorized synthetic passwords and initializer input",
     "approved exact HTTPS Origin and UI access/trust arrangement"
-  ]
+  ],
+  "coursePolicyIdentifiers": {
+    "synthetic-i0-course-a": "help-v1",
+    "synthetic-i0-course-b": "help-v1-course-b"
+  },
+  "identifierSemantics": "Help policy versionId is globally unique. Rule versionId is scoped by course. Blueprint must reference its own course policy."
 }

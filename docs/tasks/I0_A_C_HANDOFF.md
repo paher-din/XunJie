@@ -616,7 +616,7 @@ I0_SOURCE_SHA=9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77
 git fetch origin codex/i0-a-c-handoff
 test "$(git rev-parse "$I0_SOURCE_SHA^{commit}")" = "$I0_SOURCE_SHA"
 I0_CHECKOUT="$(mktemp -d -t xunjie-i0-host.XXXXXX)"
-git archive "$I0_SOURCE_SHA" | tar -x -C "$I0_CHECKOUT"
+git -c core.autocrlf=false archive "$I0_SOURCE_SHA" | tar -x -C "$I0_CHECKOUT"
 printf 'sourceCommit=%s\ncheckout=%s\n' "$I0_SOURCE_SHA" "$I0_CHECKOUT"
 cd "$I0_CHECKOUT"
 test "$(node --version)" = v24.21.0
@@ -755,7 +755,7 @@ npm start
 
 同课程未分配角色没有新增列表API可列空清单；UI使用原选定合法Assignment引用，未授权引用403，不能自造“空列表接口”。读取/保存批次通过即可先交UI，运行/停止/产物后交。计数不把重复轮询或两次环境执行算新用例。
 
-manual蓝图完整模板（将G和两个资源ID替换为真实回执；initializer政策versionId固定help-v1，课程规则textscope-core-v1）：
+manual蓝图完整模板（将G和两个资源ID替换为真实回执；以下用于course-a，政策versionId为help-v1；若验证course-b，必须改为该课程help-v1-course-b。课程规则都为textscope-core-v1，其存储按课程隔离）：
 
 ~~~json
 {
@@ -977,3 +977,27 @@ A 固定执行包已补齐至 I0-ENTRY §8及I0_A_EXECUTION_MANIFEST.json：10�
 本次git fetch同步远程引用，main仍cde69cc、#53仍Draft/Open，当前无新增正常HTTPS业务回交。#30最新C回交6147353266已证明PAHER接收/构建与当前认证读取，明确TLS/签名/账号初始化输入缺失；A未核其原输出。对原H回交仍缺：C编制/获授权补齐材料与实际入口；正常HTTPS main/原Job自动消费的20项真实链及合法Assignment；A复核原证据、处理基线差异交接并最终按H回交。UI真实接线/浏览器验收后置且独立，B模型不阻塞本批。
 
 负责人要求可由C完成的全部分派C，C的准备方案/合成输入/配置/现场执行清单在I0-ENTRY §7；本记录不把分派算执行，不擅自放行新增秘密/信任/通道，也不宣称整H或#30完成。产品/分工基线待授权维护者汇总。
+
+## 21. 接收 PR #55 的 A 实审与验证方案（2026-10-14）
+
+固定接收 PR #55 head ea5a6523245ef25e2ab15712fa5aae5fc182deb8，base cde69cc；16份本人C文档/JSON，不合并/改写C记录。已读C现场方案/成员输入/最终构建和I0原证据，与原身份、权限、宿主、政策/规则、Job/暂停契约核对；使用code-review Standards/Spec两轴只读审查。原14JSON、33HTTP样例、构建成功/失败和接收补正现可从公开固定树核查，先前“新原JSON未推送”状态在本批被替代；不把公开证据自洽当PAHER当前独立实读。
+
+确认需修正A交接材料：接收命令使用单次git -c core.autocrlf=false archive，不修改全局Git；两课程分别help-v1/help-v1-course-b，蓝图引用本课程政策。原checkRule按课程复合ID存储，可共用textscope-core-v1；不改schema/源代码/帮助强度。C正确LF2副本用于后续执行，旧tar --compare仅对归档一致而非原Git blob的错误表述保留其更正。
+
+验证计划：在本机Node24.21.0/原SQLite驱动，使用已批准原24表工厂及原initializeI0，新建保留隔离合成库；仅用离线测试占位口令与测试签名常量，不生成/交付PAHER凭据或修改既有材料。经原createI0App/app.inject真实Session/CSRF与事务核5成员/2课程、两政策ID与两检查规则、跨课程政策冲突拒绝/事务不变、五角色登录/课程归属、请求体角色伪造、Origin/CSRF、跨课程写入及匿名读取。不启消费者/transport/物理节点，不修改学生学习记录。结果属于隔离HTTP/SQLite，不计真实HTTPS/C执行/浏览器通过。
+
+C提案的新本地30天TLS、32字节随机签名、5个24字节随机密码和严格单客户端证书信任，先完成A技术/业务实审与具体申请，仍须负责人明确批准新凭据操作；本次不生成。浏览器路径/信任方案仍缺准确操作，不在本次凭据许可中自动授权；UI/C回交具体方案后由A实审。C-ENTRY-04～07最终结果/PAHER当前性仍待执行，原门禁不放宽。
+
+适用依据与授权沿I0-ENTRY §1/7/8及本稿§11/17；当前写集本人I0任务/入口准备/manifest和README导航，产品/分工基线只读，待授权维护者汇总。先记录本方案再校验，实际结果后续追加。
+
+## 22. A 实审与独立验证交付（2026-10-14）
+
+PR #55的Standards/Spec两轴实审和准确执行/授权方案见[I0-ENTRY §9](I0_HOST_ENTRY_PREPARATION.md#9-a-对-pr-55-的实质审查与后续精确范围2026-10-14)。C14份去敏JSON的输出摘要、字节/TAP、指纹及33样例已核；C现场材料与原业务契约无阻断。1项P3为C“17段日志”的计数口径，与实际27条logs/19不同摘要不符，交C澄清。A已修单次禁CRLF的归档命令及两课程政策/蓝图引用；manifest保留固定源10份原摘要并补课程政策映射。
+
+原initializeI0/24表工厂、createI0App、真实Session和事务独立21/21通过、0失败/跳过（Node24.21.0/SQLite3.53.4）。验证脚本与最终/首次去敏结果见[本批结果](evidence/i0-a-c55-review/verification.json)。首次20/21因验证脚本将缺头传为undefined，修成真正省略CSRF头后全过；两个新库均保留，原代码未改。离线测试常量不用于PAHER正常入口，不装runner/不启动消费者，结果不代替真实TLS/C Job/浏览器。
+
+本批写集补本人验证脚本/去敏结果与manifest，不动受保护产品/分工/B/C/UI。完整回归未复跑；README实际启动方式未变。当前main已合B3 PR #52，固定运行源仍9fa76ad，不将本次结果计入新main组合。MVP_SPEC §10待授权维护者汇总。
+
+A已将C精确TLS/签名/五密码、127.0.0.1:3443、原24表/原worker与严格单Node客户端信任方案整理成可审批范围；新增凭据/信任许可仍待负责人，不是缺A固定包或缺C方案。授权后C负责真实执行/原证据回交，A实审与修本人缺陷，UI明确浏览器信任/访问并验收；#53/#55保持Draft，#30/#22 Open，无合并/部署。
+
+本批交付复查：node tools/a0-review/check.mjs 为65份文档/955内链/errors=[]；git diff --check通过。10份原Git blob摘要逐项匹配，固定源至当前HEAD的teaching/student代码差异为空。新增3份JSON可解析，验证脚本Node24.21.0语法有效；仅本任务文件纳入提交，无公开现场秘密。

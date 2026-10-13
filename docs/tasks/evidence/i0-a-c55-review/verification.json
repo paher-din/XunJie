@@ -1,0 +1,118 @@
+{
+  "formatVersion": 1,
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "reviewedCCommit": "ea5a6523245ef25e2ab15712fa5aae5fc182deb8",
+  "performedAt": "2026-10-13T16:09:48.695Z",
+  "nodeVersion": "v24.21.0",
+  "scope": "Offline original initializer, Fastify public HTTP injection, real SQLite transactions; no TLS/network/runner/browser",
+  "database": {
+    "retained": true,
+    "directory": "xunjie-a12-completion-Ay3p0H",
+    "tableCount": 24,
+    "diagnostics": {
+      "sqliteVersion": "3.53.4",
+      "journalMode": "wal",
+      "foreignKeys": 1,
+      "synchronous": 2,
+      "busyTimeout": 1000
+    }
+  },
+  "counts": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0
+  },
+  "cases": [
+    {
+      "name": "fresh original 24-table database and five members in two courses",
+      "status": "passed"
+    },
+    {
+      "name": "distinct help policies and per-course identical rule version",
+      "status": "passed"
+    },
+    {
+      "name": "foreign-course policy reuse rejected and transaction rolled back",
+      "status": "passed"
+    },
+    {
+      "name": "session derives membership: synthetic-i0-teacher-a",
+      "status": "passed"
+    },
+    {
+      "name": "session derives membership: synthetic-i0-student-a",
+      "status": "passed"
+    },
+    {
+      "name": "session derives membership: synthetic-i0-student-peer",
+      "status": "passed"
+    },
+    {
+      "name": "session derives membership: synthetic-i0-teacher-b",
+      "status": "passed"
+    },
+    {
+      "name": "session derives membership: synthetic-i0-student-b",
+      "status": "passed"
+    },
+    {
+      "name": "anonymous session read rejected",
+      "status": "passed"
+    },
+    {
+      "name": "login role injection rejected by strict input",
+      "status": "passed"
+    },
+    {
+      "name": "foreign Origin login rejected",
+      "status": "passed"
+    },
+    {
+      "name": "missing CSRF write rejected",
+      "status": "passed"
+    },
+    {
+      "name": "foreign-course teacher write rejected",
+      "status": "passed"
+    },
+    {
+      "name": "student teacher-only write rejected",
+      "status": "passed"
+    },
+    {
+      "name": "teacher public material creation through original HTTP transaction",
+      "status": "passed"
+    },
+    {
+      "name": "teacher private material creation through original HTTP transaction",
+      "status": "passed"
+    },
+    {
+      "name": "owner teacher can read private material",
+      "status": "passed"
+    },
+    {
+      "name": "student private material read rejected",
+      "status": "passed"
+    },
+    {
+      "name": "foreign-course material read rejected",
+      "status": "passed"
+    },
+    {
+      "name": "anonymous material read rejected",
+      "status": "passed"
+    },
+    {
+      "name": "revoked membership invalidates existing teacher session access",
+      "status": "passed"
+    }
+  ],
+  "notExecuted": [
+    "PAHER credential creation",
+    "normal HTTPS listener",
+    "original job consumption with real C1",
+    "browser trust and browser business acceptance"
+  ]
+}

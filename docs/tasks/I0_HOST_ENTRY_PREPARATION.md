@@ -2,7 +2,7 @@
 
 日期：2026-10-13。关联 [Issue #30](https://github.com/paher-din/XunJie/issues/30)、[A Draft PR #53](https://github.com/paher-din/XunJie/pull/53)，对应 H-01，给 H-02～H-06 的正常宿主联调提供先行条件。
 
-状态：2026-10-13，负责人明确要求“能让C完成的全部分派给C”。本任务准备与现场执行负责人现为 C @paher-din，A 保留集成复核与授权协调。C 已回交固定源接收/构建/当前节点只读认证通过；TLS、签名、正常宿主与账号初始化输入缺失，具体补齐方案也由 C 编制。实际 HTTPS/初始化/登录与业务联调尚未执行；本次新分派不冒充 C 已执行或接受回交，详见 §7。
+状态：2026-10-14，C @paher-din 已在 PR #55 交付 C-ENTRY-02/03 的具体现场方案、非秘密成员输入和完整去敏原证据。A 已完成两轴实审、修正本手册的归档/政策标识，并以原初始化入口和正常登录公共接口独立验证21/21；见 §9。现场执行仍由C负责；新增凭据及单客户端证书信任待负责人精确授权，实际正常HTTPS/真实C Job链和UI浏览器验收尚未执行。
 
 ## 1. 目标、依据与范围
 
@@ -65,7 +65,7 @@ C 回交实际 HTTPS Origin、端口、证书覆盖主机和 UI 将在哪里访�
 
 ### 步骤 4：C 编制合成账号/课程输入并执行获准原初始化
 
-C 直接按本手册编制非秘密清单：教师、本人学生、同课程另一学生，以及第二课程的越权验证角色；每个账号和课程用 `synthetic-` 前缀 ID，角色来自 teacherId/studentIds 的课程归属。C 可选择满足原契约的唯一合成 ID/loginName，并填写 help-v1 帮助政策及 textscope-core-v1 检查规则；原 schema/守卫/帮助强度不变。不再等待 A 提供另一个账号表。
+C 直接按本手册编制非秘密清单：教师、本人学生、同课程另一学生，以及第二课程的越权验证角色；每个账号和课程用 `synthetic-` 前缀 ID，角色来自 teacherId/studentIds 的课程归属。C 可选择满足原契约的唯一合成 ID/loginName；course-a用help-v1、course-b用help-v1-course-b，检查规则均为textscope-core-v1；原 schema/守卫/帮助强度不变。不再等待 A 提供另一个账号表。
 
 C 在现场编制初始化 JSON 的非秘密部分和账号安全领取方案。若现有获准密码输入可用则引用；本次确认现场缺失，C 需提出新合成密码的生成方式、受控存放/权限、领取渠道和对象范围，由 A 复核并提交负责人授权后再生成/填入。秘密不经公开评论/仓库，不能用旧库 SQL 补账号、重置密码或伪造会话。分派准备工作不等于放行凭据生成。
 
@@ -184,9 +184,9 @@ C 逐项报“缺什么、哪一步受阻、实际保管人是否已知、现有
 
 ### 7.1 接收 C 最新事实，不重复已完成工作
 
-[C 最新现场回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6147353266)确认：固定运行源9fa76ad已经全新保留 Linux 副本接收；Node24.21.0、两应用原 lock 的 npm ci/typecheck/build通过，SQLite3.53.4；原package/lock摘要不变，754份源文件与固定 Git blob一致。原三文件读取、C/HDL当前认证就绪、原代际和原身份 query断言通过；没有 submit补跑。
+历史[C现场回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6147353266)曾称754份源文件与固定Git blob一致；PR #55现明确此旧结论仅核tar与CRLF归档一致，不能证明原blob。正确LF2副本754文件/10摘要以及实际typecheck/build以§9补正为准。旧Node24.21.0/SQLite3.53.4/原lock接收记录与失败均保留。原三文件读取、C/HDL当前认证就绪、原代际和原身份 query断言通过；没有 submit补跑。
 
-C 同时明确：原获准目录/变量内没有 TLS、签名、正常宿主或账号初始化输入。本轮尚未初始化应用库或启动正常main。这是现场缺材料，不再仅登记“保管人未知”。以上采用 C 回交事实，A 尚未独立核原输出，最终仍须复核；历史 true 不替代下一次运行时的当前认证。
+C 同时明确：原获准目录/变量内没有 TLS、签名、正常宿主或账号初始化输入。本轮尚未初始化应用库或启动正常main。这是现场缺材料，不再仅登记“保管人未知”。本段为历史时点；§9已完成A去敏原输出的独立实审。历史true不替代下一次运行时的当前认证。
 
 ### 7.2 C 的完整执行清单
 
@@ -194,7 +194,7 @@ C 同时明确：原获准目录/变量内没有 TLS、签名、正常宿主或�
 | --- | --- | --- |
 | C-ENTRY-01 | 接收已交固定源和手册，确认当前窗口/用户；复用已通过的接收/构建证据 | 固定SHA、现有副本/运行用户、窗口、原输出受控入口 |
 | C-ENTRY-02 | 核现有材料；现场缺失时编制准确 TLS/签名/账号输入、证书信任和 UI 访问方案 | 一份可审批的具体方案，不只回交“请A提供” |
-| C-ENTRY-03 | 编制完整非秘密合成成员、两课程归属、help-v1/textscope-core-v1初始化输入和字段映射 | 原 schema 可校验的非秘密结构/ID清单；密码留待获准安全生成或现有获准引用 |
+| C-ENTRY-03 | 编制完整非秘密合成成员、两课程归属、各课程唯一帮助政策/textscope-core-v1初始化输入和字段映射 | 原 schema 可校验的非秘密结构/ID清单；密码留待获准安全生成或现有获准引用 |
 | C-ENTRY-04 | 对已有/另获批准的材料，组合受控配置，原24表工厂新建并保留库；完成原只读预检 | 配置/新库来源、认证当前性、原identity query、实际预检结果 |
 | C-ENTRY-05 | 启动原正常HTTPS main/现有real dist，经实际HTTPS核页面、资产、教师学生登录与课程归属 | Origin/端口、运行窗口、TLS验证和正常登录去敏证据 |
 | C-ENTRY-06 | 接入口后按[I0-A/C §17.5](I0_A_C_HANDOFF.md#175-真实-https-公共接口执行清单)执行原20项公共接口链：检查/确认/分配、bootstrap、显式创建、保存/head/快照、真实C1运行/可信检查/产物、原Job自动消费、取消/暂停、授权/重放/冲突等 | H-01～H-06逐项结果、原Assignment/Attempt/Snapshot/Job/Run和原输出；未触发故障写未执行 |
@@ -222,7 +222,7 @@ A 保留已交代码/手册维护、A模块缺陷修复、共享业务边界审�
 
 UI 保留已有界面的接线、实际浏览器业务验收和回交；C 收集其访问位置/需求并交入口材料，不能代替 UI 宣称浏览器业务通过。
 
-下一动作明确为 C-ENTRY-02 与 C-ENTRY-03：C提交缺失材料具体方案，同时完成非秘密合成输入与字段映射；A审查并将需要具体授权的动作交负责人决定。准备可并行，凭据实施不能靠时间推定授权。负责人这次分派已记录，不再等待 A 编制另外一份输入；尚未收到 C 对新增批次的执行结果。
+本段保留2026-10-13的分派。2026-10-14已收到PR #55，C-ENTRY-02/03方案与输入的A实审完成，具体结论及后续C-ENTRY-04～07授权/执行顺序见§9；新凭据与实际业务仍不能靠时间推定授权。
 
 本次只调整任务文档/README和公开分派，不生成凭据/初始化库/启动宿主。文档复查65份/949内链/errors=[]，git diff --check通过，原历史通过/失败/未执行记录保留；受保护分工/产品基线未改，待授权维护者汇总。
 
@@ -242,14 +242,14 @@ UI 保留已有界面的接线、实际浏览器业务验收和回交；C 收集
 | 原公共请求/JSON样例与判据 | [§17.5](I0_A_C_HANDOFF.md#175-真实-https-公共接口执行清单)：20项链、完整manual蓝图、sync/run与工程产物样例 |
 | 回交与停止规则 | 本任务§4/7、[§17.6](I0_A_C_HANDOFF.md#176-回交模板和第1步完成界限)：原ID、原输出/去敏摘要、实际状态、窗口和安全账号领取 |
 
-manifest 的 files 摘要对原 Git blob 字节计算，不能拿 Windows CRLF 工作副本直接比较。C 当前已核归档源一致；需要核个别文件时从同一SHA的 git show 读取后计算SHA-256。manifest是公开核对清单，**不是** XUNJIE_I0_CONFIG 或 XUNJIE_I0_INITIALIZE_CONFIG，不能直接交CLI运行。其中示例政策/规则仅作原字段依据，不初始化账号/库，也不包含任何可登录密码。
+manifest 的 files 摘要对原 Git blob 字节计算，不能拿 Windows CRLF 工作副本直接比较。PR #55纠正旧tar --compare范围：旧归档与CRLF副本相同不代表原Git blob一致。后续用单次core.autocrlf=false归档和最终LF2副本，754份普通文件0差异、10份摘要一致；需要核个别文件时从同一SHA的 git show 读取后计算SHA-256。manifest是公开核对清单，**不是** XUNJIE_I0_CONFIG 或 XUNJIE_I0_INITIALIZE_CONFIG，不能直接交CLI运行。其中示例政策/规则仅作原字段依据，不初始化账号/库，也不包含任何可登录密码。
 
 ### 8.2 A 明确交出的配置与账号边界
 
 原字段以固定源为准，C可直接据此完成具体方案，不等待A再另写字段映射：
 
 - 账号输入 strictObject：synthetic=true；users 2～20，每项 id/loginName 都是 synthetic- 前缀、11～128字符、字母数字下划线/连字符，受控 password 16～1024字符；courses 1～4，每项 id/teacherId/studentIds/helpPolicy/checkRule。每课程学生1～19；用户/登录名/课程ID唯一，引用的成员必须存在，教师不同时是本课程学生，studentIds不可重复。按§7两课程、五角色验证范围填具体输入。
-- 帮助政策：help-v1、helpAllowed=true、wholeSolutionAllowed=false、limitedCheckHelpAllowed=false、非空description；检查规则：textscope-core-v1、textscope-validator-v2、limitedHelp=true、非空description。可校验的完整示例见manifest，不放宽整份代做或可信检查帮助限制。
+- 帮助政策：course-a的help-v1、course-b的help-v1-course-b；versionId全库唯一，蓝图引用所属课程的政策。helpAllowed=true、wholeSolutionAllowed=false、limitedCheckHelpAllowed=false、非空description；检查规则：textscope-core-v1、textscope-validator-v2、limitedHelp=true、非空description。可校验的完整示例见manifest，不放宽整份代做或可信检查帮助限制。
 - 本批仅原24表工厂新库、保留失败库；不接收旧目标库、不迁移/SQL补录账号，不预造分配/Attempt/Job。Teacher/Student权限只由正常会话和课程归属决定，请求体role/studentId不能授权。
 - 宿主 JSON 是严格字段集合。databaseFile、TLS/签名/代际与SSH引用须现存绝对普通受控文件；staticDirectory须本次UI dist绝对普通目录；拒绝符号链接，POSIX配置/受控文件不可组/其他用户可写，JSON不超过1MiB。
 - signingSecretFile为既有或另获批准的受控文本，trim后32～4096字符、文件最多4096字节；不公开内容。TLS主机/SAN、有效期、key匹配和浏览器信任须实际验证。
@@ -261,6 +261,66 @@ manifest 的 files 摘要对原 Git blob 字节计算，不能拿 Windows CRLF �
 
 A收到C回交后核：固定源/原lock不变、具体材料授权与保管、精确Origin/信任/权限、新库来源、当前认证代际与原identity、正常会话及跨归属拒绝、无副作用bootstrap、原Job自动消费而非手动worker、原回执重放/冲突、保存后权威三版本、运行与旧快照绑定、私有产物裁剪、暂停/取消与停止确认，以及失败/跳过/未执行的真实统计。按H给UI结论，不提前宣称完整AC/NFR或浏览器业务验收。
 
-A当前可独立准备的固定源、命令/样例、字段/权限边界、manifest与回交/复核要求均已整理。C具体凭据方案尚未收到，因此A对此方案的实质审核/专项授权协调仍是下一项，不能提前记录已批准；C原输出的独立复核亦待受控证据。A本次没有生成TLS/签名/密码或实际配置，没有初始化库/启动宿主。
+以上为2026-10-13固定包交付状态。2026-10-14已收到并实审C具体方案/去敏原输出，A独立合成验证通过；详见§9。没有生成PAHER TLS/签名/密码或配置，也未启动正常宿主。
 
 本批实际验证：10份原Git blob的manifest SHA-256逐项一致；原compiled helpPolicySchema/checkRuleSchema接收两份非秘密示例（Windows Node24.15.0，仅字段校验，无DB/网络）；文档首次发现1处新增标题锚点错误，已修复，复查65份/949内链/errors=[]、git diff --check通过。不复跑无代码变更的完整业务回归。
+
+
+## 9. A 对 PR #55 的实质审查与后续精确范围（2026-10-14）
+
+### 9.1 固定证据与两轴结论
+
+审查固定[C PR #55](https://github.com/paher-din/XunJie/pull/55) head ea5a6523245ef25e2ab15712fa5aae5fc182deb8 / base cde69cc，16份新增文档，其中14份JSON。现场方案、非秘密输入、正确LF2接收/构建与C/HDL原证据均有仓库公开入口，A不重写C记录；[C原交接记录](https://github.com/paher-din/XunJie/blob/ea5a6523245ef25e2ab15712fa5aae5fc182deb8/docs/tasks/I0_C_HANDOFF.md)和[现场方案](https://github.com/paher-din/XunJie/blob/ea5a6523245ef25e2ab15712fa5aae5fc182deb8/docs/tasks/evidence/dla-c-handoff/i0-entry-host-plan.json)为固定来源。两轴由code-review独立只读审查：
+
+| 轴 | 实质结论 | 处理 |
+| --- | --- | --- |
+| Standards | 阻断0；14份JSON可解析，27个logs输出摘要/已填字节数/TAP统计一致，7个C/HDL指纹可复算，33份HTTP样例存在；37处相关相对链接有效，未发现秘密值。P3：C closeout §11称“17段”，实际为27个logs条目/19个不同输出摘要 | 请C在本人记录澄清计数口径；不改变验收统计，不阻断本方案 |
+| Spec | C方案无阻断契约错误；两课程政策ID隔离、帮助/限定检查强度、会话/课程授权、原Job/停止边界符合既有契约。发现A归档命令可能转CRLF，A原手册两课程共用help-v1会被原守卫拒绝 | A已改单次git -c core.autocrlf=false archive、course-b政策help-v1-course-b及蓝图说明；不改schema或源码 |
+
+C材料自洽与历史实测已复核；A没有访问PAHER复测在线节点、文件权限或新TLS。旧CRLF接收错误及LF1依赖symlink导致TS2883失败均保留；正确LF2物理复用相同原依赖，两应用Node24.21.0 typecheck/build通过。旧tar --compare不能当原Git blob核对；754份原blob/10份清单核对以PR #55补正为准。正常宿主业务源仍固定9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77，不随移动main执行。
+
+2026-10-14 fetch发现main已合入B3 PR #52（0e68325），PR #53/#55仍Draft/Open。该合入不改变本批固定运行源；本次未验证将新main/B3与I0组合，不将固定源结果计入新组合。
+
+### 9.2 A 独立原入口验证
+
+先在[I0-A/C §21](I0_A_C_HANDOFF.md#21-接收-pr-55-的-a-实审与验证方案2026-10-14)记录验证方案，后执行[可复跑验证脚本](evidence/i0-a-c55-review/verify.mjs)：在仓库根、原依赖就绪的Node24.21.0运行 node docs/tasks/evidence/i0-a-c55-review/verify.mjs。只用公开离线测试常量，原initializeI0→原24表工厂→createI0App/app.inject→真实Session/SQLite事务；不监听网络、不装配runner、不启动消费者，不生成PAHER登录材料。
+
+[最终去敏结果](evidence/i0-a-c55-review/verification.json)：21/21通过、0失败、0跳过；SQLite3.53.4/WAL/foreign_keys=1/synchronous=2/busy_timeout=1000。覆盖五个正常登录/会话归属、2政策/2规则、跨课程复用政策FORBIDDEN与回滚、匿名/伪造role/Origin/CSRF、教师/学生跨归属写拒绝、私有资料裁剪、撤权后的原会话失效。没有预造Assignment/Attempt/Job，不等同C的20项真实联调。
+
+[首次结果](evidence/i0-a-c55-review/verification-first-run.json)20通过/1失败：脚本以undefined传CSRF头而非省略头；改为实际缺头后原接口拒绝并全通过，应用代码未变。两次全新原24表测试库均保留，脚本仅含公开离线fixture常量；去敏结果不含任何密码/cookie/CSRF/签名值，二者都不含现场秘密。源码/lock清单保持原值。完整394项回归本轮未复跑；正常TLS/浏览器/当前真实C组合未执行。
+
+### 9.3 待负责人授权的可执行精确方案
+
+A技术结论：接受C-ENTRY-02/03的业务/宿主字段方案作为下批执行依据；这不构成新增秘密或信任许可。按[非秘密成员方案](https://github.com/paher-din/XunJie/blob/ea5a6523245ef25e2ab15712fa5aae5fc182deb8/docs/tasks/evidence/dla-c-handoff/i0-entry-input-plan.json)物化原strict initializer，users仅id/loginName/password，courses原字段；删除提案role/courseId/passwordSource元数据。权限始终来自原会话/课程归属。
+
+待授权对象已明确：C paher-din在PAHER/WSL Ubuntu原root执行，独占新目录 /opt/xunjie-runner/tests/i0-entry-20261013-01 为0700；server.key.pem/server.cert.pem/signing-secret.txt/initializer.json/i0-host.json为0600，umask077，普通文件不覆写（目录/目标已存在即停止，不删除）。现有OpenSSL3.0.13生成RSA2048/SHA256自签server证书30天、CA:false/serverAuth，SAN IP127.0.0.1/DNSlocalhost/IP::1；Node随机32字节base64url签名、五个账号各24字节base64url密码。生成及使用留在PAHER受控文件/内存，不打印或放CLI参数、Git、公开日志、跨机新通道；C仅保管这批新增材料。
+
+C沿已批准的原24表fresh-only initializer新建并保留合成库，i0-host.json只填实际databaseFile；origin=https://127.0.0.1:3443、PORT=3443、bind127.0.0.1，staticDirectory用正确LF2的student/dist，consumerIntervalMs=250，沿C方案现有generationFile/connectionFile/originalEvidence及原application key/pinned known_hosts，预检当前代际/指纹/原identity后启动原正常main。
+
+客户端仅本次Node HTTPS请求显式ca信任该证书，rejectUnauthorized=true，保留默认主机核验；Node自签服务端作为显式ca的行为见[固定Node24.21 TLS文档](https://github.com/nodejs/node/blob/v24.21.0/doc/api/tls.md)。此为每客户端验证配置，不改变系统/浏览器信任。C通过实际HTTPS完成页面/资产/五账号会话及原20项公共链，由原消费者执行真实C Job，保留库/原输出，去敏按H交A复核。
+
+本范围不包含系统CA/浏览器证书库、关闭校验/点击绕过、新公网/跨机入口、旧库迁移/删除、.env/CI、SSH凭据替换、节点维护、35表/HDL/ALU/真实模型或生产部署。浏览器实际访问位置与精确信任方案由UI/C另明确，获准确许可后执行；Node HTTPS通过不能代表浏览器通过。
+
+### 9.4 执行顺序与 H 回交
+
+1. A已完成实审、两处手册根因修正和21项独立验证；P3计数澄清交C。
+2. 负责人批准§9.3新增凭据及单Node客户端信任范围后，C连续完成C-ENTRY-04预检/新库、05正常HTTPS、06原20项真实链和07证据/入口回交；原24表授权不重复申请。
+3. A按原ID、真实版本、政策/会话、Job自动消费与取消/暂停/撤权停止事实逐项核H；A模块缺陷由A修。C未触发的故障仍写未执行。
+4. UI并行明确同机访问/信任方案，接收安全账号领取与合法Assignment后执行浏览器接线/验收。A最终逐H汇总；#30/#22不关闭，完整H-01/G1/浏览器仍未完成。
+
+本批写集仅本人I0任务、非秘密manifest和上述验证脚本/去敏记录；README无启动用法变化。产品/分工基线只读，MVP_SPEC §10的本批实现/验证与限制待授权维护者汇总。待授权方案不写为已批准。
+
+### 9.5 按 UI 的 H 编号交回当前状态
+
+| 编号 | A已交/已核 | 完成仍缺 / 下一负责人 |
+| --- | --- | --- |
+| H-01 | 原正常HTTPS宿主/会话/CSRF实现、固定执行包；C具体材料方案已实审，独立5登录/授权验证通过 | 精确凭据授权→C实际HTTPS入口/账号领取→UI真实信任与页面验收 |
+| H-02 | 原只读Assignment/bootstrap与空态边界已交，不创建Attempt | C正常教师流程产生合法本人Assignment并回交深链；UI读取 |
+| H-03 | 受控generationFile及无副作用bootstrap来源明确；C认证/指纹材料可核 | C运行时重核当前代际、正常宿主首次创建/恢复重读；UI真实恢复 |
+| H-04 | 原自动消费者实现/既有验证；C原节点证据摘要/指纹已实审 | C正常HTTPS宿主与当前C1组合，证明仅轮询仍自动消费；A核原Job/Run |
+| H-05 | 原sync ACK/head/暂停分配样例已核；A两课程政策/蓝图说明修正 | C正常组合权威三版本与暂停样例；受保护基线差异由授权维护者汇总，UI实际保存 |
+| H-06 | 33份原Session/SQLite公共样例已核，未知/产物故障transport仍标合成 | C真实正常链读取/保存/快照/运行/停止/历史产物按能力交；UI相应浏览器验收 |
+
+“已交/已核”不等于完整H完成，准备与独立合成验证不替代正常宿主的真实链。B模型不阻塞本批。
+
+本批交付复查：node tools/a0-review/check.mjs 为65份文档/955内链/errors=[]；git diff --check通过。10份原Git blob摘要逐项匹配，固定源至当前HEAD的teaching/student代码差异为空。新增3份JSON可解析，验证脚本Node24.21.0语法有效；仅本任务文件纳入提交，无公开现场秘密。
