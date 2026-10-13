@@ -452,7 +452,7 @@ function studentVisibleTextIsSafe(
   const expectedStudentAction = value.expectedStudentAction as string;
   const questionLanguage = primaryLanguage(question);
   if (questionLanguage &&
-    (primaryLanguage(content) !== questionLanguage || primaryLanguage(expectedStudentAction) !== questionLanguage)) return false;
+    (wholeTextLanguage(content) !== questionLanguage || wholeTextLanguage(expectedStudentAction) !== questionLanguage)) return false;
   const visibleText = [
     content,
     value.rationale as string,
@@ -465,12 +465,20 @@ function studentVisibleTextIsSafe(
 }
 
 function primaryLanguage(text: string): "en" | "zh" | undefined {
-  const prose = text.replace(/`[^`]*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, " ");
+  const prose = stripQuotedText(text);
   for (const segment of prose.split(/[。！？!?;\n]+/u)) {
     const language = classifyLanguageSegment(segment);
     if (language) return language;
   }
   return classifyLanguageSegment(prose);
+}
+
+function wholeTextLanguage(text: string): "en" | "zh" | undefined {
+  return classifyLanguageSegment(stripQuotedText(text));
+}
+
+function stripQuotedText(text: string): string {
+  return text.replace(/`[^`]*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, " ");
 }
 
 function classifyLanguageSegment(text: string): "en" | "zh" | undefined {

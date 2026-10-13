@@ -410,3 +410,13 @@ node --test server/tutoring/test/index.test.ts server/tutoring/test/student-help
 修复完成后，负责人给出的原始反例及相邻守卫定向测试共 11 项全部通过；其中还覆盖中文主问题后追加英文提示注入的既有上下文链。Node 24.21.0 下 B 四文件完整领域套件共 97 项：94 通过、0 失败、3 个真实入口按门禁跳过；TypeScript 静态检查退出码 0。文档静态检查无错误，检查器回归 16/16，`git diff --check` 通过，受保护产品/计划/参考文档与 `AGENTS.md` 无改动。本轮没有设置任何真实调用开关、没有读取 key，供应商请求为 0；第 17.1 节的历史真实证据不因本轮离线收窄而被重新执行或扩大。
 
 同一工作树的 `npm test` 在受限沙箱中共 290 项：275 通过、3 失败、12 跳过。一项仍是既有 Windows/Linux `RunControl` 配置失败；另外两项是本机 loopback 连接被沙箱以 `EACCES` 拒绝。随后只在沙箱外复跑 `tests/startup.test.ts`，4/4 通过，确认两个 startup 失败属于执行环境限制而非本次回归；未在沙箱外重跑整套，故保留原始 290 项统计，不将组合结果改写成一次全套通过。
+
+## 19. 2026-10-13 B-F-R07 语言门禁整段判断修复
+
+第 18 节的语言校验收窄把同一套“先取第一个可分类片段”逻辑同时用在了 `question` 与可见的 `content`/`expectedStudentAction` 上，产生两个相反方向的误判：问题端需要忽略尾部英文注入（保留首片段判断），可见输出端却需要整段多数决定，否则中文主问题后追加英文“提示/下一步”标题仍可能漏过中文门禁。本节把两侧判断拆开，不改学生辅导公开契约、引用白名单、一次 repair、三次调用、45 秒截止或 usage 台账。
+
+修改 [core.ts](../../apps/teaching/server/tutoring/core.ts) 的 `studentVisibleTextIsSafe`：问题语言继续用 `primaryLanguage(question)`（先取第一个可分类片段），而 `content` 与 `expectedStudentAction` 改用新增的 `wholeTextLanguage`（对 `stripQuotedText` 后的整段做一次 `classifyLanguageSegment`）。新增辅助 `wholeTextLanguage` 与 `stripQuotedText`；`primaryLanguage`、`classifyLanguageSegment` 及原有阈值判定保持不变。已判定为中文或英文的问题，要求 `content` 和 `expectedStudentAction` 的整段多数语言与之一致，否则返回不可用。
+
+回归测试 [index.test.ts](../../apps/teaching/server/tutoring/test/index.test.ts) 在既有“中文问题修复英文可见输出一次”之后新增两条：`Chinese student questions repair English output after a Chinese full-stop title` 与 `Chinese student questions repair English output after a newline title`，均断言首轮拒绝（英文内容、calls=2、repair:true）后最终返回中文。
+
+验证结果：定向套件 `node --test server/tutoring/test/index.test.ts` 为 47 通过、0 失败（含上述两条新测试）；`npx tsc --noEmit` 退出码 0。本机 Node 为 v24.14.1，与运行时门禁要求的 v24.21.0 不一致，故未用 `npm run typecheck` 全量门禁，改用直接 `tsc --noEmit` 做类型检查，属既有环境约束、非本次回归。本轮没有设置任何真实调用开关、没有读取 key，供应商请求为 0；第 17.1 节的历史真实证据不因本轮离线修复而被重新执行或扩大。

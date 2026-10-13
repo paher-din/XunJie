@@ -304,6 +304,48 @@ test("Chinese student questions repair English visible output once", async () =>
   if (result.outcome === "success") assert.deepEqual(result.body, chineseBody);
 });
 
+test("Chinese student questions repair English output after a Chinese full-stop title", async () => {
+  const chineseBody = validHelpBody({
+    content: "先找出循环的分隔条件。",
+    rationale: "学生请求了一个有限提示。",
+    expectedStudentAction: "请写出并测试分隔条件。",
+    assistanceContext: "一次有限提示。",
+  });
+  const provider = new SyntheticProvider([
+    { body: validHelpBody({
+      content: "提示。 Check the loop bound before changing the pointer. The stopping condition must be checked before each access.",
+      expectedStudentAction: "下一步。 Inspect and test the loop condition. Compare the index with the bound before the access.",
+    }), usage },
+    { body: chineseBody, usage },
+  ]);
+  const result = await generateStudentHelp(helpRequest({ question: "请给我一个小提示" }), { provider });
+  assert.equal(result.outcome, "success");
+  assert.equal(result.calls, 2);
+  assert.equal(provider.calls[1]?.repair, true);
+  if (result.outcome === "success") assert.deepEqual(result.body, chineseBody);
+});
+
+test("Chinese student questions repair English output after a newline title", async () => {
+  const chineseBody = validHelpBody({
+    content: "先找出循环的分隔条件。",
+    rationale: "学生请求了一个有限提示。",
+    expectedStudentAction: "请写出并测试分隔条件。",
+    assistanceContext: "一次有限提示。",
+  });
+  const provider = new SyntheticProvider([
+    { body: validHelpBody({
+      content: "提示\nCheck the loop bound before changing the pointer. The stopping condition must be checked before each access.",
+      expectedStudentAction: "下一步\nInspect and test the loop condition. Compare the index with the bound before the access.",
+    }), usage },
+    { body: chineseBody, usage },
+  ]);
+  const result = await generateStudentHelp(helpRequest({ question: "请给我一个小提示" }), { provider });
+  assert.equal(result.outcome, "success");
+  assert.equal(result.calls, 2);
+  assert.equal(provider.calls[1]?.repair, true);
+  if (result.outcome === "success") assert.deepEqual(result.body, chineseBody);
+});
+
 test("English student questions ignore quoted Chinese when matching the primary language", async () => {
   const body = validHelpBody({
     content: "strcmp returns zero when both strings have the same byte sequence.",
