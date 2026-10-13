@@ -306,3 +306,5 @@ B 复用 B1/B2 的 `CurrentGuard` 和绝对截止时间。A/C 的 current reader
 批次总 usage 为 actual：输入 7,473 tokens、输出 1,648 tokens、合计 9,121 tokens；三场景核心 elapsed 合计 13,068 ms。AI SDK 报告 `responseFormat JSON schema` 以 compatibility mode 注入 system message，这是已知适配提示，本次没有 SDK 自动重试或请求失败。三项 body 均只引用授权 ID，政策字段均为不含完整答案、不写学生作品、不运行代码、不作正式评价。
 
 当前只能确认真实供应商通道、限额、usage 与严格结构验证通过，不能确认 DL-AC-08 的教学语义通过。下一步由获授权教师/项目推进者逐项审阅上述三组正文，尤其确认 E-DL-03 的 HDL 语义；未经人工结论不得把本批写成真实模型验收通过，也不得因该疑点自动重跑已消费的批次。
+
+供审阅者使用的完整输入事实、模型可见正文和逐项填写栏见 [DL-B 真实模型 HDL 辅导人工语义审阅单](DL-B_HDL_TUTORING_HUMAN_REVIEW.md)。该审阅单是本批可复核副本，不依赖本机临时证据路径，也不包含 API key 或真实学生/教师材料。
