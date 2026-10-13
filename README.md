@@ -78,7 +78,7 @@ P2 任务已发布：[总协调 #24](https://github.com/paher-din/XunJie/issues/
 | [运行停止与原请求核对](docs/tasks/I0_UI_06A_RUN_CONTROL.md) | 学生显式停止、等待权威确认，丢回执后原键核对；准备实现与验证，真实停止/恢复交接仍后置 |
 | [历史运行比较与公开产物](docs/tasks/I0_UI_06B_RUN_HISTORY.md) | 只读比较已有运行，区分本机参数与缺项、检查裁剪与产物可用性；完整公开文本经来源/ID/hash/bytes 校验后查看和下载；真实交接仍后置 |
 | [I0-UI 接入规格](docs/tasks/I0_UI_SPEC.md) | 学生前端接入主仓库的用户行为、实现决策、测试边界与不做事项；十张任务的依赖索引在[准备记录](docs/tasks/I0_UI_PREPARATION.md) |
-| [I0-UI 准备批次收尾与真实接入交接](docs/tasks/I0_UI_CLOSEOUT.md) | 十张票准备交付、07 提交/远端核查、Draft PR 方案与 A/C/B 逐能力交接；真实 I0 与完整产品仍未验收 |
+| [I0-UI 准备批次收尾与真实接入交接](docs/tasks/I0_UI_CLOSEOUT.md) | 十张票准备交付、main 整合/修复与 104 项 Chrome 回归、Draft PR #50 和 A/C/B 逐能力交接；真实 I0 与完整产品仍未验收 |
 
 安排开发时继续阅读 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md)：先完成当前 P2 原预交付，P3 的 A/C/B 接数字逻辑并分批联调，同时保留原反馈闭环；P4 的 A6/B4/C5 验证两课程，P5 完成整体集成与正式验收。服务端预交付、数字逻辑 Demo 与完整产品验收分别记录。
 
@@ -277,6 +277,8 @@ PR #29 合并后，A3 已同步最新 main 并适配新的16K预检机制；[A3 
 ### I0-UI 准备批次与真实接入交接
 
 2026-10-13，十张本地 I0-UI ticket 已交付准备工程，07 记录真实 Chrome 手动链及 102 项准备浏览器检查；本批正在整合最新 main 并准备 Draft PR。真实服务、节点、模型、完整 AC/NFR 与教学效果未验收，#30/#22 保持 Open；A/C 按能力交接，B 真实模型/语义余项沿 #45。当前状态、组合验证与交接入口见 [I0-UI 收尾记录](docs/tasks/I0_UI_CLOSEOUT.md)，启动/来源与故障细节见学生 README，规划文档保留其有日期的原快照。
+
+2026-10-13，main 已普通合入 UI 分支，准备批次已推送并发布 [Draft PR #50](https://github.com/paher-din/XunJie/pull/50)，尚未合并。四项审查问题已修复，最终 typecheck/build、Vitest 238 项、真实 Chrome 104 项与文档检查通过；[#30 交接清单](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137496293) 已发布，成员按 H 编号回交，完整验收未覆盖项登记在 [#22 证据索引](https://github.com/paher-din/XunJie/issues/22#issuecomment-6137502504)。真实接线/节点/模型/完整 AC/NFR 与教学效果未验收。
 
 ### 当前整体状态与后置验收
 

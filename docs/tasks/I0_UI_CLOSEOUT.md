@@ -179,4 +179,11 @@ CI=1 XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_E2E_PREP_PORT=5661 XUNJIE_E2E_REAL
 
 ### 8.3 远端交付记录
 
-准备范围验证已完成，接下来普通推送并发布 Draft PR、#30 交接摘要与 #22 证据索引；实际 URL 和回读结果在发布后追加。#30/#22 保留 Open，PR 不自动合并。基线进度及 H-05 差异仍待授权维护者汇总。
+2026-10-13 已普通推送 i0/ui-frontend，并创建 [Draft PR #50](https://github.com/paher-din/XunJie/pull/50)，base=main、head=i0/ui-frontend、Open/Draft，发布时 head=`d7af666ed49bad1379619891af290a758e198b3a`。已附到当前工作项。实际准备源码验证提交为 `df7ce3c435247f0337dd0c16e0ef4cbeb3b28f0b`；后续只同步记录与 README。
+
+已发布 [#30 成员交接清单](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137496293) 与 [#22 完整验收证据索引](https://github.com/paher-din/XunJie/issues/22#issuecomment-6137502504)。评论包含固定源码/验证、H-01～H-06 清单、回交模板和下一责任角色；#22 链接 #30，不再复制一套并行进度。成员尚未确认接收或交回实际材料，真实联调仍未执行。
+
+#30/#22 保持 Open；PR 尚未合并、无部署/发布，远端未提供 status checks，不宣称 hosted CI 通过。基线进度及 H-05 差异仍待授权维护者汇总。既有 .zcodeignore 保留且未提交；本次生成的 dist/test-results、命令日志与 PR/评论正文临时文件已清理，长期可复核结果保存在本文、PR 和评论中。
+
+
+远端回读已完成：PR 正文及两条评论与发布正文逐字一致，PR base/head 和 Open/Draft 状态正确，两父卡 Open、hosted checks=0。最后仅提交本文与 README 的实际发布记录并普通推送；源码/测试相对验证提交 df7ce3c 无差异，不重复跑应用套件。最终文档检查 55/752、errors=[]；最终记录空白检查通过，已跟踪工作区交付后应无残留改动。
