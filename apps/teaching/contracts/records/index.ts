@@ -65,7 +65,11 @@ export type TeachingControlState = {attemptRevision:number;decisionEpoch:number;
   collecting:boolean;reminders:boolean;generation:string;status:'ready'|'active'|'paused'|'submitted'|'reviewed'};
 export type TeachingEventPayload = {actionId:string;contentHash:string;disposition:ActionDisposition;createdAt:string;
   basisRevised:boolean;actionType?:string;content?:string;rationale?:string;expectedStudentAction?:string;
-  assistanceContext?:string;evidenceIds?:string[];resourceRefs?:string[];unresolved?:string[];deliveryId?:string};
+  assistanceContext?:string;evidenceIds?:string[];resourceRefs?:string[];unresolved?:string[];deliveryId?:string;
+  // Original Action association accompanies authorized body delivery only. It does not grant authority or
+  // expose the full trusted envelope (input/assistance/coverage refs, leases, or provider result bytes).
+  scope?:TeachingScopeRef;jobId?:string;messageId?:string;generation?:string;targetVersions?:TeachingVersions;
+  basis?:Pick<TeachingBasis,'attemptRevision'|'decisionEpoch'|'captureRevision'|'relatedStateRevision'|'objectRef'>};
 export type TeachingEventView = {serverSeq:number;eventId:string;type:string;occurredAt:string;payload?:TeachingEventPayload};
 export type TeachingEventsPage = {control:TeachingControlState;resyncRequired:boolean;events:TeachingEventView[];
   nextServerSeq:number;hasMore:boolean;coverage?:TeachingCoverage};
