@@ -351,3 +351,52 @@ node server/app/initialize.ts '<existing absolute controlled bootstrap JSON path
 本机缺现有获准 C 节点的应用认证/known_hosts 材料，认证 SSH 未发起，A/C 实际节点链仍未执行。继续真实链须由 C 交已有授权入口和当前 readiness/代际；本批不维护或启动节点。ALU 行为 validator/C4 提交组合仍由 C 原任务交付后消费；B #40 和 UI DL-UI/DL-E2E 的精确任务对应及最小字段表见 §9，不要求他们完成整模块才开始契约评审。当前只能交付获准 A/C 服务端合成批次，不能关闭 #38 或宣称完整 G3/MVP。
 
 交付保持本地分支，无公开推送、远端合并或团队消息。产品基线汇总仍待获授权维护者按 §12 的具体请求处理；原 typecheck 日志与主工作副本既有改动保留。
+
+## 15. 最新主线收尾与 I0 去重（2026-10-13）
+
+### 15.1 来源、已读依据与当前范围
+
+负责人要求继续收尾 DL-A，并检查本人在 Issue #30 的回交以避免重复。已核对 [A 最新回交评论](https://github.com/paher-din/XunJie/issues/30#issuecomment-6139828933) 与 [Draft PR #53](https://github.com/paher-din/XunJie/pull/53)，固定 head 为 e3e3486d7ec636836c892433c953eb303a64eb6a；它已实现正常 C/HTTPS 宿主、现有 UI 静态服务、授权 Assignment bootstrap、原 Job 自动消费和关停对账。PR 尚未合并，本文不能把它计为 main 已交付或替代真实节点通过。
+
+本次已读最新 AGENTS/README、PRD §4.5/5/6、MVP §1.4（DL-AC-01/03/07/09）、TECH §3.3/8.5/9、TEAM §7/8.6、ENGINEERING_HANDOFF 的记录/版本/执行边界，以及本文 §8–14、I0-A/C 任务及 Issue #30 原 H 清单。最新 main 固定为 cde69ccbd763c3c0ab381a809b750b951f195f64，已含 C4/A4/DL-C 与 UI #50/#51、P2 #46；本地 DL-A 固定为 3ec9f6d1326f70bd0a311b86053bcbcb0b7b5abf，原验证源码 dd5f81c 不自动代表联合候选通过。
+
+独立收尾工作副本由本地 DL-A 来源创建，原 I0 分支/工作副本和主副本改动保留。仅本地组合固定 main、DL-A、PR #53，用于审查和验证；不合并远程 PR、公开推送、发送团队消息或部署。
+
+### 15.2 已交能力直接复用，不重复实现
+
+| 能力 | 实际已有来源 | DL-A 本批差异 |
+| --- | --- | --- |
+| 正常 HTTPS/Session/CSRF、UI 静态服务 | PR #53 的 main/config/i0-static，原认证与 Workspace 工厂 | 复用原正常入口/静态注册及受控文件读取，HDL 只作获准配置分流；不设计或改 UI |
+| 首次受信代际与合法 Assignment | PR #53 GET /api/assignments/:id/bootstrap 原 AssignmentView + recoveryGeneration | 复用同一路径/原 DTO 与本人/教师授权，无新 bootstrap 或列表替代契约；HDL 来自持久 application_control |
+| 原 Job 自动消费与关停对账 | PR #53 的正常宿主生命周期 | 复用同一消费/关闭实现，组合原 HDL pending/process/reconcile 与已交教师 Job；不再写第二套 C 消费者 |
+| C 阅读/保存/运行与 H-05/H-06 | PR #53 公共 HTTP 用例与 I0 回交 | 保留原 C 模式24表和可用性条件，补 HDL 及 C4 组合反例；C-only 不等待 HDL readiness |
+| C 节点连接与当前指纹 | Issue #30 已向 C 请求 H-03/H-04 | 复用该交接请求，额外核当前 HDL runtime/profile/validation；不索要或改凭据，不启动维护节点 |
+
+在既有 A app 模块提取仅供这两条真实调用路径共享的宿主/生命周期注册能力，C 模式继续使用原24表工厂，DL-A 组合原 A3/C3/HDL 工厂；业务 API 和现有 I0 配置/命令保持。原 XUNJIE_I0_CONFIG 的 C 模式独立工作，原获准 HDL 配置模式继续使用其受控配置；两种配置同时出现应明确拒绝，不产生两个监听器。HDL 可选静态目录直接复用 I0 静态服务字段和行为。内部组合能力不授予学生新操作、不添加 B DTO、不更改 C 引擎/运行参数。
+
+### 15.3 精确合成库差异：35 表待批准
+
+静态读取 DDL（未建库）确认：原 DL-A 应用33表加已合入 C4 的 workspace_submissions、workspace_reopen_grants 两表，共35张唯一表；没有新第三张表、没有 A4 五张扩展表。新组合为最新 DL-C 31表 + A3 teacher_design_requests/teacher_design_proposals 两表 + 已获准 digital_logic_config_versions/application_control 两表。
+
+此前授权是 DL-A 33表、A4 33表与 DL-C 31表，各自不能自动扩成此35表组合。提案仅扩本 DL-A fresh-only 工厂的精确范围守卫/断言，初始化前核实际表名。旧 I0 24表、review 33表、digital-logic 31表和其他既有工厂沿各自范围；只新建并保留临时合成库，不迁移、重置或删除已有库，不改凭据/CI/UI，不维护物理节点、不调用模型。批准前不初始化35表库或运行依赖该库的业务测试。
+
+### 15.4 验证与交付
+
+沿此前已批准的真实登录/CSRF HTTP、原 Job/worker、真实 SQLite 事务接缝。先保留原 I0/HDL 的拒绝、重放/冲突、旧 revision/代际及在途 Trace 回归；通过学生显式提交后的原读取、原 worker/Session 观察验证 C4 提交停止，教师合法重开不复活旧 Session，暂停/撤权/rollback 和原 C 路由继续验证。必要反例先红后绿，不修改契约或跳过测试迁就实现。
+
+正常 C-only 在 HDL transport 不就绪/未装配时仍可工作；HDL 当前配置/指纹不符拒绝新 Build/Session，历史回执按原读取边界。关停停止接纳/dispatch，持久停止后按原身份对账，unknown 不伪装成已退出。typecheck/build、针对性组合测试，最后固定源码一次完整回归；完整命令明确纳入 server/app 的测试，未被原 glob 覆盖的测试不能静默漏算。
+
+代码落在 A app/access/design/db、原已批准 HDL 事务授权接缝和对应公共测试；只同步本人任务稿与 README。产品/planning/reference/AGENTS、B/UI 与其他任务稿只读，MVP §10/TECH 汇总待授权维护者。最终两轴审查对固定最新 main 差异，失败、跳过、真实节点/TLS/浏览器未执行分列。没有完整节点/B/UI证据时只交服务端批次，不关闭 #38。
+
+### 15.5 需补齐的信息（沿现有交接，不重复派工）
+
+| 对象 | 具体需要 | 当前影响 |
+| --- | --- | --- |
+| 负责人 | 明确批准 §15.3 的35表 fresh-only 联合范围 | 阻止该库初始化与依赖它的联合验证；不阻止来源审查/去重设计 |
+| C：#30 H-03/H-04 + DL-C #39 | 当前部署源码 SHA、C 与 HDL 新指纹重验/登记的 profile/validation/recoveryGeneration，以及既有受控应用 JSON 的本地引用位置或既有连接交接方式 | 真实 readiness→开放→Build/program/interact→暂停/退出；旧记录不能替代 |
+| 环境维护者/UI：#30 H-01 | 已存在且获准的 HTTPS origin、TLS/签名/应用连接受控配置位置、获准合成账号/分配引用的交接方式 | 正常浏览器/TLS 实际接线；不在公开评论传秘密，也不要求新造凭据 |
+| B：DL-B #40 首批 | 引用对象/必需字段/读取范围/快照-Build-Session绑定/当前性拒绝规则的最小表，以及提案/提交链接 | A/B契约会审和HDL真实帮助；不要求先完成整个DL-B |
+| UI：DL-UI / #30 后续 | 现有 HDL 操作与请求/结果状态/缺项表、固定前端来源和可接线批次 | HDL 会审与 DL-E2E；复用已有 I0 交付，不要求重做 C 准备票 |
+| ALU 检查交接 | 获准行为检查入口/覆盖范围及未定义域不评分策略的实际实现/证据；尚无入口则明确责任与方案 | 当前 structural/behavior:unverified 状态保持，不宣告完整课程检查 |
+
+本节为收尾提案与信息清单，尚未执行新的联合业务测试，也没有把PR #53的394/382或旧DL-A的26/26重复累计为本次通过。
