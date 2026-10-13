@@ -23,7 +23,9 @@ export const COUNTER_TASK_PATH = '/#/task/counter'
 /** 只允许打到本机开发进程；任何其它主机都算外发。 */
 export function isLoopback(url: string): boolean {
   try {
-    const host = new URL(url).hostname
+    const parsed = new URL(url)
+    // 本机生成的 blob 不是外发；仍按来源检查，不能一律放行 blob。
+    const host = (parsed.protocol === 'blob:' ? new URL(parsed.origin) : parsed).hostname
     return host === '127.0.0.1' || host === 'localhost' || host === '[::1]'
   } catch {
     return false

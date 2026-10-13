@@ -17,8 +17,10 @@ import { PREP_URL, REAL_URL, PREP_PORT, REAL_PORT } from './e2e/env'
 
 export default defineConfig({
   testDir: './e2e',
+  // 只并行独立 spec；文件内顺序保留，避免重启 strictPort / 系统剪贴板争用。
+  // 每项仍由 Playwright 建新 context，写场景另用 UUID 隔离 fixture authority。
   fullyParallel: false,
-  workers: 1,
+  workers: 2,
   retries: 0,
   timeout: 60_000,
   expect: { timeout: 10_000 },

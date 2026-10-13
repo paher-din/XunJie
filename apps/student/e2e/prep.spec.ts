@@ -217,6 +217,9 @@ test.describe('原数字逻辑演示保留', () => {
 
 test.describe('准备模式不外发', () => {
   test('provider 连接测试不请求外部服务，学校测试明确标模拟', async ({ page }) => {
+    expect(isLoopback(`blob:${PREP_URL}/local-worker`)).toBe(true)
+    expect(isLoopback('blob:https://example.com/external-worker')).toBe(false)
+    expect(isLoopback('blob:null/no-origin')).toBe(false)
     const urls = trackRequests(page)
     await page.goto(prepUrl('/#/settings/model'))
 
