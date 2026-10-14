@@ -111,3 +111,7 @@ Chrome 155 的既有已连接 profile「您的 Chrome」在严格受信 `https:/
 真实小辅导滚动容器只有79px，整卡含来源1874px，原5% IntersectionObserver阈值导致正文可见仍无displayed。保留当前原Job/快照，先修正为观察实际正文的正面积交集并复验；当前不能把succeeded/received写成displayed或人工acknowledged。后续修改/同输入输出变化与最终停止证据另记。
 
 可见性修复固定 `f03c033`，只观察原Markdown正文的正面积交集，来源/按钮不计，保留原visible/valid/C3；10项边界加既有HDL用例11/11通过。正常刷新实测另发现父current在初始idle/reading投影空Build，使收到但未展示的原消息被永久标过时。父current改为完整HDL read的ready才取得，暂时未知保持null；每次来源更新令下一次原channel普通轮询从0重新授权，不直接置valid或清缓存。恢复反例核原cursor、收到回执保留、unknown不展示、同来源恢复、实际草稿变化仍持久失效。原首条Job错误持久缓存不解锁，不补displayed；通过正常新请求做后续本机合成展示验证，实际模型Job/HTTP与失败分开统计。最新全前端43文件569项全部通过，类型/正常build通过；不是完整浏览器/AC/NFR或教学效果。
+
+### 4.8 合并主线后的编辑区域复核
+
+已正常合并 main `0f246056` 的 A6/P3 最新负责人范围及 UI 读取拒绝守卫，合并点 `41563d9`；仅辅导客户端私有字段冲突，保留两边行为。合并后类型、569 单元和生产构建通过。真实 Chrome 复核发现本任务新增编辑器包裹层是普通 block，内部原 flex 编辑器高度只有5px；业务源码/保存/执行正确，但代码视觉不可用。只把这个本人包裹层设为纵向 flex，恢复原 CodeWorkspace 填满已有空间，随后用相同本机 C/HDL 对象只读复核可见代码及历史，不新增模型调用或执行任务。
