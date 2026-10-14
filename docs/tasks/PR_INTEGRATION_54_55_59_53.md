@@ -30,8 +30,10 @@
 
 只提取 `git diff origin/main...origin/pr-integration-54` 的 9 个 HDL 代码/测试/原任务文件，排除 README 的过期状态行及 main 中 B3 等其他 PR 变更。保留 #54 的实现与最新修复语义，来源提交包括 `7283172`、`c47ae58`、`e3c192a`、`9b719bb`、`5d34ffe`、`b698480`，最终证据/勘误按 `c00b8ff` 接收；全部对应 PR 差异作为一个集成提交保留来源，不逐条机械 cherry-pick 历史合并。
 
-三处文本冲突：contracts/tutoring import、real-model helper 开关、helper gate 测试，均因 #54 上游 B3 代码而起。仅保留 HDL 的类型/两组独立模型门禁，未引入 AnalysisBinding/ClaimBody 或 B3 probe/测试。其余 6 个文件原 blob 完全一致。#55 原 HTTPS/持久库/执行节点交接文件及所有历史证据不改。
+三处文本冲突：contracts/tutoring import、real-model helper 开关、helper gate 测试，均因 #54 上游 B3 代码而起。仅保留 HDL 的类型/两组独立模型门禁，未引入 AnalysisBinding/ClaimBody 或 B3 probe/测试。context、HDL fixture/测试与两份原任务共 5 个文件的 Git blob 与 #54 完全一致；core 仅接纳 HDL policy 增量，保留目标原执行循环，不复制上游 B3 的分析/计费改动。#55 原 HTTPS/持久库/执行节点交接文件及所有历史证据不改。
 
-Node 24.21.0/Linux/WSL2 原 lock 安装成功，typecheck/build 通过。默认 Windows Node 24.15.0 不满足精确运行时，未绕过检查；未安装新依赖或修改锁文件。全部 tutoring + 原 C 交接 verifier：156 项、150 通过、6 项真实模型门禁跳过、0 失败/取消；供应商请求 0。文档静态检查 69 份/1020 内链/0 错误（README 导航加入前），空白与冲突检查通过。
+Node 24.21.0/Linux/WSL2 原 lock 安装成功，typecheck/build 通过。默认 Windows Node 24.15.0 不满足精确运行时，未绕过检查；未安装新依赖或修改锁文件。全部 tutoring + 原 C 交接 verifier：156 项、150 通过、6 项真实模型门禁跳过、0 失败/取消；供应商请求 0。文档静态检查 69 份/1020 内链/0 错误（README 导航加入前），空白与冲突检查通过。追加 README 导航后的静态检查为 69 份/1021 内链/0 错误。
 
 #55 交付方式：仅本批 11 文件（上述 9 文件、README 最小任务导航、本文）合成一个来源可追溯的提交；完成后普通推送原 `codex/c-entry-preparation-handoff`，不强推，遇远端推进先重新核差异。
+
+验证过程的偏差：第一次“6 个源 blob 全一致”检查在 core 报错，原因是 #54 core 同时已有 main/B3 代码。后续对比确认这是有意保留目标原 core 的基线差异，HDL policy 增量一致；上述当前结论已纠正，不将失败检查记通过。C 原交接/证据对基线的差异为空。
