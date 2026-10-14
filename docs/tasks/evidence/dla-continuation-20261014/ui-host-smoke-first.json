@@ -1,0 +1,74 @@
+{
+  "checkedAt": "2026-10-14T12:32:20.472Z",
+  "passed": false,
+  "samples": [
+    {
+      "origin": "https://127.0.0.1:3443",
+      "path": "/health/live",
+      "status": 200,
+      "authorized": true,
+      "body": {
+        "requestId": "8a2e8319-05af-453e-8005-93221e191761",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3443",
+      "path": "/health/ready",
+      "status": 503,
+      "authorized": true,
+      "body": {
+        "requestId": "d20bd675-2dfd-48fd-a53c-1bb88c1d6988",
+        "error": {
+          "code": "DEPENDENCY_UNAVAILABLE",
+          "message": "Required capability is unavailable.",
+          "retryable": false,
+          "recovery": "Use the manual workflow while unavailable; check the original request before explicitly retrying."
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3443",
+      "path": "/",
+      "status": 200,
+      "authorized": true,
+      "htmlEntry": true
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/health/live",
+      "status": 200,
+      "authorized": true,
+      "body": {
+        "requestId": "29e70453-4395-4616-bd61-f543f29af5bf",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/health/ready",
+      "status": 200,
+      "authorized": true,
+      "cacheControl": "no-store",
+      "body": {
+        "requestId": "6615795e-8a9b-45b0-822b-b1cee1b48742",
+        "data": {
+          "status": "ready"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/",
+      "status": 200,
+      "authorized": true,
+      "htmlEntry": true
+    }
+  ],
+  "modelRequests": 0,
+  "browserAcceptance": false
+}

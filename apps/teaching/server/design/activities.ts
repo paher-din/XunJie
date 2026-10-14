@@ -1,8 +1,9 @@
+import {fixedHdlRuntime,hdlRule,configurationHash} from './hdl-configurations.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { Transaction, SqlRow } from '../db/transaction.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
-import { helpPolicySchema, checkRuleSchema, runtimeSchema, frozenActivityShape, activityViewSchema, runtimeReadinessSchema } from '../../contracts/design/index.ts';
+import { helpPolicySchema, checkRuleSchema, activityRuntimeSchema, frozenActivityShape, activityViewSchema, runtimeReadinessSchema } from '../../contracts/design/index.ts';
 import { ApiError } from '../app/errors.ts';
 import { readDraft, draftMaterials, resourceSchema } from './storage.ts';
 import { checkDraft, type TeacherConcern } from './checks.ts';
@@ -40,16 +41,19 @@ export function storeRule(tx: Transaction, actor: ActorContext, input: unknown, 
     storageId, actor.courseId, actor.userId, now, body, hash(body));
   return rule;
 }
-export function releaseContext(tx: Transaction, courseId: string, blueprintId: string, concerns: TeacherConcern[], runtime?: z.infer<typeof runtimeSchema>) {
+export function releaseContext(tx: Transaction, courseId: string, blueprintId: string, concerns: TeacherConcern[], runtime?: z.infer<typeof activityRuntimeSchema>) {
   const draft = readDraft(tx, courseId, blueprintId);
   const policyRow = tx.get('SELECT * FROM help_policy_versions WHERE id=? AND course_id=?', draft.content.helpPolicyVersionId ?? '', courseId);
   const ruleRow = tx.get('SELECT * FROM check_rule_versions WHERE id=? AND course_id=?', JSON.stringify([courseId, draft.content.checkRuleVersionId ?? '']), courseId);
   const helpPolicy = policyRow ? readVersion(helpPolicySchema, policyRow, 'policy_json') : undefined;
-  const checkRule = ruleRow ? readVersion(checkRuleSchema, ruleRow, 'rules_json') : undefined;
+  const fixed=draft.content.digitalLogicConfigVersionId?fixedHdlRuntime(tx,courseId,draft.content.digitalLogicConfigVersionId):undefined;
+  const checkRule = fixed ? hdlRule : ruleRow ? readVersion(checkRuleSchema, ruleRow, 'rules_json') : undefined;
   const materials = draftMaterials(tx, draft);
   const report = checkDraft(draft, { materials, concerns, helpPolicyVersionIds: helpPolicy ? [helpPolicy.versionId] : [],
     checkRuleVersionIds: checkRule ? [checkRule.versionId] : [], ...(runtime ? { runtimeProfile: { versionId: runtime.runtimeProfileVersion, ready: true } } : {}) });
-  return { draft, materials, helpPolicy, checkRule, report };
+  if(fixed){if(draft.content.checkRuleVersionId!==hdlRule.versionId)report.blocking.push({code:'missing_version',path:'checkRuleVersionId'});
+    if(runtime&&(!('kind' in runtime)||JSON.stringify(runtime)!==JSON.stringify(fixed)))report.blocking.push({code:'runtime_not_ready',path:'digitalLogicConfigVersionId'});}
+  return { draft, materials, helpPolicy, checkRule, report: fixed?{...report,execution:{kind:'hdl_board' as const,structural:'validated' as const,behavior:'unverified' as const}}:report };
 }
 function readVersion<Schema extends z.ZodType>(schema: Schema, row: SqlRow, field: string): z.output<Schema> {
   const body = String(row[field]);
@@ -57,7 +61,7 @@ function readVersion<Schema extends z.ZodType>(schema: Schema, row: SqlRow, fiel
   return checked(schema, JSON.parse(body));
 }
 export function confirmActivity(tx: Transaction, actor: ActorContext, blueprintId: string, revision: number, concerns: TeacherConcern[],
-  runtime: z.infer<typeof runtimeSchema>, readiness: z.infer<typeof runtimeReadinessSchema>, generation: string, now: number) {
+  runtime: z.infer<typeof activityRuntimeSchema>, readiness: z.infer<typeof runtimeReadinessSchema>, generation: string, now: number) {
   teacher(tx, actor);
   const context = releaseContext(tx, actor.courseId, blueprintId, concerns, runtime);
   if (context.draft.revision !== revision) throw new ApiError('VERSION_CONFLICT');
@@ -89,6 +93,7 @@ export function readActivity(tx: Transaction, courseId: string, activityId: stri
   const row = tx.get('SELECT * FROM activity_versions WHERE id=? AND course_id=?', activityId, courseId);
   if (!row) throw new ApiError('FORBIDDEN');
   const activity = readVersion(activitySchema, row, 'activity_json');
+  if('kind' in activity.runtimeProfile&&activity.runtimeProfile.contentHash!==configurationHash(activity.runtimeProfile.configuration))throw new ApiError('INVALID_REFERENCE');
   if (activity.activityVersionId !== row.id || activity.courseId !== row.course_id || activity.sourceBlueprintId !== row.blueprint_id
     || activity.sourceRevision !== row.source_revision || activity.draft.blueprintId !== activity.sourceBlueprintId
     || activity.draft.courseId !== activity.courseId || activity.draft.revision !== activity.sourceRevision
@@ -152,11 +157,11 @@ function invalidateAssignment(tx: Transaction, assignmentId: string) {
 function stopTeachingForAssignment(tx: Transaction, actor: ActorContext, courseId: string, reason: string, now: number,
   generation: string, invalidated: {attemptIds: string[]; stoppedJobIds: string[]}, teachingStop?: DesignTeachingStop):
   {stoppedJobIds: string[]; invalidatedActionIds: string[]} {
-  if (!teachingStop || !invalidated.stoppedJobIds.length) return { stoppedJobIds: invalidated.stoppedJobIds, invalidatedActionIds: [] };
+  if (!teachingStop || !invalidated.attemptIds.length) return { stoppedJobIds: invalidated.stoppedJobIds, invalidatedActionIds: [] };
   const result = teachingStop(tx, actor, { courseId, reason, controlledAt: now, generation,
     attemptIds: invalidated.attemptIds, stoppedJobIds: invalidated.stoppedJobIds });
   if (result && typeof result === 'object' && 'then' in result) throw new ApiError('PERSISTENCE_UNAVAILABLE');
-  return { stoppedJobIds: invalidated.stoppedJobIds, invalidatedActionIds: result.invalidatedActionIds };
+  return { stoppedJobIds: [...new Set([...invalidated.stoppedJobIds,...result.stoppedJobIds])], invalidatedActionIds: result.invalidatedActionIds };
 }
 export function controlAssignment(tx: Transaction, actor: ActorContext, assignmentId: string, expected: number, action: 'pause' | 'resume', reason: string, now: number,
   generation: string, teachingStop?: DesignTeachingStop) {
@@ -199,7 +204,8 @@ export function controlActivity(tx: Transaction, actor: ActorContext, activityId
     if (action === 'pause') {
       const invalidated = invalidateAssignment(tx, assignment.id);
       attemptIds.push(...invalidated.attemptIds); stoppedJobIds.push(...invalidated.stoppedJobIds);
-      stopTeachingForAssignment(tx, actor, actor.courseId, reason, now, generation, invalidated, teachingStop);
+      const stopped=stopTeachingForAssignment(tx, actor, actor.courseId, reason, now, generation, invalidated, teachingStop);
+      stoppedJobIds.push(...stopped.stoppedJobIds.filter(id=>!stoppedJobIds.includes(id)));
     }
   }
   return { activityVersionId: activityId, activityControlRevision: expected + 1, status: desired, attemptIds, stoppedJobIds };
@@ -225,5 +231,5 @@ export function activityView(tx: Transaction, actor: ActorContext, activityId: s
   if (!control) throw new Error('Missing activity control.');
   return activityViewSchema.parse({ activityVersionId: activityId, courseId: actor.courseId, ...(actor.role === 'teacher' ? { sourceRevision: activity.sourceRevision, sourceBlueprintId: activity.sourceBlueprintId } : {}),
     activityControlRevision: control.control_revision, status: control.status, content: { audience: preview.audience, content: preview.content, materials: preview.materials },
-    helpPolicy: activity.helpPolicy, runtimeProfileVersionId: activity.runtimeProfile.runtimeProfileVersion });
+    helpPolicy: activity.helpPolicy, runtimeProfileVersionId: activity.runtimeProfile.runtimeProfileVersion, ...('kind' in activity.runtimeProfile?{execution:activity.runtimeProfile}:{}) });
 }

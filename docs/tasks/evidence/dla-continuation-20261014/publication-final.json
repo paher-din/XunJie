@@ -1,0 +1,26 @@
+{
+  "commits": {
+    "b556d75b6bbd052a01cc57c5824d1caacd9a68a7": "b556d75b6bbd052a01cc57c5824d1caacd9a68a7",
+    "HEAD": "2e0245c2c9a1ef85828b935924b55baac7243e3a"
+  },
+  "uploadedTrees": [
+    {
+      "localCommit": "b556d75b6bbd052a01cc57c5824d1caacd9a68a7",
+      "remoteCommit": "b556d75b6bbd052a01cc57c5824d1caacd9a68a7",
+      "tree": "d162ba5f12e1416b2c8d5661dbba79d922944c77",
+      "changedEntries": 23
+    },
+    {
+      "localCommit": "HEAD",
+      "remoteCommit": "2e0245c2c9a1ef85828b935924b55baac7243e3a",
+      "tree": "da1bd45ca821e24c6f4c9dcda6a528f715ffbec3",
+      "changedEntries": 50
+    }
+  ],
+  "branch": "codex/dl-a-mainline-closeout",
+  "expectedHead": "4a24849afa601d53559bca2f3ac4ab5ba830cec9",
+  "publishedHead": "2e0245c2c9a1ef85828b935924b55baac7243e3a",
+  "localHead": "HEAD",
+  "force": false,
+  "treeVerified": true
+}

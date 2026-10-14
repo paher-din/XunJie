@@ -1,0 +1,26 @@
+{
+  "commits": {
+    "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f": "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f",
+    "79f1416ff6b74483291651ab3dd015990baf1b8e": "79f1416ff6b74483291651ab3dd015990baf1b8e"
+  },
+  "uploadedTrees": [
+    {
+      "localCommit": "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f",
+      "remoteCommit": "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f",
+      "tree": "18f3a4adcb022d4a1366efaa4597ae6aa8c22d22",
+      "changedEntries": 37
+    },
+    {
+      "localCommit": "79f1416ff6b74483291651ab3dd015990baf1b8e",
+      "remoteCommit": "79f1416ff6b74483291651ab3dd015990baf1b8e",
+      "tree": "6c2df2d4d4f65f52e97ff748318934d0299ca987",
+      "changedEntries": 34
+    }
+  ],
+  "branch": "codex/dl-a-mainline-closeout",
+  "expectedHead": "7100ea6b6c9182f4c1b36fdc0ddccdca32b70754",
+  "publishedHead": "79f1416ff6b74483291651ab3dd015990baf1b8e",
+  "localHead": "79f1416ff6b74483291651ab3dd015990baf1b8e",
+  "force": false,
+  "treeVerified": true
+}

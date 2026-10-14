@@ -57,3 +57,12 @@ export function readI0SigningSecret(file:string) {
   if (secret.length<32 || secret.length>4096) throw new Error('Invalid signing material.');
   return secret;
 }
+
+import { hdlRuntimeSchema } from '../../contracts/design/hdl.ts';
+export const sshConfigurationSchema=i0ConfigSchema.shape.ssh;
+export const applicationConfigSchema=z.strictObject({databaseFile:existingFile,origin:i0ConfigSchema.shape.origin,
+ tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema,
+ approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),recoveryGeneration:z.string().min(1).max(128),
+ staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs,
+ tutoring:i0ConfigSchema.shape.tutoring});
+export function readApplicationConfig(file:string) { return applicationConfigSchema.parse(readControlledJson(file)); }

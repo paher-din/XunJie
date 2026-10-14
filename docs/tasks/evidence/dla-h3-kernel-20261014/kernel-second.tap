@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: H3 binding refuses scripts, aliases, scope escapes and unknown shared fields
+ok 1 - H3 binding refuses scripts, aliases, scope escapes and unknown shared fields
+  ---
+  duration_ms: 4.580804
+  type: 'test'
+  ...
+# Subtest: H3 actual elaboration resolves directions, ascending ranges and split S without fixing student names
+ok 2 - H3 actual elaboration resolves directions, ascending ranges and split S without fixing student names
+  ---
+  duration_ms: 2.940355
+  type: 'test'
+  ...
+# Subtest: H3 complete 2800 comparison preserves ungraded Cout and excludes undefined vectors
+ok 3 - H3 complete 2800 comparison preserves ungraded Cout and excludes undefined vectors
+  ---
+  duration_ms: 34.953286
+  type: 'test'
+  ...
+# Subtest: H3 separates behavior error, graded unknown, input mismatch, unstable and missing samples
+ok 4 - H3 separates behavior error, graded unknown, input mismatch, unstable and missing samples
+  ---
+  duration_ms: 2.78169
+  type: 'test'
+  ...
+# Subtest: H3 whole-job deadline and cancellation never turn partial coverage into pass
+ok 5 - H3 whole-job deadline and cancellation never turn partial coverage into pass
+  ---
+  duration_ms: 4.261
+  type: 'test'
+  ...
+# Subtest: H3 private parser rejects spoofed stdout, extra rows and wrong time; handles partial transport chunks
+ok 6 - H3 private parser rejects spoofed stdout, extra rows and wrong time; handles partial transport chunks
+  ---
+  duration_ms: 1.839028
+  type: 'test'
+  ...
+# Subtest: H3 node probe requires true immutable metadata; check refuses occupied Attempt and never exposes private rows
+ok 7 - H3 node probe requires true immutable metadata; check refuses occupied Attempt and never exposes private rows
+  ---
+  duration_ms: 147.539563
+  type: 'test'
+  ...
+# Subtest: H3 isolated Icarus CLI: true hierarchical binding and 2800 stable sampled vectors
+ok 8 - H3 isolated Icarus CLI: true hierarchical binding and 2800 stable sampled vectors
+  ---
+  duration_ms: 1547.993194
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2018.054302

@@ -59,7 +59,23 @@ export async function createAccessApp(options: VerificationOptions) {
       return work(tx, { userId: String(current.user_id), courseId: resolvedCourseId, role });
     });
   };
+  // Borrow the caller's active transaction: HTTP authority and C acceptance share one commit.
+  const authorizeResourceInTransaction = (request: FastifyRequest, tx: Transaction,
+    locate: (tx: Transaction) => ResourceScope | undefined, use: ResourceUse): ActorContext => {
+    if (locate.constructor.name === 'AsyncFunction') throw new ApiError('PERSISTENCE_UNAVAILABLE');
+    const current = activeSession(request, tx), resource = locate(tx);
+    if (!resource) throw new ApiError('FORBIDDEN');
+    const membership = tx.get('SELECT role FROM course_memberships WHERE user_id=? AND course_id=? AND active=1', String(current.user_id), resource.courseId);
+    const role = membership?.role;
+    if (role !== 'teacher' && role !== 'student') throw new ApiError('FORBIDDEN');
+    const actor: ActorContext = {userId: String(current.user_id), courseId: resource.courseId, role};
+    assertResourceUse(actor, resource, use);
+    if (use !== 'read') tx.run('UPDATE sessions SET last_active_at_ms=? WHERE token_hash=?', now(), digest(request.session.sessionId));
+    return actor;
+  };
   const access = {
+    authorizeResourceInTransaction,
+    authenticatedUserInTransaction(request:FastifyRequest,tx:Transaction){return String(activeSession(request,tx).user_id);},
     withAuthorizedCourse,
     inspectCourse(request: FastifyRequest, courseId: string | ((tx: Transaction) => string), requiredRole?: 'teacher' | 'student') {
       return withAuthorizedCourse(request, courseId, requiredRole, (_tx, actor) => actor, false);

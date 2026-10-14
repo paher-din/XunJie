@@ -1,0 +1,351 @@
+TAP version 13
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 1 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 106.492223
+  type: 'test'
+  ...
+# Subtest: host readiness requires the original consumer and a current database/runner, without creating business rows
+ok 2 - host readiness requires the original consumer and a current database/runner, without creating business rows
+  ---
+  duration_ms: 2502.216109
+  type: 'test'
+  ...
+# Subtest: host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+ok 3 - host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+  ---
+  duration_ms: 2896.776743
+  type: 'test'
+  ...
+# Subtest: host readiness detects database and consumer scan failure and resumes after successful scans
+ok 4 - host readiness detects database and consumer scan failure and resumes after successful scans
+  ---
+  duration_ms: 2332.552324
+  type: 'test'
+  ...
+# Subtest: a delayed readiness response cannot succeed after shutdown or database failure
+ok 5 - a delayed readiness response cannot succeed after shutdown or database failure
+  ---
+  duration_ms: 4267.778294
+  type: 'test'
+  ...
+# Subtest: health queries time out without accepting late runner success
+ok 6 - health queries time out without accepting late runner success
+  ---
+  duration_ms: 7071.593168
+  type: 'test'
+  ...
+# Subtest: a changed recovery generation during a readiness query requires a fresh probe
+ok 7 - a changed recovery generation during a readiness query requires a fresh probe
+  ---
+  duration_ms: 2144.622288
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener withdraws readiness when Fastify is closed directly
+ok 8 - the real HTTP listener withdraws readiness when Fastify is closed directly
+  ---
+  duration_ms: 2106.820411
+  type: 'test'
+  ...
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 9 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 4279.4001
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 10 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 7522.090931
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 11 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 3666.525171
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 12 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 3571.491638
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+not ok 13 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 9215.590186
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/server/app/i0-tutoring.test.ts:102:1'
+  failureType: 'testCodeFailure'
+  error: 'Original job did not reach expected state'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  operator: 'fail'
+  stack: |-
+    until (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/server/app/i0-tutoring.test.ts:43:10)
+    async TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/server/app/i0-tutoring.test.ts:117:32)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 14 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 3402.385262
+  type: 'test'
+  ...
+# Subtest: PR53 integration preserves DL-A HDL readiness while sharing the original health route
+ok 15 - PR53 integration preserves DL-A HDL readiness while sharing the original health route
+  ---
+  duration_ms: 1834.553702
+  type: 'test'
+  ...
+# Subtest: B3 model gate rejects missing authorization without network
+ok 16 - B3 model gate rejects missing authorization without network
+  ---
+  duration_ms: 380.527117
+  type: 'test'
+  ...
+# Subtest: B3 model gate rejects missing credentials without network
+ok 17 - B3 model gate rejects missing credentials without network
+  ---
+  duration_ms: 427.672909
+  type: 'test'
+  ...
+# Subtest: DL-B semantic-fix gate rejects missing authorization without network
+ok 18 - DL-B semantic-fix gate rejects missing authorization without network
+  ---
+  duration_ms: 415.641126
+  type: 'test'
+  ...
+# Subtest: DL-B semantic-fix gate rejects missing credentials without network
+ok 19 - DL-B semantic-fix gate rejects missing credentials without network
+  ---
+  duration_ms: 385.565579
+  type: 'test'
+  ...
+# Subtest: DL-B model gate rejects missing authorization without network
+ok 20 - DL-B model gate rejects missing authorization without network
+  ---
+  duration_ms: 429.46839
+  type: 'test'
+  ...
+# Subtest: DL-B model gate rejects missing credentials without network
+ok 21 - DL-B model gate rejects missing credentials without network
+  ---
+  duration_ms: 346.997081
+  type: 'test'
+  ...
+# Subtest: P2 model gate rejects missing authorization without network
+ok 22 - P2 model gate rejects missing authorization without network
+  ---
+  duration_ms: 361.770724
+  type: 'test'
+  ...
+# Subtest: P2 model gate rejects missing credentials without network
+ok 23 - P2 model gate rejects missing credentials without network
+  ---
+  duration_ms: 374.100193
+  type: 'test'
+  ...
+# Subtest: P2 model evidence observes bounded response metadata and latency
+ok 24 - P2 model evidence observes bounded response metadata and latency
+  ---
+  duration_ms: 53.366228
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies a non-success HTTP response without persisting its error body
+ok 25 - P2 model evidence classifies a non-success HTTP response without persisting its error body
+  ---
+  duration_ms: 1.471748
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies network failure without persisting raw errors
+ok 26 - P2 model evidence classifies network failure without persisting raw errors
+  ---
+  duration_ms: 0.967015
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies cancellation without persisting raw errors
+ok 27 - P2 model evidence classifies cancellation without persisting raw errors
+  ---
+  duration_ms: 0.666406
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies timeout without persisting raw errors
+ok 28 - P2 model evidence classifies timeout without persisting raw errors
+  ---
+  duration_ms: 0.288031
+  type: 'test'
+  ...
+# Subtest: P2 model evidence rejects credential, lease and reasoning fields recursively
+ok 29 - P2 model evidence rejects credential, lease and reasoning fields recursively
+  ---
+  duration_ms: 1.227402
+  type: 'test'
+  ...
+# Subtest: P2 real-model runtime gate rejects a non-locked Node before provider setup
+ok 30 - P2 real-model runtime gate rejects a non-locked Node before provider setup
+  ---
+  duration_ms: 0.366838
+  type: 'test'
+  ...
+# Subtest: P2 real-provider failure probes require their own explicit authorization
+ok 31 - P2 real-provider failure probes require their own explicit authorization
+  ---
+  duration_ms: 0.282919
+  type: 'test'
+  ...
+# Subtest: P2 30-job performance batch requires its own explicit authorization
+ok 32 - P2 30-job performance batch requires its own explicit authorization
+  ---
+  duration_ms: 0.448543
+  type: 'test'
+  ...
+# Subtest: P2 two-job semantic-fix batch requires its own explicit authorization
+ok 33 - P2 two-job semantic-fix batch requires its own explicit authorization
+  ---
+  duration_ms: 0.356299
+  type: 'test'
+  ...
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 34 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 85.993372
+  type: 'test'
+  ...
+# Subtest: normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+ok 35 - normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+  ---
+  duration_ms: 3616.924948
+  type: 'test'
+  ...
+# Subtest: original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+ok 36 - original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+  ---
+  duration_ms: 4131.123088
+  type: 'test'
+  ...
+# Subtest: fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+ok 37 - fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+  ---
+  duration_ms: 2902.248471
+  type: 'test'
+  ...
+# Subtest: HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+ok 38 - HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+  ---
+  duration_ms: 3160.710632
+  type: 'test'
+  ...
+# Subtest: management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+ok 39 - management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+  ---
+  duration_ms: 3153.905724
+  type: 'test'
+  ...
+# Subtest: activity pause stops a completed program even without a currently pending Job
+ok 40 - activity pause stops a completed program even without a currently pending Job
+  ---
+  duration_ms: 3137.160261
+  type: 'test'
+  ...
+# Subtest: same normal consumer dispatches original C and HDL jobs without a second queue
+ok 41 - same normal consumer dispatches original C and HDL jobs without a second queue
+  ---
+  duration_ms: 3200.70749
+  type: 'test'
+  ...
+# Subtest: interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+ok 42 - interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+  ---
+  duration_ms: 3109.595038
+  type: 'test'
+  ...
+# Subtest: personal pause and account disable propagate stop through original C reconciliation
+ok 43 - personal pause and account disable propagate stop through original C reconciliation
+  ---
+  duration_ms: 3319.486051
+  type: 'test'
+  ...
+# Subtest: normal scheduled consumer and shutdown retain actual termination facts
+ok 44 - normal scheduled consumer and shutdown retain actual termination facts
+  ---
+  duration_ms: 3459.113293
+  type: 'test'
+  ...
+# Subtest: reprogram rejects membership withdrawal after external wait but still persists original exit
+ok 45 - reprogram rejects membership withdrawal after external wait but still persists original exit
+  ---
+  duration_ms: 3116.189684
+  type: 'test'
+  ...
+# Subtest: fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+ok 46 - fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+  ---
+  duration_ms: 4084.498912
+  type: 'test'
+  ...
+# Subtest: fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+ok 47 - fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+  ---
+  duration_ms: 2083.001556
+  type: 'test'
+  ...
+# Subtest: withdrawal stops original C Run and marks teacher course assignment inactive
+ok 48 - withdrawal stops original C Run and marks teacher course assignment inactive
+  ---
+  duration_ms: 2837.436674
+  type: 'test'
+  ...
+# Subtest: HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+ok 49 - HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+  ---
+  duration_ms: 3396.361475
+  type: 'test'
+  ...
+# Subtest: C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+ok 50 - C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+  ---
+  duration_ms: 2968.783365
+  type: 'test'
+  ...
+# Subtest: C4 teacher grant and student revision resume never revive the stopped original HDL Session
+not ok 51 - C4 teacher grant and student revision resume never revive the stopped original HDL Session
+  ---
+  duration_ms: 1969.399667
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-app.test.ts:190:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"requestId":"3b585b5a-019f-492b-827d-a0193d4ad95d","error":{"code":"RATE_LIMITED","message":"Request rate limit reached.","retryable":false,"recovery":"Wait before explicitly retrying."}}
+
+    429 !== 200
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 429
+  operator: 'strictEqual'
+  stack: |-
+    Object.login (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-support.ts:86:170)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-app.test.ts:196:50)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+ok 52 - shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+  ---
+  duration_ms: 3211.96424
+  type: 'test'
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 50
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 57804.067956

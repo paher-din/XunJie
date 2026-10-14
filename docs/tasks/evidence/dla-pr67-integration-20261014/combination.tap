@@ -1,0 +1,432 @@
+TAP version 13
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 1 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 69.961022
+  type: 'test'
+  ...
+# Subtest: host readiness requires the original consumer and a current database/runner, without creating business rows
+ok 2 - host readiness requires the original consumer and a current database/runner, without creating business rows
+  ---
+  duration_ms: 2012.589557
+  type: 'test'
+  ...
+# Subtest: host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+ok 3 - host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+  ---
+  duration_ms: 2594.741557
+  type: 'test'
+  ...
+# Subtest: host readiness detects database and consumer scan failure and resumes after successful scans
+ok 4 - host readiness detects database and consumer scan failure and resumes after successful scans
+  ---
+  duration_ms: 2161.701988
+  type: 'test'
+  ...
+# Subtest: a delayed readiness response cannot succeed after shutdown or database failure
+ok 5 - a delayed readiness response cannot succeed after shutdown or database failure
+  ---
+  duration_ms: 3987.086661
+  type: 'test'
+  ...
+# Subtest: health queries time out without accepting late runner success
+ok 6 - health queries time out without accepting late runner success
+  ---
+  duration_ms: 6883.320634
+  type: 'test'
+  ...
+# Subtest: disabled model calls do not block readiness or authorized session access
+ok 7 - disabled model calls do not block readiness or authorized session access
+  ---
+  duration_ms: 2724.785533
+  type: 'test'
+  ...
+# Subtest: a changed recovery generation during a readiness query requires a fresh probe
+ok 8 - a changed recovery generation during a readiness query requires a fresh probe
+  ---
+  duration_ms: 2000.927923
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener withdraws readiness when Fastify is closed directly
+ok 9 - the real HTTP listener withdraws readiness when Fastify is closed directly
+  ---
+  duration_ms: 2009.809893
+  type: 'test'
+  ...
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 10 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 3632.91682
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 11 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 7029.135779
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 12 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 3276.215866
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 13 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 3113.609351
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+ok 14 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 3524.934544
+  type: 'test'
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 15 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 3342.254092
+  type: 'test'
+  ...
+# Subtest: student bootstraps own assignment with trusted generation and no attempt side effect
+ok 16 - student bootstraps own assignment with trusted generation and no attempt side effect
+  ---
+  duration_ms: 3483.253561
+  type: 'test'
+  ...
+# Subtest: normal host serves only built public assets and rejects escaped or hidden paths
+ok 17 - normal host serves only built public assets and rejects escaped or hidden paths
+  ---
+  duration_ms: 1899.67556
+  type: 'test'
+  ...
+# Subtest: normal consumer runs original job without manual worker calls and shutdown confirms its stop
+ok 18 - normal consumer runs original job without manual worker calls and shutdown confirms its stop
+  ---
+  duration_ms: 3566.652339
+  type: 'test'
+  ...
+# Subtest: controlled initializer creates a fresh synthetic host with login and original course policy
+ok 19 - controlled initializer creates a fresh synthetic host with login and original course policy
+  ---
+  duration_ms: 2495.561193
+  type: 'test'
+  ...
+# Subtest: bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+ok 20 - bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+  ---
+  duration_ms: 4856.64687
+  type: 'test'
+  ...
+# Subtest: normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+ok 21 - normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+  ---
+  duration_ms: 3491.058699
+  type: 'test'
+  ...
+# Subtest: bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+ok 22 - bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+  ---
+  duration_ms: 3483.970363
+  type: 'test'
+  ...
+# Subtest: unknown original job survives host restart and is reconciled without a replacement execution
+ok 23 - unknown original job survives host restart and is reconciled without a replacement execution
+  ---
+  duration_ms: 5056.52504
+  type: 'test'
+  ...
+# Subtest: normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+not ok 24 - normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+  ---
+  duration_ms: 2741.608522
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-pr67-integration-20261014/apps/teaching/server/app/i0.test.ts:274:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, lstat '/opt/xunjie-runner/tests/dla-pr67-integration-20261014/apps/student/dist'"
+  code: 'ENOENT'
+  stack: |-
+    realpathSync (node:fs:2862:29)
+    registerI0Static (file:///opt/xunjie-runner/tests/dla-pr67-integration-20261014/apps/teaching/server/app/i0-static.ts:13:16)
+    attachOriginalJobHost (file:///opt/xunjie-runner/tests/dla-pr67-integration-20261014/apps/teaching/server/app/original-job-host.ts:147:30)
+    createI0App (file:///opt/xunjie-runner/tests/dla-pr67-integration-20261014/apps/teaching/server/app/i0.ts:30:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-pr67-integration-20261014/apps/teaching/server/app/i0.test.ts:279:17)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: shutdown refuses a new run whose readiness request was already in flight
+ok 25 - shutdown refuses a new run whose readiness request was already in flight
+  ---
+  duration_ms: 3713.325632
+  type: 'test'
+  ...
+# Subtest: latest main void hook and PR56 boolean hook each use the same readiness route with explicit failure
+ok 26 - latest main void hook and PR56 boolean hook each use the same readiness route with explicit failure
+  ---
+  duration_ms: 105.362681
+  type: 'test'
+  ...
+# Subtest: PR53 integration preserves DL-A HDL readiness while sharing the original health route
+ok 27 - PR53 integration preserves DL-A HDL readiness while sharing the original health route
+  ---
+  duration_ms: 1447.358154
+  type: 'test'
+  ...
+# Subtest: C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating
+ok 28 - C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating
+  ---
+  duration_ms: 8.86756
+  type: 'test'
+  ...
+# Subtest: C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check
+ok 29 - C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check
+  ---
+  duration_ms: 3.317441
+  type: 'test'
+  ...
+# Subtest: C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself
+ok 30 - C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself
+  ---
+  duration_ms: 4.422926
+  type: 'test'
+  ...
+# Subtest: C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt
+ok 31 - C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt
+  ---
+  duration_ms: 5.679581
+  type: 'test'
+  ...
+# Subtest: C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect
+ok 32 - C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect
+  ---
+  duration_ms: 3584.998261
+  type: 'test'
+  ...
+# Subtest: C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain
+ok 33 - C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain
+  ---
+  duration_ms: 2864.597254
+  type: 'test'
+  ...
+# Subtest: C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused
+ok 34 - C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused
+  ---
+  duration_ms: 4309.706257
+  type: 'test'
+  ...
+# Subtest: C4-V08 submission invalidates in-flight teaching in the same short transaction
+ok 35 - C4-V08 submission invalidates in-flight teaching in the same short transaction
+  ---
+  duration_ms: 3051.618923
+  type: 'test'
+  ...
+# Subtest: C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back
+ok 36 - C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back
+  ---
+  duration_ms: 3808.162137
+  type: 'test'
+  ...
+# Subtest: C4-V10 the submission command plan is replayable and guards the authorized student scope
+ok 37 - C4-V10 the submission command plan is replayable and guards the authorized student scope
+  ---
+  duration_ms: 2.871519
+  type: 'test'
+  ...
+# Subtest: C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+    # Subtest: assignment
+    ok 1 - assignment
+      ---
+      duration_ms: 2969.68277
+      type: 'test'
+      ...
+    # Subtest: activity
+    ok 2 - activity
+      ---
+      duration_ms: 2945.745476
+      type: 'test'
+      ...
+    1..2
+ok 38 - C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+  ---
+  duration_ms: 5916.719707
+  type: 'test'
+  ...
+# Subtest: C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant
+ok 39 - C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant
+  ---
+  duration_ms: 2864.0503
+  type: 'test'
+  ...
+# Subtest: C4-V13 disabled student account makes the retained grant non-actionable for a current teacher
+ok 40 - C4-V13 disabled student account makes the retained grant non-actionable for a current teacher
+  ---
+  duration_ms: 3140.370046
+  type: 'test'
+  ...
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 41 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 60.906126
+  type: 'test'
+  ...
+# Subtest: normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+ok 42 - normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+  ---
+  duration_ms: 3337.417017
+  type: 'test'
+  ...
+# Subtest: original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+ok 43 - original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+  ---
+  duration_ms: 3736.871016
+  type: 'test'
+  ...
+# Subtest: fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+ok 44 - fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+  ---
+  duration_ms: 2727.677377
+  type: 'test'
+  ...
+# Subtest: HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+ok 45 - HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+  ---
+  duration_ms: 3061.754922
+  type: 'test'
+  ...
+# Subtest: management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+ok 46 - management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+  ---
+  duration_ms: 2985.241783
+  type: 'test'
+  ...
+# Subtest: activity pause stops a completed program even without a currently pending Job
+ok 47 - activity pause stops a completed program even without a currently pending Job
+  ---
+  duration_ms: 3085.08808
+  type: 'test'
+  ...
+# Subtest: same normal consumer dispatches original C and HDL jobs without a second queue
+ok 48 - same normal consumer dispatches original C and HDL jobs without a second queue
+  ---
+  duration_ms: 3170.714157
+  type: 'test'
+  ...
+# Subtest: interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+ok 49 - interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+  ---
+  duration_ms: 3207.635958
+  type: 'test'
+  ...
+# Subtest: personal pause and account disable propagate stop through original C reconciliation
+ok 50 - personal pause and account disable propagate stop through original C reconciliation
+  ---
+  duration_ms: 3261.07197
+  type: 'test'
+  ...
+# Subtest: normal scheduled consumer and shutdown retain actual termination facts
+ok 51 - normal scheduled consumer and shutdown retain actual termination facts
+  ---
+  duration_ms: 3301.443628
+  type: 'test'
+  ...
+# Subtest: reprogram rejects membership withdrawal after external wait but still persists original exit
+ok 52 - reprogram rejects membership withdrawal after external wait but still persists original exit
+  ---
+  duration_ms: 3062.12723
+  type: 'test'
+  ...
+# Subtest: fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+ok 53 - fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+  ---
+  duration_ms: 3790.305618
+  type: 'test'
+  ...
+# Subtest: fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+ok 54 - fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+  ---
+  duration_ms: 1888.667859
+  type: 'test'
+  ...
+# Subtest: withdrawal stops original C Run and marks teacher course assignment inactive
+ok 55 - withdrawal stops original C Run and marks teacher course assignment inactive
+  ---
+  duration_ms: 2650.897056
+  type: 'test'
+  ...
+# Subtest: HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+ok 56 - HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+  ---
+  duration_ms: 3277.287161
+  type: 'test'
+  ...
+# Subtest: C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+ok 57 - C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+  ---
+  duration_ms: 2980.02705
+  type: 'test'
+  ...
+# Subtest: C4 teacher grant and student revision resume never revive the stopped original HDL Session
+ok 58 - C4 teacher grant and student revision resume never revive the stopped original HDL Session
+  ---
+  duration_ms: 3145.367655
+  type: 'test'
+  ...
+# Subtest: shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+ok 59 - shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+  ---
+  duration_ms: 2959.159078
+  type: 'test'
+  ...
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+ok 60 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 4337.752865
+  type: 'test'
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 61 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 3100.430006
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 62 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 3143.004387
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 63 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 3157.381787
+  type: 'test'
+  ...
+# Subtest: H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+ok 64 - H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+  ---
+  duration_ms: 3211.738491
+  type: 'test'
+  ...
+# Subtest: H4 stop before dispatch and provider failure never prevent confirmed source reads
+ok 65 - H4 stop before dispatch and provider failure never prevent confirmed source reads
+  ---
+  duration_ms: 6113.017344
+  type: 'test'
+  ...
+# Subtest: H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+ok 66 - H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+  ---
+  duration_ms: 2919.409351
+  type: 'test'
+  ...
+1..66
+# tests 68
+# suites 0
+# pass 67
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 113823.048917

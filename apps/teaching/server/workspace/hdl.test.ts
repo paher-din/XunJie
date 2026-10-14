@@ -1,3 +1,4 @@
+import {ApiError} from '../app/errors.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixture,assigned,opened,command,snapshot,view} from './test-support.ts';
@@ -155,4 +156,15 @@ test('Trace polling retains its cursor until the original program or interaction
     assert.equal(confirmed.operation?.result?.sequence,1);assert.equal(confirmed.operation?.result?.finalFrame.simTimePs,'10000');assert.equal(confirmed.nextSequence,1);
     assert.deepEqual(read(program.result.sessionId,confirmed.nextSequence),{operation:null,nextSequence:1});
   }finally{await s.f.close();}
+});
+test('replacement rechecks the supplied transaction authority after its external stop wait',async()=>{
+ const s=await setup();try{
+  const b=s.service.build(actor,s.attemptId,'guard-build',s.f.generation(),{expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId});await s.service.processJob(b.result.jobId);
+  const p=await s.service.program(actor,s.attemptId,'guard-program',s.f.generation(),{expectedAttemptRevision:s.revision(),buildId:b.result.buildId});await s.service.processJob(p.result.jobId);
+  let reads=0,writes=0;
+  const guard=(tx:import('../db/transaction.ts').Transaction,use:'read'|'write')=>{assert(tx.get('SELECT id FROM users WHERE id=?',actor.userId));if(use==='write'&&++writes>1)throw new ApiError('UNAUTHENTICATED');if(use==='read')reads++;return actor;};
+  await assert.rejects(s.service.program(actor,s.attemptId,'guard-replace',s.f.generation(),{expectedAttemptRevision:s.revision(),buildId:b.result.buildId,replaceSessionId:p.result.sessionId,expectedSessionRevision:1},guard),(error:unknown)=>error instanceof ApiError&&error.code==='UNAUTHENTICATED');
+  assert(reads>=3);assert.equal(writes,2);
+  assert(s.f.db.withTransaction(tx=>s.service.readSession(tx,actor,p.result.sessionId)).terminationConfirmed);
+ }finally{await s.f.close();}
 });

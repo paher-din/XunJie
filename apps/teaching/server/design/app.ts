@@ -6,7 +6,7 @@ import { createVerificationApp, type VerificationOptions } from '../access/app.t
 import { finishRecordCommand, readRecordCommand } from '../db/records-adapter.ts';
 import { resultSchema, validateReceiptScope } from './storage.ts';
 import { releaseContext } from './activities.ts';
-import { executeRuntimeCommand, type queryRuntime } from './readiness.ts';
+import { executeRuntimeCommand, type ExecutionReadiness } from './readiness.ts';
 import type { RunnerTransport } from '../records/runner.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
@@ -15,7 +15,7 @@ import { projectDraftPreview } from './projection.ts';
 import { contentPatchSchema, versionSchema } from './model.ts';
 import { commitCommand, readMaterial, saveMaterial, draftCourse, readDraft, createStoredDraft, patchStoredDraft, checkStoredDraft, draftMaterials, teacherConcernSchema, type DesignResult } from './storage.ts';
 
-export interface DesignVerificationOptions extends VerificationOptions { currentGeneration: () => string; completion?: boolean; runner?: RunnerTransport; teacherAgent?: TeacherAgentOptions }
+export interface DesignVerificationOptions extends VerificationOptions { currentGeneration: () => string; completion?: boolean; runner?: RunnerTransport; teacherAgent?: TeacherAgentOptions; queryExecution?: (request:FastifyRequest,blueprintId:string)=>Promise<ExecutionReadiness> }
 const id = z.string().min(1).max(128);
 const paramsSchema = z.strictObject({ id });
 const keySchema = z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/);
@@ -106,7 +106,7 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
   app.post('/api/blueprints/:id/checks', async request => {
     const blueprintId = parseRequest(paramsSchema, request.params).id;
     const input = parseRequest(checksInput, request.body);
-    let readiness: Awaited<ReturnType<typeof queryRuntime>> | undefined;
+    let readiness: ExecutionReadiness | undefined;
     const checks = (replayOnly = false) => execute(request, tx => draftCourse(tx, blueprintId), { name: 'draft.checks', target: blueprintId, input,
       apply: (tx, actor) => {
         const concerns = input.concerns.map(({ resolution, ...concern }) => ({ ...concern, ...(resolution === undefined ? {} : { resolution }) }));
@@ -120,7 +120,7 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
         return { kind: 'checks', report: context.report };
       } }, replayOnly);
     return options.completion
-      ? executeRuntimeCommand(options.runner, () => checks(true), value => { readiness = value; return checks(); })
+      ? executeRuntimeCommand(options.runner, () => checks(true), value => { readiness = value; return checks(); }, options.queryExecution?()=>options.queryExecution!(request,blueprintId):undefined)
       : checks();
   });
   const design = {

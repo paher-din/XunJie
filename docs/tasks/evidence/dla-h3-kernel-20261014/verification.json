@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-14",
+  "scope": "runner kernel only",
+  "teachingTypecheck": "passed",
+  "teachingBuild": "passed",
+  "gccWallWextraWerror": "passed",
+  "isolatedIcarusCli": {
+    "toolchain": "iverilog 12.0-2build2 extracted; no system install",
+    "vectors": 2800,
+    "samples": 8400,
+    "incorrectLogicCaught": true,
+    "nodeSandboxAcceptance": false
+  },
+  "kernelFinal": {
+    "tests": 72,
+    "pass": 69,
+    "fail": 0,
+    "skipped": 3,
+    "log": "kernel-final.tap"
+  },
+  "finalTargeted": {
+    "tests": 17,
+    "pass": 17,
+    "fail": 0,
+    "skipped": 0,
+    "log": "kernel-final-targeted.tap"
+  },
+  "sourceHashes": {
+    "contracts/runner/alu.ts": "c24f6a265ba163e2d18852a2cc4da30bb4aa4c4cb25fb82f0aed3de084ae166b",
+    "contracts/runner/hdl.ts": "649275959981339444841a2a94a4529a4619b547bf38f87ef47ce5c0b9eb6461",
+    "runner/alu-check.ts": "bae1dbfecf7ac5338147a9fcde20a847f90c12ada23ef1df94ce9358a3e0d427",
+    "runner/alu-simulation.ts": "1adf4d11463ab346978a74b5719fdbb9eccdab54c0f06e8a2be36015f3676e3c",
+    "runner/hdl-alu-worker.ts": "a44b1b17312b9e12a23c47dcb8e92349eb02b5d4447dc6cb20bd7caf6d1edc92",
+    "runner/hdl-bridge.c": "9074209d17b01f5bb7310ef280cd3b1c0f51cd9af6639c06656d908a8ef75bfc",
+    "runner/hdl-ports.c": "2fe8b8d0695f2a4b81d73a809a85a88b088188002c0f053691c5e0d8ce9a349f",
+    "runner/hdl-node.ts": "cdc908ff9f0fe6883e52552b26eb804b0ed1e10c63f6d8858e3228edb6c29fd7",
+    "runner/hdl-executor.ts": "cd4e8e5c25cea89b191309ed4ecb12485a7d7faf8291de8e280d5edba260eb6a",
+    "runner/hdl-ledger.ts": "2ecbe616e09767aefd896f17e83f8233af402a64c34d3822b5fada55f12b6251",
+    "runner/fingerprint.ts": "5da6f879d4ac88b85ce17ceb7db6098972855fbb1908be3af0eae3c848dd636f",
+    "runner/ssh-control.ts": "a1ed4cce022e2f11e1300cf346dc5ea948f45c163a4c7209938ce7d25063d60e"
+  },
+  "newImagesBuilt": false,
+  "nodeDeployment": false,
+  "targetRuntime2800Executed": false,
+  "courseBindingAcceptance": false,
+  "browserAcceptance": false,
+  "modelRequests": 0
+}

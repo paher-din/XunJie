@@ -1,0 +1,165 @@
+{
+  "sourceCommit": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+  "date": "2026-10-13",
+  "node": "24.21.0",
+  "policy": "xunjie-dlc-v1 (enforce)",
+  "command": "/opt/xunjie-runner/node/bin/node /opt/xunjie-runner/source-i0-c-cde69cc/runner/hdl-acceptance.ts /opt/xunjie-runner/config.dlc-i0-c-cde69cc.json",
+  "record": {
+    "passed": true,
+    "fingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+    "validatedAt": "2026-10-13T09:51:51.930Z",
+    "evidence": [
+      {
+        "suite": "hdl",
+        "exitCode": 0,
+        "outputHash": "023ab4b69cde462685842e66310aeb651d50a5b4e7285bb24095438badae7284"
+      },
+      {
+        "suite": "c",
+        "exitCode": 0,
+        "outputHash": "fb6e28a7b67eb9725111654a6cbc2e5cfb21552469ca78e8f8ff03253ab52e0e"
+      }
+    ]
+  },
+  "hdlReadiness": {
+    "data": {
+      "ready": true,
+      "profile": {
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+        "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "fingerprint": {
+        "kernel": "6.8.0-146-generic",
+        "node": "v24.21.0",
+        "engine": "29.8.2",
+        "cgroup": "2",
+        "seccomp": [
+          "name=seccomp,profile=builtin"
+        ],
+        "profile": {
+          "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+          "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+          "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+          "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+          "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+        },
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "fingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+      "validation": {
+        "passed": true,
+        "fingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+        "validatedAt": "2026-10-13T09:51:51.930Z",
+        "evidence": [
+          {
+            "suite": "hdl",
+            "exitCode": 0,
+            "outputHash": "023ab4b69cde462685842e66310aeb651d50a5b4e7285bb24095438badae7284"
+          },
+          {
+            "suite": "c",
+            "exitCode": 0,
+            "outputHash": "fb6e28a7b67eb9725111654a6cbc2e5cfb21552469ca78e8f8ff03253ab52e0e"
+          }
+        ]
+      }
+    }
+  },
+  "cReadiness": {
+    "data": {
+      "ready": true,
+      "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+      "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+      "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+      "fingerprint": {
+        "kernel": "6.8.0-146-generic",
+        "node": "v24.21.0",
+        "engine": "29.8.2",
+        "cgroup": "2",
+        "seccomp": [
+          "name=seccomp,profile=builtin"
+        ],
+        "profile": {
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+          "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+          "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+          "approvedResultFiles": [
+            "report.txt"
+          ]
+        },
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "validation": {
+        "passed": true,
+        "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+        "fingerprint": {
+          "kernel": "6.8.0-146-generic",
+          "node": "v24.21.0",
+          "engine": "29.8.2",
+          "cgroup": "2",
+          "seccomp": [
+            "name=seccomp,profile=builtin"
+          ],
+          "profile": {
+            "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+            "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+            "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+            "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+            "approvedResultFiles": [
+              "report.txt"
+            ]
+          },
+          "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+        },
+        "evidence": [
+          {
+            "suite": "guest",
+            "exitCode": 0,
+            "outputHash": "823e0061233cc0eaa72d0c5fa5f5aba5eba7a1d547aa971c922a614131ff5180"
+          },
+          {
+            "suite": "ssh",
+            "exitCode": 0,
+            "outputHash": "4276e46edcc288c173c0a23820b566b41c7af48a4353f8fd1d48667f2034dcf0"
+          },
+          {
+            "suite": "types",
+            "exitCode": 0,
+            "outputHash": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8"
+          }
+        ],
+        "validatedAt": "2026-10-13T09:29:47.600Z"
+      }
+    }
+  },
+  "logs": [
+    {
+      "suite": "hdl",
+      "exitCode": 0,
+      "outputHash": "023ab4b69cde462685842e66310aeb651d50a5b4e7285bb24095438badae7284",
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "skipped": 0,
+      "output": "▶ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination\n  ✔ same vvp session preserves registers and an exact duplicate never advances (157.69024ms)\n  ✔ wrong port width and syntax are actual build failures (2083.525984ms)\n  ✔ wrong segment output, repaired output and X/Z are sampled from HDL (6793.960729ms)\n  ✔ untrusted stdout, proc fd and shell cannot forge the signal channel (3429.824982ms)\n  ✔ unsupported shell invocation fails without creating a forged frame (3397.720312ms)\n  ✔ original scope and generation are mandatory after stopping (1.576302ms)\n  ✔ two real instances keep independent registers and exhaust the session pool (9024.758666ms)\n  ✔ real scan samples keep the selected digit and NBA state with explicit finite coverage (3868.756055ms)\n  ✔ a zero-time loop cannot progress and is terminated, not reported as a successful frame (5629.241313ms)\n✔ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (37875.667129ms)\nℹ tests 10\nℹ suites 0\nℹ pass 10\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 38153.039574\n"
+    },
+    {
+      "suite": "c",
+      "exitCode": 0,
+      "outputHash": "fb6e28a7b67eb9725111654a6cbc2e5cfb21552469ca78e8f8ff03253ab52e0e",
+      "tests": 52,
+      "pass": 51,
+      "fail": 0,
+      "skipped": 1,
+      "output": "▶ node-local control synthetic checks\n  ✔ parallel identical submit starts once and asynchronous ACL cannot create a race (121.782136ms)\n  ✔ cancel-before-submit is durable and never creates a new unit (41.60211ms)\n  ✔ two slots and one attempt guard include unresolved create operations (167.93513ms)\n  ✔ ACL revoked while queued is checked again before dispatch (49.855943ms)\n  ✔ process crash keeps pending creation unknown and never releases its slot (353.017454ms)\n  ✔ corrupt/partial journal and different node generation stop admission (21.872288ms)\n  ✔ credentials or source bodies cannot be copied into control metadata (22.226414ms)\n  ✔ generation advance needs trusted registration, refuses rollback and survives ordinary restart (50.394977ms)\n  ✔ preparation failure before any unit intent does not occupy a phantom slot (51.143131ms)\n  ✔ confirmed recovery wins completion race and cancelled result remains readable (102.565287ms)\n  ✔ old queued work becomes stale after trusted generation registration (46.245297ms)\n✔ node-local control synthetic checks (1035.551035ms)\n✔ course rules bind selected snapshot inputs, records and approved error exits (4.358281ms)\n✔ invalid course selection and profile cannot reach trusted oracle (1.686128ms)\n✔ missing input case avoids every snapshot file and implied directory without reserving names (1.430123ms)\n✔ overflow is a trusted exit-2 case and maximum normal N still covers all words (0.887108ms)\n▶ dedicated Linux synthetic container execution and resource checks\n  ✔ fixed C17 static program runs non-root and can only read approved input (1657.548202ms)\n  ✔ stalled real GCC receives the fixed 30 second compile deadline (30574.186233ms)\n  ✔ root/source writes, Windows files, engine socket and external network are denied (1702.031898ms)\n  ✔ seccomp and no-new-privileges are effective; keys, verifier and other jobs are absent (1801.532773ms)\n  ✔ execution timeout stops the complete container (11486.056602ms)\n  ✔ over-output is terminated instead of only clipped (1775.908771ms)\n  ✔ 512 MiB OOM has engine evidence (3171.268275ms)\n  ✔ 128 MiB work limit is real and visible to the trusted host (1655.490892ms)\n  ✔ pids constraint refuses forks and cancellation leaves no live root process (2612.590391ms)\n  ✔ cancelled-before-start cannot execute a late-created unit (1229.673539ms)\n  ✔ cancellation around start request repeatedly stops a possibly late-starting unit (1744.460515ms)\n  ✔ report is collected only after termination and symlinks stay incomplete (1559.630517ms)\n  ✔ durable control uses actual fixed-snapshot containers and duplicate submit returns original results (1623.807696ms)\n✔ dedicated Linux synthetic container execution and resource checks (62602.768934ms)\n✔ immutable node files become visible only after a complete fsynced write (346.839198ms)\n✔ publication leaves no staging name behind, on success and on a refused overwrite (104.184507ms)\n﹣ authenticated dedicated VM control and supervision (1.111519ms) # SKIP\n✔ report oracle uses approved ASCII word/line/byte/tie semantics (2.724932ms)\n✔ report verifies all semantics while accepting non-semantic whitespace and bound sandbox names (4.023662ms)\n✔ JSON path quoting preserves semantic spaces and escaped names (0.31394ms)\n✔ returns bound content facts, distinguishes missing and unsafe files (3.827804ms)\n✔ enforces combined byte budget and rejects invalid UTF-8 (2.609974ms)\n✔ rejects intermediate and final symlinks in Linux (2.164398ms)\n✔ UTF-8 BOM remains in confirmed result text, byte count and checksum (0.669128ms)\n✔ maps four course operations to arrays and resolves files by immutable identity (3.071929ms)\n✔ rejects unapproved files, command/word injection, zero count and output escape (0.890143ms)\n✔ top accepts the approved C int maximum and rejects overflow exactly (0.438564ms)\n✔ hashes exact UTF-8 content and byte-sorted compact manifests (2.484619ms)\n✔ rejects traversal, absolute, drive, UNC, backslash, NUL and empty components (0.937673ms)\n✔ rejects stale body and manifest hashes and duplicate file identities (0.465886ms)\n✔ enforces file count and UTF-8 byte budget including multibyte text (13.449793ms)\n✔ builds fixed compiler argv only from approved C sources (3.146553ms)\n✔ rejects malformed input at the runtime boundary (0.693512ms)\n✔ stdout passed and exit zero cannot claim course success (6.483077ms)\n✔ trusted expected exits one and two can pass error-handling checks (0.969042ms)\n✔ limits, tooling failures, unresolved termination and missing files remain incomplete (0.557357ms)\nℹ tests 52\nℹ suites 0\nℹ pass 51\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 66343.831001\n"
+    }
+  ],
+  "boundary": "Actual approved target VM HDL/C runner maintenance with isolated synthetic inputs. HTTPS, real UI/browser, full app/NFR and teaching effectiveness unverified."
+}

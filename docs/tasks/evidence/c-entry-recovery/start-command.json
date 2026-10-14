@@ -1,0 +1,38 @@
+{
+  "argv": [
+    "wsl",
+    "-d",
+    "Ubuntu",
+    "-u",
+    "root",
+    "--",
+    "/usr/bin/systemd-run",
+    "--unit=xunjie-i0-entry-recovered-20261014",
+    "--property=Restart=no",
+    "--property=KillMode=control-group",
+    "--property=TimeoutStopSec=190s",
+    "--property=UMask=0077",
+    "--property=WorkingDirectory=/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching",
+    "--setenv=PATH=/opt/xunjie-runner/node/bin:/usr/bin:/bin",
+    "--setenv=PORT=3443",
+    "--setenv=TMPDIR=/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014",
+    "--setenv=XUNJIE_I0_CONFIG=/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host-recovered-20261014.json",
+    "/opt/xunjie-runner/node/bin/node",
+    "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching/dist/server/main.js"
+  ],
+  "exitCode": 0,
+  "unit": "xunjie-i0-entry-recovered-20261014.service",
+  "automaticStartup": false,
+  "stopCommand": [
+    "wsl",
+    "-d",
+    "Ubuntu",
+    "-u",
+    "root",
+    "--",
+    "systemctl",
+    "stop",
+    "xunjie-i0-entry-recovered-20261014.service"
+  ],
+  "secretsInArguments": false
+}

@@ -1,0 +1,341 @@
+{
+  "note": "raw gzip preserves original bytes; display text normalizes line endings/local paths, strips trailing spaces and redundant EOF blanks; original failures/cancellation retained",
+  "logs": [
+    {
+      "evidence": "windows-bootstrap-green.txt",
+      "rawGzip": "windows-bootstrap-green.txt.gz",
+      "rawSha256": "41c461dab9fe9dbfccc770b1344c91e482f0cd22ae676921d9ed4fbcdfaf44ec",
+      "gzipSha256": "2819bc032d2071639d951b1ddf37fdc17f33aa7fa7dd3d33aba2414946120008",
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-bootstrap-red.txt",
+      "rawGzip": "windows-bootstrap-red.txt.gz",
+      "rawSha256": "b99a629a3a7f51123197d6916b3dd13668081ae1203d869a8ad632c8b1b68922",
+      "gzipSha256": "6d9c1bb2cb702a68905cd203dc63c5e321160e79b9fd2077da29cbec7ebcd185",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-combined-after-c4.txt",
+      "rawGzip": "windows-combined-after-c4.txt.gz",
+      "rawSha256": "ddbeef39f81a9e95cbf44a8d2ce766e65ecffc3e4624f6ac72e4ab02b51b19ef",
+      "gzipSha256": "4d41e8dba8be3fafdd2f020a458f953fefef8d5cec2864f74ee7b7cdfce3cf07",
+      "counts": {
+        "tests": 52,
+        "pass": 52,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-combined-first.txt",
+      "rawGzip": "windows-combined-first.txt.gz",
+      "rawSha256": "8fc592e36f89b7f5f3b4e75e7a19749ca258bc6da5177571c7698e57ecc499ad",
+      "gzipSha256": "d18969d2b9edb1016fcbb5b141a2dd0035bd3ef3927275042b1d91dbd47cf010",
+      "counts": {
+        "tests": 35,
+        "pass": 34,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-combined-review-fix.txt",
+      "rawGzip": "windows-combined-review-fix.txt.gz",
+      "rawSha256": "a983ee3937e703e23b9230bcb8c5091b5443b80d4d2a47918b35c217eb3e97df",
+      "gzipSha256": "ef94897ae9a6d0e02cb28e05880488e9b9262c33533861a1d345eed3b05549d5",
+      "counts": {
+        "tests": 53,
+        "pass": 53,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-docs-before-review.txt",
+      "rawGzip": "windows-docs-before-review.txt.gz",
+      "rawSha256": "627c1927a0f1fd260c92c2d0138f24a0b1cfdb5423afe76621886319d11ec556",
+      "gzipSha256": "bb6c8ac4844e87b9ea1071c21cb4e0c449dbb82c49989983dbbac67f85d3aac2",
+      "counts": {}
+    },
+    {
+      "evidence": "windows-docs-review-fix.txt",
+      "rawGzip": "windows-docs-review-fix.txt.gz",
+      "rawSha256": "627c1927a0f1fd260c92c2d0138f24a0b1cfdb5423afe76621886319d11ec556",
+      "gzipSha256": "bb6c8ac4844e87b9ea1071c21cb4e0c449dbb82c49989983dbbac67f85d3aac2",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-clock-corrected.txt",
+      "rawGzip": "linux-clock-corrected.txt.gz",
+      "rawSha256": "f5c30da2fe6754f75e9f2b57635759d457b644f80bd12005d0f6ec2753053ebc",
+      "gzipSha256": "df17dc30f6f67ff5a41a08ac263ac1bd115f697e221de4d72024bd2c611e8c5f",
+      "counts": {
+        "tests": 5,
+        "pass": 5,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-npm-ci.txt",
+      "rawGzip": "windows-npm-ci.txt.gz",
+      "rawSha256": "cb9c5adfae7ba9175e74ca947ea0069db01ceb79bd955e878f8f680e4f979826",
+      "gzipSha256": "b2bc27d7136365ed731885e962693721e315685199c98224354ed81646ef76b6",
+      "counts": {}
+    },
+    {
+      "evidence": "windows-reopen-first.txt",
+      "rawGzip": "windows-reopen-first.txt.gz",
+      "rawSha256": "f4272ccbef203a46d24fff75fdae959dfe7b9fbb6abafe2f1600d0543901ef90",
+      "gzipSha256": "ffabd82ac860c19d36944ccc55d6a5935f4b343323227e40327266ca441645d0",
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-shutdown-green.txt",
+      "rawGzip": "windows-shutdown-green.txt.gz",
+      "rawSha256": "a8c760b190d1116745d0774136be83d3b617aedf1b60997bf857a75e5547ba03",
+      "gzipSha256": "c1c4abadac80e817aebaca99874228d3c2914b2ad17802a909977c154273dcf0",
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-shutdown-red-correct.txt",
+      "rawGzip": "windows-shutdown-red-correct.txt.gz",
+      "rawSha256": "b97758073a1ed0f60f8da37aabd3ad26cb9fb79db485542511e324d1014f0282",
+      "gzipSha256": "211e05912cc7f4b132cc902fac5c05be69c24063de3b6cfd07edecc221c37b2d",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-shutdown-red-valid.txt",
+      "rawGzip": "windows-shutdown-red-valid.txt.gz",
+      "rawSha256": "296912a2f243b6570e8d2d2c6ccefb80fb3fc38e8f3f36ae3185faff87042e88",
+      "gzipSha256": "d574f442f433ebd0e28882ad1b9d22e06b0b664fd68d1f33dd2befa3ae81175e",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 0,
+        "cancelled": 1,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-shutdown-red.txt",
+      "rawGzip": "windows-shutdown-red.txt.gz",
+      "rawSha256": "bf4571585f36445b10f317a4459b178c753fd3f819abc85af05cfa28e3deae06",
+      "gzipSha256": "c9061fb2ccf073083ccd3317c37bd3dd278da8e0ed14cc4b140f850d03a0f168",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-submission-green.txt",
+      "rawGzip": "windows-submission-green.txt.gz",
+      "rawSha256": "41c0d046ca1f7ce4fc494d4c1a9e62155a385ce174a2e2376365937a557e0d9b",
+      "gzipSha256": "a0fb8f2b58cd02bd21e7c85255072ebe432af232e218cf096b6e786cdd11049e",
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-submission-red.txt",
+      "rawGzip": "windows-submission-red.txt.gz",
+      "rawSha256": "498915ef3414dfad0666e0ee1cae2376ff58ef24b7b4b3291cd7c01b64e636d6",
+      "gzipSha256": "56ecf527024c903cce23f769f131973187dc0045c6f0569c46c56f7967add03d",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "windows-typecheck-final-windows.txt",
+      "rawGzip": "windows-typecheck-final-windows.txt.gz",
+      "rawSha256": "df01ad9d808d6ac476d75ade2bd58603edeeeb159e32bf8cb7549e090d6eb0ac",
+      "gzipSha256": "b5f3ae815422f47911cc4cf2f2a86b0188cda1ca62cefac7ce590d12f051b307",
+      "counts": {}
+    },
+    {
+      "evidence": "windows-typecheck-first.txt",
+      "rawGzip": "windows-typecheck-first.txt.gz",
+      "rawSha256": "5d7a0b8c8921a30bdc87fa7db3419da4b12f7de139d9664d8536d18b7fa38664",
+      "gzipSha256": "2a1fad2689172632b854ad70ae592bfb4fc516ccebdd65f06f5d39d0c9a526fc",
+      "counts": {}
+    },
+    {
+      "evidence": "windows-typecheck-merged.txt",
+      "rawGzip": "windows-typecheck-merged.txt.gz",
+      "rawSha256": "df01ad9d808d6ac476d75ade2bd58603edeeeb159e32bf8cb7549e090d6eb0ac",
+      "gzipSha256": "b5f3ae815422f47911cc4cf2f2a86b0188cda1ca62cefac7ce590d12f051b307",
+      "counts": {}
+    },
+    {
+      "evidence": "windows-typecheck-review-fix.txt",
+      "rawGzip": "windows-typecheck-review-fix.txt.gz",
+      "rawSha256": "df01ad9d808d6ac476d75ade2bd58603edeeeb159e32bf8cb7549e090d6eb0ac",
+      "gzipSha256": "b5f3ae815422f47911cc4cf2f2a86b0188cda1ca62cefac7ce590d12f051b307",
+      "counts": {}
+    },
+    {
+      "evidence": "windows-ui-build.txt",
+      "rawGzip": "windows-ui-build.txt.gz",
+      "rawSha256": "9116f262b84d580bcdbf031e467f9abc3b35d6ad1887485a917655355ddaeea7",
+      "gzipSha256": "5a54b63e986db97b4e0d5944e5736a6742e12a765edb352cf1fb0eba97513e01",
+      "counts": {}
+    },
+    {
+      "evidence": "windows-ui-npm-ci.txt",
+      "rawGzip": "windows-ui-npm-ci.txt.gz",
+      "rawSha256": "e327d3085f03d6c2d631fb6522b5b57a83792045283603678658d79998dbd886",
+      "gzipSha256": "476cdb446756522024230354ef9eae31b22a69a1b6713aab924b2e195bcdef56",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-first-environment.txt",
+      "rawGzip": "linux-first-environment.txt.gz",
+      "rawSha256": "6733361b12f79148b0324f861b55190093a61e1216805c88dca4fb7b5eb98d2d",
+      "gzipSha256": "0463c3bb9ccfdf54c5eb37bde680763984e4f48b5c8016206edca67c6ce6bbf1",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-first-npm-ci.txt",
+      "rawGzip": "linux-first-npm-ci.txt.gz",
+      "rawSha256": "0d63509d0d8cd42d0222ca41ab8e57eb23a3a37a7932aa3e49eb4535483d8483",
+      "gzipSha256": "d12cd64a5efa3a0cec12f7a556a667887f765937f032cdb940ef0a451cefd569",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-first-typecheck.txt",
+      "rawGzip": "linux-first-typecheck.txt.gz",
+      "rawSha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+      "gzipSha256": "ae873db1b703f9f650fc591c8396c51465d3c0bb8fb425621cd3e50c8f53e19c",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-first-build.txt",
+      "rawGzip": "linux-first-build.txt.gz",
+      "rawSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "gzipSha256": "b5ff5b6a9fc28a88112f7ce2fb74c987068e5285d24a1248f955d37d272fe686",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-first-full.txt",
+      "rawGzip": "linux-first-full.txt.gz",
+      "rawSha256": "fe0f61573080322f6d91cd1bcab9d679c76fb75153f70d665e82897ab267ba57",
+      "gzipSha256": "635fcbda86066c00f87783be4b8e2a49eb5fc6dfb681567586b9e038ed398ba5",
+      "counts": {
+        "tests": 414,
+        "pass": 402,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 11,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "linux-final-environment.txt",
+      "rawGzip": "linux-final-environment.txt.gz",
+      "rawSha256": "6733361b12f79148b0324f861b55190093a61e1216805c88dca4fb7b5eb98d2d",
+      "gzipSha256": "0463c3bb9ccfdf54c5eb37bde680763984e4f48b5c8016206edca67c6ce6bbf1",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-final-npm-ci.txt",
+      "rawGzip": "linux-final-npm-ci.txt.gz",
+      "rawSha256": "cf650ccabf9908902d6313edbeef9c7340ba9a60244332c672130aaf7c25881e",
+      "gzipSha256": "12d9621f2d993cf4e178492a850fd0461e3d3be7f46365c96273cd43d2654831",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-final-typecheck.txt",
+      "rawGzip": "linux-final-typecheck.txt.gz",
+      "rawSha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+      "gzipSha256": "ae873db1b703f9f650fc591c8396c51465d3c0bb8fb425621cd3e50c8f53e19c",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-final-build.txt",
+      "rawGzip": "linux-final-build.txt.gz",
+      "rawSha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "gzipSha256": "b5ff5b6a9fc28a88112f7ce2fb74c987068e5285d24a1248f955d37d272fe686",
+      "counts": {}
+    },
+    {
+      "evidence": "linux-final-full.txt",
+      "rawGzip": "linux-final-full.txt.gz",
+      "rawSha256": "3fbaa864fc37319c6c1d07fbca51deb5bf97427fb0271405889a25747c25a9da",
+      "gzipSha256": "28f6acda1a885cad45162fe592dfa03b6786866b583a9e1fb1b73e97f31c5d39",
+      "counts": {
+        "tests": 419,
+        "pass": 408,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 11,
+        "todo": 0
+      }
+    },
+    {
+      "evidence": "documentation-final.txt",
+      "rawGzip": "documentation-final.txt.gz",
+      "rawSha256": "4137ea037cba3fff30c1d6ef2d5fa41b93df14a3388db74a4fe60af3ebf0e2e6",
+      "gzipSha256": "5ca2e4b031d66af409706896df837f40cc7e15256aac6a7ed692878b850d7775",
+      "counts": {}
+    }
+  ]
+}

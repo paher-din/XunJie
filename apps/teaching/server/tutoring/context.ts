@@ -29,6 +29,8 @@ export function projectHdlHelpCurrentState(hdl: AuthorizedHdlHelpContext): HdlHe
     snapshotHash: hdl.snapshotHash,
     buildId: hdl.build.buildId,
     buildStatus: hdl.build.status,
+    buildResultHash:createHash('sha256').update(JSON.stringify(hdl.build),'utf8').digest('hex'),
+    ...(hdl.workspaceRevision===undefined?{}:{workspaceRevision:hdl.workspaceRevision}),
     ...(hdl.session ? {
       sessionId: hdl.session.sessionId,
       sessionRevision: hdl.session.sessionRevision,
@@ -36,6 +38,9 @@ export function projectHdlHelpCurrentState(hdl: AuthorizedHdlHelpContext): HdlHe
       sessionGeneration: hdl.session.identity.recoveryGeneration,
       confirmedSequence: hdl.session.confirmedSequence,
       simTimePs: hdl.session.simTimePs,
+      ...(hdl.session.pendingOperationId?{pendingOperationId:hdl.session.pendingOperationId}:{}),
+      stopRequested:hdl.session.stopRequested,
+      terminationConfirmed:hdl.session.terminationConfirmed,
     } : {}),
     ...(hdl.operation ? {
       operationId: hdl.operation.operationId,
@@ -275,6 +280,7 @@ function validHdlContext(input: AuthorizedStudentHelpContext): boolean {
     session.identity.recoveryGeneration !== input.current.recoveryGeneration ||
     !sameHdlScope(input, session.identity.scope) ||
     session.status !== "active" ||
+    session.pendingOperationId !== undefined ||
     session.stopRequested ||
     session.terminationConfirmed ||
     !Number.isSafeInteger(session.sessionRevision) ||
@@ -368,12 +374,17 @@ function sameHdlCurrent(
     current.snapshotHash === hdl.snapshotHash &&
     current.buildId === hdl.build.buildId &&
     current.buildStatus === hdl.build.status &&
+    current.buildResultHash === createHash('sha256').update(JSON.stringify(hdl.build),'utf8').digest('hex') &&
+    current.workspaceRevision === hdl.workspaceRevision &&
     current.sessionId === session?.sessionId &&
     current.sessionRevision === session?.sessionRevision &&
     current.sessionStatus === session?.status &&
     current.sessionGeneration === session?.identity.recoveryGeneration &&
     current.confirmedSequence === session?.confirmedSequence &&
     current.simTimePs === session?.simTimePs &&
+    current.pendingOperationId === session?.pendingOperationId &&
+    current.stopRequested === session?.stopRequested &&
+    current.terminationConfirmed === session?.terminationConfirmed &&
     current.operationId === operation?.operationId &&
     current.resultHash === operation?.resultHash;
 }

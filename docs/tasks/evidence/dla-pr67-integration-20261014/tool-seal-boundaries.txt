@@ -1,0 +1,1 @@
+Passed: malformed/private/mixed/weak recipient PEM and missing maintenance entry rejected without stdout. No real credential read, network or filesystem mutations.

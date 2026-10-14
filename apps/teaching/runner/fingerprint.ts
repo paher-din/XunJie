@@ -19,6 +19,7 @@ export async function nodeFingerprint(config:{source:string;profile:object},exec
     .map(name=>[name,sha256(readFileSync(join(config.source,name)))]);
   sources.push(['contracts/runner/index.ts',contractHash(config.source,'index.ts')]);
   sources.push(['contracts/runner/hdl.ts',contractHash(config.source,'hdl.ts')]);
+  sources.push(['contracts/runner/alu.ts',contractHash(config.source,'alu.ts')]);
   const fingerprint={kernel:release(),node:process.version,engine:info.ServerVersion,cgroup:info.CgroupVersion,
     seccomp:info.SecurityOptions?.filter((value:string)=>value.startsWith('name=seccomp')),profile:config.profile,
     sourceHash:sha256(JSON.stringify(sources))};

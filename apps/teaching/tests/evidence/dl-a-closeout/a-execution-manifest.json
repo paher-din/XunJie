@@ -1,0 +1,119 @@
+{
+  "version": "dla-a-handoff-v1",
+  "sourceCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+  "mainBaseline": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+  "publication": {
+    "runtimeSourceOnRemote": false,
+    "fixedArchive": "local retained artifact; not uploaded",
+    "branch": "codex/dl-a-mainline-closeout",
+    "permission": "No code push authorized by this preparation"
+  },
+  "archive": {
+    "name": "xunjie-dla-89c85ed-source.zip",
+    "format": "zip from raw Git blobs, preserved Unix modes",
+    "prefix": "XunJie/",
+    "bytes": 26018680,
+    "sha256": "26ada290c37539375107795251b289fae0d6f3d5e75350f80a556efd0fe01764",
+    "files": 773,
+    "matchesGitBytes": true
+  },
+  "sourceFileManifest": {
+    "path": "a-source-package-files.json",
+    "sha256": "7abd074f5fd1b79e197dec30ff4166dadfe07e6f10de9129c0d05c6bbfb57b7c"
+  },
+  "runtime": {
+    "node": "24.21.0",
+    "runnerSourceFiles": 34,
+    "runnerSourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+    "packageAndLockSha256": {
+      "apps/student/package-lock.json": "8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9",
+      "apps/student/package.json": "dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd",
+      "apps/teaching/package-lock.json": "acaa7e091e70ccd23404b905c206414fd2c4505f00527e4be783364d8957d7ed",
+      "apps/teaching/package.json": "ff61e22a3d28a9de0d675825abc7b1dcc8a2f9414df8137d53df5f10b733b79b"
+    }
+  },
+  "database": {
+    "factory": "apps/teaching/server/app/initialize.ts -> createDigitalLogicApplicationDatabase",
+    "scope": "fresh retained synthetic only",
+    "tableCount": 35,
+    "tables": [
+      "activity_controls",
+      "activity_versions",
+      "application_control",
+      "artifact_snapshots",
+      "assignments",
+      "attempts",
+      "audit_events",
+      "blueprint_drafts",
+      "check_rule_versions",
+      "command_receipts",
+      "competency_versions",
+      "course_memberships",
+      "courses",
+      "digital_logic_config_versions",
+      "hdl_builds",
+      "hdl_operations",
+      "hdl_sessions",
+      "help_policy_versions",
+      "jobs",
+      "login_attempt_windows",
+      "resource_versions",
+      "sessions",
+      "teacher_design_proposals",
+      "teacher_design_requests",
+      "teaching_action_receipts",
+      "teaching_actions",
+      "teaching_deliveries",
+      "teaching_messages",
+      "users",
+      "workspace_command_bindings",
+      "workspace_files",
+      "workspace_process_records",
+      "workspace_reopen_grants",
+      "workspace_runs",
+      "workspace_submissions"
+    ],
+    "migration": false,
+    "archiveIncludesDatabase": false
+  },
+  "entrypoints": {
+    "initializer": "apps/teaching/server/app/initialize.ts",
+    "normalHost": "apps/teaching/server/main.ts",
+    "configSchema": "apps/teaching/server/app/config.ts",
+    "workspaceReader": "apps/teaching/server/workspace/hdl.ts",
+    "manual": "docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md §18.4"
+  },
+  "historicalValidation": {
+    "sourceCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+    "evidence": "acceptance.json",
+    "windowsSpecial": {
+      "tests": 53,
+      "pass": 53,
+      "fail": 0,
+      "skip": 0
+    },
+    "linuxFull": {
+      "tests": 419,
+      "pass": 408,
+      "fail": 0,
+      "skip": 11
+    },
+    "newBusinessExecutionInThisBatch": false
+  },
+  "notExecuted": [
+    "A normal HTTPS/35-table real HDL chain on PAHER",
+    "ALU behavior checker",
+    "PR54 A/C real context wiring",
+    "browser/TLS/student workflow",
+    "paid model"
+  ],
+  "excluded": [
+    "ignored files and dependencies",
+    "SQLite files and actual controlled account-input/configuration files",
+    "private keys, signing secrets and TLS materials"
+  ],
+  "preparationFailure": {
+    "firstAttempt": "git archive on Windows changed .gitignore line endings; exact raw-byte assertion failed",
+    "resolution": "retained failed artifact; regenerated from fixed raw Git blobs and checked all entries"
+  }
+}

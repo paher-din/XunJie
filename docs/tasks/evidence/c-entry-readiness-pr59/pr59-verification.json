@@ -1,0 +1,103 @@
+{
+  "checkedAt": "2026-10-14T06:21:56.410214+00:00",
+  "pr": 59,
+  "head": "964abb4277c2cf58e81d6686f6349b6ef0fa2e39",
+  "status": "OPEN/DRAFT; no merge or deployment reported by PR",
+  "sourceInspection": "Real DB/consumer/current runtime/fingerprint/generation checks, bounded dependency wait and local recheck; no-store and safe failure retained",
+  "authorVerification": {
+    "node": "v24.21.0",
+    "typecheckExit": 0,
+    "buildExit": 0,
+    "finalCounts": {
+      "tests": 37,
+      "pass": 37,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "logsAndSourcesMatched": true,
+    "executedInThisChat": false
+  },
+  "checkedFiles": [
+    {
+      "path": "apps/teaching/server/app.ts",
+      "sha256": "2666a9acb80aa7047d86533f0936274e85074b29b0a56ed29c4e94c045fd4a90",
+      "kind": "source Git LF hash"
+    },
+    {
+      "path": "apps/teaching/server/app/i0.ts",
+      "sha256": "a4b12ebc8f2b03c156a16ff61b38aa06d515eae0429cb60322c0a269ac5cc459",
+      "kind": "source Git LF hash"
+    },
+    {
+      "path": "apps/teaching/server/app/i0-readiness.test.ts",
+      "sha256": "2e13d49a7232a7b61923468879e090694df2e5a8dc5d30e26b36825fe3847291",
+      "kind": "source Git LF hash"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/red-setup-failed.txt",
+      "bytes": 49,
+      "sha256": "600fc89673490ee3df66d015085b1eeafe57a2b51d79863229f20e434fda7536",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/red.txt",
+      "bytes": 1045,
+      "sha256": "121340bdee492e38e9236b596bdd2e5fdea8285c72b627983f41a0d405c8ab8c",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/green-first.txt",
+      "bytes": 1583,
+      "sha256": "8ac55022de7b49d7d9f4a9f51021de6ea164cdd0224e95393899540350af4449",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/regression.txt",
+      "bytes": 8965,
+      "sha256": "a1ee9c5d363cc9b3f5672befc706d6d6d1b2f1ddf3c892afb895a8f6002c2e75",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/regression-expanded.txt",
+      "bytes": 8963,
+      "sha256": "43e52bd3be7b79dccc1070a90e7fe5805623b5c9f41fe88127882c76fa169b34",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/regression-final.txt",
+      "bytes": 8959,
+      "sha256": "b7e91a789762b83feb38e642167f3adcd959129362f4170c48b66294d0c28111",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/typecheck-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/build-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/doc-before.json",
+      "bytes": 661,
+      "sha256": "dc08263d39deb14ab9a2b7032d686769df714170a2af388609c3e83ed7472caf",
+      "kind": "published log Git bytes"
+    },
+    {
+      "path": "docs/tasks/evidence/i0-a-host-readiness-20261014/doc-after.json",
+      "bytes": 661,
+      "sha256": "3a3b6ad8cdc842db7fcf0f86cb840bbfc509f64983d973b13c9c732fbd0c4d89",
+      "kind": "published log Git bytes"
+    }
+  ],
+  "currentHostEvidence": "current-host.json",
+  "conclusion": "A code fix delivered; PAHER runs old 9fa76ad receiver and still returns503. Remaining C task is fixed-source reception/build and approved onsite readback, not A implementation.",
+  "noRuntimeSourceOrConfigurationChanged": true,
+  "noDatabaseCreated": true
+}

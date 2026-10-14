@@ -26,8 +26,9 @@ export function saveSession(path:string,state:HdlSession){
   writeImmutable(join(path,`state-${String(count+1).padStart(12,'0')}.json`),envelope(state));
 }
 export function readIfPresent(path:string){return existsSync(path)?readEnvelope(path):undefined;}
-export function acquireHdlToken(config:HdlNodeConfig):Promise<()=>void>{
-  const child=spawn('/usr/bin/flock',['--exclusive','--timeout','120',join(hdlRoot(config),'active.lock'),'/bin/sh','-c','printf token; cat >/dev/null'],{stdio:['pipe','pipe','pipe']});
+export function acquireHdlToken(config:HdlNodeConfig,timeoutSeconds=120):Promise<()=>void>{
+  if(!Number.isInteger(timeoutSeconds)||timeoutSeconds<1||timeoutSeconds>120)throw new RunnerError('INVALID_REQUEST','Bounded HDL token deadline required');
+  const child=spawn('/usr/bin/flock',['--exclusive','--timeout',String(timeoutSeconds),join(hdlRoot(config),'active.lock'),'/bin/sh','-c','printf token; cat >/dev/null'],{stdio:['pipe','pipe','pipe']});
   return new Promise((resolve,reject)=>{
     let received=false;child.stdout.once('data',bytes=>{if(bytes.toString()!=='token'){reject(new RunnerError('DEPENDENCY_UNAVAILABLE','HDL token unavailable'));return;}
       received=true;resolve(()=>child.stdin.end());});

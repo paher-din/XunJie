@@ -26,6 +26,9 @@ export type HdlSession = {sessionId:string;identity:HdlIdentity;buildId:string;s
   stopRequested:boolean;createdAt:string;deadline:string;lastOperationAt:string;pendingOperationId?:string|undefined;failureKind?:string|undefined};
 export type HdlProgram = {identity:HdlIdentity;buildId:string;replaceSessionId?:string;expectedSessionRevision?:number};
 export type HdlCommand =
+  | {op:'hdl_alu_probe';request:import('./alu.ts').HdlAluProbe}
+  | {op:'hdl_alu_check';request:import('./alu.ts').HdlAluCheck}
+  | {op:'hdl_alu_result';identity:HdlIdentity}
   | {op:'hdl_readiness'}
   | {op:'hdl_build';request:HdlBuildRequest}
   | {op:'hdl_program';request:HdlProgram}

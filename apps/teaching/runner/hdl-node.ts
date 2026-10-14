@@ -11,6 +11,8 @@ import type {HdlNodeConfig} from './hdl-executor.ts';
 import {initializeHdl,hdlRoot,hdlDirectory,readSession,saveSession,sameIdentity,readIfPresent,hdlSocket} from './hdl-ledger.ts';
 import {fields,hdlLimits,validateIdentity,validateBuildRequest,validateOperation,validateProgram} from './hdl-profile.ts';
 import type {HdlCommand,HdlBuild,HdlBuildRequest,HdlIdentity,HdlProgram,HdlSession} from '../contracts/runner/hdl.ts';
+import type {HdlAluProbe,HdlAluCheck,HdlAluResult} from '../contracts/runner/alu.ts';
+import {validateAluProbe,validateAluCheck,matchAluBuild,resolveAluBinding,aluBindingHash,aluPublicResult,emptyAluCoverage,type AluElaboration} from './alu-check.ts';
 
 const exec=promisify(execFile);
 export class HdlNode {
@@ -31,12 +33,12 @@ export class HdlNode {
       &&images.every((image:{Os:string;Architecture:string})=>image.Os==='linux'&&image.Architecture==='amd64'),
       profile:this.config.hdl,recoveryGeneration:this.generation(),fingerprint,fingerprintHash:hash,validation:validation??null};
   }
-  private async launch(kind:'build'|'session',path:string,id:string){
-    const unit='xunjie-dlc-'+kind+'-'+sha256(id);
+  private async launch(kind:'build'|'session'|'alu',path:string,id:string){
+    const unit='xunjie-dlc-'+(kind==='alu'?'session':kind)+'-'+sha256(id);
     await exec('/usr/bin/systemd-run',['--unit',unit,'--quiet','--property=Restart=no','--property=KillMode=control-group',
-      `--property=RuntimeMaxSec=${kind==='build'?120:1800}s`,
+      `--property=RuntimeMaxSec=${kind==='session'?1800:120}s`,
       `--property=ExecStopPost=${this.config.node} ${this.config.source}/hdl-stop-worker.ts ${path} ${this.configPath}`,
-      this.config.node,`${this.config.source}/hdl-${kind==='build'?'build':'session'}-worker.ts`,path,this.configPath],{timeout:10000,maxBuffer:65536});
+      this.config.node,`${this.config.source}/hdl-${kind}-worker.ts`,path,this.configPath],{timeout:10000,maxBuffer:65536});
   }
   private session(identity:HdlIdentity):{state:HdlSession;path:string}{
     this.authorize(identity);const path=hdlDirectory(this.config,'sessions',identity.id);
@@ -87,6 +89,65 @@ export class HdlNode {
     writeImmutable(join(path,'initial-state.json'),envelope(state));saveSession(path,state);
     await this.launch('session',path,request.identity.id);return state;
   }
+  private aluProbe(request:HdlAluProbe){
+    const {identity,buildId,artifactHash,snapshotId,snapshotHash,configurationHash,binding}=request;
+    validateAluProbe({identity,buildId,artifactHash,snapshotId,snapshotHash,configurationHash,binding});this.authorize(request.identity);
+    const buildPath=hdlDirectory(this.config,'builds',request.buildId);
+    if(!existsSync(buildPath))throw new RunnerError('FORBIDDEN','Original ALU Build unavailable');
+    const original=readEnvelope(join(buildPath,'request.json')) as HdlBuildRequest;
+    const build=this.build(original.identity);matchAluBuild(request,build,this.config.hdl);
+    if(sha256(readFileSync(join(buildPath,'artifact','design.vvp')))!==request.artifactHash)throw new RunnerError('INVALID_REFERENCE','Immutable ALU artifact mismatch');
+    const metadata=readIfPresent(join(buildPath,'elaboration.json'));
+    if(!metadata||metadata.artifactHash!==request.artifactHash)throw new RunnerError('RUNTIME_NOT_READY','Current immutable ALU elaboration required');
+    const bits=resolveAluBinding(request.binding,metadata.elaboration as AluElaboration);
+    return {bindingVersionId:request.binding.versionId,bindingHash:aluBindingHash(request.binding),buildId:build.buildId,
+      artifactHash:build.artifactHash,bits};
+  }
+  private async aluCheck(request:HdlAluCheck){
+    validateAluCheck(request);this.authorize(request.identity);
+    const path=hdlDirectory(this.config,'sessions',request.identity.id);
+    if(existsSync(path)){
+      const original=readEnvelope(join(path,'request.json')).check;
+      if(!original)throw new RunnerError('IDEMPOTENCY_CONFLICT','Original check identity required');
+      sameIdentity(original.identity,request.identity);
+      if(JSON.stringify(original)!==JSON.stringify(request))throw new RunnerError('IDEMPOTENCY_CONFLICT','Original ALU check packet required');
+      return this.aluResult(request.identity);
+    }
+    const runtime=this.config.hdl;
+    if(['runtimeProfileVersion','engineVersion','buildImage','runtimeImage','sourceHash'].some(key=>
+      request[key as keyof HdlAluCheck]!==runtime[key as keyof typeof runtime]))throw new RunnerError('RUNTIME_NOT_READY','Approved ALU engine/source required');
+    const probed=this.aluProbe(request);
+    const occupied=readdirSync(join(hdlRoot(this.config),'sessions')).map(name=>readSession(join(hdlRoot(this.config),'sessions',name))).filter(item=>!item.terminationConfirmed);
+    if(occupied.length>=hdlLimits.sessions||occupied.some(item=>item.identity.scope.attemptId===request.identity.scope.attemptId))
+      throw new RunnerError('RATE_LIMITED','Explicitly stop the student Session before ALU check');
+    mkdirSync(path,{mode:0o700});mkdirSync(join(path,'operations'),{mode:0o700});
+    writeImmutable(join(path,'request.json'),envelope({check:request,bits:probed.bits,artifact:join(hdlDirectory(this.config,'builds',request.buildId),'artifact')}));
+    const built=this.build(readEnvelope(join(hdlDirectory(this.config,'builds',request.buildId),'request.json')).identity);
+    const at=new Date().toISOString();const state:HdlSession={sessionId:request.identity.id,identity:request.identity,buildId:request.buildId,
+      snapshotId:request.snapshotId,snapshotHash:request.snapshotHash,boardProfileVersion:built.board.boardProfileVersion,
+      mappingVersion:built.board.mappingVersion,
+      engineVersion:runtime.engineVersion,runtimeProfileVersion:runtime.runtimeProfileVersion,sessionRevision:1,confirmedSequence:0,simTimePs:'0',status:'starting',
+      terminationConfirmed:false,stopRequested:false,createdAt:at,lastOperationAt:at,deadline:new Date(Date.now()+120000).toISOString()};
+    writeImmutable(join(path,'initial-state.json'),envelope(state));saveSession(path,state);
+    await this.launch('alu',path,request.identity.id);return this.aluResult(request.identity);
+  }
+  private aluResult(identity:HdlIdentity):HdlAluResult{
+    const {path,state}=this.session(identity),request=readEnvelope(join(path,'request.json')).check as HdlAluCheck;
+    if(!request)throw new RunnerError('INVALID_REFERENCE','Original ALU check required');validateAluCheck(request);sameIdentity(request.identity,identity);
+    const result=readIfPresent(join(path,'check-result.json')) as HdlAluResult|undefined;
+    if(result){const {resultHash,...body}=result;
+      if(sha256(JSON.stringify(body))!==resultHash||JSON.stringify(body.identity)!==JSON.stringify(identity)
+        ||body.buildId!==request.buildId||body.bindingHash!==request.bindingHash)throw new RunnerError('INVALID_REFERENCE','Original private check result hash required');
+      if(JSON.stringify(aluPublicResult(request,result.status,result.coverage,result.terminationConfirmed,result.failureCategory))!==JSON.stringify(result))
+        throw new RunnerError('INVALID_REFERENCE','Exact frozen ALU result binding required');
+      if(result.status==='passed'&&(!result.terminationConfirmed||!result.coverage.complete||result.coverage.compared!==2800||result.coverage.sampled!==2800))
+        throw new RunnerError('INVALID_REFERENCE','Complete ALU comparison required');
+      if(!result.terminationConfirmed&&state.terminationConfirmed)return aluPublicResult(request,
+        existsSync(join(path,'stop.intent'))?'cancelled':'incomplete',result.coverage,true,'worker_termination_barrier');return result;
+    }
+    return aluPublicResult(request,state.terminationConfirmed?(existsSync(join(path,'stop.intent'))?'cancelled':'incomplete'):
+      state.status==='active'?'running':state.status==='outcome_unknown'?'outcome_unknown':'queued',emptyAluCoverage(),state.terminationConfirmed);
+  }
   private rpc(path:string,packet:object):Promise<unknown>{
     return new Promise((resolve,reject)=>{const socket=connect(hdlSocket(readSession(path).sessionId));let body='';socket.setTimeout(125000,()=>socket.destroy(new Error('HDL response timed out')));
       socket.on('connect',()=>socket.write(JSON.stringify(packet)+'\n'));socket.on('data',bytes=>{body+=bytes.toString('utf8');if(Buffer.byteLength(body)>hdlLimits.packetBytes+8192)socket.destroy(new Error('HDL response too large'));});
@@ -97,7 +158,8 @@ export class HdlNode {
   private async stop(identity:HdlIdentity){
     const {path,state}=this.session(identity);if(state.terminationConfirmed)return state;
     if(!existsSync(join(path,'stop.intent')))writeImmutable(join(path,'stop.intent'),envelope({identity}));
-    try{await this.rpc(path,{op:'stop',identity});}catch{
+    try{if(readEnvelope(join(path,'request.json')).check)throw new RunnerError('STATE_CONFLICT','Stop independent check worker');
+      await this.rpc(path,{op:'stop',identity});}catch{
       await exec('/usr/bin/systemctl',['stop','xunjie-dlc-session-'+sha256(identity.id)],{timeout:15000,maxBuffer:65536});}
     const result=readSession(path);if(!result.terminationConfirmed)throw new RunnerError('DEPENDENCY_UNAVAILABLE','Original session termination unconfirmed');return result;
   }
@@ -127,16 +189,19 @@ export class HdlNode {
     }this.paused=false;
   }
   async dispatch(command:HdlCommand,maintenance=false){
-    fields(command,['op',...(['hdl_build','hdl_program','hdl_interact'].includes(command.op)?['request']:command.op==='hdl_readiness'?[]:['identity',...(command.op==='hdl_result'?['operationId']:[])])]);
+    fields(command,['op',...(['hdl_build','hdl_program','hdl_interact','hdl_alu_probe','hdl_alu_check'].includes(command.op)?['request']:command.op==='hdl_readiness'?[]:['identity',...(command.op==='hdl_result'?['operationId']:[])])]);
     if(command.op==='hdl_readiness')return this.readiness();
     if(command.op==='hdl_query'){
       this.authorize(command.identity);if(!existsSync(hdlDirectory(this.config,'sessions',command.identity.id)))return this.build(command.identity);
       const state=this.session(command.identity).state;
+      if(readEnvelope(join(hdlDirectory(this.config,'sessions',command.identity.id),'request.json')).check)return this.aluResult(command.identity);
       if(!state.terminationConfirmed){const process=await exec('/usr/bin/systemctl',['show','xunjie-dlc-session-'+sha256(state.sessionId),'--property=MainPID','--value']);
         if(process.stdout.trim()==='0')return {...state,status:'outcome_unknown',stopRequested:true,failureKind:'original_worker_unavailable'};
       }return state;
     }
+    if(command.op==='hdl_alu_result')return this.aluResult(command.identity);
     if(command.op==='hdl_result'){const {path,state}=this.session(command.identity);
+      if(readEnvelope(join(path,'request.json')).check)throw new RunnerError('FORBIDDEN','ALU check has no public signal trace');
       const resultPath=command.operationId===state.sessionId?join(path,'initial.json'):join(path,'operations',sha256(command.operationId),'result.json');return readIfPresent(resultPath)??null;}
     if(command.op==='hdl_stop'){
       if(existsSync(hdlDirectory(this.config,'sessions',command.identity.id)))return this.stop(command.identity);
@@ -146,6 +211,9 @@ export class HdlNode {
     }
     if(this.paused)throw new RunnerError('RUNTIME_NOT_READY','HDL dispatch paused');
     if(!maintenance&&!(await this.readiness()).ready)throw new RunnerError('RUNTIME_NOT_READY','Current HDL validation required');
+    if(command.op==='hdl_alu_probe'){validateAluProbe(command.request);const probe=this.aluProbe(command.request);return {bindingVersionId:probe.bindingVersionId,bindingHash:probe.bindingHash,
+      buildId:probe.buildId,artifactHash:probe.artifactHash,validated:true};}
+    if(command.op==='hdl_alu_check')return this.aluCheck(command.request);
     if(command.op==='hdl_build')return this.submit(command.request);
     if(command.op==='hdl_program')return this.program(command.request);
     if(command.op!=='hdl_interact')throw new RunnerError('INVALID_REQUEST','Unknown HDL command');

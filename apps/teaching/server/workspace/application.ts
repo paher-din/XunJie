@@ -36,7 +36,13 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   const { teaching: extensions, hdl, ...designOptions } = options;
   if(hdl&&hdl.databaseFile!==options.db.file)throw new ApiError('INVALID_CONFIGURATION');
   // Workspace owns the shared Job paths and dispatches each purpose to its original handler.
-  const instance = await createDesignApp({ ...designOptions, ...(extensions?.design ? { teaching: { stop: extensions.design } } : {}) }, false);
+  const stop:DesignTeachingStop=(tx,actor,details)=>{
+    const base=extensions?.design?.(tx,actor,details)??{stoppedJobIds:[],invalidatedActionIds:[]};
+    if(base&&typeof base==='object'&&'then' in base)throw new ApiError('PERSISTENCE_UNAVAILABLE');
+    for(const id of details.attemptIds)hdl?.stopInTransaction(tx,id,details.reason,details.generation);
+    return base;
+  };
+  const instance = await createDesignApp({...designOptions,teaching:{stop},...(hdl?{afterControl:()=>hdl.reconcileStops()}: {})},false);
   const { app, access } = instance;
   const now = options.now ?? Date.now;
   const teachingStop = options.teaching?.stop;
@@ -73,6 +79,10 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
         authorize: () => true, transaction: tx, stopReason, ...(runPurposes ? {runPurposes} : {}) };
       const plan = apply(tx, before, context);
       persistWorkspace(tx, before, plan.state);
+      // Submission fixes the artifact and stops its loaded design atomically. Completed HDL program jobs
+      // may leave an active Session, so cancelling pending Workspace jobs alone cannot stop it.
+      if (!plan.replayed && command === 'submission.create')
+        hdl?.stopInTransaction(tx,id,'submission_confirmed',generation);
       if (!plan.replayed && command === 'workspace.sync') {
         const batch = syncBatch(parseRequest(syncInput, request.body));
         if (batch.process && before.attempt.collecting && batch.process.captureRevision === before.attempt.captureRevision)
@@ -189,6 +199,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     const readiness = await queryRuntime(options.runner);
     return execute(request, id, 'run.create', input.recoveryGeneration, (tx, state, context) => {
       const activity = readActivity(tx, state.attempt.courseId, state.attempt.activityVersionId);
+      if('kind' in activity.runtimeProfile)throw new ApiError('INVALID_REQUEST');
       const runtime = readiness.ok ? readiness.runtime : undefined;
       return runCommand(state, context, domainRun(input), { ready: Boolean(runtime && canonical(runtime.profile) === canonical(activity.runtimeProfile)), recoveryGeneration: runtime?.recoveryGeneration ?? input.recoveryGeneration,
         profile: activity.runtimeProfile, policyVersion: activity.helpPolicy.versionId, checkRuleVersion: activity.checkRule.versionId,
@@ -263,7 +274,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       return read(request,id,tx => readProcessRecords(tx,id));
     },
     readResultFiles(request: FastifyRequest, id: string, runId: string) {
-      return read(request, id, (tx, state) => readResultFiles(state,runId,readActivity(tx,state.attempt.courseId,state.attempt.activityVersionId).runtimeProfile.approvedResultFiles));
+      return read(request,id,(tx,state)=>{const runtime=readActivity(tx,state.attempt.courseId,state.attempt.activityVersionId).runtimeProfile;if('kind' in runtime)throw new ApiError('INVALID_REQUEST');return readResultFiles(state,runId,runtime.approvedResultFiles);});
     },
     readTutorContext(request: FastifyRequest, id: string) {
       return access.withAuthorizedResource(request, tx => locate(tx, id, true), 'student_help', (tx, actor) => {

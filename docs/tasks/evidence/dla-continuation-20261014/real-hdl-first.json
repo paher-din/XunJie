@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-14T11:00:12.539Z",
+  "purpose": "isolated synthetic engineering acceptance; no real student actions",
+  "node": "v24.21.0",
+  "origin": "https://127.0.0.1:3443",
+  "databaseFile": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014/xunjie-a12-completion-dZlbr9/synthetic.sqlite",
+  "tables": 35,
+  "generation": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+  "hdlRuntime": {
+    "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+    "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+    "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+    "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+  },
+  "cRuntime": {
+    "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+    "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5"
+  },
+  "nodeFingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+  "http": [],
+  "modelCalls": 0,
+  "browser": "not executed",
+  "aluBehavior": "unverified",
+  "passed": false,
+  "failure": {
+    "name": "Error",
+    "message": "listen EADDRINUSE: address already in use 127.0.0.1:3443"
+  }
+}

@@ -1,0 +1,46 @@
+
+> learning-space@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /opt/xunjie-runner/tests/dla-h3-source-20261014/apps/student
+
+ ✓ src/workspace/comparison.test.ts (12 tests) 12ms
+ ✓ src/lib/originalText.test.ts (31 tests) 16ms
+ ✓ src/brand/playback.test.ts (19 tests) 35ms
+ ✓ src/workspace/fileLifecycle.test.ts (25 tests) 48ms
+ ✓ src/workspace/tutoringObject.test.ts (29 tests) 55ms
+ ✓ src/workspace/tutoringSource.test.ts (78 tests) 39ms
+ ✓ src/workspace/recovery.test.ts (20 tests) 31ms
+ ✓ src/workspace/init.test.ts (16 tests) 51ms
+ ✓ src/workspace/confirmationWorkspace.test.ts (5 tests) 117ms
+ ✓ src/workspace/tutoringControls.test.ts (22 tests) 88ms
+ ✓ src/bridge/mockTurn.test.ts (22 tests) 253ms
+ ✓ src/workspace/tutoringReturn.test.ts (25 tests) 108ms
+ ✓ src/workspace/tutoringHistory.test.ts (28 tests) 201ms
+ ✓ src/workspace/versionSources.test.ts (5 tests) 20ms
+ ✓ prep/contract.test.ts (12 tests) 434ms
+ ✓ src/lib/theme.test.ts (13 tests) 21ms
+ ✓ src/lib/projectFiles.test.ts (13 tests) 16ms
+ ✓ src/workspace/tutoringWorkspace.test.ts (7 tests) 56ms
+ ✓ src/workspace/confirmation.test.ts (5 tests) 35ms
+ ✓ src/lib/tasks.test.ts (10 tests) 15ms
+ ✓ prep/workspace.test.ts (19 tests) 751ms
+ ✓ src/bridge/mockConversations.test.ts (7 tests) 176ms
+ ✓ src/workspace/projectSeed.test.ts (5 tests) 12ms
+ ✓ src/workspace/tutoringCommand.test.ts (3 tests) 23ms
+ ✓ src/workspace/tutoringRun.test.ts (7 tests) 16ms
+ ✓ src/workspace/runResults.test.ts (3 tests) 10ms
+ ✓ src/brand/motion.test.ts (8 tests) 304ms
+ ✓ src/workspace/runFiles.test.ts (2 tests) 39ms
+ ✓ src/lib/draftStore.test.ts (4 tests) 8ms
+ ✓ src/workspace/tutoringEvents.test.ts (2 tests) 24ms
+ ✓ src/brand/asset-fidelity.test.js (3 tests) 43ms
+ ✓ src/workspace/runRequest.test.ts (2 tests) 30ms
+ ✓ src/workspace/tutoringTransport.test.ts (1 test) 18ms
+ ✓ src/workspace/runControl.test.ts (1 test) 12ms
+
+ Test Files  34 passed (34)
+      Tests  464 passed (464)
+   Start at  20:35:39
+   Duration  2.47s (transform 4.80s, setup 0ms, collect 10.97s, tests 3.11s, environment 14ms, prepare 5.72s)

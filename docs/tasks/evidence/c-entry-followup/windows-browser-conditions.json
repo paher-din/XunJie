@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-10-14T04:23:15.6559930Z",
+  "computer": "PAHER",
+  "user": "p3148",
+  "browsers": [
+    {
+      "browser": "Chrome",
+      "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "version": "155.0.8059.40",
+      "userDataDirectory": "C:\\Users\\p3148\\AppData\\Local\\Google\\Chrome\\User Data",
+      "profileDirectory": "Default",
+      "exists": true,
+      "selectionStatus": "candidate only; UI has not selected or confirmed this profile"
+    },
+    {
+      "browser": "Edge",
+      "executable": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+      "version": "155.0.4283.45",
+      "userDataDirectory": "C:\\Users\\p3148\\AppData\\Local\\Microsoft\\Edge\\User Data",
+      "profileDirectory": "Default",
+      "exists": true,
+      "selectionStatus": "candidate only; UI has not selected or confirmed this profile"
+    }
+  ],
+  "certificateDerSha256": "c3f8ed37e07c341b0fcc5558d0fc12fab47913ef71d1ec8077a0e08444475173",
+  "windowsRootStores": [
+    {
+      "store": "Cert:\\CurrentUser\\Root",
+      "matchingCertificates": 0
+    },
+    {
+      "store": "Cert:\\LocalMachine\\Root",
+      "matchingCertificates": 0
+    }
+  ],
+  "wslConfigSelectedNetworkLines": [
+    "networkingMode=NAT"
+  ],
+  "windowsLoopback3443Listening": false,
+  "browserTlsAttempted": false,
+  "browserTrustModified": false,
+  "secretReadOrCopied": false,
+  "limitations": [
+    "Profile candidates are not UI agreement. No cookies, history, account content or password databases inspected.",
+    "No live HTTPS/browser test while service is stopped; Windows-to-WSL reachability is unverified.",
+    "Windows root-store absence is not a complete browser trust verdict. Browser-specific/policy trust remains UI verification."
+  ]
+}

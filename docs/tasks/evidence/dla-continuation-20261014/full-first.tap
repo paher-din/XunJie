@@ -1,0 +1,3099 @@
+TAP version 13
+# Subtest: node-local control synthetic checks
+    # Subtest: parallel identical submit starts once and asynchronous ACL cannot create a race
+    ok 1 - parallel identical submit starts once and asynchronous ACL cannot create a race
+      ---
+      duration_ms: 81.65116
+      type: 'test'
+      ...
+    # Subtest: cancel-before-submit is durable and never creates a new unit
+    ok 2 - cancel-before-submit is durable and never creates a new unit
+      ---
+      duration_ms: 29.774116
+      type: 'test'
+      ...
+    # Subtest: two slots and one attempt guard include unresolved create operations
+    ok 3 - two slots and one attempt guard include unresolved create operations
+      ---
+      duration_ms: 132.763063
+      type: 'test'
+      ...
+    # Subtest: ACL revoked while queued is checked again before dispatch
+    ok 4 - ACL revoked while queued is checked again before dispatch
+      ---
+      duration_ms: 35.911743
+      type: 'test'
+      ...
+    # Subtest: process crash keeps pending creation unknown and never releases its slot
+    ok 5 - process crash keeps pending creation unknown and never releases its slot
+      ---
+      duration_ms: 197.264089
+      type: 'test'
+      ...
+    # Subtest: corrupt/partial journal and different node generation stop admission
+    ok 6 - corrupt/partial journal and different node generation stop admission
+      ---
+      duration_ms: 16.83786
+      type: 'test'
+      ...
+    # Subtest: credentials or source bodies cannot be copied into control metadata
+    ok 7 - credentials or source bodies cannot be copied into control metadata
+      ---
+      duration_ms: 14.954563
+      type: 'test'
+      ...
+    # Subtest: generation advance needs trusted registration, refuses rollback and survives ordinary restart
+    ok 8 - generation advance needs trusted registration, refuses rollback and survives ordinary restart
+      ---
+      duration_ms: 35.385951
+      type: 'test'
+      ...
+    # Subtest: preparation failure before any unit intent does not occupy a phantom slot
+    ok 9 - preparation failure before any unit intent does not occupy a phantom slot
+      ---
+      duration_ms: 40.128153
+      type: 'test'
+      ...
+    # Subtest: confirmed recovery wins completion race and cancelled result remains readable
+    ok 10 - confirmed recovery wins completion race and cancelled result remains readable
+      ---
+      duration_ms: 76.056264
+      type: 'test'
+      ...
+    # Subtest: old queued work becomes stale after trusted generation registration
+    ok 11 - old queued work becomes stale after trusted generation registration
+      ---
+      duration_ms: 34.826627
+      type: 'test'
+      ...
+    1..11
+ok 1 - node-local control synthetic checks
+  ---
+  duration_ms: 701.40973
+  type: 'test'
+  ...
+# Subtest: course rules bind selected snapshot inputs, records and approved error exits
+ok 2 - course rules bind selected snapshot inputs, records and approved error exits
+  ---
+  duration_ms: 4.827381
+  type: 'test'
+  ...
+# Subtest: invalid course selection and profile cannot reach trusted oracle
+ok 3 - invalid course selection and profile cannot reach trusted oracle
+  ---
+  duration_ms: 1.479231
+  type: 'test'
+  ...
+# Subtest: missing input case avoids every snapshot file and implied directory without reserving names
+ok 4 - missing input case avoids every snapshot file and implied directory without reserving names
+  ---
+  duration_ms: 1.307975
+  type: 'test'
+  ...
+# Subtest: overflow is a trusted exit-2 case and maximum normal N still covers all words
+ok 5 - overflow is a trusted exit-2 case and maximum normal N still covers all words
+  ---
+  duration_ms: 0.945986
+  type: 'test'
+  ...
+# Subtest: dedicated Linux synthetic container execution and resource checks
+ok 6 - dedicated Linux synthetic container execution and resource checks # SKIP
+  ---
+  duration_ms: 1.118738
+  type: 'test'
+  ...
+# Subtest: the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+ok 7 - the platform clock and delayed RTL keep picosecond semantics under finer student time precision # SKIP
+  ---
+  duration_ms: 1.222772
+  type: 'test'
+  ...
+# Subtest: HDL board validation refuses executable mappings, missing bits and duplicates
+ok 8 - HDL board validation refuses executable mappings, missing bits and duplicates
+  ---
+  duration_ms: 1.905918
+  type: 'test'
+  ...
+# Subtest: elaborated widths/directions and all input bits must match, including ascending buses
+ok 9 - elaborated widths/directions and all input bits must match, including ascending buses
+  ---
+  duration_ms: 1.272275
+  type: 'test'
+  ...
+# Subtest: four-value frames preserve X/Z and reject missing width or forged time
+ok 10 - four-value frames preserve X/Z and reject missing width or forged time
+  ---
+  duration_ms: 0.525932
+  type: 'test'
+  ...
+# Subtest: HDL interaction keeps input/cycle trust boundaries and the independent container limits
+ok 11 - HDL interaction keeps input/cycle trust boundaries and the independent container limits
+  ---
+  duration_ms: 0.751092
+  type: 'test'
+  ...
+# Subtest: target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination
+ok 12 - target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination # SKIP
+  ---
+  duration_ms: 0.982054
+  type: 'test'
+  ...
+# Subtest: immutable node files become visible only after a complete fsynced write
+ok 13 - immutable node files become visible only after a complete fsynced write
+  ---
+  duration_ms: 333.08016
+  type: 'test'
+  ...
+# Subtest: publication leaves no staging name behind, on success and on a refused overwrite
+ok 14 - publication leaves no staging name behind, on success and on a refused overwrite
+  ---
+  duration_ms: 63.934519
+  type: 'test'
+  ...
+# Subtest: authenticated dedicated VM control and supervision
+ok 15 - authenticated dedicated VM control and supervision # SKIP
+  ---
+  duration_ms: 0.939453
+  type: 'test'
+  ...
+# Subtest: report oracle uses approved ASCII word/line/byte/tie semantics
+ok 16 - report oracle uses approved ASCII word/line/byte/tie semantics
+  ---
+  duration_ms: 2.87654
+  type: 'test'
+  ...
+# Subtest: report verifies all semantics while accepting non-semantic whitespace and bound sandbox names
+ok 17 - report verifies all semantics while accepting non-semantic whitespace and bound sandbox names
+  ---
+  duration_ms: 2.448842
+  type: 'test'
+  ...
+# Subtest: JSON path quoting preserves semantic spaces and escaped names
+ok 18 - JSON path quoting preserves semantic spaces and escaped names
+  ---
+  duration_ms: 0.334274
+  type: 'test'
+  ...
+# Subtest: returns bound content facts, distinguishes missing and unsafe files
+ok 19 - returns bound content facts, distinguishes missing and unsafe files
+  ---
+  duration_ms: 6.242538
+  type: 'test'
+  ...
+# Subtest: enforces combined byte budget and rejects invalid UTF-8
+ok 20 - enforces combined byte budget and rejects invalid UTF-8
+  ---
+  duration_ms: 3.431806
+  type: 'test'
+  ...
+# Subtest: rejects intermediate and final symlinks in Linux
+ok 21 - rejects intermediate and final symlinks in Linux
+  ---
+  duration_ms: 2.842196
+  type: 'test'
+  ...
+# Subtest: UTF-8 BOM remains in confirmed result text, byte count and checksum
+ok 22 - UTF-8 BOM remains in confirmed result text, byte count and checksum
+  ---
+  duration_ms: 1.367442
+  type: 'test'
+  ...
+# Subtest: maps four course operations to arrays and resolves files by immutable identity
+ok 23 - maps four course operations to arrays and resolves files by immutable identity
+  ---
+  duration_ms: 2.248828
+  type: 'test'
+  ...
+# Subtest: rejects unapproved files, command/word injection, zero count and output escape
+ok 24 - rejects unapproved files, command/word injection, zero count and output escape
+  ---
+  duration_ms: 1.020054
+  type: 'test'
+  ...
+# Subtest: top accepts the approved C int maximum and rejects overflow exactly
+ok 25 - top accepts the approved C int maximum and rejects overflow exactly
+  ---
+  duration_ms: 0.679368
+  type: 'test'
+  ...
+# Subtest: hashes exact UTF-8 content and byte-sorted compact manifests
+ok 26 - hashes exact UTF-8 content and byte-sorted compact manifests
+  ---
+  duration_ms: 3.094256
+  type: 'test'
+  ...
+# Subtest: rejects traversal, absolute, drive, UNC, backslash, NUL and empty components
+ok 27 - rejects traversal, absolute, drive, UNC, backslash, NUL and empty components
+  ---
+  duration_ms: 0.841831
+  type: 'test'
+  ...
+# Subtest: rejects stale body and manifest hashes and duplicate file identities
+ok 28 - rejects stale body and manifest hashes and duplicate file identities
+  ---
+  duration_ms: 0.624956
+  type: 'test'
+  ...
+# Subtest: enforces file count and UTF-8 byte budget including multibyte text
+ok 29 - enforces file count and UTF-8 byte budget including multibyte text
+  ---
+  duration_ms: 14.467143
+  type: 'test'
+  ...
+# Subtest: builds fixed compiler argv only from approved C sources
+ok 30 - builds fixed compiler argv only from approved C sources
+  ---
+  duration_ms: 1.690726
+  type: 'test'
+  ...
+# Subtest: rejects malformed input at the runtime boundary
+ok 31 - rejects malformed input at the runtime boundary
+  ---
+  duration_ms: 0.374699
+  type: 'test'
+  ...
+# Subtest: stdout passed and exit zero cannot claim course success
+ok 32 - stdout passed and exit zero cannot claim course success
+  ---
+  duration_ms: 1.761919
+  type: 'test'
+  ...
+# Subtest: trusted expected exits one and two can pass error-handling checks
+ok 33 - trusted expected exits one and two can pass error-handling checks
+  ---
+  duration_ms: 0.250698
+  type: 'test'
+  ...
+# Subtest: limits, tooling failures, unresolved termination and missing files remain incomplete
+ok 34 - limits, tooling failures, unresolved termination and missing files remain incomplete
+  ---
+  duration_ms: 0.428389
+  type: 'test'
+  ...
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 35 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 58.80342
+  type: 'test'
+  ...
+# Subtest: host readiness requires the original consumer and a current database/runner, without creating business rows
+ok 36 - host readiness requires the original consumer and a current database/runner, without creating business rows
+  ---
+  duration_ms: 2169.191273
+  type: 'test'
+  ...
+# Subtest: host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+ok 37 - host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+  ---
+  duration_ms: 2572.414054
+  type: 'test'
+  ...
+# Subtest: host readiness detects database and consumer scan failure and resumes after successful scans
+ok 38 - host readiness detects database and consumer scan failure and resumes after successful scans
+  ---
+  duration_ms: 2157.790575
+  type: 'test'
+  ...
+# Subtest: a delayed readiness response cannot succeed after shutdown or database failure
+ok 39 - a delayed readiness response cannot succeed after shutdown or database failure
+  ---
+  duration_ms: 3943.805333
+  type: 'test'
+  ...
+# Subtest: health queries time out without accepting late runner success
+ok 40 - health queries time out without accepting late runner success
+  ---
+  duration_ms: 6808.785855
+  type: 'test'
+  ...
+# Subtest: a changed recovery generation during a readiness query requires a fresh probe
+ok 41 - a changed recovery generation during a readiness query requires a fresh probe
+  ---
+  duration_ms: 1865.674822
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener withdraws readiness when Fastify is closed directly
+ok 42 - the real HTTP listener withdraws readiness when Fastify is closed directly
+  ---
+  duration_ms: 1935.434019
+  type: 'test'
+  ...
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 43 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 3821.59969
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 44 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 6940.022874
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 45 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 3183.545026
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 46 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 3072.675561
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+ok 47 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 3430.635574
+  type: 'test'
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 48 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 3287.870756
+  type: 'test'
+  ...
+# Subtest: student bootstraps own assignment with trusted generation and no attempt side effect
+ok 49 - student bootstraps own assignment with trusted generation and no attempt side effect
+  ---
+  duration_ms: 3472.016536
+  type: 'test'
+  ...
+# Subtest: normal host serves only built public assets and rejects escaped or hidden paths
+ok 50 - normal host serves only built public assets and rejects escaped or hidden paths
+  ---
+  duration_ms: 1958.741852
+  type: 'test'
+  ...
+# Subtest: normal consumer runs original job without manual worker calls and shutdown confirms its stop
+ok 51 - normal consumer runs original job without manual worker calls and shutdown confirms its stop
+  ---
+  duration_ms: 3360.667849
+  type: 'test'
+  ...
+# Subtest: controlled initializer creates a fresh synthetic host with login and original course policy
+ok 52 - controlled initializer creates a fresh synthetic host with login and original course policy
+  ---
+  duration_ms: 2509.223709
+  type: 'test'
+  ...
+# Subtest: bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+ok 53 - bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+  ---
+  duration_ms: 4695.272922
+  type: 'test'
+  ...
+# Subtest: normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+ok 54 - normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+  ---
+  duration_ms: 3528.660802
+  type: 'test'
+  ...
+# Subtest: bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+ok 55 - bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+  ---
+  duration_ms: 3309.377186
+  type: 'test'
+  ...
+# Subtest: unknown original job survives host restart and is reconciled without a replacement execution
+ok 56 - unknown original job survives host restart and is reconciled without a replacement execution
+  ---
+  duration_ms: 4871.035401
+  type: 'test'
+  ...
+# Subtest: normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+ok 57 - normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+  ---
+  duration_ms: 2579.710028
+  type: 'test'
+  ...
+# Subtest: shutdown refuses a new run whose readiness request was already in flight
+ok 58 - shutdown refuses a new run whose readiness request was already in flight
+  ---
+  duration_ms: 3440.130981
+  type: 'test'
+  ...
+# Subtest: PR53 integration preserves DL-A HDL readiness while sharing the original health route
+ok 59 - PR53 integration preserves DL-A HDL readiness while sharing the original health route
+  ---
+  duration_ms: 1482.115079
+  type: 'test'
+  ...
+# Subtest: canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials
+ok 60 - canonical digest preserves body bytes, includes versions, rejects non-JSON and session credentials
+  ---
+  duration_ms: 2.261084
+  type: 'test'
+  ...
+# Subtest: receipt plan binds both keys to original IDs and aliases cannot be reused for other payload
+ok 61 - receipt plan binds both keys to original IDs and aliases cannot be reused for other payload
+  ---
+  duration_ms: 1.333087
+  type: 'test'
+  ...
+# Subtest: jobs retain bounded deadlines/call counts across leases and reject expired worker completion
+ok 62 - jobs retain bounded deadlines/call counts across leases and reject expired worker completion
+  ---
+  duration_ms: 1.586239
+  type: 'test'
+  ...
+# Subtest: cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy
+ok 63 - cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy
+  ---
+  duration_ms: 1.797255
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-01 first body delivery exposes only the original Action association before any displayed receipt
+ok 64 - I0-B-D01-01 first body delivery exposes only the original Action association before any displayed receipt
+  ---
+  duration_ms: 3046.477817
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-02 equal bodies from different Jobs retain separate original code/run bindings and suppress the replaced epoch
+ok 65 - I0-B-D01-02 equal bodies from different Jobs retain separate original code/run bindings and suppress the replaced epoch
+  ---
+  duration_ms: 2902.349292
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-03 unrelated capture/reminder revisions advance without re-stamping or blocking the original help basis
+ok 66 - I0-B-D01-03 unrelated capture/reminder revisions advance without re-stamping or blocking the original help basis
+  ---
+  duration_ms: 2753.918626
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-04 unauthorized users, teacher reads, wrong epochs and restored generations never disclose the student payload
+ok 67 - I0-B-D01-04 unauthorized users, teacher reads, wrong epochs and restored generations never disclose the student payload
+  ---
+  duration_ms: 4257.041765
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-05 stopped succeeded Job loses its old delivery payload without erasing the generated association
+ok 68 - I0-B-D01-05 stopped succeeded Job loses its old delivery payload without erasing the generated association
+  ---
+  duration_ms: 2957.14145
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-06 changed code cannot receive the old snapshot-target association
+ok 69 - I0-B-D01-06 changed code cannot receive the old snapshot-target association
+  ---
+  duration_ms: 2830.363021
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-07 a same-path same-text replacement file never inherits the recycled instance association
+ok 70 - I0-B-D01-07 a same-path same-text replacement file never inherits the recycled instance association
+  ---
+  duration_ms: 2779.014184
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-08 another client cannot replay the original Delivery; displayed history stays on its authorized route
+ok 71 - I0-B-D01-08 another client cannot replay the original Delivery; displayed history stays on its authorized route
+  ---
+  duration_ms: 3364.051984
+  type: 'test'
+  ...
+# Subtest: I0-B-D01-09 the same-transaction related-state guard suppresses new projection while preserving shown history
+ok 72 - I0-B-D01-09 the same-transaction related-state guard suppresses new projection while preserving shown history
+  ---
+  duration_ms: 3457.399295
+  type: 'test'
+  ...
+# Subtest: review: a new help key creates a new round; original key returns the original IDs
+ok 73 - review: a new help key creates a new round; original key returns the original IDs
+  ---
+  duration_ms: 3061.250021
+  type: 'test'
+  ...
+# Subtest: review: original body JSON bytes survive persistence and a real reopen
+ok 74 - review: original body JSON bytes survive persistence and a real reopen
+  ---
+  duration_ms: 3529.032009
+  type: 'test'
+  ...
+# Subtest: review: limit-one cursor pages progress, stay in scope and do not repeat deliveries
+ok 75 - review: limit-one cursor pages progress, stay in scope and do not repeat deliveries
+  ---
+  duration_ms: 3831.248138
+  type: 'test'
+  ...
+# Subtest: review: a send without displayed does not survive cancellation or leak through raw reads
+ok 76 - review: a send without displayed does not survive cancellation or leak through raw reads
+  ---
+  duration_ms: 3433.956404
+  type: 'test'
+  ...
+# Subtest: review: a client report binds delivery and versions, and same HTTP key retries succeed
+ok 77 - review: a client report binds delivery and versions, and same HTTP key retries succeed
+  ---
+  duration_ms: 2785.067981
+  type: 'test'
+  ...
+# Subtest: review: capture controls preserve explicit help and historical coverage/real rejection reasons
+ok 78 - review: capture controls preserve explicit help and historical coverage/real rejection reasons
+  ---
+  duration_ms: 2758.02259
+  type: 'test'
+  ...
+# Subtest: review: A4 epoch/JSON/Job/Action invalidation commits together and stale CAS rolls back
+ok 79 - review: A4 epoch/JSON/Job/Action invalidation commits together and stale CAS rolls back
+  ---
+  duration_ms: 2877.261129
+  type: 'test'
+  ...
+# Subtest: review: cancelling an old help Job leaves the new help Job usable
+ok 80 - review: cancelling an old help Job leaves the new help Job usable
+  ---
+  duration_ms: 2771.151095
+  type: 'test'
+  ...
+# Subtest: review: code changes suppress an old target and an obsolete worker lease cannot complete
+ok 81 - review: code changes suppress an old target and an obsolete worker lease cannot complete
+  ---
+  duration_ms: 2798.565312
+  type: 'test'
+  ...
+# Subtest: review: A2 pause invalidates a generated Action atomically without extending its public result
+ok 82 - review: A2 pause invalidates a generated Action atomically without extending its public result
+  ---
+  duration_ms: 2714.801987
+  type: 'test'
+  ...
+# Subtest: review: pausing capture persistently stops passive analysis and a resume never revives it
+ok 83 - review: pausing capture persistently stops passive analysis and a resume never revives it
+  ---
+  duration_ms: 2716.849026
+  type: 'test'
+  ...
+# Subtest: review: client cancelled/stale/failed reports need no delivery and erase no other fact
+ok 84 - review: client cancelled/stale/failed reports need no delivery and erase no other fact
+  ---
+  duration_ms: 2819.143075
+  type: 'test'
+  ...
+# Subtest: review: verification script has no automatic deletion or toolchain installation
+ok 85 - review: verification script has no automatic deletion or toolchain installation
+  ---
+  duration_ms: 1.844926
+  type: 'test'
+  ...
+# Subtest: C3-V01 exact question/body bytes, trusted envelope, and same-result replay
+ok 86 - C3-V01 exact question/body bytes, trusted envelope, and same-result replay
+  ---
+  duration_ms: 3083.607066
+  type: 'test'
+  ...
+# Subtest: C3-V02 receipts are idempotent, order-independent and never back-dated by a client clock
+ok 87 - C3-V02 receipts are idempotent, order-independent and never back-dated by a client clock
+  ---
+  duration_ms: 3079.971517
+  type: 'test'
+  ...
+# Subtest: C3-V03 scope, role trimming, cursor bounds and stale epoch resynchronization
+ok 88 - C3-V03 scope, role trimming, cursor bounds and stale epoch resynchronization
+  ---
+  duration_ms: 4249.837823
+  type: 'test'
+  ...
+# Subtest: C3-V04 capture pause keeps functional data, records the gap and never refills it
+ok 89 - C3-V04 capture pause keeps functional data, records the gap and never refills it
+  ---
+  duration_ms: 2817.690125
+  type: 'test'
+  ...
+# Subtest: C3-V05 cancellation stops undisplays actions and never resurrects them
+ok 90 - C3-V05 cancellation stops undisplays actions and never resurrects them
+  ---
+  duration_ms: 2738.065535
+  type: 'test'
+  ...
+# Subtest: C3-V06 the same-transaction stop rolls back with the caller and covers A2 pause
+ok 91 - C3-V06 the same-transaction stop rolls back with the caller and covers A2 pause
+  ---
+  duration_ms: 2749.656402
+  type: 'test'
+  ...
+# Subtest: C3-V07 durability: reconnect after a real reopen replays original ids and hides stopped actions
+ok 92 - C3-V07 durability: reconnect after a real reopen replays original ids and hides stopped actions
+  ---
+  duration_ms: 5328.790477
+  type: 'test'
+  ...
+# (node:4364) Warning: AI SDK Warning System: To turn off warning logging, set the AI_SDK_LOG_WARNINGS global to false.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# Subtest: AI SDK adapter maps approved DeepSeek settings through an offline transport
+ok 93 - AI SDK adapter maps approved DeepSeek settings through an offline transport
+  ---
+  duration_ms: 77.318792
+  type: 'test'
+  ...
+# Subtest: invalid structured policy output reaches the one permitted repair request
+ok 94 - invalid structured policy output reaches the one permitted repair request
+  ---
+  duration_ms: 12.035225
+  type: 'test'
+  ...
+# Subtest: malformed SDK JSON preserves usage and reaches the one permitted repair
+ok 95 - malformed SDK JSON preserves usage and reaches the one permitted repair
+  ---
+  duration_ms: 7.532432
+  type: 'test'
+  ...
+# Subtest: negative SDK token usage is kept unknown
+ok 96 - negative SDK token usage is kept unknown
+  ---
+  duration_ms: 2.93715
+  type: 'test'
+  ...
+# Subtest: SDK-valid but unauthorized references are repaired by the B1 whitelist
+ok 97 - SDK-valid but unauthorized references are repaired by the B1 whitelist
+  ---
+  duration_ms: 5.149319
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter selects the teacher mode schema and returns a proposal body
+ok 98 - AI SDK adapter selects the teacher mode schema and returns a proposal body
+  ---
+  duration_ms: 4.924953
+  type: 'test'
+  ...
+# Subtest: teacher patch sends trusted reference and exact allowed-field guidance
+ok 99 - teacher patch sends trusted reference and exact allowed-field guidance
+  ---
+  duration_ms: 5.956543
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter keeps missing vendor usage unknown
+ok 100 - AI SDK adapter keeps missing vendor usage unknown
+  ---
+  duration_ms: 3.121412
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter reports vendor failure without retrying
+ok 101 - AI SDK adapter reports vendor failure without retrying
+  ---
+  duration_ms: 5.04226
+  type: 'test'
+  ...
+# Subtest: AI SDK adapter cancellation aborts a pending offline transport
+ok 102 - AI SDK adapter cancellation aborts a pending offline transport
+  ---
+  duration_ms: 14.13835
+  type: 'test'
+  ...
+# Subtest: late SDK transport completion is discarded after the shared deadline
+ok 103 - late SDK transport completion is discarded after the shared deadline
+  ---
+  duration_ms: 10.520428
+  type: 'test'
+  ...
+# Subtest: 16K preflight rejects the complete final SDK input before transport
+ok 104 - 16K preflight rejects the complete final SDK input before transport
+  ---
+  duration_ms: 0.879961
+  type: 'test'
+  ...
+# (node:4364) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+# Subtest: DL-B fixes the three approved HDL guidance fixtures and keeps them distinct
+ok 105 - DL-B fixes the three approved HDL guidance fixtures and keeps them distinct
+  ---
+  duration_ms: 2.157536
+  type: 'test'
+  ...
+# Subtest: DL-B assembles only bounded authorized build diagnostics and produces cited student-owned guidance
+ok 106 - DL-B assembles only bounded authorized build diagnostics and produces cited student-owned guidance
+  ---
+  duration_ms: 7.72192
+  type: 'test'
+  ...
+# Subtest: DL-B preserves an out-of-range diagnostic but withholds its unusable source location
+ok 107 - DL-B preserves an out-of-range diagnostic but withholds its unusable source location
+  ---
+  duration_ms: 2.540907
+  type: 'test'
+  ...
+# Subtest: DL-B rebuilds signal and trace frames before they reach the provider
+ok 108 - DL-B rebuilds signal and trace frames before they reach the provider
+  ---
+  duration_ms: 3.479303
+  type: 'test'
+  ...
+# Subtest: DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence
+ok 109 - DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence
+  ---
+  duration_ms: 2.357876
+  type: 'test'
+  ...
+# Subtest: DL-B bounds a long current trace and exposes truncation instead of claiming full coverage
+ok 110 - DL-B bounds a long current trace and exposes truncation instead of claiming full coverage
+  ---
+  duration_ms: 1.017344
+  type: 'test'
+  ...
+# Subtest: DL-B model-visible frames preserve LED bit order and do not invent a reset transition
+ok 111 - DL-B model-visible frames preserve LED bit order and do not invent a reset transition
+  ---
+  duration_ms: 1.422605
+  type: 'test'
+  ...
+# Subtest: DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities
+    # Subtest: cross-student build
+    ok 1 - cross-student build
+      ---
+      duration_ms: 1.134582
+      type: 'test'
+      ...
+    # Subtest: old snapshot
+    ok 2 - old snapshot
+      ---
+      duration_ms: 0.749168
+      type: 'test'
+      ...
+    # Subtest: wrong session build
+    ok 3 - wrong session build
+      ---
+      duration_ms: 0.643402
+      type: 'test'
+      ...
+    # Subtest: old generation
+    ok 4 - old generation
+      ---
+      duration_ms: 0.505376
+      type: 'test'
+      ...
+    # Subtest: run references are not silently reinterpreted as HDL results
+    ok 5 - run references are not silently reinterpreted as HDL results
+      ---
+      duration_ms: 0.506067
+      type: 'test'
+      ...
+    1..5
+ok 112 - DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities
+  ---
+  duration_ms: 4.936924
+  type: 'test'
+  ...
+# Subtest: DL-B current guard discards a late body after sequence, result, or session changes
+ok 113 - DL-B current guard discards a late body after sequence, result, or session changes
+  ---
+  duration_ms: 1.956083
+  type: 'test'
+  ...
+# Subtest: DL-B repairs one fabricated HDL citation and keeps unknown aggregate usage
+ok 114 - DL-B repairs one fabricated HDL citation and keeps unknown aggregate usage
+  ---
+  duration_ms: 1.953047
+  type: 'test'
+  ...
+# Subtest: DL-B authorized three-job real HDL guidance batch
+ok 115 - DL-B authorized three-job real HDL guidance batch # SKIP
+  ---
+  duration_ms: 0.172961
+  type: 'test'
+  ...
+# Subtest: DL-B authorized HR-DL-03 real semantic-fix batch
+ok 116 - DL-B authorized HR-DL-03 real semantic-fix batch # SKIP
+  ---
+  duration_ms: 0.092661
+  type: 'test'
+  ...
+# Subtest: teacher candidates accept one to three items and aggregate actual usage
+ok 117 - teacher candidates accept one to three items and aggregate actual usage
+  ---
+  duration_ms: 5.079076
+  type: 'test'
+  ...
+# Subtest: blueprint, patch, and rubric trial remain teacher-reviewable proposals
+    # Subtest: blueprint
+    ok 1 - blueprint
+      ---
+      duration_ms: 0.414628
+      type: 'test'
+      ...
+    # Subtest: patch
+    ok 2 - patch
+      ---
+      duration_ms: 0.58855
+      type: 'test'
+      ...
+    # Subtest: rubric_trial
+    ok 3 - rubric_trial
+      ---
+      duration_ms: 0.584212
+      type: 'test'
+      ...
+    1..3
+ok 118 - blueprint, patch, and rubric trial remain teacher-reviewable proposals
+  ---
+  duration_ms: 2.48966
+  type: 'test'
+  ...
+# Subtest: teacher validators rebuild every body mode without unknown model fields
+    # Subtest: candidates
+    ok 1 - candidates
+      ---
+      duration_ms: 0.84287
+      type: 'test'
+      ...
+    # Subtest: blueprint
+    ok 2 - blueprint
+      ---
+      duration_ms: 0.372139
+      type: 'test'
+      ...
+    # Subtest: patch
+    ok 3 - patch
+      ---
+      duration_ms: 0.472485
+      type: 'test'
+      ...
+    # Subtest: rubric_trial
+    ok 4 - rubric_trial
+      ---
+      duration_ms: 0.475341
+      type: 'test'
+      ...
+    1..4
+ok 119 - teacher validators rebuild every body mode without unknown model fields
+  ---
+  duration_ms: 3.582825
+  type: 'test'
+  ...
+# Subtest: teacher candidates reject an oversized list after one repair
+ok 120 - teacher candidates reject an oversized list after one repair
+  ---
+  duration_ms: 1.240387
+  type: 'test'
+  ...
+# Subtest: patch requires a blueprint and base revision without calling the provider
+ok 121 - patch requires a blueprint and base revision without calling the provider
+  ---
+  duration_ms: 0.233743
+  type: 'test'
+  ...
+# Subtest: unauthorized references are rejected before provider invocation
+ok 122 - unauthorized references are rejected before provider invocation
+  ---
+  duration_ms: 0.185364
+  type: 'test'
+  ...
+# Subtest: student help works with no learner history and returns control
+ok 123 - student help works with no learner history and returns control
+  ---
+  duration_ms: 2.173917
+  type: 'test'
+  ...
+# Subtest: student validator rebuilds the body without unknown model fields
+ok 124 - student validator rebuilds the body without unknown model fields
+  ---
+  duration_ms: 0.717729
+  type: 'test'
+  ...
+# Subtest: Chinese student questions repair English visible output once
+ok 125 - Chinese student questions repair English visible output once
+  ---
+  duration_ms: 1.36094
+  type: 'test'
+  ...
+# Subtest: Chinese student questions repair English output after a Chinese full-stop title
+ok 126 - Chinese student questions repair English output after a Chinese full-stop title
+  ---
+  duration_ms: 1.108542
+  type: 'test'
+  ...
+# Subtest: Chinese student questions repair English output after a newline title
+ok 127 - Chinese student questions repair English output after a newline title
+  ---
+  duration_ms: 0.580686
+  type: 'test'
+  ...
+# Subtest: English student questions ignore quoted Chinese when matching the primary language
+ok 128 - English student questions ignore quoted Chinese when matching the primary language
+  ---
+  duration_ms: 0.442049
+  type: 'test'
+  ...
+# Subtest: Chinese primary questions ignore a trailing English prompt injection
+ok 129 - Chinese primary questions ignore a trailing English prompt injection
+  ---
+  duration_ms: 0.931085
+  type: 'test'
+  ...
+# Subtest: valid C labels and reference-ID substrings in filenames remain visible
+ok 130 - valid C labels and reference-ID substrings in filenames remain visible
+  ---
+  duration_ms: 0.548767
+  type: 'test'
+  ...
+# Subtest: student-visible fields repair opaque IDs, UUIDs, and hashes while structured refs remain
+    # Subtest: reference ID
+    ok 1 - reference ID
+      ---
+      duration_ms: 0.5397
+      type: 'test'
+      ...
+    # Subtest: UUID
+    ok 2 - UUID
+      ---
+      duration_ms: 0.374403
+      type: 'test'
+      ...
+    # Subtest: hash
+    ok 3 - hash
+      ---
+      duration_ms: 0.427582
+      type: 'test'
+      ...
+    1..3
+ok 131 - student-visible fields repair opaque IDs, UUIDs, and hashes while structured refs remain
+  ---
+  duration_ms: 1.928973
+  type: 'test'
+  ...
+# Subtest: student-visible language and internal-ID violations fail closed after one repair
+ok 132 - student-visible language and internal-ID violations fail closed after one repair
+  ---
+  duration_ms: 0.620409
+  type: 'test'
+  ...
+# Subtest: disabled help is policy-blocked with zero provider calls
+ok 133 - disabled help is policy-blocked with zero provider calls
+  ---
+  duration_ms: 0.170706
+  type: 'test'
+  ...
+# Subtest: untrusted prompt injection remains data and cannot grant capabilities
+ok 134 - untrusted prompt injection remains data and cannot grant capabilities
+  ---
+  duration_ms: 0.431299
+  type: 'test'
+  ...
+# Subtest: whole-solution and student-operation flags fail closed
+ok 135 - whole-solution and student-operation flags fail closed
+  ---
+  duration_ms: 0.383129
+  type: 'test'
+  ...
+# Subtest: tool-loop requests cannot exceed three provider calls
+ok 136 - tool-loop requests cannot exceed three provider calls
+  ---
+  duration_ms: 0.354106
+  type: 'test'
+  ...
+# Subtest: deadline aborts a slow provider and late output is not accepted
+ok 137 - deadline aborts a slow provider and late output is not accepted
+  ---
+  duration_ms: 60.077994
+  type: 'test'
+  ...
+# Subtest: explicit cancellation before work prevents provider invocation
+ok 138 - explicit cancellation before work prevents provider invocation
+  ---
+  duration_ms: 0.617594
+  type: 'test'
+  ...
+# Subtest: cancellation interrupts a provider that ignores AbortSignal
+ok 139 - cancellation interrupts a provider that ignores AbortSignal
+  ---
+  duration_ms: 5.904752
+  type: 'test'
+  ...
+# Subtest: cancellation interrupts a current guard that never settles
+ok 140 - cancellation interrupts a current guard that never settles
+  ---
+  duration_ms: 6.13768
+  type: 'test'
+  ...
+# Subtest: deadline interrupts a current guard that never settles
+ok 141 - deadline interrupts a current guard that never settles
+  ---
+  duration_ms: 7.004118
+  type: 'test'
+  ...
+# Subtest: current guard result is discarded when cancellation happens before it returns
+ok 142 - current guard result is discarded when cancellation happens before it returns
+  ---
+  duration_ms: 0.820429
+  type: 'test'
+  ...
+# Subtest: deadline interrupts a post-provider current guard
+ok 143 - deadline interrupts a post-provider current guard
+  ---
+  duration_ms: 10.546221
+  type: 'test'
+  ...
+# Subtest: post-call current guard discards stale output
+ok 144 - post-call current guard discards stale output
+  ---
+  duration_ms: 0.554457
+  type: 'test'
+  ...
+# Subtest: missing provider usage remains unknown rather than zero
+ok 145 - missing provider usage remains unknown rather than zero
+  ---
+  duration_ms: 0.482974
+  type: 'test'
+  ...
+# Subtest: exhausted budget preserves the request without provider invocation
+ok 146 - exhausted budget preserves the request without provider invocation
+  ---
+  duration_ms: 0.430531
+  type: 'test'
+  ...
+# Subtest: provider failure is explicit and retryable without hidden retries
+ok 147 - provider failure is explicit and retryable without hidden retries
+  ---
+  duration_ms: 0.330923
+  type: 'test'
+  ...
+# Subtest: a failed second provider call makes aggregate usage unknown
+ok 148 - a failed second provider call makes aggregate usage unknown
+  ---
+  duration_ms: 0.29673
+  type: 'test'
+  ...
+# Subtest: a cancelled second provider call makes aggregate usage unknown
+ok 149 - a cancelled second provider call makes aggregate usage unknown
+  ---
+  duration_ms: 5.643298
+  type: 'test'
+  ...
+# Subtest: a timed out second provider call makes aggregate usage unknown
+ok 150 - a timed out second provider call makes aggregate usage unknown
+  ---
+  duration_ms: 9.606892
+  type: 'test'
+  ...
+# Subtest: DeepSeek adapter fixes approved configuration and performs no implicit call
+ok 151 - DeepSeek adapter fixes approved configuration and performs no implicit call
+  ---
+  duration_ms: 4.119379
+  type: 'test'
+  ...
+# Subtest: DeepSeek input budget rejects over 16K before injected SDK invocation
+ok 152 - DeepSeek input budget rejects over 16K before injected SDK invocation
+  ---
+  duration_ms: 0.942215
+  type: 'test'
+  ...
+# Subtest: the repair instruction is part of the shared input limit
+ok 153 - the repair instruction is part of the shared input limit
+  ---
+  duration_ms: 1.242231
+  type: 'test'
+  ...
+# Subtest: B3 fixed synthetic fixture matrix keeps all eight evidence and feedback boundaries explicit
+ok 154 - B3 fixed synthetic fixture matrix keeps all eight evidence and feedback boundaries explicit
+  ---
+  duration_ms: 2.179636
+  type: 'test'
+  ...
+# Subtest: B3 produces a strict evidence-grounded body and A4 accepts it through the real analysis transaction
+ok 155 - B3 produces a strict evidence-grounded body and A4 accepts it through the real analysis transaction
+  ---
+  duration_ms: 3129.305117
+  type: 'test'
+  ...
+# Subtest: B3 rejects unsupported targets, fabricated references, and policy-invalid evidence semantics
+    # Subtest: unknown target
+    ok 1 - unknown target
+      ---
+      duration_ms: 2762.531698
+      type: 'test'
+      ...
+    # Subtest: fabricated reference
+    ok 2 - fabricated reference
+      ---
+      duration_ms: 2761.22762
+      type: 'test'
+      ...
+    # Subtest: assisted state without observed help
+    ok 3 - assisted state without observed help
+      ---
+      duration_ms: 2742.384286
+      type: 'test'
+      ...
+    # Subtest: checked state without supporting evidence
+    ok 4 - checked state without supporting evidence
+      ---
+      duration_ms: 2697.494711
+      type: 'test'
+      ...
+    # Subtest: conflict without counter-evidence
+    ok 5 - conflict without counter-evidence
+      ---
+      duration_ms: 2766.26632
+      type: 'test'
+      ...
+    # Subtest: unknown discarded by resolved flag
+    ok 6 - unknown discarded by resolved flag
+      ---
+      duration_ms: 2742.006799
+      type: 'test'
+      ...
+    1..6
+ok 156 - B3 rejects unsupported targets, fabricated references, and policy-invalid evidence semantics
+  ---
+  duration_ms: 16475.334509
+  type: 'test'
+  ...
+# Subtest: B3 review of the A4 optional B2 state seam uses real transactions and ignores injected revisions
+ok 157 - B3 review of the A4 optional B2 state seam uses real transactions and ignores injected revisions
+  ---
+  duration_ms: 2927.794002
+  type: 'test'
+  ...
+# Subtest: B3 rejects a model input that omits any reference frozen in the analysis binding
+ok 158 - B3 rejects a model input that omits any reference frozen in the analysis binding
+  ---
+  duration_ms: 1.584049
+  type: 'test'
+  ...
+# Subtest: B3 core rejects an authorized reference set that omits a frozen binding reference
+ok 159 - B3 core rejects an authorized reference set that omits a frozen binding reference
+  ---
+  duration_ms: 0.51728
+  type: 'test'
+  ...
+# Subtest: B3 shares the three-call, deadline, cancellation, usage, lease, and currentness boundaries
+    # Subtest: dynamic budget stops before a second provider call and preserves first usage
+    ok 1 - dynamic budget stops before a second provider call and preserves first usage
+      ---
+      duration_ms: 1.103418
+      type: 'test'
+      ...
+    # Subtest: an already exhausted cross-worker ledger makes no provider call
+    ok 2 - an already exhausted cross-worker ledger makes no provider call
+      ---
+      duration_ms: 0.361227
+      type: 'test'
+      ...
+    # Subtest: stale lease and passive capture changes stop before the provider
+    ok 3 - stale lease and passive capture changes stop before the provider
+      ---
+      duration_ms: 0.632074
+      type: 'test'
+      ...
+    # Subtest: explicit analysis survives a capture-only change while preserving unknown
+    ok 4 - explicit analysis survives a capture-only change while preserving unknown
+      ---
+      duration_ms: 0.702817
+      type: 'test'
+      ...
+    # Subtest: provider failure keeps unknown usage and cancellation sends nothing
+    ok 5 - provider failure keeps unknown usage and cancellation sends nothing
+      ---
+      duration_ms: 0.899175
+      type: 'test'
+      ...
+    # Subtest: an input preflight rejection releases the unsent persistent reservation
+    ok 6 - an input preflight rejection releases the unsent persistent reservation
+      ---
+      duration_ms: 0.676147
+      type: 'test'
+      ...
+    # Subtest: reservation completion rechecks cancellation, deadline, currentness, and dynamic budget before sending
+        # Subtest: cancelled
+        ok 1 - cancelled
+          ---
+          duration_ms: 1.175674
+          type: 'test'
+          ...
+        # Subtest: deadline
+        ok 2 - deadline
+          ---
+          duration_ms: 0.578435
+          type: 'test'
+          ...
+        # Subtest: state revision
+        ok 3 - state revision
+          ---
+          duration_ms: 0.777637
+          type: 'test'
+          ...
+        # Subtest: budget withdrawal
+        ok 4 - budget withdrawal
+          ---
+          duration_ms: 0.498975
+          type: 'test'
+          ...
+        1..4
+    ok 7 - reservation completion rechecks cancellation, deadline, currentness, and dynamic budget before sending
+      ---
+      duration_ms: 3.631076
+      type: 'test'
+      ...
+    # Subtest: a hanging post-reservation current read releases the reservation on cancellation or deadline
+        # Subtest: cancelled
+        ok 1 - cancelled
+          ---
+          duration_ms: 1.046191
+          type: 'test'
+          ...
+        # Subtest: timed_out
+        ok 2 - timed_out
+          ---
+          duration_ms: 502.117633
+          type: 'test'
+          ...
+        1..2
+    ok 8 - a hanging post-reservation current read releases the reservation on cancellation or deadline
+      ---
+      duration_ms: 503.831655
+      type: 'test'
+      ...
+    1..8
+ok 160 - B3 shares the three-call, deadline, cancellation, usage, lease, and currentness boundaries
+  ---
+  duration_ms: 513.14513
+  type: 'test'
+  ...
+# Subtest: B3 bills only the provider calls that actually left the process
+    # Subtest: an outer cancellation settling before a delayed release still bills zero calls
+    ok 1 - an outer cancellation settling before a delayed release still bills zero calls
+      ---
+      duration_ms: 21.455531
+      type: 'test'
+      ...
+    # Subtest: a cancellation after the request was sent keeps the call and its unknown usage
+    ok 2 - a cancellation after the request was sent keeps the call and its unknown usage
+      ---
+      duration_ms: 1.426403
+      type: 'test'
+      ...
+    # Subtest: a release that fails or meets a concurrent recovery keeps the reservation and the count
+        # Subtest: storage failure
+        ok 1 - storage failure
+          ---
+          duration_ms: 0.930353
+          type: 'test'
+          ...
+        # Subtest: concurrent recovery
+        ok 2 - concurrent recovery
+          ---
+          duration_ms: 0.493235
+          type: 'test'
+          ...
+        # Subtest: a stale recheck whose release fails keeps the count without any cancellation
+        ok 3 - a stale recheck whose release fails keeps the count without any cancellation
+          ---
+          duration_ms: 0.494937
+          type: 'test'
+          ...
+        1..3
+    ok 3 - a release that fails or meets a concurrent recovery keeps the reservation and the count
+      ---
+      duration_ms: 2.510955
+      type: 'test'
+      ...
+    # Subtest: a provably unsent cancellation leaves the next worker the full three-call budget
+    ok 4 - a provably unsent cancellation leaves the next worker the full three-call budget
+      ---
+      duration_ms: 1.278787
+      type: 'test'
+      ...
+    1..4
+ok 161 - B3 bills only the provider calls that actually left the process
+  ---
+  duration_ms: 27.778439
+  type: 'test'
+  ...
+# Subtest: B3 uses the approved DeepSeek analysis schema through an injected offline invoker
+ok 162 - B3 uses the approved DeepSeek analysis schema through an injected offline invoker
+  ---
+  duration_ms: 4.174543
+  type: 'test'
+  ...
+# Subtest: B3 authorized real-model learner-analysis candidate uses one synthetic A4 job
+ok 163 - B3 authorized real-model learner-analysis candidate uses one synthetic A4 job # SKIP
+  ---
+  duration_ms: 0.071645
+  type: 'test'
+  ...
+# Subtest: B3 model gate rejects missing authorization without network
+ok 164 - B3 model gate rejects missing authorization without network
+  ---
+  duration_ms: 350.77463
+  type: 'test'
+  ...
+# Subtest: B3 model gate rejects missing credentials without network
+ok 165 - B3 model gate rejects missing credentials without network
+  ---
+  duration_ms: 323.352524
+  type: 'test'
+  ...
+# Subtest: DL-B semantic-fix gate rejects missing authorization without network
+ok 166 - DL-B semantic-fix gate rejects missing authorization without network
+  ---
+  duration_ms: 319.536886
+  type: 'test'
+  ...
+# Subtest: DL-B semantic-fix gate rejects missing credentials without network
+ok 167 - DL-B semantic-fix gate rejects missing credentials without network
+  ---
+  duration_ms: 324.266061
+  type: 'test'
+  ...
+# Subtest: DL-B model gate rejects missing authorization without network
+ok 168 - DL-B model gate rejects missing authorization without network
+  ---
+  duration_ms: 347.705347
+  type: 'test'
+  ...
+# Subtest: DL-B model gate rejects missing credentials without network
+ok 169 - DL-B model gate rejects missing credentials without network
+  ---
+  duration_ms: 326.649807
+  type: 'test'
+  ...
+# Subtest: P2 model gate rejects missing authorization without network
+ok 170 - P2 model gate rejects missing authorization without network
+  ---
+  duration_ms: 312.29765
+  type: 'test'
+  ...
+# Subtest: P2 model gate rejects missing credentials without network
+ok 171 - P2 model gate rejects missing credentials without network
+  ---
+  duration_ms: 326.103689
+  type: 'test'
+  ...
+# Subtest: P2 model evidence observes bounded response metadata and latency
+ok 172 - P2 model evidence observes bounded response metadata and latency
+  ---
+  duration_ms: 36.501016
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies a non-success HTTP response without persisting its error body
+ok 173 - P2 model evidence classifies a non-success HTTP response without persisting its error body
+  ---
+  duration_ms: 1.268333
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies network failure without persisting raw errors
+ok 174 - P2 model evidence classifies network failure without persisting raw errors
+  ---
+  duration_ms: 0.980095
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies cancellation without persisting raw errors
+ok 175 - P2 model evidence classifies cancellation without persisting raw errors
+  ---
+  duration_ms: 0.388962
+  type: 'test'
+  ...
+# Subtest: P2 model evidence classifies timeout without persisting raw errors
+ok 176 - P2 model evidence classifies timeout without persisting raw errors
+  ---
+  duration_ms: 0.331836
+  type: 'test'
+  ...
+# Subtest: P2 model evidence rejects credential, lease and reasoning fields recursively
+ok 177 - P2 model evidence rejects credential, lease and reasoning fields recursively
+  ---
+  duration_ms: 1.015967
+  type: 'test'
+  ...
+# Subtest: P2 real-model runtime gate rejects a non-locked Node before provider setup
+ok 178 - P2 real-model runtime gate rejects a non-locked Node before provider setup
+  ---
+  duration_ms: 0.327067
+  type: 'test'
+  ...
+# Subtest: P2 real-provider failure probes require their own explicit authorization
+ok 179 - P2 real-provider failure probes require their own explicit authorization
+  ---
+  duration_ms: 0.239966
+  type: 'test'
+  ...
+# Subtest: P2 30-job performance batch requires its own explicit authorization
+ok 180 - P2 30-job performance batch requires its own explicit authorization
+  ---
+  duration_ms: 0.277796
+  type: 'test'
+  ...
+# Subtest: P2 two-job semantic-fix batch requires its own explicit authorization
+ok 181 - P2 two-job semantic-fix batch requires its own explicit authorization
+  ---
+  duration_ms: 0.18283
+  type: 'test'
+  ...
+# Subtest: P2 real-provider cancellation, timeout and HTTP failure probes
+ok 182 - P2 real-provider cancellation, timeout and HTTP failure probes # SKIP
+  ---
+  duration_ms: 1.170634
+  type: 'test'
+  ...
+# Subtest: help acceptance activates ready attempt and atomically stores question, receipt, event, and job
+ok 183 - help acceptance activates ready attempt and atomically stores question, receipt, event, and job
+  ---
+  duration_ms: 2886.970998
+  type: 'test'
+  ...
+# Subtest: help acceptance derives its exact 45-second deadline from one clock reading
+ok 184 - help acceptance derives its exact 45-second deadline from one clock reading
+  ---
+  duration_ms: 2666.543713
+  type: 'test'
+  ...
+# Subtest: new help replaces the old help job and increments the shared epoch once
+ok 185 - new help replaces the old help job and increments the shared epoch once
+  ---
+  duration_ms: 2739.051199
+  type: 'test'
+  ...
+# Subtest: capture and reminder controls preserve the original accepted help input
+ok 186 - capture and reminder controls preserve the original accepted help input
+  ---
+  duration_ms: 2748.950104
+  type: 'test'
+  ...
+# Subtest: disabled policy and an active limited check reject help before a tutoring job is created
+ok 187 - disabled policy and an active limited check reject help before a tutoring job is created
+  ---
+  duration_ms: 8022.255901
+  type: 'test'
+  ...
+# Subtest: help rejects stale revisions, foreign object references, and unauthorized actors without model work
+ok 188 - help rejects stale revisions, foreign object references, and unauthorized actors without model work
+  ---
+  duration_ms: 3328.607487
+  type: 'test'
+  ...
+# Subtest: a corrupted persisted request binding returns a typed state conflict
+ok 189 - a corrupted persisted request binding returns a typed state conflict
+  ---
+  duration_ms: 2651.27982
+  type: 'test'
+  ...
+# Subtest: context assembly exposes only the selected snapshot, relevant claims, actual help, and approved paragraphs
+ok 190 - context assembly exposes only the selected snapshot, relevant claims, actual help, and approved paragraphs
+  ---
+  duration_ms: 2939.097507
+  type: 'test'
+  ...
+# Subtest: empty learner history stays explicit unknown and does not block help
+ok 191 - empty learner history stays explicit unknown and does not block help
+  ---
+  duration_ms: 2710.964202
+  type: 'test'
+  ...
+# Subtest: bounded resource reference IDs complete the real C3 message and action chain
+ok 192 - bounded resource reference IDs complete the real C3 message and action chain
+  ---
+  duration_ms: 2806.262398
+  type: 'test'
+  ...
+# Subtest: bounded code reference IDs complete the real C3 message and action chain
+ok 193 - bounded code reference IDs complete the real C3 message and action chain
+  ---
+  duration_ms: 2687.88511
+  type: 'test'
+  ...
+# Subtest: resource and unavailable-run references remain exact, scoped, and explainable
+ok 194 - resource and unavailable-run references remain exact, scoped, and explainable
+  ---
+  duration_ms: 1.945364
+  type: 'test'
+  ...
+# Subtest: instructions inside an approved resource remain untrusted and cannot expand help capabilities
+ok 195 - instructions inside an approved resource remain untrusted and cannot expand help capabilities
+  ---
+  duration_ms: 1.248493
+  type: 'test'
+  ...
+# Subtest: current guard distinguishes cancellation from stale policy, version, and recovery state
+ok 196 - current guard distinguishes cancellation from stale policy, version, and recovery state
+  ---
+  duration_ms: 0.443071
+  type: 'test'
+  ...
+# Subtest: authorized execution returns a traceable C3 handoff and discards a post-model stale result
+ok 197 - authorized execution returns a traceable C3 handoff and discards a post-model stale result
+  ---
+  duration_ms: 1.641661
+  type: 'test'
+  ...
+# Subtest: authorized execution persists one C3 message/action with the held lease and cumulative call ledger
+ok 198 - authorized execution persists one C3 message/action with the held lease and cumulative call ledger
+  ---
+  duration_ms: 2756.702801
+  type: 'test'
+  ...
+# Subtest: tutoring composer can attach the teacher agent without taking over student jobs
+ok 199 - tutoring composer can attach the teacher agent without taking over student jobs
+  ---
+  duration_ms: 2703.402209
+  type: 'test'
+  ...
+# Subtest: long unresolved teaching text survives C3 persistence and exact result replay
+ok 200 - long unresolved teaching text survives C3 persistence and exact result replay
+  ---
+  duration_ms: 2711.630979
+  type: 'test'
+  ...
+# Subtest: a withdrawn trusted budget blocks the next provider call before reservation
+ok 201 - a withdrawn trusted budget blocks the next provider call before reservation
+  ---
+  duration_ms: 5391.646408
+  type: 'test'
+  ...
+# Subtest: persisted call budget is shared across workers and reserves before provider invocation
+ok 202 - persisted call budget is shared across workers and reserves before provider invocation
+  ---
+  duration_ms: 1.41554
+  type: 'test'
+  ...
+# Subtest: cancelled and expired jobs end before claim without invoking the provider
+ok 203 - cancelled and expired jobs end before claim without invoking the provider
+  ---
+  duration_ms: 0.591453
+  type: 'test'
+  ...
+# Subtest: an input-limit rejection before the invoker releases only its unsent persisted reservation
+ok 204 - an input-limit rejection before the invoker releases only its unsent persisted reservation
+  ---
+  duration_ms: 0.606371
+  type: 'test'
+  ...
+# Subtest: P2 real-model student help, persisted content and undisplayed cancellation
+ok 205 - P2 real-model student help, persisted content and undisplayed cancellation # SKIP
+  ---
+  duration_ms: 0.067145
+  type: 'test'
+  ...
+# Subtest: P2 performance summary uses nearest-rank percentiles
+ok 206 - P2 performance summary uses nearest-rank percentiles
+  ---
+  duration_ms: 0.140592
+  type: 'test'
+  ...
+# Subtest: P2 performance fixture fixes 30 authorized scenarios without model access
+ok 207 - P2 performance fixture fixes 30 authorized scenarios without model access
+  ---
+  duration_ms: 0.534236
+  type: 'test'
+  ...
+# Subtest: P2 semantic-fix fixture fixes two authorized scenarios without model access
+ok 208 - P2 semantic-fix fixture fixes two authorized scenarios without model access
+  ---
+  duration_ms: 0.258582
+  type: 'test'
+  ...
+# Subtest: P2 authorized two-job real student-help semantic-fix batch
+ok 209 - P2 authorized two-job real student-help semantic-fix batch # SKIP
+  ---
+  duration_ms: 0.050113
+  type: 'test'
+  ...
+# Subtest: P2 authorized 30-job real student-help performance batch
+ok 210 - P2 authorized 30-job real student-help performance batch # SKIP
+  ---
+  duration_ms: 0.034876
+  type: 'test'
+  ...
+# Subtest: DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries
+ok 211 - DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries
+  ---
+  duration_ms: 3019.892741
+  type: 'test'
+  ...
+# Subtest: DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram
+ok 212 - DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram
+  ---
+  duration_ms: 2925.719267
+  type: 'test'
+  ...
+# Subtest: DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state
+ok 213 - DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state
+  ---
+  duration_ms: 2832.633871
+  type: 'test'
+  ...
+# Subtest: existing authenticated Job paths dispatch HDL and stop its original session after a completed program
+ok 214 - existing authenticated Job paths dispatch HDL and stop its original session after a completed program
+  ---
+  duration_ms: 4038.908566
+  type: 'test'
+  ...
+# Subtest: revoked membership cannot read or interact, while the trusted worker still stops original resources
+ok 215 - revoked membership cannot read or interact, while the trusted worker still stops original resources
+  ---
+  duration_ms: 3010.856528
+  type: 'test'
+  ...
+# Subtest: job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind
+ok 216 - job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind
+  ---
+  duration_ms: 3402.067382
+  type: 'test'
+  ...
+# Subtest: Trace polling retains its cursor until the original program or interaction result is available
+ok 217 - Trace polling retains its cursor until the original program or interaction result is available
+  ---
+  duration_ms: 2894.493492
+  type: 'test'
+  ...
+# Subtest: replacement rechecks the supplied transaction authority after its external stop wait
+ok 218 - replacement rechecks the supplied transaction authority after its external stop wait
+  ---
+  duration_ms: 2711.494092
+  type: 'test'
+  ...
+# Subtest: real A1/A2 transactions persist double-key ACKs, whole files and original revisions
+ok 219 - real A1/A2 transactions persist double-key ACKs, whole files and original revisions
+  ---
+  duration_ms: 3701.131852
+  type: 'test'
+  ...
+# Subtest: late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches
+ok 220 - late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches
+  ---
+  duration_ms: 2764.448134
+  type: 'test'
+  ...
+# Subtest: current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data
+ok 221 - current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data
+  ---
+  duration_ms: 4042.1337
+  type: 'test'
+  ...
+# Subtest: two real processes share the original ACK, and acknowledged state survives process restart
+ok 222 - two real processes share the original ACK, and acknowledged state survives process restart
+  ---
+  duration_ms: 5963.722944
+  type: 'test'
+  ...
+# Subtest: persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private
+ok 223 - persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private
+  ---
+  duration_ms: 3479.705665
+  type: 'test'
+  ...
+# Subtest: unknown with no node fact never resubmits; failed result commit recovers the same immutable fact
+ok 224 - unknown with no node fact never resubmits; failed result commit recovers the same immutable fact
+  ---
+  duration_ms: 4319.586984
+  type: 'test'
+  ...
+# Subtest: A2 pause stops a queued check through the original node cancellation; resume never resurrects it
+ok 225 - A2 pause stops a queued check through the original node cancellation; resume never resurrects it
+  ---
+  duration_ms: 2834.731476
+  type: 'test'
+  ...
+# Subtest: real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen
+ok 226 - real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen # SKIP
+  ---
+  duration_ms: 0.68584
+  type: 'test'
+  ...
+# Subtest: composed teacher and workspace jobs share routes while retaining their authorization and cancellation
+ok 227 - composed teacher and workspace jobs share routes while retaining their authorization and cancellation
+  ---
+  duration_ms: 4878.399651
+  type: 'test'
+  ...
+# Subtest: public Attempt uses the fixed limitedHelp=true rule for an active check
+ok 228 - public Attempt uses the fixed limitedHelp=true rule for an active check
+  ---
+  duration_ms: 3664.121537
+  type: 'test'
+  ...
+# Subtest: public Attempt uses the fixed limitedHelp=false rule for an active check
+ok 229 - public Attempt uses the fixed limitedHelp=false rule for an active check
+  ---
+  duration_ms: 3433.731291
+  type: 'test'
+  ...
+# Subtest: unknown execution and restart keep the restriction until the original result is confirmed
+ok 230 - unknown execution and restart keep the restriction until the original result is confirmed
+  ---
+  duration_ms: 3442.603642
+  type: 'test'
+  ...
+# Subtest: a cancel ACK and an unconfirmed runner stop do not clear the persisted restriction
+ok 231 - a cancel ACK and an unconfirmed runner stop do not clear the persisted restriction
+  ---
+  duration_ms: 2876.235632
+  type: 'test'
+  ...
+# Subtest: paused Attempt and assignment remain readable without releasing an active limited check
+ok 232 - paused Attempt and assignment remain readable without releasing an active limited check
+  ---
+  duration_ms: 3432.875038
+  type: 'test'
+  ...
+# Subtest: limitedCheck=false does not allow help on a paused Attempt
+ok 233 - limitedCheck=false does not allow help on a paused Attempt
+  ---
+  duration_ms: 3273.545869
+  type: 'test'
+  ...
+# Subtest: review: late runs failure rolls back student session activity with Job, receipt and event
+ok 234 - review: late runs failure rolls back student session activity with Job, receipt and event
+  ---
+  duration_ms: 2954.249486
+  type: 'test'
+  ...
+# Subtest: review: original run ACK and conflicts return before pending readiness; authorization still applies
+ok 235 - review: original run ACK and conflicts return before pending readiness; authorization still applies
+  ---
+  duration_ms: 2740.581493
+  type: 'test'
+  ...
+# Subtest: review: concurrent new runs recheck the original receipt after readiness
+ok 236 - review: concurrent new runs recheck the original receipt after readiness
+  ---
+  duration_ms: 2749.233646
+  type: 'test'
+  ...
+# Subtest: review: current teacher reads retained workspace, snapshot and run after student withdrawal
+ok 237 - review: current teacher reads retained workspace, snapshot and run after student withdrawal
+  ---
+  duration_ms: 3374.502092
+  type: 'test'
+  ...
+# Subtest: review: real RunControl preparation failure ends check without fabricating a RunRecord
+ok 238 - review: real RunControl preparation failure ends check without fabricating a RunRecord
+  ---
+  duration_ms: 3469.686262
+  type: 'test'
+  ...
+# Subtest: run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution
+ok 239 - run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution
+  ---
+  duration_ms: 7.388741
+  type: 'test'
+  ...
+# Subtest: lost transport queries same original run and rechecks current authorization before submit
+ok 240 - lost transport queries same original run and rechecks current authorization before submit
+  ---
+  duration_ms: 2.686573
+  type: 'test'
+  ...
+# Subtest: check cancellation keeps stage until the authenticated node confirms no pending units
+ok 241 - check cancellation keeps stage until the authenticated node confirms no pending units
+  ---
+  duration_ms: 1.48791
+  type: 'test'
+  ...
+# Subtest: confirmed failure requires original identity, current lease/generation and no units or result
+ok 242 - confirmed failure requires original identity, current lease/generation and no units or result
+  ---
+  duration_ms: 2.502601
+  type: 'test'
+  ...
+# Subtest: confirmed original facts reconcile expired/unknown leases and never become current-code claims
+ok 243 - confirmed original facts reconcile expired/unknown leases and never become current-code claims
+  ---
+  duration_ms: 6.681399
+  type: 'test'
+  ...
+# Subtest: authorized diagnostic reads exclude other attempts and private check detail
+ok 244 - authorized diagnostic reads exclude other attempts and private check detail
+  ---
+  duration_ms: 1.791904
+  type: 'test'
+  ...
+# Subtest: pause queued run retains cancellation intent and prevents new execution until node confirmation
+ok 245 - pause queued run retains cancellation intent and prevents new execution until node confirmation
+  ---
+  duration_ms: 2.667667
+  type: 'test'
+  ...
+# Subtest: stopping an already confirmed cancelled run under a new key preserves terminal state
+ok 246 - stopping an already confirmed cancelled run under a new key preserves terminal state
+  ---
+  duration_ms: 1.337861
+  type: 'test'
+  ...
+# Subtest: C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel
+ok 247 - C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel # SKIP
+  ---
+  duration_ms: 0.259832
+  type: 'test'
+  ...
+# Subtest: C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating
+ok 248 - C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating
+  ---
+  duration_ms: 8.578717
+  type: 'test'
+  ...
+# Subtest: C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check
+ok 249 - C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check
+  ---
+  duration_ms: 4.380794
+  type: 'test'
+  ...
+# Subtest: C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself
+ok 250 - C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself
+  ---
+  duration_ms: 3.515338
+  type: 'test'
+  ...
+# Subtest: C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt
+ok 251 - C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt
+  ---
+  duration_ms: 2.752824
+  type: 'test'
+  ...
+# Subtest: C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect
+ok 252 - C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect
+  ---
+  duration_ms: 3577.315409
+  type: 'test'
+  ...
+# Subtest: C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain
+ok 253 - C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain
+  ---
+  duration_ms: 2928.53596
+  type: 'test'
+  ...
+# Subtest: C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused
+ok 254 - C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused
+  ---
+  duration_ms: 4237.526844
+  type: 'test'
+  ...
+# Subtest: C4-V08 submission invalidates in-flight teaching in the same short transaction
+ok 255 - C4-V08 submission invalidates in-flight teaching in the same short transaction
+  ---
+  duration_ms: 2818.854096
+  type: 'test'
+  ...
+# Subtest: C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back
+ok 256 - C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back
+  ---
+  duration_ms: 3536.344378
+  type: 'test'
+  ...
+# Subtest: C4-V10 the submission command plan is replayable and guards the authorized student scope
+ok 257 - C4-V10 the submission command plan is replayable and guards the authorized student scope
+  ---
+  duration_ms: 8.371446
+  type: 'test'
+  ...
+# Subtest: C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+    # Subtest: assignment
+    ok 1 - assignment
+      ---
+      duration_ms: 2866.17336
+      type: 'test'
+      ...
+    # Subtest: activity
+    ok 2 - activity
+      ---
+      duration_ms: 2816.210475
+      type: 'test'
+      ...
+    1..2
+ok 258 - C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+  ---
+  duration_ms: 5683.578295
+  type: 'test'
+  ...
+# Subtest: C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant
+ok 259 - C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant
+  ---
+  duration_ms: 2761.22208
+  type: 'test'
+  ...
+# Subtest: C4-V13 disabled student account makes the retained grant non-actionable for a current teacher
+ok 260 - C4-V13 disabled student account makes the retained grant non-actionable for a current teacher
+  ---
+  duration_ms: 2739.020845
+  type: 'test'
+  ...
+# Subtest: whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted
+ok 261 - whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted
+  ---
+  duration_ms: 5.670406
+  type: 'test'
+  ...
+# Subtest: CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input
+ok 262 - CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input
+  ---
+  duration_ms: 6.607165
+  type: 'test'
+  ...
+# Subtest: exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges
+ok 263 - exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges
+  ---
+  duration_ms: 0.821853
+  type: 'test'
+  ...
+# Subtest: snapshot and ObjectRef bind old file instance/version/body rather than current paths
+ok 264 - snapshot and ObjectRef bind old file instance/version/body rather than current paths
+  ---
+  duration_ms: 1.72036
+  type: 'test'
+  ...
+# Subtest: capture/reminder/lifecycle controls are separate and stale process does not block saving
+ok 265 - capture/reminder/lifecycle controls are separate and stale process does not block saving
+  ---
+  duration_ms: 0.835819
+  type: 'test'
+  ...
+# Subtest: unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely
+ok 266 - unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely
+  ---
+  duration_ms: 1.204821
+  type: 'test'
+  ...
+# Subtest: login persists a Secure session and server-side course identity; logout revokes it
+ok 267 - login persists a Secure session and server-side course identity; logout revokes it
+  ---
+  duration_ms: 2029.956852
+  type: 'test'
+  ...
+# Subtest: account window admits ten total attempts, concurrent hashing admits two, and expiry resets the window
+ok 268 - account window admits ten total attempts, concurrent hashing admits two, and expiry resets the window
+  ---
+  duration_ms: 8131.968371
+  type: 'test'
+  ...
+# Subtest: IP throttling covers unknown accounts and survives application recreation with the same signing material
+ok 269 - IP throttling covers unknown accounts and survives application recreation with the same signing material
+  ---
+  duration_ms: 33903.727954
+  type: 'test'
+  ...
+# Subtest: a real database failure during password verification cannot ACK a session or expose sensitive diagnostics
+ok 270 - a real database failure during password verification cannot ACK a session or expose sensitive diagnostics
+  ---
+  duration_ms: 1315.976358
+  type: 'test'
+  ...
+# Subtest: the mature session plugin propagates a real store save failure before an HTTP acknowledgement
+ok 271 - the mature session plugin propagates a real store save failure before an HTTP acknowledgement
+  ---
+  duration_ms: 1936.441318
+  type: 'test'
+  ...
+# Subtest: session identity and reserved account attempts survive an actual process restart using IPC-only signing material
+ok 272 - session identity and reserved account attempts survive an actual process restart using IPC-only signing material
+  ---
+  duration_ms: 2988.974552
+  type: 'test'
+  ...
+# Subtest: credentials and role spoofing are rejected; current course role is reread on every request
+ok 273 - credentials and role spoofing are rejected; current course role is reread on every request
+  ---
+  duration_ms: 3364.040659
+  type: 'test'
+  ...
+# Subtest: Origin, JSON and session-bound CSRF are required; relogin rotates both tokens
+ok 274 - Origin, JSON and session-bound CSRF are required; relogin rotates both tokens
+  ---
+  duration_ms: 2631.501764
+  type: 'test'
+  ...
+# Subtest: idle and absolute deadlines reject at the exact boundary; forbidden requests do not extend activity
+ok 275 - idle and absolute deadlines reject at the exact boundary; forbidden requests do not extend activity
+  ---
+  duration_ms: 2653.919577
+  type: 'test'
+  ...
+# Subtest: course authorization and a SQL command share the same atomic transaction
+ok 276 - course authorization and a SQL command share the same atomic transaction
+  ---
+  duration_ms: 1903.403363
+  type: 'test'
+  ...
+# Subtest: authorized SQL failure rolls back session activity and revoked roles cannot enter the callback
+ok 277 - authorized SQL failure rolls back session activity and revoked roles cannot enter the callback
+  ---
+  duration_ms: 1905.730123
+  type: 'test'
+  ...
+# Subtest: authorized transactions reject async and nested work and expire escaped SQL capability
+ok 278 - authorized transactions reject async and nested work and expire escaped SQL capability
+  ---
+  duration_ms: 1887.858774
+  type: 'test'
+  ...
+# Subtest: resource authorization denies another student and private material before reading or committing work
+ok 279 - resource authorization denies another student and private material before reading or committing work
+  ---
+  duration_ms: 1936.875943
+  type: 'test'
+  ...
+# Subtest: liveness responds without claiming that teaching dependencies are ready
+ok 280 - liveness responds without claiming that teaching dependencies are ready
+  ---
+  duration_ms: 108.1489
+  type: 'test'
+  ...
+# Subtest: readiness stays unavailable while database, model and runner are not implemented
+ok 281 - readiness stays unavailable while database, model and runner are not implemented
+  ---
+  duration_ms: 10.66916
+  type: 'test'
+  ...
+# Subtest: each response uses a new server request ID even when the client supplies one
+ok 282 - each response uses a new server request ID even when the client supplies one
+  ---
+  duration_ms: 9.898699
+  type: 'test'
+  ...
+# Subtest: teacher checks and fixes a version; only its assigned student reads approved material after reopen
+ok 283 - teacher checks and fixes a version; only its assigned student reads approved material after reopen
+  ---
+  duration_ms: 4260.770398
+  type: 'test'
+  ...
+# Subtest: activity pause atomically stops teaching jobs and requests run cancellation; resume retains individual and Attempt pauses
+ok 284 - activity pause atomically stops teaching jobs and requests run cancellation; resume retains individual and Attempt pauses
+  ---
+  duration_ms: 4205.56742
+  type: 'test'
+  ...
+# Subtest: release rejects missing readiness, unresolved concerns, stale revisions and forged authorization; batch assignment is atomic
+ok 285 - release rejects missing readiness, unresolved concerns, stale revisions and forged authorization; batch assignment is atomic
+  ---
+  duration_ms: 5952.899043
+  type: 'test'
+  ...
+# Subtest: late audit SQL failure leaves activity, assignment, Attempt, Job, receipts and Session unchanged
+ok 286 - late audit SQL failure leaves activity, assignment, Attempt, Job, receipts and Session unchanged
+  ---
+  duration_ms: 2653.002555
+  type: 'test'
+  ...
+# Subtest: two independent processes serialize identical receipts, reject competing control CAS and preserve state on lock busy
+ok 287 - two independent processes serialize identical receipts, reject competing control CAS and preserve state on lock busy
+  ---
+  duration_ms: 6302.808874
+  type: 'test'
+  ...
+# Subtest: paused assignments block tutor input and queued runs retain cancellation intent until the node confirms
+ok 288 - paused assignments block tutor input and queued runs retain cancellation intent until the node confirms
+  ---
+  duration_ms: 2781.306875
+  type: 'test'
+  ...
+# Subtest: a replaced material version cannot silently change the fixed activity projection
+ok 289 - a replaced material version cannot silently change the fixed activity projection
+  ---
+  duration_ms: 2795.316379
+  type: 'test'
+  ...
+# Subtest: a readiness response with an unbound validation fingerprint cannot open an activity
+ok 290 - a readiness response with an unbound validation fingerprint cannot open an activity
+  ---
+  duration_ms: 2009.587038
+  type: 'test'
+  ...
+# Subtest: real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain
+ok 291 - real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain # SKIP
+  ---
+  duration_ms: 0.385892
+  type: 'test'
+  ...
+# Subtest: committed release replays its exact receipt while runtime readiness remains pending
+ok 292 - committed release replays its exact receipt while runtime readiness remains pending
+  ---
+  duration_ms: 1980.068351
+  type: 'test'
+  ...
+# Subtest: committed checks replay their exact receipt while runtime readiness remains pending
+ok 293 - committed checks replay their exact receipt while runtime readiness remains pending
+  ---
+  duration_ms: 1969.804102
+  type: 'test'
+  ...
+# Subtest: checks rejects current permission/generation/key conflicts without waiting for runtime
+ok 294 - checks rejects current permission/generation/key conflicts without waiting for runtime
+  ---
+  duration_ms: 2598.688353
+  type: 'test'
+  ...
+# Subtest: checks returns a concurrent committed receipt even if its earlier runtime query fails
+ok 295 - checks returns a concurrent committed receipt even if its earlier runtime query fails
+  ---
+  duration_ms: 1985.589046
+  type: 'test'
+  ...
+# Subtest: checks rechecks permission after the new command runtime wait
+ok 296 - checks rechecks permission after the new command runtime wait
+  ---
+  duration_ms: 1991.035086
+  type: 'test'
+  ...
+# Subtest: checks rechecks generation after the new command runtime wait
+ok 297 - checks rechecks generation after the new command runtime wait
+  ---
+  duration_ms: 1976.009617
+  type: 'test'
+  ...
+# Subtest: releases rejects current permission/generation/key conflicts without waiting for runtime
+ok 298 - releases rejects current permission/generation/key conflicts without waiting for runtime
+  ---
+  duration_ms: 2591.745223
+  type: 'test'
+  ...
+# Subtest: releases returns a concurrent committed receipt even if its earlier runtime query fails
+ok 299 - releases returns a concurrent committed receipt even if its earlier runtime query fails
+  ---
+  duration_ms: 2061.255148
+  type: 'test'
+  ...
+# Subtest: releases rechecks permission after the new command runtime wait
+ok 300 - releases rechecks permission after the new command runtime wait
+  ---
+  duration_ms: 2156.336628
+  type: 'test'
+  ...
+# Subtest: releases rechecks generation after the new command runtime wait
+ok 301 - releases rechecks generation after the new command runtime wait
+  ---
+  duration_ms: 1994.715699
+  type: 'test'
+  ...
+# Subtest: teacher selects an asynchronous candidate and the editable draft survives reopening
+ok 302 - teacher selects an asynchronous candidate and the editable draft survives reopening
+  ---
+  duration_ms: 2821.760767
+  type: 'test'
+  ...
+# Subtest: local proposal saves its original diff and adoption uses the existing PATCH CAS
+ok 303 - local proposal saves its original diff and adoption uses the existing PATCH CAS
+  ---
+  duration_ms: 2046.955285
+  type: 'test'
+  ...
+# Subtest: teacher-approved private sample supports rubric trial and only explicit rubric PATCH revises it
+ok 304 - teacher-approved private sample supports rubric trial and only explicit rubric PATCH revises it
+  ---
+  duration_ms: 2720.336095
+  type: 'test'
+  ...
+# Subtest: editing during generation preserves the manual revision and rejects the old result
+ok 305 - editing during generation preserves the manual revision and rejects the old result
+  ---
+  duration_ms: 2156.252454
+  type: 'test'
+  ...
+# Subtest: original request and result replay survive edits, while conflicting keys or result bodies are refused
+ok 306 - original request and result replay survive edits, while conflicting keys or result bodies are refused
+  ---
+  duration_ms: 2049.3916
+  type: 'test'
+  ...
+# Subtest: durable cancellation promptly ends a pending round and a late result cannot create a proposal
+ok 307 - durable cancellation promptly ends a pending round and a late result cannot create a proposal
+  ---
+  duration_ms: 2579.31938
+  type: 'test'
+  ...
+# Subtest: teacher job ownership, role and course checks reject students, other teachers and forged identity
+ok 308 - teacher job ownership, role and course checks reject students, other teachers and forged identity
+  ---
+  duration_ms: 4509.516497
+  type: 'test'
+  ...
+# Subtest: only explicitly approved course paragraphs and matching hashes enter generation or rubric trials
+ok 309 - only explicitly approved course paragraphs and matching hashes enter generation or rubric trials
+  ---
+  duration_ms: 2597.641185
+  type: 'test'
+  ...
+# Subtest: a model cannot expand requested fields or smuggle unapproved resources through patch values
+ok 310 - a model cannot expand requested fields or smuggle unapproved resources through patch values
+  ---
+  duration_ms: 3988.767857
+  type: 'test'
+  ...
+# Subtest: a fresh blueprint proposal retains unresolved structure and teacher confirmation forms a draft
+ok 311 - a fresh blueprint proposal retains unresolved structure and teacher confirmation forms a draft
+  ---
+  duration_ms: 1956.877057
+  type: 'test'
+  ...
+# Subtest: three reserved calls and unknown usage remain durable and manual creation works after budget denial
+ok 312 - three reserved calls and unknown usage remain durable and manual creation works after budget denial
+  ---
+  duration_ms: 2630.167526
+  type: 'test'
+  ...
+# Subtest: queueing counts toward the 45-second deadline and expired jobs cannot generate
+ok 313 - queueing counts toward the 45-second deadline and expired jobs cannot generate
+  ---
+  duration_ms: 1956.747228
+  type: 'test'
+  ...
+# Subtest: concurrent workers cannot claim the same round and an expired original lease is not retried
+ok 314 - concurrent workers cannot claim the same round and an expired original lease is not retried
+  ---
+  duration_ms: 1974.162433
+  type: 'test'
+  ...
+# Subtest: restored recovery generation refuses an old round before another model call
+ok 315 - restored recovery generation refuses an old round before another model call
+  ---
+  duration_ms: 1912.674912
+  type: 'test'
+  ...
+# Subtest: result commit failure rolls back and the original delivery can be retried without another generation
+ok 316 - result commit failure rolls back and the original delivery can be retried without another generation
+  ---
+  duration_ms: 2545.855023
+  type: 'test'
+  ...
+# Subtest: revoked teacher access invalidates an in-flight result and stops read or receipt replay
+ok 317 - revoked teacher access invalidates an in-flight result and stops read or receipt replay
+  ---
+  duration_ms: 1999.202368
+  type: 'test'
+  ...
+# Subtest: durable call reservations stop additional paid attempts when the trusted budget is withdrawn
+ok 318 - durable call reservations stop additional paid attempts when the trusted budget is withdrawn
+  ---
+  duration_ms: 2037.777591
+  type: 'test'
+  ...
+# Subtest: provider failure with missing usage keeps unknown reservations and does not affect manual edits
+ok 319 - provider failure with missing usage keeps unknown reservations and does not affect manual edits
+  ---
+  duration_ms: 2147.724108
+  type: 'test'
+  ...
+# Subtest: a ticking service clock keeps the accepted job window exactly 45 seconds
+ok 320 - a ticking service clock keeps the accepted job window exactly 45 seconds
+  ---
+  duration_ms: 1982.632059
+  type: 'test'
+  ...
+# Subtest: proposal result hash identifies the exact stored B body bytes and altered bytes conflict
+ok 321 - proposal result hash identifies the exact stored B body bytes and altered bytes conflict
+  ---
+  duration_ms: 2545.511933
+  type: 'test'
+  ...
+# Subtest: actual usage returned after the deadline survives reopening without accepting the late body
+ok 322 - actual usage returned after the deadline survives reopening without accepting the late body
+  ---
+  duration_ms: 2587.717444
+  type: 'test'
+  ...
+# Subtest: input preflight rejection records zero outbound calls and no billable reservation
+ok 323 - input preflight rejection records zero outbound calls and no billable reservation
+  ---
+  duration_ms: 2598.474559
+  type: 'test'
+  ...
+# Subtest: late actual usage updates a cancelled job without reviving its result
+ok 324 - late actual usage updates a cancelled job without reviving its result
+  ---
+  duration_ms: 2611.968883
+  type: 'test'
+  ...
+# Subtest: a second call rejected by preflight preserves the first sent call and its actual usage
+ok 325 - a second call rejected by preflight preserves the first sent call and its actual usage
+  ---
+  duration_ms: 2604.242675
+  type: 'test'
+  ...
+# Subtest: a response from an old recovery generation cannot update accounting or deliver a proposal
+ok 326 - a response from an old recovery generation cannot update accounting or deliver a proposal
+  ---
+  duration_ms: 2071.557975
+  type: 'test'
+  ...
+# Subtest: P2 real-model teacher generation, explicit adoption and local PATCH
+ok 327 - P2 real-model teacher generation, explicit adoption and local PATCH # SKIP
+  ---
+  duration_ms: 0.693794
+  type: 'test'
+  ...
+# Subtest: partial drafts remain editable while checks separately report blockers, teacher concerns and unknown effects
+ok 328 - partial drafts remain editable while checks separately report blockers, teacher concerns and unknown effects
+  ---
+  duration_ms: 9.906106
+  type: 'test'
+  ...
+# Subtest: valid linked synthetic design passes structure while effects remain unknown and teacher concerns persist
+ok 329 - valid linked synthetic design passes structure while effects remain unknown and teacher concerns persist
+  ---
+  duration_ms: 13.938799
+  type: 'test'
+  ...
+# Subtest: missing observations, duplicate IDs, old goal versions and broken task/rubric links are blockers
+ok 330 - missing observations, duplicate IDs, old goal versions and broken task/rubric links are blockers
+  ---
+  duration_ms: 3.668444
+  type: 'test'
+  ...
+# Subtest: cross-course, withdrawn, unauthorized, ambiguous resources and unavailable policy versions are blocked
+ok 331 - cross-course, withdrawn, unauthorized, ambiguous resources and unavailable policy versions are blocked
+  ---
+  duration_ms: 2.404277
+  type: 'test'
+  ...
+# Subtest: blank solution routes block confirmation without preventing a partial draft edit
+ok 332 - blank solution routes block confirmation without preventing a partial draft edit
+  ---
+  duration_ms: 1.246196
+  type: 'test'
+  ...
+# Subtest: a teacher can start a partial draft and edit one field without losing other manual content
+ok 333 - a teacher can start a partial draft and edit one field without losing other manual content
+  ---
+  duration_ms: 9.410443
+  type: 'test'
+  ...
+# Subtest: stale revisions and identity/role injection fail without changing manual edits
+ok 334 - stale revisions and identity/role injection fail without changing manual edits
+  ---
+  duration_ms: 4.407465
+  type: 'test'
+  ...
+# Subtest: copy creates a new draft at revision one and keeps an independent source reference
+ok 335 - copy creates a new draft at revision one and keeps an independent source reference
+  ---
+  duration_ms: 1.233161
+  type: 'test'
+  ...
+# Subtest: goal semantics cannot silently change while retaining the same competency version
+ok 336 - goal semantics cannot silently change while retaining the same competency version
+  ---
+  duration_ms: 1.990756
+  type: 'test'
+  ...
+# Subtest: an edit cannot reuse a lower competency version for changed goal semantics
+ok 337 - an edit cannot reuse a lower competency version for changed goal semantics
+  ---
+  duration_ms: 0.723673
+  type: 'test'
+  ...
+# Subtest: UTF-8 material preserves the original text and produces its known SHA-256 reference
+ok 338 - UTF-8 material preserves the original text and produces its known SHA-256 reference
+  ---
+  duration_ms: 6.310878
+  type: 'test'
+  ...
+# Subtest: BOM, CRLF, Chinese, astral characters and trailing spaces retain exact paragraph boundaries
+ok 339 - BOM, CRLF, Chinese, astral characters and trailing spaces retain exact paragraph boundaries
+  ---
+  duration_ms: 0.781961
+  type: 'test'
+  ...
+# Subtest: material rejects malformed UTF-8, unsupported formats, forged fields and private audience exposure
+ok 340 - material rejects malformed UTF-8, unsupported formats, forged fields and private audience exposure
+  ---
+  duration_ms: 2.339513
+  type: 'test'
+  ...
+# Subtest: material byte limits count UTF-8 bytes and course usage, allowing the exact maximum
+ok 341 - material byte limits count UTF-8 bytes and course usage, allowing the exact maximum
+  ---
+  duration_ms: 3.106448
+  type: 'test'
+  ...
+# Subtest: student and tutor previews omit all private asset identifiers, titles, hashes and content
+ok 342 - student and tutor previews omit all private asset identifiers, titles, hashes and content
+  ---
+  duration_ms: 14.128481
+  type: 'test'
+  ...
+# Subtest: preview audiences cannot grant teacher authorization or bypass a denied course
+ok 343 - preview audiences cannot grant teacher authorization or bypass a denied course
+  ---
+  duration_ms: 1.95
+  type: 'test'
+  ...
+# Subtest: visibility is purpose-specific and ambiguous, withdrawn or foreign materials expose no metadata
+ok 344 - visibility is purpose-specific and ambiguous, withdrawn or foreign materials expose no metadata
+  ---
+  duration_ms: 1.663802
+  type: 'test'
+  ...
+# Subtest: preview rejects unknown draft fields, whitelists material metadata and returns independent content
+ok 345 - preview rejects unknown draft fields, whitelists material metadata and returns independent content
+  ---
+  duration_ms: 5.664141
+  type: 'test'
+  ...
+# Subtest: teacher material is committed with a fixed paragraph reference and survives database reopening
+ok 346 - teacher material is committed with a fixed paragraph reference and survives database reopening
+  ---
+  duration_ms: 2722.438938
+  type: 'test'
+  ...
+# Subtest: manual drafts retain teacher edits, copy independently, and replay original results before revision CAS
+ok 347 - manual drafts retain teacher edits, copy independently, and replay original results before revision CAS
+  ---
+  duration_ms: 2009.942281
+  type: 'test'
+  ...
+# Subtest: competency meaning is immutable across drafts and remove-readd history, while known older versions remain usable
+ok 348 - competency meaning is immutable across drafts and remove-readd history, while known older versions remain usable
+  ---
+  duration_ms: 1975.628909
+  type: 'test'
+  ...
+# Subtest: stored checks bind revisions and teacher previews redact private and unapproved materials without granting audience access
+ok 349 - stored checks bind revisions and teacher previews redact private and unapproved materials without granting audience access
+  ---
+  duration_ms: 2635.879706
+  type: 'test'
+  ...
+# Subtest: current session roles protect commands, reads and copy sources; hidden and missing references are indistinguishable
+ok 350 - current session roles protect commands, reads and copy sources; hidden and missing references are indistinguishable
+  ---
+  duration_ms: 3193.792992
+  type: 'test'
+  ...
+# Subtest: recovery generation is checked before replay and a generation change before commit rolls back the entire command
+ok 351 - recovery generation is checked before replay and a generation change before commit rolls back the entire command
+  ---
+  duration_ms: 2513.740272
+  type: 'test'
+  ...
+# Subtest: a real late SQL failure rolls back draft, competency, audit, receipt and session activity without an ACK
+ok 352 - a real late SQL failure rolls back draft, competency, audit, receipt and session activity without an ACK
+  ---
+  duration_ms: 1923.767419
+  type: 'test'
+  ...
+# Subtest: independent processes commit one receipt per key, arbitrate revision CAS and enforce the course quota atomically
+ok 353 - independent processes commit one receipt per key, arbitrate revision CAS and enforce the course quota atomically
+  ---
+  duration_ms: 4679.725442
+  type: 'test'
+  ...
+# Subtest: a competing SQL writer reports persistence failure without advancing session or acknowledging a command
+ok 354 - a competing SQL writer reports persistence failure without advancing session or acknowledging a command
+  ---
+  duration_ms: 6047.004825
+  type: 'test'
+  ...
+# Subtest: corrupt persisted JSON cannot produce a read or replay ACK and diagnostics reveal no private content
+ok 355 - corrupt persisted JSON cannot produce a read or replay ACK and diagnostics reveal no private content
+  ---
+  duration_ms: 2029.023487
+  type: 'test'
+  ...
+# Subtest: authorization-consistent previews remain fixed to the revision observed during concurrent edits
+ok 356 - authorization-consistent previews remain fixed to the revision observed during concurrent edits
+  ---
+  duration_ms: 3261.126297
+  type: 'test'
+  ...
+# Subtest: material rejection preserves the committed catalog and does not issue receipts for invalid or oversized inputs
+ok 357 - material rejection preserves the committed catalog and does not issue receipts for invalid or oversized inputs
+  ---
+  duration_ms: 1889.856576
+  type: 'test'
+  ...
+# Subtest: a structurally valid but foreign result in a receipt is refused instead of leaking another course material
+ok 358 - a structurally valid but foreign result in a receipt is refused instead of leaking another course material
+  ---
+  duration_ms: 2594.006156
+  type: 'test'
+  ...
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 359 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 67.93275
+  type: 'test'
+  ...
+# Subtest: normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+ok 360 - normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+  ---
+  duration_ms: 3086.121123
+  type: 'test'
+  ...
+# Subtest: original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+ok 361 - original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+  ---
+  duration_ms: 3677.616923
+  type: 'test'
+  ...
+# Subtest: fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+ok 362 - fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+  ---
+  duration_ms: 2657.210594
+  type: 'test'
+  ...
+# Subtest: HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+ok 363 - HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+  ---
+  duration_ms: 2876.573324
+  type: 'test'
+  ...
+# Subtest: management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+ok 364 - management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+  ---
+  duration_ms: 2890.233635
+  type: 'test'
+  ...
+# Subtest: activity pause stops a completed program even without a currently pending Job
+ok 365 - activity pause stops a completed program even without a currently pending Job
+  ---
+  duration_ms: 2990.777465
+  type: 'test'
+  ...
+# Subtest: same normal consumer dispatches original C and HDL jobs without a second queue
+ok 366 - same normal consumer dispatches original C and HDL jobs without a second queue
+  ---
+  duration_ms: 3152.694221
+  type: 'test'
+  ...
+# Subtest: interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+ok 367 - interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+  ---
+  duration_ms: 3078.919068
+  type: 'test'
+  ...
+# Subtest: personal pause and account disable propagate stop through original C reconciliation
+ok 368 - personal pause and account disable propagate stop through original C reconciliation
+  ---
+  duration_ms: 3238.526494
+  type: 'test'
+  ...
+# Subtest: normal scheduled consumer and shutdown retain actual termination facts
+ok 369 - normal scheduled consumer and shutdown retain actual termination facts
+  ---
+  duration_ms: 3598.163783
+  type: 'test'
+  ...
+# Subtest: reprogram rejects membership withdrawal after external wait but still persists original exit
+ok 370 - reprogram rejects membership withdrawal after external wait but still persists original exit
+  ---
+  duration_ms: 2865.482951
+  type: 'test'
+  ...
+# Subtest: fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+ok 371 - fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+  ---
+  duration_ms: 3719.769948
+  type: 'test'
+  ...
+# Subtest: fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+ok 372 - fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+  ---
+  duration_ms: 1919.957579
+  type: 'test'
+  ...
+# Subtest: withdrawal stops original C Run and marks teacher course assignment inactive
+ok 373 - withdrawal stops original C Run and marks teacher course assignment inactive
+  ---
+  duration_ms: 2833.747051
+  type: 'test'
+  ...
+# Subtest: HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+ok 374 - HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+  ---
+  duration_ms: 3496.423991
+  type: 'test'
+  ...
+# Subtest: C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+ok 375 - C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+  ---
+  duration_ms: 2945.326006
+  type: 'test'
+  ...
+# Subtest: C4 teacher grant and student revision resume never revive the stopped original HDL Session
+ok 376 - C4 teacher grant and student revision resume never revive the stopped original HDL Session
+  ---
+  duration_ms: 3044.139738
+  type: 'test'
+  ...
+# Subtest: shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+ok 377 - shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+  ---
+  duration_ms: 3036.956223
+  type: 'test'
+  ...
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+ok 378 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 4070.403625
+  type: 'test'
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 379 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 3043.032441
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 380 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 3219.853228
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 381 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 3122.438916
+  type: 'test'
+  ...
+# Subtest: H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+ok 382 - H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+  ---
+  duration_ms: 3161.513854
+  type: 'test'
+  ...
+# Subtest: H4 stop before dispatch and provider failure never prevent confirmed source reads
+ok 383 - H4 stop before dispatch and provider failure never prevent confirmed source reads
+  ---
+  duration_ms: 6012.980126
+  type: 'test'
+  ...
+# Subtest: committed rows survive forced process exit; busy writers and an interrupted transaction leave no partial rows
+ok 384 - committed rows survive forced process exit; busy writers and an interrupted transaction leave no partial rows
+  ---
+  duration_ms: 1608.172182
+  type: 'test'
+  ...
+# Subtest: competing CAS updates observe the committed value; a loser rolls back all preceding writes
+ok 385 - competing CAS updates observe the committed value; a loser rolls back all preceding writes
+  ---
+  duration_ms: 79.266486
+  type: 'test'
+  ...
+# Subtest: malformed JSON returns a safe format error rather than an internal failure
+ok 386 - malformed JSON returns a safe format error rather than an internal failure
+  ---
+  duration_ms: 96.510613
+  type: 'test'
+  ...
+# Subtest: oversized input is rejected with CONTENT_LIMIT without exposing content
+ok 387 - oversized input is rejected with CONTENT_LIMIT without exposing content
+  ---
+  duration_ms: 8.131828
+  type: 'test'
+  ...
+# Subtest: unknown routes return the common error envelope without reflecting the URL
+ok 388 - unknown routes return the common error envelope without reflecting the URL
+  ---
+  duration_ms: 7.561117
+  type: 'test'
+  ...
+# Subtest: unexpected failures produce only sanitized diagnostics and do not expose exception or request data
+ok 389 - unexpected failures produce only sanitized diagnostics and do not expose exception or request data
+  ---
+  duration_ms: 34.70999
+  type: 'test'
+  ...
+# Subtest: unsupported media types and trusted schema validation use safe INVALID_REQUEST errors
+ok 390 - unsupported media types and trusted schema validation use safe INVALID_REQUEST errors
+  ---
+  duration_ms: 55.773158
+  type: 'test'
+  ...
+# Subtest: domain conflicts retain their status and require explicit authorized re-reading
+ok 391 - domain conflicts retain their status and require explicit authorized re-reading
+  ---
+  duration_ms: 6.488363
+  type: 'test'
+  ...
+# Subtest: shared C records commit once with actual Session, Attempt and Job, replay before CAS, and survive reopen
+ok 392 - shared C records commit once with actual Session, Attempt and Job, replay before CAS, and survive reopen
+  ---
+  duration_ms: 2684.211551
+  type: 'test'
+  ...
+# Subtest: late actual SQL failure rolls back Attempt, Job, C receipt/event and Session; failed command can explicitly retry
+ok 393 - late actual SQL failure rolls back Attempt, Job, C receipt/event and Session; failed command can explicitly retry
+  ---
+  duration_ms: 1926.367028
+  type: 'test'
+  ...
+# Subtest: current resource owner, generation and role are checked before stored C results
+ok 394 - current resource owner, generation and role are checked before stored C results
+  ---
+  duration_ms: 3237.076735
+  type: 'test'
+  ...
+# Subtest: an asynchronous result validator is rejected before the command callback starts
+ok 395 - an asynchronous result validator is rejected before the command callback starts
+  ---
+  duration_ms: 46.177439
+  type: 'test'
+  ...
+# Subtest: a global idempotency key conflicts across authorized courses before running new business work
+ok 396 - a global idempotency key conflicts across authorized courses before running new business work
+  ---
+  duration_ms: 2031.044508
+  type: 'test'
+  ...
+# Subtest: A4: authenticated self-report has its own revision and never manufactures a claim
+ok 397 - A4: authenticated self-report has its own revision and never manufactures a claim
+  ---
+  duration_ms: 2716.603536
+  type: 'test'
+  ...
+# Subtest: A4: original analysis bytes and IDs survive replay and reopening without becoming teacher judgment
+ok 398 - A4: original analysis bytes and IDs survive replay and reopening without becoming teacher judgment
+  ---
+  duration_ms: 3595.576567
+  type: 'test'
+  ...
+# Subtest: A4: teacher withdrawal is versioned, stops old analysis, and blocks renamed reuse of the same basis
+ok 399 - A4: teacher withdrawal is versioned, stops old analysis, and blocks renamed reuse of the same basis
+  ---
+  duration_ms: 3018.113245
+  type: 'test'
+  ...
+# Subtest: A4: student dispute contests the current basis while historical disputes cannot overwrite later judgment
+ok 400 - A4: student dispute contests the current basis while historical disputes cannot overwrite later judgment
+  ---
+  duration_ms: 3989.980517
+  type: 'test'
+  ...
+# Subtest: A4: B2 preparation automatically reads the real current learner state and ignores injected preparation state
+ok 401 - A4: B2 preparation automatically reads the real current learner state and ignores injected preparation state
+  ---
+  duration_ms: 2658.801595
+  type: 'test'
+  ...
+# Subtest: A4: C3 final transaction archives an old learner-state help result with original IDs and prevents delivery
+ok 402 - A4: C3 final transaction archives an old learner-state help result with original IDs and prevents delivery
+  ---
+  duration_ms: 2700.574886
+  type: 'test'
+  ...
+# Subtest: A4: undelivered pending help is rechecked against A before first delivery and marked as revised
+ok 403 - A4: undelivered pending help is rechecked against A before first delivery and marked as revised
+  ---
+  duration_ms: 2657.707782
+  type: 'test'
+  ...
+# Subtest: A4: B2 running guard uses persisted A revision even when the external current reader is stale
+ok 404 - A4: B2 running guard uses persisted A revision even when the external current reader is stale
+  ---
+  duration_ms: 2657.653238
+  type: 'test'
+  ...
+# Subtest: A4: actual B2 worker to C3 composition closes the last-guard-to-commit race
+ok 405 - A4: actual B2 worker to C3 composition closes the last-guard-to-commit race
+  ---
+  duration_ms: 2776.335106
+  type: 'test'
+  ...
+# Subtest: A4: any late teacher transaction failure rolls back decision, state, epochs, stopped jobs, actions, events, and receipt
+ok 406 - A4: any late teacher transaction failure rolls back decision, state, epochs, stopped jobs, actions, events, and receipt
+  ---
+  duration_ms: 3109.080223
+  type: 'test'
+  ...
+# Subtest: A4: completed analysis replays by original Job and exact hash rather than an expired execution lease
+ok 407 - A4: completed analysis replays by original Job and exact hash rather than an expired execution lease
+  ---
+  duration_ms: 2720.178447
+  type: 'test'
+  ...
+# Subtest: A4: original analysis, Job completion, state, event, and receipt are one real transaction
+ok 408 - A4: original analysis, Job completion, state, event, and receipt are one real transaction
+  ---
+  duration_ms: 2882.002783
+  type: 'test'
+  ...
+# Subtest: A4: invalid raw analyses and forged target versions remain archived rejections, never effective claims or student raw text
+ok 409 - A4: invalid raw analyses and forged target versions remain archived rejections, never effective claims or student raw text
+  ---
+  duration_ms: 3178.880392
+  type: 'test'
+  ...
+# Subtest: A4: duplicate snapshot IDs cannot resurrect a withdrawn basis, but genuinely changed work can provide a new basis
+ok 410 - A4: duplicate snapshot IDs cannot resurrect a withdrawn basis, but genuinely changed work can provide a new basis
+  ---
+  duration_ms: 2803.310659
+  type: 'test'
+  ...
+# Subtest: A4: transitive claim dependencies are contested and a changed analysis version cannot revive their primitive basis
+ok 411 - A4: transitive claim dependencies are contested and a changed analysis version cannot revive their primitive basis
+  ---
+  duration_ms: 2787.822107
+  type: 'test'
+  ...
+# Subtest: A4: evidence queues enforce real membership, owner, course, and visible exact resource scope
+ok 412 - A4: evidence queues enforce real membership, owner, course, and visible exact resource scope
+  ---
+  duration_ms: 3865.724692
+  type: 'test'
+  ...
+# Subtest: A4: stdout and a bare passed verdict cannot replace exact trusted course-check provenance
+ok 413 - A4: stdout and a bare passed verdict cannot replace exact trusted course-check provenance
+  ---
+  duration_ms: 2910.739509
+  type: 'test'
+  ...
+# Subtest: A4: an actual stored compiler failure remains a tool gap instead of unsupported certainty about the learner
+ok 414 - A4: an actual stored compiler failure remains a tool gap instead of unsupported certainty about the learner
+  ---
+  duration_ms: 2746.302242
+  type: 'test'
+  ...
+# Subtest: A4: repeating the same checked work under a new Run ID does not revive a withdrawn basis or create another observation group
+ok 415 - A4: repeating the same checked work under a new Run ID does not revive a withdrawn basis or create another observation group
+  ---
+  duration_ms: 3097.063268
+  type: 'test'
+  ...
+# Subtest: A4: stale underlying context is unavailable in the current projection and cannot be laundered through a claim reference
+ok 416 - A4: stale underlying context is unavailable in the current projection and cannot be laundered through a claim reference
+  ---
+  duration_ms: 2651.698381
+  type: 'test'
+  ...
+# Subtest: A4: self-report invalidation returns committed stop identities and rolls back entirely on a late failure
+ok 417 - A4: self-report invalidation returns committed stop identities and rolls back entirely on a late failure
+  ---
+  duration_ms: 2594.538763
+  type: 'test'
+  ...
+# Subtest: A4: teacher correction preserves original ordinary runs and displayed-help receipts while new B2 context excludes withdrawn claims
+ok 418 - A4: teacher correction preserves original ordinary runs and displayed-help receipts while new B2 context excludes withdrawn claims
+  ---
+  duration_ms: 3520.535597
+  type: 'test'
+  ...
+# Subtest: A4: declared unknowns cannot be discarded by an unresolved=false flag
+ok 419 - A4: declared unknowns cannot be discarded by an unresolved=false flag
+  ---
+  duration_ms: 2571.270965
+  type: 'test'
+  ...
+# Subtest: A4: original analysis currentness gates are checked again at completion
+    # Subtest: deadline
+    ok 1 - deadline
+      ---
+      duration_ms: 2555.048017
+      type: 'test'
+      ...
+    # Subtest: configuration
+    ok 2 - configuration
+      ---
+      duration_ms: 2578.423422
+      type: 'test'
+      ...
+    # Subtest: state
+    ok 3 - state
+      ---
+      duration_ms: 2616.437282
+      type: 'test'
+      ...
+    # Subtest: context
+    ok 4 - context
+      ---
+      duration_ms: 2554.500875
+      type: 'test'
+      ...
+    # Subtest: capture
+    ok 5 - capture
+      ---
+      duration_ms: 2572.081679
+      type: 'test'
+      ...
+    # Subtest: assignment
+    ok 6 - assignment
+      ---
+      duration_ms: 2582.664381
+      type: 'test'
+      ...
+    # Subtest: membership
+    ok 7 - membership
+      ---
+      duration_ms: 2631.305361
+      type: 'test'
+      ...
+    # Subtest: generation
+    ok 8 - generation
+      ---
+      duration_ms: 2591.587619
+      type: 'test'
+      ...
+    1..8
+ok 420 - A4: original analysis currentness gates are checked again at completion
+  ---
+  duration_ms: 20686.198829
+  type: 'test'
+  ...
+# Subtest: A4: an old goal version check cannot establish a claim for a new fixed activity goal version
+ok 421 - A4: an old goal version check cannot establish a claim for a new fixed activity goal version
+  ---
+  duration_ms: 2658.867596
+  type: 'test'
+  ...
+# Subtest: A4: non-UTF8 scalar text cannot occupy the original analysis slot or be silently normalized
+ok 422 - A4: non-UTF8 scalar text cannot occupy the original analysis slot or be silently normalized
+  ---
+  duration_ms: 2665.543243
+  type: 'test'
+  ...
+# Subtest: A4: teacher replacement requires a new verified basis and defer preserves uncertainty and decision history
+ok 423 - A4: teacher replacement requires a new verified basis and defer preserves uncertainty and decision history
+  ---
+  duration_ms: 3165.767231
+  type: 'test'
+  ...
+# Subtest: A4: a late dispute write failure restores the prior basis, epochs, Job, events, and retry identity
+ok 424 - A4: a late dispute write failure restores the prior basis, epochs, Job, events, and retry identity
+  ---
+  duration_ms: 2822.292583
+  type: 'test'
+  ...
+# Subtest: A4: paused collection blocks a new passive analysis and explicit analysis cannot erase its assistance gap
+ok 425 - A4: paused collection blocks a new passive analysis and explicit analysis cannot erase its assistance gap
+  ---
+  duration_ms: 2706.576845
+  type: 'test'
+  ...
+# Subtest: A4: candidate admission wins before an old teacher form and the stale form cannot overwrite it
+ok 426 - A4: candidate admission wins before an old teacher form and the stale form cannot overwrite it
+  ---
+  duration_ms: 2713.26197
+  type: 'test'
+  ...
+# Subtest: A4: an evidence storage outage rolls back analysis rather than becoming a model rejection
+ok 427 - A4: an evidence storage outage rolls back analysis rather than becoming a model rejection
+  ---
+  duration_ms: 2629.77435
+  type: 'test'
+  ...
+# Subtest: A4: a damaged original queue receipt cannot grant an analysis execution lease
+ok 428 - A4: a damaged original queue receipt cannot grant an analysis execution lease
+  ---
+  duration_ms: 2573.954754
+  type: 'test'
+  ...
+# Subtest: A4: a teacher decision reference inherits its primitive basis and cannot launder a later withdrawal
+ok 429 - A4: a teacher decision reference inherits its primitive basis and cannot launder a later withdrawal
+  ---
+  duration_ms: 2707.419362
+  type: 'test'
+  ...
+# Subtest: A4: an in-flight explicit analysis survives capture changes and retains the original binding and real coverage gap
+ok 430 - A4: an in-flight explicit analysis survives capture changes and retains the original binding and real coverage gap
+  ---
+  duration_ms: 2707.625954
+  type: 'test'
+  ...
+# Subtest: A4: received help without a display receipt remains an unresolved assistance gap
+ok 431 - A4: received help without a display receipt remains an unresolved assistance gap
+  ---
+  duration_ms: 2856.958699
+  type: 'test'
+  ...
+# Subtest: A4: event delivery checks current revision without requiring the full evidence projection
+ok 432 - A4: event delivery checks current revision without requiring the full evidence projection
+  ---
+  duration_ms: 2666.127876
+  type: 'test'
+  ...
+# Subtest: A4: review and dispute receipts distinguish first commit and replay without another state change
+ok 433 - A4: review and dispute receipts distinguish first commit and replay without another state change
+  ---
+  duration_ms: 2599.321082
+  type: 'test'
+  ...
+# Subtest: A4: independent fresh factory stays within the approved 33-table scope and retains its database
+ok 434 - A4: independent fresh factory stays within the approved 33-table scope and retains its database
+  ---
+  duration_ms: 48.503502
+  type: 'test'
+  ...
+# A4 projection measurement: 3 claims sharing one workspace, snapshot reads=1; next authorized read observes correction.
+# Subtest: A4: one authorized projection reuses workspace reads but the next read sees corrected state
+ok 435 - A4: one authorized projection reuses workspace reads but the next read sees corrected state
+  ---
+  duration_ms: 2594.242218
+  type: 'test'
+  ...
+# Subtest: A4: missing persisted Run input or entry files reject analysis as an invalid reference
+    # Subtest: input
+    ok 1 - input
+      ---
+      duration_ms: 2657.955465
+      type: 'test'
+      ...
+    # Subtest: entry
+    ok 2 - entry
+      ---
+      duration_ms: 2688.932307
+      type: 'test'
+      ...
+    1..2
+ok 436 - A4: missing persisted Run input or entry files reject analysis as an invalid reference
+  ---
+  duration_ms: 5348.544667
+  type: 'test'
+  ...
+# Subtest: A4: reconciling a revised basis preserves the original student cancellation reason
+ok 437 - A4: reconciling a revised basis preserves the original student cancellation reason
+  ---
+  duration_ms: 2773.526073
+  type: 'test'
+  ...
+# Subtest: persistent store cannot revive revoked/expired sessions or persist untrusted identities
+ok 438 - persistent store cannot revive revoked/expired sessions or persist untrusted identities
+  ---
+  duration_ms: 176.568967
+  type: 'test'
+  ...
+# Subtest: startup port accepts only an explicit valid TCP port or the default
+ok 439 - startup port accepts only an explicit valid TCP port or the default
+  ---
+  duration_ms: 1.701933
+  type: 'test'
+  ...
+# Subtest: the entry process refuses invalid configuration without logging its value
+ok 440 - the entry process refuses invalid configuration without logging its value
+  ---
+  duration_ms: 166.541336
+  type: 'test'
+  ...
+# Subtest: the compiled entry listens on the configured loopback port
+ok 441 - the compiled entry listens on the configured loopback port
+  ---
+  duration_ms: 437.166433
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener responds locally and releases its port on close
+ok 442 - the real HTTP listener responds locally and releases its port on close
+  ---
+  duration_ms: 102.56407
+  type: 'test'
+  ...
+# Subtest: fresh synthetic database enforces configuration, foreign keys and atomic rollback
+ok 443 - fresh synthetic database enforces configuration, foreign keys and atomic rollback
+  ---
+  duration_ms: 86.694552
+  type: 'test'
+  ...
+# Subtest: transaction rejects async, thenables, nesting and escaped capability; uniqueness rolls back
+ok 444 - transaction rejects async, thenables, nesting and escaped capability; uniqueness rolls back
+  ---
+  duration_ms: 46.19038
+  type: 'test'
+  ...
+# Subtest: shared parsing validates input and rejects undeclared identity fields without echoing data
+ok 445 - shared parsing validates input and rejects undeclared identity fields without echoing data
+  ---
+  duration_ms: 111.228221
+  type: 'test'
+  ...
+1..445
+# tests 510
+# suites 0
+# pass 495
+# fail 0
+# cancelled 0
+# skipped 15
+# todo 0
+# duration_ms 477887.411252

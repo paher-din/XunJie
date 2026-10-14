@@ -1,0 +1,1 @@
+Passed: long Unicode script uses short fixed argv and complete UTF8/base64 stdin; empty/NUL/invalid-timeout inputs never launch. No network, credentials or filesystem mutations.

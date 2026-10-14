@@ -1,0 +1,72 @@
+{
+  "checkedAt": "2026-10-14T13:06:03.897Z",
+  "passed": true,
+  "samples": [
+    {
+      "origin": "https://127.0.0.1:3443",
+      "path": "/health/live",
+      "status": 200,
+      "authorized": true,
+      "body": {
+        "requestId": "0cd1a8ef-65fd-4a80-9244-bd4f56243749",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3443",
+      "path": "/health/ready",
+      "status": 200,
+      "authorized": true,
+      "cacheControl": "no-store",
+      "body": {
+        "requestId": "2d16822b-238d-417d-83ea-f4b3233e69dd",
+        "data": {
+          "status": "ready"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3443",
+      "path": "/",
+      "status": 200,
+      "authorized": true,
+      "htmlEntry": true
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/health/live",
+      "status": 200,
+      "authorized": true,
+      "body": {
+        "requestId": "68986ec9-0b44-460b-bcad-33fd1b2e3fa1",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/health/ready",
+      "status": 200,
+      "authorized": true,
+      "cacheControl": "no-store",
+      "body": {
+        "requestId": "e00b7754-e664-4d5a-b166-d1c55844b41f",
+        "data": {
+          "status": "ready"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/",
+      "status": 200,
+      "authorized": true,
+      "htmlEntry": true
+    }
+  ],
+  "modelRequests": 0,
+  "browserAcceptance": false
+}

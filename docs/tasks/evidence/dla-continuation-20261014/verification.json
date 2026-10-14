@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "sourceBase": "25608e6",
+  "receivedPublicationOnlyHead": "246451e",
+  "initialMain": "35307e0",
+  "latestMain": "f95488a",
+  "node": "24.21.0",
+  "teachingTypecheck": "passed",
+  "teachingBuild": "passed",
+  "studentBuild": "passed",
+  "full": {
+    "tests": 510,
+    "pass": 495,
+    "fail": 0,
+    "skipped": 15,
+    "log": "full-first.tap.gz"
+  },
+  "finalFreezeRegression": {
+    "tests": 37,
+    "pass": 35,
+    "fail": 0,
+    "skipped": 2,
+    "log": "freeze-regression.tap.gz"
+  },
+  "realHdl": {
+    "passed": true,
+    "operations": 2,
+    "terminationConfirmed": true,
+    "modelRequests": 0,
+    "log": "real-hdl-final-frozen.json"
+  },
+  "oneAuthorizedModelRound": {
+    "externalRequests": 1,
+    "maximum": 3,
+    "model": "deepseek-flash",
+    "httpStatus": 200,
+    "inputTokens": 2615,
+    "outputTokens": 388,
+    "jobStatus": "succeeded",
+    "delivery": true,
+    "received": true,
+    "browserDisplayed": false,
+    "log": "real-hdl-model.json"
+  },
+  "browser": "not executed; UI handoff prepared",
+  "h3": "source implementation approved; runtime deployment and 2800 behavior execution not executed",
+  "runnerImagesGenerationChanged": false,
+  "protectedFilesEdited": false,
+  "logs": [
+    {
+      "name": "freeze-regression.tap.gz",
+      "rawBytes": 8515,
+      "rawSha256": "6e4c6f4d0fb9b2ef000103c77c79861b713bc5775c1a5e1c8cebdbc3a9678b94",
+      "readableCopy": "freeze-regression.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    },
+    {
+      "name": "full-first.tap.gz",
+      "rawBytes": 122617,
+      "rawSha256": "3986a2715555c174a881e69779decd909f233ac5beb4820ce8614a1f03e0c7e7",
+      "readableCopy": "full-first.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    },
+    {
+      "name": "hdl-help-final.tap.gz",
+      "rawBytes": 3005,
+      "rawSha256": "a99cb4102628557ce5c7746380259017f051c515ee096fda4298f7afec8b4ec5",
+      "readableCopy": "hdl-help-final.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    },
+    {
+      "name": "hdl-help-first.tap.gz",
+      "rawBytes": 1866,
+      "rawSha256": "df106ef723b2d4aab67c316661c13bf400eb75a8dcc9b1973e44a2eb35c11469",
+      "readableCopy": "hdl-help-first.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    },
+    {
+      "name": "hdl-help-second.tap.gz",
+      "rawBytes": 7160,
+      "rawSha256": "9b6338bcb85263717a40115e0a048de0b0a7750375c08324dfabdc38395c9b62",
+      "readableCopy": "hdl-help-second.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    },
+    {
+      "name": "hdl-help-third.tap.gz",
+      "rawBytes": 1106,
+      "rawSha256": "24c4d4d919008de80478ebd986e1a2ff67e2bdf5a8d11a1fe0d13a2d7b6a51b4",
+      "readableCopy": "hdl-help-third.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    },
+    {
+      "name": "integration-first.tap.gz",
+      "rawBytes": 13980,
+      "rawSha256": "bd87c8f8404f40bd083109b8f2999d493cf8d23436e1ba69b2076dbf65e7a5be",
+      "readableCopy": "integration-first.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    },
+    {
+      "name": "integration-second.tap.gz",
+      "rawBytes": 7371,
+      "rawSha256": "c5f49afd8138598fbd6e16ae23f26db7d228d77141fe19bf9e254430c9f51b03",
+      "readableCopy": "integration-second.tap",
+      "readableCopyNormalization": "strip trailing spaces only; gzip preserves original bytes"
+    }
+  ]
+}

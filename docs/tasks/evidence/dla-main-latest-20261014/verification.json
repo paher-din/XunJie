@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-14",
+  "main": "5c8c60ec93e00bc1782a534a88b696ae98c76c37",
+  "teachingTypecheck": "passed",
+  "teachingBuild": "passed",
+  "hostRegression": {
+    "tests": 66,
+    "pass": 66,
+    "fail": 0,
+    "skipped": 0,
+    "log": "main-latest-final.tap"
+  },
+  "studentBuild": "passed",
+  "studentUnitTests": {
+    "tests": 464,
+    "pass": 464,
+    "fail": 0,
+    "log": "student-latest-tests.txt"
+  },
+  "studentSourceMatchesMain": true,
+  "protectedFilesMatchMain": true,
+  "browser": "not rerun; UI-owned actual HDL display remains pending",
+  "modelRequests": 0,
+  "runnerDeployment": false
+}

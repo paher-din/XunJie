@@ -1,0 +1,11 @@
+﹣ dedicated Linux synthetic container execution and resource checks (0.562164ms) # SKIP
+﹣ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (1.171297ms) # SKIP
+﹣ authenticated dedicated VM control and supervision (0.809653ms) # SKIP
+﹣ P2 real-provider cancellation, timeout and HTTP failure probes (1.049891ms) # SKIP
+﹣ P2 real-model student help, persisted content and undisplayed cancellation (0.112873ms) # SKIP
+﹣ P2 authorized two-job real student-help semantic-fix batch (0.042647ms) # SKIP
+﹣ P2 authorized 30-job real student-help performance batch (0.0284ms) # SKIP
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (0.518631ms) # SKIP
+﹣ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (0.195611ms) # SKIP
+﹣ real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain (0.335879ms) # SKIP
+﹣ P2 real-model teacher generation, explicit adoption and local PATCH (0.394661ms) # SKIP

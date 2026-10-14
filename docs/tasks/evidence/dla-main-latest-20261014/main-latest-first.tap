@@ -1,0 +1,400 @@
+TAP version 13
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 1 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 93.678413
+  type: 'test'
+  ...
+# Subtest: host readiness requires the original consumer and a current database/runner, without creating business rows
+ok 2 - host readiness requires the original consumer and a current database/runner, without creating business rows
+  ---
+  duration_ms: 2147.084302
+  type: 'test'
+  ...
+# Subtest: host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+ok 3 - host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+  ---
+  duration_ms: 2875.351866
+  type: 'test'
+  ...
+# Subtest: host readiness detects database and consumer scan failure and resumes after successful scans
+ok 4 - host readiness detects database and consumer scan failure and resumes after successful scans
+  ---
+  duration_ms: 2128.990801
+  type: 'test'
+  ...
+# Subtest: a delayed readiness response cannot succeed after shutdown or database failure
+ok 5 - a delayed readiness response cannot succeed after shutdown or database failure
+  ---
+  duration_ms: 4177.264141
+  type: 'test'
+  ...
+# Subtest: health queries time out without accepting late runner success
+ok 6 - health queries time out without accepting late runner success
+  ---
+  duration_ms: 7062.555369
+  type: 'test'
+  ...
+# Subtest: disabled model calls do not block readiness or authorized session access
+ok 7 - disabled model calls do not block readiness or authorized session access
+  ---
+  duration_ms: 2934.715343
+  type: 'test'
+  ...
+# Subtest: a changed recovery generation during a readiness query requires a fresh probe
+ok 8 - a changed recovery generation during a readiness query requires a fresh probe
+  ---
+  duration_ms: 2028.255757
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener withdraws readiness when Fastify is closed directly
+ok 9 - the real HTTP listener withdraws readiness when Fastify is closed directly
+  ---
+  duration_ms: 2221.713733
+  type: 'test'
+  ...
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 10 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 4129.043644
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 11 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 7219.69982
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 12 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 3785.298112
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 13 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 3635.82323
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+ok 14 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 3808.73115
+  type: 'test'
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 15 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 3666.849324
+  type: 'test'
+  ...
+# Subtest: student bootstraps own assignment with trusted generation and no attempt side effect
+ok 16 - student bootstraps own assignment with trusted generation and no attempt side effect
+  ---
+  duration_ms: 3875.352368
+  type: 'test'
+  ...
+# Subtest: normal host serves only built public assets and rejects escaped or hidden paths
+ok 17 - normal host serves only built public assets and rejects escaped or hidden paths
+  ---
+  duration_ms: 2160.015807
+  type: 'test'
+  ...
+# Subtest: normal consumer runs original job without manual worker calls and shutdown confirms its stop
+ok 18 - normal consumer runs original job without manual worker calls and shutdown confirms its stop
+  ---
+  duration_ms: 3694.039798
+  type: 'test'
+  ...
+# Subtest: controlled initializer creates a fresh synthetic host with login and original course policy
+ok 19 - controlled initializer creates a fresh synthetic host with login and original course policy
+  ---
+  duration_ms: 3079.055416
+  type: 'test'
+  ...
+# Subtest: bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+ok 20 - bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+  ---
+  duration_ms: 5126.35766
+  type: 'test'
+  ...
+# Subtest: normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+ok 21 - normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+  ---
+  duration_ms: 3718.390009
+  type: 'test'
+  ...
+# Subtest: bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+ok 22 - bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+  ---
+  duration_ms: 3507.96282
+  type: 'test'
+  ...
+# Subtest: unknown original job survives host restart and is reconciled without a replacement execution
+ok 23 - unknown original job survives host restart and is reconciled without a replacement execution
+  ---
+  duration_ms: 4874.269618
+  type: 'test'
+  ...
+# Subtest: normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+ok 24 - normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+  ---
+  duration_ms: 2706.674812
+  type: 'test'
+  ...
+# Subtest: shutdown refuses a new run whose readiness request was already in flight
+ok 25 - shutdown refuses a new run whose readiness request was already in flight
+  ---
+  duration_ms: 3394.991349
+  type: 'test'
+  ...
+# Subtest: PR53 integration preserves DL-A HDL readiness while sharing the original health route
+ok 26 - PR53 integration preserves DL-A HDL readiness while sharing the original health route
+  ---
+  duration_ms: 1692.218798
+  type: 'test'
+  ...
+# Subtest: liveness responds without claiming that teaching dependencies are ready
+ok 27 - liveness responds without claiming that teaching dependencies are ready
+  ---
+  duration_ms: 111.678976
+  type: 'test'
+  ...
+# Subtest: readiness stays unavailable while database, model and runner are not implemented
+ok 28 - readiness stays unavailable while database, model and runner are not implemented
+  ---
+  duration_ms: 7.536822
+  type: 'test'
+  ...
+# Subtest: each response uses a new server request ID even when the client supplies one
+ok 29 - each response uses a new server request ID even when the client supplies one
+  ---
+  duration_ms: 8.618875
+  type: 'test'
+  ...
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 30 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 72.559367
+  type: 'test'
+  ...
+# Subtest: normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+ok 31 - normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+  ---
+  duration_ms: 3353.059164
+  type: 'test'
+  ...
+# Subtest: original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+ok 32 - original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+  ---
+  duration_ms: 4030.652382
+  type: 'test'
+  ...
+# Subtest: fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+ok 33 - fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+  ---
+  duration_ms: 2993.671722
+  type: 'test'
+  ...
+# Subtest: HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+ok 34 - HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+  ---
+  duration_ms: 3420.682542
+  type: 'test'
+  ...
+# Subtest: management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+ok 35 - management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+  ---
+  duration_ms: 2976.247136
+  type: 'test'
+  ...
+# Subtest: activity pause stops a completed program even without a currently pending Job
+ok 36 - activity pause stops a completed program even without a currently pending Job
+  ---
+  duration_ms: 3255.592305
+  type: 'test'
+  ...
+# Subtest: same normal consumer dispatches original C and HDL jobs without a second queue
+ok 37 - same normal consumer dispatches original C and HDL jobs without a second queue
+  ---
+  duration_ms: 3187.358659
+  type: 'test'
+  ...
+# Subtest: interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+ok 38 - interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+  ---
+  duration_ms: 3132.938597
+  type: 'test'
+  ...
+# Subtest: personal pause and account disable propagate stop through original C reconciliation
+ok 39 - personal pause and account disable propagate stop through original C reconciliation
+  ---
+  duration_ms: 3202.520885
+  type: 'test'
+  ...
+# Subtest: normal scheduled consumer and shutdown retain actual termination facts
+ok 40 - normal scheduled consumer and shutdown retain actual termination facts
+  ---
+  duration_ms: 3569.904215
+  type: 'test'
+  ...
+# Subtest: reprogram rejects membership withdrawal after external wait but still persists original exit
+ok 41 - reprogram rejects membership withdrawal after external wait but still persists original exit
+  ---
+  duration_ms: 2924.337235
+  type: 'test'
+  ...
+# Subtest: fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+ok 42 - fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+  ---
+  duration_ms: 3977.083473
+  type: 'test'
+  ...
+# Subtest: fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+ok 43 - fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+  ---
+  duration_ms: 2125.419473
+  type: 'test'
+  ...
+# Subtest: withdrawal stops original C Run and marks teacher course assignment inactive
+ok 44 - withdrawal stops original C Run and marks teacher course assignment inactive
+  ---
+  duration_ms: 3139.74007
+  type: 'test'
+  ...
+# Subtest: HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+ok 45 - HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+  ---
+  duration_ms: 3720.081105
+  type: 'test'
+  ...
+# Subtest: C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+ok 46 - C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+  ---
+  duration_ms: 3290.866522
+  type: 'test'
+  ...
+# Subtest: C4 teacher grant and student revision resume never revive the stopped original HDL Session
+ok 47 - C4 teacher grant and student revision resume never revive the stopped original HDL Session
+  ---
+  duration_ms: 3360.25013
+  type: 'test'
+  ...
+# Subtest: shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+ok 48 - shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+  ---
+  duration_ms: 3360.871277
+  type: 'test'
+  ...
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+ok 49 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 4214.86798
+  type: 'test'
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 50 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 3101.150748
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 51 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 3454.697472
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 52 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 3703.850991
+  type: 'test'
+  ...
+# Subtest: H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+ok 53 - H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+  ---
+  duration_ms: 3325.361245
+  type: 'test'
+  ...
+# Subtest: H4 stop before dispatch and provider failure never prevent confirmed source reads
+ok 54 - H4 stop before dispatch and provider failure never prevent confirmed source reads
+  ---
+  duration_ms: 6563.984883
+  type: 'test'
+  ...
+# Subtest: H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+ok 55 - H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+  ---
+  duration_ms: 3173.856693
+  type: 'test'
+  ...
+# Subtest: malformed JSON returns a safe format error rather than an internal failure
+ok 56 - malformed JSON returns a safe format error rather than an internal failure
+  ---
+  duration_ms: 132.831688
+  type: 'test'
+  ...
+# Subtest: oversized input is rejected with CONTENT_LIMIT without exposing content
+ok 57 - oversized input is rejected with CONTENT_LIMIT without exposing content
+  ---
+  duration_ms: 10.400127
+  type: 'test'
+  ...
+# Subtest: unknown routes return the common error envelope without reflecting the URL
+ok 58 - unknown routes return the common error envelope without reflecting the URL
+  ---
+  duration_ms: 11.733659
+  type: 'test'
+  ...
+# Subtest: unexpected failures produce only sanitized diagnostics and do not expose exception or request data
+ok 59 - unexpected failures produce only sanitized diagnostics and do not expose exception or request data
+  ---
+  duration_ms: 54.821309
+  type: 'test'
+  ...
+# Subtest: unsupported media types and trusted schema validation use safe INVALID_REQUEST errors
+ok 60 - unsupported media types and trusted schema validation use safe INVALID_REQUEST errors
+  ---
+  duration_ms: 64.005024
+  type: 'test'
+  ...
+# Subtest: domain conflicts retain their status and require explicit authorized re-reading
+ok 61 - domain conflicts retain their status and require explicit authorized re-reading
+  ---
+  duration_ms: 6.980611
+  type: 'test'
+  ...
+# Subtest: startup port accepts only an explicit valid TCP port or the default
+ok 62 - startup port accepts only an explicit valid TCP port or the default
+  ---
+  duration_ms: 2.032029
+  type: 'test'
+  ...
+# Subtest: the entry process refuses invalid configuration without logging its value
+ok 63 - the entry process refuses invalid configuration without logging its value
+  ---
+  duration_ms: 184.71545
+  type: 'test'
+  ...
+# Subtest: the compiled entry listens on the configured loopback port
+ok 64 - the compiled entry listens on the configured loopback port
+  ---
+  duration_ms: 448.280317
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener responds locally and releases its port on close
+ok 65 - the real HTTP listener responds locally and releases its port on close
+  ---
+  duration_ms: 103.771046
+  type: 'test'
+  ...
+1..65
+# tests 65
+# suites 0
+# pass 65
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 91455.356466

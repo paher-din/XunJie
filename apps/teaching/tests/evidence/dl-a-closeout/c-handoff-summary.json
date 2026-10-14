@@ -1,0 +1,43 @@
+{
+  "classification": "C public reported evidence; independent from A execution",
+  "sourceCommit": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+  "reports": [
+    {
+      "url": "https://github.com/paher-din/XunJie/issues/30#issuecomment-6142794517",
+      "updatedAt": "2026-10-13T09:44:08Z"
+    },
+    {
+      "url": "https://github.com/paher-din/XunJie/issues/30#issuecomment-6143063168",
+      "updatedAt": "2026-10-13T10:00:04Z"
+    }
+  ],
+  "reportedCurrent": {
+    "hdlReady": true,
+    "cReady": true,
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+    "hdlFingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+    "hdlValidatedAt": "2026-10-13T09:51:51.930Z",
+    "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+  },
+  "reportedHdlCounts": {
+    "tests": 10,
+    "pass": 10,
+    "fail": 0,
+    "skipped": 0
+  },
+  "reportedCCounts": {
+    "tests": 52,
+    "pass": 51,
+    "fail": 0,
+    "skipped": 1
+  },
+  "reportedScope": "existing PAHER maintenance host and approved VM; loopback connection belongs to PAHER",
+  "notProvenByThisSummary": [
+    "current authenticated readiness on A machine",
+    "A fixed-source end-to-end business chain",
+    "HTTPS/TLS",
+    "actual browser/UI",
+    "ALU behavioral checker"
+  ],
+  "remainingAIntegrationInput": "use existing authorized PAHER to execute fixed A source and return evidence, or provide an already authorized reachable controlled connection reference; no new credential/network distribution authorized"
+}

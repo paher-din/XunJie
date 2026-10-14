@@ -1,0 +1,129 @@
+
+> learning-space@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 1193 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                            1.50 kB │ gzip:   0.85 kB
+dist/assets/codicon-DF1abBS2.ttf                         153.23 kB
+dist/assets/editor.worker-CHzQTjO0.js                    275.63 kB
+dist/assets/aria-BQ0Fa-r7.css                              0.05 kB │ gzip:   0.07 kB
+dist/assets/link-Daoow6VB.css                              0.12 kB │ gzip:   0.09 kB
+dist/assets/register-YdNSa6b7.css                          0.17 kB │ gzip:   0.13 kB
+dist/assets/register-BNgPRG2T.css                          0.37 kB │ gzip:   0.24 kB
+dist/assets/register-VvSvELY2.css                          1.18 kB │ gzip:   0.25 kB
+dist/assets/keybinding-CIhNjqFS.css                        1.45 kB │ gzip:   0.40 kB
+dist/assets/register-C7vgbc7H.css                          1.48 kB │ gzip:   0.52 kB
+dist/assets/register-_-S9DiMO.css                          1.61 kB │ gzip:   0.43 kB
+dist/assets/messageController-Do3a81JH.css                 1.77 kB │ gzip:   0.49 kB
+dist/assets/hoverWidget-BFdtlATq.css                       3.53 kB │ gzip:   0.99 kB
+dist/assets/keybindingCancellation-C4iRs9W9.css            5.08 kB │ gzip:   1.01 kB
+dist/assets/findController-z1E5xnQl.css                    5.79 kB │ gzip:   1.34 kB
+dist/assets/IconBoard-BVEbgcdh.css                         6.05 kB │ gzip:   1.72 kB
+dist/assets/BrandBoard-DJBhTkop.css                        6.76 kB │ gzip:   1.88 kB
+dist/assets/findInput-BWU3_B-E.css                         6.81 kB │ gzip:   1.54 kB
+dist/assets/actionViewItems-CvhnUcyN.css                   7.69 kB │ gzip:   1.58 kB
+dist/assets/register-HJbRf0Hl.css                         11.17 kB │ gzip:   2.27 kB
+dist/assets/register-CXhHcpYU.css                         15.68 kB │ gzip:   3.07 kB
+dist/assets/editor-BfQ82MZy.css                           63.46 kB │ gzip:   9.06 kB
+dist/assets/index-Bcc495rI.css                           160.16 kB │ gzip:  29.17 kB
+dist/assets/dialogs-Clo95KjK.js                            0.09 kB │ gzip:   0.10 kB
+dist/assets/languageFeatures-DupySLm1.js                   0.10 kB │ gzip:   0.11 kB
+dist/assets/editorCommon-BwOdCC1S.js                       0.10 kB │ gzip:   0.08 kB
+dist/assets/workspaceTrust-BOsFqrNE.js                     0.10 kB │ gzip:   0.12 kB
+dist/assets/editor.worker-C0Ec0Cbg.js                      0.11 kB │ gzip:   0.12 kB
+dist/assets/contextView-DlMz679V.js                        0.12 kB │ gzip:   0.12 kB
+dist/assets/accessibility-U3cr5FvQ.js                      0.15 kB │ gzip:   0.14 kB
+dist/assets/textModelDefaults-jwCPjDQ2.js                  0.22 kB │ gzip:   0.17 kB
+dist/assets/extensions-DPbG0wzx.js                         0.24 kB │ gzip:   0.19 kB
+dist/assets/indentUtils-D7uFROOx.js                        0.25 kB │ gzip:   0.19 kB
+dist/assets/trustedTypes-CSDpBlO0.js                       0.26 kB │ gzip:   0.18 kB
+dist/assets/editOperation-BiHuZ1CN.js                      0.33 kB │ gzip:   0.19 kB
+dist/assets/tabFocus-CjMy3epR.js                           0.38 kB │ gzip:   0.22 kB
+dist/assets/indentation-BogMYXI_.js                        0.41 kB │ gzip:   0.29 kB
+dist/assets/register-DsqPZF4e.js                           0.47 kB │ gzip:   0.31 kB
+dist/assets/notification-AWCbC99-.js                       0.58 kB │ gzip:   0.34 kB
+dist/assets/jsonContributionRegistry-BLtraFH3.js           0.60 kB │ gzip:   0.35 kB
+dist/assets/marshalling-B0zVs6fC.js                        0.63 kB │ gzip:   0.39 kB
+dist/assets/quickInput-CeZ_Zx9b.js                         0.75 kB │ gzip:   0.39 kB
+dist/assets/_.contribution-CA9sJE_8.js                     0.76 kB │ gzip:   0.40 kB
+dist/assets/autorun-CzSmcpqR.js                            0.77 kB │ gzip:   0.33 kB
+dist/assets/register-BeoS97ch.js                           0.80 kB │ gzip:   0.49 kB
+dist/assets/aria-Dwd5AWqf.js                               0.83 kB │ gzip:   0.40 kB
+dist/assets/cursorColumns-BYPySugh.js                      0.89 kB │ gzip:   0.43 kB
+dist/assets/contextkeys-B0cq9-jS.js                        0.90 kB │ gzip:   0.42 kB
+dist/assets/register-DklygN5W.js                           0.96 kB │ gzip:   0.51 kB
+dist/assets/objects-Bi5svMDs.js                            1.36 kB │ gzip:   0.65 kB
+dist/assets/mime-DeGpcYMw.js                               1.48 kB │ gzip:   0.72 kB
+dist/assets/markdownRenderer-C225KXAe.js                   1.67 kB │ gzip:   0.89 kB
+dist/assets/register-DRsJwmqu.js                           1.99 kB │ gzip:   1.00 kB
+dist/assets/link-Xv273fd4.js                               2.00 kB │ gzip:   0.96 kB
+dist/assets/model-DdaE6Als.js                              2.11 kB │ gzip:   0.83 kB
+dist/assets/selection-CApR7OHi.js                          2.11 kB │ gzip:   0.64 kB
+dist/assets/hoverWidget-B_IhqFbW.js                        2.20 kB │ gzip:   0.91 kB
+dist/assets/editorBrowser-atxYgQWF.js                      2.24 kB │ gzip:   1.00 kB
+dist/assets/register-CcBP6Eyv.js                           2.28 kB │ gzip:   0.83 kB
+dist/assets/wordCharacterClassifier-JWu7VrI2.js            2.32 kB │ gzip:   0.89 kB
+dist/assets/register-DAxqFlN6.js                           2.34 kB │ gzip:   1.06 kB
+dist/assets/register-C1vOy3Ll.js                           2.40 kB │ gzip:   1.01 kB
+dist/assets/register-BvZbAvD-.js                           2.40 kB │ gzip:   1.08 kB
+dist/assets/replaceCommand-Dgu3j2US.js                     2.97 kB │ gzip:   0.78 kB
+dist/assets/viewModelDecoration-e4qRl3Zy.js                3.36 kB │ gzip:   1.53 kB
+dist/assets/stableEditorScroll-mnoU3xQV.js                 3.41 kB │ gzip:   1.41 kB
+dist/assets/markdown-BFxVWTOG.js                           3.65 kB │ gzip:   1.35 kB
+dist/assets/iconRegistry-D_BesVFv.js                       4.05 kB │ gzip:   1.66 kB
+dist/assets/messageController-DeE9h6IO.js                  4.19 kB │ gzip:   1.61 kB
+dist/assets/register-BUA25pW0.js                           4.99 kB │ gzip:   1.69 kB
+dist/assets/defaultStyles-DmezrdEB.js                      5.01 kB │ gzip:   1.63 kB
+dist/assets/cpp-BbWJElDN.js                                5.16 kB │ gzip:   2.06 kB
+dist/assets/range-D-7h23aq.js                              5.37 kB │ gzip:   1.18 kB
+dist/assets/nativeEditContextRegistry-CsIY-p9h.js          5.62 kB │ gzip:   2.42 kB
+dist/assets/python-Dta_pUap.js                             5.80 kB │ gzip:   2.37 kB
+dist/assets/IconBoard-BNIwfPeq.js                          5.85 kB │ gzip:   2.57 kB
+dist/assets/register-vcxVC39s.js                           6.47 kB │ gzip:   2.38 kB
+dist/assets/register-HD9oJYGO.js                           6.88 kB │ gzip:   2.38 kB
+dist/assets/editorContextKeys-BLNOzYPf.js                  7.04 kB │ gzip:   1.70 kB
+dist/assets/BrandBoard-CoN0sn-Z.js                         7.61 kB │ gzip:   2.98 kB
+dist/assets/register-CkumbkjF.js                           7.61 kB │ gzip:   1.94 kB
+dist/assets/storage-B8hYXDDW.js                            7.66 kB │ gzip:   2.16 kB
+dist/assets/register-CwLjOP3z.js                           7.66 kB │ gzip:   2.99 kB
+dist/assets/workspace-CTEul6j3.js                          8.20 kB │ gzip:   2.34 kB
+dist/assets/register-ExTkBi9e.js                           8.25 kB │ gzip:   2.95 kB
+dist/assets/register-BFN7GMAi.js                          10.79 kB │ gzip:   3.54 kB
+dist/assets/lineTokens-e-_CdwTf.js                        10.83 kB │ gzip:   3.10 kB
+dist/assets/register-D5rpC8z5.js                          10.90 kB │ gzip:   3.34 kB
+dist/assets/actionbar-BhGDs9c7.js                         11.09 kB │ gzip:   3.36 kB
+dist/assets/autoIndent-Dd1eqXch.js                        12.81 kB │ gzip:   3.71 kB
+dist/assets/cursorMoveCommands-DI95j-Fd.js                14.93 kB │ gzip:   3.47 kB
+dist/assets/color-RxEMNlRn.js                             15.31 kB │ gzip:   4.11 kB
+dist/assets/register--ysDczUq.js                          20.97 kB │ gzip:   5.60 kB
+dist/assets/keybindingCancellation-B6xtz_vo.js            22.17 kB │ gzip:   6.93 kB
+dist/assets/editorExtensions-AhMbJqFN.js                  24.95 kB │ gzip:   7.68 kB
+dist/assets/cursorWordOperations-BO9uFU7h.js              25.04 kB │ gzip:   6.55 kB
+dist/assets/register-CZgY-l8c.js                          25.59 kB │ gzip:   7.68 kB
+dist/assets/register-B0cuT_19.js                          29.55 kB │ gzip:   7.69 kB
+dist/assets/languageConfigurationRegistry-D3_Sxugg.js     33.83 kB │ gzip:  10.21 kB
+dist/assets/findInput-DhxuR4cr.js                         37.62 kB │ gzip:   9.54 kB
+dist/assets/register-DUSiP1v9.js                          44.71 kB │ gzip:  11.95 kB
+dist/assets/keybinding-Crg-kxEV.js                        44.90 kB │ gzip:  10.76 kB
+dist/assets/coreCommands-CjUtRPKv.js                      48.52 kB │ gzip:  11.47 kB
+dist/assets/editorColorRegistry-CU64g7ru.js               55.65 kB │ gzip:  12.78 kB
+dist/assets/findController-eFIXCOfM.js                    80.50 kB │ gzip:  19.03 kB
+dist/assets/markdownRenderer-BtrcrrG6.js                  91.98 kB │ gzip:  32.33 kB
+dist/assets/register-DNjvybSS.js                         101.83 kB │ gzip:  27.75 kB
+dist/assets/actionViewItems-DPDfBmma.js                  103.66 kB │ gzip:  24.59 kB
+dist/assets/editorOptions-Bhaxun7R.js                    106.32 kB │ gzip:  26.91 kB
+dist/assets/textModel-XqG939EK.js                        263.56 kB │ gzip:  67.80 kB
+dist/assets/actions-suuMzVqG.js                          281.05 kB │ gzip:  87.67 kB
+dist/assets/register-hNW_S10j.js                         700.76 kB │ gzip: 174.07 kB
+dist/assets/editor.api-BS0-rdrm.js                       779.88 kB │ gzip: 200.10 kB
+dist/assets/index-D6x552xS.js                          1,053.48 kB │ gzip: 324.39 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 14.86s

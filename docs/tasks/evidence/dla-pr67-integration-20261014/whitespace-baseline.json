@@ -1,0 +1,13 @@
+{
+  "baselineExitCode": 2,
+  "inheritedErrors": 1471,
+  "currentExitCode": 2,
+  "currentErrors": 1471,
+  "currentWriteSetExitCode": 0,
+  "identicalInheritedErrorLocations": true,
+  "files": [
+    "docs/tasks/evidence/i0-ui55-browser/browser-run-server-projection-20261014.json",
+    "docs/tasks/evidence/i0-ui55-browser/paher-time-source-completion-20261014.json",
+    "docs/tasks/evidence/i0-ui55-browser/ui-dist-manifest-h04-20261014.json"
+  ]
+}
