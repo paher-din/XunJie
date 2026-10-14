@@ -1,6 +1,6 @@
 # I0-UI：真实IME、依赖审计与证据入口收尾
 
-日期：2026-10-15（Asia/Shanghai）；主责：UI / Robert；实施：当前Agent。状态：`in-progress`。基线main与原分支`i0/ui-frontend`均为`37b628b75ec3a2238b9b77c8bd1882d36a2e55a6`（PR75）；原未跟踪`.zcodeignore`保留。
+日期：2026-10-15（Asia/Shanghai）；主责：UI / Robert；实施：当前Agent。状态：`completed-in-approved-synthetic-and-document-scope`，已推送并创建[PR #76](https://github.com/paher-din/XunJie/pull/76)，未合并。初始main与原分支`i0/ui-frontend`均为`37b628b75ec3a2238b9b77c8bd1882d36a2e55a6`（PR75）；原未跟踪`.zcodeignore`保留。
 
 ## 1. 依据与明确范围
 
@@ -77,3 +77,11 @@ Agent后续正常键盘undo/redo严格核实际分组：一组包含前期ASCII�
 2026-10-15，Robert明确选择“现在推送并建PR”，准确覆盖纠正身份后的18文件、原`i0/ui-frontend`正常推送及到main的PR；本次不升级依赖、不合并、不更改CI或保护对象。源/证据修正已固定`2faa918049b86e068e835111475a0bb673eb9a56`，生产src与package/lock仍相对PR75无差异。公开PR用于A读取当前Issue状态及获授权基线输入，我们自身原04/05勘误已完成；不自动给其他成员/聊天发送消息。
 
 修正后完整分支原始`git diff 37b628b HEAD --check`退出0；112文档/1813内链/errors=[]，18文件精确写集且仅原`.zcodeignore`未跟踪。发布前实时main仍`37b628b`、无同head的Open PR。验证Chrome已正常关闭，独立5841进程通过本人exec会话中断结束（退出1为中断），随后端口无监听；本轮合成profile/草稿、原audit归档和必要证据保留供复查，其他进程/网关/HDL环境不改。以下实际URL/最终head/状态在成功发布后追加，不提前写已交。
+
+### 4.1 实际PR与共享回执
+
+已正常推送原`i0/ui-frontend`并创建[PR #76](https://github.com/paher-din/XunJie/pull/76)到main。首次公开head=`a5f5b4eaab6023496910ea1a2ad77dab4588c8fe`，base=`37b628b75ec3a2238b9b77c8bd1882d36a2e55a6`，18文件、非Draft、OPEN、MERGEABLE/CLEAN；远端ref实读与该head完全相同。GitHub没有报告检查项（statusCheckRollup=[]），不表述CI通过。后续仅补本PR文档回执，不改变真实IME/审计采样来源。
+
+08的公开共享交付现在可由[固定交接索引](https://github.com/paher-din/XunJie/blob/a5f5b4eaab6023496910ea1a2ad77dab4588c8fe/docs/tasks/evidence/i0-ui-prep-04-07-08/documentation-handoff.md)及本PR独立读取，原UI维护者即我们且04/05已直接勘误；A只需据已有证据汇总#30当前状态，将产品基线输入交获授权维护者。PR公开并不代签A已阅读或基线已同步；没有私信、Issue更新或重复派C任务。发布授权不包含合并，main仍原PR75，实际合并继续另列。
+
+完成核对：04原候选确认/取消、搜索、跨文件和原文/草稿/历史/刷新/零业务写已具实际人工+事件证据；07当前完整/运行时审计、用途/前置、精确候选与回归方案已交，升级待批准；08当前清单、本人04/05勘误、Issue旧/新状态和准确基线请求均有共享固定源。原图未找回/未来回补、他人成员状态维护、保护基线汇总、依赖实施、真人/模型和完整AC/NFR属于保留的后续项，没有缩减本轮三项判据或标成全部产品验收。
