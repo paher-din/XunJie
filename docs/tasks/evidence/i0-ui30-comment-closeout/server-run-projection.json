@@ -649,4 +649,3 @@
   ],
   "boundary": "Only approved synthetic Attempt metadata and explicitly authorized v1/v3 main.c related statements. No auth, event payload, full command body, other source or runtime mutation."
 }
-
