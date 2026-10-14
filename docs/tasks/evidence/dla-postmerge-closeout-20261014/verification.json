@@ -1,0 +1,182 @@
+{
+  "date": "2026-10-14",
+  "reviewBase": "8b4130374289b71d737abe12ed4fc5e58adf55c5",
+  "reviewHead": "d6b7e9a33355bb3c31a16458ff284017d79e384c",
+  "files": 33,
+  "applicationTreeUnchanged": true,
+  "protectedTreesUnchanged": true,
+  "jsonParseErrors": 0,
+  "exactSecretMatches": 0,
+  "rawGzipLogsChecked": 7,
+  "historicalCountsMatchLogs": true,
+  "original24And35ObjectsPreservedInRecordedRound": true,
+  "modelRequestsThisRound": 0,
+  "serviceMutationsThisRound": 0,
+  "fileManifest": [
+    {
+      "path": "README.md",
+      "bytes": 10073,
+      "sha256": "5a5fd339edefd824c3c5537ba1d2780d2e1abe74920d0cfa799e92a27c34bced"
+    },
+    {
+      "path": "docs/tasks/DLA_H4_UI_HANDOFF_20261014.md",
+      "bytes": 11291,
+      "sha256": "6d7df5080d93e6cbcec9996a94ae07dfa2f9bcfa605e18d2609cfacb32da06d9"
+    },
+    {
+      "path": "docs/tasks/DLA_POSTMERGE_BRANCH_CLOSEOUT_20261014.md",
+      "bytes": 4114,
+      "sha256": "0a2e94662ffd91b4ab799914cf117179ef35ce40859a150f466812a9e7beb21e"
+    },
+    {
+      "path": "docs/tasks/DLA_PR56_REVIEW_MERGE_UI_20261014.md",
+      "bytes": 14301,
+      "sha256": "662200c755a5c5c53bf80221ad4c97737e047f6ad00c43e90a9a91338d79ca86"
+    },
+    {
+      "path": "docs/tasks/DLA_PR67_RUNTIME_HANDOFF_20261014.md",
+      "bytes": 9364,
+      "sha256": "a349edf6689b4305b258e4c09170c3b7d37801e265fb189928e9a8c6007df0a9"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/delivery-publication.json",
+      "bytes": 638,
+      "sha256": "59376251bc025dacd0ea65c7642860eabf615ba1dcbf0cfedb1f0ecd10f454de"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/hdl-cutover-preflight.json",
+      "bytes": 46,
+      "sha256": "28155ca297bd06ae55d2a5e1d78a3151a36d46f9b9829308ce1ec624eaf41e7d"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/hdl-main-runtime.json",
+      "bytes": 1952,
+      "sha256": "508e2479b7b04d98e983cfbefaf0dc51267deeba73da0b4476a5f0468ec52d94"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-combination-missing-dist-recheck.txt",
+      "bytes": 236,
+      "sha256": "14c5f7589442ed658f5c79197df1dc0849be187af52989724f092bbcbef43576"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-combination-missing-dist-recheck.txt.gz",
+      "bytes": 195,
+      "sha256": "b130d60d2862a2e90b69fccb9fd2ecde6f979cc2ff2e7f50795f5e862361c0fc"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-combination.txt",
+      "bytes": 16330,
+      "sha256": "df961f237aeec449250c23d48f434c444ea979c29886ae7095170ec4aa5f379b"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-combination.txt.gz",
+      "bytes": 6264,
+      "sha256": "e3d17867778b67f20933a7ed8afaf5a4a58a981659ccb267369301ebbcf312bf"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-source-reception.json",
+      "bytes": 349,
+      "sha256": "ecda12b5d09069abfaf5291ae5e5af89e47b314fec9bed1879ee5b51d721bb0c"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-student-build.txt",
+      "bytes": 11133,
+      "sha256": "d3fb50255713193414458d1941408590cfbf29db74a15d66be0242702d39e8e5"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-student-build.txt.gz",
+      "bytes": 2965,
+      "sha256": "ede7f8804b803e5e7ea21bb7b7920ad10e325690e1f8280c248cdc29b56c2fba"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-student-dist-manifest.json",
+      "bytes": 23901,
+      "sha256": "87aac2155d1ddb116e91c36e074f1f62f55bd2f3fb096ee990b52db2ff32bb12"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-student-tests.txt",
+      "bytes": 8640,
+      "sha256": "89114454862635935499a505e8715c285b26105bb4dffdaba218dfbf86ea6e87"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-student-tests.txt.gz",
+      "bytes": 1610,
+      "sha256": "7b0cc8996e34e33ded339b2e005b4bfac1269d1143eb4e9009c381d1593a692f"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-student-typecheck.txt",
+      "bytes": 87,
+      "sha256": "64ee31ae0f47346990e69867928d60872b15f58a8aa87072019d8a406e661ffe"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-student-typecheck.txt.gz",
+      "bytes": 93,
+      "sha256": "a98b7d460503bdb2678837831bcd05bfa20fe3a3d399ccebb9dd52ee6460c497"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-teaching-build.txt",
+      "bytes": 93,
+      "sha256": "a5db58e8e37a4ad75ff9763c8d3649c5e7065f8ff9c03e2610a75466af7e7a60"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-teaching-build.txt.gz",
+      "bytes": 104,
+      "sha256": "d0ab83710432a2352bea2102d414e5f2dd78f0963a5ef0fd30ce2a46b12b5332"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-teaching-typecheck.txt",
+      "bytes": 83,
+      "sha256": "1f4a5d4d333059f21cf60c8d75f14160b234067286489c846a4ab7a00e0e6b10"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-teaching-typecheck.txt.gz",
+      "bytes": 97,
+      "sha256": "2b38680b1ad884c69373643ca88359a370dab93daa9a20d1f15acbc585179d73"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/public-delivery.json",
+      "bytes": 940,
+      "sha256": "d00cca3bb35f3f38b46905671ba08bebdab7fed225266cd29d71b9d839237ae3"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/runtime-after-main-switch.json",
+      "bytes": 4942,
+      "sha256": "b6cf21f9b2c8e72bd7409eb8612b6b710c34b2e6637a2c9f33f1ed989c9fda0e"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/runtime-preservation.json",
+      "bytes": 710,
+      "sha256": "bf83f7cb98e65fbb8f18ae980772ea4f1b33bed49c40ad55fb528c67d32e3e6c"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/served-ui-main.json",
+      "bytes": 1113,
+      "sha256": "b7096fa746e9ad02e12233fcf302bde5a74eb12a9b5873bc796a4894d7664ae9"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/site-after-main-switch.json",
+      "bytes": 41472,
+      "sha256": "6a4cbf8ab4aef00aa0a9ffd32fad5bdcecc11a9e8e836634076cc898a65883e3"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/site-before-main-switch.json",
+      "bytes": 41472,
+      "sha256": "7c51167ef71ebacb4a0adc11bfb50ddad703f4fba82ec6d571935b20d3751f58"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/source-publication.json",
+      "bytes": 638,
+      "sha256": "c83e4e0cc5430eeff814f5bda2097c11c7cca6f5e9124356f43b51d634240040"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/source-reception.json",
+      "bytes": 335,
+      "sha256": "4302198b21f1db30af2ea85f4a38d69dc455fc9ed334875a00a8cfaec084544f"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-pr56-review-20261014/verification.json",
+      "bytes": 2721,
+      "sha256": "9b19a8bd0481176e34e43758fdd251d62c3ab60fdf75f3b824c4e0eb39846bde"
+    }
+  ]
+}

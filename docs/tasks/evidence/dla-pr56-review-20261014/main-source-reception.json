@@ -1,0 +1,8 @@
+{
+  "sourceCommit": "87edd51e165b2bab660d73a551864ff8db0bed86",
+  "directory": "/opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014",
+  "files": 791,
+  "mismatches": 0,
+  "archiveSha256": "51d35dc2f380d0d18052e85ffe8556309487d42b81a43c25af675b36b6622230",
+  "scope": "exact source; retained lock/dependencies; no credentials/db/node changes"
+}

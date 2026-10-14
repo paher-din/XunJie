@@ -1,6 +1,6 @@
 # I0-UI：真实登录与会话入口
 
-日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert；实施：当前 Agent。对应 [真实接入清单](I0_REMAINING_WORK_CHECKLIST.md) UI-REAL-01、02、08。
+日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert；实施：当前 Agent。对应 [真实接入清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md) UI-REAL-01、02、08。
 
 ## 1. 依据与授权
 

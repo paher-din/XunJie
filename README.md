@@ -52,25 +52,29 @@ node tools/a0-review/check.mjs
 | G1 作品链、服务端交付与后置验收 | [G1 总协调](docs/tasks/G1_OVERALL_COORDINATION.md)；完整 UI/AC/NFR [#22](https://github.com/paher-din/XunJie/issues/22)、环境稳定性 [#23](https://github.com/paher-din/XunJie/issues/23) |
 | P2 工程收口与 B 后续 | [G2 总协调](docs/tasks/G2_OVERALL_COORDINATION.md)、[B/P2-F 交付](docs/tasks/B_P2_MODEL_SEMANTIC_VERIFICATION.md)；模型/语义 [#45](https://github.com/paher-din/XunJie/issues/45)，已用批次的[历史命令](docs/tasks/G2_OVERALL_COORDINATION.md#223-已用模型批次的历史命令保存) |
 | P3 数字逻辑与反馈闭环 | [G3 总协调](docs/tasks/G3_OVERALL_COORDINATION.md)、[DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)、[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md)、[DL-B](docs/tasks/DL-B_HDL_TUTORING_CONTEXT.md) |
-| P3 最新分工（2026-10-14） | A 当前推进 A5，C 接续 DL-A 剩余部分；职责、交接与同步记录见 [G3 第14节](docs/tasks/G3_OVERALL_COORDINATION.md#14-2026-10-14-a5-与-dl-a-剩余工作转派) |
+| P3 分工与比赛优先调整 | [既定转派](docs/tasks/G3_OVERALL_COORDINATION.md#14-2026-10-14-a5-与-dl-a-剩余工作转派)；[2026-10-15 基础/增强交付安排](docs/tasks/G3_OVERALL_COORDINATION.md#17-2026-10-15-p3-比赛集成与完整产品闭环分段提案)与后续承接 |
 | P4 截止日前核心验证与后续验收 | [核心验证安排与授权](docs/tasks/P4_DEADLINE_CORE_VERIFICATION.md)；[总协调 #60](https://github.com/paher-din/XunJie/issues/60)、[A6 #61](https://github.com/paher-din/XunJie/issues/61)、[B4 #62](https://github.com/paher-din/XunJie/issues/62)、[C5 #63](https://github.com/paher-din/XunJie/issues/63) |
 | C4 → A4 → DL-C 顺序集成 | [集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)、[C4](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md)、[A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md)、[DL-C](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) |
 | A5 教师反馈、修订许可与后续活动 | [A5 任务记录](docs/tasks/A5_FEEDBACK_REVISION_FOLLOWUP.md)；固定提交 → 正式反馈 → 修订许可 → 学生主动重开的服务端链，接口、范围与验证见该记录 |
+| A6 的 A5 契约消费复核 | [C 消费记录](docs/tasks/A6_C_CONTRACT_CONSUMPTION.md)；反馈范围/线程版本、固定作品清单及 B/UI 接线核对 |
 | 学生 UI 准备交付与真实接入 | [I0 收尾](docs/tasks/I0_UI_CLOSEOUT.md)、[接入规格](docs/tasks/I0_UI_SPEC.md)、[准备票索引](docs/tasks/I0_UI_PREPARATION.md)；H-01～H-06 回交在 [#30](https://github.com/paher-din/XunJie/issues/30) |
 | I0 评论指定的浏览器与 HDL 交接 | [UI30 回交](docs/tasks/I0-UI30_COMMENT_CLOSEOUT.md)、[HDL 操作表](docs/tasks/I0-UI30_HDL_OPERATION_MAP.md)；正式 UI／真实 C1 与 HDL 待接线分列 |
 | HDL 页面、完整本机环境与真实浏览器闭环 | [本批实施与验收](docs/tasks/I0-UI_HDL_REAL_BROWSER.md)；现有页面真实HDL分支、固定确认快照/构建/板卡/Trace/辅导来源，本机迁移和实际验收分别记录 |
 | A/C 按 H 编号回交 | [I0-A/C 交接](docs/tasks/I0_A_C_HANDOFF.md)；[HTTPS 与账号入口准备](docs/tasks/I0_HOST_ENTRY_PREPARATION.md)单列 C 准备/现场执行、A 复核及 UI 接收；身份/分配、受信代际、原 Job 与版本/公开样例沿原交接 |
 | C 现场 HTTPS 与持久合成库恢复 | [C 当前宿主与交接](docs/tasks/DLA_C_CLOSEOUT_HANDOFF.md#18-2026-10-14-批准执行-pr59-的-paher-定向接入)；历史恢复、新版本就绪、现有对象及启动/停止方式由该任务承载 |
-| I0-B 学生辅导接线与宿主组合 | [六票执行与交接](docs/tasks/I0-B_UI_TUTOR_PLAN.md)、[正常宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)、[完整30项清单](docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)；准备、实际 HTTPS 服务链、受控节点/模型与真人证据分开记录 |
+| I0-B 学生辅导接线与宿主组合 | [六票执行与交接](docs/tasks/I0-B_UI_TUTOR_PLAN.md)、[正常宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)、[当前必做清单](docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)；准备、实际 HTTPS 服务链、受控节点/模型与真人证据分开记录 |
 | 学生真实登录、会话恢复与退出 | [I0-UI 会话入口](docs/tasks/I0-UI_AUTH_SESSION_ENTRY.md)；UI-REAL-01/02/08，获准深链及同账号草稿恢复，两个合成账号的 HTTPS/SQLite 验证 |
 | 学生真实保存、快照与故障恢复 | [I0-UI 保存与恢复](docs/tasks/I0-UI_REAL_SAVE_RECOVERY.md)；UI-REAL-05/06/07/12，受信代际、原文确认、状态/版本限制与隔离服务故障验证 |
 | 学生真实运行、停止与历史产物 | [I0-UI 运行接入](docs/tasks/I0-UI_REAL_RUN_CONTROL_HISTORY.md)；UI-REAL-09/10/11，正常宿主就绪门禁、原 Job/Run 核对与公开产物 |
 | 学生幂等、键盘、冷启动与契约补验 | [I0-UI 补验](docs/tasks/I0-UI_PREP_VERIFICATION_CLOSEOUT.md)；UI-PREP-01/03/05/06与真实节点浏览器入口准备 |
+| 学生中文IME、依赖方案与证据入口收尾 | [I0-UI 当前记录](docs/tasks/I0-UI_PREP_04_07_08_CLOSEOUT.md)；UI-PREP-04/07/08，原生输入法证据、当前运行时/工具链审计与原维护者勘误交接 |
+| PR69 新包接收与真实 C1 复验 | [本轮 UI 记录](docs/tasks/I0-UI_PR69_REAL_BROWSER_RECHECK.md)；严格 TLS/SSH、新 v9 保存冻结与 Core/原 Job 停止、已有完整产物下载、现场窄修与保留缺口 |
 | PAHER 真实 C1 浏览器与本机维护工具 | [I0-UI55](docs/tasks/I0-UI55_BROWSER_ENTRY.md)、[工具用法](tools/i0-ui55/README.md)；固定现场源、严格 SSH/TLS、会话/时钟、原 Run/Stop 与遗留缺口 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
 | 指定 PR 集成 | [54 → 55、59 → 53、55 → 53](docs/tasks/PR_INTEGRATION_54_55_59_53.md)；实际接纳差异、验证与审核交付 |
 | DL-A 当前续作 | [main 集成与真实 H4 交接](docs/tasks/DLA_CONTINUATION_20261014.md)；原 #56 统一基础，真实 HDL 与模型/浏览器分层验证 |
+| DL-A 合并后文档与分支收口 | [收尾记录](docs/tasks/DLA_POSTMERGE_BRANCH_CLOSEOUT_20261014.md)；事后验证/运行/UI回执纳入主线，源码交付与页面历史推送提示分别核对 |
 | #53 → #56 集成 | [当前集成记录](docs/tasks/PR_INTEGRATION_53_56.md)；来源、共用宿主适配、专项验证与 PR 回交 |
 | 其他模块与历史交付 | [全部任务记录](docs/tasks/)；按模块/编号查实现、批准范围、实际命令与原始证据 |
 

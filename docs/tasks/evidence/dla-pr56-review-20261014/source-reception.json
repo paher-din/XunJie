@@ -1,0 +1,10 @@
+{
+  "sourceCommit": "f28cafdfbd9450f8dbe0ccaab690207503297b78",
+  "directory": "/opt/xunjie-runner/tests/dla-pr56-fixed-f28cafd-20261014",
+  "files": 767,
+  "mismatches": 0,
+  "archiveSha256": "cc66cdea2ef83488b678d3948d1dc0ec26040f179d73f680f0d4e6973f20d925",
+  "modelCalls": 0,
+  "nodeDeployment": false,
+  "serviceStarted": false
+}

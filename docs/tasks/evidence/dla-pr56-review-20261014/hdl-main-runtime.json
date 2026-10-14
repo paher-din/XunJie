@@ -1,0 +1,56 @@
+{
+  "sourceCommit": "87edd51e165b2bab660d73a551864ff8db0bed86",
+  "origin": "https://127.0.0.1:3444",
+  "unit": "xunjie-dla-ui-main-87edd51-20261014.service",
+  "previousUnit": "xunjie-dla-ui-f761dcd-20261014.service",
+  "argv": [
+    "systemd-run",
+    "--unit=xunjie-dla-ui-main-87edd51-20261014",
+    "--property=UMask=0077",
+    "/opt/xunjie-runner/node/bin/node",
+    "/opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014/docs/tasks/evidence/dla-continuation-20261014/serve-hdl.mjs",
+    "/opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014",
+    "/opt/xunjie-runner/tests/dla-continuation-20261014/real-hdl-final-frozen.json"
+  ],
+  "responses": [
+    {
+      "path": "/health/live",
+      "status": 200,
+      "sha256": "6af80a3c3eb748b2935823aaebb4f4deeae0404a0ea948526c0a978abaf962a0",
+      "cacheControl": null,
+      "requestIdHeader": "7da33d50-1775-4d9b-969b-166a2b76393c",
+      "body": {
+        "requestId": "7da33d50-1775-4d9b-969b-166a2b76393c",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "path": "/health/ready",
+      "status": 200,
+      "sha256": "3e2e1c8a1afb53962e65eb65058b25b41f41dffa79922ee0f90c0b577047d3d6",
+      "cacheControl": "no-store",
+      "requestIdHeader": "5fd186de-fbd6-46e6-b56b-565be4b8797b",
+      "body": {
+        "requestId": "5fd186de-fbd6-46e6-b56b-565be4b8797b",
+        "data": {
+          "status": "ready"
+        }
+      }
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "sha256": "89ad10dd4c627d3db05dd3787b7f73fea362eb01cfe5375bed843e40f7bd6fe0",
+      "cacheControl": null,
+      "requestIdHeader": "e3879230-c995-49d9-8f29-bac139484623"
+    }
+  ],
+  "modelRequests": 0,
+  "budgetAvailable": false,
+  "databaseSchemaChanged": false,
+  "executionNodeChanged": false,
+  "uiBrowserAcceptance": false,
+  "rollback": "Stop new unit; start previous retained argv with original config/db/TLS/signing/generation; do not restart Job/model."
+}

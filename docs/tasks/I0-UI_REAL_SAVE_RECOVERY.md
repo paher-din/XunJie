@@ -1,6 +1,6 @@
 # I0-UI：真实保存与故障恢复（UI-REAL-05/06/07/12）
 
-日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert；实施：当前 Agent。父清单：[真实接入清单](I0_REMAINING_WORK_CHECKLIST.md) §3/§8；前置批次：[I0-UI 会话入口](I0-UI_AUTH_SESSION_ENTRY.md)、[I0-B 正常宿主](I0-B_HOST_COMPOSITION.md)。状态：`isolated-browser-verified`——本批实施及隔离合成 HTTPS/SQLite 浏览器验证完成，最终 48/48 通过；此为实施完成时快照，后续 Git 交付见 §11。完整部署、进程崩溃恢复和教学验收不在该结论内。
+日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert；实施：当前 Agent。父清单：[真实接入清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md) §3/§8；前置批次：[I0-UI 会话入口](I0-UI_AUTH_SESSION_ENTRY.md)、[I0-B 正常宿主](I0-B_HOST_COMPOSITION.md)。状态：`isolated-browser-verified`——本批实施及隔离合成 HTTPS/SQLite 浏览器验证完成，最终 48/48 通过；此为实施完成时快照，后续 Git 交付见 §11。完整部署、进程崩溃恢复和教学验收不在该结论内。
 
 ## 1. 依据与授权
 

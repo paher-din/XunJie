@@ -1,0 +1,203 @@
+TAP version 13
+# Subtest: C4/A5: persisted recovery separates scope CAS from exact thread revisions across feedback and reopen
+ok 1 - C4/A5: persisted recovery separates scope CAS from exact thread revisions across feedback and reopen
+  ---
+  duration_ms: 3253.5698
+  type: 'test'
+  ...
+# Subtest: C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating
+ok 2 - C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating
+  ---
+  duration_ms: 12.1053
+  type: 'test'
+  ...
+# Subtest: C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check
+ok 3 - C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check
+  ---
+  duration_ms: 3.3838
+  type: 'test'
+  ...
+# Subtest: C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself
+ok 4 - C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself
+  ---
+  duration_ms: 3.6877
+  type: 'test'
+  ...
+# Subtest: C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt
+ok 5 - C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt
+  ---
+  duration_ms: 2.566
+  type: 'test'
+  ...
+# Subtest: C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect
+ok 6 - C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect
+  ---
+  duration_ms: 2926.8151
+  type: 'test'
+  ...
+# Subtest: C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain
+ok 7 - C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain
+  ---
+  duration_ms: 2198.1595
+  type: 'test'
+  ...
+# Subtest: C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused
+ok 8 - C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused
+  ---
+  duration_ms: 3131.8354
+  type: 'test'
+  ...
+# Subtest: C4-V08 submission invalidates in-flight teaching in the same short transaction
+ok 9 - C4-V08 submission invalidates in-flight teaching in the same short transaction
+  ---
+  duration_ms: 2219.2384
+  type: 'test'
+  ...
+# Subtest: C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back
+ok 10 - C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back
+  ---
+  duration_ms: 2701.0601
+  type: 'test'
+  ...
+# Subtest: C4-V10 the submission command plan is replayable and guards the authorized student scope
+ok 11 - C4-V10 the submission command plan is replayable and guards the authorized student scope
+  ---
+  duration_ms: 4.0357
+  type: 'test'
+  ...
+# Subtest: C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+    # Subtest: assignment
+    ok 1 - assignment
+      ---
+      duration_ms: 2066.7037
+      type: 'test'
+      ...
+    # Subtest: activity
+    ok 2 - activity
+      ---
+      duration_ms: 2068.7747
+      type: 'test'
+      ...
+    1..2
+ok 12 - C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+  ---
+  duration_ms: 4136.5394
+  type: 'test'
+  ...
+# Subtest: C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant
+ok 13 - C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant
+  ---
+  duration_ms: 2155.1
+  type: 'test'
+  ...
+# Subtest: C4-V13 disabled student account makes the retained grant non-actionable for a current teacher
+ok 14 - C4-V13 disabled student account makes the retained grant non-actionable for a current teacher
+  ---
+  duration_ms: 2020.5311
+  type: 'test'
+  ...
+# Subtest: A5: formative feedback cites a submission without moving the learning stage
+ok 15 - A5: formative feedback cites a submission without moving the learning stage
+  ---
+  duration_ms: 2610.1587
+  type: 'test'
+  ...
+# Subtest: A5: a feedback thread can only be revised inside the scope that owns it
+ok 16 - A5: a feedback thread can only be revised inside the scope that owns it
+  ---
+  duration_ms: 2031.0815
+  type: 'test'
+  ...
+# Subtest: A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
+ok 17 - A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
+  ---
+  duration_ms: 2026.6689
+  type: 'test'
+  ...
+# Subtest: A5: reviewing an old submission reports the snapshot it bound, not the later working tree
+ok 18 - A5: reviewing an old submission reports the snapshot it bound, not the later working tree
+  ---
+  duration_ms: 2053.9958
+  type: 'test'
+  ...
+# Subtest: A5: a dispute against feedback whose basis moved on is appended as history, not refused
+ok 19 - A5: a dispute against feedback whose basis moved on is appended as history, not refused
+  ---
+  duration_ms: 2136.5285
+  type: 'test'
+  ...
+# Subtest: A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
+ok 20 - A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
+  ---
+  duration_ms: 1958.8164
+  type: 'test'
+  ...
+# Subtest: A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
+ok 21 - A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
+  ---
+  duration_ms: 1980.1056
+  type: 'test'
+  ...
+# Subtest: A5: two feedback threads report a scope version the next write can actually use
+ok 22 - A5: two feedback threads report a scope version the next write can actually use
+  ---
+  duration_ms: 1974.319
+  type: 'test'
+  ...
+# Subtest: A5: feedback revisions append, stay readable and keep the submission they evaluated
+ok 23 - A5: feedback revisions append, stay readable and keep the submission they evaluated
+  ---
+  duration_ms: 1980.0934
+  type: 'test'
+  ...
+# Subtest: A5: the revision permission keeps the artifact read-only until the student consumes it
+ok 24 - A5: the revision permission keeps the artifact read-only until the student consumes it
+  ---
+  duration_ms: 2110.0583
+  type: 'test'
+  ...
+# Subtest: A5: a permission may save the formal feedback for the same submission in one command
+ok 25 - A5: a permission may save the formal feedback for the same submission in one command
+  ---
+  duration_ms: 2023.1844
+  type: 'test'
+  ...
+# Subtest: A5: a student dispute resolves against the exact saved feedback and its evaluated claims
+ok 26 - A5: a student dispute resolves against the exact saved feedback and its evaluated claims
+  ---
+  duration_ms: 2049.8686
+  type: 'test'
+  ...
+# Subtest: A5: a failing feedback write rolls the record and the stage change back together
+ok 27 - A5: a failing feedback write rolls the record and the stage change back together
+  ---
+  duration_ms: 1962.0643
+  type: 'test'
+  ...
+# Subtest: A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
+ok 28 - A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
+  ---
+  duration_ms: 2038.5062
+  type: 'test'
+  ...
+# Subtest: A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
+ok 29 - A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
+  ---
+  duration_ms: 2346.6446
+  type: 'test'
+  ...
+# Subtest: A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
+ok 30 - A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
+  ---
+  duration_ms: 2232.6759
+  type: 'test'
+  ...
+1..30
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 62256.7598

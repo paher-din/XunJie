@@ -1,6 +1,6 @@
 # I0-B：辅导链前端批次计划与 ticket 索引
 
-日期：2026-10-13；更新：2026-10-14（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。**本批六票的获准前端工程已完成**：原67条逐项核对见§13.2，最终34文件464项规则、类型/build及169项Chrome全量通过见§13.3。发送/超限状态、当前运行许可、刷新/重建返回、原文撤销与迟到控制读取均已补齐。自动采集/分析/提醒调度、受控节点、真实模型/真人及完整产品验收另列，不作为Robert的本批前端欠交。§11/§13.1保留各历史候选、失败与修复，不混用版本或重复累加。入口：[I0-B SPEC](I0-B_UI_TUTOR_SPEC.md)、[完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)。本文件记录范围、来源、写集与执行事实；不代替产品基线、A/B/C任务或成员交接。
+日期：2026-10-13；更新：2026-10-14（Asia/Shanghai）。主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。**本批六票的获准前端工程已完成**：原67条逐项核对见§13.2，最终34文件464项规则、类型/build及169项Chrome全量通过见§13.3。发送/超限状态、当前运行许可、刷新/重建返回、原文撤销与迟到控制读取均已补齐。自动采集/分析/提醒调度、受控节点、真实模型/真人及完整产品验收另列，不作为Robert的本批前端欠交。§11/§13.1保留各历史候选、失败与修复，不混用版本或重复累加。入口：[I0-B SPEC](I0-B_UI_TUTOR_SPEC.md)、[完整30项清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)。本文件记录范围、来源、写集与执行事实；不代替产品基线、A/B/C任务或成员交接。
 
 ## 1. 当前决定与授权
 
@@ -31,7 +31,7 @@
 | [I0 收尾](I0_UI_CLOSEOUT.md)与[07](I0_UI_07_BROWSER_HANDOFF.md) | 收尾 §4/5；07 逐能力交接/层次区分/未完成项 | H 按能力回交、准备结果与真实接线分开 |
 | [B/P2-F](B_P2_MODEL_SEMANTIC_VERIFICATION.md)与[G2](G2_OVERALL_COORDINATION.md) | B §15.5/16/17/17.1/18/19；G2 §22 最新合并事实 | 语言/内部标识修复、历史真实与最新离线分开；不重复执行供应商批次 |
 | [#30 正文及现有评论](https://github.com/paher-din/XunJie/issues/30) | 完整正文、UI 交付/协作说明、A 的 H 材料及最新实现回交 | 父卡 Open；没有代勾 H，A Draft 交付与真实节点/UI未验分列 |
-| Robert补交的原HTML工作清单 | 全部业务正文与嵌入源稿，30个编号和逐项条件 | 本批01～08映射无缺项，09保持真实验收前置；完整来源快照与条件已保存至[仓库清单](I0_REMAINING_WORK_CHECKLIST.md) |
+| Robert补交的原HTML工作清单 | 全部业务正文与嵌入源稿，30个编号和逐项条件 | 本批01～08映射无缺项，09保持真实验收前置；完整来源快照与条件已保存至[仓库清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md) |
 
 ## 3. 固定基线与现状
 
@@ -95,7 +95,7 @@ UI-TUTOR-09 不建立实施票：两类真实求助→学生本人自主修订�
 
 ## 7. 本次写集与拟实施写集
 
-本次仅新增本文、SPEC、六票及[I0完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)，共九份任务文档。README/AGENTS/product/planning/reference/他人任务及应用代码只读。既有未跟踪.zcodeignore保留；.git/config的仓库代理覆盖是前次连接修复，不是应用或CI变更。
+本次仅新增本文、SPEC、六票及[I0完整30项清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)，共九份任务文档。README/AGENTS/product/planning/reference/他人任务及应用代码只读。既有未跟踪.zcodeignore保留；.git/config的仓库代理覆盖是前次连接修复，不是应用或CI变更。
 
 以下为本次规划定稿的前端实施写集；新文件名是定位建议，最终票内记录实际文件，不能据此扩展到整个目录。后续实现须继续遵守每票交接前置，不扩展受保护对象权限。
 

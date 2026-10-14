@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "87edd51e165b2bab660d73a551864ff8db0bed86",
+  "tables24": 24,
+  "tables35": 35,
+  "objects24Preserved": true,
+  "objects35Preserved": true,
+  "execution": {
+    "c": {
+      "ready": true,
+      "unchangedFields": [
+        "recoveryGeneration",
+        "fingerprint",
+        "validation",
+        "runtimeProfileVersion",
+        "imageDigest",
+        "compilerImage",
+        "runtimeImage"
+      ]
+    },
+    "hdl": {
+      "ready": true,
+      "unchangedFields": [
+        "recoveryGeneration",
+        "fingerprint",
+        "fingerprintHash",
+        "validation",
+        "profile"
+      ]
+    }
+  },
+  "modelRequests": 0,
+  "nodeDeployment": false,
+  "browserAcceptance": false
+}

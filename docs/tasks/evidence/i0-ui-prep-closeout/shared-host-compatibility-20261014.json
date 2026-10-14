@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "87edd51e165b2bab660d73a551864ff8db0bed86",
+  "scope": "Isolated synthetic HTTPS/SQLite and normal shared consumers; external runner/provider synthetic, not PAHER/C1 or a real student",
+  "command": "node node_modules/@playwright/test/cli.js test runService.spec.ts runControlService.spec.ts runHistoryService.spec.ts sessionService.spec.ts tutoringService.spec.ts --workers=2 --max-failures=2 --reporter=json",
+  "browser": "Chrome155",
+  "teachingNode": "24.21.0",
+  "workers": 2,
+  "retries": 0,
+  "stats": {
+    "startTime": "2026-10-14T14:02:01.238Z",
+    "duration": 195602.94100000002,
+    "expected": 22,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "sourceReportSha256": "412d5be17010ce406f96fd20bf82cc922f1dc42d254e3b8e3336a13b71c0f276"
+}

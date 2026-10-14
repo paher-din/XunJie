@@ -2,7 +2,7 @@
 
 日期：2026-10-13（Asia/Shanghai）。任务编号：I0-B。主责：UI / Robert；A 负责应用与公共契约协调，B 负责辅导与语义，C 负责作品、消息、回执和控制。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。状态：`finalized-plan`，规格按Robert委托复核定稿；Robert随后授权实施及并行推进，当前代码/验证/缺口见[执行记录](I0-B_UI_TUTOR_PLAN.md)。规格定稿状态不表示所有真实验收已通过。
 
-本批覆盖[完整30项清单](I0_REMAINING_WORK_CHECKLIST.md)中的UI-TUTOR-01～08；这些编号不是团队A/B/C任务编号。实施写集、阅读依据、六张ticket、依赖、缺口和验证记录见[批次计划](I0-B_UI_TUTOR_PLAN.md)。继续使用 `i0/ui-frontend`，基线为main `cde69ccbd763c3c0ab381a809b750b951f195f64`。本文是已定稿的增量任务方案，原I0-A规格仍保留原范围，不改写产品基线或原任务的Out of Scope；未交接共享契约不因定稿获准修改。
+本批覆盖[完整30项清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)中的UI-TUTOR-01～08；这些编号不是团队A/B/C任务编号。实施写集、阅读依据、六张ticket、依赖、缺口和验证记录见[批次计划](I0-B_UI_TUTOR_PLAN.md)。继续使用 `i0/ui-frontend`，基线为main `cde69ccbd763c3c0ab381a809b750b951f195f64`。本文是已定稿的增量任务方案，原I0-A规格仍保留原范围，不改写产品基线或原任务的Out of Scope；未交接共享契约不因定稿获准修改。
 
 ## Problem Statement
 

@@ -54,6 +54,11 @@ export function tutoringFailureNotice(error: unknown, fallback: string): string 
   return error instanceof Error && studentGuards.has(error.message) ? error.message : fallback
 }
 
+/** A non-retryable read rejection pauses automatic reads, without inferring a permanent capability. */
+export function tutoringReadRejectionNotice(error: unknown): string {
+  return `服务未接纳这次辅导读取。${tutoringFailureNotice(error, '')}自动读取已暂停，请明确点击“重新读取辅导”再次核对；编辑和保存仍可继续。`
+}
+
 /** The original error string is retained in the ledger; the student's view follows its existing state. */
 export function tutoringCommandFailureNotice(command: Pick<TutorCommand, 'kind' | 'state' | 'error'>, failure?: unknown): string {
   if (command.error && studentGuards.has(command.error)) return command.error
