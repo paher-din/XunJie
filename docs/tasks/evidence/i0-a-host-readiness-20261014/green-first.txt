@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: host readiness requires the original consumer and a current database/runner, without creating business rows
+ok 1 - host readiness requires the original consumer and a current database/runner, without creating business rows
+  ---
+  duration_ms: 1311.8232
+  type: 'test'
+  ...
+# Subtest: host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+ok 2 - host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+  ---
+  duration_ms: 1514.7054
+  type: 'test'
+  ...
+# Subtest: host readiness detects database and consumer scan failure and resumes after successful scans
+ok 3 - host readiness detects database and consumer scan failure and resumes after successful scans
+  ---
+  duration_ms: 1309.0928
+  type: 'test'
+  ...
+# Subtest: a delayed readiness response cannot succeed after shutdown or database failure
+ok 4 - a delayed readiness response cannot succeed after shutdown or database failure
+  ---
+  duration_ms: 2282.3352
+  type: 'test'
+  ...
+# Subtest: health queries time out without accepting late runner success
+ok 5 - health queries time out without accepting late runner success
+  ---
+  duration_ms: 6182.4971
+  type: 'test'
+  ...
+# Subtest: disabled model calls do not block readiness or authorized session/works access
+ok 6 - disabled model calls do not block readiness or authorized session/works access
+  ---
+  duration_ms: 1518.8796
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14856.4819
