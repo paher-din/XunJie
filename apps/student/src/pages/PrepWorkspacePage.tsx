@@ -574,7 +574,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
             : confirmation.seed && draftScope
               ? <>
                   {draftConflictBar}
-                  <div style={{ flex: 1, minHeight: 0 }}><CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} /></div>
+                  <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}><CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} /></div>
                   {isHdl && <div style={{ maxHeight: '34vh', overflow: 'auto', flexShrink: 0 }}>
                     <HdlBuildPane build={hdl.state.build} busy={hdlPending} notice={hdl.state.notice}
                       canHelp={!!hdl.state.build?.result && ['succeeded', 'failed'].includes(hdl.state.build.result.status) && project.unconfirmedCount === 0 && !hdl.state.unknown}
