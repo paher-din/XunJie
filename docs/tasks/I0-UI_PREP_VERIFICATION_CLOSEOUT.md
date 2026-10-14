@@ -111,3 +111,9 @@ node tools/sample-cold-start.mjs --samples 2 --port-base 5791 --output ../../doc
 合并后的首次文档静态检查为87份文档/1349内部链接，errors=[]；本轮自身`git diff origin/main --check`通过。合并上游整体空白检查仍失败：PR #67的`browser-run-server-projection-20261014.json`、`paher-time-source-completion-20261014.json`、`ui-dist-manifest-h04-20261014.json`共1471个CRLF trailing-whitespace行，`eab1075→origin/main`与`eab1075→合并源`的报告逐行相同。归UI55原维护者，建议按其证据保真要求核规范化；本轮不改他人原始证据、不关闭检查、不称全仓空白检查通过。
 
 交付记录/manifest追加后的最终静态检查为87份文档/1350内部链接、errors=[]；本轮相对`origin/main`空白检查通过。清单30个表格编号唯一，UI-PREP 9 / UI-REAL 12 / UI-TUTOR 9，原条件保留。最后只追加本记录与manifest的本地文档提交，学生源树不变；精确最终HEAD可由`git rev-parse HEAD`核对，产物仍绑定上述固定源而不是后续文档提交。冷启动自有临时缓存已清理；原失败报告/合成服务审计/正式ZIP属于需保留的验证交接材料。产品基线及MVP_SPEC §10：待授权维护者汇总。
+
+## 8. PR交付与A/C交接授权（2026-10-14）
+
+Robert明确要求先把本批推PR并合入main，然后整理给A、C的交接说明；并指出可使用既有`i0-ui55-connection` SSH工具直接接PAHER。当前授权覆盖本批正常推送/PR/合并、不删除分支，交接记录与现成维护通道的只读核查。先完成Git交付，再按当次状态整理成员事项；源码修复仍遵守原模块边界，保护配置/数据库/秘密/信任/节点冻结对象不从SSH可连接推导变更授权。
+
+本机工具README已有较晚的UI30/PR #68回交：正式main `b7e73c5`静态产物与pr56-pr67服务、HTTP ready200、v8保存/冻结/Core/取消/历史等记录。它是新发现的有日期材料，本轮尚待只读现场核对；不得继续把PR #67旧ready503或“正式UI从未现场验”当当前事实。具体PR回执、现场结果与A/C可执行交接在Git交付后追加，保留 §6～7 原核查时点。
