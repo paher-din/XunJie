@@ -169,4 +169,4 @@ Chrome 155 的既有已连接 profile「您的 Chrome」在严格受信 `https:/
 
 D盘 `START_HERE.md`、`XunJie.ps1`、全部可复用工具/原档/公开日志/截图/原库均保留，正常页面留给用户。临时传输材料已清理；模型off、业务/专用VM可用、原执行全部确认结束。本批授权的迁移、页面接线、完整合成链和按要求回交完成；其他域及完整产品/真人条件沿§5.3如实后置。
 
-收尾实时检查发现本任务3444宿主又以model-enabled启动（原因未确定，不据此归因重启/其它任务），只读确认仍33终态Job/4终止Session/无新增Message后，通过已留入口正常stop/check确认退出，再默认start。最终受限节点双ready、同代际/指纹/原库、健康200，modelEnabled=false，实际argv没有model-enabled，模型transport仍两条。当前状态另保留[最终运行回执](evidence/ui30-hdl-20261015/final-runtime-status.json)，早期modeloff验证不覆盖；用户后续可明确start -EnableModel继续使用。
+收尾实时检查发现本任务3444宿主又以model-enabled启动（原因未确定，不据此归因重启/其它任务），只读确认仍33终态Job/4终止Session/无新增Message后，通过已留入口正常stop/check确认退出，再默认start。最终受限节点双ready、同代际/指纹/原库、健康200，modelEnabled=false，实际argv没有model-enabled；模型transport六行（两组http-start/http-response/model-result）与原公开记录逐字完全一致，即仍只有两次真实HTTP。当前状态另保留[最终运行回执](evidence/ui30-hdl-20261015/final-runtime-status.json)，早期modeloff验证不覆盖；用户后续可明确start -EnableModel继续使用。
