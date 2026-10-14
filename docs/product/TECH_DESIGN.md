@@ -58,7 +58,7 @@ flowchart TB
 | records | 记录持久化、覆盖区间、幂等、作业、导出与审计 | 不从总结反向伪造原始记录；不接管教学判断 |
 | runner | 固定镜像/快照执行，资源约束和可信验证结果 | 学生程序不能访问应用数据、凭据或验证器内部答案 |
 
-后台目录冻结为 apps/teaching/：A 维护 package/锁文件/tsconfig、server/app/access/design/review/db/transaction、contracts/common/access/design/review；B 维护 server/tutoring、contracts/tutoring；C 维护 server/workspace/records、contracts/workspace/records/runner 和 runner。各领域维护对应测试，共享文件由 A 汇总 B/C 需求。前端保留实际工程/构建方式，最后接入，不预建 web 目录；contracts 的权限/版本语义不要求前后端同语言或校验库。
+后台目录冻结为 apps/teaching/：A 维护 package/锁文件/tsconfig、server/app/access/design/review/db/transaction、contracts/common/access/design/review；B 维护 server/tutoring、contracts/tutoring；C 维护 server/workspace/records、contracts/workspace/records/runner 和 runner。各领域维护对应测试，共享文件由 A 汇总 B/C 需求。2026-10-14 任务例外：C 接续 DL-A 余项必需的 server/app/access/design/db、contracts/common/design 宿主/授权/课程/事务接线及相关测试，具体文件/函数在本人任务先列明；A 保留 A5 review/正式反馈/后续活动规则，重叠文件先协调责任和合并顺序，其余默认维护者不变。批准范围和交接见 TEAM §2 与 [G3 转派记录](../tasks/G3_OVERALL_COORDINATION.md#14-2026-10-14-a5-与-dl-a-剩余工作转派)。前端保留实际工程/构建方式，最后接入，不预建 web 目录；contracts 的权限/版本语义不要求前后端同语言或校验库。
 
 该目录本次不创建。本仓库尚无正式应用的启动与测试命令；后续按团队实际 UI 工程和后台结构设置，不将旧 IDE 实验的启动命令作为产品入口。
 
@@ -407,9 +407,9 @@ RuntimeProfileVersion 列 approvedResultFiles，初版 TextScope Report 仅回�
 
 **已批准范围：** 同一独立 Web/Node.js/TypeScript/Fastify/SQLite 应用、原 A/B/C 模块和独立执行边界；保留 C17/GCC、TextScope 操作与原验收，按课程/执行配置新增 HDL 分支。首条实验采用题目 PDF 已定义的 4 位 ALU 范围及 Nexys4 DDR Rev. C，课件作讲解依据；题目空白算术组合、A≤B 减法及未定义 Cout 暂不判分。来源、板卡事实和裁决见 [DL-0 §2.3](../tasks/DL-0_DIGITAL_LOGIC_ADDON.md#23-课程材料核对与具体裁决提案)。
 
-**具体契约待评审：** 下表为需要交付的设计对象和职责，不是已批准的数据 schema、数据库表或现有 API。A 汇总 C 的执行与 B/UI 的消费需求，先在对应任务文档评审，再由获授权维护者同步具体契约。数据库/schema/迁移、运行资源、凭据和真实模型调用仍按原门禁另行授权。
+**具体契约待评审：** 下表为需要交付的设计对象和职责，不是已批准的数据 schema、数据库表或现有 API。DL-A 余项由 C 接续汇总执行与 B/UI 的消费需求（A 原成果保留），先在对应任务文档评审，再由获授权维护者同步具体契约。数据库/schema/迁移、运行资源、凭据和真实模型调用仍按原门禁另行授权。
 
-评审与实施已纳入 P2 之后的具体任务：P3 的 DL-A 由 A 负责课程/共享契约/业务宿主接入，DL-C 由 C 负责目标 Linux 引擎/Build/Session/板信号与运行配置，DL-B 由 B 负责 HDL 可信上下文与引导；各自首批交付本节所需方案后评审。P2 任务、接口和退出条件不因新增课程改动。P4 的 A6/B4/C5 分别承担两课程业务/模型语义/执行恢复验证，P5 完整 UI/应用验收；具体任务卡与交接见 TEAM §7～10。
+评审与实施已纳入 P2 之后的具体任务：P3 的 DL-A 原由 A 负责课程/共享契约/业务宿主接入，2026-10-14 起余项改由 C 接续，A 当前推进 A5；C 组织剩余 P3 DL-E2E 并按对应 C4 批次支持 A5，A5 不等 DL-A 整卡，DL-C 由 C 负责目标 Linux 引擎/Build/Session/板信号与运行配置，DL-B 由 B 负责 HDL 可信上下文与引导；各自首批交付本节所需方案后评审。P2 任务、接口和退出条件不因新增课程改动。P4 的 A6/B4/C5 分别承担两课程业务/模型语义/执行恢复验证，P5 完整 UI/应用验收；具体任务卡与交接见 TEAM §7～10。
 
 按2026-10-14负责人决定，2026-10-15前优先验证两课程实际集成的核心流程：C真实运行，HDL真实构建/持续会话/LED与数码管/必要波形、保存版本绑定、关键隔离与停止，以及获准真实上下文的Agent引导/故障降级。具备核心证据的批次继续接入；大规模并发/完整故障矩阵/长时间稳定性/全量备份恢复后续补验，不因延后取消本节已批准隔离、限额、版本、真实信号与未知状态要求。完整DL-AC及正式验收继续按原条件记录。
 
@@ -430,7 +430,7 @@ Build 是有限期作业，Session 是长期状态实例，两者分别定义限
 
 原 NFR-03 数值和 C1 两个一次性作业槽保留。新增 Build/Session 的适用资源/限额、单次推进期限、总时长、空闲回收、波形输出及与 C 作业公平调度在 DL-D04 单独确定；不能让长期会话永久占满 C 作业槽，也不能在未批准配置时开放 HDL。进程仍位于独立 VM/受限隔离单元，终止/失联、双实例隔离、资源限制及可信结果来源在目标环境独立验收。
 
-本地演示可将应用/SQLite 和独立执行 VM 部署在同一开发机，逻辑安全边界保留。A 统一交付正常业务宿主和消费者，复用 I0/A3 需要的登录、课程/分配进入及受信恢复代际初始化，避免两套入口或手工驱动 Job。浏览器访问按 §9 的 HTTPS/同源/Origin/CSRF/Secure Cookie 约束交接；受信代理与账号/签名配置须获准，不能为了 localhost 放宽认证规则。
+本地演示可将应用/SQLite 和独立执行 VM 部署在同一开发机，逻辑安全边界保留。正常业务宿主和消费者的 DL-A 余项由 C 接续统一交付，保留并复用 A 已交成果与 I0 共用宿主；复用 I0/A3 需要的登录、课程/分配进入及受信恢复代际初始化，避免两套入口或手工驱动 Job。浏览器访问按 §9 的 HTTPS/同源/Origin/CSRF/Secure Cookie 约束交接；受信代理与账号/签名配置须获准，不能为了 localhost 放宽认证规则。
 
 传输沿用现有 HTTP 命令/受限读取及必要 SSE 通知，具体 build/program/interact/trace/stop 路径和 DTO 待评审；本轮不新增独立实时网关。B 复用 B1/B2/C3 的有界求助/政策/消息回执与停止，读取获准源码、诊断和真实仿真版本；不拥有学生源码写入或板卡控制能力。真实模型、完整浏览器 Demo 与真人试点分别记录，测试替身不计为真实 Agent 接入。
 
