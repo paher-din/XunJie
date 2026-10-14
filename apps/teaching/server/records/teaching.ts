@@ -13,6 +13,7 @@ import type { CommandIdentity, Job, Purpose, Scope, TeachingAction, TeachingActi
   TeachingBasis, TeachingDelivery, TeachingMessage, TeachingMessageEnvelope, TeachingQuestionEnvelope, TeachingScopeRef,
   TeachingUsage, TeachingVersions } from '../../contracts/records/index.ts';
 import type { StudentHelpBody } from '../../contracts/tutoring/index.ts';
+import { hdlHelpSelectionSchema,hdlHelpBasisSchema } from '../../contracts/workspace/hdl-help.ts';
 
 export const teachingCommands = {question:'teaching.question',complete:'teaching.complete',stop:'teaching.stop',
   deliver:'teaching.deliver',receipt:'teaching.receipt',invalidate:'teaching.invalidate'} as const;
@@ -27,13 +28,13 @@ const usageSchema = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('actual'), inputTokens: natural, outputTokens: natural }),
   z.strictObject({ status: z.literal('unknown'), reason: id.optional() })]);
 const basisSchema = z.strictObject({ attemptRevision: positive, decisionEpoch: natural, captureRevision: natural,
-  relatedStateRevision: natural, objectRef: objectRefSchema.optional(), inputRefs: z.array(id), assistanceRefs: z.array(id), coverageRefs: z.array(id) });
+  relatedStateRevision: natural, objectRef: objectRefSchema.optional(), hdl:hdlHelpBasisSchema.optional(), inputRefs: z.array(id), assistanceRefs: z.array(id), coverageRefs: z.array(id) });
 const scopeSchema = z.strictObject({ courseId: id, studentId: id, attemptId: id });
 const messageSchema = z.strictObject({ messageId: id, scope: scopeSchema, jobId: id, requestReceiptId: id.optional(),
   authorKind: z.enum(['student','model']), contentHash: hash, resultHash: hash.optional(),
   envelope: z.union([
     z.strictObject({ kind: z.literal('student_question'), question: z.string(), objectRef: objectRefSchema.optional(),
-      inputRefs: z.array(id), versions: versionsSchema }),
+      hdlSelection:hdlHelpSelectionSchema.optional(),hdlBasis:hdlHelpBasisSchema.optional(),inputRefs: z.array(id), versions: versionsSchema }),
     z.strictObject({ kind: z.literal('student_help'), body: z.unknown(), bodyJsonText: z.string().optional(), versions: versionsSchema, usage: usageSchema,
       calls: natural, elapsedMs: natural, basis: basisSchema })]) });
 const actionSchema = z.strictObject({ actionId: id, scope: scopeSchema, jobId: id, messageId: id, contentHash: hash,
@@ -115,6 +116,7 @@ function requireBasis(value: unknown): TeachingBasis {
     inputRefs: [...parsed.data.inputRefs], assistanceRefs: [...parsed.data.assistanceRefs],
     coverageRefs: [...parsed.data.coverageRefs] };
   if (parsed.data.objectRef !== undefined) basis.objectRef = parsed.data.objectRef as NonNullable<TeachingBasis['objectRef']>;
+  if (parsed.data.hdl !== undefined) basis.hdl = parsed.data.hdl;
   return basis;
 }
 function requireUsage(value: unknown): TeachingUsage {
@@ -307,7 +309,7 @@ export function readTeachingVersions(envelope: TeachingQuestionEnvelope | Teachi
  * policy/context/authorization; C only stores the exact accepted input.
  */
 export function acceptStudentQuestionInTransaction(tx: Transaction, input: {scope: TeachingScopeRef; receiptId?: string;
-  now: string; generation: string; question: string; objectRef?: unknown;
+  now: string; generation: string; question: string; objectRef?: unknown;hdlSelection?:unknown;hdlBasis?:unknown;
   inputRefs?: string[]; versions: TeachingVersions; expectedRevision: number}) {
   let attempt = requireScope(tx, input.scope);
   const question = checkedText(input.question, 'question', 16384), now = checkedNow(input.now);
@@ -322,7 +324,9 @@ export function acceptStudentQuestionInTransaction(tx: Transaction, input: {scop
     attemptRevision: attempt.attemptRevision + (attempt.attemptRevision === input.expectedRevision ? 1 : 0) };
   saveAttempt(tx, attempt);
   const envelope: TeachingQuestionEnvelope = { kind: 'student_question', question,
-    ...(objectRef === undefined ? {} : { objectRef }), inputRefs: [...(input.inputRefs ?? [])], versions };
+    ...(objectRef === undefined ? {} : { objectRef }),
+    ...(input.hdlSelection===undefined?{}:{hdlSelection:hdlHelpSelectionSchema.parse(input.hdlSelection)}),
+    ...(input.hdlBasis===undefined?{}:{hdlBasis:hdlHelpBasisSchema.parse(input.hdlBasis)}),inputRefs: [...(input.inputRefs ?? [])], versions };
   const message: TeachingMessage = { messageId: randomUUID(), scope: structuredClone(input.scope), jobId: '',
     ...(input.receiptId ? { requestReceiptId: input.receiptId } : {}), authorKind: 'student',
     contentHash: contentHashOf(question), envelope };
@@ -405,6 +409,11 @@ export function completeTeachingInTransaction(tx: Transaction, input: {scope: Te
     if (basis.objectRef && canonical(basis.objectRef) !== canonical(question.objectRef)) throw new RunnerError('INVALID_REFERENCE', 'Original target required');
     basis.objectRef = question.objectRef;
   }
+  if(question.hdlSelection&&(!basis.hdl||basis.hdl.snapshotId!==question.hdlSelection.snapshotId
+    ||basis.hdl.buildId!==question.hdlSelection.buildId||basis.hdl.sessionId!==question.hdlSelection.sessionId
+    ||basis.hdl.operationId!==question.hdlSelection.operationId))throw new RunnerError('INVALID_REFERENCE','Original HDL target required');
+  if(!question.hdlSelection&&basis.hdl)throw new RunnerError('INVALID_REFERENCE','Unselected HDL target');
+  if(question.hdlBasis&&canonical(question.hdlBasis)!==canonical(basis.hdl))throw new RunnerError('INVALID_REFERENCE','Original frozen HDL basis required');
   const basisRevised = input.isBasisCurrent ? !input.isBasisCurrent(tx,input.scope,basis) : false;
   let { disposition, stopReason } = dispositionsFor(job, attempt, now);
   if (basisRevised && disposition === 'pending') { disposition = 'stale';stopReason = 'learner_state_revised'; }

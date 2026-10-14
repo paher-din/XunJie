@@ -26,13 +26,23 @@ import { readResultFiles } from './result-files.ts';
 import { z } from 'zod';
 import type { createHdlWorkspace } from './hdl.ts';
 
-export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop};hdl?:ReturnType<typeof createHdlWorkspace>};
+// A5 attaches its formal-feedback read through `recovery`; without it the recovery view keeps reporting `unavailable`.
+// A DB-backed attachment needs the transaction C4's own authorized read is already running in; `withTransaction` is
+// explicitly non-nested, so the seam hands its `tx` over instead of letting the attachment open a second one.
+export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop};hdl?:ReturnType<typeof createHdlWorkspace>;
+  recovery?:{readFeedback:(tx:Transaction,request:FastifyRequest,attemptId:string)=>RecoveryFeedback}};
 const attemptResult = z.strictObject({ attemptId: z.string(), activityVersionId: z.string(), assignmentId: z.string() });
 export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   const { teaching: extensions, hdl, ...designOptions } = options;
   if(hdl&&hdl.databaseFile!==options.db.file)throw new ApiError('INVALID_CONFIGURATION');
   // Workspace owns the shared Job paths and dispatches each purpose to its original handler.
-  const instance = await createDesignApp({ ...designOptions, ...(extensions?.design ? { teaching: { stop: extensions.design } } : {}) }, false);
+  const stop:DesignTeachingStop=(tx,actor,details)=>{
+    const base=extensions?.design?.(tx,actor,details)??{stoppedJobIds:[],invalidatedActionIds:[]};
+    if(base&&typeof base==='object'&&'then' in base)throw new ApiError('PERSISTENCE_UNAVAILABLE');
+    for(const id of details.attemptIds)hdl?.stopInTransaction(tx,id,details.reason,details.generation);
+    return base;
+  };
+  const instance = await createDesignApp({...designOptions,teaching:{stop},...(hdl?{afterControl:()=>hdl.reconcileStops()}: {})},false);
   const { app, access } = instance;
   const now = options.now ?? Date.now;
   const teachingStop = options.teaching?.stop;
@@ -69,6 +79,10 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
         authorize: () => true, transaction: tx, stopReason, ...(runPurposes ? {runPurposes} : {}) };
       const plan = apply(tx, before, context);
       persistWorkspace(tx, before, plan.state);
+      // Submission fixes the artifact and stops its loaded design atomically. Completed HDL program jobs
+      // may leave an active Session, so cancelling pending Workspace jobs alone cannot stop it.
+      if (!plan.replayed && command === 'submission.create')
+        hdl?.stopInTransaction(tx,id,'submission_confirmed',generation);
       if (!plan.replayed && command === 'workspace.sync') {
         const batch = syncBatch(parseRequest(syncInput, request.body));
         if (batch.process && before.attempt.collecting && batch.process.captureRevision === before.attempt.captureRevision)
@@ -185,6 +199,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     const readiness = await queryRuntime(options.runner);
     return execute(request, id, 'run.create', input.recoveryGeneration, (tx, state, context) => {
       const activity = readActivity(tx, state.attempt.courseId, state.attempt.activityVersionId);
+      if('kind' in activity.runtimeProfile)throw new ApiError('INVALID_REQUEST');
       const runtime = readiness.ok ? readiness.runtime : undefined;
       return runCommand(state, context, domainRun(input), { ready: Boolean(runtime && canonical(runtime.profile) === canonical(activity.runtimeProfile)), recoveryGeneration: runtime?.recoveryGeneration ?? input.recoveryGeneration,
         profile: activity.runtimeProfile, policyVersion: activity.helpPolicy.versionId, checkRuleVersion: activity.checkRule.versionId,
@@ -259,7 +274,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       return read(request,id,tx => readProcessRecords(tx,id));
     },
     readResultFiles(request: FastifyRequest, id: string, runId: string) {
-      return read(request, id, (tx, state) => readResultFiles(state,runId,readActivity(tx,state.attempt.courseId,state.attempt.activityVersionId).runtimeProfile.approvedResultFiles));
+      return read(request,id,(tx,state)=>{const runtime=readActivity(tx,state.attempt.courseId,state.attempt.activityVersionId).runtimeProfile;if('kind' in runtime)throw new ApiError('INVALID_REQUEST');return readResultFiles(state,runId,runtime.approvedResultFiles);});
     },
     readTutorContext(request: FastifyRequest, id: string) {
       return access.withAuthorizedResource(request, tx => locate(tx, id, true), 'student_help', (tx, actor) => {
@@ -328,14 +343,15 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
         || query.decisionEpoch !== state.attempt.decisionEpoch;
       return readRecovery(state, { recoveryGeneration: generation, resyncRequired,
         assignmentActive: assignmentActionable(tx, state),
-        feedback: recovery.readFeedback(request, id), coverage: readCoverage(tx, id) }, () => true);
+        feedback: recovery.readFeedback(tx, request, id), coverage: readCoverage(tx, id) }, () => true);
     }) };
   });
   // C4 recovery surface. A5 owns formal feedback; an unattached view reports it unavailable rather than
   // reconstructing feedback text from hashes, digests or submission rows.
-  type WorkspaceRecoverySurface = { readFeedback: (request: FastifyRequest, attemptId: string) => RecoveryFeedback };
+  type WorkspaceRecoverySurface = { readFeedback: (tx: Transaction, request: FastifyRequest, attemptId: string) => RecoveryFeedback };
   const recovery: WorkspaceRecoverySurface = {
-    readFeedback: (_request: FastifyRequest, _attemptId: string): RecoveryFeedback => ({ status: 'unavailable' }),
+    readFeedback: options.recovery?.readFeedback
+      ?? ((_tx: Transaction, _request: FastifyRequest, _attemptId: string): RecoveryFeedback => ({ status: 'unavailable' })),
   };
   // C4 seams for A5's teacher routes, the `transitionAttempt/grantReopen` pair TECH §7.2.1 assigns to C. A5 owns
   // the HTTP surface, the feedback record and the permission decision; C owns the same-transaction stage move and

@@ -1,3 +1,4 @@
+import {hdlActivityRuntimeSchema,hdlExecutionStatusSchema} from './hdl.ts';
 import { z } from 'zod';
 import { draftSchema, contentSchema } from './draft.ts';
 import { helpPolicySchema } from './inputs.ts';
@@ -21,7 +22,7 @@ export const teacherConcernSchema = z.strictObject({
   path: z.string(), reason: z.string(), resolution: z.string().optional(),
 });
 export const reportSchema = z.strictObject({
-  blueprintId: id, revision: z.number().int().positive(),
+  execution: hdlExecutionStatusSchema.optional(), blueprintId: id, revision: z.number().int().positive(),
   blocking: z.array(z.strictObject({ code: id, path: z.string() })),
   designConcerns: z.array(teacherConcernSchema.extend({ status: z.enum(['teacher_recorded', 'requires_teacher']) })),
   unverified: z.array(z.strictObject({ code: z.enum(['learning_effect', 'workload_estimate']), path: z.string(), status: z.literal('unknown') })),
@@ -50,8 +51,11 @@ const previewContent = { audience: z.enum(['student','tutor','teacher-validator'
   materials: z.array(z.union([projectedMaterialSchema,z.strictObject({ status: z.literal('redacted') }),z.strictObject({ status: z.literal('unavailable') })])) };
 export const previewSchema = z.strictObject({ blueprintId: id, revision, ...previewContent });
 export const activityViewSchema = z.strictObject({ activityVersionId: id, courseId: id, sourceRevision: revision.optional(),
+  // A5.4: the teacher needs to resolve a fixed activity version back to the blueprint it came from in order to copy
+  // it into a new version. Design-side provenance is projected to the responsible teacher only, like `sourceRevision`.
+  sourceBlueprintId: id.optional(),
   activityControlRevision: revision, status: z.enum(['active','paused']), content: z.strictObject(previewContent),
-  helpPolicy: helpPolicySchema, runtimeProfileVersionId: id });
+  helpPolicy: helpPolicySchema, runtimeProfileVersionId: id, execution: hdlActivityRuntimeSchema.optional() });
 export const assignmentViewSchema = z.strictObject({ assignmentId: id, activityVersionId: id, studentId: id, assignmentRevision: revision,
   active: z.boolean(), status: z.enum(['active','paused']), reasons: z.strictObject({ individual: z.string(), activity: z.string() }), activityControlRevision: revision });
 export type DesignResult = z.infer<typeof resultSchema>;

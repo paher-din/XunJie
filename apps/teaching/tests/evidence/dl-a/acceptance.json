@@ -1,0 +1,121 @@
+{
+  "sourceCodeCommit": "dd5f81c86ada5bc6c5dc24342d8e086308aabe4c",
+  "initialCodeCommit": "9addad3",
+  "environment": {
+    "platform": "Windows",
+    "node": "24.21.0",
+    "database": "fresh retained synthetic SQLite; 33-table application factory"
+  },
+  "commands": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "evidence": "typecheck-final.txt"
+    },
+    {
+      "command": "npm test",
+      "phase": "initial",
+      "exitCode": 1,
+      "evidence": "full.txt",
+      "counts": {
+        "tests": 341,
+        "pass": 326,
+        "fail": 2,
+        "cancelled": 2,
+        "skipped": 11
+      }
+    },
+    {
+      "command": "node --test tests/dl-a-app.test.ts server/workspace/hdl.test.ts",
+      "exitCode": 0,
+      "evidence": "special-final.txt",
+      "counts": {
+        "tests": 26,
+        "pass": 26,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "npm test",
+      "phase": "postreview",
+      "exitCode": 1,
+      "evidence": "full-postreview.txt",
+      "counts": {
+        "tests": 343,
+        "pass": 331,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 11
+      },
+      "pretestBuild": "passed"
+    },
+    {
+      "command": "node --test tests/startup.test.ts",
+      "exitCode": 0,
+      "counts": {
+        "tests": 4,
+        "pass": 4,
+        "fail": 0,
+        "skipped": 0
+      },
+      "evidence": "execution tool result; also 4 passed in postreview full log"
+    },
+    {
+      "command": "node --test tests/durability.test.ts",
+      "exitCode": 0,
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0,
+        "skipped": 0
+      },
+      "evidence": "execution tool result; also 2 passed in postreview full log"
+    }
+  ],
+  "remainingFullFailure": {
+    "test": "review: real RunControl preparation failure ends check without fabricating a RunRecord",
+    "reason": "Linux and trusted control context required; unmodified runner/control.ts platform guard on Windows",
+    "priorEvidence": "../a4/acceptance.a4-postreview-full-serial.windows.txt"
+  },
+  "notExecuted": [
+    "A/C authenticated real-node integration: authorized application material unavailable; SSH not attempted",
+    "ALU behavior validator",
+    "C4 submission composition",
+    "HDL B context/model/semantic acceptance",
+    "UI/browser/TLS/product/teaching-effect acceptance"
+  ],
+  "boundary": "External transport synthetic in local HTTP/worker tests; no real RTL/SSH/model/UI pass implied. No credentials stored. No node maintenance, old DB migration, public push.",
+  "files": [
+    {
+      "path": "full.txt",
+      "rawGzip": "full.txt.gz",
+      "rawSha256": "35632b00593dc528e8f180b63853ace17b7ba15ef017dd091dd15258551c0a0e",
+      "displaySha256": "8cc16f7095a4140a46fb24984373cac81196136af076a8755657f1290d17dc7c",
+      "formatOnly": "UTF-8 LF; trailing whitespace/outer blank lines removed; raw bytes retained in gzip"
+    },
+    {
+      "path": "full-postreview.txt",
+      "rawGzip": "full-postreview.txt.gz",
+      "rawSha256": "a3271cfcd5592b70b12115bff8f00e9a776527f9073f120b6ae911a124367b31",
+      "displaySha256": "d377985daebb03a23d568f7ee14feb66b341ff5ab43c7f07baaeb4f2a265d65d",
+      "formatOnly": "UTF-8 LF; trailing whitespace/outer blank lines removed; raw bytes retained in gzip"
+    },
+    {
+      "path": "special-final.txt",
+      "rawGzip": "special-final.txt.gz",
+      "rawSha256": "26bab7bc3c019e90d4729ede96716bdc0c33a38370e49afcb061cefe369eb2a1",
+      "displaySha256": "15a5886a90de74ee162ac1131d2185e4a66f8541e0d3d26d2baa8b52b8f7a133",
+      "formatOnly": "UTF-8 LF; trailing whitespace/outer blank lines removed; raw bytes retained in gzip"
+    },
+    {
+      "path": "typecheck-final.txt",
+      "rawGzip": "typecheck-final.txt.gz",
+      "rawSha256": "df01ad9d808d6ac476d75ade2bd58603edeeeb159e32bf8cb7549e090d6eb0ac",
+      "displaySha256": "9e1069614a5375475b25014632a096a13efc4207587881c6d2746fdd0f33e90f",
+      "formatOnly": "UTF-8 LF; trailing whitespace/outer blank lines removed; raw bytes retained in gzip"
+    }
+  ],
+  "displayHashBasis": "Normalized UTF-8 LF display text; normalize checkout CRLF to LF before computing displaySha256. rawSha256 always hashes exact decompressed gzip bytes."
+}

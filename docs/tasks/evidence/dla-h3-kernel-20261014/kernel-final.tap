@@ -1,0 +1,444 @@
+TAP version 13
+# Subtest: H3 binding refuses scripts, aliases, scope escapes and unknown shared fields
+ok 1 - H3 binding refuses scripts, aliases, scope escapes and unknown shared fields
+  ---
+  duration_ms: 3.767203
+  type: 'test'
+  ...
+# Subtest: H3 actual elaboration resolves directions, ascending ranges and split S without fixing student names
+ok 2 - H3 actual elaboration resolves directions, ascending ranges and split S without fixing student names
+  ---
+  duration_ms: 2.562363
+  type: 'test'
+  ...
+# Subtest: H3 complete 2800 comparison preserves ungraded Cout and excludes undefined vectors
+ok 3 - H3 complete 2800 comparison preserves ungraded Cout and excludes undefined vectors
+  ---
+  duration_ms: 29.442927
+  type: 'test'
+  ...
+# Subtest: H3 separates behavior error, graded unknown, input mismatch, unstable and missing samples
+ok 4 - H3 separates behavior error, graded unknown, input mismatch, unstable and missing samples
+  ---
+  duration_ms: 0.854128
+  type: 'test'
+  ...
+# Subtest: H3 whole-job deadline and cancellation never turn partial coverage into pass
+ok 5 - H3 whole-job deadline and cancellation never turn partial coverage into pass
+  ---
+  duration_ms: 3.011188
+  type: 'test'
+  ...
+# Subtest: H3 private parser rejects spoofed stdout, extra rows and wrong time; handles partial transport chunks
+ok 6 - H3 private parser rejects spoofed stdout, extra rows and wrong time; handles partial transport chunks
+  ---
+  duration_ms: 1.386768
+  type: 'test'
+  ...
+# Subtest: H3 node probe requires true immutable metadata; check refuses occupied Attempt and never exposes private rows
+ok 7 - H3 node probe requires true immutable metadata; check refuses occupied Attempt and never exposes private rows
+  ---
+  duration_ms: 197.307746
+  type: 'test'
+  ...
+# Subtest: H3 isolated Icarus CLI: true hierarchical binding and 2800 stable sampled vectors
+ok 8 - H3 isolated Icarus CLI: true hierarchical binding and 2800 stable sampled vectors
+  ---
+  duration_ms: 1639.871129
+  type: 'test'
+  ...
+# Subtest: node-local control synthetic checks
+    # Subtest: parallel identical submit starts once and asynchronous ACL cannot create a race
+    ok 1 - parallel identical submit starts once and asynchronous ACL cannot create a race
+      ---
+      duration_ms: 92.900987
+      type: 'test'
+      ...
+    # Subtest: cancel-before-submit is durable and never creates a new unit
+    ok 2 - cancel-before-submit is durable and never creates a new unit
+      ---
+      duration_ms: 44.967908
+      type: 'test'
+      ...
+    # Subtest: two slots and one attempt guard include unresolved create operations
+    ok 3 - two slots and one attempt guard include unresolved create operations
+      ---
+      duration_ms: 198.34784
+      type: 'test'
+      ...
+    # Subtest: ACL revoked while queued is checked again before dispatch
+    ok 4 - ACL revoked while queued is checked again before dispatch
+      ---
+      duration_ms: 37.799656
+      type: 'test'
+      ...
+    # Subtest: process crash keeps pending creation unknown and never releases its slot
+    ok 5 - process crash keeps pending creation unknown and never releases its slot
+      ---
+      duration_ms: 211.514881
+      type: 'test'
+      ...
+    # Subtest: corrupt/partial journal and different node generation stop admission
+    ok 6 - corrupt/partial journal and different node generation stop admission
+      ---
+      duration_ms: 13.645296
+      type: 'test'
+      ...
+    # Subtest: credentials or source bodies cannot be copied into control metadata
+    ok 7 - credentials or source bodies cannot be copied into control metadata
+      ---
+      duration_ms: 13.440497
+      type: 'test'
+      ...
+    # Subtest: generation advance needs trusted registration, refuses rollback and survives ordinary restart
+    ok 8 - generation advance needs trusted registration, refuses rollback and survives ordinary restart
+      ---
+      duration_ms: 33.632503
+      type: 'test'
+      ...
+    # Subtest: preparation failure before any unit intent does not occupy a phantom slot
+    ok 9 - preparation failure before any unit intent does not occupy a phantom slot
+      ---
+      duration_ms: 39.264433
+      type: 'test'
+      ...
+    # Subtest: confirmed recovery wins completion race and cancelled result remains readable
+    ok 10 - confirmed recovery wins completion race and cancelled result remains readable
+      ---
+      duration_ms: 86.895961
+      type: 'test'
+      ...
+    # Subtest: old queued work becomes stale after trusted generation registration
+    ok 11 - old queued work becomes stale after trusted generation registration
+      ---
+      duration_ms: 36.489234
+      type: 'test'
+      ...
+    1..11
+ok 9 - node-local control synthetic checks
+  ---
+  duration_ms: 814.688309
+  type: 'test'
+  ...
+# Subtest: course rules bind selected snapshot inputs, records and approved error exits
+ok 10 - course rules bind selected snapshot inputs, records and approved error exits
+  ---
+  duration_ms: 4.691242
+  type: 'test'
+  ...
+# Subtest: invalid course selection and profile cannot reach trusted oracle
+ok 11 - invalid course selection and profile cannot reach trusted oracle
+  ---
+  duration_ms: 1.37126
+  type: 'test'
+  ...
+# Subtest: missing input case avoids every snapshot file and implied directory without reserving names
+ok 12 - missing input case avoids every snapshot file and implied directory without reserving names
+  ---
+  duration_ms: 0.766404
+  type: 'test'
+  ...
+# Subtest: overflow is a trusted exit-2 case and maximum normal N still covers all words
+ok 13 - overflow is a trusted exit-2 case and maximum normal N still covers all words
+  ---
+  duration_ms: 0.487556
+  type: 'test'
+  ...
+# Subtest: dedicated Linux synthetic container execution and resource checks
+ok 14 - dedicated Linux synthetic container execution and resource checks # SKIP
+  ---
+  duration_ms: 1.206153
+  type: 'test'
+  ...
+# Subtest: the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+    # Subtest: 1ps
+    ok 1 - 1ps
+      ---
+      duration_ms: 35.183794
+      type: 'test'
+      ...
+    # Subtest: 100fs
+    ok 2 - 100fs
+      ---
+      duration_ms: 31.455048
+      type: 'test'
+      ...
+    # Subtest: 1fs
+    ok 3 - 1fs
+      ---
+      duration_ms: 30.6608
+      type: 'test'
+      ...
+    # Subtest: fine precision advances beyond the low 32 bits of simulation ticks
+    ok 4 - fine precision advances beyond the low 32 bits of simulation ticks
+      ---
+      duration_ms: 35.733889
+      type: 'test'
+      ...
+    1..4
+ok 15 - the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+  ---
+  duration_ms: 876.06123
+  type: 'test'
+  ...
+# Subtest: HDL board validation refuses executable mappings, missing bits and duplicates
+ok 16 - HDL board validation refuses executable mappings, missing bits and duplicates
+  ---
+  duration_ms: 5.258573
+  type: 'test'
+  ...
+# Subtest: elaborated widths/directions and all input bits must match, including ascending buses
+ok 17 - elaborated widths/directions and all input bits must match, including ascending buses
+  ---
+  duration_ms: 1.557418
+  type: 'test'
+  ...
+# Subtest: four-value frames preserve X/Z and reject missing width or forged time
+ok 18 - four-value frames preserve X/Z and reject missing width or forged time
+  ---
+  duration_ms: 0.810678
+  type: 'test'
+  ...
+# Subtest: HDL interaction keeps input/cycle trust boundaries and the independent container limits
+ok 19 - HDL interaction keeps input/cycle trust boundaries and the independent container limits
+  ---
+  duration_ms: 1.071283
+  type: 'test'
+  ...
+# Subtest: target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination
+ok 20 - target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination # SKIP
+  ---
+  duration_ms: 1.677671
+  type: 'test'
+  ...
+# Subtest: immutable node files become visible only after a complete fsynced write
+ok 21 - immutable node files become visible only after a complete fsynced write
+  ---
+  duration_ms: 340.834828
+  type: 'test'
+  ...
+# Subtest: publication leaves no staging name behind, on success and on a refused overwrite
+ok 22 - publication leaves no staging name behind, on success and on a refused overwrite
+  ---
+  duration_ms: 63.435778
+  type: 'test'
+  ...
+# Subtest: authenticated dedicated VM control and supervision
+ok 23 - authenticated dedicated VM control and supervision # SKIP
+  ---
+  duration_ms: 1.120795
+  type: 'test'
+  ...
+# Subtest: report oracle uses approved ASCII word/line/byte/tie semantics
+ok 24 - report oracle uses approved ASCII word/line/byte/tie semantics
+  ---
+  duration_ms: 3.259974
+  type: 'test'
+  ...
+# Subtest: report verifies all semantics while accepting non-semantic whitespace and bound sandbox names
+ok 25 - report verifies all semantics while accepting non-semantic whitespace and bound sandbox names
+  ---
+  duration_ms: 2.769462
+  type: 'test'
+  ...
+# Subtest: JSON path quoting preserves semantic spaces and escaped names
+ok 26 - JSON path quoting preserves semantic spaces and escaped names
+  ---
+  duration_ms: 0.34389
+  type: 'test'
+  ...
+# Subtest: returns bound content facts, distinguishes missing and unsafe files
+ok 27 - returns bound content facts, distinguishes missing and unsafe files
+  ---
+  duration_ms: 5.667133
+  type: 'test'
+  ...
+# Subtest: enforces combined byte budget and rejects invalid UTF-8
+ok 28 - enforces combined byte budget and rejects invalid UTF-8
+  ---
+  duration_ms: 3.435101
+  type: 'test'
+  ...
+# Subtest: rejects intermediate and final symlinks in Linux
+ok 29 - rejects intermediate and final symlinks in Linux
+  ---
+  duration_ms: 3.823915
+  type: 'test'
+  ...
+# Subtest: UTF-8 BOM remains in confirmed result text, byte count and checksum
+ok 30 - UTF-8 BOM remains in confirmed result text, byte count and checksum
+  ---
+  duration_ms: 1.461168
+  type: 'test'
+  ...
+# Subtest: maps four course operations to arrays and resolves files by immutable identity
+ok 31 - maps four course operations to arrays and resolves files by immutable identity
+  ---
+  duration_ms: 3.824666
+  type: 'test'
+  ...
+# Subtest: rejects unapproved files, command/word injection, zero count and output escape
+ok 32 - rejects unapproved files, command/word injection, zero count and output escape
+  ---
+  duration_ms: 1.688692
+  type: 'test'
+  ...
+# Subtest: top accepts the approved C int maximum and rejects overflow exactly
+ok 33 - top accepts the approved C int maximum and rejects overflow exactly
+  ---
+  duration_ms: 0.539173
+  type: 'test'
+  ...
+# Subtest: hashes exact UTF-8 content and byte-sorted compact manifests
+ok 34 - hashes exact UTF-8 content and byte-sorted compact manifests
+  ---
+  duration_ms: 2.243594
+  type: 'test'
+  ...
+# Subtest: rejects traversal, absolute, drive, UNC, backslash, NUL and empty components
+ok 35 - rejects traversal, absolute, drive, UNC, backslash, NUL and empty components
+  ---
+  duration_ms: 0.724168
+  type: 'test'
+  ...
+# Subtest: rejects stale body and manifest hashes and duplicate file identities
+ok 36 - rejects stale body and manifest hashes and duplicate file identities
+  ---
+  duration_ms: 0.405144
+  type: 'test'
+  ...
+# Subtest: enforces file count and UTF-8 byte budget including multibyte text
+ok 37 - enforces file count and UTF-8 byte budget including multibyte text
+  ---
+  duration_ms: 13.539619
+  type: 'test'
+  ...
+# Subtest: builds fixed compiler argv only from approved C sources
+ok 38 - builds fixed compiler argv only from approved C sources
+  ---
+  duration_ms: 2.407258
+  type: 'test'
+  ...
+# Subtest: rejects malformed input at the runtime boundary
+ok 39 - rejects malformed input at the runtime boundary
+  ---
+  duration_ms: 0.664987
+  type: 'test'
+  ...
+# Subtest: stdout passed and exit zero cannot claim course success
+ok 40 - stdout passed and exit zero cannot claim course success
+  ---
+  duration_ms: 1.76305
+  type: 'test'
+  ...
+# Subtest: trusted expected exits one and two can pass error-handling checks
+ok 41 - trusted expected exits one and two can pass error-handling checks
+  ---
+  duration_ms: 0.255696
+  type: 'test'
+  ...
+# Subtest: limits, tooling failures, unresolved termination and missing files remain incomplete
+ok 42 - limits, tooling failures, unresolved termination and missing files remain incomplete
+  ---
+  duration_ms: 0.354269
+  type: 'test'
+  ...
+# Subtest: DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries
+ok 43 - DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries
+  ---
+  duration_ms: 3486.122795
+  type: 'test'
+  ...
+# Subtest: DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram
+ok 44 - DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram
+  ---
+  duration_ms: 3065.679616
+  type: 'test'
+  ...
+# Subtest: DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state
+ok 45 - DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state
+  ---
+  duration_ms: 2890.232404
+  type: 'test'
+  ...
+# Subtest: existing authenticated Job paths dispatch HDL and stop its original session after a completed program
+ok 46 - existing authenticated Job paths dispatch HDL and stop its original session after a completed program
+  ---
+  duration_ms: 4202.418554
+  type: 'test'
+  ...
+# Subtest: revoked membership cannot read or interact, while the trusted worker still stops original resources
+ok 47 - revoked membership cannot read or interact, while the trusted worker still stops original resources
+  ---
+  duration_ms: 2831.302009
+  type: 'test'
+  ...
+# Subtest: job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind
+ok 48 - job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind
+  ---
+  duration_ms: 3417.412636
+  type: 'test'
+  ...
+# Subtest: Trace polling retains its cursor until the original program or interaction result is available
+ok 49 - Trace polling retains its cursor until the original program or interaction result is available
+  ---
+  duration_ms: 2918.282836
+  type: 'test'
+  ...
+# Subtest: replacement rechecks the supplied transaction authority after its external stop wait
+ok 50 - replacement rechecks the supplied transaction authority after its external stop wait
+  ---
+  duration_ms: 2911.893938
+  type: 'test'
+  ...
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+ok 51 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 4829.329722
+  type: 'test'
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 52 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 3000.865898
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 53 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 3211.430479
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 54 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 3121.738171
+  type: 'test'
+  ...
+# Subtest: H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+ok 55 - H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+  ---
+  duration_ms: 3187.175393
+  type: 'test'
+  ...
+# Subtest: H4 stop before dispatch and provider failure never prevent confirmed source reads
+ok 56 - H4 stop before dispatch and provider failure never prevent confirmed source reads
+  ---
+  duration_ms: 5980.735956
+  type: 'test'
+  ...
+# Subtest: H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+ok 57 - H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+  ---
+  duration_ms: 3095.551722
+  type: 'test'
+  ...
+1..57
+# tests 72
+# suites 0
+# pass 69
+# fail 0
+# cancelled 0
+# skipped 3
+# todo 0
+# duration_ms 30656.739862

@@ -1,0 +1,75 @@
+TAP version 13
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+ok 1 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 4059.761987
+  type: 'test'
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 2 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 2803.426046
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 3 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 2811.809412
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 4 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 2833.842439
+  type: 'test'
+  ...
+# Subtest: H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+not ok 5 - H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+  ---
+  duration_ms: 2956.306918
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:100:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'raceReason')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:112:94)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: H4 stop before dispatch and provider failure never prevent confirmed source reads
+not ok 6 - H4 stop before dispatch and provider failure never prevent confirmed source reads
+  ---
+  duration_ms: 5967.675439
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:115:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+
+    + 'unavailable'
+    - 'provider_error'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'provider_error'
+  actual: 'unavailable'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:127:78)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 4
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 21993.123514

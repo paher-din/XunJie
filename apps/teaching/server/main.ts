@@ -12,6 +12,8 @@ const shutdown = async () => {
 };
 try {
   const port=readPort(process.env.PORT);
+  if(process.env.XUNJIE_I0_CONFIG!==undefined && process.env.XUNJIE_APP_CONFIG!==undefined)
+    throw new Error('Exactly one controlled application mode is allowed.');
   if (process.env.XUNJIE_I0_CONFIG !== undefined) {
     // Keep the original health-only startup independent of SQLite/business initialization.
     const { readI0Config,readI0Generation,readI0SigningSecret }=await import('./app/config.ts');
@@ -52,6 +54,34 @@ try {
       await app.listen({host:'127.0.0.1',port});
       service.startConsumer();
     } catch(error) { if (!closeService) db.close(); throw error; }
+  } else if(process.env.XUNJIE_APP_CONFIG!==undefined) {
+    const {readApplicationConfig,readI0SigningSecret}=await import('./app/config.ts');
+    const {openSyntheticDatabase}=await import('./db/transaction.ts');
+    const {readFileSync}=await import('node:fs');
+    const {createDigitalLogicApplication}=await import('./app/digital-logic.ts');
+    const {executionTransports}=await import('./app/execution-transport.ts');
+    const config=readApplicationConfig(process.env.XUNJIE_APP_CONFIG);
+    const originUrl=new URL(config.origin);
+    if(Number(originUrl.port || 443)!==port) throw new Error('Exact local HTTPS origin required.');
+    const db=openSyntheticDatabase(config.databaseFile);
+    try {
+      const generation=db.withTransaction(tx=>tx.get('SELECT recovery_generation FROM application_control WHERE singleton=1'))?.recovery_generation;
+      if(generation!==config.recoveryGeneration) throw new Error('Recovery control mismatch.');
+      const versions=config.tutoring?.versions??{modelConfig:'unconfigured',prompt:'unconfigured',schema:'unconfigured',policy:'unconfigured'};
+      const service=await createDigitalLogicApplication({db,origin:config.origin,signingSecret:readI0SigningSecret(config.signingSecretFile),
+        https:{key:readFileSync(config.tls.keyFile),cert:readFileSync(config.tls.certFile)},logDestination:process.stdout,
+        ...executionTransports(config.ssh),approvedHdlRuntimes:config.approvedHdlRuntimes,
+        ...(config.staticDirectory?{staticDirectory:config.staticDirectory}:{}),
+        consumerIntervalMs:config.consumerIntervalMs,studentHelp:{versions,budgetAvailable:()=>config.tutoring?.callsAuthorized??false},
+        ...(config.tutoring?.apiKeyFile?{tutoringProvider:(await import('./tutoring/deepseek-sdk.ts')).createAiSdkDeepSeekProvider({
+          apiKey:readI0SigningSecret(config.tutoring.apiKeyFile),
+        })}:{}),
+        teacherAgent:{versions,budgetAvailable:()=>false,provider:{generate:async()=>{throw new Error('Model unavailable.');}}}});
+      app=service.app;
+      closeService=async()=>{try {await service.shutdown();} finally {db.close();}};
+      await app.listen({host:'127.0.0.1',port});
+      service.startConsumer(config.consumerIntervalMs);
+    } catch(error) {if(!closeService) db.close();throw error;}
   } else {
     const { createApp }=await import('./app.ts');
     app=createApp({logDestination:process.stdout});

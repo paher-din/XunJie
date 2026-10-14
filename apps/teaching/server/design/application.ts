@@ -3,7 +3,7 @@ import type { FastifyRequest } from 'fastify';
 import { createDesignVerificationApp, type DesignVerificationOptions } from './app.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
-import { executeRuntimeCommand, type queryRuntime } from './readiness.ts';
+import { executeRuntimeCommand, type ExecutionReadiness } from './readiness.ts';
 import { finishRecordCommand, readRecordCommand } from '../db/records-adapter.ts';
 import { releaseSchema, assignmentSchema, activityControlSchema, assignmentControlSchema, helpPolicySchema, checkRuleSchema, activityCommandResults, assignmentViewSchema } from '../../contracts/design/index.ts';
 import { activityCourse, assignmentCourse, readAssignment, confirmActivity, assignActivity, controlActivity, controlAssignment,
@@ -14,7 +14,7 @@ import type { Transaction } from '../db/transaction.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
 
 // C3 adds only this optional same-transaction callback; A's control results and algorithms stay unchanged.
-export type DesignAppOptions = Omit<DesignVerificationOptions, 'completion'> & { teaching?: { stop: DesignTeachingStop } };
+export type DesignAppOptions = Omit<DesignVerificationOptions, 'completion'> & { teaching?: { stop: DesignTeachingStop }; afterControl?:()=>Promise<void> };
 const params = z.strictObject({ id: z.string().min(1).max(128) });
 const keySchema = z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/);
 const audienceSchema = z.strictObject({ audience: z.enum(['student', 'tutor', 'teacher-validator']).default('student') });
@@ -100,7 +100,7 @@ export async function createDesignApp(options: DesignAppOptions, registerTeacher
   });
   app.post('/api/blueprints/:id/releases', async request => {
     const blueprintId = parseRequest(params, request.params).id, input = parseRequest(releaseSchema, request.body);
-    let readiness: Awaited<ReturnType<typeof queryRuntime>> | undefined;
+    let readiness: ExecutionReadiness | undefined;
     const release = (replayOnly = false) => execute(request, tx => draftCourse(tx, blueprintId), 'activity.release', blueprintId, input, (tx, actor) => {
       if (!readiness) throw new ApiError('PERSISTENCE_UNAVAILABLE');
       if (!readiness.ok) throw readiness.error;
@@ -111,22 +111,24 @@ export async function createDesignApp(options: DesignAppOptions, registerTeacher
         input.concerns.map(({ resolution, ...item }) => ({ ...item, ...(resolution === undefined ? {} : { resolution }) })),
         runtime.profile, runtime.readiness, input.recoveryGeneration, now());
     }, replayOnly);
-    return executeRuntimeCommand(options.runner, () => release(true), value => { readiness = value; return release(); });
+    return executeRuntimeCommand(options.runner, () => release(true), value => { readiness = value; return release(); }, options.queryExecution?()=>options.queryExecution!(request,blueprintId):undefined);
   });
   app.post('/api/activities/:id/assignments', request => {
     const activityId = parseRequest(params, request.params).id, input = parseRequest(assignmentSchema, request.body);
     return execute(request, tx => activityCourse(tx, activityId), 'assignment.create', activityId, input,
       (tx, actor) => assignActivity(tx, actor, activityId, input.studentIds, input.expectedActivityControlRevision, now()));
   });
-  app.post('/api/activities/:id/controls', request => {
+  app.post('/api/activities/:id/controls', async request => {
     const activityId = parseRequest(params, request.params).id, input = parseRequest(activityControlSchema, request.body);
-    return execute(request, tx => activityCourse(tx, activityId), 'activity.control', activityId, input,
+    const response=execute(request, tx => activityCourse(tx, activityId), 'activity.control', activityId, input,
       (tx, actor) => controlActivity(tx, actor, activityId, input.expectedActivityControlRevision, input.action, input.reason, now(), input.recoveryGeneration, options.teaching?.stop));
+    await options.afterControl?.();return response;
   });
-  app.post('/api/assignments/:id/controls', request => {
+  app.post('/api/assignments/:id/controls', async request => {
     const assignmentId = parseRequest(params, request.params).id, input = parseRequest(assignmentControlSchema, request.body);
-    return execute(request, tx => assignmentCourse(tx, assignmentId), 'assignment.control', assignmentId, input,
+    const response=execute(request, tx => assignmentCourse(tx, assignmentId), 'assignment.control', assignmentId, input,
       (tx, actor) => controlAssignment(tx, actor, assignmentId, input.expectedAssignmentRevision, input.action, input.reason, now(), input.recoveryGeneration, options.teaching?.stop));
+    await options.afterControl?.();return response;
   });
   return { ...instance, design: { ...design,
     configurePolicy(request: FastifyRequest, courseId: string, input: unknown) {

@@ -1,0 +1,101 @@
+{
+  "checkedAt": "2026-10-14T04:58:32.798Z",
+  "serviceRunning": true,
+  "origin": "https://127.0.0.1:3443",
+  "unit": "xunjie-i0-entry-recovered-20261014.service",
+  "service": {
+    "MainPID": "843",
+    "ExecMainStartTimestamp": "Wed 2026-10-14 12:54:09 CST",
+    "ActiveState": "active",
+    "SubState": "running"
+  },
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "applicationConfigFile": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host-recovered-20261014.json",
+  "requiredEnvironment": {
+    "TMPDIR": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014",
+    "PORT": "3443",
+    "XUNJIE_I0_CONFIG": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host-recovered-20261014.json"
+  },
+  "certificateFingerprint": "C3:F8:ED:37:E0:7C:34:1B:0F:CC:55:58:D0:FC:12:FA:B4:79:13:EF:71:D1:EC:80:77:A0:E0:84:44:47:51:73",
+  "assignmentId": "a2533386-4923-4dee-83bd-2d7a99fb06e9",
+  "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+  "assignmentRevision": 3,
+  "assignmentActive": true,
+  "attempt": {
+    "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+    "courseId": "synthetic-i0-course-a",
+    "studentId": "synthetic-i0-student-a",
+    "assignmentId": "a2533386-4923-4dee-83bd-2d7a99fb06e9",
+    "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+    "status": "active",
+    "attemptRevision": 10,
+    "workspaceRevision": 7,
+    "decisionEpoch": 2,
+    "captureRevision": 0,
+    "collecting": true,
+    "reminders": false
+  },
+  "bootstrapUrl": "https://127.0.0.1:3443/api/assignments/a2533386-4923-4dee-83bd-2d7a99fb06e9/bootstrap",
+  "studentLoginName": "synthetic-i0-student-a",
+  "credentialReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/initializer.json",
+  "database": {
+    "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014/xunjie-a12-completion-oNozxQ/synthetic.sqlite",
+    "integrity": "ok",
+    "tables": 24,
+    "users": 5,
+    "courses": 2,
+    "runJobStates": [
+      {
+        "status": "cancelled",
+        "n": 1
+      },
+      {
+        "status": "succeeded",
+        "n": 3
+      }
+    ],
+    "pendingRunJobs": 0
+  },
+  "readiness": {
+    "readiness": {
+      "ready": true,
+      "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+      "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+    },
+    "hdl_readiness": {
+      "ready": true,
+      "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+      "fingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+    }
+  },
+  "tlsVerifiedResponses": 7,
+  "hostHealthReady": {
+    "statusCode": 503,
+    "errorCode": "DEPENDENCY_UNAVAILABLE",
+    "acceptedAsReady": false,
+    "owner": "A",
+    "finding": "Fixed 9fa76ad I0 host retains base health/ready handler returning503; not counted as pass or bypassed."
+  },
+  "secretsOrCookiesPersisted": false,
+  "browserTrust": "not authorized or tested",
+  "frontendRoute": "UI login/assignment route wiring remains pending",
+  "persistenceVerification": "Same new database/objects survived verifier shutdown, handoff start/shutdown and separate normal-host start. No WSL/guest reboot executed.",
+  "stopCommand": [
+    "wsl",
+    "-d",
+    "Ubuntu",
+    "-u",
+    "root",
+    "--",
+    "systemctl",
+    "stop",
+    "xunjie-i0-entry-recovered-20261014.service"
+  ],
+  "keepaliveWindowsPid": 69164,
+  "correction": {
+    "supersedes": "running-entry.json",
+    "reason": "Initial probe filtered kind=student_run instead of purpose=student_run, producing empty counts. Corrected original readonly purpose query confirms all four jobs terminal; no business record changed."
+  }
+}

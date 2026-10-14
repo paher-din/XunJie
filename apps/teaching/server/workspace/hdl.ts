@@ -15,6 +15,11 @@ import {sha256} from '../../runner/snapshot.ts';
 import {fields,validateIdentity,validateBoard,validateOperation} from '../../runner/hdl-profile.ts';
 import {hdlBuild,hdlSession,hdlResult} from './hdl-inputs.ts';
 
+export type HdlAuthorization=(tx:Transaction,use:'read'|'write')=>ActorContext;
+function authorize(tx:Transaction,actor:ActorContext,guard:HdlAuthorization|undefined,use:'read'|'write'){
+  if(!guard)return;const current=guard(tx,use);
+  if(current.userId!==actor.userId||current.courseId!==actor.courseId||current.role!==actor.role)throw new ApiError('FORBIDDEN');
+}
 export type HdlTransport=(command:HdlCommand)=>Promise<unknown>;
 export type ApprovedHdlProfile={board:BoardProfile;runtime:HdlRuntime};
 const buildAck=z.strictObject({buildId:z.string().min(1),jobId:z.string().min(1)});
@@ -72,6 +77,43 @@ export function readHdlBuild(tx:Transaction,actor:ActorContext,buildId:string){
   if(result&&(sha256(String(row.build_json))!==row.result_hash||result.status!==row.status||result.artifactHash!== (row.artifact_hash??undefined)
     ||result.buildId!==buildId||canonical(result.identity)!==canonical(request.identity)))throw new ApiError('INVALID_REFERENCE');return {request,result,status:String(row.status),jobId:String(row.job_id)};
 }
+export function readHdlOperation(tx:Transaction,actor:ActorContext,operationId:string){
+  const row=tx.get('SELECT * FROM hdl_operations WHERE operation_id=?',operationId);
+  if(!row)throw new ApiError('FORBIDDEN');
+  const session=readHdlSession(tx,actor,String(row.session_id)),build=readHdlBuild(tx,actor,session.buildId);
+  const request=checkedRequest<HdlProgram|HdlOperation>(row,'request_json');
+  validateIdentity(request.identity);
+  const job=readJobs(tx,actor.courseId).find(item=>item.jobId===row.job_id);
+  const receipt=readRecords(tx,actor.courseId).receipts.find(item=>item.receiptId===row.request_receipt_id);
+  if(!job||!receipt||job.requestReceiptId!==row.request_receipt_id
+    ||request.identity.id!==row.operation_id||request.identity.commandId!==receipt.commandId
+    ||request.identity.requestHash!==receipt.requestHash||job.scope.attemptId!==session.identity.scope.attemptId
+    ||canonical(request.identity.scope)!==canonical(session.identity.scope)
+    ||request.identity.recoveryGeneration!==session.identity.recoveryGeneration
+    ||requestHash(session.sessionId,request)!==row.request_hash)throw new ApiError('INVALID_REFERENCE');
+  if(Number(row.sequence)===0){
+    if(!('buildId' in request)||request.buildId!==session.buildId||request.identity.id!==session.sessionId
+      ||receipt.identity.command!=='hdl.program')throw new ApiError('INVALID_REFERENCE');
+  }else{
+    if(!('sessionId' in request))throw new ApiError('INVALID_REFERENCE');
+    validateOperation(request);
+    if(request.sessionId!==session.sessionId||request.expectedSequence!==row.sequence
+      ||receipt.identity.command!=='hdl.interact')throw new ApiError('INVALID_REFERENCE');
+  }
+  const result=row.result_json===null?null:hdlResult.parse(JSON.parse(String(row.result_json)));
+  if(result){
+    const {resultHash,...body}=result;
+    if(sha256(String(row.result_json))!==row.result_hash||sha256(JSON.stringify(body))!==resultHash
+      ||result.operationId!==operationId||result.sessionId!==session.sessionId||result.buildId!==session.buildId
+      ||result.snapshotId!==build.request.snapshot.snapshotId||result.snapshotHash!==build.request.snapshot.hash
+      ||result.sequence!==row.sequence||result.boardProfileVersion!==session.boardProfileVersion
+      ||result.mappingVersion!==session.mappingVersion||result.engineVersion!==session.engineVersion
+      ||canonical(result.frames.at(-1))!==canonical(result.finalFrame)
+      ||('expectedSessionRevision' in request&&'sessionId' in request&&result.sessionRevision!==request.expectedSessionRevision+1))
+      throw new ApiError('INVALID_REFERENCE');
+  }
+  return {operationId,sessionId:session.sessionId,sequence:Number(row.sequence),status:String(row.status),request,result};
+}
 function saveSession(tx:Transaction,state:HdlSession,pending?:string){
   const old=tx.get('SELECT stop_requested FROM hdl_sessions WHERE session_id=?',state.sessionId);
   if(old?.stop_requested===1&&!state.stopRequested)throw new ApiError('STATE_CONFLICT');
@@ -93,14 +135,15 @@ export function stopHdlInTransaction(tx:Transaction,attemptId:string,reason:stri
   return {attemptId,recoveryGeneration:generation};
 }
 export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGeneration:()=>string;transport:HdlTransport;
-  approvedProfile:(tx:Transaction,attemptId:string)=>ApprovedHdlProfile|undefined;now?:()=>number}){
+  approvedProfile:(tx:Transaction,attemptId:string)=>ApprovedHdlProfile|undefined;refreshProfile?:()=>Promise<void>;now?:()=>number}){
   const now=options.now??Date.now;
+  function persisted<T>(work:(tx:Transaction)=>T):T{try{return options.db.withTransaction(work);}catch(error){throw domainError(error,'PERSISTENCE_UNAVAILABLE');}}
   const generation=(expected:string)=>{if(expected!==options.currentGeneration())throw new ApiError('RECOVERY_REQUIRED');return expected;};
-  function build(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:{expectedAttemptRevision:number;snapshotId:string}){
-    return options.db.withTransaction(tx=>{
-      generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.build');
+  function build(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:{expectedAttemptRevision:number;snapshotId:string},guard?:HdlAuthorization){
+    return persisted(tx=>{
+      authorize(tx,actor,guard,'read');generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.build');
       return finishRecordCommand(tx,identity,input,expectedGeneration,now(),()=>{
-        const current=writable(tx,actor,attemptId,input.expectedAttemptRevision),profile=options.approvedProfile(tx,attemptId);
+        authorize(tx,actor,guard,'write');const current=writable(tx,actor,attemptId,input.expectedAttemptRevision),profile=options.approvedProfile(tx,attemptId);
         if(!profile)throw new ApiError('RUNTIME_NOT_READY');validateBoard(profile.board);
         const snapshot=loadWorkspace(tx,attemptId).snapshots.find(item=>item.snapshotId===input.snapshotId);if(!snapshot)throw new ApiError('INVALID_REFERENCE');
         saveAttempt(tx,activate(current));return buildAck.parse({buildId:randomUUID(),jobId:randomUUID()});
@@ -113,11 +156,12 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
       });
     });
   }
-  function acceptProgram(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:{expectedAttemptRevision:number;buildId:string;replaceSessionId?:string;expectedSessionRevision?:number}){
-    return options.db.withTransaction(tx=>{
-      generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.program');
+  function acceptProgram(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:{expectedAttemptRevision:number;buildId:string;replaceSessionId?:string;expectedSessionRevision?:number},guard?:HdlAuthorization){
+    return persisted(tx=>{
+      authorize(tx,actor,guard,'read');generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.program');
       return finishRecordCommand(tx,identity,input,expectedGeneration,now(),()=>{
-        writable(tx,actor,attemptId,input.expectedAttemptRevision);const build=readHdlBuild(tx,actor,input.buildId);
+        authorize(tx,actor,guard,'write');writable(tx,actor,attemptId,input.expectedAttemptRevision);const profile=options.approvedProfile(tx,attemptId);if(!profile)throw new ApiError('RUNTIME_NOT_READY');const build=readHdlBuild(tx,actor,input.buildId);
+        if(!profile||canonical(profile.board)!==canonical(build.request.board)||profile.runtime.runtimeProfileVersion!==build.request.runtimeProfileVersion||profile.runtime.engineVersion!==build.result?.engineVersion||profile.runtime.buildImage!==build.result?.imageDigest)throw new ApiError('INVALID_REFERENCE');
         if(build.request.identity.scope.attemptId!==attemptId||build.result?.status!=='succeeded'||!build.result.terminationConfirmed)throw new ApiError('STATE_CONFLICT');
         const occupied=tx.get('SELECT session_id FROM hdl_sessions WHERE attempt_id=? AND termination_confirmed=0',attemptId);
         if(occupied)throw new ApiError('STATE_CONFLICT');
@@ -138,15 +182,15 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
       });
     });
   }
-  async function program(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:{expectedAttemptRevision:number;buildId:string;replaceSessionId?:string;expectedSessionRevision?:number}){
-    const previous=options.db.withTransaction(tx=>{generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true);
+  async function program(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:{expectedAttemptRevision:number;buildId:string;replaceSessionId?:string;expectedSessionRevision?:number},guard?:HdlAuthorization){
+    const previous=persisted(tx=>{authorize(tx,actor,guard,'read');generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true);
       return readRecordCommand(tx,commandScope(actor,attempt,key,expectedGeneration,'hdl.program'),input,expectedGeneration,value=>operationAck.parse(value));});
     if(previous)return previous;
     if(input.replaceSessionId){
-      const stopped=options.db.withTransaction(tx=>{
-        generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.replace_stop');
+      const stopped=persisted(tx=>{
+        authorize(tx,actor,guard,'read');generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.replace_stop');
         const receipt=finishRecordCommand(tx,identity,input,expectedGeneration,now(),()=>{
-          writable(tx,actor,attemptId,input.expectedAttemptRevision);const original=readHdlSession(tx,actor,input.replaceSessionId!);
+          authorize(tx,actor,guard,'write');writable(tx,actor,attemptId,input.expectedAttemptRevision);const original=readHdlSession(tx,actor,input.replaceSessionId!);
           if(original.identity.scope.attemptId!==attemptId)throw new ApiError('FORBIDDEN');if(original.sessionRevision!==input.expectedSessionRevision)throw new ApiError('VERSION_CONFLICT');
           stopHdlInTransaction(tx,attemptId,'explicit_reprogram',expectedGeneration);return original.identity;
         },value=>{validateIdentity(value);return value;});return receipt.result;
@@ -154,18 +198,19 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
       const response=await options.transport({op:'hdl_stop',identity:stopped});fields(response,['data','error']);if(response.error)throw new ApiError('DEPENDENCY_UNAVAILABLE');
       const node=hdlSession.parse(response.data);
       if(!node?.terminationConfirmed||canonical(node.identity)!==canonical(stopped))throw new ApiError('DEPENDENCY_UNAVAILABLE');
-      options.db.withTransaction(tx=>{generation(expectedGeneration);const original=readHdlSession(tx,actor,input.replaceSessionId!);saveSession(tx,{...node,stopRequested:true});
+      persisted(tx=>{generation(expectedGeneration);const original=checkedSession(tx,input.replaceSessionId!);scopeIdentity(original.identity,actor,readAttempt(tx,attemptId));saveSession(tx,{...node,stopRequested:true});
         for(const row of tx.all('SELECT job_id FROM hdl_operations WHERE session_id=?',original.sessionId)){
           const job=readJobs(tx,actor.courseId).find(item=>item.jobId===row.job_id)!;if(!terminal.has(job.status))saveJob(tx,{...job,status:'cancelled',stopRequested:true});}
       });
     }
-    return acceptProgram(actor,attemptId,key,expectedGeneration,input);
+    await options.refreshProfile?.();
+    return acceptProgram(actor,attemptId,key,expectedGeneration,input,guard);
   }
-  function interact(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:Omit<HdlOperation,'identity'>&{expectedAttemptRevision:number}){
-    return options.db.withTransaction(tx=>{
-      generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.interact');
+  function interact(actor:ActorContext,attemptId:string,key:string,expectedGeneration:string,input:Omit<HdlOperation,'identity'>&{expectedAttemptRevision:number},guard?:HdlAuthorization){
+    return persisted(tx=>{
+      authorize(tx,actor,guard,'read');generation(expectedGeneration);const attempt=permitted(tx,actor,attemptId,true),identity=commandScope(actor,attempt,key,expectedGeneration,'hdl.interact');
       return finishRecordCommand(tx,identity,input,expectedGeneration,now(),()=>{
-        writable(tx,actor,attemptId,input.expectedAttemptRevision);const session=readHdlSession(tx,actor,input.sessionId);
+        authorize(tx,actor,guard,'write');writable(tx,actor,attemptId,input.expectedAttemptRevision);if(!options.approvedProfile(tx,attemptId))throw new ApiError('RUNTIME_NOT_READY');const session=readHdlSession(tx,actor,input.sessionId);
         if(session.identity.scope.attemptId!==attemptId||session.status!=='active'||session.stopRequested||session.pendingOperationId)throw new ApiError('STATE_CONFLICT');
         if(session.sessionRevision!==input.expectedSessionRevision||session.confirmedSequence+1!==input.expectedSequence)throw new ApiError('VERSION_CONFLICT');
         return operationAck.parse({sessionId:input.sessionId,operationId:randomUUID(),jobId:randomUUID()});
@@ -199,11 +244,11 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
     },value=>z.strictObject({jobId:z.string(),stopRequested:z.literal(true)}).parse(value));
   }
   async function reconcileStops(){
-    const pending=options.db.withTransaction(tx=>tx.all('SELECT session_id FROM hdl_sessions WHERE stop_requested=1 AND termination_confirmed=0').map(row=>checkedSession(tx,String(row.session_id))));
+    const pending=persisted(tx=>tx.all('SELECT session_id FROM hdl_sessions WHERE stop_requested=1 AND termination_confirmed=0').map(row=>checkedSession(tx,String(row.session_id))));
     for(const original of pending){
       try{const response=await options.transport({op:'hdl_stop',identity:original.identity});fields(response,['data','error']);if(response.error)continue;
         const fact=hdlSession.parse(response.data);if(canonical(fact.identity)!==canonical(original.identity)||!fact.terminationConfirmed)continue;
-        options.db.withTransaction(tx=>{
+        persisted(tx=>{
           if(fact.identity.recoveryGeneration!==options.currentGeneration())throw new ApiError('RECOVERY_REQUIRED');
           const current=checkedSession(tx,original.sessionId);if(!current.stopRequested)return;
           saveSession(tx,{...fact,stopRequested:true});
@@ -216,7 +261,7 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
     }
   }
   async function processJob(jobId:string){
-    const work=options.db.withTransaction(tx=>{
+    const work=persisted(tx=>{
       const row=tx.get('SELECT * FROM jobs WHERE job_id=?',jobId);if(!row?.attempt_id)throw new ApiError('FORBIDDEN');
       const attempt=readAttempt(tx,String(row.attempt_id)),job=readJobs(tx,attempt.courseId).find(item=>item.jobId===jobId)!;
       if(!job.kind.startsWith('hdl_'))throw new ApiError('FORBIDDEN');generation(job.recoveryGeneration);
@@ -231,7 +276,7 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
       return {attempt,actor,job:next,dispatch,buildRow,operationRow};
     });if(!work)return;
     const packet=checkedRequest<HdlBuildRequest|HdlProgram|HdlOperation>(work.buildRow??work.operationRow!,'request_json');
-    const session=work.operationRow?options.db.withTransaction(tx=>checkedSession(tx,String(work.operationRow!.session_id))):undefined;
+    const session=work.operationRow?persisted(tx=>checkedSession(tx,String(work.operationRow!.session_id))):undefined;
     if(session)scopeIdentity(session.identity,work.actor,work.attempt);
     let command:HdlCommand;
     if(work.job.stopRequested)command={op:'hdl_stop',identity:session?.identity??packet.identity};
@@ -247,7 +292,7 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
       }
       if(session){const read=await options.transport({op:'hdl_result',identity:session.identity,operationId:work.job.kind==='hdl_program'?session.sessionId:String(work.operationRow!.operation_id)});
         fields(read,['data','error']);if(read.error)throw new ApiError('DEPENDENCY_UNAVAILABLE');result=read.data;}
-      options.db.withTransaction(tx=>{
+      persisted(tx=>{
         generation(work.job.recoveryGeneration);const current=readJobs(tx,work.attempt.courseId).find(item=>item.jobId===jobId)!;
         if(current.leaseToken!==work.job.leaseToken||!current.leaseUntil||Date.parse(current.leaseUntil)<=now())throw new ApiError('STATE_CONFLICT');
         const attempt=readAttempt(tx,work.attempt.attemptId);let stopped=current.stopRequested||attempt.status!=='active'||!assignmentAvailability(tx,attempt.courseId,attempt.assignmentId,attempt.studentId).active;
@@ -279,7 +324,7 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
         next={...next,leaseUntil:new Date(now()).toISOString()};saveJob(tx,next);progress(tx,next);
       });
     }catch(error){if(['PERSISTENCE_UNAVAILABLE','RECOVERY_REQUIRED'].includes(domainError(error,'DEPENDENCY_UNAVAILABLE').code))throw error;
-      options.db.withTransaction(tx=>{const current=readJobs(tx,work.attempt.courseId).find(item=>item.jobId===jobId)!;
+      persisted(tx=>{const current=readJobs(tx,work.attempt.courseId).find(item=>item.jobId===jobId)!;
         if(current.leaseToken===work.job.leaseToken&&!terminal.has(current.status))saveJob(tx,{...current,status:'outcome_unknown',leaseUntil:new Date(now()).toISOString()});});}
   }
   function readTrace(tx:Transaction,actor:ActorContext,sessionId:string,afterSequence=-1){
@@ -287,12 +332,11 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
     if(!Number.isSafeInteger(afterSequence)||afterSequence< -1)throw new ApiError('INVALID_REQUEST');
     const row=tx.get('SELECT * FROM hdl_operations WHERE session_id=? AND sequence>? ORDER BY sequence LIMIT 1',sessionId,afterSequence);
     if(!row)return {operation:null,nextSequence:afterSequence};
-    const body=row.result_json===null?null:hdlResult.parse(JSON.parse(String(row.result_json)));
-    if(body&&(sha256(String(row.result_json))!==row.result_hash||body.sessionId!==sessionId||body.sequence!==row.sequence))throw new ApiError('INVALID_REFERENCE');
+    const body=readHdlOperation(tx,actor,String(row.operation_id)).result;
     return {operation:{operationId:String(row.operation_id),sequence:Number(row.sequence),status:String(row.status),result:body},nextSequence:body?Number(row.sequence):afterSequence};
   }
   return {build,program,interact,processJob,readTrace,cancelInTransaction,reconcileStops,databaseFile:options.db.file,
     // '_' is a LIKE wildcard and LIKE ignores ASCII case, so compare the literal prefix to agree with startsWith('hdl_').
-    pendingJobs:()=>options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)='hdl_' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id))),
-    stopInTransaction:stopHdlInTransaction,readBuild:readHdlBuild,readSession:readHdlSession};
+    pendingJobs:()=>persisted(tx=>tx.all("SELECT job_id FROM jobs WHERE substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)='hdl_' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id))),
+    stopInTransaction:stopHdlInTransaction,readBuild:readHdlBuild,readSession:readHdlSession,readOperation:readHdlOperation};
 }

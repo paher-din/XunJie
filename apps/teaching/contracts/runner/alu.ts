@@ -1,0 +1,17 @@
+import type { HdlIdentity,HdlInputs } from './hdl.ts';
+export type AluSemantic='A'|'B'|'Cin'|'M'|'S'|'F'|'Cout';
+export type AluReference={instanceSegments:string[];signal:string;offset:number;width:number};
+export type AluReferences=Record<AluSemantic,AluReference[]>;
+export type AluSwitchMapping={semantic:'operand_a'|'operand_b'|'carry_in'|'mode'|'select';offset:number;width:number}[];
+export type AluBinding={versionId:string;references:AluReferences;switchMapping:AluSwitchMapping};
+export type HdlAluProbe={identity:HdlIdentity;buildId:string;artifactHash:string;snapshotId:string;snapshotHash:string;configurationHash:string;binding:AluBinding};
+export type HdlAluCheck=HdlAluProbe&{bindingHash:string;ruleVersionId:'hdl-alu-behavior-v1';validatorVersion:'hdl-alu-validator-v1';
+  vectorSetHash:string;samplingProfileVersion:'alu-lowphase-3samples-v1';runtimeProfileVersion:string;engineVersion:string;buildImage:string;runtimeImage:string;sourceHash:string};
+export type AluSample={index:number;simTimePs:string;bits:string};
+export type AluCoverage={expected:2800;sampled:number;compared:number;excluded:1296;complete:boolean};
+export type AluStatus='queued'|'running'|'passed'|'failed'|'incomplete'|'outcome_unknown'|'cancelled';
+export type HdlAluResult={checkId:string;identity:HdlIdentity;buildId:string;artifactHash:string;snapshotId:string;snapshotHash:string;
+  configurationHash:string;bindingVersionId:string;bindingHash:string;ruleVersionId:string;validatorVersion:string;vectorSetHash:string;samplingProfileVersion:string;
+  runtimeProfileVersion:string;engineVersion:string;buildImage:string;runtimeImage:string;sourceHash:string;
+  status:AluStatus;coverage:AluCoverage;terminationConfirmed:boolean;failureCategory?:string;resultHash:string};
+export type AluStep={index:number;inputs:HdlInputs};

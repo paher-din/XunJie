@@ -1,3 +1,5 @@
+import type {z as Zod} from 'zod';
+import type {activityRuntimeSchema} from '../../contracts/design/inputs.ts';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { readRuntime, type RunnerTransport } from '../records/runner.ts';
@@ -36,13 +38,14 @@ export async function queryRuntime(runner?: RunnerTransport) {
   }
 }
 
+export type ExecutionReadiness={ok:true;runtime: {profile:Zod.infer<typeof activityRuntimeSchema>;recoveryGeneration:string;readiness:Zod.infer<typeof runtimeReadinessSchema>}|undefined}|{ok:false;error:unknown};
 // Both handlers probe a currently authorized receipt before any external wait.
 // The final callback rechecks authorization/generation/receipt competition in SQL.
 export async function executeRuntimeCommand<T>(runner: RunnerTransport | undefined,
-  replay: () => T | undefined, execute: (readiness: Awaited<ReturnType<typeof queryRuntime>> | undefined) => T | undefined): Promise<T> {
+  replay: () => T | undefined, execute: (readiness: ExecutionReadiness | undefined) => T | undefined, query:()=>Promise<ExecutionReadiness>=()=>queryRuntime(runner)): Promise<T> {
   const previous = replay();
   // Even a replay goes through the final authorized transaction to advance Session atomically.
-  const result = execute(previous === undefined ? await queryRuntime(runner) : undefined);
+  const result = execute(previous === undefined ? await query() : undefined);
   if (result === undefined) throw new ApiError('PERSISTENCE_UNAVAILABLE');
   return result;
 }

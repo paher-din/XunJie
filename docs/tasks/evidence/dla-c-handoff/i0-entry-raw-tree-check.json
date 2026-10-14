@@ -1,0 +1,10 @@
+{
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "receiver": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf-20261013",
+  "treeEntries": 754,
+  "files": 754,
+  "symlinks": 0,
+  "gitlinks": 0,
+  "mismatches": [],
+  "scope": "Exact Git blob object IDs with binary bytes and symlink targets; all source before application build"
+}

@@ -1,0 +1,8 @@
+{
+  "profileSource": "/opt/xunjie-runner/source-i0-c-cde69cc/runner/hdl.apparmor",
+  "profileSha256": "27ccaf139da03c3102e9f05e783c84c230fb8eeee5bbc2bfed1df2e91f878d44",
+  "expectedProfileEnforced": false,
+  "loadedXunjieProfiles": [],
+  "installedProfileFiles": [],
+  "apparmorService": "active"
+}

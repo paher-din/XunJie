@@ -1,0 +1,71 @@
+{
+  "unit": {
+    "exitCode": 0,
+    "stdout": "LoadState=not-found\nActiveState=inactive\nSubState=dead\nFragmentPath=\nUnitFileState=\nTransient=no\n"
+  },
+  "tmpfilesCommand": {
+    "exitCode": 0,
+    "stdout": "ExecStart={ path=systemd-tmpfiles ; argv[]=systemd-tmpfiles --create --remove --boot --exclude-prefix=/dev ; ignore_errors=no ; start_time=[Wed 2026-10-14 12:39:13 CST] ; stop_time=[Wed 2026-10-14 12:39:13 CST] ; pid=120 ; code=exited ; status=0 }\n"
+  },
+  "tmpFilesystem": {
+    "exitCode": 0,
+    "stdout": "/      ext4\n"
+  },
+  "enabled": {
+    "exitCode": 4,
+    "stdout": "not-found\n"
+  },
+  "topLevel": [
+    {
+      "name": "data",
+      "directory": true,
+      "bytes": 4096
+    },
+    {
+      "name": "tests",
+      "directory": true,
+      "bytes": 4096
+    },
+    {
+      "name": "engine",
+      "directory": true,
+      "bytes": 4096
+    },
+    {
+      "name": "node",
+      "directory": true,
+      "bytes": 4096
+    },
+    {
+      "name": "typecheck",
+      "directory": true,
+      "bytes": 4096
+    },
+    {
+      "name": "vm",
+      "directory": true,
+      "bytes": 4096
+    },
+    {
+      "name": "cli-config",
+      "directory": true,
+      "bytes": 4096
+    },
+    {
+      "name": "downloads",
+      "directory": true,
+      "bytes": 4096
+    }
+  ],
+  "unitCandidates": [],
+  "diskCandidates": [
+    {
+      "path": "/opt/xunjie-runner/vm/state/guest.qcow2",
+      "bytes": 8818262016
+    }
+  ],
+  "rootBackupCandidates": [],
+  "wslConfig": {
+    "systemdEnabled": true
+  }
+}

@@ -103,6 +103,7 @@ export type StudentHelpCommandInput = {
   recoveryGeneration: string;
   question: string;
   objectRef?: ObjectRef;
+  hdlSelection?:import('../workspace/hdl-help.ts').HdlHelpSelection;
 };
 
 export type StudentHelpCommandResult = {
@@ -136,6 +137,7 @@ export type AssistanceContextRecord = {
 };
 
 export type AuthorizedHdlHelpContext = {
+  workspaceRevision?:number;
   snapshotId: string;
   snapshotHash: string;
   build: HdlBuild;
@@ -143,20 +145,7 @@ export type AuthorizedHdlHelpContext = {
   operation?: HdlOperationResult;
 };
 
-export type HdlHelpCurrentState = {
-  snapshotId: string;
-  snapshotHash: string;
-  buildId: string;
-  buildStatus: HdlBuild["status"];
-  sessionId?: string;
-  sessionRevision?: number;
-  sessionStatus?: HdlSession["status"];
-  sessionGeneration?: string;
-  confirmedSequence?: number;
-  simTimePs?: string;
-  operationId?: string;
-  resultHash?: string;
-};
+export type HdlHelpCurrentState = import('../workspace/hdl-help.ts').HdlHelpBasis;
 
 export type AuthorizedStudentHelpContext = {
   job: Job;

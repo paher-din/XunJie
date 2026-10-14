@@ -1,0 +1,813 @@
+{
+  "checkedAt": "2026-10-14T12:59:39.755Z",
+  "origin": "https://127.0.0.1:3443",
+  "studentId": "synthetic-i0-student-a",
+  "assignmentId": "a2533386-4923-4dee-83bd-2d7a99fb06e9",
+  "deepLink": "https://127.0.0.1:3443/#/task/a2533386-4923-4dee-83bd-2d7a99fb06e9",
+  "http": [
+    {
+      "method": "POST",
+      "path": "/api/sessions",
+      "status": 200,
+      "startedAtMs": 1791982779755,
+      "endedAtMs": 1791982780459,
+      "requestId": "581cfbb6-965e-433a-b96f-992e172b74bc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/assignments/a2533386-4923-4dee-83bd-2d7a99fb06e9/bootstrap",
+      "status": 200,
+      "startedAtMs": 1791982780459,
+      "endedAtMs": 1791982780466,
+      "requestId": "08dab2f1-1611-401b-bf95-14e4a734cf62"
+    },
+    {
+      "method": "GET",
+      "path": "/api/attempts/c9166463-5f46-4dc6-82c3-96456f394258",
+      "status": 200,
+      "startedAtMs": 1791982780466,
+      "endedAtMs": 1791982780493,
+      "requestId": "3774eb7d-6b68-4e26-815b-2a8b068c3c90"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982780495,
+      "endedAtMs": 1791982780506,
+      "requestId": "fca0ccc2-2739-44ff-a347-814e8447219b"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982781507,
+      "endedAtMs": 1791982781519,
+      "requestId": "e73b5246-cf36-4855-befc-b97c0d2527fc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982782520,
+      "endedAtMs": 1791982782532,
+      "requestId": "7b97c4cc-0532-4a41-9c60-ea40d0a563a4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982783533,
+      "endedAtMs": 1791982783545,
+      "requestId": "a92cb145-45c4-4ca0-bd48-655471983793"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982784546,
+      "endedAtMs": 1791982784558,
+      "requestId": "1d5816da-625f-4b3f-b820-8a0d2657742a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982785560,
+      "endedAtMs": 1791982785574,
+      "requestId": "be3681a4-8f29-4279-962d-0c3de85e50ce"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982786575,
+      "endedAtMs": 1791982786589,
+      "requestId": "e9259adf-c023-4c60-9429-e6576b33993d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982787591,
+      "endedAtMs": 1791982787602,
+      "requestId": "e274415a-292d-49b0-b474-2f9543cd8121"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982788602,
+      "endedAtMs": 1791982788614,
+      "requestId": "2269dce1-e869-4046-a3b2-b38a30888a78"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982789613,
+      "endedAtMs": 1791982789624,
+      "requestId": "5ba180d9-41ba-48ad-9fba-650eff46345d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982790625,
+      "endedAtMs": 1791982790635,
+      "requestId": "dc133624-e666-4692-948a-45b91f052433"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982791637,
+      "endedAtMs": 1791982791646,
+      "requestId": "1e80fab7-d496-45e8-abf6-c552a093c72d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982792647,
+      "endedAtMs": 1791982792659,
+      "requestId": "d9a67fcf-f99d-4adf-8707-f4d940408502"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982793658,
+      "endedAtMs": 1791982793670,
+      "requestId": "c30e9655-c0ce-4912-aecb-c82507b57f5e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982794671,
+      "endedAtMs": 1791982794683,
+      "requestId": "6a3d653e-1223-443f-948b-db25904ccd8f"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982795684,
+      "endedAtMs": 1791982795694,
+      "requestId": "d0ce4465-717c-430f-a598-9943fed87ff7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982796696,
+      "endedAtMs": 1791982796714,
+      "requestId": "4e18a796-99c3-4bfc-b0e6-c0d4884aef1e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982797715,
+      "endedAtMs": 1791982797725,
+      "requestId": "eab2e8ff-aa01-49c4-97d2-bab2939876bd"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982798726,
+      "endedAtMs": 1791982798737,
+      "requestId": "232c92f4-93fd-4e97-b58c-6e93aab76a6a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982799738,
+      "endedAtMs": 1791982799749,
+      "requestId": "8f747f98-cd8a-4f95-958e-cbd7c5e804b5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982800749,
+      "endedAtMs": 1791982800760,
+      "requestId": "50cb8e64-fcfa-4cde-85de-1501a6ae1ad0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982801761,
+      "endedAtMs": 1791982801772,
+      "requestId": "cf3c30cd-c23c-49eb-a84f-abb95ea6beff"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982802772,
+      "endedAtMs": 1791982802784,
+      "requestId": "19e0479f-d843-4bc4-823b-5f6f8dc47fde"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982803785,
+      "endedAtMs": 1791982803796,
+      "requestId": "27c03d54-0369-4e7e-a4aa-07dbfaac673d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982804796,
+      "endedAtMs": 1791982804814,
+      "requestId": "1fa019f1-79c7-48d6-b100-8cb7e6720d14"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982805814,
+      "endedAtMs": 1791982805826,
+      "requestId": "46573e78-5c09-4f38-bed6-82947399ea4b"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982806827,
+      "endedAtMs": 1791982806839,
+      "requestId": "afa50973-e229-4136-8ff1-cc375b338ed6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982807840,
+      "endedAtMs": 1791982807859,
+      "requestId": "6a30be6b-78fe-45f6-90ca-a8b2ae6129b7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982808860,
+      "endedAtMs": 1791982808872,
+      "requestId": "ae03cf60-acd2-4058-85fa-3122049a7b45"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982809873,
+      "endedAtMs": 1791982809884,
+      "requestId": "03b0ad6e-efc7-4e56-b722-4fb7b3be1dbc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982810884,
+      "endedAtMs": 1791982810898,
+      "requestId": "3331838b-5175-4a71-93e0-7ed788d4ad65"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982811899,
+      "endedAtMs": 1791982811910,
+      "requestId": "7b5c865b-889c-4ff1-ae74-f8aef084c42c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982812910,
+      "endedAtMs": 1791982812921,
+      "requestId": "10e4ebf0-2629-4861-ae06-e3cf2d06f6ff"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982813920,
+      "endedAtMs": 1791982813932,
+      "requestId": "153e7639-0881-497d-b968-387e3cb8941a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982814933,
+      "endedAtMs": 1791982814944,
+      "requestId": "2612965c-fdb8-4115-ac2d-a360d719c65f"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982815945,
+      "endedAtMs": 1791982815959,
+      "requestId": "ca5118a6-ff28-4be4-bee2-915e929a45fb"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982816960,
+      "endedAtMs": 1791982816970,
+      "requestId": "398c0d65-df46-4efc-b0fd-580a4803ee48"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982817971,
+      "endedAtMs": 1791982817990,
+      "requestId": "be8c069c-968b-4ad3-afac-2d4dc8430c5e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982818991,
+      "endedAtMs": 1791982819003,
+      "requestId": "19a44d58-3422-4665-a6eb-5c351d07b659"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982820004,
+      "endedAtMs": 1791982820014,
+      "requestId": "a756e2d6-ff38-43e3-b17b-fadc0f7e7411"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982821015,
+      "endedAtMs": 1791982821025,
+      "requestId": "4da5957c-94c0-4f55-b6b1-f1c95c3be8ab"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982822026,
+      "endedAtMs": 1791982822037,
+      "requestId": "35ee29bc-ebd5-44c6-b890-f31decd64941"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982823038,
+      "endedAtMs": 1791982823049,
+      "requestId": "42f3f50c-bf5f-4339-abc1-d79bad08638a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982824051,
+      "endedAtMs": 1791982824071,
+      "requestId": "e686fc03-2cd5-4931-b44b-a25672055e8d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982825072,
+      "endedAtMs": 1791982825083,
+      "requestId": "853bf864-608c-4cc7-b385-68a0773f7d4e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982826084,
+      "endedAtMs": 1791982826095,
+      "requestId": "3d3d2316-9a1e-49fb-8eeb-95b4dca0fc54"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982827097,
+      "endedAtMs": 1791982827109,
+      "requestId": "1faf5ad9-45aa-4f8c-8308-64b04e2f5809"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982828111,
+      "endedAtMs": 1791982828128,
+      "requestId": "b2a33e54-6f1b-4731-8d67-b1f4b69a351b"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982829128,
+      "endedAtMs": 1791982829144,
+      "requestId": "24ce320b-8028-4488-9b47-2be125a64dde"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982830144,
+      "endedAtMs": 1791982830155,
+      "requestId": "0fe650ad-80cf-4413-8a38-6288ecf69fb1"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982831155,
+      "endedAtMs": 1791982831174,
+      "requestId": "c7274e09-7b63-4d9a-879f-9c32e09a34d0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982832175,
+      "endedAtMs": 1791982832186,
+      "requestId": "bee82b65-879d-4bce-8683-03472b8c30b7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982833188,
+      "endedAtMs": 1791982833199,
+      "requestId": "2a752221-c5e2-46e4-b8bc-7f090e687736"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982834199,
+      "endedAtMs": 1791982834218,
+      "requestId": "e71a4deb-1775-49e0-8889-3c96740c9d6a"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982835220,
+      "endedAtMs": 1791982835232,
+      "requestId": "e4c8137c-6e50-4ab8-ad66-fb3ed36f142d"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982836233,
+      "endedAtMs": 1791982836245,
+      "requestId": "3657df2a-c57e-4de6-8904-f978ea8e7ff9"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982837246,
+      "endedAtMs": 1791982837258,
+      "requestId": "7cd2543f-3398-470f-b9b8-5a747e2cb771"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982838258,
+      "endedAtMs": 1791982838269,
+      "requestId": "7be45134-03b0-411a-8189-3443744bb135"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982839270,
+      "endedAtMs": 1791982839288,
+      "requestId": "c864ed18-7f59-438f-a0f4-c8f9a7668c4b"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982840289,
+      "endedAtMs": 1791982840306,
+      "requestId": "cc9b96d2-5895-4860-80cb-3df846479232"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982841305,
+      "endedAtMs": 1791982841317,
+      "requestId": "bf805b8e-faff-4989-be19-589ba3bf00c9"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982842317,
+      "endedAtMs": 1791982842329,
+      "requestId": "0bfdf19e-caee-4c54-8d9d-cadadd5220bc"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982843330,
+      "endedAtMs": 1791982843348,
+      "requestId": "a4067d33-9257-4ace-8d5c-20a65cbcec1c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982844349,
+      "endedAtMs": 1791982844359,
+      "requestId": "4e476d53-1525-4e1c-976a-3fb367d4c50b"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982845360,
+      "endedAtMs": 1791982845378,
+      "requestId": "238a1666-d688-491c-af6b-ac487f156b03"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982846378,
+      "endedAtMs": 1791982846389,
+      "requestId": "d0c96c62-1701-430b-9b75-e8f443e16879"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982847390,
+      "endedAtMs": 1791982847403,
+      "requestId": "9d86512b-eeed-4d99-83e7-306b64506d57"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982848404,
+      "endedAtMs": 1791982848415,
+      "requestId": "f80ba5bd-0fbc-48de-9453-4d28a28f8f93"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982849416,
+      "endedAtMs": 1791982849427,
+      "requestId": "7ff71fb6-785a-4971-a56a-11f9e092df14"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982850427,
+      "endedAtMs": 1791982850436,
+      "requestId": "1ee124fc-7d6d-4a4b-9df9-1559e1ca5be0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982851437,
+      "endedAtMs": 1791982851450,
+      "requestId": "7ace5c33-57c6-4a7c-98a8-c23cd4034f70"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982852450,
+      "endedAtMs": 1791982852460,
+      "requestId": "104e7d81-621c-4591-a8d9-33390186d936"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982853461,
+      "endedAtMs": 1791982853471,
+      "requestId": "7bc9ee75-396c-49f2-9f4a-10b8432d95ba"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982854472,
+      "endedAtMs": 1791982854480,
+      "requestId": "d7b8a77a-d9f7-4867-a2a8-11c309157104"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982855481,
+      "endedAtMs": 1791982855492,
+      "requestId": "11c16538-d370-4abb-9c35-914627263a9c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982856494,
+      "endedAtMs": 1791982856507,
+      "requestId": "87f4ebf0-f6bd-4e91-8daf-6f5fab1059c2"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982857508,
+      "endedAtMs": 1791982857519,
+      "requestId": "0fc91300-822c-4e9e-8ab8-6d66aebf5ad4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982858520,
+      "endedAtMs": 1791982858531,
+      "requestId": "810a8de1-783d-4583-8153-5e244da529d7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982859533,
+      "endedAtMs": 1791982859550,
+      "requestId": "20ac068b-9f60-44f6-9592-1405575cc87f"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982860551,
+      "endedAtMs": 1791982860568,
+      "requestId": "8d32a492-2ddc-4f02-aabe-c9109b41129b"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982861569,
+      "endedAtMs": 1791982861580,
+      "requestId": "20a17865-c682-4e07-8e53-f8afc07ed426"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982862580,
+      "endedAtMs": 1791982862590,
+      "requestId": "9230cbc9-acc9-4848-86c7-67ef1e93cc66"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982863592,
+      "endedAtMs": 1791982863606,
+      "requestId": "31ea836d-cf35-4c0e-9980-05ffd0d60f60"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982864607,
+      "endedAtMs": 1791982864616,
+      "requestId": "91db29e0-8398-4a3e-bc7b-92e2e2685d05"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982865617,
+      "endedAtMs": 1791982865627,
+      "requestId": "6a13e3e5-4ff7-4c81-93b9-57d481dee062"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982866628,
+      "endedAtMs": 1791982866637,
+      "requestId": "db78ceef-fc3a-4340-9194-379ec6ba28ae"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982867638,
+      "endedAtMs": 1791982867657,
+      "requestId": "9f8a1a16-f5bb-496c-8a50-9324d203e019"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982868658,
+      "endedAtMs": 1791982868670,
+      "requestId": "0e630afd-73a3-4045-b7e7-8c305a3e91e5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200,
+      "startedAtMs": 1791982869671,
+      "endedAtMs": 1791982869681,
+      "requestId": "6800f94e-af7a-4da4-8189-8bd0b9e01391"
+    }
+  ],
+  "clockRegressions": [],
+  "durationSeconds": 90,
+  "modelRequests": 0,
+  "studentLearningWrites": 0,
+  "browserAcceptance": false,
+  "bootstrap": {
+    "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "assignmentId": "a2533386-4923-4dee-83bd-2d7a99fb06e9",
+    "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+    "assignmentRevision": 3,
+    "active": true
+  },
+  "attempt": {
+    "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+    "workspaceRevision": 7,
+    "attemptRevision": 10,
+    "snapshots": [
+      {
+        "snapshotId": "10785f20-8431-469b-8725-901a38ae7090",
+        "hash": "49d0bc7e496f5cf16bd6275023fb2252d91d4557da4955a1a45bca0d4423d188"
+      },
+      {
+        "snapshotId": "22882244-dc09-42ca-9b66-96bfd6ba6399",
+        "hash": "f1d390749a1f6c99a49cc3053722d0213ba18b30fec4c23bb49edc981ae8c77a"
+      },
+      {
+        "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+        "hash": "179a395c6e00f4d123a366e2c4b37039b55f1cee4850f7a1e1bd2e2b5a0fb9ce"
+      },
+      {
+        "snapshotId": "f714ae74-f53f-4838-ba54-5245c67eeb6b",
+        "hash": "738ee9073549ae793358e091678aec14d1a9f6acba0963856b43359806d5cb63"
+      }
+    ],
+    "runs": [
+      {
+        "runId": "02f026f2-5208-4604-b6b9-3855e29fec51",
+        "jobId": "bdde297d-e1b1-4e59-b735-90fa107f490f"
+      },
+      {
+        "runId": "0af5cb6e-61d6-4ab3-b4d5-54880795a4f2",
+        "jobId": "c8378481-c796-4070-ba57-593ad88c3f8e"
+      },
+      {
+        "runId": "20c84ee2-ffaa-4b50-982b-e12542bcdf78",
+        "jobId": "39ed2d94-039a-4e57-8bb6-8b33d47b9bf2"
+      },
+      {
+        "runId": "36e04cba-c58e-4a41-a215-ae986b616b81",
+        "jobId": "0a5a44fb-5811-4e44-8f95-ce88d5f7d981"
+      },
+      {
+        "runId": "7675eb71-328f-4b66-b1a3-9ee96d5a78d6",
+        "jobId": "32939ee2-cf55-4b47-ad0e-97be64bf90ee"
+      },
+      {
+        "runId": "7682a282-a51d-4e1a-995b-fb9234c649f0",
+        "jobId": "0c031944-75cd-4acf-915a-a8edcca8991c"
+      },
+      {
+        "runId": "c5a207a0-4303-40b2-8480-c393391fd1cd",
+        "jobId": "9a9c0c6c-4a6a-4e13-877c-83aa6ce5214e"
+      }
+    ]
+  },
+  "sessionReads": 89,
+  "elapsedMs": 90187,
+  "passed": true
+}

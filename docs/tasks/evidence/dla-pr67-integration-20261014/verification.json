@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "startPrHead": "7100ea6",
+  "receivedMain": "b7e73c5f65d457fb78d2fcbac7003e4e60ed7f43",
+  "runtimeSource": "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f",
+  "sourceReception": {
+    "files": 767,
+    "mismatches": 0
+  },
+  "applicationSourceChanged": false,
+  "productionUiChanged": false,
+  "combination": {
+    "tests": 68,
+    "pass": 68,
+    "fail": 0,
+    "skipped": 0,
+    "log": "combination-final.tap"
+  },
+  "firstCombination": {
+    "tests": 68,
+    "pass": 67,
+    "fail": 1,
+    "reason": "student/dist build not yet finished",
+    "log": "combination.tap"
+  },
+  "toolGateway": {
+    "tests": 3,
+    "pass": 3,
+    "fail": 0,
+    "fixtureDeletion": false
+  },
+  "psLongScriptOnly": "passed",
+  "psSealOnly": "passed",
+  "psParseFiles": 4,
+  "fullRobertLocalEntry": "not executed; machine-specific entry absent",
+  "teachingTypecheck": "passed",
+  "teachingBuild": "passed",
+  "studentTypecheck": "passed",
+  "studentBuild": "passed",
+  "session": {
+    "seconds": 90,
+    "reads": 87,
+    "all200": true,
+    "clockRegressions": 0,
+    "studentLearningWrites": 0
+  },
+  "existingObjectsPreserved": true,
+  "nodeFingerprintsGenerationPreserved": true,
+  "windowsLastSyncError": 2,
+  "modelRequests": 0,
+  "browserAcceptance": false
+}

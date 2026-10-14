@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-10-14T05:09:40.492058+00:00",
+  "preservedRemoteHead": "33f9d2aac6ec8ef2bb7651d3403164c2c3091594",
+  "actualRecoveryVerifierCommit": "61ae758e745cf63797b009e1622bf410dc34a2a8",
+  "businessSourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "offlineRegression": {
+    "command": "/opt/xunjie-runner/node/bin/node --test --test-reporter=dot docs/tasks/evidence/dla-c-handoff/entry-verification.test.mjs",
+    "runtime": "Node24.21.0 WSL Ubuntu",
+    "exitCode": 0,
+    "observedOutputLines": [
+      "....................",
+      "..............."
+    ],
+    "passed": 35,
+    "failed": 0,
+    "skipped": 0
+  },
+  "targetedLiveRead": "student/tutor activity projection and readonly frozen record passed; no full20 rerun/new business objects",
+  "documentCheck": {
+    "documents": 66,
+    "internalLinks": 1004,
+    "errors": []
+  },
+  "sourceOrProtectedFilesChanged": false,
+  "files": [
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/prepare-ui-handoff.mjs",
+      "bytes": 6890,
+      "sha256": "c12cfd4bb91038aac8cef0e2c2412e790417fdfd6d03f9ed7a450c3c20df7657"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/verify-entry-https.mjs",
+      "bytes": 35047,
+      "sha256": "ef234d27510ef54ad804f132533435b6f19f3248cbfc742fc68e5420aaf03099"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/entry-verification-helpers.mjs",
+      "bytes": 6869,
+      "sha256": "76300d4a72801ba2e0abdc25058da685c5ff15b1c65d4df72cbc11ece1d2639a"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/entry-verification.test.mjs",
+      "bytes": 11506,
+      "sha256": "520089e16d0c07d47eeb5bf59d687f6e741b00e8fad30ea7562b8f32cb62e744"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/merge-release-check.json",
+      "bytes": 1905,
+      "sha256": "b20714906d09167a9663d87f4f05847eec7a0a25bc6e5b7cf4480264fccace30"
+    }
+  ],
+  "preparationFailure": "First document check ran before this newly linked receipt file was created; no source or business test failed."
+}

@@ -1,0 +1,192 @@
+TAP version 13
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 1 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 3918.579082
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 2 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 7178.494153
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 3 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 3582.876681
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 4 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 3458.906214
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+ok 5 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 3619.823355
+  type: 'test'
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 6 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 3565.750413
+  type: 'test'
+  ...
+# Subtest: DL-B fixes the three approved HDL guidance fixtures and keeps them distinct
+ok 7 - DL-B fixes the three approved HDL guidance fixtures and keeps them distinct
+  ---
+  duration_ms: 2.41202
+  type: 'test'
+  ...
+# Subtest: DL-B assembles only bounded authorized build diagnostics and produces cited student-owned guidance
+ok 8 - DL-B assembles only bounded authorized build diagnostics and produces cited student-owned guidance
+  ---
+  duration_ms: 9.260543
+  type: 'test'
+  ...
+# Subtest: DL-B preserves an out-of-range diagnostic but withholds its unusable source location
+ok 9 - DL-B preserves an out-of-range diagnostic but withholds its unusable source location
+  ---
+  duration_ms: 2.342242
+  type: 'test'
+  ...
+# Subtest: DL-B rebuilds signal and trace frames before they reach the provider
+ok 10 - DL-B rebuilds signal and trace frames before they reach the provider
+  ---
+  duration_ms: 3.225871
+  type: 'test'
+  ...
+# Subtest: DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence
+ok 11 - DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence
+  ---
+  duration_ms: 2.071457
+  type: 'test'
+  ...
+# Subtest: DL-B bounds a long current trace and exposes truncation instead of claiming full coverage
+ok 12 - DL-B bounds a long current trace and exposes truncation instead of claiming full coverage
+  ---
+  duration_ms: 0.983936
+  type: 'test'
+  ...
+# Subtest: DL-B model-visible frames preserve LED bit order and do not invent a reset transition
+ok 13 - DL-B model-visible frames preserve LED bit order and do not invent a reset transition
+  ---
+  duration_ms: 1.250249
+  type: 'test'
+  ...
+# Subtest: DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities
+    # Subtest: cross-student build
+    ok 1 - cross-student build
+      ---
+      duration_ms: 1.085992
+      type: 'test'
+      ...
+    # Subtest: old snapshot
+    ok 2 - old snapshot
+      ---
+      duration_ms: 0.80456
+      type: 'test'
+      ...
+    # Subtest: wrong session build
+    ok 3 - wrong session build
+      ---
+      duration_ms: 0.50458
+      type: 'test'
+      ...
+    # Subtest: old generation
+    ok 4 - old generation
+      ---
+      duration_ms: 0.431101
+      type: 'test'
+      ...
+    # Subtest: run references are not silently reinterpreted as HDL results
+    ok 5 - run references are not silently reinterpreted as HDL results
+      ---
+      duration_ms: 0.387904
+      type: 'test'
+      ...
+    1..5
+ok 14 - DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities
+  ---
+  duration_ms: 4.519794
+  type: 'test'
+  ...
+# Subtest: DL-B current guard discards a late body after sequence, result, or session changes
+ok 15 - DL-B current guard discards a late body after sequence, result, or session changes
+  ---
+  duration_ms: 1.8417
+  type: 'test'
+  ...
+# Subtest: DL-B repairs one fabricated HDL citation and keeps unknown aggregate usage
+ok 16 - DL-B repairs one fabricated HDL citation and keeps unknown aggregate usage
+  ---
+  duration_ms: 1.532386
+  type: 'test'
+  ...
+# Subtest: DL-B authorized three-job real HDL guidance batch
+ok 17 - DL-B authorized three-job real HDL guidance batch # SKIP
+  ---
+  duration_ms: 0.113376
+  type: 'test'
+  ...
+# Subtest: DL-B authorized HR-DL-03 real semantic-fix batch
+ok 18 - DL-B authorized HR-DL-03 real semantic-fix batch # SKIP
+  ---
+  duration_ms: 0.087892
+  type: 'test'
+  ...
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+not ok 19 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 4519.348489
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:36:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"requestId":"0636eaa3-ef8e-49e3-9eef-759434b6ae83","error":{"code":"FORBIDDEN","message":"Access denied.","retryable":false,"recovery":"Use an account authorized for this resource."}}
+
+    403 !== 200
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 403
+  operator: 'strictEqual'
+  stack: |-
+    view (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-support.ts:92:152)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async help (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:20:30)
+    async TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:56:54)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 20 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 3214.003967
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 21 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 3251.403904
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 22 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 3348.523899
+  type: 'test'
+  ...
+1..22
+# tests 27
+# suites 0
+# pass 24
+# fail 1
+# cancelled 0
+# skipped 2
+# todo 0
+# duration_ms 25928.230868

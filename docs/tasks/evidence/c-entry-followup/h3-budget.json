@@ -1,0 +1,45 @@
+{
+  "kind": "Unapproved design arithmetic; not HDL execution or measured throughput",
+  "checkedAt": "2026-10-14T04:26:38.835101+00:00",
+  "domain": {
+    "logic": 2048,
+    "addition": 512,
+    "subtraction": 240,
+    "excluded": 1296
+  },
+  "vectorCount": 2800,
+  "vectorOrder": "M,S,A,B,Cin ascending; exclude undefined domain",
+  "vectorSetHash": "e3903faa6a66e72355bfd62435caad5f53688327ff070b8e57b3992b04760ca1",
+  "proposedSamplingProfile": "alu-lowphase-3samples-v1 (pending approval)",
+  "cyclesPerVector": 4,
+  "discardFirstLowPhase": true,
+  "comparedLowPhases": [
+    2,
+    3,
+    4
+  ],
+  "samplesPerVector": 3,
+  "vectorsPerBatch": 32,
+  "batches": 88,
+  "cyclesTotal": 11200,
+  "simulationTimePs": 112000000,
+  "privateCompactRow": "[vectorIndex,simTimePs,observed A/B/Cin/M/S/F/Cout as 17 four-state bits]",
+  "maxEncodedRowBytes": 70,
+  "maxBatchEnvelopeBytes": 2048,
+  "maxPacketBytesEstimate": 8768,
+  "maxSessionTraceBytesEstimate": 774368,
+  "existingLimits": {
+    "packetBytes": 65536,
+    "traceBytes": 1048576,
+    "frames": 4096,
+    "stepMs": 2000,
+    "lifetimeMs": 1800000,
+    "idleMs": 300000,
+    "maxCycles": 5000000,
+    "sessions": 2
+  },
+  "checkJobDeadlineMs": 120000,
+  "warning": "88 times the per-step ceiling exceeds the whole-job deadline. Real 2800-vector acceptance must fit both, otherwise incomplete; no timeout/quota increase or skipped vector counted as pass.",
+  "implementationExecuted": false,
+  "privateVectorsOrExpectedOutputsPublished": false
+}

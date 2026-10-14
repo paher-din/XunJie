@@ -1,0 +1,1063 @@
+# I0-A/C 按 H 编号接收、协调与回交
+
+## 1. 任务、依据与授权
+
+2026-10-13，项目负责人要求 A 先接收 UI 负责人交付并协调 C，按 [#30 原交接请求](https://github.com/paher-din/XunJie/issues/30#issuecomment-6137496293) 的 H-01～H-06 回交。本文由 A 维护接收事实、现有接口材料、差异及下一责任角色；UI 维护真实界面接线，C 维护作品/执行。I0-A 不等待 B #45；不重开已关闭模块卡、不另建重复 UI 票。
+
+已读当前 AGENTS/README；PRD §4.1～4.4/5（身份、固定活动、学生操作）、MVP M-03/M-10、§4 状态、AC-02/03/04/06/12/15 与 NFR-04，TECH §4.1/4.3/4.4、§5、§7.1/7.2.1/8.5/9；I0_UI_SPEC、客户端约束 §2/5/6/8、I0_UI_CLOSEOUT §8.1/8.5、IMPORT_SOURCE、学生 README 和 C2/C4/DL-C/顺序集成记录。
+
+本次写集仅本文及 README 导航，维护 A 的交接材料；代码、UI、他人任务、产品/规划/参考/AGENTS、数据库、凭据与 CI 只读。不改变共享字段或版本语义，不初始化数据库、不维护节点、不调用模型。项目负责人当前请求授权在现有 #30 接收/协调/回交；没有据此授权公开推送代码、迁移库或部署。受保护基线汇总待授权维护者处理。
+
+## 2. 固定接收与代码来源
+
+2026-10-13，独立工作副本 fetch 后快进到 main [c437ef269407b71bbed26d105e3e8b98ab71bbab](https://github.com/paher-din/XunJie/commit/c437ef269407b71bbed26d105e3e8b98ab71bbab)。包含 UI PR #50/#51、C4 #47、A4 #49、DL-C #48。UI #51 固定 head 为 1fe6c960602679d8bd5f95af46ace14930cda0df，工程提交 bde0999c9cf273a11cc1ead9e3258d40365242f8；来源与许可沿 [IMPORT_SOURCE](../../apps/student/IMPORT_SOURCE.md)。原工作副本的既有未提交文档、独立工作副本原 typecheck 日志均保留。
+
+服务端公开接口依据当前 [认证应用](../../apps/teaching/server/access/app.ts)、[设计应用](../../apps/teaching/server/design/application.ts)、[Workspace 应用](../../apps/teaching/server/workspace/application.ts)、[输入校验](../../apps/teaching/server/workspace/inputs.ts)、[作品同步](../../apps/teaching/server/workspace/files.ts)、[命令/读取](../../apps/teaching/server/workspace/commands.ts) 和 [错误契约](../../apps/teaching/contracts/common/http.ts)。模块已有，不表示默认正常进程已经装配它们。
+
+另有本地 codex/dl-a-ac-integration，HEAD 3ec9f6d、已验证源码 dd5f81c86ada5bc6c5dc24342d8e086308aabe4c，含两课程宿主与消费者；尚未公开推送，且未吸收上述三项顺序合并，不向 UI 提供不可远程检出的链接作为可运行交付。其 26/26 合成专项、Windows 全量 343 项（331 通过、1 失败、11 跳过）仅适用该源码，不计当前 I0-A 通过。
+
+## 3. 按 H 编号的本次回交
+
+| H / 能力 | 负责人 | 已交材料 | 联调状态 / 剩余条件 / 下一责任角色 |
+| --- | --- | --- | --- |
+| H-01 身份与同源 HTTPS | A | §4 的 Session/Origin/CSRF 使用规则及当前入口缺口 | 当前 main 默认仅健康入口；实际 HTTPS 业务宿主、同源 UI 挂载、获准合成账号交接与真实浏览器登录未执行。A 落实正常宿主，环境维护者通过受控通道交已授权 TLS/签名材料 |
+| H-02 合法 Assignment / 空态 | A | §4 的现有授权深链、固定活动/资料读取；GET 不创建 Attempt | 无需预定新增列表；尚无正常宿主及实际获准 Assignment 引用，真实读取未执行。A 提供合法引用与无分配条件，UI 接实际入口/空态 |
+| H-03 首次代际 / 恢复 | A/C | §5 的现有 recovery 读取及禁止来源 | GET session 不含 recoveryGeneration；无 Attempt 时不能靠其 recovery 路由初始化。首次受信来源仍待具体契约确认/实现；已有 Attempt 恢复真实联调未执行。C 交当前受信代际来源，A 落实首次授权读取 |
+| H-04 原 Job 消费 / 当前 C1 | A/C | §6 的原 worker、当前指纹门禁与启动边界 | 正常进程消费者尚未合入；当前目标节点重新验证/登记未执行。C 回交当前 ready/profile/validation/代际，A 组合持续消费及停止对账 |
+| H-05 版本 / 暂停 | A/C | §5 的 sync 后重读、暂停分配、历史回执与当前状态区分 | 已交源码核对材料；没有改共享契约，当前 HTTPS/UI 联调未执行。C 复核公开反例，A 汇总基线差异，UI 消费当前权威 head |
+| H-06 分批公开样例 | A/C | §4～7 的读取、保存/快照、运行、停止/未知、历史/产物模板与反例 | 已交接口材料；模板是源码导出的示例/节选，非本次实际 HTTP 响应。C 回交对应实际样例/证据，UI 按可用能力接线，不等整包齐备 |
+
+“已交材料”只表示字段/行为/现有来源可核对；“联调通过”必须有对应固定代码、实际入口、命令和结果。本次无真实业务联调通过项，不勾选 #30/#22 完成。
+
+## 4. H-01/H-02/H-06：身份与只读入口
+
+正常浏览器仅使用批准 HTTPS 同源服务。POST /api/sessions 使用受控合成账户；GET /api/session 返回当前 userId、courses 与 csrfToken。cookie 为 HttpOnly/Secure/SameSite 的服务端 Session；写请求保留原 Origin/CSRF 检查。公开记录不附密码、key、cookie、CSRF 值、私有答案或真实学生正文。登录名称/角色按钮不决定权限，请求体不能自报 role/studentId 提权。
+
+现有读取路由：
+
+| 路由 | 公开结果/边界 |
+| --- | --- |
+| GET /api/session | 当前服务端会话和课程成员；不能拿它推导尚未公开的首次代际 |
+| GET /api/assignments/:assignmentId | 本人分配；assignmentId/activityVersionId/studentId/assignmentRevision/active/status/reasons/activityControlRevision |
+| GET /api/activities/:activityVersionId?audience=student | 固定学生投影；不读取教师草稿/私有验证资产 |
+| GET /api/resources/:resourceVersionId | 按课程/可见性裁剪；私有内容拒绝或保持不可用，不能用 hash 补正文 |
+| GET /api/attempts/:attemptId | 当前 attempt/files/snapshots/jobs/runs/checks/submissions/reopen；由本人或本课程教师授权读取 |
+
+H-02 可先使用 A 经授权交出的分配深链，不能把对象 ID 写进正式源码或猜测遍历；未获得本人分配时保持“未有获准入口”。不把不存在的列表路由/空数组示例当已实现接口。GET 不创建 Attempt、激活学习或启动 Job。跨学生/跨课程读取由服务端拒绝，学生不能读取 teacher-validator 视图。
+
+暂停分配的公开响应节选（模板，省略信封中的 requestId 及其余字段）：
+
+```json
+{
+  "data": {
+    "assignmentId": "<authorized-assignment>",
+    "activityVersionId": "<fixed-activity>",
+    "assignmentRevision": 2,
+    "active": false,
+    "status": "paused",
+    "reasons": { "individual": "", "activity": "<public-pause-reason>" },
+    "activityControlRevision": 2
+  }
+}
+```
+
+上述数字仅示例；UI 使用实际权威响应。暂停分配仍可读获准历史，不等于所有读操作拒绝；新 Attempt/运行不可绕过教师暂停。
+
+## 5. H-03/H-05：代际、ACK 和权威版本
+
+当前 GET /api/session 不含 recoveryGeneration。既有 GET /api/attempts/:id/recovery?recoveryGeneration=<last-trusted-generation>&decisionEpoch=<last-read-epoch> 在当前有效会话下只读返回当前 recoveryGeneration、resyncRequired、Attempt 与受限恢复投影。代际/epoch 不一致要求同步，GET 不创建/修改/重跑。它需要已存在且获准的 Attempt，不能解决无 Attempt 时第一次创建的代际来源。
+
+首次创建所需代际必须来自受控部署/当前节点可信来源，并由正常服务授权交给浏览器。旧 Job、活动发布时历史指纹、随机值、客户端常量均不能替代当前来源。后续若增加 bootstrap 路由/字段，须先列共享契约及负责人确认；本文未擅自新增接口。
+
+真实业务入口与可信首次代际具备后，由学生显式 POST /api/assignments/:id/attempts 创建，GET 不创建。随后确认保存使用现有 sync：
+
+```json
+{
+  "recoveryGeneration": "<current-trusted-generation>",
+  "expectedWorkspaceRevision": 0,
+  "clientId": "<stable-client>",
+  "clientSeq": 1,
+  "operations": [
+    { "kind": "create", "clientFileKey": "<local-instance>", "path": "main.c", "text": "int main(void){return 0;}\n" }
+  ]
+}
+```
+
+路由 POST /api/attempts/:id/sync。原有写入头由实际登录会话和冻结命令提供，此模板不附其值。正文必须原样保留 UTF-8/换行，不能用示例程序表示 TextScope 验收通过。
+
+当前同步成功 ACK 为 data 的 CommandReceipt（含 result、replayed），result 含 workspaceRevision、files、created、process；没有新增 attemptRevision/decisionEpoch。files 为确认元数据，不用它覆盖后续本机草稿。相同原键/同正文回原回执，异正文或 sync 双键冲突拒绝；旧代际保持 RECOVERY_REQUIRED，不换键自动补发。
+
+**实际基线差异：** files.ts 的 syncFiles 每次新接纳同步都推进 workspaceRevision 和 attemptRevision，ready 时激活也只推进一次 attemptRevision。TECH §4.3 的“attemptRevision 不随逐次文件编辑增加”与当前实现不同。本文记录差异，待授权维护者汇总；不单方改 C 代码或受保护基线。A/C 请求已要求 C 明确反例与修复/兼容裁决。
+
+在现有行为下，确认同步回执后 GET /api/attempts/:id 重读 data.attempt.attemptRevision/decisionEpoch/workspaceRevision，再构造新的 Run/Control 命令。不能把 workspaceRevision/documentVersion/editor version 当 attemptRevision。相同旧命令的历史回执不证明当前 head 没变化；重读失败保留草稿、原 outbox/回执和未知，不猜下一个版本。
+
+确认快照请求 POST /api/attempts/:id/snapshots：
+
+```json
+{ "recoveryGeneration": "<current-trusted-generation>", "expectedWorkspaceRevision": 1 }
+```
+
+回应 data.result 的 snapshotId/snapshotHash/workspaceRevision 来自原回执。再 GET /api/attempts/:id/snapshots/:snapshotId 核确切清单、正文/hash 和 sha256-manifest-v1；不可用不伪造快照。snapshot 命令也可能激活 ready Attempt，后续 CAS 命令同样使用权威重读。
+
+暂停期间仅可更新既有 active 文件正文，不 create/recycle/restore；阶段 submitted/reviewed 无合法重开许可时只读。活动/分配暂停覆盖本人 resume，保存规则不等于允许新运行。
+
+## 6. H-04：持续消费与实际环境
+
+当前 main 的 npm start 仅健康入口；模块工厂 createWorkspaceApp 已提供原 pendingJobs/processJob。正常宿主须定时消费原 Job、保持原 ID/租约/停止意图与代际，启动对账和关停持久停止/未知语义沿原 worker；不能要求教师/学生手动调用 processJob，不回退到应用宿主 GCC。
+
+I0-A 的 C 读取/保存无需 HDL 或模型就绪。已有本地 DL-A 宿主当前启动依赖 HDL readiness，不能把该条件变成 I0-A C 读取/保存的新增门禁；若复用该代码，先单列 C 模式必要差异与授权，不混入整个未交 DL-A 批次。
+
+最新 DL-C 合并修正了 Trace 游标和 VPI 时间精度，桥接源码进入既定 fingerprint。当前 main 旧目标 ready 不再有效；须 C 提供当前源码/profile/sourceHash/fingerprintHash/validation/代际绑定的重新验证事实。旧目标 14/14、历史 A2 实读 ready=true 或本地 Icarus 夹具不能计当前 C1/HDL 就绪。
+
+命令在对应工程目录、教学服务 Node 24.21.0 与原 lock 下执行；下面是既有验证命令入口，**本次均未执行**，不是可用真实服务启动保证：
+
+```sh
+cd apps/teaching
+npm run typecheck
+npm run build
+node --test server/workspace/integration.test.ts server/workspace/runs.test.ts server/workspace/submissions.test.ts
+npm test
+```
+
+学生按 [学生 README](../../apps/student/README.md) 使用自身 Node 24/lock。dev:prep 的 /__i0prep/api 是隔离 fixture，real 模式的 /api 需实际同源宿主；失败不回退 Mock。现有已获准 TLS/签名/应用 SSH/known_hosts 材料继续走受控通道，不在公开仓库给凭据、个人路径或真实数据入口。
+
+正常宿主与实际 TLS/账号未交，不能给出虚构可运行的 origin/启动配置。A 接入后须回交固定公开 SHA/PR、受控初始化的批准范围和正常启动命令；本地不可检出提交不作远程入口。
+
+## 7. H-06：运行、停止、未知与历史/产物
+
+只有当前固定活动实际支持 Core stats/find/top 且 H-04 当前 C1 就绪时，由学生主动 POST /api/attempts/:id/runs：
+
+```json
+{
+  "recoveryGeneration": "<current-trusted-generation>",
+  "expectedAttemptRevision": 3,
+  "snapshotId": "<confirmed-snapshot>",
+  "runtimeProfileVersion": "<fixed-activity-runtime>",
+  "entryFileId": "<snapshot-c-file>",
+  "input": { "operation": "stats", "fileIds": ["<snapshot-ascii-file>"] },
+  "mode": "run"
+}
+```
+
+版本/引用来自真实权威读取，示例 3 不能自算。正文允许 run/course_check；回执 data.result 关联原 jobId/runId。GET /api/jobs/:jobId 和 GET /api/attempts/:id/runs/:runId 读取原状态/诊断，Job succeeded 不等于课程检查通过。
+
+停止 POST /api/jobs/:jobId/cancel，正文为 recoveryGeneration（reason 为可选），使用学生显式停止的原命令。停止受理是意图，需读原 Job/Run 的实际终态；断线、outcome_unknown、cancelling 均不宣称已停止/未运行，不新建执行。原请求响应未知时仅核对/重放原同代际冻结命令，不能使用编辑后的表单或新键；旧代际先核原事实并重读，不能自动换代补发。
+
+历史读取与产物 GET /api/attempts/:id/runs/:runId/files：
+
+| 公开状态 | 客户端边界 |
+| --- | --- |
+| diagnostics available | 只读对应快照输出/编译诊断；缺位置不编造行列 |
+| diagnostics unavailable | 不是空输出成功，不补模型估计 |
+| 课程检查公开 verdict/failureKind | 不曝光私有输入/答案/判定正文 |
+| files available | 核原 run/snapshot、稳定 resultFileId、hash、UTF-8 字节及 complete 后只读呈现/下载 |
+| redacted/unavailable/missing/incomplete | 分别保留裁剪、不可回取、缺失、不完整，不提供不存在的正文或下载 |
+
+现有 GET Run 不公开 entryFileId/input/inputHash；只使用经原回执核验的本机冻结请求作为“本机请求记录”。其他浏览器/缓存丢失时显示历史参数不可回取，保留合法结果读取。Report 仅在实际固定活动支持/批准时开放；查看或下载不写回作品。
+
+待 C 的实际分批样例应涵盖：跨学生/课程 FORBIDDEN、旧 revision VERSION_CONFLICT、原回执 replay/异正文 IDEMPOTENCY_CONFLICT、旧代际 RECOVERY_REQUIRED、暂停分配拒绝新运行、丢 ACK 后同一 fileId/jobId、停止 unknown、私有结果 redacted，以及 missing/incomplete。错误完整信封沿 common/http，不只截一个 code 冒充完整 JSON。
+
+## 8. C 协调、回交与下一批
+
+A 已实际在 [#30 接收与 C 协调回复](https://github.com/paher-din/XunJie/issues/30#issuecomment-6139828933) 确认收到，并按 H 请求 C 回交当前节点/代际、受控连接方式、sync/暂停反例、分批作品/运行/取消/产物证据。提及的 C 域作者以 C4 PR #47 作者 paher-din 核对，不猜测邮箱或账号。C 的完成状态以实际回复为准，未把发出请求写成收到答复。
+
+下一批依次：A/C 核只读真实身份/分配/活动 → A/C 落实首次受信代际和保存/快照 → 当前 C1 readiness 与正常消费者后接运行/停止。UI 在相应材料/服务可用后完成真实接线和浏览器验证并回交结果。各能力只等待自己的必需条件。
+
+A 未把本次 H 任务变成 35 表 DL-A 合成库集成或全 HDL/B/UI 实现；若后续涉及新 bootstrap 契约、schema 或受控运行配置，先交具体方案并取得覆盖对象的确认。未完成环境条件按 #23 跟踪，跨阶段协调沿 #37，完整 AC/NFR 沿 #22；本次不关闭任务。
+
+## 9. 验证与 Git 交付
+
+本次只做接口/代码/既有证据只读核查及交接文档；业务、Node 24.21.0 类型/构建、HTTP、真实节点、浏览器/TLS、模型和完整回归均未执行。源码未改，不用历史通过数冒充本次验证。
+
+2026-10-13，开工静态检查62份文档/892内链 errors=[]；新增本任务稿与导航后63份/902内链 errors=[]。工具反例16/16通过、0失败/跳过；git diff --check通过。本次静态 Node 24.15.0，仅文档工具，不计教学服务验收。H 公开回交已发布并追加首批材料到 #30 同一条6139828933；C实际答复和后续联调仍待回读。新增文档四个 JSON 模板解析/末尾换行/空白通过；静态 DDL 为24个唯一表（未建库），暂存仅本文/README，公开回交正文与准备内容逐字一致。提交前回读 #30 为两条 UI 评论及本次 A 回复，尚无 C 实际答复。分支 codex/i0-a-c-handoff 从 c437ef2 新建，仅提交本人任务稿和 README 导航；原日志与主副本既有修改保留，不公开推送代码或部署。
+
+
+## 10. 下一批实施提案：I0-A 的 C 业务宿主（待负责人确认）
+
+本节仅提案，不改变本文已交/未执行状态。H 交接优先于整个 DL-A 收尾，首批不依赖 HDL、B 模型、A4 状态或新教师 Agent 能力；使用当前 main 的原 A/C 模块，保留同一正常 main 和原 Job。
+
+### 10.1 精确写集与运行范围
+
+A 可写 server/main.ts、server/app/config.ts、server/app.ts 及新增 server/app/i0.ts、server/app/i0-initialize.ts、server/app/i0-static.ts、server/app/i0.test.ts，新增 contracts/design/i0.ts（只定义本节获准后的 bootstrap 投影），A 本任务稿和 README。C/workspace、C/runner、B、UI 源码、产品/规划/参考/AGENTS、package/lock、凭据和 CI 保持只读；复用 createWorkspaceApp、原 pendingJobs/processJob 与现有受认证 C1 transport，不另建 API 或队列。
+
+初始化复用当前 createWorkspaceDatabase 的原 24 表（原 22 表加 C4 workspace_submissions/workspace_reopen_grants），不增加表/列，不合入 DL-A 两张新表或 HDL/A4 扩展。只新建保留临时合成库，初始化账号/课程/成员及原课程配置；教师仍走原检查→确认→分配，维护者不补造学生 Attempt/Job。账号使用明确 synthetic 标志及合成 ID/登录名，密码只在受控初始化配置/原哈希保管。既有/生产库、原合成库、凭据权限均不迁移/重置。实际建库待本节确认后执行。
+
+同一 main 从外部受控配置读取现有合成 DB、精确 HTTPS Origin、已有 TLS/签名/应用 SSH/known_hosts 文件引用、由 C 受控来源交出的 generation、静态 UI dist 与消费者间隔。服务器本机监听；静态只服务明确 dist 内普通文件，校验路径/内容类型，不提供目录枚举或配置/数据库文件。不改 UI 源码/页面、认证、证书校验或代理信任；UI 仍正常 real build。未配置保留原健康入口，业务模式明确检查配置与权限，不借健康响应冒充 ready。
+
+当前 runner 不 ready 只阻止开放/新运行等执行依赖能力，不能把 HDL/模型/current runner 不可用变成已获准读取/保存的统一门禁；当前代际来源缺失或不可信时，bootstrap/首次创建保持 RECOVERY_REQUIRED。不启动/安装/维护节点、生成证书或代际；C 回交实际受控配置及当前证据之后才做真实联调。
+
+### 10.2 最小新增共享读取：H-03 bootstrap
+
+提案 GET /api/assignments/:id/bootstrap，服务端从有效 Session、课程成员与真实 Assignment 定位授权；学生只读本人，教师沿原课程读取权限。GET 不创建 Attempt、不激活、不消费 Job，不接受请求体 role/studentId/generation。
+
+新增 data 形状：
+
+```text
+{
+  assignment: <现有 AssignmentView 原字段/语义>,
+  recoveryGeneration: <来自已获准受控配置、与 C 受信来源核对的当前 generation>
+}
+```
+
+assignment 字段沿 GET assignments 原投影，含 active/status/revisions；无合法分配保持原拒绝，不能用 bootstrap 提权。首次写入必须回带这里的 generation；它不是历史 Job/发布时快照指纹或 UI 随机值。恢复时同时重读该已授权入口和既有 Attempt/recovery；旧 outbox 保留，不自动跨代际重发。
+
+该新增路由/字段是共享契约变化，须负责人确认后编码；本次没有写进受保护 TECH_DESIGN。运行中代际不随客户端变更；获准恢复变更时按 C 的受信来源重启接纳并核原事实，不自动启动或修复节点。
+
+### 10.3 正常消费、验证和具体交付
+
+原 Workspace pendingJobs/processJob 定时消费、启动核原作业身份、停止接纳后持久停止与原 Job 对账。只运行本批 C 模块，不创建无人消费的模型任务；停止不确认时如实 unknown。真实 C1 readiness/profile/validation/代际仍等待 C 的当前输出，不由合成 transport 决定开放。
+
+预定公共验证：真实 Session/Origin/CSRF + Fastify HTTP/SQLite 事务 + 原 Job/worker；仅外部 transport 合成。核合法 Assignment/空态/越权、bootstrap 无副作用、首次代际/旧代际、原 sync 重放/冲突及权威 head 重读、暂停后读/既有文件保存与新运行拒绝、连续消费、cancel/unknown/重启读取、结果裁剪和静态路径逃逸拒绝。固定 Node 24.21.0/原 lock，逐相关专项、typecheck/build、最后一次全量，失败/跳过分别登记；不降低原守卫/门槛。所有新合成库保留，不把 transport 合成通过记真实节点或 UI 通过。
+
+实施后在本任务回交 H 编号、固定源码、启动/初始化命令、公开 HTTP 样例和结果。若负责人同时批准公开交付，则只普通推送 codex/i0-a-c-handoff 并建立本模块 Draft PR，公开内容仅代码与去敏合成验收；不自动合并/部署，保留 #30/#22。当前仅接收/协调授权不宣称已有这项代码推送授权。
+
+## 11. 本批实施授权与开工
+
+2026-10-13，负责人明确批准 §10 的具体范围并要求继续，包括原24表全新保留合成库、正常 C/HTTPS 宿主、现有 real build、原 Job 消费、授权 bootstrap，以及验证审查后普通推送并建立 Draft PR。此授权不包含 B/C/UI 源码、受保护基线、凭据/CI、节点维护、自动合并或部署。远程 main 已同步至 cde69cc；具体基线差异为 B 模型验证和 G2 记录，保留原职责。
+
+本次公共测试接缝为真实 Session/Origin/CSRF、HTTP、SQLite 事务和原 worker，仅外部 transport 使用合成替身。先逐行为红→绿，再类型/构建、相关专项和完整回归。实现与验证结果待下文记录，不提前写为通过；TECH_DESIGN 与 MVP_SPEC §10 的 bootstrap/进度汇总待授权维护者汇总。
+
+## 12. 本批实现与运行交接
+
+2026-10-13，本批 A 源码已实现，审查/完整回归/公开 PR 状态在 §13 记录，不把实现自动写成真实环境已部署。
+
+| H | 代码交付 | 当前证据与下一角色 |
+| --- | --- | --- |
+| H-01 | 原 main 的可选 C 业务模式、原真实 Session/CSRF、TLS 监听和现有 UI dist；未配置仍健康入口 | 正常宿主合成 HTTP 和 real build 已验证；现有 TLS/认证配置与实际浏览器登录等待环境维护者/UI |
+| H-02 | 原 Assignment/Activity/Resource 路由复用，既有合法深链，无分配仍拒绝 | 本人/教师读取、未分配/跨学生/跨课程/匿名拒绝已验证；UI 接正常入口/空态 |
+| H-03 | contracts/design/i0.ts 与 server/app/i0.ts 的 GET bootstrap；原 AssignmentView + 受控代际，不创建/激活 Attempt | 无可信代际/旧代际写入 RECOVERY_REQUIRED；真实 C 代际文件仍由 C 回交 |
+| H-04 | startConsumer 调用原 pendingJobs/processJob；普通重启沿原 ID/租约对账；关停持久停止意图并核原执行 | 自动消费、停止确认、unknown/停止未知与重启无替代执行的合成 HTTP 已验证；真实 C1 当前指纹/就绪未执行 |
+| H-05 | 原 sync 回执、权威 head 重读、分配暂停规则 | 重放/异正文冲突、旧 revision、暂停后更新/快照与拒绝新运行已验证；§5 版本差异仍交原 C/授权维护者 |
+| H-06 | 原作品、快照、运行、取消、历史/产物路由不变 | 本批补作品与停止/未知；原 C 专项结果在 §13；UI 分批真实接线，真实节点样例待 C |
+
+### 12.1 初始化与启动
+
+Node 固定24.21.0；沿各应用原 lock，不修改依赖/CI。从仓库根先构建现有 UI real 产物，不挂 dev:prep：
+
+~~~sh
+cd apps/student
+npm ci
+npm run build
+cd ../teaching
+npm ci
+npm run typecheck
+npm run build
+~~~
+
+维护者引用已有受控初始化 JSON：
+
+~~~sh
+XUNJIE_I0_INITIALIZE_CONFIG=/controlled/i0-initialize.json node dist/server/app/i0-initialize.js
+~~~
+
+PowerShell 设置同名环境变量后执行该 node 命令。仅调用 createWorkspaceDatabase 新建/保留原24表临时库，打印新 synthetic.sqlite 位置；不接收目标数据库、迁移/重置旧库，不创建 Assignment/Attempt/Job。失败亦保留新库。输入是 synthetic=true，users 每项含 synthetic- 前缀 id/loginName 和受控 password；courses 每项含 synthetic- 前缀 id/teacherId/studentIds 及原 helpPolicy/checkRule 对象。只初始化成员和原政策/规则；教师仍走原 HTTP 检查→确认→分配。密码不进仓库/公开记录；CLI 不打印输入/异常正文。
+
+配置引用现有文件，不生成/改写凭据、证书、known_hosts 或节点代际：
+
+~~~json
+{
+  "synthetic": true,
+  "databaseFile": "<initializer returned retained synthetic.sqlite>",
+  "origin": "https://<approved host>:3443",
+  "tls": {"keyFile": "<existing absolute key path>", "certFile": "<existing absolute certificate path>"},
+  "signingSecretFile": "<existing controlled signing file>",
+  "generationFile": "<C handed-off controlled readiness/identity JSON path>",
+  "ssh": {
+    "binary": "<existing absolute ssh executable>",
+    "keyFile": "<existing application key path>",
+    "knownHostsFile": "<existing controlled known_hosts path>",
+    "host": "<approved C1 host>",
+    "port": 2222
+  },
+  "staticDirectory": "<absolute apps/student/dist path>",
+  "consumerIntervalMs": 250
+}
+~~~
+
+占位模板不是已存在的入口。配置须绝对普通文件，拒绝符号链接，POSIX 拒绝组/其他用户可写文件；Windows 由受控目录 ACL 维护。JSON 最大1 MiB，签名长度32～4096，不打印内容。Origin 为精确 HTTPS Origin，端口与 PORT 对应；监听127.0.0.1，不新增代理信任/证书忽略。
+
+generationFile 来自 C 已获准受控交接 JSON，读取原 data.recoveryGeneration，保留原指纹/验收资料，不要求 C 改线协议。缺省/缺字段使当前代际为空，bootstrap/首次创建拒绝；文件错误使启动失败。普通重启沿同一来源，不生成代际。SSH readiness 代际与配置不一致拒绝；runner 不 ready 不阻止合法读取/保存，新开放/新运行沿原 readiness。文件存在不证明来源核实，维护者须沿 H-03/H-04 核当前 C 固定源码/输出；恢复换代仍按维护授权对账，不自动写文件或启动节点。
+
+~~~sh
+PORT=3443 XUNJIE_I0_CONFIG=/controlled/i0-host.json npm start
+~~~
+
+未配置仍健康模式；/health/ready 保留未装配的拒绝，不恒定成功。学生深链沿现有 hash router，读取/保存后分批接运行；只服务 dist 内白名单普通文件（含 Monaco 字体），不提供配置、DB、目录枚举、源码映射或路径逃逸。持续消费原 C Job，无需维护者 processJob；不装配 B/A3/HDL 扩展或模型队列。
+
+关停停止新接纳和新执行 dispatch/readiness，等待已接纳 HTTP 收束，再持久停止原 Job 并核原身份；未确认仍 cancelling/outcome_unknown，不写已停止。已进入 readiness 等待的并发请求不会补建 Job。正常 main 在关停流程后关闭并保留库。
+
+### 12.2 公共 bootstrap 与样例
+
+真实 Session + 当前课程成员 + 真实 Assignment；学生仅本人，教师沿原课程读取。GET 无 body 身份字段，响应 Cache-Control: no-store；不创建 Attempt/回执/Job，不激活。原 Access/C 事务和权限复用，新增 schema 校验结果。
+
+~~~json
+{
+  "requestId": "<server request UUID>",
+  "data": {
+    "assignment": {
+      "assignmentId": "<authorized assignment>",
+      "activityVersionId": "<fixed activity>",
+      "studentId": "<session-owned student>",
+      "assignmentRevision": 1,
+      "active": true,
+      "status": "active",
+      "reasons": {"individual": "", "activity": ""},
+      "activityControlRevision": 1
+    },
+    "recoveryGeneration": "<current controlled C generation>"
+  }
+}
+~~~
+
+此为契约节选模板；完整信封沿 common/http，不公开 cookie/CSRF/密码。测试代际 generation 仅测试输入，正常 main 无默认值。首次 POST assignments/:id/attempts 回带 bootstrap 代际；ACK 后仍按原 Attempt/recovery 与版本规则。
+
+专项命令包含 real build 读取，先完成 UI build：
+
+~~~sh
+cd apps/teaching
+node --test server/app/i0.test.ts
+node --test server/workspace/integration.test.ts server/workspace/runs.test.ts tests/startup.test.ts
+~~~
+
+原 npm test 不含新增 server/app glob，完整教学回归须明确纳入本文件：
+
+~~~sh
+npm run build
+node --test tests/*.test.ts server/app/i0.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts
+~~~
+
+HTTP 认证/SQLite 事务/原 worker 真实，仅外部 transport 合成。所有新库保留；失败/跳过与平台在 §13 独立记录，不补写 TLS/节点/浏览器/教学结果。
+
+
+## 13. 本批验证与审查记录
+
+2026-10-13，Windows Node24.21.0：新增正常宿主专项10/10通过、0失败/跳过；教学 typecheck/build通过，原启动专项4/4通过。学生原 lock 的 npm ci、real build通过，未改 UI 源码/lock；安装审计报告6项（2 low/1 moderate/1 high/2 critical）与原构建 chunk 警告保留，交 UI 依赖负责人，不自动升级。真实 loopback HTTP读取原 UI构建/会话已通过；这不包含 HTTPS真实证书、浏览器接线或 C物理节点验收。
+
+TDD红轮保留：bootstrap/初始化模块缺失、静态路由缺失、自动消费者缺失均先失败后实现；关停 readiness 并发原会200接受新 Job，反例先失败后修复。验证中先后发现测试时钟不一致、构建路径层级错误、fetch严格类型，以及原暂停快照/停止未知投影的预期误差；按原正文/HTTP契约校正测试，未改 C或放宽业务守卫。最新相关专项通过；下列完整回归/最终审查尚待执行，未提前宣称全量通过。
+
+宿主还校验当前库为获准24表的精确表集合，拒绝其他组合，不执行迁移。现有旧日志/主副本未动。新库由原工厂保留，记录不输出凭据。真实 TLS/C1最新指纹/代际/节点端到端、浏览器、模型、完整产品与教学验收未执行；#30/#22保持Open。共享字段/bootstrap与MVP§10进度待授权维护者汇总。
+
+### 13.1 完整回归与最终核对
+
+2026-10-13，WSL2 Ubuntu / Node24.21.0，独立保留源码副本（业务源码 b0030c7）：原 lock npm ci、typecheck、build 均通过；完整教学回归明确包含新增宿主专项，394项，382通过、0失败、0取消、12跳过，163.018秒。原始日志终端统计节选如下；不是382项全部原始正文。12跳过均不计通过：4个容器/HDL时钟/目标VM/监督，5个真实模型/提供商批次，3个真实C1/SSH业务链。本次未提供那些环境开关，未运行真实模型或物理节点。
+
+~~~text
+ℹ tests 394
+ℹ suites 0
+ℹ pass 382
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 12
+ℹ todo 0
+ℹ duration_ms 163018.414143
+~~~
+
+原日志中的完整跳过项：
+
+~~~text
+﹣ dedicated Linux synthetic container execution and resource checks (14.9803ms) # SKIP
+﹣ the platform clock and delayed RTL keep picosecond semantics under finer student time precision (10.458727ms) # SKIP
+﹣ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (6.740628ms) # SKIP
+﹣ authenticated dedicated VM control and supervision (2.573709ms) # SKIP
+﹣ P2 real-provider cancellation, timeout and HTTP failure probes (1.784972ms) # SKIP
+﹣ P2 real-model student help, persisted content and undisplayed cancellation (0.078338ms) # SKIP
+﹣ P2 authorized two-job real student-help semantic-fix batch (0.0859ms) # SKIP
+﹣ P2 authorized 30-job real student-help performance batch (0.084877ms) # SKIP
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (1.144459ms) # SKIP
+﹣ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (0.394982ms) # SKIP
+﹣ real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain (0.522102ms) # SKIP
+﹣ P2 real-model teacher generation, explicit adoption and local PATCH (0.376535ms) # SKIP
+~~~
+
+完整回归后仅按 Standards 建议在 A 自有测试文件提取 syntheticReadiness helper，业务源码未变；Windows 重新执行新增专项10/10、0失败/跳过，typecheck通过。原启动+宿主最近联合14/14通过。文档检查64份/921内链 errors=[]，工具反例16/16通过，git diff --check通过；最终交付再核新增链接与具体写集。
+
+### 13.2 本次实际合成 HTTP 公开回交
+
+另经实际原登录会话/SQLite事务重放下列公开读取；仅外部 transport 合成。全部账号/作品为隔离合成数据，新库保留。未记录会话、CSRF、密码或私有答案。这是本次请求/响应记录，不是占位模板；H-05 head 重读亦实际返回 workspaceRevision=1/attemptRevision=2。相同 Assignment 随后教师原控制接口暂停，bootstrap active=false/assignmentRevision=2。该 record 的 source 标识业务源码，后续仅测试提取/交付文档提交。
+
+~~~json
+{
+  "synthetic": true,
+  "externalTransport": "synthetic only",
+  "node": "v24.21.0",
+  "source": "b0030c7 business sources",
+  "steps": [
+    {
+      "H": "H-03",
+      "request": {
+        "method": "GET",
+        "url": "/api/assignments/54ab32f3-a5c5-4f0e-b3cf-c62e371c2923/bootstrap"
+      },
+      "status": 200,
+      "response": {
+        "requestId": "e3cb73e3-5abc-452a-a15e-4ff81ba73279",
+        "data": {
+          "assignment": {
+            "assignmentId": "54ab32f3-a5c5-4f0e-b3cf-c62e371c2923",
+            "activityVersionId": "814a4972-8613-40e2-a26a-b0a64dc00b22",
+            "studentId": "student",
+            "assignmentRevision": 1,
+            "active": true,
+            "status": "active",
+            "reasons": {
+              "individual": "",
+              "activity": ""
+            },
+            "activityControlRevision": 1
+          },
+          "recoveryGeneration": "generation"
+        }
+      }
+    },
+    {
+      "H": "H-02 cross-student",
+      "request": {
+        "method": "GET",
+        "url": "/api/assignments/54ab32f3-a5c5-4f0e-b3cf-c62e371c2923/bootstrap"
+      },
+      "status": 403,
+      "response": {
+        "requestId": "30079568-47aa-47de-8552-8fa28cb42cee",
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Access denied.",
+          "retryable": false,
+          "recovery": "Use an account authorized for this resource."
+        }
+      }
+    },
+    {
+      "H": "H-02 anonymous",
+      "status": 401,
+      "response": {
+        "requestId": "2f633d3b-a2aa-45fe-9d0a-cd10bb123147",
+        "error": {
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required.",
+          "retryable": false,
+          "recovery": "Sign in using a valid account."
+        }
+      }
+    },
+    {
+      "H": "H-05 paused allocation",
+      "request": {
+        "method": "GET",
+        "url": "/api/assignments/54ab32f3-a5c5-4f0e-b3cf-c62e371c2923/bootstrap"
+      },
+      "status": 200,
+      "response": {
+        "requestId": "ad9f2980-7738-4e64-bb7b-51482cc8da6a",
+        "data": {
+          "assignment": {
+            "assignmentId": "54ab32f3-a5c5-4f0e-b3cf-c62e371c2923",
+            "activityVersionId": "814a4972-8613-40e2-a26a-b0a64dc00b22",
+            "studentId": "student",
+            "assignmentRevision": 2,
+            "active": false,
+            "status": "paused",
+            "reasons": {
+              "individual": "Synthetic review",
+              "activity": ""
+            },
+            "activityControlRevision": 1
+          },
+          "recoveryGeneration": "generation"
+        }
+      }
+    }
+  ]
+}
+~~~
+
+## Standards
+
+独立 Standards 审查未发现书面规范硬性违规：写集符合 §10.1/11，未改 B/C/UI、受保护基线、schema、凭据或 CI；README 与任务记录同步，区分合成 HTTP 与真实 TLS/节点/浏览器未执行。唯一启发式为测试 readiness 响应重复构造，已在本文件提取 helper，transport 行为/断言不变，复跑10/10通过。
+
+## Spec
+
+独立 Spec 审查0项阻断：bootstrap 复用当前 Session/课程/本人分配，原 AssignmentView，缺代际拒绝，GET不创建/激活；正常 main 组合 TLS/UI build/原 worker，关停核原身份，静态/24表初始化范围相符，无越界实现。提出的完整回归与公开回交待办已分别执行/继续交付；真实 C/TLS/浏览器条件仍由原角色回交。模板 reasons 的 null 已校正为原空字符串，不改代码契约。
+
+两轴合计：Standards 硬性违规0、启发式1已处理；Spec 阻断0。没有将合成工程通过写为节点/产品验收。公开推送/Draft PR 依据 §11 授权执行，交付 URL 与最终源码回读后记录于下一节；不自动合并或部署。
+
+## 14. 公开交付与后续
+
+2026-10-13，负责人 §11 授权范围内已普通推送 codex/i0-a-c-handoff，建立 [Draft PR #53](https://github.com/paher-din/XunJie/pull/53)，并附到本任务。已验证业务源码 b0030c7，后续39b6f10仅测试helper提取/验收记录；main基线 cde69cc，最终文档交付提交在 PR 中可检出。Standards 增量复审确认启发式已处理，无新增硬性问题。
+
+H回交沿 [#30同一条A回复](https://github.com/paher-din/XunJie/issues/30#issuecomment-6139828933) 补充最新可运行代码/PR、精确命令与实际结果，保留初始材料核查的历史范围。交付时回读该卡仍只有UI与A评论，未收到C当前节点证据，不能写成已联调。下一步 C 回交获准当前节点的受控连接/代际JSON、当前固定源码/profile/validation和重验结果；A核实后进行对应真实联调，UI/Robert按 H能力接正常身份/分配/首次代际及保存/运行。无需等待 B 模型，读取/保存也不统一等待 HDL。
+
+PR保持Draft，未合并/部署；#30/#22保持Open。真实TLS/浏览器/当前C1端到端仍未执行，产品基线/bootstrap契约及MVP§10汇总待授权维护者；不改受保护文档。主副本既有修改与本工作树无关原日志均保留。
+
+## 15. C 回交接收与逐 H 核对（2026-10-13）
+
+A 已收到并核对 [C 在 #30 的回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6142231833)，来源更新时间 2026-10-13T09:10:58Z；本文 §14 的“交付时未收到”保留为先前时点事实。本次仅更新本人交接记录，不修改共享契约、代码、schema、配置或凭据；依 §11 完成同一分支和 #30 的交付更新。
+
+**接收结论：材料回交已接收，当前真实节点联调条件仍未齐。** C 本次在 PAHER 实读 Ubuntu/WSL2 为 Stopped、原获准 loopback TCP 不可达；这是 C 回交的连接失败事实，不是 A 本机复测，也不是节点返回 ready=false。当前部署 SHA、readiness/profile/validation/recoveryGeneration、原 RunIdentity 查询和 generationFile 均未取得。跨机 localhost 不能替代 PAHER 目标；本次不启动/维护节点、不新增网络或凭据分发。
+
+| H / 能力 | A 核材料结论 | 当前验证边界 / 下一责任 |
+| --- | --- | --- |
+| H-01 正常宿主、身份与 HTTPS | A 的 PR #53 已交宿主、真实 Session/CSRF、TLS 配置与启动方式；C 已给现有连接来源 | 尚无可核实正常 HTTPS URL、现有 TLS/签名配置及账号使用交接。A 与环境维护者落实已有获准受控材料，UI 再验真实浏览器登录；启动模板不是可访问入口 |
+| H-02 本人分配与空态 | A §13.2 的 bootstrap 本人/跨学生/匿名/暂停合成 HTTP 已验证；C 没有另交当前分配实读 | UI 可按原 AssignmentView 与 bootstrap 材料准备接线；正常入口具备后验证实际登录、分配引用及空态，不从 GET 创建 Attempt |
+| H-03 首次代际与恢复 | C 确认 controller 当前代际 → 受认证响应 → A 受控 generationFile → 授权 bootstrap；已有 Attempt 走 recovery 重读 | 尚缺当前受认证实读及 generationFile。C 在获准运行窗口回交当前值/来源，A 核实后引用；不填历史、测试、随机值或旧 Job |
+| H-04 原 Job 与当前节点 | A 原消费者/关停对账已合成验证；C 已给固定源码/profile/历史验收与只读命令 | 旧 validation 与候选 sourceHash 不同，当前最新指纹重验/登记未执行。C/负责人确定原获准节点运行窗口，C 回交当前部署与完整 readiness/validation/profile；A 再联调原 worker，不用旧 ready 放行 |
+| H-05 版本、暂停、恢复 | C 的 1/0/0 → 2/1/0 → 3/2/0、ACK 后 GET head 与暂停规则符合 A 当前接线材料 | C 本次仅领域函数合成，HTTP/SQLite 复验因依赖加载失败；A §13 合成接口/事务结果独立保留。UI 不推算 attemptRevision；TECH §4.3 差异待授权维护者汇总 |
+| H-06 分批公开样例 | C 已交读取/保存/快照、原运行/停止/未知、历史/产物模板及函数层样例 | 本次 C 未采集当前 HTTP/真实节点/UI 输出。UI 可按材料分批准备，A/C 在真实条件具备后补对应链路；缺失正文不补写、不自动下载/写回、不换键重跑 |
+
+### 15.1 独立核查与测试归属
+
+A 使用固定 main cde69ccbd763c3c0ab381a809b750b951f195f64 的 Git blob 原字节，按 [fingerprint.ts](../../apps/teaching/runner/fingerprint.ts) 的排序、逐文件 SHA-256 与 JSON 摘要规则独立计算 34 项（含两份 runner 契约），sourceHash 为：
+
+~~~text
+7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852
+~~~
+
+与 C 回交一致；不对 Windows 工作副本 CRLF 求部署指纹。完整 fingerprint 还依赖当前节点 kernel/Node/Engine/profile，本次未取得，离线 sourceHash 一致不表示当前节点已部署或已通过验收。旧 c-validation sourceHash 为 5ff1d2257ec5164e3e6deef503df44c2c55362dd240e5e2a44dfb4e663278d6f，不能替代当前验收。
+
+执行 git diff --stat 26e5b840270cbf489cb21e23d1d4ee2f3ad30998 cde69cc -- apps/teaching/runner apps/teaching/server/workspace apps/teaching/server/records，输出为空，确认该 C 写集与历史记录无源码差异；不是当前节点部署证明。对 C 的合成 report 文本 TOTAL、4、11、51（制表符分隔、末尾 LF）独立计算 UTF-8 字节为14，SHA-256 为 a712e934544c90229ac74e3f1dd495ff23209961c5bc11430d46e6da233ed335，与回交一致；不将该 collector 样例说成 HTTP/真实节点输出。
+
+已读 [readRuntime](../../apps/teaching/server/records/runner.ts)、[产物投影](../../apps/teaching/server/workspace/result-files.ts)。H-06 外层 /files 的 status 为 available、redacted、unavailable；available.files 逐项 status 才是 complete、missing、incomplete。私有 check 返回 redacted；无确认结果返回 unavailable。§7 中各状态的处理保留，但 UI 应按这两层解析，available 不保证每项完整。正式批准白名单仍为 report.txt，C 的 missing.txt/directory 只作收集器反例。
+
+C 本次测试归属保留：第一组20总/19通过/1跳过，records 4/4；第三组7 TAP 条目/3通过/3文件加载失败/1跳过（缺 zod），随后原 lock 安装因 Node launcher/Windows MSVC 条件失败。不能标为业务断言通过。A §13 已在独立 Linux Node24.21.0 环境按原 lock 通过 typecheck/build 及394总/382通过/12跳过全量，覆盖同一 C 源码；这说明 A 验证环境的组合结果，不覆盖 C 此次本机失败，不证明 PAHER 当前节点或 HTTPS 可用。纯材料增量不重复全套业务测试。
+
+### 15.2 分批推进与剩余条件
+
+1. A 在原 #30 回复按本节回交，PR #53 保持 Draft；UI/Robert 可立即核代码、响应层级、权威重读和分配入口材料，正常入口具备后先验身份/读取/保存，再验运行/停止/产物。
+2. C/负责人落实原批准节点的运行窗口；C 在可达后回交当前部署 SHA、受认证 readiness/profile/validation、最新指纹重验/登记结果及受控 generationFile 的使用位置。A 仅在来源核实后接入，不承担未经授权节点维护。
+3. A 与环境维护者落实原获准正常 HTTPS/签名/SSH 配置引用及合成账号安全交接；公开回复只放命令、去敏样例和状态，不放 key/cookie/CSRF/密码。当前缺口不推给 UI 伪造入口。
+4. 当前真实 C1/HTTPS/浏览器联调仍未执行；#30/#22 保持 Open，完整 AC/NFR/真人/教学验收保留。TECH §4.3/bootstrap 及 MVP §10 待授权维护者汇总，不修改受保护基线。
+
+本次材料增量验证：node tools/a0-review/check.mjs 为64份文档/924条内链/errors=[]；git diff --check 通过。写集仅本文，业务测试、节点、TLS/浏览器本次均未执行；既有业务验证仍按 §13 的固定源码和范围报告。
+
+## 16. 接收 C 当前重验，继续 A 正常宿主收尾（2026-10-13）
+
+负责人明确要求继续完成 #30 中 A 的剩余要求。沿 §11 原批准范围接收 C 当前材料、核实后接现有 SSH/generationFile、启动获准正常宿主并验证原消费者；不新增节点维护、跨机网络、凭据生成/分发或 schema 权限。当前写集仍为本人任务记录；没有因为环境缺口改业务契约、TLS 校验或 UI。
+
+### 16.1 新回交替代哪些旧状态
+
+已完整阅读 [C 的 C/TextScope 当前重验回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6142794517)（更新于2026-10-13T09:44:08Z）及 [HDL 补验回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6143063168)（更新于2026-10-13T10:00:04Z）。以下是 **C 实测回交**，不是 A 此次独立节点复测：
+
+- C 当前固定部署 cde69ccbd763c3c0ab381a809b750b951f195f64，sourceHash 与 A §15.1 复算一致。C 新 fingerprintHash 为 b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a，validatedAt 为2026-10-13T09:29:47.600Z，ready=true。
+- 当前代际来自原控制账本/认证 SSH 验收，C/HDL 同为 synthetic-generation-5944e790-6182-4807-bf21-52534b16271b；synthetic 前缀本身不表示 UI 生成，C 已说明原受控账本来源。A 不把评论中的字符串硬编码进应用，须读取受认证交接并核当前值。
+- C 回交原受控宿主已存在的 current-readiness.json、connection.json、runtime-evidence.json；目录/文件权限0700/0600，connection 只引用原 application key/known_hosts。generationFile 用 current-readiness.json 原 data.recoveryGeneration；维护换代后需重新读回，不把文件快照永久视作当前值。
+- C 新 Linux 原 lock/npm ci/native SQLite rebuild/typecheck/build 通过；guest58总/55通过/3跳过、认证SSH10/10、HTTP/SQLite36总/34通过/2跳过，再指定真实C1补验2/2无跳过；33份 HTTP 样例来自 app.inject/Session/SQLite，故障transport为合成。原Windows失败保留为历史，不能重复计数或把故障替身叫物理节点。
+- HDL 于2026-10-13T09:51:51.930Z追加登记，fingerprintHash 为 ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386；HDL10/10无失败/跳过、C52总/51通过/1跳过，认证汇总 hdlReady/cReady 为true。仅 C 节点验收范围，不等于 A/DL-A 或 UI 正常宿主验收。
+- 新完整输出/33份JSON与登记材料尚未推送，C 已给原受控位置和公开摘要。A 收到材料说明，尚未从 PAHER 读取原文件；不能写“原始文件/hash 已独立核验”。不要求将凭据或受控运行配置公开入库。
+
+§15 的“C 本次节点不可达、缺当前代际/重验、HTTP依赖失败”保留其早先时点；作为当前交接状态已被新回交替代。新材料不改变 A §13 的源码/统计，也不宣称旧完整产品验收通过。
+
+### 16.2 A 此次实际检查与执行入口缺口
+
+已 fetch origin；远端 main 仍 cde69cc，PR #53 仍为原 A 独立模块。只读检查 A 当前工具可见环境：wsl --list --verbose 显示 Ubuntu/WSL2 Stopped；Python socket 以3秒上限连接127.0.0.1:2222得到 ConnectionRefusedError。未启动 WSL/VM、未维护节点、未读或复制任何私钥。
+
+这是 **A 当前执行入口的检查**，不推翻 C 在 PAHER 的上述实测，也不能据此认定 PAHER 节点再次停止。现有交接为 PAHER 本机 loopback，无法直接在其他执行环境使用。当前未收到可在 A 工具环境执行的 PAHER 入口、已有正常 XUNJIE_I0_CONFIG 文件位置/精确 HTTPS Origin，及 TLS/签名引用、受控合成账号使用入口。A 已向负责人请求实际执行入口或明确由 C 在 PAHER 代跑，以及既有宿主配置位置；这属于缺失信息，不重复请求原范围实施许可，不请求秘密正文。
+
+真实宿主/自动消费者、浏览器HTTPS和账号交接依赖这些实际材料；不为绕过阻塞创建凭据、启用跨机访问、复制 maintenance key 或忽略证书。其他材料接收、逐 H 汇总和文档/公开回交继续执行。
+
+### 16.3 获得入口后按原批准范围执行
+
+1. 在指定 PAHER 获准运行窗口核 sourceCommit/sourceHash、原 profile、指纹/validation、当前认证 readiness 与原身份 query；对照 C 完整原输出/登记。generationFile 原 data.recoveryGeneration 必须与当前认证响应一致，原 query 不改 identity、不 submit 补跑。
+2. 由原受控配置引用已有 TLS/签名/SSH 文件、现有 UI real dist 与当前代际；核精确 HTTPS Origin/PORT、证书主机与有效期/信任、密钥配对及受控文件权限。账号材料仅走原安全通道，公开只给登录入口和使用方式。
+3. 仅用 §11 获准的新保留24表合成库，教师经真实 Session/Origin/CSRF 完成检查→确认→分配；记录本人、未分配、暂停、跨学生/课程入口和去敏响应，GET不创建 Attempt。
+4. 学生 bootstrap→显式创建→sync→GET权威head→snapshot→run；保持自动消费者运行，确认无需手工 processJob、固定 Run/Job/快照/指纹、原结果/产物。暂停/停止与未知按原 ID 对账，不换键补跑。
+5. UI/Robert 消费同一正常 HTTPS 地址、账号安全使用方式与合法 Assignment 深链，先验身份/读取/保存，再验运行/停止/产物；浏览器结果归 UI，不由服务端通过替代。
+
+目前第1～4项 **未执行**；启动命令仍沿 §12 的受控配置方式，占位模板不是实际已存在地址。A 不因 C 已通过而提前勾选这些要求。
+
+### 16.4 当前逐 H 交付状态
+
+| H | 已完成的 A 交付 | A 收尾未完成项 |
+| --- | --- | --- |
+| H-01 | 正常宿主实现、Session/CSRF与 real dist 合成验证、启动方式 | 实际 HTTPS/现有配置/账号使用入口交付及正常宿主验证 |
+| H-02 | 原 Assignment 与 bootstrap、权限/空态合成接口验证 | 实际正常环境的合法分配深链及账号使用交接 |
+| H-03 | bootstrap/恢复来源说明；已接收 C 当前受控代际材料 | A 从 PAHER 核原文件和当前认证值，再接正常宿主 |
+| H-04 | 原持续消费者/关停对账实现与合成验证；已接收 C/HDL 当前验收 | 正常宿主自动消费者与当前真实 C 节点的组合验证 |
+| H-05 | A 版本/暂停合成样例、差异汇总；已接收 C 新实测样例 | TECH §4.3 基线更新待授权维护者，不单方更改 |
+| H-06 | A 原公开样例及 C 新33份/真实指定联调摘要已接收并按批汇总 | 取得实际文件后核完整输出，补 A 正常宿主链路样例；浏览器由 UI |
+
+A 在 #30 原回复追加本节最新回交，明确替代早先“C未就绪”当前状态，保留历史。此轮纯交接增量不复跑既有全套业务，不合并/部署；PR #53 仍 Draft，#30/#22 保持 Open。受保护基线与 MVP§10 仍待授权维护者汇总。
+
+本轮文档验证：node tools/a0-review/check.mjs 为64份/924内链/errors=[]，git diff --check 通过；没有源码、依赖、受保护基线、schema、凭据或CI变更。A 当前节点连接检查失败，正常宿主组合/HTTPS业务验证未执行，不能写为已通过。
+
+## 17. 第1步交付：固定代码与 PAHER 执行手册（2026-10-13）
+
+负责人要求先完成实施顺序第1步。A 本节交付固定版本、构建/启动命令、只读预检、正常 HTTPS 接口验证序列与回交清单；环境维护者并行落实实际配置。仅维护本人任务文档，不增加运行模块或改变共享契约。本节仍以 §1 已读 PRD/MVP/TECH 的身份、固定活动、学生操作、原执行与恢复为依据，对应 AC-02/03/04/06/12/15、NFR-04；新回交事实沿 §16。步骤2及以后在 PAHER 的真实执行本次未开展。
+
+### 17.1 固定版本、执行者和输入
+
+| 对象 | 固定接收 / 责任 |
+| --- | --- |
+| A 可运行源树 | [PR #53](https://github.com/paher-din/XunJie/pull/53)，本手册固定执行提交 **9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77**；本次后续提交仅文档，不追随移动分支执行 |
+| A 已验证业务源 | b0030c771b0355c51e3eb6adeed3fc4d2c255062，后续39b6f10仅测试helper/记录；§13 保留真实统计 |
+| UI 来源 | 原合入 #51，固定 head 1fe6c960602679d8bd5f95af46ace14930cda0df，工程提交 bde0999c9cf273a11cc1ead9e3258d40365242f8；包含在上述 A 源树，无需导入另一个 UI 分支 |
+| C 当前核对源 | cde69ccbd763c3c0ab381a809b750b951f195f64；sourceHash 7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852；当前完整指纹/代际必须重新认证读回 |
+| 执行位置 | PAHER 原获准 Linux 维护宿主；C代跑，A核结果/修复/最终回交。正常main是应用进程，不调用VM维护脚本 |
+| Node/依赖 | Node24.21.0、两个应用原lock。使用既有该版本Node目录加入本进程PATH，不修改全局Node、依赖、lock或CI |
+
+环境维护者必须先给 **真实存在的受控引用**：
+
+| 输入 | 内容 / 使用者 |
+| --- | --- |
+| XUNJIE_I0_INITIALIZE_CONFIG | 已有获准合成账号/课程、help-v1帮助政策、textscope-core-v1规则；密码只在受控文件，执行原initializer新建/保留24表库。覆盖本人/同课程另一学生/跨课程读者时须有相应获准合成成员；没有就记录缺口 |
+| XUNJIE_I0_CONFIG | §12 schema：synthetic=true、initializer返回的新库、精确origin、已有TLS key/cert、签名文件、generationFile、原application SSH/known_hosts、当前副本UI dist、consumerIntervalMs |
+| XUNJIE_I0_ORIGINAL_EVIDENCE | C已交runtime-evidence.json，含原originalIdentity；用于原身份只读query，不重新submit |
+| PORT | 必须等于受控HTTPS Origin的有效端口；不是自动固定3443 |
+| 证书信任和访问路径 | 维护者确认现有CA/浏览器信任与获准访问路径；若Node客户端需要私有CA，仅引用已有受控CA文件的NODE_EXTRA_CA_CERTS，不关闭证书验证 |
+| 账号安全交接 | 教师/本人学生/同课程其他学生/跨课程角色的账号使用方式及获准课程ID；公开不交密码或Session/CSRF |
+
+配置位置由原安全通道交执行者。本文不创造实际URL、账号密码或C代际；§12 JSON仍是字段模板。准备新的非秘密文件引用配置时不覆盖已有配置，不改 .env、TLS/签名/SSH凭据；若材料不存在先回交具体缺口。新账号只能沿已有批准合成初始化输入，不借旧库SQL补录或造会话。
+
+### 17.2 接收和构建（不触碰成员现有 checkout）
+
+以下从 C 已有的干净仓库入口执行，在全新保留副本取固定 Git blob，避免 Windows CRLF 改写部署字节；不切换/重置成员工作树、不删除缓存或测试库。运行前使用既有 Node24.21.0；每段失败停止，原日志保留，环境错误不标业务通过。
+
+~~~sh
+set -euo pipefail
+I0_SOURCE_SHA=9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77
+git fetch origin codex/i0-a-c-handoff
+test "$(git rev-parse "$I0_SOURCE_SHA^{commit}")" = "$I0_SOURCE_SHA"
+I0_CHECKOUT="$(mktemp -d -t xunjie-i0-host.XXXXXX)"
+git -c core.autocrlf=false archive "$I0_SOURCE_SHA" | tar -x -C "$I0_CHECKOUT"
+printf 'sourceCommit=%s\ncheckout=%s\n' "$I0_SOURCE_SHA" "$I0_CHECKOUT"
+cd "$I0_CHECKOUT"
+test "$(node --version)" = v24.21.0
+sha256sum apps/teaching/package.json apps/teaching/package-lock.json apps/student/package.json apps/student/package-lock.json
+(
+  cd apps/student
+  npm ci
+  npm run typecheck
+  npm run build
+)
+(
+  cd apps/teaching
+  npm ci
+  npm run typecheck
+  npm run build
+  node --input-type=module -e "import Database from 'better-sqlite3'; const db=new Database(':memory:'); console.log(db.prepare('SELECT sqlite_version() AS version').get()); db.close();"
+)
+sha256sum apps/teaching/package.json apps/teaching/package-lock.json apps/student/package.json apps/student/package-lock.json
+~~~
+
+保留输出及四份package/lock的前后摘要；摘要必须不变。教学服务原npm test漏server/app目录，本轮只需新宿主专项时明确 node --test server/app/i0.test.ts（如执行先构建UI）；这属于合成工程测试，不能替代下一节真实main。原native SQLite条件不具备时记录安装/加载错误，交环境维护者，不换依赖、忽略engine或擅自安装全局工具。
+
+### 17.3 初始化、配置与只读预检
+
+在新副本 apps/teaching，引用已有受控初始化输入执行一次：
+
+~~~sh
+node dist/server/app/i0-initialize.js
+~~~
+
+CLI读取 XUNJIE_I0_INITIALIZE_CONFIG，只打印新库位置；库保留，初始没有Assignment/Attempt/Job。维护者将返回位置和本次UI dist填入本次受控XUNJIE_I0_CONFIG。若已有同次执行库，保留并说明来源，不再次初始化后偷换证据。下面预检需新库/配置已就位，PORT及三个CONFIG/EVIDENCE变量由受控环境给出，不回显输入。
+
+在 apps/teaching 执行以下完整只读脚本（可原样作为 node --input-type=module 的 stdin）；只调用原配置读取、真实 application SSH readiness/query。打印精确origin/公开指纹/合成原ID，不打印密钥、账号、cookie、CSRF。任何阶段失败均停止真实接纳，不生成代际、重验登记或维护节点。
+
+~~~sh
+node --input-type=module <<'JS'
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createPrivateKey,X509Certificate} from 'node:crypto';
+import {isIP} from 'node:net';
+import {readI0Config,readI0Generation,readI0SigningSecret,readControlledJson,readPort} from './dist/server/app/config.js';
+import {sshRunner} from './dist/server/records/runner.js';
+import {availableRuntime} from './dist/server/design/readiness.js';
+import {canonical} from './dist/server/records/commands.js';
+let phase='controlled-config';
+try {
+  assert.equal(process.version,'v24.21.0');
+  const config=readI0Config(process.env.XUNJIE_I0_CONFIG);
+  const origin=new URL(config.origin);
+  assert.equal(Number(origin.port||443),readPort(process.env.PORT));
+  assert.equal(config.ssh.host,'127.0.0.1');
+  assert.equal(config.ssh.port,2222);
+  const generation=readI0Generation(config.generationFile);
+  assert(generation);
+  readI0SigningSecret(config.signingSecretFile);
+  phase='existing-tls-material';
+  const certificate=new X509Certificate(readFileSync(config.tls.certFile));
+  const privateKey=createPrivateKey(readFileSync(config.tls.keyFile));
+  assert(certificate.checkPrivateKey(privateKey));
+  assert(isIP(origin.hostname)?certificate.checkIP(origin.hostname):certificate.checkHost(origin.hostname));
+  assert(Date.parse(certificate.validFrom)<=Date.now()&&Date.now()<=Date.parse(certificate.validTo));
+  phase='authenticated-current-runtime';
+  const transport=sshRunner(config.ssh);
+  const runtime=await availableRuntime(transport);
+  assert(runtime);
+  assert.equal(runtime.recoveryGeneration,generation);
+  assert.equal(runtime.readiness.sourceHash,'7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852');
+  assert.equal(runtime.profile.runtimeProfileVersion,'c17-gcc15.3.0-textscope-v1');
+  assert.equal(runtime.profile.imageDigest,'sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5');
+  assert.equal(runtime.profile.compilerImage,'sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa');
+  assert.equal(runtime.profile.runtimeImage,'sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99');
+  assert.deepEqual(runtime.profile.approvedResultFiles,['report.txt']);
+  const handedOff=readControlledJson(config.generationFile);
+  assert.equal(handedOff.data.validation.fingerprintHash,runtime.readiness.fingerprintHash);
+  phase='original-identity-query';
+  const evidence=readControlledJson(process.env.XUNJIE_I0_ORIGINAL_EVIDENCE);
+  const identity=evidence.originalIdentity;
+  assert(identity && typeof identity.runId==='string' && identity.runId.startsWith('run-synthetic-'));
+  const queried=await transport({op:'query',identity});
+  assert(queried && typeof queried==='object' && queried.data);
+  assert.equal(canonical(queried.data.identity),canonical(identity));
+  console.log(JSON.stringify({phase:'preflight',origin:config.origin,
+    tlsKeyMatches:true,tlsHostnameMatches:true,tlsWithinValidity:true,httpsNetworkVerified:false,
+    runtimeProfileVersion:runtime.profile.runtimeProfileVersion,
+    recoveryGeneration:generation,...runtime.readiness,
+    originalRunId:identity.runId,originalState:queried.data.state,originalIdentityMatches:true}));
+} catch {
+  process.stderr.write('I0 preflight failed at '+phase+'. No node/configuration was modified.\n');
+  process.exitCode=1;
+}
+JS
+~~~
+
+TLS字段只证明已有证书主机/有效期/配对；httpsNetworkVerified=false明确不是实际HTTPS或浏览器信任验收。当前fingerprintHash与交接文件不同时停止，C按原维护边界核当前登记并重新交接；不手改snapshot凑一致。query为null/拒绝/失联保留原身份的未知，本脚本失败不触发submit补跑。preflight源码本次只做语法/导入位置检查，未在PAHER执行。
+
+### 17.4 正常 main 启动与首批入口
+
+在同一新副本 apps/teaching、受控变量已设置后，前台执行：
+
+~~~sh
+npm start
+~~~
+
+不使用fixture应用、dev:prep、手工processJob或新的队列。原main读取配置、核24表集合、监听127.0.0.1/PORT/HTTPS、服务real dist并自动启动原消费者。维护者另保留终端/原获准进程管理方式；本次不安装常驻服务/计划任务，不用 nohup 掩盖启动失败。结束用该应用的正常SIGINT/SIGTERM，保留库/日志；不是停止C节点。
+
+先用**证书验证开启**的实际 HTTPS 客户端访问origin的 / 与 /api/session：前者应返回当前real build，匿名session应401。确认页面实际脚本能同源加载，未暴露DB/配置/目录。/health/ready不作为业务或C节点ready证据。浏览器信任/登录实测仍由UI负责。
+
+登录：POST /api/sessions，Content-Type: application/json、Origin等于配置origin，body仅loginName/password。内存保存服务端__Host-xunjie cookie与data.csrfToken；GET /api/session核真实userId及当前课程归属。后续写入带Origin、cookie、x-csrf-token和每条固定idempotency-key；读取只用正常会话。不得在公开日志或回交样例输出上述秘密，禁止curl -v/网络trace或命令行直接展开密码值。
+
+### 17.5 真实 HTTPS 公共接口执行清单
+
+以下由 C 经正常监听接口执行，不调用 test-support 的fixture/assigned/helpers；已有测试仅作字段依据。G取预检和受控文件核实的当前代际，A/T/S/B/V分别是回执返回的Assignment/Attempt/Snapshot/Blueprint/Activity ID，不是预造ID。同一条命令的原键和正文保留，重放不换键；教师/学生身份来自会话，不能往body添加role/studentId冒充操作者（分配studentIds是教师明确目标）。
+
+| 次序 / H | 正常请求与输入 | 必须保存的结果 / 判据 |
+| --- | --- | --- |
+| 1 / H-01 | 各获准合成角色POST /api/sessions，GET /api/session | 真实身份/课程/角色匹配；公开删cookie/CSRF/密码。匿名401 |
+| 2 / H-02/06 | 教师POST /api/courses/:courseId/resources 两次，均带G：公开TXT明示material.visibility={student:true,tutor:true}；私有answer明示material.kind=private_answer及visibility={student:false,tutor:false}，完整正文见下方 | data.result.resourceVersion.resourceVersionId；公开学习资源可读，私有资源student/tutor不可见 |
+| 3 / H-02 | 教师POST /api/courses/:courseId/blueprints（下方完整manual模板） | data.result.draft.blueprintId/revision，资源ID取第2步；原政策/规则已由initializer存入 |
+| 4 / H-04 | 教师POST /api/blueprints/B/checks，body={recoveryGeneration:G,expectedRevision:实际revision} | data.result.report.blocking为空；需人工concern处理时如实交回，不删除检查 |
+| 5 / H-02/04 | 教师POST /api/blueprints/B/releases，body={recoveryGeneration:G,expectedRevision:实际revision,confirmed:true,concerns:实际已处理项} | data.result.activityVersionId=V；GET /api/activities/V逐项核ID/课程/源revision/控制revision/profile/资源投影；readiness另按下方已有证据映射核对，不假设GET存在未公开字段 |
+| 6 / H-02 | 教师POST /api/activities/V/assignments，body={recoveryGeneration:G,expectedActivityControlRevision:当前值,studentIds:[实际本人学生ID]} | data.result.assignments[0].assignmentId=A。先只分配本人，另一个学生用于未分配/跨学生拒绝 |
+| 7 / H-02/03 | 学生GET /api/assignments/A/bootstrap；另会话/匿名重复读；未分配角色按UI原空态处理 | data.assignment原视图 + data.recoveryGeneration=G；本人200/匿名401/跨学生或跨课程403；GET无Attempt副作用 |
+| 8 / H-03 | 学生显式POST /api/assignments/A/attempts，body={recoveryGeneration:G} | data.result.attemptId=T；GET /api/attempts/T应ready、files/jobs为空 |
+| 9 / H-05 | POST /api/attempts/T/sync，见下方两文件模板 | 回执result.created.source/input为服务端fileId；保留原键/正文，重放同receiptId且replayed=true；改正文同键IDEMPOTENCY_CONFLICT，旧workspace revision新键VERSION_CONFLICT |
+| 10 / H-05 | GET /api/attempts/T | 重读data.attempt三版本；不从ACK/编辑器猜attemptRevision |
+| 11 / H-06 | POST /api/attempts/T/snapshots，body={recoveryGeneration:G,expectedWorkspaceRevision:刚读值}；GET /api/attempts/T/snapshots/S | result.snapshotId=S；原正文/manifest/hash/版本一致；快照后再GEThead |
+| 12 / H-04/06 | POST /api/attempts/T/runs，见下方模板；仅轮询GET /api/jobs/J和GET /api/attempts/T/runs/R | 固定原Job/Run；自动消费者使queued推进完成，无手工processJob。上限150秒未完成即保留原ID/状态并报失败，不换键再建 |
+| 13 / H-06 | 第二次sync只更新现有source至new snapshot，版本取GET文件documentVersion；再GET旧Run和旧Snapshot | 工作副本变化，旧运行仍输出old snapshot；Job succeeded只是工程执行，不表示课程verdict通过 |
+| 14 / H-06 | 以同一原run键/原正文重放，再GET原Job/Run | receiptId/jobId/runId不变；不引入第二次提交。当前新head不能改原命令正文 |
+| 15 / H-06 | 新head/原快照新建mode=course_check；原消费者完成后GET Run及/files | 极简示例不能通过TextScope；课程verdict应failed；私有/files外层redacted，stdout passed不构成课程通过 |
+| 16 / H-06 | 同步下方report测试源码，快照、GEThead、新建mode=run/input.operation=report/resultFile=report.txt；读取/files | 外层available，report.txt完整；核正文/UTF-8 bytes/hash/原run/snapshot；这是工程产物测试，不是TextScope量规通过 |
+| 17 / H-05/06 | 新快照的零时间循环源码按原学生run启动，轮询见running后POST /api/jobs/J/cancel（body仅G） | 原取消回执只表示受理；原消费者确认cancelled再记停止。若已自然终止则如实记录竞态，不能伪造确认 |
+| 18 / H-02/05 | 全部原作业已确认收束后，教师POST /api/assignments/A/controls，body={recoveryGeneration:G,expectedAssignmentRevision:GET原视图值,action:pause,reason:Synthetic handoff pause} | GET Assignment/bootstrap active=false/status=paused；已有active文件update/快照成功；create/recycle/restore/newrun拒绝，不调用节点维护制造竞态 |
+| 19 / H-03/06 | 旧G写入→RECOVERY_REQUIRED；GET /api/attempts/T/recovery?recoveryGeneration=旧G&decisionEpoch=最后读取值 | 受限当前恢复投影；GET不重跑/激活。旧G使用明显不同测试字符串，只作拒绝输入，绝不更改真实账本代际 |
+| 20 / H-06 | 缺CSRF/跨归属读取、私有资源、static路径反例；本批未真实触发的断线/unknown列未执行 | 成功/拒绝/未知分开；不擅自注入节点故障；UI浏览器验收另记 |
+
+同课程未分配角色没有新增列表API可列空清单；UI使用原选定合法Assignment引用，未授权引用403，不能自造“空列表接口”。读取/保存批次通过即可先交UI，运行/停止/产物后交。计数不把重复轮询或两次环境执行算新用例。
+
+第5步的已有字段与证据映射（2026-10-14按外部审查R3补正；仅执行说明，不改共享接口）：
+
+| 必核内容 | 已有来源 | 具体判据 |
+| --- | --- | --- |
+| 活动与课程、固定源版本 | 发布回执 `data.result`、checks回执及教师GET活动的 `data` | GET的activityVersionId等于发布回执V，courseId等于当前课程，sourceRevision等于本次expectedRevision及发布checks.revision，checks.blueprintId等于B；GET的activityControlRevision与发布回执一致，首次发布status=active。sourceRevision仅教师投影存在，学生GET不要求该字段；不得只assert(activity)或只核POST版本 |
+| 运行配置标识与政策 | GET活动的runtimeProfileVersionId/helpPolicy；本次manual蓝图及已核C预检 | profile标识等于蓝图配置及C预检runtime.runtimeProfileVersion；本批为c17-gcc15.3.0-textscope-v1。helpPolicy.versionId属于当前课程，wholeSolutionAllowed/limitedCheckHelpAllowed仍为false |
+| 学生/辅导资料裁剪 | 教师GET `/api/activities/V?audience=student` 与 `?audience=tutor` 的content；响应的content.audience、content.materials | 两种投影分别核audience；公开resourceVersionId/正文/contentHash与第2步实际公开回执一致，私有位置为redacted且不附私有正文/摘要/资源ID。已有teacher默认GET只证明student投影，不计tutor投影已执行；学生不能通过audience参数提权 |
+| 就绪与验证依据 | 原受控预检输出及[C准备记录的runtime](https://github.com/paher-din/XunJie/blob/d86e51e8b09f283e9249d0e85e70cc4df873aff9/docs/tasks/evidence/c-entry-https/preparation.json)；checks/release公共回执 | 核profile/sourceHash/fingerprintHash/validatedAt/checkedAt与受控代际来源；checks的blueprintId/revision及blocking为空，release回执的checks关联一致。预检时间与发布时核查时间分别记录，不把先前预检当发布时冻结的完整readiness原值 |
+| 冻结的镜像/运行配置与readiness | 原发布服务的availableRuntime→confirmActivity路径及受控保留的固定ActivityVersion记录 | 原服务发布前重新认证查询，冻结runtimeProfile/runtimeReadiness/recoveryGeneration；公开GET只返回profile标识，不返回imageDigest/compilerImage/runtimeImage或runtimeReadiness。需要独立核冻结原值时，由C沿已有受控只读证据回交去敏记录，关联V/课程/B/sourceRevision/G与原字节摘要；缺记录标“未独立核验”，不补造GET字段或修改API |
+
+映射代码为 [application.ts](../../apps/teaching/server/design/application.ts) 的release与GET、[readiness.ts](../../apps/teaching/server/design/readiness.ts) 的认证指纹/validation核验、[activities.ts](../../apps/teaching/server/design/activities.ts) 的confirmActivity/activityView、[results.ts](../../apps/teaching/contracts/design/results.ts) 的activityViewSchema。checks/release公开回执不含完整readiness，成功接纳与独立核冻结原记录是不同证据。固定C完整轮第5步归档中的student投影可用于离线补核，新增离线检查单独记账；tutor投影或发布冻结原值缺证不写成已补验，旧JSON与失败历史保留。
+
+manual蓝图完整模板（将G和两个资源ID替换为真实回执；以下用于course-a，政策versionId为help-v1；若验证course-b，必须改为该课程help-v1-course-b。课程规则都为textscope-core-v1，其存储按课程隔离）：
+
+~~~json
+{
+  "mode": "manual",
+  "recoveryGeneration": "<G>",
+  "content": {
+    "projectTitle": "Synthetic I0 TextScope",
+    "problem": "Explore ASCII text and compare data structures",
+    "audience": "Synthetic peers",
+    "artifact": "C source and report",
+    "studentBackground": "Synthetic CS course",
+    "timeConstraints": "Synthetic acceptance window",
+    "routes": [
+      "array",
+      "stream"
+    ],
+    "goals": [
+      {
+        "competencyId": "k",
+        "competencyVersion": 1,
+        "domain": "domain",
+        "title": "Explain pointer and text processing"
+      },
+      {
+        "competencyId": "p",
+        "competencyVersion": 1,
+        "domain": "project",
+        "title": "Compare implementation routes"
+      },
+      {
+        "competencyId": "a",
+        "competencyVersion": 1,
+        "domain": "ai_collaboration",
+        "title": "Check explanations against execution"
+      }
+    ],
+    "tasks": [
+      {
+        "taskId": "t",
+        "title": "Compare routes",
+        "goalRefs": [
+          {
+            "competencyId": "k",
+            "competencyVersion": 1
+          },
+          {
+            "competencyId": "p",
+            "competencyVersion": 1
+          },
+          {
+            "competencyId": "a",
+            "competencyVersion": 1
+          }
+        ]
+      }
+    ],
+    "observations": [
+      {
+        "observationId": "o",
+        "description": "Explain decisions with execution evidence",
+        "goalRefs": [
+          {
+            "competencyId": "k",
+            "competencyVersion": 1
+          },
+          {
+            "competencyId": "p",
+            "competencyVersion": 1
+          },
+          {
+            "competencyId": "a",
+            "competencyVersion": 1
+          }
+        ],
+        "taskIds": [
+          "t"
+        ]
+      }
+    ],
+    "rubricCriteria": [
+      {
+        "criterionId": "r",
+        "description": "Reasoning supported by execution",
+        "goalRefs": [
+          {
+            "competencyId": "k",
+            "competencyVersion": 1
+          },
+          {
+            "competencyId": "p",
+            "competencyVersion": 1
+          },
+          {
+            "competencyId": "a",
+            "competencyVersion": 1
+          }
+        ],
+        "observationIds": [
+          "o"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "milestoneId": "m",
+        "title": "Review evidence",
+        "taskIds": [
+          "t"
+        ]
+      }
+    ],
+    "resources": [
+      {
+        "resourceVersionId": "<public-resource-id>"
+      },
+      {
+        "resourceVersionId": "<private-resource-id>"
+      }
+    ],
+    "helpPolicyVersionId": "help-v1",
+    "checkRuleVersionId": "textscope-core-v1",
+    "runtimeProfileVersionId": "c17-gcc15.3.0-textscope-v1"
+  }
+}
+~~~
+
+第2步的公开学习资源完整正文（将 `<G>` 替换为受控来源核实的当前代际）：
+
+~~~json
+{
+  "recoveryGeneration": "<G>",
+  "teacherDesignAllowed": true,
+  "material": {
+    "format": "txt",
+    "kind": "learning_material",
+    "title": "Synthetic reading",
+    "content": "ASCII words",
+    "visibility": {"student": true, "tutor": true}
+  }
+}
+~~~
+
+私有答案完整正文（仅合成验证材料）：
+
+~~~json
+{
+  "recoveryGeneration": "<G>",
+  "teacherDesignAllowed": true,
+  "material": {
+    "format": "txt",
+    "kind": "private_answer",
+    "title": "Synthetic private validation",
+    "content": "Synthetic private validation asset.",
+    "visibility": {"student": false, "tutor": false}
+  }
+}
+~~~
+
+`visibility` 位于 `material` 内。省略它时，原 `prepareMaterial` 安全默认为 student=false/tutor=false；标题写“公开”或设置 `teacherDesignAllowed=true` 都不会向学生/辅导分享。`teacherDesignAllowed` 仅控制教师设计用途。教师专属学习资料也须明示 false/false；`private_answer`/`validation_asset` 不可开放 student/tutor，原保护逻辑保持不变。资源 ID 取各次真实回执后填入蓝图；若旧活动已固定不可见资源，沿原教师 API 新建显式公开资源及新活动版本，不改写旧版本或放宽读取权限。
+
+sync请求完整模板：
+
+~~~json
+{
+  "recoveryGeneration": "<G>",
+  "expectedWorkspaceRevision": 0,
+  "clientId": "i0-host-page",
+  "clientSeq": 1,
+  "operations": [
+    {"kind":"create","clientFileKey":"source","path":"main.c","text":"#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n"},
+    {"kind":"create","clientFileKey":"input","path":"input.txt","text":"Alpha beta\n"}
+  ]
+}
+~~~
+
+运行模板：
+
+~~~json
+{
+  "recoveryGeneration": "<G>",
+  "expectedAttemptRevision": 2,
+  "snapshotId": "<S>",
+  "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+  "entryFileId": "<created.source>",
+  "input": {"operation":"stats","fileIds":["<created.input>"]},
+  "mode": "run"
+}
+~~~
+
+数字2只是首次sync后的示例；实际必须取快照后GET head。report测试源码复用 [原真实链产物反例](../../apps/teaching/server/workspace/integration.test.ts) 的字符串：
+
+~~~c
+#include <stdio.h>
+int main(int argc,char**argv){
+  if(argc<4)return 2;
+  FILE*f=fopen(argv[3],"w");
+  if(!f)return 1;
+  fputs("student-owned report\n",f);
+  return fclose(f)!=0;
+}
+~~~
+
+report期待正文为student-owned report后一个LF。取消用int main(void){for(;;){}return 0;}，均为获准合成工程输入，不是代真实学生做题，不补造教学表现。
+
+### 17.6 回交模板和第1步完成界限
+
+环境维护者回交：实际配置位置/精确origin/运行窗口/安全账号渠道/已有CA信任与访问方式；缺文件列名称/维护角色，不发秘密。C执行每批后回交：
+
+~~~text
+H编号 / 用例：
+A运行SHA / UI工程SHA / C部署SHA：
+Node / SQLite / OS / 正常main启动命令：
+实际HTTPS Origin / 合法Assignment入口（hash路由由UI接线）：
+当前受认证profile/sourceHash/fingerprintHash/validation/代际来源：
+请求method/path、去敏正文、HTTP状态、去敏响应：
+原receiptId / Attempt / Snapshot / Job / Run：
+正常消费者证据（无需手工worker；原ID/结果/停止确认）：
+通过 / 失败 / 跳过 / 未执行：
+保留库、原输出/摘要、受控证据引用：
+下一责任角色 / 剩余条件：
+~~~
+
+公开记录删密码/cookie/CSRF/key/token和私有答案；保存原值的证据仅在原受控目录，不做包含秘密的HAR/trace公开上传。输出摘要对原文件计算，去敏版本明确另记摘要，不能用去敏摘要冒充原输出hash。
+
+本次第1步 **A固定代码/执行手册已准备**；环境维护者配置材料仍待实际回交，第1步整体尚未全部完成。C真实代跑、A复核、UI接线属于后续步骤，本次未执行。受保护TECH/MVP进度仍待授权维护者汇总，PR不自动合并/部署。
+
+第1步材料验证：Windows Node24.21.0对只读预检脚本node --check通过；Git Bash bash -n检查4段shell通过；3份JSON可解析；8个原compiled导出存在、6项现有契约形状校验通过；report C样例LF编码检查通过。预检的SSH/TLS实际运行及数据库/HTTP业务命令均未执行。静态文档64份/925内链/errors=[]与git diff --check通过；最终README导航增量后重查结果如下记录。没有源码/依赖/配置/凭据变更，不复跑既有全量业务。
+
+最终README导航与文档复查：64份文档/926条内链/errors=[]，git diff --check通过。第1步A材料就绪，环境配置实际回交及后续真实执行仍待完成。
+
+## 18. HTTPS 配置与账号入口的独立任务（2026-10-13）
+
+负责人指出“环境维护者”责任不清，现单列 [I0-ENTRY 正常 HTTPS 与合成账号入口准备](I0_HOST_ENTRY_PREPARATION.md)。A 总负责代码/字段、账号课程要求、配置与证据复核和缺口协调；C @paher-din 在 PAHER 核现有材料及实际保管人，按原手册现场执行；UI @wubq511 / Robert 接收访问/信任和账号安全使用方式。TLS/签名材料实际保管人尚未明确，C 不自动成为全部凭据保管人；未知时由 A 请求负责人指定。
+
+本文 §12/17 与旧公开评论中的“环境维护者”保留历史，当前具体步骤、执行出口、回交模板及缺材料流程按独立任务。现场准备安排等待 C 回交接受/窗口，不伪造已签认。固定运行 SHA 仍为9fa76ad，新增文档不改源码/配置/授权范围。
+
+本次仅整理任务；PAHER 核材料、初始化、只读预检、正常 HTTPS 启动/登录和 UI 实际访问均未执行，完整真实业务链仍待后续。产品/分工基线只读，进度待授权维护者汇总。静态检查结果见独立任务末节。
+
+## 19. 负责人将可由 C 完成的准备/操作全部分派给 C（2026-10-13）
+
+负责人本次明确“能让c完成的全部分派给c”。当前以 [I0-ENTRY §7](I0_HOST_ENTRY_PREPARATION.md#7-负责人本次分派可执行的准备和现场操作全部交-c) 为准：C @paher-din 负责现场缺失 TLS/签名/账号输入的具体方案、非秘密成员/政策输入与配置映射、获准初始化/正常宿主启动、原20项接口链和证据/入口交接。A 保留原代码/手册与 A 模块修复、方案/证据复核及授权协调；UI 保留接线/浏览器业务。
+
+[C 最新回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6147353266)已完成固定源接收、构建和原三文件/当前节点认证读取断言，复用原证据，不要求重做。该回交中 H2 等 A 提供准确配置/凭据方案的下一责任安排，由负责人本次指令改为 C 先编制方案；新增凭据/信任/通道仍须具体授权，不以任务分派取代红线。C 当前缺 TLS/签名/初始化输入，正常 HTTPS/初始化/登录/worker 组合尚未执行，A 尚未独立核原输出。
+
+当前实际动作仅文档维护和分派；不改受保护基线、凭据、源码或库，不合并/部署。固定运行源仍9fa76ad，静态检查见独立任务。
+
+## 20. A 固定执行包完成与远程收尾核对（2026-10-13）
+
+A 固定执行包已补齐至 I0-ENTRY §8及I0_A_EXECUTION_MANIFEST.json：10份固定Git源/lock摘要、原启动/初始化命令、完整字段/政策规则边界、20项HTTP样例及H回交/复核清单。原Git blob摘要和两份政策/规则示例实际校验通过；1处新增锚点错误已修复，文档65份/949内链/errors=[]、差异空白通过。仅文档/公开非秘密清单；没有凭据、库、配置或业务源码变更。
+
+本次git fetch同步远程引用，main仍cde69cc、#53仍Draft/Open，当前无新增正常HTTPS业务回交。#30最新C回交6147353266已证明PAHER接收/构建与当前认证读取，明确TLS/签名/账号初始化输入缺失；A未核其原输出。对原H回交仍缺：C编制/获授权补齐材料与实际入口；正常HTTPS main/原Job自动消费的20项真实链及合法Assignment；A复核原证据、处理基线差异交接并最终按H回交。UI真实接线/浏览器验收后置且独立，B模型不阻塞本批。
+
+负责人要求可由C完成的全部分派C，C的准备方案/合成输入/配置/现场执行清单在I0-ENTRY §7；本记录不把分派算执行，不擅自放行新增秘密/信任/通道，也不宣称整H或#30完成。产品/分工基线待授权维护者汇总。
+
+## 21. 接收 PR #55 的 A 实审与验证方案（2026-10-14）
+
+固定接收 PR #55 head ea5a6523245ef25e2ab15712fa5aae5fc182deb8，base cde69cc；16份本人C文档/JSON，不合并/改写C记录。已读C现场方案/成员输入/最终构建和I0原证据，与原身份、权限、宿主、政策/规则、Job/暂停契约核对；使用code-review Standards/Spec两轴只读审查。原14JSON、33HTTP样例、构建成功/失败和接收补正现可从公开固定树核查，先前“新原JSON未推送”状态在本批被替代；不把公开证据自洽当PAHER当前独立实读。
+
+确认需修正A交接材料：接收命令使用单次git -c core.autocrlf=false archive，不修改全局Git；两课程分别help-v1/help-v1-course-b，蓝图引用本课程政策。原checkRule按课程复合ID存储，可共用textscope-core-v1；不改schema/源代码/帮助强度。C正确LF2副本用于后续执行，旧tar --compare仅对归档一致而非原Git blob的错误表述保留其更正。
+
+验证计划：在本机Node24.21.0/原SQLite驱动，使用已批准原24表工厂及原initializeI0，新建保留隔离合成库；仅用离线测试占位口令与测试签名常量，不生成/交付PAHER凭据或修改既有材料。经原createI0App/app.inject真实Session/CSRF与事务核5成员/2课程、两政策ID与两检查规则、跨课程政策冲突拒绝/事务不变、五角色登录/课程归属、请求体角色伪造、Origin/CSRF、跨课程写入及匿名读取。不启消费者/transport/物理节点，不修改学生学习记录。结果属于隔离HTTP/SQLite，不计真实HTTPS/C执行/浏览器通过。
+
+C提案的新本地30天TLS、32字节随机签名、5个24字节随机密码和严格单客户端证书信任，先完成A技术/业务实审与具体申请，仍须负责人明确批准新凭据操作；本次不生成。浏览器路径/信任方案仍缺准确操作，不在本次凭据许可中自动授权；UI/C回交具体方案后由A实审。C-ENTRY-04～07最终结果/PAHER当前性仍待执行，原门禁不放宽。
+
+适用依据与授权沿I0-ENTRY §1/7/8及本稿§11/17；当前写集本人I0任务/入口准备/manifest和README导航，产品/分工基线只读，待授权维护者汇总。先记录本方案再校验，实际结果后续追加。
+
+## 22. A 实审与独立验证交付（2026-10-14）
+
+PR #55的Standards/Spec两轴实审和准确执行/授权方案见[I0-ENTRY §9](I0_HOST_ENTRY_PREPARATION.md#9-a-对-pr-55-的实质审查与后续精确范围2026-10-14)。C14份去敏JSON的输出摘要、字节/TAP、指纹及33样例已核；C现场材料与原业务契约无阻断。1项P3为C“17段日志”的计数口径，与实际27条logs/19不同摘要不符，交C澄清。A已修单次禁CRLF的归档命令及两课程政策/蓝图引用；manifest保留固定源10份原摘要并补课程政策映射。
+
+原initializeI0/24表工厂、createI0App、真实Session和事务独立21/21通过、0失败/跳过（Node24.21.0/SQLite3.53.4）。验证脚本与最终/首次去敏结果见[本批结果](evidence/i0-a-c55-review/verification.json)。首次20/21因验证脚本将缺头传为undefined，修成真正省略CSRF头后全过；两个新库均保留，原代码未改。离线测试常量不用于PAHER正常入口，不装runner/不启动消费者，结果不代替真实TLS/C Job/浏览器。
+
+本批写集补本人验证脚本/去敏结果与manifest，不动受保护产品/分工/B/C/UI。完整回归未复跑；README实际启动方式未变。当前main已合B3 PR #52，固定运行源仍9fa76ad，不将本次结果计入新main组合。MVP_SPEC §10待授权维护者汇总。
+
+A已将C精确TLS/签名/五密码、127.0.0.1:3443、原24表/原worker与严格单Node客户端信任方案整理成可审批范围；新增凭据/信任许可仍待负责人，不是缺A固定包或缺C方案。授权后C负责真实执行/原证据回交，A实审与修本人缺陷，UI明确浏览器信任/访问并验收；#53/#55保持Draft，#30/#22 Open，无合并/部署。
+
+本批交付复查：node tools/a0-review/check.mjs 为65份文档/955内链/errors=[]；git diff --check通过。10份原Git blob摘要逐项匹配，固定源至当前HEAD的teaching/student代码差异为空。新增3份JSON可解析，验证脚本Node24.21.0语法有效；仅本任务文件纳入提交，无公开现场秘密。
+
+## 23. I0-ENTRY 精确授权落实与 C 执行交接（2026-10-14）
+
+负责人对b64ebe1/I0-ENTRY §9.3原文答复：“批准该精确范围，交 C 连续执行”。原24表授权保持有效，本次补齐C现场TLS/签名/五合成密码与严格单Node客户端信任许可；具体对象/生成/文件权限、原固定源及C-ENTRY-04～07连续出口/停止条件已写入[I0-ENTRY §10](I0_HOST_ENTRY_PREPARATION.md#10-精确授权已取得交-c-连续执行2026-10-14)。
+
+## 24. Robert 代接手册补正与外部审查结果（2026-10-14）
+
+Robert因czr112暂时无空，明确委托本聊天代完成[PR #55指定任务](https://github.com/paher-din/XunJie/pull/55#issuecomment-6152088547)，并指定采用「审查PR反馈方式」的已完成审查，不重复审查。具体授权、固定head、外部发现/边界与本批检查见[I0-A55记录](I0-A55_REVIEW_FOLLOWUP.md)。执行者为Robert委托的Agent，不冒充czr112本人签认。
+
+§17.5已补公开学习资源与私有答案的完整合法JSON：visibility显式写在material内，公开true/true、私有false/false；原安全默认与应用源码不变。同时按外部R3明确第5步GET实际字段、student/tutor投影与预检/发布/冻结原记录的核对位置，缺证不补造字段或扩共享接口。
+
+外部审查提出R1异常绕过清理、R2停止未确认仍标已停止、R3第5步断言不足，共3个P2。Robert随后提供完整交付包并授权“一并完成问题修复”；C验证器修复另在基于PR #55的独立`codex/c55-review-fixes`分支开发，A补正保持本分支，避免两份未合并模块混交。原C成功/失败JSON、原ID和受控材料保留，新离线验证不计为现场20/20重跑。正常HTTPS/C1、浏览器与新head最终接收仍按实际证据分别报告；#30/#22及完整H/AC/NFR门禁不因文档补正关闭。产品基线及MVP_SPEC §10待授权维护者汇总。
+
+A向C @paher-din交精确授权与执行顺序，C实际确认/预检/初始化/正常HTTPS/原20项真实链及去敏原证据尚未回交；不把授权或公开分派记为执行。A收到后按H核原事实并修本人模块，UI/C具体浏览器信任与访问仍单列未授权，不代替浏览器验收。不改源码/schema/凭据/CI或受保护基线，本机未生成现场秘密/新库/启动宿主。#53/#55保留Draft，#30/#22 Open；产品进度待授权维护者汇总。纯授权交接文档，不复跑业务。
+
+本批仅授权/执行交接文档：静态复查65份文档/957内链/errors=[]，git diff --check通过；业务、现场初始化/HTTPS/节点测试未执行，原21/21结果不重复计数。

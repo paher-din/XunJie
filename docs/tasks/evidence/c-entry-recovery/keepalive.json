@@ -1,0 +1,7 @@
+{
+  "startedAt": "2026-10-14T04:41:00.3529863Z",
+  "windowsPid": 69164,
+  "command": "wsl.exe -d Ubuntu -u root -- /bin/sleep infinity",
+  "purpose": "Restore original local integration WSL lifetime; no scheduled task or startup configuration",
+  "windowStyle": "Hidden"
+}

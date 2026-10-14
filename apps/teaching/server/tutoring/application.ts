@@ -47,6 +47,10 @@ import {
 import type { ModelProvider } from "./providers.ts";
 import type { StudentHelpCurrentState } from "./context.ts";
 import type { TeachingBasisCurrent } from '../records/teaching.ts';
+import { hdlHelpSelectionSchema,type HdlHelpSelection,type HdlHelpBasis } from '../../contracts/workspace/hdl-help.ts';
+import type { AuthorizedHdlHelpContext } from '../../contracts/tutoring/index.ts';
+import { projectHdlHelpCurrentState } from './context.ts';
+import { canonical } from '../records/commands.ts';
 
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const natural = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -55,6 +59,7 @@ export const studentHelpCommandSchema = z.strictObject({
   recoveryGeneration: id,
   question: z.string().max(16_384),
   objectRef: objectRef.optional(),
+  hdlSelection:hdlHelpSelectionSchema.optional(),
 });
 const studentHelpCommandResultSchema = z.strictObject({
   jobId: id,
@@ -87,6 +92,7 @@ export type TutoringAppOptions = TeachingRecordsOptions & {
     versions: TrustedModelContext["versions"];
     readLearnerState?: LearnerStateReader;
     readLearnerStateRevision?: (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => number;
+    readHdlContext?:(tx:Transaction,actor:ActorContext,attemptId:string,selection:HdlHelpSelection,generation:string)=>AuthorizedHdlHelpContext;
     budgetAvailable: (scope: { courseId: string; studentId: string; attemptId: string }) => boolean;
   };
 };
@@ -102,13 +108,20 @@ export async function createTutoringApp(options: TutoringAppOptions) {
   const readLearnerRevision = studentHelp.readLearnerStateRevision ?? (studentHelp.readLearnerState
     ? (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => studentHelp.readLearnerState!(tx,scope).learnerStateRevision
     : undefined);
-  const isTeachingBasisCurrent:TeachingBasisCurrent|undefined=readLearnerRevision
-    ? (tx,scope,basis) =>
-      readLearnerRevision(tx,scope) === basis.relatedStateRevision
-        && (recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis) ?? true)
-    : recordsOptions.isTeachingBasisCurrent;
+  const isTeachingBasisCurrent:TeachingBasisCurrent=(tx,scope,basis)=>{
+    if(readLearnerRevision&&readLearnerRevision(tx,scope)!==basis.relatedStateRevision)return false;
+    if(!(recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis)??true))return false;
+    if(!basis.hdl)return true;
+    if(!studentHelp.readHdlContext)return false;
+    try{
+      const hdl=studentHelp.readHdlContext(tx,{userId:scope.studentId,courseId:scope.courseId,role:'student'},scope.attemptId,
+        {snapshotId:basis.hdl.snapshotId,buildId:basis.hdl.buildId,
+          ...(basis.hdl.sessionId?{sessionId:basis.hdl.sessionId}:{}),...(basis.hdl.operationId?{operationId:basis.hdl.operationId}:{})},options.currentGeneration());
+      return canonical(projectHdlHelpCurrentState(hdl))===canonical(basis.hdl);
+    }catch(error){if(error instanceof ApiError)return false;throw error;}
+  };
   const instance = await createTeachingRecordsApp({...recordsOptions,
-    ...(isTeachingBasisCurrent?{isTeachingBasisCurrent}:{}),
+    isTeachingBasisCurrent,
   });
   const { app, access } = instance;
   const now = options.now ?? Date.now;
@@ -163,6 +176,14 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           (value) => studentHelpCommandResultSchema.parse(value),
         );
         if (previous) return { ...previous, replayed: true };
+        let acceptedHdlBasis:HdlHelpBasis|undefined;
+        if(input.hdlSelection){
+          if(!studentHelp.readHdlContext)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+          const selected=studentHelp.readHdlContext(tx,actor,idValue,input.hdlSelection,generation);
+          acceptedHdlBasis=projectHdlHelpCurrentState(selected);
+          if(input.objectRef?.kind==='code'&&input.objectRef.snapshotId!==selected.snapshotId
+            ||input.objectRef?.kind==='run')throw new ApiError('INVALID_REFERENCE');
+        }
 
         const acceptedAtMs = now();
         const acceptedAt = new Date(acceptedAtMs).toISOString();
@@ -186,6 +207,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               generation,
               question: input.question,
               ...(input.objectRef ? { objectRef: input.objectRef } : {}),
+              ...(input.hdlSelection?{hdlSelection:input.hdlSelection}:{}),
+              ...(acceptedHdlBasis?{hdlBasis:acceptedHdlBasis}:{}),
               inputRefs: [],
               versions,
               expectedRevision: input.expectedAttemptRevision,
@@ -210,6 +233,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               acceptedInputHash: requestHash("student_help.accepted_input", {
                 question: input.question,
                 objectRef: input.objectRef ?? null,
+                ...(input.hdlSelection?{hdlSelection:input.hdlSelection}:{}),
+                ...(acceptedHdlBasis?{hdlBasis:acceptedHdlBasis}:{}),
               }),
             };
           },
@@ -284,10 +309,13 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           const acceptedInput = {
             question: questionMessage.envelope.question,
             ...(questionMessage.envelope.objectRef ? { objectRef: questionMessage.envelope.objectRef } : {}),
+            ...(questionMessage.envelope.hdlSelection?{hdlSelection:questionMessage.envelope.hdlSelection}:{}),
           };
           if (accepted.data.acceptedInputHash !== requestHash("student_help.accepted_input", {
             question: acceptedInput.question,
             objectRef: acceptedInput.objectRef ?? null,
+            ...(acceptedInput.hdlSelection?{hdlSelection:acceptedInput.hdlSelection}:{}),
+            ...(questionMessage.envelope.hdlBasis?{hdlBasis:questionMessage.envelope.hdlBasis}:{}),
           })) {
             throw new ApiError("STATE_CONFLICT");
           }
@@ -349,6 +377,16 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               policy: activity.helpPolicy.versionId,
             },
           };
+          if(acceptedInput.hdlSelection){
+            if(!studentHelp.readHdlContext)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+            try{
+              const hdl=studentHelp.readHdlContext(tx,actor,idValue,acceptedInput.hdlSelection,options.currentGeneration());
+              if(!questionMessage.envelope.hdlBasis||canonical(questionMessage.envelope.hdlBasis)!==canonical(projectHdlHelpCurrentState(hdl)))
+                throw new ApiError('STATE_CONFLICT');
+              context.hdl=hdl;
+            }
+            catch(error){if(use!=='read'||!(error instanceof ApiError))throw error;}
+          }
           return context;
         },
       );
@@ -387,14 +425,26 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           return next;
         });
       const readCurrent: AuthorizedStudentHelpRuntime["readCurrent"] = async (signal) => {
-        const state = await runtime.readCurrent(signal);
+        const {hdl:_runtimeHdl,...state} = await runtime.readCurrent(signal);
         const current = withHelpTransaction(request,idValue,jobId,'read',(tx) => {
           const job = readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId);
           if (!job || !job.scope.studentId || !job.scope.attemptId) throw new ApiError("STATE_CONFLICT");
           const learner = studentHelp.readLearnerState?.(tx,{
             courseId: job.scope.courseId,studentId: job.scope.studentId,attemptId: job.scope.attemptId,
           });
-          return {job,learner};
+          let hdl:ReturnType<typeof projectHdlHelpCurrentState>|undefined;
+          if(authorized.hdl&&studentHelp.readHdlContext){
+            const selected=readTeachingMessageByJob(tx,job.scope.courseId,job.jobId)?.envelope;
+            if(selected?.kind==='student_question'&&selected.hdlSelection){
+              try{
+                const current=projectHdlHelpCurrentState(studentHelp.readHdlContext(tx,
+                  {userId:job.scope.studentId,courseId:job.scope.courseId,role:'student'},idValue,selected.hdlSelection,options.currentGeneration()));
+                if(selected.hdlBasis&&canonical(selected.hdlBasis)===canonical(current))hdl=current;
+              }
+              catch(error){if(!(error instanceof ApiError))throw error;}
+            }
+          }
+          return {job,learner,hdl};
         });
         return {
           ...state,
@@ -402,6 +452,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           jobStatus: current.job.status,
           stopRequested: current.job.stopRequested,
           recoveryGeneration: current.job.recoveryGeneration,
+          ...(current.hdl?{hdl:current.hdl}:{}),
+          objectAvailable:state.objectAvailable&&(!authorized.hdl||!!current.hdl),
         };
       };
       const studentId = authorized.job.scope.studentId;
@@ -442,6 +494,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           captureRevision: authorized.current.captureRevision,
           relatedStateRevision: authorized.learnerStateRevision,
           ...(authorized.objectRef ? { objectRef: authorized.objectRef } : {}),
+          ...(authorized.hdl?{hdl:projectHdlHelpCurrentState(authorized.hdl)}:{}),
           inputRefs: execution.authorizedReferenceIds.filter((referenceId) => !referenceId.startsWith("assistance:")),
           assistanceRefs: execution.authorizedReferenceIds.filter((referenceId) => referenceId.startsWith("assistance:")),
           coverageRefs: [],
@@ -487,7 +540,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
         try { assembleStudentHelpRequest(current); } catch { objectAvailable=false; }
         return {...current.current,helpAllowed:current.activity.helpPolicy.helpAllowed,
           learnerStateRevision:current.learnerStateRevision,objectAvailable,
-          jobStatus:current.job.status,stopRequested:current.job.stopRequested};
+          jobStatus:current.job.status,stopRequested:current.job.stopRequested,
+          ...(current.hdl?{hdl:projectHdlHelpCurrentState(current.hdl)}:{})};
       };
       const execution=await tutoring.executeStudentHelp(undefined,scope,jobId,preparation,
         {provider,leaseToken,readCurrent,now,...(signal?{signal}:{})});

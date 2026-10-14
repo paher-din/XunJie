@@ -16,7 +16,7 @@ const contentShape = {
   rubricCriteria: z.array(z.strictObject({ criterionId: id, description: z.string(), goalRefs: z.array(goalRefSchema), observationIds: z.array(id) })),
   milestones: z.array(z.strictObject({ milestoneId: id, title: z.string(), taskIds: z.array(id) })),
   resources: z.array(z.strictObject({ resourceVersionId: id })),
-  helpPolicyVersionId: id, checkRuleVersionId: id, runtimeProfileVersionId: id,
+  digitalLogicConfigVersionId: id, helpPolicyVersionId: id, checkRuleVersionId: id, runtimeProfileVersionId: id,
 };
 export const contentPatchSchema = z.strictObject(contentShape).partial();
 export const contentSchema = z.strictObject({

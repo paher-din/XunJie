@@ -1,0 +1,62 @@
+✔ DL-A approved fresh application has exactly 35 tables and preserves them on close (59.6576ms)
+✔ student bootstraps own assignment with trusted generation and no attempt side effect (2492.7097ms)
+✔ normal host serves only built public assets and rejects escaped or hidden paths (1293.6065ms)
+✔ normal consumer runs original job without manual worker calls and shutdown confirms its stop (1995.3797ms)
+✔ controlled initializer creates a fresh synthetic host with login and original course policy (1835.4209ms)
+✔ bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation (3357.5687ms)
+✔ normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline (2037.6503ms)
+✔ bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it (1949.3943ms)
+✔ unknown original job survives host restart and is reconciled without a replacement execution (2786.9662ms)
+✖ normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener (1573.6068ms)
+✔ shutdown refuses a new run whose readiness request was already in flight (1976.7015ms)
+✔ DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries (2103.7763ms)
+✔ DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram (1833.3285ms)
+✔ DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state (1560.8924ms)
+✔ existing authenticated Job paths dispatch HDL and stop its original session after a completed program (2688.1662ms)
+✔ revoked membership cannot read or interact, while the trusted worker still stops original resources (2145.208ms)
+✔ job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind (2022.3202ms)
+✔ Trace polling retains its cursor until the original program or interaction result is available (1644.9142ms)
+✔ replacement rechecks the supplied transaction authority after its external stop wait (1732.1794ms)
+✔ DL-A approved fresh application has exactly 35 tables and preserves them on close (31.7803ms)
+✔ normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL (2089.4377ms)
+✔ original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay (2251.3591ms)
+✔ fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays (1487.2074ms)
+✔ HTTP reprogram denies final acceptance when its real Session logs out during stop wait (1994.5643ms)
+✔ management withdrawal commits stop with permission state; a real rollback keeps permission and session active (2110.7304ms)
+✔ activity pause stops a completed program even without a currently pending Job (1815.4402ms)
+✔ same normal consumer dispatches original C and HDL jobs without a second queue (1720.4584ms)
+✔ interaction preserves sequence, four-value outputs and immutable source when a new draft is saved (1744.0096ms)
+✔ personal pause and account disable propagate stop through original C reconciliation (1768.6922ms)
+✔ normal scheduled consumer and shutdown retain actual termination facts (2078.5457ms)
+✔ reprogram rejects membership withdrawal after external wait but still persists original exit (1659.6633ms)
+✔ fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows (2310.9998ms)
+✔ fixed ALU rejects out-of-course definitions and accepts another legal SW layout (1103.7073ms)
+✔ withdrawal stops original C Run and marks teacher course assignment inactive (1614.4462ms)
+✔ HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView (1900.549ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 34
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28633.6546
+
+✖ failing tests:
+
+test at server\app\i0.test.ts:274:1
+✖ normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener (1573.6068ms)
+  Error: ENOENT: no such file or directory, lstat '[WORKTREE]\apps\student\dist'
+      at realpathSync (node:fs:2862:29)
+      at registerI0Static (file:///[WORKTREE]/apps/teaching/server/app/i0-static.ts:13:16)
+      at attachOriginalJobHost (file:///[WORKTREE]/apps/teaching/server/app/original-job-host.ts:101:30)
+      at createI0App (file:///[WORKTREE]/apps/teaching/server/app/i0.ts:23:16)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///[WORKTREE]/apps/teaching/server/app/i0.test.ts:279:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -4058,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: 'C:\\Users\\Noctis\\.codex\\worktrees\\dl-a-closeout\\XunJie\\apps\\student\\dist'
+  }

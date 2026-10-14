@@ -32,9 +32,10 @@ export type TeachingUsage =
   | {status:'unknown';reason?:string|undefined};
 export type TeachingAttemptEpoch = {attemptRevision:number;decisionEpoch:number};
 export type TeachingBasis = TeachingAttemptEpoch & {captureRevision:number;relatedStateRevision:number;
-  objectRef?:import('../workspace/index.ts').ObjectRef;inputRefs:string[];assistanceRefs:string[];coverageRefs:string[]};
+  objectRef?:import('../workspace/index.ts').ObjectRef;hdl?:import('../workspace/hdl-help.ts').HdlHelpBasis;inputRefs:string[];assistanceRefs:string[];coverageRefs:string[]};
 export type TeachingQuestionEnvelope = {kind:'student_question';question:string;
-  objectRef?:import('../workspace/index.ts').ObjectRef;inputRefs:string[];versions:TeachingVersions};
+  objectRef?:import('../workspace/index.ts').ObjectRef;hdlSelection?:import('../workspace/hdl-help.ts').HdlHelpSelection;
+  hdlBasis?:import('../workspace/hdl-help.ts').HdlHelpBasis;inputRefs:string[];versions:TeachingVersions};
 // `calls` counts the provider requests made inside the single execution that produced this body, from 0. It is
 // a per-execution fact, not the cross-worker total: that total is `Job.attemptCount`, which only the executing
 // side may raise through `recordModelCall`.
@@ -69,7 +70,7 @@ export type TeachingEventPayload = {actionId:string;contentHash:string;dispositi
   // Original Action association accompanies authorized body delivery only. It does not grant authority or
   // expose the full trusted envelope (input/assistance/coverage refs, leases, or provider result bytes).
   scope?:TeachingScopeRef;jobId?:string;messageId?:string;generation?:string;targetVersions?:TeachingVersions;
-  basis?:Pick<TeachingBasis,'attemptRevision'|'decisionEpoch'|'captureRevision'|'relatedStateRevision'|'objectRef'>};
+  basis?:Pick<TeachingBasis,'attemptRevision'|'decisionEpoch'|'captureRevision'|'relatedStateRevision'|'objectRef'|'hdl'>};
 export type TeachingEventView = {serverSeq:number;eventId:string;type:string;occurredAt:string;payload?:TeachingEventPayload};
 export type TeachingEventsPage = {control:TeachingControlState;resyncRequired:boolean;events:TeachingEventView[];
   nextServerSeq:number;hasMore:boolean;coverage?:TeachingCoverage};

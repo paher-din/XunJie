@@ -1,0 +1,29 @@
+✖ HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView (2610.2965ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3548.9641
+
+✖ failing tests:
+
+test at tests\dl-a-app.test.ts:152:1
+✖ HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView (2610.2965ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"e80a9563-60aa-4671-a16b-eac3e79abf7b","error":{"code":"INVALID_REQUEST","message":"Invalid request.","retryable":false,"recovery":"Correct the request before retrying."}}
+
+  400 !== 200
+
+      at TestContext.<anonymous> (file:///[WORKTREE]/apps/teaching/tests/dl-a-app.test.ts:158:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 400,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,14 @@
+▶ the platform clock and delayed RTL keep picosecond semantics under finer student time precision
+  ✔ 1ps (90.313241ms)
+  ✔ 100fs (39.663592ms)
+  ✔ 1fs (32.373033ms)
+  ✔ fine precision advances beyond the low 32 bits of simulation ticks (58.949883ms)
+✔ the platform clock and delayed RTL keep picosecond semantics under finer student time precision (1432.910783ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1935.598877

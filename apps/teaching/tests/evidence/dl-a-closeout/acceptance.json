@@ -1,0 +1,161 @@
+{
+  "sourceCodeCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+  "initialCodeCommit": "d86863718f3c8dabd274c476e299a0cc7101a701",
+  "mainBaseline": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+  "reusedI0PR": {
+    "url": "https://github.com/paher-din/XunJie/pull/53",
+    "fixedHead": "e3e3486d7ec636836c892433c953eb303a64eb6a",
+    "remoteMergedByThisTask": false
+  },
+  "environment": {
+    "os": "WSL2 Ubuntu on MSI",
+    "node": "24.21.0",
+    "toolchain": "retained approved Icarus 12.0-2build2 extracted package",
+    "database": "fresh retained synthetic SQLite; DL-A exactly35 tables",
+    "ui": "original student lock npm ci/build on Windows, copied exact dist for real loopback static test"
+  },
+  "commands": [
+    {
+      "command": "npm ci / npm run typecheck / npm run build",
+      "cwd": "apps/teaching",
+      "phase": "final Linux",
+      "exitCode": 0,
+      "evidence": [
+        "linux-final-npm-ci.txt",
+        "linux-final-typecheck.txt",
+        "linux-final-build.txt"
+      ]
+    },
+    {
+      "command": "node --test --test-concurrency=1 tests/*.test.ts server/app/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
+      "cwd": "apps/teaching",
+      "phase": "initial Linux (toolchain path failure)",
+      "exitCode": 1,
+      "sourceCodeCommit": "d86863718f3c8dabd274c476e299a0cc7101a701",
+      "evidence": "linux-first-full.txt",
+      "counts": {
+        "tests": 414,
+        "pass": 402,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 11,
+        "todo": 0
+      }
+    },
+    {
+      "command": "node --test server/app/i0.test.ts server/app/digital-logic.test.ts tests/dl-a-app.test.ts server/workspace/hdl.test.ts server/workspace/submissions.test.ts",
+      "cwd": "apps/teaching",
+      "phase": "Windows after review fix",
+      "exitCode": 0,
+      "evidence": "windows-combined-review-fix.txt",
+      "counts": {
+        "tests": 53,
+        "pass": 53,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "command": "node --test --test-concurrency=1 tests/*.test.ts server/app/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
+      "cwd": "apps/teaching",
+      "phase": "final Linux",
+      "exitCode": 0,
+      "sourceCodeCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+      "evidence": "linux-final-full.txt",
+      "counts": {
+        "tests": 419,
+        "pass": 408,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 11,
+        "todo": 0
+      }
+    },
+    {
+      "command": "node --test runner/hdl-clock.test.ts",
+      "phase": "corrected toolchain path, same runner source",
+      "exitCode": 0,
+      "evidence": "linux-clock-corrected.txt",
+      "counts": {
+        "tests": 5,
+        "pass": 5,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "fullTestScope": "explicitly includes server/app; no old PR or prior DL-A counts accumulated; skips are not passes",
+  "redGreen": [
+    {
+      "case": "original I0 bootstrap reuse",
+      "red": "windows-bootstrap-red.txt",
+      "green": "windows-bootstrap-green.txt"
+    },
+    {
+      "case": "C4 submission stops original HDL Session",
+      "red": "windows-submission-red.txt",
+      "green": "windows-submission-green.txt"
+    },
+    {
+      "case": "shutdown rejects second new HDL dispatch during real HTTP drain",
+      "red": "windows-shutdown-red-correct.txt",
+      "green": "windows-shutdown-green.txt"
+    }
+  ],
+  "retention": [
+    {
+      "phase": "xunjie-dla-closeout.FYhQDu",
+      "directoryExists": true,
+      "retainedSqliteFiles": 227
+    },
+    {
+      "phase": "xunjie-dla-final.3E5Cru",
+      "directoryExists": true,
+      "retainedSqliteFiles": 228
+    }
+  ],
+  "review": {
+    "fixedSourceCodeCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+    "standardsHard": 0,
+    "standardsActionableSmells": 0,
+    "specActionable": 0,
+    "evidence": "review.md",
+    "testsRunByReviewAgents": false
+  },
+  "skips": {
+    "count": 11,
+    "physicalNodeGated": 6,
+    "realPaidModelGated": 5,
+    "evidence": "skips.txt"
+  },
+  "cHandoff": "c-handoff-summary.json",
+  "sourceOnlyAlignment": "source-alignment.json",
+  "notExecuted": [
+    "A authenticated current node query/business chain on PAHER",
+    "real HTTPS/TLS",
+    "actual UI/browser DL-E2E",
+    "real or paid model calls",
+    "ALU behavioral checker",
+    "full AC/NFR/long-term/real-person/teaching-effect acceptance"
+  ],
+  "remainingInputs": [
+    "authorized PAHER execution/controlled connection consumption for fixed A source",
+    "existing approved HTTPS/TLS/signing and synthetic account/Assignment handoff",
+    "ALU behavior checker delivery",
+    "DL-B40 minimal context/currentness table",
+    "DL-UI actual HDL operation/request/result/gap table"
+  ],
+  "publication": "local only; no push or remote merge; issue38 remains Open; product baseline pending authorized maintainer",
+  "evidenceManifest": "logs-manifest.json",
+  "documentation": {
+    "command": "node tools/a0-review/check.mjs",
+    "cwd": "repository root",
+    "exitCode": 0,
+    "documents": 64,
+    "internalLinks": 951,
+    "errors": [],
+    "evidence": "documentation-final.txt"
+  }
+}

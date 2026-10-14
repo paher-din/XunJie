@@ -1,0 +1,178 @@
+TAP version 13
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 1 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 3993.690474
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 2 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 7266.126527
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 3 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 3580.308566
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 4 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 3559.152033
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+ok 5 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 3931.496838
+  type: 'test'
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 6 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 3643.209744
+  type: 'test'
+  ...
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 7 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 75.77919
+  type: 'test'
+  ...
+# Subtest: normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+ok 8 - normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+  ---
+  duration_ms: 3537.204182
+  type: 'test'
+  ...
+# Subtest: original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+ok 9 - original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+  ---
+  duration_ms: 3866.978226
+  type: 'test'
+  ...
+# Subtest: fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+ok 10 - fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+  ---
+  duration_ms: 2831.24644
+  type: 'test'
+  ...
+# Subtest: HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+ok 11 - HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+  ---
+  duration_ms: 3143.844222
+  type: 'test'
+  ...
+# Subtest: management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+not ok 12 - management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+  ---
+  duration_ms: 2777.408252
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-app.test.ts:49:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"requestId":"006bbff7-96d9-49bd-bdda-d9eac82c41fa","error":{"code":"UNAUTHENTICATED","message":"Authentication required.","retryable":false,"recovery":"Sign in using a valid account."}}
+
+    401 !== 200
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 401
+  operator: 'strictEqual'
+  stack: |-
+    allocate (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-support.ts:94:126)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-app.test.ts:50:98)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: activity pause stops a completed program even without a currently pending Job
+ok 13 - activity pause stops a completed program even without a currently pending Job
+  ---
+  duration_ms: 3303.575125
+  type: 'test'
+  ...
+# Subtest: same normal consumer dispatches original C and HDL jobs without a second queue
+ok 14 - same normal consumer dispatches original C and HDL jobs without a second queue
+  ---
+  duration_ms: 3310.158402
+  type: 'test'
+  ...
+# Subtest: interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+ok 15 - interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+  ---
+  duration_ms: 3252.321368
+  type: 'test'
+  ...
+# Subtest: personal pause and account disable propagate stop through original C reconciliation
+ok 16 - personal pause and account disable propagate stop through original C reconciliation
+  ---
+  duration_ms: 3290.389169
+  type: 'test'
+  ...
+# Subtest: normal scheduled consumer and shutdown retain actual termination facts
+ok 17 - normal scheduled consumer and shutdown retain actual termination facts
+  ---
+  duration_ms: 3891.403692
+  type: 'test'
+  ...
+# Subtest: reprogram rejects membership withdrawal after external wait but still persists original exit
+ok 18 - reprogram rejects membership withdrawal after external wait but still persists original exit
+  ---
+  duration_ms: 3124.485921
+  type: 'test'
+  ...
+# Subtest: fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+ok 19 - fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+  ---
+  duration_ms: 4000.820313
+  type: 'test'
+  ...
+# Subtest: fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+ok 20 - fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+  ---
+  duration_ms: 1973.660038
+  type: 'test'
+  ...
+# Subtest: withdrawal stops original C Run and marks teacher course assignment inactive
+ok 21 - withdrawal stops original C Run and marks teacher course assignment inactive
+  ---
+  duration_ms: 2792.243365
+  type: 'test'
+  ...
+# Subtest: HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+ok 22 - HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+  ---
+  duration_ms: 3444.220554
+  type: 'test'
+  ...
+# Subtest: C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+ok 23 - C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+  ---
+  duration_ms: 2917.111426
+  type: 'test'
+  ...
+# Subtest: C4 teacher grant and student revision resume never revive the stopped original HDL Session
+ok 24 - C4 teacher grant and student revision resume never revive the stopped original HDL Session
+  ---
+  duration_ms: 3142.552731
+  type: 'test'
+  ...
+# Subtest: shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+ok 25 - shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+  ---
+  duration_ms: 3125.793746
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 24
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 58562.179258

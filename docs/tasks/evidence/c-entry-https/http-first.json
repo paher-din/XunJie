@@ -1,0 +1,1889 @@
+[
+  {
+    "case": 0,
+    "method": "GET",
+    "path": "/",
+    "statusCode": 200,
+    "response": {
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 1466,
+      "hash": "94948820c6a6f4c92896f86b9b53df378f82a8232aa6e68aefc52268e8237042"
+    },
+    "rawBodyHash": "94948820c6a6f4c92896f86b9b53df378f82a8232aa6e68aefc52268e8237042",
+    "rawBodyPersistedToPublic": false,
+    "publicOmission": "Generated asset body omitted; original retained in controlled evidence and its exact byte/hash metadata retained"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/",
+    "statusCode": 200,
+    "response": {
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 1466,
+      "hash": "94948820c6a6f4c92896f86b9b53df378f82a8232aa6e68aefc52268e8237042"
+    },
+    "rawBodyHash": "94948820c6a6f4c92896f86b9b53df378f82a8232aa6e68aefc52268e8237042",
+    "rawBodyPersistedToPublic": false,
+    "publicOmission": "Generated asset body omitted; original retained in controlled evidence and its exact byte/hash metadata retained"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/assets/index-Kl70RR0d.js",
+    "statusCode": 200,
+    "response": {
+      "contentType": "text/javascript; charset=utf-8",
+      "bytes": 1053271,
+      "hash": "1722b0f5f3e214cf506d2511ccf1ef4c0d21cd1aa943888e35af5d10d32192d0"
+    },
+    "rawBodyHash": "1722b0f5f3e214cf506d2511ccf1ef4c0d21cd1aa943888e35af5d10d32192d0",
+    "rawBodyPersistedToPublic": false,
+    "publicOmission": "Generated asset body omitted; original retained in controlled evidence and its exact byte/hash metadata retained"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/assets/index-Bcc495rI.css",
+    "statusCode": 200,
+    "response": {
+      "contentType": "text/css; charset=utf-8",
+      "bytes": 160160,
+      "hash": "d99f8f30594f1b81e5f74c47c29dab26d72b053018804e3e1ddd0ad7f7ca65eb"
+    },
+    "rawBodyHash": "d99f8f30594f1b81e5f74c47c29dab26d72b053018804e3e1ddd0ad7f7ca65eb",
+    "rawBodyPersistedToPublic": false,
+    "publicOmission": "Generated asset body omitted; original retained in controlled evidence and its exact byte/hash metadata retained"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/api/session",
+    "statusCode": 401,
+    "response": {
+      "requestId": "0a627ea9-0e86-4631-8ba6-6e1082afc952",
+      "error": {
+        "code": "UNAUTHENTICATED",
+        "message": "Authentication required.",
+        "retryable": false,
+        "recovery": "Sign in using a valid account."
+      }
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "POST",
+    "path": "/api/sessions",
+    "statusCode": 200,
+    "response": {
+      "requestId": "46403e8b-6dd2-4092-ab67-00f08c5d9452",
+      "data": {}
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/api/session",
+    "statusCode": 200,
+    "response": {
+      "requestId": "c04112db-773a-4c70-929d-5bf8c7167101",
+      "data": {
+        "userId": "synthetic-i0-teacher-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "teacher"
+          }
+        ]
+      }
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "POST",
+    "path": "/api/sessions",
+    "statusCode": 200,
+    "response": {
+      "requestId": "1e573a3e-de14-4b8f-aa33-a3898f1f758b",
+      "data": {}
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/api/session",
+    "statusCode": 200,
+    "response": {
+      "requestId": "b54db944-c457-4226-81d0-3b39a97ea358",
+      "data": {
+        "userId": "synthetic-i0-student-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      }
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "POST",
+    "path": "/api/sessions",
+    "statusCode": 200,
+    "response": {
+      "requestId": "c9c3b846-b3ce-4f20-86aa-2f480f0e9e80",
+      "data": {}
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/api/session",
+    "statusCode": 200,
+    "response": {
+      "requestId": "62cdf859-53fa-41a6-b249-093a21b527d7",
+      "data": {
+        "userId": "synthetic-i0-student-peer",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      }
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "POST",
+    "path": "/api/sessions",
+    "statusCode": 200,
+    "response": {
+      "requestId": "8943dc15-216e-4e61-a861-b0f5b397cedf",
+      "data": {}
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/api/session",
+    "statusCode": 200,
+    "response": {
+      "requestId": "c6026e04-7fa0-4a7b-8f72-5c3359110337",
+      "data": {
+        "userId": "synthetic-i0-teacher-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "teacher"
+          }
+        ]
+      }
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "POST",
+    "path": "/api/sessions",
+    "statusCode": 200,
+    "response": {
+      "requestId": "5844645d-3035-4bd6-9f01-ca5c270b0e7c",
+      "data": {}
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 1,
+    "method": "GET",
+    "path": "/api/session",
+    "statusCode": 200,
+    "response": {
+      "requestId": "816ee550-6e58-46c5-9db9-6886f64a79af",
+      "data": {
+        "userId": "synthetic-i0-student-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "student"
+          }
+        ]
+      }
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 2,
+    "method": "POST",
+    "path": "/api/courses/synthetic-i0-course-a/resources",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "teacherDesignAllowed": true,
+      "material": {
+        "format": "txt",
+        "title": "Synthetic reading",
+        "content": "ASCII words"
+      }
+    },
+    "response": {
+      "requestId": "47e38bfb-2f7e-4b76-91d6-52523a876913",
+      "data": {
+        "receiptId": "17d3e86b-22c5-4ad2-9cfd-6641ec5e88d7",
+        "commandId": "ba515fd7-3998-4479-8a5a-49ab3c72b2d1",
+        "identity": {
+          "actorId": "synthetic-i0-teacher-a",
+          "command": "material.create",
+          "target": "synthetic-i0-course-a",
+          "scope": {
+            "courseId": "synthetic-i0-course-a"
+          },
+          "idempotencyKey": "c-entry-20261014-resource-public",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "ef09a59c446ea5c494b9abe4a1207b2a4ea7b6ba198c8770e18bdae7596e1e7b",
+        "result": {
+          "kind": "material",
+          "resourceVersion": {
+            "courseId": "synthetic-i0-course-a",
+            "resourceVersionId": "7d47908e-29b3-46cc-9e2e-e4633a65d564",
+            "available": true,
+            "teacherDesignAllowed": true,
+            "material": {
+              "format": "txt",
+              "kind": "learning_material",
+              "title": "Synthetic reading",
+              "text": "ASCII words",
+              "byteLength": 11,
+              "contentHash": "33ec5c5a2b73b95d3018dcb954fcd432dfe0cbcad973baef129f935071618a01",
+              "visibility": {
+                "student": false,
+                "tutor": false
+              },
+              "paragraphs": [
+                {
+                  "paragraphId": "65808080-ce41-48ca-bbbf-18706adf5133",
+                  "ordinal": 1,
+                  "start": 0,
+                  "end": 11,
+                  "text": "ASCII words",
+                  "contentHash": "33ec5c5a2b73b95d3018dcb954fcd432dfe0cbcad973baef129f935071618a01"
+                }
+              ]
+            }
+          }
+        },
+        "committedAt": "2026-10-13T17:12:01.498Z",
+        "serverSeq": 1
+      }
+    },
+    "rawBody": "{\"requestId\":\"47e38bfb-2f7e-4b76-91d6-52523a876913\",\"data\":{\"receiptId\":\"17d3e86b-22c5-4ad2-9cfd-6641ec5e88d7\",\"commandId\":\"ba515fd7-3998-4479-8a5a-49ab3c72b2d1\",\"identity\":{\"actorId\":\"synthetic-i0-teacher-a\",\"command\":\"material.create\",\"target\":\"synthetic-i0-course-a\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\"},\"idempotencyKey\":\"c-entry-20261014-resource-public\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"ef09a59c446ea5c494b9abe4a1207b2a4ea7b6ba198c8770e18bdae7596e1e7b\",\"result\":{\"kind\":\"material\",\"resourceVersion\":{\"courseId\":\"synthetic-i0-course-a\",\"resourceVersionId\":\"7d47908e-29b3-46cc-9e2e-e4633a65d564\",\"available\":true,\"teacherDesignAllowed\":true,\"material\":{\"format\":\"txt\",\"kind\":\"learning_material\",\"title\":\"Synthetic reading\",\"text\":\"ASCII words\",\"byteLength\":11,\"contentHash\":\"33ec5c5a2b73b95d3018dcb954fcd432dfe0cbcad973baef129f935071618a01\",\"visibility\":{\"student\":false,\"tutor\":false},\"paragraphs\":[{\"paragraphId\":\"65808080-ce41-48ca-bbbf-18706adf5133\",\"ordinal\":1,\"start\":0,\"end\":11,\"text\":\"ASCII words\",\"contentHash\":\"33ec5c5a2b73b95d3018dcb954fcd432dfe0cbcad973baef129f935071618a01\"}]}}},\"committedAt\":\"2026-10-13T17:12:01.498Z\",\"serverSeq\":1}}",
+    "rawBodyHash": "15cf95d80d31247e551bc414a947e1cbad509fba8ea7908654dbdd96b73d83f7"
+  },
+  {
+    "case": 2,
+    "method": "POST",
+    "path": "/api/courses/synthetic-i0-course-a/resources",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "teacherDesignAllowed": true,
+      "material": {
+        "format": "txt",
+        "title": "Synthetic private validation",
+        "content": "<redacted synthetic private material>",
+        "kind": "private_answer",
+        "visibility": {
+          "student": false,
+          "tutor": false
+        }
+      }
+    },
+    "response": {
+      "requestId": "eb3f14be-aaf4-4289-b799-108f94dd502e",
+      "data": {
+        "receiptId": "a337d376-a4dd-48df-8234-9fa73a597122",
+        "commandId": "978e4786-6f00-4126-ba7b-0f233ea85bc9",
+        "identity": {
+          "actorId": "synthetic-i0-teacher-a",
+          "command": "material.create",
+          "target": "synthetic-i0-course-a",
+          "scope": {
+            "courseId": "synthetic-i0-course-a"
+          },
+          "idempotencyKey": "c-entry-20261014-resource-private",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "7f39e9d4c04920997b848917fee71f34d3f7357d0688e853c01f590ca59851cb",
+        "result": {
+          "kind": "material",
+          "resourceVersion": {
+            "courseId": "synthetic-i0-course-a",
+            "resourceVersionId": "70eefb7d-aea9-4da4-b60d-47af1f98a662",
+            "available": true,
+            "teacherDesignAllowed": true,
+            "material": {
+              "format": "txt",
+              "kind": "private_answer",
+              "title": "Synthetic private validation",
+              "text": "<redacted synthetic private material>",
+              "byteLength": 35,
+              "contentHash": "<redacted synthetic private material>",
+              "visibility": {
+                "student": false,
+                "tutor": false
+              },
+              "paragraphs": "<redacted synthetic private material>"
+            }
+          }
+        },
+        "committedAt": "2026-10-13T17:12:01.522Z",
+        "serverSeq": 2
+      }
+    },
+    "rawBodyPersisted": false,
+    "omission": "Authentication/private material kept in memory only"
+  },
+  {
+    "case": 3,
+    "method": "POST",
+    "path": "/api/courses/synthetic-i0-course-a/blueprints",
+    "statusCode": 200,
+    "request": {
+      "mode": "manual",
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "content": {
+        "projectTitle": "Synthetic I0 TextScope",
+        "problem": "Explore ASCII text and compare data structures",
+        "audience": "Synthetic peers",
+        "artifact": "C source and report",
+        "studentBackground": "Synthetic CS course",
+        "timeConstraints": "Synthetic acceptance window",
+        "routes": [
+          "array",
+          "stream"
+        ],
+        "goals": [
+          {
+            "competencyId": "k",
+            "competencyVersion": 1,
+            "domain": "domain",
+            "title": "Explain pointer and text processing"
+          },
+          {
+            "competencyId": "p",
+            "competencyVersion": 1,
+            "domain": "project",
+            "title": "Compare implementation routes"
+          },
+          {
+            "competencyId": "a",
+            "competencyVersion": 1,
+            "domain": "ai_collaboration",
+            "title": "Check explanations against execution"
+          }
+        ],
+        "tasks": [
+          {
+            "taskId": "t",
+            "title": "Compare routes",
+            "goalRefs": [
+              {
+                "competencyId": "k",
+                "competencyVersion": 1
+              },
+              {
+                "competencyId": "p",
+                "competencyVersion": 1
+              },
+              {
+                "competencyId": "a",
+                "competencyVersion": 1
+              }
+            ]
+          }
+        ],
+        "observations": [
+          {
+            "observationId": "o",
+            "description": "Explain decisions with execution evidence",
+            "goalRefs": [
+              {
+                "competencyId": "k",
+                "competencyVersion": 1
+              },
+              {
+                "competencyId": "p",
+                "competencyVersion": 1
+              },
+              {
+                "competencyId": "a",
+                "competencyVersion": 1
+              }
+            ],
+            "taskIds": [
+              "t"
+            ]
+          }
+        ],
+        "rubricCriteria": [
+          {
+            "criterionId": "r",
+            "description": "Reasoning supported by execution",
+            "goalRefs": [
+              {
+                "competencyId": "k",
+                "competencyVersion": 1
+              },
+              {
+                "competencyId": "p",
+                "competencyVersion": 1
+              },
+              {
+                "competencyId": "a",
+                "competencyVersion": 1
+              }
+            ],
+            "observationIds": [
+              "o"
+            ]
+          }
+        ],
+        "milestones": [
+          {
+            "milestoneId": "m",
+            "title": "Review evidence",
+            "taskIds": [
+              "t"
+            ]
+          }
+        ],
+        "resources": [
+          {
+            "resourceVersionId": "7d47908e-29b3-46cc-9e2e-e4633a65d564"
+          },
+          {
+            "resourceVersionId": "70eefb7d-aea9-4da4-b60d-47af1f98a662"
+          }
+        ],
+        "helpPolicyVersionId": "help-v1",
+        "checkRuleVersionId": "textscope-core-v1",
+        "runtimeProfileVersionId": "c17-gcc15.3.0-textscope-v1"
+      }
+    },
+    "response": {
+      "requestId": "b351b14d-71e3-49f4-9fe4-8b4f41144b7e",
+      "data": {
+        "receiptId": "3b01b407-71ab-4343-858c-d4b51694dd8a",
+        "commandId": "1b96bc88-6551-4b51-9fca-847ce90f4d47",
+        "identity": {
+          "actorId": "synthetic-i0-teacher-a",
+          "command": "draft.create",
+          "target": "synthetic-i0-course-a",
+          "scope": {
+            "courseId": "synthetic-i0-course-a"
+          },
+          "idempotencyKey": "c-entry-20261014-blueprint",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "f850bdfed85dfc3b4ce97f8d88cabd8924d8000f6e79f01c876c56f6eb3f5992",
+        "result": {
+          "kind": "draft",
+          "draft": {
+            "courseId": "synthetic-i0-course-a",
+            "blueprintId": "fd8aec07-fbdb-4a9c-95fd-b24d720574d9",
+            "revision": 1,
+            "content": {
+              "projectTitle": "Synthetic I0 TextScope",
+              "problem": "Explore ASCII text and compare data structures",
+              "audience": "Synthetic peers",
+              "artifact": "C source and report",
+              "studentBackground": "Synthetic CS course",
+              "timeConstraints": "Synthetic acceptance window",
+              "routes": [
+                "array",
+                "stream"
+              ],
+              "goals": [
+                {
+                  "competencyId": "k",
+                  "competencyVersion": 1,
+                  "domain": "domain",
+                  "title": "Explain pointer and text processing",
+                  "core": true
+                },
+                {
+                  "competencyId": "p",
+                  "competencyVersion": 1,
+                  "domain": "project",
+                  "title": "Compare implementation routes",
+                  "core": true
+                },
+                {
+                  "competencyId": "a",
+                  "competencyVersion": 1,
+                  "domain": "ai_collaboration",
+                  "title": "Check explanations against execution",
+                  "core": true
+                }
+              ],
+              "tasks": [
+                {
+                  "taskId": "t",
+                  "title": "Compare routes",
+                  "goalRefs": [
+                    {
+                      "competencyId": "k",
+                      "competencyVersion": 1
+                    },
+                    {
+                      "competencyId": "p",
+                      "competencyVersion": 1
+                    },
+                    {
+                      "competencyId": "a",
+                      "competencyVersion": 1
+                    }
+                  ]
+                }
+              ],
+              "observations": [
+                {
+                  "observationId": "o",
+                  "description": "Explain decisions with execution evidence",
+                  "goalRefs": [
+                    {
+                      "competencyId": "k",
+                      "competencyVersion": 1
+                    },
+                    {
+                      "competencyId": "p",
+                      "competencyVersion": 1
+                    },
+                    {
+                      "competencyId": "a",
+                      "competencyVersion": 1
+                    }
+                  ],
+                  "taskIds": [
+                    "t"
+                  ]
+                }
+              ],
+              "rubricCriteria": [
+                {
+                  "criterionId": "r",
+                  "description": "Reasoning supported by execution",
+                  "goalRefs": [
+                    {
+                      "competencyId": "k",
+                      "competencyVersion": 1
+                    },
+                    {
+                      "competencyId": "p",
+                      "competencyVersion": 1
+                    },
+                    {
+                      "competencyId": "a",
+                      "competencyVersion": 1
+                    }
+                  ],
+                  "observationIds": [
+                    "o"
+                  ]
+                }
+              ],
+              "milestones": [
+                {
+                  "milestoneId": "m",
+                  "title": "Review evidence",
+                  "taskIds": [
+                    "t"
+                  ]
+                }
+              ],
+              "resources": [
+                {
+                  "resourceVersionId": "7d47908e-29b3-46cc-9e2e-e4633a65d564"
+                },
+                {
+                  "resourceVersionId": "70eefb7d-aea9-4da4-b60d-47af1f98a662"
+                }
+              ],
+              "helpPolicyVersionId": "help-v1",
+              "checkRuleVersionId": "textscope-core-v1",
+              "runtimeProfileVersionId": "c17-gcc15.3.0-textscope-v1"
+            }
+          }
+        },
+        "committedAt": "2026-10-13T17:12:01.539Z",
+        "serverSeq": 3
+      }
+    },
+    "rawBody": "{\"requestId\":\"b351b14d-71e3-49f4-9fe4-8b4f41144b7e\",\"data\":{\"receiptId\":\"3b01b407-71ab-4343-858c-d4b51694dd8a\",\"commandId\":\"1b96bc88-6551-4b51-9fca-847ce90f4d47\",\"identity\":{\"actorId\":\"synthetic-i0-teacher-a\",\"command\":\"draft.create\",\"target\":\"synthetic-i0-course-a\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\"},\"idempotencyKey\":\"c-entry-20261014-blueprint\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"f850bdfed85dfc3b4ce97f8d88cabd8924d8000f6e79f01c876c56f6eb3f5992\",\"result\":{\"kind\":\"draft\",\"draft\":{\"courseId\":\"synthetic-i0-course-a\",\"blueprintId\":\"fd8aec07-fbdb-4a9c-95fd-b24d720574d9\",\"revision\":1,\"content\":{\"projectTitle\":\"Synthetic I0 TextScope\",\"problem\":\"Explore ASCII text and compare data structures\",\"audience\":\"Synthetic peers\",\"artifact\":\"C source and report\",\"studentBackground\":\"Synthetic CS course\",\"timeConstraints\":\"Synthetic acceptance window\",\"routes\":[\"array\",\"stream\"],\"goals\":[{\"competencyId\":\"k\",\"competencyVersion\":1,\"domain\":\"domain\",\"title\":\"Explain pointer and text processing\",\"core\":true},{\"competencyId\":\"p\",\"competencyVersion\":1,\"domain\":\"project\",\"title\":\"Compare implementation routes\",\"core\":true},{\"competencyId\":\"a\",\"competencyVersion\":1,\"domain\":\"ai_collaboration\",\"title\":\"Check explanations against execution\",\"core\":true}],\"tasks\":[{\"taskId\":\"t\",\"title\":\"Compare routes\",\"goalRefs\":[{\"competencyId\":\"k\",\"competencyVersion\":1},{\"competencyId\":\"p\",\"competencyVersion\":1},{\"competencyId\":\"a\",\"competencyVersion\":1}]}],\"observations\":[{\"observationId\":\"o\",\"description\":\"Explain decisions with execution evidence\",\"goalRefs\":[{\"competencyId\":\"k\",\"competencyVersion\":1},{\"competencyId\":\"p\",\"competencyVersion\":1},{\"competencyId\":\"a\",\"competencyVersion\":1}],\"taskIds\":[\"t\"]}],\"rubricCriteria\":[{\"criterionId\":\"r\",\"description\":\"Reasoning supported by execution\",\"goalRefs\":[{\"competencyId\":\"k\",\"competencyVersion\":1},{\"competencyId\":\"p\",\"competencyVersion\":1},{\"competencyId\":\"a\",\"competencyVersion\":1}],\"observationIds\":[\"o\"]}],\"milestones\":[{\"milestoneId\":\"m\",\"title\":\"Review evidence\",\"taskIds\":[\"t\"]}],\"resources\":[{\"resourceVersionId\":\"7d47908e-29b3-46cc-9e2e-e4633a65d564\"},{\"resourceVersionId\":\"70eefb7d-aea9-4da4-b60d-47af1f98a662\"}],\"helpPolicyVersionId\":\"help-v1\",\"checkRuleVersionId\":\"textscope-core-v1\",\"runtimeProfileVersionId\":\"c17-gcc15.3.0-textscope-v1\"}}},\"committedAt\":\"2026-10-13T17:12:01.539Z\",\"serverSeq\":3}}",
+    "rawBodyHash": "5a888a8d1e5d5821fd9e152d2dd3b928b67abb2589f7be2b7965417bb902923f"
+  },
+  {
+    "case": 4,
+    "method": "POST",
+    "path": "/api/blueprints/fd8aec07-fbdb-4a9c-95fd-b24d720574d9/checks",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedRevision": 1
+    },
+    "response": {
+      "requestId": "32240b76-c5ed-4a0c-8036-f2bc328ba146",
+      "data": {
+        "receiptId": "2affe2ab-6ff6-4c86-b7d9-deade3ef7d68",
+        "commandId": "176d28a4-e09a-49de-938b-399d7e4f9749",
+        "identity": {
+          "actorId": "synthetic-i0-teacher-a",
+          "command": "draft.checks",
+          "target": "fd8aec07-fbdb-4a9c-95fd-b24d720574d9",
+          "scope": {
+            "courseId": "synthetic-i0-course-a"
+          },
+          "idempotencyKey": "c-entry-20261014-blueprint-check",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "be8bdc714be1b1d3fcd054d5a634d9840ea6ef888dc99389be477bd13c111a5f",
+        "result": {
+          "kind": "checks",
+          "report": {
+            "blueprintId": "fd8aec07-fbdb-4a9c-95fd-b24d720574d9",
+            "revision": 1,
+            "blocking": [],
+            "designConcerns": [],
+            "unverified": [
+              {
+                "code": "learning_effect",
+                "path": "goals",
+                "status": "unknown"
+              },
+              {
+                "code": "workload_estimate",
+                "path": "timeConstraints",
+                "status": "unknown"
+              }
+            ]
+          }
+        },
+        "committedAt": "2026-10-13T17:12:03.003Z",
+        "serverSeq": 4
+      }
+    },
+    "rawBody": "{\"requestId\":\"32240b76-c5ed-4a0c-8036-f2bc328ba146\",\"data\":{\"receiptId\":\"2affe2ab-6ff6-4c86-b7d9-deade3ef7d68\",\"commandId\":\"176d28a4-e09a-49de-938b-399d7e4f9749\",\"identity\":{\"actorId\":\"synthetic-i0-teacher-a\",\"command\":\"draft.checks\",\"target\":\"fd8aec07-fbdb-4a9c-95fd-b24d720574d9\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\"},\"idempotencyKey\":\"c-entry-20261014-blueprint-check\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"be8bdc714be1b1d3fcd054d5a634d9840ea6ef888dc99389be477bd13c111a5f\",\"result\":{\"kind\":\"checks\",\"report\":{\"blueprintId\":\"fd8aec07-fbdb-4a9c-95fd-b24d720574d9\",\"revision\":1,\"blocking\":[],\"designConcerns\":[],\"unverified\":[{\"code\":\"learning_effect\",\"path\":\"goals\",\"status\":\"unknown\"},{\"code\":\"workload_estimate\",\"path\":\"timeConstraints\",\"status\":\"unknown\"}]}},\"committedAt\":\"2026-10-13T17:12:03.003Z\",\"serverSeq\":4}}",
+    "rawBodyHash": "be9e9a8edd603b3b4a09e068b6ad3e3aaf4814e28b2a86c0a39dcdeee0518691"
+  },
+  {
+    "case": 5,
+    "method": "POST",
+    "path": "/api/blueprints/fd8aec07-fbdb-4a9c-95fd-b24d720574d9/releases",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedRevision": 1,
+      "confirmed": true,
+      "concerns": []
+    },
+    "response": {
+      "requestId": "2d56af60-2856-4e05-8c9a-a606a039dc7c",
+      "data": {
+        "receiptId": "d3fbe756-1800-4e4b-bffb-e3aef1e18b6d",
+        "commandId": "03c98214-7152-41b3-8254-355bb0f8a502",
+        "identity": {
+          "actorId": "synthetic-i0-teacher-a",
+          "command": "activity.release",
+          "target": "fd8aec07-fbdb-4a9c-95fd-b24d720574d9",
+          "scope": {
+            "courseId": "synthetic-i0-course-a"
+          },
+          "idempotencyKey": "c-entry-20261014-release",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "fe7112723673fe4d199fb37d8f5889e7b397d557e7f604c9cd9a16a0edbd668b",
+        "result": {
+          "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "sourceRevision": 1,
+          "activityControlRevision": 1,
+          "unverified": [
+            {
+              "code": "learning_effect",
+              "path": "goals",
+              "status": "unknown"
+            },
+            {
+              "code": "workload_estimate",
+              "path": "timeConstraints",
+              "status": "unknown"
+            }
+          ],
+          "checks": {
+            "blueprintId": "fd8aec07-fbdb-4a9c-95fd-b24d720574d9",
+            "revision": 1,
+            "blocking": [],
+            "designConcerns": [],
+            "unverified": [
+              {
+                "code": "learning_effect",
+                "path": "goals",
+                "status": "unknown"
+              },
+              {
+                "code": "workload_estimate",
+                "path": "timeConstraints",
+                "status": "unknown"
+              }
+            ]
+          }
+        },
+        "committedAt": "2026-10-13T17:12:03.605Z",
+        "serverSeq": 5
+      }
+    },
+    "rawBody": "{\"requestId\":\"2d56af60-2856-4e05-8c9a-a606a039dc7c\",\"data\":{\"receiptId\":\"d3fbe756-1800-4e4b-bffb-e3aef1e18b6d\",\"commandId\":\"03c98214-7152-41b3-8254-355bb0f8a502\",\"identity\":{\"actorId\":\"synthetic-i0-teacher-a\",\"command\":\"activity.release\",\"target\":\"fd8aec07-fbdb-4a9c-95fd-b24d720574d9\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\"},\"idempotencyKey\":\"c-entry-20261014-release\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"fe7112723673fe4d199fb37d8f5889e7b397d557e7f604c9cd9a16a0edbd668b\",\"result\":{\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"sourceRevision\":1,\"activityControlRevision\":1,\"unverified\":[{\"code\":\"learning_effect\",\"path\":\"goals\",\"status\":\"unknown\"},{\"code\":\"workload_estimate\",\"path\":\"timeConstraints\",\"status\":\"unknown\"}],\"checks\":{\"blueprintId\":\"fd8aec07-fbdb-4a9c-95fd-b24d720574d9\",\"revision\":1,\"blocking\":[],\"designConcerns\":[],\"unverified\":[{\"code\":\"learning_effect\",\"path\":\"goals\",\"status\":\"unknown\"},{\"code\":\"workload_estimate\",\"path\":\"timeConstraints\",\"status\":\"unknown\"}]}},\"committedAt\":\"2026-10-13T17:12:03.605Z\",\"serverSeq\":5}}",
+    "rawBodyHash": "5e7f25f4f8f07266c014d08704885aa05b1a350ce865d1880c3e79e1635fcc50"
+  },
+  {
+    "case": 5,
+    "method": "GET",
+    "path": "/api/activities/bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+    "statusCode": 200,
+    "response": {
+      "requestId": "10e70ff7-5fa1-461a-916e-15c830e3b200",
+      "data": {
+        "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+        "courseId": "synthetic-i0-course-a",
+        "sourceRevision": 1,
+        "activityControlRevision": 1,
+        "status": "active",
+        "content": {
+          "audience": "student",
+          "content": {
+            "projectTitle": "Synthetic I0 TextScope",
+            "problem": "Explore ASCII text and compare data structures",
+            "audience": "Synthetic peers",
+            "artifact": "C source and report",
+            "studentBackground": "Synthetic CS course",
+            "timeConstraints": "Synthetic acceptance window",
+            "routes": [
+              "array",
+              "stream"
+            ],
+            "goals": [
+              {
+                "competencyId": "k",
+                "competencyVersion": 1,
+                "domain": "domain",
+                "title": "Explain pointer and text processing",
+                "core": true
+              },
+              {
+                "competencyId": "p",
+                "competencyVersion": 1,
+                "domain": "project",
+                "title": "Compare implementation routes",
+                "core": true
+              },
+              {
+                "competencyId": "a",
+                "competencyVersion": 1,
+                "domain": "ai_collaboration",
+                "title": "Check explanations against execution",
+                "core": true
+              }
+            ],
+            "tasks": [
+              {
+                "taskId": "t",
+                "title": "Compare routes",
+                "goalRefs": [
+                  {
+                    "competencyId": "k",
+                    "competencyVersion": 1
+                  },
+                  {
+                    "competencyId": "p",
+                    "competencyVersion": 1
+                  },
+                  {
+                    "competencyId": "a",
+                    "competencyVersion": 1
+                  }
+                ]
+              }
+            ],
+            "observations": [
+              {
+                "observationId": "o",
+                "description": "Explain decisions with execution evidence",
+                "goalRefs": [
+                  {
+                    "competencyId": "k",
+                    "competencyVersion": 1
+                  },
+                  {
+                    "competencyId": "p",
+                    "competencyVersion": 1
+                  },
+                  {
+                    "competencyId": "a",
+                    "competencyVersion": 1
+                  }
+                ],
+                "taskIds": [
+                  "t"
+                ]
+              }
+            ],
+            "rubricCriteria": [
+              {
+                "criterionId": "r",
+                "description": "Reasoning supported by execution",
+                "goalRefs": [
+                  {
+                    "competencyId": "k",
+                    "competencyVersion": 1
+                  },
+                  {
+                    "competencyId": "p",
+                    "competencyVersion": 1
+                  },
+                  {
+                    "competencyId": "a",
+                    "competencyVersion": 1
+                  }
+                ],
+                "observationIds": [
+                  "o"
+                ]
+              }
+            ],
+            "milestones": [
+              {
+                "milestoneId": "m",
+                "title": "Review evidence",
+                "taskIds": [
+                  "t"
+                ]
+              }
+            ],
+            "helpPolicyVersionId": "help-v1"
+          },
+          "materials": [
+            {
+              "status": "redacted"
+            },
+            {
+              "status": "redacted"
+            }
+          ]
+        },
+        "helpPolicy": {
+          "versionId": "help-v1",
+          "helpAllowed": true,
+          "wholeSolutionAllowed": false,
+          "limitedCheckHelpAllowed": false,
+          "description": "Synthetic I0 scoped help; no whole solution and no help during limited checks."
+        },
+        "runtimeProfileVersionId": "c17-gcc15.3.0-textscope-v1"
+      }
+    },
+    "rawBody": "{\"requestId\":\"10e70ff7-5fa1-461a-916e-15c830e3b200\",\"data\":{\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"courseId\":\"synthetic-i0-course-a\",\"sourceRevision\":1,\"activityControlRevision\":1,\"status\":\"active\",\"content\":{\"audience\":\"student\",\"content\":{\"projectTitle\":\"Synthetic I0 TextScope\",\"problem\":\"Explore ASCII text and compare data structures\",\"audience\":\"Synthetic peers\",\"artifact\":\"C source and report\",\"studentBackground\":\"Synthetic CS course\",\"timeConstraints\":\"Synthetic acceptance window\",\"routes\":[\"array\",\"stream\"],\"goals\":[{\"competencyId\":\"k\",\"competencyVersion\":1,\"domain\":\"domain\",\"title\":\"Explain pointer and text processing\",\"core\":true},{\"competencyId\":\"p\",\"competencyVersion\":1,\"domain\":\"project\",\"title\":\"Compare implementation routes\",\"core\":true},{\"competencyId\":\"a\",\"competencyVersion\":1,\"domain\":\"ai_collaboration\",\"title\":\"Check explanations against execution\",\"core\":true}],\"tasks\":[{\"taskId\":\"t\",\"title\":\"Compare routes\",\"goalRefs\":[{\"competencyId\":\"k\",\"competencyVersion\":1},{\"competencyId\":\"p\",\"competencyVersion\":1},{\"competencyId\":\"a\",\"competencyVersion\":1}]}],\"observations\":[{\"observationId\":\"o\",\"description\":\"Explain decisions with execution evidence\",\"goalRefs\":[{\"competencyId\":\"k\",\"competencyVersion\":1},{\"competencyId\":\"p\",\"competencyVersion\":1},{\"competencyId\":\"a\",\"competencyVersion\":1}],\"taskIds\":[\"t\"]}],\"rubricCriteria\":[{\"criterionId\":\"r\",\"description\":\"Reasoning supported by execution\",\"goalRefs\":[{\"competencyId\":\"k\",\"competencyVersion\":1},{\"competencyId\":\"p\",\"competencyVersion\":1},{\"competencyId\":\"a\",\"competencyVersion\":1}],\"observationIds\":[\"o\"]}],\"milestones\":[{\"milestoneId\":\"m\",\"title\":\"Review evidence\",\"taskIds\":[\"t\"]}],\"helpPolicyVersionId\":\"help-v1\"},\"materials\":[{\"status\":\"redacted\"},{\"status\":\"redacted\"}]},\"helpPolicy\":{\"versionId\":\"help-v1\",\"helpAllowed\":true,\"wholeSolutionAllowed\":false,\"limitedCheckHelpAllowed\":false,\"description\":\"Synthetic I0 scoped help; no whole solution and no help during limited checks.\"},\"runtimeProfileVersionId\":\"c17-gcc15.3.0-textscope-v1\"}}",
+    "rawBodyHash": "62a2925f5099a234095003fd2e510462a68a078bbff5372db694411c05ed6159"
+  },
+  {
+    "case": 6,
+    "method": "POST",
+    "path": "/api/activities/bd00fbeb-e449-4eeb-8eff-25a2862ee3fc/assignments",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedActivityControlRevision": 1,
+      "studentIds": [
+        "synthetic-i0-student-a"
+      ]
+    },
+    "response": {
+      "requestId": "31c9a50d-7fe6-4a3a-a51f-498745ac40cc",
+      "data": {
+        "receiptId": "708aafa5-1fa7-40d6-b4d0-27597fddc155",
+        "commandId": "52759b3e-0513-4b8f-86d0-12c2f438c404",
+        "identity": {
+          "actorId": "synthetic-i0-teacher-a",
+          "command": "assignment.create",
+          "target": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "scope": {
+            "courseId": "synthetic-i0-course-a"
+          },
+          "idempotencyKey": "c-entry-20261014-assign",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "c14baa17b8e122dfbb4b5b28707153ca5108d662d544b28e7b7ef1c1a35198e4",
+        "result": {
+          "assignments": [
+            {
+              "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+              "studentId": "synthetic-i0-student-a",
+              "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+              "assignmentRevision": 1,
+              "status": "active"
+            }
+          ]
+        },
+        "committedAt": "2026-10-13T17:12:05.274Z",
+        "serverSeq": 6
+      }
+    },
+    "rawBody": "{\"requestId\":\"31c9a50d-7fe6-4a3a-a51f-498745ac40cc\",\"data\":{\"receiptId\":\"708aafa5-1fa7-40d6-b4d0-27597fddc155\",\"commandId\":\"52759b3e-0513-4b8f-86d0-12c2f438c404\",\"identity\":{\"actorId\":\"synthetic-i0-teacher-a\",\"command\":\"assignment.create\",\"target\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\"},\"idempotencyKey\":\"c-entry-20261014-assign\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"c14baa17b8e122dfbb4b5b28707153ca5108d662d544b28e7b7ef1c1a35198e4\",\"result\":{\"assignments\":[{\"assignmentId\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\",\"studentId\":\"synthetic-i0-student-a\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"assignmentRevision\":1,\"status\":\"active\"}]},\"committedAt\":\"2026-10-13T17:12:05.274Z\",\"serverSeq\":6}}",
+    "rawBodyHash": "756a9c1027441623cee487aab0a5e28e7e2ce6f054d75d3e4dbaecb54b06d9fc"
+  },
+  {
+    "case": 7,
+    "method": "GET",
+    "path": "/api/assignments/1500dac1-07f8-4216-bd48-80467d1f06ed/bootstrap",
+    "statusCode": 200,
+    "response": {
+      "requestId": "785d3862-4c7f-4c47-acc7-757bd77c647b",
+      "data": {
+        "assignment": {
+          "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+          "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "studentId": "synthetic-i0-student-a",
+          "assignmentRevision": 1,
+          "active": true,
+          "status": "active",
+          "reasons": {
+            "individual": "",
+            "activity": ""
+          },
+          "activityControlRevision": 1
+        },
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+      }
+    },
+    "rawBody": "{\"requestId\":\"785d3862-4c7f-4c47-acc7-757bd77c647b\",\"data\":{\"assignment\":{\"assignmentId\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"studentId\":\"synthetic-i0-student-a\",\"assignmentRevision\":1,\"active\":true,\"status\":\"active\",\"reasons\":{\"individual\":\"\",\"activity\":\"\"},\"activityControlRevision\":1},\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"}}",
+    "rawBodyHash": "7c1f1a9aba8101e9d626213e0c4c75ae017371255370838373693a1e4e356608"
+  },
+  {
+    "case": 7,
+    "method": "GET",
+    "path": "/api/assignments/1500dac1-07f8-4216-bd48-80467d1f06ed/bootstrap",
+    "statusCode": 401,
+    "response": {
+      "requestId": "43d098fb-78a0-4d6a-98c1-736a7cfaf0d5",
+      "error": {
+        "code": "UNAUTHENTICATED",
+        "message": "Authentication required.",
+        "retryable": false,
+        "recovery": "Sign in using a valid account."
+      }
+    },
+    "rawBody": "{\"requestId\":\"43d098fb-78a0-4d6a-98c1-736a7cfaf0d5\",\"error\":{\"code\":\"UNAUTHENTICATED\",\"message\":\"Authentication required.\",\"retryable\":false,\"recovery\":\"Sign in using a valid account.\"}}",
+    "rawBodyHash": "d793646e6d85a68b5d1a1b81dbfa0c76cf7ca943b23e765cb8f38b555833ec1d"
+  },
+  {
+    "case": 7,
+    "method": "GET",
+    "path": "/api/assignments/1500dac1-07f8-4216-bd48-80467d1f06ed/bootstrap",
+    "statusCode": 403,
+    "response": {
+      "requestId": "16398741-378c-4014-b933-c190add231af",
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "Access denied.",
+        "retryable": false,
+        "recovery": "Use an account authorized for this resource."
+      }
+    },
+    "rawBody": "{\"requestId\":\"16398741-378c-4014-b933-c190add231af\",\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied.\",\"retryable\":false,\"recovery\":\"Use an account authorized for this resource.\"}}",
+    "rawBodyHash": "04f05e2668b71d91ca7fae1e76c11a06299b1e71b92a26a7b09ddce2f5463c78"
+  },
+  {
+    "case": 7,
+    "method": "GET",
+    "path": "/api/assignments/1500dac1-07f8-4216-bd48-80467d1f06ed/bootstrap",
+    "statusCode": 403,
+    "response": {
+      "requestId": "c2e691fd-719f-43d3-8ae8-72e145daa1d0",
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "Access denied.",
+        "retryable": false,
+        "recovery": "Use an account authorized for this resource."
+      }
+    },
+    "rawBody": "{\"requestId\":\"c2e691fd-719f-43d3-8ae8-72e145daa1d0\",\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied.\",\"retryable\":false,\"recovery\":\"Use an account authorized for this resource.\"}}",
+    "rawBodyHash": "bd71552acb34b5dd692d46f6703c5345e40bdfafe758609e03bedce7a64baa46"
+  },
+  {
+    "case": 8,
+    "method": "POST",
+    "path": "/api/assignments/1500dac1-07f8-4216-bd48-80467d1f06ed/attempts",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+    },
+    "response": {
+      "requestId": "1a278ab0-334a-455b-ae85-f561c0f3fd38",
+      "data": {
+        "receiptId": "d51905f1-8dd0-4c62-a6c1-58395f7fa71e",
+        "commandId": "d266183b-c2e4-487a-98cd-56a7f07682d6",
+        "identity": {
+          "actorId": "synthetic-i0-student-a",
+          "command": "attempt.create",
+          "target": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+          "scope": {
+            "courseId": "synthetic-i0-course-a",
+            "studentId": "synthetic-i0-student-a"
+          },
+          "idempotencyKey": "c-entry-20261014-attempt",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "f332679f8574c3a1657a908035ae1ebe4bb46b513f2cce3994d438e85512b3d8",
+        "result": {
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+          "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed"
+        },
+        "committedAt": "2026-10-13T17:12:05.345Z",
+        "serverSeq": 7
+      }
+    },
+    "rawBody": "{\"requestId\":\"1a278ab0-334a-455b-ae85-f561c0f3fd38\",\"data\":{\"receiptId\":\"d51905f1-8dd0-4c62-a6c1-58395f7fa71e\",\"commandId\":\"d266183b-c2e4-487a-98cd-56a7f07682d6\",\"identity\":{\"actorId\":\"synthetic-i0-student-a\",\"command\":\"attempt.create\",\"target\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\"},\"idempotencyKey\":\"c-entry-20261014-attempt\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"f332679f8574c3a1657a908035ae1ebe4bb46b513f2cce3994d438e85512b3d8\",\"result\":{\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"assignmentId\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\"},\"committedAt\":\"2026-10-13T17:12:05.345Z\",\"serverSeq\":7}}",
+    "rawBodyHash": "82a4abc76b00736ee98f0c197436a41f0aba2cc2ac73922dc12ab5a4240c0211"
+  },
+  {
+    "case": 8,
+    "method": "GET",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+    "statusCode": 200,
+    "response": {
+      "requestId": "1850c9c6-ccd3-4425-bb74-c4c167267377",
+      "data": {
+        "attempt": {
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+          "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "status": "ready",
+          "attemptRevision": 1,
+          "workspaceRevision": 0,
+          "decisionEpoch": 0,
+          "captureRevision": 0,
+          "collecting": true,
+          "reminders": false
+        },
+        "files": [],
+        "snapshots": [],
+        "jobs": [],
+        "runs": [],
+        "checks": [],
+        "submissions": [],
+        "reopen": {
+          "state": "none",
+          "actionable": false
+        }
+      }
+    },
+    "rawBody": "{\"requestId\":\"1850c9c6-ccd3-4425-bb74-c4c167267377\",\"data\":{\"attempt\":{\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"assignmentId\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"status\":\"ready\",\"attemptRevision\":1,\"workspaceRevision\":0,\"decisionEpoch\":0,\"captureRevision\":0,\"collecting\":true,\"reminders\":false},\"files\":[],\"snapshots\":[],\"jobs\":[],\"runs\":[],\"checks\":[],\"submissions\":[],\"reopen\":{\"state\":\"none\",\"actionable\":false}}}",
+    "rawBodyHash": "e9f26046445342778a37387097706281e77d1feb1d5089f8215e7824b5703f0a"
+  },
+  {
+    "case": 9,
+    "method": "POST",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedWorkspaceRevision": 0,
+      "clientId": "c-entry-live-page",
+      "clientSeq": 1,
+      "operations": [
+        {
+          "kind": "create",
+          "clientFileKey": "source",
+          "path": "main.c",
+          "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n"
+        },
+        {
+          "kind": "create",
+          "clientFileKey": "input",
+          "path": "input.txt",
+          "text": "Alpha beta\n"
+        }
+      ]
+    },
+    "response": {
+      "requestId": "8d54663d-1901-478f-ae0d-8f47efa66b60",
+      "data": {
+        "receiptId": "e007f632-c4f4-4482-b440-b679d84fe89d",
+        "commandId": "1945ac80-1ec5-433b-a232-8f5219624a56",
+        "identity": {
+          "actorId": "synthetic-i0-student-a",
+          "command": "workspace.sync",
+          "target": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync",
+          "scope": {
+            "courseId": "synthetic-i0-course-a",
+            "studentId": "synthetic-i0-student-a",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+          },
+          "idempotencyKey": "c-entry-20261014-sync-first",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+          "sync": {
+            "clientId": "c-entry-live-page",
+            "clientSeq": 1
+          }
+        },
+        "requestHash": "730bf31ead9d7ccb31fd097add460945c7e035e5ccd312c4b08f7ed26157bb6f",
+        "result": {
+          "workspaceRevision": 1,
+          "files": [
+            {
+              "fileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+              "path": "main.c",
+              "documentVersion": 1,
+              "contentHash": "bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac",
+              "lifecycle": "active"
+            },
+            {
+              "fileId": "b3ba56cc-628d-47c4-95d7-12f237a5b871",
+              "path": "input.txt",
+              "documentVersion": 1,
+              "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+              "lifecycle": "active"
+            }
+          ],
+          "created": {
+            "source": "5bc833c5-40a6-4b42-8961-cc233e509985",
+            "input": "b3ba56cc-628d-47c4-95d7-12f237a5b871"
+          },
+          "process": {
+            "status": "not_collected",
+            "reason": "not_requested"
+          }
+        },
+        "committedAt": "2026-10-13T17:12:05.388Z",
+        "serverSeq": 8,
+        "replayed": false
+      }
+    },
+    "rawBody": "{\"requestId\":\"8d54663d-1901-478f-ae0d-8f47efa66b60\",\"data\":{\"receiptId\":\"e007f632-c4f4-4482-b440-b679d84fe89d\",\"commandId\":\"1945ac80-1ec5-433b-a232-8f5219624a56\",\"identity\":{\"actorId\":\"synthetic-i0-student-a\",\"command\":\"workspace.sync\",\"target\":\"/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"idempotencyKey\":\"c-entry-20261014-sync-first\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"sync\":{\"clientId\":\"c-entry-live-page\",\"clientSeq\":1}},\"requestHash\":\"730bf31ead9d7ccb31fd097add460945c7e035e5ccd312c4b08f7ed26157bb6f\",\"result\":{\"workspaceRevision\":1,\"files\":[{\"fileId\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"path\":\"main.c\",\"documentVersion\":1,\"contentHash\":\"bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac\",\"lifecycle\":\"active\"},{\"fileId\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\",\"path\":\"input.txt\",\"documentVersion\":1,\"contentHash\":\"f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de\",\"lifecycle\":\"active\"}],\"created\":{\"source\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"input\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\"},\"process\":{\"status\":\"not_collected\",\"reason\":\"not_requested\"}},\"committedAt\":\"2026-10-13T17:12:05.388Z\",\"serverSeq\":8,\"replayed\":false}}",
+    "rawBodyHash": "e08115b4bd9b3f3d89c98546a311953d79100da5b4f24c1b51caba58addac3e9"
+  },
+  {
+    "case": 9,
+    "method": "POST",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedWorkspaceRevision": 0,
+      "clientId": "c-entry-live-page",
+      "clientSeq": 1,
+      "operations": [
+        {
+          "kind": "create",
+          "clientFileKey": "source",
+          "path": "main.c",
+          "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n"
+        },
+        {
+          "kind": "create",
+          "clientFileKey": "input",
+          "path": "input.txt",
+          "text": "Alpha beta\n"
+        }
+      ]
+    },
+    "response": {
+      "requestId": "d2d0c9ec-cf7a-4117-9dff-5db57c404fcf",
+      "data": {
+        "receiptId": "e007f632-c4f4-4482-b440-b679d84fe89d",
+        "commandId": "1945ac80-1ec5-433b-a232-8f5219624a56",
+        "identity": {
+          "actorId": "synthetic-i0-student-a",
+          "command": "workspace.sync",
+          "target": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync",
+          "scope": {
+            "courseId": "synthetic-i0-course-a",
+            "studentId": "synthetic-i0-student-a",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+          },
+          "idempotencyKey": "c-entry-20261014-sync-first",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+          "sync": {
+            "clientId": "c-entry-live-page",
+            "clientSeq": 1
+          }
+        },
+        "requestHash": "730bf31ead9d7ccb31fd097add460945c7e035e5ccd312c4b08f7ed26157bb6f",
+        "result": {
+          "workspaceRevision": 1,
+          "files": [
+            {
+              "fileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+              "path": "main.c",
+              "documentVersion": 1,
+              "contentHash": "bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac",
+              "lifecycle": "active"
+            },
+            {
+              "fileId": "b3ba56cc-628d-47c4-95d7-12f237a5b871",
+              "path": "input.txt",
+              "documentVersion": 1,
+              "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+              "lifecycle": "active"
+            }
+          ],
+          "created": {
+            "source": "5bc833c5-40a6-4b42-8961-cc233e509985",
+            "input": "b3ba56cc-628d-47c4-95d7-12f237a5b871"
+          },
+          "process": {
+            "status": "not_collected",
+            "reason": "not_requested"
+          }
+        },
+        "serverSeq": 8,
+        "committedAt": "2026-10-13T17:12:05.388Z",
+        "replayed": true
+      }
+    },
+    "rawBody": "{\"requestId\":\"d2d0c9ec-cf7a-4117-9dff-5db57c404fcf\",\"data\":{\"receiptId\":\"e007f632-c4f4-4482-b440-b679d84fe89d\",\"commandId\":\"1945ac80-1ec5-433b-a232-8f5219624a56\",\"identity\":{\"actorId\":\"synthetic-i0-student-a\",\"command\":\"workspace.sync\",\"target\":\"/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"idempotencyKey\":\"c-entry-20261014-sync-first\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"sync\":{\"clientId\":\"c-entry-live-page\",\"clientSeq\":1}},\"requestHash\":\"730bf31ead9d7ccb31fd097add460945c7e035e5ccd312c4b08f7ed26157bb6f\",\"result\":{\"workspaceRevision\":1,\"files\":[{\"fileId\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"path\":\"main.c\",\"documentVersion\":1,\"contentHash\":\"bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac\",\"lifecycle\":\"active\"},{\"fileId\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\",\"path\":\"input.txt\",\"documentVersion\":1,\"contentHash\":\"f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de\",\"lifecycle\":\"active\"}],\"created\":{\"source\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"input\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\"},\"process\":{\"status\":\"not_collected\",\"reason\":\"not_requested\"}},\"serverSeq\":8,\"committedAt\":\"2026-10-13T17:12:05.388Z\",\"replayed\":true}}",
+    "rawBodyHash": "6a763f527a14b5ba557e9794cde1e3d7a88d4e6d26a31b7efae605b390a549e7"
+  },
+  {
+    "case": 9,
+    "method": "POST",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync",
+    "statusCode": 409,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedWorkspaceRevision": 0,
+      "clientId": "c-entry-live-page",
+      "clientSeq": 2,
+      "operations": [
+        {
+          "kind": "create",
+          "clientFileKey": "source",
+          "path": "main.c",
+          "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n"
+        },
+        {
+          "kind": "create",
+          "clientFileKey": "input",
+          "path": "input.txt",
+          "text": "Alpha beta\n"
+        }
+      ]
+    },
+    "response": {
+      "requestId": "6d6f112b-a39c-45cb-b1fa-a95676846796",
+      "error": {
+        "code": "IDEMPOTENCY_CONFLICT",
+        "message": "Request key conflict.",
+        "retryable": false,
+        "recovery": "Do not reuse a request key with different input."
+      }
+    },
+    "rawBody": "{\"requestId\":\"6d6f112b-a39c-45cb-b1fa-a95676846796\",\"error\":{\"code\":\"IDEMPOTENCY_CONFLICT\",\"message\":\"Request key conflict.\",\"retryable\":false,\"recovery\":\"Do not reuse a request key with different input.\"}}",
+    "rawBodyHash": "9fcb6e2b059ea110b585650290cf97c14d7b7885fdd66f36f9995f41d2a35c48"
+  },
+  {
+    "case": 9,
+    "method": "POST",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/sync",
+    "statusCode": 409,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedWorkspaceRevision": 0,
+      "clientId": "c-entry-live-page",
+      "clientSeq": 2,
+      "operations": [
+        {
+          "kind": "create",
+          "clientFileKey": "source",
+          "path": "main.c",
+          "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n"
+        },
+        {
+          "kind": "create",
+          "clientFileKey": "input",
+          "path": "input.txt",
+          "text": "Alpha beta\n"
+        }
+      ]
+    },
+    "response": {
+      "requestId": "d1134447-ba10-48c5-873f-65425ae59556",
+      "error": {
+        "code": "VERSION_CONFLICT",
+        "message": "Version conflict.",
+        "retryable": false,
+        "recovery": "Read the current authorized version before retrying."
+      }
+    },
+    "rawBody": "{\"requestId\":\"d1134447-ba10-48c5-873f-65425ae59556\",\"error\":{\"code\":\"VERSION_CONFLICT\",\"message\":\"Version conflict.\",\"retryable\":false,\"recovery\":\"Read the current authorized version before retrying.\"}}",
+    "rawBodyHash": "616fe31a00d071016e5450072f2ecf5b53d6d14ef46fd41ebf6eb0b2012fae41"
+  },
+  {
+    "case": 10,
+    "method": "GET",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+    "statusCode": 200,
+    "response": {
+      "requestId": "4e4f0ce2-e842-4fa8-8e90-c426319a649d",
+      "data": {
+        "attempt": {
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+          "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "status": "active",
+          "attemptRevision": 2,
+          "workspaceRevision": 1,
+          "decisionEpoch": 0,
+          "captureRevision": 0,
+          "collecting": true,
+          "reminders": false
+        },
+        "files": [
+          {
+            "fileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+            "path": "main.c",
+            "documentVersion": 1,
+            "contentHash": "bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac",
+            "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n",
+            "lifecycle": "active"
+          },
+          {
+            "fileId": "b3ba56cc-628d-47c4-95d7-12f237a5b871",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+            "path": "input.txt",
+            "documentVersion": 1,
+            "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+            "text": "Alpha beta\n",
+            "lifecycle": "active"
+          }
+        ],
+        "snapshots": [],
+        "jobs": [],
+        "runs": [],
+        "checks": [],
+        "submissions": [],
+        "reopen": {
+          "state": "none",
+          "actionable": false
+        }
+      }
+    },
+    "rawBody": "{\"requestId\":\"4e4f0ce2-e842-4fa8-8e90-c426319a649d\",\"data\":{\"attempt\":{\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"assignmentId\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"status\":\"active\",\"attemptRevision\":2,\"workspaceRevision\":1,\"decisionEpoch\":0,\"captureRevision\":0,\"collecting\":true,\"reminders\":false},\"files\":[{\"fileId\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"path\":\"main.c\",\"documentVersion\":1,\"contentHash\":\"bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac\",\"text\":\"#include <stdio.h>\\nint main(void){puts(\\\"old snapshot\\\");}\\n\",\"lifecycle\":\"active\"},{\"fileId\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"path\":\"input.txt\",\"documentVersion\":1,\"contentHash\":\"f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de\",\"text\":\"Alpha beta\\n\",\"lifecycle\":\"active\"}],\"snapshots\":[],\"jobs\":[],\"runs\":[],\"checks\":[],\"submissions\":[],\"reopen\":{\"state\":\"none\",\"actionable\":false}}}",
+    "rawBodyHash": "28394f3fb5f67ab90310976fb8b87950c8ae04dcdc562017e2f3efe33a8cf650"
+  },
+  {
+    "case": 11,
+    "method": "GET",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+    "statusCode": 200,
+    "response": {
+      "requestId": "12cf026f-54e6-4dc2-9cb7-1ca5c14466d9",
+      "data": {
+        "attempt": {
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+          "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "status": "active",
+          "attemptRevision": 2,
+          "workspaceRevision": 1,
+          "decisionEpoch": 0,
+          "captureRevision": 0,
+          "collecting": true,
+          "reminders": false
+        },
+        "files": [
+          {
+            "fileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+            "path": "main.c",
+            "documentVersion": 1,
+            "contentHash": "bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac",
+            "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n",
+            "lifecycle": "active"
+          },
+          {
+            "fileId": "b3ba56cc-628d-47c4-95d7-12f237a5b871",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+            "path": "input.txt",
+            "documentVersion": 1,
+            "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+            "text": "Alpha beta\n",
+            "lifecycle": "active"
+          }
+        ],
+        "snapshots": [],
+        "jobs": [],
+        "runs": [],
+        "checks": [],
+        "submissions": [],
+        "reopen": {
+          "state": "none",
+          "actionable": false
+        }
+      }
+    },
+    "rawBody": "{\"requestId\":\"12cf026f-54e6-4dc2-9cb7-1ca5c14466d9\",\"data\":{\"attempt\":{\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"assignmentId\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"status\":\"active\",\"attemptRevision\":2,\"workspaceRevision\":1,\"decisionEpoch\":0,\"captureRevision\":0,\"collecting\":true,\"reminders\":false},\"files\":[{\"fileId\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"path\":\"main.c\",\"documentVersion\":1,\"contentHash\":\"bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac\",\"text\":\"#include <stdio.h>\\nint main(void){puts(\\\"old snapshot\\\");}\\n\",\"lifecycle\":\"active\"},{\"fileId\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"path\":\"input.txt\",\"documentVersion\":1,\"contentHash\":\"f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de\",\"text\":\"Alpha beta\\n\",\"lifecycle\":\"active\"}],\"snapshots\":[],\"jobs\":[],\"runs\":[],\"checks\":[],\"submissions\":[],\"reopen\":{\"state\":\"none\",\"actionable\":false}}}",
+    "rawBodyHash": "04ea7a09109f40761cf45d129e8294e63b22ee8b99ae345e9290c3e61e09561d"
+  },
+  {
+    "case": 11,
+    "method": "POST",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/snapshots",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedWorkspaceRevision": 1
+    },
+    "response": {
+      "requestId": "3697ef3c-7e79-4218-a31a-06872e4948da",
+      "data": {
+        "receiptId": "e3813ec3-ef26-4091-9b2e-1a95342a2439",
+        "commandId": "f10b70f1-44b5-4752-b72a-8c619bfc35b5",
+        "identity": {
+          "actorId": "synthetic-i0-student-a",
+          "command": "snapshot.create",
+          "target": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/snapshots",
+          "scope": {
+            "courseId": "synthetic-i0-course-a",
+            "studentId": "synthetic-i0-student-a",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+          },
+          "idempotencyKey": "c-entry-20261014-snapshot-old",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "1e510c72ed95e9b0385ffbaad6ad1a5d6365f6d0d6d750630421b47429992aa8",
+        "result": {
+          "snapshotId": "4a770ff2-bbce-43e3-9781-c4e43ab8524c",
+          "snapshotHash": "916e59bfb2a574671220858ba35ab9cedba3af3ad6536df91e31bfdf82a1ff46",
+          "workspaceRevision": 1
+        },
+        "committedAt": "2026-10-13T17:12:05.473Z",
+        "serverSeq": 9,
+        "replayed": false
+      }
+    },
+    "rawBody": "{\"requestId\":\"3697ef3c-7e79-4218-a31a-06872e4948da\",\"data\":{\"receiptId\":\"e3813ec3-ef26-4091-9b2e-1a95342a2439\",\"commandId\":\"f10b70f1-44b5-4752-b72a-8c619bfc35b5\",\"identity\":{\"actorId\":\"synthetic-i0-student-a\",\"command\":\"snapshot.create\",\"target\":\"/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/snapshots\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"idempotencyKey\":\"c-entry-20261014-snapshot-old\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"1e510c72ed95e9b0385ffbaad6ad1a5d6365f6d0d6d750630421b47429992aa8\",\"result\":{\"snapshotId\":\"4a770ff2-bbce-43e3-9781-c4e43ab8524c\",\"snapshotHash\":\"916e59bfb2a574671220858ba35ab9cedba3af3ad6536df91e31bfdf82a1ff46\",\"workspaceRevision\":1},\"committedAt\":\"2026-10-13T17:12:05.473Z\",\"serverSeq\":9,\"replayed\":false}}",
+    "rawBodyHash": "be23bf493bb6dfcc0233b6d1b5efa3fff6e8919d496ffdd4f8b88ff15b4008df"
+  },
+  {
+    "case": 11,
+    "method": "GET",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/snapshots/4a770ff2-bbce-43e3-9781-c4e43ab8524c",
+    "statusCode": 200,
+    "response": {
+      "requestId": "61b6e0dc-7e87-44f9-b779-7863393d5578",
+      "data": {
+        "snapshotId": "4a770ff2-bbce-43e3-9781-c4e43ab8524c",
+        "hashFormat": "sha256-manifest-v1",
+        "hash": "916e59bfb2a574671220858ba35ab9cedba3af3ad6536df91e31bfdf82a1ff46",
+        "files": [
+          {
+            "fileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+            "path": "main.c",
+            "documentVersion": 1,
+            "contentHash": "bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac",
+            "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n"
+          },
+          {
+            "fileId": "b3ba56cc-628d-47c4-95d7-12f237a5b871",
+            "path": "input.txt",
+            "documentVersion": 1,
+            "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+            "text": "Alpha beta\n"
+          }
+        ],
+        "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+        "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+        "workspaceRevision": 1,
+        "createdAt": "2026-10-13T17:12:05.473Z"
+      }
+    },
+    "rawBody": "{\"requestId\":\"61b6e0dc-7e87-44f9-b779-7863393d5578\",\"data\":{\"snapshotId\":\"4a770ff2-bbce-43e3-9781-c4e43ab8524c\",\"hashFormat\":\"sha256-manifest-v1\",\"hash\":\"916e59bfb2a574671220858ba35ab9cedba3af3ad6536df91e31bfdf82a1ff46\",\"files\":[{\"fileId\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"path\":\"main.c\",\"documentVersion\":1,\"contentHash\":\"bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac\",\"text\":\"#include <stdio.h>\\nint main(void){puts(\\\"old snapshot\\\");}\\n\"},{\"fileId\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\",\"path\":\"input.txt\",\"documentVersion\":1,\"contentHash\":\"f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de\",\"text\":\"Alpha beta\\n\"}],\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"workspaceRevision\":1,\"createdAt\":\"2026-10-13T17:12:05.473Z\"}}",
+    "rawBodyHash": "005ed2dd0a338fe825391dac40985e0c5ec579bfcfb5e86ae2d0a7d9987d524e"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+    "statusCode": 200,
+    "response": {
+      "requestId": "5f78559e-cdbe-460d-8494-729150979fba",
+      "data": {
+        "attempt": {
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+          "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+          "status": "active",
+          "attemptRevision": 2,
+          "workspaceRevision": 1,
+          "decisionEpoch": 0,
+          "captureRevision": 0,
+          "collecting": true,
+          "reminders": false
+        },
+        "files": [
+          {
+            "fileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+            "path": "main.c",
+            "documentVersion": 1,
+            "contentHash": "bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac",
+            "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n",
+            "lifecycle": "active"
+          },
+          {
+            "fileId": "b3ba56cc-628d-47c4-95d7-12f237a5b871",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+            "path": "input.txt",
+            "documentVersion": 1,
+            "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+            "text": "Alpha beta\n",
+            "lifecycle": "active"
+          }
+        ],
+        "snapshots": [
+          {
+            "snapshotId": "4a770ff2-bbce-43e3-9781-c4e43ab8524c",
+            "hashFormat": "sha256-manifest-v1",
+            "hash": "916e59bfb2a574671220858ba35ab9cedba3af3ad6536df91e31bfdf82a1ff46",
+            "files": [
+              {
+                "fileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+                "path": "main.c",
+                "documentVersion": 1,
+                "contentHash": "bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac",
+                "text": "#include <stdio.h>\nint main(void){puts(\"old snapshot\");}\n"
+              },
+              {
+                "fileId": "b3ba56cc-628d-47c4-95d7-12f237a5b871",
+                "path": "input.txt",
+                "documentVersion": 1,
+                "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+                "text": "Alpha beta\n"
+              }
+            ],
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+            "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+            "workspaceRevision": 1,
+            "createdAt": "2026-10-13T17:12:05.473Z"
+          }
+        ],
+        "jobs": [],
+        "runs": [],
+        "checks": [],
+        "submissions": [],
+        "reopen": {
+          "state": "none",
+          "actionable": false
+        }
+      }
+    },
+    "rawBody": "{\"requestId\":\"5f78559e-cdbe-460d-8494-729150979fba\",\"data\":{\"attempt\":{\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"assignmentId\":\"1500dac1-07f8-4216-bd48-80467d1f06ed\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"status\":\"active\",\"attemptRevision\":2,\"workspaceRevision\":1,\"decisionEpoch\":0,\"captureRevision\":0,\"collecting\":true,\"reminders\":false},\"files\":[{\"fileId\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"path\":\"main.c\",\"documentVersion\":1,\"contentHash\":\"bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac\",\"text\":\"#include <stdio.h>\\nint main(void){puts(\\\"old snapshot\\\");}\\n\",\"lifecycle\":\"active\"},{\"fileId\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"path\":\"input.txt\",\"documentVersion\":1,\"contentHash\":\"f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de\",\"text\":\"Alpha beta\\n\",\"lifecycle\":\"active\"}],\"snapshots\":[{\"snapshotId\":\"4a770ff2-bbce-43e3-9781-c4e43ab8524c\",\"hashFormat\":\"sha256-manifest-v1\",\"hash\":\"916e59bfb2a574671220858ba35ab9cedba3af3ad6536df91e31bfdf82a1ff46\",\"files\":[{\"fileId\":\"5bc833c5-40a6-4b42-8961-cc233e509985\",\"path\":\"main.c\",\"documentVersion\":1,\"contentHash\":\"bc2e7f310859297345adce1ff52d0b00fc59b0a54cc37808b96b1c8d48d9e3ac\",\"text\":\"#include <stdio.h>\\nint main(void){puts(\\\"old snapshot\\\");}\\n\"},{\"fileId\":\"b3ba56cc-628d-47c4-95d7-12f237a5b871\",\"path\":\"input.txt\",\"documentVersion\":1,\"contentHash\":\"f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de\",\"text\":\"Alpha beta\\n\"}],\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\",\"activityVersionId\":\"bd00fbeb-e449-4eeb-8eff-25a2862ee3fc\",\"workspaceRevision\":1,\"createdAt\":\"2026-10-13T17:12:05.473Z\"}],\"jobs\":[],\"runs\":[],\"checks\":[],\"submissions\":[],\"reopen\":{\"state\":\"none\",\"actionable\":false}}}",
+    "rawBodyHash": "97c795ba222246c630014b4fa7170e58544ef701d76594f7e61897c8dcfbd07d"
+  },
+  {
+    "case": 12,
+    "method": "POST",
+    "path": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/runs",
+    "statusCode": 200,
+    "request": {
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "expectedAttemptRevision": 2,
+      "snapshotId": "4a770ff2-bbce-43e3-9781-c4e43ab8524c",
+      "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+      "entryFileId": "5bc833c5-40a6-4b42-8961-cc233e509985",
+      "input": {
+        "operation": "stats",
+        "fileIds": [
+          "b3ba56cc-628d-47c4-95d7-12f237a5b871"
+        ]
+      },
+      "mode": "run"
+    },
+    "response": {
+      "requestId": "27f80c75-0037-472a-a09d-b33167082f7c",
+      "data": {
+        "receiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "commandId": "1d26519c-de20-40f6-87e3-7c49d88eed5f",
+        "identity": {
+          "actorId": "synthetic-i0-student-a",
+          "command": "run.create",
+          "target": "/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/runs",
+          "scope": {
+            "courseId": "synthetic-i0-course-a",
+            "studentId": "synthetic-i0-student-a",
+            "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+          },
+          "idempotencyKey": "c-entry-20261014-run-old",
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+        },
+        "requestHash": "7e8d4ea4a7b8ebedeb4785f6b26deed8a6dc8c3e4a82002265935551d70db00f",
+        "result": {
+          "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37",
+          "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+          "snapshotId": "4a770ff2-bbce-43e3-9781-c4e43ab8524c"
+        },
+        "committedAt": "2026-10-13T17:12:06.062Z",
+        "serverSeq": 10,
+        "replayed": false
+      }
+    },
+    "rawBody": "{\"requestId\":\"27f80c75-0037-472a-a09d-b33167082f7c\",\"data\":{\"receiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"commandId\":\"1d26519c-de20-40f6-87e3-7c49d88eed5f\",\"identity\":{\"actorId\":\"synthetic-i0-student-a\",\"command\":\"run.create\",\"target\":\"/api/attempts/74a2710d-d43f-41ee-be9e-0fcad296e3ce/runs\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"idempotencyKey\":\"c-entry-20261014-run-old\",\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\"},\"requestHash\":\"7e8d4ea4a7b8ebedeb4785f6b26deed8a6dc8c3e4a82002265935551d70db00f\",\"result\":{\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\",\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"snapshotId\":\"4a770ff2-bbce-43e3-9781-c4e43ab8524c\"},\"committedAt\":\"2026-10-13T17:12:06.062Z\",\"serverSeq\":10,\"replayed\":false}}",
+    "rawBodyHash": "3f1c802c3f919e3fe4f51c49e67de46507f650cda4fe239637612794c9427973"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/jobs/0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "statusCode": 200,
+    "response": {
+      "requestId": "6d610607-08b4-4448-bc04-ebe9cd0785af",
+      "data": {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "kind": "run",
+        "purpose": "student_run",
+        "scope": {
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+        },
+        "requestReceiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "status": "queued",
+        "stopRequested": false,
+        "expectedRevision": 2,
+        "decisionEpoch": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "acceptedAt": "2026-10-13T17:12:06.062Z",
+        "deadline": "2026-10-13T17:14:06.063Z",
+        "attemptCount": 0,
+        "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37"
+      }
+    },
+    "rawBody": "{\"requestId\":\"6d610607-08b4-4448-bc04-ebe9cd0785af\",\"data\":{\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"kind\":\"run\",\"purpose\":\"student_run\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"requestReceiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"status\":\"queued\",\"stopRequested\":false,\"expectedRevision\":2,\"decisionEpoch\":0,\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"acceptedAt\":\"2026-10-13T17:12:06.062Z\",\"deadline\":\"2026-10-13T17:14:06.063Z\",\"attemptCount\":0,\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\"}}",
+    "rawBodyHash": "49c30c62bfc85fc6985c5f964e4fe9fd75f26b1d715aa545af35491baefed740"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/jobs/0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "statusCode": 200,
+    "response": {
+      "requestId": "f3ea1711-0d71-4a61-a67c-e3d7f5cd80b7",
+      "data": {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "kind": "run",
+        "purpose": "student_run",
+        "scope": {
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+        },
+        "requestReceiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "status": "running",
+        "stopRequested": false,
+        "expectedRevision": 2,
+        "decisionEpoch": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "acceptedAt": "2026-10-13T17:12:06.062Z",
+        "deadline": "2026-10-13T17:14:06.063Z",
+        "attemptCount": 0,
+        "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37"
+      }
+    },
+    "rawBody": "{\"requestId\":\"f3ea1711-0d71-4a61-a67c-e3d7f5cd80b7\",\"data\":{\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"kind\":\"run\",\"purpose\":\"student_run\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"requestReceiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"status\":\"running\",\"stopRequested\":false,\"expectedRevision\":2,\"decisionEpoch\":0,\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"acceptedAt\":\"2026-10-13T17:12:06.062Z\",\"deadline\":\"2026-10-13T17:14:06.063Z\",\"attemptCount\":0,\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\"}}",
+    "rawBodyHash": "a24759fd7a5277bc3f17b575d74357422e5997951fde4087a43be10f33e6073f"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/jobs/0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "statusCode": 200,
+    "response": {
+      "requestId": "d41d8abd-7048-48dd-9dc8-410bb8d5500e",
+      "data": {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "kind": "run",
+        "purpose": "student_run",
+        "scope": {
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+        },
+        "requestReceiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "status": "running",
+        "stopRequested": false,
+        "expectedRevision": 2,
+        "decisionEpoch": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "acceptedAt": "2026-10-13T17:12:06.062Z",
+        "deadline": "2026-10-13T17:14:06.063Z",
+        "attemptCount": 0,
+        "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37"
+      }
+    },
+    "rawBody": "{\"requestId\":\"d41d8abd-7048-48dd-9dc8-410bb8d5500e\",\"data\":{\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"kind\":\"run\",\"purpose\":\"student_run\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"requestReceiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"status\":\"running\",\"stopRequested\":false,\"expectedRevision\":2,\"decisionEpoch\":0,\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"acceptedAt\":\"2026-10-13T17:12:06.062Z\",\"deadline\":\"2026-10-13T17:14:06.063Z\",\"attemptCount\":0,\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\"}}",
+    "rawBodyHash": "d61d8521d5cb2987f8d29479739862f2d4d2f13404b851fbe0e5c1448c7f3000"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/jobs/0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "statusCode": 200,
+    "response": {
+      "requestId": "15d443ea-1364-45bf-b08f-2d53125b7ea8",
+      "data": {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "kind": "run",
+        "purpose": "student_run",
+        "scope": {
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+        },
+        "requestReceiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "status": "running",
+        "stopRequested": false,
+        "expectedRevision": 2,
+        "decisionEpoch": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "acceptedAt": "2026-10-13T17:12:06.062Z",
+        "deadline": "2026-10-13T17:14:06.063Z",
+        "attemptCount": 0,
+        "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37"
+      }
+    },
+    "rawBody": "{\"requestId\":\"15d443ea-1364-45bf-b08f-2d53125b7ea8\",\"data\":{\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"kind\":\"run\",\"purpose\":\"student_run\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"requestReceiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"status\":\"running\",\"stopRequested\":false,\"expectedRevision\":2,\"decisionEpoch\":0,\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"acceptedAt\":\"2026-10-13T17:12:06.062Z\",\"deadline\":\"2026-10-13T17:14:06.063Z\",\"attemptCount\":0,\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\"}}",
+    "rawBodyHash": "c286fedb8c243c1808ac490319883a86e1059d8e5ec6ac1c35e7641ae086ae85"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/jobs/0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "statusCode": 200,
+    "response": {
+      "requestId": "456944e2-5362-40cc-a308-999ed5287545",
+      "data": {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "kind": "run",
+        "purpose": "student_run",
+        "scope": {
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+        },
+        "requestReceiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "status": "running",
+        "stopRequested": false,
+        "expectedRevision": 2,
+        "decisionEpoch": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "acceptedAt": "2026-10-13T17:12:06.062Z",
+        "deadline": "2026-10-13T17:14:06.063Z",
+        "attemptCount": 0,
+        "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37"
+      }
+    },
+    "rawBody": "{\"requestId\":\"456944e2-5362-40cc-a308-999ed5287545\",\"data\":{\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"kind\":\"run\",\"purpose\":\"student_run\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"requestReceiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"status\":\"running\",\"stopRequested\":false,\"expectedRevision\":2,\"decisionEpoch\":0,\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"acceptedAt\":\"2026-10-13T17:12:06.062Z\",\"deadline\":\"2026-10-13T17:14:06.063Z\",\"attemptCount\":0,\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\"}}",
+    "rawBodyHash": "4275fd56c4e99ccb1d4165f0f5e9ec1d0be7c978febb97f4f6b57899723b4eda"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/jobs/0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "statusCode": 200,
+    "response": {
+      "requestId": "21f77d0f-a57d-4c29-9ba0-365fce67fbfd",
+      "data": {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "kind": "run",
+        "purpose": "student_run",
+        "scope": {
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+        },
+        "requestReceiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "status": "running",
+        "stopRequested": false,
+        "expectedRevision": 2,
+        "decisionEpoch": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "acceptedAt": "2026-10-13T17:12:06.062Z",
+        "deadline": "2026-10-13T17:14:06.063Z",
+        "attemptCount": 0,
+        "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37"
+      }
+    },
+    "rawBody": "{\"requestId\":\"21f77d0f-a57d-4c29-9ba0-365fce67fbfd\",\"data\":{\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"kind\":\"run\",\"purpose\":\"student_run\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"requestReceiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"status\":\"running\",\"stopRequested\":false,\"expectedRevision\":2,\"decisionEpoch\":0,\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"acceptedAt\":\"2026-10-13T17:12:06.062Z\",\"deadline\":\"2026-10-13T17:14:06.063Z\",\"attemptCount\":0,\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\"}}",
+    "rawBodyHash": "6e65c02ffcfc65d8fdb3064b7ed9def32459a7d126c1dab6262bf165d303fbb0"
+  },
+  {
+    "case": 12,
+    "method": "GET",
+    "path": "/api/jobs/0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "statusCode": 200,
+    "response": {
+      "requestId": "3b5501e4-c921-4016-b90e-39a867404605",
+      "data": {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "kind": "run",
+        "purpose": "student_run",
+        "scope": {
+          "courseId": "synthetic-i0-course-a",
+          "studentId": "synthetic-i0-student-a",
+          "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce"
+        },
+        "requestReceiptId": "de0114d7-dd1d-430e-88b0-37cf37340782",
+        "status": "outcome_unknown",
+        "stopRequested": false,
+        "expectedRevision": 2,
+        "decisionEpoch": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "acceptedAt": "2026-10-13T17:12:06.062Z",
+        "deadline": "2026-10-13T17:14:06.063Z",
+        "attemptCount": 0,
+        "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37"
+      }
+    },
+    "rawBody": "{\"requestId\":\"3b5501e4-c921-4016-b90e-39a867404605\",\"data\":{\"jobId\":\"0e122937-dbb5-48b6-a223-e784b2d2fbdd\",\"kind\":\"run\",\"purpose\":\"student_run\",\"scope\":{\"courseId\":\"synthetic-i0-course-a\",\"studentId\":\"synthetic-i0-student-a\",\"attemptId\":\"74a2710d-d43f-41ee-be9e-0fcad296e3ce\"},\"requestReceiptId\":\"de0114d7-dd1d-430e-88b0-37cf37340782\",\"status\":\"outcome_unknown\",\"stopRequested\":false,\"expectedRevision\":2,\"decisionEpoch\":0,\"recoveryGeneration\":\"synthetic-generation-5944e790-6182-4807-bf21-52534b16271b\",\"acceptedAt\":\"2026-10-13T17:12:06.062Z\",\"deadline\":\"2026-10-13T17:14:06.063Z\",\"attemptCount\":0,\"runId\":\"4aa7da80-5d21-4221-8274-5103d0d69e37\"}}",
+    "rawBodyHash": "14020a2011adc5a508e0b28c0b5cee2aaceb1f4ed8aa1a6c1ac605cbb92410ca"
+  }
+]

@@ -1,0 +1,605 @@
+{
+  "task": "A5 first batch: formal feedback, revision permission and READ-11 review context",
+  "date": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "phase": "after the independent two-axis review and its fixes; source and tests committed as e61252fae39283f08436256577669d07d2ce1b5c",
+  "sourceSha": "e61252fae39283f08436256577669d07d2ce1b5c",
+  "baseSha": "eea962322ace4a1fd3dc86ce531adf5711552da9",
+  "notes": {
+    "baseSha": "origin/main, which already contains A4 (#49), C4 (#47) and B3 (#52). The working branch additionally carries the earlier I0 host-readiness commit 964abb4, which changes no A5 file.",
+    "sourceSha": "A5 is uncommitted; the verified content is the working tree described in docs/tasks/A5_FEEDBACK_REVISION_FOLLOWUP.md section 8.2 and amended by section 8.5.",
+    "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+  },
+  "environment": {
+    "platform": "Windows x64",
+    "node": "24.21.0",
+    "dependencies": "existing package-lock.json tree reused; no package installed or changed"
+  },
+  "authorization": {
+    "tableScope": 34,
+    "addedTable": "teacher_feedback",
+    "newBaselineRoutes": 0,
+    "approvedRoutes": [
+      "POST /api/attempts/:id/feedback",
+      "GET /api/attempts/:id/feedback",
+      "POST /api/attempts/:id/reopen",
+      "GET /api/attempts/:id/review-context"
+    ],
+    "cOwnedFileTouched": "apps/teaching/server/workspace/application.ts: the readFeedback seam became (tx, request, attemptId) at three sites. The project lead chose to keep it on 2026-10-14; C review of the changed shared seam is still outstanding (task record section 8.2 item 1).",
+    "oldDatabaseMigration": false,
+    "realModelsOrNodes": false
+  },
+  "commands": [
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "status": "passed"
+    },
+    {
+      "name": "build",
+      "command": "npm test pretest (npm run build)",
+      "status": "passed"
+    },
+    {
+      "name": "targeted",
+      "command": "node --test --test-reporter=tap tests/a5-feedback.test.ts",
+      "exitCode": 0,
+      "tests": 11,
+      "pass": 11,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "evidence": "acceptance.a5-targeted.windows.txt"
+    },
+    {
+      "name": "defaultFull",
+      "command": "npm test",
+      "exitCode": 1,
+      "tests": 438,
+      "pass": 419,
+      "fail": 2,
+      "skipped": 17,
+      "cancelled": 0,
+      "evidence": "acceptance.a5-full.windows.txt"
+    },
+    {
+      "name": "serialFull",
+      "command": "node tools/check-runtime.mjs; node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
+      "exitCode": 1,
+      "tests": 438,
+      "pass": 420,
+      "fail": 1,
+      "skipped": 17,
+      "cancelled": 0,
+      "evidence": "acceptance.a5-full-serial.windows.txt"
+    },
+    {
+      "name": "sdkIsolated",
+      "command": "node --test --test-reporter=spec server/tutoring/test/index.test.ts",
+      "exitCode": 0,
+      "tests": 47,
+      "pass": 47,
+      "fail": 0,
+      "skipped": 0,
+      "note": "the deadline failure seen in the default full run did not reproduce here or in the serial full run"
+    },
+    {
+      "name": "baselineFull",
+      "command": "npm test on an isolated origin/main tree with the same locked dependencies",
+      "exitCode": 1,
+      "tests": 427,
+      "pass": 409,
+      "fail": 1,
+      "skipped": 17,
+      "cancelled": 0,
+      "evidence": "acceptance.a5-baseline-full.windows.txt"
+    },
+    {
+      "name": "documentValidation",
+      "command": "node tools/a0-review/check.mjs",
+      "exitCode": 0,
+      "documents": 88,
+      "internalLinks": 1256,
+      "errors": [],
+      "evidence": "acceptance.a5-documents.windows.txt"
+    },
+    {
+      "name": "checkerSelfTests",
+      "command": "node --test tools/a0-review/check.test.mjs",
+      "tests": 16,
+      "pass": 16,
+      "fail": 0
+    },
+    {
+      "name": "whitespace",
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "delta": {
+    "tests": 11,
+    "pass": 11,
+    "fail": 0,
+    "skipped": 0
+  },
+  "syntheticSchemaSmoke": {
+    "evidence": "acceptance.a5-schema-smoke.windows.txt",
+    "tables": 34,
+    "teacherFeedbackPresent": true,
+    "integrity": "ok",
+    "foreignKeyViolations": 0,
+    "reopenedTableCount": 34,
+    "diagnostics": {
+      "sqliteVersion": "3.53.4",
+      "journalMode": "wal",
+      "foreignKeys": 1,
+      "synchronous": 2,
+      "busyTimeout": 1000
+    },
+    "guard": "assertApprovedScope still fails closed on a changed table composition before the file is created"
+  },
+  "failures": [
+    {
+      "test": "review: real RunControl preparation failure ends check without fabricating a RunRecord",
+      "location": "server/workspace/review.test.ts:118",
+      "error": "INVALID_CONFIGURATION: Linux and trusted control context required",
+      "scope": "default and serial full, and the clean baseline run",
+      "status": "unchanged Windows environment limit; no test, runner or judgement changed"
+    },
+    {
+      "test": "deadline aborts a slow provider and late output is not accepted",
+      "location": "server/tutoring/test/index.test.ts",
+      "error": "the slow provider was not aborted inside the deadline (31.9ms)",
+      "scope": "default full only",
+      "status": "file passes 47/47 in isolation and the serial full run did not reproduce it; the same class of timing flake is recorded in the A4 record. First failure retained; not rewritten into the serial pass count."
+    },
+    {
+      "test": "invalid intermediate full run caused by editing source during the run",
+      "location": "tests/review.test.ts and tests/a5-feedback.test.ts file-level load failure; durability test timed out",
+      "error": "SyntaxError: The requested module does not provide an export named 'feedbackQuery' (a rename landed between two test files' module loads)",
+      "status": "not a product defect: the developer edited a source file while the suite was loading it. Retained for audit; shows the suite stops early when a file fails to load. Lesson: do not edit the code under test while a verification run is in flight."
+    }
+  ],
+  "skippedTests": [
+    "node-local control synthetic checks",
+    "dedicated Linux synthetic container execution and resource checks",
+    "the platform clock and delayed RTL keep picosecond semantics under finer student time precision",
+    "target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination",
+    "immutable node files become visible only after a complete fsynced write",
+    "publication leaves no staging name behind, on success and on a refused overwrite",
+    "authenticated dedicated VM control and supervision",
+    "rejects intermediate and final symlinks in Linux",
+    "B3 authorized real-model learner-analysis candidate uses one synthetic A4 job",
+    "P2 real-provider cancellation, timeout and HTTP failure probes",
+    "P2 real-model student help, persisted content and undisplayed cancellation",
+    "P2 authorized two-job real student-help semantic-fix batch",
+    "P2 authorized 30-job real student-help performance batch",
+    "real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen",
+    "C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel",
+    "real authenticated C1 readiness supports the A2 checks-release-assignment-pause chain",
+    "P2 real-model teacher generation, explicit adoption and local PATCH"
+  ],
+  "coveredSeams": [
+    {
+      "seam": "HTTP POST/GET feedback over real login",
+      "tests": [
+        "formative feedback does not move the stage",
+        "formal feedback and the stage move",
+        "feedback revisions append and stay readable"
+      ]
+    },
+    {
+      "seam": "submission_review moves submitted -> reviewed in one transaction",
+      "tests": [
+        "formal feedback and the stage move"
+      ]
+    },
+    {
+      "seam": "feedback revision chain, replay and conflict",
+      "tests": [
+        "feedback revisions append and stay readable"
+      ]
+    },
+    {
+      "seam": "permission saved and artifact read-only until the student consumes it",
+      "tests": [
+        "the revision permission keeps the artifact read-only until the student consumes it"
+      ]
+    },
+    {
+      "seam": "GET review-context grouping and role boundary",
+      "tests": [
+        "a teacher reads one attempt context",
+        "the review context keeps an unresolvable competency listed and narrows history to this attempt"
+      ]
+    },
+    {
+      "seam": "student dispute against a formal feedback version",
+      "tests": [
+        "a student dispute resolves against the exact saved feedback and its evaluated claims"
+      ]
+    },
+    {
+      "seam": "real transaction fault injection",
+      "tests": [
+        "a failing feedback write rolls the record and the stage change back together"
+      ]
+    },
+    {
+      "seam": "recovery feedback seam",
+      "tests": [
+        "the recovery view reports the real formal feedback and the attempt lifecycle links up end to end"
+      ]
+    },
+    {
+      "seam": "post-review additions",
+      "tests": [
+        "a feedback thread can only be revised inside the scope that owns it",
+        "a permission may save the formal feedback for the same submission in one command"
+      ]
+    }
+  ],
+  "codeReview": {
+    "fixedFrom": "964abb4 (uncommitted working tree)",
+    "mode": "two independent read-only agents; neither ran tests nor edited files; the parent agent ran the verification",
+    "standards": {
+      "hardViolations": 4,
+      "actionableSmells": 6,
+      "hardViolationFixes": [
+        "stale header status line updated to the current state",
+        "nonexistent feedbackQuery export corrected to reviewContextQuery and the approval citation corrected",
+        "the 9-vs-10 test enumeration replaced with a seam-to-case table at the real count",
+        "the C-owned seam transaction change disclosed at its real size (3 sites) and marked as a project-lead decision requiring C review, with a revert option"
+      ],
+      "smellFixes": [
+        "removed the writeReopenInTransaction pass-through",
+        "reused one submission shape instead of re-listing eight fields",
+        "rebuilt the evidence index on the A4 template"
+      ],
+      "smellRemaining": [
+        "reopen orchestration overlaps C4 reopen.grant (inherent to the approved embedded-feedback form)",
+        "actionableAssignment restates a C4 private rule until C exports it",
+        "readRecovery is called only to reuse C4 run-outcome classification"
+      ]
+    },
+    "spec": {
+      "missingOrPartial": 4,
+      "wrongImplementation": 1,
+      "scopeCreep": 0,
+      "fixes": [
+        "feedback read now reports per-entry basis validity and a dispute marker",
+        "review context lists active/contested claims even when their basis is unresolvable, and reports per-reference unavailable",
+        "review context hoists reopen to its own top-level group",
+        "teacher feedbackId lookup is now scope-filtered (real defect, fixed with a counterexample)",
+        "review context narrows decisions and disputes to this attempt (parent-agent self-check)"
+      ],
+      "recordedNotFixed": [
+        "submission_review on an already-reviewed attempt appends a revision instead of returning STATE_CONFLICT: the record wording was narrower than the implemented three-branch rule; recorded for project-lead confirmation",
+        "invalidateLearnerTeaching stays course+student wide, so feedback on one attempt also advances revisions and stales in-flight actions on the student other attempts; inherited A4 behaviour, now disclosed"
+      ],
+      "verdictsPassed": [
+        "formative makes no transition call; submission_review transitions inside the same transaction; rollback green",
+        "feedbackRevision is the attempt-scoped append count, first write expects 0, never reset",
+        "disputes resolve to the exact saved revision and its evaluated claims; unsaved references stay INVALID_REFERENCE",
+        "review-context is teacher-only and keeps artifact, competency, help and coverage facts in separate groups",
+        "no A5 path reads a model feedback draft; private assets and other students content stay out of the projections"
+      ]
+    },
+    "worstPerAxis": {
+      "standards": "the C-owned shared seam transaction change was decided during implementation and only recorded afterwards (project-lead decision required)",
+      "spec": "the feedback thread lookup was not scope-filtered (fixed)"
+    }
+  },
+  "openExternalInputs": [
+    "project-lead decision recorded: keep the readFeedback transaction signature (the zero-C-file-change fallback was declined); C review of the changed seam is still outstanding",
+    "C review of that seam change, and a C-exported replacement for the duplicated assignment-actionable rule",
+    "C/A confirmation of whether the course+student wide invalidation should narrow to one attempt",
+    "project-lead confirmation that a submission_review may append a revision after the attempt is reviewed"
+  ],
+  "reviewResponse": {
+    "reviewedHead": "0f8a113",
+    "findings": {
+      "standards": 1,
+      "spec": 3,
+      "severity": "P2"
+    },
+    "redEvidence": "acceptance.a5-review-red.windows.txt: the three new counterexamples run against the pre-fix head �� 16 tests, 10 pass, 6 fail (3 product behaviour failures plus 3 fixture-rename failures) �� recorded before the fix and not counted as product passes",
+    "commands": [
+      {
+        "name": "typecheck",
+        "command": "npm run typecheck",
+        "exitCode": 0
+      },
+      {
+        "name": "targeted",
+        "command": "node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts",
+        "exitCode": 0,
+        "tests": 16,
+        "pass": 16,
+        "fail": 0,
+        "skipped": 0,
+        "evidence": "acceptance.a5-review-targeted.windows.txt"
+      },
+      {
+        "name": "a4Regression",
+        "command": "node --test --test-reporter=tap tests/review.test.ts",
+        "exitCode": 0,
+        "tests": 51,
+        "pass": 51,
+        "fail": 0,
+        "skipped": 0,
+        "evidence": "acceptance.a5-review-a4.windows.txt"
+      },
+      {
+        "name": "serialFull",
+        "command": "node tools/check-runtime.mjs; node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
+        "exitCode": 1,
+        "tests": 443,
+        "pass": 425,
+        "fail": 1,
+        "skipped": 17,
+        "cancelled": 0,
+        "evidence": "acceptance.a5-review-serial.windows.txt"
+      },
+      {
+        "name": "documentValidationOnCleanCheckout",
+        "command": "git worktree add <detached head>; node tools/a0-review/check.mjs",
+        "exitCode": 0,
+        "documents": 79,
+        "internalLinks": 1200,
+        "errors": []
+      }
+    ],
+    "fixes": {
+      "S65_01": "the task record no longer references A_WORK_PLAN.md or A_CURRENT_NEXT_STEPS_20261014.md, which are not in the repository; all cited basis is committed. The earlier errors=[] reading came from a working tree polluted by untracked planning materials, so every document check in this batch now runs on a detached worktree of the reviewed commit.",
+      "R65_01": "thread revision and attempt-scope CAS version are separated: column thread_revision, record field threadRevision, and responses report both threadRevision and the scope feedbackRevision the next write must send (re-read after insert, asserted to be before+1).",
+      "R65_02": "the artifact group is the file manifest of the immutable snapshot the selected submission bound, with artifactSnapshotId as provenance; the current workspace is republished separately as workspaceFiles.",
+      "R65_03": "the dispute seam reports current only when the feedback revision is the newest of its thread AND its recorded basis is still the current usable claim, so a historical objection is appended instead of refused.",
+      "AC09_gap": "coverage addition, not a defect: the follow-up test now issues a real help request on the new attempt and asserts the prepared context carries the real learner state revision and only the applicable active claim. It passed against the pre-fix head, so it is not recorded as a red case."
+    },
+    "sharedContractChanges": [
+      "teacher_feedback.feedback_revision renamed to thread_revision; the record field feedbackRevision renamed to threadRevision; feedbackResultSchema and reopenResultSchema.feedback now carry both threadRevision and feedbackRevision",
+      "ReviewContext.artifact narrowed to the bound snapshot manifest; new artifactSnapshotId; current workspace renamed to workspaceFiles"
+    ],
+    "sharedContractReviewRequested": "the reviewing agent asked that new fields go through shared-contract review; these two changes are declared here and in the pull request so the lead and C can confirm them",
+    "syntheticSchemaSmoke": {
+      "evidence": "acceptance.a5-review-schema-smoke.windows.txt",
+      "tables": 34,
+      "integrity": "ok",
+      "foreignKeyViolations": 0,
+      "reopenedTableCount": 34,
+      "note": "the review fix renamed a column inside teacher_feedback; the approved 34-table scope and the fail-closed guard are unchanged",
+      "encodingNote": "decoded from the UTF-16LE console capture to UTF-8 before being committed; sha256/rawLogSha256 in files[] identify the committed record and the local original respectively"
+    },
+    "roundTwo": {
+      "reviewedHead": "36df43b",
+      "findings": {
+        "standards": 3,
+        "spec": 1,
+        "severity": "P2 (contract confirmation) plus three P3"
+      },
+      "refreshedEvidence": "the targeted, A4 regression and serial full logs were re-captured on the post-round-two tree through the same decode pipeline; the red log still records the pre-fix head 0f8a113",
+      "clearedByReview": [
+        "S65-01",
+        "R65-01",
+        "R65-02",
+        "R65-03"
+      ],
+      "resolutions": {
+        "contractConfirmation": "project lead confirmed both shared-contract/schema renames on 2026-10-14 (task record section 11.1); C consumption review still requested",
+        "prBodyResidue": "the pull request body no longer links A_WORK_PLAN.md, marks the earlier numbers with their original head, and lists the current targeted and serial results plus the two contract confirmations",
+        "schemaSmokeEncoding": "the schema smoke log is committed as UTF-8 (decoded from the UTF-16LE console capture) with entry.sha256/rawLogSha256 updated and an accurate normalization note",
+        "ac09Chain": "the follow-up test now includes the fixed submission and the formal feedback before the new activity, and asserts the feedback binding, kind and exact basis claims and revisions; the claim and the case now agree"
+      }
+    }
+  },
+  "prBranch": {
+    "branch": "codex/a5-feedback-revision, created from origin/main (eea9623) with the five A5 commits cherry-picked so the pull request carries A5 only",
+    "commits": {
+      "feat(a5) batch one": "7e7f19f",
+      "docs(a5) batch one record and evidence": "e4839a5",
+      "docs(a5) second-batch gap check": "0b6df7a",
+      "feat(a5) batch two": "c3a7653",
+      "docs(a5) batch two record": "d32a5af"
+    },
+    "workingBranchEquivalents": {
+      "feat(a5) batch one": "e61252f",
+      "docs(a5) batch one record and evidence": "a6503f8",
+      "docs(a5) second-batch gap check": "f57ef7d",
+      "feat(a5) batch two": "f976529",
+      "docs(a5) batch two record": "bf648c9"
+    },
+    "note": "Identical tree content on both branches; the earlier records cite the working-branch hashes, and this block maps them to the pull-request branch.",
+    "commands": [
+      {
+        "name": "typecheck",
+        "command": "npm run typecheck",
+        "exitCode": 0
+      },
+      {
+        "name": "targeted",
+        "command": "node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts",
+        "exitCode": 0,
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0
+      },
+      {
+        "name": "serialFull",
+        "command": "node --test --test-concurrency=1 --test-reporter=tap <the npm test file set>",
+        "exitCode": 1,
+        "tests": 440,
+        "pass": 422,
+        "fail": 1,
+        "skipped": 17,
+        "cancelled": 0,
+        "evidence": "acceptance.a5-pr-branch-full-serial.windows.txt"
+      }
+    ],
+    "defaultRunFlakes": "Two default-concurrency runs on this branch also hit the machine storage flakes already documented in this repository: tests/durability.test.ts 15s timeout and tests/startup.test.ts subprocess 5s/10s timeouts. Neither reproduces in the serial run, and the only failure common to every run is the unchanged win32 Linux-only RunControl case."
+  },
+  "batchTwo": {
+    "scope": "A5.4/A5.5: one optional teacher-visible sourceBlueprintId on activityViewSchema plus end-to-end verification; no new route, no schema change, no permission change",
+    "commands": [
+      {
+        "name": "targeted",
+        "command": "node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts",
+        "exitCode": 0,
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0,
+        "evidence": "acceptance.a5-batch2-targeted.windows.txt"
+      },
+      {
+        "name": "defaultFull",
+        "command": "npm test",
+        "exitCode": 1,
+        "tests": 440,
+        "pass": 422,
+        "fail": 1,
+        "skipped": 17,
+        "cancelled": 0,
+        "evidence": "acceptance.a5-batch2-full.windows.txt"
+      }
+    ],
+    "deltaVsBaseline": {
+      "tests": 13,
+      "pass": 13,
+      "fail": 0,
+      "skipped": 0
+    },
+    "failures": [
+      "only the unchanged win32 Linux-only RunControl environment failure; the deadline flake of the batch-one default run did not reproduce"
+    ],
+    "verified": [
+      "the teacher resolves a fixed activity version back to its source blueprint; the student projection omits it",
+      "copy then patch leaves the copied-from draft revision and title untouched while the new draft is revision 2 with the source link",
+      "copy -> check -> release -> assign -> new attempt gives a distinct attempt against the new fixed version",
+      "the follow-up attempt reads applicable course-scope claims; a withdrawn claim stays auditable but is not valid; unresolved and unknown are not upgraded; an old activity-scoped claim is not carried in"
+    ]
+  },
+  "notExecuted": [
+    "real model calls (0 in this batch)",
+    "real execution nodes, Linux isolation, SSH and container gates",
+    "socket/TLS, browsers and the real UI",
+    "human teacher/student use and teaching-effect verification",
+    "A5.4 blueprint copy / new activity and A5.5 related follow-up task (second batch)"
+  ],
+  "files": [
+    {
+      "file": "acceptance.a5-review-red.windows.txt",
+      "sha256": "a12a7792a84a6eabd4d21504a6fae6bf0f528e35373ebe6cb0b653d7efeec558",
+      "bytes": 8541,
+      "rawLogSha256": "a019edcb2b51783b4d7169d8f4d4ab5c622ca6a834c0e1fd890ed7e9f68d3a9a",
+      "rawBytes": 17572,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-review-targeted.windows.txt",
+      "sha256": "accc9650ae8a3797153dfcf5b1cefb15b0a0f048bb1908dabd41117cd0e466b4",
+      "bytes": 4102,
+      "rawLogSha256": "5aa1747547be49d62ce2575aaf02bce417e8603f5b313bdcb49f573837de78cd",
+      "rawBytes": 8418,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-review-a4.windows.txt",
+      "sha256": "15d098e870040b181ae1770c320b933f87e9dcc3b79926dd97e57a2ac81bd817",
+      "bytes": 12362,
+      "rawLogSha256": "d0cb9cd7ae22e28f31cfb1cc441c68b71d488d6f921319c0a4abd3228cf8b7c6",
+      "rawBytes": 25364,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-review-serial.windows.txt",
+      "sha256": "ee13968544fbd2aed908d0d2d150b3c39c9b653dddf1d434b91fcc73bc38e58f",
+      "bytes": 106805,
+      "rawLogSha256": "f5edc393f7d92b7e86e698ddfce23ecd4778da2288e7cb5bb63b5ad975131678",
+      "rawBytes": 219044,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-pr-branch-full-serial.windows.txt",
+      "sha256": "15d1463421aafa4e48f73a20202a2bd1dc097ce3dba838f25d9385d143553582",
+      "bytes": 106088,
+      "rawLogSha256": "4a3025879e05b7c6975d5213182ef472d6cc0645e12f14f9dfec5fc64a154157",
+      "rawBytes": 217574,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-batch2-targeted.windows.txt",
+      "sha256": "b4aecdfbe7e28a59d3465a5ef137ea4b8bfb1c3e6e2c33048bcc7fb27c57f787",
+      "bytes": 3376,
+      "rawLogSha256": "6e41284ab037fc337c5875d266b2f5f5beb9522810add6de459486e7f475a7ff",
+      "rawBytes": 6930,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-batch2-full.windows.txt",
+      "sha256": "6bf0f9799cb930493a52805692b3ad04bbe1e9c9e82ffe663bb98e89c319bfa4",
+      "bytes": 47742,
+      "rawLogSha256": "1e5db7efe922a7a06cf0ddfcb3ec27f1f705345b1c6ab97ac0b23b47fdd748f8",
+      "rawBytes": 94658,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-targeted.windows.txt",
+      "sha256": "cde58c28ee3f5967730acb7eaf402ab3983aaf2b77b7b747a93acd5a17e458dc",
+      "bytes": 2835,
+      "rawLogSha256": "977096bc05b7b43a492d033549b98d2305f3fbb0cde45715040cb9b8cda81018",
+      "rawBytes": 5824,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-full.windows.txt",
+      "sha256": "1300731c10826b30a2f3b1f8961a6c1403d009b77be3179839d6108eb7e50175",
+      "bytes": 48117,
+      "rawLogSha256": "d716ea32bb85926667942e11c480447740aaf526df08a2d88792d7f9f23aeca3",
+      "rawBytes": 95456,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-full-serial.windows.txt",
+      "sha256": "f12828cfc7560f6227b44afac2f64437b446593af6c6e5d0e87c5c49c75e5ab1",
+      "bytes": 105548,
+      "rawLogSha256": "5490ea157815477a07ea9e45265b70418a17e570288c7fe862a30e327148d39b",
+      "rawBytes": 216470,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-baseline-full.windows.txt",
+      "sha256": "a847a0b0c50a13e370652a381d22dbfb46ef0aaece4e734c1db1f945dd9d7d2d",
+      "bytes": 46352,
+      "rawLogSha256": "d0142b4e5a54ca94606ba5b67a5b4b3bbbcfcaaa1a1bf7b641bea1b4924ee17c",
+      "rawBytes": 91956,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-schema-smoke.windows.txt",
+      "sha256": "1b2294919c5f64f6cedac756c502cbdaf1636c5031c55c15e2c401f83d0c5e2c",
+      "bytes": 422,
+      "rawLogSha256": "3dc8d9c874ae6613ce6ea1768757009d90acf2d0d3ffd875357a40eb013b2a9d",
+      "rawBytes": 880,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-documents.windows.txt",
+      "sha256": "62b02a3999740698e171dde45f118dbde963afe46417e7ee7bff1177f077f478",
+      "bytes": 661,
+      "rawLogSha256": "56b60c44fb3b1714a9f9e20c63b73a719841c56e258f9d24ef863756189550a1",
+      "rawBytes": 1378,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-review-schema-smoke.windows.txt",
+      "sha256": "1b2294919c5f64f6cedac756c502cbdaf1636c5031c55c15e2c401f83d0c5e2c",
+      "bytes": 422,
+      "rawLogSha256": "3dc8d9c874ae6613ce6ea1768757009d90acf2d0d3ffd875357a40eb013b2a9d",
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only.",
+      "rawBytes": 880
+    }
+  ]
+}

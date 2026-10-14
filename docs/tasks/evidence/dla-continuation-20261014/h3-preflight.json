@@ -1,0 +1,26 @@
+{
+  "kind": "H3 proposal preflight only; not HDL behavior acceptance",
+  "counts": {
+    "logic": 2048,
+    "addition": 512,
+    "subtraction": 240,
+    "excluded": 1296
+  },
+  "expectedVectors": 2800,
+  "tupleOrder": "M,S,A,B,Cin numeric ascending; compact JSON tuples",
+  "tupleSetSha256": "e3903faa6a66e72355bfd62435caad5f53688327ff070b8e57b3992b04760ca1",
+  "batches": 88,
+  "privateSamples": 8400,
+  "maxPacketBytes": 8768,
+  "maxTotalBytes": 774368,
+  "jobDeadlineMs": 120000,
+  "sumOfPerBatchCeilingsMs": 176000,
+  "throughputVerified": false,
+  "existingPublicFrameLimit": 4096,
+  "privateSamplesFitPublicFrameLimit": false,
+  "requiresDedicatedPrivateCompactRows": true,
+  "gradedSignals": "F; addition additionally Cout; all undefined inputs/nonaddition Cout remain ungraded",
+  "sharedContractApproved": false,
+  "nodeMaintenanceApproved": false,
+  "hdlBehaviorPassCount": 0
+}

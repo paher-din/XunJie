@@ -1,0 +1,233 @@
+TAP version 13
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 1 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 3649.639514
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 2 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 6664.080104
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 3 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 3366.972675
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 4 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 3205.206931
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+ok 5 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 3664.031771
+  type: 'test'
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 6 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 3352.644144
+  type: 'test'
+  ...
+# Subtest: C3-V01 exact question/body bytes, trusted envelope, and same-result replay
+ok 7 - C3-V01 exact question/body bytes, trusted envelope, and same-result replay
+  ---
+  duration_ms: 3014.350443
+  type: 'test'
+  ...
+# Subtest: C3-V02 receipts are idempotent, order-independent and never back-dated by a client clock
+ok 8 - C3-V02 receipts are idempotent, order-independent and never back-dated by a client clock
+  ---
+  duration_ms: 2706.191472
+  type: 'test'
+  ...
+# Subtest: C3-V03 scope, role trimming, cursor bounds and stale epoch resynchronization
+ok 9 - C3-V03 scope, role trimming, cursor bounds and stale epoch resynchronization
+  ---
+  duration_ms: 3937.498842
+  type: 'test'
+  ...
+# Subtest: C3-V04 capture pause keeps functional data, records the gap and never refills it
+ok 10 - C3-V04 capture pause keeps functional data, records the gap and never refills it
+  ---
+  duration_ms: 2918.294111
+  type: 'test'
+  ...
+# Subtest: C3-V05 cancellation stops undisplays actions and never resurrects them
+ok 11 - C3-V05 cancellation stops undisplays actions and never resurrects them
+  ---
+  duration_ms: 2773.979131
+  type: 'test'
+  ...
+# Subtest: C3-V06 the same-transaction stop rolls back with the caller and covers A2 pause
+ok 12 - C3-V06 the same-transaction stop rolls back with the caller and covers A2 pause
+  ---
+  duration_ms: 2672.943153
+  type: 'test'
+  ...
+# Subtest: C3-V07 durability: reconnect after a real reopen replays original ids and hides stopped actions
+ok 13 - C3-V07 durability: reconnect after a real reopen replays original ids and hides stopped actions
+  ---
+  duration_ms: 5422.421153
+  type: 'test'
+  ...
+# Subtest: DL-B fixes the three approved HDL guidance fixtures and keeps them distinct
+ok 14 - DL-B fixes the three approved HDL guidance fixtures and keeps them distinct
+  ---
+  duration_ms: 2.005564
+  type: 'test'
+  ...
+# Subtest: DL-B assembles only bounded authorized build diagnostics and produces cited student-owned guidance
+ok 15 - DL-B assembles only bounded authorized build diagnostics and produces cited student-owned guidance
+  ---
+  duration_ms: 8.84688
+  type: 'test'
+  ...
+# Subtest: DL-B preserves an out-of-range diagnostic but withholds its unusable source location
+ok 16 - DL-B preserves an out-of-range diagnostic but withholds its unusable source location
+  ---
+  duration_ms: 1.993732
+  type: 'test'
+  ...
+# Subtest: DL-B rebuilds signal and trace frames before they reach the provider
+ok 17 - DL-B rebuilds signal and trace frames before they reach the provider
+  ---
+  duration_ms: 3.310293
+  type: 'test'
+  ...
+# Subtest: DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence
+ok 18 - DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence
+  ---
+  duration_ms: 2.522216
+  type: 'test'
+  ...
+# Subtest: DL-B bounds a long current trace and exposes truncation instead of claiming full coverage
+ok 19 - DL-B bounds a long current trace and exposes truncation instead of claiming full coverage
+  ---
+  duration_ms: 1.153227
+  type: 'test'
+  ...
+# Subtest: DL-B model-visible frames preserve LED bit order and do not invent a reset transition
+ok 20 - DL-B model-visible frames preserve LED bit order and do not invent a reset transition
+  ---
+  duration_ms: 1.41221
+  type: 'test'
+  ...
+# Subtest: DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities
+    # Subtest: cross-student build
+    ok 1 - cross-student build
+      ---
+      duration_ms: 0.922437
+      type: 'test'
+      ...
+    # Subtest: old snapshot
+    ok 2 - old snapshot
+      ---
+      duration_ms: 0.758924
+      type: 'test'
+      ...
+    # Subtest: wrong session build
+    ok 3 - wrong session build
+      ---
+      duration_ms: 0.589999
+      type: 'test'
+      ...
+    # Subtest: old generation
+    ok 4 - old generation
+      ---
+      duration_ms: 0.447864
+      type: 'test'
+      ...
+    # Subtest: run references are not silently reinterpreted as HDL results
+    ok 5 - run references are not silently reinterpreted as HDL results
+      ---
+      duration_ms: 0.422817
+      type: 'test'
+      ...
+    1..5
+ok 21 - DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities
+  ---
+  duration_ms: 4.655578
+  type: 'test'
+  ...
+# Subtest: DL-B current guard discards a late body after sequence, result, or session changes
+ok 22 - DL-B current guard discards a late body after sequence, result, or session changes
+  ---
+  duration_ms: 1.928891
+  type: 'test'
+  ...
+# Subtest: DL-B repairs one fabricated HDL citation and keeps unknown aggregate usage
+ok 23 - DL-B repairs one fabricated HDL citation and keeps unknown aggregate usage
+  ---
+  duration_ms: 1.711747
+  type: 'test'
+  ...
+# Subtest: DL-B authorized three-job real HDL guidance batch
+ok 24 - DL-B authorized three-job real HDL guidance batch # SKIP
+  ---
+  duration_ms: 0.086301
+  type: 'test'
+  ...
+# Subtest: DL-B authorized HR-DL-03 real semantic-fix batch
+ok 25 - DL-B authorized HR-DL-03 real semantic-fix batch # SKIP
+  ---
+  duration_ms: 0.122057
+  type: 'test'
+  ...
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+ok 26 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 3923.326339
+  type: 'test'
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 27 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 2905.2911
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 28 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 2964.606066
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 29 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 2862.673356
+  type: 'test'
+  ...
+# Subtest: H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+ok 30 - H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+  ---
+  duration_ms: 2934.908674
+  type: 'test'
+  ...
+# Subtest: H4 stop before dispatch and provider failure never prevent confirmed source reads
+ok 31 - H4 stop before dispatch and provider failure never prevent confirmed source reads
+  ---
+  duration_ms: 5572.857013
+  type: 'test'
+  ...
+# Subtest: H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+ok 32 - H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+  ---
+  duration_ms: 2834.444352
+  type: 'test'
+  ...
+1..32
+# tests 37
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 2
+# todo 0
+# duration_ms 48993.485038

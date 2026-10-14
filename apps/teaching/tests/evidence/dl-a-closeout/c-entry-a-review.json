@@ -1,0 +1,216 @@
+{
+  "date": "2026-10-14",
+  "reviewedPR": "https://github.com/paher-din/XunJie/pull/55",
+  "base": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+  "head": "ea5a6523245ef25e2ab15712fa5aae5fc182deb8",
+  "scope": "offline review of original source and committed sanitized records; no independent PAHER execution",
+  "jsonParsed": 14,
+  "embeddedLogsByteAndSha256Verified": [
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/0",
+      "bytes": 380,
+      "sha256": "34cc3fe61424335833cd0247e524394253b97026b8562695632c5a306ad5ceb9"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/1",
+      "bytes": 660,
+      "sha256": "c2633928d76643185df8c579b4e6f1917c89209f6da1bdd1903ef757659c2e77"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/2",
+      "bytes": 88,
+      "sha256": "817da942274fa55c2654d984b87c5cbc58fec77d9284221904c37fae91291adf"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/3",
+      "bytes": 10437,
+      "sha256": "dcd09eea3dca4ace1f5ae4bea0781fdb7fc6d93416a5b2670f759f465f98c8c2"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/4",
+      "bytes": 514,
+      "sha256": "6cbc0b059247b2ef84fac0db5d12b701425fcca0771c256c28ae82f3fc4f18ac"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/5",
+      "bytes": 84,
+      "sha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/6",
+      "bytes": 94,
+      "sha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/7",
+      "bytes": 22,
+      "sha256": "8e7d504e3e0c8398496db01eaebcc9680e280f03ffbe3ef0c97cc92a7ca8f317"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/build-reception.json",
+      "location": "/logs/8",
+      "bytes": 380,
+      "sha256": "34cc3fe61424335833cd0247e524394253b97026b8562695632c5a306ad5ceb9"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-check.json",
+      "location": "/logs/0",
+      "bytes": 88,
+      "sha256": "817da942274fa55c2654d984b87c5cbc58fec77d9284221904c37fae91291adf"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-check.json",
+      "location": "/logs/1",
+      "bytes": 10437,
+      "sha256": "26f52d11b91e170e5938d1139a419380d5789269c454a2eaa55883e9a35c9cb5"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-check.json",
+      "location": "/logs/2",
+      "bytes": 84,
+      "sha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-check.json",
+      "location": "/logs/3",
+      "bytes": 1663,
+      "sha256": "c45052c33932f98a1e6e0483a394b2d2ddb607353344c69311b99f111b85819a"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-final.json",
+      "location": "/logs/0",
+      "bytes": 88,
+      "sha256": "817da942274fa55c2654d984b87c5cbc58fec77d9284221904c37fae91291adf"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-final.json",
+      "location": "/logs/1",
+      "bytes": 10437,
+      "sha256": "a5c10a27b7e9fbb401250bbe5c4bb092d137e545f165c968103c7ab1d0603b02"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-final.json",
+      "location": "/logs/2",
+      "bytes": 84,
+      "sha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/i0-entry-preparation-final.json",
+      "location": "/logs/3",
+      "bytes": 94,
+      "sha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072"
+    }
+  ],
+  "sourceManifestMatchesOriginalGit": [
+    {
+      "path": "apps/teaching/package.json",
+      "sha256": "ff61e22a3d28a9de0d675825abc7b1dcc8a2f9414df8137d53df5f10b733b79b"
+    },
+    {
+      "path": "apps/teaching/package-lock.json",
+      "sha256": "acaa7e091e70ccd23404b905c206414fd2c4505f00527e4be783364d8957d7ed"
+    },
+    {
+      "path": "apps/student/package.json",
+      "sha256": "dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd"
+    },
+    {
+      "path": "apps/student/package-lock.json",
+      "sha256": "8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9"
+    },
+    {
+      "path": "apps/teaching/server/main.ts",
+      "sha256": "c6a1850c139e3d9e676acb55ea53792307deabd3c05c4b09f2a1ae179ee37c0a"
+    },
+    {
+      "path": "apps/teaching/server/app/config.ts",
+      "sha256": "4589fb0b1b2a6e0fdbf02b606223495764eacb8819b79301af1330cacd236c66"
+    },
+    {
+      "path": "apps/teaching/server/app/i0.ts",
+      "sha256": "c765cc37904cd438044d01a43e2ac184bacd98d30acd2be53cc09331ac17b0d5"
+    },
+    {
+      "path": "apps/teaching/server/app/i0-initialize.ts",
+      "sha256": "0b6d5769e1c45d8a6875a640161e8f720fd8eef99a38cbebccc7919cda6d0a42"
+    },
+    {
+      "path": "apps/teaching/contracts/design/inputs.ts",
+      "sha256": "16b874f02861047c125dbd0463fdf179b309366b3d4168a5e63adb1aaebc83c9"
+    },
+    {
+      "path": "apps/teaching/contracts/design/i0.ts",
+      "sha256": "f56b89aa690aef0e105efaa57611b04e000aad6a82beb5613184fbe4de01f108"
+    }
+  ],
+  "cReportedRawTree": {
+    "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+    "receiver": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf-20261013",
+    "treeEntries": 754,
+    "files": 754,
+    "symlinks": 0,
+    "gitlinks": 0,
+    "mismatches": [],
+    "scope": "Exact Git blob object IDs with binary bytes and symlink targets; all source before application build"
+  },
+  "rawTreeIndependentlyReadOnPAHER": false,
+  "inputPlan": {
+    "users": 5,
+    "courses": 2,
+    "memberLinks": "matched",
+    "policyIds": [
+      "help-v1",
+      "help-v1-course-b"
+    ],
+    "businessSemantics": "original help/limited check unchanged"
+  },
+  "httpSamples": {
+    "count": 33,
+    "mode": "synthetic A1/A2/C2 HTTP injection with controlled RunnerTransport; no real node/model",
+    "sourceCommit": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+    "notPhysicalFaultOrNormalHttpsEvidence": true
+  },
+  "notExecuted": [
+    "credentials generation",
+    "TLS trust changes",
+    "database initialization",
+    "normal HTTPS/automatic worker chain",
+    "browser",
+    "node maintenance",
+    "paid models"
+  ],
+  "reviews": {
+    "standards": {
+      "hardViolations": 0,
+      "actionableSmells": 0
+    },
+    "spec": {
+      "actionableFindings": 0,
+      "embeddedOutputHashMatches": 27,
+      "declaredByteLengthMatches": 25
+    },
+    "execution": "static source and original record review only"
+  },
+  "documentation": {
+    "command": "node tools/a0-review/check.mjs",
+    "documents": 64,
+    "internalLinks": 962,
+    "errors": [],
+    "exitCode": 0
+  },
+  "publicHandoffComment": {
+    "url": "https://github.com/paher-din/XunJie/issues/38#issuecomment-6145619173",
+    "updatedAt": "2026-10-13T16:10:39Z",
+    "sha256": "0fea7b9ea3bd4955783acc29e7f04fdb1f98f9069cb59980c3f95139a6aa3d2a",
+    "readbackMatches": true,
+    "codePushed": false
+  }
+}

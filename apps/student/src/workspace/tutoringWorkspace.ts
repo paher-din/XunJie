@@ -10,6 +10,8 @@ import { limitedCheckFromHead } from './tutoringControls'
 import { verifyTutorCommandReceipt } from './tutoringCommand'
 import { confirmationRepository } from './confirmationDb'
 import { tutoringRequest } from './tutoringTransport'
+import { describeError, reportDiagnostic } from './diagnostics'
+import { tutoringCommandFailureNotice, tutoringFailureNotice } from './tutoringNotice'
 
 export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState; limitedCheck?:boolean|null; sendingKey?:string|null }
 /** One owner serializes durable facts. Never create another global ContextGuard. */
@@ -68,7 +70,10 @@ export class TutoringWorkspace {
   }
   private enqueue(work: () => Promise<void>) {
     const next = this.chain.then(async () => { if (this.valid()) await work() })
-    this.chain = next.catch(e => this.publish({ notice: e instanceof Error ? e.message : String(e), busy: false }))
+    this.chain = next.catch(e => {
+      reportDiagnostic('workspace.read-failed', { source: 'tutoring.operation', error: describeError(e) })
+      this.publish({ notice: tutoringFailureNotice(e, '辅导操作未完成，请重新读取并核对原请求。编辑和保存仍可继续。'), busy: false })
+    })
     return this.chain
   }
   private async persist(ledger: TutorLedger) {
@@ -92,7 +97,10 @@ export class TutoringWorkspace {
       await this.persist(ledger)
       void this.readHistory()
       await this.read(true)
-    } catch (e) { this.publish({ notice: `辅导本机存储不可用：${e instanceof Error ? e.message : e}` }) }
+    } catch (e) {
+      reportDiagnostic('workspace.read-failed', { source: 'tutoring.initialize', error: describeError(e) })
+      this.publish({ notice: tutoringFailureNotice(e, '辅导本机存储不可用，请恢复本机存储后重新读取；当前作品仍可继续编辑和保存。') })
+    }
   }
   read(revalidate = false) { return this.enqueue(() => this.readNow(revalidate)) }
   private clearHistory(notice:string) {
@@ -116,12 +124,16 @@ export class TutoringWorkspace {
       if(!authority)throw new Error('原历史读取代际已退役，请重新载入')
       let notice:string|null=null
       try {await writeTutorHistoryCache(this.context,data,isCurrent)}
-      catch(e){notice=`已核对公开历史，本机副本未保存：${e instanceof Error?e.message:String(e)}`}
+      catch(e){
+        reportDiagnostic('workspace.read-failed', { source: 'tutoring.history-cache', error: describeError(e) })
+        notice='已核对公开历史，本机副本未保存。下次查看时请重新读取。'
+      }
       if(!isCurrent())return
       this.publish({history:{phase:'ready',data,notice}})
     } catch(e) {
+      reportDiagnostic('workspace.read-failed', { source: 'tutoring.history', error: describeError(e) })
       if(isCurrent())this.publish({history:{phase:'unavailable',data:emptyTutorHistory(),
-        notice:`教学历史不可回取：${e instanceof Error?e.message:String(e)}`}})
+        notice:`教学历史不可回取：${tutoringFailureNotice(e, '请稍后重新读取；编辑和保存仍可继续。')}`}})
     } finally {if(seq===this.historySequence)this.historyPending=false}
   }
   private async readNow(revalidate: boolean) {
@@ -189,7 +201,8 @@ export class TutoringWorkspace {
             }
           } catch (e) {
             // Retain the gap, advance only after persisting the page with that gap visible.
-            this.publish({ notice: `内容不可用：${e instanceof Error ? e.message : String(e)}` })
+            reportDiagnostic('workspace.read-failed', { source: 'tutoring.content', error: describeError(e) })
+            this.publish({ notice: tutoringFailureNotice(e, '内容不可用，请重新读取核对。已有历史记录保留，也可以继续自主操作。') })
           }
         }
         cursor = page.nextServerSeq; ledger.cursor = Math.max(ledger.cursor, cursor)
@@ -206,12 +219,13 @@ export class TutoringWorkspace {
       this.publish({ synchronized: true })
       await this.flushReceipts()
     } catch (e) {
+      reportDiagnostic('workspace.read-failed', { source: 'tutoring.events', error: describeError(e) })
       if(e instanceof WorkspaceRequestError&&e.failure.kind==='api'&&['UNAUTHENTICATED','FORBIDDEN','RECOVERY_REQUIRED'].includes(e.failure.error.code)) {
         refreshHistory=false
         this.publish({limitedCheck:null})
         this.clearHistory('当前授权或代际已失效，请重新载入。')
       }
-      this.publish({ synchronized: false, notice: `辅导读取未完成：${e instanceof Error ? e.message : String(e)}` })
+      this.publish({ synchronized: false, notice: `辅导读取未完成：${tutoringFailureNotice(e, '请稍后重新读取；编辑和保存仍可继续。')}` })
     }
     finally { this.publish({ busy: false }); if(revalidate&&refreshHistory&&!this.historyPending)void this.readHistory() }
   }
@@ -258,6 +272,7 @@ export class TutoringWorkspace {
       } catch (e) {
         if (!this.valid()) return
         command.error = e instanceof Error ? e.message : String(e)
+        reportDiagnostic('command.failed', { source: 'tutoring.receipt', error: describeError(e) })
         if (e instanceof WorkspaceRequestError && e.failure.kind === 'api' && !e.failure.error.retryable) command.state = 'rejected'
         this.publish({ notice: '展示/回应事实已保存在本机，服务回执尚未确认；核对时保留原请求。' })
       }
@@ -303,9 +318,10 @@ export class TutoringWorkspace {
       }
       await this.executeCommand(command.key)
     } catch (e) {
+      reportDiagnostic('workspace.read-failed', { source: 'tutoring.help-preflight', error: describeError(e) })
       if(e instanceof WorkspaceRequestError&&e.failure.kind==='api'&&['UNAUTHENTICATED','FORBIDDEN','RECOVERY_REQUIRED'].includes(e.failure.error.code))
         this.clearHistory('当前授权或代际已失效，请重新载入。')
-      this.publish({ notice: e instanceof Error ? e.message : String(e) })
+      this.publish({ notice: tutoringFailureNotice(e, '问题未完成发送。原问题保留，请重新读取并核对。') })
     }
     finally { this.publish({ busy: false }) }
   }) }
@@ -382,13 +398,13 @@ export class TutoringWorkspace {
       await this.readNow(true)
     } catch (e) {
       if (!this.valid()) return
-      if (command.state==='confirmed') { this.publish({ notice: `原请求已确认，后续状态待读：${e instanceof Error ? e.message : e}` }); return }
+      reportDiagnostic(command.state==='confirmed' ? 'workspace.read-failed' : 'command.failed',
+        { source: 'tutoring.command', kind: command.kind, state: command.state, error: describeError(e) })
+      if (command.state==='confirmed') { this.publish({ notice: tutoringCommandFailureNotice(command, e) }); return }
       command.error = e instanceof Error ? e.message : String(e)
       if (e instanceof WorkspaceRequestError && e.failure.kind === 'api' && !e.failure.error.retryable) command.state = 'rejected'
       await this.persist(ledger)
-      this.publish({ notice: command.state==='rejected'
-        ? `服务未接纳：${command.error}。原问题保留，可以明确发起新问题。`
-        : `请求结果未知：${command.error}。保留原问题/请求，先核对。` })
+      this.publish({ notice: tutoringCommandFailureNotice(command, e) })
     } finally {
       if(this.state.sendingKey===key)this.publish({sendingKey:null})
     }
