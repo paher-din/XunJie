@@ -1,0 +1,126 @@
+{
+  "checkedAt": "2026-10-14T05:02:37.849161+00:00",
+  "businessSourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "approvedScope": "Original24-table fresh-only durable synthetic database and normal HTTPS/new objects, existing credentials reused",
+  "realHttpsCases": 20,
+  "passed": 20,
+  "failed": 0,
+  "tlsVerifiedResponses": 178,
+  "normalHostRunning": true,
+  "cAndHdlReadiness": true,
+  "hostHttpHealthReady": {
+    "statusCode": 503,
+    "errorCode": "DEPENDENCY_UNAVAILABLE",
+    "acceptedAsReady": false,
+    "owner": "A",
+    "finding": "Fixed 9fa76ad I0 host retains base health/ready handler returning503; not counted as pass or bypassed."
+  },
+  "documentCheck": {
+    "documents": 65,
+    "internalLinks": 997,
+    "errors": []
+  },
+  "secretScan": {
+    "actualSecretValuesCompared": 7,
+    "matchedFiles": [],
+    "logsCompared": 3,
+    "secretsPrinted": false
+  },
+  "scriptSyntaxAndSelfChecks": "passed",
+  "files": [
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/current-entry-manifest.json",
+      "bytes": 610,
+      "sha256": "c2ef5bdb34e5fa9fd378e75b47fb97e7525fe4661d0620c2ddee7a0b2a5a2c6d"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/database-applied.json",
+      "bytes": 1382,
+      "sha256": "94d3a7c866c9610b4d96406bbebd393624d736841ad80fa5e1dc1a8bc15fc30a"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/https-http.json",
+      "bytes": 746495,
+      "sha256": "18e90f3eed0d4dc9972a900b6d27370b15699b0595f9112386b9f19ba260bbdc"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/https-manifest.json",
+      "bytes": 1620,
+      "sha256": "4a64d91746cdb1ab1678f21657f90be4c52a9a26d149bf8cfc7d4d271e19f1ab"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/https-verification.json",
+      "bytes": 8583,
+      "sha256": "e0f6e87e0ecbf288f9746947c9f80ee2373f01acd2cc0663254a0de09d9b6645"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/logs-manifest.json",
+      "bytes": 818,
+      "sha256": "61300ab116c777e73bafcbd56d7d43bba27af5d6f5fb002193d803dc9e1e2fbb"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/onsite-after.json",
+      "bytes": 7267,
+      "sha256": "5bf7b756ce9918fdea1d9d4ffd3a5d0fe0990022ed30eea5bf0dcd1fcb20a11e"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/running-entry-final.json",
+      "bytes": 3902,
+      "sha256": "fe072cb067c9e67dfc7986b14e19d0884eb0f2170c04d1e42155b78828113dc4"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/running-entry.json",
+      "bytes": 3494,
+      "sha256": "b58b5c5f3e261cb785c5c3f026f95406c97bea2805a3c7b9daf07f725c57572e"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/running-probe-first.json",
+      "bytes": 694,
+      "sha256": "80cf5d68b144a6d62ece412bb51fc0943fee7e6d4923b9e4d066ec20c0d6d645"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/start-command.json",
+      "bytes": 1147,
+      "sha256": "60d9633083547e1842cfb25b7223d84968290c044db10a41286549d7feea4f1a"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/storage-check.json",
+      "bytes": 864,
+      "sha256": "d3b68ff4d4498548385ba09a0dcc955b6f7c4e68eb515bcb2794934682e32fd5"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/ui-handoff.json",
+      "bytes": 2255,
+      "sha256": "eddb6a3e7b24a97826884c34537d83ad63a64c5bb4c21c1222cc4b5c1ed45c02"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/windows-loopback.json",
+      "bytes": 207,
+      "sha256": "c3a13fb5563c72153828a0f7ad5fbb3e33c816e4b21d97b1b123fd19d2a8686f"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/inspect-entry-followup.mjs",
+      "bytes": 3517,
+      "sha256": "63c426c3073ae410c507605d05c354e73ba748ee6f20aee6f86036f9e4ca49a5"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/prepare-ui-handoff.mjs",
+      "bytes": 6360,
+      "sha256": "bcf54d0e9af036e3c77d576ed883bf75ec254750e19e18c6c1a84fda9a50d4e9"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/verify-entry-https.mjs",
+      "bytes": 32014,
+      "sha256": "531381bf26f32060656b34ca0037d9a36a01e2afbf39808d86435094979c5b8c"
+    }
+  ],
+  "unexecuted": [
+    "WSL/guest reboot persistence test",
+    "browser trust/login/UI acceptance",
+    "35-table/HDL/ALU/model/NFR/human/teaching acceptance"
+  ],
+  "remainingOwnerWork": [
+    "A: fixed I0 /health/ready503, configuration/evidence review and visibility manual",
+    "UI: authorized browser trust/account channel and login/assignment page wiring"
+  ]
+}

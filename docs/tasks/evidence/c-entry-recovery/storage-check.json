@@ -1,0 +1,33 @@
+{
+  "changedHostConfigFields": [
+    "databaseFile"
+  ],
+  "files": [
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014",
+      "uid": 0,
+      "mode": "0o700",
+      "bytes": 4096
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014/xunjie-a12-completion-oNozxQ",
+      "uid": 0,
+      "mode": "0o700",
+      "bytes": 4096
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014/xunjie-a12-completion-oNozxQ/synthetic.sqlite",
+      "uid": 0,
+      "mode": "0o600",
+      "bytes": 499712
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host-recovered-20261014.json",
+      "uid": 0,
+      "mode": "0o600",
+      "bytes": 919
+    }
+  ],
+  "oldConfigRetained": true,
+  "originalMissingDatabaseStillAbsent": true
+}

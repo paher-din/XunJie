@@ -1,0 +1,29 @@
+[
+  {
+    "originalPath": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-recovery-20261014/verification.json",
+    "originalBytes": 8583,
+    "originalSha256": "e0f6e87e0ecbf288f9746947c9f80ee2373f01acd2cc0663254a0de09d9b6645",
+    "publicPath": "docs/tasks/evidence/c-entry-recovery/https-verification.json",
+    "publicBytes": 8583,
+    "publicSha256": "e0f6e87e0ecbf288f9746947c9f80ee2373f01acd2cc0663254a0de09d9b6645",
+    "projection": "JSON parsed and formatted; no field removed; original/public bytes separately hashed"
+  },
+  {
+    "originalPath": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-recovery-20261014/http-public-samples.json",
+    "originalBytes": 746495,
+    "originalSha256": "18e90f3eed0d4dc9972a900b6d27370b15699b0595f9112386b9f19ba260bbdc",
+    "publicPath": "docs/tasks/evidence/c-entry-recovery/https-http.json",
+    "publicBytes": 746495,
+    "publicSha256": "18e90f3eed0d4dc9972a900b6d27370b15699b0595f9112386b9f19ba260bbdc",
+    "projection": "JSON parsed and formatted; no field removed; original/public bytes separately hashed"
+  },
+  {
+    "originalPath": "/opt/xunjie-runner/tests/i0-entry-20261013-01/ui-handoff-recovered-20261014.json",
+    "originalBytes": 2255,
+    "originalSha256": "eddb6a3e7b24a97826884c34537d83ad63a64c5bb4c21c1222cc4b5c1ed45c02",
+    "publicPath": "docs/tasks/evidence/c-entry-recovery/ui-handoff.json",
+    "publicBytes": 2255,
+    "publicSha256": "eddb6a3e7b24a97826884c34537d83ad63a64c5bb4c21c1222cc4b5c1ed45c02",
+    "projection": "JSON parsed and formatted; no field removed; original/public bytes separately hashed"
+  }
+]

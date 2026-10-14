@@ -15,21 +15,24 @@ if (process.argv[2] === '--self-check') {
 
 const source = '/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching';
 const directory = '/opt/xunjie-runner/tests/i0-entry-20261013-01';
-const config = JSON.parse(readFileSync(directory + '/i0-host.json', 'utf8'));
+const recoveryRun = process.argv[2] === '--recovery-run';
+const configFile = directory + (recoveryRun ? '/i0-host-recovered-20261014.json' : '/i0-host.json');
+const config = JSON.parse(readFileSync(configFile, 'utf8'));
 const input = JSON.parse(readFileSync(directory + '/initializer.json', 'utf8'));
 const generation = JSON.parse(readFileSync(config.generationFile, 'utf8')).data.recoveryGeneration;
-const explicitPublicMaterialRun = process.argv[2] === '--public-material-run';
+const explicitPublicMaterialRun = recoveryRun || process.argv[2] === '--public-material-run';
 const previous = process.argv[2] && !explicitPublicMaterialRun ? JSON.parse(readFileSync(process.argv[2], 'utf8')) : undefined;
 const previousPassed = previous?.cases.filter(item => item.status === 'passed').map(item => item.id) ?? [];
 const certificate = new X509Certificate(readFileSync(config.tls.certFile));
 const agent = new https.Agent({ca: readFileSync(config.tls.certFile), rejectUnauthorized: true, keepAlive: true});
-const evidenceDirectory = directory + (explicitPublicMaterialRun ? '/https-evidence-public-material' : previous ? '/https-evidence-resume' : '/https-evidence');
+const evidenceDirectory = directory + (recoveryRun ? '/https-evidence-recovery-20261014' : explicitPublicMaterialRun ? '/https-evidence-public-material' : previous ? '/https-evidence-resume' : '/https-evidence');
 mkdirSync(evidenceDirectory, {mode: 0o700});
 const serverLog = createWriteStream(evidenceDirectory + '/server-log.ndjson', {flags: 'wx', mode: 0o600});
 const startedAt = new Date().toISOString();
 const server = spawn('/opt/xunjie-runner/node/bin/node', [source + '/dist/server/main.js'], {cwd: source,
   env: {PATH: '/opt/xunjie-runner/node/bin:/usr/bin:/bin', HOME: '/root', LANG: 'C.UTF-8', TZ: 'UTC',
-    XUNJIE_I0_CONFIG: directory + '/i0-host.json', PORT: '3443'}, stdio: ['ignore', 'pipe', 'pipe']});
+    ...(recoveryRun ? {TMPDIR: directory + '/retained-tmp-20261014'} : {}),
+    XUNJIE_I0_CONFIG: configFile, PORT: '3443'}, stdio: ['ignore', 'pipe', 'pipe']});
 server.stdout.pipe(serverLog, {end: false});
 server.stderr.pipe(serverLog, {end: false});
 const samples = [], cases = [], references = {...previous?.references, origin: config.origin, generation};
@@ -39,7 +42,7 @@ const clients = new Map(input.users.map(user => [user.id, {user, cookie: '', csr
 const teacher = clients.get('synthetic-i0-teacher-a'), student = clients.get('synthetic-i0-student-a');
 const peer = clients.get('synthetic-i0-student-peer'), other = clients.get('synthetic-i0-student-b');
 const digest = value => createHash('sha256').update(value).digest('hex');
-const key = name => 'c-entry-20261014-' + (explicitPublicMaterialRun ? 'explicit-public-material-' : previous ? 'after-confirmed-cancel-' : '') + name;
+const key = name => 'c-entry-20261014-' + (recoveryRun ? 'recovered-' : explicitPublicMaterialRun ? 'explicit-public-material-' : previous ? 'after-confirmed-cancel-' : '') + name;
 const endpoint = suffix => '/api/attempts/' + references.attemptId + suffix;
 const oldSource = '#include <stdio.h>\nint main(void){puts("old snapshot");}\n';
 const newSource = '#include <stdio.h>\nint main(void){puts("new snapshot");}\n';

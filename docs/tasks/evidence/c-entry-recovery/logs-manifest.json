@@ -1,0 +1,23 @@
+[
+  {
+    "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence-recovery-20261014/server-log.ndjson",
+    "bytes": 114,
+    "sha256": "190a8b1e5dfb03fc233f584749153ae1fb37ceae3550e16a3144f522a250455f",
+    "secretValueMatches": 0,
+    "bodyPublished": false
+  },
+  {
+    "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/ui-handoff-recovered-20261014-server-log.ndjson",
+    "bytes": 114,
+    "sha256": "bb7b7a5f3b294fa70f7d54f0692294a70f79ea0bb544c6a31cc65b9c3f737d34",
+    "secretValueMatches": 0,
+    "bodyPublished": false
+  },
+  {
+    "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/recovery-service-journal-20261014.log",
+    "bytes": 297,
+    "sha256": "7e3bac8f58b319e85aad83b87679c7f5fdc4a99a394d0ac57c3c56cd92bee9a9",
+    "secretValueMatches": 0,
+    "bodyPublished": false
+  }
+]

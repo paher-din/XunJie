@@ -6,16 +6,20 @@ import {setTimeout as delay} from 'node:timers/promises';
 
 const source = '/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching';
 const root = '/opt/xunjie-runner/tests/i0-entry-20261013-01';
-const config = JSON.parse(readFileSync(root + '/i0-host.json', 'utf8'));
+const recoveryRun = process.argv[2] === '--recovery-run';
+const configFile = root + (recoveryRun ? '/i0-host-recovered-20261014.json' : '/i0-host.json');
+const outputPrefix = root + (recoveryRun ? '/ui-handoff-recovered-20261014' : '/ui-handoff-final');
+const config = JSON.parse(readFileSync(configFile, 'utf8'));
 const users = JSON.parse(readFileSync(root + '/initializer.json', 'utf8')).users;
-const prior = JSON.parse(readFileSync(root + '/https-evidence-public-material/verification.json', 'utf8'));
+const prior = JSON.parse(readFileSync(root + (recoveryRun ? '/https-evidence-recovery-20261014' : '/https-evidence-public-material') + '/verification.json', 'utf8'));
 assert.equal(prior.passed, 20); assert.equal(prior.failed, 0); assert(prior.shutdownObserved);
 const generation = JSON.parse(readFileSync(config.generationFile, 'utf8')).data.recoveryGeneration;
 const agent = new https.Agent({ca: readFileSync(config.tls.certFile), rejectUnauthorized: true});
-const log = createWriteStream(root + '/ui-handoff-final-server-log.ndjson', {flags: 'wx', mode: 0o600});
+const log = createWriteStream(outputPrefix + '-server-log.ndjson', {flags: 'wx', mode: 0o600});
 const child = spawn('/opt/xunjie-runner/node/bin/node', [source + '/dist/server/main.js'], {cwd: source,
   env: {PATH: '/opt/xunjie-runner/node/bin:/usr/bin:/bin', HOME: '/root', LANG: 'C.UTF-8', TZ: 'UTC',
-    XUNJIE_I0_CONFIG: root + '/i0-host.json', PORT: '3443'}, stdio: ['ignore', 'pipe', 'pipe']});
+    ...(recoveryRun ? {TMPDIR: root + '/retained-tmp-20261014'} : {}),
+    XUNJIE_I0_CONFIG: configFile, PORT: '3443'}, stdio: ['ignore', 'pipe', 'pipe']});
 child.stdout.pipe(log, {end: false}); child.stderr.pipe(log, {end: false});
 const teacher = {user: users.find(u => u.id === 'synthetic-i0-teacher-a'), cookie: '', csrf: ''};
 const student = {user: users.find(u => u.id === 'synthetic-i0-student-a'), cookie: '', csrf: ''};
@@ -63,7 +67,8 @@ try {
     frontendRoute: 'UI-owned route/bootstrap wiring still pending; no fabricated hash route',
     browserTrust: 'Not authorized or tested; strict Node client result is not browser acceptance',
     startup: {cwd: source, node: '/opt/xunjie-runner/node/bin/node', args: ['dist/server/main.js'],
-      PORT: '3443', XUNJIE_I0_CONFIG: root + '/i0-host.json'},
+      PORT: '3443', XUNJIE_I0_CONFIG: configFile,
+      ...(recoveryRun ? {TMPDIR: root + '/retained-tmp-20261014'} : {})},
     scope: 'Explicit normal teacher resume of same synthetic assignment for handoff; old pause evidence retained'};
 } catch (error) {failed = true; metadata = {failed: true, code: error.code ?? 'ASSERTION_OR_BOUNDARY',
   message: 'Handoff preparation stopped, original records retained; no secret values logged.'};}
@@ -73,6 +78,6 @@ finally {
     const timer = setTimeout(() => resolve(false), 180000); child.once('exit', () => {clearTimeout(timer); resolve(true);});});
   await new Promise(resolve => log.end(resolve));
   metadata.serviceRunning = false; metadata.stopConfirmed = stopped; metadata.serverExitCode = child.exitCode;
-  writeFileSync(root + '/ui-handoff-final.json', JSON.stringify(metadata, null, 2) + '\n', {flag: 'wx', mode: 0o600});
+  writeFileSync(outputPrefix + '.json', JSON.stringify(metadata, null, 2) + '\n', {flag: 'wx', mode: 0o600});
   console.log(JSON.stringify(metadata)); if (failed || !stopped || child.exitCode !== 0) process.exitCode = 1;
 }

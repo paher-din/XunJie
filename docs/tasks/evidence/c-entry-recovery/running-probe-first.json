@@ -1,0 +1,33 @@
+{
+  "firstProbeFailurePhase": "strict-health",
+  "firstFollowupProbeFailed": "An inspection command returned nonzero before producing observations; no response invented.",
+  "followupReadonlyHttpStatuses": [
+    {
+      "path": "/health/live",
+      "status": 200,
+      "authorized": true,
+      "bodyKeys": [
+        "requestId",
+        "data"
+      ]
+    },
+    {
+      "path": "/health/ready",
+      "status": 503,
+      "authorized": true,
+      "bodyKeys": [
+        "requestId",
+        "error"
+      ],
+      "errorCode": "DEPENDENCY_UNAVAILABLE"
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "authorized": true,
+      "bodyKeys": [
+        "non-json"
+      ]
+    }
+  ]
+}

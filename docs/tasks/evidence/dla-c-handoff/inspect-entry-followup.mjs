@@ -10,7 +10,7 @@ const root = '/opt/xunjie-runner/tests/i0-entry-20261013-01';
 const handoff = '/opt/xunjie-runner/tests/i0-c-revalidation-cde69cc-20261013/handoff';
 assert.equal(process.version, 'v24.21.0');
 assert.equal(process.getuid(), 0);
-const config = JSON.parse(readFileSync(root + '/i0-host.json', 'utf8'));
+const config = JSON.parse(readFileSync(root + (process.argv[2] === '--recovery-run' ? '/i0-host-recovered-20261014.json' : '/i0-host.json'), 'utf8'));
 const {sshRunner} = await import(source + '/dist/server/records/runner.js');
 const transport = sshRunner(JSON.parse(readFileSync(handoff + '/connection.json', 'utf8')));
 const cert = new X509Certificate(readFileSync(config.tls.certFile));
@@ -38,7 +38,7 @@ if (database.exists) {
   database = {...database, opened: true,
     tables: db.prepare("SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").get().count,
     assignment: db.prepare('SELECT id,assignment_revision,status FROM assignments WHERE id=?').get('9906a7af-a43e-44da-a395-db8491c4cbbf'),
-    runJobStates: db.prepare("SELECT status,count(*) AS count FROM jobs WHERE json_extract(job_json,'$.kind')='student_run' GROUP BY status").all()};
+    runJobStates: db.prepare("SELECT status,count(*) AS count FROM jobs WHERE json_extract(job_json,'$.purpose')='student_run' GROUP BY status").all()};
  } finally {db.close();}
 }
 const linuxBrowsers = ['google-chrome', 'chromium', 'firefox'].map(binary => {

@@ -607,3 +607,56 @@ A负责design课程/活动/教师binding确认、checkRule、权限/正常宿主
 已完成：原VM/隐藏保活恢复、原AppArmor策略持久加载及enforce、两种严格认证ready与原指纹/代际实核。恢复脚本语法与目标路径正/反例自检通过，只读prepare实际通过，databaseCreated=false。当前HTTPS仍停、旧库仍缺；数据库建表/配置/新对象及新HTTPS业务验证未执行，不写为修复完成。
 
 本批文档与空白检查通过；去敏证据、脚本和任务记录按实际7个既有秘密值扫描后普通推送原PR55，并向#30回交节点已恢复/24表重建待负责人确认，不合并PR或关闭Issue。主副本G3及其他作者改动保留。没有删除原文件、修改密钥/CI/产品基线或编造旧对象；恢复后的新库方案不能代替原AC-12旧备份恢复验收。
+
+### 15.5 负责人批准并开始数据库恢复
+
+2026-10-14，负责人针对上轮最终问题“复用现有凭据，在受控持久目录新建原24表合成库和新宿主配置，再恢复HTTPS、创建新的合法业务对象”明确回复 **“批准”**。已说明原记录/ID不能据此恢复、会实际建表；本批准精确覆盖§15.3，不重复请求。原先待批准状态保留其时点，本节之后实施按实际证据追加。
+
+继续只写C任务/核查脚本/去敏证据与获准本机新24表/新宿主引用；不迁移/删除旧库，不生成新秘密，不扩大到35表、ALU、浏览器信任或生产。固定运行源仍9fa76ad，原TLS/签名/五密码复用。新库创建后复用原20项验证器，只新增明确recovery运行入口以选新配置/TMPDIR/独占证据目录；旧轮输出和业务对象不覆盖。完整验证是新库/环境变化后的针对性复验，不累计旧通过数。随后通过原教师API恢复新合法分配为active，正常启动原HTTPS留同机联调入口并交明确停止方法；生命周期与原未完成浏览器门禁保持区分。
+
+### 15.6 新库、真实业务验证及新交接
+
+12:51按批准执行原脚本--apply，见 [实际建库](evidence/c-entry-recovery/database-applied.json)：新库为 `/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014/xunjie-a12-completion-oNozxQ/synthetic.sqlite`；原24表/5用户/2课程、初始Assignment/Attempt/Job为空及integrity_check=ok。新配置i0-host-recovered-20261014.json仅改databaseFile，其余引用不变；原i0-host.json仍指旧缺失库，作为历史保留，不再用于当前启动。初始化和宿主进程同设TMPDIR到新持久父目录，未迁移/绑旧路径或关闭原synthetic守卫。
+
+复用原 [HTTPS验证器](evidence/dla-c-handoff/verify-entry-https.mjs) 的--recovery-run：同一原20项在新库全部 **20/20、0失败/跳过、178个严格TLS响应**，原自动消费者执行C1；该验证进程随后正常SIGTERM/退出0。[本轮结果](evidence/c-entry-recovery/https-verification.json)、[完整去敏HTTP](evidence/c-entry-recovery/https-http.json)、[原/公开字节摘要](evidence/c-entry-recovery/https-manifest.json)。正常teacher显式visibility资源/确认/分配、五登录/课程归属、Origin/CSRF/跨归属、ACK/head/快照、原Job运行/对账unknown/报告、可信检查失败、取消、暂停、旧代际与静态拒绝均按原判据。新的synthetic请求/Job/Run未冒用旧ID；可信检查预期failed不表示课程作品或学习效果通过。
+
+再以原 [交接脚本](evidence/dla-c-handoff/prepare-ui-handoff.mjs) --recovery-run恢复新分配active，保留本轮暂停证据；脚本正常停止其本人进程。[本轮交接](evidence/c-entry-recovery/ui-handoff.json)的serviceRunning=false只表示该验证进程已停，当前持续入口以下一节为准。
+
+| 新业务对象 | 当前值 |
+| --- | --- |
+| Assignment | a2533386-4923-4dee-83bd-2d7a99fb06e9；revision=3/active=true |
+| Activity | f0942cb7-75ef-4625-aa92-d649268d61cb |
+| Attempt | c9166463-5f46-4dc6-82c3-96456f394258；active/attemptRevision=10/workspaceRevision=7/decisionEpoch=2 |
+| 首个真实C1 Run / Job | c5a207a0-4303-40b2-8480-c393391fd1cd / 9a9c0c6c-4a6a-4e13-877c-83aa6ce5214e；确认succeeded |
+| 登录名与受控引用 | synthetic-i0-student-a；原root/initializer.json，仅原WSL/root进程内存领取；未扩大到Windows浏览器秘密通道 |
+
+旧9906a7af…分配等旧对象只留§13历史，不重建同ID、不自动把旧页面指向新对象；UI按新交接显式读取。原执行代际保持，因为这不是旧备份回退或旧作业续跑；新应用数据均新建/显式操作，不补造丢失记录。
+
+### 15.7 当前入口、运行方法与仍未通过项
+
+12:54另以原main正常启动同机HTTPS，当前运行单元为 `xunjie-i0-entry-recovered-20261014.service`、MainPID=843。复用原Node24.21.0、127.0.0.1:3443、同源/Session/CSRF/自动消费者250ms，原隐藏WSL保活PID69164继续。采用瞬态unit仅管理原main生命周期，无自动开机/跨机/新代理；[完整启动/停止参数](evidence/c-entry-recovery/start-command.json)。后续启动必须同时给PORT=3443、TMPDIR=上述持久父目录、XUNJIE_I0_CONFIG=新配置；不要再用旧配置，也不要对已存在新目标再次--apply。
+
+当前准确交接是 [运行中入口](evidence/c-entry-recovery/running-entry-final.json)，受控原件为root/current-entry-recovered-20261014.json，[原/公开摘要](evidence/c-entry-recovery/current-entry-manifest.json)逐字一致。正常登录/Session/新bootstrap/本人Attempt读取实际通过，7个严格TLS响应；新库经过验证器启动/关闭、交接进程启动/关闭、另一个正常宿主启动后原对象和确认头仍在，integrity_check=ok。原student_run用途四个Job为3 succeeded/1 cancelled、未结0，见 [当前只读核查](evidence/c-entry-recovery/onsite-after.json)。C/HDL当前ready=true及原指纹/代际仍一致；Windows对127.0.0.1:3443的 [只读TCP连接](evidence/c-entry-recovery/windows-loopback.json)也已成功，未执行Windows TLS信任/浏览器登录。
+
+停止本人应用的PowerShell命令：
+
+```powershell
+wsl -d Ubuntu -u root -- systemctl stop xunjie-i0-entry-recovered-20261014.service
+wsl -d Ubuntu -u root -- systemctl show xunjie-i0-entry-recovered-20261014.service --property=ActiveState,SubState,Result,ExecMainStatus
+```
+
+原main收到SIGTERM后按原规则收束消费者及作业；停止未确认不能标成功。此命令只停应用，原执行节点/保活不顺带停止。Windows/WSL重启后仍需按原vm.sh/保活、当前readiness、保留新库/新配置再启应用；本批未做WSL/guest重启演练或备份RPO验收，不承诺全天可用。
+
+**仍需A处理的实际宿主缺口：** 初次持续入口探测要求/health/ready=200，实际503/DEPENDENCY_UNAVAILABLE，因此该探测失败，见 [失败保留/实际状态](evidence/c-entry-recovery/running-probe-first.json)。固定9fa的I0组装保留server/app.ts默认ready拒绝handler；/health/live与页面200、真实业务20/20和节点ready=true不能把该HTTP503算通过。A需核I0宿主的就绪装配/检查及修复，C未改A代码、放宽健康判断或混入35表宿主。最终运行交接将hostHealthReady.acceptedAsReady=false明确保留；“C库/节点/真实业务已恢复”不等于该HTTP健康端点/H-01/完整应用已验收。
+
+本次新探测器还误以kind=student_run筛Job，得到空集合；student_run实际是purpose。原 [只读helper](evidence/dla-c-handoff/inspect-entry-followup.mjs)已改正确purpose条件并新增显式recovery配置读取，实际核四终态通过；running-entry.json中的空计数错误保留，running-entry-final.json单独更正，业务记录未改。第一条HTTP诊断命令未产生观察即异常退出、一个受控中间输出EOF格式错误也保留；当前使用current-entry原件与公开摘要已解析/逐字核验，不用中间文件交接。
+
+### 15.8 本轮写集与验证边界
+
+三个既有本人helper仅增加recovery入口/配置/TMPDIR/独占输出，inspect另修purpose统计；应用/runner/契约/依赖、密钥、产品/规划/参考/AGENTS不改，旧原始输出不覆盖。各旧validation记录对应其原发布提交，本次helper与新增输出以新核验为准；不改旧摘要迁就当前脚本。README仅加当前C任务导航，启动细节留本任务。
+
+当前可交A/UI新库/真实20项/合法对象/可访问TCP与运行中原HTTPS；A仍负责身份/权限/宿主/契约、手册visibility补正与新证据实审，UI仍负责精确信任/账号通道、页面接线和实际浏览器验收。35表/HDL业务/ALU、模型、NFR/真人/教学效果未执行；没有关闭Issue、合并PR或更新保护基线，产品/MVP§10待授权维护者汇总。
+
+最终检查见 [本轮核验](evidence/c-entry-recovery/recovered-validation.json)、[存储/权限](evidence/c-entry-recovery/storage-check.json)、[三份原日志摘要](evidence/c-entry-recovery/logs-manifest.json)。新配置差异仅databaseFile；新父目录/库目录root0700、SQLite/新配置root0600。三份原日志与本轮公开写集在原WSL/root内存按7个真实秘密值比较，匹配0，未输出秘密或复制SQLite。四脚本syntax、原ID unknown序列和新库目标正反例自检通过；原/公开HTTP和当前运行交接的bytes/hash一致，文档65份/997内链/errors=[]与git diff --check通过。旧验证记录不累计，本轮最终20/20独立记账；宿主HTTP ready503明确仍为失败。
+
+本轮完成C获准的持久新库/原节点/正常HTTPS业务恢复，保持本人应用在线供已获准同机联调，并将精确新对象及A健康缺口回#30。实际代码/文档在原PR55普通推送；未自动合并/关闭，主副本及其他成员写集未动。证书信任与UI消费未验不能计H-01/完整C-ENTRY验收完成。
