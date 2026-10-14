@@ -62,6 +62,11 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 | 准备入口 | 首页「I0 准备场景（合成）」卡片 | 不出现 |
 | provider 连接测试 | 不外发，直接报能力不可用 | 保留原设计行为 |
 
+在本机浏览器接 PAHER 的获准服务，可用 [HTTPS 与维护工具](../../tools/i0-ui55/README.md)。
+本机正常 `dist` 与真实 `/api` 经固定 SSH 主机、严格两端 TLS 同源连接，不回退 fixture；
+实际访问位置、证书范围、持久入口及本轮 C1 浏览器证据见
+[I0-UI55](../../docs/tasks/I0-UI55_BROWSER_ENTRY.md)。该历史现场固定源与当前正式 UI 分别记账。
+
 准备 fixture 只在 `--mode prep` 的开发进程里挂载（`vite.config.ts` + `prep/plugin.ts` 的
 `apply: 'serve'` 双重限定），只接受 loopback 请求，不导入 `apps/teaching` 的任何模块。
 `npm run build` 的产物既不含这些端点，也不含合成账号与合成材料——它们全部留在 Node 侧。

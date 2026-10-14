@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "task": "H-04 real Core client adapter",
+  "diagnosedSource": {
+    "uiBase": "40db96cc8fb5f377f9c4b38e841a3b559b849c7a",
+    "runtime": "9fa76ad-lf2-20261013",
+    "worktree": "C:\\Users\\h\\.codex\\worktrees\\i0-ui55-auth-acceptance\\XunJie"
+  },
+  "scope": "Frontend local authority adaptation only; backend/Session/worker/config/DB/C1/contract wire remain unchanged. No real browser or POSTRun by this child.",
+  "readSections": [
+    "README current entry",
+    "PRD1.1/3.2/4.2/4.4",
+    "MVP1.3/M-03/M-07/M-09/M-10/4/NFR03/AC04/AC06/AC10",
+    "TECH5/5.1/8.1/8.2/8.3/8.4",
+    "I0_UI_CLIENT_CONTRACT8",
+    "I0_UI_06_RUN_RESULTS scope/acceptance",
+    "I0_UI_CLOSEOUT H-04",
+    "I0_A_C_HANDOFF6/12/17 H-04 and existing Run cases",
+    "C0_ADR_0001_UNIFIED_RECOVERY"
+  ],
+  "cause": {
+    "hook": "useRunWorkspace.ts original19-21",
+    "rule": "verified was true only for preparation and prep capabilities. real always false.",
+    "consumer": "runWorkspace.ts original272-274",
+    "effect": "Exact user notice before snapshot read/freeze/outbox/POSTRun; eligible=false. Not a backend RUNTIME_NOT_READY or cached C1 response."
+  },
+  "runtimeDiagnosis": {
+    "observedAt": "2026-10-14T11:33:08.669Z",
+    "sqlReadOnly": true,
+    "sql": {
+      "jobsAll": [
+        {
+          "status": "cancelled",
+          "count": 1
+        },
+        {
+          "status": "succeeded",
+          "count": 3
+        }
+      ],
+      "jobsForApprovedAttempt": [
+        {
+          "status": "cancelled",
+          "count": 1
+        },
+        {
+          "status": "succeeded",
+          "count": 3
+        }
+      ],
+      "runsAll": 4,
+      "runsForApprovedAttempt": 4
+    },
+    "hostConfig": {
+      "synthetic": true,
+      "consumerIntervalMs": 250,
+      "runnerTarget": "127.0.0.1:2222"
+    },
+    "readinessCalls": 1,
+    "hostDeclaredGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "originalHostQueryRuntime": {
+      "ok": true,
+      "runtime": {
+        "profile": {
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+          "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+          "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+          "approvedResultFiles": [
+            "report.txt"
+          ]
+        },
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "readiness": {
+          "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+          "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+          "validatedAt": "2026-10-13T09:29:47.600Z",
+          "checkedAt": "2026-10-14T11:33:08.668Z"
+        }
+      }
+    },
+    "appUnitStatus": [
+      "MainPID=427",
+      "ExecMainStartTimestamp=Wed 2026-10-14 17:21:10 CST",
+      "ActiveState=active"
+    ]
+  },
+  "sqlBoundary": "Counts are an observed snapshot, not a before/after delta: no pre-click total baseline was captured. This click cannot send POSTRun according to the original exact callsite guard.",
+  "serverGuardReferences": [
+    "workspace/application.ts:169-188: committed receipt replay first; every new request queryRuntime at180; complete runtime profile equals fixed Activity profile at184.",
+    "workspace/commands.ts:154-155: ready/profile/generation checked before Job/Run construction at176-179.",
+    "design/readiness.ts:9-23: original readRuntime, current fingerprint/sourceHash/validation hash/date, no cache.",
+    "server/main.ts:31-36: actual readiness generation must match controlled host generation.",
+    "app/i0.ts:38-52 and main.ts:47: consume original pendingJobs/processJob; current controlled interval250."
+  ],
+  "implementation": {
+    "files": [
+      "apps/student/src/workspace/useRunWorkspace.ts",
+      "apps/student/src/workspace/runWorkspace.ts"
+    ],
+    "localAuthority": [
+      "prep-verified",
+      "server-on-command"
+    ],
+    "semantics": "real uses authorized bootstrap G and fixed Activity profile as request binding; delegates current runtime decision to original POSTRun. No real verified=true or new readiness endpoint. Both sources require matching nonempty G/profile and exact mode-source match.",
+    "preserved": [
+      "CSRF",
+      "Session/current authority",
+      "outbox before POST",
+      "receipt checks",
+      "snapshot/version binding",
+      "poll",
+      "cancel",
+      "server gates",
+      "prep false rejection"
+    ]
+  },
+  "regression": {
+    "red": {
+      "command": "CI=1; XUNJIE_E2E_PREP_PORT=5773; REAL_PORT=5774; RESTART_PORT=5775; BROWSER_CHANNEL=chrome; npm run test:e2e -- e2e/real-mode.spec.ts -g '真实 Core 由 hook'",
+      "result": "1 failed: expected1 POST received0; exact local runtime notice; disabled run button.",
+      "context": "D:\\XunJie_Project\\i0-ui55-connection\\core-run-readiness-red-context-20261014.md"
+    },
+    "greenCallsite": "Same real page/hook/RunWorkspace test passed1/1 after fix.",
+    "units": {
+      "command": "npm test -- src/workspace/runWorkspace.test.ts src/workspace/runRequest.test.ts src/workspace/runResults.test.ts src/workspace/runControl.test.ts",
+      "files": 4,
+      "passed": 13,
+      "failed": 0
+    },
+    "browser": {
+      "command": "CI=1; unique5773/5774/5775; Chrome; npm run test:e2e -- e2e/real-mode.spec.ts e2e/runResults.spec.ts -g '真实 Core|明确运行固定 Core|readiness 明确拒绝'",
+      "passed": 4,
+      "failed": 0,
+      "durationSeconds": 19.9,
+      "proof": "Real hook reaches original POST with prior outbox, retains actual contract422 RUNTIME_NOT_READY; lost ACK retains one pending command through read/reload; preparation positive and runtime rejection still work.",
+      "boundary": "HTTP protocol replacement and preparation only, not actual backend TLS/C1 acceptance."
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "result": "passed browser and Node",
+      "rerunReason": "Test-only structural typing changes after the initial pass."
+    },
+    "build": {
+      "command": "npm run build",
+      "exitCode": 0,
+      "modules": 1208,
+      "warning": "Existing large chunks, unchanged threshold."
+    },
+    "errorContract": "Existing contracts/common/http.ts:14:422/RUNTIME_NOT_READY, Runtime is not ready., retryable=false, Wait for verified runtime readiness.; no new error code."
+  },
+  "buildOutput": {
+    "staticDirectory": "C:\\Users\\h\\.codex\\worktrees\\i0-ui55-auth-acceptance\\XunJie\\apps\\student\\dist",
+    "entry": "assets/index-BqhBrous.js",
+    "entryBytes": 1262605,
+    "entrySha256": "b52b0e8d1b48cf29375c2dfb5d6eca917b1620b39d6db5ee717704e50aa10383",
+    "htmlSha256": "53d3e5699551c95ecf4f5d3c10ba597fb2818b17ffcf9a648be05adb6c2dbd0b"
+  },
+  "delivery": {
+    "stagedOwnFiles": [
+      "apps/student/src/workspace/useRunWorkspace.ts",
+      "apps/student/src/workspace/runWorkspace.ts",
+      "apps/student/src/workspace/runWorkspace.test.ts",
+      "apps/student/e2e/real-mode.spec.ts"
+    ],
+    "scopedDiffCheck": "passed",
+    "committed": false,
+    "pushed": false,
+    "parentTaskExclusive": true
+  },
+  "failuresAndCorrections": [
+    "Initial test type-only OutboxRecord import dragged browser ImportMeta.env into Node test config; replaced with a narrow test-only structural read projection. Typecheck then passed.",
+    "One repeat typecheck was issued at repo root where no such script exists; rerun from apps/student succeeded.",
+    "RTK red output hid the failing assertion, so the actual Playwright error-context was read and retained."
+  ],
+  "nextVerificationByParent": "Switch approved local gateway static dist; actual Chrome explicit Core Run must reach the unchanged server/C1 and retain real Job/Run/snapshot diagnostics. No UI-ready/health200 surrogate and no teaching/full-app claim."
+}
