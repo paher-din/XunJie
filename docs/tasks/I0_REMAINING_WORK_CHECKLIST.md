@@ -1,12 +1,12 @@
 # I0：剩余工作清单（30 项）
 
-建档：2026-10-13；最新核对：2026-10-14（Asia/Shanghai），main `b7e73c5f65d457fb78d2fcbac7003e4e60ed7f43`。记录主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。用途：将跨电脑交接中的完整工作清单保存在仓库，后续不依赖个人附件或另一台电脑的文件路径。
+建档：2026-10-13；最新核对：2026-10-14（Asia/Shanghai），应用/前端交付main `87edd51e165b2bab660d73a551864ff8db0bed86`（PR #69）。记录主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。用途：将跨电脑交接中的完整工作清单保存在仓库，后续不依赖个人附件或另一台电脑的文件路径。
 
 来源：Robert 于2026-10-13提供的 `i0-remaining-work.html`，标题“I0 前端接入：当前还能做什么”，页面生成时间为2026-10-13 14:50，标注main `c437ef2`。附件SHA-256为 `0d850e95f6bce0b85bd164417194bca34694091bd7ae71a1597ef352c3e58364`。本页保留全部30个编号、工作及交付/进入条件，并补仓库内任务映射；不执行附件脚本，也不把其建议转为新实现授权。
 
 `UI-PREP`、`UI-REAL`、`UI-TUTOR` 是工作清单编号，不是正式团队A/B/C任务编号。负责人决定、实际写集、实现与验证仍记对应任务；本清单不取代[产品基线](../product/MVP_SPEC.md)、[共同计划](../planning/TEAM_WORK_PLAN.md)或成员记录。已完成工作不凭本清单重新开工，未确认项目保持待核。
 
-**最新结论：** 登录/保存/运行/辅导前端已随PR #57/#64/#66合main；Robert本轮授权的UI-PREP-01/03/05/06工程补验已完成，继续在`i0/ui-frontend`，见§10。浏览器信任、SSH网关与合成账号通道已随[PR #67](https://github.com/paher-din/XunJie/pull/67)交付，真实C1候选浏览器链已有实测；该现场仍为旧应用/候选前端，最终HTTP ready503尚未闭合。下一步复用入口，接收本批正式产物及现有正式宿主/就绪修复后补现场验证。工程/隔离浏览器、真实C1服务端、候选现场与正式版本验收分开，详见§3、§9～10。
+**最新结论：** 登录/保存/运行/辅导前端已随PR #57/#64/#66合main；本轮UI-PREP-01/03/05/06已随[PR #69](https://github.com/paher-din/XunJie/pull/69)合main，继续`i0/ui-frontend`。PR #56/#65也已合入，C正式宿主/入口已交；PR #68已回交正式b7e73c5 UI30的真实C浏览器增量。本轮直接SSH只读核查网关16/16、HTTP ready200、C1指纹/代际和原v8快照摘要通过，旧503不再作为当前首次待办。下一步UI接本批新dist并分批做已有C缺口/HDL操作接线；A/C联合处理H-05，交接详见§11。工程/隔离、旧候选/正式版本和现场范围继续分列。
 
 ## 1. 快照与实际状态
 
@@ -48,17 +48,17 @@ UI-PREP-09映射位置为[计划§4操作/接口映射](I0-B_UI_TUTOR_PLAN.md#4-
 
 | 编号 | 工作 | 必需条件 | 2026-10-14工程/隔离状态与剩余 |
 | --- | --- | --- | --- |
-| UI-REAL-01 | 真实登录/退出与会话失效 | H-01：正常宿主、同源HTTPS、合成账号、Session/CSRF | [会话批次](I0-UI_AUTH_SESSION_ENTRY.md)已交、PR #64已合main；隔离HTTPS已验，PR #67旧版本现场登录/退出/重登录及信任/账号通道也已验；当前正式版本/会话过期现场仍分列 |
+| UI-REAL-01 | 真实登录/退出与会话失效 | H-01：正常宿主、同源HTTPS、合成账号、Session/CSRF | [会话批次](I0-UI_AUTH_SESSION_ENTRY.md)已交、PR #64已合main；隔离HTTPS已验，PR #68正式b7e73c5 UI30已有表单重进及原会话证据；本轮匿名Session401/严格TLS核查通过，会话过期与完整现场仍分列 |
 | UI-REAL-02 | 本人分配、固定活动和资料 | H-01/H-02及读取H-06；可用授权深链 | PR #64已接获准深链/bootstrap及可见资料；PR #67旧版本现场深链/公开资料/private redacted已验；未增加分配列表或跨设备Attempt发现，正式版本当次授权仍须复核 |
 | UI-REAL-03 | 已有Attempt/文件/快照只读 | 身份、获准Attempt引用与读取样例 | 已在[I0-B真实入口](I0-B_REAL_ENTRY.md)及[保存恢复](I0-UI_REAL_SAVE_RECOVERY.md)覆盖获准引用/已有作品/快照读回；不另造独立整项通过数，跨设备发现未增加 |
 | UI-REAL-04 | 首次创建Attempt | H-03受信代际与创建样例；学生主动操作 | 已有主动创建接线及实际服务浏览器覆盖，见[I0-B真实入口](I0-B_REAL_ENTRY.md)与[运行批次](I0-UI_REAL_RUN_CONTROL_HISTORY.md)；无自动创建，不再列待开发 |
 | UI-REAL-05 | 缺首次代际时禁写 | 合法初始化后核零写请求与提示 | [保存恢复](I0-UI_REAL_SAVE_RECOVERY.md)隔离HTTPS真实409/零业务写通过，PR #64已合main |
-| UI-REAL-06 | 确认保存与冻结快照 | H-01/H-03/H-05及保存/快照H-06 | PR #64已交；多文件原字节、版本/hash/manifest、刷新及同库重开读回通过；现场联调分列 |
-| UI-REAL-07 | 版本与暂停/终态 | H-05：保存后重读，两个revision分开 | PR #64已交；paused/submitted/reviewed、VERSION_CONFLICT及两revision独立读取通过；H-05基线差异待授权维护者汇总 |
+| UI-REAL-06 | 确认保存与冻结快照 | H-01/H-03/H-05及保存/快照H-06 | PR #64隔离多文件/原字节/hash/manifest通过；PR #68正式UI30已有v8保存/冻结/刷新，本轮直接只读重算原v8两文件与manifest全部一致，不把重算计新保存/冻结 |
+| UI-REAL-07 | 版本与暂停/终态 | H-05：保存后重读，两个revision分开 | PR #64隔离paused/submitted/reviewed、VERSION_CONFLICT与两revision通过；UI30已有原Attempt暂停/恢复，submitted/reviewed等现场仍未替代；H-05差异待A/C及授权维护者处理 |
 | UI-REAL-08 | 账号切换与会话恢复 | 两个获准合成账号，核隔离与迟到响应 | PR #64已交；两个合成账号/草稿/迟到响应/同账号恢复隔离通过；不清空其他账号草稿 |
-| UI-REAL-09 | Core运行/诊断 | H-04当前指纹/代际/profile/消费者及运行H-06 | [运行批次](I0-UI_REAL_RUN_CONTROL_HISTORY.md)接线与合成runner隔离服务通过，PR #66已合main；PR #67旧应用/本地H-04候选真实C1 v7输出及v4 timeout已验，但最终HTTP ready503，正式UI前置门禁仍待现场验证 |
-| UI-REAL-10 | 停止与未知核对 | 原Job/Run和停止样例；未知不自动重跑 | PR #66隔离原ID/原命令、取消确认、unknown/丢ACK/双标签通过；PR #67候选现场原v4 Job确至cancelled。正式版本/实际丢ACK未知/持久账本/OS恢复未被替代 |
-| UI-REAL-11 | 历史比较与公开产物 | 对应H-06；核裁剪、hash/bytes与下载 | PR #66隔离历史比较及公开产物下载/摘要/裁剪通过，Report/check为合法合成历史；PR #67现场历史/关联已验，但Report unavailable、新v7缺report.txt，正向下载仍未验；Core仍只创建stats/find/top |
+| UI-REAL-09 | Core运行/诊断 | H-04当前指纹/代际/profile/消费者及运行H-06 | [运行批次](I0-UI_REAL_RUN_CONTROL_HISTORY.md)与PR #66已交；PR #68正式b7e73c5 UI30已有真实C1成功/程序超时，当前直接HTTP ready200/C1指纹与代际核查通过。新PR #69包尚未在网关接收，不据代码合并记其现场通过 |
+| UI-REAL-10 | 停止与未知核对 | 原Job/Run和停止样例；未知不自动重跑 | PR #66隔离原ID/取消/unknown/丢ACK/双标签通过；PR #68正式UI30已有真实取消/历史。实际丢ACK未知、持久账本/OS恢复与完整停止故障仍分列 |
+| UI-REAL-11 | 历史比较与公开产物 | 对应H-06；核裁剪、hash/bytes与下载 | PR #66隔离历史/下载/摘要/裁剪通过；PR #68正式UI30已有刷新历史，正向公开下载仍待按课程已有可用产物验，不补missing/redacted/incomplete；Core仍只创建stats/find/top |
 | UI-REAL-12 | 故障/冲突/恢复 | 获准环境中核断网、丢ACK、重启与旧代际 | PR #64已交；隔离断网/原命令重放/双标签/旧代际通过；重开仅同进程同库，进程崩溃、旧备份/RPO及节点恢复保持未执行 |
 
 H-01/H-02归A；H-03～H-06由A/C交清，H-06按读取、保存、运行、停止、产物分批。读取无需等运行，保存无需等节点，I0-A无需等B。宿主、执行消费者和节点维护由A/C负责，不纳入UI本批代实现。
@@ -143,6 +143,8 @@ I0-B六票完成时，UI-REAL仅对登录后授权深链、首次创建、保存
 
 ## 9. 2026-10-14 PR #64/#66后的最新状态与下一批
 
+本节保留PR #69之前的核查时点；PR #56/#65/#69合并、正式UI30和本轮PAHER只读结果以§11为最新，不把下文Open/Draft/旧ready503/未连接当当前状态。
+
 ### 9.1 已合入main的前端交付
 
 | 批次 | 实际Git交付 | 已执行验证与范围 |
@@ -183,6 +185,8 @@ A就绪修复的来源链为PR #59→#53→#56，来源关闭不代表代码弃�
 
 ## 10. 2026-10-14 UI-PREP-01/03/05/06与正式入口准备
 
+本节是工程补验与包冻结时点，随PR #69正式合main；之后的Git/只读核查与A/C交接见§11。
+
 Robert明确要求在原`i0/ui-frontend`开始四项补验并准备真实节点联调入口；[当前任务](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)记录已读正文/适用编号、写集、反例与窄修复、公开契约矩阵、原失败及最终复验。幂等同键异正文和连续键盘专项已通过；菜单Esc/只读视图返回焦点、辅导故障中文说明已修，原命令/诊断/学生作品保持。
 
 464/464单元、类型与正常build通过；90项兼容组合有3失败并提前中止，后续44项43通过/1失败，修正正文冲突说明后受影响20/20复验通过，不写一次90/90、不重复累加。实际HTTPS服务的Session4项和辅导1项通过，仍为隔离合成验证。最终prep/real各两次独立冷启动无504，进程退出0/端口释放/自有缓存清理通过；不计现场或NFR。
@@ -190,3 +194,13 @@ Robert明确要求在原`i0/ui-frontend`开始四项补验并准备真实节点�
 收尾核main已接收PR #67（2026-10-14 20:44:32合入，merge `b7e73c5`）。工具/信任/账号通道和旧候选现场证据复用，未变生产源码/API/schema；15/16的HTTP ready503与旧应用/候选版本边界保留。本批固定正常dist/源码/校验清单见[交付记录§7](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#7-正式产物与本地git交付)，本轮未连接PAHER、领取秘密、改信任/配置/库/节点或调用模型。下一步是接收正式版本和既有就绪修复后补现场，不重新实现后台。
 
 清单仍完整保留30个原编号及条件；本轮本地分支提交、最终文档检查与产物事实由当前任务追加，不改产品/规划/参考/他人记录。产品基线及MVP_SPEC §10：待授权维护者汇总。
+
+## 11. 2026-10-14 PR #69合并与直接SSH交接
+
+Robert要求先推PR并合main，再给A/C整理各自事项，并提供本机现成SSH工具。已完成[PR #69](https://github.com/paher-din/XunJie/pull/69)，head `1f7d9f0`，21:58:34合main `87edd51e165b2bab660d73a551864ff8db0bed86`；同窗口PR #56/#65已合入，正常接收且学生生产输入无新变化。PR56作者70/70及审核复用；当前组合的五份正常HTTPS/SQLite service spec另补22/22通过、零skip/flaky/failure，仍为隔离合成runner/provider，不与旧通过数累计。
+
+从负责人指定工具直接核查：SSH身份成功、当前f761dcd的两个应用unit均active/running；本机网关16/16、HTTP ready200、C1原146/profile/指纹/代际匹配、原24表v8快照两文件/manifest重算通过。旧probe检查的recovered单位已inactive而总退出1，不等于SSH断连。固定运行源和本机当前静态包分别仍是C记录的f761dcd与b7e73c5 UI30，不把main合并当已部署；本批新ZIP仍未切入gateway。
+
+[A/C可执行交接](I0-UI_AC_HANDOFF_20261014.md)明确：A联合C处理H-05差异并走原负责人/授权维护者决定路径；C提供实现/反例与既有运行环境职责。SSH只读、Robert本机产物接收及浏览器复验由UI直接承担，不要求C重复首次接线/ready修复/H-04/H-06。PR #68正式UI30回交保留所属版本，当前HDL UI按已交H4包分批进入，不等后置H3；新模型、真人与完整验收仍沿原门禁。
+
+本轮交接/去敏摘要以共享Git提供给成员，未自动私信其他聊天、未重复发Issue评论；没有秘密/配置/库/节点/服务写操作。本轮检查与共享Git回执见[A/C说明§6](I0-UI_AC_HANDOFF_20261014.md#6-当前共享宿主兼容验证与文档交付)，原30编号/进入条件及失败历史保留。产品基线/MVP_SPEC §10待授权维护者汇总。
