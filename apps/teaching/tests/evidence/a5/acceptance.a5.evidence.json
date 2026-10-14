@@ -333,7 +333,7 @@
       },
       {
         "name": "serialFull",
-        "command": "node --test --test-concurrency=1 --test-reporter=tap <the npm test file set>",
+        "command": "node tools/check-runtime.mjs; node --test --test-concurrency=1 --test-reporter=tap tests/*.test.ts server/records/*.test.ts server/workspace/*.test.ts server/tutoring/test/*.test.ts runner/*.test.ts",
         "exitCode": 1,
         "tests": 443,
         "pass": 425,
@@ -369,7 +369,29 @@
       "integrity": "ok",
       "foreignKeyViolations": 0,
       "reopenedTableCount": 34,
-      "note": "the review fix renamed a column inside teacher_feedback; the approved 34-table scope and the fail-closed guard are unchanged"
+      "note": "the review fix renamed a column inside teacher_feedback; the approved 34-table scope and the fail-closed guard are unchanged",
+      "encodingNote": "decoded from the UTF-16LE console capture to UTF-8 before being committed; sha256/rawLogSha256 in files[] identify the committed record and the local original respectively"
+    },
+    "roundTwo": {
+      "reviewedHead": "36df43b",
+      "findings": {
+        "standards": 3,
+        "spec": 1,
+        "severity": "P2 (contract confirmation) plus three P3"
+      },
+      "refreshedEvidence": "the targeted, A4 regression and serial full logs were re-captured on the post-round-two tree through the same decode pipeline; the red log still records the pre-fix head 0f8a113",
+      "clearedByReview": [
+        "S65-01",
+        "R65-01",
+        "R65-02",
+        "R65-03"
+      ],
+      "resolutions": {
+        "contractConfirmation": "project lead confirmed both shared-contract/schema renames on 2026-10-14 (task record section 11.1); C consumption review still requested",
+        "prBodyResidue": "the pull request body no longer links A_WORK_PLAN.md, marks the earlier numbers with their original head, and lists the current targeted and serial results plus the two contract confirmations",
+        "schemaSmokeEncoding": "the schema smoke log is committed as UTF-8 (decoded from the UTF-16LE console capture) with entry.sha256/rawLogSha256 updated and an accurate normalization note",
+        "ac09Chain": "the follow-up test now includes the fixed submission and the formal feedback before the new activity, and asserts the feedback binding, kind and exact basis claims and revisions; the claim and the case now agree"
+      }
     }
   },
   "prBranch": {
@@ -477,26 +499,26 @@
     },
     {
       "file": "acceptance.a5-review-targeted.windows.txt",
-      "sha256": "595a0b05748dce8883d828d822e80a9d58dcc2f2da3c4c15db2526ba54dd4263",
-      "bytes": 4103,
-      "rawLogSha256": "03c44941867be6f194d81d3a18100d50ab232d085d686bb16712ea05b74c3f70",
-      "rawBytes": 8420,
+      "sha256": "accc9650ae8a3797153dfcf5b1cefb15b0a0f048bb1908dabd41117cd0e466b4",
+      "bytes": 4102,
+      "rawLogSha256": "5aa1747547be49d62ce2575aaf02bce417e8603f5b313bdcb49f573837de78cd",
+      "rawBytes": 8418,
       "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
     },
     {
       "file": "acceptance.a5-review-a4.windows.txt",
-      "sha256": "686bcfb2e452eb44faac0ddc29b8866d2d855d2d8f6551b01c7da35343d90a2d",
-      "bytes": 12367,
-      "rawLogSha256": "b753619fc2c114540a62657ebac88d0955b5815cf6836042597aaa23b8aa8146",
-      "rawBytes": 25374,
+      "sha256": "15d098e870040b181ae1770c320b933f87e9dcc3b79926dd97e57a2ac81bd817",
+      "bytes": 12362,
+      "rawLogSha256": "d0cb9cd7ae22e28f31cfb1cc441c68b71d488d6f921319c0a4abd3228cf8b7c6",
+      "rawBytes": 25364,
       "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
     },
     {
       "file": "acceptance.a5-review-serial.windows.txt",
-      "sha256": "97c09c4508a69887d7f989600ce8d457276b9324840a55b797c0831c4ff0bf0f",
-      "bytes": 106813,
-      "rawLogSha256": "16ba416d3d3d930f7d5591e4c19cad801467c43e1fffa1534484852ea09535d7",
-      "rawBytes": 219060,
+      "sha256": "ee13968544fbd2aed908d0d2d150b3c39c9b653dddf1d434b91fcc73bc38e58f",
+      "bytes": 106805,
+      "rawLogSha256": "f5edc393f7d92b7e86e698ddfce23ecd4778da2288e7cb5bb63b5ad975131678",
+      "rawBytes": 219044,
       "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
     },
     {
@@ -573,10 +595,11 @@
     },
     {
       "file": "acceptance.a5-review-schema-smoke.windows.txt",
-      "sha256": "3dc8d9c874ae6613ce6ea1768757009d90acf2d0d3ffd875357a40eb013b2a9d",
-      "bytes": 880,
-      "rawLogSha256": null,
-      "normalization": "copied verbatim from the UTF-8 console capture of the schema smoke run"
+      "sha256": "1b2294919c5f64f6cedac756c502cbdaf1636c5031c55c15e2c401f83d0c5e2c",
+      "bytes": 422,
+      "rawLogSha256": "3dc8d9c874ae6613ce6ea1768757009d90acf2d0d3ffd875357a40eb013b2a9d",
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only.",
+      "rawBytes": 880
     }
   ]
 }

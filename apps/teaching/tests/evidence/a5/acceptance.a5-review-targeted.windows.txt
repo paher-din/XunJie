@@ -2,97 +2,97 @@ TAP version 13
 # Subtest: A5: formative feedback cites a submission without moving the learning stage
 ok 1 - A5: formative feedback cites a submission without moving the learning stage
   ---
-  duration_ms: 1797.3958
+  duration_ms: 1884.5516
   type: 'test'
   ...
 # Subtest: A5: a feedback thread can only be revised inside the scope that owns it
 ok 2 - A5: a feedback thread can only be revised inside the scope that owns it
   ---
-  duration_ms: 1967.9656
+  duration_ms: 1856.8143
   type: 'test'
   ...
 # Subtest: A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
 ok 3 - A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
   ---
-  duration_ms: 2084.4942
+  duration_ms: 2150.8762
   type: 'test'
   ...
 # Subtest: A5: reviewing an old submission reports the snapshot it bound, not the later working tree
 ok 4 - A5: reviewing an old submission reports the snapshot it bound, not the later working tree
   ---
-  duration_ms: 2002.1659
+  duration_ms: 2055.8319
   type: 'test'
   ...
 # Subtest: A5: a dispute against feedback whose basis moved on is appended as history, not refused
 ok 5 - A5: a dispute against feedback whose basis moved on is appended as history, not refused
   ---
-  duration_ms: 2075.5345
+  duration_ms: 2095.1364
   type: 'test'
   ...
 # Subtest: A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
 ok 6 - A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
   ---
-  duration_ms: 1936.9369
+  duration_ms: 1965.5769
   type: 'test'
   ...
 # Subtest: A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
 ok 7 - A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
   ---
-  duration_ms: 1955.7225
+  duration_ms: 1982.2411
   type: 'test'
   ...
 # Subtest: A5: two feedback threads report a scope version the next write can actually use
 ok 8 - A5: two feedback threads report a scope version the next write can actually use
   ---
-  duration_ms: 1996.1371
+  duration_ms: 1991.2704
   type: 'test'
   ...
 # Subtest: A5: feedback revisions append, stay readable and keep the submission they evaluated
 ok 9 - A5: feedback revisions append, stay readable and keep the submission they evaluated
   ---
-  duration_ms: 1964.7735
+  duration_ms: 1988.421
   type: 'test'
   ...
 # Subtest: A5: the revision permission keeps the artifact read-only until the student consumes it
 ok 10 - A5: the revision permission keeps the artifact read-only until the student consumes it
   ---
-  duration_ms: 2020.0424
+  duration_ms: 2000.6004
   type: 'test'
   ...
 # Subtest: A5: a permission may save the formal feedback for the same submission in one command
 ok 11 - A5: a permission may save the formal feedback for the same submission in one command
   ---
-  duration_ms: 1948.2069
+  duration_ms: 1963.7488
   type: 'test'
   ...
 # Subtest: A5: a student dispute resolves against the exact saved feedback and its evaluated claims
 ok 12 - A5: a student dispute resolves against the exact saved feedback and its evaluated claims
   ---
-  duration_ms: 2017.582
+  duration_ms: 2000.1413
   type: 'test'
   ...
 # Subtest: A5: a failing feedback write rolls the record and the stage change back together
 ok 13 - A5: a failing feedback write rolls the record and the stage change back together
   ---
-  duration_ms: 1985.6124
+  duration_ms: 1932.4045
   type: 'test'
   ...
 # Subtest: A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
 ok 14 - A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
   ---
-  duration_ms: 2034.168
+  duration_ms: 2063.125
   type: 'test'
   ...
 # Subtest: A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
 ok 15 - A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
   ---
-  duration_ms: 1778.0014
+  duration_ms: 1866.6761
   type: 'test'
   ...
 # Subtest: A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
 ok 16 - A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
   ---
-  duration_ms: 2173.9727
+  duration_ms: 2140.2147
   type: 'test'
   ...
 1..16
@@ -103,4 +103,4 @@ ok 16 - A5: the follow-up attempt reads applicable valid history and carries no 
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 28461.0555
+# duration_ms 28516.254

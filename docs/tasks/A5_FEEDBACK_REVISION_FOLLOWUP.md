@@ -2,7 +2,7 @@
 
 日期：2026-10-14（Asia/Shanghai）。主责：A；对应 [Issue #42](https://github.com/paher-din/XunJie/issues/42) 相邻的 A 属切片由本文承载，[TEAM §A5](../planning/TEAM_WORK_PLAN.md#a5教师反馈个人修订与后续活动) 为范围依据。A 属的详细工作包排程是负责人维护的受保护规划材料，不随本仓库交付，因此本文不引用它；本任务的范围、批准与验收全部以本仓库内已入库的正文为据（下文各节逐项给出）。
 
-状态：2026-10-14 负责人批准 §3～§6 与第二批最小范围，A5 全部五个子项（A5.1～A5.5）的服务端实现与验证完成，并已按 [PR #65](https://github.com/paher-din/XunJie/pull/65) 的审查意见修复其 1 项 Standards P2 与 3 项 Spec P2（见 §10）；专项用例 13 → **16 项全部通过**，串行完整回归 **443 项、425 通过、1 失败（win32 既有环境限制）、17 跳过**；文档检查在干净检出上 `errors=[]`。真实模型、真实执行节点、浏览器/UI 与真人验收未执行；本文不代替完整产品验收。§1 与原「提案、尚未获批准」的时点记录保留在 §8.1 之前，本节为其后的当前状态。
+状态：2026-10-14 负责人批准 §3～§6、第二批最小范围，并确认 §10 修复引入的两项共享契约/schema 更名（见 §11.1）；A5 全部五个子项（A5.1～A5.5）的服务端实现与验证完成，并已处置 [PR #65](https://github.com/paher-din/XunJie/pull/65) 的两轮审查（§10 第一轮 1 项 Standards P2 与 3 项 Spec P2；§11 第二轮 1 项 Standards P2 与 3 项 P3）；专项用例 **16 项全部通过**；真实模型、真实执行节点、浏览器/UI 与真人验收未执行；本文不代替完整产品验收。§1 与原「提案、尚未获批准」的时点记录保留在 §8.1 之前，本节为其后的当前状态。
 
 ## 1. 依据、范围与写集
 
@@ -446,6 +446,8 @@ PR 正文声明了 §8.2 第 1 项的接缝越界与所需 C 复核，以及全�
 
 审查未列为缺陷但指出：原第二批用例只到 GET learner-state，没有串联「正式反馈 → 新活动 → 新求助」。已在 A5.5 用例末端补上：新分配尝试上发起真实 `POST /help` 并经 `prepareStudentHelp` 组装上下文，断言上下文带真实 `learnerStateRevision`、只提供适用的 active 主张，且**不**包含已撤回主张与旧活动版本的主张。该项是覆盖补充而非缺陷修复：该用例在修复前的树上**通过**（见表），故不记为红灯。
 
+**第二轮复审更正了本节的表述**：当时该用例的前置只有教师 `reviews` 的主张纠正，没有固定提交与正式反馈，因此「after the formal feedback」的措辞超出用例。已在 §11.4 补上固定提交与正式反馈并把声明与用例对齐。
+
 ### 10.6 反例在修复前的实际结果与修复后验证
 
 修复前树 = 固定 head `0f8a113`，只把三份新测试文件复制过去执行（Node 只剥离类型、不做类型检查，故类型改名不阻断运行）：
@@ -475,5 +477,49 @@ PR 正文声明了 §8.2 第 1 项的接缝越界与所需 C 复核，以及全�
 ### 10.7 仍未处理与边界
 
 本次未改规格、未关闭任何检查、未改超时阈值或平台门禁。课程+学生失效宽度、`submission_review` 在已 `reviewed` 尝试上追加评价修订的产品确认、C 对 `readFeedback` 事务形参的复核，仍按 §8.6 保留，不据本次审查代签。真实模型、真实节点、浏览器与真人验收仍未执行。
+
+## 11. 第二次复审的处置（2026-10-14）
+
+[PR #65](https://github.com/paher-din/XunJie/pull/65) 收到第二轮复审（`COMMENTED`，固定 head `36df43b`）：上一轮 S65-01 与 R65-01/02/03 全部复验关闭；新增 Standards 3 项（1 P2、2 P3）与 Spec 1 项 P3，均无新的运行时行为缺陷。逐项处置如下。
+
+### 11.1 共享契约与 schema 更名确认（Standards P2）
+
+审查指出 §10.2/§10.3 的两项变更属原批准范围之外，合并前需明确决定与消费方交接。**2026-10-14 负责人明确确认**（来源：本任务会话中对「是否确认本次修复引入的两项共享契约/schema 变更？」的答复「确认两项变更，按现有形式保留」），确认范围按字面只覆盖下列两项：
+
+1. `apps/teaching/server/db/review-schema.ts`：`teacher_feedback.feedback_revision` → `thread_revision`（主键第二列，语义不变）；`apps/teaching/contracts/review/index.ts`：记录字段 `feedbackRevision` → `threadRevision`，`feedbackResultSchema` 与 `reopenResultSchema.feedback` 同时携带 `threadRevision` 与范围 `feedbackRevision`。
+2. `apps/teaching/contracts/review/index.ts`：`ReviewContext` 新增 `artifactSnapshotId`，`artifact` 收窄为绑定快照清单，当前工作区改名 `workspaceFiles`。
+
+该确认**不**延伸到其他字段、表结构、路由或后续批次；`teacher_feedback` 表仍为精确 34 表集合内的 1 张 A 属表，未新增路由。消费方交接：这两处是 A 属契约的对外形状，**交 C 在其消费批次复核**（尤其 C4 恢复视图中 `feedbackRevision` 仍表示范围版本、`threadRevision` 表示线程版本）；B/UI 若已按旧名接线需按本节改名。未复核前不写作跨域共享契约已批准。
+
+### 11.2 PR 正文残留（Standards P3）
+
+原 PR 正文仍引用 `main` 上不存在的 `docs/planning/A_WORK_PLAN.md`，并把专项 13 项与全集 440/422 写成未标历史的「本分支」结果。处置：正文改为只引已入库文档，旧数字标明其原 head，补当前专项 **16 项**、串行全集 **443/425/1 失败/17 跳过**，并单列 §11.1 的两项契约确认。
+
+### 11.3 schema 冒烟证据的编码元数据（Standards P3）
+
+证据索引曾称该日志来自 UTF-8 采集，而入库文件实际为 UTF-16LE（880 字节、前缀 `FF FE`）。处置：用与其他日志相同的管线把控制台采集解码为 UTF-8 后入库（现 422 字节、前缀 `7B 0A 20`），同步更新 `files[]` 的 `sha256`/`bytes` 与 `rawLogSha256`/`rawBytes`（保留原始 UTF-16LE 字节的摘要以标识本地原件），并把 `normalization` 改为与实际操作一致的描述。这是**元数据与编码不匹配的更正**，不是数值变化：表数、完整性、外键结论未变。
+
+### 11.4 AC-09 完整链的覆盖与声明对齐（Spec P3）
+
+审查指出 §10.5 与用例注释称「after the formal feedback」，但该用例当时只包含主张纠正（`reviews`）而非正式反馈，声明超出用例。处置：改为真正的完整链——在主张纠正之后增加**固定提交**与**正式反馈**（`kind=submission_review`，使尝试进入 `reviewed`），并断言反馈绑定的提交、`kind`、以及其记录的确切依据主张与版本（被撤回的主张必须已不在依据内），随后才复制蓝图、发布、分配、开新尝试并发起求助；求助上下文仍断言真实 `learnerStateRevision`、只含适用的 active 主张、不含撤回主张与旧活动版本主张。声明与用例现已一致：链条是「固定提交 → 正式反馈 → 新活动 → 新尝试 → 新求助读有效状态」，其中 `reviews` 的主张纠正只作为该尝试在反馈之前的状态前置，不再被当作正式反馈。
+
+### 11.5 本轮验证
+
+| 实际命令（`apps/teaching`，Node v24.21.0 + 原锁依赖） | 实际结果 |
+| --- | --- |
+| `npm run typecheck` | 通过（exit 0） |
+| `node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts` | 16 项：16 通过、0 失败、0 跳过 |
+| `node --test --test-reporter=tap tests/review.test.ts` | A4 回归 51 项全通过 |
+| `node --test --test-concurrency=1 …`（同文件集合） | **443 项：425 通过、1 失败、17 跳过、0 取消**；唯一失败仍是 win32 Linux-only 环境限制；相对基线 427/409/1/17 为 +16 项、+16 通过 |
+| 干净检出 `node tools/a0-review/check.mjs` | 79 文档、1202 内链、`errors=[]`、exit 0 |
+| `git diff --check` | 通过（exit 0） |
+
+### 11.6 收口
+
+四项全部处置完毕：契约确认按 §11.1 记录（含文件与范围、消费方交接与未复核前不当作已批准）；PR 正文按 §11.2 更新；schema 冒烟证据按 §11.3 改为 UTF-8 并同步摘要；AC-09 链按 §11.4 补齐固定提交与正式反馈并断言其绑定、类型与确切依据版本。
+
+证据索引：`reviewResponse.roundTwo` 段记录本轮处置，`reviewResponse.commands` 的三份日志已按当前树重新采集（同一解码管线），`acceptance.a5-review-red` 仍保留修复前 head `0f8a113` 的红灯记录。全部入库日志均为 UTF-8（原控制台采集为 UTF-16LE，`rawLogSha256` 标识本地原件）。
+
+仍未处理与边界：§8.6 与 §10.7 的待协调项不变（课程+学生失效宽度、`submission_review` 在已 `reviewed` 尝试上追加修订的产品确认、C 对 `readFeedback` 事务形参的复核）；C 另需按 §11.1 复核两处更名后的消费；真实模型（本批 0 次调用）、真实节点、浏览器与真人验收未执行。
 
 待获授权维护者汇总：批准后的实际代码位置、受控接口签名、验证命令与结果、失败/跳过/未执行项，按 A4 先例汇总至 MVP_SPEC 第 10 节与 TECH 对应契约段；本任务不自行修改受保护基线。

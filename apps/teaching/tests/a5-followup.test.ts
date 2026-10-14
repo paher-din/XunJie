@@ -93,6 +93,24 @@ test('A5: the follow-up attempt reads applicable valid history and carries no wi
       {targetRef: {kind: 'claim',id: course,revision: 1},expectedStateRevision: (await s.state()).learnerStateRevision,
         decision: 'correct',reason: 'The explanation overstates what the file shows',evidenceRefs: []},'a5-correct');
     assert.equal(correction.statusCode,200,correction.body);
+    // AC-09's chain starts from a fixed submission closed by a formal feedback, not from the claim correction above:
+    // a `reviews` decision is a judgment about claims, while a formal `Feedback` is the evaluation of the artifact.
+    const submission = await s.submit({reflection: 'My own account of the route comparison'});
+    const sealed = await s.feedback({kind: 'submission_review',submissionId: submission.submissionId,
+      summary: 'The comparison is present; state the trade-off explicitly.',reason: 'Rubric criterion r',evidenceRefs: []});
+    assert.equal(sealed.statusCode,200,sealed.body);
+    assert.equal(sealed.json().data.result.reviewed,true);
+    assert.equal((await s.attempt()).attempt.status,'reviewed');
+    const sealedView = await s.feedbackView(s.student);
+    assert.equal(sealedView.entries.length,1);
+    assert.equal(sealedView.entries[0]!.kind,'submission_review');
+    assert.equal(sealedView.entries[0]!.submissionId,submission.submissionId);
+    // The saved evaluation names the exact claims and revisions it rested on: the withdrawn one is already excluded.
+    const basisRefs = sealedView.entries[0]!.claimRefs;
+    assert.deepEqual(basisRefs.map(ref => ref.revision),[1,1]);
+    assert.deepEqual([...basisRefs.map(ref => ref.id)].sort(),[project,ai].sort());
+    // The reviewed attempt stays fixed on the original activity version while the follow-up version is built.
+    assert.equal((await s.attempt()).attempt.activityVersionId,s.activityId);
     // Now the follow-up version and attempt.
     const {blueprintId: copiedId} = await copyFromActivity(s,s.activityId,1,{projectTitle: 'TextScope follow-up'});
     const check = await command(s.f,s.teacher,`/api/blueprints/${copiedId}/checks`,{expectedRevision: 2});
