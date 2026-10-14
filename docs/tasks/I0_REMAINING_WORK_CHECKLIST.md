@@ -209,7 +209,7 @@ Robert要求先推PR并合main，再给A/C整理各自事项，并提供本机�
 
 ## 12. 2026-10-14 新包真实浏览器复验与现场修复
 
-本节保留新包现场与本地收尾时点；随后负责人要求本批推PR/合main，最新Git交付见[本轮发布记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md#6-2026-10-14-pr发布与合并授权)。
+本节保留新包现场与本地收尾时点；随后负责人要求本批推PR/合main，已创建[PR #75](https://github.com/paher-din/XunJie/pull/75)，最新Git交付见[本轮发布记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md#6-2026-10-14-pr发布与合并授权)及该PR最终公开回执。
 
 Robert明确授权接收新包、仅切本机网关选择、复用现有SSH和获准合成A做实际Chrome复验，并在原`i0/ui-frontend`修问题/更新清单。[完整本轮记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)列读依据、精确授权、两条现场反例、红/绿与来源/失败/未执行。先接PR69源`4a0bdbb`原143文件ZIP；再修首次打开回收文件及明确不可重试的辅导拒绝仍轮询，固定本地源码`b50918a`，独立143文件新包/入口`index-DmeUPG54.js`已由原工具切入，check16/16、严格TLS/ready200。远端正常24表源仍`f761dcd`，没有部署新宿主或改库/schema/账号/信任/代际/节点。
 

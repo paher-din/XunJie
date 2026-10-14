@@ -120,4 +120,10 @@ Robert明确要求“把这次修复和复验记录推PR，合并进main”，�
 
 PR包含两处现场窄修、原先红例和分批通过数、正常Chrome/严格TLS/真实PAHER C1的合成操作与21字节既有完整产物下载，以及清单/原A/C交接更新。复验时的PAHER运行源`f761dcd`和当时24表未组合C3是该固定现场记录；本次Git发布不重新探测或部署PAHER，也不将上游后来交付的其他运行源混记为本轮复验源。H-05、新辅导/模型/真人、HDL及未执行故障分支继续保留。
 
-当前执行正常推送和PR创建；实际PR编号/head、检查与合并回执由下文和PR正文记录，不提前标已合。产品基线/MVP_SPEC §10待授权维护者汇总。
+### 6.1 公开PR与实际回执
+
+已正常推送原`i0/ui-frontend`，创建[PR #75](https://github.com/paher-din/XunJie/pull/75)到main；首次公开head为`887cf891a22396d7f6206f1fab5defc1b9cbc7e7`、base为`02c042ef50a5294267812c107d1bd8965de35f26`，17文件、非Draft、`MERGEABLE/CLEAN`。本记录与清单/A-C交接的PR引用将随正常后续文档提交进入同一PR，前端源码与冻结包不变。
+
+GitHub连接器创建操作实际403（Resource not accessible by integration），改用已存在的本机`gh`正常创建成功；未绕过审批、改权限/token或重复创建。`gh pr checks`明确没有报告检查项，`statusCheckRollup=[]`，不表述CI通过。发布前静态检查108文档/1759内链、errors=[]；本批相对main空白检查通过、17文件写集/去敏再次核对通过。
+
+按Robert授权，对准确最终head执行普通merge，不使用强推、admin旁路或删除分支。**PR的最终head、mergedAt与mergeCommit以[公开Git回执](https://github.com/paher-din/XunJie/pull/75)为准；合并完成后原PR正文补准确SHA/时间。** 本文保存创建时点，不将当时OPEN快照视为永久未合，也不提前用未来merge SHA补造记录。产品基线/MVP_SPEC §10待授权维护者汇总。

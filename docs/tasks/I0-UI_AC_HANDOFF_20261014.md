@@ -67,7 +67,7 @@ PR #56/#65的main增量没有修改学生生产输入。除复用作者已有宿
 
 ## 7. 新包真实复验后追加交接（2026-10-14）
 
-本节为现场收尾时点；后续本批PR发布/合main见[最新Git交付](I0-UI_PR69_REAL_BROWSER_RECHECK.md#6-2026-10-14-pr发布与合并授权)，现场证据仍绑定原源/窗口。
+本节为现场收尾时点；后续本批已创建[PR #75](https://github.com/paher-din/XunJie/pull/75)，发布/合main见[最新Git交付](I0-UI_PR69_REAL_BROWSER_RECHECK.md#6-2026-10-14-pr发布与合并授权)及该PR最终公开回执，现场证据仍绑定原源/窗口。
 
 本节更新§2/§5之前时点的“PR68仍Draft/尚未切新包”：PR68已于22:14:50合main `8ef9dc0`，本交接PR70于22:15:55合main `8b41303`。随后Robert明确授权直接接收/本机切换/真实浏览器/必要UI修复，本轮实际结果以[新记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)和[清单§12](I0_REMAINING_WORK_CHECKLIST.md#12-2026-10-14-新包真实浏览器复验与现场修复)为准。
 
