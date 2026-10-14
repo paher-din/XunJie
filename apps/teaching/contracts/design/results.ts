@@ -50,6 +50,9 @@ const previewContent = { audience: z.enum(['student','tutor','teacher-validator'
   materials: z.array(z.union([projectedMaterialSchema,z.strictObject({ status: z.literal('redacted') }),z.strictObject({ status: z.literal('unavailable') })])) };
 export const previewSchema = z.strictObject({ blueprintId: id, revision, ...previewContent });
 export const activityViewSchema = z.strictObject({ activityVersionId: id, courseId: id, sourceRevision: revision.optional(),
+  // A5.4: the teacher needs to resolve a fixed activity version back to the blueprint it came from in order to copy
+  // it into a new version. Design-side provenance is projected to the responsible teacher only, like `sourceRevision`.
+  sourceBlueprintId: id.optional(),
   activityControlRevision: revision, status: z.enum(['active','paused']), content: z.strictObject(previewContent),
   helpPolicy: helpPolicySchema, runtimeProfileVersionId: id });
 export const assignmentViewSchema = z.strictObject({ assignmentId: id, activityVersionId: id, studentId: id, assignmentRevision: revision,

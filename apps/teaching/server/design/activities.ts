@@ -223,7 +223,7 @@ export function activityView(tx: Transaction, actor: ActorContext, activityId: s
     authorizeActivity: courseId => { if (courseId !== actor.courseId) throw new ApiError('FORBIDDEN'); } });
   const control = tx.get('SELECT status,control_revision FROM activity_controls WHERE activity_id=?', activityId);
   if (!control) throw new Error('Missing activity control.');
-  return activityViewSchema.parse({ activityVersionId: activityId, courseId: actor.courseId, ...(actor.role === 'teacher' ? { sourceRevision: activity.sourceRevision } : {}),
+  return activityViewSchema.parse({ activityVersionId: activityId, courseId: actor.courseId, ...(actor.role === 'teacher' ? { sourceRevision: activity.sourceRevision, sourceBlueprintId: activity.sourceBlueprintId } : {}),
     activityControlRevision: control.control_revision, status: control.status, content: { audience: preview.audience, content: preview.content, materials: preview.materials },
     helpPolicy: activity.helpPolicy, runtimeProfileVersionId: activity.runtimeProfile.runtimeProfileVersion });
 }

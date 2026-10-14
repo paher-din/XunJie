@@ -297,14 +297,71 @@
     "C/A confirmation of whether the course+student wide invalidation should narrow to one attempt",
     "project-lead confirmation that a submission_review may append a revision after the attempt is reviewed"
   ],
+  "batchTwo": {
+    "scope": "A5.4/A5.5: one optional teacher-visible sourceBlueprintId on activityViewSchema plus end-to-end verification; no new route, no schema change, no permission change",
+    "commands": [
+      {
+        "name": "targeted",
+        "command": "node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts",
+        "exitCode": 0,
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0,
+        "evidence": "acceptance.a5-batch2-targeted.windows.txt"
+      },
+      {
+        "name": "defaultFull",
+        "command": "npm test",
+        "exitCode": 1,
+        "tests": 440,
+        "pass": 422,
+        "fail": 1,
+        "skipped": 17,
+        "cancelled": 0,
+        "evidence": "acceptance.a5-batch2-full.windows.txt"
+      }
+    ],
+    "deltaVsBaseline": {
+      "tests": 13,
+      "pass": 13,
+      "fail": 0,
+      "skipped": 0
+    },
+    "failures": [
+      "only the unchanged win32 Linux-only RunControl environment failure; the deadline flake of the batch-one default run did not reproduce"
+    ],
+    "verified": [
+      "the teacher resolves a fixed activity version back to its source blueprint; the student projection omits it",
+      "copy then patch leaves the copied-from draft revision and title untouched while the new draft is revision 2 with the source link",
+      "copy -> check -> release -> assign -> new attempt gives a distinct attempt against the new fixed version",
+      "the follow-up attempt reads applicable course-scope claims; a withdrawn claim stays auditable but is not valid; unresolved and unknown are not upgraded; an old activity-scoped claim is not carried in"
+    ]
+  },
   "notExecuted": [
     "real model calls (0 in this batch)",
     "real execution nodes, Linux isolation, SSH and container gates",
     "socket/TLS, browsers and the real UI",
     "human teacher/student use and teaching-effect verification",
-    "A5.4 blueprint copy / new activity and A5.5 related follow-up task (second batch)"
+    "batch-two items are verified in the batchTwo block; real models/nodes, browsers and human use remain unexecuted for both batches"
   ],
   "files": [
+    {
+      "file": "acceptance.a5-batch2-targeted.windows.txt",
+      "sha256": "b4aecdfbe7e28a59d3465a5ef137ea4b8bfb1c3e6e2c33048bcc7fb27c57f787",
+      "bytes": 3376,
+      "rawLogSha256": "6e41284ab037fc337c5875d266b2f5f5beb9522810add6de459486e7f475a7ff",
+      "rawBytes": 6930,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
+    {
+      "file": "acceptance.a5-batch2-full.windows.txt",
+      "sha256": "6bf0f9799cb930493a52805692b3ad04bbe1e9c9e82ffe663bb98e89c319bfa4",
+      "bytes": 47742,
+      "rawLogSha256": "1e5db7efe922a7a06cf0ddfcb3ec27f1f705345b1c6ab97ac0b23b47fdd748f8",
+      "rawBytes": 94658,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
     {
       "file": "acceptance.a5-targeted.windows.txt",
       "sha256": "cde58c28ee3f5967730acb7eaf402ab3983aaf2b77b7b747a93acd5a17e458dc",
