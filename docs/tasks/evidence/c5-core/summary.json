@@ -1,0 +1,81 @@
+{
+  "sourceCommit": "37b628b75ec3a2238b9b77c8bd1882d36a2e55a6",
+  "date": "2026-10-15",
+  "node": "v24.21.0",
+  "applicationEvidence": "real-fourth.json",
+  "applicationEvidenceHash": "9668ea3c8b2ab5d7ea5ea8197a5f952647784fd40ad585f385e860a7dfacf46f",
+  "applicationScope": "fresh isolated synthetic 35-table application, authenticated real VM; app.inject HTTP transport; no browser/model",
+  "checks": [
+    "HDL immutable old version, duplicate operation, explicit reprogram and same-input changed RTL",
+    "two real sessions, four-valued signals and finite scan trace",
+    "real C makes progress with two HDL sessions and retains old confirmed source",
+    "student stdout passed is not a trusted course verdict",
+    "cross-student and stale operation refusal; genuine compiler diagnostic",
+    "every real session termination confirmed before release"
+  ],
+  "publicHttpResponses": 472,
+  "models": 0,
+  "browser": "NOT_EXECUTED",
+  "typecheck": "PASS",
+  "build": "PASS",
+  "targeted": {
+    "tests": 73,
+    "pass": 71,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 2,
+    "skipReason": "Real C1 runtime gates were disabled in this offline suite; fresh actual-node app chain is separately recorded."
+  },
+  "nodeFingerprintUnchanged": true,
+  "cFingerprint": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+  "hdlFingerprint": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+  "nodeSourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+  "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+  "preparationFailures": [
+    {
+      "round": 1,
+      "reason": "Finally tried PRAGMA through SELECT/INSERT/UPDATE-only transaction; rejected. No result file was saved; no pass claimed."
+    },
+    {
+      "round": 2,
+      "evidence": "real-second.json",
+      "reason": "Synthetic blueprint omitted project and ai_collaboration goals; product correctly refused checks."
+    },
+    {
+      "round": 3,
+      "evidence": "real-third.json",
+      "reason": "Harness compared snapshotHash on outer Build projection; actual public contract stores it under result."
+    }
+  ],
+  "sourceChanges": [],
+  "deferred": [
+    "HDL actual browser display and full error→repair→reload flow (UI/P5)",
+    "H3 image/node deployment and 2800-vector trusted course_check",
+    "Full load/performance distribution, large fault matrix, long stability, complete backup restore/export/RPO/RTO",
+    "Real-model semantic/teacher review, actual learners and teaching effectiveness"
+  ],
+  "retained": "Fresh synthetic databases and stopped container/ledger facts remain; no deletion, old database migration, key/config change or model request.",
+  "files": [
+    {
+      "path": "targeted.tap",
+      "originalArchive": "targeted.tap.gz",
+      "originalHash": "50650c01aadf8f7c21c21d656a8e37aef5134502e6df53df44450aaa787a573e",
+      "displayHash": "50650c01aadf8f7c21c21d656a8e37aef5134502e6df53df44450aaa787a573e",
+      "displayChange": "Only trailing whitespace/EOF blank lines"
+    },
+    {
+      "path": "typecheck.txt",
+      "originalArchive": "typecheck.txt.gz",
+      "originalHash": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+      "displayHash": "1f4a5d4d333059f21cf60c8d75f14160b234067286489c846a4ab7a00e0e6b10",
+      "displayChange": "Only trailing whitespace/EOF blank lines"
+    },
+    {
+      "path": "build.txt",
+      "originalArchive": "build.txt.gz",
+      "originalHash": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "displayHash": "a5db58e8e37a4ad75ff9763c8d3649c5e7065f8ff9c03e2610a75466af7e7a60",
+      "displayChange": "Only trailing whitespace/EOF blank lines"
+    }
+  ]
+}
