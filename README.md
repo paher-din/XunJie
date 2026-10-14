@@ -63,6 +63,7 @@ node tools/a0-review/check.mjs
 | 学生真实登录、会话恢复与退出 | [I0-UI 会话入口](docs/tasks/I0-UI_AUTH_SESSION_ENTRY.md)；UI-REAL-01/02/08，获准深链及同账号草稿恢复，两个合成账号的 HTTPS/SQLite 验证 |
 | 学生真实保存、快照与故障恢复 | [I0-UI 保存与恢复](docs/tasks/I0-UI_REAL_SAVE_RECOVERY.md)；UI-REAL-05/06/07/12，受信代际、原文确认、状态/版本限制与隔离服务故障验证 |
 | 学生真实运行、停止与历史产物 | [I0-UI 运行接入](docs/tasks/I0-UI_REAL_RUN_CONTROL_HISTORY.md)；UI-REAL-09/10/11，正常宿主就绪门禁、原 Job/Run 核对与公开产物 |
+| 学生幂等、键盘、冷启动与契约补验 | [I0-UI 补验](docs/tasks/I0-UI_PREP_VERIFICATION_CLOSEOUT.md)；UI-PREP-01/03/05/06与真实节点浏览器入口准备 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
 | 其他模块与历史交付 | [全部任务记录](docs/tasks/)；按模块/编号查实现、批准范围、实际命令与原始证据 |

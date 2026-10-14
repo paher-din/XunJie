@@ -101,6 +101,7 @@ export const FileStrip = forwardRef<FileStripHandle, FileStripProps>(function Fi
   const [error, setError] = useState<string | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   useImperativeHandle(ref, () => ({
     startNaming: () => {
@@ -125,6 +126,7 @@ export const FileStrip = forwardRef<FileStripHandle, FileStripProps>(function Fi
         onMenuOpenChange(false)
         setNaming(false)
         setError(null)
+        menuButtonRef.current?.focus()
       }
     }
     document.addEventListener('mousedown', onDown)
@@ -164,6 +166,7 @@ export const FileStrip = forwardRef<FileStripHandle, FileStripProps>(function Fi
     <div className="cw-filestrip">
       <div className="cw-filelist" ref={wrapRef}>
         <button
+          ref={menuButtonRef}
           type="button"
           className="cw-stripbtn"
           aria-haspopup="menu"

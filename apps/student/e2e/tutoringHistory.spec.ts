@@ -130,8 +130,13 @@ test('刷新缓存待重新授权；正常回取后退出账号，真实401清�
   });expect(logout).toBe(200)
   // The normal workspace poll observes the real 401; history must disappear before its own manual read.
   await expect(other.getByTestId('tutor-history-message')).toHaveCount(0)
+  const historyRefusal=other.waitForResponse(response=>response.url().endsWith('/teaching-records'))
   await other.getByRole('button',{name:'刷新教学历史'}).click()
-  await expect(other.getByTestId('tutor-history')).toContainText('UNAUTHENTICATED')
+  const refusal=await historyRefusal
+  expect(refusal.status()).toBe(401)
+  expect((await refusal.json()).error.code).toBe('UNAUTHENTICATED')
+  await expect(other.getByTestId('tutor-history')).toContainText('登录已失效，请重新登录')
+  await expect(other.getByTestId('tutor-history')).not.toContainText('UNAUTHENTICATED')
   await expect(other.getByTestId('tutor-history-message')).toHaveCount(0)
   expect(writes).toEqual([])
 })

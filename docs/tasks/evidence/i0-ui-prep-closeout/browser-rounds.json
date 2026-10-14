@@ -1,0 +1,39 @@
+{
+  "scope": "Synthetic frontend preparation plus isolated HTTPS/SQLite; no PAHER/C1/provider or real student",
+  "browser": "Chrome 155",
+  "workers": 2,
+  "retries": 0,
+  "earlierRound": {
+    "result": "Stopped after three assertion failures; interrupted/unexecuted cases are not passes. See task section 4.2.",
+    "planned": 90
+  },
+  "rounds": [
+    {
+      "name": "remaining-and-affected",
+      "planned": 44,
+      "stats": {
+        "startTime": "2026-10-14T13:13:50.478Z",
+        "duration": 177926.88,
+        "expected": 43,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "sourceReportSha256": "65ae6e7acebc92fb5d8739de7c131de064c789f4b334b97db6240cda30a12328"
+    },
+    {
+      "name": "content-final",
+      "planned": 20,
+      "stats": {
+        "startTime": "2026-10-14T13:20:48.042Z",
+        "duration": 101809.043,
+        "expected": 20,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceReportSha256": "ceee5a3460615e9078019d725aaeb314087590f489ec200460769dcbbc545f37"
+    }
+  ],
+  "aggregation": "The final 20 are included in the 44, not additional coverage. There was no single 90/90 green run."
+}

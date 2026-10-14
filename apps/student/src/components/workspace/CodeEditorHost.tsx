@@ -113,6 +113,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
   const readOnlyRef = useRef({ readOnly, readOnlyReason })
   const selectionRef = useRef(onSelectionChange)
   const identityRef = useRef({ workspaceKey, fileId })
+  const pendingFocus = useRef<{ workspaceKey: string; fileId: string | null } | null>(null)
   identityRef.current = { workspaceKey, fileId }
   useEffect(() => {
     textChangeRef.current = onTextChange
@@ -148,7 +149,15 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
   const notifySelection = () => selectionRef.current?.(captureSelection())
 
   useImperativeHandle(ref, () => ({
-    focus: () => editorRef.current?.focus(),
+    focus: () => {
+      const editor = editorRef.current
+      const model = editor?.getModel(), identity = identityRef.current
+      if (editor && model && registryKey === identity.workspaceKey && identity.fileId !== null &&
+        fileOf(model.uri.path) === identity.fileId) {
+        pendingFocus.current = null
+        editor.focus()
+      } else pendingFocus.current = { ...identity }
+    },
     saveViewState: () => {
       const editor = editorRef.current
       const model = editor?.getModel()
@@ -320,6 +329,11 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     editor.setModel(model)
     const saved = viewStates.get(key)
     if (saved) editor.restoreViewState(saved)
+    // Returning from a read-only pane can request focus before Monaco has mounted its model.
+    // Apply that request only to the same workspace/file, without changing its saved view.
+    const requestedFocus = pendingFocus.current
+    pendingFocus.current = null
+    if (requestedFocus?.workspaceKey === workspaceKey && requestedFocus.fileId === fileId) editor.focus()
     // restoreViewState 可能已发光标事件；不能随后清空刚恢复的行列读数。
     // 首次挂载和位置未变时也主动报告，状态栏与编辑器当前原文位置保持一致。
     const position = editor.getPosition()

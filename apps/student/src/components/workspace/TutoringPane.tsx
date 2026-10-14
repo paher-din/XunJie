@@ -6,6 +6,7 @@ import type { TutoringState, TutoringWorkspace } from '../../workspace/tutoringW
 import type { TutorMessage } from '../../workspace/tutoringStore'
 import type { TutorObject } from '../../workspace/tutoringContracts'
 import type { TutorHistoryEntry } from '../../workspace/tutoringContracts'
+import { tutoringCommandFailureNotice } from '../../workspace/tutoringNotice'
 
 /** Reuses WorkspacePage's existing ws-chatpop/ws-chatpane and AgentMessage slots. */
 export function TutoringPane({ client, state, open, onClose, objectRef, objectLabel, onClearObject,
@@ -39,7 +40,7 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
         {ledger?.commands.filter(c=>c.kind==='help').map(c=><div className="chat-message user" key={c.key}>
           <div className="bubble">{c.question}</div><small data-testid="tutor-question-status">{c.state==='confirmed' ? '已受理' : c.state==='pending'
             ? state.sendingKey===c.key ? '发送中' : c.error ? '结果未知 · 原请求待核对' : '原请求已保存，等待发送' : '服务未接纳'}</small>
-          {c.error && <p role="status">{c.error}</p>}</div>)}
+          {c.error && <p role="status">{tutoringCommandFailureNotice(c)}</p>}</div>)}
         {attempt&&ledger?.messages.filter(m=>m.shown || (m.valid && state.synchronized && !ledger.blocked)).map(m=>
           <TutorMessageView key={m.payload.actionId} message={m} client={client} synchronized={state.synchronized}
             scroller={scroller.current} onExample={onExample} sourceStatus={sourceStatus} />)}

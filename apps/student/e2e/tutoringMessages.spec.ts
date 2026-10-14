@@ -62,7 +62,7 @@ test('教学页真实IDB事务中止：正文/游标/待received一起回滚，�
     await route.fulfill({response})
   })
   await abortTutorWrites(page,'page');await ask(page)
-  await expect(page.getByTestId('tutoring-pane')).toContainText('写入事务被中止')
+  await expect(page.getByTestId('tutoring-pane')).toContainText('辅导记录没有保存到本机')
   expect(await page.evaluate(()=> (window as typeof window&{tutorAbortCount:number}).tutorAbortCount)).toBeGreaterThan(0)
   const failed=(await tutorLedger(page))[0]!
   expect(failed.cursor).toBe(before.cursor);expect(failed.messages).toEqual([])
@@ -87,7 +87,7 @@ test('help真实IDB事务中止后问题保留、零POST；刷新不补发失败
   await expect.poll(async()=> (await tutorLedger(page)).length).toBe(1)
   const help:string[]=[];page.on('request',r=> {if(r.method()==='POST'&&r.url().endsWith('/help'))help.push(r.postData()!)})
   await abortTutorWrites(page,'help');await ask(page,'本机存储失败时保留的问题')
-  await expect(page.getByTestId('tutoring-pane')).toContainText('写入事务被中止')
+  await expect(page.getByTestId('tutoring-pane')).toContainText('辅导记录没有保存到本机')
   await expect(page.getByRole('textbox',{name:'就这个任务提问'})).toHaveValue('本机存储失败时保留的问题')
   expect(await page.evaluate(()=> (window as typeof window&{tutorAbortCount:number}).tutorAbortCount)).toBeGreaterThan(0)
   expect((await tutorLedger(page))[0]!.commands).toEqual([])
@@ -181,7 +181,7 @@ test('同Action正文冲突不覆盖原已展示内容或回执，显示冲突�
     await route.fulfill({response,json:body})
   })
   await page.getByRole('button',{name:'重新读取辅导',exact:true}).click()
-  await expect(page.getByTestId('tutoring-pane')).toContainText('同一教学动作的正文发生冲突')
+  await expect(page.getByTestId('tutoring-pane')).toContainText('新收到的辅导正文与原记录不一致，这次未接纳')
   const after=(await tutorLedger(page))[0]!.messages[0]!
   expect(after.payload).toEqual(original.payload);expect(after.facts).toEqual(original.facts)
   expect(after.shown).toBe(true);expect(after).toMatchObject({valid:false})

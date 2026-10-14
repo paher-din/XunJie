@@ -1,0 +1,113 @@
+{
+  "startedAt": "2026-10-14T12:42:41.756Z",
+  "finishedAt": "2026-10-14T12:42:56.981Z",
+  "node": "v24.15.0",
+  "browser": "155.0.8059.40",
+  "sourceConfig": "apps/student/vite.config.ts",
+  "method": "independent Vite workers, original config, fresh private cache per mode/sample, normal browser route loading",
+  "scope": "synthetic preparation and frontend real-mode startup; no teaching host, execution node or provider",
+  "scratchRemoved": true,
+  "requestedSamplesPerMode": 2,
+  "passed": true,
+  "failure": null,
+  "results": [
+    {
+      "mode": "prep",
+      "iteration": 1,
+      "port": 5791,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 142,
+      "browserLoadMs": 3515,
+      "optimizedResponses": 104,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 51
+    },
+    {
+      "mode": "development",
+      "iteration": 1,
+      "port": 5792,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 140,
+      "browserLoadMs": 2313,
+      "optimizedResponses": 13,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [
+        {
+          "path": "/api/session",
+          "status": 404
+        },
+        {
+          "path": "/api/session",
+          "status": 404
+        }
+      ],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 59
+    },
+    {
+      "mode": "prep",
+      "iteration": 2,
+      "port": 5791,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 140,
+      "browserLoadMs": 3458,
+      "optimizedResponses": 104,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 50
+    },
+    {
+      "mode": "development",
+      "iteration": 2,
+      "port": 5792,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 137,
+      "browserLoadMs": 2343,
+      "optimizedResponses": 13,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [
+        {
+          "path": "/api/session",
+          "status": 404
+        },
+        {
+          "path": "/api/session",
+          "status": 404
+        }
+      ],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 44
+    }
+  ]
+}
