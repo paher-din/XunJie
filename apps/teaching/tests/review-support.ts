@@ -139,7 +139,7 @@ export async function setup(options: {process?: boolean} = {}) {
   const feedbackView = async (headers: Headers = student) => {
     const response = await f.app.inject({url: `/api/attempts/${attemptId}/feedback`,headers});
     assert.equal(response.statusCode,200,response.body);
-    return response.json().data as {feedbackRevision: number;entries: {feedbackId: string;feedbackRevision: number;current: boolean;
+    return response.json().data as {feedbackRevision: number;entries: {feedbackId: string;threadRevision: number;current: boolean;
       disputed: boolean;submissionId: string;kind: string;claimRefs: {id: string;revision: number}[];
       basis: {claimId: string;claimRevision: number;status: string}[]}[];reopen: {state: string;actionable: boolean;
       grantId?: string;submissionId?: string;reason?: string;consumedAt?: string}};

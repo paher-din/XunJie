@@ -179,7 +179,8 @@ export async function createReviewApp(options: ReviewAppOptions) {
         return {grantId: pending.grant.grantId,submissionId: pending.grant.submissionId,
           attemptRevision: pending.attempt.attemptRevision,status: 'reviewed' as const,
           supersededGrantIds: pending.superseded.map(row => row.grantId),
-          ...(feedback ? {feedback: {feedbackId: feedback.feedbackId,feedbackRevision: feedback.feedbackRevision}} : {})};
+          ...(feedback ? {feedback: {feedbackId: feedback.feedbackId,threadRevision: feedback.threadRevision,
+            feedbackRevision: feedback.feedbackRevision}} : {})};
       },value => reopenResultSchema.parse(value),(receiptId,value) => {
         // The grant row's foreign key names the authorizing receipt, so it is written once that receipt exists.
         if(!pending)throw new Error('Missing planned reopen grant.');

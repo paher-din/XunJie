@@ -87,7 +87,7 @@ test('A5: the follow-up attempt reads applicable valid history and carries no wi
       recoveryGeneration: s.f.generation(),bodyJson: JSON.stringify(body)});
     assert.equal(accepted.disposition,'accepted');
     assert.equal(accepted.claimIds.length,3);
-    const course = accepted.claimIds[0]!,project = accepted.claimIds[1]!;
+    const course = accepted.claimIds[0]!,project = accepted.claimIds[1]!,ai = accepted.claimIds[2]!;
     // The teacher withdraws the first course-scope claim; its basis must stop being usable.
     const correction = await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/reviews`,
       {targetRef: {kind: 'claim',id: course,revision: 1},expectedStateRevision: (await s.state()).learnerStateRevision,
@@ -124,5 +124,25 @@ test('A5: the follow-up attempt reads applicable valid history and carries no wi
     // The reviewed attempt still holds its own claim, so the exclusion is a projection rule and not a lost record.
     const original = (await s.state()).claims as {claimId: string}[];
     assert.equal(original.some(entry => entry.claimId === project),true);
+    // AC-09's full chain: after the formal feedback and the new activity, the follow-up attempt's own help request
+    // reads the effective state. The withdrawn claim and the other activity version's claim must not return as
+    // current support, and the revision the helper sees is the real one for this course/student.
+    const next = await s.f.app.inject({url: `/api/attempts/${nextAttemptId}`,headers: s.student});
+    assert.equal(next.statusCode,200,next.body);
+    const help = await command(s.f,s.student,`/api/attempts/${nextAttemptId}/help`,
+      {question: 'Which route should I compare next, and why?',
+        expectedAttemptRevision: (next.json().data.attempt as {attemptRevision: number}).attemptRevision},'a5-follow-up-help');
+    assert.equal(help.statusCode,200,help.body);
+    const jobId = help.json().data.result.jobId as string;
+    const prepared = await s.f.app.inject({method: 'POST',url: `/fixture/prepare/${nextAttemptId}/${jobId}`,
+      headers: s.student,payload: {}});
+    assert.equal(prepared.statusCode,200,prepared.body);
+    const stateRevision = (await s.f.app.inject({url: `/api/attempts/${nextAttemptId}/learner-state`,headers: s.student}))
+      .json().data.learnerStateRevision as number;
+    // The reference content is JSON embedded in a JSON string, so its keys arrive escaped.
+    assert.ok(prepared.body.includes(`learnerStateRevision\\":${stateRevision}`),'the helper reads the real state revision: '+prepared.body);
+    assert.ok(prepared.body.includes(`claim:${project}:1`),'the applicable active claim is offered as context');
+    assert.equal(prepared.body.includes(course),false,'a withdrawn claim must not come back as current support');
+    assert.equal(prepared.body.includes(ai),false,"the other activity version's claim is not applicable here");
   } finally { await s.f.close(); }
 });

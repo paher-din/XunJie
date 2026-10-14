@@ -31,8 +31,11 @@ CREATE TABLE analysis_results (
  result_hash TEXT NOT NULL CHECK(length(result_hash)=64), disposition TEXT NOT NULL CHECK(disposition IN ('accepted','rejected')),
  reason TEXT, result_json TEXT NOT NULL CHECK(json_valid(result_json)), created_at TEXT NOT NULL);
 CREATE INDEX analysis_result_scope ON analysis_results(course_id,student_id,attempt_id);
+-- thread_revision counts revisions inside one feedback thread. It is deliberately not the public CAS version: the
+-- teacher's expectedFeedbackRevision and the GET view's feedbackRevision are the attempt-scoped count of saved
+-- feedback revisions, which spans every thread of the attempt.
 CREATE TABLE teacher_feedback (
- feedback_id TEXT NOT NULL, feedback_revision INTEGER NOT NULL CHECK(feedback_revision>0),
+ feedback_id TEXT NOT NULL, thread_revision INTEGER NOT NULL CHECK(thread_revision>0),
  course_id TEXT NOT NULL REFERENCES courses(id), student_id TEXT NOT NULL REFERENCES users(id),
  attempt_id TEXT NOT NULL REFERENCES attempts(attempt_id),
  submission_id TEXT NOT NULL REFERENCES workspace_submissions(submission_id),
@@ -40,6 +43,6 @@ CREATE TABLE teacher_feedback (
  kind TEXT NOT NULL CHECK(kind IN ('formative','submission_review')),
  expected_state_revision INTEGER NOT NULL CHECK(expected_state_revision>=0),
  feedback_json TEXT NOT NULL CHECK(json_valid(feedback_json)), created_at TEXT NOT NULL,
- PRIMARY KEY(feedback_id,feedback_revision));
+ PRIMARY KEY(feedback_id,thread_revision));
 CREATE INDEX teacher_feedback_scope ON teacher_feedback(course_id,student_id,attempt_id);
 `;

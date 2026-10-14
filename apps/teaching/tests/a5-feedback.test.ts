@@ -41,10 +41,10 @@ test('A5: a feedback thread can only be revised inside the scope that owns it',a
     const submission = await s.submit();
     // Adversarial synthetic precondition: a `feedback_id` that already exists, but under another course. Only the
     // scope check stops a teacher here from appending onto another scope's thread and reading its revision count.
-    s.f.db.withTransaction(tx => tx.run(`INSERT INTO teacher_feedback(feedback_id,feedback_revision,course_id,student_id,
+    s.f.db.withTransaction(tx => tx.run(`INSERT INTO teacher_feedback(feedback_id,thread_revision,course_id,student_id,
       attempt_id,submission_id,teacher_id,kind,expected_state_revision,feedback_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       'foreign-thread',1,'foreign-course','student',s.attemptId,submission.submissionId,'foreign','submission_review',0,
-      JSON.stringify({feedbackId: 'foreign-thread',feedbackRevision: 1,courseId: 'foreign-course',studentId: 'student',
+      JSON.stringify({feedbackId: 'foreign-thread',threadRevision: 1,courseId: 'foreign-course',studentId: 'student',
         attemptId: s.attemptId,submissionId: submission.submissionId,teacherId: 'foreign',kind: 'submission_review',
         expectedStateRevision: 0,summary: 'Other course evaluation',reason: 'Other course reason',evidenceRefs: [],
         claimRefs: [],createdAt: new Date().toISOString()}),new Date().toISOString()));
@@ -91,6 +91,104 @@ test('A5: the review context keeps an unresolvable competency listed and narrows
     assert.deepEqual(listed[0]!.references.map(reference => reference.status),['unavailable']);
     assert.deepEqual(data.decisions.map(entry => entry.attemptId),[s.attemptId]);
     assert.deepEqual(data.disputes,[]);
+  } finally { await s.f.close(); }
+});
+
+test('A5: reviewing an old submission reports the snapshot it bound, not the later working tree',async () => {
+  const s = await setup();
+  try {
+    const submission = await s.submit();
+    const atSubmission = await s.attempt();
+    const submittedFile = atSubmission.files[0]!;
+    await s.feedback({kind: 'submission_review',submissionId: submission.submissionId,
+      summary: 'First evaluation of the submitted snapshot',reason: 'Rubric criterion r',evidenceRefs: []});
+    const granted = await s.reopenGrant({submissionId: submission.submissionId,reason: 'Revise the route comparison'});
+    assert.equal(granted.statusCode,200,granted.body);
+    const resumed = await command(s.f,s.student,`/api/attempts/${s.attemptId}/controls`,
+      {expectedAttemptRevision: (await s.attempt()).attempt.attemptRevision,control: {kind: 'resume_revision'}},'resume-for-artifact');
+    assert.equal(resumed.statusCode,200,resumed.body);
+    // The student advances the same file to version 2 after the review round trip.
+    const edited = await command(s.f,s.student,`/api/attempts/${s.attemptId}/sync`,
+      {expectedWorkspaceRevision: (await s.attempt()).attempt.workspaceRevision,clientId: 'page',clientSeq: 2,
+        operations: [{kind: 'update',fileId: submittedFile.fileId,baseVersion: submittedFile.documentVersion,
+          text: 'int main(void){return 1;}\n'}]},'edit-after-review');
+    assert.equal(edited.statusCode,200,edited.body);
+    const now = await s.attempt();
+    assert.notEqual(now.files[0]!.documentVersion,submittedFile.documentVersion);
+    // R65-02: the artifact group must stay on the immutable snapshot the reviewed submission bound.
+    const response = await s.reviewContext(s.teacher,submission.submissionId);
+    assert.equal(response.statusCode,200,response.body);
+    const data = response.json().data as {artifactSnapshotId: string|null;submission: {snapshotId: string};
+      artifact: {fileId: string;documentVersion: number;contentHash: string}[];
+      workspaceFiles: {fileId: string;documentVersion: number;contentHash: string}[]};
+    assert.equal(data.artifactSnapshotId,data.submission.snapshotId);
+    assert.equal(data.artifact.length,1);
+    assert.equal(data.artifact[0]!.documentVersion,submittedFile.documentVersion);
+    assert.equal(data.artifact[0]!.contentHash,submittedFile.contentHash);
+    // The newer draft stays visible, but as the separately named current workspace rather than as the reviewed work.
+    assert.equal(data.workspaceFiles[0]!.documentVersion,now.files[0]!.documentVersion);
+    assert.notEqual(data.workspaceFiles[0]!.contentHash,data.artifact[0]!.contentHash);
+    // Selecting the latest submission (none exists after the reopen) still reports the fixed one.
+    const latest = await s.reviewContext(s.teacher);
+    assert.equal(latest.json().data.submission.submissionId,submission.submissionId);
+    assert.equal(latest.json().data.artifact[0]!.contentHash,submittedFile.contentHash);
+  } finally { await s.f.close(); }
+});
+
+test('A5: a dispute against feedback whose basis moved on is appended as history, not refused',async () => {
+  const s = await setup();
+  try {
+    const queued = await s.queue(),claimed = s.f.review.claimAnalysis(queued.jobId);
+    assert.ok(claimed);
+    const accepted = s.f.review.completeAnalysis({jobId: queued.jobId,leaseToken: claimed.leaseToken,
+      recoveryGeneration: s.f.generation(),bodyJson: JSON.stringify(candidate(s.snapshotId,s.activityId))});
+    assert.equal(accepted.disposition,'accepted');
+    const claimId = accepted.claimIds[0]!;
+    const submission = await s.submit();
+    const saved = await s.feedback({kind: 'submission_review',submissionId: submission.submissionId,
+      summary: 'Evaluation of the current candidate',reason: 'Rubric criterion r',evidenceRefs: []});
+    assert.equal(saved.statusCode,200,saved.body);
+    const feedbackId = saved.json().data.result.feedbackId;
+    // The teacher confirms the claim, which appends revision 2 and moves the basis of the saved evaluation.
+    const confirmed = await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/reviews`,
+      {targetRef: {kind: 'claim',id: claimId,revision: 1},expectedStateRevision: (await s.state()).learnerStateRevision,
+        decision: 'confirm',reason: 'Confirmed against the fixed snapshot',evidenceRefs: []},'confirm-basis');
+    assert.equal(confirmed.statusCode,200,confirmed.body);
+    const state = await s.state();
+    assert.equal(state.claims.at(-1).claimRevision,2);
+    const before = await s.feedbackView(s.student);
+    assert.equal(before.entries[0]!.basis[0]!.status,'revised');
+    // R65-03: the evaluation is no longer current, so the student's objection is recorded as history with the
+    // current state revision in hand, and it must not be refused or allowed to overwrite the new judgment.
+    const revisionBefore = state.learnerStateRevision;
+    const dispute = await command(s.f,s.student,`/api/attempts/${s.attemptId}/disputes`,
+      {expectedStateRevision: revisionBefore,targetRef: {kind: 'feedback',id: feedbackId,revision: 1},
+        reason: 'The evaluation predates the trade-off I had already stated.'},'historical-dispute');
+    assert.equal(dispute.statusCode,200,dispute.body);
+    assert.equal(dispute.json().data.result.currentTarget,false);
+    assert.equal(dispute.json().data.result.learnerStateRevision,revisionBefore);
+    const after = await s.state();
+    assert.equal(after.learnerStateRevision,revisionBefore);
+    assert.equal(after.claims.at(-1)!.validity,'active');
+    // It is a real appended record, visible as a historical dispute against that exact revision.
+    const read = await s.feedbackView(s.student);
+    assert.equal(read.entries[0]!.disputed,true);
+    const disputes = (after.disputes as {currentTarget: boolean;targetRef: {kind: string;id: string;revision: number}}[])
+      .filter(entry => entry.targetRef.kind === 'feedback');
+    assert.equal(disputes.length,1);
+    assert.equal(disputes[0]!.currentTarget,false);
+    assert.equal(disputes[0]!.targetRef.id,feedbackId);
+    // A live evaluation whose basis is still current keeps the stronger semantics: it contests the current claim.
+    const secondThread = await s.feedback({kind: 'formative',submissionId: submission.submissionId,
+      summary: 'Fresh evaluation of the confirmed claim',reason: 'Rubric criterion r',evidenceRefs: []});
+    assert.equal(secondThread.statusCode,200,secondThread.body);
+    const live = await command(s.f,s.student,`/api/attempts/${s.attemptId}/disputes`,
+      {expectedStateRevision:(await s.state()).learnerStateRevision,
+        targetRef:{kind:'feedback',id:secondThread.json().data.result.feedbackId,revision:1},
+        reason:'The fresh evaluation still misses the trade-off.'},'live-dispute');
+    assert.equal(live.statusCode,200,live.body);
+    assert.equal(live.json().data.result.currentTarget,true);
+    assert.equal((await s.state()).claims.at(-1)!.validity,'contested');
   } finally { await s.f.close(); }
 });
 
@@ -176,6 +274,46 @@ test('A5: formal feedback saves in its own record and moves a submitted attempt 
   } finally { await s.f.close(); }
 });
 
+test('A5: two feedback threads report a scope version the next write can actually use',async () => {
+  const s = await setup();
+  try {
+    const submission = await s.submit();
+    // R65-01: a fresh thread's own revision is 1, but the public CAS counter must not be mistaken for it. Following
+    // the success response of the first thread to write a second thread has to be accepted, not rejected.
+    const first = await s.feedback({kind: 'submission_review',submissionId: submission.submissionId,
+      summary: 'Evaluation of the submitted route comparison',reason: 'Rubric criterion r',evidenceRefs: []});
+    assert.equal(first.statusCode,200,first.body);
+    assert.equal(first.json().data.result.threadRevision,1);
+    assert.equal(first.json().data.result.feedbackRevision,1);
+    const second = await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/feedback`,
+      {expectedFeedbackRevision: first.json().data.result.feedbackRevision,expectedStateRevision: 0,
+        kind: 'formative',submissionId: submission.submissionId,summary: 'A separate note on the same submission',
+        reason: 'Interim guidance',evidenceRefs: []},'second-thread');
+    assert.equal(second.statusCode,200,second.body);
+    assert.equal(second.json().data.result.threadRevision,1);
+    assert.equal(second.json().data.result.feedbackRevision,2);
+    assert.notEqual(second.json().data.result.feedbackId,first.json().data.result.feedbackId);
+    // The response version agrees with the GET view and with the next accepted write.
+    const view = await s.feedbackView(s.teacher);
+    assert.equal(view.feedbackRevision,second.json().data.result.feedbackRevision);
+    assert.deepEqual(view.entries.map(entry => entry.threadRevision),[1,1]);
+    assert.deepEqual(view.entries.map(entry => entry.current),[true,true]);
+    const third = await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/feedback`,
+      {expectedFeedbackRevision: view.feedbackRevision,expectedStateRevision: 0,kind: 'formative',
+        feedbackId: second.json().data.result.feedbackId,submissionId: submission.submissionId,
+        summary: 'Second revision of the second thread',reason: 'Follow-up',evidenceRefs: []},'third-write');
+    assert.equal(third.statusCode,200,third.body);
+    assert.equal(third.json().data.result.threadRevision,2);
+    assert.equal(third.json().data.result.feedbackRevision,3);
+    // The stale value from the first response no longer writes anything.
+    const stale = await command(s.f,s.teacher,`/api/attempts/${s.attemptId}/feedback`,
+      {expectedFeedbackRevision: first.json().data.result.feedbackRevision,expectedStateRevision: 0,kind: 'formative',
+        submissionId: submission.submissionId,summary: 'Stale version',reason: 'Stale',evidenceRefs: []},'stale-thread');
+    assert.equal(stale.statusCode,409,stale.body);
+    assert.equal(stale.json().error.code,'VERSION_CONFLICT');
+  } finally { await s.f.close(); }
+});
+
 test('A5: feedback revisions append, stay readable and keep the submission they evaluated',async () => {
   const s = await setup();
   try {
@@ -188,13 +326,16 @@ test('A5: feedback revisions append, stay readable and keep the submission they 
       summary: 'Revised evaluation after re-reading the file',reason: 'Second reason',evidenceRefs: []});
     assert.equal(second.statusCode,200,second.body);
     assert.equal(second.json().data.result.feedbackId,feedbackId);
+    // Both counters are reported and they mean different things: this row is revision 2 of its own thread, and the
+    // attempt-scoped CAS version is also 2 because the attempt holds exactly one thread so far.
+    assert.equal(second.json().data.result.threadRevision,2);
     assert.equal(second.json().data.result.feedbackRevision,2);
     assert.equal(second.json().data.result.reviewed,false);
     const view = await s.feedbackView(s.teacher);
     assert.equal(view.feedbackRevision,2);
     assert.equal(view.entries.length,2);
-    assert.equal(view.entries[0]!.feedbackRevision,1);assert.equal(view.entries[0]!.current,false);
-    assert.equal(view.entries[1]!.feedbackRevision,2);assert.equal(view.entries[1]!.current,true);
+    assert.equal(view.entries[0]!.threadRevision,1);assert.equal(view.entries[0]!.current,false);
+    assert.equal(view.entries[1]!.threadRevision,2);assert.equal(view.entries[1]!.current,true);
     assert.deepEqual(view.entries.map(entry => entry.submissionId),[submission.submissionId,submission.submissionId]);
     // The student reads the same formal feedback about their own attempt.
     const studentView = await s.feedbackView(s.student);
@@ -261,7 +402,10 @@ test('A5: a permission may save the formal feedback for the same submission in o
     assert.equal(combined.statusCode,200,combined.body);
     const result = combined.json().data.result;
     assert.ok(result.feedback,combined.body);
-    assert.equal(result.feedback!.feedbackRevision,1);
+    // The embedded feedback opens a new thread (thread revision 1) while the attempt-scoped CAS version is 2, which
+    // is the number the next write has to send. Reporting only the thread revision here was the R65-01 defect.
+    assert.equal(result.feedback!.threadRevision,1);
+    assert.equal(result.feedback!.feedbackRevision,2);
     const view = await s.feedbackView(s.teacher);
     assert.equal(view.feedbackRevision,2);
     assert.equal(view.entries[1]!.feedbackId,result.feedback!.feedbackId);

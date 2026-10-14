@@ -55,7 +55,7 @@ export function readFeedbackRevisions(tx: Transaction, scope: AttemptScope): Tea
   return tx.all('SELECT * FROM teacher_feedback WHERE course_id=? AND student_id=? AND attempt_id=? ORDER BY rowid',
     scope.courseId, scope.studentId, scope.attemptId).map(row => {
     const value = feedbackSchema.parse(JSON.parse(String(row.feedback_json)));
-    if (value.feedbackId !== row.feedback_id || value.feedbackRevision !== row.feedback_revision
+    if (value.feedbackId !== row.feedback_id || value.threadRevision !== row.thread_revision
       || value.courseId !== scope.courseId || value.studentId !== scope.studentId || value.attemptId !== row.attempt_id
       || value.submissionId !== row.submission_id || value.teacherId !== row.teacher_id || value.kind !== row.kind
       || value.expectedStateRevision !== row.expected_state_revision || value.createdAt !== row.created_at)
@@ -66,10 +66,11 @@ export function readFeedbackRevisions(tx: Transaction, scope: AttemptScope): Tea
 
 type ProjectedClaim = {claimId: string;claimRevision: number;validity: string;basisAvailable: boolean};
 /**
- * The appended feedback revisions of one attempt. `feedbackRevision` is the attempt-scoped append counter; `current`
- * marks the newest revision of each thread. Each entry also reports whether a student dispute targets that exact
- * revision and how each claim the evaluation rested on stands now, so a reader can never mistake a stale or
- * withdrawn basis for a still-current evaluation.
+ * The appended feedback revisions of one attempt. `feedbackRevision` is the attempt-scoped CAS version across every
+ * thread (what the next write sends as `expectedFeedbackRevision`); each entry carries its own `threadRevision`.
+ * `current` marks the newest revision of that entry's thread. Each entry also reports whether a student dispute
+ * targets that exact revision and how each claim the evaluation rested on stands now, so a reader can never mistake
+ * a stale or withdrawn basis for a still-current evaluation.
  */
 export function readFeedbackEntries(tx: Transaction, scope: AttemptScope, current?: {claims: ProjectedClaim[]}): FeedbackThread {
   const rows = readFeedbackRevisions(tx, scope);
@@ -78,11 +79,11 @@ export function readFeedbackEntries(tx: Transaction, scope: AttemptScope, curren
   const disputed = new Set(tx.all("SELECT target_id,target_revision FROM learner_disputes WHERE course_id=? AND student_id=? AND attempt_id=? AND target_kind='feedback'",
     scope.courseId, scope.studentId, scope.attemptId).map(row => `${row.target_id}\0${row.target_revision}`));
   const newest = new Map<string, number>();
-  for (const row of rows) newest.set(row.feedbackId, Math.max(newest.get(row.feedbackId) ?? 0, row.feedbackRevision));
+  for (const row of rows) newest.set(row.feedbackId, Math.max(newest.get(row.feedbackId) ?? 0, row.threadRevision));
   const entries: FeedbackEntry[] = rows.map(row => ({
     ...row,
-    current: newest.get(row.feedbackId) === row.feedbackRevision,
-    disputed: disputed.has(`${row.feedbackId}\0${row.feedbackRevision}`),
+    current: newest.get(row.feedbackId) === row.threadRevision,
+    disputed: disputed.has(`${row.feedbackId}\0${row.threadRevision}`),
     basis: row.claimRefs.map(ref => ({claimId: ref.id, claimRevision: ref.revision, status: basisStatus(ref, latestByClaim.get(ref.id))})),
   }));
   return {feedbackRevision: rows.length, entries};
@@ -113,7 +114,8 @@ export function readFeedbackView(tx: Transaction, scope: AttemptScope): Feedback
 export function appendFeedbackInTransaction(tx: Transaction, scope: AttemptScope, teacherId: string,
   input: FeedbackFields, generation: string, now: string, options: {submissionId?: string} = {}) {
   const attempt = ownedAttempt(tx, scope);
-  if (input.expectedFeedbackRevision !== readFeedbackScopeRevision(tx, scope)) throw new ApiError('VERSION_CONFLICT');
+  const before = readFeedbackScopeRevision(tx, scope);
+  if (input.expectedFeedbackRevision !== before) throw new ApiError('VERSION_CONFLICT');
   const state = readState(tx, scope);
   if (input.expectedStateRevision !== state.learnerStateRevision) throw new ApiError('VERSION_CONFLICT');
   const submissions = readSubmissions(tx, scope.attemptId, attempt), latest = latestSubmission({submissions});
@@ -141,22 +143,26 @@ export function appendFeedbackInTransaction(tx: Transaction, scope: AttemptScope
   // one course/attempt append onto a thread owned by another, and would turn the per-thread revision into a global
   // maximum. Ownership is checked on the same four columns the row itself carries.
   const previous = input.feedbackId === undefined ? []
-    : tx.all('SELECT feedback_revision FROM teacher_feedback WHERE feedback_id=? AND course_id=? AND student_id=? AND attempt_id=?',
+    : tx.all('SELECT thread_revision FROM teacher_feedback WHERE feedback_id=? AND course_id=? AND student_id=? AND attempt_id=?',
       input.feedbackId, scope.courseId, scope.studentId, scope.attemptId);
   if (input.feedbackId !== undefined && !previous.length) throw new ApiError('INVALID_REFERENCE');
-  const feedbackRevision = previous.reduce((max, row) => Math.max(max, Number(row.feedback_revision)), 0) + 1;
-  const value = feedbackSchema.parse({feedbackId, feedbackRevision, courseId: scope.courseId, studentId: scope.studentId,
+  const threadRevision = previous.reduce((max, row) => Math.max(max, Number(row.thread_revision)), 0) + 1;
+  const value = feedbackSchema.parse({feedbackId, threadRevision, courseId: scope.courseId, studentId: scope.studentId,
     attemptId: scope.attemptId, submissionId, teacherId, kind: input.kind, expectedStateRevision: input.expectedStateRevision,
     summary: input.summary, reason: input.reason, evidenceRefs: input.evidenceRefs, claimRefs, createdAt: now});
-  tx.run(`INSERT INTO teacher_feedback(feedback_id,feedback_revision,course_id,student_id,attempt_id,submission_id,teacher_id,kind,expected_state_revision,feedback_json,created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)`, value.feedbackId, value.feedbackRevision, value.courseId, value.studentId,
+  tx.run(`INSERT INTO teacher_feedback(feedback_id,thread_revision,course_id,student_id,attempt_id,submission_id,teacher_id,kind,expected_state_revision,feedback_json,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`, value.feedbackId, value.threadRevision, value.courseId, value.studentId,
     value.attemptId, value.submissionId, value.teacherId, value.kind, value.expectedStateRevision, JSON.stringify(value), value.createdAt);
-  const saved = readFeedbackRevisions(tx, scope).find(row => row.feedbackId === feedbackId && row.feedbackRevision === feedbackRevision);
+  const saved = readFeedbackRevisions(tx, scope).find(row => row.feedbackId === feedbackId && row.threadRevision === threadRevision);
   if (!saved || JSON.stringify(saved) !== JSON.stringify(value)) throw new ApiError('PERSISTENCE_UNAVAILABLE');
+  // The attempt-scoped version is the public CAS counter, and it is what the caller must send back next. It is
+  // re-read from the store rather than computed, so the response can only ever report a version that really exists.
+  const feedbackRevision = readFeedbackScopeRevision(tx, scope);
+  if (feedbackRevision !== before + 1) throw new ApiError('PERSISTENCE_UNAVAILABLE');
   // TECH §7.2.1: a related formal-feedback change invalidates the teaching context that depended on it.
   const invalidated = invalidateLearnerTeaching(tx, scope, feedbackId, generation, now, teacherId);
   const next = readAttempt(tx, scope.attemptId);
-  return {feedbackId, feedbackRevision, submissionId, kind: input.kind, reviewed,
+  return {feedbackId, threadRevision, feedbackRevision, submissionId, kind: input.kind, reviewed,
     attemptRevision: next.attemptRevision, decisionEpoch: next.decisionEpoch,
     stoppedJobIds: invalidated.jobIds, affectedAttemptIds: Object.keys(invalidated.epochs)};
 }
@@ -178,24 +184,34 @@ export function planReopenInTransaction(tx: Transaction, scope: AttemptScope, te
 export type ReopenPlan = ReturnType<typeof planReopenGrant>;
 
 /**
- * A4's dispute seam: resolve an exact feedback revision to whether it is still current and which claims it rested
- * on. Nothing is invented for a reference that was never saved, so A4 keeps returning `INVALID_REFERENCE`.
+ * A4's dispute seam. `current` means this feedback revision is the newest of its thread AND every claim the
+ * evaluation rested on is still exactly the claim revision that was evaluated and still usable. Anything else — an
+ * older revision of the thread, or a basis that has since been revised, withdrawn or become unreachable — is a
+ * historical dispute: A4 appends it with `currentTarget: false` and changes no projection, which is what
+ * "历史异议仅追加、不覆盖新判断" requires. Reporting `current: true` there would make A4 reject the command with
+ * VERSION_CONFLICT against the moved claim and no historical dispute could ever be recorded.
  */
 export function feedbackTargetResolver(): FeedbackTargetResolver {
   return (tx, scope, ref) => {
     const rows = readFeedbackRevisions(tx, scope);
-    const target = rows.find(row => row.feedbackId === ref.id && row.feedbackRevision === ref.revision);
+    const target = rows.find(row => row.feedbackId === ref.id && row.threadRevision === ref.revision);
     if (!target) return undefined;
     const newest = rows.filter(row => row.feedbackId === ref.id)
-      .reduce((max, row) => Math.max(max, row.feedbackRevision), 0);
-    return {current: newest === ref.revision, claimRefs: target.claimRefs};
+      .reduce((max, row) => Math.max(max, row.threadRevision), 0);
+    const latestByClaim = new Map(readProjectedCurrent(tx, scope).claims.map(claim => [claim.claimId, claim]));
+    const basisCurrent = target.claimRefs.every(claimRef => {
+      const latest = latestByClaim.get(claimRef.id);
+      return latest !== undefined && latest.claimRevision === claimRef.revision
+        && latest.basisAvailable && ['active', 'contested'].includes(latest.validity);
+    });
+    return {current: newest === ref.revision && basisCurrent, claimRefs: target.claimRefs};
   };
 }
 
 /** The C4 recovery surface A5 attaches: the formal feedback revisions, never a draft or a reconstructed digest. */
 export function readRecoveryFeedback(tx: Transaction, scope: AttemptScope) {
   const entries = readFeedbackRevisions(tx, scope)
-    .map(row => ({feedbackId: row.feedbackId, kind: row.kind, revision: row.feedbackRevision,
+    .map(row => ({feedbackId: row.feedbackId, kind: row.kind, revision: row.threadRevision,
       submissionId: row.submissionId, createdAt: row.createdAt}));
   return {status: 'available' as const, feedbackRevision: readFeedbackScopeRevision(tx, scope), entries};
 }
@@ -220,6 +236,11 @@ export function reviewContextInTransaction(tx: Transaction, attemptId: string, g
   const latest = latestSubmission(state);
   const chosen = submissionId === undefined ? latest : state.submissions.find(row => row.submissionId === submissionId);
   if (submissionId !== undefined && !chosen) throw new ApiError('INVALID_REFERENCE');
+  // The artifact group is the file manifest of the immutable snapshot the selected submission bound, so reviewing an
+  // older submission cannot silently be judged against drafts written after it. The current workspace is republished
+  // separately, which keeps the two provenances distinguishable instead of overwriting one with the other.
+  const boundSnapshot = chosen === undefined ? undefined : state.snapshots.find(row => row.snapshotId === chosen.snapshotId);
+  if (chosen !== undefined && !boundSnapshot) throw new ApiError('PERSISTENCE_UNAVAILABLE');
   const current = readProjectedCurrent(tx, scope);
   // The three competency lines are the current valid claims, so a claim that has no resolvable basis stays listed
   // with `basisAvailable: false` and per-reference `unavailable` rather than being dropped from the teacher's view.
@@ -228,7 +249,9 @@ export function reviewContextInTransaction(tx: Transaction, attemptId: string, g
     attempt: structuredClone(attempt),
     submission: chosen ? structuredClone(chosen) : null,
     submissions: state.submissions.map(row => ({...structuredClone(row), latest: row.submissionId === latest?.submissionId})),
-    artifact: projected.files.map(({fileId, path, documentVersion, contentHash, lifecycle}) => ({fileId, path, documentVersion, contentHash, lifecycle})),
+    artifact: (boundSnapshot?.files ?? []).map(({fileId, path, documentVersion, contentHash}) => ({fileId, path, documentVersion, contentHash})),
+    artifactSnapshotId: boundSnapshot?.snapshotId ?? null,
+    workspaceFiles: projected.files.map(({fileId, path, documentVersion, contentHash, lifecycle}) => ({fileId, path, documentVersion, contentHash, lifecycle})),
     runs,
     help: readTeachingRecordsInTransaction(tx, scope, 'teacher'),
     coverage: readCoverageIntervals(tx, attemptId),

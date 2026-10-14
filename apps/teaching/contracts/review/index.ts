@@ -94,17 +94,22 @@ export const reopenInput = z.strictObject({recoveryGeneration: id,expectedAttemp
 export const reviewContextQuery = z.strictObject({submissionId: id.optional()});
 // Every revision keeps the submission it evaluated and the exact claims the teacher's evaluation rested on, so a
 // later dispute resolves against the version that was actually saved instead of the current projection.
-export const feedbackSchema = z.strictObject({feedbackId: id,feedbackRevision: positive,courseId: id,studentId: id,
+// `threadRevision` counts revisions inside this feedback thread and is what a `feedback` dispute target names. It is
+// NOT the value a caller sends back as `expectedFeedbackRevision`: that is `FeedbackThread.feedbackRevision`, the
+// attempt-scoped count of saved feedback revisions across all threads. Both are 1 only while one thread exists.
+export const feedbackSchema = z.strictObject({feedbackId: id,threadRevision: positive,courseId: id,studentId: id,
   attemptId: id,submissionId: id,teacherId: id,kind: feedbackKindSchema,expectedStateRevision: natural,
   summary: z.string().min(1).max(16384),reason: z.string().min(1).max(512),evidenceRefs: z.array(evidenceRefSchema),
   claimRefs: z.array(claimRefSchema),createdAt: id});
 export type TeacherFeedback = z.infer<typeof feedbackSchema>;
-export const feedbackResultSchema = z.strictObject({feedbackId: id,feedbackRevision: positive,submissionId: id,
-  kind: feedbackKindSchema,attemptRevision: positive,decisionEpoch: natural,reviewed: z.boolean(),
-  stoppedJobIds: z.array(id),affectedAttemptIds: z.array(id)});
+export const feedbackResultSchema = z.strictObject({feedbackId: id,threadRevision: positive,
+  // The attempt-scoped version after this write, i.e. exactly what the next write must send as
+  // `expectedFeedbackRevision`. Returning the thread revision here would make a second thread look unwritable.
+  feedbackRevision: positive,submissionId: id,kind: feedbackKindSchema,attemptRevision: positive,decisionEpoch: natural,
+  reviewed: z.boolean(),stoppedJobIds: z.array(id),affectedAttemptIds: z.array(id)});
 export const reopenResultSchema = z.strictObject({grantId: id,submissionId: id,attemptRevision: positive,
   status: z.literal('reviewed'),supersededGrantIds: z.array(id),
-  feedback: z.strictObject({feedbackId: id,feedbackRevision: positive}).optional()});
+  feedback: z.strictObject({feedbackId: id,threadRevision: positive,feedbackRevision: positive}).optional()});
 // C4 owns the reopen projection; this is the shape A5 reads and republishes, so a `valid` grant that a pause has
 // spent stays distinguishable from never having been granted.
 export const reopenViewSchema = z.strictObject({state: z.enum(['none','valid','consumed','superseded']),actionable: z.boolean(),
@@ -117,7 +122,9 @@ export const feedbackEntrySchema = feedbackSchema.extend({current: z.boolean(),
   basis: z.array(z.strictObject({claimId: id,claimRevision: positive,
     status: z.enum(['current','revised','withdrawn','superseded','unavailable'])}))});
 export type FeedbackEntry = z.infer<typeof feedbackEntrySchema>;
-/** READ-14: the appended revisions of one attempt plus C4's grant view, which the student needs in order to act. */
+/** READ-14: the appended revisions of one attempt plus C4's grant view, which the student needs in order to act.
+ *  `feedbackRevision` is the attempt-scoped CAS version across all threads, i.e. the value `POST feedback` expects
+ *  next as `expectedFeedbackRevision`; each entry carries its own `threadRevision`. */
 export type FeedbackThread = {feedbackRevision: number;entries: FeedbackEntry[]};
 export type FeedbackView = FeedbackThread & {reopen: z.infer<typeof reopenViewSchema>};
 /** READ-11. Teacher-only aggregate: artifact facts, the three competency lines, help, unknown and coverage. */
@@ -127,7 +134,13 @@ export type ReviewContext = {
   // one. Reflection text comes from C4's own workspace projection; artifact facts never carry file text.
   submission: import('../workspace/index.ts').Submission | null;
   submissions: (import('../workspace/index.ts').Submission & {latest: boolean})[];
-  artifact: {fileId: string;path: string;documentVersion: number;contentHash: string;lifecycle: 'active'|'recycled'}[];
+  // The file manifest of the immutable snapshot the selected submission bound, with that snapshot's id as provenance.
+  // It is deliberately not the current working tree: evaluating an old submission against later drafts would
+  // misreport what the teacher actually reviewed.
+  artifact: {fileId: string;path: string;documentVersion: number;contentHash: string}[];
+  artifactSnapshotId: string | null;
+  // The current confirmed workspace, named separately so its provenance is never confused with the fixed submission.
+  workspaceFiles: {fileId: string;path: string;documentVersion: number;contentHash: string;lifecycle: 'active'|'recycled'}[];
   runs: import('../workspace/index.ts').RecoveryRun[];
   help: {messages: import('../records/index.ts').TeachingMessage[];actions: import('../records/index.ts').TeachingActionRecord[]};
   coverage: import('../records/index.ts').TeachingCoverage;
