@@ -89,4 +89,12 @@ rtk npm run test:e2e -- runService.spec.ts runControlService.spec.ts runHistoryS
 
 最终写集16文件：README导航、学生README用法、前批保存记录的实际PR64回读、本记录；两个前端运行文件、sessionHost、三张新增service spec与共用helper；隔离browser fixture/runner；A固定修复三文件。A三处Git blob与964原源一致；受保护文档、正常runner/workspace/records/contracts、schema、依赖/lock、真实配置/凭据/CI均未变，原 `.zcodeignore` 保留。
 
-交付在原 `i0/ui-frontend`，基线为前批merge `8e6d37d`；依仓库文档交付规则保存本批本地提交，具体commit由本文件的Git历史及最终回读定位。本轮未推送/创建下一批PR/合并或发布。最终GitHub回读：#64仍MERGED、merge8e6d37d；#56仍Open/Draft、head246451e，未合main。本批只接纳明确批准的三处既有C就绪代码，其完整HDL/共享宿主接纳独立；产品基线/MVP§10待授权维护者汇总。
+实现完成时的交付快照：原 `i0/ui-frontend`，基线为前批merge `8e6d37d`，本批本地提交 `e0dabe534398e9e57031aa33b07c54e1d892ceec`；当时未推送/创建本批PR/合并或发布。该时点GitHub回读：#64仍MERGED、merge8e6d37d；#56仍Open/Draft、head246451e，未合main。本批只接纳明确批准的三处既有C就绪代码，其完整HDL/共享宿主接纳独立；产品基线/MVP§10待授权维护者汇总。后续交付见 §7。
+
+## 7. 2026-10-14 PR 与 main 合并交付
+
+负责人在会话中对“下一批09/10/11”明确批注“把我们这次完成的这一批也推动，建PR，然后合并到main”，授权推送本批、创建PR并正常合并。交付分支继续使用 `i0/ui-frontend`，保留来源分支和原 `.zcodeignore`，不扩大到 #56 整批合并或生产发布。
+
+交付前实际核查：远端 `main=8e6d37d`，本批 `e0dabe5` 以其为直接父提交，没有新主线差异；写集16文件，三处A源blob与964逐项一致，无保护文档/配置/依赖/秘密越界。源码与上轮已验证版本相同，本轮仅补交付记录，不重复通过检查或将既有不同批次数合并称一次77/77。沿原本地464单元、24宿主、17新增实际服务与60兼容的准确证据边界交付；静态文档与差异空白复核通过。#56在本轮核查时仍Open/Draft、head246451e，未合main。
+
+本节先记录批准范围和交付前事实；PR创建后补正式链接/回读，合并以该PR与main的实际Git记录为准，不预先标成功。
