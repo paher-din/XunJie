@@ -59,6 +59,7 @@ node tools/a0-review/check.mjs
 | A6 的 A5 契约消费复核 | [C 消费记录](docs/tasks/A6_C_CONTRACT_CONSUMPTION.md)；反馈范围/线程版本、固定作品清单及 B/UI 接线核对 |
 | 学生 UI 准备交付与真实接入 | [I0 收尾](docs/tasks/I0_UI_CLOSEOUT.md)、[接入规格](docs/tasks/I0_UI_SPEC.md)、[准备票索引](docs/tasks/I0_UI_PREPARATION.md)；H-01～H-06 回交在 [#30](https://github.com/paher-din/XunJie/issues/30) |
 | I0 评论指定的浏览器与 HDL 交接 | [UI30 回交](docs/tasks/I0-UI30_COMMENT_CLOSEOUT.md)、[HDL 操作表](docs/tasks/I0-UI30_HDL_OPERATION_MAP.md)；正式 UI／真实 C1 与 HDL 待接线分列 |
+| HDL 页面、完整本机环境与真实浏览器闭环 | [本批实施与验收](docs/tasks/I0-UI_HDL_REAL_BROWSER.md)；现有页面真实HDL分支、固定确认快照/构建/板卡/Trace/辅导来源，本机迁移和实际验收分别记录 |
 | A/C 按 H 编号回交 | [I0-A/C 交接](docs/tasks/I0_A_C_HANDOFF.md)；[HTTPS 与账号入口准备](docs/tasks/I0_HOST_ENTRY_PREPARATION.md)单列 C 准备/现场执行、A 复核及 UI 接收；身份/分配、受信代际、原 Job 与版本/公开样例沿原交接 |
 | UI交接的A/C接纳与H-05版本分离 | [本轮技术核对、批准修复与现场回交](docs/tasks/I0_AC_UI_HANDOFF_RESPONSE_20261014.md)；控制CAS/作品CAS、原评论对象和固定运行源分别核查 |
 | C 现场 HTTPS 与持久合成库恢复 | [C 当前宿主与交接](docs/tasks/DLA_C_CLOSEOUT_HANDOFF.md#18-2026-10-14-批准执行-pr59-的-paher-定向接入)；历史恢复、新版本就绪、现有对象及启动/停止方式由该任务承载 |

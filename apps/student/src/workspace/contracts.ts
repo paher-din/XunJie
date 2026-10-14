@@ -14,6 +14,8 @@
  * 不在此补造（例如 GET Run 不公开 entryFileId/input，见 CLIENT_CONTRACT §6）。
  */
 
+import type { HdlActivityExecution } from './hdlActivityContracts'
+
 /* ---------- 统一信封 ---------- */
 
 export interface SuccessEnvelope<T> {
@@ -204,6 +206,7 @@ export interface ActivityView {
   }
   helpPolicy: HelpPolicyView
   runtimeProfileVersionId: string
+  execution?: HdlActivityExecution
 }
 
 /** GET `/api/resources/:id` 的 `data`（student 视角 = `projectedMaterialSchema`）。 */
