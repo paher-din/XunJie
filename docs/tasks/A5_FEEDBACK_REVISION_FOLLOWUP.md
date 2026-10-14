@@ -2,7 +2,7 @@
 
 日期：2026-10-14（Asia/Shanghai）。主责：A；对应 [Issue #42](https://github.com/paher-din/XunJie/issues/42) 相邻的 A 属切片由本文承载，[TEAM §A5](../planning/TEAM_WORK_PLAN.md#a5教师反馈个人修订与后续活动) 与 [A_WORK_PLAN §10](../planning/A_WORK_PLAN.md) 为范围依据。
 
-状态：2026-10-14 负责人批准 §3～§6 并完成 A5 第一批（A5.1～A5.3）的服务端实现、11 项专项与完整回归，另经独立两轴代码审查并修正其发现（见 §8.1～§8.5）；A5.4/A5.5 仍为第二批，未实现。真实模型、真实执行节点、浏览器/UI 与真人验收未执行；本文不代替完整产品验收。§1 中原「提案、尚未获批准」的时点记录保留在 §8.1 之前，本节为其后的当前状态。
+状态：2026-10-14 负责人批准 §3～§6 与第二批最小范围，A5 全部五个子项（A5.1～A5.5）的服务端实现与验证完成：第一批 11 项、第二批 2 项专项用例，另经独立两轴代码审查并修正其发现（见 §8.1～§8.5）；完整回归 440 项、422 通过、1 失败（win32 既有环境限制）、17 跳过。真实模型、真实执行节点、浏览器/UI 与真人验收未执行；本文不代替完整产品验收。§1 与原「提案、尚未获批准」的时点记录保留在 §8.1 之前，本节为其后的当前状态。
 
 ## 1. 依据、范围与写集
 
@@ -297,7 +297,7 @@ A5 专项 11 项与 §7 约定接缝一一对应：
 
 **本批完成：** A5.1 教师审阅业务读取、A5.2 正式反馈保存与读取、A5.3 教师修订许可，含 A4 `FeedbackTargetResolver` 与 C4 恢复读取接缝的实际装配，并已按 §8.5 的两轴审查修正其发现。
 
-**仍未完成（分别报告，不随本批通过）：** A5.4 复制蓝图与新活动、A5.5 至少一个相关后续任务（§6 提案 8 列第二批）；真实模型（本批 0 次调用）、真实执行节点/Linux 隔离、socket/TLS、实际 UI/浏览器、真人师生与教学效果验收；C 对 §8.2 第 1 项接缝的复核（保留决定已作，复核未作）。未修改 `docs/product/**`、`docs/planning/**`、`docs/reference/**`、`AGENTS.md`、B/C/UI 源码、依赖清单/锁、凭据/CI；未推送、未合并、未创建或评论 PR、未关闭 Issue。
+**仍未完成（分别报告，不随本批通过）：** A5.4 复制蓝图与新活动、A5.5 至少一个相关后续任务（§6 提案 8 列第二批；**已于 §9 完成**，本节为该批时点记录）；真实模型（本批 0 次调用）、真实执行节点/Linux 隔离、socket/TLS、实际 UI/浏览器、真人师生与教学效果验收；C 对 §8.2 第 1 项接缝的复核（保留决定已作，复核未作）。未修改 `docs/product/**`、`docs/planning/**`、`docs/reference/**`、`AGENTS.md`、B/C/UI 源码、依赖清单/锁、凭据/CI；未推送、未合并、未创建或评论 PR、未关闭 Issue。
 
 ### 8.5 独立两轴代码审查与修正（2026-10-14）
 
@@ -358,5 +358,33 @@ A5 专项 11 项与 §7 约定接缝一一对应：
 结论：第二批的代码增量是**一处 A 属只读投影字段**（`activityViewSchema` 加 `sourceBlueprintId`），其余为复用既有 A2/C2/A4 能力加一条端到端验证。`contracts/design` 是 B/C/UI 共同消费的共享契约，按 AGENTS「共享字段…先提案并确认」，该字段与第二批写集需负责人另行确认后再实施；本任务不据本节自行修改契约。
 
 第二批拟写集（待确认）：`docs/tasks/A5_FEEDBACK_REVISION_FOLLOWUP.md`（本节及后续执行记录）、`README.md`、`apps/teaching/contracts/design/results.ts`（+1 可选字段）、`apps/teaching/tests/a5-feedback.test.ts` 或新增 `tests/a5-followup.test.ts`、`apps/teaching/tests/evidence/a5/`。不新增路由、不改表结构、不改 A2/C4 判定。
+
+### 9.1 负责人批准与实际实现（2026-10-14）
+
+负责人明确答复「批准第二批：+1 可选字段 + 端到端验证」，按上表最小范围实施：
+
+| 实际文件 | 实际改动 |
+| --- | --- |
+| [design results](../../apps/teaching/contracts/design/results.ts) | `activityViewSchema` 增可选 `sourceBlueprintId`；既有字段与语义零改写 |
+| [design activities](../../apps/teaching/server/design/activities.ts) | 只读投影在 `actor.role === 'teacher'` 时一并给出 `sourceBlueprintId`，与既有 `sourceRevision` 同一角色门；学生读取不含该字段 |
+| [A5 follow-up tests](../../apps/teaching/tests/a5-followup.test.ts)（新） | 两项端到端用例：复制蓝图→检查→确认→分配→新尝试；以及新尝试只读取适用且仍有效历史 |
+
+未新增路由、未改表结构、未改任何权限用途、未改 A2/C4 判定，未装依赖。A5.4 的「修订进入新版本、旧要求不被修改」由 `mode:'copy'` 加一次 PATCH 证明（源草稿 revision 与标题保持不变，新草稿为 revision 2 并保存来源关联）；A5.5 由新分配尝试上的有效状态读取证明。
+
+### 9.2 第二批实际验证（2026-10-14）
+
+| 实际命令（`apps/teaching`，Node v24.21.0） | 实际结果 |
+| --- | --- |
+| `npm run typecheck` | 通过（exit 0） |
+| `node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts` | **13 项：13 通过、0 失败、0 跳过**，exit 0 |
+| `npm test`（默认文件并发，含 build） | **440 项：422 通过、1 失败、17 跳过**；相对基线 427/409/1/17 为 +13 项、+13 通过，失败与跳过不变，相对第一批的 438/419 为 +2 项、+3 通过（第一批默认全集含一次未复现的 deadline 抖动） |
+| `node tools/a0-review/check.mjs` | `errors=[]`、exit 0 |
+| `git diff --check` | 通过（exit 0） |
+
+唯一失败仍是 `server/workspace/review.test.ts:118` 的 win32 Linux-only 控制上下文环境限制，两侧一致。`activityViewSchema` 的加性字段未造成任何既有回归（A2 设计链、C 工作区/I0 宿主读取全部保持通过）。
+
+A5.5 用例固定的实际行为（这些是投影规则，不是丢失记录）：课程范围的主张随同课程适用目标进入新尝试；`withdrawn` 主张保留可查但不计为有效，且没有同依据的 active 主张；未被纠正的课程范围主张保持 `active` 且 `unresolved: true`/`assistanceStatus: 'unknown'` 不被升级；旧活动版本上的 activity 范围主张**不**进入新版本的新尝试（原尝试仍保留该记录）。未执行项与 §8.4 相同，另加：真实模型、真实节点、浏览器与真人验收。
+
+证据索引新增第二批记录（见 `acceptance.a5-batch2-*` 与索引的 `batchTwo` 段）。
 
 待获授权维护者汇总：批准后的实际代码位置、受控接口签名、验证命令与结果、失败/跳过/未执行项，按 A4 先例汇总至 MVP_SPEC 第 10 节与 TECH 对应契约段；本任务不自行修改受保护基线。
