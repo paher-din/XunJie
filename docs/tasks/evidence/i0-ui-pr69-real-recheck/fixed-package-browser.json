@@ -1,0 +1,401 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-14T15:17:27.415Z",
+  "scope": "Approved synthetic account A; normal production static dist, strict-TLS Chrome through existing SSH gateway and actual PAHER SQLite/C1. No fixtures, new model/help or remote configuration changes.",
+  "sourceCommit": "b50918ae17ae3a961f8c4cabac4cc9ad529b51ae",
+  "studentTree": "7fb690a787ac813b026838bd5d93123602233a17",
+  "entrypoint": "/assets/index-DmeUPG54.js",
+  "runtimeApplicationSource": "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f",
+  "browser": {
+    "product": "Chrome",
+    "version": "155.0.8059.40",
+    "headed": true,
+    "ignoreHTTPSErrors": false,
+    "trace": false,
+    "har": false,
+    "profilePurpose": "owned synthetic development verification"
+  },
+  "account": "synthetic-i0-student-a",
+  "assignmentId": "a2533386-4923-4dee-83bd-2d7a99fb06e9",
+  "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+  "tutoringRead": {
+    "sourceCommit": "b50918ae17ae3a961f8c4cabac4cc9ad529b51ae",
+    "firstRejectedStatus": 400,
+    "firstAutomaticReadsDuring6500ms": 1,
+    "manualReadAdditional": 1,
+    "automaticRepeatsDuring3500ms": 0,
+    "helpPostCount": 0
+  },
+  "freshInitial": {
+    "sourceCommit": "b50918ae17ae3a961f8c4cabac4cc9ad529b51ae",
+    "noUiMetadataSeeded": true,
+    "firstActiveFile": "input.txt",
+    "editorVisible": true,
+    "sameOriginalAttempt": true,
+    "businessPosts": [
+      {
+        "path": "/api/sessions",
+        "method": "POST",
+        "status": 200
+      },
+      {
+        "path": "/api/assignments/a2533386-4923-4dee-83bd-2d7a99fb06e9/attempts",
+        "method": "POST",
+        "status": 200
+      }
+    ],
+    "eventsReads": [
+      {
+        "path": "/api/attempts/c9166463-5f46-4dc6-82c3-96456f394258/events",
+        "method": "GET",
+        "status": 400
+      }
+    ]
+  },
+  "keyboard": {
+    "originalMenuEscapeReturnedFocus": true,
+    "fixedCompareEscapeReturnedEditorFocus": true,
+    "undoRedoRetained": true,
+    "runReturnEditorFocus": true,
+    "readonlyViewsPosted": false
+  },
+  "save": {
+    "receiptId": "ff00bb7f-96fd-4207-b442-bbd1d4731b41",
+    "commandId": "d04248f8-2d42-4fac-93d9-ca93f0130233",
+    "result": {
+      "workspaceRevision": 9,
+      "files": [
+        {
+          "fileId": "1e97b8df-1bb3-4ecb-b353-1e9b0a4905c2",
+          "path": "scratch.txt",
+          "documentVersion": 2,
+          "contentHash": "df234e10a3a13ed64dc906202866683ceaad7b014feda25ead2cafb1e2c36706",
+          "lifecycle": "recycled"
+        },
+        {
+          "fileId": "a60fd7eb-3e3f-40ed-8a14-4b9eb3434436",
+          "path": "input.txt",
+          "documentVersion": 1,
+          "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+          "lifecycle": "active"
+        },
+        {
+          "fileId": "d9f1b67d-808d-4dec-86f1-ac46c29c4c0e",
+          "path": "main.c",
+          "documentVersion": 7,
+          "contentHash": "dd116ed6032ef6934f46f50b598777c2dd34c097fbdd15036b119e0191b46a1f",
+          "lifecycle": "active"
+        }
+      ],
+      "created": {},
+      "process": {
+        "status": "not_collected",
+        "reason": "not_requested"
+      }
+    },
+    "file": {
+      "fileId": "d9f1b67d-808d-4dec-86f1-ac46c29c4c0e",
+      "path": "main.c",
+      "documentVersion": 7,
+      "utf8Bytes": 144,
+      "contentHash": "dd116ed6032ef6934f46f50b598777c2dd34c097fbdd15036b119e0191b46a1f",
+      "originalTextPlusOnlyApprovedMarker": true
+    }
+  },
+  "freeze": {
+    "receiptId": "720bec5f-4b18-4bd2-a8ad-1823a29c0874",
+    "commandId": "f161f793-f2ba-471b-bac6-288a2af495a3",
+    "snapshotId": "39495a9c-0c61-4a96-8dc5-50a1ac43a840",
+    "snapshotHash": "9c39861e4da1fb6b2fae5920abf1deec868cc6e9c7c67c084928cc52424ac54b",
+    "workspaceRevision": 9,
+    "manifestHashRecomputed": true,
+    "fileHashesRecomputed": true,
+    "previousV8Preserved": true
+  },
+  "run": {
+    "receiptId": "a5787b05-0336-49ee-b0ff-071d9b9bfdad",
+    "commandId": "f4be7022-4bba-41d9-95dc-61b9a30076c3",
+    "runId": "e695b290-bdcd-47f0-bc0c-a73d3e965b99",
+    "jobId": "51701919-06c3-4022-9747-2de2fdf710f3",
+    "snapshotId": "39495a9c-0c61-4a96-8dc5-50a1ac43a840",
+    "status": "succeeded",
+    "publicResult": {
+      "runId": "e695b290-bdcd-47f0-bc0c-a73d3e965b99",
+      "jobId": "51701919-06c3-4022-9747-2de2fdf710f3",
+      "snapshotId": "39495a9c-0c61-4a96-8dc5-50a1ac43a840",
+      "snapshotHash": "9c39861e4da1fb6b2fae5920abf1deec868cc6e9c7c67c084928cc52424ac54b",
+      "mode": "run",
+      "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+      "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+      "diagnostics": {
+        "runId": "e695b290-bdcd-47f0-bc0c-a73d3e965b99",
+        "snapshotId": "39495a9c-0c61-4a96-8dc5-50a1ac43a840",
+        "snapshotHash": "9c39861e4da1fb6b2fae5920abf1deec868cc6e9c7c67c084928cc52424ac54b",
+        "source": "runner_diagnostics",
+        "status": "available",
+        "stdout": "new snapshot\n",
+        "stderr": ""
+      }
+    }
+  },
+  "stop": {
+    "receiptId": "ad884b99-17bb-4632-9672-434a605ffd32",
+    "commandId": "ab2e0139-f50a-4f76-b8ae-3e3bbd4c39e9",
+    "runId": "b3f6d609-bb67-409d-9a7b-1c6e17874d0d",
+    "jobId": "ddf13610-4ff1-4acb-9349-bc4229dfc043",
+    "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+    "observedBeforeStop": "running",
+    "cancelReceiptId": "f1b4e589-c877-4e0c-98f5-d68873f6febc",
+    "cancelCommandId": "0472718b-7615-4f88-9db7-28696589575a",
+    "acknowledgement": {
+      "jobId": "ddf13610-4ff1-4acb-9349-bc4229dfc043",
+      "status": "cancelling",
+      "stopRequested": true
+    },
+    "uiImmediatelyAfterResponse": "快照作品 v4 的结果\n\n运行中\n\n本机请求记录 · 入口 main.c · stats · 输入 input.txt\n\n诊断暂不可回取。\n\n结果只读，供你修订作品；不作为课程通过或能力评价。\n\n就这次运行求助",
+    "finalJob": {
+      "jobId": "ddf13610-4ff1-4acb-9349-bc4229dfc043",
+      "kind": "run",
+      "purpose": "student_run",
+      "scope": {
+        "courseId": "synthetic-i0-course-a",
+        "studentId": "synthetic-i0-student-a",
+        "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258"
+      },
+      "requestReceiptId": "ad884b99-17bb-4632-9672-434a605ffd32",
+      "status": "cancelled",
+      "stopRequested": true,
+      "expectedRevision": 14,
+      "decisionEpoch": 3,
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "acceptedAt": "2026-10-14T15:11:58.437Z",
+      "deadline": "2026-10-14T15:13:58.438Z",
+      "attemptCount": 0,
+      "runId": "b3f6d609-bb67-409d-9a7b-1c6e17874d0d"
+    }
+  },
+  "refresh": {
+    "noBusinessPosts": true,
+    "workspaceRevision": 9,
+    "originalV8AndNewV9Unchanged": true
+  },
+  "history": {
+    "readOnly": true,
+    "oldV8Run": "4fc8722a-e701-4187-acc3-6168d5b136ba",
+    "oldV8SnapshotHash": "53a10f0c04d644670b4ecea93107701d1fd073c41d14d1e782df0813cfd0dfce",
+    "newV9SnapshotHash": "9c39861e4da1fb6b2fae5920abf1deec868cc6e9c7c67c084928cc52424ac54b",
+    "originalParametersOnly": true,
+    "missingAndRedactedDoNotOfferDownload": true,
+    "artifactCandidateReads": [
+      {
+        "runId": "36e04cba-c58e-4a41-a215-ae986b616b81",
+        "snapshotId": "10785f20-8431-469b-8725-901a38ae7090",
+        "status": 200,
+        "filesStatus": "redacted"
+      },
+      {
+        "runId": "7682a282-a51d-4e1a-995b-fb9234c649f0",
+        "snapshotId": "22882244-dc09-42ca-9b66-96bfd6ba6399",
+        "status": 200,
+        "filesStatus": "available",
+        "files": [
+          {
+            "relativeName": "report.txt",
+            "status": "complete",
+            "contentHash": "3105a39fba2d6ddf5e48f95ff264f0f8e23f2fd107da03b17c6a3943415c7c36",
+            "bytes": 21,
+            "runId": "7682a282-a51d-4e1a-995b-fb9234c649f0",
+            "snapshotId": "22882244-dc09-42ca-9b66-96bfd6ba6399",
+            "resultFileId": "b9415ed6df2507437f341ee1978b1d188da68c4a0140c3bb4966310ee80e1bf0",
+            "source": "runner_result_file",
+            "caseIndex": 0
+          }
+        ]
+      },
+      {
+        "runId": "c5a207a0-4303-40b2-8480-c393391fd1cd",
+        "snapshotId": "10785f20-8431-469b-8725-901a38ae7090",
+        "status": 200,
+        "filesStatus": "available",
+        "files": [
+          {
+            "relativeName": "report.txt",
+            "status": "missing",
+            "runId": "c5a207a0-4303-40b2-8480-c393391fd1cd",
+            "snapshotId": "10785f20-8431-469b-8725-901a38ae7090",
+            "resultFileId": "6c76e824365dcd06d49c03fa1bdcf05993ce18efacdb035ed1d431b10d7c97a4",
+            "source": "runner_result_file",
+            "caseIndex": 0
+          }
+        ]
+      }
+    ]
+  },
+  "download": {
+    "approvedExistingRun": "7682a282-a51d-4e1a-995b-fb9234c649f0",
+    "snapshotId": "22882244-dc09-42ca-9b66-96bfd6ba6399",
+    "resultFileId": "b9415ed6df2507437f341ee1978b1d188da68c4a0140c3bb4966310ee80e1bf0",
+    "relativeName": "report.txt",
+    "status": "complete",
+    "source": "runner_result_file",
+    "bytes": 21,
+    "contentHash": "3105a39fba2d6ddf5e48f95ff264f0f8e23f2fd107da03b17c6a3943415c7c36",
+    "publicTextHashVerified": true,
+    "actualBrowserDownloadHashVerified": true,
+    "suggestedName": "report.txt",
+    "newRunCreatedForArtifact": false,
+    "historyPostCount": 0
+  },
+  "auth": {
+    "normalFormLogin": true,
+    "logoutStatus": 200,
+    "normalReloginRestoredSameAttemptV9": true,
+    "noInjectedSession": true
+  },
+  "businessRequests": [
+    {
+      "atUtc": "2026-10-14T15:08:49.308Z",
+      "path": "/api/attempts/c9166463-5f46-4dc6-82c3-96456f394258/sync",
+      "status": 200,
+      "idempotencyKey": "65cde64f-3e08-439e-9928-f22d2a70e5a3",
+      "wireSha256": "cfb57925d9587e59b88cbb7fc78f326f7d2625cc127960b491888545646bd64b",
+      "receiptId": "ff00bb7f-96fd-4207-b442-bbd1d4731b41",
+      "commandId": "d04248f8-2d42-4fac-93d9-ca93f0130233",
+      "requestHash": "cbba4543966883a3aa55225a4d22141f44d975a7da06d3d31dd18de0e48bcf9f",
+      "serverSeq": 166,
+      "result": {
+        "workspaceRevision": 9,
+        "files": [
+          {
+            "fileId": "1e97b8df-1bb3-4ecb-b353-1e9b0a4905c2",
+            "path": "scratch.txt",
+            "documentVersion": 2,
+            "contentHash": "df234e10a3a13ed64dc906202866683ceaad7b014feda25ead2cafb1e2c36706",
+            "lifecycle": "recycled"
+          },
+          {
+            "fileId": "a60fd7eb-3e3f-40ed-8a14-4b9eb3434436",
+            "path": "input.txt",
+            "documentVersion": 1,
+            "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+            "lifecycle": "active"
+          },
+          {
+            "fileId": "d9f1b67d-808d-4dec-86f1-ac46c29c4c0e",
+            "path": "main.c",
+            "documentVersion": 7,
+            "contentHash": "dd116ed6032ef6934f46f50b598777c2dd34c097fbdd15036b119e0191b46a1f",
+            "lifecycle": "active"
+          }
+        ],
+        "created": {},
+        "process": {
+          "status": "not_collected",
+          "reason": "not_requested"
+        }
+      }
+    },
+    {
+      "atUtc": "2026-10-14T15:09:42.510Z",
+      "path": "/api/attempts/c9166463-5f46-4dc6-82c3-96456f394258/snapshots",
+      "status": 200,
+      "idempotencyKey": "5c022434-baa9-45c3-b9dc-c0c5eed82edb",
+      "wireSha256": "e93c743220fceb0e27b1873ea1aeb227a38ae8e1b9cc419d0bd59b5bd389f178",
+      "receiptId": "720bec5f-4b18-4bd2-a8ad-1823a29c0874",
+      "commandId": "f161f793-f2ba-471b-bac6-288a2af495a3",
+      "requestHash": "39a1e8f536cb72c7b10e5aaac7350090056cfa929f52cfb3a16fea0782f4619c",
+      "serverSeq": 167,
+      "result": {
+        "snapshotId": "39495a9c-0c61-4a96-8dc5-50a1ac43a840",
+        "snapshotHash": "9c39861e4da1fb6b2fae5920abf1deec868cc6e9c7c67c084928cc52424ac54b",
+        "workspaceRevision": 9
+      }
+    },
+    {
+      "atUtc": "2026-10-14T15:10:30.893Z",
+      "path": "/api/attempts/c9166463-5f46-4dc6-82c3-96456f394258/runs",
+      "status": 200,
+      "idempotencyKey": "35bb0144-e9e3-4ad6-aefb-e9c76c3c0bfc",
+      "wireSha256": "3241b67f7712b10bff779ad25fdbd05fc9792a2c3ded6f346aa0f5ba2d3ccae1",
+      "receiptId": "a5787b05-0336-49ee-b0ff-071d9b9bfdad",
+      "commandId": "f4be7022-4bba-41d9-95dc-61b9a30076c3",
+      "requestHash": "ffb47c75f10a8dcfcf470d284ff3d5eeb1a203e086ccee48468369584fe2df53",
+      "serverSeq": 168,
+      "result": {
+        "runId": "e695b290-bdcd-47f0-bc0c-a73d3e965b99",
+        "jobId": "51701919-06c3-4022-9747-2de2fdf710f3",
+        "snapshotId": "39495a9c-0c61-4a96-8dc5-50a1ac43a840"
+      }
+    },
+    {
+      "atUtc": "2026-10-14T15:11:42.931Z",
+      "path": "/api/attempts/c9166463-5f46-4dc6-82c3-96456f394258/runs",
+      "status": 200,
+      "idempotencyKey": "d51bed5f-acf4-4e4b-874f-6ff6e0d5d874",
+      "wireSha256": "393941372d25bb9f3437aaaa08f6ea4652d6a3d650e0b8ff1ad92306819a1a96",
+      "receiptId": "ad884b99-17bb-4632-9672-434a605ffd32",
+      "commandId": "ab2e0139-f50a-4f76-b8ae-3e3bbd4c39e9",
+      "requestHash": "2a0208f0b38136d8b07154ad0a2a35a33a2b8d9f46aa9a79f61e899f25eaf0f9",
+      "serverSeq": 177,
+      "result": {
+        "runId": "b3f6d609-bb67-409d-9a7b-1c6e17874d0d",
+        "jobId": "ddf13610-4ff1-4acb-9349-bc4229dfc043",
+        "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516"
+      }
+    },
+    {
+      "atUtc": "2026-10-14T15:11:45.036Z",
+      "path": "/api/jobs/ddf13610-4ff1-4acb-9349-bc4229dfc043/cancel",
+      "status": 200,
+      "idempotencyKey": "64df623d-eb04-46bc-8038-516d685465ba",
+      "wireSha256": "e70e5d631bc1baeb9fd761fd0208cccc9eca6ad531f50a561620a988e8e48355",
+      "receiptId": "f1b4e589-c877-4e0c-98f5-d68873f6febc",
+      "commandId": "0472718b-7615-4f88-9db7-28696589575a",
+      "requestHash": "b8d9f38fa09da62452521f917adb1875285c72a39111556564eba09cc8351314",
+      "serverSeq": 182,
+      "result": {
+        "jobId": "ddf13610-4ff1-4acb-9349-bc4229dfc043",
+        "status": "cancelling",
+        "stopRequested": true
+      }
+    }
+  ],
+  "totals": {
+    "sync": 1,
+    "snapshot": 1,
+    "run": 2,
+    "cancel": 1,
+    "help": 0,
+    "newAssignment": 0,
+    "newAttempt": 0
+  },
+  "notExecuted": [
+    "second account and real expiry/revocation",
+    "real lost ACK or generation/database restore fault",
+    "HDL 3444",
+    "new tutoring/model or real student actions",
+    "full AC/NFR acceptance"
+  ],
+  "servedEntry": {
+    "path": "/assets/index-DmeUPG54.js",
+    "status": 200,
+    "bytes": 1269910,
+    "sha256": "8f401f35209eb5460acebe5bfbd3ba55d8ba9a88521861e7394c8a4b610dc103",
+    "strictTls": true,
+    "credentials": "omit",
+    "hashMatchesFrozenManifest": true,
+    "verification": "Anonymous native browser fetch on same strict-TLS origin; initial normal page loaded same entry"
+  },
+  "cleanup": {
+    "finalNormalLogoutStatus": 200,
+    "anonymousSessionAfterLogout": 401,
+    "ownedBrowserCookiesCleared": true,
+    "originalDataAndGatewayPreserved": true
+  },
+  "toolFailure": {
+    "staticRequestClient": "Playwright APIRequestContext did not inherit Windows trust; request rejected before response",
+    "unexpectedSessionHeaderInToolError": true,
+    "affectedSyntheticSessionRevokedThroughNormalLogout": true,
+    "publishedEvidenceContainsAuth": false
+  }
+}
