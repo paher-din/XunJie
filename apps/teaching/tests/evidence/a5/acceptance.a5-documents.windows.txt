@@ -1,0 +1,27 @@
+{
+  "check": "A0 static document review",
+  "documents": 88,
+  "internalLinks": 1256,
+  "commands": 24,
+  "recoveryRows": 24,
+  "readGroups": 19,
+  "dataParameters": 12,
+  "decisions": 12,
+  "plannedCases": 20,
+  "syntheticExamples": 15,
+  "jsonExamples": 4,
+  "traceabilityRows": 20,
+  "handoffQuestions": 12,
+  "independentDeliverables": 8,
+  "firstBatches": 3,
+  "baselineMutationRoutes": 27,
+  "additionalProposedRoutes": [],
+  "g0Approved": true,
+  "approvedG0Extensions": [
+    "POST /api/activities/:id/controls",
+    "POST /api/blueprints/:id/sample-runs",
+    "POST /api/attempts/:id/snapshots"
+  ],
+  "businessTests": "NOT_EXECUTED",
+  "errors": []
+}
