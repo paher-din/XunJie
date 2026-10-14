@@ -8,6 +8,7 @@ import type { ServerOptions } from 'node:https';
 export interface AppOptions {
   https?:Pick<ServerOptions,'key'|'cert'>;
   logDestination?: { write(message: string): void };
+  checkReady?: () => void | Promise<void>;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -44,8 +45,11 @@ export function createApp(options: AppOptions = {}) {
     throw new ApiError('INVALID_REQUEST');
   });
 
-  app.get('/health/ready', async () => {
-    throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  app.get('/health/ready', async (request, reply) => {
+    reply.header('cache-control', 'no-store');
+    if (!options.checkReady) throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    await options.checkReady();
+    return { requestId: request.id, data: { status: 'ready' } };
   });
 
   app.addHook('onSend', async (request, reply, payload) => {

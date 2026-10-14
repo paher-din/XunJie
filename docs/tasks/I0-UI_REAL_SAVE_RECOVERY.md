@@ -177,3 +177,5 @@ rtk npm run test:e2e -- saveRecoveryService.spec.ts saveStateService.spec.ts con
 负责人明确要求“先把这批推 PR，合并进 main，然后开始下一批 09 10 11”，现据此提交本批八个文件，保留原 `.zcodeignore`。远端核对：`origin/main=f95488a`，本分支的前置登录 `ba89fe0` 和两条分支归属勘误尚未合入 main；本 PR 一并承载该已批准前置依赖和本批保存恢复，不把它们省略为已在 main。
 
 交付顺序：先提交批准写集，正常 merge 最新 main 后核集成差异与必要检查，再推送 `i0/ui-frontend` 并创建 PR；核实际检查/合并状态后合入 main，不绕过分支保护、不删除分支。随后在原前端分支接上实际合并提交推进下一批。此段记录授权与顺序，不预先声明推送或合并成功；实际 PR/merge SHA 由后续任务的交付回读记录承接。
+
+实际回读：[PR #64](https://github.com/paher-din/XunJie/pull/64) 于2026-10-14 19:16:22（Asia/Shanghai）MERGED，head `96da789`、merge `8e6d37d843a79c87bd223689746bd1aefff3bb2f`；本批提交 `b88694a`，前置登录及最新 main 正常组合后 48/48 Chrome 回归再次通过（3.7 分钟），464 单元/typecheck/build/教学类型/84文档1243内链/差异空白通过。远端当时未报告 CI 检查，未绕过保护；前端分支 fast-forward 到该 main，无分支删除或生产发布。下一批由 [UI-REAL-09/10/11 任务](I0-UI_REAL_RUN_CONTROL_HISTORY.md)承接；此回读在下一批记录更新时补入，不改写前面的实施完成快照。

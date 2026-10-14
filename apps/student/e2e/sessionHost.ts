@@ -7,12 +7,35 @@ import { get } from 'node:https'
 import type { Page } from '@playwright/test'
 import type { WorkspaceHead } from '../src/workspace/workspaceContracts'
 
+export type HostRunnerOutcome = 'running' | 'success' | 'compile-error' | 'program-error' | 'timeout' | 'output-limit'
+  | 'infrastructure-error' | 'unknown' | 'report-complete' | 'report-missing' | 'report-incomplete'
+export type HostRunnerFinishedOutcome = Exclude<HostRunnerOutcome, 'running' | 'unknown'>
+export interface HostRunnerConfiguration {
+  ready: boolean; outcome: HostRunnerOutcome; stopConfirmed: boolean; link: 'online' | 'offline'
+}
+export interface HostRunnerCounts { submit: number; query: number; cancel: number; readResult: number; submitEffects: number }
+export interface HostRunnerFact {
+  identity: { runId: string; commandId: string; requestHash: string; recoveryGeneration: string; snapshotId: string;
+    snapshotHash: string; inputHash: string; runtimeProfileVersion: string; imageDigest: string;
+    authorizedScope: { userId: string; courseId: string; purpose: 'student_run' | 'teacher_sample'; attemptId?: string; activityVersionId?: string } }
+  state: 'queued' | 'running' | 'cancelling' | 'cancelled' | 'succeeded' | 'failed' | 'stale' | 'outcome_unknown'
+  reserved: boolean; stopRequested: boolean; units: string[]; pending: string[]; resultRef?: string; resultHash?: string
+}
+export interface HostRunnerInspection {
+  readiness: number; totals: HostRunnerCounts; configuration: HostRunnerConfiguration
+  runs: Array<{ runId: string; counts: HostRunnerCounts; fact: HostRunnerFact | null }>
+}
 export type HostControl =
   | { kind: 'generation'; value: string }
   | { kind: 'reopen' }
   | { kind: 'state'; attemptId: string; state: 'paused' | 'active' | 'submitted' | 'reviewed' }
   | { kind: 'inspect'; attemptId?: string }
   | { kind: 'clock-regress'; milliseconds: number }
+  | ({ kind: 'runner'; action: 'configure' } & Partial<HostRunnerConfiguration>)
+  | { kind: 'runner'; action: 'finish'; runId: string; outcome?: HostRunnerFinishedOutcome }
+  | { kind: 'runner'; action: 'confirm-stop'; runId: string }
+  | { kind: 'runner'; action: 'inspect'; runId?: string }
+  | { kind: 'history'; attemptId: string; outcome: 'report-complete' | 'report-missing' | 'report-incomplete' | 'files-unavailable' | 'check' }
 export interface HostInspection {
   requests: { businessWrites: number; activityReads: number }
   database: { attempts: number; files: number; snapshots: number; submissions: number; receipts: number }
@@ -20,6 +43,10 @@ export interface HostInspection {
   attemptCounts?: { files: number; snapshots: number; submissions: number; receipts: number }
 }
 export type HostControlResult<T extends HostControl> =
+  T extends { kind: 'runner'; action: 'inspect' } ? HostRunnerInspection :
+  T extends { kind: 'runner'; action: 'configure' } ? HostRunnerConfiguration :
+  T extends { kind: 'runner' } ? { runId: string; state: HostRunnerFact['state'] } :
+  T extends { kind: 'history' } ? { jobId: string; runId: string; snapshotId: string; status: string } :
   T extends { kind: 'inspect' } ? HostInspection :
   T extends { kind: 'generation' } ? { recoveryGeneration: string } :
   T extends { kind: 'reopen' } ? { reopened: true; recoveryGeneration: string } :
@@ -45,7 +72,7 @@ async function reachable(base: string) {
 }
 
 /** 复用已获准的隔离 HTTPS/SQLite 宿主。密码只走私有 stdin，不写日志/trace。 */
-export async function startSessionHost() {
+export async function startSessionHost(options: { runs?: boolean } = {}) {
   const password = randomBytes(32).toString('base64url')
   const port = await new Promise<number>((accept, reject) => {
     const listener = createServer()
@@ -144,7 +171,7 @@ export async function startSessionHost() {
       if (code !== 0) throw new Error('Isolated HTTPS exited with failure')
     } finally { clearTimeout(timer); output.close() }
   })()
-  child.stdin.write(JSON.stringify({ synthetic: true, port, password }) + '\n')
+  child.stdin.write(JSON.stringify({ synthetic: true, port, password, ...(options.runs ? { runs: true } : {}) }) + '\n')
   try {
     const service = await ready
     if (service.synthetic !== true) throw new Error('Synthetic host required')

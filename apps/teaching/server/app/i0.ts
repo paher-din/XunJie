@@ -13,8 +13,9 @@ import type { ModelProvider } from '../tutoring/providers.ts';
 import { readTeachingJob, stopTeachingJobsInTransaction } from '../records/teaching.ts';
 import { saveJob } from '../db/records-adapter.ts';
 import { recoverJob } from '../records/jobs.ts';
+import { availableRuntime } from '../design/readiness.ts';
 
-export type I0AppOptions = WorkspaceAppOptions & {staticDirectory?:string;consumerIntervalMs?:number;
+export type I0AppOptions = Omit<WorkspaceAppOptions,'checkReady'> & {staticDirectory?:string;consumerIntervalMs?:number;
   tutoring?: {studentHelp:TutoringAppOptions['studentHelp'];provider:ModelProvider}};
 export async function createI0App(options: I0AppOptions) {
   const approvedTables=['activity_controls','activity_versions','artifact_snapshots','assignments','attempts','audit_events',
@@ -33,7 +34,25 @@ export async function createI0App(options: I0AppOptions) {
     const response=await transport(command);
     if (!accepting && command.op==='readiness') throw new ApiError('DEPENDENCY_UNAVAILABLE');
     return response;
-  }} : {})};
+  }} : {}),checkReady:async()=>{
+    assertHostReady();
+    checkDatabase();
+    const generation=options.currentGeneration();
+    if (!generation) throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    try {
+      // Only the health response is bounded; do not change the original runner's operation limits.
+      const runtime=await Promise.race([availableRuntime(guardedOptions.runner),new Promise<never>((_,reject)=>{
+        timeout=setTimeout(()=>reject(new ApiError('DEPENDENCY_UNAVAILABLE')),5000);
+      })]);
+      if (!runtime || runtime.recoveryGeneration!==generation) throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    } catch { throw new ApiError('DEPENDENCY_UNAVAILABLE'); }
+    finally { if (timeout) clearTimeout(timeout); }
+    // Shutdown, database failure or a recovery may have occurred during the external query.
+    assertHostReady();
+    checkDatabase();
+    if (options.currentGeneration()!==generation) throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  }};
   const service = tutoringOptions
     ? await createTutoringApp({...guardedOptions,studentHelp:tutoringOptions.studentHelp})
     : await createWorkspaceApp(guardedOptions);
@@ -42,8 +61,22 @@ export async function createI0App(options: I0AppOptions) {
   let timer:ReturnType<typeof setTimeout>|undefined, inFlight:Promise<void>|undefined;
   let teachingTimer:ReturnType<typeof setTimeout>|undefined,teachingScan:Promise<void>|undefined;
   let started = false, closing:Promise<void>|undefined;
+  let runScanHealthy=false,teachingScanHealthy=false;
   const teachingTasks=new Map<string,{controller:AbortController;task:Promise<unknown>}>();
   const now=options.now??Date.now;
+  function assertHostReady() {
+    if (!accepting || !started || !runScanHealthy || (tutoring && !teachingScanHealthy))
+      throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  }
+  function checkDatabase() {
+    try { options.db.withTransaction(tx=>tx.get('SELECT 1 AS available')); }
+    catch { throw new ApiError('PERSISTENCE_UNAVAILABLE'); }
+  }
+  app.addHook('preClose',async()=>{
+    accepting=false;
+    if(timer) clearTimeout(timer);
+    if(teachingTimer) clearTimeout(teachingTimer);
+  });
   app.addHook('onRequest',async request => {
     if (!accepting && !['GET','HEAD'].includes(request.method)) throw new ApiError('DEPENDENCY_UNAVAILABLE');
   });
@@ -97,12 +130,14 @@ export async function createI0App(options: I0AppOptions) {
   }
   function tick() {
     if (!accepting) return;
-    inFlight = consumeRuns().catch(() => { app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original job scan failed.'); })
+    inFlight = consumeRuns().then(()=>{runScanHealthy=true;})
+      .catch(() => { runScanHealthy=false; app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original job scan failed.'); })
       .finally(() => { inFlight = undefined; if (accepting) timer = setTimeout(tick,interval); });
   }
   function teachingTick() {
     if(!accepting||!tutoring) return;
-    teachingScan=consumeTeaching().catch(()=>{app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original teaching scan failed.');})
+    teachingScan=consumeTeaching().then(()=>{teachingScanHealthy=true;})
+      .catch(()=>{teachingScanHealthy=false;app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original teaching scan failed.');})
       .finally(()=>{teachingScan=undefined;if(accepting) teachingTimer=setTimeout(teachingTick,interval);});
   }
   function startConsumer() {
