@@ -106,3 +106,13 @@ PAHER保留联调宿主 `xunjie-dla-ui-handoff-20261014.service`：同机3444、
 原3444临时host已正常停止；切至保留新副本的 `xunjie-dla-ui-integrated-20261014.service`，相同原35表/3444/TLS/签名/账号、最新main继承UI dist与应用服务。模型预算继续关闭，不读本轮key，runner节点仍原获准sourceHash/镜像，**应用源码换版不是H3节点部署**。严格TLS三次GET的 [最终smoke](evidence/dla-continuation-20261014/ui-host-integrated-smoke.json)均200；未改系统信任/旧3443/24表，也没有浏览器验收。
 
 当前停止命令：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-integrated-20261014.service`。回滚可停止当前unit，再沿§8原serve-hdl argv在旧副本启动；目录/库/原对象保留，恢复不重放已结束模型批次。WSL本轮保活是有界进程，不承诺自动开机或长期在线。
+
+### 8.2 最终公开回执与剩余工作
+
+H3内核提交 `b556d75`，接纳latest main及66项专项的merge为 `2e0245c2c9a1ef85828b935924b55baac7243e3a`，包含 `5c8c60e` main父历史。Git API exact tree/非强制更新回读均一致，见 [发布回执](evidence/dla-continuation-20261014/publication-final.json)。原PR56 head已更新且仍Open/Draft；标题/正文重写为本轮最终范围，不再沿早期H3/H4未接线摘要描述已完成代码。未合并到远端main或关闭#38。
+
+[UI #30实际回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6168625583)已发布且正文逐字回读一致，包含统一PR56、真实模型/HDL证据、3444入口/停止/安全账号与信任边界，以及UI同浏览器接线验收清单；未代UI勾通过。主副本原未提交/未跟踪文件完整保持本轮开工状态，不暂存/覆盖/提交。
+
+最终静态97份/1483内部引用/errors=[]（随回执链接增长，以最后工具实际输出为准），差异空白通过；stage曾因原student unit日志尾空行失败，保留原gzip后仅规范可读文本并通过，不更改测试事实。密钥实际值对本轮源码/证据扫描0命中，保存仅在PAHER仓库外0600文件；单轮实际1次请求授权已消费，现有联调host不读该文件。
+
+本轮明确完成：固定main集成/回归、真实HDL Build/Session/Operation/读取/确认停止、H4正常获准冻结/B实际模型/C3传输交接、UI真实包和保留同机入口、H3已批准runner内核及隔离CLI2800采样。尚未完成：UI真实HDL同浏览器展示/学生修复链；H3新镜像/节点部署与真实worker2800/故障/隔离验收、活动binding/course_check接线；原3443就绪缺口归其现场维护者；完整P4/P5/真人/教学效果沿原后置安排。产品基线/MVP§10待授权维护者汇总。
