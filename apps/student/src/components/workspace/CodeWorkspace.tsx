@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import { Icon } from '../../icons'
 import type { ProjectFile } from '../../bridge/types'
 import { eolLabel, eolOf, hasBom, languageLabel, languageOf } from '../../lib/projectFiles'
@@ -6,6 +6,7 @@ import { activeFiles, isLifecyclePending, lifecycleProblemMessage, recycleProble
 import { CodeEditorHost, type CodeEditorHandle } from './CodeEditorHost'
 import { FileStrip, type FileStripHandle } from './FileStrip'
 import type { ProjectWorkspace } from './useProjectWorkspace'
+import type { CodeSelectionResult } from '../../workspace/tutoringObject'
 
 /**
  * 程序设计课程的核心工具：多文件代码编辑区。
@@ -22,9 +23,12 @@ export interface CodeWorkspaceProps {
   ws: ProjectWorkspace
   /** 隔离命名空间：mock 用任务 id，正式版是模式 / 账号 / Attempt 的组合。 */
   workspaceKey: string
+  /** 辅导/返回组件只能读取或定位当前实例，不能通过此 handle 修改正文。 */
+  editorHandleRef?: Ref<CodeEditorHandle>
+  onSelectionChange?: (result: CodeSelectionResult) => void
 }
 
-export function CodeWorkspace({ ws, workspaceKey }: CodeWorkspaceProps) {
+export function CodeWorkspace({ ws, workspaceKey, editorHandleRef, onSelectionChange }: CodeWorkspaceProps) {
   const editorRef = useRef<CodeEditorHandle>(null)
   const stripRef = useRef<FileStripHandle>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -37,6 +41,18 @@ export function CodeWorkspace({ ws, workspaceKey }: CodeWorkspaceProps) {
   const readOnly = ws.access.kind === 'read-only'
   const readOnlyReason = accessReason(ws)
   const activeText = active === null ? '' : ws.draftText(active.fileId)
+
+  useImperativeHandle(editorHandleRef, () => ({
+    focus: () => editorRef.current?.focus(),
+    saveViewState: () => editorRef.current?.saveViewState() ?? null,
+    captureSelection: () => editorRef.current?.captureSelection() ?? { ok: false, reason: '没有可用的代码编辑器。' },
+    revealOriginalRange: (location) => editorRef.current?.revealOriginalRange(location) ?? { ok: false, reason: '没有可用的代码编辑器。' },
+  }))
+  const selectionCallback = useRef(onSelectionChange)
+  selectionCallback.current = onSelectionChange
+  useEffect(() => {
+    if (active === null || recycledActive) selectionCallback.current?.({ ok: false, reason: '没有打开的活动文件，请重新选择。' })
+  }, [active?.fileId, recycledActive])
 
   return (
     <div className="cw">
@@ -119,6 +135,7 @@ export function CodeWorkspace({ ws, workspaceKey }: CodeWorkspaceProps) {
           readOnlyReason={readOnlyReason}
           onTextChange={(fileId, text) => ws.setDraft(fileId, text)}
           onCursorChange={setCursor}
+          onSelectionChange={onSelectionChange}
         />
       )}
 

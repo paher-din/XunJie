@@ -94,6 +94,9 @@ export function phaseFor(outcome: CommandOutcome): ConfirmationPhase {
 export class ConfirmationWorkspace {
   private guard: ContextGuard
   private state = initialState()
+  /** Verified control versions survive a temporarily unknown display state in this context. */
+  private controlWatermark: Pick<AttemptView, 'attemptRevision' | 'decisionEpoch' | 'captureRevision'> | null = null
+  private controlPublicationSeq = 0
   private readonly clientId = crypto.randomUUID()
   private readonly leaseOwner = crypto.randomUUID()
   private busy = false
@@ -125,6 +128,11 @@ export class ConfirmationWorkspace {
   dispose(): void { this.guard.dispose(); this.listeners.clear(); this.channel?.close() }
   private publish(change: Partial<ConfirmationState>): void {
     if (this.guard.stale) return
+    if (change.attempt) {
+      const { attemptRevision, decisionEpoch, captureRevision } = change.attempt
+      this.controlWatermark = { attemptRevision, decisionEpoch, captureRevision }
+      this.controlPublicationSeq++
+    }
     this.state = { ...this.state, ...change }
     this.listeners.forEach(fn => fn(this.state))
   }
@@ -133,6 +141,13 @@ export class ConfirmationWorkspace {
   private bindAttempt(attemptId: string): void {
     this.guard = new ContextGuard({ ...this.context, attemptId, loadEpoch: nextLoadEpoch() })
     this.state = initialState()
+    this.controlWatermark = null
+    this.controlPublicationSeq = 0
+  }
+  private retireHeadReads(guard: ContextGuard): void {
+    for (const lane of ['workspace-head', 'workspace-controls']) {
+      guard.acceptRead(lane, guard.nextReadSeq(lane))
+    }
   }
   /**
    * 展示一条未决原命令的结论。
@@ -187,7 +202,7 @@ export class ConfirmationWorkspace {
           attemptId: this.context.attemptId, recoveryGeneration: this.context.trustedRecoveryGeneration,
           preparationEpoch: this.context.preparationEpoch })
         this.publish({ error: '工作区已重新加载，草稿保留；请重新读取后再保存。' })
-        if (this.context.mode === 'preparation' && !this.context.attemptId) {
+        if (import.meta.env.DEV && this.context.mode === 'preparation' && !this.context.attemptId) {
           const c = this.context
           await confirmationRepository.acceptPreparationEpoch(c, () => this.valid(guard), async () => {
             const latest = await apiGet<PrepContextView>('', { ...this.opts(), absolutePath: prepContextUrl(c.mode)! })
@@ -212,16 +227,49 @@ export class ConfirmationWorkspace {
       if (this.valid(guard)) this.publish({ phase: 'error', error: '工作区没有读取成功，请重新读取。' })
     }
   }
-  async readHead(): Promise<WorkspaceHead | null> {
+  async readHead(options?:{controlsOnly?:boolean}): Promise<WorkspaceHead | null> {
     const guard = this.guard, c = this.context
     if (!c.attemptId || guard.stale) return null
-    const seq = guard.nextReadSeq('workspace-head')
+    const lane=options?.controlsOnly?'workspace-controls':'workspace-head'
+    const seq = guard.nextReadSeq(lane)
+    const publicationBeforeRead = this.controlPublicationSeq
     try {
       const value = await apiGet<unknown>(`/attempts/${encodeURIComponent(c.attemptId)}`, this.opts())
       if (!this.valid(guard)) return null
       const head = await verifyHead(value, c, c.courseId)
-      if (!guard.acceptRead('workspace-head', seq) || !this.valid(guard)) return null
-      const current = () => this.valid(guard) && guard.isAcceptedRead('workspace-head', seq)
+      if (!guard.acceptRead(lane, seq) || !this.valid(guard)) return null
+      const current = () => {
+        const knownAttempt = this.controlWatermark
+        return this.valid(guard) && guard.isAcceptedRead(lane, seq) && (!knownAttempt ||
+          (head.attempt.attemptRevision >= knownAttempt.attemptRevision &&
+            head.attempt.decisionEpoch >= knownAttempt.decisionEpoch &&
+            head.attempt.captureRevision >= knownAttempt.captureRevision))
+      }
+      if (!current()) return null
+      if(options?.controlsOnly) {
+        if(!await confirmationRepository.isCurrentAuthority(c) || !current())return null
+        // Read permission/control facts without installing work or competing with an explicit work/run read.
+        // A background GET is not the student's acceptance of another writer's new work baseline.
+        this.publish({attempt:head.attempt})
+        return head
+      }
+      // GET 能读到远端已提交的作品，但不能代替原 sync ACK 的原子映射/草稿/outbox 接纳。
+      // 核当前已绑定的原 pending 及其落盘事实。新的初始化仍可合法读取服务确认头，
+      // 不能用前一次已退役加载的请求阻断退出后重新授权的 GET。
+      const local = await confirmationRepository.read(c)
+      if (!current()) return null
+      const unresolvedSync = local.commands.some(command => command.kind === 'workspace.sync' &&
+        command.commandKey === this.state.pending?.commandKey &&
+        command.state === 'pending' && !command.rejected && sameGeneration(command.context, c) &&
+        command.before !== null && head.attempt.workspaceRevision > command.before.workspaceRevision)
+      if (unresolvedSync) {
+        // 控制事实仍须及时生效，尤其暂停/epoch/限定检查；只延后作品与快照的接纳。
+        // 完整 head 可供控制/既有运行记录读取，不能借此宣称原保存已在本机确认。
+        const workspace = !this.state.workspace || (local.workspace &&
+          local.workspace.workspaceRevision > this.state.workspace.workspaceRevision) ? local.workspace : this.state.workspace
+        this.publish({ workspace, attempt: head.attempt })
+        return head
+      }
       const workspace = await confirmationRepository.installHead(c, workspaceOf(head), current)
       if (!current()) return null
       if (workspace.workspaceRevision !== head.attempt.workspaceRevision) {
@@ -236,8 +284,10 @@ export class ConfirmationWorkspace {
       return head
     } catch (e) {
       reportDiagnostic('workspace.read-failed', { reason: 'authority attempt read failed', attemptId: c.attemptId, error: describeError(e) })
-      if (this.valid(guard) && (guard.isAcceptedRead('workspace-head', seq) || guard.acceptRead('workspace-head', seq))) {
-        this.publish({ error: '作品没有读取成功，请重新读取。', phase: 'error', attempt: null })
+      if (this.valid(guard) && this.controlPublicationSeq === publicationBeforeRead &&
+        (guard.isAcceptedRead(lane, seq) || guard.acceptRead(lane, seq))) {
+        this.publish(options?.controlsOnly ? { attempt: null } :
+          { error: '作品没有读取成功，请重新读取。', phase: 'error', attempt: null })
       }
       return null
     }
@@ -453,6 +503,7 @@ export class ConfirmationWorkspace {
       snapshot = (await verifySnapshotReceipt(record, receipt, value)).snapshot
       if (!valid()) return
     } else verifyAttemptReceipt(record, receipt)
+    this.retireHeadReads(captured)
     const confirmed = await confirmationRepository.acknowledge(record, receipt, workspace, mappings, snapshot, valid)
     if (!valid()) return
     this.publish({ pending: null, outcome: null, workspace: confirmed ?? this.state.workspace,
@@ -523,7 +574,7 @@ export class ConfirmationWorkspace {
         }
       } else verifyAttemptReceipt(command, receipt)
       // ACK 是新的权威接纳点，屏蔽此前启动但尚未返回的 GET。
-      captured.acceptRead('workspace-head', captured.nextReadSeq('workspace-head'))
+      this.retireHeadReads(captured)
       const confirmed = await confirmationRepository.acknowledge(command, receipt, workspace, mappings, snapshot, valid)
       if (!guardValid('context changed while committing the acknowledgement')) return
       const accepted = await confirmationRepository.command(command.commandKey)

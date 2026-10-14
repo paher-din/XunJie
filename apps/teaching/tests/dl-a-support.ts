@@ -6,7 +6,7 @@ import type {BoardProfile,HdlCommand,HdlBuild,HdlSession,HdlOperationResult} fro
 import {sha256} from '../runner/snapshot.ts';
 import {createDigitalLogicApplicationDatabase} from '../server/db/transaction.ts';
 import {createPasswordRecord} from '../server/access/password.ts';
-import {createDigitalLogicApplication} from '../server/app/digital-logic.ts';
+import {createDigitalLogicApplication,type DigitalLogicApplicationOptions} from '../server/app/digital-logic.ts';
 import {storePolicy,storeRule} from '../server/design/activities.ts';
 import {definedAluOperations,type HdlConfiguration} from '../contracts/design/hdl.ts';
 export const origin='https://synthetic.example';
@@ -74,7 +74,7 @@ function controlledRunner() {
       results.set(id,record); facts.set(id,{ ...facts.get(id)!,state: 'succeeded',reserved: false,resultRef: 'synthetic-result-'+id,resultHash: sha256(JSON.stringify(record)) });
     } };
 }
-export async function fixture(onHdlCommand?:(command:HdlCommand)=>Promise<void>){const db=createDigitalLogicApplicationDatabase(),node=syntheticNode(),password=randomBytes(32).toString('base64url'),record=await createPasswordRecord(password),signingSecret=randomBytes(48).toString('hex');
+export async function fixture(onHdlCommand?:(command:HdlCommand)=>Promise<void>,tutoring:Partial<Pick<DigitalLogicApplicationOptions,'studentHelp'|'tutoringProvider'>>={}){const db=createDigitalLogicApplicationDatabase(),node=syntheticNode(),password=randomBytes(32).toString('base64url'),record=await createPasswordRecord(password),signingSecret=randomBytes(48).toString('hex');
  db.withTransaction(tx=>{for(const user of ['teacher','student','other','foreign'])tx.run('INSERT INTO users(id,login_name,password_hash,salt,algorithm,n,r,p,key_length) VALUES (?,?,?,?,?,?,?,?,?)',user,user,record.hash,record.salt,'scrypt',131072,8,1,64);
  for(const course of ['course','logic-course']){tx.run('INSERT INTO courses(id) VALUES (?)',course);for(const [user,role] of [['teacher','teacher'],['student','student'],['other','student']])tx.run('INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,?,?,1)',course,user!,role!);
  const actor={userId:'teacher',courseId:course,role:'teacher' as const};storePolicy(tx,actor,{versionId:course+'-help',helpAllowed:true,wholeSolutionAllowed:false,limitedCheckHelpAllowed:false,description:'Synthetic policy'},Date.now());storeRule(tx,actor,{versionId:'textscope-core-v1',validatorVersion:'textscope-validator-v2',limitedHelp:true,description:'Synthetic checks'},Date.now());}
@@ -82,7 +82,7 @@ export async function fixture(onHdlCommand?:(command:HdlCommand)=>Promise<void>)
  });
  const cNode=controlledRunner(),runner=cNode.transport;
  const settings={db,origin,signingSecret,runner,hdlTransport:async(packet:HdlCommand)=>{await onHdlCommand?.(packet);return node.transport(packet);},approvedHdlRuntimes:[runtime],studentHelp:{versions:{modelConfig:'unconfigured',prompt:'unconfigured',schema:'unconfigured',policy:'unconfigured'},budgetAvailable:()=>false}};
- const host=await createDigitalLogicApplication(settings);
+ const host=await createDigitalLogicApplication({...settings,...tutoring});
  const login=async(user='student')=>{const response=await host.app.inject({method:'POST',url:'/api/sessions',headers:{origin},payload:{loginName:user,password}});assert.equal(response.statusCode,200,response.body);return {origin,cookie:response.cookies.filter(c=>c.value).map(c=>`${c.name}=${encodeURIComponent(c.value)}`).join('; '),'x-csrf-token':String(response.json().data.csrfToken)};};
  return {db,node,cNode,host,app:host.app,settings,login,async close(){await host.shutdown();db.close();}};
 }

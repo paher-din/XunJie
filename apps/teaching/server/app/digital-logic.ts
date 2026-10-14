@@ -1,5 +1,8 @@
 import {assertDigitalLogicApplicationDatabase} from '../db/transaction.ts';
 import {attachOriginalJobHost,guardHostTransport} from './original-job-host.ts';
+import { originalTeachingConsumer } from './original-teaching-host.ts';
+import { readAuthorizedHdlHelp } from '../workspace/hdl-help.ts';
+import type { ModelProvider } from '../tutoring/providers.ts';
 import {z} from 'zod';
 import type {FastifyRequest} from 'fastify';
 import {createTutoringApp,type TutoringAppOptions} from '../tutoring/application.ts';
@@ -21,7 +24,7 @@ const buildInput=z.strictObject({...basis,snapshotId:id});
 const programInput=z.strictObject({...basis,buildId:id,replaceSessionId:id.optional(),expectedSessionRevision:revision.optional()}).refine(value=>(value.replaceSessionId===undefined)===(value.expectedSessionRevision===undefined));
 const operationInput=z.strictObject({...basis,sessionId:id,expectedSessionRevision:revision,expectedSequence:revision,inputs:z.strictObject({switches:z.string().regex(/^[01]{16}$/),buttons:z.string().regex(/^[01]{5}$/),resetN:z.string().regex(/^[01]$/)}),advanceCycles:z.number().int().min(1).max(5000000)});
 const stopInput=z.strictObject({...basis,action:z.literal('stop'),reason:z.string().trim().min(1).max(1024)});
-export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'> & {hdlTransport:HdlTransport;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number};
+export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'> & {hdlTransport:HdlTransport;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number;tutoringProvider?:ModelProvider};
 export async function createDigitalLogicApplication(options:DigitalLogicApplicationOptions){
  assertDigitalLogicApplicationDatabase(options.db);
  const now=options.now??Date.now;
@@ -42,7 +45,9 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  if(!('kind' in runtime)||canonical(runtime.configuration.runtime)!==canonical(latest.profile)||runtime.contentHash!==configurationHash(runtime.configuration))return undefined;
  return {board:runtime.configuration.board,runtime:runtime.configuration.runtime};}});
  const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
- const instance=await createTutoringApp({...options,...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{if(!admission.accepting)return false;try{await refresh();const c=await availableRuntime(runner);return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
+ const instance=await createTutoringApp({...options,studentHelp:{...options.studentHelp,readHdlContext:(...args)=>{
+  if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');return readAuthorizedHdlHelp(...args);
+ }},...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{if(!admission.accepting)return false;try{await refresh();const c=await availableRuntime(runner);return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
  const fixed=instance.access.withAuthorizedCourse(request,tx=>draftCourse(tx,blueprintId),'teacher',(tx,actor)=>{
   const draft=readDraft(tx,actor.courseId,blueprintId);return draft.content.digitalLogicConfigVersionId?fixedHdlRuntime(tx,actor.courseId,draft.content.digitalLogicConfigVersionId):undefined;
  },false);
@@ -58,7 +63,7 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  if(!admission.accepting&&use==='write')throw new ApiError('DEPENDENCY_UNAVAILABLE');return access.authorizeResourceInTransaction(request,tx,t=>locate(t,attemptId),use);
  };
  const requireGeneration=(expected:string)=>{if(expected!==generation)throw new ApiError('RECOVERY_REQUIRED');return generation;};
- app.addHook('preHandler',async request=>{if(request.method==='POST'&&/^\/api\/attempts\/[^/]+\/help$/.test(request.url.split('?',1)[0]!))throw new ApiError('DEPENDENCY_UNAVAILABLE');if(!admission.accepting&&!['GET','HEAD','OPTIONS'].includes(request.method))throw new ApiError('DEPENDENCY_UNAVAILABLE');});
+ app.addHook('preHandler',async request=>{if(!admission.accepting&&!['GET','HEAD','OPTIONS'].includes(request.method))throw new ApiError('DEPENDENCY_UNAVAILABLE');});
  app.get('/api/courses',request=>({requestId:request.id,data:options.db.withTransaction(tx=>{
  const userId=access.authenticatedUserInTransaction(request,tx);
  return tx.all('SELECT course_id,role FROM course_memberships WHERE user_id=? AND active=1 ORDER BY course_id',userId).map(row=>({courseId:String(row.course_id),role:row.role}));
@@ -100,8 +105,12 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  }
 
  let host:ReturnType<typeof attachOriginalJobHost>;
+ const teaching=originalTeachingConsumer(instance,{...options,currentGeneration},options.tutoringProvider??{
+  generate:async()=>{throw new ApiError('DEPENDENCY_UNAVAILABLE');},
+ },admission);
  try {host=attachOriginalJobHost(instance,{...options,currentGeneration},{
   admission,
+  startAdditional:teaching.start,
   async consumeAdditional(){
    if(instance.teacherAgent){
     const jobs=options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE purpose='teacher_design' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id)));
@@ -109,12 +118,14 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
    }
   },
   stopInTransaction(tx){
+   teaching.stopInTransaction(tx);
    for(const row of tx.all('SELECT DISTINCT attempt_id FROM hdl_sessions WHERE termination_confirmed=0')){
     const attempt=readAttempt(tx,String(row.attempt_id));
     hdl.stopInTransaction(tx,attempt.attemptId,'application_shutdown',generation);
     saveAttempt(tx,{...attempt,attemptRevision:attempt.attemptRevision+1,decisionEpoch:attempt.decisionEpoch+1});
    }
   },
+  stopAdditional:teaching.stop,
   reconcile:()=>hdl.reconcileStops(),
  });} catch(error) {await app.close();throw error;}
  app.addHook('onReady',async()=>{await host.consumeOnce();});

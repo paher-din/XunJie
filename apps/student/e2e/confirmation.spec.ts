@@ -88,6 +88,16 @@ for (const stage of ['mapping', 'head', 'drafts', 'outbox'] as const) {
     // 学生只看到「已发出、本地没记完、可以重试」；四阶段事务名与回执事实只在控制台
     await expect(page.locator('.ws-head-run [role=alert]'))
       .toHaveText('保存已经发出，但本地还没记完，草稿已保留。可以重试。')
+    // 用原控制 UI 完成一次真实 GET，DOM flag 由 readHead 完成后发布。
+    // 不关闭周期读取，也不借模块原型替身或 HTTP 到达时刻冒充本机接纳完成。
+    await page.getByRole('button',{name:'任务信息',exact:true}).click()
+    const controls=page.getByTestId('tutoring-controls')
+    await expect(controls.getByRole('button',{name:'重读学习控制',exact:true})).toBeEnabled()
+    const read=page.waitForResponse(r=>r.request().method()==='GET'&&/\/api\/attempts\/[^/]+$/.test(new URL(r.url()).pathname))
+    await controls.getByRole('button',{name:'重读学习控制',exact:true}).click()
+    expect((await(await read).json()).data.attempt.workspaceRevision).toBe(1)
+    await expect(controls.getByTestId('limited-check-state')).toHaveAttribute('data-state','not-limited')
+    await page.getByRole('button',{name:'关闭',exact:true}).click()
     const failed = await localState(page)
     expect(failed.workspace!.workspaceRevision).toBe(0)
     expect(failed.instances.every((i: { fileId: string }) => i.fileId.startsWith('local-'))).toBe(true)

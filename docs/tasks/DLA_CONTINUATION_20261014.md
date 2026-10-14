@@ -1,0 +1,64 @@
+# DL-A：统一 PR56 后的 C 续作
+
+日期：2026-10-14（Asia/Shanghai）；执行角色：C。
+
+## 1. 依据与负责人指令
+
+负责人本会话明确指令：以 PR #56 `25608e6` 为统一集成基础，不再分别处理 #53/#54/#55/#59；优先与最新 main 集成验证、在获准环境完成真实 HDL 构建/装载/操作/结果读取；立即接通 H4 真实上下文交 B/UI；H3 继续推进但不得阻塞成熟演示。
+
+已读 README/AGENTS、PRD §1/3–8（PRD-03/04/05/09/10）、MVP_SPEC §1.4/M-03–05/5–6（DL-AC-01–09、AC-02/04/05/06/07/10/11/12/15/16）、TECH_DESIGN §4.1/5–7/8.5、TEAM 的 P3–P5 与职责、DL-0、DL-A §15–20、C 原交接 H3/H4 和 PAHER 当前现场记录。原始作者记录只引用，保留历史结论；产品/MVP_SPEC §10 待授权维护者汇总。
+
+## 2. 写集与实施方案
+
+独立工作树起点为 `25608e6`；远端 `246451e` 仅补原集成交付记录，先快进保留，再正常 merge `origin/main@35307e0`。根工作区无关改动不动。
+
+可写：本记录、本次去敏证据；集成冲突涉及 README、contracts/tutoring/index.ts、server/app.ts、app/config.ts、app/i0.ts、app/i0-initialize.ts、main.ts、tutoring/test/real-model-support.ts 与对应测试。保留 DL-A 的双课程/HDL正常宿主、唯一原 Job 消费者/关停/readiness，以及 main 的 I0-B/C3/学习分析能力。
+
+H4 沿 DL-A §18.3 已列最小接线方案，使用显式 hdlSelection、同事务真实授权与固定对象读取、readOperation/current、C3 原问题/候选/投递/回执守卫；预计追加写集为 contracts/tutoring、workspace/hdl 与 inputs、records 原问题冻结和 current 接缝、tutoring/context 与 application、app/digital-logic/original-job-host 及其相关测试。编码前核准确调用链，不改 B 模型核心/教学判断，不另建 UI。
+
+只读：AGENTS、docs/product/planning/reference、其他任务正文、A5规则、UI视觉/页面、依赖/lock、runner现有协议/镜像、凭据/CI、schema/迁移。自动 merge 接纳 main 已批准变更不作额外编辑。真实环境沿原批准 PAHER/合成账号；只在准确批准环境内运行，不创建未经批准的数据库/schema或修改秘密配置。H3 优先推进原精确提案/无副作用校核；需要共享协议/运行配置/DDL决定时单独记录，不阻塞 H4。
+
+## 3. 验收与交接
+
+验证 Node24.21.0 类型/构建、双课程/I0-B/readiness/原Job/C4/HDL/tutoring专项及必要全量，保留失败和真实门禁跳过。真实证据绑定快照/hash/Build/Session/Operation/配置/引擎/代际；错误构建与成功构建、持续输入/结果读取分别记录。H4 验证跨scope/hash、pending/停止/迟到/新sequence、重复冲突及模型故障；送 UI 真实请求/响应与去敏错误、unknown、停止/恢复样例。
+
+服务端工程、真实执行节点、实际模型、浏览器、真人/教学效果分别记账。现有 UI 暂无 HDL 页面时交材料，不伪称浏览器通过。PR/main远端更新及公开协作按具体授权，未获授权不发布。回滚使用保留旧副本/新revert，不删文件、不重置历史。
+
+## 4. 准备时点状态
+
+准备时main merge出现上述九个文件冲突，当时尚无本轮新增通过结果；后续实际状态见下方实现/验证章节。
+
+## 5. 单轮模型调用与凭据授权
+
+负责人本会话明确批准“批准这一轮有界调用”：只用本轮合成数据、DeepSeek/deepseek-flash、一轮 student_help、最多3次供应商请求（含修复），费用按本轮授权。随后负责人提供密钥并明确要求由本 Agent 处理。具体保存对象为 PAHER 本轮独占工作目录的 `deepseek.key`，仓库外 root/0600；不写 .env、源码、Git或证据，不修改原TLS/签名/账号凭据。仅本轮脚本读此文件；任何其他调用或扩大预算仍需独立授权。
+
+在首个外部请求前建立独占使用回执，防止重跑消费同一授权；SDK retries=0，模型与应用同享45秒截止，实际HTTP计数不超过3。模型输出、usage、HTTP事实与C3接纳分别保留；生成不代表投递或学生独立修复。本轮不改变原B语义审阅结论。
+
+## 6. 第一批实际实现和验证
+
+九个合并冲突已解；保留main的学习分析/教学路由和I0-B辅导消费者，复用PR56唯一运行宿主。辅导消费者移为共享 `original-teaching-host.ts`，使用独立调度循环，避免C编译派发阻塞新求助；退出同事务停止原教学Job并abort在途调用。readiness/原bootstrap/静态服务及原C4/HDL控制保留。
+
+H4 新增 `contracts/workspace/hdl-help.ts`、`workspace/hdl-help.ts`；HDL精确Operation读取复核请求/回执/所属/嵌入hash和原字节hash，Trace复用该检查。正常help接受显式hdlSelection，同事务冻结Build可见投影hash、workspaceRevision与选中Session/Operation；C3原问题JSON和acceptedInputHash绑定该冻结basis。B调用前后、候选保存、Delivery和Receipt均读真实当前性，不选“最新”替代原对象；旧缺冻结basis的HDL历史只作历史。宿主配置可选tutoring复用I0已有受控字段，实际配置/密钥和默认关闭状态没有被静默改开。
+
+实际命令与结果：
+
+| 范围 | 实际结果 |
+| --- | --- |
+| Node24.21.0/Linux teaching typecheck/build | 通过；原lock依赖复用，不安装新依赖 |
+| 继承main的student构建 | npm run build通过；现有大chunk警告保留，不做无关UI/性能重构 |
+| 联合完整测试（含server/app） | 510项，495通过、0失败、15受控节点/模型门禁跳过；[原日志](evidence/dla-continuation-20261014/full-first.tap) |
+| 最后追加workspace冻结及Receipt守卫定向回归 | 37项，35通过、0失败、2真实模型门禁跳过；[原日志](evidence/dla-continuation-20261014/freeze-regression.tap)。不是把两轮累计成547项 |
+| PAHER原节点只读就绪 | C/HDL均ready，当前代际/镜像/34文件sourceHash与原批准指纹一致；[原证据](evidence/dla-continuation-20261014/runtime-probe-first.json) |
+| 真实HDL/模型一次闭环 | [工程记录](evidence/dla-continuation-20261014/real-hdl-model.json)：新35表合成库、严格TLS、真实失败/成功Build、真实持续Session/两操作/Trace、确认停止。DeepSeek 1次HTTP200，input2615/output388、Job succeeded、C3投递和received回执；未报告displayed/acknowledged/真人。该记录先于最后workspace冻结增强，后者由上述定向回归独立验证，原记录不改写 |
+| H3无副作用预检 | [原脚本](evidence/dla-continuation-20261014/h3-preflight.mjs)断言通过；定义域/tupleSetHash与原提案一致。8400私有样本不适用4096公开帧上限，需要私有紧凑协议；88×2秒上界176秒超过120秒整Job，吞吐未验证 |
+| 最终冻结守卫版本的现场补验 | [原记录](evidence/dla-continuation-20261014/real-hdl-final-frozen.json)：复用同35表，新增独立合成Attempt，真实错误/获准冻结上下文/修正构建/持续装载/两操作/确认停止通过，额外模型请求0。未重复消费已经结束的单轮模型授权 |
+
+失败保留：第一次联合专项发现辅导串行扫描阻塞C派发，已改独立原Job循环并通过原反例；部分早期合成登录出现RATE_LIMITED/UNAUTHENTICATED，独立复验及最终510无失败，未放宽认证/时钟守卫。真实现场第一轮3443端口占用，原服务保留并改同机3444；第二轮验证器把单账号授权课程数误写为全库课程数，修正为真实成员列表，同时核全库2课程；第三轮操作轮询发生401并保留，后续完整真实轮次通过。早期H4测试中的权限调用/字段层级/故障枚举期望错误已修正，未绕过产品检查。各失败文件与时点在同证据目录保留，不累计旧通过统计，不推定瞬态401的根因已定位。
+
+UI交接为 [真实接线包](DLA_H4_UI_HANDOFF_20261014.md)。本轮未修改UI页面/布局；当前原数字逻辑中心仍有静态/模拟路径，UI按包接真实请求/诊断/板信号/有限Trace/B消息和展示回执，浏览器完整链未执行。原3443/24表/凭据/CI/保护基线保留；本轮35表在原获准retained TMPDIR创建并留存，不迁移旧库。
+
+## 7. H3后续源码批准
+
+负责人对本轮精确问题回复“批准这一批 H3 源码实现”：沿原 [C §14.5](DLA_C_CLOSEOUT_HANDOFF.md#145-dla-h3层级采样占用和2800向量的精确执行提案) 的真实ALU结构化绑定、私有2800向量、三次稳定采样、原120秒及资源限额；保留每Attempt一个未终止Session，学生先显式停止板卡再发起独立检查，不改DDL/旧库，不自动替换或重装板卡。批准runner共享命令/VPI及对应原Job/绑定/读取的源码实现；新镜像、节点换版、维护和新指纹登记**尚未批准**，产物备齐后另交具体方案确认。现有Demo继续使用旧批准节点，不等待H3。
+
+H3按C原明确写集及A课程/绑定确认接缝维护，补 `contracts/design/hdl.ts` 的可选行为检查与绑定契约、design/hdl-configurations 的确认/固定配置、workspace与app原Job调用方及必要测试；节点侧独立check保持停止/代际/配额/私有资产边界。受保护产品/计划/参考与UI保持只读，产品/MVP§10待授权维护者汇总。实际H3源码、离线测试、未执行真实2800及下一轮节点提案将在后续章节记录，不把此次批准或数学预检记成ALU行为通过。

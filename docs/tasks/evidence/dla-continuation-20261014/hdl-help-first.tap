@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+not ok 1 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 3689.109112
+  type: 'test'
+  location: '/opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:36:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert(sent.includes(op.operationId))
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///opt/xunjie-runner/tests/dla-continuation-20261014/apps/teaching/tests/dl-a-hdl-help.test.ts:50:38)
+    runNextTicks (node:internal/process/task_queues:65:5)
+    process.processTimers (node:internal/timers:615:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 2 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 3160.090479
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 3 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 3202.468253
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 4 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 3144.16916
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 3
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13923.104478

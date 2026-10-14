@@ -26,7 +26,7 @@ export function guardHostTransport<Command extends {op:string}>(
 type OriginalService = Pick<Awaited<ReturnType<typeof createWorkspaceApp>>, 'app'|'access'|'workspace'>;
 type HostOptions = Pick<WorkspaceAppOptions,'db'|'currentGeneration'|'runner'> & {staticDirectory?:string;consumerIntervalMs?:number};
 type ExecutionHooks = {admission:HostAdmission;consumeAdditional?:()=>Promise<void>;
-  stopInTransaction?:(tx:Transaction)=>void;reconcile?:()=>Promise<void>};
+  startAdditional?:(interval:number)=>void;stopInTransaction?:(tx:Transaction)=>void;stopAdditional?:()=>Promise<void>;reconcile?:()=>Promise<void>};
 
 // I0 and DL-A wrap their original business factories in the same host; only execution reconciliation differs.
 export function attachOriginalJobHost(service:OriginalService,options:HostOptions,hooks:ExecutionHooks) {
@@ -94,6 +94,7 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
     // The public DL-A method previously accepted an interval; preserve it without a second loop.
     tickInterval=intervalMs;
     tick();
+    hooks.startAdditional?.(intervalMs);
   }
   let tickInterval=interval;
   async function stopOriginalJobs() {
@@ -111,6 +112,7 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
       }
       hooks.stopInTransaction?.(tx);
     });
+    await hooks.stopAdditional?.();
     await hooks.reconcile?.();
     if(inFlight)await inFlight;
     await consumeOnce();

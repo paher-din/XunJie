@@ -115,6 +115,12 @@ export const MATERIALS: FixtureMaterial[] = [
     visibility: { student: true, tutor: true },
     available: false,
   },
+  {
+    resourceVersionId: 'prep-resource-adjacent-example-01',
+    kind: 'learning_material', format: 'markdown', title: '合成相邻例子：温度阈值的边界核查',
+    text: '这是 Robert 与 Agent 共同设计的相邻例子，用于隔离准备验证，不是实际模型结果。\n假设规则是温度大于 30 才提示，请分别预测输入 29、30、31 的结果。比较 > 与 >= 在边界值的区别，再回到自己的项目设计反例。\n这里没有 TextScope 实现，不会修改或运行学生作品。',
+    visibility: { student: true, tutor: true }, available: true,
+  },
 ]
 
 /* ---------- 段落与摘要 ---------- */

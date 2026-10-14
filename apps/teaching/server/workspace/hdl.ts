@@ -77,6 +77,43 @@ export function readHdlBuild(tx:Transaction,actor:ActorContext,buildId:string){
   if(result&&(sha256(String(row.build_json))!==row.result_hash||result.status!==row.status||result.artifactHash!== (row.artifact_hash??undefined)
     ||result.buildId!==buildId||canonical(result.identity)!==canonical(request.identity)))throw new ApiError('INVALID_REFERENCE');return {request,result,status:String(row.status),jobId:String(row.job_id)};
 }
+export function readHdlOperation(tx:Transaction,actor:ActorContext,operationId:string){
+  const row=tx.get('SELECT * FROM hdl_operations WHERE operation_id=?',operationId);
+  if(!row)throw new ApiError('FORBIDDEN');
+  const session=readHdlSession(tx,actor,String(row.session_id)),build=readHdlBuild(tx,actor,session.buildId);
+  const request=checkedRequest<HdlProgram|HdlOperation>(row,'request_json');
+  validateIdentity(request.identity);
+  const job=readJobs(tx,actor.courseId).find(item=>item.jobId===row.job_id);
+  const receipt=readRecords(tx,actor.courseId).receipts.find(item=>item.receiptId===row.request_receipt_id);
+  if(!job||!receipt||job.requestReceiptId!==row.request_receipt_id
+    ||request.identity.id!==row.operation_id||request.identity.commandId!==receipt.commandId
+    ||request.identity.requestHash!==receipt.requestHash||job.scope.attemptId!==session.identity.scope.attemptId
+    ||canonical(request.identity.scope)!==canonical(session.identity.scope)
+    ||request.identity.recoveryGeneration!==session.identity.recoveryGeneration
+    ||requestHash(session.sessionId,request)!==row.request_hash)throw new ApiError('INVALID_REFERENCE');
+  if(Number(row.sequence)===0){
+    if(!('buildId' in request)||request.buildId!==session.buildId||request.identity.id!==session.sessionId
+      ||receipt.identity.command!=='hdl.program')throw new ApiError('INVALID_REFERENCE');
+  }else{
+    if(!('sessionId' in request))throw new ApiError('INVALID_REFERENCE');
+    validateOperation(request);
+    if(request.sessionId!==session.sessionId||request.expectedSequence!==row.sequence
+      ||receipt.identity.command!=='hdl.interact')throw new ApiError('INVALID_REFERENCE');
+  }
+  const result=row.result_json===null?null:hdlResult.parse(JSON.parse(String(row.result_json)));
+  if(result){
+    const {resultHash,...body}=result;
+    if(sha256(String(row.result_json))!==row.result_hash||sha256(JSON.stringify(body))!==resultHash
+      ||result.operationId!==operationId||result.sessionId!==session.sessionId||result.buildId!==session.buildId
+      ||result.snapshotId!==build.request.snapshot.snapshotId||result.snapshotHash!==build.request.snapshot.hash
+      ||result.sequence!==row.sequence||result.boardProfileVersion!==session.boardProfileVersion
+      ||result.mappingVersion!==session.mappingVersion||result.engineVersion!==session.engineVersion
+      ||canonical(result.frames.at(-1))!==canonical(result.finalFrame)
+      ||('expectedSessionRevision' in request&&'sessionId' in request&&result.sessionRevision!==request.expectedSessionRevision+1))
+      throw new ApiError('INVALID_REFERENCE');
+  }
+  return {operationId,sessionId:session.sessionId,sequence:Number(row.sequence),status:String(row.status),request,result};
+}
 function saveSession(tx:Transaction,state:HdlSession,pending?:string){
   const old=tx.get('SELECT stop_requested FROM hdl_sessions WHERE session_id=?',state.sessionId);
   if(old?.stop_requested===1&&!state.stopRequested)throw new ApiError('STATE_CONFLICT');
@@ -295,12 +332,11 @@ export function createHdlWorkspace(options:{db:SyntheticDatabase;currentGenerati
     if(!Number.isSafeInteger(afterSequence)||afterSequence< -1)throw new ApiError('INVALID_REQUEST');
     const row=tx.get('SELECT * FROM hdl_operations WHERE session_id=? AND sequence>? ORDER BY sequence LIMIT 1',sessionId,afterSequence);
     if(!row)return {operation:null,nextSequence:afterSequence};
-    const body=row.result_json===null?null:hdlResult.parse(JSON.parse(String(row.result_json)));
-    if(body&&(sha256(String(row.result_json))!==row.result_hash||body.sessionId!==sessionId||body.sequence!==row.sequence))throw new ApiError('INVALID_REFERENCE');
+    const body=readHdlOperation(tx,actor,String(row.operation_id)).result;
     return {operation:{operationId:String(row.operation_id),sequence:Number(row.sequence),status:String(row.status),result:body},nextSequence:body?Number(row.sequence):afterSequence};
   }
   return {build,program,interact,processJob,readTrace,cancelInTransaction,reconcileStops,databaseFile:options.db.file,
     // '_' is a LIKE wildcard and LIKE ignores ASCII case, so compare the literal prefix to agree with startsWith('hdl_').
     pendingJobs:()=>persisted(tx=>tx.all("SELECT job_id FROM jobs WHERE substr(COALESCE(json_extract(job_json,'$.kind'),''),1,4)='hdl_' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id))),
-    stopInTransaction:stopHdlInTransaction,readBuild:readHdlBuild,readSession:readHdlSession};
+    stopInTransaction:stopHdlInTransaction,readBuild:readHdlBuild,readSession:readHdlSession,readOperation:readHdlOperation};
 }

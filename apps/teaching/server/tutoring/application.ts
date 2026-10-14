@@ -6,9 +6,13 @@ import type {
   AuthorizedStudentHelpContext,
   LearnerContextClaim,
   StudentHelpCommandInput,
+  StudentHelpExecutionResult,
+  StudentHelpBody,
   TrustedModelContext,
 } from "../../contracts/tutoring/index.ts";
 import { ApiError } from "../app/errors.ts";
+import { assertResourceUse } from "../access/resource.ts";
+import type { ActorContext, ResourceUse } from "../../contracts/access/index.ts";
 import { parseRequest } from "../app/validation.ts";
 import { assignmentAvailability, activityView, readActivity } from "../design/activities.ts";
 import {
@@ -24,8 +28,10 @@ import {
 } from "../records/application.ts";
 import {
   acceptStudentQuestionInTransaction,
+  completeTeachingInTransaction,
   readTeachingJob,
   readTeachingMessageByJob,
+  readTeachingRecordsInTransaction,
   saveTeachingJobInTransaction,
   stopTeachingJobsInTransaction,
 } from "../records/teaching.ts";
@@ -38,6 +44,13 @@ import {
   executeAuthorizedStudentHelp,
   type AuthorizedStudentHelpRuntime,
 } from "./service.ts";
+import type { ModelProvider } from "./providers.ts";
+import type { StudentHelpCurrentState } from "./context.ts";
+import type { TeachingBasisCurrent } from '../records/teaching.ts';
+import { hdlHelpSelectionSchema,type HdlHelpSelection,type HdlHelpBasis } from '../../contracts/workspace/hdl-help.ts';
+import type { AuthorizedHdlHelpContext } from '../../contracts/tutoring/index.ts';
+import { projectHdlHelpCurrentState } from './context.ts';
+import { canonical } from '../records/commands.ts';
 
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const natural = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -46,6 +59,7 @@ export const studentHelpCommandSchema = z.strictObject({
   recoveryGeneration: id,
   question: z.string().max(16_384),
   objectRef: objectRef.optional(),
+  hdlSelection:hdlHelpSelectionSchema.optional(),
 });
 const studentHelpCommandResultSchema = z.strictObject({
   jobId: id,
@@ -78,6 +92,7 @@ export type TutoringAppOptions = TeachingRecordsOptions & {
     versions: TrustedModelContext["versions"];
     readLearnerState?: LearnerStateReader;
     readLearnerStateRevision?: (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => number;
+    readHdlContext?:(tx:Transaction,actor:ActorContext,attemptId:string,selection:HdlHelpSelection,generation:string)=>AuthorizedHdlHelpContext;
     budgetAvailable: (scope: { courseId: string; studentId: string; attemptId: string }) => boolean;
   };
 };
@@ -93,10 +108,20 @@ export async function createTutoringApp(options: TutoringAppOptions) {
   const readLearnerRevision = studentHelp.readLearnerStateRevision ?? (studentHelp.readLearnerState
     ? (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => studentHelp.readLearnerState!(tx,scope).learnerStateRevision
     : undefined);
+  const isTeachingBasisCurrent:TeachingBasisCurrent=(tx,scope,basis)=>{
+    if(readLearnerRevision&&readLearnerRevision(tx,scope)!==basis.relatedStateRevision)return false;
+    if(!(recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis)??true))return false;
+    if(!basis.hdl)return true;
+    if(!studentHelp.readHdlContext)return false;
+    try{
+      const hdl=studentHelp.readHdlContext(tx,{userId:scope.studentId,courseId:scope.courseId,role:'student'},scope.attemptId,
+        {snapshotId:basis.hdl.snapshotId,buildId:basis.hdl.buildId,
+          ...(basis.hdl.sessionId?{sessionId:basis.hdl.sessionId}:{}),...(basis.hdl.operationId?{operationId:basis.hdl.operationId}:{})},options.currentGeneration());
+      return canonical(projectHdlHelpCurrentState(hdl))===canonical(basis.hdl);
+    }catch(error){if(error instanceof ApiError)return false;throw error;}
+  };
   const instance = await createTeachingRecordsApp({...recordsOptions,
-    ...(readLearnerRevision ? {isTeachingBasisCurrent: (tx,scope,basis) =>
-      readLearnerRevision(tx,scope) === basis.relatedStateRevision
-        && (recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis) ?? true)} : {}),
+    isTeachingBasisCurrent,
   });
   const { app, access } = instance;
   const now = options.now ?? Date.now;
@@ -151,6 +176,14 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           (value) => studentHelpCommandResultSchema.parse(value),
         );
         if (previous) return { ...previous, replayed: true };
+        let acceptedHdlBasis:HdlHelpBasis|undefined;
+        if(input.hdlSelection){
+          if(!studentHelp.readHdlContext)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+          const selected=studentHelp.readHdlContext(tx,actor,idValue,input.hdlSelection,generation);
+          acceptedHdlBasis=projectHdlHelpCurrentState(selected);
+          if(input.objectRef?.kind==='code'&&input.objectRef.snapshotId!==selected.snapshotId
+            ||input.objectRef?.kind==='run')throw new ApiError('INVALID_REFERENCE');
+        }
 
         const acceptedAtMs = now();
         const acceptedAt = new Date(acceptedAtMs).toISOString();
@@ -174,6 +207,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               generation,
               question: input.question,
               ...(input.objectRef ? { objectRef: input.objectRef } : {}),
+              ...(input.hdlSelection?{hdlSelection:input.hdlSelection}:{}),
+              ...(acceptedHdlBasis?{hdlBasis:acceptedHdlBasis}:{}),
               inputRefs: [],
               versions,
               expectedRevision: input.expectedAttemptRevision,
@@ -198,6 +233,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               acceptedInputHash: requestHash("student_help.accepted_input", {
                 question: input.question,
                 objectRef: input.objectRef ?? null,
+                ...(input.hdlSelection?{hdlSelection:input.hdlSelection}:{}),
+                ...(acceptedHdlBasis?{hdlBasis:acceptedHdlBasis}:{}),
               }),
             };
           },
@@ -222,15 +259,33 @@ export async function createTutoringApp(options: TutoringAppOptions) {
     return { requestId: request.id, data };
   });
 
+  // Only the trusted in-process consumer can omit a request. Its authority comes
+  // from the original persisted Job, with current owner/membership rechecked in
+  // every transaction; it never creates or impersonates a student Session.
+  const withHelpTransaction = <T>(request: FastifyRequest | undefined, idValue: string,
+    jobId: string, use: ResourceUse, work: (tx: Transaction, actor: ActorContext) => T): T => {
+    if (request) return access.withAuthorizedResource(request, tx => locate(tx,idValue), use, work);
+    return options.db.withTransaction(tx => {
+      const scope = locate(tx,idValue);
+      const membership = tx.get("SELECT m.role FROM course_memberships m JOIN users u ON u.id=m.user_id WHERE m.user_id=? AND m.course_id=? AND m.active=1 AND u.disabled_at_ms IS NULL",
+        scope.studentId,scope.courseId);
+      const job = readTeachingJob(tx,scope.courseId,jobId);
+      if (membership?.role !== 'student' || !job || job.purpose !== 'student_help'
+        || job.scope.studentId !== scope.studentId || job.scope.attemptId !== idValue) throw new ApiError('FORBIDDEN');
+      const actor = {userId:scope.studentId,courseId:scope.courseId,role:'student' as const};
+      assertResourceUse(actor,scope,use);
+      return work(tx,actor);
+    });
+  };
+
   const authorizeStudentHelp = (
-    request: FastifyRequest,
+    request: FastifyRequest | undefined,
     idValue: string,
     jobId: string,
     preparation: StudentHelpPreparationOptions,
-  ) => access.withAuthorizedResource(
-        request,
-        (tx) => locate(tx, idValue),
-        "student_help",
+    use: ResourceUse = 'student_help',
+  ) => withHelpTransaction(
+        request, idValue, jobId, use,
         (tx, actor) => {
           const state = loadWorkspace(tx, idValue);
           const job = state.records.jobs.find((item) => item.jobId === jobId);
@@ -254,10 +309,13 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           const acceptedInput = {
             question: questionMessage.envelope.question,
             ...(questionMessage.envelope.objectRef ? { objectRef: questionMessage.envelope.objectRef } : {}),
+            ...(questionMessage.envelope.hdlSelection?{hdlSelection:questionMessage.envelope.hdlSelection}:{}),
           };
           if (accepted.data.acceptedInputHash !== requestHash("student_help.accepted_input", {
             question: acceptedInput.question,
             objectRef: acceptedInput.objectRef ?? null,
+            ...(acceptedInput.hdlSelection?{hdlSelection:acceptedInput.hdlSelection}:{}),
+            ...(questionMessage.envelope.hdlBasis?{hdlBasis:questionMessage.envelope.hdlBasis}:{}),
           })) {
             throw new ApiError("STATE_CONFLICT");
           }
@@ -319,6 +377,16 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               policy: activity.helpPolicy.versionId,
             },
           };
+          if(acceptedInput.hdlSelection){
+            if(!studentHelp.readHdlContext)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+            try{
+              const hdl=studentHelp.readHdlContext(tx,actor,idValue,acceptedInput.hdlSelection,options.currentGeneration());
+              if(!questionMessage.envelope.hdlBasis||canonical(questionMessage.envelope.hdlBasis)!==canonical(projectHdlHelpCurrentState(hdl)))
+                throw new ApiError('STATE_CONFLICT');
+              context.hdl=hdl;
+            }
+            catch(error){if(use!=='read'||!(error instanceof ApiError))throw error;}
+          }
           return context;
         },
       );
@@ -336,7 +404,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       );
     },
     async executeStudentHelp(
-      request: FastifyRequest,
+      request: FastifyRequest | undefined,
       idValue: string,
       jobId: string,
       preparation: StudentHelpPreparationOptions,
@@ -344,7 +412,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
     ) {
       const authorized = authorizeStudentHelp(request, idValue, jobId, preparation);
       const updateJob: AuthorizedStudentHelpRuntime["updateJob"] = (expectedJobId, update) =>
-        options.db.withTransaction((tx) => {
+        withHelpTransaction(request,idValue,jobId,'student_help',(tx) => {
           currentGeneration(authorized.job.recoveryGeneration);
           const current = readTeachingJob(tx, authorized.job.scope.courseId, expectedJobId);
           if (!current || current.scope.studentId !== authorized.job.scope.studentId ||
@@ -357,14 +425,26 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           return next;
         });
       const readCurrent: AuthorizedStudentHelpRuntime["readCurrent"] = async (signal) => {
-        const state = await runtime.readCurrent(signal);
-        const current = options.db.withTransaction((tx) => {
+        const {hdl:_runtimeHdl,...state} = await runtime.readCurrent(signal);
+        const current = withHelpTransaction(request,idValue,jobId,'read',(tx) => {
           const job = readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId);
           if (!job || !job.scope.studentId || !job.scope.attemptId) throw new ApiError("STATE_CONFLICT");
           const learner = studentHelp.readLearnerState?.(tx,{
             courseId: job.scope.courseId,studentId: job.scope.studentId,attemptId: job.scope.attemptId,
           });
-          return {job,learner};
+          let hdl:ReturnType<typeof projectHdlHelpCurrentState>|undefined;
+          if(authorized.hdl&&studentHelp.readHdlContext){
+            const selected=readTeachingMessageByJob(tx,job.scope.courseId,job.jobId)?.envelope;
+            if(selected?.kind==='student_question'&&selected.hdlSelection){
+              try{
+                const current=projectHdlHelpCurrentState(studentHelp.readHdlContext(tx,
+                  {userId:job.scope.studentId,courseId:job.scope.courseId,role:'student'},idValue,selected.hdlSelection,options.currentGeneration()));
+                if(selected.hdlBasis&&canonical(selected.hdlBasis)===canonical(current))hdl=current;
+              }
+              catch(error){if(!(error instanceof ApiError))throw error;}
+            }
+          }
+          return {job,learner,hdl};
         });
         return {
           ...state,
@@ -372,6 +452,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           jobStatus: current.job.status,
           stopRequested: current.job.stopRequested,
           recoveryGeneration: current.job.recoveryGeneration,
+          ...(current.hdl?{hdl:current.hdl}:{}),
+          objectAvailable:state.objectAvailable&&(!authorized.hdl||!!current.hdl),
         };
       };
       const studentId = authorized.job.scope.studentId;
@@ -391,7 +473,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       const bodyJson = JSON.stringify(execution.outcome.body);
       const completeTeaching = instance.workspace.teaching.completeTeaching;
       if (!completeTeaching) throw new ApiError("DEPENDENCY_UNAVAILABLE");
-      const delivery = completeTeaching(request, idValue, {
+      const completion = {
         recoveryGeneration: authorized.job.recoveryGeneration,
         jobId: authorized.job.jobId,
         leaseToken: runtime.leaseToken,
@@ -412,12 +494,69 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           captureRevision: authorized.current.captureRevision,
           relatedStateRevision: authorized.learnerStateRevision,
           ...(authorized.objectRef ? { objectRef: authorized.objectRef } : {}),
+          ...(authorized.hdl?{hdl:projectHdlHelpCurrentState(authorized.hdl)}:{}),
           inputRefs: execution.authorizedReferenceIds.filter((referenceId) => !referenceId.startsWith("assistance:")),
           assistanceRefs: execution.authorizedReferenceIds.filter((referenceId) => referenceId.startsWith("assistance:")),
           coverageRefs: [],
         },
-      });
+      };
+      const delivery = request ? completeTeaching(request, idValue, completion)
+        : withHelpTransaction(undefined,idValue,jobId,'read',tx => {
+          currentGeneration(completion.recoveryGeneration);
+          return completeTeachingInTransaction(tx, {
+            scope:{courseId:authorized.job.scope.courseId,studentId,attemptId:authorizedAttemptId},
+            jobId,leaseToken:completion.leaseToken,generation:completion.recoveryGeneration,
+            now:new Date(now()).toISOString(),bodyJsonText:completion.bodyJson,
+            versions:completion.versions,usage:completion.usage,calls:completion.calls,
+            elapsedMs:completion.elapsedMs,basis:completion.basis,messageId:randomUUID(),actionId:randomUUID(),
+            ...(isTeachingBasisCurrent?{isBasisCurrent:isTeachingBasisCurrent}:{}),
+          });
+        });
       return { ...execution, delivery };
+    },
+    async processJob(jobId: string, provider: ModelProvider, signal?: AbortSignal): Promise<StudentHelpExecutionResult> {
+      const scope = options.db.withTransaction(tx => {
+        const row=tx.get('SELECT attempt_id FROM jobs WHERE job_id=?',jobId);
+        if(typeof row?.attempt_id!=='string') throw new ApiError('FORBIDDEN');
+        return row.attempt_id;
+      });
+      const leaseToken=randomUUID();
+      const assistanceHistory=withHelpTransaction(undefined,scope,jobId,'read',(tx,actor)=> {
+        const records=readTeachingRecordsInTransaction(tx,{courseId:actor.courseId,studentId:actor.userId,attemptId:scope},'student');
+        return records.actions.flatMap(action=> {
+          const message=records.messages.find(item=>item.messageId===action.messageId);
+          if(message?.envelope.kind!=='student_help') return [];
+          const body=message.envelope.body as StudentHelpBody;
+          const status:AssistanceContextRecord['status']=action.basisRevised||action.disposition==='stale'?'stale'
+            :action.disposition==='cancelled'?'cancelled':action.disposition==='failed'?'failed'
+            :action.receipts.some(row=>row.receiptKind==='acknowledged')?'acknowledged':'displayed';
+          return [{actionId:action.actionId,actionType:body.actionType,content:body.content,status}];
+        });
+      });
+      const preparation={assistanceHistory};
+      const readCurrent = (): StudentHelpCurrentState => {
+        const current=authorizeStudentHelp(undefined,scope,jobId,preparation,'read');
+        let objectAvailable=true;
+        try { assembleStudentHelpRequest(current); } catch { objectAvailable=false; }
+        return {...current.current,helpAllowed:current.activity.helpPolicy.helpAllowed,
+          learnerStateRevision:current.learnerStateRevision,objectAvailable,
+          jobStatus:current.job.status,stopRequested:current.job.stopRequested,
+          ...(current.hdl?{hdl:projectHdlHelpCurrentState(current.hdl)}:{})};
+      };
+      const execution=await tutoring.executeStudentHelp(undefined,scope,jobId,preparation,
+        {provider,leaseToken,readCurrent,now,...(signal?{signal}:{})});
+      if(execution.outcome.outcome!=='success') options.db.withTransaction(tx=> {
+        const row=tx.get('SELECT course_id FROM jobs WHERE job_id=?',jobId);
+        if(typeof row?.course_id!=='string') throw new ApiError('STATE_CONFLICT');
+        const job=readTeachingJob(tx,row.course_id,jobId);
+        // A late failure cannot overwrite a stop/new lease/generation or terminal success.
+        if(!job||job.status!=='running'||job.leaseToken!==leaseToken||job.stopRequested
+          ||job.recoveryGeneration!==options.currentGeneration()) return;
+        const outcome=execution.outcome.outcome;
+        saveJob(tx,{...job,status:outcome==='timed_out'?'timed_out':outcome==='stale'?'stale':outcome==='cancelled'?'cancelled':'failed',
+          failure:outcome,...(outcome==='cancelled'||outcome==='stale'?{stopRequested:true}:{})});
+      });
+      return execution;
     },
   };
 

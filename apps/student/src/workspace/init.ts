@@ -9,13 +9,14 @@
  * 两种模式的入口顺序不同，但路径、输入、信封与投影完全一致：
  * - preparation：`GET /__i0prep/context` 取合成账号与获准引用 → `POST /sessions` 建立开发会话
  *   → `GET /session` → 分配 → 活动 → 材料；
- * - real：直接 `GET /session`。本人分配发现入口（H-02）与正常业务宿主（H-01）尚未交接，
- *   此时如实报告不可用，不硬编码正式对象 ID、不遍历猜测、不回退到准备 fixture 或 Mock 成功。
+ * - real：`GET /session` → 获准深链的 Assignment bootstrap → 固定活动与资料。
+ *   宿主未提供入口或授权失败时如实不可用，不猜 ID、不回退 fixture，不自动创建 Attempt。
  */
 
 import type {
   ActivityView,
   AssignmentView,
+  AssignmentBootstrapView,
   PrepContextView,
   ProjectedMaterial,
   ResourceStudentView,
@@ -31,7 +32,7 @@ import {
   type RequestOptions,
   WorkspaceRequestError,
 } from './http'
-import { prepContextUrl, type WorkspaceMode } from './mode'
+import { PREP_BUILD, prepContextUrl, type WorkspaceMode } from './mode'
 
 export type InitStage = 'context' | 'session' | 'discovery' | 'assignment' | 'activity' | 'resource'
 
@@ -112,12 +113,14 @@ async function guardedGet<T>(
  * 守卫失效（换上下文、卸载、主动重载）时立刻返回 `{ kind: 'stale' }`，调用方丢弃结果。
  */
 export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceInit> {
+  if (guard.stale) return { kind: 'stale' }
+  setCsrfToken(null)
   const mode: WorkspaceMode = guard.context.mode
   const opts: RequestOptions = { mode }
 
   /* 0. 准备模式先取 bootstrap 元信息：合成账号与获准对象引用。真实模式没有这个入口。 */
   let prepContext: PrepContextView | null = null
-  if (mode === 'preparation') {
+  if (PREP_BUILD && mode === 'preparation') {
     const url = prepContextUrl(mode)
     if (!url) return unavailable('context', '准备模式没有 bootstrap 端点')
     const read = await guardedGet<PrepContextView>(guard, { ...opts, absolutePath: url }, 'prep-context', '')
@@ -130,7 +133,7 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
   }
 
   /* 1. 会话：身份只来自 Session，不从昵称或本地设置构造。 */
-  if (mode === 'preparation') {
+  if (PREP_BUILD && mode === 'preparation') {
     // 准备身份由 fixture 生成：用合成账号建立开发会话（U-07：不自建登录页面）
     const account = prepContext!.syntheticAccount
     try {
@@ -139,6 +142,7 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
         { loginName: account.loginName, password: account.password },
         opts,
       )
+      if (guard.stale) return { kind: 'stale' }
     } catch (e) {
       if (guard.stale) return { kind: 'stale' }
       return unavailable('session', '准备 fixture 未建立合成会话', e)
@@ -150,52 +154,61 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
     return unavailable(
       'session',
       mode === 'real'
-        ? '真实模式取不到当前会话（正常业务宿主与同源 HTTPS 入口属交接项 H-01）'
+        ? '当前会话没有读取成功，请先登录后重新读取。'
         : '准备 fixture 未建立合成会话',
       sessionRead.error,
     )
   }
   const session = sessionRead.data
-  if (typeof session?.userId !== 'string' || !Array.isArray(session.courses)) {
+  if (!validId(session?.userId) || !Array.isArray(session.courses) ||
+    !validId(session.csrfToken) || !session.courses.every(c => validId(c?.courseId) && ['student', 'teacher'].includes(c.role))) {
     return unavailable('session', '会话响应缺少 userId / courses，无法确定身份归属')
   }
   setCsrfToken(typeof session.csrfToken === 'string' ? session.csrfToken : null)
 
-  /* 2. 真实模式到此为止：没有获准的分配引用，不猜、不遍历。 */
+  /* 2. 正常模式只读深链的授权 bootstrap；代际来自服务，首次作品仍由学生显式开始。 */
+  let assignment: AssignmentView
+  let recoveryGeneration: string
   if (mode === 'real') {
-    return unavailable(
-      'discovery',
-      '真实模式缺本人分配发现入口（H-02）：已建立会话但没有获准的 Assignment 引用。' +
-        '不硬编码正式对象 ID，也不遍历猜测分配。',
+    const assignmentId = guard.context.assignmentId
+    if (!validId(assignmentId)) return unavailable('discovery', '请从获准的任务链接进入工作区。')
+    const read = await guardedGet<AssignmentBootstrapView>(guard, opts, `bootstrap:${assignmentId}`,
+      `/assignments/${encodeURIComponent(assignmentId)}/bootstrap`,
     )
-  }
+    if (read.kind === 'stale') return { kind: 'stale' }
+    if (read.kind === 'failed') return unavailable('assignment', '这项分配没有读取成功，请核对任务链接或重新登录。', read.error)
+    if (!validId(read.data?.recoveryGeneration)) return unavailable('assignment', '工作区恢复状态没有读取完整，请重新读取。')
+    assignment = read.data.assignment
+    recoveryGeneration = read.data.recoveryGeneration
+    if (!validAssignment(assignment, assignmentId)) return unavailable('assignment', '分配信息与任务链接不符，请重新读取。')
+  } else if (PREP_BUILD && prepContext) {
+    // 登录前 context 不暴露已有 Attempt；准备模式登录后才回取获准引用。
+    const authorized = await guardedGet<PrepContextView>(guard,
+      { ...opts, absolutePath: prepContextUrl(mode)! }, 'prep-context', '')
+    if (authorized.kind === 'stale') return { kind: 'stale' }
+    if (authorized.kind === 'failed') return unavailable('context', '准备工作区引用没有读取成功', authorized.error)
+    if (authorized.data.preparationEpoch !== prepContext.preparationEpoch ||
+      authorized.data.recoveryGeneration !== prepContext.recoveryGeneration ||
+      authorized.data.syntheticAccount.userId !== session.userId ||
+      authorized.data.refs.assignmentId !== prepContext.refs.assignmentId) return unavailable('context', '准备工作区已变化，请重新读取。')
+    prepContext = authorized.data
+    const assignmentId = prepContext.refs.assignmentId
+    const read = await guardedGet<AssignmentView>(guard, opts, `assignment:${assignmentId}`,
+      `/assignments/${encodeURIComponent(assignmentId)}`)
+    if (read.kind === 'stale') return { kind: 'stale' }
+    if (read.kind === 'failed') return unavailable('assignment', '读取分配失败', read.error)
+    assignment = read.data
+    recoveryGeneration = prepContext.recoveryGeneration
+    if (!validAssignment(assignment, assignmentId) || assignment.activityVersionId !== prepContext.refs.activityVersionId) {
+      return unavailable('assignment', '分配信息与准备引用不符，请重新读取。')
+    }
+  } else return unavailable('context', '当前工作区模式不可用。')
 
-  // 登录前 context 不会暴露已有 Attempt 引用；另一浏览器登录后只读恢复原作品。
-  const authorizedContext = await guardedGet<PrepContextView>(guard,
-    { ...opts, absolutePath: prepContextUrl(mode)! }, 'prep-context', '')
-  if (authorizedContext.kind === 'stale') return { kind: 'stale' }
-  if (authorizedContext.kind === 'failed') return unavailable('context', '准备工作区引用没有读取成功', authorizedContext.error)
-  if (authorizedContext.data.preparationEpoch !== prepContext!.preparationEpoch ||
-    authorizedContext.data.recoveryGeneration !== prepContext!.recoveryGeneration ||
-    authorizedContext.data.syntheticAccount.userId !== session.userId ||
-    authorizedContext.data.refs.assignmentId !== prepContext!.refs.assignmentId) return unavailable('context', '准备工作区已变化，请重新读取。')
-  prepContext = authorizedContext.data
-  const assignmentId = prepContext.refs.assignmentId
-
-  /* 3. 分配：核对归属到当前 Session。 */
-  const assignmentRead = await guardedGet<AssignmentView>(
-    guard,
-    opts,
-    `assignment:${assignmentId}`,
-    `/assignments/${encodeURIComponent(assignmentId)}`,
-  )
-  if (assignmentRead.kind === 'stale') return { kind: 'stale' }
-  if (assignmentRead.kind === 'failed') return unavailable('assignment', '读取分配失败', assignmentRead.error)
-  const assignment = assignmentRead.data
+  /* 3. 分配归属始终来自当前 Session。 */
   if (assignment.studentId !== session.userId) {
     return unavailable(
       'assignment',
-      `分配归属不符：studentId=${assignment.studentId ?? '(缺)'} 与当前会话 userId=${session.userId} 不一致`,
+      '当前账号不是这项分配的学生，请核对任务链接或重新登录。',
     )
   }
 
@@ -210,6 +223,13 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
   if (activityRead.kind === 'stale') return { kind: 'stale' }
   if (activityRead.kind === 'failed') return unavailable('activity', '读取活动版本失败', activityRead.error)
   const activity = activityRead.data
+  if (!activity || typeof activity !== 'object' || !activity.content || !activity.content.content ||
+    !validId(activity.courseId) || !validId(activity.runtimeProfileVersionId) || !activity.helpPolicy ||
+    typeof activity.helpPolicy.helpAllowed !== 'boolean' || !Array.isArray(activity.content.materials) ||
+    !['routes', 'goals', 'tasks', 'observations', 'rubricCriteria', 'milestones'].every(key =>
+      Array.isArray(activity.content.content[key as keyof typeof activity.content.content]))) {
+    return unavailable('activity', '活动信息没有读取完整，请重新读取。')
+  }
   if (activity.activityVersionId !== activityVersionId) {
     return unavailable(
       'activity',
@@ -222,8 +242,12 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
       `活动投影视角不是 student（实际 ${activity.content?.audience ?? '(缺)'}），不采用非学生视角内容`,
     )
   }
-  if (!session.courses.some((c) => c.courseId === activity.courseId)) {
-    return unavailable('activity', `活动课程 ${activity.courseId} 不在当前会话的课程归属里`)
+  if (!session.courses.some((c) => c.courseId === activity.courseId && c.role === 'student')) {
+    return unavailable('activity', '当前账号不属于这项活动的学生范围。')
+  }
+  if (activity.activityControlRevision !== assignment.activityControlRevision ||
+    !['active', 'paused'].includes(activity.status) || (assignment.active && activity.status !== 'active')) {
+    return unavailable('activity', '活动状态已变化，请重新读取。')
   }
 
   /* 5. 材料：只对活动投影标为 available 的条目发起读取；redacted / unavailable 不补正文。 */
@@ -257,7 +281,8 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
       continue
     }
     const view = read.data
-    if (view.resourceVersionId !== resourceVersionId || view.status !== 'available') {
+    if (!view || view.resourceVersionId !== resourceVersionId || view.status !== 'available' ||
+      typeof view.text !== 'string' || typeof view.title !== 'string' || !Array.isArray(view.paragraphs)) {
       materials.push({
         index,
         projectedStatus: m.status,
@@ -267,7 +292,7 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
           failure: {
             kind: 'protocol',
             status: 200,
-            message: `资源归属或状态不符（resourceVersionId=${view.resourceVersionId ?? '(缺)'}，status=${view.status ?? '(缺)'}）`,
+            message: `资源归属、状态或正文不符（resourceVersionId=${view?.resourceVersionId ?? '(缺)'}，status=${view?.status ?? '(缺)'}）`,
           },
         },
       })
@@ -281,9 +306,20 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
     userId: session.userId,
     assignmentId: assignment.assignmentId,
     activityVersionId: activity.activityVersionId,
-    trustedRecoveryGeneration: prepContext?.recoveryGeneration ?? null,
+    trustedRecoveryGeneration: recoveryGeneration,
     preparationEpoch: prepContext?.preparationEpoch ?? null,
   }
 
   return { kind: 'ready', context, session, assignment, activity, materials, prepContext }
+}
+
+function validId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 128
+}
+function validAssignment(value: AssignmentView | undefined, expectedId: string): value is AssignmentView {
+  return !!value && value.assignmentId === expectedId && validId(value.activityVersionId) && validId(value.studentId) &&
+    Number.isSafeInteger(value.assignmentRevision) && value.assignmentRevision > 0 &&
+    Number.isSafeInteger(value.activityControlRevision) && value.activityControlRevision > 0 &&
+    typeof value.active === 'boolean' && ['active', 'paused'].includes(value.status) &&
+    !(value.active && value.status === 'paused') && typeof value.reasons?.individual === 'string' && typeof value.reasons?.activity === 'string'
 }

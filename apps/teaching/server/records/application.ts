@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { hdlHelpBasisSchema } from '../../contracts/workspace/hdl-help.ts';
 import type { FastifyRequest } from 'fastify';
 import { createWorkspaceApp } from '../workspace/application.ts';
 import type { DesignTeachingStop } from '../design/activities.ts';
@@ -47,7 +48,7 @@ const objectRefInput = z.discriminatedUnion('kind', [
 ]);
 const basisInput = z.strictObject({ attemptRevision: positive, decisionEpoch: natural, captureRevision: natural,
   relatedStateRevision: natural, objectRef: objectRefInput.optional(), inputRefs: z.array(id), assistanceRefs: z.array(id),
-  coverageRefs: z.array(id) });
+  coverageRefs: z.array(id),hdl:hdlHelpBasisSchema.optional() });
 export const teachingQuestionInput = z.strictObject({ recoveryGeneration: id, expectedAttemptRevision: positive,
   question: z.string().min(1).max(16384), objectRef: objectRefInput.optional(), inputRefs: z.array(id).max(64).default([]),
   versions: versionsInput, deadlineSeconds: z.number().int().positive().max(45).default(45) });
@@ -133,7 +134,15 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
       disposition: action.disposition, createdAt: action.createdAt, basisRevised: action.basisRevised };
     if (!message || message.envelope.kind !== 'student_help') return base;
     const body = message.envelope.body as StudentHelpBody;
-    return { ...base, actionType: body.actionType, content: body.content, rationale: body.rationale,
+    // readPage has already checked the target client/Delivery and the current Action. Keep the persisted
+    // association even when unrelated control revisions advanced; never bind an answer by body or arrival.
+    return { ...base, scope: { ...action.scope }, jobId: action.jobId, messageId: action.messageId,
+      generation: action.generation, targetVersions: { ...action.targetVersions },
+      basis: { attemptRevision: action.basis.attemptRevision, decisionEpoch: action.basis.decisionEpoch,
+        captureRevision: action.basis.captureRevision, relatedStateRevision: action.basis.relatedStateRevision,
+        ...(action.basis.objectRef === undefined ? {} : { objectRef: action.basis.objectRef }),
+        ...(action.basis.hdl===undefined?{}:{hdl:action.basis.hdl}) },
+      actionType: body.actionType, content: body.content, rationale: body.rationale,
       expectedStudentAction: body.expectedStudentAction, assistanceContext: body.assistanceContext,
       evidenceIds: [...body.evidenceIds], resourceRefs: [...body.resourceRefs], unresolved: [...body.unresolved] };
   }
@@ -212,6 +221,8 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
       const previous = readRecordCommand(tx, identity, input, current, validate);
       if (previous) return { ...previous.result, replayed: true };
       const command = finishRecordCommand(tx, identity, input, current, now(), () => {
+        if(options.isTeachingBasisCurrent)reconcileTeachingBasisInTransaction(tx,{scope,actionId,actorId:actor.userId,
+          generation:current,now:timestamp()},options.isTeachingBasisCurrent);
         const recorded = recordTeachingReceiptInTransaction(tx, { scope, actionId, clientId: input.clientId,
           clientReceiptId: input.clientReceiptId, ...(input.deliveryId === undefined ? {} : { deliveryId: input.deliveryId }),
           contentHash: input.contentHash, receiptKind: input.receiptKind,

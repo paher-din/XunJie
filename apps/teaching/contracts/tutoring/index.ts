@@ -1,6 +1,7 @@
 import type { Job } from "../records/index.ts";
 import type { ActivityView } from "../design/results.ts";
 import type { HdlBuild, HdlOperationResult, HdlSession } from "../runner/hdl.ts";
+import type { AnalysisBinding, ClaimBody } from "../review/index.ts";
 import type { ArtifactSnapshot, ObjectRef } from "../workspace/index.ts";
 
 export const teacherGenerationModes = [
@@ -26,7 +27,7 @@ export const studentActionTypes = [
 ] as const;
 
 export type StudentActionType = (typeof studentActionTypes)[number];
-export type TutoringPurpose = "teacher_design" | "student_help";
+export type TutoringPurpose = "teacher_design" | "student_help" | "learner_analysis";
 
 export type TrustedModelContext = {
   jobId: string;
@@ -76,11 +77,33 @@ export type StudentHelpRequest = {
   signal?: AbortSignal;
 };
 
+export type LearnerAnalysisTarget = Pick<
+  ClaimBody,
+  "competencyId" | "competencyVersion" | "domain" | "scope"
+>;
+
+export type LearnerAnalysisClaim = Omit<ClaimBody, "claimId">;
+
+export type LearnerAnalysisBody = {
+  kind: "learner_analysis";
+  claims: readonly LearnerAnalysisClaim[];
+  feedbackDraft?: string;
+};
+
+export type LearnerAnalysisRequest = {
+  context: TrustedModelContext;
+  binding: AnalysisBinding;
+  targets: readonly LearnerAnalysisTarget[];
+  references: readonly UntrustedReference[];
+  signal?: AbortSignal;
+};
+
 export type StudentHelpCommandInput = {
   expectedAttemptRevision: number;
   recoveryGeneration: string;
   question: string;
   objectRef?: ObjectRef;
+  hdlSelection?:import('../workspace/hdl-help.ts').HdlHelpSelection;
 };
 
 export type StudentHelpCommandResult = {
@@ -114,6 +137,7 @@ export type AssistanceContextRecord = {
 };
 
 export type AuthorizedHdlHelpContext = {
+  workspaceRevision?:number;
   snapshotId: string;
   snapshotHash: string;
   build: HdlBuild;
@@ -121,20 +145,7 @@ export type AuthorizedHdlHelpContext = {
   operation?: HdlOperationResult;
 };
 
-export type HdlHelpCurrentState = {
-  snapshotId: string;
-  snapshotHash: string;
-  buildId: string;
-  buildStatus: HdlBuild["status"];
-  sessionId?: string;
-  sessionRevision?: number;
-  sessionStatus?: HdlSession["status"];
-  sessionGeneration?: string;
-  confirmedSequence?: number;
-  simTimePs?: string;
-  operationId?: string;
-  resultHash?: string;
-};
+export type HdlHelpCurrentState = import('../workspace/hdl-help.ts').HdlHelpBasis;
 
 export type AuthorizedStudentHelpContext = {
   job: Job;

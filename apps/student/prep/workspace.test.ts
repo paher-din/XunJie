@@ -108,7 +108,7 @@ it('GET does not create; explicit creation yields one readable Attempt and a sta
     attemptId: receipt.result.attemptId, courseId: SYNTHETIC_ACCOUNT.courseId, studentId: SYNTHETIC_ACCOUNT.userId,
     assignmentId: REFS.assignmentId, activityVersionId: REFS.activityVersionId, status: 'ready',
     attemptRevision: 1, workspaceRevision: 0, decisionEpoch: 0, captureRevision: 0, collecting: true, reminders: false,
-  }, files: [], snapshots: [], jobs: [], runs: [], checks: [] })
+  }, files: [], snapshots: [], jobs: [], runs: [], checks: [], limitedCheck:false })
 })
 
 it('scenario-bound sessions isolate authority while another login in the same scenario reads the same head', async () => {

@@ -96,7 +96,7 @@ test.describe('准备入口与模式', () => {
 
     await page.getByRole('button', { name: '任务信息' }).click()
     await expect(page.locator('.ts-taskinfo')).toContainText('TextScope 文本统计工具')
-    await expect(page.locator('.ts-material')).toHaveCount(4)
+    await expect(page.locator('.ts-material')).toHaveCount(5)
   })
 })
 
@@ -119,11 +119,13 @@ test.describe('活动要求与材料', () => {
     await page.getByRole('button', { name: '任务信息' }).click()
 
     const materials = page.locator('.ts-material')
-    await expect(materials).toHaveCount(4)
+    await expect(materials).toHaveCount(5)
     await expect(materials.nth(0).locator('.ts-material-status')).toHaveText('available')
     await expect(materials.nth(1).locator('.ts-material-status')).toHaveText('available')
     await expect(materials.nth(2).locator('.ts-material-status')).toHaveText('redacted')
     await expect(materials.nth(3).locator('.ts-material-status')).toHaveText('unavailable')
+    await expect(materials.nth(4).locator('.ts-material-status')).toHaveText('available')
+    await expect(materials.nth(4)).toContainText('合成相邻例子')
 
     await expect(materials.nth(0)).toContainText('TextScope 任务说明')
     await expect(materials.nth(0)).toContainText('段')

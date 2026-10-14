@@ -49,6 +49,7 @@ export function AgentMessage({
   onQuizAnswer,
   onConceptCollect,
   genCardSlots,
+  sourceLabel = '学习助手 · 模拟回复',
   children,
 }: {
   message: ChatMessage
@@ -64,12 +65,14 @@ export function AgentMessage({
   onConceptCollect?: () => void
   /** 生成交互卡动作槽；不传则消息内的生成卡不带收纳等动作。 */
   genCardSlots?: GenCardSlots
+  /** I0-B complete approved content keeps its actual source label. */
+  sourceLabel?: string
   children?: React.ReactNode
 }) {
   const phase = message.phase ?? 'settled'
   return (
     <div className="chat-message agent">
-      <div className="agentmark"><IconText name="assistant-mark">学习助手 · 模拟回复</IconText></div>
+      <div className="agentmark"><IconText name="assistant-mark">{sourceLabel}</IconText></div>
       {phase === 'waiting' && <WaitingLine />}
       {(phase === 'thinking' || message.thinking) && (
         <ThinkingRow running={phase === 'thinking'} thinking={message.thinking} />

@@ -1,4 +1,4 @@
-import { createApp } from './app.ts';
+import type { createApp } from './app.ts';
 import { readPort } from './app/config.ts';
 
 let app:ReturnType<typeof createApp>|undefined;
@@ -42,7 +42,13 @@ try {
       const service=await createI0App({db,origin:config.origin,signingSecret:readI0SigningSecret(config.signingSecretFile),
         https:{key:readFileSync(config.tls.keyFile),cert:readFileSync(config.tls.certFile)},
         currentGeneration:()=>generation,runner,staticDirectory:config.staticDirectory,
-        consumerIntervalMs:config.consumerIntervalMs,logDestination:process.stdout});
+        consumerIntervalMs:config.consumerIntervalMs,logDestination:process.stdout,
+        ...(config.tutoring?{tutoring:{
+          studentHelp:{versions:config.tutoring.versions,budgetAvailable:()=>config.tutoring!.callsAuthorized},
+          provider:config.tutoring.apiKeyFile?(await import('./tutoring/deepseek-sdk.ts')).createAiSdkDeepSeekProvider({
+            apiKey:readI0SigningSecret(config.tutoring.apiKeyFile),
+          }):{generate:async()=>{throw new Error('Tutoring provider unavailable');}},
+        }}:{})});
       app=service.app;
       closeService=async()=>{try { await service.close(); } finally { db.close(); }};
       await app.listen({host:'127.0.0.1',port});
@@ -61,12 +67,15 @@ try {
     try {
       const generation=db.withTransaction(tx=>tx.get('SELECT recovery_generation FROM application_control WHERE singleton=1'))?.recovery_generation;
       if(generation!==config.recoveryGeneration) throw new Error('Recovery control mismatch.');
-      const versions={modelConfig:'unconfigured',prompt:'unconfigured',schema:'unconfigured',policy:'unconfigured'};
+      const versions=config.tutoring?.versions??{modelConfig:'unconfigured',prompt:'unconfigured',schema:'unconfigured',policy:'unconfigured'};
       const service=await createDigitalLogicApplication({db,origin:config.origin,signingSecret:readI0SigningSecret(config.signingSecretFile),
         https:{key:readFileSync(config.tls.keyFile),cert:readFileSync(config.tls.certFile)},logDestination:process.stdout,
         ...executionTransports(config.ssh),approvedHdlRuntimes:config.approvedHdlRuntimes,
         ...(config.staticDirectory?{staticDirectory:config.staticDirectory}:{}),
-        consumerIntervalMs:config.consumerIntervalMs,studentHelp:{versions,budgetAvailable:()=>false},
+        consumerIntervalMs:config.consumerIntervalMs,studentHelp:{versions,budgetAvailable:()=>config.tutoring?.callsAuthorized??false},
+        ...(config.tutoring?.apiKeyFile?{tutoringProvider:(await import('./tutoring/deepseek-sdk.ts')).createAiSdkDeepSeekProvider({
+          apiKey:readI0SigningSecret(config.tutoring.apiKeyFile),
+        })}:{}),
         teacherAgent:{versions,budgetAvailable:()=>false,provider:{generate:async()=>{throw new Error('Model unavailable.');}}}});
       app=service.app;
       closeService=async()=>{try {await service.shutdown();} finally {db.close();}};
@@ -74,6 +83,7 @@ try {
       service.startConsumer(config.consumerIntervalMs);
     } catch(error) {if(!closeService) db.close();throw error;}
   } else {
+    const { createApp }=await import('./app.ts');
     app=createApp({logDestination:process.stdout});
     await app.listen({host:'127.0.0.1',port});
   }

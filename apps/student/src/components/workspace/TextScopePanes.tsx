@@ -4,6 +4,7 @@ import { describeFailure } from '../../workspace/http'
 import { reportDiagnostic } from '../../workspace/diagnostics'
 import type { MaterialRead, WorkspaceInit } from '../../workspace/init'
 import { PREP_ENTRY_COURSE, PREP_ENTRY_NOTE } from '../../workspace/prepEntry'
+import { PREP_BUILD } from '../../workspace/mode'
 
 /**
  * I0-A 准备场景在既有中心容器与阅读位置里的内容块。
@@ -31,10 +32,10 @@ export function TextScopeBodyPane({ init, onReload }: { init: WorkspaceInit | nu
     <div className="ts-pane">
       <header className="ts-pane-head">
         <IconText name="code-square" tone="neutral">C 正文区</IconText>
-        <span className="ts-pending-pill">先开始 Attempt</span>
+        <span className="ts-pending-pill">{init.assignment.active ? '先开始 Attempt' : '分配已暂停'}</span>
       </header>
       <p className="ts-pane-lead">
-        点击顶栏“开始 Attempt”进入多文件编辑。载入只读取活动与资料，
+        {init.assignment.active ? '点击顶栏“开始 Attempt”进入多文件编辑。' : '当前分配已暂停，可以阅读活动与资料。'}载入只读取活动与资料，
         <b>不会自动创建作品或发送保存请求</b>。
       </p>
       <dl className="ts-facts">
@@ -92,17 +93,17 @@ export function TextScopeRunCluster({ init }: { init: WorkspaceInit | null }) {
     <>
       <span className="ws-run-state" data-state="prep">
         <i />
-        <span>C 准备 · 未运行</span>
+        <span>{PREP_BUILD ? 'C 准备 · 未运行' : 'C 工作区 · 未运行'}</span>
       </span>
-      <span className="ws-flow" title="01 只做只读初始化；保存属 03，运行属 06">
+      <span className="ws-flow" title="载入只读取活动和资料，不自动开始或运行">
         <span className="ws-flow-node draft">
           <i />
           只读载入
         </span>
         <span className="ws-flow-link">▸</span>
-        <span className="ws-flow-node">保存待 03</span>
+        <span className="ws-flow-node">学生确认保存</span>
         <span className="ws-flow-link">▸</span>
-        <span className="ws-flow-node">运行待 06</span>
+        <span className="ws-flow-node">学生发起运行</span>
       </span>
     </>
   )
@@ -113,14 +114,14 @@ export function TextScopeRunCluster({ init }: { init: WorkspaceInit | null }) {
 export function PrepTaskInfo({ init, onReload }: { init: WorkspaceInit | null; onReload: () => void }) {
   // 标题取自活动响应的 projectTitle；还没读到（载入中 / 不可用）时只显示导航用的准备入口名，
   // 不预先写死活动内容。
-  const title = init?.kind === 'ready' ? init.activity.content.content.projectTitle : PREP_ENTRY_COURSE
+  const title = init?.kind === 'ready' ? init.activity.content.content.projectTitle : PREP_BUILD ? PREP_ENTRY_COURSE : '任务信息'
   return (
     <div className="ws-taskinfo ts-taskinfo">
       <h2>{title}</h2>
-      <p className="ts-synth-flag">
+      {PREP_BUILD && <p className="ts-synth-flag">
         <Icon name="shield-check" size={14} tone="neutral" />
         {PREP_ENTRY_NOTE}
-      </p>
+      </p>}
       {init === null ? (
         <InitLoading />
       ) : init.kind === 'ready' ? (
@@ -137,15 +138,15 @@ function ReadyTaskInfo({ init }: { init: ReadyInit }) {
   const brief = activity.content.content
   return (
     <>
-      <Section title="身份与会话（合成）">
-        <Fact label="模式" value="准备场景（合成）" />
+      <Section title={PREP_BUILD ? '身份与会话（合成）' : '身份与会话'}>
+        <Fact label="模式" value={PREP_BUILD ? '准备场景（合成）' : '真实分配'} />
         <Fact label="Session userId" value={session.userId} />
         <Fact
           label="课程归属"
           value={session.courses.map((x) => `${x.courseId}（${x.role}）`).join('、') || '（空）'}
         />
-        <Fact label="登录页面" value="未交付（U-07）：会话由 fixture 用合成账号建立，不自建登录页" />
-        {prepContext && (
+        {PREP_BUILD && <Fact label="登录页面" value="未交付（U-07）：会话由 fixture 用合成账号建立，不自建登录页" />}
+        {PREP_BUILD && prepContext && (
           <>
             <Fact label="场景 ID" value={prepContext.scenarioId} />
             <Fact label="preparation epoch" value={prepContext.preparationEpoch} />

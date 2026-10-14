@@ -38,6 +38,12 @@ export const i0ConfigSchema=z.strictObject({
     catch { return false; }
   }),
   consumerIntervalMs:z.number().int().min(50).max(10000).default(250),
+  tutoring:z.strictObject({
+    apiKeyFile:existingFile.optional(),
+    callsAuthorized:z.boolean().default(false),
+    versions:z.strictObject({modelConfig:z.string().min(1).max(128),prompt:z.string().min(1).max(128),
+      schema:z.string().min(1).max(128),policy:z.string().min(1).max(128)}),
+  }).refine(value=>!value.callsAuthorized||!!value.apiKeyFile,'Authorized calls require an existing key file').optional(),
 });
 export function readI0Config(file:string) { return i0ConfigSchema.parse(readControlledJson(file)); }
 export function readI0Generation(file:string|undefined) {
@@ -57,5 +63,6 @@ export const sshConfigurationSchema=i0ConfigSchema.shape.ssh;
 export const applicationConfigSchema=z.strictObject({databaseFile:existingFile,origin:i0ConfigSchema.shape.origin,
  tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema,
  approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),recoveryGeneration:z.string().min(1).max(128),
- staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs});
+ staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs,
+ tutoring:i0ConfigSchema.shape.tutoring});
 export function readApplicationConfig(file:string) { return applicationConfigSchema.parse(readControlledJson(file)); }

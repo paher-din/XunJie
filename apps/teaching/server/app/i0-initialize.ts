@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createWorkspaceDatabase } from '../db/transaction.ts';
+import { createWorkspaceDatabase,createTeachingDatabase } from '../db/transaction.ts';
 import { createPasswordRecord } from '../access/password.ts';
 import { helpPolicySchema,checkRuleSchema } from '../../contracts/design/index.ts';
 import { storePolicy,storeRule } from '../design/activities.ts';
@@ -10,6 +10,7 @@ import { readControlledJson } from './config.ts';
 const syntheticId = z.string().min(11).max(128).regex(/^synthetic-[A-Za-z0-9_-]+$/);
 const configuration = z.strictObject({
   synthetic:z.literal(true),
+  teaching:z.boolean().default(false),
   users:z.array(z.strictObject({id:syntheticId,loginName:syntheticId,password:z.string().min(16).max(1024)})).min(2).max(20),
   courses:z.array(z.strictObject({id:syntheticId,teacherId:syntheticId,studentIds:z.array(syntheticId).min(1).max(19),
     helpPolicy:helpPolicySchema,checkRule:checkRuleSchema})).min(1).max(4),
@@ -24,7 +25,7 @@ export async function initializeI0(raw:unknown) {
     throw new Error('Invalid synthetic membership configuration.');
   const records:Awaited<ReturnType<typeof createPasswordRecord>>[] = [];
   for (const user of input.users) records.push(await createPasswordRecord(user.password));
-  const db = createWorkspaceDatabase();
+  const db = input.teaching?createTeachingDatabase():createWorkspaceDatabase();
   try {
     db.withTransaction(tx => {
       input.users.forEach((user,index) => {

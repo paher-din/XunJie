@@ -39,7 +39,7 @@ const idle: ConfirmationState = { phase: 'idle', workspace: null, attempt: null,
   outcome: null, error: null, comparison: null, snapshots: [] }
 
 /** 绑定一次 bootstrap；重新加载/退出/切换令旧客户端立即失效，页面不复用另一份确认状态。 */
-export function useConfirmationWorkspace(init: WorkspaceInit | null, taskId: string) {
+export function useConfirmationWorkspace(init: WorkspaceInit | null, taskId: string, assignmentActiveOverride?: boolean) {
   const [client, setClient] = useState<ConfirmationWorkspace | null>(null)
   const [state, setState] = useState<ConfirmationState>(idle)
   const [instances, setInstances] = useState<InstanceRecord[]>([])
@@ -68,6 +68,6 @@ export function useConfirmationWorkspace(init: WorkspaceInit | null, taskId: str
     void current.initialize()
     return () => { live = false; unsubscribe(); current.dispose() }
   }, [ready])
-  const seed = useMemo(() => projectSeedOf(state, instances, taskId, ready?.assignment.active ?? false), [state.workspace, state.attempt, instances, taskId, ready?.assignment.active])
+  const seed = useMemo(() => projectSeedOf(state, instances, taskId, assignmentActiveOverride ?? ready?.assignment.active ?? false), [state.workspace, state.attempt, instances, taskId, ready?.assignment.active, assignmentActiveOverride])
   return { client, state, seed }
 }
