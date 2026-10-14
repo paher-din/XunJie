@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { analysisBodySchema } from "../../contracts/review/index.ts";
 
 const nonEmptyString = z.string().min(1);
 const stringList = z.array(z.string());
@@ -88,6 +89,7 @@ export const tutoringSchemaKinds = [
   "patch",
   "rubric_trial",
   "student_help",
+  "learner_analysis",
 ] as const;
 
 export type TutoringSchemaKind = (typeof tutoringSchemaKinds)[number];
@@ -99,6 +101,7 @@ export function getTutoringOutputSchema(kind: TutoringSchemaKind): z.ZodType<unk
     case "patch": return teacherPatchSchema;
     case "rubric_trial": return teacherRubricTrialSchema;
     case "student_help": return studentHelpSchema;
+    case "learner_analysis": return analysisBodySchema;
   }
 }
 
