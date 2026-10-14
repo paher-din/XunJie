@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "scope": "Live read-only C1 readiness before approved one-time kernel restoration; no Run or validation write",
+  "observedAt": "2026-10-14T10:05:45.572Z",
+  "runtimeSourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "ready": false,
+  "readRuntimeError": "RUNTIME_NOT_READY",
+  "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+  "appGenerationMatches": true,
+  "currentFingerprintHash": "cb9e202cbfb8b4b943a7ea1139560495863afe7875ef8aaf3b7c5432a106ebc6",
+  "historicalValidatedFingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+  "validatedAt": "2026-10-13T09:29:47.6Z",
+  "fingerprintDifferences": [
+    {
+      "field": "kernel",
+      "validated": "6.8.0-146-generic",
+      "current": "6.8.0-147-generic"
+    }
+  ],
+  "hostHealthReadyStatus": 503,
+  "hostHealthReadySource": "apps/teaching/server/app.ts:47-49 fixed DEPENDENCY_UNAVAILABLE",
+  "notExecuted": [
+    "Run",
+    "record-validation",
+    "generation advance",
+    "full acceptance suite"
+  ]
+}

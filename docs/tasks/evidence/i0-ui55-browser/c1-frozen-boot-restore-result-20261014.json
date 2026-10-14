@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "authorization": {
+    "source": "User approved exact recovery and limited rollback",
+    "reference": "call_bd98f60d1a7545baad6af0c1a5418b34",
+    "approvedScope": "One-time retained146 boot selection, normal original guest poweroff/start; limited147 rollback only if146 started but remained not-ready."
+  },
+  "status": "CURRENT_ORIGINAL_FROZEN_RUNTIME_RESTORED",
+  "preflight": {
+    "observedAt": "2026-10-14T10:33:21.289Z",
+    "configSynthetic": true,
+    "sqlReadOnly": true,
+    "sqlPendingStatuses": [],
+    "sqlPendingTotal": 0,
+    "appDeclaredGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "node": {
+      "observedAt": "2026-10-14T10:33:21.028Z",
+      "runningKernel": "6.8.0-147-generic",
+      "hdlConfigured": false,
+      "ledger": {
+        "path": "/opt/xunjie-runner/state/ledger.jsonl",
+        "integrityValid": true,
+        "rowCount": 1016,
+        "factCount": 218,
+        "statusCounts": {
+          "succeeded": 170,
+          "cancelled": 48
+        },
+        "reserved": 0,
+        "pendingCount": 0,
+        "nonterminal": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "lastHash": "a3576c4fe41d5ee8b9f76ef622943b109d433da0995e92f4c1e670ed6977e845"
+      },
+      "activeOriginalUnitCount": 0,
+      "runningContainerCount": 0
+    },
+    "idle": true
+  },
+  "selection": {
+    "preflight": {
+      "observedAt": "2026-10-14T10:34:46.371Z",
+      "configSynthetic": true,
+      "sqlReadOnly": true,
+      "sqlPendingStatuses": [],
+      "sqlPendingTotal": 0,
+      "appDeclaredGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "node": {
+        "observedAt": "2026-10-14T10:34:43.817Z",
+        "runningKernel": "6.8.0-147-generic",
+        "hdlConfigured": false,
+        "ledger": {
+          "path": "/opt/xunjie-runner/state/ledger.jsonl",
+          "integrityValid": true,
+          "rowCount": 1016,
+          "factCount": 218,
+          "statusCounts": {
+            "succeeded": 170,
+            "cancelled": 48
+          },
+          "reserved": 0,
+          "pendingCount": 0,
+          "nonterminal": 0,
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+          "lastHash": "a3576c4fe41d5ee8b9f76ef622943b109d433da0995e92f4c1e670ed6977e845"
+        },
+        "activeOriginalUnitCount": 0,
+        "runningContainerCount": 0
+      },
+      "idle": true
+    },
+    "selection": {
+      "observedAt": "2026-10-14T10:34:44.364Z",
+      "backup": "/boot/grub/grubenv.xunjie-ui55-20261014T103444233Z.before146",
+      "backupUid": 0,
+      "backupMode": "600",
+      "backupSha256": "f64122858064885ef0733e42c6a3d2d3fd642671f714db0d974b880c0f087430",
+      "writeTarget": "/boot/grub/grubenv",
+      "nextEntry": "gnulinux-advanced-1bfefdfb-34c9-46c7-854f-399d0a1dea04>gnulinux-6.8.0-146-generic-advanced-1bfefdfb-34c9-46c7-854f-399d0a1dea04",
+      "permanentDefaultChanged": false,
+      "phase": "select146"
+    }
+  },
+  "poweroff": {
+    "observedAt": "2026-10-14T10:35:59.467Z",
+    "preflight": {
+      "observedAt": "2026-10-14T10:35:55.733Z",
+      "configSynthetic": true,
+      "sqlReadOnly": true,
+      "sqlPendingStatuses": [],
+      "sqlPendingTotal": 0,
+      "appDeclaredGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "node": {
+        "observedAt": "2026-10-14T10:35:54.904Z",
+        "runningKernel": "6.8.0-147-generic",
+        "hdlConfigured": false,
+        "ledger": {
+          "path": "/opt/xunjie-runner/state/ledger.jsonl",
+          "integrityValid": true,
+          "rowCount": 1016,
+          "factCount": 218,
+          "statusCounts": {
+            "succeeded": 170,
+            "cancelled": 48
+          },
+          "reserved": 0,
+          "pendingCount": 0,
+          "nonterminal": 0,
+          "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+          "lastHash": "a3576c4fe41d5ee8b9f76ef622943b109d433da0995e92f4c1e670ed6977e845"
+        },
+        "activeOriginalUnitCount": 0,
+        "runningContainerCount": 0
+      },
+      "idle": true
+    },
+    "before": {
+      "MainPID": "409",
+      "ExecStart": "{ path=/usr/bin/qemu-system-x86_64 ; argv[]=/usr/bin/qemu-system-x86_64 -name xunjie-c1 -machine q35,accel=kvm -cpu host -smp 2 -m 4096 -display none -serial file:/opt/xunjie-runner/vm/state/serial.log -monitor unix:/opt/xunjie-runner/vm/state/monitor.sock,server=on,wait=off -drive file=/opt/xunjie-runner/vm/state/guest.qcow2,if=virtio,format=qcow2 -drive file=/opt/xunjie-runner/vm/state/seed.iso,media=cdrom,format=raw,readonly=on -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22 -device virtio-net-pci,netdev=net0 -no-reboot ; ignore_errors=no ; start_time=[Wed 2026-10-14 17:21:09 CST] ; stop_time=[n/a] ; pid=409 ; code=(null) ; status=0/0 }",
+      "LoadState": "loaded",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "request": {
+      "observedAt": "2026-10-14T10:35:55.333Z",
+      "normalPoweroffRequested": true,
+      "previousKernel": "6.8.0-147-generic",
+      "nextEntryVerified": true
+    },
+    "after": {
+      "MainPID": "0",
+      "LoadState": "not-found",
+      "ActiveState": "inactive",
+      "SubState": "dead"
+    },
+    "ssh2222Open": false,
+    "originalQemuExitConfirmed": true,
+    "forcedStop": false
+  },
+  "startAttempt": {
+    "exitCode": 1,
+    "stdoutEmpty": true,
+    "startRequestedByThisChild": false,
+    "explanation": "The submitted source had an unnecessary group-write rejection for the known root:root0664 vm.sh. That condition would reject this approved root-group script; stdout was empty and remote stderr suppressed, so the first rejection branch was not captured. No permission was modified and no start retry was made.",
+    "originalSourceRetained": true
+  },
+  "observedOriginalVmRestart": {
+    "observedAt": "2026-10-14T10:48:39.103Z",
+    "unit": [
+      "MainPID=2522",
+      "ExecStart={ path=/usr/bin/qemu-system-x86_64 ; argv[]=/usr/bin/qemu-system-x86_64 -name xunjie-c1 -machine q35,accel=kvm -cpu host -smp 2 -m 4096 -display none -serial file:/opt/xunjie-runner/vm/state/serial.log -monitor unix:/opt/xunjie-runner/vm/state/monitor.sock,server=on,wait=off -drive file=/opt/xunjie-runner/vm/state/guest.qcow2,if=virtio,format=qcow2 -drive file=/opt/xunjie-runner/vm/state/seed.iso,media=cdrom,format=raw,readonly=on -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22 -device virtio-net-pci,netdev=net0 -no-reboot ; ignore_errors=no ; start_time=[Wed 2026-10-14 18:46:00 CST] ; stop_time=[n/a] ; pid=2522 ; code=(null) ; status=0/0 }",
+      "LoadState=loaded",
+      "ActiveState=active",
+      "SubState=running"
+    ],
+    "vmScript": {
+      "path": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching/runner/vm.sh",
+      "uid": 0,
+      "gid": 0,
+      "mode": "664",
+      "regular": true,
+      "symlink": false,
+      "sha256": "9da8f18f2d0119c0e8558c8184b0cc34044fc59e2f2f7d9af2302d1e2285586f",
+      "exactApprovedScriptMarkers": {
+        "base": true,
+        "originalImages": true,
+        "fixedGuestPort": true,
+        "noReboot": true
+      }
+    },
+    "monitorExists": true,
+    "monitorMetadata": {
+      "uid": 0,
+      "mode": "755",
+      "isSocket": true
+    }
+  },
+  "restartAttribution": {
+    "source": "Unknown existing recovery mechanism",
+    "observedMainPid": 2522,
+    "observedVmStart": "2026-10-14 18:46:00 CST",
+    "primaryAndOtherSubagentsDidNotStart": true,
+    "noRepeatStartByChild": true,
+    "noClaimOfDirectChildStart": true
+  },
+  "verification": {
+    "observedAt": "2026-10-14T10:50:48.268Z",
+    "guest": {
+      "observedAt": "2026-10-14T10:50:46.275Z",
+      "runningKernel": "6.8.0-146-generic",
+      "hdlConfigured": false,
+      "ledger": {
+        "path": "/opt/xunjie-runner/state/ledger.jsonl",
+        "integrityValid": true,
+        "rowCount": 1016,
+        "factCount": 218,
+        "statusCounts": {
+          "succeeded": 170,
+          "cancelled": 48
+        },
+        "reserved": 0,
+        "pendingCount": 0,
+        "nonterminal": 0,
+        "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+        "lastHash": "a3576c4fe41d5ee8b9f76ef622943b109d433da0995e92f4c1e670ed6977e845"
+      },
+      "activeOriginalUnitCount": 0,
+      "runningContainerCount": 0,
+      "nextEntry": null,
+      "oneTimeEntryConsumed": true,
+      "backup": {
+        "path": "/boot/grub/grubenv.xunjie-ui55-20261014T103444233Z.before146",
+        "uid": 0,
+        "gid": 0,
+        "mode": "600",
+        "sha256": "f64122858064885ef0733e42c6a3d2d3fd642671f714db0d974b880c0f087430"
+      }
+    },
+    "sqlReadOnly": true,
+    "sqlPendingStatuses": [],
+    "appDeclaredGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "readiness": {
+      "ready": true,
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+      "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+      "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+      "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+      "fingerprint": {
+        "kernel": "6.8.0-146-generic",
+        "node": "v24.21.0",
+        "engine": "29.8.2",
+        "cgroup": "2",
+        "seccomp": [
+          "name=seccomp,profile=builtin"
+        ],
+        "profile": {
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+          "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+          "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+          "approvedResultFiles": [
+            "report.txt"
+          ]
+        },
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "currentFingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+      "validation": {
+        "passed": true,
+        "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+        "validatedAt": "2026-10-13T09:29:47.600Z"
+      }
+    },
+    "runtime": {
+      "profile": {
+        "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+        "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+        "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+        "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+        "approvedResultFiles": [
+          "report.txt"
+        ]
+      },
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+    },
+    "criteria": {
+      "kernelRestored": true,
+      "nextEntryConsumed": true,
+      "generationUnchanged": true,
+      "fingerprintRestored": true,
+      "validationUnchanged": true,
+      "sourceUnchanged": true,
+      "ledgerUnchanged": true,
+      "formalReadinessPassed": true,
+      "noPendingJobs": true,
+      "noReservedWork": true,
+      "noRunningUnitsOrContainers": true
+    },
+    "passed": true
+  },
+  "primaryIndependentVerification": {
+    "reportedObservedAt": "2026-10-14T10:50:29.894Z",
+    "command": "Read-C1Readiness.ps1",
+    "exitCode": 0,
+    "kernel": "6.8.0-146-generic",
+    "ready": true,
+    "fingerprintMatches": true,
+    "appGenerationMatches": true,
+    "originalRuntimeProjectionSucceeded": true
+  },
+  "fallback147Executed": false,
+  "permanentDefaultChanged": false,
+  "futureBootBoundary": "GRUB_DEFAULT remains0; one-time next_entry was consumed. A later boot can return to147 and require an owner-approved maintenance decision. No automatic or permanent146 pinning.",
+  "noAdditionalActions": [
+    "No Run/Job created/cancelled or database write",
+    "No app/config/auth/schema/secret/generation/profile/validation changes",
+    "No acceptance rerun or validation forged/appended",
+    "No forced QEMU stop/monitor reset/live image mount/socket deletion",
+    "No password/key/token content read or output; key path references passed to existing SSH only"
+  ],
+  "localToolScope": "Retained step scripts are controlled entrances for this reviewed frozen environment. Any future mutating maintenance needs fresh exact operational authorization and current idle/frozen conditions; defaults are read-only.",
+  "toolErrors": [
+    "A preflight source assembly failed locally before execution and was corrected.",
+    "Initial start source rejected known root-group writable script; corrected only in retained future tool, not rerun on active VM."
+  ]
+}

@@ -116,3 +116,35 @@ H3内核提交 `b556d75`，接纳latest main及66项专项的merge为 `2e0245c2c
 最终静态97份/1483内部引用/errors=[]（随回执链接增长，以最后工具实际输出为准），差异空白通过；stage曾因原student unit日志尾空行失败，保留原gzip后仅规范可读文本并通过，不更改测试事实。密钥实际值对本轮源码/证据扫描0命中，保存仅在PAHER仓库外0600文件；单轮实际1次请求授权已消费，现有联调host不读该文件。
 
 本轮明确完成：固定main集成/回归、真实HDL Build/Session/Operation/读取/确认停止、H4正常获准冻结/B实际模型/C3传输交接、UI真实包和保留同机入口、H3已批准runner内核及隔离CLI2800采样。尚未完成：UI真实HDL同浏览器展示/学生修复链；H3新镜像/节点部署与真实worker2800/故障/隔离验收、活动binding/course_check接线；原3443就绪缺口归其现场维护者；完整P4/P5/真人/教学效果沿原后置安排。产品基线/MVP§10待授权维护者汇总。
+
+## 9. 接续 UI55 / PR67 的评论处理
+
+日期：2026-10-14（Asia/Shanghai）。负责人本会话明确要求处理 [PR56评论6168703238](https://github.com/paher-din/XunJie/pull/56#issuecomment-6168703238)，即接纳含PR67的当前main、验证实际组合、沿已有准确授权核准/对齐正式PAHER入口，并一次交回固定SHA/当前现场事实供Robert/UI复验；不自动合入main。
+
+本批开工：独立原工作树/分支codex/dl-a-continuation为7100ea6，无本地差异；PR56远端head同为7100ea6，base为5c8c60e。fetch后main=b7e73c5f65d457fb78d2fcbac7003e4e60ed7f43，PR67原head40edfea。当前main增量只含tools/i0-ui55七份源/说明、UI本人任务及去敏证据、两处README入口，不含应用/生产UI代码；旧候选79f9037/patch不接纳。原已验证b556d75/2e0245c实现和历史保留，不重审PR67或再cherry-pick其源码。
+
+已复读README、PRD §1/3.2/4.5、MVP §1.4/M-03–05/M-10/4–6、TECH §5/7.2.1/7.3/8.5、TEAM P3–P5/G3分工、本任务§6–8；接收UI55批准路线/固定工具/现有信任与指定学生领取方式/旧24表证据/Windows时间与146恢复正文、工具README及当前执行入口。适用DL-AC-01/03/04/07/08/09、AC-02/04/06/10/12、M-10/NFR-04；旧浏览器结果只计原24表/9fa/40db96c候选组合。
+
+可写：本任务、本人本批去敏接收/验证/现场核对脚本与证据、README必要导航；正常merge原样接纳main的批准工具/任务/两处README。若实际冲突仅沿函数职责适配，保留唯一正常bootstrap/各原Job消费者/readiness和C4/35表控制，不整文件覆盖。只读：规范、产品/规划/参考、UI55本人历史/审核结果、旧候选、凭据/信任/真实配置、schema/旧库/节点冻结环境；不启模型，不重复已消费真实批次。
+
+验证方案：批准Node24.21.0/原lock的teaching/student类型/构建及受影响I0/readiness/DL-A/C4/H4专项；工具Node/PowerShell隔离测试与解析，缺Robert本机文件的local-entry测试明确未执行；静态/空白和base/head/main接纳证明。先只读核PAHER当前两入口、服务源码/UI产物hash、24/35表/现有对象与代际、原C/HDLreadiness、Windows同步状态；沿已批准的应用开发换版/保留库和材料范围对齐运行副本，不维护节点或改冻结环境。需要改配置/秘密/信任或其他未覆盖范围时一次列准确差异与风险，仅暂停依赖部分。
+
+本批不代Robert操作学生页面/写displayed回执，也不把单域ready/CLI/静态页面计作浏览器或完整教学通过。交回正式origin/原深链/合成身份领取入口、固定源码/构建SHA、当前通过/失败/跳过、停止/回退方式；产品/MVP§10待授权维护者汇总。
+
+### 9.1 接纳与准备时点事实
+
+正常merge含b7e73c5的main，无冲突；应用/生产UI/原lock相对7100ea6无本批修改，PR67七份工具/本人历史证据原样接纳。固定最终merge SHA由提交后回执记录，不把PR67原head当作新的组合head。
+
+PAHER只读核查：原3443为xunjie-i0-entry-recovered-20261014/9fa76ad应用，PR59 unit inactive；3444为本轮上一批integrated unit。两库分别24/35表，pending Job均0；C/HDL readiness均true且原146指纹/代际/镜像/sourceHash一致。Windows W32Time Running/Manual、源ntp.ubuntu.com,0x9、Leap0/LastSyncError2保持事实；未改Windows/WSL校时、GRUB/内核或C1。
+
+准备组合第一轮68项67通过/1失败：I0真实静态服务用例在新副本student/dist尚未建好时启动，ENOENT，不是产品拒绝；已先完成student typecheck/build再重验，原失败保留。网关测试第一轮跨Windows/WSL import URL错误，修正本人临时harness的Linux file URL后3/3通过；原工具/断言不改，仅保留测试新建fixture取代递归清理，避免未经许可删除。PS LongScriptOnly、SealOnly全组通过，四份PS解析通过；完整maintenance/local-entry依赖Robert机器路径，本机未运行，不冒称通过。
+
+沿已有应用开发换版/严格TLS与原24表许可，正常停止旧3443 unit（MainPID0/Result success），用本人serve-i0组合脚本启动xunjie-i0-entry-pr56-pr67-20261014。复用原受控配置/库/TLS/签名/SSH/代际，仅进程静态选项指向新副本已构建正式student/dist，不修改原配置文件、秘密或schema；原源目录/配置/启动参数保留回退。六次strict TLS GET，两入口live/ready/静态均200；3443已不再使用历史9fa就绪装配，3444/35表不搬到3443。
+
+最终正式交接包会按新merge原始Git blob重新接收/校核并构建，避免Windows源码换行与固定源码SHA混淆；此前过程副本/日志保留，不把准备时点字节复制当最终Git字节证明。当前90秒正常登录/原对象只读/Session回查与组合最终检查执行中，实际结果随后追加；没有学生编辑/运行/提交、浏览器展示或模型调用。
+
+### 9.2 本批实际验证与既有空白失败
+
+组合重验68/68通过、0失败/跳过，teaching及student类型/构建通过。90秒已有指定学生正常登录→原bootstrap/Attempt读取→89次Session GET全200，实时采样倒退0，原24表工作区revision/确认snapshot/run ID保留；只创建正常认证Session，不发学生保存/运行/提交或模型请求。不是Robert Chrome结果，也不把LastSyncError2变成Windows同步完全通过。
+
+全merge暂存空白检查失败，位置全部来自PR67继承的原CRLF公开JSON；原7100ea6→main也有相同失败，新增本人写集相对main的空白检查通过。[前后差异](evidence/dla-pr67-integration-20261014/whitespace-baseline.json)记录相同位置/数量和文件归属。保留UI本人原始blob，不越权格式化他人证据或关闭检查；交UI维护者另行处理。静态文档检查errors=[]，不把全merge空白失败写成全仓通过。
