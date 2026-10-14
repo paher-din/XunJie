@@ -346,4 +346,17 @@ A5 专项 11 项与 §7 约定接缝一一对应：
 
 以上四项均不阻塞本批已实现能力的服务端验证，但在裁决/确认前不写作共享契约已批准，也不据此扩大后续批次范围。
 
+## 9. 第二批（A5.4/A5.5）开工前的缺口核对（2026-10-14，只读）
+
+按 §6 提案 8，第一批验证后才核第二批的实际缺口。下面是在 `e61252f` 提交的树上的只读核对结果，**未写任何代码、未改任何契约**。
+
+| 第二批要求 | 现有能力 | 实际缺口 |
+| --- | --- | --- |
+| A5.4 复制蓝图与新活动、保留来源关联、旧要求不被修改 | A2 已有 `POST /api/courses/:id/blueprints` 的 `mode:'copy'`：产生 `revision=1` 的新草稿并保存 `source:{courseId,blueprintId,revision}`（[draft.ts](../../apps/teaching/server/design/draft.ts)）。复核/确认/分配走 A2 既有链 | **只有一处**：`ActivityVersion` 内部已持久化并校验 `sourceBlueprintId`（[activities.ts](../../apps/teaching/server/design/activities.ts) 的 `blueprint_id` 列与读取交叉核对），但公开的 `activityViewSchema`（[results.ts](../../apps/teaching/contracts/design/results.ts)）只投影 `sourceRevision`，**没有 `sourceBlueprintId`**。因此从「一次已复核尝试的 `activityVersionId`」无法经公共读取反查来源蓝图。补一个可选字段即可 |
+| A5.5 至少一个相关后续任务、新尝试读取同课程适用目标的有效状态、撤回与无关历史排除、缺迁移证据保持未知 | C2 已有 `POST /api/assignments/:id/attempts`（创建/返回当前尝试）；A4 已有 `readCurrentInTransaction`，按活动目标与 `scope` 过滤主张、`withdrawn/superseded` 不进有效投影、`basisAvailable=false` 标 `unavailable`（§4.6 第 1 项已在 `review-context` 固化） | 未发现需要新增生产代码的能力缺口；缺的是**端到端验证**：复制蓝图 → 检查 → 确认 → 分配 → 新尝试 → 读取适用有效状态，并证明撤回主张不回带、未知不被补造 |
+
+结论：第二批的代码增量是**一处 A 属只读投影字段**（`activityViewSchema` 加 `sourceBlueprintId`），其余为复用既有 A2/C2/A4 能力加一条端到端验证。`contracts/design` 是 B/C/UI 共同消费的共享契约，按 AGENTS「共享字段…先提案并确认」，该字段与第二批写集需负责人另行确认后再实施；本任务不据本节自行修改契约。
+
+第二批拟写集（待确认）：`docs/tasks/A5_FEEDBACK_REVISION_FOLLOWUP.md`（本节及后续执行记录）、`README.md`、`apps/teaching/contracts/design/results.ts`（+1 可选字段）、`apps/teaching/tests/a5-feedback.test.ts` 或新增 `tests/a5-followup.test.ts`、`apps/teaching/tests/evidence/a5/`。不新增路由、不改表结构、不改 A2/C4 判定。
+
 待获授权维护者汇总：批准后的实际代码位置、受控接口签名、验证命令与结果、失败/跳过/未执行项，按 A4 先例汇总至 MVP_SPEC 第 10 节与 TECH 对应契约段；本任务不自行修改受保护基线。
