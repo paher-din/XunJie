@@ -668,3 +668,16 @@ wsl -d Ubuntu -u root -- systemctl show xunjie-i0-entry-recovered-20261014.servi
 组合保留远端exchangeHttps/进程日志错误收束、SIGTERM/unknown真实停止、student/tutor发布投影和原SQLite冻结记录断言、独占UUID输出/一次执行幂等命名；同时保留--recovery-run的新配置/TMPDIR。后续每轮输出采用UUID；UI交接的recovery模式可传第三参数明确选择该轮verification.json，不把新轮静默映到旧轮。未实际执行合并后完整20项；本轮已完成的20/20、178响应准确对应61ae758验证器及固定9fa业务源，原证据目录不改。
 
 合并后只补受影响范围：Node24.21.0离线错误/停止/发布投影回归35/35、0失败/跳过；当前已存在的新Activity分别正常GET student/tutor投影，调用合并后的实质断言，再只读原activity_versions核原JSON hash/冻结runtime/readiness/蓝图/revision/代际，均通过，见 [合并后定向现场读取](evidence/c-entry-recovery/merge-release-check.json)。不新建对象、不调用模型、不重启当前服务或重跑20项；离线35与现场定向读取单独记账。新增摘要/检查见 [合并核验](evidence/c-entry-recovery/merge-validation.json)，旧统计各留原提交。
+
+## 16. 2026-10-14 负责人确认 A 两项已完成，纠正当前待办
+
+负责人本轮明确：“A还需补正公开资源样例、复核结果；这一部分已完成，审核和修改在pr55，补正公开资源样例在pr53。”本节据此纠正当前状态，前文相应待办只保留其历史时点，不重复派发。
+
+| A责任项 | 当前状态与可核查来源 |
+| --- | --- |
+| PR55对应审核与修改 | **已完成。** [原PR55](https://github.com/paher-din/XunJie/pull/55)的R1～R3修复由5c3f0cf等提交交付，已完整保留在0d7c5f9；[审查修复记录](I0-C55_REVIEW_FIXES.md)记具体授权、异常/停止/发布与冻结记录断言、35项回归。负责人确认本项完成，不再列“A待复核结果/待完成原审查修改” |
+| 公开资源样例补正 | **已完成。** [PR53固定交接稿](https://github.com/paher-din/XunJie/blob/869f3c0fc53884e573761ba43cec72000fc91f98/docs/tasks/I0_A_C_HANDOFF.md) §17.5/24及9bd1f16：公开TXT明确material.visibility={student:true,tutor:true}，私有答案明确false/false，给完整合法JSON；原安全默认未放宽。另补第5项实际GET投影/冻结证据映射。当前PR53 head869f3c0，不将旧fe6d301摘要当最新样例 |
+
+该A责任项由Robert明确委托的Agent代接，按PR记录保留执行来源，不冒充czr112本人签认。A模块/技术决策/集成质量责任仍保留；角色责任不等于上述两项持续未完成。此次仅校正本人任务、PR55说明及本人最新#30回交中的待办表述，不修改A作者稿、保护基线或既有运行证据，不重跑业务。
+
+尚未因本次确认关闭的独立事项：§15.7所录固定9fa宿主/health/ready的503（新的宿主就绪缺口）；UI精确信任/账号通道、登录/分配接线与实际浏览器验收；其他35表/HDL/ALU等沿原门禁。两PR当前仍Open/Draft，审核/补正完成不改写为已合并、已部署或H-01完整通过。
