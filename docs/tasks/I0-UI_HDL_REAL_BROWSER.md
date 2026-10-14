@@ -1,6 +1,6 @@
 # I0-UI：真实 HDL 页面与浏览器闭环
 
-日期：2026-10-14（Asia/Shanghai）。负责：UI / Robert；实施：当前 Agent 与三个分工子 Agent。状态：实施中。
+日期：2026-10-14～2026-10-15（Asia/Shanghai）。负责：UI / Robert；实施：当前 Agent 与分工子 Agent。状态：本批实现、本机迁移和获准合成浏览器闭环完成；可审查交付与原 Issue 回交见末节，不表示完整产品或真人验收完成。
 
 ## 1. 要求、基线与已读依据
 
@@ -37,7 +37,7 @@ UDL-07/08：显式同快照 hdlSelection/ObjectRef、服务端冻结 basis 和 C
 
 ## 4. 实施与现场事实
 
-待随实施补记具体代码、命令/结果、中间失败、批准和未完成项。PR68 合并回执保留在本机工具目录，浏览器旧 b7 产物仍是旧批次，不自动转为本任务新源码证明。
+以下按当时事实保留实施、批准、被取代提案与失败；最终结果见§5。PR68 合并回执保留在本机工具目录，浏览器旧 b7 产物仍是旧批次，不自动转为本任务新源码证明。
 
 ### 4.1 原评论逐项完成与回交核对
 
@@ -115,3 +115,46 @@ Chrome 155 的既有已连接 profile「您的 Chrome」在严格受信 `https:/
 ### 4.8 合并主线后的编辑区域复核
 
 已正常合并 main `0f246056` 的 A6/P3 最新负责人范围及 UI 读取拒绝守卫，合并点 `41563d9`；仅辅导客户端私有字段冲突，保留两边行为。合并后类型、569 单元和生产构建通过。真实 Chrome 复核发现本任务新增编辑器包裹层是普通 block，内部原 flex 编辑器高度只有5px；业务源码/保存/执行正确，但代码视觉不可用。只把这个本人包裹层设为纵向 flex，恢复原 CodeWorkspace 填满已有空间，随后用相同本机 C/HDL 对象只读复核可见代码及历史，不新增模型调用或执行任务。
+
+## 5. 2026-10-15 最终本机验证与交付
+
+本批独立工作树完成当前页面真实 HDL 接线、整个专用节点/正常业务/本人模型迁到 Robert 的 D 盘 WSL 环境，并执行同一真实 Chrome155/profile「您的Chrome」中的获准合成闭环。依据最新 main `0f246056` 的 G3 §17，比赛基础与合成增强演示分别回交，成熟 C 历史批次不重新累计；H3/2800/course_check、完整 P3/P4/P5/AC/NFR 和真人条件未因本批完成而关闭。
+
+### 5.1 固定来源、实际环境与可复用入口
+
+- 完整演示修复源 `bec2e3c250091969f59e233439debd307a6925c2`，原正常 ZIP 143文件/5,653,272bytes/SHA256 `bdecee2b4d532468d3dd2b3a4c7709dd3f9317175a63e29fad09875736595fac`。完整链中的早期464b33e/f03c033失败及后续修复分开保存，不能把最终修复追写成早期通过。
+- 已吸收主线并完成编辑器显示修复的当前前端 `8d613a7224d6e309500913277a10b024258fa82c`，entry `/assets/index-Iq2DyhKA.js`，143文件/5,653,435bytes/ZIP SHA256 `4346d0a05308d0b73ebddc109be37dd5612ee86f71efd373d84baeb92e63ed5d`。实际 C 编辑器646px、HDL491.5px，代码完整可见；原 C 结果/历史及 HDL 已停止采样恢复，公开账本九组对象和版本完全不变，未再构建、装载或调用模型。
+- 正常业务源254e938，原35表新合成库；专用执行VM固定9fa76ad原34文件/sourceHash7f4ec4f3…7852、四原OCI、新实际内核/身份/指纹。没有搬 PAHER 数据库、密钥、磁盘或旧验证账本。节点实际 readiness 双 true，原始日志/失败和跳过见公开包。
+- 同源 `https://127.0.0.1:3444`，Windows严格系统TLS/同一批准叶子/IP SAN/CurrentUser Root，无忽略证书或私有登录通道。C/HDL分别使用新的 synthetic-robert-student-a/b 原表单、Session/CSRF/bootstrap；跨账号分配两向读取被拒绝，没有旧文件/正文泄漏。
+- 运行工具、公开下载/OCI、原始日志、产物与入口保留 `D:\XunJie_Project\i0-ui55-connection\hdl-ui\local-environment`。日常 `XunJie.ps1 status/check/start/stop`；模型默认关闭，仅 `start -EnableModel` 使用自己的 `DEEPSEEK_API_KEY`。本机受限initializer/signing/SSH/TLS文件不在Git；本人的key只在本机子进程env，未读取或使用PAHER的key。
+
+### 5.2 实际合成操作与结果
+
+| 路径 | 实际结果及原始证据 |
+| --- | --- |
+| HDL 主链 | Assignment4c589f3c / Attemptc5d1cf8e：v1真实成功Build与SW0=1仍LED0；显式漏分号/v2真实failed Build2a28b361，原第10/11行诊断；同快照代码对象+Build正常请求真实模型提示；显式分号修订/v3成功Buildce1bc3d1与Sessionc40824e4，同SW0=1输出LED1，BTN0、多位AN、推进与有限Trace80000ps，然后termination_confirmed=true |
+| 提示与证据边界 | 实际2次模型HTTP200：2933/507、2704/466 input/output。首Job03f58f2d只received34，可见性/恢复错误保留，未补造展示。新Job70d697fc的原message92e9f7a9 / action5b918f49 / deliveryc4396c80，received46 → 正文实际可见displayed48 → 合成账号明确“我先试试”acknowledged50。此动作由Agent按授权执行，不计真人或教学效果 |
+| 全输入补验 | 原教师API另建Assignmentcb4e54cb、Attemptbb20d32e、成功Builddf648a36，原Config显式绑定resetN；真实SW0/1/2/15、BTN0～4各按/松、resetN按/松、键盘Space/Enter、低有效AN/SEG/DP、LED/SEG真实X/Z、精确160000ps。取消替换没有新命令；明确替换先核旧a424a6b2退出才得新88afdc62，再明确停止新实例 |
+| 降级与恢复 | 模型宿主正常关停后默认关闭重启，原PID已退出、同VM/代际/指纹/库ready。第三help Job8d88a61e accepted后failed、0新增模型HTTP/正文/教学动作；编辑保存冻结v4仍成功，旧v2引导仅历史；原板卡刷新前后Build/Session/操作/文件/快照不增加 |
+| 原 C 回归 | 同源正常A登录，新Attempt1e657276、snapshot4be2ecef、Run53e6cafd/Job2269a9cc真实compile/execute exit0、unitTerminated=true，stdout“Robert local C core”。固定历史/hash/profile显示正确；report.txt原missing，不编造下载。check_state=null，只计普通运行和Core入口保留，不计课程检查通过 |
+| 最终清场 | 33Job全终态、4Build（3成功/1预期失败）、4Session全部stopped/termination_confirmed、25操作；模型HTTP总计仍2。原库保留用于后续，业务/VM当前可用且模型默认关闭 |
+
+### 5.3 相称验证、失败与未执行
+
+类型检查、原正常生产构建通过；主线合并后43文件569单元通过。独立7项正常Chrome/隔离HTTP协议用例覆盖实际形状、pending/ACK丢失/原键核对/刷新停止、同快照来源/降级、长pending手动续读、迟到分配、键盘操作；这是协议替身，不冒充本机真实节点。原冻结镜像反例4/4、宿主生命周期3/3、seed/schema反例与公开证据反例分别通过；公开账本校验是完整性检查，不计产品测试数量。
+
+真实节点：C guest58总/55通过/0失败/3跳过、SSH10/10、类型退出0；随后 HDL10/10和C52总/51通过/0失败/1guestSSH跳过，分别记录原轮次不累计。初始fixture搬运缺失、验收umask、部分OCI超时、seed回执误解、正文显示阈值/恢复当前性、5px编辑区及定位器超时均保留原因与修复，不写成全部首次通过。
+
+严格静态HTTP首次137servable字节/MIME/nosniff正确，另6原JSON/OFL拒绝；415中间产物13变更重新测，未变124与6拒绝引用前轮。最终8d产物窄变更及当前入口/健康检查记录单独文件，不覆盖原演示产物。打包35项准备边界扫描0命中，143ZIP逐字节匹配；源码库/凭据/私钥不进dist或公开包。
+
+未执行：剩余12SW逐个现场点击、完整多标签/自然会话到期/断网丢ACK/换代际/教师暂停本地全故障矩阵、完整课程Report检查与产物下载、教师界面、真实学生/教师签认、教学效果、全AC/NFR和阶段门禁。原成熟C/H历史证据与协议用例保留其批次，不改写为本轮新现场。A仍需正式组合复核入口/TLS/身份/分配/暂停边界；B/C需接纳来源与节点工程收据。产品基线及 MVP_SPEC §10：待授权维护者汇总。
+
+### 5.4 团队可独立复查的材料与本机使用
+
+[逐项回交包](evidence/ui30-hdl-20261015/handoff.md)包含三个原comment与H/UDL逐项状态、准确对象/原返回/模型元数据/回执/截图/固定manifest/实际节点日志；公开包自身不含账号密码、签名key、会话凭据、模型上下文或数据库。原SDK模型上下文只在获准本机业务进程与DeepSeek使用，模型HTTP证据只记录状态与实际token。
+
+[本机工具说明](../../tools/i0-hdl/README.md)和[原教师API seed说明](../../tools/i0-hdl/SEED_LOCAL_COURSES.md)提供启停、正常合法Assignment入口、只读公开导出与校验。`read-local-evidence.mjs` 在 `/opt/xunjie-ui-local/source/tools/i0-hdl/` 由本机Node24执行，只读本人三合成账号库；`verify-local-browser-evidence.mjs` 在本仓库读取公开包，默认可检查in-progress，最终加`--require-settled`。完整demo manifest特定绑定bec2e3c，当前8d另列，不用当前包冒充旧模型链。
+
+回交先给数字逻辑#38，#30保留共同接纳入口与A/B/C请求；不在#53/#56重复整包，不自动合并新PR或关闭#30/#38。公开交付URL与固定提交见最终回执。
+
+补充主线核对：交付准备时 main 已推进至 `3a6de704`（PR73 H-05 控制/作品版本分离及 C5 证据）。已读 A/C 指定评论回复任务全文、三份业务差异及兼容说明；原 UI ACK 后 GET 分别读取两个 revision，不从保存次数推导控制 CAS。该主线将普通合并进本PR，保持他人原记录和回归，不重做其审查。当前本机业务仍固定254e938，未把仓库合并称作H-05已部署或新现场验证；原已完成完整链的source/ID/版本保持不改。A/C已接纳之前UI评论的原H状态，新的本机身份/合成包继续交其核对。
