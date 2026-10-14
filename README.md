@@ -55,6 +55,7 @@ node tools/a0-review/check.mjs
 | A/C 按 H 编号回交 | [I0-A/C 交接](docs/tasks/I0_A_C_HANDOFF.md)；[HTTPS 与账号入口准备](docs/tasks/I0_HOST_ENTRY_PREPARATION.md)单列 C 准备/现场执行、A 复核及 UI 接收；身份/分配、受信代际、原 Job 与版本/公开样例沿原交接 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
+| 指定 PR 集成 | [54 → 55、59 → 53、55 → 53](docs/tasks/PR_INTEGRATION_54_55_59_53.md)；实际接纳差异、验证与审核交付 |
 | 其他模块与历史交付 | [全部任务记录](docs/tasks/)；按模块/编号查实现、批准范围、实际命令与原始证据 |
 
 准备浏览器通过、服务端预交付、Issue 关闭与阶段进入分别记账；真实服务/节点/模型、完整 M/AC/NFR、真人与教学效果按原条件验收。产品进度由获授权维护者汇总至 MVP_SPEC §10。

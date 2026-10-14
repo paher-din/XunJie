@@ -1,0 +1,301 @@
+{
+  "date": "2026-10-14",
+  "baseline": "eea962322ace4a1fd3dc86ce531adf5711552da9",
+  "node": "v24.21.0",
+  "kind": "I0 host readiness isolated synthetic verification",
+  "commands": {
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json",
+    "regression": "node --test --test-concurrency=1 --test-reporter=tap server/app/i0-readiness.test.ts server/app/i0.test.ts server/app/i0-tutoring.test.ts tests/app.test.ts tests/errors.test.ts tests/startup.test.ts"
+  },
+  "typecheckExit": 0,
+  "buildExit": 0,
+  "regressionExit": 0,
+  "sources": [
+    {
+      "file": "apps/teaching/server/app.ts",
+      "sha256": "1d079e951e63a8875e7b567e9c7dd1e8405746d98de28f558414f67e35d8a09f",
+      "gitNormalizedSha256": "2666a9acb80aa7047d86533f0936274e85074b29b0a56ed29c4e94c045fd4a90"
+    },
+    {
+      "file": "apps/teaching/server/app/i0.ts",
+      "sha256": "162de780d494fc88051f6e9a7d3258ebdfb3c4c61a9a9fc9300c8a3e9a01a7e8",
+      "gitNormalizedSha256": "a4b12ebc8f2b03c156a16ff61b38aa06d515eae0429cb60322c0a269ac5cc459"
+    },
+    {
+      "file": "apps/teaching/server/app/i0-readiness.test.ts",
+      "sha256": "2e13d49a7232a7b61923468879e090694df2e5a8dc5d30e26b36825fe3847291",
+      "gitNormalizedSha256": "2e13d49a7232a7b61923468879e090694df2e5a8dc5d30e26b36825fe3847291"
+    }
+  ],
+  "logs": [
+    {
+      "file": "red-setup-failed.txt",
+      "bytes": 49,
+      "sha256": "600fc89673490ee3df66d015085b1eeafe57a2b51d79863229f20e434fda7536",
+      "recordedBytes": 50,
+      "recordedSha256": "b0f904d694d63e01cdd32854ba285aaaea636de17b3bfd87e4d9db2340b3e874"
+    },
+    {
+      "file": "red.txt",
+      "bytes": 1045,
+      "sha256": "121340bdee492e38e9236b596bdd2e5fdea8285c72b627983f41a0d405c8ab8c",
+      "recordedBytes": 1072,
+      "recordedSha256": "49bfbe64386110edd349e3046d36078be41d446413d89458c1b61b9661d91fce",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "file": "green-first.txt",
+      "bytes": 1583,
+      "sha256": "8ac55022de7b49d7d9f4a9f51021de6ea164cdd0224e95393899540350af4449",
+      "recordedBytes": 1629,
+      "recordedSha256": "ea9afa83886a1e229d50625705a706db9fd487250ec9074a81b87c8b0a0a3a61",
+      "counts": {
+        "tests": 6,
+        "pass": 6,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "file": "regression.txt",
+      "bytes": 8965,
+      "sha256": "a1ee9c5d363cc9b3f5672befc706d6d6d1b2f1ddf3c892afb895a8f6002c2e75",
+      "recordedBytes": 9197,
+      "recordedSha256": "a432023f2ec515cc33ddc981586d10ac63760024719d5b48e67c0b506e36e283",
+      "counts": {
+        "tests": 37,
+        "pass": 37,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "file": "regression-expanded.txt",
+      "bytes": 8963,
+      "sha256": "43e52bd3be7b79dccc1070a90e7fe5805623b5c9f41fe88127882c76fa169b34",
+      "recordedBytes": 9195,
+      "recordedSha256": "b3879490c5b1b88abcd32e851bb98aba85474d7809108295b6ade0c074d41d93",
+      "counts": {
+        "tests": 37,
+        "pass": 37,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "file": "regression-final.txt",
+      "bytes": 8959,
+      "sha256": "b7e91a789762b83feb38e642167f3adcd959129362f4170c48b66294d0c28111",
+      "recordedBytes": 9191,
+      "recordedSha256": "9be89c90a476a68aa34a40e7550ba74ba67292c15f5846a11a7dbf3417c77618",
+      "counts": {
+        "tests": 37,
+        "pass": 37,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      }
+    },
+    {
+      "file": "typecheck-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recordedBytes": 0,
+      "recordedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "build-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recordedBytes": 0,
+      "recordedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "doc-before.json",
+      "bytes": 661,
+      "sha256": "dc08263d39deb14ab9a2b7032d686769df714170a2af388609c3e83ed7472caf",
+      "recordedBytes": 688,
+      "recordedSha256": "2050883efc3a63d8c38ec8fb8e5e6a78e7172855ebcb62ee2152b4a6a87c01b7"
+    },
+    {
+      "file": "doc-after.json",
+      "bytes": 661,
+      "sha256": "3a3b6ad8cdc842db7fcf0f86cb840bbfc509f64983d973b13c9c732fbd0c4d89",
+      "recordedBytes": 688,
+      "recordedSha256": "be61dc90eda71ad26df7047175b708e133b840a8840ef2edb4863543f037f512"
+    }
+  ],
+  "evidenceEncoding": "Published text uses Git LF bytes; recordedBytes/recordedSha256 retain original Windows log bytes; source sha256 records tested working bytes and gitNormalizedSha256 records Git LF source bytes.",
+  "retention": {
+    "scope": "Final regression batch only, database birthtime cutoff after final typecheck started; read-only table counts and integrity; no credential/business rows read",
+    "retainedFiles": 26,
+    "groups": {
+      "24": 18,
+      "28": 8
+    },
+    "files": [
+      {
+        "directory": "xunjie-a12-completion-1XoX4l",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-2t6GPo",
+        "tables": 28,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-4UkIL4",
+        "tables": 28,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-7kyX17",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-9nz4db",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-bZuem5",
+        "tables": 28,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-fA6vjt",
+        "tables": 28,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-fKHhoP",
+        "tables": 28,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-Fq30Hm",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-Fvii8y",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-G1pNXE",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-HbV8Fp",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-HUd2PG",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-JHdINT",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-kEf5In",
+        "tables": 28,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-LBEHj3",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-LdLKLw",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-looV0M",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-lzbJhb",
+        "tables": 28,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-mSyl53",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-nhWdQL",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-OWgB7P",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-raMPU1",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-sbXNCR",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-w1SFmA",
+        "tables": 24,
+        "integrity": "ok"
+      },
+      {
+        "directory": "xunjie-a12-completion-w5FFSC",
+        "tables": 28,
+        "integrity": "ok"
+      }
+    ]
+  },
+  "safeguards": {
+    "schemaChanged": false,
+    "originalDatabasesTouched": false,
+    "credentialsChanged": false,
+    "runtimeFingerprintChanged": false,
+    "realNode": false,
+    "realModel": false,
+    "strictTls": false,
+    "browser": false,
+    "remotePublication": false
+  },
+  "limits": [
+    "Reused original-lock dependencies and existing student dist only for unchanged static serving behavior; not current UI/browser acceptance.",
+    "Plain loopback HTTP listener and app.inject are synthetic; PAHER strict TLS and authenticated C1 probe remain unexecuted.",
+    "No full application regression, load/NFR, VM/WSL restart or classroom acceptance run.",
+    "Initial relative-path test copy failed before test loading; separate setup failure preserved. Red reproduction intentionally failed healthy readiness."
+  ]
+}
