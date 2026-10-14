@@ -481,3 +481,17 @@ Robert明确要求检查远程main更新、必要整合、完成整体PR并合�
 `88f7eac`已推送至原远程`i0/ui-frontend`；整体[PR #57](https://github.com/paher-din/XunJie/pull/57)已创建并附在本会话，base为main `0e68325`。GitHub在创建head上报告MERGEABLE/CLEAN，CI诊断checks/statuses均为空；这表示没有返回CI任务，不写“CI全部通过”。本节文档提交后再次核最新head、base与合并状态，依Robert明确授权用保留提交的merge方式合入，绑定实际head以防分支在等待期间被更新；不使用管理员绕过或合并其他开放PR。
 
 合并完成后从远端再fetch，核main包含PR最终head及远端merge记录，主checkout转main并仅fast-forward。清理先保存8个管理工作树的可恢复快照，再删除本批11条协作分支及本地/远程交付分支；必要依赖链接只unlink自身，无关两工作树/其他成员分支和`.zcodeignore`保留。工作树归档状态由本任务attachments保存，合并SHA/时间由PR公开记录保存；本节不提前宣称合并或清理已经完成。
+
+### 14.3 合并与清理的实际结果
+
+整体[PR #57](https://github.com/paher-din/XunJie/pull/57)已于2026-10-14 13:13:16（Asia/Shanghai）正常merge，最终head为`dbe5bd377d9ab2d9784957fb9cb7e1864e776545`，合并提交为`657ec10b03f833d3a9891650a27ac2c60b645ece`。随后fetch确认远程main包含最终head，主checkout切main并fast-forward到同一提交；合并树与已验证head无差异。保留原本的本地检查结果与13项服务测试跳过，GitHub未返回CI任务，不将空状态写成CI通过。
+
+§14.1～14.2记载的是归档清理方案，实际执行有如下偏差：8次管理工作树归档仅返回`queued`，复核attachments仍为工作树，没有可核实的归档快照；直接移除依赖链接及临时PR正文文件的命令被自动审批拒绝，返回理由仅为`blocked by policy`，均未执行。因此没有宣称管理归档或物理目录删除成功，也没有换工具执行被拒绝的链接/正文删除。
+
+替代的Git清理先生成并用`git bundle verify`核实主仓库`.git/i0-b-worktrees-2026-10-14.bundle`，保存本批11条协作分支的完整历史。检查确认8个工作树没有未提交源码，projection/limited-check各仅有原WSL依赖链接；其余依赖与测试产物均不属于待交源码。核对本机Git for Windows 2.55.0对应的[一手源码](https://github.com/git-for-windows/git/blob/32c4f7689275d233577576630e1ac5b7eb354eb0/dir.c)后，确认`git worktree remove`会保留junction而不会遍历其目标，再移除8个已核对的Git工作树；仅上述两个有未跟踪链接的工作树使用`--force`。原主仓库学生/教学依赖均仍可读。
+
+本批11条协作分支已在恢复bundle核实之后删除；`i0/ui-frontend`本地分支也已删除，远程分支用绑定最终head的lease删除成功。合计12条本地分支、1条远程分支；`git branch --list 'codex/i0-b-*' 'i0/ui-frontend'`与远程对应分支查询为空。`git worktree list`仅保留main，以及其他会话的`c55-review-fixes`、`i0-a-c55-review`、本轮期间新增的`i0-ui-real-browser`，未删除或改动它们。用户原未跟踪`.zcodeignore`保留；清理时主checkout除此文件外没有待交改动。
+
+尚未完成的物理清理明确保留：`i0-b-controls`、`i0-b-code`、`i0-b-run`、`i0-b-return`、`i0-b-history`、`i0-b-projection`、`i0-b-limited-check`、`i0-b-real-entry`这8个原工作树根下均只剩`apps/student/node_modules`指向主仓库依赖的junction及其父目录，无`.git`或源文件；Codex附件仍显示旧工作树，不能称已归档。ignored的`apps/student/test-results/i0-b-overall-pr.md`临时正文也因相同审批拒绝保留。上述残留清理由平台允许的目录/附件清理操作承接，不算Git分支或工程交付未合并；恢复bundle保留用于必要恢复，不作为团队开工前置。
+
+本节是合并后的事实补记，采用独立临时文档分支交付；只改本任务记录，根`node tools/a0-review/check.mjs`检查78份文档/1164内链、errors=[]、退出0，原Git差异空白检查退出0。不重复已通过且源码未变化的测试。补记合入后删除该临时分支，不新建工作树或改动受保护文档。
