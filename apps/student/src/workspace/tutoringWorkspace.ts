@@ -11,7 +11,7 @@ import { verifyTutorCommandReceipt } from './tutoringCommand'
 import { confirmationRepository } from './confirmationDb'
 import { tutoringRequest } from './tutoringTransport'
 import { describeError, reportDiagnostic } from './diagnostics'
-import { tutoringCommandFailureNotice, tutoringFailureNotice } from './tutoringNotice'
+import { tutoringCommandFailureNotice, tutoringFailureNotice, tutoringReadRejectionNotice } from './tutoringNotice'
 
 export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState; limitedCheck?:boolean|null; sendingKey?:string|null }
 /** One owner serializes durable facts. Never create another global ContextGuard. */
@@ -28,6 +28,7 @@ export class TutoringWorkspace {
   private displayFence = false
   private stopVersion = 0
   private requiresRevalidation = true
+  private automaticReadsPaused = false
   private readonly observed = new Map<string, { actionId: string; hash: string; kind: TutorReceiptKind; command: TutorCommand }>()
   constructor(readonly confirmation: ConfirmationWorkspace, readonly context: CommandContext) {}
   get current() { return this.state }
@@ -102,7 +103,12 @@ export class TutoringWorkspace {
       this.publish({ notice: tutoringFailureNotice(e, '辅导本机存储不可用，请恢复本机存储后重新读取；当前作品仍可继续编辑和保存。') })
     }
   }
-  read(revalidate = false) { return this.enqueue(() => this.readNow(revalidate)) }
+  read(revalidate = false) {
+    return this.enqueue(async () => {
+      if (this.automaticReadsPaused && !revalidate) return
+      await this.readNow(revalidate)
+    })
+  }
   private clearHistory(notice:string) {
     this.historySequence++;this.historyPending=false
     this.publish({history:{phase:'unavailable',data:emptyTutorHistory(),notice}})
@@ -216,16 +222,21 @@ export class TutoringWorkspace {
       await this.persist(ledger)
       if(!this.valid() || seq!==this.sequence) return
       this.requiresRevalidation=false
+      this.automaticReadsPaused=false
       this.publish({ synchronized: true })
       await this.flushReceipts()
     } catch (e) {
       reportDiagnostic('workspace.read-failed', { source: 'tutoring.events', error: describeError(e) })
+      const rejected=this.valid()&&seq===this.sequence&&e instanceof WorkspaceRequestError&&
+        e.failure.kind==='api'&&!e.failure.error.retryable
+      if(rejected)this.automaticReadsPaused=true
       if(e instanceof WorkspaceRequestError&&e.failure.kind==='api'&&['UNAUTHENTICATED','FORBIDDEN','RECOVERY_REQUIRED'].includes(e.failure.error.code)) {
         refreshHistory=false
         this.publish({limitedCheck:null})
         this.clearHistory('当前授权或代际已失效，请重新载入。')
       }
-      this.publish({ synchronized: false, notice: `辅导读取未完成：${tutoringFailureNotice(e, '请稍后重新读取；编辑和保存仍可继续。')}` })
+      this.publish({ synchronized: false, notice: `辅导读取未完成：${rejected?tutoringReadRejectionNotice(e):
+        tutoringFailureNotice(e, '请稍后重新读取；编辑和保存仍可继续。')}` })
     }
     finally { this.publish({ busy: false }); if(revalidate&&refreshHistory&&!this.historyPending)void this.readHistory() }
   }
