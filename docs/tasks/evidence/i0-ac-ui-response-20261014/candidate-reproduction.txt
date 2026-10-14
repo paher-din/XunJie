@@ -1,0 +1,19 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: {"requestId":"c9563099-477e-4ce5-bde4-cb92322fa4a4","error":{"code":"VERSION_CONFLICT","message":"Version conflict.","retryable":false,"recovery":"Read the current authorized version before retrying."}}
+
+409 !== 200
+
+    at file:///mnt/c/Users/p3148/.codex/worktrees/dl-a-continuation/XunJie/docs/tasks/evidence/i0-ac-ui-response-20261014/reproduce-h05.mjs:47:92
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 409,
+  expected: 200,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

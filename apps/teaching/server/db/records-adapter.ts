@@ -60,7 +60,10 @@ export function saveAttempt(tx: Transaction, attempt: Attempt) {
   if (old) {
     const current = readAttempt(tx, checked.attemptId);
     if (checked.attemptRevision === current.attemptRevision && JSON.stringify(checked) === JSON.stringify(current)) return;
-    if (checked.attemptRevision !== current.attemptRevision + 1 || checked.decisionEpoch < current.decisionEpoch) throw new ApiError('VERSION_CONFLICT');
+    // File confirmation has its own CAS; every control field must stay unchanged in this branch.
+    const workspaceOnly = checked.attemptRevision === current.attemptRevision && checked.workspaceRevision === current.workspaceRevision + 1
+      && JSON.stringify({ ...checked, workspaceRevision: current.workspaceRevision }) === JSON.stringify(current);
+    if (!workspaceOnly && (checked.attemptRevision !== current.attemptRevision + 1 || checked.decisionEpoch < current.decisionEpoch)) throw new ApiError('VERSION_CONFLICT');
   }
   const assignment = tx.get('SELECT * FROM assignments WHERE id=? AND course_id=? AND student_id=? AND activity_id=?',
     checked.assignmentId, checked.courseId, checked.studentId, checked.activityVersionId);

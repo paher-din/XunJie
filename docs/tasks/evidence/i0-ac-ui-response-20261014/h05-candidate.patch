@@ -1,0 +1,50 @@
+diff --git a/apps/teaching/server/workspace/files.ts b/apps/teaching/server/workspace/files.ts
+--- a/apps/teaching/server/workspace/files.ts
++++ b/apps/teaching/server/workspace/files.ts
+@@ -88,7 +88,6 @@
+   }
+   validateFiles(attempt,next);
+   const nextAttempt=assignmentActive?activate(attempt):structuredClone(attempt);
+-  if(nextAttempt.attemptRevision===attempt.attemptRevision)nextAttempt.attemptRevision++;
+   nextAttempt.workspaceRevision++;
+   const processAccepted=Boolean(batch.process&&attempt.collecting&&Number.isSafeInteger(batch.process.captureRevision)&&batch.process.captureRevision===attempt.captureRevision);
+   return {attempt:nextAttempt,files:next,created,
+diff --git a/apps/teaching/server/db/records-adapter.ts b/apps/teaching/server/db/records-adapter.ts
+--- a/apps/teaching/server/db/records-adapter.ts
++++ b/apps/teaching/server/db/records-adapter.ts
+@@ -60,7 +60,9 @@
+   if (old) {
+     const current = readAttempt(tx, checked.attemptId);
+     if (checked.attemptRevision === current.attemptRevision && JSON.stringify(checked) === JSON.stringify(current)) return;
+-    if (checked.attemptRevision !== current.attemptRevision + 1 || checked.decisionEpoch < current.decisionEpoch) throw new ApiError('VERSION_CONFLICT');
++    const workspaceOnly = checked.attemptRevision === current.attemptRevision && checked.workspaceRevision === current.workspaceRevision + 1
++      && JSON.stringify({ ...checked, workspaceRevision: current.workspaceRevision }) === JSON.stringify(current);
++    if (!workspaceOnly && (checked.attemptRevision !== current.attemptRevision + 1 || checked.decisionEpoch < current.decisionEpoch)) throw new ApiError('VERSION_CONFLICT');
+   }
+   const assignment = tx.get('SELECT * FROM assignments WHERE id=? AND course_id=? AND student_id=? AND activity_id=?',
+     checked.assignmentId, checked.courseId, checked.studentId, checked.activityVersionId);
+diff --git a/apps/teaching/server/workspace/integration.test.ts b/apps/teaching/server/workspace/integration.test.ts
+--- a/apps/teaching/server/workspace/integration.test.ts
++++ b/apps/teaching/server/workspace/integration.test.ts
+@@ -54,7 +54,9 @@
+     const restoredFile = await command(f,student,`/api/attempts/${id}/sync`,{ expectedWorkspaceRevision: 3,clientId: 'page',clientSeq: 96,
+       operations: [{ kind: 'recycle',fileId: recycled.json().data.result.created.replacement,baseVersion: 1 },{ kind: 'restore',fileId: file.fileId,baseVersion: 3 }] });
+     assert.equal(restoredFile.statusCode,200,restoredFile.body);
+-    const position = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: 5,
++    const positionRevision = (await view(f,student,id)).attempt.attemptRevision;
++    assert.equal(positionRevision,2,'file-only updates preserve lifecycle/control CAS');
++    const position = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: positionRevision,
+       control: { kind: 'position',route: 'array',question: 'Explain this',returnPosition: { kind: 'code',attemptId: id,snapshotId: snap,
+         fileId: file.fileId,path: 'main.c',documentVersion: 1,contentHash: file.contentHash,range: { startLine: 1,startColumn: 3,endLine: 1,endColumn: 5 } } } });
+     assert.equal(position.statusCode,200,position.body);
+@@ -123,7 +125,9 @@
+       operations: [{ kind: 'update',fileId: ids.source,baseVersion: version,text: 'new draft '+seq }],process: { captureRevision } });
+     const paused = await command(f,student,`/api/attempts/${id}/sync`,update(1,10,0));
+     assert.equal(paused.statusCode,200,paused.body); assert.equal(paused.json().data.result.process.reason,'capture_paused');
+-    const resumeCapture = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: 4,control: { kind: 'capture',value: true } });
++    const captureControlRevision = (await view(f,student,id)).attempt.attemptRevision;
++    assert.equal(captureControlRevision,3,'saving with capture paused changes only workspace CAS');
++    const resumeCapture = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: captureControlRevision,control: { kind: 'capture',value: true } });
+     assert.equal(resumeCapture.statusCode,200,resumeCapture.body);
+     const late = await command(f,student,`/api/attempts/${id}/sync`,update(2,11,0));
+     assert.equal(late.json().data.result.process.reason,'stale_capture_revision');

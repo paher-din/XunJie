@@ -1,0 +1,56 @@
+{
+  "runtimeSource": "87edd51e165b2bab660d73a551864ff8db0bed86",
+  "mainReceived": "8b4130374289b71d737abe12ed4fc5e58adf55c5",
+  "sameProductionBytes": true,
+  "newUnit": "xunjie-i0-entry-main-87edd51-20261014.service",
+  "previousUnit": "xunjie-i0-entry-pr56-f761dcd-20261014.service",
+  "previousArgv": "{ path=/opt/xunjie-runner/node/bin/node ; argv[]=/opt/xunjie-runner/node/bin/node /opt/xunjie-runner/tests/dla-pr67-fixed-f761dcd-20261014/docs/tasks/evidence/dla-pr67-integration-20261014/serve-i0.mjs /opt/xunjie-runner/tests/dla-pr67-fixed-f761dcd-20261014 ; ignore_errors=no ; start_time=[Wed 2026-10-14 21:05:58 CST] ; stop_time=[n/a] ; pid=10261 ; code=(null) ; status=0/0 }",
+  "argv": [
+    "systemd-run",
+    "--unit=xunjie-i0-entry-main-87edd51-20261014",
+    "--property=UMask=0077",
+    "/opt/xunjie-runner/node/bin/node",
+    "/opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014/docs/tasks/evidence/dla-pr67-integration-20261014/serve-i0.mjs",
+    "/opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014"
+  ],
+  "origin": "https://127.0.0.1:3443",
+  "tables": 24,
+  "schemaChanged": false,
+  "credentialsChanged": false,
+  "recoveryGenerationChanged": false,
+  "modelRequests": 0,
+  "h05CandidateApplied": false,
+  "nodeChanged": false,
+  "responses": [
+    {
+      "path": "/health/live",
+      "status": 200,
+      "sha256": "aeaaeb08c92025674181b6b01aa96e1a9f0b63bf23af9056e6809725f7829009",
+      "cacheControl": null,
+      "body": {
+        "requestId": "a8b5d489-92b8-49cc-b172-22a50aa6f47c",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "path": "/health/ready",
+      "status": 200,
+      "sha256": "db5b3c5280ed7036e55ac6be63629912f54cb1863861d5b83369b2ebe62a4079",
+      "cacheControl": "no-store",
+      "body": {
+        "requestId": "f8fd4da8-03f7-4234-9511-1e8c744f5a17",
+        "data": {
+          "status": "ready"
+        }
+      }
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "sha256": "89ad10dd4c627d3db05dd3787b7f73fea362eb01cfe5375bed843e40f7bd6fe0",
+      "cacheControl": null
+    }
+  ]
+}

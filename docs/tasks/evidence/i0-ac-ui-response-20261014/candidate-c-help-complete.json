@@ -1,0 +1,24 @@
+{
+  "synthetic": true,
+  "externalModelRequests": 0,
+  "cases": [
+    {
+      "targetChanged": true,
+      "controlRevisionPreserved": true,
+      "jobStatus": "stale",
+      "actionDispositions": [
+        "stale"
+      ],
+      "externalModelRequests": 0
+    },
+    {
+      "targetChanged": false,
+      "controlRevisionPreserved": true,
+      "jobStatus": "succeeded",
+      "actionDispositions": [
+        "pending"
+      ],
+      "externalModelRequests": 0
+    }
+  ]
+}

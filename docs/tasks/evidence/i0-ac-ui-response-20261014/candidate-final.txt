@@ -1,0 +1,1 @@
+{"mode":"candidate","cases":10,"passed":true,"output":"/opt/xunjie-runner/tests/i0-ac-ui-response-20261014/candidate-final.json"}
