@@ -168,8 +168,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
         url,
       )
     }
-    // requestId 只取自信封：真实后端把同一个 request.id 写进 body，且不下发 requestId 响应头
-    // （apps/teaching/server/app.ts:21,53，requestIdHeader: false），不依赖头做回退。
+    // requestId只取自信封；正常宿主同时下发x-request-id，客户端不依赖响应头补造缺失信封。
     const requestId = typeof envelope?.requestId === 'string' ? envelope.requestId : ''
     if (opts.mode === 'real' && path !== '/sessions' && response.status === 401 && error.code === 'UNAUTHENTICATED') {
       for (const listener of sessionExpiredListeners) listener()

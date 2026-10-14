@@ -226,6 +226,17 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   }, [versionSelection, versionOptions])
   const versionChoices = useMemo(() => versionOptions.map(({ id, label }) => ({ id, label })), [versionOptions])
   const compareOpen = comparison !== null || versionComparison !== null
+  const previousReadingView = useRef({ open: false, context: c })
+  useEffect(() => {
+    const previous = previousReadingView.current
+    const open = compareOpen || runOpen
+    if (previous.context !== c) {
+      previousReadingView.current = { open: false, context: c }
+      return
+    }
+    if (previous.open && !open) editorHandle.current?.focus()
+    previousReadingView.current = { open, context: c }
+  }, [compareOpen, runOpen, c])
   const runSnapshots = confirmation.state.snapshots.map(snapshot => ({ id: snapshot.snapshotId,
     label: `确认作品 v${snapshot.workspaceRevision} · ${new Date(snapshot.createdAt).toLocaleTimeString()}`,
     files: snapshot.files.map(file => ({ id: file.fileId, path: file.path, ascii: /^[\x00-\x7f]*$/.test(file.text) })) }))

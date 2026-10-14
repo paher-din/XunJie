@@ -1,0 +1,115 @@
+{
+  "startedAt": "2026-10-14T13:32:40.961Z",
+  "finishedAt": "2026-10-14T13:32:57.053Z",
+  "node": "v24.15.0",
+  "browser": "155.0.8059.40",
+  "sourceConfig": "apps/student/vite.config.ts",
+  "sourceConfigSha256": "5316590b7a7dabc1096cd94023684d76f5f37663c1833d3b053a0767c4d0d4d2",
+  "method": "independent Vite workers, original config, fresh private cache per mode/sample, normal browser route loading",
+  "scope": "synthetic preparation and frontend real-mode startup; no teaching host, execution node or provider",
+  "scratchRemoved": true,
+  "cleanupErrors": [],
+  "requestedSamplesPerMode": 2,
+  "passed": true,
+  "failure": null,
+  "results": [
+    {
+      "mode": "prep",
+      "iteration": 1,
+      "port": 5791,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 160,
+      "browserLoadMs": 3714,
+      "optimizedResponses": 104,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 49
+    },
+    {
+      "mode": "development",
+      "iteration": 1,
+      "port": 5792,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 142,
+      "browserLoadMs": 2451,
+      "optimizedResponses": 13,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [
+        {
+          "path": "/api/session",
+          "status": 404
+        },
+        {
+          "path": "/api/session",
+          "status": 404
+        }
+      ],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 58
+    },
+    {
+      "mode": "prep",
+      "iteration": 2,
+      "port": 5791,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 140,
+      "browserLoadMs": 3629,
+      "optimizedResponses": 104,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 63
+    },
+    {
+      "mode": "development",
+      "iteration": 2,
+      "port": 5792,
+      "cacheInitiallyAbsent": true,
+      "startupMs": 147,
+      "browserLoadMs": 2425,
+      "optimizedResponses": 13,
+      "assetErrors": [],
+      "requestFailures": [],
+      "expectedApiFailures": [
+        {
+          "path": "/api/session",
+          "status": 404
+        },
+        {
+          "path": "/api/session",
+          "status": 404
+        }
+      ],
+      "optimizerMessages": [],
+      "stopped": true,
+      "exit": {
+        "code": 0,
+        "signal": null
+      },
+      "portReleased": true,
+      "stopMs": 53
+    }
+  ]
+}
