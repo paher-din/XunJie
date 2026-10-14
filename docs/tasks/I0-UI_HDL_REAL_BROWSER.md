@@ -168,3 +168,5 @@ Chrome 155 的既有已连接 profile「您的 Chrome」在严格受信 `https:/
 先在 [#38回交6175218005](https://github.com/paher-din/XunJie/issues/38#issuecomment-6175218005) 给完整数字逻辑证据，再在 [#30回交6175261812](https://github.com/paher-din/XunJie/issues/30#issuecomment-6175261812) 给共用入口/H状态、三原comment映射、前条链接及A/B/C接纳请求，两份独立GET正文逐字匹配。#30首次GraphQL连接超时，先核专属标记无已有评论，再REST同正文发布，无重复；两Issue仍Open。没有在#53/#56重复整包，没有编辑他人评论。正式新本机A/B/C签认及产品基线汇总仍由对应角色承接，不冒作UI已完成他们的审核。
 
 D盘 `START_HERE.md`、`XunJie.ps1`、全部可复用工具/原档/公开日志/截图/原库均保留，正常页面留给用户。临时传输材料已清理；模型off、业务/专用VM可用、原执行全部确认结束。本批授权的迁移、页面接线、完整合成链和按要求回交完成；其他域及完整产品/真人条件沿§5.3如实后置。
+
+收尾实时检查发现本任务3444宿主又以model-enabled启动（原因未确定，不据此归因重启/其它任务），只读确认仍33终态Job/4终止Session/无新增Message后，通过已留入口正常stop/check确认退出，再默认start。最终受限节点双ready、同代际/指纹/原库、健康200，modelEnabled=false，实际argv没有model-enabled，模型transport仍两条。当前状态另保留[最终运行回执](evidence/ui30-hdl-20261015/final-runtime-status.json)，早期modeloff验证不覆盖；用户后续可明确start -EnableModel继续使用。
