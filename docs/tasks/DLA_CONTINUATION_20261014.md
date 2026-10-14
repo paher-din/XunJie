@@ -148,3 +148,13 @@ PAHER只读核查：原3443为xunjie-i0-entry-recovered-20261014/9fa76ad应用�
 组合重验68/68通过、0失败/跳过，teaching及student类型/构建通过。90秒已有指定学生正常登录→原bootstrap/Attempt读取→89次Session GET全200，实时采样倒退0，原24表工作区revision/确认snapshot/run ID保留；只创建正常认证Session，不发学生保存/运行/提交或模型请求。不是Robert Chrome结果，也不把LastSyncError2变成Windows同步完全通过。
 
 全merge暂存空白检查失败，位置全部来自PR67继承的原CRLF公开JSON；原7100ea6→main也有相同失败，新增本人写集相对main的空白检查通过。[前后差异](evidence/dla-pr67-integration-20261014/whitespace-baseline.json)记录相同位置/数量和文件归属。保留UI本人原始blob，不越权格式化他人证据或关闭检查；交UI维护者另行处理。静态文档检查errors=[]，不把全merge空白失败写成全仓通过。
+
+### 9.3 最终正式运行源、产物和交接
+
+实际merge为f761dcddb2081fa7948fc7f6bd03cfe593d22b5f，其main父为b7e73c5；后续本人证据提交不改应用/UI。原始Git runtime包767文件在新PAHER副本逐字节/mode/hash一致，Node24.21.0类型/构建通过；student/src tree与main均bd0c312b9e33dd00227cb97a04943a0dcfacb5ce。正式dist ZIP143文件/SHA256=42e84956eccda63bc2ebc69eb8bf27af572b235749591e90ebd2a15255d507d0，已保存在PAHER Windows可经原SFTP读取的新公开目录，不含秘密/数据库/旧候选。
+
+24表原库在3443、35表原库在3444，均切至固定f761dcd应用/正式UI副本；当前单位分别xunjie-i0-entry-pr56-f761dcd-20261014、xunjie-dla-ui-f761dcd-20261014。两个进程按原配置/代际/TLS/签名/SSH/各自库组合，配置文件与秘密不改，原副本/单位argv保留回退。最终六项strictTLS live/ready/root全200；C/HDL节点readiness与原146/profile/镜像/sourceHash/validation/代际逐字段保持。原24/35表Assignment/Attempt/workspace revision/Job数量前后不变，pending均0；没有新schema、恢复代际、节点部署/H3运行、校时或真实模型调用。
+
+固定源3443再次正常登录/read-only回查：90秒87次Session均200、墙钟倒退0、原深链和确认作品/快照/Run引用保持，不代理学生编辑/保存/运行/提交。LastSyncError2仍保留，不将短窗口无倒退表述为Windows时间全面修复。真实静态137个允许文件逐HTTP byte/hash匹配、6个JSON/许可证按已有MIME契约400拒绝；初始143全200期待的失败保留，相关JSON是Vite编译期import，未修改白名单或关闭产品检查。
+
+一次完整回交材料为 [正式现场接线](DLA_PR67_RUNTIME_HANDOFF_20261014.md)，包含固定源/包摘要、143文件清单、原SFTP领取与指定synthetic-i0-student-a加密领取方式、原深链、current ready/C1分别结果、停止/回退、68/68组合与工具结果、失败/未执行。Robert须更新自己本机gateway的正式dist，并由本人完成实际Chrome复验；本轮不操作该机器、不把PAHER静态/Session读取计作其浏览器展示或UI-REAL全12项。公开回复/推送实际回执随后记录，PR56不自动合入main、Issue不关闭。

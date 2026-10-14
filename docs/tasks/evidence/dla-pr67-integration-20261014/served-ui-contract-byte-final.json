@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-10-14T13:10:30.608Z",
+  "origin": "https://127.0.0.1:3443",
+  "sourceCommit": "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f",
+  "zipSha256": "42e84956eccda63bc2ebc69eb8bf27af572b235749591e90ebd2a15255d507d0",
+  "filesInManifest": 143,
+  "servedFilesVerified": 137,
+  "expectedRejections": [
+    {
+      "path": "brand/sprout/accessories/registration.json",
+      "status": 400,
+      "code": "INVALID_REQUEST"
+    },
+    {
+      "path": "brand/sprout/registration.json",
+      "status": 400,
+      "code": "INVALID_REQUEST"
+    },
+    {
+      "path": "brand/sprout/rig/eye-masks.json",
+      "status": 400,
+      "code": "INVALID_REQUEST"
+    },
+    {
+      "path": "brand/sprout/rig/registration.json",
+      "status": 400,
+      "code": "INVALID_REQUEST"
+    },
+    {
+      "path": "brand/xunjie-logo/master.json",
+      "status": 400,
+      "code": "INVALID_REQUEST"
+    },
+    {
+      "path": "fonts/OFL.txt",
+      "status": 400,
+      "code": "INVALID_REQUEST"
+    }
+  ],
+  "byteMismatches": [],
+  "passed": true,
+  "strictTls": true,
+  "modelRequests": 0,
+  "browserAcceptance": false
+}
