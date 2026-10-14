@@ -25,18 +25,27 @@ export interface TutorObject { kind: string; attemptId: string; [key: string]: u
 export interface TutorVersions { activityVersionId:string;policyVersionId:string;modelConfigVersion:string
   promptVersion:string;schemaVersion:string;analysisVersion?:string }
 export interface TutorHistoryScope { courseId:string;studentId:string;attemptId:string }
+export interface TutorHdlSelection { snapshotId:string;buildId:string;sessionId?:string;operationId?:string }
+/** Original server-frozen H4 public projection, never reconstructed from a current selection. */
+export interface TutorHdlBasis extends TutorHdlSelection {
+  snapshotHash:string;buildStatus:'queued'|'running'|'succeeded'|'failed'|'cancelled'|'outcome_unknown'
+  buildResultHash?:string;workspaceRevision?:number;sessionRevision?:number
+  sessionStatus?:'starting'|'active'|'stopping'|'stopped'|'failed'|'outcome_unknown';sessionGeneration?:string
+  confirmedSequence?:number;simTimePs?:string;pendingOperationId?:string;stopRequested?:boolean
+  terminationConfirmed?:boolean;resultHash?:string
+}
 export interface TutorBasis { attemptRevision:number;decisionEpoch:number;captureRevision:number;relatedStateRevision:number
-  objectRef?:TutorObject;inputRefs:string[];assistanceRefs:string[];coverageRefs:string[] }
+  objectRef?:TutorObject;hdl?:TutorHdlBasis;inputRefs:string[];assistanceRefs:string[];coverageRefs:string[] }
 // C3 authorized event body association. The original basis is immutable provenance, not the current head.
 export interface TutorSource { scope:TutorHistoryScope;jobId:string;messageId:string;generation:string;targetVersions:TutorVersions
-  basis:Pick<TutorBasis,'attemptRevision'|'decisionEpoch'|'captureRevision'|'relatedStateRevision'|'objectRef'> }
+  basis:Pick<TutorBasis,'attemptRevision'|'decisionEpoch'|'captureRevision'|'relatedStateRevision'|'objectRef'|'hdl'> }
 export interface TutorHistoryBody { kind:'student_help';actionType:string;content:string;rationale:string
   expectedStudentAction:string;evidenceIds:string[];resourceRefs:string[];assistanceContext:string;unresolved:string[]
   policyChecks:{containsWholeSolution:false;writesStudentWork:false;runsCode:false;makesFormalEvaluation:false} }
 interface TutorHistoryMessageBase { messageId:string;scope:TutorHistoryScope;jobId:string;requestReceiptId?:string
   contentHash:string;resultHash?:string }
 export interface TutorHistoryQuestion extends TutorHistoryMessageBase { authorKind:'student'
-  envelope:{kind:'student_question';question:string;objectRef?:TutorObject;inputRefs:string[];versions:TutorVersions} }
+  envelope:{kind:'student_question';question:string;objectRef?:TutorObject;hdlSelection?:TutorHdlSelection;hdlBasis?:TutorHdlBasis;inputRefs:string[];versions:TutorVersions} }
 export interface TutorHistoryReply extends TutorHistoryMessageBase { authorKind:'model'
   envelope:{kind:'student_help';body:TutorHistoryBody;bodyJsonText?:string;versions:TutorVersions
     usage:{status:'actual';inputTokens:number;outputTokens:number}|{status:'unknown';reason?:string}

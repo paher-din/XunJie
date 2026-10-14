@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon, IconText } from '../icons'
 import { CenterToolArea, type ToolKey } from '../components/workspace/CenterToolArea'
@@ -40,6 +40,11 @@ import { resolveTutoringResource, captureTutoringReturn, validateTutoringReturn,
   type TutoringResourceResult, type TutoringReturnAnchor, type TutoringReturnFile } from '../workspace/tutoringReturn'
 import type { TutorMessage } from '../workspace/tutoringStore'
 import type { CommandContext } from '../workspace/frozenCommand'
+import { useHdlWorkspace } from '../workspace/useHdlWorkspace'
+import { HdlBoardPane, HdlTracePane, HdlBuildPane, HdlRunCluster } from '../components/workspace/HdlToolArea'
+import type { HdlBuildView, HdlDiagnostic, HdlInputs } from '../workspace/hdlContracts'
+import { hdlDiagnosticTarget } from '../workspace/hdlDiagnostic'
+import { createTutorHdlCurrent, type TutorHdlSelection } from '../workspace/tutoringHdl'
 
 type ReturnOrigin={fileId:string;path:string;documentVersion:number|null}
 const readingMarkerKey=(c:CommandContext)=>`tutor:return:${JSON.stringify([c.mode,c.userId,c.courseId,c.assignmentId,
@@ -48,7 +53,7 @@ const returnOrigin=(file:TutoringReturnFile):ReturnOrigin=>({fileId:file.serverF
 function clearReadingMarker(c:CommandContext) {try {sessionStorage.removeItem(readingMarkerKey(c))} catch { /* Current-page return remains usable. */ }}
 
 /**
- * 同一 C / TextScope 工作区按启动模式读取准备场景或获准真实分配。
+ * 同一工作区按启动模式读取准备场景或获准真实分配，HDL由学生投影的确切execution分流。
  *
  * 复用原设计的页面骨架与容器：顶栏（标签槽 + 运行簇槽）、左侧胶囊「任务信息」、中心工具区
  * （胶囊标签 + 分屏）。不新造页面或导航，不接原数字逻辑的模拟构建与主动教学引导。
@@ -62,13 +67,19 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   const taskId = PREP_BUILD ? PREP_TASK_ID : assignmentId ?? ''
   const [assignment, setAssignment] = useState<AssignmentView | null>(null)
   const confirmation = useConfirmationWorkspace(init.init, taskId, assignment?.active)
-  const run = useRunWorkspace(confirmation.client, init.init)
+  const hdlExecution = init.init?.kind === 'ready' ? init.init.activity.execution : undefined
+  const isHdl = hdlExecution?.kind === 'hdl_board'
+  const run = useRunWorkspace(confirmation.client, init.init, !isHdl)
+  const hdl = useHdlWorkspace(confirmation.client, init.init)
+  const [hdlSnapshotId, setHdlSnapshotId] = useState('')
+  const [hdlSelection, setHdlSelection] = useState<TutorHdlSelection | undefined>()
+  const [replaceTarget, setReplaceTarget] = useState<{ sessionId: string; sessionRevision: number; buildId: string } | null>(null)
   const [runOpen, setRunOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const history = useRunHistory(confirmation.client, runOpen && historyOpen)
   const [runSelection, setRunSelection] = useState<CoreSelection>({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
   const c = confirmation.client?.context
-  const tutor = useTutoringWorkspace(confirmation.client)
+  const tutor = useTutoringWorkspace(confirmation.client, isHdl)
   const [tutorOpen, setTutorOpen] = useState(false)
   const [tutorObject, setTutorObject] = useState<TutorObject | undefined>(undefined)
   const [tutorObjectLabel, setTutorObjectLabel] = useState('')
@@ -80,6 +91,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     setHistoryOpen(false)
     setRunSelection({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
     setTutorObject(undefined); setCodeBasis(null); setCodeSnapshotId(''); setExample(null)
+    setHdlSnapshotId(''); setHdlSelection(undefined); setReplaceTarget(null)
   }, [c])
   useEffect(()=> { setAssignment(null) }, [init.init])
   const draftScope = useMemo<DraftScope | null>(() => c?.attemptId && c.userId
@@ -88,6 +100,23 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   const project = useProjectWorkspace(confirmation.seed, idbDraftRepository, draftScope)
   const projectLive = useRef(project)
   projectLive.current = project
+  const hdlSelectedBuild = hdlSelection?.sessionId ? hdl.state.sessionBuild ?? hdl.state.build : hdl.state.build
+  useLayoutEffect(() => {
+    if (!isHdl || !tutor.client) return
+    tutor.client.setHdlCurrent(null)
+    let cancelled = false
+    // Startup/restore has not authorized a current Build yet. Keep provenance
+    // unknown until the complete original read settles; missing initial data
+    // is not a witnessed source change that permanently retires a delivery.
+    if (!c?.trustedRecoveryGeneration || !confirmation.state.workspace || hdl.state.phase !== 'ready' || hdl.state.pending || hdl.state.unknown || hdl.state.busy) return
+    void createTutorHdlCurrent({ workspaceRevision: confirmation.state.workspace.workspaceRevision,
+      hasDraftChanges: project.unconfirmedCount > 0 || project.lifecyclePendingCount > 0,
+      generation: c.trustedRecoveryGeneration, build: hdlSelectedBuild?.result ?? null, session: hdl.state.session, operation: hdl.state.operation })
+      .then(current => { if (!cancelled) tutor.client?.setHdlCurrent(current) })
+      .catch(() => { /* Unknown provenance stays unavailable; never construct a replacement basis. */ })
+    return () => { cancelled = true }
+  }, [isHdl, tutor.client, c, confirmation.state.workspace, project.unconfirmedCount, project.lifecyclePendingCount,
+    hdlSelectedBuild, hdl.state.session, hdl.state.operation, hdl.state.phase, hdl.state.pending, hdl.state.unknown, hdl.state.busy])
   const [example, setExample] = useState<{ resource: TutoringResourceResult; anchor: TutoringReturnAnchor<NonNullable<CodeEditorViewState>> | null } | null>(null)
   const [returnNotice,setReturnNotice]=useState<{notice:string;origin?:ReturnOrigin}|null>(null)
   useEffect(()=> {
@@ -131,6 +160,53 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
       setTutorObject({ ...ref }); setTutorObjectLabel(`原运行 ${ref.runId} · 原快照 ${ref.snapshotId}（不重跑）`); setTutorOpen(true)
     } catch(e) { showToast(describeError(e)) }
   }
+  function onHdlHelp(board = false) {
+    const build = board ? hdl.state.sessionBuild ?? hdl.state.build : hdl.state.build
+    const result = build?.result, session = hdl.state.session, operation = hdl.state.operation
+    if (!build || !result || !['succeeded', 'failed'].includes(result.status) || hdl.state.pending || hdl.state.unknown || project.unconfirmedCount > 0) {
+      showToast('请先核对所选构建和确认作品；求助不会自动保存或构建。'); return
+    }
+    if (board && (!session || !operation || session.pendingOperationId || session.stopRequested || session.terminationConfirmed ||
+      session.status !== 'active' || operation.sessionId !== session.sessionId || operation.sequence !== session.confirmedSequence)) {
+      showToast('原板卡会话或采样尚未核对，请先读取结果。'); return
+    }
+    const selection: TutorHdlSelection = { snapshotId: build.request.snapshot.snapshotId, buildId: result.buildId,
+      ...(board ? { sessionId: session!.sessionId, operationId: operation!.operationId } : {}) }
+    setHdlSelection(selection); setTutorObject(undefined); setCodeBasis(null)
+    setCodeSnapshotId(selection.snapshotId)
+    setTutorObjectLabel(board ? `原板卡采样 · 序号 ${operation!.sequence}` : `所选构建 · 确认作品 v${build.request.snapshot.workspaceRevision}`)
+    setTutorOpen(true)
+  }
+  function onHdlDiagnostic(diagnostic: HdlDiagnostic, build: HdlBuildView) {
+    if (!draftScope) return
+    const drafts = projectLive.current.files.map(file => projectLive.current.readCodeDraft(file.fileId)).filter((v): v is CodeDraft => !!v)
+    const target = hdlDiagnosticTarget(diagnostic, build, drafts)
+    if (target.kind !== 'current') { showToast(target.notice); return }
+    setTool('design'); setRunOpen(false); project.open(target.draft.fileId)
+    const location = { workspaceKey: scopeKey(draftScope), fileId: target.draft.fileId, originalText: target.draft.text, range: target.range }
+    window.requestAnimationFrame(() => {
+      const result = editorHandle.current?.revealOriginalRange(location)
+      if (result && !result.ok) showToast(result.reason)
+    })
+  }
+  function onHdlBuild() {
+    if (!hdlSnapshotId) { showToast('请明确选择确认快照。'); return }
+    tutor.client?.setHdlCurrent(null); void hdl.client?.build(hdlSnapshotId)
+  }
+  function onHdlLoad() {
+    const buildId = hdl.state.build?.result?.buildId
+    if (!buildId) return
+    if (hdl.state.session && !hdl.state.session.terminationConfirmed) {
+      setReplaceTarget({ sessionId: hdl.state.session.sessionId, sessionRevision: hdl.state.session.sessionRevision, buildId }); return
+    }
+    tutor.client?.setHdlCurrent(null); void hdl.client?.program(buildId)
+  }
+  function onHdlInteract(inputs: HdlInputs, advanceCycles: number) {
+    tutor.client?.setHdlCurrent(null); void hdl.client?.interact(inputs, advanceCycles)
+  }
+  function onHdlStop() {
+    tutor.client?.setHdlCurrent(null); void hdl.client?.stop('学生显式停止虚拟板会话')
+  }
   function codeObjectCurrent() {
     if (!codeBasis) return true
     const current=projectLive.current.readCodeDraft(codeBasis.fileId)
@@ -156,6 +232,9 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     if(intent==='selection' && !selected?.ok) {showToast(selected && !selected.ok?selected.reason:'请明确选择代码。');return}
     const snapshot=confirmation.state.snapshots.find(s=>s.snapshotId===(codeSnapshotId||confirmation.state.snapshot?.snapshotId))
     if(!snapshot) {showToast('请先自主冻结并选择已确认快照。');return}
+    if (isHdl && (!hdlSelection || hdlSelection.snapshotId !== snapshot.snapshotId)) {
+      showToast('请先引用同一确认快照的真实构建，再选择代码求助。'); return
+    }
     try {
       const target=await verifyCodeTarget(snapshot,{workspaceKey:scopeKey(draftScope),attemptId:context.attemptId,activityVersionId:context.activityVersionId},before.serverFileId)
       if(!client.isCurrent(context)) return
@@ -254,6 +333,16 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     !!confirmation.state.attempt && ['ready','active'].includes(confirmation.state.attempt.status)
   const canRun = runPermitted && run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
     runSelection.fileIds.length > 0 && !confirmation.client?.commandInFlight
+  const hdlPending = hdl.state.pending || hdl.state.busy || !!hdl.state.session?.pendingOperationId ||
+    !!hdl.state.job && !settledJob(hdl.state.job.status)
+  const hdlFrame = hdl.state.operation?.finalFrame
+  const hdlInputs: HdlInputs = hdlFrame ? { switches: hdlFrame.switches, buttons: hdlFrame.buttons, resetN: hdlFrame.resetN }
+    : { switches: '', buttons: '', resetN: '' }
+  const hdlResultCurrent = !!hdl.state.session && !!hdl.state.operation && hdl.state.operation.sessionId === hdl.state.session.sessionId &&
+    hdl.state.operation.sequence === hdl.state.session.confirmedSequence && hdl.state.operation.sessionRevision === hdl.state.session.sessionRevision
+  const hdlSnapshot = confirmation.state.snapshots.find(snapshot => snapshot.snapshotId === hdlSnapshotId)
+  const hdlNotice = [hdl.state.notice, project.unconfirmedCount > 0 ? '新草稿尚未确认；已有构建与板卡仍使用各自原快照。' : null]
+    .filter(Boolean).join(' ') || null
 
   /** Esc 关闭比较：只在比较视图打开期间挂监听，行为与「返回编辑」一致。 */
   useEffect(() => {
@@ -404,19 +493,27 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           signingOut={signingOut}
           onSignOut={onSignOut}
         />
-        <div className="ws-head-run" ref={setRunSlot} />
+        <div className="ws-head-run" ref={setRunSlot}
+          style={isHdl ? { minWidth: 0, flex: '1 1 0', overflowX: 'auto' } : undefined} />
       </header>
 
       <div className="ws-body">
         <CenterToolArea
           taskId={taskId}
-          variant="textscope-c"
+          variant={isHdl ? 'digital-logic-real' : 'textscope-c'}
           tool={tool}
           onToolChange={setTool}
           onToast={showToast}
+          boardBody={isHdl ? <HdlBoardPane session={hdl.state.session} result={hdl.state.operation} inputs={hdlInputs}
+            pending={hdlPending} disabled={!runPermitted || !hdl.state.canInteract || !hdlResultCurrent}
+            bindings={hdlExecution?.configuration.board.bindings} currentNotice={hdlNotice} onInteract={onHdlInteract} /> : undefined}
+          waveBody={isHdl ? <HdlTracePane session={hdl.state.session} result={hdl.state.operation} pending={hdlPending}
+            currentNotice={hdlNotice} /> : undefined}
           designBody={<div style={{position:'relative',height:'100%',width:'100%',display:'flex',flexDirection:'column'}}>
             {c?.attemptId && <div className="ws-chatbind" style={{display:'flex',gap:8,flexWrap:'wrap',flexShrink:0}}>
-            {c?.attemptId && <button type="button" className="ws-btn ghost" onClick={()=>{ setTutorObject(undefined);setCodeBasis(null); setTutorOpen(true) }}>就项目求助</button>}
+            {c?.attemptId && <button type="button" className="ws-btn ghost" onClick={()=>{ setTutorObject(undefined);setCodeBasis(null);setHdlSelection(undefined); setTutorOpen(true) }}>就项目求助</button>}
+            {isHdl && <button type="button" className="ws-btn ghost" disabled={hdlPending || !hdlResultCurrent || !hdl.state.canInteract}
+              onClick={() => onHdlHelp(true)}>引用当前板卡求助</button>}
             {c?.attemptId && !runOpen && <>
               <select aria-label="代码求助快照" value={codeSnapshotId||confirmation.state.snapshot?.snapshotId||''} onChange={e=>setCodeSnapshotId(e.target.value)}>
                 {!confirmation.state.snapshots.length && <option value="">尚无确认快照</option>}
@@ -477,7 +574,12 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
             : confirmation.seed && draftScope
               ? <>
                   {draftConflictBar}
-                  <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} />
+                  <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}><CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} /></div>
+                  {isHdl && <div style={{ maxHeight: '34vh', overflow: 'auto', flexShrink: 0 }}>
+                    <HdlBuildPane build={hdl.state.build} busy={hdlPending} notice={hdl.state.notice}
+                      canHelp={!!hdl.state.build?.result && ['succeeded', 'failed'].includes(hdl.state.build.result.status) && project.unconfirmedCount === 0 && !hdl.state.unknown}
+                      onDiagnostic={onHdlDiagnostic} onHelp={() => onHdlHelp()} onRead={hdl.read} />
+                  </div>}
                 </>
               : <TextScopeBodyPane init={init.init} onReload={init.reload} />}</div>
               {example && <div style={{position:'absolute',inset:0,zIndex:4,overflow:'auto',background:'var(--paper)'}}>
@@ -485,7 +587,20 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
               </div>}
             </div>}
           runCluster={<>
-            {c?.attemptId && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
+            {c?.attemptId && !isHdl && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
+            {isHdl && c?.attemptId && <>
+              <select aria-label="HDL 确认快照" value={hdlSnapshotId} onChange={event => setHdlSnapshotId(event.target.value)} disabled={hdlPending}>
+                <option value="">选择确认快照</option>
+                {confirmation.state.snapshots.map(snapshot => <option key={snapshot.snapshotId} value={snapshot.snapshotId}>确认作品 v{snapshot.workspaceRevision}</option>)}
+              </select>
+              <HdlRunCluster build={hdl.state.build} session={hdl.state.session} busy={hdlPending} unknown={hdl.state.unknown}
+                readBusy={hdl.state.busy || hdl.state.phase === 'reading'}
+                notice={hdl.state.notice} snapshotLabel={hdlSnapshot ? `所选确认作品 v${hdlSnapshot.workspaceRevision}` : undefined}
+                canBuild={runPermitted && hdl.state.canBuild && !!hdlSnapshot} canLoad={runPermitted && hdl.state.canProgram}
+                canStop={runPermitted && hdl.state.canStop} onBuild={onHdlBuild} onLoad={onHdlLoad} onStop={onHdlStop} onRefresh={hdl.read} />
+              {hdl.state.pending && <button type="button" className="ws-btn ghost" disabled={hdl.state.busy}
+                onClick={() => { tutor.client?.setHdlCurrent(null); void hdl.client?.reconcile() }}>核对原 HDL 请求</button>}
+            </>}
             <ConfirmationCluster
             phase={init.status !== 'ready' ? 'loading' : !confirmation.state.attempt && !(assignment ?? (init.init?.kind === 'ready' ? init.init.assignment : null))?.active
               ? 'readonly' : confirmation.state.phase}
@@ -547,11 +662,22 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
         />
 
         <TutoringPane client={tutor.client} state={tutor.state} open={tutorOpen} onClose={()=>setTutorOpen(false)}
+          hdlSelection={isHdl ? hdlSelection : undefined}
           helpAllowed={init.init?.kind==='ready'&&init.init.activity.helpPolicy.helpAllowed}
           assignmentActive={init.init?.kind==='ready'&&(assignment??init.init.assignment).active} sourceStatus={messageSourceStatus}
           objectRef={tutorObject} objectLabel={tutorObjectLabel} objectCurrent={codeObjectCurrent}
           objectError={!codeObjectCurrent()?'所指代码或草稿已改变，请重新核对对象；不会自动保存。':undefined}
-          onClearObject={()=>{setTutorObject(undefined);setCodeBasis(null)}} onExample={onExample} />
+          onClearObject={()=>{setTutorObject(undefined);setCodeBasis(null);setHdlSelection(undefined)}} onExample={onExample} />
+        {replaceTarget && <div role="dialog" aria-modal="true" aria-label="确认替换虚拟板会话"
+          style={{ position: 'fixed', inset: '25% 25% auto', zIndex: 20, background: 'var(--paper)', padding: 24, border: '1px solid var(--line)' }}>
+          <p>替换会停止原虚拟板并按新构建重新初始化；原实例退出确认前不会显示新装载成功。</p>
+          <p>原会话 {replaceTarget.sessionId} · 版本 {replaceTarget.sessionRevision}</p>
+          <button type="button" className="ws-btn ghost" onClick={() => setReplaceTarget(null)}>保留原会话</button>
+          <button type="button" className="ws-btn solid" disabled={hdlPending || !hdl.state.canProgram} onClick={() => {
+            const target = replaceTarget; setReplaceTarget(null); tutor.client?.setHdlCurrent(null)
+            void hdl.client?.program(target.buildId, { sessionId: target.sessionId, sessionRevision: target.sessionRevision })
+          }}>确认替换装载</button>
+        </div>}
         <SideDock
           taskInfo={<><PrepTaskInfo init={init.init} onReload={init.reload} />
             {init.init?.kind==='ready' && <TutoringControls confirmation={confirmation.client} activity={init.init.activity}

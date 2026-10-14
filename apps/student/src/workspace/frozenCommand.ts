@@ -11,13 +11,15 @@ export interface FrozenDraft {
   lifecycle?: 'active' | 'recycled'
 }
 export interface FrozenCommand {
-  commandKey: string; context: CommandContext; kind: 'attempt.create' | 'workspace.sync' | 'snapshot.create' | 'run.create' | 'job.cancel'
+  commandKey: string; context: CommandContext; kind: 'attempt.create' | 'workspace.sync' | 'snapshot.create' | 'run.create' | 'job.cancel' | 'hdl.build' | 'hdl.program' | 'hdl.interact' | 'hdl.stop'
   path: string; target: string; wireJson: string; requestHash: string; createdAt: number
   before: ConfirmedWorkspace | null; drafts: FrozenDraft[]
   /** 06 本机来源标签：经回执关联后才展示，不补入 GET Run 或 POST wire。 */
   runSnapshot?: { hash: string; workspaceRevision: number; files: Array<{ fileId: string; path: string }> }
   /** 06A 本机原停止对象；不扩充 POST cancel 的 wire。 */
   cancelRun?: { runId: string; jobId: string }
+  /** Original HDL provenance in the existing outbox; never added to the HTTP body. */
+  hdlSnapshot?: SnapshotView
 }
 export interface OutboxRecord extends FrozenCommand {
   state: 'pending' | 'confirmed' | 'historical'

@@ -6,9 +6,12 @@ const mocked=vi.hoisted(()=>({get:vi.fn(),post:vi.fn(),write:vi.fn(),read:vi.fn(
 vi.mock('./http',async original=>({...await original<object>(),apiGet:mocked.get,apiPostFrozen:mocked.post}))
 vi.mock('./confirmationDb',()=>({confirmationRepository:{isCurrentAuthority:async()=>true}}))
 vi.mock('./tutoringStore',async original=>({...await original<object>(),readTutorLedger:mocked.read,writeTutorLedger:mocked.write,
-  tutorChannel:async()=>({clientId:'original-channel',close:()=>{}})}))
+  writeTutorHistoryCache:async()=>undefined,tutorChannel:async()=>({clientId:'original-channel',close:()=>{}})}))
 import { TutoringWorkspace } from './tutoringWorkspace'
 import { textHash } from './confirmation'
+import type { TutorPayload } from './tutoringContracts'
+import type { TutorHdlCurrent } from './tutoringHdl'
+import { tutorRequestHash } from './tutoringCommand'
 const context:CommandContext={mode:'preparation',userId:'u',courseId:'c',assignmentId:'assignment',activityVersionId:'activity',attemptId:'attempt',
   preparationEpoch:'prep',trustedRecoveryGeneration:'g',loadEpoch:1}
 function deferred<T>() {let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>{resolve=r});return{promise,resolve}}
@@ -88,6 +91,160 @@ describe('tutoring stop/display/control interleavings',()=> {
     expect(f.client.current.synchronized).toBe(false)
     expect(f.client.current.ledger?.messages).toEqual([])
     expect(mocked.post).not.toHaveBeenCalled()
+    f.client.dispose()
+  })
+})
+function currentHdl():TutorHdlCurrent {return {workspaceRevision:4,hasDraftChanges:false,generation:'g',
+  build:{buildId:'build',snapshotId:'snapshot',snapshotHash:'a'.repeat(64),status:'succeeded',buildResultHash:'b'.repeat(64)},
+  session:{sessionId:'session',buildId:'build',snapshotId:'snapshot',snapshotHash:'a'.repeat(64),sessionRevision:2,status:'active',recoveryGeneration:'g',
+    confirmedSequence:1,simTimePs:'40000',stopRequested:false,terminationConfirmed:false},
+  operation:{operationId:'operation',sessionId:'session',resultHash:'c'.repeat(64),sequence:1,sessionRevision:2,simTimePs:'40000'}}}
+async function hdlFixture() {
+  const f=await fixture(),payload=f.page.events[0]!.payload as TutorPayload
+  Object.assign(f.confirmation.current.attempt,{workspaceRevision:4})
+  Object.assign(payload,{scope:{courseId:'c',studentId:'u',attemptId:'attempt'},jobId:'job',messageId:'message',generation:'g',
+    targetVersions:{activityVersionId:'activity',policyVersionId:'policy',modelConfigVersion:'model',promptVersion:'prompt',schemaVersion:'schema'},
+    basis:{attemptRevision:1,decisionEpoch:1,captureRevision:0,relatedStateRevision:0,hdl:{snapshotId:'snapshot',snapshotHash:'a'.repeat(64),buildId:'build',
+      buildStatus:'succeeded',buildResultHash:'b'.repeat(64),workspaceRevision:4,sessionId:'session',sessionRevision:2,sessionStatus:'active',sessionGeneration:'g',
+      confirmedSequence:1,simTimePs:'40000',stopRequested:false,terminationConfirmed:false,operationId:'operation',resultHash:'c'.repeat(64)}}})
+  f.page.events[0]!.type='teaching.delivered'
+  mocked.get.mockImplementation(async(path:string)=>path.endsWith('/teaching-records')?{messages:[],actions:[]}:f.page)
+  f.client.dispose()
+  const client=new TutoringWorkspace(f.confirmation as unknown as ConfirmationWorkspace,{...context,mode:'real',preparationEpoch:null})
+  client.setHdlCurrent(currentHdl())
+  return {...f,client}
+}
+describe('HDL provenance and explicit display fence',()=> {
+  it('receives a real delivered body without inventing display or student acknowledgement',async()=> {
+    const f=await hdlFixture();await f.client.initialize()
+    expect(f.client.current.ledger?.messages[0]?.valid).toBe(true)
+    expect(f.client.current.ledger?.messages[0]?.facts.received?.state).toBe('confirmed')
+    expect(f.client.current.ledger?.messages[0]?.shown).toBe(false)
+    expect(f.client.current.ledger?.messages[0]?.facts.displayed).toBeUndefined()
+    expect(f.client.current.ledger?.messages[0]?.facts.acknowledged).toBeUndefined()
+    await f.client.fact('a','acknowledged');expect(f.client.current.ledger?.messages[0]?.facts.acknowledged).toBeUndefined()
+    f.client.dispose()
+  })
+  it('reauthorizes the same received unseen HDL source on ordinary polling after temporary recovery unknown',async()=> {
+    const f=await hdlFixture()
+    // Model the original event channel accurately: an advanced cursor does
+    // not receive the earlier delivery again unless reauthorization reads0.
+    mocked.get.mockImplementation(async(path:string)=> {
+      if(path.endsWith('/teaching-records'))return {messages:[],actions:[]}
+      const after=Number(new URL(path,'https://synthetic.invalid').searchParams.get('afterServerSeq'))
+      return {...f.page,events:f.page.events.filter(event=>event.serverSeq>after)}
+    })
+    await f.client.initialize()
+    const received=structuredClone(f.client.current.ledger!.messages[0]!.facts.received)
+    expect(received?.state).toBe('confirmed')
+    expect(f.client.current.ledger!.messages[0]!.shown).toBe(false)
+    mocked.post.mockClear()
+    f.client.setHdlCurrent(null)
+    await f.client.read()
+    await f.client.fact('a','displayed')
+    expect(f.client.current.ledger!.messages[0]!.valid).toBe(false)
+    expect(f.getStored()!.messages[0]!.hdlInvalidated).toBeUndefined()
+    expect(f.getStored()!.messages[0]!.shown).toBe(false)
+    expect(mocked.post).not.toHaveBeenCalled()
+    f.client.dispose()
+
+    const restored=new TutoringWorkspace(f.confirmation as unknown as ConfirmationWorkspace,{...context,mode:'real',preparationEpoch:null})
+    restored.setHdlCurrent(null)
+    await restored.initialize()
+    expect(restored.current.ledger!.messages[0]!.valid).toBe(false)
+    expect(restored.current.ledger!.messages[0]!.hdlInvalidated).toBeUndefined()
+    expect(restored.current.ledger!.messages[0]!.facts.received).toEqual(received)
+    restored.setHdlCurrent(currentHdl())
+    expect(restored.current.ledger!.messages[0]!.valid).toBe(false)
+    mocked.get.mockClear()
+    await restored.read()
+    const eventRead=mocked.get.mock.calls.find(([path])=>String(path).includes('/events?'))
+    expect(new URL(String(eventRead![0]),'https://synthetic.invalid').searchParams.get('afterServerSeq')).toBe('0')
+    const message=restored.current.ledger!.messages[0]!
+    expect(restored.current.synchronized).toBe(true)
+    expect(message.valid).toBe(true)
+    expect(message.hdlInvalidated).toBeUndefined()
+    expect(message.facts.received).toEqual(received)
+    expect(message.shown).toBe(false)
+    expect(message.facts.displayed).toBeUndefined()
+    expect(message.facts.acknowledged).toBeUndefined()
+    expect(mocked.post).not.toHaveBeenCalled()
+    restored.dispose()
+  })
+  it('invalidates a shown answer on new draft and cannot restore current guidance by rereading old events',async()=> {
+    const f=await hdlFixture();await f.client.initialize();await f.client.fact('a','displayed')
+    const edited=currentHdl();edited.hasDraftChanges=true;f.client.setHdlCurrent(edited)
+    expect(f.client.current.ledger?.messages[0]?.valid).toBe(false)
+    expect(f.client.current.ledger?.messages[0]?.hdlInvalidated).toBe(true)
+    f.client.setHdlCurrent(currentHdl());await f.client.read(true)
+    expect(f.client.current.ledger?.messages[0]?.valid).toBe(false)
+    expect(f.client.current.ledger?.messages[0]?.shown).toBe(true)
+    expect(f.client.hdlSourceStatus(f.client.current.ledger!.messages[0]!)).toContain('历史')
+    f.client.dispose()
+  })
+  it('fences an unseen answer synchronously when an interaction becomes pending',async()=> {
+    const f=await hdlFixture();await f.client.initialize();mocked.post.mockClear()
+    const pending=currentHdl();pending.session!.pendingOperationId='pending';f.client.setHdlCurrent(pending)
+    await f.client.fact('a','displayed')
+    expect(f.client.current.ledger?.messages[0]?.facts.displayed).toBeUndefined()
+    expect(mocked.post).not.toHaveBeenCalled();f.client.dispose()
+  })
+  it('keeps missing HDL basis and non-delivery payloads out of real current guidance',async()=> {
+    const f=await hdlFixture();delete (f.page.events[0]!.payload as TutorPayload).basis!.hdl
+    await f.client.initialize();expect(f.client.current.ledger?.messages).toEqual([]);f.client.dispose()
+    const other=await hdlFixture();other.page.events[0]!.type='teaching.received'
+    await other.client.initialize();expect(other.client.current.ledger?.messages).toEqual([]);other.client.dispose()
+  })
+  it('retains an explicitly unselected project dialogue only with its original confirmed request/Job association',async()=> {
+    const f=await hdlFixture();delete (f.page.events[0]!.payload as TutorPayload).basis!.hdl
+    await f.client.initialize()
+    f.client.current.ledger!.commands.push({kind:'help',state:'confirmed',key:'original-help',path:'/attempts/attempt/help',
+      wireJson:JSON.stringify({question:'一般项目问题',recoveryGeneration:'g',expectedAttemptRevision:1}),result:{result:{jobId:'other-job'}}})
+    await f.client.read(true);expect(f.client.current.ledger?.messages).toEqual([])
+    f.client.current.ledger!.commands[0]!.result={result:{jobId:'job'}}
+    await f.client.read(true)
+    expect(f.client.current.ledger?.messages[0]?.hdlUnselected).toBe(true)
+    expect(f.client.current.ledger?.messages[0]?.payload.basis?.hdl).toBeUndefined()
+    expect(f.client.hdlSourceStatus(f.client.current.ledger!.messages[0]!)).toContain('不代表当前板卡')
+    f.client.dispose()
+  })
+  it('does not send a selected HDL problem after draft state changes during persistence',async()=> {
+    const f=await hdlFixture();await f.client.initialize();mocked.post.mockClear()
+    mocked.write.mockImplementation(async(row:TutorLedger)=> {
+      if(row.commands.some(c=>c.kind==='help')) {const edited=currentHdl();edited.hasDraftChanges=true;f.client.setHdlCurrent(edited)}
+    })
+    await f.client.send('明确询问所选构建',undefined,false,()=>true,{snapshotId:'snapshot',buildId:'build',sessionId:'session',operationId:'operation'})
+    expect(mocked.post).not.toHaveBeenCalled();expect(f.client.current.ledger?.commands[0]?.error).toContain('发送前改变')
+    f.client.dispose()
+  })
+  it('confirms HDL acceptance only after the original authorized question supplies its frozen basis',async()=> {
+    const f=await hdlFixture();await f.client.initialize()
+    let originalQuestion:unknown
+    const frozen=structuredClone((f.page.events[0]!.payload as TutorPayload).basis!.hdl!)
+    mocked.post.mockImplementation(async(path:string,wire:string)=> {
+      const input=JSON.parse(wire)
+      if(!path.endsWith('/help'))return{receiptId:'r',actionId:'a',receiptKind:input.receiptKind,serverSeq:4,replayed:false}
+      originalQuestion={messageId:'original-question',jobId:'accepted-job',requestReceiptId:'accepted-receipt',authorKind:'student',
+        scope:{courseId:'c',studentId:'u',attemptId:'attempt'},contentHash:await textHash(input.question),
+        envelope:{kind:'student_question',question:input.question,hdlSelection:input.hdlSelection,hdlBasis:frozen,inputRefs:[],
+          versions:{activityVersionId:'activity',policyVersionId:'policy',modelConfigVersion:'model',promptVersion:'prompt',schemaVersion:'schema'}}}
+      Object.assign(f.confirmation.current.attempt,{decisionEpoch:2,attemptRevision:2})
+      f.page.control={...control,decisionEpoch:2,attemptRevision:2};f.page.events=[]
+      return {receiptId:'accepted-receipt',commandId:'accepted-command',serverSeq:5,committedAt:'2026-10-14T00:00:00Z',replayed:false,
+        identity:{command:'student_help.create',actorId:'u',target:'/api/attempts/attempt/help',idempotencyKey:f.client.current.ledger!.commands[0]!.key,
+          recoveryGeneration:'g',scope:{courseId:'c',studentId:'u',attemptId:'attempt'}},requestHash:await tutorRequestHash('/api/attempts/attempt/help',input),
+        result:{jobId:'accepted-job',attemptRevision:2,decisionEpoch:2,replacedJobIds:[],acceptedInputHash:await tutorRequestHash('student_help.accepted_input',
+          {question:input.question,objectRef:null,hdlSelection:input.hdlSelection,hdlBasis:frozen})}}
+    })
+    mocked.get.mockImplementation(async(path:string)=>path.endsWith('/teaching-records')?{messages:originalQuestion?[originalQuestion]:[],actions:[]}:
+      path==='/jobs/accepted-job'?{jobId:'accepted-job',purpose:'student_help',status:'failed',stopRequested:false,decisionEpoch:2,recoveryGeneration:'g',
+        scope:{courseId:'c',studentId:'u',attemptId:'attempt'},acceptedAt:'2026-10-14T00:00:00Z',deadline:'2026-10-14T00:00:45Z',failure:'budget_disabled'}:f.page)
+    await f.client.send('明确所选 HDL',undefined,false,()=>true,{snapshotId:'snapshot',buildId:'build',sessionId:'session',operationId:'operation'})
+    expect(f.client.current.ledger?.commands[0]?.state).toBe('confirmed')
+    expect(JSON.parse(f.client.current.ledger!.commands[0]!.wireJson).hdlSelection.operationId).toBe('operation')
+    expect(f.client.current.ledger?.job?.status).toBe('failed')
+    expect(mocked.get).toHaveBeenCalledWith('/attempts/attempt/teaching-records',{mode:'real',scenarioId:undefined})
+    expect(f.client.current.ledger?.messages.some(m=>m.facts.displayed||m.facts.acknowledged)).toBe(false)
     f.client.dispose()
   })
 })

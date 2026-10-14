@@ -4,14 +4,14 @@ import { MessageRail } from '../chat/MessageRail'
 import { Icon, IconText } from '../../icons'
 import type { TutoringState, TutoringWorkspace } from '../../workspace/tutoringWorkspace'
 import type { TutorMessage } from '../../workspace/tutoringStore'
-import type { TutorObject } from '../../workspace/tutoringContracts'
+import type { TutorObject, TutorHdlBasis, TutorHdlSelection } from '../../workspace/tutoringContracts'
 import type { TutorHistoryEntry } from '../../workspace/tutoringContracts'
 import { tutoringCommandFailureNotice } from '../../workspace/tutoringNotice'
 
 /** Reuses WorkspacePage's existing ws-chatpop/ws-chatpane and AgentMessage slots. */
 export function TutoringPane({ client, state, open, onClose, objectRef, objectLabel, onClearObject,
-  onExample, objectCurrent, objectError, helpAllowed, assignmentActive, sourceStatus }: { client: TutoringWorkspace | null; state: TutoringState; open: boolean; onClose: () => void
-  helpAllowed?:boolean; assignmentActive?:boolean; sourceStatus?:(ref:TutorObject)=>string
+  onExample, objectCurrent, objectError, helpAllowed, assignmentActive, sourceStatus, hdlSelection }: { client: TutoringWorkspace | null; state: TutoringState; open: boolean; onClose: () => void
+  helpAllowed?:boolean; assignmentActive?:boolean; sourceStatus?:(ref:TutorObject,message?:TutorMessage)=>string;hdlSelection?:TutorHdlSelection
   objectCurrent?: () => boolean; objectError?: string
   objectRef?: TutorObject; objectLabel?: string; onClearObject?: () => void; onExample?: (message: TutorMessage) => void }) {
   const [draft, setDraft] = useState('')
@@ -52,7 +52,8 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
           {state.history?.notice&&<p role="status">{state.history.notice}</p>}
           {state.history?.phase==='ready'&&state.history.data.questions.filter(q=>!state.history!.data.entries.some(e=>e.question?.messageId===q.messageId)).map(q=>
             <div className="chat-message user" key={q.messageId} data-testid="tutor-history-question"><div className="bubble">{q.envelope.question}</div>
-              <small>原已接纳问题 · 尚无可回取回答</small></div>)}
+              <small>原已接纳问题 · 尚无可回取回答</small>
+              {q.envelope.hdlSelection&&<p>原所选 HDL 快照：{q.envelope.hdlSelection.snapshotId} · Build：{q.envelope.hdlSelection.buildId}</p>}</div>)}
           {state.history?.phase==='ready'&&!state.history.data.entries.length&&<p>暂无可回取的已展示或已明确回应内容；缺项保持未知。</p>}
           {state.history?.phase==='ready'&&state.history.data.entries.map(entry=><TutorHistoryView key={entry.action.actionId}
             entry={entry} preparation={client?.context.mode==='preparation'}/>)}
@@ -68,12 +69,16 @@ export function TutoringPane({ client, state, open, onClose, objectRef, objectLa
       </div>
       {objectRef && <div className="ws-chatbind" data-testid="tutor-object">所指对象：{objectLabel ?? JSON.stringify(objectRef)}
         <button type="button" onClick={onClearObject}>改为项目问题</button>{objectError && <p role="status">{objectError}</p>}</div>}
+      {hdlSelection&&<div className="ws-chatbind" data-testid="tutor-hdl-selection">所选 HDL：快照 {hdlSelection.snapshotId} · Build {hdlSelection.buildId}
+        {hdlSelection.sessionId&&` · Session ${hdlSelection.sessionId}`}{hdlSelection.operationId&&` · Operation ${hdlSelection.operationId}`}
+        {!objectRef&&onClearObject&&<button type="button" onClick={onClearObject}>改为项目问题</button>}
+        {!objectRef&&objectError&&<p role="status">{objectError}</p>}</div>}
       {unavailable&&<p className="ws-chatbind" role="status" data-testid="tutor-help-limit">{unavailable}</p>}
-      <form className="ws-chatinput" onSubmit={e=> { e.preventDefault(); if (!running && canSend) void client?.send(draft, objectRef, false, objectCurrent) }}>
+      <form className="ws-chatinput" onSubmit={e=> { e.preventDefault(); if (!running && canSend) void client?.send(draft, objectRef, false, objectCurrent, hdlSelection) }}>
         <input aria-label="就这个任务提问" autoComplete="off" placeholder="就这个任务提问…" value={draft} onChange={e=>setDraft(e.target.value)} />
         <button type={running ? 'button' : 'submit'} className={running?'ws-action':'send'} aria-label={running ? '替换并发送' : '发送辅导问题'} title={running?'替换并发送新问题':'发送辅导问题'}
           disabled={!canSend}
-          onClick={running ? ()=>{if(canSend)void client?.send(draft, objectRef, true, objectCurrent)} : undefined}>{running ? '替换并发送' : <Icon name="arrow-up" size={18}/>}</button>
+          onClick={running ? ()=>{if(canSend)void client?.send(draft, objectRef, true, objectCurrent, hdlSelection)} : undefined}>{running ? '替换并发送' : <Icon name="arrow-up" size={18}/>}</button>
       </form>
     </div>
   </div>
@@ -87,6 +92,12 @@ function objectDescription(ref:TutorObject) {
   if(ref.kind==='project')return `原项目活动 ${ref.activityVersionId}`
   return `原资料 ${ref.resourceVersionId} · 段落 ${ref.paragraphId}`
 }
+function HdlSource({basis}:{basis:TutorHdlBasis}) {
+  return <div data-testid="tutor-hdl-source"><p>原 HDL 快照：{basis.snapshotId} · Build：{basis.buildId}（{basis.buildStatus}）</p>
+    <p>原确认作品版本：{basis.workspaceRevision??'旧记录未提供'} · 快照摘要：{basis.snapshotHash}</p>
+    {basis.sessionId&&<p>原 Session：{basis.sessionId} · revision {basis.sessionRevision??'未知'} · sequence {basis.confirmedSequence??'未知'} · 模拟时间 {basis.simTimePs??'未知'} ps</p>}
+    {basis.operationId&&<p>原 Operation：{basis.operationId} · 结果摘要：{basis.resultHash??'未提供'}</p>}</div>
+}
 function TutorHistoryView({entry,preparation}:{entry:TutorHistoryEntry;preparation:boolean}) {
   const {action,message,question}=entry,body=message.envelope.body
   return <article data-testid="tutor-history-message" data-action-id={action.actionId}>
@@ -94,6 +105,8 @@ function TutorHistoryView({entry,preparation}:{entry:TutorHistoryEntry;preparati
     <AgentMessage message={{role:'agent',text:body.content,phase:'settled'}} sourceLabel={preparation?'学习助手 · 合成历史记录':'学习助手 · 获准历史记录'}>
       <p>原 Job：{action.jobId} · 原 Message：{action.messageId}</p>
       {action.basis.objectRef&&<p data-testid="tutor-history-object">原对象：{JSON.stringify(action.basis.objectRef)}（仅核对来源，不定位当前作品）</p>}
+      {action.basis.hdl&&<HdlSource basis={action.basis.hdl}/>}
+      {question?.envelope.hdlSelection&&!action.basis.hdl&&<p>旧 HDL 记录缺少冻结来源，仅核对历史，不能视为当前板卡或代码建议。</p>}
       <p>原帮助政策：{action.targetVersions.policyVersionId} · 原 epoch：{action.basis.decisionEpoch}</p>
       <p>原状态：{action.disposition}{action.basisRevised?' · 依据后来修订':''}{action.stopReason?` · ${action.stopReason}`:''}</p>
       <p>下一步：{body.expectedStudentAction}</p><p>帮助条件：{body.assistanceContext}</p>
@@ -102,20 +115,58 @@ function TutorHistoryView({entry,preparation}:{entry:TutorHistoryEntry;preparati
     </AgentMessage>
   </article>
 }
+
+type TutorBodyRect = Pick<DOMRectReadOnly, 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height'>
+export const TUTOR_BODY_SELECTOR = ':scope > .chat-message.agent > .turn-body'
+/** A displayed fact requires actual body pixels, independent of card length. */
+export function tutorBodyVisible(facts: {
+  documentVisible:boolean; connected:boolean; hasContent:boolean; styleVisible:boolean; hasClientRect:boolean
+  isIntersecting:boolean; intersectionRect:TutorBodyRect; bodyRect:TutorBodyRect; viewportRect:TutorBodyRect; rootRect:TutorBodyRect|null
+}) {
+  const positive=(r:TutorBodyRect)=>[r.left,r.top,r.right,r.bottom,r.width,r.height].every(Number.isFinite)
+    && r.width>0 && r.height>0 && r.right>r.left && r.bottom>r.top
+  if(!facts.documentVisible||!facts.connected||!facts.hasContent||!facts.styleVisible||!facts.hasClientRect
+    ||!facts.isIntersecting||!positive(facts.intersectionRect)||!positive(facts.bodyRect)||!positive(facts.viewportRect)
+    ||facts.rootRect&&!positive(facts.rootRect))return false
+  const clips=[facts.bodyRect,facts.viewportRect,...(facts.rootRect?[facts.rootRect]:[])]
+  return Math.min(...clips.map(r=>r.right))>Math.max(...clips.map(r=>r.left))
+    && Math.min(...clips.map(r=>r.bottom))>Math.max(...clips.map(r=>r.top))
+}
 function TutorMessageView({ message, client, synchronized, scroller, onExample, sourceStatus }: {
   message: TutorMessage; client: TutoringWorkspace | null; synchronized: boolean; scroller: HTMLElement | null
-  onExample?: (message: TutorMessage) => void; sourceStatus?:(ref:TutorObject)=>string }) {
+  onExample?: (message: TutorMessage) => void; sourceStatus?:(ref:TutorObject,message?:TutorMessage)=>string }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(()=> {
     const el = ref.current
-    if (!el || !synchronized || !message.valid || message.facts.displayed) return
-    let intersecting = false
+    const body=el?.querySelector<HTMLElement>(TUTOR_BODY_SELECTOR)
+    if (!body || !synchronized || !message.valid || message.facts.displayed) return
+    const root=scroller??body.closest<HTMLElement>('.ws-chatbody')
+    const pane=body.closest('.ws-chatpop')
+    let entry:IntersectionObserverEntry|undefined
     const report = () => {
-      if (intersecting && document.visibilityState === 'visible' && el.getClientRects().length) void client?.fact(message.payload.actionId, 'displayed')
+      if(!entry)return
+      let styleVisible=getComputedStyle(body).visibility==='visible'
+      for(let ancestor:HTMLElement|null=body;styleVisible&&ancestor;ancestor=ancestor.parentElement) {
+        const style=getComputedStyle(ancestor)
+        if(style.display==='none'||Number(style.opacity)===0)styleVisible=false
+      }
+      if(tutorBodyVisible({documentVisible:document.visibilityState==='visible',connected:body.isConnected,
+        hasContent:!!body.textContent?.trim(),styleVisible,hasClientRect:Array.from(body.getClientRects()).some(r=>r.width>0&&r.height>0),
+        isIntersecting:entry.isIntersecting,intersectionRect:entry.intersectionRect,bodyRect:body.getBoundingClientRect(),rootRect:root?.getBoundingClientRect()??null,
+        viewportRect:{left:0,top:0,right:window.innerWidth,bottom:window.innerHeight,width:window.innerWidth,height:window.innerHeight}}))
+        void client?.fact(message.payload.actionId, 'displayed')
     }
-    const observer = new IntersectionObserver(entries=> { intersecting = entries.some(e=>e.isIntersecting); report() }, { root: scroller, threshold: 0.05 })
-    observer.observe(el); document.addEventListener('visibilitychange', report)
-    return ()=> { observer.disconnect(); document.removeEventListener('visibilitychange',report) }
+    const observer = new IntersectionObserver(entries=> {
+      entry=entries.find(e=>e.target===body); report()
+    }, { root, threshold: 0 })
+    // Edge contact can be isIntersecting with zero area at threshold0. Obtain
+    // a fresh body intersection after scrolling/showing instead of using it.
+    const refresh=()=>{entry=undefined;observer.unobserve(body);observer.observe(body)}
+    observer.observe(body)
+    document.addEventListener('visibilitychange',refresh);root?.addEventListener('scroll',refresh)
+    window.addEventListener('resize',refresh);pane?.addEventListener('animationend',refresh)
+    return ()=> { observer.disconnect(); document.removeEventListener('visibilitychange',refresh);root?.removeEventListener('scroll',refresh)
+      window.removeEventListener('resize',refresh);pane?.removeEventListener('animationend',refresh) }
   }, [client, message.payload.actionId, message.valid, !!message.facts.displayed, synchronized, scroller])
   const p = message.payload
   return <div ref={ref} data-testid="tutor-message" data-action-id={p.actionId}>
@@ -123,7 +174,9 @@ function TutorMessageView({ message, client, synchronized, scroller, onExample, 
       {p.jobId&&p.messageId&&p.basis&&p.targetVersions?<div data-testid="tutor-source">
         <p>原 Job：{p.jobId} · 原 Message：{p.messageId}</p>
         <p>回答来源：{p.basis.objectRef?objectDescription(p.basis.objectRef):'原尝试的项目问题'} · 原政策：{p.targetVersions.policyVersionId}</p>
-        {p.basis.objectRef&&<p>{sourceStatus?.(p.basis.objectRef)??'只核对原对象，不定位或替换当前作品。'}</p>}
+        {p.basis.objectRef&&<p>{sourceStatus?.(p.basis.objectRef,message)??'只核对原对象，不定位或替换当前作品。'}</p>}
+        {p.basis.hdl&&<HdlSource basis={p.basis.hdl}/>}
+        {!!client?.hdlSourceStatus(message)&&<p>{client.hdlSourceStatus(message)}</p>}
       </div>:<p>当前公开结果缺少原始对象关联，不能确定对应的代码或运行。</p>}
       <p><b>下一步：</b>{p.expectedStudentAction ?? '公开结果未提供下一步。'}</p>
       {p.rationale && <p>支持目的：{p.rationale}</p>}

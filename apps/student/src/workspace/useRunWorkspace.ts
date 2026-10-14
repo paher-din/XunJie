@@ -6,7 +6,7 @@ import type { WorkspaceInit } from './init'
 import { apiGet } from './http'
 
 /** 一个确认上下文一个运行客户端；不创建第二份 head/快照状态或新的 ContextGuard。 */
-export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: WorkspaceInit | null) {
+export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: WorkspaceInit | null, enabled = true) {
   const [client, setClient] = useState<RunWorkspace | null>(null)
   const [state, setState] = useState<RunState>(emptyRunState)
   const [visible, setVisible] = useState(() => document.visibilityState === 'visible')
@@ -15,7 +15,7 @@ export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: W
   const context = workspace?.context
   useEffect(() => {
     setState(emptyRunState())
-    if (!workspace || !context?.attemptId || init?.kind !== 'ready') { setClient(null); return }
+    if (!enabled || !workspace || !context?.attemptId || init?.kind !== 'ready') { setClient(null); return }
     const current = new RunWorkspace(workspace, {
       verified: context.mode === 'preparation' && init.prepContext?.capabilities.run === true,
       runtimeProfileVersion: init.activity.runtimeProfileVersionId, recoveryGeneration: context.trustedRecoveryGeneration,
@@ -39,7 +39,7 @@ export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: W
       }
     })
     return () => { unsubscribe(); stopConfirmation(); current.dispose() }
-  }, [workspace, context, init])
+  }, [workspace, context, init, enabled])
   useEffect(() => {
     const update = () => { setVisible(document.visibilityState === 'visible'); setOnline(navigator.onLine) }
     document.addEventListener('visibilitychange', update)

@@ -53,7 +53,7 @@ const initialState = (): ConfirmationState => ({ phase: 'idle', workspace: null,
  * 仍是本 Attempt 的事实）。绝不回退到别的 Attempt 或别的账号：那会把别处的工作区锁住并展示错误事实。
  */
 function currentPendingRow(rows: OutboxRecord[], context: CommandContext): OutboxRecord | null {
-  const ordered = rows.filter(r => r.kind !== 'run.create' && r.kind !== 'job.cancel').sort((a, b) => b.createdAt - a.createdAt)
+  const ordered = rows.filter(r => ['attempt.create', 'workspace.sync', 'snapshot.create'].includes(r.kind)).sort((a, b) => b.createdAt - a.createdAt)
   return ordered.find(r => sameGeneration(r.context, context)) ??
     ordered.find(r => r.context.attemptId === context.attemptId) ?? null
 }

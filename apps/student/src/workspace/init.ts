@@ -33,6 +33,7 @@ import {
   WorkspaceRequestError,
 } from './http'
 import { PREP_BUILD, prepContextUrl, type WorkspaceMode } from './mode'
+import { verifyHdlActivity } from './hdlActivity'
 
 export type InitStage = 'context' | 'session' | 'discovery' | 'assignment' | 'activity' | 'resource'
 
@@ -248,6 +249,12 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
   if (activity.activityControlRevision !== assignment.activityControlRevision ||
     !['active', 'paused'].includes(activity.status) || (assignment.active && activity.status !== 'active')) {
     return unavailable('activity', '活动状态已变化，请重新读取。')
+  }
+  try {
+    await verifyHdlActivity(activity.execution, activity.runtimeProfileVersionId)
+    if (guard.stale) return { kind: 'stale' }
+  } catch {
+    return unavailable('activity', 'HDL 活动配置或版本不完整，请重新读取；不会使用模拟板卡。')
   }
 
   /* 5. 材料：只对活动投影标为 available 的条目发起读取；redacted / unavailable 不补正文。 */

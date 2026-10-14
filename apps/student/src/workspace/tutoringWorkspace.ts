@@ -2,7 +2,8 @@ import { requiredId, record, revision } from './confirmation'
 import type { ConfirmationWorkspace } from './confirmationWorkspace'
 import type { CommandContext } from './frozenCommand'
 import { apiGet, apiPostFrozen, WorkspaceRequestError } from './http'
-import { type TutorJob, type TutorObject, type TutorReceiptKind, type TutorHistoryState } from './tutoringContracts'
+import { type TutorJob, type TutorObject, type TutorReceiptKind, type TutorHistoryState, type TutorHdlSelection, type TutorPayload } from './tutoringContracts'
+import { tutorHdlBasisCurrent, tutorHdlSelectionCurrent, verifyTutorHdlSelection, verifyTutorHdlObject, type TutorHdlCurrent } from './tutoringHdl'
 import { verifyTutorContent, verifyTutorPage } from './tutoringEvents'
 import { readTutorLedger, tutorChannel, tutorLedgerKey, writeTutorLedger, writeTutorHistoryCache, type TutorCommand, type TutorLedger, type TutorMessage } from './tutoringStore'
 import { emptyTutorHistory, verifyTutorHistory, verifyTutorSource, sameTutorSource } from './tutoringHistory'
@@ -28,6 +29,9 @@ export class TutoringWorkspace {
   private displayFence = false
   private stopVersion = 0
   private requiresRevalidation = true
+  private hdlEnabled = false
+  private hdlCurrent: TutorHdlCurrent | null = null
+  private hdlVersion = 0
   private automaticReadsPaused = false
   private readonly observed = new Map<string, { actionId: string; hash: string; kind: TutorReceiptKind; command: TutorCommand }>()
   constructor(readonly confirmation: ConfirmationWorkspace, readonly context: CommandContext) {}
@@ -38,10 +42,37 @@ export class TutoringWorkspace {
   dispose() { this.alive = false; this.sequence++; this.historySequence++
     this.state={...this.state,history:{phase:'unavailable',data:emptyTutorHistory(),notice:null}}
     this.closeChannel?.(); this.listeners.clear() }
+  /** The page supplies only verified public reads and actual local draft state. */
+  setHdlCurrent(value:TutorHdlCurrent|null) {
+    const next=value?structuredClone(value):null
+    if(this.hdlEnabled&&JSON.stringify(next)===JSON.stringify(this.hdlCurrent))return
+    this.hdlEnabled=true;this.hdlCurrent=next;this.hdlVersion++
+    // A read while HDL was unknown may already have advanced the event cursor.
+    // Reauthorize the original source through that channel on the next poll.
+    this.requiresRevalidation=true
+    const ledger=this.state.ledger?structuredClone(this.state.ledger):null
+    ledger?.messages.forEach(m=> {
+      if(!m.hdlUnselected&&(!m.payload.basis?.hdl||!tutorHdlBasisCurrent(m.payload.basis.hdl,next)))m.valid=false
+      // An unknown read temporarily fences display; a witnessed source change is a durable stale fact.
+      if(next&&m.payload.basis?.hdl&&!tutorHdlBasisCurrent(m.payload.basis.hdl,next))m.hdlInvalidated=true
+    })
+    this.publish({ledger})
+    if(ledger)void this.enqueue(()=>this.persist(structuredClone(this.state.ledger!)))
+  }
+  hdlSourceStatus(message:TutorMessage):string {
+    if(!this.hdlEnabled)return ''
+    if(message.hdlUnselected)return '未选 HDL 对象的一般项目对话，不代表当前板卡或代码建议。'
+    if(!message.payload.basis?.hdl)return '历史内容缺少冻结 HDL 来源，不能作为当前建议。'
+    return message.valid&&!message.hdlInvalidated&&tutorHdlBasisCurrent(message.payload.basis.hdl,this.hdlCurrent)
+      ?'已核对原 HDL 来源；不修改、装载或推进当前作品。':'原 HDL 来源已变化或尚未核对，仅保留历史内容。'
+  }
   private protectLedger(ledger: TutorLedger) {
     ledger.stopVersion=this.stopVersion
     const latest=this.confirmation.current.attempt
-    ledger.messages.forEach(m=>{if(!latest || m.epoch!==latest.decisionEpoch || !['ready','active'].includes(latest.status))m.valid=false})
+    ledger.messages.forEach(m=> {
+      if(!latest || m.epoch!==latest.decisionEpoch || !['ready','active'].includes(latest.status))m.valid=false
+      if(this.hdlEnabled&&!m.hdlUnselected&&(!m.payload.basis?.hdl||m.hdlInvalidated||!tutorHdlBasisCurrent(m.payload.basis.hdl,this.hdlCurrent)))m.valid=false
+    })
     for(const fact of this.observed.values()) {
       const m=ledger.messages.find(m=>m.payload.actionId===fact.actionId && m.payload.contentHash===fact.hash)
       if(!m) continue
@@ -54,6 +85,14 @@ export class TutoringWorkspace {
   private controlsCurrent(epoch: number) {
     const latest=this.confirmation.current.attempt
     return this.valid() && !!latest && latest.decisionEpoch===epoch && ['ready','active'].includes(latest.status)
+  }
+  private unselectedProjectMessage(ledger:TutorLedger,source:TutorPayload):boolean {
+    if(!source.jobId||source.basis?.hdl||source.basis?.objectRef&&!['project','resource'].includes(source.basis.objectRef.kind))return false
+    return ledger.commands.some(command=> {
+      if(command.kind!=='help'||command.state!=='confirmed'||!command.result)return false
+      try {return record(record(command.result).result).jobId===source.jobId&&!JSON.parse(command.wireJson).hdlSelection}
+      catch {return false}
+    })
   }
   invalidateControl() {
     this.sequence++
@@ -188,20 +227,24 @@ export class TutoringWorkspace {
         }
         for (const event of page.events) {
           if (!event.payload) continue
+          if(event.type!=='teaching.delivered'&&!(this.context.mode==='preparation'&&event.type==='teaching.delivery'))continue
           try {
             const p = await verifyTutorContent(event.payload)
             const source = verifyTutorSource(p, this.context, epoch)
             if (!this.valid() || seq !== this.sequence) return
             const old = ledger.messages.find(m => m.payload.actionId === p.actionId)
+            const unselectedProject=!!source&&this.unselectedProjectMessage(ledger,p)
+            if(this.hdlEnabled&&!source?.basis.hdl&&!unselectedProject) {if(old)old.valid=false;continue}
             if (old && (old.payload.contentHash !== p.contentHash || old.payload.content !== p.content)) { old.valid = false; throw new Error('同一教学动作的正文发生冲突') }
             if (old) {
               const previous=verifyTutorSource(old.payload,this.context,epoch)
               if(previous && (!source || !sameTutorSource(previous,source))) {old.valid=false;throw new Error('同一教学动作的原始来源发生冲突')}
               if(source)Object.assign(old.payload,source)
+              old.hdlUnselected=unselectedProject
               old.valid = !ledger.blocked && ['ready','active'].includes(page.control.status); old.payload.basisRevised = p.basisRevised
             }
             else if (!ledger.blocked && ['ready', 'active'].includes(page.control.status)) {
-              const message: TutorMessage = { payload: p, epoch, valid: true, shown: false, facts: {} }
+              const message: TutorMessage = { payload: p, epoch, valid: true, shown: false, facts: {},...(unselectedProject?{hdlUnselected:true}:{}) }
               message.facts.received = this.receiptCommand(ledger, message, 'received')
               ledger.messages.push(message)
             }
@@ -290,9 +333,10 @@ export class TutoringWorkspace {
       await this.persist(ledger)
     }
   }
-  send(question: string, objectRef?: TutorObject, replace = false, objectCurrent: () => boolean = () => true) {
+  send(question: string, objectRef?: TutorObject, replace = false, objectCurrent: () => boolean = () => true, hdlSelection?:TutorHdlSelection) {
     // Capture intent before the queue or HTTP wait; a later stop must fence this older send.
     const issuedStopVersion=this.stopVersion, originalObject=objectRef?structuredClone(objectRef):undefined
+    const originalSelection=hdlSelection?structuredClone(hdlSelection):undefined,issuedHdlVersion=this.hdlVersion
     return this.enqueue(async () => {
     if(issuedStopVersion!==this.stopVersion) {this.publish({notice:'等待期间已停止帮助，原问题未发送。'});return}
     if (!question.trim() || !this.state.ledger) return
@@ -313,6 +357,11 @@ export class TutoringWorkspace {
       if(issuedStopVersion!==this.stopVersion)throw new Error('等待期间已停止帮助，原问题未发送。')
       if(limitedCheckFromHead(head)!==false)throw new Error(head.limitedCheck===true?'限定检查进行中，当前不能发送辅导问题。':'限定检查状态尚未确认，请重新读取后再求助。')
       if (!objectCurrent()) throw new Error('所指代码或原对象已改变，问题未发送；请重新核对')
+      if(originalSelection) {
+        verifyTutorHdlSelection(originalSelection);verifyTutorHdlObject(originalSelection,originalObject)
+        if(issuedHdlVersion!==this.hdlVersion||!tutorHdlSelectionCurrent(originalSelection,this.hdlCurrent)
+          ||head.attempt.workspaceRevision!==this.hdlCurrent?.workspaceRevision)throw new Error('所选 HDL 来源已变化或尚未核对，问题未发送')
+      }
       if (!['ready', 'active'].includes(head.attempt.status)) throw new Error('当前尝试不允许新求助')
       if (originalObject && originalObject.attemptId !== this.context.attemptId) throw new Error('求助对象不属于当前尝试')
       const ledger = structuredClone(this.state.ledger!)
@@ -320,11 +369,16 @@ export class TutoringWorkspace {
         issuedStopVersion,
         path: `/attempts/${encodeURIComponent(this.context.attemptId!)}/help`,
         wireJson: JSON.stringify({ question, expectedAttemptRevision: head.attempt.attemptRevision,
-          recoveryGeneration: this.context.trustedRecoveryGeneration, ...(originalObject ? { objectRef:originalObject } : {}) }) }
+          recoveryGeneration: this.context.trustedRecoveryGeneration, ...(originalObject ? { objectRef:originalObject } : {}),
+          ...(originalSelection?{hdlSelection:originalSelection}:{}) }) }
       ledger.commands.push(command); await this.persist(ledger)
       if(!this.valid())return
       if(issuedStopVersion!==this.stopVersion) {
         command.state='rejected';command.error='等待期间已停止帮助，原问题未发送。'
+        await this.persist(ledger);throw new Error(command.error)
+      }
+      if(originalSelection&&(issuedHdlVersion!==this.hdlVersion||!objectCurrent()||!tutorHdlSelectionCurrent(originalSelection,this.hdlCurrent))) {
+        command.state='rejected';command.error='所选 HDL 来源在发送前改变，原问题未发送。'
         await this.persist(ledger);throw new Error(command.error)
       }
       await this.executeCommand(command.key)
@@ -379,7 +433,14 @@ export class TutoringWorkspace {
     try {
       const raw = await tutoringRequest(apiPostFrozen<unknown>(command.path, command.wireJson, { ...this.opts(), idempotencyKey: key }))
       if (!this.valid()) return
-      const result = await verifyTutorCommandReceipt(this.context, command, raw)
+      let originalQuestion
+      if(command.kind==='help'&&JSON.parse(command.wireJson).hdlSelection) {
+        const publicHistory=await tutoringRequest(apiGet<unknown>(`/attempts/${encodeURIComponent(this.context.attemptId!)}/teaching-records`,this.opts()))
+        if(!this.valid())return
+        const history=await verifyTutorHistory(publicHistory,this.context),ack=record(raw),accepted=record(ack.result)
+        originalQuestion=history.questions.find(q=>q.jobId===accepted.jobId&&q.requestReceiptId===ack.receiptId)
+      }
+      const result = await verifyTutorCommandReceipt(this.context, command, raw, originalQuestion)
       if (!this.valid()) return
       let inheritedStop:string|undefined
       if (command.kind === 'help') {

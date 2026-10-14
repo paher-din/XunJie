@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ConfirmationWorkspace } from './confirmationWorkspace'
 import { TutoringWorkspace, type TutoringState } from './tutoringWorkspace'
 const idle: TutoringState = { ledger: null, busy: false, synchronized: false, notice: null }
-export function useTutoringWorkspace(confirmation: ConfirmationWorkspace | null) {
+export function useTutoringWorkspace(confirmation: ConfirmationWorkspace | null, hdlEnabled = false) {
   const context = confirmation?.context
   const [client, setClient] = useState<TutoringWorkspace | null>(null)
   const [state, setState] = useState(idle)
@@ -10,6 +10,8 @@ export function useTutoringWorkspace(confirmation: ConfirmationWorkspace | null)
     setState(idle)
     if (!confirmation || !context?.attemptId) { setClient(null); return }
     const current = new TutoringWorkspace(confirmation, context)
+    // Fence HDL display before the first event read, including cached/legacy deliveries.
+    if(hdlEnabled)current.setHdlCurrent(null)
     setClient(current)
     const unsubscribe = current.subscribe(setState)
     let started = false
@@ -26,6 +28,6 @@ export function useTutoringWorkspace(confirmation: ConfirmationWorkspace | null)
     const reconnect = () => { void current.read(true) }
     window.addEventListener('online', reconnect)
     return () => { clearInterval(timer); window.removeEventListener('online', reconnect); stopConfirmation(); unsubscribe(); current.dispose() }
-  }, [confirmation, context])
+  }, [confirmation, context, hdlEnabled])
   return { client, state }
 }

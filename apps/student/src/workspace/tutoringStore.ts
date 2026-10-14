@@ -5,7 +5,7 @@ import type { TutorControl, TutorJob, TutorPayload, TutorReceiptKind, TutorCover
 export interface TutorCommand { key: string; path: string; wireJson: string; kind: 'receipt' | 'help' | 'cancel'
   state: 'pending' | 'confirmed' | 'rejected'; result?: unknown; error?: string; question?: string; issuedStopVersion?:number }
 export interface TutorMessage { payload: TutorPayload; epoch: number; valid: boolean; shown: boolean
-  facts: Partial<Record<TutorReceiptKind, TutorCommand>> }
+  facts: Partial<Record<TutorReceiptKind, TutorCommand>>;hdlInvalidated?:boolean;hdlUnselected?:boolean }
 export interface TutorLedger { key: string; clientId: string; cursor: number; control: TutorControl | null
   messages: TutorMessage[]; commands: TutorCommand[]; job: TutorJob | null; blocked: boolean; coverage?:TutorCoverage; stopVersion?:number }
 export const tutorScope = (c: CommandContext) => JSON.stringify([c.mode, c.userId, c.courseId, c.assignmentId,

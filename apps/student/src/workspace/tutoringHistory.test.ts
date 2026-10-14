@@ -91,6 +91,22 @@ describe('existing C3 student history projection',()=> {
     reply.envelope.bodyJsonText='UNVALIDATED_PRIVATE_TEXT';reply.resultHash=await textHash(reply.envelope.bodyJsonText)
     await expect(verifyTutorHistory(raw,context)).rejects.toThrow('教学历史字段、归属或原始关联不完整')
   })
+  it('retains frozen HDL history and verifies question, answer and Action association atomically',async()=> {
+    const raw=await fixture(),q=raw.messages[0] as TutorHistoryQuestion,m=raw.messages[1] as TutorHistoryReply
+    const hdl={snapshotId:'snapshot',snapshotHash:'a'.repeat(64),buildId:'build',buildStatus:'failed' as const,workspaceRevision:4,buildResultHash:'b'.repeat(64)}
+    q.envelope.hdlSelection={snapshotId:'snapshot',buildId:'build'};q.envelope.hdlBasis=structuredClone(hdl)
+    raw.actions[0]!.basis.hdl=structuredClone(hdl);m.envelope.basis.hdl=structuredClone(hdl)
+    const history=await verifyTutorHistory(raw,context)
+    expect(history.entries[0]!.action.basis.hdl).toEqual(hdl)
+    q.envelope.hdlBasis.buildId='other';await expect(verifyTutorHistory(raw,context)).rejects.toThrow()
+  })
+  it('keeps legacy selected HDL history without reconstructing missing frozen fields',async()=> {
+    const raw=await fixture(),q=raw.messages[0] as TutorHistoryQuestion
+    q.envelope.hdlSelection={snapshotId:'snapshot',buildId:'build'}
+    const history=await verifyTutorHistory(raw,context)
+    expect(history.questions[0]!.envelope.hdlBasis).toBeUndefined()
+    expect(history.entries[0]!.action.basis.hdl).toBeUndefined()
+  })
 })
 function client() {
   let active=true
