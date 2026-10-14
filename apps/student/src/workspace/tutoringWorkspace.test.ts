@@ -125,6 +125,52 @@ describe('HDL provenance and explicit display fence',()=> {
     await f.client.fact('a','acknowledged');expect(f.client.current.ledger?.messages[0]?.facts.acknowledged).toBeUndefined()
     f.client.dispose()
   })
+  it('reauthorizes the same received unseen HDL source on ordinary polling after temporary recovery unknown',async()=> {
+    const f=await hdlFixture()
+    // Model the original event channel accurately: an advanced cursor does
+    // not receive the earlier delivery again unless reauthorization reads0.
+    mocked.get.mockImplementation(async(path:string)=> {
+      if(path.endsWith('/teaching-records'))return {messages:[],actions:[]}
+      const after=Number(new URL(path,'https://synthetic.invalid').searchParams.get('afterServerSeq'))
+      return {...f.page,events:f.page.events.filter(event=>event.serverSeq>after)}
+    })
+    await f.client.initialize()
+    const received=structuredClone(f.client.current.ledger!.messages[0]!.facts.received)
+    expect(received?.state).toBe('confirmed')
+    expect(f.client.current.ledger!.messages[0]!.shown).toBe(false)
+    mocked.post.mockClear()
+    f.client.setHdlCurrent(null)
+    await f.client.read()
+    await f.client.fact('a','displayed')
+    expect(f.client.current.ledger!.messages[0]!.valid).toBe(false)
+    expect(f.getStored()!.messages[0]!.hdlInvalidated).toBeUndefined()
+    expect(f.getStored()!.messages[0]!.shown).toBe(false)
+    expect(mocked.post).not.toHaveBeenCalled()
+    f.client.dispose()
+
+    const restored=new TutoringWorkspace(f.confirmation as unknown as ConfirmationWorkspace,{...context,mode:'real',preparationEpoch:null})
+    restored.setHdlCurrent(null)
+    await restored.initialize()
+    expect(restored.current.ledger!.messages[0]!.valid).toBe(false)
+    expect(restored.current.ledger!.messages[0]!.hdlInvalidated).toBeUndefined()
+    expect(restored.current.ledger!.messages[0]!.facts.received).toEqual(received)
+    restored.setHdlCurrent(currentHdl())
+    expect(restored.current.ledger!.messages[0]!.valid).toBe(false)
+    mocked.get.mockClear()
+    await restored.read()
+    const eventRead=mocked.get.mock.calls.find(([path])=>String(path).includes('/events?'))
+    expect(new URL(String(eventRead![0]),'https://synthetic.invalid').searchParams.get('afterServerSeq')).toBe('0')
+    const message=restored.current.ledger!.messages[0]!
+    expect(restored.current.synchronized).toBe(true)
+    expect(message.valid).toBe(true)
+    expect(message.hdlInvalidated).toBeUndefined()
+    expect(message.facts.received).toEqual(received)
+    expect(message.shown).toBe(false)
+    expect(message.facts.displayed).toBeUndefined()
+    expect(message.facts.acknowledged).toBeUndefined()
+    expect(mocked.post).not.toHaveBeenCalled()
+    restored.dispose()
+  })
   it('invalidates a shown answer on new draft and cannot restore current guidance by rereading old events',async()=> {
     const f=await hdlFixture();await f.client.initialize();await f.client.fact('a','displayed')
     const edited=currentHdl();edited.hasDraftChanges=true;f.client.setHdlCurrent(edited)

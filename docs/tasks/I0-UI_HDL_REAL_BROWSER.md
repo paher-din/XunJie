@@ -109,3 +109,5 @@ Chrome 155 的既有已连接 profile「您的 Chrome」在严格受信 `https:/
 显式同快照 Build + top.sv/file v2求助，经正常表单/原SDK/原Job消费者/C3：Job `03f58f2d-080e-4074-b69f-26a63b44cbb8` succeeded，Message `f688beaf-ca51-48a4-84c8-e9d8fac818dd`，服务端 received seq34；本人环境key只传本机子进程env。真实模型HTTP一次200，原SDK actual usage input2933/output507；没有直接模型脚本或假的 teaching.delivered。提示说明缺分号并建议自行验证，没有提供完整作品或改源码。初始辅导在Attempt创建前sync的通知通过正常“重新读取辅导”清除，不是新的模型请求。
 
 真实小辅导滚动容器只有79px，整卡含来源1874px，原5% IntersectionObserver阈值导致正文可见仍无displayed。保留当前原Job/快照，先修正为观察实际正文的正面积交集并复验；当前不能把succeeded/received写成displayed或人工acknowledged。后续修改/同输入输出变化与最终停止证据另记。
+
+可见性修复固定 `f03c033`，只观察原Markdown正文的正面积交集，来源/按钮不计，保留原visible/valid/C3；10项边界加既有HDL用例11/11通过。正常刷新实测另发现父current在初始idle/reading投影空Build，使收到但未展示的原消息被永久标过时。父current改为完整HDL read的ready才取得，暂时未知保持null；每次来源更新令下一次原channel普通轮询从0重新授权，不直接置valid或清缓存。恢复反例核原cursor、收到回执保留、unknown不展示、同来源恢复、实际草稿变化仍持久失效。原首条Job错误持久缓存不解锁，不补displayed；通过正常新请求做后续本机合成展示验证，实际模型Job/HTTP与失败分开统计。最新全前端43文件569项全部通过，类型/正常build通过；不是完整浏览器/AC/NFR或教学效果。

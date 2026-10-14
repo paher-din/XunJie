@@ -105,7 +105,10 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     if (!isHdl || !tutor.client) return
     tutor.client.setHdlCurrent(null)
     let cancelled = false
-    if (!c?.trustedRecoveryGeneration || !confirmation.state.workspace || hdl.state.pending || hdl.state.unknown || hdl.state.busy) return
+    // Startup/restore has not authorized a current Build yet. Keep provenance
+    // unknown until the complete original read settles; missing initial data
+    // is not a witnessed source change that permanently retires a delivery.
+    if (!c?.trustedRecoveryGeneration || !confirmation.state.workspace || hdl.state.phase !== 'ready' || hdl.state.pending || hdl.state.unknown || hdl.state.busy) return
     void createTutorHdlCurrent({ workspaceRevision: confirmation.state.workspace.workspaceRevision,
       hasDraftChanges: project.unconfirmedCount > 0 || project.lifecyclePendingCount > 0,
       generation: c.trustedRecoveryGeneration, build: hdlSelectedBuild?.result ?? null, session: hdl.state.session, operation: hdl.state.operation })
@@ -113,7 +116,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
       .catch(() => { /* Unknown provenance stays unavailable; never construct a replacement basis. */ })
     return () => { cancelled = true }
   }, [isHdl, tutor.client, c, confirmation.state.workspace, project.unconfirmedCount, project.lifecyclePendingCount,
-    hdlSelectedBuild, hdl.state.session, hdl.state.operation, hdl.state.pending, hdl.state.unknown, hdl.state.busy])
+    hdlSelectedBuild, hdl.state.session, hdl.state.operation, hdl.state.phase, hdl.state.pending, hdl.state.unknown, hdl.state.busy])
   const [example, setExample] = useState<{ resource: TutoringResourceResult; anchor: TutoringReturnAnchor<NonNullable<CodeEditorViewState>> | null } | null>(null)
   const [returnNotice,setReturnNotice]=useState<{notice:string;origin?:ReturnOrigin}|null>(null)
   useEffect(()=> {

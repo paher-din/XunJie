@@ -46,6 +46,9 @@ export class TutoringWorkspace {
     const next=value?structuredClone(value):null
     if(this.hdlEnabled&&JSON.stringify(next)===JSON.stringify(this.hdlCurrent))return
     this.hdlEnabled=true;this.hdlCurrent=next;this.hdlVersion++
+    // A read while HDL was unknown may already have advanced the event cursor.
+    // Reauthorize the original source through that channel on the next poll.
+    this.requiresRevalidation=true
     const ledger=this.state.ledger?structuredClone(this.state.ledger):null
     ledger?.messages.forEach(m=> {
       if(!m.hdlUnselected&&(!m.payload.basis?.hdl||!tutorHdlBasisCurrent(m.payload.basis.hdl,next)))m.valid=false
