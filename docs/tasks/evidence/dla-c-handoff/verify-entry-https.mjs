@@ -4,6 +4,7 @@ import {readFileSync, writeFileSync, mkdirSync, createWriteStream} from 'node:fs
 import https from 'node:https';
 import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
+import {exchangeHttps, monitorApplication, stopApplication, assertReleasedActivity, assertFrozenActivity} from './entry-verification-helpers.mjs';
 
 const terminalStatuses = new Set(['succeeded', 'failed', 'cancelled', 'stale', 'timed_out']);
 assert.equal(['queued', 'running', 'outcome_unknown', 'running', 'succeeded'].find(status => terminalStatuses.has(status)), 'succeeded');
@@ -19,13 +20,15 @@ const recoveryRun = process.argv[2] === '--recovery-run';
 const configFile = directory + (recoveryRun ? '/i0-host-recovered-20261014.json' : '/i0-host.json');
 const config = JSON.parse(readFileSync(configFile, 'utf8'));
 const input = JSON.parse(readFileSync(directory + '/initializer.json', 'utf8'));
+const preparation = JSON.parse(readFileSync(directory + '/preparation-metadata.json', 'utf8'));
 const generation = JSON.parse(readFileSync(config.generationFile, 'utf8')).data.recoveryGeneration;
 const explicitPublicMaterialRun = recoveryRun || process.argv[2] === '--public-material-run';
 const previous = process.argv[2] && !explicitPublicMaterialRun ? JSON.parse(readFileSync(process.argv[2], 'utf8')) : undefined;
 const previousPassed = previous?.cases.filter(item => item.status === 'passed').map(item => item.id) ?? [];
 const certificate = new X509Certificate(readFileSync(config.tls.certFile));
 const agent = new https.Agent({ca: readFileSync(config.tls.certFile), rejectUnauthorized: true, keepAlive: true});
-const evidenceDirectory = directory + (recoveryRun ? '/https-evidence-recovery-20261014' : explicitPublicMaterialRun ? '/https-evidence-public-material' : previous ? '/https-evidence-resume' : '/https-evidence');
+const executionId = randomUUID();
+const evidenceDirectory = directory + (recoveryRun ? '/https-evidence-recovery-20261014' : explicitPublicMaterialRun ? '/https-evidence-public-material' : previous ? '/https-evidence-resume' : '/https-evidence') + '-review-fix-' + executionId;
 mkdirSync(evidenceDirectory, {mode: 0o700});
 const serverLog = createWriteStream(evidenceDirectory + '/server-log.ndjson', {flags: 'wx', mode: 0o600});
 const startedAt = new Date().toISOString();
@@ -33,16 +36,17 @@ const server = spawn('/opt/xunjie-runner/node/bin/node', [source + '/dist/server
   env: {PATH: '/opt/xunjie-runner/node/bin:/usr/bin:/bin', HOME: '/root', LANG: 'C.UTF-8', TZ: 'UTC',
     ...(recoveryRun ? {TMPDIR: directory + '/retained-tmp-20261014'} : {}),
     XUNJIE_I0_CONFIG: configFile, PORT: '3443'}, stdio: ['ignore', 'pipe', 'pipe']});
+const lifecycle = monitorApplication(server, serverLog);
 server.stdout.pipe(serverLog, {end: false});
 server.stderr.pipe(serverLog, {end: false});
-const samples = [], cases = [], references = {...previous?.references, origin: config.origin, generation};
+const samples = [], cases = [], references = {...previous?.references, origin: config.origin, generation, executionId};
 let currentCase = 0, requestCount = 0, tlsVerified = 0, shutdownObserved = false;
 let sourceFileId, inputFileId, oldSnapshot, originalRun, originalRunBody, originalRunKey;
 const clients = new Map(input.users.map(user => [user.id, {user, cookie: '', csrf: ''}]));
 const teacher = clients.get('synthetic-i0-teacher-a'), student = clients.get('synthetic-i0-student-a');
 const peer = clients.get('synthetic-i0-student-peer'), other = clients.get('synthetic-i0-student-b');
 const digest = value => createHash('sha256').update(value).digest('hex');
-const key = name => 'c-entry-20261014-' + (recoveryRun ? 'recovered-' : explicitPublicMaterialRun ? 'explicit-public-material-' : previous ? 'after-confirmed-cancel-' : '') + name;
+const key = name => 'c-entry-20261014-' + executionId + '-' + (recoveryRun ? 'recovered-' : explicitPublicMaterialRun ? 'explicit-public-material-' : previous ? 'after-confirmed-cancel-' : '') + name;
 const endpoint = suffix => '/api/attempts/' + references.attemptId + suffix;
 const oldSource = '#include <stdio.h>\nint main(void){puts("old snapshot");}\n';
 const newSource = '#include <stdio.h>\nint main(void){puts("new snapshot");}\n';
@@ -59,6 +63,7 @@ function publicValue(value, privateMaterial = false) {
   return result;
 }
 async function request(client, method, path, body, options = {}) {
+  lifecycle.assertHealthy();
   const text = body === undefined ? undefined : JSON.stringify(body);
   const headers = {};
   if (client?.cookie) headers.cookie = client.cookie;
@@ -69,35 +74,32 @@ async function request(client, method, path, body, options = {}) {
     if (options.key) headers['idempotency-key'] = options.key;
     if (text !== undefined) headers['content-length'] = Buffer.byteLength(text);
   }
-  const response = await new Promise((resolve, reject) => {
-    const req = https.request({hostname: '127.0.0.1', port: 3443, path, method, headers, agent}, res => {
-      assert.equal(res.socket.authorized, true);
-      assert.equal(res.socket.getPeerCertificate().fingerprint256, certificate.fingerprint256);
-      tlsVerified++;
-      const chunks = [];
-      res.on('data', chunk => chunks.push(chunk));
-      res.on('end', () => {
-        const raw = Buffer.concat(chunks).toString('utf8');
-        let parsed; try {parsed = JSON.parse(raw);} catch {parsed = undefined;}
-        if (client && res.headers['set-cookie']) client.cookie = res.headers['set-cookie']
-          .map(item => item.split(';', 1)[0]).join('; ');
-        const sensitive = path === '/api/sessions' || path === '/api/session' || options.privateMaterial;
-        const sample = {case: currentCase, method, path, statusCode: res.statusCode,
-          ...(body === undefined || path === '/api/sessions' ? {} : {request: publicValue(body, options.privateMaterial)}),
-          response: parsed === undefined ? {contentType: res.headers['content-type'], bytes: Buffer.byteLength(raw), hash: digest(raw)}
-            : publicValue(parsed, options.privateMaterial),
-          ...(sensitive || parsed === undefined ? {rawBodyPersisted: false, omission: parsed === undefined
-            ? 'Asset content represented by exact bytes/hash; generated bundles not copied to Git'
-            : 'Authentication/private material kept in memory only'}
-            : {rawBody: raw, rawBodyHash: digest(raw)})};
-        samples.push(sample); requestCount++;
-        resolve({status: res.statusCode, body: parsed, raw});
-      });
-    });
-    req.setTimeout(180000, () => req.destroy(Object.assign(new Error('Request deadline'), {code: 'REQUEST_DEADLINE'})));
-    req.on('error', reject); req.end(text);
-  });
-  return response;
+  const response = await exchangeHttps(https.request, {hostname: '127.0.0.1', port: 3443, path, method, headers, agent}, text, res => {
+    assert.equal(res.socket.authorized, true);
+    assert.equal(res.socket.getPeerCertificate().fingerprint256, certificate.fingerprint256);
+  }, 180000);
+  const {raw} = response;
+  tlsVerified++; requestCount++;
+  // API and health JSON must parse; an invalid response is not an asset.
+  let parsed;
+  try {
+    if (path.startsWith('/api/') || path.startsWith('/health/') || /application\/json/i.test(response.headers['content-type'] ?? '')) parsed = JSON.parse(raw);
+  } catch {
+    samples.push({case: currentCase, method, path, statusCode: response.status, rawBodyPersisted: false,
+      omission: 'Malformed API JSON omitted; no response body or credentials persisted'});
+    throw Object.assign(new Error('Malformed API response'), {code: 'INVALID_RESPONSE_JSON'});
+  }
+  if (client && response.headers['set-cookie']) client.cookie = response.headers['set-cookie'].map(item => item.split(';', 1)[0]).join('; ');
+  const sensitive = path === '/api/sessions' || path === '/api/session' || options.privateMaterial;
+  const sample = {case: currentCase, method, path, statusCode: response.status,
+    ...(body === undefined || path === '/api/sessions' ? {} : {request: publicValue(body, options.privateMaterial)}),
+    response: parsed === undefined ? {contentType: response.headers['content-type'], bytes: Buffer.byteLength(raw), hash: digest(raw)}
+      : publicValue(parsed, options.privateMaterial),
+    ...(sensitive || parsed === undefined ? {rawBodyPersisted: false, omission: parsed === undefined
+      ? 'Asset content represented by exact bytes/hash; generated bundles not copied to Git'
+      : 'Authentication/private material kept in memory only'} : {rawBody: raw, rawBodyHash: digest(raw)})};
+  samples.push(sample);
+  return {status: response.status, body: parsed, raw};
 }
 function success(response) {assert.equal(response.status, 200); assert(response.body?.data); return response.body.data;}
 function denied(response, code) {assert(response.status >= 400 && response.status < 500); assert.equal(response.body?.error?.code, code);}
@@ -112,6 +114,15 @@ async function attemptCount() {
   const Database = (await import(source + '/node_modules/better-sqlite3/lib/index.js')).default;
   const db = new Database(config.databaseFile, {readonly: true, fileMustExist: true});
   try {return db.prepare('SELECT count(*) AS n FROM attempts').get().n;} finally {db.close();}
+}
+async function readFrozenActivity(activityVersionId, courseId) {
+  const Database = (await import(source + '/node_modules/better-sqlite3/lib/index.js')).default;
+  const db = new Database(config.databaseFile, {readonly: true, fileMustExist: true});
+  try {
+    const row = db.prepare('SELECT activity_json,content_hash FROM activity_versions WHERE id=? AND course_id=?').get(activityVersionId, courseId);
+    assert(row); assert.equal(digest(row.activity_json), row.content_hash);
+    return JSON.parse(row.activity_json);
+  } finally {db.close();}
 }
 async function sync(operations, name, seq) {
   const state = await head();
@@ -149,9 +160,12 @@ async function updateSource(text, name, seq) {
   const state = await head(), file = state.files.find(item => item.fileId === sourceFileId);
   return sync([{kind: 'update', fileId: sourceFileId, baseVersion: file.documentVersion, text}], name, seq);
 }
-let failed = false;
+let failed = false, failureCode;
 try {
+  await lifecycle.run(async () => {
   assert.equal(process.version, 'v24.21.0');
+  assert.equal(preparation.sourceCommit, '9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77');
+  assert.equal(preparation.runtime.recoveryGeneration, generation);
   let online = false;
   for (let i = 0; i < 50; i++) {
     if (server.exitCode !== null) break;
@@ -204,6 +218,7 @@ try {
       material: {format: 'txt', title: 'Synthetic private validation', content: 'Synthetic private validation asset.',
         kind: 'private_answer', visibility: {student: false, tutor: false}}}, {key: key('resource-private'), privateMaterial: true}));
     references.publicResourceId = pub.result.resourceVersion.resourceVersionId;
+    references.publicMaterial = pub.result.resourceVersion.material;
     references.privateResourceId = priv.result.resourceVersion.resourceVersionId;
   });
   await runCase(3, 'Normal manual blueprint uses own policy and immutable resource refs', async () => {
@@ -235,9 +250,26 @@ try {
     const r = success(await request(teacher, 'POST', '/api/blueprints/' + references.blueprintId + '/releases',
       {recoveryGeneration: generation, expectedRevision: references.blueprintRevision, confirmed: true, concerns: []}, {key: key('release')}));
     references.activityVersionId = r.result.activityVersionId;
-    const activity = success(await request(teacher, 'GET', '/api/activities/' + references.activityVersionId));
     references.activityControlRevision = r.result.activityControlRevision; assert.equal(references.activityControlRevision, 1);
-    assert(activity);
+    assert.equal(r.result.sourceRevision, references.blueprintRevision);
+    assert.equal(r.result.checks.blueprintId, references.blueprintId);
+    assert.equal(r.result.checks.revision, references.blueprintRevision);
+    assert.deepEqual(r.result.checks.blocking, []);
+    const courseId = input.courses.find(item => item.teacherId === teacher.user.id).id;
+    for (const audience of ['student', 'tutor']) {
+      const activity = success(await request(teacher, 'GET', '/api/activities/' + references.activityVersionId + '?audience=' + audience));
+      assertReleasedActivity(activity, {activityVersionId: references.activityVersionId, courseId,
+        sourceRevision: references.blueprintRevision, activityControlRevision: references.activityControlRevision,
+        runtimeProfileVersionId: preparation.runtime.runtimeProfileVersion, helpPolicyVersionId: 'help-v1', audience,
+        publicResourceId: references.publicResourceId, publicMaterial: references.publicMaterial});
+    }
+    const frozen = await readFrozenActivity(references.activityVersionId, courseId);
+    assertFrozenActivity(frozen, {...references, courseId, generation, preparation: preparation.runtime});
+    // Publish only non-secret runtime evidence, never the full activity/material body.
+    references.releaseEvidence = {activityVersionId: frozen.activityVersionId, courseId, sourceBlueprintId: frozen.sourceBlueprintId,
+      sourceRevision: frozen.sourceRevision, recoveryGeneration: frozen.recoveryGeneration,
+      runtimeProfile: frozen.runtimeProfile, runtimeReadiness: frozen.runtimeReadiness,
+      source: 'Original readonly activity_versions record; authenticated release froze these values'};
   });
   await runCase(6, 'Normal teacher assigns only the intended synthetic student', async () => {
     const r = success(await request(teacher, 'POST', '/api/activities/' + references.activityVersionId + '/assignments',
@@ -378,22 +410,22 @@ try {
     references.unexecuted = ['real transport disconnect/outcome_unknown injection', 'browser certificate trust and UI workflow',
       'system CA changes', 'node maintenance', 'HDL/ALU and model', 'full NFR/human/teaching acceptance'];
   });
+  });
 } catch (error) {
-  failed = true;
+  failed = true; failureCode = error.code ?? 'ASSERTION_OR_BOUNDARY';
   console.log(JSON.stringify({failed: true, case: currentCase, code: error.code ?? 'ASSERTION_OR_BOUNDARY',
     message: 'Execution stopped at failed boundary; original references retained, no automatic replacement or retry.'}));
 } finally {
   agent.destroy();
-  if (server.exitCode === null) server.kill('SIGTERM');
-  shutdownObserved = await new Promise(resolve => {
-    if (server.exitCode !== null) return resolve(true);
-    const timer = setTimeout(() => resolve(false), 180000);
-    server.once('exit', () => {clearTimeout(timer); resolve(true);});
-  });
-  await new Promise(resolve => serverLog.end(resolve));
+  const shutdown = await stopApplication(server, serverLog, {spawnFailed: lifecycle.spawnFailed});
+  shutdownObserved = shutdown.stopConfirmed;
+  if (shutdown.shutdownErrorCode || lifecycle.failureCode) failed = true;
+  if (shutdownObserved) lifecycle.dispose();
   const evidence = {startedAt, finishedAt: new Date().toISOString(), sourceCommit: '9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77',
     origin: config.origin, databaseFile: config.databaseFile, node: process.version, cases, references, requestCount,
-    tlsVerifiedResponses: tlsVerified, serverPid: server.pid, serverExitCode: server.exitCode, shutdownObserved,
+    tlsVerifiedResponses: tlsVerified, ...shutdown, shutdownObserved, executionFailed: failed,
+    ...(failed ? {failureCode: failureCode ?? shutdown.shutdownErrorCode ?? lifecycle.failureCode,
+      failureStage: shutdown.shutdownErrorCode ? 'shutdown' : lifecycle.failureCode ? 'application-process-or-log' : 'case-' + currentCase} : {}),
     passed: cases.filter(c => c.status === 'passed').length, failed: cases.filter(c => c.status === 'failed').length,
     previousEvidence: previous ? process.argv[2] : undefined, previousPassed,
     distinctPassingCaseCoverage: new Set([...previousPassed, ...cases.filter(c => c.status === 'passed').map(c => c.id)]).size,

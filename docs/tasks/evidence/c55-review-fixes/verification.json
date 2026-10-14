@@ -1,0 +1,55 @@
+{
+  "checkedAt": "2026-10-13T19:03:59.836Z",
+  "reviewedHead": "d86e51e8b09f283e9249d0e85e70cc4df873aff9",
+  "reviewPackageSha256": "2b52131a02f57bc8da08a7d98bba9a9b45747a3233c9af9f937d4608b376ee6a",
+  "node": "v24.21.0",
+  "environment": "Linux/WSL2, existing portable runtime; no dependency install",
+  "scope": "Offline actual verifier request/finalizer/case-5 code with synthetic I/O; original archived student projection plus negative mutations; no PAHER HTTPS/C1/browser rerun",
+  "baseline": {
+    "node": "v24.15.0",
+    "tests": 32,
+    "pass": 9,
+    "fail": 21,
+    "skipped": 2,
+    "note": "Corrected baseline mock destroy forwards request errors; new helper-only tests unavailable on original source"
+  },
+  "final": {
+    "tests": 35,
+    "pass": 35,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "syntax": [
+    {
+      "file": "prepare-ui-handoff.mjs",
+      "status": "passed"
+    },
+    {
+      "file": "verify-entry-https.mjs",
+      "status": "passed"
+    },
+    {
+      "file": "entry-verification-helpers.mjs",
+      "status": "passed"
+    },
+    {
+      "file": "entry-verification.test.mjs",
+      "status": "passed"
+    }
+  ],
+  "unknownPollingSelfCheck": "passed",
+  "historicalEvidenceChanged": false,
+  "case5": {
+    "archivedStudentProjection": "passed",
+    "emptyWrongProfilePrivateLeakWrongCourseWrongRevision": "rejected",
+    "tutorProjection": "synthetic test only; new actual GET not executed",
+    "frozenReadiness": "synthetic mutations rejected; new real readonly record not executed"
+  },
+  "limitations": [
+    "No newly executed real HTTPS/main/C1 sequence",
+    "No PAHER credentials, database or node accessed",
+    "No browser trust/workflow, full NFR, human or teaching acceptance"
+  ],
+  "tapSha256": "4054650a2ecd3aa0e74c134b3eac79310c3ab615cbd78c06b7fc6d4a5e14eeb2"
+}

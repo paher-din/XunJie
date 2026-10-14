@@ -1,0 +1,57 @@
+{
+  "checkedAt": "2026-10-14T05:08:11.979Z",
+  "businessSourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "scope": "Targeted readonly merge verification of new student/tutor release and frozen-record assertions; no complete20 rerun or new business objects",
+  "views": [
+    {
+      "audience": "student",
+      "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+      "sourceRevision": 1,
+      "materials": [
+        {
+          "status": "available"
+        },
+        {
+          "status": "redacted"
+        }
+      ],
+      "assertionsPassed": true
+    },
+    {
+      "audience": "tutor",
+      "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+      "sourceRevision": 1,
+      "materials": [
+        {
+          "status": "available"
+        },
+        {
+          "status": "redacted"
+        }
+      ],
+      "assertionsPassed": true
+    }
+  ],
+  "frozen": {
+    "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+    "sourceRevision": 1,
+    "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "runtimeProfile": {
+      "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+      "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+      "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+      "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+      "approvedResultFiles": [
+        "report.txt"
+      ]
+    },
+    "runtimeReadiness": {
+      "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+      "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+      "validatedAt": "2026-10-13T09:29:47.600Z",
+      "checkedAt": "2026-10-14T04:52:02.375Z"
+    },
+    "assertionsPassed": true
+  },
+  "fullPrivateActivityPersisted": false
+}

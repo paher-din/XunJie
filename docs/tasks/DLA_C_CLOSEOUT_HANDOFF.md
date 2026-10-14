@@ -660,3 +660,11 @@ wsl -d Ubuntu -u root -- systemctl show xunjie-i0-entry-recovered-20261014.servi
 最终检查见 [本轮核验](evidence/c-entry-recovery/recovered-validation.json)、[存储/权限](evidence/c-entry-recovery/storage-check.json)、[三份原日志摘要](evidence/c-entry-recovery/logs-manifest.json)。新配置差异仅databaseFile；新父目录/库目录root0700、SQLite/新配置root0600。三份原日志与本轮公开写集在原WSL/root内存按7个真实秘密值比较，匹配0，未输出秘密或复制SQLite。四脚本syntax、原ID unknown序列和新库目标正反例自检通过；原/公开HTTP和当前运行交接的bytes/hash一致，文档65份/997内链/errors=[]与git diff --check通过。旧验证记录不累计，本轮最终20/20独立记账；宿主HTTP ready503明确仍为失败。
 
 本轮完成C获准的持久新库/原节点/正常HTTPS业务恢复，保持本人应用在线供已获准同机联调，并将精确新对象及A健康缺口回#30。实际代码/文档在原PR55普通推送；未自动合并/关闭，主副本及其他成员写集未动。证书信任与UI消费未验不能计H-01/完整C-ENTRY验收完成。
+
+### 15.9 原PR并发更新的保留与组合
+
+首次61ae758普通推送被拒绝，远端已有33f9d2a及其前三个C审查修复提交；未强推。先在 [原PR协调](https://github.com/paher-din/XunJie/pull/55#issuecomment-6161340656)，正常merge保留远端I0-C55_REVIEW_FIXES、公共helper、回归与证据；只解决两个本人验证器的文本冲突，不改其他作者记录。
+
+组合保留远端exchangeHttps/进程日志错误收束、SIGTERM/unknown真实停止、student/tutor发布投影和原SQLite冻结记录断言、独占UUID输出/一次执行幂等命名；同时保留--recovery-run的新配置/TMPDIR。后续每轮输出采用UUID；UI交接的recovery模式可传第三参数明确选择该轮verification.json，不把新轮静默映到旧轮。未实际执行合并后完整20项；本轮已完成的20/20、178响应准确对应61ae758验证器及固定9fa业务源，原证据目录不改。
+
+合并后只补受影响范围：Node24.21.0离线错误/停止/发布投影回归35/35、0失败/跳过；当前已存在的新Activity分别正常GET student/tutor投影，调用合并后的实质断言，再只读原activity_versions核原JSON hash/冻结runtime/readiness/蓝图/revision/代际，均通过，见 [合并后定向现场读取](evidence/c-entry-recovery/merge-release-check.json)。不新建对象、不调用模型、不重启当前服务或重跑20项；离线35与现场定向读取单独记账。新增摘要/检查见 [合并核验](evidence/c-entry-recovery/merge-validation.json)，旧统计各留原提交。
