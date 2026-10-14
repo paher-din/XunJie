@@ -1,0 +1,66 @@
+{
+  "observedAtUtc": "2026-10-14T13:21:45.671Z",
+  "operation": "read-only approved synthetic snapshot/receipt metadata",
+  "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+  "tableCount": 24,
+  "snapshots": [
+    {
+      "snapshotId": "be814058-0ee7-4a68-95b1-521a543e75ac",
+      "workspaceRevision": 8,
+      "hash": "53a10f0c04d644670b4ecea93107701d1fd073c41d14d1e782df0813cfd0dfce",
+      "manifestHashMatches": true,
+      "files": [
+        {
+          "fileId": "a60fd7eb-3e3f-40ed-8a14-4b9eb3434436",
+          "path": "input.txt",
+          "documentVersion": 1,
+          "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+          "bytes": 11,
+          "contentHashMatches": true,
+          "syntheticMarkerPresent": false
+        },
+        {
+          "fileId": "d9f1b67d-808d-4dec-86f1-ac46c29c4c0e",
+          "path": "main.c",
+          "documentVersion": 6,
+          "contentHash": "110248d35ec027932dc23915bd00b36482da465b6e111be67fbfa2e2bd073e7a",
+          "bytes": 99,
+          "contentHashMatches": true,
+          "syntheticMarkerPresent": true
+        }
+      ]
+    }
+  ],
+  "receipts": [
+    {
+      "receiptId": "eeb4876d-c06a-43ce-b6b4-ba8082d2ac12",
+      "commandId": "2a7e5bdc-dce4-4fa0-b573-de72a37dfc1d",
+      "command": "shared.workspace.sync",
+      "serverSeq": 113,
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "workspaceRevision": 8,
+      "snapshotId": null
+    },
+    {
+      "receiptId": "53fcc04e-8ee8-4f68-af9a-64afb9129318",
+      "commandId": "364fe25f-7012-425f-8eb4-6e1d5535ff6a",
+      "command": "shared.snapshot.create",
+      "serverSeq": 114,
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "workspaceRevision": 8,
+      "snapshotId": "be814058-0ee7-4a68-95b1-521a543e75ac"
+    },
+    {
+      "receiptId": "0a4bb945-3da4-47d4-bd0e-a90e8daaf9c6",
+      "commandId": "8335f99b-29d6-4311-9240-ffe469c18149",
+      "command": "shared.run.create",
+      "serverSeq": 115,
+      "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+      "workspaceRevision": null,
+      "snapshotId": "be814058-0ee7-4a68-95b1-521a543e75ac"
+    }
+  ],
+  "plaintextSourceEmitted": false,
+  "authRead": false
+}
+

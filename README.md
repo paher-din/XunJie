@@ -59,6 +59,7 @@ node tools/a0-review/check.mjs
 | P4 截止日前核心验证与后续验收 | [核心验证安排与授权](docs/tasks/P4_DEADLINE_CORE_VERIFICATION.md)；[总协调 #60](https://github.com/paher-din/XunJie/issues/60)、[A6 #61](https://github.com/paher-din/XunJie/issues/61)、[B4 #62](https://github.com/paher-din/XunJie/issues/62)、[C5 #63](https://github.com/paher-din/XunJie/issues/63) |
 | C4 → A4 → DL-C 顺序集成 | [集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)、[C4](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md)、[A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md)、[DL-C](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) |
 | 学生 UI 准备交付与真实接入 | [I0 收尾](docs/tasks/I0_UI_CLOSEOUT.md)、[接入规格](docs/tasks/I0_UI_SPEC.md)、[准备票索引](docs/tasks/I0_UI_PREPARATION.md)；H-01～H-06 回交在 [#30](https://github.com/paher-din/XunJie/issues/30) |
+| I0 评论指定的浏览器与 HDL 交接 | [UI30 回交](docs/tasks/I0-UI30_COMMENT_CLOSEOUT.md)、[HDL 操作表](docs/tasks/I0-UI30_HDL_OPERATION_MAP.md)；正式 UI／真实 C1 与 HDL 待接线分列 |
 | I0-B 学生辅导接线与宿主组合 | [六票执行与交接](docs/tasks/I0-B_UI_TUTOR_PLAN.md)、[正常宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)、[完整30项清单](docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)；准备、实际 HTTPS 服务链、受控节点/模型与真人证据分开记录 |
 | 学生真实登录、会话恢复与退出 | [I0-UI 会话入口](docs/tasks/I0-UI_AUTH_SESSION_ENTRY.md)；UI-REAL-01/02/08，获准深链及同账号草稿恢复，两个合成账号的 HTTPS/SQLite 验证 |
 | 学生真实保存、快照与故障恢复 | [I0-UI 保存与恢复](docs/tasks/I0-UI_REAL_SAVE_RECOVERY.md)；UI-REAL-05/06/07/12，受信代际、原文确认、状态/版本限制与隔离服务故障验证 |

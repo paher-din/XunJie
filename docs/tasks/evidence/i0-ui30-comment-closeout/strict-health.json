@@ -1,0 +1,25 @@
+{
+  "observedAtUtc": "2026-10-14T13:18:51.3210284+00:00",
+  "origin": "https://127.0.0.1:3443",
+  "tlsValidation": "Windows current user trust, no bypass",
+  "probes": [
+    {
+      "path": "/health/live",
+      "status": 200,
+      "requestId": "de70723f-c5cc-459a-b4f8-1e81aa721d89",
+      "data": {
+        "status": "alive"
+      },
+      "cacheControl": ""
+    },
+    {
+      "path": "/health/ready",
+      "status": 200,
+      "requestId": "2a538d58-6427-46ca-8a99-010e5897467d",
+      "data": {
+        "status": "ready"
+      },
+      "cacheControl": "no-store"
+    }
+  ]
+}
