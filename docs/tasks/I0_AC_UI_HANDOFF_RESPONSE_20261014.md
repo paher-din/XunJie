@@ -71,6 +71,12 @@ Node24.21原lock/依赖下 `npm run typecheck`、`npm run build`通过；`node -
 
 原全库未结Job=0后，正常停止旧 `xunjie-i0-entry-pr56-f761dcd-20261014.service`，启动 `xunjie-i0-entry-main-87edd51-20261014.service`；正常createI0App/原config/24表库/账号/TLS/签名/SSH/generation全部保留，新源码/UI来自已验证87edd51。严格TLS live/ready/root200，ready no-store/requestId一致；同origin3443，不改Robert网关。3444仍原35表 `xunjie-dla-ui-main-87edd51-20261014.service`。H-05修复未部署至任何现场unit。
 
-切后再只读核指定评论：10个Run/Job/snapshot/requestReceiptId/hash/status关系保留，v8两文件/documentVersion/正文hash/manifest正确，活跃或未知0；两入口live/ready200、匿名Session401。新3443的137可服务资源严格TLS/HTTP bytes/hash一致，6JSON/OFL按原MIME拒绝400；143文件清单与UI PR69逐文件一致。ZIP8e6a52a…与UI722e5d4…容器字节不同，但展开路径/bytes/hash逐项相同，不能要求重造源码或声称两份ZIP hash相同。新包/原受控SFTP领取见 [主线运行回执](DLA_PR56_REVIEW_MERGE_UI_20261014.md#62-3444当前正常宿主与正式ui)。
+切后再只读核指定评论：10个Run/Job/snapshot/requestReceiptId/hash/status关系保留，v8两文件/documentVersion/正文hash/manifest正确，活跃或未知0；两入口live/ready200、匿名Session401。新3443的137可服务资源严格TLS/HTTP bytes/hash一致，6JSON/OFL按原MIME拒绝400；143文件清单与UI PR69逐文件一致。ZIP8e6a52a…与UI722e5d4…容器字节不同，但展开路径/bytes/hash逐项相同，不能要求重造源码或声称两份ZIP hash相同。新包/原受控SFTP领取见 [主线运行固定回执](https://github.com/paher-din/XunJie/blob/3d053bf4cc9e8d71cf2920ad9f205f1020228f30/docs/tasks/DLA_PR56_REVIEW_MERGE_UI_20261014.md#62-3444当前正常宿主与正式ui)，并已在 [原UI Issue](https://github.com/paher-din/XunJie/issues/30#issuecomment-6170632785)回交。本轮PR不夹带此前C未合main的整批记录。
 
 停止3443：`wsl -d Ubuntu -u root -- systemctl stop xunjie-i0-entry-main-87edd51-20261014.service`；回退先停新unit，再按 [现场保留旧argv](evidence/i0-ac-ui-response-20261014/c24-current-runtime.json)启动原f761dcd，不改库/代际或重放旧Job。旧unit inactive不是SSH断连/首次宿主未修；工具旧probe target应由UI在本人现有工具范围确认当前unit，不让C改Robert机器工具。秘密/信任、3444学生B通路、新模型轮次维持准确许可边界，现有H4/UI接线不等H3。
+
+## 6. 固定审查与交付准备
+
+只提本轮48个源码/测试/记录/证据文件，3份业务/回归源码；base为8b41303。应用原实现提交2398c894来自C续作工作树，仅取该提交在独立main副本正常cherry-pick，保留双方历史，不携带此前C事后记录。App managed创建操作9df95e6b长时间停在creating且没有给最终路径；没有重复请求同一操作。直接git worktree add另建 `i0-h05-delivery` / `codex/i0-h05-revision-fix` 并接纳本轮提交，attach返回“not a managed worktree”；工作副本实际存在且保留，不能把它称已成功App托管。原根工作树与续作写集未覆盖。
+
+初次隔离PR静态发现本记录引用的旧C事后文档锚点未在main；改为已公开固定3d053bf同仓库链接，不复制整批历史证据绕过问题。该文档修复不改源码字节，不重跑已通过测试；最终静态/空白和两个审查轴按实际结果记录。
