@@ -115,20 +115,58 @@ function TutorHistoryView({entry,preparation}:{entry:TutorHistoryEntry;preparati
     </AgentMessage>
   </article>
 }
+
+type TutorBodyRect = Pick<DOMRectReadOnly, 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height'>
+export const TUTOR_BODY_SELECTOR = ':scope > .chat-message.agent > .turn-body'
+/** A displayed fact requires actual body pixels, independent of card length. */
+export function tutorBodyVisible(facts: {
+  documentVisible:boolean; connected:boolean; hasContent:boolean; styleVisible:boolean; hasClientRect:boolean
+  isIntersecting:boolean; intersectionRect:TutorBodyRect; bodyRect:TutorBodyRect; viewportRect:TutorBodyRect; rootRect:TutorBodyRect|null
+}) {
+  const positive=(r:TutorBodyRect)=>[r.left,r.top,r.right,r.bottom,r.width,r.height].every(Number.isFinite)
+    && r.width>0 && r.height>0 && r.right>r.left && r.bottom>r.top
+  if(!facts.documentVisible||!facts.connected||!facts.hasContent||!facts.styleVisible||!facts.hasClientRect
+    ||!facts.isIntersecting||!positive(facts.intersectionRect)||!positive(facts.bodyRect)||!positive(facts.viewportRect)
+    ||facts.rootRect&&!positive(facts.rootRect))return false
+  const clips=[facts.bodyRect,facts.viewportRect,...(facts.rootRect?[facts.rootRect]:[])]
+  return Math.min(...clips.map(r=>r.right))>Math.max(...clips.map(r=>r.left))
+    && Math.min(...clips.map(r=>r.bottom))>Math.max(...clips.map(r=>r.top))
+}
 function TutorMessageView({ message, client, synchronized, scroller, onExample, sourceStatus }: {
   message: TutorMessage; client: TutoringWorkspace | null; synchronized: boolean; scroller: HTMLElement | null
   onExample?: (message: TutorMessage) => void; sourceStatus?:(ref:TutorObject,message?:TutorMessage)=>string }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(()=> {
     const el = ref.current
-    if (!el || !synchronized || !message.valid || message.facts.displayed) return
-    let intersecting = false
+    const body=el?.querySelector<HTMLElement>(TUTOR_BODY_SELECTOR)
+    if (!body || !synchronized || !message.valid || message.facts.displayed) return
+    const root=scroller??body.closest<HTMLElement>('.ws-chatbody')
+    const pane=body.closest('.ws-chatpop')
+    let entry:IntersectionObserverEntry|undefined
     const report = () => {
-      if (intersecting && document.visibilityState === 'visible' && el.getClientRects().length) void client?.fact(message.payload.actionId, 'displayed')
+      if(!entry)return
+      let styleVisible=getComputedStyle(body).visibility==='visible'
+      for(let ancestor:HTMLElement|null=body;styleVisible&&ancestor;ancestor=ancestor.parentElement) {
+        const style=getComputedStyle(ancestor)
+        if(style.display==='none'||Number(style.opacity)===0)styleVisible=false
+      }
+      if(tutorBodyVisible({documentVisible:document.visibilityState==='visible',connected:body.isConnected,
+        hasContent:!!body.textContent?.trim(),styleVisible,hasClientRect:Array.from(body.getClientRects()).some(r=>r.width>0&&r.height>0),
+        isIntersecting:entry.isIntersecting,intersectionRect:entry.intersectionRect,bodyRect:body.getBoundingClientRect(),rootRect:root?.getBoundingClientRect()??null,
+        viewportRect:{left:0,top:0,right:window.innerWidth,bottom:window.innerHeight,width:window.innerWidth,height:window.innerHeight}}))
+        void client?.fact(message.payload.actionId, 'displayed')
     }
-    const observer = new IntersectionObserver(entries=> { intersecting = entries.some(e=>e.isIntersecting); report() }, { root: scroller, threshold: 0.05 })
-    observer.observe(el); document.addEventListener('visibilitychange', report)
-    return ()=> { observer.disconnect(); document.removeEventListener('visibilitychange',report) }
+    const observer = new IntersectionObserver(entries=> {
+      entry=entries.find(e=>e.target===body); report()
+    }, { root, threshold: 0 })
+    // Edge contact can be isIntersecting with zero area at threshold0. Obtain
+    // a fresh body intersection after scrolling/showing instead of using it.
+    const refresh=()=>{entry=undefined;observer.unobserve(body);observer.observe(body)}
+    observer.observe(body)
+    document.addEventListener('visibilitychange',refresh);root?.addEventListener('scroll',refresh)
+    window.addEventListener('resize',refresh);pane?.addEventListener('animationend',refresh)
+    return ()=> { observer.disconnect(); document.removeEventListener('visibilitychange',refresh);root?.removeEventListener('scroll',refresh)
+      window.removeEventListener('resize',refresh);pane?.removeEventListener('animationend',refresh) }
   }, [client, message.payload.actionId, message.valid, !!message.facts.displayed, synchronized, scroller])
   const p = message.payload
   return <div ref={ref} data-testid="tutor-message" data-action-id={p.actionId}>

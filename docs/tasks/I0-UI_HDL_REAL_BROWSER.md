@@ -99,3 +99,13 @@ Robert 已明确答复“批准上述本机完整迁移及验证范围”。对�
 本机业务副本的原lock npm ci70包、SQLite :memory:原生probe、Node24.21类型/构建通过；没有编辑原依赖/锁文件。原35表工厂实际创建新库，三个synthetic-robert账号/两课程/新签名与初始化材料仅本机root受限目录；库路径由原工厂生成，不绕path验证。仍待教师原发布/分配、真实Chrome与本人模型/C3闭环。
 
 后续配置核对发现原BoardProfile允许buttons/resetN缺失或部分绑定。前端按原六个必需信号覆盖核验，额外防物理port bit重叠；optional输入从原binding决定可操作性，未绑定明确显示并disabled，不伪造已接线。新增3反例、受影响22项与typecheck/build通过；新dist主入口index-DVKKNh5Z.js。新本机工具的初始化失败重试、启动期间SIGTERM、默认模型关闭与仅student_help用途守卫3/3无副作用反例通过；启动入口以原flock排除pending阶段重复宿主，不覆盖原PID。模型与真实浏览器尚未据此算通过。
+
+### 4.7 2026-10-15：本机正常浏览器与本人模型首次实测
+
+原教师正常 HTTPS API 已发布并分配两个新合成活动，未直接写 SQL：C Assignment `fb0983e4-81bc-487b-8b50-7ffe984c38bb`，HDL Assignment `4c589f3c-18bc-447a-b6bb-6e3a86c442a7`。seed 首次正常 material.create 已成功，但本人解析器误期待旧扁平回执；改为原 `identity`/scope/hash 验证后复用原 prepared key 成功回读，未重复资料，失败历史保留。原教师 sample-run HTTP 路由不存在，未编造该步骤。
+
+Chrome 155 的既有已连接 profile「您的 Chrome」在严格受信 `https://127.0.0.1:3444` 正常登录 synthetic-robert-student-b，原表单/Session/CSRF/bootstrap，HDL Attempt `c5d1cf8e-991b-431a-9d39-177260725964`。没有使用 PAHER 服务或读取其模型key。原固定UI `464b33e`/index-DVKKNh5Z.js 的确认保存/冻结、真实成功Build/装载/SW0输入与确认停止已经执行；baseline LED常量0，SW0=1时仍0，原Session `88c7960f-50f8-43d6-9e2b-04775e94dad9`、seq1/time10000ps。之后显式编辑漏分号，确认快照 `992df0be-69e1-47ea-a28b-436b55bbc22b`/workspace v2，真实 failed Build `2a28b361-05fa-4b35-bb92-4a57a7db208c`，原iverilog第10/11行诊断原样显示，只做整行定位。
+
+显式同快照 Build + top.sv/file v2求助，经正常表单/原SDK/原Job消费者/C3：Job `03f58f2d-080e-4074-b69f-26a63b44cbb8` succeeded，Message `f688beaf-ca51-48a4-84c8-e9d8fac818dd`，服务端 received seq34；本人环境key只传本机子进程env。真实模型HTTP一次200，原SDK actual usage input2933/output507；没有直接模型脚本或假的 teaching.delivered。提示说明缺分号并建议自行验证，没有提供完整作品或改源码。初始辅导在Attempt创建前sync的通知通过正常“重新读取辅导”清除，不是新的模型请求。
+
+真实小辅导滚动容器只有79px，整卡含来源1874px，原5% IntersectionObserver阈值导致正文可见仍无displayed。保留当前原Job/快照，先修正为观察实际正文的正面积交集并复验；当前不能把succeeded/received写成displayed或人工acknowledged。后续修改/同输入输出变化与最终停止证据另记。
