@@ -83,3 +83,11 @@ UI实际接线与同浏览器演示尚未回交。最新main已经有成熟服�
 公开交付：[UI当前源/ZIP/严格TLS/停止回执6170632785](https://github.com/paher-din/XunJie/issues/30#issuecomment-6170632785)、[PR56合并回执6170633658](https://github.com/paher-din/XunJie/pull/56#issuecomment-6170633658)、[DL-A整卡范围回执6170634483](https://github.com/paher-din/XunJie/issues/38#issuecomment-6170634483)。B已收到 [真实HDL上下文/语义核对与预算边界6170648839](https://github.com/paher-din/XunJie/issues/40#issuecomment-6170648839)，不再要求C重制已有包；B只复核已有真实提示/当前性和故障降级，新的实际调用仍需准确预算。
 
 截至本次交付没有UI完成UDL-01～08的回复，不记“已接线”或“浏览器完成”。UI维护本人代码与浏览器演示，B配合语义/有限上下文，C已完成本批main集成、必要修复验证、原35表正常宿主和固定材料；具体跨机3444/B受控通路、新模型轮次在UI产物备齐后按准确门禁处理。不得恢复等待H3才接线。根工作区原README/planning/product/G3及原C材料无关差异仍未触碰。
+
+### 6.4 后续当前状态与文档主线收口
+
+上述3d053bf/c303346为PR56合并后的文档/证据回执，曾只在source分支，收口见 [本轮分支任务](DLA_POSTMERGE_BRANCH_CLOSEOUT_20261014.md)。main后续接纳PR68/70为8b41303，apps/**相对87edd51不变；本批将剩余材料纳入main，不改变运行代码或重验节点。
+
+2026-10-14后续A/C交接已将3443原24表正常宿主更新为 `xunjie-i0-entry-main-87edd51-20261014.service`，应用/UI来源仍87edd51，原10Run/v8快照/库/秘密/代际/节点保持，strictTLS/137静态字节已核。此事实补正§6.2当时“3443仍f761dcd”，原执行时点不改。具体批准/验证/旧argv/停止回退见 [H-05独立PR73任务](https://github.com/paher-din/XunJie/blob/40581e0b85a9abfde45a0acab444522f57f49564/docs/tasks/I0_AC_UI_HANDOFF_RESPONSE_20261014.md#52-24表现场接纳实际完成)和 [原#30回执](https://github.com/paher-din/XunJie/issues/30#issuecomment-6171614259)。3444仍 `xunjie-dla-ui-main-87edd51-20261014.service` / 原35表。
+
+H-05修复独立在PR73，尚未合main/部署，不进入本次文档收口；真实HDL UI/新模型预算及后置H3仍沿原责任/门禁。不能从分支提示清零推定完整应用/浏览器/真人验收完成。

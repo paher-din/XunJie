@@ -70,6 +70,7 @@ node tools/a0-review/check.mjs
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
 | 指定 PR 集成 | [54 → 55、59 → 53、55 → 53](docs/tasks/PR_INTEGRATION_54_55_59_53.md)；实际接纳差异、验证与审核交付 |
 | DL-A 当前续作 | [main 集成与真实 H4 交接](docs/tasks/DLA_CONTINUATION_20261014.md)；原 #56 统一基础，真实 HDL 与模型/浏览器分层验证 |
+| DL-A 合并后文档与分支收口 | [收尾记录](docs/tasks/DLA_POSTMERGE_BRANCH_CLOSEOUT_20261014.md)；事后验证/运行/UI回执纳入主线，源码交付与页面历史推送提示分别核对 |
 | #53 → #56 集成 | [当前集成记录](docs/tasks/PR_INTEGRATION_53_56.md)；来源、共用宿主适配、专项验证与 PR 回交 |
 | 其他模块与历史交付 | [全部任务记录](docs/tasks/)；按模块/编号查实现、批准范围、实际命令与原始证据 |
 
