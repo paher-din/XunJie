@@ -12,12 +12,14 @@
 | --- | --- |
 | [package.json](../../../../../apps/student/package.json) | `dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd` |
 | [package-lock.json](../../../../../apps/student/package-lock.json)，lockfileVersion3 | `8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9` |
-| [完整audit原始JSON](audit-full.json)，完成于2026-10-15 00:00:23 +08:00 | 6571 bytes；`7ae1e073ecafb36a4ea4859a1a80ded02935958c7968a5008ca2c51fcb97c4cf` |
-| [运行时audit原始JSON](audit-runtime.json)，完成于2026-10-15 00:00:20 +08:00 | 2310 bytes；`019fe7b81b7bb045974b8d6d2461dd77cd8b3d94eee26a9add65e085bd00aca8` |
+| [完整audit同值LF JSON](audit-full.json)，采样完成于2026-10-15 00:00:23 +08:00 | 公开6329 bytes；`254e0ed3df2d3e9bad046ad8ab8cde8679138697196a1fd77dae398ac535d0bc`；原CRLF输出6571 bytes/`7ae1e073ecafb36a4ea4859a1a80ded02935958c7968a5008ca2c51fcb97c4cf`另留存 |
+| [运行时audit同值LF JSON](audit-runtime.json)，采样完成于2026-10-15 00:00:20 +08:00 | 公开2219 bytes；`d3fe350428b0e597ec53f08f322c1bf522e89d6911aaf64a08958198ba794df6`；原CRLF输出2310 bytes/`019fe7b81b7bb045974b8d6d2461dd77cd8b3d94eee26a9add65e085bd00aca8`另留存 |
 | [摘要/锁定路径/源码摘要](audit-summary.json) | 含所有6公告、版本、integrity、命令退出值、未执行与网络读取限制 |
 | [精确候选的registry返回](registry-candidates.json) | 8次明确版本/标签查询均退出0；不含npm配置或凭据 |
 
 audit metadata 的 prod43、dev152、total195是其依赖分类；optional54是子集，不能再相加成249。完整安装树、原始 `npm explain` 和查询 stderr 留本轮本机证据区；可协同依据是上表已入库的固定摘要与JSON，不要求其他成员访问个人磁盘路径。
+
+发布前原始Git暂存检查把Windows stdout的CRLF判为新增尾随空白。仅这两份本轮JSON的外层换行规范为LF；逐解析值完全相等，且把公开LF恢复成CRLF可逐字节重建原捕获输出。原字节未改，摘要`capturedRaw`保留原bytes/hash、`presentationNormalization`列公开转换；上表现在区分两种表示。不改公告、时间、范围或计数，没有为此重跑audit。
 
 ## 2. 每个包级条目及实际路径
 

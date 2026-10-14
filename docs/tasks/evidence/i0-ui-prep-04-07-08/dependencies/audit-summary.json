@@ -61,14 +61,34 @@
   },
   "artifacts": {
     "audit-full.json": {
-      "sha256": "7ae1e073ecafb36a4ea4859a1a80ded02935958c7968a5008ca2c51fcb97c4cf",
-      "bytes": 6571,
-      "completedAtUtc": "2026-10-14T16:00:23.338Z"
+      "sha256": "254e0ed3df2d3e9bad046ad8ab8cde8679138697196a1fd77dae398ac535d0bc",
+      "bytes": 6329,
+      "completedAtUtc": "2026-10-14T16:00:23.338Z",
+      "capturedRaw": {
+        "sha256": "7ae1e073ecafb36a4ea4859a1a80ded02935958c7968a5008ca2c51fcb97c4cf",
+        "bytes": 6571,
+        "lineEndings": "CRLF"
+      },
+      "presentationNormalization": {
+        "lineEndings": "LF",
+        "parsedValueUnchanged": true,
+        "originalRawReconstructibleByLfToCrlf": true
+      }
     },
     "audit-runtime.json": {
-      "sha256": "019fe7b81b7bb045974b8d6d2461dd77cd8b3d94eee26a9add65e085bd00aca8",
-      "bytes": 2310,
-      "completedAtUtc": "2026-10-14T16:00:20.690Z"
+      "sha256": "d3fe350428b0e597ec53f08f322c1bf522e89d6911aaf64a08958198ba794df6",
+      "bytes": 2219,
+      "completedAtUtc": "2026-10-14T16:00:20.690Z",
+      "capturedRaw": {
+        "sha256": "019fe7b81b7bb045974b8d6d2461dd77cd8b3d94eee26a9add65e085bd00aca8",
+        "bytes": 2310,
+        "lineEndings": "CRLF"
+      },
+      "presentationNormalization": {
+        "lineEndings": "LF",
+        "parsedValueUnchanged": true,
+        "originalRawReconstructibleByLfToCrlf": true
+      }
     }
   },
   "lockedPackages": {
@@ -323,5 +343,10 @@
       "operation": "web open registry.npmjs.org/dompurify/3.4.16 and source-map-js/1.2.2",
       "result": "reader Internal Error; native npm view exact versions exited0 and raw metadata retained"
     }
-  ]
+  ],
+  "publicationFormatting": {
+    "normalizedAtUtc": "2026-10-14T16:36:45.682Z",
+    "reason": "New CRLF stdout evidence failed raw staged Git whitespace check; values retained and raw bytes archived/reconstructible.",
+    "auditNotRerun": true
+  }
 }
