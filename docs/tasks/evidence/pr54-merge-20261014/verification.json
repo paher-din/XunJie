@@ -170,7 +170,15 @@
   "initialFailure": "Isolated checkout lacked apps/student/dist; original same-version build generated, failed test alone rerun successfully",
   "originalSourcePreserved": true,
   "rootWorkspaceModified": false,
-  "githubPublication": "pending",
+  "githubPublication": {
+    "state": "MERGED",
+    "sha": "eb1c6de26a371e36cfabc62a81d0736ba0e1218d",
+    "mergedAt": "2026-10-14T10:46:18Z",
+    "tree": "835eb93d7a1914470e517b416a0962760774a966",
+    "issue40": "OPEN",
+    "force": false,
+    "deletedBranches": false
+  },
   "finalDocuments": {
     "check": "A0 static document review",
     "documents": 82,
