@@ -1,0 +1,6 @@
+
+> @xunjie/teaching@0.0.0 typecheck
+> node tools/check-runtime.mjs && tsc --noEmit
+
+server/app/pr53-56-readiness.test.ts(76,15): error TS2740: Type 'Promise<Response>' is missing the following properties from type 'Chain': delete, get, head, options, and 10 more.
+server/app/pr53-56-readiness.test.ts(78,28): error TS2532: Object is possibly 'undefined'.

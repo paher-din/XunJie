@@ -43,10 +43,13 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
     try {options.db.withTransaction(tx=>tx.get('SELECT 1 AS available'));}
     catch {throw new ApiError('PERSISTENCE_UNAVAILABLE');}
   }
-  // The C-only I0 entry uses this original PR59 guard; DL-A keeps its own HDL/C dependency probe.
-  async function checkReady() {
+  function checkConsumerReady() {
     assertHostReady();
     checkDatabase();
+  }
+  // The C-only I0 entry uses this original PR59 guard; DL-A keeps its own HDL/C dependency probe.
+  async function checkReady() {
+    checkConsumerReady();
     const generation=options.currentGeneration();
     if(!generation)throw new ApiError('DEPENDENCY_UNAVAILABLE');
     let timeout:ReturnType<typeof setTimeout>|undefined;
@@ -57,8 +60,7 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
       if(!runtime||runtime.recoveryGeneration!==generation)throw new ApiError('DEPENDENCY_UNAVAILABLE');
     }catch {throw new ApiError('DEPENDENCY_UNAVAILABLE');}
     finally {if(timeout)clearTimeout(timeout);}
-    assertHostReady();
-    checkDatabase();
+    checkConsumerReady();
     if(options.currentGeneration()!==generation)throw new ApiError('DEPENDENCY_UNAVAILABLE');
   }
   app.addHook('preClose',async()=>{
@@ -145,5 +147,5 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
   });
 
   if(options.staticDirectory)registerI0Static(app,options.staticDirectory);
-  return {consumeOnce,startConsumer,close,checkReady,isAccepting:()=>admission.accepting};
+  return {consumeOnce,startConsumer,close,checkReady,checkConsumerReady,isAccepting:()=>admission.accepting};
 }

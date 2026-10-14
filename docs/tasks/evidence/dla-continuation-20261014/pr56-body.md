@@ -30,3 +30,9 @@ H3按负责人最新决定仅交runner内核：真实层级端口探测、私有
 **Blast Radius:** host。影响原消费者/就绪组合及HDL求助/C3当前性；保留两课程授权、版本、停止和模型失败不阻止保存/仿真的边界。H3新源码改变runner指纹，现有节点未部署，不得沿旧validation启用它。
 
 同浏览器HDL展示仍待UI接线/验收；H3新镜像、目标节点2800/故障/限额验收与活动绑定/course_check未执行。原P4/P5、AC/NFR、真人和教学效果保留。#38保持Open，本PR不关闭整卡，也未公开生产部署。
+
+## Final Review
+
+负责人最新明确要求先审查合并成熟服务端，再立即交UI按其PR68操作表UDL-01～08接真实HDL；H3教师绑定/course_check/节点部署及完整矩阵后置。Standards轴0项；Spec轴发现1个P1：DL-A ready只探节点，未接原运行/教学消费者健康。已复用共享同步consumer/database守卫，在C/HDL探测前后检查，并接teaching.isHealthy；I0判据保持。两轴补丁复核0项新增/未解决问题。
+
+Node24.21类型/构建通过，修复后宿主/DL-A/H4/C4专项 **70/70、0失败/跳过**，新增未启动、数据库/run/teaching扫描故障恢复及探测期间失效反例通过，原真实HTTP关停断言保留。初次测试类型错误及最终日志均留存；本轮真实模型请求0、节点换版0。正式运行源仍需与合并后的准确源分别记录；没有以源代码合并冒充浏览器演示完成。[本轮审查与UI任务](https://github.com/paher-din/XunJie/blob/codex/dl-a-mainline-closeout/docs/tasks/DLA_PR56_REVIEW_MERGE_UI_20261014.md)。

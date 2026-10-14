@@ -170,3 +170,7 @@ PAHER只读核查：原3443为xunjie-i0-entry-recovered-20261014/9fa76ad应用�
 后续文档head为75308d1c10f59943ed29790a45f080f711ceb9b5，原PR56远端回读一致、Open/Draft/CLEAN；b7e73c5接纳证明、固定runtime=f761dcd和本批68/68结果保留。已在原评论线程发布 [C完整回复6169341548](https://github.com/paher-din/XunJie/pull/56#issuecomment-6169341548)，逐字回读与准备正文一致；PR正文也与本轮稿逐字一致。回复明确提供两个库/入口/当前HTTP与C1分别状态、原深链/身份加密领取、143文件正式ZIP/SFTP/摘要、停止/回退、失败/未执行和Robert可开始项，没有重复开Issue或合入main。
 
 PAHER Windows已有loopback TCP3443实际可达，sshd Running/192.168.3.15；不据此替Robert机器的SSH gateway/Chrome作新通过。当前服务仍固定f761dcd、两个原库与冻结节点；本节回执的最后文档提交不改变运行源码。C本评论范围已交付，下一责任为Robert/UI正式产物切换及实际Chrome复验；原H3节点/全UI-REAL/P4/P5/真人教学待办保留。主副本无关改动仍未触碰。
+
+## 10. 负责人要求合并主线并立即UI接线
+
+2026-10-14负责人明确“先审查、合并#56，将成熟DL-A服务端纳入main；立即交UI真实HDL浏览器接线；H3教师绑定/course_check/节点部署和完整测试后置”。本轮独立两轴审查、readiness阻塞修复及70/70受影响验证见 [审查合并/UI执行记录](DLA_PR56_REVIEW_MERGE_UI_20261014.md)；最新UI接线顺序见 [H4包§5](DLA_H4_UI_HANDOFF_20261014.md#5-最新负责人顺序与-ui-立即接线批次)。此前“不自动合入main”和“HDL UI后置”不再作为等待依据，历史状态保留。源码合并与UI交接请求、实际浏览器验收分别记账，不关闭DL-A整卡或宣称真人教学完成。

@@ -1,0 +1,64 @@
+be4305e docs(dl-a): record verified PR67 comment response
+75308d1 docs(dl-a): record PR67 integration delivery and current entry
+79f1416 docs(dl-a): verify PR67 combination and hand off fixed PAHER entry
+f761dcd merge(dl-a): receive PR67 browser tools and preserve formal runtime
+7100ea6 docs(dl-a): record verified PR56 and UI handoff receipts
+2e0245c merge(dl-a): integrate current main UI delivery and verify shared host
+b556d75 feat(dl-a): implement bounded private ALU runner kernel
+4a24849 merge(dl-a): receive latest main and preserve H4 integration
+5b78684 feat(dl-a): integrate main and wire real HDL tutoring context
+246451e docs(integration): record PR56 comment and authorized PR53 closure
+25608e6 merge(integration): receive current PR53 into PR56 shared host
+2f6f158 docs(integration): record authorized closure of superseded source PRs
+b1fb5e6 merge(integration): receive updated PR55 into original PR53 host
+2c5b37c fix(integration): apply PR59 readiness to original PR53 host
+08445bc docs(integration): clarify source blob verification scope
+3d7a03e feat(integration): receive PR54 HDL tutoring changes into PR55
+279f214 ops: adopt PR59 on PAHER and verify strict HTTPS readiness
+e7b35f0 docs: confirm PR59 readiness fix and distinguish pending onsite adoption
+3424d0f docs: mark A review fixes and public resource examples complete
+0d7c5f9 Merge concurrent PR55 verifier fixes with approved durable recovery
+61ae758 fix: recover durable I0 database and verify normal HTTPS C1 chain
+869f3c0 docs(i0-a): record delivery to original PR53
+33f9d2a docs(c-entry): record delivery to original PR55
+88007e0 docs(i0-a): record authorization to update PR53 directly
+94080a2 docs(c-entry): record latest PR55 base and direct update authorization
+bb1665e docs(c-entry): record local fixes and pending public handoff
+5c3f0cf fix(c-entry): contain verifier failures and validate released activity
+eb86e08 fix: restore C node readiness and prepare durable I0 database recovery
+e492d25 docs: complete C follow-up proposals and report current runtime blockers
+fae3f25 docs(i0-a): record completed local handoff
+9bd1f16 docs(i0-a): clarify resource visibility and release evidence checks
+d86e51e docs: record real C-ENTRY HTTPS execution and clarify evidence counts
+87a3b79 docs(dl-a): record authorized draft publication and C handoff
+fe6d301 docs(i0): record approved C entry execution scope and handoff
+b64ebe1 docs(i0): review C entry proposal and verify A authorization boundaries
+0256384 docs(dla): substantively review C entry proposal and raw evidence
+b658f01 docs(dla): review H3/H4 and prepare fixed A execution handoff
+ea5a652 docs: publish C handoff evidence and C-ENTRY preparation
+23bccc7 docs(i0): complete A execution packet and assign C preparation
+914d456 docs(i0): isolate HTTPS and account entry preparation
+8aa28a0 docs(i0): deliver fixed PAHER host execution runbook
+00a4529 docs(dl-a): deduplicate I0 environment handoffs
+9fa76ad docs(i0): receive current C validation and specify A host closeout
+f4683be docs(dl-a): clarify C H1 and A H2 responsibilities
+13f9886 docs(dl-a): record issue handoff publication
+ebdd939 docs(dl-a): verify received inputs and owner handoffs
+84fc05f docs(dl-a): preserve verified joint regression and precise remaining handoffs
+89c85ed fix(dl-a): stop HDL dispatch while draining HTTP and share admission guards
+d868637 feat(dl-a): compose approved I0 host and C4 HDL submission lifecycle
+c071b4d docs(i0): receive C handoff and retain live integration gates
+df92ed5 merge: reuse fixed I0 PR53 normal C host and bootstrap delivery
+05eabd7 merge: compose authorized DL-A with current C4 A4 DL-C and UI main
+58323fb docs(dl-a): record authorized 35-table I0 reuse scope
+3c3dd55 docs(dl-a): record duplicate-work review and outstanding handoffs
+2604111 docs(dl-a): align closeout with I0 PR53 and specify joint scope
+e3e3486 docs(i0): record draft PR53 and remaining C UI handoff
+39b6f10 test(i0): consolidate readiness fixture and record verified H handoff
+b0030c7 feat(i0): compose authorized C host bootstrap and original job consumer
+174e798 Merge remote-tracking branch 'origin/main' into codex/i0-a-c-handoff
+75ddac0 docs(i0): receive UI handoff and return A/C H materials
+3ec9f6d docs(dl-a): record fixed-source acceptance and remaining handoffs
+dd5f81c fix(dl-a): enforce approved ALU domain and revoke original runs
+9addad3 feat(dl-a): compose authorized two-course HDL application
+1d71698 docs(dl-a): review C seams and specify first integration batch

@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "reviewBase": "b7e73c5f65d457fb78d2fcbac7003e4e60ed7f43",
+  "reviewHead": "be4305e844bf8aa594235c7c7252cd9bedade0ce",
+  "standards": {"findings": 0, "patchFindings": 0},
+  "spec": {"originalFindings": 1, "worst": "P1: DL-A consumer health omitted from readiness", "fixed": 1, "remaining": 0},
+  "node": "24.21.0",
+  "teachingTypecheck": "passed",
+  "teachingBuild": "passed",
+  "typecheckFirst": {"result": "failed", "reason": "test inject overload ReturnType was Chain rather than Promise; corrected test response type", "log": "typecheck.txt"},
+  "regression": {"tests": 70, "pass": 70, "fail": 0, "cancelled": 0, "skipped": 0, "log": "regression-first.txt"},
+  "commands": ["npm run typecheck", "npm run build", "node --test server/app/*.test.ts tests/dl-a-app.test.ts tests/dl-a-hdl-help.test.ts server/workspace/submissions.test.ts"],
+  "modelRequests": 0,
+  "executionNodeDeployments": 0,
+  "hdlBrowserAcceptance": "not executed; handed to original UI owner",
+  "h3Deferred": ["teacher binding", "course_check", "new node deployment", "full target acceptance matrix"],
+  "evidence": "Raw log bytes retained as .gz; readable logs normalize whitespace only. Historical validation counts are not accumulated."
+}

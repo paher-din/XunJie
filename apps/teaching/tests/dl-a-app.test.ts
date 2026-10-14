@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {setTimeout as delay} from 'node:timers/promises';
 import '../server/app/digital-logic.test.ts';
 import {fixture,allocate,command,view,programmed,configuration} from './dl-a-support.ts';
 test('normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL',async()=>{
@@ -239,6 +240,10 @@ test('shutdown blocks new HDL dispatch while a real HTTP readiness request drain
  });
  let consuming:Promise<void>|undefined,closing:Promise<void>|undefined,http:Promise<Response>|undefined;
  try{
+  f.host.startConsumer(10000);
+  let healthy=false;
+  for(let i=0;i<100;i++){if((await f.app.inject({url:'/health/ready'})).statusCode===200){healthy=true;break;}await delay(10);}
+  assert.equal(healthy,true);
   const teacher=await f.login('teacher'),student=await f.login();
   for(let n=0;n<2;n++){
    const item=await allocate(f,teacher,student);

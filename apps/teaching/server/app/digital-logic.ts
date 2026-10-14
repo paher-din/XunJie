@@ -45,9 +45,10 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  if(!('kind' in runtime)||canonical(runtime.configuration.runtime)!==canonical(latest.profile)||runtime.contentHash!==configurationHash(runtime.configuration))return undefined;
  return {board:runtime.configuration.board,runtime:runtime.configuration.runtime};}});
  const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
+ let host:ReturnType<typeof attachOriginalJobHost>;
  const instance=await createTutoringApp({...options,studentHelp:{...options.studentHelp,readHdlContext:(...args)=>{
   if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');return readAuthorizedHdlHelp(...args);
- }},...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{if(!admission.accepting)return false;try{await refresh();const c=await availableRuntime(runner);return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
+ }},...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{try{host.checkConsumerReady();await refresh();const c=await availableRuntime(runner);host.checkConsumerReady();return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
  const fixed=instance.access.withAuthorizedCourse(request,tx=>draftCourse(tx,blueprintId),'teacher',(tx,actor)=>{
   const draft=readDraft(tx,actor.courseId,blueprintId);return draft.content.digitalLogicConfigVersionId?fixedHdlRuntime(tx,actor.courseId,draft.content.digitalLogicConfigVersionId):undefined;
  },false);
@@ -104,13 +105,13 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  for(const row of tx.all('SELECT course_id FROM course_memberships WHERE user_id=?',userId))deactivateMembership(tx,String(row.course_id),userId);
  }
 
- let host:ReturnType<typeof attachOriginalJobHost>;
  const teaching=originalTeachingConsumer(instance,{...options,currentGeneration},options.tutoringProvider??{
   generate:async()=>{throw new ApiError('DEPENDENCY_UNAVAILABLE');},
  },admission);
  try {host=attachOriginalJobHost(instance,{...options,currentGeneration},{
   admission,
   startAdditional:teaching.start,
+  additionalReady:teaching.isHealthy,
   async consumeAdditional(){
    if(instance.teacherAgent){
     const jobs=options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE purpose='teacher_design' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id)));

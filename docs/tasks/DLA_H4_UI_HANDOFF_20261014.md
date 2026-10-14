@@ -49,3 +49,15 @@ INVALID_REFERENCE=422、STATE_CONFLICT/VERSION_CONFLICT=409、FORBIDDEN=403、UN
 2026-10-14后续接纳main@5c8c60e的正式登录/保存恢复/C运行UI批次；UI构建与464项单元测试通过，原作者浏览器证据保持其批次归属，本轮未重复浏览器验收。现场只读smoke发现3443的live/静态200、ready503；3444的live/ready/静态均200且严格TLS通过。原3443由其他批次维护，本轮不替它更换运行源或把历史ready200当当前。3444联调按本轮保留库/获准合成账号/现有信任通道使用；页面真正渲染HDL仍需上述UI接线。
 
 当前3444宿主unit是 `xunjie-dla-ui-integrated-20261014.service`，使用保留新源码/最新UI产物及原35表，不读密钥/不触发模型。停止：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-integrated-20261014.service`。新宿主[严格TLS最终smoke](evidence/dla-continuation-20261014/ui-host-integrated-smoke.json)三项200；此为静态/健康检查，页面登录/HDL操作/帮助展示仍由UI实际浏览器验收。新H3 runner源码已提交，但节点未升级，本批UI继续消费原HDL构建/板卡/Trace协议，不等待H3。
+
+## 5. 最新负责人顺序与 UI 立即接线批次
+
+2026-10-14负责人明确要求“先审查、合并 #56 → 立即交 UI 真实 HDL 浏览器接线”；教师绑定、course_check、H3节点部署和完整测试后置。上节旧unit/旧3443 ready503只保留历史，当前准确运行源、两个active unit及严格TLS200见 [PR67现场包](DLA_PR67_RUNTIME_HANDOFF_20261014.md)。本轮审查/合并/公开回执见 [执行记录](DLA_PR56_REVIEW_MERGE_UI_20261014.md)。
+
+UI 已交 [PR68固定805c76a的操作表](https://github.com/paher-din/XunJie/blob/805c76a6f230cb7f6a64bc94abf8adfa2616e955/docs/tasks/I0-UI30_HDL_OPERATION_MAP.md)，直接按 UDL-01～08 实现，不重制后端或操作表。UI 在本人任务列写集后，复用 TaskRoute/PrepWorkspacePage、原文编辑/确认、CenterToolArea 板卡/波形位置和原 Tutoring 客户端；只补真实课程分流、HDL命令/读取、四态显示、selection/basis及来源/回执守卫，不新建替代界面或换框架。Session真实字段是 `sessionRevision/confirmedSequence/simTimePs`，操作 `expectedSequence=confirmedSequence+1`；没有公开独立 Operation/current HTTP端点，通过 Session/Trace 取得状态。
+
+可核查的原35表 HDL 分配为 `f4caed76-39b5-461a-bc5f-2325d8495d69`，学生 `synthetic-i0-student-b`，对应 Attempt `54bb4cfc-5d64-42a2-a1c9-58ea58458705`，深链 `https://127.0.0.1:3444/#/task/f4caed76-39b5-461a-bc5f-2325d8495d69`。这些是合成开发对象；读/写前从正常 Session/bootstrap/head 核授权、版本和代际，不硬编码对象或复用3443学生A的cookie。原演示已修复/停止，现有记录用于历史核对，不能当新浏览器当前运行。
+
+同一浏览器交付顺序：人工编辑/保存错误HDL → 确认快照 → 真实失败Build与定位 → 显式选中该快照/Build求助 → 真B/C3正文渲染与displayed → 人工自行修订/保存 → 新成功Build → 显式装载 → 相同输入观察真实LED/段位/有限Trace改变 → 确认停止。再核新草稿/旧快照、pending、X/Z、unknown/刷新、旧引导失效和模型不可用仍可操作。真人明确确认时才记acknowledged，回交截图/公开HTTP对象/源码及引擎版本、失败和未执行项；合成浏览器不计真实学生学习或教学收益。
+
+UI 开工不等H3。现场依赖分开处理：Robert已批准入口/密文reader是3443/学生A，HDL需要3444同源通路和学生B获准领取，不能把原工具误当已覆盖；沿现有SSH/严格TLS/原RSA内存通道提出准确窄适配，不新增账号/重置密码/改密钥/放宽Origin。当前模型预算关闭，旧真实单轮已耗用；历史真实提示可标旧快照展示，新的现场求助须另获一轮有界预算，不能用旧输出/fixture冒充新调用。UI先完成实现、隔离验证和降级路径，再单列确需的秘密/信任/付费动作，不因这些条件停掉可独立接线。
