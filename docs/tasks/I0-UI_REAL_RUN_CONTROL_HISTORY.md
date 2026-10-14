@@ -97,4 +97,6 @@ rtk npm run test:e2e -- runService.spec.ts runControlService.spec.ts runHistoryS
 
 交付前实际核查：远端 `main=8e6d37d`，本批 `e0dabe5` 以其为直接父提交，没有新主线差异；写集16文件，三处A源blob与964逐项一致，无保护文档/配置/依赖/秘密越界。源码与上轮已验证版本相同，本轮仅补交付记录，不重复通过检查或将既有不同批次数合并称一次77/77。沿原本地464单元、24宿主、17新增实际服务与60兼容的准确证据边界交付；静态文档与差异空白复核通过。#56在本轮核查时仍Open/Draft、head246451e，未合main。
 
-本节先记录批准范围和交付前事实；PR创建后补正式链接/回读，合并以该PR与main的实际Git记录为准，不预先标成功。
+已普通推送原 `i0/ui-frontend` 并创建 [PR #66](https://github.com/paher-din/XunJie/pull/66)。创建时回读快照：head `36adbf5efdaa8004343352b4226e2e5e6c2c164f`，base `8e6d37d`，Open/non-Draft、MERGEABLE/CLEAN；GitHub未报告配置的检查项，不称CI通过。本轮新增提交仅本记录，运行实现仍为已验证的 `e0dabe5`；来源三blob及16文件写集不变。
+
+负责人已明确批准本PR正常合入main，使用固定head核对，不加admin绕过、不删除来源分支、不部署。创建快照不是预报合并成功；实际mergedAt/merge SHA保留在上述PR及main Git记录，交付最终回读同时回报负责人。本节历史阶段和§5/§6测试失败/修复事实保留，产品/MVP§10待授权维护者汇总。
