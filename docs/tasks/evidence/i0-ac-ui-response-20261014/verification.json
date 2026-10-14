@@ -25,5 +25,9 @@
   "executionNodeDeployments": 0,
   "newStudentLearningWrites": 0,
   "browserAcceptance": "UI original execution evidence retained; no new browser actions by A/C",
-  "evidence": "raw stdout bytes retained as gzip; readable logs normalize whitespace only; rounds not accumulated"
+  "evidence": "raw stdout bytes retained as gzip; readable logs normalize whitespace only; rounds not accumulated",
+  "review": {"base": "8b4130374289b71d737abe12ed4fc5e58adf55c5", "head": "3e8a095d96c4eff72fad9a8e325f6afd82e092a6", "standardsFindings": 0, "specFindings": 0},
+  "pullRequest": "https://github.com/paher-din/XunJie/pull/73",
+  "h05Merged": false,
+  "h05Deployed": false
 }
