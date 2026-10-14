@@ -1,0 +1,279 @@
+{
+  "observedAtUtc": "2026-10-14T18:17:56.420Z",
+  "scope": "Fresh local synthetic engineering validation; no real learner data",
+  "origin": "https://127.0.0.1:3444",
+  "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+  "attempts": [
+    {
+      "attempt_id": "1e657276-83dd-4129-a1c5-fb8c66f1c21c",
+      "assignment_id": "fb0983e4-81bc-487b-8b50-7ffe984c38bb",
+      "course_id": "synthetic-robert-course-c",
+      "student_id": "synthetic-robert-student-a",
+      "activity_id": "e60dfec4-756b-4853-95e6-453911afd5d0",
+      "attempt_revision": 2,
+      "decision_epoch": 0
+    }
+  ],
+  "files": [
+    {
+      "file_id": "020c44e5-a80b-4481-b277-be56c6ed5eda",
+      "attempt_id": "1e657276-83dd-4129-a1c5-fb8c66f1c21c",
+      "path": "main.c",
+      "document_version": 1,
+      "lifecycle": "active",
+      "content_hash": "ce67d1609c549c1bc3eaf543365aae9778b44c83bc54be07193fc34947542814"
+    }
+  ],
+  "snapshots": [
+    {
+      "snapshot_id": "4be2ecef-9c89-4031-8e2f-e6244aef5638",
+      "attempt_id": "1e657276-83dd-4129-a1c5-fb8c66f1c21c",
+      "workspace_revision": 1,
+      "content_hash": "87485c906c558697aef5bc2fa450226ca3d225e7cb3701e76d823b369a2eb404"
+    }
+  ],
+  "jobs": [
+    {
+      "job_id": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "attempt_id": "1e657276-83dd-4129-a1c5-fb8c66f1c21c",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "53e6cafd-fc28-434a-92ad-9cacc88cb6c1",
+      "attempt_id": "1e657276-83dd-4129-a1c5-fb8c66f1c21c",
+      "job_id": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "snapshot_id": "4be2ecef-9c89-4031-8e2f-e6244aef5638",
+      "submission_json": {
+        "identity": {
+          "runId": "53e6cafd-fc28-434a-92ad-9cacc88cb6c1",
+          "commandId": "f5078829-dfd9-46d9-967c-93793a3b1c8e",
+          "requestHash": "3781ece17200ffc3ff23a7ab6135430521d0ba3abc3f4564101f84401f3a5364",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "snapshotId": "4be2ecef-9c89-4031-8e2f-e6244aef5638",
+          "snapshotHash": "87485c906c558697aef5bc2fa450226ca3d225e7cb3701e76d823b369a2eb404",
+          "inputHash": "0a727be8b4c955a652dc46709b58033989876598727068c78799ca57d001dcd2",
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+          "authorizedScope": {
+            "userId": "synthetic-robert-student-a",
+            "courseId": "synthetic-robert-course-c",
+            "attemptId": "1e657276-83dd-4129-a1c5-fb8c66f1c21c",
+            "activityVersionId": "e60dfec4-756b-4853-95e6-453911afd5d0",
+            "purpose": "student_run"
+          }
+        },
+        "snapshot": {
+          "snapshotId": "4be2ecef-9c89-4031-8e2f-e6244aef5638",
+          "hashFormat": "sha256-manifest-v1",
+          "hash": "87485c906c558697aef5bc2fa450226ca3d225e7cb3701e76d823b369a2eb404",
+          "files": [
+            {
+              "fileId": "020c44e5-a80b-4481-b277-be56c6ed5eda",
+              "path": "main.c",
+              "documentVersion": 1,
+              "contentHash": "ce67d1609c549c1bc3eaf543365aae9778b44c83bc54be07193fc34947542814",
+              "text": "#include <stdio.h>\nint main(void) {\n  puts(\"Robert local C core\");\n  return 0;\n}\n"
+            }
+          ],
+          "attemptId": "1e657276-83dd-4129-a1c5-fb8c66f1c21c",
+          "activityVersionId": "e60dfec4-756b-4853-95e6-453911afd5d0",
+          "workspaceRevision": 1,
+          "createdAt": "2026-10-14T17:33:59.377Z"
+        },
+        "entryFileId": "020c44e5-a80b-4481-b277-be56c6ed5eda",
+        "input": {
+          "operation": "stats",
+          "fileIds": [
+            "020c44e5-a80b-4481-b277-be56c6ed5eda"
+          ]
+        },
+        "mode": "run"
+      },
+      "result_json": {
+        "runId": "53e6cafd-fc28-434a-92ad-9cacc88cb6c1",
+        "snapshotId": "4be2ecef-9c89-4031-8e2f-e6244aef5638",
+        "snapshotHash": "87485c906c558697aef5bc2fa450226ca3d225e7cb3701e76d823b369a2eb404",
+        "inputHash": "0a727be8b4c955a652dc46709b58033989876598727068c78799ca57d001dcd2",
+        "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+        "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+        "unitTerminated": true,
+        "phases": [
+          {
+            "phase": "compile",
+            "containerId": "6048670fcec0d0f4288be83f22a6b285a7db79cab8a2e7b747ac74daeb481476",
+            "imageId": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": "",
+            "outputBytes": 0,
+            "durationMs": 355.49655599999994,
+            "pidsMaxEvents": 0,
+            "cgroupLimits": {
+              "cpuMax": "100000 100000",
+              "memoryMax": "536870912",
+              "memorySwapMax": "0",
+              "pidsMax": "64"
+            },
+            "unitTerminated": true
+          },
+          {
+            "phase": "execute",
+            "containerId": "8fb6c6ed6a73736dbc03b3d0c3d31ef796f78f86ce835569ccd0517e1cf68e6c",
+            "imageId": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+            "exitCode": 0,
+            "stdout": "Robert local C core\n",
+            "stderr": "",
+            "outputBytes": 20,
+            "durationMs": 314.1859289999999,
+            "pidsMaxEvents": 0,
+            "unitTerminated": true
+          }
+        ],
+        "resultFiles": [
+          {
+            "relativeName": "report.txt",
+            "status": "missing",
+            "runId": "53e6cafd-fc28-434a-92ad-9cacc88cb6c1",
+            "snapshotId": "4be2ecef-9c89-4031-8e2f-e6244aef5638",
+            "resultFileId": "fe2f24a1da62d0a0dc8c3d059d432eef6b40a8e1876a6566a4fb4bc654c6da6a",
+            "source": "runner_result_file",
+            "caseIndex": 0
+          }
+        ]
+      },
+      "result_hash": "01cffbe4d9b510e14389c651a7addab1688c6e3dc9fd235c98b362485d89fbe6",
+      "check_state": null
+    }
+  ],
+  "actions": [],
+  "messages": [],
+  "deliveries": [],
+  "teachingReceipts": [],
+  "commandReceipts": [
+    {
+      "receipt_id": "15681ad3-f391-4eaa-8595-eec3bc93e379",
+      "command_id": "49427bd4-bcb8-4c9d-8a69-3f3b6db75922",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.attempt.create",
+      "target": "fb0983e4-81bc-487b-8b50-7ffe984c38bb",
+      "idempotency_key": "ae688a83-d39b-4b27-b636-6d19a1d83480",
+      "request_hash": "ee3bc0c48f139de6481f299b194848eebfa144a66c02e6b6259f6063372e67fd",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 122
+    },
+    {
+      "receipt_id": "535ee63e-c095-4733-bda5-305d83b333e3",
+      "command_id": "121ed94c-b3a3-4e44-8ca3-96819756a60f",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.workspace.sync",
+      "target": "/api/attempts/1e657276-83dd-4129-a1c5-fb8c66f1c21c/sync",
+      "idempotency_key": "b5484e9e-f3ab-4a82-b2a6-21bfaf314581",
+      "request_hash": "13fcfa6b26be5e37f6c1b7b70b47c4e936c8bea182a68645d920bf15741a6f6e",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 123
+    },
+    {
+      "receipt_id": "a8b7b9ea-ea77-449e-8f5c-65e0d4d11223",
+      "command_id": "b4e20537-3777-4cc3-9d9b-b53da2ea75e9",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.snapshot.create",
+      "target": "/api/attempts/1e657276-83dd-4129-a1c5-fb8c66f1c21c/snapshots",
+      "idempotency_key": "131c0147-1c2d-4c44-a5c0-1a41cd77a224",
+      "request_hash": "384a5b4de40c4993ee85a3c78290cb179fff855ca7c9595fbe83086921edb7de",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 124
+    },
+    {
+      "receipt_id": "57285043-09dd-4b88-b774-90b82b66cfd8",
+      "command_id": "f5078829-dfd9-46d9-967c-93793a3b1c8e",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.run.create",
+      "target": "/api/attempts/1e657276-83dd-4129-a1c5-fb8c66f1c21c/runs",
+      "idempotency_key": "42ad0da9-6069-4b5e-ab26-7669ea90838c",
+      "request_hash": "3781ece17200ffc3ff23a7ab6135430521d0ba3abc3f4564101f84401f3a5364",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 125
+    },
+    {
+      "receipt_id": "3f95d6cb-64a2-4d93-85cd-b1bdfdabce78",
+      "command_id": "e2ebe4d0-a599-4242-90a9-9c6dc49117e6",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.run.progress",
+      "target": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "idempotency_key": "082934a6-5bf0-408b-8f7e-31a722a634c3",
+      "request_hash": "b976e652f7a96300d750540554cc32983717d61e1e5426f85e7f5c0468035822",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 126
+    },
+    {
+      "receipt_id": "108f21ce-7d80-4c29-bf39-df2a7783fffc",
+      "command_id": "f21070b8-6b0c-48f4-96cc-22dbc703ad37",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.run.progress",
+      "target": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "idempotency_key": "015db701-add8-469a-bbb4-eedbe445eeb4",
+      "request_hash": "b976e652f7a96300d750540554cc32983717d61e1e5426f85e7f5c0468035822",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 127
+    },
+    {
+      "receipt_id": "9ea0852f-374f-4637-a5cd-8684a1feb28f",
+      "command_id": "0c02becb-391d-4600-95d9-9c471e4cae1b",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.run.progress",
+      "target": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "idempotency_key": "3ff35e7f-368f-4dd6-b914-b427f8875b08",
+      "request_hash": "51317a723d62f6f30654a92894116349cfafd09a7286bdf74d13111d0d57198f",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 128
+    },
+    {
+      "receipt_id": "b410df23-c5bd-45b6-8b30-203e8020df51",
+      "command_id": "f50039c6-2055-4c69-bb83-a83883c3f8e0",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.run.progress",
+      "target": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "idempotency_key": "21b00fe5-959f-4a6c-b93d-fb34a8e68b40",
+      "request_hash": "b976e652f7a96300d750540554cc32983717d61e1e5426f85e7f5c0468035822",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 129
+    },
+    {
+      "receipt_id": "03b37701-69fd-4e51-9c96-33619babdfa1",
+      "command_id": "e74b1f08-7207-41a0-9dda-c658cf0e883a",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.run.progress",
+      "target": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "idempotency_key": "e3aae2a2-3078-49b9-ad5e-ce227a07ef3b",
+      "request_hash": "51317a723d62f6f30654a92894116349cfafd09a7286bdf74d13111d0d57198f",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 130
+    },
+    {
+      "receipt_id": "8fbf48d6-5ea7-4031-8b0f-9ce42d860d7b",
+      "command_id": "9673a716-a050-489d-a324-648bed498620",
+      "actor_id": "synthetic-robert-student-a",
+      "course_id": "synthetic-robert-course-c",
+      "command": "shared.run.progress",
+      "target": "2269a9cc-d052-4f7d-a34a-62d3470d3819",
+      "idempotency_key": "f88c3597-06eb-4cb6-9522-d0f653c5c128",
+      "request_hash": "a16dc53b7ad89000d382d62ba4ef5f565f09cf5cc907e72bc408c485153f7a34",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 131
+    }
+  ]
+}
