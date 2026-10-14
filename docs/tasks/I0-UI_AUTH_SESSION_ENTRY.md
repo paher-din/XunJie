@@ -92,4 +92,4 @@ UI-REAL-01/08 本批合成正常宿主验证完成；UI-REAL-02 获准深链/固
 - 未推送、未创建 PR、未改动任何远程引用；远程 `main` 仍为 `eea9623`，`i0/ui-frontend` 现仅存在于本地。
 - 无关未跟踪 `.zcodeignore` 保留且未暂存。
 
-纠正证据：`ba89fe0` 的树为 `676cd14fdd3d2feafd8359c18e2458ccca096276`，`i0/ui-frontend` 与 `ba89fe0` 的相对文件差异为空；除本任务记录外，`git ls-files -s`（排除本记录）纠正前后哈希均为 `C5641B0AFB3510D6D764F755D73922AFD74B4051CFC6B00C8F31DED957B0CD03`，即应用源码/测试/README 保持原版本。本记录作为 `i0/ui-frontend` 上的独立本地提交，未推送。
+纠正证据：`ba89fe0` 的树为 `676cd14fdd3d2feafd8359c18e2458ccca096276`；`i0/ui-frontend` 初建时即指向该提交，其提交树与 `ba89fe0` 完全一致。补记本任务记录后，前端分支相对 `ba89fe0` 的唯一文件差异为该记录本身，其余文件仍与 `ba89fe0` 相同；除该记录外，`git ls-files -s`（排除本记录）纠正前后哈希均为 `C5641B0AFB3510D6D764F755D73922AFD74B4051CFC6B00C8F31DED957B0CD03`，即应用源码/测试/README 保持原版本。本记录作为 `i0/ui-frontend` 上的独立本地提交，未推送。
