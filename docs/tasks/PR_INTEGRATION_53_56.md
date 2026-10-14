@@ -57,3 +57,9 @@ node --test --test-reporter=tap server/app/i0-readiness.test.ts server/app/i0.te
 ## 6. 审核交付与关闭顺序
 
 本批正常 merge 保留 #53 与 #56 双方历史，仅普通推送原 `codex/dl-a-mainline-closeout`，不强推、不合并main、不删除分支。推送成功并确认来源head是目标head祖先之后，依负责人当前明确要求关闭#53，再在#56发布集成comment（来源、接纳方式、冲突、验证和关闭状态）。这些操作的实际回执随后追加；#56保持Open/Draft，其他Issue不关闭。回滚如需执行，应由负责人审核新的revert提交，保留原证据，不以reset/删除历史处理。
+
+### 6.1 实际公开回执
+
+集成 merge 为 `25608e64d88691d96ccd46f8ddd4159056142058`，父提交为原 #56 与当前 #53；已普通推送原 #56 分支并回读head一致，`git merge-base --is-ancestor 2f6f158 HEAD`通过。关闭前再次核 #53 head仍为固定2f6f158，无新增未接纳提交；随后按负责人明确指令关闭#53，API回读CLOSED，#56仍Open/Draft。未删除分支、改main或关闭Issue。
+
+用户要求的 [#56集成comment](https://github.com/paher-din/XunJie/pull/56#issuecomment-6166286437) 已发布，API回读URL与UTF-8正文逐字一致；包含来源/merge、三个冲突与共用宿主适配、230/224/6的实际结果、原证据/保护写集、#53关闭和既有未执行/遗留边界。最终静态74份/1129内链/errors=[]、空白/冲突检查通过。本文这一回执为纯文档提交，不改25608e6已验证的代码，不重复跑业务测试。本次集成、关闭与comment要求全部完成，交回负责人审核后停止。
