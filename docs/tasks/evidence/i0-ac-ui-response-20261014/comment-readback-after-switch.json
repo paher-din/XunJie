@@ -1,0 +1,131 @@
+{
+  "checkedAt": "2026-10-14T14:53:04.519Z",
+  "readOnly": true,
+  "studentLearningWrites": 0,
+  "modelRequests": 0,
+  "executionNodeMutations": 0,
+  "originalRunCount": 10,
+  "checkedRuns": [
+    {
+      "runId": "c5a207a0-4303-40b2-8480-c393391fd1cd",
+      "jobId": "9a9c0c6c-4a6a-4e13-877c-83aa6ce5214e",
+      "status": "succeeded",
+      "snapshotId": "10785f20-8431-469b-8725-901a38ae7090",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "36e04cba-c58e-4a41-a215-ae986b616b81",
+      "jobId": "0a5a44fb-5811-4e44-8f95-ce88d5f7d981",
+      "status": "succeeded",
+      "snapshotId": "10785f20-8431-469b-8725-901a38ae7090",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "7682a282-a51d-4e1a-995b-fb9234c649f0",
+      "jobId": "0c031944-75cd-4acf-915a-a8edcca8991c",
+      "status": "succeeded",
+      "snapshotId": "22882244-dc09-42ca-9b66-96bfd6ba6399",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "02f026f2-5208-4604-b6b9-3855e29fec51",
+      "jobId": "bdde297d-e1b1-4e59-b735-90fa107f490f",
+      "status": "cancelled",
+      "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "0af5cb6e-61d6-4ab3-b4d5-54880795a4f2",
+      "jobId": "c8378481-c796-4070-ba57-593ad88c3f8e",
+      "status": "succeeded",
+      "snapshotId": "f714ae74-f53f-4838-ba54-5245c67eeb6b",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "7675eb71-328f-4b66-b1a3-9ee96d5a78d6",
+      "jobId": "32939ee2-cf55-4b47-ad0e-97be64bf90ee",
+      "status": "succeeded",
+      "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "20c84ee2-ffaa-4b50-982b-e12542bcdf78",
+      "jobId": "39ed2d94-039a-4e57-8bb6-8b33d47b9bf2",
+      "status": "cancelled",
+      "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "4fc8722a-e701-4187-acc3-6168d5b136ba",
+      "jobId": "9b58090f-37ac-49f1-b42e-9009a72083c5",
+      "status": "succeeded",
+      "snapshotId": "be814058-0ee7-4a68-95b1-521a543e75ac",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "c446d3e9-7d1d-40b3-8ae0-4072379d2851",
+      "jobId": "2a5b78bd-e65d-43d7-aa54-bdf10527fd5b",
+      "status": "succeeded",
+      "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+      "relationsPreserved": true
+    },
+    {
+      "runId": "a51eea9d-d4b9-4145-8a61-b9378877b304",
+      "jobId": "2fc7b1aa-fa13-4929-bb50-040efb6f4bfc",
+      "status": "cancelled",
+      "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+      "relationsPreserved": true
+    }
+  ],
+  "originalSnapshotCount": 1,
+  "snapshotHashesPreserved": true,
+  "ui143FileBytesMatch": true,
+  "zipContainerHashesMayDiffer": true,
+  "http": [
+    {
+      "port": 3443,
+      "path": "/health/live",
+      "status": 200
+    },
+    {
+      "port": 3443,
+      "path": "/health/ready",
+      "status": 200,
+      "noStore": true
+    },
+    {
+      "port": 3443,
+      "path": "/api/session",
+      "status": 401
+    },
+    {
+      "port": 3444,
+      "path": "/health/live",
+      "status": 200
+    },
+    {
+      "port": 3444,
+      "path": "/health/ready",
+      "status": 200,
+      "noStore": true
+    },
+    {
+      "port": 3444,
+      "path": "/api/session",
+      "status": 401
+    }
+  ],
+  "services": [
+    {
+      "unit": "xunjie-i0-entry-main-87edd51-20261014.service",
+      "status": "active",
+      "execStart": "{ path=/opt/xunjie-runner/node/bin/node ; argv[]=/opt/xunjie-runner/node/bin/node /opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014/docs/tasks/evidence/dla-pr67-integration-20261014/serve-i0.mjs /opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014 ; ignore_errors=no ; start_time=[Wed 2026-10-14 22:52:03 CST] ; stop_time=[n/a] ; pid=14016 ; code=(null) ; status=0/0 }"
+    },
+    {
+      "unit": "xunjie-dla-ui-main-87edd51-20261014.service",
+      "status": "active",
+      "execStart": "{ path=/opt/xunjie-runner/node/bin/node ; argv[]=/opt/xunjie-runner/node/bin/node /opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014/docs/tasks/evidence/dla-continuation-20261014/serve-hdl.mjs /opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014 /opt/xunjie-runner/tests/dla-continuation-20261014/real-hdl-final-frozen.json ; ignore_errors=no ; start_time=[Wed 2026-10-14 22:11:16 CST] ; stop_time=[n/a] ; pid=12932 ; code=(null) ; status=0/0 }"
+    }
+  ],
+  "browserAcceptance": false
+}

@@ -1,0 +1,482 @@
+{
+  "sourceCommit": "37b628b75ec3a2238b9b77c8bd1882d36a2e55a6",
+  "startedAt": "2026-10-14T17:29:13.325Z",
+  "node": "v24.21.0",
+  "scope": "fresh isolated synthetic 35-table application, authenticated real VM; app.inject HTTP transport; no browser/model",
+  "databaseFile": "/tmp/xunjie-a12-completion-E5DmXb/synthetic.sqlite",
+  "cReadiness": {
+    "ready": true,
+    "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+    "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+    "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+    "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+    "fingerprint": {
+      "kernel": "6.8.0-146-generic",
+      "node": "v24.21.0",
+      "engine": "29.8.2",
+      "cgroup": "2",
+      "seccomp": [
+        "name=seccomp,profile=builtin"
+      ],
+      "profile": {
+        "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+        "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+        "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+        "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+        "approvedResultFiles": [
+          "report.txt"
+        ]
+      },
+      "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+    },
+    "validation": {
+      "passed": true,
+      "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+      "fingerprint": {
+        "kernel": "6.8.0-146-generic",
+        "node": "v24.21.0",
+        "engine": "29.8.2",
+        "cgroup": "2",
+        "seccomp": [
+          "name=seccomp,profile=builtin"
+        ],
+        "profile": {
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+          "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+          "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+          "approvedResultFiles": [
+            "report.txt"
+          ]
+        },
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "evidence": [
+        {
+          "suite": "guest",
+          "exitCode": 0,
+          "outputHash": "823e0061233cc0eaa72d0c5fa5f5aba5eba7a1d547aa971c922a614131ff5180"
+        },
+        {
+          "suite": "ssh",
+          "exitCode": 0,
+          "outputHash": "4276e46edcc288c173c0a23820b566b41c7af48a4353f8fd1d48667f2034dcf0"
+        },
+        {
+          "suite": "types",
+          "exitCode": 0,
+          "outputHash": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8"
+        }
+      ],
+      "validatedAt": "2026-10-13T09:29:47.600Z"
+    }
+  },
+  "hdlReadiness": {
+    "ready": true,
+    "profile": {
+      "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+      "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+      "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+    },
+    "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "fingerprint": {
+      "kernel": "6.8.0-146-generic",
+      "node": "v24.21.0",
+      "engine": "29.8.2",
+      "cgroup": "2",
+      "seccomp": [
+        "name=seccomp,profile=builtin"
+      ],
+      "profile": {
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+        "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+    },
+    "fingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+    "validation": {
+      "passed": true,
+      "fingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+      "validatedAt": "2026-10-13T09:51:51.930Z",
+      "evidence": [
+        {
+          "suite": "hdl",
+          "exitCode": 0,
+          "outputHash": "023ab4b69cde462685842e66310aeb651d50a5b4e7285bb24095438badae7284"
+        },
+        {
+          "suite": "c",
+          "exitCode": 0,
+          "outputHash": "fb6e28a7b67eb9725111654a6cbc2e5cfb21552469ca78e8f8ff03253ab52e0e"
+        }
+      ]
+    }
+  },
+  "http": [
+    {
+      "method": "POST",
+      "url": "/api/courses/synthetic-i0-course-b/hdl-configurations",
+      "status": 200,
+      "body": {
+        "requestId": "40592383-11db-4f65-9546-ad1b53542506",
+        "data": {
+          "receiptId": "33ecf0ff-aec8-42d1-83e2-1557a376f3aa",
+          "commandId": "3304139e-ad8b-4455-ba7d-008276606f00",
+          "identity": {
+            "actorId": "synthetic-i0-teacher-b",
+            "command": "hdl.configuration",
+            "target": "synthetic-i0-course-b",
+            "scope": {
+              "courseId": "synthetic-i0-course-b"
+            },
+            "idempotencyKey": "55b05225-c8a0-4bb1-9b02-4249b418c656",
+            "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+          },
+          "requestHash": "d45eba2d9c17d4e3bde92338d1a7e94f0d7deb1944b69f6a2fe804c8891afed3",
+          "result": {
+            "configuration": {
+              "versionId": "synthetic-c5-ec508222-b3a6-4f37-a3d9-0ca1a22d0805",
+              "board": {
+                "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+                "mappingVersion": "synthetic-mapping-v1",
+                "topModule": "top",
+                "bindings": [
+                  {
+                    "signal": "clock",
+                    "offset": 0,
+                    "port": "clk",
+                    "portOffset": 0,
+                    "width": 1
+                  },
+                  {
+                    "signal": "switches",
+                    "offset": 0,
+                    "port": "sw",
+                    "portOffset": 0,
+                    "width": 16
+                  },
+                  {
+                    "signal": "buttons",
+                    "offset": 0,
+                    "port": "btn",
+                    "portOffset": 0,
+                    "width": 5
+                  },
+                  {
+                    "signal": "leds",
+                    "offset": 0,
+                    "port": "led",
+                    "portOffset": 0,
+                    "width": 16
+                  },
+                  {
+                    "signal": "anodes",
+                    "offset": 0,
+                    "port": "an",
+                    "portOffset": 0,
+                    "width": 8
+                  },
+                  {
+                    "signal": "segments",
+                    "offset": 0,
+                    "port": "seg",
+                    "portOffset": 0,
+                    "width": 7
+                  },
+                  {
+                    "signal": "dp",
+                    "offset": 0,
+                    "port": "dp",
+                    "portOffset": 0,
+                    "width": 1
+                  }
+                ]
+              },
+              "runtime": {
+                "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+                "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+                "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+                "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+                "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+              },
+              "signals": {
+                "bitOrder": "msb_first",
+                "clockHz": 100000000,
+                "initialClock": "0",
+                "initialSwitches": "0000000000000000",
+                "initialButtons": "00000",
+                "initialResetN": "1",
+                "stableSampling": "low_phase",
+                "anodesActive": "low",
+                "segmentsActive": "low",
+                "dpActive": "low"
+              },
+              "alu": {
+                "operandWidth": 4,
+                "resultWidth": 4,
+                "carryWidth": 1,
+                "signedness": "unsigned",
+                "operations": [
+                  {
+                    "mode": "0",
+                    "code": "00",
+                    "meaning": "not_a"
+                  },
+                  {
+                    "mode": "0",
+                    "code": "01",
+                    "meaning": "and"
+                  },
+                  {
+                    "mode": "0",
+                    "code": "10",
+                    "meaning": "or"
+                  },
+                  {
+                    "mode": "0",
+                    "code": "11",
+                    "meaning": "xor"
+                  },
+                  {
+                    "mode": "1",
+                    "code": "00",
+                    "meaning": "add_with_carry"
+                  },
+                  {
+                    "mode": "1",
+                    "code": "01",
+                    "meaning": "subtract_with_borrow"
+                  }
+                ],
+                "subtractionOperandDomain": "a_gt_b",
+                "undefinedArithmeticSelectors": "ungraded",
+                "subtractionOutsideDomain": "ungraded",
+                "nonAdditionCout": "ungraded",
+                "switchMapping": [
+                  {
+                    "semantic": "operand_a",
+                    "offset": 0,
+                    "width": 4
+                  },
+                  {
+                    "semantic": "operand_b",
+                    "offset": 4,
+                    "width": 4
+                  },
+                  {
+                    "semantic": "mode",
+                    "offset": 15,
+                    "width": 1
+                  },
+                  {
+                    "semantic": "select",
+                    "offset": 13,
+                    "width": 2
+                  },
+                  {
+                    "semantic": "carry_in",
+                    "offset": 8,
+                    "width": 1
+                  }
+                ]
+              },
+              "structuralCoverage": "board_bindings_and_defined_alu_domain"
+            },
+            "contentHash": "8f3720c88c998107fe82dc388b69ff14bb9c75bfbfdcc75bfbf114ada16fc7c2"
+          },
+          "committedAt": "2026-10-14T17:29:17.879Z",
+          "serverSeq": 1
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/courses/synthetic-i0-course-b/blueprints",
+      "status": 200,
+      "body": {
+        "requestId": "ad139b29-8de5-448e-9ceb-f0440b95292c",
+        "data": {
+          "receiptId": "6040dea8-8b41-444c-a485-29390aacf749",
+          "commandId": "6612d171-cdc6-48eb-8f02-0dff696ec6f1",
+          "identity": {
+            "actorId": "synthetic-i0-teacher-b",
+            "command": "draft.create",
+            "target": "synthetic-i0-course-b",
+            "scope": {
+              "courseId": "synthetic-i0-course-b"
+            },
+            "idempotencyKey": "a32369e4-3ef6-44d0-ad40-39838922eb1c",
+            "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+          },
+          "requestHash": "d13c12fdd4942036c7324750d81b655d1fab8bc04ad94e34dfbb9e4602ffd42c",
+          "result": {
+            "kind": "draft",
+            "draft": {
+              "courseId": "synthetic-i0-course-b",
+              "blueprintId": "b3830355-0e6c-448d-8cfd-8d4abaf5d0e6",
+              "revision": 1,
+              "content": {
+                "projectTitle": "C5 synthetic execution",
+                "problem": "Verify immutable results",
+                "audience": "Engineering",
+                "artifact": "HDL",
+                "routes": [
+                  "compare"
+                ],
+                "goals": [
+                  {
+                    "competencyId": "k",
+                    "competencyVersion": 1,
+                    "domain": "domain",
+                    "title": "Explain results",
+                    "core": true
+                  }
+                ],
+                "tasks": [
+                  {
+                    "taskId": "t",
+                    "title": "Compare",
+                    "goalRefs": [
+                      {
+                        "competencyId": "k",
+                        "competencyVersion": 1
+                      }
+                    ]
+                  }
+                ],
+                "observations": [
+                  {
+                    "observationId": "o",
+                    "description": "Observe",
+                    "goalRefs": [
+                      {
+                        "competencyId": "k",
+                        "competencyVersion": 1
+                      }
+                    ],
+                    "taskIds": [
+                      "t"
+                    ]
+                  }
+                ],
+                "rubricCriteria": [
+                  {
+                    "criterionId": "r",
+                    "description": "Explain",
+                    "goalRefs": [
+                      {
+                        "competencyId": "k",
+                        "competencyVersion": 1
+                      }
+                    ],
+                    "observationIds": [
+                      "o"
+                    ]
+                  }
+                ],
+                "milestones": [
+                  {
+                    "milestoneId": "m",
+                    "title": "Review",
+                    "taskIds": [
+                      "t"
+                    ]
+                  }
+                ],
+                "resources": [],
+                "digitalLogicConfigVersionId": "synthetic-c5-ec508222-b3a6-4f37-a3d9-0ca1a22d0805",
+                "helpPolicyVersionId": "synthetic-i0-course-b-help",
+                "checkRuleVersionId": "hdl-board-structure-v1",
+                "runtimeProfileVersionId": "hdl-iverilog12-nexys4ddr-v1"
+              }
+            }
+          },
+          "committedAt": "2026-10-14T17:29:17.911Z",
+          "serverSeq": 2
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/blueprints/b3830355-0e6c-448d-8cfd-8d4abaf5d0e6/checks",
+      "status": 200,
+      "body": {
+        "requestId": "10a4c381-dab9-4503-b398-0245914c4337",
+        "data": {
+          "receiptId": "c278f4de-33e9-48cd-9218-2a1247cc50e4",
+          "commandId": "9841443f-d44d-46d9-a95a-e35c91a9b875",
+          "identity": {
+            "actorId": "synthetic-i0-teacher-b",
+            "command": "draft.checks",
+            "target": "b3830355-0e6c-448d-8cfd-8d4abaf5d0e6",
+            "scope": {
+              "courseId": "synthetic-i0-course-b"
+            },
+            "idempotencyKey": "c7d70287-89fd-4610-b02a-7301763fada3",
+            "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+          },
+          "requestHash": "ad0ccc35411ba25f9dd181287dcbd63c56a2c4f39b9d44cde3a9f8f902dba308",
+          "result": {
+            "kind": "checks",
+            "report": {
+              "execution": {
+                "kind": "hdl_board",
+                "structural": "validated",
+                "behavior": "unverified"
+              },
+              "blueprintId": "b3830355-0e6c-448d-8cfd-8d4abaf5d0e6",
+              "revision": 1,
+              "blocking": [
+                {
+                  "code": "missing_domain",
+                  "path": "goals.project"
+                },
+                {
+                  "code": "missing_domain",
+                  "path": "goals.ai_collaboration"
+                }
+              ],
+              "designConcerns": [],
+              "unverified": [
+                {
+                  "code": "learning_effect",
+                  "path": "goals",
+                  "status": "unknown"
+                },
+                {
+                  "code": "workload_estimate",
+                  "path": "timeConstraints",
+                  "status": "unknown"
+                }
+              ]
+            }
+          },
+          "committedAt": "2026-10-14T17:29:19.105Z",
+          "serverSeq": 3
+        }
+      }
+    }
+  ],
+  "checks": [],
+  "passed": false,
+  "failure": {
+    "name": "AssertionError",
+    "message": "Expected values to be strictly equal:\n\n2 !== 0\n"
+  },
+  "databaseDiagnostics": {
+    "sqliteVersion": "3.53.4",
+    "journalMode": "wal",
+    "foreignKeys": 1,
+    "synchronous": 2,
+    "busyTimeout": 1000
+  },
+  "finishedAt": "2026-10-14T17:29:19.147Z",
+  "modelCalls": 0,
+  "browser": "not executed"
+}

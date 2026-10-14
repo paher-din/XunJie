@@ -1,0 +1,449 @@
+TAP version 13
+# Subtest: node-local control synthetic checks
+    # Subtest: parallel identical submit starts once and asynchronous ACL cannot create a race
+    ok 1 - parallel identical submit starts once and asynchronous ACL cannot create a race
+      ---
+      duration_ms: 79.764879
+      type: 'test'
+      ...
+    # Subtest: cancel-before-submit is durable and never creates a new unit
+    ok 2 - cancel-before-submit is durable and never creates a new unit
+      ---
+      duration_ms: 30.628238
+      type: 'test'
+      ...
+    # Subtest: two slots and one attempt guard include unresolved create operations
+    ok 3 - two slots and one attempt guard include unresolved create operations
+      ---
+      duration_ms: 130.950892
+      type: 'test'
+      ...
+    # Subtest: ACL revoked while queued is checked again before dispatch
+    ok 4 - ACL revoked while queued is checked again before dispatch
+      ---
+      duration_ms: 35.672536
+      type: 'test'
+      ...
+    # Subtest: process crash keeps pending creation unknown and never releases its slot
+    ok 5 - process crash keeps pending creation unknown and never releases its slot
+      ---
+      duration_ms: 233.106421
+      type: 'test'
+      ...
+    # Subtest: corrupt/partial journal and different node generation stop admission
+    ok 6 - corrupt/partial journal and different node generation stop admission
+      ---
+      duration_ms: 15.722821
+      type: 'test'
+      ...
+    # Subtest: credentials or source bodies cannot be copied into control metadata
+    ok 7 - credentials or source bodies cannot be copied into control metadata
+      ---
+      duration_ms: 14.681947
+      type: 'test'
+      ...
+    # Subtest: generation advance needs trusted registration, refuses rollback and survives ordinary restart
+    ok 8 - generation advance needs trusted registration, refuses rollback and survives ordinary restart
+      ---
+      duration_ms: 35.734908
+      type: 'test'
+      ...
+    # Subtest: preparation failure before any unit intent does not occupy a phantom slot
+    ok 9 - preparation failure before any unit intent does not occupy a phantom slot
+      ---
+      duration_ms: 37.572779
+      type: 'test'
+      ...
+    # Subtest: confirmed recovery wins completion race and cancelled result remains readable
+    ok 10 - confirmed recovery wins completion race and cancelled result remains readable
+      ---
+      duration_ms: 77.216412
+      type: 'test'
+      ...
+    # Subtest: old queued work becomes stale after trusted generation registration
+    ok 11 - old queued work becomes stale after trusted generation registration
+      ---
+      duration_ms: 35.075294
+      type: 'test'
+      ...
+    1..11
+ok 1 - node-local control synthetic checks
+  ---
+  duration_ms: 731.425745
+  type: 'test'
+  ...
+# Subtest: HDL board validation refuses executable mappings, missing bits and duplicates
+ok 2 - HDL board validation refuses executable mappings, missing bits and duplicates
+  ---
+  duration_ms: 2.104883
+  type: 'test'
+  ...
+# Subtest: elaborated widths/directions and all input bits must match, including ascending buses
+ok 3 - elaborated widths/directions and all input bits must match, including ascending buses
+  ---
+  duration_ms: 1.385601
+  type: 'test'
+  ...
+# Subtest: four-value frames preserve X/Z and reject missing width or forged time
+ok 4 - four-value frames preserve X/Z and reject missing width or forged time
+  ---
+  duration_ms: 0.658742
+  type: 'test'
+  ...
+# Subtest: HDL interaction keeps input/cycle trust boundaries and the independent container limits
+ok 5 - HDL interaction keeps input/cycle trust boundaries and the independent container limits
+  ---
+  duration_ms: 0.887227
+  type: 'test'
+  ...
+# Subtest: hashes exact UTF-8 content and byte-sorted compact manifests
+ok 6 - hashes exact UTF-8 content and byte-sorted compact manifests
+  ---
+  duration_ms: 2.298125
+  type: 'test'
+  ...
+# Subtest: rejects traversal, absolute, drive, UNC, backslash, NUL and empty components
+ok 7 - rejects traversal, absolute, drive, UNC, backslash, NUL and empty components
+  ---
+  duration_ms: 0.988335
+  type: 'test'
+  ...
+# Subtest: rejects stale body and manifest hashes and duplicate file identities
+ok 8 - rejects stale body and manifest hashes and duplicate file identities
+  ---
+  duration_ms: 0.762121
+  type: 'test'
+  ...
+# Subtest: enforces file count and UTF-8 byte budget including multibyte text
+ok 9 - enforces file count and UTF-8 byte budget including multibyte text
+  ---
+  duration_ms: 14.24588
+  type: 'test'
+  ...
+# Subtest: builds fixed compiler argv only from approved C sources
+ok 10 - builds fixed compiler argv only from approved C sources
+  ---
+  duration_ms: 2.176164
+  type: 'test'
+  ...
+# Subtest: rejects malformed input at the runtime boundary
+ok 11 - rejects malformed input at the runtime boundary
+  ---
+  duration_ms: 0.541203
+  type: 'test'
+  ...
+# Subtest: DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries
+ok 12 - DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries
+  ---
+  duration_ms: 3187.99708
+  type: 'test'
+  ...
+# Subtest: DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram
+ok 13 - DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram
+  ---
+  duration_ms: 2972.749998
+  type: 'test'
+  ...
+# Subtest: DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state
+ok 14 - DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state
+  ---
+  duration_ms: 2946.147533
+  type: 'test'
+  ...
+# Subtest: existing authenticated Job paths dispatch HDL and stop its original session after a completed program
+ok 15 - existing authenticated Job paths dispatch HDL and stop its original session after a completed program
+  ---
+  duration_ms: 4089.237115
+  type: 'test'
+  ...
+# Subtest: revoked membership cannot read or interact, while the trusted worker still stops original resources
+ok 16 - revoked membership cannot read or interact, while the trusted worker still stops original resources
+  ---
+  duration_ms: 2646.410707
+  type: 'test'
+  ...
+# Subtest: job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind
+ok 17 - job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind
+  ---
+  duration_ms: 3172.058599
+  type: 'test'
+  ...
+# Subtest: Trace polling retains its cursor until the original program or interaction result is available
+ok 18 - Trace polling retains its cursor until the original program or interaction result is available
+  ---
+  duration_ms: 2750.351456
+  type: 'test'
+  ...
+# Subtest: replacement rechecks the supplied transaction authority after its external stop wait
+ok 19 - replacement rechecks the supplied transaction authority after its external stop wait
+  ---
+  duration_ms: 2867.429784
+  type: 'test'
+  ...
+# Subtest: real A1/A2 transactions persist double-key ACKs, whole files and original revisions
+ok 20 - real A1/A2 transactions persist double-key ACKs, whole files and original revisions
+  ---
+  duration_ms: 3883.471375
+  type: 'test'
+  ...
+# Subtest: late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches
+ok 21 - late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches
+  ---
+  duration_ms: 2724.392646
+  type: 'test'
+  ...
+# Subtest: current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data
+ok 22 - current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data
+  ---
+  duration_ms: 3935.866672
+  type: 'test'
+  ...
+# Subtest: two real processes share the original ACK, and acknowledged state survives process restart
+ok 23 - two real processes share the original ACK, and acknowledged state survives process restart
+  ---
+  duration_ms: 6013.025895
+  type: 'test'
+  ...
+# Subtest: persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private
+ok 24 - persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private
+  ---
+  duration_ms: 3625.266679
+  type: 'test'
+  ...
+# Subtest: unknown with no node fact never resubmits; failed result commit recovers the same immutable fact
+ok 25 - unknown with no node fact never resubmits; failed result commit recovers the same immutable fact
+  ---
+  duration_ms: 4141.951108
+  type: 'test'
+  ...
+# Subtest: A2 pause stops a queued check through the original node cancellation; resume never resurrects it
+ok 26 - A2 pause stops a queued check through the original node cancellation; resume never resurrects it
+  ---
+  duration_ms: 2764.287205
+  type: 'test'
+  ...
+# Subtest: real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen
+ok 27 - real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen # SKIP
+  ---
+  duration_ms: 1.066522
+  type: 'test'
+  ...
+# Subtest: run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution
+ok 28 - run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution
+  ---
+  duration_ms: 8.219213
+  type: 'test'
+  ...
+# Subtest: lost transport queries same original run and rechecks current authorization before submit
+ok 29 - lost transport queries same original run and rechecks current authorization before submit
+  ---
+  duration_ms: 2.510282
+  type: 'test'
+  ...
+# Subtest: check cancellation keeps stage until the authenticated node confirms no pending units
+ok 30 - check cancellation keeps stage until the authenticated node confirms no pending units
+  ---
+  duration_ms: 1.616533
+  type: 'test'
+  ...
+# Subtest: confirmed failure requires original identity, current lease/generation and no units or result
+ok 31 - confirmed failure requires original identity, current lease/generation and no units or result
+  ---
+  duration_ms: 3.093426
+  type: 'test'
+  ...
+# Subtest: confirmed original facts reconcile expired/unknown leases and never become current-code claims
+ok 32 - confirmed original facts reconcile expired/unknown leases and never become current-code claims
+  ---
+  duration_ms: 8.107835
+  type: 'test'
+  ...
+# Subtest: authorized diagnostic reads exclude other attempts and private check detail
+ok 33 - authorized diagnostic reads exclude other attempts and private check detail
+  ---
+  duration_ms: 2.25569
+  type: 'test'
+  ...
+# Subtest: pause queued run retains cancellation intent and prevents new execution until node confirmation
+ok 34 - pause queued run retains cancellation intent and prevents new execution until node confirmation
+  ---
+  duration_ms: 2.474066
+  type: 'test'
+  ...
+# Subtest: stopping an already confirmed cancelled run under a new key preserves terminal state
+ok 35 - stopping an already confirmed cancelled run under a new key preserves terminal state
+  ---
+  duration_ms: 2.224742
+  type: 'test'
+  ...
+# Subtest: C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel
+ok 36 - C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel # SKIP
+  ---
+  duration_ms: 0.45635
+  type: 'test'
+  ...
+# Subtest: DL-A approved fresh application has exactly 35 tables and preserves them on close
+ok 37 - DL-A approved fresh application has exactly 35 tables and preserves them on close
+  ---
+  duration_ms: 67.318144
+  type: 'test'
+  ...
+# Subtest: normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+ok 38 - normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL
+  ---
+  duration_ms: 3065.483611
+  type: 'test'
+  ...
+# Subtest: original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+ok 39 - original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay
+  ---
+  duration_ms: 3683.195224
+  type: 'test'
+  ...
+# Subtest: fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+ok 40 - fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays
+  ---
+  duration_ms: 2775.03591
+  type: 'test'
+  ...
+# Subtest: HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+ok 41 - HTTP reprogram denies final acceptance when its real Session logs out during stop wait
+  ---
+  duration_ms: 3189.041229
+  type: 'test'
+  ...
+# Subtest: management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+ok 42 - management withdrawal commits stop with permission state; a real rollback keeps permission and session active
+  ---
+  duration_ms: 2916.523356
+  type: 'test'
+  ...
+# Subtest: activity pause stops a completed program even without a currently pending Job
+ok 43 - activity pause stops a completed program even without a currently pending Job
+  ---
+  duration_ms: 2809.86023
+  type: 'test'
+  ...
+# Subtest: same normal consumer dispatches original C and HDL jobs without a second queue
+ok 44 - same normal consumer dispatches original C and HDL jobs without a second queue
+  ---
+  duration_ms: 2902.661134
+  type: 'test'
+  ...
+# Subtest: interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+ok 45 - interaction preserves sequence, four-value outputs and immutable source when a new draft is saved
+  ---
+  duration_ms: 2833.962981
+  type: 'test'
+  ...
+# Subtest: personal pause and account disable propagate stop through original C reconciliation
+ok 46 - personal pause and account disable propagate stop through original C reconciliation
+  ---
+  duration_ms: 3115.909108
+  type: 'test'
+  ...
+# Subtest: normal scheduled consumer and shutdown retain actual termination facts
+ok 47 - normal scheduled consumer and shutdown retain actual termination facts
+  ---
+  duration_ms: 3455.576396
+  type: 'test'
+  ...
+# Subtest: reprogram rejects membership withdrawal after external wait but still persists original exit
+ok 48 - reprogram rejects membership withdrawal after external wait but still persists original exit
+  ---
+  duration_ms: 2860.021277
+  type: 'test'
+  ...
+# Subtest: fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+ok 49 - fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows
+  ---
+  duration_ms: 3632.267767
+  type: 'test'
+  ...
+# Subtest: fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+ok 50 - fixed ALU rejects out-of-course definitions and accepts another legal SW layout
+  ---
+  duration_ms: 1898.708024
+  type: 'test'
+  ...
+# Subtest: withdrawal stops original C Run and marks teacher course assignment inactive
+ok 51 - withdrawal stops original C Run and marks teacher course assignment inactive
+  ---
+  duration_ms: 2956.622408
+  type: 'test'
+  ...
+# Subtest: HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+ok 52 - HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView
+  ---
+  duration_ms: 3486.799894
+  type: 'test'
+  ...
+# Subtest: C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+ok 53 - C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable
+  ---
+  duration_ms: 3018.599068
+  type: 'test'
+  ...
+# Subtest: C4 teacher grant and student revision resume never revive the stopped original HDL Session
+ok 54 - C4 teacher grant and student revision resume never revive the stopped original HDL Session
+  ---
+  duration_ms: 3037.824317
+  type: 'test'
+  ...
+# Subtest: shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+ok 55 - shutdown blocks new HDL dispatch while a real HTTP readiness request drains
+  ---
+  duration_ms: 3170.392063
+  type: 'test'
+  ...
+# Subtest: H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+ok 56 - H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance
+  ---
+  duration_ms: 4239.016906
+  type: 'test'
+  ...
+# Subtest: H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+ok 57 - H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch
+  ---
+  duration_ms: 2812.601438
+  type: 'test'
+  ...
+# Subtest: H4 new operation during model generation invalidates old help without a C3 body
+ok 58 - H4 new operation during model generation invalidates old help without a C3 body
+  ---
+  duration_ms: 2793.719856
+  type: 'test'
+  ...
+# Subtest: H4 operation after generation prevents old Delivery and displayed receipt
+ok 59 - H4 operation after generation prevents old Delivery and displayed receipt
+  ---
+  duration_ms: 2846.937221
+  type: 'test'
+  ...
+# Subtest: H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+ok 60 - H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact
+  ---
+  duration_ms: 2921.91566
+  type: 'test'
+  ...
+# Subtest: H4 stop before dispatch and provider failure never prevent confirmed source reads
+ok 61 - H4 stop before dispatch and provider failure never prevent confirmed source reads
+  ---
+  duration_ms: 5581.358352
+  type: 'test'
+  ...
+# Subtest: H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+ok 62 - H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call
+  ---
+  duration_ms: 2875.898062
+  type: 'test'
+  ...
+1..62
+# tests 73
+# suites 0
+# pass 71
+# fail 0
+# cancelled 0
+# skipped 2
+# todo 0
+# duration_ms 134966.750422

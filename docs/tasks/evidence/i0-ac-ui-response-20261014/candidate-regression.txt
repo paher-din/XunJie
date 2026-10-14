@@ -1,0 +1,160 @@
+✔ host readiness requires the original consumer and a current database/runner, without creating business rows (2569.218398ms)
+✔ host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies (2875.359994ms)
+✔ host readiness detects database and consumer scan failure and resumes after successful scans (2295.409364ms)
+✔ a delayed readiness response cannot succeed after shutdown or database failure (4237.99359ms)
+✔ health queries time out without accepting late runner success (7134.336568ms)
+✔ disabled model calls do not block readiness or authorized session access (3596.280347ms)
+✔ a changed recovery generation during a readiness query requires a fresh probe (2397.246609ms)
+✔ the real HTTP listener withdraws readiness when Fastify is closed directly (2270.221982ms)
+✔ normal tutoring consumer uses the original job without retaining or creating student sessions (4268.571386ms)
+✔ withdrawn membership prevents automatic dispatch; budget refusal never calls a provider (7627.772796ms)
+✔ shutdown persists original teaching stop and aborts the in-process provider without a replacement job (3707.381209ms)
+✔ a prior worker lease is reconciled as unknown without another model call (3686.545627ms)
+✔ an in-flight C dispatch cannot block a newly accepted tutoring job (4669.804151ms)
+✔ internal completion rechecks the same trusted learner revision guard as public C3 completion (3782.630563ms)
+✔ help acceptance activates ready attempt and atomically stores question, receipt, event, and job (3542.973165ms)
+✔ help acceptance derives its exact 45-second deadline from one clock reading (3035.887026ms)
+✔ new help replaces the old help job and increments the shared epoch once (3018.53508ms)
+✔ capture and reminder controls preserve the original accepted help input (3074.070126ms)
+✔ disabled policy and an active limited check reject help before a tutoring job is created (9483.95024ms)
+✔ help rejects stale revisions, foreign object references, and unauthorized actors without model work (4126.991181ms)
+✔ a corrupted persisted request binding returns a typed state conflict (3055.484825ms)
+✔ context assembly exposes only the selected snapshot, relevant claims, actual help, and approved paragraphs (2909.088018ms)
+✔ empty learner history stays explicit unknown and does not block help (2986.068932ms)
+✔ bounded resource reference IDs complete the real C3 message and action chain (2862.386353ms)
+✔ bounded code reference IDs complete the real C3 message and action chain (2810.856182ms)
+✔ resource and unavailable-run references remain exact, scoped, and explainable (2.33894ms)
+✔ instructions inside an approved resource remain untrusted and cannot expand help capabilities (1.507053ms)
+✔ current guard distinguishes cancellation from stale policy, version, and recovery state (0.539333ms)
+✔ authorized execution returns a traceable C3 handoff and discards a post-model stale result (1.630934ms)
+✔ authorized execution persists one C3 message/action with the held lease and cumulative call ledger (2796.600763ms)
+✔ tutoring composer can attach the teacher agent without taking over student jobs (2742.932252ms)
+✔ long unresolved teaching text survives C3 persistence and exact result replay (2728.553608ms)
+✔ a withdrawn trusted budget blocks the next provider call before reservation (5357.732326ms)
+✔ persisted call budget is shared across workers and reserves before provider invocation (1.971296ms)
+✔ cancelled and expired jobs end before claim without invoking the provider (0.696702ms)
+✔ an input-limit rejection before the invoker releases only its unsent persisted reservation (0.65831ms)
+﹣ P2 real-model student help, persisted content and undisplayed cancellation (0.076422ms) # SKIP
+✔ P2 performance summary uses nearest-rank percentiles (0.251746ms)
+✔ P2 performance fixture fixes 30 authorized scenarios without model access (0.80932ms)
+✔ P2 semantic-fix fixture fixes two authorized scenarios without model access (0.414308ms)
+﹣ P2 authorized two-job real student-help semantic-fix batch (0.141362ms) # SKIP
+﹣ P2 authorized 30-job real student-help performance batch (0.078466ms) # SKIP
+✖ real A1/A2 transactions persist double-key ACKs, whole files and original revisions (3664.002694ms)
+✔ late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches (3151.518347ms)
+✖ current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data (4456.310377ms)
+✔ two real processes share the original ACK, and acknowledged state survives process restart (6546.983174ms)
+✔ persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private (4426.771601ms)
+✔ unknown with no node fact never resubmits; failed result commit recovers the same immutable fact (5161.322771ms)
+✔ A2 pause stops a queued check through the original node cancellation; resume never resurrects it (3005.408163ms)
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (0.648519ms) # SKIP
+✔ composed teacher and workspace jobs share routes while retaining their authorization and cancellation (5688.211147ms)
+✔ public Attempt uses the fixed limitedHelp=true rule for an active check (4296.513589ms)
+✔ public Attempt uses the fixed limitedHelp=false rule for an active check (3803.902319ms)
+✔ unknown execution and restart keep the restriction until the original result is confirmed (3956.468841ms)
+✔ a cancel ACK and an unconfirmed runner stop do not clear the persisted restriction (3182.325316ms)
+✔ paused Attempt and assignment remain readable without releasing an active limited check (3842.084293ms)
+✔ limitedCheck=false does not allow help on a paused Attempt (4478.04455ms)
+✔ run plan freezes original IDs/snapshot, requires actual ready and registers check policy before execution (11.768249ms)
+✔ lost transport queries same original run and rechecks current authorization before submit (4.260949ms)
+✔ check cancellation keeps stage until the authenticated node confirms no pending units (2.28613ms)
+✔ confirmed failure requires original identity, current lease/generation and no units or result (4.630395ms)
+✔ confirmed original facts reconcile expired/unknown leases and never become current-code claims (6.781788ms)
+✔ authorized diagnostic reads exclude other attempts and private check detail (15.008759ms)
+✔ pause queued run retains cancellation intent and prevents new execution until node confirmation (3.876109ms)
+✔ stopping an already confirmed cancelled run under a new key preserves terminal state (1.966733ms)
+﹣ C2 synthetic confirmed workspace uses real C1 SSH: old snapshot, original result, check verdict and cancel (1.011777ms) # SKIP
+✔ C4-V01 a fixed submission freezes the confirmed snapshot and records a failing verdict without gating (8.260355ms)
+✔ C4-V02 submission guards reject a stale revision, a paused assignment, an unconfirmed snapshot and a mismatched check (3.220388ms)
+✔ C4-V03 resume_revision consumes only a current grant on the latest submission and never reopens by itself (6.035972ms)
+✔ C4-V04 recovery separates confirmed, unknown and in-flight outcomes without touching the attempt (2.928572ms)
+✔ C4-V05 a fixed submission is idempotent, conflicts on a differing digest and never repeats the side effect (4263.247755ms)
+✔ C4-V06 teacher review, reopen grant and the student own resume_revision form the revision chain (3310.339787ms)
+✔ C4-V07 stale revisions, old submissions, paused assignments and foreign actors are refused (4715.541525ms)
+✔ C4-V08 submission invalidates in-flight teaching in the same short transaction (3163.022299ms)
+✔ C4-V09 submissions, grants and recovery survive a restart, and a late failure rolls the whole command back (3918.058562ms)
+✔ C4-V10 the submission command plan is replayable and guards the authorized student scope (12.578245ms)
+▶ C4-V11 grants issued during assignment or activity pause are not actionable in either public view
+  ✔ assignment (3802.04764ms)
+  ✔ activity (3380.812869ms)
+✔ C4-V11 grants issued during assignment or activity pause are not actionable in either public view (7184.508678ms)
+✔ C4-V12 current teacher retains recovery history after student withdrawal but cannot see an actionable grant (3062.072999ms)
+✔ C4-V13 disabled student account makes the retained grant non-actionable for a current teacher (2962.804944ms)
+✔ whole sync plan, stable receipt and authorization-before-replay distinguish confirmed from uncommitted (12.946669ms)
+✔ CAS conflicts, paused updates, recycle/recreate/restore and limits never mutate input (9.800899ms)
+✔ exact UTF-16 edits preserve CRLF/emoji, reject overlap and malformed ranges (1.447332ms)
+✔ snapshot and ObjectRef bind old file instance/version/body rather than current paths (2.72981ms)
+✔ capture/reminder/lifecycle controls are separate and stale process does not block saving (1.376154ms)
+✔ unapproved fields, pre-ACK file operations and prototype-like client keys are handled safely (1.568633ms)
+✔ DL-A approved fresh application has exactly 35 tables and preserves them on close (80.154013ms)
+✔ normal two-course host freezes HDL config, hides private materials and rejects TextScope execution on HDL (3821.095022ms)
+✔ original consumer builds/programs exact snapshots; pending Trace cursor and read authority survive replay (4175.854102ms)
+✔ fixed configuration rejects unknown runtime, client role, overlap and changed body; same body replays (2946.754873ms)
+✔ HTTP reprogram denies final acceptance when its real Session logs out during stop wait (3301.412261ms)
+✔ management withdrawal commits stop with permission state; a real rollback keeps permission and session active (3106.359495ms)
+✔ activity pause stops a completed program even without a currently pending Job (3456.213365ms)
+✔ same normal consumer dispatches original C and HDL jobs without a second queue (4029.21059ms)
+✔ interaction preserves sequence, four-value outputs and immutable source when a new draft is saved (3381.027872ms)
+✔ personal pause and account disable propagate stop through original C reconciliation (3375.078665ms)
+✔ normal scheduled consumer and shutdown retain actual termination facts (3844.508591ms)
+✔ reprogram rejects membership withdrawal after external wait but still persists original exit (3006.849712ms)
+✔ fresh initializer creates two normal courses and rejects mismatched recovery before creating business rows (3900.766616ms)
+✔ fixed ALU rejects out-of-course definitions and accepts another legal SW layout (2002.12323ms)
+✔ withdrawal stops original C Run and marks teacher course assignment inactive (2807.285352ms)
+✔ HDL host reuses the authorized I0 bootstrap with current generation and original AssignmentView (3345.131507ms)
+✔ C4 fixed submission stops the original active HDL Session and keeps replay and old trace readable (2897.775099ms)
+✔ C4 teacher grant and student revision resume never revive the stopped original HDL Session (3028.787259ms)
+✔ shutdown blocks new HDL dispatch while a real HTTP readiness request drains (3017.270919ms)
+✔ H4 normal HTTP freezes explicit objects, automatically consumes original Job and delivers C3 provenance (4912.55737ms)
+✔ H4 rejects pending/stopped/foreign selection and corrupted operation bytes before dispatch (3395.695299ms)
+✔ H4 new operation during model generation invalidates old help without a C3 body (3407.75268ms)
+✔ H4 operation after generation prevents old Delivery and displayed receipt (3473.830245ms)
+✔ H4 receipt rechecks HDL in its own transaction and preserves a late display as a raced fact (3465.100927ms)
+✔ H4 stop before dispatch and provider failure never prevent confirmed source reads (7493.328934ms)
+✔ H4 freezes workspace revision at acceptance; edits before dispatch stop the original Job without a provider call (3365.166787ms)
+ℹ tests 113
+ℹ suites 0
+ℹ pass 106
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 5
+ℹ todo 0
+ℹ duration_ms 60532.961543
+
+✖ failing tests:
+
+test at server/workspace/integration.test.ts:16:1
+✖ real A1/A2 transactions persist double-key ACKs, whole files and original revisions (3664.002694ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"b640e148-c296-4118-b123-e878ecdc5895","error":{"code":"VERSION_CONFLICT","message":"Version conflict.","retryable":false,"recovery":"Read the current authorized version before retrying."}}
+
+  409 !== 200
+
+      at TestContext.<anonymous> (file:///opt/xunjie-runner/tests/i0-ac-ui-response-20261014/candidate/apps/teaching/server/workspace/integration.test.ts:60:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 409,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at server/workspace/integration.test.ts:112:1
+✖ current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data (4456.310377ms)
+  AssertionError [ERR_ASSERTION]: {"requestId":"e71b3d3e-1551-4b1b-99c0-0e26ccdd16d6","error":{"code":"VERSION_CONFLICT","message":"Version conflict.","retryable":false,"recovery":"Read the current authorized version before retrying."}}
+
+  409 !== 200
+
+      at TestContext.<anonymous> (file:///opt/xunjie-runner/tests/i0-ac-ui-response-20261014/candidate/apps/teaching/server/workspace/integration.test.ts:127:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 409,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -12,6 +12,51 @@ import { sshRunner } from '../records/runner.ts';
 import { setTimeout } from 'node:timers/promises';
 import { z } from 'zod';
 import { readActivity } from '../design/activities.ts';
+import {readAttempt,saveAttempt} from '../db/records-adapter.ts';
+
+test('H-05 file confirmation preserves control CAS while old workspace writes and real control races conflict',async()=>{
+  const f=await fixture();
+  try {
+    const teacher=await f.login('teacher'),student=await f.login(),allocation=await assigned(f,teacher);
+    const id=await opened(f,student,allocation.assignmentId),ids=await files(f,student,id),before=await view(f,student,id);
+    const file=before.files.find((row:{fileId:string})=>row.fileId===ids.source);
+    const payload={expectedWorkspaceRevision:before.attempt.workspaceRevision,clientId:'h05',clientSeq:1,
+      operations:[{kind:'update',fileId:file.fileId,baseVersion:file.documentVersion,text:'synthetic new source'}]};
+    const saved=await command(f,student,`/api/attempts/${id}/sync`,payload,'h05-save');assert.equal(saved.statusCode,200,saved.body);
+    const after=await view(f,student,id);
+    assert.equal(after.attempt.attemptRevision,before.attempt.attemptRevision);
+    assert.equal(after.attempt.workspaceRevision,before.attempt.workspaceRevision+1);
+    assert.equal(after.files.find((row:{fileId:string})=>row.fileId===ids.source).documentVersion,file.documentVersion+1);
+    const replay=await command(f,student,`/api/attempts/${id}/sync`,payload,'h05-save');
+    assert.equal(replay.json().data.replayed,true);assert.deepEqual((await view(f,student,id)).attempt,after.attempt);
+    assert.equal((await command(f,student,`/api/attempts/${id}/sync`,{...payload,clientSeq:2},'h05-stale')).statusCode,409);
+    const pause=await command(f,student,`/api/attempts/${id}/controls`,{expectedAttemptRevision:before.attempt.attemptRevision,control:{kind:'pause'}});
+    assert.equal(pause.statusCode,200,pause.body);const paused=await view(f,student,id);
+    assert.equal(paused.attempt.attemptRevision,before.attempt.attemptRevision+1);
+    const pausedSave=await command(f,student,`/api/attempts/${id}/sync`,{expectedWorkspaceRevision:paused.attempt.workspaceRevision,
+      clientId:'h05',clientSeq:3,operations:[{kind:'update',fileId:file.fileId,baseVersion:file.documentVersion+1,text:'paused draft'}]});
+    assert.equal(pausedSave.statusCode,200,pausedSave.body);
+    assert.equal((await view(f,student,id)).attempt.attemptRevision,paused.attempt.attemptRevision);
+    assert.equal((await command(f,student,`/api/attempts/${id}/controls`,{expectedAttemptRevision:before.attempt.attemptRevision,control:{kind:'resume'}})).statusCode,409);
+    const resume=await command(f,student,`/api/attempts/${id}/controls`,{expectedAttemptRevision:paused.attempt.attemptRevision,control:{kind:'resume'}});
+    assert.equal(resume.statusCode,200,resume.body);
+  }finally{await f.close();}
+});
+
+test('H-05 persistence rejects same-control changes outside one workspace increment and rolls back',async()=>{
+  const f=await fixture();
+  try {
+    const teacher=await f.login('teacher'),student=await f.login(),allocation=await assigned(f,teacher);
+    const id=await opened(f,student,allocation.assignmentId);await files(f,student,id);
+    const original=f.db.withTransaction(tx=>readAttempt(tx,id));
+    for(const change of [{workspaceRevision:original.workspaceRevision+2},{status:'paused' as const},
+      {decisionEpoch:original.decisionEpoch+1},{captureRevision:original.captureRevision+1},{route:'same-version bypass'},
+      {workspaceRevision:original.workspaceRevision+1,status:'paused' as const}]){
+      assert.throws(()=>f.db.withTransaction(tx=>saveAttempt(tx,{...original,...change})),{code:'VERSION_CONFLICT'});
+      assert.deepEqual(f.db.withTransaction(tx=>readAttempt(tx,id)),original);
+    }
+  }finally{await f.close();}
+});
 
 test('real A1/A2 transactions persist double-key ACKs, whole files and original revisions', async () => {
   const f = await fixture();
@@ -54,7 +99,9 @@ test('real A1/A2 transactions persist double-key ACKs, whole files and original 
     const restoredFile = await command(f,student,`/api/attempts/${id}/sync`,{ expectedWorkspaceRevision: 3,clientId: 'page',clientSeq: 96,
       operations: [{ kind: 'recycle',fileId: recycled.json().data.result.created.replacement,baseVersion: 1 },{ kind: 'restore',fileId: file.fileId,baseVersion: 3 }] });
     assert.equal(restoredFile.statusCode,200,restoredFile.body);
-    const position = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: 5,
+    const positionRevision = (await view(f,student,id)).attempt.attemptRevision;
+    assert.equal(positionRevision,2,'file-only updates preserve lifecycle/control CAS');
+    const position = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: positionRevision,
       control: { kind: 'position',route: 'array',question: 'Explain this',returnPosition: { kind: 'code',attemptId: id,snapshotId: snap,
         fileId: file.fileId,path: 'main.c',documentVersion: 1,contentHash: file.contentHash,range: { startLine: 1,startColumn: 3,endLine: 1,endColumn: 5 } } } });
     assert.equal(position.statusCode,200,position.body);
@@ -123,7 +170,9 @@ test('current ownership and A2 controls guard replay; paused work and capture ga
       operations: [{ kind: 'update',fileId: ids.source,baseVersion: version,text: 'new draft '+seq }],process: { captureRevision } });
     const paused = await command(f,student,`/api/attempts/${id}/sync`,update(1,10,0));
     assert.equal(paused.statusCode,200,paused.body); assert.equal(paused.json().data.result.process.reason,'capture_paused');
-    const resumeCapture = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: 4,control: { kind: 'capture',value: true } });
+    const captureControlRevision = (await view(f,student,id)).attempt.attemptRevision;
+    assert.equal(captureControlRevision,3,'saving with capture paused changes only workspace CAS');
+    const resumeCapture = await command(f,student,`/api/attempts/${id}/controls`,{ expectedAttemptRevision: captureControlRevision,control: { kind: 'capture',value: true } });
     assert.equal(resumeCapture.statusCode,200,resumeCapture.body);
     const late = await command(f,student,`/api/attempts/${id}/sync`,update(2,11,0));
     assert.equal(late.json().data.result.process.reason,'stale_capture_revision');
