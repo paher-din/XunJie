@@ -79,3 +79,13 @@ H各行只对实际覆盖部分记通过，没有用“已接线”将全项自�
 本轮命令：学生目录 `rtk npm ci --offline --no-audit --no-fund`（仅原lock/已有缓存）、`rtk npm run typecheck`、`rtk npm run build`；固定归档入口 `package-student-dist.ps1`，原本机 `xunjie-ui55.ps1 stop/start/status/check`；原 `Read-C1Readiness.ps1` / `Read-BrowserRunServerProjection.ps1`；新增只读 `Read-Ui30WorkspaceFacts.ps1`。全部工具与产物留原本机入口，实际机器路径/凭据不成为仓库开工前置。
 
 没有新生产源码/测试/依赖/lock/后端/规范变更，故不重复已通过单元/整批浏览器/原20项；本轮当前正式产物构建及真实浏览器验证如上，原专项计数只引用不累加。本写集最终静态检查 **88文档/1322内部链接/errors=[]**，差异空白通过，6份JSON秘密值字段零命中；该静态脚本不运行业务测试，真实浏览器/节点结果按前文另记。普通推送/PR及Issue回交回执待交付后补入；本地提交、远端PR、main合并和部署分别报告。产品基线/MVP_SPEC §10：待授权维护者汇总。
+
+## 8. 普通推送、PR 与指定 Issue 回交回执
+
+实现/证据提交 **805c76a6f230cb7f6a64bc94abf8adfa2616e955** 已普通推送独立 `codex/ui30-comment-closeout`，创建并回读 [Draft PR68](https://github.com/paher-din/XunJie/pull/68)，base=main，初始head与上述提交一致，Open/Draft、未合并。该提交含16文件；本节及公开回执是其后的纯记录追加，不重建UI或将旧证据改贴新执行版本。
+
+两份指定交付均已发布并独立回读，正文匹配：[#30 浏览器方案/H状态回交](https://github.com/paher-din/XunJie/issues/30#issuecomment-6169702024)，[#38 HDL操作表](https://github.com/paher-din/XunJie/issues/38#issuecomment-6169700560)。两条评论固定指向805c76a的原证据，未覆盖他人评论、关闭Issue或重复粘贴整包日志。[公开发布读回](evidence/i0-ui30-comment-closeout/public-delivery-receipt.json)保留来源head/PR/评论ID与实际状态。
+
+最初发布工具完成PR/两评论后，本机回执序列化遇PowerShell generic List转数组错误；先用独立API确认现有PR并附任务，改用ToArray，再按原marker/完整正文复用两评论读回，没有重复POST。token始终只在内存/curl stdin，公开payload仅正文/标识。此修复是本机交付工具，不改产品源码。
+
+交付当前属于**已推送/已建Draft PR/已回交**；没有合入main、改C工作分支或部署PAHER。C/B/A可直接读取固定操作表和H状态续接，本任务不代其签认，不宣布HDL页面/完整AC/NFR/真人及教学效果完成。相关工具与正式包均留原本机入口，主目录并行差异未触碰。

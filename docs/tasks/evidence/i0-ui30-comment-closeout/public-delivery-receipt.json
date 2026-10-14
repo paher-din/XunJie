@@ -1,0 +1,26 @@
+{
+  "observedAtUtc": "2026-10-14T13:40:41.4586959+00:00",
+  "head": "805c76a6f230cb7f6a64bc94abf8adfa2616e955",
+  "url": "https://github.com/paher-din/XunJie/pull/68",
+  "prNumber": 68,
+  "state": "open",
+  "draft": true,
+  "merged": false,
+  "comments": [
+    {
+      "commentId": 6169700560,
+      "url": "https://github.com/paher-din/XunJie/issues/38#issuecomment-6169700560",
+      "issue": 38,
+      "bodyMatched": true
+    },
+    {
+      "commentId": 6169702024,
+      "url": "https://github.com/paher-din/XunJie/issues/30#issuecomment-6169702024",
+      "issue": 30,
+      "bodyMatched": true
+    }
+  ],
+  "mainMergedByThisTool": false,
+  "servicesChangedByThisTool": false,
+  "readOnly": false
+}
