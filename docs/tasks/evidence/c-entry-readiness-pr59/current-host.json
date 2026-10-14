@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-10-14T06:20:32.856Z",
+  "unit": "xunjie-i0-entry-recovered-20261014.service",
+  "service": {
+    "MainPID": "468",
+    "ActiveState": "active",
+    "SubState": "running"
+  },
+  "processArgv": [
+    "/opt/xunjie-runner/node/bin/node",
+    "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching/dist/server/main.js"
+  ],
+  "origin": "https://127.0.0.1:3443",
+  "sourceReceiver": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching",
+  "sourceHashes": {
+    "server/app.ts": "b35543ef028b6b52b4cc41af7b2eb43296da7f85662344a3a37f19e1d1732805",
+    "server/app/i0.ts": "c765cc37904cd438044d01a43e2ac184bacd98d30acd2be53cc09331ac17b0d5"
+  },
+  "responses": [
+    {
+      "path": "/health/live",
+      "statusCode": 200,
+      "tlsAuthorized": true,
+      "body": {
+        "requestId": "fc0ad0b3-9513-4347-af1f-6ac2652b06b4",
+        "data": {
+          "status": "alive"
+        }
+      },
+      "cacheControl": null,
+      "responseRequestId": "fc0ad0b3-9513-4347-af1f-6ac2652b06b4"
+    },
+    {
+      "path": "/health/ready",
+      "statusCode": 503,
+      "tlsAuthorized": true,
+      "body": {
+        "requestId": "6d7bee1f-76d1-4791-af28-18de51c2230b",
+        "error": {
+          "code": "DEPENDENCY_UNAVAILABLE",
+          "message": "Required capability is unavailable.",
+          "retryable": false,
+          "recovery": "Use the manual workflow while unavailable; check the original request before explicitly retrying."
+        }
+      },
+      "cacheControl": null,
+      "responseRequestId": "6d7bee1f-76d1-4791-af28-18de51c2230b"
+    }
+  ],
+  "scope": "Read-only original strict Node HTTPS; no credentials/session body, database creation or service/configuration mutation",
+  "sourceHashesMatch9fa76ad": true
+}
