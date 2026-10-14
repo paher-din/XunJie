@@ -475,3 +475,9 @@ Robert明确要求检查远程main更新、必要整合、完成整体PR并合�
 教学检查的初次WSL命令因Windows参数转义展开含空格PATH而在启动前退出2，没有执行测试，不能记业务失败/通过。已改用临时`env PATH=<精确Node目录及Linux系统目录>`及原npm脚本成功执行；本进程明确移除P2/B3真实模型与C1/HDL外部运行授权标记，不修改.env/系统PATH/凭据或旧配置，新增供应商请求为0。
 
 8个工作树均已提交源改动；projection/limited-check各仅多一个非源码`apps/teaching/node_modules`的WSL符号链接，实际目标是主仓库依赖，学生依赖为指向同主仓库的junction。归档前仅移除这些本次链接自身，主依赖目标保留；不把依赖链接/ignored浏览器产物当待交源代码。8个当前分支和另外3个初始I0-B支线共11条协作分支，连同已交付主分支共12条待清理；管理工具保留可恢复工作树快照，最终PR/清理事实由远程PR记录、任务attachments及本会话收尾结果核对，不预造合并SHA或完成状态。
+
+### 14.2 整体PR与合并后交接
+
+`88f7eac`已推送至原远程`i0/ui-frontend`；整体[PR #57](https://github.com/paher-din/XunJie/pull/57)已创建并附在本会话，base为main `0e68325`。GitHub在创建head上报告MERGEABLE/CLEAN，CI诊断checks/statuses均为空；这表示没有返回CI任务，不写“CI全部通过”。本节文档提交后再次核最新head、base与合并状态，依Robert明确授权用保留提交的merge方式合入，绑定实际head以防分支在等待期间被更新；不使用管理员绕过或合并其他开放PR。
+
+合并完成后从远端再fetch，核main包含PR最终head及远端merge记录，主checkout转main并仅fast-forward。清理先保存8个管理工作树的可恢复快照，再删除本批11条协作分支及本地/远程交付分支；必要依赖链接只unlink自身，无关两工作树/其他成员分支和`.zcodeignore`保留。工作树归档状态由本任务attachments保存，合并SHA/时间由PR公开记录保存；本节不提前宣称合并或清理已经完成。
