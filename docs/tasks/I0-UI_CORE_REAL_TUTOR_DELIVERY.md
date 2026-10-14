@@ -15,7 +15,7 @@ Robert 要求完成清单中当前可做的全部必做项，已授权普通 Git
 - H-05：[PR #73](https://github.com/paher-din/XunJie/pull/73) 已合 main，merge `a49863f894a4485dd5f4b7b08a27fc3a25414276`。原 110 通过/5 受控跳过按相同源码复用；本机 `files.ts` / `records-adapter.ts` 已接收，Git blob 分别为 `ee80fab376d4254ddefdfbc70163d7d787cb7bac` / `f2f85d1affc140610e7b52a86baa4a3d6d71412b`，与本分支一致。真实普通保存后 Attempt revision 仍为 2、decisionEpoch 仍为 0。
 - HDL：[PR #79](https://github.com/paher-din/XunJie/pull/79) 固定 head `36f9304979a20ddeb2c00fbbe5dd0a28e2ac0a09` 已合 main，merge `2309cee31de16a0671636a2a60980443f7a16b23`；本分支接收为 `348d4eb5c101f5dea714e2896c9e2134955835fa`。共享工具、真实提示/修订/构建/同输入 LED 改变/确认停止见[原回交包](evidence/ui30-hdl-20261015/handoff.md)。不接收原会话未提交文件，也不重复 HDL 实现。
 - 当前 UI：[固定清单](evidence/ui-core-c-20261015/ui-manifest.json) source `bd8d3e06664bc51b5feb6b077e9f51c6a7564cd2`，入口 `index-Iq2DyhKA.js`；143 文件逐字节核对，ZIP 5,653,435 bytes / SHA256 `778883419f00e66178b6a75f3bb9ddb09b7f237da0068dfed6aeb67073062da9`，35 项边界扫描零命中。已接收 8d613a7 的编辑器纵向 flex 修复；本人实测 C 编辑器 646px、5 行正文完整可见。早期 cd17bef 候选未部署，已由此包替代。
-- 当前组合：`apps/student` 的 `npm run typecheck` 与正常 `npm run build` 退出 0；接收高度修复后再次正常 build 退出 0。最终 main 接收只有共享工具/文档/证据，`git diff bd8d3e0 HEAD -- apps/student/src apps/teaching` 无差异，无需重复构建和全量测试。原大 chunk 提示保持。文档检查 118 份 / 1846 条内部链接，errors=[]；差异空白检查通过。
+- 当前组合：`apps/student` 的 `npm run typecheck` 与正常 `npm run build` 退出 0；接收高度修复后再次正常 build 退出 0。最终 main 接收只有共享工具/文档/证据，`git diff bd8d3e0 HEAD -- apps/student/src apps/teaching` 无差异，无需重复构建和全量测试。原大 chunk 提示保持。文档链接检查 errors=[]，差异空白检查通过。
 - 运行入口：[仓库工具说明](../../tools/i0-hdl/README.md)；本机既有 `D:\XunJie_Project\i0-ui55-connection\hdl-ui\local-environment\XunJie.ps1 start` 沿用同库、VM、原代际和指纹。正常 HTTPS `https://127.0.0.1:3444`，当前 live/ready 均 200；C/HDL 使用各自分配深链与 A/B 合成账号。
 
 ## 本轮 C 真实结果
@@ -32,4 +32,4 @@ Robert 要求完成清单中当前可做的全部必做项，已授权普通 Git
 
 共享 Chrome 标签换账号曾由会话守卫中断 C 求助，未产生模型调用；改用内置浏览器独立登录，保留同一 C 对象。首次 C Help `6bf2173d-e6b1-4fe9-8fd6-ea89fbc5a1f6` 在模型默认关闭时 failed/budget_exhausted，调用次数 0；显式启用原模型入口并发起新问题后成功，失败记录保留。只读导出首次 Linux helper 路径错误、Chrome 读高超时分别改用现有 D 盘导出工具及新页面复核解决。
 
-当前仅剩：Robert 核对提示/引用并明确回应，在 main.c 补分号、确认保存、冻结 v3、重跑；随后核对新结果和旧对象不变，完成本批 Git 交付。已把真实页面交给 Robert 操作，尚未将该步骤记作通过。2026-10-15 03:17（Asia/Shanghai）只读导出中没有未结 Job，但原 HDL 会话随后新增的 Session 仍 active；其历史关闭模型收据不能当作当前状态，待现场业务终态后恢复默认关闭。
+当前仅剩：Robert 核对提示/引用并明确回应，在 main.c 补分号、确认保存、冻结 v3、重跑；随后核对新结果和旧对象不变，完成本批 Git 交付。已把真实页面交给 Robert 操作，尚未将该步骤记作通过。2026-10-15 03:26（Asia/Shanghai）通过原 HDL 页面停止回交后遗留的临时 Session，终态 failed / terminationConfirmed=true（不计正常停止通过），未结 Job / 未终止 Session 均为 0，见[实际终态收据](evidence/ui-core-c-20261015/cleanup-receipt.json)和[原页面](evidence/ui-core-c-20261015/hdl-cleanup.png)。随后用原工具核业务退出，再按默认 start 恢复 modelEnabled=false、同 VM/代际/指纹、live/ready200，见[启动收据](evidence/ui-core-c-20261015/model-disabled-start.json)。C 原 received/displayed 和待人工回应状态保持。
