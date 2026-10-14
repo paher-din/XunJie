@@ -61,3 +61,9 @@ UI 已交 [PR68固定805c76a的操作表](https://github.com/paher-din/XunJie/bl
 同一浏览器交付顺序：人工编辑/保存错误HDL → 确认快照 → 真实失败Build与定位 → 显式选中该快照/Build求助 → 真B/C3正文渲染与displayed → 人工自行修订/保存 → 新成功Build → 显式装载 → 相同输入观察真实LED/段位/有限Trace改变 → 确认停止。再核新草稿/旧快照、pending、X/Z、unknown/刷新、旧引导失效和模型不可用仍可操作。真人明确确认时才记acknowledged，回交截图/公开HTTP对象/源码及引擎版本、失败和未执行项；合成浏览器不计真实学生学习或教学收益。
 
 UI 开工不等H3。现场依赖分开处理：Robert已批准入口/密文reader是3443/学生A，HDL需要3444同源通路和学生B获准领取，不能把原工具误当已覆盖；沿现有SSH/严格TLS/原RSA内存通道提出准确窄适配，不新增账号/重置密码/改密钥/放宽Origin。当前模型预算关闭，旧真实单轮已耗用；历史真实提示可标旧快照展示，新的现场求助须另获一轮有界预算，不能用旧输出/fixture冒充新调用。UI先完成实现、隔离验证和降级路径，再单列确需的秘密/信任/付费动作，不因这些条件停掉可独立接线。
+
+### 5.1 主线合并后的准确运行回执
+
+#56已合入main：head f28cafd，merge b03b1b4；同期PR65 A5/PR69 UI组合的固定main为87edd51，已补验teaching/UI类型构建、UI464项及受影响137项首轮136通过/静态产物前置1失败补验1通过，详细失败与计数保留在 [执行记录§6](DLA_PR56_REVIEW_MERGE_UI_20261014.md#6-合并与ui回交)。UI实施请求已发 [原#30评论6170192513](https://github.com/paher-din/XunJie/issues/30#issuecomment-6170192513)。
+
+3444现在使用87edd51固定源码/正式dist，unit `xunjie-dla-ui-main-87edd51-20261014.service`，strictTLS live/ready/root200、137可服务文件bytes/hash一致；原35表/对象/节点/代际保持，模型预算关闭。具体ZIP/SFTP路径、摘要、停止/回退见执行记录§6.2；上节f761dcd/更旧unit只保留历史。该换版不使现有静态HDL演示成为真实接线，也不赋予3443/A通道访问3444/B的授权，UDL-01～08仍由UI实施验收。

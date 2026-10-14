@@ -1,0 +1,115 @@
+
+> learning-space@0.1.0 test
+> vitest run --run
+
+
+ RUN  v3.2.7 /opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014/apps/student
+
+ ✓ src/brand/motion.test.ts (8 tests) 254ms
+ ✓ src/brand/asset-fidelity.test.js (3 tests) 28ms
+ ✓ src/workspace/tutoringSource.test.ts (78 tests) 52ms
+ ✓ src/workspace/tutoringObject.test.ts (29 tests) 42ms
+ ✓ src/workspace/fileLifecycle.test.ts (25 tests) 51ms
+ ✓ src/workspace/init.test.ts (16 tests) 49ms
+ ✓ src/bridge/mockTurn.test.ts (22 tests) 164ms
+ ✓ src/bridge/mockConversations.test.ts (7 tests) 173ms
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > retiring the context while the help command is persisted prevents its POST
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > retiring the context while the help command is persisted prevents its POST
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during the preflight read prevents the earlier help POST
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+ ✓ src/workspace/tutoringControls.test.ts (22 tests) 81ms
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during the preflight read prevents the earlier help POST
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during the preflight read prevents the earlier help POST
+[i0-workspace] workspace.read-failed {
+  source: [32m'tutoring.help-preflight'[39m,
+  error: [32m'Error: 等待期间已停止帮助，原问题未发送。'[39m
+}
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=true blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=true blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=true blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed {
+  source: [32m'tutoring.help-preflight'[39m,
+  error: [32m'Error: 限定检查进行中，当前不能发送辅导问题。'[39m
+}
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=undefined blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=undefined blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=undefined blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed {
+  source: [32m'tutoring.help-preflight'[39m,
+  error: [32m'Error: 限定检查状态尚未确认，请重新读取后再求助。'[39m
+}
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during page persistence cannot release the synchronous display fence
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during page persistence cannot release the synchronous display fence
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+ ✓ src/workspace/confirmationWorkspace.test.ts (5 tests) 74ms
+ ✓ src/workspace/tutoringReturn.test.ts (25 tests) 66ms
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > an actual display observed while received ACK is held survives a following stop
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > an actual display observed while received ACK is held survives a following stop
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringHistory.test.ts > authorized history lifecycle > clears this view on a rejected fresh read and never falls back to cached or previous text
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: FORBIDDEN'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a delayed active page cannot cross the newer accepted pause/epoch
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a delayed active page cannot cross the newer accepted pause/epoch
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.events'[39m, error: [32m'Error: 已读取新的控制状态，旧教学页不接纳'[39m }
+
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a delayed active page cannot cross the newer accepted pause/epoch
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: 教学历史字段、归属或原始关联不完整'[39m }
+
+stdout | src/workspace/tutoringHistory.test.ts > authorized history lifecycle > late old read cannot restore content after a newer read fails
+[i0-workspace] workspace.read-failed { source: [32m'tutoring.history'[39m, error: [32m'Error: UNAUTHENTICATED'[39m }
+
+ ✓ src/workspace/tutoringWorkspace.test.ts (7 tests) 90ms
+ ✓ src/workspace/tutoringHistory.test.ts (28 tests) 123ms
+ ✓ src/workspace/runFiles.test.ts (2 tests) 44ms
+ ✓ src/workspace/confirmation.test.ts (5 tests) 27ms
+ ✓ prep/contract.test.ts (12 tests) 437ms
+ ✓ src/workspace/runRequest.test.ts (2 tests) 37ms
+ ✓ src/brand/playback.test.ts (19 tests) 59ms
+ ✓ src/workspace/tutoringEvents.test.ts (2 tests) 27ms
+ ✓ src/workspace/tutoringCommand.test.ts (3 tests) 15ms
+ ✓ src/workspace/recovery.test.ts (20 tests) 44ms
+ ✓ prep/workspace.test.ts (19 tests) 809ms
+ ✓ src/workspace/tutoringTransport.test.ts (1 test) 44ms
+ ✓ src/workspace/versionSources.test.ts (5 tests) 11ms
+ ✓ src/lib/projectFiles.test.ts (13 tests) 35ms
+ ✓ src/lib/originalText.test.ts (31 tests) 27ms
+ ✓ src/lib/theme.test.ts (13 tests) 23ms
+ ✓ src/lib/tasks.test.ts (10 tests) 13ms
+ ✓ src/workspace/tutoringRun.test.ts (7 tests) 29ms
+ ✓ src/workspace/comparison.test.ts (12 tests) 36ms
+ ✓ src/workspace/projectSeed.test.ts (5 tests) 13ms
+ ✓ src/workspace/runControl.test.ts (1 test) 20ms
+ ✓ src/workspace/runResults.test.ts (3 tests) 10ms
+ ✓ src/lib/draftStore.test.ts (4 tests) 9ms
+
+ Test Files  34 passed (34)
+      Tests  464 passed (464)
+   Start at  22:06:25
+   Duration  3.22s (transform 6.75s, setup 0ms, collect 16.79s, tests 3.01s, environment 13ms, prepare 6.25s)

@@ -1,0 +1,9 @@
+✔ normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener (2794.428592ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3408.099551

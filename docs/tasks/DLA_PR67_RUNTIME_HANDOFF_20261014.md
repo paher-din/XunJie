@@ -59,3 +59,5 @@ ZIP共143文件；SHA256 `42e84956eccda63bc2ebc69eb8bf27af572b235749591e90ebd2a1
 2026-10-14负责人已明确把真实HDL UI接线改为当前立即推进项，先审查/合并PR56，随后沿UI本人 [PR68操作表](https://github.com/paher-din/XunJie/blob/805c76a6f230cb7f6a64bc94abf8adfa2616e955/docs/tasks/I0-UI30_HDL_OPERATION_MAP.md)的UDL-01～08实施。上文“3444 HDL同浏览器界面接线后置”仅为此前交接状态，不再作为等待H3的依据；H3教师绑定/course_check/新节点和完整测试继续后置。最新准确任务与回执见 [审查合并记录](DLA_PR56_REVIEW_MERGE_UI_20261014.md)，具体请求/当前性/浏览器链见 [H4包§5](DLA_H4_UI_HANDOFF_20261014.md#5-最新负责人顺序与-ui-立即接线批次)。
 
 UI PR68已回交3443正式C浏览器增量，保留原24表/独立通过数，不能迁移算HDL通过。原3444环境/学生B分配、同源SSH与账号通道的准确差异及新现场模型轮次由UI/C/B按上述包协调；主线合并不消耗新模型请求，不改变原账号/密钥/库/节点。
+
+合并后更新：#56 merge b03b1b4，含A5/后续UI69的固定main87edd51已组合补验；3444切至 `xunjie-dla-ui-main-87edd51-20261014.service` 与其新143文件dist，原35表/对象/节点保留。3443仍此包f761dcd/24表，旧ZIP不可冒充87edd51。最新运行、正式ZIP `student-87edd51-dist.zip`、SFTP/摘要、停止/回退及原UI交接回执统一见 [执行记录§6](DLA_PR56_REVIEW_MERGE_UI_20261014.md#6-合并与ui回交)。上述历史获准A通道与新HDL/B通道的差异仍保留，不因换版自动领取别的账号。

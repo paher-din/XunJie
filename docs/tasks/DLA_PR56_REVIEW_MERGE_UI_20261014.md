@@ -52,4 +52,26 @@ Linux `/opt/xunjie-runner/tests/dla-pr56-review-20261014/source` 从已核767文
 
 ## 6. 合并与UI回交
 
-待远端exact-head合并和公开回执回读后填写。
+修复提交 `f28cafdfbd9450f8dbe0ccaab690207503297b78` 普通Git push连接失败，沿既有Git API精确树/原父/force=false发布，远端SHA与本地相同。PR56已ready并以match-head正常merge，合并 `b03b1b49728677a87876e8d71ccfb7c6c874a029`，2026-10-14 21:58:33（Asia/Shanghai）；源分支保留，Issue不关闭。
+
+并发变化：merge首父是 `e12c944d070ec4f45b56990292954a5da74a2664`（PR65 A5），并非此前b7；随后PR69 UI合入main `87edd51e165b2bab660d73a551864ff8db0bed86`。#68 HDL操作表仍Open/Draft，引用其固定805c76a，不称合入。已用HTTP/1.1正常fetch并在本人独立工作树fast-forward到87edd51，未覆盖根工作区。新main的A5改动包括事务内recovery readFeedback、活动teacher投影与独立review工厂teacher_feedback，须补验实际组合；DL-A精确35表不接review表，不迁移原35/24表。UI#69也有生产源码变动，需重建当前正式dist，不能把旧f761的143字节当87edd51。
+
+新增验证写集仍只本人记录/去敏证据；读A5批准与消费交接、UI69已交验证，复用源成果不改其文件。方案原始Git归档791 runtime文件、逐字节/mode/hash核接纳；在新受控副本按原Node24.21/lock/依赖跑teaching类型/构建、宿主/HDL/H4/C4+A4/A5受影响组合和当前UI类型/单元/构建；不重复UI作者全浏览器矩阵。仅在通过且旧HDL无未结Job/会话时，将C本人的3444联调进程正常停/启至准确当前源/新dist，保留原35表/配置/TLS/签名/SSH/节点/代际/预算关闭与旧副本/argv；3443由原C/UI批次继续，不因本轮切35表或修改凭据。换版后严格TLS live/ready/static并核原对象和冻结指纹，绝不部署H3新节点。
+
+已向原UI负责人@wubq511/Robert发布 [立即实施交接6170192513](https://github.com/paher-din/XunJie/issues/30#issuecomment-6170192513)，指定87edd51/UDL-01～08和同浏览器人工错误→真提示→自行修复→重构建装载链，沿原UI页面，不等H3；原3443/A身份通道与3444/B准确差异及已耗用模型预算明确单列。公开原文最初误把#68说成已合入，已回读merge历史并编辑纠正；未据此接纳其文件或重复合并。请求已发不代表UI已收到或完成。
+
+### 6.1 合并后固定main的实际验证
+
+791 runtime文件的Git blob/bytes/mode/hash一致；teaching与student类型/构建通过，UI单元464/464。实际main组合137项首轮136通过/1失败/0跳过：本人并行构建时宿主静态测试先于student/dist完成，唯一失败为i0.test的真实UI loopback测试ENOENT；不是功能拒绝。产物完成后只补跑该原用例，1/1、0失败/跳过，其余136项不重复跑、不把首轮写成137/137单轮通过。原失败和补验日志保留。命令与结果见 [汇总](evidence/dla-pr56-review-20261014/verification.json)。
+
+A5原成果正常接纳：新增34表review工厂不扩展DL-A35表，事务内readFeedback接缝与其可选未装配unavailable路径在C4/A4/A5组合通过；teacher的sourceBlueprintId投影与学生私有边界在组合回归覆盖。未部署A5新库/反馈schema，未重复审查作者完整UI浏览器/NFR。
+
+### 6.2 3444当前正常宿主与正式UI
+
+切换前严格读原35表，pendingJob=0/未确认终止Session=0；正常停止本人旧f761dcd unit，启动 `xunjie-dla-ui-main-87edd51-20261014.service`，来源 `/opt/xunjie-runner/tests/dla-main-fixed-87edd51-20261014`，原serve-hdl脚本/原35表reference/Node24.21。没有改受控配置、秘密、24表服务或节点；model budget仍false。Windows loopback TCP3444可达，strictTLS live/ready/root均200，ready检查原消费者健康且no-store/requestId一致。
+
+原24/35表Assignment/Attempt版本、原Job数与未结数前后投影一致；两种C/HDL readiness均true，原generation/fingerprint/profile/images/validation逐字段保持。实际0模型请求、0节点部署、0浏览器HDL操作。137可服务静态文件全部严格TLS/bytes/hash一致；143清单中的6项JSON/OFL按既有契约拒绝400，未改白名单。[现场回执](evidence/dla-pr56-review-20261014/hdl-main-runtime.json)、[原对象/指纹保留](evidence/dla-pr56-review-20261014/runtime-preservation.json)、[真实静态字节](evidence/dla-pr56-review-20261014/served-ui-main.json)。
+
+正式ZIP：PAHER Windows `/C:/Users/p3148/XunJie_DLA_MAIN_87edd51_20261014/student-87edd51-dist.zip`，143文件，SHA256 `8e6a52a3a3fff7a36c91bc35589eb4a36dcb6160fcd412ad36d5357bf5a879bb`；同行 `student-dist-manifest.json`，可沿既有SFTP领取，校本机staticDirectory/来源后再验Robert浏览器。旧包/目录/argv保留。停止：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-main-87edd51-20261014.service`；回退只停新unit、按旧f761dcd保留argv启动，不重建库/重放Job/模型。3443仍f761dcd/24表，本轮不把两环境混成同账号入口。
+
+UI实际接线与同浏览器演示尚未回交。最新main已经有成熟服务端；H3教师绑定/course_check/节点换版/完整矩阵后置。新现场模型批次与学生B受控通路需沿UI完成后的准确边界处理，旧单轮不再消费。完整DL-A整卡、DL-AC、原AC/NFR/真人/教学效果未宣称完成。

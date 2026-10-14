@@ -15,5 +15,18 @@
   "executionNodeDeployments": 0,
   "hdlBrowserAcceptance": "not executed; handed to original UI owner",
   "h3Deferred": ["teacher binding", "course_check", "new node deployment", "full target acceptance matrix"],
-  "evidence": "Raw log bytes retained as .gz; readable logs normalize whitespace only. Historical validation counts are not accumulated."
+  "evidence": "Raw log bytes retained as .gz; readable logs normalize whitespace only. Historical validation counts are not accumulated.",
+  "merge": {"head": "f28cafdfbd9450f8dbe0ccaab690207503297b78", "commit": "b03b1b49728677a87876e8d71ccfb7c6c874a029", "firstParent": "e12c944d070ec4f45b56990292954a5da74a2664", "mergedAt": "2026-10-14T13:58:33Z", "branchDeleted": false},
+  "verifiedMain": "87edd51e165b2bab660d73a551864ff8db0bed86",
+  "mainSourceReception": {"files": 791, "mismatches": 0},
+  "mainTeachingTypecheck": "passed",
+  "mainTeachingBuild": "passed",
+  "mainStudentTypecheck": "passed",
+  "mainStudentBuild": "passed",
+  "mainStudentUnit": {"tests": 464, "pass": 464},
+  "mainCombinationFirst": {"tests": 137, "pass": 136, "fail": 1, "skipped": 0, "reason": "own harness ran static host test before parallel student build produced dist", "log": "main-combination.txt"},
+  "mainCombinationRecheck": {"tests": 1, "pass": 1, "fail": 0, "skipped": 0, "log": "main-combination-missing-dist-recheck.txt", "remaining136Rerun": false},
+  "hdlRuntime": {"source": "87edd51e165b2bab660d73a551864ff8db0bed86", "unit": "xunjie-dla-ui-main-87edd51-20261014.service", "origin": "https://127.0.0.1:3444", "strictTlsHttp": [200, 200, 200], "objectsAndNodePreserved": true, "windowsLoopbackTcp": true},
+  "mainUiStatic": {"manifestFiles": 143, "servedVerified": 137, "expectedMimeRejections": 6, "byteMismatches": 0, "zipSha256": "8e6a52a3a3fff7a36c91bc35589eb4a36dcb6160fcd412ad36d5357bf5a879bb"},
+  "uiRequest": "https://github.com/paher-din/XunJie/issues/30#issuecomment-6170192513"
 }
