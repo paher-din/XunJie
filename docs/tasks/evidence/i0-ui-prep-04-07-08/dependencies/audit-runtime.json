@@ -1,0 +1,92 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "dompurify": {
+      "name": "dompurify",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240621,
+          "name": "dompurify",
+          "dependency": "dompurify",
+          "title": "DOMPurify: IN_PLACE: node-removing afterSanitize hook leaves detached subtree event handlers armed, causing DOM XSS",
+          "url": "https://github.com/advisories/GHSA-p98j-92pf-mc4p",
+          "severity": "low",
+          "cwe": [
+            "CWE-79"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=3.4.13 <=3.4.15"
+        },
+        {
+          "source": 1241204,
+          "name": "dompurify",
+          "dependency": "dompurify",
+          "title": "DOMPurify: IN_PLACE returns a force-removed rawtext root whose text carries attacker markup — pure HTML reparse executes",
+          "url": "https://github.com/advisories/GHSA-6688-9rhm-gjv2",
+          "severity": "low",
+          "cwe": [
+            "CWE-79"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=3.4.15"
+        }
+      ],
+      "effects": [
+        "monaco-editor"
+      ],
+      "range": "<=3.4.15",
+      "nodes": [
+        "node_modules/dompurify"
+      ],
+      "fixAvailable": {
+        "name": "monaco-editor",
+        "version": "0.56.0",
+        "isSemVerMajor": true
+      }
+    },
+    "monaco-editor": {
+      "name": "monaco-editor",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "dompurify"
+      ],
+      "effects": [],
+      "range": ">=0.57.0-rc.2",
+      "nodes": [
+        "node_modules/monaco-editor"
+      ],
+      "fixAvailable": {
+        "name": "monaco-editor",
+        "version": "0.56.0",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 2,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 2
+    },
+    "dependencies": {
+      "prod": 43,
+      "dev": 152,
+      "optional": 54,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 195
+    }
+  }
+}

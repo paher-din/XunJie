@@ -66,6 +66,7 @@ node tools/a0-review/check.mjs
 | 学生真实保存、快照与故障恢复 | [I0-UI 保存与恢复](docs/tasks/I0-UI_REAL_SAVE_RECOVERY.md)；UI-REAL-05/06/07/12，受信代际、原文确认、状态/版本限制与隔离服务故障验证 |
 | 学生真实运行、停止与历史产物 | [I0-UI 运行接入](docs/tasks/I0-UI_REAL_RUN_CONTROL_HISTORY.md)；UI-REAL-09/10/11，正常宿主就绪门禁、原 Job/Run 核对与公开产物 |
 | 学生幂等、键盘、冷启动与契约补验 | [I0-UI 补验](docs/tasks/I0-UI_PREP_VERIFICATION_CLOSEOUT.md)；UI-PREP-01/03/05/06与真实节点浏览器入口准备 |
+| 学生中文IME、依赖方案与证据入口收尾 | [I0-UI 当前记录](docs/tasks/I0-UI_PREP_04_07_08_CLOSEOUT.md)；UI-PREP-04/07/08，原生输入法证据、当前运行时/工具链审计与原维护者勘误交接 |
 | PR69 新包接收与真实 C1 复验 | [本轮 UI 记录](docs/tasks/I0-UI_PR69_REAL_BROWSER_RECHECK.md)；严格 TLS/SSH、新 v9 保存冻结与 Core/原 Job 停止、已有完整产物下载、现场窄修与保留缺口 |
 | PAHER 真实 C1 浏览器与本机维护工具 | [I0-UI55](docs/tasks/I0-UI55_BROWSER_ENTRY.md)、[工具用法](tools/i0-ui55/README.md)；固定现场源、严格 SSH/TLS、会话/时钟、原 Run/Stop 与遗留缺口 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |

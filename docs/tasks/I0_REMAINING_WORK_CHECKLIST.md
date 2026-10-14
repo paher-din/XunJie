@@ -1,12 +1,12 @@
 # I0：剩余工作清单（30 项）
 
-建档：2026-10-13；最新核对：2026-10-14（Asia/Shanghai），应用/前端交付main `87edd51e165b2bab660d73a551864ff8db0bed86`（PR #69）。记录主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。用途：将跨电脑交接中的完整工作清单保存在仓库，后续不依赖个人附件或另一台电脑的文件路径。
+建档：2026-10-13；最新核对：2026-10-15（Asia/Shanghai），应用/前端已交付main `37b628b75ec3a2238b9b77c8bd1882d36a2e55a6`（PR #75，2026-10-14 23:41:36合并）。记录主责：UI / Robert。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。用途：将跨电脑交接中的完整工作清单保存在仓库，后续不依赖个人附件或另一台电脑的文件路径。
 
 来源：Robert 于2026-10-13提供的 `i0-remaining-work.html`，标题“I0 前端接入：当前还能做什么”，页面生成时间为2026-10-13 14:50，标注main `c437ef2`。附件SHA-256为 `0d850e95f6bce0b85bd164417194bca34694091bd7ae71a1597ef352c3e58364`。本页保留全部30个编号、工作及交付/进入条件，并补仓库内任务映射；不执行附件脚本，也不把其建议转为新实现授权。
 
 `UI-PREP`、`UI-REAL`、`UI-TUTOR` 是工作清单编号，不是正式团队A/B/C任务编号。负责人决定、实际写集、实现与验证仍记对应任务；本清单不取代[产品基线](../product/MVP_SPEC.md)、[共同计划](../planning/TEAM_WORK_PLAN.md)或成员记录。已完成工作不凭本清单重新开工，未确认项目保持待核。
 
-**最新结论：** 登录/保存/运行/辅导前端已随PR #57/#64/#66合main；本轮UI-PREP-01/03/05/06已随[PR #69](https://github.com/paher-din/XunJie/pull/69)合main，继续`i0/ui-frontend`。PR #56/#65也已合入，C正式宿主/入口已交；PR #68已回交正式b7e73c5 UI30的真实C浏览器增量。本轮直接SSH只读核查网关16/16、HTTP ready200、C1指纹/代际和原v8快照摘要通过，旧503不再作为当前首次待办。下一步UI接本批新dist并分批做已有C缺口/HDL操作接线；A/C联合处理H-05，交接详见§11。工程/隔离、旧候选/正式版本和现场范围继续分列。
+**最新结论：** 登录/保存/运行/辅导前端已随PR #57/#64/#66合main；UI-PREP-01/03/05/06已随[PR #69](https://github.com/paher-din/XunJie/pull/69)交付，新包接收、两处现场UI修复和真实C1复验已随[PR #75](https://github.com/paher-din/XunJie/pull/75)合main，继续`i0/ui-frontend`。新143文件包已切入本机网关，严格TLS/check16/16、新v9保存冻结、真实Core成功、原Job停止及已有完整产物21字节下载/hash核对均有[分批证据](I0-UI_PR69_REAL_BROWSER_RECHECK.md#4-修复包冻结与最终现场结果)；不再安排首次接包或正向下载。当前推进UI-PREP-04/07/08，见[本批记录](I0-UI_PREP_04_07_08_CLOSEOUT.md)。H-05已获裁决并交修复PR #73，合并/运行生效与基线汇总另核；HDL由并行会话承接。工程/隔离、固定现场窗口、模型/真人和完整验收继续分列。
 
 ## 1. 快照与实际状态
 
@@ -26,19 +26,19 @@
 
 下表“可检查的交付”保留原清单含义；最新状态按对应记录核对。没有完整专项证据的编号保持待核，不把局部覆盖计成整项通过，也不把后续已修复的问题继续列成现有缺陷。
 
-| 编号 | 工作 | 可检查的交付 | 2026-10-14状态/剩余 |
+| 编号 | 工作 | 可检查的交付 | 截至2026-10-15状态/剩余 |
 | --- | --- | --- | --- |
 | UI-PREP-01 | 补IDEMPOTENCY_CONFLICT浏览器回放 | 原命令保留；不自动换键，不丢草稿，不重复业务动作 | [本轮专项](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#41-新反例与必要修复)已完成：同authority公开POST占位、实际409、在途较新草稿/原key-body、刷新比较零补写，明确选择后新键/当前CAS只保存一次 |
 | UI-PREP-02 | 加强撤销/重做证明 | 分别断言编辑、撤销、重做后的正文；核原EOL/BOM和历史分支 | 已补原文历史根因修复、逐组undo/redo和新分支证据，见[I0-B §13](I0-B_UI_TUTOR_PLAN.md#13-2026-10-14-六票逐项收尾审查)及[浏览器原文用例](../../apps/student/e2e/tutoringReturn.spec.ts)；不沿用旧“只检查最终文字”判断 |
 | UI-PREP-03 | 补完整键盘流程 | 新建、文件切换、保存、比较、冲突、运行、停止及返回；核焦点恢复 | [连续键盘专项](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#41-新反例与必要修复)已完成：真实Tab/Shift+Tab贯穿全部操作，修文件菜单Esc和同上下文只读视图返回焦点；保留原模型/正文/undo/选区 |
-| UI-PREP-04 | 核真实中文输入法 | 候选确认/取消不丢字；组合输入、搜索、跨文件编辑有实际操作证据 | 待真实IME操作证据；已有中文文字输入不代替组合输入验收 |
+| UI-PREP-04 | 核真实中文输入法 | 候选确认/取消不丢字；组合输入、搜索、跨文件编辑有实际操作证据 | [真实IME证据](evidence/i0-ui-prep-04-07-08/ime/README.md)已交：Robert实际系统候选确认/取消、中文查找1 of 1与跨文件；220事件原trust值、两份正文/本机草稿、undo/redo和刷新逐身份/LF核对，零自动业务写。具体IME产品名未识别；没有以insertText或合成composition替代 |
 | UI-PREP-05 | 补独立冷启动采样 | 核首次依赖预优化、504、启动/关闭与端口回收；不增加无理由的全量复跑 | [独立采样](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#42-兼容复验与冷启动)已完成：原配置/独立新缓存，prep/real各两次，无504/资源失败，退出0/端口释放/自有缓存清理；不计NFR或真实服务通过 |
-| UI-PREP-06 | 核最新客户端/服务端契约 | 对照当前main的公开输入、信封、版本、错误和裁剪；差异交A/C | [当前契约表](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#5-ui-prep-06当前公开契约核对)已完成；PR #67未变API/schema。辅导异常中文提示补反例/窄修复，原命令/诊断保留；H-05差异待A/C/授权维护者裁决，不改后台/基线 |
-| UI-PREP-07 | 形成依赖修复方案 | 区分运行时与测试工具链影响；列精确版本与回归范围，获准后再改依赖 | 待当前审计与精确方案；本轮未更新依赖，不沿用旧6项作为当前结论 |
-| UI-PREP-08 | 校正文档与证据入口 | Issue #30早期状态、04截图指针、05的104/106计数及基线请求；交原维护者 | 本轮更新本清单；其他作者记录、Issue评论、截图/计数与基线汇总仍由对应维护者核对，未全项关闭 |
+| UI-PREP-06 | 核最新客户端/服务端契约 | 对照当前main的公开输入、信封、版本、错误和裁剪；差异交A/C | [当前契约表](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#5-ui-prep-06当前公开契约核对)已完成；PR #67未变API/schema。辅导异常中文提示补反例/窄修复，原命令/诊断保留；H-05获准修源码且A/C已交PR #73，合并/运行生效另核，产品汇总仍待授权维护者 |
+| UI-PREP-07 | 形成依赖修复方案 | 区分运行时与测试工具链影响；列精确版本与回归范围，获准后再改依赖 | [当前审计与精确方案](evidence/i0-ui-prep-04-07-08/dependencies/DEPENDENCY_REPAIR_PROPOSAL.md)已形成：固定lock全树6包条目、runtime仅2 low，逐通报/用途/前置与候选版本/回归分列；Monaco内嵌旧DOMPurify不能仅override消除。依赖升级/构建映射待批准，package/lock未变 |
+| UI-PREP-08 | 校正文档与证据入口 | Issue #30早期状态、04截图指针、05的104/106计数及基线请求；交原维护者 | 已直接校正当前页首/接包/下载、本人04缺图指针/MVP误链和05固定来源104/新增10及fileLifecycle5，旧数/日期保留；wubq511即我们。[交接索引](evidence/i0-ui-prep-04-07-08/documentation-handoff.md)和基线输入已通过[PR #76](https://github.com/paher-din/XunJie/pull/76)共享，普通合并已获授权，实际Git状态见该回执；未代签A阅读，保护基线和原图未来回补仍分列 |
 | UI-PREP-09 | 准备I0-B操作/接口映射 | 核现有求助、消息、停止、返回、采集操作；列缺失组件和最小接入范围 | 映射及六票前端工程已交，见[I0-B计划](I0-B_UI_TUTOR_PLAN.md)；后台采集/分析与UI-TUTOR-09分列 |
 
-原页提示（2026-10-13）：UI-PREP-02的已有测试连续按undo/redo但只检查最终文字；两个快捷键都无效也可能满足该断言。这是历史风险线索，后续逐组断言与原文历史修复已补，见上表。中文文字输入覆盖仍不能证明真实输入法组合流程，UI-PREP-04保持待验。
+原页提示（2026-10-13）：UI-PREP-02的已有测试连续按undo/redo但只检查最终文字；两个快捷键都无效也可能满足该断言。这是历史风险线索，后续逐组断言与原文历史修复已补，见上表。原页中文文字输入不能证明真实组合流程；2026-10-15专项已有实际系统IME证据，见UI-PREP-04当前行。
 
 原页audit统计为2 critical、1 high、1 moderate、2 low，涉及Vitest/tinypool、source-map-js、Monaco/DOMPurify等。保留原统计范围，不解释成当前漏洞结论；修复先核实际用途，不直接跨大版本自动升级。
 
@@ -46,19 +46,19 @@ UI-PREP-09映射位置为[计划§4操作/接口映射](I0-B_UI_TUTOR_PLAN.md#4-
 
 ## 3. UI-REAL：按A/C交接分批接入的12项
 
-| 编号 | 工作 | 必需条件 | 2026-10-14工程/隔离状态与剩余 |
+| 编号 | 工作 | 必需条件 | 截至2026-10-15工程/隔离状态与剩余 |
 | --- | --- | --- | --- |
 | UI-REAL-01 | 真实登录/退出与会话失效 | H-01：正常宿主、同源HTTPS、合成账号、Session/CSRF | [会话批次](I0-UI_AUTH_SESSION_ENTRY.md)已交、PR #64已合main；隔离HTTPS已验，PR #68正式b7e73c5 UI30已有表单重进及原会话证据；本轮匿名Session401/严格TLS核查通过，会话过期与完整现场仍分列 |
 | UI-REAL-02 | 本人分配、固定活动和资料 | H-01/H-02及读取H-06；可用授权深链 | PR #64已接获准深链/bootstrap及可见资料；PR #67旧版本现场深链/公开资料/private redacted已验；未增加分配列表或跨设备Attempt发现，正式版本当次授权仍须复核 |
 | UI-REAL-03 | 已有Attempt/文件/快照只读 | 身份、获准Attempt引用与读取样例 | 已在[I0-B真实入口](I0-B_REAL_ENTRY.md)及[保存恢复](I0-UI_REAL_SAVE_RECOVERY.md)覆盖获准引用/已有作品/快照读回；不另造独立整项通过数，跨设备发现未增加 |
 | UI-REAL-04 | 首次创建Attempt | H-03受信代际与创建样例；学生主动操作 | 已有主动创建接线及实际服务浏览器覆盖，见[I0-B真实入口](I0-B_REAL_ENTRY.md)与[运行批次](I0-UI_REAL_RUN_CONTROL_HISTORY.md)；无自动创建，不再列待开发 |
 | UI-REAL-05 | 缺首次代际时禁写 | 合法初始化后核零写请求与提示 | [保存恢复](I0-UI_REAL_SAVE_RECOVERY.md)隔离HTTPS真实409/零业务写通过，PR #64已合main |
-| UI-REAL-06 | 确认保存与冻结快照 | H-01/H-03/H-05及保存/快照H-06 | PR #64隔离多文件/原字节/hash/manifest通过；PR #68正式UI30已有v8保存/冻结/刷新，本轮直接只读重算原v8两文件与manifest全部一致，不把重算计新保存/冻结 |
-| UI-REAL-07 | 版本与暂停/终态 | H-05：保存后重读，两个revision分开 | PR #64隔离paused/submitted/reviewed、VERSION_CONFLICT与两revision通过；UI30已有原Attempt暂停/恢复，submitted/reviewed等现场仍未替代；H-05差异待A/C及授权维护者处理 |
+| UI-REAL-06 | 确认保存与冻结快照 | H-01/H-03/H-05及保存/快照H-06 | PR #64隔离多文件/原字节/hash/manifest通过；PR #68正式UI30已有v8保存/冻结/刷新；[PR #75复验](I0-UI_PR69_REAL_BROWSER_RECHECK.md#42-真正浏览器操作与公共结果)实际明确保存新v9并冻结，原fileId/正文/hash/manifest及旧v8不变、刷新重登录均核对。实际丢ACK/恢复仍分列 |
+| UI-REAL-07 | 版本与暂停/终态 | H-05：保存后重读，两个revision分开 | PR #64隔离paused/submitted/reviewed、VERSION_CONFLICT与两revision通过；UI30已有原Attempt暂停/恢复，submitted/reviewed等现场仍未替代；H-05已获准修源码并交PR #73，合并、当次运行生效及授权基线汇总分别核验 |
 | UI-REAL-08 | 账号切换与会话恢复 | 两个获准合成账号，核隔离与迟到响应 | PR #64已交；两个合成账号/草稿/迟到响应/同账号恢复隔离通过；不清空其他账号草稿 |
-| UI-REAL-09 | Core运行/诊断 | H-04当前指纹/代际/profile/消费者及运行H-06 | [运行批次](I0-UI_REAL_RUN_CONTROL_HISTORY.md)与PR #66已交；PR #68正式b7e73c5 UI30已有真实C1成功/程序超时，当前直接HTTP ready200/C1指纹与代际核查通过。新PR #69包尚未在网关接收，不据代码合并记其现场通过 |
-| UI-REAL-10 | 停止与未知核对 | 原Job/Run和停止样例；未知不自动重跑 | PR #66隔离原ID/取消/unknown/丢ACK/双标签通过；PR #68正式UI30已有真实取消/历史。实际丢ACK未知、持久账本/OS恢复与完整停止故障仍分列 |
-| UI-REAL-11 | 历史比较与公开产物 | 对应H-06；核裁剪、hash/bytes与下载 | PR #66隔离历史/下载/摘要/裁剪通过；PR #68正式UI30已有刷新历史，正向公开下载仍待按课程已有可用产物验，不补missing/redacted/incomplete；Core仍只创建stats/find/top |
+| UI-REAL-09 | Core运行/诊断 | H-04当前指纹/代际/profile/消费者及运行H-06 | [运行批次](I0-UI_REAL_RUN_CONTROL_HISTORY.md)与PR #66已交；PR #68有真实C1成功/程序超时；[PR #75复验](I0-UI_PR69_REAL_BROWSER_RECHECK.md#42-真正浏览器操作与公共结果)已接正式修复包并完成新v9真实C1 succeeded，原Run/Job/快照/profile/代际关联一致。结果绑定该窗口，不记此刻在线或完整故障通过 |
+| UI-REAL-10 | 停止与未知核对 | 原Job/Run和停止样例；未知不自动重跑 | PR #66隔离原ID/取消/unknown/丢ACK/双标签通过；PR #68有真实取消/历史；[PR #75复验](I0-UI_PR69_REAL_BROWSER_RECHECK.md#42-真正浏览器操作与公共结果)独立v4原Job实际running→cancelling→cancelled，确认后才显示停止。真实丢ACK未知、持久账本/OS恢复与完整停止故障仍分列 |
+| UI-REAL-11 | 历史比较与公开产物 | 对应H-06；核裁剪、hash/bytes与下载 | PR #66隔离历史/下载/摘要/裁剪通过；[PR #75复验](I0-UI_PR69_REAL_BROWSER_RECHECK.md#42-真正浏览器操作与公共结果)已实际查看/下载已有获准v3完整report.txt，21 UTF-8 bytes和SHA-256匹配；历史/参数只读零业务写。未增加新Report运行能力，不补missing/redacted/incomplete；Core仍只创建stats/find/top |
 | UI-REAL-12 | 故障/冲突/恢复 | 获准环境中核断网、丢ACK、重启与旧代际 | PR #64已交；隔离断网/原命令重放/双标签/旧代际通过；重开仅同进程同库，进程崩溃、旧备份/RPO及节点恢复保持未执行 |
 
 H-01/H-02归A；H-03～H-06由A/C交清，H-06按读取、保存、运行、停止、产物分批。读取无需等运行，保存无需等节点，I0-A无需等B。宿主、执行消费者和节点维护由A/C负责，不纳入UI本批代实现。

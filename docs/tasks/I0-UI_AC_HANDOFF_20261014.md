@@ -1,6 +1,6 @@
 # I0-UI：PR69 后给 A/C 的交接与 PAHER 直接核查
 
-日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert。来源：[本批工程记录](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)、[剩余清单](I0_REMAINING_WORK_CHECKLIST.md)。状态：本批 PR 已合 main，现成 SSH/网关只读核查完成；本批新静态包尚未替换到本机网关。
+建档：2026-10-14；最新核对：2026-10-15（Asia/Shanghai）。主责：UI / Robert。来源：[本批工程记录](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)、[剩余清单](I0_REMAINING_WORK_CHECKLIST.md)。当前状态：PR #69/#70/#75已合main，新143文件修复包已在本机网关接收并完成获准真实C1浏览器复验；当前事实见§7及[复验记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)。§1～6保留原交接时点，不能把其中“尚未切包/PR68 Draft”当最新状态。
 
 ## 1. 负责人要求与固定交付
 
