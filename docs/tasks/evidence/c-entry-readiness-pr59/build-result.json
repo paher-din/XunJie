@@ -1,0 +1,36 @@
+{
+  "checkedAt": "2026-10-14T06:32:37.131521+00:00",
+  "node": "24.21.0",
+  "sourceCommit": "964abb4277c2cf58e81d6686f6349b6ef0fa2e39",
+  "logs": [
+    {
+      "kind": "typecheck",
+      "command": [
+        "/opt/xunjie-runner/node/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "--noEmit"
+      ],
+      "cwd": "/opt/xunjie-runner/tests/i0-entry-source-964abb4-20261014/apps/teaching",
+      "exitCode": 0,
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "kind": "build",
+      "command": [
+        "/opt/xunjie-runner/node/bin/node",
+        "node_modules/typescript/bin/tsc",
+        "-p",
+        "tsconfig.build.json"
+      ],
+      "cwd": "/opt/xunjie-runner/tests/i0-entry-source-964abb4-20261014/apps/teaching",
+      "exitCode": 0,
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/build.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "passed": true,
+  "schemaTestsExecuted": false
+}

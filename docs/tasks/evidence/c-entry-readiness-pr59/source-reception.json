@@ -1,0 +1,17 @@
+{
+  "receiver": "/opt/xunjie-runner/tests/i0-entry-source-964abb4-20261014",
+  "verifiedFiles": 825,
+  "rawByteAndModeMismatches": 0,
+  "dependencySource": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching/node_modules",
+  "packageAndLockBytesIdentical": true,
+  "dependencies": "Physical copy of original installed exact-lock dependencies; no npm ci or global install",
+  "databaseCreated": false,
+  "configurationChanged": false,
+  "checkedAt": "2026-10-14T06:31:51.790642+00:00",
+  "sourceCommit": "964abb4277c2cf58e81d6686f6349b6ef0fa2e39",
+  "archiveBytes": 43356160,
+  "archiveSha256": "bbb51692d902ddc8f60cce375cefb6854d29d4273fb4dcb41f0ca31278d5aec4",
+  "retainedWindowsArchive": "C:\\Users\\p3148\\AppData\\Local\\Temp\\xunjie-c-pr59-source-20261014-ueku9vei\\source.tar",
+  "trackedFileManifestSha256": "4fd48cf859a724dfc2fe1a10438921b1a9764514d3944d6f274765839e544c47",
+  "trackedManifestOrigin": "git ls-tree -r -z 964abb4277c2cf58e81d6686f6349b6ef0fa2e39; raw tar Git blob/SHA256/mode roundtrip"
+}

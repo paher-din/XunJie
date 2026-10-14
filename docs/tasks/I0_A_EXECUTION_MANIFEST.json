@@ -1,0 +1,77 @@
+{
+  "formatVersion": 1,
+  "purpose": "Public non-secret source verification and handoff requirements; not runtime configuration or initialization input",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "nodeVersion": "24.21.0",
+  "syntheticOnly": true,
+  "approvedTableCount": 24,
+  "courseRuntime": "C/TextScope",
+  "startupCommand": "npm start",
+  "initializerCommand": "node dist/server/app/i0-initialize.js",
+  "files": [
+    {
+      "path": "apps/teaching/package.json",
+      "sha256": "ff61e22a3d28a9de0d675825abc7b1dcc8a2f9414df8137d53df5f10b733b79b"
+    },
+    {
+      "path": "apps/teaching/package-lock.json",
+      "sha256": "acaa7e091e70ccd23404b905c206414fd2c4505f00527e4be783364d8957d7ed"
+    },
+    {
+      "path": "apps/student/package.json",
+      "sha256": "dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd"
+    },
+    {
+      "path": "apps/student/package-lock.json",
+      "sha256": "8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9"
+    },
+    {
+      "path": "apps/teaching/server/main.ts",
+      "sha256": "c6a1850c139e3d9e676acb55ea53792307deabd3c05c4b09f2a1ae179ee37c0a"
+    },
+    {
+      "path": "apps/teaching/server/app/config.ts",
+      "sha256": "4589fb0b1b2a6e0fdbf02b606223495764eacb8819b79301af1330cacd236c66"
+    },
+    {
+      "path": "apps/teaching/server/app/i0.ts",
+      "sha256": "c765cc37904cd438044d01a43e2ac184bacd98d30acd2be53cc09331ac17b0d5"
+    },
+    {
+      "path": "apps/teaching/server/app/i0-initialize.ts",
+      "sha256": "0b6d5769e1c45d8a6875a640161e8f720fd8eef99a38cbebccc7919cda6d0a42"
+    },
+    {
+      "path": "apps/teaching/contracts/design/inputs.ts",
+      "sha256": "16b874f02861047c125dbd0463fdf179b309366b3d4168a5e63adb1aaebc83c9"
+    },
+    {
+      "path": "apps/teaching/contracts/design/i0.ts",
+      "sha256": "f56b89aa690aef0e105efaa57611b04e000aad6a82beb5613184fbe4de01f108"
+    }
+  ],
+  "helpPolicyExample": {
+    "versionId": "help-v1",
+    "helpAllowed": true,
+    "wholeSolutionAllowed": false,
+    "limitedCheckHelpAllowed": false,
+    "description": "Synthetic I0 scoped help; no whole solution and no help during limited checks."
+  },
+  "checkRuleExample": {
+    "versionId": "textscope-core-v1",
+    "validatorVersion": "textscope-validator-v2",
+    "limitedHelp": true,
+    "description": "Synthetic TextScope Core trusted checks with limited help."
+  },
+  "missingControlledInputs": [
+    "TLS key/certificate",
+    "application signing secret",
+    "authorized synthetic passwords and initializer input",
+    "approved exact HTTPS Origin and UI access/trust arrangement"
+  ],
+  "coursePolicyIdentifiers": {
+    "synthetic-i0-course-a": "help-v1",
+    "synthetic-i0-course-b": "help-v1-course-b"
+  },
+  "identifierSemantics": "Help policy versionId is globally unique. Rule versionId is scoped by course. Blueprint must reference its own course policy."
+}

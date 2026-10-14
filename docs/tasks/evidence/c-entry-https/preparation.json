@@ -1,0 +1,68 @@
+{
+  "checkedAt": "2026-10-13T17:01:06.249Z",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "directory": "/opt/xunjie-runner/tests/i0-entry-20261013-01",
+  "node": "v24.21.0",
+  "uid": 0,
+  "origin": "https://127.0.0.1:3443",
+  "files": [
+    {
+      "name": "server.key.pem",
+      "uid": 0,
+      "mode": "0600",
+      "bytes": 1704
+    },
+    {
+      "name": "server.cert.pem",
+      "uid": 0,
+      "mode": "0600",
+      "bytes": 1224
+    },
+    {
+      "name": "signing-secret.txt",
+      "uid": 0,
+      "mode": "0600",
+      "bytes": 44
+    },
+    {
+      "name": "initializer.json",
+      "uid": 0,
+      "mode": "0600",
+      "bytes": 1667
+    },
+    {
+      "name": "i0-host.json",
+      "uid": 0,
+      "mode": "0600",
+      "bytes": 856
+    }
+  ],
+  "database": {
+    "file": "/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite",
+    "sqlite": "3.53.4",
+    "tables": 24,
+    "users": 5,
+    "courses": 2,
+    "assignments": 0,
+    "attempts": 0,
+    "jobs": 0
+  },
+  "certificate": {
+    "fingerprint256": "C3:F8:ED:37:E0:7C:34:1B:0F:CC:55:58:D0:FC:12:FA:B4:79:13:EF:71:D1:EC:80:77:A0:E0:84:44:47:51:73",
+    "subjectAltName": "IP Address:127.0.0.1, DNS:localhost, IP Address:0:0:0:0:0:0:0:1",
+    "validFrom": "Oct 13 17:01:01 2026 GMT",
+    "validTo": "Nov 12 17:01:01 2026 GMT",
+    "keyMatches": true,
+    "ca": false
+  },
+  "runtime": {
+    "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+    "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+    "validatedAt": "2026-10-13T09:29:47.600Z",
+    "checkedAt": "2026-10-13T17:01:01.086Z",
+    "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b"
+  },
+  "originalIdentityMatches": true,
+  "scope": "Authorized new local demo materials/fresh-only database; secrets not printed or persisted to evidence"
+}

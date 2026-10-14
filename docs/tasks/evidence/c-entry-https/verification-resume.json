@@ -1,0 +1,265 @@
+{
+  "startedAt": "2026-10-13T17:36:28.724Z",
+  "finishedAt": "2026-10-13T17:36:59.418Z",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "origin": "https://127.0.0.1:3443",
+  "databaseFile": "/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite",
+  "node": "v24.21.0",
+  "cases": [
+    {
+      "id": 12,
+      "title": "Original main consumer runs real C1 job without manual processJob",
+      "status": "passed",
+      "elapsedMs": 5477
+    },
+    {
+      "id": 13,
+      "title": "A new acknowledged draft never changes the old run/snapshot",
+      "status": "passed",
+      "elapsedMs": 79
+    },
+    {
+      "id": 14,
+      "title": "Original run key/body replays the same receipt/job/run after head changes",
+      "status": "passed",
+      "elapsedMs": 8
+    },
+    {
+      "id": 15,
+      "title": "Trusted course check fails incomplete TextScope and redacts private artifacts",
+      "status": "passed",
+      "elapsedMs": 11813
+    },
+    {
+      "id": 16,
+      "title": "Real report result file has original run/snapshot, bytes/hash and complete status",
+      "status": "passed",
+      "elapsedMs": 5440
+    },
+    {
+      "id": 17,
+      "title": "Explicit cancel preserves original identity and waits for confirmed terminal state",
+      "status": "passed",
+      "elapsedMs": 2259
+    },
+    {
+      "id": 18,
+      "title": "Teacher pause permits existing saves/snapshot but rejects create/recycle/restore/run",
+      "status": "passed",
+      "elapsedMs": 834
+    },
+    {
+      "id": 19,
+      "title": "Old generation is rejected and recovery GET has no execution side effects",
+      "status": "passed",
+      "elapsedMs": 62
+    },
+    {
+      "id": 20,
+      "title": "Origin/CSRF/ownership/private/static refusals and explicit unexecuted fault gaps",
+      "status": "failed",
+      "code": "ERR_ASSERTION",
+      "elapsedMs": 38
+    }
+  ],
+  "references": {
+    "origin": "https://127.0.0.1:3443",
+    "generation": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "serverPid": 6704,
+    "accounts": [
+      {
+        "userId": "synthetic-i0-teacher-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "teacher"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-peer",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-teacher-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "teacher"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "student"
+          }
+        ]
+      }
+    ],
+    "publicResourceId": "7d47908e-29b3-46cc-9e2e-e4633a65d564",
+    "privateResourceId": "70eefb7d-aea9-4da4-b60d-47af1f98a662",
+    "blueprintId": "fd8aec07-fbdb-4a9c-95fd-b24d720574d9",
+    "blueprintRevision": 1,
+    "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+    "activityControlRevision": 1,
+    "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+    "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+    "afterSync": {
+      "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+      "courseId": "synthetic-i0-course-a",
+      "studentId": "synthetic-i0-student-a",
+      "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+      "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+      "status": "active",
+      "attemptRevision": 2,
+      "workspaceRevision": 1,
+      "decisionEpoch": 0,
+      "captureRevision": 0,
+      "collecting": true,
+      "reminders": false
+    },
+    "oldSnapshotId": "4a770ff2-bbce-43e3-9781-c4e43ab8524c",
+    "originalRunId": "12b55905-8ca9-4f25-82f2-962d67275b07",
+    "originalJobId": "4454f13c-4b2c-44d4-969b-093796118cb6",
+    "jobTransitions": [
+      {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "seen": [
+          "queued",
+          "running",
+          "outcome_unknown"
+        ],
+        "terminal": "outcome_unknown"
+      },
+      {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "seen": [
+          "cancelled"
+        ],
+        "terminal": "cancelled"
+      },
+      {
+        "jobId": "4454f13c-4b2c-44d4-969b-093796118cb6",
+        "seen": [
+          "queued",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "succeeded"
+        ],
+        "terminal": "succeeded"
+      },
+      {
+        "jobId": "6c2f6a73-8cf7-4142-b89a-7df5d7673e18",
+        "seen": [
+          "queued",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "succeeded"
+        ],
+        "terminal": "succeeded"
+      },
+      {
+        "jobId": "c074ff23-119a-443a-81d9-33bd98d7fbc6",
+        "seen": [
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "running",
+          "outcome_unknown",
+          "succeeded"
+        ],
+        "terminal": "succeeded"
+      },
+      {
+        "jobId": "88e76b5e-51a8-44fb-9c7d-2607e347550c",
+        "seen": [
+          "cancelling",
+          "cancelled"
+        ],
+        "terminal": "cancelled"
+      }
+    ],
+    "previousCancelledRun": {
+      "runId": "4aa7da80-5d21-4221-8274-5103d0d69e37",
+      "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+      "applicationConfirmed": true,
+      "reason": "First verifier treated transient reconciliation unknown as terminal and closed its own host"
+    },
+    "checkRunId": "e95978f6-8a80-4b97-b9b2-82f35be6e73c",
+    "reportRunId": "8851ccfe-9a35-4458-b2ad-f1f3485f06f2",
+    "cancelRunId": "1c18ba6b-e301-43ed-8be0-1a8056edb691",
+    "pausedAssignment": {
+      "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+      "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+      "studentId": "synthetic-i0-student-a",
+      "assignmentRevision": 2,
+      "active": false,
+      "status": "paused",
+      "reasons": {
+        "individual": "Synthetic handoff pause",
+        "activity": ""
+      },
+      "activityControlRevision": 1
+    }
+  },
+  "requestCount": 155,
+  "tlsVerifiedResponses": 155,
+  "serverPid": 6704,
+  "serverExitCode": 0,
+  "shutdownObserved": true,
+  "passed": 8,
+  "failed": 1,
+  "previousEvidence": "/opt/xunjie-runner/tests/i0-entry-20261013-01/https-evidence/verification.json",
+  "previousPassed": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "distinctPassingCaseCoverage": 19,
+  "remainingCasesUnexecuted": [],
+  "scope": "Authorized synthetic real HTTPS/main/original automatic worker; no fixture transport or manual processJob; browser acceptance separate"
+}

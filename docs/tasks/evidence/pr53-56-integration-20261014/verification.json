@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "scope": "PR53 -> PR56",
+  "sourceHead": "2f6f158f563dca9f824c449a8895edb1e3b2563a",
+  "targetOriginalHead": "87a3b795b0e457445edbcd40ecf985e3a0dac012",
+  "commonAncestor": "e3e3486d7ec636836c892433c953eb303a64eb6a",
+  "sourceIncludes": [
+    "PR54 -> PR55",
+    "PR59 -> PR53",
+    "updated PR55 -> PR53"
+  ],
+  "runtime": {
+    "node": "24.21.0",
+    "platform": "Linux/WSL2",
+    "originalLockDependenciesReused": true,
+    "lockfilesChanged": false,
+    "originalUnchangedUiDistReused": true
+  },
+  "typecheck": "passed",
+  "build": "passed",
+  "tests": {
+    "tests": 230,
+    "pass": 224,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 6,
+    "log": "affected-tests.tap",
+    "logSha256": "400c00ffe23834bb6a30d5f8f907507104397c4fcbd3e7f835082d027dcff2c4",
+    "skipReason": "6 real-model authorization gates; no provider requests"
+  },
+  "conflictsResolved": [
+    "README.md",
+    "apps/teaching/server/app.ts",
+    "apps/teaching/server/app/i0.ts"
+  ],
+  "compatibility": [
+    "Retain PR56 shared host, single bootstrap/consumer/shutdown",
+    "Move original PR59/53 C-only readiness into shared host",
+    "Use PR56 existing boolean health hook and preserve original HDL callback",
+    "Retain no-store/requestId without duplicate health route"
+  ],
+  "preservation": {
+    "sourceChangedBlobsKeptExactly": 115,
+    "targetOriginalChangedBlobsKeptExactly": 112,
+    "protectedPathsUnchanged": true,
+    "uiSchemaCredentialsCiLocksUnchanged": true,
+    "runnerRecordsWorkspaceUnchanged": true,
+    "unresolvedConflicts": 0
+  },
+  "notExecuted": [
+    "P4 system acceptance",
+    "P5/browser integration",
+    "live HTTPS/runner",
+    "real model",
+    "real students/teaching outcomes"
+  ],
+  "delivery": "Normal push to original PR56; close PR53 only after confirmed ancestry; publish requested PR56 integration comment"
+}

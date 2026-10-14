@@ -1,0 +1,54 @@
+{
+  "host": "Paher",
+  "configuredDatabaseFile": "/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite",
+  "checks": {
+    "configuredDatabaseExists": false,
+    "nodeServiceActive": false
+  },
+  "service": {
+    "Restart": "no",
+    "Result": "success",
+    "ExecMainStatus": "0",
+    "ActiveState": "inactive",
+    "SubState": "dead",
+    "FragmentPath": "",
+    "UnitFileState": "",
+    "ActiveEnterTimestamp": "",
+    "InactiveEnterTimestamp": ""
+  },
+  "controlledRootDatabaseOrBackupCandidates": [],
+  "controlledRootNames": [
+    "ui-handoff-original.mjs",
+    "i0-host.json",
+    "preparation-metadata.json",
+    "https-evidence-resume",
+    "ui-handoff-final.json",
+    "server.key.pem",
+    "https-evidence",
+    "https-evidence-public-material",
+    "initializer.json",
+    "ui-handoff.json",
+    "server.cert.pem",
+    "ui-handoff-server-log.ndjson",
+    "signing-secret.txt",
+    "ui-handoff-final-server-log.ndjson"
+  ],
+  "tmpMount": {
+    "exitCode": 1,
+    "output": ""
+  },
+  "currentBootVmJournal": {
+    "exitCode": 0,
+    "output": ""
+  },
+  "tmpfilesSetup": {
+    "exitCode": 0,
+    "output": "ExecMainStatus=0\nActiveEnterTimestamp=Wed 2026-10-14 12:38:12 CST\n"
+  },
+  "tmpRules": {
+    "exitCode": 0,
+    "output": "D! /tmp/snap-private-tmp 0700 root root -\nX /tmp/snap-private-tmp\nX /tmp/snap-private-tmp/*/tmp\nx /tmp/snap-private-tmp/*/tmp/.snap\nx /tmp/systemd-private-%b-*\nX /tmp/systemd-private-%b-*/tmp\nx /var/tmp/systemd-private-%b-*\nX /var/tmp/systemd-private-%b-*/tmp\nR! /tmp/systemd-private-*\nR! /var/tmp/systemd-private-*\nD /tmp 1777 root root 30d"
+  },
+  "checkedAt": "2026-10-14T04:38:16.907252+00:00",
+  "reproductionExitCode": 2
+}

@@ -1,0 +1,62 @@
+{
+  "checkedAt": "2026-10-13T13:46:39.508Z",
+  "hostname": "PAHER",
+  "hostUid": 0,
+  "hostAccount": "WSL Ubuntu/root",
+  "node": "v24.21.0",
+  "authorizedChannel": "original application key / root SSH login / forced xunjie-c1 over PAHER loopback",
+  "connectionReferences": {
+    "binary": "/usr/bin/ssh",
+    "host": "127.0.0.1",
+    "port": 2222,
+    "keyFile": "/opt/xunjie-runner/vm/keys/application",
+    "knownHostsFile": "/opt/xunjie-runner/vm/keys/known_hosts"
+  },
+  "controlledFiles": [
+    {
+      "path": "/opt/xunjie-runner/tests/i0-c-revalidation-cde69cc-20261013/handoff/connection.json",
+      "mode": "600",
+      "uid": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-c-revalidation-cde69cc-20261013/handoff/current-readiness.json",
+      "mode": "600",
+      "uid": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-c-revalidation-cde69cc-20261013/handoff/runtime-evidence.json",
+      "mode": "600",
+      "uid": 0
+    }
+  ],
+  "currentReadinessMatches": true,
+  "cReady": true,
+  "hdlReady": true,
+  "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+  "cFingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+  "hdlFingerprintHash": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+  "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+  "originalRunId": "run-synthetic-1f1c2d43-4439-4d4b-93ab-a05d7d08b576",
+  "originalState": "succeeded",
+  "originalIdentityMatches": true,
+  "originalReserved": false,
+  "normalHostMaterials": {
+    "approvedTls": "not provided in existing controlled handoff",
+    "approvedSigningSecret": "not provided in existing controlled handoff",
+    "hostConfig": "not present in existing controlled handoff",
+    "initializerConfig": "not present in existing controlled handoff",
+    "crossMachineEntry": "none authorized"
+  },
+  "compiledAConsumer": {
+    "checkedAt": "2026-10-13T13:57:50.877Z",
+    "consumerSource": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+    "compiledAReaderPassed": true,
+    "readers": ["sshRunner", "availableRuntime", "readI0Generation"],
+    "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+    "generationAndSourceMatch": true,
+    "originalIdentityMatches": true,
+    "originalState": "succeeded",
+    "scope": "C executed compiled A readers on PAHER; A independent verification and normal HTTPS main/worker not executed"
+  },
+  "scope": "read-only; no acceptance, submit, cancel, maintenance, generation change, credential or network changes"
+}

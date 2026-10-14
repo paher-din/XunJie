@@ -2,7 +2,7 @@ import { createWorkspaceApp, type WorkspaceAppOptions } from '../workspace/appli
 import { ApiError } from './errors.ts';
 import { attachOriginalJobHost,guardHostTransport } from './original-job-host.ts';
 
-export type I0AppOptions = WorkspaceAppOptions & {staticDirectory?:string;consumerIntervalMs?:number};
+export type I0AppOptions = Omit<WorkspaceAppOptions,'checkReadiness'> & {staticDirectory?:string;consumerIntervalMs?:number};
 export async function createI0App(options:I0AppOptions) {
   const approvedTables=['activity_controls','activity_versions','artifact_snapshots','assignments','attempts','audit_events',
     'blueprint_drafts','check_rule_versions','command_receipts','competency_versions','course_memberships','courses',
@@ -12,10 +12,14 @@ export async function createI0App(options:I0AppOptions) {
   if (JSON.stringify(tables)!==JSON.stringify(approvedTables)) throw new ApiError('INVALID_CONFIGURATION');
   const admission={accepting:true};
   const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
-  const service=await createWorkspaceApp({...options,...(runner?{runner}:{})});
+  let host:ReturnType<typeof attachOriginalJobHost>;
+  const service=await createWorkspaceApp({...options,...(runner?{runner}:{}),checkReadiness:async()=>{
+    await host.checkReady();
+    return true;
+  }});
 
   try {
-    const host=attachOriginalJobHost(service,options,{admission});
+    host=attachOriginalJobHost(service,{...options,...(runner?{runner}:{})},{admission});
     return {...service,...host};
   } catch(error) {await service.app.close();throw error;}
 }

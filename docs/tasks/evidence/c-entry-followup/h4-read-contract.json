@@ -1,0 +1,115 @@
+{
+  "kind": "Fixed-source existing contract and illustrative projections; no new target runtime samples",
+  "runtimeSourceCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+  "sourceSha256": {
+    "apps/teaching/server/app/digital-logic.ts": "5e7f6b5183fc21c12e82610fdac98851ea2036df71e3393b02ec1c21a796afc9",
+    "apps/teaching/server/workspace/hdl.ts": "df289f7f3170502092d67383daeeb0b5139a9ccbd083308960de401cf8bac698",
+    "apps/teaching/server/workspace/hdl-schema.ts": "2fc44fc77f59365ef885f7358ce460578177ccec2308a4b07b044ad8c58ee723",
+    "apps/teaching/server/workspace/hdl-inputs.ts": "095f9dc17849c04b80835c745f9ef342fcaf1d6180f4742f1aa9dfaf0604a1d3",
+    "apps/teaching/contracts/runner/hdl.ts": "c130c9860c45e1d204fb1f6cb8b0db40635e149fc4bae512d60f441dae2aeb92",
+    "apps/teaching/runner/hdl-node.ts": "d1b30f7e679be50bc4b47b16d10809a10df48ad26af6f5669b4a316bc113cb8e",
+    "apps/teaching/runner/hdl-profile.ts": "ab070c4790cdeafa9227f0c6e95042b9079f6eb2067294aad97dcfb94acf985e",
+    "apps/teaching/runner/hdl-bridge.c": "93e81a0600417469d3740086410816f53ece797085c79709f9921b71ae406f1a"
+  },
+  "reads": [
+    {
+      "http": "GET /api/hdl/builds/:id",
+      "transactionReader": "hdl.readBuild(tx, actor, buildId)",
+      "returns": [
+        "request",
+        "result nullable",
+        "status",
+        "jobId"
+      ],
+      "caution": "request includes snapshot source; apply A/B projection, do not forward raw DTO to model"
+    },
+    {
+      "http": "GET /api/hdl/sessions/:id",
+      "transactionReader": "hdl.readSession(tx, actor, sessionId)",
+      "returns": [
+        "sessionRevision",
+        "confirmedSequence",
+        "simTimePs",
+        "pendingOperationId optional",
+        "stopRequested",
+        "terminationConfirmed",
+        "scope and immutable version bindings"
+      ]
+    },
+    {
+      "http": "GET /api/hdl/sessions/:id/trace?afterSequence=-1",
+      "transactionReader": "hdl.readTrace(tx, actor, sessionId, afterSequence)",
+      "returns": [
+        "operation nullable",
+        "nextSequence"
+      ],
+      "caution": "One next sequence, not exact operationId lookup. Pending result leaves nextSequence at afterSequence; stop polling instead of busy loop."
+    }
+  ],
+  "missing": [
+    "readOperation(tx, actor, operationId) with full binding/hash checks",
+    "normal-host authorized H4 context/current reader and C3 delivery wiring; help intentionally DEPENDENCY_UNAVAILABLE",
+    "real 35-table normal HTTPS Build/Session/Operation/current samples on PAHER"
+  ],
+  "currentRules": [
+    "Explicit selection, no latest object substitution",
+    "One SQL transaction for current authorization, assignment/activity/attempt/job and selected Build/Session/Operation; no SQL held across network/model",
+    "Pending, stopping, unknown, replaced, stale sequence/generation or unconfirmed termination cannot be current help",
+    "Recheck before model, after model, candidate commit, delivery and receipt; preserve original frozen selection"
+  ],
+  "illustrativeOnly": [
+    {
+      "case": "pending interaction",
+      "projection": {
+        "status": "active",
+        "pendingOperationId": "EXAMPLE_PENDING_OPERATION",
+        "confirmedSequence": 4,
+        "stopRequested": false,
+        "terminationConfirmed": false
+      },
+      "use": "Historical frame at sequence4 is not current input; query same original operation"
+    },
+    {
+      "case": "stop requested",
+      "projection": {
+        "status": "stopping",
+        "stopRequested": true,
+        "terminationConfirmed": false
+      },
+      "use": "Not stopped yet; preserve unknown and same identity"
+    },
+    {
+      "case": "confirmed stop",
+      "projection": {
+        "status": "stopped",
+        "stopRequested": true,
+        "terminationConfirmed": true
+      },
+      "use": "Historical only; no implicit restart"
+    },
+    {
+      "case": "replacement",
+      "projection": {
+        "originalTerminationConfirmed": true,
+        "replacementSessionId": "EXAMPLE_NEW_SESSION",
+        "replacementStartingRevision": 1,
+        "replacementConfirmedSequence": 0
+      },
+      "use": "Explicit new session identity after confirmed old stop; old frames remain old"
+    },
+    {
+      "case": "transport loss",
+      "projection": {
+        "status": "outcome_unknown",
+        "terminationConfirmed": false
+      },
+      "use": "Do not resubmit or infer final result"
+    }
+  ],
+  "illustrativeProjectionsAreNotCompleteDtosOrObservedResults": true,
+  "targetExecutionBlockedBy": [
+    "current VM inactive/readiness unavailable",
+    "original I0 temporary database absent",
+    "35-table onsite configuration/scope not approved by this task"
+  ]
+}

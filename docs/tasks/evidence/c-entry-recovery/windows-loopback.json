@@ -1,0 +1,9 @@
+{
+  "checkedAt": "2026-10-14T04:59:55.7552714Z",
+  "host": "PAHER",
+  "address": "127.0.0.1",
+  "port": 3443,
+  "tcpConnected": true,
+  "tlsOrBrowserTrustValidated": false,
+  "passwordOrCookieUsed": false
+}

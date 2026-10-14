@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-14T04:45:52.719Z",
+  "mode": "--prepare",
+  "originalDatabaseFile": "/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite",
+  "temporaryRoot": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014",
+  "newConfigFile": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host-recovered-20261014.json",
+  "metadataFile": "/opt/xunjie-runner/tests/i0-entry-20261013-01/recovery-preparation-20261014.json",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "sameCredentials": true,
+  "schemaTables": 24,
+  "accounts": 5,
+  "courses": 2,
+  "origin": "https://127.0.0.1:3443",
+  "databaseCreated": false,
+  "requiresExplicitSchemaApproval": true,
+  "startup": {
+    "cwd": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching",
+    "node": "/opt/xunjie-runner/node/bin/node",
+    "args": [
+      "dist/server/main.js"
+    ],
+    "PORT": "3443",
+    "TMPDIR": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014",
+    "XUNJIE_I0_CONFIG": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host-recovered-20261014.json"
+  },
+  "note": "New synthetic database and new object IDs; no old evidence replay or identity restoration."
+}

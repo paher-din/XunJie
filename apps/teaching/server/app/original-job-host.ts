@@ -8,6 +8,7 @@ import { cancelJob } from '../records/jobs.ts';
 import { loadWorkspace, persistWorkspace } from '../workspace/storage.ts';
 import { registerI0Static } from './i0-static.ts';
 import type { Transaction } from '../db/transaction.ts';
+import { availableRuntime } from '../design/readiness.ts';
 
 export type HostAdmission = { accepting:boolean };
 export function guardHostTransport<Command extends {op:string}>(
@@ -23,7 +24,7 @@ export function guardHostTransport<Command extends {op:string}>(
   };
 }
 type OriginalService = Pick<Awaited<ReturnType<typeof createWorkspaceApp>>, 'app'|'access'|'workspace'>;
-type HostOptions = Pick<WorkspaceAppOptions,'db'|'currentGeneration'> & {staticDirectory?:string;consumerIntervalMs?:number};
+type HostOptions = Pick<WorkspaceAppOptions,'db'|'currentGeneration'|'runner'> & {staticDirectory?:string;consumerIntervalMs?:number};
 type ExecutionHooks = {admission:HostAdmission;consumeAdditional?:()=>Promise<void>;
   stopInTransaction?:(tx:Transaction)=>void;reconcile?:()=>Promise<void>};
 
@@ -32,8 +33,38 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
   const {app,access,workspace}=service,{admission}=hooks;
   let timer:ReturnType<typeof setTimeout>|undefined,inFlight:Promise<void>|undefined;
   let started=false,closing:Promise<void>|undefined;
+  let runScanHealthy=false;
   const interval=options.consumerIntervalMs??250;
   if(!Number.isInteger(interval)||interval<50||interval>10000) throw new ApiError('INVALID_CONFIGURATION');
+  function assertHostReady() {
+    if(!admission.accepting||!started||!runScanHealthy)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  }
+  function checkDatabase() {
+    try {options.db.withTransaction(tx=>tx.get('SELECT 1 AS available'));}
+    catch {throw new ApiError('PERSISTENCE_UNAVAILABLE');}
+  }
+  // The C-only I0 entry uses this original PR59 guard; DL-A keeps its own HDL/C dependency probe.
+  async function checkReady() {
+    assertHostReady();
+    checkDatabase();
+    const generation=options.currentGeneration();
+    if(!generation)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    try {
+      const runtime=await Promise.race([availableRuntime(options.runner),new Promise<never>((_,reject)=>{
+        timeout=setTimeout(()=>reject(new ApiError('DEPENDENCY_UNAVAILABLE')),5000);
+      })]);
+      if(!runtime||runtime.recoveryGeneration!==generation)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    }catch {throw new ApiError('DEPENDENCY_UNAVAILABLE');}
+    finally {if(timeout)clearTimeout(timeout);}
+    assertHostReady();
+    checkDatabase();
+    if(options.currentGeneration()!==generation)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  }
+  app.addHook('preClose',async()=>{
+    admission.accepting=false;
+    if(timer)clearTimeout(timer);
+  });
   app.addHook('onRequest',async request=>{
     if(!admission.accepting&&!['GET','HEAD'].includes(request.method)) throw new ApiError('DEPENDENCY_UNAVAILABLE');
   });
@@ -52,7 +83,8 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
   }
   function tick() {
     if(!admission.accepting)return;
-    void consumeOnce().catch(()=>{app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original job scan failed.');})
+    void consumeOnce().then(()=>{runScanHealthy=true;})
+      .catch(()=>{runScanHealthy=false;app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original job scan failed.');})
       .finally(()=>{if(admission.accepting)timer=setTimeout(tick,tickInterval);});
   }
   function startConsumer(intervalMs=interval) {
@@ -111,5 +143,5 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
   });
 
   if(options.staticDirectory)registerI0Static(app,options.staticDirectory);
-  return {consumeOnce,startConsumer,close,isAccepting:()=>admission.accepting};
+  return {consumeOnce,startConsumer,close,checkReady,isAccepting:()=>admission.accepting};
 }

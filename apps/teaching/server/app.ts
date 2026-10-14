@@ -46,7 +46,8 @@ export function createApp(options: AppOptions = {}) {
     throw new ApiError('INVALID_REQUEST');
   });
 
-  app.get('/health/ready', async request => {
+  app.get('/health/ready', async (request,reply) => {
+    reply.header('cache-control','no-store');
     if(await options.checkReadiness?.())return {requestId:request.id,data:{status:'ready'}};
     throw new ApiError('DEPENDENCY_UNAVAILABLE');
   });

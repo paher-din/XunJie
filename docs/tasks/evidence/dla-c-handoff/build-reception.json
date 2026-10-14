@@ -1,0 +1,75 @@
+{
+  "checkedAt": "2026-10-13T13:52:15.815Z",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "manualCommit": "8aa28a04294a0622961ab7b67aaea25be34229d9",
+  "receiver": "/opt/xunjie-runner/tests/dla-c-handoff-9fa76ad-20261013",
+  "node": "v24.21.0",
+  "packageLockUnchanged": true,
+  "checks": {
+    "studentInstall": 0,
+    "studentTypecheck": 0,
+    "studentBuild": 0,
+    "teachingInstall": 0,
+    "teachingTypecheck": 0,
+    "teachingBuild": 0,
+    "sqliteLoad": 0
+  },
+  "sqlite": "3.53.4",
+  "scope": "isolated source reception/build only; no application database initialized or normal host started",
+  "logs": [
+    {
+      "name": "locks.before.txt",
+      "bytes": 380,
+      "sha256": "34cc3fe61424335833cd0247e524394253b97026b8562695632c5a306ad5ceb9",
+      "output": "7afe559e776844b926a9411dc942b26f94d660e58966fae671d2527faaa5e053  apps/teaching/package.json\n7d93afc2441eceff0ccd26a9cae981557a9f789021b40f079a70d4ea356d548e  apps/teaching/package-lock.json\n18b4cf3e371f2c0b80325dd001ec6c5f525de1e7078d1e2298eb3ac460f8995e  apps/student/package.json\nb371f9085f1ee3a5494c9eddc4360d394adae137a31869fef028ee1319a047d6  apps/student/package-lock.json\n"
+    },
+    {
+      "name": "student-install.txt",
+      "bytes": 660,
+      "sha256": "c2633928d76643185df8c579b4e6f1917c89209f6da1bdd1903ef757659c2e77",
+      "output": "\nadded 145 packages, and audited 146 packages in 2m\n\n22 packages are looking for funding\n  run `npm fund` for details\n\n6 vulnerabilities (2 low, 1 moderate, 1 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues (including breaking changes), run:\n  npm audit fix --force\n\nRun `npm audit` for details.\nnpm warn install-scripts 1 package has install scripts not yet covered by allowScripts:\nnpm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)\nnpm warn install-scripts\nnpm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.\n"
+    },
+    {
+      "name": "student-typecheck.txt",
+      "bytes": 88,
+      "sha256": "817da942274fa55c2654d984b87c5cbc58fec77d9284221904c37fae91291adf",
+      "output": "\n> learning-space@0.1.0 typecheck\n> tsc --noEmit && tsc --noEmit -p tsconfig.node.json\n\n"
+    },
+    {
+      "name": "student-build.txt",
+      "bytes": 10437,
+      "sha256": "dcd09eea3dca4ace1f5ae4bea0781fdb7fc6d93416a5b2670f759f465f98c8c2",
+      "output": "\n> learning-space@0.1.0 build\n> tsc --noEmit && vite build\n\nvite v7.3.6 building client environment for production...\ntransforming...\n✓ 1193 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/index.html                                            1.50 kB │ gzip:   0.85 kB\ndist/assets/codicon-DF1abBS2.ttf                         153.23 kB\ndist/assets/editor.worker-CHzQTjO0.js                    275.63 kB\ndist/assets/aria-BQ0Fa-r7.css                              0.05 kB │ gzip:   0.07 kB\ndist/assets/link-Daoow6VB.css                              0.12 kB │ gzip:   0.09 kB\ndist/assets/register-YdNSa6b7.css                          0.17 kB │ gzip:   0.13 kB\ndist/assets/register-BNgPRG2T.css                          0.37 kB │ gzip:   0.24 kB\ndist/assets/register-VvSvELY2.css                          1.18 kB │ gzip:   0.25 kB\ndist/assets/keybinding-CIhNjqFS.css                        1.45 kB │ gzip:   0.40 kB\ndist/assets/register-C7vgbc7H.css                          1.48 kB │ gzip:   0.52 kB\ndist/assets/register-_-S9DiMO.css                          1.61 kB │ gzip:   0.43 kB\ndist/assets/messageController-Do3a81JH.css                 1.77 kB │ gzip:   0.49 kB\ndist/assets/hoverWidget-BFdtlATq.css                       3.53 kB │ gzip:   0.99 kB\ndist/assets/keybindingCancellation-C4iRs9W9.css            5.08 kB │ gzip:   1.01 kB\ndist/assets/findController-z1E5xnQl.css                    5.79 kB │ gzip:   1.34 kB\ndist/assets/IconBoard-BVEbgcdh.css                         6.05 kB │ gzip:   1.72 kB\ndist/assets/BrandBoard-DJBhTkop.css                        6.76 kB │ gzip:   1.88 kB\ndist/assets/findInput-BWU3_B-E.css                         6.81 kB │ gzip:   1.54 kB\ndist/assets/actionViewItems-CvhnUcyN.css                   7.69 kB │ gzip:   1.58 kB\ndist/assets/register-HJbRf0Hl.css                         11.17 kB │ gzip:   2.27 kB\ndist/assets/register-CXhHcpYU.css                         15.68 kB │ gzip:   3.07 kB\ndist/assets/editor-BfQ82MZy.css                           63.46 kB │ gzip:   9.06 kB\ndist/assets/index-Bcc495rI.css                           160.16 kB │ gzip:  29.17 kB\ndist/assets/dialogs-Clo95KjK.js                            0.09 kB │ gzip:   0.10 kB\ndist/assets/languageFeatures-DupySLm1.js                   0.10 kB │ gzip:   0.11 kB\ndist/assets/editorCommon-BwOdCC1S.js                       0.10 kB │ gzip:   0.08 kB\ndist/assets/workspaceTrust-BOsFqrNE.js                     0.10 kB │ gzip:   0.12 kB\ndist/assets/editor.worker-C0Ec0Cbg.js                      0.11 kB │ gzip:   0.12 kB\ndist/assets/contextView-DlMz679V.js                        0.12 kB │ gzip:   0.12 kB\ndist/assets/accessibility-U3cr5FvQ.js                      0.15 kB │ gzip:   0.14 kB\ndist/assets/textModelDefaults-jwCPjDQ2.js                  0.22 kB │ gzip:   0.17 kB\ndist/assets/extensions-DPbG0wzx.js                         0.24 kB │ gzip:   0.19 kB\ndist/assets/indentUtils-D7uFROOx.js                        0.25 kB │ gzip:   0.19 kB\ndist/assets/trustedTypes-CSDpBlO0.js                       0.26 kB │ gzip:   0.18 kB\ndist/assets/editOperation-BiHuZ1CN.js                      0.33 kB │ gzip:   0.19 kB\ndist/assets/tabFocus-CjMy3epR.js                           0.38 kB │ gzip:   0.22 kB\ndist/assets/indentation-BogMYXI_.js                        0.41 kB │ gzip:   0.29 kB\ndist/assets/register-DsqPZF4e.js                           0.47 kB │ gzip:   0.31 kB\ndist/assets/notification-AWCbC99-.js                       0.58 kB │ gzip:   0.34 kB\ndist/assets/jsonContributionRegistry-BLtraFH3.js           0.60 kB │ gzip:   0.35 kB\ndist/assets/marshalling-B0zVs6fC.js                        0.63 kB │ gzip:   0.39 kB\ndist/assets/quickInput-CeZ_Zx9b.js                         0.75 kB │ gzip:   0.39 kB\ndist/assets/_.contribution-CA9sJE_8.js                     0.76 kB │ gzip:   0.40 kB\ndist/assets/autorun-CzSmcpqR.js                            0.77 kB │ gzip:   0.33 kB\ndist/assets/register-BeoS97ch.js                           0.80 kB │ gzip:   0.49 kB\ndist/assets/aria-Dwd5AWqf.js                               0.83 kB │ gzip:   0.40 kB\ndist/assets/cursorColumns-BYPySugh.js                      0.89 kB │ gzip:   0.43 kB\ndist/assets/contextkeys-B0cq9-jS.js                        0.90 kB │ gzip:   0.42 kB\ndist/assets/register-DklygN5W.js                           0.96 kB │ gzip:   0.51 kB\ndist/assets/objects-Bi5svMDs.js                            1.36 kB │ gzip:   0.65 kB\ndist/assets/mime-DeGpcYMw.js                               1.48 kB │ gzip:   0.72 kB\ndist/assets/markdownRenderer-C225KXAe.js                   1.67 kB │ gzip:   0.89 kB\ndist/assets/register-DRsJwmqu.js                           1.99 kB │ gzip:   1.00 kB\ndist/assets/link-Xv273fd4.js                               2.00 kB │ gzip:   0.96 kB\ndist/assets/model-DdaE6Als.js                              2.11 kB │ gzip:   0.83 kB\ndist/assets/selection-CApR7OHi.js                          2.11 kB │ gzip:   0.64 kB\ndist/assets/hoverWidget-B_IhqFbW.js                        2.20 kB │ gzip:   0.91 kB\ndist/assets/editorBrowser-atxYgQWF.js                      2.24 kB │ gzip:   1.00 kB\ndist/assets/register-CcBP6Eyv.js                           2.28 kB │ gzip:   0.83 kB\ndist/assets/wordCharacterClassifier-JWu7VrI2.js            2.32 kB │ gzip:   0.89 kB\ndist/assets/register-DAxqFlN6.js                           2.34 kB │ gzip:   1.06 kB\ndist/assets/register-C1vOy3Ll.js                           2.40 kB │ gzip:   1.01 kB\ndist/assets/register-BvZbAvD-.js                           2.40 kB │ gzip:   1.08 kB\ndist/assets/replaceCommand-Dgu3j2US.js                     2.97 kB │ gzip:   0.78 kB\ndist/assets/viewModelDecoration-e4qRl3Zy.js                3.36 kB │ gzip:   1.53 kB\ndist/assets/stableEditorScroll-mnoU3xQV.js                 3.41 kB │ gzip:   1.41 kB\ndist/assets/markdown-BFxVWTOG.js                           3.65 kB │ gzip:   1.35 kB\ndist/assets/iconRegistry-D_BesVFv.js                       4.05 kB │ gzip:   1.66 kB\ndist/assets/messageController-DeE9h6IO.js                  4.19 kB │ gzip:   1.61 kB\ndist/assets/register-BUA25pW0.js                           4.99 kB │ gzip:   1.69 kB\ndist/assets/defaultStyles-DmezrdEB.js                      5.01 kB │ gzip:   1.63 kB\ndist/assets/cpp-BbWJElDN.js                                5.16 kB │ gzip:   2.06 kB\ndist/assets/range-D-7h23aq.js                              5.37 kB │ gzip:   1.18 kB\ndist/assets/nativeEditContextRegistry-CsIY-p9h.js          5.62 kB │ gzip:   2.42 kB\ndist/assets/python-Dta_pUap.js                             5.80 kB │ gzip:   2.37 kB\ndist/assets/IconBoard-BNIwfPeq.js                          5.85 kB │ gzip:   2.57 kB\ndist/assets/register-vcxVC39s.js                           6.47 kB │ gzip:   2.38 kB\ndist/assets/register-HD9oJYGO.js                           6.88 kB │ gzip:   2.38 kB\ndist/assets/editorContextKeys-BLNOzYPf.js                  7.04 kB │ gzip:   1.70 kB\ndist/assets/BrandBoard-CoN0sn-Z.js                         7.61 kB │ gzip:   2.98 kB\ndist/assets/register-CkumbkjF.js                           7.61 kB │ gzip:   1.94 kB\ndist/assets/storage-B8hYXDDW.js                            7.66 kB │ gzip:   2.16 kB\ndist/assets/register-CwLjOP3z.js                           7.66 kB │ gzip:   2.99 kB\ndist/assets/workspace-CTEul6j3.js                          8.20 kB │ gzip:   2.34 kB\ndist/assets/register-ExTkBi9e.js                           8.25 kB │ gzip:   2.95 kB\ndist/assets/register-BFN7GMAi.js                          10.79 kB │ gzip:   3.54 kB\ndist/assets/lineTokens-e-_CdwTf.js                        10.83 kB │ gzip:   3.10 kB\ndist/assets/register-D5rpC8z5.js                          10.90 kB │ gzip:   3.34 kB\ndist/assets/actionbar-BhGDs9c7.js                         11.09 kB │ gzip:   3.36 kB\ndist/assets/autoIndent-Dd1eqXch.js                        12.81 kB │ gzip:   3.71 kB\ndist/assets/cursorMoveCommands-DI95j-Fd.js                14.93 kB │ gzip:   3.47 kB\ndist/assets/color-RxEMNlRn.js                             15.31 kB │ gzip:   4.11 kB\ndist/assets/register--ysDczUq.js                          20.97 kB │ gzip:   5.60 kB\ndist/assets/keybindingCancellation-B6xtz_vo.js            22.17 kB │ gzip:   6.93 kB\ndist/assets/editorExtensions-AhMbJqFN.js                  24.95 kB │ gzip:   7.68 kB\ndist/assets/cursorWordOperations-BO9uFU7h.js              25.04 kB │ gzip:   6.55 kB\ndist/assets/register-CZgY-l8c.js                          25.59 kB │ gzip:   7.68 kB\ndist/assets/register-B0cuT_19.js                          29.55 kB │ gzip:   7.69 kB\ndist/assets/languageConfigurationRegistry-D3_Sxugg.js     33.83 kB │ gzip:  10.21 kB\ndist/assets/findInput-DhxuR4cr.js                         37.62 kB │ gzip:   9.54 kB\ndist/assets/register-DUSiP1v9.js                          44.71 kB │ gzip:  11.95 kB\ndist/assets/keybinding-Crg-kxEV.js                        44.90 kB │ gzip:  10.76 kB\ndist/assets/coreCommands-CjUtRPKv.js                      48.52 kB │ gzip:  11.47 kB\ndist/assets/editorColorRegistry-CU64g7ru.js               55.65 kB │ gzip:  12.78 kB\ndist/assets/findController-eFIXCOfM.js                    80.50 kB │ gzip:  19.03 kB\ndist/assets/markdownRenderer-BtrcrrG6.js                  91.98 kB │ gzip:  32.33 kB\ndist/assets/register-DNjvybSS.js                         101.83 kB │ gzip:  27.75 kB\ndist/assets/actionViewItems-DPDfBmma.js                  103.66 kB │ gzip:  24.59 kB\ndist/assets/editorOptions-Bhaxun7R.js                    106.32 kB │ gzip:  26.91 kB\ndist/assets/textModel-XqG939EK.js                        263.56 kB │ gzip:  67.80 kB\ndist/assets/actions-suuMzVqG.js                          281.05 kB │ gzip:  87.67 kB\ndist/assets/register-hNW_S10j.js                         700.76 kB │ gzip: 174.07 kB\ndist/assets/editor.api-BS0-rdrm.js                       779.88 kB │ gzip: 200.10 kB\ndist/assets/index-D6x552xS.js                          1,053.48 kB │ gzip: 324.39 kB\n\n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n✓ built in 12.07s\n"
+    },
+    {
+      "name": "teaching-install.txt",
+      "bytes": 514,
+      "sha256": "6cbc0b059247b2ef84fac0db5d12b701425fcca0771c256c28ae82f3fc4f18ac",
+      "output": "\n> @xunjie/teaching@0.0.0 preinstall\n> node tools/check-runtime.mjs\n\n\nadded 70 packages, and audited 71 packages in 7s\n\n24 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities\nnpm warn install-scripts 1 package has install scripts not yet covered by allowScripts:\nnpm warn install-scripts   better-sqlite3@13.0.3 (install: node-gyp rebuild)\nnpm warn install-scripts\nnpm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.\n"
+    },
+    {
+      "name": "teaching-typecheck.txt",
+      "bytes": 84,
+      "sha256": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+      "output": "\n> @xunjie/teaching@0.0.0 typecheck\n> node tools/check-runtime.mjs && tsc --noEmit\n\n"
+    },
+    {
+      "name": "teaching-build.txt",
+      "bytes": 94,
+      "sha256": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+      "output": "\n> @xunjie/teaching@0.0.0 build\n> node tools/check-runtime.mjs && tsc -p tsconfig.build.json\n\n"
+    },
+    {
+      "name": "sqlite-version.txt",
+      "bytes": 22,
+      "sha256": "8e7d504e3e0c8398496db01eaebcc9680e280f03ffbe3ef0c97cc92a7ca8f317",
+      "output": "{ version: '3.53.4' }\n"
+    },
+    {
+      "name": "locks.after.txt",
+      "bytes": 380,
+      "sha256": "34cc3fe61424335833cd0247e524394253b97026b8562695632c5a306ad5ceb9",
+      "output": "7afe559e776844b926a9411dc942b26f94d660e58966fae671d2527faaa5e053  apps/teaching/package.json\n7d93afc2441eceff0ccd26a9cae981557a9f789021b40f079a70d4ea356d548e  apps/teaching/package-lock.json\n18b4cf3e371f2c0b80325dd001ec6c5f525de1e7078d1e2298eb3ac460f8995e  apps/student/package.json\nb371f9085f1ee3a5494c9eddc4360d394adae137a31869fef028ee1319a047d6  apps/student/package-lock.json\n"
+    }
+  ]
+}

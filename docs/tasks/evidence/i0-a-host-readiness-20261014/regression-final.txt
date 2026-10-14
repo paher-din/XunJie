@@ -1,0 +1,232 @@
+TAP version 13
+# Subtest: host readiness requires the original consumer and a current database/runner, without creating business rows
+ok 1 - host readiness requires the original consumer and a current database/runner, without creating business rows
+  ---
+  duration_ms: 1422.2674
+  type: 'test'
+  ...
+# Subtest: host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+ok 2 - host readiness rejects missing, unavailable, unvalidated and wrong-generation execution dependencies
+  ---
+  duration_ms: 1582.6944
+  type: 'test'
+  ...
+# Subtest: host readiness detects database and consumer scan failure and resumes after successful scans
+ok 3 - host readiness detects database and consumer scan failure and resumes after successful scans
+  ---
+  duration_ms: 1273.0822
+  type: 'test'
+  ...
+# Subtest: a delayed readiness response cannot succeed after shutdown or database failure
+ok 4 - a delayed readiness response cannot succeed after shutdown or database failure
+  ---
+  duration_ms: 2246.6887
+  type: 'test'
+  ...
+# Subtest: health queries time out without accepting late runner success
+ok 5 - health queries time out without accepting late runner success
+  ---
+  duration_ms: 6141.4916
+  type: 'test'
+  ...
+# Subtest: disabled model calls do not block readiness or authorized session access
+ok 6 - disabled model calls do not block readiness or authorized session access
+  ---
+  duration_ms: 1713.9642
+  type: 'test'
+  ...
+# Subtest: a changed recovery generation during a readiness query requires a fresh probe
+ok 7 - a changed recovery generation during a readiness query requires a fresh probe
+  ---
+  duration_ms: 1672.7407
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener withdraws readiness when Fastify is closed directly
+ok 8 - the real HTTP listener withdraws readiness when Fastify is closed directly
+  ---
+  duration_ms: 1165.804
+  type: 'test'
+  ...
+# Subtest: normal tutoring consumer uses the original job without retaining or creating student sessions
+ok 9 - normal tutoring consumer uses the original job without retaining or creating student sessions
+  ---
+  duration_ms: 2302.9964
+  type: 'test'
+  ...
+# Subtest: withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+ok 10 - withdrawn membership prevents automatic dispatch; budget refusal never calls a provider
+  ---
+  duration_ms: 3922.0035
+  type: 'test'
+  ...
+# Subtest: shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+ok 11 - shutdown persists original teaching stop and aborts the in-process provider without a replacement job
+  ---
+  duration_ms: 1982.6533
+  type: 'test'
+  ...
+# Subtest: a prior worker lease is reconciled as unknown without another model call
+ok 12 - a prior worker lease is reconciled as unknown without another model call
+  ---
+  duration_ms: 1890.9006
+  type: 'test'
+  ...
+# Subtest: an in-flight C dispatch cannot block a newly accepted tutoring job
+ok 13 - an in-flight C dispatch cannot block a newly accepted tutoring job
+  ---
+  duration_ms: 2104.4356
+  type: 'test'
+  ...
+# Subtest: internal completion rechecks the same trusted learner revision guard as public C3 completion
+ok 14 - internal completion rechecks the same trusted learner revision guard as public C3 completion
+  ---
+  duration_ms: 2011.1975
+  type: 'test'
+  ...
+# Subtest: student bootstraps own assignment with trusted generation and no attempt side effect
+ok 15 - student bootstraps own assignment with trusted generation and no attempt side effect
+  ---
+  duration_ms: 2096.9964
+  type: 'test'
+  ...
+# Subtest: normal host serves only built public assets and rejects escaped or hidden paths
+ok 16 - normal host serves only built public assets and rejects escaped or hidden paths
+  ---
+  duration_ms: 1143.1329
+  type: 'test'
+  ...
+# Subtest: normal consumer runs original job without manual worker calls and shutdown confirms its stop
+ok 17 - normal consumer runs original job without manual worker calls and shutdown confirms its stop
+  ---
+  duration_ms: 2133.2839
+  type: 'test'
+  ...
+# Subtest: controlled initializer creates a fresh synthetic host with login and original course policy
+ok 18 - controlled initializer creates a fresh synthetic host with login and original course policy
+  ---
+  duration_ms: 1506.5078
+  type: 'test'
+  ...
+# Subtest: bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+ok 19 - bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation
+  ---
+  duration_ms: 2639.1173
+  type: 'test'
+  ...
+# Subtest: normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+ok 20 - normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline
+  ---
+  duration_ms: 2010.398
+  type: 'test'
+  ...
+# Subtest: bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+ok 21 - bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it
+  ---
+  duration_ms: 1895.0744
+  type: 'test'
+  ...
+# Subtest: unknown original job survives host restart and is reconciled without a replacement execution
+ok 22 - unknown original job survives host restart and is reconciled without a replacement execution
+  ---
+  duration_ms: 2762.9374
+  type: 'test'
+  ...
+# Subtest: normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+ok 23 - normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener
+  ---
+  duration_ms: 1625.2
+  type: 'test'
+  ...
+# Subtest: shutdown refuses a new run whose readiness request was already in flight
+ok 24 - shutdown refuses a new run whose readiness request was already in flight
+  ---
+  duration_ms: 1911.7348
+  type: 'test'
+  ...
+# Subtest: liveness responds without claiming that teaching dependencies are ready
+ok 25 - liveness responds without claiming that teaching dependencies are ready
+  ---
+  duration_ms: 196.8071
+  type: 'test'
+  ...
+# Subtest: readiness stays unavailable while database, model and runner are not implemented
+ok 26 - readiness stays unavailable while database, model and runner are not implemented
+  ---
+  duration_ms: 3.9974
+  type: 'test'
+  ...
+# Subtest: each response uses a new server request ID even when the client supplies one
+ok 27 - each response uses a new server request ID even when the client supplies one
+  ---
+  duration_ms: 4.4257
+  type: 'test'
+  ...
+# Subtest: malformed JSON returns a safe format error rather than an internal failure
+ok 28 - malformed JSON returns a safe format error rather than an internal failure
+  ---
+  duration_ms: 190.2072
+  type: 'test'
+  ...
+# Subtest: oversized input is rejected with CONTENT_LIMIT without exposing content
+ok 29 - oversized input is rejected with CONTENT_LIMIT without exposing content
+  ---
+  duration_ms: 5.991
+  type: 'test'
+  ...
+# Subtest: unknown routes return the common error envelope without reflecting the URL
+ok 30 - unknown routes return the common error envelope without reflecting the URL
+  ---
+  duration_ms: 5.0857
+  type: 'test'
+  ...
+# Subtest: unexpected failures produce only sanitized diagnostics and do not expose exception or request data
+ok 31 - unexpected failures produce only sanitized diagnostics and do not expose exception or request data
+  ---
+  duration_ms: 53.3308
+  type: 'test'
+  ...
+# Subtest: unsupported media types and trusted schema validation use safe INVALID_REQUEST errors
+ok 32 - unsupported media types and trusted schema validation use safe INVALID_REQUEST errors
+  ---
+  duration_ms: 35.863
+  type: 'test'
+  ...
+# Subtest: domain conflicts retain their status and require explicit authorized re-reading
+ok 33 - domain conflicts retain their status and require explicit authorized re-reading
+  ---
+  duration_ms: 3.4801
+  type: 'test'
+  ...
+# Subtest: startup port accepts only an explicit valid TCP port or the default
+ok 34 - startup port accepts only an explicit valid TCP port or the default
+  ---
+  duration_ms: 1.6035
+  type: 'test'
+  ...
+# Subtest: the entry process refuses invalid configuration without logging its value
+ok 35 - the entry process refuses invalid configuration without logging its value
+  ---
+  duration_ms: 256.2845
+  type: 'test'
+  ...
+# Subtest: the compiled entry listens on the configured loopback port
+ok 36 - the compiled entry listens on the configured loopback port
+  ---
+  duration_ms: 583.4339
+  type: 'test'
+  ...
+# Subtest: the real HTTP listener responds locally and releases its port on close
+ok 37 - the real HTTP listener responds locally and releases its port on close
+  ---
+  duration_ms: 180.0703
+  type: 'test'
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 56318.461

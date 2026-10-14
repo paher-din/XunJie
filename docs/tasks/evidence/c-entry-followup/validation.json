@@ -1,0 +1,64 @@
+{
+  "checkedAt": "2026-10-14T04:32:18.310861+00:00",
+  "sourceReception": "773 exact raw Git blobs/SHA256/modes passed",
+  "offlineRunnerSourceHashFiles": 34,
+  "domainAndBudgetAssertions": "passed; arithmetic only",
+  "documentCheck": {
+    "documents": 65,
+    "internalLinks": 970,
+    "errors": []
+  },
+  "scriptSyntax": "passed",
+  "readonlyScriptExecution": "completed with database absent and authenticated readiness unavailable; these are blockers, not runtime acceptance passes",
+  "secretScan": {
+    "matchedFiles": [],
+    "actualSecretValuesCompared": 7,
+    "secretsOutput": false
+  },
+  "files": [
+    {
+      "path": "docs/tasks/evidence/c-entry-followup/h3-budget.json",
+      "bytes": 1500,
+      "sha256": "1be15e0a2b119ba0b1c28bfe705cfc79cd80cabbe561963d0d6322a12891f73f"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-followup/h4-read-contract.json",
+      "bytes": 4690,
+      "sha256": "973c4d57de62593f53068658416ade91af15ddfb36085393f9cca9bf01848d97"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-followup/onsite-readonly.json",
+      "bytes": 2308,
+      "sha256": "e71bccb369558c168edd8a89f8ad092ab51c0763803df50cb3ae1e1822efbfd4"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-followup/runner-source-alignment.json",
+      "bytes": 461,
+      "sha256": "3ecac6bec522c3c10af0c8988364af1764390e79e4be9e2b9a4c1cabe1de40b8"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-followup/service-state.json",
+      "bytes": 445,
+      "sha256": "cf88842ab31b1ec8b22a6ffeb21137bcf1e49953e8016187e67b98aeeaa999bc"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-followup/source-reception.json",
+      "bytes": 1423,
+      "sha256": "15aeab3892acec0007d2a8b375adbb8e27fe8dba2c3e3cb9e1c92a7eb756070e"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-followup/windows-browser-conditions.json",
+      "bytes": 1784,
+      "sha256": "c206a0122349fbe5bba196aad8b370cb7ef2e2c40495e20cd1a28b58f902eb2d"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/inspect-entry-followup.mjs",
+      "bytes": 3436,
+      "sha256": "31de00969115713fc8ba85a27135d767fe0348f6930c000b0d923fa06660c112"
+    }
+  ],
+  "excluded": [
+    "Validation file itself and evolving task prose are not self-hashed",
+    "No new browser acceptance, 20-item rerun, 35-table onsite initialization, ALU execution, node maintenance or model call"
+  ]
+}
