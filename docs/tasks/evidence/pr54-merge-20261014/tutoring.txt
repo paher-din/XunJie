@@ -1,0 +1,192 @@
+(node:48392) Warning: AI SDK Warning System: To turn off warning logging, set the AI_SDK_LOG_WARNINGS global to false.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+✔ AI SDK adapter maps approved DeepSeek settings through an offline transport (205.2964ms)
+✔ invalid structured policy output reaches the one permitted repair request (61.2012ms)
+✔ malformed SDK JSON preserves usage and reaches the one permitted repair (18.3098ms)
+✔ negative SDK token usage is kept unknown (7.8844ms)
+✔ SDK-valid but unauthorized references are repaired by the B1 whitelist (19.5284ms)
+✔ AI SDK adapter selects the teacher mode schema and returns a proposal body (12.7616ms)
+✔ teacher patch sends trusted reference and exact allowed-field guidance (19.8498ms)
+✔ AI SDK adapter keeps missing vendor usage unknown (12.3304ms)
+✔ AI SDK adapter reports vendor failure without retrying (7.6401ms)
+✔ AI SDK adapter cancellation aborts a pending offline transport (20.2677ms)
+✔ late SDK transport completion is discarded after the shared deadline (19.1522ms)
+✔ 16K preflight rejects the complete final SDK input before transport (3.0503ms)
+(node:48392) Warning: AI SDK Warning (deepseek.chat / deepseek-flash): The feature "responseFormat JSON schema" is used in a compatibility mode. JSON response schema is injected into the system message.
+✔ DL-B fixes the three approved HDL guidance fixtures and keeps them distinct (5.1273ms)
+✔ DL-B assembles only bounded authorized build diagnostics and produces cited student-owned guidance (25.728ms)
+✔ DL-B preserves an out-of-range diagnostic but withholds its unusable source location (3.8078ms)
+✔ DL-B rebuilds signal and trace frames before they reach the provider (5.4441ms)
+✔ DL-B preserves current four-state signal and bounded trace facts without treating them as ability evidence (3.7075ms)
+✔ DL-B bounds a long current trace and exposes truncation instead of claiming full coverage (1.5131ms)
+✔ DL-B model-visible frames preserve LED bit order and do not invent a reset transition (1.6443ms)
+▶ DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities
+  ✔ cross-student build (1.8923ms)
+  ✔ old snapshot (1.2245ms)
+  ✔ wrong session build (1.1091ms)
+  ✔ old generation (0.769ms)
+  ✔ run references are not silently reinterpreted as HDL results (0.7277ms)
+✔ DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities (8.4477ms)
+✔ DL-B current guard discards a late body after sequence, result, or session changes (2.4614ms)
+✔ DL-B repairs one fabricated HDL citation and keeps unknown aggregate usage (2.1641ms)
+﹣ DL-B authorized three-job real HDL guidance batch (0.2684ms) # SKIP
+﹣ DL-B authorized HR-DL-03 real semantic-fix batch (0.1251ms) # SKIP
+✔ teacher candidates accept one to three items and aggregate actual usage (30.6665ms)
+▶ blueprint, patch, and rubric trial remain teacher-reviewable proposals
+  ✔ blueprint (1.0607ms)
+  ✔ patch (0.7668ms)
+  ✔ rubric_trial (0.6602ms)
+✔ blueprint, patch, and rubric trial remain teacher-reviewable proposals (4.6791ms)
+▶ teacher validators rebuild every body mode without unknown model fields
+  ✔ candidates (1.0663ms)
+  ✔ blueprint (0.7832ms)
+  ✔ patch (0.7092ms)
+  ✔ rubric_trial (0.6143ms)
+✔ teacher validators rebuild every body mode without unknown model fields (5.0469ms)
+✔ teacher candidates reject an oversized list after one repair (1.341ms)
+✔ patch requires a blueprint and base revision without calling the provider (0.3832ms)
+✔ unauthorized references are rejected before provider invocation (0.2811ms)
+✔ student help works with no learner history and returns control (5.0272ms)
+✔ student validator rebuilds the body without unknown model fields (2.8294ms)
+✔ Chinese student questions repair English visible output once (4.506ms)
+✔ Chinese student questions repair English output after a Chinese full-stop title (1.054ms)
+✔ Chinese student questions repair English output after a newline title (0.8805ms)
+✔ English student questions ignore quoted Chinese when matching the primary language (0.6907ms)
+✔ Chinese primary questions ignore a trailing English prompt injection (0.7351ms)
+✔ valid C labels and reference-ID substrings in filenames remain visible (0.9602ms)
+▶ student-visible fields repair opaque IDs, UUIDs, and hashes while structured refs remain
+  ✔ reference ID (1.2006ms)
+  ✔ UUID (0.5234ms)
+  ✔ hash (1.0739ms)
+✔ student-visible fields repair opaque IDs, UUIDs, and hashes while structured refs remain (4.5351ms)
+✔ student-visible language and internal-ID violations fail closed after one repair (0.9932ms)
+✔ disabled help is policy-blocked with zero provider calls (0.2992ms)
+✔ untrusted prompt injection remains data and cannot grant capabilities (0.7669ms)
+✔ whole-solution and student-operation flags fail closed (0.4503ms)
+✔ tool-loop requests cannot exceed three provider calls (0.2563ms)
+✔ deadline aborts a slow provider and late output is not accepted (67.2194ms)
+✔ explicit cancellation before work prevents provider invocation (0.9029ms)
+✔ cancellation interrupts a provider that ignores AbortSignal (13.7507ms)
+✔ cancellation interrupts a current guard that never settles (17.6922ms)
+✔ deadline interrupts a current guard that never settles (14.872ms)
+✔ current guard result is discarded when cancellation happens before it returns (4.8703ms)
+✔ deadline interrupts a post-provider current guard (31.8085ms)
+✔ post-call current guard discards stale output (1.9961ms)
+✔ missing provider usage remains unknown rather than zero (0.8344ms)
+✔ exhausted budget preserves the request without provider invocation (0.3404ms)
+✔ provider failure is explicit and retryable without hidden retries (0.4519ms)
+✔ a failed second provider call makes aggregate usage unknown (0.4445ms)
+✔ a cancelled second provider call makes aggregate usage unknown (31.7192ms)
+✔ a timed out second provider call makes aggregate usage unknown (25.1979ms)
+✔ DeepSeek adapter fixes approved configuration and performs no implicit call (25.0119ms)
+✔ DeepSeek input budget rejects over 16K before injected SDK invocation (1.1139ms)
+✔ the repair instruction is part of the shared input limit (2.0951ms)
+✔ B3 fixed synthetic fixture matrix keeps all eight evidence and feedback boundaries explicit (3.2412ms)
+✔ B3 produces a strict evidence-grounded body and A4 accepts it through the real analysis transaction (4330.0068ms)
+▶ B3 rejects unsupported targets, fabricated references, and policy-invalid evidence semantics
+  ✔ unknown target (2992.8774ms)
+  ✔ fabricated reference (2882.5232ms)
+  ✔ assisted state without observed help (3033.52ms)
+  ✔ checked state without supporting evidence (2849.699ms)
+  ✔ conflict without counter-evidence (2765.8924ms)
+  ✔ unknown discarded by resolved flag (3268.0909ms)
+✔ B3 rejects unsupported targets, fabricated references, and policy-invalid evidence semantics (17796.6995ms)
+✔ B3 review of the A4 optional B2 state seam uses real transactions and ignores injected revisions (3239.8974ms)
+✔ B3 rejects a model input that omits any reference frozen in the analysis binding (1.496ms)
+✔ B3 core rejects an authorized reference set that omits a frozen binding reference (0.3749ms)
+▶ B3 shares the three-call, deadline, cancellation, usage, lease, and currentness boundaries
+  ✔ dynamic budget stops before a second provider call and preserves first usage (1.4368ms)
+  ✔ an already exhausted cross-worker ledger makes no provider call (0.3903ms)
+  ✔ stale lease and passive capture changes stop before the provider (0.543ms)
+  ✔ explicit analysis survives a capture-only change while preserving unknown (0.6617ms)
+  ✔ provider failure keeps unknown usage and cancellation sends nothing (1.9524ms)
+  ✔ an input preflight rejection releases the unsent persistent reservation (0.6574ms)
+  ▶ reservation completion rechecks cancellation, deadline, currentness, and dynamic budget before sending
+    ✔ cancelled (1.236ms)
+    ✔ deadline (1.1085ms)
+    ✔ state revision (1.2341ms)
+    ✔ budget withdrawal (0.5971ms)
+  ✔ reservation completion rechecks cancellation, deadline, currentness, and dynamic budget before sending (5.0319ms)
+  ▶ a hanging post-reservation current read releases the reservation on cancellation or deadline
+    ✔ cancelled (1.5184ms)
+    ✔ timed_out (509.6697ms)
+  ✔ a hanging post-reservation current read releases the reservation on cancellation or deadline (511.8292ms)
+✔ B3 shares the three-call, deadline, cancellation, usage, lease, and currentness boundaries (523.9233ms)
+▶ B3 bills only the provider calls that actually left the process
+  ✔ an outer cancellation settling before a delayed release still bills zero calls (29.0213ms)
+  ✔ a cancellation after the request was sent keeps the call and its unknown usage (0.9284ms)
+  ▶ a release that fails or meets a concurrent recovery keeps the reservation and the count
+    ✔ storage failure (0.5673ms)
+    ✔ concurrent recovery (0.4709ms)
+    ✔ a stale recheck whose release fails keeps the count without any cancellation (0.4265ms)
+  ✔ a release that fails or meets a concurrent recovery keeps the reservation and the count (1.9257ms)
+  ✔ a provably unsent cancellation leaves the next worker the full three-call budget (0.9589ms)
+✔ B3 bills only the provider calls that actually left the process (33.6712ms)
+✔ B3 uses the approved DeepSeek analysis schema through an injected offline invoker (3.7588ms)
+﹣ B3 authorized real-model learner-analysis candidate uses one synthetic A4 job (0.0724ms) # SKIP
+✔ DL-B semantic-fix gate rejects missing authorization without network (868.4363ms)
+✔ DL-B semantic-fix gate rejects missing credentials without network (914.8806ms)
+✔ DL-B model gate rejects missing authorization without network (796.5805ms)
+✔ DL-B model gate rejects missing credentials without network (662.1629ms)
+✔ B3 model gate rejects missing authorization without network (630.5584ms)
+✔ B3 model gate rejects missing credentials without network (888.9504ms)
+✔ P2 model gate rejects missing authorization without network (750.5591ms)
+✔ P2 model gate rejects missing credentials without network (624.1644ms)
+✔ P2 model evidence observes bounded response metadata and latency (56.4304ms)
+✔ P2 model evidence classifies a non-success HTTP response without persisting its error body (1.7923ms)
+✔ P2 model evidence classifies network failure without persisting raw errors (2.5666ms)
+✔ P2 model evidence classifies cancellation without persisting raw errors (0.6435ms)
+✔ P2 model evidence classifies timeout without persisting raw errors (0.4433ms)
+✔ P2 model evidence rejects credential, lease and reasoning fields recursively (1.8822ms)
+✔ P2 real-model runtime gate rejects a non-locked Node before provider setup (0.6488ms)
+✔ P2 real-provider failure probes require their own explicit authorization (0.4499ms)
+✔ P2 30-job performance batch requires its own explicit authorization (0.3953ms)
+✔ P2 two-job semantic-fix batch requires its own explicit authorization (0.8343ms)
+﹣ P2 real-provider cancellation, timeout and HTTP failure probes (8.7323ms) # SKIP
+✔ help acceptance activates ready attempt and atomically stores question, receipt, event, and job (4160.6552ms)
+✔ help acceptance derives its exact 45-second deadline from one clock reading (2996.3434ms)
+✔ new help replaces the old help job and increments the shared epoch once (2858.8854ms)
+✔ capture and reminder controls preserve the original accepted help input (2961.6999ms)
+✔ disabled policy and an active limited check reject help before a tutoring job is created (8342.6726ms)
+✔ help rejects stale revisions, foreign object references, and unauthorized actors without model work (3733.4167ms)
+✔ a corrupted persisted request binding returns a typed state conflict (2189.3067ms)
+✔ context assembly exposes only the selected snapshot, relevant claims, actual help, and approved paragraphs (2323.4017ms)
+✔ empty learner history stays explicit unknown and does not block help (2659.0416ms)
+✔ bounded resource reference IDs complete the real C3 message and action chain (2293.5607ms)
+✔ bounded code reference IDs complete the real C3 message and action chain (2510.5202ms)
+✔ resource and unavailable-run references remain exact, scoped, and explainable (3.4829ms)
+✔ instructions inside an approved resource remain untrusted and cannot expand help capabilities (1.5069ms)
+✔ current guard distinguishes cancellation from stale policy, version, and recovery state (0.6417ms)
+✔ authorized execution returns a traceable C3 handoff and discards a post-model stale result (1.269ms)
+✔ authorized execution persists one C3 message/action with the held lease and cumulative call ledger (2282.4023ms)
+✔ tutoring composer can attach the teacher agent without taking over student jobs (3051.6063ms)
+✔ long unresolved teaching text survives C3 persistence and exact result replay (2174.099ms)
+✔ a withdrawn trusted budget blocks the next provider call before reservation (3125.3923ms)
+✔ persisted call budget is shared across workers and reserves before provider invocation (1.4031ms)
+✔ cancelled and expired jobs end before claim without invoking the provider (0.6757ms)
+✔ an input-limit rejection before the invoker releases only its unsent persisted reservation (0.6389ms)
+﹣ P2 real-model student help, persisted content and undisplayed cancellation (0.0885ms) # SKIP
+✔ P2 performance summary uses nearest-rank percentiles (0.1441ms)
+✔ P2 performance fixture fixes 30 authorized scenarios without model access (0.5448ms)
+✔ P2 semantic-fix fixture fixes two authorized scenarios without model access (0.2411ms)
+﹣ P2 authorized two-job real student-help semantic-fix batch (0.0553ms) # SKIP
+﹣ P2 authorized 30-job real student-help performance batch (0.0404ms) # SKIP
+ℹ tests 160
+ℹ suites 0
+ℹ pass 153
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 7
+ℹ todo 0
+ℹ duration_ms 49756.3379

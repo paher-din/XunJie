@@ -49,10 +49,10 @@ not ok 6 - H4 stop before dispatch and provider failure never prevent confirmed 
   error: |-
     Expected values to be strictly equal:
     + actual - expected
-    
+
     + 'unavailable'
     - 'provider_error'
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: 'provider_error'

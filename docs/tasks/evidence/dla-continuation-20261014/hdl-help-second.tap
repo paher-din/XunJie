@@ -147,9 +147,9 @@ not ok 19 - H4 normal HTTP freezes explicit objects, automatically consumes orig
   failureType: 'testCodeFailure'
   error: |-
     {"requestId":"0636eaa3-ef8e-49e3-9eef-759434b6ae83","error":{"code":"FORBIDDEN","message":"Access denied.","retryable":false,"recovery":"Use an account authorized for this resource."}}
-    
+
     403 !== 200
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: 200

@@ -74,9 +74,9 @@ not ok 12 - management withdrawal commits stop with permission state; a real rol
   failureType: 'testCodeFailure'
   error: |-
     {"requestId":"006bbff7-96d9-49bd-bdda-d9eac82c41fa","error":{"code":"UNAUTHENTICATED","message":"Authentication required.","retryable":false,"recovery":"Sign in using a valid account."}}
-    
+
     401 !== 200
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: 200

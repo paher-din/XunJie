@@ -8,9 +8,9 @@ not ok 1 - H4 normal HTTP freezes explicit objects, automatically consumes origi
   failureType: 'testCodeFailure'
   error: |-
     The expression evaluated to a falsy value:
-    
+
       assert(sent.includes(op.operationId))
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: true

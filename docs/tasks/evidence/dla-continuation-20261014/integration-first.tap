@@ -319,9 +319,9 @@ not ok 51 - C4 teacher grant and student revision resume never revive the stoppe
   failureType: 'testCodeFailure'
   error: |-
     {"requestId":"3b585b5a-019f-492b-827d-a0193d4ad95d","error":{"code":"RATE_LIMITED","message":"Request rate limit reached.","retryable":false,"recovery":"Wait before explicitly retrying."}}
-    
+
     429 !== 200
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: 200
