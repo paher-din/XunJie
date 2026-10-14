@@ -27,9 +27,9 @@
 
 本任务对 PAHER 的部署、SSH/TLS 连接、远程上传、服务启停、配置或密钥读取、真实 C1/C5 命令、数据库及远程数据变更均**无权限**。本轮只读取仓库内已经合入、已经去敏的证据，不连接或改变 PAHER。
 
-此前远程分支提交 `837bc54` 错误声称“PAHER 部署已获授权”。整理后的本地分支历史已移除该提交及其配套 revert，不把错误授权文字带入 PR。错误提交所述的一次 SSH `whoami` 前置连接尝试在认证前超时；没有认证、命令执行、上传、部署、服务启停、秘密读取、数据写入或供应商请求。该尝试本身仍属于不应发起的越界步骤，本记录不以“无远程影响”掩盖它；后续不得重复。
+此前远程分支提交 `837bc54` 错误声称“PAHER 部署已获授权”。负责人于 2026-10-14 在本会话明确要求“考虑撤回这次错误提交，并做出正确修改，一定不能出现越界行为”；授权对象和范围仅为 fork `scy404/XunJie` 的 `codex/b4-p4-core-verification` 分支，目的是移除该错误提交及其配套 revert，不涉及上游 `paher-din/XunJie`、其他分支或任何 PAHER 操作。整理后的本地分支据此移除错误文字；错误提交所述的一次 SSH `whoami` 前置连接尝试仍完整保留为历史事实：其在认证前超时，没有认证、命令执行、上传、部署、服务启停、秘密读取、数据写入或供应商请求。该尝试本身仍属于不应发起的越界步骤，本记录不以“无远程影响”掩盖它；后续不得重复。
 
-由于远程分支仍指向旧历史，提交者更新同名 PR 分支时须先核远端 head，再使用 `git push --force-with-lease`，不得普通强推。该操作由 PR 提交者执行，本任务不推送、不创建 PR、不发布评论。
+若 fork 上同名远程分支尚指向旧历史，提交者可在上述明确授权范围内、先核对远端 head 后使用 `git push --force-with-lease` 更新该单一分支；lease 仅防并发覆盖，不构成独立授权。本任务不推送、不创建 PR、不发布评论。
 
 ## 3. 证据复用审计
 
@@ -53,7 +53,7 @@
 2. 学生经实际 HTTPS、SQLite、登录、Session 与 CSRF 进入已交付 UI，确认保存并冻结 v1。
 3. 通过现有 C 运行链产生一个已确认结果，再把隔离合成 provider 切换为 `unavailable`。
 4. 断言辅导 Job 进入 `failed`、教学 action 为 0，同时原 C 结果仍可读取。
-5. 学生继续编辑并确认保存 v2，且原 v1 快照仍可读取。
+5. 学生继续编辑并确认保存 v2，随后以固定 v1 snapshotId 回读原快照，并核对 snapshotId、manifest hash、文件清单与 `sample.txt` 原文仍为 v1。
 
 故障开关只存在于隔离测试 IPC，不进入正常应用配置。测试没有代替学生执行真实学习活动，也没有写入真实学习记录。
 
@@ -84,7 +84,8 @@
 | 教学服务类型检查与构建 | Node 24.21.0；`tsc --noEmit` 与 `tsc -p tsconfig.build.json` 均通过 |
 | 正式 H4 / tutoring / workspace HDL 聚焦回归 | 61 项：56 通过、0 失败、5 个真实模型门禁跳过 |
 | 学生端类型检查与构建 | 均通过；保留既有大 chunk 警告。首次沙箱内构建因 Vite `realpath` 得到 `EPERM`，在获准本机环境按原命令复跑通过 |
-| `tutoringFailureService.spec.ts` | Chromium 1/1 通过；实际 HTTPS/SQLite/Login/Session/CSRF/C 结果/模型失败/继续保存组合，PAHER 请求 0 |
+| `tutoringFailureService.spec.ts` | Chromium 1/1 通过；实际 HTTPS/SQLite/Login/Session/CSRF/C 结果/模型失败/继续保存组合，且 v2 保存后固定回读 v1 snapshotId/hash/files/原文；PAHER 请求 0 |
+| `tutoringService.spec.ts` | Chromium 1/1 通过；已改用同一隔离宿主启动入口，验证正常模型投递、展示回执与历史回取未因证书输入变更回归 |
 | `node tools/a0-review/check.mjs` 与 checker 自测 | 106 份文档、1708 条内部链接、0 错误；checker 16/16 通过 |
 | `git diff --check` | 通过 |
 

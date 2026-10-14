@@ -33,6 +33,10 @@ test('模型不可用终态不产生教学投递，既有 C 结果可读且学�
     await expect(page.locator('.cw')).toContainText('文件版本 v1')
     await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
     await expect(page.getByText('已冻结快照 v1', { exact: true })).toBeVisible()
+    const frozenHead = await page.context().request.get(`${host.base}/api/attempts/${attemptId}`)
+    expect(frozenHead.status()).toBe(200)
+    const frozen = (await frozenHead.json()).data.snapshots[0]
+    expect(frozen).toBeDefined()
     const existingRun = await host.control({ kind: 'history', attemptId, outcome: 'check' })
     expect(existingRun.status).toBe('succeeded')
 
@@ -70,6 +74,13 @@ test('模型不可用终态不产生教学投递，既有 C 结果可读且学�
     expect(continued.documentVersion).toBe(2)
     expect(continued.text).toContain('student continues after model failure')
     expect(head.snapshots).toHaveLength(1)
+    const originalResponse = await page.context().request.get(`${host.base}/api/attempts/${attemptId}/snapshots/${frozen.snapshotId}`)
+    expect(originalResponse.status()).toBe(200)
+    const original = (await originalResponse.json()).data
+    expect(original.snapshotId).toBe(frozen.snapshotId)
+    expect(original.hash).toBe(frozen.hash)
+    expect(original.files).toEqual(frozen.files)
+    expect(original.files.find((file: { path: string }) => file.path === 'sample.txt').text).toBe('one two one\n')
   } finally {
     await host.stop()
   }
