@@ -20,6 +20,18 @@ const result: HdlOperationResult = { operationId: 'operation', sessionId: sessio
   frames: [frame], finalFrame: frame, sampleCount: 33, droppedFrames: 32, coverage: 'incomplete', resultHash: 'b'.repeat(64) }
 
 describe('HDL real four-state board', () => {
+  it('marks unbound optional inputs unavailable instead of offering ineffective actions', () => {
+    const html = renderToStaticMarkup(createElement(HdlBoardPane, { session, result, inputs, bindings: [
+      { signal: 'buttons', offset: 2, width: 1, port: 'button', portOffset: 0 },
+    ], pending: false, disabled: false, onInteract: vi.fn() }))
+    expect(html).toContain('BTN0: 未绑定')
+    expect(html).toContain('BTN2: 0')
+    expect(html).toContain('RESET_N: 未绑定')
+    for (const name of ['按下 BTN0', '松开 BTN0', '按下复位 RESET_N=0', '松开复位 RESET_N=1']) {
+      expect(html.match(new RegExp(`<button[^>]*aria-label="${name}"[^>]*>`))?.[0]).toContain('disabled=""')
+    }
+    expect(html.match(/<button[^>]*aria-label="按下 BTN2"[^>]*>/)?.[0]).not.toContain('disabled=""')
+  })
   it('uses the MSB-first bit index and preserves X/Z or missing data', () => {
     expect(hdlBit(frame.leds, 15, 16)).toBe('x')
     expect(hdlBit(frame.leds, 14, 16)).toBe('1')

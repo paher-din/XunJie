@@ -67,7 +67,8 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   const taskId = PREP_BUILD ? PREP_TASK_ID : assignmentId ?? ''
   const [assignment, setAssignment] = useState<AssignmentView | null>(null)
   const confirmation = useConfirmationWorkspace(init.init, taskId, assignment?.active)
-  const isHdl = init.init?.kind === 'ready' && init.init.activity.execution?.kind === 'hdl_board'
+  const hdlExecution = init.init?.kind === 'ready' ? init.init.activity.execution : undefined
+  const isHdl = hdlExecution?.kind === 'hdl_board'
   const run = useRunWorkspace(confirmation.client, init.init, !isHdl)
   const hdl = useHdlWorkspace(confirmation.client, init.init)
   const [hdlSnapshotId, setHdlSnapshotId] = useState('')
@@ -502,7 +503,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           onToast={showToast}
           boardBody={isHdl ? <HdlBoardPane session={hdl.state.session} result={hdl.state.operation} inputs={hdlInputs}
             pending={hdlPending} disabled={!runPermitted || !hdl.state.canInteract || !hdlResultCurrent}
-            currentNotice={hdlNotice} onInteract={onHdlInteract} /> : undefined}
+            bindings={hdlExecution?.configuration.board.bindings} currentNotice={hdlNotice} onInteract={onHdlInteract} /> : undefined}
           waveBody={isHdl ? <HdlTracePane session={hdl.state.session} result={hdl.state.operation} pending={hdlPending}
             currentNotice={hdlNotice} /> : undefined}
           designBody={<div style={{position:'relative',height:'100%',width:'100%',display:'flex',flexDirection:'column'}}>

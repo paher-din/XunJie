@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import type { HdlBuildView, HdlDiagnostic, HdlFrame, HdlInputs, HdlOperationResult, HdlSessionView } from '../../workspace/hdlContracts'
+import type { HdlBoardProfile, HdlBuildView, HdlDiagnostic, HdlFrame, HdlInputs, HdlOperationResult, HdlSessionView } from '../../workspace/hdlContracts'
 
 type LogicBit = '0' | '1' | 'x' | 'z'
 export type HdlLight = 'on' | 'off' | 'x' | 'z' | 'unavailable'
@@ -89,18 +89,20 @@ interface ResultProps {
 
 export interface HdlBoardPaneProps extends ResultProps {
   inputs: HdlInputs
+  bindings?: HdlBoardProfile['bindings']
   disabled: boolean
   onInteract: (inputs: HdlInputs, advanceCycles: number) => void
 }
 
 /** Existing board position, now a controlled view of the actual last confirmed frame. */
-export function HdlBoardPane({ session, result, inputs, pending, disabled, currentNotice, onInteract }: HdlBoardPaneProps) {
+export function HdlBoardPane({ session, result, inputs, bindings, pending, disabled, currentNotice, onInteract }: HdlBoardPaneProps) {
   const [cycles, setCycles] = useState('1')
   const validCycles = /^\d+$/.test(cycles) && Number(cycles) >= 1 && Number(cycles) <= 5_000_000 && Number.isSafeInteger(Number(cycles))
   const validInputs = /^[01]{16}$/.test(inputs.switches) && /^[01]{5}$/.test(inputs.buttons) && /^[01]$/.test(inputs.resetN)
   const waiting = pending || !!session?.pendingOperationId
   const active = session?.status === 'active' && !session.stopRequested && !session.terminationConfirmed
   const blocked = disabled || waiting || !active || !validInputs || !validCycles
+  const bound = (signal: 'buttons' | 'resetN', index: number) => bindings?.some(binding => binding.signal === signal && index >= binding.offset && index < binding.offset + binding.width) === true
   const frame = result?.finalFrame ?? null
   const activeAnodes = frame?.anodes.match(/0/g)?.length ?? 0
   const selectedLabel = !frame ? '尚未取得位选' : /[xz]/.test(frame.anodes) ? '位选含 X/Z'
@@ -137,15 +139,15 @@ export function HdlBoardPane({ session, result, inputs, pending, disabled, curre
         {Array.from({ length: 5 }, (_, index) => {
           const bit = hdlBit(inputs.buttons, index, 5)
           return <span className="ws-switch" key={index}>
-            <span>BTN{index}: {bit ?? '?'}</span>
-            <button type="button" className="ws-pbtn" disabled={blocked || bit === '1'} aria-label={`按下 BTN${index}`} onClick={() => change('buttons', index, '1')}>按下</button>
-            <button type="button" className="ws-pbtn" disabled={blocked || bit === '0'} aria-label={`松开 BTN${index}`} onClick={() => change('buttons', index, '0')}>松开</button>
+            <span>BTN{index}: {bound('buttons', index) ? bit ?? '?' : '未绑定'}</span>
+            <button type="button" className="ws-pbtn" disabled={blocked || !bound('buttons', index) || bit === '1'} aria-label={`按下 BTN${index}`} onClick={() => change('buttons', index, '1')}>按下</button>
+            <button type="button" className="ws-pbtn" disabled={blocked || !bound('buttons', index) || bit === '0'} aria-label={`松开 BTN${index}`} onClick={() => change('buttons', index, '0')}>松开</button>
           </span>
         })}
         <span className="ws-switch">
-          <span>RESET_N: {inputs.resetN || '?'}</span>
-          <button type="button" className="ws-pbtn" disabled={blocked || inputs.resetN === '0'} aria-label="按下复位 RESET_N=0" onClick={() => change('resetN', 0, '0')}>复位</button>
-          <button type="button" className="ws-pbtn" disabled={blocked || inputs.resetN === '1'} aria-label="松开复位 RESET_N=1" onClick={() => change('resetN', 0, '1')}>松开</button>
+          <span>RESET_N: {bound('resetN', 0) ? inputs.resetN || '?' : '未绑定'}</span>
+          <button type="button" className="ws-pbtn" disabled={blocked || !bound('resetN', 0) || inputs.resetN === '0'} aria-label="按下复位 RESET_N=0" onClick={() => change('resetN', 0, '0')}>复位</button>
+          <button type="button" className="ws-pbtn" disabled={blocked || !bound('resetN', 0) || inputs.resetN === '1'} aria-label="松开复位 RESET_N=1" onClick={() => change('resetN', 0, '1')}>松开</button>
         </span>
       </div>
     </div>

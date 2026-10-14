@@ -23,6 +23,21 @@ describe('authorized HDL Activity projection', () => {
     const value = await projection()
     expect(await verifyHdlActivity(value, 'hdl')).toBe(value)
   })
+  it('accepts original optional or partly bound buttons/reset without inventing bindings', async () => {
+    for (const omitted of [['resetN'], ['buttons', 'resetN']]) {
+      const cfg = configuration(); cfg.board.bindings = cfg.board.bindings.filter(binding => !omitted.includes(binding.signal))
+      const value = await projection(cfg)
+      expect(await verifyHdlActivity(value, 'hdl')).toBe(value)
+    }
+    const cfg = configuration(); cfg.board.bindings.find(binding => binding.signal === 'buttons')!.width = 1
+    const value = await projection(cfg)
+    expect(await verifyHdlActivity(value, 'hdl')).toBe(value)
+  })
+  it('rejects aliasing two logical signals to the same physical port bit', async () => {
+    const cfg = configuration()
+    cfg.board.bindings.find(binding => binding.signal === 'resetN')!.port = 'clock'
+    await expect(verifyHdlActivity(await projection(cfg), 'hdl')).rejects.toThrow()
+  })
   it('cannot select a different runtime using an HDL file extension or mismatched profile', async () => {
     await expect(verifyHdlActivity(await projection(), 'c17')).rejects.toThrow()
     await expect(verifyHdlActivity({ kind: 'other' }, 'hdl')).rejects.toThrow()

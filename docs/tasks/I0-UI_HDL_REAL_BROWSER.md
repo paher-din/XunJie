@@ -89,3 +89,13 @@ Robert 已明确答复“批准上述本机完整迁移及验证范围”。对�
 已经实际完成的准备：WSL内核6.6.87.2、systemd、vmx、`/dev/kvm` 和 KVM_GET_API_VERSION=12核查（没有创建VM）；公有Cloud/Node/Docker三档合计743,093,816 bytes接收逐size/SHA匹配，保留D目录收据；9fa76ad的runner/contracts公有Git archive 460,800bytes/SHA256 cfc0ab0c4b931cb012e39888491d138446d4f9bcfd98504949be63fd099a3468，主Agent逐Git blob复算34文件sourceHash精确7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852。没有复制PAHER guest磁盘/种子/密钥/数据库/ledger/旧passed。
 
 当前UI typecheck、生产build和42文件555单元全部通过；正常Chrome隔离协议共7个独立用例已执行（前4项，随后长pending/迟到Assignment/键盘3项），新长pending最初失败如实留存，修复只读按钮与可见notice后单项1/1复验通过，其它已通过项不反复累计。最新dist主入口index-VCYCL3rF.js；这仍是开发协议验证，不是本机C1/模型/正式浏览器通过。本机节点、35表业务与真实演示正在搭建，后续实际状态另记。
+
+### 4.6 2026-10-15：本机节点与业务库准备结果
+
+本机Ubuntu安装实际0升级/24新增/0删除；新VM为kernel6.8.0-142-generic、Node24.21.0、Docker29.8.2、runc1.5.2、cgroup2、overlay2、swap0，原AppArmor `xunjie-dlc-v1 (enforce)` 持久载入；实际没有9p/virtiofs/drvfs共享挂载。新guest host公钥由本人serial通道固定，新双SSH身份仅本机root700/600。四OCI完整档1,917,330,944bytes/SHA2564645f0b0aaa2ad2c3030cc2dc8cecc3b41aded0893c7537023069f09d3175ee3；43条TAR记录/15层逐config/diffID校验，镜像反例4/4通过。最初接收90秒超时部分档没有加载；真实源readiness确认C runtime765d51df…fe99，早期清单e658候选是历史值，现据原当前节点修正。仅接收非秘密OCI，不拷原磁盘/库/账本/密钥/旧passed，不改PAHER环境。
+
+原C验收首轮因搬运漏相邻公有HDL测试fixture而有3项失败，补固定9fa原blob后：guest58总/55通过/0失败/3明确跳过、真实应用/维护SSH10/10、strict类型退出0。HDL工具第一轮真实HDL10/10后C部分因本人setup的umask077使公有测试输入65534不可读而失败；仅恢复公有验收子进程原umask022，密钥/config权限保持。最终完整HDL工具真实10/10与C52总/51通过/0失败/1guest SSH明确跳过，并登记新实际validation；不把分轮重复或跳过累计成全仓通过。C指纹2ce8cb3324b8001a5e3929baf21e5b802b09b4aba82fa7c6ab2e93ecf67b9dcf，HDL指纹ed41d6ee92874c8a96bdb9530e28f9735f9e80005079708f358382ee5785c99d；受限应用key原readiness/hdl_readiness双ready=true、同代际synthetic-generation-c6772623-ba28-4c50-a853-337f77382452。原始失败与通过日志/实际node receipt留本机D目录。
+
+本机业务副本的原lock npm ci70包、SQLite :memory:原生probe、Node24.21类型/构建通过；没有编辑原依赖/锁文件。原35表工厂实际创建新库，三个synthetic-robert账号/两课程/新签名与初始化材料仅本机root受限目录；库路径由原工厂生成，不绕path验证。仍待教师原发布/分配、真实Chrome与本人模型/C3闭环。
+
+后续配置核对发现原BoardProfile允许buttons/resetN缺失或部分绑定。前端按原六个必需信号覆盖核验，额外防物理port bit重叠；optional输入从原binding决定可操作性，未绑定明确显示并disabled，不伪造已接线。新增3反例、受影响22项与typecheck/build通过；新dist主入口index-DVKKNh5Z.js。新本机工具的初始化失败重试、启动期间SIGTERM、默认模型关闭与仅student_help用途守卫3/3无副作用反例通过；启动入口以原flock排除pending阶段重复宿主，不覆盖原PID。模型与真实浏览器尚未据此算通过。

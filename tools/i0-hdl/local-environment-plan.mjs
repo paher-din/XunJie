@@ -34,7 +34,7 @@ export function localEnvironmentPlan() {
       deployCurrentMainH3:false,businessAndUi:'Current reviewed main APIs plus this task owned HDL UI; guest remains the original frozen runner'},
     frozenImages:[
       {role:'C compiler',image:'sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa',source:'Official GCC OCI manifest listed below'},
-      {role:'C runtime',image:'sha256:e658256304c8484cf20c0e49a1b5a49178e9fa48fba7da85cff9368c38bae09e',source:'Original non-secret derived OCI archive; not asserted to be publicly pullable'},
+      {role:'C runtime',image:'sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99',source:'2026-10-14 live restricted readiness and verified original non-secret OCI archive; supersedes the earlier historical e658 candidate'},
       {role:'HDL build',image:'sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d',source:'Original non-secret derived OCI archive; not asserted to be publicly pullable'},
       {role:'HDL runtime',image:'sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5',source:'Original non-secret derived OCI archive; not asserted to be publicly pullable'},
     ],
