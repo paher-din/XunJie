@@ -452,4 +452,116 @@ C-ENTRY-04～06的获准服务端批次已实测通过，07的C证据与操作�
 
 本轮发布写集限本文、三份本人验证脚本和十份新去敏HTTPS JSON；既有14JSON与I0-C历史原文不改。原source/secret/config/database/.env/CI、A/B/UI代码与作者稿、product/planning/reference/AGENTS只读或按明确排除项保留，G3无关改动不暂存。验证脚本syntax/未知状态序列、清单字节/hash、HTTP原JSON一致性及实际秘密值扫描、内链/空白均核后提交；普通推送本PR并按H交A复核，实际URL/提交回读在本会话交付。
 
+## 14. 2026-10-14 C 配合浏览器方案与 HDL H3/H4 补交
+
+### 14.1 本批依据、范围与实施前记录
+
+负责人要求完成 [#30 当前安排](https://github.com/paher-din/XunJie/issues/30#issuecomment-6155068633) 的 C 部分。本批复用 §13 的真实20项、库、账号及对象，不重跑整包，不重新初始化或生成秘密。已读 README/AGENTS，PRD §1.1/4.5/5/6/8，MVP_SPEC §1.4/2/M-03/M-09/M-10/4～7，TECH_DESIGN §1～2/4.3～5/7.4～9，TEAM §2/7 的 DL-C/8.5～8.6/9，DL-0 §2.3，I0_UI_SPEC、I0_UI_CLIENT_CONTRACT 与 IMPORT_SOURCE；契约依据为原 H-01～06、DL-AC-03～09、AC-02～04/06/10/12/15、NFR-03/04，完整验收门槛不变。
+
+计划：只读核 PAHER 浏览器候选/位置/profile、WSL/端口/保留文件元数据及原认证 readiness；交 C 侧运行窗口、精确信任与账号最小领取提案给 A/UI。接收 PR #56 固定运行源 89c85ed 和原始字节清单，只核源/归档，不安装依赖、组装35表配置或启动新宿主。基于该固定源补 H4 真实只读接口/当前性取得与缺口、H3 层级/采样/占用/command-result/准确写集和2800向量预算；共享接缝仍是提案，不实现 ALU。
+
+可写仅本文、本人 evidence/dla-c-handoff/ 下本批核查脚本及 evidence/c-entry-followup/ 的去敏输出/固定源接收副本。受控现有配置/密钥/密码/数据库只读，原 I0 24 表库保留；A/B/UI 源码与作者稿、product/planning/reference/AGENTS 只读。使用现有工作树/PR #55，完成检查后普通提交/推送并向 #30/#38 回交，不合并或关闭 Issue。
+
+原批准覆盖 WSL/root、既有 I0 宿主与单 Node 严格客户端，不覆盖 Windows 浏览器信任/账号交付通道、35表现场、ALU/节点维护或模型。只读信息不代替 UI 双方确认；尚缺浏览器/profile/时间或新操作授权时标明确责任人与未执行，不假定认可或到期视为批准。
+
+### 14.2 PAHER 当前现场：原临时库已缺失，节点未运行
+
+2026-10-14 12:23（Asia/Shanghai）实查，见 [现场只读输出](evidence/c-entry-followup/onsite-readonly.json)、[VM状态](evidence/c-entry-followup/service-state.json) 与 [Windows浏览器条件](evidence/c-entry-followup/windows-browser-conditions.json)。核查命令为 WSL/root、Node24.21.0 执行 [只读脚本](evidence/dla-c-handoff/inspect-entry-followup.mjs)；服务状态另用 `systemctl show xunjie-c1-vm.service --property=ActiveState,SubState,Result,ExecMainStatus`，没有 start/restart。
+
+| 对象 | 本次实读事实 | 当前影响 |
+| --- | --- | --- |
+| 既有I0秘密/配置 | §13原五个文件仍为root/0600；证书公开指纹、SAN与有效期一致 | 可保留复用；没有输出私钥、密码或签名值 |
+| 既有I0库 | 配置所指 `/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite` 当前不存在，父目录也不存在；首次只读打开因此失败 | 旧Assignment/Attempt/Run仅有§13历史证据，不能宣称现仍可读或新建同ID代替；没有重建库/改配置 |
+| 原节点 | `xunjie-c1-vm.service` 为inactive/dead，ExecMainStatus=0；原认证readiness与hdl_readiness均DEPENDENCY_UNAVAILABLE | 当前ready/profile/validation/代际不能确认；不能沿历史true开放运行，未维护节点 |
+| 入口/WSL | Windows与WSL的127.0.0.1:3443均未监听；WSL启动时间为2026-10-14 12:21:08 | 两侧端口空不证明Windows→WSL HTTPS可通；库缺失原因未查明，不能把启动时间当作删除原因证据 |
+| 浏览器位置 | PAHER Windows/p3148；Chrome155.0.8059.40、Edge155.0.4283.45；WSL无google-chrome/chromium/firefox | 使用Windows现有浏览器作为候选，不安装新浏览器 |
+| profile/信任 | 两浏览器默认User Data下均有Default；Windows CurrentUser/Root、LocalMachine/Root均无本证书相同DER摘要 | UI尚未选定profile；没有读取cookie/历史/账号库，没有浏览器握手、证书导入或警告绕过；store检查不等于完整浏览器信任判定 |
+
+本节更新此前“库保留”的当前可用性，保留§13完成时点的事实与原证据。缺失不补造，不改旧结果；需要A/负责人确定原库恢复来源/范围，若无获准可恢复副本，再由A提出fresh-only新库及新对象方案。本批没有自动改为重新初始化，也不把恢复/重建纳入原单Node授权。
+
+### 14.3 交 A/UI 的浏览器、账号与运行窗口方案（C侧已核；待双方核对）
+
+**固定来源：** I0服务端仍9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77/LF2；其中apps/student tree为35e190c6101a6172c171a5f8756836f61509aefe，与89c85ed及0e68325中的学生树相同。这是现已交静态产物的源，不代替UI随后接线的源码SHA；UI回交实际接线SHA后再核组合。
+
+| 项目 | C提供的具体方案/条件 | 待确认角色与权限 |
+| --- | --- | --- |
+| 浏览器/profile | 首选现有Windows Chrome155；已存在 `C:\Users\p3148\AppData\Local\Google\Chrome\User Data\Default`，只读核存在。建议UI联调改用独占新目录 `C:\Users\p3148\AppData\Local\XunJie\CEntry-UiProfile-20261014`，避免写入日常profile；该目录未创建 | UI确认Chrome、p3148及具体profile，回交实际版本/目录。若选Edge须另给准确同机profile；不能将C候选写为双方已同意 |
+| 同机访问 | 仅原Origin https://127.0.0.1:3443，WSL原main只监听127.0.0.1；现 `.wslconfig` 的networkingMode=NAT | 恢复获准且readiness通过后，先WSL严格Node GET health，再Windows不登录TCP/严格TLS核SAN/指纹，最后所选浏览器无警告正常访问。失败回交，不添加portproxy/0.0.0.0/跨机入口 |
+| 精确信任提案 | 只复用现有CA:false自签server证书；先核DER SHA256 `c3f8ed37e07c341b0fcc5558d0fc12fab47913ef71d1ec8077a0e08444475173`、SAN、有效期。若UI确认缺信任，候选为仅Windows用户p3148的CurrentUser/Root中显式添加这一张公开证书；不导私钥、不改LocalMachine/Root | A先核现有CA:false证书在实际Chrome的可用性及方案；负责人须明确批准该用户信任库写入。独占profile并不将Windows用户信任隔离到该profile。若当前证书不适用，另提准确证书方案，不能自动生成CA或关闭验证 |
+| 拟执行信任步骤 | 获准后C仅导出现有公开证书到获准Windows本机路径，前后核上述DER摘要；UI/执行人通过Windows用户证书管理器或原 `certutil -user -addstore Root <public-cert>` 添加精确对象，再在所选浏览器核无警告TLS。全过程尚未执行 | 原授权明确排除系统/浏览器信任。信任将影响该Windows用户的其他消费方；后续移除同一证书/临时文件也须覆盖删除对象的授权，不擅自操作 |
+| 账号领取 | 公开仅synthetic-i0-student-a及原initializer.json引用，默认只领该学生；教师/其他四账号按具体用例另限定。原root受控进程内存消费不等于浏览器已经领到密码 | 最小新增通道提案：UI已有获准的PAHER本地浏览器自动化进程以匿名管道从WSL/root读取**所选一条**loginName/password，仅在进程内存填UI正常登录字段，不经CLI参数/终端/剪贴板/文件/聊天/日志，不传整份initializer。该跨WSL/Windows秘密消费对象须A核对并获负责人许可；未实现、未发送秘密、未假定已有此自动化能力 |
+| 正常登录/合法入口 | 原POST /api/sessions→GET /api/session→原Assignment/bootstrap。固定历史对象和URL直接引用 [§13 UI材料](evidence/c-entry-https/ui-handoff.json)，不另造ID或深链 | 当前旧库缺失，原对象不可用。恢复前不登录；恢复后正常Session/Origin/CSRF，不能预填cookie绕过登录。UI必须给正常登录交互及分配选择/空态的实际接线 |
+| 页面缺口 | 固定UI main.tsx有task/:taskId；TaskRoute仅PREP_BUILD+准备ID进入I0准备页，正式构建走原WorkspacePage。准备ID不代表合法Assignment；未见正式Assignment到该页面的已交接线 | UI补正常登录、本人分配→现有页面、未分配与暂停显示；有403/未知如实显示，不把bootstrap API URL声称为前端深链，不由C新增页面 |
+| 运行窗口 | 提议在恢复/操作批准、A核配置、UI回交profile和接线SHA后，由UI确认一个30分钟同机窗口；C执行启动、就绪及停止，UI操作浏览器；未约定具体起止，不表示入口在线 | A协调确认条件；UI确认实际时间。窗口末C只SIGTERM本人进程、核原Job/Session终止；未确认保持cancelling/outcome_unknown，不停节点、不删除保留材料 |
+
+信任依据为 [Chromium当前官方说明](https://chromium.googlesource.com/chromium/src/+/main/net/data/ssl/chrome_root_store/faq.md)：Windows Chrome消费显式用户信任，CurrentUser/Root属于其读取范围；[certutil官方说明](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/certutil)给出用户store/addstore能力。这些说明不证明当前CA:false证书已经被实际浏览器接受。本批只读核与提案无需等待A完成全部历史证据实审，实际写入/恢复/启动依对应门禁。
+
+分批运行沿评论次序：身份/合法入口/空态→bootstrap/恢复读取→保存/ACK/head/快照→原运行/停止/历史产物；C只响应具体workspace/records/runner问题、原对象同ID查询及输出。无具体新增代码/失败不重跑20项。浏览器未执行不能代填H-01～06通过；A继续负责本人实审/visibility手册修正与模块修复。
+
+### 14.4 DLA-H4：已有读取、current规则及样例缺口
+
+本节以 [PR56固定源](https://github.com/paher-din/XunJie/tree/89c85ed04db5a55ddebdc95c27303f0ff76fa31c/apps/teaching) 为准，完整字段/代码摘要与**说明性投影**见 [H4读取清单](evidence/c-entry-followup/h4-read-contract.json)。说明性投影不是实际节点输出、完整DTO或新增验收；本批节点未运行且35表正常组合未执行，无法补真实目标Build/Session/Operation/current样例，明确保留该缺项。
+
+| 已有真实接口/读法 | 返回与使用限制 |
+| --- | --- |
+| GET /api/hdl/builds/:id；hdl.readBuild(tx,actor,buildId) | 原request/result/status/jobId；result可为null。核snapshot所属/hash、scope、配置/版本、持久原结果hash。request含快照源码，不能整包送B；仅A授权投影必要源码/去敏诊断 |
+| GET /api/hdl/sessions/:id；hdl.readSession(tx,actor,sessionId) | 原Session身份、Build/快照/版本、revision/confirmedSequence/simTimePs、pendingOperationId、stopRequested、terminationConfirmed。GET只读不推进，不替代当前授权 |
+| GET /api/hdl/sessions/:id/trace?afterSequence=-1；hdl.readTrace(tx,actor,id,afterSequence) | 单页返回一个后继Operation及nextSequence；不是operationId精确读。无记录operation=null；pending时result=null、nextSequence不推进，调用方停止忙循环，等原Job/原操作再查 |
+| 原节点hdl_query / hdl_result | 仅应用受控SSH原identity；program的初始结果operationId=sessionId，后续为原Operation identity.id。不能从浏览器/模型直连SSH或用另一个ID代查 |
+
+供UI操作表核对的已有写入口均为正常Session/Origin/CSRF与原idempotency-key接纳；公共body含recoveryGeneration和expectedAttemptRevision，不由页面构造ActorContext：
+
+| 操作/已有POST | 其余固定输入及回执 |
+| --- | --- |
+| 构建 /api/attempts/:id/hdl/builds | snapshotId；返回原receipt/result中的buildId/jobId，后续读原Build，构建成功且terminationConfirmed才可装载 |
+| 装载/替换 /api/attempts/:id/hdl/programs | buildId；替换须同时replaceSessionId/expectedSessionRevision；回sessionId/operationId/jobId，不把受理当active |
+| SW/按钮/reset/推进 /api/attempts/:id/hdl/interactions | sessionId/expectedSessionRevision/expectedSequence、inputs={switches:16位二值串,buttons:5位二值串,resetN:1位二值串}、advanceCycles；同一命令施加输入并显式推进，按下/松开分别发起；回原Operation/Job，不用UI定时器产生模拟时间 |
+| 停止 /api/attempts/:id/hdl/controls | action=stop及reason；回stopRequested=true，只表示受理。查同一原Session/Job至terminationConfirmed，不补发program或把超时当已停 |
+
+保存/快照沿既有C2与H-05接口；HDL求助当前不可用，不能把B静态提案或fixture消息填成真实回执。诊断位置只给确认快照的有效file/line，未知保持unavailable。UI独立列已有/模拟/缺失与实际按钮消费，不由本表宣告页面已接。
+
+**状态消费样例：** pending的active Session+旧confirmedSequence只表示旧帧，不能当新输入已应用；stopping+terminationConfirmed=false表示停止未确认；stopped+true才释放原占用。替换是显式replaceSessionId+expectedSessionRevision、原Session确认终止后新Session revision=1/sequence=0，旧结果保留；outcome_unknown仅同原身份查询，不能新建Session重发。新草稿不改变旧Build；换快照/Build/Session/sequence/代际后旧帮助均不可作为当前。数码管低有效、X/Z与Trace dropped/coverage照实消费，不从ALU数值补正确板输出。
+
+**同事务current取得提案：** A从正常Session授权，在一个SQL事务内读课程成员/账号、Assignment/活动控制、本人Attempt/decisionEpoch/learnerStateRevision/代际、原Help Job/冻结选择，再调用以上C reader。显式核同course/student/attempt/activity、snapshotId/hash、buildId/artifactHash/configurationHash、board/mapping/runtime/engine与Session/Operation所属、sequence/revision、finalFrame模拟时间/resultHash。pending、停止、替换、过时与终止不明拒绝作为当前；事务外才调模型/网络。调用前/返回后/候选提交/Delivery/Receipt接纳各复核原冻结链，不自动改成最新对象。
+
+**尚未实现、请A汇总确认的最小C接缝：** `readOperation(tx,actor,operationId)` 精确读，先复用Session/Build授权，核request_json的identity/请求摘要、row与result原字节hash、Session/Build/快照/sequence/revision/finalFrame绑定；pending结果保留null。`readTrace`现有校验不能冒充此完整校验。`readHdlCurrent(tx,actor,selection)`只作同步事务投影，不自建公开路由、查询节点或替A作身份授权；返回原字段与明确当前性原因，具体status/error映射经A/B确认。旧ObjectRef不能把runId充buildId；新hdlSelection及C3输入hash/投递接线仍是A §18.3待确认提案。
+
+未来C可写范围为workspace/hdl.ts、hdl.test.ts、必要hdl-inputs.ts及records已有student_question冻结/accepted-input hash对应实现与测试；由A先固定新增字段/函数/投影和准确调用方清单。A负责正常授权/宿主装配，B负责内部上下文适配，UI负责操作表/页面。当前fixed digital-logic.ts故意把help置DEPENDENCY_UNAVAILABLE，不在本批放开；不调用模型。
+
+### 14.5 DLA-H3：层级、采样、占用和2800向量的精确执行提案
+
+沿用 [首批H3](https://github.com/paher-din/XunJie/issues/38#issuecomment-6147371151) 与 [A固定会审§18.2](https://github.com/paher-din/XunJie/blob/87a3b795b0e457445edbcd40ecf985e3a0dac012/docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#182-h3alu可信行为检查的a会审结论与待确认提案)，不重新制作节点材料。下列都是待A会审/负责人确认的新增方案，未实现、未冻结共享契约。
+
+1. **层级语法/解析：** 绑定用结构化 `{instanceSegments:string[],signal:string,offset:number,width:number}`，每段沿原identifier白名单 `[A-Za-z_][A-Za-z0-9_]{0,127}` 且不以xunjie_开头；最多16段、拼接后1024字符。路径锚定受信wrapper的 `xunjie_board.dut`，只解析这一Build的elaboration；拒绝点号嵌入段、转义标识符、斜线、通配符、任意索引表达式/宿主路径、系统任务、任意VPI脚本。S允许同一2位端口或两个显式1位引用，逐bit冻结顺序，不假设S0/S1命名。须为同一显式ALU实例的真实输入端口A/B/Cin/M/S与输出F/Cout，宽度4/4/1/1/2/4/1；拒绝inout/别名跨实例/重复位，核真实direction及左右界，按right+方向映射offset。普通命名/嵌套层级可自选；生成块/escaped名称本版先明确不支持并报配置不可用，不误判学生功能错。教师确认bindingVersion/hash只确认可定位，不确认功能正确；板SW映射仍由学生选择、逐bit无重叠。
+2. **稳定采样提案alu-lowphase-3samples-v1：** 沿现有100MHz、5000ps半周期、全局1ps～1fs精度换算及VPI只读同步回调；输入在低相位+1ps施加，先弃第一低相位，再取第2/3/4个低相位的只读样本（20/30/40ns）。三次实际A/B/Cin/M/S必须和该向量一致；被评分F及加法Cout须为确定值且三次相同，才比较。输入不符为绑定/未完成；有已核输入而评分输出X/Z为行为失败；三次输出改变、缺样本、时间不符/零时死循环为incomplete/unknown，不passed。固定采样窗是待批准的可观察稳定条件，不证明任意RTL以后永不改变；不能自动扩等待时间或反复取到一次正确值。未定义Cout可X/Z而不评分，公开板卡Trace仍独立按真实输出绘制。
+3. **占用约束的最小选择：** 原SQL索引 `hdl_occupied_attempt` 对每个Attempt、termination_confirmed=0唯一；原hdl-node.program也拒绝同Attempt第二个未终止Session，全节点最多2个。建议本版**保持这两个约束不变**：学生交互Session未确认终止时拒绝/标检查尚不可用，学生显式停止并确认后再显式发起独立check Session；不自动停止、替换、排队重发或恢复学生Session。检查结束后也不自动装载。这样不必DDL/扩大并发；若负责人要求边交互边独立检查，则须另审purpose占用索引、节点配额/控制接缝及schema，不能仅绕过SQL约束。
+4. **command/result提案：** 新受限 `hdl_alu_check` request冻结原identity/scope、checkId/jobId、成功buildId/artifactHash/snapshotId/hash/configurationHash、bindingVersion/hash、rule/validator/vectorSetHash/samplingProfileVersion、board/mapping/runtime/engine/images/sourceHash、代际/decisionEpoch。仅获准配置派发；新purpose/命令联合类型先确认，不把它塞成现有interact或TextScope course_check。一个原Job/独立Session内部有界批次执行，按原身份查询/取消，重放返回同Job，不新建check补未知。对外结果只给绑定/版本、状态/coverage/去敏类别、terminationConfirmed/resultHash和私有证据引用；原四态样本及比较器结果留受控资产，不进入学生/B上下文。passed须2800完整比较、规则/绑定一致且确认终止；failed指明确题目域不符；incomplete/unknown/cancelled与原Job的精确映射由A/C确认，不扩原公共status集合。
+5. **限额/向量：** [预算自检](evidence/c-entry-followup/h3-budget.json)重新核4096=2800+1296；逻辑2048、加法512（F/Cout）、A>B减法240（仅F）。按M/S/A/B/Cin升序枚举定义域，32向量一批，共88批，每向量4周期，11200周期/112000000ps。每批96个被比较样本≤4096；内部紧凑私有行 `[index,simTimePs,17位四态观察值]` 上限70字节，batch信封上限2048字节，含全部8400样本、88信封与初始化/结束预算774368字节<1MiB，单包8768字节<64KiB。必须在编码/落盘前检查真实字节，不能照用现有完整SignalFrame/OperationResult重复字段后仍声称该预算成立。保持step≤2秒、cycles≤500万、Session≤30分钟/idle≤5分钟、总2Session及原资源/公平调度；建议检查Job整轮≤原120秒。88×2秒上界超过整轮期限，因此数学预算不保证吞吐，实际2800必须实测同时满足两者；未完成即incomplete，不加时/删向量记通过。
+
+**准确待确认写集：** C新增 `runner/alu-check.ts`（窄校验/比较与反例）、`runner/alu-check.test.ts`；修改 `contracts/runner/hdl.ts`（受限命令/结果/purpose）、`runner/hdl-profile.ts`（结构化绑定/版本/预算验证）、`hdl-ports.c`（编译后层级/端口解析）、`hdl-bridge.c`（只读原始语义采样，不接受学生VPI）、`hdl-executor.ts`、`hdl-session-worker.ts`、`hdl-node.ts`、`hdl-ledger.ts`（专用受控检查/私有结果与原停止）；`server/workspace/hdl.ts`、`hdl-inputs.ts`及 `hdl.test.ts`（原Job/回执、授权钩子、purpose与读取投影）。若需要额外记录事件，只复用原records命令/Job函数，不预先改其全域语义。原hdl-schema.ts/DDL/旧库保持不改；JSON strict schema新增字段也须作为共享变更确认，不因“无DDL”跳过评审。
+
+A负责design课程/活动/教师binding确认、checkRule、权限/正常宿主/自动消费者及其测试；B/UI仅接获准投影。C计划反例覆盖合法不同层级/SW、错宽度/伪路径/别名、正确及错误六操作/加法进位/A>B边界、未定义域不评分、评分X/Z/非稳定/伪stdout、私有资产不泄露、重复/冲突/错Build/hash/旧代际、占用拒绝、暂停/撤权/提交/迟到/停止不明、真实2800限额。本批只做枚举/预算，不执行该矩阵。runner/VPI变化会移动共同sourceHash与镜像，必须独立批准节点维护/重验/登记范围；现ready不可用更不能沿旧validation启用。
+
+### 14.6 PR56接收与本批交付状态
+
+[固定源接收](evidence/c-entry-followup/source-reception.json)：已从PR56发布提交87a3b795b0e457445edbcd40ecf985e3a0dac012取得运行源89c85ed04db5a55ddebdc95c27303f0ff76fa31c和A原773项manifest（SHA256=7abd074f5fd1b79e197dec30ff4166dadfe07e6f10de9129c0d05c6bbfb57b7c）。PAHER新目录 `/opt/xunjie-runner/tests/dla-source-89c85ed-20261014` 中773个文件的Git blob/SHA256/字节/mode均一致；[runner34文件离线指纹](evidence/c-entry-followup/runner-source-alignment.json)仍匹配历史sourceHash。首次C新tar默认mode0664/0775与Git不符，保留失败包；新包仅指定tar.umask=0022、core.autocrlf=false后全部一致。C tar不冒充A原zip或其zip摘要；未安装依赖、建35表库、启动HDL宿主或维护节点。
+
+| 交付 | C本批状态 | 后续责任/进入条件 |
+| --- | --- | --- |
+| 现场条件、运行/信任/账号方案 | C侧已核并提出准确方案；没有UI共同确认或实际浏览器结果 | UI回浏览器/profile/时间/接线SHA；A核组合及最小新增秘密/信任通道；负责人只审批未覆盖对象 |
+| 原I0运行配合 | 当前阻塞，未启动；不重跑20项 | A/负责人明确原库恢复/无备份时新库新对象方案及节点原服务启动范围；C获准后先核当前readiness/profile/代际，再逐能力运行 |
+| H4 | 固定源已有读法/当前性/状态说明已补；目标真实样例仍缺 | A确认readOperation/current/hdlSelection及C3接缝；对应35表现场门禁齐后C交真实样例，B/UI各接消费 |
+| H3 | 原首批引用与精确层级/稳定采样/占用/command-result/写集/2800预算已补 | A会审，负责人确认共享与实施/运行范围；未批准前不实现ALU、不改节点 |
+| PR56固定源/原字节清单 | 已实际接收，773/773匹配 | 35表现场输入与配置另交A审查，原I024表不能扩权或被迁移/覆盖 |
+
+历史20/20与已有C/HDL验收不累计。#30/#38/#22/#23保持原状态；产品基线及MVP_SPEC §10待授权维护者汇总。没有把C准备完成写成双方方案确认、浏览器/H-01通过或完整C-ENTRY再次完成。
+
+### 14.7 本批验证与交付
+
+[核验记录](evidence/c-entry-followup/validation.json)列8份去敏证据/脚本的实际字节与SHA256；本任务正文与核验记录自身不循环自签。773文件接收及34文件runner源匹配通过，2800定义域/88批/实际编码预算上限断言通过；它们不计真实HDL执行。只读脚本syntax通过，现场实跑在库不存在分支完成，readiness不可用和VM inactive如实记录；库存在时的SQL读取分支本批未执行。Windows浏览器/系统信任只读探测完成，没有浏览器操作。
+
+文档静态检查65份/970内链/errors=[]，git diff --check通过。按实际五密码/签名/私钥共7个秘密值在原WSL/root内存比对本批写集，matchedFiles=[]，没有输出秘密。新源码接收首次mode不符与首次只读开库失败的原因/保留位置均记入证据，未绕过检查或重建库掩盖。
+
+交付沿原PR55普通提交/推送，按#30回共用现场条件/当前阻塞、按#38回H3/H4与固定源链接，不重复贴整包日志，不合并PR、不关闭Issue。主副本G3等其他成员改动不纳入。当前只完成本批可独立的C核查/方案/接收，UI共同确认、A实审及新授权后的现场/浏览器/35表真实样例仍待对应责任人；未实施部分不能因本次推送变成已通过。
+
 发布前检查：三脚本Node24.21.0语法通过，原ID unknown→确认成功/取消序列自检通过；九份公开结果/HTTP文件的原文件与公开字节/hash、五份服务日志正文/hash匹配。十JSON的解析/EOF/尾随空白及私钥/token形状检查通过；以实际生成的五密码、签名秘密和私钥对全部新公开材料/脚本及服务日志匹配，秘密值均未出现。文档65份/960内链/errors=[]，差异空白通过；没有为发布重复执行已通过业务链。A审查固定ea5a652原包的27 logs/19摘要口径与随后新增五服务日志分开，不累计为测试通过数量。
