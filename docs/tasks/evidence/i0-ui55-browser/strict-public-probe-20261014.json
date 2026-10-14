@@ -1,0 +1,49 @@
+{
+  "checkedAt": "2026-10-14T06:52:49.429Z",
+  "sshTunnel": true,
+  "strictNodeTls": true,
+  "browserTrustVerified": false,
+  "authenticated": false,
+  "records": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 1466,
+      "tlsVerified": true
+    },
+    {
+      "path": "/health/live",
+      "status": 200,
+      "bytes": 78,
+      "tlsVerified": true
+    },
+    {
+      "path": "/health/ready",
+      "status": 200,
+      "bytes": 78,
+      "tlsVerified": true
+    },
+    {
+      "path": "/api/session",
+      "status": 401,
+      "bytes": 186,
+      "tlsVerified": true,
+      "errorCode": "UNAUTHENTICATED"
+    },
+    {
+      "path": "/api/assignments/a2533386-4923-4dee-83bd-2d7a99fb06e9/bootstrap",
+      "status": 401,
+      "bytes": 186,
+      "tlsVerified": true,
+      "errorCode": "UNAUTHENTICATED"
+    },
+    {
+      "path": "/assets/index-Kl70RR0d.js",
+      "status": 200,
+      "bytes": 1053271,
+      "sha256": "1722b0f5f3e214cf506d2511ccf1ef4c0d21cd1aa943888e35af5d10d32192d0",
+      "tlsVerified": true,
+      "containsUi55Login": false
+    }
+  ]
+}

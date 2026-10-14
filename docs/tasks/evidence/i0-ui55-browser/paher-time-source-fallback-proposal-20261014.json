@@ -1,0 +1,100 @@
+{
+  "observedAtUtc": "2026-10-14T11:07:47.9572420+00:00",
+  "status": "PROPOSED_NOT_EXECUTED",
+  "scope": "PAHER Windows existing W32Time source-only fallback plus one resync",
+  "originalResync": {
+    "nativeExitCode": 0,
+    "usableTimeData": false,
+    "leapIndicator": 3,
+    "lastSynchronizationError": 1,
+    "service": "Running",
+    "startupType": "Manual",
+    "source": "time.windows.com,0x9"
+  },
+  "windowsReadOnlyNtpProbes": [
+    {
+      "host": "time.windows.com",
+      "resolvedEndpoint": "52.231.114.183:123",
+      "command": "w32tm /stripchart /computer:time.windows.com /samples:3 /period:1 /dataonly",
+      "nativeExitCode": 0,
+      "samples": 3,
+      "receivedValidSamples": 0,
+      "errors": [
+        "0x800705B4",
+        "0x800705B4",
+        "0x800705B4"
+      ],
+      "startUtcMs": 1791975901026,
+      "endUtcMs": 1791975906128
+    },
+    {
+      "host": "ntp.ubuntu.com",
+      "resolvedEndpoint": "185.125.190.57:123",
+      "command": "w32tm /stripchart /computer:ntp.ubuntu.com /samples:3 /period:1 /dataonly",
+      "nativeExitCode": 0,
+      "samples": 3,
+      "receivedValidSamples": 3,
+      "offsetSeconds": [
+        0.0094218,
+        0.0154408,
+        0.0019145
+      ],
+      "startUtcMs": 1791975906280,
+      "endUtcMs": 1791975909094
+    }
+  ],
+  "wslExistingSync": {
+    "server": "185.125.190.57 (ntp.ubuntu.com)",
+    "systemdTimesyncd": "active",
+    "NTP": true,
+    "NTPSynchronized": true,
+    "offsetSeconds": -0.005163,
+    "delayMilliseconds": 265.403,
+    "jitterSeconds": 1.152453,
+    "packetCount": 204,
+    "pollIntervalSeconds": 128,
+    "frequencyPpm": -0.549,
+    "clocksource": "tsc",
+    "observedUtcMs": 1791975973758
+  },
+  "readOnlyProbeBoundary": "stripchart uses an ephemeral UDP source port. W32Time actual client uses source UDP123; endpoint samples do not prove actual service sync.",
+  "proposedConfig": {
+    "registryPath": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\Parameters",
+    "property": "NtpServer",
+    "oldValue": "time.windows.com,0x9",
+    "newValue": "ntp.ubuntu.com,0x9",
+    "sourceTypeUnchanged": "NTP",
+    "startupTypeUnchanged": "Manual",
+    "ntpClientUnchanged": {
+      "Enabled": 1,
+      "InputProvider": 1,
+      "SpecialPollInterval": 32768
+    },
+    "vmTimeProviderUnchanged": {
+      "Enabled": 1,
+      "InputProvider": 1
+    },
+    "changeCommand": "w32tm /config /manualpeerlist:\"ntp.ubuntu.com,0x9\" /update",
+    "resyncCommand": "w32tm /resync",
+    "rollbackCommand": "w32tm /config /manualpeerlist:\"time.windows.com,0x9\" /update",
+    "updateEffect": "Notify the running W32Time service to use the changed peer; may correct PAHER system clock. No service restart required by this source-only proposal."
+  },
+  "validation": [
+    "Read back exact source-only field/provider/startup values",
+    "W32Time synchronization status LeapIndicator is not3, last sync error0, source identifies new peer",
+    "At least90s real-time/monotonic sampling without backward steps",
+    "One normal synthetic login and 90s strict Session-only reads remain valid",
+    "Two current WSL poll intervals require at least256s because poll is now128s"
+  ],
+  "unchangedObjects": [
+    "WSL services/restart/clocksource",
+    "App config/restart",
+    "DB/schema",
+    "Auth future guard/TTL",
+    "Signing material",
+    "C1/guest"
+  ],
+  "requiredAuthorization": "Windows W32Time NtpServer source change and one subsequent resync; current approval did not include it",
+  "officialSource": "https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings",
+  "executed": false
+}

@@ -1,0 +1,12 @@
+{
+  "sourceCommit": "eaadb17199226aea3feaf9b6393118cf70bd57e0",
+  "artifact": "ui55-eaadb17-dist.zip",
+  "sha256": "bee3be5c02638acb8e6e04a5abc2a2807f761088ff09617abddb3d0efd8a2278",
+  "bytes": 5628012,
+  "staticFiles": 143,
+  "normalBuild": true,
+  "containsSourceDatabase": false,
+  "containsCredentials": false,
+  "entry": "index.html",
+  "backendChanged": false
+}
