@@ -1,0 +1,17 @@
+{
+  "tableCount": 34,
+  "approvedScopeGuard": "fail-closed before creating the file (assertApprovedScope)",
+  "teacherFeedbackPresent": true,
+  "teacherFeedbackRows": 0,
+  "submissionsRows": 0,
+  "integrity": "ok",
+  "foreignKeyViolations": 0,
+  "reopenedTableCount": 34,
+  "diagnostics": {
+    "sqliteVersion": "3.53.4",
+    "journalMode": "wal",
+    "foreignKeys": 1,
+    "synchronous": 2,
+    "busyTimeout": 1000
+  }
+}

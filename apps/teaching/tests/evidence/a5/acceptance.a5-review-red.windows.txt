@@ -1,0 +1,204 @@
+TAP version 13
+# Subtest: A5: formative feedback cites a submission without moving the learning stage
+ok 1 - A5: formative feedback cites a submission without moving the learning stage
+  ---
+  duration_ms: 1761.607
+  type: 'test'
+  ...
+# Subtest: A5: a feedback thread can only be revised inside the scope that owns it
+not ok 2 - A5: a feedback thread can only be revised inside the scope that owns it
+  ---
+  duration_ms: 1826.0812
+  type: 'test'
+  location: 'D:\\XunJie\\.tmp\\a5-wt\\apps\\teaching\\tests\\a5-feedback.test.ts:38:1'
+  failureType: 'testCodeFailure'
+  error: 'table teacher_feedback has no column named thread_revision'
+  code: 'SQLITE_ERROR'
+  name: 'SqliteError'
+  stack: |-
+    Database.prepare (D:\XunJie\apps\teaching\node_modules\better-sqlite3\lib\methods\wrappers.js:5:21)
+    prepare (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/server/db/transaction.ts:100:21)
+    Object.run (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/server/db/transaction.ts:103:36)
+    file:///D:/XunJie/.tmp/a5-wt/apps/teaching/tests/a5-feedback.test.ts:44:37
+    Object.withTransaction (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/server/db/transaction.ts:108:25)
+    TestContext.<anonymous> (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/tests/a5-feedback.test.ts:44:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
+ok 3 - A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
+  ---
+  duration_ms: 2050.0472
+  type: 'test'
+  ...
+# Subtest: A5: reviewing an old submission reports the snapshot it bound, not the later working tree
+not ok 4 - A5: reviewing an old submission reports the snapshot it bound, not the later working tree
+  ---
+  duration_ms: 1993.3924
+  type: 'test'
+  location: 'D:\\XunJie\\.tmp\\a5-wt\\apps\\teaching\\tests\\a5-feedback.test.ts:97:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+
+    + undefined
+    - '77e208fb-8703-45d5-a96a-2bf6d92dcd29'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '77e208fb-8703-45d5-a96a-2bf6d92dcd29'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/tests/a5-feedback.test.ts:124:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: A5: a dispute against feedback whose basis moved on is appended as history, not refused
+not ok 5 - A5: a dispute against feedback whose basis moved on is appended as history, not refused
+  ---
+  duration_ms: 1959.8048
+  type: 'test'
+  location: 'D:\\XunJie\\.tmp\\a5-wt\\apps\\teaching\\tests\\a5-feedback.test.ts:138:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"requestId":"195a253f-5d45-4dc0-947b-be08959a22cd","error":{"code":"VERSION_CONFLICT","message":"Version conflict.","retryable":false,"recovery":"Read the current authorized version before retrying."}}
+
+    409 !== 200
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 409
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/tests/a5-feedback.test.ts:167:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
+ok 6 - A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
+  ---
+  duration_ms: 1932.8334
+  type: 'test'
+  ...
+# Subtest: A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
+ok 7 - A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
+  ---
+  duration_ms: 1897.3147
+  type: 'test'
+  ...
+# Subtest: A5: two feedback threads report a scope version the next write can actually use
+not ok 8 - A5: two feedback threads report a scope version the next write can actually use
+  ---
+  duration_ms: 1940.8447
+  type: 'test'
+  location: 'D:\\XunJie\\.tmp\\a5-wt\\apps\\teaching\\tests\\a5-feedback.test.ts:277:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    undefined !== 1
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/tests/a5-feedback.test.ts:286:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: A5: feedback revisions append, stay readable and keep the submission they evaluated
+not ok 9 - A5: feedback revisions append, stay readable and keep the submission they evaluated
+  ---
+  duration_ms: 1975.765
+  type: 'test'
+  location: 'D:\\XunJie\\.tmp\\a5-wt\\apps\\teaching\\tests\\a5-feedback.test.ts:317:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    undefined !== 2
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 2
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/tests/a5-feedback.test.ts:331:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: A5: the revision permission keeps the artifact read-only until the student consumes it
+ok 10 - A5: the revision permission keeps the artifact read-only until the student consumes it
+  ---
+  duration_ms: 1923.9742
+  type: 'test'
+  ...
+# Subtest: A5: a permission may save the formal feedback for the same submission in one command
+not ok 11 - A5: a permission may save the formal feedback for the same submission in one command
+  ---
+  duration_ms: 1887.4947
+  type: 'test'
+  location: 'D:\\XunJie\\.tmp\\a5-wt\\apps\\teaching\\tests\\a5-feedback.test.ts:393:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    undefined !== 1
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/XunJie/.tmp/a5-wt/apps/teaching/tests/a5-feedback.test.ts:407:12)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: A5: a student dispute resolves against the exact saved feedback and its evaluated claims
+ok 12 - A5: a student dispute resolves against the exact saved feedback and its evaluated claims
+  ---
+  duration_ms: 1956.3614
+  type: 'test'
+  ...
+# Subtest: A5: a failing feedback write rolls the record and the stage change back together
+ok 13 - A5: a failing feedback write rolls the record and the stage change back together
+  ---
+  duration_ms: 1921.3089
+  type: 'test'
+  ...
+# Subtest: A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
+ok 14 - A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
+  ---
+  duration_ms: 1973.5895
+  type: 'test'
+  ...
+# Subtest: A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
+ok 15 - A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
+  ---
+  duration_ms: 1761.1585
+  type: 'test'
+  ...
+# Subtest: A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
+ok 16 - A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
+  ---
+  duration_ms: 2050.2047
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 10
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 27632.3387
