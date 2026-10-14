@@ -26,7 +26,11 @@ import { readResultFiles } from './result-files.ts';
 import { z } from 'zod';
 import type { createHdlWorkspace } from './hdl.ts';
 
-export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop};hdl?:ReturnType<typeof createHdlWorkspace>};
+// A5 attaches its formal-feedback read through `recovery`; without it the recovery view keeps reporting `unavailable`.
+// A DB-backed attachment needs the transaction C4's own authorized read is already running in; `withTransaction` is
+// explicitly non-nested, so the seam hands its `tx` over instead of letting the attachment open a second one.
+export type WorkspaceAppOptions = Omit<DesignAppOptions,'teaching'> & {teaching?:{stop:TeachingStopHandler;design?:DesignTeachingStop};hdl?:ReturnType<typeof createHdlWorkspace>;
+  recovery?:{readFeedback:(tx:Transaction,request:FastifyRequest,attemptId:string)=>RecoveryFeedback}};
 const attemptResult = z.strictObject({ attemptId: z.string(), activityVersionId: z.string(), assignmentId: z.string() });
 export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   const { teaching: extensions, hdl, ...designOptions } = options;
@@ -328,14 +332,15 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
         || query.decisionEpoch !== state.attempt.decisionEpoch;
       return readRecovery(state, { recoveryGeneration: generation, resyncRequired,
         assignmentActive: assignmentActionable(tx, state),
-        feedback: recovery.readFeedback(request, id), coverage: readCoverage(tx, id) }, () => true);
+        feedback: recovery.readFeedback(tx, request, id), coverage: readCoverage(tx, id) }, () => true);
     }) };
   });
   // C4 recovery surface. A5 owns formal feedback; an unattached view reports it unavailable rather than
   // reconstructing feedback text from hashes, digests or submission rows.
-  type WorkspaceRecoverySurface = { readFeedback: (request: FastifyRequest, attemptId: string) => RecoveryFeedback };
+  type WorkspaceRecoverySurface = { readFeedback: (tx: Transaction, request: FastifyRequest, attemptId: string) => RecoveryFeedback };
   const recovery: WorkspaceRecoverySurface = {
-    readFeedback: (_request: FastifyRequest, _attemptId: string): RecoveryFeedback => ({ status: 'unavailable' }),
+    readFeedback: options.recovery?.readFeedback
+      ?? ((_tx: Transaction, _request: FastifyRequest, _attemptId: string): RecoveryFeedback => ({ status: 'unavailable' })),
   };
   // C4 seams for A5's teacher routes, the `transitionAttempt/grantReopen` pair TECH §7.2.1 assigns to C. A5 owns
   // the HTTP surface, the feedback record and the permission decision; C owns the same-transaction stage move and

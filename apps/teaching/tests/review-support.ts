@@ -134,7 +134,34 @@ export async function setup(options: {process?: boolean} = {}) {
       expectedStateRevision: (await state()).learnerStateRevision,purpose: 'explicit_analysis',inputRefs,assistanceRefs: [],coverageRefs: [],...extra},key);
     assert.equal(response.statusCode,200,response.body);return response.json().data.result;
   };
-  return {f,student,teacher,attemptId,snapshotId,activityId,allocationId,state,attempt,queue,content: draft.json().data.result.draft.content,material: material.json().data.result.resourceVersion,privateMaterial: privateMaterial.json().data.result.resourceVersion};
+  // A5 helpers. They drive the real product routes, so the same fixtures observe the teacher command, the student
+  // read and the C4 seams in one chain.
+  const feedbackView = async (headers: Headers = student) => {
+    const response = await f.app.inject({url: `/api/attempts/${attemptId}/feedback`,headers});
+    assert.equal(response.statusCode,200,response.body);
+    return response.json().data as {feedbackRevision: number;entries: {feedbackId: string;feedbackRevision: number;current: boolean;
+      disputed: boolean;submissionId: string;kind: string;claimRefs: {id: string;revision: number}[];
+      basis: {claimId: string;claimRevision: number;status: string}[]}[];reopen: {state: string;actionable: boolean;
+      grantId?: string;submissionId?: string;reason?: string;consumedAt?: string}};
+  };
+  const submit = async (extra: object = {}, headers: Headers = student) => {
+    const response = await command(f,headers,`/api/attempts/${attemptId}/submissions`,
+      {expectedAttemptRevision: (await attempt()).attempt.attemptRevision,snapshotId,...extra});
+    assert.equal(response.statusCode,200,response.body);
+    return response.json().data.result as {submissionId: string;attemptRevision: number;decisionEpoch: number;status: string};
+  };
+  const feedback = async (payload: object, headers: Headers = teacher, key: string = randomUUID()) =>
+    command(f,headers,`/api/attempts/${attemptId}/feedback`,
+      {expectedFeedbackRevision: (await feedbackView(teacher)).feedbackRevision,
+        expectedStateRevision: (await state()).learnerStateRevision,
+        expectedAttemptRevision: (await attempt()).attempt.attemptRevision,...payload},key);
+  const reopenGrant = async (payload: object, headers: Headers = teacher, key: string = randomUUID()) =>
+    command(f,headers,`/api/attempts/${attemptId}/reopen`,
+      {expectedAttemptRevision: (await attempt()).attempt.attemptRevision,...payload},key);
+  const reviewContext = async (headers: Headers = teacher, chosen?: string) => f.app.inject({
+    url: `/api/attempts/${attemptId}/review-context${chosen === undefined ? '' : `?submissionId=${chosen}`}`,headers });
+  return {f,student,teacher,attemptId,snapshotId,activityId,allocationId,state,attempt,queue,submit,feedback,feedbackView,reopenGrant,reviewContext,
+    content: draft.json().data.result.draft.content,material: material.json().data.result.resourceVersion,privateMaterial: privateMaterial.json().data.result.resourceVersion};
 }
 export function candidate(snapshotId: string,activityVersionId: string,overrides: object = {}) {
   return {kind: 'learner_analysis',claims: [{competencyId: 'k',competencyVersion: 1,domain: 'domain',scope: {kind: 'activity',activityVersionId},
