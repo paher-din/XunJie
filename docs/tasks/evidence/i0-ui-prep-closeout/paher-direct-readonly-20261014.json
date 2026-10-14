@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-14T14:09:29.9866474Z",
+  "scope": "Existing approved synthetic I0 environment; read-only SSH and public gateway checks, no credentials or plaintext source emitted",
+  "pullRequest": {
+    "mergedAtUtc": "2026-10-14T13:58:34Z",
+    "head": "1f7d9f0c2833285a1cfc6bcedf162bf815012e1e",
+    "state": "MERGED",
+    "number": 69,
+    "merge": "87edd51e165b2bab660d73a551864ff8db0bed86"
+  },
+  "sshProbe": {
+    "observedAtUtc": "2026-10-14T13:59:48.2946193Z",
+    "entry": "xunjie-paher.ps1 probe",
+    "exitCode": 1,
+    "identityAuthenticated": true,
+    "whoami": "paher\\p3148",
+    "legacyAppUnit": "xunjie-i0-entry-recovered-20261014.service",
+    "legacyAppState": "inactive",
+    "vmUnit": "xunjie-c1-vm.service",
+    "vmState": "active",
+    "stderrPresent": true,
+    "meaning": "Old unit target is inactive; this is not an SSH connection failure"
+  },
+  "gatewayCheck": {
+    "entry": "xunjie-ui55.ps1 status/check",
+    "sshProcessOwned": true,
+    "gatewayProcessOwned": true,
+    "activeDistSource": "b7e73c5f65d457fb78d2fcbac7003e4e60ed7f43",
+    "activeDistFiles": 143,
+    "allFileDigestsMatch": true,
+    "strictTlsAndApprovedTrust": true,
+    "anonymousSessionHttp": 401,
+    "liveHttp": 200,
+    "readyHttp": 200,
+    "passed": 16,
+    "failed": 0,
+    "notExecuted": 0,
+    "newPr69DistActivated": false
+  },
+  "currentApplicationUnits": [
+    {
+      "activeState": "active",
+      "id": "xunjie-i0-entry-pr56-f761dcd-20261014.service",
+      "subState": "running"
+    },
+    {
+      "activeState": "active",
+      "id": "xunjie-dla-ui-f761dcd-20261014.service",
+      "subState": "running"
+    }
+  ],
+  "currentApplicationSource": {
+    "notInferredFromMainMerge": true,
+    "fullSourceBlobAuditExecuted": false,
+    "declaredBy": "DLA_PR67_RUNTIME_HANDOFF_20261014.md",
+    "commit": "f761dcddb2081fa7948fc7f6bd03cfe593d22b5f"
+  },
+  "c1Readiness": {
+    "observedAtUtc": "2026-10-14T14:00:44.285Z",
+    "entry": "scratch-c1-readiness/Read-C1Readiness.ps1",
+    "exitCode": 0,
+    "ready": true,
+    "kernel": "6.8.0-146-generic",
+    "profile": "c17-gcc15.3.0-textscope-v1",
+    "fingerprintHash": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+    "fingerprintMatchesExistingValidation": true,
+    "differences": [],
+    "generationMatchesOriginalAppDeclaration": true,
+    "transportSource": "i0-entry-source-9fa76ad-lf2-20261013",
+    "meaning": "Archived transport is only the reader source, not current application version"
+  },
+  "approvedSnapshot": {
+    "observedAtUtc": "2026-10-14T14:00:44.297Z",
+    "entry": "Read-Ui30WorkspaceFacts.ps1",
+    "exitCode": 0,
+    "tableCount": 24,
+    "workspaceRevision": 8,
+    "files": 2,
+    "allUtf8ContentHashesMatch": true,
+    "manifestHashMatches": true,
+    "originalSyncSnapshotRunReceiptsReadable": true,
+    "plaintextSourceEmitted": false,
+    "authRead": false
+  },
+  "mutations": [],
+  "newBrowserRunExecuted": false,
+  "newModelRequestExecuted": false,
+  "limitations": [
+    "Does not prove current source equals merged main",
+    "No static config or service switch performed",
+    "No new save/freeze/run, real student or complete AC/NFR acceptance",
+    "WSL stderr warnings retained as a separate fact"
+  ]
+}
