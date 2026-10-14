@@ -1,0 +1,150 @@
+{
+  "date": "2026-10-15",
+  "currentIntegration": "37b628b75ec3a2238b9b77c8bd1882d36a2e55a6",
+  "probeHash": "649e11bae401bcdcbe2c0d08d57c291f5c577bd1ea9386ce7d0761734938a8c5",
+  "records": [
+    {
+      "path": "docs/tasks/evidence/i0-c-revalidation/verification.json",
+      "fileHash": "bb2c99cee3b485263a0e5d362b69a616690b0d42f76ca3aba98a7655bdd9b1cc",
+      "sourceCommit": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+      "environment": "Original approved WSL2 Ubuntu + existing dedicated Linux VM; isolated source and original lock",
+      "registeredFingerprint": "b07cddf90498f8d537a24e7ad827d68109544437f30e0147eae715a39982d29a",
+      "validatedAt": "2026-10-13T09:29:47.600Z",
+      "currentSourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+      "decision": "Reuse for unchanged deployed node only; current app seams tested separately. H3 source is not deployed or validated.",
+      "logs": [
+        {
+          "suite": "guest",
+          "command": "Guest: XUNJIE_C1_RUNTIME=1 XUNJIE_C1_RUNTIME_IMAGE=<approved fixed ID> node --test --test-concurrency=1 --test-reporter=tap <current versioned source>/runner/*.test.ts",
+          "exitCode": 0,
+          "outputHash": "823e0061233cc0eaa72d0c5fa5f5aba5eba7a1d547aa971c922a614131ff5180",
+          "bytes": 12976,
+          "tests": 58,
+          "pass": 55,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 3
+        },
+        {
+          "suite": "ssh",
+          "command": "apps/teaching: XUNJIE_C1_SSH=1 node --test --test-reporter=tap runner/node.rpc.test.ts",
+          "exitCode": 0,
+          "outputHash": "4276e46edcc288c173c0a23820b566b41c7af48a4353f8fd1d48667f2034dcf0",
+          "bytes": 2635,
+          "tests": 10,
+          "pass": 10,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "types",
+          "command": "apps/teaching: npm run typecheck",
+          "exitCode": 0,
+          "outputHash": "566871a2d05516d42ac25ec03d1e733fbcbe3ada6fbd824d17f000611e3f09f8",
+          "bytes": 84
+        },
+        {
+          "suite": "synthetic-http",
+          "command": "apps/teaching: node --test --test-concurrency=1 --test-reporter=tap server/workspace/integration.test.ts server/workspace/runs.test.ts server/workspace/submissions.test.ts runner/result-files.test.ts",
+          "exitCode": 0,
+          "outputHash": "6a90469791383f3fb43c2180a3608f58c6df27e94d883551af8b35456abf885c",
+          "bytes": 9117,
+          "tests": 36,
+          "pass": 34,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 2
+        },
+        {
+          "suite": "real-c1-http",
+          "command": "apps/teaching: XUNJIE_C2_RUNTIME=1 XUNJIE_C2_SSH_CONFIG=<controlled JSON referencing original application/known_hosts> node --test --test-concurrency=1 --test-reporter=tap --test-name-pattern=\"real A1/A2/C1 student chain|C2 synthetic confirmed workspace uses real C1 SSH\" server/workspace/integration.test.ts server/workspace/runs.test.ts",
+          "exitCode": 0,
+          "outputHash": "12e8abb00ed2e52cabd1a020cb02d0bc396ca65ebbbb41b07e46382c5db39470",
+          "bytes": 1587,
+          "tests": 2,
+          "pass": 2,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "build",
+          "command": "apps/teaching: npm run build",
+          "exitCode": 0,
+          "outputHash": "8e2744d832987fc384924529e13d615f0e92e70929a03ea98d9d086fa36c8072",
+          "bytes": 94
+        },
+        {
+          "suite": "dependencies",
+          "command": "Fresh isolated Linux apps/teaching: npm ci",
+          "exitCode": 0,
+          "outputHash": "8fcc9b4448eb03168b554cf0b010f458d31eb9a456f7d73fc06bda74b0102372",
+          "bytes": 514
+        },
+        {
+          "suite": "sqlite-rebuild",
+          "command": "If npm install-script policy withheld the native step: exact Node executes the bundled npm/node-gyp/bin/node-gyp.js rebuild inside the fresh locked better-sqlite3 13.0.3 directory",
+          "exitCode": 0,
+          "outputHash": "2e97eab9d41d3406460d381e7c0cbd9881f0b1a2d589f15c7cc7df829c885c3e",
+          "bytes": 2037
+        }
+      ]
+    },
+    {
+      "path": "docs/tasks/evidence/i0-c-revalidation/hdl-current.json",
+      "fileHash": "913ebc648c26c84a7a6444aeaea537f7b9e032f2d37664410888e88c3af38f16",
+      "sourceCommit": "cde69ccbd763c3c0ab381a809b750b951f195f64",
+      "registeredFingerprint": "ea84f8d5a29b5cb1c7609bc0756f72fc58802d103eac6206a2ac6bf74f958386",
+      "validatedAt": "2026-10-13T09:51:51.930Z",
+      "currentSourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+      "decision": "Reuse for unchanged deployed node only; current app seams tested separately. H3 source is not deployed or validated.",
+      "logs": [
+        {
+          "suite": "hdl",
+          "exitCode": 0,
+          "outputHash": "023ab4b69cde462685842e66310aeb651d50a5b4e7285bb24095438badae7284",
+          "tests": 10,
+          "pass": 10,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "c",
+          "exitCode": 0,
+          "outputHash": "fb6e28a7b67eb9725111654a6cbc2e5cfb21552469ca78e8f8ff03253ab52e0e",
+          "tests": 52,
+          "pass": 51,
+          "fail": 0,
+          "skipped": 1
+        }
+      ]
+    }
+  ],
+  "nodeSourceChanges": [
+    "apps/teaching/contracts/runner/alu.ts",
+    "apps/teaching/contracts/runner/hdl.ts",
+    "apps/teaching/runner/alu-check.test.ts",
+    "apps/teaching/runner/alu-check.ts",
+    "apps/teaching/runner/alu-simulation.ts",
+    "apps/teaching/runner/fingerprint.ts",
+    "apps/teaching/runner/hdl-alu-worker.ts",
+    "apps/teaching/runner/hdl-bridge.c",
+    "apps/teaching/runner/hdl-executor.ts",
+    "apps/teaching/runner/hdl-ledger.ts",
+    "apps/teaching/runner/hdl-node.ts",
+    "apps/teaching/runner/hdl-ports.c",
+    "apps/teaching/runner/ssh-control.ts"
+  ],
+  "unchangedCoreFiles": [
+    "docker.ts",
+    "docker.runtime.test.ts",
+    "control.ts",
+    "control.test.ts",
+    "course.ts",
+    "verify.ts",
+    "hdl-profile.ts",
+    "hdl.runtime.test.ts",
+    "node.rpc.test.ts"
+  ]
+}

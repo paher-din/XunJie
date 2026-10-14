@@ -21,6 +21,8 @@ npm run dev:prep
 
 正常模式、浏览器端口、真实 Chrome、专项/全量测试及故障回放见 [学生运行说明](apps/student/README.md)；来源、许可与同步边界见 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。正常请求失败不回退到 fixture。
 
+Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)：`xunjie-local.ps1 start` 复用专用执行 VM 和原35表合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；默认模型关闭，`-EnableModel` 才使用自己的环境变量 key。登录使用该说明中的实际分配深链；首页设计 Demo 不替代正常任务入口。本批真实浏览器、模型与逐项回交见 [验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)。
+
 学生前端的交付检查在 `apps/student` 执行：
 
 ```sh
@@ -54,6 +56,7 @@ node tools/a0-review/check.mjs
 | P3 数字逻辑与反馈闭环 | [G3 总协调](docs/tasks/G3_OVERALL_COORDINATION.md)、[DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)、[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md)、[DL-B](docs/tasks/DL-B_HDL_TUTORING_CONTEXT.md) |
 | P3 分工与比赛优先调整 | [既定转派](docs/tasks/G3_OVERALL_COORDINATION.md#14-2026-10-14-a5-与-dl-a-剩余工作转派)；[2026-10-15 基础/增强交付安排](docs/tasks/G3_OVERALL_COORDINATION.md#17-2026-10-15-p3-比赛集成与完整产品闭环分段提案)与后续承接 |
 | P4 截止日前核心验证与后续验收 | [核心验证安排与授权](docs/tasks/P4_DEADLINE_CORE_VERIFICATION.md)；[总协调 #60](https://github.com/paher-din/XunJie/issues/60)、[A6 #61](https://github.com/paher-din/XunJie/issues/61)、[B4 #62](https://github.com/paher-din/XunJie/issues/62)、[C5 #63](https://github.com/paher-din/XunJie/issues/63) |
+| C5 两课程执行核心证据 | [C5 验证记录](docs/tasks/C5_CORE_EXECUTION_VERIFICATION.md)；固定应用版本、真实节点补验、旧证据复用与后续验收分别记录 |
 | C4 → A4 → DL-C 顺序集成 | [集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)、[C4](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md)、[A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md)、[DL-C](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) |
 | A5 教师反馈、修订许可与后续活动 | [A5 任务记录](docs/tasks/A5_FEEDBACK_REVISION_FOLLOWUP.md)；固定提交 → 正式反馈 → 修订许可 → 学生主动重开的服务端链，接口、范围与验证见该记录 |
 | A6 的 A5 契约消费复核 | [C 消费记录](docs/tasks/A6_C_CONTRACT_CONSUMPTION.md)；反馈范围/线程版本、固定作品清单及 B/UI 接线核对 |

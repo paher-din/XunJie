@@ -1,0 +1,19 @@
+▶ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination
+  ✔ same vvp session preserves registers and an exact duplicate never advances (124.809202ms)
+  ✔ wrong port width and syntax are actual build failures (1137.868711ms)
+  ✔ wrong segment output, repaired output and X/Z are sampled from HDL (3934.121778ms)
+  ✔ untrusted stdout, proc fd and shell cannot forge the signal channel (1799.716336ms)
+  ✔ unsupported shell invocation fails without creating a forged frame (1789.64863ms)
+  ✔ original scope and generation are mandatory after stopping (0.460775ms)
+  ✔ two real instances keep independent registers and exhaust the session pool (4905.451917ms)
+  ✔ real scan samples keep the selected digit and NBA state with explicit finite coverage (2021.326711ms)
+  ✔ a zero-time loop cannot progress and is terminated, not reported as a successful frame (4086.475136ms)
+✔ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (21674.864322ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21780.695422

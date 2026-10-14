@@ -1,0 +1,141 @@
+{
+  "status": "settled-consistent",
+  "requireSettled": true,
+  "origin": "https://127.0.0.1:3444",
+  "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+  "counts": {
+    "assignments": 3,
+    "attempts": 3,
+    "files": 3,
+    "snapshots": 6,
+    "builds": 4,
+    "sessions": 4,
+    "operations": 25,
+    "jobs": 33,
+    "messages": 5,
+    "actions": 2,
+    "teachingReceipts": 4
+  },
+  "facts": {
+    "checked": 246,
+    "builds": [
+      {
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+        "snapshotId": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+        "status": "succeeded",
+        "terminationConfirmed": true
+      },
+      {
+        "buildId": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+        "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+        "snapshotId": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+        "status": "failed",
+        "terminationConfirmed": true
+      },
+      {
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "status": "succeeded",
+        "terminationConfirmed": true
+      },
+      {
+        "buildId": "df648a36-acaa-442c-95af-3977bd3df22f",
+        "attemptId": "bb20d32e-64de-4156-9fd0-9bda95364f60",
+        "snapshotId": "9e2cbfcd-99f3-4fae-ad4f-6be5998b40aa",
+        "status": "succeeded",
+        "terminationConfirmed": true
+      }
+    ],
+    "sessions": [
+      {
+        "sessionId": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "sequence": 1,
+        "revision": 3,
+        "simTimePs": "10000",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "sequence": 4,
+        "revision": 6,
+        "simTimePs": "80000",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "a424a6b2-2ce3-4b94-a259-0eb407d21ffe",
+        "buildId": "df648a36-acaa-442c-95af-3977bd3df22f",
+        "sequence": 16,
+        "revision": 18,
+        "simTimePs": "160000",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "88afdc62-71d2-4cf8-8c6a-5bcafb048c48",
+        "buildId": "df648a36-acaa-442c-95af-3977bd3df22f",
+        "sequence": 0,
+        "revision": 2,
+        "simTimePs": "0",
+        "status": "stopped",
+        "terminationConfirmed": true
+      }
+    ],
+    "teachingChains": [
+      {
+        "actionId": "696831b4-5998-455d-81da-8f51af526f2f",
+        "deliveryId": "1fae0616-9053-40d3-977c-426b2ba39745",
+        "receivedServerSeq": 34,
+        "displayedServerSeq": null,
+        "syntheticExplicitResponseServerSeq": null,
+        "raceReceipts": []
+      },
+      {
+        "actionId": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+        "deliveryId": "c4396c80-94c4-4828-9783-f3766b67fcb2",
+        "receivedServerSeq": 46,
+        "displayedServerSeq": 48,
+        "syntheticExplicitResponseServerSeq": 50,
+        "raceReceipts": []
+      }
+    ]
+  },
+  "missingEvidence": [],
+  "failures": [],
+  "boundaries": [
+    "Public exported ledger consistency; no live database/auth/browser/model access",
+    "Server displayed and acknowledged receipts are linked facts; actual visibility and explicit synthetic browser actions need separate screenshots/operation evidence",
+    "Model HTTP/token journal is never used as display proof; no human-learning, teacher semantics, H3/2800/course_check or complete AC/NFR claim"
+  ],
+  "static": {
+    "sourceCommit": "bec2e3c250091969f59e233439debd307a6925c2",
+    "sha256": "bdecee2b4d532468d3dd2b3a4c7709dd3f9317175a63e29fad09875736595fac",
+    "bundleBytesChecked": true
+  },
+  "node": {
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+    "recordConsistency": true,
+    "liveReadPerformed": false
+  },
+  "refresh": {
+    "status": "unchanged",
+    "exactGroups": [
+      "assignments",
+      "attempts",
+      "files",
+      "snapshots",
+      "builds",
+      "sessions",
+      "operations",
+      "jobs",
+      "runs"
+    ],
+    "failures": [],
+    "boundary": "The supplied before/after objects match; this comparison does not operate or independently identify the browser refresh."
+  }
+}

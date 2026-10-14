@@ -1,0 +1,58 @@
+{
+  "observedAtUtc": "2026-10-14T16:15:10.152Z",
+  "scope": "Fresh Robert local node engineering acceptance; no browser/model/teaching result",
+  "ready": true,
+  "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+  "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+  "c": {
+    "fingerprint": "2ce8cb3324b8001a5e3929baf21e5b802b09b4aba82fa7c6ab2e93ecf67b9dcf",
+    "rawEvidence": "D:\\XunJie_Project\\i0-ui55-connection\\hdl-ui\\local-environment\\node-logs\\original-c\\c1-acceptance-EGAOzX",
+    "guest": {
+      "tests": 58,
+      "pass": 55,
+      "fail": 0,
+      "skipped": 3
+    },
+    "ssh": {
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "skipped": 0
+    },
+    "types": {
+      "exitCode": 0,
+      "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "hdl": {
+    "fingerprint": "ed41d6ee92874c8a96bdb9530e28f9735f9e80005079708f358382ee5785c99d",
+    "rawEvidence": "D:\\XunJie_Project\\i0-ui55-connection\\hdl-ui\\local-environment\\node-logs\\original-hdl\\acceptance-1791994237177",
+    "hdl": {
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "skipped": 0
+    },
+    "c": {
+      "tests": 52,
+      "pass": 51,
+      "fail": 0,
+      "skipped": 1
+    }
+  },
+  "failuresPreserved": [
+    {
+      "reason": "Missing original public HDL fixture in first copied two-directory archive",
+      "path": "D:\\XunJie_Project\\i0-ui55-connection\\hdl-ui\\local-environment\\node-logs\\original-c\\c1-acceptance-BL75DN\\guest.txt"
+    },
+    {
+      "reason": "Original installer expected prepared hdl-input directory",
+      "kind": "hdl-install stage log"
+    },
+    {
+      "reason": "Setup umask077 inherited by public C acceptance fixture; restored original umask022 for acceptance subprocess",
+      "path": "D:\\XunJie_Project\\i0-ui55-connection\\hdl-ui\\local-environment\\node-logs\\original-hdl\\acceptance-1791994095016\\c.failed.txt"
+    }
+  ],
+  "rawOutputHashesMatchRegisteredValidation": true
+}

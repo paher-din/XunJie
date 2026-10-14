@@ -1,0 +1,38 @@
+{
+  "started": true,
+  "origin": "https://127.0.0.1:3444",
+  "modelEnabled": false,
+  "node": {
+    "ready": true,
+    "vmActive": true,
+    "vmStarted": false,
+    "unit": "xunjie-c1-vm.service",
+    "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+    "cFingerprintHash": "2ce8cb3324b8001a5e3929baf21e5b802b09b4aba82fa7c6ab2e93ecf67b9dcf",
+    "hdlFingerprintHash": "ed41d6ee92874c8a96bdb9530e28f9735f9e80005079708f358382ee5785c99d",
+    "kernel": "6.8.0-142-generic"
+  },
+  "health": [
+    {
+      "path": "/health/live",
+      "status": 200,
+      "body": {
+        "requestId": "d3f6bf9a-9a98-4b25-9ef4-463d117d2a6b",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "path": "/health/ready",
+      "status": 200,
+      "body": {
+        "requestId": "5b63953b-6423-4ade-a65f-90e56133503a",
+        "data": {
+          "status": "ready"
+        }
+      }
+    }
+  ]
+}

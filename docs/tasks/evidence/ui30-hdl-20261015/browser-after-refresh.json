@@ -1,0 +1,1370 @@
+{
+  "observedAtUtc": "2026-10-14T17:10:34.952Z",
+  "scope": "Fresh local synthetic engineering validation; no real learner data",
+  "origin": "https://127.0.0.1:3444",
+  "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+  "tableCounts": [
+    {
+      "name": "activity_controls",
+      "count": 3
+    },
+    {
+      "name": "activity_versions",
+      "count": 3
+    },
+    {
+      "name": "application_control",
+      "count": 1
+    },
+    {
+      "name": "artifact_snapshots",
+      "count": 3
+    },
+    {
+      "name": "assignments",
+      "count": 3
+    },
+    {
+      "name": "attempts",
+      "count": 1
+    },
+    {
+      "name": "audit_events",
+      "count": 70
+    },
+    {
+      "name": "blueprint_drafts",
+      "count": 3
+    },
+    {
+      "name": "check_rule_versions",
+      "count": 2
+    },
+    {
+      "name": "command_receipts",
+      "count": 70
+    },
+    {
+      "name": "competency_versions",
+      "count": 6
+    },
+    {
+      "name": "course_memberships",
+      "count": 6
+    },
+    {
+      "name": "courses",
+      "count": 2
+    },
+    {
+      "name": "digital_logic_config_versions",
+      "count": 2
+    },
+    {
+      "name": "hdl_builds",
+      "count": 3
+    },
+    {
+      "name": "hdl_operations",
+      "count": 7
+    },
+    {
+      "name": "hdl_sessions",
+      "count": 2
+    },
+    {
+      "name": "help_policy_versions",
+      "count": 2
+    },
+    {
+      "name": "jobs",
+      "count": 12
+    },
+    {
+      "name": "login_attempt_windows",
+      "count": 4
+    },
+    {
+      "name": "resource_versions",
+      "count": 3
+    },
+    {
+      "name": "sessions",
+      "count": 7
+    },
+    {
+      "name": "teacher_design_proposals",
+      "count": 0
+    },
+    {
+      "name": "teacher_design_requests",
+      "count": 0
+    },
+    {
+      "name": "teaching_action_receipts",
+      "count": 4
+    },
+    {
+      "name": "teaching_actions",
+      "count": 2
+    },
+    {
+      "name": "teaching_deliveries",
+      "count": 2
+    },
+    {
+      "name": "teaching_messages",
+      "count": 4
+    },
+    {
+      "name": "users",
+      "count": 3
+    },
+    {
+      "name": "workspace_command_bindings",
+      "count": 9
+    },
+    {
+      "name": "workspace_files",
+      "count": 1
+    },
+    {
+      "name": "workspace_process_records",
+      "count": 0
+    },
+    {
+      "name": "workspace_reopen_grants",
+      "count": 0
+    },
+    {
+      "name": "workspace_runs",
+      "count": 0
+    },
+    {
+      "name": "workspace_submissions",
+      "count": 0
+    }
+  ],
+  "assignments": [
+    {
+      "id": "fb0983e4-81bc-487b-8b50-7ffe984c38bb",
+      "course_id": "synthetic-robert-course-c",
+      "student_id": "synthetic-robert-student-a",
+      "activity_id": "e60dfec4-756b-4853-95e6-453911afd5d0",
+      "assignment_revision": 1,
+      "status": "active"
+    },
+    {
+      "id": "4c589f3c-18bc-447a-b6bb-6e3a86c442a7",
+      "course_id": "synthetic-robert-course-hdl",
+      "student_id": "synthetic-robert-student-b",
+      "activity_id": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe",
+      "assignment_revision": 1,
+      "status": "active"
+    },
+    {
+      "id": "cb4e54cb-df5a-4198-bc91-1d8274a9cf64",
+      "course_id": "synthetic-robert-course-hdl",
+      "student_id": "synthetic-robert-student-b",
+      "activity_id": "34333404-d8a3-464f-8039-ab4fad8e6873",
+      "assignment_revision": 1,
+      "status": "active"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "assignment_id": "4c589f3c-18bc-447a-b6bb-6e3a86c442a7",
+      "course_id": "synthetic-robert-course-hdl",
+      "student_id": "synthetic-robert-student-b",
+      "activity_id": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe",
+      "attempt_revision": 6,
+      "decision_epoch": 2
+    }
+  ],
+  "files": [
+    {
+      "file_id": "1ff729fe-3365-4cb0-8e07-2bc4a558783c",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "path": "top.sv",
+      "document_version": 3,
+      "lifecycle": "active",
+      "content_hash": "5bf6e7f4e1943ca5bf20a2d65178690b76fb686f845c185339667379b8db79ee"
+    }
+  ],
+  "snapshots": [
+    {
+      "snapshot_id": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "workspace_revision": 1,
+      "content_hash": "73da034d96be26d4eac5bd0b8b52b90afe15695206ac6acac42666bb9ad0c730"
+    },
+    {
+      "snapshot_id": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "workspace_revision": 2,
+      "content_hash": "a79cbdb7f6c129abff7d0929893a69bcdef1b0aaddbc2c92cc056eabb4ad68f4"
+    },
+    {
+      "snapshot_id": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "workspace_revision": 3,
+      "content_hash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8"
+    }
+  ],
+  "jobs": [
+    {
+      "job_id": "aecc7a40-c1ef-4f19-9aa8-6dd1dcf69c46",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "a47a51a1-7e99-40f7-a0f4-6f4c20abf34e",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "eebed61e-f5ba-47da-a0a5-8b6a613d96ca",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "ad763255-3271-456d-9c72-aea2e0ea9d63",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "failed",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "03f58f2d-080e-4074-b69f-26a63b44cbb8",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_help",
+      "status": "succeeded",
+      "stop_requested": 1,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "70d697fc-0389-4cb5-a19b-9d68515db10d",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_help",
+      "status": "succeeded",
+      "stop_requested": 1,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "e81a2d65-525d-43b6-92fc-a8b568e8a764",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "cb183151-328a-4cad-b36e-da734968c655",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "27635efa-fcd4-4b1b-86b4-d4d9f3e4e8d4",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "4351caea-a17d-4f95-be63-b9a0c2108fa7",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "f6d28b81-d8eb-4106-a9b4-4ecc8240036b",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    },
+    {
+      "job_id": "4c1b26c1-6223-419a-8319-d99c97a809e1",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "purpose": "student_run",
+      "status": "succeeded",
+      "stop_requested": 0,
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452"
+    }
+  ],
+  "builds": [
+    {
+      "build_id": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "job_id": "aecc7a40-c1ef-4f19-9aa8-6dd1dcf69c46",
+      "run_id": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+      "snapshot_id": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+      "status": "succeeded",
+      "artifact_hash": "b541fc32921ac1c637b0288fb1d58c1a9bb798980ebd0a72a85007d78591647b",
+      "result_hash": "923a274051e1abf21e671a9cc4e5b90530084eaaaa434b7a0cad4333c35a8e64",
+      "build_json": {
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "identity": {
+          "id": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+          "commandId": "caeaf165-098e-4533-b7c1-eb1a6e0141f7",
+          "requestHash": "9797f3860419c2feb1e942dc8d00bb3ef905bc9ec0145fc70663c4a1750934b2",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "snapshotId": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+        "snapshotHash": "73da034d96be26d4eac5bd0b8b52b90afe15695206ac6acac42666bb9ad0c730",
+        "board": {
+          "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+          "mappingVersion": "synthetic-mapping-v1",
+          "topModule": "top",
+          "bindings": [
+            {
+              "signal": "clock",
+              "offset": 0,
+              "port": "clk",
+              "portOffset": 0,
+              "width": 1
+            },
+            {
+              "signal": "switches",
+              "offset": 0,
+              "port": "sw",
+              "portOffset": 0,
+              "width": 16
+            },
+            {
+              "signal": "buttons",
+              "offset": 0,
+              "port": "btn",
+              "portOffset": 0,
+              "width": 5
+            },
+            {
+              "signal": "leds",
+              "offset": 0,
+              "port": "led",
+              "portOffset": 0,
+              "width": 16
+            },
+            {
+              "signal": "anodes",
+              "offset": 0,
+              "port": "an",
+              "portOffset": 0,
+              "width": 8
+            },
+            {
+              "signal": "segments",
+              "offset": 0,
+              "port": "seg",
+              "portOffset": 0,
+              "width": 7
+            },
+            {
+              "signal": "dp",
+              "offset": 0,
+              "port": "dp",
+              "portOffset": 0,
+              "width": 1
+            }
+          ]
+        },
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "imageDigest": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+        "configurationHash": "b394be2dc7ff99cfc794131058da61ea62ed1be3f480ead900f0faa7fcdb3142",
+        "status": "succeeded",
+        "terminationConfirmed": true,
+        "artifactHash": "b541fc32921ac1c637b0288fb1d58c1a9bb798980ebd0a72a85007d78591647b",
+        "diagnostics": [],
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "build_id": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "job_id": "ad763255-3271-456d-9c72-aea2e0ea9d63",
+      "run_id": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+      "snapshot_id": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+      "status": "failed",
+      "artifact_hash": null,
+      "result_hash": "89dfb8378b17be8cdfe92178505e181f33ca05b27569d8d11434fe09e596068e",
+      "build_json": {
+        "buildId": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+        "identity": {
+          "id": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+          "commandId": "1d9f2c97-48d4-48ad-9754-02846dc5072b",
+          "requestHash": "f9ff354dbd3b5bb2afdfa74b1d5dba3747195cb686e81dcb34a638b78b789a32",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "snapshotId": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+        "snapshotHash": "a79cbdb7f6c129abff7d0929893a69bcdef1b0aaddbc2c92cc056eabb4ad68f4",
+        "board": {
+          "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+          "mappingVersion": "synthetic-mapping-v1",
+          "topModule": "top",
+          "bindings": [
+            {
+              "signal": "clock",
+              "offset": 0,
+              "port": "clk",
+              "portOffset": 0,
+              "width": 1
+            },
+            {
+              "signal": "switches",
+              "offset": 0,
+              "port": "sw",
+              "portOffset": 0,
+              "width": 16
+            },
+            {
+              "signal": "buttons",
+              "offset": 0,
+              "port": "btn",
+              "portOffset": 0,
+              "width": 5
+            },
+            {
+              "signal": "leds",
+              "offset": 0,
+              "port": "led",
+              "portOffset": 0,
+              "width": 16
+            },
+            {
+              "signal": "anodes",
+              "offset": 0,
+              "port": "an",
+              "portOffset": 0,
+              "width": 8
+            },
+            {
+              "signal": "segments",
+              "offset": 0,
+              "port": "seg",
+              "portOffset": 0,
+              "width": 7
+            },
+            {
+              "signal": "dp",
+              "offset": 0,
+              "port": "dp",
+              "portOffset": 0,
+              "width": 1
+            }
+          ]
+        },
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "imageDigest": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+        "configurationHash": "b394be2dc7ff99cfc794131058da61ea62ed1be3f480ead900f0faa7fcdb3142",
+        "status": "failed",
+        "terminationConfirmed": true,
+        "diagnostics": [
+          {
+            "severity": "error",
+            "message": "/snapshot/top.sv:11: syntax error",
+            "fileId": "1ff729fe-3365-4cb0-8e07-2bc4a558783c",
+            "path": "top.sv",
+            "line": 11,
+            "location": "line-only"
+          },
+          {
+            "severity": "error",
+            "message": "/snapshot/top.sv:10: error: Syntax error in left side of continuous assignment.",
+            "fileId": "1ff729fe-3365-4cb0-8e07-2bc4a558783c",
+            "path": "top.sv",
+            "line": 10,
+            "location": "line-only"
+          }
+        ],
+        "stdout": "",
+        "stderr": "/snapshot/top.sv:11: syntax error\n/snapshot/top.sv:10: error: Syntax error in left side of continuous assignment.\n",
+        "failureKind": "compile_error"
+      }
+    },
+    {
+      "build_id": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "job_id": "e81a2d65-525d-43b6-92fc-a8b568e8a764",
+      "run_id": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+      "snapshot_id": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+      "status": "succeeded",
+      "artifact_hash": "7be96bc89f63f474e075dd48bed20bef2256cc3574cc6153b00de9823feece32",
+      "result_hash": "d301c83ab76da59413a9310db4ca480beba2a7c8c717fdadfb3d628a94213a8b",
+      "build_json": {
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "identity": {
+          "id": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+          "commandId": "d5384961-e074-40e3-88a2-1c56847bd05d",
+          "requestHash": "3244be178b4c342aa51242f6fc2c03731998156b76cc2a68bd81afb6f632a4ca",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "snapshotHash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8",
+        "board": {
+          "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+          "mappingVersion": "synthetic-mapping-v1",
+          "topModule": "top",
+          "bindings": [
+            {
+              "signal": "clock",
+              "offset": 0,
+              "port": "clk",
+              "portOffset": 0,
+              "width": 1
+            },
+            {
+              "signal": "switches",
+              "offset": 0,
+              "port": "sw",
+              "portOffset": 0,
+              "width": 16
+            },
+            {
+              "signal": "buttons",
+              "offset": 0,
+              "port": "btn",
+              "portOffset": 0,
+              "width": 5
+            },
+            {
+              "signal": "leds",
+              "offset": 0,
+              "port": "led",
+              "portOffset": 0,
+              "width": 16
+            },
+            {
+              "signal": "anodes",
+              "offset": 0,
+              "port": "an",
+              "portOffset": 0,
+              "width": 8
+            },
+            {
+              "signal": "segments",
+              "offset": 0,
+              "port": "seg",
+              "portOffset": 0,
+              "width": 7
+            },
+            {
+              "signal": "dp",
+              "offset": 0,
+              "port": "dp",
+              "portOffset": 0,
+              "width": 1
+            }
+          ]
+        },
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "imageDigest": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+        "configurationHash": "b394be2dc7ff99cfc794131058da61ea62ed1be3f480ead900f0faa7fcdb3142",
+        "status": "succeeded",
+        "terminationConfirmed": true,
+        "artifactHash": "7be96bc89f63f474e075dd48bed20bef2256cc3574cc6153b00de9823feece32",
+        "diagnostics": [],
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "build_id": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+      "generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "revision": 3,
+      "status": "stopped",
+      "confirmed_sequence": 1,
+      "termination_confirmed": 1,
+      "stop_requested": 1,
+      "pending_operation_id": null,
+      "session_json": {
+        "sessionId": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+        "identity": {
+          "id": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+          "commandId": "9f71fa68-0d9d-4972-b5e3-234beb6ef97b",
+          "requestHash": "6a10522b4541e366d801547e25f047650232ce29b4bd6a233e4cbd780dc89c89",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "snapshotId": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+        "snapshotHash": "73da034d96be26d4eac5bd0b8b52b90afe15695206ac6acac42666bb9ad0c730",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "sessionRevision": 3,
+        "confirmedSequence": 1,
+        "simTimePs": "10000",
+        "status": "stopped",
+        "terminationConfirmed": true,
+        "stopRequested": true,
+        "createdAt": "2026-10-14T16:32:28.918Z",
+        "deadline": "2026-10-14T17:02:28.918Z",
+        "lastOperationAt": "2026-10-14T16:33:31.082Z",
+        "failureKind": "stopped"
+      }
+    },
+    {
+      "session_id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "build_id": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+      "generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "revision": 5,
+      "status": "active",
+      "confirmed_sequence": 4,
+      "termination_confirmed": 0,
+      "stop_requested": 0,
+      "pending_operation_id": null,
+      "session_json": {
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "identity": {
+          "id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+          "commandId": "f657a4d1-8b7a-47da-a2d5-dcbcd8505ea5",
+          "requestHash": "30265a065e2afde0e93fa090692cd25ae69e32ce8c5599f9b324296e6f97f2aa",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "snapshotHash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "sessionRevision": 5,
+        "confirmedSequence": 4,
+        "simTimePs": "80000",
+        "status": "active",
+        "terminationConfirmed": false,
+        "stopRequested": false,
+        "createdAt": "2026-10-14T17:07:14.022Z",
+        "deadline": "2026-10-14T17:37:14.022Z",
+        "lastOperationAt": "2026-10-14T17:09:12.373Z"
+      }
+    }
+  ],
+  "operations": [
+    {
+      "operation_id": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+      "session_id": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+      "job_id": "a47a51a1-7e99-40f7-a0f4-6f4c20abf34e",
+      "sequence": 0,
+      "request_hash": "72a1627f76a14f97543a5725cab49de866471283dec133f52afb632607fb5f63",
+      "status": "succeeded",
+      "request_json": {
+        "identity": {
+          "id": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+          "commandId": "9f71fa68-0d9d-4972-b5e3-234beb6ef97b",
+          "requestHash": "6a10522b4541e366d801547e25f047650232ce29b4bd6a233e4cbd780dc89c89",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f"
+      },
+      "result_json": {
+        "operationId": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+        "sessionId": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "snapshotId": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+        "snapshotHash": "73da034d96be26d4eac5bd0b8b52b90afe15695206ac6acac42666bb9ad0c730",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "sequence": 0,
+        "sessionRevision": 1,
+        "frames": [
+          {
+            "simTimePs": "0",
+            "switches": "0000000000000000",
+            "buttons": "00000",
+            "resetN": "1",
+            "leds": "0000000000000000",
+            "anodes": "11111110",
+            "segments": "1000000",
+            "dp": "1"
+          }
+        ],
+        "finalFrame": {
+          "simTimePs": "0",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "1000000",
+          "dp": "1"
+        },
+        "sampleCount": 1,
+        "droppedFrames": 0,
+        "coverage": "complete",
+        "resultHash": "bd655403a7244537ed31e42b3039ebedfed5d04cd6e3888690b8ecab4b4acf86"
+      },
+      "result_hash": "10b806167393d2940ed0e72aaa7358dcf4ebd74ef32d02359e6edaa084abebe2"
+    },
+    {
+      "operation_id": "1db50912-0daa-498c-a217-f476b4174f24",
+      "session_id": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+      "job_id": "eebed61e-f5ba-47da-a0a5-8b6a613d96ca",
+      "sequence": 1,
+      "request_hash": "c1da596d847926adb62fe9764a7b4ef8cca552a224c238d0e7657fd5baac97f7",
+      "status": "succeeded",
+      "request_json": {
+        "identity": {
+          "id": "1db50912-0daa-498c-a217-f476b4174f24",
+          "commandId": "378422c9-085f-4179-bd29-ee90caf002cc",
+          "requestHash": "21918a2f03b01aa992dc263bf2bc1def7ca743429d057bc3e8f11f4d2ed60c0c",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "sessionId": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+        "expectedSessionRevision": 1,
+        "expectedSequence": 1,
+        "inputs": {
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1"
+        },
+        "advanceCycles": 1
+      },
+      "result_json": {
+        "operationId": "1db50912-0daa-498c-a217-f476b4174f24",
+        "sessionId": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "snapshotId": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+        "snapshotHash": "73da034d96be26d4eac5bd0b8b52b90afe15695206ac6acac42666bb9ad0c730",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "sequence": 1,
+        "sessionRevision": 2,
+        "frames": [
+          {
+            "simTimePs": "10000",
+            "switches": "0000000000000001",
+            "buttons": "00000",
+            "resetN": "1",
+            "leds": "0000000000000000",
+            "anodes": "11111110",
+            "segments": "1000000",
+            "dp": "1"
+          }
+        ],
+        "finalFrame": {
+          "simTimePs": "10000",
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "1000000",
+          "dp": "1"
+        },
+        "sampleCount": 1,
+        "droppedFrames": 0,
+        "coverage": "complete",
+        "resultHash": "f33071ed4626e39a0ca89b30821c17221970011191f061f81ab74385a969814b"
+      },
+      "result_hash": "e92a866a53bd9bd2662d38952bc85bfcf20701ae863fb45fc2ca420efee1b3bc"
+    },
+    {
+      "operation_id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+      "session_id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+      "job_id": "cb183151-328a-4cad-b36e-da734968c655",
+      "sequence": 0,
+      "request_hash": "87ef3e682893623e076ce0d41d8e75474d2a1d6a157fcf6baf9745c98b2746ab",
+      "status": "succeeded",
+      "request_json": {
+        "identity": {
+          "id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+          "commandId": "f657a4d1-8b7a-47da-a2d5-dcbcd8505ea5",
+          "requestHash": "30265a065e2afde0e93fa090692cd25ae69e32ce8c5599f9b324296e6f97f2aa",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1"
+      },
+      "result_json": {
+        "operationId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "snapshotHash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "sequence": 0,
+        "sessionRevision": 1,
+        "frames": [
+          {
+            "simTimePs": "0",
+            "switches": "0000000000000000",
+            "buttons": "00000",
+            "resetN": "1",
+            "leds": "0000000000000000",
+            "anodes": "11111110",
+            "segments": "1000000",
+            "dp": "1"
+          }
+        ],
+        "finalFrame": {
+          "simTimePs": "0",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "1000000",
+          "dp": "1"
+        },
+        "sampleCount": 1,
+        "droppedFrames": 0,
+        "coverage": "complete",
+        "resultHash": "547167986234af8ad755ed1f4dfdde90bd360c41ed58c55914945463475edd3f"
+      },
+      "result_hash": "7d0a0ead8d71ae6d5ce1491b707e884bab8edcd0add707de469d1edce5f1cb96"
+    },
+    {
+      "operation_id": "e87af0fe-6a28-4b04-98c6-2440b3b3b0e2",
+      "session_id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+      "job_id": "27635efa-fcd4-4b1b-86b4-d4d9f3e4e8d4",
+      "sequence": 1,
+      "request_hash": "b745e8f62b65cad5e2c5789e07237a7b0abcb293a5e37c0642e3a72290f9ac03",
+      "status": "succeeded",
+      "request_json": {
+        "identity": {
+          "id": "e87af0fe-6a28-4b04-98c6-2440b3b3b0e2",
+          "commandId": "76a47bb1-828c-44c3-ada1-feeb865d125a",
+          "requestHash": "f785aa6b94d15288ec6866e5b1af64e61ee69ef9fabfd265c1aabd70277ddf18",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "expectedSessionRevision": 1,
+        "expectedSequence": 1,
+        "inputs": {
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1"
+        },
+        "advanceCycles": 1
+      },
+      "result_json": {
+        "operationId": "e87af0fe-6a28-4b04-98c6-2440b3b3b0e2",
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "snapshotHash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "sequence": 1,
+        "sessionRevision": 2,
+        "frames": [
+          {
+            "simTimePs": "10000",
+            "switches": "0000000000000001",
+            "buttons": "00000",
+            "resetN": "1",
+            "leds": "0000000000000001",
+            "anodes": "11111110",
+            "segments": "1000000",
+            "dp": "1"
+          }
+        ],
+        "finalFrame": {
+          "simTimePs": "10000",
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11111110",
+          "segments": "1000000",
+          "dp": "1"
+        },
+        "sampleCount": 1,
+        "droppedFrames": 0,
+        "coverage": "complete",
+        "resultHash": "456cc60284ea8dfaa2c94245c8243aad3752fd6421af1a33caba378da916afbb"
+      },
+      "result_hash": "bf59eb0162cda32a767d02ff83232540121135aef06bc447ccc1d5521503044c"
+    },
+    {
+      "operation_id": "5dcad458-dd92-4af3-afeb-38fe02827587",
+      "session_id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+      "job_id": "4351caea-a17d-4f95-be63-b9a0c2108fa7",
+      "sequence": 2,
+      "request_hash": "b4ce9bda9e72f314655ee4a5418fc12b8c60919f89145d2c2fe98fe02a670c5b",
+      "status": "succeeded",
+      "request_json": {
+        "identity": {
+          "id": "5dcad458-dd92-4af3-afeb-38fe02827587",
+          "commandId": "2ddd7402-e10a-4a70-b62b-7986067dba5e",
+          "requestHash": "865fdaaa7225136f58ae9db4be73a81fb004c268e02e2d2cbacc38dcbefe48a5",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "expectedSessionRevision": 2,
+        "expectedSequence": 2,
+        "inputs": {
+          "switches": "0000000000000001",
+          "buttons": "00001",
+          "resetN": "1"
+        },
+        "advanceCycles": 1
+      },
+      "result_json": {
+        "operationId": "5dcad458-dd92-4af3-afeb-38fe02827587",
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "snapshotHash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "sequence": 2,
+        "sessionRevision": 3,
+        "frames": [
+          {
+            "simTimePs": "20000",
+            "switches": "0000000000000001",
+            "buttons": "00001",
+            "resetN": "1",
+            "leds": "0000000000000001",
+            "anodes": "11111100",
+            "segments": "1000000",
+            "dp": "1"
+          }
+        ],
+        "finalFrame": {
+          "simTimePs": "20000",
+          "switches": "0000000000000001",
+          "buttons": "00001",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11111100",
+          "segments": "1000000",
+          "dp": "1"
+        },
+        "sampleCount": 1,
+        "droppedFrames": 0,
+        "coverage": "complete",
+        "resultHash": "6a33e852fe054ea780c830941ea1517d66bc64b8f2f4ba6265b9930061e362e5"
+      },
+      "result_hash": "2097df2f0328f621d9b1be302e1322d393f5232e6d44aba12531349e7abfb0c3"
+    },
+    {
+      "operation_id": "d9766f0f-de57-4bda-ad04-932511a5845f",
+      "session_id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+      "job_id": "f6d28b81-d8eb-4106-a9b4-4ecc8240036b",
+      "sequence": 3,
+      "request_hash": "236e5c9cd17eef08705c5e72c89c20f25238218aaf89874e1164411486d3fe9f",
+      "status": "succeeded",
+      "request_json": {
+        "identity": {
+          "id": "d9766f0f-de57-4bda-ad04-932511a5845f",
+          "commandId": "d22667b9-38da-4d10-b3b2-12c7b3e1ce16",
+          "requestHash": "95a5b406bad413d64c482cbafc882316ffad9457fc723e1588bf010c08f361ea",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "expectedSessionRevision": 3,
+        "expectedSequence": 3,
+        "inputs": {
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1"
+        },
+        "advanceCycles": 1
+      },
+      "result_json": {
+        "operationId": "d9766f0f-de57-4bda-ad04-932511a5845f",
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "snapshotHash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "sequence": 3,
+        "sessionRevision": 4,
+        "frames": [
+          {
+            "simTimePs": "30000",
+            "switches": "0000000000000001",
+            "buttons": "00000",
+            "resetN": "1",
+            "leds": "0000000000000001",
+            "anodes": "11111110",
+            "segments": "1000000",
+            "dp": "1"
+          }
+        ],
+        "finalFrame": {
+          "simTimePs": "30000",
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11111110",
+          "segments": "1000000",
+          "dp": "1"
+        },
+        "sampleCount": 1,
+        "droppedFrames": 0,
+        "coverage": "complete",
+        "resultHash": "b147c34410591bc43230c54e35d9ade91de28cea841d6597f219fcdc20645812"
+      },
+      "result_hash": "c01a73a2f4e48defb304fd720d021589335c24d8ff137f38eb02bbe5dc4ec33e"
+    },
+    {
+      "operation_id": "441aa6b5-4e3b-4ef8-bd96-8f2e0427bd48",
+      "session_id": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+      "job_id": "4c1b26c1-6223-419a-8319-d99c97a809e1",
+      "sequence": 4,
+      "request_hash": "0c8f0b7083d9d5dd14cc5f49fbbfaece98ffca8c4bf74b438f8e236fe6d7f9e9",
+      "status": "succeeded",
+      "request_json": {
+        "identity": {
+          "id": "441aa6b5-4e3b-4ef8-bd96-8f2e0427bd48",
+          "commandId": "9ca1f542-26ea-45d0-8167-45dfa1a351c4",
+          "requestHash": "ce3027973991566a9a6a620088c08e800b8d9fecfdc5c2afb8c041d60830953d",
+          "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+          "scope": {
+            "courseId": "synthetic-robert-course-hdl",
+            "studentId": "synthetic-robert-student-b",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe"
+          }
+        },
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "expectedSessionRevision": 4,
+        "expectedSequence": 4,
+        "inputs": {
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1"
+        },
+        "advanceCycles": 5
+      },
+      "result_json": {
+        "operationId": "441aa6b5-4e3b-4ef8-bd96-8f2e0427bd48",
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "snapshotHash": "a3364d3144662c55d1c11bcd674c4ce2ca0b24b551cb296e997f756adc8caee8",
+        "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+        "mappingVersion": "synthetic-mapping-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "sequence": 4,
+        "sessionRevision": 5,
+        "frames": [
+          {
+            "simTimePs": "80000",
+            "switches": "0000000000000001",
+            "buttons": "00000",
+            "resetN": "1",
+            "leds": "0000000000000001",
+            "anodes": "11111110",
+            "segments": "1000000",
+            "dp": "1"
+          }
+        ],
+        "finalFrame": {
+          "simTimePs": "80000",
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11111110",
+          "segments": "1000000",
+          "dp": "1"
+        },
+        "sampleCount": 5,
+        "droppedFrames": 0,
+        "coverage": "complete",
+        "resultHash": "2700c21da1bd2aeb02a74b9ec55d2baf3f71e8b00649e513b35614575708bed9"
+      },
+      "result_hash": "79baeaac325146c66771c5013af2c6319f95a82644c83692b78d12a73b576dab"
+    }
+  ],
+  "runs": [],
+  "actions": [
+    {
+      "action_id": "696831b4-5998-455d-81da-8f51af526f2f",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "job_id": "03f58f2d-080e-4074-b69f-26a63b44cbb8",
+      "message_id": "f688beaf-ca51-48a4-84c8-e9d8fac818dd",
+      "content_hash": "18a4b1a8784a1208dad7fca6c644bdc746ff9e252d7835bacc0d3b7397d7cdc9",
+      "disposition": "cancelled",
+      "action_json": {
+        "actionId": "696831b4-5998-455d-81da-8f51af526f2f",
+        "scope": {
+          "courseId": "synthetic-robert-course-hdl",
+          "studentId": "synthetic-robert-student-b",
+          "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964"
+        },
+        "jobId": "03f58f2d-080e-4074-b69f-26a63b44cbb8",
+        "messageId": "f688beaf-ca51-48a4-84c8-e9d8fac818dd",
+        "contentHash": "18a4b1a8784a1208dad7fca6c644bdc746ff9e252d7835bacc0d3b7397d7cdc9",
+        "disposition": "cancelled",
+        "targetVersions": {
+          "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe",
+          "policyVersionId": "synthetic-robert-course-hdl-help",
+          "modelConfigVersion": "deepseek-flash-v1",
+          "promptVersion": "student-help-v1",
+          "schemaVersion": "student-help-v1"
+        },
+        "basis": {
+          "attemptRevision": 4,
+          "decisionEpoch": 1,
+          "captureRevision": 0,
+          "relatedStateRevision": 0,
+          "objectRef": {
+            "kind": "code",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "snapshotId": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+            "fileId": "1ff729fe-3365-4cb0-8e07-2bc4a558783c",
+            "path": "top.sv",
+            "documentVersion": 2,
+            "contentHash": "c3fd44fa14d891c967b9ddbb7c21235f3bff3a505bfd9fa40ffaf0dd69ea11ed"
+          },
+          "hdl": {
+            "snapshotId": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+            "snapshotHash": "a79cbdb7f6c129abff7d0929893a69bcdef1b0aaddbc2c92cc056eabb4ad68f4",
+            "buildId": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+            "buildResultHash": "89dfb8378b17be8cdfe92178505e181f33ca05b27569d8d11434fe09e596068e",
+            "workspaceRevision": 2,
+            "buildStatus": "failed"
+          },
+          "inputRefs": [
+            "project:813eeec7-d356-4e50-87ba-acd1b6fb3ebe",
+            "code:d00d8e4ac2365a5eec75433509d366a2e96c8f5404d762b862e4bd33b9fcf089",
+            "hdl-build:11170b83044768c42ad2ff002b381654aa959034ec8ed7af71cfd47c4d2eb42e",
+            "resource:42ee15e3c34928f1eed3fa9cc9abe8de47a9aba96c802fe7b9dee348b76a1275",
+            "resource:417a8f2973344fca7de84b8e79fe1f4637979ece09d02619e3090889e52072c6",
+            "resource:2b1cf35c3ad9bfb4da9f9f03dd84307d423e4c14f5d3f166624fed14782ccd83",
+            "learner-state:0:unknown"
+          ],
+          "assistanceRefs": [],
+          "coverageRefs": []
+        },
+        "generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+        "stopReason": "replaced_by_new_question",
+        "causeRef": "334a2f80-b348-4a42-9e63-7ba45e1c00fa",
+        "basisRevised": true,
+        "createdAt": "2026-10-14T16:47:02.752Z"
+      }
+    },
+    {
+      "action_id": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+      "attempt_id": "c5d1cf8e-991b-431a-9d39-177260725964",
+      "job_id": "70d697fc-0389-4cb5-a19b-9d68515db10d",
+      "message_id": "92e9f7a9-dc89-4ee9-9f76-77242b10f013",
+      "content_hash": "e0aded304a3a979c45ed00fc1dd0b5e6b0d2d5523e58a94d2d644958174bc0fd",
+      "disposition": "stale",
+      "action_json": {
+        "actionId": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+        "scope": {
+          "courseId": "synthetic-robert-course-hdl",
+          "studentId": "synthetic-robert-student-b",
+          "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964"
+        },
+        "jobId": "70d697fc-0389-4cb5-a19b-9d68515db10d",
+        "messageId": "92e9f7a9-dc89-4ee9-9f76-77242b10f013",
+        "contentHash": "e0aded304a3a979c45ed00fc1dd0b5e6b0d2d5523e58a94d2d644958174bc0fd",
+        "disposition": "stale",
+        "targetVersions": {
+          "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe",
+          "policyVersionId": "synthetic-robert-course-hdl-help",
+          "modelConfigVersion": "deepseek-flash-v1",
+          "promptVersion": "student-help-v1",
+          "schemaVersion": "student-help-v1"
+        },
+        "basis": {
+          "attemptRevision": 5,
+          "decisionEpoch": 2,
+          "captureRevision": 0,
+          "relatedStateRevision": 0,
+          "objectRef": {
+            "kind": "code",
+            "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+            "snapshotId": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+            "fileId": "1ff729fe-3365-4cb0-8e07-2bc4a558783c",
+            "path": "top.sv",
+            "documentVersion": 2,
+            "contentHash": "c3fd44fa14d891c967b9ddbb7c21235f3bff3a505bfd9fa40ffaf0dd69ea11ed"
+          },
+          "hdl": {
+            "snapshotId": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+            "snapshotHash": "a79cbdb7f6c129abff7d0929893a69bcdef1b0aaddbc2c92cc056eabb4ad68f4",
+            "buildId": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+            "buildResultHash": "89dfb8378b17be8cdfe92178505e181f33ca05b27569d8d11434fe09e596068e",
+            "workspaceRevision": 2,
+            "buildStatus": "failed"
+          },
+          "inputRefs": [
+            "project:813eeec7-d356-4e50-87ba-acd1b6fb3ebe",
+            "code:d00d8e4ac2365a5eec75433509d366a2e96c8f5404d762b862e4bd33b9fcf089",
+            "hdl-build:11170b83044768c42ad2ff002b381654aa959034ec8ed7af71cfd47c4d2eb42e",
+            "resource:42ee15e3c34928f1eed3fa9cc9abe8de47a9aba96c802fe7b9dee348b76a1275",
+            "resource:417a8f2973344fca7de84b8e79fe1f4637979ece09d02619e3090889e52072c6",
+            "learner-state:0:unknown"
+          ],
+          "assistanceRefs": [],
+          "coverageRefs": []
+        },
+        "generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+        "stopReason": "learner_state_revised",
+        "basisRevised": true,
+        "createdAt": "2026-10-14T17:05:15.388Z"
+      }
+    }
+  ],
+  "deliveries": [
+    {
+      "delivery_id": "1fae0616-9053-40d3-977c-426b2ba39745",
+      "action_id": "696831b4-5998-455d-81da-8f51af526f2f",
+      "recipient_id": "synthetic-robert-student-b",
+      "content_hash": "18a4b1a8784a1208dad7fca6c644bdc746ff9e252d7835bacc0d3b7397d7cdc9",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 33
+    },
+    {
+      "delivery_id": "c4396c80-94c4-4828-9783-f3766b67fcb2",
+      "action_id": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+      "recipient_id": "synthetic-robert-student-b",
+      "content_hash": "e0aded304a3a979c45ed00fc1dd0b5e6b0d2d5523e58a94d2d644958174bc0fd",
+      "recovery_generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "server_seq": 45
+    }
+  ],
+  "teachingReceipts": [
+    {
+      "receipt_id": "994bfcd1-eb1d-4b6a-bf73-db030020e8fc",
+      "action_id": "696831b4-5998-455d-81da-8f51af526f2f",
+      "delivery_id": "1fae0616-9053-40d3-977c-426b2ba39745",
+      "content_hash": "18a4b1a8784a1208dad7fca6c644bdc746ff9e252d7835bacc0d3b7397d7cdc9",
+      "receipt_kind": "received",
+      "server_seq": 34
+    },
+    {
+      "receipt_id": "9d7f3386-4dab-4fbe-a239-c09252393ffe",
+      "action_id": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+      "delivery_id": "c4396c80-94c4-4828-9783-f3766b67fcb2",
+      "content_hash": "e0aded304a3a979c45ed00fc1dd0b5e6b0d2d5523e58a94d2d644958174bc0fd",
+      "receipt_kind": "received",
+      "server_seq": 46
+    },
+    {
+      "receipt_id": "0ead30ae-638f-4853-8847-d285e1d0f2e3",
+      "action_id": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+      "delivery_id": "c4396c80-94c4-4828-9783-f3766b67fcb2",
+      "content_hash": "e0aded304a3a979c45ed00fc1dd0b5e6b0d2d5523e58a94d2d644958174bc0fd",
+      "receipt_kind": "displayed",
+      "server_seq": 48
+    },
+    {
+      "receipt_id": "c98efcd7-5100-4eb7-a42d-3089d9c2735c",
+      "action_id": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+      "delivery_id": "c4396c80-94c4-4828-9783-f3766b67fcb2",
+      "content_hash": "e0aded304a3a979c45ed00fc1dd0b5e6b0d2d5523e58a94d2d644958174bc0fd",
+      "receipt_kind": "acknowledged",
+      "server_seq": 50
+    }
+  ],
+  "exclusions": [
+    "users credentials",
+    "sessions credentials",
+    "login windows",
+    "signing secret",
+    "API key",
+    "headers",
+    "model HTTP request bodies"
+  ]
+}

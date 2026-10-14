@@ -1,0 +1,151 @@
+{
+  "observedAtUtc": "2026-10-14T16:13:15.823Z",
+  "scope": "Robert fresh local synthetic C1; authenticated application reads after current acceptance",
+  "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+  "ssh": {
+    "binary": "/usr/bin/ssh",
+    "keyFile": "/opt/xunjie-runner/vm/keys/application",
+    "knownHostsFile": "/opt/xunjie-runner/vm/keys/known_hosts",
+    "host": "127.0.0.1",
+    "port": 2222
+  },
+  "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+  "c": {
+    "data": {
+      "ready": true,
+      "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+      "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+      "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+      "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+      "fingerprint": {
+        "kernel": "6.8.0-142-generic",
+        "node": "v24.21.0",
+        "engine": "29.8.2",
+        "cgroup": "2",
+        "seccomp": [
+          "name=seccomp,profile=builtin"
+        ],
+        "profile": {
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+          "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+          "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+          "approvedResultFiles": [
+            "report.txt"
+          ]
+        },
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "validation": {
+        "passed": true,
+        "fingerprintHash": "2ce8cb3324b8001a5e3929baf21e5b802b09b4aba82fa7c6ab2e93ecf67b9dcf",
+        "fingerprint": {
+          "kernel": "6.8.0-142-generic",
+          "node": "v24.21.0",
+          "engine": "29.8.2",
+          "cgroup": "2",
+          "seccomp": [
+            "name=seccomp,profile=builtin"
+          ],
+          "profile": {
+            "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+            "imageDigest": "sha256:980e5c2310bee44d11ee46964174cc11dfea822ba60f0d050d2161d63b64b8f5",
+            "compilerImage": "sha256:9f14e671a09bc195b93ca39524b8dcf401bc832b0c520e462327ce94986799aa",
+            "runtimeImage": "sha256:765d51df494104de704bbecfdfdd42945077ea4c8f11fb49f91e9dca27a6fe99",
+            "approvedResultFiles": [
+              "report.txt"
+            ]
+          },
+          "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+        },
+        "evidence": [
+          {
+            "suite": "guest",
+            "exitCode": 0,
+            "outputHash": "4f26abbb50c7134e4b588cafd4a5a0322cdcbbe96f6d49a3dd70ab2f26f5b5fe"
+          },
+          {
+            "suite": "ssh",
+            "exitCode": 0,
+            "outputHash": "4623f4193193a020e88c5a61fecf0e9788ed6d44ef3583931d0a8ec179469820"
+          },
+          {
+            "suite": "types",
+            "exitCode": 0,
+            "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "validatedAt": "2026-10-14T16:06:26.744Z"
+      }
+    }
+  },
+  "hdl": {
+    "data": {
+      "ready": true,
+      "profile": {
+        "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+        "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+        "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+        "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "fingerprint": {
+        "kernel": "6.8.0-142-generic",
+        "node": "v24.21.0",
+        "engine": "29.8.2",
+        "cgroup": "2",
+        "seccomp": [
+          "name=seccomp,profile=builtin"
+        ],
+        "profile": {
+          "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+          "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+          "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+          "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+          "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+        },
+        "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+      },
+      "fingerprintHash": "ed41d6ee92874c8a96bdb9530e28f9735f9e80005079708f358382ee5785c99d",
+      "validation": {
+        "passed": true,
+        "fingerprintHash": "ed41d6ee92874c8a96bdb9530e28f9735f9e80005079708f358382ee5785c99d",
+        "validatedAt": "2026-10-14T16:11:54.151Z",
+        "evidence": [
+          {
+            "suite": "hdl",
+            "exitCode": 0,
+            "outputHash": "c62b4eb5e2a79f83fbb7113865014a4bd9395f17fcbb1a5ab0b00a8f60bb61fc"
+          },
+          {
+            "suite": "c",
+            "exitCode": 0,
+            "outputHash": "ecf6e6148d1d9442825441c8f48b197ef32e9bdd8cbb6ebd56f03b4318a9a996"
+          }
+        ]
+      }
+    }
+  },
+  "hdlRuntime": {
+    "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+    "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+    "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+    "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+  },
+  "vm": {
+    "hostDistribution": "Ubuntu",
+    "unit": "xunjie-c1-vm.service",
+    "vcpus": 2,
+    "memoryMiB": 4096,
+    "diskGiB": 20,
+    "sharedFolders": false,
+    "guestHostPublicPin": "[127.0.0.1]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINC6XIJ9p+uu2yaKjCKIgGNIIZnzwaWIq404gFzyVx4g"
+  },
+  "importedRemoteValidationState": false,
+  "readinessUsesCurrentLocalValidation": true,
+  "importedRemoteKeys": false,
+  "importedRemoteDatabase": false
+}

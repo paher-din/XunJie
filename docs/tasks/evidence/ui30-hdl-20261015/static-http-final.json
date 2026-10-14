@@ -1,0 +1,1392 @@
+{
+  "schema": "ui30-hdl-static-http-final-v1",
+  "observedAtUtc": "2026-10-14T18:09:22.5878836+00:00",
+  "origin": "https://127.0.0.1:3444",
+  "sourceCommit": "8d613a7224d6e309500913277a10b024258fa82c",
+  "manifest": "ui55-hdl-local-8d613a7-dist-manifest.json",
+  "manifestSha256": "eec010a07251a56b5cb546cbbf5012d64fa3f60c4b6685df17c57e326bef579e",
+  "artifactSha256": "4346d0a05308d0b73ebddc109be37dd5612ee86f71efd373d84baeb92e63ed5d",
+  "entrypointAsset": "/assets/index-Iq2DyhKA.js",
+  "entrypointSha256": "79e824f73bca6675068257961217541a323721f5f37b8c192b86fca3f5aea451",
+  "purpose": "Final editor-fix normal artifact incremental strict public HTTP check; not a new full143 or browser teaching chain",
+  "priorFacts": {
+    "sourceCommit": "41563d9101355a08cb8f65633bab0319e344cacb",
+    "manifest": "ui55-hdl-local-41563d9-dist-manifest.json",
+    "manifestSha256": "4fd8084bb3bb74592e6c4f7ac8943f38c946437bbf0b06528dd1a98a8370edb3",
+    "evidence": "static-http-postmerge.json",
+    "evidenceSha256": "d93b2d62e6aa350beba8087c88fedb753ac67c1441186f6285c4d3a658ffc3cf",
+    "originalDemoSource": "bec2e3c250091969f59e233439debd307a6925c2",
+    "intermediateAndOriginalEvidenceOverwritten": false
+  },
+  "tls": {
+    "approvedLeafSha256": "8d663b4dba93b1fb61df544fe3fe17022e561d88a559576381abf1220b3ac52e",
+    "validation": "Current Windows system certificate chain/target127.0.0.1 validation with no custom callback or bypass",
+    "verificationPassed": true,
+    "peerLeafSha256": "8d663b4dba93b1fb61df544fe3fe17022e561d88a559576381abf1220b3ac52e",
+    "protocol": "Tls13",
+    "encrypted": true,
+    "leafInCurrentUserRoot": true
+  },
+  "freshDeltaChecks": [
+    {
+      "manifestPath": "assets/_.contribution-BgmPs3YP.js",
+      "expectedBytes": 757,
+      "expectedSha256": "110db41e04d7f97653d2f1eb39d2994be646470aab27a8b1f69374167f6aa2e4",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/_.contribution-BgmPs3YP.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 757,
+      "sha256": "110db41e04d7f97653d2f1eb39d2994be646470aab27a8b1f69374167f6aa2e4",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "03de7bdd-408a-459e-9296-e4b745c97ebc",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "757"
+      }
+    },
+    {
+      "manifestPath": "assets/BrandBoard-BYdLUAlR.js",
+      "expectedBytes": 7608,
+      "expectedSha256": "ebf33c2e8bc27679d05cc067c654fe807fe35a6053e407140c29cf0699f7d5fc",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/BrandBoard-BYdLUAlR.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 7608,
+      "sha256": "ebf33c2e8bc27679d05cc067c654fe807fe35a6053e407140c29cf0699f7d5fc",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "f61eb537-1528-49ca-ac94-a5abfb23d82e",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "7608"
+      }
+    },
+    {
+      "manifestPath": "assets/diffEditorWidget-BnnLLssI.js",
+      "expectedBytes": 202785,
+      "expectedSha256": "192e011a1d5a8fad09464cd470d3e996c4c698e23c6cfd511b49f5dae0d1dd80",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/diffEditorWidget-BnnLLssI.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 202785,
+      "sha256": "192e011a1d5a8fad09464cd470d3e996c4c698e23c6cfd511b49f5dae0d1dd80",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "5b3981b2-067d-4644-b257-7b3c8476e006",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "202785"
+      }
+    },
+    {
+      "manifestPath": "assets/editor.api-D4SO6SRT.js",
+      "expectedBytes": 579231,
+      "expectedSha256": "525278c861cce0ba4efaaa2f0d4994110e262e84c736c65e6f2be9de65781d0f",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/editor.api-D4SO6SRT.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 579231,
+      "sha256": "525278c861cce0ba4efaaa2f0d4994110e262e84c736c65e6f2be9de65781d0f",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "cba53837-9f88-4094-b1c9-43603e8706b0",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "579231"
+      }
+    },
+    {
+      "manifestPath": "assets/IconBoard-D1egTU-8.js",
+      "expectedBytes": 5846,
+      "expectedSha256": "295f41b7487e39edf18602a2e3e45b3b68dd073ab46d3bdbd6d5aecd3d2f715f",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/IconBoard-D1egTU-8.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 5846,
+      "sha256": "295f41b7487e39edf18602a2e3e45b3b68dd073ab46d3bdbd6d5aecd3d2f715f",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "bbe1c166-3eae-46cb-9360-5055e88a5f80",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "5846"
+      }
+    },
+    {
+      "manifestPath": "assets/index-Iq2DyhKA.js",
+      "expectedBytes": 1337830,
+      "expectedSha256": "79e824f73bca6675068257961217541a323721f5f37b8c192b86fca3f5aea451",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/index-Iq2DyhKA.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 1337830,
+      "sha256": "79e824f73bca6675068257961217541a323721f5f37b8c192b86fca3f5aea451",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "3961f460-d493-42bd-9823-0cdfa1942151",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "1337830"
+      }
+    },
+    {
+      "manifestPath": "assets/python-Dsf-pBRL.js",
+      "expectedBytes": 5939,
+      "expectedSha256": "ed0cf2aced84385026d495a8bf162907c48ff0e3860f093708294aa47de0e4a3",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/python-Dsf-pBRL.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 5939,
+      "sha256": "ed0cf2aced84385026d495a8bf162907c48ff0e3860f093708294aa47de0e4a3",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "7d1bdcc4-8a6f-44eb-b28b-e264c6e301f7",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "5939"
+      }
+    },
+    {
+      "manifestPath": "assets/register-1feeXDP8.js",
+      "expectedBytes": 2479,
+      "expectedSha256": "ddcd121ea42a7fbf266e05e7e27c66031adccb6fb7f6c00a997b87fc093b6dd6",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/register-1feeXDP8.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 2479,
+      "sha256": "ddcd121ea42a7fbf266e05e7e27c66031adccb6fb7f6c00a997b87fc093b6dd6",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "0d193916-bdd5-4748-81b3-70c0f8673d94",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "2479"
+      }
+    },
+    {
+      "manifestPath": "assets/register-BBxk0Ddq.js",
+      "expectedBytes": 6792,
+      "expectedSha256": "823ede14133ca6528d03bd69ed24393bc170c581996f563b37332f9723ee3f5e",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/register-BBxk0Ddq.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 6792,
+      "sha256": "823ede14133ca6528d03bd69ed24393bc170c581996f563b37332f9723ee3f5e",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "4333a0ed-8dda-46d7-abc6-7533a2452db5",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "6792"
+      }
+    },
+    {
+      "manifestPath": "assets/register-Bd7CsLqt.js",
+      "expectedBytes": 5390,
+      "expectedSha256": "7b9347db65798a1160c084a236cc4e3b48ef8204bc8d48d50e448e56f032d34e",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/register-Bd7CsLqt.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 5390,
+      "sha256": "7b9347db65798a1160c084a236cc4e3b48ef8204bc8d48d50e448e56f032d34e",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "bf3eeed4-3ee2-4d0b-b973-ebc6b6f5bedb",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "5390"
+      }
+    },
+    {
+      "manifestPath": "assets/register-D5CKgSAN.js",
+      "expectedBytes": 700759,
+      "expectedSha256": "f5be2a1445b8be0386096bfff4fd50cc0f94831787190a2b420ddc87e0b3b778",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/register-D5CKgSAN.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 700759,
+      "sha256": "f5be2a1445b8be0386096bfff4fd50cc0f94831787190a2b420ddc87e0b3b778",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "048432f7-b208-4ff8-a7a2-4ef055d826cd",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "700759"
+      }
+    },
+    {
+      "manifestPath": "assets/register-D8jnCLyv.js",
+      "expectedBytes": 2543,
+      "expectedSha256": "44d9ef526bed4af142791e837b3cdebeab873089958d5f36a5d94716df358a1c",
+      "expectedContentType": "text/javascript; charset=utf-8",
+      "passed": true,
+      "path": "/assets/register-D8jnCLyv.js",
+      "method": "GET",
+      "status": 200,
+      "bytes": 2543,
+      "sha256": "44d9ef526bed4af142791e837b3cdebeab873089958d5f36a5d94716df358a1c",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "6f9efb85-207a-4e37-bcfa-d0d183429afe",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Content-Length": "2543"
+      }
+    },
+    {
+      "manifestPath": "index.html",
+      "expectedBytes": 1466,
+      "expectedSha256": "b44294fd23ea8563cad4f97de0e01a7325b858b560aa1e6857954c23e2e9345c",
+      "expectedContentType": "text/html; charset=utf-8",
+      "passed": true,
+      "path": "/index.html",
+      "method": "GET",
+      "status": 200,
+      "bytes": 1466,
+      "sha256": "b44294fd23ea8563cad4f97de0e01a7325b858b560aa1e6857954c23e2e9345c",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-ID": "95326e23-6949-4eca-b185-eade9242dcaa",
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": "1466"
+      }
+    }
+  ],
+  "unchangedFileReferences": [
+    {
+      "path": "assets/accessibility-BuH6J2sC.js",
+      "bytes": 145,
+      "sha256": "b59636a2f94a2a43886357fdf17d80545c7b2ae1ff5fe8ced00e24d565dcbb23",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/accessibility-BuH6J2sC.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/actionbar-DkAvC2lD.js",
+      "bytes": 11086,
+      "sha256": "cd31f697f726e0923d7e4edae26010ef6cc60f14413715de080da8e8a2343dfd",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/actionbar-DkAvC2lD.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/actions-eXnz8klT.js",
+      "bytes": 281048,
+      "sha256": "22f51f541611e0685d064a6fd3c00fc702da686c08aafbc7f75743a1d50cf78c",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/actions-eXnz8klT.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/actionViewItems-Bdb9zmrP.js",
+      "bytes": 103657,
+      "sha256": "1c902980d1298250123115f3a982f50367b958d401e03efa6fc05b5fdb0d1a18",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/actionViewItems-Bdb9zmrP.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/actionViewItems-CvhnUcyN.css",
+      "bytes": 7689,
+      "sha256": "cd7d8f88464fef9a688ea27ecb288289d2e8e4e9e277eabf2c79808636e9accb",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/actionViewItems-CvhnUcyN.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/aria-BQ0Fa-r7.css",
+      "bytes": 54,
+      "sha256": "2f5bc24c33f1634d6c3a7b319dc32f51953c0767583ced60086f20202c186874",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/aria-BQ0Fa-r7.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/aria-DiC-G1VU.js",
+      "bytes": 829,
+      "sha256": "fb0b218c24f37d538f77e38edc162830d1f5cb7b93710e1387423fbfa522e57f",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/aria-DiC-G1VU.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/autoIndent-BnC3HkEn.js",
+      "bytes": 12812,
+      "sha256": "d67d08d62dd552ff0ea15cefe89888407b98b91d0f673b8270a0bbc5a86a4063",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/autoIndent-BnC3HkEn.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/autorun-BlKw6Nsk.js",
+      "bytes": 766,
+      "sha256": "b95018e8759029a19a3378fff3dcb9a4a84a457959211d69b54b03ec48c23701",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/autorun-BlKw6Nsk.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/BrandBoard-DJBhTkop.css",
+      "bytes": 6755,
+      "sha256": "6f31e479888d3b7230c24e2140921b304d5b2382c30910e1115c69187d841771",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/BrandBoard-DJBhTkop.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/codicon-DF1abBS2.ttf",
+      "bytes": 153228,
+      "sha256": "77f902557231f95c4c71ae517d09a1a842753656f5f665086b3e5ad8095538da",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/codicon-DF1abBS2.ttf",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/color-RxEMNlRn.js",
+      "bytes": 15311,
+      "sha256": "51e76e201f7fb220699c1b943fb186f7d9d08cd7b629be484a715e115f6395be",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/color-RxEMNlRn.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/contextkeys-BpYaH7bP.js",
+      "bytes": 901,
+      "sha256": "12e62d2fa409748673f9b29cce9ae7bff7ea55e613439e95830d0e1bc73822cd",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/contextkeys-BpYaH7bP.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/contextView-BmXbIzbt.js",
+      "bytes": 123,
+      "sha256": "d99343146edcac4d81f337c01797b7aab8ff2f060ec592324bb870ccc06eb628",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/contextView-BmXbIzbt.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/coreCommands-MadErNUZ.js",
+      "bytes": 48522,
+      "sha256": "5a6cea3bc91141eb9fda7f2304c06f2ce9c98560e39939684afe13cde93dea75",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/coreCommands-MadErNUZ.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/cpp-BbWJElDN.js",
+      "bytes": 5162,
+      "sha256": "2c1afb37aaf5c69f7a69fcb6ad664fae21ec42024b2870473ddbbdcd2f8fa097",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/cpp-BbWJElDN.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/cursorColumns-5qeE9UuB.js",
+      "bytes": 887,
+      "sha256": "c40160cb15447697bd64b2503301459b20d3d36094fbad0735a6d80d9950caa9",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/cursorColumns-5qeE9UuB.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/cursorMoveCommands-BB85SbtO.js",
+      "bytes": 14928,
+      "sha256": "d7293417c17daa5fa1d969b725254b22469107a54ef6f5b7c638c4b5f9f99688",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/cursorMoveCommands-BB85SbtO.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/cursorWordOperations-BxVySbAm.js",
+      "bytes": 25040,
+      "sha256": "42a52b341d285ae4bce76f9abde50e77d5aab639e64124a43a5bb72f572a3ffe",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/cursorWordOperations-BxVySbAm.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/defaultStyles-Bbw-joIn.js",
+      "bytes": 5012,
+      "sha256": "d26a637e1d15b3a082271cb34c9dca29f2d5965dedd8be243ed11eca295bd7d1",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/defaultStyles-Bbw-joIn.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/dialogs-IJ_6H_EZ.js",
+      "bytes": 85,
+      "sha256": "45b64502ce552d8912ccaacb593e9989167001690ab35588f196e0037d1c0ea2",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/dialogs-IJ_6H_EZ.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/diffEditorWidget-BUM5UDYN.css",
+      "bytes": 18327,
+      "sha256": "7c58f78db0ce64d9cc446a444276d5c4902b8eb3c1a735f7f859a36559f23c78",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/diffEditorWidget-BUM5UDYN.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editOperation-D-mjDRhC.js",
+      "bytes": 329,
+      "sha256": "c66339c6f6569f64e13178a873fe33d0c5d934288655f6bcc6f3952c8798057d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editOperation-D-mjDRhC.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editor-DJxGQQfC.css",
+      "bytes": 45137,
+      "sha256": "8fb783a7f590ad71af008aa6dfb9cef483a6a76301925dfe66331aa3dbcc058d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editor-DJxGQQfC.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editor.worker-C0Ec0Cbg.js",
+      "bytes": 106,
+      "sha256": "5c6bffa90891c225511f42a680a79b70f5418137ece00eeb87062df0da0513af",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editor.worker-C0Ec0Cbg.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editor.worker-CHzQTjO0.js",
+      "bytes": 275625,
+      "sha256": "e96f442eb216fe44bfb04d6d2d609159697ecb753729f37dac2fe1f83639f3b9",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editor.worker-CHzQTjO0.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editorBrowser-D6ouvOrD.js",
+      "bytes": 2243,
+      "sha256": "832cb9f9cf98da8badcb878c02431dac771fdb7ea46e625174dc9bc972d733a3",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editorBrowser-D6ouvOrD.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editorColorRegistry-Udw-gUtY.js",
+      "bytes": 55654,
+      "sha256": "9ab44dada2cdf1264d316e0fe403f1144d0ca7b2f795fcaae6337b26ae378897",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editorColorRegistry-Udw-gUtY.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editorCommon-BwOdCC1S.js",
+      "bytes": 98,
+      "sha256": "838e09bfa91e5c7bc11c8e22ca6e69e04d22339f0e3de0796882cd672f02bc14",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editorCommon-BwOdCC1S.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editorContextKeys-CMT5HD5Q.js",
+      "bytes": 7036,
+      "sha256": "96b0e6312e45405c4b765f14163e4e1a2b859eced23efb6a48c5b482b61d6952",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editorContextKeys-CMT5HD5Q.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editorExtensions-Byddgx3Z.js",
+      "bytes": 25373,
+      "sha256": "e2bb5fcb48bdfc24cca89770631bac6c946ab90a3cfdb2c606a658c253700b08",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editorExtensions-Byddgx3Z.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/editorOptions-DlTtnV8g.js",
+      "bytes": 106323,
+      "sha256": "4ac5cc1b6bfbc32a6901201172fc471c1614c069cbba5336cde703f22b7545ee",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/editorOptions-DlTtnV8g.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/extensions-DPbG0wzx.js",
+      "bytes": 236,
+      "sha256": "58ac22c65dcc6136a54da4278730389a5289f434cee9b0681492aa2b5cd553f1",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/extensions-DPbG0wzx.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/findController-CmeQkMIN.js",
+      "bytes": 80528,
+      "sha256": "d7107485dc4e82645065830ea0870942d14f607c78585c01f21f5c7f54f57662",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/findController-CmeQkMIN.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/findController-z1E5xnQl.css",
+      "bytes": 5790,
+      "sha256": "bf54cf93169d6b87dee0f55428d515e0388917ab1fe96c8babc0bf193fc90769",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/findController-z1E5xnQl.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/findInput-BY9r4-JU.js",
+      "bytes": 29569,
+      "sha256": "43ad5fcc8d9ce43d14abe77b53a3d2d0be51eceff281101c99f33ade1965d024",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/findInput-BY9r4-JU.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/findInput-VW5HTh3_.css",
+      "bytes": 4238,
+      "sha256": "9080384a52d9b1eaf6228f01d81549cf7daf7465b792b39062a2c9c675007f0d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/findInput-VW5HTh3_.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/hoverWidget-BFdtlATq.css",
+      "bytes": 3527,
+      "sha256": "24bd62d66c4e4161c315ecf7f929d49e0555500023f31f888f4f5fa69824d0b5",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/hoverWidget-BFdtlATq.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/hoverWidget-RZo-YHcC.js",
+      "bytes": 2197,
+      "sha256": "761f1116572bb2f672af5155f23de90cdb7564c572a42a232784f89aec116114",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/hoverWidget-RZo-YHcC.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/IconBoard-BVEbgcdh.css",
+      "bytes": 6049,
+      "sha256": "032d1c7cc438dc12d8216599e20606aa7c6aea66ee4f0e632338cfc5b25b32a6",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/IconBoard-BVEbgcdh.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/iconRegistry-_JMihGsp.js",
+      "bytes": 4049,
+      "sha256": "5593493a7882ef9d3930d1acda7296ab10fbfe07e199d76e5b91bc943976071c",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/iconRegistry-_JMihGsp.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/indentation-JwFDQx9a.js",
+      "bytes": 413,
+      "sha256": "4434111a564f610c6062a12265259132db38f53773e07b509cc4403397c6fc6b",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/indentation-JwFDQx9a.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/indentUtils-D7uFROOx.js",
+      "bytes": 247,
+      "sha256": "aff17c1a8f898811458d3468478daa79b0dcf161c6fbd321177be7f5009ded4b",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/indentUtils-D7uFROOx.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/index-D5XGdpUz.css",
+      "bytes": 161066,
+      "sha256": "9a591fb761aab4db64b350f6702252d9323e9740b4d5ee55c9a891c2a008c098",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/index-D5XGdpUz.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/jsonContributionRegistry-CfjjWnTO.js",
+      "bytes": 603,
+      "sha256": "2f5062bf4aa647e8308e228708cb5adbe6a63cd35171544c230fb2d03444f363",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/jsonContributionRegistry-CfjjWnTO.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/keybinding-CIhNjqFS.css",
+      "bytes": 1446,
+      "sha256": "6e2b3177dcc5b4a6ae1f5b571019b319b975834c99c4a361f872dde0c83c151e",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/keybinding-CIhNjqFS.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/keybinding-DBCS8g_Y.js",
+      "bytes": 44897,
+      "sha256": "1d48877d1f587331dfb66a01fdde7722706383693c8c1fa88d4898c48564b4b1",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/keybinding-DBCS8g_Y.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/keybindingCancellation-AG1-ldZR.js",
+      "bytes": 9516,
+      "sha256": "bbf133c26f8e97468148d475d1163f8fdcd582a968444e078829e951cf4304e8",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/keybindingCancellation-AG1-ldZR.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/keybindingCancellation-i_l9TmcK.css",
+      "bytes": 4949,
+      "sha256": "e4a2a9c0fedfd310f7e5756f064efb19e83fcb3c90ce6caf3ead84741904eeb7",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/keybindingCancellation-i_l9TmcK.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/languageConfigurationRegistry-Tg5KSHma.js",
+      "bytes": 33834,
+      "sha256": "861d5b68457978a557fb6b8272091489f8faaece122d2e1ad0cb08876f29cafb",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/languageConfigurationRegistry-Tg5KSHma.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/languageFeatureDebounce-CUJ0h-KD.js",
+      "bytes": 2251,
+      "sha256": "fa9b4d81fc457770c1c4c48d32e3436a691e025872cc26625694ef7ddbb899be",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/languageFeatureDebounce-CUJ0h-KD.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/languageFeatures-CNnC12r3.js",
+      "bytes": 96,
+      "sha256": "ac6deb940c88e0cf7b419e7da63fca9b7f5f1824bd466741ac9474c040da27e3",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/languageFeatures-CNnC12r3.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/lineTokens-D4n89wnp.js",
+      "bytes": 10825,
+      "sha256": "bf679d836a0ed61bcb372a262437f212ad74901cdec6bf6cf342c386aa49756d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/lineTokens-D4n89wnp.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/link-ClDRMnc0.js",
+      "bytes": 1996,
+      "sha256": "4e7bf41e10a80049c5463958ef8ddf8e60beed6ab93d2f135b470c489a9b3316",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/link-ClDRMnc0.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/link-Daoow6VB.css",
+      "bytes": 119,
+      "sha256": "1808672971908cbe7c750c362241cda9187d3db79272db7d8954e937c67ceb00",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/link-Daoow6VB.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/markdown-BFxVWTOG.js",
+      "bytes": 3650,
+      "sha256": "f22ad36fd7b2c5e0b0ab62c8496934cb476d7142e2d4cc258fb712137c8a9946",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/markdown-BFxVWTOG.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/markdownRenderer-8dBYP_FZ.js",
+      "bytes": 91976,
+      "sha256": "6f1daf47f54a5b2b65f32142d85426609b9d53a4d7bb854d441faf9f35974d63",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/markdownRenderer-8dBYP_FZ.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/markdownRenderer-DcBgf8yZ.js",
+      "bytes": 1669,
+      "sha256": "58ca25f24e9d045e1f4c773e409a4e75e06ddf95957c01081471d9ab453a078b",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/markdownRenderer-DcBgf8yZ.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/marshalling-aq4sQeMr.js",
+      "bytes": 627,
+      "sha256": "32f65eae361e21cdc6bb62cfaf1c9a4377f51fd681c6031570206f7fc27d6804",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/marshalling-aq4sQeMr.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/messageController-CnvuMv8j.js",
+      "bytes": 4193,
+      "sha256": "a26ef1e306715bc1036829b4d244af98d4c04821b62d5c733bf58c6005785516",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/messageController-CnvuMv8j.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/messageController-Do3a81JH.css",
+      "bytes": 1771,
+      "sha256": "9fb6461e6efebef7b31545ebf4113d86b02c9cbf5ae072d0079d801b643b19c4",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/messageController-Do3a81JH.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/mime-x2cMqLTw.js",
+      "bytes": 1480,
+      "sha256": "5db67b77a5c67bfd5802a7e7ab97ee0aa704d841bc91482260af3a58180b0db0",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/mime-x2cMqLTw.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/model-Bd9LOepH.js",
+      "bytes": 2106,
+      "sha256": "0bf850036dc1518e667605448f37733396803baa6d981d3702731ba771fa007b",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/model-Bd9LOepH.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/nativeEditContextRegistry-nmzmXLaE.js",
+      "bytes": 5620,
+      "sha256": "0735dfa1c3844d17610690ff996cc98897305784a411c5d5c2759961817d80a1",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/nativeEditContextRegistry-nmzmXLaE.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/notification-BgEtb1fs.js",
+      "bytes": 575,
+      "sha256": "3902c0bfddc0d4f1253c403cdd6a251d820e9fbf73e72031dc1727f663fe059a",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/notification-BgEtb1fs.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/objects-VVykEVLf.js",
+      "bytes": 1357,
+      "sha256": "dcf3104a225d2e97113fbfbee1cb80f9cfeb936aa304f494cbf498a6ddb56664",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/objects-VVykEVLf.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/progress-C4Foj4um.js",
+      "bytes": 12742,
+      "sha256": "84bbb0f0df4f5bed33ea47a7deaf2b20649cee8c605ed83fb276a7c649306dde",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/progress-C4Foj4um.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/progress-Dtk8vS2d.css",
+      "bytes": 129,
+      "sha256": "f419bd5e50fa7337a4124a0be58d51a0849af2ae8ce28f01e6240d6fdc63a2de",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/progress-Dtk8vS2d.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/quickInput-B8aWUqt7.js",
+      "bytes": 749,
+      "sha256": "d813d2093552d8f12ad8be06708bb107ff5f47a03612be794258cff7a09f384d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/quickInput-B8aWUqt7.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/range-CUjulYi6.js",
+      "bytes": 5367,
+      "sha256": "cbf210f6374bd70b4b1b0dede2a6fab0c66aed08eeca96617eac74248249f5ef",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/range-CUjulYi6.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-_-S9DiMO.css",
+      "bytes": 1612,
+      "sha256": "0c41dd940a98e4ac3dfcc0c06bff3f5f11f94242dd0f04819d54f5b2c3a4a340",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-_-S9DiMO.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-7S2yeL-G.js",
+      "bytes": 10786,
+      "sha256": "a207cfea05ac62c2a7b1a73a9d594025f679e4499ecb3f2b8482dcb098cb2144",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-7S2yeL-G.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-B6sdZn3t.js",
+      "bytes": 2012,
+      "sha256": "05dce3d56d8b5c05beaf08dba77123f0149eb65154d6f0e0069ab2fe9c660311",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-B6sdZn3t.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-B7hDGCb3.js",
+      "bytes": 25591,
+      "sha256": "864654b53ac20c4d225c9528daf8daf0cfde7e3044bc767e2c3327480a13470b",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-B7hDGCb3.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-BbD4ztGM.js",
+      "bytes": 956,
+      "sha256": "d2a8a4a1c922a163a6abc3e1e527caacd220f84ac9b4104b8d8539b1e216524d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-BbD4ztGM.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-BNgPRG2T.css",
+      "bytes": 366,
+      "sha256": "eb6c485c830ac466ffa3ff52e7a95c48427b1058781a74ecf5a3fd96b2f23c18",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-BNgPRG2T.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-BTcfGZkR.js",
+      "bytes": 6878,
+      "sha256": "3607e74a0910844677c98d443103180de69a51e1a11f6abb9029229607fab720",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-BTcfGZkR.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-bzcihJzc.js",
+      "bytes": 7610,
+      "sha256": "786a66db52c8c95116e0650e826097ef0234e2740d4bb179f04aa869b5c8bdac",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-bzcihJzc.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-C3d5iPr3.js",
+      "bytes": 101861,
+      "sha256": "0ffc0b716aa8b72dffd1db87786d4aa7d72084d806f0fff2ef3f0992f743d8eb",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-C3d5iPr3.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-C7vgbc7H.css",
+      "bytes": 1477,
+      "sha256": "29448b754666000ae2ed263bed52026ab9442b95c30975956b82c371207e359c",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-C7vgbc7H.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-CT77A6y4.js",
+      "bytes": 29550,
+      "sha256": "d608e3515efda9697689377e181ae0a7adfd3dbb3f4e99ff6385900d6aec8dd3",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-CT77A6y4.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-CXhHcpYU.css",
+      "bytes": 15678,
+      "sha256": "50ec1917ac17b360809a746671dee0672a0a8bf688fda4c1f399b388fe2e3c2c",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-CXhHcpYU.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-CzGHuiIk.js",
+      "bytes": 795,
+      "sha256": "715902ffdb16b0f7272773993ad0652f0cadb508adcc4e936002e2ba3e76a42e",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-CzGHuiIk.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-D3ERfIWs.js",
+      "bytes": 8247,
+      "sha256": "05d5c0aeea33a00e798af8292f454005f2558c3c9fe63975de5b0f224d3f85ae",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-D3ERfIWs.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-Dt34O6_v.js",
+      "bytes": 44762,
+      "sha256": "d2b94babe69edf74f4f3aa0380db709d53dae543d4e77c143115700fc89f9baa",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-Dt34O6_v.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-HJbRf0Hl.css",
+      "bytes": 11167,
+      "sha256": "11a9aa60beefa907b4e4ba5f6f5990ee2c7ad396dbe216a260f3cd11ec71e58f",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-HJbRf0Hl.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-HSiXb6Lf.js",
+      "bytes": 465,
+      "sha256": "a24154a61d9761b73482abc7d0245e2a755bb311cc893cb91a32d7f6cdb21d45",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-HSiXb6Lf.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-jxsbM24b.js",
+      "bytes": 20993,
+      "sha256": "a6cd40d8d33dd18a20a8c89ce8faa0d31604ddcfb963c0533ed2754005662d55",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-jxsbM24b.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-oJjHpvnu.js",
+      "bytes": 7665,
+      "sha256": "fd9628d4632acd64fcbda7c9ce6b9a6acc1f00e2368f8ce58f0bcfd5befb3e3d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-oJjHpvnu.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-RFm_MnEX.js",
+      "bytes": 10897,
+      "sha256": "0e18bb7715e672206cd0b60c4b6c888a6ed7fdf3776c4f6b9788d634d52da5ba",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-RFm_MnEX.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-VgQqWyBE.js",
+      "bytes": 6466,
+      "sha256": "aa1c40add705fbb6e1d587b22967bb05949922589f129b8720ef6e3b85b6bedc",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-VgQqWyBE.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-VvSvELY2.css",
+      "bytes": 1183,
+      "sha256": "8df682effd2bd778cab4430e39555dbafe986c8ea9392d2e1d5822da5155ba2d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-VvSvELY2.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-wMzyqfux.js",
+      "bytes": 2400,
+      "sha256": "6d544c2f6c08a2be1978ea985d4cd5cdd7fa313b8585a6f95527f093e3adf74d",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-wMzyqfux.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-wwIoHPWq.js",
+      "bytes": 2277,
+      "sha256": "e7d80167a8676e3b2c6150d1abe3c5ad82bc4d18f532d255da54e3561ed7e7bc",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-wwIoHPWq.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/register-YdNSa6b7.css",
+      "bytes": 171,
+      "sha256": "1b72b598a4a340218a288c8f6366ddfb160387339684d6c484ec4ed21c8f78df",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/register-YdNSa6b7.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/replaceCommand-Boqudi1M.js",
+      "bytes": 2965,
+      "sha256": "0b219422062a7b2ea42b5ced962a70486d6fdf858bbd3a7f26b66f9db05f1871",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/replaceCommand-Boqudi1M.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/sash-CC_uwcv_.js",
+      "bytes": 8189,
+      "sha256": "0b2e2b0df5a9b0a509641ed5f50d3f49473cd3072949cc97182bda76d9d963f7",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/sash-CC_uwcv_.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/sash-CnFYCDYW.css",
+      "bytes": 2571,
+      "sha256": "013cf9d924b8c964323da93808ca910d8c39745e9dffaca06d666caa29683760",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/sash-CnFYCDYW.css",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/selection-CMngmqsD.js",
+      "bytes": 2110,
+      "sha256": "d07da13722355df3756998a15f2bd1c7b904555dd193189d2d27b11331b22200",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/selection-CMngmqsD.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/stableEditorScroll-D0BZxJ6l.js",
+      "bytes": 1169,
+      "sha256": "6c514d7effe2dccb960cc03c2aae1502b1f41b273584581f2ba266dbfd81465f",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/stableEditorScroll-D0BZxJ6l.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/storage-DLVAA3Ia.js",
+      "bytes": 7657,
+      "sha256": "029067c4457c4b506fe908dd66e97bafb155bbb03c74ac4439e399388e5a29ed",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/storage-DLVAA3Ia.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/tabFocus-jJNbTJHV.js",
+      "bytes": 378,
+      "sha256": "3618210fc444b1f0e1966e6b3e7ff080ac1679d72c984a1561a6b41b42dfb912",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/tabFocus-jJNbTJHV.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/textModel-CFiSMcgW.js",
+      "bytes": 263556,
+      "sha256": "97f9b62a78657718da837c75cb8ac6223752739aaf3426da5211e4ba7414dea0",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/textModel-CFiSMcgW.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/textModelDefaults-jwCPjDQ2.js",
+      "bytes": 216,
+      "sha256": "1e8a83d60762c2fe76d1286b1ee0f661495255c9855db3b9cc05bd5c9d0e2dfc",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/textModelDefaults-jwCPjDQ2.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/trustedTypes-BxMRDZxc.js",
+      "bytes": 264,
+      "sha256": "d0310c1061f5411432a0bfe051d047a37df0fe025da52e1dda8a6248dc8edb69",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/trustedTypes-BxMRDZxc.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/viewModelDecoration-BJgWtKwQ.js",
+      "bytes": 3358,
+      "sha256": "f61ff2c6948a53f60c322b62b516930a8782fd23101bf1abc8866502b3a3ccd8",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/viewModelDecoration-BJgWtKwQ.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/wordCharacterClassifier-DcV_zuqm.js",
+      "bytes": 2320,
+      "sha256": "6a85fbc445d99bbee0b8a8a57be22c2bca9808ae377bf568530ff07d238efeb4",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/wordCharacterClassifier-DcV_zuqm.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/workspace-CtJMIYZO.js",
+      "bytes": 8204,
+      "sha256": "283fff7e13662004fc0daa167c155cf0ee463a103ba5b17a85383e03610272b1",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/workspace-CtJMIYZO.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "assets/workspaceTrust-Cr6YVeEJ.js",
+      "bytes": 103,
+      "sha256": "5a29147e4243b008454b4d40012ac5e0361442b12d647df1a93a1d4640ea045e",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/assets/workspaceTrust-Cr6YVeEJ.js",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/accessories/chalk-v1.png",
+      "bytes": 1003845,
+      "sha256": "e1f9d224bc5f810eafa73e3f23d6c2b91eb71cf8304329f260081f79f05ebeb9",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/accessories/chalk-v1.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/accessories/glasses-v1.png",
+      "bytes": 239883,
+      "sha256": "20ab43e6b85a795208f3ced4432773aa0e5d060d67e17d06e7457907b09c7a12",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/accessories/glasses-v1.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/accessories/pencil-v1.png",
+      "bytes": 143382,
+      "sha256": "17247ca12ee4a141d4225a067ea731931c554117f04dd9e2bf62ac9d0a93e530",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/accessories/pencil-v1.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/accessories/pointer-v1.png",
+      "bytes": 106338,
+      "sha256": "a31f247f7ac505d294531a9ed27f2a5b52e793aab835cfb4273b7f00314b78e3",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/accessories/pointer-v1.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/chalk.svg",
+      "bytes": 84384,
+      "sha256": "89f738b70d4bab6c956f9564891868b9d1c2d136da2d18a83fe17c5e311c0331",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/chalk.svg",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/glasses.svg",
+      "bytes": 99019,
+      "sha256": "1173d9fec38857bfc45a00cc4142cf883ef2b9df7520f1dcf861797f6fce9720",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/glasses.svg",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/master.png",
+      "bytes": 600591,
+      "sha256": "e36865cbd4a52922bbfec77c3ca4f329ddc5e6aaf44648f13f806e40415adb9f",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/master.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/none.svg",
+      "bytes": 67997,
+      "sha256": "65b0bd22a07d58a8734d1c98a5db14bd60ef3890858d7d42a5f1e98b723eada2",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/none.svg",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/pencil.svg",
+      "bytes": 85377,
+      "sha256": "9595d106e36ce33d86bef6c004fa8f0e1438cefff9829fe2c7e1ed34979a57da",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/pencil.svg",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/pointer.svg",
+      "bytes": 88158,
+      "sha256": "c06493550c623c153a35a6e8215ed423d1a3fce440c7d7a9ed0e5d73cdb840e8",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/pointer.svg",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/props.png",
+      "bytes": 887199,
+      "sha256": "34e872e1468f9301f8634f3b72c3abb0fd3d417e3ab2679398b754f376f4ad3a",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/props.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/sprout/rig/underpaint-v1.png",
+      "bytes": 682998,
+      "sha256": "840ab98d154361a9a3d6b7922eac791507e20deef966eb6dd4dbe0aefd30c273",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/sprout/rig/underpaint-v1.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/xunjie-logo/favicon-32.png",
+      "bytes": 665,
+      "sha256": "be807f6a44ca92a85c396286ba063d1807f66b27032437cad061b94ed876dd02",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/xunjie-logo/favicon-32.png",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "brand/xunjie-logo/mark-color.svg",
+      "bytes": 647,
+      "sha256": "580c522426a23cfa60e2d6dd5ef048da510d536b35fcaa2032e9e5a8818b940b",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/brand/xunjie-logo/mark-color.svg",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    },
+    {
+      "path": "fonts/lxgw-wenkai-regular.woff2",
+      "bytes": 837180,
+      "sha256": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6",
+      "notReRequested": true,
+      "priorReference": "static-http-postmerge.json/fonts/lxgw-wenkai-regular.woff2",
+      "boundary": "Intermediate13 actual GET plus originalbec137 reference chain; no final GET"
+    }
+  ],
+  "unservedMimeReferences": [
+    {
+      "path": "brand/sprout/accessories/registration.json",
+      "artifactBytes": 84685,
+      "artifactSha256": "466d6335031a080e5225f49c97654ccc9b659f4dc7e74094478a6b656de02a64",
+      "originalExpectedStatus": 400,
+      "originalExpectedErrorCode": "INVALID_REQUEST",
+      "notReRequested": true,
+      "staticContentVerified": false,
+      "priorReference": "static-http-postmerge.json/unservedMimeReferences/brand/sprout/accessories/registration.json"
+    },
+    {
+      "path": "brand/sprout/registration.json",
+      "artifactBytes": 88646,
+      "artifactSha256": "4fdf88fed1e0a3662b398d8a90d5917ba7b764599e4faaa62be7aa1a98321a16",
+      "originalExpectedStatus": 400,
+      "originalExpectedErrorCode": "INVALID_REQUEST",
+      "notReRequested": true,
+      "staticContentVerified": false,
+      "priorReference": "static-http-postmerge.json/unservedMimeReferences/brand/sprout/registration.json"
+    },
+    {
+      "path": "brand/sprout/rig/eye-masks.json",
+      "artifactBytes": 3462,
+      "artifactSha256": "39912c3d79fd74963805ed4720f73b8d3a558ca6d1a379fb8834c06d1a079b2c",
+      "originalExpectedStatus": 400,
+      "originalExpectedErrorCode": "INVALID_REQUEST",
+      "notReRequested": true,
+      "staticContentVerified": false,
+      "priorReference": "static-http-postmerge.json/unservedMimeReferences/brand/sprout/rig/eye-masks.json"
+    },
+    {
+      "path": "brand/sprout/rig/registration.json",
+      "artifactBytes": 336,
+      "artifactSha256": "2d2804481c3ca6baacc05b1d4b699a1eafcf22b880c5941248ca0b7cbda4e2c9",
+      "originalExpectedStatus": 400,
+      "originalExpectedErrorCode": "INVALID_REQUEST",
+      "notReRequested": true,
+      "staticContentVerified": false,
+      "priorReference": "static-http-postmerge.json/unservedMimeReferences/brand/sprout/rig/registration.json"
+    },
+    {
+      "path": "brand/xunjie-logo/master.json",
+      "artifactBytes": 2704,
+      "artifactSha256": "3d7810463ef5ec98150f0f07830c44b30cae87ae4ceb0918fdca86e6539f36bd",
+      "originalExpectedStatus": 400,
+      "originalExpectedErrorCode": "INVALID_REQUEST",
+      "notReRequested": true,
+      "staticContentVerified": false,
+      "priorReference": "static-http-postmerge.json/unservedMimeReferences/brand/xunjie-logo/master.json"
+    },
+    {
+      "path": "fonts/OFL.txt",
+      "artifactBytes": 4447,
+      "artifactSha256": "932999b6451e2c5b61f93c9d9a34d22742f81e41a192d2ad65acc300ba942298",
+      "originalExpectedStatus": 400,
+      "originalExpectedErrorCode": "INVALID_REQUEST",
+      "notReRequested": true,
+      "staticContentVerified": false,
+      "priorReference": "static-http-postmerge.json/unservedMimeReferences/fonts/OFL.txt"
+    }
+  ],
+  "health": [
+    {
+      "path": "/health/live",
+      "method": "GET",
+      "status": 200,
+      "bytes": 78,
+      "sha256": "66a8de86569330f7e11694696abce8f8b241ac37663d123ef45fce7791e03937",
+      "headers": {
+        "X-Request-ID": "01847665-3fc0-4955-9738-13a76007e815",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "78"
+      },
+      "requestId": "01847665-3fc0-4955-9738-13a76007e815",
+      "reportedStatus": "alive",
+      "passed": true
+    },
+    {
+      "path": "/health/ready",
+      "method": "GET",
+      "status": 200,
+      "bytes": 78,
+      "sha256": "baaa46f38a959bb439d7a1187e005ff9e50433ce59abcf118849bafb1ea0caaa",
+      "headers": {
+        "Cache-Control": "no-store",
+        "X-Request-ID": "1a31fec8-5042-46d9-a82a-8d5feb443796",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "78"
+      },
+      "requestId": "1a31fec8-5042-46d9-a82a-8d5feb443796",
+      "reportedStatus": "ready",
+      "passed": true
+    }
+  ],
+  "indexAlias": {
+    "path": "/",
+    "method": "GET",
+    "status": 200,
+    "bytes": 1466,
+    "sha256": "b44294fd23ea8563cad4f97de0e01a7325b858b560aa1e6857954c23e2e9345c",
+    "headers": {
+      "X-Content-Type-Options": "nosniff",
+      "X-Request-ID": "d6ee4e18-1e4d-41e1-9887-73eb37a46bcb",
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Length": "1466"
+    },
+    "passed": true
+  },
+  "failures": [],
+  "scope": {
+    "tlsOrMimeChanged": false,
+    "browserUsed": false,
+    "cookiesReadOrSent": false,
+    "serviceChanged": false,
+    "sourceChanged": false,
+    "modelCalled": false,
+    "databaseRead": false,
+    "credentialsRead": false
+  },
+  "summary": {
+    "freshChangedServableFilesChecked": 13,
+    "freshChangedServableFilesPassed": 13,
+    "unchangedFilesReferenced": 124,
+    "unsupportedMimeFilesReferenced": 6,
+    "newHealthChecksPassed": 2,
+    "failureCount": 0,
+    "incrementalRequestedChecksPassed": true,
+    "newFull143Verification": false,
+    "newBrowserAcceptance": false,
+    "teachingEffectAcceptance": false
+  }
+}
