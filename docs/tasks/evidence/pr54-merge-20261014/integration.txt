@@ -1,0 +1,70 @@
+﹣ the platform clock and delayed RTL keep picosecond semantics under finer student time precision (4.6104ms) # SKIP
+✔ HDL board validation refuses executable mappings, missing bits and duplicates (13.0226ms)
+✔ elaborated widths/directions and all input bits must match, including ascending buses (4.7776ms)
+✔ four-value frames preserve X/Z and reject missing width or forged time (2.8746ms)
+✔ HDL interaction keeps input/cycle trust boundaries and the independent container limits (3.5116ms)
+﹣ target VM: real build, persistent state, duplicates, four values, scan, spoofing and termination (5.2343ms) # SKIP
+✔ normal tutoring consumer uses the original job without retaining or creating student sessions (6034.0154ms)
+✔ withdrawn membership prevents automatic dispatch; budget refusal never calls a provider (7996.4166ms)
+✔ shutdown persists original teaching stop and aborts the in-process provider without a replacement job (3331.8962ms)
+✔ a prior worker lease is reconciled as unknown without another model call (3730.5772ms)
+✔ an in-flight C dispatch cannot block a newly accepted tutoring job (3951.9987ms)
+✔ internal completion rechecks the same trusted learner revision guard as public C3 completion (3111.2159ms)
+✔ student bootstraps own assignment with trusted generation and no attempt side effect (5347.7907ms)
+✔ normal host serves only built public assets and rejects escaped or hidden paths (2378.3209ms)
+✔ normal consumer runs original job without manual worker calls and shutdown confirms its stop (4373.2716ms)
+✔ controlled initializer creates a fresh synthetic host with login and original course policy (2691.5122ms)
+✔ bootstrap rejects anonymous, cross-student and cross-course readers and fails closed without trusted generation (4998.2535ms)
+✔ normal host keeps original sync replay, current revision and paused assignment save boundaries while runner is offline (3872.2963ms)
+✔ bootstrap does not create an attempt: pausing allocation before first explicit creation still rejects it (3397.9475ms)
+✔ unknown original job survives host restart and is reconciled without a replacement execution (3416.7448ms)
+✖ normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener (1480.2143ms)
+✔ shutdown refuses a new run whose readiness request was already in flight (1803.2255ms)
+✔ I0-B-D01-01 first body delivery exposes only the original Action association before any displayed receipt (5041.1474ms)
+✔ I0-B-D01-02 equal bodies from different Jobs retain separate original code/run bindings and suppress the replaced epoch (3675.7023ms)
+✔ I0-B-D01-03 unrelated capture/reminder revisions advance without re-stamping or blocking the original help basis (3473.2929ms)
+✔ I0-B-D01-04 unauthorized users, teacher reads, wrong epochs and restored generations never disclose the student payload (4098.526ms)
+✔ I0-B-D01-05 stopped succeeded Job loses its old delivery payload without erasing the generated association (3171.2991ms)
+✔ I0-B-D01-06 changed code cannot receive the old snapshot-target association (3107.4948ms)
+✔ I0-B-D01-07 a same-path same-text replacement file never inherits the recycled instance association (3036.2177ms)
+✔ I0-B-D01-08 another client cannot replay the original Delivery; displayed history stays on its authorized route (2868.7126ms)
+✔ I0-B-D01-09 the same-transaction related-state guard suppresses new projection while preserving shown history (2317.974ms)
+✔ DL-C synthetic schema is exactly 31 approved tables; authenticated .sv ACK and immutable build survive retries (5008.6557ms)
+✔ DL-C program/interact keep exact source, resolve lost response by original operation and explicitly reprogram (3598.7655ms)
+✔ DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state (3508.4487ms)
+✔ existing authenticated Job paths dispatch HDL and stop its original session after a completed program (4062.4535ms)
+✔ revoked membership cannot read or interact, while the trusted worker still stops original resources (3191.2794ms)
+✔ job kind prefix classification matches startsWith for near prefixes, ASCII case and a missing kind (3804.7166ms)
+✔ Trace polling retains its cursor until the original program or interaction result is available (2997.7773ms)
+✔ public Attempt uses the fixed limitedHelp=true rule for an active check (6020.8438ms)
+✔ public Attempt uses the fixed limitedHelp=false rule for an active check (4324.0857ms)
+✔ unknown execution and restart keep the restriction until the original result is confirmed (3681.6896ms)
+✔ a cancel ACK and an unconfirmed runner stop do not clear the persisted restriction (2719.2143ms)
+✔ paused Attempt and assignment remain readable without releasing an active limited check (3787.8478ms)
+✔ limitedCheck=false does not allow help on a paused Attempt (3842.2629ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 41
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 36703.8833
+
+✖ failing tests:
+
+test at server\app\i0.test.ts:274:1
+✖ normal host serves the unchanged real UI build and authorized session over a loopback HTTP listener (1480.2143ms)
+  Error: ENOENT: no such file or directory, lstat 'D:\XunJie\.tmp\pr54-merge-20261014\repo-isolated\apps\student\dist'
+      at realpathSync (node:fs:2862:29)
+      at registerI0Static (file:///D:/XunJie/.tmp/pr54-merge-20261014/repo-isolated/apps/teaching/server/app/i0-static.ts:13:16)
+      at createI0App (file:///D:/XunJie/.tmp/pr54-merge-20261014/repo-isolated/apps/teaching/server/app/i0.ts:178:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///D:/XunJie/.tmp/pr54-merge-20261014/repo-isolated/apps/teaching/server/app/i0.test.ts:279:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -4058,
+    code: 'ENOENT',
+    syscall: 'lstat',
+    path: 'D:\\XunJie\\.tmp\\pr54-merge-20261014\\repo-isolated\\apps\\student\\dist'
+  }

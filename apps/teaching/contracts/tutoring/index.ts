@@ -1,5 +1,6 @@
 import type { Job } from "../records/index.ts";
 import type { ActivityView } from "../design/results.ts";
+import type { HdlBuild, HdlOperationResult, HdlSession } from "../runner/hdl.ts";
 import type { AnalysisBinding, ClaimBody } from "../review/index.ts";
 import type { ArtifactSnapshot, ObjectRef } from "../workspace/index.ts";
 
@@ -65,6 +66,7 @@ export type TeacherGenerationRequest = {
 
 export type StudentHelpRequest = {
   context: TrustedModelContext;
+  domain?: "hdl";
   question: string;
   objectRef?: Readonly<Record<string, unknown>>;
   references: readonly UntrustedReference[];
@@ -133,6 +135,29 @@ export type AssistanceContextRecord = {
   status: "generated" | "received" | "displayed" | "acknowledged" | "cancelled" | "stale" | "failed";
 };
 
+export type AuthorizedHdlHelpContext = {
+  snapshotId: string;
+  snapshotHash: string;
+  build: HdlBuild;
+  session?: HdlSession;
+  operation?: HdlOperationResult;
+};
+
+export type HdlHelpCurrentState = {
+  snapshotId: string;
+  snapshotHash: string;
+  buildId: string;
+  buildStatus: HdlBuild["status"];
+  sessionId?: string;
+  sessionRevision?: number;
+  sessionStatus?: HdlSession["status"];
+  sessionGeneration?: string;
+  confirmedSequence?: number;
+  simTimePs?: string;
+  operationId?: string;
+  resultHash?: string;
+};
+
 export type AuthorizedStudentHelpContext = {
   job: Job;
   current: {
@@ -162,6 +187,7 @@ export type AuthorizedStudentHelpContext = {
   learnerStateRevision: number;
   learnerClaims: readonly LearnerContextClaim[];
   assistanceHistory: readonly AssistanceContextRecord[];
+  hdl?: AuthorizedHdlHelpContext;
   budgetAvailable: boolean;
   versions: TrustedModelContext["versions"];
 };

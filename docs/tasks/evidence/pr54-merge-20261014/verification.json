@@ -1,0 +1,201 @@
+{
+  "date": "2026-10-14",
+  "main": "35307e04f60c3da12fe0e9c87700d6f41d027279",
+  "prHead": "c00b8ff87114e1522b02a8a0c288b0184799b099",
+  "runtime": "v24.21.0",
+  "validation": {
+    "runtime": "v24.21.0",
+    "main": "35307e04f60c3da12fe0e9c87700d6f41d027279",
+    "pr": "c00b8ff87114e1522b02a8a0c288b0184799b099",
+    "realModelCalls": 0,
+    "results": [
+      {
+        "name": "typecheck",
+        "exit": 0,
+        "elapsedMs": 3793,
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit"
+        ],
+        "summary": []
+      },
+      {
+        "name": "build",
+        "exit": 0,
+        "elapsedMs": 3174,
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "-p",
+          "tsconfig.build.json"
+        ],
+        "summary": []
+      },
+      {
+        "name": "tutoring",
+        "exit": 0,
+        "elapsedMs": 49925,
+        "args": [
+          "--test",
+          "server/tutoring/test/deepseek-sdk.test.ts",
+          "server/tutoring/test/hdl-help.test.ts",
+          "server/tutoring/test/index.test.ts",
+          "server/tutoring/test/learner-analysis.test.ts",
+          "server/tutoring/test/real-model-support.test.ts",
+          "server/tutoring/test/real-provider-failures.test.ts",
+          "server/tutoring/test/student-help.test.ts"
+        ],
+        "summary": [
+          "ℹ tests 160",
+          "ℹ pass 153",
+          "ℹ fail 0",
+          "ℹ cancelled 0",
+          "ℹ skipped 7"
+        ]
+      },
+      {
+        "name": "integration",
+        "exit": 1,
+        "elapsedMs": 36806,
+        "args": [
+          "--test",
+          "server/app/i0.test.ts",
+          "server/app/i0-tutoring.test.ts",
+          "server/records/teaching-projection.test.ts",
+          "server/workspace/limited-check.test.ts",
+          "server/workspace/hdl.test.ts",
+          "runner/hdl-profile.test.ts",
+          "runner/hdl-clock.test.ts",
+          "runner/hdl.runtime.test.ts"
+        ],
+        "summary": [
+          "ℹ tests 44",
+          "ℹ pass 41",
+          "ℹ fail 1",
+          "ℹ cancelled 0",
+          "ℹ skipped 2"
+        ]
+      }
+    ]
+  },
+  "followup": {
+    "runtime": "v24.21.0",
+    "results": [
+      {
+        "name": "student-typecheck",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "--noEmit"
+        ],
+        "exit": 0,
+        "summary": []
+      },
+      {
+        "name": "student-build",
+        "args": [
+          "node_modules/vite/bin/vite.js",
+          "build"
+        ],
+        "exit": 0,
+        "summary": []
+      },
+      {
+        "name": "host-static-recheck",
+        "args": [
+          "--test",
+          "--test-name-pattern=normal host serves the unchanged real UI build",
+          "server/app/i0.test.ts"
+        ],
+        "exit": 0,
+        "summary": [
+          "ℹ tests 1",
+          "ℹ pass 1",
+          "ℹ fail 0",
+          "ℹ skipped 0"
+        ]
+      }
+    ]
+  },
+  "logs": [
+    {
+      "file": "typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "build.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "tutoring.txt",
+      "bytes": 16389,
+      "sha256": "a30038966114aaf30ba4889ebadc64801f0d23fe5569e6bc0cb397e5ac66ebfd"
+    },
+    {
+      "file": "integration.txt",
+      "bytes": 6152,
+      "sha256": "1b53f4fa083e65775c8bd6cffea437a3525bed206abd6c537dff0e00a01008fb"
+    },
+    {
+      "file": "student-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "student-build.txt",
+      "bytes": 11073,
+      "sha256": "a96d1646aa9587e84e07de7da72cc25eb3cb8205286cfb6ae2f423de2d46c571"
+    },
+    {
+      "file": "host-static-recheck.txt",
+      "bytes": 231,
+      "sha256": "290c88bd02f2e0c6fc20069e00a1ad7059226bbc010471d18a36ddac558d0535"
+    }
+  ],
+  "review": {
+    "standards": 0,
+    "spec": 0
+  },
+  "realModelCalls": 0,
+  "browser": false,
+  "realNode": false,
+  "fullTeaching": false,
+  "integrationCoverage": {
+    "unique": 44,
+    "passed": 42,
+    "environmentSkipped": 2,
+    "initialFailed": 1,
+    "recheckPassed": 1
+  },
+  "initialFailure": "Isolated checkout lacked apps/student/dist; original same-version build generated, failed test alone rerun successfully",
+  "originalSourcePreserved": true,
+  "rootWorkspaceModified": false,
+  "githubPublication": "pending",
+  "finalDocuments": {
+    "check": "A0 static document review",
+    "documents": 82,
+    "internalLinks": 1199,
+    "commands": 24,
+    "recoveryRows": 24,
+    "readGroups": 19,
+    "dataParameters": 12,
+    "decisions": 12,
+    "plannedCases": 20,
+    "syntheticExamples": 15,
+    "jsonExamples": 4,
+    "traceabilityRows": 20,
+    "handoffQuestions": 12,
+    "independentDeliverables": 8,
+    "firstBatches": 3,
+    "baselineMutationRoutes": 27,
+    "additionalProposedRoutes": [],
+    "g0Approved": true,
+    "approvedG0Extensions": [
+      "POST /api/activities/:id/controls",
+      "POST /api/blueprints/:id/sample-runs",
+      "POST /api/attempts/:id/snapshots"
+    ],
+    "businessTests": "NOT_EXECUTED",
+    "errors": []
+  }
+}

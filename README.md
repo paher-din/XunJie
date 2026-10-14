@@ -54,7 +54,7 @@ node tools/a0-review/check.mjs
 | G0 决定与实施门禁 | [批准记录](docs/tasks/G0_CLOSURE_PROPOSAL.md)、[交付核对](docs/tasks/G0_SCOPE_CONTRACT_GATE_REVIEW.md) |
 | G1 作品链、服务端交付与后置验收 | [G1 总协调](docs/tasks/G1_OVERALL_COORDINATION.md)；完整 UI/AC/NFR [#22](https://github.com/paher-din/XunJie/issues/22)、环境稳定性 [#23](https://github.com/paher-din/XunJie/issues/23) |
 | P2 工程收口与 B 后续 | [G2 总协调](docs/tasks/G2_OVERALL_COORDINATION.md)、[B/P2-F 交付](docs/tasks/B_P2_MODEL_SEMANTIC_VERIFICATION.md)；模型/语义 [#45](https://github.com/paher-din/XunJie/issues/45)，已用批次的[历史命令](docs/tasks/G2_OVERALL_COORDINATION.md#223-已用模型批次的历史命令保存) |
-| P3 数字逻辑与反馈闭环 | [G3 总协调](docs/tasks/G3_OVERALL_COORDINATION.md)、[DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)、[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) |
+| P3 数字逻辑与反馈闭环 | [G3 总协调](docs/tasks/G3_OVERALL_COORDINATION.md)、[DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)、[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md)、[DL-B](docs/tasks/DL-B_HDL_TUTORING_CONTEXT.md) |
 | P3 最新分工（2026-10-14） | A 当前推进 A5，C 接续 DL-A 剩余部分；职责、交接与同步记录见 [G3 第14节](docs/tasks/G3_OVERALL_COORDINATION.md#14-2026-10-14-a5-与-dl-a-剩余工作转派) |
 | P4 截止日前核心验证与后续验收 | [核心验证安排与授权](docs/tasks/P4_DEADLINE_CORE_VERIFICATION.md)；[总协调 #60](https://github.com/paher-din/XunJie/issues/60)、[A6 #61](https://github.com/paher-din/XunJie/issues/61)、[B4 #62](https://github.com/paher-din/XunJie/issues/62)、[C5 #63](https://github.com/paher-din/XunJie/issues/63) |
 | C4 → A4 → DL-C 顺序集成 | [集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)、[C4](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md)、[A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md)、[DL-C](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) |
