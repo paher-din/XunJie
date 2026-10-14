@@ -1,12 +1,14 @@
 import {execFile,spawn} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdirSync,writeFileSync,readFileSync,chmodSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,chmodSync,statSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {DockerExecutor} from './docker.ts';
 import {RunnerError,sha256,validatePath} from './snapshot.ts';
 import {boardWrapper,configurationHash,hdlLimits,validateBuildRequest} from './hdl-profile.ts';
 import type {HdlPort} from './hdl-profile.ts';
 import type {HdlBuildRequest,HdlBuild,HdlRuntime,HdlInputs,SignalFrame} from '../contracts/runner/hdl.ts';
+import type {AluElaboration} from './alu-check.ts';
+import {envelope,writeImmutable} from './node-files.ts';
 
 const exec=promisify(execFile);
 export type HdlNodeConfig={node:string;source:string;state:string;generation:string;dockerBinary:string;dockerSocket:string;cliConfig:string;hdl:HdlRuntime};
@@ -62,16 +64,19 @@ export async function buildHdl(config:HdlNodeConfig,request:HdlBuildRequest,path
     failure??=result.failure??(result.exitCode!==0?'compile_error':undefined);return !failure;
   };
   try{
-    if(await compile('ports',['-g2012','-gno-std-include','-I/snapshot','-s',request.board.topModule,'-txunjie_ports','-Mprefix=/work/deps.txt','-o','/work/ports.json',...files])){
+    if(await compile('ports',['-g2012','-gno-std-include','-I/snapshot','-s',request.board.topModule,'-pXUNJIE_HIERARCHY=1','-txunjie_ports','-Mprefix=/work/deps.txt','-o','/work/ports.json',...files])){
       const dependencies=readFileSync(join(work,'deps.txt'),'utf8').trim().split('\n').map(line=>line.replace(/^[IM] /,''));
       for(const dependency of dependencies){if(!dependency.startsWith('/snapshot/'))throw new RunnerError('INVALID_REFERENCE','External HDL include rejected');
         const relative=dependency.slice(10);validatePath(relative);if(!request.snapshot.files.some(file=>file.path===relative))throw new RunnerError('INVALID_REFERENCE','Include is outside the confirmed snapshot');}
-      const ports=JSON.parse(readFileSync(join(work,'ports.json'),'utf8')) as HdlPort[];
+      if(statSync(join(work,'ports.json')).size>hdlLimits.traceBytes)throw new RunnerError('CONTENT_LIMIT','Elaboration metadata capacity exceeded');
+      const metadata=JSON.parse(readFileSync(join(work,'ports.json'),'utf8')) as HdlPort[]|{ports:HdlPort[];elaboration:AluElaboration};
+      const ports=Array.isArray(metadata)?metadata:metadata.ports;
       if(!Array.isArray(ports))throw new RunnerError('INVALID_CONFIGURATION','Elaborated ports unavailable');
       writeFileSync(join(work,'board.sv'),boardWrapper(request.board,ports),{flag:'wx',mode:0o444});
       if(await compile('compile',['-g2012','-gno-std-include','-I/snapshot','-s','xunjie_board','-o','/work/design.vvp','/work/board.sv',...files])){
         const artifact=readFileSync(join(work,'design.vvp'));artifactHash=sha256(artifact);
         mkdirSync(join(path,'artifact'),{mode:0o755});writeFileSync(join(path,'artifact','design.vvp'),artifact,{flag:'wx',mode:0o444});
+        if(!Array.isArray(metadata))writeImmutable(join(path,'elaboration.json'),envelope({artifactHash,elaboration:metadata.elaboration}));
         chmodSync(join(path,'artifact'),0o755);
       }
     }

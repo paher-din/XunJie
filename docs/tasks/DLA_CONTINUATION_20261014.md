@@ -62,3 +62,33 @@ UI交接为 [真实接线包](DLA_H4_UI_HANDOFF_20261014.md)。本轮未修改UI
 负责人对本轮精确问题回复“批准这一批 H3 源码实现”：沿原 [C §14.5](DLA_C_CLOSEOUT_HANDOFF.md#145-dla-h3层级采样占用和2800向量的精确执行提案) 的真实ALU结构化绑定、私有2800向量、三次稳定采样、原120秒及资源限额；保留每Attempt一个未终止Session，学生先显式停止板卡再发起独立检查，不改DDL/旧库，不自动替换或重装板卡。批准runner共享命令/VPI及对应原Job/绑定/读取的源码实现；新镜像、节点换版、维护和新指纹登记**尚未批准**，产物备齐后另交具体方案确认。现有Demo继续使用旧批准节点，不等待H3。
 
 H3按C原明确写集及A课程/绑定确认接缝维护，补 `contracts/design/hdl.ts` 的可选行为检查与绑定契约、design/hdl-configurations 的确认/固定配置、workspace与app原Job调用方及必要测试；节点侧独立check保持停止/代际/配额/私有资产边界。受保护产品/计划/参考与UI保持只读，产品/MVP§10待授权维护者汇总。实际H3源码、离线测试、未执行真实2800及下一轮节点提案将在后续章节记录，不把此次批准或数学预检记成ALU行为通过。
+
+### 7.1 最新范围裁决：仅 runner 内核
+
+实现前发现“把学生Build绑定提前冻结进活动”与“活动发布后才有学生Build”顺序冲突，提出每Build独立教师确认版本的建议。负责人明确选择 **“H3 先只实现 runner 内核”**。该最新选择缩小第7节的本批源码写集：不改design/活动发布、教师确认、workspace业务Job接纳或UI；这些调用方保留待明确接口设计，不从此前广义批准自行实现。节点运行配置/镜像/部署仍未批准。
+
+### 7.2 runner 内核实际源码
+
+- `contracts/runner/alu.ts` 和原 `hdl.ts`：受限 hdl_alu_probe/check/result；固定原scope/Build/artifact/snapshot/board配置/绑定/规则/向量/采样/runtime/images/source/generation。probe仅返回确认元数据，原query/stop复用同身份。
+- `runner/alu-check.ts`：结构化同实例端口绑定/宽度/方向/升降序/S拆分及自选SW无重叠校验；固定2800定义域与私有比较器；逐向量真实输入匹配、三次20/30/40ns低相位、评分X/Z/不稳定/缺样本区分，完整覆盖且确认终止才passed。非加法Cout/未定义域保持不判分；120秒整检查、2秒批次、64KiB/1MiB限额保留。
+- `hdl-ports.c`/`hdl-executor.ts`：已有ports模式兼容；新构建可生成绑定artifactHash的真实有限层级端口元数据。旧Build没有metadata时probe明确拒绝，不能拿人工名字补造解析结果。
+- `hdl-bridge.c`/`alu-simulation.ts`：受信通道的窄绑定/批次协议，SW真实施加、VPI只读低相位采集A/B/Cin/M/S/F/Cout；原板卡Frame/时钟路径兼容。私有协议与stdout分开，原始样本/失败向量只留节点受控资产。
+- `hdl-alu-worker.ts`/`hdl-node.ts`/`hdl-ledger.ts`/`ssh-control.ts`/`fingerprint.ts`：独立check使用原Session配额/同Attempt占用/原flock公平调度、原限制与确认停止，不替换板卡。查询只返回去敏summary/hash，拒绝用hdl_result读check私有帧。停止/worker退出未知不pass；新contract与内核文件纳入fingerprint，旧节点不能因为新应用源就被称作已更新。
+
+使用官方 Icarus v12 接口正文核对解析与回调：[ivl_target.h](https://raw.githubusercontent.com/steveicarus/iverilog/v12_0/ivl_target.h)、[vpi_user.h](https://raw.githubusercontent.com/steveicarus/iverilog/v12_0/vpi_user.h)。本机CLI使用与已批准镜像一致的[Ubuntu iverilog 12.0-2build2包](https://archive.ubuntu.com/ubuntu/pool/universe/i/iverilog/iverilog_12.0-2build2_amd64.deb)解包到独立H3目录，不安装系统依赖、不建新镜像、不改节点。
+
+### 7.3 已执行与后置
+
+H3 Node24.21.0 typecheck通过；gcc -Wall -Wextra -Werror 两个C模块通过。第一次C编译发现两处misleading-indentation并修正，不关闭warning。内核/原时钟第一轮12项全通过；新增节点probe/配额/隐私/错scope/旧代际后H3专项8/8通过。隔离Icarus CLI实际2800向量/8400样本完全比较通过，故意错误取反被检出；细于1ps的原时钟反例保持通过。初次联合runner/HDL/H4回归71项68通过/0失败/3受控真实门禁跳过；最后小改动的针对性结果另列，不累计。
+
+未执行：获准VM中的新镜像/H3 worker真实2800吞吐与停止/崩溃/双实例限额；活动绑定确认和业务course_check接线；浏览器和真人。CLI结果不满足DL-AC全项，不声称目标节点H3验收通过；公开运行仍用原sourceHash与镜像，H4/已成熟Demo不被H3等待阻塞。
+
+## 8. 统一 PR56 发布与现场交接
+
+main集成与H4提交为 `5b78684`（保留PR56与main35307e0父提交）、`4a24849`（保留同期main f95488a父提交）。第二次merge仅接纳已在PR56的B历史及最新main交付记录，冲突保留本轮冻结增强；重复插入的DL-B模型门禁测试恢复为单份。受保护产品/计划/参考与main逐blob一致，不作额外修改。
+
+普通Git推送两次因GitHub连接reset/timeout失败；改用现有gh认证Git API上传**相同Git树与原merge父提交**，force=false。API生成SHA与本地两提交完全一致；远端原PR56分支回读 `4a24849afa601d53559bca2f3ac4ab5ba830cec9`，最新已接纳main为其祖先。未合并远端PR/main、未关闭Issue、未删除分支或Git历史。发布脚本留在本人证据目录；API非秘密准备文件保留仓库外。
+
+早期原tap日志含测试输出尾空格；第一提交的检查有此新增失败但提交已发生，后续保留原始gzip字节与sha，并仅去掉可读tap的行尾空格，复验通过。不重写/删除第一提交，失败如实记录。
+
+PAHER保留联调宿主 `xunjie-dla-ui-handoff-20261014.service`：同机3444、同35表、原TLS/签名/合成账号、继承main UI构建；模型预算关闭且不读取本轮密钥，不新增自动开机或跨机路由。停止命令：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-handoff-20261014.service`；原3443服务与24表不动。H3代码另在 `dla-h3-source-20261014` 副本验证，不覆盖这个正在运行的旧runner契约宿主。实际存活就绪结果见后续smoke证据，长期在线不作保证。
