@@ -98,3 +98,11 @@ node docs/tasks/evidence/c5-core/verify-real.mjs "$sourceRoot" "$outputFile"
 负责人对准确19文件/分支/证据PR/#63回交及关闭申请回复：**“同意公开交付并关闭 C5”**。授权普通推送 `codex/c5-core-verification`、创建证据PR、公开去敏合成证据、向#63回交并关闭本批Issue；不包含main合并、生产发布、H3节点换版或受保护文档维护。沿此范围完成最后交付，不重复申请。
 
 核心结果提交为 `4ecd1584238f6fc5c25067b0ae1a822e641baf35`，后续授权/回执仅改本文，不移动固定应用/节点验证版本。公开PR及Issue关闭状态由Git/GitHub实际回读确认；结果附后，不将待执行动作提前记成成功。
+
+### 4.2 公开交付与关闭回执
+
+普通推送 `codex/c5-core-verification` 成功，首次远端head=`0f347c03856a2741ea06d3ed28651790ec1e918f`，与本地相同；[证据PR #78](https://github.com/paher-din/XunJie/pull/78) 已创建并附到本chat，base=main、Open/非Draft/CLEAN。19文件清单和完整正文逐字回读一致；GitHub `statusCheckRollup=[]`，没有CI检查报告，不宣称CI通过。尚未合并main。
+
+由paher-din发布 [#63回交](https://github.com/paher-din/XunJie/issues/63#issuecomment-6174566168)，作者/URL/正文回读与准备稿逐字一致。随后按负责人授权关闭#63，API实读 **CLOSED / COMPLETED**，closedAt=`2026-10-14T17:43:01Z`（Asia/Shanghai **2026-10-15 01:43:01**）。关闭的是本次C5核心批次；§3.4浏览器/长测/完整故障/备份/H3/真人后续项不升级为通过。
+
+最后回执提交仅更新本文；后续PR head以实际Git回读为准，不把文档提交当成新实测应用/节点源码。原19文件写集、固定结果/失败证据与manifest不变；生产源码/配置/保护文档/其他任务不改，不删除分支或工作树。公开交付已完成，产品基线/MVP§10仍待授权维护者汇总。
