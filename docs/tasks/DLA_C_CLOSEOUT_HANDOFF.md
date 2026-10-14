@@ -695,3 +695,61 @@ wsl -d Ubuntu -u root -- systemctl show xunjie-i0-entry-recovered-20261014.servi
 **当前待办纠正：A的宿主就绪代码修复已交付；剩余转为C接收固定964abb4完整应用源码、沿原Node/lock构建，在既有准确窗口/许可下复用现有TLS/持久24表库/配置和节点做现场版本切换及严格回读。** 按A手册核/health/ready=200、data.status=ready、requestId/no-store，再正常登录重读既有Assignment/bootstrap/Attempt；不直接覆盖旧两文件、不重建库/凭据、不重跑整20项或重登记节点。该实际换版在本次“检查”中未执行，记录为C待现场接收验证；不再列“A尚未修复503代码”。
 
 UI精确信任/账号通道/登录分配接线及实际浏览器验收仍独立。H-01整体不能由源码修复/作者37项或旧20项自动计通过；不合并/部署PR59、不关闭Issue或修改A作者稿/保护基线。本人PR55说明与最新#30回交同步此状态，历史失败与本次只读输出不覆盖。
+
+## 18. 2026-10-14 批准执行 PR59 的 PAHER 定向接入
+
+负责人对上轮四步方案“接收固定964abb4完整源码/沿原Node-lock构建并保留旧副本；复用现有24表持久库与凭据切换宿主；严格TLS核ready200/status/requestId/no-store及原登录/Assignment/bootstrap/Attempt；回交后UI继续浏览器验收”明确回复 **“开始吧”**。据此连续执行同机开发换版与定向复验，不再等待A改代码；不是生产部署/PR合并或浏览器信任授权。
+
+基线沿§17已读PRD-10、MVP M-09/M-10/AC-06/12/NFR-04、TECH §7.4/10.1/10.2、原C0恢复ADR及PR59实施/交接手册。本批应用源固定964abb4277c2cf58e81d6686f6349b6ef0fa2e39，正常配置无tutoring，保留原24表/代际/SSH与旧静态产物；不启模型/35表，不运行会新建24/28表的整37项或旧20项。
+
+可写本人任务、c-entry-readiness-pr59本批去敏证据及必要C检查脚本、新独占PAHER完整源码/构建目录；README仅可导航/使用说明。A源码只接收/构建原样，不在旧9fa副本覆盖两文件；依赖/lock先核一致，优先复用同版本原已安装依赖，不安装新全局工具。配置、TLS/签名/五密码与数据库路径全部复用不改，保护基线/其他作者稿及主副本写集只读。
+
+先核当前持久库24表/完整性、原业务对象与未结Job、C/HDL当前ready/指纹/代际，构建通过后才SIGTERM停止本人旧宿主，核停止完成，再以同Origin/PORT/TMPDIR/原配置启动新main并保持本机联调运行。回滚仅停止本人新宿主并按原启动参数恢复旧副本；无库迁移/新建对象/凭据替换或删除，原503与旧证据保留。遇指纹/代际不一致、未结作业、构建或新宿主验证失败，保留事实，按原身份/停止规则处理，不改判据或造替代库继续。
+
+### 18.1 固定源码接收与构建通过
+
+[接收记录](evidence/c-entry-readiness-pr59/source-reception.json)：完整964abb4接收至 `/opt/xunjie-runner/tests/i0-entry-source-964abb4-20261014`，825个Git跟踪文件逐项核raw blob/SHA256/字节/Unix mode，0差异；没有在旧9fa树覆盖应用文件。package.json及lock与原Linux已安装副本逐字节一致，物理复制同版本node_modules（保留包内合法链接），没有全局安装或重跑npm ci。
+
+Node24.21.0在新副本执行原tsc --noEmit及tsc -p tsconfig.build.json，均exit0，见 [实际构建](evidence/c-entry-readiness-pr59/build-result.json)。两份tsc输出实际为空、原日志root0600保留，未把无输出充为其他测试通过；未执行37项建库回归。构建后 [825文件再核](evidence/c-entry-readiness-pr59/source-after-build.json)全部原字节/mode仍一致，未改A源码/契约/lock。
+
+### 18.2 原库原对象预检与实际切换
+
+本批 [定向检查脚本](evidence/dla-c-handoff/check-pr59-host.mjs)复用已有exchangeHttps处理网络/TLS异常；--self-check以正例及503、错误status、缓存/requestId反例验证就绪判据，不访问库/服务。before/after仅使用原合成账号正常登录和只读业务/健康查询；不创建Assignment/Attempt/Run，不手工消费Job，不输出认证正文或cookie/CSRF。
+
+[切换前](evidence/c-entry-readiness-pr59/before-switch.json)：旧9fa宿主live200/ready503均经严格TLS；原24表库integrity=ok、1 Assignment/1 Attempt、全部四Job为3 succeeded/1 cancelled、未结0；原对象/配置摘要、C/HDL当前ready及指纹/代际均记录。before.passed=true表示预检与旧503复现符合切换条件，不表示旧HTTP ready通过。
+
+14:35:53～14:35:59按 [实际切换记录](evidence/c-entry-readiness-pr59/switch-result.json)执行：原xunjie-i0-entry-recovered-20261014.service在0.283秒内停止，inactive/dead/MainPID=0、Result=success/ExecMainStatus=0；未强杀或改作业状态。新unit `xunjie-i0-entry-pr59-20261014.service`以新完整副本dist/server/main.js启动，Node24.21.0、相同PORT=3443/TMPDIR/原XUNJIE_I0_CONFIG与全部凭据/库/静态目录引用不变。新MainPID=2313，验证通过，未执行回滚；旧副本与原启动参数仍保留可恢复。没有重启/维护执行节点、改指纹登记或新增自动开机任务。
+
+### 18.3 严格 TLS 就绪、登录与原对象回读通过
+
+[切换后](evidence/c-entry-readiness-pr59/after-switch.json)6个严格TLS响应全部通过，rejectUnauthorized=true/默认主机验证/实际服务证书指纹核验，未改系统/浏览器信任：
+
+| 定向验证 | 实际结果 |
+| --- | --- |
+| GET /health/live | 200、data.status=alive |
+| GET /health/ready | **200、data.status=ready、Cache-Control:no-store**；body.requestId与x-request-id一致，且与live请求不同 |
+| 原synthetic-i0-student-a正常登录及GET /api/session | 200，实际userId一致；认证正文与cookie/CSRF只留进程内存 |
+| 原Assignment/bootstrap | 原a2533386-4923-4dee-83bd-2d7a99fb06e9、activity=f0942cb7-75ef-4625-aa92-d649268d61cb，revision3/active=true，与切换前完全一致 |
+| 原Attempt | c9166463-5f46-4dc6-82c3-96456f394258，attemptRevision10/workspaceRevision7/decisionEpoch2等公开头与切换前完全一致 |
+| 原配置/持久库/作业/节点 | 配置原字节摘要一致，24表/完整性/对象数及四Job终态一致，未结0；C/HDL ready=true、原fingerprint/sourceHash/代际一致 |
+
+当前宿主503问题已完成“PR59修复→C现场接收→实际200”闭环，不再列A未修复或C待换版。此次不累计旧20项/作者37项，不把6个HTTP响应称为6套业务验收。正常登录会产生原认证所需Session记录，业务对象/确认头不改；没有重建库/生成新凭据/创建替代分配。
+
+### 18.4 当前运行交接与停止/回滚
+
+以 [当前PR59入口](evidence/c-entry-readiness-pr59/active-entry.json)为准，受控原件root/pr59-adoption-20261014/active-entry.json；本批前后输出/原日志及公开摘要分开保留。Origin仍https://127.0.0.1:3443，当前unit为xunjie-i0-entry-pr59-20261014.service，正常消费者保持运行。现有配置/库/TLS/签名/账号领取引用全部复用；UI静态目录也保留旧9fa的已交产物，没有把PR59源码包中其他UI变更自动激活或宣称页面已接。
+
+```powershell
+wsl -d Ubuntu -u root -- systemctl stop xunjie-i0-entry-pr59-20261014.service
+wsl -d Ubuntu -u root -- systemctl show xunjie-i0-entry-pr59-20261014.service --property=ActiveState,SubState,Result,ExecMainStatus
+```
+
+停止仍走原main的SIGTERM收束；未确认终止不得记停止成功。重启新宿主用switch-result.json的newStartArgv，保持新WorkingDirectory/新main与原PORT/TMPDIR/配置。需要回退时先正常停止本人PR59 unit，再用§15保留的原start-command.json启动旧9fa unit；不迁移/改写/删除现有库，也不随机改代际。WSL/Windows重启与保活、浏览器信任和实际页面验收依旧按原条件，不以本次局部通过承诺全天运行或完整AC-12。
+
+本轮完成获准的C换版/定向复验，回A/UI精确当前源与原对象即可；A审阅/样例/PR59代码修复及C就绪现场验证均已有交付。H-01后续仍为UI的精确信任/账号通道、正常登录/分配页面接线与浏览器验收；35表/HDL业务/ALU、模型、NFR/真人沿各自原门禁，不由本批关闭Issue或合并PR59。产品/MVP§10待授权维护者汇总。
+
+### 18.5 最终核验与公开回交
+
+[本批核验](evidence/c-entry-readiness-pr59/adoption-validation.json)列实际通过项与新公开文件字节/hash；[受控原输出清单](evidence/c-entry-readiness-pr59/controlled-output-manifest.json)分别保留前后检查、构建、当前交接、切换参数及原日志摘要。8份受控文件和本批公开写集按原5密码/签名/私钥共7个实际值在WSL/root内存比对，匹配0，未公开认证正文/SQLite或私钥。源码825/825接收与构建后核验通过，Node24.21.0类型/构建、检查器syntax及ready判据正反例自检通过；仅本次6+6严格TLS请求，不累计旧20/37或审查35项。
+
+文档静态66份/1017内链/errors=[]、git diff --check通过；仅本人任务/README导航、定向C检查器和去敏证据入原PR55，应用/共享契约/依赖与保护基线无本域改动。普通推送后向#30及PR59回交当前964abb4/200/原对象和UI剩余门禁，不改他人PR正文、不合并或关闭Issue。当前服务保持运行；旧配置/源码与503历史、原启动参数保留。
