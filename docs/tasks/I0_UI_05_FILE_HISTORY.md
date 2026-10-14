@@ -211,7 +211,7 @@ export interface ConfirmationState {
 
 | 设计侧文件 | 内容 |
 | --- | --- |
-| `src/lib/fileLifecycle.ts`(+test) | 回收/恢复能不能点、为什么点不动、未确认判定与文案（设计规则的可执行形态，6 例） |
+| `src/lib/fileLifecycle.ts`(+test) | 回收/恢复能不能点、为什么点不动、未确认判定与文案（设计规则的可执行形态，固定Design源5例；原6例于2026-10-15勘误） |
 | `src/lib/fileComparison.ts`(+test) | 只读比较视图模型：按 fileId 对齐、单侧为 null、回收状态只在权威侧（4 例） |
 | `src/components/workspace/CompareText.tsx`、`VersionCompare.tsx`(新) | 只读正文面板与版本比较视图（左右来源、键盘「换一版」、身份/版本/回收读数、Esc 返回） |
 | `FileStrip.tsx`、`CodeWorkspace.tsx` | 行内「回收」、已回收实例区「恢复」+ 占用者说明、待确认标记、已回收实例的编辑区说明、运行簇比较入口 |
@@ -219,7 +219,7 @@ export interface ConfirmationState {
 | `pages/WorkspacePage.tsx`、`bridge/types.ts` | 比较视图接线；演示数据补两个**历史版本**（wordfreq v1/v2，身份与当前作品同 fileId），默认打开即比最近两版，来源列表里另有「确认作品 vN」与「本机草稿」可切换 |
 | `styles/app.css` | 05 两个分节，按 `docs/DESIGN.md` 取值（辅助信息 `muted`、琥珀文字 `--tint-amber-fg` 满足 AA、圆角 6/8、150ms S 曲线） |
 
-设计侧验证：`npx tsc --noEmit` 通过；`npm test` 10 文件 **106 例**通过（含新增 12 例）；`npm run build` 通过；dev 实屏核对五种状态并用断言确认：恢复被占用时按钮禁用且标题为「main.c 现在被另一个文件实例占用；先在它那一行回收，才能恢复这个实例。」、比较行显示「右侧已回收」、终态下回收按钮禁用且标题为「当前作品状态不允许回收或恢复文件实例。」、同名重建在比较里是两行（6 行 = 5 个演示文件 + 1 个新建）；历史版本比较默认打开即 v1 × v2（4 行，其中 2 行「只有右侧有这个文件实例」——v1 还没有 words.c 与 sample.txt），来源列表给出四个可切换来源。截图留在本地（`/tmp/i005-design-*.png`，不纳入版本库）。
+设计侧验证：`npx tsc --noEmit` 通过；固定`718f2ae`原提交记录为`npm test` 10 文件 **104 例**通过（含新增10例，原106/新增12于2026-10-15勘误，见文末）；`npm run build` 通过；dev 实屏核对五种状态并用断言确认：恢复被占用时按钮禁用且标题为「main.c 现在被另一个文件实例占用；先在它那一行回收，才能恢复这个实例。」、比较行显示「右侧已回收」、终态下回收按钮禁用且标题为「当前作品状态不允许回收或恢复文件实例。」、同名重建在比较里是两行（6 行 = 5 个演示文件 + 1 个新建）；历史版本比较默认打开即 v1 × v2（4 行，其中 2 行「只有右侧有这个文件实例」——v1 还没有 words.c 与 sample.txt），来源列表给出四个可切换来源。截图留在本地（`/tmp/i005-design-*.png`，不纳入版本库）。
 
 同步关系（详见 `IMPORT_SOURCE §4`）：主仓库接收 `fileLifecycle`/`fileComparison`/两个比较组件/文件条与工作区接线/CSS 分节；`VersionCompare.tsx` 两仓库是同一份组件（只差数据模块 import 路径），`CompareText.tsx` 主仓库多一层 `projectOriginal` 正文投影；设计仓库的页面接线、演示存储与 `mergedLifecycle`（多标签口径）不进主仓库；主仓库的 IndexedDB 事务、原文保真与确认 outbox 不进设计仓库。
 
@@ -282,3 +282,9 @@ export interface ConfirmationState {
 03/04/04A 已交付的共同边界全部复用：本任务没有第二份确认状态、没有新 IndexedDB store、没有新依赖、没有改服务端。06/06A/06B 可直接复用 `readSnapshot`/`state.snapshots` 与 `buildVersionComparison`（例如运行快照之间的比较），不需要另建比较实现；生命周期意图与确认头的边界保持在 `useProjectWorkspace` 与 03 的 outbox 里。
 
 状态：**已实现（准备范围）、已通过工程与浏览器验证**；两轴审查发现与修复见下节。本次改动已提交并推送到 `i0/ui-frontend`（`git ls-remote` 核对 `refs/heads/i0/ui-frontend` = `6dfc9231f53bf30e919aef93e88d8f20abf40792`）；设计仓库 `718f2ae`、`ad89519` 已推送到其 `origin/main`（核对 = `ad89519eff7673c399b3dfcbf521cf0363b31b40`）。两者均未部署；开工前已存在的未跟踪 `.zcodeignore` 未纳入提交。推送后仅文档记录变化，代码不再改动。基线汇总请求：请授权维护者把本文件范围汇总到 [MVP_SPEC §10](../product/MVP_SPEC.md#10-实现进展与验证记录)；本文件即该范围的实施记录，未改动 `docs/product/**` 任何内容（`git status -- docs/product docs/planning docs/reference AGENTS.md` 为空）。
+
+## 2026-10-15 Design计数勘误
+
+Robert明确说明wubq511就是我们，本轮[UI-PREP-08](I0-UI_PREP_04_07_08_CLOSEOUT.md)直接纠正本人记录。固定[Design提交718f2aee58dd7b7b67ba0a1d1b92f6a89004168a](https://github.com/wubq511/XunJie_Design/commit/718f2aee58dd7b7b67ba0a1d1b92f6a89004168a)于2026-10-12 21:09:14 +08:00的原提交正文记录“104例通过（含新增10例）”；同固定树10测试文件静态展开也为104，`fileLifecycle.test.ts`声明为5。明细见[来源核对表](evidence/i0-ui-prep-04-07-08/documentation-handoff.md#2-design固定来源的静态计数核对)。
+
+因此设计交付段落原106/新增12及表内fileLifecycle6与本文件引用的固定来源不符，本轮改为104/新增10和5；验证表原104保持。保留旧错误数与日期在本节，不把静态计数写成本轮新测试通过，也不重跑Design或替换主仓229单元/59浏览器的历史。若另找回106的独立源码/日志，只能单列该轮，不能继续归到当前固定718f2ae。类型/build、实屏文字、原截图本地留存及未执行边界不变，受保护基线仍待获授权维护者汇总。

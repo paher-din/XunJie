@@ -1,0 +1,327 @@
+{
+  "taskId": "UI-PREP-07",
+  "status": "audit-and-proposal-complete-no-upgrade-implemented",
+  "capturedAtUtc": "2026-10-14T16:06:18.536Z",
+  "baselineCommit": "37b628b75ec3a2238b9b77c8bd1882d36a2e55a6",
+  "branch": "i0/ui-frontend",
+  "nodeVersion": "v24.15.0",
+  "npmVersion": "11.12.1",
+  "lockfileVersion": 3,
+  "inputs": {
+    "packageJson": {
+      "path": "apps/student/package.json",
+      "sha256": "dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd"
+    },
+    "packageLock": {
+      "path": "apps/student/package-lock.json",
+      "sha256": "8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9"
+    }
+  },
+  "commands": [
+    {
+      "command": "npm audit --json",
+      "exitCode": 1,
+      "artifact": "audit-full.json"
+    },
+    {
+      "command": "npm audit --omit=dev --json",
+      "exitCode": 1,
+      "artifact": "audit-runtime.json"
+    },
+    {
+      "command": "npm ls --all --json",
+      "exitCode": 0,
+      "rawRetainedLocally": true
+    },
+    {
+      "command": "npm explain dompurify source-map-js tinypool @vitest/mocker --json",
+      "exitCode": 0,
+      "rawRetainedLocally": true
+    }
+  ],
+  "auditCounts": {
+    "full": {
+      "info": 0,
+      "low": 2,
+      "moderate": 1,
+      "high": 1,
+      "critical": 2,
+      "total": 6
+    },
+    "runtime": {
+      "info": 0,
+      "low": 2,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 2
+    },
+    "uniqueAdvisoryUrls": 6,
+    "packageEntryCount": 6
+  },
+  "artifacts": {
+    "audit-full.json": {
+      "sha256": "7ae1e073ecafb36a4ea4859a1a80ded02935958c7968a5008ca2c51fcb97c4cf",
+      "bytes": 6571,
+      "completedAtUtc": "2026-10-14T16:00:23.338Z"
+    },
+    "audit-runtime.json": {
+      "sha256": "019fe7b81b7bb045974b8d6d2461dd77cd8b3d94eee26a9add65e085bd00aca8",
+      "bytes": 2310,
+      "completedAtUtc": "2026-10-14T16:00:20.690Z"
+    }
+  },
+  "lockedPackages": {
+    "vitest": {
+      "version": "3.2.7",
+      "installedVersion": "3.2.7",
+      "dev": true,
+      "direct": true,
+      "dependencies": {
+        "@types/chai": "^5.2.2",
+        "@vitest/expect": "3.2.7",
+        "@vitest/mocker": "3.2.7",
+        "@vitest/pretty-format": "^3.2.7",
+        "@vitest/runner": "3.2.7",
+        "@vitest/snapshot": "3.2.7",
+        "@vitest/spy": "3.2.7",
+        "@vitest/utils": "3.2.7",
+        "chai": "^5.2.0",
+        "debug": "^4.4.1",
+        "expect-type": "^1.2.1",
+        "magic-string": "^0.30.17",
+        "pathe": "^2.0.3",
+        "picomatch": "^4.0.2",
+        "std-env": "^3.9.0",
+        "tinybench": "^2.9.0",
+        "tinyexec": "^0.3.2",
+        "tinyglobby": "^0.2.14",
+        "tinypool": "^1.1.1",
+        "tinyrainbow": "^2.0.0",
+        "vite": "^5.0.0 || ^6.0.0 || ^7.0.0-0",
+        "vite-node": "3.2.4",
+        "why-is-node-running": "^2.3.0"
+      },
+      "engines": {
+        "node": "^18.0.0 || ^20.0.0 || >=22.0.0"
+      },
+      "integrity": "sha512-KrxIJ62Fd89gfysR4WotlgZABiz2dqFPgqGzX7s+CwsqLFomRH7777ZcrOD6+WVAh7khPQP41A+BKbpcJFrdEg==",
+      "resolved": "https://registry.npmjs.org/vitest/-/vitest-3.2.7.tgz"
+    },
+    "@vitest/mocker": {
+      "version": "3.2.7",
+      "installedVersion": "3.2.7",
+      "dev": true,
+      "direct": false,
+      "dependencies": {
+        "@vitest/spy": "3.2.7",
+        "estree-walker": "^3.0.3",
+        "magic-string": "^0.30.17"
+      },
+      "engines": null,
+      "integrity": "sha512-Trr0hYO9CM3Wj6ksWHRhK9IZpIY6wTMO5u/MqXurMxT57sWBaOPEtP3Oq60ihZuh5JsiagKfz95OcxdEP6dBrA==",
+      "resolved": "https://registry.npmjs.org/@vitest/mocker/-/mocker-3.2.7.tgz"
+    },
+    "tinypool": {
+      "version": "1.1.1",
+      "installedVersion": "1.1.1",
+      "dev": true,
+      "direct": false,
+      "dependencies": {},
+      "engines": {
+        "node": "^18.0.0 || >=20.0.0"
+      },
+      "integrity": "sha512-Zba82s87IFq9A9XmjiX5uZA/ARWDrB03OHlq+Vw1fSdt0I+4/Kutwy8BP4Y/y/aORMo61FQ0vIb5j44vSo5Pkg==",
+      "resolved": "https://registry.npmjs.org/tinypool/-/tinypool-1.1.1.tgz"
+    },
+    "vite": {
+      "version": "7.3.6",
+      "installedVersion": "7.3.6",
+      "dev": true,
+      "direct": true,
+      "dependencies": {
+        "esbuild": "^0.27.0 || ^0.28.0",
+        "fdir": "^6.5.0",
+        "picomatch": "^4.0.3",
+        "postcss": "^8.5.6",
+        "rollup": "^4.43.0",
+        "tinyglobby": "^0.2.15"
+      },
+      "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "integrity": "sha512-4XP60spRGjSZFf1qYH+dJIkK2znL3zQfl9KkOV9MkkRR/3Dls0dxaBsQPTloEc5BLXWPL9vsOxopxyKoMmDueg==",
+      "resolved": "https://registry.npmjs.org/vite/-/vite-7.3.6.tgz"
+    },
+    "postcss": {
+      "version": "8.5.28",
+      "installedVersion": "8.5.28",
+      "dev": true,
+      "direct": false,
+      "dependencies": {
+        "nanoid": "^3.3.18",
+        "picocolors": "^1.1.1",
+        "source-map-js": "^1.2.1"
+      },
+      "engines": {
+        "node": "^10 || ^12 || >=14"
+      },
+      "integrity": "sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==",
+      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.28.tgz"
+    },
+    "source-map-js": {
+      "version": "1.2.1",
+      "installedVersion": "1.2.1",
+      "dev": true,
+      "direct": false,
+      "dependencies": {},
+      "engines": {
+        "node": ">=0.10.0"
+      },
+      "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
+      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz"
+    },
+    "monaco-editor": {
+      "version": "0.57.0",
+      "installedVersion": "0.57.0",
+      "dev": false,
+      "direct": true,
+      "dependencies": {
+        "dompurify": "3.4.15",
+        "marked": "14.0.0"
+      },
+      "engines": null,
+      "integrity": "sha512-5BkI9KGoqrNvBGUe15/QlZq3OooZ8WLg1AxTpaqHRCP3HNpzPPZKE2EDz8M7c+VRmCeUw1Brp4cx/PWm3kI/5A==",
+      "resolved": "https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.57.0.tgz"
+    },
+    "dompurify": {
+      "version": "3.4.15",
+      "installedVersion": "3.4.15",
+      "dev": false,
+      "direct": false,
+      "dependencies": {},
+      "engines": null,
+      "integrity": "sha512-EUBjM+B+lkDE41iE82DDSCfkoPGfXx8IxFxPMjNzm/Uk4xDet77rTN9wqlxlVg71kK7XGuUMv6wUxJUwwv+Xyw==",
+      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.15.tgz"
+    }
+  },
+  "directDependencyRanges": {
+    "dependencies": {
+      "@radix-ui/react-dialog": "^1.1.6",
+      "@tanstack/react-query": "^5.66.0",
+      "marked": "^18.1.0",
+      "monaco-editor": "0.57.0",
+      "react": "^19.1.0",
+      "react-dom": "^19.1.0",
+      "react-router-dom": "^7.6.0",
+      "remend": "^1.4.0"
+    },
+    "devDependencies": {
+      "@playwright/test": "1.64.0",
+      "@types/node": "24.19.2",
+      "@types/react": "^19.1.0",
+      "@types/react-dom": "^19.1.0",
+      "@vitejs/plugin-react": "^5.0.0",
+      "typescript": "~5.9.2",
+      "vite": "^7.1.0",
+      "vitest": "^3.2.4"
+    }
+  },
+  "deduplicatedAdvisories": [
+    {
+      "source": 1193683,
+      "name": "vitest",
+      "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+      "url": "https://github.com/advisories/GHSA-82fw-gwwq-j7x9",
+      "severity": "moderate",
+      "range": ">=2.1.0 <4.1.11"
+    },
+    {
+      "source": 1240621,
+      "name": "dompurify",
+      "title": "DOMPurify: IN_PLACE: node-removing afterSanitize hook leaves detached subtree event handlers armed, causing DOM XSS",
+      "url": "https://github.com/advisories/GHSA-p98j-92pf-mc4p",
+      "severity": "low",
+      "range": ">=3.4.13 <=3.4.15"
+    },
+    {
+      "source": 1241204,
+      "name": "dompurify",
+      "title": "DOMPurify: IN_PLACE returns a force-removed rawtext root whose text carries attacker markup — pure HTML reparse executes",
+      "url": "https://github.com/advisories/GHSA-6688-9rhm-gjv2",
+      "severity": "low",
+      "range": "<=3.4.15"
+    },
+    {
+      "source": 1241209,
+      "name": "source-map-js",
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+      "severity": "high",
+      "range": ">=1.0.0 <1.2.2"
+    },
+    {
+      "source": 1241260,
+      "name": "tinypool",
+      "title": "Tinypool: Prototype Pollution gadget in worker options leads to Remote Code Execution",
+      "url": "https://github.com/advisories/GHSA-5gmw-xhrv-c9v3",
+      "severity": "critical",
+      "range": "<=2.1.0"
+    },
+    {
+      "source": 1241261,
+      "name": "tinypool",
+      "title": "Tinypool: Prototype Pollution Gadget to RCE in run() options",
+      "url": "https://github.com/advisories/GHSA-85c8-ppgw-ccpr",
+      "severity": "critical",
+      "range": "<2.1.2"
+    }
+  ],
+  "sourceEvidence": {
+    "monacoVendoredDomPurify": {
+      "path": "apps/student/node_modules/monaco-editor/esm/vs/base/browser/dompurify/dompurify.js",
+      "sha256": "493e9f430fbdde595f9e12ff46aa5b3606a514d5c8556eb144da69612f77fc8e",
+      "version": "3.4.15",
+      "hasLiteralLicenseVersion": true,
+      "hasRuntimeVersion": true
+    },
+    "monacoSanitizer": {
+      "path": "apps/student/node_modules/monaco-editor/esm/vs/base/browser/domSanitize.js",
+      "sha256": "52ab050b0d10f6876809363d08324be5a90980d6158b1c0828d91c6f2acdcd4b",
+      "importsVendoredRelativeFile": true,
+      "containsInPlaceConfig": false,
+      "returnModes": [
+        "RETURN_DOM_FRAGMENT",
+        "RETURN_TRUSTED_TYPE"
+      ]
+    },
+    "existingBuildChunks": {
+      "sourceCommitNotRebuiltOrIndependentlyBoundInThisAudit": true,
+      "chunks": [
+        {
+          "path": "apps/student/dist/assets/markdownRenderer-8dBYP_FZ.js",
+          "sha256": "6f1daf47f54a5b2b65f32142d85426609b9d53a4d7bb854d441faf9f35974d63",
+          "containsDomPurifyVersion3_4_15": true
+        }
+      ]
+    }
+  },
+  "notExecuted": [
+    "npm install/ci",
+    "npm audit fix",
+    "dependency or lock changes",
+    "upgrade builds/tests",
+    "exploit demonstration",
+    "browser/SSH/node/model/CI changes"
+  ],
+  "networkLimitations": [
+    {
+      "operation": "web open https://github.com/7rulnik/source-map-js/releases/tag/1.2.2",
+      "result": "404; official merged PR79/commit cf7658058ceeaa8619d5ae0ec90be6905209d016 and npm metadata verified instead"
+    },
+    {
+      "operation": "web open registry.npmjs.org/dompurify/3.4.16 and source-map-js/1.2.2",
+      "result": "reader Internal Error; native npm view exact versions exited0 and raw metadata retained"
+    }
+  ]
+}
