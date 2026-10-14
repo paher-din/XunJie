@@ -62,6 +62,26 @@ function asErrorBody(value: unknown): ApiErrorBody | null {
  * 只存 token，不存口令或 provider 凭据。
  */
 let csrfToken: string | null = null
+let sessionEpoch = 0
+const activeSessionRequests = new Set<AbortController>()
+const sessionExpiredListeners = new Set<() => void>()
+const sessionReadListeners = new Set<(value: unknown) => void>()
+
+export function onSessionRead(listener: (value: unknown) => void): void {
+  sessionReadListeners.add(listener)
+}
+
+export function invalidateSessionRequests(): void {
+  sessionEpoch += 1
+  // 取消旧 HTTP 也阻止其迟到 Set-Cookie 改写新会话；数据接纳仍独立核代次/上下文。
+  for (const controller of activeSessionRequests) controller.abort()
+  activeSessionRequests.clear()
+}
+
+export function onSessionExpired(listener: () => void): () => void {
+  sessionExpiredListeners.add(listener)
+  return () => { sessionExpiredListeners.delete(listener) }
+}
 
 export function setCsrfToken(token: string | null): void {
   csrfToken = token
@@ -76,6 +96,8 @@ export interface RequestOptions {
   idempotencyKey?: string
   /** 仅开发准备 fixture 的场景隔离，不进入业务正文或真实请求。 */
   scenarioId?: string
+  /** 会话入口限定等待，超时仍是传输失败，不伪造业务结论。 */
+  timeoutMs?: number
 }
 
 function urlOf(path: string, opts: RequestOptions): string {
@@ -84,6 +106,7 @@ function urlOf(path: string, opts: RequestOptions): string {
 
 async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, opts: RequestOptions, wireJson?: string): Promise<T> {
   const url = urlOf(path, opts)
+  const epoch = sessionEpoch
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (import.meta.env.DEV && opts.mode === 'preparation') {
     const scenario = opts.scenarioId ?? new URLSearchParams(globalThis.location?.search ?? '').get('scenario')
@@ -97,20 +120,32 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
   }
 
   let response: Response
+  let text: string
+  const controller = opts.mode === 'real' || opts.timeoutMs ? new AbortController() : undefined
+  if (opts.mode === 'real' && controller) activeSessionRequests.add(controller)
+  const timer = controller && opts.timeoutMs ? setTimeout(() => controller.abort(), opts.timeoutMs) : undefined
   try {
     response = await fetch(url, {
       method,
       headers,
       credentials: 'same-origin',
       body: method === 'POST' ? (wireJson ?? JSON.stringify(body ?? {})) : undefined,
+      signal: controller?.signal,
     })
+    text = await response.text()
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     throw new WorkspaceRequestError({ kind: 'transport', message }, method, url)
+  } finally {
+    clearTimeout(timer)
+    if (controller) activeSessionRequests.delete(controller)
   }
 
   let payload: unknown = null
-  const text = await response.text()
+  // 会话改变后，旧成功或旧 401 都不能影响下一账号，包括 CSRF 与本机 ACK。
+  if (opts.mode === 'real' && epoch !== sessionEpoch) {
+    throw new WorkspaceRequestError({ kind: 'transport', message: '原会话请求已失效' }, method, url)
+  }
   if (text.length > 0) {
     try {
       payload = JSON.parse(text)
@@ -136,6 +171,9 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
     // requestId 只取自信封：真实后端把同一个 request.id 写进 body，且不下发 requestId 响应头
     // （apps/teaching/server/app.ts:21,53，requestIdHeader: false），不依赖头做回退。
     const requestId = typeof envelope?.requestId === 'string' ? envelope.requestId : ''
+    if (opts.mode === 'real' && path !== '/sessions' && response.status === 401 && error.code === 'UNAUTHENTICATED') {
+      for (const listener of sessionExpiredListeners) listener()
+    }
     throw new WorkspaceRequestError(
       { kind: 'api', status: response.status, requestId, error },
       method,
@@ -150,6 +188,9 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
       method,
       url,
     )
+  }
+  if (opts.mode === 'real' && method === 'GET' && path === '/session') {
+    for (const listener of sessionReadListeners) listener(envelope.data)
   }
   return envelope.data
 }

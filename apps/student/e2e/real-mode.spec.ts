@@ -25,8 +25,9 @@ test.describe('真实模式', () => {
 
     // 同一深链容器可挂载，普通 dev 没有可用 Session，不取准备正文/身份。
     await page.goto(REAL_URL + '/#/task/i0-prep-textscope-c')
-    await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'unavailable')
-    await expect(page.locator('.ts-badge')).toContainText('真实分配')
+    await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
+    await expect(page.locator('.session-notice')).toContainText('登录服务暂时无法连接')
+    await expect(page.locator('.ts-badge')).toHaveCount(0)
     await expect(page.locator('.ts-synth-flag')).toHaveCount(0)
     await expect(page.locator('body')).not.toContainText('prep-student-01')
   })
@@ -53,12 +54,15 @@ test.describe('真实模式', () => {
   })
 
   test('原数字逻辑演示在真实模式下同样保留', async ({ page }) => {
+    const sessionReads: string[] = []
+    page.on('request', request => { if (new URL(request.url()).pathname === '/api/session') sessionReads.push(request.url()) })
     await page.goto(REAL_URL + '/#/task/counter')
     await expect(page.locator('.ws-intro-veil')).toContainText('可交互数字计数器')
     await page.locator('.ws-intro-veil').getByRole('button', { name: /开始任务|进入任务/ }).click()
     await page.getByRole('button', { name: '任务信息' }).click()
     await expect(page.locator('.ws-demo-flag')).toContainText('演示数据')
     await expect(page.getByRole('button', { name: '检查并构建' })).toBeVisible()
+    expect(sessionReads).toEqual([])
   })
 })
 
@@ -113,8 +117,8 @@ async function mockProtocol(page: Page, options: { paused?: boolean; generation?
     }, files: [], snapshots: [], jobs: [], runs: [], checks: [] }
     else if (path === '/api/logout' && method === 'POST') { signedIn = false; data = { loggedOut: true } }
     if (data === undefined) {
-      await route.fulfill({ status: 401, json: { requestId: 'protocol-read', error: {
-        code: 'UNAUTHENTICATED', message: 'Protocol stub unavailable', retryable: false, recovery: 'Read session',
+      await route.fulfill({ status: signedIn ? 403 : 401, json: { requestId: 'protocol-read', error: {
+        code: signedIn ? 'FORBIDDEN' : 'UNAUTHENTICATED', message: 'Protocol stub unavailable', retryable: false, recovery: 'Read session',
       } } })
     } else await route.fulfill({ json: { requestId: 'protocol-read', data } })
   })
@@ -153,7 +157,7 @@ test.describe('real 入口协议替身（非真实宿主验收）', () => {
     await page.keyboard.press('Escape')
     await expect(page.locator('.ws-popveil')).toHaveCount(0)
     await page.getByRole('button', { name: '退出', exact: true }).click()
-    await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'unavailable')
+    await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
     await expect(page.locator('.cw')).toHaveCount(0)
   })
   test('暂停分配可以阅读，不能首次创建', async ({ page }) => {
