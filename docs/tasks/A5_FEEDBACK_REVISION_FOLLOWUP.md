@@ -399,4 +399,12 @@ A5.5 用例固定的实际行为（这些是投影规则，不是丢失记录）
 
 PR 分支的验证记录加入证据索引：`acceptance.a5-pr-branch-full-serial.windows.txt`。
 
+### 9.4 公开交付（2026-10-14）
+
+负责人明确要求「提交一个 PR」，并在「只含 A5 的干净分支」与「用当前分支一并带 I0 提交」之间选择前者。据此推送 `codex/a5-feedback-revision` 并创建 **[A5 PR #65](https://github.com/paher-din/XunJie/pull/65)**，目标 `main`，创建后核对 `state=OPEN`、`isDraft=false`、`mergeable=MERGEABLE`、`mergeStateStatus=CLEAN`；25 个文件、+8928/−13。
+
+本次公开交付只包含本分支的 A5 提交与证据，未推送、未合并工作分支 `codex/i0-host-readiness` 上的 I0 宿主健康提交 `964abb4`（另行交付）；未合并 PR、未关闭 Issue、未部署。推送时本机 git 的 `http.proxy`（`http://127.0.0.1:7890`）无监听进程，改用单次 `-c http.proxy= -c https.proxy=` 覆盖完成，未写入任何 git 配置。
+
+PR 正文声明了 §8.2 第 1 项的接缝越界与所需 C 复核，以及全部未执行项；产品基线仍只读。
+
 待获授权维护者汇总：批准后的实际代码位置、受控接口签名、验证命令与结果、失败/跳过/未执行项，按 A4 先例汇总至 MVP_SPEC 第 10 节与 TECH 对应契约段；本任务不自行修改受保护基线。
