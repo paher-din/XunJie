@@ -565,3 +565,45 @@ A负责design课程/活动/教师binding确认、checkRule、权限/正常宿主
 交付沿原PR55普通提交/推送，按#30回共用现场条件/当前阻塞、按#38回H3/H4与固定源链接，不重复贴整包日志，不合并PR、不关闭Issue。主副本G3等其他成员改动不纳入。当前只完成本批可独立的C核查/方案/接收，UI共同确认、A实审及新授权后的现场/浏览器/35表真实样例仍待对应责任人；未实施部分不能因本次推送变成已通过。
 
 发布前检查：三脚本Node24.21.0语法通过，原ID unknown→确认成功/取消序列自检通过；九份公开结果/HTTP文件的原文件与公开字节/hash、五份服务日志正文/hash匹配。十JSON的解析/EOF/尾随空白及私钥/token形状检查通过；以实际生成的五密码、签名秘密和私钥对全部新公开材料/脚本及服务日志匹配，秘密值均未出现。文档65份/960内链/errors=[]，差异空白通过；没有为发布重复执行已通过业务链。A审查固定ea5a652原包的27 logs/19摘要口径与随后新增五服务日志分开，不累计为测试通过数量。
+
+## 15. 2026-10-14 I0 现场恢复
+
+### 15.1 当前请求、诊断与操作范围
+
+负责人本轮要求修复“原I0临时库不存在、执行节点已停止、readiness不可用”。沿本文§14已读基线，补读PRD §8、MVP M-09/M-10/§4、TECH §7.4/7.5/10.1/10.2、C0_GLOSSARY与C0 ADR-0001、原C1 vm.sh及I0初始化/配置/数据库守卫；目标为恢复同机开发联调，不改产品/共享契约。采用diagnosing-bugs：只读复现命令核原配置库存在及原VM active，两个条件均false、退出2，见 [故障复现](evidence/c-entry-recovery/diagnosis-before.json)。
+
+排序假设：①WSL生命周期结束，瞬态VM单元消失且开机临时清理移除库；②持久服务存在但未自启；③VM/节点启动失败。只读结果 [存储/服务](evidence/c-entry-recovery/diagnosis-storage-service.json) 为LoadState=not-found/无FragmentPath及unit文件；原8.8GB qcow2仍在；vm.sh本来以systemd-run创建瞬态单元。宿主启动执行systemd-tmpfiles --create --remove --boot，规则为D /tmp；原root受控目录和/opt下未找到.sqlite备份。前两次诊断的WSL启动时间不同，没有原保活wsl.exe。证据支持①，未见③的启动失败日志；没有审计记录能逐文件证明过去删除者，不补造因果。
+
+本轮可写本文、本人recovery证据与恢复脚本。用户明确要求修复所指原节点，按原vm.sh start复用同一qcow2/KVM/2vCPU/4GiB/loopback2222，恢复原本机隐藏WSL保活和原应用身份只读readiness；不安装、换镜像/源码/指纹、改密钥、开新网络、重验/登记或新增开机任务。只恢复原服务运行属于本次明确请求；若现有指纹/代际不符或有未结作业则停止后续并回交。
+
+**数据库尚待红线确认：** 受控根目录内没有原库副本，不能从HTTP日志补造旧库/原ID。建议用原9fa76ad初始化器、原五账号密码/TLS/签名创建全新24表合成库，将TMPDIR限定到原root/0700根目录下的新retained-tmp（初始化和宿主同设，沿原tmpdir目标守卫），新建i0-host-recovered-20261014.json只指向原初始化器实际返回的新库。保留旧配置/历史/ID，正常教师/学生API建立新对象并给新交接，不宣称恢复原记录。无旧库迁移、无删除、新秘密/35表/浏览器信任或生产。创建schema须按AGENTS红线说明对象/风险后由负责人确认，未确认不执行该部分。
+
+数据库恢复方案将先备成可审查脚本，核语法/只读prepare；准备、批准、实际执行与验收分开。重新可用后须严格HTTPS、会话/授权、原自动消费者/C1运行及有界停止查询验证；历史20项不拿来代新环境通过。产品基线与MVP§10待授权维护者汇总。
+
+### 15.2 原节点恢复与 HDL 策略持久加载
+
+恢复原隐藏WSL保活后，用9fa LF2原vm.sh start成功启动同一VM；C认证readiness=true、原sourceHash/指纹/代际匹配。首轮HDL仍ready=false，实际响应与首次断言失败说明保留在 [启动后探测](evidence/c-entry-recovery/node-start-probe.json)，不改成第一次全部通过。
+
+[AppArmor只读核查](evidence/c-entry-recovery/apparmor-before.json)确认服务active，但内核无xunjie-dlc-v1，/etc/apparmor.d无该策略。原hdl-install仅apparmor_parser加载源码文件，没有将其安装到持久自动加载目录；重启会丢内核加载状态。原策略源SHA256=27ccaf139da03c3102e9f05e783c84c230fb8eeee5bbc2bfed1df2e91f878d44，与固定9fa原blob完全相同。
+
+本次针对负责人明确要求的readiness修复，仅在原guest独占新建/etc/apparmor.d/xunjie-dlc-v1（原策略逐字节，root/0644；目标存在则停止），由原apparmor_parser装载并核enforce；沿现有apparmor.service的启动扫描持久加载，不增加新服务/任务、不改规则、源码/镜像/指纹或validation登记。原SSH维护身份仅用于本次节点恢复，不交给应用。恢复后再经原application key严格认证读取两种readiness并核当前指纹/代际。
+
+实际结果见 [策略恢复](evidence/c-entry-recovery/apparmor-after.json)、[当前节点](evidence/c-entry-recovery/node-after.json)：2026-10-14 12:45两种ready均true，C指纹b07cddf9…、HDL指纹ea84f8d5…及原代际一致，无需重验/改写登记。本次没有执行新C/HDL作业；旧库仍缺失、HTTPS仍未启动。原节点保持本机运行、隐藏保活PID见 [运行引用](evidence/c-entry-recovery/keepalive.json)。不承诺跨Windows重启持续在线，也不通过重启原guest来测试持久加载；现策略文件/字节及内核enforce已实核。
+
+根因依据：[微软WSL官方说明](https://learn.microsoft.com/en-us/windows/wsl/systemd)明确systemd服务不维持WSL实例生命周期；[systemd官方手册源码](https://raw.githubusercontent.com/systemd/systemd/main/man/tmpfiles.d.xml)的D类型在--remove时清目录内容。结合现场D /tmp和开机命令，旧库位于会被清理的存储；这说明原部署存在可复现的持久化缺陷，不证明某次具体删除事件。C此前把仅保留于/tmp的合成库当作后续可复用交付，没有落实耐久存储/备份，属于本次需要纠正的交接缺口。
+
+### 15.3 已准备、尚待批准的新24表库
+
+可审查 [恢复脚本](evidence/dla-c-handoff/prepare-entry-recovery.mjs) 与 [只读准备结果](evidence/c-entry-recovery/database-plan.json)。`--self-check`核新库目标允许/拒绝边界；默认或`--prepare`仅核root/Node、现有五份0600材料、TLS指纹/配对、两种当前ready/原指纹/代际，确认原库仍缺失且新目标不存在，没有创建目录/库/配置。`--apply`才执行以下动作，尚未运行：
+
+1. 新建原受控根下retained-tmp-20261014（root/0700），仅该初始化/宿主进程设置TMPDIR至此。用原9fa初始化器与原initializer.json建全新24表/5账号/2课程库，检查实际返回路径、表数、空Assignment/Attempt/Job和integrity_check。原密码/TLS/签名复用，不生成秘密；不修改旧库或原配置。
+2. 新建i0-host-recovered-20261014.json（root/0600）仅改新库引用，保留其余原Origin/TLS/签名/SSH/静态目录/消费者设置；新建recovery-preparation-20261014.json存去敏实际路径。初始化器和应用继续执行原tmpdir父级/命名/非symlink守卫；不搬库、绑旧路径或关闭检查。明确不是从旧备份恢复，旧对象ID不能被冒充复原，不改执行节点原代际来掩盖新合成应用数据。
+3. 获准后正常启动原127.0.0.1:3443 HTTPS，以原严格Node客户端验证登录/课程/Session与真实C1自动消费，原教师/学生API创建新合法Assignment/Activity/Attempt及运行记录，交新ID/版本/当前证据。新进程必须同设TMPDIR与XUNJIE_I0_CONFIG为上述路径；提供同机启动/停止引用。真实浏览器信任、35表/ALU、模型及生产仍不在本次范围。
+
+原因与风险：当前已查原受控目录内未找到可恢复副本，继续使用原配置必然失败；新库会建立schema并产生新合成业务ID，不能保住原学习记录或把历史通过搬为本轮通过。耐久目录可避免系统/tmp开机清理，但Windows/WSL生命周期和手工损坏仍须靠运行约定/后续备份处理，不能宣传完整AC-12/RPO恢复。此处“数据库schema变更/迁移”的红线覆盖fresh建表，须取得负责人针对该24表范围的明确同意，当前为待批准，不执行apply。
+
+### 15.4 当前结果与交接
+
+已完成：原VM/隐藏保活恢复、原AppArmor策略持久加载及enforce、两种严格认证ready与原指纹/代际实核。恢复脚本语法与目标路径正/反例自检通过，只读prepare实际通过，databaseCreated=false。当前HTTPS仍停、旧库仍缺；数据库建表/配置/新对象及新HTTPS业务验证未执行，不写为修复完成。
+
+本批文档与空白检查通过；去敏证据、脚本和任务记录按实际7个既有秘密值扫描后普通推送原PR55，并向#30回交节点已恢复/24表重建待负责人确认，不合并PR或关闭Issue。主副本G3及其他作者改动保留。没有删除原文件、修改密钥/CI/产品基线或编造旧对象；恢复后的新库方案不能代替原AC-12旧备份恢复验收。
