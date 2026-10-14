@@ -88,6 +88,14 @@ rg -n 'threadRevision|feedbackRevision|feedback_revision|thread_revision|artifac
 
 回滚：本批只有版本语义注释、测试、任务与入口导航；需要撤回时按对应提交逆向恢复，删除/重置需另获授权。本批没有数据迁移需回滚。
 
-交付范围：本地分支 `codex/a6-c-contract-consumption`，仅提交本批写集。未推送、未合并、未发 Issue/PR 评论、未部署；A5 原任务记录与其历史待办不覆盖，本记录提供当前消费复核结果。
+首批本地交付：分支 `codex/a6-c-contract-consumption`、提交 `c4aa865`，仅提交本批写集。当时未推送、未合并、未发 Issue/PR 评论、未部署；后续负责人授权与公开交付见 §4。A5 原任务记录与其历史待办不覆盖，本记录提供当前消费复核结果。
+
+## 4. 2026-10-14 PR 推送交付
+
+负责人本轮明确指令“建立pr推送吧”，授权将本批分支推送并创建 PR，无需重复确认。已创建 [PR #71](https://github.com/paher-din/XunJie/pull/71)，目标 `main`，分支 `codex/a6-c-contract-consumption`；创建后核 `state=OPEN`、`isDraft=false`、`mergeable=MERGEABLE`、`mergeStateStatus=CLEAN`，远端 head 与本地 `c4aa86581d3f9cc6b03a9913816df62ad648513e` 完全一致。
+
+常规 `git push` 报连接重置，单次禁用代理的重试报连接超时；GitHub API 可用，因此经 GitHub Git Database API 上传本地已提交 blob/tree/commit，并创建分支引用。每个 blob、完整 tree 与 commit SHA 均逐一核对与本地相同，没有改写提交内容或作者信息；未修改全局代理/凭据/配置。本文交付记录作为后续文档提交推送到同一 PR。
+
+PR 正文记录版本映射、多线程/许可/重开/旧版本拒绝证据、32/32 专项结果，以及正常宿主/UI 尚未接入、未迁移数据库与未执行边界；不会自动关闭 #61。PR 已附加到当前 chat。未合并、未部署、未发布其他产物、未发 Issue/PR 评论；受保护基线仍待授权维护者汇总。
 
 产品基线与 MVP_SPEC §10：待授权维护者汇总。
