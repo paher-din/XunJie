@@ -4,7 +4,7 @@
 
 ## 1. 依据与明确范围
 
-Robert要求“完整完成这三个”，承接上一条明确排除并行HDL后列出的[清单](I0_REMAINING_WORK_CHECKLIST.md)UI-PREP-04/07/08：真实中文输入法验证、当前依赖审计与精确修复方案、文档与证据入口。另一个“完成PR55中分配给czr112的任务”会话已在独立`codex/ui-hdl-real-browser`实施UDL-01～08及本机环境迁移；本轮不重复该工作、不改它的工作树或运行环境。
+Robert要求“完整完成这三个”，承接上一条明确排除并行HDL后列出的[清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)UI-PREP-04/07/08：真实中文输入法验证、当前依赖审计与精确修复方案、文档与证据入口。另一个“完成PR55中分配给czr112的任务”会话已在独立`codex/ui-hdl-real-browser`实施UDL-01～08及本机环境迁移；本轮不重复该工作、不改它的工作树或运行环境。
 
 已读README、根规范、PRD §3.2/4.2～4.4、MVP §2及M-03/09相关前端要求、TECH §7.4/11、I0_UI_SPEC Implementation/Testing、客户端§4/5、IMPORT_SOURCE许可/同步、原04/05与清单正文。适用原文/本机草稿与键盘输入、AC-03/04/12及NFR-05前端证据；不计完整验收或教学效果。
 

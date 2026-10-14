@@ -8,7 +8,7 @@ Robert于本轮明确指出wubq511就是我们，因此原UI的04/05勘误已由
 
 | 项目 | 旧说法与出处 | 可核事实与固定来源 | 当前入口及原维护者的具体动作 | 实际状态 |
 | --- | --- | --- | --- | --- |
-| Issue #30 早期正文 | [#30](https://github.com/paher-din/XunJie/issues/30) 的正文仍称未见可运行 UI、正常宿主/jobs 待组装、B1/B2 未交；[清单](../../I0_REMAINING_WORK_CHECKLIST.md)第17行仍引用 Draft PR53 核查时点 | #30 正文创建于2026-10-11，本轮只读回读为 Open、24条评论。原安排[6155068633](https://github.com/paher-din/XunJie/issues/30#issuecomment-6155068633)创建于2026-10-14 04:58:34 +08:00，引用当时 main `0e68325`，已交服务端20/20、174个严格TLS响应，并明确服务端通过不等于浏览器/H-01通过 | 当前 UI 入口注明 PR75/日期与最新记录；旧正文和清单早期快照保留其时点。A / czr112作为原集成协调人汇总 Issue 当前状态；UI / Robert维护本人证据入口，不覆盖其他成员历史评论 | 后续成员回交已经存在，不能再称完全未回交。本轮未更新 Issue 正文或评论 |
+| Issue #30 早期正文 | [#30](https://github.com/paher-din/XunJie/issues/30) 的正文仍称未见可运行 UI、正常宿主/jobs 待组装、B1/B2 未交；[清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)第17行仍引用 Draft PR53 核查时点 | #30 正文创建于2026-10-11，本轮只读回读为 Open、24条评论。原安排[6155068633](https://github.com/paher-din/XunJie/issues/30#issuecomment-6155068633)创建于2026-10-14 04:58:34 +08:00，引用当时 main `0e68325`，已交服务端20/20、174个严格TLS响应，并明确服务端通过不等于浏览器/H-01通过 | 当前 UI 入口注明 PR75/日期与最新记录；旧正文和清单早期快照保留其时点。A / czr112作为原集成协调人汇总 Issue 当前状态；UI / Robert维护本人证据入口，不覆盖其他成员历史评论 | 后续成员回交已经存在，不能再称完全未回交。本轮未更新 Issue 正文或评论 |
 | 原浏览器方案及 H 回交 | 6155068633要求 UI/C先准备访问、运行窗口、信任、账号领取和登录方案，容易被当作今天仍未启动的任务 | UI[6169702024](https://github.com/paher-din/XunJie/issues/30#issuecomment-6169702024)已交浏览器方案、H-01～06及HDL操作表；原证据源 `805c76a6f230cb7f6a64bc94abf8adfa2616e955`，PR68最终 head `e4370f2c65f8db79cf8edd082914eb4db6a7cb3a`。正式 UI `b7e73c5` / Chrome155，工具16/0/0；v8成功、独立v4程序timeout与cancelled分列。最后7份JSON仅空白勘误，不重做或改贴现场版本 | UI当前行指向[PR75复验](../../I0-UI_PR69_REAL_BROWSER_RECHECK.md)，原[UI30记录](../../I0-UI30_COMMENT_CLOSEOUT.md)作为较早正式源。A/C按各自域接受固定材料；不重复派首次SSH/信任/账号方案或原20项服务端验收 | PR68回交及PR75后续新包复验已有固定证据；不表示12项UI-REAL或完整产品验收全部完成 |
 | H-05旧“待裁决” | 清单第36/57行及早期 I0-B 摘要仍写待A/C、授权维护者裁决 | 最新[6171614259](https://github.com/paher-din/XunJie/issues/30#issuecomment-6171614259)更新于2026-10-14 23:13:52 +08:00：负责人已批准按现有基线修复，A/C已交[PR73](https://github.com/paher-din/XunJie/pull/73)。本轮两次REST回读均为 Open、`merged=false`、`merged_at=null`，head `40581e0b85a9abfde45a0acab444522f57f49564`；最终核对时点2026-10-15 00:11:57 +08:00。其115项为110通过/0失败/5门禁跳过，候选失败分轮保留 | 当前入口应写“裁决和修复源码已交PR73，尚未合main”；不重派首次裁决。A协调公共版本与验收，C提供实现/反例；合并、现场接纳和受保护基线汇总分别核查。UI继续ACK后GET分别读取两revision，不推算 | 源码材料已交，但PR75基线未合入PR73。本轮未核现场运行；不能把交源码写成已合并或已部署 |
 | 原04截图指针 | [原04](../../I0_UI_04_RECOVERY_CONFLICTS.md)第144行写准备态及四恢复态截图“见04交付说明”，没有对应共享路径；[原07](../../I0_UI_07_BROWSER_HANDOFF.md)第145/159行已登记缺口 | 2026-10-12的原04实际文字记录为15文件184单元、47浏览器、typecheck/build通过及1280×800人工布局核对。当前主仓库受跟踪图像及只读Design固定树未找到这些原04恢复截图。后来的UI55/UI30/PR75图像属于另一个日期/源码 | 本人UI / Robert（wubq511）核原产物：若存在，回交原图、日期、来源SHA、校验与准确共享路径；若不能恢复，在原记录补勘误，明确没有共享归档。新截图必须另标新日期/源码，不能替代2026-10-12原图 | 原验证文字保留；本人UI已将原04截图声明标为原报告且明确缺共享图，当前两可访问仓库未找回；没有补造截图或重新执行原04 |
@@ -41,7 +41,7 @@ Robert于本轮明确指出wubq511就是我们，因此原UI的04/05勘误已由
 
 ## 3. 30个原编号及门禁保留
 
-[清单](../../I0_REMAINING_WORK_CHECKLIST.md)原序为9/12/9，编号唯一、无缺号。这里只索引，不新增编号、改名或移动原判据。
+[清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)原序为9/12/9，编号唯一、无缺号。这里只索引，不新增编号、改名或移动原判据。
 
 | 顺序 | 原编号 |
 | --- | --- |
