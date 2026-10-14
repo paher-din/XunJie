@@ -291,6 +291,7 @@ describe('准备 fixture 契约核对', () => {
       'available',
       'redacted',
       'unavailable',
+      'available',
     ])
 
     for (const m of view.content.materials) {

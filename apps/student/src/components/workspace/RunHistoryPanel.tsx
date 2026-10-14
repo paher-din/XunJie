@@ -1,5 +1,6 @@
 import './RunPanel.css'
 import './RunHistoryPanel.css'
+import type { RunHelpTarget } from '../../workspace/tutoringRun'
 
 export interface HistoryFileDisplay {
   id: string
@@ -42,11 +43,13 @@ export interface RunHistoryPanelProps {
   onRead: () => void
   onReturn: () => void
   onDownload: (side: 0 | 1, fileId: string) => void
+  /** 两侧分别携原结果身份，不从当前控件/另一侧结果补引用。 */
+  onHelp?: (target: RunHelpTarget) => void
 }
 
 /** 06B 纯 props 交付：调用方提供已校验的公开事实，组件只呈现和转交显式操作。 */
 export function RunHistoryPanel({ options, sides, busy, notice, synthetic,
-  onSelect, onRead, onReturn, onDownload }: RunHistoryPanelProps) {
+  onSelect, onRead, onReturn, onDownload, onHelp }: RunHistoryPanelProps) {
   return <section className="core-run run-history" aria-label="历史运行与产物" aria-busy={busy}>
     <header className="core-run-head">
       <h2>历史运行与产物</h2>
@@ -80,6 +83,9 @@ export function RunHistoryPanel({ options, sides, busy, notice, synthetic,
           {result && <div key={result.runId} className="core-run-result run-history-result"
             data-run-id={result.runId} data-job-id={result.jobId} data-snapshot-id={result.snapshotId} data-snapshot-hash={result.snapshotHash}>
             <p role="status" aria-live="polite">{result.statusLabel}</p>
+            {onHelp && <button type="button" className="ws-btn ghost"
+              disabled={busy || side.busy || !!side.notice || side.runId !== result.runId || !result.runId || !result.snapshotId}
+              onClick={() => onHelp({ runId: result.runId, snapshotId: result.snapshotId })}>就这次运行求助</button>}
             <dl className="run-history-fields">
               <dt>运行 ID</dt><dd>{result.runId}</dd>
               <dt>作业 ID</dt><dd>{result.jobId}</dd>

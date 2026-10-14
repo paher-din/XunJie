@@ -114,8 +114,13 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
     "SELECT m.user_id FROM course_memberships m JOIN users u ON u.id=m.user_id WHERE m.course_id=? AND m.user_id=? AND m.role='student' AND m.active=1 AND u.disabled_at_ms IS NULL",
     state.attempt.courseId, state.attempt.studentId))
     && assignmentAvailability(tx, state.attempt.courseId, state.attempt.assignmentId, state.attempt.studentId).active;
-  const workspaceProjection = (tx: Transaction, state: WorkspaceState) => readWorkspace(state, () => true,
-    assignmentActionable(tx, state));
+  const workspaceProjection = (tx: Transaction, state: WorkspaceState) => ({
+    ...readWorkspace(state, () => true, assignmentActionable(tx, state)),
+    // The fixed rule and durable check stage are read in the original authorized transaction.
+    // A non-limited active check is not a help restriction; cancellation/unknown outcomes do not end it.
+    limitedCheck: readActivity(tx, state.attempt.courseId, state.attempt.activityVersionId).checkRule.limitedHelp
+      && state.checks.some(check => check.state === 'active'),
+  });
   app.get('/api/attempts/:id', request => ({ requestId: request.id, data: read(request, attemptId(request), (tx, state) => workspaceProjection(tx, state)) }));
   app.post('/api/attempts/:id/sync', { bodyLimit: 8 * 1024 * 1024 }, request => {
     const input = parseRequest(syncInput, request.body), batch = syncBatch(input);

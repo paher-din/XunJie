@@ -6,9 +6,13 @@ import type {
   AuthorizedStudentHelpContext,
   LearnerContextClaim,
   StudentHelpCommandInput,
+  StudentHelpExecutionResult,
+  StudentHelpBody,
   TrustedModelContext,
 } from "../../contracts/tutoring/index.ts";
 import { ApiError } from "../app/errors.ts";
+import { assertResourceUse } from "../access/resource.ts";
+import type { ActorContext, ResourceUse } from "../../contracts/access/index.ts";
 import { parseRequest } from "../app/validation.ts";
 import { assignmentAvailability, activityView, readActivity } from "../design/activities.ts";
 import {
@@ -24,8 +28,10 @@ import {
 } from "../records/application.ts";
 import {
   acceptStudentQuestionInTransaction,
+  completeTeachingInTransaction,
   readTeachingJob,
   readTeachingMessageByJob,
+  readTeachingRecordsInTransaction,
   saveTeachingJobInTransaction,
   stopTeachingJobsInTransaction,
 } from "../records/teaching.ts";
@@ -38,6 +44,9 @@ import {
   executeAuthorizedStudentHelp,
   type AuthorizedStudentHelpRuntime,
 } from "./service.ts";
+import type { ModelProvider } from "./providers.ts";
+import type { StudentHelpCurrentState } from "./context.ts";
+import type { TeachingBasisCurrent } from '../records/teaching.ts';
 
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const natural = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -93,10 +102,13 @@ export async function createTutoringApp(options: TutoringAppOptions) {
   const readLearnerRevision = studentHelp.readLearnerStateRevision ?? (studentHelp.readLearnerState
     ? (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => studentHelp.readLearnerState!(tx,scope).learnerStateRevision
     : undefined);
-  const instance = await createTeachingRecordsApp({...recordsOptions,
-    ...(readLearnerRevision ? {isTeachingBasisCurrent: (tx,scope,basis) =>
+  const isTeachingBasisCurrent:TeachingBasisCurrent|undefined=readLearnerRevision
+    ? (tx,scope,basis) =>
       readLearnerRevision(tx,scope) === basis.relatedStateRevision
-        && (recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis) ?? true)} : {}),
+        && (recordsOptions.isTeachingBasisCurrent?.(tx,scope,basis) ?? true)
+    : recordsOptions.isTeachingBasisCurrent;
+  const instance = await createTeachingRecordsApp({...recordsOptions,
+    ...(isTeachingBasisCurrent?{isTeachingBasisCurrent}:{}),
   });
   const { app, access } = instance;
   const now = options.now ?? Date.now;
@@ -222,15 +234,33 @@ export async function createTutoringApp(options: TutoringAppOptions) {
     return { requestId: request.id, data };
   });
 
+  // Only the trusted in-process consumer can omit a request. Its authority comes
+  // from the original persisted Job, with current owner/membership rechecked in
+  // every transaction; it never creates or impersonates a student Session.
+  const withHelpTransaction = <T>(request: FastifyRequest | undefined, idValue: string,
+    jobId: string, use: ResourceUse, work: (tx: Transaction, actor: ActorContext) => T): T => {
+    if (request) return access.withAuthorizedResource(request, tx => locate(tx,idValue), use, work);
+    return options.db.withTransaction(tx => {
+      const scope = locate(tx,idValue);
+      const membership = tx.get("SELECT m.role FROM course_memberships m JOIN users u ON u.id=m.user_id WHERE m.user_id=? AND m.course_id=? AND m.active=1 AND u.disabled_at_ms IS NULL",
+        scope.studentId,scope.courseId);
+      const job = readTeachingJob(tx,scope.courseId,jobId);
+      if (membership?.role !== 'student' || !job || job.purpose !== 'student_help'
+        || job.scope.studentId !== scope.studentId || job.scope.attemptId !== idValue) throw new ApiError('FORBIDDEN');
+      const actor = {userId:scope.studentId,courseId:scope.courseId,role:'student' as const};
+      assertResourceUse(actor,scope,use);
+      return work(tx,actor);
+    });
+  };
+
   const authorizeStudentHelp = (
-    request: FastifyRequest,
+    request: FastifyRequest | undefined,
     idValue: string,
     jobId: string,
     preparation: StudentHelpPreparationOptions,
-  ) => access.withAuthorizedResource(
-        request,
-        (tx) => locate(tx, idValue),
-        "student_help",
+    use: ResourceUse = 'student_help',
+  ) => withHelpTransaction(
+        request, idValue, jobId, use,
         (tx, actor) => {
           const state = loadWorkspace(tx, idValue);
           const job = state.records.jobs.find((item) => item.jobId === jobId);
@@ -336,7 +366,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       );
     },
     async executeStudentHelp(
-      request: FastifyRequest,
+      request: FastifyRequest | undefined,
       idValue: string,
       jobId: string,
       preparation: StudentHelpPreparationOptions,
@@ -344,7 +374,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
     ) {
       const authorized = authorizeStudentHelp(request, idValue, jobId, preparation);
       const updateJob: AuthorizedStudentHelpRuntime["updateJob"] = (expectedJobId, update) =>
-        options.db.withTransaction((tx) => {
+        withHelpTransaction(request,idValue,jobId,'student_help',(tx) => {
           currentGeneration(authorized.job.recoveryGeneration);
           const current = readTeachingJob(tx, authorized.job.scope.courseId, expectedJobId);
           if (!current || current.scope.studentId !== authorized.job.scope.studentId ||
@@ -358,7 +388,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
         });
       const readCurrent: AuthorizedStudentHelpRuntime["readCurrent"] = async (signal) => {
         const state = await runtime.readCurrent(signal);
-        const current = options.db.withTransaction((tx) => {
+        const current = withHelpTransaction(request,idValue,jobId,'read',(tx) => {
           const job = readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId);
           if (!job || !job.scope.studentId || !job.scope.attemptId) throw new ApiError("STATE_CONFLICT");
           const learner = studentHelp.readLearnerState?.(tx,{
@@ -391,7 +421,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       const bodyJson = JSON.stringify(execution.outcome.body);
       const completeTeaching = instance.workspace.teaching.completeTeaching;
       if (!completeTeaching) throw new ApiError("DEPENDENCY_UNAVAILABLE");
-      const delivery = completeTeaching(request, idValue, {
+      const completion = {
         recoveryGeneration: authorized.job.recoveryGeneration,
         jobId: authorized.job.jobId,
         leaseToken: runtime.leaseToken,
@@ -416,8 +446,63 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           assistanceRefs: execution.authorizedReferenceIds.filter((referenceId) => referenceId.startsWith("assistance:")),
           coverageRefs: [],
         },
-      });
+      };
+      const delivery = request ? completeTeaching(request, idValue, completion)
+        : withHelpTransaction(undefined,idValue,jobId,'read',tx => {
+          currentGeneration(completion.recoveryGeneration);
+          return completeTeachingInTransaction(tx, {
+            scope:{courseId:authorized.job.scope.courseId,studentId,attemptId:authorizedAttemptId},
+            jobId,leaseToken:completion.leaseToken,generation:completion.recoveryGeneration,
+            now:new Date(now()).toISOString(),bodyJsonText:completion.bodyJson,
+            versions:completion.versions,usage:completion.usage,calls:completion.calls,
+            elapsedMs:completion.elapsedMs,basis:completion.basis,messageId:randomUUID(),actionId:randomUUID(),
+            ...(isTeachingBasisCurrent?{isBasisCurrent:isTeachingBasisCurrent}:{}),
+          });
+        });
       return { ...execution, delivery };
+    },
+    async processJob(jobId: string, provider: ModelProvider, signal?: AbortSignal): Promise<StudentHelpExecutionResult> {
+      const scope = options.db.withTransaction(tx => {
+        const row=tx.get('SELECT attempt_id FROM jobs WHERE job_id=?',jobId);
+        if(typeof row?.attempt_id!=='string') throw new ApiError('FORBIDDEN');
+        return row.attempt_id;
+      });
+      const leaseToken=randomUUID();
+      const assistanceHistory=withHelpTransaction(undefined,scope,jobId,'read',(tx,actor)=> {
+        const records=readTeachingRecordsInTransaction(tx,{courseId:actor.courseId,studentId:actor.userId,attemptId:scope},'student');
+        return records.actions.flatMap(action=> {
+          const message=records.messages.find(item=>item.messageId===action.messageId);
+          if(message?.envelope.kind!=='student_help') return [];
+          const body=message.envelope.body as StudentHelpBody;
+          const status:AssistanceContextRecord['status']=action.basisRevised||action.disposition==='stale'?'stale'
+            :action.disposition==='cancelled'?'cancelled':action.disposition==='failed'?'failed'
+            :action.receipts.some(row=>row.receiptKind==='acknowledged')?'acknowledged':'displayed';
+          return [{actionId:action.actionId,actionType:body.actionType,content:body.content,status}];
+        });
+      });
+      const preparation={assistanceHistory};
+      const readCurrent = (): StudentHelpCurrentState => {
+        const current=authorizeStudentHelp(undefined,scope,jobId,preparation,'read');
+        let objectAvailable=true;
+        try { assembleStudentHelpRequest(current); } catch { objectAvailable=false; }
+        return {...current.current,helpAllowed:current.activity.helpPolicy.helpAllowed,
+          learnerStateRevision:current.learnerStateRevision,objectAvailable,
+          jobStatus:current.job.status,stopRequested:current.job.stopRequested};
+      };
+      const execution=await tutoring.executeStudentHelp(undefined,scope,jobId,preparation,
+        {provider,leaseToken,readCurrent,now,...(signal?{signal}:{})});
+      if(execution.outcome.outcome!=='success') options.db.withTransaction(tx=> {
+        const row=tx.get('SELECT course_id FROM jobs WHERE job_id=?',jobId);
+        if(typeof row?.course_id!=='string') throw new ApiError('STATE_CONFLICT');
+        const job=readTeachingJob(tx,row.course_id,jobId);
+        // A late failure cannot overwrite a stop/new lease/generation or terminal success.
+        if(!job||job.status!=='running'||job.leaseToken!==leaseToken||job.stopRequested
+          ||job.recoveryGeneration!==options.currentGeneration()) return;
+        const outcome=execution.outcome.outcome;
+        saveJob(tx,{...job,status:outcome==='timed_out'?'timed_out':outcome==='stale'?'stale':outcome==='cancelled'?'cancelled':'failed',
+          failure:outcome,...(outcome==='cancelled'||outcome==='stale'?{stopRequested:true}:{})});
+      });
+      return execution;
     },
   };
 

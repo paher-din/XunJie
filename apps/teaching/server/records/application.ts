@@ -133,7 +133,14 @@ export async function createTeachingRecordsApp(options: TeachingRecordsOptions) 
       disposition: action.disposition, createdAt: action.createdAt, basisRevised: action.basisRevised };
     if (!message || message.envelope.kind !== 'student_help') return base;
     const body = message.envelope.body as StudentHelpBody;
-    return { ...base, actionType: body.actionType, content: body.content, rationale: body.rationale,
+    // readPage has already checked the target client/Delivery and the current Action. Keep the persisted
+    // association even when unrelated control revisions advanced; never bind an answer by body or arrival.
+    return { ...base, scope: { ...action.scope }, jobId: action.jobId, messageId: action.messageId,
+      generation: action.generation, targetVersions: { ...action.targetVersions },
+      basis: { attemptRevision: action.basis.attemptRevision, decisionEpoch: action.basis.decisionEpoch,
+        captureRevision: action.basis.captureRevision, relatedStateRevision: action.basis.relatedStateRevision,
+        ...(action.basis.objectRef === undefined ? {} : { objectRef: action.basis.objectRef }) },
+      actionType: body.actionType, content: body.content, rationale: body.rationale,
       expectedStudentAction: body.expectedStudentAction, assistanceContext: body.assistanceContext,
       evidenceIds: [...body.evidenceIds], resourceRefs: [...body.resourceRefs], unresolved: [...body.unresolved] };
   }

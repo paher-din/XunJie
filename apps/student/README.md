@@ -58,7 +58,7 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 | 模式 | preparation（合成） | real |
 | 窄客户端 base | `/__i0prep/api` | 同源 `/api` |
 | 身份来源 | fixture 用合成账号建立的开发会话 | 服务端 Session |
-| 数据来源 | Vite 开发进程内的 fixture authority | 真实后台（H-01 / H-02 交接后） |
+| 数据来源 | Vite 开发进程内的 fixture authority | 正常教学宿主的获准公开 API |
 | 准备入口 | 首页「I0 准备场景（合成）」卡片 | 不出现 |
 | provider 连接测试 | 不外发，直接报能力不可用 | 保留原设计行为 |
 
@@ -66,9 +66,12 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 `apply: 'serve'` 双重限定），只接受 loopback 请求，不导入 `apps/teaching` 的任何模块。
 `npm run build` 的产物既不含这些端点，也不含合成账号与合成材料——它们全部留在 Node 侧。
 
-真实模式目前没有可用的工作区初始化：正常业务宿主与同源 HTTPS 入口（H-01）、本人分配发现入口
-（H-02）尚未交接。此时界面如实显示不可用条件与对应交接项，不硬编码正式对象 ID、不遍历猜测、
-不回退到 Mock 成功。缺口清单见[准备记录 §5.2](../../docs/tasks/I0_UI_PREPARATION.md)。
+真实模式沿 `/#/task/<assignmentId>` 获准分配深链，读取当前 Session、授权 bootstrap、固定活动与公开材料，
+在同一工作区接入确认作品和辅导。载入只读，创建 Attempt、保存、冻结和求助仍需明确操作；
+缺登录、权限或可信代际时显示不可用条件，不硬编码正式 ID、不遍历猜测、不回退准备数据。
+分配列表和跨设备 Attempt 发现不在本批范围；同一浏览器的已有原请求与引用仍沿确认库恢复。
+正常宿主须由维护者提供受控 HTTPS、现有配置/数据库与节点来源，接线与隔离服务证据见
+[真实入口记录](../../docs/tasks/I0-B_REAL_ENTRY.md)和[正常宿主组合](../../docs/tasks/I0-B_HOST_COMPOSITION.md)。
 
 ## I0-A 准备场景
 
@@ -131,6 +134,24 @@ public/       品牌 IP 与字体资产（导入来源）
 
 ## 测试
 
+2026-10-13，I0-B在同一C准备工作区提供项目、确认文件/选区和原运行求助入口。任务信息内可查看政策和分别设置尝试、过程采集、里程碑提醒；学习助手复用现有对话容器，仅显示完整正文，查看合成相邻资料后可返回原作品。发送、停止、核对原请求及回应均由明确操作发起。准备模式不请求供应商、不执行学生代码；正常模式仍按原宿主/身份/入口条件进入，失败不回退准备数据。执行范围、原请求/回执/控制及未完成契约见[I0-B计划](../../docs/tasks/I0-B_UI_TUTOR_PLAN.md)。
+
+过程采集开关表示服务允许接收的区间；当前页面尚未自动上传逐次编辑过程，正常宿主尚未组合自动分析与提醒调度。本批负责控制UI与已交契约的消费，不把这些后台工作追加给前端。准备例子由Robert与Agent共同设计，来源明确标为合成；刷新阅读后只保留本机原文件引用并说明精确位置未保留，原实例已变时不把旧位置贴到新作品。
+
+准备辅导专项使用上述同一Vite authority、浏览器和IndexedDB。在学生目录运行以下命令，Chrome可按上述变量选择。
+
+```sh
+npm test -- tutoring
+npm run test:e2e -- tutoring
+```
+
+`tutoringService.spec.ts` 另使用正式 `dist` 和实际教学 HTTPS/Session/CSRF/SQLite/持久 worker，
+仅在明确提供 `XUNJIE_E2E_SERVICE_NODE` 时执行。Windows 当前 harness 使用 WSL2 Ubuntu，变量须指向
+该环境的 Node 24.21.0 可执行文件，教学原 lock 依赖及 native 模块须已就绪；Linux可直接提供本机路径。
+先 `npm run build`，再设置该变量运行 `npm run test:e2e -- tutoringService.spec.ts --workers=1`。
+未提供运行时的 skip 不计通过。测试只用离线合成 provider、独立合成库和临时测试证书；
+忽略自签名证书仅是该用例条件，未改变正常应用 TLS 或系统信任，不代表受控部署、真实模型或真人验收。
+
 | 命令 | 范围 | 说明 |
 | --- | --- | --- |
 | `npm test` | Vitest（Node 环境） | 导入来源规则、原文保真、冻结回执与摘要/Core 输入/公开结果；fixture HTTP 验证会话/权限/双键/拒绝原子性/持久读取与快照 |
@@ -147,8 +168,9 @@ CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装�
 `npm run test:e2e -- editor.spec.ts editorProtection.spec.ts confirmation.spec.ts`。
 最终提交候选再跑完整 `npm run test:e2e`；专项通过与全量通过分别记录，不重复跑无新增疑点的全量。
 
-e2e 的成功响应来自同一开发进程 fixture；故障用例延迟真实回执、注入本机事务 abort 或损坏读取摘要，
-核对拒绝/保留行为，不伪造成功路径。真实模式断言「如实没有可用初始化」。因此 e2e 通过只说明本批准备范围，
+准备 e2e 的成功响应来自同一开发进程 fixture；故障用例延迟真实回执、注入本机事务 abort 或损坏读取摘要，
+核对拒绝/保留行为，不伪造成功路径。普通真实模式检查区分缺会话/缺深链和明确标注的公开协议替身；
+上述实际HTTPS专项另验正常dist、真实Session与持久服务，并包含跨账号的旧控制ACK隔离。因此准备 e2e 通过只说明本批准备范围，
 不代表真实服务联调通过，也不代表任何 AC / NFR 或 G0～G4 条件已验收。
 
 ## 设计参考

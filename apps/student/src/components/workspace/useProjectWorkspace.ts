@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectAccess, ProjectFile, ProjectSeed } from '../../bridge/types'
 import type { FrozenDraft } from '../../workspace/frozenCommand'
+import type { CodeDraft } from '../../workspace/tutoringObject'
 import {
   clientFileKey,
   scopeKey,
@@ -54,6 +55,8 @@ export interface ProjectWorkspace {
   lifecyclePendingCount: number
   usage: WorkspaceUsage
   draftText: (fileId: string) => string
+  /** 原文/实例/确认版本的只读复制，不触发保护、保存或快照。 */
+  readCodeDraft: (fileId: string) => CodeDraft | null
   isCreated: (file: ProjectFile) => boolean
   isDirty: (file: ProjectFile) => boolean
   open: (fileId: string) => void
@@ -85,6 +88,7 @@ export function useProjectWorkspace(
   // seed 为 null（这门课没有代码工具包）时返回一个惰性工作区：钩子照样跑，动作一律无效
   const key = seed === null || scope === null ? null : scopeKey(scope)
   const [loaded, setLoaded] = useState(false)
+  const loadedKey = useRef<string | null>(null)
   const [files, setFiles] = useState<ProjectFile[]>([])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [openFileIds, setOpenFileIds] = useState<string[]>([])
@@ -120,6 +124,7 @@ export function useProjectWorkspace(
 
   /* 载入：确认作品来自 seed，本机草稿来自新库；两边按 fileId 对齐，对不上的一律丢弃 */
   useEffect(() => {
+    loadedKey.current = null
     conflicts.current = new Set()
     lastCandidate.current = {}
     setConflictIds([])
@@ -143,6 +148,7 @@ export function useProjectWorkspace(
           status: 'failed',
           reason: `本机草稿读取失败：${error instanceof Error ? error.message : String(error)}`,
         })
+        loadedKey.current = key
         setLoaded(true)
       }
       let storedUi: Awaited<ReturnType<DraftRepository['loadUi']>> = null
@@ -191,6 +197,7 @@ export function useProjectWorkspace(
         setActiveFileId(active ?? (open.length > 0 ? open[0] : (merged[0]?.fileId ?? null)))
         pendingWrite.current = false
         setProtection({ status: 'protected', reason: null })
+        loadedKey.current = key
         setLoaded(true)
       } catch (error: unknown) {
         if (!cancelled) failLoad(error)
@@ -542,6 +549,14 @@ export function useProjectWorkspace(
     lifecyclePendingCount,
     usage,
     draftText,
+    readCodeDraft: (fileId) => {
+      const file = files.find(f => f.fileId === fileId)
+      if (!loaded || !key || liveKey.current !== key || loadedKey.current !== key || !file) return null
+      return Object.freeze({ workspaceKey: key, fileId: file.fileId,
+        serverFileId: file.serverFileId ?? (file.confirmed ? file.fileId : null), path: file.path,
+        lifecycle: file.lifecycle, text: draftText(fileId),
+        confirmed: file.confirmed ? Object.freeze({ ...file.confirmed }) : null })
+    },
     isCreated: (file) => file.confirmed === null && !file.serverFileId,
     isDirty: (file) => file.confirmed !== null && draftText(file.fileId) !== file.confirmed.text,
     open,

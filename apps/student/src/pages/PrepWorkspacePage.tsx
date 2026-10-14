@@ -23,13 +23,32 @@ import { canReplay, comparableOutcome } from '../workspace/recovery'
 import { describeError, reportDiagnostic } from '../workspace/diagnostics'
 import { idbDraftRepository } from '../workspace/draftDb'
 import { scopeKey, type DraftScope } from '../lib/draftStore'
-import { workspaceMode } from '../workspace/mode'
+import { PREP_BUILD, workspaceMode } from '../workspace/mode'
 import { PREP_ENTRY_LABEL, PREP_TASK_ID } from '../workspace/prepEntry'
 import { signOut } from '../workspace/session'
 import { useWorkspaceInit, type InitStatus } from '../workspace/useWorkspaceInit'
+import { useTutoringWorkspace } from '../workspace/useTutoringWorkspace'
+import { TutoringPane } from '../components/workspace/TutoringPane'
+import { createRunHelpObjectRef, type RunHelpTarget } from '../workspace/tutoringRun'
+import type { TutorObject } from '../workspace/tutoringContracts'
+import { TutoringControls } from '../components/workspace/TutoringControls'
+import type { AssignmentView } from '../workspace/contracts'
+import type { CodeEditorHandle, CodeEditorViewState } from '../components/workspace/CodeEditorHost'
+import { createCodeObjectRef, verifyCodeTarget, type CodeDraft } from '../workspace/tutoringObject'
+import { TutoringExample } from '../components/workspace/TutoringExample'
+import { resolveTutoringResource, captureTutoringReturn, validateTutoringReturn,
+  type TutoringResourceResult, type TutoringReturnAnchor, type TutoringReturnFile } from '../workspace/tutoringReturn'
+import type { TutorMessage } from '../workspace/tutoringStore'
+import type { CommandContext } from '../workspace/frozenCommand'
+
+type ReturnOrigin={fileId:string;path:string;documentVersion:number|null}
+const readingMarkerKey=(c:CommandContext)=>`tutor:return:${JSON.stringify([c.mode,c.userId,c.courseId,c.assignmentId,
+  c.activityVersionId,c.attemptId,c.trustedRecoveryGeneration,c.preparationEpoch,c.scenarioId??null])}`
+const returnOrigin=(file:TutoringReturnFile):ReturnOrigin=>({fileId:file.serverFileId??file.fileId,path:file.path,documentVersion:file.documentVersion})
+function clearReadingMarker(c:CommandContext) {try {sessionStorage.removeItem(readingMarkerKey(c))} catch { /* Current-page return remains usable. */ }}
 
 /**
- * I0-A 准备场景的 C / TextScope 工作区。
+ * 同一 C / TextScope 工作区按启动模式读取准备场景或获准真实分配。
  *
  * 复用原设计的页面骨架与容器：顶栏（标签槽 + 运行簇槽）、左侧胶囊「任务信息」、中心工具区
  * （胶囊标签 + 分屏）。不新造页面或导航，不接原数字逻辑的模拟构建与主动教学引导。
@@ -37,25 +56,58 @@ import { useWorkspaceInit, type InitStatus } from '../workspace/useWorkspaceInit
  * 01 的范围是只读初始化与可用容器：编辑属 02，保存/快照属 03，运行属 06。
  * 载入不创建 Attempt、不开始学习、不写学习记录。
  */
-export default function PrepWorkspacePage() {
+export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: string }) {
   const navigate = useNavigate()
-  const init = useWorkspaceInit()
-  const confirmation = useConfirmationWorkspace(init.init, PREP_TASK_ID)
+  const init = useWorkspaceInit(assignmentId)
+  const taskId = PREP_BUILD ? PREP_TASK_ID : assignmentId ?? ''
+  const [assignment, setAssignment] = useState<AssignmentView | null>(null)
+  const confirmation = useConfirmationWorkspace(init.init, taskId, assignment?.active)
   const run = useRunWorkspace(confirmation.client, init.init)
   const [runOpen, setRunOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const history = useRunHistory(confirmation.client, runOpen && historyOpen)
   const [runSelection, setRunSelection] = useState<CoreSelection>({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
   const c = confirmation.client?.context
+  const tutor = useTutoringWorkspace(confirmation.client)
+  const [tutorOpen, setTutorOpen] = useState(false)
+  const [tutorObject, setTutorObject] = useState<TutorObject | undefined>(undefined)
+  const [tutorObjectLabel, setTutorObjectLabel] = useState('')
+  const [codeBasis, setCodeBasis] = useState<CodeDraft | null>(null)
+  const [codeSnapshotId, setCodeSnapshotId] = useState('')
+  const editorHandle = useRef<CodeEditorHandle>(null)
   useEffect(() => {
     setRunOpen(false)
     setHistoryOpen(false)
     setRunSelection({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
+    setTutorObject(undefined); setCodeBasis(null); setCodeSnapshotId(''); setExample(null)
   }, [c])
+  useEffect(()=> { setAssignment(null) }, [init.init])
   const draftScope = useMemo<DraftScope | null>(() => c?.attemptId && c.userId
     ? { mode: c.mode, account: c.userId, attemptKey: c.attemptId } : null,
   [c?.mode, c?.userId, c?.attemptId])
   const project = useProjectWorkspace(confirmation.seed, idbDraftRepository, draftScope)
+  const projectLive = useRef(project)
+  projectLive.current = project
+  const [example, setExample] = useState<{ resource: TutoringResourceResult; anchor: TutoringReturnAnchor<NonNullable<CodeEditorViewState>> | null } | null>(null)
+  const [returnNotice,setReturnNotice]=useState<{notice:string;origin?:ReturnOrigin}|null>(null)
+  useEffect(()=> {
+    setReturnNotice(null)
+    if(!c?.attemptId || !c.userId)return
+    const key=readingMarkerKey(c)
+    try {
+      const raw=sessionStorage.getItem(key)
+      if(!raw)return
+      const value=JSON.parse(raw),origin=value?.origin
+      if(value?.key===key && typeof origin?.fileId==='string' && origin.fileId && typeof origin.path==='string' && origin.path &&
+        (origin.documentVersion===null || Number.isSafeInteger(origin.documentVersion)&&origin.documentVersion>=1))
+        setReturnNotice({notice:'上次阅读的精确位置未保留；原引用仅供核对，请明确选择当前作品。',origin})
+      else setReturnNotice({notice:'上次阅读的本机引用不可用，精确位置未保留；请明确选择当前作品。'})
+      clearReadingMarker(c)
+    } catch {
+      setReturnNotice({notice:'本机阅读引用不可回取，无法确认旧精确位置；请明确选择当前作品。'})
+      clearReadingMarker(c)
+    }
+  },[c])
   const [tool, setTool] = useState<ToolKey>('design')
   const [tabsSlot, setTabsSlot] = useState<HTMLElement | null>(null)
   const [runSlot, setRunSlot] = useState<HTMLElement | null>(null)
@@ -68,6 +120,84 @@ export default function PrepWorkspacePage() {
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(null), 2600)
   }, [])
+  function onRunHelp(target: RunHelpTarget) {
+    if (!confirmation.client) return
+    const detail = history.state.sides.find(s=>s.detail?.run.runId===target.runId)?.detail
+    const job = target.runId===run.state.run?.runId ? run.state.job : detail?.job
+    const originalRun = target.runId===run.state.run?.runId ? run.state.run : detail?.run
+    try {
+      const ref = createRunHelpObjectRef(confirmation.client.context, target, job, originalRun)
+      setCodeBasis(null)
+      setTutorObject({ ...ref }); setTutorObjectLabel(`原运行 ${ref.runId} · 原快照 ${ref.snapshotId}（不重跑）`); setTutorOpen(true)
+    } catch(e) { showToast(describeError(e)) }
+  }
+  function codeObjectCurrent() {
+    if (!codeBasis) return true
+    const current=projectLive.current.readCodeDraft(codeBasis.fileId)
+    return !!current && current.workspaceKey===codeBasis.workspaceKey && current.serverFileId===codeBasis.serverFileId &&
+      current.lifecycle==='active' && current.text===codeBasis.text && current.confirmed?.version===codeBasis.confirmed?.version
+  }
+  function messageSourceStatus(ref:TutorObject) {
+    if(ref.kind!=='code')return '只核对原对象，不定位或替换当前作品。'
+    const file=projectLive.current.files.find(f=>f.serverFileId===ref.fileId)
+    const draft=file?projectLive.current.readCodeDraft(file.fileId):null
+    const confirmed=confirmation.client?.current.workspace?.files.find(f=>f.fileId===ref.fileId)
+    if(!draft||draft.lifecycle!=='active')return '原文件当前不可用；同名文件不承接这份回答。'
+    if(!draft.confirmed||draft.path!==ref.path||draft.confirmed.version!==ref.documentVersion||confirmed?.contentHash!==ref.contentHash)
+      return '当前文件或确认版本已改变；回答仍依据原快照。'
+    if(draft.text!==draft.confirmed.text)return '本机草稿已修改；回答仍依据原快照，不代表当前草稿。'
+    return '当前文件仍对应该确认版本；回答依据原快照，不自动定位或修改。'
+  }
+  async function onCodeHelp(intent:'file'|'selection') {
+    const client=confirmation.client, context=client?.context, localId=projectLive.current.activeFile?.fileId
+    if(!client || !context?.attemptId || !context.activityVersionId || !draftScope || !localId) {showToast('请先打开一个已确认文件。');return}
+    const before=projectLive.current.readCodeDraft(localId), selected=intent==='selection'?editorHandle.current?.captureSelection():null
+    if(!before?.serverFileId) {showToast('请先自主确认作品并冻结快照，求助不会自动保存。');return}
+    if(intent==='selection' && !selected?.ok) {showToast(selected && !selected.ok?selected.reason:'请明确选择代码。');return}
+    const snapshot=confirmation.state.snapshots.find(s=>s.snapshotId===(codeSnapshotId||confirmation.state.snapshot?.snapshotId))
+    if(!snapshot) {showToast('请先自主冻结并选择已确认快照。');return}
+    try {
+      const target=await verifyCodeTarget(snapshot,{workspaceKey:scopeKey(draftScope),attemptId:context.attemptId,activityVersionId:context.activityVersionId},before.serverFileId)
+      if(!client.isCurrent(context)) return
+      const current=projectLive.current.readCodeDraft(localId), selection=intent==='selection'?editorHandle.current?.captureSelection():null
+      if(selected?.ok && (!selection?.ok || JSON.stringify(selection.selection)!==JSON.stringify(selected.selection))) {showToast('选区已改变，请重新核对。');return}
+      const result=createCodeObjectRef({workspaceKey:scopeKey(draftScope),target,draft:current,intent,selection:selected?.ok?selected.selection:null})
+      if(!result.ok) {showToast(result.reason);return}
+      setCodeBasis(current);setTutorObject({...result.objectRef});setTutorObjectLabel(`${result.objectRef.path} · 文件版本 ${result.objectRef.documentVersion} · 快照 ${result.objectRef.snapshotId}${result.objectRef.range?` · 行 ${result.objectRef.range.startLine}–${result.objectRef.range.endLine}`:' · 整个文件'}`);setTutorOpen(true)
+    }catch(e) {if(client.isCurrent(context))showToast(describeError(e))}
+  }
+  function returnFiles():TutoringReturnFile[] {
+    return projectLive.current.files.map(f=>({fileId:f.fileId,serverFileId:f.serverFileId,path:f.path,lifecycle:f.lifecycle,
+      documentVersion:f.confirmed?.version??null,contentHash:confirmation.client?.current.workspace?.files.find(s=>s.fileId===f.serverFileId)?.contentHash??null,
+      draftText:projectLive.current.draftText(f.fileId)}))
+  }
+  function onExample(message:TutorMessage) {
+    if(init.init?.kind!=='ready' || !c || !confirmation.client?.isCurrent(c)) return
+    const resource=resolveTutoringResource(message.payload.resourceRefs?.[0]??'',init.init.activity,init.init.materials,c.mode)
+    const file=returnFiles().find(f=>f.fileId===projectLive.current.activeFile?.fileId)
+    const view=editorHandle.current?.saveViewState()??null
+    const anchor=file?captureTutoringReturn(c,file,view):null
+    if(resource.kind==='ready' && anchor) {
+      try {sessionStorage.setItem(readingMarkerKey(c),JSON.stringify({key:readingMarkerKey(c),origin:returnOrigin(anchor.file)}))}
+      catch {setReturnNotice({notice:'本机阅读引用未保留；刷新后不能恢复原精确位置。',origin:returnOrigin(anchor.file)})}
+    }
+    setExample({resource,anchor});setTutorOpen(false)
+  }
+  function onReturnExample() {
+    if(!example) return
+    const checked=example.anchor && c ? validateTutoringReturn(example.anchor,c,returnFiles()):null
+    setExample(null)
+    if(c)clearReadingMarker(c)
+    if(checked?.kind==='ready' && example.anchor && draftScope) {
+      setReturnNotice(null)
+      project.open(checked.fileId)
+      // The editor and its saved scroll/fold/undo state remained mounted: focus does not move the view.
+      if(projectLive.current.activeFile?.fileId===checked.fileId) editorHandle.current?.focus()
+    } else if(checked?.kind==='unavailable') setReturnNotice({notice:checked.notice,
+      ...(example.anchor?{origin:returnOrigin(example.anchor.file)}:{})})
+    else setReturnNotice({notice:'未保留精确文件位置，返回当前作品继续自主操作。'})
+    setTutorOpen(true)
+  }
 
   /* ---------- 04A：服务版本冲突的只读比较 ---------- */
   const comparison = confirmation.state.comparison
@@ -109,7 +239,9 @@ export default function PrepWorkspacePage() {
           id: f.resultFileId, name: f.relativeName, status: f.status, contentHash: f.contentHash, bytes: f.bytes, text: f.text,
         })) } : detail.files } : null }
   }) as [HistorySideDisplay, HistorySideDisplay]
-  const canRun = run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
+  const runPermitted=(assignment??(init.init?.kind==='ready'?init.init.assignment:null))?.active===true &&
+    !!confirmation.state.attempt && ['ready','active'].includes(confirmation.state.attempt.status)
+  const canRun = runPermitted && run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
     runSelection.fileIds.length > 0 && !confirmation.client?.commandInFlight
 
   /** Esc 关闭比较：只在比较视图打开期间挂监听，行为与「返回编辑」一致。 */
@@ -216,7 +348,7 @@ export default function PrepWorkspacePage() {
     </div>
   ) : null
 
-  /** 结束准备会话（学生明确发起）：POST logout 后重读，会建立新的合成会话与新的 loadEpoch。 */
+  /** 学生明确退出：立即失效旧展示，准备重建合成会话，真实模式只重读已有 Session。 */
   async function onSignOut() {
     if (signingOut) return
     setSigningOut(true)
@@ -224,7 +356,7 @@ export default function PrepWorkspacePage() {
     init.invalidate()
     try {
       await signOut(workspaceMode)
-      showToast('已退出准备场景')
+      showToast(PREP_BUILD ? '已退出准备场景' : '已退出当前会话')
       init.reload()
     } catch (e) {
       reportDiagnostic('command.failed', { reason: 'sign out failed', error: describeError(e) })
@@ -261,12 +393,26 @@ export default function PrepWorkspacePage() {
 
       <div className="ws-body">
         <CenterToolArea
-          taskId={PREP_TASK_ID}
+          taskId={taskId}
           variant="textscope-c"
           tool={tool}
           onToolChange={setTool}
           onToast={showToast}
-          designBody={versionComparison !== null && versionSelection !== null
+          designBody={<div style={{position:'relative',height:'100%',width:'100%',display:'flex',flexDirection:'column'}}>
+            {c?.attemptId && <div className="ws-chatbind" style={{display:'flex',gap:8,flexWrap:'wrap',flexShrink:0}}>
+            {c?.attemptId && <button type="button" className="ws-btn ghost" onClick={()=>{ setTutorObject(undefined);setCodeBasis(null); setTutorOpen(true) }}>就项目求助</button>}
+            {c?.attemptId && !runOpen && <>
+              <select aria-label="代码求助快照" value={codeSnapshotId||confirmation.state.snapshot?.snapshotId||''} onChange={e=>setCodeSnapshotId(e.target.value)}>
+                {!confirmation.state.snapshots.length && <option value="">尚无确认快照</option>}
+                {confirmation.state.snapshots.map(s=><option key={s.snapshotId} value={s.snapshotId}>求助快照 v{s.workspaceRevision}</option>)}
+              </select>
+              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('file')}>就这个文件求助</button>
+              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('selection')}>就所选代码求助</button>
+            </>}
+            {!tutorOpen && tutor.state.ledger?.job && !tutor.state.ledger.job.stopRequested && <button type="button" className="ws-btn ghost" onClick={()=>void tutor.client?.stop()}>停止这次帮助</button>}
+            </div>}
+            <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}} inert={!!example} aria-hidden={!!example}>
+            {versionComparison !== null && versionSelection !== null
             ? <VersionCompare
                 comparison={versionComparison}
                 options={versionChoices}
@@ -290,11 +436,13 @@ export default function PrepWorkspacePage() {
             : runOpen
               ? historyOpen
                 ? <RunHistoryPanel options={history.state.jobs.map(j => ({ id: j.runId, label: historyLabel(j) }))}
+                    onHelp={onRunHelp}
                     sides={historySides} busy={history.state.busy} notice={history.state.notice} synthetic={c?.mode === 'preparation'}
                     onSelect={(side, id) => { void history.client?.select(side, id) }}
                     onRead={() => { void history.client?.initialize() }} onReturn={() => setHistoryOpen(false)}
                     onDownload={(side, id) => { void history.download(side, id) }} />
                 : <RunPanel snapshots={runSnapshots} selection={runSelection} result={run.result}
+                  onHelp={onRunHelp}
                   busy={runBusy} canRun={canRun} notice={run.state.notice} synthetic={c?.mode === 'preparation'}
                   control={{ canStop: !!run.state.job && !settledJob(run.state.job.status) && !run.state.job.stopRequested && !run.state.pending,
                     canReconcile: run.state.pending || run.state.phase === 'read-unknown' ||
@@ -313,13 +461,18 @@ export default function PrepWorkspacePage() {
             : confirmation.seed && draftScope
               ? <>
                   {draftConflictBar}
-                  <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} />
+                  <CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} />
                 </>
-              : <TextScopeBodyPane init={init.init} onReload={init.reload} />}
+              : <TextScopeBodyPane init={init.init} onReload={init.reload} />}</div>
+              {example && <div style={{position:'absolute',inset:0,zIndex:4,overflow:'auto',background:'var(--paper)'}}>
+                <TutoringExample resource={example.resource} onReturn={onReturnExample}/>
+              </div>}
+            </div>}
           runCluster={<>
             {c?.attemptId && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
             <ConfirmationCluster
-            phase={init.status !== 'ready' ? 'loading' : confirmation.state.phase}
+            phase={init.status !== 'ready' ? 'loading' : !confirmation.state.attempt && !(assignment ?? (init.init?.kind === 'ready' ? init.init.assignment : null))?.active
+              ? 'readonly' : confirmation.state.phase}
             hasAttempt={!!c?.attemptId}
             hasPending={!!confirmation.state.pending}
             unconfirmedCount={project.unconfirmedCount}
@@ -338,7 +491,11 @@ export default function PrepWorkspacePage() {
                 ? '暂停期间只能保存已有文件的修改。' : null}
             error={confirmation.state.error}
             canRetry={canReplay(confirmation.state.outcome)}
-            onOpen={() => { void confirmation.client?.openAttempt() }}
+            onOpen={() => {
+              if (init.init?.kind !== 'ready') return
+              if (!confirmation.state.attempt && !(assignment ?? init.init.assignment).active) return
+              void confirmation.client?.openAttempt()
+            }}
             onSave={() => {
               const current = confirmation.client
               void project.prepareSave().then(drafts => current?.save(drafts)).catch(e => {
@@ -373,8 +530,16 @@ export default function PrepWorkspacePage() {
           runSlot={runSlot}
         />
 
+        <TutoringPane client={tutor.client} state={tutor.state} open={tutorOpen} onClose={()=>setTutorOpen(false)}
+          helpAllowed={init.init?.kind==='ready'&&init.init.activity.helpPolicy.helpAllowed}
+          assignmentActive={init.init?.kind==='ready'&&(assignment??init.init.assignment).active} sourceStatus={messageSourceStatus}
+          objectRef={tutorObject} objectLabel={tutorObjectLabel} objectCurrent={codeObjectCurrent}
+          objectError={!codeObjectCurrent()?'所指代码或草稿已改变，请重新核对对象；不会自动保存。':undefined}
+          onClearObject={()=>{setTutorObject(undefined);setCodeBasis(null)}} onExample={onExample} />
         <SideDock
-          taskInfo={<PrepTaskInfo init={init.init} onReload={init.reload} />}
+          taskInfo={<><PrepTaskInfo init={init.init} onReload={init.reload} />
+            {init.init?.kind==='ready' && <TutoringControls confirmation={confirmation.client} activity={init.init.activity}
+              assignment={assignment??init.init.assignment} coverage={tutor.state.ledger?.coverage} onAssignmentChange={setAssignment}/>}</>}
           stash={[]}
           onPin={() => {
             // 准备场景没有可收纳的课程卡片；生成卡属 I0-B，不在 01 范围
@@ -382,9 +547,13 @@ export default function PrepWorkspacePage() {
           onToast={showToast}
         />
 
-        {toast && (
+        {(toast || returnNotice&&confirmation.state.attempt) && (
           <div className="toast" role="status">
             {toast}
+            {returnNotice&&confirmation.state.attempt && <><p data-testid="tutor-return-notice">{returnNotice.notice}</p>
+              {returnNotice.origin && <p data-testid="tutor-return-origin" data-file-id={returnNotice.origin.fileId}>
+                本机保留的原引用：{returnNotice.origin.path} · {returnNotice.origin.documentVersion===null?'本机未确认实例':`原文件版本 ${returnNotice.origin.documentVersion}`}
+              </p>}</>}
           </div>
         )}
       </div>
@@ -393,7 +562,7 @@ export default function PrepWorkspacePage() {
 }
 
 /**
- * 顶栏准备标识：模式与载入代次。preparation epoch 在左侧「任务信息」里完整展示，
+ * 顶栏模式标识与载入代次。preparation epoch 仅准备模式在「任务信息」展示，
  * 顶栏不重复，避免窄视口下指挥栏溢出。
  */
 function PrepBadge({
@@ -410,8 +579,8 @@ function PrepBadge({
   return (
     <span className="ts-badge" data-status={status} style={{ flex: '0 0 auto' }}>
       <Icon name="shield-check" size={15} tone="neutral" />
-      <b>{PREP_ENTRY_LABEL}</b>
-      {/* 学生只需要知道当前是合成准备场景、是否就绪；loadEpoch 等排障值进控制台。 */}
+      <b>{PREP_BUILD ? PREP_ENTRY_LABEL : '真实分配'}</b>
+      {/* 模式与就绪状态可见；loadEpoch 排障值不充当服务端版本。 */}
       <span className="ts-badge-meta" data-load-epoch={loadEpoch || undefined}>
         {statusText(status)}
       </span>

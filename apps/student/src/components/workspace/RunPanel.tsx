@@ -1,4 +1,5 @@
 import './RunPanel.css'
+import type { RunHelpTarget } from '../../workspace/tutoringRun'
 
 export interface CoreSelection {
   snapshotId: string
@@ -37,6 +38,8 @@ export interface RunPanelProps {
   onRead: () => void
   onReturn: () => void
   onOpenHistory?: () => void
+  /** 只选择可见原结果；调用方核归属并打开求助表单，显式发送另行处理。 */
+  onHelp?: (target: RunHelpTarget) => void
 }
 
 /** 顶栏入口沿用既有运行簇；类名只为窄屏下保持标签、身份标识和操作互不遮挡。 */
@@ -48,7 +51,7 @@ export function CoreRunEntry({ onOpen }: { onOpen: () => void }) {
 
 /** 06 设计交付：纯受控 Core 参数与只读结果。请求、身份、限额和确认由业务调用方负责。 */
 export function RunPanel({ snapshots, selection, result, busy, canRun, notice, synthetic, control,
-  onSelect, onRun, onRead, onReturn, onOpenHistory }: RunPanelProps) {
+  onSelect, onRun, onRead, onReturn, onOpenHistory, onHelp }: RunPanelProps) {
   const fixed = snapshots.find(s => s.id === selection.snapshotId)
   const change = (patch: Partial<CoreSelection>) => onSelect({ ...selection, ...patch })
   return <section className="core-run" aria-label="Core 运行与结果">
@@ -115,6 +118,8 @@ export function RunPanel({ snapshots, selection, result, busy, canRun, notice, s
         {result.diagnostics.stderr !== undefined && <><h3>stderr</h3><pre aria-label="stderr">{result.diagnostics.stderr || '（空输出）'}</pre></>}
       </>}
       <p className="core-run-note">结果只读，供你修订作品；不作为课程通过或能力评价。</p>
+      {onHelp && <button type="button" className="ws-btn ghost" disabled={busy || !result.runId || !result.snapshotId}
+        onClick={() => onHelp({ runId: result.runId, snapshotId: result.snapshotId })}>就这次运行求助</button>}
     </section>}
   </section>
 }

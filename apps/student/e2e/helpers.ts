@@ -100,7 +100,7 @@ export async function syntheticUpdate(page: Page, text: string) {
 }
 
 /** 读取 fixture 权威 Attempt（不经页面状态），用于核对服务端事实而不是界面自述。 */
-export interface ServerHead { attempt: { workspaceRevision: number; status: string; attemptRevision: number }
+export interface ServerHead { attempt: { attemptId: string; workspaceRevision: number; status: string; attemptRevision: number }
   files: Array<{ fileId: string; path: string; text: string; lifecycle: 'active' | 'recycled'; documentVersion: number; contentHash: string }>
   snapshots: Array<{ snapshotId: string; workspaceRevision: number; createdAt: string
     files: Array<{ fileId: string; path: string; text: string; contentHash: string; documentVersion: number }> }> }

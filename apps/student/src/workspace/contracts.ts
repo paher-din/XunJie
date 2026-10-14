@@ -87,6 +87,12 @@ export interface AssignmentView {
   activityControlRevision: number
 }
 
+/** 固定 I0 宿主 GET `/api/assignments/:id/bootstrap`；授权深链读取，不发现/创建 Attempt。 */
+export interface AssignmentBootstrapView {
+  assignment: AssignmentView
+  recoveryGeneration: string
+}
+
 export type CompetencyDomain = 'domain' | 'project' | 'ai_collaboration'
 
 export interface GoalRef {

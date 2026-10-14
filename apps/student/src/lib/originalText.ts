@@ -141,41 +141,40 @@ export function applyModelEdits(original: string, projection: OriginalProjection
 }
 
 /**
- * 与 Monaco undo/redo 状态对应的可逆原文历史：每笔编辑记原文前后态，
- * undo/redo 直接取前后态，不用 Monaco 的规范化文本做逆操作（契约 §4）。
+ * 与 Monaco alternativeVersionId 对应的原文历史：原生 undo/redo 可以一次跨过
+ * 多个内容事件，必须按模型实际恢复的版本取原文，不按事件数退一步（契约 §4）。
  */
 export class OriginalEditHistory {
-  private entries: Array<{ before: string; after: string }> = []
+  private entries: Array<{ alternativeVersionId: number; text: string }>
+  private versions = new Map<number, number>()
   private cursor = 0
-  private state: string
 
-  constructor(initial: string) {
-    this.state = initial
+  constructor(initial: string, alternativeVersionId: number) {
+    this.entries = [{ alternativeVersionId, text: initial }]
+    this.versions.set(alternativeVersionId, 0)
   }
 
   get current(): string {
-    return this.state
+    return this.entries[this.cursor].text
   }
 
-  /** 一笔新编辑（或一次含多范围的操作）后的原文；丢弃 redo 分支。 */
-  push(next: string): void {
-    this.entries.length = this.cursor
-    this.entries.push({ before: this.state, after: next })
+  /** 记录实际新编辑的模型版本；只丢弃不可达的原文 redo 分支，不操作模型历史。 */
+  push(next: string, alternativeVersionId: number): void {
+    if (this.versions.has(alternativeVersionId)) throw new Error('模型历史版本不能重新绑定原文。')
+    for (let i = this.cursor + 1; i < this.entries.length; i++) {
+      this.versions.delete(this.entries[i].alternativeVersionId)
+    }
+    this.entries.length = this.cursor + 1
+    this.entries.push({ alternativeVersionId, text: next })
     this.cursor++
-    this.state = next
+    this.versions.set(alternativeVersionId, this.cursor)
   }
 
-  undo(): boolean {
-    if (this.cursor === 0) return false
-    this.cursor--
-    this.state = this.entries[this.cursor].before
-    return true
-  }
-
-  redo(): boolean {
-    if (this.cursor === this.entries.length) return false
-    this.state = this.entries[this.cursor].after
-    this.cursor++
+  /** 恢复原生 undo/redo 已安装的确切版本；未知版本保留原文，不从模型正文猜。 */
+  restore(alternativeVersionId: number): boolean {
+    const index = this.versions.get(alternativeVersionId)
+    if (index === undefined) return false
+    this.cursor = index
     return true
   }
 }

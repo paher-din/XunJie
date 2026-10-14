@@ -25,7 +25,7 @@ export interface WorkspaceInitState {
  * 上下文标记失效——因此卸载、切换任务、主动重载之后到达的旧响应不会写进当前工作区。
  * StrictMode 的双挂载正好验证这条规则：第一次载入的结果被判为 stale 并丢弃。
  */
-export function useWorkspaceInit(): WorkspaceInitState {
+export function useWorkspaceInit(assignmentId?: string): WorkspaceInitState {
   const [state, setState] = useState<{ status: InitStatus; init: WorkspaceInit | null; loadEpoch: number }>({
     status: 'loading',
     init: null,
@@ -38,7 +38,7 @@ export function useWorkspaceInit(): WorkspaceInitState {
     const context: WorkspaceContext = {
       mode: workspaceMode,
       userId: null,
-      assignmentId: null,
+      assignmentId: workspaceMode === 'real' ? assignmentId ?? null : null,
       activityVersionId: null,
       attemptId: null,
       preparationEpoch: null,
@@ -63,7 +63,7 @@ export function useWorkspaceInit(): WorkspaceInitState {
       guard.dispose()
       if (guardRef.current === guard) guardRef.current = null
     }
-  }, [nonce])
+  }, [nonce, assignmentId])
 
   const reload = useCallback(() => setNonce((n) => n + 1), [])
   const invalidate = useCallback(() => {
