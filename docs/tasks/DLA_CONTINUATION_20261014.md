@@ -164,3 +164,9 @@ PAHER只读核查：原3443为xunjie-i0-entry-recovered-20261014/9fa76ad应用�
 源码merge f761dcd、验证/现场交接证据79f1416ff6b74483291651ab3dd015990baf1b8e已更新原PR56分支。普通Git推送遇连接reset失败，沿已有发布工具用Git API上传相同树/原merge父提交、force=false；两提交远端SHA与本地相同，[回执](evidence/dla-pr67-integration-20261014/publication.json)已回读确认。PR56仍Open/Draft、mergeStateStatus=CLEAN，b7e73c5为祖先，远端main当前仍b7e73c5，未自动合并PR或关闭Issue。
 
 本节与PR正文为后续文档提交；应用/UI/工具相对f761dcd没有新差异，现场继续以固定f761dcd运行，不能把文档head当作新的已部署源码。最后99份/1524内链静态检查errors=[]，本任务增量空白通过；PR67原三JSON的1471处全merge空白失败保留且未改写其blob。实际模型值对本批证据扫描0命中，所有合成身份领取继续走原加密通道，不公开秘密。
+
+### 9.5 一次完整回交已发布
+
+后续文档head为75308d1c10f59943ed29790a45f080f711ceb9b5，原PR56远端回读一致、Open/Draft/CLEAN；b7e73c5接纳证明、固定runtime=f761dcd和本批68/68结果保留。已在原评论线程发布 [C完整回复6169341548](https://github.com/paher-din/XunJie/pull/56#issuecomment-6169341548)，逐字回读与准备正文一致；PR正文也与本轮稿逐字一致。回复明确提供两个库/入口/当前HTTP与C1分别状态、原深链/身份加密领取、143文件正式ZIP/SFTP/摘要、停止/回退、失败/未执行和Robert可开始项，没有重复开Issue或合入main。
+
+PAHER Windows已有loopback TCP3443实际可达，sshd Running/192.168.3.15；不据此替Robert机器的SSH gateway/Chrome作新通过。当前服务仍固定f761dcd、两个原库与冻结节点；本节回执的最后文档提交不改变运行源码。C本评论范围已交付，下一责任为Robert/UI正式产物切换及实际Chrome复验；原H3节点/全UI-REAL/P4/P5/真人教学待办保留。主副本无关改动仍未触碰。
