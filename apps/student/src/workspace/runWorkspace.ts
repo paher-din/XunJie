@@ -16,8 +16,11 @@ export interface RunState {
   controlBusy: boolean
 }
 export const emptyRunState = (): RunState => ({ phase: 'idle', job: null, run: null, command: null, pending: false, eligible: false, notice: null, controlBusy: false })
-/** H-04 由已交接来源提供；准备配置仅声明合成能力，真实模式缺少时禁写。 */
-export interface RunReadiness { verified: boolean; runtimeProfileVersion: string; recoveryGeneration: string | null }
+/** 真实 read 只读取当前同源健康入口；verified 仅用于已声明的准备能力。 */
+export interface RunReadiness {
+  verified: boolean; runtimeProfileVersion: string; recoveryGeneration: string | null
+  read?: () => Promise<boolean>
+}
 type RunReference = Pick<JobView, 'runId' | 'jobId'>
 const definiteRejections = new Set(['INVALID_REQUEST', 'INVALID_REFERENCE', 'INVALID_CONFIGURATION', 'CONTENT_LIMIT',
   'RUNTIME_NOT_READY', 'VERSION_CONFLICT', 'STATE_CONFLICT', 'RECOVERY_REQUIRED', 'FORBIDDEN', 'UNAUTHENTICATED'])
@@ -33,6 +36,8 @@ export class RunWorkspace {
   private initSeq = 0
   private acceptedSeq = 0
   private selectionEpoch = 0
+  private readinessSeq = 0
+  private runtimeVerified = false
   private readonly leaseOwner = crypto.randomUUID()
   constructor(private readonly workspace: ConfirmationWorkspace, private readonly readiness: RunReadiness) {
     this.context = workspace.context
@@ -49,9 +54,38 @@ export class RunWorkspace {
   }
   private publish(change: Partial<RunState>): void {
     if (!this.valid) return
-    this.state = { ...this.state, ...change }; this.listeners.forEach(listener => listener(this.state))
+    // 原运行读到终态也不能绕过最近一次就绪失败，或把核对原请求当成新运行许可。
+    this.state = { ...this.state, ...change }
+    this.state.eligible = this.state.eligible && this.runtimeReady
+    this.listeners.forEach(listener => listener(this.state))
   }
   private opts() { return { mode: this.context.mode, scenarioId: this.context.scenarioId } }
+  private get runtimeReady(): boolean {
+    return this.runtimeVerified && !!this.context.trustedRecoveryGeneration &&
+      this.readiness.recoveryGeneration === this.context.trustedRecoveryGeneration &&
+      typeof this.readiness.runtimeProfileVersion === 'string' && this.readiness.runtimeProfileVersion.length > 0 &&
+      this.readiness.runtimeProfileVersion.length <= 128
+  }
+  private get readinessNotice(): string | null {
+    return this.runtimeReady ? null : '运行环境尚未就绪，请稍后重新读取。编辑与保存仍可继续。'
+  }
+  private async refreshReadiness(current: () => boolean): Promise<void> {
+    const seq = ++this.readinessSeq
+    this.runtimeVerified = false
+    if (this.context.mode === 'preparation') {
+      if (current()) this.runtimeVerified = this.readiness.verified
+      return
+    }
+    try {
+      const verified = await this.readiness.read?.()
+      if (!current() || seq !== this.readinessSeq || !await this.authority()) return
+      if (current() && seq === this.readinessSeq) this.runtimeVerified = verified === true
+    } catch (error) {
+      if (current() && seq === this.readinessSeq) {
+        reportDiagnostic('run.read-failed', { source: 'runtime-readiness', error: describeError(error) })
+      }
+    }
+  }
   private async authority(): Promise<boolean> {
     if (!this.valid) return false
     const current = await confirmationRepository.isCurrentAuthority(this.context)
@@ -68,7 +102,8 @@ export class RunWorkspace {
     const current = () => this.valid && seq === this.initSeq
     this.publish({ phase: 'reading', eligible: false })
     try {
-      const head = await this.workspace.readHead()
+      // 就绪失败只收紧新运行；原 head/Job/Run 仍按原读取与核对路径继续，不生成拒绝回执。
+      const [head] = await Promise.all([this.workspace.readHead(), this.refreshReadiness(current)])
       if (!current()) return
       if (!head) { this.publish({ phase: 'read-unknown', notice: '运行记录没有读到，请重新读取。' }); return }
       const commands = await confirmationRepository.commands(this.context)
@@ -86,7 +121,7 @@ export class RunWorkspace {
         notice: oldGeneration ? '服务已恢复到新的状态，原请求不能直接重试；恢复核对尚未交接，请联系教师。'
           : pending ? unresolved.some(c => c.kind === 'job.cancel')
           ? '停止请求结果未知，已保留原请求；请核对，暂时不能再次运行。'
-          : '上次运行请求还没有核对完成，暂时不能再次运行。' : null })
+          : '上次运行请求还没有核对完成，暂时不能再次运行。' : this.readinessNotice })
       if (original && !selected) {
         this.publish({ phase: 'read-unknown', eligible: false, notice: '原运行记录不可回取，请重新读取工作区；暂时不能再次运行。' })
         return
@@ -266,11 +301,14 @@ export class RunWorkspace {
       // 每次明确新操作都核原请求与权威服务执行资格；不从旧编辑器版本猜 revision。
       await this.initialize()
       if (!this.valid) return
-      if (!this.state.eligible || this.state.pending) {
+      if (this.state.pending) {
         this.publish({ notice: '上次运行或当前作品状态仍需核对，暂时不能再次运行。' }); return
       }
-      if (!this.readiness.verified || this.readiness.recoveryGeneration !== this.context.trustedRecoveryGeneration) {
-        this.publish({ phase: 'blocked', eligible: false, notice: '运行环境尚未就绪，请稍后再试。' }); return
+      if (!this.runtimeReady) {
+        this.publish({ phase: 'blocked', eligible: false, notice: this.readinessNotice }); return
+      }
+      if (!this.state.eligible) {
+        this.publish({ notice: '上次运行或当前作品状态仍需核对，暂时不能再次运行。' }); return
       }
       const attempt = this.workspace.current.attempt
       if (!attempt || !['ready', 'active'].includes(attempt.status)) return
@@ -367,7 +405,7 @@ export class RunWorkspace {
         // 是否还有别的作业只有 head 能核；终态读回后重新 initialize 才开放下一次。
         notice: pending ? this.state.notice : job.stopRequested && !settledJob(job.status)
           ? '停止请求已受理，等待服务确认；暂时不能再次运行。'
-          : job.status === 'outcome_unknown' || job.status === 'stale' ? '原运行仍需核对，暂时不能再次运行。' : null })
+          : job.status === 'outcome_unknown' || job.status === 'stale' ? '原运行仍需核对，暂时不能再次运行。' : this.readinessNotice })
     } catch (error) {
       if (!current()) return
       this.acceptedSeq = seq
