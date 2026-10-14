@@ -108,4 +108,6 @@
 
 H3目标新镜像/worker部署、私有2800向量、教师活动绑定/course_check、独立检查Session占用/吞吐与完整双实例/停止/崩溃矩阵 **未执行**。本机原10项/公开Trace/普通C运行/两模型请求不能代替它们。完整DL-AC、原P4/P5/M/AC/NFR、真人门禁、正式教师语义评审和学习效果 **未完成/未执行**；产品基线及MVP_SPEC §10 **待授权维护者汇总**。
 
-本文件及同目录证据为本轮实际交付；本地提交、普通推送、PR、合并和发布分别由主Agent的最终交付回执记录。本轮新PR URL / #30与#38公开回交URL：**后补发布字段**，不据此虚构已发布/已合并；此前PR68已合入的事实沿任务起点8ef9dc0保留。
+本文件及同目录证据已正常推送固定交付 `954f5613f8a3d9d1da0dd288cf8127fa010a0752`，创建并附当前任务 [PR79](https://github.com/paher-din/XunJie/pull/79)（Open、非Draft、CLEAN/MERGEABLE，hosted status checks为空，未合并）。main `3a6de704` 的H-05/C5已普通接纳；当前本机业务仍254e938，不把仓库合并计该现场已部署。
+
+按原要求先发布 [#38固定回交6175218005](https://github.com/paher-din/XunJie/issues/38#issuecomment-6175218005)，再发布 [#30共用入口/逐项状态6175261812](https://github.com/paher-din/XunJie/issues/30#issuecomment-6175261812)，两份正文均独立GET逐字回读一致。#30首次GraphQL连接在发出前超时，先查专属标记无已有评论，再用原REST POST同正文完成，没有重复发布。两Issue仍Open；此前PR68已合入事实沿任务起点8ef9dc0保留，本PR没有被自动合并。A/B/C实审及保护基线汇总请求已经在原Issue交对应角色，不冒称他们已确认本批新本机证据。

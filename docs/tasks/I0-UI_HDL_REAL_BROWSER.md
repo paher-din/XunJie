@@ -160,3 +160,11 @@ Chrome 155 的既有已连接 profile「您的 Chrome」在严格受信 `https:/
 补充主线核对：交付准备时 main 已推进至 `3a6de704`（PR73 H-05 控制/作品版本分离及 C5 证据）。已读 A/C 指定评论回复任务全文、三份业务差异及兼容说明；原 UI ACK 后 GET 分别读取两个 revision，不从保存次数推导控制 CAS。该主线将普通合并进本PR，保持他人原记录和回归，不重做其审查。当前本机业务仍固定254e938，未把仓库合并称作H-05已部署或新现场验证；原已完成完整链的source/ID/版本保持不改。A/C已接纳之前UI评论的原H状态，新的本机身份/合成包继续交其核对。
 
 最终组合树 `b5abe84c` 已正常吸收 main `3a6de704`，无冲突、本人差异没有A/B/C业务源码或保护目录。再次执行受共享契约影响的前端单元：43文件569/569通过（原输出见验收包final-ui-unit.txt）。文档静态117文档/1834内链/errors=[]；空白检查保留公开原始CRLF字节并认可CR行尾，仍检查真实行尾空格、空白EOF与tab前空格，没有关闭检查。三份临时RSA公钥/封装口令传输文件已按本人D目录确切非reparse路径删除，原initializer/签名/SSH/TLS和全部可复用工具保留，浏览器内临时私钥引用/解密buffer已释放或清零。当前合成B页面留作用户入口，所有执行均确认结束，模型默认off。
+
+## 6. 实际公开交付回执
+
+已正常推送 `codex/ui-hdl-real-browser`，固定源码/证据交付 `954f5613f8a3d9d1da0dd288cf8127fa010a0752`；创建并附当前任务 [PR79](https://github.com/paher-din/XunJie/pull/79)，非Draft、CLEAN/MERGEABLE，GitHub status checks为空，不称hosted CI通过，未自动合并。PR只含本任务UI/工具/本人记录及公开证据，相对main没有A/B/C业务源码或保护目录差异。
+
+先在 [#38回交6175218005](https://github.com/paher-din/XunJie/issues/38#issuecomment-6175218005) 给完整数字逻辑证据，再在 [#30回交6175261812](https://github.com/paher-din/XunJie/issues/30#issuecomment-6175261812) 给共用入口/H状态、三原comment映射、前条链接及A/B/C接纳请求，两份独立GET正文逐字匹配。#30首次GraphQL连接超时，先核专属标记无已有评论，再REST同正文发布，无重复；两Issue仍Open。没有在#53/#56重复整包，没有编辑他人评论。正式新本机A/B/C签认及产品基线汇总仍由对应角色承接，不冒作UI已完成他们的审核。
+
+D盘 `START_HERE.md`、`XunJie.ps1`、全部可复用工具/原档/公开日志/截图/原库均保留，正常页面留给用户。临时传输材料已清理；模型off、业务/专用VM可用、原执行全部确认结束。本批授权的迁移、页面接线、完整合成链和按要求回交完成；其他域及完整产品/真人条件沿§5.3如实后置。
