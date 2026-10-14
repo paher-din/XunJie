@@ -114,3 +114,7 @@ node docs/tasks/evidence/c5-core/verify-real.mjs "$sourceRoot" "$outputFile"
 合并前实读head仍为9a89aa4，19文件写集一致、Open/非Draft/MERGEABLE/CLEAN；未报告CI检查，无已提交的变更请求。Copilot在0f347c0上的COMMENTED记录说明请求者review配额耗尽，未完成审查；不将其称为审查通过或自动审批拒绝。源码/证据没有新改动，不重复已完成真实业务测试；合并树文档/空白及证据hash核对后执行。
 
 本轮两次fetch遇Git传输connection reset，失败保留；GitHub/远端main实读为 `0f24605654f923cf41927d3fb4e2c48219a8d585`，该准确commit已在本机，未因fetch失败使用猜测版本。以此main与9a89aa4的 `git merge-tree --write-tree` 得到无冲突树 `0037777843cef36b1d60e0e253f458eac77410ad`。Windows tar.exe将中文文件名解成乱码导致7条missing document；同一原始归档在新WSL目录按UTF-8展开后，合并树静态114文档/1763内链/errors=[]。未改正文、路径引用或关闭检查迁就错误，两个临时副本/归档均保留。C5分支静态109文档/1778内链、差异空白及16项证据hash也通过；原业务实测结果保持其固定版本。
+
+合并授权记录提交44fb1be的普通push亦因连接失败，随后GitHub API创建相同blob/tree/author/committer/原父与message，返回SHA与本地 `44fb1bee849ca74a46b4b883556e425ea3fc602b` 完全一致，force=false更新并回读成功。未更改Git全局配置、网络、凭据或绕过审批。
+
+期间main经PR73前进至 `a49863f894a4485dd5f4b7b08a27fc3a25414276`，新增H-05保存/控制版本修复、本人任务/证据与README导航；C5写集不触及这些源码/他人记录。最新main归档下载60秒超时，未使用不完整归档作验证；改为按API compare核50项新增/修改blob的Git SHA-1，从前一准确组合构造最新main＋C5候选，仅叠加C5原文件及其README导航。最终组合静态 **115文档/1768内链/errors=[]**，当前PR MERGEABLE/CLEAN；C5原证据不变。此次只核文档证据PR的合并适用性，不把该最新main写成已重新实测C/HDL的应用版本。最后记录更新随准确PR head发布，普通merge以该head执行，实际merge SHA与时间以PR回读为准。
