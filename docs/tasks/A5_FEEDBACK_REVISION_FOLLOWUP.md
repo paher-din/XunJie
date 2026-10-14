@@ -1,12 +1,12 @@
 # A5：教师反馈、个人修订与后续活动
 
-日期：2026-10-14（Asia/Shanghai）。主责：A；对应 [Issue #42](https://github.com/paher-din/XunJie/issues/42) 相邻的 A 属切片由本文承载，[TEAM §A5](../planning/TEAM_WORK_PLAN.md#a5教师反馈个人修订与后续活动) 与 [A_WORK_PLAN §10](../planning/A_WORK_PLAN.md) 为范围依据。
+日期：2026-10-14（Asia/Shanghai）。主责：A；对应 [Issue #42](https://github.com/paher-din/XunJie/issues/42) 相邻的 A 属切片由本文承载，[TEAM §A5](../planning/TEAM_WORK_PLAN.md#a5教师反馈个人修订与后续活动) 为范围依据。A 属的详细工作包排程是负责人维护的受保护规划材料，不随本仓库交付，因此本文不引用它；本任务的范围、批准与验收全部以本仓库内已入库的正文为据（下文各节逐项给出）。
 
-状态：2026-10-14 负责人批准 §3～§6 与第二批最小范围，A5 全部五个子项（A5.1～A5.5）的服务端实现与验证完成：第一批 11 项、第二批 2 项专项用例，另经独立两轴代码审查并修正其发现（见 §8.1～§8.5）；完整回归 440 项、422 通过、1 失败（win32 既有环境限制）、17 跳过。真实模型、真实执行节点、浏览器/UI 与真人验收未执行；本文不代替完整产品验收。§1 与原「提案、尚未获批准」的时点记录保留在 §8.1 之前，本节为其后的当前状态。
+状态：2026-10-14 负责人批准 §3～§6 与第二批最小范围，A5 全部五个子项（A5.1～A5.5）的服务端实现与验证完成，并已按 [PR #65](https://github.com/paher-din/XunJie/pull/65) 的审查意见修复其 1 项 Standards P2 与 3 项 Spec P2（见 §10）；专项用例 13 → **16 项全部通过**，串行完整回归 **443 项、425 通过、1 失败（win32 既有环境限制）、17 跳过**；文档检查在干净检出上 `errors=[]`。真实模型、真实执行节点、浏览器/UI 与真人验收未执行；本文不代替完整产品验收。§1 与原「提案、尚未获批准」的时点记录保留在 §8.1 之前，本节为其后的当前状态。
 
 ## 1. 依据、范围与写集
 
-已读正文：[AGENTS](../../AGENTS.md) 全文（文档优先、文档写入边界、共享契约先提案、学生操作与证据边界、红线）；[README](../../README.md) 全文；[PRD](../product/PRD.md) 第 4.3、5、8 节（PRD-06/07/08/09/10）；[MVP_SPEC](../product/MVP_SPEC.md) M-07/M-08/M-09、AC-08/09/16、第 4 节状态与操作规则、第 10 节；[TECH_DESIGN](../product/TECH_DESIGN.md) 第 4/4.2/4.3/4.4/5/5.1/7.1/7.2.1/7.3 节；[TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md) §A5 与 P3 联调顺序；[A_WORK_PLAN](../planning/A_WORK_PLAN.md) §10/§12/§13；上游已交付接缝按 [A4](A4_LEARNER_STATE_REVIEW.md) §9/§11、[C4](C4_SUBMISSIONS_REOPEN_RECOVERY.md) §4/§5/§8、[A0 契约复核](A0_BUSINESS_CONTRACT_REVIEW.md) READ-11/READ-14 正文核对。
+已读正文：[AGENTS](../../AGENTS.md) 全文（文档优先、文档写入边界、共享契约先提案、学生操作与证据边界、红线）；[README](../../README.md) 全文；[PRD](../product/PRD.md) 第 4.3、5、8 节（PRD-06/07/08/09/10）；[MVP_SPEC](../product/MVP_SPEC.md) M-07/M-08/M-09、AC-08/09/16、第 4 节状态与操作规则、第 10 节；[TECH_DESIGN](../product/TECH_DESIGN.md) 第 4/4.2/4.3/4.4/5/5.1/7.1/7.2.1/7.3 节；[TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md) §A5 与 P3 联调顺序；上游已交付接缝按 [A4](A4_LEARNER_STATE_REVIEW.md) §9/§11、[C4](C4_SUBMISSIONS_REOPEN_RECOVERY.md) §4/§5/§8、[A0 契约复核](A0_BUSINESS_CONTRACT_REVIEW.md) READ-11/READ-14 正文核对。以上均为本仓库已入库文档，可独立查阅。
 
 本任务负责 A 属的正式反馈契约、存储、命令、读取投影与测试，以及 A5.4/A5.5 的业务链接通。学习主张纠正与有效状态仍归 A4；作品、提交、许可与恢复归 C；候选分析与反馈草稿归 B。本任务不改写 A4 的状态语义、C4 的提交/许可语义或 B 的模型格式；需要的跨属差异在 §6 列为提案，未确认前不按提案实现。
 
@@ -148,6 +148,9 @@ CREATE INDEX teacher_feedback_scope ON teacher_feedback(course_id,student_id,att
 4. **`kind=submission_review` 的阶段规则原文表述过窄（§4.2 第 4 项）**：实际规则是——必须指向最新固定提交；尝试处于 `submitted` 时必须携带 `expectedAttemptRevision` 并在同一事务推进到 `reviewed`；尝试已是 `reviewed` 时追加一条评价修订而不迁移阶段（教师可修订已给出的正式评价，符合 M-08「不覆盖历史」）；其他阶段返回 `STATE_CONFLICT`。原文「尝试处于 submitted」把最后两种情形压成了一种，实际实现按上述三分支。§4.3 第 3 项要求许可与反馈同事务保存，其中的反馈必然发生在 `reviewed`，因此这条澄清是该项可行的前提。
 5. **失效范围（§4.2 第 6 项、TECH §7.2.1）**：实际调用的 `invalidateLearnerTeaching` 以**课程+学生**为范围（A4 既有实现，`storage.ts:61`），不是只针对本尝试。因此任一尝试上的正式反馈都会让该学生在该课程内的相关未展示教学/分析动作失效，并使各尝试的 `attemptRevision`/`decisionEpoch` 递增。这是沿用的保守做法，不是本批新增语义；原文「相关…使依赖的教学上下文失效」未说明该宽度，此处如实补记，交 C/A 在联合集成时确认是否需要收窄。
 6. **反馈条目的排序依据**：按表中 `rowid`（真实插入顺序），不按调用方给出的毫秒级 `created_at`；同一毫秒保存的两条修订不会退化成按随机 UUID 排序。
+7. **线程版本与范围 CAS 版本分离（R65-01，见 §10.2）**：记录的 `threadRevision` 是线程内计数，`FeedbackThread.feedbackRevision` 与成功响应里的 `feedbackRevision` 是尝试范围 CAS 版本（下一次写入应发送的值）。两者只在尝试仅有一个线程时相等。
+8. **artifact 取固定提交绑定的不可变快照（R65-02，见 §10.3）**：`artifact` 是所选提交绑定快照的文件清单，并附 `artifactSnapshotId`；当前工作区清单改名 `workspaceFiles` 单独返回。
+9. **反馈异议目标当前性包含依据（R65-03，见 §10.4）**：`current` 要求线程最新**且**其记录的依据仍是当前可用主张；否则按历史异议追加，不改投影。
 
 ## 5. 与 C4/A4/B3 的交接
 
@@ -395,7 +398,7 @@ A5.5 用例固定的实际行为（这些是投影规则，不是丢失记录）
 
 在新基线上重跑（该树不含 `964abb4`）：`npm run typecheck` exit 0；A5 专项 13/13；`node --test --test-concurrency=1` 同文件集合 **440 项：422 通过、1 失败、17 跳过、0 取消**，唯一失败仍是 `server/workspace/review.test.ts:118` 的 win32 Linux-only 环境限制，与工作分支测量一致（440/422/1/17），说明 A5 不依赖 `964abb4`。
 
-该分支的两次默认并发全集另有失败：`tests/durability.test.ts:8` 15 秒超时、`tests/startup.test.ts` 的两项子进程 5 秒/10 秒超时。这些都是本仓库既有记录中同一台机器挂载盘读写导致的时序抖动（见 [A 推进记录](A_CURRENT_NEXT_STEPS_20261014.md) §8 的同名现象与原生目录对照），串行全集与单独复跑均未复现，两次默认运行也没有共同的额外失败；按实际保留，未回填串行结果，也未改任何超时阈值。
+该分支的两次默认并发全集另有失败：`tests/durability.test.ts:8` 15 秒超时、`tests/startup.test.ts` 的两项子进程 5 秒/10 秒超时。这些是本机挂载盘读写与并发负载导致的时序抖动，同类的启动超时在本仓库既有记录中已有先例（见 [A4](A4_LEARNER_STATE_REVIEW.md) §11.1 对启动 5 秒超时两次未复现的记载）；串行全集与单独复跑均未复现，两次默认运行也没有共同的额外失败；按实际保留，未回填串行结果，也未改任何超时阈值。
 
 PR 分支的验证记录加入证据索引：`acceptance.a5-pr-branch-full-serial.windows.txt`。
 
@@ -406,5 +409,71 @@ PR 分支的验证记录加入证据索引：`acceptance.a5-pr-branch-full-seria
 本次公开交付只包含本分支的 A5 提交与证据，未推送、未合并工作分支 `codex/i0-host-readiness` 上的 I0 宿主健康提交 `964abb4`（另行交付）；未合并 PR、未关闭 Issue、未部署。推送时本机 git 的 `http.proxy`（`http://127.0.0.1:7890`）无监听进程，改用单次 `-c http.proxy= -c https.proxy=` 覆盖完成，未写入任何 git 配置。
 
 PR 正文声明了 §8.2 第 1 项的接缝越界与所需 C 复核，以及全部未执行项；产品基线仍只读。
+
+## 10. PR #65 审查意见的处置（2026-10-14）
+
+[PR #65](https://github.com/paher-din/XunJie/pull/65) 收到独立审查（`COMMENTED`，请求修改，固定 head `0f8a113`，实际 merge-base `eea9623`）：Standards 1 项 P2、Spec 3 项 P2，均附隔离合成 HTTP/SQLite 复现。本节逐项记录复现、修法与验证；**每项先有失败反例**，反例在修复前的树上实际运行过。
+
+### 10.1 S65-01 任务依据引用未入库文档（Standards P2）
+
+**审查事实成立，并暴露了我此前的验证方法错误。** 本任务稿曾引用 `docs/planning/A_WORK_PLAN.md`（2 处）与 `docs/tasks/A_CURRENT_NEXT_STEPS_20261014.md`（1 处）；这两份是负责人维护、未入库的本地材料。我此前的 `check.mjs` 是在含这些未跟踪文件的工作树上跑的，因此得到 `88 文档/1258 内链/errors=[]`；在固定 head 的干净检出上实际为 **79 文档、1202 内链、3 条 missing document**，与审查一致。
+
+处置：删除全部对未入库文档的引用；范围依据改用已入库的 [TEAM_WORK_PLAN](../planning/TEAM_WORK_PLAN.md) §A5，并注明 A 属详细排程是受保护规划材料、不随仓库交付；§9.3 的时序抖动先例改引 [A4](A4_LEARNER_STATE_REVIEW.md) §11.1（已入库）。验证方法同时改正：**文档检查必须在代表性干净树上执行**，本节所有检查都用 `git worktree` 在你检出该提交后运行，不再用被未跟踪文件污染的工作树。
+
+### 10.2 R65-01 线程版本被当作公开 CAS 版本（Spec P2）
+
+**复现（修复前树上）：** 新建线程 A 的成功响应 `feedbackRevision=1`，但该 Attempt 的范围版本已是 2；用响应里的版本继续写第二个线程返回 **409 `VERSION_CONFLICT`**，反例在 `result.threadRevision` 处先报 `undefined !== 1`。原因是 `feedbackResultSchema.feedbackRevision` 返回的是**线程内**计数，而 `expectedFeedbackRevision` 校验的是**尝试范围**计数。
+
+处置：区分两个版本并在命名上固定——
+- 存储列 `feedback_revision` → `thread_revision`，记录 JSON 字段 `feedbackRevision` → `threadRevision`（线程内计数，也是 `feedback` 异议目标指向的版本）；
+- 成功响应同时给出 `threadRevision` 与 `feedbackRevision`，后者是**本次写入后的尝试范围版本**，即下一次写入应当发送的值；该值在写入后从存储重新读取，并断言等于写入前 +1，因此只可能报出真实存在的版本；
+- `reopenResultSchema.feedback` 同步给出两者；GET 视图顶层 `feedbackRevision` 仍是范围版本，每条 entry 带自己的 `threadRevision`。
+- 新增反例覆盖：两个线程的响应版本递增且第二次写入被接受、GET 与响应一致、沿响应版本写第三笔成功、用第一次的旧版本写入返回 409。这是**共享契约变更**（字段改名与新增），按审查要求在此明示，交评审与负责人确认。
+
+### 10.3 R65-02 选旧提交时 artifact 取当前工作区（Spec P2）
+
+**复现（修复前树上）：** 提交 v1 → 正式反馈 → 许可 → 学生 `resume_revision` → 同一文件改成 v2 → 教师按原 `submissionId` 读取，`submission` 仍绑定原快照，但 `artifact` 报的是 `documentVersion=2` 的当前工作区；反例在 `artifactSnapshotId` 处报 `undefined !== <快照 id>`（修复前响应根本没有快照绑定）。
+
+处置：`artifact` 改为**所选固定提交绑定的不可变快照**的文件清单（只含 fileId/path/documentVersion/contentHash），并新增 `artifactSnapshotId` 作为来源凭据；找不到绑定快照时抛 `PERSISTENCE_UNAVAILABLE` 而不是回退到工作区。当前工作区清单改名 `workspaceFiles` 单独返回，来源不再与固定提交混淆。新增反例固定「旧提交读旧快照、新草稿只出现在 `workspaceFiles`、缺省读取仍取最新固定提交」。同样是**共享契约变更**，在此明示。
+
+### 10.4 R65-03 依据被修订后无法留下历史异议（Spec P2）
+
+**复现（修复前树上）：** 反馈 rev1 绑定 claim rev1；教师 confirm 追加 claim rev2 后，学生以当前 `stateRevision` 对反馈 rev1 提异议，返回 **409 `VERSION_CONFLICT`**、异议表 0 行。原因是 A5 的 `FeedbackTargetResolver` 只按「线程是否最新」判 `current=true`，A4 随后要求受评 claimRefs 必须是当前 revision，于是旧依据被当成活的当前目标而拒绝。
+
+处置：`current` 改为**线程最新且其记录的依据仍恰好是当前可用主张**；依据已 `revised`/`withdrawn`/`superseded`/不可达或线程本身不是最新时返回 `current=false`，A4 现有代码即把异议作为历史追加（`currentTarget=false`、不改投影、不要求 CAS）。未改 A4 一行。新增反例同时固定两种语义：历史异议返回 200 且 `currentTarget=false`、`learnerStateRevision` 不变、原主张仍 `active`、异议可按确切版本读回；依据仍当前时返回 `currentTarget=true` 并把该主张置 `contested`。
+
+### 10.5 AC-09 完整链的验证缺口
+
+审查未列为缺陷但指出：原第二批用例只到 GET learner-state，没有串联「正式反馈 → 新活动 → 新求助」。已在 A5.5 用例末端补上：新分配尝试上发起真实 `POST /help` 并经 `prepareStudentHelp` 组装上下文，断言上下文带真实 `learnerStateRevision`、只提供适用的 active 主张，且**不**包含已撤回主张与旧活动版本的主张。该项是覆盖补充而非缺陷修复：该用例在修复前的树上**通过**（见表），故不记为红灯。
+
+### 10.6 反例在修复前的实际结果与修复后验证
+
+修复前树 = 固定 head `0f8a113`，只把三份新测试文件复制过去执行（Node 只剥离类型、不做类型检查，故类型改名不阻断运行）：
+
+| 反例 | 修复前 | 修复后 |
+| --- | --- | --- |
+| R65-01 两个线程的范围版本 | 失败：`threadRevision` 为 `undefined`；第二次写入 409 | 通过 |
+| R65-02 旧提交的快照绑定 | 失败：`artifactSnapshotId` 为 `undefined` | 通过 |
+| R65-03 依据已修订的历史异议 | 失败：异议返回 409 而非 200 | 通过 |
+| AC-09 新求助读取有效状态 | 通过（覆盖补充，非缺陷） | 通过 |
+| 其余 A5 用例 | 3 项因夹具改名失败（`no column named thread_revision` 等），不属产品行为差异 | 全部通过 |
+| 合计 | 16 项：10 通过、6 失败 | **16 项：16 通过、0 失败** |
+
+修复后的完整验证（`apps/teaching`，Node `v24.21.0` + 原锁依赖）：
+
+| 实际命令 | 实际结果 |
+| --- | --- |
+| `npm run typecheck` | 通过（exit 0） |
+| `node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts` | **16 项：16 通过、0 失败、0 跳过**，exit 0 |
+| `node --test --test-reporter=tap tests/review.test.ts` | A4 回归 **51 项全通过** |
+| `node --test --test-concurrency=1 …`（同文件集合） | **443 项：425 通过、1 失败、17 跳过、0 取消**；唯一失败仍是 win32 Linux-only 环境限制；相对基线 427/409/1/17 为 +16 项、+16 通过 |
+| 干净树上 `node tools/a0-review/check.mjs` | 79 文档、1202 内链、`errors=[]`、exit 0（本节写入后复测的计数） |
+| `git diff --check` | 通过（exit 0） |
+
+证据：`acceptance.a5-review-red`（修复前 10/16）、`acceptance.a5-review-targeted`、`acceptance.a5-review-a4`、`acceptance.a5-review-serial`，连同 SHA-256 记入 `acceptance.a5.evidence.json` 的 `reviewResponse` 段。
+
+### 10.7 仍未处理与边界
+
+本次未改规格、未关闭任何检查、未改超时阈值或平台门禁。课程+学生失效宽度、`submission_review` 在已 `reviewed` 尝试上追加评价修订的产品确认、C 对 `readFeedback` 事务形参的复核，仍按 §8.6 保留，不据本次审查代签。真实模型、真实节点、浏览器与真人验收仍未执行。
 
 待获授权维护者汇总：批准后的实际代码位置、受控接口签名、验证命令与结果、失败/跳过/未执行项，按 A4 先例汇总至 MVP_SPEC 第 10 节与 TECH 对应契约段；本任务不自行修改受保护基线。
