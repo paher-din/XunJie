@@ -7,9 +7,14 @@ import { reviewInTransaction } from './decisions.ts';
 import { resolveEvidence } from './evidence.ts';
 import { claimAnalysisInTransaction,completeAnalysisInTransaction,originalAnalysis } from './analysis.ts';
 import { readAnalysisResultInTransaction } from '../records/analysis.ts';
+import { appendFeedbackInTransaction,feedbackTargetResolver,planReopenInTransaction,readFeedbackView,
+  readRecoveryFeedback,reviewContextInTransaction,type ReopenPlan } from './feedback.ts';
+// The grant row's foreign key names the authorizing receipt, so C4's write runs from the command's `afterCommit`.
+import { writeReopenGrant } from '../workspace/submissions.ts';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { contextInput,contextResultSchema,id,type AnalysisVersions,queueAnalysisInput,queuedAnalysisSchema,analysisResultSchema,analysisCompleteInput,reviewInput,reviewResultSchema,disputeInput,disputeResultSchema } from '../../contracts/review/index.ts';
+import { contextInput,contextResultSchema,id,type AnalysisVersions,queueAnalysisInput,queuedAnalysisSchema,analysisResultSchema,analysisCompleteInput,reviewInput,reviewResultSchema,disputeInput,disputeResultSchema,
+  feedbackInput,reviewContextQuery,feedbackResultSchema,reopenInput,reopenResultSchema } from '../../contracts/review/index.ts';
 import { createTutoringApp,type TutoringAppOptions } from '../tutoring/application.ts';
 import { ApiError,domainError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
@@ -21,7 +26,13 @@ export type ReviewAppOptions = TutoringAppOptions & { review: { versions: Analys
 const params = z.strictObject({ id });
 const key = id.regex(/^[\x21-\x7e]+$/);
 export async function createReviewApp(options: ReviewAppOptions) {
-  const instance = await createTutoringApp({...options,studentHelp: {...options.studentHelp,
+  // A5 owns formal feedback. C4 declares this mount point; without a real record it reports `unavailable` instead of
+  // reconstructing text from hashes or submission rows. The transaction comes from C4's own authorized read.
+  const readFeedback = (tx: Transaction,_request: FastifyRequest,attemptId: string) => {
+    const attempt = readAttempt(tx,attemptId);
+    return readRecoveryFeedback(tx,{courseId: attempt.courseId,studentId: attempt.studentId,attemptId});
+  };
+  const instance = await createTutoringApp({...options,recovery: {readFeedback},studentHelp: {...options.studentHelp,
     readLearnerStateRevision: (tx,scope) => {
       const attempt=readAttempt(tx,scope.attemptId);
       if(attempt.courseId!==scope.courseId || attempt.studentId!==scope.studentId)throw new ApiError('FORBIDDEN');
@@ -39,6 +50,9 @@ export async function createReviewApp(options: ReviewAppOptions) {
     },
   }});
   const { app,access } = instance,now = options.now ?? Date.now;
+  // A5 supplies A4's dispute seam from its own store; an explicit resolver still wins, and an unresolved reference
+  // stays `INVALID_REFERENCE` instead of inventing a formal feedback that was never saved.
+  const feedbackTarget = options.review.feedbackTarget ?? feedbackTargetResolver();
   const generation = (expected: string) => {
     if (!expected || expected !== options.currentGeneration()) throw new ApiError('RECOVERY_REQUIRED');return expected;
   };
@@ -109,8 +123,73 @@ export async function createReviewApp(options: ReviewAppOptions) {
       const previous=readRecordCommand(tx,identity,input,currentGeneration,value=>disputeResultSchema.parse(value));
       if(previous)return {...previous,replayed:true};
       const result = finishRecordCommand(tx,identity,input,currentGeneration,now(),
-        () => disputeInTransaction(tx,scope,input,currentGeneration,new Date(now()).toISOString(),options.review.feedbackTarget),value => disputeResultSchema.parse(value));
+        () => disputeInTransaction(tx,scope,input,currentGeneration,new Date(now()).toISOString(),feedbackTarget),value => disputeResultSchema.parse(value));
       generation(currentGeneration);return {...result,replayed:false};
+    });
+    return {requestId: request.id,data};
+  });
+
+  // A5.1 READ-11. Teacher-only aggregate. It never hands a student the review surface and never hands anyone the
+  // private validation assets or another student's content.
+  app.get('/api/attempts/:id/review-context',request => {
+    const attemptId = parseRequest(params,request.params).id,query = parseRequest(reviewContextQuery,request.query);
+    const data = authorizeAttempt(request,attemptId,'teacher',tx => reviewContextInTransaction(tx,attemptId,options.currentGeneration(),query.submissionId));
+    return {requestId: request.id,data};
+  });
+  // A5.2 READ-14. The student sees the formal feedback about their own attempt and whether a revision permission is
+  // actionable right now; the teacher of the course sees the same shape. An unadopted model draft never appears.
+  app.get('/api/attempts/:id/feedback',request => {
+    const attemptId = parseRequest(params,request.params).id;
+    const data = authorizeAttempt(request,attemptId,undefined,tx => readFeedbackView(tx,attemptScope(tx,attemptId)));
+    return {requestId: request.id,data};
+  });
+  app.post('/api/attempts/:id/feedback',request => {
+    const attemptId = parseRequest(params,request.params).id,input = parseRequest(feedbackInput,request.body);
+    const idempotencyKey = parseRequest(key,request.headers['idempotency-key']);
+    const data = authorizeAttempt(request,attemptId,'teacher',(tx,actor) => {
+      const currentGeneration = generation(input.recoveryGeneration),scope = attemptScope(tx,attemptId);
+      const identity = {actorId: actor.userId,command: 'feedback.save',target: '/api/attempts/'+attemptId+'/feedback',scope,idempotencyKey,recoveryGeneration: currentGeneration};
+      const previous=readRecordCommand(tx,identity,input,currentGeneration,value=>feedbackResultSchema.parse(value));
+      if(previous)return {...previous,replayed:true};
+      const result = finishRecordCommand(tx,identity,input,currentGeneration,now(),
+        () => appendFeedbackInTransaction(tx,scope,actor.userId,input,currentGeneration,new Date(now()).toISOString()),
+        value => feedbackResultSchema.parse(value));
+      generation(currentGeneration);return {...result,replayed:false};
+    });
+    return {requestId: request.id,data};
+  });
+  // A5.3. The teacher saves the revision permission for the latest fixed submission, optionally with the formal
+  // feedback for that same submission in one transaction. C4 owns the guard and the storage; saving the permission
+  // keeps the attempt `reviewed`, and only the student's own resume_revision consumes it.
+  app.post('/api/attempts/:id/reopen',request => {
+    const attemptId = parseRequest(params,request.params).id,input = parseRequest(reopenInput,request.body);
+    const idempotencyKey = parseRequest(key,request.headers['idempotency-key']);
+    const data = authorizeAttempt(request,attemptId,'teacher',(tx,actor) => {
+      const currentGeneration = generation(input.recoveryGeneration),scope = attemptScope(tx,attemptId);
+      const identity = {actorId: actor.userId,command: 'feedback.reopen',target: '/api/attempts/'+attemptId+'/reopen',scope,idempotencyKey,recoveryGeneration: currentGeneration};
+      const previous=readRecordCommand(tx,identity,input,currentGeneration,value=>reopenResultSchema.parse(value));
+      if(previous)return {...previous,replayed:true};
+      let pending: ReopenPlan|undefined,written = false;
+      const timestamp = new Date(now()).toISOString();
+      const result = finishRecordCommand(tx,identity,input,currentGeneration,now(),() => {
+        pending = planReopenInTransaction(tx,scope,actor.userId,input,timestamp);
+        const feedback = input.feedback
+          ? appendFeedbackInTransaction(tx,scope,actor.userId,{...input.feedback},currentGeneration,timestamp,{submissionId: input.submissionId})
+          : undefined;
+        return {grantId: pending.grant.grantId,submissionId: pending.grant.submissionId,
+          attemptRevision: pending.attempt.attemptRevision,status: 'reviewed' as const,
+          supersededGrantIds: pending.superseded.map(row => row.grantId),
+          ...(feedback ? {feedback: {feedbackId: feedback.feedbackId,feedbackRevision: feedback.feedbackRevision}} : {})};
+      },value => reopenResultSchema.parse(value),(receiptId,value) => {
+        // The grant row's foreign key names the authorizing receipt, so it is written once that receipt exists.
+        if(!pending)throw new Error('Missing planned reopen grant.');
+        const granted = writeReopenGrant(tx,pending,receiptId);
+        if(granted.grantId !== value.grantId || granted.submissionId !== value.submissionId
+          || granted.attemptRevision !== value.attemptRevision || granted.status !== value.status)
+          throw new ApiError('PERSISTENCE_UNAVAILABLE');
+        written = true;
+      });
+      generation(currentGeneration);return {...result,replayed:!written};
     });
     return {requestId: request.id,data};
   });
