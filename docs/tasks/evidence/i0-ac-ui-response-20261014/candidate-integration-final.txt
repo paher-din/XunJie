@@ -1,0 +1,16 @@
+✔ real A1/A2 transactions persist double-key ACKs, whole files and original revisions (3817.557909ms)
+✔ late SQL failure rolls back files, Job, Event, Receipt and session activity; CAS and limits reject whole batches (2788.664068ms)
+✔ current ownership and A2 controls guard replay; paused work and capture gaps keep only functional data (4012.916179ms)
+✔ two real processes share the original ACK, and acknowledged state survives process restart (6200.075712ms)
+✔ persistent worker reconciles unknown original IDs after reopen and keeps limited-check diagnostics private (3828.958695ms)
+✔ unknown with no node fact never resubmits; failed result commit recovers the same immutable fact (4267.521302ms)
+✔ A2 pause stops a queued check through the original node cancellation; resume never resurrects it (2878.415254ms)
+﹣ real A1/A2/C1 student chain retains old snapshots, trusted checks, cancellation and ACKs after reopen (0.753013ms) # SKIP
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 28410.196955

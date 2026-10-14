@@ -1,0 +1,142 @@
+{
+  "node": "v24.21.0",
+  "mode": "candidate",
+  "synthetic": true,
+  "productionSourceChanged": false,
+  "modelRequests": 0,
+  "executionNodeRequests": 0,
+  "cases": [
+    {
+      "case": "ready_first_save_activates",
+      "before": {
+        "status": "ready",
+        "attemptRevision": 1,
+        "workspaceRevision": 0,
+        "decisionEpoch": 0
+      },
+      "after": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 1,
+        "decisionEpoch": 0
+      }
+    },
+    {
+      "case": "active_update",
+      "before": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 1,
+        "decisionEpoch": 0
+      },
+      "after": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 2,
+        "decisionEpoch": 0
+      },
+      "documentVersion": 2
+    },
+    {
+      "case": "paused_update",
+      "before": {
+        "status": "paused",
+        "attemptRevision": 2,
+        "workspaceRevision": 1,
+        "decisionEpoch": 0
+      },
+      "after": {
+        "status": "paused",
+        "attemptRevision": 2,
+        "workspaceRevision": 2,
+        "decisionEpoch": 0
+      },
+      "documentVersion": 2
+    },
+    {
+      "case": "assignment_paused_update",
+      "before": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 1,
+        "decisionEpoch": 0
+      },
+      "after": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 2,
+        "decisionEpoch": 0
+      },
+      "documentVersion": 2
+    },
+    {
+      "case": "new_batch_with_identical_body_still_confirms_file_version",
+      "after": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 2,
+        "decisionEpoch": 0
+      },
+      "documentVersion": 2
+    },
+    {
+      "case": "pause_using_control_revision_read_before_file_edit",
+      "control": {
+        "accepted": true,
+        "after": {
+          "status": "paused",
+          "attemptRevision": 3,
+          "workspaceRevision": 2,
+          "decisionEpoch": 1
+        }
+      }
+    },
+    {
+      "case": "real_control_and_workspace_document_conflicts",
+      "staleControlRejected": true,
+      "staleWorkspaceRejected": true,
+      "staleDocumentRejected": true
+    },
+    {
+      "case": "file_recycle_restore_versions",
+      "before": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 1,
+        "decisionEpoch": 0
+      },
+      "after": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 3,
+        "decisionEpoch": 0
+      },
+      "documentVersion": 3
+    },
+    {
+      "case": "normal_http_sqlite_ack_replay_and_control",
+      "before": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 1,
+        "decisionEpoch": 0
+      },
+      "afterEdit": {
+        "status": "active",
+        "attemptRevision": 2,
+        "workspaceRevision": 2,
+        "decisionEpoch": 0
+      },
+      "saveHttp": 200,
+      "replayHttp": 200,
+      "replayPreservesVersions": true,
+      "staleWorkspaceHttp": 409,
+      "pauseUsingPriorControlHttp": 200
+    },
+    {
+      "case": "persistence_same_control_whitelist_and_rollback",
+      "forbiddenMutationsRejected": 6,
+      "originalHeadPreserved": true
+    }
+  ]
+}
