@@ -33,6 +33,11 @@ export interface WorkspaceContext extends WorkspaceIdentity {
 let epochSeq = 0
 let activeGuard: ContextGuard | null = null
 
+/** 退出/会话失效时同步停止当前工作区，不能等 React 卸载后再丢弃 ACK。 */
+export function invalidateWorkspaceContext(): void {
+  activeGuard?.dispose()
+}
+
 /** 领取下一个本机 loadEpoch（单调递增，进程内不回退）。 */
 export function nextLoadEpoch(): number {
   epochSeq += 1

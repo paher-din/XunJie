@@ -15,7 +15,7 @@ export function originalTeachingConsumer(
 ) {
   const tasks=new Map<string,{controller:AbortController;task:Promise<unknown>}>();
   const now=options.now??Date.now;
-  let timer:ReturnType<typeof setTimeout>|undefined,scan:Promise<void>|undefined,started=false;
+  let timer:ReturnType<typeof setTimeout>|undefined,scan:Promise<void>|undefined,started=false,healthy=false;
   async function consume() {
     const jobs=options.db.withTransaction(tx=>tx.all("SELECT course_id,job_id FROM jobs WHERE purpose='student_help'")
       .map(row=>readTeachingJob(tx,String(row.course_id),String(row.job_id))!).filter(Boolean));
@@ -76,10 +76,10 @@ export function originalTeachingConsumer(
     started=true;
     const tick=()=>{
       if(!admission.accepting)return;
-      scan=consume().catch(()=>{service.app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original teaching scan failed.');})
+      scan=consume().then(()=>{healthy=true;}).catch(()=>{healthy=false;service.app.log.error({errorCode:'PERSISTENCE_UNAVAILABLE'},'Original teaching scan failed.');})
         .finally(()=>{scan=undefined;if(admission.accepting)timer=setTimeout(tick,interval);});
     };
     tick();
   }
-  return {consume,start,stopInTransaction,stop};
+  return {consume,start,stopInTransaction,stop,isHealthy:()=>admission.accepting&&started&&healthy};
 }

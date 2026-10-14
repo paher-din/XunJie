@@ -92,3 +92,17 @@ main集成与H4提交为 `5b78684`（保留PR56与main35307e0父提交）、`4a2
 早期原tap日志含测试输出尾空格；第一提交的检查有此新增失败但提交已发生，后续保留原始gzip字节与sha，并仅去掉可读tap的行尾空格，复验通过。不重写/删除第一提交，失败如实记录。
 
 PAHER保留联调宿主 `xunjie-dla-ui-handoff-20261014.service`：同机3444、同35表、原TLS/签名/合成账号、继承main UI构建；模型预算关闭且不读取本轮密钥，不新增自动开机或跨机路由。停止命令：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-handoff-20261014.service`；原3443服务与24表不动。H3代码另在 `dla-h3-source-20261014` 副本验证，不覆盖这个正在运行的旧runner契约宿主。实际存活就绪结果见后续smoke证据，长期在线不作保证。
+
+### 8.1 main 同期 UI 批次接纳
+
+最新main又前进至 `5c8c60ec93e00bc1782a534a88b696ae98c76c37`（PR64/66的正式会话、保存恢复和C运行UI）。本轮正常merge接纳；已读其本人任务依据/写集与真实验收边界，只处理 app.ts/i0.ts/i0-readiness.test.ts 三处冲突，UI源码原样接纳、不新增页面设计。main的void checkReady与PR56 boolean checkReadiness使用同一个健康路由兼容，双hook同时装配明确拒绝，防止另一hook绕过依赖故障；I0消费者健康同时覆盖原运行扫描和辅导扫描。保留PR56的HDLprobe、共用bootstrap/静态/关停、B原Job与唯一独立辅导调度，不把main旧monolithic宿主覆盖回来。latest main新增的预算关闭也能ready回归原样保留。
+
+新UI npm run build通过（既有大chunk警告）、34文件464单元测试全部通过；teaching最新类型/构建通过，受影响宿主/权限/C4/HDL/H4专项首轮65/65通过。随后补void/boolean互斥适配反例的最终专项结果另列，不累计。全部510与最新main专项属于不同指纹/层级，分别留证；本轮没有重跑作者浏览器、真实模型、负载/性能或真人。
+
+现场最新 [smoke原结果](evidence/dla-continuation-20261014/ui-host-smoke-first.json)：六次严格TLSGET，3444 live/ready/静态均200，3443 live/静态200、ready503，联合“全部200”判据失败。保留此失败，不更改原3443服务或声称全现场通过；本轮3444独立就绪可交UI。原第三轮401的根因仍未确定；最终真实/离线验证通过不反写其失败。
+
+最新main融合最终66/66专项通过、0失败/跳过，包含唯一健康路由兼容反例和main新增I0预算关闭/扫描健康用例；[原日志](evidence/dla-main-latest-20261014/main-latest-final.tap)。UI的[最新构建](evidence/dla-main-latest-20261014/student-latest-build.txt)与[464项单元测试](evidence/dla-main-latest-20261014/student-latest-tests.txt)分别保留。H3最后17/17专项及72/69/3联合回归见[核验清单](evidence/dla-h3-kernel-20261014/verification.json)，不是跨批累计统计。
+
+原3444临时host已正常停止；切至保留新副本的 `xunjie-dla-ui-integrated-20261014.service`，相同原35表/3444/TLS/签名/账号、最新main继承UI dist与应用服务。模型预算继续关闭，不读本轮key，runner节点仍原获准sourceHash/镜像，**应用源码换版不是H3节点部署**。严格TLS三次GET的 [最终smoke](evidence/dla-continuation-20261014/ui-host-integrated-smoke.json)均200；未改系统信任/旧3443/24表，也没有浏览器验收。
+
+当前停止命令：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-integrated-20261014.service`。回滚可停止当前unit，再沿§8原serve-hdl argv在旧副本启动；目录/库/原对象保留，恢复不重放已结束模型批次。WSL本轮保活是有界进程，不承诺自动开机或长期在线。

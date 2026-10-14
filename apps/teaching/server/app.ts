@@ -10,9 +10,12 @@ export interface AppOptions {
   https?:Pick<ServerOptions,'key'|'cert'>;
   checkReadiness?:()=>boolean|Promise<boolean>;
   logDestination?: { write(message: string): void };
+  // Current main exposes a throwing void hook; PR56 callers retain their boolean hook during integration.
+  checkReady?: () => void | Promise<void>;
 }
 
 export function createApp(options: AppOptions = {}) {
+  if(options.checkReadiness&&options.checkReady)throw new ApiError('INVALID_CONFIGURATION');
   const app = Fastify({
     ...(options.https ? {https:options.https} : {}),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } },
@@ -48,8 +51,11 @@ export function createApp(options: AppOptions = {}) {
 
   app.get('/health/ready', async (request,reply) => {
     reply.header('cache-control','no-store');
-    if(await options.checkReadiness?.())return {requestId:request.id,data:{status:'ready'}};
-    throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    if(options.checkReadiness){
+      if(!await options.checkReadiness())throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    }else if(options.checkReady)await options.checkReady();
+    else throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    return {requestId:request.id,data:{status:'ready'}};
   });
 
   app.addHook('onSend', async (request, reply, payload) => {

@@ -3,7 +3,7 @@ import {request} from 'node:https';
 import assert from 'node:assert/strict';
 const cert=readFileSync('/opt/xunjie-runner/tests/i0-entry-20261013-01/server.cert.pem');
 const samples=[];
-for(const port of [3443,3444])for(const path of ['/health/live','/health/ready','/']){
+for(const port of process.argv[3]==='--dl-only'?[3444]:[3443,3444])for(const path of ['/health/live','/health/ready','/']){
   const result=await new Promise((resolve,reject)=>{
     const req=request(`https://127.0.0.1:${port}${path}`,{ca:cert,rejectUnauthorized:true},response=>{
       const authorized=response.socket.authorized;let text='';response.setEncoding('utf8');response.on('data',chunk=>{text+=chunk;});

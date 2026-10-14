@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-10-14T12:39:19.665Z",
+  "passed": true,
+  "samples": [
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/health/live",
+      "status": 200,
+      "authorized": true,
+      "body": {
+        "requestId": "e8a06a8b-cf5c-4880-aba3-e674bb66df88",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/health/ready",
+      "status": 200,
+      "authorized": true,
+      "cacheControl": "no-store",
+      "body": {
+        "requestId": "4500851f-2d4c-4d66-b3c6-1c72e45ea013",
+        "data": {
+          "status": "ready"
+        }
+      }
+    },
+    {
+      "origin": "https://127.0.0.1:3444",
+      "path": "/",
+      "status": 200,
+      "authorized": true,
+      "htmlEntry": true
+    }
+  ],
+  "modelRequests": 0,
+  "browserAcceptance": false
+}

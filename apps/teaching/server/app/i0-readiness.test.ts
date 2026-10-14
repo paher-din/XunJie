@@ -149,6 +149,30 @@ test('health queries time out without accepting late runner success', { timeout:
   } finally { release(readyResponse()); await service.close(); await f.close(); }
 });
 
+test('disabled model calls do not block readiness or authorized session access', async () => {
+  const f = await fixture(undefined, { teaching: true }); let calls = 0, scanFailed = false;
+  const db: SyntheticDatabase = { ...f.db, withTransaction(work) {
+    return f.db.withTransaction(tx => work({ ...tx, all(sql, ...args) {
+      if (scanFailed && sql.includes("WHERE purpose='student_help'")) throw new Error('Synthetic teaching scan unavailable');
+      return tx.all(sql, ...args);
+    } }));
+  } };
+  const service = await createI0App({ ...options(f, async () => readyResponse(), db), tutoring: {
+    studentHelp: { versions: { modelConfig: 'model-v1', prompt: 'prompt-v1', schema: 'schema-v1', policy: 'help-v1' },
+      budgetAvailable: () => false }, provider: { generate: async () => { calls++; throw new Error('Unavailable model'); } },
+  } });
+  try {
+    service.startConsumer(); await untilReady(service);
+    const student = await f.login();
+    const session = await service.app.inject({ url: '/api/session', headers: student });
+    assert.equal(session.statusCode, 200, session.body);
+    scanFailed = true; await delay(120);
+    assert.equal((await service.app.inject({ url: '/health/ready' })).statusCode, 503);
+    scanFailed = false; await untilReady(service);
+    assert.equal(calls, 0);
+  } finally { scanFailed = false; await service.close(); await f.close(); }
+});
+
 test('a changed recovery generation during a readiness query requires a fresh probe', async () => {
   const f = await fixture(); let block = false;
   let release!: (value: unknown) => void, entered!: () => void;

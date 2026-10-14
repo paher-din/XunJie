@@ -68,10 +68,28 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 
 真实模式沿 `/#/task/<assignmentId>` 获准分配深链，读取当前 Session、授权 bootstrap、固定活动与公开材料，
 在同一工作区接入确认作品和辅导。载入只读，创建 Attempt、保存、冻结和求助仍需明确操作；
-缺登录、权限或可信代际时显示不可用条件，不硬编码正式 ID、不遍历猜测、不回退准备数据。
+未登录时在原深链显示账号/密码表单，登录成功继续读取获准任务；首页也可登录，之后使用课程提供的任务链接。
+会话失效后重新登录同账号可恢复该账号的本机草稿；首页账号菜单及工作区「退出」实际结束服务端会话。
+退出未确认时先重试退出，不能将网络失败显示为成功；账号改变立即隔离旧展示与在途响应。
+密码不进入本机存储；身份/CSRF 只取服务端 Session。登录/会话请求等待上限15秒，失败不自动重试。
+缺权限或可信代际时显示不可用条件，不硬编码正式 ID、不遍历猜测、不回退准备数据。
 分配列表和跨设备 Attempt 发现不在本批范围；同一浏览器的已有原请求与引用仍沿确认库恢复。
 正常宿主须由维护者提供受控 HTTPS、现有配置/数据库与节点来源，接线与隔离服务证据见
 [真实入口记录](../../docs/tasks/I0-B_REAL_ENTRY.md)和[正常宿主组合](../../docs/tasks/I0-B_HOST_COMPOSITION.md)。
+
+真实 Core 运行复用现有顶栏与参数面板：初始化及每次明确新运行先核同源 `/health/ready`，失败只禁新运行，编辑/保存、已有结果、停止和原请求核对仍可使用。正常宿主再核当前权限、代际和固定 profile；健康状态不能替代运行命令的授权。停止受理后等原 Job 确认终止，执行未知不自动补跑；历史参数只显示经回执关联的本机原请求，完整公开产物核字节/摘要后才能下载，读取不写回作品。实现、依赖接纳及验证边界见 [UI-REAL-09/10/11](../../docs/tasks/I0-UI_REAL_RUN_CONTROL_HISTORY.md)。
+
+本批专项先 `npm run build`，沿上面的 `XUNJIE_E2E_SERVICE_NODE`、Chrome 和独立端口条件执行：
+`npm run test:e2e -- runService.spec.ts runControlService.spec.ts runHistoryService.spec.ts --workers=2`。
+专项以实际登录表单、正常 HTTPS/SQLite/原消费者验证前端；执行器仅为隔离私有 transport，不编译或运行真实 C，不计节点隔离、生产恢复或课程检查通过。缺服务运行时的 skipped 不计通过。
+
+本批会话入口的实现/失败/实际 HTTPS 合成验证见 [I0-UI 登录与会话](../../docs/tasks/I0-UI_AUTH_SESSION_ENTRY.md)。
+运行浏览器专项：`npm run test:e2e -- sessionEntry.spec.ts sessionService.spec.ts real-mode.spec.ts`。
+`sessionEntry` 为前端协议故障回放；`sessionService` 须设置 `XUNJIE_E2E_SERVICE_NODE` 指向已有教学 Node 24.21.0，
+沿原隔离宿主使用正常 dist、HTTPS/SQLite 和两个合成账号；先 `npm run build`。Windows 沿已有 Ubuntu WSL 运行，
+变量为该环境可执行路径；缺该条件时专项明确 skipped，不计通过。表单凭据仅私有内存/stdin，专项关闭 trace。
+临时自签 TLS 只在测试 context 忽略证书错误，不改变正常浏览器信任；验证关闭测试连接后核宿主退出，
+原工厂的合成数据库按既有审计边界保留。此验证不连接真实学生、执行节点或供应商。
 
 ## I0-A 准备场景
 
@@ -90,8 +108,7 @@ C / TextScope 活动，**不是正式 Assignment**，不写入学习记录。
   已确认实例被恢复移除时，其草稿仍可打开，不能自动当新文件补发。完整比较/选择界面属于 04A。
 - 冻结后进入顶栏「Core 运行」，明确选择快照、C 入口和输入文件，使用 stats/find/top 并点击「运行此快照」。
 - 运行中可明确“停止此运行”。停止受理后仍等待原 Job 的 `cancelled` 等权威终态；断线不显示已停。原运行/停止请求未知时主动“核对原运行请求”，只重放同代际冻结原命令，表单修改不改变原正文；已有回执只读原 Job/Run，旧代际不换键补发。实现与真实交接边界见 [06A](../../docs/tasks/I0_UI_06A_RUN_CONTROL.md)。
-  06 准备 fixture 仅返回合成状态与诊断，不编译/执行 C、不连接节点或模型；真实服务/readiness 未交接，
-  见 [06 交付记录](../../docs/tasks/I0_UI_06_RUN_RESULTS.md)。
+  06 准备 fixture 仅返回合成状态与诊断，不编译/执行 C、不连接节点或模型；原准备交付事实见 [06 交付记录](../../docs/tasks/I0_UI_06_RUN_RESULTS.md)，较新的真实接线与分层证据见 [UI-REAL-09/10/11](../../docs/tasks/I0-UI_REAL_RUN_CONTROL_HISTORY.md)。
 - 运行中的改稿只进入当前草稿；结果绑定旧快照。刷新只读已有结果，本机原请求参数标来源，另一浏览器
   缺缓存显示“历史运行参数不可回取”。ACK 丢失保留原请求并阻止重复运行，保存重试不处理运行命令；
   未知核对/取消已由 [06A](../../docs/tasks/I0_UI_06A_RUN_CONTROL.md) 接入。

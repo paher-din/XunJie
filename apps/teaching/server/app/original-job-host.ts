@@ -26,7 +26,7 @@ export function guardHostTransport<Command extends {op:string}>(
 type OriginalService = Pick<Awaited<ReturnType<typeof createWorkspaceApp>>, 'app'|'access'|'workspace'>;
 type HostOptions = Pick<WorkspaceAppOptions,'db'|'currentGeneration'|'runner'> & {staticDirectory?:string;consumerIntervalMs?:number};
 type ExecutionHooks = {admission:HostAdmission;consumeAdditional?:()=>Promise<void>;
-  startAdditional?:(interval:number)=>void;stopInTransaction?:(tx:Transaction)=>void;stopAdditional?:()=>Promise<void>;reconcile?:()=>Promise<void>};
+  startAdditional?:(interval:number)=>void;additionalReady?:()=>boolean;stopInTransaction?:(tx:Transaction)=>void;stopAdditional?:()=>Promise<void>;reconcile?:()=>Promise<void>};
 
 // I0 and DL-A wrap their original business factories in the same host; only execution reconciliation differs.
 export function attachOriginalJobHost(service:OriginalService,options:HostOptions,hooks:ExecutionHooks) {
@@ -37,7 +37,7 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
   const interval=options.consumerIntervalMs??250;
   if(!Number.isInteger(interval)||interval<50||interval>10000) throw new ApiError('INVALID_CONFIGURATION');
   function assertHostReady() {
-    if(!admission.accepting||!started||!runScanHealthy)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+    if(!admission.accepting||!started||!runScanHealthy||hooks.additionalReady&&!hooks.additionalReady())throw new ApiError('DEPENDENCY_UNAVAILABLE');
   }
   function checkDatabase() {
     try {options.db.withTransaction(tx=>tx.get('SELECT 1 AS available'));}

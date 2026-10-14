@@ -45,3 +45,7 @@ INVALID_REFERENCE=422、STATE_CONFLICT/VERSION_CONFLICT=409、FORBIDDEN=403、UN
 ```
 
 当前 UI 的数字逻辑中心仍有静态代码/模拟板卡/模拟构建路径，尚未接入上述真实链路；源码定位见 `apps/student/src/components/workspace/CenterToolArea.tsx`。沿成员现有工程接入，不另建替代界面。UI验收记录：真实确认版本→失败诊断→显式选中对象求助→真实B/C3正文展示及回执→学生自行修正→新构建/显式装载→相同输入的真实输出改变；另验X/Z、pending/停止、旧版本提示和模型不可用仍可操作。浏览器验收当前未执行，UI回交自己的实际证据即可；不重跑本包已消费的模型批次。
+
+2026-10-14后续接纳main@5c8c60e的正式登录/保存恢复/C运行UI批次；UI构建与464项单元测试通过，原作者浏览器证据保持其批次归属，本轮未重复浏览器验收。现场只读smoke发现3443的live/静态200、ready503；3444的live/ready/静态均200且严格TLS通过。原3443由其他批次维护，本轮不替它更换运行源或把历史ready200当当前。3444联调按本轮保留库/获准合成账号/现有信任通道使用；页面真正渲染HDL仍需上述UI接线。
+
+当前3444宿主unit是 `xunjie-dla-ui-integrated-20261014.service`，使用保留新源码/最新UI产物及原35表，不读密钥/不触发模型。停止：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-integrated-20261014.service`。新宿主[严格TLS最终smoke](evidence/dla-continuation-20261014/ui-host-integrated-smoke.json)三项200；此为静态/健康检查，页面登录/HDL操作/帮助展示仍由UI实际浏览器验收。新H3 runner源码已提交，但节点未升级，本批UI继续消费原HDL构建/板卡/Trace协议，不等待H3。

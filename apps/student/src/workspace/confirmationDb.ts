@@ -163,7 +163,10 @@ export const confirmationRepository = {
       reads(tx, [['metadata', referenceKey(c)]], safe, ([value]) => {
         const ref = value as RefRecord | undefined
         const changed = !!ref && (ref.context.trustedRecoveryGeneration !== c.trustedRecoveryGeneration || ref.context.preparationEpoch !== c.preparationEpoch)
-        result({ attemptId: changed ? null : ref?.attemptId ?? null, changed })
+        // A real bootstrap supplies the authority, but no Attempt discovery. Keep the
+        // existing reference only as a read candidate; verifyHead must authorize it.
+        // Preparation restarts deliberately create a new synthetic Attempt instead.
+        result({ attemptId: changed && c.mode === 'preparation' ? null : ref?.attemptId ?? null, changed })
       }))
   },
   /** 仅在准备初始化受信重读后接受新进程；保留旧作品和命令，围住迟到旧 ACK/GET。 */
@@ -303,11 +306,27 @@ export const confirmationRepository = {
           candidates: (candidates as LocalConfirmationState['candidates']).filter(r => r.clientFileKey.startsWith(prefix)) })
       }))
   },
-  async installHead(c: CommandContext, incoming: ConfirmedWorkspace, valid: () => boolean): Promise<ConfirmedWorkspace> {
-    return transaction(await openWorkspaceDb(), ['metadata'], 'readwrite', (tx, result, safe) =>
-      reads(tx, [['metadata', headKey(c)], ['metadata', referenceKey(c)]], safe, ([value, r]) => {
+  async installHead(c: CommandContext, incoming: ConfirmedWorkspace, valid: () => boolean,
+    currentAuthority?: () => Promise<boolean>): Promise<ConfirmedWorkspace> {
+    const db = await openWorkspaceDb()
+    const observed = await transaction<RefRecord | undefined>(db, ['metadata'], 'readonly', (tx, result, safe) =>
+      reads(tx, [['metadata', referenceKey(c)]], safe, ([value]) => result(value as RefRecord | undefined)))
+    const switchingAuthority = c.mode === 'real' && !!observed && !sameAuthority(observed.context, c)
+    // Opaque generations cannot be ordered. A delayed, never-installed bootstrap
+    // must not retire another tab's newer authority merely because its GET succeeds.
+    if (switchingAuthority && (!valid() || !currentAuthority || !await currentAuthority())) {
+      throw new Error('受信入口已变化，请重新读取')
+    }
+    return transaction(db, ['metadata', 'outbox'], 'readwrite', (tx, result, safe) =>
+      reads(tx, [['metadata', headKey(c)], ['metadata', referenceKey(c)], ['outbox', null]], safe, ([value, r, commands]) => {
         if (!valid()) throw new Error('工作区上下文已失效')
         const old = value as HeadRecord | undefined, ref = r as RefRecord | undefined
+        if (c.mode === 'real' && ref && !sameAuthority(ref.context, c) && !switchingAuthority) {
+          throw new Error('另一标签已建立新的受信引用，需要重新读取')
+        }
+        if (switchingAuthority && JSON.stringify(ref) !== JSON.stringify(observed)) {
+          throw new Error('另一标签已更新受信引用，需要重新读取')
+        }
         const retiredGenerations = [...new Set([...(old?.retiredGenerations ?? []), ...(ref?.retiredGenerations ?? [])])]
         if (retiredGenerations.includes(generationKey(c))) throw new Error('此代际已被另一标签的权威读取替代，需要重新读取')
         const retired = [...new Set([...retiredGenerations,
@@ -316,6 +335,15 @@ export const confirmationRepository = {
         const workspace = chooseHead(old, c, incoming)
         tx.objectStore('metadata').put({ key: headKey(c), context: c, workspace, retiredGenerations: retired } satisfies HeadRecord)
         tx.objectStore('metadata').put({ key: referenceKey(c), context: c, attemptId: c.attemptId!, retiredGenerations: retired } satisfies RefRecord)
+        // A verified reread settles explicitly rejected old-generation saves. Keep
+        // their input/rejection as history; unknown commands still need comparison.
+        for (const row of commands as OutboxRecord[]) {
+          if (c.mode === 'real' && row.state === 'pending' && row.rejected?.code === 'RECOVERY_REQUIRED' &&
+            ['workspace.sync', 'snapshot.create'].includes(row.kind) && sameOwner(row.context, c) &&
+            row.context.attemptId === c.attemptId && !sameGeneration(row.context, c)) {
+            tx.objectStore('outbox').put({ ...row, state: 'historical', lease: undefined })
+          }
+        }
         result(workspace)
       }))
   },

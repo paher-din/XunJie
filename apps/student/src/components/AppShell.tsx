@@ -22,6 +22,9 @@ import { ThemeMenu } from './ThemeMenu'
 import { XunjieLogo } from '../brand/XunjieLogo'
 import { useAccount } from '../lib/account'
 import { THEME_OPTIONS, useTheme } from '../lib/theme'
+import { useSession } from './SessionEntry'
+import { PREP_BUILD } from '../workspace/mode'
+import { logoutSession } from '../workspace/session'
 
 /** 历史会话按单一时间流分组：今天 / 昨天 / 更早（2026-10-11 由四档收成三档——「近 7 天」并进
     「更早」：最近两档已经由今天、昨天担起来，2 天以前统一算更早，不再切一个 7 天的口子）。 */
@@ -125,6 +128,7 @@ export default function AppShell() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const account = useAccount()
+  const session = useSession()
   // 外观偏好（lib/theme.ts）：按钮图标取**实际生效**的深浅——跟随系统时也要与画面一致，
   // 提示里同时标出偏好与当前值（如「跟随系统（当前深色）」）
   const { preference: themePreference, resolved: themeResolved } = useTheme()
@@ -715,7 +719,8 @@ export default function AppShell() {
     },
     onLogout: () => {
       setAccountMenu(false)
-      showToast('退出登录将在后续版本提供')
+      if (PREP_BUILD) showToast('准备场景请从工作区退出合成会话')
+      else void logoutSession()
     },
   }
 
@@ -750,7 +755,7 @@ export default function AppShell() {
           <div className="account-wrap" ref={accountRef}>
             <button
               className={'account-pill' + (accountMenu ? ' open' : '')}
-              title="学生 · 本地学习空间"
+              title={!PREP_BUILD && session.session ? '课程账号 · 学习空间' : '学生 · 本地学习空间'}
               aria-haspopup="menu"
               aria-expanded={accountMenu}
               onClick={() => {
@@ -759,7 +764,7 @@ export default function AppShell() {
               }}
             >
               <AccountAvatar />
-              <span className="account-name">{account.name}</span>
+              <span className="account-name">{!PREP_BUILD && session.session ? session.session.userId : account.name}</span>
               <Icon name="sort-vertical" size={14} className="account-chev" />
             </button>
             <AccountMenu

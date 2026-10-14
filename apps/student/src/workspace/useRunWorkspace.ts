@@ -3,6 +3,7 @@ import type { ConfirmationWorkspace } from './confirmationWorkspace'
 import { RunWorkspace, emptyRunState, type RunState } from './runWorkspace'
 import { displayRun, settledJob } from './runResults'
 import type { WorkspaceInit } from './init'
+import { apiGet } from './http'
 
 /** 一个确认上下文一个运行客户端；不创建第二份 head/快照状态或新的 ContextGuard。 */
 export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: WorkspaceInit | null) {
@@ -16,9 +17,16 @@ export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: W
     setState(emptyRunState())
     if (!workspace || !context?.attemptId || init?.kind !== 'ready') { setClient(null); return }
     const current = new RunWorkspace(workspace, {
-      // 当前真实 H-04 尚未交接；不能把 activity profile 或合成配置等同于 runtime readiness。
       verified: context.mode === 'preparation' && init.prepContext?.capabilities.run === true,
       runtimeProfileVersion: init.activity.runtimeProfileVersionId, recoveryGeneration: context.trustedRecoveryGeneration,
+      ...(context.mode === 'real' ? { read: async () => {
+        // 健康只给宿主整体就绪；绑定已授权初始化的身份/代际/profile，不另从 Activity 推定 ready。
+        if (init.session.userId !== context.userId || init.assignment.assignmentId !== context.assignmentId ||
+          init.activity.activityVersionId !== context.activityVersionId || init.activity.courseId !== context.courseId ||
+          init.context.trustedRecoveryGeneration !== context.trustedRecoveryGeneration) return false
+        const value = await apiGet<unknown>('/health/ready', { mode: 'real', absolutePath: '/health/ready', timeoutMs: 6500 })
+        return !!value && typeof value === 'object' && 'status' in value && value.status === 'ready'
+      } } : {}),
     })
     setClient(current)
     const unsubscribe = current.subscribe(setState)
