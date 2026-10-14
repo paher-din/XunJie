@@ -31,7 +31,7 @@ export function TextScopeBodyPane({ init, onReload }: { init: WorkspaceInit | nu
   return (
     <div className="ts-pane">
       <header className="ts-pane-head">
-        <IconText name="code-square" tone="neutral">C 正文区</IconText>
+        <IconText name="code-square" tone="neutral">{activity.execution?.kind === 'hdl_board' ? 'HDL 正文区' : 'C 正文区'}</IconText>
         <span className="ts-pending-pill">{init.assignment.active ? '先开始 Attempt' : '分配已暂停'}</span>
       </header>
       <p className="ts-pane-lead">

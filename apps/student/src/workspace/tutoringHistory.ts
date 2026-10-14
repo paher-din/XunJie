@@ -3,6 +3,7 @@ import { pathProblem } from '../lib/projectFiles'
 import { tutorActions } from './tutoringEvents'
 import type { CommandContext } from './frozenCommand'
 import type { TutorHistory, TutorHistoryAction, TutorHistoryQuestion, TutorHistoryReply, TutorSource } from './tutoringContracts'
+import { verifyTutorHdlBasis, verifyTutorHdlSelection, verifyTutorHdlObject, sameTutorHdlSelection } from './tutoringHdl'
 
 export const emptyTutorHistory = ():TutorHistory => ({questions:[],entries:[]})
 function fail():never { throw new Error('教学历史字段、归属或原始关联不完整') }
@@ -55,10 +56,11 @@ function objectRef(v:unknown,c:CommandContext) {
   } else for(const key of keys)requiredId(r[key])
 }
 function basis(v:unknown,c:CommandContext) {
-  const r=shape(v,['attemptRevision','decisionEpoch','captureRevision','relatedStateRevision','objectRef','inputRefs','assistanceRefs','coverageRefs'])
+  const r=shape(v,['attemptRevision','decisionEpoch','captureRevision','relatedStateRevision','objectRef','hdl','inputRefs','assistanceRefs','coverageRefs'])
   revision(r.attemptRevision,1);for(const k of ['decisionEpoch','captureRevision','relatedStateRevision'])revision(r[k])
   for(const k of ['inputRefs','assistanceRefs','coverageRefs'])strings(r[k],true)
   if(r.objectRef!==undefined)objectRef(r.objectRef,c)
+  if(Object.hasOwn(r,'hdl')) {const h=verifyTutorHdlBasis(r.hdl);verifyTutorHdlObject(h,r.objectRef as TutorSource['basis']['objectRef'])}
 }
 const sourceFields = ['scope','jobId','messageId','generation','targetVersions','basis'] as const
 function freezeSource<T>(value:T):T {
@@ -79,11 +81,12 @@ export function verifyTutorSource(payload:unknown,c:CommandContext,epoch:number)
     scope(source.scope,c);versions(source.targetVersions,c)
     requiredId(source.jobId);requiredId(source.messageId);requiredId(source.generation)
     if(source.generation!==c.trustedRecoveryGeneration)fail()
-    const b=shape(source.basis,['attemptRevision','decisionEpoch','captureRevision','relatedStateRevision','objectRef'])
+    const b=shape(source.basis,['attemptRevision','decisionEpoch','captureRevision','relatedStateRevision','objectRef','hdl'])
     revision(b.attemptRevision,1)
     for(const key of ['decisionEpoch','captureRevision','relatedStateRevision'])revision(b[key])
     if(b.decisionEpoch!==revision(epoch))fail()
     if(b.objectRef!==undefined)objectRef(b.objectRef,c)
+    if(Object.hasOwn(b,'hdl')) {const h=verifyTutorHdlBasis(b.hdl);verifyTutorHdlObject(h,b.objectRef as TutorSource['basis']['objectRef'])}
     return freezeSource(source as unknown as TutorSource)
   } catch {
     throw new Error('教学消息来源字段、归属或原始关联不完整')
@@ -118,9 +121,13 @@ export async function verifyTutorHistory(value:unknown,c:CommandContext):Promise
     if(m.requestReceiptId!==undefined)requiredId(m.requestReceiptId)
     if(m.resultHash!==undefined)hash(m.resultHash)
     if(m.authorKind==='student') {
-      const e=shape(m.envelope,['kind','question','objectRef','inputRefs','versions'])
+      const e=shape(m.envelope,['kind','question','objectRef','hdlSelection','hdlBasis','inputRefs','versions'])
       if(e.kind!=='student_question'||m.contentHash!==await textHash(text(e.question)))fail()
       strings(e.inputRefs,true);versions(e.versions,c);if(e.objectRef!==undefined)objectRef(e.objectRef,c)
+      if(Object.hasOwn(e,'hdlSelection')) {
+        const selected=verifyTutorHdlSelection(e.hdlSelection);verifyTutorHdlObject(selected,e.objectRef as TutorSource['basis']['objectRef'])
+        if(Object.hasOwn(e,'hdlBasis')&&!sameTutorHdlSelection(selected,verifyTutorHdlBasis(e.hdlBasis)))fail()
+      } else if(Object.hasOwn(e,'hdlBasis'))fail()
       questions.push(m as unknown as TutorHistoryQuestion)
     } else if(m.authorKind==='model') {
       const e=shape(m.envelope,['kind','body','bodyJsonText','versions','usage','calls','elapsedMs','basis'])
@@ -153,6 +160,8 @@ export async function verifyTutorHistory(value:unknown,c:CommandContext):Promise
     const message=replies.get(messageId),question=questions.find(q=>q.jobId===jobId)
     if(!message||message.jobId!==jobId||message.contentHash!==a.contentHash||!same(message.envelope.basis,a.basis)||!same(message.envelope.versions,a.targetVersions))fail()
     if(question&&(!same(question.envelope.versions,a.targetVersions)||question.envelope.objectRef!==undefined&&!same(question.envelope.objectRef,message.envelope.basis.objectRef)))fail()
+    if(question?.envelope.hdlBasis&&!same(question.envelope.hdlBasis,(a.basis as TutorSource['basis']).hdl))fail()
+    if(question?.envelope.hdlSelection&&(a.basis as TutorSource['basis']).hdl&&!sameTutorHdlSelection(question.envelope.hdlSelection,(a.basis as TutorSource['basis']).hdl!))fail()
     if(question?.requestReceiptId&&message.requestReceiptId&&question.requestReceiptId!==message.requestReceiptId)fail()
     const deliveries=new Map<string,Record<string,unknown>>()
     for(const value of a.deliveries) {

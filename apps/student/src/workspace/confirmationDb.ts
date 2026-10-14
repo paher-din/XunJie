@@ -145,6 +145,9 @@ export const confirmationRepository = {
         if (command.kind === 'job.cancel' && (all as OutboxRecord[]).some(r => r.commandKey !== command.commandKey &&
           r.kind === 'job.cancel' && r.state === 'pending' && r.target === command.target &&
           sameOwner(r.context, command.context) && r.context.attemptId === command.context.attemptId)) throw new Error('原停止请求仍需核对')
+        if (command.kind.startsWith('hdl.') && (all as OutboxRecord[]).some(r => r.commandKey !== command.commandKey &&
+          r.kind.startsWith('hdl.') && r.state === 'pending' && sameOwner(r.context, command.context) &&
+          r.context.attemptId === command.context.attemptId)) throw new Error('原 HDL 请求仍需核对，不能创建替代请求。')
         if (!old) tx.objectStore('outbox').put({ ...command, state: 'pending' } satisfies OutboxRecord)
         result(undefined)
       })
@@ -252,19 +255,19 @@ export const confirmationRepository = {
           // STATE_CONFLICT（05）：整批原子、确定没有生效，而且没有可比较或可重放的动作
           // （comparableOutcome 为 false、claim 也拒绝重放）。留在 pending 只会让这条已经了结的
           // 失败在每次刷新时重新变成「未决」状态——事实仍保留在记录的 rejected 字段里。
-          const retired = code === 'STATE_CONFLICT' && row.kind !== 'run.create' && row.kind !== 'job.cancel'
+          const retired = code === 'STATE_CONFLICT' && row.kind !== 'run.create' && row.kind !== 'job.cancel' && !row.kind.startsWith('hdl.')
           tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() },
             ...(retired ? { state: 'historical' as const, lease: undefined } : {}) })
         }
         result(undefined)
       }))
   },
-  /** 06 明确未接受的运行请求保留拒绝事实；未知/键冲突不调用此入口。 */
+  /** C Run / HDL 明确未接受的原请求保留拒绝事实；未知/键冲突不调用此入口。 */
   async rejectRun(key: string, code: ApiErrorCode, owner: string): Promise<void> {
     await transaction<void>(await openWorkspaceDb(), ['outbox'], 'readwrite', (tx, result, safe) =>
       reads(tx, [['outbox', key]], safe, ([value]) => {
         const row = value as OutboxRecord | undefined
-        if (row && (row.kind === 'run.create' || row.kind === 'job.cancel') && !row.receipt && row.lease?.owner === owner) {
+        if (row && (row.kind === 'run.create' || row.kind === 'job.cancel' || row.kind.startsWith('hdl.')) && !row.receipt && row.lease?.owner === owner) {
           tx.objectStore('outbox').put({ ...row, rejected: { code, at: Date.now() }, state: 'historical', lease: undefined })
         }
         result(undefined)

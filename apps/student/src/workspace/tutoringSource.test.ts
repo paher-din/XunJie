@@ -129,6 +129,20 @@ describe('C3 first-delivery immutable source',()=> {
       expect((e as Error).message).toBe('教学消息来源字段、归属或原始关联不完整')
     }
   })
+  it('preserves and freezes the original HDL basis without adding current fields to a legacy projection',()=> {
+    const p=payload();p.basis.objectRef={...code(),snapshotId:'snapshot'}
+    p.basis.hdl={snapshotId:'snapshot',snapshotHash:'a'.repeat(64),buildId:'build',buildStatus:'failed',workspaceRevision:4,buildResultHash:'b'.repeat(64)}
+    const original=verifyTutorSource(p,context,epoch)!
+    expect(original.basis.hdl).toEqual(p.basis.hdl);expect(Object.isFrozen(original.basis.hdl)).toBe(true)
+    p.basis.hdl.workspaceRevision=9;expect(original.basis.hdl!.workspaceRevision).toBe(4)
+    const legacy=payload();expect(verifyTutorSource(legacy,context,epoch)!.basis.hdl).toBeUndefined()
+  })
+  it('rejects an HDL frozen snapshot inconsistent with the original code, and private HDL fields',()=> {
+    const p=payload();p.basis.hdl={snapshotId:'different',snapshotHash:'a'.repeat(64),buildId:'build',buildStatus:'failed'}
+    expect(()=>verifyTutorSource(p,context,epoch)).toThrow()
+    p.basis.hdl.snapshotId='snapshot';(p.basis.hdl as unknown as Record<string,unknown>).privateAnswer='secret'
+    expect(()=>verifyTutorSource(p,context,epoch)).toThrow()
+  })
 })
 
 describe('source identity comparison',()=> {

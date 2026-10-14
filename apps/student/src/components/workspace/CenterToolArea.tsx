@@ -35,10 +35,11 @@ export type { ToolKey }
 /**
  * 中心容器变体。
  * - `digital-logic`（默认）：原数字逻辑演示，静态代码 + 虚拟板 + 波形 + 模拟构建/烧录。
+ * - `digital-logic-real`：真实 HDL 工作区，所有正文和运行状态由页面注入。
  * - `textscope-c`：I0-A 的 C 准备工作区。正文与顶栏运行簇由页面注入，
  *   board / wave 保留为数字逻辑演示并明确标注，不提供模拟构建入口。
  */
-export type CenterVariant = 'digital-logic' | 'textscope-c'
+export type CenterVariant = 'digital-logic' | 'digital-logic-real' | 'textscope-c'
 
 /** 暴露给工作区页面的命令句柄：从收纳 / 会话消息里重开生成卡标签。 */
 export interface CenterToolAreaHandle {
@@ -392,6 +393,8 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   variant = 'digital-logic',
   tools = DIGITAL_LOGIC_TOOLS,
   designBody,
+  boardBody,
+  waveBody,
   runCluster,
 }: {
   taskId: string
@@ -418,6 +421,9 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   tools?: ToolSpec[]
   /** 「设计 / 代码」标签的正文：课程工具包自己给（缺省是数字逻辑的静态代码演示）。 */
   designBody?: ReactNode
+  /** 真实板卡 / 有限波形由业务页面提供，不改变原标签与分屏布局。 */
+  boardBody?: ReactNode
+  waveBody?: ReactNode
   /** 顶栏运行簇内容：状态与操作由学科工具包声明（缺省是虚拟板的状态与烧录）。 */
   runCluster?: ReactNode
 }, ref: React.Ref<CenterToolAreaHandle>) {
@@ -471,6 +477,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   }, [layout, onGenTabsChange])
 
   const isTextScopeC = variant === 'textscope-c'
+  const isRealHdl = variant === 'digital-logic-real'
 
   /** C 变体下 board / wave 仍是数字逻辑演示：加一条明确横幅，避免被当成 C 工具。 */
   function withDemoBanner(node: ReactElement): ReactElement {
@@ -496,8 +503,11 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
         />
       )
     }
-    if (k === 'design') return designBody ?? (isTextScopeC ? null : <EditorPane />)
-    if (k === 'wave') return withDemoBanner(<WavePane />)
+    if (k === 'design') return designBody ?? (isTextScopeC || isRealHdl ? null : <EditorPane />)
+    if (k === 'wave') return waveBody ?? (isRealHdl
+      ? <p className="ws-pane-note">尚未取得真实 HDL 波形。</p> : withDemoBanner(<WavePane />))
+    if (boardBody !== undefined) return boardBody
+    if (isRealHdl) return <p className="ws-pane-note">尚未取得真实 HDL 板卡结果。</p>
     return withDemoBanner(
       <BoardPane
         count={count}
@@ -614,7 +624,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
                 </button>
               </span>
             )}
-            {isTextScopeC ? (
+            {isTextScopeC || isRealHdl ? (
               // C 准备工作区：顶栏运行簇由页面注入（06 接入前是不可用状态，不提供模拟构建/烧录）
               runCluster
             ) : (
