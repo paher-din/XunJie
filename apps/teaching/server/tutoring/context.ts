@@ -457,12 +457,16 @@ function visibleHdlDiagnostic(
     (diagnostic.line ?? 0) <= physicalLineCount(file.text);
   return {
     severity: diagnostic.severity,
-    message: diagnostic.message.slice(0, 1024),
+    message: visibleHdlDiagnosticMessage(diagnostic.message),
     fileId: lineAvailable ? diagnostic.fileId ?? null : null,
     path: lineAvailable ? diagnostic.path ?? null : null,
     line: lineAvailable ? diagnostic.line ?? null : null,
     location: lineAvailable ? "line-only" : "unavailable",
   };
+}
+
+function visibleHdlDiagnosticMessage(message: string): string {
+  return message.replace(/^\/snapshot\/[^:\r\n]+:\d+:\s*/u, "").slice(0, 1024);
 }
 
 function physicalLineCount(text: string): number {

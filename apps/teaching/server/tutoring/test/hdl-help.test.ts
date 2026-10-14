@@ -75,9 +75,10 @@ test("DL-B assembles only bounded authorized build diagnostics and produces cite
   assert.doesNotMatch(outcome.body.content, /module\s+top|assign\s+F/);
 });
 
-test("DL-B preserves an out-of-range diagnostic but withholds its unusable source location", () => {
+test("DL-B preserves an out-of-range diagnostic but withholds its unusable source location", async () => {
   const input = authorizedHdlContext("diagnostic");
   input.hdl!.build.diagnostics[0]!.line = 12;
+  input.hdl!.build.diagnostics[0]!.message = "/snapshot/top.sv:12: Port F expects 4 bits, but the connected expression has 1 bit.";
   const request = assembleStudentHelpRequest(input);
   const buildReference = parsedReference(request, "authorized_hdl_build");
   const diagnostics = buildReference.body.diagnostics as Array<Record<string, unknown>>;
@@ -89,6 +90,26 @@ test("DL-B preserves an out-of-range diagnostic but withholds its unusable sourc
     line: null,
     location: "unavailable",
   }]);
+
+  const provider = new SyntheticProvider([({ untrustedInput }) => {
+    const serialized = JSON.stringify(untrustedInput);
+    assert.doesNotMatch(serialized, /\/snapshot\/top\.sv:12:/);
+    assert.doesNotMatch(serialized, /"line":12/);
+    return {
+      body: helpBody({
+        content: "当前诊断仍可用于核对位宽，但没有可用源码位置；请你自行检查端口声明和连接。",
+        expectedStudentAction: "请你自行定位相关声明和连接，修改后重新构建。",
+        evidenceIds: [buildReference.id],
+      }),
+    };
+  }]);
+  const outcome = await generateStudentHelp(request, {
+    provider,
+    checkCurrent: createStudentHelpCurrentGuard(input, () => currentState(input)),
+    now: () => 2_000,
+  });
+  assert.equal(outcome.outcome, "success");
+  assert.equal(provider.calls.length, 1);
 });
 
 test("DL-B rebuilds signal and trace frames before they reach the provider", async () => {
@@ -170,6 +191,21 @@ test("DL-B bounds a long current trace and exposes truncation instead of claimin
   assert.equal(traceReference.body.locallyTruncated, true);
   assert.equal(traceReference.body.fromSimulationTimePs, "279000");
   assert.equal(traceReference.body.toSimulationTimePs, "310000");
+});
+
+test("DL-B model-visible frames preserve LED bit order and do not invent a reset transition", () => {
+  const request = assembleStudentHelpRequest(authorizedHdlContext("logic"));
+  const signalReference = parsedReference(request, "authorized_hdl_signal_frame");
+  const traceReference = parsedReference(request, "authorized_hdl_trace_summary");
+  const finalFrame = signalReference.body.frame as Record<string, unknown>;
+  const leds = String(finalFrame.leds);
+  const frames = traceReference.body.frames as Array<Record<string, unknown>>;
+
+  assert.equal(leds, "0000000000000010");
+  assert.equal(leds.at(-1), "0", "rightmost character is LED bit0");
+  assert.equal(leds.at(-2), "1", "second character from the right is LED bit1");
+  assert.equal(frames.every((frame) => frame.resetN === "1"), true);
+  assert.deepEqual([...new Set(frames.map((frame) => frame.resetN))], ["1"]);
 });
 
 test("DL-B rejects cross-student, mismatched snapshot/build/session, and stale HDL identities", async (t) => {
