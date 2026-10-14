@@ -1,9 +1,6 @@
 /** Explicit isolated service verification; never imported by the normal startup. */
 import { createInterface } from 'node:readline';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync,readFileSync,rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join,resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { fixture,assigned,command,view,snapshot,submit,markReviewed,origin } from '../workspace/test-support.ts';
@@ -14,11 +11,13 @@ import type { ModelProvider } from '../tutoring/providers.ts';
 import { createBrowserRunner,browserRunnerOutcomes } from './i0-browser-runner.ts';
 
 const protocol=createInterface({input:process.stdin}),lines=protocol[Symbol.asyncIterator]();
-const configuration=z.strictObject({synthetic:z.literal(true),port:z.number().int().min(1).max(65535),password:z.string().min(16).max(128),runs:z.boolean().default(false)});
+const configuration=z.strictObject({synthetic:z.literal(true),port:z.number().int().min(1).max(65535),password:z.string().min(16).max(128),
+  key:z.string().min(256).max(8192),cert:z.string().min(256).max(8192),runs:z.boolean().default(false)});
 const reference=z.string().min(1).max(128);
 const requestId=z.uuid();
 const controlInput=z.union([
   z.strictObject({requestId,kind:z.literal('generation'),value:z.string().max(128)}),
+  z.strictObject({requestId,kind:z.literal('provider'),mode:z.enum(['normal','unavailable'])}),
   z.strictObject({requestId,kind:z.literal('reopen')}),
   z.strictObject({requestId,kind:z.literal('state'),attemptId:reference,state:z.enum(['paused','active','submitted','reviewed'])}),
   z.strictObject({requestId,kind:z.literal('inspect'),attemptId:reference.optional()}),
@@ -32,11 +31,11 @@ const controlInput=z.union([
   z.strictObject({requestId,kind:z.literal('history'),attemptId:reference,
     outcome:z.enum(['report-complete','report-missing','report-incomplete','files-unavailable','check'])}),
 ]);
-let close:(()=>Promise<void>)|undefined,certDirectory:string|undefined;
+let close:(()=>Promise<void>)|undefined;
 try {
   if(process.versions.node!=='24.21.0') throw new Error('Approved teaching runtime required');
   const first=await lines.next();
-  if(first.done||first.value.length>1024) throw new Error('Synthetic IPC input required');
+  if(first.done||first.value.length>20*1024) throw new Error('Synthetic IPC input required');
   const input=configuration.parse(JSON.parse(first.value));
   // Private synthetic fault: observe behavior when the host's wall clock retreats.
   const originalWallClock=Date.now;
@@ -53,12 +52,10 @@ try {
   const otherAssignmentId=String(other.json().data.result.assignments[0].assignmentId);
   const password=await createPasswordRecord(input.password);
   f.db.withTransaction(tx=>tx.run("UPDATE users SET password_hash=?,salt=? WHERE id IN ('student','other')",password.hash,password.salt));
-  certDirectory=mkdtempSync(join(tmpdir(),'xunjie-i0-browser-tls-'));
-  const keyFile=join(certDirectory,'key.pem'),certFile=join(certDirectory,'cert.pem');
-  execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',keyFile,'-out',certFile,
-    '-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1,DNS:localhost','-days','1'],{stdio:'ignore'});
   const base=`https://127.0.0.1:${input.port}`;
+  let providerMode:'normal'|'unavailable'='normal';
   const provider:ModelProvider={generate:async request=> {
+    if(providerMode==='unavailable')throw new Error('Synthetic provider unavailable');
     const refs=request.untrustedInput as {references:Array<{id:string}>};
     return {body:{kind:'student_help',actionType:'hint',content:'隔离合成服务验证：先写出一个边界输入，再自行检查。',
       rationale:'保留学生选择与验证。',expectedStudentAction:'请自行试验边界条件。',
@@ -71,7 +68,7 @@ try {
   const clockEpoch=Math.max(f.timestamp(),originalWallClock()),clockStart=performance.now();
   const currentTime=()=>clockEpoch+Math.floor(performance.now()-clockStart);
   const requests={businessWrites:0,activityReads:0};
-  const https={key:readFileSync(keyFile),cert:readFileSync(certFile)};
+  const https={key:input.key,cert:input.cert};
   async function compose() {
     const service=await createI0App({db:f.db,origin:base,signingSecret:f.signingSecret,currentGeneration:()=>generation,now:currentTime,
       https,staticDirectory:resolve('../student/dist'),consumerIntervalMs:50,
@@ -223,6 +220,7 @@ try {
       let data:unknown;
       switch(control.kind) {
         case 'generation':generation=control.value;data={recoveryGeneration:generation};break;
+        case 'provider':providerMode=control.mode;data={providerMode};break;
         case 'reopen':
           // Close the actual listener/consumer before reopening the same original SQLite file.
           await service.close();await f.reopen();service=await compose();
@@ -258,7 +256,5 @@ try {
 } finally {
   try {await close?.();}catch {process.stderr.write('Isolated I0 browser shutdown failed.\n');process.exitCode=1;}
   protocol.close();
-  if(certDirectory&&resolve(certDirectory).startsWith(join(resolve(tmpdir()),'xunjie-i0-browser-tls-')))
-    rmSync(certDirectory,{recursive:true});
   // The original factory database is retained independently for audit; never deleted.
 }
