@@ -387,4 +387,16 @@ A5.5 用例固定的实际行为（这些是投影规则，不是丢失记录）
 
 证据索引新增第二批记录（见 `acceptance.a5-batch2-*` 与索引的 `batchTwo` 段）。
 
+### 9.3 PR 分支与在 `main` 基础上的复验（2026-10-14）
+
+按负责人「只含 A5 的干净分支」的选择，公开交付使用分支 `codex/a5-feedback-revision`：从 `origin/main`（`eea9623`）新建，cherry-pick 上述五个提交，因此不夹带工作分支上既有、尚未合入的 I0 宿主健康提交 `964abb4`（它改 `server/app.ts`/`server/app/i0.ts`，属另一条工作线，另行交付）。
+
+两份记录的提交号对应如下，树内容逐字相同：工作分支 `e61252f`/`a6503f8`/`f57ef7d`/`f976529`/`bf648c9` ↔ PR 分支 `7e7f19f`/`e4839a5`/`0b6df7a`/`c3a7653`/`d32a5af`；§8.2、§8.4、§9.1 中出现的哈希是工作分支的，PR 分支的等价映射同时记入证据索引 `prBranch` 段。
+
+在新基线上重跑（该树不含 `964abb4`）：`npm run typecheck` exit 0；A5 专项 13/13；`node --test --test-concurrency=1` 同文件集合 **440 项：422 通过、1 失败、17 跳过、0 取消**，唯一失败仍是 `server/workspace/review.test.ts:118` 的 win32 Linux-only 环境限制，与工作分支测量一致（440/422/1/17），说明 A5 不依赖 `964abb4`。
+
+该分支的两次默认并发全集另有失败：`tests/durability.test.ts:8` 15 秒超时、`tests/startup.test.ts` 的两项子进程 5 秒/10 秒超时。这些都是本仓库既有记录中同一台机器挂载盘读写导致的时序抖动（见 [A 推进记录](A_CURRENT_NEXT_STEPS_20261014.md) §8 的同名现象与原生目录对照），串行全集与单独复跑均未复现，两次默认运行也没有共同的额外失败；按实际保留，未回填串行结果，也未改任何超时阈值。
+
+PR 分支的验证记录加入证据索引：`acceptance.a5-pr-branch-full-serial.windows.txt`。
+
 待获授权维护者汇总：批准后的实际代码位置、受控接口签名、验证命令与结果、失败/跳过/未执行项，按 A4 先例汇总至 MVP_SPEC 第 10 节与 TECH 对应契约段；本任务不自行修改受保护基线。

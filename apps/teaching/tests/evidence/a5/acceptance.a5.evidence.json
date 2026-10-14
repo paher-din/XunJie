@@ -297,6 +297,52 @@
     "C/A confirmation of whether the course+student wide invalidation should narrow to one attempt",
     "project-lead confirmation that a submission_review may append a revision after the attempt is reviewed"
   ],
+  "prBranch": {
+    "branch": "codex/a5-feedback-revision, created from origin/main (eea9623) with the five A5 commits cherry-picked so the pull request carries A5 only",
+    "commits": {
+      "feat(a5) batch one": "7e7f19f",
+      "docs(a5) batch one record and evidence": "e4839a5",
+      "docs(a5) second-batch gap check": "0b6df7a",
+      "feat(a5) batch two": "c3a7653",
+      "docs(a5) batch two record": "d32a5af"
+    },
+    "workingBranchEquivalents": {
+      "feat(a5) batch one": "e61252f",
+      "docs(a5) batch one record and evidence": "a6503f8",
+      "docs(a5) second-batch gap check": "f57ef7d",
+      "feat(a5) batch two": "f976529",
+      "docs(a5) batch two record": "bf648c9"
+    },
+    "note": "Identical tree content on both branches; the earlier records cite the working-branch hashes, and this block maps them to the pull-request branch.",
+    "commands": [
+      {
+        "name": "typecheck",
+        "command": "npm run typecheck",
+        "exitCode": 0
+      },
+      {
+        "name": "targeted",
+        "command": "node --test --test-reporter=tap tests/a5-followup.test.ts tests/a5-feedback.test.ts",
+        "exitCode": 0,
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0
+      },
+      {
+        "name": "serialFull",
+        "command": "node --test --test-concurrency=1 --test-reporter=tap <the npm test file set>",
+        "exitCode": 1,
+        "tests": 440,
+        "pass": 422,
+        "fail": 1,
+        "skipped": 17,
+        "cancelled": 0,
+        "evidence": "acceptance.a5-pr-branch-full-serial.windows.txt"
+      }
+    ],
+    "defaultRunFlakes": "Two default-concurrency runs on this branch also hit the machine storage flakes already documented in this repository: tests/durability.test.ts 15s timeout and tests/startup.test.ts subprocess 5s/10s timeouts. Neither reproduces in the serial run, and the only failure common to every run is the unchanged win32 Linux-only RunControl case."
+  },
   "batchTwo": {
     "scope": "A5.4/A5.5: one optional teacher-visible sourceBlueprintId on activityViewSchema plus end-to-end verification; no new route, no schema change, no permission change",
     "commands": [
@@ -343,9 +389,17 @@
     "real execution nodes, Linux isolation, SSH and container gates",
     "socket/TLS, browsers and the real UI",
     "human teacher/student use and teaching-effect verification",
-    "batch-two items are verified in the batchTwo block; real models/nodes, browsers and human use remain unexecuted for both batches"
+    "A5.4 blueprint copy / new activity and A5.5 related follow-up task (second batch)"
   ],
   "files": [
+    {
+      "file": "acceptance.a5-pr-branch-full-serial.windows.txt",
+      "sha256": "15d1463421aafa4e48f73a20202a2bd1dc097ce3dba838f25d9385d143553582",
+      "bytes": 106088,
+      "rawLogSha256": "4a3025879e05b7c6975d5213182ef472d6cc0645e12f14f9dfec5fc64a154157",
+      "rawBytes": 217574,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository/baseline paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are NOT committed as blobs, so rawLogSha256 identifies the local original (UTF-16LE bytes) for this batch only."
+    },
     {
       "file": "acceptance.a5-batch2-targeted.windows.txt",
       "sha256": "b4aecdfbe7e28a59d3465a5ef137ea4b8bfb1c3e6e2c33048bcc7fb27c57f787",
