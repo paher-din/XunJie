@@ -106,3 +106,11 @@ node docs/tasks/evidence/c5-core/verify-real.mjs "$sourceRoot" "$outputFile"
 由paher-din发布 [#63回交](https://github.com/paher-din/XunJie/issues/63#issuecomment-6174566168)，作者/URL/正文回读与准备稿逐字一致。随后按负责人授权关闭#63，API实读 **CLOSED / COMPLETED**，closedAt=`2026-10-14T17:43:01Z`（Asia/Shanghai **2026-10-15 01:43:01**）。关闭的是本次C5核心批次；§3.4浏览器/长测/完整故障/备份/H3/真人后续项不升级为通过。
 
 最后回执提交仅更新本文；后续PR head以实际Git回读为准，不把文档提交当成新实测应用/节点源码。原19文件写集、固定结果/失败证据与manifest不变；生产源码/配置/保护文档/其他任务不改，不删除分支或工作树。公开交付已完成，产品基线/MVP§10仍待授权维护者汇总。
+
+### 4.3 2026-10-15 PR #78 合并授权
+
+负责人后续明确要求“合并pr吧”，本chat对应的证据PR为#78；据此批准将本19文件证据/导航/记录按普通merge合入main，不删除远端分支、不使用强推或管理员旁路。§4.2“尚未合并”保留其交付时点；最终mergedAt/mergeCommit由PR实际回执核实。
+
+合并前实读head仍为9a89aa4，19文件写集一致、Open/非Draft/MERGEABLE/CLEAN；未报告CI检查，无已提交的变更请求。Copilot在0f347c0上的COMMENTED记录说明请求者review配额耗尽，未完成审查；不将其称为审查通过或自动审批拒绝。源码/证据没有新改动，不重复已完成真实业务测试；合并树文档/空白及证据hash核对后执行。
+
+本轮两次fetch遇Git传输connection reset，失败保留；GitHub/远端main实读为 `0f24605654f923cf41927d3fb4e2c48219a8d585`，该准确commit已在本机，未因fetch失败使用猜测版本。以此main与9a89aa4的 `git merge-tree --write-tree` 得到无冲突树 `0037777843cef36b1d60e0e253f458eac77410ad`。Windows tar.exe将中文文件名解成乱码导致7条missing document；同一原始归档在新WSL目录按UTF-8展开后，合并树静态114文档/1763内链/errors=[]。未改正文、路径引用或关闭检查迁就错误，两个临时副本/归档均保留。C5分支静态109文档/1778内链、差异空白及16项证据hash也通过；原业务实测结果保持其固定版本。
