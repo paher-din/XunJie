@@ -158,3 +158,9 @@ PAHER只读核查：原3443为xunjie-i0-entry-recovered-20261014/9fa76ad应用�
 固定源3443再次正常登录/read-only回查：90秒87次Session均200、墙钟倒退0、原深链和确认作品/快照/Run引用保持，不代理学生编辑/保存/运行/提交。LastSyncError2仍保留，不将短窗口无倒退表述为Windows时间全面修复。真实静态137个允许文件逐HTTP byte/hash匹配、6个JSON/许可证按已有MIME契约400拒绝；初始143全200期待的失败保留，相关JSON是Vite编译期import，未修改白名单或关闭产品检查。
 
 一次完整回交材料为 [正式现场接线](DLA_PR67_RUNTIME_HANDOFF_20261014.md)，包含固定源/包摘要、143文件清单、原SFTP领取与指定synthetic-i0-student-a加密领取方式、原深链、current ready/C1分别结果、停止/回退、68/68组合与工具结果、失败/未执行。Robert须更新自己本机gateway的正式dist，并由本人完成实际Chrome复验；本轮不操作该机器、不把PAHER静态/Session读取计作其浏览器展示或UI-REAL全12项。公开回复/推送实际回执随后记录，PR56不自动合入main、Issue不关闭。
+
+### 9.4 本批公开源码回执
+
+源码merge f761dcd、验证/现场交接证据79f1416ff6b74483291651ab3dd015990baf1b8e已更新原PR56分支。普通Git推送遇连接reset失败，沿已有发布工具用Git API上传相同树/原merge父提交、force=false；两提交远端SHA与本地相同，[回执](evidence/dla-pr67-integration-20261014/publication.json)已回读确认。PR56仍Open/Draft、mergeStateStatus=CLEAN，b7e73c5为祖先，远端main当前仍b7e73c5，未自动合并PR或关闭Issue。
+
+本节与PR正文为后续文档提交；应用/UI/工具相对f761dcd没有新差异，现场继续以固定f761dcd运行，不能把文档head当作新的已部署源码。最后99份/1524内链静态检查errors=[]，本任务增量空白通过；PR67原三JSON的1471处全merge空白失败保留且未改写其blob。实际模型值对本批证据扫描0命中，所有合成身份领取继续走原加密通道，不公开秘密。
