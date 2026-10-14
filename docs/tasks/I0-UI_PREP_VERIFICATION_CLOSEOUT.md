@@ -104,4 +104,10 @@ node tools/sample-cold-start.mjs --samples 2 --port-base 5791 --output ../../doc
 
 最终正常build通过（Vite构建7.98秒）；原大chunk提示保留，未改阈值或配置。最终[四次冷启动](evidence/i0-ui-prep-closeout/cold-start-delivery.json)于2026-10-14 21:32:40～21:32:57执行：prep启动160/140ms、加载3714/3629ms；real启动142/147ms、加载2451/2425ms；全部退出0、端口释放、缓存清除，无504/资源失败。该采样绑定最终生产源码，既有两轮摘要保留历史。
 
-保持`i0/ui-frontend`，仅提交本批写集及原授权清单更新；原`.zcodeignore`不暂存。接收PR #67正常main增量，范围只有入口工具/证据/README，没有接纳其本地候选生产源码。冻结产物的源提交、ZIP/manifest核对和最终文档检查在本节追加实际结果；尚未推送、新建PR、合并main或部署。
+保持`i0/ui-frontend`，本批22文件本地提交`eab1075`；原`.zcodeignore`不暂存。正常接收PR #67后的本地merge源为`4a0bdbbac2565fd21bf940039cbd3d071c15a8a0`，学生树`c957eda726b0b2f00a2b7cd28a060aceac4007d1`。合并唯一冲突是根README两条新增任务导航，保留双方；接收范围只有入口工具/证据/README，没有接纳其本地候选生产源码，学生生产输入与已验证/已构建源码一致。本轮尚未推送、新建PR、合并main或部署。
+
+[正式dist清单](evidence/i0-ui-prep-closeout/student-real-dist-manifest.json)绑定上述已提交源，入口`/assets/index-k3K5KOqC.js`，143文件；本机交接ZIP名`student-real-dist.zip`，根为dist内容，5,632,388 bytes，SHA-256 `722e5d425506e0eb4275a7f5fa6de19c86360b73f57352c230c928de027779cb`。逐个读取ZIP entry对照当前dist，143/143的bytes与SHA-256一致。ZIP仅本机保留供获准窗口接收，未放入Git或部署；公开manifest不含凭据/机器配置。包装发生在生产源码提交/README工具合并后，build发生在此前；清单明确保留该顺序且核所有生产输入未变，不冒称现场接收。
+
+合并后的首次文档静态检查为87份文档/1349内部链接，errors=[]；本轮自身`git diff origin/main --check`通过。合并上游整体空白检查仍失败：PR #67的`browser-run-server-projection-20261014.json`、`paher-time-source-completion-20261014.json`、`ui-dist-manifest-h04-20261014.json`共1471个CRLF trailing-whitespace行，`eab1075→origin/main`与`eab1075→合并源`的报告逐行相同。归UI55原维护者，建议按其证据保真要求核规范化；本轮不改他人原始证据、不关闭检查、不称全仓空白检查通过。
+
+交付记录/manifest追加后的最终静态检查为87份文档/1350内部链接、errors=[]；本轮相对`origin/main`空白检查通过。清单30个表格编号唯一，UI-PREP 9 / UI-REAL 12 / UI-TUTOR 9，原条件保留。最后只追加本记录与manifest的本地文档提交，学生源树不变；精确最终HEAD可由`git rev-parse HEAD`核对，产物仍绑定上述固定源而不是后续文档提交。冷启动自有临时缓存已清理；原失败报告/合成服务审计/正式ZIP属于需保留的验证交接材料。产品基线及MVP_SPEC §10：待授权维护者汇总。
