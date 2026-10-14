@@ -1,0 +1,42 @@
+{
+  "observedAtUtc": "2026-10-14T11:03:36.3226291+00:00",
+  "approvedScope": "Existing W32Time start with same Manual startup and configured source, one resync",
+  "rawResultFile": "paher-time-correction-result-20261014.json",
+  "rawResultSha256": "e166728d4c7e98bb4c939710ac6d2052ff081a8b1b35f1ffe051e37c3371f336",
+  "rawResultSuccessFlagAccepted": false,
+  "rawResultFlagLimitation": "Initial script checked native exitcode only. w32tm reported no time data despite exitcode0; subsequent read-only verbose status confirms unsynchronized.",
+  "serviceStartSucceeded": true,
+  "serviceAfter": "Running",
+  "startupTypeAfter": "Manual",
+  "sourceTypeAfter": "NTP",
+  "sourceAfter": "time.windows.com,0x9",
+  "resyncCalls": 1,
+  "resyncNativeExitCode": 0,
+  "resyncSucceeded": false,
+  "windowsStatus": {
+    "leapIndicator": 3,
+    "synchronized": false,
+    "stratum": 0,
+    "lastSynchronizationError": 1,
+    "lastSynchronizationErrorText": "This computer did not resync because no time data was available.",
+    "lastReportedSuccessLocal": "2026/10/14 19:01:51",
+    "phaseOffsetSeconds": -2.0496299,
+    "pollIntervalSeconds": 1024
+  },
+  "clockComparison": {
+    "clientStartUtcMs": 1791975759841,
+    "clientEndUtcMs": 1791975761168,
+    "windowsUtcMs": 1791975776772
+  },
+  "continuedMutations": false,
+  "timeSourceRegistryChanged": false,
+  "wsRestarted": false,
+  "wsServicesChanged": false,
+  "clocksourceChanged": false,
+  "appRestarted": false,
+  "authGuardTtlSigningChanged": false,
+  "syntheticSessionLoginsAfterCorrection": 0,
+  "clock90sValidation": "NOT EXECUTED: Windows synchronization did not succeed",
+  "session90sValidation": "NOT EXECUTED: Windows synchronization did not succeed",
+  "nextDecision": "Existing Windows NTP source did not supply usable data. No retry or source change was performed. Owner must decide whether to authorize the next synchronization/network remedy."
+}

@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "40db96cc8fb5f377f9c4b38e841a3b559b849c7a",
+  "sourceAuthCommit": "ba89fe0f09432457e793ac92b276547700aa82ab",
+  "artifact": "ui55-40db96c-dist.zip",
+  "sha256": "a1b63e0362041a0db8f713a3f45ca37373014c7eec683b0e3ad777919c2fc09b",
+  "bytes": 5630300,
+  "staticFiles": 143,
+  "normalBuild": true,
+  "containsSourceDatabase": false,
+  "containsCredentials": false,
+  "entry": "index.html",
+  "backendChanged": false,
+  "nodeVersion": "v24.15.0",
+  "typecheckExitCode": 0,
+  "buildExitCode": 0,
+  "buildModules": 1208,
+  "boundaryScan": {
+    "textFiles": 133,
+    "patterns": 35,
+    "matches": 0,
+    "prepEndpoint": false,
+    "syntheticAccount": false,
+    "fixedPreparationIdentifiers": false,
+    "fixedPreparationCredentials": false,
+    "privateKeyMaterials": false,
+    "sourceDatabaseFiles": false
+  },
+  "indexSha256": "d253f02bf93d5f0ec6b517050e1f706703ddb041219cc233e4343f32f3b7ee52",
+  "entrypointAsset": "/assets/index-CI-tVfkz.js",
+  "entrypointSha256": "d605a014e04e813a3aae75c431f23a1443bce413c39f69ea3f7dc4d665050d3d"
+}

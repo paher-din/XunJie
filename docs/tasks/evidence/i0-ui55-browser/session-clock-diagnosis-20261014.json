@@ -1,0 +1,154 @@
+{
+  "task": "I0-UI55 session liveness diagnosis",
+  "date": "2026-10-14",
+  "scope": "Read-only synthetic service diagnosis; only normal POST sessions writes",
+  "sourceFrontendCommit": "40db96cc8fb5f377f9c4b38e841a3b559b849c7a",
+  "sourceBackendCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "sessionStoreSha256": "dadac7b1c4ece1aa2c3060697037230ce579d9c6d0ca06e6f03365c55855e836",
+  "hypotheses": [
+    "External session revocation",
+    "Wall clock rollback triggers future last_active rejection",
+    "Application or signing state changed",
+    "Unexpected short TTL"
+  ],
+  "httpLoops": [
+    {
+      "scope": "Session/bootstrap/activity/existing Attempt",
+      "rounds": 15,
+      "intervalSeconds": 2,
+      "elapsedMs": 31108,
+      "exitCode": 1,
+      "signal": "RED",
+      "statusTransition": "login 200; authenticated GET 200 then 401 UNAUTHENTICATED"
+    },
+    {
+      "scope": "Session only",
+      "rounds": 15,
+      "intervalSeconds": 2,
+      "elapsedMs": 30426,
+      "exitCode": 1,
+      "signal": "RED",
+      "loginUtc": "2026-10-14T10:29:58.7271839Z",
+      "loginStatus": 200,
+      "last200Utc": "2026-10-14T10:30:04.8883426Z",
+      "last200ServerDateUtc": "2026-10-14T10:30:23Z",
+      "first401Utc": "2026-10-14T10:30:06.9122873Z",
+      "first401ServerDateUtc": "2026-10-14T10:30:22Z",
+      "errorCode": "UNAUTHENTICATED",
+      "cookieCountBefore": 1,
+      "cookieCountAfter": 0,
+      "originalCookieExpiryUtc": "2026-10-14T18:30:16Z"
+    },
+    {
+      "scope": "Session only",
+      "rounds": 20,
+      "intervalSeconds": 1,
+      "elapsedMs": 21671,
+      "exitCode": 0,
+      "signal": "GREEN within observed 21.7 seconds, no fix applied",
+      "first401": null
+    }
+  ],
+  "wallClockProbe": {
+    "scope": "Read-only WSL CLOCK_REALTIME versus monotonic",
+    "clocksource": "tsc",
+    "durationMs": 27541,
+    "samples": 500,
+    "backwardSteps": [
+      {
+        "sample": 180,
+        "previousUnixMs": 1791974120655,
+        "currentUnixMs": 1791974117752,
+        "wallDeltaMs": -2902.95974
+      }
+    ],
+    "futureSessionSamples": 0,
+    "note": "Clock probe began after GET loop ended, so this did not capture the SQL future predicate at the exact 401 instant"
+  },
+  "safeSessionMetadata": {
+    "newestTwoSessionsRevoked": false,
+    "userDisabled": false,
+    "absoluteLifetimeMs": 28800000,
+    "idleLifetimeMs": 1800000,
+    "absoluteRemainingMsAtRead": [
+      28690172,
+      28621558
+    ],
+    "idleRemainingMsAtRead": [
+      1696972,
+      1637884
+    ],
+    "appPID": 427,
+    "appNRestarts": 0,
+    "appStarted": "2026-10-14T17:21:10+08:00"
+  },
+  "clockSources": {
+    "authClock": "options.now ?? Date.now",
+    "authClockSource": "server/access/app.ts:28",
+    "normalMainPassesNow": false,
+    "normalMainSource": "server/main.ts:40-43",
+    "windowsTimeServiceStatus": "Stopped",
+    "windowsTimeServiceStartType": "Manual",
+    "windowsTimeSourceType": "NTP",
+    "windowsConfiguredNtpServer": "time.windows.com,0x9",
+    "windowsAheadOfClientApproxSeconds": [
+      17.6,
+      18.8
+    ],
+    "wslTimesyncd": "active",
+    "chrony": "inactive",
+    "chronyd": "inactive",
+    "wslNTP": true,
+    "wslNTPSynchronized": true,
+    "wslServer": "ntp.ubuntu.com",
+    "wslPollSeconds": 32,
+    "wslOffsetSeconds": -2.396454,
+    "wslDelayMilliseconds": 251.763,
+    "wslJitterMilliseconds": 964.603,
+    "nodePythonDifferenceMilliseconds": 48,
+    "availableClocksource": [
+      "tsc",
+      "hyperv_clocksource_tsc_page",
+      "hyperv_clocksource_msr",
+      "acpi_pm"
+    ]
+  },
+  "currentConclusion": "Real session rejection and a real 2.9s backward clock step are proven. Future last_active guard is consistent with the failure. Exact simultaneous SQL predicate was not captured; Windows clock/synchronization contribution is still an environment-repair hypothesis.",
+  "repairExecuted": false,
+  "repairProposal": {
+    "requiresNewAuthorization": "PAHER Windows time service and system clock",
+    "actions": [
+      "Start existing W32Time, keep Manual startup and existing time.windows.com NTP source",
+      "Run one w32tm /resync with existing configured source",
+      "Observe existing WSL timesyncd for two 32s periods, without restarting WSL/app or changing guard/TTL"
+    ],
+    "effects": "Clock correction affects the PAHER machine; it cannot be undone as an ordinary file change",
+    "rollback": "Stop W32Time restores prior service state, but does not reverse clock correction",
+    "validation": [
+      "90s CLOCK_REALTIME/CLOCK_MONOTONIC probe has zero backward steps",
+      "Windows/WSL/Node time offsets converge",
+      "One normal login then 90s Session GET remains 200 across two NTP poll intervals"
+    ],
+    "unchanged": [
+      "App",
+      "WSL restart",
+      "DB/schema",
+      "Session guard",
+      "TTL",
+      "Signing material",
+      "C1 config"
+    ]
+  },
+  "tools": {
+    "sessionScript": "diagnose-session-liveness.ps1",
+    "sessionScriptSha256": "9722692a539bdd3cc98f7f4b26b425b3442f024c71685722e891320bb3c2492b",
+    "clockScript": "diagnose-paher-clock.ps1",
+    "clockScriptSha256": "cd1dacc0919a801b960cb976897d7d248bd8f5ac6396a325950f232df4f2cfbf"
+  },
+  "credentialsPersisted": false,
+  "headersBodiesPersisted": false,
+  "intermediateHarnessErrors": [
+    "First Date.Value projection raised PropertyNotFoundException; corrected without service changes",
+    "Remote PowerShell nested quote composition failed before clock query; safe separate Windows/WSL probes then succeeded"
+  ]
+}

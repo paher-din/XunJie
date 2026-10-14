@@ -1,0 +1,185 @@
+{
+  "observedAtUtc": "2026-10-14T19:43:09.4056491+08:00",
+  "status": "OBSERVED_REGRESSIONS_PASSED_WINDOWS_AUTO_SYNC_FOLLOWUP_RECORDED",
+  "authorization": "Human explicitly approved existing time correction, then exact peer switch with source-only rollback",
+  "windows": {
+    "serviceStatus": "Running",
+    "startupType": "Manual",
+    "sourceType": "NTP",
+    "peer": "ntp.ubuntu.com,0x9",
+    "providerWhitelistUnchanged": true,
+    "actualFallbackNativeConfigCalls": 1,
+    "actualFallbackNativeResyncCalls": 1,
+    "leapIndicator": 0,
+    "lastSyncError": 0,
+    "rollbackUsed": false,
+    "statusScope": "At the accepted source-switch operation; current followup state is in finalWindowsReadOnlyState"
+  },
+  "clock90": {
+    "durationSeconds": 90,
+    "samples": 1794,
+    "clocksource": "tsc",
+    "wallBackwardSteps": [],
+    "monotonicBackwardSteps": [],
+    "timesyncStatus": {
+      "exitCode": 0,
+      "safeFields": [
+        "Server: 185.125.190.57 (ntp.ubuntu.com)",
+        "Poll interval: 17min 4s (min: 32s; max 34min 8s)",
+        "Offset: +30.365ms",
+        "Delay: 255.438ms",
+        "Jitter: 903.914ms",
+        "Packet count: 207",
+        "Frequency: +103.312ppm"
+      ]
+    },
+    "passed": true
+  },
+  "session": {
+    "normalLoginCalls": 1,
+    "loginStatus": 200,
+    "sessionGetCalls": 91,
+    "non200SessionGetCalls": 0,
+    "loginToLastGetMs": 93000.0,
+    "summary": {
+      "signal": "GREEN: exact authenticated GET chain remained authorized",
+      "rounds": 91,
+      "elapsedMs": 94871,
+      "lastAuthorized": {
+        "observedAtUtc": "2026-10-14T19:21:00.4670124+08:00",
+        "elapsedMs": 94870,
+        "method": "GET",
+        "endpoint": "/api/session",
+        "status": 200,
+        "errorCode": null,
+        "expiresAt": null,
+        "serverDateUtc": "2026-10-14T19:21:16+08:00",
+        "requestMs": 27,
+        "cookieCount": 1,
+        "cookieExpiryUtc": [
+          "2026-10-14T19:19:43Z"
+        ],
+        "round": 90
+      },
+      "firstUnauthenticated": null,
+      "unexpectedRead": false,
+      "credentialsPersisted": false,
+      "onlySessionLoginWrites": true
+    }
+  },
+  "actualNtpPackets": {
+    "baseline": 206,
+    "observedCounts": [
+      207,
+      208
+    ],
+    "final": 208,
+    "secondSuccessfulSyncFileMtimeMs": 1791977822591,
+    "finalSynchronized": true,
+    "latestSafeStatus": [
+      "Server: 185.125.190.57 (ntp.ubuntu.com)",
+      "Poll interval: 34min 8s (min: 32s; max 34min 8s)",
+      "Offset: +40.632ms",
+      "Delay: 269.404ms",
+      "Jitter: 878.859ms",
+      "Packet count: 208",
+      "Frequency: +100.459ppm"
+    ],
+    "observerSummary": {
+      "observerFinished": true,
+      "passed": true,
+      "baselinePacketCount": 206,
+      "requiredPacketIncrease": 2,
+      "latestPacketCount": 208,
+      "elapsedSeconds": 869.08,
+      "observationFile": "D:\\XunJie_Project\\i0-ui55-connection\\paher-post-switch-timesync-observer-20261014.jsonl",
+      "remoteChanges": false,
+      "loginPerformed": false
+    },
+    "observerSha256": "7965c3880ff0d8693f2d23a09f8a52d03c4b1a81a91da9bf6f92f9db2fd4974c"
+  },
+  "clockWindowAroundSecondPacket": {
+    "durationSeconds": 240,
+    "samples": 4783,
+    "clocksource": "tsc",
+    "wallBackwardSteps": [],
+    "monotonicBackwardSteps": [],
+    "timesyncStatus": {
+      "exitCode": 0,
+      "safeFields": [
+        "Server: 185.125.190.57 (ntp.ubuntu.com)",
+        "Poll interval: 34min 8s (min: 32s; max 34min 8s)",
+        "Offset: +40.632ms",
+        "Delay: 269.404ms",
+        "Jitter: 878.859ms",
+        "Packet count: 208",
+        "Frequency: +100.459ppm"
+      ]
+    },
+    "passed": true
+  },
+  "windowsWslNodeClockComparison": {
+    "windowsStartUtcMs": 1791977260100,
+    "windowsEndUtcMs": 1791977260400,
+    "wslExitCode": 0,
+    "wsl": {
+      "wslStartUtcMs": 1791977260328,
+      "node": {
+        "dateNowMs": 1791977260364
+      },
+      "wslEndUtcMs": 1791977260377
+    },
+    "stderrPresent": true
+  },
+  "unchanged": [
+    "App/config/restart",
+    "WSL services/restart/clocksource",
+    "C1/guest",
+    "Database/schema",
+    "Auth future guard/TTL/signing material",
+    "CurrentUser TLS trust"
+  ],
+  "originalFailuresPreserved": [
+    "paher-time-correction-result-20261014.json",
+    "paher-time-correction-assessment-20261014.json",
+    "paher-time-source-postcheck-stage-20261014.json"
+  ],
+  "scopeLimits": [
+    "Only observed engineering stability; not indefinite time guarantee",
+    "Real browser/C1/product acceptance remains parent task evidence",
+    "No original guard or quota bypass",
+    "Current Windows globalLastSyncError2 is a recorded followup; current Windows synchronization is not claimed error-free"
+  ],
+  "finalWindowsReadOnlyState": {
+    "baseline": {
+      "windowsUtcMs": 1791978248147,
+      "serviceStatus": "Running",
+      "startupType": "Manual",
+      "sourceType": "NTP",
+      "peer": "ntp.ubuntu.com,0x9",
+      "ntpClient": {
+        "enabled": 1,
+        "inputProvider": 1,
+        "specialPollInterval": 32768
+      },
+      "vmTimeProvider": {
+        "enabled": 1,
+        "inputProvider": 1
+      }
+    },
+    "nativeProcessExitCode": 0,
+    "status": {
+      "leapIndicator": 0,
+      "lastSyncError": 2,
+      "source": "ntp.ubuntu.com,0x9",
+      "lastSuccessfulSyncTime": "2026/10/14 19:17:39",
+      "rejectedForNoTimeData": false
+    }
+  },
+  "finalWindowsFollowupPublicStatusFile": "paher-time-source-followup-public-status-20261014.json",
+  "followupDisposition": "Global LastSyncError2 reports only stale time data; peer remains active with peerLastError0. Preserve current approved Running/Manual/Ubuntu. No new sync, source change or rollback. Parent tracks followup independently of observed regression windows.",
+  "priorCompletionSnapshot": {
+    "file": "paher-time-source-completion-before-final-state-20261014.json",
+    "sha256": "d530cfd545ce632aaefc530315b54ec4decc06dc6e0b28f7686fa7c5d50ce0c9"
+  }
+}
