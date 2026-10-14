@@ -2,6 +2,8 @@ import { Icon } from '../icons'
 import type { CSSProperties } from 'react'
 import { useAccount } from '../lib/account'
 import { AccountAvatar } from './AccountAvatar'
+import { useSession } from './SessionEntry'
+import { PREP_BUILD } from '../workspace/mode'
 
 /** 菜单挂点：展开态账号胶囊上方（pill）／收起态轨道头像右侧（rail）。 */
 export type AccountAnchor = 'pill' | 'rail'
@@ -23,14 +25,16 @@ const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
  * 只有锚点不同——胶囊上方向上弹、轨道头像右侧弹出，两处头像坐标逐像素对齐。
  */
 export function AccountMenu({ open, anchor, onProfile, onSettings, onLogout }: AccountMenuProps) {
-  const { name } = useAccount()
+  const account = useAccount()
+  const session = useSession()
+  const name = !PREP_BUILD && session.session ? session.session.userId : account.name
   return (
     <div className={'account-menu am-' + anchor + (open ? ' on' : '')} role="menu" aria-hidden={!open}>
       <div className="am-head" style={delay(30)}>
         <AccountAvatar />
         <span className="am-who">
           <span className="am-name">{name}</span>
-          <span className="am-sub">学生 · 本地学习空间</span>
+          <span className="am-sub">{!PREP_BUILD && session.session ? '课程账号 · 学习空间' : '学生 · 本地学习空间'}</span>
         </span>
       </div>
       <div className="am-sep" style={delay(65)} />

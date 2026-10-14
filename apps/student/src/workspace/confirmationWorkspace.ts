@@ -8,7 +8,7 @@ import { buildWorkspaceComparison, type WorkspaceComparison } from './comparison
 import { blocksNewSave, classifyWriteFailure, codeOfOutcome, diagnosticText, reconcileStoredCommand, studentHint,
   summarizeOriginalRequest, type CommandOutcome } from './recovery'
 import { describeError, reportDiagnostic } from './diagnostics'
-import type { PrepContextView, SessionView } from './contracts'
+import type { AssignmentBootstrapView, PrepContextView, SessionView } from './contracts'
 import { prepContextUrl } from './mode'
 import type { AttemptView, ConfirmedWorkspace, Receipt, SnapshotResult, SnapshotView, WorkspaceHead } from './workspaceContracts'
 
@@ -270,7 +270,13 @@ export class ConfirmationWorkspace {
         this.publish({ workspace, attempt: head.attempt })
         return head
       }
-      const workspace = await confirmationRepository.installHead(c, workspaceOf(head), current)
+      const workspace = await confirmationRepository.installHead(c, workspaceOf(head), current, async () => {
+        const bootstrap = await apiGet<AssignmentBootstrapView>(
+          `/assignments/${encodeURIComponent(c.assignmentId!)}/bootstrap`, this.opts())
+        return current() && bootstrap.recoveryGeneration === c.trustedRecoveryGeneration &&
+          bootstrap.assignment.assignmentId === c.assignmentId && bootstrap.assignment.studentId === c.userId &&
+          bootstrap.assignment.activityVersionId === c.activityVersionId
+      })
       if (!current()) return null
       if (workspace.workspaceRevision !== head.attempt.workspaceRevision) {
         this.publish({ workspace, attempt: null, error: '读取到的是较早的版本，请重新读取。', phase: 'unknown' })

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AppShell from './components/AppShell'
+import SessionEntry from './components/SessionEntry'
 import AgentPage from './pages/AgentPage'
 import HomePage from './pages/HomePage'
 import SettingsPage from './pages/SettingsPage'
@@ -25,7 +26,7 @@ const router = createHashRouter([
   { path: 'brand', element: <Suspense fallback={<div>加载品牌看板…</div>}><BrandBoardPage /></Suspense> },
   {
     path: '/',
-    element: <AppShell />,
+    element: <SessionEntry><AppShell /></SessionEntry>,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'agent', element: <AgentPage /> },

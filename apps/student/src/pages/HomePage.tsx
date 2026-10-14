@@ -20,6 +20,7 @@ import {
 } from '../lib/tasks'
 import { PREP_BUILD } from '../workspace/mode'
 import { PREP_ENTRY_COURSE, PREP_ENTRY_GOAL, PREP_ENTRY_LABEL, PREP_ENTRY_NOTE, PREP_TASK_ROUTE } from '../workspace/prepEntry'
+import { useSession } from '../components/SessionEntry'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
 const COURSE_ICONS: IconName[] = ['virtual-board', 'code-square', 'structure']
@@ -36,6 +37,7 @@ const COURSE_COVERS: Record<string, string> = {
  * 学习看板（整宽，可个性化编辑；任务完成卡下半部分内嵌继续任务入口）→ 课程卡片（仅名称、待完成数、入口）→ 课程内任务卡片（截止时间优先）。
  */
 export default function HomePage() {
+  const session = useSession()
   const snapshot = useQuery({
     queryKey: ['home'],
     queryFn: () => learningApi.getHomeSnapshot(),
@@ -70,11 +72,13 @@ export default function HomePage() {
   return (
     <div className="content">
       <div className="intro">
-        <h1>{greeting}，Robert</h1>
+        <h1>{greeting}，{!PREP_BUILD && session.session ? session.session.userId : 'Robert'}</h1>
         <span className="date">
           {now.getMonth() + 1} 月 {now.getDate()} 日
         </span>
       </div>
+
+      {!PREP_BUILD && <p className="session-home-note">请从课程提供的任务链接进入真实项目。下方学习看板与任务为设计演示。</p>}
 
       {PREP_BUILD && (
         <section className="prep-entry">

@@ -114,7 +114,7 @@ async function guardedGet<T>(
  */
 export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceInit> {
   if (guard.stale) return { kind: 'stale' }
-  setCsrfToken(null)
+  if (guard.context.mode === 'preparation') setCsrfToken(null)
   const mode: WorkspaceMode = guard.context.mode
   const opts: RequestOptions = { mode }
 

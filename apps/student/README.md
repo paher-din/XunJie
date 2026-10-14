@@ -68,10 +68,22 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 
 真实模式沿 `/#/task/<assignmentId>` 获准分配深链，读取当前 Session、授权 bootstrap、固定活动与公开材料，
 在同一工作区接入确认作品和辅导。载入只读，创建 Attempt、保存、冻结和求助仍需明确操作；
-缺登录、权限或可信代际时显示不可用条件，不硬编码正式 ID、不遍历猜测、不回退准备数据。
+未登录时在原深链显示账号/密码表单，登录成功继续读取获准任务；首页也可登录，之后使用课程提供的任务链接。
+会话失效后重新登录同账号可恢复该账号的本机草稿；首页账号菜单及工作区「退出」实际结束服务端会话。
+退出未确认时先重试退出，不能将网络失败显示为成功；账号改变立即隔离旧展示与在途响应。
+密码不进入本机存储；身份/CSRF 只取服务端 Session。登录/会话请求等待上限15秒，失败不自动重试。
+缺权限或可信代际时显示不可用条件，不硬编码正式 ID、不遍历猜测、不回退准备数据。
 分配列表和跨设备 Attempt 发现不在本批范围；同一浏览器的已有原请求与引用仍沿确认库恢复。
 正常宿主须由维护者提供受控 HTTPS、现有配置/数据库与节点来源，接线与隔离服务证据见
 [真实入口记录](../../docs/tasks/I0-B_REAL_ENTRY.md)和[正常宿主组合](../../docs/tasks/I0-B_HOST_COMPOSITION.md)。
+
+本批会话入口的实现/失败/实际 HTTPS 合成验证见 [I0-UI 登录与会话](../../docs/tasks/I0-UI_AUTH_SESSION_ENTRY.md)。
+运行浏览器专项：`npm run test:e2e -- sessionEntry.spec.ts sessionService.spec.ts real-mode.spec.ts`。
+`sessionEntry` 为前端协议故障回放；`sessionService` 须设置 `XUNJIE_E2E_SERVICE_NODE` 指向已有教学 Node 24.21.0，
+沿原隔离宿主使用正常 dist、HTTPS/SQLite 和两个合成账号；先 `npm run build`。Windows 沿已有 Ubuntu WSL 运行，
+变量为该环境可执行路径；缺该条件时专项明确 skipped，不计通过。表单凭据仅私有内存/stdin，专项关闭 trace。
+临时自签 TLS 只在测试 context 忽略证书错误，不改变正常浏览器信任；验证关闭测试连接后核宿主退出，
+原工厂的合成数据库按既有审计边界保留。此验证不连接真实学生、执行节点或供应商。
 
 ## I0-A 准备场景
 

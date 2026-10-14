@@ -348,9 +348,14 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     </div>
   ) : null
 
-  /** 学生明确退出：立即失效旧展示，准备重建合成会话，真实模式只重读已有 Session。 */
+  /** 正常退出由全局会话入口接管；准备模式继续重建隔离合成会话。 */
   async function onSignOut() {
     if (signingOut) return
+    if (!PREP_BUILD) {
+      // 不再在旧页面 await 之后重启初始化；它的 401 不能打断下一次登录。
+      await signOut(workspaceMode)
+      return
+    }
     setSigningOut(true)
     confirmation.client?.dispose()
     init.invalidate()
