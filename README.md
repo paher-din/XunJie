@@ -55,6 +55,7 @@ node tools/a0-review/check.mjs
 | C 现场 HTTPS 与持久合成库恢复 | [C 当前宿主与交接](docs/tasks/DLA_C_CLOSEOUT_HANDOFF.md#18-2026-10-14-批准执行-pr59-的-paher-定向接入)；历史恢复、新版本就绪、现有对象及启动/停止方式由该任务承载 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
+| 指定 PR 集成 | [54 → 55、59 → 53、55 → 53](docs/tasks/PR_INTEGRATION_54_55_59_53.md)；实际接纳差异、验证与审核交付 |
 | 其他模块与历史交付 | [全部任务记录](docs/tasks/)；按模块/编号查实现、批准范围、实际命令与原始证据 |
 
 准备浏览器通过、服务端预交付、Issue 关闭与阶段进入分别记账；真实服务/节点/模型、完整 M/AC/NFR、真人与教学效果按原条件验收。产品进度由获授权维护者汇总至 MVP_SPEC §10。
