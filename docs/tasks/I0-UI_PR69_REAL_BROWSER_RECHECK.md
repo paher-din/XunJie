@@ -4,7 +4,7 @@
 
 ## 1. 依据与授权
 
-Robert明确要求“继续接收这批新产物包，切换本机网关，用现有SSH工具完成真实浏览器复验，继续在i0/ui-frontend分支推进，发现问题就修复并更新清单”。承接[PR69补验](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)、[A/C交接](I0-UI_AC_HANDOFF_20261014.md)、[UI30实际结果](I0-UI30_COMMENT_CLOSEOUT.md)及[完整清单](I0_REMAINING_WORK_CHECKLIST.md)。PR #69/#70已合main，当前Git学生树与冻结包源一致，不因文档head变化重建或改贴产物。
+Robert明确要求“继续接收这批新产物包，切换本机网关，用现有SSH工具完成真实浏览器复验，继续在i0/ui-frontend分支推进，发现问题就修复并更新清单”。承接[PR69补验](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)、[A/C交接](I0-UI_AC_HANDOFF_20261014.md)、[UI30实际结果](I0-UI30_COMMENT_CLOSEOUT.md)及[完整清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)。PR #69/#70已合main，当前Git学生树与冻结包源一致，不因文档head变化重建或改贴产物。
 
 本轮已读README、PRD §4.2～4.4、MVP M-03/M-10/§4～6、TECH §4.3/8.1/8.2、TEAM §9、I0_UI_SPEC用户场景、客户端§3～6及IMPORT_SOURCE许可/后续同步；复用前轮已读的具体契约正文。适用M-03/10、AC-03/04/06/12与NFR-05的本批工程范围，不计整项通过。
 

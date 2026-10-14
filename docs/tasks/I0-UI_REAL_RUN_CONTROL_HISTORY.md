@@ -1,6 +1,6 @@
 # I0-UI：真实运行、停止与历史产物（UI-REAL-09/10/11）
 
-日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert；实施：当前 Agent。状态：`isolated-service-verified`。本批前端接线及隔离服务验证完成：新增17项实际服务与60项兼容检查分别通过，具体失败/复验见 §5/§6；真实节点/现场浏览器/完整验收未执行。父清单：[真实接入清单](I0_REMAINING_WORK_CHECKLIST.md) §3；前置：[登录会话](I0-UI_AUTH_SESSION_ENTRY.md)、[真实保存恢复](I0-UI_REAL_SAVE_RECOVERY.md)。本任务记录实施和依赖，不改产品基线、A/B/C 分工或验收阈值。
+日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert；实施：当前 Agent。状态：`isolated-service-verified`。本批前端接线及隔离服务验证完成：新增17项实际服务与60项兼容检查分别通过，具体失败/复验见 §5/§6；真实节点/现场浏览器/完整验收未执行。父清单：[真实接入清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md) §3；前置：[登录会话](I0-UI_AUTH_SESSION_ENTRY.md)、[真实保存恢复](I0-UI_REAL_SAVE_RECOVERY.md)。本任务记录实施和依赖，不改产品基线、A/B/C 分工或验收阈值。
 
 ## 1. 批次授权与 Git 基线
 

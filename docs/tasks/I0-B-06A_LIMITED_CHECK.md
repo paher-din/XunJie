@@ -1,6 +1,6 @@
 # I0-B-06A：限定检查公开状态实施补充
 
-日期：2026-10-14（Asia/Shanghai）；2026-10-13的审计/授权事实保留来源时点。执行角色：UI / D-03实施Agent。状态：`isolated-verified / pending-main-integration`。本文是[I0-B-06父票](I0-B-06_POLICY_CONTROLS.md)的窄实施记录，不是第七张ticket；主Agent统一整合[批次计划](I0-B_UI_TUTOR_PLAN.md)和[完整清单](I0_REMAINING_WORK_CHECKLIST.md)。
+日期：2026-10-14（Asia/Shanghai）；2026-10-13的审计/授权事实保留来源时点。执行角色：UI / D-03实施Agent。状态：`isolated-verified / pending-main-integration`。本文是[I0-B-06父票](I0-B-06_POLICY_CONTROLS.md)的窄实施记录，不是第七张ticket；主Agent统一整合[批次计划](I0-B_UI_TUTOR_PLAN.md)和[完整清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)。
 
 ## 依据与授权
 

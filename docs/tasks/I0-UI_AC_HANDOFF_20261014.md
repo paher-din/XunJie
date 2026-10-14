@@ -1,6 +1,6 @@
 # I0-UI：PR69 后给 A/C 的交接与 PAHER 直接核查
 
-建档：2026-10-14；最新核对：2026-10-15（Asia/Shanghai）。主责：UI / Robert。来源：[本批工程记录](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)、[剩余清单](I0_REMAINING_WORK_CHECKLIST.md)。当前状态：PR #69/#70/#75已合main，新143文件修复包已在本机网关接收并完成获准真实C1浏览器复验；当前事实见§7及[复验记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)。§1～6保留原交接时点，不能把其中“尚未切包/PR68 Draft”当最新状态。
+建档：2026-10-14；最新核对：2026-10-15（Asia/Shanghai）。主责：UI / Robert。来源：[本批工程记录](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)、[剩余清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)。当前状态：PR #69/#70/#75已合main，新143文件修复包已在本机网关接收并完成获准真实C1浏览器复验；当前事实见§7及[复验记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)。§1～6保留原交接时点，不能把其中“尚未切包/PR68 Draft”当最新状态。
 
 ## 1. 负责人要求与固定交付
 
@@ -69,7 +69,7 @@ PR #56/#65的main增量没有修改学生生产输入。除复用作者已有宿
 
 本节为现场收尾时点；后续本批已创建[PR #75](https://github.com/paher-din/XunJie/pull/75)，发布/合main见[最新Git交付](I0-UI_PR69_REAL_BROWSER_RECHECK.md#6-2026-10-14-pr发布与合并授权)及该PR最终公开回执，现场证据仍绑定原源/窗口。
 
-本节更新§2/§5之前时点的“PR68仍Draft/尚未切新包”：PR68已于22:14:50合main `8ef9dc0`，本交接PR70于22:15:55合main `8b41303`。随后Robert明确授权直接接收/本机切换/真实浏览器/必要UI修复，本轮实际结果以[新记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)和[清单§12](I0_REMAINING_WORK_CHECKLIST.md#12-2026-10-14-新包真实浏览器复验与现场修复)为准。
+本节更新§2/§5之前时点的“PR68仍Draft/尚未切新包”：PR68已于22:14:50合main `8ef9dc0`，本交接PR70于22:15:55合main `8b41303`。随后Robert明确授权直接接收/本机切换/真实浏览器/必要UI修复，本轮实际结果以[新记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)和[清单§12](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md#12-2026-10-14-新包真实浏览器复验与现场修复)为准。
 
 UI已自行完成原4a包接收与本机严格TLS/SSH复验，并修真实暴露的首次选择回收文件、明确拒绝后重复辅导读取；新本地提交`b50918a`的143文件正常包已切入gateway，16/16。原合成A/原Attempt新v9保存冻结、真实C1成功、独立v4停止确认、刷新/退出重登录/固定历史通过；已有v3完整report.txt实际下载21 bytes/hash匹配。PAHER应用仍`f761dcd`、24表C-only，远端配置/库/节点未变；当前新UI修复尚未新建PR或合main，不把它写成共享main已经交付。
 

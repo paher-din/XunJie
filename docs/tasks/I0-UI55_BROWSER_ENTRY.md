@@ -229,7 +229,7 @@ v4 切换快照后入口与输入按原 UI 重置，一次 disabled 点击未提
 
 独立只读 SQL 投影核原 4→7 项、全部 Job/Run/snapshot/G/profile/创建回执关联一致，当前 queued/running/cancelling/outcome_unknown=0。Stop 原回执 `3826d44e-ecb6-4933-8976-7c604d0a354b` seq107 后原进度 seq112 确认 cancelled；[服务端去敏投影](evidence/i0-ui55-browser/browser-run-server-projection-20261014.json)。重新登录后历史中的原 v7 stdout 仍读回 `new snapshot`。新静态包逐文件清单见 [H-04 产物](evidence/i0-ui55-browser/ui-dist-manifest-h04-20261014.json)。最终持久 `check` 为 15 通过/1 失败/0 未执行，退出 1，唯一失败仍为原 HTTP ready=503；不关闭检查或改状态。
 
-原任务是 comment 的精确信任/接线与浏览器验收，本批完成上述获准现有链，不宣称 [UI-REAL 全 12 项](I0_REMAINING_WORK_CHECKLIST.md#3-ui-real按ac交接分批接入的12项)。首次新 Attempt、缺代际零写、确认保存/新增冻结、暂停/终态/撤权、第二合成账号/迟到响应、正向公开产物下载、真实丢 ACK/旧代际/恢复故障仍未在该 PAHER 浏览器批次全部执行；前端原协议检查与 C 旧服务端20项不替这些现场项。HTTP ready 503、Windows后续 LastSyncError=2、一次内核选择与未知 VM 自动启动来源保持独立未完成记录。没有真人输入、模型调用、全产品/G0～G4/教学效果通过或 Issue 关闭。
+原任务是 comment 的精确信任/接线与浏览器验收，本批完成上述获准现有链，不宣称 [UI-REAL 全 12 项](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md#3-ui-real按ac交接分批接入的12项)。首次新 Attempt、缺代际零写、确认保存/新增冻结、暂停/终态/撤权、第二合成账号/迟到响应、正向公开产物下载、真实丢 ACK/旧代际/恢复故障仍未在该 PAHER 浏览器批次全部执行；前端原协议检查与 C 旧服务端20项不替这些现场项。HTTP ready 503、Windows后续 LastSyncError=2、一次内核选择与未知 VM 自动启动来源保持独立未完成记录。没有真人输入、模型调用、全产品/G0～G4/教学效果通过或 Issue 关闭。
 
 长期入口在 `D:\XunJie_Project\i0-ui55-connection`：`xunjie-ui55.ps1 help/start/status/check/stop`，维护 `xunjie-paher.ps1 help/probe/exec/sftp-get`；README 及专项 SESSION_CLOCK、C1_RECOVERY、STUDENT_DIST_PACKAGING 使用说明与工具原文均保留。现场候选 `codex/i0-ui55-local-tools` 只留本地；共享工具和证据转为下面的最新基线交付。产品基线与 MVP_SPEC §10 待授权维护者汇总。
 
