@@ -75,3 +75,11 @@ A5原成果正常接纳：新增34表review工厂不扩展DL-A35表，事务内r
 正式ZIP：PAHER Windows `/C:/Users/p3148/XunJie_DLA_MAIN_87edd51_20261014/student-87edd51-dist.zip`，143文件，SHA256 `8e6a52a3a3fff7a36c91bc35589eb4a36dcb6160fcd412ad36d5357bf5a879bb`；同行 `student-dist-manifest.json`，可沿既有SFTP领取，校本机staticDirectory/来源后再验Robert浏览器。旧包/目录/argv保留。停止：`wsl -d Ubuntu -u root -- systemctl stop xunjie-dla-ui-main-87edd51-20261014.service`；回退只停新unit、按旧f761dcd保留argv启动，不重建库/重放Job/模型。3443仍f761dcd/24表，本轮不把两环境混成同账号入口。
 
 UI实际接线与同浏览器演示尚未回交。最新main已经有成熟服务端；H3教师绑定/course_check/节点换版/完整矩阵后置。新现场模型批次与学生B受控通路需沿UI完成后的准确边界处理，旧单轮不再消费。完整DL-A整卡、DL-AC、原AC/NFR/真人/教学效果未宣称完成。
+
+### 6.3 最终公开回执与后续责任
+
+文档/证据提交 `3d053bf4cc9e8d71cf2920ad9f205f1020228f30` 已普通非强制发布原source分支，Git传输失败后API精确树/原父回读SHA一致；无新PR、未把事后记录提交误称PR56已合并源码。实际runtime仍87edd51，源分支和旧副本均保留。
+
+公开交付：[UI当前源/ZIP/严格TLS/停止回执6170632785](https://github.com/paher-din/XunJie/issues/30#issuecomment-6170632785)、[PR56合并回执6170633658](https://github.com/paher-din/XunJie/pull/56#issuecomment-6170633658)、[DL-A整卡范围回执6170634483](https://github.com/paher-din/XunJie/issues/38#issuecomment-6170634483)。B已收到 [真实HDL上下文/语义核对与预算边界6170648839](https://github.com/paher-din/XunJie/issues/40#issuecomment-6170648839)，不再要求C重制已有包；B只复核已有真实提示/当前性和故障降级，新的实际调用仍需准确预算。
+
+截至本次交付没有UI完成UDL-01～08的回复，不记“已接线”或“浏览器完成”。UI维护本人代码与浏览器演示，B配合语义/有限上下文，C已完成本批main集成、必要修复验证、原35表正常宿主和固定材料；具体跨机3444/B受控通路、新模型轮次在UI产物备齐后按准确门禁处理。不得恢复等待H3才接线。根工作区原README/planning/product/G3及原C材料无关差异仍未触碰。
