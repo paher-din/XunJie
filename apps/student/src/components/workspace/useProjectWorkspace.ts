@@ -187,14 +187,16 @@ export function useProjectWorkspace(
         const ids = new Set(merged.map((f) => f.fileId))
         const open = (storedUi?.openFileIds ?? []).filter((id) => ids.has(id))
         const active = storedUi?.activeFileId && open.includes(storedUi.activeFileId) ? storedUi.activeFileId : null
+        // 没有本机视图记录时先打开未回收的活动实例；全回收则沿原首项显示回收说明。
+        // 已存标签/活动选择仍按原记录恢复，不把学生明确打开的回收实例换成另一份作品。
+        const first = storedUi === null ? merged.find(file => file.lifecycle === 'active') ?? merged[0] : merged[0]
 
         revisions.current = nextRevisions
         lastWritten.current = { ui: JSON.stringify(uiRecordOf(active, open, merged)), drafts: writtenDrafts }
         setFiles(merged)
         setDrafts(nextDrafts)
-        // 首次进入没有本机记录时打开第一个文件，其余从「文件」列表里取
-        setOpenFileIds(open.length > 0 ? open : merged.slice(0, 1).map((f) => f.fileId))
-        setActiveFileId(active ?? (open.length > 0 ? open[0] : (merged[0]?.fileId ?? null)))
+        setOpenFileIds(open.length > 0 ? open : first ? [first.fileId] : [])
+        setActiveFileId(active ?? (open.length > 0 ? open[0] : (first?.fileId ?? null)))
         pendingWrite.current = false
         setProtection({ status: 'protected', reason: null })
         loadedKey.current = key

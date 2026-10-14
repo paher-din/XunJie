@@ -52,6 +52,72 @@ async function freezeSnapshot(page: Page, revision: number) {
   await expect(page.getByText(`已冻结快照 v${revision}`)).toBeVisible()
 }
 
+test('首次读取首项已回收时打开活动文件，保留已存回收视图且全回收时如实提示', async ({ page, browser }) => {
+  await start(page, 'file-initial-active')
+  await create(page, 'scratch.txt')
+  await edit(page, 'retained scratch\n')
+  await confirmSave(page, 1)
+  await createFile(page, 'main.c')
+  const original = 'int main(void){return 0;}\n'
+  await edit(page, original)
+  await confirmSave(page, 2)
+  await openFileMenu(page)
+  await page.getByRole('menuitem', { name: 'scratch.txt', exact: true }).click()
+  await openFileMenu(page)
+  await page.getByRole('menuitem', { name: '回收 scratch.txt', exact: true }).click()
+  await confirmSave(page, 3)
+  await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
+  const head = await serverHead(page)
+  expect(head.files.map(file => ({ path: file.path, lifecycle: file.lifecycle }))).toEqual([
+    { path: 'scratch.txt', lifecycle: 'recycled' }, { path: 'main.c', lifecycle: 'active' },
+  ])
+
+  // 独立浏览器没有UI/草稿/实例记录。通过正常登录与公开GET读同一authority，不能灌UI元数据。
+  const fresh = await browser.newContext()
+  try {
+    const reader = await fresh.newPage()
+    const writes = trackWrites(reader)
+    await reader.goto(page.url())
+    await expect(reader.locator('.ws-flow')).toContainText('确认作品 v3 · 与草稿一致')
+    await expect(reader.locator('.cw-status-path')).toHaveText('main.c')
+    await expect(reader.locator('.cw .monaco-editor textarea').first()).toBeVisible()
+    await expect(reader.locator('.cw .view-lines')).toContainText('int main(void)')
+    await reader.reload()
+    await expect(reader.locator('.cw-status-path')).toHaveText('main.c')
+    await expect(reader.locator('.cw .view-lines')).toContainText('int main(void)')
+    expect(writes.filter(write => !write.endsWith('/sessions'))).toEqual([])
+    expect((await serverHead(reader)).files).toEqual(head.files)
+  } finally { await fresh.close() }
+
+  // 原浏览器明确选择scratch后回收，已存的active/open视图即使是回收实例也不能被默认策略覆盖。
+  await page.reload()
+  await expect(page.locator('.ws-flow')).toContainText('确认作品 v3 · 与草稿一致')
+  await expect(page.locator('.cw-status-path')).toHaveText('scratch.txt')
+  await expect(page.locator('.cw-empty')).toContainText('这个实例已回收，草稿保留。')
+  await expect(page.locator('.cw .monaco-editor textarea')).toHaveCount(0)
+
+  await openFileMenu(page)
+  await page.getByRole('menuitem', { name: 'main.c', exact: true }).click()
+  await openFileMenu(page)
+  await page.getByRole('menuitem', { name: '回收 main.c', exact: true }).click()
+  await confirmSave(page, 4)
+  const allRecycled = await browser.newContext()
+  try {
+    const reader = await allRecycled.newPage()
+    const writes = trackWrites(reader)
+    await reader.goto(page.url())
+    await expect(reader.locator('.ws-flow')).toContainText('确认作品 v4 · 与草稿一致')
+    await expect(reader.locator('.cw-status-path')).toHaveText('scratch.txt')
+    await expect(reader.locator('.cw-empty')).toContainText('这个实例已回收，草稿保留。')
+    await expect(reader.locator('.cw .monaco-editor textarea')).toHaveCount(0)
+    expect(writes.filter(write => !write.endsWith('/sessions'))).toEqual([])
+    const final = await serverHead(reader)
+    expect(final.files.map(file => file.lifecycle)).toEqual(['recycled', 'recycled'])
+    expect(final.files.find(file => file.path === 'main.c')!.text).toBe(original)
+    expect(final.files.find(file => file.path === 'scratch.txt')!.text).toBe('retained scratch\n')
+  } finally { await allRecycled.close() }
+})
+
 test('回收→同名重建→恢复被占用→显式回收占用者后用新命令恢复：双方保留、身份与正文各自独立', async ({ page }) => {
   const original = 'int main(void){return 0;}\n'
   await start(page, 'file-lifecycle')

@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-14T15:23:49.0503094Z",
+  "sourceCommit": "b50918ae17ae3a961f8c4cabac4cc9ad529b51ae",
+  "normalDistEntrypoint": "/assets/index-DmeUPG54.js",
+  "unit": {
+    "command": "rtk npm test -- --reporter=dot",
+    "files": 34,
+    "passed": 464,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "types": {
+    "command": "rtk npm run typecheck",
+    "exitCode": 0
+  },
+  "build": {
+    "command": "rtk npm run build",
+    "exitCode": 0,
+    "node": "24.15.0",
+    "unchangedWarning": "Existing chunks exceed 500 kB; threshold/dependencies unchanged"
+  },
+  "fileInitial": {
+    "red": {
+      "command": "npx playwright test e2e/fileHistory.spec.ts --grep 首次读取 --workers=1 --max-failures=1",
+      "failed": 1,
+      "seconds": 16.6,
+      "expected": "main.c",
+      "actual": "scratch.txt",
+      "publicFlowWithoutMetadataSeed": true
+    },
+    "green": {
+      "newPassed": 1,
+      "seconds": 14.6,
+      "originalCompatibilityPassed": 7,
+      "originalCompatibilitySeconds": 37,
+      "retries": 0
+    },
+    "ports": [
+      5831,
+      5832,
+      5833
+    ],
+    "browser": "Chrome155",
+    "noResidualListeners": true
+  },
+  "tutoringCapability": {
+    "command": "npx playwright test e2e/tutoringCapabilityService.spec.ts --workers=1",
+    "red": {
+      "failed": 1,
+      "notRun": 1,
+      "seconds": 20.3,
+      "expectedEventsDuring6Seconds": 1,
+      "actualEvents": 3,
+      "actualHttpStatus": 400,
+      "retryable": false,
+      "independentRedLogSaved": false
+    },
+    "green": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "flaky": 0,
+      "seconds": 49.6,
+      "workers": 1,
+      "retries": 0,
+      "exitCode": 0,
+      "logSha256": "be535134b5f7e4ee7d7e5cf2bbc50416002396a815adbfc28c88cbe906f88a8d"
+    },
+    "backend": "Original 24-table HTTPS/SQLite without C3 and original 28-table HTTPS/SQLite with C3; isolated synthetic factory; no actual PAHER or model call in this spec",
+    "normalDistUsed": true,
+    "controlledTeachingNode": "24.21.0",
+    "ports": [
+      5821,
+      5822,
+      5823
+    ],
+    "noResidualListeners": true
+  },
+  "tutoringCompatibility": {
+    "command": "npx playwright test e2e/tutoringFailure.spec.ts e2e/tutoringHelpStop.spec.ts e2e/tutoringHistory.spec.ts e2e/tutoringMessages.spec.ts",
+    "passed": 33,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "workers": 2,
+    "retries": 0,
+    "duration": "2.1m",
+    "exitCode": 0,
+    "logSha256": "22b97ebdf55e9b7103025435cf2d4bad00563f54787bb8f3fa9f8660efcae3e9",
+    "scope": "Existing dev:prep synthetic authority and actual browser IDB/transport interleavings; separate from real PAHER run"
+  },
+  "gateway": {
+    "command": "xunjie-ui55.ps1 check",
+    "passed": 16,
+    "failed": 0,
+    "unexecuted": 0,
+    "staticFiles": 143,
+    "strictTls": true,
+    "readyStatus": 200,
+    "anonymousSessionStatus": 401,
+    "gatewayPidAtCheck": 49736,
+    "sshPidAtStart": 23240,
+    "sourceCommit": "b50918ae17ae3a961f8c4cabac4cc9ad529b51ae"
+  },
+  "boundary": "Separate executions and prior red failures retained; no aggregate full-suite or full product acceptance claim",
+  "documentReview": {
+    "command": "node tools/a0-review/check.mjs",
+    "documents": 106,
+    "internalLinks": 1719,
+    "errors": [],
+    "exitCode": 0
+  },
+  "finalScope": {
+    "files": 17,
+    "studentSourceFiles": 3,
+    "e2eFiles": 2,
+    "documents": 4,
+    "publicEvidenceJson": 6,
+    "syntheticScreenshots": 2,
+    "studentTreeUnchangedAfterFreeze": true,
+    "whitespacePassed": true,
+    "protectedObjectsUnchanged": true,
+    "unrelatedZcodeignorePreserved": true,
+    "originalChecklistIdsAndOrderPreserved": true,
+    "checklistCounts": {
+      "PREP": 9,
+      "REAL": 12,
+      "TUTOR": 9
+    },
+    "ownedTemporaryLeavesCleaned": 9,
+    "ownedBrowserClosedAfterNormalLogout": true,
+    "gatewayAndTunnelRetained": true
+  }
+}

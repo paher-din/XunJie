@@ -1,0 +1,128 @@
+{
+  "capturedAtUtc": "2026-10-14T14:54:56.947Z",
+  "sourceCommit": "4a0bdbbac2565fd21bf940039cbd3d071c15a8a0",
+  "menuEscapeFocus": true,
+  "compareEscClosed": true,
+  "returnedFocus": {
+    "tag": "TEXTAREA",
+    "cls": "inputarea monaco-mouse-cursor-text",
+    "label": "Editor content",
+    "text": ""
+  },
+  "postCountAfterCompare": 2,
+  "initPostTypes": [
+    {
+      "path": "/api/sessions",
+      "status": 200
+    },
+    {
+      "path": "/api/assignments/a2533386-4923-4dee-83bd-2d7a99fb06e9/attempts",
+      "status": 200
+    }
+  ],
+  "initialAttempt": {
+    "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+    "courseId": "synthetic-i0-course-a",
+    "studentId": "synthetic-i0-student-a",
+    "assignmentId": "a2533386-4923-4dee-83bd-2d7a99fb06e9",
+    "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+    "status": "active",
+    "attemptRevision": 13,
+    "workspaceRevision": 8,
+    "decisionEpoch": 3,
+    "captureRevision": 0,
+    "collecting": true,
+    "reminders": false,
+    "files": [
+      {
+        "fileId": "1e97b8df-1bb3-4ecb-b353-1e9b0a4905c2",
+        "path": "scratch.txt",
+        "lifecycle": "recycled",
+        "documentVersion": 2,
+        "contentHash": "df234e10a3a13ed64dc906202866683ceaad7b014feda25ead2cafb1e2c36706",
+        "utf8Bytes": 24,
+        "hashVerified": true
+      },
+      {
+        "fileId": "a60fd7eb-3e3f-40ed-8a14-4b9eb3434436",
+        "path": "input.txt",
+        "lifecycle": "active",
+        "documentVersion": 1,
+        "contentHash": "f373adf5993b715cc3a9c9df009f07bb43a2105ea8df6bb621d46416e7d644de",
+        "utf8Bytes": 11,
+        "hashVerified": true
+      },
+      {
+        "fileId": "d9f1b67d-808d-4dec-86f1-ac46c29c4c0e",
+        "path": "main.c",
+        "lifecycle": "active",
+        "documentVersion": 6,
+        "contentHash": "110248d35ec027932dc23915bd00b36482da465b6e111be67fbfa2e2bd073e7a",
+        "utf8Bytes": 99,
+        "hashVerified": true
+      }
+    ],
+    "snapshots": [
+      {
+        "snapshotId": "10785f20-8431-469b-8725-901a38ae7090",
+        "hashFormat": "sha256-manifest-v1",
+        "hash": "49d0bc7e496f5cf16bd6275023fb2252d91d4557da4955a1a45bca0d4423d188",
+        "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+        "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+        "workspaceRevision": 1,
+        "createdAt": "2026-10-14T04:52:02.590Z",
+        "fileCount": 2
+      },
+      {
+        "snapshotId": "22882244-dc09-42ca-9b66-96bfd6ba6399",
+        "hashFormat": "sha256-manifest-v1",
+        "hash": "f1d390749a1f6c99a49cc3053722d0213ba18b30fec4c23bb49edc981ae8c77a",
+        "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+        "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+        "workspaceRevision": 3,
+        "createdAt": "2026-10-14T04:52:18.274Z",
+        "fileCount": 2
+      },
+      {
+        "snapshotId": "27027b15-ec52-451e-880a-ef400ca1d516",
+        "hashFormat": "sha256-manifest-v1",
+        "hash": "179a395c6e00f4d123a366e2c4b37039b55f1cee4850f7a1e1bd2e2b5a0fb9ce",
+        "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+        "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+        "workspaceRevision": 4,
+        "createdAt": "2026-10-14T04:52:24.072Z",
+        "fileCount": 2
+      },
+      {
+        "snapshotId": "be814058-0ee7-4a68-95b1-521a543e75ac",
+        "hashFormat": "sha256-manifest-v1",
+        "hash": "53a10f0c04d644670b4ecea93107701d1fd073c41d14d1e782df0813cfd0dfce",
+        "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+        "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+        "workspaceRevision": 8,
+        "createdAt": "2026-10-14T13:14:11.757Z",
+        "fileCount": 2
+      },
+      {
+        "snapshotId": "f714ae74-f53f-4838-ba54-5245c67eeb6b",
+        "hashFormat": "sha256-manifest-v1",
+        "hash": "738ee9073549ae793358e091678aec14d1a9f6acba0963856b43359806d5cb63",
+        "attemptId": "c9166463-5f46-4dc6-82c3-96456f394258",
+        "activityVersionId": "f0942cb7-75ef-4625-aa92-d649268d61cb",
+        "workspaceRevision": 7,
+        "createdAt": "2026-10-14T04:52:26.487Z",
+        "fileCount": 2
+      }
+    ]
+  },
+  "eventsRejected": {
+    "count": 272,
+    "error": {
+      "code": "INVALID_REQUEST",
+      "message": "Invalid request.",
+      "retryable": false,
+      "recovery": "Correct the request before retrying."
+    }
+  },
+  "browser": "Chrome155 headed strictTLS"
+}
