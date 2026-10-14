@@ -1,0 +1,189 @@
+{
+  "startedAt": "2026-10-13T17:11:56.755Z",
+  "finishedAt": "2026-10-13T17:12:08.991Z",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "origin": "https://127.0.0.1:3443",
+  "databaseFile": "/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite",
+  "node": "v24.21.0",
+  "cases": [
+    {
+      "id": 1,
+      "title": "Strict HTTPS pages/assets, anonymous401 and five real sessions",
+      "status": "passed",
+      "elapsedMs": 3060
+    },
+    {
+      "id": 2,
+      "title": "Normal teacher creates public and private resource versions",
+      "status": "passed",
+      "elapsedMs": 39
+    },
+    {
+      "id": 3,
+      "title": "Normal manual blueprint uses own policy and immutable resource refs",
+      "status": "passed",
+      "elapsedMs": 24
+    },
+    {
+      "id": 4,
+      "title": "Normal teacher check consumes current authenticated runtime",
+      "status": "passed",
+      "elapsedMs": 1470
+    },
+    {
+      "id": 5,
+      "title": "Teacher confirms a fixed activity and role previews are scoped",
+      "status": "passed",
+      "elapsedMs": 2244
+    },
+    {
+      "id": 6,
+      "title": "Normal teacher assigns only the intended synthetic student",
+      "status": "passed",
+      "elapsedMs": 29
+    },
+    {
+      "id": 7,
+      "title": "Read-only bootstrap, anonymous/cross-student/course refusals",
+      "status": "passed",
+      "elapsedMs": 41
+    },
+    {
+      "id": 8,
+      "title": "Explicit student attempt creation starts with confirmed empty workspace",
+      "status": "passed",
+      "elapsedMs": 37
+    },
+    {
+      "id": 9,
+      "title": "Sync ACK, original-key replay/conflict and stale workspace refusal",
+      "status": "passed",
+      "elapsedMs": 58
+    },
+    {
+      "id": 10,
+      "title": "Authoritative attempt/workspace/decision versions are reread after ACK",
+      "status": "passed",
+      "elapsedMs": 17
+    },
+    {
+      "id": 11,
+      "title": "Explicit frozen snapshot binds confirmed files and manifest hash",
+      "status": "passed",
+      "elapsedMs": 49
+    },
+    {
+      "id": 12,
+      "title": "Original main consumer runs real C1 job without manual processJob",
+      "status": "failed",
+      "code": "ERR_ASSERTION",
+      "elapsedMs": 2211
+    }
+  ],
+  "references": {
+    "origin": "https://127.0.0.1:3443",
+    "generation": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+    "serverPid": 6375,
+    "accounts": [
+      {
+        "userId": "synthetic-i0-teacher-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "teacher"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-a",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-peer",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-a",
+            "role": "student"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-teacher-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "teacher"
+          }
+        ]
+      },
+      {
+        "userId": "synthetic-i0-student-b",
+        "courses": [
+          {
+            "courseId": "synthetic-i0-course-b",
+            "role": "student"
+          }
+        ]
+      }
+    ],
+    "publicResourceId": "7d47908e-29b3-46cc-9e2e-e4633a65d564",
+    "privateResourceId": "70eefb7d-aea9-4da4-b60d-47af1f98a662",
+    "blueprintId": "fd8aec07-fbdb-4a9c-95fd-b24d720574d9",
+    "blueprintRevision": 1,
+    "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+    "activityControlRevision": 1,
+    "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+    "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+    "afterSync": {
+      "attemptId": "74a2710d-d43f-41ee-be9e-0fcad296e3ce",
+      "courseId": "synthetic-i0-course-a",
+      "studentId": "synthetic-i0-student-a",
+      "assignmentId": "1500dac1-07f8-4216-bd48-80467d1f06ed",
+      "activityVersionId": "bd00fbeb-e449-4eeb-8eff-25a2862ee3fc",
+      "status": "active",
+      "attemptRevision": 2,
+      "workspaceRevision": 1,
+      "decisionEpoch": 0,
+      "captureRevision": 0,
+      "collecting": true,
+      "reminders": false
+    },
+    "oldSnapshotId": "4a770ff2-bbce-43e3-9781-c4e43ab8524c",
+    "originalRunId": "4aa7da80-5d21-4221-8274-5103d0d69e37",
+    "originalJobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+    "jobTransitions": [
+      {
+        "jobId": "0e122937-dbb5-48b6-a223-e784b2d2fbdd",
+        "seen": [
+          "queued",
+          "running",
+          "outcome_unknown"
+        ],
+        "terminal": "outcome_unknown"
+      }
+    ]
+  },
+  "requestCount": 45,
+  "tlsVerifiedResponses": 45,
+  "serverPid": 6375,
+  "serverExitCode": 0,
+  "shutdownObserved": true,
+  "passed": 11,
+  "failed": 1,
+  "remainingCasesUnexecuted": [
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "scope": "Authorized synthetic real HTTPS/main/original automatic worker; no fixture transport or manual processJob; browser acceptance separate"
+}

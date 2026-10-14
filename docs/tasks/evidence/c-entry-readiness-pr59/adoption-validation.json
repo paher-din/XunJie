@@ -1,0 +1,83 @@
+{
+  "checkedAt": "2026-10-14T06:41:49.542241+00:00",
+  "runtimeSourceCommit": "964abb4277c2cf58e81d6686f6349b6ef0fa2e39",
+  "rawSourceFilesVerified": 825,
+  "typecheckAndBuild": "Node24.21.0 both exit0; original exact-lock dependencies physically reused",
+  "baselineReadyStatus": 503,
+  "newReadyStatus": 200,
+  "readyBodyStatus": "ready",
+  "cacheControl": "no-store",
+  "freshMatchingRequestId": true,
+  "beforeTlsVerifiedResponses": 6,
+  "afterTlsVerifiedResponses": 6,
+  "sameExistingConfigDatabaseObjectsAndNode": true,
+  "newDatabaseOrBusinessObjectsCreated": false,
+  "targetCheckerSyntaxAndSelfCheck": "passed on Node24.21.0",
+  "secretScan": {
+    "actualSecretValuesCompared": 7,
+    "publicMatchedFiles": [],
+    "controlledFilesCompared": 8,
+    "secretsOutput": false
+  },
+  "documentCheck": {
+    "documents": 66,
+    "internalLinks": 1017,
+    "errors": []
+  },
+  "protectedOrApplicationSourceEdited": false,
+  "newAppLeftRunning": true,
+  "oldAppStoppedCleanly": true,
+  "files": [
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/active-entry.json",
+      "bytes": 4229,
+      "sha256": "fe43941c660b985e28d8b9f653f94b338b548f7f8e4873b74f39b7cd251aeef6"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/after-switch.json",
+      "bytes": 5337,
+      "sha256": "4c194a1ae04e3b79e06a29473f51d99a216011487768eece140c53b0a738bb24"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/before-switch.json",
+      "bytes": 5510,
+      "sha256": "685ad0ffa0f7a333854932fe14324d2843e35f9a916c14fd00117d4d6c6cf18a"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/build-result.json",
+      "bytes": 1188,
+      "sha256": "442047f9435e700253d82f09908d323eb6cbdd7f7bba8cfceaf3bd58b88c457b"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/controlled-output-manifest.json",
+      "bytes": 2165,
+      "sha256": "480b647e8a40df11407c8584e07bd6614dca6a725ad969259d0c9095743178e5"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/source-after-build.json",
+      "bytes": 175,
+      "sha256": "1eda0b412b5057caf682efe371ef75f04197be37100fe898ec0c788c78ae6e0d"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/source-reception.json",
+      "bytes": 1038,
+      "sha256": "c5c5ad1cdf6c46a95b6f8f2bb5d1619831f8030d1342a3b5c9191b69aee3c639"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-readiness-pr59/switch-result.json",
+      "bytes": 1583,
+      "sha256": "406ab271f7737bfc42f1d95b7c0a943eee1a42262e85c8bc46ae27ebe605c6d5"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/check-pr59-host.mjs",
+      "bytes": 9061,
+      "sha256": "d472c55c38f9c9fb0ade7ef262262fb6798832c676e9fb022e5c11110557d74a"
+    }
+  ],
+  "notExecuted": [
+    "complete37/20 suites",
+    "model/35-table/HDL/ALU business",
+    "browser trust/login/UI acceptance",
+    "WSL/guest reboot/NFR/backup/human/teaching acceptance"
+  ]
+}

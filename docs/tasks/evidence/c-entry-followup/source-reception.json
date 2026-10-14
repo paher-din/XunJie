@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-10-14T04:22:36.510212+00:00",
+  "deliveryCommit": "87a3b795b0e457445edbcd40ecf985e3a0dac012",
+  "runtimeSourceCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+  "aManifestSha256": "7abd074f5fd1b79e197dec30ff4166dadfe07e6f10de9129c0d05c6bbfb57b7c",
+  "manifestSourceUrl": "https://github.com/paher-din/XunJie/blob/87a3b795b0e457445edbcd40ecf985e3a0dac012/apps/teaching/tests/evidence/dl-a-closeout/a-source-package-files.json",
+  "aOriginalZipCopied": false,
+  "archiveFormat": "C generated tar from Git, core.autocrlf=false, tar.umask=0022; not A original zip",
+  "archiveBytes": 42711040,
+  "archiveSha256": "27342b7fc9f4e171c2b8fb1762572896df8bbf056a57697e5b5adc75e6495053",
+  "windowsRetainedArchive": "C:\\Users\\p3148\\AppData\\Local\\Temp\\xunjie-c-dla-receive-20261014-so__0k8h\\source-mode-corrected.tar",
+  "sourceReceiver": "/opt/xunjie-runner/tests/dla-source-89c85ed-20261014",
+  "verifiedFiles": 773,
+  "byteAndModeMismatches": 0,
+  "uid": 0,
+  "dependenciesInstalled": false,
+  "databaseCreated": false,
+  "hostStarted": false,
+  "firstAttempt": {
+    "retainedArchive": "C:\\Users\\p3148\\AppData\\Local\\Temp\\xunjie-c-dla-receive-20261014-so__0k8h\\source.tar",
+    "failure": "Archive permissions 0664/0775 differed from Git 0644/0755; raw bytes matched. Failed artifact retained.",
+    "resolution": "New archive with tar.umask=0022, all modes verified; no source edits"
+  }
+}

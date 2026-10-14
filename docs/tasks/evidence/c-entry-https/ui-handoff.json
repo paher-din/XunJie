@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-10-13T17:54:05.299Z",
+  "origin": "https://127.0.0.1:3443",
+  "assignmentId": "9906a7af-a43e-44da-a395-db8491c4cbbf",
+  "before": {
+    "assignmentId": "9906a7af-a43e-44da-a395-db8491c4cbbf",
+    "activityVersionId": "ef2137d8-641d-480f-b1c1-9c60d3c5975a",
+    "studentId": "synthetic-i0-student-a",
+    "assignmentRevision": 2,
+    "active": false,
+    "status": "paused",
+    "reasons": {
+      "individual": "Synthetic handoff pause",
+      "activity": ""
+    },
+    "activityControlRevision": 1
+  },
+  "current": {
+    "assignmentId": "9906a7af-a43e-44da-a395-db8491c4cbbf",
+    "activityVersionId": "ef2137d8-641d-480f-b1c1-9c60d3c5975a",
+    "studentId": "synthetic-i0-student-a",
+    "assignmentRevision": 3,
+    "active": true,
+    "status": "active",
+    "reasons": {
+      "individual": "Synthetic UI handoff after recorded pause acceptance",
+      "activity": ""
+    },
+    "activityControlRevision": 1
+  },
+  "recoveryGeneration": "synthetic-generation-5944e790-6182-4807-bf21-52534b16271b",
+  "receiptId": "bfa9cb6f-fed8-40e7-b537-cfd09fae7e36",
+  "studentLoginName": "synthetic-i0-student-a",
+  "credentialReference": "/opt/xunjie-runner/tests/i0-entry-20261013-01/initializer.json",
+  "access": "PAHER same machine only; original authorized WSL/root process consumes selected controlled credential in memory",
+  "bootstrapUrl": "https://127.0.0.1:3443/api/assignments/9906a7af-a43e-44da-a395-db8491c4cbbf/bootstrap",
+  "frontendRoute": "UI-owned route/bootstrap wiring still pending; no fabricated hash route",
+  "browserTrust": "Not authorized or tested; strict Node client result is not browser acceptance",
+  "startup": {
+    "cwd": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf2-20261013/apps/teaching",
+    "node": "/opt/xunjie-runner/node/bin/node",
+    "args": [
+      "dist/server/main.js"
+    ],
+    "PORT": "3443",
+    "XUNJIE_I0_CONFIG": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host.json"
+  },
+  "scope": "Explicit normal teacher resume of same synthetic assignment for handoff; old pause evidence retained",
+  "serviceRunning": false,
+  "stopConfirmed": true,
+  "serverExitCode": 0
+}

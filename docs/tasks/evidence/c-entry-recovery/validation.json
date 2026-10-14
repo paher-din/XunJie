@@ -1,0 +1,70 @@
+{
+  "checkedAt": "2026-10-14T04:47:59.065209+00:00",
+  "nodeRepair": "C and HDL authenticated readiness true, original fingerprints and generation unchanged",
+  "databaseRepair": "NOT_EXECUTED pending explicit 24-table schema approval",
+  "scriptSyntaxAndTargetBoundarySelfCheck": "passed",
+  "databasePrepareOnly": "passed without creating database/configuration",
+  "documentCheck": {
+    "documents": 65,
+    "internalLinks": 979,
+    "errors": []
+  },
+  "secretScan": {
+    "actualSecretValuesCompared": 7,
+    "matchedFiles": [],
+    "secretsOutput": false
+  },
+  "files": [
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/apparmor-after.json",
+      "bytes": 240,
+      "sha256": "ebc69be25f24fbf07cb1c4328600615abd8a9a61876eaf1106f2f8c5910b75cf"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/apparmor-before.json",
+      "bytes": 299,
+      "sha256": "d99819e0c719ec51d752305adb58b86574c9389923808af1f4e986375a341553"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/database-plan.json",
+      "bytes": 1213,
+      "sha256": "d29d94dfe73231f4bd66b849f5ae34f7c916ac199b979c181035c65bfe52fe6d"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/diagnosis-before.json",
+      "bytes": 1678,
+      "sha256": "e6e9ab4047a37c5b8af4b976f2749b905c7429ecbc5ddc146cfbec51ee4a0996"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/diagnosis-storage-service.json",
+      "bytes": 1516,
+      "sha256": "2463202ed850ca5f5f028ec605624c83a8b04857d005040ccba8c64d48429d2a"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/keepalive.json",
+      "bytes": 273,
+      "sha256": "c18b4e8962cbbcb14304f011bdae0933651342303cd8eb68a64671d9fa3f68bb"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/node-after.json",
+      "bytes": 7027,
+      "sha256": "3ccfd1f47823cf560d52ab80452f612e02face1cf5e52280bd33342edd72f138"
+    },
+    {
+      "path": "docs/tasks/evidence/c-entry-recovery/node-start-probe.json",
+      "bytes": 7253,
+      "sha256": "2b9336b4f8cb69b4fb892df7b6b8249ed2508f1f3d2fdcff99f7915b3a6699c1"
+    },
+    {
+      "path": "docs/tasks/evidence/dla-c-handoff/prepare-entry-recovery.mjs",
+      "bytes": 6334,
+      "sha256": "278bedf51113afcf1838ec94e197b01242f1ddaa0aa7921bf6083576f28dcaae"
+    }
+  ],
+  "notExecuted": [
+    "new database creation or migrations",
+    "HTTPS application/login/real C1 chain",
+    "VM reboot or WSL shutdown to test persistence",
+    "browser trust/35 tables/ALU/model/production"
+  ]
+}

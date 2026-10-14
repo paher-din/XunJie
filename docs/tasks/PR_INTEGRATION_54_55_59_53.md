@@ -45,3 +45,35 @@ Node 24.21.0/Linux/WSL2 原 lock 安装成功，typecheck/build 通过。默认 
 适配细节：沿原 guarded runner 校验当前指纹/代际，检查数据库短事务与首次成功扫描；5 秒 health 查询期限和外部等待后的关停/数据库/代际重核保持 #59 原行为。#53 未具备 tutoring 宿主选项，故不新增 teaching consumer/28 表配置；#59 的第 6 项“disabled model + teaching scan”测试不适用于此目标，未伪装为已运行/跳过；其余 7 项原测试按原字节接纳（仅排除该项）。未来 tutoring 宿主集成由原负责人另批处理。
 
 Node24.21.0 typecheck/build 通过。首次复制依赖不完整导致缺 @typescript/typescript-linux-x64，已以原 #55 lock 安装所得 Linux 依赖补齐，未修改 lock/配置；失败与修复区分记录。专项验收将在三条关系组合后的最终 #53 上执行。
+
+## 6. 更新后 #55 → #53
+
+#55 已普通推送原分支至 `08445bc5765ef21b54a3253e60daad086475eee0`（实现 `3d7a03e`、验证记录补正 `08445bc`）；#53 的 readiness 接纳提交为 `2c5b37c`。确认 #55 在共同基线外只有原 C 交接及本次 HDL 增量后，对 #53 执行保留双方历史的 `git merge --no-ff 08445bc`，没有引入 #54/#59 的 main 历史。代码文件自动合并无冲突，仅 README 两条相邻导航和本文 add/add 冲突：保留 A/C 两条导航、任务记录并集；没有覆盖原 A 交接或重写 C 历史。最终组合 typecheck/build/专项与只读写集检查待执行。
+
+## 7. 组合验证、失败与复验
+
+最终组合的 Node24.21.0 typecheck/build 通过。首次联合专项共186项：179通过、6个真实模型门禁跳过、1失败；唯一失败为原宿主静态 real UI 测试在独立工作树缺少 `apps/student/dist`（ENOENT），未改业务代码或判据。按学生端原 lock 构建原 UI 后复验；本操作只是原静态宿主测试的构建前置，不扩展 UI 功能、不开展浏览器/P5。首次失败原日志保留于 [组合首轮](evidence/pr-integration-20261014/pr53-tests-first.tap)，#55 独立日志见 [PR55 专项](evidence/pr-integration-20261014/pr55-tests.tap)。
+
+可复现命令（使用原 lock、Node24.21.0，所有真实模型门禁关闭）：
+
+```sh
+cd apps/teaching
+npm ci
+npm run typecheck
+npm run build
+node --test --test-reporter=tap server/app/i0-readiness.test.ts server/app/i0.test.ts tests/app.test.ts tests/errors.test.ts tests/startup.test.ts server/tutoring/test/*.test.ts ../../docs/tasks/evidence/dla-c-handoff/entry-verification.test.mjs
+```
+
+该命令的静态宿主前置：在 `apps/student` 用原 lock `npm ci && npm run build`。#55 专项命令为仓库根 `node --test --test-reporter=tap apps/teaching/server/tutoring/test/*.test.ts docs/tasks/evidence/dla-c-handoff/entry-verification.test.mjs`。
+
+写集保留核查：#53 原头除明确接纳的8个已有文件外，752个原 Git blob 与原头完全一致；#55 相对共同基线的90个代码/任务/证据 blob 原样纳入 #53，README/本文合并。首次按整个 #55 基线检查因 config.ts 命中 #53 原正常宿主差异而拒绝，随后纠正检查范围为 #55 实际增量，90/90一致；未为迎合检查覆盖原 A 配置。受保护路径、UI 源码、依赖/锁文件、runner/records/workspace 与原 #53 差异为空。
+
+### 7.1 最终通过与遗留边界
+
+原 UI `npm ci`/`npm run build` 成功，未改 UI/锁文件；随后按上述完全相同的联合专项命令复验：**186 项、180 通过、6 项真实模型门禁跳过、0 失败/取消**。其中 #59 适用 readiness 7/7、#53 原宿主 10/10、C verifier 35/35，其余为原健康/错误/启动与 B tutoring 回归。模型门禁已关闭、供应商请求 0；没有跳过失败的静态宿主项。结果与原日志/hash见 [最终核验](evidence/pr-integration-20261014/verification.json) / [组合最终日志](evidence/pr-integration-20261014/pr53-tests-final.tap)。
+
+三项指定关系处理完成，代码无未解冲突；没有复制队列、worker、bootstrap、权限或模型实现。任务未新增需负责人确认的业务/共享语义：#54 原 HDL 正常业务授权构造/读取、C3/浏览器真实消费，以及 #53 后续 tutoring host 等既有缺口均留原负责人/任务处理。#54 人工语义仍保留 HR-DL-02 有条件通过，不据离线测试恢复整批语义结论。当前提交可供 A/B/C 审核。
+
+#53 交付：正常合并更新后的 #55，保留其完整 Git 历史；普通推送原 `codex/i0-a-c-handoff`，远端若推进则重新核差异、不强推。#53/#55 保持 Draft/Open，#54/#59 不改状态；不合并 main、不关闭原 PR/Issue、不部署。P4/P5/现场/模型/真人/教学均未执行，产品基线/MVP §10 待授权维护者汇总。
+
+回滚交接：如负责人拒绝本批集成，按两个目标上的本次提交/merge 做新的 revert 审核；不 reset/强推、不删除原交接和失败证据。后续由负责人审核对应原 PR，本次任务到交付即停止。

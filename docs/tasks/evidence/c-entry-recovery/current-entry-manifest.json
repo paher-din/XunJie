@@ -1,0 +1,10 @@
+{
+  "originalPath": "/opt/xunjie-runner/tests/i0-entry-20261013-01/current-entry-recovered-20261014.json",
+  "originalBytes": 3902,
+  "originalSha256": "fe072cb067c9e67dfc7986b14e19d0884eb0f2170c04d1e42155b78828113dc4",
+  "publicPath": "docs/tasks/evidence/c-entry-recovery/running-entry-final.json",
+  "publicBytes": 3902,
+  "publicSha256": "fe072cb067c9e67dfc7986b14e19d0884eb0f2170c04d1e42155b78828113dc4",
+  "jsonEquivalent": true,
+  "correctedIntermediateRetained": "running-entry.json and controlled running-entry-recovered-final-20261014.json kept; current reference is the exact originalPath above."
+}

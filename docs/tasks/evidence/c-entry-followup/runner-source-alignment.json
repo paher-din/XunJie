@@ -1,0 +1,9 @@
+{
+  "sourceCommit": "89c85ed04db5a55ddebdc95c27303f0ff76fa31c",
+  "algorithm": "Original runner/fingerprint.ts file selection/order/sha256(JSON.stringify(sources))",
+  "files": 34,
+  "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+  "matchesHistoricalRegistrationSourceOnly": true,
+  "liveReadiness": false,
+  "limits": "Offline source match does not establish current kernel/engine/profile/validation/generation readiness."
+}

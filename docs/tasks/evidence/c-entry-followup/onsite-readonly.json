@@ -1,0 +1,84 @@
+{
+  "checkedAt": "2026-10-14T04:23:09.402Z",
+  "host": "Paher",
+  "uid": 0,
+  "node": "v24.21.0",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "origin": "https://127.0.0.1:3443",
+  "listening": false,
+  "files": [
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/server.key.pem",
+      "uid": 0,
+      "mode": "600",
+      "bytes": 1704
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/server.cert.pem",
+      "uid": 0,
+      "mode": "600",
+      "bytes": 1224
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/signing-secret.txt",
+      "uid": 0,
+      "mode": "600",
+      "bytes": 44
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/initializer.json",
+      "uid": 0,
+      "mode": "600",
+      "bytes": 1667
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/i0-host.json",
+      "uid": 0,
+      "mode": "600",
+      "bytes": 856
+    }
+  ],
+  "certificate": {
+    "fingerprint256": "C3:F8:ED:37:E0:7C:34:1B:0F:CC:55:58:D0:FC:12:FA:B4:79:13:EF:71:D1:EC:80:77:A0:E0:84:44:47:51:73",
+    "validFrom": "Oct 13 17:01:01 2026 GMT",
+    "validTo": "Nov 12 17:01:01 2026 GMT",
+    "subjectAltName": "IP Address:127.0.0.1, DNS:localhost, IP Address:0:0:0:0:0:0:0:1",
+    "publicDerSha256": "c3f8ed37e07c341b0fcc5558d0fc12fab47913ef71d1ec8077a0e08444475173"
+  },
+  "database": {
+    "path": "/tmp/xunjie-a12-completion-ZfUn7m/synthetic.sqlite",
+    "exists": false,
+    "opened": false
+  },
+  "linuxBrowsers": [
+    {
+      "binary": "google-chrome",
+      "path": null
+    },
+    {
+      "binary": "chromium",
+      "path": null
+    },
+    {
+      "binary": "firefox",
+      "path": null
+    }
+  ],
+  "readiness": {
+    "readiness": {
+      "error": {
+        "code": "DEPENDENCY_UNAVAILABLE"
+      }
+    },
+    "hdl_readiness": {
+      "error": {
+        "code": "DEPENDENCY_UNAVAILABLE"
+      }
+    }
+  },
+  "scope": "Read-only metadata, original authenticated readiness and retained SQLite. No start, initialization, secret output or node maintenance.",
+  "firstProbeFailure": {
+    "code": "DATABASE_PATH_ABSENT",
+    "description": "Read-only database open failed because configured retained tmp directory was absent; no database created or guessed replacement used."
+  }
+}

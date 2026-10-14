@@ -1,0 +1,58 @@
+{
+  "secretScan": {
+    "actualSecretValuesCompared": 7,
+    "publicMatchedFiles": [],
+    "controlledFilesCompared": 8,
+    "secretsOutput": false
+  },
+  "outputs": [
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/before.json",
+      "bytes": 5510,
+      "sha256": "685ad0ffa0f7a333854932fe14324d2843e35f9a916c14fd00117d4d6c6cf18a",
+      "secretValueMatches": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/after.json",
+      "bytes": 5337,
+      "sha256": "4c194a1ae04e3b79e06a29473f51d99a216011487768eece140c53b0a738bb24",
+      "secretValueMatches": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/build-result.json",
+      "bytes": 1188,
+      "sha256": "442047f9435e700253d82f09908d323eb6cbdd7f7bba8cfceaf3bd58b88c457b",
+      "secretValueMatches": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/active-entry.json",
+      "bytes": 4229,
+      "sha256": "fe43941c660b985e28d8b9f653f94b338b548f7f8e4873b74f39b7cd251aeef6",
+      "secretValueMatches": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/switch-result.json",
+      "bytes": 1583,
+      "sha256": "406ab271f7737bfc42f1d95b7c0a943eee1a42262e85c8bc46ae27ebe605c6d5",
+      "secretValueMatches": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "secretValueMatches": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/build.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "secretValueMatches": 0
+    },
+    {
+      "path": "/opt/xunjie-runner/tests/i0-entry-20261013-01/pr59-adoption-20261014/journal-after-switch.txt",
+      "bytes": 289,
+      "sha256": "f23bce04d43b74c4331f1aa845b4fd7ecdef51ee443c07f7221b871f420ec639",
+      "secretValueMatches": 0
+    }
+  ]
+}

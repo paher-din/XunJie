@@ -1,0 +1,101 @@
+{
+  "checkedAt": "2026-10-13T14:38:54.435Z",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "oldReceiver": "/opt/xunjie-runner/tests/dla-c-handoff-9fa76ad-20261013",
+  "currentReceiver": "/opt/xunjie-runner/tests/i0-entry-source-9fa76ad-lf-20261013",
+  "files": [
+    {
+      "path": "apps/teaching/package.json",
+      "declaredSha256": "ff61e22a3d28a9de0d675825abc7b1dcc8a2f9414df8137d53df5f10b733b79b",
+      "oldReceiverSha256": "7afe559e776844b926a9411dc942b26f94d660e58966fae671d2527faaa5e053",
+      "lfNormalizedOldSha256": "ff61e22a3d28a9de0d675825abc7b1dcc8a2f9414df8137d53df5f10b733b79b",
+      "currentReceiverSha256": "ff61e22a3d28a9de0d675825abc7b1dcc8a2f9414df8137d53df5f10b733b79b",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/teaching/package-lock.json",
+      "declaredSha256": "acaa7e091e70ccd23404b905c206414fd2c4505f00527e4be783364d8957d7ed",
+      "oldReceiverSha256": "7d93afc2441eceff0ccd26a9cae981557a9f789021b40f079a70d4ea356d548e",
+      "lfNormalizedOldSha256": "acaa7e091e70ccd23404b905c206414fd2c4505f00527e4be783364d8957d7ed",
+      "currentReceiverSha256": "acaa7e091e70ccd23404b905c206414fd2c4505f00527e4be783364d8957d7ed",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/student/package.json",
+      "declaredSha256": "dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd",
+      "oldReceiverSha256": "18b4cf3e371f2c0b80325dd001ec6c5f525de1e7078d1e2298eb3ac460f8995e",
+      "lfNormalizedOldSha256": "dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd",
+      "currentReceiverSha256": "dda67530bda121133858f9d70097fa4326471c17dba000e09075697a616b7abd",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/student/package-lock.json",
+      "declaredSha256": "8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9",
+      "oldReceiverSha256": "b371f9085f1ee3a5494c9eddc4360d394adae137a31869fef028ee1319a047d6",
+      "lfNormalizedOldSha256": "8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9",
+      "currentReceiverSha256": "8c9a86c6951c26f6378002d39caa9ab7250c0fd066efb0abb5104afb776750e9",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/teaching/server/main.ts",
+      "declaredSha256": "c6a1850c139e3d9e676acb55ea53792307deabd3c05c4b09f2a1ae179ee37c0a",
+      "oldReceiverSha256": "05a642c5c1b9bec91c7a367aa12351007f543eeb15ddacb86a81cba2952bac4e",
+      "lfNormalizedOldSha256": "c6a1850c139e3d9e676acb55ea53792307deabd3c05c4b09f2a1ae179ee37c0a",
+      "currentReceiverSha256": "c6a1850c139e3d9e676acb55ea53792307deabd3c05c4b09f2a1ae179ee37c0a",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/teaching/server/app/config.ts",
+      "declaredSha256": "4589fb0b1b2a6e0fdbf02b606223495764eacb8819b79301af1330cacd236c66",
+      "oldReceiverSha256": "a978aac7814399309b32a47f564c72721e15c542414e5a11e520a048d863a577",
+      "lfNormalizedOldSha256": "4589fb0b1b2a6e0fdbf02b606223495764eacb8819b79301af1330cacd236c66",
+      "currentReceiverSha256": "4589fb0b1b2a6e0fdbf02b606223495764eacb8819b79301af1330cacd236c66",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/teaching/server/app/i0.ts",
+      "declaredSha256": "c765cc37904cd438044d01a43e2ac184bacd98d30acd2be53cc09331ac17b0d5",
+      "oldReceiverSha256": "a773bf462c4d55be2554fda13278cc97d5e5ab29a9e1e2479184e0c715082a7c",
+      "lfNormalizedOldSha256": "c765cc37904cd438044d01a43e2ac184bacd98d30acd2be53cc09331ac17b0d5",
+      "currentReceiverSha256": "c765cc37904cd438044d01a43e2ac184bacd98d30acd2be53cc09331ac17b0d5",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/teaching/server/app/i0-initialize.ts",
+      "declaredSha256": "0b6d5769e1c45d8a6875a640161e8f720fd8eef99a38cbebccc7919cda6d0a42",
+      "oldReceiverSha256": "041b2319ba201390737697a79cedc0c678b578ba4df986e641dc5cc51e909e85",
+      "lfNormalizedOldSha256": "0b6d5769e1c45d8a6875a640161e8f720fd8eef99a38cbebccc7919cda6d0a42",
+      "currentReceiverSha256": "0b6d5769e1c45d8a6875a640161e8f720fd8eef99a38cbebccc7919cda6d0a42",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/teaching/contracts/design/inputs.ts",
+      "declaredSha256": "16b874f02861047c125dbd0463fdf179b309366b3d4168a5e63adb1aaebc83c9",
+      "oldReceiverSha256": "f048edb906dbcf78962685ac3a9eb25c83513c69fa907c45b6bb01db24f5cb80",
+      "lfNormalizedOldSha256": "16b874f02861047c125dbd0463fdf179b309366b3d4168a5e63adb1aaebc83c9",
+      "currentReceiverSha256": "16b874f02861047c125dbd0463fdf179b309366b3d4168a5e63adb1aaebc83c9",
+      "currentMatches": true,
+      "oldMatches": false
+    },
+    {
+      "path": "apps/teaching/contracts/design/i0.ts",
+      "declaredSha256": "f56b89aa690aef0e105efaa57611b04e000aad6a82beb5613184fbe4de01f108",
+      "oldReceiverSha256": "fee3eeea2cec02e1e78ea8cb3c7f797376bad434b4ae244bea183e83a44e6628",
+      "lfNormalizedOldSha256": "f56b89aa690aef0e105efaa57611b04e000aad6a82beb5613184fbe4de01f108",
+      "currentReceiverSha256": "f56b89aa690aef0e105efaa57611b04e000aad6a82beb5613184fbe4de01f108",
+      "currentMatches": true,
+      "oldMatches": false
+    }
+  ],
+  "oldMismatches": 10,
+  "currentMismatches": 0,
+  "scope": "Application source reception only; old receiver and execution node untouched"
+}

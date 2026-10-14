@@ -1,0 +1,95 @@
+{
+  "formatVersion": 1,
+  "purpose": "Non-secret proposal; not accepted initializer input; contains no passwords",
+  "status": "pending A substantive review and credential authorization",
+  "sourceCommit": "9fa76adbfb37a60cc087f8bf2fbdd1e05cd18e77",
+  "users": [
+    {
+      "id": "synthetic-i0-teacher-a",
+      "loginName": "synthetic-i0-teacher-a",
+      "role": "teacher",
+      "courseId": "synthetic-i0-course-a",
+      "passwordSource": "pending explicit authorization; controlled input only"
+    },
+    {
+      "id": "synthetic-i0-student-a",
+      "loginName": "synthetic-i0-student-a",
+      "role": "student",
+      "courseId": "synthetic-i0-course-a",
+      "passwordSource": "pending explicit authorization; controlled input only"
+    },
+    {
+      "id": "synthetic-i0-student-peer",
+      "loginName": "synthetic-i0-student-peer",
+      "role": "student",
+      "courseId": "synthetic-i0-course-a",
+      "passwordSource": "pending explicit authorization; controlled input only"
+    },
+    {
+      "id": "synthetic-i0-teacher-b",
+      "loginName": "synthetic-i0-teacher-b",
+      "role": "teacher",
+      "courseId": "synthetic-i0-course-b",
+      "passwordSource": "pending explicit authorization; controlled input only"
+    },
+    {
+      "id": "synthetic-i0-student-b",
+      "loginName": "synthetic-i0-student-b",
+      "role": "student",
+      "courseId": "synthetic-i0-course-b",
+      "passwordSource": "pending explicit authorization; controlled input only"
+    }
+  ],
+  "courses": [
+    {
+      "id": "synthetic-i0-course-a",
+      "teacherId": "synthetic-i0-teacher-a",
+      "studentIds": [
+        "synthetic-i0-student-a",
+        "synthetic-i0-student-peer"
+      ],
+      "helpPolicy": {
+        "versionId": "help-v1",
+        "helpAllowed": true,
+        "wholeSolutionAllowed": false,
+        "limitedCheckHelpAllowed": false,
+        "description": "Synthetic I0 scoped help; no whole solution and no help during limited checks."
+      },
+      "checkRule": {
+        "versionId": "textscope-core-v1",
+        "validatorVersion": "textscope-validator-v2",
+        "limitedHelp": true,
+        "description": "Synthetic TextScope Core trusted checks with limited help."
+      }
+    },
+    {
+      "id": "synthetic-i0-course-b",
+      "teacherId": "synthetic-i0-teacher-b",
+      "studentIds": [
+        "synthetic-i0-student-b"
+      ],
+      "helpPolicy": {
+        "versionId": "help-v1-course-b",
+        "helpAllowed": true,
+        "wholeSolutionAllowed": false,
+        "limitedCheckHelpAllowed": false,
+        "description": "Synthetic I0 scoped help; no whole solution and no help during limited checks."
+      },
+      "checkRule": {
+        "versionId": "textscope-core-v1",
+        "validatorVersion": "textscope-validator-v2",
+        "limitedHelp": true,
+        "description": "Synthetic TextScope Core trusted checks with limited help."
+      }
+    }
+  ],
+  "policyIdentifierProposal": {
+    "courseA": "help-v1",
+    "courseB": "help-v1-course-b",
+    "reason": "storePolicy uses a globally unique id and refuses reuse across courses; permissions and help semantics remain unchanged",
+    "reviewOwner": "A",
+    "approved": false
+  },
+  "materialization": "Only after authorization: users.map(({id,loginName})=>({id,loginName,password:<controlled random password>})); courses contain only original fields; no role/courseId/passwordSource additions to users.",
+  "initialize": "Original fresh-only createWorkspaceDatabase via i0-initialize CLI; retain database, no old-database migration or direct account SQL."
+}
