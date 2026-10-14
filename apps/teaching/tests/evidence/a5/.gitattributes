@@ -1,0 +1,3 @@
+*.txt -text
+*.json -text
+*.gz -text

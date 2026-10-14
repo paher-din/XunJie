@@ -56,6 +56,7 @@ node tools/a0-review/check.mjs
 | P2 工程收口与 B 后续 | [G2 总协调](docs/tasks/G2_OVERALL_COORDINATION.md)、[B/P2-F 交付](docs/tasks/B_P2_MODEL_SEMANTIC_VERIFICATION.md)；模型/语义 [#45](https://github.com/paher-din/XunJie/issues/45)，已用批次的[历史命令](docs/tasks/G2_OVERALL_COORDINATION.md#223-已用模型批次的历史命令保存) |
 | P3 数字逻辑与反馈闭环 | [G3 总协调](docs/tasks/G3_OVERALL_COORDINATION.md)、[DL-0](docs/tasks/DL-0_DIGITAL_LOGIC_ADDON.md)、[DL-A](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md) |
 | C4 → A4 → DL-C 顺序集成 | [集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)、[C4](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md)、[A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md)、[DL-C](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) |
+| A5 教师反馈、修订许可与后续活动 | [A5 任务记录](docs/tasks/A5_FEEDBACK_REVISION_FOLLOWUP.md)；固定提交 → 正式反馈 → 修订许可 → 学生主动重开的服务端链，接口、范围与验证见该记录 |
 | 学生 UI 准备交付与真实接入 | [I0 收尾](docs/tasks/I0_UI_CLOSEOUT.md)、[接入规格](docs/tasks/I0_UI_SPEC.md)、[准备票索引](docs/tasks/I0_UI_PREPARATION.md)；H-01～H-06 回交在 [#30](https://github.com/paher-din/XunJie/issues/30) |
 | I0-B 学生辅导接线与宿主组合 | [六票执行与交接](docs/tasks/I0-B_UI_TUTOR_PLAN.md)、[正常宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)、[完整30项清单](docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)；准备、实际 HTTPS 服务链、受控节点/模型与真人证据分开记录 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |
