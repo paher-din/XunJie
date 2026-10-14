@@ -56,6 +56,7 @@ node tools/a0-review/check.mjs
 | P4 截止日前核心验证与后续验收 | [核心验证安排与授权](docs/tasks/P4_DEADLINE_CORE_VERIFICATION.md)；[总协调 #60](https://github.com/paher-din/XunJie/issues/60)、[A6 #61](https://github.com/paher-din/XunJie/issues/61)、[B4 #62](https://github.com/paher-din/XunJie/issues/62)、[C5 #63](https://github.com/paher-din/XunJie/issues/63) |
 | C4 → A4 → DL-C 顺序集成 | [集成记录](docs/tasks/ORDERED_C4_A4_DL_C_INTEGRATION.md)、[C4](docs/tasks/C4_SUBMISSIONS_REOPEN_RECOVERY.md)、[A4](docs/tasks/A4_LEARNER_STATE_REVIEW.md)、[DL-C](docs/tasks/DL-C_HDL_BUILD_SIMULATION.md) |
 | A5 教师反馈、修订许可与后续活动 | [A5 任务记录](docs/tasks/A5_FEEDBACK_REVISION_FOLLOWUP.md)；固定提交 → 正式反馈 → 修订许可 → 学生主动重开的服务端链，接口、范围与验证见该记录 |
+| A6 的 A5 契约消费复核 | [C 消费记录](docs/tasks/A6_C_CONTRACT_CONSUMPTION.md)；反馈范围/线程版本、固定作品清单及 B/UI 接线核对 |
 | 学生 UI 准备交付与真实接入 | [I0 收尾](docs/tasks/I0_UI_CLOSEOUT.md)、[接入规格](docs/tasks/I0_UI_SPEC.md)、[准备票索引](docs/tasks/I0_UI_PREPARATION.md)；H-01～H-06 回交在 [#30](https://github.com/paher-din/XunJie/issues/30) |
 | I0 评论指定的浏览器与 HDL 交接 | [UI30 回交](docs/tasks/I0-UI30_COMMENT_CLOSEOUT.md)、[HDL 操作表](docs/tasks/I0-UI30_HDL_OPERATION_MAP.md)；正式 UI／真实 C1 与 HDL 待接线分列 |
 | A/C 按 H 编号回交 | [I0-A/C 交接](docs/tasks/I0_A_C_HANDOFF.md)；[HTTPS 与账号入口准备](docs/tasks/I0_HOST_ENTRY_PREPARATION.md)单列 C 准备/现场执行、A 复核及 UI 接收；身份/分配、受信代际、原 Job 与版本/公开样例沿原交接 |
@@ -71,6 +72,7 @@ node tools/a0-review/check.mjs
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
 | 指定 PR 集成 | [54 → 55、59 → 53、55 → 53](docs/tasks/PR_INTEGRATION_54_55_59_53.md)；实际接纳差异、验证与审核交付 |
 | DL-A 当前续作 | [main 集成与真实 H4 交接](docs/tasks/DLA_CONTINUATION_20261014.md)；原 #56 统一基础，真实 HDL 与模型/浏览器分层验证 |
+| DL-A 合并后文档与分支收口 | [收尾记录](docs/tasks/DLA_POSTMERGE_BRANCH_CLOSEOUT_20261014.md)；事后验证/运行/UI回执纳入主线，源码交付与页面历史推送提示分别核对 |
 | #53 → #56 集成 | [当前集成记录](docs/tasks/PR_INTEGRATION_53_56.md)；来源、共用宿主适配、专项验证与 PR 回交 |
 | 其他模块与历史交付 | [全部任务记录](docs/tasks/)；按模块/编号查实现、批准范围、实际命令与原始证据 |
 

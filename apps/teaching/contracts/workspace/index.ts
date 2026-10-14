@@ -43,7 +43,9 @@ export type RecoveryRun = {runId:string;jobId:string;mode:'run'|'check';snapshot
 // Formal feedback belongs to A5. C4 carries only what an attached A5 seam returns, so an unattached recovery view
 // reports `unavailable` instead of reconstructing feedback text from hashes, digests or submission rows.
 export type RecoveryFeedback = {status:'unavailable'}
+  // Attempt-scoped CAS across all threads; send it as expectedFeedbackRevision for the next feedback write.
   | {status:'available';feedbackRevision:number;
+    // `revision` projects A5's threadRevision and identifies an exact feedback dispute target.
     entries:{feedbackId:string;kind:string;revision:number;submissionId?:string;createdAt:string}[]};
 // The reopen permission as a resuming client acts on it. `state` is the most recently saved grant's own persisted
 // state, so a `valid` row is never folded into `none`; `actionable` says whether the student's own resume_revision
