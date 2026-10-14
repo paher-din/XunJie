@@ -1,6 +1,6 @@
 # I0-UI：真实IME、依赖审计与证据入口收尾
 
-日期：2026-10-15（Asia/Shanghai）；主责：UI / Robert；实施：当前Agent。状态：`completed-in-approved-synthetic-and-document-scope`，已推送并创建[PR #76](https://github.com/paher-din/XunJie/pull/76)，未合并。初始main与原分支`i0/ui-frontend`均为`37b628b75ec3a2238b9b77c8bd1882d36a2e55a6`（PR75）；原未跟踪`.zcodeignore`保留。
+日期：2026-10-15（Asia/Shanghai）；主责：UI / Robert；实施：当前Agent。状态：`completed-in-approved-synthetic-and-document-scope`，已推送并创建[PR #76](https://github.com/paher-din/XunJie/pull/76)；普通合并已获授权，实际Git状态以该公开回执和§4为准。初始main与原分支`i0/ui-frontend`均为`37b628b75ec3a2238b9b77c8bd1882d36a2e55a6`（PR75）；原未跟踪`.zcodeignore`保留。
 
 ## 1. 依据与明确范围
 

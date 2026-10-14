@@ -35,7 +35,7 @@
 | UI-PREP-05 | 补独立冷启动采样 | 核首次依赖预优化、504、启动/关闭与端口回收；不增加无理由的全量复跑 | [独立采样](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#42-兼容复验与冷启动)已完成：原配置/独立新缓存，prep/real各两次，无504/资源失败，退出0/端口释放/自有缓存清理；不计NFR或真实服务通过 |
 | UI-PREP-06 | 核最新客户端/服务端契约 | 对照当前main的公开输入、信封、版本、错误和裁剪；差异交A/C | [当前契约表](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#5-ui-prep-06当前公开契约核对)已完成；PR #67未变API/schema。辅导异常中文提示补反例/窄修复，原命令/诊断保留；H-05获准修源码且A/C已交PR #73，合并/运行生效另核，产品汇总仍待授权维护者 |
 | UI-PREP-07 | 形成依赖修复方案 | 区分运行时与测试工具链影响；列精确版本与回归范围，获准后再改依赖 | [当前审计与精确方案](evidence/i0-ui-prep-04-07-08/dependencies/DEPENDENCY_REPAIR_PROPOSAL.md)已形成：固定lock全树6包条目、runtime仅2 low，逐通报/用途/前置与候选版本/回归分列；Monaco内嵌旧DOMPurify不能仅override消除。依赖升级/构建映射待批准，package/lock未变 |
-| UI-PREP-08 | 校正文档与证据入口 | Issue #30早期状态、04截图指针、05的104/106计数及基线请求；交原维护者 | 已直接校正当前页首/接包/下载、本人04缺图指针/MVP误链和05固定来源104/新增10及fileLifecycle5，旧数/日期保留；wubq511即我们。[交接索引](evidence/i0-ui-prep-04-07-08/documentation-handoff.md)和基线输入已通过[PR #76](https://github.com/paher-din/XunJie/pull/76)共享，未合main/未代签A阅读；保护基线和原图未来回补仍分列 |
+| UI-PREP-08 | 校正文档与证据入口 | Issue #30早期状态、04截图指针、05的104/106计数及基线请求；交原维护者 | 已直接校正当前页首/接包/下载、本人04缺图指针/MVP误链和05固定来源104/新增10及fileLifecycle5，旧数/日期保留；wubq511即我们。[交接索引](evidence/i0-ui-prep-04-07-08/documentation-handoff.md)和基线输入已通过[PR #76](https://github.com/paher-din/XunJie/pull/76)共享，普通合并已获授权，实际Git状态见该回执；未代签A阅读，保护基线和原图未来回补仍分列 |
 | UI-PREP-09 | 准备I0-B操作/接口映射 | 核现有求助、消息、停止、返回、采集操作；列缺失组件和最小接入范围 | 映射及六票前端工程已交，见[I0-B计划](I0-B_UI_TUTOR_PLAN.md)；后台采集/分析与UI-TUTOR-09分列 |
 
 原页提示（2026-10-13）：UI-PREP-02的已有测试连续按undo/redo但只检查最终文字；两个快捷键都无效也可能满足该断言。这是历史风险线索，后续逐组断言与原文历史修复已补，见上表。原页中文文字输入不能证明真实组合流程；2026-10-15专项已有实际系统IME证据，见UI-PREP-04当前行。
