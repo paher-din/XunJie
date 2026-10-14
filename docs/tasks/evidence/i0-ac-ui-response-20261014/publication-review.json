@@ -1,0 +1,19 @@
+{
+  "commits": {
+    "cf2326f70ed0cec8cc92f51f7402808061c1b6b7": "cf2326f70ed0cec8cc92f51f7402808061c1b6b7"
+  },
+  "uploadedTrees": [
+    {
+      "localCommit": "cf2326f70ed0cec8cc92f51f7402808061c1b6b7",
+      "remoteCommit": "cf2326f70ed0cec8cc92f51f7402808061c1b6b7",
+      "tree": "1b1f264aebed5f446d39f876b3549ecfe46b2db3",
+      "changedEntries": 3
+    }
+  ],
+  "branch": "codex/i0-h05-revision-fix",
+  "expectedHead": "3e8a095d96c4eff72fad9a8e325f6afd82e092a6",
+  "publishedHead": "cf2326f70ed0cec8cc92f51f7402808061c1b6b7",
+  "localHead": "cf2326f70ed0cec8cc92f51f7402808061c1b6b7",
+  "force": false,
+  "treeVerified": true
+}

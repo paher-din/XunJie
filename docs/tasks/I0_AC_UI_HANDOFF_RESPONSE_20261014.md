@@ -96,3 +96,11 @@ Node24.21原lock/依赖下 `npm run typecheck`、`npm run build`通过；`node -
 正常推送 `codex/i0-h05-revision-fix`，初始公开head `3e8a095d96c4eff72fad9a8e325f6afd82e092a6`；已创建并附当前任务 [PR73](https://github.com/paher-din/XunJie/pull/73)。本节及审查回执为后续纯记录/README导航，业务源码与已验证正式文件一致，不重复测试。main当前8b41303，H-05代码尚未合main/部署；两正常宿主已经接纳此前main87edd51/同字节应用/UI，不能混作H-05已生效。
 
 后续在原#30回交指定评论的A/C接纳、H-05批准/实现/验证/PR及准确现场状态与停止责任；不编辑UI作者评论或将其b7e73c5真实浏览器证据改贴新源。具体公开回执待读回后填写。产品基线/TECH/MVP§10维护者汇总仍待授权维护者，不改保护文档。
+
+### 7.1 实际公开回执
+
+审查/导航提交 `cf2326f70ed0cec8cc92f51f7402808061c1b6b7` 已发布；两次Git push连接reset后复用既有精确Git API上传相同树/父、force=false，远端SHA回读相同。PR73现Open/非Draft/CLEAN/MERGEABLE，GitHub status checks为空，不称hosted CI通过；base仍8b41303。实际三份代码与formal回归源码一致，后续只有文档/回执变化。
+
+已在原#30向UI/A发布并逐字回读 [A/C完整回复6171614259](https://github.com/paher-din/XunJie/issues/30#issuecomment-6171614259)，明确接纳指定6169702024的原H状态/失败/缺口、H-05批准/实现/反例/115项分层验证/PR、24表准确source/unit/停止回退与137静态字节，逐项给UI可继续动作。保留原作者评论，不重复开票/贴原始整包日志，不再派首次ready/登录/runner材料；H3后置、3444/B通路/新模型预算和UI真演示仍沿原具体门禁。
+
+本轮A/C清单完成到正式代码PR可审阅、现有主线正常宿主接纳和指定评论回交；H-05尚未合main/现场部署，UI浏览器待本人续作，不把Issue或完整产品标完成。本节是事后记录，实际业务源码仍固定bfa17f7，现场87edd51，无新模型/学生学习操作或节点改变。
