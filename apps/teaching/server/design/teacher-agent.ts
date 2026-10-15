@@ -23,6 +23,18 @@ import { loadTeacherRequest, saveTeacherRequest, saveUsages, selectReferences, t
 export interface TeacherAgentOptions {
   provider: ModelProvider; versions: TrustedModelContext['versions'];
   budgetAvailable: (context:{courseId:string;actorId:string;usages:readonly ModelUsage[]}) => boolean;
+  /**
+   * Additive per-teacher resolution. When present it replaces the static `provider`/`versions` above for that
+   * teacher, so an approved personal model is bound to the request at accept time and a later model change makes
+   * the request stale instead of silently reusing the new configuration. Absent hooks keep the static behaviour.
+   */
+  providerForTeacher?: (context:{actorId:string;courseId:string;modelConfig:string}) => ModelProvider;
+  versionsForTeacher?: (context:{actorId:string;courseId:string}) => TrustedModelContext['versions'];
+  /**
+   * Round accounting needs the original request rows, so it must run inside the caller's transaction; nesting is
+   * not allowed. When present this replaces `budgetAvailable`.
+   */
+  budgetAvailableInTransaction?: (tx:Transaction,context:{courseId:string;actorId:string;usages:readonly ModelUsage[]}) => boolean;
 }
 export interface TeacherResultDelivery {
   jobId:string; leaseToken:string; recoveryGeneration:string; outcome:TutoringOutcome<TeacherGenerationBody>; bodyJson?:string;
@@ -45,6 +57,8 @@ const timeString = (now:number) => new Date(now).toISOString();
 
 export function registerTeacherAgent(app:FastifyInstance,access:Access,options:DesignVerificationOptions,config:TeacherAgentOptions,registerJobRoutes=true) {
   const now = options.now ?? Date.now, versions = parseRequest(modelVersionsSchema,config.versions);
+  const versionsFor = (actorId:string,courseId:string) => config.versionsForTeacher
+    ? parseRequest(modelVersionsSchema,config.versionsForTeacher({actorId,courseId})) : versions;
   const inFlight = new Map<string,AbortController>();
   const persisted = <T>(work:(tx:Transaction) => T) => {
     try {
@@ -62,8 +76,10 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
   function requireActor(work:ReturnType<typeof original>,actor:{userId:string;courseId:string}) {
     if (actor.userId !== work.input.actorId || actor.courseId !== work.input.courseId) throw new ApiError('FORBIDDEN');
   }
-  function budget(input:StoredTeacherRequest,usages:ModelUsage[]) {
-    const value = config.budgetAvailable({courseId:input.courseId,actorId:input.actorId,usages:structuredClone(usages)});
+  function budget(tx:Transaction,input:StoredTeacherRequest,usages:ModelUsage[]) {
+    const context = {courseId:input.courseId,actorId:input.actorId,usages:structuredClone(usages)};
+    const value = config.budgetAvailableInTransaction
+      ? config.budgetAvailableInTransaction(tx,context) : config.budgetAvailable(context);
     if (typeof value !== 'boolean') throw new ApiError('DEPENDENCY_UNAVAILABLE');
     return value;
   }
@@ -90,9 +106,9 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         const requestData:StoredTeacherRequest = {jobId:randomUUID(),courseId,actorId:actor.userId,blueprintId:blueprintId ?? null,baseRevision:draft?.revision ?? 0,
           mode:trial ? 'rubric_trial' : 'generationMode' in input ? input.generationMode : 'mode' in input ? input.mode : 'rubric_trial',
           request:input.request,references,allowedFields:trial ? ['rubricCriteria'] : 'allowedFields' in input ? input.allowedFields : knownFields,
-          sampleReferenceIds,baseline:draft?.content ?? null,versions};
+          sampleReferenceIds,baseline:draft?.content ?? null,versions:versionsFor(actor.userId,courseId)};
         if (new Set(requestData.allowedFields).size !== requestData.allowedFields.length) throw new ApiError('INVALID_REQUEST');
-        if (!budget(requestData,[])) throw new ApiError('BUDGET_EXHAUSTED');
+        if (!budget(tx,requestData,[])) throw new ApiError('BUDGET_EXHAUSTED');
         const acceptedAtMs = now();
         const job:Job = {jobId:requestData.jobId,kind:requestData.mode,purpose:'teacher_design',scope,
           requestReceiptId:receiptId,status:'queued',stopRequested:false,expectedRevision:requestData.baseRevision,decisionEpoch:0,recoveryGeneration:current,
@@ -129,7 +145,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
     },write);
   }
   function applicable(tx:Transaction,input:StoredTeacherRequest,job:Job) {
-    return !job.stopRequested && job.status === 'succeeded' && teacherContextCurrent(tx,input,versions);
+    return !job.stopRequested && job.status === 'succeeded' && teacherContextCurrent(tx,input,versionsFor(input.actorId,input.courseId));
   }
   function readJobRequest(request:FastifyRequest) { return {requestId:request.id,data:readAuthorized(request,parseRequest(params,request.params).id,(tx,work) => {
     const proposal = proposalForJob(tx,work.job.jobId);
@@ -224,7 +240,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
       if (job.leaseToken !== delivery.leaseToken || job.status !== 'running' || job.stopRequested) throw new ApiError('STATE_CONFLICT');
       if (Date.parse(job.deadline) <= now()) { progress(tx,work,{...job,status:'timed_out',failure:'deadline'}); return undefined; }
       if (!job.leaseUntil || Date.parse(job.leaseUntil) <= now()) throw new ApiError('STATE_CONFLICT');
-      if (!teacherContextCurrent(tx,input,versions)) { progress(tx,work,{...job,status:'stale',failure:'stale_context'}); return undefined; }
+      if (!teacherContextCurrent(tx,input,versionsFor(input.actorId,input.courseId))) { progress(tx,work,{...job,status:'stale',failure:'stale_context'}); return undefined; }
       const outcome = delivery.outcome;
       if (outcome.outcome !== 'success') {
         const status = outcome.outcome === 'cancelled' ? 'cancelled' : outcome.outcome === 'timed_out' ? 'timed_out' : outcome.outcome === 'stale' ? 'stale' : 'failed';
@@ -268,7 +284,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         if (recovered.status !== job.status) progress(tx,work,recovered); return undefined;
       }
       if (job.status !== 'queued') return undefined;
-      if (!teacherContextCurrent(tx,input,versions)) { progress(tx,work,{...job,status:'stale',failure:'stale_context'}); return undefined; }
+      if (!teacherContextCurrent(tx,input,versionsFor(input.actorId,input.courseId))) { progress(tx,work,{...job,status:'stale',failure:'stale_context'}); return undefined; }
       const next = claimJob(job,randomUUID(),job.deadline,job.recoveryGeneration,timeString(now())); progress(tx,work,next);
       return next.status === 'running' ? {...work,job:next} : undefined;
     });
@@ -279,19 +295,24 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
       const work = original(tx,jobId);
       if (work.job.stopRequested || work.job.status === 'cancelled') return 'cancelled' as const;
       return work.job.leaseToken === job.leaseToken && work.job.status === 'running'
-        && teacherContextCurrent(tx,work.input,versions) ? 'current' as const : 'stale' as const;
+        && teacherContextCurrent(tx,work.input,versionsFor(work.input.actorId,work.input.courseId)) ? 'current' as const : 'stale' as const;
     });
     let budgetDenied = false;
+    // The approved personal model is bound to the accepted request; a configuration change since then is refused
+    // by the resolver instead of silently dispatching the new model.
+    const resolveProvider = () => config.providerForTeacher
+      ? config.providerForTeacher({actorId:input.actorId,courseId:input.courseId,modelConfig:input.versions.modelConfig})
+      : config.provider;
     const provider:ModelProvider = {generate:async request => {
       const callIndex = persisted(tx => {
         const work = original(tx,jobId);
-        if (!teacherContextCurrent(tx,work.input,versions)) throw new ApiError('STATE_CONFLICT');
-        if (!budget(work.input,work.usages)) { budgetDenied = true; throw new ApiError('BUDGET_EXHAUSTED'); }
+        if (!teacherContextCurrent(tx,work.input,versionsFor(work.input.actorId,work.input.courseId))) throw new ApiError('STATE_CONFLICT');
+        if (!budget(tx,work.input,work.usages)) { budgetDenied = true; throw new ApiError('BUDGET_EXHAUSTED'); }
         const next = recordModelCall(work.job,job.leaseToken!,job.recoveryGeneration,timeString(now()));
         progress(tx,work,next,() => saveUsages(tx,jobId,[...work.usages,{status:'unknown'}])); return next.attemptCount-1;
       });
       let response;
-      try { response = await config.provider.generate(request); }
+      try { response = await resolveProvider().generate(request); }
       catch (error) {
         if (error instanceof InputLimitError) persisted(tx => {
           const work = original(tx,jobId);
@@ -315,7 +336,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
     let outcome = await generateTeacherProposal({
       context:{jobId,purpose:'teacher_design',scope:{courseId:input.courseId,userId:input.actorId},
         authorizedReferenceIds:input.references.map(ref => ref.id),acceptedAtMs:Date.parse(job.acceptedAt),deadlineAtMs:Date.parse(job.deadline),
-        budgetAvailable:budget(input,claimed.usages),versions:input.versions},mode:input.mode,
+        budgetAvailable:persisted(tx => budget(tx,input,claimed.usages)),versions:input.versions},mode:input.mode,
       request:JSON.stringify({teacherRequest:input.request,blueprint:input.baseline,allowedFields:input.allowedFields,sampleReferenceIds:input.sampleReferenceIds}),
       signal:controller.signal,
       references:input.references.map(ref => ({id:ref.id,content:ref.content})),blueprintId:input.blueprintId,baseRevision:input.baseRevision,

@@ -36,6 +36,9 @@ try {
       config.tutoring?.apiKeyFile || !config.executionNodes?.length || config.ssh) {
     throw new Error('Cloud shared configuration with registered execution nodes and disabled legacy model calls required.');
   }
+  if (config.teacherDesign && !config.personalModels) {
+    throw new Error('Teacher design approval requires the personal model store.');
+  }
   const retained = dirname(dirname(config.databaseFile));
   if (retained !== '/var/lib/xunjie/retained-tmp') throw new Error('Cloud retained database path required.');
   process.env.TMPDIR = retained;
@@ -53,6 +56,7 @@ try {
     ...(config.staticDirectory ? { staticDirectory: config.staticDirectory } : {}),
     consumerIntervalMs: config.consumerIntervalMs, logDestination: process.stdout,
     ...(config.personalModels ? { personalModels: config.personalModels } : {}),
+    ...(config.teacherDesign ? { teacherDesign: config.teacherDesign } : {}),
     // The original factory checks the exact 35/41-table scope; this entry performs no migration.
     ...(config.review ? { review: { versions: {
       modelConfigVersion: versions.modelConfig, promptVersion: versions.prompt,
