@@ -1,5 +1,7 @@
 # I0-UI：幂等、键盘、冷启动与契约补验
 
+旧 PAHER 连接与维护入口已退役。当前地址、身份、证书及连接步骤由负责人私下发放；仓库仅提供[通用基础设施模板](../../tools/i0-cloud/README.md)。本文保留原补验结果和交付来源，不作为当前连接手册。
+
 日期：2026-10-14（Asia/Shanghai）。主责：UI / Robert；实施：当前 Agent。状态：获准工程补验完成，已随PR #69合main；正式产物冻结见 §7，后续SSH只读核查/A-C交接见 §8；本轮未新增真实C1浏览器运行。对应[剩余清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md) UI-PREP-01/03/05/06，另准备已有 H-04/H-06 的真实节点浏览器入口。
 
 ## 1. 依据与授权
@@ -96,7 +98,7 @@ node tools/sample-cold-start.mjs --samples 2 --port-base 5791 --output ../../doc
 | 历史入口候选 | C的[换版后固定公开摘要](https://github.com/paher-din/XunJie/blob/279f2145a33b0526f394f97739a204a1e5f0016c/docs/tasks/evidence/c-entry-readiness-pr59/after-switch.json)提供原Assignment `a2533386-4923-4dee-83bd-2d7a99fb06e9`，候选深链为`https://127.0.0.1:3443/#/task/a2533386-4923-4dee-83bd-2d7a99fb06e9` | 仅有日期的合法候选，必须当次Session/GET重新核对存在、归属、active/版本，不从旧记录断言现在可读 |
 | Core操作与已有现场 | PR #67已验真实v7 Core stdout=`new snapshot`、另一v4程序timeout、另一原v4 Job取消至cancelled，以及历史/退出/重新登录；[公开关联投影](https://github.com/paher-din/XunJie/blob/b7e73c5f65d457fb78d2fcbac7003e4e60ed7f43/docs/tasks/evidence/i0-ui55-browser/browser-run-server-projection-20261014.json)保留原ID/快照/代际/回执 | 正式页面仍按明确创建/编辑→保存→冻结→Core→原Job核对执行；首次Attempt、保存/新冻结、缺代际、终态/撤权、第二账号/迟到响应、真实丢ACK/旧代际仍有现场缺口。Report历史为unavailable、新v7缺report.txt，正向公开产物下载未验 |
 | H-04与H-06 | 复用[清单§9.2](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md#92-ac条件材料已交现场进入条件另核)的固定profile/指纹/代际与样例。PR #67获准恢复原146内核后独立C1 readiness退出0，原指纹/代际保留 | PR #67最终HTTP入口检查15通过/1失败，唯一失败为`/health/ready=503`；C1独立ready不能覆盖正式UI的HTTP门禁。UI/C在当次窗口核应用源并接收既有正式宿主/就绪修复，再重读HTTP ready、bootstrap代际/profile；503时正确禁止新Run，不修改客户端放行 |
-| 浏览器/信任/账号通道 | PR #67已落实Windows用户h的CurrentUser Root信任，Chrome155无TLS interstitial；固定主机公钥及既有维护身份、SSH14443→PAHER3443转发/HTTPS gateway与指定合成学生的内存口令消费均实测。上游严格CA/pin、Origin/Cookie/CSRF/状态保留 | 复用[入口工具](../../tools/i0-ui55/README.md)和UI55的获准本机持久入口；本轮不重新导入信任、不再索取首次通道方案。后续开窗口确认本机进程归属与启动/停止责任，再接本批正常dist，不将新源码直接记为已部署 |
+| 浏览器/信任/账号通道 | PR #67已落实获准Windows用户的CurrentUser Root信任，Chrome155无TLS interstitial；固定主机公钥、受限维护身份与HTTPS gateway、指定合成学生的内存口令消费均曾实测。上游严格CA/pin、Origin/Cookie/CSRF/状态保留 | 旧连接入口已退役，当前资料由负责人私下发放；本轮当时未重复导入信任，仍需分别核对进程归属、固定产物与真实浏览器结果，未把新源码直接记为已部署 |
 
 正式接入顺序：核 §7 固定源/ZIP/manifest → 按UI55原入口核状态及停止责任 → UI/C接收本批dist与现有正式宿主/就绪实现 → 当次Session/授权深链/HTTP ready/profile/代际重读 → 由获准操作者按上表补正式版本的真实C1行为。保持原HTTP门禁，不从旧ready200、C1独立ready或候选已跑通推断可放行。
 
@@ -116,7 +118,7 @@ node tools/sample-cold-start.mjs --samples 2 --port-base 5791 --output ../../doc
 
 ## 8. PR交付与A/C交接授权（2026-10-14）
 
-Robert明确要求先把本批推PR并合入main，然后整理给A、C的交接说明；并指出可使用既有`i0-ui55-connection` SSH工具直接接PAHER。当前授权覆盖本批正常推送/PR/合并、不删除分支，交接记录与现成维护通道的只读核查。先完成Git交付，再按当次状态整理成员事项；源码修复仍遵守原模块边界，保护配置/数据库/秘密/信任/节点冻结对象不从SSH可连接推导变更授权。
+Robert明确要求先把本批推PR并合入main，然后整理给A、C的交接说明；并提供当时获准的本机连接工具资料。当前授权覆盖本批正常推送/PR/合并、不删除分支，交接记录与现成维护通道的只读核查。先完成Git交付，再按当次状态整理成员事项；源码修复仍遵守原模块边界，保护配置/数据库/秘密/信任/节点冻结对象不从SSH可连接推导变更授权。
 
 本机工具README已有较晚的UI30/PR #68回交：正式main `b7e73c5`静态产物与pr56-pr67服务、HTTP ready200、v8保存/冻结/Core/取消/历史等记录。它是新发现的有日期材料，本轮尚待只读现场核对；不得继续把PR #67旧ready503或“正式UI从未现场验”当当前事实。具体PR回执、现场结果与A/C可执行交接在Git交付后追加，保留 §6～7 原核查时点。
 

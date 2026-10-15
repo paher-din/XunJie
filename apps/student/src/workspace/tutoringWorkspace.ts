@@ -45,7 +45,7 @@ export class TutoringWorkspace {
     this.closeChannel?.(); this.listeners.clear() }
   /** The page supplies only verified public reads and actual local draft state. */
   setHdlCurrent(value:TutorHdlCurrent|null) {
-    const next=value?structuredClone(value):null
+    const next=value?.generation===this.context.trustedRecoveryGeneration?structuredClone(value):null
     if(this.hdlEnabled&&JSON.stringify(next)===JSON.stringify(this.hdlCurrent))return
     this.hdlEnabled=true;this.hdlCurrent=next;this.hdlVersion++
     // A read while HDL was unknown may already have advanced the event cursor.

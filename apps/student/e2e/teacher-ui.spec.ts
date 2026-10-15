@@ -238,20 +238,23 @@ test('学生审阅深链追溯原始证据，纠正有理由和引用，反馈�
   expect(requests).toEqual([])
 })
 
-test('真实入口拒绝没有教师课程的账号，不读取学生课程或出现示例记录', async ({ page }) => {
+test('学生账号误入教师入口回到本人首页，不读取教师课程或出现示例记录', async ({ page }) => {
   const reads: string[] = []
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname
     reads.push(path)
-    if (path !== '/api/session') { await route.fulfill({ status: 503, json: failure }); return }
-    await route.fulfill({ json: { requestId, data: { userId: 'student-only', csrfToken: 'student-csrf',
-      courses: [{ courseId: 'student-course', role: 'student' }] } } })
+    const data = path === '/api/session' ? { userId: 'student-only', csrfToken: 'student-csrf', courses: [{ courseId: 'student-course', role: 'student' }] }
+      : path === '/api/model-settings' ? { revision: 0, enabled: false, callsEnabled: false, defaultModelId: '', providers: [], efforts: {} }
+        : path === '/api/courses/student-course/assignments' || path === '/api/agent/conversations' ? [] : undefined
+    if (data === undefined) await route.fulfill({ status: 503, json: failure })
+    else await route.fulfill({ json: { requestId, data } })
   })
   await page.goto(`${REAL_URL}/#/teacher`)
-  await expect(page.getByRole('heading', { name: '当前账号没有教师课程', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(`${REAL_URL}/#/`)
+  await expect(page.locator('.account-name')).toHaveText('student-only')
   await expect(page.locator('.t-preview-note')).toHaveCount(0)
   await expect(page.getByText('林同学', { exact: true })).toHaveCount(0)
-  expect(reads.every(path => path === '/api/session')).toBe(true)
+  expect(reads.some(path => path.includes('/teacher-workbench'))).toBe(false)
 })
 
 test('真实分配读取失败明确显示错误，重试只读真实接口且不回退预览', async ({ page }) => {
@@ -262,11 +265,11 @@ test('真实分配读取失败明确显示错误，重试只读真实接口且�
     expect(request.method()).toBe('GET')
     reads.push(path)
     if (path === '/api/session') {
-      await route.fulfill({ json: { requestId, data: { userId: 'authorized-teacher', csrfToken: 'teacher-csrf',
+      await route.fulfill({ json: { requestId, data: { userId: 'authorized-teacher', displayName: '陈老师', csrfToken: 'teacher-csrf',
         courses: [{ courseId: 'authorized-course', role: 'teacher' }] } } }); return
     }
     if (path === '/api/courses/authorized-course/teacher-workbench') {
-      await route.fulfill(unavailable ? { status: 503, json: failure } : { json: { requestId, data: { courseId: 'authorized-course', recoveryGeneration: 'g', members: [], resources: [], drafts: [], activities: [], assignments: [], attempts: [], presets: [] } } }); return
+      await route.fulfill(unavailable ? { status: 503, json: failure } : { json: { requestId, data: { courseId: 'authorized-course', courseName: '程序设计基础 · 一班', recoveryGeneration: 'g', members: [], resources: [], drafts: [], activities: [], assignments: [], attempts: [], presets: [] } } }); return
     }
     await route.fulfill({ status: 503, json: failure })
   })
@@ -280,7 +283,12 @@ test('真实分配读取失败明确显示错误，重试只读真实接口且�
   await page.getByRole('button', { name: '重新读取', exact: true }).click()
   await expect(page.locator('.t-scope-note')).toContainText('已连接当前教学服务')
   await expect(page.locator('.t-course-card')).toHaveCount(1)
-  await expect(page.locator('.t-course-card')).toContainText('authorized-course')
+  await expect(page.locator('.t-course-card')).toContainText('程序设计基础 · 一班')
+  await expect(page.locator('.t-course-card')).not.toContainText('authorized-course')
+  await expect(page.locator('.t-course-cover > span:not(.t-course-mark), .t-course-card-body > p')).toHaveCount(0)
+  await expect(page.locator('.t-account')).toContainText('陈老师')
+  await expect(page.locator('.t-account small')).toHaveText('教师账号')
+  await expect(page.locator('.t-account')).not.toContainText('authorized-teacher')
   await expect(page.locator('.t-preview-note')).toHaveCount(0)
   await expect(page.getByText('林同学', { exact: true })).toHaveCount(0)
   expect(reads.every(path => path === '/api/session' || path === '/api/courses/authorized-course/teacher-workbench')).toBe(true)
@@ -320,6 +328,56 @@ test('真实工作台按教师课程读取活动，未提交和审阅显示实�
   // Development StrictMode may restart the loading effect; each load still fetches the shared activity only once.
   expect(paths).not.toContain('/api/activities/fixed-version')
   expect(paths).not.toContain('/api/courses/student-course/assignments')
+})
+
+test('课程学生名单读取真实成员与分配，未开始不生成尝试或审阅入口，按课程筛选', async ({ page }, info) => {
+  const reads: string[] = []
+  const workbenches = [
+    { courseId: 'course-a', courseName: '程序设计基础 · 一班', recoveryGeneration: 'g', resources: [], drafts: [], activities: [], presets: [],
+      members: [{ userId: 'not-started', displayName: '林同学' }, { userId: 'started', displayName: '陈同学' }],
+      assignments: [{ assignmentId: 'assigned-pending', studentId: 'not-started', activityVersionId: 'activity-a', assignmentRevision: 1, active: true },
+        { assignmentId: 'assigned-started', studentId: 'started', activityVersionId: 'activity-a', assignmentRevision: 1, active: true }],
+      attempts: [{ attemptId: 'original-attempt', courseId: 'course-a', studentId: 'started', assignmentId: 'assigned-started', activityVersionId: 'activity-a',
+        status: 'active', attemptRevision: 1, workspaceRevision: 0, latestSubmission: null }] },
+    { courseId: 'course-b', courseName: '数字逻辑 · 二班', recoveryGeneration: 'g', resources: [], drafts: [], activities: [], presets: [],
+      members: [{ userId: 'unassigned', displayName: '周同学' }], assignments: [], attempts: [] },
+  ]
+  await page.route('**/api/**', async route => {
+    const request = route.request(), path = new URL(request.url()).pathname
+    expect(request.method()).toBe('GET'); reads.push(path)
+    const data = path === '/api/session' ? { userId: 'authorized-teacher', csrfToken: 'teacher-csrf', courses: workbenches.map(w => ({ courseId: w.courseId, role: 'teacher' })) }
+      : workbenches.find(w => path === `/api/courses/${w.courseId}/teacher-workbench`)
+    if (data === undefined) await route.fulfill({ status: 503, json: failure })
+    else await route.fulfill({ json: { requestId, data } })
+  })
+  await page.goto(`${REAL_URL}/#/teacher/review`)
+  const roster = page.getByRole('table', { name: '课程学生', exact: true })
+  await expect(roster.getByRole('row')).toHaveCount(4)
+  const pending = roster.getByRole('row').filter({ hasText: '林同学' })
+  await expect(pending).not.toContainText('not-started')
+  await expect(pending).toContainText('程序设计基础 · 一班')
+  await expect(pending.getByRole('cell').nth(2)).toHaveText('1 项1 项开放')
+  await expect(pending.getByRole('cell').nth(3)).toHaveText('未开始0 次尝试')
+  await expect(pending.getByRole('button')).toHaveCount(0)
+  await expect(pending.getByRole('link')).toHaveCount(0)
+  await expect(roster.getByRole('row').filter({ hasText: '陈同学' })).toContainText('进行中1 次尝试')
+  await expect(roster.getByRole('row').filter({ hasText: '周同学' })).toContainText('0 项0 项开放未开始0 次尝试')
+  expect(reads.some(path => path.startsWith('/api/attempts/'))).toBe(false)
+  await page.getByRole('combobox', { name: '当前课程', exact: true }).selectOption('course-b')
+  await expect(roster.getByRole('row')).toHaveCount(2)
+  await expect(roster).toContainText('数字逻辑 · 二班')
+  await expect(roster).not.toContainText('林同学')
+  await expect(page.locator('button.t-rm-learner-row')).toHaveCount(0)
+  await page.getByRole('combobox', { name: '当前课程', exact: true }).selectOption('all')
+  await expect(roster.getByRole('row')).toHaveCount(4)
+  await expect(page.locator('button.t-rm-learner-row .t-rm-learner-identity')).toHaveText('陈同陈同学')
+  await page.locator('.t-live-review').screenshot({ path: info.outputPath('course-student-roster.png') })
+  await page.setViewportSize({ width: 390, height: 1000 })
+  await expect.poll(() => page.locator('.t-main').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+  await page.screenshot({ path: info.outputPath('course-student-roster-mobile.png'), fullPage: true })
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.locator('button.t-rm-learner-row').click()
+  await expect.poll(() => reads.filter(path => path.startsWith('/api/attempts/'))).toEqual(['/api/attempts/original-attempt/review-context'])
 })
 
 test('720与390宽度主要页面无水平溢出，主题切换与刷新保留偏好', async ({ page }, info) => {

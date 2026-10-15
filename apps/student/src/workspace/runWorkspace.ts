@@ -20,6 +20,7 @@ export const emptyRunState = (): RunState => ({ phase: 'idle', job: null, run: n
 export interface RunReadiness {
   verified: boolean; runtimeProfileVersion: string; recoveryGeneration: string | null
   read?: () => Promise<boolean>
+  executionNodeId?: () => string | undefined
 }
 type RunReference = Pick<JobView, 'runId' | 'jobId'>
 const definiteRejections = new Set(['INVALID_REQUEST', 'INVALID_REFERENCE', 'INVALID_CONFIGURATION', 'CONTENT_LIMIT',
@@ -251,7 +252,7 @@ export class RunWorkspace {
     if (!current()) return null
     reportDiagnostic('command.sent', { kind: leased.kind, commandKey: leased.commandKey,
       requestHash: leased.requestHash, attemptId: this.context.attemptId })
-    const value = await apiPostFrozen<unknown>(leased.path, leased.wireJson, { ...this.opts(), idempotencyKey: leased.commandKey })
+    const value = await apiPostFrozen<unknown>(leased.path, leased.wireJson, { ...this.opts(), idempotencyKey: leased.commandKey, executionNodeId: leased.executionNodeId })
     const receipt = leased.kind === 'run.create' ? verifyRunReceipt(leased, value) : verifyCancelReceipt(leased, value)
     // 仅持久化原回执。无论回执中的 status 是什么，当前显示均须再 GET。
     await confirmationRepository.acknowledge(leased, receipt, null, {}, null, current)
@@ -297,6 +298,7 @@ export class RunWorkspace {
     if (!this.valid || this.busy || this.workspace.commandInFlight) return
     this.busy = true
     let command: OutboxRecord | null = null
+    const executionNodeId = this.readiness.executionNodeId?.()
     try {
       // 每次明确新操作都核原请求与权威服务执行资格；不从旧编辑器版本猜 revision。
       await this.initialize()
@@ -317,6 +319,8 @@ export class RunWorkspace {
       if (!this.valid || !snapshot) return
       const frozen = await freezeRun(this.context, attempt.attemptRevision, snapshot, this.readiness.runtimeProfileVersion, entryFileId, input)
       if (!this.valid) return
+      if (executionNodeId !== this.readiness.executionNodeId?.()) throw new RunInputError('执行电脑已切换，请重新确认运行。')
+      if (executionNodeId) frozen.executionNodeId = executionNodeId
       await confirmationRepository.persist(frozen, () => this.valid)
       if (!this.valid) return
       command = { ...frozen, state: 'pending' }
@@ -329,7 +333,7 @@ export class RunWorkspace {
       if (!this.valid || !await this.authority()) return
       reportDiagnostic('command.sent', { kind: 'run.create', commandKey: command.commandKey,
         attemptId: this.context.attemptId, snapshotId, requestHash: command.requestHash })
-      const response = await apiPostFrozen<unknown>(command.path, command.wireJson, { ...this.opts(), idempotencyKey: command.commandKey })
+      const response = await apiPostFrozen<unknown>(command.path, command.wireJson, { ...this.opts(), idempotencyKey: command.commandKey, executionNodeId: command.executionNodeId })
       const receipt = verifyRunReceipt(command, response)
       // 失效 ACK 只进原隔离事实，acknowledge 同事务再核 authority，不能绑定当前 Run。
       await confirmationRepository.acknowledge(command, receipt as Receipt, null, {}, null, () => this.valid)

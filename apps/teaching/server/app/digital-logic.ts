@@ -24,13 +24,15 @@ import {courseMembershipViewSchema} from '../../contracts/access/index.ts';
 import {assignmentSummarySchema} from '../../contracts/design/results.ts';
 import {hasDisplayColumn,optionalDisplayText} from '../access/display-text.ts';
 import {personalModels,type PersonalModelsOptions} from './personal-models.ts';
+import {executionNodes,type ExecutionNode} from './execution-nodes.ts';
+import type {ExecutionBinding} from '../../contracts/records/index.ts';
 const id=z.string().min(1).max(128),revision=z.number().int().positive(),key=z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/),params=z.strictObject({id});
 const generationInput={recoveryGeneration:id},basis={...generationInput,expectedAttemptRevision:revision};
 const buildInput=z.strictObject({...basis,snapshotId:id});
 const programInput=z.strictObject({...basis,buildId:id,replaceSessionId:id.optional(),expectedSessionRevision:revision.optional()}).refine(value=>(value.replaceSessionId===undefined)===(value.expectedSessionRevision===undefined));
 const operationInput=z.strictObject({...basis,sessionId:id,expectedSessionRevision:revision,expectedSequence:revision,inputs:z.strictObject({switches:z.string().regex(/^[01]{16}$/),buttons:z.string().regex(/^[01]{5}$/),resetN:z.string().regex(/^[01]$/)}),advanceCycles:z.number().int().min(1).max(5000000)});
 const stopInput=z.strictObject({...basis,action:z.literal('stop'),reason:z.string().trim().min(1).max(1024)});
-export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'> & {hdlTransport:HdlTransport;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number;tutoringProvider?:ModelProvider;personalModels?:PersonalModelsOptions;review?:ReviewAppOptions['review']};
+export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'|'execution'> & {hdlTransport?:HdlTransport;executionNodes?:ExecutionNode[];legacyExecutionNodeId?:string;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number;tutoringProvider?:ModelProvider;personalModels?:PersonalModelsOptions;review?:ReviewAppOptions['review']};
 export async function createDigitalLogicApplication(options:DigitalLogicApplicationOptions){
  assertDigitalLogicApplicationDatabase(options.db,Boolean(options.review));
  const now=options.now??Date.now;
@@ -41,14 +43,34 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  const approved=options.approvedHdlRuntimes.map(value=>hdlRuntimeSchema.parse(value));
  if(!approved.length)throw new ApiError('INVALID_CONFIGURATION');
  const admission={accepting:true};
- const hdlTransport=guardHostTransport(options.hdlTransport,admission,{dispatch:['hdl_build','hdl_program','hdl_interact'],readiness:'hdl_readiness'});
+ if(options.executionNodes&&(options.runner||options.hdlTransport)||!options.executionNodes&&!options.hdlTransport)throw new ApiError('INVALID_CONFIGURATION');
+ const execution=options.executionNodes?executionNodes(options.executionNodes.map(node=>({...node,
+  runner:guardHostTransport(node.runner,admission,{dispatch:['submit','editor_diagnostics'],readiness:'readiness'}),
+  hdlTransport:guardHostTransport(node.hdlTransport,admission,{dispatch:['hdl_build','hdl_program','hdl_interact'],readiness:'hdl_readiness'}),
+ })),options.legacyExecutionNodeId):undefined;
+ const hdlTransport:HdlTransport=guardHostTransport(async command=>{
+  if(!execution)return options.hdlTransport!(command);
+  if(command.op==='hdl_readiness')throw new ApiError('RUNTIME_NOT_READY');
+  const identity='identity' in command?command.identity:command.request.identity;
+  const binding=options.db.withTransaction(tx=>execution.forHdl(tx,identity.id));
+  if(identity.recoveryGeneration!==binding.nodeGeneration)throw new ApiError('RECOVERY_REQUIRED');
+  return execution.node(binding).hdlTransport(command);
+ },admission,{dispatch:['hdl_build','hdl_program','hdl_interact'],readiness:'hdl_readiness'});
  let latest:Awaited<ReturnType<typeof availableHdlRuntime>>|undefined;
- async function refresh(){latest=undefined;if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');const result=await availableHdlRuntime(hdlTransport,approved);if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');if(result.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');latest=result;}
- await refresh();
- const cReady=await availableRuntime(options.runner);if(options.runner&&(!cReady||cReady.recoveryGeneration!==generation))throw new ApiError('RECOVERY_REQUIRED');
- const hdl=createHdlWorkspace({db:options.db,currentGeneration,transport:hdlTransport,...(options.now?{now:options.now}:{}),refreshProfile:refresh,
- approvedProfile(tx,attemptId){if(!admission.accepting||!latest)return undefined;const attempt=readAttempt(tx,attemptId),runtime=readActivity(tx,attempt.courseId,attempt.activityVersionId).runtimeProfile;
- if(!('kind' in runtime)||canonical(runtime.configuration.runtime)!==canonical(latest.profile)||runtime.contentHash!==configurationHash(runtime.configuration))return undefined;
+ const profiles=new Map<string,NonNullable<typeof latest>>();
+ async function refresh(binding?:ExecutionBinding){
+  if(binding)profiles.delete(binding.nodeId);else latest=undefined;
+  if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  if(execution&&!binding)throw new ApiError('RUNTIME_NOT_READY');
+  const result=await availableHdlRuntime(binding?execution!.node(binding).hdlTransport:hdlTransport,approved);
+  if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+  if(result.recoveryGeneration!==(binding?.nodeGeneration??generation))throw new ApiError('RECOVERY_REQUIRED');
+  if(binding)profiles.set(binding.nodeId,result);else latest=result;
+ }
+ if(!execution){await refresh();const cReady=await availableRuntime(options.runner);if(options.runner&&(!cReady||cReady.recoveryGeneration!==generation))throw new ApiError('RECOVERY_REQUIRED');}
+ const hdl=createHdlWorkspace({db:options.db,currentGeneration,transport:hdlTransport,...(execution?{execution}:{}),...(options.now?{now:options.now}:{}),refreshProfile:refresh,
+ approvedProfile(tx,attemptId,binding){const profile=binding?profiles.get(binding.nodeId):latest;if(!admission.accepting||!profile)return undefined;const attempt=readAttempt(tx,attemptId),runtime=readActivity(tx,attempt.courseId,attempt.activityVersionId).runtimeProfile;
+ if(!('kind' in runtime)||canonical(runtime.configuration.runtime)!==canonical(profile.profile)||runtime.contentHash!==configurationHash(runtime.configuration))return undefined;
  return {board:runtime.configuration.board,runtime:runtime.configuration.runtime};}});
  const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit','editor_diagnostics'],readiness:'readiness'}):undefined;
  let host:ReturnType<typeof attachOriginalJobHost>;
@@ -57,16 +79,34 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
   (request):string=>options.db.withTransaction(tx=>instance.access.authenticatedUserInTransaction(request,tx)),options.studentHelp):undefined;
  const instance:Awaited<ReturnType<typeof compose>>=await compose({...options,studentHelp:{...(personal?.studentHelp??options.studentHelp),readHdlContext:(...args)=>{
   if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');return readAuthorizedHdlHelp(...args);
- }},...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{try{host.checkConsumerReady();await refresh();const c=await availableRuntime(runner);host.checkConsumerReady();return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
+ }},...(runner?{runner}:{}),...(execution?{execution}:{}),currentGeneration,hdl,checkReadiness:async()=>{try{host.checkConsumerReady();if(execution)return true;await refresh();const c=await availableRuntime(runner);host.checkConsumerReady();return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
  const fixed=instance.access.withAuthorizedCourse(request,tx=>draftCourse(tx,blueprintId),'teacher',(tx,actor)=>{
   const draft=readDraft(tx,actor.courseId,blueprintId);return draft.content.digitalLogicConfigVersionId?fixedHdlRuntime(tx,actor.courseId,draft.content.digitalLogicConfigVersionId):undefined;
  },false);
- if(!fixed)return queryRuntime(runner);
- try{const ready=await availableHdlRuntime(hdlTransport,approved);if(ready.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');
- if(canonical(fixed.configuration.runtime)!==canonical(ready.profile))throw new ApiError('INVALID_REFERENCE');return {ok:true as const,runtime:{...ready,profile:fixed}};
+ const binding=execution?.selected(request);
+ if(!fixed){const result=await queryRuntime(binding?execution!.node(binding).runner:runner);if(binding&&result.ok&&result.runtime){if(result.runtime.recoveryGeneration!==binding.nodeGeneration)throw new ApiError('RECOVERY_REQUIRED');return {ok:true as const,runtime:{...result.runtime,execution:binding}};}return result;}
+ try{const ready=await availableHdlRuntime(binding?execution!.node(binding).hdlTransport:hdlTransport,approved);if(ready.recoveryGeneration!==(binding?.nodeGeneration??generation))throw new ApiError('RECOVERY_REQUIRED');
+ if(canonical(fixed.configuration.runtime)!==canonical(ready.profile))throw new ApiError('INVALID_REFERENCE');return {ok:true as const,runtime:{...ready,profile:fixed,...(binding?{execution:binding}:{})}};
  }catch(error){return {ok:false as const,error};}
  }}).catch(async error=>{await personal?.close();throw error;});
  const {app,access}=instance;
+ app.get('/api/execution-nodes',async request=>{
+  options.db.withTransaction(tx=>access.authenticatedUserInTransaction(request,tx));
+  async function probe(read:()=>Promise<boolean>){
+   let timer:ReturnType<typeof setTimeout>|undefined;
+   try{return await Promise.race([read(),new Promise<boolean>(resolve=>{timer=setTimeout(()=>resolve(false),4000);})]);}
+   catch{return false;}finally{if(timer)clearTimeout(timer);}
+  }
+  const nodes=await Promise.all((execution?.nodes??[]).map(async node=>{
+   const [cReady,hdlReady]=await Promise.all([
+    probe(async()=>{const ready=await availableRuntime(node.runner);return Boolean(ready&&ready.recoveryGeneration===node.recoveryGeneration);}),
+    probe(async()=>(await availableHdlRuntime(node.hdlTransport,approved)).recoveryGeneration===node.recoveryGeneration),
+   ]);
+   return {nodeId:node.nodeId,label:node.label,cReady,hdlReady};
+  }));
+  const selected=request.headers['x-xunjie-execution-node'];
+  return {requestId:request.id,data:{nodes,...(typeof selected==='string'&&nodes.some(node=>node.nodeId===selected)?{selectedNodeId:selected}:{})}};
+ });
  if(personal){personal.register(app);app.addHook('onClose',async()=>personal.close());}
  if(options.review)registerTeacherWorkbench(app,access,currentGeneration);
  const locate=(tx:Transaction,attemptId:string)=>{const attempt=readAttempt(tx,attemptId);return {kind:'student_work' as const,courseId:attempt.courseId,studentId:attempt.studentId,stage:attempt.status,assignmentActive:false};};
@@ -95,11 +135,12 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  app.post('/api/attempts/:id/hdl/builds',async request=>{const attemptId=parseRequest(params,request.params).id,input=parseRequest(buildInput,request.body),actor=scope(request,attemptId),idempotencyKey=parseRequest(key,request.headers['idempotency-key']);
  // Read replay in the same C transaction; fresh readiness is consulted only for a new command.
  const previous=options.db.withTransaction(tx=>{guard(request,attemptId)(tx,'read');const attempt=readAttempt(tx,attemptId);return readRecordCommand(tx,{actorId:actor.userId,command:'hdl.build',target:attemptId,scope:{courseId:attempt.courseId,studentId:attempt.studentId,attemptId},idempotencyKey,recoveryGeneration:requireGeneration(input.recoveryGeneration)},{expectedAttemptRevision:input.expectedAttemptRevision,snapshotId:input.snapshotId},generation,value=>z.strictObject({buildId:id,jobId:id}).parse(value));});
- if(!previous)await refresh();return {requestId:request.id,data:hdl.build(actor,attemptId,idempotencyKey,input.recoveryGeneration,{expectedAttemptRevision:input.expectedAttemptRevision,snapshotId:input.snapshotId},guard(request,attemptId))};});
+ const binding=previous?undefined:execution?.selected(request);
+ if(!previous)await refresh(binding);return {requestId:request.id,data:hdl.build(actor,attemptId,idempotencyKey,input.recoveryGeneration,{expectedAttemptRevision:input.expectedAttemptRevision,snapshotId:input.snapshotId},guard(request,attemptId),binding)};});
  app.post('/api/attempts/:id/hdl/programs',async request=>{const attemptId=parseRequest(params,request.params).id,{recoveryGeneration,...input}=parseRequest(programInput,request.body),actor=scope(request,attemptId);return {requestId:request.id,data:await hdl.program(actor,attemptId,parseRequest(key,request.headers['idempotency-key']),recoveryGeneration,JSON.parse(JSON.stringify(input)),guard(request,attemptId))};});
  app.post('/api/attempts/:id/hdl/interactions',async request=>{const attemptId=parseRequest(params,request.params).id,{recoveryGeneration,...input}=parseRequest(operationInput,request.body),actor=scope(request,attemptId),idempotencyKey=parseRequest(key,request.headers['idempotency-key']);
  const previous=options.db.withTransaction(tx=>{guard(request,attemptId)(tx,'read');const attempt=readAttempt(tx,attemptId);return readRecordCommand(tx,{actorId:actor.userId,command:'hdl.interact',target:attemptId,scope:{courseId:attempt.courseId,studentId:attempt.studentId,attemptId},idempotencyKey,recoveryGeneration:requireGeneration(recoveryGeneration)},input,generation,value=>z.strictObject({sessionId:id,operationId:id,jobId:id}).parse(value));});
- if(!previous)await refresh();return {requestId:request.id,data:hdl.interact(actor,attemptId,idempotencyKey,recoveryGeneration,JSON.parse(JSON.stringify(input)),guard(request,attemptId))};});
+ if(!previous){const binding=execution?options.db.withTransaction(tx=>{guard(request,attemptId)(tx,'read');hdl.readSession(tx,actor,input.sessionId);return execution.forHdl(tx,input.sessionId);}):undefined;await refresh(binding);}return {requestId:request.id,data:hdl.interact(actor,attemptId,idempotencyKey,recoveryGeneration,JSON.parse(JSON.stringify(input)),guard(request,attemptId))};});
  app.post('/api/attempts/:id/hdl/controls',async request=>{const attemptId=parseRequest(params,request.params).id,input=parseRequest(stopInput,request.body),idempotencyKey=parseRequest(key,request.headers['idempotency-key']);
  const data=options.db.withTransaction(tx=>{const actor=guard(request,attemptId)(tx,'read'),attempt=readAttempt(tx,attemptId);if(actor.role!=='student')throw new ApiError('FORBIDDEN');return finishRecordCommand(tx,{actorId:actor.userId,command:'hdl.stop',target:attemptId,scope:{courseId:actor.courseId,studentId:actor.userId,attemptId},idempotencyKey,recoveryGeneration:requireGeneration(input.recoveryGeneration)},input,generation,now(),()=>{
  guard(request,attemptId)(tx,'write');if(attempt.attemptRevision!==input.expectedAttemptRevision)throw new ApiError('VERSION_CONFLICT');hdl.stopInTransaction(tx,attemptId,input.reason,generation);saveAttempt(tx,{...attempt,attemptRevision:attempt.attemptRevision+1,decisionEpoch:attempt.decisionEpoch+1});return {attemptId,stopRequested:true};
@@ -143,7 +184,8 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
   stopAdditional:teaching.stop,
   reconcile:()=>hdl.reconcileStops(),
  });} catch(error) {await app.close();throw error;}
- app.addHook('onReady',async()=>{await host.consumeOnce();});
+ // Member PCs can be offline during an ECS restart. Reconciliation starts after listen in the original consumer.
+ if(!execution)app.addHook('onReady',async()=>{await host.consumeOnce();});
  return {...instance,hdl,currentGeneration,consumeOnce:host.consumeOnce,startConsumer:host.startConsumer,shutdown:host.close,
    management:{deactivateMembershipInTransaction:deactivateMembership,disableUserInTransaction:disableUser},isAccepting:host.isAccepting};
 }

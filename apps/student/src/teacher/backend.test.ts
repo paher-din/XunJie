@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadTeacherWorkbenchData, pendingTeacherCommands, retryTeacherCommands, teacherCommand } from './backend'
 import { setCsrfToken } from '../workspace/http'
+import { clearExecutionNodes, loadExecutionNodes, selectExecutionNode } from '../workspace/executionNodes'
 
 const envelope = (data: unknown) => new Response(JSON.stringify({ requestId: 'test-read', data }))
 const receipt = (account: string, init: RequestInit) => ({ commandId: 'command', receiptId: 'receipt', identity: { actorId: account, idempotencyKey: (init.headers as Record<string, string>)['Idempotency-Key'], recoveryGeneration: 'generation' }, result: { accepted: true } })
@@ -13,10 +14,37 @@ beforeEach(() => {
     removeItem: (key: string) => values.delete(key),
   })
   setCsrfToken('test-csrf')
+  clearExecutionNodes()
 })
 afterEach(() => { vi.unstubAllGlobals(); setCsrfToken(null) })
 
 describe('教师真实命令和课程读取', () => {
+  it('design checks require an explicit node and a lost ACK retry retains the original node, body and key', async () => {
+    let first = true
+    const fetcher = vi.fn(async (url: string, init: RequestInit) => {
+      if (url.endsWith('/execution-nodes')) return envelope({ nodes: [
+        { nodeId: 'robert', label: 'Robert 的电脑', cReady: true, hdlReady: true },
+        { nodeId: 'member', label: '成员的电脑', cReady: true, hdlReady: true },
+      ] })
+      if (first) { first = false; throw new Error('lost check ACK') }
+      return envelope(receipt('node-teacher', init))
+    })
+    vi.stubGlobal('fetch', fetcher)
+    await loadExecutionNodes('node-teacher')
+    const body = { recoveryGeneration: 'generation', expectedRevision: 1, concerns: [] }
+    await expect(teacherCommand('node-teacher', 'POST', '/blueprints/draft/checks', body)).rejects.toThrow('选择自己的执行电脑')
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    selectExecutionNode('robert')
+    await expect(teacherCommand('node-teacher', 'POST', '/blueprints/draft/checks', body)).rejects.toThrow('lost check ACK')
+    selectExecutionNode('member')
+    await retryTeacherCommands('node-teacher')
+    const posts = fetcher.mock.calls.filter(([, init]) => init?.method === 'POST').map(([, init]) => init)
+    expect(posts).toHaveLength(2)
+    expect(posts[0]!.headers).toMatchObject({ 'x-xunjie-execution-node': 'robert', 'x-csrf-token': 'test-csrf' })
+    expect(posts[1]!.headers).toEqual(posts[0]!.headers)
+    expect(posts[1]!.body).toBe(posts[0]!.body)
+    expect(JSON.parse(posts[0]!.body as string)).not.toHaveProperty('executionNodeId')
+  })
   it('未知结果保留原字节和幂等键，拒绝同对象不同命令，重试不会重复创建', async () => {
     const fetcher = vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementationOnce(async (_url: string, init: RequestInit) => envelope(receipt('pending-teacher', init)))
     vi.stubGlobal('fetch', fetcher)

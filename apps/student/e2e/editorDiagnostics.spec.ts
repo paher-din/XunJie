@@ -1,6 +1,59 @@
 import { createHash } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 import { start, create, edit, confirmSave, serverHead, setAttemptState } from './helpers'
+import { installHdlProtocolFixture } from './hdlProtocolFixture'
+import { loginThroughForm } from './sessionHost'
+
+test('normal mode diagnostics keep their selected node and discard late results after a switch; offline does not save drafts', async ({ page }) => {
+  const protocol = await installHdlProtocolFixture(page)
+  let robertReady = false, release!: () => void, arrived!: () => void, completed!: () => void
+  const held = new Promise<void>(resolve => { release = resolve }), requested = new Promise<void>(resolve => { arrived = resolve })
+  const delivered = new Promise<void>(resolve => { completed = resolve }), requests: string[] = []
+  await page.route('**/api/execution-nodes', route => route.fulfill({ json: { requestId: 'node-registry', data: { nodes: [
+    { nodeId: 'robert', label: 'Robert 的电脑', cReady: robertReady, hdlReady: true },
+    { nodeId: 'member', label: '成员的电脑', cReady: true, hdlReady: true },
+  ] } } }))
+  await page.route('**/api/attempts/*/editor-diagnostics', async route => {
+    const node = route.request().headers()['x-xunjie-execution-node']!
+    requests.push(node)
+    const body = route.request().postDataJSON(), sources = body.files.map((file: { fileId: string; documentVersion: number; text: string }) => ({ ...file,
+      path: protocol.head!.files.find(source => source.fileId === file.fileId)!.path, hash: createHash('sha256').update(file.text).digest('hex') }))
+    const sourceHash = createHash('sha256').update(JSON.stringify(sources.sort((a: { path: string }, b: { path: string }) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)))
+      .map((file: { fileId: string; path: string; documentVersion: number; hash: string }) => [file.fileId, file.path, file.documentVersion, file.hash]))).digest('hex')
+    const source = sources.find((file: { fileId: string }) => file.fileId === body.fileId)
+    if (node === 'member') { arrived(); await held }
+    await route.fulfill({ json: { requestId: 'node-diagnostic', data: { status: 'ready', provider: 'gcc', sourceHash,
+      diagnostics: [{ fileId: source.fileId, path: source.path, contentHash: source.hash, severity: 'error', message: `SYNTHETIC ${node} diagnostic`, line: 1 }] } } })
+    if (node === 'member') completed()
+  })
+  try {
+    await page.goto(protocol.cUrl)
+    await loginThroughForm(page, protocol.loginName, protocol.password)
+    await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
+    await page.getByRole('button', { name: '开始 Attempt', exact: true }).click()
+    await create(page, 'main.c'); await edit(page, 'int value = 1;\n'); await confirmSave(page, 1)
+    const saved = protocol.head!.files[0]!.text, selector = page.getByRole('combobox', { name: '执行电脑', exact: true })
+    const check = page.getByLabel('编辑检查', { exact: true })
+    await page.locator('.monaco-editor textarea').first().focus(); await page.keyboard.press('ControlOrMeta+a'); await page.keyboard.insertText('int value = ;\n')
+    await expect(check.locator('summary')).toContainText('暂不可用')
+    expect(requests).toHaveLength(0)
+    await selector.selectOption('member'); await requested
+    await selector.selectOption('robert')
+    await expect(check.locator('summary')).toContainText('暂不可用')
+    release(); await delivered
+    await expect(page.locator('.squiggly-error')).toHaveCount(0)
+    robertReady = true
+    await page.locator('.ws-execution-node').getByRole('button', { name: '刷新', exact: true }).click()
+    await expect(check.locator('summary')).toContainText('1 个错误')
+    await check.locator('summary').click()
+    await expect(check).toContainText('SYNTHETIC robert diagnostic')
+    await expect(check).not.toContainText('SYNTHETIC member diagnostic')
+    expect(requests).toEqual(['member', 'robert'])
+    expect(protocol.head!.files[0]!.text).toBe(saved)
+    expect(protocol.head!.jobs).toHaveLength(0)
+    expect(protocol.head!.snapshots).toHaveLength(0)
+  } finally { release() }
+})
 
 // Isolated protocol response verifies rendering/expiry. The real compiler is tested on the execution node.
 for (const [path, good, bad, provider] of [

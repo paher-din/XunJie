@@ -67,7 +67,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   function read<T>(request: FastifyRequest, id: string, work: (tx: Transaction, state: WorkspaceState, actor: ActorContext) => T) {
     return access.withAuthorizedResource(request, tx => locate(tx, id), 'read', (tx, actor) => work(tx, loadWorkspace(tx, id), actor));
   }
-  registerEditorDiagnostics(app, read, options.runner, currentGeneration, attemptId);
+  registerEditorDiagnostics(app, read, options.runner, currentGeneration, attemptId, options.execution);
   function execute(request: FastifyRequest, target: string | ((tx: Transaction) => string), command: string, expectedGeneration: string,
     apply: (tx: Transaction, state: WorkspaceState, context: CommandContext) => ReturnType<typeof syncCommand>, stopReason = 'explicit_command',
     runPurposes?: CommandContext['runPurposes'], use: ResourceUse = 'write') {
@@ -198,13 +198,15 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
       currentGeneration(generation); return receipt;
     },false);
     if (previous) return { requestId: request.id,data: { ...previous,replayed: true } };
-    const readiness = await queryRuntime(options.runner);
+    const execution=options.execution?.selected(request);
+    const readiness = await queryRuntime(execution?options.execution!.node(execution).runner:options.runner);
+    if(execution&&readiness.ok&&readiness.runtime&&readiness.runtime.recoveryGeneration!==execution.nodeGeneration)throw new ApiError('RECOVERY_REQUIRED');
     return execute(request, id, 'run.create', input.recoveryGeneration, (tx, state, context) => {
       const activity = readActivity(tx, state.attempt.courseId, state.attempt.activityVersionId);
       if('kind' in activity.runtimeProfile)throw new ApiError('INVALID_REQUEST');
       const runtime = readiness.ok ? readiness.runtime : undefined;
       return runCommand(state, context, domainRun(input), { ready: Boolean(runtime && canonical(runtime.profile) === canonical(activity.runtimeProfile)), recoveryGeneration: runtime?.recoveryGeneration ?? input.recoveryGeneration,
-        profile: activity.runtimeProfile, policyVersion: activity.helpPolicy.versionId, checkRuleVersion: activity.checkRule.versionId,
+        ...(execution?{execution}:{}),profile: activity.runtimeProfile, policyVersion: activity.helpPolicy.versionId, checkRuleVersion: activity.checkRule.versionId,
         checkCancelPurposes: activity.checkRule.limitedHelp ? ['student_help','reminder','explicit_analysis','passive_analysis'] : [] },
       { runId: randomUUID(), jobId: randomUUID() }, new Date(now() + 120000).toISOString());
     });

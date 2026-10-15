@@ -1,0 +1,25 @@
+[Unit]
+Description=XunJie shared application and retained SQLite
+After=network.target
+
+[Service]
+Type=simple
+User=xunjie
+Group=xunjie
+WorkingDirectory=/opt/xunjie/current
+Environment=NODE_ENV=production
+Environment=TMPDIR=/var/lib/xunjie/retained-tmp
+ExecStart=/opt/xunjie/node/bin/node /opt/xunjie/current/tools/i0-cloud/cloud-host.mjs --config /etc/xunjie/application-config.json --teaching-root /opt/xunjie/current/apps/teaching
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=60
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/xunjie
+
+[Install]
+WantedBy=multi-user.target

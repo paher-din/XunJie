@@ -138,6 +138,7 @@ export type AssistanceContextRecord = {
 };
 
 export type AuthorizedHdlHelpContext = {
+  execution?:import('../records/index.ts').ExecutionBinding;
   workspaceRevision?:number;
   snapshotId: string;
   snapshotHash: string;

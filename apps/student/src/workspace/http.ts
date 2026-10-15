@@ -98,6 +98,8 @@ export interface RequestOptions {
   scenarioId?: string
   /** 会话入口限定等待，超时仍是传输失败，不伪造业务结论。 */
   timeoutMs?: number
+  /** Only a newly-created Run/HDL Build supplies its explicitly selected node. */
+  executionNodeId?: string
 }
 
 function urlOf(path: string, opts: RequestOptions): string {
@@ -108,6 +110,7 @@ async function request<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body: 
   const url = urlOf(path, opts)
   const epoch = sessionEpoch
   const headers: Record<string, string> = { Accept: 'application/json' }
+  if (opts.mode === 'real' && opts.executionNodeId) headers['x-xunjie-execution-node'] = opts.executionNodeId
   if (import.meta.env.DEV && opts.mode === 'preparation') {
     const scenario = opts.scenarioId ?? new URLSearchParams(globalThis.location?.search ?? '').get('scenario')
     if (scenario) headers['x-i0prep-scenario'] = scenario

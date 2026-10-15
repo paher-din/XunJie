@@ -114,7 +114,7 @@ export async function createDesignVerificationApp(options: DesignVerificationOpt
         if (!readiness) throw new ApiError('PERSISTENCE_UNAVAILABLE');
         if (!readiness.ok) throw readiness.error;
         const runtime = readiness?.ok ? readiness.runtime : undefined;
-        if (runtime && runtime.recoveryGeneration !== input.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
+        if (runtime && runtime.recoveryGeneration !== (runtime.execution?.nodeGeneration??input.recoveryGeneration)) throw new ApiError('RECOVERY_REQUIRED');
         const context = releaseContext(tx, actor.courseId, blueprintId, concerns, runtime?.profile);
         if (context.draft.revision !== input.expectedRevision) throw new ApiError('VERSION_CONFLICT');
         return { kind: 'checks', report: context.report };

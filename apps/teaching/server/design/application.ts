@@ -15,7 +15,7 @@ import type { Transaction } from '../db/transaction.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
 
 // C3 adds only this optional same-transaction callback; A's control results and algorithms stay unchanged.
-export type DesignAppOptions = Omit<DesignVerificationOptions, 'completion'> & { teaching?: { stop: DesignTeachingStop }; afterControl?:()=>Promise<void> };
+export type DesignAppOptions = Omit<DesignVerificationOptions, 'completion'> & { teaching?: { stop: DesignTeachingStop }; afterControl?:()=>Promise<void>;execution?:import('../app/execution-nodes.ts').ExecutionRouting };
 const params = z.strictObject({ id: z.string().min(1).max(128) });
 const keySchema = z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/);
 const audienceSchema = z.strictObject({ audience: z.enum(['student', 'tutor', 'teacher-validator']).default('student') });
@@ -108,7 +108,7 @@ export async function createDesignApp(options: DesignAppOptions, registerTeacher
       if (!readiness.ok) throw readiness.error;
       const runtime = readiness.runtime;
       if (!runtime) throw new ApiError('RUNTIME_NOT_READY');
-      if (runtime.recoveryGeneration !== input.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
+      if (runtime.recoveryGeneration !== (runtime.execution?.nodeGeneration??input.recoveryGeneration)) throw new ApiError('RECOVERY_REQUIRED');
       return confirmActivity(tx, actor, blueprintId, input.expectedRevision,
         input.concerns.map(({ resolution, ...item }) => ({ ...item, ...(resolution === undefined ? {} : { resolution }) })),
         runtime.profile, runtime.readiness, input.recoveryGeneration, now());

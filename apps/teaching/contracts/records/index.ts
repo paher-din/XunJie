@@ -10,10 +10,11 @@ export type AuditEvent = {eventId:string;serverSeq:number;scope:Scope;type:strin
 // `attemptCount` is the cumulative provider-call ledger for this job across workers, bounded by the approved
 // three-call budget. The executing side increments it through `recordModelCall` before every provider request;
 // it is never a per-round figure, and nothing else may raise it.
+export type ExecutionBinding={nodeId:string;nodeGeneration:string};
 export type Job = {jobId:string;kind:string;purpose:Purpose;scope:Scope;requestReceiptId:string;
   status:JobStatus;stopRequested:boolean;expectedRevision:number;decisionEpoch:number;
   recoveryGeneration:string;acceptedAt:string;deadline:string;attemptCount:number;inactivityTimeoutMs?:number;
-  leaseToken?:string;leaseUntil?:string;runId?:string;resultRef?:string;resultHash?:string;failure?:string};
+  leaseToken?:string;leaseUntil?:string;runId?:string;resultRef?:string;resultHash?:string;failure?:string;execution?:ExecutionBinding};
 export type Records = {receipts:CommandReceipt[];commandAliases:{identity:CommandIdentity;receiptId:string}[];
   events:AuditEvent[];jobs:Job[];serverSeq:number};
 
