@@ -113,7 +113,8 @@ test('A4: B2 preparation automatically reads the real current learner state and 
   const {setup,candidate} = await import('./review-support.ts');const s = await setup();
   try {
     const queued = await s.queue(),lease = s.f.review.claimAnalysis(queued.jobId)!;
-    s.f.review.completeAnalysis({jobId: queued.jobId,leaseToken: lease.leaseToken,recoveryGeneration: s.f.generation(),bodyJson: JSON.stringify(candidate(s.snapshotId,s.activityId))});
+    const statement = 'Synthetic candidate: explain the boundary at 900 items';
+    s.f.review.completeAnalysis({jobId: queued.jobId,leaseToken: lease.leaseToken,recoveryGeneration: s.f.generation(),bodyJson: JSON.stringify(candidate(s.snapshotId,s.activityId,{statement}))});
     const claim = (await s.state()).claims[0];
     const help = await command(s.f,s.student,`/api/attempts/${s.attemptId}/help`,{question: 'Explain the approach',expectedAttemptRevision: (await s.attempt()).attempt.attemptRevision});
     assert.equal(help.statusCode,200,help.body);const jobId = help.json().data.result.jobId;
@@ -123,7 +124,10 @@ test('A4: B2 preparation automatically reads the real current learner state and 
     const refs = prepared.json().data.references;
     const ref = refs.find((r: {id:string}) => r.id === `claim:${claim.claimId}:1`);
     assert.ok(ref,'Real A claim is included');assert.equal(JSON.parse(ref.content).learnerStateRevision,1);
-    assert.equal(JSON.parse(ref.content).assistanceStatus,'unknown');assert.ok(!JSON.stringify(refs).includes('900'));
+    assert.equal(JSON.parse(ref.content).assistanceStatus,'unknown');
+    assert.equal(JSON.parse(ref.content).statement,statement);
+    const learnerRefs = refs.filter((r: {id:string}) => r.id.startsWith('claim:') || r.id.startsWith('learner-state:'));
+    for (const learnerRef of learnerRefs) assert.equal(JSON.parse(learnerRef.content).learnerStateRevision,1);
   } finally {await s.f.close();}
 });
 

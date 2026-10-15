@@ -1,0 +1,55 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+ 15 30.4M   15 4884k    0     0  4251k      0  0:00:07  0:00:01  0:00:06 4250k
+ 43 30.4M   43 13.3M    0     0  6354k      0  0:00:04  0:00:02  0:00:02 6354k
+ 68 30.4M   68 20.7M    0     0  6760k      0  0:00:04  0:00:03  0:00:01 6760k
+100 30.4M  100 30.4M    0     0  7773k      0  0:00:04  0:00:04 --:--:-- 7774k
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100  3171  100  3171    0     0  12090      0 --:--:-- --:--:-- --:--:-- 12057
+node-v24.21.0-linux-x64.tar.xz: OK
+v24.21.0
+7d93afc2441eceff0ccd26a9cae981557a9f789021b40f079a70d4ea356d548e  package-lock.json
+
+> @xunjie/teaching@0.0.0 preinstall
+> node tools/check-runtime.mjs
+
+
+added 70 packages in 5s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   better-sqlite3@13.0.3 (install: node-gyp rebuild)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+npm notice
+npm notice New major version of npm available! 11.19.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
+✔ review: real RunControl preparation failure ends check without fabricating a RunRecord (2517.880472ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2925.460774
+✔ review: late runs failure rolls back student session activity with Job, receipt and event (1725.200942ms)
+✔ review: original run ACK and conflicts return before pending readiness; authorization still applies (3781.577955ms)
+✔ review: concurrent new runs recheck the original receipt after readiness (2222.420254ms)
+✔ review: current teacher reads retained workspace, snapshot and run after student withdrawal (3208.615534ms)
+✔ review: real RunControl preparation failure ends check without fabricating a RunRecord (2323.788784ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13619.23523

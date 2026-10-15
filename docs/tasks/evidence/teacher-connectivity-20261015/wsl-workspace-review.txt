@@ -1,0 +1,1 @@
+/mnt/d/XunJie/.tmp/teacher-connectivity-fix-20261015/wsl-review-regression.sh: 6: cd: can't cd to /tmp/xunjie-review-wsl-20261015-oQCwEF/teaching

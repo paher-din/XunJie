@@ -1,0 +1,157 @@
+{
+  "task": "I1 teacher-side front/back-end connectivity test execution",
+  "date": "2026-10-15",
+  "timezone": "Asia/Shanghai",
+  "plan": "docs/tasks/I1_TEACHER_CONNECTIVITY_TEST_PLAN_20261015.md",
+  "planBaseline": "4ea3c73e70a6ad334476d54315c58e806b06cae8",
+  "executedAt": "main@9664ca5646b969cde0ccff4f4b8d5c7ea2da547d",
+  "environment": {
+    "platform": "Windows x64",
+    "node": "v24.21.0 (approved, retained)",
+    "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "realHost": "absent: nothing listening on 127.0.0.1:3444; /opt/xunjie-ui-local and /opt/xunjie-runner absent in WSL Ubuntu; no XUNJIE_* environment variables"
+  },
+  "files": [
+    {
+      "file": "batch1-teaching-build.txt",
+      "note": "apps/teaching npm run build",
+      "sha256": "a5db58e8e37a4ad75ff9763c8d3649c5e7065f8ff9c03e2610a75466af7e7a60",
+      "bytes": 93,
+      "rawLogSha256": "cc6a8381aecccfb462cda95bbdf98c428541d0ce02026ab1002019473da8a534",
+      "rawBytes": 198,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-teaching-4files.txt",
+      "note": "the four test files named in plan section 9.2, first run",
+      "sha256": "c70101d9b93455dd51512450f04b5c7dfa5001d5455cb739630d99f91a8b4ab7",
+      "bytes": 18733,
+      "rawLogSha256": "ff5108a1bda1415052799e64ff7f5334e3a189b4463d090b61acf95aae3d12df",
+      "rawBytes": 38426,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-teaching-full-suite-partial.txt",
+      "note": "apps/teaching npm test (NOT a plan-prescribed command): stalled after the last test of tests/app.test.ts with flat CPU for over five minutes, terminated; partial log only",
+      "sha256": "03c1d3fa3ac9e817b458ef5fd8dedf29d2c86a5f4570adc9d7810c6692b7314b",
+      "bytes": 36902,
+      "rawLogSha256": "fa322bcaefe29fee191628045e5d52314a84b40df818bf62f4c72124111b15b9",
+      "rawBytes": 73132,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-student-typecheck.txt",
+      "note": "apps/student npm run typecheck",
+      "sha256": "64ee31ae0f47346990e69867928d60872b15f58a8aa87072019d8a406e661ffe",
+      "bytes": 87,
+      "rawLogSha256": "d0b3afaa2e058e8d8bb4ffbd590f7193d6d13a3f768bbee8ddd1e0204b4adf4c",
+      "rawBytes": 186,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-student-targeted.txt",
+      "note": "the three student test files named in plan section 9.2",
+      "sha256": "391ca081d746b68a7a84ae8b5741713b31c3add41917c8a43dbed8c6a45ac4ee",
+      "bytes": 510,
+      "rawLogSha256": "3eb146f3443d834a0569ef9386ae9480ece1e5ba25ca839ddc36ab84f4448533",
+      "rawBytes": 1050,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-student-full-unit.txt",
+      "note": "apps/student npm test (full vitest suite)",
+      "sha256": "f704885d5e5b7ac482dc4f4496c0c4cb0ec9295f0a4460e1a60cd0ac8e736dfe",
+      "bytes": 10284,
+      "rawLogSha256": "f28c13cf0efa01c1c6af3964244bb55352e66e8bc5659d1eb0fb19aaf2167ca0",
+      "rawBytes": 19032,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-student-build.txt",
+      "note": "apps/student npm run build",
+      "sha256": "b327c4cdd28639bd2a2233d3edc84c04b9b2c23c6c4799d4fb53221b952e3b98",
+      "bytes": 14752,
+      "rawLogSha256": "4c473ba5cddcdbde28a948d8f1aba4bf62747620e9bf649de4285faa780f7320",
+      "rawBytes": 29206,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-student-e2e-3specs.txt",
+      "note": "teacher-ui + sessionEntry + real-mode on fresh ports with Chrome; first run",
+      "sha256": "2053cd81f38704fb8affdb959b0dd913c215cf244ad9dd397f659354b31aa4bd",
+      "bytes": 46161,
+      "rawLogSha256": "fd566c5b47a1f276c0e675b869f6a09456dff49185e383753e496d247df085f9",
+      "rawBytes": 90684,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-student-e2e-sessionentry-alone.txt",
+      "note": "sessionEntry alone, isolating the timeout",
+      "sha256": "95bcd109109b96348b8a0b31ab7794cc0554881db9f01b393425281c9e539e1c",
+      "bytes": 7327,
+      "rawLogSha256": "59d013883472a7fc30c1e8f4f8709e272934114af2a66767a3ac79dc6f89ba2a",
+      "rawBytes": 14108,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-student-e2e-teacher-model-settings.txt",
+      "note": "the personal teacher model entry added after the plan baseline",
+      "sha256": "143337957caae447687de96b720fc5635c86a27d3a5c3578ebd248d538532127",
+      "bytes": 6658,
+      "rawLogSha256": "6730e6b56f7d2c7d11f1cdd6092a31b2ab7450fa1e0600d600607318388de471",
+      "rawBytes": 13226,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "finding-review-flake-loop.txt",
+      "note": "the single A4 test repeated 25 times: 1 failure, 24 passes (about 4%)",
+      "sha256": "34ea611955d7973cbea81b32be0762869bb78527ec582f4d7eb504c7e2c020be",
+      "bytes": 571,
+      "rawLogSha256": "1c8d754a278eb431f89def1745ecd6f86bda9a6934d4c8c4a0a6ecfd523836cf",
+      "rawBytes": 601,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "batch1-teaching-4files-repeat1.txt",
+      "note": "the four test files again: 73/73 pass",
+      "sha256": "1468e6672bc66a5d939836570cbaecd48456020f9d52343eab3fa3d2ff40c798",
+      "bytes": 18087,
+      "rawLogSha256": "e7308a892e9bffed97f3b26dfc59301d4021ebb98b941a50fc51f3bc0294989e",
+      "rawBytes": 37078,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "finding-review-alone.txt",
+      "note": "tests/review.test.ts alone: 51/51 pass",
+      "sha256": "7bed252169b9776c632b9066da40d4197c09aa2925486a12db3c25194c218af2",
+      "bytes": 12366,
+      "rawLogSha256": "077145130de7c6c86e377bbcdf241d7a32e917f59888c91b38ae6de0faaf59dc",
+      "rawBytes": 25372,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "finding-sessionentry-request-trace.json",
+      "note": "request trace of the failing spec on current main: bootstrap never requested, two new calls answered 401",
+      "sha256": "c5f36b546b3ec4d1a9fc4a4c47fbf03c9c1f8d39ad801eef2aef8321e69b6fe7",
+      "bytes": 480,
+      "rawLogSha256": "f78e91db040fe1b5c7caae47133c3721a25262a3051f7ee4061cc9e67179dbe7",
+      "rawBytes": 479,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    },
+    {
+      "file": "finding-sessionentry-positive-control.txt",
+      "note": "same spec passes when only those two calls are stubbed",
+      "sha256": "8c3adfc806af506c277633d823e72df0060f23bd026ff680ea15de8529574fc3",
+      "bytes": 6771,
+      "rawLogSha256": "ee6ec82906dd410dfbd96c1c744b25c8e96c0245f9cef7b28d92954c7b8c46ef",
+      "rawBytes": 13366,
+      "normalization": "PowerShell console capture decoded from UTF-16LE to UTF-8; absolute repository paths, ANSI codes, CRLF and trailing blank whitespace normalized only. The pre-normalization originals are not committed; rawLogSha256 identifies the local original."
+    }
+  ],
+  "transcriptNotes": [
+    {
+      "command": "apps/teaching: node node_modules/typescript/bin/tsc --noEmit",
+      "observed": "exit code 0, no console output (tsc --noEmit prints nothing on success), so no log file was produced"
+    }
+  ]
+}
