@@ -46,9 +46,9 @@ const DEFAULT_TRAY = ['mosaic', 'badges', 'radar', 'timeline', 'punch', 'trend',
 
 const LAYOUT_KEY = 'dashboard.layout.v3'
 
-function loadLayout(): { board: string[]; tray: string[] } {
+function loadLayout(storageKey: string): { board: string[]; tray: string[] } {
   try {
-    const raw = localStorage.getItem(LAYOUT_KEY)
+    const raw = localStorage.getItem(storageKey)
     if (!raw) return { board: DEFAULT_BOARD, tray: DEFAULT_TRAY }
     const parsed = JSON.parse(raw) as { board?: unknown; tray?: unknown }
     const valid = (ids: unknown): ids is string[] =>
@@ -66,22 +66,26 @@ function loadLayout(): { board: string[]; tray: string[] } {
 export function DashboardSection({
   data,
   tasks,
+  taskCount,
   now,
   continueSlot,
+  storageKey = LAYOUT_KEY,
 }: {
-  data: DashboardData
-  tasks: ProjectTask[]
+  data: Partial<DashboardData>
+  tasks: ProjectTask[] | null
+  taskCount?: number
   now: Date
   continueSlot?: React.ReactNode
+  storageKey?: string
 }) {
-  const [layout, setLayout] = useState(loadLayout)
+  const [layout, setLayout] = useState(() => loadLayout(storageKey))
   const [editing, setEditing] = useState(false)
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
   const { board, tray } = layout
 
   useEffect(() => {
-    localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout))
-  }, [layout])
+    localStorage.setItem(storageKey, JSON.stringify(layout))
+  }, [layout, storageKey])
 
   // 悬停提示锚定在元素本身上方，而不是跟随鼠标，避免间隙/视差造成的错位感
   const bindTip = (text: string) => ({
@@ -104,13 +108,13 @@ export function DashboardSection({
     }
   }, [])
 
-  const props: WidgetProps = { data, tasks, now, bindTip, showTip, hideTip }
+  const props: WidgetProps = { data, tasks, taskCount, now, bindTip, showTip, hideTip }
 
   return (
     <section className={`dash-section${editing ? ' editing' : ''}`}>
       <div className="dash-sec-head">
         <h2>学习看板</h2>
-        <span className="period">本学期</span>
+        <span className="period">{data.semesterStart ? '本学期' : '全部任务'}</span>
         <button className="outline db-edit-btn" onClick={() => setEditing((v) => !v)}>
           <IconText name={editing ? 'check' : 'pen'}>{editing ? '完成' : '编辑'}</IconText>
         </button>
