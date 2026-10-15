@@ -1,0 +1,151 @@
+{
+  "status": "verified",
+  "reviewer": "Codex under explicit user A assignment",
+  "runtime": "v24.15.0",
+  "reviewedSource": "ac49334218c8cfe1e4aa945355e982ddaf3638f3",
+  "checks": [
+    {
+      "name": "A.originalApplicationMatchesTestedSource",
+      "passed": true,
+      "detail": {
+        "tested": "87edd51e165b2bab660d73a551864ff8db0bed86",
+        "runtime": "254e9387ea0b5c81c9160dd53ca272b621caba49",
+        "paths": [
+          "apps/teaching/server/access",
+          "apps/teaching/server/design",
+          "apps/teaching/server/app",
+          "apps/teaching/server/tutoring",
+          "apps/teaching/server/records",
+          "apps/teaching/server/workspace",
+          "apps/teaching/server/db",
+          "apps/teaching/server/app.ts",
+          "apps/teaching/contracts",
+          "apps/teaching/common",
+          "apps/teaching/package.json",
+          "apps/teaching/package-lock.json"
+        ],
+        "differences": []
+      }
+    },
+    {
+      "name": "A.currentApplicationChangesAreOnlyH05AndTests",
+      "passed": true,
+      "detail": {
+        "current": "ac49334218c8cfe1e4aa945355e982ddaf3638f3",
+        "differences": [
+          "apps/teaching/contracts/workspace/index.ts",
+          "apps/teaching/server/db/records-adapter.ts",
+          "apps/teaching/server/workspace/a5-consumption.test.ts",
+          "apps/teaching/server/workspace/files.ts",
+          "apps/teaching/server/workspace/integration.test.ts"
+        ],
+        "liveDeploymentPerformed": false
+      }
+    },
+    {
+      "name": "A.H05FixedProductionMatchesPR73",
+      "passed": true,
+      "detail": {
+        "fixedSource": "cf2326f70ed0cec8cc92f51f7402808061c1b6b7",
+        "files": [
+          "apps/teaching/server/db/records-adapter.ts",
+          "apps/teaching/server/workspace/files.ts"
+        ],
+        "contractSource": "a49863f",
+        "contract": "apps/teaching/contracts/workspace/index.ts",
+        "note": "PR73 merge also retained two existing A6 feedback CAS comments; no runtime type change"
+      }
+    },
+    {
+      "name": "A.archivedTlsManifestAndHealth",
+      "passed": true,
+      "detail": {
+        "source": "8d613a7224d6e309500913277a10b024258fa82c",
+        "leafSha256": "8d663b4dba93b1fb61df544fe3fe17022e561d88a559576381abf1220b3ac52e",
+        "liveTlsPerformed": false,
+        "artifactBytesChecked": false
+      }
+    },
+    {
+      "name": "A_B.original.ledgerConsistency",
+      "passed": true,
+      "detail": {
+        "checked": 246,
+        "counts": {
+          "assignments": 3,
+          "attempts": 3,
+          "files": 3,
+          "snapshots": 6,
+          "builds": 4,
+          "sessions": 4,
+          "operations": 25,
+          "jobs": 33,
+          "messages": 5,
+          "actions": 2,
+          "teachingReceipts": 4
+        }
+      }
+    },
+    {
+      "name": "A_B.supplement.ledgerConsistency",
+      "passed": true,
+      "detail": {
+        "checked": 462,
+        "counts": {
+          "assignments": 3,
+          "attempts": 3,
+          "files": 4,
+          "snapshots": 8,
+          "builds": 5,
+          "sessions": 6,
+          "operations": 62,
+          "jobs": 75,
+          "messages": 10,
+          "actions": 4,
+          "teachingReceipts": 9
+        }
+      }
+    },
+    {
+      "name": "A.supplementalStalePeerHasNoStoredSideEffects",
+      "passed": true,
+      "detail": {
+        "explicitRetryPreservesOtherInput": true,
+        "actualBrowserOperated": false
+      }
+    },
+    {
+      "name": "A.purePermissionRules",
+      "passed": true,
+      "detail": {
+        "assertions": 12,
+        "boundary": "Pure resource authorization; no authenticated HTTP/session/SQLite test in this run"
+      }
+    },
+    {
+      "name": "A.reusedTestLogsRetainActualResults",
+      "passed": true,
+      "detail": [
+        {
+          "path": "docs/tasks/evidence/dla-pr56-review-20261014/regression-first.txt",
+          "sha256": "7c23a1022deb3f65394ef485f45035513abe7229dc9563cfbc914715e76bb95f"
+        },
+        {
+          "path": "docs/tasks/evidence/dla-pr56-review-20261014/main-combination.txt",
+          "sha256": "df961f237aeec449250c23d48f434c444ea979c29886ae7095170ec4aa5f379b"
+        },
+        {
+          "path": "docs/tasks/evidence/i0-ac-ui-response-20261014/formal-regression.txt",
+          "sha256": "02c603ddbb7e343157c30ae460af845f65ce5f9c352f387f6bc56847278bf067"
+        }
+      ]
+    }
+  ],
+  "checkGroups": 9,
+  "scope": "A business evidence reception only",
+  "boundaries": [
+    "No live TLS/session/database/VM/model/browser actions",
+    "Archived HTTP/transaction results reused by exact scoped source comparison",
+    "B teaching semantics excluded; complete product and human gates unchanged"
+  ]
+}
