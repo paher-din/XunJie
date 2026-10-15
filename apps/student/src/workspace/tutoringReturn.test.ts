@@ -1,11 +1,12 @@
 import { createElement } from 'react'
+import { createHash } from 'node:crypto'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { TutoringExample } from '../components/workspace/TutoringExample'
 import type { ActivityView, ResourceStudentView } from './contracts'
 import type { WorkspaceContext } from './context'
 import type { MaterialRead } from './init'
-import { captureTutoringReturn, resolveTutoringResource, validateTutoringReturn, type TutoringReturnFile } from './tutoringReturn'
+import { captureTutoringReturn, resolveTutoringReferences, resolveTutoringResource, validateTutoringReturn, type TutoringReturnFile } from './tutoringReturn'
 
 const id = 'prep-resource-adjacent-example-01'
 const resource: ResourceStudentView = { status: 'available', resourceVersionId: id,
@@ -18,9 +19,38 @@ const file: TutoringReturnFile = { fileId: 'local-1', serverFileId: 'server-1', 
   documentVersion: 4, contentHash: 'b'.repeat(64), draftText: '\ufeff// 😀\r\nint x;\r// tail\n' }
 const view = { cursor: { line: 2, column: 4 }, scrollTop: 200, folds: [{ start: 2, end: 4 }] }
 
+describe('teaching replies resolve the server paragraph references among mixed references', () => {
+  const hash = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex')
+  const text = 'C 语句以分号结束。'
+  const paragraph = { paragraphId: 'c-statements-1', ordinal: 1, start: 0, end: text.length,
+    text, contentHash: hash(text) }
+  const cited: ResourceStudentView = { status: 'available', resourceVersionId: 'c-statements-v1',
+    title: 'C 语句', text, contentHash: hash(text), paragraphs: [paragraph] }
+  const projected = { ...activity, content: { ...activity.content, materials: [cited] } }
+  const reads: MaterialRead[] = [{ index: 0, projectedStatus: 'available', state: { kind: 'loaded', view: cited } }]
+  // Match the backend wire format independently of the browser's resolver.
+  const reference = `resource:${hash(JSON.stringify([cited.resourceVersionId, paragraph.paragraphId, paragraph.contentHash]))}`
+
+  it('opens the actual cited public material when a project reference comes first', async () => {
+    expect(await resolveTutoringReferences(['project:activity', reference], projected, reads, 'real'))
+      .toMatchObject({ kind: 'ready', nature: 'course-material', resource: { resourceVersionId: cited.resourceVersionId, text } })
+  })
+  it('does not substitute an arbitrary readable material for an unknown paragraph reference', async () => {
+    expect(await resolveTutoringReferences(['project:activity', `resource:${'0'.repeat(64)}`], projected, reads, 'real'))
+      .toMatchObject({ kind: 'unavailable', reason: 'not-readable' })
+  })
+  it('does not resolve an old paragraph reference after its content hash changes', async () => {
+    const changed = { ...cited, paragraphs: [{ ...paragraph, contentHash: hash('revised paragraph') }] }
+    expect(await resolveTutoringReferences([reference], { ...projected, content: { ...projected.content, materials: [changed] } },
+      [{ index: 0, projectedStatus: 'available', state: { kind: 'loaded', view: changed } }], 'real'))
+      .toMatchObject({ kind: 'unavailable', reason: 'not-readable' })
+  })
+})
+
 describe('only authorized public resources become passive reading content', () => {
-  it('resolves the supplied preparation ID and states its actual synthetic source', () => {
+  it('resolves the supplied preparation ID and states its actual synthetic source', async () => {
     const reads = materials(), result = resolveTutoringResource(id, activity, reads, 'preparation')
+    expect(await resolveTutoringReferences([id], activity, reads, 'preparation')).toEqual(result)
     expect(result.kind).toBe('ready')
     if (result.kind !== 'ready') throw new Error('expected loaded material')
     expect(result.nature).toBe('synthetic-example')

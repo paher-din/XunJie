@@ -1,4 +1,5 @@
 import type { ActivityView, ResourceStudentView } from './contracts'
+import { textHash } from './confirmation'
 import type { WorkspaceContext } from './context'
 import type { MaterialRead } from './init'
 import type { WorkspaceMode } from './mode'
@@ -6,6 +7,31 @@ import type { WorkspaceMode } from './mode'
 export type TutoringResourceResult =
   | { kind: 'ready'; resource: ResourceStudentView; nature: 'synthetic-example' | 'course-material'; sourceLabel: string }
   | { kind: 'unavailable'; reason: 'missing-reference' | 'not-readable' | 'load-failed' | 'projection-mismatch'; notice: string }
+
+/** Wire references may mix project/code IDs with paragraph hashes; only an exact public material match opens. */
+export async function resolveTutoringReferences(resourceRefs: readonly string[], activity: ActivityView,
+  materials: readonly MaterialRead[], mode: WorkspaceMode): Promise<TutoringResourceResult> {
+  if (activity.content.audience !== 'student') return resolveTutoringResource('', activity, materials, mode)
+  for (const ref of resourceRefs) {
+    for (const material of activity.content.materials) {
+      if (material.status !== 'available') continue
+      // The isolated preparation transport historically supplies bare resource version IDs.
+      if (mode === 'preparation' && ref === material.resourceVersionId) {
+        return resolveTutoringResource(material.resourceVersionId, activity, materials, mode)
+      }
+      if (!/^resource:[a-f0-9]{64}$/.test(ref)) continue
+      for (const paragraph of material.paragraphs) {
+        if (!paragraph.paragraphId) continue
+        // apps/teaching/server/tutoring/context.ts: boundedReferenceId('resource', identity).
+        const expected = `resource:${await textHash(JSON.stringify([
+          material.resourceVersionId, paragraph.paragraphId, paragraph.contentHash,
+        ]))}`
+        if (ref === expected) return resolveTutoringResource(material.resourceVersionId, activity, materials, mode)
+      }
+    }
+  }
+  return resolveTutoringResource(resourceRefs[0] ?? '', activity, materials, mode)
+}
 
 /** Only resolves IDs explicitly supplied by resourceRefs, never parses teaching prose into cards.
  * The caller must use init.activity/materials from the same currently valid context as the message.
