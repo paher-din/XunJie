@@ -41,6 +41,6 @@
 
 页面与事实：[首页截图](evidence/ui-home-dashboard-20261015/home.png)、[课程任务截图](evidence/ui-home-dashboard-20261015/course-tasks.png)、[编辑托盘截图](evidence/ui-home-dashboard-20261015/edit-tray.png)、[浏览器事实](evidence/ui-home-dashboard-20261015/browser-facts.json)。这是开发合成数据下的真实宿主浏览器复验，与前述协议/fixture检查分开。
 
-文档检查 `node tools/a0-review/check.mjs`：124篇、1935条内部链接、`errors=[]`；`git diff --check`通过。无本轮实现/验证失败，无本批未完成验收项；未执行模型/执行器回归，复用既有交付。本批在原前端分支提交并沿负责人既有授权推送PR/合并；PR号随后补记。
+文档检查 `node tools/a0-review/check.mjs`：124篇、1935条内部链接、`errors=[]`；`git diff --check`通过。无本轮实现/验证失败，无本批未完成验收项；未执行模型/执行器回归，复用既有交付。本批在原前端分支推送并创建[PR #85](https://github.com/paher-din/XunJie/pull/85)，沿负责人既有授权合并main，保留前端分支。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。
