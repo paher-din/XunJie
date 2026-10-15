@@ -29,6 +29,14 @@
 - 独立端口5701/5702/5703、`XUNJIE_E2E_BROWSER_CHANNEL=chrome`、`CI=1`，`node node_modules/@playwright/test/cli.js test homeEntry.spec.ts prep.spec.ts --grep '真实首页|没有学生课程|列表故障|列表401|首页准备入口' --workers=1`：5/5，含演示标识、每日热力/每周曲线、XP原托盘、真实课程搜索/进入、空与故障不补演示任务、登录过期及换账号布局隔离。前4例为公开HTTP响应替换的前端协议验证，准备首页1例用原fixture；不计真实宿主验收。既有品牌public JSON开发提示未改。
 - 窄审查未发现需修复项：未混用完成数/分母，未改变真实列表或权限，未新增统计请求/业务写入。
 
-随后进行本机HTTPS页面复验、截图和文档检查；不重复模型/执行器链路。
+## 本机正常HTTPS复验与交付
+
+源码固定 `cf6eaa6`，入口 `/assets/index-C9P8IzGF.js`，SHA256 `f11c2c44a8c7469eb47cb18b1eaa6994b1282b43dec3ae1bb03c284d9e1ed904`。只将正常构建复制到原WSL静态目录，旧index备份 `/opt/xunjie-ui-local/index-before-dashboard-demo-statistics.html`，旧hash资源保留；恢复旧index即可回滚。未重启或修改后端、数据库、VM、配置、凭据。
+
+原 `https://127.0.0.1:3444`、原已登录合成账号 `synthetic-robert-student-a` 刷新：显示“演示统计”、独立的“真实分配1个任务”、演示完成3/8=37.5%、每日热力20列及每周时长曲线。真实C/HDL课程仍分别1/0个本人分配；内嵌入口仍显示真实C标题/目标，没有演示任务入口混入课程列表。最终留在每日首页，未发起学习输入/保存/运行/求助。本次观察证明显示与数据来源区分，不证明真实学习完成率或时长。
+
+证据：[每日首页](evidence/ui-dashboard-display-20261015/home.png)、[每周曲线](evidence/ui-dashboard-display-20261015/weekly.png)、[浏览器事实](evidence/ui-dashboard-display-20261015/browser-facts.json)。
+
+本轮未出现实现/验证失败，没有本批未完成项；模型/执行器回归未执行，复用原交付。`node tools/a0-review/check.mjs`：125篇、1938条内部链接、`errors=[]`；`git diff --check`通过。交付为[PR #86](https://github.com/paher-din/XunJie/pull/86)，沿负责人授权推送并合并main，保留前端分支。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。

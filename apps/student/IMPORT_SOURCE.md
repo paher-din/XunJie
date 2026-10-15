@@ -142,6 +142,8 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 
 2026-10-15，[原首页看板接回](../../docs/tasks/I0-UI_HOME_DASHBOARD_RECONNECT.md)再次只读对照 Design HEAD `16558426ce70524218eacbf7ce8fde35681c0503` 与本地 DESIGN.md；本批没有新增来源文件导入。主仓库复用已有 `DashboardSection`、原 widgets、问候日期、任务卡及搜索/筛选结构，只接本人真实分配与缺失统计空态；保留原默认看板、编辑/移出/添加托盘和内嵌任务入口。完成率、时长等无来源统计保持未知，不以演示值替代；本轮验证结果由该任务记录承载。
 
+同日，负责人在[看板展示数据任务](../../docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)中明确允许没有真实统计时使用虚构数据供展示，调整上一批的未知态要求。核查当前35表宿主无完成率/活跃时长汇总接口后，原 `DashboardSection` 接已有源 `demoDashboard` / `demoTasks`，新增“演示统计”标注；演示完成比例与真实分配数量分开，内嵌“当前获准任务”仍使用本人真实分配。本批无新增来源文件导入、不回写 Design，也不生成学习记录；验证状态见该任务。
+
 | 日期 | 任务 | 改动 |
 | --- | --- | --- |
 | 2026-10-11 | I0_UI_01 | 新增本文件、`.gitignore`（Playwright 产物）、`tsconfig.node.json`、`playwright.config.ts`、`e2e/`、`prep/`（fixture）、`src/workspace/`（模式/契约投影/窄 HTTP 客户端/上下文与 loadEpoch/初始化读取/会话/准备入口常量）、`src/pages/PrepWorkspacePage.tsx`、`src/pages/TaskRoute.tsx`、`src/components/workspace/TextScopePanes.tsx` |
