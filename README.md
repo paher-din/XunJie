@@ -1,9 +1,25 @@
-# XunJie
+<div align="center">
 
-面向高校 CS 课程的独立 Web 项目制教学应用：教师与 Agent 共同设计项目，学生动手、试验和修订，教师依据具体表现改进教学。首版面向一位教师与少量学生的个人项目。
+# XunJie · 循阶
+
+**面向高校 CS 课程的独立 Web 项目制教学应用**
+
+教师与 Agent 共同设计项目，学生动手、试验和修订，教师依据具体表现改进教学。
+首版面向一位教师与少量学生的个人项目。
+
+[![官网](https://img.shields.io/badge/%E5%AE%98%E7%BD%91-xunjie--learning--studio-2f81f7?style=for-the-badge&logo=googlechrome&logoColor=white)](https://xunjie-learning-studio.tsts19891213.chatgpt.site/)
+[![Node](https://img.shields.io/badge/Node-24-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](apps/student/package.json)
+[![状态](https://img.shields.io/badge/%E7%8A%B6%E6%80%81-%E5%BC%80%E5%8F%91%E4%B8%AD-orange?style=for-the-badge)](#从这里开始)
+
+**官网入口：[xunjie-learning-studio.tsts19891213.chatgpt.site](https://xunjie-learning-studio.tsts19891213.chatgpt.site/)**
+
+</div>
+
+---
 
 ## 从这里开始
 
+- **访问官网：** [xunjie-learning-studio.tsts19891213.chatgpt.site](https://xunjie-learning-studio.tsts19891213.chatgpt.site/) 是项目的网站入口；实际课程与学习功能需负责人私下发放的账号与连接资料，仓库不含地址、账号或证书。
 - **了解产品：** 按 [PRD](docs/product/PRD.md) → [MVP_SPEC](docs/product/MVP_SPEC.md) → [TECH_DESIGN](docs/product/TECH_DESIGN.md) 阅读。首版 C / TextScope Core → Report 与数字逻辑增量的范围、限额及验收以基线和批准任务为准。
 - **修改学生 UI：** 页面、组件、样式与交互改动前先读本仓库 [DESIGN.md](docs/DESIGN.md)，沿用已交付设计与语义图标；产品、权限、数据和真实状态仍以产品基线及当前获准任务为准。
 - **领取或继续任务：** 先读 [AGENTS.md](AGENTS.md)，再按 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md) 找对应任务，核对最新负责人决定、进入条件、授权写集和交付状态。
@@ -14,9 +30,13 @@
 
 ## 本地运行与验证
 
+### 云端共享入口
+
 团队共用账号、课程和任务时，按负责人私下发放的连接操作手册进入同一个云端服务，不初始化各自的业务库。仓库仅提供配置模板和通用工具；旧 PAHER 共享连接与临时网关已退役。显示姓名、课程名称、项目名称由同一后端返回；迁移与成员执行绑定见[本轮记录](docs/tasks/I0-UI_CLOUD_SHARED_ENTRY.md)。
 
 云端只保留共享页面、后端生产运行包与数据库，按[远程 main 自动部署流程](docs/tasks/I0-UI_CLOUD_MAIN_DEPLOY.md)统一更新；成员在部署成功后刷新页面即可使用。C/HDL 执行留在成员电脑；Git 拉取不分发账号、数据库或连接权限。
+
+### 学生前端
 
 学生前端需要 Node 24，使用自己的 lockfile，不依赖 Design 仓库 checkout。以下命令在仓库根开始；`dev:prep` 使用隔离合成数据，不写真实学习记录、不连接执行节点或模型。
 
@@ -28,10 +48,13 @@ npm run dev:prep
 
 正常模式、浏览器端口、真实 Chrome、专项/全量测试及故障回放见 [学生运行说明](apps/student/README.md)；来源、许可与同步边界见 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。正常请求失败不回退到 fixture。
 
+### C / HDL 本机环境
+
 Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)，复用专用执行 VM 和原合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；新版个人通道由本人在设置页保存并启用 Key 后生效，`-DisablePersonalModels` 可总停用；`-EnableModel` 仅保留旧环境 Key 通道。登录后从[首页真实任务入口](docs/tasks/I0-UI_REAL_HOME_ENTRY.md)选择本人课程与分配，也可沿用实际分配深链。首页沿用原问候、学习看板和任务卡；后端尚无完成率/时长汇总，看板按本轮授权展示明确标注的[演示统计](docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)，本人真实分配数量与任务入口独立保留。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
 
 本机教师闭环已按[当前批准范围](docs/tasks/I1-TEACHER_UI_WORKBENCH.md#63-本轮批准记录)将该合成库升级为 41 表，日常启动改用 `xunjie-local.ps1 start -EnableReview`，教师入口为 `https://127.0.0.1:3444/#/teacher`；原库与原应用备份保留。此前本机迁移是隔离工程验证；当前共享云端已接收PAHER后续41表数据，状态见云端任务。迁移和真实浏览器工具见 [teacher-workflow](tools/teacher-workflow/README.md)。
 
+### 交付检查
 
 学生前端的交付检查在 `apps/student` 执行：
 
@@ -42,13 +65,19 @@ npm run build
 npm run test:e2e
 ```
 
-教学服务使用 Node24.21.0，依赖与命令见 [package.json](apps/teaching/package.json)。默认 npm start 提供健康入口；受控 XUNJIE_I0_CONFIG 启动 C 课程宿主，XUNJIE_APP_CONFIG 启动两课程35表 HDL 宿主。两种模式共用 HTTPS、分配 bootstrap、原 Job 消费和关停，只能选择一种。配置的可选 tutoring 复用既有模型通道，实际调用须有对应预算和数据授权，默认关闭。
+### 教学服务
+
+教学服务使用 Node24.21.0，依赖与命令见 [package.json](apps/teaching/package.json)。默认 `npm start` 提供健康入口；受控 `XUNJIE_I0_CONFIG` 启动 C 课程宿主，`XUNJIE_APP_CONFIG` 启动两课程 35 表 HDL 宿主。两种模式共用 HTTPS、分配 bootstrap、原 Job 消费和关停，只能选择一种。配置的可选 `tutoring` 复用既有模型通道，实际调用须有对应预算和数据授权，默认关闭。
 
 已有独立宿主升级显示字段时，由该库维护者备份后、启动新代码前显式调用 `server/db/transaction.ts` 的 `migrateDisplayMetadata(数据库绝对路径)`；启动不会自动迁移。团队成员使用共享服务，勿另建或迁移业务库。
 
-正常 I0 就绪检查数据库、原消费者与执行节点，失败保持503。已有启动/账号/配置交接见 [I0-A/C](docs/tasks/I0_A_C_HANDOFF.md)和[正常辅导宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)；数字逻辑固定配置与35表初始化见 [DL-A §16](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#16-35表去重联合收尾实现与验证)。个人供应商配置与独立 Agent 真实聊天的新宿主接线见[本轮任务](docs/tasks/I0_UI_MODEL_CONFIGURATION_REAL_CHAT.md)和[学生运行说明](apps/student/README.md#个人模型配置与独立聊天)：每账号加密保存 Key，项目辅导和独立聊天共用本人选择；仅支持公网 HTTPS。原冻结环境不会随源码改动自动升级。统一 PR56 的 main 集成、真实 HDL 链路、H4 请求/投递与 UI 回交见[本轮 C 续作](docs/tasks/DLA_CONTINUATION_20261014.md)。服务端、模型、浏览器和真人验收分别记录。
+正常 I0 就绪检查数据库、原消费者与执行节点，失败保持 503。已有启动/账号/配置交接见 [I0-A/C](docs/tasks/I0_A_C_HANDOFF.md)和[正常辅导宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)；数字逻辑固定配置与 35 表初始化见 [DL-A §16](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#16-35表去重联合收尾实现与验证)。
 
 独立 Agent 对话询问本人课程任务时的只读接线见[任务上下文记录](docs/tasks/I0_UI_AGENT_TASK_CONTEXT_20261015.md)：当前可列出本人真实分配及开放状态，完成状态仍未知。
+
+个人供应商配置与独立 Agent 真实聊天的新宿主接线见[本轮任务](docs/tasks/I0_UI_MODEL_CONFIGURATION_REAL_CHAT.md)和[学生运行说明](apps/student/README.md#个人模型配置与独立聊天)：每账号加密保存 Key，项目辅导和独立聊天共用本人选择；仅支持公网 HTTPS。原冻结环境不会随源码改动自动升级。统一 PR56 的 main 集成、真实 HDL 链路、H4 请求/投递与 UI 回交见[本轮 C 续作](docs/tasks/DLA_CONTINUATION_20261014.md)。服务端、模型、浏览器和真人验收分别记录。
+
+### 规范与入口检查
 
 规范或入口文档修改后，从仓库根检查引用与标题锚点：
 
@@ -105,12 +134,15 @@ node tools/a0-review/check.mjs
 
 ## 目录与参考
 
-| 目录 | 用途 |
+| 入口 | 用途 |
 | --- | --- |
+| [官网](https://xunjie-learning-studio.tsts19891213.chatgpt.site/) | 项目网站入口；课程与学习功能需负责人私下发放的账号与连接资料 |
 | [apps/student/](apps/student/) | 成员交付的学生 Web UI、准备 fixture 与浏览器检查 |
 | [apps/teaching/](apps/teaching/) | A/B/C 教学业务、Agent、作品/记录与隔离执行能力 |
 | [docs/](docs/) | 产品基线、共同计划、任务记录与参考依据 |
 | [course_matrial/](course_matrial/) | 已获分发授权的课程材料；来源/授权见 [W2](docs/tasks/W2_WORKSPACE_MAIN_INTEGRATION.md) 与 DL-0，MVP 资料导入仍按 TXT/Markdown 范围 |
 | [tools/](tools/) | 仓库检查工具 |
+
+导航：[任务与交接入口](#任务与交接入口) · [开发 skills](#开发-skills) · [从这里开始](#从这里开始)
 
 复用旧工程时读 [ENGINEERING_HANDOFF](docs/reference/ENGINEERING_HANDOFF.md)；追溯研究依据时读 [PRODUCT_RESEARCH](docs/reference/PRODUCT_RESEARCH.md)。旧实验/实现/通过数保留其来源与适用范围，不能计作正式产品验收，旧实验原始归档不作为团队开工前置。
