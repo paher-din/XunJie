@@ -8,7 +8,7 @@ import type { ConfirmedWorkspace, Receipt, SyncInput, SyncResult, WorkspaceHead 
 const mocked = vi.hoisted(() => ({
   get: vi.fn(), post: vi.fn(), head: vi.fn(), read: vi.fn(), installHead: vi.fn(),
   reserveSeq: vi.fn(), persist: vi.fn(), claim: vi.fn(), command: vi.fn(),
-  acknowledge: vi.fn(), release: vi.fn(), isCurrentAuthority: vi.fn(),
+  acknowledge: vi.fn(), release: vi.fn(), isCurrentAuthority: vi.fn(), reference: vi.fn(), commands: vi.fn(),
 }))
 vi.mock('./http', async original => ({
   ...await original<typeof import('./http')>(), apiGet: mocked.get, apiPostFrozen: mocked.post,
@@ -19,6 +19,7 @@ vi.mock('./confirmationDb', async original => ({
     read: mocked.read, installHead: mocked.installHead, reserveSeq: mocked.reserveSeq,
     persist: mocked.persist, claim: mocked.claim, command: mocked.command,
     acknowledge: mocked.acknowledge, release: mocked.release, isCurrentAuthority: mocked.isCurrentAuthority,
+    reference: mocked.reference, commands: mocked.commands,
   },
 }))
 
@@ -155,6 +156,53 @@ async function harness() {
     },
   }
 }
+
+describe('real Attempt reference recovery', () => {
+  it('reads the server-authorized Attempt instead of a stale local reference', async () => {
+    const current = 'current-attempt'
+    const realContext: CommandContext = { ...context, mode: 'real', attemptId: current, preparationEpoch: null }
+    const remote = head()
+    remote.attempt.attemptId = current
+    remote.files[0]!.attemptId = current
+    mocked.reference.mockResolvedValue({ attemptId: 'stale-attempt', changed: true })
+    mocked.commands.mockResolvedValue([])
+    mocked.read.mockResolvedValue({ workspace: null, commands: [], instances: [], drafts: [], candidates: [] })
+    mocked.get.mockImplementation(async (path: string) => {
+      if (path === `/attempts/${current}`) return remote
+      if (path === '/assignments/assignment/bootstrap') return {
+        assignment: { assignmentId: 'assignment', studentId: 'student', activityVersionId: 'activity' },
+        recoveryGeneration: 'g1', currentAttemptId: current,
+      }
+      throw new Error(`unexpected GET ${path}`)
+    })
+    mocked.installHead.mockImplementation(async (_c: CommandContext, incoming: ConfirmedWorkspace,
+      valid: () => boolean, currentAuthority: () => Promise<boolean>) => {
+      expect(valid()).toBe(true)
+      expect(await currentAuthority()).toBe(true)
+      return incoming
+    })
+    const client = new ConfirmationWorkspace(realContext)
+    clients.push(client)
+    await client.initialize()
+    expect(client.context.attemptId).toBe(current)
+    expect(client.current).toMatchObject({ phase: 'ready', error: null, attempt: { attemptId: current } })
+    expect(mocked.get.mock.calls.map(([path]) => path)).toEqual([`/attempts/${current}`, '/assignments/assignment/bootstrap'])
+    expect(mocked.persist).not.toHaveBeenCalled()
+  })
+
+  it('does not resurrect a stale local Attempt when the server reports none', async () => {
+    const realContext: CommandContext = { ...context, mode: 'real', attemptId: null, preparationEpoch: null }
+    mocked.reference.mockResolvedValue({ attemptId: 'stale-attempt', changed: true })
+    mocked.commands.mockResolvedValue([])
+    const client = new ConfirmationWorkspace(realContext)
+    clients.push(client)
+    await client.initialize()
+    expect(client.context.attemptId).toBeNull()
+    expect(client.current).toMatchObject({ phase: 'idle', attempt: null, workspace: null, error: null })
+    expect(mocked.get).not.toHaveBeenCalled()
+    expect(mocked.persist).not.toHaveBeenCalled()
+  })
+})
 
 describe('confirmation head/control interleavings through the public workspace', () => {
   it.each(['save', 'retry'] as const)('%s ACK retires an already in-flight controls read without undoing the saved work', async operation => {

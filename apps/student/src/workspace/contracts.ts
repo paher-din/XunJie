@@ -91,10 +91,12 @@ export interface AssignmentView {
   activityControlRevision: number
 }
 
-/** 固定 I0 宿主 GET `/api/assignments/:id/bootstrap`；授权深链读取，不发现/创建 Attempt。 */
+/** 固定 I0 宿主 GET `/api/assignments/:id/bootstrap`；授权深链读取，不创建 Attempt。 */
 export interface AssignmentBootstrapView {
   assignment: AssignmentView
   recoveryGeneration: string
+  /** 学生本人当前 Attempt 的只读引用；尚未显式创建时为 null。教师响应不带此字段。 */
+  currentAttemptId?: string | null
 }
 
 export type CompetencyDomain = 'domain' | 'project' | 'ai_collaboration'

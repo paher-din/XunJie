@@ -27,7 +27,7 @@ function transport(options: { session?: unknown; bootstrap?: unknown; activity?:
     paths.push(url)
     expect(init.method).toBe('GET')
     const data = url === '/api/session' ? options.session ?? session
-      : url.endsWith('/bootstrap') ? options.bootstrap ?? { assignment, recoveryGeneration: 'trusted-generation' }
+      : url.endsWith('/bootstrap') ? options.bootstrap ?? { assignment, recoveryGeneration: 'trusted-generation', currentAttemptId: null }
       : url.startsWith('/api/activities/') ? options.activity ?? activity : undefined
     if (data === undefined) throw new Error(`Unexpected read ${url}`)
     return new Response(JSON.stringify(options.status ? { requestId: 'r', error: {
@@ -55,6 +55,12 @@ describe('real 深链初始化（协议替身，非宿主验收）', () => {
     expect(await loadWorkspaceInit(guard(null))).toMatchObject({ kind: 'unavailable', stage: 'discovery' })
     expect(paths).toEqual(['/api/session'])
   })
+  it('以服务端当前 Attempt 引用进入现存作品，不从浏览器猜 ID', async () => {
+    const paths = transport({ bootstrap: { assignment, recoveryGeneration: 'trusted-generation', currentAttemptId: 'current-attempt' } })
+    const result = await loadWorkspaceInit(guard())
+    expect(result).toMatchObject({ kind: 'ready', context: { attemptId: 'current-attempt' } })
+    expect(paths).toEqual(['/api/session', '/api/assignments/approved-assignment/bootstrap', '/api/activities/fixed-activity?audience=student'])
+  })
   it('匿名失败不读分配或回准备端点', async () => {
     const paths = transport({ status: 401 })
     expect(await loadWorkspaceInit(guard())).toMatchObject({ kind: 'unavailable', stage: 'session' })
@@ -77,10 +83,12 @@ describe('real 深链初始化（协议替身，非宿主验收）', () => {
     expect(paths).toEqual(['/api/session'])
   })
   it.each([
-    { assignment: { ...assignment, assignmentId: 'other-assignment' }, recoveryGeneration: 'trusted-generation' },
-    { assignment: { ...assignment, studentId: 'student-b' }, recoveryGeneration: 'trusted-generation' },
-    { assignment, recoveryGeneration: '' },
+    { assignment: { ...assignment, assignmentId: 'other-assignment' }, recoveryGeneration: 'trusted-generation', currentAttemptId: null },
+    { assignment: { ...assignment, studentId: 'student-b' }, recoveryGeneration: 'trusted-generation', currentAttemptId: null },
+    { assignment, recoveryGeneration: '', currentAttemptId: null },
     { assignment },
+    { assignment, recoveryGeneration: 'trusted-generation' },
+    { assignment, recoveryGeneration: 'trusted-generation', currentAttemptId: 42 },
   ])('错误引用/跨学生/缺代际不能进入 ($assignment.studentId)', async bootstrap => {
     const paths = transport({ bootstrap })
     expect(await loadWorkspaceInit(guard())).toMatchObject({ kind: 'unavailable', stage: 'assignment' })
@@ -102,7 +110,7 @@ describe('real 深链初始化（协议替身，非宿主验收）', () => {
     expect(await loadWorkspaceInit(guard())).toMatchObject({ kind: 'unavailable', stage: 'activity' })
   })
   it('暂停分配可以只读，active=false 原样保留', async () => {
-    transport({ bootstrap: { assignment: { ...assignment, active: false, status: 'paused' }, recoveryGeneration: 'trusted-generation' } })
+    transport({ bootstrap: { assignment: { ...assignment, active: false, status: 'paused' }, recoveryGeneration: 'trusted-generation', currentAttemptId: null } })
     const result = await loadWorkspaceInit(guard())
     expect(result).toMatchObject({ kind: 'ready', assignment: { active: false, status: 'paused' } })
   })
