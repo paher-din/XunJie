@@ -17,7 +17,7 @@
 
 本轮两项必做已完成。真实 C 对象、回执顺序、新旧版本与固定包见[本批记录](I0-UI_CORE_REAL_TUTOR_DELIVERY.md)，交付入口为 [PR #80](https://github.com/paher-din/XunJie/pull/80)。
 
-[PR #79](https://github.com/paher-din/XunJie/pull/79) 已合 main；[HDL 正式交付](evidence/ui30-hdl-20261015/handoff.md)直接复用，本批补齐 C 场景及共享资料引用接缝，没有重复 HDL 实现。
+[PR #79](https://github.com/paher-din/XunJie/pull/79) 与[补证 PR #81](https://github.com/paher-din/XunJie/pull/81) 已合 main；[HDL 正式交付](evidence/ui30-hdl-20261015/handoff.md)直接复用，本批补齐 C 场景及共享资料引用接缝，没有重复 HDL 实现。
 
 ## 依据与已有交付
 
