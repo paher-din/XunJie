@@ -8,6 +8,7 @@ export type ProviderRequest = {
   repair: boolean;
   remainingMs: number;
   signal: AbortSignal;
+  onActivity?:()=>void|Promise<void>;
 };
 
 export type ProviderResponse = {
@@ -61,12 +62,14 @@ export type DeepSeekInvocation = {
   repair: boolean;
   abortSignal: AbortSignal;
   timeoutMs: number;
+  onActivity?:()=>void|Promise<void>;
 };
 
 export type DeepSeekInvoker = (request: DeepSeekInvocation) => Promise<ProviderResponse>;
 
 export function createDeepSeekProvider(options: {
   invoke: DeepSeekInvoker;
+  inputTokenLimit?:number;
 }): ModelProvider {
   return {
     async generate(request) {
@@ -82,10 +85,12 @@ export function createDeepSeekProvider(options: {
         repair: request.repair,
         abortSignal: request.signal,
         timeoutMs: request.remainingMs,
+        ...(request.onActivity?{onActivity:request.onActivity}:{}),
       };
       const inputTokenUpperBound = estimateDeepSeekInputTokenUpperBound(invocation);
-      if (inputTokenUpperBound > 16_000) {
-        throw new InputLimitError(inputTokenUpperBound);
+      const inputLimit=options.inputTokenLimit??16_000;
+      if (inputTokenUpperBound > inputLimit) {
+        throw new InputLimitError(inputTokenUpperBound,inputLimit);
       }
       return options.invoke(invocation);
     },
@@ -151,8 +156,8 @@ export function estimateDeepSeekInputTokenUpperBound(invocation: DeepSeekInvocat
 export class InputLimitError extends Error {
   readonly inputTokens: number;
 
-  constructor(inputTokens: number) {
-    super(`Input token upper bound ${inputTokens} exceeds 16000`);
+  constructor(inputTokens: number,limit=16000) {
+    super(`Input token upper bound ${inputTokens} exceeds ${limit}`);
     this.name = "InputLimitError";
     this.inputTokens = inputTokens;
   }

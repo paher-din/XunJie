@@ -16,7 +16,13 @@
 | 原35表合成库 | `/opt/xunjie-ui-local/retained-tmp/xunjie-a12-completion-*/synthetic.sqlite`；路径由原工厂生成，重启沿用同一库 |
 | 保留材料、工具和公开收据 | `D:\XunJie_Project\i0-ui55-connection\hdl-ui\local-environment\`；业务入口副本在其中 `application-tools\`，大档在 `downloads\`、`oci\`，节点日志在 `node-logs\` |
 
-这些工具不带密码、私钥、API key 或数据库。只保留公开源码、下载档和工程收据到 D 盘；本机秘密继续留在受限 Linux 目录，模型 key 从自己的本机环境读取。
+这些工具不带密码、私钥、API key 或数据库。只保留公开源码、下载档和工程收据到 D 盘；本机秘密继续留在受限 Linux 目录。原冻结宿主通过本人环境 Key 调用；新版个人通道从设置页保存的本人加密配置读取，见下节。
+
+## 新版个人模型通道
+
+[个人模型与真实聊天接入](../../docs/tasks/I0_UI_MODEL_CONFIGURATION_REAL_CHAT.md)新增受限目录 `/opt/xunjie-ui-local/personal-agent/`，仅在同步新版源码/前端与 `local-application-host.mjs` 后生效，既有运行进程不会自动更新。新版 `start` 可使用设置页中的本人供应商配置，无需环境 Key；本人保存并启用后，下一次显式发送即可调用。`start -DisablePersonalModels` 是维护者总停用入口，保留配置与历史。
+
+个人通道不会回退环境 Key 或其他账号 Key；原 `-EnableModel` 的环境传递仍保留为旧宿主兼容入口，不能代替新版设置页配置。个人配置独立四表库与 `credentials.key` 不属于原35表课程库，不重建原课程库、执行 VM 或身份。首次运行的四表与加密凭据初始化已由本轮负责人明确批准；后续运行继续复用。教师模型仍关闭。
 
 ## 日常使用
 

@@ -30,6 +30,8 @@ export type TutoringRuntime = {
   priorCalls?: number;
   now?: () => number;
   callVerdictWindowMs?: number;
+  maximumCalls?:number;
+  inactivityTimeoutMs?:number;
 };
 
 const MAX_CALLS = 3;
@@ -164,19 +166,22 @@ async function execute<TBody>(
   validateBody: (value: unknown) => TBody | undefined,
 ): Promise<TutoringOutcome<TBody>> {
   const now = runtime.now ?? Date.now;
-  const effectiveDeadline = Math.min(context.deadlineAtMs, context.acceptedAtMs + MAX_REQUEST_MS);
+  const maxCalls=runtime.maximumCalls??MAX_CALLS;
+  if(!Number.isSafeInteger(maxCalls)||maxCalls<1||maxCalls>MAX_CALLS)
+    return failure('unavailable','DEPENDENCY_UNAVAILABLE',false);
+  const effectiveDeadline = runtime.inactivityTimeoutMs?Infinity:Math.min(context.deadlineAtMs, context.acceptedAtMs + MAX_REQUEST_MS);
   const startedAt = now();
   const usages: ModelUsage[] = [];
   let repairUsed = false;
   const priorCalls = runtime.priorCalls ?? 0;
-  if (!Number.isSafeInteger(priorCalls) || priorCalls < 0 || priorCalls > MAX_CALLS) {
+  if (!Number.isSafeInteger(priorCalls) || priorCalls < 0 || priorCalls > maxCalls) {
     return failure("unavailable", "DEPENDENCY_UNAVAILABLE", true);
   }
-  if (priorCalls === MAX_CALLS) {
+  if (priorCalls === maxCalls) {
     return failure("budget_exhausted", "CALL_LIMIT_EXCEEDED", false);
   }
 
-  for (let call = 1; call <= MAX_CALLS - priorCalls; call += 1) {
+  for (let call = 1; call <= maxCalls - priorCalls; call += 1) {
     const before = await guardFailure(
       externalSignal,
       runtime.checkCurrent,
@@ -213,7 +218,7 @@ async function execute<TBody>(
         return failure("timed_out", "DEADLINE_EXCEEDED", false, call, aggregateUsage(usages));
       }
       if (response.needsAnotherCall) {
-        if (priorCalls + call === MAX_CALLS) {
+        if (priorCalls + call === maxCalls) {
           return failure("unavailable", "CALL_LIMIT_EXCEEDED", false, call, aggregateUsage(usages));
         }
         continue;
@@ -230,7 +235,7 @@ async function execute<TBody>(
           versions: context.versions,
         };
       }
-      if (repairUsed || priorCalls + call === MAX_CALLS) {
+      if (repairUsed || priorCalls + call === maxCalls) {
         return failure("rejected", "INVALID_MODEL_OUTPUT", false, call, aggregateUsage(usages));
       }
       repairUsed = true;
@@ -259,7 +264,7 @@ async function execute<TBody>(
     }
   }
 
-  return failure("unavailable", "CALL_LIMIT_EXCEEDED", false, MAX_CALLS, aggregateUsage(usages));
+  return failure("unavailable", "CALL_LIMIT_EXCEEDED", false, maxCalls, aggregateUsage(usages));
 }
 
 type CallBilling = { calls: number; usage: ModelUsage };
@@ -344,6 +349,7 @@ async function runWithinRequestBoundary<T>(
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let removeExternalAbort: (() => void) | undefined;
   const deadline = new Promise<never>((_, reject) => {
+    if(!Number.isFinite(remainingMs))return;
     timeout = setTimeout(() => {
       deadlineController.abort();
       reject(new DeadlineError());

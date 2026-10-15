@@ -2,8 +2,11 @@ import { Icon, IconText } from '../icons'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { learningApi } from '../bridge/mockAdapter'
-import type { ProjectTask } from '../bridge/types'
+import { PREP_BUILD } from '../workspace/mode'
+import { getSessionState } from '../workspace/session'
+import { getModelSettings, personalModelOptions, saveModelSettings, useModelSettings } from '../lib/modelSettings'
+import { learningApi } from '../bridge/agentApi'
+import type { ChatMessage, ProjectTask } from '../bridge/types'
 import {
   MODELS,
   MODEL_CHANGE_EVENT,
@@ -13,9 +16,12 @@ import {
 } from '../components/PromptInput'
 import { AgentMessage, type GenCardSlots } from '../components/chat/AgentMessage'
 import { MessageRail } from '../components/chat/MessageRail'
+import { UserMessage } from '../components/chat/UserMessage'
 import { QUEUE_TIP } from '../components/chat/copy'
 import { TaskPicker } from '../components/chat/TaskPicker'
+import { TurnAriaStatus } from '../components/chat/TurnAriaStatus'
 import { useAgentTurn } from '../components/chat/useAgentTurn'
+import { useFollowBottom } from '../components/chat/useFollowBottom'
 import { SuggestionStack } from '../components/SuggestionStack'
 import { MascotSvg } from '../components/Mascot'
 import { ProgressBar } from '../components/ProgressBar'
@@ -49,7 +55,7 @@ const scrollBehavior = (): ScrollBehavior =>
  * 上滑翻历史时换成居中的「回到底部」圆钮——翻历史时不给阅读添遮挡，贴底时几秒可达。
  */
 export default function AgentPage() {
-  const { conversationId } = useParams()
+  const routeConversationId = useParams().conversationId
   const navigate = useNavigate()
   const [input, setInput] = useState('')
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -62,17 +68,34 @@ export default function AgentPage() {
   const arrivingRef = useRef(false)
   /** 上一次滚动位置换算的离底距离：平滑回底途中反向变大即视为学生接手。 */
   const distanceRef = useRef(0)
-  const prevPendingRef = useRef<string | null>(null)
+  /** 贴底跟随自己写入的 scrollTop：onScroll 用它把「我们搬的位置」与「学生上滑」分开。 */
+  const oursScrollRef = useRef(-1)
+  /** 上一次看到的会话 id：用来分辨「切换会话」与「新会话刚落定才有 id」。 */
+  const prevCidRef = useRef<string | null | undefined>(undefined)
   const queryClient = useQueryClient()
+  const models = useModelSettings()
+  const [operationError, setOperationError] = useState('')
+  const operation = useRef(0)
+  useEffect(() => { operation.current++; setOperationError(''); setInput(''); return () => { operation.current++ } }, [routeConversationId])
 
   const snapshot = useQuery({
-    queryKey: ['home'],
-    queryFn: () => learningApi.getHomeSnapshot(),
+    queryKey: ['agent-task-options'],
+    queryFn: () => learningApi.listTasks(),
   })
+  const turn = useAgentTurn(routeConversationId ?? null)
+  /**
+   * 本页对哪条会话说话：路由参数，或刚落定那一帧回合报的 id。
+   * 新会话首条回复落定时 navigate(replace) 比同批的状态更新晚一帧才落到 useParams，
+   * 只认路由参数的话会话查询会是空的——整条对话退回空状态再重建（重挂载 + 入场重播 + 位移），
+   * 实测 60ms 空窗。回合的 settledId 把这一帧接上，路由参数一变即作废。
+   */
+  const conversationId = routeConversationId ?? turn.settledId
   const conversation = useQuery({
     queryKey: ['conversation', conversationId],
     queryFn: () => learningApi.getConversation(conversationId!),
-    enabled: !!conversationId,
+    // 回合接纳已保存学生消息；在途历史刷新会与 pendingUser/live 重叠。
+    // 由 useAgentTurn 在终态读取并原子交接这份快照。
+    enabled: !!conversationId && !turn.active,
   })
   const conversations = useQuery({
     queryKey: ['conversations'],
@@ -84,17 +107,49 @@ export default function AgentPage() {
     staleTime: Infinity,
   })
 
-  const turn = useAgentTurn(conversationId ?? null)
-
   const allMessages = conversation.data?.messages ?? []
-  // 继续 / 重试时，会话最后一条 agent 消息由 live 原位接管，避免双份一闪而过
-  const messages = turn.replacing ? allMessages.slice(0, -1) : allMessages
-  const lastAgentIdx = messages.map((m) => m.role).lastIndexOf('agent')
-  const tasks = snapshot.data?.tasks ?? []
+  // 继续 / 重试时，会话最后一条 agent 消息由 live 原位接管，避免双份一闪而过。
+  // 只切 agent 消息：刚改写过问题时会话末尾是学生消息，它得留在屏上。
+  const replacingAgent =
+    turn.replacing && allMessages[allMessages.length - 1]?.role === 'agent'
+  const messages = replacingAgent ? allMessages.slice(0, -1) : allMessages
+  const tasks = snapshot.data ?? []
+
+  /**
+   * 一条平铺到底的渲染行：会话历史 + 乐观上屏的学生消息 + 生成中的 live。
+   * key 取它们落进历史之后的下标，于是落定交接时 React 复用同一批 DOM 节点，
+   * 只是换 props——不重挂载就不重播 .chat-message 的入场（那一下就是「抽」），
+   * 卡片与操作条也不必等第二次渲染才出现。stored = 在历史里的下标，
+   * -1 表示这条还没进会话存储（按消息定位的本地动作槽不给）。
+   */
+  const rows: { key: string; msg: ChatMessage; stored: number }[] = [
+    ...messages.map((msg, i) => ({ key: 'm' + i, msg, stored: i })),
+    ...(turn.pendingUser
+      ? [
+          {
+            key: 'm' + messages.length,
+            msg: { role: 'user' as const, text: turn.pendingUser },
+            stored: -1,
+          },
+        ]
+      : []),
+    ...(turn.live
+      ? [
+          {
+            key: 'm' + (messages.length + (turn.pendingUser ? 1 : 0)),
+            msg: turn.live,
+            stored: -1,
+          },
+        ]
+      : []),
+  ]
+  // 最后一条 agent 消息才挂继续 / 重新生成 / 换模型；算在渲染行上，
+  // 所以 live 一落定就有操作条，交接后不会再多出一枚键
+  const lastAgentRow = rows.reduce((acc, r, i) => (r.msg.role === 'agent' ? i : acc), -1)
 
   // 追问选项（2026-10-10 定稿）：取最近一条落定 agent 消息的 followUps，
   // 浮在输入框上方；生成中原选项保留、可再点（点击走排队），下一轮落定后替换。
-  const lastAgent = lastAgentIdx >= 0 ? messages[lastAgentIdx] : undefined
+  const lastAgent = lastAgentRow >= 0 ? rows[lastAgentRow].msg : undefined
   const followUps =
     lastAgent && (!lastAgent.phase || lastAgent.phase === 'settled')
       ? (lastAgent.followUps ?? [])
@@ -105,20 +160,29 @@ export default function AgentPage() {
   // 自发送首条消息起常驻，不随草稿显隐——输入/落定/排队全程底部几何零跳动。
   const padSuggest = !!conversationId || messages.length > 0 || !!turn.pendingUser || turn.active
 
-  // 新消息 / 流式追加 / 乐观上屏时把对话流滚到底部；学生上滑翻历史即释放，不拽动（2026-10-10 定稿）。
-  // 自己发出的消息（含排队后发出）上屏瞬间重新吸附——发消息就是看回答的意图。
+  // 新回合开始那一帧重新吸附并瞬时贴底：发消息、重新生成、继续生成、改写后重发都算「我要看这条回答」，
+  // 「我发出去了」的反馈不等动画（第 18 条）。不重新吸附会漏掉改写这条——编辑框打开时浏览器把那条
+  // 滚进视野（focus 的自然行为）即释放跟随，不吸附的话新正文会在视口外悄悄流完（实测离底 592）。
+  // 正文逐字与落定撑出的卡片高度都交给 useFollowBottom 的滑行：瞬时贴底会把每行长高读成一次位移。
   useEffect(() => {
-    if (turn.pendingUser && prevPendingRef.current === null) stickRef.current = true
-    prevPendingRef.current = turn.pendingUser
-    const el = wrapRef.current
-    if (el && stickRef.current) el.scrollTop = el.scrollHeight
-  }, [messages.length, turn.live?.text, turn.pendingUser])
-
-  // 切换会话：重新吸附并滚到底
-  useEffect(() => {
+    if (!turn.active && !turn.pendingUser) return
     stickRef.current = true
-    arrivingRef.current = false
+    // 当帧换挡：贴底位是 Dock 的挡位来源，位置没真的移动时不会来 scroll 事件替我们改
     setAtBottom(true)
+    const el = wrapRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [turn.active, turn.pendingUser])
+  useFollowBottom({ scroller: wrapRef, stick: stickRef, ours: oursScrollRef })
+
+  // 切换会话：重新吸附并瞬时落到底（历史很长，滑下去是「飞」不是「跟」）。
+  // 新会话的 id 是落定那一帧才出现的（navigate 比状态更新晚一帧，见 useAgentTurn.settledId）——
+  // 那不是切换会话，位置本来就该交给上面的滑行，这里重贴会把滑行拦腰切成一次瞬移（实测 525px）。
+  useEffect(() => {
+    const prev = prevCidRef.current
+    prevCidRef.current = conversationId
+    stickRef.current = true
+    setAtBottom(true)
+    if (!prev && conversationId && turn.settledId === conversationId) return
     const el = wrapRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [conversationId])
@@ -130,6 +194,10 @@ export default function AgentPage() {
     const distance = el.scrollHeight - el.scrollTop - el.clientHeight
     const previous = distanceRef.current
     distanceRef.current = distance
+    // 贴底跟每一格的位移都记在案：跟随只会把位置往下搬，所以来的事件位置不比它写下的更低，
+    // 就是它自己搬的那一格；更低才是学生上滑（滑行途中的离底可以上百 px，按位置判会误杀跟随）
+    const ours = oursScrollRef.current
+    if (ours >= 0 && el.scrollTop > ours - 1.5) return
     // 平滑回底途中：位置仍在收近（或已到底）就继续等；一旦反向变大 = 学生接手，按新位置判定
     if (arrivingRef.current) {
       if (distance > 4 && distance <= previous + 2) return
@@ -144,6 +212,7 @@ export default function AgentPage() {
   const backToBottom = () => {
     stickRef.current = true
     arrivingRef.current = true
+    oursScrollRef.current = -1
     setAtBottom(true)
     wrapRef.current?.scrollTo({ top: wrapRef.current.scrollHeight, behavior: scrollBehavior() })
   }
@@ -178,7 +247,9 @@ export default function AgentPage() {
   const doSend = (text: string, attachments: PromptAttachment[] = []) => {
     const trimmed = text.trim()
     if (!trimmed && attachments.length === 0) return
-    // Mock 边界：附件不上传，仅把文件名附在消息里呈现
+    if (!PREP_BUILD && attachments.length) { setOperationError('独立聊天暂不支持附件，请移除附件后发送。'); return }
+    if (!PREP_BUILD && (models.saving || models.loading)) { setOperationError('等待模型配置保存确认后再发送。'); return }
+    // 准备演示附件只显示文件名。
     const suffix = attachments.length
       ? '\n📎 ' + attachments.map((a) => a.name).join('、')
       : ''
@@ -188,11 +259,42 @@ export default function AgentPage() {
 
   /** 换个模型重试：切到另一可选模型（写回选择并通知输入区按钮），然后重发上一回合。 */
   const switchModelAndRetry = () => {
-    const current = localStorage.getItem(MODEL_KEY) ?? MODELS[0].id
-    const next = MODELS.find((m) => m.id !== current) ?? MODELS[0]
-    localStorage.setItem(MODEL_KEY, next.id)
-    window.dispatchEvent(new Event(MODEL_CHANGE_EVENT))
-    turn.retry()
+    if (PREP_BUILD) {
+      const current = localStorage.getItem(MODEL_KEY) ?? MODELS[0].id
+      const next = MODELS.find(m => m.id !== current) ?? MODELS[0]
+      localStorage.setItem(MODEL_KEY, next.id); window.dispatchEvent(new Event(MODEL_CHANGE_EVENT)); turn.retry()
+      return
+    }
+    const options = personalModelOptions(getModelSettings().data)
+    const next = options.find(m => m.id !== models.data?.defaultModelId)
+    if (!next) { setOperationError('请先在模型设置中添加另一个可用模型。'); return }
+    const epoch = getSessionState().epoch, op = operation.current
+    void saveModelSettings({ defaultModelId: next.id }).then(() => { if (op === operation.current && epoch === getSessionState().epoch) turn.retry() }).catch(() => { if (op === operation.current && epoch === getSessionState().epoch) setOperationError('模型切换未确认，请重新读取配置。') })
+  }
+
+  /**
+   * 改写一条学生消息（消息级操作「编辑我的消息」，已确认 2026-10-11 第 24 条）：
+   * 适配层原位替换并截掉其后内容，会话查询落定后走 retry——此时会话末尾就是这条
+   * 新问题，retry 直接给它补一条回答（与第 9 条重试同一条语义）。
+   */
+  const editUserMessage = async (messageIndex: number, text: string) => {
+    if (!conversationId || turn.active) return
+    const epoch = getSessionState().epoch, op = operation.current
+    const current = () => op === operation.current && epoch === getSessionState().epoch
+    try {
+      const original = allMessages[messageIndex]
+      if (!original || original.role !== 'user') throw new Error('原消息不可用')
+      const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([original.role, original.text, original.at ?? null])))
+      const expectedMessageHash = [...new Uint8Array(bytes)].map(n => n.toString(16).padStart(2, '0')).join('')
+      if (!current()) return
+      await learningApi.editUserMessage({ conversationId, messageIndex, text, expectedMessageHash })
+      if (!current()) return
+      const fresh = await learningApi.getConversation(conversationId)
+      if (!current()) return
+      queryClient.setQueryData(['conversation', conversationId], fresh)
+      void queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      turn.retry()
+    } catch { if (current()) setOperationError('消息编辑未确认，请重新读取原会话。') }
   }
 
   /** 建议卡只填草稿、不发送；焦点交给输入框，接着改或直接回车都顺手。 */
@@ -254,46 +356,52 @@ export default function AgentPage() {
   return (
     <div className="agent-layout">
       <div className="agent-main">
+        {(operationError || turn.error || conversation.error || conversations.error || models.error) && <p role="alert">{operationError || turn.error || (conversation.error || conversations.error ? '会话读取失败，请重新打开或刷新后重试。' : models.error)}</p>}
         <div className="chat-viewport">
           <MessageRail scrollerRef={wrapRef} onJump={jumpToMessage} />
+          {/* 只报「开始 / 结束」两件事：逐字上屏的内容不进读屏队列（见组件注释） */}
+          <TurnAriaStatus phase={lastAgent ? lastAgent.phase ?? 'settled' : undefined} />
           <div className="chat-wrap" ref={wrapRef} onScroll={onChatScroll}>
             <div
               className={
                 'chat-inner' + (padSuggest ? ' pad-suggest' : '') + (turn.queued ? ' pad-queue' : '')
               }
+              role="log"
+              aria-live="off"
+              aria-busy={turn.active}
+              aria-label="对话记录"
             >
-              {messages.length > 0 || turn.pendingUser ? (
-                <>
-                  {messages.map((m, i) =>
-                    m.role === 'user' ? (
-                      <div key={i} className="chat-message user">
-                        <div className="bubble">{m.text}</div>
-                      </div>
-                    ) : (
-                      <AgentMessage
-                        key={i}
-                        message={m}
-                        onResume={i === lastAgentIdx ? turn.resume : undefined}
-                        onRetry={i === lastAgentIdx ? turn.retry : undefined}
-                        onSwitchModel={i === lastAgentIdx ? switchModelAndRetry : undefined}
-                        onQuizAnswer={answerQuiz(i)}
-                        genCardSlots={genCardHandlers(i)}
-                      >
-                        {m.taskId &&
-                          (() => {
-                            const task = tasks.find((t) => t.id === m.taskId)
+              {rows.length > 0 ? (
+                rows.map(({ key, msg, stored }, i) =>
+                  msg.role === 'user' ? (
+                    <UserMessage
+                      key={key}
+                      text={msg.text}
+                      at={msg.at}
+                      busy={turn.active}
+                      onEdit={
+                        stored >= 0 ? (next) => void editUserMessage(stored, next) : undefined
+                      }
+                    />
+                  ) : (
+                    <AgentMessage
+                      key={key}
+                      message={msg}
+                      onResume={i === lastAgentRow && !!conversationId ? turn.resume : undefined}
+                      onRetry={i === lastAgentRow && (!!conversationId||msg.failure?.code==='MODEL_CONFIGURATION_CHANGED') ? turn.retry : undefined}
+                      onSwitchModel={i === lastAgentRow && !!conversationId ? switchModelAndRetry : undefined}
+                      onQuizAnswer={PREP_BUILD && stored >= 0 ? answerQuiz(stored) : undefined}
+                      genCardSlots={PREP_BUILD && stored >= 0 ? genCardHandlers(stored) : undefined}
+                    >
+                      {msg.taskId
+                        ? (() => {
+                            const task = tasks.find((t) => t.id === msg.taskId)
                             return task ? <TaskEntryCard task={task} /> : null
-                          })()}
-                      </AgentMessage>
-                    ),
-                  )}
-                  {turn.pendingUser && (
-                    <div className="chat-message user">
-                      <div className="bubble">{turn.pendingUser}</div>
-                    </div>
-                  )}
-                  {turn.live && <AgentMessage message={turn.live} />}
-                </>
+                          })()
+                        : null}
+                    </AgentMessage>
+                  ),
+                )
               ) : (
                 <div className="chat-empty">
                   <div style={{ width: 52, margin: 'auto' }}>
@@ -346,10 +454,11 @@ export default function AgentPage() {
                 autoFocus
                 busy={turn.active}
                 onStop={turn.stop}
-                contextTokens={conversation.data?.contextTokens ?? 0}
+                contextTokens={conversation.data?.contextTokens}
+                showContextRing={PREP_BUILD}
               />
             </div>
-            <div className="chat-disclaimer">本地模拟环境 · 生成内容仅供教学参考</div>
+            <div className="chat-disclaimer">{PREP_BUILD ? '本地模拟环境 · 生成内容仅供教学参考' : '独立对话 · 使用个人模型配置，不自动读取课程私有材料'}{!PREP_BUILD && conversation.data?.contextTokens !== undefined && <span> · 实际用量 {conversation.data.contextTokens} tokens</span>}</div>
           </div>
         </div>
       </div>

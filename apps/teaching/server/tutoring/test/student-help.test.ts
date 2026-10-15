@@ -8,7 +8,7 @@ import { readTeachingJob } from "../../records/teaching.ts";
 import { createTutoringApp, type StudentHelpPreparationOptions } from "../application.ts";
 import { assembleStudentHelpRequest, createStudentHelpCurrentGuard } from "../context.ts";
 import { generateStudentHelp } from "../core.ts";
-import { InputLimitError, SyntheticProvider, type ModelProvider } from "../providers.ts";
+import { InputLimitError, ProviderCallNotStartedError, SyntheticProvider, type ModelProvider } from "../providers.ts";
 import { executeAuthorizedStudentHelp } from "../service.ts";
 import {
   assertRealPerformanceBatchAuthorization,
@@ -36,7 +36,8 @@ const versions = {
   policy: "help-v1",
 };
 
-async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, liveClock = false) {
+async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, liveClock = false,
+  personal:Pick<Parameters<typeof createTutoringApp>[0]['studentHelp'],'versionsForStudent'|'providerForStudent'|'modelConfigRevisionForStudent'>={}) {
   const db = createTeachingDatabase();
   let time = Date.now();
   let clockStepMs = 0;
@@ -70,7 +71,7 @@ async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, l
       time += clockStepMs;
       return current;
     },
-    studentHelp: { versions, budgetAvailable: () => budgetAvailable },
+    studentHelp: { versions, budgetAvailable: () => budgetAvailable,...personal },
     ...(teacherAgent ? { teacherAgent: { provider: new SyntheticProvider([]), versions, budgetAvailable: () => true } } : {}),
     runner: async (command) => {
       if (command.op !== "readiness") throw new Error("Synthetic runner operation unavailable");
@@ -303,6 +304,55 @@ async function attemptView(f: Awaited<ReturnType<typeof fixture>>, headers: Head
   assert.equal(response.statusCode, 200, response.body);
   return response.json().data;
 }
+
+test('personal model selection fixes accepted provenance, rejects queued changes, and retains an in-flight provider',async()=>{
+  let modelRevision=1,personalCalls=0;
+  const fallback:ModelProvider={generate:async()=>{throw new Error('Global provider must never receive a personal request');}};
+  const f=await fixture(false,fallback,false,{
+    versionsForStudent:userId=>{assert.equal(userId,'student');return {...versions,modelConfig:`personal-student-${modelRevision}`};},
+    providerForStudent:(userId,modelVersion)=>{
+      assert.equal(userId,'student');
+      if(modelVersion!==`personal-student-${modelRevision}`)throw new ProviderCallNotStartedError('stale','Personal configuration changed');
+      return {generate:async request=>{
+        personalCalls++;modelRevision=3;
+        const input=request.untrustedInput as {references:{id:string}[]};
+        return {body:validBody(input.references[0]!.id,'en'),usage:{status:'actual',inputTokens:17,outputTokens:9}};
+      }};
+    },
+  });
+  try{
+    const setup=await setupProject(f);
+    const accept=async()=>{
+      const current=await attemptView(f,setup.student,setup.attemptId);
+      const result=await command(f.service.app,setup.student,`/api/attempts/${setup.attemptId}/help`,{
+        expectedAttemptRevision:current.attempt.attemptRevision,question:'Give one bounded starting hint.'});
+      assert.equal(result.statusCode,200,result.body);return String(result.json().data.result.jobId);
+    };
+    const execute=(jobId:string)=>f.service.app.inject({method:'POST',url:`/fixture/execute/${setup.attemptId}/${jobId}`,headers:setup.student,payload:{}});
+    const queued=await accept();modelRevision=2;
+    const stale=await execute(queued);assert.equal(stale.statusCode,200,stale.body);
+    assert.equal(stale.json().data.outcome.outcome,'stale');assert.equal(personalCalls,0);
+    assert.equal(f.db.withTransaction(tx=>readTeachingJob(tx,'course',queued))?.attemptCount,0);
+    const running=await accept(),completed=await execute(running);
+    assert.equal(completed.statusCode,200,completed.body);assert.equal(completed.json().data.outcome.outcome,'success',completed.body);
+    assert.equal(completed.json().data.versions.modelConfig,'personal-student-2');assert.equal(personalCalls,1);assert.equal(modelRevision,3);
+    const history=await f.service.app.inject({url:`/api/attempts/${setup.attemptId}/teaching-records`,headers:setup.teacher});
+    const messages=history.json().data.messages as {authorKind:string;envelope:{versions:{modelConfigVersion:string}}}[];
+    assert.equal(messages.find(message=>message.authorKind==='model')?.envelope.versions.modelConfigVersion,'personal-student-2');
+  }finally{await f.close();}
+});
+
+test('stale personal configuration rejects help before replacing any job or persisting the question',async()=>{
+  const f=await fixture(false,undefined,false,{modelConfigRevisionForStudent:()=>2});
+  try{
+    const setup=await setupProject(f),before=await attemptView(f,setup.student,setup.attemptId);
+    const stale=await command(f.service.app,setup.student,`/api/attempts/${setup.attemptId}/help`,{
+      expectedAttemptRevision:before.attempt.attemptRevision,expectedModelConfigRevision:1,question:'Do not send using an unseen model.'});
+    assert.equal(stale.statusCode,409,stale.body);assert.equal(stale.json().error.code,'VERSION_CONFLICT');
+    assert.equal((await attemptView(f,setup.student,setup.attemptId)).attempt.attemptRevision,before.attempt.attemptRevision);
+    assert.equal(f.db.withTransaction(tx=>tx.get("SELECT COUNT(*) AS n FROM jobs WHERE purpose='student_help'")?.n),0);
+  }finally{await f.close();}
+});
 
 test("help acceptance activates ready attempt and atomically stores question, receipt, event, and job", async () => {
   const f = await fixture();
@@ -1224,6 +1274,22 @@ test("persisted call budget is shared across workers and reserves before provide
   assert.equal(exhaustedResult.outcome.calls, 0);
   assert.equal(neverCalled.calls.length, 0);
   assert.equal(exhaustedRuntime.job().attemptCount, 3);
+});
+
+test('personal provider activity renews the same persisted lease beyond the original deadline',async()=>{
+  const expected=authorizedContext();let now=Date.parse(expected.job.acceptedAt);
+  expected.job.inactivityTimeoutMs=600000;
+  expected.job.deadline=expected.job.leaseUntil=new Date(now+600000).toISOString();
+  let calls=0;
+  const provider:ModelProvider={async generate(request){
+    calls++;assert.equal(request.remainingMs,Infinity);
+    for(let i=0;i<4;i++){now+=240000;await request.onActivity?.();}
+    return {body:validBody('project:activity'),usage:{status:'actual',inputTokens:10,outputTokens:20}};
+  }};
+  const persisted=persistedRuntime(expected,provider,()=>currentState(expected));
+  const result=await executeAuthorizedStudentHelp(expected,{...persisted.runtime,now:()=>now,inactivityTimeoutMs:600000,maximumCalls:1});
+  assert.equal(result.outcome.outcome,'success');assert.equal(calls,1);assert.equal(persisted.job().attemptCount,1);
+  assert.equal(persisted.job().leaseToken,'lease');assert.equal(Date.parse(persisted.job().deadline),now+600000);
 });
 
 test("cancelled and expired jobs end before claim without invoking the provider", async () => {

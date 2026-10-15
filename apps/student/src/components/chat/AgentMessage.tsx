@@ -2,12 +2,14 @@ import { Icon, IconText } from '../../icons'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ChatMessage, ConceptCard as ConceptCardData } from '../../bridge/types'
+import { formatMessageTime } from '../../lib/chatTime'
 import { MascotSvg } from '../Mascot'
 import { ConceptCard } from './ConceptCard'
 import { GenCard } from './GenCard'
 import { Markdown } from './Markdown'
 import { QuizCard } from './QuizCard'
 import { StepsBlock } from './StepsBlock'
+import { useSmoothStreamText } from './useSmoothStreamText'
 import {
   FAILURE_ACTION_LABEL,
   FAILURE_COPY,
@@ -49,7 +51,7 @@ export function AgentMessage({
   onQuizAnswer,
   onConceptCollect,
   genCardSlots,
-  sourceLabel = '学习助手 · 模拟回复',
+  sourceLabel,
   children,
 }: {
   message: ChatMessage
@@ -70,25 +72,45 @@ export function AgentMessage({
   children?: React.ReactNode
 }) {
   const phase = message.phase ?? 'settled'
+  const streaming = phase === 'streaming'
+  // 到达节奏 ≠ 上屏节奏：适配层按 token 吐字（一次 1–4 字、间隔带抖动），
+  // 这一层按帧把缓冲匀出去，正文才是一条匀速的流而不是一顿一顿。
+  const shown = useSmoothStreamText(message.text, streaming)
   return (
     <div className="chat-message agent">
-      <div className="agentmark"><IconText name="assistant-mark">{sourceLabel}</IconText></div>
-      {phase === 'waiting' && <WaitingLine />}
-      {(phase === 'thinking' || message.thinking) && (
-        <ThinkingRow running={phase === 'thinking'} thinking={message.thinking} />
+      {sourceLabel && <div className="agentmark"><IconText name="assistant-mark">{sourceLabel}</IconText></div>}
+      {phase === 'waiting' || phase === 'thinking' ? (
+        /* 回合头：等待与正在思考共用同一行、同一只 IP 小图。
+           小图挂在相位切换之外——重挂会让它的骨骼动画从第 0 帧重来，每回合开头都会跳一下 */
+        <div className="turn-status">
+          <MascotSvg className="turn-ip" motion="think" />
+          {phase === 'waiting' ? <WaitTail /> : <ThinkTail thinking={message.thinking} />}
+        </div>
+      ) : (
+        message.thinking && <ThinkingSettled thinking={message.thinking} />
       )}
+      {/* 概念卡随正文画出：讲到它依附的那一段就立壳，之后逐条写出、出图、补读图提示，不再等落定才弹出。
+          失败不落卡（半张卡配一张失败卡只会分不清看哪儿）；被叫停则停在半张卡上——
+          正文留着半截，卡片没理由不见，只是动作还不给 */}
       {message.text && (
         <Markdown
-          text={message.text}
-          live={phase === 'streaming'}
+          text={shown}
+          live={streaming}
+          truncated={phase === 'stopped' || phase === 'failed'}
           insert={
-            phase === 'settled' && message.concept ? (
-              <ConceptBlock card={message.concept} onCollect={onConceptCollect} />
+            message.concept && phase !== 'failed' ? (
+              <ConceptBlock
+                card={message.concept}
+                stage={streaming ? 'drawing' : phase === 'stopped' ? 'paused' : 'ready'}
+                onCollect={onConceptCollect}
+              />
             ) : undefined
           }
           insertAfterPara={message.concept?.afterPara}
         />
       )}
+      {/* 消息内卡片槽紧跟正文：卡片属于这条回复的内容，操作条始终收在最后 */}
+      {children}
       {message.steps && message.steps.length > 0 && (
         <StepsBlock steps={message.steps} running={phase === 'streaming'} />
       )}
@@ -104,14 +126,15 @@ export function AgentMessage({
       {phase === 'failed' && message.failure && (
         <FailureCard message={message} onRetry={onRetry} onSwitchModel={onSwitchModel} />
       )}
-      {phase === 'settled' && <ActionBar text={message.text} onRetry={onRetry} />}
-      {children}
+      {phase === 'settled' && (
+        <ActionBar text={message.text} at={message.at} onRetry={onRetry} />
+      )}
     </div>
   )
 }
 
-/** 等待首 token：呼吸点；4 秒起「等待模型响应」；12 秒起追加走动秒数。 */
-function WaitingLine() {
+/** 等待首 token 的尾段：呼吸点；4 秒起「等待模型响应」，12 秒起追加走动秒数。 */
+function WaitTail() {
   const startRef = useRef(Date.now())
   const [elapsed, setElapsed] = useState(0)
   useEffect(() => {
@@ -125,58 +148,53 @@ function WaitingLine() {
         ? WAIT_TEXT
         : `${WAIT_TEXT} · ${Math.floor(elapsed / 1000)} 秒`
   return (
-    <div className="turn-wait">
-      {/* a2（2026-10-10 定稿）：等待期 IP 小图出现在状态行前，落定即消失 */}
-      <MascotSvg className="turn-ip" motion="think" />
+    <>
       <span className="turn-dots">
         <i />
         <i />
         <i />
       </span>
       {text && <span className="turn-wait-text">{text}</span>}
-    </div>
+    </>
   )
 }
 
-/** 思考折叠行：进行中「正在思考」+ 走动秒数；拿到摘要后「已思考 N 秒」，可展开看教学化摘要。 */
-function ThinkingRow({
-  running,
-  thinking,
-}: {
-  running: boolean
-  thinking?: { summary: string; seconds: number }
-}) {
+/** 正在思考的尾段：走动秒数；摘要回来后换成可展开的落定态。 */
+function ThinkTail({ thinking }: { thinking?: { summary: string; seconds: number } }) {
   const startRef = useRef(Date.now())
   const [elapsed, setElapsed] = useState(0)
-  const [open, setOpen] = useState(false)
   useEffect(() => {
-    if (!running) return
     const t = window.setInterval(() => setElapsed(Date.now() - startRef.current), 200)
     return () => window.clearInterval(t)
-  }, [running])
+  }, [])
   const seconds = thinking?.seconds ?? Math.max(1, Math.round(elapsed / 1000))
-  const expandable = !!thinking
+  return (
+    <>
+      <span className="turn-thinklabel">正在思考</span>
+      <span className="tm">{seconds} 秒</span>
+    </>
+  )
+}
+
+/** 已思考（落定态）：静态 orb + 「已思考 N 秒」，可展开看教学化摘要。 */
+function ThinkingSettled({ thinking }: { thinking: { summary: string; seconds: number } }) {
+  const [open, setOpen] = useState(false)
   return (
     <div className="turn-thinkwrap">
       <div
-        className={
-          'turn-thinkrow' +
-          (running ? ' running' : '') +
-          (expandable ? ' clickable' : '') +
-          (open && expandable ? ' open' : '')
-        }
-        role={expandable ? 'button' : undefined}
-        aria-expanded={expandable ? open : undefined}
-        onClick={expandable ? () => setOpen((v) => !v) : undefined}
+        className={'turn-thinkrow clickable' + (open ? ' open' : '')}
+        role="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
       >
-        {/* a2：进行中 IP 小图顶替状态球；落定后回到静态 orb */}
-        {running ? <MascotSvg className="turn-ip" motion="think" /> : <span className="orb" />}
-        <span>{running ? '正在思考' : '已思考'}</span>
-        <span className="tm">{seconds} 秒</span>
-        {expandable && <Icon className="arw" name="alt-arrow-right" size={12} />}
+        <span className="orb" />
+        <span className="turn-thinklabel">已思考</span>
+        <span className="tm">{thinking.seconds} 秒</span>
+        <Icon className="arw" name="alt-arrow-right" size={12} />
       </div>
-      {open && thinking && <div className="turn-thinkbody">{thinking.summary}</div>}
-    </div>
+      <div className="turn-thinkbody" hidden={!open}>
+        {thinking.summary}
+      </div>    </div>
   )
 }
 
@@ -184,15 +202,19 @@ function ThinkingRow({
  * 工作区场景传 onCollect 时改收进左侧胶囊卡片体系（已确认第 12 条分流）。 */
 function ConceptBlock({
   card,
+  stage,
   onCollect,
 }: {
   card: ConceptCardData
+  /** 卡片处在哪个阶段：生成中 / 这条被叫停 / 落定（动作只给落定态）。 */
+  stage?: 'drawing' | 'paused' | 'ready'
   onCollect?: () => void
 }) {
   const [pinned, setPinned] = useState(false)
   const el = (
     <ConceptCard
       card={card}
+      stage={stage}
       pinned={pinned}
       onTogglePin={onCollect ?? (() => setPinned((v) => !v))}
     />
@@ -234,7 +256,21 @@ function FailureCard({
 }) {
   const [dismissed, setDismissed] = useState(false)
   const failure = message.failure!
-  const copy = FAILURE_COPY[failure.reason]
+  const copy: (typeof FAILURE_COPY)['network'] = failure.code==='MODEL_CONFIGURATION_CHANGED'
+    ? {title:'模型配置已改变，请核对后重试',actions:['retry','dismiss']}
+    : failure.code === 'DEADLINE_EXCEEDED'||failure.code==='PROVIDER_IDLE_TIMEOUT'
+    ? { title: failure.code==='PROVIDER_IDLE_TIMEOUT'?'模型连接长时间无响应':'等待模型响应超时', actions: ['retry', 'dismiss'] }
+    : failure.code === 'PROVIDER_PAYMENT_REQUIRED'
+      ? { title: '供应商余额不足', actions: ['dismiss'] }
+      : failure.code === 'RATE_LIMITED'
+        ? { title: '供应商请求频率受限', actions: ['retry', 'dismiss'] }
+        : failure.code === 'OUTPUT_LIMIT_EXCEEDED'
+          ? { title: '模型已用完本次输出额度，回复未完成', actions: ['retry', 'dismiss'] }
+          : failure.code === 'EMPTY_MODEL_RESPONSE'
+            ? { title: '模型已结束，但没有返回正文', actions: ['retry', 'dismiss'] }
+            : failure.code === 'PROVIDER_CONTENT_FILTERED'
+              ? { title: '供应商未能返回这次回复', actions: ['retry', 'dismiss'] }
+        : FAILURE_COPY[failure.reason]
   if (dismissed) {
     return (
       <div className="turn-fail-collapsed">
@@ -271,21 +307,33 @@ function FailureCard({
   )
 }
 
-/** 落定操作条：复制、重新生成（重新生成只挂在会话最后一条 agent 消息上，由父级控制）。 */
-function ActionBar({ text, onRetry }: { text: string; onRetry?: () => void }) {
+/** 落定操作条：图标键，无障碍名与提示承载文案（复制、重新生成——重新生成只挂在会话最后一条 agent 消息上，由父级控制）。 */
+function ActionBar({ text, at, onRetry }: { text: string; at?: string; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false)
   return (
     <div className="turn-actions">
       <button
+        aria-label={copied ? '已复制' : '复制回复'}
+        title={copied ? '已复制' : '复制'}
         onClick={() => {
           navigator.clipboard.writeText(text).catch(() => {})
           setCopied(true)
           window.setTimeout(() => setCopied(false), 1500)
         }}
       >
-        <IconText name={copied ? 'check' : 'copy'} size={14}>{copied ? '已复制' : '复制'}</IconText>
+        <Icon className={copied ? 'copied' : ''} name={copied ? 'check' : 'copy'} size={16} />
       </button>
-      {onRetry && <button onClick={onRetry}><IconText name="restart" size={14}>重新生成</IconText></button>}
+      {onRetry && (
+        <button aria-label="重新生成" title="重新生成" onClick={onRetry}>
+          <Icon name="restart" size={16} />
+        </button>
+      )}
+      {/* 时间戳跟在操作键后面：先给动作，再交代这条是什么时候说的 */}
+      {at && (
+        <time className="turn-time" dateTime={at}>
+          {formatMessageTime(at)}
+        </time>
+      )}
     </div>
   )
 }
