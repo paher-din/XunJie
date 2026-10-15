@@ -84,3 +84,30 @@ Robert 明确要求一起排查历史 HDL 构建读取错误，确保构建、�
 可重复诊断：仓库外 `check-hdl.mjs` 对原历史构建读取报 403（exit 1），当前分配 bootstrap 200，执行节点 HDL/C ready=true。只读服务器核对发现该构建 ID 不在 `hdl_builds`；当前 Attempt 的授权 Jobs/Builds/Sessions 则具有另一组完整历史。前端 `HdlWorkspace.initialize()` 先用已确认的本机回执设置选中对象，只有本机无引用才取服务器 Job；因此本机过时回执遮蔽当前授权历史，持续读取不存在对象并锁住写入口。
 
 方案：初始化以当前工作区已授权并核验的 Job 历史选择构建/会话；本机回执仍保留并在匹配时用于原命令核验，不单独作为服务器现存对象依据。未确认 outbox 保持原键、未知状态与禁止重做边界。先以 stale confirmed + current Job 场景建立失败回归，再修复，最后在原共享合成环境验证新构建/装载/板卡输入和停止。后端拒绝不存在对象的 403 仍保持，不伪造历史数据。
+
+### 6.1 实现与自动化结果
+
+`HdlWorkspace.initialize()` 从当前授权 head 的已核验 Jobs 选择最新构建、会话及 Job，重连时重新核对；只有对象改变才清当前显示引用和 Trace 游标。旧本机回执及待确认请求均保留，旧回执不再覆盖当前服务历史。新的初始化使旧轮次失效，异步 authority 和异常出口均再次核轮次，迟到失败不能锁住已经恢复的新会话。没有改变服务端鉴权、字段、数据库或节点路由。
+
+两项针对根因的回归均先失败后通过：旧 confirmed 回执指向当前服务器不存在的对象；旧初始化失败在新初始化成功后迟到。夹具补齐既有 Session 的服务器 Job，使恢复测试与真实 head 一致。
+
+- HDL 客户端/存储/活动专项最初 38/38；补轮次反例后客户端与存储 28/28。
+- `npx playwright test hdlRealWorkflow.spec.ts real-mode.spec.ts --workers=2 --timeout=120000`：18/18，通过整板输入、构建/装载、失 ACK 原键核对、长 pending、迟到分配隔离、键盘和操作整合。
+- 接纳并行主线 `68f5ae9` 后，全量 `npm test`：54 个文件、661/661；主线吉祥物发送专项 2/2，未回退并行成果。
+- 类型检查、最终构建、差异空白检查通过；A0 文档检查 142 篇、errors=[]。保留既有 Vite 大 chunk 提示和开发 public JSON 导入提示；不声称后端全量、真实模型或教学效果验收。
+
+### 6.2 共享环境真实验证
+
+实际操作限原共享合成开发工作区，先 SQLite 一致备份，完整性 ok。保留原 `top.sv` v3 与快照，选择已有确认快照 v2，在原登记执行电脑完成新 RTL 构建（succeeded、固定产物 hash）及真实装载。没有另建 Attempt、编辑/保存代码或新增快照。
+
+原会话初始 sequence=0；16 个开关逐位开/关 32 次、5 个按钮各按下/松开 10 次、显式时钟推进 1 次，共 43 次真实交互。逐条核对确认输入与预期 bit 向量、无序号缺口、模拟时间每次增加 10000ps，最终 sequence=43/time=430000ps，LED/位选/段码真实变化。该活动未绑定 RESET_N，按原配置保持禁用；复位的绑定场景由上述隔离整板/键盘用例验证，不伪造本设计的复位响应。刷新恢复同一会话至 sequence=43，无新增 Build/Session/operation。
+
+验证间隙执行 VM 在 20:42 左右重启，原会话工作进程消失、Docker 容器退出，但原账本没有终止确认。此失败保留，不把“等待确认退出”计为通过。核 exact unit MainPID=0、原容器 Running=false 后，仅对该合成会话运行已有 `hdl-stop-worker.ts` 终止核验；服务器沿原 reconciliation 接纳 failed/terminationConfirmed=true，43 次采样保留。未手工改写课程数据库或伪造成功。
+
+之后从同一成功构建重新装载，获得新会话 sequence=0/time=0；SW0 开/关均确认，LED0 随真实源码变化，随后正常 Stop。服务端最终 status=stopped、terminationConfirmed=true、sequence=2/time=20000ps，正常停止链路通过。首次重启故障与第二次正常停止分别记录。
+
+截图、逐条 DOM 证据、原始 ID、备份和安装回执仅保留仓库外维护目录。最终组合前端含最新主线：`index-CI1bfllc.js`，HTML SHA-256 `e164125e6a168cd05f693e2820f105fa3d1c9e85694f00b660d0af11e174cf21`；已按摘要校验和原子入口替换更新私有开发环境，旧静态资源和入口备份可回退。执行器代码/配置、数据库 schema 未变更。
+
+### 6.3 Git 交付
+
+已包含前述 UI 整合、失效任务入口恢复和 HDL 修复，接纳课程范围主线 `956f527` 与并行页面主线 `68f5ae9`。负责人已明确批准本批推送并合并 main；最终 PR 与合并回执由 GitHub 保留。只提交本任务写集，主 checkout 的并行分支及原 `.zcodeignore` 保留。产品基线及 MVP_SPEC §10：待授权维护者汇总。
