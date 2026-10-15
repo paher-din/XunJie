@@ -24,6 +24,14 @@
 
 已执行：`rtk npm run typecheck` 与正常 `rtk npm run build` 退出0；构建原大chunk提示保留。原首页专项4项+准备首页1项，初跑4/5：唯一失败是旧用例按“标题→暂停文本”匹配，恢复原状态徽标在前后不再适用；改为实际“暂停状态→标题→入口”顺序，仅复验该例1/1通过，其余4项不重复。专项同时核课程顺序倒置仍选对图、无分配课程已知/未知图案、真实目标、无虚构进度/截止、暂停与进入返回/账号隔离。命令使用原生 `node node_modules/@playwright/test/cli.js test`，明确设置 `XUNJIE_E2E_BROWSER_CHANNEL=chrome` 和独立5691/5692/5693端口；前序 RTK/cmd 正则参数传递、未续传 Chrome 环境的启动失败不计业务断言通过，未安装依赖。
 
-文档静态检查123篇/1923内链、errors=[]，差异空白通过。实际 HTTPS 页面与 PR 回执随后追加；不重跑执行/模型或整套浏览器矩阵。
+文档静态检查123篇/1923内链、errors=[]，差异空白通过。不重跑执行/模型或整套浏览器矩阵。
+
+## 实际页面与公开交付
+
+固定源码 `d21b9c898cc61d43fc64540023d2140bb9977d24`；实际静态包入口 `index-DYbPdKAn.js`，SHA256 `dfb13ed085ddf0dc31d20dd2b668a97c81e0ec28f7023a6152b9484ed1accadf`。沿原本机35表 HTTPS 宿主仅接收静态文件、最后替换 HTML，旧入口及旧哈希资产保留供本机回滚；未修改后台、原库、配置或执行环境。
+
+原 C 合成账号在本会话可见浏览器刷新后验证：任务卡状态“已分配”、标题、公开目标“解释文本统计规则”、右下入口均来自当前页面；圆角8px、内边距20px，无进度/截止元素。全部课程页实际 C 为 `code-square`、HDL为 `virtual-board`，包含当前账号无HDL分配时的明确装饰映射。见[实际 DOM 读数](evidence/ui-home-design-20261015/browser-card-facts.json)、[任务卡页面](evidence/ui-home-design-20261015/c-task-card.png)、[课程图案页面](evidence/ui-home-design-20261015/course-artwork.png)。两张截图已逐张查看；仅刷新/读取页面/课程导航，没有学习写操作。
+
+本地实现与本机页面已完成，清单已同步。PR/合并入口公开后补记；产品基线汇总仍按上述边界。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。

@@ -1,0 +1,28 @@
+{
+  "observedAt": "2026-10-15T03:10:20.860Z",
+  "origin": "https://127.0.0.1:3444",
+  "userId": "synthetic-robert-student-a",
+  "sourceCommit": "d21b9c8",
+  "courses": [
+    {
+      "course": "课程 synthetic-robert-course-c",
+      "icon": "code-square"
+    },
+    {
+      "course": "课程 synthetic-robert-course-hdl",
+      "icon": "virtual-board"
+    }
+  ],
+  "card": {
+    "actionOnRight": true,
+    "borderRadius": "8px",
+    "goal": "解释文本统计规则",
+    "hasDeadline": false,
+    "hasProgress": false,
+    "padding": "20px",
+    "status": "已分配",
+    "title": "TextScope Core 本机合成工程验证"
+  },
+  "synthetic": true,
+  "actions": "reload, read DOM, course navigation only; no learning writes"
+}
