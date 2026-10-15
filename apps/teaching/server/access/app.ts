@@ -11,6 +11,8 @@ import { parseRequest } from '../app/validation.ts';
 import type { SyntheticDatabase, Transaction } from '../db/transaction.ts';
 import { createPasswordVerifier, type PasswordRecord } from './password.ts';
 import { absoluteLifetime, createSessionStore, digest, readActiveSession } from './session-store.ts';
+import { sessionViewSchema } from '../../contracts/access/index.ts';
+import { optionalDisplayText } from './display-text.ts';
 
 export interface VerificationOptions extends AppOptions {
   db: SyntheticDatabase;
@@ -120,10 +122,14 @@ export async function createAccessApp(options: VerificationOptions) {
       const current = activeSession(request, tx);
       const csrfToken = csrfFor(request.session.sessionId);
       if (digest(csrfToken) !== current.csrf_hash) throw new ApiError('UNAUTHENTICATED');
-      const courses = tx.all('SELECT course_id,role FROM course_memberships WHERE user_id=? AND active=1 ORDER BY course_id', String(current.user_id))
-        .map(row => ({ courseId: String(row.course_id), role: row.role }));
+      const courses = tx.all('SELECT m.course_id,m.role,c.name FROM course_memberships m JOIN courses c ON c.id=m.course_id WHERE m.user_id=? AND m.active=1 ORDER BY m.course_id', String(current.user_id))
+        .map(row => {
+          const name = optionalDisplayText(row.name);
+          return { courseId: String(row.course_id), role: row.role, ...(name ? { name } : {}) };
+        });
+      const displayName = optionalDisplayText(tx.get('SELECT display_name FROM users WHERE id=?', String(current.user_id))?.display_name);
       tx.run('UPDATE sessions SET last_active_at_ms=? WHERE token_hash=?', now(), digest(request.session.sessionId));
-      return { userId: String(current.user_id), courses, csrfToken };
+      return sessionViewSchema.parse({ userId: String(current.user_id), ...(displayName ? { displayName } : {}), courses, csrfToken });
     });
     return { requestId: request.id, data };
   });

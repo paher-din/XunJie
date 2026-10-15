@@ -3,6 +3,7 @@ import type { FastifyRequest } from 'fastify';
 import { createDesignVerificationApp, type DesignVerificationOptions } from './app.ts';
 import { ApiError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
+import { optionalDisplayText } from '../access/display-text.ts';
 import { executeRuntimeCommand, type ExecutionReadiness } from './readiness.ts';
 import { finishRecordCommand, readRecordCommand } from '../db/records-adapter.ts';
 import { releaseSchema, assignmentSchema, activityControlSchema, assignmentControlSchema, helpPolicySchema, checkRuleSchema, activityCommandResults, assignmentViewSchema } from '../../contracts/design/index.ts';
@@ -76,9 +77,10 @@ export async function createDesignApp(options: DesignAppOptions, registerTeacher
       const assignment = readAssignment(tx, actor.courseId, assignmentId);
       if (actor.role === 'student' && assignment.student_id !== actor.userId) throw new ApiError('FORBIDDEN');
       const availability = assignmentAvailability(tx, actor.courseId, assignmentId, assignment.student_id);
+      const displayTitle = optionalDisplayText(assignment.display_title);
       return assignmentViewSchema.parse({ assignmentId, activityVersionId: assignment.activity_id, studentId: assignment.student_id, assignmentRevision: assignment.assignment_revision,
         active: availability.active, status: assignment.status, reasons: { individual: assignment.individual_reason, activity: assignment.activity_reason },
-        activityControlRevision: availability.activityControlRevision });
+        activityControlRevision: availability.activityControlRevision, ...(displayTitle ? { displayTitle } : {}) });
     });
     return { requestId: request.id, data };
   });

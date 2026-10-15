@@ -4,9 +4,10 @@ import { loginThroughForm } from './sessionHost'
 
 test.use({ trace: 'off' })
 
-type Course = { courseId: string; role: 'student' | 'teacher' }
+type Course = { courseId: string; role: 'student' | 'teacher'; name?: string }
 type Assignment = {
   assignmentId: string; studentId: string; activityVersionId: string; active: boolean
+  displayTitle?: string
   executionKind: 'textscope' | 'hdl_board'
 }
 const error = (code: string) => ({ requestId: 'home-protocol', error: {
@@ -20,12 +21,13 @@ const assignment = (id: string, studentId = 'account-a', active = true, kind: As
 async function protocol(page: Page) {
   const state: {
     identity: string | null
+    names: Record<string, string>
     courses: Record<string, Course[]>
     assignments: Record<string, Assignment[]>
     titles: Record<string, { courseId: string; title: string; goal?: string }>
     reads: Array<{ path: string; method: string }>
     list?: (route: Route, courseId: string, identity: string) => Promise<boolean>
-  } = { identity: null, courses: {}, assignments: {}, titles: {}, reads: [] }
+  } = { identity: null, names: {}, courses: {}, assignments: {}, titles: {}, reads: [] }
   page.on('request', request => {
     const path = new URL(request.url()).pathname
     if (path.startsWith('/api/') || path.startsWith('/__i0prep/')) state.reads.push({ path, method: request.method() })
@@ -41,7 +43,7 @@ async function protocol(page: Page) {
     } else if (!state.identity) {
       await route.fulfill({ status: 401, json: error('UNAUTHENTICATED') }); return
     } else if (path === '/api/session') {
-      data = { userId: state.identity, courses: state.courses[state.identity] ?? [], csrfToken: `csrf-${state.identity}` }
+      data = { userId: state.identity, displayName: state.names[state.identity], courses: state.courses[state.identity] ?? [], csrfToken: `csrf-${state.identity}` }
     } else if (/^\/api\/courses\/[^/]+\/assignments$/.test(path)) {
       const courseId = decodeURIComponent(path.split('/')[3])
       if (await state.list?.(route, courseId, state.identity)) return
@@ -158,13 +160,13 @@ test('没有学生课程或课程没有分配时显示真实空态，不补演�
   expect(state.reads.some(read => read.path.includes('/assignments'))).toBe(false)
   state.courses['account-a'] = [
     { courseId: 'empty-course', role: 'student' },
-    { courseId: 'synthetic-robert-course-hdl', role: 'student' },
-    { courseId: 'synthetic-robert-course-c', role: 'student' },
+    { courseId: 'empty-hdl-course', role: 'student', name: '数字逻辑与部件设计' },
+    { courseId: 'empty-c-course', role: 'student', name: '程序设计基础' },
   ]
   await page.reload()
   await expect(page.getByRole('button', { name: /课程 empty-course/ }).locator('[data-icon="structure"]')).toBeVisible()
-  await expect(page.getByRole('button', { name: /数字逻辑与部件设计/ }).locator('[data-icon="virtual-board"]')).toBeVisible()
-  await expect(page.getByRole('button', { name: /程序设计基础/ }).locator('[data-icon="code-square"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /数字逻辑与部件设计/ }).locator('[data-icon="structure"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /程序设计基础/ }).locator('[data-icon="structure"]')).toBeVisible()
   await page.getByRole('button', { name: /课程 empty-course/ }).click()
   await expect(page.getByText('此课程暂无分配任务', { exact: true })).toBeVisible()
   await expect(page.locator('.task-card, .db-continue')).toHaveCount(0)
@@ -172,36 +174,48 @@ test('没有学生课程或课程没有分配时显示真实空态，不补演�
   expect(state.reads.some(read => read.path.startsWith('/__i0prep/'))).toBe(false)
 })
 
-test('首页姓名与课程别名只改变显示，Session身份、课程参数和任务入口继续使用原ID', async ({ page }) => {
+test('首页读取后端姓名课程和任务标题，搜索及原ID路由保持，缺字段回退原表示', async ({ page }) => {
   const state = await protocol(page)
-  const account = 'synthetic-robert-student-a', course = 'synthetic-robert-course-c'
-  state.courses[account] = [{ courseId: course, role: 'student' }, { courseId: 'synthetic-robert-course-hdl', role: 'student' }]
-  state.assignments[course] = [assignment('display-c', account)]
-  state.titles['activity-display-c'] = { courseId: course, title: 'TextScope Core 本机合成工程验证', goal: '原固定目标' }
-  await loginHome(page, account, 'Robert')
-  await expect(page.locator('.intro h1')).toHaveText(/，Robert$/)
-  await expect(page.locator('.account-pill .avatar')).toHaveText('R')
-  await expect(page.locator('.content')).not.toContainText('synthetic-robert')
-  await expect(page.locator('.db-continue .course-tag')).toHaveText('项目任务 · 程序设计基础')
-  await expect(page.locator('.db-continue h3')).toHaveText('文本分析工具')
-  await expect(page.locator('.content')).not.toContainText('本机合成工程验证')
-  await expect(page.getByRole('button', { name: /数字逻辑与部件设计.*查看任务/ })).toBeVisible()
+  const account = 'learner-371', course = 'course-218'
+  state.names[account] = '陈明'
+  state.courses[account] = [
+    { courseId: course, role: 'student', name: '程序分析实践' },
+    { courseId: 'course-762', role: 'student', name: '计算机系统基础' },
+  ]
+  state.assignments[course] = [{ ...assignment('display-c', account), displayTitle: '词频分析项目' }]
+  state.titles['activity-display-c'] = { courseId: course, title: '原固定活动标题', goal: '原固定目标' }
+  await loginHome(page, account, '陈明')
+  await expect(page.locator('.intro h1')).toHaveText(/，陈明$/)
+  await expect(page.locator('.account-pill .avatar')).toHaveText('陈')
+  await expect(page.locator('.db-continue .course-tag')).toHaveText('项目任务 · 程序分析实践')
+  await expect(page.locator('.db-continue h3')).toHaveText('词频分析项目')
+  await expect(page.locator('.content')).not.toContainText('原固定活动标题')
+  await expect(page.getByRole('button', { name: /计算机系统基础.*查看任务/ })).toBeVisible()
   await page.locator('.account-pill').click()
-  await expect(page.getByRole('menu').filter({ visible: true }).locator('.am-name')).toHaveText('Robert')
+  await expect(page.getByRole('menu').filter({ visible: true }).locator('.am-name')).toHaveText('陈明')
   await page.locator('.account-pill').click()
-  await page.getByRole('button', { name: /程序设计基础.*查看任务/ }).click()
+  await page.getByRole('button', { name: /程序分析实践.*查看任务/ }).click()
   await expect(page).toHaveURL(`${REAL_URL}/#/?course=${course}`)
-  await expect(page.locator('.course-breadcrumb strong')).toHaveText('程序设计基础')
-  await page.getByRole('textbox', { name: '搜索任务', exact: true }).fill('程序设计基础')
+  await expect(page.locator('.course-breadcrumb strong')).toHaveText('程序分析实践')
+  await page.getByRole('textbox', { name: '搜索任务', exact: true }).fill('程序分析实践')
   await expect(page.locator('.task-card')).toHaveCount(1)
-  await page.getByRole('textbox', { name: '搜索任务', exact: true }).fill('文本分析工具')
-  await expect(page.locator('.task-card h3')).toHaveText('文本分析工具')
+  await page.getByRole('textbox', { name: '搜索任务', exact: true }).fill('词频分析')
+  await expect(page.locator('.task-card h3')).toHaveText('词频分析项目')
   await page.locator('.task-card').click()
   await expect(page).toHaveURL(`${REAL_URL}/#/task/display-c`)
   await expect(page.locator('.ts-badge')).toContainText('不可用')
   expect(state.identity).toBe(account)
   expect(state.reads.some(read => read.path === `/api/courses/${course}/assignments`)).toBe(true)
   expect(state.reads.some(read => read.path === '/api/assignments/display-c/bootstrap')).toBe(true)
+  delete state.names[account]
+  state.courses[account] = [{ courseId: course, role: 'student' }]
+  state.assignments[course] = [assignment('display-c', account)]
+  await page.goto(`${REAL_URL}/#/?course=${course}`)
+  await page.reload()
+  await expect(page.locator('.account-name')).toHaveText(account)
+  await expect(page.locator('.intro h1')).toHaveText(/，learner-371$/)
+  await expect(page.locator('.course-breadcrumb strong')).toHaveText(`课程 ${course}`)
+  await expect(page.locator('.task-card h3')).toHaveText('原固定活动标题')
 })
 
 test('列表故障保持失败并可明确重试，恢复后只展示原接口任务', async ({ page }) => {
@@ -233,13 +247,14 @@ test('列表401重新登录，首页真实退出换账号后拒收迟到旧列�
   // 故意禁用 abort 优化，验证账号代次与查询隔离仍拒收旧响应。
   await page.addInitScript(() => { AbortController.prototype.abort = () => {} })
   const state = await protocol(page)
-  state.courses['account-a'] = [{ courseId: 'course-a', role: 'student' }]
-  state.courses['account-b'] = [{ courseId: 'course-b', role: 'student' }]
-  state.assignments['course-a'] = [assignment('task-a')]
-  state.assignments['course-b'] = [assignment('task-b', 'account-b')]
+  state.names = { 'account-a': '周然', 'account-b': '王青' }
+  state.courses['account-a'] = [{ courseId: 'course-a', role: 'student', name: '程序设计甲班' }]
+  state.courses['account-b'] = [{ courseId: 'course-b', role: 'student', name: '程序设计乙班' }]
+  state.assignments['course-a'] = [{ ...assignment('task-a'), displayTitle: '账号 A 原任务' }]
+  state.assignments['course-b'] = [{ ...assignment('task-b', 'account-b'), displayTitle: '账号 B 新任务' }]
   state.titles = {
-    'activity-task-a': { courseId: 'course-a', title: '账号 A 原任务' },
-    'activity-task-b': { courseId: 'course-b', title: '账号 B 新任务' },
+    'activity-task-a': { courseId: 'course-a', title: '账号 A 固定活动' },
+    'activity-task-b': { courseId: 'course-b', title: '账号 B 固定活动' },
   }
   let expired = false, hold = false, reached!: () => void, release!: () => void, delivered!: () => void
   const started = new Promise<void>(resolve => { reached = resolve })
@@ -254,8 +269,8 @@ test('列表401重新登录，首页真实退出换账号后拒收迟到旧列�
     await route.fulfill({ json: { requestId: 'late-old-home', data } }); delivered(); return true
   }
   try {
-    await loginHome(page)
-    await page.getByRole('button', { name: /课程 course-a/ }).click()
+    await loginHome(page, 'account-a', '周然')
+    await page.getByRole('button', { name: /程序设计甲班/ }).click()
     await expect(page.getByRole('button', { name: /账号 A 原任务/ })).toBeVisible()
     expired = true
     await page.getByRole('button', { name: '刷新任务', exact: true }).click()
@@ -274,16 +289,17 @@ test('列表401重新登录，首页真实退出换账号后拒收迟到旧列�
     await page.getByRole('menuitem', { name: '退出登录', exact: true }).click()
     await expect(page.locator('.session-notice')).toContainText('已退出登录')
     await loginThroughForm(page, 'account-b', 'synthetic-only')
-    await expect(page.locator('.account-name')).toHaveText('account-b')
-    await expect(page.locator('.intro h1')).toHaveText(/，account-b$/)
+    await expect(page.locator('.account-name')).toHaveText('王青')
+    await expect(page.locator('.intro h1')).toHaveText(/，王青$/)
     await expect(page.locator('.dash-section .db-card')).toHaveCount(2)
     await expect(page.locator('.dash-section .db-side').filter({ hasText: '真实分配' })).toHaveText('真实分配 1 个任务')
-    await page.getByRole('button', { name: /课程 course-b/ }).click()
+    await page.getByRole('button', { name: /程序设计乙班/ }).click()
     await expect(page.getByRole('button', { name: /账号 B 新任务/ })).toBeVisible()
     release(); await finished
     await expect(page.getByRole('button', { name: /账号 A 原任务/ })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /账号 B 新任务/ })).toBeVisible()
-    await expect(page.locator('.account-name')).toHaveText('account-b')
+    await expect(page.locator('.account-name')).toHaveText('王青')
+    await expect(page.locator('.content')).not.toContainText('程序设计甲班')
     await expect(page.getByRole('heading', { name: '登录学习空间' })).toHaveCount(0)
     expect(state.reads.filter(read => read.path === '/api/logout' && read.method === 'POST')).toHaveLength(1)
   } finally { release() }

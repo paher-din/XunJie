@@ -106,6 +106,7 @@ export function readActivity(tx: Transaction, courseId: string, activityId: stri
   return activity;
 }
 const assignmentRowSchema = z.object({ id: z.string(), course_id: z.string(), student_id: z.string(), activity_id: z.string(),
+  display_title: z.string().nullable().optional(),
   assignment_revision: z.number().int().positive(), status: z.enum(['active', 'paused']), individual_paused: z.union([z.literal(0), z.literal(1)]),
   paused_by_activity: z.union([z.literal(0), z.literal(1)]), individual_reason: z.string(), activity_reason: z.string() });
 export function readAssignment(tx: Transaction, courseId: string, assignmentId: string) {

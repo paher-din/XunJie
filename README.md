@@ -7,10 +7,13 @@
 - **了解产品：** 按 [PRD](docs/product/PRD.md) → [MVP_SPEC](docs/product/MVP_SPEC.md) → [TECH_DESIGN](docs/product/TECH_DESIGN.md) 阅读。首版 C / TextScope Core → Report 与数字逻辑增量的范围、限额及验收以基线和批准任务为准。
 - **修改学生 UI：** 页面、组件、样式与交互改动前先读本仓库 [DESIGN.md](docs/DESIGN.md)，沿用已交付设计与语义图标；产品、权限、数据和真实状态仍以产品基线及当前获准任务为准。
 - **领取或继续任务：** 先读 [AGENTS.md](AGENTS.md)，再按 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md) 找对应任务，核对最新负责人决定、进入条件、授权写集和交付状态。
-- **运行学生前端：** 使用下方准备入口；正常业务服务的接线条件见 [学生 README](apps/student/README.md)。
+- **团队演示与调试：** 使用 [PAHER 共享入口](tools/i0-shared/README.md)，所有成员连接同一服务、数据库和学生演示账号。拉取代码不会同步本机数据库。
+- **单独验证学生前端：** 使用下方准备入口；正常业务服务的接线条件见 [学生 README](apps/student/README.md)。
 - **接收模块交付：** 按下方任务入口与原 Issue 回交证据，区分材料已交、联调通过、失败和未执行。
 
 ## 本地运行与验证
+
+团队共用账号、课程和任务时，先运行 [共享 SSH 入口](tools/i0-shared/README.md)，打开 PAHER 提供的 HTTPS 页面。此路径不初始化本机库；本机3444已占用时入口直接拒绝，以免打开另一份数据。显示姓名、课程名称、项目名称由同一后端返回，实施与验证见[共享数据记录](docs/tasks/I0-UI_SHARED_DATA_ENTRY.md)。
 
 学生前端需要 Node 24，使用自己的 lockfile，不依赖 Design 仓库 checkout。以下命令在仓库根开始；`dev:prep` 使用隔离合成数据，不写真实学习记录、不连接执行节点或模型。
 
@@ -34,6 +37,8 @@ npm run test:e2e
 ```
 
 教学服务使用 Node24.21.0，依赖与命令见 [package.json](apps/teaching/package.json)。默认 npm start 提供健康入口；受控 XUNJIE_I0_CONFIG 启动 C 课程宿主，XUNJIE_APP_CONFIG 启动两课程35表 HDL 宿主。两种模式共用 HTTPS、分配 bootstrap、原 Job 消费和关停，只能选择一种。配置的可选 tutoring 复用既有模型通道，实际调用须有对应预算和数据授权，默认关闭。
+
+已有宿主升级本批显示字段时，由该库维护者备份后、启动新代码前显式调用 `server/db/transaction.ts` 的 `migrateDisplayMetadata(数据库绝对路径)`；启动不会自动迁移。PAHER 共享库已完成，成员只连接共享入口即可，勿另建或迁移本机库。
 
 正常 I0 就绪检查数据库、原消费者与执行节点，失败保持503。已有启动/账号/配置交接见 [I0-A/C](docs/tasks/I0_A_C_HANDOFF.md)和[正常辅导宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)；数字逻辑固定配置与35表初始化见 [DL-A §16](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#16-35表去重联合收尾实现与验证)。统一 PR56 的 main 集成、真实 HDL 链路、H4 请求/投递与 UI 回交见[本轮 C 续作](docs/tasks/DLA_CONTINUATION_20261014.md)。服务端、模型、浏览器和真人验收分别记录。
 

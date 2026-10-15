@@ -2,6 +2,7 @@ import {hdlActivityRuntimeSchema,hdlExecutionStatusSchema} from './hdl.ts';
 import { z } from 'zod';
 import { draftSchema, contentSchema } from './draft.ts';
 import { helpPolicySchema } from './inputs.ts';
+import { displayTextSchema } from '../access/index.ts';
 export const materialByteLimit = 256 * 1024;
 const id = z.string().min(1);
 const paragraphSchema = z.strictObject({
@@ -57,7 +58,11 @@ export const activityViewSchema = z.strictObject({ activityVersionId: id, course
   activityControlRevision: revision, status: z.enum(['active','paused']), content: z.strictObject(previewContent),
   helpPolicy: helpPolicySchema, runtimeProfileVersionId: id, execution: hdlActivityRuntimeSchema.optional() });
 export const assignmentViewSchema = z.strictObject({ assignmentId: id, activityVersionId: id, studentId: id, assignmentRevision: revision,
-  active: z.boolean(), status: z.enum(['active','paused']), reasons: z.strictObject({ individual: z.string(), activity: z.string() }), activityControlRevision: revision });
+  active: z.boolean(), status: z.enum(['active','paused']), reasons: z.strictObject({ individual: z.string(), activity: z.string() }), activityControlRevision: revision,
+  displayTitle: displayTextSchema.optional() });
+export const assignmentSummarySchema = z.strictObject({ assignmentId: id, studentId: id, activityVersionId: id,
+  assignmentRevision: revision, active: z.boolean(), executionKind: z.enum(['textscope', 'hdl_board']),
+  runtimeProfileVersion: id, displayTitle: displayTextSchema.optional() });
 export type DesignResult = z.infer<typeof resultSchema>;
 export type ActivityReleaseResult = z.infer<typeof activityCommandResults['activity.release']>;
 export type AssignmentCreationResult = z.infer<typeof activityCommandResults['assignment.create']>;

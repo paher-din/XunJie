@@ -13,10 +13,11 @@
 | 1 | **已完成：C 课程真实辅导闭环**（UI-TUTOR-09 的本次核心工程范围 / B4-CORE-01 场景） | 真实 v2 编译诊断→原版本求助→收到/展示/受委托明确回应→补分号、确认保存、冻结 v3→真实重跑成功。引用资料可读，返回作品不变；旧诊断与辅导来源保留。 |
 | 2 | **已完成：两课程前端整合与交付** | 已接收 H-05 与 HDL 原交付；两课程使用同一正常入口与既有环境。引用接缝修复已定向测试、正常构建与浏览器复验，固定包、启动入口和结果随 PR #80 交付。 |
 | 3 | **已完成：真实任务入口、原看板与演示统计展示** | 原本人分配与[看板接回](I0-UI_HOME_DASHBOARD_RECONNECT.md)已完成。本轮核查后端无完成率/时长汇总，按负责人授权仅看板使用原演示数据并标注“演示统计”，真实分配数量独立显示，内嵌入口仍为“当前获准任务”。类型/构建、组件5/5、浏览器专项5/5与本机HTTPS显示复验通过，见[记录与截图](I0-UI_DASHBOARD_DISPLAY_DATA.md)。后续[姓名/课程/项目显示名](I0-UI_HOME_DISPLAY_NAMES.md)已修正并定向验证，原账号与任务接线保持；最新项目名随统一构建部署，本批不单独覆盖3444。 |
+| 4 | **已完成：团队共用数据与一个演示账号** | PAHER 原35表库已显式迁移；显示资料由后端返回，前端别名已撤；统一 B 账号拥有1个C/4个HDL任务，旧A/辅助学生停用且历史保留。两个独立Chrome会话严格TLS验证相同课程、分配及bootstrap；共享启动命令、成员SSH授权条件和现场证据见[本批记录](I0-UI_SHARED_DATA_ENTRY.md)。 |
 
 ## 当前批次
 
-当前三项均已完成，本批[看板演示统计接入](I0-UI_DASHBOARD_DISPLAY_DATA.md)已有本机显示复验与截图，交付为[PR #86](https://github.com/paher-din/XunJie/pull/86)。上一批[原看板与任务入口接回](I0-UI_HOME_DASHBOARD_RECONNECT.md)由[PR #85](https://github.com/paher-din/XunJie/pull/85)交付。此前[真实任务入口](I0-UI_REAL_HOME_ENTRY.md)由 [PR #82](https://github.com/paher-din/XunJie/pull/82) 交付，[设计规范与课程图案对齐](I0-UI_DESIGN_ALIGNMENT.md)由 [PR #84](https://github.com/paher-din/XunJie/pull/84) 交付；原 C 对象、回执顺序、新旧版本与固定包见[C 辅导与两课程整合](I0-UI_CORE_REAL_TUTOR_DELIVERY.md)，原批次交付为 [PR #80](https://github.com/paher-din/XunJie/pull/80)。
+当前四项均已完成；本批[统一共享数据和演示账号](I0-UI_SHARED_DATA_ENTRY.md)由[PR #89](https://github.com/paher-din/XunJie/pull/89)交付。此前[看板演示统计](I0-UI_DASHBOARD_DISPLAY_DATA.md)由[PR #86](https://github.com/paher-din/XunJie/pull/86)交付；[原看板](I0-UI_HOME_DASHBOARD_RECONNECT.md)与[真实任务入口](I0-UI_REAL_HOME_ENTRY.md)分别由[PR #85](https://github.com/paher-din/XunJie/pull/85)、[PR #82](https://github.com/paher-din/XunJie/pull/82)交付。原 C 对象、回执与固定包见[C 辅导与两课程整合](I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
 
 [PR #79](https://github.com/paher-din/XunJie/pull/79) 与[补证 PR #81](https://github.com/paher-din/XunJie/pull/81) 已合 main；[HDL 正式交付](evidence/ui30-hdl-20261015/handoff.md)直接复用，本批补齐 C 场景及共享资料引用接缝，没有重复 HDL 实现。
 

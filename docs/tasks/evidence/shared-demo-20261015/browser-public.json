@@ -1,0 +1,108 @@
+{
+  "browser": "Chrome",
+  "tlsVerification": true,
+  "contexts": 2,
+  "equalAccountCourseAssignments": true,
+  "data": {
+    "session": {
+      "userId": "synthetic-i0-student-b",
+      "displayName": "Robert",
+      "courses": [
+        {
+          "courseId": "synthetic-i0-course-a",
+          "role": "student",
+          "name": "C 程序设计"
+        },
+        {
+          "courseId": "synthetic-i0-course-b",
+          "role": "student",
+          "name": "数字逻辑与系统设计"
+        }
+      ]
+    },
+    "courses": [
+      {
+        "courseId": "synthetic-i0-course-a",
+        "role": "student",
+        "name": "C 程序设计"
+      },
+      {
+        "courseId": "synthetic-i0-course-b",
+        "role": "student",
+        "name": "数字逻辑与系统设计"
+      }
+    ],
+    "assignments": {
+      "synthetic-i0-course-a": [
+        {
+          "assignmentId": "220b2dae-5070-42ff-a165-daaf681a0644",
+          "studentId": "synthetic-i0-student-b",
+          "activityVersionId": "f0e26cd0-2a81-49c7-9c5a-03b8e122fb6e",
+          "assignmentRevision": 1,
+          "active": true,
+          "executionKind": "textscope",
+          "runtimeProfileVersion": "c17-gcc15.3.0-textscope-v1",
+          "displayTitle": "文本分析工具"
+        }
+      ],
+      "synthetic-i0-course-b": [
+        {
+          "assignmentId": "d36d8430-d842-44fd-80ad-33c9004c127a",
+          "studentId": "synthetic-i0-student-b",
+          "activityVersionId": "4ff33806-4e2b-4fec-92f2-7e0c0f5465fa",
+          "assignmentRevision": 1,
+          "active": true,
+          "executionKind": "hdl_board",
+          "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+          "displayTitle": "四位算术逻辑单元"
+        },
+        {
+          "assignmentId": "d44eb578-6f3f-4c54-96b1-f88f22141d37",
+          "studentId": "synthetic-i0-student-b",
+          "activityVersionId": "5223412b-e68a-48a8-a06a-f38a011aca6e",
+          "assignmentRevision": 1,
+          "active": true,
+          "executionKind": "hdl_board",
+          "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+          "displayTitle": "四位算术逻辑单元"
+        },
+        {
+          "assignmentId": "e6d99397-603c-4cd0-997c-3285dc0948ae",
+          "studentId": "synthetic-i0-student-b",
+          "activityVersionId": "d119d364-0ce9-4c71-b276-d714d0b8a6fc",
+          "assignmentRevision": 1,
+          "active": true,
+          "executionKind": "hdl_board",
+          "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+          "displayTitle": "四位算术逻辑单元"
+        },
+        {
+          "assignmentId": "f4caed76-39b5-461a-bc5f-2325d8495d69",
+          "studentId": "synthetic-i0-student-b",
+          "activityVersionId": "6cd5c1cd-1bbb-4181-8d15-851b59db25aa",
+          "assignmentRevision": 1,
+          "active": true,
+          "executionKind": "hdl_board",
+          "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+          "displayTitle": "四位算术逻辑单元"
+        }
+      ]
+    },
+    "bootstrap": [
+      {
+        "assignmentId": "220b2dae-5070-42ff-a165-daaf681a0644",
+        "studentId": "synthetic-i0-student-b",
+        "active": true,
+        "displayTitle": "文本分析工具",
+        "recoveryGeneration": "synthetic-generation-96fc2f60-8102-47fb-af1f-e2d86f4c2764"
+      },
+      {
+        "assignmentId": "d36d8430-d842-44fd-80ad-33c9004c127a",
+        "studentId": "synthetic-i0-student-b",
+        "active": true,
+        "displayTitle": "四位算术逻辑单元",
+        "recoveryGeneration": "synthetic-generation-96fc2f60-8102-47fb-af1f-e2d86f4c2764"
+      }
+    ]
+  }
+}

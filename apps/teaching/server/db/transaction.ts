@@ -8,7 +8,7 @@ import { teachingSchema } from '../records/schema.ts';
 import { designSchema } from './design-schema.ts';
 import { createRequire } from 'node:module';
 import { closeSync, lstatSync, mkdtempSync, openSync, realpathSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 export type SqlValue = string | number | null | Buffer;
@@ -38,8 +38,8 @@ CREATE TABLE users (
  password_hash BLOB NOT NULL CHECK(typeof(password_hash)='blob' AND length(password_hash)=64), salt BLOB NOT NULL CHECK(typeof(salt)='blob' AND length(salt)=16),
  algorithm TEXT NOT NULL CHECK(algorithm='scrypt'), n INTEGER NOT NULL CHECK(n=131072),
  r INTEGER NOT NULL CHECK(r=8), p INTEGER NOT NULL CHECK(p=1), key_length INTEGER NOT NULL CHECK(key_length=64),
- disabled_at_ms INTEGER);
-CREATE TABLE courses (id TEXT PRIMARY KEY NOT NULL);
+ disabled_at_ms INTEGER, display_name TEXT);
+CREATE TABLE courses (id TEXT PRIMARY KEY NOT NULL, name TEXT);
 CREATE TABLE course_memberships (
  course_id TEXT NOT NULL REFERENCES courses(id), user_id TEXT NOT NULL REFERENCES users(id),
  role TEXT NOT NULL CHECK(role IN ('teacher','student')), active INTEGER NOT NULL CHECK(active IN (0,1)),
@@ -123,6 +123,33 @@ export function openSyntheticDatabase(file: string) {
 }
 
 export type SyntheticDatabase = ReturnType<typeof openSyntheticDatabase>;
+
+/** Explicit maintenance operation; opening or starting an application never migrates its database. */
+export function migrateDisplayMetadata(file: string): { addedColumns: string[] } {
+  if (!isAbsolute(file) || lstatSync(file).isSymbolicLink() || !lstatSync(file).isFile()) {
+    throw new Error('An explicit existing database file is required.');
+  }
+  const db = new Driver(file, { fileMustExist: true });
+  try {
+    db.pragma('busy_timeout=1000', { simple: true });
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const additions = [['users', 'display_name'], ['courses', 'name'], ['assignments', 'display_title']] as const;
+      const missing = additions.filter(([table, column]) => {
+        const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+        if (!columns.length) throw new Error('Display metadata migration requires the existing users, courses and assignments tables.');
+        const existing = columns.find(row => row.name === column);
+        if (existing && (String(existing.type).toUpperCase() !== 'TEXT' || existing.notnull !== 0)) {
+          throw new Error('Existing display metadata column must be nullable TEXT.');
+        }
+        return !existing;
+      });
+      for (const [table, column] of missing) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} TEXT`);
+      db.exec('COMMIT');
+      return { addedColumns: missing.map(([table, column]) => `${table}.${column}`) };
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  } finally { db.close(); }
+}
 
 export function createSyntheticDatabase(): SyntheticDatabase {
   return createFreshDatabase('access');

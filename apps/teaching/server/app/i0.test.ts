@@ -103,8 +103,8 @@ test('controlled initializer creates a fresh synthetic host with login and origi
   const password = randomBytes(32).toString('hex');
   const initialized = await initializeI0({synthetic:true,users:[
     {id:'synthetic-teacher',loginName:'synthetic-teacher',password},
-    {id:'synthetic-student',loginName:'synthetic-student',password}],
-    courses:[{id:'synthetic-course',teacherId:'synthetic-teacher',studentIds:['synthetic-student'],
+    {id:'synthetic-student',loginName:'synthetic-student',password,displayName:'阿青'}],
+    courses:[{id:'synthetic-course',name:'程序设计',teacherId:'synthetic-teacher',studentIds:['synthetic-student'],
       helpPolicy:{versionId:'synthetic-help',helpAllowed:true,wholeSolutionAllowed:false,limitedCheckHelpAllowed:false,description:'Synthetic'},
       checkRule:{versionId:'textscope-core-v1',validatorVersion:'textscope-validator-v2',limitedHelp:true,description:'Synthetic'}}]});
   const service = await createI0App({db:initialized.db,origin:'https://synthetic.example',
@@ -115,7 +115,8 @@ test('controlled initializer creates a fresh synthetic host with login and origi
     assert.equal(logged.statusCode,200,logged.body);
     const cookie = logged.cookies.filter(c=>c.value).map(c=>c.name+'='+encodeURIComponent(c.value)).join('; ');
     const session = await service.app.inject({url:'/api/session',headers:{cookie}});
-    assert.deepEqual(session.json().data.courses,[{courseId:'synthetic-course',role:'student'}]);
+    assert.equal(session.json().data.displayName,'阿青');
+    assert.deepEqual(session.json().data.courses,[{courseId:'synthetic-course',role:'student',name:'程序设计'}]);
     const missing = await service.app.inject({url:'/api/assignments/unassigned/bootstrap',headers:{cookie}});
     assert.equal(missing.json().error.code,'FORBIDDEN');
   } finally { await service.close(); initialized.db.close(); }

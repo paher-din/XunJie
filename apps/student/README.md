@@ -11,6 +11,8 @@ XunJie 主仓库的学生端前端工程。首次内容由设计仓库 `XunJie_D
 
 ## 运行
 
+团队演示和共用任务使用 [PAHER 共享入口](../../tools/i0-shared/README.md)，同一 HTTPS 宿主提供页面、API 和数据库。只需成员已有的获准 SSH 身份和统一学生演示凭据，不执行本机初始化或 `dev:prep`；这些开发命令用于隔离验证。姓名、课程名、项目显示标题来自 Session 与分配的后端资料，缺字段时保留原 ID/Activity 标题，见[本批记录](../../docs/tasks/I0-UI_SHARED_DATA_ENTRY.md)。
+
 需要 Node 24（与 `apps/teaching` 已批准的工具环境同一大版本）。本机默认 Node 更高时，
 自行把 Node 24 的可执行目录放到 `PATH` 前面——机器专有路径不写进仓库文件。
 本工程有独立的 `package.json` 与 `package-lock.json`，与 `apps/teaching` 的后端互不依赖，

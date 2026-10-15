@@ -9,6 +9,7 @@ import { loadWorkspace, persistWorkspace } from '../workspace/storage.ts';
 import { registerI0Static } from './i0-static.ts';
 import type { Transaction } from '../db/transaction.ts';
 import { availableRuntime } from '../design/readiness.ts';
+import { optionalDisplayText } from '../access/display-text.ts';
 
 export type HostAdmission = { accepting:boolean };
 export function guardHostTransport<Command extends {op:string}>(
@@ -136,11 +137,13 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
       const recoveryGeneration = options.currentGeneration();
       if (!recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
       const availability = assignmentAvailability(tx,actor.courseId,id,assignment.student_id);
+      const displayTitle = optionalDisplayText(assignment.display_title);
       return assignmentBootstrapSchema.parse({recoveryGeneration,assignment:{
         assignmentId:id,activityVersionId:assignment.activity_id,studentId:assignment.student_id,
         assignmentRevision:assignment.assignment_revision,active:availability.active,status:assignment.status,
         reasons:{individual:assignment.individual_reason,activity:assignment.activity_reason},
         activityControlRevision:availability.activityControlRevision,
+        ...(displayTitle ? {displayTitle} : {}),
       }});
     },false);
     return {requestId:request.id,data};
