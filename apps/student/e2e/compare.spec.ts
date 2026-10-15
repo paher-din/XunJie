@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test, type Page } from '@playwright/test'
 import { create, edit, identities, localState, newestSync, sceneUrl, setFault, start, syntheticUpdate, trackSync, typeIn } from './helpers'
 
@@ -243,7 +244,7 @@ test('恢复换代后比较：旧代际未决命令以 recovery 比较并退役�
   expect(newestSync(await localState(page)).rejected?.code).toBe('RECOVERY_REQUIRED')
 
   // 重新读取：新代际上下文，旧未决命令只留事实；旧 ACK 没有建立确认头，本机保持回退状态
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await expect(page.locator('.ws-run-state')).toHaveText('上一次保存已过期')
   expect((await localState(page)).workspace!.workspaceRevision).toBe(0)

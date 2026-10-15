@@ -1,10 +1,11 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { start } from './helpers'
 
 test('工作区大幅阅读、多行与IME、问答顺序、收起保留草稿和窄屏', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await start(page, 'chat-reading')
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   const pane = page.getByTestId('tutoring-pane')
   const box = await pane.boundingBox()
   expect(box!.width).toBeGreaterThanOrEqual(560)
@@ -38,7 +39,7 @@ test('工作区大幅阅读、多行与IME、问答顺序、收起保留草稿�
   await page.getByRole('button', { name: '展开阅读', exact: true }).click()
   expect((await pane.boundingBox())!.width).toBeGreaterThan(box!.width)
   await page.getByRole('button', { name: '收起辅导', exact: true }).click()
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await expect(input).toHaveValue('继续输入但暂不发送')
   await page.setViewportSize({ width: 390, height: 844 })
   const narrow = await pane.boundingBox()

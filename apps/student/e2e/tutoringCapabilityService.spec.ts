@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
@@ -133,7 +134,7 @@ test('正常24表宿主明确拒绝辅导读取后暂停自动轮询；显式重
     expect((await failure.json()).error).toMatchObject({ code: 'INVALID_REQUEST', retryable: false })
     await page.waitForTimeout(6000) // Observe more than two original 2.5s automatic polling intervals.
     expect(eventReads).toBe(1)
-    await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+    await clickWorkspaceAction(page, '就项目求助')
     const pane = page.getByTestId('tutoring-pane')
     await expect(pane).toContainText('自动读取已暂停')
     await expect(pane).not.toContainText('INVALID_REQUEST')
@@ -176,7 +177,7 @@ test('有C3的正常宿主：一次传输故障不停止后续自动读取，真
     await expect(page.locator('.cw')).toBeVisible()
     await expect.poll(() => successes).toBeGreaterThanOrEqual(2)
     expect(reads).toBeGreaterThanOrEqual(3)
-    await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+    await clickWorkspaceAction(page, '就项目求助')
     await expect(page.getByTestId('tutoring-pane')).not.toContainText('自动读取已暂停')
   } finally { await page.goto('about:blank'); await host.stop() }
 })

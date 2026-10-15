@@ -1,3 +1,4 @@
+import { clickWorkspaceAction, openWorkspaceMenu } from './workspaceControls'
 import { expect, test, type Page } from '@playwright/test'
 import {
   confirmSave, create, edit, localState, openFileMenu, sceneUrl, serverHead, setAttemptState, start, typeIn,
@@ -187,7 +188,7 @@ test('暂停与终态下不能回收或恢复，暂停仍可修改已有文件',
   await confirmSave(page, 1)
 
   expect((await setAttemptState(page, 'paused')).status).toBe(200)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.cw-access')).toContainText('暂停')
   await openFileMenu(page)
   await expect(page.locator('[data-fileid] button[aria-label="回收 main.c"]')).toBeDisabled()
@@ -201,7 +202,7 @@ test('暂停与终态下不能回收或恢复，暂停仍可修改已有文件',
 
   // 终态：作品只读，回收/恢复同样不可操作
   expect((await setAttemptState(page, 'submitted')).status).toBe(200)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.cw-access')).toContainText('终态')
   await openFileMenu(page)
   await expect(page.locator('[data-fileid] button[aria-label="回收 main.c"]')).toBeDisabled()
@@ -219,6 +220,7 @@ test('只读版本比较：快照×快照与草稿×确认作品，打开/切换
   await freezeSnapshot(page, 2)
 
   const writes = trackWrites(page)
+  await openWorkspaceMenu(page, '版本与恢复')
   const entry = page.getByRole('button', { name: '比较版本', exact: true })
   await entry.focus()
   await page.keyboard.press('Enter')
@@ -281,7 +283,7 @@ test('同名重建在比较里是两行而不是按路径合并，且单侧状�
   const newLocalId = localIdOf(ids, (await serverHead(page)).files.find(file => file.path === 'main.c' && file.lifecycle === 'active')!.fileId)
 
   const writes = trackWrites(page)
-  await page.getByRole('button', { name: '比较版本', exact: true }).click()
+  await clickWorkspaceAction(page, '比较版本')
   const compare = page.locator(".ws-compare[data-source='draft-confirmed']")
   await expect(compare).toBeVisible()
   await compare.getByLabel('右侧来源', { exact: true }).selectOption({ label: '当前确认作品 v3' })
@@ -344,7 +346,7 @@ test('暂停期间发出的回收被整批拒绝：如实显示未生效、不�
 
   // 暂停解除后重新读取：按钮重新可用，学生明确把意图撤回（不自动改键重发旧命令）
   expect((await setAttemptState(page, 'active')).status).toBe(200)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await openFileMenu(page)
   await page.locator('.cw-filerecycled [data-fileid] button[aria-label="恢复 main.c"]').click()
   await expect(page.locator('.cw-tag-pending')).toHaveCount(0)
@@ -373,7 +375,7 @@ test('另一标签回收并确认后，本标签重新读取以权威为准，�
   // A 标签重新读取：权威值已变，必须以权威为准。若把本机残留的旧意图顶回去，界面会显示
   // 「待确认恢复」，学生再点一次确认保存就会静默撤销 B 的操作。
   const writes = trackWrites(page)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v2 · 与草稿一致')
   await openFileMenu(page)
   await expect(page.locator('.cw-filerecycled-row')).toHaveCount(1)
@@ -401,7 +403,7 @@ test('混合 EOL/BOM/非 BMP 正文进入只读比较不改摘要、不改正文
   const before = await localState(page)
   const headBefore = await serverHead(page)
   const writes = trackWrites(page)
-  await page.getByRole('button', { name: '比较版本', exact: true }).click()
+  await clickWorkspaceAction(page, '比较版本')
   const compare = page.locator(".ws-compare[data-source='snapshots']")
   await expect(compare).toBeVisible()
   const diff = compare.locator('.ws-compare-diff')

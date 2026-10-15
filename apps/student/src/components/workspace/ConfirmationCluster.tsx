@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { WorkspacePopover } from './WorkspacePopover'
 
 export type ConfirmationPhase =
   | 'idle'
@@ -73,20 +73,7 @@ const phaseLabels: Record<ConfirmationPhase, string> = {
   'not-applied': '上一次操作没有生效',
 }
 
-const compactControl = { padding: '0 10px', fontSize: 12 }
-const relativeBox: CSSProperties = { position: 'relative' }
-const hintCard: CSSProperties = {
-  position: 'absolute',
-  top: 20,
-  right: 0,
-  width: 320,
-  maxWidth: '80vw',
-  padding: 12,
-  whiteSpace: 'normal',
-  overflowWrap: 'anywhere',
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-}
+const compactControl = { padding: '0 10px', fontSize: 13 }
 
 /** 直接放入已有顶栏运行簇；所有业务事实、权限和请求均由调用方提供。 */
 export function ConfirmationCluster({
@@ -121,7 +108,8 @@ export function ConfirmationCluster({
   const hint = blockedReason || error
 
   return (
-    <>
+    <div className="ws-confirmation">
+      <div className="ws-confirmation-status">
       {phase !== 'ready' && <span className="ws-run-state" role="status" aria-live="polite" aria-atomic="true">
         {phaseLabels[phase]}
       </span>}
@@ -147,6 +135,9 @@ export function ConfirmationCluster({
           </>
         )}
       </span>
+
+      {snapshot && <span className="ws-snapshot-status" title="本次冻结的是当时已确认的作品版本">已冻结快照 v{snapshot.workspaceRevision}</span>}
+      </div>
 
       <span className="ws-run-actions" role="group" aria-label="作品确认操作" aria-busy={busy}>
         {(!hasAttempt || phase !== 'ready') && !needsReconciliation && <button
@@ -183,34 +174,25 @@ export function ConfirmationCluster({
             重试上次保存
           </button>
         )}
-        <button type="button" className="ws-btn ghost" style={compactControl} disabled={phase === 'loading'} onClick={onReload}>
-          重新读取
-        </button>
-      </span>
-
-      {snapshot && (
-        <span className="ws-btn ghost" style={{ ...compactControl, cursor: 'default' }} title="本次冻结的是当时已确认的作品版本">
-          已冻结快照 v{snapshot.workspaceRevision}
-        </span>
-      )}
-
-      {/* 05：只读版本比较入口。放在既有「已冻结快照」位置，不新造版本面板；
-          打开后只消费已核验的快照与确认头，不发任何写请求。 */}
-      {canCompareVersions && onCompareVersions && (
-        <span className="ws-run-actions">
+        <WorkspacePopover label="版本与恢复" icon="clock-circle" closeOnAction>
+          <p>比较草稿与确认版本，或重新读取当前作品。</p>
+          {canCompareVersions && onCompareVersions && (
           <button type="button" className="ws-btn ghost" style={compactControl} disabled={busy}
             title={busy ? '正在读取或保存，稍后再比较' : '只读比较本机草稿、确认作品与已冻结快照'}
             onClick={onCompareVersions}>
             比较版本
           </button>
-        </span>
-      )}
+          )}
+          {phase === 'ready' && <button type="button" className="ws-btn ghost" style={compactControl} onClick={onReload}>
+            重新读取
+          </button>}
+        </WorkspacePopover>
+        {phase !== 'ready' && <button type="button" className="ws-btn ghost" style={compactControl} disabled={phase === 'loading'} onClick={onReload}>重新读取</button>}
+      </span>
 
       {hint && (
-        <span style={relativeBox}><span className="ws-popcard" role={error ? 'alert' : undefined} style={hintCard}>
-          {hint}
-        </span></span>
+        <div className="ws-confirmation-hint" role={error ? 'alert' : 'status'}>{hint}</div>
       )}
-    </>
+    </div>
   )
 }

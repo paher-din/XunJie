@@ -105,7 +105,7 @@ test('真实 Tab 路径完成新建/切换/保存/比较/冲突选择/Core停止
   await tabTo(page, files, 'Shift+Tab')
   await page.keyboard.press('Enter')
   await expect(page.getByRole('menu', { name: '项目文件', exact: true })).toBeVisible()
-  await page.keyboard.press('Tab')
+  await tabTo(page, page.getByRole('menuitem', { name: /^main\.c/ }))
   await expect(page.getByRole('menuitem', { name: /^main\.c/ })).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(page.locator('.cw-filemenu')).toHaveCount(0)
@@ -120,10 +120,14 @@ test('真实 Tab 路径完成新建/切换/保存/比较/冲突选择/Core停止
   await page.keyboard.press('Enter')
   await expect(page.getByText('已冻结快照 v1')).toBeVisible()
   const baseline = await serverHead(page)
-  expect(baseline.files.map(file => ({ path: file.path, text: file.text }))).toEqual([
+  // The authority orders by file identity; generated IDs do not imply filename order.
+  expect(baseline.files.map(file => ({ path: file.path, text: file.text })).sort((a, b) => a.path.localeCompare(b.path))).toEqual([
     { path: 'main.c', text: initial }, { path: 'sample.txt', text: 'one two one\n' },
   ])
 
+  const versions = page.getByRole('button', { name: '版本与恢复', exact: true })
+  await tabTo(page, versions)
+  await page.keyboard.press('Enter')
   const compareEntry = page.getByRole('button', { name: '比较版本', exact: true })
   const beforeComparison = writes.length
   await tabTo(page, compareEntry)
@@ -140,7 +144,7 @@ test('真实 Tab 路径完成新建/切换/保存/比较/冲突选择/Core停止
   await page.keyboard.press('Escape')
   await expect(compare).toHaveCount(0)
   await expect(editor).toBeAttached()
-  await returnedFocus(editor, compareEntry)
+  await returnedFocus(editor, versions)
   expect(writes).toHaveLength(beforeComparison)
 
   const mine = `${initial}// my revision\n`
@@ -186,7 +190,7 @@ test('真实 Tab 路径完成新建/切换/保存/比较/冲突选择/Core停止
   expect(inputFile.text).toBe('one two one\n')
   await setRunScript(page, 'running')
   const runEntry = page.getByRole('button', { name: 'Core 运行', exact: true })
-  await tabTo(page, runEntry, 'Shift+Tab')
+  await tabTo(page, runEntry)
   await page.keyboard.press('Enter')
   const panel = page.getByRole('region', { name: 'Core 运行与结果', exact: true })
   const snapshotSelect = panel.getByRole('combobox', { name: '确认快照', exact: true })

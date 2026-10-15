@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { edit, localState, serverHead, setFault } from './helpers'
 
@@ -198,7 +199,7 @@ test('工作区重新加载后的权威读取可含旧代际 Job，旧加载 pol
   })
   expect(rotated.status).toBe(200); expect(rotated.after).not.toBe(rotated.before)
   await setRunScript(page, 'success')
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await page.getByRole('button', { name: 'Core 运行', exact: true }).click()
   await expect(page.locator('.core-run-result')).toContainText('运行完成')

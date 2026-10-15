@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { confirmSave, edit, localState, serverHead } from './helpers'
 import { fixedProject, selectRun, setRunScript } from './runHelpers'
@@ -44,7 +45,7 @@ test('原运行求助后继续编辑并启动另一Run，旧回答仍保留原Ru
   await page.keyboard.press('ControlOrMeta+End')
   await edit(page, '// revised after original help 😀')
   await expect(page.locator('.ws-flow')).toContainText('1 个文件未确认')
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await expect(page.getByTestId('tutor-source')).toHaveText(originalSource)
   await expect(page.getByTestId('tutor-message')).toHaveAttribute('data-action-id', actionId!)
   expect(writes.some(url=>/\/(runs|sync|snapshots)$/.test(url))).toBe(false)
@@ -66,7 +67,7 @@ test('原运行求助后继续编辑并启动另一Run，旧回答仍保留原Ru
   await expect(result).toContainText('运行完成')
   const nextRunId = await result.getAttribute('data-run-id')
   expect(nextRunId).toBeTruthy(); expect(nextRunId).not.toBe(runId)
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await expect(page.getByTestId('tutor-source')).toHaveText(originalSource)
   await expect(page.getByTestId('tutor-source')).not.toContainText(nextRunId!)
   await expect(page.getByTestId('tutor-source')).not.toContainText(nextSnapshot.snapshotId)
@@ -121,7 +122,7 @@ test('原运行回答的HTTP页晚到，学生已改稿并完成另一Run仍只�
     const nextRunId = (await result.getAttribute('data-run-id'))!
     expect(nextRunId).not.toBe(runId)
     release()
-    await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+    await clickWorkspaceAction(page, '就项目求助')
     await expect(page.getByTestId('tutor-message')).toHaveCount(1)
     await expect(page.getByTestId('tutor-source')).toContainText(`原运行 ${runId}`)
     await expect(page.getByTestId('tutor-source')).toContainText(`原快照 ${snapshot.snapshotId}`)

@@ -298,15 +298,17 @@ function buildLabel(build: HdlBuildView): string {
 
 export function HdlRunCluster({ build, session, busy, readBusy = busy, unknown, notice, snapshotLabel, canBuild, canLoad, canStop, onBuild, onLoad, onStop, onRefresh }: HdlRunClusterProps) {
   return <>
+    <span className="ws-execution-summary">
     <span className="ws-run-state" role="status" aria-live="polite" title={notice ?? undefined}>
       {unknown ? 'HDL 操作结果待核对' : session ? hdlSessionLabel(session) : build ? buildLabel(build) : '尚未构建'}
     </span>
     {snapshotLabel && <span className="ws-flow" title="构建固定所选确认快照；不会自动选择最新草稿。">{snapshotLabel}</span>}
+    </span>
     <span className="ws-run-actions" role="group" aria-label="真实 HDL 构建与会话操作" aria-busy={busy}>
       <button type="button" className="ws-btn ghost" style={buttonStyle} disabled={busy || !canBuild} onClick={onBuild}>检查并构建</button>
       <button type="button" className="ws-btn solid" style={buttonStyle} disabled={busy || !canLoad} onClick={onLoad}>{session && !session.terminationConfirmed ? '替换装载' : '装载到虚拟板'}</button>
-      <button type="button" className="ws-btn ghost" style={buttonStyle} disabled={!canStop} onClick={onStop}>停止 HDL</button>
-      <button type="button" className="ws-btn ghost" style={buttonStyle} disabled={readBusy} onClick={onRefresh}>核对 HDL 状态</button>
+      {canStop && <button type="button" className="ws-btn ghost" style={buttonStyle} onClick={onStop}>停止 HDL</button>}
+      {unknown && <button type="button" className="ws-btn ghost" style={buttonStyle} disabled={readBusy} onClick={onRefresh}>核对 HDL 状态</button>}
     </span>
   </>
 }

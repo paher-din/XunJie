@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test } from '@playwright/test'
 import { REAL_URL } from './env'
 import { loginThroughForm } from './sessionHost'
@@ -165,7 +166,7 @@ test('取消请求失效时仍靠会话代次拒收旧 Session 成功与旧 401'
     holdSession = true
     await page.evaluate(() => window.dispatchEvent(new Event('focus')))
     await oldSession
-    await page.getByRole('button', { name: '退出', exact: true }).click()
+    await clickWorkspaceAction(page, '退出')
     await expect(page.locator('.session-notice')).toContainText('已退出登录')
     await page.evaluate(() => { location.hash = '/' })
     await loginThroughForm(page, 'account-b', 'synthetic-only')

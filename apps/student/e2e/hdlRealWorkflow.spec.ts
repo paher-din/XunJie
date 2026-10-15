@@ -1,3 +1,4 @@
+import { clickWorkspaceAction, openWorkspaceMenu } from './workspaceControls'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { create, edit } from './helpers'
 import { loginThroughForm } from './sessionHost'
@@ -51,7 +52,9 @@ async function snapshot(page: Page, protocol: Protocol, text: string, revision: 
   await expect(page.getByText(`已冻结快照 v${revision}`, { exact: true })).toBeVisible()
   const source = protocol.head!.snapshots.at(-1)!
   expect(source.files[0]!.text).toBe(text)
+  await openWorkspaceMenu(page, '构建设置')
   await page.getByRole('combobox', { name: 'HDL 确认快照', exact: true }).selectOption(source.snapshotId)
+  await page.keyboard.press('Escape')
   return source
 }
 async function buildAndProgram(page: Page, protocol: Protocol) {
@@ -216,7 +219,7 @@ test('隔离 HDL pending/失ACK/刷新：零额外装载与交互，原键原wir
   expect(protocol.effects.interactions).toBe(1)
   expect(protocol.posts.filter(post => post.kind === 'hdl.interact')).toHaveLength(1)
   protocol.holdInputs(false); protocol.finishInputs()
-  await page.getByRole('button', { name: '核对 HDL 状态', exact: true }).click()
+  await clickWorkspaceAction(page, '核对 HDL 状态')
   await expect(page.getByRole('button', { name: '拨码开关 SW1', exact: true })).toBeEnabled()
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('操作序号 1')
   protocol.dropInteractionAck()
@@ -242,7 +245,7 @@ test('隔离 HDL pending/失ACK/刷新：零额外装载与交互，原键原wir
   expect(protocol.sessions[0]!.terminationConfirmed).toBe(false)
   await expect(page.getByRole('button', { name: '拨码开关 SW2', exact: true })).toBeDisabled()
   protocol.confirmStop()
-  await page.getByRole('button', { name: '核对 HDL 状态', exact: true }).click()
+  await clickWorkspaceAction(page, '核对 HDL 状态')
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('已确认停止')
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('操作序号 2')
   const layout = await page.evaluate(() => ({ width: document.documentElement.clientWidth,
@@ -281,14 +284,14 @@ test('隔离 HDL 同快照构建与代码求助：准确selection、预算关闭
   await expect(page.locator('[aria-label="真实 HDL 构建诊断"]')).toContainText('构建失败')
   const failedBuild = protocol.builds[0]!.result!
   expect(failedBuild.snapshotId).toBe(frozen.snapshotId)
-  await page.getByRole('button', { name: '就这个文件求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就这个文件求助')
   await expect(page.getByTestId('tutoring-pane')).toHaveCount(0)
   expect(protocol.posts.filter(post => post.kind === 'help')).toHaveLength(0)
   await page.getByRole('button', { name: '引用此次构建求助', exact: true }).click()
   await expect(page.getByTestId('tutor-hdl-selection')).toContainText(failedBuild.buildId)
   await expect(page.getByTestId('tutor-hdl-selection')).toContainText(frozen.snapshotId)
   await page.getByRole('button', { name: '收起辅导', exact: true }).click()
-  await page.getByRole('button', { name: '就这个文件求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就这个文件求助')
   await expect(page.getByTestId('tutor-object')).toContainText('top.sv · 文件版本 1')
   await expect(page.getByTestId('tutor-hdl-selection')).toContainText(frozen.snapshotId)
   const question = '隔离浏览器验证：请解释这份构建第3行诊断，保留我自行修订。'
@@ -358,10 +361,11 @@ test('隔离 HDL 长 pending：虚拟时钟最多60轮读取、耗尽不循环�
   expect(protocol.effects).toEqual({ builds: 1, programs: 1, interactions: 1, stops: 0 })
   // The page is still usable; it neither invents a result nor disables recovery.
   await expect(page.getByRole('button', { name: '停止 HDL', exact: true })).toBeEnabled()
+  await openWorkspaceMenu(page, '构建设置')
   await expect(page.getByRole('button', { name: '核对 HDL 状态', exact: true })).toBeEnabled()
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('操作序号 0')
   protocol.holdInputs(false); protocol.finishInputs()
-  await page.getByRole('button', { name: '核对 HDL 状态', exact: true }).click()
+  await clickWorkspaceAction(page, '核对 HDL 状态')
   await expect(page.getByRole('button', { name: '拨码开关 SW1', exact: true })).toBeEnabled()
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('操作序号 1')
   await expect(notice).toHaveCount(0)
@@ -376,7 +380,7 @@ test('隔离 HDL 切换分配：旧Session迟到响应不能覆盖正常C页面�
   const original = await buildAndProgram(page, protocol)
   const held = protocol.holdNextSessionRead(original.sessionId)
   try {
-    await page.getByRole('button', { name: '核对 HDL 状态', exact: true }).click()
+    await clickWorkspaceAction(page, '核对 HDL 状态')
     await held.arrived
     await page.goto(protocol.cUrl)
     await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
@@ -434,6 +438,8 @@ test('隔离 HDL 键盘基本路径：SW、按钮按下松开、低有效复位�
   await page.keyboard.press('Enter')
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('等待确认退出')
   protocol.confirmStop()
+  await keyboardTo(page, page.getByRole('button', { name: '构建设置', exact: true }))
+  await page.keyboard.press('Enter')
   await keyboardTo(page, page.getByRole('button', { name: '核对 HDL 状态', exact: true }))
   await page.keyboard.press('Enter')
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('已确认停止')
@@ -452,4 +458,49 @@ test('隔离 HDL 键盘基本路径：SW、按钮按下松开、低有效复位�
   await expect(page.getByTestId('tutor-message')).toHaveCount(0)
   expect(protocol.effects).toEqual({ builds: 1, programs: 1, interactions: 6, stops: 1 })
   await page.screenshot({ path: test.info().outputPath('isolated-hdl-keyboard-basics.png') })
+})
+
+test('工作区操作整合：常用入口不溢出、配置与求助按需展开、键盘返回且不产生业务写入', async ({ page }) => {
+  const protocol = await installHdlProtocolFixture(page)
+  await page.route('**/api/agent/conversations*', route => route.fulfill({ json: { requestId: 'isolated-toolbar-history', data: [] } }))
+  await page.route('**/api/execution-nodes', route => route.fulfill({ json: { requestId: 'isolated-toolbar-nodes', data: { nodes: [
+    { nodeId: 'ui-preview', label: '预览执行电脑', cReady: true, hdlReady: true },
+  ] } } }))
+  await enterHdl(page, protocol)
+  await snapshot(page, protocol, good, 1)
+  const writes = protocol.posts.length
+  for (const width of [1440, 1280, 900, 600]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const region of ['.ws-head', '.ws-commandbar']) {
+      expect(await page.locator(region).evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+    }
+    await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '检查并构建', exact: true })).toBeVisible()
+    await openWorkspaceMenu(page, '构建设置')
+    await expect(page.getByRole('combobox', { name: 'HDL 确认快照', exact: true })).toHaveValue(protocol.head!.snapshots[0]!.snapshotId)
+    const bounds = await page.getByRole('region', { name: '构建设置', exact: true }).boundingBox()
+    expect(bounds!.x).toBeGreaterThanOrEqual(0)
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('button', { name: '构建设置', exact: true })).toBeFocused()
+    await page.screenshot({ path: test.info().outputPath(`workspace-light-${width}.png`) })
+  }
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await openWorkspaceMenu(page, '执行电脑设置')
+  await page.getByRole('combobox', { name: '执行电脑', exact: true }).selectOption('ui-preview')
+  await page.keyboard.press('Escape')
+  await openWorkspaceMenu(page, '求助')
+  await expect(page.getByRole('button', { name: '就项目求助', exact: true })).toBeFocused()
+  await expect(page.getByRole('button', { name: '就这个文件求助', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '引用当前板卡求助', exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: '就所选代码求助', exact: true }).focus()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('region', { name: '求助', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '提交与反馈', exact: true })).toBeFocused()
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await openWorkspaceMenu(page, '求助')
+  await page.screenshot({ path: test.info().outputPath('workspace-dark-help.png') })
+  await page.keyboard.press('Escape')
+  expect(protocol.posts).toHaveLength(writes)
+  expect(protocol.effects).toEqual({ builds: 0, programs: 0, interactions: 0, stops: 0 })
 })

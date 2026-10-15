@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect } from '@playwright/test'
 import { fixedProject, selectRun, setRunScript, recoverRunContext } from './runHelpers'
 import { identities, localState, setFault } from './helpers'
@@ -251,7 +252,7 @@ test('工作区换代际后迟到 cancel 回执只留历史，不覆盖新加载
   await ready
   await recoverRunContext(page)
   await setRunScript(page, 'cancelled')
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await page.getByRole('button', { name: 'Core 运行', exact: true }).click()
   await expect(page.locator('.core-run-result')).toContainText('已停止')
@@ -303,7 +304,7 @@ test('未知原运行的旧代际核对被拒仍保留原请求，新上下文�
   expect(original.state).toBe('pending')
   expect(original.rejected?.code).toBe('RECOVERY_REQUIRED')
   expect(identities(posts).size).toBe(1)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await page.getByRole('button', { name: 'Core 运行', exact: true }).click()
   await expect(page.locator('.core-run-notice')).toContainText('恢复核对尚未交接')

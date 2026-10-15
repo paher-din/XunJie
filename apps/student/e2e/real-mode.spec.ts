@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { REAL_URL } from './env'
@@ -156,7 +157,7 @@ test.describe('real 入口协议替身（非真实宿主验收）', () => {
     await expect(page.locator('.ts-taskinfo')).not.toContainText('身份与会话（合成）')
     await page.keyboard.press('Escape')
     await expect(page.locator('.ws-popveil')).toHaveCount(0)
-    await page.getByRole('button', { name: '退出', exact: true }).click()
+    await clickWorkspaceAction(page, '退出')
     await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
     await expect(page.locator('.cw')).toHaveCount(0)
   })

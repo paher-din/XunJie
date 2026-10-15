@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test } from '@playwright/test'
 import { confirmSave, create, edit, localState, openFileMenu, serverHead, setAttemptState, start, trackBusinessWrites, typeIn } from './helpers'
 import { fixedProject, selectRun } from './runHelpers'
@@ -26,7 +27,7 @@ test('暂停时新建文件与 Core 运行都被挡住，已有 active 文件仍
 
   expect((await setAttemptState(page, 'paused')).status).toBe(200)
   const writes = trackBusinessWrites(page)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.cw-access')).toHaveAttribute('data-kind', 'paused')
 
   // 运行闸：重新选齐快照/入口/输入后仍然禁用，且没有运行 POST 离开浏览器。
@@ -77,7 +78,7 @@ test('submitted 与 reviewed 终态：编辑器只读、确认保存与新建都
   for (const status of ['submitted', 'reviewed'] as const) {
     expect((await setAttemptState(page, status)).status).toBe(200)
     const writes = trackBusinessWrites(page)
-    await page.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(page, '重新读取')
     await expect(page.locator('.cw-access')).toHaveAttribute('data-kind', 'read-only')
     await expect(page.locator('.cw-access')).toContainText('终态')
 

@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test, type Page } from '@playwright/test'
 import { create, edit } from './helpers'
 import { loginThroughForm, startSessionHost } from './sessionHost'
@@ -20,7 +21,7 @@ async function ready(page: Page) {
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
 }
 async function exit(page: Page) {
-  await page.getByRole('button', { name: '退出', exact: true }).click()
+  await clickWorkspaceAction(page, '退出')
   await expect(page.locator('.session-notice')).toContainText('已退出登录')
   await expect(page.locator('.cw')).toHaveCount(0)
 }
@@ -152,7 +153,7 @@ test('HTTPS 会话失效重新登录保留深链与草稿；退出失败可明�
     await loginThroughForm(page, 'student', service.password); await ready(page)
     await expect(page.locator('.monaco-editor')).toContainText('edited-while-session-check-offline')
     await page.route('**/api/logout', route => route.abort('failed'))
-    await page.getByRole('button', { name: '退出', exact: true }).click()
+    await clickWorkspaceAction(page, '退出')
     await expect(page.locator('.session-notice')).toContainText('退出未确认')
     await expect(page.getByRole('button', { name: '登录', exact: true })).toBeDisabled()
     await expect(page.locator('.cw')).toHaveCount(0)
