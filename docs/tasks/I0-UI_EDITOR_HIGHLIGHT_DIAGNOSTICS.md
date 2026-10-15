@@ -97,3 +97,5 @@
 - 接入后学生typecheck、build通过；Vitest 53文件644/644通过。教学Node24.21.0/Linux typecheck及parser/HTTP诊断/正常I0宿主13/13通过，无跳过。原真实VM和HTTPS/SQLite证据按上方原批次版本保留，不把它们重标为新main的全量验收。
 - 接入后四组Chrome专项首轮15通过、1项在暂停检查的虚拟时钟推进时触发React Performance计时异常；改为真实观察完整2秒防抖/重试窗口，未关闭断言或修改产品逻辑。诊断两项随后2/2通过，其余高亮/编辑保护/HDL工作流14项首轮通过。仅本任务新测试相应调整，原时钟60轮阈值仍保留。
 - 代码提交 `bb26015058ea91f2d72857fa6233d22251de1dbf` 已推送至 origin/codex/editor-highlighting-diagnostics，并创建 [PR #91](https://github.com/paher-din/XunJie/pull/91)，已关联当前聊天。创建后实读为 OPEN、非草稿、MERGEABLE/CLEAN；远程base为4ea3c73，没有返回CI检查，不称CI通过。PR地址以本独立文档提交回填；未合并或生产发布。原工作区main的暂存区仍为空，其他任务及原差异保留。
+
+- 负责人于2026-10-15追加明确指令“合并pr吧”，授权合并PR #91。合并前实核：main为4ea3c73，PR head为9423222，OPEN/非草稿、MERGEABLE/CLEAN，未返回CI检查；沿上方已完成的644项前端单测、浏览器与13项后端集成验证。本次只补充本任务合并授权记录，按普通merge保留原提交及源分支，不执行本地main更新或再次部署。实际合并结果以PR状态及merge commit为准。
