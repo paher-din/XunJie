@@ -87,7 +87,7 @@
 | 隔离浏览器宿主与验收 | server/app/i0-browser-fixture.ts；学生e2e/sessionHost.ts、helpers.ts、hdlRealWorkflow.spec.ts、editorDiagnostics*.spec.ts、editorHighlight.spec.ts |
 | 认证入口安装与使用 | tools/i0-hdl/install-editor-diagnostics.mjs；apps/student/README.md；本任务及evidence/editor-diagnostics-20261015 |
 
-只交付本任务写集，不暂存/提交/推送他人改动；当前未执行Git提交、推送、合并或公开发布。回退仅恢复原已备份host脚本并restart原service、按原授权备份恢复application的command；不回滚数据库或删除历史。原引擎源码/活动固定版本/代际没有变化，后续必要契约及进度由授权维护者汇总。
+只交付本任务写集，不暂存/提交/推送他人改动；实现交付时尚未执行Git提交或推送，后续实际交付见下一节。回退仅恢复原已备份host脚本并restart原service、按原授权备份恢复application的command；不回滚数据库或删除历史。原引擎源码/活动固定版本/代际没有变化，后续必要契约及进度由授权维护者汇总。
 
 ## 2026-10-15 PR交付
 
@@ -96,3 +96,4 @@
 - 独立分支 `codex/editor-highlighting-diagnostics` 以远程main 4ea3c73为基线，44个本任务文件。README只有新增说明相邻冲突，保留上游共享入口/教师说明与本任务编辑器说明；其余补丁三方接纳，没有改动受保护基线或引入原工作区的其他差异。
 - 接入后学生typecheck、build通过；Vitest 53文件644/644通过。教学Node24.21.0/Linux typecheck及parser/HTTP诊断/正常I0宿主13/13通过，无跳过。原真实VM和HTTPS/SQLite证据按上方原批次版本保留，不把它们重标为新main的全量验收。
 - 接入后四组Chrome专项首轮15通过、1项在暂停检查的虚拟时钟推进时触发React Performance计时异常；改为真实观察完整2秒防抖/重试窗口，未关闭断言或修改产品逻辑。诊断两项随后2/2通过，其余高亮/编辑保护/HDL工作流14项首轮通过。仅本任务新测试相应调整，原时钟60轮阈值仍保留。
+- 代码提交 `bb26015058ea91f2d72857fa6233d22251de1dbf` 已推送至 origin/codex/editor-highlighting-diagnostics，并创建 [PR #91](https://github.com/paher-din/XunJie/pull/91)，已关联当前聊天。创建后实读为 OPEN、非草稿、MERGEABLE/CLEAN；远程base为4ea3c73，没有返回CI检查，不称CI通过。PR地址以本独立文档提交回填；未合并或生产发布。原工作区main的暂存区仍为空，其他任务及原差异保留。
