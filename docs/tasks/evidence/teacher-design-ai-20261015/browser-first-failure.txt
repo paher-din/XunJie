@@ -1,0 +1,86 @@
+
+Running 6 tests using 1 worker
+
+(node:24028) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\teacher-design-ai.spec.ts:72:1 › 预算关闭如实失败，未授权材料不进入设计上下文 (5.4s)
+  ok 2 [chromium] › e2e\teacher-design-ai.spec.ts:79:1 › 根候选显式选择并采用为新草稿；刷新恢复只读取不重新生成 (5.5s)
+  x  3 [chromium] › e2e\teacher-design-ai.spec.ts:92:1 › 已有蓝图局部建议只PATCH允许字段；教师编辑后不能覆盖 (3.1s)
+(node:9168) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  4 [chromium] › e2e\teacher-design-ai.spec.ts:101:1 › 局部采纳成功增加草稿版本，冲突不覆盖当前编辑 (15.3s)
+(node:36676) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 5 [chromium] › e2e\teacher-design-ai.spec.ts:110:1 › 量规试评须显式认可样例，结果只提供建议 (5.2s)
+  ok 6 [chromium] › e2e\teacher-design-ai.spec.ts:123:1 › 未知响应核对原请求保留字节与幂等键，运行中可取消 (3.8s)
+
+
+  1) [chromium] › e2e\teacher-design-ai.spec.ts:92:1 › 已有蓝图局部建议只PATCH允许字段；教师编辑后不能覆盖 ────────────────
+
+    Error: locator.fill: Error: Input of type "checkbox" cannot be filled
+    Call log:
+      - waiting for getByLabel('真实问题', { exact: true })
+        - locator resolved to <input checked type="checkbox"/>
+        - fill("教师期间手改")
+      - attempting fill action
+        - waiting for element to be visible, enabled and editable
+
+
+       95 |   const adopt = panel.getByRole('button', { name: '采用允许字段到草稿新版本' })
+       96 |   await expect(adopt).toBeEnabled()
+    >  97 |   await page.getByLabel('真实问题', { exact: true }).fill('教师期间手改')
+          |                                                  ^
+       98 |   await expect(adopt).toBeDisabled(); await expect(panel).toContainText('期间发生人工编辑')
+       99 |   expect(api.writes).toHaveLength(1)
+      100 | })
+        at D:\XunJie\apps\student\e2e\teacher-design-ai.spec.ts:97:50
+
+    Error Context: ..\..\.tmp\teacher-design-ai-browser\results\teacher-design-ai-已有蓝图局部建议只PATCH允许字段；教师编辑后不能覆盖-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\..\.tmp\teacher-design-ai-browser\results\teacher-design-ai-已有蓝图局部建议只PATCH允许字段；教师编辑后不能覆盖-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\..\.tmp\teacher-design-ai-browser\results\teacher-design-ai-已有蓝图局部建议只PATCH允许字段；教师编辑后不能覆盖-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e\teacher-design-ai.spec.ts:101:1 › 局部采纳成功增加草稿版本，冲突不覆盖当前编辑 ─────────────────────
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('真实问题', { exact: true })
+    Expected: "原问题"
+    Received: "on"
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('真实问题', { exact: true }) with timeout 10000ms
+      - waiting for getByLabel('真实问题', { exact: true })
+        23 × locator resolved to <input checked type="checkbox"/>
+           - unexpected value "on"
+
+
+      106 |   await panel.getByRole('button', { name: '采用允许字段到草稿新版本' }).click()
+      107 |   await expect(panel.getByRole('alert')).toContainText('VERSION_CONFLICT')
+    > 108 |   await expect(page.getByLabel('真实问题', { exact: true })).toHaveValue('原问题')
+          |                                                          ^
+      109 | })
+      110 | test('量规试评须显式认可样例，结果只提供建议', async ({ page }) => {
+      111 |   const api = await setup(page, true), panel = await enter(page, true)
+        at D:\XunJie\apps\student\e2e\teacher-design-ai.spec.ts:108:58
+
+    Error Context: ..\..\.tmp\teacher-design-ai-browser\results\teacher-design-ai-局部采纳成功增加草稿版本，冲突不覆盖当前编辑-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\..\.tmp\teacher-design-ai-browser\results\teacher-design-ai-局部采纳成功增加草稿版本，冲突不覆盖当前编辑-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\..\.tmp\teacher-design-ai-browser\results\teacher-design-ai-局部采纳成功增加草稿版本，冲突不覆盖当前编辑-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › e2e\teacher-design-ai.spec.ts:92:1 › 已有蓝图局部建议只PATCH允许字段；教师编辑后不能覆盖 ─────────────────
+    [chromium] › e2e\teacher-design-ai.spec.ts:101:1 › 局部采纳成功增加草稿版本，冲突不覆盖当前编辑 ──────────────────────
+  4 passed (53.7s)
