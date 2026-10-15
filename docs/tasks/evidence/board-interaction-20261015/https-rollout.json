@@ -1,0 +1,36 @@
+{
+  "observedAtUtc": "2026-10-15T06:44:11.4161987+00:00",
+  "origin": "https://127.0.0.1:3444",
+  "strictTls": true,
+  "servedArtifactsVerified": 148,
+  "restrictedArtifacts": [
+    {
+      "path": "brand/sprout/registration.json",
+      "status": 400
+    },
+    {
+      "path": "brand/sprout/accessories/registration.json",
+      "status": 400
+    },
+    {
+      "path": "brand/sprout/rig/eye-masks.json",
+      "status": 400
+    },
+    {
+      "path": "brand/sprout/rig/registration.json",
+      "status": 400
+    },
+    {
+      "path": "brand/xunjie-logo/master.json",
+      "status": 400
+    },
+    {
+      "path": "fonts/OFL.txt",
+      "status": 400
+    }
+  ],
+  "live": "alive",
+  "ready": "ready",
+  "unauthenticatedSessionStatus": 401,
+  "indexSha256": "8ba010e4ed80e9edfc2e1f53d5842a8ed02b60e8de40f4a0f95e4db873bf4fa9"
+}

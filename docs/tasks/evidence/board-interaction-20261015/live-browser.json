@@ -1,0 +1,12 @@
+{
+  "observedAtUtc": "2026-10-15T06:42:50.012Z",
+  "origin": "https://127.0.0.1:3444",
+  "browser": "Chrome",
+  "strictTls": true,
+  "status": 200,
+  "script": "/assets/index-CbBvS58n.js",
+  "visibleLogin": true,
+  "pageErrors": [],
+  "authenticated": false,
+  "recordsWritten": false
+}

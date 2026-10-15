@@ -84,3 +84,23 @@ Robert 对上一轮“尚未推送或更新3444服务”明确批注“现在做
 写入前只读核对：3444无监听，host.pid记录2728但原进程已不存在；当前静态入口为 `index-B66OM0mG.js`，index.html SHA256=`280c205e362469e57a489c5379c88b35fe9d4a66cb14ea8dc60d058f562472bf`，与教师/模型任务记录一致（静态来源5d9c5e、后端613e586）。新fetch的 `origin/main@4ea3c73` 相对5d9c5e在学生及教学应用源码上无差异。
 
 实施：将已批准main纳入本修复分支，保留已交付教师/个人模型能力；在独立工作树构建和专项验证后，留存逐SHA回退静态副本，再覆盖静态产物、最后切换index，保留旧assets供已打开页面使用。仅沿现有最新宿主工具启动原后端，原配置、TLS、身份、数据库、个人凭据、执行节点与代际不替换。部署前复查当前index仍是本轮读取版本，若发生并行发布则先重读并保留其结果。验证实际HTTPS产物hash、live/ready及新版页面。此处是执行方案，实际结果随后补记。
+
+### 5.1 推送与实际更新完成
+
+main整合无冲突，固定应用源码为 `cffa6e6f2445d64b5bbf582ee02e96770cb8bb4c`，包含原板卡修复 `4b8c0b3` 与 `origin/main@4ea3c73`。该head已正常推送到 `origin/codex/hdl-virtual-board-fix`，`git ls-remote --heads`精确回读一致；未合并main或创建PR。相对当前main生产差异仍仅板卡组件、页面接线及板卡禁用样式三处，教师/个人模型保留。
+
+整合后重新执行：学生类型检查与生产build通过；52文件641/641单元通过；正常Chrome `hdlRealWorkflow.spec.ts teacher-ui.spec.ts personalAgent.spec.ts --workers=2` 为29/29通过，见[输出](evidence/board-interaction-20261015/rollout-browser.txt)。本轮未重跑首批已有12项非板卡失败的完整套件，不声明那些问题已解决。
+
+2026-10-15 14:41（Asia/Shanghai），[限定静态更新脚本](evidence/board-interaction-20261015/deploy-static.mjs)完成：154份产物逐SHA核对；旧静态完整保留在 `/opt/xunjie-ui-local/releases/board-static-cffa6e6-20261015/student-dist-before` 并逐SHA验证；既有同名资源内容不同则拒绝，旧hash资源全部保留，index最后原子切换。新入口 `/assets/index-CbBvS58n.js`，index.html SHA256=`8ba010e4ed80e9edfc2e1f53d5842a8ed02b60e8de40f4a0f95e4db873bf4fa9`，见[实际部署收据](evidence/board-interaction-20261015/deployment.json)。
+
+原宿主已停止，因此沿最新工具执行 `xunjie-local.ps1 start -EnableReview` 恢复现有41表宿主。原执行VM当时未运行，工具仅启动原冻结VM（vmStarted=true），同代际 `synthetic-generation-c6772623-ba28-4c50-a853-337f77382452`、C/HDL指纹和原就绪校验通过，没有重建VM/镜像/身份或重签readiness。后端PID433；静态更新前后209个后端/工具文件及application-config字节相同，数据库/个人存储未由部署脚本读取或修改。全局旧模型预算未启用，个人配置与已有开关沿原宿主保持；本轮无模型生成请求。
+
+实际HTTPS和页面：严格TLS正常，148份可服务前端产物经HTTPS下载后逐SHA与新build相同；6份原MIME白名单外的JSON/字体许可文本仍按原守卫返回400。初次全文件HTTP断言在这些原受限文件上失败后，按既有服务器白名单分别核对允许200及受限400，没有修改服务规则。live/ready均200，未认证Session保持401，见[HTTPS回执](evidence/board-interaction-20261015/https-rollout.json)。独立正常Chrome实际3444页加载新入口、原登录表单可见且无pageerror，未登录/代操作学生记录，见[页面回执](evidence/board-interaction-20261015/live-browser.json)与[截图](evidence/board-interaction-20261015/deployed-login.png)。这次实际页面检查不冒充登录后的新一轮真实板卡或模型全链路。
+
+回退：保留全部旧hash资源，需回退静态时从上述受限回退目录恢复原index即可；后端、41表库、TLS、个人Key与执行节点不参与此静态回退。D盘本轮构建归档保留作部署输入证据，未重试上一轮被自动审批拒绝的清理。
+
+### 5.2 用户指定关联会话核对
+
+已只读查看「实现登录与会话进入流程」（`01a1391d-6b93-7910-ba1c-66f6f4040104`）最新工作：负责人要求继续使用北京ECS，配置SSH/成员受限访问，将PAHER共享应用/后端/数据库迁入，C/HDL继续由成员本机执行。它与本任务的交集是应用发布版本及执行节点就绪接线；本次原基线的辅导展示失败是在隔离协议fixture中复现，不能由云迁移/PAHER状态解释。
+
+本轮交付仅为上述Git分支和本机3444静态修复，没有操作ECS/PAHER共享库、SSH权限或云端发布；未擅自给其他会话发送指令。共享部署可显式接纳本分支的三处生产差异及原板卡/节点契约，不能仅复制旧d77c9cc构建或改变C/HDL输入/会话边界。
