@@ -19,6 +19,42 @@ async function install(page: Page, handle: (route: Route, path: string) => Promi
   })
 }
 
+test('图片真实协议发送原始像素，纯图片可发且刷新可恢复；无效附件保留草稿',async({page})=>{
+  const current=config();current.providers[0].models[0].inputTypes=['image'] as never[]
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC','base64')
+  const cid='synthetic-image-conversation',dataUrl=`data:image/png;base64,${png.toString('base64')}`
+  const messages:unknown[]=[];let calls=0
+  await install(page,async(route,path)=>{
+    if(path==='/api/model-settings'){await envelope(route,current);return true}
+    if(path==='/api/agent/turns'){
+      const body=route.request().postDataJSON();calls++
+      expect(body.images).toEqual([{name:'sample.png',dataUrl}]);expect(body.text).toBe('');expect(body.expectedModelConfigRevision).toBe(1)
+      messages.push({role:'user',text:'',images:body.images,at},{role:'agent',text:'合成图片协议回答',phase:'settled',at})
+      await envelope(route,{conversationId:cid,turnId:'image-turn',message:messages[1]});return true
+    }
+    if(path===`/api/agent/conversations/${cid}`){await envelope(route,{id:cid,title:'图片',updatedAt:at,messages});return true}
+    return false
+  })
+  await page.goto(`${REAL_URL}/#/agent`)
+  const fileInput=page.locator('input[type=file]')
+  await fileInput.setInputFiles({name:'invalid.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg/>')})
+  await page.getByRole('textbox',{name:'向 Agent 提问'}).fill('保留这个草稿')
+  await page.getByRole('button',{name:'发送消息',exact:true}).click()
+  await expect(page.getByRole('alert')).toContainText('图片格式不支持')
+  await expect(page.getByRole('textbox',{name:'向 Agent 提问'})).toHaveValue('保留这个草稿')
+  await expect(page.getByRole('button',{name:'移除附件 invalid.svg'})).toBeVisible();expect(calls).toBe(0)
+  await page.getByRole('button',{name:'移除附件 invalid.svg'}).click()
+  await expect(page.getByRole('button',{name:'移除附件 invalid.svg'})).toHaveCount(0)
+  await page.getByRole('textbox',{name:'向 Agent 提问'}).fill('')
+  await fileInput.setInputFiles({name:'sample.png',mimeType:'image/png',buffer:png})
+  await page.getByRole('button',{name:'发送消息',exact:true}).click()
+  await expect(page.locator('.chat-message.agent')).toContainText('合成图片协议回答')
+  await expect(page.locator('.chat-user-images img')).toHaveAttribute('src',dataUrl)
+  await page.reload()
+  await expect(page.locator('.chat-user-images img')).toHaveAttribute('src',dataUrl)
+  expect(calls).toBe(1)
+})
+
 test('个人模型保存等待后台确认，失败留在表单；明文凭据不进浏览器存储', async ({ page }) => {
   let current = config(), fail = true, release!: () => void
   const held = new Promise<void>(resolve => { release = resolve })

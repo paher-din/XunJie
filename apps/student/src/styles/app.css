@@ -2899,6 +2899,8 @@ h3 {
      中文与正常英文排版不受影响。代码块反过来（见 .turn-body .md-pre pre）。 */
   overflow-wrap: break-word;
 }
+.chat-user-images { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+.chat-user-images img { display:block; max-width:min(320px,60vw); max-height:240px; object-fit:contain; border-radius:12px; border:1px solid var(--line); }
 .chat-message.user {
   text-align: right;
 }

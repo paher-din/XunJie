@@ -8,6 +8,7 @@ import { openCredential, sealCredential, type SealedCredential } from './credent
 import { openPersonalAgentStore } from './store.ts';
 import type { CompatibleMessage, ModelSelection, PersonalAgentOptions, PersonalAgentService } from './types.ts';
 import {inactivityGuard} from './inactivity.ts';
+import {imageSchema,validateImages,inputTokenUpper,IMAGE_REQUEST_BYTES,type ChatImage} from './images.ts';
 
 const identifier=z.string().min(1).max(128);
 const tokenSetting=z.string().max(16).regex(/^(?:[1-9][0-9]*)?$/).refine(value=>!value||Number.isSafeInteger(Number(value)));
@@ -22,7 +23,7 @@ const settingsSchema=z.strictObject({expectedRevision:z.number().int().min(0),en
 type ModelMetadata=z.infer<typeof modelSchema>;
 type StoredProvider={id:string;name:string;baseUrl:string;models:ModelMetadata[];credential?:SealedCredential};
 type StoredConfig={enabled:boolean;defaultModelId:string;providers:StoredProvider[];efforts:Record<string,string>};
-type ChatMessage={role:'user'|'agent';text:string;at:string;phase?:'waiting'|'thinking'|'streaming'|'settled'|'stopped'|'failed';
+type ChatMessage={role:'user'|'agent';text:string;at:string;images?:ChatImage[];phase?:'waiting'|'thinking'|'streaming'|'settled'|'stopped'|'failed';
   failure?:{reason:'network'|'model'|'quota';code:string}};
 type Turn={turnId:string;conversationId:string;userId:string;messageId:string;message:ChatMessage;configVersion:string;
   modelConfig:Omit<ModelSelection,'userId'|'version'|'apiKey'>;
@@ -30,7 +31,7 @@ type Turn={turnId:string;conversationId:string;userId:string;messageId:string;me
 type Conversation={id:string;userId:string;title:string;updatedAt:string;pinned:boolean;archived:boolean;ids:string[]};
 const turnInput=z.strictObject({conversationId:identifier.nullable(),mode:z.enum(['send','retry','resume']),
   expectedModelConfigRevision:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-  text:z.string().max(32000).optional(),requestKey:z.string().min(1).max(128)});
+  text:z.string().max(32000).optional(),images:z.array(imageSchema).optional(),requestKey:z.string().min(1).max(128)});
 const textInput=z.string().trim().min(1).max(32000);
 const parse=<T>(schema:z.ZodType<T>,value:unknown):T=>{const result=schema.safeParse(value);if(!result.success)throw new ApiError('INVALID_REQUEST');return result.data;};
 const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -195,6 +196,7 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
   }
   function acceptTurn(userId:string,raw:unknown){
     const input=parse(turnInput,raw),requestHash=hash(JSON.stringify(input));
+    if(input.mode!=='send'&&input.images!==undefined)throw new ApiError('INVALID_REQUEST');
     const accepted=store.transaction(()=>{
       const previous=store.get('SELECT request_hash,turn_json FROM agent_turns WHERE user_id=? AND request_key=?',userId,input.requestKey);
       if(previous){if(previous.request_hash!==requestHash)throw new ApiError('IDEMPOTENCY_CONFLICT');return {turn:JSON.parse(String(previous.turn_json)) as Turn};}
@@ -215,7 +217,9 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       const turnId=randomUUID(),messageId=randomUUID();
       let prefix='';
       if(input.mode==='send'){
-        const text=parse(textInput,input.text),userMessage:ChatMessage={role:'user',text,at};
+        const images=input.images??[];
+        const text=images.length?(input.text??'').trim():parse(textInput,input.text);
+        const userMessage:ChatMessage={role:'user',text,at,...(images.length?{images}:{})};
         const id=randomUUID();saveMessage(userId,current.id,id,userMessage);current.ids.push(id);
       } else {
         const lastId=current.ids.at(-1);if(!lastId)throw new ApiError('STATE_CONFLICT');
@@ -226,10 +230,13 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
         }else if(last.role==='agent')current.ids.pop();
         if(!current.ids.length||message(userId,current.ids.at(-1)!).role!=='user')throw new ApiError('STATE_CONFLICT');
       }
+      const history=current.ids.map(id=>message(userId,id));
+      validateImages(history.flatMap(value=>value.images??[]),selected);
       const messages:CompatibleMessage[]=[{role:'system',content:'You are a teaching assistant. Help the user understand and reason. Do not claim to have run tools, inspected private course material, evaluated a learner, or changed their work. Only use the messages provided.'},
-        ...current.ids.map(id=>{const value=message(userId,id);return {role:value.role==='agent'?'assistant' as const:'user' as const,content:value.text};})];
+        ...history.map((value):CompatibleMessage=>({role:value.role==='agent'?'assistant':'user',content:value.images?.length?
+          [...(value.text?[{type:'text' as const,text:value.text}]:[]),...value.images.map(image=>({type:'image_url' as const,image_url:{url:image.dataUrl}}))]:value.text}))];
       if(input.mode==='resume')messages.push({role:'assistant',content:prefix},{role:'user',content:'请接着上一条被中断的回答继续，不要重复已有内容。'});
-      if(Buffer.byteLength(JSON.stringify(messages),'utf8')+256>(selected.contextWindow??16384)-(selected.maxOutputTokens??4096))throw new ApiError('CONTENT_LIMIT');
+      if(Buffer.byteLength(JSON.stringify(messages),'utf8')+1024>IMAGE_REQUEST_BYTES||inputTokenUpper(messages,selected)>(selected.contextWindow??16384)-(selected.maxOutputTokens??4096))throw new ApiError('CONTENT_LIMIT');
       const acceptedAt=now();
       const turn:Turn={turnId,conversationId:current.id,userId,messageId,message:{role:'agent',text:prefix,at,phase:'waiting'},
         configVersion:selected.version,modelConfig:{providerId:selected.providerId,baseUrl:selected.baseUrl,model:selected.model,
@@ -312,13 +319,13 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
         const original=message(userId,previousId);
         if(hash(JSON.stringify([original.role,original.text,original.at??null]))!==input.expectedMessageHash)throw new ApiError('VERSION_CONFLICT');
         if(original.role!=='user')throw new ApiError('INVALID_REQUEST');
-        const messageId=randomUUID();saveMessage(userId,id,messageId,{role:'user',text:input.text,at:stamp()});
+        const messageId=randomUUID();saveMessage(userId,id,messageId,{role:'user',text:input.text,at:stamp(),...(original.images?.length?{images:original.images}:{})});
         current.ids=[...current.ids.slice(0,input.messageIndex),messageId];current.updatedAt=stamp();
         if(input.messageIndex===0)current.title=input.text.slice(0,24);
         setBranch(current);return {id};
       });return envelope(request,result);
     });
-    app.post('/api/agent/turns',request=>envelope(request,acceptTurn(user(request),request.body)));
+    app.post('/api/agent/turns',{bodyLimit:IMAGE_REQUEST_BYTES},request=>envelope(request,acceptTurn(user(request),request.body)));
     app.get('/api/agent/turns/:id',request=>{
       const userId=user(request),id=parse(z.strictObject({id:identifier}),request.params).id,turn=readTurn(userId,id);conversation(userId,turn.conversationId);
       return envelope(request,response(turn));

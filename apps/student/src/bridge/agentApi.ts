@@ -1,5 +1,5 @@
 import type { LearningApi } from './learningApi'
-import type { ChatMessage, Conversation, ConversationSummary } from './types'
+import type { ChatMessage, ChatImage, Conversation, ConversationSummary } from './types'
 import { learningApi as mock } from './mockAdapter'
 import { apiGet, apiPost } from '../workspace/http'
 import { PREP_BUILD } from '../workspace/mode'
@@ -16,7 +16,8 @@ function message(value: unknown): ChatMessage {
   if (!m || !['user', 'agent'].includes(m.role) || typeof m.text !== 'string'
     || (m.phase !== undefined && !['waiting', 'thinking', 'streaming', 'settled', 'stopped', 'failed'].includes(m.phase))) throw new Error('聊天响应无效，请重新读取会话。')
   // 独立通道只接正文与实际状态，不从模型内容构造课程卡片、画像或生成 HTML。
-  return { role: m.role, text: m.text, ...(typeof m.at === 'string' ? { at: m.at } : {}),
+  if(m.images!==undefined&&(!Array.isArray(m.images)||m.role!=='user'||m.images.some(image=>!image||typeof image.name!=='string'||typeof image.dataUrl!=='string'||!/^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+=*$/.test(image.dataUrl))))throw new Error('图片历史响应无效，请重新读取会话。')
+  return { role: m.role, text: m.text, ...(m.images?.length?{images:m.images.map(({name,dataUrl})=>({name,dataUrl}))}:{}), ...(typeof m.at === 'string' ? { at: m.at } : {}),
     ...(m.phase ? { phase: m.phase } : {}), ...(m.failure && ['network', 'model', 'quota'].includes(m.failure.reason)
       ? { failure: { reason: m.failure.reason, ...(typeof m.failure.code === 'string' ? { code: m.failure.code } : {}) } } : {}) }
 }
@@ -55,7 +56,7 @@ class RealAgentApi {
     if (!input.expectedMessageHash) throw new Error('原消息未核对，编辑未发送。')
     await this.post(`/agent/conversations/${encodeURIComponent(input.conversationId)}/edit`, { messageIndex: input.messageIndex, text: input.text, expectedMessageHash: input.expectedMessageHash })
   }
-  private async run(mode: 'send' | 'retry' | 'resume', input: { conversationId: string | null; text?: string; onUpdate: (m: ChatMessage) => void }) {
+  private async run(mode: 'send' | 'retry' | 'resume', input: { conversationId: string | null; text?: string; images?:ChatImage[]; onUpdate: (m: ChatMessage) => void }) {
     const configuration = getModelSettings()
     if (configuration.saving || configuration.loading) throw new Error('模型配置保存或读取中，请等待确认后再发送。')
     if (!configuration.data?.enabled || !configuration.data.callsEnabled || !configuration.data.defaultModelId) throw new Error('请先在设置中保存并启用个人模型。')
@@ -71,7 +72,7 @@ class RealAgentApi {
       let raw:unknown;
       try{raw=await this.post('/agent/turns', { conversationId: input.conversationId, mode,
         expectedModelConfigRevision:configuration.data.revision,
-        ...(mode === 'send' ? { text: input.text } : {}), requestKey: crypto.randomUUID() })}
+        ...(mode === 'send' ? { text: input.text,...(input.images?.length?{images:input.images}:{}) } : {}), requestKey: crypto.randomUUID() })}
       catch(error){
         if(await reloadOnModelConfigConflict(error,configuration.data.revision))throw new ModelConfigurationChangedError();
         throw error;
@@ -94,7 +95,7 @@ class RealAgentApi {
       return { conversationId: cid, final: view.message }
     } finally { if (this.active === active) this.active = null }
   }
-  sendMessageStream(input: { conversationId: string | null; text: string; onUpdate: (m: ChatMessage) => void }) { return this.run('send', input) }
+  sendMessageStream(input: { conversationId: string | null; text: string; images?:ChatImage[]; onUpdate: (m: ChatMessage) => void }) { return this.run('send', input) }
   async sendMessage(input: { conversationId: string | null; text: string }) {
     const result = await this.run('send', { ...input, onUpdate: () => {} })
     return { conversationId: result.conversationId, reply: result.final }

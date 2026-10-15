@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 
 export type ModelSelection = {userId:string;version:string;providerId:string;baseUrl:string;model:string;apiKey:string;reasoningEffort?:'low'|'high'|'max';
   contextWindow?:number;maxOutputTokens?:number;inputTypes?:('image'|'video'|'pdf')[]};
-export type CompatibleMessage = {role:'system'|'user'|'assistant';content:string};
+export type CompatiblePart = {type:'text';text:string}|{type:'image_url';image_url:{url:string}};
+export type CompatibleMessage = {role:'system'|'user'|'assistant';content:string|CompatiblePart[]};
 export type CompatibleUsage = {status:'actual';inputTokens:number;outputTokens:number};
 export type DiscoveredModel={id:string;name?:string;contextWindow?:number;maxOutputTokens?:number;inputTypes?:('image'|'video'|'pdf')[];reasoningLevels?:('low'|'high'|'max')[]};
 export type ConnectionResult = {ok:true;latencyMs:number;modelCount:number|null;models?:DiscoveredModel[]} |

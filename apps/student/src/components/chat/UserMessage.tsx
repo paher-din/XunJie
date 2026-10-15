@@ -1,6 +1,7 @@
 import { Icon } from '../../icons'
 import { useEffect, useRef, useState } from 'react'
 import { formatMessageTime } from '../../lib/chatTime'
+import type {ChatImage} from '../../bridge/types'
 
 /**
  * 一条学生消息：气泡 + 消息级操作（复制 / 编辑，已确认 2026-10-11 第 24 条）。
@@ -12,8 +13,10 @@ export function UserMessage({
   at,
   onEdit,
   busy,
+  images,
 }: {
   text: string
+  images?:ChatImage[]
   /** 这条说出来的时刻；有就标在操作键左侧。 */
   at?: string
   /** 保存改写；不传则不给编辑键。 */
@@ -51,7 +54,8 @@ export function UserMessage({
 
   return (
     <div className={'chat-message user' + (editing ? ' editing' : '')}>
-      <div className="bubble">{text}</div>
+      {!!images?.length&&<div className="chat-user-images">{images.map((image,index)=><a key={index} href={image.dataUrl} download={image.name} title={`下载图片：${image.name}`}><img src={image.dataUrl} alt={image.name} /></a>)}</div>}
+      {text&&<div className="bubble">{text}</div>}
       {editing ? (
         <div className="user-edit">
           <textarea

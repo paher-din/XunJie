@@ -13,6 +13,14 @@ const response=(chunks:(string|Buffer)[],statusCode=200)=>Object.assign(Readable
 const frame=(value:unknown)=>`data: ${JSON.stringify(value)}\n\n`;
 const opts=()=>({selection,messages:[{role:'user' as const,content:'解释时钟边沿'}],signal:new AbortController().signal,remainingMs:1000});
 
+test('image content parts retain their data on the wire without counting base64 as text tokens',async()=>{
+  const dataUrl='data:image/png;base64,'+'A'.repeat(1200000);let wire:any;
+  const transport=createCompatibleTransport(async(_url,input)=>{wire=JSON.parse(input.body!);return response([frame({choices:[{delta:{content:'seen'},finish_reason:'stop'}]})+'data: [DONE]\n\n']);});
+  await transport.complete({...opts(),selection:{...selection,baseUrl:'https://api.deepseek.com/v1',model:'deepseek-flash',inputTypes:['image'],contextWindow:16000,maxOutputTokens:4096},
+    messages:[{role:'user',content:[{type:'image_url',image_url:{url:dataUrl}}]}]});
+  assert.equal(wire.messages[0].content[0].image_url.url,dataUrl);
+});
+
 test('provider address gate rejects local/private/mapped and non-HTTPS destinations',()=>{
   for(const address of ['127.0.0.1','0.0.0.0','10.1.2.3','172.16.1.1','192.168.1.1','169.254.169.254','100.64.0.1',
     '224.0.0.1','192.0.2.1','::1','fc00::1','fe80::1','::ffff:8.8.8.8','2001:db8::1','2002:7f00:1::1'])assert.equal(isPublicModelAddress(address),false,address);

@@ -1,5 +1,6 @@
 import type {
   ChatMessage,
+  ChatImage,
   Conversation,
   ConversationSummary,
   GenCard,
@@ -72,6 +73,7 @@ export interface LearningApi {
   sendMessageStream(input: {
     conversationId: string | null
     text: string
+    images?:ChatImage[]
     onUpdate: (message: ChatMessage) => void
   }): Promise<{ conversationId: string; final: ChatMessage }>
   /** 停止当前回合：保留已生成部分，快照 phase 变为 stopped。无进行中回合时不做事。 */
