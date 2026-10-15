@@ -76,9 +76,7 @@ class RealAgentApi {
       const cid = view.conversationId, tid = view.turnId
       input.onUpdate(view.message)
       if (active.stopRequested && !terminal(view.message)) await this.post(`/agent/turns/${encodeURIComponent(tid)}/stop`, {})
-      const deadline = performance.now() + 60_000
       while (!terminal(view.message)) {
-        if (performance.now() > deadline) throw new Error('回合结果尚未确认，请重新打开原会话核对，勿重复发送。')
         await new Promise(resolve => setTimeout(resolve, 250))
         assertCurrent(captured)
         if (active.stopError) throw active.stopError

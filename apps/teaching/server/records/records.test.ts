@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {sha256} from '../../runner/snapshot.ts';
 import {canonical,finishCommand,requestHash,resolveCommandReceipt} from './commands.ts';
-import {enqueueJob,claimJob,renewJob,recordModelCall,finishJob,cancelJob,confirmRunStopped,recoverJob,cancelByPurpose,invalidateInTransaction} from './jobs.ts';
+import {enqueueJob,claimJob,renewJob,recordModelCall,renewModelActivity,finishJob,cancelJob,confirmRunStopped,recoverJob,cancelByPurpose,invalidateInTransaction} from './jobs.ts';
 import type {Job,Records,CommandIdentity} from '../../contracts/records/index.ts';
 
 const now='2026-10-10T00:00:00.000Z';
@@ -50,6 +50,20 @@ test('jobs retain bounded deadlines/call counts across leases and reject expired
   assert.throws(()=>finishJob(running,completion,{expectedRevision:1,decisionEpoch:1}),/applicable/);
   assert.equal(recoverJob(running,at(31000)).status,'outcome_unknown');
   assert.throws(()=>claimJob(recoverJob(running,at(31000)),'new',at(44000),'gen',at(32000)),/dispatchable/);
+});
+
+test('personal model activity renews its idle lease past old total limits without allowing another call',()=>{
+  const queued=job({inactivityTimeoutMs:600000,deadline:at(600000)});
+  assert.equal(enqueueJob([],queued).length,1);
+  assert.throws(()=>enqueueJob([],job({deadline:at(600000)})),/45 seconds/);
+  let running=recordModelCall(claimJob(queued,'lease',at(600000),'gen',now),'lease','gen',now);
+  running=renewModelActivity(running,'lease','gen',at(500000));
+  running=renewModelActivity(running,'lease','gen',at(1000000));
+  assert.equal(running.deadline,at(1600000));assert.equal(running.attemptCount,1);
+  assert.throws(()=>recordModelCall(running,'lease','gen',at(1000001)),/not permitted/);
+  assert.throws(()=>renewModelActivity({...running,stopRequested:true},'lease','gen',at(1000001)),/inactive/);
+  assert.throws(()=>renewModelActivity(running,'lease','gen',at(1600001)),/lease/);
+  assert.equal(recoverJob(running,at(1600001)).status,'outcome_unknown');
 });
 test('cancel and purpose invalidation preserve generated/ordinary-run facts and unknown occupancy',()=>{
   for(const purpose of ['student_run','teacher_sample'] as const){

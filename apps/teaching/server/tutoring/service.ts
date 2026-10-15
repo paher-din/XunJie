@@ -4,7 +4,7 @@ import type {
   TutoringFailure,
 } from "../../contracts/tutoring/index.ts";
 import type { Job } from "../../contracts/records/index.ts";
-import { claimJob, recordModelCall } from "../records/jobs.ts";
+import { claimJob, recordModelCall,renewModelActivity } from "../records/jobs.ts";
 import { generateStudentHelp } from "./core.ts";
 import {
   assembleStudentHelpRequest,
@@ -30,6 +30,8 @@ export type AuthorizedStudentHelpRuntime = {
   readCurrent: (signal: AbortSignal) => StudentHelpCurrentState | Promise<StudentHelpCurrentState>;
   signal?: AbortSignal;
   now?: () => number;
+  maximumCalls?:number;
+  inactivityTimeoutMs?:number;
 };
 
 /**
@@ -85,6 +87,8 @@ export async function executeAuthorizedStudentHelp(
     checkCurrent: createStudentHelpCurrentGuard(authorizedInput, runtime.readCurrent),
     priorCalls: trustedJob.attemptCount,
     now,
+    ...(runtime.maximumCalls?{maximumCalls:runtime.maximumCalls}:{}),
+    ...(runtime.inactivityTimeoutMs?{inactivityTimeoutMs:runtime.inactivityTimeoutMs}:{}),
   });
   return executionResult(input, request.context.authorizedReferenceIds, request.context.versions, outcome);
 }
@@ -141,6 +145,7 @@ function persistedCallProvider(
   runtime: AuthorizedStudentHelpRuntime,
   now: () => number,
 ): ModelProvider {
+  let renewedAt=0;
   return {
     async generate(request) {
       let reservedCount = -1;
@@ -159,7 +164,7 @@ function persistedCallProvider(
           if (current.stopRequested || current.status === "cancelled") {
             throw new ProviderCallNotStartedError("cancelled", "Student help was stopped");
           }
-          if (current.attemptCount >= 3) {
+          if (current.attemptCount >= (runtime.maximumCalls??3)) {
             throw new ProviderCallNotStartedError("budget_exhausted", "Student help call budget is exhausted");
           }
           if (Date.parse(current.deadline) <= now()) {
@@ -182,7 +187,13 @@ function persistedCallProvider(
       }
 
       try {
-        return await runtime.provider.generate(request);
+        return await runtime.provider.generate({...request,...(input.job.inactivityTimeoutMs?{onActivity:async()=>{
+          const stamp=now();if(stamp-renewedAt<5000)return;
+          await updateJob(runtime,input.job.jobId,current=>{
+            assertSameJob(input.job,current);
+            return renewModelActivity(current,runtime.leaseToken,input.job.recoveryGeneration,new Date(stamp).toISOString());
+          });renewedAt=stamp;
+        }}:{})});
       } catch (error) {
         if (error instanceof InputLimitError || error instanceof ProviderCallNotStartedError && error.reservation==='none') {
           try {
@@ -231,7 +242,8 @@ function assertSameJob(expected: Job, current: Job) {
     current.decisionEpoch !== expected.decisionEpoch ||
     current.recoveryGeneration !== expected.recoveryGeneration ||
     current.acceptedAt !== expected.acceptedAt ||
-    current.deadline !== expected.deadline
+    current.inactivityTimeoutMs !== expected.inactivityTimeoutMs ||
+    !expected.inactivityTimeoutMs&&current.deadline !== expected.deadline
   ) {
     throw new ProviderCallNotStartedError("stale", "Student help job identity changed");
   }

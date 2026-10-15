@@ -54,6 +54,12 @@ test('个人模型保存等待后台确认，失败留在表单；明文凭据�
   expect(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }))).not.toContain('secret')
   await page.getByRole('button', { name: '编辑', exact: true }).click()
   await expect(page.locator('input[type=password]')).toHaveValue('')
+  await page.getByPlaceholder('例如：DeepSeek 官方').fill('合成供应商改名')
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(writes).toHaveLength(3)
+  expect(writes[2].enabled).toBe(true)
+  expect((writes[2].providers as { apiKey?: string }[])[0]).not.toHaveProperty('apiKey')
 })
 
 test('真实模式独立聊天走发送、编辑hash、重试、停止和继续协议，设置选择等待ACK', async ({ page }) => {

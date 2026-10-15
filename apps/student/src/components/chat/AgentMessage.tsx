@@ -256,7 +256,19 @@ function FailureCard({
 }) {
   const [dismissed, setDismissed] = useState(false)
   const failure = message.failure!
-  const copy = FAILURE_COPY[failure.reason]
+  const copy: (typeof FAILURE_COPY)['network'] = failure.code === 'DEADLINE_EXCEEDED'||failure.code==='PROVIDER_IDLE_TIMEOUT'
+    ? { title: failure.code==='PROVIDER_IDLE_TIMEOUT'?'模型连接长时间无响应':'等待模型响应超时', actions: ['retry', 'dismiss'] }
+    : failure.code === 'PROVIDER_PAYMENT_REQUIRED'
+      ? { title: '供应商余额不足', actions: ['dismiss'] }
+      : failure.code === 'RATE_LIMITED'
+        ? { title: '供应商请求频率受限', actions: ['retry', 'dismiss'] }
+        : failure.code === 'OUTPUT_LIMIT_EXCEEDED'
+          ? { title: '模型已用完本次输出额度，回复未完成', actions: ['retry', 'dismiss'] }
+          : failure.code === 'EMPTY_MODEL_RESPONSE'
+            ? { title: '模型已结束，但没有返回正文', actions: ['retry', 'dismiss'] }
+            : failure.code === 'PROVIDER_CONTENT_FILTERED'
+              ? { title: '供应商未能返回这次回复', actions: ['retry', 'dismiss'] }
+        : FAILURE_COPY[failure.reason]
   if (dismissed) {
     return (
       <div className="turn-fail-collapsed">

@@ -1264,6 +1264,22 @@ test("persisted call budget is shared across workers and reserves before provide
   assert.equal(exhaustedRuntime.job().attemptCount, 3);
 });
 
+test('personal provider activity renews the same persisted lease beyond the original deadline',async()=>{
+  const expected=authorizedContext();let now=Date.parse(expected.job.acceptedAt);
+  expected.job.inactivityTimeoutMs=600000;
+  expected.job.deadline=expected.job.leaseUntil=new Date(now+600000).toISOString();
+  let calls=0;
+  const provider:ModelProvider={async generate(request){
+    calls++;assert.equal(request.remainingMs,Infinity);
+    for(let i=0;i<4;i++){now+=240000;await request.onActivity?.();}
+    return {body:validBody('project:activity'),usage:{status:'actual',inputTokens:10,outputTokens:20}};
+  }};
+  const persisted=persistedRuntime(expected,provider,()=>currentState(expected));
+  const result=await executeAuthorizedStudentHelp(expected,{...persisted.runtime,now:()=>now,inactivityTimeoutMs:600000,maximumCalls:1});
+  assert.equal(result.outcome.outcome,'success');assert.equal(calls,1);assert.equal(persisted.job().attemptCount,1);
+  assert.equal(persisted.job().leaseToken,'lease');assert.equal(Date.parse(persisted.job().deadline),now+600000);
+});
+
 test("cancelled and expired jobs end before claim without invoking the provider", async () => {
   for (const variant of ["cancelled", "expired"] as const) {
     const expected = authorizedContext();

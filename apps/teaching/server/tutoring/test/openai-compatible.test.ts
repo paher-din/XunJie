@@ -57,15 +57,15 @@ test('stream interruption preserves actual partial text but never reports a comp
   assert.equal(seen,'部分正文');
 });
 
-test('structured teaching uses the configured model with bounded JSON and no thinking/tool capabilities',async()=>{
+test('structured teaching uses saved model and reasoning with JSON validation and no tools',async()=>{
   let wire:Record<string,unknown>|undefined;
   const transport=createCompatibleTransport(async(_url,input)=>{wire=JSON.parse(input.body!);return response([JSON.stringify({choices:[{message:{content:'{}'},finish_reason:'stop'}]})]);});
   const provider=compatibleTutoringProvider({...selection,baseUrl:'https://api.deepseek.com/v1',reasoningEffort:'max'},transport);
   const result=await provider.generate({purpose:'student_help',systemPolicy:'Keep the student in control.',untrustedInput:{question:'synthetic'},repair:false,remainingMs:1000,signal:new AbortController().signal});
   assert.deepEqual(result.body,{});assert.equal(result.usage,undefined);
-  assert.equal(wire!.model,'custom-model');assert.equal(wire!.stream,false);
-  assert.deepEqual(wire!.response_format,{type:'json_object'});assert.deepEqual(wire!.thinking,{type:'disabled'});
-  assert.equal('reasoning_effort' in wire!,false);
+  assert.equal(wire!.model,'custom-model');assert.equal(wire!.stream,true);
+  assert.deepEqual(wire!.response_format,{type:'json_object'});assert.deepEqual(wire!.thinking,{type:'enabled'});
+  assert.equal(wire!.reasoning_effort,'max');
 });
 
 test('declared reasoning effort affects standalone calls without persisting reasoning content',async()=>{
@@ -73,6 +73,33 @@ test('declared reasoning effort affects standalone calls without persisting reas
   const transport=createCompatibleTransport(async(_url,input)=>{wire=JSON.parse(input.body!);return response([frame({choices:[{delta:{content:'正文'},finish_reason:'stop'}]})+'data: [DONE]\n\n']);});
   await transport.complete({...opts(),selection:{...selection,reasoningEffort:'high'}});
   assert.equal(wire!.reasoning_effort,'high');
+});
+
+test('low high and max reach both text and structured wire requests with saved token limits',async()=>{
+  for(const effort of ['low','high','max'] as const)for(const structured of [false,true]){
+    let wire:Record<string,any>|undefined,thinking=0,visible='';
+    const transport=createCompatibleTransport(async(_url,input)=>{
+      wire=JSON.parse(input.body!);
+      const reply=response([frame({choices:[{delta:{reasoning_content:'INTERNAL-CANARY'}}]})+
+        frame({choices:[{delta:{content:structured?'{}':'answer'},finish_reason:'stop'}],usage:{prompt_tokens:18,completion_tokens:5}})+'data: [DONE]\n\n']);
+      reply.headers={'content-type':'text/event-stream'};return reply;
+    });
+    const result=await transport.complete({...opts(),selection:{...selection,baseUrl:'https://api.deepseek.com/v1',reasoningEffort:effort,
+      contextWindow:300000,maxOutputTokens:131072},...(structured?{jsonSchema:{type:'object'}}:{}),onThinking:()=>{thinking++;},onText:text=>{visible=text;}});
+    assert.equal(wire!.reasoning_effort,effort);assert.deepEqual(wire!.thinking,{type:'enabled'});
+    assert.equal(wire!.max_tokens,131072);assert.equal(thinking,1);assert.equal(result.text,structured?'{}':'answer');
+    assert.doesNotMatch(visible+JSON.stringify(result),/INTERNAL-CANARY/);
+  }
+});
+
+test('saved context limit rejects unsent input while larger declared context accepts it',async()=>{
+  let calls=0;
+  const transport=createCompatibleTransport(async()=>{calls++;return response([frame({choices:[{delta:{content:'ok'},finish_reason:'stop'}]})+'data: [DONE]\n\n']);});
+  const input={...opts(),messages:[{role:'user' as const,content:'x'.repeat(18000)}]};
+  await assert.rejects(transport.complete({...input,selection:{...selection,contextWindow:20000,maxOutputTokens:4096}}),/exceeds/);
+  assert.equal(calls,0);
+  assert.equal((await transport.complete({...input,selection:{...selection,contextWindow:32000,maxOutputTokens:4096}})).text,'ok');
+  assert.equal(calls,1);
 });
 
 test('models probe refuses redirects, malformed success and secret-bearing upstream errors',async()=>{
@@ -92,4 +119,38 @@ test('input cap prevents transmission and dispatch rejects a changed queued conf
   assert.equal(calls,0);
   assert.throws(()=>requirePersonalSelection(selection,'old-revision'),/changed before dispatch/);
   assert.throws(()=>requirePersonalSelection(undefined,selection.version),/not configured/);
+});
+
+test('catalog discovery accepts provider field dialects without inventing missing capabilities',async()=>{
+  const input={baseUrl:selection.baseUrl,apiKey:selection.apiKey,signal:new AbortController().signal};
+  const catalog={models:{large:{name:'Large',context_length:2000000,limit:{output:200000}},sparse:{}}};
+  const result=await createCompatibleTransport(async()=>response([JSON.stringify(catalog)])).test(input);
+  assert.equal(result.ok,true);if(!result.ok)return;
+  assert.equal(result.modelCount,2);
+  assert.deepEqual(result.models,[{id:'large',name:'Large',contextWindow:2000000,maxOutputTokens:200000},{id:'sparse'}]);
+});
+
+test('official protocol dialects send one authoritative thinking and output field',async()=>{
+  for(const host of ['api.kimi.com','api.openai.com','api.deepseek.com','models.example']){
+    let wire:any;
+    const transport=createCompatibleTransport(async(_url,input)=>{wire=JSON.parse(input.body!);return response([frame({choices:[{delta:{content:'ok'},finish_reason:'stop'}]})+'data: [DONE]\n\n']);});
+    await transport.complete({...opts(),selection:{...selection,baseUrl:`https://${host}/v1`,reasoningEffort:'high'}});
+    if(host==='api.kimi.com'){
+      assert.deepEqual(wire.thinking,{type:'enabled',effort:'high'});assert.equal(wire.reasoning_effort,undefined);
+    }else assert.equal(wire.reasoning_effort,'high');
+    assert.equal(wire[host==='api.kimi.com'||host==='api.openai.com'?'max_completion_tokens':'max_tokens'],4096);
+  }
+});
+
+test('SSE frame parsing joins multiline data, keeps reasoning private and distinguishes terminal empty from thinking',async()=>{
+  let thinking=0,activity=0;
+  const chunks=[': keep-alive\r\n\r\n','data: {"choices":[\r\ndata: {"delta":{"reasoning":"PRIVATE-CANARY"}}]}\r\n\r\n',
+    frame({choices:[{delta:{},finish_reason:'stop'}]})+'data: [DONE]\n\n'];
+  await assert.rejects(createCompatibleTransport(async()=>response(chunks)).complete({...opts(),onThinking(){thinking++;},onActivity(){activity++;}}),
+    error=>error instanceof CompatibleRequestError&&error.kind==='empty'&&!error.message.includes('PRIVATE-CANARY'));
+  assert.equal(thinking,1);assert.equal(activity,4);
+  let partial='';
+  await assert.rejects(createCompatibleTransport(async()=>response([frame({choices:[{delta:{content:'partial'},finish_reason:'length'}],usage:{prompt_tokens:4,completion_tokens:8}})+'data: [DONE]\n\n']))
+    .complete({...opts(),onText(text){partial=text;}}),error=>error instanceof CompatibleRequestError&&error.kind==='output-limit'&&error.usage?.outputTokens===8);
+  assert.equal(partial,'partial');
 });

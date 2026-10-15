@@ -194,16 +194,49 @@ test('effort is selected only from supported model metadata and the maintenance 
   assert.equal(accepted.statusCode,422);assert.equal(calls,0);
 });
 
-test('45 second deadline preserves real partial output, releases the conversation and never retries the provider',async t=>{
+test('each supported effort and saved limits reach actual dispatch while thinking state stores no reasoning text',async t=>{
+  for(const effort of ['low','high','max'] as const){
+    let finish:()=>void=()=>{};let dispatched:any;
+    const fixture=await setup({...immediateTransport,async complete(input){
+      dispatched=input.selection;input.onThinking?.();await new Promise<void>(resolve=>{finish=resolve;});return {text:'visible answer'};
+    }});t.after(fixture.cleanup);
+    const models=[{...provider.models[0],contextWindow:'300000',maxOutput:'131072',reasoningLevels:['low','high','max']}];
+    assert.equal((await fixture.request('POST','/api/model-settings',settings({providers:[{...provider,models}],efforts:{'custom:test:test-model':effort}}))).status,200);
+    const accepted=await fixture.request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'question',requestKey:effort});
+    await pause();assert.equal(dispatched.reasoningEffort,effort);assert.equal(dispatched.maxOutputTokens,131072);assert.equal(dispatched.contextWindow,300000);
+    const thinking=await fixture.request('GET',`/api/agent/turns/${accepted.body.data.turnId}`);
+    assert.equal(thinking.body.data.message.phase,'thinking');assert.equal(thinking.body.data.message.text,'');
+    finish();await pause();assert.equal((await fixture.request('GET',`/api/agent/turns/${accepted.body.data.turnId}`)).body.data.message.text,'visible answer');
+  }
+});
+
+test('all configured model efforts are validated, and large declared contexts are not silently capped',async t=>{
+  const fixture=await setup(immediateTransport);t.after(fixture.cleanup);
+  const models=[{...provider.models[0],contextWindow:'2000000',maxOutput:'200000',reasoningLevels:['low']},
+    {...provider.models[0],id:'other',reasoningLevels:['low']}];
+  const bad=await fixture.request('POST','/api/model-settings',settings({providers:[{...provider,models}],efforts:{'custom:test:other':'max'}}));
+  assert.equal(bad.status,422);
+  const good=await fixture.request('POST','/api/model-settings',settings({providers:[{...provider,models}],efforts:{'custom:test:other':'low'}}));
+  assert.equal(good.status,200);assert.equal(good.body.data.providers[0].models[0].contextWindow,'2000000');
+});
+
+test('thinking has no total deadline; actual activity renews only the network idle window',async t=>{
   let calls=0;
-  const fixture=await setup({...immediateTransport,async complete({onText}){calls++;onText?.('bounded partial');return new Promise(()=>{});}});
+  let activity:(()=>void|Promise<void>)|undefined;
+  const fixture=await setup({...immediateTransport,async complete({onText,onActivity}){calls++;activity=onActivity;onText?.('bounded partial');return new Promise(()=>{});}});
   t.after(fixture.cleanup);await fixture.request('POST','/api/model-settings',settings());
   t.mock.timers.enable({apis:['setTimeout']});
   const accepted=await fixture.request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'question',requestKey:'timeout'});
   await pause();t.mock.timers.tick(45001);await pause();
+  assert.equal((await fixture.request('GET',`/api/agent/turns/${accepted.body.data.turnId}`)).body.data.message.phase,'streaming');
+  t.mock.timers.tick(255000);await pause();
+  assert.equal((await fixture.request('GET',`/api/agent/turns/${accepted.body.data.turnId}`)).body.data.message.phase,'streaming');
+  await activity?.();t.mock.timers.tick(599999);await pause();
+  assert.equal((await fixture.request('GET',`/api/agent/turns/${accepted.body.data.turnId}`)).body.data.message.phase,'streaming');
+  t.mock.timers.tick(2);await pause();
   const failed=await fixture.request('GET',`/api/agent/turns/${accepted.body.data.turnId}`);
   assert.equal(failed.body.data.message.phase,'failed');assert.equal(failed.body.data.message.text,'bounded partial');
-  assert.equal(failed.body.data.message.failure.code,'DEADLINE_EXCEEDED');assert.equal(calls,1);
+  assert.equal(failed.body.data.message.failure.code,'PROVIDER_IDLE_TIMEOUT');assert.equal(calls,1);
   const edit=await fixture.request('POST',`/api/agent/conversations/${accepted.body.data.conversationId}/edit`,{
     messageIndex:0,text:'revised',expectedMessageHash:messageHash((await fixture.request('GET',`/api/agent/conversations/${accepted.body.data.conversationId}`)).body.data.messages[0]),
   });assert.equal(edit.status,200);

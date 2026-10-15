@@ -18,7 +18,7 @@ const purposeSchema = z.enum(['teacher_design', 'student_help', 'reminder', 'exp
 const jobSchema = z.strictObject({ jobId: id, kind: id, purpose: purposeSchema, scope: scopeSchema, requestReceiptId: id,
   status: z.enum(['queued', 'running', 'succeeded', 'failed', 'cancelling', 'cancelled', 'stale', 'timed_out', 'outcome_unknown']),
   stopRequested: z.boolean(), expectedRevision: natural, decisionEpoch: natural, recoveryGeneration: id,
-  acceptedAt: time, deadline: time, attemptCount: natural.max(3), leaseToken: id.optional(), leaseUntil: time.optional(),
+  acceptedAt: time, deadline: time, attemptCount: natural.max(3), inactivityTimeoutMs:z.number().int().positive().max(2147483647).optional(),leaseToken: id.optional(), leaseUntil: time.optional(),
   runId: id.optional(), resultRef: id.optional(), resultHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), failure: id.optional() });
 const receiptSchema = z.strictObject({ receiptId: id, commandId: id, identity: identitySchema, requestHash: z.string().regex(/^[a-f0-9]{64}$/),
   // JSON validation must not normalize client file keys such as "__proto__" in the original ACK.

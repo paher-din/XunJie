@@ -93,7 +93,9 @@ export default function AgentPage() {
   const conversation = useQuery({
     queryKey: ['conversation', conversationId],
     queryFn: () => learningApi.getConversation(conversationId!),
-    enabled: !!conversationId,
+    // 回合接纳已保存学生消息；在途历史刷新会与 pendingUser/live 重叠。
+    // 由 useAgentTurn 在终态读取并原子交接这份快照。
+    enabled: !!conversationId && !turn.active,
   })
   const conversations = useQuery({
     queryKey: ['conversations'],

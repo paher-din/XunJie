@@ -12,7 +12,7 @@ export type AuditEvent = {eventId:string;serverSeq:number;scope:Scope;type:strin
 // it is never a per-round figure, and nothing else may raise it.
 export type Job = {jobId:string;kind:string;purpose:Purpose;scope:Scope;requestReceiptId:string;
   status:JobStatus;stopRequested:boolean;expectedRevision:number;decisionEpoch:number;
-  recoveryGeneration:string;acceptedAt:string;deadline:string;attemptCount:number;
+  recoveryGeneration:string;acceptedAt:string;deadline:string;attemptCount:number;inactivityTimeoutMs?:number;
   leaseToken?:string;leaseUntil?:string;runId?:string;resultRef?:string;resultHash?:string;failure?:string};
 export type Records = {receipts:CommandReceipt[];commandAliases:{identity:CommandIdentity;receiptId:string}[];
   events:AuditEvent[];jobs:Job[];serverSeq:number};

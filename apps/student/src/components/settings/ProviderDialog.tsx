@@ -2,7 +2,7 @@ import { PREP_BUILD } from '../../workspace/mode'
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Icon } from '../../icons'
-import { emptyProviderModel, type ModelProvider, type ProviderModel } from '../../lib/settings'
+import { emptyProviderModel, modelConfigurationError, type ModelProvider, type ProviderModel } from '../../lib/settings'
 import { testProviderConnection, testResultText, type TestResult } from '../../lib/connectionTest'
 import { Field, ModelFields, TextInput } from './controls'
 
@@ -56,6 +56,8 @@ export function ProviderDialog({ open, onClose, provider, onSave }: ProviderDial
     if (!/^https:\/\/.+/.test(baseUrl.trim())) errs.baseUrl = '请填写公网 HTTPS Base URL'
     if (modelIds.length === 0) errs.models = '请至少添加一个模型'
     else if (new Set(modelIds).size !== modelIds.length) errs.models = '模型 ID 不能重复'
+    const invalid=models.map(modelConfigurationError).find(Boolean)
+    if(invalid)errs.models=invalid
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
     setSaving(true); setSaveError('')
@@ -122,6 +124,20 @@ export function ProviderDialog({ open, onClose, provider, onSave }: ProviderDial
                 <Icon name={result.ok ? 'check-circle' : 'danger-triangle'} size={15} />
                 {result.text}
               </p>
+            )}
+            {testResult?.ok && testResult.models && testResult.models.length>0 && (
+              <Field label="供应商可用模型" tip="从真实模型列表选择，使用可调用 ID；供应商提供的能力字段会同步填写。">
+                <select className="st-input" aria-label="供应商可用模型" value="" onChange={e=>{
+                  const found=testResult.models?.find(m=>m.id===e.target.value);if(!found)return;
+                  const next={id:found.id,contextWindow:String(found.contextWindow??''),maxOutput:String(found.maxOutputTokens??''),
+                    inputTypes:found.inputTypes??[],reasoningLevels:found.reasoningLevels??[]};
+                  setModels(current=>current.length===1&&!current[0]?.id?[next]:current.some(m=>m.id===next.id)
+                    ?current.map(m=>m.id===next.id?next:m):[...current,next]);
+                }}>
+                  <option value="">选择并导入模型能力…</option>
+                  {testResult.models.map(m=><option key={m.id} value={m.id}>{m.name??m.id} · {m.id}</option>)}
+                </select>
+              </Field>
             )}
           </div>
           <div className="st-dialog-foot">

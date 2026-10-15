@@ -220,13 +220,9 @@ export function correctPortrait({ kind, value }: PortraitCorrection) {
 
 /* ---------- 模型供应商 ---------- */
 
-/** 智能配置的本地参照表：按模型 ID 前缀回填上下文窗口与最大输出（mock 知识库）。 */
+/** 精确型号参考值；未知供应商/型号不按名称前缀猜能力。实际值优先由供应商模型列表导入。 */
 const SMART_MODEL_PRESETS: Array<[RegExp, string, string]> = [
-  [/deepseek/i, '131072', '8192'],
-  [/mimo/i, '262144', '16384'],
-  [/kimi|k2|k3/i, '262144', '8192'],
-  [/gpt|o[0-9]/i, '128000', '16384'],
-  [/qwen|通义/i, '131072', '8192'],
+  [/^deepseek-(?:flash|v4-pro)$/, '1048576', '393216'],
 ]
 
 /** 新建模型的初值：窗口与上限留空，等填 ID 时由智能配置按需回填。 */
@@ -234,10 +230,19 @@ export function emptyProviderModel(): ProviderModel {
   return { id: '', contextWindow: '', maxOutput: '', inputTypes: [], reasoningLevels: [] }
 }
 
-/** 按模型 ID 猜上下文窗口与最大输出；未命中返回空串。 */
+/** 精确已知模型的能力参考值；未命中返回空串。 */
 export function smartModelDefaults(id: string): { contextWindow: string; maxOutput: string } {
   const hit = SMART_MODEL_PRESETS.find(([re]) => re.test(id))
   return hit ? { contextWindow: hit[1], maxOutput: hit[2] } : { contextWindow: '', maxOutput: '' }
+}
+
+export function modelConfigurationError(model:ProviderModel):string {
+  for(const value of [model.contextWindow,model.maxOutput])
+    if(value&&(!/^[1-9][0-9]*$/.test(value)||!Number.isSafeInteger(Number(value))))return '上下文和输出上限须为有效正整数。'
+  if((Number(model.maxOutput)||4096)>=(Number(model.contextWindow)||16384))return '最大输出必须小于上下文窗口，才能为输入保留空间。'
+  if(model.reasoningLevels.some(level=>!['low','high','max'].includes(level)))return '思考等级仅支持 low、high、max。'
+  if(new Set(model.reasoningLevels).size!==model.reasoningLevels.length)return '思考等级不能重复。'
+  return ''
 }
 
 export function saveProvider(provider: ModelProvider) {

@@ -5,7 +5,8 @@ import { PREP_BUILD } from '../workspace/mode'
 /** 供应商探测走同源后台，不在浏览器连接外部端点；准备模式始终禁止外发。 */
 
 export type TestResult =
-  | { ok: true; latencyMs: number; modelCount: number | null; simulated?: boolean }
+  | { ok: true; latencyMs: number; modelCount: number | null; simulated?: boolean;
+      models?:Array<{id:string;name?:string;contextWindow?:number;maxOutputTokens?:number;inputTypes?:ModelProvider['models'][number]['inputTypes'];reasoningLevels?:string[]}> }
   | { ok: false; kind: 'auth' | 'not-found' | 'http' | 'cors' | 'timeout' | 'blocked-preparation' | 'network' | 'invalid-url' | 'unavailable'; status?: number }
 
 

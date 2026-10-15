@@ -93,6 +93,7 @@ export type TutoringAppOptions = TeachingRecordsOptions & {
     /** Trusted personal configuration, selected on acceptance and captured before dispatch. */
     versionsForStudent?: (studentId:string)=>TrustedModelContext["versions"];
     providerForStudent?: (studentId:string,modelConfigVersion:string)=>ModelProvider;
+    requestLimits?:{inactivityTimeoutMs?:number;maximumCalls:number};
     readLearnerState?: LearnerStateReader;
     readLearnerStateRevision?: (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => number;
     readHdlContext?:(tx:Transaction,actor:ActorContext,attemptId:string,selection:HdlHelpSelection,generation:string)=>AuthorizedHdlHelpContext;
@@ -190,7 +191,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
 
         const acceptedAtMs = now();
         const acceptedAt = new Date(acceptedAtMs).toISOString();
-        const deadline = new Date(acceptedAtMs + 45_000).toISOString();
+        const deadline = new Date(acceptedAtMs + (studentHelp.requestLimits?.inactivityTimeoutMs??45_000)).toISOString();
         const jobId = randomUUID();
         let plannedMessage: ReturnType<typeof acceptStudentQuestionInTransaction>["message"] | undefined;
         const receipt = finishRecordCommand(
@@ -253,6 +254,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               generation,
               deadline,
               kind: "student_help",
+              ...(studentHelp.requestLimits?.inactivityTimeoutMs?{inactivityTimeoutMs:studentHelp.requestLimits.inactivityTimeoutMs}:{}),
             });
           },
         );
@@ -481,6 +483,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       if (!studentId || !authorizedAttemptId) throw new ApiError("STATE_CONFLICT");
       const execution = await executeAuthorizedStudentHelp(authorized, {
         ...runtime,
+        ...studentHelp.requestLimits,
         provider:selectedProvider,
         budgetAvailable: () => studentHelp.budgetAvailable({
           courseId: authorized.job.scope.courseId,

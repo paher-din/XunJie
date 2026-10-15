@@ -92,7 +92,7 @@ export function ModelTab({ toast }: TabProps) {
       return
     }
     const next = providers.some(x => x.id === p.id)
-      ? providers.map(x => x.id === p.id ? p : x)
+      ? providers.map(x => x.id === p.id ? {...x,...p} : x)
       : [...providers, p]
     await replaceProviders(next)
   }

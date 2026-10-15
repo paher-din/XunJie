@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Icon } from '../../icons'
-import { emptyProviderModel, type ProviderModel } from '../../lib/settings'
+import { emptyProviderModel, modelConfigurationError, type ProviderModel } from '../../lib/settings'
 import { ModelFields } from './controls'
 
 interface ModelDialogProps {
@@ -35,6 +35,8 @@ export function ModelDialog({ open, onClose, providerName, model, siblings, onSa
       setIdError('该供应商下已有同名模型')
       return
     }
+    const invalid=modelConfigurationError(draft)
+    if(invalid){setIdError(invalid);return}
     setSaving(true)
     try { await onSave({ ...draft, id, contextWindow: draft.contextWindow.trim(), maxOutput: draft.maxOutput.trim() })
     onClose()

@@ -7,10 +7,12 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { openCredential, sealCredential, type SealedCredential } from './credentials.ts';
 import { openPersonalAgentStore } from './store.ts';
 import type { CompatibleMessage, ModelSelection, PersonalAgentOptions, PersonalAgentService } from './types.ts';
+import {inactivityGuard} from './inactivity.ts';
 
 const identifier=z.string().min(1).max(128);
-const modelSchema=z.strictObject({id:z.string().trim().min(1).max(256),contextWindow:z.string().max(32),maxOutput:z.string().max(32),
-  inputTypes:z.array(z.enum(['image','video','pdf'])).max(3),reasoningLevels:z.array(z.string().max(32)).max(12)});
+const tokenSetting=z.string().max(16).regex(/^(?:[1-9][0-9]*)?$/).refine(value=>!value||Number.isSafeInteger(Number(value)));
+const modelSchema=z.strictObject({id:z.string().trim().min(1).max(256),contextWindow:tokenSetting,maxOutput:tokenSetting,
+  inputTypes:z.array(z.enum(['image','video','pdf'])).max(3),reasoningLevels:z.array(z.enum(['low','high','max'])).max(3).refine(levels=>new Set(levels).size===levels.length)});
 const providerSchema=z.strictObject({id:z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),name:z.string().trim().min(1).max(128),
   baseUrl:z.string().min(1).max(2048),models:z.array(modelSchema).max(100),apiKey:z.string().max(4096).optional(),clearKey:z.boolean().optional(),
   // These public read fields can be returned by clients, but never select stored credential material.
@@ -20,11 +22,11 @@ const settingsSchema=z.strictObject({expectedRevision:z.number().int().min(0),en
 type ModelMetadata=z.infer<typeof modelSchema>;
 type StoredProvider={id:string;name:string;baseUrl:string;models:ModelMetadata[];credential?:SealedCredential};
 type StoredConfig={enabled:boolean;defaultModelId:string;providers:StoredProvider[];efforts:Record<string,string>};
-type ChatMessage={role:'user'|'agent';text:string;at:string;phase?:'waiting'|'streaming'|'settled'|'stopped'|'failed';
+type ChatMessage={role:'user'|'agent';text:string;at:string;phase?:'waiting'|'thinking'|'streaming'|'settled'|'stopped'|'failed';
   failure?:{reason:'network'|'model'|'quota';code:string}};
 type Turn={turnId:string;conversationId:string;userId:string;messageId:string;message:ChatMessage;configVersion:string;
-  modelConfig:{providerId:string;baseUrl:string;model:string;reasoningEffort?:'low'|'high'|'max'};
-  acceptedAt:number;deadline:number;callCount:number;status:'running'|'settled'|'stopped'|'failed';usage?:{status:'actual';inputTokens:number;outputTokens:number}|{status:'unknown'}};
+  modelConfig:Omit<ModelSelection,'userId'|'version'|'apiKey'>;
+  acceptedAt:number;deadline:number|null;callCount:number;status:'running'|'settled'|'stopped'|'failed';usage?:{status:'actual';inputTokens:number;outputTokens:number}|{status:'unknown'}};
 type Conversation={id:string;userId:string;title:string;updatedAt:string;pinned:boolean;archived:boolean;ids:string[]};
 const turnInput=z.strictObject({conversationId:identifier.nullable(),mode:z.enum(['send','retry','resume']),
   text:z.string().max(32000).optional(),requestKey:z.string().min(1).max(128)});
@@ -66,7 +68,9 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
         const level=rawEffort==='低'?'low':rawEffort==='高'?'high':rawEffort==='最高'?'max':rawEffort;
         const reasoningEffort=(level==='low'||level==='high'||level==='max')&&model.reasoningLevels.includes(level)?level:undefined;
         return {userId,version:version(userId,current.revision),providerId:provider.id,baseUrl:provider.baseUrl,
-          model:model.id,apiKey:openCredential(store.key,userId,provider.id,provider.credential),...(reasoningEffort?{reasoningEffort}:{})};
+          model:model.id,apiKey:openCredential(store.key,userId,provider.id,provider.credential),
+          contextWindow:Number(model.contextWindow)||16384,maxOutputTokens:Number(model.maxOutput)||4096,inputTypes:model.inputTypes,
+          ...(reasoningEffort?{reasoningEffort}:{})};
       }
     }
     return;
@@ -78,13 +82,21 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       if(new Set(input.providers.map(item=>item.id)).size!==input.providers.length)throw new ApiError('INVALID_REQUEST');
       const providers:StoredProvider[]=input.providers.map(item=>{
         if(new Set(item.models.map(model=>model.id)).size!==item.models.length)throw new ApiError('INVALID_REQUEST');
+        if(item.models.some(model=>(Number(model.maxOutput)||4096)>=(Number(model.contextWindow)||16384)))throw new ApiError('INVALID_CONFIGURATION');
         const prior=previous.value.providers.find(provider=>provider.id===item.id);
         const credential=item.clearKey?undefined:item.apiKey?.trim()?sealCredential(store.key,userId,item.id,item.apiKey.trim()):prior?.credential;
         return {id:item.id,name:item.name,baseUrl:normalizeBaseUrl(item.baseUrl),models:item.models,...(credential?{credential}:{})};
       });
       const validDefault=providers.some(provider=>provider.credential&&provider.models.some(model=>input.defaultModelId===`custom:${provider.id}:${model.id}`));
       if(input.enabled&&!validDefault)throw new ApiError('INVALID_CONFIGURATION');
-      const value:StoredConfig={enabled:input.enabled,defaultModelId:input.defaultModelId,providers,efforts:input.efforts??{}};
+      const efforts:Record<string,string>={};
+      for(const provider of providers)for(const model of provider.models){
+        const id=`custom:${provider.id}:${model.id}`,effort=input.efforts?.[id];
+        const level=effort==='低'?'low':effort==='高'?'high':effort==='最高'?'max':effort;
+        if(level&&!model.reasoningLevels.includes(level as 'low'|'high'|'max'))throw new ApiError('INVALID_CONFIGURATION');
+        if(effort)efforts[id]=effort;
+      }
+      const value:StoredConfig={enabled:input.enabled,defaultModelId:input.defaultModelId,providers,efforts};
       store.run('INSERT INTO user_model_configs(user_id,revision,config_json,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET revision=excluded.revision,config_json=excluded.config_json,updated_at=excluded.updated_at',
         userId,previous.revision+1,JSON.stringify(value),stamp());
       return publicSettings(userId);
@@ -130,33 +142,39 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
 
   async function execute(turnId:string,selected:ModelSelection,messages:CompatibleMessage[],controller:AbortController,prefix:string){
     const userId=selected.userId;
-    let timer:ReturnType<typeof setTimeout>|undefined;
+    const idle=inactivityGuard(controller.signal);
     try {
       let turn=readTurn(userId,turnId);
       if(turn.status!=='running')return;
       if(!callsEnabled())throw new ApiError('BUDGET_EXHAUSTED');
-      const remainingMs=turn.deadline-now();
+      const remainingMs=turn.deadline===null?Infinity:turn.deadline-now();
       if(remainingMs<=0)throw new Error('PERSONAL_TIMEOUT');
       turn.callCount=1;store.transaction(()=>writeTurn(turn));
       const aborted=new Promise<never>((_,reject)=>{
         const fail=()=>reject(new Error('PERSONAL_ABORTED'));
-        if(controller.signal.aborted)fail();else controller.signal.addEventListener('abort',fail,{once:true});
+        if(idle.signal.aborted)fail();else idle.signal.addEventListener('abort',fail,{once:true});
       });
-      const timeout=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{reject(new Error('PERSONAL_TIMEOUT'));controller.abort();},remainingMs);});
-      const result=await Promise.race([options.transport.complete({selection:selected,messages,signal:controller.signal,remainingMs,
+      const result=await Promise.race([options.transport.complete({selection:selected,messages,signal:idle.signal,remainingMs,onActivity:()=>idle.touch(),
+        onThinking(){
+          idle.touch();
+          if(closing)return;
+          const current=readTurn(userId,turnId);if(current.status!=='running'||current.message.phase==='streaming'||current.message.phase==='thinking')return;
+          current.message.phase='thinking';store.transaction(()=>writeTurn(current));
+        },
         onText(text){
+          idle.touch();
           if(closing)return;
           const current=readTurn(userId,turnId);if(current.status!=='running')return;
           // The transport callback supplies the accumulated text, not a fabricated local reply.
           current.message.text=prefix+text;current.message.phase='streaming';store.transaction(()=>writeTurn(current));
-        }}),aborted,timeout]);
+        }}),aborted]);
       turn=readTurn(userId,turnId);if(turn.status!=='running')return;
       turn.message.text=prefix+result.text;turn.message.phase='settled';turn.status='settled';turn.usage=result.usage??{status:'unknown'};
       store.transaction(()=>writeTurn(turn));
     } catch(error){
       const turn=readTurn(userId,turnId);if(turn.status!=='running')return;
-      const timedOut=now()>=turn.deadline||(error instanceof Error&&error.message==='PERSONAL_TIMEOUT');
-      turn.status='failed';turn.message.phase='failed';turn.usage={status:'unknown'};
+      const timedOut=idle.expired||(turn.deadline!==null&&now()>=turn.deadline)||(error instanceof Error&&error.message==='PERSONAL_TIMEOUT');
+      turn.status='failed';turn.message.phase='failed';turn.usage=error instanceof CompatibleRequestError&&error.usage?error.usage:{status:'unknown'};
       const providerKind=error instanceof CompatibleRequestError?error.kind:undefined;
       const providerStatus=error instanceof CompatibleRequestError?error.status:undefined;
       const localQuota=error instanceof ApiError&&error.code==='BUDGET_EXHAUSTED';
@@ -165,13 +183,14 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       // A strict transport preflight failure proves that its persisted reservation was never sent.
       if(inputLimit)turn.callCount=0;
       turn.message.failure={reason:quota?'quota':timedOut||providerKind==='network'||providerKind==='timeout'?'network':'model',
-        code:inputLimit?'INPUT_LIMIT_EXCEEDED':timedOut||providerKind==='timeout'?'DEADLINE_EXCEEDED'
+        code:inputLimit?'INPUT_LIMIT_EXCEEDED':timedOut||providerKind==='timeout'?'PROVIDER_IDLE_TIMEOUT'
           :localQuota?'BUDGET_EXHAUSTED':providerKind==='http'&&providerStatus===429?'RATE_LIMITED':providerKind==='http'&&providerStatus===402?'PROVIDER_PAYMENT_REQUIRED'
           :providerKind==='auth'?'PROVIDER_AUTHENTICATION_FAILED':providerKind==='not-found'?'MODEL_NOT_FOUND'
-          :providerKind==='invalid-url'?'INVALID_PROVIDER_URL':providerKind==='protocol'?'PROVIDER_PROTOCOL_ERROR'
+          :providerKind==='invalid-url'?'INVALID_PROVIDER_URL':providerKind==='output-limit'?'OUTPUT_LIMIT_EXCEEDED'
+          :providerKind==='empty'?'EMPTY_MODEL_RESPONSE':providerKind==='filtered'?'PROVIDER_CONTENT_FILTERED':providerKind==='protocol'?'PROVIDER_PROTOCOL_ERROR'
           :providerKind==='http'?'PROVIDER_HTTP_ERROR':'DEPENDENCY_UNAVAILABLE'};
       store.transaction(()=>writeTurn(turn));
-    } finally{if(timer)clearTimeout(timer);selected.apiKey='';}
+    } finally{idle.dispose();selected.apiKey='';}
   }
   function acceptTurn(userId:string,raw:unknown){
     const input=parse(turnInput,raw),requestHash=hash(JSON.stringify(input));
@@ -208,12 +227,13 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       const messages:CompatibleMessage[]=[{role:'system',content:'You are a teaching assistant. Help the user understand and reason. Do not claim to have run tools, inspected private course material, evaluated a learner, or changed their work. Only use the messages provided.'},
         ...current.ids.map(id=>{const value=message(userId,id);return {role:value.role==='agent'?'assistant' as const:'user' as const,content:value.text};})];
       if(input.mode==='resume')messages.push({role:'assistant',content:prefix},{role:'user',content:'请接着上一条被中断的回答继续，不要重复已有内容。'});
-      if(Buffer.byteLength(JSON.stringify(messages),'utf8')+256>16000)throw new ApiError('CONTENT_LIMIT');
+      if(Buffer.byteLength(JSON.stringify(messages),'utf8')+256>(selected.contextWindow??16384)-(selected.maxOutputTokens??4096))throw new ApiError('CONTENT_LIMIT');
       const acceptedAt=now();
       const turn:Turn={turnId,conversationId:current.id,userId,messageId,message:{role:'agent',text:prefix,at,phase:'waiting'},
         configVersion:selected.version,modelConfig:{providerId:selected.providerId,baseUrl:selected.baseUrl,model:selected.model,
-          ...(selected.reasoningEffort?{reasoningEffort:selected.reasoningEffort}:{})},
-        acceptedAt,deadline:acceptedAt+45000,callCount:0,status:'running',usage:{status:'unknown'}};
+          ...(selected.reasoningEffort?{reasoningEffort:selected.reasoningEffort}:{}),
+          contextWindow:selected.contextWindow??16384,maxOutputTokens:selected.maxOutputTokens??4096,inputTypes:selected.inputTypes??[]},
+        acceptedAt,deadline:null,callCount:0,status:'running',usage:{status:'unknown'}};
       store.run('INSERT INTO agent_turns(turn_id,conversation_id,user_id,request_key,request_hash,turn_json) VALUES(?,?,?,?,?,?)',
         turnId,current.id,userId,input.requestKey,requestHash,JSON.stringify(turn));
       saveMessage(userId,current.id,messageId,turn.message,turnId);current.ids.push(messageId);current.updatedAt=at;setBranch(current);
