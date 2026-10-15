@@ -20,10 +20,16 @@ test('student bootstraps own assignment with trusted generation and no attempt s
     const before = await f.app.inject({url:'/api/assignments/'+assignment.assignmentId,headers:student});
     const response = await service.app.inject({url:'/api/assignments/'+assignment.assignmentId+'/bootstrap',headers:student});
     assert.equal(response.statusCode,200,response.body);
-    assert.deepEqual(response.json().data,{assignment:before.json().data,recoveryGeneration:'generation'});
+    assert.deepEqual(response.json().data,{assignment:before.json().data,recoveryGeneration:'generation',currentAttemptId:null});
+    assert.equal(f.db.withTransaction(tx=>tx.all('SELECT attempt_id FROM attempts WHERE assignment_id=?',assignment.assignmentId).length),0);
     const attempt = await service.app.inject({method:'POST',url:'/api/assignments/'+assignment.assignmentId+'/attempts',
       headers:{...student,'idempotency-key':'first'},payload:{recoveryGeneration:response.json().data.recoveryGeneration}});
     assert.equal(attempt.statusCode,200,attempt.body);
+    const after = await service.app.inject({url:'/api/assignments/'+assignment.assignmentId+'/bootstrap',headers:student});
+    assert.equal(after.json().data.currentAttemptId,attempt.json().data.result.attemptId);
+    assert.equal(f.db.withTransaction(tx=>tx.all('SELECT attempt_id FROM attempts WHERE assignment_id=?',assignment.assignmentId).length),1);
+    const teacherRead = await service.app.inject({url:'/api/assignments/'+assignment.assignmentId+'/bootstrap',headers:teacher});
+    assert.equal(Object.hasOwn(teacherRead.json().data,'currentAttemptId'),false);
     const read = await service.app.inject({url:'/api/attempts/'+attempt.json().data.result.attemptId,headers:student});
     assert.equal(read.json().data.attempt.status,'ready');
     assert.deepEqual(read.json().data.files,[]);

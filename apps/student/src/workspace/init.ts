@@ -170,6 +170,7 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
   /* 2. 正常模式只读深链的授权 bootstrap；代际来自服务，首次作品仍由学生显式开始。 */
   let assignment: AssignmentView
   let recoveryGeneration: string
+  let currentAttemptId: string | null = null
   if (mode === 'real') {
     const assignmentId = guard.context.assignmentId
     if (!validId(assignmentId)) return unavailable('discovery', '请从获准的任务链接进入工作区。')
@@ -187,6 +188,10 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
     if (!validId(read.data?.recoveryGeneration)) return unavailable('assignment', '工作区恢复状态没有读取完整，请重新读取。')
     assignment = read.data.assignment
     recoveryGeneration = read.data.recoveryGeneration
+    if (!(read.data.currentAttemptId === null || validId(read.data.currentAttemptId))) {
+      return unavailable('assignment', '当前作品引用没有读取完整，请重新读取。')
+    }
+    currentAttemptId = read.data.currentAttemptId
     if (!validAssignment(assignment, assignmentId)) return unavailable('assignment', '分配信息与任务链接不符，请重新读取。')
   } else if (PREP_BUILD && prepContext) {
     // 登录前 context 不暴露已有 Attempt；准备模式登录后才回取获准引用。
@@ -319,6 +324,7 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
     userId: session.userId,
     assignmentId: assignment.assignmentId,
     activityVersionId: activity.activityVersionId,
+    attemptId: mode === 'real' ? currentAttemptId : guard.context.attemptId,
     trustedRecoveryGeneration: recoveryGeneration,
     preparationEpoch: prepContext?.preparationEpoch ?? null,
   }
