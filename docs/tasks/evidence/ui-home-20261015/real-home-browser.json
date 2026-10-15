@@ -1,0 +1,78 @@
+{
+  "sourceCommit": "96029085b87f12471eeae4ada78af661761e2adf",
+  "observedAt": "2026-10-15T02:52:32.066Z",
+  "origin": "https://127.0.0.1:3444",
+  "browser": "existing Chrome / isolated contexts",
+  "tlsVerification": true,
+  "mode": "real / original 35-table host",
+  "apiInterception": false,
+  "accounts": [
+    {
+      "userId": "synthetic-robert-student-a",
+      "courseId": "synthetic-robert-course-c",
+      "assignments": [
+        {
+          "assignmentId": "fb0983e4-81bc-487b-8b50-7ffe984c38bb",
+          "activityVersionId": "e60dfec4-756b-4853-95e6-453911afd5d0",
+          "title": "TextScope Core 本机合成工程验证",
+          "active": true,
+          "executionKind": "textscope"
+        }
+      ],
+      "screenshot": "student-a-tasks.png",
+      "workspaceReady": true,
+      "returnAndRefresh": true,
+      "authWrites": [
+        {
+          "method": "POST",
+          "path": "/api/sessions"
+        },
+        {
+          "method": "POST",
+          "path": "/api/logout"
+        }
+      ],
+      "businessWriteRequests": 0
+    },
+    {
+      "userId": "synthetic-robert-student-b",
+      "courseId": "synthetic-robert-course-hdl",
+      "assignments": [
+        {
+          "assignmentId": "4c589f3c-18bc-447a-b6bb-6e3a86c442a7",
+          "activityVersionId": "813eeec7-d356-4e50-87ba-acd1b6fb3ebe",
+          "title": "HDL 板卡本机合成工程验证",
+          "active": true,
+          "executionKind": "hdl_board"
+        },
+        {
+          "assignmentId": "cb4e54cb-df5a-4198-bc91-1d8274a9cf64",
+          "activityVersionId": "34333404-d8a3-464f-8039-ab4fad8e6873",
+          "title": "HDL 全输入本机合成工程补充验证",
+          "active": true,
+          "executionKind": "hdl_board"
+        }
+      ],
+      "screenshot": "student-b-tasks.png",
+      "workspaceReady": true,
+      "returnAndRefresh": true,
+      "authWrites": [
+        {
+          "method": "POST",
+          "path": "/api/sessions"
+        },
+        {
+          "method": "POST",
+          "path": "/api/logout"
+        }
+      ],
+      "businessWriteRequests": 0
+    }
+  ],
+  "browserVersion": "155.0.8059.40",
+  "bundle": {
+    "entry": "/assets/index-gOEWjXMX.js",
+    "sha256": "415eb3883325d35c17e02a83c2355aae895fe9c0ea47bfb1d4513441623f1b71"
+  },
+  "passed": true
+}
