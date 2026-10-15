@@ -114,3 +114,5 @@ Robert 现明确要求“现在能合并到main做推送了吗？”。本轮将
 沿用同一生产源码已完成的641项单元、29项板卡/教师/个人聊天浏览器专项、27项隔离真实引擎检查及本机3444严格TLS/live/ready证据；本轮只补交付记录，无新生产改动，不重复这些检查。首批完整套件的12失败/39跳过继续如实保留，不把main合入称为全仓验收通过。最终运行文档引用与Git空白检查后，普通推送main，并回读远端head和修复提交祖先关系；若main并行前进导致非fast-forward，保留对方提交并重新核对，不使用force。
 
 合入前原生 `git diff --check` 纠正了先前RTK空白检查未充分呈现的证据格式问题：5份公开文本副本含CRLF，另有完整浏览器日志的2行末尾空格。已先将5份原始字节完整保存到[原始归档](evidence/board-interaction-20261015/original-evidence-crlf.tar.gz)，逐字节解包比对后，再统一仓库可读副本为LF并去掉上述2处空格。原始字节hash及规范化hash见[格式核对](evidence/board-interaction-20261015/line-ending-normalization.json)，JSON值、原断言、通过/失败统计和实际输入结果不变；没有关闭检查或覆盖唯一原始证据。本轮最终采用原生Git空白检查结果，先前空白通过的描述由此纠正。
+
+实际交付已完成：普通非force推送将远端main从 `4ea3c73` 快进至 `7059152`，修复分支同时推送到同一head；随后fetch及 `git ls-remote --heads` 回读均一致。原修复 `4b8c0b3`、已部署应用 `cffa6e6` 均为远端main祖先。原生 `git diff --check 4ea3c73..origin/main` 通过，5份原始归档/公开副本SHA复核通过，A0 errors=[]。当前补充回执作为纯文档续交，一并普通推送；没有切换、重置或更新其他会话占用的本地main工作树，也没有再次改动3444运行服务。
