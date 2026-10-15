@@ -284,3 +284,5 @@ Robert 追加明确要求：全面检查独立 Agent 与工作区对话，重点
 最终静态`6bc0ec6`：正常build通过，181文件逐SHA更新，入口`index-BfdJuFQ2.js`、index.html SHA256 `8c30ad4b180b7ccf23eab42ce5b0c765b7bdaf2a0652ef6acfe938f65a8bcd5f`；后端仍b3b279b/PID1496且逐文件不变。实际重载两处原回复仍完整，展开宽1120px、消息导航只保留当前问题/回答2条；[工作区截图](evidence/chat-interaction-20261015/workspace-live.png)、[独立聊天截图](evidence/chat-interaction-20261015/agent-live.png)、[白名单验收结果](evidence/chat-interaction-20261015/acceptance.json)。工作区Message `1eee7512-1df3-401a-9b71-3de4a52b923a`，actual input1843/output986、calls1、8547ms，配置版本仍personal:0bc7e863c307d958c037948a:12。未改Key/档位，最终重载无新增调用。
 
 收尾已停止本轮5641临时预览进程。自动审批拒绝了清除弃用的D盘组合构建目录及本工作树临时teaching/node_modules软链的命令，仅返回`blocked by policy`；未重试删除或把清理标为完成，这两项原样保留、不提交。正式备份/验收证据有后续回退用途，继续保留。新fetch的远程主线仅追加板卡交付记录，正常合入保留，无运行源码变化。
+
+教师会话最终在独立Chrome上下文完成严格TLS只读核对，Bfd入口、1440/390布局和刷新均通过，配置摘要前后一致；验收记录`1021d44`已合入，详见[教师任务§7](I1-TEACHER_UI_WORKBENCH.md)。本批所有实现、并行来源和验收记录已推送main，并实读远程`0df4cf669aaf9b719989a03d33761af3fe7079f3`一致；本段是其后续文档回执，不改部署源码。最终A0 135篇/2033链接/errors=[]、diff空白通过。无PR创建或公共生产发布；当前3444为已批准的本机合成环境。全仓浏览器、真人学习和教学效果仍未执行。
