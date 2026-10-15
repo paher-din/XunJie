@@ -2844,6 +2844,10 @@ h3 {
 .chat-wrap {
   flex: 1;
   overflow-y: auto;
+  /* 滚动位置归贴底跟随自己管（useFollowBottom）：默认的 scroll anchoring 会在上方内容
+     增减时自作主张补一段 scrollTop，那一下在页面上读不出是浏览器搬的，会被「离底 80px 即
+     释放」判成学生上滑——改写消息后重新生成实测就是这样把跟随掐断、正文停在半路（离底 592）。 */
+  overflow-anchor: none;
   padding: 34px 38px 30px;
   /* 底缘渐隐（2026-10-11）：内容不再被输入框上沿一刀切断，最下 72px 内渐次溶进背景。
      用 mask（alpha 通道）而不是盖一层「背景色 → 透明」的渐变：遮罩只改不透明度，
@@ -2889,7 +2893,14 @@ h3 {
 .chat-message {
   margin: 26px 0;
   animation: enter 0.35s cubic-bezier(0.3, 1, 0.35, 1) backwards;
+  /* 一条消息里的自由文本（正文 / 气泡 / 卡片）都不许用长词撑破列宽：裸链接、长标识符是一个
+     整词，420px 窄屏实测 84px 的正文列里塞进 610px 的 URL、71px 的气泡里塞进 628px，画到列外
+     就被祖先裁掉，后半截看不见也滚不出来。break-word 只在「这个词单占一行也放不下」时才断，
+     中文与正常英文排版不受影响。代码块反过来（见 .turn-body .md-pre pre）。 */
+  overflow-wrap: break-word;
 }
+.chat-user-images { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+.chat-user-images img { display:block; max-width:min(320px,60vw); max-height:240px; object-fit:contain; border-radius:12px; border:1px solid var(--line); }
 .chat-message.user {
   text-align: right;
 }
@@ -3751,6 +3762,8 @@ h3 {
   padding: 16px 18px 14px;
   box-shadow: var(--panel-shadow);
   border-color: var(--line);
+  /* 与概念 / 小测 / 生成卡同一档入场：落定时撑出高度，靠淡入而不是凭空出现 */
+  animation: turn-linein 0.35s cubic-bezier(0.3, 1, 0.35, 1);
 }
 .msg-task-top {
   display: flex;
@@ -5762,22 +5775,29 @@ h3 {
 }
 
 /* ---------- Agent 回合状态（docs/agent-page-design.md：等待 / 思考 / 流式 / 停止 / 失败 / 落定） ---------- */
-/* 等待首 token：呼吸点，4 秒起出文案，12 秒起追加走动秒数 */
-.turn-wait {
-  display: flex;
+/* 回合头：等待与正在思考共用 .turn-status（IP 小图跨相位不重挂），落定后换成可展开的 .turn-thinkrow。
+   两者共用同一套内边距与 20px 前导槽，所以相位切换那一刻小图 / 状态球 / 文字都不位移。 */
+.turn-status,
+.turn-thinkrow {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 26px;
+  gap: 8px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
+.turn-status {
+  margin: 2px 0 14px;
+}
+/* 等待首 token：呼吸点，4 秒起出文案，12 秒起追加走动秒数 */
 /* 等待/思考态的 IP 小图（2026-10-10 定稿 a2）：只在进行中出现，落定即消失。
    竖版形象（1000×1200）在水平状态行里微降 1px 补偿视觉重心 */
 .turn-ip {
   width: 20px;
   flex: none;
   margin-top: 2px;
-}
-.turn-thinkrow .turn-ip {
-  width: 16px;
 }
 .turn-dots {
   display: inline-flex;
@@ -5816,16 +5836,6 @@ h3 {
 .turn-thinkwrap {
   margin: 2px 0 14px;
 }
-.turn-thinkrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 8px;
-  padding: 4px 10px 4px 8px;
-  color: var(--muted);
-  font-size: 13px;
-  border: 1px solid transparent;
-}
 .turn-thinkrow.clickable {
   cursor: pointer;
 }
@@ -5834,27 +5844,16 @@ h3 {
   border-color: var(--line);
 }
 .turn-thinkrow .orb {
+  /* 与小图同宽的前导槽（11px 球 + 9px 右距）：小图换成状态球时，后面的文字不跟着左右跳 */
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, var(--orb-hi), var(--orb-lo));
+  margin-right: 9px;
   flex: none;
+  background: radial-gradient(circle at 34% 30%, var(--orb-hi), var(--orb-lo));
 }
-.turn-thinkrow.running .orb {
-  animation: turn-pulse 1.5s cubic-bezier(0.3, 1, 0.35, 1) infinite;
-}
-@keyframes turn-pulse {
-  0%,
-  100% {
-    transform: scale(0.82);
-    opacity: 0.55;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-}
-.turn-thinkrow .tm {
+.turn-thinkrow .tm,
+.turn-status .tm {
   font-variant-numeric: tabular-nums;
   color: var(--faint);
 }
@@ -5865,6 +5864,18 @@ h3 {
 }
 .turn-thinkrow.open .arw {
   transform: rotate(90deg);
+}
+/* 状态球 / 步骤块进行中那一点脉冲（循环动画按⑦豁免） */
+@keyframes turn-pulse {
+  0%,
+  100% {
+    transform: scale(0.82);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
 }
 .turn-thinkbody {
   margin: 8px 0 0 8px;
@@ -5878,10 +5889,24 @@ h3 {
   animation: turn-linein 0.24s cubic-bezier(0.3, 1, 0.35, 1);
 }
 
-/* 正文流：markdown 块逐字出现；新块淡入，流式期间末块跟闪烁光标 */
+/* 正文流：块随文字逐字长出，不再逐块淡入升起（2026-10-12 改）。
+   marked 在流式中途会把同一处重判成另一种块（围栏起头 paragraph→code、分隔行打全 paragraph→table），
+   元素类型一变即重挂载，入场动画跟着重播——已经读过的正文凭空再淡一次，那一下就是「抽」。
+   入场只留消息级 .chat-message 那一档；消息内卡片仍各自淡入（它们是真的新出现的整块）。 */
+/* 只给读屏的回合状态区：留在可访问性树里，但不占位也不显示 */
+.turn-aria {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 .turn-body > * {
   margin: 0 0 14px;
-  animation: turn-linein 0.35s cubic-bezier(0.3, 1, 0.35, 1);
 }
 .turn-body > :last-child {
   margin-bottom: 0;
@@ -5903,7 +5928,7 @@ h3 {
   background: var(--faint);
   border-radius: 4px;
   vertical-align: -2px;
-  margin-left: 2px;
+  margin-left: 1px;
   animation: turn-blink 1.1s step-end infinite;
 }
 @keyframes turn-blink {
@@ -5912,7 +5937,43 @@ h3 {
     opacity: 1;
   }
   50% {
-    opacity: 0;
+    opacity: 0.2;
+  }
+}
+
+/* 流式尾段逐字淡入：每个字挂载时各自淡一次，屏上留下约六字的软尾。
+   只走透明度、不走位移——位移会改行盒高度，那正是上一轮拆掉的「抽」。
+   已上屏的字不重挂载，因此不重播；代码块与表格不套这层（见 Markdown.tsx）。 */
+.turn-ch {
+  animation: turn-chin 0.24s cubic-bezier(0.3, 1, 0.35, 1) both;
+}
+@keyframes turn-chin {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 思考期标签的微光：字面上一条高光来回扫（循环动画按⑦豁免，与呼吸点 / 光标同档） */
+.turn-thinklabel {
+  display: inline-block;
+}
+.turn-status .turn-thinklabel {
+  background: linear-gradient(90deg, var(--muted) 0%, var(--ink) 45%, var(--muted) 90%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: turn-shimmer 2.4s linear infinite;
+}
+@keyframes turn-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
   }
 }
 
@@ -6013,23 +6074,117 @@ h3 {
   padding: 4px 10px;
 }
 
-/* 落定操作条 */
+/* 落定操作条：不画分割线，图标键直接跟在内容之后；文案落在无障碍名与 title 上 */
 .turn-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  gap: 2px;
+  margin-top: 10px;
   animation: turn-linein 0.35s cubic-bezier(0.3, 1, 0.35, 1);
 }
 .turn-actions button {
-  font-size: 12px;
-  color: var(--muted);
-  border: 1px solid var(--line);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
-  padding: 4px 12px;
-  background: var(--raised);
+  color: var(--muted);
+  transition:
+    background 0.15s cubic-bezier(0.3, 1, 0.35, 1),
+    color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.turn-actions button:hover {
+  background: var(--hover-bg);
+  color: var(--ink);
+}
+.turn-actions button:active {
+  background: var(--chip-active);
+}
+/* 复制成功的反馈只剩图形，用勾选弹入补上「变了」的那一下 */
+.turn-actions .copied {
+  animation: check-pop 0.24s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.turn-actions button:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+.turn-actions button:disabled:hover {
+  background: none;
+  color: var(--faint);
+}
+/* 消息时间戳：与操作键同排（agent 侧跟在键后、学生侧排在键前）。
+   走 muted 而不是 faint——它是「说了话」的辅助文字（DESIGN.md 四级字口径）；等宽数字，分钟翻牌不抖。 */
+.turn-time {
+  align-self: center;
+  padding-inline: 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 学生消息的操作条（2026-10-11 定稿，docs/agent-page-design.md 已确认第 24 条）：
+   与 agent 侧共用上面那套图标键，只把它推到气泡那一侧。
+   气泡自带 12px 下内边距，所以这里比 agent 侧（紧跟正文或卡片）紧一档，不留两段空白。 */
+.chat-message.user .turn-actions {
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+/* 编辑态隐掉原文气泡、原位换成输入区；原文留在 DOM 里给消息导航导轨读摘要 */
+.chat-message.user.editing .bubble {
+  display: none;
+}
+.user-edit {
+  display: inline-block;
+  width: 85%;
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 10px 12px 8px;
+  box-shadow: var(--panel-shadow);
+  transform-origin: bottom right;
+  animation: user-edit-open 0.24s cubic-bezier(0.3, 1, 0.35, 1) backwards;
+}
+/* 焦点在里面的 textarea 上，描边与柔光落在整张编辑卡（同 .st-input:focus 的口径） */
+.user-edit:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--panel-shadow), var(--focus-glow);
+}
+.user-edit-field {
+  display: block;
+  width: 100%;
+  padding: 2px 2px 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  overflow: hidden;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.user-edit-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.user-edit-btns .primary:disabled {
+  opacity: 0.38;
+}
+@keyframes user-edit-open {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
 }
 
 /* 排队提示：生成中再发送 */
@@ -6052,7 +6207,7 @@ h3 {
   font-size: 11px;
 }
 
-/* 概念讲解卡：嵌在正文段落之间（落定才挂载）；「收纳」钉到右缘对照 */
+/* 概念讲解卡：嵌在正文段落之间，随正文一块一块画出来（壳 → 要点 → 波形 → 读图提示）；「收纳」钉到右缘对照 */
 .concept-card {
   margin: 4px 0 16px;
   max-width: 620px;
@@ -6096,6 +6251,18 @@ h3 {
   border-radius: 6px;
   padding: 4px 10px;
   background: var(--raised);
+  /* 画完才换上来（生成中是呼吸点）：挂上时淡一次，之后折叠来回不重播 */
+  animation: concept-appear 0.24s cubic-bezier(0.3, 1, 0.35, 1) both;
+}
+/* 生成中：卡片头部的呼吸点与「生成中」，占掉折叠键的位置（进行中不可折叠，同步骤块口径） */
+.concept-live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  transform: translateY(-1px);
 }
 .concept-body {
   padding: 6px 16px 12px;
@@ -6105,14 +6272,20 @@ h3 {
   margin: 8px 0 4px;
   padding: 0;
 }
+/* 要点一条一条长出来：0fr → 1fr 把行高摊成一次展开，而不是「上面插了 30px」的一次跳动 */
 .concept-points li {
+  display: grid;
+  animation: concept-unfold 0.24s cubic-bezier(0.3, 1, 0.35, 1) both;
+}
+.concept-points li > span {
   position: relative;
+  overflow: hidden;
   padding: 4px 0 4px 16px;
   font-size: 13px;
   line-height: 1.7;
   color: var(--ink-soft);
 }
-.concept-points li::before {
+.concept-points li > span::before {
   content: '';
   position: absolute;
   left: 2px;
@@ -6130,6 +6303,7 @@ h3 {
   background: var(--sunken);
   border: 1px solid var(--line);
   border-radius: 12px;
+  animation: concept-appear 0.24s cubic-bezier(0.3, 1, 0.35, 1) both;
 }
 .concept-wave-hl {
   fill: var(--tint-blue-mark);
@@ -6151,6 +6325,36 @@ h3 {
   stroke: var(--ink-soft);
   stroke-width: 1.6;
   stroke-linejoin: round;
+  /* pathLength 归一成 1：dasharray 1 铺满整条 = 实线，描图只把 dashoffset 从 1 推到 0 */
+  stroke-dasharray: 1;
+  animation: wave-draw 0.35s cubic-bezier(0.3, 1, 0.35, 1) both;
+}
+@keyframes wave-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes concept-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* 长高度而不是跳高度：0fr 那一格被 overflow 压到 0，展开的过程就是布局自己在一帧帧里变高 */
+@keyframes concept-unfold {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
 }
 .concept-wave-line.clk {
   stroke: var(--faint);
@@ -6160,10 +6364,15 @@ h3 {
   fill: var(--faint);
 }
 .concept-note {
+  display: grid;
   font-size: 12px;
   color: var(--faint);
   line-height: 1.5;
   margin-top: 6px;
+  animation: concept-unfold 0.24s cubic-bezier(0.3, 1, 0.35, 1) both;
+}
+.concept-note > span {
+  overflow: hidden;
 }
 .concept-foot {
   display: flex;
@@ -6171,6 +6380,8 @@ h3 {
   padding: 10px 16px;
   border-top: 1px solid var(--line);
   background: var(--sunken);
+  /* 卡片画完才出现（生成中不给收纳） */
+  animation: concept-appear 0.24s cubic-bezier(0.3, 1, 0.35, 1) both;
 }
 .concept-keep {
   font-size: 12px;
@@ -6404,13 +6615,28 @@ h3 {
 
 /* ── 正文 markdown 块（components/chat/Markdown.tsx）── */
 
+/* 代码块反过来：那里的横向滚动是有意为之，断行会毁掉缩进与对齐（口径见 .chat-message） */
+.turn-body .md-pre pre {
+  overflow-wrap: normal;
+}
+
+/* 中文正文的孤儿标点：一行末尾只剩一个标点 / 行首被标点顶着，pretty 会让它换行。
+   不支持的浏览器按 auto 渲染，不影响可读性。 */
+.turn-body p {
+  text-wrap: pretty;
+}
+
 .turn-body .md-h {
   font-weight: 600;
   line-height: 1.5;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
+/* 正文升到 15px 后，消息内标题跟着抬一档：h3 走 17px（阶梯上一档），h4 与正文同档、只靠字重分行级。
+   原先两档都写死 15px，标题在正文里等于没有层级（14 → 15 那次抬档留下的旧值）。 */
 .turn-body h3.md-h {
-  font-size: 15px;
+  font-size: 17px;
+  margin-top: 4px;
 }
 .turn-body h4.md-h {
   font-size: 15px;
@@ -6420,10 +6646,13 @@ h3 {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
   background: var(--code-inline-bg);
+  border: 1px solid var(--code-border);
   border-radius: 6px;
-  padding: 2px 6px;
+  padding: 1px 5px;
 }
 
+/* 代码块：顶栏一条放语言与复制键，正文一条；顶栏常驻（无语言时写 text），
+   复制键与消息操作条同一套图标键语言，只是压到 22px（块内比块外小一档）。 */
 .turn-body .md-pre {
   position: relative;
   border: 1px solid var(--code-border);
@@ -6431,22 +6660,52 @@ h3 {
   background: var(--code-bg);
   overflow: hidden;
 }
+.turn-body .md-pre-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 4px 14px;
+  border-bottom: 1px solid var(--code-border);
+  background: var(--sunken);
+}
+.turn-body .md-pre-lang {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  user-select: none;
+}
+.turn-body .md-pre-bar button {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--muted);
+  transition:
+    background 0.15s cubic-bezier(0.3, 1, 0.35, 1),
+    color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.turn-body .md-pre-bar button:hover:not(:disabled) {
+  background: var(--hover-bg);
+  color: var(--ink);
+}
+/* 围栏没闭合时复制键先灰着：半截代码不该被复制走 */
+.turn-body .md-pre-bar button:disabled {
+  opacity: 0.45;
+}
+.turn-body .md-pre-bar button .copied {
+  animation: check-pop 0.24s cubic-bezier(0.3, 1, 0.35, 1);
+}
 .turn-body .md-pre pre {
   margin: 0;
   padding: 12px 14px;
   overflow-x: auto;
+  tab-size: 2;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
   line-height: 1.7;
-}
-.turn-body .md-pre-lang {
-  position: absolute;
-  top: 7px;
-  right: 10px;
-  font-size: 11px;
-  color: var(--faint);
-  letter-spacing: 0.04em;
-  user-select: none;
 }
 .turn-body .md-pre .turn-caret {
   background: var(--faint);
@@ -6457,6 +6716,10 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+.turn-body .md-list li::marker {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .turn-body .md-list .md-list {
   margin: 4px 0 0;
@@ -6474,19 +6737,82 @@ h3 {
   margin-bottom: 0;
 }
 
+/* 表格套一层滚动盒：窄屏下横向溢出只发生在表格里，不撑破正文列；
+   边框只留外框 + 分隔线，去掉四格双线（border-collapse 的旧观感）。 */
+/* 表格卡：一条顶栏（复制为 Markdown）+ 滚动盒，外面一圈与代码块同一套卡片壳。
+   顶栏必须在壳内、带下边线——挂在盒子外面就是一枚浮在表格上方的图标，
+   与代码块那种「一条顶栏压住正文」的家具语言不是一套（实屏复看发现的）。 */
+.turn-body .md-tablecard {
+  border: 1px solid var(--code-border);
+  border-radius: 12px;
+  background: var(--paper);
+  overflow: hidden;
+}
+.turn-body .md-tablebox {
+  overflow: auto hidden;
+}
+.turn-body .md-table-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--code-border);
+  background: var(--sunken);
+}
+.turn-body .md-table-bar button {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--muted);
+  transition:
+    background 0.15s cubic-bezier(0.3, 1, 0.35, 1),
+    color 0.15s cubic-bezier(0.3, 1, 0.35, 1);
+}
+.turn-body .md-table-bar button:hover:not(:disabled) {
+  background: var(--hover-bg);
+  color: var(--ink);
+}
+.turn-body .md-table-bar button:disabled {
+  opacity: 0.45;
+}
+.turn-body .md-table-bar button .copied {
+  animation: check-pop 0.24s cubic-bezier(0.3, 1, 0.35, 1);
+}
+/* 还在长高的块：限高 + 内部贴底，生长留在盒子里，页面上正在读的那行不被一行一行顶走 */
+.turn-body .md-tablebox.growing {
+  max-height: 300px;
+  overflow: auto;
+}
+.turn-body .md-pre pre.growing {
+  max-height: 300px;
+  overflow: auto;
+}
 .turn-body .md-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
   font-size: 13px;
 }
 .turn-body .md-table th,
 .turn-body .md-table td {
-  border: 1px solid var(--code-border);
-  padding: 6px 12px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--line);
   text-align: left;
+}
+.turn-body .md-table tr:last-child td {
+  border-bottom: none;
 }
 .turn-body .md-table th {
   background: var(--sunken);
   font-weight: 600;
+  color: var(--ink);
+}
+.turn-body .md-table td {
+  color: var(--ink-soft);
 }
 
 .turn-body .md-link {

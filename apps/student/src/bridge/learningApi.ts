@@ -1,5 +1,6 @@
 import type {
   ChatMessage,
+  ChatImage,
   Conversation,
   ConversationSummary,
   GenCard,
@@ -72,6 +73,7 @@ export interface LearningApi {
   sendMessageStream(input: {
     conversationId: string | null
     text: string
+    images?:ChatImage[]
     onUpdate: (message: ChatMessage) => void
   }): Promise<{ conversationId: string; final: ChatMessage }>
   /** 停止当前回合：保留已生成部分，快照 phase 变为 stopped。无进行中回合时不做事。 */
@@ -89,6 +91,19 @@ export interface LearningApi {
     conversationId: string
     onUpdate: (message: ChatMessage) => void
   }): Promise<{ conversationId: string; final: ChatMessage }>
+  /**
+   * 改写一条学生消息（消息级操作「编辑我的消息」，已确认 2026-10-11 第 24 条）：
+   * 原位替换文本，并截掉该条之后的全部内容——旧问题的答案留着会自相矛盾（同第 9 条重试语义），
+   * 界面随后用 retryLast 按新文本补一条回答。改的是首问时同步会话标题（首句截断 24 字，第 15 条）。
+   * 越界索引 / 不是学生消息时抛错，交由界面提示，不静默改坏历史。
+   */
+  editUserMessage(input: {
+    conversationId: string
+    messageIndex: number
+    text: string
+    /** 真实通道核对当前可见原消息，避免另一个标签编辑了不同分支。 */
+    expectedMessageHash?: string
+  }): Promise<void>
   /**
    * 提交小测卡作答：判定并写回消息的 quiz.result（历史保留已答状态，已确认 2026-10-10）。
    * 答错可再答一次，attempts 累计。真实实现里这里同时把结果计入学习画像；mock 只写回消息。

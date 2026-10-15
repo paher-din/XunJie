@@ -104,7 +104,7 @@ function urlOf(path: string, opts: RequestOptions): string {
   return opts.absolutePath ?? `${apiBase(opts.mode)}${path}`
 }
 
-async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, opts: RequestOptions, wireJson?: string): Promise<T> {
+async function request<T>(method: 'GET' | 'POST' | 'PATCH', path: string, body: unknown, opts: RequestOptions, wireJson?: string): Promise<T> {
   const url = urlOf(path, opts)
   const epoch = sessionEpoch
   const headers: Record<string, string> = { Accept: 'application/json' }
@@ -112,7 +112,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
     const scenario = opts.scenarioId ?? new URLSearchParams(globalThis.location?.search ?? '').get('scenario')
     if (scenario) headers['x-i0prep-scenario'] = scenario
   }
-  if (method === 'POST') {
+  if (method !== 'GET') {
     headers['Content-Type'] = 'application/json'
     // POST sessions 本身豁免 CSRF（服务端据此下发 token）；其余写请求必须带。
     if (path !== '/sessions' && csrfToken) headers['x-csrf-token'] = csrfToken
@@ -129,7 +129,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, o
       method,
       headers,
       credentials: 'same-origin',
-      body: method === 'POST' ? (wireJson ?? JSON.stringify(body ?? {})) : undefined,
+      body: method !== 'GET' ? (wireJson ?? JSON.stringify(body ?? {})) : undefined,
       signal: controller?.signal,
     })
     text = await response.text()
@@ -205,4 +205,9 @@ export function apiPost<T>(path: string, body: unknown, opts: RequestOptions): P
 /** 只发送已经持久化的原 JSON 字节；Session/CSRF 仍在发送时取得。 */
 export function apiPostFrozen<T>(path: string, wireJson: string, opts: RequestOptions): Promise<T> {
   return request<T>('POST', path, undefined, opts, wireJson)
+}
+
+/** 教师蓝图局部变更沿用会话代次、CSRF 和原字节幂等保护。 */
+export function apiPatchFrozen<T>(path: string, wireJson: string, opts: RequestOptions): Promise<T> {
+  return request<T>('PATCH', path, undefined, opts, wireJson)
 }

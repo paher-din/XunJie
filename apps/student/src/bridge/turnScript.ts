@@ -1,4 +1,6 @@
-import type { ChatMessage, FailureReason, TurnPhase } from './types'
+import { lexer } from 'marked'
+import { insertIndex } from '../lib/messageBlocks'
+import type { ChatMessage, ConceptCard, FailureReason, TurnPhase, WaveSpec } from './types'
 
 /**
  * 一条回合的确定性剧本（docs/agent-page-design.md 推进顺序第 2 步）。
@@ -18,13 +20,39 @@ export interface ScriptStep {
   appendStep?: string
   thinking?: { summary: string; seconds: number }
   failure?: { reason: FailureReason; code: string }
+  /**
+   * 概念讲解卡的逐步流出：正文讲到它依附的那一段，就在这一拍立起壳与标题，
+   * 随后要点逐字写出、波形一次到位（各行自己描线）、读图提示收尾——
+   * 卡片跟着正文一起长出来，不是最后补上的一张。
+   */
+  conceptStart?: { title: string; afterPara?: number }
+  /** 卡片里的一段字：start 起新的一条（首拍就带几个字，屏上不会闪过空行），否则续写到最后一条上。 */
+  conceptText?: { part: 'point' | 'note'; start?: boolean; chunk: string }
+  /** 波形图示：整块到位。 */
+  conceptWave?: WaveSpec
 }
 
 const WAIT_MS = 1200
 const THINK_MS = 2600
-const CHAR_MS = 42
-const PAUSE_MS = 320
+/** token 到达节奏：一次 1–4 字、间隔带确定性抖动（下标派生，同一问题永远同一份剧本）。
+ *  到达不等于上屏——界面侧 useSmoothStreamText 把这股抖动匀成匀速流。 */
+const TOKEN_MS = 74
+const TOKEN_JITTER_MS = 30
+const TOKEN_MAX = 4
+/** 句末余拍：一拍什么都不长的「零位移」时间。原先 320ms 通吃句末与换行，实测一条 20 秒的回复里
+ *  有 6.7 秒正文一动不动（占 34%），读起来是「一顿一顿」而不是「从头流到尾」——压到句末 160、换行 80，
+ *  节奏还在，但停的那一下短到只够上一行落定。 */
+const SENTENCE_MS = 160
+const LINE_MS = 80
 const STEP_MS = 650
+/** 卡片自身的流出节奏：壳 → 要点逐字写出 → 波形一次到位 → 读图提示收尾。
+ *  正文会在这里停三秒左右，但那不是空拍——卡片一直在长，屏上始终有东西出来。 */
+const CARD_SHELL_MS = 320
+/** 卡片里的字比正文快一档（一行二十几字，约半秒写完）：高度只在起行那一拍变一次，其余各拍横向生长。 */
+const CARD_TEXT_MS = 40
+const CARD_LINE_MS = 140
+const CARD_TEXT_MAX = 4
+const CARD_WAVE_MS = 260
 const FAIL_AT_MS = 2000
 
 /** 失败演示触发词：问题里出现即按对应分型失败（在等待期失败）。 */
@@ -49,14 +77,67 @@ const THINK_SUMMARIES: [RegExp, string][] = [
   [/任务|哪里|上次/, '我先找到你最近停留的任务阶段，再对照任务目标给出下一步。'],
 ]
 
-/** 逐字拆出正文步骤（已确认：正文逐字出现）；句末与换行后多停一拍。 */
+/** 逐 token 拆出正文步骤（已确认：正文逐字出现）；token 末尾是句读或换行时多停一拍。 */
 function streamSteps(text: string): ScriptStep[] {
   const steps: ScriptStep[] = []
-  for (const ch of text) {
-    const pause = ch === '。' || ch === '？' || ch === '！' || ch === '\n' ? PAUSE_MS : 0
-    steps.push({ delayMs: CHAR_MS + pause, appendText: ch })
+  const chars = [...text]
+  for (let i = 0, n = 0; i < chars.length; n++) {
+    const size = 1 + ((n * 7919) % TOKEN_MAX)
+    const chunk = chars.slice(i, i + size).join('')
+    i += chunk.length
+    const tail = chunk[chunk.length - 1]
+    const pause = tail === '\n' ? LINE_MS : '。？！'.includes(tail) ? SENTENCE_MS : 0
+    steps.push({
+      delayMs: TOKEN_MS + ((n * 104729) % TOKEN_JITTER_MS) + pause,
+      appendText: chunk,
+    })
   }
   return steps
+}
+
+/** 卡片的一步一图：壳与标题先起，要点一条一条写出来，波形一次到位，读图提示收尾。 */
+function conceptSteps(card: ConceptCard): ScriptStep[] {
+  const out: ScriptStep[] = [
+    { delayMs: CARD_SHELL_MS, conceptStart: { title: card.title, afterPara: card.afterPara } },
+  ]
+  for (const p of card.points) out.push(...textSteps('point', p, CARD_LINE_MS))
+  if (card.wave) out.push({ delayMs: CARD_WAVE_MS, conceptWave: card.wave })
+  if (card.note) out.push(...textSteps('note', card.note, CARD_LINE_MS))
+  return out
+}
+
+/**
+ * 卡片里的一段字逐拍写出：每拍 2–4 字（下标派生，同一问题永远同一份剧本）。
+ * 首拍就带着字上台，屏上不会闪过一枚空子弹；起行前留一口余拍（gap），读起来是一条写完再开下一条。
+ */
+function textSteps(part: 'point' | 'note', text: string, gap: number): ScriptStep[] {
+  const out: ScriptStep[] = []
+  const chars = [...text]
+  for (let i = 0, n = 0; i < chars.length; n++) {
+    const size = 1 + ((n * 7919) % CARD_TEXT_MAX)
+    const chunk = chars.slice(i, i + size).join('')
+    i += chunk.length
+    out.push({ delayMs: n === 0 ? gap : CARD_TEXT_MS, conceptText: { part, start: n === 0, chunk } })
+  }
+  return out
+}
+
+/**
+ * 正文讲到卡片依附的那一段，卡片就从那儿开始画——把卡片的子序列劈进正文步骤流，
+ * 而不是等整条正文流完再补一张。落点用渲染器同一份规则算（lib/messageBlocks.insertIndex），
+ * 两边共用才不会各说各话；没有 afterPara 的卡片按「附在正文末尾」的老规矩排在最后。
+ */
+function withConcept(text: string, stream: ScriptStep[], card: ConceptCard): ScriptStep[] {
+  const blocks = lexer(text)
+  const at = insertIndex(blocks, card.afterPara)
+  let off = 0
+  for (let i = 0; i <= at; i++) off += blocks[i].raw.length
+  let seen = 0
+  for (let i = 0; i < stream.length; i++) {
+    seen += stream[i].appendText?.length ?? 0
+    if (seen >= off) return [...stream.slice(0, i + 1), ...conceptSteps(card), ...stream.slice(i + 1)]
+  }
+  return [...stream, ...conceptSteps(card)]
 }
 
 export function buildTurnScript(question: string, reply: ChatMessage): TurnScript {
@@ -85,7 +166,9 @@ export function buildTurnScript(question: string, reply: ChatMessage): TurnScrip
     // 低档思考强度：没有思考区，从等待直接进正文
     steps.push({ delayMs: WAIT_MS, phase: 'streaming' })
   }
-  steps.push(...streamSteps(reply.text))
+  const stream = streamSteps(reply.text)
+  // 概念讲解卡插在正文中间：讲到依附的那一段就开始画，卡片跟着正文一起长出来
+  steps.push(...(reply.concept ? withConcept(reply.text, stream, reply.concept) : stream))
   // 教学化步骤块：正文之后逐步流出，每步落定一行（第 20 条）
   if (reply.steps?.length) {
     for (const s of reply.steps) steps.push({ delayMs: STEP_MS, appendStep: s })

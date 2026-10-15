@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import type {BoardProfile,HdlCommand,HdlBuild,HdlSession,HdlOperationResult} from '../contracts/runner/hdl.ts';
 import {sha256} from '../runner/snapshot.ts';
-import {createDigitalLogicApplicationDatabase} from '../server/db/transaction.ts';
+import {createDigitalLogicApplicationDatabase,createDigitalLogicReviewApplicationDatabase} from '../server/db/transaction.ts';
 import {createPasswordRecord} from '../server/access/password.ts';
 import {createDigitalLogicApplication,type DigitalLogicApplicationOptions} from '../server/app/digital-logic.ts';
 import {storePolicy,storeRule} from '../server/design/activities.ts';
@@ -74,7 +74,7 @@ function controlledRunner() {
       results.set(id,record); facts.set(id,{ ...facts.get(id)!,state: 'succeeded',reserved: false,resultRef: 'synthetic-result-'+id,resultHash: sha256(JSON.stringify(record)) });
     } };
 }
-export async function fixture(onHdlCommand?:(command:HdlCommand)=>Promise<void>,tutoring:Partial<Pick<DigitalLogicApplicationOptions,'studentHelp'|'tutoringProvider'>>={}){const db=createDigitalLogicApplicationDatabase(),node=syntheticNode(),password=randomBytes(32).toString('base64url'),record=await createPasswordRecord(password),signingSecret=randomBytes(48).toString('hex');
+export async function fixture(onHdlCommand?:(command:HdlCommand)=>Promise<void>,tutoring:Partial<Pick<DigitalLogicApplicationOptions,'studentHelp'|'tutoringProvider'|'review'|'personalModels'>>={}){const db=tutoring.review?createDigitalLogicReviewApplicationDatabase():createDigitalLogicApplicationDatabase(),node=syntheticNode(),password=randomBytes(32).toString('base64url'),record=await createPasswordRecord(password),signingSecret=randomBytes(48).toString('hex');
  db.withTransaction(tx=>{for(const user of ['teacher','student','other','foreign'])tx.run('INSERT INTO users(id,login_name,password_hash,salt,algorithm,n,r,p,key_length) VALUES (?,?,?,?,?,?,?,?,?)',user,user,record.hash,record.salt,'scrypt',131072,8,1,64);
  for(const course of ['course','logic-course']){tx.run('INSERT INTO courses(id) VALUES (?)',course);for(const [user,role] of [['teacher','teacher'],['student','student'],['other','student']])tx.run('INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,?,?,1)',course,user!,role!);
  const actor={userId:'teacher',courseId:course,role:'teacher' as const};storePolicy(tx,actor,{versionId:course+'-help',helpAllowed:true,wholeSolutionAllowed:false,limitedCheckHelpAllowed:false,description:'Synthetic policy'},Date.now());storeRule(tx,actor,{versionId:'textscope-core-v1',validatorVersion:'textscope-validator-v2',limitedHelp:true,description:'Synthetic checks'},Date.now());}

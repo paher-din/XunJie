@@ -174,21 +174,28 @@ export function createDigitalLogicDatabase(): SyntheticDatabase {
   return createFreshDatabase('digital-logic');
 }
 const digitalLogicApplicationTables = ['activity_controls', 'activity_versions', 'application_control', 'artifact_snapshots', 'assignments', 'attempts', 'audit_events', 'blueprint_drafts', 'check_rule_versions', 'command_receipts', 'competency_versions', 'course_memberships', 'courses', 'digital_logic_config_versions', 'hdl_builds', 'hdl_operations', 'hdl_sessions', 'help_policy_versions', 'jobs', 'login_attempt_windows', 'resource_versions', 'sessions', 'teacher_design_proposals', 'teacher_design_requests', 'teaching_action_receipts', 'teaching_actions', 'teaching_deliveries', 'teaching_messages', 'users', 'workspace_command_bindings', 'workspace_files', 'workspace_process_records', 'workspace_reopen_grants', 'workspace_runs', 'workspace_submissions'];
-export function assertDigitalLogicApplicationDatabase(db:SyntheticDatabase) {
+export const reviewTableNames = ['analysis_results','learner_context_revisions','learner_disputes','learner_state_revisions','teacher_decisions','teacher_feedback'];
+export function assertDigitalLogicApplicationDatabase(db:SyntheticDatabase,review=false) {
  const names=db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").map(row=>String(row.name)));
- if(JSON.stringify(names)!==JSON.stringify(digitalLogicApplicationTables))throw new Error('Digital logic application requires the approved 35-table scope.');
+ const expected=review?[...digitalLogicApplicationTables,...reviewTableNames].sort():digitalLogicApplicationTables;
+ if(JSON.stringify(names)!==JSON.stringify(expected))throw new Error('Digital logic application requires the explicit '+expected.length+'-table scope.');
 }
 export function createDigitalLogicApplicationDatabase(): SyntheticDatabase {
  assertApprovedScope(digitalLogicApplicationTables,[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,teacherDesignSchema,hdlSchema,digitalLogicSchema],'Digital logic application');
  return createFreshDatabase('digital-logic-application');
+}
+// Opt-in only. Callers must obtain authorization for this exact 41-table composition before initialization.
+export function createDigitalLogicReviewApplicationDatabase(): SyntheticDatabase {
+ assertApprovedScope([...digitalLogicApplicationTables,...reviewTableNames].sort(),[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,teacherDesignSchema,hdlSchema,digitalLogicSchema,reviewSchema],'Digital logic review application');
+ return createFreshDatabase('digital-logic-review-application');
 }
 function assertApprovedScope(approvedTables:string[],schemas:string[],name:string) {
   const declaredTables = schemas.flatMap(sql=>[...sql.matchAll(/CREATE TABLE\s+([a-z_][a-z0-9_]*)/gi)].map(match=>match[1]!)).sort();
   if(JSON.stringify(declaredTables)!==JSON.stringify(approvedTables))
     throw new Error(name+' initialization requires the approved '+approvedTables.length+'-table scope; authorize a changed composition before creating a database.');
 }
-function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'review' | 'digital-logic' | 'digital-logic-application'): SyntheticDatabase {
-  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching','review','digital-logic','digital-logic-application'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
+function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'review' | 'digital-logic' | 'digital-logic-application' | 'digital-logic-review-application'): SyntheticDatabase {
+  const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching','review','digital-logic','digital-logic-application','digital-logic-review-application'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
@@ -196,8 +203,8 @@ function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspa
   try {
     db.exec('BEGIN IMMEDIATE');
     try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind !== 'design' && kind !== 'access') db.exec(completionSchema);
-      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application') db.exec(workspaceSchema);
-      if (kind === 'teacher-design' || kind === 'digital-logic-application') db.exec(teacherDesignSchema); if (kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application') db.exec(teachingSchema); if (kind === 'review') db.exec(reviewSchema); if (kind === 'digital-logic' || kind === 'digital-logic-application') db.exec(hdlSchema); if (kind === 'digital-logic-application') db.exec(digitalLogicSchema); db.exec('COMMIT'); }
+      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(workspaceSchema);
+      if (kind === 'teacher-design' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(teacherDesignSchema); if (kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(teachingSchema); if (kind === 'review' || kind === 'digital-logic-review-application') db.exec(reviewSchema); if (kind === 'digital-logic' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(hdlSchema); if (kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(digitalLogicSchema); db.exec('COMMIT'); }
     catch (error) { db.exec('ROLLBACK'); throw error; }
   } finally { db.close(); }
   return openSyntheticDatabase(file);

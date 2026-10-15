@@ -90,6 +90,18 @@ function validHelpBody(overrides: Partial<StudentHelpBody> = {}): StudentHelpBod
   };
 }
 
+test('personal help can keep thinking past old total limits but never silently retries invalid output',async()=>{
+  const acceptedAtMs=Date.now()-360000;
+  const request=helpRequest({context:context('student_help',{acceptedAtMs,deadlineAtMs:acceptedAtMs+600000})});
+  const provider=new SyntheticProvider([{body:validHelpBody(),usage}]);
+  const result=await generateStudentHelp(request,{provider,inactivityTimeoutMs:600000,maximumCalls:1});
+  assert.equal(result.outcome,'success');assert.equal(result.calls,1);
+  const invalid=new SyntheticProvider([{body:{}},{body:validHelpBody()}]);
+  const rejected=await generateStudentHelp(request,{provider:invalid,inactivityTimeoutMs:600000,maximumCalls:1});
+  assert.equal(rejected.outcome,'rejected');assert.equal(invalid.calls.length,1);
+  assert.equal((await generateStudentHelp(request,{provider:new SyntheticProvider([])})).outcome,'timed_out');
+});
+
 test("teacher candidates accept one to three items and aggregate actual usage", async () => {
   const provider = new SyntheticProvider([{ body: validCandidateBody(), usage }]);
   const result = await generateTeacherProposal(teacherRequest(), { provider });

@@ -339,7 +339,7 @@ export function acceptStudentQuestionInTransaction(tx: Transaction, input: {scop
 
 /** Saves the accepted question and its bounded job once the caller's command receipt exists in the same transaction. */
 export function saveTeachingJobInTransaction(tx: Transaction, input: {message: TeachingMessage; jobId: string; receiptId: string;
-  now: string; generation: string; deadline: string; kind?: string}) {
+  now: string; generation: string; deadline: string; kind?: string;inactivityTimeoutMs?:number}) {
   const attempt = requireScope(tx, input.message.scope);
   if (!input.jobId || !input.receiptId) throw new RunnerError('INVALID_REQUEST', 'Trusted message/job/receipt identity required');
   const now = checkedNow(input.now);
@@ -348,7 +348,8 @@ export function saveTeachingJobInTransaction(tx: Transaction, input: {message: T
   const message: TeachingMessage = { ...structuredClone(input.message), jobId: input.jobId };
   const job: Job = { jobId: input.jobId, kind: input.kind ?? 'help', purpose: 'student_help', scope: structuredClone(message.scope),
     requestReceiptId: input.receiptId, status: 'queued', stopRequested: false, expectedRevision: attempt.attemptRevision,
-    decisionEpoch: attempt.decisionEpoch, recoveryGeneration: input.generation, acceptedAt: now, deadline: input.deadline, attemptCount: 0 };
+    decisionEpoch: attempt.decisionEpoch, recoveryGeneration: input.generation, acceptedAt: now, deadline: input.deadline, attemptCount: 0,
+    ...(input.inactivityTimeoutMs?{inactivityTimeoutMs:input.inactivityTimeoutMs}:{}) };
   enqueueTeachingJob(tx, job);
   saveMessage(tx, message);
   return { messageId: message.messageId, jobId: job.jobId, contentHash: message.contentHash };

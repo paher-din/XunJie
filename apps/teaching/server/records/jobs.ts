@@ -15,7 +15,10 @@ export function enqueueJob(existing:Job[],job:Job) {
     ||!Number.isSafeInteger(job.expectedRevision)||job.expectedRevision<0||!Number.isSafeInteger(job.decisionEpoch)||job.decisionEpoch<0
     ||time(job.deadline)<=time(job.acceptedAt)||job.leaseToken||job.resultRef)throw new RunnerError('INVALID_REQUEST','Invalid new job');
   if(existing.some(item=>item.jobId===job.jobId))throw new RunnerError('IDEMPOTENCY_CONFLICT','Job ID already exists');
-  if(['teacher_design','student_help'].includes(job.purpose)&&time(job.deadline)-time(job.acceptedAt)>45000)throw new RunnerError('INVALID_CONFIGURATION','Teaching round deadline exceeds 45 seconds');
+  if(job.inactivityTimeoutMs!==undefined){
+    if(job.purpose!=='student_help'||!Number.isSafeInteger(job.inactivityTimeoutMs)||job.inactivityTimeoutMs<1||job.inactivityTimeoutMs>2147483647
+      ||time(job.deadline)-time(job.acceptedAt)>job.inactivityTimeoutMs)throw new RunnerError('INVALID_CONFIGURATION','Invalid personal model inactivity window');
+  }else if(['teacher_design','student_help'].includes(job.purpose)&&time(job.deadline)-time(job.acceptedAt)>45000)throw new RunnerError('INVALID_CONFIGURATION','Teaching round deadline exceeds 45 seconds');
   if(job.purpose==='student_run'&&(!job.runId||!job.scope.attemptId||!job.scope.studentId))throw new RunnerError('INVALID_REFERENCE','Run scope required');
   if(job.purpose==='teacher_sample'&&(job.scope.attemptId||job.scope.studentId))throw new RunnerError('INVALID_REFERENCE','Teacher sample cannot use a student scope');
   if(job.scope.attemptId&&['student_run','student_help'].includes(job.purpose)&&existing.some(item=>item.scope.attemptId===job.scope.attemptId
@@ -36,9 +39,17 @@ export function renewJob(job:Job,token:string,until:string,generation:string,now
 }
 export function recordModelCall(job:Job,token:string,generation:string,now:string):Job {
   assertLease(job,token,generation,now);
-  if(job.status!=='running'||job.stopRequested||time(job.deadline)<=time(now)||job.attemptCount>=3
+  if(job.status!=='running'||job.stopRequested||time(job.deadline)<=time(now)||job.attemptCount>=(job.inactivityTimeoutMs?1:3)
     ||['student_run','teacher_sample'].includes(job.purpose))throw new RunnerError('STATE_CONFLICT','Model call is not permitted');
   return {...job,attemptCount:job.attemptCount+1};
+}
+/** Only actual provider activity may renew this personal call; it never authorizes another call. */
+export function renewModelActivity(job:Job,token:string,generation:string,now:string):Job {
+  assertLease(job,token,generation,now);
+  if(job.purpose!=='student_help'||!job.inactivityTimeoutMs||job.status!=='running'||job.stopRequested||time(job.deadline)<=time(now))
+    throw new RunnerError('STATE_CONFLICT','Cannot renew inactive personal model call');
+  const until=new Date(time(now)+job.inactivityTimeoutMs).toISOString();
+  return {...job,deadline:until,leaseUntil:until};
 }
 export function finishJob(job:Job,completion:{leaseToken:string;generation:string;now:string;resultRef:string;resultHash:string},
   current:{expectedRevision:number;decisionEpoch:number}):Job {

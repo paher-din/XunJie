@@ -4,8 +4,9 @@ import type { ModelProvider } from '../tutoring/providers.ts';
 import { originalTeachingConsumer } from './original-teaching-host.ts';
 import { ApiError } from './errors.ts';
 import { attachOriginalJobHost,guardHostTransport } from './original-job-host.ts';
+import {personalModels,type PersonalModelsOptions} from './personal-models.ts';
 
-export type I0AppOptions = Omit<WorkspaceAppOptions,'checkReadiness'|'checkReady'> & {staticDirectory?:string;consumerIntervalMs?:number;tutoring?:{studentHelp:TutoringAppOptions['studentHelp'];provider:ModelProvider}};
+export type I0AppOptions = Omit<WorkspaceAppOptions,'checkReadiness'|'checkReady'> & {staticDirectory?:string;consumerIntervalMs?:number;personalModels?:PersonalModelsOptions;tutoring?:{studentHelp:TutoringAppOptions['studentHelp'];provider:ModelProvider}};
 export async function createI0App(options:I0AppOptions) {
   const approvedTables=['activity_controls','activity_versions','artifact_snapshots','assignments','attempts','audit_events',
     'blueprint_drafts','check_rule_versions','command_receipts','competency_versions','course_memberships','courses',
@@ -23,7 +24,12 @@ export async function createI0App(options:I0AppOptions) {
     await host.checkReady();
     return true;
   }};
-  const service=tutoring?await createTutoringApp({...guarded,studentHelp:tutoring.studentHelp}):await createWorkspaceApp(guarded);
+  const personal:ReturnType<typeof personalModels>|undefined=options.personalModels?personalModels(options.personalModels,
+    (request):string=>options.db.withTransaction(tx=>service.access.authenticatedUserInTransaction(request,tx)),
+    tutoring?.studentHelp??{versions:{modelConfig:'personal-unconfigured',prompt:'student-help-v1',schema:'student-help-v1',policy:'activity-policy'},budgetAvailable:()=>false}):undefined;
+  const service=await (tutoring?createTutoringApp({...guarded,studentHelp:personal?.studentHelp??tutoring.studentHelp}):createWorkspaceApp(guarded))
+    .catch(async error=>{await personal?.close();throw error;});
+  if(personal){personal.register(service.app);service.app.addHook('onClose',async()=>personal.close());}
   const teaching=tutoring?originalTeachingConsumer(service as Awaited<ReturnType<typeof createTutoringApp>>,options,tutoring.provider,admission):undefined;
 
   try {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Icon } from '../../icons'
-import { emptyProviderModel, type ProviderModel } from '../../lib/settings'
+import { emptyProviderModel, modelConfigurationError, type ProviderModel } from '../../lib/settings'
 import { ModelFields } from './controls'
 
 interface ModelDialogProps {
@@ -12,7 +12,7 @@ interface ModelDialogProps {
   model: ProviderModel | null
   /** 同供应商下其他模型的 ID：重名要在弹窗内报错，不能让弹窗关掉后丢掉用户填的细项。 */
   siblings: string[]
-  onSave: (m: ProviderModel) => void
+  onSave: (m: ProviderModel) => void | Promise<void>
 }
 
 /**
@@ -22,8 +22,10 @@ interface ModelDialogProps {
 export function ModelDialog({ open, onClose, providerName, model, siblings, onSave }: ModelDialogProps) {
   const [draft, setDraft] = useState<ProviderModel>(model ?? emptyProviderModel())
   const [idError, setIdError] = useState('')
+  const [saving, setSaving] = useState(false)
 
-  const submit = () => {
+  const submit = async () => {
+    if (saving) return
     const id = draft.id.trim()
     if (!id) {
       setIdError('请填写模型 ID')
@@ -33,8 +35,12 @@ export function ModelDialog({ open, onClose, providerName, model, siblings, onSa
       setIdError('该供应商下已有同名模型')
       return
     }
-    onSave({ ...draft, id, contextWindow: draft.contextWindow.trim(), maxOutput: draft.maxOutput.trim() })
+    const invalid=modelConfigurationError(draft)
+    if(invalid){setIdError(invalid);return}
+    setSaving(true)
+    try { await onSave({ ...draft, id, contextWindow: draft.contextWindow.trim(), maxOutput: draft.maxOutput.trim() })
     onClose()
+    } catch { setIdError('保存未确认，请重试。') } finally { setSaving(false) }
   }
 
   return (
@@ -60,7 +66,7 @@ export function ModelDialog({ open, onClose, providerName, model, siblings, onSa
             <span />
             <div className="st-dialog-foot-right">
               <Dialog.Close asChild><button type="button" className="outline">取消</button></Dialog.Close>
-              <button type="button" className="primary" onClick={submit}>{model ? '保存' : '添加'}</button>
+              <button type="button" className="primary" disabled={saving} onClick={() => void submit()}>{model ? '保存' : '添加'}</button>
             </div>
           </div>
         </Dialog.Content>

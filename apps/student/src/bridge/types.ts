@@ -137,7 +137,7 @@ export interface WaveRow {
   segs?: [number, number][]
 }
 
-/** 概念讲解卡：结构化要点 + 图示；嵌在正文第 afterPara 段之后（1 起，缺省或超出则附在正文末尾）。 */
+/** 概念讲解卡：结构化要点 + 图示；嵌在正文第 afterPara 段之后（1 起，该段引出的列表 / 代码一并带上；缺省或超出则附在正文末尾）。 */
 export interface ConceptCard {
   title: string
   points: string[]
@@ -221,9 +221,13 @@ export interface StoredGenCard extends GenCard {
   collectedAt: string
 }
 
-export interface ChatMessage {
+  export interface ChatImage { name:string; dataUrl:string }
+  export interface ChatMessage {
   role: 'user' | 'agent'
+  images?:ChatImage[]
   text: string
+  /** 这条说出来的时刻（ISO）；界面上随操作条标在时间戳里，缺省则不标。 */
+  at?: string
   /** 消息内任务卡：Agent 回复引用具体项目任务时携带，渲染时按 id 查任务数据。 */
   taskId?: string
   /** 回合阶段，只出现在 agent 消息上；流式期间 text 随增量增长。历史消息缺省视为 settled。 */
@@ -241,7 +245,9 @@ export interface ChatMessage {
   /**
    * 概念讲解卡：结构化要点 + 图示，嵌在正文段落之间（afterPara）。
    * 「收纳」按场景分流：对话页钉到右缘对照，工作区收进工作区卡片体系（已确认 2026-10-10）。
-   * 与任务卡、追问选项同一规则：只在落定（settled / 历史消息）时挂载，stopped / failed 不带。
+   * 与任务卡、追问选项不同（2026-10-12 改）：它是正文的一部分，随流式逐块画出——
+   * 讲到它依附的那一段就挂壳，要点 / 波形 / 读图提示一步步长出来，画完前不给收纳与收起；
+   * stopped 保留已画出的部分并禁用动作，failed 不显示；继续生成后按实际内容接上。
    */
   concept?: ConceptCard
   /**

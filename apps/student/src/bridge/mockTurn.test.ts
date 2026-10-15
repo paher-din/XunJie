@@ -145,6 +145,22 @@ describe('mock 回合剧本（docs/agent-page-design.md 状态机）', () => {
     expect(conv?.messages[1].text).toBe(retried.final.text)
   })
 
+  it('改写过问题再重试：会话末尾是学生消息时直接补一条回答', async () => {
+    const api = new MockLearningApi()
+    const first = await run(api, '随便一个问题')
+    const cid = first.result.conversationId
+    await api.editUserMessage({ conversationId: cid, messageIndex: 0, text: RESET_Q })
+    const snaps: ChatMessage[] = []
+    const done = api.retryLast({ conversationId: cid, onUpdate: (m) => snaps.push(m) })
+    await vi.advanceTimersByTimeAsync(60_000)
+    const retried = await done
+    expect(collectPhases(snaps)).toEqual(['waiting', 'thinking', 'streaming', 'settled'])
+    const conv = await api.getConversation(cid)
+    expect(conv?.messages.map((m) => m.role)).toEqual(['user', 'agent'])
+    expect(conv?.messages[0].text).toBe(RESET_Q)
+    expect(conv?.messages[1].text).toBe(retried.final.text)
+  })
+
   it('已停止回合被重试后不能再继续', async () => {
     const api = new MockLearningApi()
     const done = api.sendMessageStream({ conversationId: null, text: RESET_Q, onUpdate: () => {} })
@@ -214,20 +230,58 @@ describe('mock 回合剧本（docs/agent-page-design.md 状态机）', () => {
     expect(conv?.messages[1].quiz?.result?.correct).toBe(true)
   })
 
-  it('概念讲解卡在落定时才挂上；停止的半截消息不带', async () => {
+  it('概念讲解卡随正文画出：讲到依附的那一段就挂壳，要点逐条落定、波形再成形', async () => {
     const api = new MockLearningApi()
     const { snaps, result } = await run(api, RESET_Q)
+    const first = snaps.findIndex((s) => s.concept)
+    // 卡片出现在流式途中，而且正文还有下一节没流完——不是最后补上的一张
+    expect(snaps[first].phase).toBe('streaming')
+    const started = snaps[first].text
+    expect(started).toContain('异步复位**：一拉低就归零')
+    expect(started).not.toContain('差别就在敏感列表')
+    // 壳与标题先起，要点一条一条写出来，波形一次到位，读图提示收尾
+    const shape = (s: ChatMessage) => {
+      const c = s.concept
+      return c ? `${c.title}|${c.points.length}|${c.wave?.rows.length ?? 0}|${c.note ? 1 : 0}` : ''
+    }
+    const seen = snaps.map(shape).filter(Boolean).filter((v, i, arr) => i === 0 || arr[i - 1] !== v)
+    expect(seen).toEqual([
+      '同步复位 vs 异步复位|0|0|0',
+      '同步复位 vs 异步复位|1|0|0',
+      '同步复位 vs 异步复位|2|0|0',
+      '同步复位 vs 异步复位|3|0|0',
+      '同步复位 vs 异步复位|3|4|0',
+      '同步复位 vs 异步复位|3|4|1',
+    ])
+    // 落定时一张不少
     expect(result.final.concept?.title).toContain('复位')
     expect(result.final.concept?.wave?.rows).toHaveLength(4)
-    const mid = snaps.find((s) => s.phase === 'streaming')
-    expect(mid?.concept).toBeUndefined()
-
+    expect(result.final.concept?.points).toHaveLength(3)
+    expect(result.final.concept?.note).toContain('读图')
+    // 要点是一条一条写出来的，不是一整条砸上来的
+    const line = result.final.concept!.points[2].length
+    expect(snaps.some((s) => { const p = s.concept?.points[2]; return !!p && p.length > 0 && p.length < line })).toBe(true)
+    expect(snaps.filter((s) => (s.concept?.points[2]?.length ?? 0) > 0).every((s, i, arr) =>
+      i === 0 || (s.concept?.points[2].length ?? 0) >= (arr[i - 1].concept?.points[2].length ?? 0))).toBe(true)
+    // 停得太早（还没讲到那一段）就没有卡片；卡片不会在失败后留下半张
     const done = api.sendMessageStream({ conversationId: null, text: RESET_Q, onUpdate: () => {} })
     await vi.advanceTimersByTimeAsync(3950)
     api.stopTurn()
     const stopped = await done
     expect(stopped.final.phase).toBe('stopped')
     expect(stopped.final.concept).toBeUndefined()
+    // 停得晚（卡片已经在画）：半张卡留在草稿上，与留着半截正文同一口径，继续生成后原样接上
+    const done2 = api.sendMessageStream({ conversationId: null, text: RESET_Q, onUpdate: () => {} })
+    await vi.advanceTimersByTimeAsync(10_600)
+    api.stopTurn()
+    const half = await done2
+    expect(half.final.concept?.title).toContain('复位')
+    expect(half.final.concept!.points.length).toBeLessThan(3)
+    const back = api.resumeTurn({ conversationId: half.conversationId, onUpdate: () => {} })
+    await vi.advanceTimersByTimeAsync(60_000)
+    const resumed = await back
+    expect(resumed.final.concept?.points).toHaveLength(3)
+    expect(resumed.final.concept?.note).toContain('读图')
   })
 
   it('「毛刺」完整回合：步骤块逐步流出，生成卡只在落定时挂载（第 19、20 条）', async () => {

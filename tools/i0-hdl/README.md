@@ -13,10 +13,16 @@
 | 本机节点验收收据 | `/opt/xunjie-runner/local-node-ready.json`；绑定本机公钥 pin、原代际及 C/HDL 指纹 |
 | 正常业务和前端 | `/opt/xunjie-ui-local`；原认证、原消费者、原 API、准备好的 `student-dist` 与 TLS 叶子 |
 | 初始化材料 | `/opt/xunjie-ui-local/initializer.json`、`application-config.json`、`signing-secret.txt`；目录root700、文件root600 |
-| 原35表合成库 | `/opt/xunjie-ui-local/retained-tmp/xunjie-a12-completion-*/synthetic.sqlite`；路径由原工厂生成，重启沿用同一库 |
+| 合成库 | `/opt/xunjie-ui-local/retained-tmp/xunjie-a12-completion-*/synthetic.sqlite`；路径由原工厂生成，重启沿用同一库。本机教师任务已获准增加 review 六表至41，备份和范围见 [I1-TEACHER](../../docs/tasks/I1-TEACHER_UI_WORKBENCH.md) |
 | 保留材料、工具和公开收据 | `D:\XunJie_Project\i0-ui55-connection\hdl-ui\local-environment\`；业务入口副本在其中 `application-tools\`，大档在 `downloads\`、`oci\`，节点日志在 `node-logs\` |
 
-这些工具不带密码、私钥、API key 或数据库。只保留公开源码、下载档和工程收据到 D 盘；本机秘密继续留在受限 Linux 目录，模型 key 从自己的本机环境读取。
+这些工具不带密码、私钥、API key 或数据库。只保留公开源码、下载档和工程收据到 D 盘；本机秘密继续留在受限 Linux 目录。原冻结宿主通过本人环境 Key 调用；新版个人通道从设置页保存的本人加密配置读取，见下节。
+
+## 新版个人模型通道
+
+[个人模型与真实聊天接入](../../docs/tasks/I0_UI_MODEL_CONFIGURATION_REAL_CHAT.md)新增受限目录 `/opt/xunjie-ui-local/personal-agent/`，仅在同步新版源码/前端与 `local-application-host.mjs` 后生效，既有运行进程不会自动更新。新版 `start` 可使用设置页中的本人供应商配置，无需环境 Key；本人保存并启用后，下一次显式发送即可调用。`start -DisablePersonalModels` 是维护者总停用入口，保留配置与历史。
+
+个人通道不会回退环境 Key 或其他账号 Key；原 `-EnableModel` 的环境传递仍保留为旧宿主兼容入口，不能代替新版设置页配置。个人配置独立四表库与 `credentials.key` 不属于原35表课程库，不重建原课程库、执行 VM 或身份。首次运行的四表与加密凭据初始化已由本轮负责人明确批准；后续运行继续复用。教师模型仍关闭。
 
 ## 日常使用
 
@@ -25,9 +31,9 @@
 ```powershell
 .\xunjie-local.ps1 status
 .\xunjie-local.ps1 check
-.\xunjie-local.ps1 start
+.\xunjie-local.ps1 start -EnableReview
 # 本轮明确需要自己的真实模型时才使用：
-.\xunjie-local.ps1 start -EnableModel
+.\xunjie-local.ps1 start -EnableReview -EnableModel
 .\xunjie-local.ps1 stop
 ```
 
@@ -36,6 +42,7 @@
 | `status` | 只读查看已保存的业务 PID、VM 当前状态、原受限应用 SSH 双 readiness、HTTPS live/ready。保存的 PID 是启动记录，健康检查才表示当前状态 |
 | `check` | 只读查询 `/health/live` 与 `/health/ready`，不启动 VM、业务宿主或模型 |
 | `start` | 已监听3444时拒绝重复启动；复用运行中的既有 VM，停机时调用原冻结 VM 的 `start`。最多等待120秒，核对原 `readiness`、`hdl_readiness` 与收据中的同代际、完整指纹、验证哈希、公钥 pin 和 sourceHash，再启动正常宿主 |
+| `start -EnableReview` | 以上述检查启动显式41表教师复核宿主；只适用于已按批准完成 review 升级的库，不执行迁移、不启用模型。当前本机库使用此命令 |
 | `start -EnableModel` | 执行同样的启动检查，并从本人 Windows Process 或 User 的 `DEEPSEEK_API_KEY` 传入本机子进程环境；默认不启用模型 |
 | `stop` | 核对 Linux PID 的确切 Node 可执行文件及宿主模块后发送 SIGTERM；只停止业务宿主，保留 VM、磁盘、身份、原代际、数据库和工具 |
 
@@ -53,7 +60,7 @@
 | HDL | `synthetic-robert-student-b`：<https://127.0.0.1:3444/#/task/4c589f3c-18bc-447a-b6bb-6e3a86c442a7> |
 | HDL 全输入补验 | 同一个 B 账号：<https://127.0.0.1:3444/#/task/cb4e54cb-df5a-4198-bc91-1d8274a9cf64>；独立 immutable 配置显式绑定 resetN，保留主演示配置未绑定的原事实 |
 
-以上是当前新本机库的使用示例，移机或重新初始化后从 `course-seed-receipt` 取得实际 assignmentId，不能复用这些旧 ID。首页列表来自当前 Session 的学生课程与本人分配，课程显示真实课程标识、任务显示固定活动标题；进入后仍沿用原授权与工作区。教师合成账号 `synthetic-robert-teacher` 用于原教师 API 的课程发布与分配，当前页面不承诺教师操作界面。
+以上是本机库的使用示例，移机或重新初始化后从 `course-seed-receipt` 取得实际 assignmentId，不能复用这些旧 ID。首页列表来自当前 Session 的学生课程与本人分配，课程与任务优先显示后端展示字段，缺失则保留原 ID/Activity 标题。教师合成账号 `synthetic-robert-teacher` 可打开 `https://127.0.0.1:3444/#/teacher`；本轮教师设计、分配、审阅和反馈修订接线见 [教师任务](../../docs/tasks/I1-TEACHER_UI_WORKBENCH.md)。
 
 密码仅在本机root600的 `initializer.json` 内，由账号本人通过受控本机入口领取；运行工具不会打印或保存密码。
 

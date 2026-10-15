@@ -1,5 +1,6 @@
 import type { createApp } from './app.ts';
 import { readPort } from './app/config.ts';
+import {dirname,join} from 'node:path';
 
 let app:ReturnType<typeof createApp>|undefined;
 let closeService:(()=>Promise<unknown>)|undefined;
@@ -43,6 +44,7 @@ try {
         https:{key:readFileSync(config.tls.keyFile),cert:readFileSync(config.tls.certFile)},
         currentGeneration:()=>generation,runner,staticDirectory:config.staticDirectory,
         consumerIntervalMs:config.consumerIntervalMs,logDestination:process.stdout,
+        personalModels:config.personalModels??{directory:join(dirname(config.databaseFile),'personal-agent')},
         ...(config.tutoring?{tutoring:{
           studentHelp:{versions:config.tutoring.versions,budgetAvailable:()=>config.tutoring!.callsAuthorized},
           provider:config.tutoring.apiKeyFile?(await import('./tutoring/deepseek-sdk.ts')).createAiSdkDeepSeekProvider({
@@ -73,6 +75,8 @@ try {
         ...executionTransports(config.ssh),approvedHdlRuntimes:config.approvedHdlRuntimes,
         ...(config.staticDirectory?{staticDirectory:config.staticDirectory}:{}),
         consumerIntervalMs:config.consumerIntervalMs,studentHelp:{versions,budgetAvailable:()=>config.tutoring?.callsAuthorized??false},
+        personalModels:config.personalModels??{directory:join(dirname(config.databaseFile),'personal-agent')},
+        ...(config.review?{review:{versions:{modelConfigVersion:versions.modelConfig,promptVersion:versions.prompt,schemaVersion:versions.schema,analysisVersion:'learner-analysis-v1'}}}:{}),
         ...(config.tutoring?.apiKeyFile?{tutoringProvider:(await import('./tutoring/deepseek-sdk.ts')).createAiSdkDeepSeekProvider({
           apiKey:readI0SigningSecret(config.tutoring.apiKeyFile),
         })}:{}),

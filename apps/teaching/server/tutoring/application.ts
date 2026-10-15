@@ -56,6 +56,7 @@ const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const natural = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const studentHelpCommandSchema = z.strictObject({
   expectedAttemptRevision: revision,
+  expectedModelConfigRevision:natural.optional(),
   recoveryGeneration: id,
   question: z.string().max(16_384),
   objectRef: objectRef.optional(),
@@ -90,6 +91,11 @@ export type LearnerStateReader = (tx: Transaction,scope: {courseId: string;stude
 export type TutoringAppOptions = TeachingRecordsOptions & {
   studentHelp: {
     versions: TrustedModelContext["versions"];
+    /** Trusted personal configuration, selected on acceptance and captured before dispatch. */
+    versionsForStudent?: (studentId:string)=>TrustedModelContext["versions"];
+    modelConfigRevisionForStudent?:(studentId:string)=>number;
+    providerForStudent?: (studentId:string,modelConfigVersion:string)=>ModelProvider;
+    requestLimits?:{inactivityTimeoutMs?:number;maximumCalls:number};
     readLearnerState?: LearnerStateReader;
     readLearnerStateRevision?: (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => number;
     readHdlContext?:(tx:Transaction,actor:ActorContext,attemptId:string,selection:HdlHelpSelection,generation:string)=>AuthorizedHdlHelpContext;
@@ -176,6 +182,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           (value) => studentHelpCommandResultSchema.parse(value),
         );
         if (previous) return { ...previous, replayed: true };
+        if(input.expectedModelConfigRevision!==undefined&&input.expectedModelConfigRevision!==studentHelp.modelConfigRevisionForStudent?.(actor.userId))
+          throw new ApiError('VERSION_CONFLICT');
         let acceptedHdlBasis:HdlHelpBasis|undefined;
         if(input.hdlSelection){
           if(!studentHelp.readHdlContext)throw new ApiError('DEPENDENCY_UNAVAILABLE');
@@ -187,7 +195,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
 
         const acceptedAtMs = now();
         const acceptedAt = new Date(acceptedAtMs).toISOString();
-        const deadline = new Date(acceptedAtMs + 45_000).toISOString();
+        const deadline = new Date(acceptedAtMs + (studentHelp.requestLimits?.inactivityTimeoutMs??45_000)).toISOString();
         const jobId = randomUUID();
         let plannedMessage: ReturnType<typeof acceptStudentQuestionInTransaction>["message"] | undefined;
         const receipt = finishRecordCommand(
@@ -199,7 +207,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           (receiptId) => {
             const before = readAttempt(tx, idValue);
             const activity = readActivity(tx, actor.courseId, before.activityVersionId);
-            const versions = teachingVersions(activity.activityVersionId, activity.helpPolicy.versionId, studentHelp.versions);
+            const versions = teachingVersions(activity.activityVersionId, activity.helpPolicy.versionId,
+              studentHelp.versionsForStudent?.(actor.userId)??studentHelp.versions);
             const accepted = acceptStudentQuestionInTransaction(tx, {
               scope: identity.scope,
               receiptId,
@@ -249,6 +258,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
               generation,
               deadline,
               kind: "student_help",
+              ...(studentHelp.requestLimits?.inactivityTimeoutMs?{inactivityTimeoutMs:studentHelp.requestLimits.inactivityTimeoutMs}:{}),
             });
           },
         );
@@ -374,6 +384,11 @@ export async function createTutoringApp(options: TutoringAppOptions) {
             }),
             versions: {
               ...studentHelp.versions,
+              ...(studentHelp.versionsForStudent?{
+                modelConfig:questionMessage.envelope.versions.modelConfigVersion,
+                prompt:questionMessage.envelope.versions.promptVersion,
+                schema:questionMessage.envelope.versions.schemaVersion,
+              }:{}),
               policy: activity.helpPolicy.versionId,
             },
           };
@@ -411,6 +426,17 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       runtime: Omit<AuthorizedStudentHelpRuntime, "updateJob" | "budgetAvailable">,
     ) {
       const authorized = authorizeStudentHelp(request, idValue, jobId, preparation);
+      // Resolve once before the first call: queued changes are rejected; an in-flight
+      // call keeps its captured provider instead of silently switching credentials.
+      let selectedProvider=runtime.provider;
+      if(studentHelp.providerForStudent){
+        try{selectedProvider=studentHelp.providerForStudent(authorized.job.scope.studentId!,authorized.versions.modelConfig);}
+        catch(error){
+          // Execute through the original gate so a missing/changed configuration is
+          // a terminal truthful Job outcome and still uses the original call ledger.
+          selectedProvider={generate:async()=>{throw error;}};
+        }
+      }
       const updateJob: AuthorizedStudentHelpRuntime["updateJob"] = (expectedJobId, update) =>
         withHelpTransaction(request,idValue,jobId,'student_help',(tx) => {
           currentGeneration(authorized.job.recoveryGeneration);
@@ -461,6 +487,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       if (!studentId || !authorizedAttemptId) throw new ApiError("STATE_CONFLICT");
       const execution = await executeAuthorizedStudentHelp(authorized, {
         ...runtime,
+        ...studentHelp.requestLimits,
+        provider:selectedProvider,
         budgetAvailable: () => studentHelp.budgetAvailable({
           courseId: authorized.job.scope.courseId,
           studentId,

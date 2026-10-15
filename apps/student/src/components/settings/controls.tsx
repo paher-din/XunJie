@@ -235,7 +235,7 @@ export function ModelFields({
       <div className="st-smart-row">
         <span className="st-field-label">
           智能配置
-          <HelpTip tip="根据已知模型型号自动补全上下文窗口与最大输出限制" />
+          <HelpTip tip="按已知精确模型 ID 填写参考值；连接测试可导入供应商返回的实际能力" />
         </span>
         <Toggle checked={smart} onChange={setSmart} label="智能配置" />
       </div>
@@ -243,7 +243,7 @@ export function ModelFields({
         <div className="st-model-row">
           <TextInput
             value={model.id}
-            placeholder="模型 ID，例如 deepseek-v4.1-flash"
+            placeholder="模型 ID，例如 deepseek-flash"
             className="st-mono-input"
             onChange={(e) => changeId(e.target.value)}
           />
@@ -255,19 +255,19 @@ export function ModelFields({
         </div>
       </Field>
       <div className="st-model-cols">
-        <Field label="上下文窗口" tip="单次交互最大上下文容量（Tokens）">
+        <Field label="上下文窗口" tip="输入与输出共用此容量；发送前保守核算，不自动截断历史。留空使用16384。">
           <TextInput
             type="number"
-            min={0}
+            min={1}
             value={model.contextWindow}
             placeholder="如 131072"
             onChange={(e) => onPatch({ contextWindow: e.target.value })}
           />
         </Field>
-        <Field label="最大输出 Token" tip="单次回复最大生成上限（Tokens）">
+        <Field label="最大输出 Token" tip="实际请求的 max_tokens，包含模型思考与正文；需小于上下文窗口。留空使用4096。">
           <TextInput
             type="number"
-            min={0}
+            min={1}
             value={model.maxOutput}
             placeholder="如 30000"
             onChange={(e) => onPatch({ maxOutput: e.target.value })}

@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { learningApi } from '../bridge/mockAdapter'
+import { learningApi } from '../bridge/agentApi'
 import type { ConversationSummary } from '../bridge/types'
 import { AccountMenu } from './AccountMenu'
 import { AccountAvatar } from './AccountAvatar'
@@ -24,6 +24,8 @@ import { useAccount } from '../lib/account'
 import { THEME_OPTIONS, useTheme } from '../lib/theme'
 import { useSession } from './SessionEntry'
 import { PREP_BUILD } from '../workspace/mode'
+import { useModelSettings } from '../lib/modelSettings'
+import { getSessionState } from '../workspace/session'
 import { logoutSession } from '../workspace/session'
 import { displayAccountName } from '../lib/displayNames'
 
@@ -130,6 +132,7 @@ export default function AppShell() {
   const queryClient = useQueryClient()
   const account = useAccount()
   const session = useSession()
+  useModelSettings()
   // 外观偏好（lib/theme.ts）：按钮图标取**实际生效**的深浅——跟随系统时也要与画面一致，
   // 提示里同时标出偏好与当前值（如「跟随系统（当前深色）」）
   const { preference: themePreference, resolved: themeResolved } = useTheme()
@@ -204,7 +207,9 @@ export default function AppShell() {
 
   const sendFromHome = useMutation({
     mutationFn: (text: string) => learningApi.sendMessage({ conversationId: null, text }),
+    onError: () => showToast('消息发送未确认，请打开原会话核对。'),
     onSuccess: ({ conversationId }) => {
+      if (!PREP_BUILD && getSessionState().epoch !== session.epoch) return
       void queryClient.invalidateQueries({ queryKey: ['conversations'] })
       void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
       setComposerOpen(false)
@@ -216,12 +221,15 @@ export default function AppShell() {
   const renameConv = useMutation({
     mutationFn: (input: { conversationId: string; title: string }) =>
       learningApi.renameConversation(input),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+    onError: () => showToast('会话操作未确认，请重新读取后重试。'),
+    onSuccess: () => { if (PREP_BUILD || getSessionState().epoch === session.epoch) void queryClient.invalidateQueries({ queryKey: ['conversations'] }) },
   })
 
   const deleteConv = useMutation({
     mutationFn: (conversationId: string) => learningApi.deleteConversation({ conversationId }),
+    onError: () => showToast('会话操作未确认，请重新读取后重试。'),
     onSuccess: (_data, conversationId) => {
+      if (!PREP_BUILD && getSessionState().epoch !== session.epoch) return
       void queryClient.invalidateQueries({ queryKey: ['conversations'] })
       queryClient.removeQueries({ queryKey: ['conversation', conversationId] })
       // 删的是正在看的会话：回到空状态新会话
@@ -232,13 +240,16 @@ export default function AppShell() {
   const pinConv = useMutation({
     mutationFn: (input: { conversationId: string; pinned: boolean }) =>
       learningApi.pinConversation(input),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+    onError: () => showToast('会话操作未确认，请重新读取后重试。'),
+    onSuccess: () => { if (PREP_BUILD || getSessionState().epoch === session.epoch) void queryClient.invalidateQueries({ queryKey: ['conversations'] }) },
   })
 
   const archiveConv = useMutation({
     mutationFn: (conversationId: string) =>
       learningApi.archiveConversation({ conversationId }),
+    onError: () => showToast('会话操作未确认，请重新读取后重试。'),
     onSuccess: (_data, conversationId) => {
+      if (!PREP_BUILD && getSessionState().epoch !== session.epoch) return
       void queryClient.invalidateQueries({ queryKey: ['conversations'] })
       // 归档的是正在看的会话：回到空状态新会话（「已归档」的查看入口待定，见 docs/agent-page-design.md）
       if (conversationId === activeConv) navigate('/agent')
@@ -249,7 +260,9 @@ export default function AppShell() {
   const restoreConv = useMutation({
     mutationFn: (conversationId: string) =>
       learningApi.restoreConversation({ conversationId }),
+    onError: () => showToast('会话操作未确认，请重新读取后重试。'),
     onSuccess: () => {
+      if (!PREP_BUILD && getSessionState().epoch !== session.epoch) return
       void queryClient.invalidateQueries({ queryKey: ['conversations'] })
       showToast('已恢复到对话列表')
     },
@@ -292,6 +305,14 @@ export default function AppShell() {
     enteredRef.current.add(location.pathname)
     return first
   }, [location.key, location.pathname])
+
+  // 重挂载的键要跳过 REPLACE（2026-10-12）：REPLACE 不是「出现了一屏新页面」，
+  // 是这一页被补上地址。最典型的是新会话发出首条消息——/agent → /agent/<新id>，
+  // 若跟着 location.key 重挂载，首条回复落定的那一刻整页重建、入场重播、消息节点全部重来，
+  // 就是「卡片出现时页面抽一下」最响的那一声。
+  const enterMountRef = useRef(location.key)
+  if (navType !== 'REPLACE') enterMountRef.current = location.key
+  const enterMountKey = enterMountRef.current
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -810,7 +831,7 @@ export default function AppShell() {
       <main className="main" ref={mainRef}>
         <div
           className={'page-enter' + (enterKey ? '' : ' revisit')}
-          key={location.key}
+          key={enterMountKey}
         >
           <Outlet />
         </div>
@@ -946,6 +967,7 @@ export default function AppShell() {
         </>
       )}
       <ProfileCard open={profileOpen} onClose={() => setProfileOpen(false)} onAction={showToast} />
+      {conversations.error && <div className="toast" role="alert">会话列表读取失败，请刷新后重试。</div>}
       {toast && (
         <div className="toast" role="status">
           {toast}

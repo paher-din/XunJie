@@ -45,6 +45,7 @@ import { HdlBoardPane, HdlTracePane, HdlBuildPane, HdlRunCluster } from '../comp
 import type { HdlBuildView, HdlDiagnostic, HdlInputs } from '../workspace/hdlContracts'
 import { hdlDiagnosticTarget } from '../workspace/hdlDiagnostic'
 import { createTutorHdlCurrent, type TutorHdlSelection } from '../workspace/tutoringHdl'
+import { SubmissionFeedbackPanel } from '../components/workspace/SubmissionFeedbackPanel'
 
 type ReturnOrigin={fileId:string;path:string;documentVersion:number|null}
 const readingMarkerKey=(c:CommandContext)=>`tutor:return:${JSON.stringify([c.mode,c.userId,c.courseId,c.assignmentId,
@@ -75,6 +76,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   const [hdlSelection, setHdlSelection] = useState<TutorHdlSelection | undefined>()
   const [replaceTarget, setReplaceTarget] = useState<{ sessionId: string; sessionRevision: number; buildId: string } | null>(null)
   const [runOpen, setRunOpen] = useState(false)
+  const [submissionOpen, setSubmissionOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const history = useRunHistory(confirmation.client, runOpen && historyOpen)
   const [runSelection, setRunSelection] = useState<CoreSelection>({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
@@ -88,6 +90,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   const editorHandle = useRef<CodeEditorHandle>(null)
   useEffect(() => {
     setRunOpen(false)
+    setSubmissionOpen(false)
     setHistoryOpen(false)
     setRunSelection({ snapshotId: '', entryFileId: '', fileIds: [], operation: 'stats', word: '', count: '10' })
     setTutorObject(undefined); setCodeBasis(null); setCodeSnapshotId(''); setExample(null)
@@ -517,6 +520,9 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
             currentNotice={hdlNotice} /> : undefined}
           designBody={<div style={{position:'relative',height:'100%',width:'100%',display:'flex',flexDirection:'column'}}>
             {c?.attemptId && <div className="ws-chatbind" style={{display:'flex',gap:8,flexWrap:'wrap',flexShrink:0}}>
+            {c.mode === 'real' && <button type="button" className="ws-btn ghost" onClick={() => {
+              setVersionSelection(null); confirmation.client?.closeComparison(); setRunOpen(false); setSubmissionOpen(true)
+            }}>提交与反馈</button>}
             {c?.attemptId && <button type="button" className="ws-btn ghost" onClick={()=>{ setTutorObject(undefined);setCodeBasis(null);setHdlSelection(undefined); setTutorOpen(true) }}>就项目求助</button>}
             {isHdl && <button type="button" className="ws-btn ghost" disabled={hdlPending || !hdlResultCurrent || !hdl.state.canInteract}
               onClick={() => onHdlHelp(true)}>引用当前板卡求助</button>}
@@ -531,7 +537,10 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
             {!tutorOpen && tutor.state.ledger?.job && !tutor.state.ledger.job.stopRequested && <button type="button" className="ws-btn ghost" onClick={()=>void tutor.client?.stop()}>停止这次帮助</button>}
             </div>}
             <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}} inert={!!example} aria-hidden={!!example}>
-            {versionComparison !== null && versionSelection !== null
+            {submissionOpen && confirmation.client
+            ? <SubmissionFeedbackPanel confirmation={confirmation.client} snapshots={confirmation.state.snapshots}
+                unconfirmedCount={project.unconfirmedCount} onReturn={() => setSubmissionOpen(false)} onAssignmentChange={setAssignment} />
+            : versionComparison !== null && versionSelection !== null
             ? <VersionCompare
                 comparison={versionComparison}
                 options={versionChoices}
@@ -593,7 +602,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
               </div>}
             </div>}
           runCluster={<>
-            {c?.attemptId && !isHdl && <CoreRunEntry onOpen={() => { setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
+            {c?.attemptId && !isHdl && <CoreRunEntry onOpen={() => { setSubmissionOpen(false); setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
             {isHdl && c?.attemptId && <>
               <select aria-label="HDL 确认快照" value={hdlSnapshotId} onChange={event => setHdlSnapshotId(event.target.value)} disabled={hdlPending}>
                 <option value="">选择确认快照</option>
