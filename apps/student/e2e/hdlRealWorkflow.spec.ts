@@ -332,12 +332,13 @@ test('隔离 HDL 长 pending：虚拟时钟最多60轮读取、耗尽不循环�
   await enterHdl(page, protocol)
   await snapshot(page, protocol, good, 1)
   await buildAndProgram(page, protocol)
+  // Freeze before creating pending input; a 1ms cross-process deadline can already be in the past.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
   protocol.holdInputs(true)
   await page.getByRole('button', { name: '拨码开关 SW0', exact: true }).click()
   await expect.poll(() => protocol.effects.interactions).toBe(1)
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('正在处理输入')
   await expect(page.getByRole('button', { name: '停止 HDL', exact: true })).toBeEnabled()
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1))
   const before = { ...protocol.readCounts }
   for (let round = 1; round <= 60; round++) {
     await page.clock.runFor(1000)

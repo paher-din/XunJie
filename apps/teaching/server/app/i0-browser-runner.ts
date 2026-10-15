@@ -58,6 +58,7 @@ export function createBrowserRunner(generation:()=>string) {
       resultRef:`synthetic-result-${identity.runId}`,resultHash:digest(JSON.stringify(record))};
   }
   const transport:RunnerTransport=async command=> {
+    if(command.op==='editor_diagnostics')throw new Error('Synthetic editor diagnostics unavailable');
     if(command.op==='readiness') {
       readiness++;
       if(configuration.link==='offline') throw new Error('Synthetic runner link unavailable');

@@ -9697,6 +9697,20 @@ button.st-check.checked:hover {
 }
 
 /* ---------- 状态行：文件级事实 + 本机草稿保护状态 ---------- */
+.cw-diagnostics {
+  flex: none;
+  max-height: 160px;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+  padding: 8px 12px;
+  font-size: 12px;
+  background: var(--sunken);
+  color: var(--ink-soft);
+}
+.cw-diagnostics summary { cursor: pointer; }
+.cw-diagnostics p { margin: 8px 0; color: var(--muted); }
+.cw-diagnostics ul { margin: 8px 0; padding-left: 20px; }
+.cw-diagnostics li { margin: 4px 0; overflow-wrap: anywhere; }
 .cw-status {
   display: flex;
   align-items: center;

@@ -44,6 +44,7 @@ import { useHdlWorkspace } from '../workspace/useHdlWorkspace'
 import { HdlBoardPane, HdlTracePane, HdlBuildPane, HdlRunCluster } from '../components/workspace/HdlToolArea'
 import type { HdlBuildView, HdlDiagnostic, HdlInputs } from '../workspace/hdlContracts'
 import { hdlDiagnosticTarget } from '../workspace/hdlDiagnostic'
+import { useEditorDiagnostics } from '../workspace/useEditorDiagnostics'
 import { createTutorHdlCurrent, type TutorHdlSelection } from '../workspace/tutoringHdl'
 import { SubmissionFeedbackPanel } from '../components/workspace/SubmissionFeedbackPanel'
 
@@ -338,6 +339,8 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   }) as [HistorySideDisplay, HistorySideDisplay]
   const runPermitted=(assignment??(init.init?.kind==='ready'?init.init.assignment:null))?.active===true &&
     !!confirmation.state.attempt && ['ready','active'].includes(confirmation.state.attempt.status)
+  const editorDiagnostics = useEditorDiagnostics(project, c, confirmation.state.workspace, confirmation.state.attempt,
+    !runPermitted || !!confirmation.state.pending || tutor.state.limitedCheck !== false)
   const canRun = runPermitted && run.state.eligible && !run.state.pending && !!runSelection.snapshotId && !!runSelection.entryFileId &&
     runSelection.fileIds.length > 0 && !confirmation.client?.commandInFlight
   const hdlPending = hdl.state.pending || hdl.state.busy || !!hdl.state.session?.pendingOperationId ||
@@ -589,7 +592,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
             : confirmation.seed && draftScope
               ? <>
                   {draftConflictBar}
-                  <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}><CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} /></div>
+                  <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}><CodeWorkspace ws={project} workspaceKey={scopeKey(draftScope)} editorHandleRef={editorHandle} diagnostics={editorDiagnostics} /></div>
                   {isHdl && <div style={{ maxHeight: '34vh', overflow: 'auto', flexShrink: 0 }}>
                     <HdlBuildPane build={hdl.state.build} busy={hdlPending} notice={hdl.state.notice}
                       canHelp={!!hdl.state.build?.result && ['succeeded', 'failed'].includes(hdl.state.build.result.status) && project.unconfirmedCount === 0 && !hdl.state.unknown}
