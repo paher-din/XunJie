@@ -280,3 +280,7 @@ Robert 追加明确要求：全面检查独立 Agent 与工作区对话，重点
 实际HTTPS页面沿原合成学生Session验证：独立 conversation `6f014f5e-c3f4-405e-95a9-c4e852641b87`、turn `da78c52b-fe50-48e4-afd1-1085d8f1078a`，生成中刷新保持原回合并再次显示思考/停止控件，最终settled且callCount=1；回答的列表、表格和Python代码完整可读，actual input117/output2463。配置仍DeepSeek Flash/max/context300000/output131072/deadline=null。工作区Job `950ccf27-481f-41a1-92b0-28137807c5f6` succeeded，先显示running进度再交付三个自检问题及下一步；在640默认窗和展开窗核对正文、来源和本机展示事实。不编辑/保存/运行学生作品，不点“我先试试”，原main.c仍确认v3；页面模型建议仅作为输出观察，不作为Agent执行指令。
 
 实际展开历史核对发现浏览器对关闭details内元素仍可返回clientRect，导致消息导航含折叠历史。补充关闭details祖先过滤；新增展开/折叠导航数量回归通过1/1。该小修仅需要最后静态更新与已有回答重载，不再付费重发。最终静态head、教师只读回核和推送状态随后补记。
+
+最终静态`6bc0ec6`：正常build通过，181文件逐SHA更新，入口`index-BfdJuFQ2.js`、index.html SHA256 `8c30ad4b180b7ccf23eab42ce5b0c765b7bdaf2a0652ef6acfe938f65a8bcd5f`；后端仍b3b279b/PID1496且逐文件不变。实际重载两处原回复仍完整，展开宽1120px、消息导航只保留当前问题/回答2条；[工作区截图](evidence/chat-interaction-20261015/workspace-live.png)、[独立聊天截图](evidence/chat-interaction-20261015/agent-live.png)、[白名单验收结果](evidence/chat-interaction-20261015/acceptance.json)。工作区Message `1eee7512-1df3-401a-9b71-3de4a52b923a`，actual input1843/output986、calls1、8547ms，配置版本仍personal:0bc7e863c307d958c037948a:12。未改Key/档位，最终重载无新增调用。
+
+收尾已停止本轮5641临时预览进程。自动审批拒绝了清除弃用的D盘组合构建目录及本工作树临时teaching/node_modules软链的命令，仅返回`blocked by policy`；未重试删除或把清理标为完成，这两项原样保留、不提交。正式备份/验收证据有后续回退用途，继续保留。新fetch的远程主线仅追加板卡交付记录，正常合入保留，无运行源码变化。
