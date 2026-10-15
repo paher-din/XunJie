@@ -23,7 +23,8 @@ import type {ActorContext} from '../../contracts/access/index.ts';
 import {courseMembershipViewSchema} from '../../contracts/access/index.ts';
 import {assignmentSummarySchema} from '../../contracts/design/results.ts';
 import {hasDisplayColumn,optionalDisplayText} from '../access/display-text.ts';
-import {personalModels,type PersonalModelsOptions} from './personal-models.ts';
+import {personalModels,type PersonalModelsOptions,teacherDesignAgentOptions} from './personal-models.ts';
+import type {TeacherDesignApproval} from './config.ts';
 import {executionNodes,type ExecutionNode} from './execution-nodes.ts';
 import type {ExecutionBinding} from '../../contracts/records/index.ts';
 const id=z.string().min(1).max(128),revision=z.number().int().positive(),key=z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/),params=z.strictObject({id});
@@ -32,7 +33,7 @@ const buildInput=z.strictObject({...basis,snapshotId:id});
 const programInput=z.strictObject({...basis,buildId:id,replaceSessionId:id.optional(),expectedSessionRevision:revision.optional()}).refine(value=>(value.replaceSessionId===undefined)===(value.expectedSessionRevision===undefined));
 const operationInput=z.strictObject({...basis,sessionId:id,expectedSessionRevision:revision,expectedSequence:revision,inputs:z.strictObject({switches:z.string().regex(/^[01]{16}$/),buttons:z.string().regex(/^[01]{5}$/),resetN:z.string().regex(/^[01]$/)}),advanceCycles:z.number().int().min(1).max(5000000)});
 const stopInput=z.strictObject({...basis,action:z.literal('stop'),reason:z.string().trim().min(1).max(1024)});
-export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'|'execution'> & {hdlTransport?:HdlTransport;executionNodes?:ExecutionNode[];legacyExecutionNodeId?:string;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number;tutoringProvider?:ModelProvider;personalModels?:PersonalModelsOptions;review?:ReviewAppOptions['review']};
+export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'|'execution'> & {hdlTransport?:HdlTransport;executionNodes?:ExecutionNode[];legacyExecutionNodeId?:string;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number;tutoringProvider?:ModelProvider;personalModels?:PersonalModelsOptions;teacherDesign?:TeacherDesignApproval;review?:ReviewAppOptions['review']};
 export async function createDigitalLogicApplication(options:DigitalLogicApplicationOptions){
  assertDigitalLogicApplicationDatabase(options.db,Boolean(options.review));
  const now=options.now??Date.now;
@@ -77,7 +78,20 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  const compose=(base:TutoringAppOptions)=>options.review?createReviewApp({...base,review:options.review}):createTutoringApp(base);
  const personal:ReturnType<typeof personalModels>|undefined=options.personalModels?personalModels(options.personalModels,
   (request):string=>options.db.withTransaction(tx=>instance.access.authenticatedUserInTransaction(request,tx)),options.studentHelp,options.db):undefined;
- const instance:Awaited<ReturnType<typeof compose>>=await compose({...options,studentHelp:{...(personal?.studentHelp??options.studentHelp),readHdlContext:(...args)=>{
+ const teacherDesignAgent=personal&&options.teacherDesign
+  ?{
+    // The approved personal model replaces the static provider for this teacher, gated by the separate,
+    // default-off approval. The static fields stay present so the original behaviour remains the fallback.
+    ...(options.teacherAgent??{provider:{generate:async()=>{throw new Error('Model unavailable.');}},
+      versions:{modelConfig:'personal-unconfigured',prompt:'teacher-design-v1',schema:'teacher-design-v1',policy:'teacher-design-v1'},
+      budgetAvailable:()=>false}),
+    ...teacherDesignAgentOptions({service:personal,transport:personal.transport,
+      personalCallsEnabled:()=>options.personalModels?.callsEnabled!==false,
+      approval:{allowedTeacherIds:options.teacherDesign.allowedTeacherIds,allowedCourseIds:options.teacherDesign.allowedCourseIds,
+        maximumCallsPerRequest:options.teacherDesign.maximumCallsPerRequest,maximumCallsPerRound:options.teacherDesign.maximumCallsPerRound,
+        maximumOutputTokens:options.teacherDesign.maximumOutputTokens,roundStartsAtMs:Date.parse(options.teacherDesign.roundStartsAt)}})}
+  :options.teacherAgent;
+ const instance:Awaited<ReturnType<typeof compose>>=await compose({...options,...(teacherDesignAgent?{teacherAgent:teacherDesignAgent}:{}),studentHelp:{...(personal?.studentHelp??options.studentHelp),readHdlContext:(...args)=>{
   if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');return readAuthorizedHdlHelp(...args);
  }},...(runner?{runner}:{}),...(execution?{execution}:{}),currentGeneration,hdl,checkReadiness:async()=>{try{host.checkConsumerReady();if(execution)return true;await refresh();const c=await availableRuntime(runner);host.checkConsumerReady();return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
  const fixed=instance.access.withAuthorizedCourse(request,tx=>draftCourse(tx,blueprintId),'teacher',(tx,actor)=>{

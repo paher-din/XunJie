@@ -23,6 +23,21 @@ function controlledFile(file:string) {
 const existingFile=z.string().refine(controlledFile);
 const personalModelsSchema=z.strictObject({directory:z.string().refine(isAbsolute),callsEnabled:z.boolean().default(true)});
 const allowedLoginUserIdsSchema=z.array(z.string().min(1).max(128)).min(1).max(20).refine(ids=>new Set(ids).size===ids.length);
+/**
+ * Separate, default-off approval for teacher design model calls. Every approved value is required: a
+ * configuration that omits any of them is rejected here rather than silently allowing an unbounded call.
+ * `roundStartsAt` scopes the round accounting, which is read from the original teacher-design request rows.
+ */
+const teacherDesignSchema=z.strictObject({
+  callsAuthorized:z.literal(true),
+  allowedTeacherIds:z.array(z.string().min(1).max(128)).min(1).max(20).refine(ids=>new Set(ids).size===ids.length),
+  allowedCourseIds:z.array(z.string().min(1).max(128)).min(1).max(20).refine(ids=>new Set(ids).size===ids.length),
+  maximumCallsPerRequest:z.number().int().min(1).max(3),
+  maximumCallsPerRound:z.number().int().min(1).max(60),
+  maximumOutputTokens:z.number().int().min(1).max(4096),
+  roundStartsAt:z.string().min(1).refine(value=>Number.isFinite(Date.parse(value))),
+});
+export type TeacherDesignApproval=z.infer<typeof teacherDesignSchema>;
 export function readControlledJson(file:string):unknown {
   if (!controlledFile(file) || lstatSync(file).size>1024*1024) throw new Error('Controlled configuration file required.');
   return JSON.parse(readFileSync(file,'utf8'));
@@ -71,7 +86,7 @@ export const applicationConfigSchema=z.strictObject({databaseFile:existingFile,o
  tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema.optional(),executionNodes:z.array(executionNodeSchema).min(1).max(16).optional(),legacyExecutionNodeId:z.string().min(1).max(64).optional(),
  approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),recoveryGeneration:z.string().min(1).max(128),
  staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs,
- tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional(),review:z.strictObject({enabled:z.literal(true)}).optional()})
+ tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional(),teacherDesign:teacherDesignSchema.optional(),review:z.strictObject({enabled:z.literal(true)}).optional()})
  .refine(value=>Boolean(value.ssh)!==Boolean(value.executionNodes),'Choose exactly one single-node or member-node configuration')
  .refine(value=>!value.executionNodes||new Set(value.executionNodes.map(node=>node.nodeId)).size===value.executionNodes.length,'Node IDs must be unique')
  .refine(value=>!value.legacyExecutionNodeId||value.executionNodes?.some(node=>node.nodeId===value.legacyExecutionNodeId),'Original node must be registered');
