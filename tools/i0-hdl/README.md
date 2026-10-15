@@ -1,6 +1,8 @@
 # Robert 本机 C/HDL 环境入口
 
-本目录是已准备环境的运行工具。范围及实际验收见 [本批任务](../../docs/tasks/I0-UI_HDL_REAL_BROWSER.md)，课程发布工具见 [合成课程准备说明](SEED_LOCAL_COURSES.md)。运行入口为 `xunjie-local.ps1`，业务页面为 <https://127.0.0.1:3444>。
+**当前状态（2026-10-15）：** Robert 已改用负责人私下提供的云端共享服务；旧 3444 业务宿主 `/opt/xunjie-ui-local` 已按[本轮授权和记录](../../docs/tasks/DL-UI_ALU_TASK_DEDUP_20261015.md)停用并清理。下文的 `xunjie-local.ps1`、3444 页面、初始化材料及合成库路径是当时本机验证的历史说明，现不可用；不要按下文命令重新创建旧宿主。专用执行 VM `/opt/xunjie-runner` 仍由云端节点回连使用，云端连接资料由负责人私下发放。
+
+本目录记录此前已准备环境的运行工具。范围及实际验收见 [本批任务](../../docs/tasks/I0-UI_HDL_REAL_BROWSER.md)，课程发布工具见 [合成课程准备说明](SEED_LOCAL_COURSES.md)。当时运行入口为 `xunjie-local.ps1`，业务页面为 <https://127.0.0.1:3444>。
 
 ## 首次准备
 

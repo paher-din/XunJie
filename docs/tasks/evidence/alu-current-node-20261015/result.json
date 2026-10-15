@@ -1,0 +1,40 @@
+{
+  "recordedAt": "2026-10-15T21:36:32+08:00",
+  "purpose": "isolated synthetic ALU engineering check on Robert's dedicated execution VM",
+  "cloudServiceCheck": "read-only execution-nodes returned cReady=true and hdlReady=true after the run",
+  "runnerConfig": "/opt/xunjie-runner/config.dlc.robert.json",
+  "passed": true,
+  "buildStatus": "succeeded",
+  "buildTerminationConfirmed": true,
+  "sessionStatus": "stopped",
+  "sessionTerminationConfirmed": true,
+  "results": [
+    {
+      "switches": "0000100101000011",
+      "leds": "0000000000001000",
+      "anodesAndSegments": [
+        ["11111101", "0011001"],
+        ["11111011", "0000000"],
+        ["11110111", "1000000"],
+        ["11111110", "0110000"]
+      ],
+      "sequence": 1,
+      "coverage": "complete"
+    },
+    {
+      "switches": "0000011000110101",
+      "leds": "0000000000000110",
+      "anodesAndSegments": [
+        ["11111101", "0110000"],
+        ["11111011", "0000010"],
+        ["11110111", "1000000"],
+        ["11111110", "0010010"]
+      ],
+      "sequence": 2,
+      "coverage": "complete"
+    }
+  ],
+  "guestTemporaryFilesCleaned": true,
+  "sharedStudentAttemptTouched": false,
+  "sharedApplicationBrowserWorkflowExecuted": false
+}
