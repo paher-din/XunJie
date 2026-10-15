@@ -5,10 +5,48 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import type { IncomingMessage } from 'node:http';
-import { fixture } from '../workspace/test-support.ts';
+import { assigned, fixture } from '../workspace/test-support.ts';
 import { createI0App } from './i0.ts';
 import { createPersonalAgentService } from '../personal-agent/service.ts';
 import { createCompatibleTransport } from '../tutoring/openai-compatible.ts';
+import { readStudentTasks } from '../personal-agent/student-tasks.ts';
+
+test('authenticated independent chat sends only the current student assignment summary to the model',async()=>{
+  const f=await fixture(),directory=mkdtempSync(join(tmpdir(),'xunjie-task-chat-host-'));
+  const host=await createI0App({db:f.db,origin:'https://synthetic.example',signingSecret:f.signingSecret,now:f.timestamp,currentGeneration:f.generation});
+  const seen:Array<{userId:string;messages:unknown}>=[];
+  const personal=createPersonalAgentService({directory,now:f.timestamp,
+    authorize:request=>f.db.withTransaction(tx=>host.access.authenticatedUserInTransaction(request,tx)),
+    readStudentTasks:userId=>readStudentTasks(f.db,userId),
+    transport:{async test(){return {ok:true,latencyMs:1,modelCount:1}},async complete({selection,messages}){
+      seen.push({userId:selection.userId,messages});return {text:'Synthetic reply'};
+    }}});
+  personal.register(host.app);
+  try{
+    const teacher=await f.login('teacher'),student=await f.login(),other=await f.login('other');
+    const {assignmentId}=await assigned(f,teacher);
+    const payload={expectedRevision:0,enabled:true,defaultModelId:'custom:p:model',providers:[{id:'p',name:'Synthetic provider',
+      baseUrl:'https://models.example/v1',apiKey:'SYNTHETIC-KEY',models:[{id:'model',contextWindow:'16000',maxOutput:'4096',inputTypes:[],reasoningLevels:[]}]}],efforts:{}};
+    for(const headers of [student,other,teacher]){
+      const saved=await host.app.inject({method:'POST',url:'/api/model-settings',headers,payload});
+      assert.equal(saved.statusCode,200,saved.body);
+      const turn=await host.app.inject({method:'POST',url:'/api/agent/turns',headers,
+        payload:{conversationId:null,mode:'send',text:'我现在有什么任务还没完成',requestKey:'task-question'}});
+      assert.equal(turn.statusCode,200,turn.body);
+    }
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(seen.length,3);
+    const studentPrompt=JSON.stringify(seen.find(item=>item.userId==='student')?.messages);
+    assert.match(studentPrompt,/TextScope/);assert.match(studentPrompt,new RegExp(assignmentId));
+    assert.doesNotMatch(studentPrompt,/PRIVATE_TITLE|PRIVATE_BODY|SYNTHETIC-KEY/);
+    for(const userId of ['other','teacher']){
+      const prompt=JSON.stringify(seen.find(item=>item.userId===userId)?.messages);
+      assert.doesNotMatch(prompt,/TextScope|PRIVATE_TITLE|PRIVATE_BODY|SYNTHETIC-KEY/);
+      const summary=(seen.find(item=>item.userId===userId)?.messages as {content:string}[])[1]?.content??'';
+      assert.match(summary,/"tasks":\[\]/);
+    }
+  }finally{await personal.close();await host.close();await f.close();rmSync(directory,{recursive:true,force:true});}
+});
 
 test('personal endpoints reuse actual Session/Origin/CSRF and do not alter the course database',async()=>{
   const f=await fixture(),directory=mkdtempSync(join(tmpdir(),'xunjie-personal-host-'));

@@ -46,6 +46,7 @@ npm run test:e2e
 
 正常 I0 就绪检查数据库、原消费者与执行节点，失败保持503。已有启动/账号/配置交接见 [I0-A/C](docs/tasks/I0_A_C_HANDOFF.md)和[正常辅导宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)；数字逻辑固定配置与35表初始化见 [DL-A §16](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#16-35表去重联合收尾实现与验证)。个人供应商配置与独立 Agent 真实聊天的新宿主接线见[本轮任务](docs/tasks/I0_UI_MODEL_CONFIGURATION_REAL_CHAT.md)和[学生运行说明](apps/student/README.md#个人模型配置与独立聊天)：每账号加密保存 Key，项目辅导和独立聊天共用本人选择；仅支持公网 HTTPS。原冻结环境不会随源码改动自动升级。统一 PR56 的 main 集成、真实 HDL 链路、H4 请求/投递与 UI 回交见[本轮 C 续作](docs/tasks/DLA_CONTINUATION_20261014.md)。服务端、模型、浏览器和真人验收分别记录。
 
+独立 Agent 对话询问本人课程任务时的只读接线见[任务上下文记录](docs/tasks/I0_UI_AGENT_TASK_CONTEXT_20261015.md)：当前可列出本人真实分配及开放状态，完成状态仍未知。
 
 规范或入口文档修改后，从仓库根检查引用与标题锚点：
 
