@@ -45,7 +45,10 @@ export type DiagnosticEvent =
 /** 上报一条诊断。detail 只放可序列化的排障字段，不放正文与凭据。 */
 export function reportDiagnostic(event: DiagnosticEvent, detail: object): void {
   if (typeof console === 'undefined' || typeof console.info !== 'function') return
-  console.info(`${TAG} ${event}`, detail)
+  // The in-app browser collapses object arguments to "Object" in captured logs.
+  // Keep this read failure's existing fields as one line so the exact failure can be diagnosed.
+  if (event === 'workspace.read-failed') console.info(`${TAG} ${event} ${JSON.stringify(detail)}`)
+  else console.info(`${TAG} ${event}`, detail)
 }
 
 /** 把未知异常整理成可读的排障文本（学生界面不显示这一份）。 */
