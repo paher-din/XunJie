@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { fixedProject, recoverRunContext } from './runHelpers'
+import { revealTutorSource } from './tutoringHelpers'
 import { confirmSave, create, edit, localState, openFileMenu, start, serverHead, trackBusinessWrites } from './helpers'
 import type { TutorPage, TutorPayload } from '../src/workspace/tutoringContracts'
 
@@ -136,7 +137,7 @@ test('已显示的代码回答经历原文件回收及同名重建，仍保留�
   await page.locator('[data-fileid] button[aria-label="回收 sample.txt"]').click()
   await confirmSave(page, 2)
   await page.getByRole('button', { name: '就项目求助', exact: true }).click()
-  await expect(source).toBeVisible()
+  await revealTutorSource(message)
   await expect(source).toContainText(`原快照 ${snapshot.snapshotId}`)
   await expect(source).toContainText(`sample.txt · 文件版本 ${original.documentVersion}`)
   await expect(source).toContainText('原文件当前不可用；同名文件不承接这份回答。')
@@ -159,7 +160,7 @@ test('已显示的代码回答经历原文件回收及同名重建，仍保留�
   expect(position).toBeTruthy()
   const localBefore = await localState(page), writes = trackBusinessWrites(page)
   await page.getByRole('button', { name: '就项目求助', exact: true }).click()
-  await expect(source).toBeVisible()
+  await revealTutorSource(message)
   await expect(source).toContainText(`原快照 ${snapshot.snapshotId}`)
   await expect(source).toContainText(`sample.txt · 文件版本 ${original.documentVersion}`)
   await expect(source).toContainText('原文件当前不可用；同名文件不承接这份回答。')

@@ -1,0 +1,35 @@
+{
+  "templateOnly": true,
+  "databaseFile": "/var/lib/xunjie/retained-tmp/REPLACE_WITH_RETAINED_DATABASE_DIRECTORY/synthetic.sqlite",
+  "origin": "REPLACE_WITH_PRIVATE_HTTPS_LOOPBACK_ORIGIN",
+  "tls": {
+    "keyFile": "/etc/xunjie/tls/server.key.pem",
+    "certFile": "/etc/xunjie/tls/server.cert.pem"
+  },
+  "signingSecretFile": "/etc/xunjie/signing-secret.txt",
+  "staticDirectory": "/opt/xunjie/releases/REPLACE_COMMIT/apps/student/dist",
+  "recoveryGeneration": "REPLACE_WITH_EXISTING_APPLICATION_GENERATION",
+  "approvedHdlRuntimes": [],
+  "executionNodes": [
+    {
+      "nodeId": "REPLACE_WITH_REGISTERED_NODE_ID",
+      "label": "REPLACE_WITH_MEMBER_LABEL",
+      "recoveryGeneration": "REPLACE_WITH_THIS_NODE_GENERATION",
+      "ssh": {
+        "binary": "/usr/bin/ssh",
+        "host": "127.0.0.1",
+        "port": 0,
+        "keyFile": "/etc/xunjie/execution/cloud-application",
+        "knownHostsFile": "/etc/xunjie/execution/known_hosts"
+      }
+    }
+  ],
+  "consumerIntervalMs": 250,
+  "allowedLoginUserIds": [
+    "REPLACE_WITH_ALLOWED_TEACHER_ID",
+    "REPLACE_WITH_ALLOWED_STUDENT_ID"
+  ],
+  "review": {
+    "enabled": true
+  }
+}

@@ -25,6 +25,7 @@ export type StudentHelpCurrentState = AuthorizedStudentHelpContext["current"] & 
 
 export function projectHdlHelpCurrentState(hdl: AuthorizedHdlHelpContext): HdlHelpCurrentState {
   return {
+    ...(hdl.execution?{execution:structuredClone(hdl.execution)}:{}),
     snapshotId: hdl.snapshotId,
     snapshotHash: hdl.snapshotHash,
     buildId: hdl.build.buildId,
@@ -234,6 +235,8 @@ function assertAuthorizedContext(input: AuthorizedStudentHelpContext) {
 function validHdlContext(input: AuthorizedStudentHelpContext): boolean {
   const hdl = input.hdl;
   if (!hdl) return true;
+  const execution=hdl.execution,nodeGeneration=execution?.nodeGeneration??input.current.recoveryGeneration;
+  if(execution&&(!/^[A-Za-z0-9_-]{1,64}$/.test(execution.nodeId)||!execution.nodeGeneration))return false;
   const attemptId = input.job.scope.attemptId;
   const studentId = input.job.scope.studentId;
   if (!attemptId || !studentId) return false;
@@ -250,7 +253,7 @@ function validHdlContext(input: AuthorizedStudentHelpContext): boolean {
     build.snapshotHash !== hdl.snapshotHash ||
     !validHash(hdl.snapshotHash) ||
     !validHash(build.configurationHash) ||
-    build.identity.recoveryGeneration !== input.current.recoveryGeneration ||
+    build.identity.recoveryGeneration !== nodeGeneration ||
     !sameHdlScope(input, build.identity.scope) ||
     !["succeeded", "failed"].includes(build.status) ||
     !build.terminationConfirmed ||
@@ -277,7 +280,7 @@ function validHdlContext(input: AuthorizedStudentHelpContext): boolean {
     session.mappingVersion !== build.board.mappingVersion ||
     session.engineVersion !== build.engineVersion ||
     session.runtimeProfileVersion !== build.runtimeProfileVersion ||
-    session.identity.recoveryGeneration !== input.current.recoveryGeneration ||
+    session.identity.recoveryGeneration !== nodeGeneration ||
     !sameHdlScope(input, session.identity.scope) ||
     session.status !== "active" ||
     session.pendingOperationId !== undefined ||
@@ -371,6 +374,7 @@ function sameHdlCurrent(
   const session = hdl.session;
   const operation = hdl.operation;
   return current.snapshotId === hdl.snapshotId &&
+    current.execution?.nodeId === hdl.execution?.nodeId && current.execution?.nodeGeneration === hdl.execution?.nodeGeneration &&
     current.snapshotHash === hdl.snapshotHash &&
     current.buildId === hdl.build.buildId &&
     current.buildStatus === hdl.build.status &&

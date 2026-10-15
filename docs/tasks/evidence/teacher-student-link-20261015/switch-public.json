@@ -1,0 +1,28 @@
+{
+  "startedAtUtc": "2026-10-15T07:25:40.025Z",
+  "head": "9664ca5646b969cde0ccff4f4b8d5c7ea2da547d",
+  "oldPid": 1852,
+  "oldHost": "/mnt/d/tmp/xunjie-shared-20261015-input/host-shared.mjs",
+  "newHost": "/mnt/d/tmp/xunjie-teacher-link-20261015/host-link.mjs",
+  "source": "/opt/xunjie-runner/tests/teacher-student-link-9664ca5-20261015",
+  "oldHostStopped": true,
+  "migration": {
+    "applied": true,
+    "databaseFile": "/opt/xunjie-runner/tests/i0-entry-20261013-01/retained-tmp-20261014/xunjie-a12-completion-dZlbr9/synthetic.sqlite",
+    "tableCount": 41,
+    "evidenceDirectory": "/opt/xunjie-runner/tests/i0-entry-20261013-01/teacher-link-review-2026-10-15T07-25-40-619Z",
+    "backupSha256": "f5c4a2fe4bfaf8023af050a344b5829c672cbcca680dfd1384959a046b85b27d"
+  },
+  "newPid": 3652,
+  "health": {
+    "status": 200,
+    "body": {
+      "requestId": "6e37f07b-6008-46bf-aa58-5f3669dcbc15",
+      "data": {
+        "status": "ready"
+      }
+    }
+  },
+  "newHostReady": true,
+  "finishedAtUtc": "2026-10-15T07:25:48.247Z"
+}

@@ -1,5 +1,7 @@
 # I0-UI55：登录接线与本机浏览器交接
 
+旧 PAHER 连接与维护入口已退役。当前地址、身份、证书及连接步骤由负责人私下发放；仓库仅提供[通用基础设施模板](../../tools/i0-cloud/README.md)。以下保留原历史授权、失败和验证事实，不作为当前连接、维护或领取凭据的说明。
+
 日期：2026-10-14（Asia/Shanghai）。负责角色：Robert / UI，由本会话 Agent 实施。父任务：[I0 #30](https://github.com/paher-din/XunJie/issues/30)。请求来源：[PR55 的 UI 交接 comment](https://github.com/paher-din/XunJie/pull/55#issuecomment-6152088547)。
 
 当前共享交付从最新 main `5c8c60ec93e00bc1782a534a88b696ae98c76c37` 建立 `codex/i0-ui55-tools-evidence`；仅工具、证据、本人任务与入口说明有差异。旧宿主现场所用 `40db96c` 加 H-04 候选及窄回归已保存为本地 `79f90370114abba05ba3e3ea428f273734e04ede`，不公开叠到刚合入 PR66 的正式 UI；早期内容槽登录原型亦不包含。以下各节按发生时间保留历史，“未执行”不自动代表当前状态。
@@ -35,11 +37,11 @@
 
 ## 本机服务与精确信任方案（待决策）
 
-浏览器主机为 `LAPTOP-S7A4IQFU` / Windows 用户 `h` / Chrome 155.0.8059.40。C 的原服务主机为 PAHER，当前电脑 `127.0.0.1:3443` 未监听；PAHER 的回环入口不能直接作为本机地址。
+浏览器主机为 获准本机 / Windows 获准用户 / Chrome 155.0.8059.40。C 的原服务主机为 PAHER，当前电脑 `历史回环入口` 未监听；PAHER 的回环入口不能直接作为本机地址。
 
-本任务准备时原 24 表合成库的 `/tmp` 文件已丢失，恢复尚待批准；随后回读 [PR55 当前提交](https://github.com/paher-din/XunJie/commit/0d7c5f93b95f4d4ff4204db5c49accaa15c6f10b) 的 C 记录 §15.5～15.9，确认 C 已获负责人批准新建持久 24 表合成库、复用原秘密材料并恢复真实 HTTPS 服务。新库原 20 项独立 20/20；本任务没有重复其服务端验证。旧 Assignment/Activity/Attempt 仅为历史证据，不能用于当前浏览器。已有叶子证书 SHA-256 `c3f8ed37e07c341b0fcc5558d0fc12fab47913ef71d1ec8077a0e08444475173` 属 PAHER 公共 TLS 材料，不能直接把旧信任提案写成本机已实施。
+本任务准备时原 24 表合成库的 `/tmp` 文件已丢失，恢复尚待批准；随后回读 [PR55 当前提交](https://github.com/paher-din/XunJie/commit/0d7c5f93b95f4d4ff4204db5c49accaa15c6f10b) 的 C 记录 §15.5～15.9，确认 C 已获负责人批准新建持久 24 表合成库、复用原秘密材料并恢复真实 HTTPS 服务。新库原 20 项独立 20/20；本任务没有重复其服务端验证。旧 Assignment/Activity/Attempt 仅为历史证据，不能用于当前浏览器。已有叶子证书 SHA-256 `历史指纹私下保留` 属 PAHER 公共 TLS 材料，不能直接把旧信任提案写成本机已实施。
 
-当前真实 C 入口（C 回交，非本任务现场验收）：PAHER `https://127.0.0.1:3443/#/task/a2533386-4923-4dee-83bd-2d7a99fb06e9`，Activity `f0942cb7-75ef-4625-aa92-d649268d61cb`，Attempt `c9166463-5f46-4dc6-82c3-96456f394258`。C 的公开 TCP 证据明确 host=PAHER；本机重新探测 127.0.0.1:3443 仍不可达。原业务运行源固定 `9fa76ad`，不会自动带上本次学生前端构建；实际入口还须交接本次 UI 产物。
+当前真实 C 入口（C 回交，非本任务现场验收）：PAHER `历史回环入口/#/task/a2533386-4923-4dee-83bd-2d7a99fb06e9`，Activity `f0942cb7-75ef-4625-aa92-d649268d61cb`，Attempt `c9166463-5f46-4dc6-82c3-96456f394258`。C 的公开 TCP 证据明确 host=PAHER；本机重新探测 历史回环入口 仍不可达。原业务运行源固定 `9fa76ad`，不会自动带上本次学生前端构建；实际入口还须交接本次 UI 产物。
 
 真实 C 链需要先落实服务路线：通过既有获准私有地址/SSH/VPN 访问 PAHER，或另行明确本机部署范围。用户已选本机浏览器，但本会话没有新增通道、复制 PAHER 凭据、修改信任或另建本机数据库。已向用户请求可达的私有地址/现有通道信息，不要求在聊天发送口令/密钥。若后续确需新增跨机通道/本机环境，须形成精确对象/端口/凭据渠道方案再批准实施；C 已完成的原服务恢复不重复申请。
 
@@ -70,13 +72,13 @@ Chrome 五项新增回放分别核错误口令→正确登录→只读→显式�
 
 ## SSH 路线与本机实测（2026-10-14）
 
-负责人先询问本机部署，随后明确决定“用 ssh 连它的电脑，用他的环境”，撤回本机部署路线；未创建本机服务库、签名/TLS 私钥、C1 VM 或安装组件。PAHER Agent 回交专用普通账号 `xunjie-tunnel`、仅公钥认证/仅本地转发到 PAHER loopback 3443，以及待安装本机公钥。该回交是环境资料；实际状态以下述本机检查及后续认证为准。
+负责人先询问本机部署，随后明确决定“用 ssh 连它的电脑，用他的环境”，撤回本机部署路线；未创建本机服务库、签名/TLS 私钥、C1 VM 或安装组件。PAHER Agent 回交专用普通账号 当时受限转发身份、仅公钥认证/仅本地转发到 PAHER loopback 3443，以及待安装本机公钥。该回交是环境资料；实际状态以下述本机检查及后续认证为准。
 
-本机只读核查确认双方当前在同一 /24；SSH keyscan 取得的 Ed25519 公钥逐字匹配回交，SHA256 为 `tKOIBwI9+zWEn6kBhETV9pPbGS7hzEYiDjOMd3MuaHA`。本机客户端 OpenSSH 10.0p2；对端 banner 实际报告 OpenSSH_for_Windows_9.5，未把回交的安装版本当当前服务版本或据此诊断签名缺陷。
+本机只读核查确认双方当前在同一 /24；当时独立取得的 Ed25519 公钥逐字匹配回交，真实主机指纹由私下材料保留。当时本机客户端 OpenSSH 10.0p2；对端 banner 实际报告 OpenSSH_for_Windows_9.5，未把回交的安装版本当当前服务版本或据此诊断签名缺陷。
 
-原本机 Ed25519 公钥/私钥文件已存在，无需新建凭据；公钥指纹 `SHA256:dq1UjxIyJuEo6f820uFuLUA66jqMyvXcrBxowFHNWIw`。只读取公钥和文件是否存在，未读私钥正文，ssh-agent 当前无加载身份。主机公钥固定在仓库外本次专用 known_hosts，不改用户全局 SSH 配置或其他 host 记录。
+原本机 Ed25519 公钥/私钥文件已存在，无需新建凭据；公钥指纹仅在私下材料保留。只读取公钥和文件是否存在，未读私钥正文，ssh-agent 当前无加载身份。主机公钥固定在仓库外本次专用 known_hosts，不改用户全局 SSH 配置或其他 host 记录。
 
-使用已有 identity、BatchMode、StrictHostKeyChecking=yes、精确 Ed25519 host key、ExitOnForwardFailure=yes，显式绑定本机 127.0.0.1:3443 的首次 `ssh -N -L` 实测返回 `Permission denied (publickey)`，进程退出 1，隧道未建立。对应远端 authorized_keys 尚空的交接，当前须由 PAHER Agent 安装本机公共钥后重测，不能计认证、转发或 TLS 验收通过。只向负责人提供公钥，不代发送消息给 PAHER。
+使用已有 identity、BatchMode、StrictHostKeyChecking=yes、精确 Ed25519 host key、ExitOnForwardFailure=yes，显式绑定本机 历史回环入口 的首次 受限转发请求 实测返回 `Permission denied (publickey)`，进程退出 1，隧道未建立。对应远端 authorized_keys 尚空的交接，当前须由 PAHER Agent 安装本机公共钥后重测，不能计认证、转发或 TLS 验收通过。只向负责人提供公钥，不代发送消息给 PAHER。
 
 另保留回交中的节点重启事实：PAHER 现场恢复了 transient VM/应用 unit，当前 readiness、原冻结指纹和恢复代际需再次实核。C 回交的“前端没有 hash 路由”是部署物描述，不能替代当前代码核查；本分支继承的正常 TaskRoute 已存在，本次新增登录也已完成 Chrome 协议验证。远端旧静态目录仍需接收本次新产物；SSH 专用账号禁止 shell/SFTP，不能据此假定已取得部署或秘密领取通道。
 
@@ -84,13 +86,13 @@ Chrome 五项新增回放分别核错误口令→正确登录→只读→显式�
 
 ## SSH 连通、用户证书授权与真实页面检查（2026-10-14）
 
-PAHER 安装同一客户端公钥后，本机原命令实际认证并建立 SSH 隧道，监听只在本机 127.0.0.1:3443。使用已有私钥由 SSH 客户端完成签名，Agent 未读取/输出其正文；不改服务端身份或放宽转发。未复现远端报告的 host-bound 签名失败，不将其历史诊断写成本机结论。当前路线为同一局域网的 TCP 22 直连，未建立 VPN 或公网映射；跨网络继续使用仍需可达的获准私有入口。
+PAHER 安装同一客户端公钥后，本机原命令实际认证并建立 SSH 隧道，监听只在本机 历史回环入口。使用已有私钥由 SSH 客户端完成签名，Agent 未读取/输出其正文；不改服务端身份或放宽转发。未复现远端报告的 host-bound 签名失败，不将其历史诊断写成本机结论。当前路线为同一局域网的 TCP 22 直连，未建立 VPN 或公网映射；跨网络继续使用仍需可达的获准私有入口。
 
 通过固定主机身份的隧道，仅采集公开 TLS 证书、核对 DER SHA256，采集阶段不发 HTTP/凭据、也不记 TLS 信任通过。实际证书为 CA:false 自签叶子，SAN=127.0.0.1/localhost/::1，SHA256 与原交接逐字一致；UTC 有效期 2026-10-13 17:01:01～2026-11-12 17:01:01，即北京时间 2026-10-14 01:01:01～2026-11-13 01:01:01。
 
 之后用该确切公共证书作为本次 Node 请求的 CA、保留严格链/主机名校验，六次公开 GET 通过严格 TLS：首页/live/ready 均 200；Session 与新 Assignment bootstrap 匿名读取均 401 / UNAUTHENTICATED；静态 JS 200。此时未修改 Windows trust，也未登录。原历史 HTTP ready=503 保留，当前本机观察为 200，不从该变化推导运行节点指纹/代际已重新验收。
 
-导入前只读核查确认 CurrentUser Root/TrustedPeople 与 LocalMachine Root 均无同指纹证书。负责人针对精确证书/用户范围确认：“允许，验收后可以不移除，这样后续可以继续使用”。据此只导入 Windows 用户 h 的 CurrentUser\\Root；Thumbprint=B05E48C8E29228860BA94B8756B4A51C75DB4B7B；导入后 CurrentUser Root 存在、LocalMachine Root 仍不存在，按新指令保留不移除。不生成 CA/服务器私钥，不关闭证书校验。[Chrome 官方说明](https://chromium.googlesource.com/chromium/src/+/main/net/data/ssl/chrome_root_store/faq.md#how-does-the-chrome-certificate-verifier-integrate-with-platform-trust-stores-for-local-trust-decisions)说明 TCP TLS 使用 Windows CurrentUser Root 的本机显式信任；该操作影响该用户应用，不限单标签或独立 profile。
+导入前只读核查确认 CurrentUser Root/TrustedPeople 与 LocalMachine Root 均无同指纹证书。负责人针对精确证书/用户范围确认：“允许，验收后可以不移除，这样后续可以继续使用”。据此只导入 获准 Windows 用户 的 CurrentUser\\Root；Thumbprint=历史指纹私下保留；导入后 CurrentUser Root 存在、LocalMachine Root 仍不存在，按新指令保留不移除。不生成 CA/服务器私钥，不关闭证书校验。[Chrome 官方说明](https://chromium.googlesource.com/chromium/src/+/main/net/data/ssl/chrome_root_store/faq.md#how-does-the-chrome-certificate-verifier-integrate-with-platform-trust-stores-for-local-trust-decisions)说明 TCP TLS 使用 Windows CurrentUser Root 的本机显式信任；该操作影响该用户应用，不限单标签或独立 profile。
 
 随后用已连接的本机 Chrome 实际打开新 Assignment 的浏览器 hash 路由：页面正常加载“循阶”，未出现 TLS interstitial；当前内容却显示“没有找到这个任务”。结合远端实际 bundle 不含本次登录组件，确认服务仍部署旧学生静态产物。此处只通过浏览器 HTTPS 页面读取，不计登录/分配接线、Secure Cookie、学生作品/真实 C1 或完整验收通过。
 
@@ -106,29 +108,29 @@ PAHER 安装同一客户端公钥后，本机原命令实际认证并建立 SSH 
 
 负责人要求直接完成、减少手动转交，并澄清 PAHER Agent 是另一台电脑上的 DeepSeek Harness，不是本机 Codex chat。当前 SSH 身份仍只获准转发，不能借其他账号、shell/SFTP 或接口漏洞绕过限制。本机另一个“实现登录与会话进入流程”聊天正在实施完整 UI，当前仅只读了解其交付状态，不复制其未提交文件、不发送未授权消息。
 
-为浏览器接线验收而先部署 PAHER 静态目录并非必需。方案改为本机 Node HTTPS gateway：在原浏览器 origin `https://127.0.0.1:3443` 只读提供已验证的正常学生 dist；`/api` 与 `/health` 经本机另一个 SSH 转发端口 14443 接 PAHER 原 127.0.0.1:3443。backend TLS 固定原证书、严格链/名称/指纹校验。Origin、CSRF、Cookie、方法、正文、状态与流保持原值；只剔除逐跳 HTTP header，不改角色、契约或拒绝结果。该方案没有 fixture、模型替身、执行器替身、数据库或新的远端通道，PAHER 原网站仍保持原部署状态。
+为浏览器接线验收而先部署 PAHER 静态目录并非必需。方案改为本机 Node HTTPS gateway：在原浏览器 origin `历史回环入口` 只读提供已验证的正常学生 dist；`/api` 与 `/health` 经本机另一个 SSH 转发端口 14443 接 PAHER 原 历史回环入口。backend TLS 固定原证书、严格链/名称/指纹校验。Origin、CSRF、Cookie、方法、正文、状态与流保持原值；只剔除逐跳 HTTP header，不改角色、契约或拒绝结果。该方案没有 fixture、模型替身、执行器替身、数据库或新的远端通道，PAHER 原网站仍保持原部署状态。
 
 适用依据补读 TECH_DESIGN §9 的同源 HTTPS/受信代理要求及实际 access/app.ts 的 Origin/CSRF 正文。可写新增 `tools/i0-ui55/local-ui-gateway.mjs` 与其必要边界/转发测试、本人任务记录和学生使用说明；所有现有后台、产品/规划/参考、规范及并行 UI 文件只读。程序准备与离线验证属于本次明确的直接接线任务，**启动代理、新建本机 TLS 私钥及导入其证书仍是待批准对象**，不以代码完成代替批准。
 
-精确待批准本机对象：仓库外 `D:\\XunJie_Project\\i0-ui55-connection\\local-relay\\`；只为本机 127.0.0.1:3443 新建一对 RSA2048 TLS 叶子证书/私钥（CA:false，SAN 127.0.0.1/localhost/::1、serverAuth、30 天），私钥限用户 h/SYSTEM/Administrators；只将本次确切新公共证书导入用户 h 的 CurrentUser Root，不动 LocalMachine、不复制 PAHER 私钥、不修改 .env/CI。原 PAHER 公开证书继续作为 backend 唯一 CA/pin。既有 SSH 改本机监听端口 14443 时保持原服务端 destination、身份和 host pin，确认新转发后才结束本任务原客户端。无新增依赖或 VM。
+精确待批准本机对象：仓库外 `<仓库外私下路径>`；只为本机 历史回环入口 新建一对 RSA2048 TLS 叶子证书/私钥（CA:false，SAN 127.0.0.1/localhost/::1、serverAuth、30 天），私钥限获准用户/SYSTEM/Administrators；只将本次确切新公共证书导入获准用户的 CurrentUser Root，不动 LocalMachine、不复制 PAHER 私钥、不修改 .env/CI。原 PAHER 公开证书继续作为 backend 唯一 CA/pin。既有 SSH 改本机监听端口 14443 时保持原服务端 destination、身份和 host pin，确认新转发后才结束本任务原客户端。无新增依赖或 VM。
 
 凭据仍是独立必要条件：目前只知道 root-only initializer 引用，没有获得跨机浏览器领取授权或实际密码。若负责人已有批准渠道领取的学生账号，由其直接在可信浏览器输入，Agent 不在聊天/日志获取口令；若没有，则只暂停真实登录以后的验证，不假造会话或把 gateway 当凭据渠道。代理验证与 PAHER 真正部署、完整身份/运行验收分别记录。
 
 ## 本机长期工具包与已批准 TLS 实现（2026-10-14）
 
-负责人要求相关工具留在本机、留下入口与使用方法，并已批准精确的本机 TLS 对象范围。据此把上节提案做成可长期保留、可再次使用的工具包，并实施该已批准范围。工作目录为仓库外 `D:\XunJie_Project\i0-ui55-connection`；本阶段不改产品/规划/参考/规范，不推送、不提交、不改原 PR53/55，主工作区 `D:\XunJie_Project\XunJie` 的并行改动未触碰。
+负责人要求相关工具留在本机、留下入口与使用方法，并已批准精确的本机 TLS 对象范围。据此把上节提案做成可长期保留、可再次使用的工具包，并实施该已批准范围。工作目录为仓库外 `<仓库外私下路径>`；本阶段不改产品/规划/参考/规范，不推送、不提交、不改原 PR53/55，主工作区 `<仓库外私下路径>` 的并行改动未触碰。
 
-入口与内容：统一入口 `xunjie-ui55.ps1`（`help`/`setup`/`start`/`status`/`check`/`stop`，`start -LocalOnly` 为无隧道离线自检），中文说明 `README.zh-CN.md`，可执行源码快照 `tools\i0-ui55\`（`local-ui-gateway.mjs`、`local-ui-gateway.test.mjs`、`source-manifest.json`），机器配置/私钥/状态/日志只在 `local-relay\`，学生产物解压到 `dist\eaadb17\`。源码快照来源为本分支 `d39d7c2` 下未提交的 `tools/i0-ui55` 两文件，摘要记入 `source-manifest.json`，`check` 逐文件核对。既有 ZIP、补丁、host pin、PAHER 公开证书、部署提示词与旧证据原样保留，未新增依赖：仅引用已存在的 `D:\nodejs\node.exe`、`C:\Program Files\OpenSSH\ssh.exe` 与 WSL Ubuntu openssl（本机实测 3.0.13；不可用时回退已核对的 msys64 openssl）。
+入口与内容：统一入口 `xunjie-ui55.ps1`（`help`/`setup`/`start`/`status`/`check`/`stop`，`start -LocalOnly` 为无隧道离线自检），中文说明 `README.zh-CN.md`，可执行源码快照 `tools\i0-ui55\`（`local-ui-gateway.mjs`、`local-ui-gateway.test.mjs`、`source-manifest.json`），机器配置/私钥/状态/日志只在 `local-relay\`，学生产物解压到 `dist\eaadb17\`。源码快照来源为本分支 `d39d7c2` 下未提交的 `tools/i0-ui55` 两文件，摘要记入 `source-manifest.json`，`check` 逐文件核对。既有 ZIP、补丁、host pin、PAHER 公开证书、部署提示词与旧证据原样保留，未新增依赖：仅引用已存在的 `<仓库外私下路径>`、`<仓库外私下路径>` 与 WSL Ubuntu openssl（本机实测 3.0.13；不可用时回退已核对的 msys64 openssl）。
 
-已实施的精确批准对象：`local-relay\` 目录先建再设 ACL（仅 `LAPTOP-S7A4IQFU\h`/`SYSTEM`/`Administrators`，去继承），随后用 openssl 生成 RSA2048/SHA256/30 天、`CA:FALSE`、SAN `localhost`+`127.0.0.1`+`::1`、`serverAuth` 的自签叶子，私钥文件 ACL 同样限定三主体；只把这一个确切公共证书导入用户 `h` 的 `CurrentUser\Root`。实测公开事实：叶子 `SHA256=8d663b4dba93b1fb61df544fe3fe17022e561d88a559576381abf1220b3ac52e`、Thumbprint `675CD4606DD1CCC8A8E561BD16EA15FC1ABBF34D`、有效期 UTC 2026-10-14T08:56:31Z～2026-11-13T08:56:31Z；导入后 `CurrentUser\Root` 存在、`LocalMachine\Root` 不存在；未生成 CA、未读/输出私钥正文、未复制 PAHER 私钥、未改 `.env`/CI。`setup` 对已存在证书只核对不替换，文档明确到期后须对新证书对象另行授权。
+已实施的精确批准对象：`local-relay\` 目录先建再设 ACL（仅 `获准本机用户`/`SYSTEM`/`Administrators`，去继承），随后用 openssl 生成 RSA2048/SHA256/30 天、`CA:FALSE`、SAN `localhost`+`127.0.0.1`+`::1`、`serverAuth` 的自签叶子，私钥文件 ACL 同样限定三主体；只把这一个确切公共证书导入获准用户 的 `CurrentUser\Root`。实测公开事实：叶子 `SHA256=历史指纹私下保留`、Thumbprint `历史指纹私下保留`、有效期 UTC 2026-10-14T08:56:31Z～2026-11-13T08:56:31Z；导入后 `CurrentUser\Root` 存在、`LocalMachine\Root` 不存在；未生成 CA、未读/输出私钥正文、未复制 PAHER 私钥、未改 `.env`/CI。`setup` 对已存在证书只核对不替换，文档明确到期后须对新证书对象另行授权。
 
 验证结果（本机，Node 24.15.0）：网关离线单元/路径/转发边界测试仓库副本与持久快照各 3/3 通过；`check` 在 `-LocalOnly` 下 13 项通过、0 失败（含叶子参数、私钥与目录 ACL、`CurrentUser\Root` 唯一信任、SSH 主机/客户端公钥指纹、上游证书指纹、3443 归属本工具、经 Windows 信任链的 TLS 与 `GET /` 200）；无隧道时 `/api/session` 与 `/health/live` 均 502，不做 fixture 回退。生命周期安全实测：3443 被占用时 `start` 停止本次启动、占用者存活、退出码 1；`stop` 对 PID 复用（启动 Ticks 不符）与命令行不符两种情况均拒绝终止、保留记录并退出 1，进程退出后再 `stop` 清空记录并退出 0；正常 `start -LocalOnly` → `status` 归属通过 → `stop` 终止并释放 3443/14443。真实 `start`（含 SSH）在本阶段未建立隧道，失败后无残留监听、无残留进程、状态为空。
 
 验证中发现并修复的工具缺陷（均属本阶段新增脚本）：SAN 前缀只匹配 .NET 写法而漏掉 openssl 的 `DNS:`/`IP Address:` 写法；分发处用赋值接收动词输出导致 `setup`/`status` 输出被吞；局部变量 `$home` 与只读自动变量冲突；`ConvertFrom-Json` 把 ISO 时间字符串转成 `[datetime]` 致 PID 复用判定误报（改为比较启动 Ticks）；`stop` 拒绝分支未真正保留记录。网关 `local-ui-gateway.mjs` 复审未发现需要相称修补的明显遗漏，未改动其源码。
 
-**未执行**：PAHER 跨机真实链路（HTTPS 登录、Secure Cookie/CSRF、C1 运行与取消恢复、历史与公开产物、UI-REAL 全项）与浏览器登录验收。原因是本机当前到 `192.168.3.15` 的路由被 `iKuuuVPN` 隧道（`198.18.0.1`）接管：WLAN 邻居表 Incomplete、ping 超时、TCP 22 只得到 `kex_exchange_identification: Connection closed by remote host`，即请求并未真正到达 PAHER。本机 `-LocalOnly` 的 200 只证明本机静态/TLS 与信任，不表示登录、C1 或完整产品验收通过；无隧道时的 502 也不作为真实验收。本阶段没有观察到上游 `401`，因为请求未能到达 PAHER。
+**未执行**：PAHER 跨机真实链路（HTTPS 登录、Secure Cookie/CSRF、C1 运行与取消恢复、历史与公开产物、UI-REAL 全项）与浏览器登录验收。原因是本机当前到 `历史内网地址` 的路由被 当时 VPN 隧道接管：WLAN 邻居表 Incomplete、ping 超时、TCP 22 只得到 `kex_exchange_identification: Connection closed by remote host`，即请求并未真正到达 PAHER。本机 `-LocalOnly` 的 200 只证明本机静态/TLS 与信任，不表示登录、C1 或完整产品验收通过；无隧道时的 502 也不作为真实验收。本阶段没有观察到上游 `401`，因为请求未能到达 PAHER。
 
-本阶段改动文件：`tools/i0-ui55/local-ui-gateway.mjs`、`tools/i0-ui55/local-ui-gateway.test.mjs`（均为上一轮新增、本阶段复审未改）、`docs/tasks/I0-UI55_BROWSER_ENTRY.md`、`apps/student/README.md`，以及仓库外 `D:\XunJie_Project\i0-ui55-connection` 下的 `xunjie-ui55.ps1`、`README.zh-CN.md`、`tools\i0-ui55\source-manifest.json`、`local-relay\*`、`dist\eaadb17\*`。最终检查：`node tools/a0-review/check.mjs` 为 79 份文档、1173 内链、`errors:[]`；`git diff --check` 空白检查通过；本分支仍是未推送的本地改动，未新增提交。
+本阶段改动文件：`tools/i0-ui55/local-ui-gateway.mjs`、`tools/i0-ui55/local-ui-gateway.test.mjs`（均为上一轮新增、本阶段复审未改）、`docs/tasks/I0-UI55_BROWSER_ENTRY.md`、`apps/student/README.md`，以及仓库外 `<仓库外私下路径>` 下的 `xunjie-ui55.ps1`、`README.zh-CN.md`、`tools\i0-ui55\source-manifest.json`、`local-relay\*`、`dist\eaadb17\*`。最终检查：`node tools/a0-review/check.mjs` 为 79 份文档、1173 内链、`errors:[]`；`git diff --check` 空白检查通过；本分支仍是未推送的本地改动，未新增提交。
 
 ## 工具复核与收口范围（2026-10-14）
 
@@ -138,15 +140,15 @@ PAHER 安装同一客户端公钥后，本机原命令实际认证并建立 SSH 
 
 收口实现：持久入口的 `check` 对健康只接受 200，存在未执行项返回 2、失败返回 1；公开 GET 使用 `ResponseHeadersRead`，不缓存正文或自动附 Cookie/跟随重定向；ACL 逐 SID 验证仅当前用户/SYSTEM/Administrators、禁继承；归属验证要求可读且匹配的命令行和启动时间。`active-dist.json` 引用当前产物清单，与 `gateway.config.json` 的实际静态目录逐文件比较 ZIP 摘要，替换新构建后不再引用固定旧版本。入口与三份保留工具也纳入源摘要；现有证书/私钥未更换，叶子已有元数据不再被重复 setup 覆写。新增源码负例保存在 `tools/i0-ui55/local-entry.test.ps1`，持久副本位于本机工具根；团队使用说明改为仓库相对链接，不以个人目录作为共享开工前置。
 
-实际验证：入口语法通过；`pwsh -NoProfile -File tools/i0-ui55/local-entry.test.ps1 -EntryPath <持久入口> -NodePath <现有Node>` 退出 0，进程归属（不可读命令/不符/PID复用）、ACL（额外SID/缺项）、新配置静态目录及相同文件数但字节变化、HTTP 503 响应头而正文永不结束四组通过。最终 `LocalOnly` 的 `check` 为 13 通过/0 失败/3 未执行，明确原生退出码 2；Windows 信任链及当前静态根 GET 200 通过，真实 Session/live/ready 未运行。本机 Chrome 实际显示原工作区“不可用/会话没有读取成功”，无 TLS interstitial、无登录提交，不算 PAHER 验收。测试后 `stop` 退出 0，只终止本人网关并释放 3443/14443，保留全部工具、包、证书和信任。
+实际验证：入口语法通过；旧入口的隔离负例验证 退出 0，进程归属（不可读命令/不符/PID复用）、ACL（额外SID/缺项）、新配置静态目录及相同文件数但字节变化、HTTP 503 响应头而正文永不结束四组通过。最终 `LocalOnly` 的 `check` 为 13 通过/0 失败/3 未执行，明确原生退出码 2；Windows 信任链及当前静态根 GET 200 通过，真实 Session/live/ready 未运行。本机 Chrome 实际显示原工作区“不可用/会话没有读取成功”，无 TLS interstitial、无登录提交，不算 PAHER 验收。测试后 `stop` 退出 0，只终止本人网关并释放 3443/14443，保留全部工具、包、证书和信任。
 
-负责人补充 PAHER 曾重启，并随后要求重测恢复情况；再次普通严格 host pin SSH 在握手前被关闭，指定本机 WLAN 源地址 192.168.3.8 时 TCP 22 超时。未建立 SSH 会话，未读取 initializer 或执行远端命令。已请求实际重启后的 IPv4 与 sshd 状态，负责人正在核对；不将其推测“应该恢复”记为已验证。
+负责人补充 PAHER 曾重启，并随后要求重测恢复情况；再次普通严格 host pin SSH 在握手前被关闭，指定本机 WLAN 源地址 历史内网地址 时 TCP 22 超时。未建立 SSH 会话，未读取 initializer 或执行远端命令。已请求实际重启后的 IPv4 与 sshd 状态，负责人正在核对；不将其推测“应该恢复”记为已验证。
 
 负责人进一步要求直接 SSH 维护，并要求提供一次性设置提示词和完整回交字段。已保留本机 `PAHER_SSH_MAINTENANCE_PROMPT.txt`：在保留原 tunnel 身份限制的同时，为现有 WSL 拥有者账号提议指定公钥、单一来源、exec/SFTP、专属授权文件、有效配置核对与回退；一并核对原开发环境、公开 TLS、当前任务引用，并提供仅指定合成学生的现有凭据读取命令。提示词仍待 PAHER 侧实施与本机严格认证验收，不冒充已建立维护通道；未向远端 Agent 自动发消息、未改远端 SSH 配置或账户。
 
 ## 已接通维护通道与正式 UI 消费（2026-10-14）
 
-PAHER 的正式回交由用户提供，包含网络、两个账号的有效配置与指定学生的凭据读取命令；用户允许适当使用子 Agent 加快独立工作。本人本机实测：普通 SSH 与指定 WLAN 源地址两条路径均以原公钥完成认证、原 Ed25519 主机指纹匹配；`xunjie-tunnel` 仍固定 echo，`p3148` 实际 `whoami=paher\\p3148`，SFTP 取回非秘密交接 JSON 退出 0，WSL 中原应用与 C1 VM 单元均 active。本机严格 TLS gateway 的 root/live 为 200、匿名 Session 为 401、HTTP ready 为 503，后者不改贴通过。原私钥/证书/数据库/代际没有更换。
+PAHER 的正式回交由用户提供，包含网络、两个账号的有效配置与指定学生的凭据读取命令；用户允许适当使用子 Agent 加快独立工作。本人本机实测：普通 SSH 与指定 WLAN 源地址两条路径均以原公钥完成认证、原 Ed25519 主机指纹匹配；当时受限转发身份 仍固定 echo，维护身份实际核对通过，SFTP 取回非秘密交接 JSON 退出 0，WSL 中原应用与 C1 VM 单元均 active。本机严格 TLS gateway 的 root/live 为 200、匿名 Session 为 401、HTTP ready 为 503，后者不改贴通过。原私钥/证书/数据库/代际没有更换。
 
 正式登录交付已在另一任务提交，故本次不再扩展本人原内容区登录原型，改为消费其已提交实际 UI：Auth `ba89fe0f09432457e793ac92b276547700aa82ab`，冻结树 `40db96cc8fb5f377f9c4b38e841a3b559b849c7a`。新 managed worktree `i0-ui55-auth-acceptance` 从该树构建，主目录正在进行的保存/恢复未提交内容只读、不导入。依赖 lock/package 相同，普通复制隔离依赖，无 junction；Node24.15 typecheck/build 退出0，正式143文件 ZIP逐项摘要与静态目录相符，准备/凭据/数据库/私钥边界扫描通过。producer 的全量175/176与修复分支29/29仍按原事实，不改成176/176。本机新包和旧包均保留。
 
@@ -231,7 +233,7 @@ v4 切换快照后入口与输入按原 UI 重置，一次 disabled 点击未提
 
 原任务是 comment 的精确信任/接线与浏览器验收，本批完成上述获准现有链，不宣称 [UI-REAL 全 12 项](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md#3-ui-real按ac交接分批接入的12项)。首次新 Attempt、缺代际零写、确认保存/新增冻结、暂停/终态/撤权、第二合成账号/迟到响应、正向公开产物下载、真实丢 ACK/旧代际/恢复故障仍未在该 PAHER 浏览器批次全部执行；前端原协议检查与 C 旧服务端20项不替这些现场项。HTTP ready 503、Windows后续 LastSyncError=2、一次内核选择与未知 VM 自动启动来源保持独立未完成记录。没有真人输入、模型调用、全产品/G0～G4/教学效果通过或 Issue 关闭。
 
-长期入口在 `D:\XunJie_Project\i0-ui55-connection`：`xunjie-ui55.ps1 help/start/status/check/stop`，维护 `xunjie-paher.ps1 help/probe/exec/sftp-get`；README 及专项 SESSION_CLOCK、C1_RECOVERY、STUDENT_DIST_PACKAGING 使用说明与工具原文均保留。现场候选 `codex/i0-ui55-local-tools` 只留本地；共享工具和证据转为下面的最新基线交付。产品基线与 MVP_SPEC §10 待授权维护者汇总。
+旧长期连接和维护入口已退役；当时的工具、专项说明与原验证记录按历史保留，当前连接步骤由负责人私下交接。现场候选 `codex/i0-ui55-local-tools` 仅留本地；共享交付来源仍见下节。产品基线与 MVP_SPEC §10 待授权维护者汇总。
 
 ## 并行正式运行交付接纳与共享写集收口（2026-10-14）
 

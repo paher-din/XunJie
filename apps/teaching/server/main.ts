@@ -41,6 +41,7 @@ try {
         return response;
       };
       const service=await createI0App({db,origin:config.origin,signingSecret:readI0SigningSecret(config.signingSecretFile),
+        ...(config.allowedLoginUserIds?{allowedLoginUserIds:config.allowedLoginUserIds}:{}),
         https:{key:readFileSync(config.tls.keyFile),cert:readFileSync(config.tls.certFile)},
         currentGeneration:()=>generation,runner,staticDirectory:config.staticDirectory,
         consumerIntervalMs:config.consumerIntervalMs,logDestination:process.stdout,
@@ -71,8 +72,9 @@ try {
       if(generation!==config.recoveryGeneration) throw new Error('Recovery control mismatch.');
       const versions=config.tutoring?.versions??{modelConfig:'unconfigured',prompt:'unconfigured',schema:'unconfigured',policy:'unconfigured'};
       const service=await createDigitalLogicApplication({db,origin:config.origin,signingSecret:readI0SigningSecret(config.signingSecretFile),
+        ...(config.allowedLoginUserIds?{allowedLoginUserIds:config.allowedLoginUserIds}:{}),
         https:{key:readFileSync(config.tls.keyFile),cert:readFileSync(config.tls.certFile)},logDestination:process.stdout,
-        ...executionTransports(config.ssh),approvedHdlRuntimes:config.approvedHdlRuntimes,
+        ...(config.ssh?executionTransports(config.ssh):{executionNodes:config.executionNodes!.map(({ssh,...node})=>({...node,...executionTransports(ssh)})),...(config.legacyExecutionNodeId?{legacyExecutionNodeId:config.legacyExecutionNodeId}:{})}),approvedHdlRuntimes:config.approvedHdlRuntimes,
         ...(config.staticDirectory?{staticDirectory:config.staticDirectory}:{}),
         consumerIntervalMs:config.consumerIntervalMs,studentHelp:{versions,budgetAvailable:()=>config.tutoring?.callsAuthorized??false},
         personalModels:config.personalModels??{directory:join(dirname(config.databaseFile),'personal-agent')},

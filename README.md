@@ -7,14 +7,14 @@
 - **了解产品：** 按 [PRD](docs/product/PRD.md) → [MVP_SPEC](docs/product/MVP_SPEC.md) → [TECH_DESIGN](docs/product/TECH_DESIGN.md) 阅读。首版 C / TextScope Core → Report 与数字逻辑增量的范围、限额及验收以基线和批准任务为准。
 - **修改学生 UI：** 页面、组件、样式与交互改动前先读本仓库 [DESIGN.md](docs/DESIGN.md)，沿用已交付设计与语义图标；产品、权限、数据和真实状态仍以产品基线及当前获准任务为准。
 - **领取或继续任务：** 先读 [AGENTS.md](AGENTS.md)，再按 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md) 找对应任务，核对最新负责人决定、进入条件、授权写集和交付状态。
-- **团队演示与调试：** 使用 [PAHER 共享入口](tools/i0-shared/README.md)，所有成员连接同一服务、数据库和学生演示账号。拉取代码不会同步本机数据库。
+- **团队演示与调试：** 共享应用和数据库采用[云端基础设施](tools/i0-cloud/README.md)，C/HDL 在各成员电脑执行。实际连接资料由负责人私下发放，仓库不包含地址、账号、主机指纹或证书。拉取代码不会复制数据库或取得访问权限。
 - **单独验证学生前端：** 使用下方准备入口；正常业务服务的接线条件见 [学生 README](apps/student/README.md)。
 - **查看教师端：** 真实入口为 `/#/teacher`，本机已批准的复核宿主支持手工项目设计、分配、作品审阅和反馈修订。开发专用 `/#/teacher/preview` 提供隔离交互预览。启动、备份与验证见 [教师工作台](docs/tasks/I1-TEACHER_UI_WORKBENCH.md)。
 - **接收模块交付：** 按下方任务入口与原 Issue 回交证据，区分材料已交、联调通过、失败和未执行。
 
 ## 本地运行与验证
 
-团队共用账号、课程和任务时，先运行 [共享 SSH 入口](tools/i0-shared/README.md)，打开 PAHER 提供的 HTTPS 页面。此路径不初始化本机库；本机3444已占用时入口直接拒绝，以免打开另一份数据。显示姓名、课程名称、项目名称由同一后端返回，实施与验证见[共享数据记录](docs/tasks/I0-UI_SHARED_DATA_ENTRY.md)。
+团队共用账号、课程和任务时，按负责人私下发放的连接操作手册进入同一个云端服务，不初始化各自的业务库。仓库仅提供配置模板和通用工具；旧 PAHER 共享连接与临时网关已退役。显示姓名、课程名称、项目名称由同一后端返回；迁移与成员执行绑定见[本轮记录](docs/tasks/I0-UI_CLOUD_SHARED_ENTRY.md)。
 
 学生前端需要 Node 24，使用自己的 lockfile，不依赖 Design 仓库 checkout。以下命令在仓库根开始；`dev:prep` 使用隔离合成数据，不写真实学习记录、不连接执行节点或模型。
 
@@ -28,7 +28,7 @@ npm run dev:prep
 
 Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)，复用专用执行 VM 和原合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；新版个人通道由本人在设置页保存并启用 Key 后生效，`-DisablePersonalModels` 可总停用；`-EnableModel` 仅保留旧环境 Key 通道。登录后从[首页真实任务入口](docs/tasks/I0-UI_REAL_HOME_ENTRY.md)选择本人课程与分配，也可沿用实际分配深链。首页沿用原问候、学习看板和任务卡；后端尚无完成率/时长汇总，看板按本轮授权展示明确标注的[演示统计](docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)，本人真实分配数量与任务入口独立保留。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
 
-本机教师闭环已按[当前批准范围](docs/tasks/I1-TEACHER_UI_WORKBENCH.md#63-本轮批准记录)将该合成库升级为 41 表，日常启动改用 `xunjie-local.ps1 start -EnableReview`，教师入口为 `https://127.0.0.1:3444/#/teacher`；原库与原应用备份保留。此项仅为本机隔离工程验证，PAHER 共享库未迁移，教师模型仍关闭。迁移和真实浏览器工具见 [teacher-workflow](tools/teacher-workflow/README.md)。
+本机教师闭环已按[当前批准范围](docs/tasks/I1-TEACHER_UI_WORKBENCH.md#63-本轮批准记录)将该合成库升级为 41 表，日常启动改用 `xunjie-local.ps1 start -EnableReview`，教师入口为 `https://127.0.0.1:3444/#/teacher`；原库与原应用备份保留。此前本机迁移是隔离工程验证；当前共享云端已接收PAHER后续41表数据，状态见云端任务。迁移和真实浏览器工具见 [teacher-workflow](tools/teacher-workflow/README.md)。
 
 
 学生前端的交付检查在 `apps/student` 执行：
@@ -42,7 +42,7 @@ npm run test:e2e
 
 教学服务使用 Node24.21.0，依赖与命令见 [package.json](apps/teaching/package.json)。默认 npm start 提供健康入口；受控 XUNJIE_I0_CONFIG 启动 C 课程宿主，XUNJIE_APP_CONFIG 启动两课程35表 HDL 宿主。两种模式共用 HTTPS、分配 bootstrap、原 Job 消费和关停，只能选择一种。配置的可选 tutoring 复用既有模型通道，实际调用须有对应预算和数据授权，默认关闭。
 
-已有宿主升级本批显示字段时，由该库维护者备份后、启动新代码前显式调用 `server/db/transaction.ts` 的 `migrateDisplayMetadata(数据库绝对路径)`；启动不会自动迁移。PAHER 共享库已完成，成员只连接共享入口即可，勿另建或迁移本机库。
+已有独立宿主升级显示字段时，由该库维护者备份后、启动新代码前显式调用 `server/db/transaction.ts` 的 `migrateDisplayMetadata(数据库绝对路径)`；启动不会自动迁移。团队成员使用共享服务，勿另建或迁移业务库。
 
 正常 I0 就绪检查数据库、原消费者与执行节点，失败保持503。已有启动/账号/配置交接见 [I0-A/C](docs/tasks/I0_A_C_HANDOFF.md)和[正常辅导宿主](docs/tasks/I0-B_HOST_COMPOSITION.md)；数字逻辑固定配置与35表初始化见 [DL-A §16](docs/tasks/DL-A_COURSE_BUSINESS_INTEGRATION.md#16-35表去重联合收尾实现与验证)。个人供应商配置与独立 Agent 真实聊天的新宿主接线见[本轮任务](docs/tasks/I0_UI_MODEL_CONFIGURATION_REAL_CHAT.md)和[学生运行说明](apps/student/README.md#个人模型配置与独立聊天)：每账号加密保存 Key，项目辅导和独立聊天共用本人选择；仅支持公网 HTTPS。原冻结环境不会随源码改动自动升级。统一 PR56 的 main 集成、真实 HDL 链路、H4 请求/投递与 UI 回交见[本轮 C 续作](docs/tasks/DLA_CONTINUATION_20261014.md)。服务端、模型、浏览器和真人验收分别记录。
 
@@ -84,7 +84,8 @@ node tools/a0-review/check.mjs
 | 学生幂等、键盘、冷启动与契约补验 | [I0-UI 补验](docs/tasks/I0-UI_PREP_VERIFICATION_CLOSEOUT.md)；UI-PREP-01/03/05/06与真实节点浏览器入口准备 |
 | 学生中文IME、依赖方案与证据入口收尾 | [I0-UI 当前记录](docs/tasks/I0-UI_PREP_04_07_08_CLOSEOUT.md)；UI-PREP-04/07/08，原生输入法证据、当前运行时/工具链审计与原维护者勘误交接 |
 | PR69 新包接收与真实 C1 复验 | [本轮 UI 记录](docs/tasks/I0-UI_PR69_REAL_BROWSER_RECHECK.md)；严格 TLS/SSH、新 v9 保存冻结与 Core/原 Job 停止、已有完整产物下载、现场窄修与保留缺口 |
-| PAHER 真实 C1 浏览器与本机维护工具 | [I0-UI55](docs/tasks/I0-UI55_BROWSER_ENTRY.md)、[工具用法](tools/i0-ui55/README.md)；固定现场源、严格 SSH/TLS、会话/时钟、原 Run/Stop 与遗留缺口 |
+| PAHER 历史 C1 浏览器记录 | [I0-UI55](docs/tasks/I0-UI55_BROWSER_ENTRY.md)；旧连接工具已退役，历史验证保留 |
+| 云端共享入口与成员本机执行 | [本批实施](docs/tasks/I0-UI_CLOUD_SHARED_ENTRY.md)、[通用基础设施](tools/i0-cloud/README.md)；实际连接手册和材料仅私下发放 |
 | 编辑器补验与测试耗时优化 | [I0-UI-BV](docs/tasks/I0_UI_BV_EDITOR_BROWSER_VERIFICATION.md)；保留全部 108 项浏览器检查的覆盖/实测对照与交付状态 |
 | 仓库入口与规则重写 | [W4](docs/tasks/W4_REPO_ENTRYPOINT_REWRITE.md) |
 | 指定 PR 集成 | [54 → 55、59 → 53、55 → 53](docs/tasks/PR_INTEGRATION_54_55_59_53.md)；实际接纳差异、验证与审核交付 |

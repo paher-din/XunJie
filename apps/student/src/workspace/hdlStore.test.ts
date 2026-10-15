@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { freezeHdl, hdlCanonical, verifyHdlBuild, verifyHdlCommand, verifyHdlInputs, verifyHdlOperationCommand, verifyHdlReceipt, verifyHdlSession, verifyHdlTrace } from './hdlStore'
 import { textHash } from './confirmation'
 import type { CommandContext, OutboxRecord } from './frozenCommand'
-import type { HdlRuntimeProfile, HdlSessionView } from './hdlContracts'
+import type { HdlJobView, HdlRuntimeProfile, HdlSessionView } from './hdlContracts'
 
 // Archived server/real-node responses are protocol evidence, not a new live acceptance run.
 const evidence = JSON.parse(readFileSync(new URL('../../../../docs/tasks/evidence/dla-continuation-20261014/real-hdl-final-frozen.json', import.meta.url), 'utf8'))
@@ -25,8 +25,36 @@ const ack = (command: OutboxRecord) => ({ receiptId: 'r', commandId: 'c', server
     idempotencyKey: command.commandKey, recoveryGeneration: context.trustedRecoveryGeneration!,
     scope: { courseId: context.courseId, studentId: context.userId!, attemptId: context.attemptId! } },
   result: { sessionId: 's', operationId: 'op', jobId: 'j' } })
+function nodeJob(kind: HdlJobView['kind'], runId: string, jobId: string): HdlJobView {
+  return { jobId, kind, runId, purpose: 'student_run', scope: { courseId: context.courseId, studentId: context.userId!, attemptId: context.attemptId! },
+    requestReceiptId: 'original-receipt', recoveryGeneration: context.trustedRecoveryGeneration!, status: 'succeeded', stopRequested: false,
+    expectedRevision: 1, decisionEpoch: 0, attemptCount: 1, acceptedAt: '2026-10-14T00:00:00Z', deadline: '2026-10-14T01:00:00Z',
+    execution: { nodeId: 'robert', nodeGeneration: 'node-generation' } }
+}
 
 describe('existing HDL HTTP protocol and immutable result provenance', () => {
+  it('requires the original authorized Job binding for a node generation different from the business generation', async () => {
+    const value = clone(successful) as unknown as import('./hdlContracts').HdlBuildView
+    value.request.identity.recoveryGeneration = 'node-generation'
+    value.result!.identity.recoveryGeneration = 'node-generation'
+    const job = nodeJob('hdl_build', buildId, value.jobId)
+    const build = await verifyHdlBuild(value, context, buildId, profile, null, job)
+    expect(build.execution).toEqual(job.execution)
+    await expect(verifyHdlBuild(value, context, buildId, profile)).rejects.toThrow('身份或代际')
+    await expect(verifyHdlBuild(value, context, buildId, profile, null, { ...job, execution: { nodeId: 'robert', nodeGeneration: 'another-node-generation' } })).rejects.toThrow()
+    await expect(verifyHdlBuild(value, context, buildId, profile, null, { ...job, recoveryGeneration: 'wrong-business-generation' })).rejects.toThrow('业务代际')
+    await expect(verifyHdlBuild(value, context, buildId, profile, null, { ...job, runId: 'another-build' })).rejects.toThrow()
+    const session = clone(active) as unknown as HdlSessionView
+    session.identity.recoveryGeneration = 'node-generation'
+    const program = nodeJob('hdl_program', session.sessionId, 'program-job')
+    const verified = verifyHdlSession(session, context, session.sessionId, build, profile, program)
+    expect(verified.identity.recoveryGeneration).toBe('node-generation')
+    expect(() => verifyHdlSession(session, context, session.sessionId, build, profile)).toThrow()
+    expect(() => verifyHdlSession(session, context, session.sessionId, build, profile, { ...program, execution: { nodeId: 'member', nodeGeneration: 'node-generation' } })).toThrow('执行节点')
+    const operation = evidence.operations.at(-1)
+    expect((await verifyHdlTrace({ operation: { operationId: operation.operationId, sequence: operation.sequence, status: 'succeeded', result: operation }, nextSequence: operation.sequence },
+      verified, operation.sequence - 1)).operation?.result?.resultHash).toBe(operation.resultHash)
+  })
   it('uses the actual Attempt target and route-specific hash fields', async () => {
     const build = await freezeHdl(context, 'hdl.build', { expectedAttemptRevision: 2, snapshotId: 'snapshot' })
     expect(build.path).toBe(`/attempts/${context.attemptId}/hdl/builds`)

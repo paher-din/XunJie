@@ -4,6 +4,7 @@ import type { WorkspaceInit } from './init'
 import { apiGet } from './http'
 import { HdlWorkspace, emptyHdlState, type HdlState } from './hdlWorkspace'
 import { hdlSettled } from './hdlStore'
+import { executionNodeReady, selectedExecutionNode } from './executionNodes'
 
 /** One authorized confirmation context; polling reads facts and never creates or replays operations. */
 export function useHdlWorkspace(workspace: ConfirmationWorkspace | null, init: WorkspaceInit | null) {
@@ -24,10 +25,20 @@ export function useHdlWorkspace(workspace: ConfirmationWorkspace | null, init: W
       boardProfileVersion: cfg.board.boardProfileVersion, mappingVersion: cfg.board.mappingVersion,
       buildImage: cfg.runtime.buildImage, recoveryGeneration: context.trustedRecoveryGeneration,
       configurationVersion: cfg.versionId, contentHash: execution.contentHash, sourceHash: cfg.runtime.sourceHash,
+      ...(context.mode === 'real' ? { executionNodeId: selectedExecutionNode, readBuild: async () => {
+        const selected = await executionNodeReady(context.userId!, 'hdl')
+        if (selected !== undefined) return selected
+        const value = await apiGet<unknown>('/health/ready', { mode: context.mode, absolutePath: '/health/ready', timeoutMs: 6500 })
+        return !!value && typeof value === 'object' && 'status' in value && value.status === 'ready'
+      } } : {}),
       read: async () => {
         if (init.session.userId !== context.userId || init.assignment.assignmentId !== context.assignmentId ||
           init.activity.activityVersionId !== context.activityVersionId || init.activity.courseId !== context.courseId ||
           init.context.trustedRecoveryGeneration !== context.trustedRecoveryGeneration || !workspace.isCurrent(context)) return false
+        if (context.mode === 'real') {
+          const control = await executionNodeReady(context.userId!, 'hdl', true)
+          if (control !== undefined) return workspace.isCurrent(context) && control
+        }
         const value = await apiGet<unknown>('/health/ready', { mode: context.mode, absolutePath: '/health/ready', timeoutMs: 6500 })
         return workspace.isCurrent(context) && !!value && typeof value === 'object' && 'status' in value && value.status === 'ready'
       },

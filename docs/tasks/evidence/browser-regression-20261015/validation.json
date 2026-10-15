@@ -1,0 +1,266 @@
+{
+  "date": "2026-10-15",
+  "node": "v24.15.0",
+  "browser": "installed Chrome via Playwright 1.64.0",
+  "baseMain": "9664ca5",
+  "full": {
+    "total": 259,
+    "passed": 196,
+    "failed": 23,
+    "skipped": 40
+  },
+  "originalTwelve": 12,
+  "initialFailures": 23,
+  "union": 32,
+  "resolved": 32,
+  "unresolved": [],
+  "rows": [
+    {
+      "key": "confirmation.spec.ts: 整批保存被拒绝时服务端不部分创建，草稿和原命令保留",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "confirmation.spec.ts: 首次创建 ACK 未绑定 Attempt 时也不能覆盖另一标签已接纳 g2",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "draftConflict.spec.ts: 草稿 CAS 冲突锁存：重复编辑/确认不能覆盖赢家或 POST，page 重载赢家后可保存",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "draftConflict.spec.ts: 草稿 CAS 冲突锁存：重复编辑/确认不能覆盖赢家或 POST，workspace 重载赢家后可保存",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "editorProtection.spec.ts: 重置布局 实际生效但保留草稿、确认记录、快照与原命令",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-last-five.log"
+    },
+    {
+      "key": "fileHistory.spec.ts: 另一标签回收并确认后，本标签重新读取以权威为准，不把别处刚生效的回收显示成待确认恢复",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "fileHistory.spec.ts: 只读版本比较：快照×快照与草稿×确认作品，打开/切换/离开零写请求，键盘可达",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "hdlRealWorkflow.spec.ts: 整板输入逐位响应：16 SW、5 BTN 按下松开、低有效复位及显式时钟推进",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "homeEntry.spec.ts: 列表故障保持失败并可明确重试，恢复后只展示原接口任务",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "homeEntry.spec.ts: 没有学生课程或课程没有分配时显示真实空态，不补演示任务",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-last-five.log"
+    },
+    {
+      "key": "prepRestart.spec.ts: 准备进程重启后旧确认缓存不装成新 head，草稿保留且原命令不自动迁代际",
+      "originalTwelve": true,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "runControl.spec.ts: 两标签同时停止时原命令事务和发送租约阻止第二个停止 POST",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "runHistory.spec.ts: 另一浏览器缺本机请求仍能比较公开历史与未知/失败，读取不创建运行",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "runResults.spec.ts: 公开诊断 node_failed 与网络未知分开，缺项不伪装空输出",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "runResults.spec.ts: 运行轮询断线暂停、隐藏降频且有次数上限，主动只读可恢复",
+      "originalTwelve": true,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-last-five.log"
+    },
+    {
+      "key": "sessionEntry.spec.ts: 取消请求失效时仍靠会话代次拒收旧 Session 成功与旧 401",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-last-five.log"
+    },
+    {
+      "key": "tutoringCode.spec.ts: 已显示的代码回答经历原文件回收及同名重建，仍保留原来源且不定位或修改新实例",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringCode.spec.ts: 没有快照的代码问题只说明缺口，不偷偷确认/冻结；开放项目问题不要求代码",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringControls.spec.ts: 已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringFailure.spec.ts: 辅导events、历史与help公开失败只显示中文恢复提示，保留草稿/原命令且不自动新求助",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringHelpStop.spec.ts: 学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍沿原取消核对",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringHelpStop.spec.ts: 替换help和旧Job取消均丢ACK，分别核对原命令后不会把旧取消改贴新Job或永久阻塞",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-last-five.log"
+    },
+    {
+      "key": "tutoringHelpStop.spec.ts: 非法正文不展示不报displayed，故障仍可保存；模型失败显示公开失败",
+      "originalTwelve": true,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringHistory.spec.ts: received-only且停止的正文不在公共历史中，新通道仍无正文",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringMessages.spec.ts: visible且展开的面板：消息未滚入区域零displayed，实际滚入后才展示",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringMessages.spec.ts: 原authority正向多页和resync：从零重取、跨序号缺口、重复正文不增加回执",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringMessages.spec.ts: 教学页真实IDB事务中止：正文/游标/待received一起回滚，刷新回取原Delivery",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringReturn.spec.ts: 实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringReturn.spec.ts: 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringReturn.spec.ts: 键盘看合成相邻例子→返回同一编辑器视图，草稿/undo保持且没有业务副作用",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringReturn.spec.ts: 阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例",
+      "originalTwelve": true,
+      "initialFullFailure": false,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    },
+    {
+      "key": "tutoringRun.spec.ts: 没有原参数且环境诊断不可回取时历史仍可选择求助，不自动重跑",
+      "originalTwelve": false,
+      "initialFullFailure": true,
+      "passed": true,
+      "log": "regression-fixed-final.log"
+    }
+  ],
+  "sourceHashes": {
+    "apps/student/README.md": "91fcf4efd68f8645311a9567f4510a3c2bdc08bf96ce6204537ee6e7cedb92ed",
+    "apps/student/e2e/confirmation.spec.ts": "09b114fcf34d167af0adca82b2fd2b9a46cf43f9d7a2461bf2b13409c84ab4cc",
+    "apps/student/e2e/draftConflict.spec.ts": "e6d05ab7a60bffb828a356bf2e3c159b71833bdcdd53e2c99bcfb56ee4e3b808",
+    "apps/student/e2e/fileHistory.spec.ts": "94b727601b8892548ed36e3b91b1660565ee3186a059a64dfbc3e41080d4e4d4",
+    "apps/student/e2e/helpers.ts": "7a073f5fa8f7c3059a55d84aac100bfb026cabbdf20f21700d856a14db515ef8",
+    "apps/student/e2e/homeEntry.spec.ts": "6550ca277b330a2eb6a7070194df43eb804676d04b69c8b41d4336d4a2d1ffb1",
+    "apps/student/e2e/prepRestart.spec.ts": "f3f7f07cfcc1f5711501a5301c0b3fc854737d3ee6a1ec7e48dad25419606fbb",
+    "apps/student/e2e/runControl.spec.ts": "bfe8ac57328f623b8d8be60752feaa001f8179fc474dd73cdfadef95032b043f",
+    "apps/student/e2e/runHistory.spec.ts": "ecbd7eeff75529f34dcaf031a7a209cbbcd6fe6f13d3629d84cc4331eca3de1b",
+    "apps/student/e2e/runResults.spec.ts": "f3fe5675166ca4bfe08f07784c960206be25bdcdd6d399a410741cf68a47bcc5",
+    "apps/student/e2e/sessionEntry.spec.ts": "f1d6468e7a9599ba1e8f3df434d32ed03b16895a921f6d57f3d882e2071a62d9",
+    "apps/student/e2e/tutoringCode.spec.ts": "83dd12c614e48d8ddf1e7df66daf1ca948030e7ae5e05c1d14cfe4b99886d86e",
+    "apps/student/e2e/tutoringControls.spec.ts": "66db93b757838a6b5598310fea5ad9c394f31d36f4ea251686a426bc91e0cf18",
+    "apps/student/e2e/tutoringFailure.spec.ts": "bfc3890d20e13761479ec4e507ebf1c3de6590389a2960331a7d94e1e3d495ce",
+    "apps/student/e2e/tutoringHelpStop.spec.ts": "d131868dfd0f55c48316b75b89f22a215c9b556449af855aa6abd31c6544122d",
+    "apps/student/e2e/tutoringHelpers.ts": "be12753b23b261005a64438a4052d94d2c2dff0fa84556b362d9ce23dbf8241f",
+    "apps/student/e2e/tutoringHistory.spec.ts": "fe62db71e945e85e4c06a8cec3f4f95a420102f3456ce043cb4ca67b92089e11",
+    "apps/student/e2e/tutoringMessages.spec.ts": "4f413b276064d711a6d420e342b7e87b4a37d3e2a8b1eb07d5ea0b1d800f4d45",
+    "apps/student/e2e/tutoringReturn.spec.ts": "5109c983b3176244c0f96fc4fb1a3169320e1e7943aa609178420b5fb49ba82d",
+    "apps/student/playwright.config.ts": "bede0cd9b859da311a14acaa6df45c72625c6ab2a7710ee04936dd3ef3f0c6a8",
+    "apps/student/vite.config.ts": "7cb094facda4828ae93f67a7ff26ad163a740410b325a4b495ffe045ea9d8cbc"
+  }
+}

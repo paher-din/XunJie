@@ -1,0 +1,13 @@
+{
+  "observedAtUtc": "2026-10-15T07:31:50.563Z",
+  "stage": "teacher-assigned-before-student-access",
+  "assignment": {
+    "id": "b81973b2-dde4-4019-98d9-b4f26b036b13",
+    "course_id": "synthetic-i0-course-b",
+    "student_id": "synthetic-i0-student-b",
+    "activity_id": "224c955b-a5b9-4553-9257-2878f7635cf0",
+    "status": "active",
+    "assignment_revision": 1
+  },
+  "attempts": []
+}

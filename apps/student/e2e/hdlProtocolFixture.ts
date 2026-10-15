@@ -107,6 +107,7 @@ export async function installHdlProtocolFixture(page: Page) {
     if (path === '/api/session') return signedIn ? success(route, sessionView) : failure(route, 401, 'UNAUTHENTICATED')
     if (!signedIn) return failure(route, 401, 'UNAUTHENTICATED')
     if (path === '/health/ready') return success(route, { status: 'ready' })
+    if (path === '/api/execution-nodes' && method === 'GET') return success(route, { nodes: [] })
     if (method === 'GET' && path.match(/^\/api\/assignments\/[^/]+(?:\/bootstrap)?$/)) {
       const id = path.split('/')[3]!
       if (![assignmentId, cAssignmentId].includes(id)) return failure(route, 403, 'FORBIDDEN')

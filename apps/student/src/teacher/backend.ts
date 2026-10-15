@@ -2,13 +2,14 @@ import { apiGet, apiPatchFrozen, apiPostFrozen, WorkspaceRequestError } from '..
 import type { SessionView } from '../workspace/contracts'
 import type { TeacherData, DesignDraft, TeacherResource } from './types'
 import type { BlueprintContent, BlueprintDraft, BlueprintPreview, DesignResult, TeacherWorkbench, ReviewContext } from './wire'
+import { getExecutionNodes, selectedExecutionNode } from '../workspace/executionNodes'
 
 const options = { mode: 'real' as const, timeoutMs: 20_000 }
 export const teacherGet = <T,>(path: string) => apiGet<T>(path, options)
 const encoded = encodeURIComponent
 export interface TeacherReceipt<T> { result: T; commandId: string; receiptId: string
   identity: { actorId: string; idempotencyKey: string; recoveryGeneration: string } }
-interface Pending { account: string; method: 'POST' | 'PATCH'; path: string; wire: string; key: string }
+interface Pending { account: string; method: 'POST' | 'PATCH'; path: string; wire: string; key: string; executionNodeId?: string }
 const prefix = 'xunjie.teacher.command.v1:'
 const volatile = new Map<string, Pending>()
 const pendingListeners = new Set<() => void>()
@@ -36,7 +37,7 @@ function keep(key: string, value: Pending) {
 function forget(key: string) { volatile.delete(key); try { sessionStorage.removeItem(key) } catch { /* Confirmed result remains safe. */ } changed() }
 async function send<T>(pending: Pending): Promise<TeacherReceipt<T>> {
   const response = await (pending.method === 'POST' ? apiPostFrozen : apiPatchFrozen)<TeacherReceipt<T>>(pending.path, pending.wire,
-    { ...options, idempotencyKey: pending.key })
+    { ...options, idempotencyKey: pending.key, executionNodeId: pending.executionNodeId })
   const expected = JSON.parse(pending.wire) as { recoveryGeneration?: unknown }
   if (!response || typeof response.commandId !== 'string' || !response.commandId || typeof response.receiptId !== 'string' || !response.receiptId ||
     response.identity?.actorId !== pending.account || response.identity?.idempotencyKey !== pending.key ||
@@ -51,7 +52,10 @@ export async function teacherCommand<T>(account: string, method: 'POST' | 'PATCH
   if (previous && (previous.account !== account || previous.path !== path || previous.method !== method || previous.wire !== wire)) {
     throw new Error('这个对象有尚未核对的原操作。请先点击“核对原教师操作”，再继续编辑或发送。')
   }
-  const pending = previous ?? { account, method, path, wire, key: crypto.randomUUID() }
+  const nodes = getExecutionNodes(), requiresNode = /^\/blueprints\/[^/]+\/(checks|releases)$/.test(path)
+  const executionNodeId = nodes.userId === account ? selectedExecutionNode() : undefined
+  if (!previous && requiresNode && !(nodes.userId === account && nodes.status === 'unsupported') && !executionNodeId) throw new Error('请先在上方选择自己的执行电脑，再检查或发布设计。')
+  const pending = previous ?? { account, method, path, wire, key: crypto.randomUUID(), ...(requiresNode && executionNodeId ? { executionNodeId } : {}) }
   keep(key, pending)
   try { const result = await send<T>(pending); forget(key); return result.result }
   catch (cause) {
@@ -102,7 +106,7 @@ export async function loadTeacherWorkbenchData(session: SessionView): Promise<Te
     return value
   }))
   return { workbenches,
-    courses: workbenches.map(w => { const kinds = new Set(w.activities.map(a => a.execution ? 'hdl' : 'c')); return { id: w.courseId, title: w.courseName || w.courseId, code: w.courseId, term: '', kind: kinds.size > 1 ? 'mixed' : kinds.has('hdl') ? 'hdl' : kinds.has('c') ? 'c' : 'unknown' } }),
+    courses: workbenches.map(w => { const kinds = new Set(w.activities.map(a => a.execution ? 'hdl' : 'c')); return { id: w.courseId, title: w.courseName || w.courseId, code: '', term: '', kind: kinds.size > 1 ? 'mixed' : kinds.has('hdl') ? 'hdl' : kinds.has('c') ? 'c' : 'unknown' } }),
     activities: workbenches.flatMap(w => w.activities.map(a => ({ id: a.activityVersionId, courseId: w.courseId, title: a.content.content.projectTitle ?? a.activityVersionId,
       description: a.content.content.problem ?? '', status: a.status, version: a.sourceRevision ?? 0,
       assigned: w.assignments.filter(row => row.activityVersionId === a.activityVersionId).length,

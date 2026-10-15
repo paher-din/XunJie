@@ -182,6 +182,17 @@ test("DL-B preserves current four-state signal and bounded trace facts without t
   assert.doesNotMatch(outcome.body.content, /你不会|能力不足|零处理/);
 });
 
+test("DL-B retains separate business and node generations only with the trusted original execution binding",async()=>{
+  const input=authorizedHdlContext('logic'),hdl=input.hdl!;
+  hdl.execution={nodeId:'member-a',nodeGeneration:'node-generation-a'};
+  hdl.build.identity.recoveryGeneration='node-generation-a';hdl.session!.identity.recoveryGeneration='node-generation-a';
+  const request=assembleStudentHelpRequest(input);assert.equal(request.domain,'hdl');
+  const guard=createStudentHelpCurrentGuard(input,()=>currentState(input));assert.equal(await guard(new AbortController().signal),'current');
+  const changed=currentState(input);changed.hdl.execution={nodeId:'member-b',nodeGeneration:'node-generation-a'};
+  assert.equal(await createStudentHelpCurrentGuard(input,()=>changed)(new AbortController().signal),'stale');
+  delete hdl.execution;assert.throws(()=>assembleStudentHelpRequest(input),/context is not current/,'node identity alone cannot authorize another generation');
+});
+
 test("DL-B bounds a long current trace and exposes truncation instead of claiming full coverage", () => {
   const input = authorizedHdlContext("logic");
   const request = assembleStudentHelpRequest(input);

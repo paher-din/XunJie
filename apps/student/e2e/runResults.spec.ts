@@ -69,51 +69,54 @@ test('运行轮询断线暂停、隐藏降频且有次数上限，主动只读�
   let reads = 0
   page.on('request', r => { if (r.method() === 'GET' && /\/api\/jobs\/[^/]+$/.test(r.url())) reads++ })
   await selectRun(page, snapshot.snapshotId, snapshot.files.find(f => f.path === 'main.c')!.fileId, '')
-  await page.getByRole('button', { name: '运行此快照', exact: true }).click()
-  await expect(page.locator('.core-run-result')).toContainText('运行中')
   await page.clock.install()
   await page.clock.pauseAt(new Date())
+  await page.getByRole('button', { name: '运行此快照', exact: true }).click()
+  await expect(page.locator('.core-run-result')).toContainText('运行中')
+  await expect(page.getByRole('button', { name: '停止此运行', exact: true })).toBeEnabled()
+  await expect.poll(() => reads).toBe(2)
   await page.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
     document.dispatchEvent(new Event('visibilitychange'))
   })
+  // Let React commit the environment change and replace the visible timer before
+  // advancing nine seconds in one virtual-clock action (including animation frames).
+  await page.clock.runFor(50)
   let before = reads
-  await page.clock.runFor(9000)
+  await page.clock.fastForward(9000)
   expect(reads).toBe(before)
-  await page.clock.runFor(1000)
+  await page.clock.fastForward(1000)
   await expect.poll(() => reads).toBe(before + 1)
   await page.evaluate(() => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false })
     window.dispatchEvent(new Event('offline'))
   })
+  await page.clock.runFor(50)
   before = reads
-  await page.clock.runFor(30_000)
+  await page.clock.fastForward(30_000)
   expect(reads).toBe(before)
   await page.evaluate(() => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true })
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
     window.dispatchEvent(new Event('online')); document.dispatchEvent(new Event('visibilitychange'))
   })
+  await page.clock.runFor(50)
   // 接受回执后有两次初始 Job GET，之后最多 60 次自动读取。
-  for (let i = 0; i < 60 && reads < 62; i++) {
-    const count = reads
-    const response = page.waitForResponse(r => /\/runs\/[^/]+$/.test(r.url()) && r.request().method() === 'GET')
-    await page.clock.runFor(1000)
-    await expect.poll(() => reads).toBe(count + 1)
-    // 等本轮公开 Run 读到并发布后，再推进下一轮的浏览器时钟。
-    await expect(page.locator('.core-run-result')).toContainText('运行中')
-    await (await response).finished()
-    await page.waitForTimeout(30)
-  }
+  // A response finishing does not mean async authority/IDB checks have published it.
+  // Advance time until the exact budget is reached, without assuming one completed
+  // poll per clock step; retain the exact cap and the no-further-reads assertions.
+  await expect.poll(async () => {
+    await page.clock.fastForward(1000)
+    return reads
+  }, { timeout: 30_000, intervals: [50] }).toBe(62)
   await expect(page.locator('.core-run-notice')).toContainText('自动读取已暂停')
   expect(reads).toBe(62)
   before = reads
-  await page.clock.runFor(60_000)
+  await page.clock.fastForward(60_000)
   expect(reads).toBe(before)
   await page.getByRole('button', { name: '重新读取结果', exact: true }).click()
   await expect.poll(() => reads).toBe(before + 1)
-  await page.clock.runFor(1000)
-  await expect.poll(() => reads).toBe(before + 2)
+  await expect.poll(async () => { await page.clock.fastForward(1000); return reads }).toBe(before + 2)
   expect((await localState(page)).commands.filter(c => c.kind === 'run.create')).toHaveLength(1)
 })
 

@@ -146,20 +146,24 @@ test('两标签同时停止时原命令事务和发送租约阻止第二个停�
   let release!: () => void, arrived!: () => void
   const held = new Promise<void>(r => { release = r }), ready = new Promise<void>(r => { arrived = r })
   await page.route('**/api/jobs/*/cancel', async route => {
-    const response = await route.fetch(); arrived(); await held; await route.fulfill({ response })
+    // Hold before the server applies cancellation; otherwise the other tab can
+    // correctly poll stopRequested and remove its stop button before the race.
+    arrived(); await held; const response = await route.fetch(); await route.fulfill({ response })
   })
-  await page.getByRole('button', { name: '停止此运行', exact: true }).click()
-  await ready
-  await other.getByRole('button', { name: '停止此运行', exact: true }).click()
-  await expect(other.locator('.core-run-notice')).toBeVisible()
-  await other.getByRole('button', { name: '核对原运行请求', exact: true }).click()
-  await expect(other.locator('.core-run-notice')).toContainText('停止请求结果未知')
-  expect(posts).toHaveLength(1)
-  release()
-  await expect.poll(async () => (await localState(page)).commands.find(c => c.kind === 'job.cancel')!.state).toBe('confirmed')
-  await other.getByRole('button', { name: '重新读取结果', exact: true }).click()
-  await expect(other.locator('.core-run-result')).toContainText('正在停止')
-  expect(posts).toHaveLength(1)
+  try {
+    await page.getByRole('button', { name: '停止此运行', exact: true }).click()
+    await ready
+    await other.getByRole('button', { name: '停止此运行', exact: true }).click()
+    await expect(other.locator('.core-run-notice')).toBeVisible()
+    await other.getByRole('button', { name: '核对原运行请求', exact: true }).click()
+    await expect(other.locator('.core-run-notice')).toContainText('停止请求结果未知')
+    expect(posts).toHaveLength(1)
+    release()
+    await expect.poll(async () => (await localState(page)).commands.find(c => c.kind === 'job.cancel')!.state).toBe('confirmed')
+    await other.getByRole('button', { name: '重新读取结果', exact: true }).click()
+    await expect(other.locator('.core-run-result')).toContainText('正在停止')
+    expect(posts).toHaveLength(1)
+  } finally { release(); await page.unrouteAll({ behavior: 'wait' }) }
 })
 
 test('停止命令未能落盘时不 POST，不宣称已停止', async ({ page }) => {

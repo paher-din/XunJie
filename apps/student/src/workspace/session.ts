@@ -2,6 +2,7 @@ import type { LogoutView, SessionCreatedView, SessionView } from './contracts'
 import { apiGet, apiPost, invalidateSessionRequests, onSessionExpired, onSessionRead, setCsrfToken, WorkspaceRequestError } from './http'
 import { invalidateWorkspaceContext } from './context'
 import type { WorkspaceMode } from './mode'
+import { clearExecutionNodes } from './executionNodes'
 
 /**
  * POST `/api/logout`：结束当前会话。由学生明确发起，不自动调用。
@@ -42,6 +43,7 @@ function isolate(status: SessionState['status'], notice: string): number {
   operation += 1
   invalidateWorkspaceContext()
   invalidateSessionRequests()
+  clearExecutionNodes()
   setCsrfToken(null)
   publish({ status, session: null, epoch: state.epoch + 1, notice })
   return operation

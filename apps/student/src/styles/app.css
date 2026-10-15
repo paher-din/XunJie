@@ -3995,6 +3995,9 @@ h3 {
   gap: 16px;
   flex: none;
 }
+.ws-execution-node { display: flex; align-items: center; gap: 6px; flex: none; }
+.ws-execution-node .st-input { width: 144px; min-height: 32px; font-size: 13px; }
+.ws-execution-status { color: var(--muted); font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-run-state {
   display: inline-flex;
   align-items: center;
@@ -10116,6 +10119,8 @@ button.st-check.checked:hover {
 .session-card form { display: grid; gap: 12px; margin-top: 24px; }
 .session-card input { width: 100%; min-height: 44px; border: 1px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; background: var(--paper); color: inherit; }
 .session-card button { min-height: 44px; margin-top: 12px; }
+.session-role-switch { display: flex; width: 100%; margin-top: 16px; }
+.session-role-switch .st-seg-item { flex: 1; min-height: 32px; margin: 0; font-size: 13px; }
 .session-notice { min-height: 24px; line-height: 1.5; }
 .session-shell { display: contents; }
 .session-health { position: fixed; z-index: 120; inset: auto 24px 24px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); color: var(--ink); }

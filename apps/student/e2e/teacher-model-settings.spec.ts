@@ -20,6 +20,7 @@ async function installTeacher(page: Page, role: 'teacher' | 'student' = 'teacher
     else if (path === '/api/courses/synthetic-course/teacher-workbench') data = {
       courseId: 'synthetic-course', recoveryGeneration: 'synthetic-g', members: [], resources: [], drafts: [], activities: [], assignments: [], attempts: [], presets: [],
     }
+    else if (path === '/api/courses/synthetic-course/assignments' || path === '/api/agent/conversations') data = []
     else if (path === '/api/model-settings/test') {
       expect(request.method()).toBe('POST')
       expect(request.headers()['x-csrf-token']).toBe('synthetic-teacher-csrf')
@@ -95,12 +96,15 @@ test('教师设置复用供应商保存、模型能力、强度、连接测试�
   expect(errors).toEqual([])
 })
 
-test('教师预览与无教师权限账号不加载个人模型配置', async ({ page }) => {
+test('教师预览不加载个人模型配置，学生误入教师设置回本人首页', async ({ page }) => {
   const api = await installTeacher(page, 'student')
   await page.goto(`${REAL_URL}/#/teacher/preview/settings/model`)
   await expect(page.getByRole('heading', { name: '模型配置使用真实账号', exact: true })).toBeVisible()
   expect(api.paths.filter(path => path.startsWith('/api/model-settings'))).toEqual([])
   await page.goto(`${REAL_URL}/#/teacher/settings/model`)
-  await expect(page.getByRole('heading', { name: '当前账号没有教师课程', exact: true })).toBeVisible()
-  expect(api.paths.filter(path => path.startsWith('/api/model-settings'))).toEqual([])
+  await expect(page).toHaveURL(`${REAL_URL}/#/`)
+  await expect(page.locator('.account-name')).toHaveText('synthetic-settings-student')
+  await expect(page.locator('.teacher-shell')).toHaveCount(0)
+  expect(api.paths.some(path => path.endsWith('/teacher-workbench'))).toBe(false)
+  expect(api.writes).toEqual([])
 })

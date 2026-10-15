@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { revealTutorBody } from './tutoringHelpers'
 import { create, edit, openFileMenu, start as startWorkspace, sceneUrl, localState } from './helpers'
 import { fixedProject, selectRun, recoverRunContext } from './runHelpers'
 
@@ -234,6 +235,7 @@ test('已收到但未展示的合成提醒在关闭后取消，再开启不复�
   await page.getByRole('button',{name:'就项目求助',exact:true}).click()
   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('先给一个项目提示，提醒样例另属合成准备数据')
   await page.getByRole('button',{name:'发送辅导问题',exact:true}).click()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
   const original=await page.getByTestId('tutor-message').getAttribute('data-action-id')
   await page.getByRole('button',{name:'收起辅导',exact:true}).click()

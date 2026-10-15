@@ -40,6 +40,7 @@ export default defineConfig({
   webServer: [
     {
       command: `npm run dev:prep -- --port ${PREP_PORT}`,
+      env: { XUNJIE_VITE_CACHE_DIR: `.playwright/node_modules/.vite-prep-${PREP_PORT}` },
       url: PREP_URL,
       // 本机常已有一个 dev:prep 在跑（端口 strictPort，再起会直接失败），所以本地复用；
       // CI 一律新起进程——fixture authority 是进程级状态，复用陈旧进程会让断言失去意义。
@@ -48,6 +49,7 @@ export default defineConfig({
     },
     {
       command: `npm run dev -- --port ${REAL_PORT} --strictPort`,
+      env: { XUNJIE_VITE_CACHE_DIR: `.playwright/node_modules/.vite-real-${REAL_PORT}` },
       url: REAL_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

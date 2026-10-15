@@ -1,0 +1,25 @@
+{
+  "applied": true,
+  "backupFile": "/opt/xunjie-runner/tests/i0-entry-20261013-01/teacher-link-review-2026-10-15T07-25-40-619Z/before.sqlite",
+  "backupSha256": "f5c4a2fe4bfaf8023af050a344b5829c672cbcca680dfd1384959a046b85b27d",
+  "sourceTableCount": 35,
+  "resultTableCount": 41,
+  "addedTables": [
+    "analysis_results",
+    "learner_context_revisions",
+    "learner_disputes",
+    "learner_state_revisions",
+    "teacher_decisions",
+    "teacher_feedback"
+  ],
+  "addedIndexes": [
+    "teacher_decision_scope",
+    "learner_dispute_scope",
+    "analysis_result_scope",
+    "teacher_feedback_scope"
+  ],
+  "schemaSha256": "7d498423167679a1f52e1feef5170f8284d27fb1f19f5be0a489046bd937316c",
+  "originalRowsUnchanged": true,
+  "integrityAfter": "ok",
+  "foreignKeyViolationsAfter": 0
+}

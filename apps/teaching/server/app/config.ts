@@ -22,6 +22,7 @@ function controlledFile(file:string) {
 }
 const existingFile=z.string().refine(controlledFile);
 const personalModelsSchema=z.strictObject({directory:z.string().refine(isAbsolute),callsEnabled:z.boolean().default(true)});
+const allowedLoginUserIdsSchema=z.array(z.string().min(1).max(128)).min(1).max(20).refine(ids=>new Set(ids).size===ids.length);
 export function readControlledJson(file:string):unknown {
   if (!controlledFile(file) || lstatSync(file).size>1024*1024) throw new Error('Controlled configuration file required.');
   return JSON.parse(readFileSync(file,'utf8'));
@@ -29,6 +30,7 @@ export function readControlledJson(file:string):unknown {
 
 export const i0ConfigSchema=z.strictObject({
   synthetic:z.literal(true),databaseFile:existingFile,
+  allowedLoginUserIds:allowedLoginUserIdsSchema.optional(),
   origin:z.url().refine(value=>value.startsWith('https://') && new URL(value).origin===value),
   tls:z.strictObject({keyFile:existingFile,certFile:existingFile}),signingSecretFile:existingFile,
   generationFile:existingFile.optional(),
@@ -62,9 +64,15 @@ export function readI0SigningSecret(file:string) {
 
 import { hdlRuntimeSchema } from '../../contracts/design/hdl.ts';
 export const sshConfigurationSchema=i0ConfigSchema.shape.ssh;
+const executionNodeSchema=z.strictObject({nodeId:z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),label:z.string().min(1).max(128),
+ recoveryGeneration:z.string().min(1).max(128),ssh:sshConfigurationSchema});
 export const applicationConfigSchema=z.strictObject({databaseFile:existingFile,origin:i0ConfigSchema.shape.origin,
- tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema,
+ allowedLoginUserIds:allowedLoginUserIdsSchema.optional(),
+ tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema.optional(),executionNodes:z.array(executionNodeSchema).min(1).max(16).optional(),legacyExecutionNodeId:z.string().min(1).max(64).optional(),
  approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),recoveryGeneration:z.string().min(1).max(128),
  staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs,
- tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional(),review:z.strictObject({enabled:z.literal(true)}).optional()});
+ tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional(),review:z.strictObject({enabled:z.literal(true)}).optional()})
+ .refine(value=>Boolean(value.ssh)!==Boolean(value.executionNodes),'Choose exactly one single-node or member-node configuration')
+ .refine(value=>!value.executionNodes||new Set(value.executionNodes.map(node=>node.nodeId)).size===value.executionNodes.length,'Node IDs must be unique')
+ .refine(value=>!value.legacyExecutionNodeId||value.executionNodes?.some(node=>node.nodeId===value.legacyExecutionNodeId),'Original node must be registered');
 export function readApplicationConfig(file:string) { return applicationConfigSchema.parse(readControlledJson(file)); }

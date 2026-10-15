@@ -1,3 +1,5 @@
+旧连接退役说明（2026-10-15）：本记录保存历史显示字段、账号整合与验证事实；当前连接按[云端任务](I0-UI_CLOUD_SHARED_ENTRY.md)，实际资料由负责人私下发放。
+
 # I0-UI：团队共用后端与显示资料绑定
 
 日期：2026-10-15（Asia/Shanghai）。主责：UI / Robert。依据分支 `i0/ui-frontend` / `a1b1235`；主checkout已有教师UI并行未提交内容，本任务使用附属隔离worktree，不改其文件。
@@ -26,7 +28,7 @@
 
 1. 选一个现有35表宿主及数据库作为团队唯一业务来源，复用原认证、C/HDL执行和静态页面；不新搭第二套业务服务、不复制库到每个成员电脑。
 2. 优先核PAHER已有两课程宿主；成员通过获准SSH本机回环转发访问同一HTTPS源和原页面。只需客户端访问通路及受信公共证书，不分发服务TLS私钥，不放宽Origin/CSRF/TLS。
-3. 既有 `tools/i0-ui55/local-ui-gateway.mjs` 固定3443/14443并接PAHER旧C-only入口，不能宣称它已支持35表3444。PAHER维护SSH与应用转发SSH身份/权限分开，3444转发是否已允许须实核；当前Robert3444由另一会话使用，本轮不抢占或部署。
+3. 旧临时网关只覆盖当时的单课程宿主，不能当成后续共享服务；现在已退役。维护与页面访问身份分开。
 4. PAHER原库与Robert本机新库不同。必须明确团队复用PAHER现有活动/分配，还是保留Robert当前那一批对象；指向PAHER不会自动带上synthetic-robert账号/作品。未经确认不迁库、不重播学习记录。
 
 2026-10-15 12:42（Asia/Shanghai）原维护SSH实连成功，原公钥/host pin通过。PAHER回环3444正在监听，严格TLS下 `/health/live`、`/health/ready`、`/` 均200，入口 `/assets/index-BjElIjC5.js`；3443无监听。当前PID2880、cwd `/mnt/d/XunJie`，确切Git提交未确认（目录Git读取退出128，未修改信任）；历史87edd51的两个应用unit不再存在，不能当当前运行源。
@@ -53,7 +55,7 @@
 
 2026-10-15 只读盘点：PAHER 的 student-a 无分配/Attempt；student-b 在 course-b 有四个 HDL 分配及四个 active Attempt。保留 B 作为统一学生演示账号，可保留全部旧 HDL 历史；为其增加 course-a 学生成员关系并沿原业务能力补 C 演示任务。A 退出演示入口并撤销会话、停用登录；必要教师身份保留。原分配/Attempt/作品不转移、不删除，不把本机 synthetic-robert 库迁入 PAHER。
 
-所有成员使用同一 PAHER HTTPS 页面、API 和数据库。仓库提供固定目的地的回环 SSH 转发入口，3444 已占用则拒绝，禁止静默复用本机服务；不运行各机初始化。成员各用自己的获准 SSH 身份；密码及私钥经现有私下渠道领取，不写 Git。现有受限转发只允许3443，须将相同目的地的3444加入许可后才能接当前服务，保持仅本机回环，不开公网业务端口。
+历史部署曾通过同一 PAHER 服务共享账号、课程和任务；该连接方式现已退役。当前只使用负责人私下发放的云端连接材料，不按此历史记录恢复旧入口。
 
 共享同一学生账号意味着已确认作品和任务属于同一个演示身份；本机未保存草稿仍按设备保存。开发者同时修改同一作品时沿现有版本冲突提示处理，不承诺互不干扰。
 
@@ -61,8 +63,8 @@
 
 - 后端：`apps/teaching/server/db/transaction.ts` 的 `migrateDisplayMetadata` 显式、事务性补三列；原35表不变。Session、课程、分配列表/详情/bootstrap 返回可选显示字段，空值省略；原初始化格式兼容可选姓名/课程名。
 - 前端：`apps/student/src/lib/displayNames.ts` 撤掉特定测试ID/旧文字映射，原账号组件和首页消费后端资料；搜索使用显示名，URL、请求、缓存和草稿归属仍用原ID。固定 Activity 正文与已确认作品没有改写。
-- 共享入口：`tools/i0-shared/start.ps1` 固定转发 PAHER 回环3444，端口已占用则拒绝，不接管本机3444。随包仅提供 SSH 主机公钥与原公共 TLS 证书，无任何私钥或密码。sshd 原 `xunjie-tunnel` 的 PermitOpen 加入同一目的地3444，未扩大监听、用户或防火墙来源。
-- PAHER：先在原源码副本上应用本批补丁，保留原消费、执行、模型和关闭语义，再显式迁移原库。原库备份为 `/opt/xunjie-runner/tests/i0-entry-20261013-01/shared-demo-before-20261015.sqlite`，只在服务端保存。差异应用最初因原副本 CRLF 失败；仅在新副本统一换行后检查并应用成功，没有覆盖原源。
+- 历史共享入口曾使用严格 SSH/TLS 与受限回环转发；脚本、主机 pin 和证书现已从仓库移除。
+- PAHER：先在原源码副本上应用本批补丁，保留原消费、执行、模型和关闭语义，再显式迁移原库。原库备份为 原服务端受限备份，只在服务端保存。差异应用最初因原副本 CRLF 失败；仅在新副本统一换行后检查并应用成功，没有覆盖原源。
 - 统一学生：`synthetic-i0-student-b` 显示 Robert，属于“C 程序设计”和“数字逻辑与系统设计”；保留原四个 HDL 分配/Attempt，并新增一个“文本分析工具”C分配 `220b2dae-5070-42ff-a165-daaf681a0644`。旧 A 和辅助 peer 停用并撤销会话，原密码/记录保留；两个教师身份继续承担原业务授权，不作为学生演示账号。
 - C 任务通过原教师资源→手工蓝图→检查→确认发布→分配接口创建，沿当前受信 C profile，无模型调用、程序运行或学生学习记录补造。现有 HDL 项目显示“四位算术逻辑单元”，显示列不修改其固定活动正文。
 
@@ -72,9 +74,9 @@
 
 初次后台进程在维护 SSH 结束后退出，WSL 内瞬态 VM/应用单元随之丢失；该临时启动不计部署通过。已用 PAHER Windows 任务 `XunJie Shared Demo` 独立持有 WSL，调用原 `runner/vm.sh start` 恢复原 VM（没有重建镜像），再由 `xunjie-shared-demo.service` 运行应用。模型继续取原 PAHER 用户环境中的 key，仅在进程内传递，没有新建密钥文件或输出值。
 
-任务入口为 `D:\tmp\xunjie-shared-20261015-input\start-shared.ps1`，配套 `keep-shared.sh`、原保留启动包装器及新公开 launch receipt；Windows 任务在维护用户登录时触发。已检查语法、实际重启任务并在维护SSH退出后的独立连接中核 `/health/live`、`/health/ready`、`/` 全200、原VM active、应用 active且无重启。未做整机重启验收。
+当时使用独立任务持有原执行 VM 与业务宿主，维护连接退出后实测仍可用；未做整机重启验收。具体旧启动路径与连接资料现仅私下保留。
 
-维护者在 PAHER PowerShell 可用 `Start-ScheduledTask -TaskName 'XunJie Shared Demo'` 启动；停止时先在 WSL `systemctl stop xunjie-shared-demo.service`，再 `Stop-ScheduledTask -TaskName 'XunJie Shared Demo'`。不要用旧3443配置直接启动35表宿主。需要回退时保留新记录，换回保留的原源码/包装器；可空显示列可继续保留，不通过删库或重写旧作品回退。
+旧共享入口已退役，不再提供其启动/停止命令。保留原备份和历史作品；当前权威写库及回退记录见云端任务。
 
 ### 验证
 
@@ -91,10 +93,10 @@
 
 ### 成员接入边界
 
-所有成员按[共享入口](../../tools/i0-shared/README.md)连接同一个服务即可共享账号、课程和任务；拉取代码本身不包含数据库。当前已实测的SSH来源仍是Robert的 `192.168.3.8`，其他成员需将各自公钥/IP交给PAHER维护者登记，未宣称未知成员已连通。无需A/C再初始化应用账号、课程或本机数据库。共享同一账号的已确认作品遵循原版本冲突处理，本机未保存草稿不跨设备同步。
+当前成员使用负责人私下发放的云端手册连接同一服务；成员自己的 SSH 公钥须先登记。无需另行初始化账号、课程或业务库；未保存草稿不跨设备同步。
 
 产品基线及MVP_SPEC §10：待授权维护者汇总。
 
 文档检查：`node tools/a0-review/check.mjs` 为127篇、1949条内部链接、`errors=[]`；本任务暂存写集空白检查通过。依赖/lock、保护基线及主checkout并行改动未入本批提交。
 
-交付入口：[PR #89](https://github.com/paher-din/XunJie/pull/89)，基于 `a1b1235` 沿原 `i0/ui-frontend` 推送，实施提交 `92a128e`；main 合入状态由该 PR 提供可核查记录。成员接入请直接使用随 PR 的共享入口，不沿旧本机课程种子重建数据。
+交付入口：[PR #89](https://github.com/paher-din/XunJie/pull/89)，基于 `a1b1235` 沿原 `i0/ui-frontend` 推送，实施提交 `92a128e`；main 合入状态由该 PR 提供可核查记录。原 PR 中共享连接现已退役；当前连接手册仅私下发放，不沿旧本机课程种子重建数据。

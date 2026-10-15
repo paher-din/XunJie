@@ -47,6 +47,7 @@ import { hdlDiagnosticTarget } from '../workspace/hdlDiagnostic'
 import { useEditorDiagnostics } from '../workspace/useEditorDiagnostics'
 import { createTutorHdlCurrent, type TutorHdlSelection } from '../workspace/tutoringHdl'
 import { SubmissionFeedbackPanel } from '../components/workspace/SubmissionFeedbackPanel'
+import { ExecutionNodeSelect } from '../components/workspace/ExecutionNodeSelect'
 
 type ReturnOrigin={fileId:string;path:string;documentVersion:number|null}
 const readingMarkerKey=(c:CommandContext)=>`tutor:return:${JSON.stringify([c.mode,c.userId,c.courseId,c.assignmentId,
@@ -115,7 +116,8 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
     if (!c?.trustedRecoveryGeneration || !confirmation.state.workspace || hdl.state.phase !== 'ready' || hdl.state.pending || hdl.state.unknown || hdl.state.busy) return
     void createTutorHdlCurrent({ workspaceRevision: confirmation.state.workspace.workspaceRevision,
       hasDraftChanges: project.unconfirmedCount > 0 || project.lifecyclePendingCount > 0,
-      generation: c.trustedRecoveryGeneration, build: hdlSelectedBuild?.result ?? null, session: hdl.state.session, operation: hdl.state.operation })
+      generation: c.trustedRecoveryGeneration, build: hdlSelectedBuild?.result ?? null, session: hdl.state.session, operation: hdl.state.operation,
+      execution: hdlSelectedBuild?.execution })
       .then(current => { if (!cancelled) tutor.client?.setHdlCurrent(current) })
       .catch(() => { /* Unknown provenance stays unavailable; never construct a replacement basis. */ })
     return () => { cancelled = true }
@@ -503,6 +505,9 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           signingOut={signingOut}
           onSignOut={onSignOut}
         />
+        {!PREP_BUILD && init.init?.kind === 'ready' && <ExecutionNodeSelect userId={init.init.session.userId} kind={isHdl ? 'hdl' : 'c'}
+          busy={hdl.state.busy || run.state.phase === 'submitting' || run.state.controlBusy}
+          onChange={() => { if (isHdl) hdl.read(); else run.read() }} />}
         <div className="ws-head-run" ref={setRunSlot}
           style={isHdl ? { minWidth: 0, flex: '1 1 0', overflowX: 'auto' } : undefined} />
       </header>

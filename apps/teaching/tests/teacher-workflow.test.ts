@@ -10,6 +10,21 @@ import { tmpdir } from 'node:os';
 
 const review = { versions: { modelConfigVersion: 'disabled', promptVersion: 'disabled', schemaVersion: 'review-v1', analysisVersion: 'review-v1' } };
 
+test('allowed login users preserve 35/41 hosts and active virtual teacher rosters',async()=>{
+  for(const reviewEnabled of [false,true]){
+    const f=await fixture(undefined,reviewEnabled?{review}:{});let restricted:Awaited<ReturnType<typeof createDigitalLogicApplication>>|undefined;
+    try{
+      const teacher=await f.login('teacher'),student=await f.login(),virtual=await f.login('other');await f.host.shutdown();
+      restricted=await createDigitalLogicApplication({...f.settings,...(reviewEnabled?{review}:{}),allowedLoginUserIds:['teacher','student']});
+      for(const headers of [teacher,student])assert.equal((await restricted.app.inject({url:'/api/session',headers})).statusCode,200);
+      assert.equal((await restricted.app.inject({url:'/api/session',headers:virtual})).statusCode,401);
+      assert.equal(f.db.withTransaction(tx=>tx.get("SELECT active FROM course_memberships WHERE course_id='course' AND user_id='other'")!.active),1);
+      if(reviewEnabled){const workbench=await restricted.app.inject({url:'/api/courses/course/teacher-workbench',headers:teacher});assert.equal(workbench.statusCode,200,workbench.body);assert(workbench.json().data.members.some((member:{userId:string})=>member.userId==='other'));}
+      assert.equal(f.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").length),reviewEnabled?41:35);
+    }finally{await restricted?.shutdown();await f.close();}
+  }
+});
+
 test('41-table teacher review and independent personal-model settings coexist in one host without a model call', async () => {
   const directory = mkdtempSync(join(realpathSync(tmpdir()), 'xunjie-teacher-models-'));
   const f = await fixture(undefined, { review, personalModels: { directory, callsEnabled: false } });

@@ -11,6 +11,20 @@ export const hdlCurrent=():TutorHdlCurrent=>({workspaceRevision:4,hasDraftChange
     confirmedSequence:1,simTimePs:time,stopRequested:false,terminationConfirmed:false},
   operation:{operationId:'operation',sessionId:'session',resultHash:'c'.repeat(64),sequence:1,sessionRevision:2,simTimePs:time}})
 describe('original HDL help selection and frozen provenance',()=> {
+  it('keeps business context separate from the exact authorized node binding for HDL currentness',()=> {
+    const basis=hdlBasis(),current=hdlCurrent(),execution={nodeId:'robert',nodeGeneration:'node-generation'}
+    basis.execution=execution;basis.sessionGeneration=execution.nodeGeneration
+    current.execution=execution;current.session!.recoveryGeneration=execution.nodeGeneration
+    expect(verifyTutorHdlBasis(basis).execution).toEqual(execution)
+    expect(tutorHdlBasisCurrent(basis,current)).toBe(true)
+    expect(tutorHdlSelectionCurrent({snapshotId:'snapshot',buildId:'build',sessionId:'session'},current)).toBe(true)
+    expect(tutorHdlBasisCurrent({...basis,execution:undefined},current)).toBe(false)
+    expect(tutorHdlBasisCurrent({...basis,execution:{...execution,nodeId:'member'}},current)).toBe(false)
+    expect(tutorHdlBasisCurrent({...basis,execution:{...execution,nodeGeneration:'other'}},current)).toBe(false)
+    expect(()=>verifyTutorHdlBasis({...basis,execution:{...execution,extra:true}})).toThrow()
+    current.session!.recoveryGeneration='arbitrary-generation'
+    expect(tutorHdlSelectionCurrent({snapshotId:'snapshot',buildId:'build',sessionId:'session'},current)).toBe(false)
+  })
   it('requires operation/session pairing and the same confirmed code snapshot',()=> {
     expect(()=>verifyTutorHdlSelection({snapshotId:'snapshot',buildId:'build',operationId:'operation'})).toThrow()
     expect(()=>verifyTutorHdlSelection({snapshotId:'snapshot',buildId:'build',runId:'run'})).toThrow()

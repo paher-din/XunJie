@@ -1,0 +1,127 @@
+{
+  "observedAtUtc": "2026-10-15T08:37:45.947588+00:00",
+  "sourceCommit": "9664ca5646b969cde0ccff4f4b8d5c7ea2da547d",
+  "scope": "Synthetic project help; not independent chat, real learning or full semantic/NFR acceptance",
+  "integrity": "ok",
+  "foreignKeyErrors": 0,
+  "tableCount": 41,
+  "control": {
+    "recovery_generation": "synthetic-generation-96fc2f60-8102-47fb-af1f-e2d86f4c2764",
+    "control_revision": 2
+  },
+  "cases": [
+    {
+      "kind": "c",
+      "assignmentId": "a60e1238-d9a7-4658-8f54-882b61ebf3c6",
+      "attemptId": "46f6dd83-1906-4b86-8dda-0bd4a1d8741d",
+      "attemptStatus": "active",
+      "attemptRevision": 2,
+      "workspaceRevision": 0,
+      "jobId": "7f73aec2-e4b2-40d2-89a1-58f404ed2079",
+      "jobStatus": "succeeded",
+      "actionId": "b5cab360-2361-4d77-b912-67feb2a599ab",
+      "messageId": "59708551-4b8b-4f9b-a2f8-bf8c1413673c",
+      "contentHash": "54d05c13ece9686faed8353892d53b139c91f467164b498b2b15adb7b9edaf56",
+      "versions": {
+        "activityVersionId": "eaeb74d5-1256-43f1-8d0b-0ba1bcb1d82d",
+        "policyVersionId": "synthetic-i0-course-a-help",
+        "modelConfigVersion": "deepseek-flash-v1",
+        "promptVersion": "student-help-v1",
+        "schemaVersion": "student-help-v1"
+      },
+      "calls": 1,
+      "usage": {
+        "status": "actual",
+        "inputTokens": 1770,
+        "outputTokens": 562
+      },
+      "modelElapsedMs": 3668,
+      "acceptedAt": "2026-10-15T08:23:28.560Z",
+      "displayedReceiptDelayMs": 5811,
+      "receipts": [
+        {
+          "receipt_kind": "received",
+          "server_seq": 167,
+          "committed_at_ms": 1792052613990
+        },
+        {
+          "receipt_kind": "displayed",
+          "server_seq": 169,
+          "committed_at_ms": 1792052614371
+        }
+      ],
+      "replyContent": "在文本分析任务里，“单词”的边界不是自然定律，而是你选的规则。先问三件事：哪些字符算字母？连字符、撇号、数字算不算单词的一部分？大小写要不要合并？常见策略有三种：按空白切分、按“字母/数字连续段”切分、或先定义字母集合再逐个字符扫描。关键是先写下你的规则，再用一个边界例子验证它是否按你预期工作。",
+      "unchangedEmptyWork": {
+        "workspace_files": 0,
+        "artifact_snapshots": 0,
+        "workspace_runs": 0,
+        "workspace_submissions": 0,
+        "hdl_builds": 0,
+        "hdl_sessions": 0
+      }
+    },
+    {
+      "kind": "hdl",
+      "assignmentId": "b81973b2-dde4-4019-98d9-b4f26b036b13",
+      "attemptId": "aaa73cb7-9aaa-44c2-8b74-87b423b93414",
+      "attemptStatus": "active",
+      "attemptRevision": 2,
+      "workspaceRevision": 0,
+      "jobId": "3c75dbe4-56f1-4fe3-897b-ac102b1c52aa",
+      "jobStatus": "succeeded",
+      "actionId": "2e20b39d-79ac-4efa-826b-66c54cec86b3",
+      "messageId": "5c5c6524-4904-4880-ba84-82c79eddbe0e",
+      "contentHash": "f73b343c183774a5084051d9c402cc2be8a3ef755ce5323e4617f6df937877ad",
+      "versions": {
+        "activityVersionId": "224c955b-a5b9-4553-9257-2878f7635cf0",
+        "policyVersionId": "synthetic-i0-course-b-help",
+        "modelConfigVersion": "deepseek-flash-v1",
+        "promptVersion": "student-help-v1",
+        "schemaVersion": "student-help-v1"
+      },
+      "calls": 1,
+      "usage": {
+        "status": "actual",
+        "inputTokens": 1057,
+        "outputTokens": 405
+      },
+      "modelElapsedMs": 3630,
+      "acceptedAt": "2026-10-15T08:28:42.839Z",
+      "displayedReceiptDelayMs": 6209,
+      "receipts": [
+        {
+          "receipt_kind": "received",
+          "server_seq": 174,
+          "committed_at_ms": 1792052926829
+        },
+        {
+          "receipt_kind": "displayed",
+          "server_seq": 176,
+          "committed_at_ms": 1792052929048
+        }
+      ],
+      "replyContent": "在四位加法中，无符号进位与有符号溢出的判断依据不同。进位看的是最高位产生的进位输出；溢出看的是最高位与次高位的进位是否不一致，等价于两个同号数相加却得到异号结果。\n\n例：0101(+5) + 0110(+6) = 1011，四位结果看起来是 -5。这里最高位进位为 0、次高位进位为 1，二者不同，所以有符号溢出发生；同时无符号进位为 0。若再加一个 1111 的情况，比如 1111 + 0001 = 0000，最高位进位为 1，无符号进位发生，但两个操作数符号不同，有符号溢出不发生。\n\n注意：无符号数用进位，有符号数用溢出；不要用同一个标志去判断两类解释。",
+      "unchangedEmptyWork": {
+        "workspace_files": 0,
+        "artifact_snapshots": 0,
+        "workspace_runs": 0,
+        "workspace_submissions": 0,
+        "hdl_builds": 0,
+        "hdl_sessions": 0
+      }
+    }
+  ],
+  "transport": [
+    {
+      "kind": "model-http",
+      "status": 200,
+      "elapsedMs": 330
+    },
+    {
+      "kind": "model-http",
+      "status": 200,
+      "elapsedMs": 316
+    }
+  ],
+  "assertions": "passed"
+}

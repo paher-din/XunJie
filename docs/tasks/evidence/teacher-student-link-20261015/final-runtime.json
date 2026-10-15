@@ -1,0 +1,11 @@
+{
+  "observedAtUtc": "2026-10-15T07:53:24.6506422+00:00",
+  "strictTls": true,
+  "healthStatus": 200,
+  "entry": "/assets/index-BJIEyGZQ.js",
+  "sha256": "E1BBCB9EEFFFC73F588A494C3A880A5E0A85D5F9AE634F74A38A608D10BEFFEA",
+  "bytes": 1413233,
+  "matchesLatestBuild": true,
+  "windowsHostPid": 15272,
+  "windowsKeepalivePid": 28884
+}

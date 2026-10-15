@@ -55,6 +55,30 @@ test('login persists a Secure session and server-side course identity; logout re
   } finally { await f.close(); }
 });
 
+test('allowed login users reject correct virtual credentials and retained sessions without disabling course membership',async()=>{
+  const f=await fixture();let restricted:Awaited<ReturnType<typeof createVerificationApp>>|undefined;
+  try{
+    f.db.withTransaction(tx=>{
+      for(const [id,role] of [['teacher','teacher'],['virtual','student']]){
+        tx.run('INSERT INTO users(id,login_name,password_hash,salt,algorithm,n,r,p,key_length) SELECT ?,?,password_hash,salt,algorithm,n,r,p,key_length FROM users WHERE id=?',id!,id!,'user');
+        tx.run('INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,?,?,1)','course',id!,role!);
+      }
+    });
+    const retained=await login(f),virtual=await f.app.inject({method:'POST',url:'/api/sessions',headers:{origin},payload:{loginName:'virtual',password:f.password}});assert.equal(virtual.statusCode,200,virtual.body);
+    await f.app.close();const allowedLoginUserIds=['user','teacher'];
+    restricted=await createVerificationApp({db:f.db,origin,signingSecret:f.signingSecret,now:f.clock,allowedLoginUserIds});
+    allowedLoginUserIds.push('virtual'); // The running policy is captured; mutating a caller's configuration cannot expand it.
+    assert.equal((await restricted.app.inject({url:'/api/session',headers:{cookie:retained.cookie}})).statusCode,200);
+    assert.equal((await restricted.app.inject({url:'/api/session',headers:{cookie:cookieHeader(virtual)}})).statusCode,401);
+    for(const loginName of ['learner','teacher']){
+      const response:{statusCode:number;body:string}=await restricted.app.inject({method:'POST',url:'/api/sessions',headers:{origin},payload:{loginName,password:f.password}});assert.equal(response.statusCode,200,response.body);
+      assert.equal(response.body.includes('allowedLoginUserIds'),false);
+    }
+    const rejected=await restricted.app.inject({method:'POST',url:'/api/sessions',headers:{origin},payload:{loginName:'virtual',password:f.password}});assert.equal(rejected.statusCode,401,rejected.body);assert.equal(rejected.body.includes('virtual'),false);
+    assert.deepEqual(f.db.withTransaction(tx=>tx.get('SELECT m.active,u.disabled_at_ms FROM course_memberships m JOIN users u ON u.id=m.user_id WHERE m.course_id=? AND m.user_id=?','course','virtual')),{active:1,disabled_at_ms:null});
+  }finally{await restricted?.app.close();await f.close();}
+});
+
 test('account window admits ten total attempts, concurrent hashing admits two, and expiry resets the window', async () => {
   const f = await fixture();
   try {

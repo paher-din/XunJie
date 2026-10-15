@@ -64,10 +64,10 @@ function frame(value: unknown): HdlFrame {
   for (const [key, width] of [['switches', 16], ['buttons', 5], ['resetN', 1], ['leds', 16], ['anodes', 8], ['segments', 7], ['dp', 1]] as const) bits(f[key], width)
   return structuredClone(f) as unknown as HdlFrame
 }
-function identity(value: unknown, c: CommandContext, id: string): HdlIdentity {
+function identity(value: unknown, c: CommandContext, id: string, generation = c.trustedRecoveryGeneration): HdlIdentity {
   const i = record(value), s = record(i.scope)
   if (i.id !== id || s.courseId !== c.courseId || s.studentId !== c.userId || s.attemptId !== c.attemptId ||
-    s.activityVersionId !== c.activityVersionId || i.recoveryGeneration !== c.trustedRecoveryGeneration) throw new Error('HDL 对象身份或代际不符')
+    s.activityVersionId !== c.activityVersionId || i.recoveryGeneration !== generation) throw new Error('HDL 对象身份或代际不符')
   requiredId(i.commandId); hash(i.requestHash)
   return structuredClone(i) as unknown as HdlIdentity
 }
@@ -159,12 +159,24 @@ export function verifyHdlJob(value: unknown, c: CommandContext, jobId?: string, 
     !statuses.includes(String(j.status)) || (jobId !== undefined && j.jobId !== jobId) ||
     (objectId !== undefined && j.runId !== objectId)) throw new Error('HDL Job 归属不符')
   bool(j.stopRequested); revision(j.expectedRevision, 1); revision(j.decisionEpoch); revision(j.attemptCount)
+  if (j.execution !== undefined) {
+    const execution = record(j.execution)
+    if (typeof execution.nodeId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(execution.nodeId)) throw new Error('HDL Job 执行节点不完整')
+    requiredId(execution.nodeGeneration)
+  }
   for (const key of ['acceptedAt', 'deadline']) if (!Number.isFinite(Date.parse(String(j[key])))) throw new Error('HDL Job 时间不完整')
   return structuredClone(j) as unknown as HdlJobView
 }
-export async function verifyHdlBuild(value: unknown, c: CommandContext, id: string, profile?: HdlRuntimeProfile, command?: FrozenCommand | null): Promise<HdlBuildView> {
+function originalJob(value: HdlJobView | undefined, c: CommandContext, kind: HdlJobView['kind'], id: string, jobId?: string): HdlJobView | undefined {
+  if (!value) return undefined
+  const job = verifyHdlJob(value, c, jobId, id)
+  if (job.kind !== kind || job.recoveryGeneration !== c.trustedRecoveryGeneration) throw new Error('HDL 原 Job 业务代际或类型不符')
+  return job
+}
+export async function verifyHdlBuild(value: unknown, c: CommandContext, id: string, profile?: HdlRuntimeProfile, command?: FrozenCommand | null, job?: HdlJobView): Promise<HdlBuildView> {
   const b = record(value), request = record(b.request)
-  const source = identity(request.identity, c, id), snapshot = await verifySnapshot(request.snapshot, c.attemptId!, c.activityVersionId!), mapping = board(request.board)
+  const boundJob = originalJob(job, c, 'hdl_build', id, requiredId(b.jobId)), generation = boundJob?.execution?.nodeGeneration ?? c.trustedRecoveryGeneration
+  const source = identity(request.identity, c, id, generation), snapshot = await verifySnapshot(request.snapshot, c.attemptId!, c.activityVersionId!), mapping = board(request.board)
   requiredId(request.runtimeProfileVersion); requiredId(b.jobId)
   if (!buildStatuses.includes(String(b.status)) || b.result === undefined) throw new Error('Build 状态不完整')
   if (profile && (request.runtimeProfileVersion !== profile.runtimeProfileVersion || mapping.boardProfileVersion !== profile.boardProfileVersion || mapping.mappingVersion !== profile.mappingVersion)) throw new Error('Build 不属于当前获准执行配置')
@@ -176,7 +188,7 @@ export async function verifyHdlBuild(value: unknown, c: CommandContext, id: stri
   }
   if (b.result !== null) {
     const r = record(b.result)
-    const resultIdentity = identity(r.identity, c, id), resultBoard = board(r.board)
+    const resultIdentity = identity(r.identity, c, id, generation), resultBoard = board(r.board)
     if (hdlCanonical(resultIdentity) !== hdlCanonical(source) || r.buildId !== id || r.snapshotId !== snapshot.snapshotId ||
       r.snapshotHash !== snapshot.hash || r.runtimeProfileVersion !== request.runtimeProfileVersion || r.status !== b.status ||
       hdlCanonical(resultBoard) !== hdlCanonical(mapping) || r.configurationHash !== await textHash(JSON.stringify(r.board))) throw new Error('Build 结果引用或配置摘要不符')
@@ -197,11 +209,13 @@ export async function verifyHdlBuild(value: unknown, c: CommandContext, id: stri
       }
     }
   }
-  return structuredClone(b) as unknown as HdlBuildView
+  return { ...structuredClone(b), execution: boundJob?.execution && structuredClone(boundJob.execution) } as unknown as HdlBuildView
 }
-export function verifyHdlSession(value: unknown, c: CommandContext, id: string, build: HdlBuildView, profile?: HdlRuntimeProfile): HdlSessionView {
+export function verifyHdlSession(value: unknown, c: CommandContext, id: string, build: HdlBuildView, profile?: HdlRuntimeProfile, job?: HdlJobView): HdlSessionView {
   const s = record(value), result = build.result
-  identity(s.identity, c, id)
+  const boundJob = originalJob(job, c, 'hdl_program', id), generation = boundJob?.execution?.nodeGeneration ?? c.trustedRecoveryGeneration
+  identity(s.identity, c, id, generation)
+  if (generation !== build.request.identity.recoveryGeneration || build.execution && hdlCanonical(boundJob?.execution) !== hdlCanonical(build.execution)) throw new Error('Session 与原 Build 执行节点不符')
   if (s.sessionId !== id || s.buildId !== build.request.identity.id || s.snapshotId !== build.request.snapshot.snapshotId ||
     s.snapshotHash !== build.request.snapshot.hash || s.boardProfileVersion !== build.request.board.boardProfileVersion ||
     s.mappingVersion !== build.request.board.mappingVersion || s.runtimeProfileVersion !== build.request.runtimeProfileVersion ||

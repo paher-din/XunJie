@@ -81,6 +81,7 @@ test('received-only且停止的正文不在公共历史中，新通道仍无正�
   })
   await expect.poll(async()=>(await localReceived())[0]?.facts.received?.state).toBe('confirmed')
   expect((await localReceived())[0]!.facts.displayed).toBeUndefined()
+  await page.unrouteAll({behavior:'wait'})
   await page.getByRole('button',{name:'停止这次帮助'}).click()
   const before=await history(page);expect(before.actions).toEqual([]);expect(before.messages.every(m=>m.authorKind==='student')).toBe(true)
   const other=await context.newPage(),writes=receiptWrites(other);await other.goto(page.url());await expect(other.locator('.cw')).toBeVisible()

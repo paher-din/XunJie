@@ -78,6 +78,26 @@ test('DL-C program/interact keep exact source, resolve lost response by original
     await s.service.processJob(replacement.result.jobId);assert.equal(s.f.db.withTransaction(tx=>readHdlSession(tx,actor,replacement.result.sessionId)).status,'active');
   }finally{await s.f.close();}
 });
+test('program re-queries the original Session after its asynchronous result completes',async()=>{
+ const s=await setup();try{
+  const order:string[]=[];let resultRead=false;
+  const transport=async(packet:HdlCommand)=>{
+   const response=await s.node.transport(packet);
+   if(packet.op==='hdl_program'){order.push(packet.op);return {data:{...response.data as HdlSession,status:'starting'}};}
+   if(packet.op==='hdl_result'){order.push(packet.op);await Promise.resolve();resultRead=true;return response;}
+   if(packet.op==='hdl_query'){order.push(packet.op);return resultRead?response:{data:{...response.data as HdlSession,status:'starting'}};}
+   return response;
+  };
+  const service=createHdlWorkspace({db:s.f.db,currentGeneration:s.f.generation,transport,approvedProfile:()=>({board,runtime})});
+  const build=service.build(actor,s.attemptId,'async-build',s.f.generation(),{expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId});await service.processJob(build.result.jobId);
+  const program=await service.program(actor,s.attemptId,'async-program',s.f.generation(),{expectedAttemptRevision:s.revision(),buildId:build.result.buildId});await service.processJob(program.result.jobId);
+  assert.deepEqual(order,['hdl_program','hdl_result','hdl_query']);
+  const session=s.f.db.withTransaction(tx=>readHdlSession(tx,actor,program.result.sessionId));assert.equal(session.status,'active');assert.equal(session.confirmedSequence,0);
+  assert.equal(s.f.db.withTransaction(tx=>tx.get('SELECT status FROM jobs WHERE job_id=?',program.result.jobId)?.status),'succeeded');
+  assert.equal(s.f.db.withTransaction(tx=>service.readTrace(tx,actor,session.sessionId)).operation?.result?.sessionId,session.sessionId);
+ }finally{await s.f.close();}
+});
+
 test('DL-C roles, course, generation and phase guards reject new actions; a stop does not restore an old active state',async()=>{
   const s=await setup();try{
     const input={expectedAttemptRevision:s.revision(),snapshotId:s.snapshotId};

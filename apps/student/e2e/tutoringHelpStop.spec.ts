@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { revealTutorBody } from './tutoringHelpers'
 import { start, create, edit, serverHead } from './helpers'
 async function script(page:Page,kind:string) {
   await page.evaluate(async kind=> {
@@ -50,6 +51,7 @@ test('求助丢ACK尚无Job时可明确停止，核对原键后取消原Job而�
   await page.route('**/__i0prep/api/attempts/*/help',async route=>{await route.fetch();await held;await route.abort('failed')})
   await page.getByRole('button',{name:'就项目求助'}).click()
   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('未确认的原求助')
+  await expect(page.getByRole('button',{name:'发送辅导问题'})).toBeEnabled()
   await page.getByRole('textbox',{name:'就这个任务提问'}).press('Enter')
   await expect(page.getByTestId('tutor-question-status')).toHaveText('发送中')
   release()
@@ -100,18 +102,24 @@ test('替换help和旧Job取消均丢ACK，分别核对原命令后不会把旧�
   await page.getByRole('button',{name:'替换并发送'}).click()
   await expect(page.getByRole('button',{name:'核对原辅导请求'})).toBeEnabled()
   const oldCancelUrl=`**/__i0prep/api/jobs/${old.jobId}/cancel`
-  await page.route(oldCancelUrl,async route=>{await route.fetch();await route.abort('failed')})
+  let cancelFinished!:()=>void
+  const cancelledTransport=new Promise<void>(resolve=>{cancelFinished=resolve})
+  await page.route(oldCancelUrl,async route=>{try {await route.fetch();await route.abort('failed')} finally {cancelFinished()}})
   await page.getByRole('button',{name:'停止这次帮助'}).click()
   await expect.poll(()=>keys.filter(k=>k.path.endsWith(`/jobs/${old.jobId}/cancel`)).length).toBe(1)
+  await cancelledTransport
   await page.unroute(oldJobUrl);await page.unroute(oldCancelUrl);await page.unroute('**/__i0prep/api/attempts/*/help')
   await expect(page.getByRole('button',{name:'核对原辅导请求'})).toBeEnabled()
   await page.getByRole('button',{name:'核对原辅导请求'}).click()
+  await expect(page.getByTestId('tutor-job')).not.toHaveAttribute('title',old.jobId)
   await expect(page.getByTestId('tutor-job')).toContainText('已请求停止 · cancelled')
   const newJobText=await page.getByTestId('tutor-job').textContent()
-  expect(newJobText).not.toContain(old.jobId)
+  const newJobId=await page.getByTestId('tutor-job').getAttribute('title')
+  expect(newJobId).toBeTruthy();expect(newJobId).not.toBe(old.jobId)
   await page.getByRole('button',{name:'核对原辅导请求'}).click()
   await expect(page.getByRole('button',{name:'核对原辅导请求'})).toHaveCount(0)
   await expect(page.getByTestId('tutor-job')).toHaveText(newJobText!)
+  await expect(page.getByTestId('tutor-job')).toHaveAttribute('title',newJobId!)
   await expect(page.getByTestId('tutor-message')).toHaveCount(0)
   const oldCancels=keys.filter(k=>k.path.endsWith(`/jobs/${old.jobId}/cancel`))
   expect(oldCancels).toHaveLength(2);expect(oldCancels[1]).toEqual(oldCancels[0])
@@ -131,7 +139,7 @@ test('学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍
   await page.getByRole('button',{name:'替换并发送'}).click()
   await expect(page.getByTestId('tutor-message')).toHaveCount(1)
   expect(new Set(helpKeys).size).toBe(2)
-  await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
   await page.route('**/__i0prep/api/jobs/*/cancel',async route=> {const response=await route.fetch();await route.abort('failed');await page.unroute('**/__i0prep/api/jobs/*/cancel');expect(response.ok()).toBe(true)})
   await page.getByRole('button',{name:'停止这次帮助'}).click()
@@ -161,7 +169,7 @@ test('非法正文不展示不报displayed，故障仍可保存；模型失败�
   await create(page);await edit(page,'int main(void){return 0;}')
   await page.getByRole('button',{name:'确认保存',exact:true}).click()
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
-  await page.unroute('**/__i0prep/api/attempts/*/events?*')
+  await page.unrouteAll({behavior:'wait'})
   await script(page,'failed')
   await page.getByRole('button',{name:'就项目求助'}).click()
   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('又一个问题')

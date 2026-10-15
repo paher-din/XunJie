@@ -1,5 +1,7 @@
 # I0-UI：PR69 后给 A/C 的交接与 PAHER 直接核查
 
+旧 PAHER 连接与维护入口已退役。当前地址、身份、证书及连接步骤由负责人私下发放；仓库仅提供[通用基础设施模板](../../tools/i0-cloud/README.md)。本文保留原交接时点与验证事实，不作为当前连接或下载说明。
+
 建档：2026-10-14；最新核对：2026-10-15（Asia/Shanghai）。主责：UI / Robert。来源：[本批工程记录](I0-UI_PREP_VERIFICATION_CLOSEOUT.md)、[剩余清单](https://github.com/paher-din/XunJie/blob/33a68baba5005c9a6433ed2bf9c99f01d89345b6/docs/tasks/I0_REMAINING_WORK_CHECKLIST.md)。当前状态：PR #69/#70/#75已合main，新143文件修复包已在本机网关接收并完成获准真实C1浏览器复验；当前事实见§7及[复验记录](I0-UI_PR69_REAL_BROWSER_RECHECK.md)。§1～6保留原交接时点，不能把其中“尚未切包/PR68 Draft”当最新状态。
 
 ## 1. 负责人要求与固定交付
@@ -14,7 +16,7 @@ Robert明确要求“先把这批推PR并合并到main，再整理给A、C的交
 | [工程/验证记录](I0-UI_PREP_VERIFICATION_CLOSEOUT.md) | 实现、实际命令、分轮失败/修复/结果、当前依赖与未执行项；不写一次90/90或完整AC/NFR通过 |
 | [正式dist manifest](evidence/i0-ui-prep-closeout/student-real-dist-manifest.json) | 143个网页资源、逐文件bytes/SHA-256，ZIP SHA256 `722e5d425506e0eb4275a7f5fa6de19c86360b73f57352c230c928de027779cb`；包名`student-real-dist.zip`、5,632,388 bytes。用于本机网关接收/校核，不含后台、数据库、配置或凭据 |
 | [公开契约核对](I0-UI_PREP_VERIFICATION_CLOSEOUT.md#5-ui-prep-06当前公开契约核对) / [A-C原交接](I0_A_C_HANDOFF.md) | H-05差异的具体依据；控制/作品revision分别重读，不靠UI猜版本 |
-| [已有SSH/HTTPS工具](../../tools/i0-ui55/README.md) / [C固定现场交接](DLA_PR67_RUNTIME_HANDOFF_20261014.md) | 复用主机公钥、严格TLS、指定合成账号通道、原24表/35表、当前单位/停止责任；不索取首次H-04/H-06材料 |
+| [C固定现场历史交接](DLA_PR67_RUNTIME_HANDOFF_20261014.md) | 保留严格TLS、指定合成身份、原24表/35表及停止责任的当时验证范围；旧连接工具与领取步骤已退役 |
 
 ZIP冻结源`4a0bdbb`的学生树为`c957eda726b0b2f00a2b7cd28a060aceac4007d1`，与PR #69合并后的学生树相同；后续任务文档提交不改变已验证生产输入。ZIP留Robert本机，团队可按固定源、Node24/原lock与学生README重建，不能要求其他电脑拥有Robert个人工具路径。旧候选补丁不叠加正式前端。
 
@@ -24,9 +26,9 @@ ZIP冻结源`4a0bdbb`的学生树为`c957eda726b0b2f00a2b7cd28a060aceac4007d1`�
 
 | 核查 | 本次实际结果 |
 | --- | --- |
-| 维护SSH `xunjie-paher.ps1 probe` | 公钥/固定host认证成功、`whoami=paher\p3148`；旧`xunjie-i0-entry-recovered-20261014.service`已inactive、VM active，故该旧目标probe总退出1。不是SSH断连，不将两个服务状态等同ready |
-| 本机`xunjie-ui55.ps1 status/check` | 已有SSH隧道和gateway进程归属通过，当前提供main `b7e73c5`的UI30正式包；143文件摘要一致，严格TLS/原信任通过；匿名Session401按预期、live/ready各200；**16通过/0失败/0未执行** |
-| 两个当前应用unit | 通过同一维护入口显式只读`systemctl show`：`xunjie-i0-entry-pr56-f761dcd-20261014.service`与`xunjie-dla-ui-f761dcd-20261014.service`均active/running。当前固定记录源为f761dcd；不把PR #56/#65/#69合main记作这些服务已更新到87edd51，未重新校核全部运行源码文件 |
+| 历史维护身份核对 | 公钥与固定host认证成功；旧应用单元已inactive、VM active，故该旧目标probe总退出1。不是SSH断连，不将两个服务状态等同ready |
+| 历史本机入口状态核对 | 当时SSH隧道和gateway进程归属通过，提供main `b7e73c5`的UI30正式包；143文件摘要一致，严格TLS/原信任通过；匿名Session401按预期、live/ready各200；**16通过/0失败/0未执行** |
+| 历史两个应用单元 | 通过当时维护入口只读核对均active/running。固定记录源为f761dcd；不把PR #56/#65/#69合main记作这些服务已更新到87edd51，未重新校核全部运行源码文件 |
 | C1只读readiness | ready=true、原146内核、profile=`c17-gcc15.3.0-textscope-v1`；指纹`b07cddf9…`匹配既有验证、差异为空、代际与原宿主声明匹配；退出0。脚本使用旧归档transport，它的source字段不是当前运行应用版本 |
 | UI30原获准作品 | 原24表合成库的v8快照，2文件的原UTF-8内容摘要与manifest重算全部一致；sync/snapshot/run原回执可读。退出0、正文和认证材料未输出；没有新保存/冻结/运行 |
 
@@ -51,7 +53,7 @@ ZIP冻结源`4a0bdbb`的学生树为`c957eda726b0b2f00a2b7cd28a060aceac4007d1`�
 
 ## 5. UI直接承担的部分与给成员的方式
 
-UI可直接用既有工具做SSH身份/当前unit、公开HTTP ready、节点只读ready和已获准合成对象核查，本轮已完成，不转给C重复执行。本机正式dist接收、逐文件校验、本人gateway切换/启停和实际Chrome复验由UI在既有准确授权内推进；SSH工具可连接不改变A/C代码归属，也不自动授权配置/库/节点冻结环境或秘密变更。
+当时UI已用获准工具完成身份/应用状态、公开HTTP ready、节点只读ready和合成对象核查，没有转给C重复执行。旧连接工具现已退役。本机正式dist接收、逐文件校验、本人gateway切换/启停和实际Chrome复验由UI在既有准确授权内推进；SSH工具可连接不改变A/C代码归属，也不自动授权配置/库/节点冻结环境或秘密变更。
 
 本批新ZIP尚未切到gateway，当前仍是b7e73c5 UI30包。下一步UI接新包后核登录/账号隔离、保存/冻结、原Job/Run、历史与可用产物等实际差异；已有UI30结果按原版本复用，正向下载和真实丢ACK/恢复等缺口分列。需要新模型或真实学生阶段时另沿原门禁，不把合成开发行为算学生接棒。
 

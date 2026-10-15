@@ -77,6 +77,7 @@ test('辅导events、历史与help公开失败只显示中文恢复提示，保�
 
   const historyPath = '**/__i0prep/api/attempts/*/teaching-records'
   await page.route(historyPath, failPublicRead)
+  await pane.locator('.tutor-history-details > summary').click()
   await page.getByRole('button', { name: '刷新教学历史', exact: true }).click()
   await expect(page.getByTestId('tutor-history')).toContainText('教学历史不可回取')
   leaks.push(...await visibleLeaks(pane, 'history'))

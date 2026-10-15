@@ -12,10 +12,11 @@ import type { WorkspaceState } from './commands.ts';
 import type { ActorContext } from '../../contracts/access/index.ts';
 import type { RunnerTransport } from '../records/runner.ts';
 import { rangeOffsets } from './files.ts';
+import type { ExecutionRouting } from '../app/execution-nodes.ts';
 
 type AuthorizedRead = <T>(request: FastifyRequest, id: string, work: (tx: Transaction, state: WorkspaceState, actor: ActorContext) => T) => T;
 export function registerEditorDiagnostics(app: FastifyInstance, read: AuthorizedRead, runner: RunnerTransport | undefined,
-  generation: (expected: string) => string, attemptId: (request: FastifyRequest) => string) {
+  generation: (expected: string) => string, attemptId: (request: FastifyRequest) => string, execution?:ExecutionRouting) {
   let busy = false;
   app.post('/api/attempts/:id/editor-diagnostics', { bodyLimit: 8 * 1024 * 1024 }, async request => {
     const input = parseRequest(editorDiagnosticsInput, request.body), id = attemptId(request);
@@ -51,11 +52,18 @@ export function registerEditorDiagnostics(app: FastifyInstance, read: Authorized
     const base = { sourceHash: typeof packet === 'string' ? '0'.repeat(64) : packet.snapshot.hash, diagnostics: [] };
     const respond = (status: EditorDiagnosticsResult['status']) => ({ requestId: request.id, data: { ...base, status } });
     if (typeof packet === 'string') return respond(packet);
-    if (!runner) return respond('unavailable');
+    let selectedRunner=runner,nodeGeneration=packet.recoveryGeneration;
+    if(execution){
+      try{const binding=execution.selected(request);selectedRunner=execution.node(binding).runner;nodeGeneration=binding.nodeGeneration;}
+      catch{return respond('unavailable');}
+    }
+    if (!selectedRunner) return respond('unavailable');
     if (busy) return respond('busy');
     busy = true;
     try {
-      const response = await runner({ op: 'editor_diagnostics', packet });
+      // This transient analysis has no Job. Its node generation belongs only to the wire packet;
+      // prepare() continues to recheck the authenticated business generation and original draft basis.
+      const response = await selectedRunner({ op: 'editor_diagnostics', packet:{...packet,recoveryGeneration:nodeGeneration} });
       const current = prepare();
       if (typeof current === 'string') return respond(current);
       if (current.snapshot.hash !== packet.snapshot.hash) return respond('stale');

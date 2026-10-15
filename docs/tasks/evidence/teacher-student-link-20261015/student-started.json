@@ -1,0 +1,12 @@
+{
+  "observedAtUtc": "2026-10-15T07:35:40.984Z",
+  "stage": "student-explicit-attempt-created",
+  "attemptId": "aaa73cb7-9aaa-44c2-8b74-87b423b93414",
+  "courseId": "synthetic-i0-course-b",
+  "studentId": "synthetic-i0-student-b",
+  "assignmentId": "b81973b2-dde4-4019-98d9-b4f26b036b13",
+  "activityVersionId": "224c955b-a5b9-4553-9257-2878f7635cf0",
+  "status": "ready",
+  "attemptRevision": 1,
+  "workspaceRevision": 0
+}

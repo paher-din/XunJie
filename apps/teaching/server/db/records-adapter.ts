@@ -19,7 +19,8 @@ const jobSchema = z.strictObject({ jobId: id, kind: id, purpose: purposeSchema, 
   status: z.enum(['queued', 'running', 'succeeded', 'failed', 'cancelling', 'cancelled', 'stale', 'timed_out', 'outcome_unknown']),
   stopRequested: z.boolean(), expectedRevision: natural, decisionEpoch: natural, recoveryGeneration: id,
   acceptedAt: time, deadline: time, attemptCount: natural.max(3), inactivityTimeoutMs:z.number().int().positive().max(2147483647).optional(),leaseToken: id.optional(), leaseUntil: time.optional(),
-  runId: id.optional(), resultRef: id.optional(), resultHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), failure: id.optional() });
+  runId: id.optional(), resultRef: id.optional(), resultHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), failure: id.optional(),
+  execution:z.strictObject({nodeId:z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),nodeGeneration:id}).optional() });
 const receiptSchema = z.strictObject({ receiptId: id, commandId: id, identity: identitySchema, requestHash: z.string().regex(/^[a-f0-9]{64}$/),
   // JSON validation must not normalize client file keys such as "__proto__" in the original ACK.
   result: z.unknown().refine(value => z.json().safeParse(value).success), serverSeq: z.number().int().positive(), committedAt: time });
@@ -98,7 +99,8 @@ export function saveJob(tx: Transaction, input: Job) {
   const original = persisted(receiptSchema, String(receipt.result_json)) as CommandReceipt;
   if (!sameScope(original.identity.scope, job.scope) || original.receiptId !== job.requestReceiptId
     || original.identity.recoveryGeneration !== job.recoveryGeneration) throw new ApiError('INVALID_REFERENCE');
-  const oldJob = tx.get('SELECT stop_requested FROM jobs WHERE job_id=?', job.jobId);
+  const oldJob = tx.get('SELECT stop_requested,job_json FROM jobs WHERE job_id=?', job.jobId);
+  if(oldJob&&JSON.stringify(JSON.parse(String(oldJob.job_json)).execution??null)!==JSON.stringify(job.execution??null))throw new ApiError('INVALID_REFERENCE');
   if (oldJob?.stop_requested === 1 && !job.stopRequested) throw new ApiError('STATE_CONFLICT');
   tx.run(`INSERT INTO jobs(job_id,course_id,student_id,attempt_id,request_receipt_id,purpose,status,stop_requested,recovery_generation,job_json)
     VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(job_id) DO UPDATE SET status=excluded.status,stop_requested=excluded.stop_requested,

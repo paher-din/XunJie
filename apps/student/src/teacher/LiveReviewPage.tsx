@@ -161,6 +161,10 @@ export default function LiveReviewPage() {
   const [replacementAssistance, setReplacementAssistance] = useState<LearnerClaim['assistanceStatus']>('unknown')
   const [replacementUnknown, setReplacementUnknown] = useState('')
   const workbenches = (data.workbenches ?? []).filter(w => !courseId || courseId === 'all' || w.courseId === courseId)
+  const courseMembers = workbenches.flatMap(workbench => workbench.members.map(member => ({ member, workbench,
+    assignments: workbench.assignments.filter(assignment => assignment.studentId === member.userId),
+    attempts: workbench.attempts.filter(attempt => attempt.studentId === member.userId),
+  })))
   const rows = workbenches.flatMap(w => w.attempts.map(attempt => ({ attempt, workbench: w,
     name: w.members.find(member => member.userId === attempt.studentId)?.displayName || attempt.studentId,
     title: w.activities.find(activity => activity.activityVersionId === attempt.activityVersionId)?.content.content.projectTitle || attempt.activityVersionId })))
@@ -297,6 +301,19 @@ export default function LiveReviewPage() {
     const filtered = rows.filter(row => (status === 'all' || row.attempt.status === status) && `${row.name} ${row.title} ${row.attempt.studentId}`.toLowerCase().includes(query.toLowerCase()))
     return <div className="t-rm-page t-live-review"><div className="t-rm-page-heading"><div><div className="t-rm-eyebrow">LEARNING EVIDENCE</div><h1>学生与证据</h1><p>从真实尝试与固定提交进入审阅，作品表现与能力判断分别查看。</p></div><button type="button" className="t-rm-button" disabled={loading} onClick={refresh}>重新读取学生列表</button></div>
       {workspaceError && <p role="alert" className="t-rm-error">{workspaceError}</p>}
+      <section className="t-rm-panel t-live-roster" aria-labelledby="course-students-title">
+        <div className="t-rm-section-head"><h2 id="course-students-title">课程学生</h2><span className="t-rm-caption">{courseMembers.length} 条课程成员</span></div>
+        {loading ? <p role="status">正在读取课程学生…</p> : courseMembers.length === 0 ? <p>当前课程没有学生成员。</p>
+          : <div className="t-rm-learner-table" role="table" aria-label="课程学生">
+            <div className="t-rm-learner-table-head" role="row"><span role="columnheader">学生</span><span role="columnheader">课程与班级</span><span role="columnheader">分配</span><span role="columnheader">尝试状态</span><span /></div>
+            {courseMembers.map(({ member, workbench, assignments, attempts }) => <div role="row" className="t-rm-learner-row t-live-course-member" key={`${workbench.courseId}:${member.userId}`}>
+              <span role="cell" className="t-rm-learner-identity"><span className="t-rm-avatar">{(member.displayName || member.userId).slice(0, 2)}</span><span><strong>{member.displayName || member.userId}</strong></span></span>
+              <span role="cell" className="t-rm-learner-project"><strong>{workbench.courseName || workbench.courseId}</strong></span>
+              <span role="cell">{assignments.length} 项<small>{assignments.filter(assignment => assignment.active).length} 项开放</small></span>
+              <span role="cell">{attempts.length ? [...new Set(attempts.map(attempt => statuses[attempt.status]))].join('、') : '未开始'}<small>{attempts.length} 次尝试</small></span><span />
+            </div>)}
+          </div>}
+      </section>
       <div className="t-rm-toolbar"><label className="t-rm-search"><Icon name="minimalistic-magnifier" size={16} /><input aria-label="搜索学生审阅" value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索学生或项目" /></label>
         <label className="t-rm-filter-label">状态<select aria-label="审阅状态" value={status} onChange={event => setStatus(event.target.value)}><option value="all">全部状态</option>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <span className="t-rm-caption">{rows.length} 个真实尝试</span></div>
@@ -304,7 +321,7 @@ export default function LiveReviewPage() {
       {loading ? <p role="status">正在读取课程尝试…</p> : filtered.length === 0 ? <div className="t-rm-empty"><h2>暂无匹配的学生尝试</h2><p>尚未开始的分配不会自动生成学生作品或能力证据。</p></div>
         : <div className="t-rm-learner-table"><div className="t-rm-learner-table-head"><span>学生</span><span>项目</span><span>提交</span><span>状态</span><span /></div>
           {filtered.map(row => <button type="button" className="t-rm-learner-row" key={row.attempt.attemptId} onClick={() => select(row.attempt.attemptId)}>
-            <span className="t-rm-learner-identity"><span className="t-rm-avatar">{row.name.slice(0, 2)}</span><span><strong>{row.name}</strong><small>{row.attempt.studentId}</small></span></span>
+            <span className="t-rm-learner-identity"><span className="t-rm-avatar">{row.name.slice(0, 2)}</span><span><strong>{row.name}</strong></span></span>
             <span className="t-rm-learner-project"><strong>{row.title}</strong><small>{row.workbench.courseName || row.workbench.courseId}</small></span>
             <span>{row.attempt.latestSubmission ? '已有提交' : '尚未提交'}</span><span className={`t-rm-status t-rm-status-${row.attempt.status}`}>{statuses[row.attempt.status]}</span><Icon name="alt-arrow-right" size={16} />
           </button>)}</div>}

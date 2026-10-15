@@ -38,7 +38,7 @@ export async function queryRuntime(runner?: RunnerTransport) {
   }
 }
 
-export type ExecutionReadiness={ok:true;runtime: {profile:Zod.infer<typeof activityRuntimeSchema>;recoveryGeneration:string;readiness:Zod.infer<typeof runtimeReadinessSchema>}|undefined}|{ok:false;error:unknown};
+export type ExecutionReadiness={ok:true;runtime: {profile:Zod.infer<typeof activityRuntimeSchema>;recoveryGeneration:string;execution?:import('../../contracts/records/index.ts').ExecutionBinding;readiness:Zod.infer<typeof runtimeReadinessSchema>}|undefined}|{ok:false;error:unknown};
 // Both handlers probe a currently authorized receipt before any external wait.
 // The final callback rechecks authorization/generation/receipt competition in SQL.
 export async function executeRuntimeCommand<T>(runner: RunnerTransport | undefined,
