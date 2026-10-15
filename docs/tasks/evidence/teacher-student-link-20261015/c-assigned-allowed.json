@@ -1,0 +1,9 @@
+{
+  "observedAtUtc": "2026-10-15T07:43:26.152Z",
+  "stage": "same-course-student-after-assignment",
+  "studentId": "synthetic-i0-student-b",
+  "activityId": "eaeb74d5-1256-43f1-8d0b-0ba1bcb1d82d",
+  "status": 200,
+  "receivedActivityId": "eaeb74d5-1256-43f1-8d0b-0ba1bcb1d82d",
+  "teacherWorkbenchDenied": 403
+}
