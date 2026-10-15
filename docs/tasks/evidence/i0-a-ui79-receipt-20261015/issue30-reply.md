@@ -11,3 +11,5 @@
 | H-05 | 仓库修复与原PR73实现/验证一致，可接纳；现场254e938没有部署该修复，仍保留原逐次保存推进控制版本的历史行为。UI原GET分别读作品/控制版本兼容，不把仓库merge写成现场已换版 |
 
 原70/70、组合136通过+dist准备顺序失败后定向1/1、H-05的110通过/5skip分批保留，没有重跑成熟节点/模型/浏览器，也没有把静态或替身当真实现场。完整暂停撤权/自然到期/冲突/恢复矩阵、AC/NFR/P4/P5及真人仍按原门禁；**#30/#38保持Open，产品基线/MVP_SPEC §10待授权维护者汇总。**
+
+独立A交付固定提交 `93bd0dac203a9cd0e3c9bd5f17a31553371bdc9b`：[任务及证据适用性](https://github.com/paher-din/XunJie/blob/93bd0dac203a9cd0e3c9bd5f17a31553371bdc9b/docs/tasks/I0_A_UI79_RECEIPT_20261015.md)、[可复查核查器](https://github.com/paher-din/XunJie/blob/93bd0dac203a9cd0e3c9bd5f17a31553371bdc9b/docs/tasks/evidence/i0-a-ui79-receipt-20261015/verify-reception.mjs)、[本次输出](https://github.com/paher-din/XunJie/blob/93bd0dac203a9cd0e3c9bd5f17a31553371bdc9b/docs/tasks/evidence/i0-a-ui79-receipt-20261015/reception-verification.json)。9组核查、12个纯域权限断言及文档检查通过；档案核查运行时Node24.15，不冒称本轮Node24.21应用回归。B未完成正文审阅的本地稿没有推入该分支。
