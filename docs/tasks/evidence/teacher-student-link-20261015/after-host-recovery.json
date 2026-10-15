@@ -1,0 +1,19 @@
+{
+  "observedAtUtc": "2026-10-15T07:54:30.245Z",
+  "bothOriginalAttemptsPreservedAfterHostRecovery": true,
+  "pendingJobs": 0,
+  "unconfirmedHdl": 0,
+  "integrity": [
+    {
+      "integrity_check": "ok"
+    }
+  ],
+  "foreignKeys": [],
+  "control": {
+    "singleton": 1,
+    "recovery_generation": "synthetic-generation-96fc2f60-8102-47fb-af1f-e2d86f4c2764",
+    "control_revision": 2,
+    "initialized_at_ms": 1791975610539
+  },
+  "modelRequestsInRetainedHost": 0
+}
