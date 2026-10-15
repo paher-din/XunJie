@@ -1,0 +1,12 @@
+{"observedAtUtc":"2026-10-14T16:46:59.965Z","kind":"http-start","id":"1ba10502-3b18-4d4c-b05a-46cb1329da1b","provider":"DeepSeek"}
+{"observedAtUtc":"2026-10-14T16:47:00.119Z","kind":"http-response","id":"1ba10502-3b18-4d4c-b05a-46cb1329da1b","status":200,"elapsedMs":154}
+{"observedAtUtc":"2026-10-14T16:47:02.747Z","kind":"model-result","purpose":"student_help","usage":{"status":"actual","inputTokens":2933,"outputTokens":507}}
+{"observedAtUtc":"2026-10-14T17:05:12.414Z","kind":"http-start","id":"03082596-f771-4c53-a6e5-08cdf247d6db","provider":"DeepSeek"}
+{"observedAtUtc":"2026-10-14T17:05:12.581Z","kind":"http-response","id":"03082596-f771-4c53-a6e5-08cdf247d6db","status":200,"elapsedMs":167}
+{"observedAtUtc":"2026-10-14T17:05:15.382Z","kind":"model-result","purpose":"student_help","usage":{"status":"actual","inputTokens":2704,"outputTokens":466}}
+{"observedAtUtc":"2026-10-14T18:55:44.482Z","kind":"http-start","id":"5588d19e-a360-43e3-ac39-dce336e908e8","provider":"DeepSeek"}
+{"observedAtUtc":"2026-10-14T18:55:44.629Z","kind":"http-response","id":"5588d19e-a360-43e3-ac39-dce336e908e8","status":200,"elapsedMs":147}
+{"observedAtUtc":"2026-10-14T18:55:46.614Z","kind":"model-result","purpose":"student_help","usage":{"status":"actual","inputTokens":1915,"outputTokens":353}}
+{"observedAtUtc":"2026-10-14T19:07:37.991Z","kind":"http-start","id":"b268e2b4-8a0a-414a-b2e4-79ce0dba2dc5","provider":"DeepSeek"}
+{"observedAtUtc":"2026-10-14T19:07:38.134Z","kind":"http-response","id":"b268e2b4-8a0a-414a-b2e4-79ce0dba2dc5","status":200,"elapsedMs":143}
+{"observedAtUtc":"2026-10-14T19:07:41.571Z","kind":"model-result","purpose":"student_help","usage":{"status":"actual","inputTokens":2977,"outputTokens":694}}

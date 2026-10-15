@@ -1,0 +1,31 @@
+{
+  "status": "verified",
+  "verilogSnapshot": "6d0ed106-5b29-4603-98d5-1fef95ac3914",
+  "switchOnOffCases": 32,
+  "stalePeer": {
+    "nineObjectGroupsUnchanged": true,
+    "commandReceiptsUnchanged": true,
+    "explicitRetryPreservesSW8": true
+  },
+  "boardHelp": {
+    "jobId": "765530ca-367c-4ca1-b496-d5365584cdff",
+    "basisMatches": true,
+    "finalDisposition": "stale",
+    "displayed": false,
+    "acknowledged": false
+  },
+  "globalCounts": {
+    "assignments": 3,
+    "attempts": 3,
+    "files": 4,
+    "snapshots": 8,
+    "builds": 5,
+    "sessions": 6,
+    "operations": 62,
+    "jobs": 75,
+    "messages": 10,
+    "actions": 4,
+    "teachingReceipts": 9
+  },
+  "boundary": "Archived public consistency only; screenshots/operation records supply browser evidence. Global totals include other C-side activity and are not all attributed to this UI supplement."
+}
