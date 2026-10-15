@@ -23,7 +23,7 @@ import { PREP_BUILD } from '../workspace/mode'
 import { PREP_ENTRY_COURSE, PREP_ENTRY_GOAL, PREP_ENTRY_LABEL, PREP_ENTRY_NOTE, PREP_TASK_ROUTE } from '../workspace/prepEntry'
 import { useSession } from '../components/SessionEntry'
 import { loadHomeCourses, type HomeCourse } from '../workspace/home'
-import { displayAccountName, displayCourseName } from '../lib/displayNames'
+import { displayAccountName, displayCourseName, displayProjectName } from '../lib/displayNames'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
 const ASSIGNMENT_FILTERS = ['全部', '已分配', '任务已暂停'] as const
@@ -73,7 +73,7 @@ function RealHomePage() {
   const search = query.trim().toLowerCase()
   const visibleTasks = selected?.assignments.filter(task =>
     (statusFilter === '全部' || statusFilter === (task.active ? '已分配' : '任务已暂停')) &&
-    `${task.title} ${task.goal ?? ''} ${displayCourseName(selected.courseId)} ${selected.courseId}`.toLowerCase().includes(search)) ?? []
+    `${displayProjectName(task.title)} ${task.title} ${task.goal ?? ''} ${displayCourseName(selected.courseId)} ${selected.courseId}`.toLowerCase().includes(search)) ?? []
   const allTasks = courses.flatMap(course => course.assignments.map(task => ({ ...task, courseId: course.courseId })))
   const entryTask = !snapshot.isError && allTasks.find(task => task.active)
   const now = new Date()
@@ -91,7 +91,7 @@ function RealHomePage() {
       taskCount={snapshot.isSuccess ? allTasks.length : undefined} now={now}
       continueSlot={entryTask && <div className="db-continue">
         <span className="course-tag"><i className="dot" />项目任务 · {displayCourseName(entryTask.courseId)}</span>
-        <h3>{entryTask.title}</h3>
+        <h3>{displayProjectName(entryTask.title)}</h3>
         {entryTask.goal && <p>{entryTask.goal}</p>}
         <div className="db-continue-foot">
           <span className="db-side">当前获准任务</span>
@@ -121,7 +121,7 @@ function RealHomePage() {
           : <div className="task-card-grid" ref={cardsRef} {...hover.handlers}>
             <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
             {visibleTasks.map((task, index) => <TaskCard key={task.assignmentId}
-              task={{ name: task.title, goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
+              task={{ name: displayProjectName(task.title), goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
               action={task.active ? '进入任务' : '查看任务'} index={index}
               registerItem={hover.registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}
           </div>}

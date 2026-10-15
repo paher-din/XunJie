@@ -11,3 +11,6 @@ const courseNames = new Map([
 
 export const displayAccountName = (userId: string) => accountNames.get(userId) ?? userId
 export const displayCourseName = (courseId: string) => courseNames.get(courseId) ?? `课程 ${courseId}`
+
+export const displayProjectName = (title: string) =>
+  title === 'TextScope Core 本机合成工程验证' ? '文本分析工具' : title
