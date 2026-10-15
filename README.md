@@ -21,7 +21,7 @@ npm run dev:prep
 
 正常模式、浏览器端口、真实 Chrome、专项/全量测试及故障回放见 [学生运行说明](apps/student/README.md)；来源、许可与同步边界见 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。正常请求失败不回退到 fixture。
 
-Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)：`xunjie-local.ps1 start` 复用专用执行 VM 和原35表合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；默认模型关闭，`-EnableModel` 才使用自己的环境变量 key。登录使用该说明中的实际分配深链；首页设计 Demo 不替代正常任务入口。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
+Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)：`xunjie-local.ps1 start` 复用专用执行 VM 和原35表合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；默认模型关闭，`-EnableModel` 才使用自己的环境变量 key。登录后从[首页真实任务入口](docs/tasks/I0-UI_REAL_HOME_ENTRY.md)选择本人课程与分配，也可沿用实际分配深链。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
 
 学生前端的交付检查在 `apps/student` 执行：
 

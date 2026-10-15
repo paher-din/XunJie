@@ -21,6 +21,7 @@ import {
 import { PREP_BUILD } from '../workspace/mode'
 import { PREP_ENTRY_COURSE, PREP_ENTRY_GOAL, PREP_ENTRY_LABEL, PREP_ENTRY_NOTE, PREP_TASK_ROUTE } from '../workspace/prepEntry'
 import { useSession } from '../components/SessionEntry'
+import { loadHomeCourses } from '../workspace/home'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
 const COURSE_ICONS: IconName[] = ['virtual-board', 'code-square', 'structure']
@@ -37,7 +38,75 @@ const COURSE_COVERS: Record<string, string> = {
  * 学习看板（整宽，可个性化编辑；任务完成卡下半部分内嵌继续任务入口）→ 课程卡片（仅名称、待完成数、入口）→ 课程内任务卡片（截止时间优先）。
  */
 export default function HomePage() {
+  return PREP_BUILD ? <PreparationHomePage /> : <RealHomePage />
+}
+
+function RealHomePage() {
   const session = useSession()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const snapshot = useQuery({
+    queryKey: ['home', 'real', session.epoch, session.session?.userId],
+    queryFn: () => loadHomeCourses(session.session!),
+    enabled: session.status === 'authenticated' && !!session.session,
+  })
+  const courses = snapshot.data ?? []
+  const selected = courses.find(course => course.courseId === searchParams.get('course'))
+  const now = new Date()
+  const hour = now.getHours()
+  const greeting = hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好'
+  const cardsRef = useRef<HTMLDivElement>(null)
+  const hover = useFluidHover(cardsRef)
+  return <div className="content">
+    <div className="intro">
+      <h1>{greeting}，{session.session?.userId}</h1>
+      <span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span>
+    </div>
+    <div className="sectionhead">
+      <h2>{selected ? '课程与任务' : '我的课程'}<small>{selected ? `${selected.assignments.length} 个任务` : `${courses.length} 门`}</small></h2>
+      <button type="button" disabled={snapshot.isFetching} onClick={() => { void snapshot.refetch() }}>刷新任务</button>
+    </div>
+    {snapshot.isPending ? <p role="status">正在读取课程与任务…</p>
+      : snapshot.isError ? <div className="empty" role="alert">
+        <p>暂时无法读取课程与任务，请重试。已有任务链接仍可使用。</p>
+        <button type="button" disabled={snapshot.isFetching} onClick={() => { void snapshot.refetch() }}>重试</button>
+      </div>
+      : selected ? <>
+        <div className="course-breadcrumb">
+          <button onClick={() => setSearchParams({})}><IconText name="alt-arrow-left">全部课程</IconText></button>
+          <span>/</span><strong>课程 {selected.courseId}</strong>
+        </div>
+        {selected.assignments.length === 0 ? <div className="empty">此课程暂无分配任务</div>
+          : <div className="task-card-grid" ref={cardsRef} {...hover.handlers}>
+            <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
+            {selected.assignments.map((task, index) => <RealTaskCard key={task.assignmentId}
+              title={task.title} kind={task.executionKind} active={task.active} index={index}
+              registerItem={hover.registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}
+          </div>}
+      </> : courses.length === 0 ? <div className="empty">暂无获准的学生课程与任务</div>
+        : <CourseTiles courses={courses.map(course => course.courseId)} tasks={[]}
+          titleOf={id => `课程 ${id}`}
+          summaryOf={id => `${courses.find(course => course.courseId === id)!.assignments.length} 个分配任务`}
+          toneOf={id => courses.findIndex(course => course.courseId === id)}
+          onOpen={id => setSearchParams({ course: id })} />}
+  </div>
+}
+
+function RealTaskCard({ title, kind, active, index, registerItem, onOpen }: {
+  title: string; kind: 'textscope' | 'hdl_board'; active: boolean; index: number
+  registerItem: (index: number, el: HTMLElement | null) => void; onOpen: () => void
+}) {
+  const ref = useRef<HTMLButtonElement>(null)
+  useRegisterFluidHoverItem(registerItem, index, ref)
+  return <button ref={ref} className="task-card" onClick={onOpen}>
+    <div><span className="course-tag">{kind === 'hdl_board' ? '数字逻辑' : 'C / TextScope'}</span></div>
+    <h3>{title}</h3>
+    <p>{active ? '已分配' : '任务已暂停'}</p>
+    <div className="card-foot"><span className="action"><IconText name="arrow-right" position="end">{active ? '进入任务' : '查看任务'}</IconText></span></div>
+  </button>
+}
+
+function PreparationHomePage() {
   const snapshot = useQuery({
     queryKey: ['home'],
     queryFn: () => learningApi.getHomeSnapshot(),
@@ -72,13 +141,11 @@ export default function HomePage() {
   return (
     <div className="content">
       <div className="intro">
-        <h1>{greeting}，{!PREP_BUILD && session.session ? session.session.userId : 'Robert'}</h1>
+        <h1>{greeting}，Robert</h1>
         <span className="date">
           {now.getMonth() + 1} 月 {now.getDate()} 日
         </span>
       </div>
-
-      {!PREP_BUILD && <p className="session-home-note">请从课程提供的任务链接进入真实项目。下方学习看板与任务为设计演示。</p>}
 
       {PREP_BUILD && (
         <section className="prep-entry">
@@ -218,11 +285,15 @@ function CourseTiles({
   toneOf,
   tasks,
   onOpen,
+  titleOf = course => course,
+  summaryOf,
 }: {
   courses: string[]
   toneOf: (course: string) => number
   tasks: ProjectTask[]
   onOpen: (course: string) => void
+  titleOf?: (course: string) => string
+  summaryOf?: (course: string) => string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const hover = useFluidHover(ref)
@@ -236,10 +307,10 @@ function CourseTiles({
       {courses.map((c, i) => (
         <CourseTile
           key={c}
-          course={c}
+          course={titleOf(c)}
           index={i}
           tone={toneOf(c)}
-          pending={pendingCount(tasks, c)}
+          summary={summaryOf ? summaryOf(c) : pendingCount(tasks, c) > 0 ? pendingCount(tasks, c) + ' 个待完成' : '暂无待完成任务'}
           onOpen={() => onOpen(c)}
           registerItem={hover.registerItem}
         />
@@ -252,14 +323,14 @@ function CourseTile({
   course,
   index,
   tone,
-  pending,
+  summary,
   onOpen,
   registerItem,
 }: {
   course: string
   index: number
   tone: number
-  pending: number
+  summary: string
   onOpen: () => void
   registerItem: (index: number, el: HTMLElement | null) => void
 }) {
@@ -278,7 +349,7 @@ function CourseTile({
       )}
       <span className="course-tile-body">
         <h3>{course}</h3>
-        <p>{pending > 0 ? pending + ' 个待完成' : '暂无待完成任务'}</p>
+        <p>{summary}</p>
         <span className="course-tile-foot">
           <span className="cb-primary">查看任务</span>
         </span>
