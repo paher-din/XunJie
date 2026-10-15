@@ -1,0 +1,8 @@
+
+Running 1 test using 1 worker
+
+(node:45772) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\teacher-design-ai.spec.ts:79:1 › 根候选显式选择并采用为新草稿；刷新恢复只读取不重新生成 (7.9s)
+
+  1 passed (11.7s)
