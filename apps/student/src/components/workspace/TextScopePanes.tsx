@@ -1,5 +1,6 @@
 import { Icon, IconText } from '../../icons'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { describeFailure } from '../../workspace/http'
 import { reportDiagnostic } from '../../workspace/diagnostics'
 import type { MaterialRead, WorkspaceInit } from '../../workspace/init'
@@ -263,9 +264,14 @@ export function InitUnavailable({ init, onReload }: { init: WorkspaceInit; onRel
         现在还不能进入工作区
       </p>
       <p className="ts-unavailable-reason">{init.reason}</p>
-      <button type="button" className="outline" onClick={onReload}>
-        <IconText name="refresh">重新读取</IconText>
-      </button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {!PREP_BUILD && init.stage === 'assignment' && <Link className="primary" to="/">
+          <IconText name="arrow-left">返回我的任务</IconText>
+        </Link>}
+        <button type="button" className="outline" onClick={onReload}>
+          <IconText name="refresh">重新读取</IconText>
+        </button>
+      </div>
     </div>
   )
 }

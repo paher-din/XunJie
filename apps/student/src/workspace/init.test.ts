@@ -61,6 +61,22 @@ describe('real 深链初始化（协议替身，非宿主验收）', () => {
     expect(paths).toEqual(['/api/session'])
   })
   it.each([
+    { status: 403, code: 'FORBIDDEN', reason: '当前账号无法访问这个任务' },
+    { status: 503, code: 'DEPENDENCY_UNAVAILABLE', reason: '这项分配没有读取成功' },
+  ])('分配读取 $status 给出对应恢复说明，不猜任务或绕过鉴权', async ({ status, code, reason }) => {
+    const paths = transport()
+    const original = globalThis.fetch
+    vi.stubGlobal('fetch', async (url: string, request: RequestInit) => url.endsWith('/bootstrap')
+      ? new Response(JSON.stringify({ requestId: 'rejected-bootstrap', error: {
+        code, message: 'Unavailable', retryable: false, recovery: 'Read current assignments',
+      } }), { status, headers: { 'content-type': 'application/json' } })
+      : original(url, request))
+    const result = await loadWorkspaceInit(guard())
+    expect(result).toMatchObject({ kind: 'unavailable', stage: 'assignment', reason: expect.stringContaining(reason),
+      failure: { kind: 'api', status, error: { code } } })
+    expect(paths).toEqual(['/api/session'])
+  })
+  it.each([
     { assignment: { ...assignment, assignmentId: 'other-assignment' }, recoveryGeneration: 'trusted-generation' },
     { assignment: { ...assignment, studentId: 'student-b' }, recoveryGeneration: 'trusted-generation' },
     { assignment, recoveryGeneration: '' },
