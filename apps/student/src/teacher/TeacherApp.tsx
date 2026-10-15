@@ -17,6 +17,7 @@ const ReviewPage = lazy(() => import('./ReviewPage'))
 const LiveDesignPage = lazy(() => import('./LiveDesignPage'))
 const LiveReviewPage = lazy(() => import('./LiveReviewPage'))
 const MaterialsPage = lazy(() => import('./MaterialsPage'))
+const TeacherSettingsPage = lazy(() => import('./TeacherSettingsPage'))
 const PREVIEW_KEY = 'xunjie.teacher.preview.v1'
 const emptyData = (): TeacherData => ({ courses: [], activities: [], drafts: [], resources: [], learners: [] })
 
@@ -192,7 +193,7 @@ export default function TeacherApp({ preview = false, initialData }: { preview?:
               <Route path="design/:draftId" element={preview ? <DesignPage /> : <LiveDesignPage />} />
               <Route path="review" element={preview ? <ReviewPage /> : <LiveReviewPage />} />
               <Route path="materials" element={<MaterialsPage />} />
-              <Route path="settings" element={<TeacherSettings />} />
+              <Route path="settings/*" element={<TeacherSettingsPage />} />
               <Route path="*" element={<TeacherEmpty title="没有找到这个页面"><Link to={base}>返回教学概览</Link></TeacherEmpty>} />
             </Routes>
           </Suspense>}
@@ -314,22 +315,4 @@ function ActivityDetail({ activity, onClose }: { activity: TeacherActivity; onCl
     {!snapshot && preview && <p className="t-detail-note">这是预置活动摘要。完整版本回看可通过设计草稿的“预览与分配”创建。</p>}
     <div className="t-dialog-footer"><TeacherButton primary onClick={onClose}>完成</TeacherButton></div>
   </div>
-}
-
-function TeacherSettings() {
-  const { preview, data, notify } = useTeacher()
-  const { preference } = useTheme()
-  function exportPreview() {
-    const file = new Blob([JSON.stringify({ source: 'isolated-teacher-ui-preview', exportedAt: new Date().toISOString(), data }, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(file)
-    const link = document.createElement('a')
-    link.href = url; link.download = 'xunjie-teacher-preview.json'; link.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-    notify('已导出本机预览，不包含真实教学记录。')
-  }
-  return <><div className="t-heading"><div><div className="t-eyebrow">WORKSPACE PREFERENCES</div><h1>工作台设置</h1><p>让工作空间适合你的教学节奏。</p></div></div><div className="t-settings-stack">
-    <section className="t-panel"><div className="t-section-heading"><h2>外观</h2><Icon name="sun" size={20} /></div><div className="t-settings-row"><div><strong>显示主题</strong><p>与学生空间共享外观偏好，刷新后仍保留。</p></div><select aria-label="显示主题" value={preference} onChange={event => setThemePreference(event.target.value as 'light' | 'dark' | 'system')}><option value="light">浅色</option><option value="dark">深色</option><option value="system">跟随系统</option></select></div></section>
-    <section className="t-panel"><div className="t-section-heading"><h2>数据与使用范围</h2><Icon name="shield-check" size={20} /></div><div className="t-settings-row"><div><strong>{preview ? '当前为隔离交互预览' : '当前为真实教学入口'}</strong><p>{preview ? '示例学生、作品、材料和判断均为合成数据。修改保存在当前标签页的预览存储中，不写入课程。' : '仅使用服务端会话授予的教师课程。数据读取失败会明确提示，不切换为示例数据。'}</p></div><TeacherBadge tone={preview ? 'pending' : 'progress'}>{preview ? '合成预览' : '真实课程'}</TeacherBadge></div>{preview && <div className="t-settings-row"><div><strong>导出预览内容</strong><p>保留你调整的项目蓝图、示例材料与审阅内容，便于讨论设计。</p></div><TeacherButton icon="download-minimalistic" onClick={exportPreview}>导出 JSON</TeacherButton></div>}</section>
-    <section className="t-panel"><div className="t-section-heading"><h2>教学判断与证据</h2><Icon name="book-2" size={20} /></div><p className="t-settings-copy">作品表现、学科知识、项目能力、AI 协作与实际帮助分别呈现。教师正式评价需要理由与引用；没有观察时保留未知。过程空窗、系统外帮助和模型建议均不转换为独立掌握证明。</p></section>
-  </div></>
 }

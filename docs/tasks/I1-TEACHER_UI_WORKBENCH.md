@@ -175,3 +175,27 @@ Robert 新增明确授权：“把这次改动整合进 main 并推送到 GitHub
 已在协调的干净 main 工作树执行 `git merge --ff-only 43757fb611e3be983c3f83df96abdc5acb6a7491`，随后普通 `git push origin main` 成功；`git ls-remote --heads origin main` 实际返回 `43757fb611e3be983c3f83df96abdc5acb6a7491`。仓库为 `https://github.com/paher-din/XunJie`。本节回执作为单独文档提交再按同样方式快进并推送，最终文档提交 SHA 由会话交付的远端核验给出。
 
 本轮工具语法、差异空白和文档导航检查通过；应用源码与已验收固定版本相同，沿用 §6.8 的 641 项单元、后端专项及真实 C/HDL 浏览器结果，不将它们写成此次重新运行。`.zcodeignore`、其他工作树、原备份、个人模型配置/Key 与数据库保留；本轮只做 Git 交付，不重新部署、迁移或发模型请求。
+
+## 7. 2026-10-15 教师账号模型配置入口
+
+### 7.1 授权、依据与写集
+
+Robert 明确要求“教师端现在前端没有模型供应商 api 设置配置入口，照着学生端的实现和 UI 页面搬过去，实现相应功能”。当前实现基线为已推送 `main` 的 `4ea3c73e70a6ad334476d54315c58e806b06cae8`；本任务延续教师前端维护，不改模型会话正在处理的聊天/浮窗文件。
+
+已读正文：README；PRD §3.2/4.1–4.3；MVP_SPEC §2、M-01/02；TECH_DESIGN §5.1、§6.1/6.2；DESIGN 的现有视觉令牌、按钮/设置动效和主题规则；学生 `SettingsPage`、`ModelTab`、供应商/模型弹窗及 `lib/modelSettings.ts`；个人模型任务 §4 接口和 §10.9 统一验收。配置是按当前账号保存的个人供应商设置，与课程角色、教师正式判断和宿主教师设计预算分开。
+
+方案：在教师“工作台设置”内增加可直达的模型配置页，直接复用学生 `ModelTab` 和现有 `GET/POST /api/model-settings`、`POST /api/model-settings/test`，保留供应商/Key、默认模型、完整模型能力/上下文/最大输出、思考强度、连接测试、启停、CAS 和账号隔离。开发教师预览仅显示真实入口说明，不读取或写入当前账号模型配置。原外观与数据说明保留。
+
+可写：`apps/student/src/teacher/TeacherApp.tsx`、新教师设置页面及 scoped CSS、新教师模型入口浏览器检查；必要后端 `personal-models.test.ts` 的教师账号隔离回归；本任务记录与实际使用说明。只读：学生模型设置共享组件/客户端/API 的实现、聊天和浮窗在途写集、产品/规划/参考/AGENTS、依赖与凭据。若发现必须修改共享实现，先回交具体差异与模型会话协调。
+
+验收：真实教师角色可进入同款配置 UI；保存请求沿现有会话/CSRF，响应不含 Key，刷新和账号隔离保持；协议 Chrome 覆盖供应商/模型保存和强度、失败/权限与窄屏；后端隔离合成教师账号验证现有真实接口。沿用原加密四表，不迁移库、不代用户改现有 Key、不自动调用模型或测试真实供应商。与模型会话统一固定源码后再协调本机静态更新，避免覆盖其后续聊天交付。产品基线汇总仍待授权维护者汇总。
+
+### 7.2 实现与专项验证
+
+`TeacherSettingsPage.tsx` 将教师原设置内容保留在“通用”，增加“模型”子路由 `/#/teacher/settings/model`，直接懒加载原 `components/settings/ModelTab.tsx`；供应商/模型弹窗、参数与保存/测试客户端均未复制或改写。`TeacherApp.tsx` 仅改为设置子路由，`teacher-settings.css` 只在新教师容器内适配原设置控件和三档宽度。学生共享组件与 API 实现、模型会话的聊天/浮窗在途源码均未改。
+
+双 TypeScript 配置检查通过，正式 build 通过，入口 `index-BBOjfwVH.js`（保留原大 chunk 提示）。Chrome 协议专项 `teacher-model-settings.spec.ts teacher-ui.spec.ts` 11/11 通过，41.8秒：新两项验证教师供应商连接目录导入、完整参数/图像能力/low-high-max、CAS 保存失败留表单、保存后刷新/密钥脱敏、启用/最高强度、明文不进 local/sessionStorage、1440/720/390 无溢出；教师预览与没有教师角色的账号不加载模型 API。原九项教师 UI 行为回归通过。这里使用同源 HTTP 合成替身，不是供应商或真实配置写入验收；[协议桌面截图](evidence/teacher-workbench-20261015/teacher-model-settings-protocol-desktop.png)和[390px截图](evidence/teacher-workbench-20261015/teacher-model-settings-protocol-mobile.png)仅包含合成供应商和脱敏状态。
+
+后端 Node v24.21.0 隔离专项 `server/app/personal-models.test.ts` 2/2 通过、0失败/跳过（3.258秒），教学完整类型检查通过。新增用例使用真实 Session/CSRF 和真实加密存储服务配合离线 HTTPS boundary，验证教师保存、启用、revision CAS、脱敏、学生隔离、过期会话；连接测试只读取 `/v1/models`，生成请求为0。首次类型检查因独立 stage 漏复制学生 `wire.ts` 报 TS2307，补齐只读源快照后通过，未改源码迁就检查；证据位于 `D:/XunJie_Project/artifacts/teacher-model-settings-tests-20261015`。真实库、Key 和运行服务未操作。
+
+与模型会话已再次协调：其仍在原 `4ea3c73` 的独立 main 工作树完成新聊天恢复/浮窗阅读任务，3444 尚未切换；本次教师固定提交交由该会话合入，再统一构建/部署。为避免覆盖，新教师入口不单独提前同步静态；本任务待统一版本就绪后只读验证真实教师入口，不修改现有账号配置或代填 Key。
