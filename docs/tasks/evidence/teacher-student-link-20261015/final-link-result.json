@@ -1,0 +1,152 @@
+{
+  "observedAtUtc": "2026-10-15T07:47:10.369Z",
+  "head": "9664ca5646b969cde0ccff4f4b8d5c7ea2da547d",
+  "origin": "https://127.0.0.1:3444",
+  "scope": "Actual teacher and student UI synthetic workflow; no real learner/teaching-effect claim",
+  "samples": [
+    {
+      "kind": "hdl",
+      "blueprintId": "4b8c99cb-3c15-4c0e-9250-b075858e0b53",
+      "activityId": "224c955b-a5b9-4553-9257-2878f7635cf0",
+      "assignmentId": "b81973b2-dde4-4019-98d9-b4f26b036b13",
+      "teacherId": "synthetic-i0-teacher-b",
+      "courseId": "synthetic-i0-course-b",
+      "assignment": {
+        "id": "b81973b2-dde4-4019-98d9-b4f26b036b13",
+        "course_id": "synthetic-i0-course-b",
+        "student_id": "synthetic-i0-student-b",
+        "activity_id": "224c955b-a5b9-4553-9257-2878f7635cf0",
+        "status": "active",
+        "assignment_revision": 1
+      },
+      "attempt": {
+        "attemptId": "aaa73cb7-9aaa-44c2-8b74-87b423b93414",
+        "activityVersionId": "224c955b-a5b9-4553-9257-2878f7635cf0",
+        "status": "ready",
+        "attemptRevision": 1,
+        "workspaceRevision": 0
+      },
+      "newJobs": 0,
+      "newFiles": 0
+    },
+    {
+      "kind": "c",
+      "blueprintId": "72eee86e-ec91-49bb-8e9b-67270bd0e66b",
+      "activityId": "eaeb74d5-1256-43f1-8d0b-0ba1bcb1d82d",
+      "assignmentId": "a60e1238-d9a7-4658-8f54-882b61ebf3c6",
+      "teacherId": "synthetic-i0-teacher-a",
+      "courseId": "synthetic-i0-course-a",
+      "assignment": {
+        "id": "a60e1238-d9a7-4658-8f54-882b61ebf3c6",
+        "course_id": "synthetic-i0-course-a",
+        "student_id": "synthetic-i0-student-b",
+        "activity_id": "eaeb74d5-1256-43f1-8d0b-0ba1bcb1d82d",
+        "status": "active",
+        "assignment_revision": 1
+      },
+      "attempt": {
+        "attemptId": "46f6dd83-1906-4b86-8dda-0bd4a1d8741d",
+        "activityVersionId": "eaeb74d5-1256-43f1-8d0b-0ba1bcb1d82d",
+        "status": "ready",
+        "attemptRevision": 1,
+        "workspaceRevision": 0
+      },
+      "newJobs": 0,
+      "newFiles": 0
+    }
+  ],
+  "history": {
+    "users": {
+      "originalRows": 5,
+      "unchanged": true
+    },
+    "courses": {
+      "originalRows": 2,
+      "unchanged": true
+    },
+    "course_memberships": {
+      "originalRows": 6,
+      "unchanged": true
+    },
+    "application_control": {
+      "originalRows": 1,
+      "unchanged": true
+    },
+    "activity_versions": {
+      "originalRows": 5,
+      "unchanged": true
+    },
+    "assignments": {
+      "originalRows": 5,
+      "unchanged": true
+    },
+    "attempts": {
+      "originalRows": 4,
+      "unchanged": true
+    },
+    "artifact_snapshots": {
+      "originalRows": 8,
+      "unchanged": true
+    },
+    "workspace_files": {
+      "originalRows": 4,
+      "unchanged": true
+    },
+    "workspace_runs": {
+      "originalRows": 0,
+      "unchanged": true
+    },
+    "workspace_submissions": {
+      "originalRows": 0,
+      "unchanged": true
+    },
+    "jobs": {
+      "originalRows": 33,
+      "unchanged": true
+    },
+    "hdl_builds": {
+      "originalRows": 12,
+      "unchanged": true
+    },
+    "hdl_sessions": {
+      "originalRows": 6,
+      "unchanged": true
+    },
+    "hdl_operations": {
+      "originalRows": 15,
+      "unchanged": true
+    },
+    "teaching_messages": {
+      "originalRows": 7,
+      "unchanged": true
+    },
+    "teaching_actions": {
+      "originalRows": 1,
+      "unchanged": true
+    },
+    "teaching_deliveries": {
+      "originalRows": 1,
+      "unchanged": true
+    },
+    "teaching_action_receipts": {
+      "originalRows": 1,
+      "unchanged": true
+    }
+  },
+  "integrity": [
+    {
+      "integrity_check": "ok"
+    }
+  ],
+  "foreignKeys": [],
+  "tableCount": 41,
+  "pendingJobs": 0,
+  "unconfirmedHdl": 0,
+  "control": {
+    "singleton": 1,
+    "recovery_generation": "synthetic-generation-96fc2f60-8102-47fb-af1f-e2d86f4c2764",
+    "control_revision": 2,
+    "initialized_at_ms": 1791975610539
+  },
+  "modelHttpSinceNewHost": 0
+}
