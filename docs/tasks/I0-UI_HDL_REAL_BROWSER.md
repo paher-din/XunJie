@@ -218,3 +218,7 @@ Robert在本会话确认审查通过并要求推送合并后，实时核对[PR79
 在原隔离worktree从该main创建 `codex/ui-hdl-completion-evidence`，仅交新测试、本人任务和公开补证；生产实现、依赖、A/B/C业务及受保护目录不变，用户并行主checkout不动。沿本次合并和原回交授权，把补证另开PR交付，并更新原本人#38/#30评论，不新增重复评论、不关闭Issue。实际补证PR、检查、固定提交和回读在交付完成后续记。
 
 补证图像复查：逐位过程图实际是seq30/pending、双标签原图仍seq0，不宣称它们是之后确认状态。32步和拦截以同期DOM记录＋原请求/回执核对；明确续读后的seq2/SW8+SW0图正确。模型返回图只见请求停止/成功与无正文，不单独证明stale，stale以原Action字段为据。原图未修改或补造。
+
+合并前交付记录：补证提交 `e3766d0cd7870498d38662d75710678223e9616b` 已推送，创建并附当前任务[PR81](https://github.com/paher-din/XunJie/pull/81)，base为#79合并提交2309cee；GitHub回读CLEAN/MERGEABLE，hosted checks为空，不称CI通过。写集28文件全部为上述1项测试、本人任务与公开证据。A0为117文档/1866内链/errors=[]，空白检查通过，25个新增文件中的16个JSON及JSONL解析通过，新增文本凭据模式扫描无命中。该扫描不代替人工检查；六张原图已逐张核对且标清较早帧。
+
+Robert本次明确通过并要求推送合并，补证沿同范围完成普通合并和原评论追加回交，不使用admin绕门禁、不删除分支。最终合并状态见PR81；实际回交沿既有[#38](https://github.com/paher-din/XunJie/issues/38#issuecomment-6175218005)、[#30](https://github.com/paher-din/XunJie/issues/30#issuecomment-6175261812)更新，保留首批正文并在最新补充标明新固定提交/结果。最终REST回读及merge JSON保留D盘同一local-environment目录，不为写入本PR自己的合并提交摘要再制造补证PR。
