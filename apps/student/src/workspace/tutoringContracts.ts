@@ -28,6 +28,7 @@ export interface TutorHistoryScope { courseId:string;studentId:string;attemptId:
 export interface TutorHdlSelection { snapshotId:string;buildId:string;sessionId?:string;operationId?:string }
 /** Original server-frozen H4 public projection, never reconstructed from a current selection. */
 export interface TutorHdlBasis extends TutorHdlSelection {
+  execution?: import('./hdlContracts').HdlExecutionBinding
   snapshotHash:string;buildStatus:'queued'|'running'|'succeeded'|'failed'|'cancelled'|'outcome_unknown'
   buildResultHash?:string;workspaceRevision?:number;sessionRevision?:number
   sessionStatus?:'starting'|'active'|'stopping'|'stopped'|'failed'|'outcome_unknown';sessionGeneration?:string

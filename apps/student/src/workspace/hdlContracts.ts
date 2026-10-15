@@ -18,7 +18,9 @@ export interface HdlBuildResult { buildId: string; identity: HdlIdentity; snapsh
   status: HdlBuildStatus; terminationConfirmed: boolean; artifactHash?: string; diagnostics: HdlDiagnostic[]
   stdout: string; stderr: string; failureKind?: string }
 export interface HdlBuildView { request: { identity: HdlIdentity; snapshot: SnapshotView; board: HdlBoardProfile; runtimeProfileVersion: string }
-  result: HdlBuildResult | null; status: HdlBuildStatus; jobId: string }
+  result: HdlBuildResult | null; status: HdlBuildStatus; jobId: string
+  /** Browser-verified binding from the authorized Job, never trusted from the Build body. */
+  execution?: HdlExecutionBinding }
 export interface HdlSessionView { sessionId: string; identity: HdlIdentity; buildId: string; snapshotId: string; snapshotHash: string
   boardProfileVersion: string; mappingVersion: string; engineVersion: string; runtimeProfileVersion: string
   sessionRevision: number; confirmedSequence: number; simTimePs: string
@@ -32,10 +34,12 @@ export interface HdlOperationResult { operationId: string; sessionId: string; bu
 export type HdlTraceResult = HdlOperationResult
 export interface HdlTraceOperation { operationId: string; sequence: number; status: string; result: HdlOperationResult | null }
 export interface HdlTraceView { operation: HdlTraceOperation | null; nextSequence: number }
-export type HdlJobView = Omit<JobView, 'kind'> & { kind: 'hdl_build' | 'hdl_program' | 'hdl_interact'; status: JobStatus }
+export interface HdlExecutionBinding { nodeId: string; nodeGeneration: string }
+export type HdlJobView = Omit<JobView, 'kind'> & { kind: 'hdl_build' | 'hdl_program' | 'hdl_interact'; status: JobStatus; execution?: HdlExecutionBinding }
 /** These identities come from an authorized Activity and same-origin readiness, never from the file extension. */
 export interface HdlRuntimeProfile { runtimeProfileVersion: string; engineVersion: string; boardProfileVersion: string; mappingVersion: string
   buildImage?: string; recoveryGeneration: string | null; read?: () => Promise<boolean>
+  readBuild?: () => Promise<boolean>; executionNodeId?: () => string | undefined
   configurationVersion?: string; contentHash?: string; sourceHash?: string }
 export interface HdlReplacement { sessionId: string; sessionRevision: number }
 export type HdlCommandKind = 'hdl.build' | 'hdl.program' | 'hdl.interact' | 'hdl.stop'

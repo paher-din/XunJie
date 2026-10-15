@@ -19,6 +19,7 @@ export interface VerificationOptions extends AppOptions {
   origin: string;
   signingSecret: string;
   now?: () => number;
+  allowedLoginUserIds?:string[];
 }
 const loginSchema = z.strictObject({ loginName: z.string().min(1).max(128), password: z.string().min(1).max(1024) });
 const windowLength = 15 * 60 * 1000;
@@ -29,8 +30,11 @@ export async function createAccessApp(options: VerificationOptions) {
   }
   const now = options.now ?? Date.now;
   const db = options.db;
+  if(options.allowedLoginUserIds&&(!options.allowedLoginUserIds.length||options.allowedLoginUserIds.some(id=>typeof id!=='string'||!id||id.length>128)
+    ||new Set(options.allowedLoginUserIds).size!==options.allowedLoginUserIds.length))throw new ApiError('INVALID_CONFIGURATION');
+  const allowedLoginUsers=options.allowedLoginUserIds?new Set(options.allowedLoginUserIds):undefined;
   const app = createApp(options);
-  const persistence = createSessionStore(db, now);
+  const persistence = createSessionStore(db, now, allowedLoginUsers);
   const verifyPassword = await createPasswordVerifier();
   await app.register(cookie);
   await app.register(session, { secret: options.signingSecret, store: persistence.store, cookieName: '__Host-xunjie',
@@ -41,7 +45,7 @@ export async function createAccessApp(options: VerificationOptions) {
     catch (error) { throw domainError(error, 'PERSISTENCE_UNAVAILABLE'); }
   };
   const activeSession = (request: FastifyRequest, tx: Transaction) => {
-    const row = readActiveSession(tx, request.session.sessionId, now());
+    const row = readActiveSession(tx, request.session.sessionId, now(), allowedLoginUsers);
     if (!row || row.user_id !== request.session.userId) throw new ApiError('UNAUTHENTICATED');
     return row;
   };
@@ -154,7 +158,7 @@ export async function createAccessApp(options: VerificationOptions) {
     const record: PasswordRecord | undefined = user && Buffer.isBuffer(user.password_hash) && Buffer.isBuffer(user.salt)
       ? { hash: user.password_hash, salt: user.salt } : undefined;
     const valid = await verifyPassword(input.password, record);
-    if (!valid || !user || user.disabled_at_ms !== null) {
+    if (!valid || !user || user.disabled_at_ms !== null || allowedLoginUsers&&!allowedLoginUsers.has(String(user.id))) {
       persisted(tx => { for (const bucket of reservations) tx.run('UPDATE login_attempt_windows SET failure_count=failure_count+1 WHERE kind=? AND bucket_hash=? AND window_start_ms=?', bucket.kind, bucket.hash, bucket.start); });
       throw new ApiError('UNAUTHENTICATED');
     }

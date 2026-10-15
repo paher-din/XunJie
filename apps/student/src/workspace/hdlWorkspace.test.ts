@@ -4,7 +4,7 @@ import type { ConfirmationWorkspace } from './confirmationWorkspace'
 import type { CommandContext, FrozenCommand, OutboxRecord } from './frozenCommand'
 import type { Receipt, WorkspaceHead } from './workspaceContracts'
 import { HdlWorkspace } from './hdlWorkspace'
-import type { HdlBuildView, HdlRuntimeProfile, HdlSessionView, HdlTraceView } from './hdlContracts'
+import type { HdlBuildView, HdlExecutionBinding, HdlRuntimeProfile, HdlSessionView, HdlTraceView } from './hdlContracts'
 import { textHash } from './confirmation'
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), persist: vi.fn(), authority: vi.fn(), rows: new Map<string, OutboxRecord>() }))
@@ -50,9 +50,19 @@ beforeEach(() => {
   })
 })
 
-function fixture(existing = true) {
+function fixture(existing = true, execution?: HdlExecutionBinding) {
   let valid = true, build = clone(goldenBuild), session = existing ? clone(goldenSession) : null, status = 'succeeded'
   const head = clone(goldenHead); head.jobs = []; head.attempt.status = 'active'
+  if (execution) {
+    build.request.identity.recoveryGeneration = execution.nodeGeneration
+    build.result!.identity.recoveryGeneration = execution.nodeGeneration
+    if (session) session.identity.recoveryGeneration = execution.nodeGeneration
+    const common = { purpose: 'student_run', scope: { courseId: context.courseId, studentId: context.userId, attemptId: aid },
+      recoveryGeneration: context.trustedRecoveryGeneration, status: 'succeeded', stopRequested: false, expectedRevision: head.attempt.attemptRevision,
+      decisionEpoch: 0, attemptCount: 1, acceptedAt: '2026-10-14T00:00:00Z', deadline: '2026-10-14T01:00:00Z', execution }
+    head.jobs.push({ ...common, kind: 'hdl_build', jobId: build.jobId, runId: bid, requestReceiptId: 'build-receipt' },
+      { ...common, kind: 'hdl_program', jobId: (programResponse.result as { jobId: string }).jobId, runId: sid, requestReceiptId: programResponse.receiptId })
+  }
   const profile: HdlRuntimeProfile = { runtimeProfileVersion: build.request.runtimeProfileVersion, engineVersion: build.result!.engineVersion,
     boardProfileVersion: build.request.board.boardProfileVersion, mappingVersion: build.request.board.mappingVersion,
     buildImage: build.result!.imageDigest, recoveryGeneration: raw.generation, read: vi.fn().mockResolvedValue(true) }
@@ -86,7 +96,7 @@ function fixture(existing = true) {
       return { operation: null, nextSequence: cursor }
     }
     if (path.startsWith('/hdl/sessions/')) return clone(session)
-    if (path.startsWith('/jobs/')) return job(path.split('/').at(-1)!)
+    if (path.startsWith('/jobs/')) return head.jobs.find(j => (j as { jobId: string }).jobId === path.split('/').at(-1)) ?? job(path.split('/').at(-1)!)
     throw new Error(`Unexpected read ${path}`)
   }
   mocks.get.mockImplementation(get)
@@ -124,6 +134,45 @@ it('restores the original Session/output using GET only; stop revision keeps ori
   expect(f.client.current.operation?.resultHash).toBe(raw.operations.at(-1).resultHash)
   expect(f.client.current.session?.terminationConfirmed).toBe(true)
   expect(f.client.current.canInteract).toBe(false)
+})
+it('restores a node-bound Build/Session/Trace from authorized head Jobs in a browser with no local outbox', async () => {
+  const f = fixture(true, { nodeId: 'robert', nodeGeneration: 'separate-node-generation' })
+  mocks.rows.clear()
+  await f.client.initialize()
+  expect(f.client.current.phase).toBe('ready')
+  expect(f.client.current.build?.execution).toEqual({ nodeId: 'robert', nodeGeneration: 'separate-node-generation' })
+  expect(f.client.current.session?.identity.recoveryGeneration).toBe('separate-node-generation')
+  expect(f.client.current.operation?.sessionId).toBe(sid)
+  expect(f.client.current.canInteract).toBe(true)
+  expect(mocks.post).not.toHaveBeenCalled()
+})
+it('keeps a Build destination through lost ACK and selection changes, without routing Session controls by the new selection', async () => {
+  const f = fixture(false)
+  let selected = 'robert'
+  f.profile.executionNodeId = () => selected
+  f.profile.readBuild = async () => true
+  await f.client.initialize()
+  let first = true
+  mocks.post.mockImplementation(async (_path: string, wire: string, options: { idempotencyKey: string }) => {
+    const receipt = f.receipt(wire, options.idempotencyKey, !first)
+    if (first) { first = false; throw new Error('lost ACK') }
+    return receipt
+  })
+  await f.client.build(goldenBuild.request.snapshot.snapshotId)
+  selected = 'member'
+  await f.client.reconcile()
+  expect(mocks.post.mock.calls.map(call => call[2].executionNodeId)).toEqual(['robert', 'robert'])
+  expect(JSON.parse(mocks.post.mock.calls[0]![1])).not.toHaveProperty('executionNodeId')
+  await f.client.program(bid)
+  expect(mocks.post.mock.calls.at(-1)![2].executionNodeId).toBeUndefined()
+})
+it('allows original Session controls when the newly selected Build node is unavailable', async () => {
+  const f = fixture()
+  f.profile.readBuild = async () => false
+  await f.client.initialize()
+  expect(f.client.current.canBuild).toBe(false)
+  expect(f.client.current.canInteract).toBe(true)
+  expect(f.client.current.canStop).toBe(true)
 })
 it('preserves a lost ACK in the original outbox; reads/new builds never silently replay or replace it', async () => {
   const f = fixture(false); await f.client.initialize()

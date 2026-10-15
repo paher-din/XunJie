@@ -49,3 +49,14 @@ test('persistent store cannot revive revoked/expired sessions or persist untrust
     await assert.rejects(set(access.store, invalidated, value), { code: 'UNAUTHENTICATED' });
   } finally { db.close(); }
 });
+
+test('allowed login users are checked again at Session grant and persistence',async()=>{
+  const db=createSyntheticDatabase(),now=Date.now(),hash=randomBytes(64),token=randomBytes(32).toString('hex');
+  try{
+    db.withTransaction(tx=>tx.run('INSERT INTO users(id,login_name,password_hash,salt,algorithm,n,r,p,key_length) VALUES (?,?,?,?,?,?,?,?,?)','virtual','virtual',hash,randomBytes(16),'scrypt',131072,8,1,64));
+    const access=createSessionStore(db,()=>now,new Set(['teacher','student']));
+    const value:Session={userId:'virtual',csrfHash:digest('synthetic-csrf'),cookie:{originalMaxAge:null,secure:true,path:'/'}};
+    access.approveLogin(token,'virtual',value.csrfHash!,hash);await assert.rejects(set(access.store,token,value),{code:'UNAUTHENTICATED'});
+    assert.equal(await get(access.store,token),null);assert.equal(db.withTransaction(tx=>tx.get('SELECT count(*) AS n FROM sessions')!.n),0);
+  }finally{db.close();}
+});

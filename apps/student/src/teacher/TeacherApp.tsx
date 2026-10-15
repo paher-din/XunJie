@@ -11,6 +11,7 @@ import type { DesignResult } from './wire'
 import { CourseMark, TeacherBadge, TeacherButton, TeacherDialog, TeacherEmpty } from './ui'
 import type { DesignDraft, TeacherActivity, TeacherData, TeacherLearner, TeacherResource, TeacherWorkspace } from './types'
 import './teacher.css'
+import { ExecutionNodeSelect } from '../components/workspace/ExecutionNodeSelect'
 
 const DesignPage = lazy(() => import('./DesignPage'))
 const ReviewPage = lazy(() => import('./ReviewPage'))
@@ -173,14 +174,15 @@ export default function TeacherApp({ preview = false, initialData }: { preview?:
         </button>)}</div>
         <div className="t-sidebar-bottom">
           <NavLink aria-label="工作台设置" to={`${base}/settings`}><Icon name="settings" size={19} /><span>工作台设置</span></NavLink>
-          <Link aria-label="学生空间入口" to="/"><Icon name="arrow-left" size={18} /><span>学生空间入口</span></Link>
-          <div className="t-account"><span className="t-avatar">教</span><div>{preview ? '教师预览' : session.session?.displayName || '教师账号'}<small>{preview ? '隔离合成数据' : session.session?.userId}</small></div>
+          {(preview || session.session?.courses.some(course => course.role === 'student')) && <Link aria-label="学生空间入口" to="/"><Icon name="arrow-left" size={18} /><span>学生空间入口</span></Link>}
+          <div className="t-account"><span className="t-avatar">教</span><div>{preview ? '教师预览' : session.session?.displayName || '教师账号'}<small>{preview ? '隔离合成数据' : '教师账号'}</small></div>
             {preview ? <Link to="/teacher" title="登录真实工作台" aria-label="登录真实工作台"><Icon name="logout-2" /></Link> : <button className="t-icon-button" title="退出登录" aria-label="退出登录" onClick={() => { void logoutSession() }}><Icon name="logout-2" /></button>}
           </div>
         </div>
       </aside>
       <main className="t-main" id="teacher-main" ref={scrollRegion} tabIndex={-1}>
         <header className="t-topbar"><div className="t-breadcrumb"><button className="t-icon-button" aria-label={collapsed ? '展开导航' : '收起导航'} aria-expanded={!collapsed} onClick={() => setCollapsed(value => !value)}><Icon name="panel-left-close" size={18} /></button><span>教师工作台</span><span className="t-slash">/</span><strong>{sectionNames[section] ?? '页面'}</strong></div>
+          {!preview && teacher && section === 'design' && session.session && <ExecutionNodeSelect userId={session.session.userId} kind="any" busy={retrying || pendingCount > 0} />}
           <div className="t-topbar-actions"><label className="t-course-select"><span className="t-sr-only">当前课程</span><select aria-label="当前课程" value={courseId} onChange={event => setCourseId(event.target.value)}><option value="all">全部课程</option>{data.courses.map(course => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label><button className="t-icon-button" aria-label={resolved === 'dark' ? '切换浅色模式' : '切换深色模式'} onClick={() => setThemePreference(resolved === 'dark' ? 'light' : 'dark')}><Icon name={resolved === 'dark' ? 'sun' : 'moon'} size={18} /></button></div>
         </header>
         {preview && <div className="t-preview-note"><span><Icon name="info-circle" size={15} />交互预览 · 数据为合成示例，操作仅保存在本机</span><Link to="/teacher">进入真实工作台<Icon name="arrow-right" size={14} /></Link></div>}
@@ -232,7 +234,7 @@ function OverviewPage() {
     </section>
     <div className="t-overview-columns">
       <section className="t-panel"><div className="t-section-heading"><h2>需要你关注</h2><Link to={`${base}/review`}>查看全部<Icon name="alt-arrow-right" size={15} /></Link></div>
-        {pending.length ? <div className="t-attention-list">{pending.map(learner => <Link key={learner.id} className="t-attention-row" to={`${base}/review?learner=${encodeURIComponent(learner.id)}`}><span className={`t-avatar t-avatar-${data.courses.findIndex(course => course.id === learner.courseId) % 2}`}>{learner.name[0]}</span><div><strong>{learner.name}<TeacherBadge tone="pending">待审阅</TeacherBadge></strong><p>{learner.activityTitle} · 固定提交 v{learner.version}</p></div><Icon name="alt-arrow-right" size={17} /></Link>)}</div> : <div className="t-inline-empty"><Icon name="clipboard-check" size={24} /><p>当前没有等待审阅的提交</p></div>}
+        {pending.length ? <div className="t-attention-list">{pending.map(learner => <Link key={learner.id} className="t-attention-row" to={`${base}/review?learner=${encodeURIComponent(learner.id)}`}><span className={`t-avatar t-avatar-${data.courses.findIndex(course => course.id === learner.courseId) % 2}`}>{learner.name[0]}</span><div><strong>{learner.name}<TeacherBadge tone="pending">待审阅</TeacherBadge></strong><p>{learner.activityTitle}</p></div><Icon name="alt-arrow-right" size={17} /></Link>)}</div> : <div className="t-inline-empty"><Icon name="clipboard-check" size={24} /><p>当前没有等待审阅的提交</p></div>}
         <div className="t-panel-foot"><Icon name="info-circle" size={15} /><span>作品结果、实际帮助与能力判断分别查看。</span></div>
       </section>
       <section className="t-panel t-design-card"><div className="t-section-heading"><h2>下一次好项目，从这里开始</h2><span className="t-quiet-icon"><Icon name="lightbulb" size={23} /></span></div><p>把课程目标、探索空间和评价依据，放进同一份可编辑的项目蓝图。</p>
@@ -243,7 +245,7 @@ function OverviewPage() {
     <section><div className="t-section-heading t-course-heading"><div><h2>我的课程</h2><p>围绕课程组织活动、材料与教学反馈。</p></div><Link to={`${base}/projects`}>管理项目<Icon name="alt-arrow-right" size={15} /></Link></div>
       <div className="t-courses-grid">{courses.map(course => {
         const list = activities.filter(activity => activity.courseId === course.id)
-        return <article className="t-course-card" key={course.id}><div className={`t-course-cover ${course.kind === 'hdl' ? 'hdl' : ''}`}><CourseMark kind={course.kind} /><span>{course.code || 'COURSE'}</span><div className="t-course-geometry" aria-hidden="true" /></div><div className="t-course-card-body"><div><h3>{course.title}</h3><TeacherBadge>{list.length} 个活动</TeacherBadge></div><p>{course.term || course.id}</p><div className="t-course-card-bottom"><span>{preview ? `${data.learners.filter(learner => learner.courseId === course.id).length} 位合成学生` : `${list.reduce((sum, item) => sum + item.assigned, 0)} 条实际分配`}</span><TeacherButton onClick={() => navigate(`${base}/projects?course=${encodeURIComponent(course.id)}`)}>查看活动<Icon name="arrow-right" size={14} /></TeacherButton></div></div></article>
+        return <article className="t-course-card" key={course.id}><div className={`t-course-cover ${course.kind === 'hdl' ? 'hdl' : ''}`}><CourseMark kind={course.kind} />{course.code && <span>{course.code}</span>}<div className="t-course-geometry" aria-hidden="true" /></div><div className="t-course-card-body"><div><h3>{course.title}</h3><TeacherBadge>{list.length} 个活动</TeacherBadge></div>{course.term && <p>{course.term}</p>}<div className="t-course-card-bottom"><span>{preview ? `${data.learners.filter(learner => learner.courseId === course.id).length} 位合成学生` : `${list.reduce((sum, item) => sum + item.assigned, 0)} 条实际分配`}</span><TeacherButton onClick={() => navigate(`${base}/projects?course=${encodeURIComponent(course.id)}`)}>查看活动<Icon name="arrow-right" size={14} /></TeacherButton></div></div></article>
       })}</div>{!courses.length && <TeacherEmpty title="暂无可显示的任教课程">课程信息以当前教学服务的会话和授权为准。</TeacherEmpty>}
     </section>
   </>

@@ -46,11 +46,11 @@ export function createWorkspaceWorker(options: DesignAppOptions) {
     persistWorkspace(tx, before, { ...after, records: plan.records });
   }
   async function processJob(jobId: string) {
-    if (!options.runner) throw new ApiError('DEPENDENCY_UNAVAILABLE');
-    const runner = options.runner;
+    if (!options.runner&&!options.execution) throw new ApiError('DEPENDENCY_UNAVAILABLE');
     const work = persisted(tx => {
       const originalWork = original(tx, jobId), { state, job } = originalWork;
       if (terminal.has(job.status)) return undefined;
+      const runner=options.execution?options.execution.node(options.execution.forJob(job)).runner:options.runner!;
       if (!job.stopRequested && job.leaseUntil && Date.parse(job.leaseUntil) > now()) return undefined;
       let next = state, dispatch = false;
       if (!permitted(tx, state, job) || Date.parse(job.deadline) <= now())
@@ -65,9 +65,10 @@ export function createWorkspaceWorker(options: DesignAppOptions) {
         next = claimRunReconciliation(next,jobId,randomUUID(),new Date(now()+150000).toISOString(),options.currentGeneration(),timestamp());
       }
       save(tx, state, next, jobId);
-      return { ...originalWork, job: next.records.jobs.find(item => item.jobId === jobId)!, dispatch };
+      return { ...originalWork, job: next.records.jobs.find(item => item.jobId === jobId)!, dispatch, runner };
     });
     if (!work) return;
+    const runner=work.runner;
     const generation = work.job.recoveryGeneration, lease = work.job.leaseToken!;
     const current = (requirePermission = false) => persisted(tx => {
       const item = original(tx, jobId);

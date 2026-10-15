@@ -44,6 +44,8 @@ async function protocol(page: Page) {
       await route.fulfill({ status: 401, json: error('UNAUTHENTICATED') }); return
     } else if (path === '/api/session') {
       data = { userId: state.identity, displayName: state.names[state.identity], courses: state.courses[state.identity] ?? [], csrfToken: `csrf-${state.identity}` }
+    } else if (path === '/api/model-settings') {
+      data = { revision: 0, enabled: false, callsEnabled: false, defaultModelId: '', providers: [], efforts: {} }
     } else if (path === '/api/agent/conversations') {
       data = []
     } else if (/^\/api\/courses\/[^/]+\/assignments$/.test(path)) {
@@ -284,6 +286,7 @@ test('列表401重新登录，首页真实退出换账号后拒收迟到旧列�
     await loginHome(page, 'account-a', '周然')
     await page.getByRole('button', { name: /程序设计甲班/ }).click()
     await expect(page.getByRole('button', { name: /账号 A 原任务/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: '刷新任务', exact: true })).toBeEnabled()
     expired = true
     await page.getByRole('button', { name: '刷新任务', exact: true }).click()
     await expect(page.locator('.session-notice')).toContainText('登录已失效')
@@ -294,6 +297,7 @@ test('列表401重新登录，首页真实退出换账号后拒收迟到旧列�
     await page.locator('.t-item').filter({ hasText: '成长等级' }).getByRole('button').click()
     await page.locator('.dash-section').getByRole('button', { name: '完成', exact: true }).click()
     await expect(page.locator('.dash-section .db-card')).toHaveCount(3)
+    await expect(page.getByRole('button', { name: '刷新任务', exact: true })).toBeEnabled()
     hold = true
     await page.getByRole('button', { name: '刷新任务', exact: true }).click()
     await started

@@ -4,6 +4,7 @@ import { RunWorkspace, emptyRunState, type RunState } from './runWorkspace'
 import { displayRun, settledJob } from './runResults'
 import type { WorkspaceInit } from './init'
 import { apiGet } from './http'
+import { executionNodeReady, selectedExecutionNode } from './executionNodes'
 
 /** 一个确认上下文一个运行客户端；不创建第二份 head/快照状态或新的 ContextGuard。 */
 export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: WorkspaceInit | null, enabled = true) {
@@ -24,9 +25,11 @@ export function useRunWorkspace(workspace: ConfirmationWorkspace | null, init: W
         if (init.session.userId !== context.userId || init.assignment.assignmentId !== context.assignmentId ||
           init.activity.activityVersionId !== context.activityVersionId || init.activity.courseId !== context.courseId ||
           init.context.trustedRecoveryGeneration !== context.trustedRecoveryGeneration) return false
+        const nodeReady = await executionNodeReady(context.userId!, 'c')
+        if (nodeReady !== undefined) return nodeReady
         const value = await apiGet<unknown>('/health/ready', { mode: 'real', absolutePath: '/health/ready', timeoutMs: 6500 })
         return !!value && typeof value === 'object' && 'status' in value && value.status === 'ready'
-      } } : {}),
+      }, executionNodeId: selectedExecutionNode } : {}),
     })
     setClient(current)
     const unsubscribe = current.subscribe(setState)

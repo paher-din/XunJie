@@ -7,6 +7,55 @@ const expired = { requestId: 'auth-protocol', error: {
   code: 'UNAUTHENTICATED', message: 'No synthetic session', retryable: false, recovery: 'Login',
 } }
 
+for (const scenario of [
+  { selected: '学生', actual: 'student', path: '/task/authorized-link', landing: '/task/authorized-link' },
+  { selected: '教师', actual: 'teacher', path: '/', landing: '/teacher' },
+  { selected: '教师', actual: 'student', path: '/teacher', landing: '/' },
+  { selected: '学生', actual: 'teacher', path: '/task/authorized-link', landing: '/teacher' },
+] as const) {
+  test(`统一登录选择${scenario.selected}，真实${scenario.actual}角色进入${scenario.landing}`, async ({ page }) => {
+    let authenticated = false, bootstrapReads = 0, teacherReads = 0
+    const loginBodies: unknown[] = []
+    await page.route('**/api/**', async route => {
+      const path = new URL(route.request().url()).pathname
+      let data: unknown
+      if (path === '/api/sessions') { loginBodies.push(route.request().postDataJSON()); authenticated = true; data = { csrfToken: 'csrf-role' } }
+      else if (path === '/api/session' && authenticated) data = { userId: 'role-account', csrfToken: 'csrf-role', courses: [{ courseId: 'role-course', role: scenario.actual }] }
+      else if (!authenticated) { await route.fulfill({ status: 401, json: expired }); return }
+      else if (path === '/api/model-settings') data = { revision: 0, enabled: false, callsEnabled: false, defaultModelId: '', providers: [], efforts: {} }
+      else if (path === '/api/agent/conversations' || path === '/api/courses/role-course/assignments') data = []
+      else if (path === '/api/courses/role-course/teacher-workbench') {
+        teacherReads++; data = { courseId: 'role-course', recoveryGeneration: 'role-generation', members: [], resources: [], drafts: [], activities: [], assignments: [], attempts: [], presets: [] }
+      } else if (path.endsWith('/bootstrap')) bootstrapReads++
+      if (data === undefined) await route.fulfill({ status: 422, json: { ...expired, error: { ...expired.error, code: 'INVALID_REFERENCE' } } })
+      else await route.fulfill({ json: { requestId: 'role-entry', data } })
+    })
+    await page.goto(`${REAL_URL}/#${scenario.path}`)
+    await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
+    await page.getByRole('group', { name: '登录身份' }).getByRole('button', { name: scenario.selected, exact: true }).click()
+    await expect(page.getByRole('button', { name: scenario.selected, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    if (scenario.actual === 'teacher' && scenario.selected === '教师') await page.locator('.session-card').screenshot({ path: test.info().outputPath('unified-role-login.png') })
+    await loginThroughForm(page, 'synthetic-role-login', 'synthetic-only')
+    await expect(page).toHaveURL(`${REAL_URL}/#${scenario.landing}`)
+    await expect(page.getByRole('heading', { name: '登录学习空间' })).toHaveCount(0)
+    expect(loginBodies).toEqual([{ loginName: 'synthetic-role-login', password: 'synthetic-only' }])
+    if (scenario.actual === 'teacher') {
+      await expect(page.getByRole('navigation').getByRole('link', { name: '教学概览', exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: '学生空间入口', exact: true })).toHaveCount(0)
+      expect(bootstrapReads).toBe(0)
+    }
+    else expect(teacherReads).toBe(0)
+    // A reused session still cannot enter the other role's space by changing the URL.
+    if (scenario.actual === 'student' && scenario.selected === '教师') {
+      await expect(page.locator('.account-name')).toHaveText('role-account')
+      await page.goto(`${REAL_URL}/#/teacher/settings`)
+      await expect(page).toHaveURL(`${REAL_URL}/#/`)
+      await expect(page.locator('.account-name')).toHaveText('role-account')
+      expect(teacherReads).toBe(0)
+    }
+  })
+}
+
 test('登录入口键盘与浅深主题；限流、错误信封和断网保留真实失败', async ({ page }, info) => {
   let failure: 'limit' | 'malformed' | 'offline' = 'limit'
   let submissions = 0
@@ -94,10 +143,11 @@ test('取消请求失效时仍靠会话代次拒收旧 Session 成功与旧 401'
         holdSession = false; sessionReached(); await held
         await route.fulfill({ json: { requestId: 'old-session-read', data } }); sessionDelivered(); return
       }
-    } else if (path === '/api/courses/protocol-course/assignments' && identity) {
+    } else if ((path === '/api/courses/protocol-course/assignments' || path === '/api/agent/conversations') && identity) {
       data = []
-    } else if (path === '/api/agent/conversations' && identity) {
-      data = []
+    } else if (path === '/api/model-settings' && identity) {
+      // AppShell reads personal settings after login; this scenario keeps models disabled.
+      data = { revision: 0, enabled: false, callsEnabled: false, defaultModelId: '', providers: [], efforts: {} }
     } else if (path === '/api/assignments/authorized-link/bootstrap') {
       bootstrapReached(); await held
       await route.fulfill({ status: 401, json: expired }); bootstrapDelivered(); return

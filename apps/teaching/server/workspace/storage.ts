@@ -72,7 +72,7 @@ export function loadWorkspace(tx: Transaction, attemptId: string, identity?: Com
     if (!job || job.runId !== row.run_id || job.scope.attemptId !== attemptId || scope.attemptId !== attemptId
       || scope.userId !== attempt.studentId || scope.courseId !== attempt.courseId || scope.activityVersionId !== attempt.activityVersionId
       || submission.identity.runId !== row.run_id || !snapshot || canonical(submission.snapshot) !== canonical(snapshot)
-      || job.recoveryGeneration !== submission.identity.recoveryGeneration) throw new Error('Invalid persisted run scope.');
+      || (job.execution?.nodeGeneration??job.recoveryGeneration) !== submission.identity.recoveryGeneration) throw new Error('Invalid persisted run scope.');
     const run: WorkspaceState['runs'][number] = { runId: String(row.run_id), jobId: job.jobId, submission };
     if (row.result_json !== null) {
       const result = validateRunResult(submission, JSON.parse(String(row.result_json)));

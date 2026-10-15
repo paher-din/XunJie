@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "registered": false,
+  "host": "REPLACE_WITH_PRIVATE_DESTINATION",
+  "port": 0,
+  "knownHostsFile": "REPLACE_WITH_PRIVATE_HOST_PIN_FILE",
+  "browserUser": "REPLACE_WITH_PRIVATE_BROWSER_USER",
+  "browserLocalPort": 0,
+  "applicationPort": 0,
+  "browserOrigin": "REPLACE_WITH_PRIVATE_HTTPS_LOOPBACK_ORIGIN",
+  "nodeId": "REPLACE_WITH_REGISTERED_NODE_ID",
+  "nodeUser": "REPLACE_WITH_PRIVATE_NODE_USER",
+  "remoteRunnerPort": 0,
+  "localRunnerPort": 0
+}

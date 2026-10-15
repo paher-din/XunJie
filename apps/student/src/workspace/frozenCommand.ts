@@ -20,6 +20,8 @@ export interface FrozenCommand {
   cancelRun?: { runId: string; jobId: string }
   /** Original HDL provenance in the existing outbox; never added to the HTTP body. */
   hdlSnapshot?: SnapshotView
+  /** Original transport destination, frozen with a new Run/Build; never taken from a later selection. */
+  executionNodeId?: string
 }
 export interface OutboxRecord extends FrozenCommand {
   state: 'pending' | 'confirmed' | 'historical'

@@ -140,7 +140,7 @@ function stopJobs(state:WorkspaceState,context:CommandContext,purposes:Purpose[]
 
 export type RunRequest = {expectedAttemptRevision:number;snapshotId:string;runtimeProfileVersion:string;entryFileId:string;
   input:TextScopeInput;mode:'run'|'course_check'};
-export type RuntimeConfiguration = {ready:boolean;recoveryGeneration:string;profile:Profile;policyVersion:string;
+export type RuntimeConfiguration = {ready:boolean;recoveryGeneration:string;execution?:import('../../contracts/records/index.ts').ExecutionBinding;profile:Profile;policyVersion:string;
   checkRuleVersion:string;checkCancelPurposes:Purpose[]};
 export function runCommand(state:WorkspaceState,context:CommandContext,request:RunRequest,runtime:RuntimeConfiguration,
   ids:{runId:string;jobId:string},deadline:string) {
@@ -152,7 +152,7 @@ export function runCommand(state:WorkspaceState,context:CommandContext,request:R
   const previous=resolveCommandReceipt(state.records,context.identity,hash,context.generation);
   if(previous)return completeCommand(state,context,hash,previous.result,'run_requested');
   if(!['run','course_check'].includes(request.mode)||!runtime.ready||request.runtimeProfileVersion!==runtime.profile.runtimeProfileVersion)throw new RunnerError('RUNTIME_NOT_READY','Confirmed runtime configuration unavailable');
-  if(runtime.recoveryGeneration!==context.generation)throw new RunnerError('RECOVERY_REQUIRED','Runtime generation reconciliation required');
+  if(runtime.recoveryGeneration!==(runtime.execution?.nodeGeneration??context.generation))throw new RunnerError('RECOVERY_REQUIRED','Runtime generation reconciliation required');
   if(state.runs.some(row=>row.runId===ids.runId)||!ids.runId)throw new RunnerError('IDEMPOTENCY_CONFLICT','Original run ID must be unique');
   const snapshot=state.snapshots.find(row=>row.snapshotId===request.snapshotId&&row.attemptId===state.attempt.attemptId&&row.activityVersionId===state.attempt.activityVersionId);
   if(!snapshot)throw new RunnerError('INVALID_REFERENCE','Confirmed snapshot unavailable');
@@ -168,14 +168,14 @@ export function runCommand(state:WorkspaceState,context:CommandContext,request:R
     jobs=cancelByPurpose(jobs,context.identity.scope,runtime.checkCancelPurposes).jobs;
     checks.push({jobId:ids.jobId,runId:ids.runId,policyVersion:runtime.policyVersion,state:'active'});
   }
-  const submission:SubmitRun={identity:{runId:ids.runId,commandId:context.commandId,requestHash:hash,recoveryGeneration:context.generation,
+  const submission:SubmitRun={identity:{runId:ids.runId,commandId:context.commandId,requestHash:hash,recoveryGeneration:runtime.execution?.nodeGeneration??context.generation,
     snapshotId:snapshot.snapshotId,snapshotHash:snapshot.hash,inputHash:sha256(JSON.stringify(args)),runtimeProfileVersion:runtime.profile.runtimeProfileVersion,
     imageDigest:runtime.profile.imageDigest,authorizedScope:{userId:context.identity.actorId,courseId:attempt.courseId,attemptId:attempt.attemptId,
       activityVersionId:attempt.activityVersionId,purpose:'student_run'}},snapshot:structuredClone(snapshot),entryFileId:request.entryFileId,
     input:structuredClone(request.input),mode:request.mode==='run'?'run':'check',...(request.mode==='course_check'?{checkRuleVersion:runtime.checkRuleVersion}:{})};
   const job:Job={jobId:ids.jobId,kind:request.mode,purpose:'student_run',scope:context.identity.scope,requestReceiptId:context.receiptId,
     status:'queued',stopRequested:false,expectedRevision:attempt.attemptRevision,decisionEpoch:attempt.decisionEpoch,recoveryGeneration:context.generation,
-    acceptedAt:context.now,deadline,attemptCount:0,runId:ids.runId};
+    acceptedAt:context.now,deadline,attemptCount:0,runId:ids.runId,...(runtime.execution?{execution:runtime.execution}:{})};
   const next={...state,attempt,checks,records:{...state.records,jobs:enqueueJob(jobs,job)},runs:[...state.runs,{runId:ids.runId,jobId:ids.jobId,submission}]};
   return completeCommand(next,context,hash,{runId:ids.runId,jobId:ids.jobId,snapshotId:snapshot.snapshotId},'run_requested');
 }
@@ -245,7 +245,7 @@ export function readWorkspace(state:WorkspaceState,authorize:()=>boolean,assignm
     jobs:own.map(job=>({jobId:job.jobId,kind:job.kind,purpose:job.purpose,scope:job.scope,requestReceiptId:job.requestReceiptId,
       status:job.status,stopRequested:job.stopRequested,expectedRevision:job.expectedRevision,decisionEpoch:job.decisionEpoch,
       recoveryGeneration:job.recoveryGeneration,acceptedAt:job.acceptedAt,deadline:job.deadline,attemptCount:job.attemptCount,
-      ...(job.runId?{runId:job.runId}:{})})),runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)).map(run=>{ownRun(state,run.jobId);return {
+      ...(job.runId?{runId:job.runId}:{}),...(job.execution?{execution:job.execution}:{})})),runs:state.runs.filter(row=>own.some(job=>job.jobId===row.jobId)).map(run=>{ownRun(state,run.jobId);return {
       runId:run.runId,jobId:run.jobId,snapshotId:run.submission.identity.snapshotId,snapshotHash:run.submission.identity.snapshotHash,
       mode:run.submission.mode,runtimeProfileVersion:run.submission.identity.runtimeProfileVersion,
       imageDigest:run.submission.identity.imageDigest,diagnostics:runDiagnostics(run)};}),
@@ -353,7 +353,7 @@ export function confirmNodeFailure(state:WorkspaceState,jobId:string,nodeFact:un
   if(job.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Original run generation required');
   if(!Number.isFinite(Date.parse(now))||!leaseToken||job.leaseToken!==leaseToken||!job.leaseUntil||Date.parse(job.leaseUntil)<=Date.parse(now))throw new RunnerError('STATE_CONFLICT','Current failure reconciliation lease required');
   const fact=validateRunFact(run.submission,nodeFact);
-  if(fact&&fact.identity.recoveryGeneration!==generation)throw new RunnerError('RECOVERY_REQUIRED','Node failure generation reconciliation required');
+  if(fact&&fact.identity.recoveryGeneration!==(job.execution?.nodeGeneration??generation))throw new RunnerError('RECOVERY_REQUIRED','Node failure generation reconciliation required');
   if(!fact||fact.state!=='failed'||fact.reserved||fact.units.length||fact.pending.length
     ||fact.resultRef!==undefined||fact.resultHash!==undefined||run.resultHash||!['running','outcome_unknown','cancelling','failed'].includes(job.status))throw new RunnerError('STATE_CONFLICT','Full node failure without a result is not confirmed');
   return {...state,records:{...state.records,jobs:state.records.jobs.map(row=>row.jobId===jobId?
