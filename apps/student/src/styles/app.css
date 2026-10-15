@@ -1169,7 +1169,7 @@ h3 {
   width: 100%;
   text-align: left;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 20px;
   min-height: 195px;
   display: flex;
@@ -1206,6 +1206,10 @@ h3 {
 }
 .card-foot .action {
   color: var(--accent);
+}
+.task-card-without-progress .card-foot {
+  margin-top: auto;
+  padding-top: 18px;
 }
 .empty {
   padding: 40px;

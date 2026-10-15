@@ -7,7 +7,7 @@ import type { ProjectTask, TaskStatus } from '../bridge/types'
 import { DashboardSection } from '../components/dashboard/DashboardSection'
 import { FluidHighlight } from '../components/FluidHighlight'
 import { ProgressBar } from '../components/ProgressBar'
-import { StatusChip } from '../components/StatusChip'
+import { StatusChip, type TaskDisplayStatus } from '../components/StatusChip'
 import { useFluidHover, useRegisterFluidHoverItem } from '../lib/fluidHover'
 import {
   filterTasks,
@@ -21,10 +21,23 @@ import {
 import { PREP_BUILD } from '../workspace/mode'
 import { PREP_ENTRY_COURSE, PREP_ENTRY_GOAL, PREP_ENTRY_LABEL, PREP_ENTRY_NOTE, PREP_TASK_ROUTE } from '../workspace/prepEntry'
 import { useSession } from '../components/SessionEntry'
-import { loadHomeCourses } from '../workspace/home'
+import { loadHomeCourses, type HomeCourse } from '../workspace/home'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
 const COURSE_ICONS: IconName[] = ['virtual-board', 'code-square', 'structure']
+
+// 已交本机课程的装饰映射用于尚无本人分配的课程；不按列表顺序猜课程类型。
+const KNOWN_COURSE_TONES: Record<string, number> = {
+  'synthetic-robert-course-c': 1,
+  'synthetic-robert-course-hdl': 0,
+}
+
+function realCourseTone(course: HomeCourse): number {
+  const kinds = new Set(course.assignments.map(task => task.executionKind))
+  if (kinds.size === 0) return KNOWN_COURSE_TONES[course.courseId] ?? 2
+  if (kinds.size > 1) return 2
+  return kinds.has('hdl_board') ? 0 : 1
+}
 
 /** 课程封面插画（动画风），放在 app/public/courses/ 下；缺图时回退课程色占位块。 */
 const COURSE_COVERS: Record<string, string> = {
@@ -79,31 +92,18 @@ function RealHomePage() {
         {selected.assignments.length === 0 ? <div className="empty">此课程暂无分配任务</div>
           : <div className="task-card-grid" ref={cardsRef} {...hover.handlers}>
             <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
-            {selected.assignments.map((task, index) => <RealTaskCard key={task.assignmentId}
-              title={task.title} kind={task.executionKind} active={task.active} index={index}
+            {selected.assignments.map((task, index) => <TaskCard key={task.assignmentId}
+              task={{ name: task.title, goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
+              action={task.active ? '进入任务' : '查看任务'} index={index}
               registerItem={hover.registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}
           </div>}
       </> : courses.length === 0 ? <div className="empty">暂无获准的学生课程与任务</div>
         : <CourseTiles courses={courses.map(course => course.courseId)} tasks={[]}
           titleOf={id => `课程 ${id}`}
           summaryOf={id => `${courses.find(course => course.courseId === id)!.assignments.length} 个分配任务`}
-          toneOf={id => courses.findIndex(course => course.courseId === id)}
+          toneOf={id => realCourseTone(courses.find(course => course.courseId === id)!)}
           onOpen={id => setSearchParams({ course: id })} />}
   </div>
-}
-
-function RealTaskCard({ title, kind, active, index, registerItem, onOpen }: {
-  title: string; kind: 'textscope' | 'hdl_board'; active: boolean; index: number
-  registerItem: (index: number, el: HTMLElement | null) => void; onOpen: () => void
-}) {
-  const ref = useRef<HTMLButtonElement>(null)
-  useRegisterFluidHoverItem(registerItem, index, ref)
-  return <button ref={ref} className="task-card" onClick={onOpen}>
-    <div><span className="course-tag">{kind === 'hdl_board' ? '数字逻辑' : 'C / TextScope'}</span></div>
-    <h3>{title}</h3>
-    <p>{active ? '已分配' : '任务已暂停'}</p>
-    <div className="card-foot"><span className="action"><IconText name="arrow-right" position="end">{active ? '进入任务' : '查看任务'}</IconText></span></div>
-  </button>
 }
 
 function PreparationHomePage() {
@@ -383,9 +383,9 @@ function TaskCards({
       {tasks.map((t, i) => (
         <TaskCard
           key={t.id}
-          task={t}
+          task={{ ...t, progress: { percent: progressPercent(t), done: t.status === '已完成' } }}
           index={i}
-          now={now}
+          overdue={isOverdue(t, now)}
           onOpen={() => onOpen(t)}
           registerItem={hover.registerItem}
         />
@@ -397,36 +397,38 @@ function TaskCards({
 function TaskCard({
   task,
   index,
-  now,
+  overdue = false,
+  action: explicitAction,
   onOpen,
   registerItem,
 }: {
-  task: ProjectTask
+  task: { name: string; goal?: string; status: TaskDisplayStatus; deadlineAt?: string | null
+    progress?: { percent: number; done: boolean } }
   index: number
-  now: Date
+  overdue?: boolean
+  action?: string
   onOpen: () => void
   registerItem: (index: number, el: HTMLElement | null) => void
 }) {
   const cardRef = useRef<HTMLButtonElement>(null)
   useRegisterFluidHoverItem(registerItem, index, cardRef)
-  const percent = progressPercent(task)
-  const action =
-    task.status === '未开始' ? '开始任务' : task.status === '进行中' ? '继续任务' : '查看任务'
+  const action = explicitAction ?? (
+    task.status === '未开始' ? '开始任务' : task.status === '进行中' ? '继续任务' : '查看任务')
   return (
-    <button ref={cardRef} className="task-card" onClick={onOpen}>
+    <button ref={cardRef} className={`task-card${task.progress ? '' : ' task-card-without-progress'}`} onClick={onOpen}>
       <div>
         <StatusChip status={task.status} />
-        {isOverdue(task, now) && <span className="status overdue">已逾期</span>}
+        {overdue && <span className="status overdue">已逾期</span>}
       </div>
       <h3>{task.name}</h3>
-      <p>{task.goal}</p>
-      <div className="progresslabel">
+      {task.goal && <p>{task.goal}</p>}
+      {task.progress && <><div className="progresslabel">
         <span>任务进度</span>
-        <span>{percent}%</span>
+        <span>{task.progress.percent}%</span>
       </div>
-      <ProgressBar percent={percent} done={task.status === '已完成'} />
+      <ProgressBar percent={task.progress.percent} done={task.progress.done} /></>}
       <div className="card-foot">
-        <span className="deadline">
+        <span className={task.deadlineAt ? 'deadline' : undefined}>
           {task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : ''}
         </span>
         <span className="action"><IconText name="arrow-right" position="end">{action}</IconText></span>

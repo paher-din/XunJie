@@ -22,7 +22,7 @@ async function protocol(page: Page) {
     identity: string | null
     courses: Record<string, Course[]>
     assignments: Record<string, Assignment[]>
-    titles: Record<string, { courseId: string; title: string }>
+    titles: Record<string, { courseId: string; title: string; goal?: string }>
     reads: Array<{ path: string; method: string }>
     list?: (route: Route, courseId: string, identity: string) => Promise<boolean>
   } = { identity: null, courses: {}, assignments: {}, titles: {}, reads: [] }
@@ -49,7 +49,9 @@ async function protocol(page: Page) {
     } else if (path.startsWith('/api/activities/')) {
       expect(url.searchParams.get('audience')).toBe('student')
       const activityVersionId = decodeURIComponent(path.split('/')[3]), title = state.titles[activityVersionId]
-      if (title) data = { activityVersionId, courseId: title.courseId, content: { audience: 'student', content: { projectTitle: title.title } } }
+      if (title) data = { activityVersionId, courseId: title.courseId, content: { audience: 'student', content: {
+        projectTitle: title.title, goals: title.goal ? [{ title: title.goal, core: true }] : [],
+      } } }
     }
     // 卡片只需验证进入原工作区及其 bootstrap，不另造一套工作区协议。
     if (data === undefined) await route.fulfill({ status: 403, json: error('FORBIDDEN') })
@@ -67,19 +69,22 @@ async function loginHome(page: Page, account = 'account-a') {
 test('真实首页读取本人两课程与固定标题，暂停可查看，卡片沿原路由返回后可再进入', async ({ page }) => {
   const state = await protocol(page)
   state.courses['account-a'] = [
-    { courseId: 'course-c', role: 'student' }, { courseId: 'course-hdl', role: 'student' },
+    { courseId: 'course-hdl', role: 'student' }, { courseId: 'course-c', role: 'student' },
     { courseId: 'teacher-course', role: 'teacher' },
   ]
   state.assignments['course-c'] = [assignment('assigned-c')]
   state.assignments['course-hdl'] = [assignment('assigned-hdl', 'account-a', true, 'hdl_board'), assignment('paused-hdl', 'account-a', false, 'hdl_board')]
   state.titles = {
-    'activity-assigned-c': { courseId: 'course-c', title: '固定 C 项目标题' },
+    'activity-assigned-c': { courseId: 'course-c', title: '固定 C 项目标题', goal: '公开 C 项目的实际目标' },
     'activity-assigned-hdl': { courseId: 'course-hdl', title: '固定 HDL 项目标题' },
     'activity-paused-hdl': { courseId: 'course-hdl', title: '已暂停的 HDL 项目' },
   }
   await loginHome(page)
   await expect(page.getByRole('button', { name: /课程 course-c/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /课程 course-hdl/ })).toBeVisible()
+  // 故意将 HDL 排在 C 前面，图案仍必须按真实任务类型匹配。
+  await expect(page.getByRole('button', { name: /课程 course-c/ }).locator('[data-icon="code-square"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /课程 course-hdl/ }).locator('[data-icon="virtual-board"]')).toBeVisible()
   await expect(page.getByRole('button', { name: /teacher-course/ })).toHaveCount(0)
   await expect(page.locator('.db, .db-continue, .progress, .deadline')).toHaveCount(0)
   await expect(page.locator('.content')).not.toContainText(/学习看板|设计演示|截止|进度|%/)
@@ -87,6 +92,9 @@ test('真实首页读取本人两课程与固定标题，暂停可查看，卡�
   expect(state.reads.filter(read => read.path !== '/api/sessions').every(read => read.method === 'GET')).toBe(true)
 
   await page.getByRole('button', { name: /课程 course-c/ }).click()
+  await expect(page.locator('.task-card .status.pending')).toHaveText('已分配')
+  await expect(page.locator('.task-card p')).toHaveText('公开 C 项目的实际目标')
+  await expect(page.locator('.task-card .progress, .task-card .deadline')).toHaveCount(0)
   for (let visit = 0; visit < 2; visit++) {
     await page.getByRole('button', { name: /固定 C 项目标题.*进入任务/ }).click()
     await expect(page).toHaveURL(`${REAL_URL}/#/task/assigned-c`)
@@ -96,7 +104,7 @@ test('真实首页读取本人两课程与固定标题，暂停可查看，卡�
   }
   await page.getByRole('button', { name: '全部课程', exact: true }).click()
   await page.getByRole('button', { name: /课程 course-hdl/ }).click()
-  await expect(page.getByRole('button', { name: /已暂停的 HDL 项目.*任务已暂停.*查看任务/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /任务已暂停.*已暂停的 HDL 项目.*查看任务/ })).toBeVisible()
   for (const [title, id] of [['固定 HDL 项目标题', 'assigned-hdl'], ['已暂停的 HDL 项目', 'paused-hdl']]) {
     await page.getByRole('button', { name: new RegExp(title) }).click()
     await expect(page).toHaveURL(`${REAL_URL}/#/task/${id}`)
@@ -116,8 +124,15 @@ test('没有学生课程或课程没有分配时显示真实空态，不补演�
   await loginHome(page)
   await expect(page.getByText('暂无获准的学生课程与任务', { exact: true })).toBeVisible()
   expect(state.reads.some(read => read.path.includes('/assignments'))).toBe(false)
-  state.courses['account-a'] = [{ courseId: 'empty-course', role: 'student' }]
+  state.courses['account-a'] = [
+    { courseId: 'empty-course', role: 'student' },
+    { courseId: 'synthetic-robert-course-hdl', role: 'student' },
+    { courseId: 'synthetic-robert-course-c', role: 'student' },
+  ]
   await page.reload()
+  await expect(page.getByRole('button', { name: /课程 empty-course/ }).locator('[data-icon="structure"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /课程 synthetic-robert-course-hdl/ }).locator('[data-icon="virtual-board"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /课程 synthetic-robert-course-c/ }).locator('[data-icon="code-square"]')).toBeVisible()
   await page.getByRole('button', { name: /课程 empty-course/ }).click()
   await expect(page.getByText('此课程暂无分配任务', { exact: true })).toBeVisible()
   await expect(page.locator('.task-card, .db-continue')).toHaveCount(0)
