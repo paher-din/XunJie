@@ -55,6 +55,7 @@ export interface PromptAttachment {
   src?: string
   /** 0–100 表示上传中（队列动画驱动）；undefined 表示已落位。 */
   progress?: number
+  file?:File
 }
 
 /** 瓦片移除瞬间的视口矩形：退场期瓦片固定在这块位置上播完动效。 */
@@ -102,7 +103,7 @@ const RING_PATH = [
 interface PromptInputProps {
   value: string
   onChange: (value: string) => void
-  onSend: (text: string, attachments: PromptAttachment[]) => void
+  onSend: (text: string, attachments: PromptAttachment[]) => void|boolean|Promise<void|boolean>
   autoFocus?: boolean
   /** 当前会话的上下文窗口已用 token 数（缺省 0），驱动模型按钮左侧的上下文环。 */
   contextTokens?: number
@@ -121,7 +122,7 @@ interface PromptInputProps {
  * 附件瓦片动效搬自 BoardUI Composer Attachments：56px 瓦片（图片缩略图 / 插件图标 + 文件名），
  * 排队逐个「落位」——accent 描边环顺时针画进度、右上角 9px 百分比跳数，
  * 到 100% 后百分比模糊淡出、关闭按钮在同一位置模糊淡入。
- * 上传为本地模拟（Mock 边界），不发任何网络请求。
+ * 准备模式模拟附件进度；真实模式在显式发送时读取图片，随聊天命令保存并交给模型。
  * 高度动画（2026-10-10）：输入区换行与附件区增减瓦片引起的高度变化都走 CSS height 过渡
  * （0.24s / 0.3s，同一条弹簧曲线）——输入区高度由 JS 量 scrollHeight 写进 inline style，
  * 附件区外层容器高度取内层 flex 行的实测高度（ResizeObserver），空时为 0；
@@ -144,6 +145,10 @@ export function PromptInput({
   onStop,
 }: PromptInputProps) {
   const [attachments, setAttachments] = useState<PromptAttachment[]>([])
+  const attachmentsRef=useRef(attachments)
+  attachmentsRef.current=attachments
+  useEffect(()=>()=>{attachmentsRef.current.forEach(attachment=>{if(attachment.src)URL.revokeObjectURL(attachment.src)})},[])
+  const [reading,setReading]=useState(false)
   /** 退场动画进行中的附件：id → 移除瞬间的视口矩形。
       瓦片随即转成 position: fixed 停在那块位置上播 280ms 出场动效（脱离文档流），
       空间当帧就开始收，不用等出场播完——原地占位等 280ms 会被读成「先愣一下再收回」。 */
@@ -228,7 +233,7 @@ export function PromptInput({
     [],
   )
 
-  const canSend = (value.trim().length > 0 || attachments.length > 0) && (PREP_BUILD || (!remoteModels.loading && !remoteModels.saving && !!remoteModels.data?.enabled && !!remoteModels.data.callsEnabled))
+  const canSend = !reading&&(value.trim().length > 0 || attachments.length > 0) && (PREP_BUILD || (!remoteModels.loading && !remoteModels.saving && !!remoteModels.data?.enabled && !!remoteModels.data.callsEnabled))
   // 设置页可选自定义供应商模型（agent.model = custom:<供应商>:<模型ID>），此处兜底展示原始 ID
   const model = availableModels.find((m) => m.id === modelId) ?? {
     id: modelId,
@@ -324,8 +329,9 @@ export function PromptInput({
         name: f.name,
         size: f.size,
         kind,
+        file:f,
         src: kind === 'image' ? URL.createObjectURL(f) : undefined,
-        progress: 0, // 排队：轮到自己才开始画环
+        progress: PREP_BUILD?0:undefined, // 真实模式仅在显式发送时读取，不伪造上传进度。
       }
     })
     if (added.length) setAttachments((prev) => [...prev, ...added])
@@ -349,14 +355,18 @@ export function PromptInput({
     removeTimers.current.push(timer)
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSend) return
-    onSend(value.trim(), attachments)
+    setReading(true)
+    try{
+    const accepted=await onSend(value.trim(), attachments)
+    if(accepted===false)return
     attachments.forEach((a) => {
       if (a.src) URL.revokeObjectURL(a.src)
     })
     setAttachments([])
     setLeaving({})
+    }finally{setReading(false)}
   }
 
   // 模拟上传队列（搬自 BoardUI ComposerWithAttachments）：
@@ -435,6 +445,7 @@ export function PromptInput({
       </div>
       <textarea
         ref={textareaRef}
+        disabled={reading}
         rows={1}
         aria-label="向 Agent 提问"
         placeholder="输入问题或探讨任务思路…"
@@ -452,7 +463,8 @@ export function PromptInput({
           type="button"
           className="prompt-attach"
           aria-label="添加附件"
-          title="上传代码、波形或文件"
+          title={PREP_BUILD?'上传代码、波形或文件':'添加PNG、JPEG、GIF或WebP图片'}
+          disabled={reading}
           onClick={() => fileRef.current?.click()}
         >
           <Icon name="paperclip" size={16} />
@@ -583,6 +595,7 @@ export function PromptInput({
       <input
         ref={fileRef}
         type="file"
+        accept={PREP_BUILD?undefined:'image/png,image/jpeg,image/gif,image/webp'}
         multiple
         hidden
         onChange={(e) => {

@@ -27,6 +27,7 @@ import { MascotSvg } from '../components/Mascot'
 import { ProgressBar } from '../components/ProgressBar'
 import { StatusChip } from '../components/StatusChip'
 import { formatDeadline, progressPercent } from '../lib/tasks'
+import {readChatImages} from '../lib/chatImages'
 
 /** 收纳占位行「打开」→ 工作区交接意图的 sessionStorage 键（WorkspacePage 进入即消费）。 */
 const GEN_HANDOFF_KEY = 'ws-gen-handoff'
@@ -124,11 +125,11 @@ export default function AgentPage() {
    */
   const rows: { key: string; msg: ChatMessage; stored: number }[] = [
     ...messages.map((msg, i) => ({ key: 'm' + i, msg, stored: i })),
-    ...(turn.pendingUser
+    ...(turn.pendingUser!==null
       ? [
           {
             key: 'm' + messages.length,
-            msg: { role: 'user' as const, text: turn.pendingUser },
+            msg: { role: 'user' as const, text: turn.pendingUser,images:turn.pendingImages },
             stored: -1,
           },
         ]
@@ -136,7 +137,7 @@ export default function AgentPage() {
     ...(turn.live
       ? [
           {
-            key: 'm' + (messages.length + (turn.pendingUser ? 1 : 0)),
+            key: 'm' + (messages.length + (turn.pendingUser!==null ? 1 : 0)),
             msg: turn.live,
             stored: -1,
           },
@@ -158,14 +159,14 @@ export default function AgentPage() {
   // 对话流底部为叠层卡片（初始建议 / 追问选项）常驻留白：叠层浮在输入框上方、
   // absolute 不占布局，留白让落定操作条与叠层各占其位（几何见 app.css .chat-inner 一段）。
   // 自发送首条消息起常驻，不随草稿显隐——输入/落定/排队全程底部几何零跳动。
-  const padSuggest = !!conversationId || messages.length > 0 || !!turn.pendingUser || turn.active
+  const padSuggest = !!conversationId || messages.length > 0 || turn.pendingUser!==null || turn.active
 
   // 新回合开始那一帧重新吸附并瞬时贴底：发消息、重新生成、继续生成、改写后重发都算「我要看这条回答」，
   // 「我发出去了」的反馈不等动画（第 18 条）。不重新吸附会漏掉改写这条——编辑框打开时浏览器把那条
   // 滚进视野（focus 的自然行为）即释放跟随，不吸附的话新正文会在视口外悄悄流完（实测离底 592）。
   // 正文逐字与落定撑出的卡片高度都交给 useFollowBottom 的滑行：瞬时贴底会把每行长高读成一次位移。
   useEffect(() => {
-    if (!turn.active && !turn.pendingUser) return
+    if (!turn.active && turn.pendingUser===null) return
     stickRef.current = true
     // 当帧换挡：贴底位是 Dock 的挡位来源，位置没真的移动时不会来 scroll 事件替我们改
     setAtBottom(true)
@@ -244,17 +245,27 @@ export default function AgentPage() {
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) el.scrollTop = el.scrollHeight
   }, [padSuggest, turn.queued])
 
-  const doSend = (text: string, attachments: PromptAttachment[] = []) => {
+  const doSend = async (text: string, attachments: PromptAttachment[] = []) => {
     const trimmed = text.trim()
-    if (!trimmed && attachments.length === 0) return
-    if (!PREP_BUILD && attachments.length) { setOperationError('独立聊天暂不支持附件，请移除附件后发送。'); return }
-    if (!PREP_BUILD && (models.saving || models.loading)) { setOperationError('等待模型配置保存确认后再发送。'); return }
+    if (!trimmed && attachments.length === 0) return false
+    if (!PREP_BUILD && (models.saving || models.loading)) { setOperationError('等待模型配置保存确认后再发送。'); return false }
+    if(!PREP_BUILD){
+      const current=operation.current,session=getSessionState(),revision=getModelSettings().data?.revision
+      try{
+        if(attachments.some(attachment=>attachment.kind!=='image'||!attachment.file))throw new Error('本轮支持图片附件，请移除其他文件后发送。')
+        const images=attachments.length?await readChatImages(attachments.map(attachment=>attachment.file!)):[]
+        if(operation.current!==current||getSessionState().epoch!==session.epoch)return false
+        if(getModelSettings().data?.revision!==revision)throw new Error('读取图片期间模型配置已改变，请核对当前模型后重新发送。')
+        setOperationError('');turn.send(trimmed,images);setInput('');return true
+      }catch(error){if(operation.current===current)setOperationError(error instanceof Error?error.message:'图片读取失败，请重试。');return false}
+    }
     // 准备演示附件只显示文件名。
     const suffix = attachments.length
       ? '\n📎 ' + attachments.map((a) => a.name).join('、')
       : ''
     turn.send(trimmed + suffix)
     setInput('')
+    return true
   }
 
   /** 换个模型重试：切到另一可选模型（写回选择并通知输入区按钮），然后重发上一回合。 */
@@ -375,6 +386,7 @@ export default function AgentPage() {
                 rows.map(({ key, msg, stored }, i) =>
                   msg.role === 'user' ? (
                     <UserMessage
+                      images={msg.images}
                       key={key}
                       text={msg.text}
                       at={msg.at}
@@ -432,7 +444,7 @@ export default function AgentPage() {
                 items={suggestions.data ?? []}
                 onPick={fillSuggestion}
                 show={
-                  atBottom && !conversationId && !turn.active && !turn.pendingUser && input.trim() === ''
+                  atBottom && !conversationId && !turn.active && turn.pendingUser===null && input.trim() === ''
                 }
               />
               {/* 追问选项：落定后出现（与操作条同刻），同上条件；点击直接发送，生成中点击排队 */}

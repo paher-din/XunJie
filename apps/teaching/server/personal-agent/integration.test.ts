@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import {crc32} from 'node:zlib';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -18,6 +19,40 @@ const provider={id:'test',name:'Offline integration provider',baseUrl:'https://p
   models:[{id:'test-model',contextWindow:'16000',maxOutput:'4096',inputTypes:[],reasoningLevels:[]}]};
 const settings=(overrides:Record<string,unknown>={})=>({expectedRevision:0,enabled:true,defaultModelId:'custom:test:test-model',providers:[provider],...overrides});
 const pause=()=>new Promise<void>(resolve=>setImmediate(resolve));
+const image={name:'sample.png',dataUrl:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC'};
+
+test('image-only messages reach the provider as pixels, survive history/edit/retry and retain account isolation',async t=>{
+  const requests:any[]=[];
+  const fixture=await setup({...immediateTransport,async complete(input){requests.push(input.messages);return {text:'vision reply'};}});
+  t.after(fixture.cleanup);const {request}=fixture;
+  await request('POST','/api/model-settings',settings({providers:[{...provider,models:[{...provider.models[0],inputTypes:['image']}]}]}));
+  const input={conversationId:null,mode:'send',text:'',images:[image],requestKey:'image-one'};
+  const accepted=await request('POST','/api/agent/turns',input);assert.equal(accepted.status,200);
+  const {conversationId,turnId}=accepted.body.data;await pause();
+  assert.deepEqual(requests[0][1].content,[{type:'image_url',image_url:{url:image.dataUrl}}]);
+  assert.equal((await request('POST','/api/agent/turns',input)).body.data.turnId,turnId);assert.equal(requests.length,1);
+  assert.equal((await request('POST','/api/agent/turns',{...input,images:[{...image,name:'different.png'}]})).status,409);
+  const history=(await request('GET',`/api/agent/conversations/${conversationId}`)).body.data;
+  assert.deepEqual(history.messages[0].images,[image]);
+  assert.equal((await request('GET',`/api/agent/conversations/${conversationId}`,undefined,'bob')).status,403);
+  await request('POST',`/api/agent/conversations/${conversationId}/edit`,{messageIndex:0,text:'Describe it',expectedMessageHash:messageHash(history.messages[0])});
+  await request('POST','/api/agent/turns',{conversationId,mode:'retry',requestKey:'image-retry'});await pause();
+  assert.deepEqual(requests[1][1].content,[{type:'text',text:'Describe it'},{type:'image_url',image_url:{url:image.dataUrl}}]);
+  await request('POST','/api/model-settings',settings({expectedRevision:1}));
+  assert.equal((await request('POST','/api/agent/turns',{conversationId,mode:'send',text:'again',requestKey:'image-text-only'})).status,422);
+  assert.equal(requests.length,2);assert.equal((await request('GET',`/api/agent/conversations/${conversationId}`)).body.data.messages.length,2);
+});
+
+test('invalid image bytes, MIME spoofing, URLs and unsupported models are rejected before recording or billing',async t=>{
+  let calls=0;
+  const fixture=await setup({...immediateTransport,async complete(){calls++;return {text:'unexpected'};}});t.after(fixture.cleanup);
+  const {request}=fixture;
+  await request('POST','/api/model-settings',settings({providers:[{...provider,models:[{...provider.models[0],inputTypes:['image']}]}]}));
+  for(const dataUrl of ['https://example.com/image.png','data:image/svg+xml;base64,PHN2Zy8+','data:image/png;base64,aGVsbG8=',image.dataUrl.replace('image/png','image/jpeg')]){
+    assert.equal((await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'inspect',images:[{...image,dataUrl}],requestKey:dataUrl.slice(0,100)})).status,400);
+  }
+  assert.deepEqual((await request('GET','/api/agent/conversations')).body.data,[]);assert.equal(calls,0);
+});
 const messageHash=(message:{role:string;text:string;at?:string})=>createHash('sha256').update(JSON.stringify([message.role,message.text,message.at??null])).digest('hex');
 const immediateTransport:CompatibleTransport={async complete(){return {text:'actual fake transport result'};},async test(){return {ok:true,latencyMs:1,modelCount:1};}};
 
@@ -33,6 +68,20 @@ async function setup(transport:CompatibleTransport=immediateTransport){
   async function cleanup(){await service.close();await app.close();assert.ok(directory.startsWith(join(tmpdir(),'xunjie-personal-integration-')));rmSync(directory,{recursive:true,force:true});}
   return {directory,service,app,request,cleanup};
 }
+
+test('an inline image above Fastify default body size remains sendable and durable after a service restart',async t=>{
+  const fixture=await setup();t.after(fixture.cleanup);const {request,directory}=fixture;
+  await request('POST','/api/model-settings',settings({providers:[{...provider,models:[{...provider.models[0],inputTypes:['image']}]}]}));
+  const png=Buffer.from(image.dataUrl.split(',')[1]!, 'base64'),data=Buffer.concat([Buffer.from('Comment\0'),Buffer.alloc(1100000,65)]);
+  const chunk=Buffer.alloc(data.length+12);chunk.writeUInt32BE(data.length);chunk.write('tEXt',4);data.copy(chunk,8);chunk.writeUInt32BE(crc32(chunk.subarray(4,-4)),chunk.length-4);
+  const large={name:'large.png',dataUrl:'data:image/png;base64,'+Buffer.concat([png.subarray(0,-12),chunk,png.subarray(-12)]).toString('base64')};
+  const accepted=await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'inspect',images:[large],requestKey:'large'});
+  assert.equal(accepted.status,200);await pause();await fixture.service.close();
+  const restarted=createPersonalAgentService({directory,transport:immediateTransport,authorize(){return 'alice';}}),app=createApp();restarted.register(app);await app.ready();
+  t.after(async()=>{await restarted.close();await app.close();});
+  const restored=(await app.inject({method:'GET',url:`/api/agent/conversations/${accepted.body.data.conversationId}`})).json();
+  assert.deepEqual(restored.data.messages[0].images,[large]);
+});
 
 test('personal settings use CAS, authenticated ownership and encrypted persistent secrets; public reads never return a key',async t=>{
   const fixture=await setup();t.after(fixture.cleanup);

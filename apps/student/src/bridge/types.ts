@@ -221,8 +221,10 @@ export interface StoredGenCard extends GenCard {
   collectedAt: string
 }
 
-export interface ChatMessage {
+  export interface ChatImage { name:string; dataUrl:string }
+  export interface ChatMessage {
   role: 'user' | 'agent'
+  images?:ChatImage[]
   text: string
   /** 这条说出来的时刻（ISO）；界面上随操作条标在时间戳里，缺省则不标。 */
   at?: string
