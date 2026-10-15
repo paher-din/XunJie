@@ -1,0 +1,17 @@
+{
+  "status": "unchanged",
+  "exactGroups": [
+    "assignments",
+    "attempts",
+    "files",
+    "snapshots",
+    "builds",
+    "sessions",
+    "operations",
+    "jobs",
+    "runs"
+  ],
+  "failures": [],
+  "boundary": "The supplied before/after objects match; this comparison does not operate or independently identify the browser refresh.",
+  "commandReceiptsUnchanged": true
+}

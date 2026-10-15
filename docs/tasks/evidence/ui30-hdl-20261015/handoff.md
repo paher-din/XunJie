@@ -2,7 +2,7 @@
 
 2026-10-15（Asia/Shanghai）；主责 UI / Robert。本轮完成正常页面的真实 HDL 接线及获准的本机合成浏览器闭环：错误源码→确认快照→真实失败诊断→真实模型提示可见展示→开发合成明确回应→显式修订→新成功 Build/装载→相同输入输出改变→确认停止。原 C 同源入口及普通运行保留。**这是合成工程验收，不是真人学习、教师语义评审或完整产品验收；#30/#38保持 Open。**
 
-依据为[本轮实施与明确批准](../../I0-UI_HDL_REAL_BROWSER.md)、[原 UI30 回交](../../I0-UI30_COMMENT_CLOSEOUT.md)、[UDL 操作表](../../I0-UI30_HDL_OPERATION_MAP.md)、[H4 接线包](../../DLA_H4_UI_HANDOFF_20261014.md)。已按根 AGENTS、README 与上述正文核查；产品/规划/参考/规范未由本交付改动。原操作表的“尚未接线”属于旧时点，本文件以新源码和新证据补充，不改贴旧材料。
+依据为[本轮实施与明确批准](../../I0-UI_HDL_REAL_BROWSER.md)、[原 UI30 回交](../../I0-UI30_COMMENT_CLOSEOUT.md)、[UDL 操作表](../../I0-UI30_HDL_OPERATION_MAP.md)、[H4 接线包](../../DLA_H4_UI_HANDOFF_20261014.md)。已按根 AGENTS、README 与上述正文核查；产品/规划/参考/规范未由本交付改动。原操作表的“尚未接线”属于旧时点，本文件以新源码和新证据补充，不改贴旧材料。§1～5保留首批范围/计数；最新`.v`、全16SW和双标签等补证及#79合并事实见§6。
 
 ## 1. 精确源码、环境与入口
 
@@ -62,15 +62,15 @@
 | H-02 分配/活动/材料 | 原teacher check/release/assign、本人bootstrap/head；合法C/HDL和交叉未分配拒绝；公开资料显式student/tutor visibility | 本机教师暂停/撤权/submitted/reviewed的完整实际矩阵未执行；不增加分配列表或教师替代UI |
 | H-03 受信代际/恢复 | 全部新库对象/原命令/节点同新代际；刷新文件/执行IDs与版本集合不变 | 实际换代际、旧备份、崩溃/RPO、WSL/guest重启恢复未执行；原故障隔离证据不迁现场 |
 | H-04 原消费者/节点 | 真Build/Session/Trace和同机C Run由原消费者推进；新专用节点原验收及双ready | 未手工processJob补门禁；H3新worker/2800/course_check/完整AC/NFR不计通过 |
-| H-05 权威head/保存/快照/控制 | `.sv` v1→v2→v3→v4；原ACK/hash/不可变快照与新草稿区别；停止/替换核权威状态 | `.v`实际编辑、版本冲突、实际教师暂停/提交/审阅、多标签故障未执行 |
+| H-05 权威head/保存/快照/控制 | `.sv` v1→v2→v3→v4；原ACK/hash/不可变快照与新草稿区别；停止/替换核权威状态；§6补`.v`确认/快照/Build及双标签旧版本拦截 | 完整版本冲突/实际教师暂停/提交/审阅/多标签故障矩阵未执行 |
 | H-06 执行/停止/unknown/历史 | 原Run/Job/HDL执行投影、真实停止确认、替换初值、保留旧结果及C历史；产物missing不补正文 | unknown/失ACK/离线/长pending是隔离协议反例，非本机网络故障注入；Core普通运行非课程判分 |
 | UDL-01 合法课程分流 | 原Activity.execution/config/hash选择真实HDL，保留C；实际两学生入口及拒绝 | missing execution/篡改配置/物理port重叠/`.sv`不能切C的单元与协议反例 |
-| UDL-02 原文/ACK/快照 | 原编辑/确认客户端与成员工作区；真实`.sv`保存/快照/刷新，更晚草稿不污染旧Build | 旧快照/回收/同路径新实例/CRLF诊断保护由隔离单元；`.v`实际未跑 |
+| UDL-02 原文/ACK/快照 | 原编辑/确认客户端与成员工作区；真实`.sv`保存/快照/刷新，更晚草稿不污染旧Build；§6补`.v`正常编辑/确认/冻结/真实构建 | 旧快照/回收/同路径新实例/CRLF诊断保护由隔离单元 |
 | UDL-03 Build/Job/诊断 | 真失败第10/11行整行定位、修订成功；null/waiting/unknown不当成功 | unavailable位置、不猜列/旧源码定位/伪hash拒绝等定向单元；非课程能力判断 |
 | UDL-04 program/持续Session/替换 | 明确成功Build→原持续实例，真实replace_stop→program、seq0初值与最后退出 | 完整崩溃/双实例吞吐矩阵属C后续，已有节点两实例测试不等本机浏览器全矩阵 |
-| UDL-05 输入/真帧/有限波形 | 16SW控件/5BTN press-release/resetN/推进，实际SW0/1/2/15与五按钮/新映射reset；真LED/AN/SEG/DP/XZ/time/coverage | 原未绑定reset仍disabled；其余12SW逐位现场未执行；超Number精度字符串/有限window/无数据不归零由单元验证 |
-| UDL-06 pending/原键/Stop/恢复 | 真刷新不新增执行、Stop确认/替换；原wire/key/hash持久化及迟到guard | 隔离失ACK/60轮耗尽后明确续读/迟到Assignment/keyboard用例通过；不冒称实际断网/换代际矩阵 |
-| UDL-07 明确求助/来源/过时/降级 | 同快照selection/ObjectRef/冻结basis，实际提示和作品修订后的stale；budgetoff失败仍保存 | 单元/协议确认错误basis/新草稿/Session变化/原预算拒绝；B语义/教师正式审阅未代跑 |
+| UDL-05 输入/真帧/有限波形 | 16SW控件/5BTN press-release/resetN/推进；首批4位SW/五按钮/新映射reset，§6补全16SW各开关32步原帧/DOM/seq/time | 原未绑定reset仍disabled；超Number精度字符串/有限window/无数据不归零由单元验证 |
+| UDL-06 pending/原键/Stop/恢复 | 真刷新不新增执行、Stop确认/替换；原wire/key/hash持久化及迟到guard；§6实际双标签拦旧选择、明确续读后保留另一位输入 | 隔离失ACK/60轮耗尽后明确续读/迟到Assignment/keyboard用例通过；不冒称实际断网/换代际矩阵 |
+| UDL-07 明确求助/来源/过时/降级 | 同快照selection/ObjectRef/冻结basis，实际提示和作品修订后的stale；budgetoff失败仍保存；§6原Session/Operation basis准确，新Action真实received→stale | 单元/协议确认错误basis/新草稿/Session变化/原预算拒绝；B语义/教师正式审阅未代跑，新Action无displayed/ack |
 | UDL-08 真显示/回执/接棒 | 第二真实提示可见，原46/48/50分层回执；显式开发合成修订后同SW输出变0→1 | 首轮可见性失败保留；合成ack不能记真人确认，完整DL-AC/教学收益仍未通过 |
 
 源码使用[原工作区](../../../../apps/student/src/pages/PrepWorkspacePage.tsx)、[HDL客户端](../../../../apps/student/src/workspace/hdlWorkspace.ts)/[持久原命令](../../../../apps/student/src/workspace/hdlStore.ts)/[状态协调](../../../../apps/student/src/workspace/useHdlWorkspace.ts)、[真实板卡/Trace](../../../../apps/student/src/components/workspace/HdlToolArea.tsx)、[同快照诊断](../../../../apps/student/src/workspace/hdlDiagnostic.ts)、[辅导来源](../../../../apps/student/src/workspace/tutoringHdl.ts)，注入原CenterToolArea/Tutoring位置，不另建整页。没有虚构Operation/current HTTP端点，原Session/Trace取得结果。
@@ -108,6 +108,26 @@
 
 H3目标新镜像/worker部署、私有2800向量、教师活动绑定/course_check、独立检查Session占用/吞吐与完整双实例/停止/崩溃矩阵 **未执行**。本机原10项/公开Trace/普通C运行/两模型请求不能代替它们。完整DL-AC、原P4/P5/M/AC/NFR、真人门禁、正式教师语义评审和学习效果 **未完成/未执行**；产品基线及MVP_SPEC §10 **待授权维护者汇总**。
 
-本文件及同目录证据已正常推送固定交付 `954f5613f8a3d9d1da0dd288cf8127fa010a0752`，创建并附当前任务 [PR79](https://github.com/paher-din/XunJie/pull/79)（Open、非Draft、CLEAN/MERGEABLE，hosted status checks为空，未合并）。main `3a6de704` 的H-05/C5已普通接纳；当前本机业务仍254e938，不把仓库合并计该现场已部署。
+首次发布时，本文件及同目录证据已正常推送固定交付 `954f5613f8a3d9d1da0dd288cf8127fa010a0752`，创建并附当前任务 [PR79](https://github.com/paher-din/XunJie/pull/79)（当时Open、非Draft、CLEAN/MERGEABLE，hosted status checks为空，未合并）。main `3a6de704` 的H-05/C5已普通接纳；本机业务仍254e938，不把仓库合并计该现场已部署。最新#79合并及补证交付见§6。
 
-按原要求先发布 [#38固定回交6175218005](https://github.com/paher-din/XunJie/issues/38#issuecomment-6175218005)，再发布 [#30共用入口/逐项状态6175261812](https://github.com/paher-din/XunJie/issues/30#issuecomment-6175261812)，两份正文均独立GET逐字回读一致。#30首次GraphQL连接在发出前超时，先查专属标记无已有评论，再用原REST POST同正文完成，没有重复发布。两Issue仍Open；此前PR68已合入事实沿任务起点8ef9dc0保留，本PR没有被自动合并。A/B/C实审及保护基线汇总请求已经在原Issue交对应角色，不冒称他们已确认本批新本机证据。
+按原要求先发布 [#38固定回交6175218005](https://github.com/paher-din/XunJie/issues/38#issuecomment-6175218005)，再发布 [#30共用入口/逐项状态6175261812](https://github.com/paher-din/XunJie/issues/30#issuecomment-6175261812)，两份正文均独立GET逐字回读一致。#30首次GraphQL连接在发出前超时，先查专属标记无已有评论，再用原REST POST同正文完成，没有重复发布。两Issue仍Open；此前PR68已合入事实沿任务起点8ef9dc0保留，首次发布时本PR没有被自动合并。A/B/C实审及保护基线汇总请求已经在原Issue交对应角色，不冒称他们已确认本批新本机证据。
+
+## 6. 2026-10-15 追加补证与合并状态
+
+PR79已于北京时间2026-10-15 03:19合入main，merge `2309cee31de16a0671636a2a60980443f7a16b23` / head `36f9304979a20ddeb2c00fbbe5dd0a28e2ac0a09`。以下证据在该次合并时尚未提交，另用[补证PR81](https://github.com/paher-din/XunJie/pull/81)交付，固定证据提交 `e3766d0cd7870498d38662d75710678223e9616b`；生产实现仍是§1固定8d613a7，补证只增加1项测试和本人文档/公开资料。未修改并行主checkout或A/B/C业务。此处是合并前记录，最终合并状态及原评论追加回交可由PR81、上方#38/#30恒定链接独立核查。
+
+| 新现场项 | 原结果与可复查材料 |
+| --- | --- |
+| `.v` 与`.sv`同快照真实构建 | 原全输入Attempt `bb20d32e`，正常新建helper.v/file `3b5093cb-e443-46a1-b715-d75b0132f027` v1；workspaceRevision2，snapshot `6d0ed106-5b29-4603-98d5-1fef95ac3914` / hash `ee8fe86e53fda58d4383813c34d2f61d6079e7eb9900ab1b6e0d0cfd833f5cc4`，Build `d8174bc9-ac86-4a9f-928f-e5692aa567e3` succeeded。[原文确认](browser-v-confirmed.png)、[最终账本](browser-completion-after.json)。 |
+| 全部16位各开/关 | Session `0d8b34a8-bc2a-4780-bc60-3218c200bc26`，SW0～15分别开/关，32原Operation/seq1～32；16位输入、buttons00000/resetN1、真实四态LED、每步10000ps与[32步DOM](browser-all16-observations.json)逐条对应。[过程原图（seq30/pending）](browser-all16-msb.png)，不冒称seq31最高位确认图。首批“其余12SW未执行”现由此补齐，不改首批计数。 |
+| 双标签旧选择拦截 | 新Session `c69decae-f4c2-4cc3-9fa3-0138d30ca22c`两页先读seq0；A SW8开到seq1，B仍seq0点SW0，预读发现新revision并提示“原会话已改变、正在处理或已停止，请重新读取”。[原图仍是seq0](browser-peer-stale-blocked.png)，拦截后的证据为[两页前DOM](browser-peer-short-before-dom.json)、[后DOM](browser-peer-short-after-dom.json)；[九组原对象与commandReceipts完全不变](browser-peer-short-comparison.json)，没有新增已存命令/执行。 |
+| 明确续读再操作 | B明确核对后重新选SW0，原Operation `16235ed5-73b7-42e0-b8eb-d4535abaebe0` / seq2 / time20000，输入/LED `0000000100000001`，保留另一页SW8。[重试截图](browser-peer-retry.png)。新增客户端单元独立断言POST0/persist0/outbox不变，专项10/10；完整43文件570/570及类型检查通过，见[原输出](completion-ui-unit.txt)。 |
+| 板卡求助准确来源 | 正常“引用当前板卡求助”，Job `765530ca-367c-4ca1-b496-d5365584cdff` succeeded；Action `1e32c2ec-60f2-4fa3-93fb-547e607e12ac`冻结同快照/Build、c69 Session revision3、seq2/time20000、Operation16235/resultHash `229a353b8933e6ef0abc2d964d69d53da27f90addb298a5f753bdc281e49e583`。[选择截图](browser-board-help-selection.png)。Action最终learner_state_revised→stale，[求助返回界面（无正文展示）](browser-board-help-stale.png)；仅received234/237/240，无displayed/ack，不能称又一次提示展示成功。 |
+
+首轮双标签补验在宿主变为02:52启动的新进程期间被打断，[比较failed](browser-peer-comparison.json)的Attempt/Session变化、前后账本和[当时状态](audit-current-runtime.json)保留；本轮未启停宿主，原因不定，不将中断记通过。短窗口独立重做才取得上表的真实拦截结果。末次Session按原300000ms空闲限额idle_timeout确认退出，未放宽限额。最终全6个Session均terminationConfirmed=true；原完整闭环的明确Stop与46/48/50仍独立保留在§2，本次stale不借用该回执。
+
+新公开快照全库3分配/3Attempt/4文件/8快照/5Build/6Session/62Operation/75终态Job/10Message/4Action/9Receipt，包含期间独立C侧活动，**不全归本次UI补证**。[新增transport元数据](model-transport-completion.jsonl)12事件/4次HTTP为首批2次＋独立C侧1次＋本次板卡求助1次，日志无Job外键，不作伪关联。[最新只读状态](completion-current-runtime.json)为03:26:48启动、modelEnabled=false、原代际/指纹ready、双health200；保留可复用入口，用户以后按需明确启用自己的key。
+
+在仓库根运行 `node docs/tasks/evidence/ui30-hdl-20261015/verify-completion.mjs` 可复查[补证结论](completion-audit-result.json)：原契约settled-consistent、32步原输入/DOM/帧、双标签原对象不变、明确重试保留SW8、准确板卡basis、stale无假回执及全实例退出。该工具只核对已公开档案，不是新一轮真实运行。生产源码未变，不为测试/文档补证重建相同产物。
+
+三个原comment的本UI实现、获准合成浏览器任务和按角色/原Issue回交均已完成，逐项对照见[任务§7.4](../../I0-UI_HDL_REAL_BROWSER.md#74-三条原要求完成度与验证边界)。完整故障矩阵、正式A/B/C组合签认、H3/2800/course_check、完整AC/NFR/P4/P5和真人/教学效果仍按原comment后置条件处理，不能从本PR完成推导全部产品验收。#30/#38保持Open；产品基线/MVP_SPEC§10待授权维护者汇总。

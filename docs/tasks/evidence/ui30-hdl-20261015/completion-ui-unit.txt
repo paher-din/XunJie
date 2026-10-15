@@ -1,0 +1,105 @@
+> vitest run
+ RUN  v3.2.7 C:/Users/h/.codex/worktrees/ui30-comment-closeout/XunJie/apps/student
+ ✓ src/brand/motion.test.ts (8 tests) 73ms
+ ✓ src/workspace/tutoringHdl.test.ts (19 tests) 5ms
+ ✓ src/workspace/hdlActivity.test.ts (11 tests) 10ms
+ ✓ src/workspace/tutoringReturn.test.ts (25 tests) 16ms
+ ✓ src/workspace/hdlStore.test.ts (12 tests) 25ms
+ ✓ src/workspace/tutoringControls.test.ts (22 tests) 23ms
+ ✓ src/bridge/mockTurn.test.ts (22 tests) 49ms
+ ✓ src/workspace/hdlWorkspace.test.ts (10 tests) 43ms
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > retiring the context while the help command is persisted prevents its POST
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringHistory.test.ts > authorized history lifecycle > clears this view on a rejected fresh read and never falls back to cached or previous text
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: FORBIDDEN' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > retiring the context while the help command is persisted prevents its POST
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringHistory.test.ts > authorized history lifecycle > late old read cannot restore content after a newer read fails
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: UNAUTHENTICATED' }
+ ✓ src/workspace/confirmationWorkspace.test.ts (5 tests) 14ms
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during the preflight read prevents the earlier help POST
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during the preflight read prevents the earlier help POST
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+ ✓ src/workspace/tutoringHistory.test.ts (30 tests) 32ms
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during the preflight read prevents the earlier help POST
+[i0-workspace] workspace.read-failed {
+  source: 'tutoring.help-preflight',
+  error: 'Error: 等待期间已停止帮助，原问题未发送。'
+}
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=true blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=true blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=true blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed {
+  source: 'tutoring.help-preflight',
+  error: 'Error: 限定检查进行中，当前不能发送辅导问题。'
+}
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=undefined blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=undefined blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > fresh limitedCheck=undefined blocks help even after an unrestricted cached read
+[i0-workspace] workspace.read-failed {
+  source: 'tutoring.help-preflight',
+  error: 'Error: 限定检查状态尚未确认，请重新读取后再求助。'
+}
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during page persistence cannot release the synchronous display fence
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a stop during page persistence cannot release the synchronous display fence
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > an actual display observed while received ACK is held survives a following stop
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > an actual display observed while received ACK is held survives a following stop
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a delayed active page cannot cross the newer accepted pause/epoch
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a delayed active page cannot cross the newer accepted pause/epoch
+[i0-workspace] workspace.read-failed { source: 'tutoring.events', error: 'Error: 已读取新的控制状态，旧教学页不接纳' }
+stdout | src/workspace/tutoringWorkspace.test.ts > tutoring stop/display/control interleavings > a delayed active page cannot cross the newer accepted pause/epoch
+[i0-workspace] workspace.read-failed { source: 'tutoring.history', error: 'Error: 教学历史字段、归属或原始关联不完整' }
+stdout | src/workspace/tutoringWorkspace.test.ts > HDL provenance and explicit display fence > fences an unseen answer synchronously when an interaction becomes pending
+[i0-workspace] workspace.read-failed { source: 'tutoring.operation', error: 'Error: 原辅导代际已退役，请重新载入' }
+stdout | src/workspace/tutoringWorkspace.test.ts > HDL provenance and explicit display fence > does not send a selected HDL problem after draft state changes during persistence
+[i0-workspace] workspace.read-failed {
+  source: 'tutoring.help-preflight',
+  error: 'Error: 所选 HDL 来源在发送前改变，原问题未发送。'
+}
+ ✓ src/workspace/tutoringWorkspace.test.ts (15 tests) 38ms
+ ✓ prep/contract.test.ts (12 tests) 140ms
+ ✓ src/bridge/mockConversations.test.ts (7 tests) 171ms
+ ✓ prep/workspace.test.ts (19 tests) 255ms
+ ✓ src/workspace/init.test.ts (16 tests) 14ms
+ ✓ src/workspace/tutoringObject.test.ts (29 tests) 18ms
+ ✓ src/brand/playback.test.ts (19 tests) 17ms
+ ✓ src/workspace/tutoringEvents.test.ts (2 tests) 13ms
+ ✓ src/workspace/fileLifecycle.test.ts (25 tests) 27ms
+ ✓ src/workspace/recovery.test.ts (20 tests) 9ms
+ ✓ src/workspace/tutoringSource.test.ts (80 tests) 13ms
+ ✓ src/workspace/runRequest.test.ts (2 tests) 13ms
+ ✓ src/workspace/tutoringCommand.test.ts (7 tests) 10ms
+ ✓ src/brand/asset-fidelity.test.js (3 tests) 12ms
+ ✓ src/workspace/runFiles.test.ts (2 tests) 18ms
+ ✓ src/lib/originalText.test.ts (31 tests) 6ms
+ ✓ src/workspace/confirmation.test.ts (5 tests) 12ms
+ ✓ src/lib/tasks.test.ts (10 tests) 4ms
+ ✓ src/workspace/comparison.test.ts (12 tests) 7ms
+ ✓ src/workspace/runControl.test.ts (1 test) 13ms
+ ✓ src/lib/theme.test.ts (13 tests) 5ms
+ ✓ src/workspace/projectSeed.test.ts (5 tests) 3ms
+ ✓ src/workspace/tutoringTransport.test.ts (1 test) 5ms
+ ✓ src/workspace/tutoringRun.test.ts (7 tests) 4ms
+ ✓ src/lib/projectFiles.test.ts (13 tests) 4ms
+ ✓ src/workspace/versionSources.test.ts (5 tests) 3ms
+ ✓ src/workspace/runResults.test.ts (3 tests) 3ms
+ ✓ src/workspace/hdlDiagnostic.test.ts (13 tests) 4ms
+ ✓ src/lib/draftStore.test.ts (4 tests) 2ms
+ ✓ src/workspace/tutoringNotice.hdl.test.ts (3 tests) 2ms
+ ✓ src/components/workspace/HdlToolArea.test.ts (11 tests) 49ms
+ ✓ src/components/workspace/TutoringPane.visibility.test.ts (10 tests) 13ms
+ ✓ src/components/workspace/TutoringPane.hdl.test.ts (1 test) 15ms
+ Test Files  43 passed (43)
+      Tests  570 passed (570)
+   Start at  03:08:17
+   Duration  3.19s (transform 4.41s, setup 0ms, collect 14.90s, tests 1.21s, environment 6ms, prepare 4.88s)

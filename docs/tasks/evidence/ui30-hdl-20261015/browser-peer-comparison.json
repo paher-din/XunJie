@@ -1,0 +1,19 @@
+{
+  "status": "failed",
+  "exactGroups": [
+    "assignments",
+    "attempts",
+    "files",
+    "snapshots",
+    "builds",
+    "sessions",
+    "operations",
+    "jobs",
+    "runs"
+  ],
+  "failures": [
+    "REFRESH_CHANGED_ATTEMPTS",
+    "REFRESH_CHANGED_SESSIONS"
+  ],
+  "boundary": "The supplied before/after objects match; this comparison does not operate or independently identify the browser refresh."
+}
