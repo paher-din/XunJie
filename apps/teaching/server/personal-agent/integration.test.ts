@@ -98,12 +98,14 @@ test('task question receives current account assignments without inventing compl
   t.after(fixture.cleanup);const {request}=fixture;
   await request('POST','/api/model-settings',settings());
   await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'你好',requestKey:'hello'});await pause();
-  assert.deepEqual(reads,[]);
-  assert.doesNotMatch(JSON.stringify(prompts[0]),/own-assignment|TextScope Core/);
-  await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'我现在有什么任务还没完成',requestKey:'tasks'});await pause();
   assert.deepEqual(reads,['alice']);
-  assert.match(JSON.stringify(prompts[1]),/own-assignment|TextScope Core/);
-  assert.match(JSON.stringify(prompts[1]),/完成状态未知/);
+  assert.doesNotMatch(JSON.stringify(prompts[0]),/own-assignment|TextScope Core/);
+  await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'我该怎么做一道数学题？',requestKey:'generic-how-to'});await pause();
+  assert.doesNotMatch(JSON.stringify(prompts[1]),/own-assignment|TextScope Core/);
+  await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'我现在有什么任务还没完成',requestKey:'tasks'});await pause();
+  assert.ok(reads.every(userId=>userId==='alice'));
+  assert.match(JSON.stringify(prompts[2]),/own-assignment|TextScope Core/);
+  assert.match(JSON.stringify(prompts[2]),/完成状态未知/);
 });
 
 test('task lookup failure rejects the turn before recording a question or calling the provider',async t=>{
@@ -117,6 +119,53 @@ test('task lookup failure rejects the turn before recording a question or callin
   assert.equal(failed.status,503);
   assert.deepEqual((await request('GET','/api/agent/conversations')).body.data,[]);
   assert.equal(calls,0);
+});
+
+test('a settled reply gets one durable card only for a uniquely named assignment in its authenticated snapshot',async t=>{
+  let reply='',hasMore=false,fail=false;const reads:string[]=[];
+  const assignments=[
+    {assignmentId:'assignment-a',courseId:'course-a',courseName:'数字逻辑',title:'同步计数器',availability:'active' as const},
+    {assignmentId:'assignment-b',courseId:'course-b',courseName:'程序设计',title:'文件索引器',availability:'paused' as const},
+  ];
+  const fixture=await setup({...immediateTransport,async complete(input){
+    if(fail){input.onText?.('同步计数器的部分回答');throw new Error('Synthetic provider failure');}
+    return {text:reply};
+  }},userId=>{
+    reads.push(userId);
+    return {tasks:userId==='alice'?assignments:[],hasMore};
+  });t.after(fixture.cleanup);
+  const {request}=fixture;await request('POST','/api/model-settings',settings());
+  const send=async(text:string,key:string)=>{
+    const accepted=await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text,requestKey:key});
+    assert.equal(accepted.status,200);await pause();
+    const turn=(await request('GET',`/api/agent/turns/${accepted.body.data.turnId}`)).body.data;
+    const history=(await request('GET',`/api/agent/conversations/${accepted.body.data.conversationId}`)).body.data;
+    assert.deepEqual(turn.message.taskCard,history.messages.at(-1).taskCard);
+    return {turn,history};
+  };
+  reply='同步计数器可以先画状态图。';
+  const single=await send('我该怎么做同步计数器？','single-task-card');
+  assert.deepEqual(single.turn.message.taskCard,{assignmentId:'assignment-a',courseName:'数字逻辑',title:'同步计数器',availability:'active'});
+  assert.equal((await request('GET',`/api/agent/conversations/${single.turn.conversationId}`,undefined,'bob')).status,403);
+  reply='同步计数器和文件索引器都在你的任务列表。';
+  assert.equal((await send('我有哪些任务？','multiple-task-cards')).turn.message.taskCard,undefined);
+  reply='可以先画状态图。';
+  assert.equal((await send('我该怎么做同步计数器？','no-reply-reference')).turn.message.taskCard,undefined);
+  reply='普通回答。';
+  assert.equal((await send('你好','ordinary-chat')).turn.message.taskCard,undefined);
+  assert.ok(reads.length>=4&&reads.every(userId=>userId==='alice'));
+  reply='同步计数器可以先画状态图。';
+  assert.deepEqual((await send('这个状态图画法呢？','answer-references-task')).turn.message.taskCard,single.turn.message.taskCard);
+  hasMore=true;
+  assert.equal((await send('同步计数器怎么做？','partial-task-snapshot')).turn.message.taskCard,undefined);
+  hasMore=false;fail=true;
+  const failed=await send('同步计数器怎么做？','failed-task-reply');
+  assert.equal(failed.turn.message.phase,'failed');
+  assert.equal(failed.turn.message.taskCard,undefined);
+  fail=false;
+  assignments.push({assignmentId:'assignment-c',courseId:'course-a',courseName:'数字逻辑',title:'同步计数器',availability:'active'});
+  reply='同步计数器可以先画状态图。';
+  assert.equal((await send('我该怎么做同步计数器？','ambiguous-task-card')).turn.message.taskCard,undefined);
 });
 
 test('an inline image above Fastify default body size remains sendable and durable after a service restart',async t=>{

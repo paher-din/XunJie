@@ -21,6 +21,7 @@ export type PersonalAgentService = {
 };
 export type StudentTaskSnapshot = {tasks:{assignmentId:string;courseId:string;courseName?:string;title:string;
   availability:'active'|'paused'}[];hasMore:boolean};
+export type StudentTaskCard = Pick<StudentTaskSnapshot['tasks'][number], 'assignmentId'|'courseName'|'title'|'availability'>;
 export type PersonalAgentOptions = {directory:string;authorize(request:FastifyRequest):string;
   transport:CompatibleTransport;callsEnabled?:()=>boolean;now?:()=>number;
   readStudentTasks?:(userId:string)=>StudentTaskSnapshot};
