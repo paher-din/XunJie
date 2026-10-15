@@ -14,6 +14,14 @@
 
 别名用例核招呼/头像/菜单、课程中文名与中文课程搜索，并核Session仍是原synthetic账号、URL仍带原courseId、bootstrap仍使用原assignmentId。其余例覆盖故障/空列表、会话过期及账号切换、原准备入口。前端协议/fixture检查与下述本机真实宿主复验分开。本次显示文案不另建纯函数单测，不重跑执行或模型；保留既有构建体积/public品牌JSON开发提示。
 
-随后更新本机静态页面并保存姓名/课程名显示证据。
+## 本机复验与交付
+
+源码 `ed1d408`；正常入口 `/assets/index-DcpLvnIQ.js`，SHA256 `2b43259aab1ec03117ce0af2a82038e8bd17aa6d807b65bdc52d56675476aa39`。只替换原WSL静态构建，旧index备份 `/opt/xunjie-ui-local/index-before-home-display-names.html`，旧资源保留，恢复index可回滚；后端、配置、账号和数据库均未改。
+
+原HTTPS浏览器及已登录账号刷新：招呼“下午好，Robert”、侧栏Robert/头像R、看板标签“程序设计基础”、两课程卡“程序设计基础/数字逻辑与部件设计”。点击C课程后面包屑显示中文名，URL仍为原 `?course=synthetic-robert-course-c`，任务标题/目标仍来自原分配。返回留在首页。正文中不再出现synthetic-robert，不改任务作品或发起运行/模型。
+
+证据：[首页截图](evidence/ui-home-names-20261015/home.png)、[浏览器事实](evidence/ui-home-names-20261015/browser-facts.json)。本批显示核对完成；协议验证和真实宿主页面观察分别记录，无剩余功能项。
+
+`node tools/a0-review/check.mjs`：126篇、1941条内部链接、`errors=[]`；`git diff --check`通过。交付：[PR #87](https://github.com/paher-din/XunJie/pull/87)，沿负责人授权推送并合并main，保留前端分支。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。
