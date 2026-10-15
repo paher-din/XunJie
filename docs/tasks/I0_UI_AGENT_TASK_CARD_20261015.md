@@ -1,6 +1,6 @@
 # I0-UI：独立 Agent 回复的课程任务卡与工作区入口
 
-日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：实施中。
+日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：代码已合并，共享合成账号实测通过。
 
 ## 依据与授权
 
@@ -28,4 +28,11 @@ Robert 要求从 `D:\XunJie_Project\XunJie_Design` 核对既有设计，在正�
 - Chrome `rtk npm run test:e2e -- e2e/personalAgent.spec.ts --grep 单项任务回复卡`：1/1 通过。默认 Playwright Chromium 浏览器包未安装，首次启动失败；改用已安装 Chrome 同一用例通过。该项是本机合成 HTTP/browser 接线验证，不代表共享云端、真实模型或教学效果验收。
 - 根目录 `node tools/a0-review/check.mjs`：145 篇文档、2077 条内部链接、`errors=[]`；`git diff --check` 通过。README 与学生使用说明已同步。
 
-真实共享云端与真实模型下的卡片尚未验收；发布状态需按本任务交付结果补记。产品基线及 MVP_SPEC §10：待授权维护者汇总。
+## 交付与共享实例核对（2026-10-15）
+
+- 功能分支 `codex/agent-task-workspace-cards` 的原提交 `1e1a3f4` 经合并最新 `main@8333852` 后以 `aedfe79` 交付 [PR #103](https://github.com/paher-din/XunJie/pull/103)，于 22:09（北京时间）合入 `main@b5ed7351bfc213463eb2903d2b077badeb9c5f9b`。合并新版产品入口 README 时只加入本功能的学生使用句，保留主线的入口结构；并行 PR #99 的学生说明差异一并保留。GitHub 检查列表为空，不当作 CI 通过。
+- 共享私有实例先以 `b5ed7351` 运行并由本会话核对；随后并行 PR #102 将主线推进到 `34aeb46c4a4345caf11c8366a8c8204b10f87e06`。截至 22:17，北京时间，独立 `git ls-remote` 和部署 `Status` 的 `remoteCommit/deployedCommit` 均为 `34aeb46c4a4345caf11c8366a8c8204b10f87e06`，`upToDate=true`、`serviceActive=true`。部署器在主线前进期间两次以 `REMOTE_MAIN_CHANGED` 中止旧目标，旧应用保持在线；之后由既有同步服务切换到上述最新提交，本会话没有重复触发 Start。
+- 在共享 HTTPS 页面使用**隔离合成学生账号**的一次真实个人模型回合，问题为“文本分析工具这个任务建议我先做哪一步？”。模型回复明确提到“文本分析工具”后，正文底部出现一张真实任务卡，显示课程、当前开放和“完成状态未知”。点击「进入任务」到 `/#/task/220b2dae-5070-42ff-a165-daaf681a0644`，工作区显示“就绪”；任务信息中的标题、分配 ID 与卡片一致。返回对话及最新版本刷新后卡仍在原历史消息中。旧的七项任务列表回复未出现任意挑选的卡。此验证说明真实模型、会话持久化、前端、路由和授权工作区在该合成账号下连通；不等于真实学生学习行为、教师评价或教学效果验收。
+- 本次前端测试临时创建的 `apps/student/node_modules` 目录联接指向本机 D 盘已有同锁文件依赖；清理该联接的 `Remove-Item` 被自动审批以 `blocked by policy` 拒绝，联接仍在本 worktree 且被 Git 忽略。未删除或修改源依赖，需在允许清理时移除该联接。
+
+产品基线及 MVP_SPEC §10：待授权维护者汇总。
