@@ -6,6 +6,8 @@ import { TurnPlayer } from './turnPlayer'
 import { glitch, simCompare } from './genCardDemos'
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+/** 消息落库时刻：mock 用真实时钟，操作条上的时间戳由此而来。 */
+const now = () => new Date().toISOString()
 
 /** 本地模拟回复：按问题关键词给出预设内容；涉及具体任务时携带任务卡（taskId）。 */
 function mockReply(question: string): ChatMessage {
@@ -83,7 +85,7 @@ function mockReply(question: string): ChatMessage {
   if (/复位/.test(question)) {
     return {
       role: 'agent',
-      text: '**复位**的作用，是让电路回到一个确定的初始状态。\n\n两种做法的差别，在于复位信号要不要等时钟的有效边沿：**同步复位**要等下一个上升沿，**异步复位**则立即生效。\n\n写进代码里，差别就在敏感列表：\n\n```verilog\n// 异步复位：rst_n 一拉低，q 立刻归零\nalways_ff @(posedge clk or negedge rst_n) begin\n  if (!rst_n) q <= \'0;\n  else        q <= d;\nend\n```\n\n代价是异步复位对**毛刺**更敏感，释放时刻还要额外处理。板级复位常用「异步置位、同步释放」的组合。\n\n这是本地模拟回复，用于体验对话流程。',
+      text: '**复位**的作用，是让电路回到一个确定的初始状态。\n\n两种做法的差别，只在一处——复位信号要不要等时钟的有效边沿：\n\n- **同步复位**：要等下一个上升沿才归零，复位信号上的毛刺被时钟挡在门外。\n- **异步复位**：一拉低就归零，不等时钟；代价是对**毛刺**敏感，释放时刻还要单独处理。\n\n# 差别就在敏感列表\n\n```verilog\n// 异步复位：rst_n 一拉低，q 立刻归零\nalways_ff @(posedge clk or negedge rst_n) begin\n  if (!rst_n) q <= \'0;\n  else        q <= d;\nend\n```\n\n板级复位因此很少二选一，常用「**异步置位、同步释放**」的组合：复位来得快，释放那一下交给时钟对齐。\n\n这是本地模拟回复，用于体验对话流程。',
       concept: {
         title: '同步复位 vs 异步复位',
         afterPara: 2,
@@ -122,7 +124,7 @@ function mockReply(question: string): ChatMessage {
   if (/进度|这周|时长|学习情况/.test(question)) {
     return {
       role: 'agent',
-      text: '从当前的学习记录来看，你本周学习了 **6.4 小时**，完成了 **2 个任务**。\n\n| 状态 | 任务数 |\n| --- | --- |\n| 已完成 | 3 |\n| 进行中 | 3 |\n| 未开始 | 2 |\n\n数字计数器已完成 3 / 5 个阶段，可以从`按键消抖验证`继续。\n\n以上均为模拟记录，不代表真实学习情况。',
+      text: '从当前的学习记录来看，你本周学习了 **6.4 小时**，完成了 **2 个任务**。\n\n| 状态 | 任务数 |\n| --- | --- |\n| 已完成 | 3 |\n| 进行中 | 3 |\n| 未开始 | 2 |\n\n数字计数器已完成 3 / 5 个阶段，可以从`按键消抖验证`继续。\n\n> 以上均为模拟记录，不代表真实学习情况。',
       taskId: 'counter',
       followUps: ['哪个任务最紧急？', '计数器还剩哪些阶段？', '这周哪天学得最多？'],
     }
@@ -311,6 +313,22 @@ function seedConversations(): Conversation[] {
 }
 
 /**
+ * 种子会话只带整条的 updatedAt，没有逐条时刻：从它往回按 3 分钟一步铺上，
+ * 让操作条的时间戳在演示里读得出先后（真实实现里逐条时间由服务端给）。
+ */
+function stampSeedTimes(c: Conversation): Conversation {
+  const end = new Date(c.updatedAt).getTime()
+  const back = c.messages.length - 1
+  return {
+    ...c,
+    messages: c.messages.map((m, i) => ({
+      ...m,
+      at: new Date(end - (back - i) * 180_000).toISOString(),
+    })),
+  }
+}
+
+/**
  * Mock 适配器：进程内内存态，刷新即清空。
  *
  * sendMessage 同步返回预设内容，供未迁移的页面使用；sendMessageStream 按
@@ -334,7 +352,7 @@ export class MockLearningApi implements LearningApi {
   private genCardStore = new Map<string, StoredGenCard[]>()
 
   constructor() {
-    for (const c of seedConversations()) this.conversations.set(c.id, c)
+    for (const c of seedConversations()) this.conversations.set(c.id, stampSeedTimes(c))
   }
 
   async getHomeSnapshot(): Promise<HomeSnapshot> {
@@ -562,8 +580,8 @@ export class MockLearningApi implements LearningApi {
       })
     }
     const conversation = this.conversations.get(id)!
-    conversation.messages.push({ role: 'user', text })
-    const reply = mockReply(text)
+    conversation.messages.push({ role: 'user', text, at: now() })
+    const reply = { ...mockReply(text), at: now() }
     conversation.messages.push(reply)
     this.bumpUsage(conversation, text, reply)
     return { conversationId: id, reply }
@@ -600,12 +618,13 @@ export class MockLearningApi implements LearningApi {
       })
     }
     const conversation = this.conversations.get(id)!
-    conversation.messages.push({ role: 'user', text })
+    conversation.messages.push({ role: 'user', text, at: now() })
     const cid = id
     const reply = mockReply(text)
     const player = new TurnPlayer(buildTurnScript(text, reply), reply, onUpdate)
     this.activeTurn = { conversationId: cid, player }
     const final = await player.start()
+    final.at = now()
     conversation.messages.push(final)
     if (final.phase !== 'stopped') this.bumpUsage(conversation, text, final)
     this.activeTurn = null
@@ -659,6 +678,7 @@ export class MockLearningApi implements LearningApi {
     const conversation = this.conversations.get(conversationId)!
     this.activeTurn = { conversationId, player: stopped.player }
     const final = await stopped.player.resume(onUpdate)
+    final.at = now()
     conversation.messages[stopped.messageIndex] = final
     if (final.phase !== 'stopped') this.bumpUsage(conversation, stopped.question, final)
     this.activeTurn = null
@@ -677,16 +697,17 @@ export class MockLearningApi implements LearningApi {
     const conversation = this.conversations.get(conversationId)
     if (!conversation) throw new Error('会话不存在')
     const last = conversation.messages[conversation.messages.length - 1]
-    if (!last || last.role !== 'agent') throw new Error('没有可重试的回合')
+    if (!last) throw new Error('没有可重试的回合')
     const question = [...conversation.messages].reverse().find((m) => m.role === 'user')?.text
     if (!question) throw new Error('找不到原问题')
-    // 重试语义：替换原消息（已确认 2026-10-10）
-    conversation.messages.pop()
+    // 重试语义：替换原回答（已确认 2026-10-10）；刚改过问题时会话末尾就是学生消息，直接补回答
+    if (last.role === 'agent') conversation.messages.pop()
     this.stoppedTurn = null
     const reply = mockReply(question)
     const player = new TurnPlayer(buildTurnScript(question, reply), reply, onUpdate)
     this.activeTurn = { conversationId, player }
     const final = await player.start()
+    final.at = now()
     conversation.messages.push(final)
     if (final.phase !== 'stopped') this.bumpUsage(conversation, question, final)
     this.activeTurn = null
@@ -699,6 +720,36 @@ export class MockLearningApi implements LearningApi {
       }
     }
     return { conversationId, final }
+  }
+
+  /**
+   * 改写一条学生消息：原位替换文本并截掉其后全部内容（已确认 2026-10-11 第 24 条）。
+   * 改的是首问时同步会话标题——标题就是首句截断 24 字，不跟着改侧栏会一直挂着旧问题。
+   */
+  async editUserMessage({
+    conversationId,
+    messageIndex,
+    text,
+  }: {
+    conversationId: string
+    messageIndex: number
+    text: string
+  }) {
+    const conversation = this.conversations.get(conversationId)
+    if (!conversation) throw new Error('会话不存在')
+    const target = conversation.messages[messageIndex]
+    if (!target || target.role !== 'user') throw new Error('只能改写学生消息')
+    conversation.messages.splice(messageIndex, conversation.messages.length - messageIndex, {
+      ...target,
+      role: 'user',
+      text,
+      // 改一遍就是重新发一次，时间戳跟着走
+      at: now(),
+    })
+    if (conversation.messages.findIndex((m) => m.role === 'user') === messageIndex) {
+      conversation.title = text.slice(0, 24)
+    }
+    conversation.updatedAt = new Date().toISOString()
   }
 }
 

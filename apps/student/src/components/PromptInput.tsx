@@ -1,5 +1,7 @@
 import { Icon, type IconName } from '../icons'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { PREP_BUILD } from '../workspace/mode'
+import { personalModelOptions, reasoningOptions, saveModelSettings, useModelSettings } from '../lib/modelSettings'
 import { ContextRing } from './ContextRing'
 
 /** 可选模型（Mock）：形态参考 MiMo 模型选择器，选择只影响展示，不接真实模型。 */
@@ -104,6 +106,8 @@ interface PromptInputProps {
   autoFocus?: boolean
   /** 当前会话的上下文窗口已用 token 数（缺省 0），驱动模型按钮左侧的上下文环。 */
   contextTokens?: number
+  /** 真实独立聊天不使用演示容量环；其他现有调用方保持原显示。 */
+  showContextRing?: boolean
   /** 回合生成中：发送键变为停止键，输入保持可用（生成中再发送由父级排队）。 */
   busy?: boolean
   onStop?: () => void
@@ -135,6 +139,7 @@ export function PromptInput({
   onSend,
   autoFocus,
   contextTokens = 0,
+  showContextRing = true,
   busy = false,
   onStop,
 }: PromptInputProps) {
@@ -144,10 +149,16 @@ export function PromptInput({
       空间当帧就开始收，不用等出场播完——原地占位等 280ms 会被读成「先愣一下再收回」。 */
   const [leaving, setLeaving] = useState<Record<string, TileRect>>({})
   const [dragging, setDragging] = useState(false)
-  const [modelId, setModelId] = useState(
+  const remoteModels = useModelSettings()
+  const [modelError, setModelError] = useState('')
+  const [prepModelId, setModelId] = useState(
     () => localStorage.getItem(MODEL_KEY) ?? MODELS[0].id,
   )
-  const [efforts, setEfforts] = useState<Record<string, Effort>>(readEfforts)
+  const [prepEfforts, setEfforts] = useState<Record<string, Effort>>(readEfforts)
+  const modelId = PREP_BUILD ? prepModelId : remoteModels.data?.defaultModelId ?? ''
+  const efforts = PREP_BUILD ? prepEfforts : remoteModels.data?.efforts ?? {}
+  const availableEfforts = PREP_BUILD ? EFFORTS : reasoningOptions(remoteModels.data)
+  const availableModels = PREP_BUILD ? MODELS : personalModelOptions(remoteModels.data)
   const [modelOpen, setModelOpen] = useState(false)
   /** 菜单退出动画进行中：保持挂载 140ms 播完再卸载。 */
   const [modelClosing, setModelClosing] = useState(false)
@@ -217,20 +228,29 @@ export function PromptInput({
     [],
   )
 
-  const canSend = value.trim().length > 0 || attachments.length > 0
+  const canSend = (value.trim().length > 0 || attachments.length > 0) && (PREP_BUILD || (!remoteModels.loading && !remoteModels.saving && !!remoteModels.data?.enabled && !!remoteModels.data.callsEnabled))
   // 设置页可选自定义供应商模型（agent.model = custom:<供应商>:<模型ID>），此处兜底展示原始 ID
-  const model = MODELS.find((m) => m.id === modelId) ?? {
+  const model = availableModels.find((m) => m.id === modelId) ?? {
     id: modelId,
-    name: modelId.startsWith('custom:') ? modelId.split(':').slice(2).join(':') || modelId : modelId,
+    name: modelId ? modelId.split(':').slice(2).join(':') || modelId : '未配置模型',
     note: '自定义模型',
     icon: 'model' as const,
   }
-  const effort = efforts[model.id] ?? DEFAULT_EFFORT
+  const effort = availableEfforts.length ? efforts[model.id] ?? (PREP_BUILD ? DEFAULT_EFFORT : '默认') : '不支持配置'
 
+  const pickModel = (id: string) => {
+    if (PREP_BUILD) { setModelId(id); localStorage.setItem(MODEL_KEY, id); window.dispatchEvent(new Event(MODEL_CHANGE_EVENT)); return }
+    setModelError('')
+    void saveModelSettings({ defaultModelId: id }).catch(() => setModelError('模型切换未确认，请重试。'))
+  }
   const pickEffort = (id: string, level: Effort) => {
-    const next = { ...efforts, [id]: level }
-    setEfforts(next)
-    localStorage.setItem(EFFORT_KEY, JSON.stringify(next))
+    if (!PREP_BUILD) {
+      setModelError('')
+      void saveModelSettings({ efforts: { ...remoteModels.data?.efforts, [id]: level } }).catch(() => setModelError('思考强度保存未确认，请重试。'))
+      return
+    }
+    const next = { ...prepEfforts, [id]: level }
+    setEfforts(next); localStorage.setItem(EFFORT_KEY, JSON.stringify(next))
   }
 
   useEffect(() => {
@@ -438,12 +458,14 @@ export function PromptInput({
           <Icon name="paperclip" size={16} />
         </button>
         <div className="prompt-actions">
-          <ContextRing tokens={contextTokens} />
+          {showContextRing && <ContextRing tokens={contextTokens} />}
+          {!PREP_BUILD && (modelError || remoteModels.error || remoteModels.saving || !remoteModels.data?.enabled || !remoteModels.data.callsEnabled) && <span role={modelError || remoteModels.error ? 'alert' : 'status'}>{modelError || remoteModels.error || (remoteModels.saving ? '正在保存模型选择…' : !remoteModels.data?.enabled ? '请在设置中配置并启用个人模型' : '模型调用已停用')}</span>}
           <div className="prompt-model" ref={modelRef}>
             <button
               type="button"
               className={modelOpen ? 'prompt-model-btn open' : 'prompt-model-btn'}
               aria-label="切换模型"
+              disabled={!PREP_BUILD && (remoteModels.saving || remoteModels.loading || availableModels.length === 0)}
               aria-expanded={modelOpen}
               aria-haspopup="menu"
               onClick={() => toggleModel()}
@@ -460,7 +482,7 @@ export function PromptInput({
                 className={modelClosing ? 'prompt-model-menu closing' : 'prompt-model-menu'}
                 role="menu"
               >
-                {MODELS.map((m) => (
+                {availableModels.map((m) => (
                   <div
                     key={m.id}
                     role="menuitemradio"
@@ -468,15 +490,13 @@ export function PromptInput({
                     tabIndex={0}
                     className="prompt-model-item"
                     onClick={() => {
-                      setModelId(m.id)
-                      localStorage.setItem(MODEL_KEY, m.id)
+                      pickModel(m.id)
                       closeModel()
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
-                        setModelId(m.id)
-                        localStorage.setItem(MODEL_KEY, m.id)
+                        pickModel(m.id)
                         closeModel()
                       }
                     }}
@@ -497,6 +517,7 @@ export function PromptInput({
               type="button"
               className={effortOpen ? 'prompt-model-btn open' : 'prompt-model-btn'}
               aria-label="切换思考强度"
+              disabled={!PREP_BUILD && (remoteModels.saving || remoteModels.loading || !modelId || availableEfforts.length === 0)}
               aria-expanded={effortOpen}
               aria-haspopup="menu"
               onClick={() => toggleEffort()}
@@ -516,7 +537,7 @@ export function PromptInput({
                 role="menu"
               >
                 <span className="mi-effort-title">思考强度</span>
-                {EFFORTS.map((level) => (
+                {availableEfforts.map((level) => (
                   <button
                     key={level}
                     type="button"

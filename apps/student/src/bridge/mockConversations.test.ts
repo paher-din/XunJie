@@ -100,6 +100,42 @@ describe('会话历史管理', () => {
     expect(list.find((s) => s.id === conversationId)?.title).toBe(long.slice(0, 24))
   })
 
+  it('改写学生消息：原位替换并截掉其后内容；只有改到首问才动标题', async () => {
+    const api = new MockLearningApi()
+    const { conversationId } = await api.sendMessage({ conversationId: null, text: '原始问题' })
+    await api.sendMessage({ conversationId, text: '第二个问题' })
+    expect((await api.getConversation(conversationId))?.messages.map((m) => m.role)).toEqual([
+      'user',
+      'agent',
+      'user',
+      'agent',
+    ])
+
+    await api.editUserMessage({ conversationId, messageIndex: 2, text: '第二个问题改一下' })
+    const after = await api.getConversation(conversationId)
+    // 旧问题的回答留着会自相矛盾：截到这一条为止
+    expect(after?.messages.map((m) => m.role)).toEqual(['user', 'agent', 'user'])
+    expect(after?.messages[2].text).toBe('第二个问题改一下')
+    const titleOf = async () =>
+      (await api.listConversations()).find((s) => s.id === conversationId)?.title
+    expect(await titleOf()).toBe('原始问题')
+
+    await api.editUserMessage({ conversationId, messageIndex: 0, text: '换了个开头的问题' })
+    expect((await api.getConversation(conversationId))?.messages.length).toBe(1)
+    expect(await titleOf()).toBe('换了个开头的问题')
+  })
+
+  it('改写只认学生消息：agent 消息与越界索引都抛错', async () => {
+    const api = new MockLearningApi()
+    const { conversationId } = await api.sendMessage({ conversationId: null, text: '问题' })
+    await expect(
+      api.editUserMessage({ conversationId, messageIndex: 1, text: '改回答' }),
+    ).rejects.toThrow('只能改写学生消息')
+    await expect(
+      api.editUserMessage({ conversationId, messageIndex: 9, text: '不存在' }),
+    ).rejects.toThrow('只能改写学生消息')
+  })
+
   it('空状态推荐问题：2–4 条非空文案', async () => {
     const api = new MockLearningApi()
     const sugs = await api.suggestQuestions()

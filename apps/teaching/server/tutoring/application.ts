@@ -90,6 +90,9 @@ export type LearnerStateReader = (tx: Transaction,scope: {courseId: string;stude
 export type TutoringAppOptions = TeachingRecordsOptions & {
   studentHelp: {
     versions: TrustedModelContext["versions"];
+    /** Trusted personal configuration, selected on acceptance and captured before dispatch. */
+    versionsForStudent?: (studentId:string)=>TrustedModelContext["versions"];
+    providerForStudent?: (studentId:string,modelConfigVersion:string)=>ModelProvider;
     readLearnerState?: LearnerStateReader;
     readLearnerStateRevision?: (tx: Transaction,scope: {courseId: string;studentId: string;attemptId: string}) => number;
     readHdlContext?:(tx:Transaction,actor:ActorContext,attemptId:string,selection:HdlHelpSelection,generation:string)=>AuthorizedHdlHelpContext;
@@ -199,7 +202,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           (receiptId) => {
             const before = readAttempt(tx, idValue);
             const activity = readActivity(tx, actor.courseId, before.activityVersionId);
-            const versions = teachingVersions(activity.activityVersionId, activity.helpPolicy.versionId, studentHelp.versions);
+            const versions = teachingVersions(activity.activityVersionId, activity.helpPolicy.versionId,
+              studentHelp.versionsForStudent?.(actor.userId)??studentHelp.versions);
             const accepted = acceptStudentQuestionInTransaction(tx, {
               scope: identity.scope,
               receiptId,
@@ -374,6 +378,11 @@ export async function createTutoringApp(options: TutoringAppOptions) {
             }),
             versions: {
               ...studentHelp.versions,
+              ...(studentHelp.versionsForStudent?{
+                modelConfig:questionMessage.envelope.versions.modelConfigVersion,
+                prompt:questionMessage.envelope.versions.promptVersion,
+                schema:questionMessage.envelope.versions.schemaVersion,
+              }:{}),
               policy: activity.helpPolicy.versionId,
             },
           };
@@ -411,6 +420,17 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       runtime: Omit<AuthorizedStudentHelpRuntime, "updateJob" | "budgetAvailable">,
     ) {
       const authorized = authorizeStudentHelp(request, idValue, jobId, preparation);
+      // Resolve once before the first call: queued changes are rejected; an in-flight
+      // call keeps its captured provider instead of silently switching credentials.
+      let selectedProvider=runtime.provider;
+      if(studentHelp.providerForStudent){
+        try{selectedProvider=studentHelp.providerForStudent(authorized.job.scope.studentId!,authorized.versions.modelConfig);}
+        catch(error){
+          // Execute through the original gate so a missing/changed configuration is
+          // a terminal truthful Job outcome and still uses the original call ledger.
+          selectedProvider={generate:async()=>{throw error;}};
+        }
+      }
       const updateJob: AuthorizedStudentHelpRuntime["updateJob"] = (expectedJobId, update) =>
         withHelpTransaction(request,idValue,jobId,'student_help',(tx) => {
           currentGeneration(authorized.job.recoveryGeneration);
@@ -461,6 +481,7 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       if (!studentId || !authorizedAttemptId) throw new ApiError("STATE_CONFLICT");
       const execution = await executeAuthorizedStudentHelp(authorized, {
         ...runtime,
+        provider:selectedProvider,
         budgetAvailable: () => studentHelp.budgetAvailable({
           courseId: authorized.job.scope.courseId,
           studentId,

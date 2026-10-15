@@ -184,7 +184,7 @@ function persistedCallProvider(
       try {
         return await runtime.provider.generate(request);
       } catch (error) {
-        if (error instanceof InputLimitError) {
+        if (error instanceof InputLimitError || error instanceof ProviderCallNotStartedError && error.reservation==='none') {
           try {
             await updateJob(runtime, input.job.jobId, (current) => {
               assertSameJob(input.job, current);
@@ -203,6 +203,7 @@ function persistedCallProvider(
             if (releaseError instanceof ProviderCallNotStartedError) throw releaseError.withReservation("held");
             throw new ProviderCallNotStartedError("unavailable", "Unable to release unsent model call reservation", "held");
           }
+          if(error instanceof ProviderCallNotStartedError)throw error.withReservation('released');
         }
         throw error;
       }

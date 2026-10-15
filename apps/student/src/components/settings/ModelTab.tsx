@@ -1,131 +1,126 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Icon } from '../../icons'
 import { MODELS, MODEL_KEY, MODEL_CHANGE_EVENT } from '../PromptInput'
-import { removeModel, removeProvider, saveProvider, useSettings, type ModelProvider, type ProviderModel } from '../../lib/settings'
-import { testProviderConnection, testSchoolConnection, testResultText, type TestResult } from '../../lib/connectionTest'
+import {
+  saveProvider, removeProvider, useSettings, type ModelProvider, type ProviderModel,
+} from '../../lib/settings'
+import {
+  getModelSettings, loadModelSettings, personalModelOptions, reasoningOptions,
+  saveModelSettings, useModelSettings,
+} from '../../lib/modelSettings'
+import {
+  testProviderConnection, testSchoolConnection, testResultText, type TestResult,
+} from '../../lib/connectionTest'
+import { PREP_BUILD } from '../../workspace/mode'
 import { Section, RadioCard, Seg, Field } from './controls'
 import { ProviderDialog } from './ProviderDialog'
 import { ModelDialog } from './ModelDialog'
 import type { TabProps } from '../../pages/SettingsPage'
 
 const EFFORTS = ['低', '高', '最高'] as const
-type Effort = (typeof EFFORTS)[number]
-const EFFORT_KEY = 'agent.model.effort'
-const DEFAULT_EFFORT: Effort = '高'
 
-function readEfforts(): Record<string, Effort> {
-  try {
-    return JSON.parse(localStorage.getItem(EFFORT_KEY) ?? '{}') as Record<string, Effort>
-  } catch {
-    return {}
-  }
-}
-
-/** 学校统一接入：预置供应商，由课程统一配置，演示路径连接测试恒成功。 */
-const SCHOOL = {
-  id: 'school',
-  name: '学校统一接入',
-  baseUrl: 'https://llm-gateway.edu.cn/v1',
-  desc: '课程专用网关服务 · 免配置 API 密钥',
-}
-
-/**
- * 模型：默认模型与思考强度真实接管 agent.model / agent.model.effort
- * （作为新对话默认值，对话页可单次覆盖）；自定义供应商与模型真实持久化；
- * 连接测试为「真实请求 + CORS 明示」混合方案（docs/settings-design.md）。
- */
 export function ModelTab({ toast }: TabProps) {
-  const { providers } = useSettings()
-  const [modelId, setModelId] = useState(() => localStorage.getItem(MODEL_KEY) ?? MODELS[0].id)
-  const [efforts, setEfforts] = useState<Record<string, Effort>>(readEfforts)
-  const [providerDlg, setProviderDlg] = useState<{ open: boolean; provider: ModelProvider | null }>({ open: false, provider: null })
-  const [modelDlg, setModelDlg] = useState<{ provider: ModelProvider; model: ProviderModel | null } | null>(null)
+  const local = useSettings()
+  const remote = useModelSettings()
+  const [prepModel, setPrepModel] = useState(() => localStorage.getItem(MODEL_KEY) ?? MODELS[0].id)
+  const [providerDlg, setProviderDlg] = useState<{ provider: ModelProvider | null } | null>(null)
+  const [modelDlg, setModelDlg] = useState<{
+    provider: ModelProvider
+    model: ProviderModel | null
+  } | null>(null)
   const [testingId, setTestingId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, TestResult>>({})
   const [confirmingDel, setConfirmingDel] = useState<string | null>(null)
+  const [notice, setNotice] = useState('')
 
-  // 对话页内切换模型后，这里同步高亮
-  useEffect(() => {
-    const sync = () => setModelId(localStorage.getItem(MODEL_KEY) ?? MODELS[0].id)
-    window.addEventListener(MODEL_CHANGE_EVENT, sync)
-    return () => window.removeEventListener(MODEL_CHANGE_EVENT, sync)
-  }, [])
+  const providers = PREP_BUILD ? local.providers : remote.data?.providers ?? []
+  const modelId = PREP_BUILD ? prepModel : remote.data?.defaultModelId ?? ''
+  const strengths = PREP_BUILD ? [...EFFORTS] : reasoningOptions(remote.data)
+  const disabled = !PREP_BUILD && (!remote.data || remote.saving || remote.loading)
+  const options = PREP_BUILD
+    ? [
+        ...MODELS,
+        ...providers.flatMap(p => p.models.map(m => ({
+          id: `custom:${p.id}:${m.id}`,
+          name: m.id,
+          note: p.name,
+          icon: 'model' as const,
+        }))),
+      ]
+    : personalModelOptions(remote.data)
 
-  const pickModel = (id: string) => {
-    setModelId(id)
-    localStorage.setItem(MODEL_KEY, id)
-    window.dispatchEvent(new Event(MODEL_CHANGE_EVENT))
+  const act = async (fn: () => Promise<void>) => {
+    setNotice('')
+    try {
+      await fn()
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : '操作未完成，请重试。')
+    }
   }
 
-  const pickEffort = (level: Effort) => {
-    const next = { ...efforts, [modelId]: level }
-    setEfforts(next)
-    localStorage.setItem(EFFORT_KEY, JSON.stringify(next))
+  const pickModel = (id: string) => {
+    if (PREP_BUILD) {
+      setPrepModel(id)
+      localStorage.setItem(MODEL_KEY, id)
+      window.dispatchEvent(new Event(MODEL_CHANGE_EVENT))
+      return
+    }
+    void act(() => saveModelSettings({ defaultModelId: id }))
+  }
+
+  const replaceProviders = async (next: ModelProvider[]) => {
+    const current = getModelSettings().data
+    const ids = next.flatMap(p => p.models.map(m => `custom:${p.id}:${m.id}`))
+    const currentDefault = current?.defaultModelId
+    const defaultModelId = currentDefault && ids.includes(currentDefault)
+      ? currentDefault
+      : ids[0] ?? ''
+    const hasDefaultCredential = next.some(p => {
+      const hasKey = Boolean(p.apiKey?.trim() || (p.hasKey && !p.clearKey))
+      return hasKey && p.models.some(m => `custom:${p.id}:${m.id}` === defaultModelId)
+    })
+    const enabled = ids.length > 0 && hasDefaultCredential
+      ? current?.enabled ?? false
+      : false
+
+    await saveModelSettings({ providers: next, defaultModelId, enabled })
+  }
+
+  const persistProvider = async (p: ModelProvider) => {
+    if (PREP_BUILD) {
+      saveProvider({ ...p, apiKey: '' })
+      return
+    }
+    const next = providers.some(x => x.id === p.id)
+      ? providers.map(x => x.id === p.id ? p : x)
+      : [...providers, p]
+    await replaceProviders(next)
   }
 
   const runTest = async (p: ModelProvider | 'school') => {
-    const id = p === 'school' ? SCHOOL.id : p.id
+    const id = p === 'school' ? 'school' : p.id
     setTestingId(id)
-    const r = p === 'school' ? await testSchoolConnection() : await testProviderConnection(p)
-    setResults((m) => ({ ...m, [id]: r }))
+    const result = p === 'school'
+      ? await testSchoolConnection()
+      : await testProviderConnection(p)
+    setResults(previous => ({ ...previous, [id]: result }))
     setTestingId(null)
   }
 
-  /** 默认模型指向的模型已不在该供应商里（删供应商 / 删模型 / 编辑时移除）时，回退到学校接入的首个模型。 */
-  const revertModelIfGone = (providerId: string, remaining: string[]) => {
-    const prefix = `custom:${providerId}:`
-    const current = localStorage.getItem(MODEL_KEY) ?? MODELS[0].id
-    if (!current.startsWith(prefix) || remaining.some((id) => `${prefix}${id}` === current)) return
-    localStorage.setItem(MODEL_KEY, MODELS[0].id)
-    setModelId(MODELS[0].id)
-    window.dispatchEvent(new Event(MODEL_CHANGE_EVENT))
-  }
-
-  /** 删除供应商；若默认模型来自它，回退到学校接入的首个模型。 */
-  const confirmRemove = (p: ModelProvider) => {
-    removeProvider(p.id)
-    setConfirmingDel(null)
-    revertModelIfGone(p.id, [])
-    toast(`已移除供应商「${p.name}」`)
-  }
-
-  /** 删除单个自定义模型；若它是默认模型，同样回退。 */
-  const confirmRemoveModel = (p: ModelProvider, mid: string) => {
-    removeModel(p.id, mid)
-    revertModelIfGone(p.id, p.models.filter((m) => m.id !== mid).map((m) => m.id))
-    toast(`已移除模型「${mid}」`)
-  }
-
-  const modelOptions = [
-    ...MODELS.map((m) => ({
-      value: m.id,
-      title: m.name,
-      desc: m.note,
-      icon: <Icon name={m.icon} size={22} />,
-    })),
-    ...providers.flatMap((p) =>
-      p.models.map((m) => ({
-        value: `custom:${p.id}:${m.id}`,
-        title: m.id,
-        desc: `${p.name} · 自定义模型`,
-        icon: <Icon name="model" size={20} tone="neutral" />,
-      })),
-    ),
-  ]
-
-  const testRow = (id: string, onTest: () => void) => {
-    const r = results[id]
-    const t = r ? testResultText(r) : null
+  const testRow = (id: string, p: ModelProvider | 'school') => {
+    const result = results[id] ? testResultText(results[id]) : null
     return (
       <div className="st-provider-test">
-        <button type="button" className="outline st-xs" disabled={testingId === id} onClick={onTest}>
-          {testingId === id ? <span className="st-spinner" aria-hidden="true" /> : <Icon name="refresh" size={13} />}
+        <button
+          className="outline st-xs"
+          disabled={testingId !== null || disabled}
+          onClick={() => void runTest(p)}
+        >
           {testingId === id ? '测试中…' : '连接测试'}
         </button>
-        {t && testingId !== id && (
-          <span className={'st-test-result inline' + (t.ok ? ' ok' : ' fail')} role="status">
-            <Icon name={t.ok ? 'check-circle' : 'danger-triangle'} size={13} />
-            {t.text}
+        {result && (
+          <span role="status" className={'st-test-result inline' + (result.ok ? ' ok' : ' fail')}>
+            {result.text}
           </span>
         )}
       </div>
@@ -134,16 +129,68 @@ export function ModelTab({ toast }: TabProps) {
 
   return (
     <>
+      {!PREP_BUILD && (
+        <Section title="个人模型配置">
+          <p>配置仅属于当前登录账号。保存并启用后，下一次发送使用所选模型。</p>
+          <button
+            className="outline"
+            disabled={remote.loading || remote.saving}
+            onClick={() => void loadModelSettings()}
+          >
+            重新读取配置
+          </button>
+          <button
+            className="primary"
+            disabled={disabled || (!remote.data?.enabled && options.length === 0)}
+            onClick={() => void act(() => saveModelSettings({ enabled: !remote.data?.enabled }))}
+          >
+            {remote.saving ? '保存中…' : remote.data?.enabled ? '停用个人模型' : '启用个人模型'}
+          </button>
+          <p role="status">
+            {remote.loading ? '正在读取配置…' : remote.data?.enabled ? '个人模型已启用' : '个人模型未启用'}
+            {remote.data && !remote.data.callsEnabled ? ' · 管理员已停用模型调用' : ''}
+          </p>
+          {(remote.error || notice) && <p role="alert">{notice || remote.error}</p>}
+        </Section>
+      )}
+
       <Section title="默认模型">
-        <RadioCard ariaLabel="默认模型" value={modelId} onChange={pickModel} options={modelOptions} />
+        {options.length ? (
+          <RadioCard
+            ariaLabel="默认模型"
+            value={modelId}
+            onChange={id => { if (!disabled) pickModel(id) }}
+            options={options.map(m => ({
+              value: m.id,
+              title: m.name,
+              desc: m.note,
+              icon: <Icon name={m.icon} size={22} />,
+            }))}
+          />
+        ) : (
+          <p>添加供应商和模型后选择默认模型。</p>
+        )}
         <div className="st-panel st-effort-panel">
           <Field label="思考强度">
-            <Seg
-              ariaLabel="思考强度"
-              options={EFFORTS.map((e) => ({ value: e, label: e }))}
-              value={efforts[modelId] ?? DEFAULT_EFFORT}
-              onChange={pickEffort}
-            />
+            {strengths.length ? (
+              <Seg
+                ariaLabel="思考强度"
+                options={strengths.map(e => ({ value: e, label: e }))}
+                value={remote.data?.efforts[modelId] ?? ''}
+                onChange={level => {
+                  if (!PREP_BUILD && modelId && !disabled) {
+                    void act(() => saveModelSettings({
+                      efforts: { ...remote.data?.efforts, [modelId]: level },
+                    }))
+                  }
+                }}
+              />
+            ) : (
+              <span>此模型未声明可配置思考强度</span>
+            )}
+            {!PREP_BUILD && strengths.length > 0 && !remote.data?.efforts[modelId] && (
+              <span>未指定，使用供应商默认强度</span>
+            )}
           </Field>
         </div>
       </Section>
@@ -151,114 +198,124 @@ export function ModelTab({ toast }: TabProps) {
       <Section title="模型供应商">
         <div className="st-provider">
           <div className="st-provider-head">
-            <span className="st-provider-badge"><Icon name="learning-space" size={18} tone="neutral" /></span>
+            <span className="st-provider-badge"><Icon name="learning-space" size={18} /></span>
             <div className="st-provider-info">
               <span className="st-provider-name">
-                {SCHOOL.name}
-                <span className="st-status-pill ok">内置就绪</span>
+                学校统一接入
+                <span className="st-status-pill">{PREP_BUILD ? '演示' : '未提供个人配置'}</span>
               </span>
-              <span className="st-provider-sub">{SCHOOL.desc}</span>
-              <span className="st-mono st-provider-url">{SCHOOL.baseUrl}</span>
+              <span className="st-provider-sub">
+                {PREP_BUILD ? '课程专用网关演示' : '当前账号使用自己的供应商配置'}
+              </span>
+              {PREP_BUILD && (
+                <span className="st-mono st-provider-url">https://llm-gateway.edu.cn/v1</span>
+              )}
             </div>
           </div>
-          <div className="st-provider-models">
-            {MODELS.map((m) => (
-              <span className="st-model-chip" key={m.id}><Icon name={m.icon} size={14} />{m.name}</span>
-            ))}
-          </div>
-          {testRow(SCHOOL.id, () => runTest('school'))}
+          {PREP_BUILD ? testRow('school', 'school') : <p>学校模型接入尚未开放，请配置个人供应商。</p>}
         </div>
 
-        {providers.map((p) => {
-          const r = results[p.id]
-          const t = r ? testResultText(r) : null
-          return (
-            <div className="st-provider" key={p.id}>
-              <div className="st-provider-head">
-                <span className="st-provider-badge"><Icon name="model" size={18} tone="neutral" /></span>
-                <div className="st-provider-info">
-                  <span className="st-provider-name">{p.name}</span>
-                  <span className="st-mono st-provider-url">{p.baseUrl}</span>
-                </div>
-                <div className="st-provider-acts">
-                  <button className="outline st-xs" onClick={() => setModelDlg({ provider: p, model: null })}>
-                    <Icon name="add" size={13} />添加模型
-                  </button>
-                  <button className="outline st-xs" onClick={() => setProviderDlg({ open: true, provider: p })}>
-                    <Icon name="pen" size={13} />编辑
-                  </button>
-                  {confirmingDel === p.id ? (
-                    <span className="st-cf-inline">
-                      确认删除？
-                      <button className="st-cf-yes" onClick={() => confirmRemove(p)}>删除</button>
-                      <button className="st-cf-no" onClick={() => setConfirmingDel(null)}>取消</button>
-                    </span>
-                  ) : (
-                    <button className="outline st-xs danger" onClick={() => setConfirmingDel(p.id)}>
-                      <Icon name="trash-bin-trash" size={13} />删除
-                    </button>
-                  )}
-                </div>
+        {providers.map(p => (
+          <div className="st-provider" key={p.id}>
+            <div className="st-provider-head">
+              <span className="st-provider-badge"><Icon name="model" size={18} /></span>
+              <div className="st-provider-info">
+                <span className="st-provider-name">{p.name}</span>
+                <span className="st-mono st-provider-url">{p.baseUrl}</span>
+                {!PREP_BUILD && (
+                  <span>{p.hasKey ? `密钥已保存 ${p.keyHint ?? ''}` : '尚未保存密钥'}</span>
+                )}
               </div>
-              {p.models.length > 0 ? (
-                <div className="st-provider-models">
-                  {p.models.map((m) => (
-                    <span className="st-model-chip" key={m.id}>
-                      <Icon name="model" size={14} tone="neutral" />{m.id}
-                      {m.contextWindow && <small>{Number(m.contextWindow) / 1024}K 上下文</small>}
-                      <button
-                        type="button"
-                        className="st-chip-x st-chip-edit"
-                        aria-label={`编辑模型 ${m.id}`}
-                        onClick={() => setModelDlg({ provider: p, model: m })}
-                      >
-                        <Icon name="pen" size={11} />
-                      </button>
-                      <button
-                        type="button"
-                        className="st-chip-x"
-                        aria-label={`删除模型 ${m.id}`}
-                        onClick={() => confirmRemoveModel(p, m.id)}
-                      >
-                        <Icon name="close" size={11} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="st-empty st-provider-empty">暂未配置模型，点击上方添加</p>
-              )}
-              <div className="st-provider-test">
-                <button type="button" className="outline st-xs" disabled={testingId === p.id} onClick={() => runTest(p)}>
-                  {testingId === p.id ? <span className="st-spinner" aria-hidden="true" /> : <Icon name="refresh" size={13} />}
-                  {testingId === p.id ? '测试中…' : '连接测试'}
+              <div className="st-provider-acts">
+                <button
+                  className="outline st-xs"
+                  disabled={disabled}
+                  onClick={() => setModelDlg({ provider: p, model: null })}
+                >
+                  添加模型
                 </button>
-                {t && testingId !== p.id && (
-                  <span className={'st-test-result inline' + (t.ok ? ' ok' : ' fail')} role="status">
-                    <Icon name={t.ok ? 'check-circle' : 'danger-triangle'} size={13} />
-                    {t.text}
+                <button
+                  className="outline st-xs"
+                  disabled={disabled}
+                  onClick={() => setProviderDlg({ provider: p })}
+                >
+                  编辑
+                </button>
+                {confirmingDel === p.id ? (
+                  <span className="st-cf-inline">
+                    确认移除？
+                    <button
+                      className="st-cf-yes"
+                      disabled={disabled}
+                      onClick={() => void act(async () => {
+                        if (PREP_BUILD) removeProvider(p.id)
+                        else await replaceProviders(providers.filter(x => x.id !== p.id))
+                        setConfirmingDel(null)
+                        toast('供应商已移除')
+                      })}
+                    >
+                      删除
+                    </button>
+                    <button onClick={() => setConfirmingDel(null)}>取消</button>
                   </span>
+                ) : (
+                  <button
+                    className="outline st-xs danger"
+                    disabled={disabled}
+                    onClick={() => setConfirmingDel(p.id)}
+                  >
+                    删除
+                  </button>
                 )}
               </div>
             </div>
-          )
-        })}
+            <div className="st-provider-models">
+              {p.models.map(m => (
+                <span className="st-model-chip" key={m.id}>
+                  <Icon name="model" size={14} />{m.id}
+                  <button
+                    className="st-chip-x st-chip-edit"
+                    disabled={disabled}
+                    aria-label={`编辑模型 ${m.id}`}
+                    onClick={() => setModelDlg({ provider: p, model: m })}
+                  >
+                    <Icon name="pen" size={11} />
+                  </button>
+                  <button
+                    className="st-chip-x"
+                    disabled={disabled}
+                    aria-label={`删除模型 ${m.id}`}
+                    onClick={() => void act(async () => {
+                      await persistProvider({ ...p, models: p.models.filter(x => x.id !== m.id) })
+                      toast('模型已移除')
+                    })}
+                  >
+                    <Icon name="close" size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {testRow(p.id, p)}
+          </div>
+        ))}
 
-        <button type="button" className="st-add-provider" onClick={() => setProviderDlg({ open: true, provider: null })}>
+        <button
+          className="st-add-provider"
+          disabled={disabled}
+          onClick={() => setProviderDlg({ provider: null })}
+        >
           <Icon name="add" size={15} />添加自定义供应商
         </button>
       </Section>
 
-      {providerDlg.open && (
+      {providerDlg && (
         <ProviderDialog
           open
           provider={providerDlg.provider}
-          onClose={() => setProviderDlg({ open: false, provider: null })}
-          onSave={(p) => {
-            const isNew = providerDlg.provider == null
-            saveProvider(p)
-            revertModelIfGone(p.id, p.models.map((m) => m.id))
-            toast(isNew ? `已添加供应商「${p.name}」` : '供应商已更新')
+          onClose={() => setProviderDlg(null)}
+          onSave={async p => {
+            await persistProvider(p)
+            toast('供应商已保存')
           }}
         />
       )}
@@ -267,16 +324,15 @@ export function ModelTab({ toast }: TabProps) {
           open
           providerName={modelDlg.provider.name}
           model={modelDlg.model}
-          siblings={modelDlg.provider.models.filter((x) => x.id !== modelDlg.model?.id).map((x) => x.id)}
+          siblings={modelDlg.provider.models.filter(x => x.id !== modelDlg.model?.id).map(x => x.id)}
           onClose={() => setModelDlg(null)}
-          onSave={(m) => {
+          onSave={async m => {
             const { provider, model } = modelDlg
             const models = model
-              ? provider.models.map((x) => (x.id === model.id ? m : x))
+              ? provider.models.map(x => x.id === model.id ? m : x)
               : [...provider.models, m]
-            saveProvider({ ...provider, models })
-            revertModelIfGone(provider.id, models.map((x) => x.id))
-            toast(model ? `模型 ${m.id} 已更新` : `已添加模型 ${m.id}`)
+            await persistProvider({ ...provider, models })
+            toast('模型已保存')
           }}
         />
       )}

@@ -21,6 +21,7 @@ function controlledFile(file:string) {
   } catch { return false; }
 }
 const existingFile=z.string().refine(controlledFile);
+const personalModelsSchema=z.strictObject({directory:z.string().refine(isAbsolute),callsEnabled:z.boolean().default(true)});
 export function readControlledJson(file:string):unknown {
   if (!controlledFile(file) || lstatSync(file).size>1024*1024) throw new Error('Controlled configuration file required.');
   return JSON.parse(readFileSync(file,'utf8'));
@@ -38,6 +39,7 @@ export const i0ConfigSchema=z.strictObject({
     catch { return false; }
   }),
   consumerIntervalMs:z.number().int().min(50).max(10000).default(250),
+  personalModels:personalModelsSchema.optional(),
   tutoring:z.strictObject({
     apiKeyFile:existingFile.optional(),
     callsAuthorized:z.boolean().default(false),
@@ -64,5 +66,5 @@ export const applicationConfigSchema=z.strictObject({databaseFile:existingFile,o
  tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema,
  approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),recoveryGeneration:z.string().min(1).max(128),
  staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs,
- tutoring:i0ConfigSchema.shape.tutoring});
+ tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional()});
 export function readApplicationConfig(file:string) { return applicationConfigSchema.parse(readControlledJson(file)); }

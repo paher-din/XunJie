@@ -30,6 +30,6 @@ export default defineConfig(({ command, mode }) => ({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.js', 'prep/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.test.js', 'prep/**/*.test.ts'],
   },
 }))

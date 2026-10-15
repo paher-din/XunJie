@@ -3,6 +3,7 @@
 param(
   [Parameter(Position=0)][ValidateSet('help','status','check','start','stop')][string]$Operation='help',
   [switch]$EnableModel,
+  [switch]$DisablePersonalModels,
   [string]$RetainedRoot='D:\XunJie_Project\i0-ui55-connection\hdl-ui\local-environment'
 )
 Set-StrictMode -Version Latest
@@ -131,12 +132,15 @@ Robert local C/HDL environment (Ubuntu data and retained tools live on D:).
   .\xunjie-local.ps1 check
   .\xunjie-local.ps1 start
   .\xunjie-local.ps1 start -EnableModel
+  .\xunjie-local.ps1 start -DisablePersonalModels
   .\xunjie-local.ps1 stop
 Open https://127.0.0.1:3444 in the owned acceptance Chrome profile.
 start reuses the prepared/validated dedicated C1 VM, starting it if stopped.
 It waits at most120s for both original SSH readiness checks to match the saved local generation/fingerprints.
 The synthetic35 database must already exist; this entry never prepares disks, keys or data again.
 EnableModel reads your own DEEPSEEK_API_KEY into the local child environment only.
+Personal model settings use each signed-in account's encrypted Key by default, without environment-Key fallback.
+DisablePersonalModels stops new personal model calls while preserving settings and history.
 stop sends SIGTERM to this exact business host; VM/runtime assets and database remain.
 The parallel3443 gateway and PAHER are not controlled by this entry.
 '@
@@ -164,6 +168,7 @@ The parallel3443 gateway and PAHER are not controlled by this entry.
       $modelArgument=' --model-enabled'
       $key=$null
     } else { $null=$info.Environment.Remove('DEEPSEEK_API_KEY') }
+    if($DisablePersonalModels){$modelArgument+=' --personal-models-disabled'}
     $node=Get-LocalNodeState -Ensure
     $startScript='set -eu; umask 077; echo $$ > /opt/xunjie-ui-local/host.pid; exec /opt/xunjie-runner/node/bin/node /opt/xunjie-ui-local/tools/local-application-host.mjs'+$modelArgument+' >>/opt/xunjie-ui-local/evidence/host.stdout.log 2>>/opt/xunjie-ui-local/evidence/host.stderr.log'
     # Original nonblocking flock retains exclusive ownership through the host exec.

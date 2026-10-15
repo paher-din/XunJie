@@ -3,42 +3,71 @@ import type { ConceptCard as ConceptCardData, WaveRow, WaveSpec } from '../../br
 
 /**
  * 概念讲解卡：结构化要点 + 时序波形图示，嵌在正文段落之间（已确认 2026-10-10，
- * docs/agent-page-design.md「教学专属块」）。只在落定后挂载。
+ * docs/agent-page-design.md「教学专属块」）。随正文画出（2026-10-12）：讲到依附的那一段就立壳，
+ * 要点一条一条写出来（行高靠展开长，不靠插）、波形一次到位但各行按档依次描线、读图提示收尾。
+ * 动作按阶段给：生成中只挂呼吸点，被叫停就停在半张卡（什么都不给），落定才齐全。
  * 「收纳」按场景分流：对话页钉到右缘对照（pinned，portal 由父级处理）；
  * 工作区收进工作区卡片体系（随工作区轮次接，届时由父级换 onTogglePin 的实现）。
  */
 export function ConceptCard({
   card,
+  stage = 'ready',
   pinned,
   onTogglePin,
 }: {
   card: ConceptCardData
+  /** 卡片处在哪个阶段：drawing 生成中 / paused 这条被叫停 / ready 落定。 */
+  stage?: 'drawing' | 'paused' | 'ready'
   pinned?: boolean
   /** 收纳 / 取消收纳；不传则不提供收纳动作。 */
   onTogglePin?: () => void
 }) {
   const [open, setOpen] = useState(true)
+  const drawing = stage === 'drawing'
+  // 还没落任何内容的那一拍不摆一只空 body——与正文「只有标记、还没有内容就先当不存在」同一口径
+  const hasBody = card.points.length > 0 || !!card.wave || !!card.note
+  const body = open && hasBody
   return (
-    <div className={'concept-card' + (open ? '' : ' closed')}>
+    <div className={'concept-card' + (body ? '' : ' closed')}>
       <div className="concept-head">
         <span className="concept-cap">概念讲解</span>
         <span className="concept-title">{card.title}</span>
-        <button className="concept-fold" onClick={() => setOpen((v) => !v)}>
-          {open ? '收起' : '展开'}
-        </button>
+        {drawing ? (
+          <span className="concept-live">
+            <span className="turn-dots">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span>生成中</span>
+          </span>
+        ) : (
+          stage === 'ready' && (
+            <button className="concept-fold" onClick={() => setOpen((v) => !v)}>
+              {open ? '收起' : '展开'}
+            </button>
+          )
+        )}
       </div>
-      {open && (
+      {body && (
         <>
           <div className="concept-body">
             <ul className="concept-points">
+              {/* span 是折叠动画的那一格：0fr → 1fr 得有内容能被压到 0 高，长出来的才是高度而不是跳动 */}
               {card.points.map((p, i) => (
-                <li key={i}>{p}</li>
+                <li key={i}>
+                  <span>{p}</span>
+                </li>
               ))}
             </ul>
             {card.wave && <Waveform spec={card.wave} />}
-            {card.note && <div className="concept-note">{card.note}</div>}
+            {card.note && (
+              <div className="concept-note">
+                <span>{card.note}</span>
+              </div>
+            )}
           </div>
-          {onTogglePin && (
+          {stage === 'ready' && onTogglePin && (
             <div className="concept-foot">
               <button className="concept-keep" onClick={onTogglePin}>
                 {pinned ? '取消收纳' : '收纳'}
@@ -81,7 +110,7 @@ function rowPath(row: WaveRow, y: number): string {
   return d + ` L${X1},${cur ? hi : lo}`
 }
 
-/** 时序波形：WaveSpec 数据直接映射成 SVG，无运行时依赖。 */
+/** 时序波形：WaveSpec 数据直接映射成 SVG，无运行时依赖。整块到位，各行按 90ms 一档依次描出来。 */
 function Waveform({ spec }: { spec: WaveSpec }) {
   const H = spec.rows.length * ROW + 14
   return (
@@ -105,7 +134,13 @@ function Waveform({ spec }: { spec: WaveSpec }) {
             <text className="concept-wave-name" x={8} y={y + 3.5}>
               {r.name}
             </text>
-            <path className={'concept-wave-line' + (r.clk ? ' clk' : '')} d={rowPath(r, y)} />
+            {/* pathLength 把长度归一成 1：dasharray 1 就是实线，描图只动 dashoffset；行与行隔 90ms 描 */}
+            <path
+              className={'concept-wave-line' + (r.clk ? ' clk' : '')}
+              d={rowPath(r, y)}
+              pathLength={1}
+              style={{ animationDelay: `${i * 90}ms` }}
+            />
           </g>
         )
       })}

@@ -638,8 +638,8 @@ export const iconCatalog = {
       },
       {
         "label": "编辑我的消息",
-        "group": "后续对话设计储备",
-        "scope": "后续",
+        "group": "Agent 对话与输入",
+        "scope": "现有",
         "reviewId": "I097"
       },
       {

@@ -78,3 +78,15 @@ test('an inherited test key alone keeps model budget off, and explicit model mod
     assert.equal(run.publicOutput.join('').includes(canary),false);assert.equal(run.publicOutput.join('').includes(bodyCanary),false);
   }
 });
+
+test('personal configuration is available without an environment key and has an explicit maintenance stop',async()=>{
+  for(const disabled of [false,true]){
+    let options;
+    const db={withTransaction:fn=>fn({get:()=>({recovery_generation:generation}),all:sql=>sql.includes('users')?
+      ['teacher','student-a','student-b'].map(x=>({id:'synthetic-robert-'+x})):['c','hdl'].map(x=>({id:'synthetic-robert-course-'+x}))}),close:()=>{}};
+    const service={shutdown:async()=>{},app:{listen:async()=>{}},startConsumer:()=>{}};
+    const run=await execute('local-application-host.mjs',{db,argv:disabled?['--personal-models-disabled']:[],createService:async value=>{options=value;return service;}});
+    await run.done;assert.deepEqual(JSON.parse(JSON.stringify(options.personalModels)),{directory:root+'/personal-agent',callsEnabled:!disabled});
+    assert.equal(options.studentHelp.budgetAvailable({}),false);assert.equal(options.tutoringProvider,undefined);
+  }
+});

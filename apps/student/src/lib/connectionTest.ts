@@ -1,58 +1,26 @@
 import type { ModelProvider } from './settings'
+import { apiPost } from '../workspace/http'
 import { PREP_BUILD } from '../workspace/mode'
 
-/**
- * 供应商连接测试（docs/settings-design.md 已确认的混合方案）：
- * 自定义供应商真实发起 OpenAI 兼容的 GET /models 请求；
- * 浏览器 CORS 限制导致的失败如实说明，桌面版落地后自动重试。
- * 预置「学校统一接入」走模拟测试（演示路径恒成功），结果文案明确标「模拟」。
- *
- * I0-A 准备模式（`npm run dev:prep`）下**不发起任何外部请求**：设置入口只报告能力不可用，
- * 不把代码、凭据或材料送到模型服务。真实模式保留原设计行为。
- */
+/** 供应商探测走同源后台，不在浏览器连接外部端点；准备模式始终禁止外发。 */
 
 export type TestResult =
   | { ok: true; latencyMs: number; modelCount: number | null; simulated?: boolean }
-  | { ok: false; kind: 'auth' | 'not-found' | 'http' | 'cors' | 'timeout' | 'blocked-preparation'; status?: number }
+  | { ok: false; kind: 'auth' | 'not-found' | 'http' | 'cors' | 'timeout' | 'blocked-preparation' | 'network' | 'invalid-url' | 'unavailable'; status?: number }
 
-/** 探测请求的超时上限（毫秒）：不再有用户可调的超时配置，取原高级配置的默认档。 */
-const TEST_TIMEOUT_MS = 30_000
 
-export async function testProviderConnection(p: Pick<ModelProvider, 'baseUrl' | 'apiKey'>): Promise<TestResult> {
-  // 准备模式：直接判为不可用，不发 fetch（生产构建里这个分支被静态消除）
+export async function testProviderConnection(p: Pick<ModelProvider, 'baseUrl' | 'apiKey'> & { id?: string }): Promise<TestResult> {
   if (PREP_BUILD) return { ok: false, kind: 'blocked-preparation' }
-  const base = p.baseUrl.trim().replace(/\/+$/, '')
-  const started = performance.now()
-  const ctrl = new AbortController()
-  const timer = window.setTimeout(() => ctrl.abort(), TEST_TIMEOUT_MS)
   try {
-    const res = await fetch(`${base}/models`, {
-      signal: ctrl.signal,
-      headers: p.apiKey ? { Authorization: `Bearer ${p.apiKey}` } : undefined,
-    })
-    const latencyMs = Math.round(performance.now() - started)
-    if (res.status === 401 || res.status === 403) return { ok: false, kind: 'auth', status: res.status }
-    if (res.status === 404) return { ok: false, kind: 'not-found', status: 404 }
-    if (!res.ok) return { ok: false, kind: 'http', status: res.status }
-    let modelCount: number | null = null
-    try {
-      const body = await res.json() as { data?: unknown[] }
-      if (Array.isArray(body.data)) modelCount = body.data.length
-    } catch {
-      // 响应非 JSON 也视为连接成功
-    }
-    return { ok: true, latencyMs, modelCount }
-  } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') return { ok: false, kind: 'timeout' }
-    // 浏览器下 CORS 与网络不可达都表现为 TypeError，无法进一步区分
-    return { ok: false, kind: 'cors' }
-  } finally {
-    window.clearTimeout(timer)
-  }
+    const result = await apiPost<TestResult>('/model-settings/test', p.id && !p.apiKey ? { providerId: p.id } : { baseUrl: p.baseUrl, ...(p.apiKey ? { apiKey: p.apiKey } : {}) }, { mode: 'real', timeoutMs: 35_000 })
+    if (!result || typeof result.ok !== 'boolean') return { ok: false, kind: 'unavailable' }
+    return result
+  } catch { return { ok: false, kind: 'unavailable' } }
 }
 
 /** 预置学校服务的模拟测试：850ms 后恒成功，不发网络请求，结果明确标「模拟」。 */
 export function testSchoolConnection(): Promise<TestResult> {
+  if (!PREP_BUILD) return Promise.resolve({ ok: false, kind: 'unavailable' })
   return new Promise((resolve) =>
     window.setTimeout(() => resolve({ ok: true, latencyMs: 42, modelCount: 2, simulated: true }), 850),
   )
@@ -76,7 +44,12 @@ export function testResultText(r: TestResult): { ok: boolean; text: string } {
     case 'http':
       return { ok: false, text: `服务响应异常（HTTP ${r.status}）` }
     case 'cors':
-      return { ok: false, text: '受浏览器跨域安全限制无法直接验证，配置已保存，桌面客户端中将自动重试' }
+    case 'network':
+      return { ok: false, text: '供应商网络连接失败，请核对地址后重试。' }
+    case 'invalid-url':
+      return { ok: false, text: '仅支持公网 HTTPS 供应商地址。' }
+    case 'unavailable':
+      return { ok: false, text: '连接测试不可用或请求失败，请重试。' }
     case 'blocked-preparation':
       return { ok: false, text: '准备场景不发起外部供应商请求（I0-A 不调用真实教学模型）' }
   }

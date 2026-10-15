@@ -21,10 +21,10 @@ export class TurnPlayer {
     onUpdate: (message: ChatMessage) => void,
   ) {
     this.draft = { role: 'agent', text: '', phase: 'waiting' }
-    // 任务卡、追问选项、概念卡、小测卡与生成卡只在落定时挂上：正文没写完就展示会误导
+    // 任务卡、追问选项、小测卡与生成卡只在落定时挂上：正文没写完就展示会误导。
+    // 概念讲解卡是例外（2026-10-12）：它是正文的一部分，由剧本插在它依附的那一段之后逐笔画出。
     this.finalTaskId = reply.taskId
     this.finalFollowUps = reply.followUps
-    this.finalConcept = reply.concept
     this.finalQuiz = reply.quiz
     this.finalGenCard = reply.genCard
     this.onUpdate = onUpdate
@@ -32,7 +32,6 @@ export class TurnPlayer {
 
   private finalTaskId?: string
   private finalFollowUps?: string[]
-  private finalConcept?: ChatMessage['concept']
   private finalQuiz?: ChatMessage['quiz']
   private finalGenCard?: ChatMessage['genCard']
 
@@ -57,10 +56,13 @@ export class TurnPlayer {
     if (step.phase) this.draft.phase = step.phase
     if (step.appendText !== undefined) this.draft.text += step.appendText
     if (step.appendStep !== undefined) this.draft.steps = [...(this.draft.steps ?? []), step.appendStep]
+    this.applyConcept(step)
     if (step.thinking) this.draft.thinking = step.thinking
     if (step.failure) {
       this.draft.phase = 'failed'
       this.draft.failure = step.failure
+      // 失败不落卡：半张卡片配一张失败卡，只会让学生分不清该看哪儿（与停止同规则）
+      this.draft.concept = undefined
     }
     this.stepIndex++
     this.emit()
@@ -68,11 +70,36 @@ export class TurnPlayer {
     this.schedule()
   }
 
+  /** 概念讲解卡的逐步流出：壳与标题 → 要点逐字写出 → 波形 → 读图提示。每步换一个新对象，视图按引用重渲染。 */
+  private applyConcept(step: ScriptStep) {
+    if (step.conceptStart) {
+      this.draft.concept = {
+        title: step.conceptStart.title,
+        afterPara: step.conceptStart.afterPara,
+        points: [],
+      }
+    }
+    const card = this.draft.concept
+    if (!card) return
+    const t = step.conceptText
+    if (t) {
+      const last = card.points[card.points.length - 1] ?? ''
+      this.draft.concept =
+        t.part === 'point'
+          ? {
+              ...card,
+              points: t.start ? [...card.points, t.chunk] : [...card.points.slice(0, -1), last + t.chunk],
+            }
+          : { ...card, note: (card.note ?? '') + t.chunk }
+      return
+    }
+    if (step.conceptWave) this.draft.concept = { ...card, wave: step.conceptWave }
+  }
+
   private settle() {
     this.draft.phase = 'settled'
     if (this.finalTaskId) this.draft.taskId = this.finalTaskId
     if (this.finalFollowUps) this.draft.followUps = this.finalFollowUps
-    if (this.finalConcept) this.draft.concept = this.finalConcept
     if (this.finalQuiz) this.draft.quiz = this.finalQuiz
     if (this.finalGenCard) this.draft.genCard = this.finalGenCard
     this.emit()

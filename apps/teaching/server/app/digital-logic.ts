@@ -18,13 +18,14 @@ import {ApiError} from './errors.ts';
 import {canonical} from '../records/commands.ts';
 import type {Transaction} from '../db/transaction.ts';
 import type {ActorContext} from '../../contracts/access/index.ts';
+import {personalModels,type PersonalModelsOptions} from './personal-models.ts';
 const id=z.string().min(1).max(128),revision=z.number().int().positive(),key=z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/),params=z.strictObject({id});
 const generationInput={recoveryGeneration:id},basis={...generationInput,expectedAttemptRevision:revision};
 const buildInput=z.strictObject({...basis,snapshotId:id});
 const programInput=z.strictObject({...basis,buildId:id,replaceSessionId:id.optional(),expectedSessionRevision:revision.optional()}).refine(value=>(value.replaceSessionId===undefined)===(value.expectedSessionRevision===undefined));
 const operationInput=z.strictObject({...basis,sessionId:id,expectedSessionRevision:revision,expectedSequence:revision,inputs:z.strictObject({switches:z.string().regex(/^[01]{16}$/),buttons:z.string().regex(/^[01]{5}$/),resetN:z.string().regex(/^[01]$/)}),advanceCycles:z.number().int().min(1).max(5000000)});
 const stopInput=z.strictObject({...basis,action:z.literal('stop'),reason:z.string().trim().min(1).max(1024)});
-export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'> & {hdlTransport:HdlTransport;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number;tutoringProvider?:ModelProvider};
+export type DigitalLogicApplicationOptions=Omit<TutoringAppOptions,'currentGeneration'|'hdl'|'queryExecution'> & {hdlTransport:HdlTransport;approvedHdlRuntimes:z.infer<typeof hdlRuntimeSchema>[];staticDirectory?:string;consumerIntervalMs?:number;tutoringProvider?:ModelProvider;personalModels?:PersonalModelsOptions};
 export async function createDigitalLogicApplication(options:DigitalLogicApplicationOptions){
  assertDigitalLogicApplicationDatabase(options.db);
  const now=options.now??Date.now;
@@ -46,7 +47,9 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  return {board:runtime.configuration.board,runtime:runtime.configuration.runtime};}});
  const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
  let host:ReturnType<typeof attachOriginalJobHost>;
- const instance=await createTutoringApp({...options,studentHelp:{...options.studentHelp,readHdlContext:(...args)=>{
+ const personal:ReturnType<typeof personalModels>|undefined=options.personalModels?personalModels(options.personalModels,
+  (request):string=>options.db.withTransaction(tx=>instance.access.authenticatedUserInTransaction(request,tx)),options.studentHelp):undefined;
+ const instance:Awaited<ReturnType<typeof createTutoringApp>>=await createTutoringApp({...options,studentHelp:{...(personal?.studentHelp??options.studentHelp),readHdlContext:(...args)=>{
   if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');return readAuthorizedHdlHelp(...args);
  }},...(runner?{runner}:{}),currentGeneration,hdl,checkReadiness:async()=>{try{host.checkConsumerReady();await refresh();const c=await availableRuntime(runner);host.checkConsumerReady();return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
  const fixed=instance.access.withAuthorizedCourse(request,tx=>draftCourse(tx,blueprintId),'teacher',(tx,actor)=>{
@@ -56,8 +59,9 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  try{const ready=await availableHdlRuntime(hdlTransport,approved);if(ready.recoveryGeneration!==generation)throw new ApiError('RECOVERY_REQUIRED');
  if(canonical(fixed.configuration.runtime)!==canonical(ready.profile))throw new ApiError('INVALID_REFERENCE');return {ok:true as const,runtime:{...ready,profile:fixed}};
  }catch(error){return {ok:false as const,error};}
- }});
+ }}).catch(async error=>{await personal?.close();throw error;});
  const {app,access}=instance;
+ if(personal){personal.register(app);app.addHook('onClose',async()=>personal.close());}
  const locate=(tx:Transaction,attemptId:string)=>{const attempt=readAttempt(tx,attemptId);return {kind:'student_work' as const,courseId:attempt.courseId,studentId:attempt.studentId,stage:attempt.status,assignmentActive:false};};
  const scope=(request:FastifyRequest,attemptId:string)=>access.withAuthorizedResource(request,tx=>locate(tx,attemptId),'read',(_tx,actor)=>actor);
  const guard=(request:FastifyRequest,attemptId:string)=>(tx:Transaction,use:'read'|'write')=>{

@@ -7,8 +7,10 @@ const root = '/opt/xunjie-ui-local';
 const args = process.argv.slice(2);
 const values = new Map();
 let modelEnabled = false;
+let personalModelsDisabled = false;
 for (let index = 0; index < args.length; index++) {
   if (args[index] === '--model-enabled') { modelEnabled = true; continue; }
+  if (args[index] === '--personal-models-disabled') { personalModelsDisabled = true; continue; }
   if (!['--config', '--teaching-root'].includes(args[index]) || !args[index + 1]) throw new Error('Unsupported local host argument');
   values.set(args[index], args[++index]);
 }
@@ -75,6 +77,7 @@ try {
     https: { key: (await import('node:fs')).readFileSync(config.tls.keyFile), cert: (await import('node:fs')).readFileSync(config.tls.certFile) },
     ...executionTransports(config.ssh), approvedHdlRuntimes: config.approvedHdlRuntimes,
     staticDirectory: config.staticDirectory, consumerIntervalMs: config.consumerIntervalMs,
+    personalModels: {directory: `${root}/personal-agent`, callsEnabled: !personalModelsDisabled},
     studentHelp: { versions: config.tutoring?.versions ?? { modelConfig: 'deepseek-flash-v1', prompt: 'student-help-v1', schema: 'student-help-v1', policy: 'activity-policy' }, budgetAvailable: () => callsAuthorized },
     ...(tutoringProvider ? { tutoringProvider } : {}),
     teacherAgent: { versions: { modelConfig: 'disabled', prompt: 'disabled', schema: 'disabled', policy: 'disabled' }, budgetAvailable: () => false, provider: { generate: async () => { throw new Error('Teacher model is disabled'); } } },
@@ -84,7 +87,7 @@ try {
   if (closing) await close();
   else {
     service.startConsumer(config.consumerIntervalMs);
-    console.log(JSON.stringify({ origin: config.origin, source: 'owned local reviewed application', recoveryGeneration: config.recoveryGeneration, modelCallsAuthorized: callsAuthorized, keySource: 'local child environment only' }));
+    console.log(JSON.stringify({ origin: config.origin, source: 'owned local reviewed application', recoveryGeneration: config.recoveryGeneration, modelCallsAuthorized: callsAuthorized, personalModelsEnabled: !personalModelsDisabled, keySource: 'per-account encrypted storage; no fallback' }));
   }
 } catch {
   startupCompleted = true;

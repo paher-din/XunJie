@@ -8,7 +8,7 @@ import { readTeachingJob } from "../../records/teaching.ts";
 import { createTutoringApp, type StudentHelpPreparationOptions } from "../application.ts";
 import { assembleStudentHelpRequest, createStudentHelpCurrentGuard } from "../context.ts";
 import { generateStudentHelp } from "../core.ts";
-import { InputLimitError, SyntheticProvider, type ModelProvider } from "../providers.ts";
+import { InputLimitError, ProviderCallNotStartedError, SyntheticProvider, type ModelProvider } from "../providers.ts";
 import { executeAuthorizedStudentHelp } from "../service.ts";
 import {
   assertRealPerformanceBatchAuthorization,
@@ -36,7 +36,8 @@ const versions = {
   policy: "help-v1",
 };
 
-async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, liveClock = false) {
+async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, liveClock = false,
+  personal:Pick<Parameters<typeof createTutoringApp>[0]['studentHelp'],'versionsForStudent'|'providerForStudent'>={}) {
   const db = createTeachingDatabase();
   let time = Date.now();
   let clockStepMs = 0;
@@ -70,7 +71,7 @@ async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, l
       time += clockStepMs;
       return current;
     },
-    studentHelp: { versions, budgetAvailable: () => budgetAvailable },
+    studentHelp: { versions, budgetAvailable: () => budgetAvailable,...personal },
     ...(teacherAgent ? { teacherAgent: { provider: new SyntheticProvider([]), versions, budgetAvailable: () => true } } : {}),
     runner: async (command) => {
       if (command.op !== "readiness") throw new Error("Synthetic runner operation unavailable");
@@ -303,6 +304,43 @@ async function attemptView(f: Awaited<ReturnType<typeof fixture>>, headers: Head
   assert.equal(response.statusCode, 200, response.body);
   return response.json().data;
 }
+
+test('personal model selection fixes accepted provenance, rejects queued changes, and retains an in-flight provider',async()=>{
+  let modelRevision=1,personalCalls=0;
+  const fallback:ModelProvider={generate:async()=>{throw new Error('Global provider must never receive a personal request');}};
+  const f=await fixture(false,fallback,false,{
+    versionsForStudent:userId=>{assert.equal(userId,'student');return {...versions,modelConfig:`personal-student-${modelRevision}`};},
+    providerForStudent:(userId,modelVersion)=>{
+      assert.equal(userId,'student');
+      if(modelVersion!==`personal-student-${modelRevision}`)throw new ProviderCallNotStartedError('stale','Personal configuration changed');
+      return {generate:async request=>{
+        personalCalls++;modelRevision=3;
+        const input=request.untrustedInput as {references:{id:string}[]};
+        return {body:validBody(input.references[0]!.id,'en'),usage:{status:'actual',inputTokens:17,outputTokens:9}};
+      }};
+    },
+  });
+  try{
+    const setup=await setupProject(f);
+    const accept=async()=>{
+      const current=await attemptView(f,setup.student,setup.attemptId);
+      const result=await command(f.service.app,setup.student,`/api/attempts/${setup.attemptId}/help`,{
+        expectedAttemptRevision:current.attempt.attemptRevision,question:'Give one bounded starting hint.'});
+      assert.equal(result.statusCode,200,result.body);return String(result.json().data.result.jobId);
+    };
+    const execute=(jobId:string)=>f.service.app.inject({method:'POST',url:`/fixture/execute/${setup.attemptId}/${jobId}`,headers:setup.student,payload:{}});
+    const queued=await accept();modelRevision=2;
+    const stale=await execute(queued);assert.equal(stale.statusCode,200,stale.body);
+    assert.equal(stale.json().data.outcome.outcome,'stale');assert.equal(personalCalls,0);
+    assert.equal(f.db.withTransaction(tx=>readTeachingJob(tx,'course',queued))?.attemptCount,0);
+    const running=await accept(),completed=await execute(running);
+    assert.equal(completed.statusCode,200,completed.body);assert.equal(completed.json().data.outcome.outcome,'success',completed.body);
+    assert.equal(completed.json().data.versions.modelConfig,'personal-student-2');assert.equal(personalCalls,1);assert.equal(modelRevision,3);
+    const history=await f.service.app.inject({url:`/api/attempts/${setup.attemptId}/teaching-records`,headers:setup.teacher});
+    const messages=history.json().data.messages as {authorKind:string;envelope:{versions:{modelConfigVersion:string}}}[];
+    assert.equal(messages.find(message=>message.authorKind==='model')?.envelope.versions.modelConfigVersion,'personal-student-2');
+  }finally{await f.close();}
+});
 
 test("help acceptance activates ready attempt and atomically stores question, receipt, event, and job", async () => {
   const f = await fixture();

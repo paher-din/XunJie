@@ -53,6 +53,9 @@ export interface ModelProvider {
   name: string
   baseUrl: string
   apiKey: string
+  hasKey?: boolean
+  keyHint?: string
+  clearKey?: boolean
   models: ProviderModel[]
 }
 
@@ -125,7 +128,7 @@ function load(): SettingsState {
       account: { ...DEFAULT_SETTINGS.account, ...parsed.account },
       agent: { ...DEFAULT_SETTINGS.agent, ...parsed.agent },
       portrait: { ...DEFAULT_SETTINGS.portrait, ...parsed.portrait },
-      providers: parsed.providers ?? DEFAULT_SETTINGS.providers,
+      providers: (parsed.providers ?? DEFAULT_SETTINGS.providers).map(p => ({ ...p, apiKey: '' })),
     }
   } catch {
     return DEFAULT_SETTINGS
@@ -133,12 +136,25 @@ function load(): SettingsState {
 }
 
 let state: SettingsState = load()
+// 清理旧演示版本遗留的明文凭据；真实配置由当前账号后台持有。
+try {
+  const raw = localStorage.getItem(KEY)
+  const previous = raw ? JSON.parse(raw) : null
+  if (Array.isArray(previous?.providers)) {
+    const providers = previous.providers.map((p: Record<string, unknown>) => {
+      if (!p || typeof p !== 'object') return p
+      const { apiKey: _key, ...metadata } = p
+      return metadata
+    })
+    localStorage.setItem(KEY, JSON.stringify({ ...previous, providers }))
+  }
+} catch { /* 只清理可识别的旧供应商字段，不覆盖其他本机设置。 */ }
 const listeners = new Set<() => void>()
 
 function commit(next: SettingsState) {
   state = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(state))
+    localStorage.setItem(KEY, JSON.stringify({ ...state, providers: state.providers.map(({ apiKey: _key, ...p }) => p) }))
   } catch {
     // 存储不可用（隐私模式等）时设置仅在本次会话内生效
   }
