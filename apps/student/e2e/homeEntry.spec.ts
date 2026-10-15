@@ -177,12 +177,14 @@ test('首页姓名与课程别名只改变显示，Session身份、课程参数�
   const account = 'synthetic-robert-student-a', course = 'synthetic-robert-course-c'
   state.courses[account] = [{ courseId: course, role: 'student' }, { courseId: 'synthetic-robert-course-hdl', role: 'student' }]
   state.assignments[course] = [assignment('display-c', account)]
-  state.titles['activity-display-c'] = { courseId: course, title: '原本人 C 任务', goal: '原固定目标' }
+  state.titles['activity-display-c'] = { courseId: course, title: 'TextScope Core 本机合成工程验证', goal: '原固定目标' }
   await loginHome(page, account, 'Robert')
   await expect(page.locator('.intro h1')).toHaveText(/，Robert$/)
   await expect(page.locator('.account-pill .avatar')).toHaveText('R')
   await expect(page.locator('.content')).not.toContainText('synthetic-robert')
   await expect(page.locator('.db-continue .course-tag')).toHaveText('项目任务 · 程序设计基础')
+  await expect(page.locator('.db-continue h3')).toHaveText('文本分析工具')
+  await expect(page.locator('.content')).not.toContainText('本机合成工程验证')
   await expect(page.getByRole('button', { name: /数字逻辑与部件设计.*查看任务/ })).toBeVisible()
   await page.locator('.account-pill').click()
   await expect(page.getByRole('menu').filter({ visible: true }).locator('.am-name')).toHaveText('Robert')
@@ -192,6 +194,8 @@ test('首页姓名与课程别名只改变显示，Session身份、课程参数�
   await expect(page.locator('.course-breadcrumb strong')).toHaveText('程序设计基础')
   await page.getByRole('textbox', { name: '搜索任务', exact: true }).fill('程序设计基础')
   await expect(page.locator('.task-card')).toHaveCount(1)
+  await page.getByRole('textbox', { name: '搜索任务', exact: true }).fill('文本分析工具')
+  await expect(page.locator('.task-card h3')).toHaveText('文本分析工具')
   await page.locator('.task-card').click()
   await expect(page).toHaveURL(`${REAL_URL}/#/task/display-c`)
   await expect(page.locator('.ts-badge')).toContainText('不可用')

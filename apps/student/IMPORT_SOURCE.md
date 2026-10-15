@@ -146,6 +146,8 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 
 同日按负责人指令补[首页姓名与课程名](../../docs/tasks/I0-UI_HOME_DISPLAY_NAMES.md)：本机测试ID仅在显示层映射为Robert/小林、程序设计基础/数字逻辑与部件设计，复用原首页、菜单和头像，课程/任务请求、路由和隔离身份仍用原ID。无新增源文件导入，不回写Design。
 
+随后按同一显示范围，将原本机TextScope标题在首页看板/任务卡中显示为“文本分析工具”，搜索同时支持显示名；固定活动标题、分配及接口原样保留。构建和定向协议检查通过，本批未单独发布共享3444，运行集成由模型配置会话统一处理；记录见上项。
+
 | 日期 | 任务 | 改动 |
 | --- | --- | --- |
 | 2026-10-11 | I0_UI_01 | 新增本文件、`.gitignore`（Playwright 产物）、`tsconfig.node.json`、`playwright.config.ts`、`e2e/`、`prep/`（fixture）、`src/workspace/`（模式/契约投影/窄 HTTP 客户端/上下文与 loadEpoch/初始化读取/会话/准备入口常量）、`src/pages/PrepWorkspacePage.tsx`、`src/pages/TaskRoute.tsx`、`src/components/workspace/TextScopePanes.tsx` |
