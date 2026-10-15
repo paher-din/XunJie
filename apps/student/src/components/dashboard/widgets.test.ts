@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ProjectTask } from '../../bridge/types'
 import { DashboardSection } from './DashboardSection'
+import { demoDashboard, demoTasks } from '../../bridge/mockData'
 import { HeatWidget, TaskProgressWidget, TrendWidget, XpWidget, type WidgetProps } from './widgets'
 
 const now = new Date('2026-10-15T10:00:00+08:00')
@@ -17,6 +18,20 @@ const task = (id: string, status: ProjectTask['status']): ProjectTask => ({
 })
 
 describe('原首页看板的真实数据空态', () => {
+  it('经明确授权的演示统计使用独立样例分母，真实分配数和任务入口另列', () => {
+    const html = renderToStaticMarkup(createElement(DashboardSection, {
+      data: demoDashboard, tasks: demoTasks, taskCount: 1, now, demoStatistics: true,
+      continueSlot: createElement('button', null, '本人真实任务'),
+    }))
+    expect(html).toContain('演示统计')
+    expect(html).toContain('真实分配 1 个任务')
+    expect(html).toContain('/ 8 个任务 · 37.5%')
+    expect(html).toContain('db-hm-col')
+    expect(html).toContain('本人真实任务')
+    expect(html).not.toContain('暂无统计')
+    expect(html).not.toMatch(/NaN|undefined/)
+  })
+
   it('保留原看板和内嵌入口，分开显示已知分配数与未知完成进度', () => {
     const html = renderToStaticMarkup(createElement(DashboardSection, {
       data: {}, tasks: null, taskCount: 3, now,

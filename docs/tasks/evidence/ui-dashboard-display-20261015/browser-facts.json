@@ -1,0 +1,17 @@
+{
+  "courses": [
+    "课程 synthetic-robert-course-c1 个分配任务查看任务",
+    "课程 synthetic-robert-course-hdl0 个分配任务查看任务"
+  ],
+  "dailyColumns": 20,
+  "demoProgress": "3 / 8 个任务 · 37.5%",
+  "realAssignments": "真实分配 1 个任务",
+  "realEntry": "项目任务 · 课程 synthetic-robert-course-cTextScope Core 本机合成工程验证解释文本统计规则当前获准任务进入任务",
+  "script": "/assets/index-C9P8IzGF.js",
+  "sourceDescription": "完成率、学习时长等为演示数据，课程和任务入口来自真实服务",
+  "statisticsSource": "演示统计",
+  "url": "https://127.0.0.1:3444/#/",
+  "weeklyCurveVisible": true,
+  "sourceCommit": "cf6eaa6",
+  "dataBoundary": "仅看板为Design演示统计；本人分配与入口来自原真实宿主，未新增学习记录或执行/模型请求"
+}

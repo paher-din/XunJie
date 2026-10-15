@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { learningApi } from '../bridge/mockAdapter'
+import { demoDashboard, demoTasks } from '../bridge/mockData'
 import type { ProjectTask, TaskStatus } from '../bridge/types'
 import { DashboardSection } from '../components/dashboard/DashboardSection'
 import { FluidHighlight } from '../components/FluidHighlight'
@@ -85,13 +86,14 @@ function RealHomePage() {
       <span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span>
     </div>
     <DashboardSection key={session.session?.userId} storageKey={`dashboard.layout.v3:real:${session.session?.userId}`}
-      data={{}} tasks={null} taskCount={snapshot.isSuccess ? allTasks.length : undefined} now={now}
+      data={demoDashboard} tasks={demoTasks} demoStatistics
+      taskCount={snapshot.isSuccess ? allTasks.length : undefined} now={now}
       continueSlot={entryTask && <div className="db-continue">
         <span className="course-tag"><i className="dot" />项目任务 · 课程 {entryTask.courseId}</span>
         <h3>{entryTask.title}</h3>
         {entryTask.goal && <p>{entryTask.goal}</p>}
         <div className="db-continue-foot">
-          <span className="pct">进度暂无统计</span>
+          <span className="db-side">当前获准任务</span>
           <button className="primary" onClick={() => navigate('/task/' + encodeURIComponent(entryTask.assignmentId))}>
             <IconText name="arrow-right" position="end">进入任务</IconText>
           </button>
