@@ -1,0 +1,49 @@
+{
+  "observedAtUtc": "2026-10-14T19:26:26.487Z",
+  "session": {
+    "session_id": "c69decae-f4c2-4cc3-9fa3-0138d30ca22c",
+    "attempt_id": "bb20d32e-64de-4156-9fd0-9bda95364f60",
+    "build_id": "d8174bc9-ac86-4a9f-928f-e5692aa567e3",
+    "generation": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+    "revision": 4,
+    "status": "failed",
+    "confirmed_sequence": 2,
+    "termination_confirmed": 1,
+    "stop_requested": 1,
+    "pending_operation_id": null,
+    "session_json": {
+      "sessionId": "c69decae-f4c2-4cc3-9fa3-0138d30ca22c",
+      "identity": {
+        "id": "c69decae-f4c2-4cc3-9fa3-0138d30ca22c",
+        "commandId": "8ff0abe2-6ebe-41a8-acd3-e4754f7639a2",
+        "requestHash": "a9d73c7dab8e6cfe36b62c9676cf2af2e1b11e655c752d49484a1362e1ba905f",
+        "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+        "scope": {
+          "courseId": "synthetic-robert-course-hdl",
+          "studentId": "synthetic-robert-student-b",
+          "attemptId": "bb20d32e-64de-4156-9fd0-9bda95364f60",
+          "activityVersionId": "34333404-d8a3-464f-8039-ab4fad8e6873"
+        }
+      },
+      "buildId": "d8174bc9-ac86-4a9f-928f-e5692aa567e3",
+      "snapshotId": "6d0ed106-5b29-4603-98d5-1fef95ac3914",
+      "snapshotHash": "ee8fe86e53fda58d4383813c34d2f61d6079e7eb9900ab1b6e0d0cfd833f5cc4",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-robert-full-input-mapping-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+      "sessionRevision": 4,
+      "confirmedSequence": 2,
+      "simTimePs": "20000",
+      "status": "failed",
+      "terminationConfirmed": true,
+      "stopRequested": true,
+      "createdAt": "2026-10-14T19:02:53.962Z",
+      "deadline": "2026-10-14T19:32:53.963Z",
+      "lastOperationAt": "2026-10-14T19:05:51.631Z",
+      "failureKind": "idle_timeout"
+    }
+  },
+  "unsettledJobs": 0,
+  "unterminatedSessions": 0
+}

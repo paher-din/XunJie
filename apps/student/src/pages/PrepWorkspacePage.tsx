@@ -36,7 +36,7 @@ import type { AssignmentView } from '../workspace/contracts'
 import type { CodeEditorHandle, CodeEditorViewState } from '../components/workspace/CodeEditorHost'
 import { createCodeObjectRef, verifyCodeTarget, type CodeDraft } from '../workspace/tutoringObject'
 import { TutoringExample } from '../components/workspace/TutoringExample'
-import { resolveTutoringResource, captureTutoringReturn, validateTutoringReturn,
+import { resolveTutoringReferences, captureTutoringReturn, validateTutoringReturn,
   type TutoringResourceResult, type TutoringReturnAnchor, type TutoringReturnFile } from '../workspace/tutoringReturn'
 import type { TutorMessage } from '../workspace/tutoringStore'
 import type { CommandContext } from '../workspace/frozenCommand'
@@ -250,17 +250,21 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
       documentVersion:f.confirmed?.version??null,contentHash:confirmation.client?.current.workspace?.files.find(s=>s.fileId===f.serverFileId)?.contentHash??null,
       draftText:projectLive.current.draftText(f.fileId)}))
   }
-  function onExample(message:TutorMessage) {
-    if(init.init?.kind!=='ready' || !c || !confirmation.client?.isCurrent(c)) return
-    const resource=resolveTutoringResource(message.payload.resourceRefs?.[0]??'',init.init.activity,init.init.materials,c.mode)
-    const file=returnFiles().find(f=>f.fileId===projectLive.current.activeFile?.fileId)
-    const view=editorHandle.current?.saveViewState()??null
-    const anchor=file?captureTutoringReturn(c,file,view):null
-    if(resource.kind==='ready' && anchor) {
-      try {sessionStorage.setItem(readingMarkerKey(c),JSON.stringify({key:readingMarkerKey(c),origin:returnOrigin(anchor.file)}))}
-      catch {setReturnNotice({notice:'本机阅读引用未保留；刷新后不能恢复原精确位置。',origin:returnOrigin(anchor.file)})}
-    }
-    setExample({resource,anchor});setTutorOpen(false)
+  async function onExample(message:TutorMessage) {
+    const client=confirmation.client
+    if(init.init?.kind!=='ready' || !c || !client?.isCurrent(c)) return
+    try {
+      const resource=await resolveTutoringReferences(message.payload.resourceRefs??[],init.init.activity,init.init.materials,c.mode)
+      if(!client.isCurrent(c)) return
+      const file=returnFiles().find(f=>f.fileId===projectLive.current.activeFile?.fileId)
+      const view=editorHandle.current?.saveViewState()??null
+      const anchor=file?captureTutoringReturn(c,file,view):null
+      if(resource.kind==='ready' && anchor) {
+        try {sessionStorage.setItem(readingMarkerKey(c),JSON.stringify({key:readingMarkerKey(c),origin:returnOrigin(anchor.file)}))}
+        catch {setReturnNotice({notice:'本机阅读引用未保留；刷新后不能恢复原精确位置。',origin:returnOrigin(anchor.file)})}
+      }
+      setExample({resource,anchor});setTutorOpen(false)
+    } catch(e) {if(client.isCurrent(c))showToast(describeError(e))}
   }
   function onReturnExample() {
     if(!example) return
