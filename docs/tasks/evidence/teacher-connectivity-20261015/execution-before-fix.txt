@@ -1,0 +1,124 @@
+# I1 教师端连通性测试：本轮执行记录�?026-10-15�?
+## 1. 任务、依据与写集
+
+负责人请求：�?[I1 教师端前后端连通性测试方案](I1_TEACHER_CONNECTIVITY_TEST_PLAN_20261015.md) 执行详细测试�?
+- 方案固定基线 `4ea3c73e70a6ad334476d54315c58e806b06cae8`�?*实际执行版本** `main@9664ca5646b969cde0ccff4f4b8d5c7ea2da547d`（方案基线之后又�?PR #89/#91 与统一聊天主线等提交；方案 §1 已要求「执行前重新登记实际前端产物、后端版本及环境」）�?- 已读：方案全文及 §1 列出�?PRD/MVP/TECH/TEAM 章节、[教师工作台](I1-TEACHER_UI_WORKBENCH.md) §1�?.9、[受控验证工具](../../tools/teacher-workflow/README.md)、[本机同步与测试入口](LOCAL_PROJECT_TEST_ENTRY_20261015.md)、[学生运行说明](../../apps/student/README.md)�?- 本任务可写：本记录与 `docs/tasks/evidence/teacher-connectivity-20261015/`、`.tmp` 隔离运行目录�?*应用源码、凭据、数据库、产�?规划/参考与规范均只�?*；本轮未改任何源码、未做真实模型调用、未部署、未提交、未推送�?- 环境：Windows x64；批�?Node `v24.21.0`（保留发行包）；Chrome `C:/Program Files/Google/Chrome/Application/chrome.exe`；两�?lockfile 与方�?入口记录一致（teaching `7D93AFC2�?48E`、student `B371F908�?7D6`）�?
+## 2. �?0 批：环境准入（结论：真实�?BLOCKED�?
+按方�?§3.2 十项清单逐条核实，全部为本机只读实测，不采信他人历史结论�?
+| # | 要求 | 实测结果 |
+| --- | --- | --- |
+| 1 | 维护者明确本�?origin/环境所有�?库范�?可写合成课程 | 未取得；无维护者收�?|
+| 2 | 受控环境具备精确 41 表复核组合并启用 review �?teacher-workbench | **不具�?*：`127.0.0.1:3444` 无监听（`curl` http=000�?|
+| 3 | 登记前端产物/后端提交/Node/lockfile/库模�?浏览�?| 仅登记本机源码与运行时；无已部署产物可比 |
+| 4 | 严格 TLS �?`/health/live`、`/health/ready` 正常，静态与 `/api` 同源 | 无法测：宿主不存�?|
+| 5 | 教师真实登录、`/session` �?workbench 返回预期 | 无法测：无账号与宿主 |
+| 6 | 教师与学生独立浏览器上下�?| 无法�?|
+| 7 | 使用现有合成账号、密码本人受控领取、无并行操作 | 未取得；无并行确�?|
+| 8 | 备份/恢复负责人、备份标识、产物位置与恢复方式 | 未取�?|
+| 9 | 关闭教师与个人模型调�?| 本机教师模型默认关闭（源码核对）；无宿主可核 |
+| 10 | 禁用成功替身/请求改道/fixture 回退 | 本轮浏览器项仅用既有协议替身回归，未作为真实链通过 |
+
+宿主前置的独立复核（不依赖他人记录）�?
+- WSL Ubuntu �?`ls -d /opt/xunjie-ui-local /opt/xunjie-runner` �?两者均 **No such file or directory**（`/opt` 下只�?`ida-free-9.3`）�?- `tools/i0-hdl/xunjie-local.ps1` �?`local-application-host.mjs` 硬绑定该根目录与 `/opt/xunjie-runner/node/bin/node`、`xunjie-c1-vm.service`；均不存在�?- 无任�?`XUNJIE_*` 环境变量�?- 唯一在听的是 `127.0.0.1:5601`（PID 63160，上一会话保留的学�?`dev:prep`，HTTP 200），按方�?§44/§59 属开发交互预览，**不计真实连通性通过**�?- `verify-browser.mjs --course c`（不�?`--run`）实测只输出计划：`origin=https://127.0.0.1:3444`、账�?`synthetic-robert-teacher`/`synthetic-robert-student-a`、课�?`synthetic-robert-course-c` —�?与方�?§9.1「硬绑定 Robert 原本�?origin/账号/课程，不是通用测试器」一致，本机不是该对象�?
+**结论**：本机不具备真实链入口。按方案 §59「当前不具备入口时将真实链标阻塞，先完成静态、单元和隔离服务测试，不自动搭建替代服务或改用预览凑数」，真实链（TC 全部浏览器环节与 TX 的浏览器/宿主环节）标 **BLOCKED**，第 1 批照常执行�?
+## 3. �?1 批：客户端、后端专项、构建与协议替身回归（已执行�?
+| 命令（Node v24.21.0、原锁依赖） | 实际结果 | 证据 |
+| --- | --- | --- |
+| `apps/teaching`：`npm run typecheck` | **通过**（exit 0�?| `batch1-teaching-typecheck.txt` |
+| `apps/teaching`：`npm run build` | **通过**（exit 0�?| `batch1-teaching-build.txt` |
+| `apps/teaching`：`node --test tests/teacher-workflow.test.ts tests/review.test.ts tests/a5-feedback.test.ts tests/a5-followup.test.ts` | 73 项：**72 通过�? 失败**（首次运行） | `batch1-teaching-4files.txt` |
+| `apps/student`：`npm run typecheck` | **通过**（exit 0�?| `batch1-student-typecheck.txt` |
+| `apps/student`：`npm test -- src/teacher/backend.test.ts src/teacher/live.test.ts src/workspace/submissionFeedback.test.ts` | **16/16 通过** | `batch1-student-targeted.txt` |
+| `apps/student`：`npm test`（全�?vitest�?| **647/647 通过**�?3 文件�?| `batch1-student-full-unit.txt` |
+| `apps/student`：`npm run build` | **通过**（exit 0�?| `batch1-student-build.txt` |
+| 协议替身浏览器回归：`teacher-ui.spec.ts`、`sessionEntry.spec.ts`、`real-mode.spec.ts`（`XUNJIE_E2E_BROWSER_CHANNEL=chrome`；因 5601 被上一会话占用，按 harness 支持的显式覆盖用新端�?5621/5622/5623 �?`CI=1` 另起进程，未关闭他人服务�?| **18 通过�? 失败** | `batch1-student-e2e-3specs.txt` |
+| `teacher-model-settings.spec.ts`（方案基线之后新增的个人模型入口，按入口记录 §47�?3 补测�?| **2/2 通过** | `batch1-student-e2e-teacher-model-settings.txt` |
+| `apps/teaching`：`npm test`�?*非方案指定命�?*，为扩大映射范围另跑�?| **未完�?*：跑�?`tests/app.test.ts` 最后一项后停止输出，随�?5 分钟以上 CPU 无增长（进程存活�?2 �?node 子进程），判定为挂起；已终止 | `batch1-teaching-full-suite-partial.txt` |
+
+说明：`teacher-workflow.test.ts` 是方�?§9.1 所述「应�?inject + 真实隔离 DB 的正�?35/41 表组合、权限读取、C/HDL 反馈与主动修订」服务集成证据，**不证明浏览器连�?*，本节所有结果都只记在隔离层�?
+## 4. 发现一：`sessionEntry.spec.ts:71` �?`main@9664ca5` 超时（FAIL�?
+方案 §9.2 指定运行的三个协议替�?spec 中，`e2e/sessionEntry.spec.ts:71`「取消请求失效时仍靠会话代次拒收�?Session 成功与旧 401」稳定超时（60 秒），非断言失败�?
+**定位过程与证据（全部在本机实测）�?*
+
+1. **不是环境或参数问�?*：单独运行该 spec 同样超时（`batch1-student-e2e-sessionentry-alone.txt`）�?2. **不是本机差异**：在隔离 worktree 检出方案基线附近的 `d77c9cc`（本地入口记录记载该提交上此 spec 曾通过），�?*同一套配�?*运行 �?**2.9 秒通过**�?3. **请求轨迹**（在 HEAD 的隔�?worktree 里对同一 spec 加装记录、写�?`finding-sessionentry-request-trace.json`）：
+   `GET /api/session 401` ×2 �?`POST /api/sessions 200` �?`GET /api/session 200` ×2 �?**`GET /api/model-settings 401`** �?**`GET /api/agent/conversations 401`** �?`GET /api/session 200`�?*`/api/assignments/authorized-link/bootstrap` 从未被请�?*�?4. **正向对照**（`finding-sessionentry-positive-control.txt`）：把上述两个新调用按正�?200 加入�?spec 的替身（**不改任何业务断言**）后，同一 spec **3.0 秒通过**�?
+**根因**：`main` 窗口内（`d77c9cc..9664ca5`）`AppShell` 改为调用真实 API 并在挂载时读取个人模型配置（`useModelSettings()` �?`GET /api/model-settings`，另�?`bridge/agentApi` 的会话列表读），而该 spec 的兜底拦截对未知 `/api/**` 统一�?**401 UNAUTHENTICATED**；`apps/student/src/workspace/http.ts:174` �?*任何** real 模式 401 UNAUTHENTICATED（`/sessions` 除外）触发全局会话失效通知，界面因此显示「登录已失效，请重新登录」，永远到不了任务页，bootstrap 自然不发。用户可见的失败现场（登录页 + 该提示）与超时错误上下文一致�?
+**性质与建议（不由本任务代决）**：这�?*替身与新启动调用的契约缺�?*，业务断言未被证明错误；同时暴露一个值得模块负责人判断的健壮性问题——辅助接口（个人模型配置）的 401 被当作「会话失效」并把用户登出。处置选项：把这两个新调用补进 spec 替身，或收窄客户端的「任�?401 即失效」规则；两者都�?UI 侧，且需要决定哪个才是期望行为�?*本轮不修改源�?*�?
+**影响**：方�?§9.2 指定的浏览器回归在当�?`main` 上无法全绿；�?spec 是会话入口的关键守卫用例，属方案 §10 的「功能失败」类别（非越�?泄露，不触发阻断本轮链路）�?
+## 5. 发现二：`review.test.ts:126` 的子串断言不稳定（间歇 FAIL�?
+首次四文件运行时 `tests/review.test.ts:112`「A4: B2 preparation automatically reads the real current learner state and ignores injected preparation state」失败于�?126 �?`assert.ok(!JSON.stringify(refs).includes('900'))`�?
+- 单独运行 `tests/review.test.ts`�?*51/51 通过 ×3 �?*�?- 四文件集合复跑：**73/73 通过 ×2 �?*�?- 只跑该用例循�?25 次：**1 次失�?/ 24 次通过（约 4%�?*�?
+**原因**：该断言把注入的假版本号 `900` 当作子串在整个响应体里搜索，而响应本身必然含随机 UUID �?SHA-256 内容哈希；三者中任一含数字串 `900` 即误报。属**断言写法过宽**，不是产品回归。建议改为结构化断言（仅比较各引用的 `learnerStateRevision`/不接纳注入值），使批次的「确定性用例零失败」出口条件不被随机误报污染�?*本轮不修改源�?*（该文件�?A4 任务）�?
+## 6. 逐用例状�?
+判定口径：`PASS(隔离�?` = 由本轮或既有隔离服务/协议替身测试实测通过�?*明确不表示浏览器或真实宿主连�?*；`BLOCKED` = 需要本机不存在�?41 表宿主、账号、维护者收据或恢复授权；`GAP-UI` = 源码中无对应真实控件/路由；`NOT_RUN` = 本轮未执行且无隔离层替代�?
+### 6.1 第一�?TC-01�?8（真实主链，C/HDL 各一遍）
+
+| ID | 状�?| 依据 |
+| --- | --- | --- |
+| TC-01 | **BLOCKED**（真实登�?退�?深链）；协议替身层有覆盖 | 宿主与账号缺失；`sessionEntry.spec.ts` 覆盖会话入口与退出语义（且当前有 §4 的失败） |
+| TC-02 | **PASS(隔离�?** + 浏览�?**BLOCKED** | 「normal review host exposes only the responsible teacher discovery; reads do not start assigned attempts」「retained databases without display columns keep session, course, assignment, bootstrap and teacher workbench reads usable�?|
+| TC-03 | **BLOCKED**（三条导入链走真实页面）；材料校验有隔离层覆�?| 需宿主；材�?资源校验由既�?`design-material` 等文件覆盖，本轮未在其命令范围内 |
+| TC-04 | **PASS(隔离�?**（私有用途强制关闭且投影不泄露） + 浏览�?**BLOCKED** | `A5: a teacher reads one attempt context …`、协议替�?`teacher-ui.spec.ts` 的私有材料裁剪用例（18 通过中） |
+| TC-05 | **BLOCKED** | 需宿主与账�?|
+| TC-06 | **BLOCKED**（草�?PATCH 版本前进）；CAS 语义有隔离层覆盖 | 需宿主；`http.ts` PATCH 与既有设计测试覆盖协议层 |
+| TC-07 | **BLOCKED**（三类检查结果与阻断）；检查链有隔离层覆盖 | 需宿主 |
+| TC-08 | **PASS(隔离�?**（三视角裁剪与服务端过滤�?+ 浏览�?**BLOCKED** | `design-projection.test.ts`（本轮未跑，属既有证据）+ `teacher-ui.spec.ts` 预览/权限替身用例 |
+| TC-09 | **BLOCKED**（发布与固定活动不变）；release 语义有隔离层覆盖 | 需宿主 |
+| TC-10 | **BLOCKED**（分配与 S1/S2 边界�?| 需宿主与第二身�?|
+| TC-11 | **PASS(隔离�?** + 浏览�?**BLOCKED** | `normal C host fixes submission …`、`normal HDL host fixes submission …` |
+| TC-12 | **PASS(隔离�?**（review-context/artifactSnapshotId/证据分层�?+ 浏览�?**BLOCKED** | `A5: reviewing an old submission reports the snapshot it bound …`、`A5: a teacher reads one attempt context …` |
+| TC-13 | **PASS(隔离�?**（正式反馈绑定固定提交、阶段迁移同事务�?+ 浏览�?**BLOCKED** | `A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction` |
+| TC-14 | **PASS(隔离�?**（同线程修订与两种版本） + 浏览�?**BLOCKED** | `A5: feedback revisions append …`、`A5: two feedback threads report a scope version…` |
+| TC-15 | **PASS(隔离�?**（发许可仍只读、学生消费才 active�?+ 浏览�?**BLOCKED** | `A5: the revision permission keeps the artifact read-only until the student consumes it` |
+| TC-16 | **PASS(隔离�?**（第二版提交与旧提交原文保留�?+ 浏览�?**BLOCKED** | `A5: reviewing an old submission reports the snapshot it bound …`（含旧提交与新草稿分离） |
+| TC-17 | **PASS(隔离�?**（复制新蓝图、来源精确、旧活动不变�?+ 浏览�?**BLOCKED** | `A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt` |
+| TC-18 | **PASS(隔离�?**（适用有效历史、撤回不复活、未知保留） + 浏览�?**BLOCKED** | `A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims`（含 `POST /help` + `prepareStudentHelp` 真实上下文） |
+
+HDL 链：隔离层由 `normal HDL host fixes submission, saves feedback, grants and consumes student revision without replacing history` 覆盖；浏览器与固�?`digitalLogicConfig`/runtime 引用、构�?板卡/仿真**未执�?*（本轮不宣称）�?
+### 6.2 第二�?TX-01�?8
+
+| ID | 状�?| 依据 |
+| --- | --- | --- |
+| TX-01 / TX-02 | **PASS(隔离�?**（越权与跨课/跨角色拒绝、audience 不提权） + 浏览�?**BLOCKED** | `A5: a teacher reads one attempt context…`（学�?403）、`A4: evidence queues enforce real membership, owner, course, and visible exact resource scope`、协议替身权限用�?|
+| TX-03 | **PASS(协议替身�?**�?01/限流/CSRF/Origin 语义�?+ 真实宿主 **BLOCKED** | `sessionEntry.spec.ts:10`、`:48` 通过；`:71` �?§4 |
+| TX-04 | **NOT_RUN**（本轮命令范围外）；既有材料校验文件可补 | 需�?`design-material` 等既有文件另�?|
+| TX-05 | **PASS(隔离�?**（旧 revision 冲突不覆盖） + 浏览�?**BLOCKED** | `A4: candidate admission wins before an old teacher form and the stale form cannot overwrite it` |
+| TX-06 | **PASS(隔离�?**（两教师�?stateRevision 只有一个成功） | 同上�?`A4: a late dispute write failure restores the prior basis…` |
+| TX-07 | **PASS(隔离�?**（纠正同事务失效、旧结果迟到不生效） | `A4: any late teacher transaction failure rolls back decision, state, epochs, stopped jobs, actions, events, and receipt`、`A4: teacher correction preserves original ordinary runs and displayed-help receipts…` |
+| TX-08 | **PASS(隔离�?**（范围版本与线程版本不同仍正确） | `A5: two feedback threads report a scope version the next write can actually use` |
+| TX-09 | **PASS(隔离�?**（旧提交与最新提交边界） | `A5: reviewing an old submission reports the snapshot it bound…`、`A5: formative feedback cites a submission without moving the learning stage` |
+| TX-10 | **PASS(隔离�?**（同键重放原 IDs、异键冲突） | `A4: review and dispute receipts distinguish first commit and replay without another state change`、`A5: formal feedback …`（重放断言�?|
+| TX-11 / TX-12 / TX-13 | **BLOCKED / NOT_RUN**（断响应�?xx、账号切换的真实页面分支�?| 需真实宿主与浏览器；方�?§9.3 亦将这几项列为本方案新增覆盖重点 |
+| TX-14 | **PASS(隔离�?**（暂停使许可失效、恢复不复活�?| `A5: the revision permission keeps the artifact read-only until the student consumes it` + C4 既有语义；控制类 UI **GAP-UI**（教师端暂停控件未在本轮核到�?|
+| TX-15 | **PASS(隔离�?** | `41-table teacher review and independent personal-model settings coexist in one host without a model call`（模型调�?0�?|
+| TX-16 | **BLOCKED** | 需维护者在专用宿主重启；不在共享进程实�?|
+| TX-17 | **BLOCKED** | 需专门恢复授权，不操作现用�?|
+| TX-18 | **PASS(隔离�?**（依据修�?撤回标记与历史异议不覆盖新判断） | `A5: a dispute against feedback whose basis moved on is appended as history, not refused` |
+
+### 6.3 第三�?TE-01�?7
+
+| ID | 状�?| 依据 |
+| --- | --- | --- |
+| TE-01 教师 AI 根草�?局部建�?| **BLOCKED**（模型预算关闭且无宿主）；本机未发现教师�?AI 起草真实控件 | 方案 §45 说明设计 AI 预算关闭 |
+| TE-02 试评量规/teacher_sample | **GAP-UI**（未核到真实控件�? 服务�?**NOT_RUN** | 需逐项核页面与宿主 |
+| TE-03 课程导出与活�?分配控制 | **GAP-UI**（导出控件未核到；预�?JSON 不算�?| 方案 §47 明确预览导出不算真实导出 |
+| TE-04 后续任务语义 | **NOT_RUN** | 无模型输出可�?|
+| TE-05 教师真人一次设计→分配→审阅→再设�?| **BLOCKED**（需负责人本人操作且课程内容实际审阅�?| 方案 §164 |
+| TE-06 键盘�?1440/720/390 布局 | **部分 PASS**：协议替�?`teacher-ui.spec.ts:325` 720/390 无水平溢出、主题切换与刷新保留偏好�?8 通过之一）；真实宿主布局 **BLOCKED** | `batch1-student-e2e-3specs.txt` |
+| TE-07 性能与故障规�?| **NOT_RUN**（完�?NFR 另按 MVP 负载执行�?| 单用户冒烟不能宣�?p95/10 会话 |
+
+## 7. 汇总（分母按方�?§11 口径�?
+| 统计口径 | 计划 | 实际执行 | 通过 | 失败 | 阻塞 | 界面缺口 | 不适用 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 真实浏览器（真实宿主，TC/TX 浏览器环节） | 36 项浏览器环节 | 0 | 0 | �?| 36 | �?| �?|
+| 隔离服务/协议替身（本轮实际执行） | �?| �?1 �?9 条命�?| 8 条命令通过 | 2 项（§4 稳定 1 项、�? 间歇 1 项） | �?| �?| �?|
+| 真实模型 | 0 次调�?| 0 次调�?| �?| �?| 未执�?| �?| �?|
+| 真人教师与学�?| TE-05 | 0 | 0 | �?| 1 | �?| �?|
+
+- �?1 批命令级结果：`typecheck`×2、`build`×2、teaching 四文件、student 专项、student 全量单元、协议替身三 spec、教师模型设�?spec —�?其中 teaching 四文件首次含 1 项间歇失败（§5），协议替身�?spec �?1 项稳定失败（§4）�?- 首次失败与复验分别保留，未以复验覆盖首次结果；未以跳过或替身冒充真实链通过�?
+## 8. 未执行与边界
+
+- **真实�?*：TC-01�?8 的浏览器环节、TX-01�?3/05�?4 的浏览器环节、TX-11�?3/16/17 全部 �?BLOCKED（本机无 41 表宿主、无账号与维护者收据、无恢复授权）�?- **未搭建替代服务、未使用预览充当真实�?*（方�?§59）�?- **未修�?*：应用源码、README、`docs/product/**`、`docs/planning/**`、`docs/reference/**`、`AGENTS.md`、凭据、CI、数据库；未提交、未推送、未部署�?- **未调用模�?*�? 次）、未连接执行节点、未做真人操作或教学效果判断�?- �?1 批中 `apps/teaching` 全量 `npm test` 挂起（�? 末行）：非方案指定命令，产物为部分日志；命名具体挂起用例需另跑�?`--test-timeout` 的一轮，留给模块负责人或后续批次�?- 产品基线�?MVP_SPEC §10：待授权维护者汇总；本记录不代改基线�?
+## 9. 下一步建议（不代决）
+
+1. **UI �?*：处�?§4（补替身或收窄「任�?401 即会话失效」规则，并明确期望行为）；这决定方案 §9.2 的浏览器回归能否全绿�?2. **A4/测试�?*：把 §5 的子串断言改为结构化断言�?3. **环境�?*：请维护者按方案 §3.2 提供 41 表宿主收据、合成账号（本人受控领取）、备�?恢复负责人与产物位置；具备后�?§9.2 �?`--run` 命令�?§10 批次 2/3 执行真实链，并在两课各跑一遍�?4. `apps/teaching` 全量挂起项：�?`--test-timeout` 定位后再决定是否属产品问题�?

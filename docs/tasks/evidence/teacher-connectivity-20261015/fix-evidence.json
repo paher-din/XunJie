@@ -1,0 +1,78 @@
+{
+  "task": "I1 teacher connectivity regression fixes",
+  "date": "2026-10-15",
+  "baseline": "9664ca5646b969cde0ccff4f4b8d5c7ea2da547d",
+  "results": {
+    "studentUnit": {
+      "passed": 647,
+      "failed": 0,
+      "files": 53
+    },
+    "browser": {
+      "passed": 21,
+      "failed": 0
+    },
+    "teachingTargeted": {
+      "passed": 73,
+      "failed": 0,
+      "skipped": 0
+    },
+    "studentTypecheck": "exit0",
+    "teachingTypecheck": "exit0",
+    "windowsRunControlDiagnostic": "exit1: Linux and trusted control context required; existing platform restriction, retained",
+    "realHost": "BLOCKED: no normal review host; not run"
+  },
+  "note": "Initial fix logs without a terminal summary are interrupted attempts; final logs are authoritative. Original evidence.json and its files are unchanged.",
+  "files": [
+    {
+      "file": "fix-student-browser-final.txt",
+      "bytes": 51273,
+      "sha256": "26a2d7732dcb3a44841f21efad4a7cc6edca2f67018c9bc838111424dd5c685d"
+    },
+    {
+      "file": "fix-student-browser.txt",
+      "bytes": 39479,
+      "sha256": "6785d0a8b853faa168f826d9e62b6b880733d3f2ad6268fe92e52adf5c62029d"
+    },
+    {
+      "file": "fix-student-full-unit-final.txt",
+      "bytes": 10413,
+      "sha256": "e8c9b67d4484e050d8b95d7dc215854d72af4393c035f3892ec2b86efdb69628"
+    },
+    {
+      "file": "fix-student-full-unit.txt",
+      "bytes": 1642,
+      "sha256": "2b86744bcfeb4e005be6c455856d60d27f4581989fe0781ca39c72a00f85a3ad"
+    },
+    {
+      "file": "fix-student-typecheck.txt",
+      "bytes": 92,
+      "sha256": "d5541ec8e56867806267f5f80ce11865050d6409a375607d46bd508dc089b43e"
+    },
+    {
+      "file": "fix-teaching-4files-final.txt",
+      "bytes": 8039,
+      "sha256": "77bcf1ab0cb0ea9fcff6c912d1b65b24965db6d5678e5d4460da1cf7626dc690"
+    },
+    {
+      "file": "fix-teaching-4files.txt",
+      "bytes": 1062,
+      "sha256": "a164e696f04a24eb0638b08dd078c6ee0d7c7cd791f7788f35d81d02e2fd4299"
+    },
+    {
+      "file": "fix-teaching-typecheck-final.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fix-teaching-typecheck.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "fix-windows-runcontrol-diagnostic.txt",
+      "bytes": 956,
+      "sha256": "8bbfc88251a4a32b0857f5b3858f9d84cfb86ee156c6eb8a533f77ca93cc93a7"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+
+> learning-space@0.1.0 test
+> vitest run src/teacher/backend.test.ts src/teacher/live.test.ts src/workspace/submissionFeedback.test.ts
+
+
+ RUN  v3.2.7 <repo>/apps/student
+
+ ✓ src/teacher/backend.test.ts (3 tests) 21ms
+ ✓ src/teacher/live.test.ts (4 tests) 31ms
+ ✓ src/workspace/submissionFeedback.test.ts (9 tests) 25ms
+
+ Test Files  3 passed (3)
+      Tests  16 passed (16)
+   Start at  15:44:48
+   Duration  2.10s (transform 630ms, setup 0ms, collect 895ms, tests 77ms, environment 2ms, prepare 2.52s)

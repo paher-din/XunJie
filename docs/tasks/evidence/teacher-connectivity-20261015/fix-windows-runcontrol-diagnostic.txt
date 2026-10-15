@@ -1,0 +1,23 @@
+✖ review: real RunControl preparation failure ends check without fabricating a RunRecord (2.8801ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 669.4579
+
+✖ failing tests:
+
+test at server\workspace\review.test.ts:118:1
+✖ review: real RunControl preparation failure ends check without fabricating a RunRecord (2.8801ms)
+  Error [RunnerError]: Linux and trusted control context required
+      at new RunControl (file:///D:/XunJie/apps/teaching/runner/control.ts:48:13)
+      at TestContext.<anonymous> (file:///D:/XunJie/apps/teaching/server/workspace/review.test.ts:120:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    code: 'INVALID_CONFIGURATION'
+  }

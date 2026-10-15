@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-15",
+  "environment": "Ubuntu WSL Linux x64; Node v24.21.0; original lockfile npm ci",
+  "single": {
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  "relatedFile": {
+    "path": "server/workspace/review.test.ts",
+    "tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "durationMs": 13619.23523
+  },
+  "sourceHashesMatchWindows": true,
+  "notes": [
+    "Single test is included in the five-test file; do not add the counts.",
+    "Initial cross-session continuation failed before tests because the temporary directory was unavailable; preserved separately.",
+    "No platform guard changes, global installation, real teaching database, model call or execution node setup."
+  ],
+  "files": [
+    {
+      "file": "wsl-initial-isolated-root.txt",
+      "bytes": 39,
+      "sha256": "0d09312e6b8567c5cc290549d321d499648c14d7aee7e55ec739afc56d917429"
+    },
+    {
+      "file": "wsl-isolated-root.txt",
+      "bytes": 39,
+      "sha256": "25af5f1ba627abee835de131ea1947be4351a23bc7345ae0b4cda4872972450f"
+    },
+    {
+      "file": "wsl-isolated-roots.txt",
+      "bytes": 39,
+      "sha256": "25af5f1ba627abee835de131ea1947be4351a23bc7345ae0b4cda4872972450f"
+    },
+    {
+      "file": "wsl-regression-preparation-final.txt",
+      "bytes": 2700,
+      "sha256": "52d848c633f72a28245aca27209156365a5441e35dd58846185b83a3ffbdcee3"
+    },
+    {
+      "file": "wsl-runcontrol-exit.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "file": "wsl-runcontrol-validation.txt",
+      "bytes": 1949,
+      "sha256": "9ff102e4663f8e67a55e45cdd92c26eac4180d11eff6f28997e47a8e8ac020fd"
+    },
+    {
+      "file": "wsl-runtime.json",
+      "bytes": 52,
+      "sha256": "12f445f7cc93c4688cb8e3f8cacf03b0fff037e0da586fa98ab1786a9a821229"
+    },
+    {
+      "file": "wsl-source-sha256.txt",
+      "bytes": 353,
+      "sha256": "53ba1008642a6bfd873e6628cd4d5f5da5abfbcb92c820f44dafc80a73ea6d62"
+    },
+    {
+      "file": "wsl-workspace-review-exit.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "file": "wsl-workspace-review-final.txt",
+      "bytes": 658,
+      "sha256": "bd42a0f7c3df9d69020672db917d6ed88151db08c74a3df57729b792ed5e8855"
+    },
+    {
+      "file": "wsl-workspace-review.txt",
+      "bytes": 147,
+      "sha256": "fafd027897cf3402da9890dfbe9985ccfdf5528b8ed40f082850907a8c85b258"
+    }
+  ]
+}
