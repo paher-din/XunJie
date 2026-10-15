@@ -111,3 +111,11 @@ Robert 追加明确授权：将当前3444运行环境更新到本次 main；随�
 实际升级已完成：旧 PID 24784 的确切宿主收到 SIGTERM 后，核对 `/proc/24784` 消失且3444不监听，随后部署并启动新版。回滚包在受限 `/opt/xunjie-ui-local/releases/model-settings-a49993c-20261015/`，包含应用源码/静态产物/工具和一致 SQLite backup；D 盘日常启动工具另保留旧副本。课程库 schema 哈希及全部35表条数在替换前后一致，原 application-config 未变。新宿主424个 teaching 源文件与提交归档逐字节一致，前端来自该提交重新构建的 dist 并核对全部文件；未安装依赖或更新执行节点。
 
 `xunjie-local.ps1 start` 实际返回 live/ready 均200，原 C/HDL readiness 同代际及指纹匹配、VM 已运行且未重新启动。未登录访问 `/api/model-settings` 返回401，保持原认证。个人库初始化为批准的四表，`credentials.key` 和 SQLite 均root600；核对时尚无账号配置（0行），没有模型生成。Chrome 实际3444页已刷新，显示新版原登录入口并交给本人登录/填写 Key。真实两处回复待本人保存启用后验证。前端本次重新 build 通过，保留大 chunk 提示；A0静态检查 errors=[]、diff --check通过。
+
+### 10.1 页面保存与后台记录不一致排查
+
+Robert 随后报告已保存并提供连接成功截图。最初仅查看 Chrome 的旧登录标签是不完整的：用户实际使用的是 Codex 应用内浏览器同源 `/#/settings/model`，账号 `synthetic-robert-student-a`。核对时个人库仍0条配置，应用内页面入口为 `/assets/index-C9P8IzGF.js`；HTTP根页面及磁盘静态目录也实际变为该构建。后端424文件与本次 main仍逐字节一致，说明偏差在静态交付，不是新版保存接口已接纳但丢失。旧前端本地配置及供应商连接成功不代表新版后台保存。
+
+可复现判据：读取3444根页面入口脚本，断言等于已验证本批构建 `/assets/index-C0xkrcS_.js`。恢复前输出 `FAIL: live=/assets/index-C9P8IzGF.js expected=/assets/index-C0xkrcS_.js`；恢复后同一命令输出 `PASS: main frontend deployed`。变化来源/操作者未查明，不据此归因给其他会话。
+
+将偏离静态目录完整保留为受限回滚包中的 `student-dist-diverged-before-restore/`，恢复本批归档所配套的143个前端产物并逐字节校验；未替换后台或重启服务。刷新用户实际应用内标签后，页面显示个人模型未启用、尚无供应商，符合后端0行事实。已预填公开供应商名称、Base URL和模型ID，交由本人重新录入并保存 Key；未读取旧浏览器本地 Key、自动上传旧凭据或生成模型回复。此次为运行产物偏差修复，没有源代码行为变更，原HTTP判据作为现场回归，不添加复述实现的源码测试。
