@@ -154,6 +154,37 @@ test('真实首页读取本人两课程与固定标题，暂停可查看，卡�
   expect(state.reads.some(read => read.path.startsWith('/__i0prep/'))).toBe(false)
 })
 
+test('同课程四次相同 ALU 实验只显示一个入口，独立任务与旧深链仍保留', async ({ page }) => {
+  const state = await protocol(page)
+  state.courses['account-a'] = [{ courseId: 'course-hdl', role: 'student', name: '数字逻辑与系统设计' }]
+  const oldIds = ['alu-1', 'alu-2', 'alu-3', 'alu-4']
+  state.assignments['course-hdl'] = [assignment('teacher-check', 'account-a', true, 'hdl_board'),
+    ...oldIds.map(id => ({ ...assignment(id, 'account-a', true, 'hdl_board'), displayTitle: '四位算术逻辑单元' }))]
+  state.titles = Object.fromEntries([
+    ['activity-teacher-check', { courseId: 'course-hdl', title: '合成联动验证：教师下发 HDL 任务', goal: '检查教师分配' }],
+    ...oldIds.map(id => [`activity-${id}`, { courseId: 'course-hdl', title: '4 位 ALU 合成工程演示', goal: '解释 ALU 运算' }] as const),
+  ])
+  await loginHome(page)
+  await expect(page.getByRole('button', { name: /数字逻辑与系统设计.*2 个分配任务/ })).toBeVisible()
+  await expect(page.locator('.dash-section .db-side').filter({ hasText: '真实分配' })).toHaveText('真实分配 2 个任务')
+  await page.getByRole('button', { name: /数字逻辑与系统设计.*2 个分配任务/ }).click()
+  await expect(page.locator('.task-card')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: /合成联动验证：教师下发 HDL 任务/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /四位算术逻辑单元/ })).toHaveCount(1)
+  await page.getByRole('button', { name: /四位算术逻辑单元/ }).click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/task/alu-4`)
+  await page.goto(`${REAL_URL}/#/task/alu-1`)
+  await expect(page).toHaveURL(`${REAL_URL}/#/task/alu-1`)
+  await expect(page.locator('.ts-badge')).toContainText('不可用')
+  expect(state.reads.some(read => read.path === '/api/assignments/alu-1/bootstrap')).toBe(true)
+
+  // 同名但活动目标不同的版本必须仍是独立任务。
+  state.titles['activity-alu-3'] = { courseId: 'course-hdl', title: '4 位 ALU 合成工程演示', goal: '新的验收目标' }
+  await page.goto(`${REAL_URL}/#/`)
+  await page.reload()
+  await expect(page.getByRole('button', { name: /数字逻辑与系统设计.*3 个分配任务/ })).toBeVisible()
+})
+
 test('没有学生课程或课程没有分配时显示真实空态，不补演示任务', async ({ page }) => {
   const state = await protocol(page)
   state.courses['account-a'] = [{ courseId: 'teacher-only', role: 'teacher' }]
