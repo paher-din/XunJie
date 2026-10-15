@@ -75,7 +75,11 @@ export interface LearningApi {
     text: string
     images?:ChatImage[]
     onUpdate: (message: ChatMessage) => void
+    onAccepted?: (conversationId: string, turnId: string) => void
   }): Promise<{ conversationId: string; final: ChatMessage }>
+  /** Reattach by GET, or explicitly reconcile the exact request whose ACK was lost. */
+  recoverTurn?(input: { conversationId: string | null; turnId?: string; onUpdate: (message: ChatMessage) => void;
+    onAccepted?: (conversationId: string, turnId: string) => void }): Promise<{ conversationId: string; final: ChatMessage }>
   /** 停止当前回合：保留已生成部分，快照 phase 变为 stopped。无进行中回合时不做事。 */
   stopTurn(): void
   /** 继续生成被停止的回合；该回合的已停止消息在会话里原位更新。 */

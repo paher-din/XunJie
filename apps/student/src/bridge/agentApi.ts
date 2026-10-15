@@ -30,8 +30,14 @@ function turnView(raw: unknown): TurnView {
   return { conversationId: v.conversationId, turnId: v.turnId, message: m }
 }
 const terminal = (m: ChatMessage) => ['settled', 'stopped', 'failed'].includes(m.phase ?? '')
+export class AgentRecoveryRequiredError extends Error {
+  constructor() { super('连接中断，已收到的内容仍保留。请核对原回合以继续接收，不会重新生成。') }
+}
+type Observer = { conversationId: string | null; onUpdate: (m: ChatMessage) => void; onAccepted?: (conversationId: string, turnId: string) => void }
+type PendingTurn = { session: string; conversationId: string | null; turnId?: string; body?: unknown }
 class RealAgentApi {
   private active: { session: string; turnId?: string; stopRequested: boolean; stopError?: Error } | null = null
+  private pending = new Map<string | null, PendingTurn>()
   private async get<T>(path: string): Promise<T> { const captured = identity(); const value = await apiGet<T>(path, opts); assertCurrent(captured); return value }
   private async post<T>(path: string, body: unknown): Promise<T> { const captured = identity(); const value = await apiPost<T>(path, body, opts); assertCurrent(captured); return value }
   async listConversations(options?: { includeArchived?: boolean }): Promise<ConversationSummary[]> {
@@ -44,6 +50,7 @@ class RealAgentApi {
     if (c === null) return null
     if (!c || c.id !== id || typeof c.title !== 'string' || typeof c.updatedAt !== 'string' || !Array.isArray(c.messages)) throw new Error('会话响应无效。')
     return { id, title: c.title, updatedAt: c.updatedAt, pinned: c.pinned === true, archived: c.archived === true,
+      ...(typeof c.activeTurnId==='string'&&c.activeTurnId?{activeTurnId:c.activeTurnId}:{}),
       ...(typeof c.contextTokens === 'number' && Number.isFinite(c.contextTokens) && c.contextTokens >= 0 ? { contextTokens: c.contextTokens } : {}), messages: c.messages.map(message) }
   }
   private async action(id: string, body: unknown) { await this.post(`/agent/conversations/${encodeURIComponent(id)}`, body) }
@@ -56,25 +63,34 @@ class RealAgentApi {
     if (!input.expectedMessageHash) throw new Error('原消息未核对，编辑未发送。')
     await this.post(`/agent/conversations/${encodeURIComponent(input.conversationId)}/edit`, { messageIndex: input.messageIndex, text: input.text, expectedMessageHash: input.expectedMessageHash })
   }
-  private async run(mode: 'send' | 'retry' | 'resume', input: { conversationId: string | null; text?: string; images?:ChatImage[]; onUpdate: (m: ChatMessage) => void }) {
+  private async run(mode: 'send' | 'retry' | 'resume', input: Observer & { text?: string; images?:ChatImage[] }) {
     const configuration = getModelSettings()
     if (configuration.saving || configuration.loading) throw new Error('模型配置保存或读取中，请等待确认后再发送。')
     if (!configuration.data?.enabled || !configuration.data.callsEnabled || !configuration.data.defaultModelId) throw new Error('请先在设置中保存并启用个人模型。')
     const captured = identity()
+    if(this.pending.get(input.conversationId)?.session===captured&&!this.active)throw new AgentRecoveryRequiredError()
+    const pending:PendingTurn={session:captured,conversationId:input.conversationId,body:{conversationId:input.conversationId,mode,
+      expectedModelConfigRevision:configuration.data.revision,
+      ...(mode==='send'?{text:input.text,...(input.images?.length?{images:input.images}:{})}:{}),requestKey:crypto.randomUUID()}}
+    return this.observe(pending,input,configuration.data.revision)
+  }
+  private async observe(pending:PendingTurn,input:Observer,revision?:number) {
+    const captured=pending.session
+    assertCurrent(captured)
     if (this.active?.session === captured) {
       throw new Error(this.active.stopRequested ? '上一会话正在停止，请等待确认后再发送。' : '此账号已有回复正在生成，请先停止原会话后再发送。')
     }
     // 换账号或重新认证后，旧回合不能占用新会话的停止目标。
     if (this.active) this.active = null
+    this.pending.set(pending.conversationId,pending)
     const active = { session: captured, stopRequested: false } as NonNullable<RealAgentApi['active']>
     this.active = active
     try {
       let raw:unknown;
-      try{raw=await this.post('/agent/turns', { conversationId: input.conversationId, mode,
-        expectedModelConfigRevision:configuration.data.revision,
-        ...(mode === 'send' ? { text: input.text,...(input.images?.length?{images:input.images}:{}) } : {}), requestKey: crypto.randomUUID() })}
+      try{raw=pending.turnId?await this.get(`/agent/turns/${encodeURIComponent(pending.turnId)}`):await this.post('/agent/turns',pending.body)}
       catch(error){
-        if(await reloadOnModelConfigConflict(error,configuration.data.revision))throw new ModelConfigurationChangedError();
+        if((error as {failure?:{kind:string}})?.failure?.kind==='api'&&this.pending.get(pending.conversationId)===pending)this.pending.delete(pending.conversationId)
+        if(revision!==undefined&&await reloadOnModelConfigConflict(error,revision))throw new ModelConfigurationChangedError();
         throw error;
       }
       let view = turnView(raw)
@@ -82,6 +98,10 @@ class RealAgentApi {
       if (input.conversationId && view.conversationId !== input.conversationId) throw new Error('回合归属不一致，请重新读取会话。')
       active.turnId = view.turnId
       const cid = view.conversationId, tid = view.turnId
+      if(this.pending.get(pending.conversationId)===pending)this.pending.delete(pending.conversationId)
+      pending.conversationId=cid;pending.turnId=tid
+      this.pending.set(cid,pending)
+      input.onAccepted?.(cid,tid)
       input.onUpdate(view.message)
       if (active.stopRequested && !terminal(view.message)) await this.post(`/agent/turns/${encodeURIComponent(tid)}/stop`, {})
       while (!terminal(view.message)) {
@@ -92,10 +112,19 @@ class RealAgentApi {
         if (view.conversationId !== cid || view.turnId !== tid) throw new Error('回合归属不一致，请重新读取会话。')
         input.onUpdate(view.message)
       }
+      if(this.pending.get(pending.conversationId)===pending)this.pending.delete(pending.conversationId)
       return { conversationId: cid, final: view.message }
+    } catch(error) {
+      if(this.pending.get(pending.conversationId)===pending&&captured===identity())throw new AgentRecoveryRequiredError()
+      throw error
     } finally { if (this.active === active) this.active = null }
   }
-  sendMessageStream(input: { conversationId: string | null; text: string; images?:ChatImage[]; onUpdate: (m: ChatMessage) => void }) { return this.run('send', input) }
+  async recoverTurn(input:Observer&{turnId?:string}) {
+    const pending=input.turnId?{session:identity(),conversationId:input.conversationId,turnId:input.turnId}:this.pending.get(input.conversationId)
+    if(!pending||pending.session!==identity()||pending.conversationId!==input.conversationId)throw new Error('原回合未找到，请重新打开原会话核对。')
+    return this.observe(pending,input)
+  }
+  sendMessageStream(input: Observer & { text: string; images?:ChatImage[] }) { return this.run('send', input) }
   async sendMessage(input: { conversationId: string | null; text: string }) {
     const result = await this.run('send', { ...input, onUpdate: () => {} })
     return { conversationId: result.conversationId, reply: result.final }

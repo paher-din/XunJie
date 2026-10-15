@@ -287,8 +287,9 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       const userId=user(request),id=parse(z.strictObject({id:identifier}),request.params).id,current=conversation(userId,id);
       const messages=current.ids.map(messageId=>message(userId,messageId));
       const lastId=current.ids.at(-1),lastTurnId=lastId?store.get('SELECT turn_id FROM agent_messages WHERE message_id=? AND user_id=?',lastId,userId)?.turn_id:undefined;
-      const usage=typeof lastTurnId==='string'?readTurn(userId,lastTurnId).usage:undefined;
+      const lastTurn=typeof lastTurnId==='string'?readTurn(userId,lastTurnId):undefined,usage=lastTurn?.usage;
       return envelope(request,{id:current.id,title:current.title,updatedAt:current.updatedAt,pinned:current.pinned,archived:current.archived,messages,
+        ...(lastTurn?.status==='running'?{activeTurnId:lastTurn.turnId}:{}),
         ...(usage?.status==='actual'?{contextTokens:usage.inputTokens+usage.outputTokens}:{})});
     });
     app.post('/api/agent/conversations/:id',request=>{

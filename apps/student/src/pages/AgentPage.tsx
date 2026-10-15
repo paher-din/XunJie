@@ -96,12 +96,15 @@ export default function AgentPage() {
     queryFn: () => learningApi.getConversation(conversationId!),
     // 回合接纳已保存学生消息；在途历史刷新会与 pendingUser/live 重叠。
     // 由 useAgentTurn 在终态读取并原子交接这份快照。
-    enabled: !!conversationId && !turn.active,
+    enabled: !!conversationId && !turn.active && !turn.live,
   })
   const conversations = useQuery({
     queryKey: ['conversations'],
     queryFn: () => learningApi.listConversations(),
   })
+  useEffect(()=>{
+    if(conversation.data?.activeTurnId&&!turn.active&&!turn.live)turn.recover(conversation.data.activeTurnId)
+  },[conversation.data,turn.active,turn.live,turn.recover])
   const suggestions = useQuery({
     queryKey: ['suggestions'],
     queryFn: () => learningApi.suggestQuestions(),
@@ -400,7 +403,7 @@ export default function AgentPage() {
                       key={key}
                       message={msg}
                       onResume={i === lastAgentRow && !!conversationId ? turn.resume : undefined}
-                      onRetry={i === lastAgentRow && (!!conversationId||msg.failure?.code==='MODEL_CONFIGURATION_CHANGED') ? turn.retry : undefined}
+                      onRetry={i === lastAgentRow && (!!conversationId||msg.failure?.code==='MODEL_CONFIGURATION_CHANGED'||msg.failure?.code==='TURN_CONNECTION_LOST') ? turn.retry : undefined}
                       onSwitchModel={i === lastAgentRow && !!conversationId ? switchModelAndRetry : undefined}
                       onQuizAnswer={PREP_BUILD && stored >= 0 ? answerQuiz(stored) : undefined}
                       genCardSlots={PREP_BUILD && stored >= 0 ? genCardHandlers(stored) : undefined}
@@ -454,7 +457,7 @@ export default function AgentPage() {
                 label="延伸探讨"
                 show={atBottom && !!conversationId && followUps.length > 0 && input.trim() === ''}
               />
-              {turn.queued && <div className="queue-tip">{QUEUE_TIP}</div>}
+              {turn.queued && <div className="queue-tip">{turn.active?QUEUE_TIP:'上一轮已中断，排队问题仍保留。'}{!turn.active&&<button onClick={turn.sendQueued}>发送排队问题</button>}</div>}
               {/* 与叠层同一格、同一基准（composer-anchor 上沿往 8px）：排队提示占位时两者一起上抬，换挡不串位 */}
               <button className="back-bottom" onClick={backToBottom} aria-label="回到底部">
                 <Icon name="arrow-down" size={15} />

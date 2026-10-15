@@ -256,7 +256,9 @@ function FailureCard({
 }) {
   const [dismissed, setDismissed] = useState(false)
   const failure = message.failure!
-  const copy: (typeof FAILURE_COPY)['network'] = failure.code==='MODEL_CONFIGURATION_CHANGED'
+  const copy: (typeof FAILURE_COPY)['network'] = failure.code==='TURN_CONNECTION_LOST'
+    ? {title:'连接中断，原回合状态待核对',desc:'已收到的内容仍保留；核对原回合会继续接收，不会重新生成。',actions:['retry','dismiss']}
+    : failure.code==='MODEL_CONFIGURATION_CHANGED'
     ? {title:'模型配置已改变，请核对后重试',actions:['retry','dismiss']}
     : failure.code === 'DEADLINE_EXCEEDED'||failure.code==='PROVIDER_IDLE_TIMEOUT'
     ? { title: failure.code==='PROVIDER_IDLE_TIMEOUT'?'模型连接长时间无响应':'等待模型响应超时', actions: ['retry', 'dismiss'] }
@@ -275,7 +277,7 @@ function FailureCard({
     return (
       <div className="turn-fail-collapsed">
         <span>{copy.title}</span>
-        {onRetry && <button onClick={onRetry}><IconText name="restart" size={14}>重试</IconText></button>}
+        {onRetry && <button onClick={onRetry}><IconText name="restart" size={14}>{failure.code==='TURN_CONNECTION_LOST'?'核对原回合':'重试'}</IconText></button>}
       </div>
     )
   }
@@ -298,7 +300,7 @@ function FailureCard({
           if (!handler) return null
           return (
             <button key={action} className={i === 0 ? 'primary' : ''} onClick={handler}>
-              {FAILURE_ACTION_LABEL[action]}
+              {action==='retry'&&failure.code==='TURN_CONNECTION_LOST'?'核对原回合':FAILURE_ACTION_LABEL[action]}
             </button>
           )
         })}
@@ -310,19 +312,21 @@ function FailureCard({
 /** 落定操作条：图标键，无障碍名与提示承载文案（复制、重新生成——重新生成只挂在会话最后一条 agent 消息上，由父级控制）。 */
 function ActionBar({ text, at, onRetry }: { text: string; at?: string; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
   return (
     <div className="turn-actions">
       <button
         aria-label={copied ? '已复制' : '复制回复'}
         title={copied ? '已复制' : '复制'}
-        onClick={() => {
-          navigator.clipboard.writeText(text).catch(() => {})
-          setCopied(true)
-          window.setTimeout(() => setCopied(false), 1500)
+        onClick={async () => {
+          setCopied(false);setCopyError(false)
+          try { await navigator.clipboard.writeText(text);setCopied(true);window.setTimeout(() => setCopied(false), 1500) }
+          catch { setCopyError(true) }
         }}
       >
         <Icon className={copied ? 'copied' : ''} name={copied ? 'check' : 'copy'} size={16} />
       </button>
+      {copyError&&<span role="status">复制失败，请选择正文手动复制</span>}
       {onRetry && (
         <button aria-label="重新生成" title="重新生成" onClick={onRetry}>
           <Icon name="restart" size={16} />

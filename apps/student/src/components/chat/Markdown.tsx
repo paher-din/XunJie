@@ -181,6 +181,7 @@ const Block = memo(
 /** 代码块：一条顶栏放语言与复制键；正文按语言走迷你高亮，无语言时按纯文本。 */
 function CodeBlock({ token, caret }: { token: Tokens.Code; caret?: ReactNode }) {
   const [copied, setCopied] = useState(false)
+  const [copyError,setCopyError]=useState(false)
   const lang = (token.lang ?? '').toLowerCase()
   // 光标还落在这一块 = 还在写；但围栏一闭合就该高亮，不必等下一块开始
   const open = !!caret && !FENCE_CLOSED.test(token.raw)
@@ -202,15 +203,16 @@ function CodeBlock({ token, caret }: { token: Tokens.Code; caret?: ReactNode }) 
           disabled={pending}
           aria-label={pending ? '代码生成中' : copied ? '已复制代码' : '复制代码'}
           title={pending ? '生成中' : copied ? '已复制' : '复制代码'}
-          onClick={() => {
-            navigator.clipboard.writeText(token.text).catch(() => {})
-            setCopied(true)
-            window.setTimeout(() => setCopied(false), 1500)
+          onClick={async () => {
+            setCopied(false);setCopyError(false)
+            try { await navigator.clipboard.writeText(token.text);setCopied(true);window.setTimeout(() => setCopied(false), 1500) }
+            catch { setCopyError(true) }
           }}
         >
           <Icon className={copied ? 'copied' : ''} name={copied ? 'check' : 'copy'} size={13} />
         </button>
       </div>
+      {copyError&&<span role="status">复制失败，请选择代码手动复制</span>}
       <pre ref={pre} className={pending ? 'growing' : undefined}>
         <code>
           {body}
