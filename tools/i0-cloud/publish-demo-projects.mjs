@@ -23,8 +23,9 @@ export function validatePublicationPlan(value){
  for(const item of value.publicationPlan){
   requireValue(['textscope','hdl_board'].includes(item.kind)&&[item.courseId,item.sourceCourseId,item.sourceActivityVersionId,item.policyVersionId,item.checkRuleVersionId].every(id)
    &&typeof item.projectTitle==='string'&&item.projectTitle.trim()&&item.courseId!==item.sourceCourseId&&!courses.has(item.courseId),'INVALID_PUBLICATION_PROJECT');
-  requireValue(Array.isArray(item.studentIds)&&item.studentIds.length===4&&item.studentIds.every(id)&&new Set(item.studentIds).size===4
-   &&item.studentIds.includes(value.identities.studentId)&&!item.studentIds.includes(value.identities.teacherId),'MAIN_AND_THREE_VIRTUAL_STUDENTS_REQUIRED');
+  requireValue(Array.isArray(item.studentIds)&&item.studentIds.every(id)&&new Set(item.studentIds).size===item.studentIds.length
+   &&item.studentIds.length===(item.studentIds.includes(value.identities.studentId)?4:3)
+   &&!item.studentIds.includes(value.identities.teacherId),'THREE_VIRTUAL_STUDENTS_REQUIRED');
   courses.add(item.courseId);
  }
  return value;
@@ -35,7 +36,7 @@ export function dryPlan(plan){
   prerequisites:['Prepared private plan with course memberships and course-local help policy/check rule versions',
    'Private teacher/student credentials, explicit node ID, original CA and business generation',
    'Teacher API access to the fixed source activities and public materials; verified execution readiness'],
-  chain:['teacher login','copy public learning materials','register copied fixed HDL configuration when applicable','manual blueprint','checks','confirmed release','assign main student and three virtual students','main student read-only bootstrap'],
+  chain:['teacher login','copy public learning materials','register copied fixed HDL configuration when applicable','manual blueprint','checks','confirmed release','assign listed class students','main student read-only bootstrap when assigned'],
   excluded:['No SQL writes or migration','No model calls','No attempt, source file, run, score or learning record creation']};
 }
 /** Copy only a fixed public teaching projection; no mutable draft or private answer is imported. */
@@ -138,11 +139,11 @@ export async function applyPublication(spec,plan){
  }
  try{
   requireValue((await http('GET','/health/ready')).data?.status==='ready','APPLICATION_NOT_READY');
-  const teacher=await login(plan.identities.teacherId),student=await login(plan.identities.studentId);
-  const teacherCourses=(await http('GET','/api/courses',undefined,teacher)).data,studentCourses=(await http('GET','/api/courses',undefined,student)).data;
+  const teacher=await login(plan.identities.teacherId),student=plan.publicationPlan.some(item=>item.studentIds.includes(plan.identities.studentId))?await login(plan.identities.studentId):undefined;
+  const teacherCourses=(await http('GET','/api/courses',undefined,teacher)).data,studentCourses=student?(await http('GET','/api/courses',undefined,student)).data:[];
   for(const item of plan.publicationPlan){
    requireValue([item.courseId,item.sourceCourseId].every(courseId=>teacherCourses.some(course=>course.courseId===courseId&&course.role==='teacher'))
-    &&studentCourses.some(course=>course.courseId===item.courseId&&course.role==='student'),'COURSE_MEMBERSHIP_REQUIRED');
+    &&(!item.studentIds.includes(plan.identities.studentId)||studentCourses.some(course=>course.courseId===item.courseId&&course.role==='student')),'COURSE_MEMBERSHIP_REQUIRED');
   }
   const nodes=(await http('GET','/api/execution-nodes',undefined,teacher)).data?.nodes,node=nodes?.find(item=>item.nodeId===spec.executionNodeId);
   requireValue(node&&plan.publicationPlan.every(item=>item.kind==='hdl_board'?node.hdlReady:node.cReady),'SELECTED_NODE_NOT_READY');
@@ -181,9 +182,11 @@ export async function applyPublication(spec,plan){
    requireValue(assigned.assignments.length===item.studentIds.length&&new Set(assigned.assignments.map(assignment=>assignment.studentId)).size===item.studentIds.length
     &&assigned.assignments.every(assignment=>item.studentIds.includes(assignment.studentId)&&assignment.activityVersionId===release.activityVersionId&&assignment.status==='active'),'ASSIGNMENT_SCOPE_MISMATCH');
    const mainAssignment=assigned.assignments.find(assignment=>assignment.studentId===plan.identities.studentId);
-   const bootstrap=(await http('GET',`/api/assignments/${encodeURIComponent(mainAssignment.assignmentId)}/bootstrap`,undefined,student)).data;
-   requireValue(bootstrap?.recoveryGeneration===generation&&bootstrap.assignment.assignmentId===mainAssignment.assignmentId&&bootstrap.assignment.studentId===plan.identities.studentId&&bootstrap.assignment.active,'MAIN_STUDENT_BOOTSTRAP_MISMATCH');
-   checkpoint.projects=checkpoint.projects.filter(project=>project.courseId!==course).concat({courseId:course,sourceActivityVersionId:item.sourceActivityVersionId,blueprintId,activityVersionId:release.activityVersionId,assignments:assigned.assignments,studentBootstrap:'passed',attemptsCreated:0,runsCreated:0});save();
+   if(mainAssignment){
+    const bootstrap=(await http('GET',`/api/assignments/${encodeURIComponent(mainAssignment.assignmentId)}/bootstrap`,undefined,student)).data;
+    requireValue(bootstrap?.recoveryGeneration===generation&&bootstrap.assignment.assignmentId===mainAssignment.assignmentId&&bootstrap.assignment.studentId===plan.identities.studentId&&bootstrap.assignment.active,'MAIN_STUDENT_BOOTSTRAP_MISMATCH');
+   }
+   checkpoint.projects=checkpoint.projects.filter(project=>project.courseId!==course).concat({courseId:course,sourceActivityVersionId:item.sourceActivityVersionId,blueprintId,activityVersionId:release.activityVersionId,assignments:assigned.assignments,studentBootstrap:mainAssignment?'passed':'not_assigned',attemptsCreated:0,runsCreated:0});save();
   }
   checkpoint.status='published';checkpoint.completedAt=new Date().toISOString();save();
   return {status:'published',projects:checkpoint.projects.length,assignments:checkpoint.projects.reduce((total,project)=>total+project.assignments.length,0),attemptsCreated:0,runsCreated:0,modelCalls:0};

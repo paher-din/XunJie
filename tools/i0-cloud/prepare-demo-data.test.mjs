@@ -6,6 +6,7 @@ import { basename, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fixture, allocate } from '../../apps/teaching/tests/dl-a-support.ts';
 import { prepareDemoData } from './prepare-demo-data.mjs';
+import { validatePublicationPlan } from './publish-demo-projects.mjs';
 
 const review = { versions: { modelConfigVersion: 'disabled', promptVersion: 'disabled', schemaVersion: 'disabled', analysisVersion: 'learner-analysis-v1' } };
 function ownedRemove(directory, pattern) {
@@ -44,20 +45,33 @@ test('demo maintenance preserves existing work and credentials, adds real member
     assert.equal(credentialDigest(f), credentials);
     assert.equal(f.db.withTransaction(tx => tx.get('SELECT display_name FROM users WHERE id=?', 'student').display_name), studentDisplay);
     assert.equal(f.db.withTransaction(tx => tx.get('SELECT display_name FROM users WHERE id=?', 'teacher').display_name), '陈老师');
-    assert.equal(f.db.withTransaction(tx => tx.get("SELECT COUNT(*) AS n FROM course_memberships WHERE user_id='student' AND active=1").n), 4);
+    assert.equal(f.db.withTransaction(tx => tx.get("SELECT COUNT(*) AS n FROM course_memberships WHERE user_id='student' AND active=1").n), 2);
+    assert.equal(f.db.withTransaction(tx => tx.get("SELECT COUNT(*) AS n FROM course_memberships WHERE user_id='teacher' AND role='teacher' AND active=1").n), 4);
     assert.equal(f.db.withTransaction(tx => tx.get("SELECT COUNT(*) AS n FROM sessions WHERE user_id='other' AND revoked_at_ms IS NULL").n), 0);
     const receipt = JSON.parse(readFileSync(outputFile, 'utf8'));
+    assert.equal(validatePublicationPlan(receipt), receipt);
     assert.equal(receipt.publicationPlan.length, 2);
+    for (const virtual of receipt.virtualStudents) {
+      const expected = receipt.courses.filter(course => course.classIndex === virtual.classIndex).map(course => course.courseId).sort();
+      assert.deepEqual(f.db.withTransaction(tx => tx.all('SELECT course_id FROM course_memberships WHERE user_id=? AND role=? AND active=1 ORDER BY course_id', virtual.userId, 'student').map(row => row.course_id)), expected);
+    }
     for (const pending of receipt.publicationPlan) {
-      assert.equal(pending.studentIds.length, 4);
+      assert.equal(pending.studentIds.length, 3);
+      assert(!pending.studentIds.includes('student'));
       assert.notEqual(pending.courseId, pending.sourceCourseId);
       assert(f.db.withTransaction(tx => tx.get('SELECT id FROM help_policy_versions WHERE course_id=? AND id=?', pending.courseId, pending.policyVersionId)));
       if (pending.kind === 'textscope') assert(f.db.withTransaction(tx => tx.get('SELECT id FROM check_rule_versions WHERE course_id=? AND id=?', pending.courseId, JSON.stringify([pending.courseId, pending.checkRuleVersionId]))));
       else assert.equal(pending.checkRuleVersionId, 'hdl-board-structure-v1');
     }
+    assert.throws(() => validatePublicationPlan({ ...receipt, publicationPlan: [{ ...receipt.publicationPlan[0], studentIds: ['student', ...receipt.publicationPlan[0].studentIds.slice(0, 2)] }] }), { code: 'THREE_VIRTUAL_STUDENTS_REQUIRED' });
+    const excludedCourse = receipt.publicationPlan[0].courseId, absentCourse = receipt.publicationPlan[1].courseId;
+    f.db.withTransaction(tx => tx.run("INSERT INTO course_memberships(course_id,user_id,role,active) VALUES (?,'student','student',0)", excludedCourse));
     const second = await prepareDemoData({ ...options, apply: true });
     assert.deepEqual(second.created, { users: 0, courses: 0, memberships: 0, assignments: 0, revokedSessions: 0 });
     assert.deepEqual(rowCounts(f), after); assert.equal(credentialDigest(f), credentials);
+    assert.equal(f.db.withTransaction(tx => tx.get("SELECT active FROM course_memberships WHERE course_id=? AND user_id='student'", excludedCourse).active), 0);
+    assert.equal(f.db.withTransaction(tx => tx.get("SELECT active FROM course_memberships WHERE course_id=? AND user_id='student'", absentCourse)), undefined);
+    assert.equal(f.db.withTransaction(tx => tx.get("SELECT COUNT(*) AS n FROM course_memberships WHERE user_id='student' AND active=1").n), 2);
     assert.equal(JSON.parse(readFileSync(outputFile, 'utf8')).runs.length, 2);
     assert.equal(readdirSync(backupDirectory).length, 2);
   } finally {
