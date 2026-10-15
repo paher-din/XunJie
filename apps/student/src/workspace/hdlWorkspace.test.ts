@@ -198,6 +198,44 @@ it('requires explicit replacement of a current Session and does not auto-program
   expect(mocks.post).toHaveBeenCalledTimes(1)
   expect(JSON.parse(mocks.post.mock.calls[0]![1])).toMatchObject({ replaceSessionId: sid, expectedSessionRevision: goldenSession.sessionRevision })
 })
+it('keeps a newer other-tab Session/Trace and never sends the old selected input with its fresh revision', async () => {
+  const f = fixture(); await f.client.initialize()
+  expect(f.client.current.canInteract).toBe(true)
+  const before = clone(f.client.current.session!)
+  const oldFrame = clone(f.client.current.operation!.finalFrame)
+  // This page selected SW0 off before another page confirmed SW15 on.
+  const selectedInputs = { switches: oldFrame.switches.slice(0, 15) + '0', buttons: oldFrame.buttons, resetN: oldFrame.resetN }
+  const freshFrame = { ...oldFrame, switches: '1' + oldFrame.switches.slice(1), simTimePs: (BigInt(before.simTimePs) + 10000n).toString() }
+  expect(selectedInputs.switches).not.toBe(freshFrame.switches)
+  const freshSession: HdlSessionView = { ...before, sessionRevision: before.sessionRevision + 1,
+    confirmedSequence: before.confirmedSequence + 1, simTimePs: freshFrame.simTimePs }
+  const body = { ...clone(raw.operations.at(-1)), operationId: 'fresh-other-tab-operation',
+    sequence: freshSession.confirmedSequence, sessionRevision: freshSession.sessionRevision,
+    frames: [freshFrame], finalFrame: freshFrame, sampleCount: 1, droppedFrames: 0, coverage: 'complete' }
+  delete body.resultHash
+  const freshOperation = { ...body, resultHash: await textHash(JSON.stringify(body)) }
+  const commandsBefore = clone([...mocks.rows.values()])
+  mocks.get.mockClear()
+  mocks.get.mockImplementation(async (path: string) => {
+    if (path === `/hdl/sessions/${sid}`) return clone(freshSession)
+    if (path.includes('/trace?')) return { operation: { operationId: freshOperation.operationId,
+      sequence: freshOperation.sequence, status: 'succeeded', result: clone(freshOperation) }, nextSequence: freshOperation.sequence }
+    return f.get(path)
+  })
+
+  await f.client.interact(selectedInputs, 1)
+
+  expect(mocks.get).toHaveBeenCalledWith(`/hdl/sessions/${sid}`, expect.anything())
+  expect(f.client.current.session).toEqual(freshSession)
+  expect(f.client.current.operation).toEqual(freshOperation)
+  expect(f.client.current.phase).toBe('blocked')
+  expect(f.client.current.notice).toBe('原会话已改变、正在处理或已停止，请重新读取')
+  expect(f.client.current.pending).toBe(false)
+  expect(f.client.current.unknown).toBe(false)
+  expect(mocks.persist).not.toHaveBeenCalled()
+  expect(mocks.post).not.toHaveBeenCalled()
+  expect([...mocks.rows.values()]).toEqual(commandsBefore)
+})
 it('stores a late ACK as historical without binding the disposed context', async () => {
   const f = fixture(false); await f.client.initialize()
   let reply!: (value: Receipt) => void, entered!: () => void

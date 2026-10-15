@@ -1,0 +1,166 @@
+{
+  "origin": "https://127.0.0.1:3444/#/task/cb4e54cb-df5a-4198-bc91-1d8274a9cf64",
+  "initialSequence": 0,
+  "observations": [
+    {
+      "bit": 0,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n1\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 1 · 模拟时间 10000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000001\nAN=11111110\nSEG(gfedcba)=1000000 · DP=0\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 0,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 2 · 模拟时间 20000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 1,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\nx\n14\nx\n13\nx\n12\nx\n11\nx\n10\nx\n9\nx\n8\nx\n7\nz\n6\nz\n5\nz\n4\nz\n3\nz\n2\nz\n1\nz\n0\nz\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 3 · 模拟时间 30000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=xxxxxxxxzzzzzzzz\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 1,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 4 · 模拟时间 40000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 2,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n1\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 5 · 模拟时间 50000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000100\nAN=11111110\nSEG(gfedcba)=xxxxzzz · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 2,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 6 · 模拟时间 60000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 3,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n1\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 7 · 模拟时间 70000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000001000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 3,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 8 · 模拟时间 80000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 4,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n1\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 9 · 模拟时间 90000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000010000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 4,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 10 · 模拟时间 100000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 5,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n1\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 11 · 模拟时间 110000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000100000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 5,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 12 · 模拟时间 120000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 6,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n1\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 13 · 模拟时间 130000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000001000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 6,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 14 · 模拟时间 140000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 7,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n1\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 15 · 模拟时间 150000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000010000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 7,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 16 · 模拟时间 160000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 8,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n1\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 17 · 模拟时间 170000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000100000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 8,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 18 · 模拟时间 180000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 9,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n1\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 19 · 模拟时间 190000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000001000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 9,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 20 · 模拟时间 200000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 10,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n1\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 21 · 模拟时间 210000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000010000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 10,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 22 · 模拟时间 220000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 11,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n1\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 23 · 模拟时间 230000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000100000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 11,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 24 · 模拟时间 240000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 12,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n1\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 25 · 模拟时间 250000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0001000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 12,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 26 · 模拟时间 260000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 13,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n1\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 27 · 模拟时间 270000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0010000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 13,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 28 · 模拟时间 280000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 14,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n1\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 29 · 模拟时间 290000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0100000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 14,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 30 · 模拟时间 300000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 15,
+      "on": true,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n1\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 31 · 模拟时间 310000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=1000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    },
+    {
+      "bit": 15,
+      "on": false,
+      "dom": "AN7: 1\nAN6: 1\nAN5: 1\nAN4: 1\nAN3: 1\nAN2: 1\nAN1: 1\nAN0: 0\n15\n0\n14\n0\n13\n0\n12\n0\n11\n0\n10\n0\n9\n0\n8\n0\n7\n0\n6\n0\n5\n0\n4\n0\n3\n0\n2\n0\n1\n0\n0\n0\nSW15\nSW14\nSW13\nSW12\nSW11\nSW10\nSW9\nSW8\nSW7\nSW6\nSW5\nSW4\nSW3\nSW2\nSW1\nSW0\nBTN0: 0\n按下\n松开\nBTN1: 0\n按下\n松开\nBTN2: 0\n按下\n松开\nBTN3: 0\n按下\n松开\nBTN4: 0\n按下\n松开\nRESET_N: 1\n复位\n松开\n\n虚拟板运行中\n\n保留已确认采样：操作序号 32 · 模拟时间 320000 ps\n\n单个位选。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。\n\nLED=0000000000000000\nAN=11111110\nSEG(gfedcba)=1000000 · DP=1\n\n每次推进周期\n推进时钟\n\n每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。\n\n查看信号版本"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "origin": "https://127.0.0.1:3444",
+  "process": {
+    "windowsPid": 36416,
+    "startedAtUtc": "2026-10-15T02:52:02.127052+08:00",
+    "module": "/opt/xunjie-ui-local/tools/local-application-host.mjs",
+    "modelEnabled": true
+  },
+  "node": {
+    "ready": true,
+    "vmActive": true,
+    "vmStarted": false,
+    "unit": "xunjie-c1-vm.service",
+    "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+    "cFingerprintHash": "2ce8cb3324b8001a5e3929baf21e5b802b09b4aba82fa7c6ab2e93ecf67b9dcf",
+    "hdlFingerprintHash": "ed41d6ee92874c8a96bdb9530e28f9735f9e80005079708f358382ee5785c99d",
+    "kernel": "6.8.0-142-generic"
+  },
+  "health": [
+    {
+      "path": "/health/live",
+      "status": 200,
+      "body": {
+        "requestId": "afcfd53d-3b8c-4ea4-a54c-ecc50e8d42d3",
+        "data": {
+          "status": "alive"
+        }
+      }
+    },
+    {
+      "path": "/health/ready",
+      "status": 200,
+      "body": {
+        "requestId": "999fa57a-6fb7-4c8d-8657-0df98ab94f0a",
+        "data": {
+          "status": "ready"
+        }
+      }
+    }
+  ]
+}

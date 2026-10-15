@@ -1,0 +1,177 @@
+{
+  "status": "settled-consistent",
+  "requireSettled": true,
+  "origin": "https://127.0.0.1:3444",
+  "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+  "counts": {
+    "assignments": 3,
+    "attempts": 3,
+    "files": 4,
+    "snapshots": 8,
+    "builds": 5,
+    "sessions": 6,
+    "operations": 62,
+    "jobs": 75,
+    "messages": 10,
+    "actions": 4,
+    "teachingReceipts": 9
+  },
+  "facts": {
+    "checked": 462,
+    "builds": [
+      {
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+        "snapshotId": "9a7f145f-db7e-4b31-b6aa-1ea528ab4581",
+        "status": "succeeded",
+        "terminationConfirmed": true
+      },
+      {
+        "buildId": "2a28b361-05fa-4b35-bb92-4a57a7db208c",
+        "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+        "snapshotId": "992df0be-69e1-47ea-a28b-436b55bbc22b",
+        "status": "failed",
+        "terminationConfirmed": true
+      },
+      {
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "attemptId": "c5d1cf8e-991b-431a-9d39-177260725964",
+        "snapshotId": "22273762-7ba5-4d7e-b5da-63425a3ccf14",
+        "status": "succeeded",
+        "terminationConfirmed": true
+      },
+      {
+        "buildId": "df648a36-acaa-442c-95af-3977bd3df22f",
+        "attemptId": "bb20d32e-64de-4156-9fd0-9bda95364f60",
+        "snapshotId": "9e2cbfcd-99f3-4fae-ad4f-6be5998b40aa",
+        "status": "succeeded",
+        "terminationConfirmed": true
+      },
+      {
+        "buildId": "d8174bc9-ac86-4a9f-928f-e5692aa567e3",
+        "attemptId": "bb20d32e-64de-4156-9fd0-9bda95364f60",
+        "snapshotId": "6d0ed106-5b29-4603-98d5-1fef95ac3914",
+        "status": "succeeded",
+        "terminationConfirmed": true
+      }
+    ],
+    "sessions": [
+      {
+        "sessionId": "88c7960f-50f8-43d6-9e2b-04775e94dad9",
+        "buildId": "9e2c8b08-92c1-4c64-aea3-3bcf734bdc8f",
+        "sequence": 1,
+        "revision": 3,
+        "simTimePs": "10000",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "c40824e4-d9bd-45af-9542-16c7d1d67eb3",
+        "buildId": "ce1bc3d1-183c-487c-8a48-f1e18ccc5ac1",
+        "sequence": 4,
+        "revision": 6,
+        "simTimePs": "80000",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "a424a6b2-2ce3-4b94-a259-0eb407d21ffe",
+        "buildId": "df648a36-acaa-442c-95af-3977bd3df22f",
+        "sequence": 16,
+        "revision": 18,
+        "simTimePs": "160000",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "88afdc62-71d2-4cf8-8c6a-5bcafb048c48",
+        "buildId": "df648a36-acaa-442c-95af-3977bd3df22f",
+        "sequence": 0,
+        "revision": 2,
+        "simTimePs": "0",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "0d8b34a8-bc2a-4780-bc60-3218c200bc26",
+        "buildId": "d8174bc9-ac86-4a9f-928f-e5692aa567e3",
+        "sequence": 33,
+        "revision": 35,
+        "simTimePs": "330000",
+        "status": "stopped",
+        "terminationConfirmed": true
+      },
+      {
+        "sessionId": "c69decae-f4c2-4cc3-9fa3-0138d30ca22c",
+        "buildId": "d8174bc9-ac86-4a9f-928f-e5692aa567e3",
+        "sequence": 2,
+        "revision": 4,
+        "simTimePs": "20000",
+        "status": "failed",
+        "terminationConfirmed": true
+      }
+    ],
+    "teachingChains": [
+      {
+        "actionId": "696831b4-5998-455d-81da-8f51af526f2f",
+        "deliveryId": "1fae0616-9053-40d3-977c-426b2ba39745",
+        "receivedServerSeq": 34,
+        "displayedServerSeq": null,
+        "syntheticExplicitResponseServerSeq": null,
+        "raceReceipts": []
+      },
+      {
+        "actionId": "5b918f49-a908-4b4a-864f-7b6d50f021c3",
+        "deliveryId": "c4396c80-94c4-4828-9783-f3766b67fcb2",
+        "receivedServerSeq": 46,
+        "displayedServerSeq": 48,
+        "syntheticExplicitResponseServerSeq": 50,
+        "raceReceipts": []
+      },
+      {
+        "actionId": "0b8386a1-7c5b-46ba-8e68-4b9d35072890",
+        "deliveryId": "8da6f6c7-9f85-4d33-af2d-b30edd98d5e8",
+        "receivedServerSeq": 220,
+        "displayedServerSeq": 227,
+        "syntheticExplicitResponseServerSeq": null,
+        "raceReceipts": []
+      },
+      {
+        "actionId": "1e32c2ec-60f2-4fa3-93fb-547e607e12ac",
+        "deliveryId": "cccf22f0-bdab-4db4-b873-b78c8d515430",
+        "receivedServerSeq": 234,
+        "displayedServerSeq": null,
+        "syntheticExplicitResponseServerSeq": null,
+        "raceReceipts": []
+      },
+      {
+        "actionId": "1e32c2ec-60f2-4fa3-93fb-547e607e12ac",
+        "deliveryId": "85390dbf-1b37-423f-9d28-5f8e8c0b63b6",
+        "receivedServerSeq": 237,
+        "displayedServerSeq": null,
+        "syntheticExplicitResponseServerSeq": null,
+        "raceReceipts": []
+      },
+      {
+        "actionId": "1e32c2ec-60f2-4fa3-93fb-547e607e12ac",
+        "deliveryId": "8b66a420-a2ed-4fb6-916f-195eb14b3ca7",
+        "receivedServerSeq": 240,
+        "displayedServerSeq": null,
+        "syntheticExplicitResponseServerSeq": null,
+        "raceReceipts": []
+      }
+    ]
+  },
+  "missingEvidence": [],
+  "failures": [],
+  "boundaries": [
+    "Public exported ledger consistency; no live database/auth/browser/model access",
+    "Server displayed and acknowledged receipts are linked facts; actual visibility and explicit synthetic browser actions need separate screenshots/operation evidence",
+    "Model HTTP/token journal is never used as display proof; no human-learning, teacher semantics, H3/2800/course_check or complete AC/NFR claim"
+  ],
+  "node": {
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852",
+    "recordConsistency": true,
+    "liveReadPerformed": false
+  }
+}
