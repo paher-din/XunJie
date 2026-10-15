@@ -57,7 +57,7 @@ export async function setFault(page: Page, kind: 'none' | 'drop-ack' | 'fail-wri
 }
 
 export interface LocalCommand { kind: string; state: string; createdAt: number; commandKey: string; wireJson: string
-  rejected?: { code: string } | null; context: Record<string, unknown> }
+  rejected?: { code: string } | null; lease?: { owner: string; until: number }; context: Record<string, unknown> }
 export interface LocalSummary { workspace: { workspaceRevision: number; files: Array<{ fileId: string; text: string; contentHash?: string }> } | null
   instances: Array<{ fileId: string; clientFileKey?: string }>; drafts: Array<{ text: string }>
   commands: LocalCommand[]; candidates: Array<{ text: string; reason: string }> }

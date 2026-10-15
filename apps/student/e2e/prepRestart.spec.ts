@@ -24,7 +24,8 @@ interface PrepServer { readonly epoch: string; stop(): Promise<void> }
 /** 直接跑 vite 而不是 `npm run`：只留一个可杀进程，避免 npm 包装进程被杀后 vite 变成孤儿。 */
 function startPrepServer(servers: PrepServer[], readyTimeoutMs = 60_000): Promise<PrepServer> {
   const child: ChildProcess = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--mode', 'prep',
-    '--port', RESTART_PORT, '--strictPort'], { cwd: STUDENT_ROOT, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] })
+    '--port', RESTART_PORT, '--strictPort'], { cwd: STUDENT_ROOT,
+      env: { ...process.env, XUNJIE_VITE_CACHE_DIR: `.playwright/node_modules/.vite-restart-${RESTART_PORT}` }, stdio: ['ignore', 'pipe', 'pipe'] })
   let log = '', epoch = '', stopping: Promise<void> | null = null
   child.stdout?.on('data', chunk => { log += String(chunk) })
   child.stderr?.on('data', chunk => { log += String(chunk) })
@@ -156,8 +157,14 @@ test('准备进程重启后旧确认缓存不装成新 head，草稿保留且原
     // 留一条**未决原命令**跨越重启：ACK 被丢掉，服务侧已提交，客户端只能保留原命令等待核对。
     expect(await setFault(page, 'drop-ack')).toBe(200)
     await edit(page, 'pending across restart\n')
+    const failedSave = page.waitForEvent('requestfailed', { predicate: request => request.method() === 'POST' && request.url().endsWith('/sync') })
     await page.getByRole('button', { name: '确认保存', exact: true }).click()
-    await expect(page.getByRole('button', { name: '重试上次保存', exact: true })).toBeVisible()
+    // The pending row renders before its original POST; begin the zero-write
+    // observation only once that send has actually failed and retry is available.
+    await expect(page.getByRole('button', { name: '重试上次保存', exact: true })).toBeEnabled()
+    await failedSave
+    await expect.poll(async () => (await readLocalWith(page, contextBefore)).commands
+      .find(c => c.kind === 'workspace.sync' && c.state === 'pending')?.lease).toBeUndefined()
     const pendingBefore = (await readLocalWith(page, contextBefore)).commands
       .filter(c => c.kind === 'workspace.sync' && c.state === 'pending')
     expect(pendingBefore).toHaveLength(1)
@@ -191,7 +198,7 @@ test('准备进程重启后旧确认缓存不装成新 head，草稿保留且原
     expect(commandAfter.context.preparationEpoch).toBe(contextBefore.preparationEpoch)
     expect(commandAfter.context.trustedRecoveryGeneration).toBe(contextBefore.recoveryGeneration)
     // 换 epoch 后旧 Attempt 引用不再可用：必须重读，不能拿旧 attemptId 继续发命令。
-    expect(await readReference(page, contextAfter)).toEqual({ attemptId: null, changed: false })
+    await expect.poll(() => readReference(page, contextAfter)).toEqual({ attemptId: null, changed: false })
     expect(await readReference(page, contextBefore)).toEqual({ attemptId: null, changed: true })
 
     // 本机草稿保留：换 epoch 不清空学生没确认的正文，旧 attempt 的草稿仍可按旧上下文读回。

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
   confirmSave, create, edit, localState, openFileMenu, sceneUrl, serverHead, setAttemptState, start, typeIn,
-  type LocalSummary,
+  type LocalSummary, trackBusinessWrites as trackWrites,
 } from './helpers'
 
 /**
@@ -19,15 +19,6 @@ import {
  * 全部走同一个 dev:prep 进程与真实浏览器（Monaco、IndexedDB、HTTP）；「另一处」一律由 fixture
  * 的合成接口充当，不在测试里造业务响应。
  */
-
-/** 记录页面发出的所有非 GET 请求：只读比较必须一条都不产生。 */
-function trackWrites(page: Page) {
-  const writes: string[] = []
-  page.on('request', request => {
-    if (request.method() !== 'GET') writes.push(`${request.method()} ${new URL(request.url()).pathname}`)
-  })
-  return writes
-}
 
 /** 本机实例 ID（clientFileKey 最后一段）；同名实例只能靠身份区分。 */
 function localIdOf(state: LocalSummary, serverFileId: string): string {
@@ -50,6 +41,7 @@ async function createFile(page: Page, name: string) {
 async function freezeSnapshot(page: Page, revision: number) {
   await page.getByRole('button', { name: '冻结确认作品', exact: true }).click()
   await expect(page.getByText(`已冻结快照 v${revision}`)).toBeVisible()
+  await expect(page.getByRole('button', { name: '冻结确认作品', exact: true })).toBeEnabled()
 }
 
 test('首次读取首项已回收时打开活动文件，保留已存回收视图且全回收时如实提示', async ({ page, browser }) => {

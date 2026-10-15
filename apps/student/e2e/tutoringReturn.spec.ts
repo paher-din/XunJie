@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { revealTutorBody } from './tutoringHelpers'
 import { confirmSave, create, edit, localState, newestSync, openFileMenu, serverHead, start } from './helpers'
 
 // Actual reading/return, refresh and another tab's file lifecycle all use the current UI.
@@ -7,6 +8,7 @@ async function exampleMessage(page: Page) {
   await page.getByRole('button', { name: '就项目求助', exact: true }).click()
   await page.getByRole('textbox', { name: '就这个任务提问' }).fill('给一个相邻边界测试例子，我会返回原作品自己试。')
   await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
 }
 function forbiddenWrites(page: Page) {
@@ -156,8 +158,11 @@ test('未确认作品命令跨只读资料返回保持原字节，混合EOL/非B
   await edit(page, ' // pending suffix 😀')
   await expect.poll(async () => (await localState(page)).drafts[0]!.text).toBe(raw + ' // pending suffix 😀')
   await page.route('**/api/attempts/*/sync', async route => { await route.fetch(); await route.abort('failed') })
+  const failedSave = page.waitForEvent('requestfailed', { predicate: request => request.method() === 'POST' && request.url().endsWith('/sync') })
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
-  await expect(page.getByRole('button', { name: '重试上次保存', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '重试上次保存', exact: true })).toBeEnabled()
+  await failedSave
+  await expect.poll(async () => newestSync(await localState(page)).lease).toBeUndefined()
   const before = await localState(page), pending = newestSync(before)
   expect(pending.state).toBe('pending')
   expect(JSON.parse(pending.wireJson).operations[0].text).toBe(raw + ' // pending suffix 😀')

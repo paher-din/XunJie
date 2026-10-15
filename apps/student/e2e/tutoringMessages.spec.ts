@@ -1,4 +1,5 @@
 import { chromium, test, expect, type Page } from '@playwright/test'
+import { revealTutorBody } from './tutoringHelpers'
 import { createServer } from 'node:net'
 import { createHash } from 'node:crypto'
 import { start, setFault } from './helpers'
@@ -111,7 +112,7 @@ for(const kind of ['received','displayed','acknowledged'] as const) {
       if(dropping)await route.abort('failed');else await route.fulfill({response})
     })
     await ask(page)
-    await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+    await revealTutorBody(page.getByTestId('tutor-message'))
     await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
     await page.getByRole('button',{name:'我先试试',exact:true}).click()
     await expect.poll(()=>requests.length).toBeGreaterThan(0)
@@ -161,7 +162,7 @@ test('visible且展开的面板：消息未滚入区域零displayed，实际滚�
   await expect.poll(()=>reads).toBeGreaterThan(initialReads)
   expect((await tutorLedger(page))[0]!.messages[0]!.facts.displayed).toBeUndefined()
   expect(receipts).toEqual(['received'])
-  await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[0]?.facts.displayed?.state).toBe('confirmed')
   expect(receipts).toEqual(['received','displayed'])
   expect((await tutorLedger(page))[0]!.messages[0]!.facts.acknowledged).toBeUndefined()
@@ -195,7 +196,7 @@ test('原authority正向多页和resync：从零重取、跨序号缺口、重�
   for(let i=0;i<3;i++) {
     await ask(page,`合成分页核对问题 ${i+1}`)
     await expect(page.getByTestId('tutor-message')).toHaveCount(i+1)
-    await page.getByTestId('tutor-message').last().scrollIntoViewIfNeeded()
+    await revealTutorBody(page.getByTestId('tutor-message').last())
     await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[i]?.facts.displayed?.state).toBe('confirmed')
     if(i<2)await page.getByRole('button',{name:'收起辅导'}).click()
   }
@@ -307,6 +308,8 @@ test('完整正文→可见展示→明确回应，重读/刷新只保留一份�
   await expect(page.getByTestId('tutor-facts')).toContainText('回应：未回应')
   await page.getByRole('button',{name:'我先试试',exact:true}).click()
   await expect(page.getByTestId('tutor-facts')).toContainText('回应：明确回应')
+  await expect.poll(async()=> Object.values((await tutorLedger(page))[0]!.messages[0]!.facts)
+    .every(fact=>fact.state==='confirmed')).toBe(true)
   const before=(await tutorLedger(page))[0]!
   const facts=before.messages[0]!.facts
   expect(Object.keys(facts).sort()).toEqual(['acknowledged','displayed','received'])
@@ -318,7 +321,7 @@ test('完整正文→可见展示→明确回应，重读/刷新只保留一份�
   expect((await tutorLedger(page))[0]!.messages[0]!.facts).toEqual(facts)
   expect(writes).toHaveLength(1)
   await page.getByTestId('tutoring-pane').evaluate(async el=>{await Promise.all(el.getAnimations().map(animation=>animation.finished))})
-  await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await page.screenshot({path:testInfo.outputPath('tutoring-preparation.png'),fullPage:true})
 })
 test('收起面板只收到，未展示；已succeeded仍能停止未展示内容',async({page})=> {
@@ -373,7 +376,7 @@ test('received回执在途时已经发生的可见展示，停止后仍保留历
     }else await route.continue()
   })
   await ask(page);await ready
-  await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
   await page.getByRole('button',{name:'停止这次帮助'}).click()
   release()
@@ -444,7 +447,7 @@ test('受控可见性反例：隐藏时收到正文不报展示，恢复后才�
     Reflect.deleteProperty(document,'visibilityState')
     document.dispatchEvent(new Event('visibilitychange'))
   })
-  await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
 })
 
@@ -513,7 +516,7 @@ test('原生后台标签收到正文不报展示；实际切回前台后仅报�
     expect(hiddenMessage.facts.displayed).toBeUndefined();expect(hiddenMessage.facts.acknowledged).toBeUndefined()
     expect(receipts.map(r=>r.receiptKind)).toEqual(['received'])
     await page.bringToFront();await expect.poll(async()=> (await visibility()).state).toBe('visible')
-    await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+    await revealTutorBody(page.getByTestId('tutor-message'))
     await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[0]?.facts.displayed?.state).toBe('confirmed')
     const visible=await visibility(),transition=[...visible.events].reverse().find(e=>e.state==='visible'&&e.trusted)
     expect(transition).toBeDefined()

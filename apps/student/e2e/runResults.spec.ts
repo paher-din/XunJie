@@ -95,16 +95,13 @@ test('运行轮询断线暂停、隐藏降频且有次数上限，主动只读�
     window.dispatchEvent(new Event('online')); document.dispatchEvent(new Event('visibilitychange'))
   })
   // 接受回执后有两次初始 Job GET，之后最多 60 次自动读取。
-  for (let i = 0; i < 60 && reads < 62; i++) {
-    const count = reads
-    const response = page.waitForResponse(r => /\/runs\/[^/]+$/.test(r.url()) && r.request().method() === 'GET')
+  // A response finishing does not mean async authority/IDB checks have published it.
+  // Advance time until the exact budget is reached, without assuming one completed
+  // poll per clock step; retain the exact cap and the no-further-reads assertions.
+  await expect.poll(async () => {
     await page.clock.runFor(1000)
-    await expect.poll(() => reads).toBe(count + 1)
-    // 等本轮公开 Run 读到并发布后，再推进下一轮的浏览器时钟。
-    await expect(page.locator('.core-run-result')).toContainText('运行中')
-    await (await response).finished()
-    await page.waitForTimeout(30)
-  }
+    return reads
+  }, { timeout: 30_000, intervals: [50] }).toBe(62)
   await expect(page.locator('.core-run-notice')).toContainText('自动读取已暂停')
   expect(reads).toBe(62)
   before = reads
@@ -112,8 +109,7 @@ test('运行轮询断线暂停、隐藏降频且有次数上限，主动只读�
   expect(reads).toBe(before)
   await page.getByRole('button', { name: '重新读取结果', exact: true }).click()
   await expect.poll(() => reads).toBe(before + 1)
-  await page.clock.runFor(1000)
-  await expect.poll(() => reads).toBe(before + 2)
+  await expect.poll(async () => { await page.clock.runFor(1000); return reads }).toBe(before + 2)
   expect((await localState(page)).commands.filter(c => c.kind === 'run.create')).toHaveLength(1)
 })
 

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { revealTutorBody } from './tutoringHelpers'
 import { start, create, edit, serverHead } from './helpers'
 async function script(page:Page,kind:string) {
   await page.evaluate(async kind=> {
@@ -50,6 +51,7 @@ test('求助丢ACK尚无Job时可明确停止，核对原键后取消原Job而�
   await page.route('**/__i0prep/api/attempts/*/help',async route=>{await route.fetch();await held;await route.abort('failed')})
   await page.getByRole('button',{name:'就项目求助'}).click()
   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('未确认的原求助')
+  await expect(page.getByRole('button',{name:'发送辅导问题'})).toBeEnabled()
   await page.getByRole('textbox',{name:'就这个任务提问'}).press('Enter')
   await expect(page.getByTestId('tutor-question-status')).toHaveText('发送中')
   release()
@@ -131,7 +133,7 @@ test('学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍
   await page.getByRole('button',{name:'替换并发送'}).click()
   await expect(page.getByTestId('tutor-message')).toHaveCount(1)
   expect(new Set(helpKeys).size).toBe(2)
-  await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+  await revealTutorBody(page.getByTestId('tutor-message'))
   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
   await page.route('**/__i0prep/api/jobs/*/cancel',async route=> {const response=await route.fetch();await route.abort('failed');await page.unroute('**/__i0prep/api/jobs/*/cancel');expect(response.ok()).toBe(true)})
   await page.getByRole('button',{name:'停止这次帮助'}).click()
