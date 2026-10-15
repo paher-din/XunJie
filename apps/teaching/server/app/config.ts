@@ -66,5 +66,5 @@ export const applicationConfigSchema=z.strictObject({databaseFile:existingFile,o
  tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema,
  approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),recoveryGeneration:z.string().min(1).max(128),
  staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs,
- tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional()});
+ tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional(),review:z.strictObject({enabled:z.literal(true)}).optional()});
 export function readApplicationConfig(file:string) { return applicationConfigSchema.parse(readControlledJson(file)); }

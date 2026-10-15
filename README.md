@@ -9,6 +9,7 @@
 - **领取或继续任务：** 先读 [AGENTS.md](AGENTS.md)，再按 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md) 找对应任务，核对最新负责人决定、进入条件、授权写集和交付状态。
 - **团队演示与调试：** 使用 [PAHER 共享入口](tools/i0-shared/README.md)，所有成员连接同一服务、数据库和学生演示账号。拉取代码不会同步本机数据库。
 - **单独验证学生前端：** 使用下方准备入口；正常业务服务的接线条件见 [学生 README](apps/student/README.md)。
+- **查看教师端：** 真实入口为 `/#/teacher`，本机已批准的复核宿主支持手工项目设计、分配、作品审阅和反馈修订。开发专用 `/#/teacher/preview` 提供隔离交互预览。启动、备份与验证见 [教师工作台](docs/tasks/I1-TEACHER_UI_WORKBENCH.md)。
 - **接收模块交付：** 按下方任务入口与原 Issue 回交证据，区分材料已交、联调通过、失败和未执行。
 
 ## 本地运行与验证
@@ -25,7 +26,10 @@ npm run dev:prep
 
 正常模式、浏览器端口、真实 Chrome、专项/全量测试及故障回放见 [学生运行说明](apps/student/README.md)；来源、许可与同步边界见 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。正常请求失败不回退到 fixture。
 
-Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)：`xunjie-local.ps1 start` 复用专用执行 VM 和原35表合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；新版个人通道由本人在设置页保存并启用 Key 后生效，`-DisablePersonalModels` 可总停用；`-EnableModel` 仅保留旧环境 Key 通道。登录后从[首页真实任务入口](docs/tasks/I0-UI_REAL_HOME_ENTRY.md)选择本人课程与分配，也可沿用实际分配深链。首页沿用原问候、学习看板和任务卡；后端尚无完成率/时长汇总，看板按本轮授权展示明确标注的[演示统计](docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)，本人真实分配数量与任务入口独立保留。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
+Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)，复用专用执行 VM 和原合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；新版个人通道由本人在设置页保存并启用 Key 后生效，`-DisablePersonalModels` 可总停用；`-EnableModel` 仅保留旧环境 Key 通道。登录后从[首页真实任务入口](docs/tasks/I0-UI_REAL_HOME_ENTRY.md)选择本人课程与分配，也可沿用实际分配深链。首页沿用原问候、学习看板和任务卡；后端尚无完成率/时长汇总，看板按本轮授权展示明确标注的[演示统计](docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)，本人真实分配数量与任务入口独立保留。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
+
+本机教师闭环已按[当前批准范围](docs/tasks/I1-TEACHER_UI_WORKBENCH.md#63-本轮批准记录)将该合成库升级为 41 表，日常启动改用 `xunjie-local.ps1 start -EnableReview`，教师入口为 `https://127.0.0.1:3444/#/teacher`；原库与原应用备份保留。此项仅为本机隔离工程验证，PAHER 共享库未迁移，教师模型仍关闭。迁移和真实浏览器工具见 [teacher-workflow](tools/teacher-workflow/README.md)。
+
 
 学生前端的交付检查在 `apps/student` 执行：
 

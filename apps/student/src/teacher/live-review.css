@@ -1,0 +1,33 @@
+.t-live-review details { margin: 12px 0; font-size: 12px; line-height: 1.8; }
+.t-live-review summary { cursor: pointer; overflow-wrap: anywhere; }
+.t-live-review .t-rm-page-heading { flex-wrap: wrap; align-items: flex-start; }
+.t-live-review .t-rm-page-heading > div:first-child { flex: 1 1 280px; overflow-wrap: anywhere; }
+.t-live-heading-actions { display: flex; flex-wrap: wrap; gap: 10px; max-width: 100%; }
+.t-live-heading-actions .t-rm-button { text-decoration: none; }
+.t-live-review .t-rm-page-heading > .t-rm-button { max-width: 100%; }
+.t-live-review .t-rm-snapshot { flex-wrap: wrap; }
+.t-live-review .t-rm-snapshot > div { min-width: 0; }
+.t-live-review .t-rm-snapshot .t-rm-filter-label { margin-left: auto; max-width: 100%; }
+.t-live-review .t-rm-snapshot select { max-width: min(420px, 100%); }
+.t-live-review .t-rm-review-side { position: sticky; top: 20px; }
+.t-live-history { border-top: 1px solid var(--line); padding: 16px 0; font-size: 13px; line-height: 1.9; }
+.t-live-history p { margin: 8px 0; overflow-wrap: anywhere; }
+.t-live-review .t-rm-claim, .t-live-review .t-rm-panel, .t-live-review .t-rm-filter-label { min-width: 0; }
+.t-live-review .t-rm-claim p, .t-live-review .t-rm-panel p, .t-live-review .t-rm-caption, .t-live-preserved { overflow-wrap: anywhere; }
+.t-live-reference { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.t-live-reference > .t-rm-reference { max-width: 100%; white-space: normal; text-align: left; }
+.t-live-reference > .t-rm-caption { display: block; margin-top: 6px; }
+.t-live-reference details { margin: 6px 0; }
+.t-live-raw-record, .t-live-preserved details { font-size: 12px; line-height: 1.8; }
+.t-live-raw-record summary, .t-live-preserved summary { cursor: pointer; }
+.t-live-prewrap, .t-live-json { white-space: pre-wrap; overflow-wrap: anywhere; }
+.t-live-json { max-width: 100%; font: 400 11px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+@media (max-width: 1020px) { .t-live-review .t-rm-review-side { position: static; } }
+@media (max-width: 680px) {
+  .t-live-review .t-rm-page-heading { gap: 16px; }
+  .t-live-review .t-rm-page-heading > div:first-child { flex-basis: 100%; }
+  .t-live-heading-actions { width: 100%; }
+  .t-live-heading-actions .t-rm-button { flex: 1 1 auto; }
+  .t-live-review .t-rm-snapshot .t-rm-filter-label { margin: 8px 0 0; width: 100%; flex-wrap: wrap; }
+  .t-live-review .t-rm-snapshot select { width: 100%; max-width: 100%; }
+}

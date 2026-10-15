@@ -1,0 +1,35 @@
+.tld-page { min-width: 0; }
+.tld-page .tld-error, .td-dialog .tld-error { color: var(--danger-deep); }
+.tld-links { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
+.tld-links legend { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.tld-links > label { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; color: var(--ink-soft); font-size: 12px; line-height: 1.7; }
+.tld-links input, .tld-checkbox input { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+.tld-links span { overflow-wrap: anywhere; }
+.tld-checkbox { display: flex; gap: 8px; align-items: flex-start; color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+.tld-links .tld-invalid-link { color: var(--danger-deep); }
+.tld-id, .tld-path { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.tld-path { display: block; }
+.tld-preset-note { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 24px; }
+.tld-preset-note p { flex: 1 1 220px; }
+.tld-config { border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+.tld-config summary { cursor: pointer; color: var(--ink-soft); }
+.tld-config dl { display: grid; grid-template-columns: 90px minmax(0,1fr); gap: 8px 12px; margin-top: 16px; }
+.tld-config dd { margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+.tld-concern { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.tld-concern summary { cursor: pointer; color: var(--ink-soft); font-size: 12px; }
+.tld-concern[open] summary { margin-bottom: 12px; }
+.tld-concern .td-field { margin-bottom: 12px; }
+.tld-concern .td-field-title { font-size: 12px; }
+.tld-concern textarea { min-height: 64px; font-size: 12px; padding: 6px 8px; }
+.tld-preview-button { margin-top: 10px; }
+.tld-release { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-top: 24px; background: var(--paper); }
+.tld-release > div:first-child { flex: 1 1 240px; min-width: 0; }
+.tld-release h2 { font-size: 20px; margin: 10px 0 !important; overflow-wrap: anywhere; }
+.tld-release p { color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.tld-receipts { flex-basis: 100%; border-top: 1px solid var(--line); padding-top: 16px; color: var(--ink-soft); }
+.tld-receipts strong { display: block; margin-bottom: 8px; font-weight: 500; }
+.tld-assignment-result { margin-top: 20px; }
+.tld-assignment-result p { margin-top: 6px; }
+.tld-follow-up-actions { margin-top: 24px; }
+.tld-page .td-field input[readonly], .tld-page .td-field textarea[readonly] { background: var(--sunken); color: var(--muted); }
+@media (max-width: 680px) { .tld-release { padding: 20px 16px; } .tld-release > button { width: 100%; } }

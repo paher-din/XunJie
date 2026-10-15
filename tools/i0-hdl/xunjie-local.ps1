@@ -4,6 +4,7 @@ param(
   [Parameter(Position=0)][ValidateSet('help','status','check','start','stop')][string]$Operation='help',
   [switch]$EnableModel,
   [switch]$DisablePersonalModels,
+  [switch]$EnableReview,
   [string]$RetainedRoot='D:\XunJie_Project\i0-ui55-connection\hdl-ui\local-environment'
 )
 Set-StrictMode -Version Latest
@@ -133,11 +134,13 @@ Robert local C/HDL environment (Ubuntu data and retained tools live on D:).
   .\xunjie-local.ps1 start
   .\xunjie-local.ps1 start -EnableModel
   .\xunjie-local.ps1 start -DisablePersonalModels
+  .\xunjie-local.ps1 start -EnableReview
   .\xunjie-local.ps1 stop
 Open https://127.0.0.1:3444 in the owned acceptance Chrome profile.
 start reuses the prepared/validated dedicated C1 VM, starting it if stopped.
 It waits at most120s for both original SSH readiness checks to match the saved local generation/fingerprints.
 The synthetic35 database must already exist; this entry never prepares disks, keys or data again.
+EnableReview requires the separately authorized41-table review composition; start never migrates it.
 EnableModel reads your own DEEPSEEK_API_KEY into the local child environment only.
 Personal model settings use each signed-in account's encrypted Key by default, without environment-Key fallback.
 DisablePersonalModels stops new personal model calls while preserving settings and history.
@@ -158,6 +161,7 @@ The parallel3443 gateway and PAHER are not controlled by this entry.
     $info.UseShellExecute=$false
     $info.CreateNoWindow=$true
     $modelArgument=''
+    $reviewArgument=if($EnableReview){' --review-enabled'}else{''}
     if($EnableModel) {
       $key=[Environment]::GetEnvironmentVariable('DEEPSEEK_API_KEY','Process')
       if(-not $key){$key=[Environment]::GetEnvironmentVariable('DEEPSEEK_API_KEY','User')}
@@ -170,7 +174,7 @@ The parallel3443 gateway and PAHER are not controlled by this entry.
     } else { $null=$info.Environment.Remove('DEEPSEEK_API_KEY') }
     if($DisablePersonalModels){$modelArgument+=' --personal-models-disabled'}
     $node=Get-LocalNodeState -Ensure
-    $startScript='set -eu; umask 077; echo $$ > /opt/xunjie-ui-local/host.pid; exec /opt/xunjie-runner/node/bin/node /opt/xunjie-ui-local/tools/local-application-host.mjs'+$modelArgument+' >>/opt/xunjie-ui-local/evidence/host.stdout.log 2>>/opt/xunjie-ui-local/evidence/host.stderr.log'
+    $startScript='set -eu; umask 077; echo $$ > /opt/xunjie-ui-local/host.pid; exec /opt/xunjie-runner/node/bin/node /opt/xunjie-ui-local/tools/local-application-host.mjs'+$modelArgument+$reviewArgument+' >>/opt/xunjie-ui-local/evidence/host.stdout.log 2>>/opt/xunjie-ui-local/evidence/host.stderr.log'
     # Original nonblocking flock retains exclusive ownership through the host exec.
     # A second start cannot overwrite the live Linux PID while readiness is pending.
     foreach($argument in @('-d','Ubuntu','-u','root','--exec','/usr/bin/flock','--no-fork','--nonblock','/opt/xunjie-ui-local/host.lock','/bin/sh','-c',$startScript)){$info.ArgumentList.Add($argument)}
@@ -178,8 +182,8 @@ The parallel3443 gateway and PAHER are not controlled by this entry.
     $null=$process.Start()
     Start-Sleep -Seconds 2
     if($process.HasExited){throw 'Local host exited; inspect the controlled local startup log.'}
-    [pscustomobject]@{windowsPid=$process.Id;startedAtUtc=[DateTimeOffset]::UtcNow.ToString('o');module='/opt/xunjie-ui-local/tools/local-application-host.mjs';modelEnabled=[bool]$EnableModel}|ConvertTo-Json|Set-Content -LiteralPath $statePath -Encoding utf8
-    [pscustomobject]@{started=$true;origin='https://127.0.0.1:3444';modelEnabled=[bool]$EnableModel;node=$node;health=Get-LocalPublicHealth}|ConvertTo-Json -Depth 8
+    [pscustomobject]@{windowsPid=$process.Id;startedAtUtc=[DateTimeOffset]::UtcNow.ToString('o');module='/opt/xunjie-ui-local/tools/local-application-host.mjs';modelEnabled=[bool]$EnableModel;reviewEnabled=[bool]$EnableReview}|ConvertTo-Json|Set-Content -LiteralPath $statePath -Encoding utf8
+    [pscustomobject]@{started=$true;origin='https://127.0.0.1:3444';modelEnabled=[bool]$EnableModel;reviewEnabled=[bool]$EnableReview;node=$node;health=Get-LocalPublicHealth}|ConvertTo-Json -Depth 8
     $process.Dispose()
   }
   stop {

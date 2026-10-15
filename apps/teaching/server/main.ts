@@ -76,6 +76,7 @@ try {
         ...(config.staticDirectory?{staticDirectory:config.staticDirectory}:{}),
         consumerIntervalMs:config.consumerIntervalMs,studentHelp:{versions,budgetAvailable:()=>config.tutoring?.callsAuthorized??false},
         personalModels:config.personalModels??{directory:join(dirname(config.databaseFile),'personal-agent')},
+        ...(config.review?{review:{versions:{modelConfigVersion:versions.modelConfig,promptVersion:versions.prompt,schemaVersion:versions.schema,analysisVersion:'learner-analysis-v1'}}}:{}),
         ...(config.tutoring?.apiKeyFile?{tutoringProvider:(await import('./tutoring/deepseek-sdk.ts')).createAiSdkDeepSeekProvider({
           apiKey:readI0SigningSecret(config.tutoring.apiKeyFile),
         })}:{}),

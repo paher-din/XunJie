@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { XunjieLogo } from '../brand/XunjieLogo'
 import { demoTasks } from '../bridge/mockData'
@@ -13,6 +13,7 @@ export function useSession() {
 
 function LoginForm() {
   const session = useSession()
+  const teacherEntry = useLocation().pathname.startsWith('/teacher')
   useTheme()
   const accountInput = useRef<HTMLInputElement>(null)
   const [loginName, setLoginName] = useState('')
@@ -26,8 +27,8 @@ function LoginForm() {
     <main className="session-entry">
       <section className="session-card" aria-labelledby="session-title">
         <XunjieLogo format="horizontal" label="循阶" />
-        <h1 id="session-title">登录学习空间</h1>
-        <p>使用课程提供的账号登录，继续打开获准的任务。</p>
+        <h1 id="session-title">{teacherEntry ? '登录教师工作台' : '登录学习空间'}</h1>
+        <p>{teacherEntry ? '使用教师账号登录，查看任教课程与固定活动。' : '使用课程提供的账号登录，继续打开获准的任务。'}</p>
         <form onSubmit={event => {
           event.preventDefault()
           if (busy || logoutFailed) return
@@ -53,6 +54,8 @@ function LoginForm() {
         {logoutFailed
           ? <button type="button" onClick={() => { void logoutSession() }}>重试退出</button>
           : <button type="button" disabled={busy} onClick={() => { void restoreSession() }}>重新读取当前会话</button>}
+        <Link to={teacherEntry ? '/' : '/teacher'} style={{ display: 'block', marginTop: 16, fontSize: 13 }}>{teacherEntry ? '进入学生空间' : '进入教师工作台'}</Link>
+        {import.meta.env.DEV && <Link to="/teacher/preview" style={{ display: 'block', marginTop: 12, fontSize: 13 }}>查看教师端交互预览</Link>}
       </section>
     </main>
   )
@@ -64,17 +67,20 @@ export default function SessionEntry({ children }: { children: ReactNode }) {
   const location = useLocation()
   const queries = useQueryClient()
   const demo = demoTasks.some(task => location.pathname === `/task/${task.id}`)
+  const preparation = PREP_BUILD && !location.pathname.startsWith('/teacher')
   useEffect(() => {
-    if (PREP_BUILD || demo) return
+    if (preparation || demo) return
     const stop = startSessionLifecycle()
     void restoreSession()
     return stop
-  }, [demo])
+  }, [demo, preparation])
   useLayoutEffect(() => {
-    if (!PREP_BUILD && !demo) queries.clear()
-  }, [state.epoch, queries, demo])
-  if (PREP_BUILD || demo) return children
+    if (!preparation && !demo) queries.clear()
+  }, [state.epoch, queries, demo, preparation])
+  if (preparation || demo) return children
   if (state.status !== 'authenticated') return <LoginForm />
+  if (location.pathname === '/' && state.session?.courses.some(course => course.role === 'teacher') &&
+    !state.session.courses.some(course => course.role === 'student')) return <Navigate to="/teacher" replace />
   return <div className="session-shell" key={state.epoch}>
     {state.notice && <div className="session-health" role="status">
       {state.notice}<button type="button" onClick={() => { void restoreSession() }}>重新核对登录</button>
