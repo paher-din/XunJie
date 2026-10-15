@@ -19,5 +19,8 @@ export type PersonalAgentService = {
   configurationRevision(userId:string):number;
   close():Promise<void>;
 };
+export type StudentTaskSnapshot = {tasks:{assignmentId:string;courseId:string;courseName?:string;title:string;
+  availability:'active'|'paused'}[];hasMore:boolean};
 export type PersonalAgentOptions = {directory:string;authorize(request:FastifyRequest):string;
-  transport:CompatibleTransport;callsEnabled?:()=>boolean;now?:()=>number};
+  transport:CompatibleTransport;callsEnabled?:()=>boolean;now?:()=>number;
+  readStudentTasks?:(userId:string)=>StudentTaskSnapshot};
