@@ -1,6 +1,6 @@
 # I0-UI：独立 Agent 与首页使用一致的可见任务
 
-日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：PR #109 待审查；共享实例尚未运行本次代码。
+日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：PR #109 已合并，云端已同步并完成合成账号复验。
 
 ## 依据、授权与范围
 
@@ -24,9 +24,17 @@ Robert 报告：课程首页「四位算术逻辑单元」只有一张任务卡�
 - `service.ts` 在已触发的本人任务上下文中明确提示：旧回复可能按历史原始分配计数，本轮以当前可见任务快照为准；旧历史消息本身不改写。
 - `integration.test.ts` 新增四次发布同一 HDL 活动并设置与活动标题不同的 ALU 展示标题的正式应用夹具：改动前 23/24 通过，首版新用例准确复现原始四条而预期一条的失败；修复后 24/24 通过，验证 `hdl_board` 学生分配、本轮模型上下文只含一个 ALU 分配 ID、成功落定及历史消息的卡指向该 ID、该 ID 的授权工作区 bootstrap 可读、暂停代表后选择另一开放分配，以及同名不同正文继续分开。既有 `student-tasks.test.ts` 1/1 通过，仍覆盖跨账号、非学生成员、私有内容和暂停不等于完成。`apps/teaching` 的本地 `tsc --noEmit` 通过。
 - Windows 本机 Node 为 24.15，低于项目固定的 24.21；包脚本运行时门禁未跳过。专项测试由 `node --input-type=module -e` 注册只对缺失包回退到同锁文件 D 盘教学目录的依赖解析，再导入上述测试文件执行。当前工作树运行 `npm ci --ignore-scripts --engine-strict=false --no-audit --no-fund` 后，直接运行 `node node_modules/typescript/bin/tsc --noEmit` 通过。这里是本机离线合成验证，不是正式包脚本门禁、真实模型或共享云端验收。
-- 共享 HTTPS 页面的新 Chrome 标签在修复前读到本账号数字逻辑课程只有一个 ALU 卡；点击进入 `/#/task/f4caed76-39b5-461a-bc5f-2325d8495d69`，工作区显示就绪，未开始 Attempt。用户随后确认首页现为一张卡。本次服务端代码尚未在该实例运行，Agent 新回复和卡片的浏览器复验待代码交付后进行；旧历史消息不会自动改写。
+- 合并前的共享 HTTPS 页面复验读到本账号数字逻辑课程只有一个 ALU 卡；点击进入 `/#/task/f4caed76-39b5-461a-bc5f-2325d8495d69`，工作区显示就绪，未开始 Attempt。用户随后确认首页现为一张卡。当时服务端代码尚未在该实例运行，Agent 新回复和卡片留待交付后复验；旧历史消息不会自动改写。
 - `apps/student/README.md` 同步独立对话的可见任务折叠、卡片与旧深链行为。合并最新 `origin/main@514a4cd9f6ae128e01ec874571e5d7036355166f` 后，服务端专项 25/25、本地 `tsc --noEmit`、仓库根 `node tools/a0-review/check.mjs`（149 篇文档、2011 条链接、`errors=[]`）和 `git diff --check origin/main...HEAD` 均通过；主线同期新增的工作区 Attempt 恢复文件无本任务写集重叠。
 
-交付：本任务提交 `e10f515` 与最新主线合并后推送到 `codex/agent-visible-task-cards`，创建 [PR #109](https://github.com/paher-din/XunJie/pull/109)。PR 可合并，检查列表为空，不计 CI 通过；尚未合并。主线合并会触发共享实例自动部署，依工作空间的生产部署红线须取得覆盖范围的负责人同意。获同意后再确认部署版本，并在合成账号下分别复验真实模型新会话与旧会话追问。旧历史消息仍保留原回复，不回填。
+交付前记录：本任务提交 `e10f515` 与当时最新主线合并后推送到 `codex/agent-visible-task-cards`，创建 [PR #109](https://github.com/paher-din/XunJie/pull/109)。合并前 PR 可合并，检查列表为空，不计 CI 通过。主线合并及共享实例部署均等待负责人明确授权后执行。
+
+## 合并、云端同步与浏览器复验
+
+- Robert 明确授权合并 PR #109，并使用 `D:/XunJie_Project/XunJie/.agents/skills/xunjie-cloud-deploy` 同步云端和用合成账号验证新旧 Agent 会话。PR #109 于 2026-10-15 23:06（Asia/Shanghai）合并，主线 merge commit 为 `8fab36ac6b02299a03af58faea439bc46e60953f`。GitHub 检查列表仍为空，不计 CI 通过。
+- 云端部署器起初报告上一次 GitHub 请求受 403 rate limit 限制；限额重置后按项目部署 skill 触发同步。2026-10-15 23:11 左右，部署状态报告 `remoteCommit=deployedCommit=8fab36ac6b02299a03af58faea439bc46e60953f`、`upToDate=true`、`serviceActive=true`；部署日志末条为该 SHA 成功，远端定时器为 enabled/active。此处是部署器与服务状态，不单独等同于浏览器功能验收。
+- 同一合成学生账号 Robert 的 HTTPS 页面刷新后，数字逻辑课程只显示一张「四位算术逻辑单元」卡，进入 ID 为 `f4caed76-39b5-461a-bc5f-2325d8495d69` 的既有工作区。新 Agent 会话实际模型回复“可见入口：1 个”，附一张「进入任务」卡；点击落在同一 ID 的工作区。未新建 Attempt 或提交作品。
+- 旧 Agent 会话原先“四条同名任务”回复仍保留。追问当前可见任务后，实际模型明确更正为“只有 1 个可用入口”，附同一 ID 的任务卡；点击也落在该工作区。这验证了新轮快照及卡片，而非改写旧消息。完成状态仍为未知。没有用真实学生数据、教师私有材料或教学效果作验证。
+- 本轮未作教师端浏览器验收、真人教学验收或其他课程的全量回归；本任务的合成账号目标链路已实测。服务端 1000 条原始分配的读取边界保留为后续容量设计项。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。
