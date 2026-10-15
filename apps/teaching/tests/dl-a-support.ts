@@ -49,6 +49,7 @@ function controlledRunner() {
   const accepted = new Map<string,SubmitRun>(), facts = new Map<string,RunFact>();
   const results = new Map<string,object>(); let submits = 0, queries = 0, lose = false, loseQuery = false;
   const transport: RunnerTransport = async command => {
+    if(command.op==='editor_diagnostics')throw new Error('Synthetic editor diagnostics unavailable');
     if (command.op === 'readiness') {
       const fingerprint = { profile: profile,sourceHash: 'd'.repeat(64) };
       return { data: { ready: true,...profile,recoveryGeneration: 'generation',fingerprint,

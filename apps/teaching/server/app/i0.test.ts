@@ -62,6 +62,7 @@ test('normal consumer runs original job without manual worker calls and shutdown
   const { setTimeout: delay } = await import('node:timers/promises');
   const facts = new Map<string,object>();
   const runner: import('../records/runner.ts').RunnerTransport = async request => {
+    if(request.op==='editor_diagnostics')throw new Error('Synthetic editor diagnostics unavailable');
     if (request.op === 'readiness') {
       return syntheticReadiness();
     }
@@ -217,6 +218,7 @@ test('bootstrap does not create an attempt: pausing allocation before first expl
 test('unknown original job survives host restart and is reconciled without a replacement execution',async()=>{
   const facts=new Map<string,object>(); let confirms=false,submits=0;
   const runner:import('../records/runner.ts').RunnerTransport=async request=>{
+    if(request.op==='editor_diagnostics')throw new Error('Synthetic editor diagnostics unavailable');
     if (request.op==='readiness') {
       return syntheticReadiness();
     }

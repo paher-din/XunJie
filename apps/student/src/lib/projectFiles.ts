@@ -80,6 +80,10 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   cc: 'cpp',
   cxx: 'cpp',
   hpp: 'cpp',
+  v: 'verilog',
+  vh: 'verilog',
+  sv: 'systemverilog',
+  svh: 'systemverilog',
   py: 'python',
   md: 'markdown',
   markdown: 'markdown',
@@ -129,6 +133,8 @@ export function hasBom(text: string): boolean {
 export function languageLabel(language: string): string {
   if (language === 'c') return 'C'
   if (language === 'cpp') return 'C++'
+  if (language === 'verilog') return 'Verilog'
+  if (language === 'systemverilog') return 'SystemVerilog'
   if (language === 'python') return 'Python'
   if (language === 'markdown') return 'Markdown'
   return '纯文本'

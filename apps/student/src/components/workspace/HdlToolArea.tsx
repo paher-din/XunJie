@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 import type { HdlBoardProfile, HdlBuildView, HdlDiagnostic, HdlFrame, HdlInputs, HdlOperationResult, HdlSessionView } from '../../workspace/hdlContracts'
 
 type LogicBit = '0' | '1' | 'x' | 'z'
@@ -92,16 +92,29 @@ export interface HdlBoardPaneProps extends ResultProps {
   bindings?: HdlBoardProfile['bindings']
   disabled: boolean
   onInteract: (inputs: HdlInputs, advanceCycles: number) => void
+  canLoad?: boolean
+  onLoad?: () => void
+  readBusy?: boolean
+  onRead?: () => void
 }
 
 /** Existing board position, now a controlled view of the actual last confirmed frame. */
-export function HdlBoardPane({ session, result, inputs, bindings, pending, disabled, currentNotice, onInteract }: HdlBoardPaneProps) {
+export function HdlBoardPane({ session, result, inputs, bindings, pending, disabled, currentNotice, onInteract,
+  canLoad, onLoad, readBusy, onRead }: HdlBoardPaneProps) {
   const [cycles, setCycles] = useState('1')
+  const reasonId = useId()
   const validCycles = /^\d+$/.test(cycles) && Number(cycles) >= 1 && Number(cycles) <= 5_000_000 && Number.isSafeInteger(Number(cycles))
   const validInputs = /^[01]{16}$/.test(inputs.switches) && /^[01]{5}$/.test(inputs.buttons) && /^[01]$/.test(inputs.resetN)
   const waiting = pending || !!session?.pendingOperationId
   const active = session?.status === 'active' && !session.stopRequested && !session.terminationConfirmed
   const blocked = disabled || waiting || !active || !validInputs || !validCycles
+  const blockedReason = waiting ? '正在等待当前操作确认，确认后可继续操作。'
+    : !session ? '尚未装载设计，请先检查并构建，再装载到虚拟板。'
+    : session.terminationConfirmed ? '会话已结束，请重新装载已构建的设计，再操作按钮和开关。'
+    : !active ? `${hdlSessionLabel(session)}，请先核对板卡状态。`
+    : disabled ? '板卡操作暂不可用，请先核对板卡状态。'
+    : !validInputs ? '尚未取得已确认输入，请先核对板卡状态。'
+    : !validCycles ? '推进周期须为 1～5000000 的整数，修正后可继续操作按钮和开关。' : null
   const bound = (signal: 'buttons' | 'resetN', index: number) => bindings?.some(binding => binding.signal === signal && index >= binding.offset && index < binding.offset + binding.width) === true
   const frame = result?.finalFrame ?? null
   const activeAnodes = frame?.anodes.match(/0/g)?.length ?? 0
@@ -125,7 +138,7 @@ export function HdlBoardPane({ session, result, inputs, bindings, pending, disab
           </span>
         })}
       </div>
-      <div className="ws-ctlrow" role="group" aria-label="16 位拨码开关" style={{ gap: 6 }}>
+      <div className="ws-ctlrow" role="group" aria-label="16 位拨码开关" aria-describedby={blockedReason ? reasonId : undefined} style={{ gap: 6 }}>
         {Array.from({ length: 16 }, (_, n) => {
           const index = 15 - n, bit = hdlBit(inputs.switches, index, 16)
           return <span className="ws-switch" key={index}>
@@ -135,16 +148,16 @@ export function HdlBoardPane({ session, result, inputs, bindings, pending, disab
           </span>
         })}
       </div>
-      <div role="group" aria-label="5 个按钮与复位" style={{ ...row, marginTop: 16, justifyContent: 'center' }}>
+      <div role="group" aria-label="5 个按钮与复位" aria-describedby={blockedReason ? reasonId : undefined} style={{ ...row, marginTop: 16, justifyContent: 'center' }}>
         {Array.from({ length: 5 }, (_, index) => {
           const bit = hdlBit(inputs.buttons, index, 5)
-          return <span className="ws-switch" key={index}>
+          return <span className="ws-switch" key={index} title={bound('buttons', index) ? undefined : `当前设计未连接 BTN${index}`}>
             <span>BTN{index}: {bound('buttons', index) ? bit ?? '?' : '未绑定'}</span>
             <button type="button" className="ws-pbtn" disabled={blocked || !bound('buttons', index) || bit === '1'} aria-label={`按下 BTN${index}`} onClick={() => change('buttons', index, '1')}>按下</button>
             <button type="button" className="ws-pbtn" disabled={blocked || !bound('buttons', index) || bit === '0'} aria-label={`松开 BTN${index}`} onClick={() => change('buttons', index, '0')}>松开</button>
           </span>
         })}
-        <span className="ws-switch">
+        <span className="ws-switch" title={bound('resetN', 0) ? undefined : '当前设计未连接复位输入'}>
           <span>RESET_N: {bound('resetN', 0) ? inputs.resetN || '?' : '未绑定'}</span>
           <button type="button" className="ws-pbtn" disabled={blocked || !bound('resetN', 0) || inputs.resetN === '0'} aria-label="按下复位 RESET_N=0" onClick={() => change('resetN', 0, '0')}>复位</button>
           <button type="button" className="ws-pbtn" disabled={blocked || !bound('resetN', 0) || inputs.resetN === '1'} aria-label="松开复位 RESET_N=1" onClick={() => change('resetN', 0, '1')}>松开</button>
@@ -153,7 +166,14 @@ export function HdlBoardPane({ session, result, inputs, bindings, pending, disab
     </div>
     <div className="ws-board-note" style={{ maxWidth: 400, flex: '1 1 220px' }}>
       <p role="status" aria-live="polite"><b>{hdlSessionLabel(session)}</b>{waiting ? ' · 等待当前操作确认' : ''}</p>
+      {blockedReason && <p id={reasonId} role="status">{blockedReason}</p>}
+      <div style={row}>
+        {onLoad && (!session || session.terminationConfirmed) && <button type="button" className="ws-btn ghost"
+          disabled={!canLoad || waiting} onClick={onLoad}>{session ? '重新装载已构建设计' : '装载已构建设计'}</button>}
+        {onRead && <button type="button" className="ws-btn ghost" disabled={readBusy} onClick={onRead}>读取板卡状态</button>}
+      </div>
       <p>{result ? `保留已确认采样：操作序号 ${result.sequence} · 模拟时间 ${frame?.simTimePs} ps` : '尚无已确认信号；不会显示默认零输出。'}</p>
+      {frame && <p aria-label="已确认板卡输入" style={mono}>已确认输入：SW={frame.switches} · BTN={frame.buttons} · RESET_N={frame.resetN}</p>}
       {hdlResultNotice(session, result) && <p role="status">{hdlResultNotice(session, result)}</p>}
       {currentNotice && <p role="status">{currentNotice}</p>}
       <p>{selectedLabel}。LED 高有效；AN、SEG、DP 低有效。橙色虚线 X 表示未知，蓝色虚线 Z 表示高阻。</p>
@@ -161,11 +181,13 @@ export function HdlBoardPane({ session, result, inputs, bindings, pending, disab
       <form onSubmit={event => { event.preventDefault(); send(inputs) }} style={row}>
         <label style={row}>每次推进周期
           <input aria-label="推进周期" type="number" min="1" max="5000000" step="1" value={cycles}
+            aria-invalid={!validCycles} aria-describedby={blockedReason ? reasonId : undefined}
             disabled={disabled || waiting || !active} onChange={event => setCycles(event.target.value)} style={{ width: 100, padding: 6, border: '1px solid var(--line)', borderRadius: 6, background: 'var(--paper)', color: 'var(--ink)' }} />
         </label>
         <button className="ws-btn ghost" type="submit" disabled={blocked}>推进时钟</button>
       </form>
       <p>每次输入或推进都等待真实确认。按下与松开分别推进；新草稿不会改变已装载设计。</p>
+      <p>输出由已装载的 HDL 决定；输入已确认但输出不变时，请检查设计是否使用该输入。标为未绑定的按钮或复位不可操作。</p>
       <details><summary>查看信号版本</summary><p style={mono}>
         {result ? <>Session: {result.sessionId}<br />Build: {result.buildId}<br />快照: {result.snapshotId}<br />板卡: {result.boardProfileVersion}<br />映射: {result.mappingVersion}<br />引擎: {result.engineVersion}<br />结果序号 / 会话版本: {result.sequence} / {result.sessionRevision}</> : '未取得真实结果。'}
       </p></details>

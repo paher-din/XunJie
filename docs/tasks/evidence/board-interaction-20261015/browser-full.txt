@@ -1,0 +1,555 @@
+> playwright test --workers=2
+Running 228 tests using 2 workers
+  ok   1 [chromium] › e2e\compare.spec.ts:45:1 › 服务版本冲突：比较 → 保留本页正文 → 退役原命令并以新键在当前权威预期版本上保存 (8.6s)
+  ok   2 [chromium] › e2e\confirmation.spec.ts:5:1 › 学生主动创建、保存、冻结与刷新读回同一作品和快照 (8.8s)
+  ok   3 [chromium] › e2e\compare.spec.ts:94:1 › 服务版本冲突：采用服务端正文写回本页草稿，原命令退役且比较入口消失 (5.7s)
+  ok   4 [chromium] › e2e\confirmation.spec.ts:39:1 › 保存等待期间继续编辑，确认只取冻结原文且不换 model 身份 (6.3s)
+  ok   6 [chromium] › e2e\confirmation.spec.ts:62:3 › ACK mapping 后 abort 全回滚，刷新只重放原命令恢复同 fileId (7.4s)
+  ok   5 [chromium] › e2e\compare.spec.ts:114:1 › 两标签本机草稿冲突：冲突条选择、选择期间另一处又写入、再次选择后保存 (14.7s)
+  ok   7 [chromium] › e2e\confirmation.spec.ts:62:3 › ACK head 后 abort 全回滚，刷新只重放原命令恢复同 fileId (6.8s)
+  ok   8 [chromium] › e2e\compare.spec.ts:200:1 › 键盘进入/离开比较：Enter 打开只读比较，Esc 关闭并回到编辑器 (4.6s)
+  ok   9 [chromium] › e2e\confirmation.spec.ts:62:3 › ACK drafts 后 abort 全回滚，刷新只重放原命令恢复同 fileId (6.7s)
+  ok  10 [chromium] › e2e\compare.spec.ts:217:1 › 恢复换代后比较：旧代际未决命令以 recovery 比较并退役，确认头保持回退状态，新代际保存成功 (4.5s)
+  ok  11 [chromium] › e2e\confirmation.spec.ts:62:3 › ACK outbox 后 abort 全回滚，刷新只重放原命令恢复同 fileId (6.8s)
+  ok  13 [chromium] › e2e\confirmation.spec.ts:139:1 › 混合 EOL/BOM/非 BMP 草稿经真实保存与 snapshot GET 字节不变 (4.3s)
+  ok  12 [chromium] › e2e\draftConflict.spec.ts:10:3 › 草稿 CAS 冲突锁存：重复编辑/确认不能覆盖赢家或 POST，page 重载赢家后可保存 (13.7s)
+  ok  14 [chromium] › e2e\confirmation.spec.ts:174:1 › 另一标签推进 head 后迟到旧 ACK 只记历史，不回退头或映射 (4.9s)
+  ok  16 [chromium] › e2e\confirmation.spec.ts:211:1 › g2 回退头读取后 g1 ACK 到达，只保留旧请求事实与草稿 (2.7s)
+  ok  17 [chromium] › e2e\confirmation.spec.ts:242:1 › 同身份退出再进入后迟到 ACK 不接纳到当前加载 (2.7s)
+  ok  18 [chromium] › e2e\confirmation.spec.ts:260:1 › 摘要不符的 snapshot GET 不显示快照成功，原请求保留 (2.2s)
+  ok  19 [chromium] › e2e\confirmation.spec.ts:277:1 › v1 增量升级保留草稿，跨标签序号事务不复用，中断原命令只跳号 (2.2s)
+  ok  15 [chromium] › e2e\draftConflict.spec.ts:10:3 › 草稿 CAS 冲突锁存：重复编辑/确认不能覆盖赢家或 POST，workspace 重载赢家后可保存 (11.8s)
+  ok  20 [chromium] › e2e\confirmation.spec.ts:321:1 › 同一对象两次 GET 逆序返回，旧读不覆盖较新已接纳 head (2.3s)
+  ok  22 [chromium] › e2e\confirmation.spec.ts:355:1 › 整批保存被拒绝时服务端不部分创建，草稿和原命令保留 (3.3s)
+  ok  21 [chromium] › e2e\editor.spec.ts:47:1 › 多文件编辑：中文输入、键盘 undo/redo、刷新恢复 (5.1s)
+  ok  23 [chromium] › e2e\confirmation.spec.ts:388:1 › 同 revision 的不同确认摘要不可按到达顺序接纳 (3.0s)
+  ok  24 [chromium] › e2e\editor.spec.ts:71:1 › 切换标签保留各文件正文与视图 (5.0s)
+  ok  25 [chromium] › e2e\confirmation.spec.ts:412:1 › 另一标签安装 g2 后旧 g1 ACK 和旧 GET 都不能回退持久确认头 (5.0s)
+  ok  26 [chromium] › e2e\editor.spec.ts:84:1 › 新建文件：重复路径就地报错，合法名字进标签与库 (4.9s)
+  ok  27 [chromium] › e2e\confirmation.spec.ts:444:1 › 已确认文件在 g2 回退后仍可打开原草稿，不能当新文件补发 (4.9s)
+  ok  28 [chromium] › e2e\editor.spec.ts:100:1 › 写失败：存储不可用时正文留在内存并显示未保护 (4.3s)
+  ok  29 [chromium] › e2e\confirmation.spec.ts:469:1 › 快照 GET 清单的 ID 顺序不覆盖刚冻结的快照 (4.3s)
+  ok  31 [chromium] › e2e\confirmation.spec.ts:490:1 › 首次创建 ACK 未绑定 Attempt 时也不能覆盖另一标签已接纳 g2 (2.6s)
+  ok  30 [chromium] › e2e\editorProtection.spec.ts:59:1 › 切换文件后保留折叠、光标、滚动与完整原文 (5.6s)
+  ok  32 [chromium] › e2e\confirmation.spec.ts:520:1 › 创建事务已提交但 UI 还在 await 时切换 g2，旧后续读取不能退休 g2 (3.6s)
+  ok  33 [chromium] › e2e\editorProtection.spec.ts:73:1 › 中心工具切换卸载再挂载后保留折叠与视图 (4.3s)
+  ok  35 [chromium] › e2e\editorProtection.spec.ts:101:3 › 清除缓存 实际生效但保留草稿、确认记录、快照与原命令 (7.2s)
+  ok  34 [chromium] › e2e\fileHistory.spec.ts:55:1 › 首次读取首项已回收时打开活动文件，保留已存回收视图且全回收时如实提示 (13.9s)
+  ok  36 [chromium] › e2e\editorProtection.spec.ts:101:3 › 重置布局 实际生效但保留草稿、确认记录、快照与原命令 (9.0s)
+  ok  37 [chromium] › e2e\fileHistory.spec.ts:121:1 › 回收→同名重建→恢复被占用→显式回收占用者后用新命令恢复：双方保留、身份与正文各自独立 (6.6s)
+  ok  39 [chromium] › e2e\fileHistory.spec.ts:191:1 › 暂停与终态下不能回收或恢复，暂停仍可修改已有文件 (5.5s)
+  ok  38 [chromium] › e2e\idempotencyConflict.spec.ts:11:1 › 同键异正文被真实 authority 拒绝：保留较新草稿，刷新和重读不补做，明确比较后用新命令保存 (10.4s)
+  ok  41 [chromium] › e2e\keyboardWorkflow.spec.ts:56:1 › 真实 Tab 路径完成新建/切换/保存/比较/冲突选择/Core停止/返回，焦点与原作品保留 (14.3s)
+  ok  42 [chromium] › e2e\prep.spec.ts:23:3 › 准备入口与模式 › 首页准备入口明确标合成，点击进入 C 中心容器而非工具包占位 (1.7s)
+  ok  43 [chromium] › e2e\prep.spec.ts:57:3 › 准备入口与模式 › 顶栏标识准备模式与合成身份，并如实记录 U-07 登录缺口 (1.5s)
+  ok  44 [chromium] › e2e\prep.spec.ts:84:3 › 准备入口与模式 › 刷新后重新读取同一份权威内容 (2.1s)
+  ok  45 [chromium] › e2e\prep.spec.ts:104:3 › 活动要求与材料 › 三条并列能力线与活动要求按 student 视角呈现 (1.5s)
+  ok  46 [chromium] › e2e\prep.spec.ts:117:3 › 活动要求与材料 › 材料按 visibility 分状态呈现，redacted / unavailable 不泄露任何正文 (1.5s)
+  ok  47 [chromium] › e2e\prep.spec.ts:146:3 › C 场景不触发模拟构建与主动教学 › 没有模拟构建 / 烧录入口，也没有引导层与浮动 IP (1.1s)
+  ok  48 [chromium] › e2e\prep.spec.ts:163:3 › C 场景不触发模拟构建与主动教学 › C 容器里保留的 board / wave 明确标为数字逻辑演示 (1.3s)
+  ok  49 [chromium] › e2e\prep.spec.ts:178:3 › 原数字逻辑演示保留 › 首次进入仍有原任务卡入场，演示身份明确 (2.7s)
+  ok  50 [chromium] › e2e\prep.spec.ts:191:3 › 原数字逻辑演示保留 › 静态代码、板卡与波形仍可访问且各自标演示 (1.6s)
+  ok  51 [chromium] › e2e\prep.spec.ts:221:3 › 准备模式不外发 › provider 连接测试不请求外部服务，学校测试明确标模拟 (3.0s)
+  ok  52 [chromium] › e2e\prepRestart.spec.ts:124:1 › 启动超时回收子进程，随后可以在同一 strictPort 启动 (908ms)
+  x   53 [chromium] › e2e\prepRestart.spec.ts:135:1 › 准备进程重启后旧确认缓存不装成新 head，草稿保留且原命令不自动迁代际 (20.6s)
+  x   40 [chromium] › e2e\fileHistory.spec.ts:219:1 › 只读版本比较：快照×快照与草稿×确认作品，打开/切换/离开零写请求，键盘可达 (1.0m)
+  ok  55 [chromium] › e2e\fileHistory.spec.ts:270:1 › 同名重建在比较里是两行而不是按路径合并，且单侧状态明确 (5.0s)
+  ok  54 [chromium] › e2e\prepRestart.spec.ts:230:1 › 双标签逆序接纳 epoch：迟到旧初始化不能退役已接纳的新引用 (12.8s)
+  ok  56 [chromium] › e2e\fileHistory.spec.ts:316:1 › 暂停期间发出的回收被整批拒绝：如实显示未生效、不重放、不丢意图，刷新后不再当成未决 (5.6s)
+  ok  57 [chromium] › e2e\real-mode.spec.ts:14:3 › 真实模式 › 不挂载准备 fixture，准备深链不冒充合成成功 (993ms)
+  ok  59 [chromium] › e2e\real-mode.spec.ts:35:3 › 真实模式 › 真实 /api 没有可回退的数据源（H-01 缺口如实暴露） (15ms)
+  ok  60 [chromium] › e2e\real-mode.spec.ts:56:3 › 真实模式 › 原数字逻辑演示在真实模式下同样保留 (4.0s)
+  ok  58 [chromium] › e2e\fileHistory.spec.ts:364:1 › 另一标签回收并确认后，本标签重新读取以权威为准，不把别处刚生效的回收显示成待确认恢复 (7.6s)
+  ok  61 [chromium] › e2e\real-mode.spec.ts:129:3 › real 入口协议替身（非真实宿主验收） › 只读载入→学生明确创建→同本机刷新恢复；不使用准备身份/端点 (4.1s)
+  ok  63 [chromium] › e2e\real-mode.spec.ts:163:3 › real 入口协议替身（非真实宿主验收） › 暂停分配可以阅读，不能首次创建 (1.4s)
+  ok  64 [chromium] › e2e\real-mode.spec.ts:172:5 › real 入口协议替身（非真实宿主验收） › 缺代际不进入，不回 fixture (1.5s)
+  ok  65 [chromium] › e2e\real-mode.spec.ts:172:5 › real 入口协议替身（非真实宿主验收） › 跨学生不进入，不回 fixture (2.4s)
+  ok  62 [chromium] › e2e\fileHistory.spec.ts:394:1 › 混合 EOL/BOM/非 BMP 正文进入只读比较不改摘要、不改正文 (6.5s)
+  ok  67 [chromium] › e2e\runControl.spec.ts:5:1 › 学生停止原运行，取消受理不当成已停止，公开 GET 确认后才能再次主动运行 (6.4s)
+  ok  66 [chromium] › e2e\recovery.spec.ts:13:1 › 丢 ACK 后继续编辑、刷新，重放原命令只创建一次并恢复同一 fileId (7.3s)
+  ok  69 [chromium] › e2e\recovery.spec.ts:95:1 › 浏览器断线时保存不冒充拒绝或成功，重连后只重放原命令 (5.9s)
+  ok  68 [chromium] › e2e\runControl.spec.ts:41:1 › 核对 GET Session 期间另一标签确认原命令，本页接纳同回执而不重变未知 (10.3s)
+  ok  70 [chromium] › e2e\recovery.spec.ts:127:1 › 原命令在另一标签已确认时，本标签停止重发并重读当前 head (5.5s)
+  ok  72 [chromium] › e2e\recovery.spec.ts:189:1 › 另一标签持有原命令租约时不重发也不产生新命令 (4.2s)
+  ok  71 [chromium] › e2e\runControl.spec.ts:72:1 › 确认原回执后租约清理事务失败仍读取原运行，不重新标未知 (7.6s)
+  ok  73 [chromium] › e2e\recovery.spec.ts:217:1 › RECOVERY_REQUIRED 停止旧重试，重新读取后仍保留草稿与旧事实 (4.2s)
+  ok  75 [chromium] › e2e\recovery.spec.ts:279:1 › VERSION_CONFLICT 保留正文、阻止自动覆盖，并把拒绝事实留在原命令上 (4.8s)
+  ok  74 [chromium] › e2e\runControl.spec.ts:105:1 › 核对锁定点击时的未知原运行，独立浏览器的新运行不替换它 (8.4s)
+  ok  76 [chromium] › e2e\recovery.spec.ts:321:1 › 暂时性服务拒绝不封死工作区：保留原命令，明确重试后仍然只创建一次 (2.9s)
+  ok  78 [chromium] › e2e\recovery.spec.ts:349:1 › 重放期间主动重读工作区，旧加载的回执不回灌当前工作区 (4.0s)
+  ok  77 [chromium] › e2e\runControl.spec.ts:133:1 › 两标签同时停止时原命令事务和发送租约阻止第二个停止 POST (6.0s)
+  ok  80 [chromium] › e2e\runControl.spec.ts:165:1 › 停止命令未能落盘时不 POST，不宣称已停止 (5.0s)
+  ok  79 [chromium] › e2e\runHistory.spec.ts:31:1 › 比较两次已回执关联运行，各保留旧快照与本机参数，改稿和只读比较不写回 (9.6s)
+  ok  81 [chromium] › e2e\runControl.spec.ts:191:1 › 旧代际停止被服务拒绝，不宣称已停或自动迁代际补发 (4.7s)
+  ok  82 [chromium] › e2e\runHistory.spec.ts:77:1 › 另一浏览器缺本机请求仍能比较公开历史与未知/失败，读取不创建运行 (6.1s)
+  ok  83 [chromium] › e2e\runControl.spec.ts:210:1 › 停止前的迟到 running poll 不覆盖停止后已接受的 cancelling (6.1s)
+  ok  84 [chromium] › e2e\runHistory.spec.ts:97:1 › 公开文件完整验证后安全查看与合法下载，字节保留 BOM/CRLF 且无写请求 (5.4s)
+  ok  85 [chromium] › e2e\runControl.spec.ts:232:1 › 工作区换代际后迟到 cancel 回执只留历史，不覆盖新加载的已停止结果 (5.6s)
+  ok  86 [chromium] › e2e\runHistory.spec.ts:120:1 › 检查只显示公开 verdict/failureKind，HTTP course_check 与节点 check 分层，产物已裁剪 (4.6s)
+  ok  87 [chromium] › e2e\runControl.spec.ts:261:1 › 取消回执本机事务 abort 后保留原命令，刷新原键核对可以完成 (6.1s)
+  ok  88 [chromium] › e2e\runHistory.spec.ts:137:3 › 历史产物 missing 单列且不能查看或下载 (4.9s)
+  ok  89 [chromium] › e2e\runControl.spec.ts:284:1 › 未知原运行的旧代际核对被拒仍保留原请求，新上下文不改键/代际补做 (5.2s)
+  ok  90 [chromium] › e2e\runHistory.spec.ts:137:3 › 历史产物 incomplete 单列且不能查看或下载 (4.5s)
+  ok  91 [chromium] › e2e\runControl.spec.ts:312:1 › 创建 ACK 丢失后核对冻结原请求，当前控件修改不进入重放；原回执恢复同 run/job (6.8s)
+  ok  92 [chromium] › e2e\runHistory.spec.ts:137:3 › 历史产物 unavailable 单列且不能查看或下载 (4.5s)
+  ok  93 [chromium] › e2e\runControl.spec.ts:338:3 › outcome_unknown 与断线核对只 GET 原运行，不产生新的执行 (5.0s)
+  ok  94 [chromium] › e2e\runHistory.spec.ts:147:1 › 文件 hash 不符/不完整/来源错误拒绝正文与下载，原公开运行仍可比较 (5.1s)
+  ok  95 [chromium] › e2e\runControl.spec.ts:338:3 › stale 与断线核对只 GET 原运行，不产生新的执行 (5.0s)
+  ok  96 [chromium] › e2e\runHistory.spec.ts:172:1 › 切换比较来源后迟到的完整文件不能绑定另一次运行或开放下载 (5.2s)
+  ok  97 [chromium] › e2e\runControl.spec.ts:359:1 › 停止 ACK 丢失且刷新后只显式重放原停止键/正文，终态也不替代未决回执核对 (6.1s)
+  ok  98 [chromium] › e2e\runHistory.spec.ts:197:1 › 损坏本机请求关联时不借用表单或其他记录的参数，公开输出继续可读 (6.1s)
+  ok  99 [chromium] › e2e\runResults.spec.ts:6:1 › 明确运行固定 Core 快照，先落盘原命令再 POST，GET 公开结果与本机参数关联 (6.3s)
+  ok 100 [chromium] › e2e\stateGuards.spec.ts:17:1 › 暂停时新建文件与 Core 运行都被挡住，已有 active 文件仍可编辑保存 (6.3s)
+  ok 102 [chromium] › e2e\stateGuards.spec.ts:69:1 › submitted 与 reviewed 终态：编辑器只读、确认保存与新建都不可用、运行不可发起 (4.8s)
+  ok 101 [chromium] › e2e\runResults.spec.ts:44:1 › 运行 readiness 明确拒绝保留原请求事实，重读后新操作才另建命令 (6.2s)
+  ok 103 [chromium] › e2e\tutoringCode.spec.ts:78:1 › 确认文件/精确选区核对后显式求助，修改草稿后阻止旧对象发送且不自动保存 (7.8s)
+  ok 105 [chromium] › e2e\tutoringCode.spec.ts:109:1 › 没有快照的代码问题只说明缺口，不偷偷确认/冻结；开放项目问题不要求代码 (4.0s)
+  ok 106 [chromium] › e2e\tutoringCode.spec.ts:122:1 › 已显示的代码回答经历原文件回收及同名重建，仍保留原来源且不定位或修改新实例 (10.1s)
+  x  104 [chromium] › e2e\runResults.spec.ts:66:1 › 运行轮询断线暂停、隐藏降频且有次数上限，主动只读可恢复 (16.2s)
+  ok 108 [chromium] › e2e\runResults.spec.ts:120:1 › 运行 ACK 丢失后刷新不换键重跑，保存核对不误处理运行原命令 (6.9s)
+  ok 107 [chromium] › e2e\tutoringCode.spec.ts:179:1 › 旧代码回答在同一页面切换当前Attempt并重读后才到达，不混入新尝试 (14.3s)
+  ok 109 [chromium] › e2e\runResults.spec.ts:146:1 › 较早 running poll 迟到不能覆盖较新已读取的终态 (6.1s)
+  ok 110 [chromium] › e2e\tutoringCode.spec.ts:215:1 › 原代际代码正文在恢复并重读后迟到，不展示或补回执，新的显式代码求助仍可用 (9.3s)
+  ok 111 [chromium] › e2e\runResults.spec.ts:172:1 › 工作区重新加载后的权威读取可含旧代际 Job，旧加载 poll 不绑定新结果 (6.2s)
+  ok 112 [chromium] › e2e\tutoringControls.spec.ts:39:1 › 固定帮助政策和三个控制分别可查，默认提醒关闭，键盘操作不激活 ready (3.6s)
+  ok 113 [chromium] › e2e\runResults.spec.ts:218:3 › 公开诊断 compile_failed 与网络未知分开，缺项不伪装空输出 (6.1s)
+  ok 114 [chromium] › e2e\tutoringControls.spec.ts:68:1 › 关闭采集仍确认作品；恢复不追认暂停期间的旧过程 (8.9s)
+  ok 115 [chromium] › e2e\runResults.spec.ts:218:3 › 公开诊断 runtime_failed 与网络未知分开，缺项不伪装空输出 (6.0s)
+  ok 117 [chromium] › e2e\runResults.spec.ts:218:3 › 公开诊断 timed_out 与网络未知分开，缺项不伪装空输出 (5.9s)
+  ok 116 [chromium] › e2e\tutoringControls.spec.ts:101:1 › 暂停尝试保留已有文件保存，个人恢复不改变采集或提醒 (9.3s)
+  ok 118 [chromium] › e2e\runResults.spec.ts:218:3 › 公开诊断 output_limit 与网络未知分开，缺项不伪装空输出 (6.8s)
+  ok 119 [chromium] › e2e\tutoringControls.spec.ts:123:1 › 当前尝试或分配暂停立即禁用已配置的运行按钮，恢复后按当前许可再开放 (8.4s)
+  ok 120 [chromium] › e2e\runResults.spec.ts:218:3 › 公开诊断 unavailable 与网络未知分开，缺项不伪装空输出 (6.2s)
+  ok 121 [chromium] › e2e\tutoringControls.spec.ts:150:1 › 丢控制ACK后刷新不自动发送，明确核对原键原文且只增加一次采集代际 (4.4s)
+  ok 122 [chromium] › e2e\runResults.spec.ts:218:3 › 公开诊断 node_failed 与网络未知分开，缺项不伪装空输出 (6.3s)
+  ok 123 [chromium] › e2e\tutoringControls.spec.ts:182:1 › 公开教师暂停投影禁用个人恢复，按钮禁用只证明UI消费而非服务端授权 (6.7s)
+  ok 125 [chromium] › e2e\tutoringControls.spec.ts:201:1 › 服务拒绝原控制仍保护草稿，不显示假成功且不自动重放 (9.9s)
+  ok 124 [chromium] › e2e\runResults.spec.ts:246:1 › 运行中主动改稿不改变旧快照，刷新与另一浏览器缺参数仍能只读结果 (13.9s)
+  ok 126 [chromium] › e2e\tutoringControls.spec.ts:218:1 › 实际关闭采集和提醒后仍可主动求助，帮助失败不会切换三个控制 (7.4s)
+  ok 127 [chromium] › e2e\runResults.spec.ts:285:1 › 已确认运行的 Job GET 拒绝只记读取未知，不把成功 POST 改成未被接受 (7.4s)
+  ok 129 [chromium] › e2e\runResults.spec.ts:305:1 › find/top 输入拒绝不发送，参数修正后每次学生新操作用新命令 (6.1s)
+  ok 130 [chromium] › e2e\tutoringFailure.spec.ts:48:1 › 辅导events、历史与help公开失败只显示中文恢复提示，保留草稿/原命令且不自动新求助 (3.4s)
+  x  128 [chromium] › e2e\tutoringControls.spec.ts:232:1 › 已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留 (13.8s)
+  ok 131 [chromium] › e2e\tutoringHelpStop.spec.ts:11:1 › 限定检查权威重读阻止旧页面发送，未知状态不放行，结束后显式求助仍可用 (4.0s)
+  ok 132 [chromium] › e2e\tutoringHelpStop.spec.ts:41:1 › 求助丢ACK尚无Job时可明确停止，核对原键后取消原Job而不只屏蔽正文 (1.7s)
+  ok 134 [chromium] › e2e\tutoringHelpStop.spec.ts:80:1 › 替换help和旧Job取消均丢ACK，分别核对原命令后不会把旧取消改贴新Job或永久阻塞 (2.4s)
+  ok 133 [chromium] › e2e\tutoringControls.spec.ts:282:1 › 另一标签基于旧显示再次设相同采集值，发送前用新revision且不新增采集代际 (3.6s)
+  ok 136 [chromium] › e2e\tutoringControls.spec.ts:325:1 › 旧代际控制ACK晚于恢复和新控制，不改新值、不重贴旧键或清除新确认 (7.3s)
+  ok 137 [chromium] › e2e\tutoringHistory.spec.ts:36:1 › 不同client合法回取shown原文/原Job，只读历史无新Delivery或三类回执 (5.4s)
+  x  135 [chromium] › e2e\tutoringHelpStop.spec.ts:121:1 › 学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍沿原取消核对 (14.2s)
+  ok 138 [chromium] › e2e\tutoringHistory.spec.ts:51:1 › 已失效shown正文及依据修订作为历史保留，不复活当前候选 (5.2s)
+  ok 140 [chromium] › e2e\tutoringHistory.spec.ts:65:1 › received-only且停止的正文不在公共历史中，新通道仍无正文 (4.8s)
+  ok 141 [chromium] › e2e\tutoringHistory.spec.ts:91:1 › 同authority负例：shape/hash/scope/Job/received-only非法响应不展示历史也不补回执 (6.0s)
+  x  139 [chromium] › e2e\tutoringHelpStop.spec.ts:145:1 › 非法正文不展示不报displayed，故障仍可保存；模型失败显示公开失败 (16.7s)
+  ok 143 [chromium] › e2e\tutoringHelpStop.spec.ts:178:1 › 服务仍返回running但公开截止已过时提示等待超限，不编造远端终态或另发问题 (2.2s)
+  ok 142 [chromium] › e2e\tutoringHistory.spec.ts:112:1 › 刷新缓存待重新授权；正常回取后退出账号，真实401清空历史而缓存不冒充许可 (8.7s)
+  ok 145 [chromium] › e2e\tutoringMessages.spec.ts:51:1 › 教学页真实IDB事务中止：正文/游标/待received一起回滚，刷新回取原Delivery (4.8s)
+  ok 144 [chromium] › e2e\tutoringHelpStop.spec.ts:197:1 › 预算拒绝和权威超时保留问题与草稿，不编造回答或阻断明确保存 (7.8s)
+  ok 146 [chromium] › e2e\tutoringMessages.spec.ts:85:1 › help真实IDB事务中止后问题保留、零POST；刷新不补发失败意图 (2.6s)
+  ok 147 [chromium] › e2e\tutoringHelpStop.spec.ts:246:1 › 替换求助的旧ACK跨越明确停止不能释放屏障，也不把新内容先展示再取消 (2.1s)
+  ok 148 [chromium] › e2e\tutoringMessages.spec.ts:101:3 › received回执丢ACK：原clientReceiptId/键/正文重发，刷新不增加服务事实 (5.4s)
+  ok 150 [chromium] › e2e\tutoringMessages.spec.ts:101:3 › displayed回执丢ACK：原clientReceiptId/键/正文重发，刷新不增加服务事实 (5.3s)
+  ok 151 [chromium] › e2e\tutoringMessages.spec.ts:101:3 › acknowledged回执丢ACK：原clientReceiptId/键/正文重发，刷新不增加服务事实 (5.3s)
+  x  149 [chromium] › e2e\tutoringReturn.spec.ts:23:1 › 键盘看合成相邻例子→返回同一编辑器视图，草稿/undo保持且没有业务副作用 (14.2s)
+  x  153 [chromium] › e2e\tutoringReturn.spec.ts:57:1 › 实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品 (13.7s)
+  x  152 [chromium] › e2e\tutoringMessages.spec.ts:138:1 › visible且展开的面板：消息未滚入区域零displayed，实际滚入后才展示 (16.3s)
+  ok 155 [chromium] › e2e\tutoringMessages.spec.ts:169:1 › 同Action正文冲突不覆盖原已展示内容或回执，显示冲突原因 (4.9s)
+  x  154 [chromium] › e2e\tutoringReturn.spec.ts:82:1 › 阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例 (13.7s)
+  x  156 [chromium] › e2e\tutoringMessages.spec.ts:193:1 › 原authority正向多页和resync：从零重取、跨序号缺口、重复正文不增加回执 (16.0s)
+  x  157 [chromium] › e2e\tutoringReturn.spec.ts:127:1 › 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留 (13.8s)
+  ok 158 [chromium] › e2e\tutoringMessages.spec.ts:236:1 › 只丢教学ledger后刷新领取新通道，从零读取且不复用旧Delivery/游标 (5.7s)
+  ok 159 [chromium] › e2e\tutoringMessages.spec.ts:267:1 › 未展示内容丢教学ledger后，新通道从零取得新Delivery，不冒用旧通道回执 (5.0s)
+  ok 161 [chromium] › e2e\tutoringMessages.spec.ts:298:1 › 完整正文→可见展示→明确回应，重读/刷新只保留一份和原通道 (5.4s)
+  ok 160 [chromium] › e2e\tutoringRun.spec.ts:9:1 › 原运行求助后继续编辑并启动另一Run，旧回答仍保留原Run/快照且不自动重跑 (13.5s)
+  ok 162 [chromium] › e2e\tutoringMessages.spec.ts:324:1 › 收起面板只收到，未展示；已succeeded仍能停止未展示内容 (5.2s)
+  ok 164 [chromium] › e2e\tutoringMessages.spec.ts:340:1 › 求助丢ACK以原键原正文核对，不自动补发或重复生成 (2.7s)
+  ok 165 [chromium] › e2e\tutoringMessages.spec.ts:355:1 › 新标签使用独立delivery通道，不把已展示历史缓存当跨客户端回取 (6.1s)
+  ok 166 [chromium] › e2e\tutoringMessages.spec.ts:365:1 › received回执在途时已经发生的可见展示，停止后仍保留历史及迟到展示回执 (4.3s)
+  ok 163 [chromium] › e2e\tutoringRun.spec.ts:80:1 › 原运行回答的HTTP页晚到，学生已改稿并完成另一Run仍只显示原来源 (14.6s)
+  ok 167 [chromium] › e2e\tutoringMessages.spec.ts:384:1 › 已重读的新暂停优先于迟到旧教学页，旧正文不展示 (6.2s)
+  ok 168 [chromium] › e2e\tutoringRun.spec.ts:133:1 › 没有原参数且环境诊断不可回取时历史仍可选择求助，不自动重跑 (8.8s)
+  ok 169 [chromium] › e2e\tutoringMessages.spec.ts:405:1 › window.open复制sessionStorage仍领取独立通道；原标签刷新继续原通道 (6.8s)
+  ok 170 [chromium] › e2e\tutoringRun.spec.ts:159:1 › 从同一 authority 的公开 Run/Job 构造引用，控件快照错配拒绝 (6.5s)
+  ok 171 [chromium] › e2e\tutoringMessages.spec.ts:422:1 › 受控可见性反例：隐藏时收到正文不报展示，恢复后才产生displayed (4.1s)
+  ok 172 [chromium] › e2e\tutoringMessages.spec.ts:451:1 › 原生后台标签收到正文不报展示；实际切回前台后仅报一次displayed (11.3s)
+  ok 174 [chromium] › e2e\homeEntry.spec.ts:71:1 › 真实首页读取本人两课程与固定标题，暂停可查看，卡片沿原路由返回后可再进入 (7.8s)
+  ok 175 [chromium] › e2e\homeEntry.spec.ts:153:1 › 没有学生课程或课程没有分配时显示真实空态，不补演示任务 (2.7s)
+  ok 173 [chromium] › e2e\hdlRealWorkflow.spec.ts:73:1 › 整板输入逐位响应：16 SW、5 BTN 按下松开、低有效复位及显式时钟推进 (24.3s)
+  ok 176 [chromium] › e2e\homeEntry.spec.ts:177:1 › 首页读取后端姓名课程和任务标题，搜索及原ID路由保持，缺字段回退原表示 (2.9s)
+  ok 178 [chromium] › e2e\homeEntry.spec.ts:221:1 › 列表故障保持失败并可明确重试，恢复后只展示原接口任务 (1.9s)
+  ok 177 [chromium] › e2e\hdlRealWorkflow.spec.ts:127:1 › 板卡禁用有原因且可就地恢复：未装载、无效周期、停止后显式重装 (6.0s)
+  ok 179 [chromium] › e2e\homeEntry.spec.ts:246:1 › 列表401重新登录，首页真实退出换账号后拒收迟到旧列表 (5.3s)
+  -  181 [chromium] › e2e\runControlService.spec.ts:8:1 › 实际停止受理保持原身份和未确认槽位，确认后仍服从最新 readiness，只有显式新操作再运行
+  -  182 [chromium] › e2e\runControlService.spec.ts:43:1 › 实际停止丢ACK后刷新不自动再取消，明确核对只重放原停止命令，结果GET确认
+  -  183 [chromium] › e2e\runControlService.spec.ts:73:1 › 实际原消费者同库重开继续核原未确认停止，绝不生成替代运行
+  -  184 [chromium] › e2e\runControlService.spec.ts:98:1 › 实际两标签未决停止共用原命令租约，另一标签核对不能重复POST或新建运行
+  -  185 [chromium] › e2e\runHistoryService.spec.ts:107:1 › HTTPS 两次真实 Core：固定快照和本机参数分别关联，第二浏览器不猜参数，只读不改稿
+  -  186 [chromium] › e2e\runHistoryService.spec.ts:168:1 › HTTPS 完整 Report：原 UTF-8 字节/BOM/CRLF/非BMP、hash/bytes/稳定 ID 全部相符且下载只读
+  -  187 [chromium] › e2e\runHistoryService.spec.ts:214:1 › HTTPS 课程检查：原 course_check Job 与 check Run 分层，实际公开响应裁剪私有正文和产物
+  -  188 [chromium] › e2e\runHistoryService.spec.ts:249:3 › HTTPS report-missing：实际产物状态单列，没有正文查看或下载，也不补写作品
+  -  189 [chromium] › e2e\runHistoryService.spec.ts:249:3 › HTTPS report-incomplete：实际产物状态单列，没有正文查看或下载，也不补写作品
+  -  190 [chromium] › e2e\runHistoryService.spec.ts:249:3 › HTTPS files-unavailable：实际产物状态单列，没有正文查看或下载，也不补写作品
+  -  191 [chromium] › e2e\runHistoryService.spec.ts:277:1 › HTTPS 选择逆序：实际完整产物迟到不能绑定另一运行或开放下载，原草稿和写计数不变
+  -  192 [chromium] › e2e\runService.spec.ts:10:1 › 实际 Core 固定快照 stats/find/top：原命令先落盘、原消费者推进，运行中改稿不改结果来源
+  -  193 [chromium] › e2e\runService.spec.ts:61:1 › 实际 readiness 失效禁新运行且不冻结命令；恢复后仅学生新操作运行，保存仍可用
+  -  194 [chromium] › e2e\runService.spec.ts:88:1 › 实际公开诊断区分编译/程序/时间/输出失败与基础设施不可回取，不将 Job succeeded 当课程通过
+  -  195 [chromium] › e2e\runService.spec.ts:114:1 › 实际创建丢ACK：刷新无自动第二次运行，明确核对重放同key/body且同一个原Job/Run
+  -  196 [chromium] › e2e\runService.spec.ts:146:1 › 实际执行接收后失联 outcome_unknown 仅核原身份，不自动补 submit 或新运行
+  -  197 [chromium] › e2e\runService.spec.ts:171:1 › 实际原Job迟到 running读取不能回退已接纳终态或改变原快照
+  -  198 [chromium] › e2e\saveRecoveryService.spec.ts:87:1 › HTTPS 隔离宿主墙钟回拨不误判会话失效或限流，仍可明确保存原文
+  -  199 [chromium] › e2e\saveRecoveryService.spec.ts:109:1 › HTTPS 缺受信代际真实409：入口不可用、零业务写、零活动读取
+  -  200 [chromium] › e2e\saveRecoveryService.spec.ts:132:1 › HTTPS 代际轮换拒绝旧保存：显式重读同Attempt保留草稿后使用新键
+  -  201 [chromium] › e2e\saveRecoveryService.spec.ts:170:32 › HTTPS 迟到代际读取1不能覆盖另一标签已重读的新代际
+  -  202 [chromium] › e2e\saveRecoveryService.spec.ts:170:32 › HTTPS 迟到代际读取2不能覆盖另一标签已重读的新代际
+  -  203 [chromium] › e2e\saveRecoveryService.spec.ts:201:1 › HTTPS 换代际并重读较新作品后，迟到旧ACK只留历史不回退确认头或草稿
+  -  204 [chromium] › e2e\saveRecoveryService.spec.ts:238:1 › HTTPS 多文件原字节、版本/hash/manifest与刷新和同库重开读回一致，较新草稿单列
+  -  205 [chromium] › e2e\saveRecoveryService.spec.ts:296:1 › HTTPS 服务接收但丢ACK：刷新和明确重试只重放原命令、一次效果且保留新草稿
+  -  206 [chromium] › e2e\saveRecoveryService.spec.ts:329:1 › HTTPS 浏览器离线可继续保护草稿，重连重开服务不自动重发，明确重试原命令
+  -  207 [chromium] › e2e\saveRecoveryService.spec.ts:352:1 › HTTPS 两标签持久租约阻止重复重放，原ACK确认后另一标签只读且保留草稿
+  -  208 [chromium] › e2e\saveRecoveryService.spec.ts:381:1 › HTTPS 两标签本机草稿CAS冲突保留败方候选且不覆盖赢家作品
+  -  209 [chromium] › e2e\saveStateService.spec.ts:114:1 › 实际暂停：既有 active 文件 update 可保存，新建、回收、恢复和运行零写
+  -  210 [chromium] › e2e\saveStateService.spec.ts:168:1 › 实际 submitted/reviewed：正文只读，保存、冻结、新建、回收、恢复、运行均零写
+  -  211 [chromium] › e2e\saveStateService.spec.ts:210:1 › 实际 VERSION_CONFLICT 保留原草稿与拒绝事实，重读比较后显式保留正文才用新命令保存
+  -  212 [chromium] › e2e\saveStateService.spec.ts:279:1 › 两个 revision 分别读取：保存/快照后控制重读权威 attemptRevision，拒用作品版本与旧渲染版本
+  ok 213 [chromium] › e2e\sessionEntry.spec.ts:10:1 › 登录入口键盘与浅深主题；限流、错误信封和断网保留真实失败 (1.4s)
+  ok 214 [chromium] › e2e\sessionEntry.spec.ts:48:1 › 会话入口等待有上限，超时不冒充登录成功或自动重试 (1.2s)
+  ok 180 [chromium] › e2e\hdlRealWorkflow.spec.ts:162:1 › 隔离正常 HDL 页面：.sv保存与快照、真实形状失败诊断、显式成功装载及四态输出 (7.6s)
+  ok 215 [chromium] › e2e\sessionEntry.spec.ts:71:1 › 取消请求失效时仍靠会话代次拒收旧 Session 成功与旧 401 (2.4s)
+  -  217 [chromium] › e2e\sessionService.spec.ts:28:1 › HTTPS 表单登录、错误口令、获准深链、刷新与首页账号菜单退出
+  -  218 [chromium] › e2e\sessionService.spec.ts:64:1 › HTTPS 退出/换账号后旧 ACK 和旧 401 不进入新会话；原账号草稿可恢复
+  -  219 [chromium] › e2e\sessionService.spec.ts:126:1 › HTTPS 会话失效重新登录保留深链与草稿；退出失败可明确重试
+  -  220 [chromium] › e2e\sessionService.spec.ts:166:1 › HTTPS 多标签退出立即隔离；外部同账号新会话在前台恢复时重读
+  -  221 [chromium] › e2e\tutoringCapabilityService.spec.ts:114:1 › 正常24表宿主明确拒绝辅导读取后暂停自动轮询；显式重读重新判断，编辑和保存不受阻
+  -  222 [chromium] › e2e\tutoringCapabilityService.spec.ts:163:1 › 有C3的正常宿主：一次传输故障不停止后续自动读取，真实成功读取继续轮询
+  -  223 [chromium] › e2e\tutoringService.spec.ts:11:1 › 正常构建连接实际教学HTTPS/SQLite/原worker，公开求助正文与历史回取
+  ok 216 [chromium] › e2e\hdlRealWorkflow.spec.ts:199:1 › 隔离 HDL pending/失ACK/刷新：零额外装载与交互，原键原wire核对，停止请求和退出分开 (10.6s)
+  ok 224 [chromium] › e2e\hdlRealWorkflow.spec.ts:261:1 › 隔离同源正常 C 分配仍显示原 Core 入口，不能因 HDL 文件扩展名替换课程 (3.1s)
+  ok 225 [chromium] › e2e\hdlRealWorkflow.spec.ts:276:1 › 隔离 HDL 同快照构建与代码求助：准确selection、预算关闭原拒绝且仍可编辑保存 (6.4s)
+  ok 226 [chromium] › e2e\hdlRealWorkflow.spec.ts:329:1 › 隔离 HDL 长 pending：虚拟时钟最多60轮读取、耗尽不循环发布、明确读取恢复 (24.5s)
+  ok 227 [chromium] › e2e\hdlRealWorkflow.spec.ts:371:1 › 隔离 HDL 切换分配：旧Session迟到响应不能覆盖正常C页面或作品 (8.1s)
+  ok 228 [chromium] › e2e\hdlRealWorkflow.spec.ts:401:1 › 隔离 HDL 键盘基本路径：SW、按钮按下松开、低有效复位、推进、停止及显式构建求助 (11.8s)
+  1) [chromium] › e2e\fileHistory.spec.ts:219:1 › 只读版本比较：快照×快照与草稿×确认作品，打开/切换/离开零写请求，键盘可达 ───────────
+    Test timeout of 60000ms exceeded.
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Browser logs:
+    <launching> C:\Program Files\Google\Chrome\Application\chrome.exe --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=C:\Users\h\AppData\Local\Temp\playwright_chromiumdev_profile-xtPKr5 --remote-debugging-pipe --no-startup-window
+    <launched> pid=38316
+    [pid=38316][err] [38316:51088:1015/141728.071:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+    [pid=38316][err] [38316:51088:1015/141728.164:ERROR:google_apis\gcm\engine\mcs_client.cc:702]   Error code: 401  Error message: Authentication Failed: wrong_secret
+    [pid=38316][err] [38316:51088:1015/141728.164:ERROR:google_apis\gcm\engine\mcs_client.cc:704] Failed to log in to GCM, resetting connection.
+    [pid=38316][err] [38316:51088:1015/141728.223:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: PHONE_REGISTRATION_ERROR
+    [pid=38316][err] [38316:51088:1015/141755.769:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: DEPRECATED_ENDPOINT
+    [pid=38316][err] [38316:51088:1015/141845.243:ERROR:google_apis\gcm\engine\registration_request.cc:291] Registration response error message: DEPRECATED_ENDPOINT
+    [pid=38316] <gracefully close start>
+    Call log:
+      - waiting for getByRole('button', { name: '确认保存', exact: true })
+        - locator resolved to <button disabled type="button" title="当前不能保存" class="ws-btn solid">确认保存</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is not enabled
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is not enabled
+        - retrying click action
+          - waiting 100ms
+        109 × waiting for element to be visible, enabled and stable
+            - element is not enabled
+          - retrying click action
+            - waiting 500ms
+        - waiting for element to be visible, enabled and stable
+       at helpers.ts:148
+      146 |  */
+      147 | export async function confirmSave(page: Page, revision: number) {
+    > 148 |   await page.getByRole('button', { name: '确认保存', exact: true }).click()
+          |                                                                 ^
+      149 |   await expect(page.locator('.ws-flow')).toContainText(`确认作品 v${revision}`)
+      150 | }
+      151 |
+        at confirmSave (C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\helpers.ts:148:65)
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\fileHistory.spec.ts:226:9
+    Error Context: test-results\fileHistory-只读版本比较：快照×快照与草稿×确认作品，打开-切换-离开零写请求，键盘可达-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\fileHistory-只读版本比较：快照×快照与草稿×确认作品，打开-切换-离开零写请求，键盘可达-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\fileHistory-只读版本比较：快照×快照与草稿×确认作品，打开-切换-离开零写请求，键盘可达-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  2) [chromium] › e2e\prepRestart.spec.ts:135:1 › 准备进程重启后旧确认缓存不装成新 head，草稿保留且原命令不自动迁代际 ─────────────
+    Error: expect(locator).toBeAttached() failed
+    Locator: locator('.monaco-editor textarea').first()
+    Expected: attached
+    Timeout: 10000ms
+    Error: element(s) not found
+    Call log:
+      - Expect "toBeAttached" locator('.monaco-editor textarea').first() with timeout 10000ms
+      - waiting for locator('.monaco-editor textarea').first()
+       at helpers.ts:32
+      30 |   await input.fill(name)
+      31 |   await input.press('Enter')
+    > 32 |   await expect(page.locator('.monaco-editor textarea').first()).toBeAttached()
+         |                                                                 ^
+      33 | }
+      34 |
+      35 | /** 输入正文但不等待落盘；落盘结果（保护/冲突条）由调用方用 expect 等待。 */
+        at create (C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\helpers.ts:32:65)
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\prepRestart.spec.ts:204:5
+    Error Context: test-results\prepRestart-准备进程重启后旧确认缓存不装成新-head，草稿保留且原命令不自动迁代际-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\prepRestart-准备进程重启后旧确认缓存不装成新-head，草稿保留且原命令不自动迁代际-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\prepRestart-准备进程重启后旧确认缓存不装成新-head，草稿保留且原命令不自动迁代际-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  3) [chromium] › e2e\runResults.spec.ts:66:1 › 运行轮询断线暂停、隐藏降频且有次数上限，主动只读可恢复 ────────────────────────
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: 18
+    Received: 19
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+      100 |     const response = page.waitForResponse(r => /\/runs\/[^/]+$/.test(r.url()) && r.request().method() === 'GET')
+      101 |     await page.clock.runFor(1000)
+    > 102 |     await expect.poll(() => reads).toBe(count + 1)
+          |                                    ^
+      103 |     // 等本轮公开 Run 读到并发布后，再推进下一轮的浏览器时钟。
+      104 |     await expect(page.locator('.core-run-result')).toContainText('运行中')
+      105 |     await (await response).finished()
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\runResults.spec.ts:102:36
+    Error Context: test-results\runResults-运行轮询断线暂停、隐藏降频且有次数上限，主动只读可恢复-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\runResults-运行轮询断线暂停、隐藏降频且有次数上限，主动只读可恢复-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\runResults-运行轮询断线暂停、隐藏降频且有次数上限，主动只读可恢复-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  4) [chromium] › e2e\tutoringControls.spec.ts:232:1 › 已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留 ────────
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('tutor-facts')
+    Expected substring: "展示：本机已发生"
+    Received string:    "收到：已确认 · 展示：未发生 · 回应：未回应"
+    Timeout: 10000ms
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-facts') with timeout 10000ms
+      - waiting for getByTestId('tutor-facts')
+        19 × locator resolved to <p data-testid="tutor-facts">…</p>
+           - unexpected value "收到：已确认 · 展示：未发生 · 回应：未回应"
+      235 |   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('先给一个项目提示，提醒样例另属合成准备数据')
+      236 |   await page.getByRole('button',{name:'发送辅导问题',exact:true}).click()
+    > 237 |   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+          |                                                 ^
+      238 |   const original=await page.getByTestId('tutor-message').getAttribute('data-action-id')
+      239 |   await page.getByRole('button',{name:'收起辅导',exact:true}).click()
+      240 |   await page.getByRole('button',{name:'任务信息',exact:true}).click()
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringControls.spec.ts:237:49
+    Error Context: test-results\tutoringControls-已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringControls-已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringControls-已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  5) [chromium] › e2e\tutoringHelpStop.spec.ts:121:1 › 学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍沿原取消核对 ────────
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('tutor-facts')
+    Expected substring: "展示：本机已发生"
+    Received string:    "收到：已确认 · 展示：未发生 · 回应：未回应"
+    Timeout: 10000ms
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-facts') with timeout 10000ms
+      - waiting for getByTestId('tutor-facts')
+        23 × locator resolved to <p data-testid="tutor-facts">…</p>
+           - unexpected value "收到：已确认 · 展示：未发生 · 回应：未回应"
+      133 |   expect(new Set(helpKeys).size).toBe(2)
+      134 |   await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+    > 135 |   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+          |                                                 ^
+      136 |   await page.route('**/__i0prep/api/jobs/*/cancel',async route=> {const response=await route.fetch();await route.abort('failed');await page.unroute('**/__i0prep/api/jobs/*/cancel');expect(response.ok()).toBe(true)})
+      137 |   await page.getByRole('button',{name:'停止这次帮助'}).click()
+      138 |   await expect(page.getByRole('button',{name:'核对原辅导请求'})).toBeEnabled()
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringHelpStop.spec.ts:135:49
+    Error Context: test-results\tutoringHelpStop-学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍沿原取消核对-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringHelpStop-学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍沿原取消核对-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringHelpStop-学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍沿原取消核对-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  6) [chromium] › e2e\tutoringHelpStop.spec.ts:145:1 › 非法正文不展示不报displayed，故障仍可保存；模型失败显示公开失败 ────────
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('tutor-job')
+    Expected substring: "failed"
+    Received string:    "帮助状态 · succeeded · 90ae88c7-283e-4afe-aa38-52ee92d412d2"
+    Timeout: 10000ms
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-job') with timeout 10000ms
+      - waiting for getByTestId('tutor-job')
+        24 × locator resolved to <span data-testid="tutor-job">帮助状态 · succeeded · 90ae88c7-283e-4afe-aa38-52ee92…</span>
+           - unexpected value "帮助状态 · succeeded · 90ae88c7-283e-4afe-aa38-52ee92d412d2"
+      167 |   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('又一个问题')
+      168 |   await page.getByRole('button',{name:'发送辅导问题'}).click()
+    > 169 |   await expect(page.getByTestId('tutor-job')).toContainText('failed')
+          |                                               ^
+      170 |   await page.getByRole('button',{name:'收起辅导',exact:true}).click()
+      171 |   await page.locator('.monaco-editor textarea').first().focus();await page.keyboard.press('ControlOrMeta+a')
+      172 |   await edit(page,'// saved after actual failed help\nint main(void){return 0;}')
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringHelpStop.spec.ts:169:47
+    Error Context: test-results\tutoringHelpStop-非法正文不展示不报displayed，故障仍可保存；模型失败显示公开失败-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringHelpStop-非法正文不展示不报displayed，故障仍可保存；模型失败显示公开失败-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringHelpStop-非法正文不展示不报displayed，故障仍可保存；模型失败显示公开失败-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  7) [chromium] › e2e\tutoringMessages.spec.ts:138:1 › visible且展开的面板：消息未滚入区域零displayed，实际滚入后才展示 ────
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: "confirmed"
+    Received: undefined
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+      163 |   expect(receipts).toEqual(['received'])
+      164 |   await page.getByTestId('tutor-message').scrollIntoViewIfNeeded()
+    > 165 |   await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[0]?.facts.displayed?.state).toBe('confirmed')
+          |                                                                                                  ^
+      166 |   expect(receipts).toEqual(['received','displayed'])
+      167 |   expect((await tutorLedger(page))[0]!.messages[0]!.facts.acknowledged).toBeUndefined()
+      168 | })
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringMessages.spec.ts:165:98
+    Error Context: test-results\tutoringMessages-visible且展开的面板：消息未滚入区域零displayed，实际滚入后才展示-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringMessages-visible且展开的面板：消息未滚入区域零displayed，实际滚入后才展示-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringMessages-visible且展开的面板：消息未滚入区域零displayed，实际滚入后才展示-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  8) [chromium] › e2e\tutoringMessages.spec.ts:193:1 › 原authority正向多页和resync：从零重取、跨序号缺口、重复正文不增加回执 ──
+    Error: expect(received).toBe(expected) // Object.is equality
+    Expected: "confirmed"
+    Received: undefined
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+      197 |     await expect(page.getByTestId('tutor-message')).toHaveCount(i+1)
+      198 |     await page.getByTestId('tutor-message').last().scrollIntoViewIfNeeded()
+    > 199 |     await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[i]?.facts.displayed?.state).toBe('confirmed')
+          |                                                                                                    ^
+      200 |     if(i<2)await page.getByRole('button',{name:'收起辅导'}).click()
+      201 |   }
+      202 |   const original=(await tutorLedger(page))[0]!,receipts:string[]=[],pages:Array<{cursor:number;page:TutorPage}>=[]
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringMessages.spec.ts:199:100
+    Error Context: test-results\tutoringMessages-原authority正向多页和resync：从零重取、跨序号缺口、重复正文不增加回执-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringMessages-原authority正向多页和resync：从零重取、跨序号缺口、重复正文不增加回执-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringMessages-原authority正向多页和resync：从零重取、跨序号缺口、重复正文不增加回执-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  9) [chromium] › e2e\tutoringReturn.spec.ts:23:1 › 键盘看合成相邻例子→返回同一编辑器视图，草稿/undo保持且没有业务副作用 ──────────
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('tutor-facts')
+    Expected substring: "展示：本机已发生"
+    Received string:    "收到：已确认 · 展示：未发生 · 回应：未回应"
+    Timeout: 10000ms
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-facts') with timeout 10000ms
+      - waiting for getByTestId('tutor-facts')
+        15 × locator resolved to <p data-testid="tutor-facts">…</p>
+           - unexpected value "收到：已确认 · 展示：未发生 · 回应：未回应"
+       8 |   await page.getByRole('textbox', { name: '就这个任务提问' }).fill('给一个相邻边界测试例子，我会返回原作品自己试。')
+       9 |   await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
+    > 10 |   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+         |                                                 ^
+      11 | }
+      12 | function forbiddenWrites(page: Page) {
+      13 |   const writes: string[] = []
+        at exampleMessage (C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:10:49)
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:36:3
+    Error Context: test-results\tutoringReturn-键盘看合成相邻例子→返回同一编辑器视图，草稿-undo保持且没有业务副作用-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringReturn-键盘看合成相邻例子→返回同一编辑器视图，草稿-undo保持且没有业务副作用-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringReturn-键盘看合成相邻例子→返回同一编辑器视图，草稿-undo保持且没有业务副作用-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  10) [chromium] › e2e\tutoringReturn.spec.ts:57:1 › 实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品 ─────────────
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('tutor-facts')
+    Expected substring: "展示：本机已发生"
+    Received string:    "收到：已确认 · 展示：未发生 · 回应：未回应"
+    Timeout: 10000ms
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-facts') with timeout 10000ms
+      - waiting for getByTestId('tutor-facts')
+        17 × locator resolved to <p data-testid="tutor-facts">…</p>
+           - unexpected value "收到：已确认 · 展示：未发生 · 回应：未回应"
+       8 |   await page.getByRole('textbox', { name: '就这个任务提问' }).fill('给一个相邻边界测试例子，我会返回原作品自己试。')
+       9 |   await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
+    > 10 |   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+         |                                                 ^
+      11 | }
+      12 | function forbiddenWrites(page: Page) {
+      13 |   const writes: string[] = []
+        at exampleMessage (C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:10:49)
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:64:3
+    Error Context: test-results\tutoringReturn-实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringReturn-实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringReturn-实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  11) [chromium] › e2e\tutoringReturn.spec.ts:82:1 › 阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例 ─────────────
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('tutor-facts')
+    Expected substring: "展示：本机已发生"
+    Received string:    "收到：已确认 · 展示：未发生 · 回应：未回应"
+    Timeout: 10000ms
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-facts') with timeout 10000ms
+      - waiting for getByTestId('tutor-facts')
+        17 × locator resolved to <p data-testid="tutor-facts">…</p>
+           - unexpected value "收到：已确认 · 展示：未发生 · 回应：未回应"
+       8 |   await page.getByRole('textbox', { name: '就这个任务提问' }).fill('给一个相邻边界测试例子，我会返回原作品自己试。')
+       9 |   await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
+    > 10 |   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+         |                                                 ^
+      11 | }
+      12 | function forbiddenWrites(page: Page) {
+      13 |   const writes: string[] = []
+        at exampleMessage (C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:10:49)
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:87:3
+    Error Context: test-results\tutoringReturn-阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringReturn-阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringReturn-阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  12) [chromium] › e2e\tutoringReturn.spec.ts:127:1 › 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留
+    Error: expect(locator).toContainText(expected) failed
+    Locator: getByTestId('tutor-facts')
+    Expected substring: "展示：本机已发生"
+    Received string:    "收到：已确认 · 展示：未发生 · 回应：未回应"
+    Timeout: 10000ms
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-facts') with timeout 10000ms
+      - waiting for getByTestId('tutor-facts')
+        16 × locator resolved to <p data-testid="tutor-facts">…</p>
+           - unexpected value "收到：已确认 · 展示：未发生 · 回应：未回应"
+       8 |   await page.getByRole('textbox', { name: '就这个任务提问' }).fill('给一个相邻边界测试例子，我会返回原作品自己试。')
+       9 |   await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
+    > 10 |   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+         |                                                 ^
+      11 | }
+      12 | function forbiddenWrites(page: Page) {
+      13 |   const writes: string[] = []
+        at exampleMessage (C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:10:49)
+        at C:\Users\h\.codex\worktrees\hdl-virtual-board-fix\XunJie\apps\student\e2e\tutoringReturn.spec.ts:148:3
+    Error Context: test-results\tutoringReturn-未确认作品命令跨只读资-6ac9c-OL-非BMP-折叠-滚动及undo-redo分支保留-chromium\error-context.md
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringReturn-未确认作品命令跨只读资-6ac9c-OL-非BMP-折叠-滚动及undo-redo分支保留-chromium\trace.zip
+    Usage:
+        npx playwright show-trace test-results\tutoringReturn-未确认作品命令跨只读资-6ac9c-OL-非BMP-折叠-滚动及undo-redo分支保留-chromium\trace.zip
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  12 failed
+    [chromium] › e2e\fileHistory.spec.ts:219:1 › 只读版本比较：快照×快照与草稿×确认作品，打开/切换/离开零写请求，键盘可达 ────────────
+    [chromium] › e2e\prepRestart.spec.ts:135:1 › 准备进程重启后旧确认缓存不装成新 head，草稿保留且原命令不自动迁代际 ──────────────
+    [chromium] › e2e\runResults.spec.ts:66:1 › 运行轮询断线暂停、隐藏降频且有次数上限，主动只读可恢复 ─────────────────────────
+    [chromium] › e2e\tutoringControls.spec.ts:232:1 › 已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留 ─────────
+    [chromium] › e2e\tutoringHelpStop.spec.ts:121:1 › 学生明确替换产生新键，新epoch不续旧回答；停止丢ACK仍沿原取消核对 ─────────
+    [chromium] › e2e\tutoringHelpStop.spec.ts:145:1 › 非法正文不展示不报displayed，故障仍可保存；模型失败显示公开失败 ─────────
+    [chromium] › e2e\tutoringMessages.spec.ts:138:1 › visible且展开的面板：消息未滚入区域零displayed，实际滚入后才展示 ─────
+    [chromium] › e2e\tutoringMessages.spec.ts:193:1 › 原authority正向多页和resync：从零重取、跨序号缺口、重复正文不增加回执 ───
+    [chromium] › e2e\tutoringReturn.spec.ts:23:1 › 键盘看合成相邻例子→返回同一编辑器视图，草稿/undo保持且没有业务副作用 ───────────
+    [chromium] › e2e\tutoringReturn.spec.ts:57:1 › 实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品 ───────────────
+    [chromium] › e2e\tutoringReturn.spec.ts:82:1 › 阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例 ───────────────
+    [chromium] › e2e\tutoringReturn.spec.ts:127:1 › 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留
+  39 skipped
+  177 passed (11.9m)

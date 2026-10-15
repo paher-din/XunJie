@@ -19,6 +19,10 @@ XunJie 主仓库的学生端前端工程。首次内容由设计仓库 `XunJie_D
 
 团队演示和共用任务使用 [PAHER 共享入口](../../tools/i0-shared/README.md)，同一 HTTPS 宿主提供页面、API 和数据库。只需成员已有的获准 SSH 身份和统一学生演示凭据，不执行本机初始化或 `dev:prep`；这些开发命令用于隔离验证。姓名、课程名、项目显示标题来自 Session 与分配的后端资料，缺字段时保留原 ID/Activity 标题，见[本批记录](../../docs/tasks/I0-UI_SHARED_DATA_ENTRY.md)。
 
+代码区支持 C/头文件、Verilog/SystemVerilog 的语法高亮。已有确认实例的当前草稿在输入停顿后自动做静态检查，错误显示波浪线，悬停可读消息；下方“编辑检查”可展开问题列表。新文件或文件生命周期变更先“确认保存”一次，之后修改草稿无需再次保存即可检查。暂停过程采集、尝试不可编辑或限定检查期间停止自动检查；检查故障不阻断编辑保存，检查完成不等于课程验收通过。
+
+正常自动检查需要教学后端与专用 VM 的诊断通道；参考 [编辑器交付记录](../../docs/tasks/I0-UI_EDITOR_HIGHLIGHT_DIAGNOSTICS.md)。浏览器专项为 `e2e/editorDiagnostics.spec.ts` / `editorHighlight.spec.ts`；真实 HTTPS/SQLite/VM 专项为 `editorDiagnosticsService.spec.ts`，显式指定 `XUNJIE_E2E_SERVICE_NODE` 与 `XUNJIE_E2E_DIAGNOSTICS_CONFIG`（已有本机宿主配置的路径，只读复用 SSH 设置）。Windows 的受限 root SSH 材料需由获准执行用户读取时，另显式设 `XUNJIE_E2E_SERVICE_USER=root`。缺条件的 skip 不计通过；该专项仅创建独立合成账号/项目，不操作现有学习会话。
+
 需要 Node 24（与 `apps/teaching` 已批准的工具环境同一大版本）。本机默认 Node 更高时，
 自行把 Node 24 的可执行目录放到 `PATH` 前面——机器专有路径不写进仓库文件。
 本工程有独立的 `package.json` 与 `package-lock.json`，与 `apps/teaching` 的后端互不依赖，
@@ -224,6 +228,8 @@ CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装�
 ## 已准备的本机真实 C / HDL 入口
 
 完整本机宿主、执行 VM、模型与启停命令见 [tools/i0-hdl](../../tools/i0-hdl/README.md)。从实际 Assignment 深链进入原登录页面；只有获准的 `execution.kind=hdl_board` 使用真实 HDL 分支。构建引用确认快照，装载引用成功 Build；板卡和有限 Trace 只展示原节点返回的四态信号与时间。普通 C 保留 Core/历史入口。
+
+先检查并构建，再装载到虚拟板，才能操作按钮和开关。板卡旁显示禁用原因及已确认输入；推进周期必须是1～5000000的整数。会话结束后可显式“重新装载已构建设计”，状态不确定时使用“读取板卡状态”。输入确认而输出不变时，检查已装载HDL是否使用该输入；未绑定的按钮/复位不可操作。全板修复与验证见[本轮记录](../../docs/tasks/DL-UI_BOARD_INTERACTION_FIX.md)。
 
 本批固定源码、原始结果、正常 Chrome 截图、真实模型展示及失败记录见 [逐项回交](../../docs/tasks/evidence/ui30-hdl-20261015/handoff.md)。这些是开发隔离合成验证，真人及完整产品验收另计。
 

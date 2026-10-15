@@ -3,7 +3,7 @@ import {RunnerError,sha256,validatePath} from '../../runner/snapshot.ts';
 import {canonical} from './commands.ts';
 import type {RunnerCommand,SubmitRun,RunFact,Profile} from '../../contracts/runner/index.ts';
 
-type ApplicationCommand=Extract<RunnerCommand,{op:'submit'|'query'|'cancel'|'readResult'|'readiness'}>;
+type ApplicationCommand=Extract<RunnerCommand,{op:'submit'|'query'|'cancel'|'readResult'|'readiness'|'editor_diagnostics'}>;
 export type RunnerTransport=(command:ApplicationCommand)=>Promise<unknown>;
 function object(value:unknown):Record<string,unknown> {
   if(!value||typeof value!=='object'||Array.isArray(value))throw new RunnerError('DEPENDENCY_UNAVAILABLE','Malformed authenticated runner response');
@@ -24,7 +24,7 @@ export function sshRunner(config:{binary:string;keyFile:string;knownHostsFile:st
   return request=>new Promise((resolve,reject)=>{
     const child=execFile(config.binary,['-i',config.keyFile,'-o',`UserKnownHostsFile=${config.knownHostsFile}`,
       '-o','StrictHostKeyChecking=yes','-o','BatchMode=yes','-o','ConnectTimeout=5','-p',String(config.port),`root@${config.host}`,'xunjie-c1'],
-      {timeout:150000,maxBuffer:4*1024*1024},(error,stdout)=>{
+      {timeout:request.op==='editor_diagnostics'?20000:150000,maxBuffer:4*1024*1024},(error,stdout)=>{
         if(error){reject(new RunnerError('DEPENDENCY_UNAVAILABLE','Authenticated runner unavailable'));return;}
         try{resolve(JSON.parse(stdout));}catch{reject(new RunnerError('DEPENDENCY_UNAVAILABLE','Malformed runner response'));}
       });

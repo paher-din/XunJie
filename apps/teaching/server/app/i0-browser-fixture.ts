@@ -12,9 +12,11 @@ import { createPasswordRecord } from '../access/password.ts';
 import { createI0App } from './i0.ts';
 import type { ModelProvider } from '../tutoring/providers.ts';
 import { createBrowserRunner,browserRunnerOutcomes } from './i0-browser-runner.ts';
+import { sshRunner } from '../records/runner.ts';
 
 const protocol=createInterface({input:process.stdin}),lines=protocol[Symbol.asyncIterator]();
-const configuration=z.strictObject({synthetic:z.literal(true),port:z.number().int().min(1).max(65535),password:z.string().min(16).max(128),runs:z.boolean().default(false)});
+const configuration=z.strictObject({synthetic:z.literal(true),port:z.number().int().min(1).max(65535),password:z.string().min(16).max(128),runs:z.boolean().default(false),
+  diagnosticsConfig:z.string().regex(/^\/opt\/xunjie-runner\/[A-Za-z0-9/_.-]+\.json$/).optional()});
 const reference=z.string().min(1).max(128);
 const requestId=z.uuid();
 const controlInput=z.union([
@@ -44,7 +46,10 @@ try {
   Date.now=()=>originalWallClock()-wallOffset;
   let generation='generation';
   const runner=input.runs?createBrowserRunner(()=>generation):undefined;
-  const f=await fixture(runner?.transport,{teaching:true});
+  if(input.runs&&input.diagnosticsConfig)throw new Error('Choose one explicit synthetic runner mode');
+  const diagnosticRunner=input.diagnosticsConfig?sshRunner(JSON.parse(readFileSync(input.diagnosticsConfig,'utf8')).ssh):undefined;
+  const transport=runner?.transport??diagnosticRunner;
+  const f=await fixture(transport,{teaching:true});
   close=()=>f.close();
   const teacher=await f.login('teacher'),allocation=await assigned(f,teacher);
   const other=await command(f,teacher,`/api/activities/${allocation.activityId}/assignments`,{
@@ -75,7 +80,7 @@ try {
   async function compose() {
     const service=await createI0App({db:f.db,origin:base,signingSecret:f.signingSecret,currentGeneration:()=>generation,now:currentTime,
       https,staticDirectory:resolve('../student/dist'),consumerIntervalMs:50,
-      ...(runner?{runner:runner.transport}:{}),
+      ...(transport?{runner:transport}:{}),
       tutoring:{studentHelp:{versions:{modelConfig:'deepseek-flash-v1',prompt:'student-help-v1',schema:'student-help-v1',policy:'help-v1'},
         budgetAvailable:()=>true},provider}});
     // Observation only: no fixture HTTP route, body rewriting, authorization bypass or normal-app change.
@@ -83,7 +88,7 @@ try {
       const path=request.url.split('?')[0]!;
       if(request.method==='GET'&&/^\/api\/activities\/[^/]+$/.test(path))requests.activityReads++;
       if(!['GET','HEAD','OPTIONS'].includes(request.method)&&path.startsWith('/api/')
-        &&!['/api/sessions','/api/logout'].includes(path))requests.businessWrites++;
+        &&!['/api/sessions','/api/logout'].includes(path)&&!path.endsWith('/editor-diagnostics'))requests.businessWrites++;
     });
     try {await service.app.listen({host:'127.0.0.1',port:input.port});service.startConsumer();}
     catch(error){await service.close();throw error;}

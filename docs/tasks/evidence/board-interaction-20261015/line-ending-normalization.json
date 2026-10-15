@@ -1,0 +1,41 @@
+{
+  "archive": "original-evidence-crlf.tar.gz",
+  "files": [
+    {
+      "path": "baseline-review-result.json",
+      "originalSha256": "bed87f95e8b018ddb59685a18fa61d76d1ecc64410812485bb4ee1c715aa957f",
+      "normalizedSha256": "75697fce8f0962519adf4d8c770812937b41f108f43e6701996dd85e7f6c440e",
+      "change": "CRLF to LF only",
+      "rawArchiveVerified": true
+    },
+    {
+      "path": "baseline-tutoringControls.log",
+      "originalSha256": "97d5b3c1deeedbb06c81971ce2a74b33354676779c6b8e39f669ff0c9dd1b6da",
+      "normalizedSha256": "dce110aad20685d18e937fb986e6f8232ddef03c043092c8225680428131438a",
+      "change": "CRLF to LF only",
+      "rawArchiveVerified": true
+    },
+    {
+      "path": "browser-full.txt",
+      "originalSha256": "6d067f8b193f95963cec37f4f502a29ef0a70bbd72235cd00941fab603488497",
+      "normalizedSha256": "2ee73a867bff487b5753b3f673e3db2859dcb22da2a86ab58ada649d15df970b",
+      "change": "CRLF to LF; remove trailing horizontal whitespace on two log lines",
+      "rawArchiveVerified": true,
+      "trimmedLines": 2
+    },
+    {
+      "path": "https-rollout.json",
+      "originalSha256": "b3d90c89e868926074df4bb2a828e9ecc9cfdc92686d9bedcf1853b418ae15c3",
+      "normalizedSha256": "f761ad89751646e152b458d402cb145fbdd094fa6e3746a1e82edf459134c42b",
+      "change": "CRLF to LF only",
+      "rawArchiveVerified": true
+    },
+    {
+      "path": "rollout-browser.txt",
+      "originalSha256": "36afee793a85f507dc27d8498b724327a5c45b5f5610c7cc8b92255ae685decb",
+      "normalizedSha256": "d6cd2c41648bf48d0396c271a5cffebaef9878e4627d2b255a7e2372a2c52781",
+      "change": "CRLF to LF only",
+      "rawArchiveVerified": true
+    }
+  ]
+}

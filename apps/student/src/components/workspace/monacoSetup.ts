@@ -3,7 +3,7 @@ import type { editor } from 'monaco-editor/editor/editor.api'
 /**
  * Monaco 的按需加载与主题接线。
  *
- * 只加载编辑器核心 + 已登记的功能 + 项目实际用到的语言（C / C++ / Python / Markdown），
+ * 只加载编辑器核心 + 已登记的功能 + 项目实际用到的语言（C / C++ / HDL / Python / Markdown），
  * 不导入 `monaco-editor` 根入口——它会把八十多种语言与 LSP 客户端一起拉进来。
  * 语言 id 与 `lib/projectFiles.ts` 的 `languageOf` 一致：`.c` / `.h` 走 monaco 的 `c`，
  * 语法高亮不等于 C17 编译检查，编译与诊断属课程运行时。
@@ -54,6 +54,8 @@ const EDITOR_FEATURES: Array<() => Promise<unknown>> = [
   () => import('monaco-editor/features/codeEditor/register'),
   () => import('monaco-editor/features/codicon/register'),
   () => import('monaco-editor/features/find/register'),
+  () => import('monaco-editor/features/hover/register'),
+  () => import('monaco-editor/features/gotoError/register'),
   () => import('monaco-editor/features/folding/register'),
   () => import('monaco-editor/features/comment/register'),
   () => import('monaco-editor/features/linesOperations/register'),
@@ -76,6 +78,7 @@ const EDITOR_FEATURES: Array<() => Promise<unknown>> = [
 /** 项目文件实际会用到的语言；`.c` / `.h` 由 cpp 定义注册成语言 id `c`。 */
 const LANGUAGE_DEFINITIONS: Array<() => Promise<unknown>> = [
   () => import('monaco-editor/languages/definitions/cpp/register'),
+  () => import('monaco-editor/languages/definitions/systemverilog/register'),
   () => import('monaco-editor/languages/definitions/python/register'),
   () => import('monaco-editor/languages/definitions/markdown/register'),
 ]

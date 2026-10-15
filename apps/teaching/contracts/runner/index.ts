@@ -16,6 +16,7 @@ export type RunnerCommand =
   | {op:'submit';submission:SubmitRun}
   | {op:'query'|'cancel'|'readResult';identity:RunIdentity}
   | {op:'readiness'}
+  | {op:'editor_diagnostics';packet:import('../workspace/editor-diagnostics.ts').EditorDiagnosticsPacket}
   | {op:'recover'}
   | {op:'advanceGeneration';generation:string}
   | import('./hdl.ts').HdlCommand;

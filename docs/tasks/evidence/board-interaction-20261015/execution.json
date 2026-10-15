@@ -1,0 +1,86 @@
+{
+  "local": "D:/XunJie_Project/hdl-virtual-board-verification-20261015",
+  "guest": "/tmp/xunjie-board-source-5ca133e5-6c10-4ebd-a653-9c9eca585c74",
+  "currentSource": "/tmp/xunjie-board-source-5ca133e5-6c10-4ebd-a653-9c9eca585c74/apps/teaching/runner",
+  "node": "/opt/xunjie-runner/node/bin/node",
+  "originalConfig": "/opt/xunjie-runner/config.dlc.robert.json",
+  "scope": "temporary current source; original immutable container images; maintenance dispatch bypasses readiness without registering it",
+  "audit": [
+    {
+      "file": "hdl-node.ts",
+      "currentHash": "cdc908ff9f0fe6883e52552b26eb804b0ed1e10c63f6d8858e3228edb6c29fd7",
+      "guestHash": "d1b30f7e679be50bc4b47b16d10809a10df48ad26af6f5669b4a316bc113cb8e"
+    },
+    {
+      "file": "hdl-ledger.ts",
+      "currentHash": "2ecbe616e09767aefd896f17e83f8233af402a64c34d3822b5fada55f12b6251",
+      "guestHash": "632008c685fe7116cd21d03df09412bcb5a3c78ca74d04202b5ee088849fd552"
+    },
+    {
+      "file": "hdl-build-worker.ts",
+      "currentHash": "b79c4da6685a2129c4719cd4cc6d942ee99e4adbbfad1151be9ffc1021761d3f",
+      "guestHash": "b79c4da6685a2129c4719cd4cc6d942ee99e4adbbfad1151be9ffc1021761d3f"
+    },
+    {
+      "file": "hdl-session-worker.ts",
+      "currentHash": "ab9bde1a06eebe531a322d7f9d19cf2f347502cbd636df588aa41c87e5cf7ee5",
+      "guestHash": "ab9bde1a06eebe531a322d7f9d19cf2f347502cbd636df588aa41c87e5cf7ee5"
+    },
+    {
+      "file": "hdl-stop-worker.ts",
+      "currentHash": "56532b68150dad1620d34f9a1f58d80bb33620e7b56060c45d918516a85db19e",
+      "guestHash": "56532b68150dad1620d34f9a1f58d80bb33620e7b56060c45d918516a85db19e"
+    },
+    {
+      "file": "hdl-executor.ts",
+      "currentHash": "cd4e8e5c25cea89b191309ed4ecb12485a7d7faf8291de8e280d5edba260eb6a",
+      "guestHash": "c29a9484e4a9d55f848986464ba9e329fb76388e22e6bdb18c02e8ba30a310dc"
+    },
+    {
+      "file": "hdl-profile.ts",
+      "currentHash": "ab070c4790cdeafa9227f0c6e95042b9079f6eb2067294aad97dcfb94acf985e",
+      "guestHash": "ab070c4790cdeafa9227f0c6e95042b9079f6eb2067294aad97dcfb94acf985e"
+    },
+    {
+      "file": "hdl-bridge.c",
+      "currentHash": "9074209d17b01f5bb7310ef280cd3b1c0f51cd9af6639c06656d908a8ef75bfc",
+      "guestHash": "93e81a0600417469d3740086410816f53ece797085c79709f9921b71ae406f1a"
+    },
+    {
+      "file": "hdl-host.c",
+      "currentHash": "d5d90ae08add24475edf86d34d2ef3ac6424320b5f50cc488aceaad4817b3ffe",
+      "guestHash": "d5d90ae08add24475edf86d34d2ef3ac6424320b5f50cc488aceaad4817b3ffe"
+    },
+    {
+      "file": "hdl-ports.c",
+      "currentHash": "2fe8b8d0695f2a4b81d73a809a85a88b088188002c0f053691c5e0d8ce9a349f",
+      "guestHash": "16d2b90e5d2ae7d2e1f54fce9f197543cbc8d93de1c08bcd0d40297dfe98c054"
+    },
+    {
+      "file": "snapshot.ts",
+      "currentHash": "ffa5066d8c2cd4e32b3999de2ff0982155e9ef9cfcb853c47138ce1da95c123b",
+      "guestHash": "ffa5066d8c2cd4e32b3999de2ff0982155e9ef9cfcb853c47138ce1da95c123b"
+    },
+    {
+      "file": "node-files.ts",
+      "currentHash": "248eaece497a2df4bbd51cf83c23a2df8d6c0ca397a31b1c551c18c6b9aa0743",
+      "guestHash": "248eaece497a2df4bbd51cf83c23a2df8d6c0ca397a31b1c551c18c6b9aa0743"
+    },
+    {
+      "file": "fingerprint.ts",
+      "currentHash": "5da6f879d4ac88b85ce17ceb7db6098972855fbb1908be3af0eae3c848dd636f",
+      "guestHash": "253a8825a80c89852e023cb8aecd26b475be01418e829dc950e8e5ea20302559"
+    },
+    {
+      "file": "alu-check.ts",
+      "currentHash": "bae1dbfecf7ac5338147a9fcde20a847f90c12ada23ef1df94ce9358a3e0d427",
+      "guestHash": null
+    },
+    {
+      "file": "docker.ts",
+      "currentHash": "c5bbebbf24b8c46ca13daed3691d2db32ec98b95f200dde6ec047c1b36d25c16",
+      "guestHash": "c5bbebbf24b8c46ca13daed3691d2db32ec98b95f200dde6ec047c1b36d25c16"
+    }
+  ],
+  "isolatedState": "/tmp/xunjie-board-inputs-c0BCIm"
+}

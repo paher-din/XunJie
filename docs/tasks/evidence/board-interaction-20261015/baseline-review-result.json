@@ -1,0 +1,22 @@
+{
+  "commit": "d77c9cc8efdab1a55c54c5b711f2cf8fce8f1ed3",
+  "command": "D:\\nodejs\\node.exe node_modules/@playwright/test/cli.js test e2e/tutoringControls.spec.ts --grep 已收到但未展示的合成提醒在关闭后取消 --workers=1",
+  "cwd": "D:\\XunJie_Project\\hdl-virtual-board-baseline-20261015\\apps\\student",
+  "environment": {
+    "CI": "1",
+    "XUNJIE_E2E_PREP_PORT": "5841",
+    "FORCE_COLOR": "0",
+    "XUNJIE_E2E_BROWSER_CHANNEL": "chrome",
+    "XUNJIE_E2E_RESTART_PORT": "5843",
+    "XUNJIE_E2E_REAL_PORT": "5842"
+  },
+  "exitCode": 1,
+  "failedTest": "已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留",
+  "assertion": "e2e/tutoringControls.spec.ts:237:49",
+  "expected": "展示：本机已发生",
+  "received": "收到：已确认 · 展示：未发生 · 回应：未回应",
+  "isolatedDependencyCache": true,
+  "sourceArchiveSha256": "bc7c50877c9e5eee4ac7e0829cd9065189326fc83cc62c685b64c87e82e96b88",
+  "listenersAfterTest": [],
+  "scope": "Only this non-HDL displayed-fact failure was reproduced on unchanged baseline; other full-suite failures remain unclassified."
+}

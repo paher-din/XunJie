@@ -70,6 +70,95 @@ async function reopenBoard(page: Page) {
   await page.getByRole('tab', { name: '虚拟板', exact: true }).click()
 }
 
+test('整板输入逐位响应：16 SW、5 BTN 按下松开、低有效复位及显式时钟推进', async ({ page }) => {
+  test.setTimeout(120_000)
+  const protocol = await installHdlProtocolFixture(page)
+  await enterHdl(page, protocol)
+  await snapshot(page, protocol, good, 1)
+  const loaded = await buildAndProgram(page, protocol)
+  let sequence = 0
+  let expectedInputs = { switches: '0'.repeat(16), buttons: '00000', resetN: '1' }
+  const board = page.locator('[aria-label="真实 HDL 虚拟板"]')
+  async function interact(name: string, inputs: typeof expectedInputs, cycles = 1) {
+    await page.getByRole('button', { name, exact: true }).click()
+    sequence++
+    await expect(board).toContainText(`操作序号 ${sequence} ·`)
+    const last = protocol.posts.filter(post => post.kind === 'hdl.interact').at(-1)!
+    expect(JSON.parse(last.wire)).toMatchObject({ sessionId: loaded.sessionId, expectedSequence: sequence, inputs, advanceCycles: cycles })
+    expect(protocol.sessions[0]!.confirmedSequence).toBe(sequence)
+    expectedInputs = inputs
+  }
+  for (let index = 0; index < 16; index++) {
+    const name = `拨码开关 SW${index}`
+    const bit = 15 - index
+    const switches = expectedInputs.switches.slice(0, bit) + '1' + expectedInputs.switches.slice(bit + 1)
+    await interact(name, { ...expectedInputs, switches })
+    await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('img', { name: `LED${index}: 1`, exact: true })).toBeVisible()
+  }
+  for (let index = 0; index < 16; index++) {
+    const name = `拨码开关 SW${index}`, bit = 15 - index
+    const switches = expectedInputs.switches.slice(0, bit) + '0' + expectedInputs.switches.slice(bit + 1)
+    await interact(name, { ...expectedInputs, switches })
+    await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByRole('img', { name: `LED${index}: 0`, exact: true })).toBeVisible()
+  }
+  for (let index = 0; index < 5; index++) {
+    const bit = 4 - index
+    await interact(`按下 BTN${index}`, { ...expectedInputs, buttons: '00000'.slice(0, bit) + '1' + '00000'.slice(bit + 1) })
+    await expect(board).toContainText(`BTN${index}: 1`)
+    await expect(page.getByRole('button', { name: `松开 BTN${index}`, exact: true })).toBeEnabled()
+    await interact(`松开 BTN${index}`, { ...expectedInputs, buttons: '00000' })
+    await expect(board).toContainText(`BTN${index}: 0`)
+  }
+  await interact('按下复位 RESET_N=0', { ...expectedInputs, resetN: '0' })
+  await expect(board).toContainText('RESET_N: 0')
+  await interact('松开复位 RESET_N=1', { ...expectedInputs, resetN: '1' })
+  await page.getByRole('spinbutton', { name: '推进周期', exact: true }).fill('5000000')
+  await interact('推进时钟', expectedInputs, 5_000_000)
+  await expect(board).toContainText('模拟时间 50000440000 ps')
+  await reopenBoard(page)
+  await expect(board).toContainText(`操作序号 ${sequence} ·`)
+  await expect(page.getByRole('button', { name: '拨码开关 SW15', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  expect(protocol.effects.programs).toBe(1)
+  expect(protocol.effects.interactions).toBe(45)
+})
+
+test('板卡禁用有原因且可就地恢复：未装载、无效周期、停止后显式重装', async ({ page }) => {
+  const protocol = await installHdlProtocolFixture(page)
+  await enterHdl(page, protocol)
+  await page.getByRole('tab', { name: '虚拟板', exact: true }).click()
+  const board = page.locator('[aria-label="真实 HDL 虚拟板"]')
+  await expect(board).toContainText('尚未装载')
+  await expect(page.getByRole('button', { name: '拨码开关 SW0', exact: true })).toBeDisabled()
+  await page.getByRole('tab', { name: '设计', exact: true }).click()
+  await snapshot(page, protocol, good, 1)
+  const original = await buildAndProgram(page, protocol)
+  for (const value of ['0', '', '5000001', '1.5']) {
+    await page.getByRole('spinbutton', { name: '推进周期', exact: true }).fill(value)
+    await expect(board).toContainText('推进周期须为 1～5000000 的整数')
+    await expect(page.getByRole('spinbutton', { name: '推进周期', exact: true })).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByRole('button', { name: '拨码开关 SW0', exact: true })).toBeDisabled()
+  }
+  expect(protocol.effects.interactions).toBe(0)
+  await page.getByRole('spinbutton', { name: '推进周期', exact: true }).fill('1')
+  await expect(page.getByRole('button', { name: '拨码开关 SW0', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: '停止 HDL', exact: true }).click()
+  await expect(board).toContainText('等待确认退出')
+  protocol.confirmStop()
+  await board.getByRole('button', { name: '读取板卡状态', exact: true }).click()
+  await expect(board).toContainText('会话已结束，请重新装载已构建的设计')
+  await page.getByRole('button', { name: '重新装载已构建设计', exact: true }).click()
+  await expect(page.getByRole('button', { name: '拨码开关 SW0', exact: true })).toBeEnabled()
+  expect(protocol.sessions.at(-1)!.sessionId).not.toBe(original.sessionId)
+  expect(protocol.effects.programs).toBe(2)
+  await page.getByRole('button', { name: '拨码开关 SW0', exact: true }).click()
+  await expect(board).toContainText('操作序号 1 ·')
+  await expect(board.getByLabel('已确认板卡输入')).toContainText('SW=0000000000000001')
+  await expect(page.getByRole('img', { name: 'LED0: 1', exact: true })).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath('board-rearmed.png') })
+})
+
 test('隔离正常 HDL 页面：.sv保存与快照、真实形状失败诊断、显式成功装载及四态输出', async ({ page }) => {
   const protocol = await installHdlProtocolFixture(page)
   await enterHdl(page, protocol)
@@ -243,12 +332,13 @@ test('隔离 HDL 长 pending：虚拟时钟最多60轮读取、耗尽不循环�
   await enterHdl(page, protocol)
   await snapshot(page, protocol, good, 1)
   await buildAndProgram(page, protocol)
+  // Freeze before creating pending input; a 1ms cross-process deadline can already be in the past.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
   protocol.holdInputs(true)
   await page.getByRole('button', { name: '拨码开关 SW0', exact: true }).click()
   await expect.poll(() => protocol.effects.interactions).toBe(1)
   await expect(page.locator('[aria-label="真实 HDL 虚拟板"]')).toContainText('正在处理输入')
   await expect(page.getByRole('button', { name: '停止 HDL', exact: true })).toBeEnabled()
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1))
   const before = { ...protocol.readCounts }
   for (let round = 1; round <= 60; round++) {
     await page.clock.runFor(1000)
