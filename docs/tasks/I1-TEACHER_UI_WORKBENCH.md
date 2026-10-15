@@ -199,3 +199,15 @@ Robert 明确要求“教师端现在前端没有模型供应商 api 设置配�
 后端 Node v24.21.0 隔离专项 `server/app/personal-models.test.ts` 2/2 通过、0失败/跳过（3.258秒），教学完整类型检查通过。新增用例使用真实 Session/CSRF 和真实加密存储服务配合离线 HTTPS boundary，验证教师保存、启用、revision CAS、脱敏、学生隔离、过期会话；连接测试只读取 `/v1/models`，生成请求为0。首次类型检查因独立 stage 漏复制学生 `wire.ts` 报 TS2307，补齐只读源快照后通过，未改源码迁就检查；证据位于 `D:/XunJie_Project/artifacts/teacher-model-settings-tests-20261015`。真实库、Key 和运行服务未操作。
 
 与模型会话已再次协调：其仍在原 `4ea3c73` 的独立 main 工作树完成新聊天恢复/浮窗阅读任务，3444 尚未切换；本次教师固定提交交由该会话合入，再统一构建/部署。为避免覆盖，新教师入口不单独提前同步静态；本任务待统一版本就绪后只读验证真实教师入口，不修改现有账号配置或代填 Key。
+
+### 7.3 统一部署与真实教师只读核验
+
+教师功能固定提交 `217a013bf5dc33f673b2fb446f18904424e7a179` 已由模型会话接入其 main。期间发现另一会话已更新本机虚拟板版本，双方先保留现场并核对来源；其后 fetch 确认虚拟板与编辑器修复均已进入 `origin/main@dc48c92`，采用正常历史合并形成单一部署头 `b3b279b28a0065ab57aa888aed3c5c919ee34226`，保留教师、聊天、虚拟板和编辑器功能，不另造运行 overlay。教师源文件与 `217a013` 一致。
+
+由模型会话统一部署并核验 623 文件 SHA、live/ready=200、41 业务表与个人四表、配置/Key 和执行节点保留；随后只更新消息导航显示的静态收口为 `6bc0ec6bf7e20254257ed3a2bad70f9141cb47ab`。最终模块 `index-BfdJuFQ2.js`，index.html SHA256=`8c30ad4b180b7ccf23eab42ce5b0c765b7bdaf2a0652ef6acfe938f65a8bcd5f`；181 个静态文件逐 SHA 核对，后端仍为 `b3b279b`、PID1496。回执在 `/opt/xunjie-ui-local/releases/chat-b3b279b-20261015/static-final.json`。合并后的 647 项前端单元、36 项后端专项与类型/构建由该会话验证，不写成本会话重复执行。
+
+本会话随后实际使用独立 Chrome context、严格 TLS 和原合成教师正常登录，打开 `https://127.0.0.1:3444/#/teacher/settings/model`，点击页面“重新读取配置”并刷新：读取200、无 raw apiKey 字段；实际模块为 Bfd；“添加自定义供应商”可用，教师初始配置为 revision0/enabled=false/providers0。前后配置 SHA256 均为 `5269c2242c9f4736d5aacc7d2c61ba128bceb21928ddd42b0e4b7cd178c6e2e5`。1440 主区域1170/1170、390主区域308/308，溢出0、页面错误0。除正常登录外仅 GET，没有保存 Key、连接真实供应商、发模型请求或操作共享学生 Cookie。真实配置写入和真实供应商连接未代用户执行；其功能由上述隔离和协议专项覆盖。
+
+真实核验的中途失败保留于 D 盘任务证据：首次误用 Node APIRequestContext 额外读取接口，其证书信任与已信任的 Chrome 不同而失败；异常输出带出该独立合成测试会话字段，已脱敏产物并按确切教师身份注销该测试会话，未改真实 Key、其他 Session 或共享 IAB。首次导入清理时的终端控制字符导致 Cookie 格式无效，清洗后已成功注销；后续错误统一清理会话字段，并改为点击真实页面按钮读取 Chrome 响应，未关闭 TLS 校验。另一次窄屏立即量测落在350ms侧栏过渡中；等待实际 CSS transition 完成后验证通过，没有改宽度阈值或 UI 代码迁就脚本。
+
+公开结果与两档真实截图见[teacher-model-settings-live.json](evidence/teacher-workbench-20261015/teacher-model-settings-live.json)、[桌面](evidence/teacher-workbench-20261015/teacher-model-settings-live-desktop.png)和[390px](evidence/teacher-workbench-20261015/teacher-model-settings-live-mobile.png)。运行版本已可使用；本节仅追加文档/公开证据，由模型会话合入最终 main 收口，无需再次构建部署。保护基线与 `.zcodeignore` 保留。
