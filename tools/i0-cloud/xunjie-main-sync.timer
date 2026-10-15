@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the fixed XunJie main branch for a new deployment
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+Unit=xunjie-main-sync.service
+
+[Install]
+WantedBy=timers.target
