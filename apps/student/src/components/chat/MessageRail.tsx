@@ -49,7 +49,7 @@ export function MessageRail({
     const scroller = scrollerRef.current
     const rail = railRef.current
     if (!scroller || !rail) return
-    const els = Array.from(scroller.querySelectorAll<HTMLElement>('.chat-message')).filter(el=>el.getClientRects().length>0)
+    const els = Array.from(scroller.querySelectorAll<HTMLElement>('.chat-message')).filter(el=>!el.closest('details:not([open])')&&el.getClientRects().length>0)
     const railH = rail.clientHeight
     const itemH = els.length
       ? Math.max(ITEM_H_MIN, Math.min(ITEM_H_MAX, Math.floor(railH / els.length)))
@@ -70,7 +70,7 @@ export function MessageRail({
   const updateActive = useCallback(() => {
     const scroller = scrollerRef.current
     if (!scroller) return
-    const els = Array.from(scroller.querySelectorAll<HTMLElement>('.chat-message')).filter(el=>el.getClientRects().length>0)
+    const els = Array.from(scroller.querySelectorAll<HTMLElement>('.chat-message')).filter(el=>!el.closest('details:not([open])')&&el.getClientRects().length>0)
     if (els.length === 0) {
       setActive(-1)
       return

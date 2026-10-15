@@ -270,3 +270,13 @@ Robert 追加明确要求：全面检查独立 Agent 与工作区对话，重点
 最终源码Chrome专项：`XUNJIE_E2E_BROWSER_CHANNEL=chrome npx playwright test e2e/personalAgent.spec.ts e2e/chatReadability.spec.ts e2e/tutoringHelpStop.spec.ts e2e/tutoringMessages.spec.ts e2e/tutoringHistory.spec.ts`，46/46通过，2.5分钟、无跳过；类型再次通过，A0 133篇/1997链接/errors=[]，diff空白通过。保留既有Vite public资源提示，不以本次专项代替全仓浏览器验收。
 
 部署前发现其他获准板卡修复已更新3444静态版本到`cffa6e6`，后端沿原代码重启为PID433。因此统一发布须保留该已交付前端差异，不能直接用main构建覆盖。计划使用明确组合的发布源码，板卡分支不擅自合入main；教师个人模型入口固定提交同时纳入，最终来源和逐文件哈希另记。产品基线及MVP_SPEC §10仍待授权维护者汇总。
+
+### 11.2 统一主线与实际3444验收
+
+后续fetch确认板卡修复与已获负责人批准合并的编辑器PR #91均已进入`origin/main@dc48c92`，因此取消临时overlay方案。以本任务`f22feed`合入教师`217a013`和远程主线，得到单一交付head `b3b279b28a0065ab57aa888aed3c5c919ee34226`，无冲突；没有覆盖其他工作树或改写源分支。合并后前端build与647/647单元通过，后端类型及个人/传输/teacher模型权限36/36通过。附加教师入口、工作区阅读和HDL浏览器12项中11项首轮通过；原HDL 60轮虚拟时钟项触及60秒测试预算，未改源码/断言，以120秒总测试预算单独执行49.7秒完成、1/1通过。不把首轮超时抹去或记作一次全绿。
+
+2026-10-15 14:58统一更新：先核无在途课程Job/个人turn，留存一致SQLite备份、原source/static及保护字段摘要，再停止确切原host，复制并核对623个源码/静态文件；启动原review宿主。原41业务表、个人4表、业务全行摘要及配置/个人凭据Key前后相同，未迁移schema；执行VM未重启，C/HDL fingerprint相同，live/ready均200。后端PID1496、入口`index-DhPRjFyp.js`，index.html SHA256 `3ab4268aad5feb425f7e4c8d4169a00503553e48638e51bfc2e10612c9af168c`。本机受限回退/逐文件manifest位于`/opt/xunjie-ui-local/releases/chat-b3b279b-20261015`；备份保留，未执行回退。
+
+实际HTTPS页面沿原合成学生Session验证：独立 conversation `6f014f5e-c3f4-405e-95a9-c4e852641b87`、turn `da78c52b-fe50-48e4-afd1-1085d8f1078a`，生成中刷新保持原回合并再次显示思考/停止控件，最终settled且callCount=1；回答的列表、表格和Python代码完整可读，actual input117/output2463。配置仍DeepSeek Flash/max/context300000/output131072/deadline=null。工作区Job `950ccf27-481f-41a1-92b0-28137807c5f6` succeeded，先显示running进度再交付三个自检问题及下一步；在640默认窗和展开窗核对正文、来源和本机展示事实。不编辑/保存/运行学生作品，不点“我先试试”，原main.c仍确认v3；页面模型建议仅作为输出观察，不作为Agent执行指令。
+
+实际展开历史核对发现浏览器对关闭details内元素仍可返回clientRect，导致消息导航含折叠历史。补充关闭details祖先过滤；新增展开/折叠导航数量回归通过1/1。该小修仅需要最后静态更新与已有回答重载，不再付费重发。最终静态head、教师只读回核和推送状态随后补记。
