@@ -1,0 +1,26 @@
+
+ RUN  v3.2.7 D:/XunJie/apps/student
+
+ ✓ src/brand/motion.test.ts (8 tests) 337ms
+ ✓ src/brand/playback.test.ts (19 tests) 76ms
+ ✓ src/workspace/confirmation.test.ts (5 tests) 154ms
+ ✓ src/workspace/hdlActivity.test.ts (11 tests) 61ms
+ ✓ src/workspace/init.test.ts (16 tests) 82ms
+ ✓ src/workspace/fileLifecycle.test.ts (25 tests) 171ms
+ ✓ src/workspace/tutoringSource.test.ts (80 tests) 54ms
+ ✓ src/workspace/submissionFeedback.test.ts (9 tests) 77ms
+ ✓ src/workspace/hdlStore.test.ts (12 tests) 92ms
+ ✓ src/bridge/mockTurn.test.ts (23 tests) 294ms
+ ✓ src/workspace/tutoringObject.test.ts (29 tests) 503ms
+ ✓ src/bridge/mockConversations.test.ts (9 tests) 804ms
+   ✓ 会话历史管理 > 改写学生消息：原位替换并截掉其后内容；只有改到首问才动标题  400ms
+ ✓ src/workspace/tutoringControls.test.ts (22 tests) 120ms
+ ✓ src/bridge/agentApi.test.ts (6 tests) 1301ms
+   ✓ personal agent client boundaries > restores an in-progress turn by GET and retains its original stop target  385ms
+   ✓ personal agent client boundaries > isolates an old account turn and keeps the new account stop target  325ms
+ ✓ src/workspace/hdlWorkspace.test.ts (10 tests) 1713ms
+   ✓ rejects pending interactions and invalid/X input; explicit stop waits for actual termination  762ms
+   ✓ requires explicit replacement of a current Session and does not auto-program on refresh  424ms
+   ✓ does not let an older Build read overwrite a later accepted state  381ms
+ ✓ prep/contract.test.ts (12 tests) 1132ms
+ ✓ src/workspace/confirmationWorkspace.test.ts (5 tests) 691ms
