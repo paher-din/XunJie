@@ -1,0 +1,29 @@
+{
+  "entry": "项目任务 · 课程 synthetic-robert-course-cTextScope Core 本机合成工程验证解释文本统计规则进度暂无统计进入任务",
+  "greeting": "上午好，synthetic-robert-student-a10 月 15 日",
+  "heat": "每日每周暂无学习时长统计",
+  "script": "/assets/index-C5JF8YnX.js",
+  "statistic": "— / 1 个任务",
+  "task": "已分配TextScope Core 本机合成工程验证解释文本统计规则进入任务",
+  "taskRadius": "8px",
+  "toolbar": "全部已分配任务已暂停",
+  "unknownProgress": "任务完成进度暂无统计",
+  "url": "https://127.0.0.1:3444/#/?course=synthetic-robert-course-c",
+  "workspaceEntry": {
+    "url": "https://127.0.0.1:3444/#/task/fb0983e4-81bc-487b-8b50-7ffe984c38bb",
+    "status": "真实分配 · 就绪",
+    "confirmedVersion": 3,
+    "frozenVersion": 3,
+    "source": "浏览器可访问性状态"
+  },
+  "checks": {
+    "weeklyUnknown": true,
+    "editTrayVisible": true,
+    "searchMissingEmpty": true,
+    "searchByRealGoal": true,
+    "clearRestoresCard": true,
+    "embeddedEntryAndReturn": true
+  },
+  "sourceCommit": "a8137e9",
+  "dataBoundary": "本机35表宿主和原合成账号；完成统计未知，未执行保存/运行/模型请求"
+}

@@ -24,6 +24,7 @@ import { useSession } from '../components/SessionEntry'
 import { loadHomeCourses, type HomeCourse } from '../workspace/home'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
+const ASSIGNMENT_FILTERS = ['全部', '已分配', '任务已暂停'] as const
 const COURSE_ICONS: IconName[] = ['virtual-board', 'code-square', 'structure']
 
 // 已交本机课程的装饰映射用于尚无本人分配的课程；不按列表顺序猜课程类型。
@@ -65,6 +66,14 @@ function RealHomePage() {
   })
   const courses = snapshot.data ?? []
   const selected = courses.find(course => course.courseId === searchParams.get('course'))
+  const [statusFilter, setStatusFilter] = useState<typeof ASSIGNMENT_FILTERS[number]>('全部')
+  const [query, setQuery] = useState('')
+  const search = query.trim().toLowerCase()
+  const visibleTasks = selected?.assignments.filter(task =>
+    (statusFilter === '全部' || statusFilter === (task.active ? '已分配' : '任务已暂停')) &&
+    `${task.title} ${task.goal ?? ''} ${selected.courseId}`.toLowerCase().includes(search)) ?? []
+  const allTasks = courses.flatMap(course => course.assignments.map(task => ({ ...task, courseId: course.courseId })))
+  const entryTask = !snapshot.isError && allTasks.find(task => task.active)
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好'
@@ -75,9 +84,23 @@ function RealHomePage() {
       <h1>{greeting}，{session.session?.userId}</h1>
       <span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span>
     </div>
+    <DashboardSection key={session.session?.userId} storageKey={`dashboard.layout.v3:real:${session.session?.userId}`}
+      data={{}} tasks={null} taskCount={snapshot.isSuccess ? allTasks.length : undefined} now={now}
+      continueSlot={entryTask && <div className="db-continue">
+        <span className="course-tag"><i className="dot" />项目任务 · 课程 {entryTask.courseId}</span>
+        <h3>{entryTask.title}</h3>
+        {entryTask.goal && <p>{entryTask.goal}</p>}
+        <div className="db-continue-foot">
+          <span className="pct">进度暂无统计</span>
+          <button className="primary" onClick={() => navigate('/task/' + encodeURIComponent(entryTask.assignmentId))}>
+            <IconText name="arrow-right" position="end">进入任务</IconText>
+          </button>
+        </div>
+      </div>} />
+    <div>
     <div className="sectionhead">
       <h2>{selected ? '课程与任务' : '我的课程'}<small>{selected ? `${selected.assignments.length} 个任务` : `${courses.length} 门`}</small></h2>
-      <button type="button" disabled={snapshot.isFetching} onClick={() => { void snapshot.refetch() }}>刷新任务</button>
+      <button className="outline" type="button" disabled={snapshot.isFetching} onClick={() => { void snapshot.refetch() }}>刷新任务</button>
     </div>
     {snapshot.isPending ? <p role="status">正在读取课程与任务…</p>
       : snapshot.isError ? <div className="empty" role="alert">
@@ -89,10 +112,12 @@ function RealHomePage() {
           <button onClick={() => setSearchParams({})}><IconText name="alt-arrow-left">全部课程</IconText></button>
           <span>/</span><strong>课程 {selected.courseId}</strong>
         </div>
+        <TaskToolbar filters={ASSIGNMENT_FILTERS} value={statusFilter} onFilter={setStatusFilter} query={query} onQuery={setQuery} />
         {selected.assignments.length === 0 ? <div className="empty">此课程暂无分配任务</div>
+          : visibleTasks.length === 0 ? <div className="empty"><Icon name="folder-search" size={22} />此课程没有匹配的任务</div>
           : <div className="task-card-grid" ref={cardsRef} {...hover.handlers}>
             <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
-            {selected.assignments.map((task, index) => <TaskCard key={task.assignmentId}
+            {visibleTasks.map((task, index) => <TaskCard key={task.assignmentId}
               task={{ name: task.title, goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
               action={task.active ? '进入任务' : '查看任务'} index={index}
               registerItem={hover.registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}
@@ -103,6 +128,7 @@ function RealHomePage() {
           summaryOf={id => `${courses.find(course => course.courseId === id)!.assignments.length} 个分配任务`}
           toneOf={id => realCourseTone(courses.find(course => course.courseId === id)!)}
           onOpen={id => setSearchParams({ course: id })} />}
+    </div>
   </div>
 }
 
@@ -117,7 +143,6 @@ function PreparationHomePage() {
   const setCourse = (c: string | null) => setSearchParams(c ? { course: c } : {})
   const [statusFilter, setStatusFilter] = useState<'全部' | TaskStatus>('全部')
   const [query, setQuery] = useState('')
-  const searchRef = useRef<HTMLInputElement>(null)
 
   if (!snapshot.data) return null
   const { tasks, dashboard } = snapshot.data
@@ -220,42 +245,7 @@ function PreparationHomePage() {
               <span>/</span>
               <strong>{course}</strong>
             </div>
-            <div className="task-toolbar">
-              <div className="filters">
-                {STATUS_FILTERS.map((f) => (
-                  <button
-                    key={f}
-                    className={statusFilter === f ? 'filter active' : 'filter'}
-                    onClick={() => setStatusFilter(f)}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-              <label className="search">
-                <Icon name="minimalistic-magnifier" size={14} />
-                <input
-                  ref={searchRef}
-                  aria-label="搜索任务"
-                  placeholder="搜索任务或课程…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-                {query !== '' && (
-                  <button
-                    type="button"
-                    className="search-clear"
-                    aria-label="清除搜索"
-                    onClick={() => {
-                      setQuery('')
-                      searchRef.current?.focus()
-                    }}
-                  >
-                    <Icon name="close" size={12} />
-                  </button>
-                )}
-              </label>
-            </div>
+            <TaskToolbar filters={STATUS_FILTERS} value={statusFilter} onFilter={setStatusFilter} query={query} onQuery={setQuery} />
             {visibleTasks.length > 0 ? (
               <TaskCards
                 tasks={visibleTasks}
@@ -274,6 +264,23 @@ function PreparationHomePage() {
       </div>
     </div>
   )
+}
+
+/** 两种数据来源共用 Design 原筛选与搜索控件。 */
+function TaskToolbar<T extends string>({ filters, value, onFilter, query, onQuery }: {
+  filters: readonly T[]; value: T; onFilter: (value: T) => void; query: string; onQuery: (value: string) => void
+}) {
+  const searchRef = useRef<HTMLInputElement>(null)
+  return <div className="task-toolbar">
+    <div className="filters">{filters.map(filter => <button key={filter}
+      className={value === filter ? 'filter active' : 'filter'} onClick={() => onFilter(filter)}>{filter}</button>)}</div>
+    <label className="search">
+      <Icon name="minimalistic-magnifier" size={14} />
+      <input ref={searchRef} aria-label="搜索任务" placeholder="搜索任务或课程…" value={query} onChange={event => onQuery(event.target.value)} />
+      {query !== '' && <button type="button" className="search-clear" aria-label="清除搜索"
+        onClick={() => { onQuery(''); searchRef.current?.focus() }}><Icon name="close" size={12} /></button>}
+    </label>
+  </div>
 }
 
 /**

@@ -140,6 +140,8 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 
 导入内容与来源逐字节一致；此后本目录的改动由 XunJie 的任务文档记录，不回写设计仓库。
 
+2026-10-15，[原首页看板接回](../../docs/tasks/I0-UI_HOME_DASHBOARD_RECONNECT.md)再次只读对照 Design HEAD `16558426ce70524218eacbf7ce8fde35681c0503` 与本地 DESIGN.md；本批没有新增来源文件导入。主仓库复用已有 `DashboardSection`、原 widgets、问候日期、任务卡及搜索/筛选结构，只接本人真实分配与缺失统计空态；保留原默认看板、编辑/移出/添加托盘和内嵌任务入口。完成率、时长等无来源统计保持未知，不以演示值替代；本轮验证结果由该任务记录承载。
+
 | 日期 | 任务 | 改动 |
 | --- | --- | --- |
 | 2026-10-11 | I0_UI_01 | 新增本文件、`.gitignore`（Playwright 产物）、`tsconfig.node.json`、`playwright.config.ts`、`e2e/`、`prep/`（fixture）、`src/workspace/`（模式/契约投影/窄 HTTP 客户端/上下文与 loadEpoch/初始化读取/会话/准备入口常量）、`src/pages/PrepWorkspacePage.tsx`、`src/pages/TaskRoute.tsx`、`src/components/workspace/TextScopePanes.tsx` |
