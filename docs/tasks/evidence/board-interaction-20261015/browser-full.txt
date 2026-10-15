@@ -512,7 +512,7 @@ Running 228 tests using 2 workers
     Usage:
         npx playwright show-trace test-results\tutoringReturn-阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例-chromium\trace.zip
     ────────────────────────────────────────────────────────────────────────────────────────────────
-  12) [chromium] › e2e\tutoringReturn.spec.ts:127:1 › 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留 
+  12) [chromium] › e2e\tutoringReturn.spec.ts:127:1 › 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留
     Error: expect(locator).toContainText(expected) failed
     Locator: getByTestId('tutor-facts')
     Expected substring: "展示：本机已发生"
@@ -550,6 +550,6 @@ Running 228 tests using 2 workers
     [chromium] › e2e\tutoringReturn.spec.ts:23:1 › 键盘看合成相邻例子→返回同一编辑器视图，草稿/undo保持且没有业务副作用 ───────────
     [chromium] › e2e\tutoringReturn.spec.ts:57:1 › 实际打开资料后刷新：保留原引用，明确缺精确位置而不自动定位或写作品 ───────────────
     [chromium] › e2e\tutoringReturn.spec.ts:82:1 › 阅读期间另一标签回收并同名重建：明确返回只保留原引用，不定位新实例 ───────────────
-    [chromium] › e2e\tutoringReturn.spec.ts:127:1 › 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留 
+    [chromium] › e2e\tutoringReturn.spec.ts:127:1 › 未确认作品命令跨只读资料返回保持原字节，混合EOL/非BMP/折叠/滚动及undo/redo分支保留
   39 skipped
   177 passed (11.9m)
