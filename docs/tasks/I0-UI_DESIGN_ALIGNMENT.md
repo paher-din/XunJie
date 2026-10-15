@@ -32,6 +32,6 @@
 
 原 C 合成账号在本会话可见浏览器刷新后验证：任务卡状态“已分配”、标题、公开目标“解释文本统计规则”、右下入口均来自当前页面；圆角8px、内边距20px，无进度/截止元素。全部课程页实际 C 为 `code-square`、HDL为 `virtual-board`，包含当前账号无HDL分配时的明确装饰映射。见[实际 DOM 读数](evidence/ui-home-design-20261015/browser-card-facts.json)、[任务卡页面](evidence/ui-home-design-20261015/c-task-card.png)、[课程图案页面](evidence/ui-home-design-20261015/course-artwork.png)。两张截图已逐张查看；仅刷新/读取页面/课程导航，没有学习写操作。
 
-本地实现与本机页面已完成，清单已同步。PR/合并入口公开后补记；产品基线汇总仍按上述边界。
+实现与本机页面已完成，清单已同步。源码/规范 `d21b9c8` 与复验/清单 `5e786a5` 已普通推送，交付入口为 [PR #84](https://github.com/paher-din/XunJie/pull/84)，合并沿本会话已有授权执行，以 PR 实际状态为准。最终文档检查123篇/1928内链、errors=[]，差异空白通过；产品基线汇总仍按上述边界。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。
