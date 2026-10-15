@@ -1,58 +1,20 @@
 import { test,expect } from '@playwright/test'
-import { spawn } from 'node:child_process'
-import { createServer } from 'node:net'
-import { randomBytes } from 'node:crypto'
-import { resolve } from 'node:path'
 import { create,edit } from './helpers'
+import { loginThroughForm,startSessionHost } from './sessionHost'
 
 // The temporary self-signed certificate is an isolated test condition. Normal
 // application TLS verification and OS/browser trust stores are never changed.
 test.use({ignoreHTTPSErrors:true,trace:'off'})
 test('正常构建连接实际教学HTTPS/SQLite/原worker，公开求助正文与历史回取',async({page})=> {
   test.skip(!process.env.XUNJIE_E2E_SERVICE_NODE,'Requires the approved teaching runtime and native dependencies')
-  const password=randomBytes(32).toString('base64url')
-  const port=await new Promise<number>((resolvePort,reject)=> {
-    const listener=createServer();listener.on('error',reject)
-    listener.listen(0,'127.0.0.1',()=> {
-      const address=listener.address()
-      if(!address||typeof address==='string') {listener.close();reject(new Error('No service port'));return}
-      listener.close(error=>error?reject(error):resolvePort(address.port))
-    })
-  })
-  const teaching=resolve(import.meta.dirname,'../../teaching')
-  const linuxPath=teaching.replace(/\\/g,'/').replace(/^([A-Za-z]):/,(_,drive:string)=>`/mnt/${drive.toLowerCase()}`)
-  const node=process.env.XUNJIE_E2E_SERVICE_NODE!
-  const child=process.platform==='win32'
-    ?spawn('wsl.exe',['-d','Ubuntu','--cd',linuxPath,'--',node,'server/app/i0-browser-fixture.ts'],{stdio:'pipe',windowsHide:true})
-    :spawn(node,['server/app/i0-browser-fixture.ts'],{cwd:teaching,stdio:'pipe'})
-  const closed=new Promise<number|null>(r=>child.on('close',r))
-  const ready=new Promise<{synthetic:true;base:string;assignmentId:string;otherAssignmentId:string}>((accept,reject)=> {
-    let output=''
-    child.on('error',reject);child.on('close',()=>reject(new Error('Isolated service exited before readiness')))
-    child.stdout.on('data',(chunk:Buffer)=> {
-      output+=chunk.toString('utf8')
-      const end=output.indexOf('\n')
-      if(end<0) return
-      try {accept(JSON.parse(output.slice(0,end)))} catch {reject(new Error('Invalid service readiness'))}
-    })
-  })
-  child.stdin.write(JSON.stringify({synthetic:true,port,password})+'\n')
+  const service=await startSessionHost()
   try {
-    const service=await ready
-    expect(service.synthetic).toBe(true)
-    // A Linux listener becoming ready precedes WSL's Windows loopback forwarding.
-    await expect.poll(async()=> {
-      try {return (await page.context().request.get(service.base+'/health/live')).status()} catch {return 0}
-    },{timeout:20000}).toBe(200)
-    const login=await page.context().request.post(service.base+'/api/sessions',{
-      headers:{Origin:service.base},data:{loginName:'student',password},
-    })
-    expect(login.status()).toBe(200)
+    await page.goto(`${service.base}/#/task/${service.assignmentId}`)
+    await loginThroughForm(page,'student',service.password)
     const writes:Array<{path:string;body:Record<string,unknown>}>=[]
     page.on('request',request=> {
       if(request.method()==='POST') writes.push({path:new URL(request.url()).pathname,body:request.postDataJSON()})
     })
-    await page.goto(`${service.base}/#/task/${service.assignmentId}`)
     await expect(page.locator('.ts-badge')).toHaveAttribute('data-status','ready')
     expect(writes).toEqual([])
     await page.getByRole('button',{name:'开始 Attempt',exact:true}).click()
@@ -135,7 +97,7 @@ test('正常构建连接实际教学HTTPS/SQLite/原worker，公开求助正文�
       await page.getByRole('switch',{name:'过程采集',exact:true}).click()
       await atAuthority
       const nextLogin=await page.context().request.post(service.base+'/api/sessions',{
-        headers:{Origin:service.base},data:{loginName:'other',password},
+        headers:{Origin:service.base},data:{loginName:'other',password:service.password},
       })
       expect(nextLogin.status()).toBe(200)
       expect((await page.context().request.get(`${service.base}/api/attempts/${attemptId}`)).status()).toBe(403)
@@ -172,7 +134,6 @@ test('正常构建连接实际教学HTTPS/SQLite/原worker，公开求助正文�
       expect(writes.filter(row=>row.path.endsWith('/help'))).toHaveLength(2)
     } finally {release()}
   } finally {
-    child.stdin.end('stop\n')
-    await Promise.race([closed,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Isolated service shutdown timeout')),15000))])
+    await service.stop()
   }
 })

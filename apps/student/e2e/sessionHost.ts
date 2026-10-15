@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { get } from 'node:https'
+import { createRequire } from 'node:module'
 import type { Page } from '@playwright/test'
 import type { WorkspaceHead } from '../src/workspace/workspaceContracts'
 
@@ -27,6 +28,7 @@ export interface HostRunnerInspection {
 }
 export type HostControl =
   | { kind: 'generation'; value: string }
+  | { kind: 'provider'; mode: 'normal' | 'unavailable' }
   | { kind: 'reopen' }
   | { kind: 'state'; attemptId: string; state: 'paused' | 'active' | 'submitted' | 'reviewed' }
   | { kind: 'inspect'; attemptId?: string }
@@ -49,6 +51,7 @@ export type HostControlResult<T extends HostControl> =
   T extends { kind: 'history' } ? { jobId: string; runId: string; snapshotId: string; status: string } :
   T extends { kind: 'inspect' } ? HostInspection :
   T extends { kind: 'generation' } ? { recoveryGeneration: string } :
+  T extends { kind: 'provider' } ? { providerMode: 'normal' | 'unavailable' } :
   T extends { kind: 'reopen' } ? { reopened: true; recoveryGeneration: string } :
   T extends { kind: 'clock-regress' } ? { regressed: true } :
   { attemptId: string; status: string; attemptRevision: number; workspaceRevision: number }
@@ -74,6 +77,10 @@ async function reachable(base: string) {
 /** 复用已获准的隔离 HTTPS/SQLite 宿主。密码只走私有 stdin，不写日志/trace。 */
 export async function startSessionHost(options: { runs?: boolean } = {}) {
   const password = randomBytes(32).toString('base64url')
+  const playwrightCore = createRequire(import.meta.url)('playwright-core/lib/coreBundle') as {
+    utils: { generateSelfSignedCertificate(): { cert: string; key: string } }
+  }
+  const certificate = playwrightCore.utils.generateSelfSignedCertificate()
   const port = await new Promise<number>((accept, reject) => {
     const listener = createServer()
     listener.on('error', reject)
@@ -87,9 +94,10 @@ export async function startSessionHost(options: { runs?: boolean } = {}) {
   const linuxPath = teaching.replace(/\\/g, '/').replace(/^([A-Za-z]):/, (_, drive: string) => `/mnt/${drive.toLowerCase()}`)
   const node = process.env.XUNJIE_E2E_SERVICE_NODE
   if (!node) throw new Error('Approved teaching runtime required')
-  const child = process.platform === 'win32'
+  const windowsNode = process.platform === 'win32' && /^[A-Za-z]:[\\/].*\.exe$/i.test(node)
+  const child = process.platform === 'win32' && !windowsNode
     ? spawn('wsl.exe', ['-d', 'Ubuntu', '--cd', linuxPath, '--', node, 'server/app/i0-browser-fixture.ts'], { stdio: 'pipe', windowsHide: true })
-    : spawn(node, ['server/app/i0-browser-fixture.ts'], { cwd: teaching, stdio: 'pipe' })
+    : spawn(node, ['server/app/i0-browser-fixture.ts'], { cwd: teaching, stdio: 'pipe', windowsHide: true })
   const pending = new Map<string, { accept(value: unknown): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>()
   let stopping = false
   const rejectPending = (message: string) => {
@@ -171,7 +179,8 @@ export async function startSessionHost(options: { runs?: boolean } = {}) {
       if (code !== 0) throw new Error('Isolated HTTPS exited with failure')
     } finally { clearTimeout(timer); output.close() }
   })()
-  child.stdin.write(JSON.stringify({ synthetic: true, port, password, ...(options.runs ? { runs: true } : {}) }) + '\n')
+  child.stdin.write(JSON.stringify({ synthetic: true, port, password, ...certificate,
+    ...(options.runs ? { runs: true } : {}) }) + '\n')
   try {
     const service = await ready
     if (service.synthetic !== true) throw new Error('Synthetic host required')
