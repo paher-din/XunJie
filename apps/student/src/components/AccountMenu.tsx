@@ -28,7 +28,7 @@ const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
 export function AccountMenu({ open, anchor, onProfile, onSettings, onLogout }: AccountMenuProps) {
   const account = useAccount()
   const session = useSession()
-  const name = !PREP_BUILD && session.session ? displayAccountName(session.session.userId) : account.name
+  const name = !PREP_BUILD && session.session ? displayAccountName(session.session.userId, session.session.displayName) : account.name
   return (
     <div className={'account-menu am-' + anchor + (open ? ' on' : '')} role="menu" aria-hidden={!open}>
       <div className="am-head" style={delay(30)}>

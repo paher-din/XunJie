@@ -4,6 +4,7 @@ import { apiGet } from './http'
 /** 当前35表宿主的课程分配列表投影；没有进度或截止时间。 */
 interface AssignmentSummary {
   assignmentId: string
+  displayTitle?: string
   studentId: string
   activityVersionId: string
   active: boolean
@@ -17,13 +18,14 @@ export interface HomeAssignment extends AssignmentSummary {
 
 export interface HomeCourse {
   courseId: string
+  name?: string
   assignments: HomeAssignment[]
 }
 
 /** 沿当前 Session 的学生课程读取；只读，不创建 Attempt 或触发学习操作。 */
 export async function loadHomeCourses(session: SessionView): Promise<HomeCourse[]> {
   const options = { mode: 'real' as const, timeoutMs: 15_000 }
-  return Promise.all(session.courses.filter(course => course.role === 'student').map(async ({ courseId }) => {
+  return Promise.all(session.courses.filter(course => course.role === 'student').map(async ({ courseId, name }) => {
     const summaries = await apiGet<AssignmentSummary[]>(`/courses/${encodeURIComponent(courseId)}/assignments`, options)
     if (!Array.isArray(summaries) || summaries.some(item =>
       !item || typeof item.assignmentId !== 'string' || !item.assignmentId ||
@@ -43,6 +45,6 @@ export async function loadHomeCourses(session: SessionView): Promise<HomeCourse[
       const goal = goals.find(item => item.core)?.title ?? goals[0]?.title
       return { ...summary, title, goal }
     }))
-    return { courseId, assignments }
+    return { courseId, name, assignments }
   }))
 }

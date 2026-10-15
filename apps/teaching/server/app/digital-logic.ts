@@ -18,6 +18,9 @@ import {ApiError} from './errors.ts';
 import {canonical} from '../records/commands.ts';
 import type {Transaction} from '../db/transaction.ts';
 import type {ActorContext} from '../../contracts/access/index.ts';
+import {courseMembershipViewSchema} from '../../contracts/access/index.ts';
+import {assignmentSummarySchema} from '../../contracts/design/results.ts';
+import {optionalDisplayText} from '../access/display-text.ts';
 const id=z.string().min(1).max(128),revision=z.number().int().positive(),key=z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/),params=z.strictObject({id});
 const generationInput={recoveryGeneration:id},basis={...generationInput,expectedAttemptRevision:revision};
 const buildInput=z.strictObject({...basis,snapshotId:id});
@@ -67,12 +70,14 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  app.addHook('preHandler',async request=>{if(!admission.accepting&&!['GET','HEAD','OPTIONS'].includes(request.method))throw new ApiError('DEPENDENCY_UNAVAILABLE');});
  app.get('/api/courses',request=>({requestId:request.id,data:options.db.withTransaction(tx=>{
  const userId=access.authenticatedUserInTransaction(request,tx);
- return tx.all('SELECT course_id,role FROM course_memberships WHERE user_id=? AND active=1 ORDER BY course_id',userId).map(row=>({courseId:String(row.course_id),role:row.role}));
+ return tx.all('SELECT m.course_id,m.role,c.name FROM course_memberships m JOIN courses c ON c.id=m.course_id WHERE m.user_id=? AND m.active=1 ORDER BY m.course_id',userId).map(row=>{
+ const name=optionalDisplayText(row.name);return courseMembershipViewSchema.parse({courseId:String(row.course_id),role:row.role,...(name?{name}:{})});});
  })}));
  app.get('/api/courses/:id/assignments',request=>{const courseId=parseRequest(params,request.params).id;return {requestId:request.id,data:access.withAuthorizedCourse(request,courseId,undefined,(tx,actor)=>{
  const rows=actor.role==='teacher'?tx.all('SELECT id FROM assignments WHERE course_id=? ORDER BY id',courseId):tx.all('SELECT id FROM assignments WHERE course_id=? AND student_id=? ORDER BY id',courseId,actor.userId);
  return rows.map(row=>{const assignment=readAssignment(tx,courseId,String(row.id)),activity=readActivity(tx,courseId,assignment.activity_id),control=tx.get('SELECT status FROM activity_controls WHERE activity_id=?',assignment.activity_id),member=tx.get('SELECT m.active,u.disabled_at_ms FROM course_memberships m JOIN users u ON u.id=m.user_id WHERE m.course_id=? AND m.user_id=?',courseId,assignment.student_id);
- return {assignmentId:assignment.id,studentId:assignment.student_id,activityVersionId:assignment.activity_id,assignmentRevision:assignment.assignment_revision,active:assignment.status==='active'&&control?.status==='active'&&member?.active===1&&member.disabled_at_ms===null,executionKind:'kind' in activity.runtimeProfile?'hdl_board':'textscope',runtimeProfileVersion:activity.runtimeProfile.runtimeProfileVersion};});
+ const displayTitle=optionalDisplayText(assignment.display_title);
+ return assignmentSummarySchema.parse({assignmentId:assignment.id,studentId:assignment.student_id,activityVersionId:assignment.activity_id,assignmentRevision:assignment.assignment_revision,active:assignment.status==='active'&&control?.status==='active'&&member?.active===1&&member.disabled_at_ms===null,executionKind:'kind' in activity.runtimeProfile?'hdl_board':'textscope',runtimeProfileVersion:activity.runtimeProfile.runtimeProfileVersion,...(displayTitle?{displayTitle}:{})});});
  })};});
  app.post('/api/courses/:id/hdl-configurations',request=>{const courseId=parseRequest(params,request.params).id,input=parseRequest(z.strictObject({...generationInput,configuration:hdlConfigurationSchema}),request.body),idempotencyKey=parseRequest(key,request.headers['idempotency-key']);
  const data=access.withAuthorizedCourse(request,courseId,'teacher',(tx,actor)=>finishRecordCommand(tx,{actorId:actor.userId,command:'hdl.configuration',target:courseId,scope:{courseId},idempotencyKey,recoveryGeneration:requireGeneration(input.recoveryGeneration)},input,generation,now(),()=>storeHdlConfiguration(tx,actor,input.configuration,approved,now()),value=>{

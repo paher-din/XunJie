@@ -29,15 +29,9 @@ const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '�
 const ASSIGNMENT_FILTERS = ['全部', '已分配', '任务已暂停'] as const
 const COURSE_ICONS: IconName[] = ['virtual-board', 'code-square', 'structure']
 
-// 已交本机课程的装饰映射用于尚无本人分配的课程；不按列表顺序猜课程类型。
-const KNOWN_COURSE_TONES: Record<string, number> = {
-  'synthetic-robert-course-c': 1,
-  'synthetic-robert-course-hdl': 0,
-}
-
 function realCourseTone(course: HomeCourse): number {
   const kinds = new Set(course.assignments.map(task => task.executionKind))
-  if (kinds.size === 0) return KNOWN_COURSE_TONES[course.courseId] ?? 2
+  if (kinds.size === 0) return 2
   if (kinds.size > 1) return 2
   return kinds.has('hdl_board') ? 0 : 1
 }
@@ -73,8 +67,8 @@ function RealHomePage() {
   const search = query.trim().toLowerCase()
   const visibleTasks = selected?.assignments.filter(task =>
     (statusFilter === '全部' || statusFilter === (task.active ? '已分配' : '任务已暂停')) &&
-    `${displayProjectName(task.title)} ${task.title} ${task.goal ?? ''} ${displayCourseName(selected.courseId)} ${selected.courseId}`.toLowerCase().includes(search)) ?? []
-  const allTasks = courses.flatMap(course => course.assignments.map(task => ({ ...task, courseId: course.courseId })))
+    `${displayProjectName(task.title, task.displayTitle)} ${task.title} ${task.goal ?? ''} ${displayCourseName(selected.courseId, selected.name)} ${selected.courseId}`.toLowerCase().includes(search)) ?? []
+  const allTasks = courses.flatMap(course => course.assignments.map(task => ({ ...task, courseId: course.courseId, courseName: course.name })))
   const entryTask = !snapshot.isError && allTasks.find(task => task.active)
   const now = new Date()
   const hour = now.getHours()
@@ -83,15 +77,15 @@ function RealHomePage() {
   const hover = useFluidHover(cardsRef)
   return <div className="content">
     <div className="intro">
-      <h1>{greeting}，{displayAccountName(session.session!.userId)}</h1>
+      <h1>{greeting}，{displayAccountName(session.session!.userId, session.session!.displayName)}</h1>
       <span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span>
     </div>
     <DashboardSection key={session.session?.userId} storageKey={`dashboard.layout.v3:real:${session.session?.userId}`}
       data={demoDashboard} tasks={demoTasks} demoStatistics
       taskCount={snapshot.isSuccess ? allTasks.length : undefined} now={now}
       continueSlot={entryTask && <div className="db-continue">
-        <span className="course-tag"><i className="dot" />项目任务 · {displayCourseName(entryTask.courseId)}</span>
-        <h3>{displayProjectName(entryTask.title)}</h3>
+        <span className="course-tag"><i className="dot" />项目任务 · {displayCourseName(entryTask.courseId, entryTask.courseName)}</span>
+        <h3>{displayProjectName(entryTask.title, entryTask.displayTitle)}</h3>
         {entryTask.goal && <p>{entryTask.goal}</p>}
         <div className="db-continue-foot">
           <span className="db-side">当前获准任务</span>
@@ -113,7 +107,7 @@ function RealHomePage() {
       : selected ? <>
         <div className="course-breadcrumb">
           <button onClick={() => setSearchParams({})}><IconText name="alt-arrow-left">全部课程</IconText></button>
-          <span>/</span><strong>{displayCourseName(selected.courseId)}</strong>
+          <span>/</span><strong>{displayCourseName(selected.courseId, selected.name)}</strong>
         </div>
         <TaskToolbar filters={ASSIGNMENT_FILTERS} value={statusFilter} onFilter={setStatusFilter} query={query} onQuery={setQuery} />
         {selected.assignments.length === 0 ? <div className="empty">此课程暂无分配任务</div>
@@ -121,13 +115,13 @@ function RealHomePage() {
           : <div className="task-card-grid" ref={cardsRef} {...hover.handlers}>
             <FluidHighlight activeIndex={hover.activeIndex} rects={hover.itemRects} className="card-grid-highlight" />
             {visibleTasks.map((task, index) => <TaskCard key={task.assignmentId}
-              task={{ name: displayProjectName(task.title), goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
+              task={{ name: displayProjectName(task.title, task.displayTitle), goal: task.goal, status: task.active ? '已分配' : '任务已暂停' }}
               action={task.active ? '进入任务' : '查看任务'} index={index}
               registerItem={hover.registerItem} onOpen={() => navigate('/task/' + encodeURIComponent(task.assignmentId))} />)}
           </div>}
       </> : courses.length === 0 ? <div className="empty">暂无获准的学生课程与任务</div>
         : <CourseTiles courses={courses.map(course => course.courseId)} tasks={[]}
-          titleOf={displayCourseName}
+          titleOf={id => displayCourseName(id, courses.find(course => course.courseId === id)?.name)}
           summaryOf={id => `${courses.find(course => course.courseId === id)!.assignments.length} 个分配任务`}
           toneOf={id => realCourseTone(courses.find(course => course.courseId === id)!)}
           onOpen={id => setSearchParams({ course: id })} />}

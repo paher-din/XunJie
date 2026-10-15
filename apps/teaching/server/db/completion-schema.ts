@@ -18,7 +18,7 @@ CREATE TABLE assignments (
  activity_id TEXT NOT NULL REFERENCES activity_versions(id), assignment_revision INTEGER NOT NULL CHECK(assignment_revision>0),
  status TEXT NOT NULL CHECK(status IN ('active','paused')), individual_paused INTEGER NOT NULL CHECK(individual_paused IN (0,1)),
  paused_by_activity INTEGER NOT NULL CHECK(paused_by_activity IN (0,1)), individual_reason TEXT NOT NULL, activity_reason TEXT NOT NULL,
- controlled_by TEXT NOT NULL REFERENCES users(id), controlled_at_ms INTEGER NOT NULL,
+ controlled_by TEXT NOT NULL REFERENCES users(id), controlled_at_ms INTEGER NOT NULL, display_title TEXT,
  CHECK((status='active')=(individual_paused=0 AND paused_by_activity=0)), UNIQUE(activity_id,student_id));
 CREATE TABLE attempts (
  attempt_id TEXT PRIMARY KEY NOT NULL, course_id TEXT NOT NULL REFERENCES courses(id), student_id TEXT NOT NULL REFERENCES users(id),
