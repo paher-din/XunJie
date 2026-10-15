@@ -13,6 +13,7 @@ for (const scenario of [
   { selected: '教师', actual: 'teacher', path: '/', landing: '/teacher' },
   { selected: '教师', actual: 'student', path: '/teacher', landing: '/' },
   { selected: '学生', actual: 'teacher', path: '/task/authorized-link', landing: '/teacher' },
+  { selected: '教师', actual: 'teacher', path: '/teacher/settings/model', landing: '/teacher/settings/model' },
 ] as const) {
   test(`统一登录选择${scenario.selected}，真实${scenario.actual}角色进入${scenario.landing}`, async ({ page }) => {
     let authenticated = false, bootstrapReads = 0, teacherReads = 0
@@ -32,13 +33,14 @@ for (const scenario of [
       else await route.fulfill({ json: { requestId: 'role-entry', data } })
     })
     await page.goto(`${REAL_URL}/#${scenario.path}`)
-    await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: scenario.path.startsWith('/teacher') ? '登录教师工作台' : '登录学习空间', exact: true })).toBeVisible()
     await page.getByRole('group', { name: '登录身份' }).getByRole('button', { name: scenario.selected, exact: true }).click()
     await expect(page.getByRole('button', { name: scenario.selected, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('heading', { name: scenario.selected === '教师' ? '登录教师工作台' : '登录学习空间', exact: true })).toBeVisible()
     if (scenario.actual === 'teacher' && scenario.selected === '教师') await page.locator('.session-card').screenshot({ path: test.info().outputPath('unified-role-login.png') })
     await loginThroughForm(page, 'synthetic-role-login', 'synthetic-only')
     await expect(page).toHaveURL(`${REAL_URL}/#${scenario.landing}`)
-    await expect(page.getByRole('heading', { name: '登录学习空间' })).toHaveCount(0)
+    await expect(page.locator('.session-card')).toHaveCount(0)
     expect(loginBodies).toEqual([{ loginName: 'synthetic-role-login', password: 'synthetic-only' }])
     if (scenario.actual === 'teacher') {
       await expect(page.getByRole('navigation').getByRole('link', { name: '教学概览', exact: true })).toBeVisible()
