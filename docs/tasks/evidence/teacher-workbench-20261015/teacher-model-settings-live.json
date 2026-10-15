@@ -1,0 +1,94 @@
+{
+  "origin": "https://127.0.0.1:3444",
+  "strictTLS": true,
+  "account": "synthetic-robert-teacher",
+  "status": "passed",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/sessions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/model-settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/model-settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/model-settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/model-settings",
+      "status": 200
+    }
+  ],
+  "pageErrors": [],
+  "layouts": [
+    {
+      "viewport": 1440,
+      "width": 1170,
+      "scrollWidth": 1170,
+      "overflowing": []
+    },
+    {
+      "viewport": 390,
+      "width": 308,
+      "scrollWidth": 308,
+      "overflowing": []
+    }
+  ],
+  "startedAt": "2026-10-15T07:06:10.754Z",
+  "configuration": {
+    "revision": 0,
+    "enabled": false,
+    "providerCount": 0,
+    "sha256": "5269c2242c9f4736d5aacc7d2c61ba128bceb21928ddd42b0e4b7cd178c6e2e5"
+  },
+  "entryJS": [
+    "/assets/index-BfdJuFQ2.js"
+  ],
+  "completedAt": "2026-10-15T07:06:15.538Z"
+}
