@@ -19,6 +19,102 @@ async function install(page: Page, handle: (route: Route, path: string) => Promi
   })
 }
 
+for (const trigger of ['Enter', '发送键'] as const) {
+  test(`首页吉祥物${trigger}发送后立即进入对话，原问题只接纳一次`, async ({ page }) => {
+    const cid = 'home-handoff', tid = 'home-turn', question = `首页${trigger}提问`
+    let phase = 'waiting', calls = 0
+    const view = () => ({ conversationId: cid, turnId: tid, message: { role: 'agent', text: phase === 'settled' ? '已回答首页问题' : '', phase, at } })
+    await install(page, async (route, path) => {
+      if (path === '/api/session') { await envelope(route, { userId: 'alice', courses: [{ courseId: 'synthetic-course', role: 'student' }], csrfToken: 'synthetic-csrf' }); return true }
+      if (path === '/api/model-settings') { await envelope(route, config()); return true }
+      if (path === '/api/agent/turns') { calls++; await envelope(route, view()); return true }
+      if (path === `/api/agent/turns/${tid}`) { await envelope(route, view()); return true }
+      if (path === `/api/agent/conversations/${cid}`) {
+        await envelope(route, { id: cid, title: question, updatedAt: at, messages: [{ role: 'user', text: question, at }, view().message] }); return true
+      }
+      return false
+    })
+    await page.goto(`${REAL_URL}/#/`)
+    if (trigger === 'Enter') await page.getByRole('button', { name: '唤起 Agent 输入框' }).click({ force: true })
+    else await page.getByRole('button', { name: '有问题，问我 ⌘J' }).click()
+    await expect(page.locator('.ask')).toHaveClass(/open/)
+    const input = page.getByRole('textbox', { name: '向 Agent 提问' })
+    await input.fill(question)
+    await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled()
+    if (trigger === 'Enter') await input.press('Enter')
+    else await page.getByRole('button', { name: '发送消息', exact: true }).click()
+    await expect(page).toHaveURL(`${REAL_URL}/#/agent/${cid}`, { timeout: 3000 })
+    await expect(page.locator('.page-enter')).not.toHaveClass(/revisit/)
+    expect(await page.locator('.page-enter').evaluate(element => getComputedStyle(element).animationName)).toBe('enter')
+    await expect(page.locator('.chat-message.user')).toContainText(question)
+    expect(calls).toBe(1)
+    phase = 'settled'
+    await expect(page.locator('.chat-message.agent')).toContainText('已回答首页问题')
+    await expect(page.getByText('消息发送未确认，请打开原会话核对。')).toHaveCount(0)
+  })
+}
+
+test('首页提问连接中断后在对话页核对同一请求，不显示首页笼统提示', async ({ page }) => {
+  const question = '首页失联核对原问题', cid = 'home-recovered'
+  const bodies: unknown[] = []
+  let recovered = false
+  const reply = { role: 'agent', text: '原回合已恢复', phase: 'settled', at }
+  await install(page, async (route, path) => {
+    if (path === '/api/session') { await envelope(route, { userId: 'alice', courses: [{ courseId: 'synthetic-course', role: 'student' }], csrfToken: 'synthetic-csrf' }); return true }
+    if (path === '/api/model-settings') { await envelope(route, config()); return true }
+    if (path === '/api/agent/turns') {
+      bodies.push(route.request().postDataJSON())
+      if (bodies.length === 1) await route.abort('failed')
+      else { recovered = true; await envelope(route, { conversationId: cid, turnId: 'original-turn', message: reply }) }
+      return true
+    }
+    if (path === `/api/agent/conversations/${cid}`) {
+      await envelope(route, { id: cid, title: question, updatedAt: at, messages: recovered ? [{ role: 'user', text: question, at }, reply] : [] }); return true
+    }
+    return false
+  })
+  await page.goto(`${REAL_URL}/#/`)
+  await page.getByRole('button', { name: '有问题，问我 ⌘J' }).click()
+  await page.getByRole('textbox', { name: '向 Agent 提问' }).fill(question)
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/agent`)
+  await expect(page.locator('.chat-message.user')).toContainText(question)
+  await expect(page.getByRole('button', { name: '核对原回合', exact: true })).toBeVisible()
+  expect(bodies).toHaveLength(1)
+  await page.getByRole('button', { name: '核对原回合', exact: true }).click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/agent/${cid}`)
+  await expect(page.locator('.chat-message.agent')).toContainText('原回合已恢复')
+  expect(bodies[1]).toEqual(bodies[0])
+  await expect(page.getByText('消息发送未确认，请打开原会话核对。')).toHaveCount(0)
+})
+
+test('首页刚打开时模型配置仍在读取，问题先进入对话并在读取完成后只发送一次', async ({ page }) => {
+  const question = '配置读取中提出的问题', cid = 'home-after-settings'
+  let release!: () => void, settingsStarted = false, calls = 0
+  const held = new Promise<void>(resolve => { release = resolve })
+  const reply = { role: 'agent', text: '配置就绪后的回答', phase: 'settled', at }
+  await install(page, async (route, path) => {
+    if (path === '/api/session') { await envelope(route, { userId: 'alice', courses: [{ courseId: 'synthetic-course', role: 'student' }], csrfToken: 'synthetic-csrf' }); return true }
+    if (path === '/api/model-settings') { settingsStarted = true; await held; await envelope(route, config()); return true }
+    if (path === '/api/agent/turns') { calls++; await envelope(route, { conversationId: cid, turnId: 'configured-turn', message: reply }); return true }
+    if (path === `/api/agent/conversations/${cid}`) { await envelope(route, { id: cid, title: question, updatedAt: at, messages: [{ role: 'user', text: question, at }, reply] }); return true }
+    return false
+  })
+  await page.goto(`${REAL_URL}/#/`)
+  await expect.poll(() => settingsStarted).toBe(true)
+  await page.getByRole('button', { name: '有问题，问我 ⌘J' }).click()
+  await page.getByRole('textbox', { name: '向 Agent 提问' }).fill(question)
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/agent`)
+  await expect(page.locator('.chat-message.user')).toContainText(question)
+  expect(calls).toBe(0)
+  release()
+  await expect(page).toHaveURL(`${REAL_URL}/#/agent/${cid}`)
+  await expect(page.locator('.chat-message.user')).toContainText(question)
+  await expect(page.locator('.chat-message.agent')).toContainText('配置就绪后的回答')
+  expect(calls).toBe(1)
+})
+
 test('思考到正文逐块可见，生成中刷新接回原回合，停止不新增模型请求',async({page})=>{
   const cid='recover-stream',tid='original-stream'
   let phase='waiting',text='',calls=0
@@ -264,7 +360,7 @@ test('退出换账号后拒收旧配置回包，清除会话与模型展示', as
   await page.addInitScript(() => { AbortController.prototype.abort = () => {} })
   await install(page, async (route, path) => {
     if (path === '/api/session') {
-      if (account) await envelope(route, { userId: account, courses: [], csrfToken: 'synthetic-csrf' })
+      if (account) await envelope(route, { userId: account, courses: [{ courseId: 'synthetic-course', role: 'student' }], csrfToken: 'synthetic-csrf' })
       else await route.fulfill({ status: 401, json: { requestId: 'synthetic', error: { code: 'UNAUTHENTICATED', message: 'Login required', retryable: false, recovery: 'Login' } } })
       return true
     }

@@ -192,6 +192,7 @@ export default function AppShell() {
   const [foldingGroup, setFoldingGroup] = useState<string | null>(null)
   const foldTimer = useRef<number | undefined>(undefined)
   const [draft, setDraft] = useState('')
+  const homeHandoff = useRef(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
   const mainRef = useRef<HTMLElement>(null)
@@ -205,18 +206,15 @@ export default function AppShell() {
     queryFn: () => learningApi.listConversations({ includeArchived: true }),
   })
 
-  const sendFromHome = useMutation({
-    mutationFn: (text: string) => learningApi.sendMessage({ conversationId: null, text }),
-    onError: () => showToast('消息发送未确认，请打开原会话核对。'),
-    onSuccess: ({ conversationId }) => {
-      if (!PREP_BUILD && getSessionState().epoch !== session.epoch) return
-      void queryClient.invalidateQueries({ queryKey: ['conversations'] })
-      void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
-      setComposerOpen(false)
-      setDraft('')
-      navigate('/agent/' + conversationId)
-    },
-  })
+  // 首页只交接一次提问；回合从 Agent 页发起、展示与恢复，页面渐入不等模型完成。
+  useEffect(() => { if (onHome) homeHandoff.current = false }, [onHome])
+  const sendFromHome = (text: string) => {
+    if (homeHandoff.current) return
+    homeHandoff.current = true
+    setComposerOpen(false)
+    setDraft('')
+    navigate('/agent', { state: { homeQuestion: text, homeEpoch: session.epoch } })
+  }
 
   const renameConv = useMutation({
     mutationFn: (input: { conversationId: string; title: string }) =>
@@ -948,7 +946,6 @@ export default function AppShell() {
           <CompanionButton
             className="mascot"
             attention={composerOpen}
-            working={sendFromHome.isPending}
             ambient
             onClick={() => setComposerOpen((open) => !open)}
             aria-label="唤起 Agent 输入框"
@@ -960,7 +957,7 @@ export default function AppShell() {
             open={composerOpen}
             value={draft}
             onChange={setDraft}
-            onSend={(text) => sendFromHome.mutate(text)}
+            onSend={sendFromHome}
             onOpen={() => setComposerOpen(true)}
             onClose={() => setComposerOpen(false)}
           />

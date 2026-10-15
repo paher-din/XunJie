@@ -1,6 +1,6 @@
 import { Icon, IconText } from '../icons'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { PREP_BUILD } from '../workspace/mode'
 import { getSessionState } from '../workspace/session'
@@ -57,6 +57,7 @@ const scrollBehavior = (): ScrollBehavior =>
  */
 export default function AgentPage() {
   const routeConversationId = useParams().conversationId
+  const location = useLocation()
   const navigate = useNavigate()
   const [input, setInput] = useState('')
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -84,6 +85,20 @@ export default function AgentPage() {
     queryFn: () => learningApi.listTasks(),
   })
   const turn = useAgentTurn(routeConversationId ?? null)
+  const homeQuestion = location.state as { homeQuestion?: unknown; homeEpoch?: unknown } | null
+  const consumedHomeQuestion = useRef(false)
+  useEffect(() => {
+    if (routeConversationId || consumedHomeQuestion.current || typeof homeQuestion?.homeQuestion !== 'string') return
+    const question = homeQuestion.homeQuestion.trim()
+    if (!question || (!PREP_BUILD && (models.loading || models.saving))) return
+    // 首次挂载的 StrictMode 效果会先清理一次；延到下一任务，避免它停止刚发出的回合。
+    const timer = window.setTimeout(() => {
+      consumedHomeQuestion.current = true
+      navigate('/agent', { replace: true, state: null })
+      if (getSessionState().epoch === homeQuestion.homeEpoch) turn.send(question)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [routeConversationId, homeQuestion, models.loading, models.saving, navigate, turn.send])
   /**
    * 本页对哪条会话说话：路由参数，或刚落定那一帧回合报的 id。
    * 新会话首条回复落定时 navigate(replace) 比同批的状态更新晚一帧才落到 useParams，
@@ -126,13 +141,17 @@ export default function AgentPage() {
    * 卡片与操作条也不必等第二次渲染才出现。stored = 在历史里的下标，
    * -1 表示这条还没进会话存储（按消息定位的本地动作槽不给）。
    */
+  const handedOffText = !routeConversationId && !consumedHomeQuestion.current
+    && getSessionState().epoch === homeQuestion?.homeEpoch && typeof homeQuestion?.homeQuestion === 'string'
+    ? homeQuestion.homeQuestion.trim() || null : null
+  const pendingText = turn.pendingUser ?? handedOffText
   const rows: { key: string; msg: ChatMessage; stored: number }[] = [
     ...messages.map((msg, i) => ({ key: 'm' + i, msg, stored: i })),
-    ...(turn.pendingUser!==null
+    ...(pendingText!==null
       ? [
           {
             key: 'm' + messages.length,
-            msg: { role: 'user' as const, text: turn.pendingUser,images:turn.pendingImages },
+            msg: { role: 'user' as const, text: pendingText,images:turn.pendingImages },
             stored: -1,
           },
         ]
@@ -140,7 +159,7 @@ export default function AgentPage() {
     ...(turn.live
       ? [
           {
-            key: 'm' + (messages.length + (turn.pendingUser!==null ? 1 : 0)),
+            key: 'm' + (messages.length + (pendingText!==null ? 1 : 0)),
             msg: turn.live,
             stored: -1,
           },
@@ -162,7 +181,7 @@ export default function AgentPage() {
   // 对话流底部为叠层卡片（初始建议 / 追问选项）常驻留白：叠层浮在输入框上方、
   // absolute 不占布局，留白让落定操作条与叠层各占其位（几何见 app.css .chat-inner 一段）。
   // 自发送首条消息起常驻，不随草稿显隐——输入/落定/排队全程底部几何零跳动。
-  const padSuggest = !!conversationId || messages.length > 0 || turn.pendingUser!==null || turn.active
+  const padSuggest = !!conversationId || messages.length > 0 || pendingText!==null || turn.active
 
   // 新回合开始那一帧重新吸附并瞬时贴底：发消息、重新生成、继续生成、改写后重发都算「我要看这条回答」，
   // 「我发出去了」的反馈不等动画（第 18 条）。不重新吸附会漏掉改写这条——编辑框打开时浏览器把那条
@@ -447,7 +466,7 @@ export default function AgentPage() {
                 items={suggestions.data ?? []}
                 onPick={fillSuggestion}
                 show={
-                  atBottom && !conversationId && !turn.active && turn.pendingUser===null && input.trim() === ''
+                  atBottom && !conversationId && !turn.active && pendingText===null && input.trim() === ''
                 }
               />
               {/* 追问选项：落定后出现（与操作条同刻），同上条件；点击直接发送，生成中点击排队 */}
