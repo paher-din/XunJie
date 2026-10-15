@@ -101,7 +101,7 @@ export async function prepareDemoData(options) {
         projectTitle: source.display_title?.trim() || (source.key === 'c' ? '文本统计与检索' : '四位算术逻辑单元'),
         policyVersionId: classIndex === 0 ? source.activity.helpPolicy.versionId : `${courseId}-help`,
         checkRuleVersionId: source.activity.checkRule.versionId,
-        studentIds: [studentId, ...virtualStudents.filter(user => user.classIndex === classIndex).map(user => user.userId)],
+        studentIds: [...(classIndex === 0 ? [studentId] : []), ...virtualStudents.filter(user => user.classIndex === classIndex).map(user => user.userId)],
         publication: classIndex === 0 ? 'existing' : 'pending_teacher_api', classIndex };
     }));
     const teacherDisplayName = spec.teacherDisplayName ?? '陈老师';
