@@ -18,6 +18,8 @@ import time
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
+import urllib.error
+import urllib.request
 import uuid
 
 
@@ -144,19 +146,57 @@ class DeploymentSynchronizer:
                  'stderr': errors.decode(errors='replace') if isinstance(errors, bytes) else errors}
         write_json(self.work / 'last-failure.log', value)
 
-    def git(self, *arguments, timeout=120):
-        environment = dict(os.environ, GIT_TERMINAL_PROMPT='0', GIT_CONFIG_NOSYSTEM='1',
-                           GIT_CONFIG_GLOBAL=os.devnull, GIT_ASKPASS='/bin/false')
-        return self.checked(['git', '-c', 'credential.helper=', '-c', 'http.version=HTTP/1.1',
-                             '-c', 'http.lowSpeedLimit=1', '-c', 'http.lowSpeedTime=20', *arguments],
-                            'GIT_COMMAND_FAILED', env=environment, timeout=timeout)
+    def github_repository(self):
+        source = urlsplit(self.config['repositoryUrl'])
+        match = re.fullmatch(r'/([A-Za-z0-9_-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?', source.path)
+        require(source.scheme == 'https' and source.hostname == 'github.com' and source.port in (None, 443)
+                and not source.username and not source.password and not source.query and not source.fragment
+                and match is not None, 'PUBLIC_GITHUB_REPOSITORY_REQUIRED')
+        owner, repository = match.groups()
+        require(repository not in ('.', '..'), 'PUBLIC_GITHUB_REPOSITORY_REQUIRED')
+        return owner, repository
+
+    def github_open(self, url, accept='application/vnd.github+json'):
+        address = urlsplit(url)
+        require(address.scheme == 'https' and address.hostname in ('api.github.com', 'codeload.github.com')
+                and address.port in (None, 443) and not address.username and not address.password
+                and not address.query and not address.fragment, 'OFFICIAL_GITHUB_HTTPS_REQUIRED')
+        request = urllib.request.Request(url, headers={'User-Agent': 'XunJie-main-deployment', 'Accept': accept,
+                                                     'X-GitHub-Api-Version': '2022-11-28'})
+        try:
+            response = urllib.request.urlopen(request, timeout=30, context=ssl.create_default_context())
+            final = urlsplit(response.geturl())
+            try:
+                require(response.status == 200 and final.scheme == 'https'
+                        and final.hostname == address.hostname and not final.username and not final.password,
+                        'GITHUB_RESPONSE_REJECTED')
+            except Exception:
+                response.close()
+                raise
+            return response
+        except (urllib.error.URLError, OSError) as error:
+            self.log_failure('GITHUB_REQUEST_FAILED', '', str(error))
+            raise DeploymentError('GITHUB_REQUEST_FAILED') from None
+
+    def github_json(self, url):
+        with self.github_open(url) as response:
+            content = response.read(1024 * 1024 + 1)
+        require(len(content) <= 1024 * 1024, 'GITHUB_METADATA_TOO_LARGE')
+        try:
+            result = json.loads(content)
+        except ValueError:
+            raise DeploymentError('GITHUB_METADATA_INVALID') from None
+        require(isinstance(result, dict), 'GITHUB_METADATA_INVALID')
+        return result
 
     def remote_commit(self):
-        result = self.git('ls-remote', '--exit-code', self.config['repositoryUrl'], 'refs/heads/main', timeout=30).splitlines()
-        require(len(result) == 1, 'REMOTE_MAIN_REQUIRED')
-        fields = result[0].split()
-        require(len(fields) == 2 and re.fullmatch(r'[0-9a-f]{40}', fields[0]) and fields[1] == 'refs/heads/main', 'REMOTE_MAIN_REQUIRED')
-        return fields[0]
+        owner, repository = self.github_repository()
+        reference = self.github_json('https://api.github.com/repos/' + owner + '/' + repository + '/git/ref/heads/main')
+        target = reference.get('object')
+        require(reference.get('ref') == 'refs/heads/main' and isinstance(target, dict)
+                and target.get('type') == 'commit' and isinstance(target.get('sha'), str)
+                and re.fullmatch(r'[0-9a-f]{40}', target['sha']) is not None, 'REMOTE_MAIN_REQUIRED')
+        return target['sha']
 
     def read_application(self):
         application = read_json(self.config['applicationConfigFile'])
@@ -199,22 +239,33 @@ class DeploymentSynchronizer:
         return {'remoteCommit': remote, 'deployedCommit': deployed, 'upToDate': remote == deployed and aligned, 'serviceActive': active}
 
     def fetch_source(self, staging, commit):
-        mirror = self.work / 'source.git'
-        if not mirror.exists():
-            self.git('init', '--bare', str(mirror))
-        require(mirror.is_dir() and not mirror.is_symlink(), 'CONTROLLED_GIT_CACHE_REQUIRED')
-        self.git('-C', str(mirror), 'fetch', '--no-tags', '--depth=1', self.config['repositoryUrl'], 'refs/heads/main', timeout=600)
-        require(self.git('-C', str(mirror), 'rev-parse', 'FETCH_HEAD') == commit, 'REMOTE_MAIN_CHANGED')
-        tree = self.git('-C', str(mirror), 'rev-parse', commit + '^{tree}')
-        require(re.fullmatch(r'[0-9a-f]{40}', tree), 'GIT_TREE_REQUIRED')
-        archive = self.work / ('source-' + uuid.uuid4().hex + '.tar')
+        owner, repository = self.github_repository()
+        require(isinstance(commit, str) and re.fullmatch(r'[0-9a-f]{40}', commit) is not None, 'FIXED_COMMIT_REQUIRED')
+        metadata = self.github_json('https://api.github.com/repos/' + owner + '/' + repository + '/git/commits/' + commit)
+        require(metadata.get('sha') == commit, 'FIXED_COMMIT_MISMATCH')
+        tree = metadata.get('tree')
+        require(isinstance(tree, dict) and isinstance(tree.get('sha'), str)
+                and re.fullmatch(r'[0-9a-f]{40}', tree['sha']) is not None, 'GIT_TREE_REQUIRED')
+        archive = self.work / ('source-' + uuid.uuid4().hex + '.tar.gz')
+        archive_root = repository + '-' + commit
+        roots = (PurePosixPath('apps/student'), PurePosixPath('apps/teaching'))
         try:
-            self.git('-C', str(mirror), 'archive', '--format=tar', '--output=' + str(archive), commit)
-            with tarfile.open(archive) as source:
+            with self.github_open('https://codeload.github.com/' + owner + '/' + repository + '/tar.gz/' + commit,
+                                  'application/octet-stream') as response, archive.open('xb') as output:
+                shutil.copyfileobj(response, output)
+            with tarfile.open(archive, mode='r:gz') as source:
                 for member in source.getmembers():
                     name = PurePosixPath(member.name)
-                    require(not name.is_absolute() and '..' not in name.parts, 'UNSAFE_SOURCE_ARCHIVE')
-                    destination = staging.joinpath(*name.parts)
+                    require(not name.is_absolute() and '..' not in name.parts and name.parts
+                            and name.parts[0] == archive_root, 'UNSAFE_SOURCE_ARCHIVE')
+                    if len(name.parts) == 1:
+                        require(member.isdir(), 'UNSAFE_SOURCE_ARCHIVE')
+                        continue
+                    relative = PurePosixPath(*name.parts[1:])
+                    if relative != PurePosixPath('tools/i0-cloud/cloud-host.mjs') and not any(
+                            relative == root or root in relative.parents for root in roots):
+                        continue
+                    destination = staging.joinpath(*relative.parts)
                     require(destination.resolve().is_relative_to(staging.resolve()), 'UNSAFE_SOURCE_ARCHIVE')
                     if member.isdir():
                         destination.mkdir(parents=True, exist_ok=True)
@@ -233,7 +284,7 @@ class DeploymentSynchronizer:
         finally:
             if archive.exists():
                 archive.unlink()
-        return tree
+        return tree['sha']
 
     def build(self, staging):
         import pwd
@@ -248,12 +299,18 @@ class DeploymentSynchronizer:
         require(self.checked([str(node / 'node'), '--version'], 'NODE_VERSION_CHECK_FAILED') == 'v24.21.0', 'NODE_24_21_REQUIRED')
         environment = ['HOME=' + account.pw_dir, 'PATH=' + str(node) + ':/usr/bin:/bin', 'NODE_ENV=production',
                        'NODE_OPTIONS=--max-old-space-size=1024', 'npm_config_cache=' + str(cache),
-                       'npm_config_nodedir=' + str(node), 'npm_config_devdir=' + str(cache / 'node-gyp')]
+                       'npm_config_nodedir=' + str(node.parent), 'npm_config_devdir=' + str(cache / 'node-gyp')]
         commands = {'student': (['ci', '--include=dev', '--prefer-offline', '--no-audit', '--no-fund'], ['run', 'build']),
                     'teaching': (['ci', '--omit=dev', '--prefer-offline', '--no-audit', '--no-fund'],)}
         for application, steps in commands.items():
             directory = staging / 'apps' / application
             require((directory / 'package-lock.json').is_file(), 'APPLICATION_LOCKFILE_REQUIRED')
+            previous = self.current_release() / 'apps' / application
+            if application == 'teaching' and (previous / 'node_modules').is_dir() and all(
+                    (previous / name).is_file() and (previous / name).read_bytes() == (directory / name).read_bytes()
+                    for name in ('package.json', 'package-lock.json')):
+                shutil.copytree(previous / 'node_modules', directory / 'node_modules', symlinks=True)
+                continue
             for arguments in steps:
                 self.checked(['runuser', '-u', account.pw_name, '--', 'env', *environment, str(node / 'npm'), *arguments],
                              'APPLICATION_BUILD_FAILED', cwd=str(directory), timeout=600)

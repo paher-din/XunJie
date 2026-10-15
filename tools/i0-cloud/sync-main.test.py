@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import unittest
@@ -35,6 +36,39 @@ ENTRY_JS = "/assets/index-test.js"
 
 def sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+class GithubResponse(io.BytesIO):
+    status = 200
+
+    def __init__(self, content: bytes, url: str) -> None:
+        super().__init__(content)
+        self.url = url
+        self.headers = {"Content-Length": str(len(content))}
+
+    def geturl(self) -> str:
+        return self.url
+
+    def getcode(self) -> int:
+        return self.status
+
+
+def source_archive(entries: list[tuple[str, bytes | None, str | None]]) -> bytes:
+    output = io.BytesIO()
+    with tarfile.open(fileobj=output, mode="w:gz") as archive:
+        for name, content, target in entries:
+            entry = tarfile.TarInfo(name)
+            if target is not None:
+                entry.type = tarfile.SYMTYPE
+                entry.linkname = target
+                archive.addfile(entry)
+            elif content is None:
+                entry.type = tarfile.DIRTYPE
+                archive.addfile(entry)
+            else:
+                entry.size = len(content)
+                archive.addfile(entry, io.BytesIO(content))
+    return output.getvalue()
 
 
 class DeploymentSynchronizerTests(unittest.TestCase):
@@ -72,7 +106,7 @@ class DeploymentSynchronizerTests(unittest.TestCase):
         self.node = self.root / "node/bin"
         self.node.mkdir(parents=True)
         self.config = {
-            "repositoryUrl": "https://example.invalid/team/xunjie.git",
+            "repositoryUrl": "https://github.com/example-team/xunjie.git",
             "releasesDirectory": str(self.releases),
             "currentLink": str(self.current),
             "workDirectory": str(self.work),
@@ -183,12 +217,135 @@ class DeploymentSynchronizerTests(unittest.TestCase):
         self.assertEqual(manifest["entryJs"], ENTRY_JS)
         self.assertEqual(manifest["staticSha256"], self.synchronizer.release_manifest(staging, NEW_COMMIT, TREE)["staticSha256"])
 
+    @unittest.skipUnless(os.name == "posix", "the Linux build uses the existing pwd account")
+    def test_build_reuses_running_production_dependencies_only_with_matching_lock(self) -> None:
+        package = b'{"type":"module","dependencies":{"zod":"fixed"}}\n'
+        locked = b'{"lockfileVersion":3,"dependencies":"fixed"}\n'
+        previous = self.old_release / "apps/teaching"
+        (previous / "package.json").write_bytes(package)
+        (previous / "package-lock.json").write_bytes(locked)
+        module = previous / "node_modules/zod/index.js"
+        module.parent.mkdir(parents=True)
+        module.write_bytes(b"export const runningProductionDependency = true;\n")
+        account = mock.Mock(pw_uid=1234, pw_gid=1234, pw_name="fixture-build-user", pw_dir=str(self.root))
+
+        for name, lock, reuse in (("matching", locked, True), ("changed", locked + b" ", False)):
+            with self.subTest(dependencies=name):
+                staging = self.work / ("staging-build-" + name)
+                for application in ("student", "teaching"):
+                    directory = staging / "apps" / application
+                    directory.mkdir(parents=True)
+                    (directory / "package.json").write_bytes(package)
+                    (directory / "package-lock.json").write_bytes(lock if application == "teaching" else locked)
+                calls = []
+
+                def checked(arguments, code, **kwargs):
+                    if arguments == [str(self.node / "node"), "--version"]:
+                        return "v24.21.0"
+                    calls.append((arguments, Path(kwargs["cwd"])))
+                    return ""
+
+                with mock.patch("pwd.getpwnam", return_value=account), mock.patch.object(
+                    self.synchronizer, "checked", side_effect=checked
+                ):
+                    sync_main.DeploymentSynchronizer.build(self.synchronizer, staging)
+                student_calls = [arguments for arguments, cwd in calls if cwd == staging / "apps/student"]
+                teaching_calls = [arguments for arguments, cwd in calls if cwd == staging / "apps/teaching"]
+                self.assertEqual(len(student_calls), 2)
+                self.assertTrue(any("ci" in arguments and "--include=dev" in arguments for arguments in student_calls))
+                self.assertTrue(any(arguments[-2:] == ["run", "build"] for arguments in student_calls))
+                copied = staging / "apps/teaching/node_modules/zod/index.js"
+                if reuse:
+                    self.assertEqual(copied.read_bytes(), module.read_bytes())
+                    self.assertEqual(teaching_calls, [])
+                else:
+                    self.assertFalse(copied.exists())
+                    self.assertEqual(len(teaching_calls), 1)
+                    self.assertIn("ci", teaching_calls[0])
+                    self.assertIn("--omit=dev", teaching_calls[0])
+
     def backup(self, current_release: Path) -> dict:
         self.assertEqual(Path(current_release).resolve(), self.old_release.resolve())
         destination = self.backup_directory / "before-deploy.sqlite"
         contents = self.database.read_bytes()
         destination.write_bytes(contents)
         return {"path": str(destination), "sha256": sha256(contents)}
+
+    def github_responses(self, ref: dict, commit: dict, archive: bytes):
+        prefix = "https://api.github.com/repos/example-team/xunjie/git/"
+        responses = {
+            prefix + "ref/heads/main": json.dumps(ref).encode(),
+            prefix + "commits/" + NEW_COMMIT: json.dumps(commit).encode(),
+            "https://codeload.github.com/example-team/xunjie/tar.gz/" + NEW_COMMIT: archive,
+        }
+
+        def open_response(request, **kwargs):
+            url = request.full_url if hasattr(request, "full_url") else request
+            self.assertIn(url, responses)
+            return GithubResponse(responses[url], url)
+
+        return open_response
+
+    def test_github_source_uses_exact_commit_and_extracts_only_deployment_inputs(self) -> None:
+        root = "xunjie-" + NEW_COMMIT
+        selected = {
+            "apps/student/src/main.ts": b"export const student = true;\n",
+            "apps/student/package-lock.json": b'{"lockfileVersion":3}\n',
+            "apps/teaching/server/main.ts": b"export const teaching = true;\n",
+            "apps/teaching/package-lock.json": b'{"lockfileVersion":3}\n',
+            "tools/i0-cloud/cloud-host.mjs": b"export const host = true;\n",
+        }
+        excluded = {"README.md": b"outside source", "docs/private.md": b"outside source", "tools/other.mjs": b"outside source"}
+        entries = [(root, None, None)] + [
+            (root + "/" + name, content, None) for name, content in {**selected, **excluded}.items()
+        ]
+        ref = {"ref": "refs/heads/main", "object": {"type": "commit", "sha": NEW_COMMIT}}
+        commit = {"sha": NEW_COMMIT, "tree": {"sha": TREE}}
+        staging = self.work / "staging-github-source"
+        staging.mkdir()
+        with mock.patch.object(
+            sync_main.urllib.request, "urlopen", side_effect=self.github_responses(ref, commit, source_archive(entries))
+        ) as requests:
+            self.assertEqual(sync_main.DeploymentSynchronizer.remote_commit(self.synchronizer), NEW_COMMIT)
+            self.assertEqual(
+                sync_main.DeploymentSynchronizer.fetch_source(self.synchronizer, staging, NEW_COMMIT), TREE
+            )
+        self.assertEqual(requests.call_count, 3)
+        for name, content in selected.items():
+            self.assertEqual((staging / name).read_bytes(), content)
+        for name in excluded:
+            self.assertFalse((staging / name).exists())
+        self.assertFalse((self.work / "source.git").exists())
+        self.assertEqual(list(self.work.glob("source-*.tar.gz")), [])
+        self.synchronizer.run.assert_not_called()
+
+    def test_github_source_rejects_wrong_identity_and_unsafe_archives(self) -> None:
+        root = "xunjie-" + NEW_COMMIT
+        valid_ref = {"ref": "refs/heads/main", "object": {"type": "commit", "sha": NEW_COMMIT}}
+        valid_commit = {"sha": NEW_COMMIT, "tree": {"sha": TREE}}
+        valid_entries = [(root, None, None), (root + "/apps/student/src/main.ts", b"source", None)]
+        cases = [
+            ("wrong-ref", {**valid_ref, "ref": "refs/heads/other"}, valid_commit, valid_entries),
+            ("invalid-branch-sha", {**valid_ref, "object": {"type": "commit", "sha": "invalid"}}, valid_commit, valid_entries),
+            ("wrong-object-type", {**valid_ref, "object": {"type": "tree", "sha": NEW_COMMIT}}, valid_commit, valid_entries),
+            ("wrong-commit-sha", valid_ref, {**valid_commit, "sha": LATER_COMMIT}, valid_entries),
+            ("invalid-tree-sha", valid_ref, {**valid_commit, "tree": {"sha": "invalid"}}, valid_entries),
+            ("wrong-archive-root", valid_ref, valid_commit, [("xunjie-" + OLD_COMMIT + "/apps/student/src/main.ts", b"source", None)]),
+            ("directory-traversal", valid_ref, valid_commit, valid_entries + [(root + "/apps/student/../../../../outside.txt", b"unsafe", None)]),
+            ("absolute-symlink", valid_ref, valid_commit, valid_entries + [(root + "/apps/student/src/unsafe.ts", None, "/etc/passwd")]),
+        ]
+        for name, ref, commit, entries in cases:
+            with self.subTest(case=name):
+                staging = self.work / ("staging-" + name)
+                staging.mkdir()
+                with mock.patch.object(
+                    sync_main.urllib.request, "urlopen", side_effect=self.github_responses(ref, commit, source_archive(entries))
+                ):
+                    with self.assertRaises(sync_main.DeploymentError):
+                        self.assertEqual(sync_main.DeploymentSynchronizer.remote_commit(self.synchronizer), NEW_COMMIT)
+                        sync_main.DeploymentSynchronizer.fetch_source(self.synchronizer, staging, NEW_COMMIT)
+                self.assertEqual(list(self.work.glob("source-*.tar.gz")), [])
+                self.assertFalse((self.work / "outside.txt").exists())
 
     def assert_previous_release(self) -> None:
         self.assertTrue(self.current.is_symlink())

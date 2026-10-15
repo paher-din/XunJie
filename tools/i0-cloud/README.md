@@ -17,7 +17,7 @@
 | `connection.example.json` | 连接字段示例；`registered=false` 与占位端口会被拒绝 |
 | `sshd-members.example.conf` | 页面与执行身份分离的 Match 结构示例，含不可直接安装的占位项 |
 | `sync-main.py` | 固定远程 main，构建精简生产运行包、备份、版本核对、切换与失败回退；`--status` 只读 |
-| `xunjie-main-sync.service` / `xunjie-main-sync.timer` | 低权限构建与服务器每分钟自动同步的服务模板 |
+| `xunjie-main-sync.service` / `xunjie-main-sync.timer` | 低权限构建与服务器每 5 分钟自动同步的服务模板 |
 
 维护者按私下部署记录核定实际路径、服务用户、节点绑定和访问权限。应用沿现有35表或显式启用的41表课程库及登记节点启动；两种模式均复用原组合并核对精确表结构；个人模型存储按获准配置启用，不复制旧个人模型库或 Key。运行时配置、机密、数据库、真实公钥 pin 和证书均不随源码分发。
 
