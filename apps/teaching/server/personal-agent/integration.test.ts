@@ -75,9 +75,10 @@ test('invalid image bytes, MIME spoofing, URLs and unsupported models are reject
 const messageHash=(message:{role:string;text:string;at?:string})=>createHash('sha256').update(JSON.stringify([message.role,message.text,message.at??null])).digest('hex');
 const immediateTransport:CompatibleTransport={async complete(){return {text:'actual fake transport result'};},async test(){return {ok:true,latencyMs:1,modelCount:1};}};
 
-async function setup(transport:CompatibleTransport=immediateTransport){
+async function setup(transport:CompatibleTransport=immediateTransport,
+  readStudentTasks?:(userId:string)=>{tasks:{assignmentId:string;courseId:string;courseName?:string;title:string;availability:'active'|'paused'}[];hasMore:boolean}){
   const directory=mkdtempSync(join(tmpdir(),'xunjie-personal-integration-'));
-  const service=createPersonalAgentService({directory,transport,authorize(request){
+  const service=createPersonalAgentService({directory,transport,...(readStudentTasks?{readStudentTasks}:{}),authorize(request){
     const user=request.headers['x-test-user'];if(typeof user!=='string')throw new ApiError('UNAUTHENTICATED');return user;
   }}),app=createApp();service.register(app);await app.ready();
   const request=async(method:'GET'|'POST',url:string,payload?:unknown,user='alice')=>{
@@ -88,6 +89,36 @@ async function setup(transport:CompatibleTransport=immediateTransport){
   return {directory,service,app,request,cleanup};
 }
 
+test('task question receives current account assignments without inventing completion, while unrelated chat sends no task data',async t=>{
+  const prompts:unknown[]=[];const reads:string[]=[];
+  const fixture=await setup({...immediateTransport,async complete(input){prompts.push(input.messages);return {text:'synthetic reply'};}},userId=>{
+    reads.push(userId);
+    return {tasks:[{assignmentId:'own-assignment',courseId:'course-c',courseName:'C',title:`${userId} 的 TextScope Core`,availability:'active'}],hasMore:false};
+  });
+  t.after(fixture.cleanup);const {request}=fixture;
+  await request('POST','/api/model-settings',settings());
+  await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'你好',requestKey:'hello'});await pause();
+  assert.deepEqual(reads,[]);
+  assert.doesNotMatch(JSON.stringify(prompts[0]),/own-assignment|TextScope Core/);
+  await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'我现在有什么任务还没完成',requestKey:'tasks'});await pause();
+  assert.deepEqual(reads,['alice']);
+  assert.match(JSON.stringify(prompts[1]),/own-assignment|TextScope Core/);
+  assert.match(JSON.stringify(prompts[1]),/完成状态未知/);
+});
+
+test('task lookup failure rejects the turn before recording a question or calling the provider',async t=>{
+  let calls=0;
+  const fixture=await setup({...immediateTransport,async complete(){calls++;return {text:'unexpected'};}},()=>{
+    throw new Error('Synthetic course read failed');
+  });
+  t.after(fixture.cleanup);const {request}=fixture;
+  await request('POST','/api/model-settings',settings());
+  const failed=await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'我现在有什么任务还没完成',requestKey:'tasks-failure'});
+  assert.equal(failed.status,503);
+  assert.deepEqual((await request('GET','/api/agent/conversations')).body.data,[]);
+  assert.equal(calls,0);
+});
+
 test('an inline image above Fastify default body size remains sendable and durable after a service restart',async t=>{
   const fixture=await setup();t.after(fixture.cleanup);const {request,directory}=fixture;
   await request('POST','/api/model-settings',settings({providers:[{...provider,models:[{...provider.models[0],inputTypes:['image']}]}]}));
@@ -97,9 +128,10 @@ test('an inline image above Fastify default body size remains sendable and durab
   const accepted=await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'inspect',images:[large],requestKey:'large'});
   assert.equal(accepted.status,200);await pause();await fixture.service.close();
   const restarted=createPersonalAgentService({directory,transport:immediateTransport,authorize(){return 'alice';}}),app=createApp();restarted.register(app);await app.ready();
-  t.after(async()=>{await restarted.close();await app.close();});
-  const restored=(await app.inject({method:'GET',url:`/api/agent/conversations/${accepted.body.data.conversationId}`})).json();
-  assert.deepEqual(restored.data.messages[0].images,[large]);
+  try {
+    const restored=(await app.inject({method:'GET',url:`/api/agent/conversations/${accepted.body.data.conversationId}`})).json();
+    assert.deepEqual(restored.data.messages[0].images,[large]);
+  } finally { await restarted.close(); await app.close(); }
 });
 
 test('personal settings use CAS, authenticated ownership and encrypted persistent secrets; public reads never return a key',async t=>{

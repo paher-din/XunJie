@@ -22,3 +22,12 @@
 - 最终本机 Node 24.15、Google Chrome 合成 HTTP 协议：`CI=1 XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_E2E_PREP_PORT=5741 XUNJIE_E2E_REAL_PORT=5742 XUNJIE_E2E_RESTART_PORT=5743 npm run test:e2e -- personalAgent.spec.ts --reporter=dot`，17/17 通过，含原完整独立聊天回归。未安装的 Playwright 自带 Chromium 初次启动失败，转用本机 Chrome；整组中途一条旧测试因无课程 fixture 被页面提示遮挡，修正 fixture 后 17/17。
 - `apps/student`: `npm run typecheck` 通过；`npm test -- --reporter=dot` 为 54 文件/657 项通过；`npm run build` 通过，保留原大 chunk 提示。仓库根 `node tools/a0-review/check.mjs` 的 `errors=[]`；`git diff --check` 通过。
 - 本轮测试只用隔离合成 HTTP/Chrome，没有对现有 HTTPS 宿主部署，也没有调用真实供应商或操作真人学习记录；真实服务器数据/模型回复仍按已有批准入口另行验收。产品基线及 MVP_SPEC §10 待授权维护者汇总。
+
+## 2026-10-15 追加授权：主线与云端
+
+- Robert 完成浏览器手工试用后明确回复“可以，没问题。你可以合并到main然后推送，并且同步云端的那个部署”。本节记录后续实际交付；上节“尚未部署”为原本地验证时点。
+- 写入前 `origin/main@956f527` 与本分支 `68f5ae9` 仅差本任务提交，远端主线是本分支祖先。`git push origin HEAD:refs/heads/main` 以快进方式将远端 `main` 更新至 `68f5ae91244bcfa52bc4493c284590e91c8cc3df`；`git ls-remote origin refs/heads/main` 精确回读一致。未修改其他工作树的本地 `main`。
+- 该提交的学生前端重新执行 `npm run build` 通过，产物 `index.html` SHA256 为 `79ca1c0427c78a4fae8885ad84f22d5305907351f62a0ecf553e39e83ca4df27`，入口为 `assets/index-BfE2hvqL.js`。本地构建只作来源证据，不代表云端已上线。
+- 云端另有获授权的[统一整包部署任务](I0-UI_CLOUD_MAIN_DEPLOY.md)接入远端 `main`，包括前后端构建、原子切换、健康检查和回退。本任务没有单独覆盖静态目录，也没有改数据库、密钥或运行配置。首轮网络拉取、构建内存与 SQLite 依赖准备的失败和修复均由该部署任务记录；旧应用在切换前保持在线。
+- 统一部署先于 21:17 发布包含本修复的 `5989b96e21eb9d6ef68a14cf7c0636edad079511`；21:24 定时任务自动启动，约 21:26 发布合并部署 PR 后的 `ce2cd4f0be074b357db78c1633a2313e1de59d40`。当时 `remoteCommit == deployedCommit`、`upToDate=true`、`serviceActive=true`，原数据库、账号与学习记录保留；真实 HTTPS 浏览器刷新后原学生会话、2 门课程、7 个分配任务和旧对话可见。本任务另在既有 HTTPS 转发入口只读打开页面，确认首页与新前端资源加载，没有代学生发送真实模型问题。
+- 后续远端 `main` 又因其他已合并任务前进，本记录提交也会产生新的提交号；交付时以远端最新 `main`、云端 `remoteCommit/deployedCommit` 和实际页面再次核对。本轮合成协议浏览器通过不替代真实模型或真人学习验收，产品基线与 MVP_SPEC §10 仍待授权维护者汇总。

@@ -1,6 +1,6 @@
 # DL-UI：ALU 任务去重与虚拟板流程核对
 
-日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：当前 Agent。状态：分支实现、专项验证及现节点合成复核完成，待合并与部署。
+日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：当前 Agent。状态：分支实现、专项验证及现节点合成复核完成，主线整合与云端部署进行中。
 
 ## 1. 依据、范围与授权
 
@@ -49,3 +49,9 @@ Robert 要求解释课程任务列表中的重复卡片，只保留不重复的�
 ## 4. 交付
 
 初次交付提交 `apps/student/src/workspace/home.ts`、`apps/student/e2e/homeEntry.spec.ts`、`apps/student/README.md` 与本文；后续现节点复核追加上述证据与当前入口文档。分支 `codex/alu-task-dedupe-flow` 以 `origin/main@5989b96` 为基线，未更改截图中的运行服务。产品基线及 MVP_SPEC §10 如需汇总，待授权维护者汇总。
+
+### 2026-10-15 主线整合与部署前核对
+
+Robert 已明确要求合并本 PR 并按本机 `xunjie-cloud-deploy` Skill 同步云端。整合时远程 `main@b71a26c2cd2807544352953ce23a1808b980e4e5` 已包含云端自动同步部署器、独立 Agent 任务上下文及新的产品入口版根 README。PR #99 与主线仅在根 README 发生文本冲突：保留主线产品入口版；旧 3444 宿主的退役说明仍由 `tools/i0-hdl/README.md`、`apps/student/README.md` 和本文承载。相对于该 main，净写集仍是本任务的首页去重、专项测试、证据与运行说明；主线既有服务端与规范内容未做本任务改写。
+
+合并前重跑 `rtk npm run typecheck`、独立端口 5861/5862/5863 的 Chrome `homeEntry.spec.ts hdlRealWorkflow.spec.ts --workers=2`（16/16）及 `rtk npm run build`，均通过；构建保留 Vite 已有 public 资源引用与大 chunk 提示。根目录 `node tools/a0-review/check.mjs` 返回 `errors: []`、`businessTests: NOT_EXECUTED`，`git diff --check` 通过。此轮未重跑服务端完整测试，云端同步器将继续执行自己的构建、切换与健康核对；真实页面在部署后另验。

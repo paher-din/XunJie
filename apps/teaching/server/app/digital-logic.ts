@@ -76,7 +76,7 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  let host:ReturnType<typeof attachOriginalJobHost>;
  const compose=(base:TutoringAppOptions)=>options.review?createReviewApp({...base,review:options.review}):createTutoringApp(base);
  const personal:ReturnType<typeof personalModels>|undefined=options.personalModels?personalModels(options.personalModels,
-  (request):string=>options.db.withTransaction(tx=>instance.access.authenticatedUserInTransaction(request,tx)),options.studentHelp):undefined;
+  (request):string=>options.db.withTransaction(tx=>instance.access.authenticatedUserInTransaction(request,tx)),options.studentHelp,options.db):undefined;
  const instance:Awaited<ReturnType<typeof compose>>=await compose({...options,studentHelp:{...(personal?.studentHelp??options.studentHelp),readHdlContext:(...args)=>{
   if(!admission.accepting)throw new ApiError('DEPENDENCY_UNAVAILABLE');return readAuthorizedHdlHelp(...args);
  }},...(runner?{runner}:{}),...(execution?{execution}:{}),currentGeneration,hdl,checkReadiness:async()=>{try{host.checkConsumerReady();if(execution)return true;await refresh();const c=await availableRuntime(runner);host.checkConsumerReady();return !options.runner||Boolean(c&&c.recoveryGeneration===generation);}catch{return false;}},async queryExecution(request,blueprintId){
