@@ -26,8 +26,21 @@
 - `rtk npm run typecheck`：通过；`rtk npm run build`：通过（含再次类型检查）。构建保留既有大块体积提示，无构建错误。
 - `rtk npm test -- src/components/dashboard/widgets.test.ts`：4/4。核对未知完成数与真实0/50%、缺时长与真实零时长日期、缺趋势/XP不生成演示数据。
 - `XUNJIE_E2E_BROWSER_CHANNEL=chrome`，独立端口5701/5702/5703、`CI=1`，`node node_modules/@playwright/test/cli.js test homeEntry.spec.ts prep.spec.ts --grep '真实首页|没有学生课程|列表故障|列表401|首页准备入口' --workers=1`：5/5。覆盖原看板/每日每周/托盘添加移出、真实总数、搜索与清除焦点、暂停筛选、原卡路由、空与失败、过期/退出/迟到响应和账号布局隔离，以及原准备首页。正常首页4例替换公开HTTP响应，是前端协议验证，另1例为准备fixture，不计本机真实宿主验收。
-- 对照 Design 原组件及本地 DESIGN 的窄审查：未发现需修复项。无额外依赖、后端接口或数据写入。开发服务仍报告既有 public 品牌JSON导入提示，本批未改该处。
+- 对照 Design 原组件及本地 DESIGN 的窄审查：未发现需修复项。无额外依赖或后端接口；首页仍仅沿原Session/分配/活动读取，不新增业务写入。开发服务仍报告既有 public 品牌JSON导入提示，本批未改该处。
 
-随后在正常本机 HTTPS 页面复验原看板、编辑托盘、任务入口/搜索/返回并截图；不重跑执行或模型。
+## 本机正常 HTTPS 复验
+
+源码固定提交 `a8137e9`。正常构建入口 `/assets/index-C5JF8YnX.js`，SHA256 `b23bf824774b1a3d099f64d78101a0ab452f5477863c4b5f49fcdd34b418a35d`。只替换原WSL静态目录的构建文件，资源先复制、index最后复制；旧index备份 `/opt/xunjie-ui-local/index-before-dashboard-reconnect.html`，旧hash资源保留，恢复该index可回滚。原宿主/35表库/执行VM/配置/凭据均未调整。
+
+在原 `https://127.0.0.1:3444` 浏览器标签、原已登录合成账号 `synthetic-robert-student-a` 操作并观察：
+
+- 首页恢复原问候/当日日期、学习看板、默认两卡与课程顺序；Session本人有2门课程、1个C分配，完成数/时长仍明确未知。
+- 每周切换仍显示缺统计，原编辑托盘可打开；返回每日/结束编辑，未改变原默认布局。
+- 真实C课程内输入不匹配标题出现原空态；清除后按实际目标“解释文本统计规则”搜索命中原卡，清除恢复列表，任务卡圆角实测8px。
+- 看板内“进入任务”到原分配 `fb0983e4-81bc-487b-8b50-7ffe984c38bb`，原C工作区显示真实分配/就绪、确认与冻结均v3，返回恢复课程列表；最终留在首页。未修改、保存、冻结、运行或求助，不重跑执行/模型，不计学生学习行为。
+
+页面与事实：[首页截图](evidence/ui-home-dashboard-20261015/home.png)、[课程任务截图](evidence/ui-home-dashboard-20261015/course-tasks.png)、[编辑托盘截图](evidence/ui-home-dashboard-20261015/edit-tray.png)、[浏览器事实](evidence/ui-home-dashboard-20261015/browser-facts.json)。这是开发合成数据下的真实宿主浏览器复验，与前述协议/fixture检查分开。
+
+文档检查 `node tools/a0-review/check.mjs`：124篇、1935条内部链接、`errors=[]`；`git diff --check`通过。无本轮实现/验证失败，无本批未完成验收项；未执行模型/执行器回归，复用既有交付。本批在原前端分支提交并沿负责人既有授权推送PR/合并；PR号随后补记。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。
