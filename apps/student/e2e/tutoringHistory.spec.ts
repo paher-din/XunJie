@@ -26,6 +26,7 @@ async function shown(page:Page) {
 async function openHistory(page:Page) {
   await expect(page.locator('.cw')).toBeVisible()
   await page.getByRole('button',{name:'就项目求助',exact:true}).click()
+  await page.getByText('查看教学历史与原始记录',{exact:true}).click()
   await expect(page.getByTestId('tutor-history-message')).toHaveCount(1)
 }
 const receiptWrites=(page:Page) => {
@@ -119,6 +120,7 @@ test('刷新缓存待重新授权；正常回取后退出账号，真实401清�
   })
   await other.reload();await ready;await expect(other.locator('.cw')).toBeVisible()
   await other.getByRole('button',{name:'就项目求助'}).click()
+  await other.getByText('查看教学历史与原始记录',{exact:true}).click()
   await expect(other.getByTestId('tutor-history-message')).toHaveCount(0)
   await expect(other.getByTestId('tutor-history')).toContainText('正在核对历史读取权限')
   release();await expect(other.getByTestId('tutor-history-message')).toHaveCount(1)

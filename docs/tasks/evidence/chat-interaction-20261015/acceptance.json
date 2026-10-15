@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-15",
+  "environment": "owned synthetic HTTPS localhost:3444",
+  "backendHead": "b3b279b28a0065ab57aa888aed3c5c919ee34226",
+  "frontendHead": "6bc0ec6bf7e20254257ed3a2bad70f9141cb47ab",
+  "frontendEntry": "index-BfdJuFQ2.js",
+  "indexSha256": "8c30ad4b180b7ccf23eab42ce5b0c765b7bdaf2a0652ef6acfe938f65a8bcd5f",
+  "deployment": {"sourceAndStaticFilesVerified": 623, "finalStaticFilesVerified": 181, "courseBusinessTables": 41, "personalTables": 4, "schemaMigration": false, "configurationAndCredentialBytesPreserved": true, "vmRestarted": false, "live": 200, "ready": 200},
+  "independentChat": {
+    "conversationId": "6f014f5e-c3f4-405e-95a9-c4e852641b87",
+    "turnId": "da78c52b-fe50-48e4-afd1-1085d8f1078a",
+    "status": "settled", "callCount": 1, "refreshDuringGenerationRecoveredOriginalTurn": true,
+    "listTableCodeRendered": true, "finalReloadPreserved": true,
+    "model": "deepseek-flash", "reasoningEffort": "max", "contextWindow": 300000, "maxOutputTokens": 131072, "totalDeadline": null,
+    "usage": {"status": "actual", "inputTokens": 117, "outputTokens": 2463}
+  },
+  "workspaceChat": {
+    "jobId": "950ccf27-481f-41a1-92b0-28137807c5f6",
+    "messageId": "1eee7512-1df3-401a-9b71-3de4a52b923a",
+    "status": "succeeded", "calls": 1, "elapsedMs": 8547,
+    "usage": {"status": "actual", "inputTokens": 1843, "outputTokens": 986},
+    "observedRunningThenAuthorizedFullBody": true,
+    "expandedWidthPx": 1120, "visibleMessageNavigationCount": 2,
+    "finalReloadPreserved": true, "receivedConfirmed": true, "localDisplayFact": true, "acknowledged": false,
+    "confirmedWorkVersionBeforeAndAfter": 3, "studentWorkEditedOrRun": false
+  },
+  "automated": {
+    "chatBrowser": {"passed": 46, "failed": 0, "skipped": 0},
+    "mergedFrontendUnit": {"passed": 647, "failed": 0},
+    "mergedBackendFocused": {"passed": 36, "failed": 0},
+    "mergedTeacherReadabilityHdlBrowserInitial": {"passed": 11, "failed": 1, "failure": "60-second total test timeout in existing 60-round virtual-clock HDL test"},
+    "hdlClockRecheck": {"passed": 1, "testBudgetSeconds": 120, "actualSeconds": 49.7, "assertionsUnchanged": true},
+    "finalHistoryNavigationReadability": {"passed": 1, "failed": 0}
+  },
+  "boundaries": ["isolated synthetic checks", "workspace raw unvalidated model chunks are not delivered", "not full repository browser acceptance", "not real-student or teaching-effect acceptance", "no repeat paid generation after final static-only change"]
+}

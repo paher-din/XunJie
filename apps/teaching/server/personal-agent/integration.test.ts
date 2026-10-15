@@ -21,6 +21,25 @@ const settings=(overrides:Record<string,unknown>={})=>({expectedRevision:0,enabl
 const pause=()=>new Promise<void>(resolve=>setImmediate(resolve));
 const image={name:'sample.png',dataUrl:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC'};
 
+test('history identifies only the original live turn for refresh recovery; reads never call the provider',async t=>{
+  let release!:(value:{text:string})=>void,calls=0;
+  const fixture=await setup({...immediateTransport,async complete(input){calls++;input.onText?.('first chunk');return new Promise(resolve=>{release=resolve;});}});
+  t.after(fixture.cleanup);const {request}=fixture;
+  await request('POST','/api/model-settings',settings());
+  const accepted=(await request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'recover',requestKey:'recover-original'})).body.data;
+  await pause();
+  const path=`/api/agent/conversations/${accepted.conversationId}`;
+  const history=(await request('GET',path)).body.data;
+  assert.equal(history.activeTurnId,accepted.turnId);
+  assert.equal(history.messages.at(-1).text,'first chunk');
+  assert.equal((await request('GET',path,undefined,'bob')).status,403);
+  assert.equal((await request('GET',`/api/agent/turns/${history.activeTurnId}`)).body.data.turnId,accepted.turnId);
+  assert.equal(calls,1);
+  release({text:'first chunk completed'});await pause();
+  assert.equal((await request('GET',path)).body.data.activeTurnId,undefined);
+  assert.equal(calls,1);
+});
+
 test('image-only messages reach the provider as pixels, survive history/edit/retry and retain account isolation',async t=>{
   const requests:any[]=[];
   const fixture=await setup({...immediateTransport,async complete(input){requests.push(input.messages);return {text:'vision reply'};}});

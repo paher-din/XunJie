@@ -1,0 +1,18 @@
+.t-settings-layout { display: grid; grid-template-columns: 152px minmax(0, 1fr); gap: 32px; max-width: 1080px; align-items: start; }
+.t-settings-nav { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; }
+.t-settings-content.st-body-in { width: 100%; min-width: 0; max-width: 880px; margin: 0; padding: 0 0 32px; }
+.t-settings-content .st-section { min-width: 0; }
+.t-settings-content .st-section > p { font-size: 13px; line-height: 1.9; margin: 10px 0; }
+.t-settings-content .st-section > button + button { margin-left: 8px; }
+.t-settings-content .st-provider-head, .t-settings-content .st-provider-name { flex-wrap: wrap; }
+.t-settings-content .st-provider-info { min-width: 120px; }
+.t-settings-content .st-provider-url, .t-settings-content .st-model-chip { max-width: 100%; overflow-wrap: anywhere; }
+.t-settings-open { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; color: var(--accent); }
+@media (max-width: 1100px) {
+  .t-settings-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .t-settings-nav { position: static; flex-direction: row; flex-wrap: wrap; }
+}
+@media (max-width: 760px) {
+  .t-settings-content .st-provider-acts { width: 100%; justify-content: flex-start; }
+  .t-settings-content .st-model-chip { flex-wrap: wrap; }
+}

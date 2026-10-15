@@ -27,6 +27,7 @@ export function UserMessage({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(text)
   const [copied, setCopied] = useState(false)
+  const [copyError,setCopyError]=useState(false)
   const fieldRef = useRef<HTMLTextAreaElement>(null)
 
   // 编辑区跟内容长，不出内层滚动条
@@ -98,14 +99,15 @@ export function UserMessage({
           <button
             aria-label={copied ? '已复制' : '复制这条消息'}
             title={copied ? '已复制' : '复制'}
-            onClick={() => {
-              navigator.clipboard.writeText(text).catch(() => {})
-              setCopied(true)
-              window.setTimeout(() => setCopied(false), 1500)
+            onClick={async () => {
+              setCopied(false);setCopyError(false)
+              try {await navigator.clipboard.writeText(text);setCopied(true);window.setTimeout(() => setCopied(false), 1500)}
+              catch {setCopyError(true)}
             }}
           >
             <Icon className={copied ? 'copied' : ''} name={copied ? 'check' : 'copy'} size={16} />
           </button>
+          {copyError&&<span role="status">复制失败，请选择正文手动复制</span>}
           {onEdit && (
             <button
               aria-label="编辑这条消息"

@@ -9,7 +9,7 @@ vi.mock('../workspace/http', () => ({ apiGet: fixture.get, apiPost: fixture.post
 vi.mock('../workspace/session', () => ({ getSessionState: () => fixture.session }))
 vi.mock('../lib/modelSettings', () => ({ getModelSettings: () => ({
   loading: false, saving: false, data: { enabled: true, callsEnabled: true, defaultModelId: 'custom:p:m' },
-}) }))
+}), reloadOnModelConfigConflict: async () => false }))
 import { learningApi } from './agentApi'
 
 const view = (id: string, phase: string) => ({ conversationId: `conversation-${id}`, turnId: id,
@@ -26,6 +26,37 @@ beforeEach(() => {
 afterEach(() => { fixture.session.epoch++ })
 
 describe('personal agent client boundaries', () => {
+  it('keeps recovery scoped to the original conversation after visiting another chat', async () => {
+    fixture.post.mockResolvedValueOnce(view('interrupted','streaming')).mockResolvedValueOnce(view('other','settled'))
+    fixture.get.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce(view('interrupted','settled'))
+    await expect(learningApi.sendMessageStream({conversationId:'conversation-interrupted',text:'original',onUpdate:vi.fn()})).rejects.toThrow('连接中断')
+    await expect(learningApi.sendMessageStream({conversationId:'conversation-other',text:'other',onUpdate:vi.fn()})).resolves.toHaveProperty('conversationId','conversation-other')
+    await expect(learningApi.recoverTurn!({conversationId:'conversation-interrupted',onUpdate:vi.fn()})).resolves.toHaveProperty('conversationId','conversation-interrupted')
+    expect(fixture.post).toHaveBeenCalledTimes(2)
+    await expect(learningApi.recoverTurn!({conversationId:'missing',onUpdate:vi.fn()})).rejects.toThrow('原回合未找到')
+  })
+  it('lost acceptance ACK retries the original key instead of generating another turn', async () => {
+    fixture.post.mockRejectedValueOnce(new Error('lost ACK')).mockResolvedValueOnce(view('lost', 'settled'))
+    await expect(learningApi.sendMessageStream({ conversationId: null, text: 'original', onUpdate: vi.fn() })).rejects.toThrow()
+    const original = fixture.post.mock.calls[0][1]
+    expect(learningApi.recoverTurn).toBeTypeOf('function')
+    await learningApi.recoverTurn!({ conversationId: null, onUpdate: vi.fn() })
+    expect(fixture.post.mock.calls[1][1]).toEqual(original)
+  })
+
+  it('restores an in-progress turn by GET and retains its original stop target', async () => {
+    const end=deferred<ReturnType<typeof view>>()
+    fixture.get.mockResolvedValueOnce(view('restored','streaming')).mockReturnValueOnce(end.promise)
+    fixture.post.mockResolvedValue(view('restored','stopped'))
+    expect(learningApi.recoverTurn).toBeTypeOf('function')
+    const update=vi.fn()
+    const result=learningApi.recoverTurn!({conversationId:'conversation-restored',turnId:'restored',onUpdate:update})
+    await vi.waitFor(()=>expect(update).toHaveBeenCalledTimes(1))
+    learningApi.stopTurn()
+    expect(fixture.post).toHaveBeenCalledWith('/agent/turns/restored/stop',{},expect.anything())
+    end.resolve(view('restored','stopped'));await result
+    expect(fixture.post.mock.calls.every(c=>c[0].endsWith('/stop'))).toBe(true)
+  })
   it('preserves unknown usage instead of projecting zero; retains actual numeric usage', async () => {
     const conversation = { id: 'c', title: '问题', updatedAt: '2026-10-15T00:00:00Z', messages: [{ role: 'agent', text: '回答' }] }
     fixture.get.mockResolvedValueOnce(conversation).mockResolvedValueOnce({ ...conversation, contextTokens: 0 })

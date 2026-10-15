@@ -19,6 +19,62 @@ async function install(page: Page, handle: (route: Route, path: string) => Promi
   })
 }
 
+test('思考到正文逐块可见，生成中刷新接回原回合，停止不新增模型请求',async({page})=>{
+  const cid='recover-stream',tid='original-stream'
+  let phase='waiting',text='',calls=0
+  const view=()=>({conversationId:cid,turnId:tid,message:{role:'agent',text,phase,at}})
+  await install(page,async(route,path)=>{
+    if(path==='/api/model-settings'){await envelope(route,config());return true}
+    if(path==='/api/agent/turns'){calls++;await envelope(route,view());return true}
+    if(path===`/api/agent/turns/${tid}/stop`){phase='stopped';await envelope(route,view());return true}
+    if(path===`/api/agent/turns/${tid}`){await envelope(route,view());return true}
+    if(path===`/api/agent/conversations/${cid}`){await envelope(route,{id:cid,title:'流式恢复',updatedAt:at,
+      ...(!['stopped','settled'].includes(phase)?{activeTurnId:tid}:{}),messages:[{role:'user',text:'测试逐块输出',at},view().message]});return true}
+    return false
+  })
+  await page.goto(`${REAL_URL}/#/agent`)
+  await page.getByRole('textbox',{name:'向 Agent 提问'}).fill('测试逐块输出')
+  await page.getByRole('button',{name:'发送消息',exact:true}).click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/agent/${cid}`)
+  phase='thinking'
+  await expect(page.locator('.turn-thinklabel')).toHaveText('正在思考')
+  phase='streaming';text='第一段中文 🌱\n\n```js\nconst value = 42;'
+  await expect(page.locator('.chat-message.agent .turn-body')).toContainText('第一段中文 🌱')
+  await expect(page.locator('.chat-message.agent pre')).toContainText('const value = 42;')
+  await page.reload()
+  await expect(page.locator('.chat-message.user')).toHaveCount(1)
+  await expect(page.locator('.chat-message.agent')).toHaveCount(1)
+  await expect(page.getByRole('button',{name:'停止生成',exact:true})).toBeVisible()
+  text+='\n```\n\n| 项 | 值 |\n| --- | --- |\n| 当前 | 42 |'
+  await expect(page.locator('.chat-message.agent table')).toContainText('42')
+  await page.getByRole('button',{name:'停止生成',exact:true}).click()
+  await expect(page.locator('.turn-stopline')).toBeVisible()
+  await expect(page.locator('.chat-message.agent pre')).toContainText('const value = 42;')
+  expect(calls).toBe(1)
+})
+
+test('首条发送丢ACK可以核对原请求，原键和原问题保持一致',async({page})=>{
+  const bodies:unknown[]=[];let finished=false
+  const reply={role:'agent',text:'核对回取的原回答',phase:'settled',at}
+  await install(page,async(route,path)=>{
+    if(path==='/api/model-settings'){await envelope(route,config());return true}
+    if(path==='/api/agent/turns'){
+      bodies.push(route.request().postDataJSON())
+      if(bodies.length===1){await route.abort('failed');return true}
+      finished=true;await envelope(route,{conversationId:'lost-ack',turnId:'same-turn',message:reply});return true
+    }
+    if(path==='/api/agent/conversations/lost-ack'){await envelope(route,{id:'lost-ack',title:'原问题',updatedAt:at,messages:finished?[{role:'user',text:'不能重复生成',at},reply]:[]});return true}
+    return false
+  })
+  await page.goto(`${REAL_URL}/#/agent`)
+  await page.getByRole('textbox',{name:'向 Agent 提问'}).fill('不能重复生成')
+  await page.getByRole('button',{name:'发送消息',exact:true}).click()
+  await page.getByRole('button',{name:'核对原回合',exact:true}).click()
+  await expect(page.locator('.chat-message.agent')).toContainText('核对回取的原回答')
+  expect(bodies).toHaveLength(2);expect(bodies[1]).toEqual(bodies[0])
+  await expect(page.locator('.chat-message.user')).toHaveCount(1)
+})
+
 test('图片真实协议发送原始像素，纯图片可发且刷新可恢复；无效附件保留草稿',async({page})=>{
   const current=config();current.providers[0].models[0].inputTypes=['image'] as never[]
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC','base64')
@@ -276,7 +332,8 @@ test('首轮完成补上会话地址时排队问题只发送一次并继续显�
 })
 
 
-test('服务端未返回实际用量时不显示零用量或演示容量环', async ({ page }) => {
+test('剪贴板被拒绝时不假报复制成功，服务端用量未知时不显示零', async ({ page }) => {
+  await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw new Error('denied')}}}))
   await install(page, async (route, path) => {
     if (path === '/api/model-settings') { await envelope(route, config()); return true }
     if (path === '/api/agent/conversations/unknown-usage') {
@@ -290,6 +347,9 @@ test('服务端未返回实际用量时不显示零用量或演示容量环', as
   await expect(page.locator('.chat-message.agent')).toContainText('已有模型回答')
   await expect(page.locator('.ctx-ring')).toHaveCount(0)
   await expect(page.locator('.chat-disclaimer')).not.toContainText('实际用量')
+  await page.getByRole('button',{name:'复制回复',exact:true}).click()
+  await expect(page.getByText('复制失败，请选择正文手动复制',{exact:true})).toBeVisible()
+  await expect(page.getByRole('button',{name:'已复制',exact:true})).toHaveCount(0)
 })
 
 for(const existing of [false,true])test(`${existing?'现有会话':'旧页'}配置版本不能悄悄换档发送，冲突后刷新选择并保留原问题`,async({page})=>{

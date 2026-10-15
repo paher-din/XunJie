@@ -15,3 +15,7 @@
 JSON 只包含合成对象 ID、摘要、方法/路径/状态和布局观测，不含密码、Cookie、CSRF、Key 或完整存储导出。C 的中途失败在 `D:/XunJie_Project/artifacts/teacher-live-c-20261015/failure-*.json`，HDL 在对应 `teacher-live-hdl-20261015`，均保留供追溯。
 
 HDL 原保存的消歧只对确切合成 Attempt/actor/版本/115 字符/摘要成立，并以 SQLite `mode=ro` 读取唯一原命令回执；未再次保存或换对象。这个一次性诊断分支在证据保留、原检查点确认后已从通用工具移除；最终工具的未知命令仍停止等待读取确认。移除后再从原检查点运行 C 19 项、HDL 20 项，全部通过；截图均等待学生反馈正文实际加载完毕。
+
+教师模型设置入口续作的[桌面](teacher-model-settings-protocol-desktop.png)与[390px](teacher-model-settings-protocol-mobile.png)截图来自 `teacher-model-settings.spec.ts` 的合成 HTTP 协议场景：真实页面复用学生控件，供应商、凭据和模型目录均为隔离测试数据，不表示已替用户保存真实 Key 或完成付费模型调用。相关授权和实现见任务 §7。
+
+最终统一运行版本的[真实读取结果](teacher-model-settings-live.json)、[桌面](teacher-model-settings-live-desktop.png)和[390px](teacher-model-settings-live-mobile.png)来自严格 TLS、独立 Chrome 的原合成教师账号。实际入口 Bfd、刷新和重新读取200、配置前后摘要不变，无配置或模型写入。这里展示该教师尚未添加供应商的实际空状态，与前述协议截图中的合成已配置状态分开。

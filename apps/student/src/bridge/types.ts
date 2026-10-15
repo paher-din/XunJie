@@ -270,6 +270,8 @@ export interface StoredGenCard extends GenCard {
 
 export interface Conversation {
   id: string
+  /** Original in-progress turn, for read-only recovery after reload. */
+  activeTurnId?: string
   title: string
   /** 最近一条消息的时间，ISO 字符串；历史时间流分组以它为准。 */
   updatedAt: string
