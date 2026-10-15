@@ -1,5 +1,5 @@
 import type { LearningApi } from './learningApi'
-import type { ChatMessage, ChatImage, Conversation, ConversationSummary } from './types'
+import type { ChatMessage, ChatImage, Conversation, ConversationSummary, AssignedTaskCard } from './types'
 import { learningApi as mock } from './mockAdapter'
 import { apiGet, apiPost } from '../workspace/http'
 import { PREP_BUILD } from '../workspace/mode'
@@ -17,7 +17,17 @@ function message(value: unknown): ChatMessage {
     || (m.phase !== undefined && !['waiting', 'thinking', 'streaming', 'settled', 'stopped', 'failed'].includes(m.phase))) throw new Error('聊天响应无效，请重新读取会话。')
   // 独立通道只接正文与实际状态，不从模型内容构造课程卡片、画像或生成 HTML。
   if(m.images!==undefined&&(!Array.isArray(m.images)||m.role!=='user'||m.images.some(image=>!image||typeof image.name!=='string'||typeof image.dataUrl!=='string'||!/^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+=*$/.test(image.dataUrl))))throw new Error('图片历史响应无效，请重新读取会话。')
+  let taskCard: AssignedTaskCard | undefined
+  if(m.taskCard!==undefined){
+    const card=m.taskCard
+    if(m.role!=='agent'||(m.phase!==undefined&&m.phase!=='settled')||!card||typeof card.assignmentId!=='string'||!card.assignmentId||card.assignmentId.length>128
+      ||typeof card.title!=='string'||!card.title||card.title.length>500||!['active','paused'].includes(card.availability)
+      ||(card.courseName!==undefined&&(typeof card.courseName!=='string'||card.courseName.length>500)))throw new Error('任务卡响应无效，请重新读取会话。')
+    taskCard={assignmentId:card.assignmentId,title:card.title,availability:card.availability,
+      ...(card.courseName?{courseName:card.courseName}:{})}
+  }
   return { role: m.role, text: m.text, ...(m.images?.length?{images:m.images.map(({name,dataUrl})=>({name,dataUrl}))}:{}), ...(typeof m.at === 'string' ? { at: m.at } : {}),
+    ...(taskCard?{taskCard}:{}),
     ...(m.phase ? { phase: m.phase } : {}), ...(m.failure && ['network', 'model', 'quota'].includes(m.failure.reason)
       ? { failure: { reason: m.failure.reason, ...(typeof m.failure.code === 'string' ? { code: m.failure.code } : {}) } } : {}) }
 }

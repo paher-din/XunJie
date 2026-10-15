@@ -26,6 +26,20 @@ beforeEach(() => {
 afterEach(() => { fixture.session.epoch++ })
 
 describe('personal agent client boundaries', () => {
+  it('keeps a verified single-task card in live and historical messages and rejects non-settled cards', async () => {
+    const taskCard = { assignmentId: 'assignment-a', courseName: '数字逻辑', title: '同步计数器', availability: 'active' }
+    fixture.post.mockResolvedValueOnce({ ...view('card', 'settled'), message: { role: 'agent', text: '同步计数器可先画状态图。', phase: 'settled', taskCard } })
+    const update = vi.fn()
+    const result = await learningApi.sendMessageStream({ conversationId: null, text: '同步计数器怎么做？', onUpdate: update })
+    expect(result.final.taskCard).toEqual(taskCard)
+    expect(update).toHaveBeenLastCalledWith(expect.objectContaining({ taskCard }))
+    fixture.get.mockResolvedValueOnce({ id: result.conversationId, title: '任务', updatedAt: '2026-10-15T00:00:00Z',
+      messages: [{ role: 'user', text: '同步计数器怎么做？' }, { role: 'agent', text: '同步计数器可先画状态图。', phase: 'settled', taskCard }] })
+    expect((await learningApi.getConversation(result.conversationId))?.messages[1].taskCard).toEqual(taskCard)
+    fixture.get.mockResolvedValueOnce({ id: 'bad', title: '任务', updatedAt: '2026-10-15T00:00:00Z',
+      messages: [{ role: 'agent', text: '处理中', phase: 'streaming', taskCard }] })
+    await expect(learningApi.getConversation('bad')).rejects.toThrow('任务卡响应无效')
+  })
   it('keeps recovery scoped to the original conversation after visiting another chat', async () => {
     fixture.post.mockResolvedValueOnce(view('interrupted','streaming')).mockResolvedValueOnce(view('other','settled'))
     fixture.get.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce(view('interrupted','settled'))
