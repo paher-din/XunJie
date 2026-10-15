@@ -15,7 +15,7 @@ XunJie 主仓库的学生端前端工程。首次内容由设计仓库 `XunJie_D
 
 教师“工作台设置 → 模型”（`/#/teacher/settings/model`）直接复用学生模型设置页：供应商、API Key、模型能力/上下文/最大输出、默认模型、思考强度、连接测试和个人启停均使用当前教师账号的后台配置。Key 留空保留原值，服务端读取仅返回脱敏状态，不与学生账号共享。开发教师预览不加载真实配置；教师项目设计的模型预算仍由原宿主开关控制。
 
-这些能力要求显式启用复核的 41 表教学宿主；已批准升级的本机环境使用 `tools/i0-hdl/xunjie-local.ps1 start -EnableReview`，入口为 `https://127.0.0.1:3444/#/teacher`。PAHER 共享库仍由共享数据任务维护，本轮没有升级或部署到该服务。教师模型预算保持关闭，项目从真实已确认范例进行手工设计。开发专用 `/#/teacher/preview` 仍提供隔离交互预览，示例数据不进入正式构建，也不补齐真实请求失败。具体授权、备份与验证见 [教师任务记录](../../docs/tasks/I1-TEACHER_UI_WORKBENCH.md)和[受控验证工具](../../tools/teacher-workflow/README.md)。
+这些能力要求显式启用复核的 41 表教学宿主；原本机环境与旧 PAHER 共享入口已退役，当前从负责人私下发放的云端共享入口进入 `/#/teacher`。原教师任务没有向当时的 PAHER 共享库部署；当前云端接收与状态见[云端任务](../../docs/tasks/I0-UI_CLOUD_SHARED_ENTRY.md)。教师模型预算保持关闭，项目从真实已确认范例进行手工设计。开发专用 `/#/teacher/preview` 仍提供隔离交互预览，示例数据不进入正式构建，也不补齐真实请求失败。原任务授权、备份与验证见 [教师任务记录](../../docs/tasks/I1-TEACHER_UI_WORKBENCH.md)和[受控验证工具](../../tools/teacher-workflow/README.md)。
 
 ## 运行
 
@@ -227,7 +227,7 @@ CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装�
 
 ## 已准备的本机真实 C / HDL 入口
 
-完整本机宿主、执行 VM、模型与启停命令见 [tools/i0-hdl](../../tools/i0-hdl/README.md)。从实际 Assignment 深链进入原登录页面；只有获准的 `execution.kind=hdl_board` 使用真实 HDL 分支。构建引用确认快照，装载引用成功 Build；板卡和有限 Trace 只展示原节点返回的四态信号与时间。普通 C 保留 Core/历史入口。
+原本机宿主的历史配置及仍保留的专用执行 VM 见 [tools/i0-hdl](../../tools/i0-hdl/README.md)；当前业务入口按负责人私下发放的云端连接资料使用。从实际 Assignment 深链进入原登录页面；只有获准的 `execution.kind=hdl_board` 使用真实 HDL 分支。构建引用确认快照，装载引用成功 Build；板卡和有限 Trace 只展示原节点返回的四态信号与时间。普通 C 保留 Core/历史入口。
 
 课程首页将同一学生、同一课程中标题、活动正文、材料、帮助政策和执行配置均相同的多次分配显示为一个任务入口；不同内容仍分别显示。重复分配的原深链及作品记录保持可访问。本次 ALU 列表去重与验证见 [任务记录](../../docs/tasks/DL-UI_ALU_TASK_DEDUP_20261015.md)。
 
