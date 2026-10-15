@@ -16,7 +16,7 @@
 
 ## 当前批次
 
-当前三项均已完成。新增首页接线与本机复验见[首页真实任务入口](I0-UI_REAL_HOME_ENTRY.md)；原 C 对象、回执顺序、新旧版本与固定包见[C 辅导与两课程整合](I0-UI_CORE_REAL_TUTOR_DELIVERY.md)，原批次交付为 [PR #80](https://github.com/paher-din/XunJie/pull/80)。
+当前三项均已完成。新增首页接线与本机复验见[首页真实任务入口](I0-UI_REAL_HOME_ENTRY.md)，交付入口为 [PR #82](https://github.com/paher-din/XunJie/pull/82)；原 C 对象、回执顺序、新旧版本与固定包见[C 辅导与两课程整合](I0-UI_CORE_REAL_TUTOR_DELIVERY.md)，原批次交付为 [PR #80](https://github.com/paher-din/XunJie/pull/80)。
 
 [PR #79](https://github.com/paher-din/XunJie/pull/79) 与[补证 PR #81](https://github.com/paher-din/XunJie/pull/81) 已合 main；[HDL 正式交付](evidence/ui30-hdl-20261015/handoff.md)直接复用，本批补齐 C 场景及共享资料引用接缝，没有重复 HDL 实现。
 
