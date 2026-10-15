@@ -222,6 +222,12 @@ export interface StoredGenCard extends GenCard {
 }
 
   export interface ChatImage { name:string; dataUrl:string }
+  export interface AssignedTaskCard {
+    assignmentId: string
+    courseName?: string
+    title: string
+    availability: 'active' | 'paused'
+  }
   export interface ChatMessage {
   role: 'user' | 'agent'
   images?:ChatImage[]
@@ -230,6 +236,8 @@ export interface StoredGenCard extends GenCard {
   at?: string
   /** 消息内任务卡：Agent 回复引用具体项目任务时携带，渲染时按 id 查任务数据。 */
   taskId?: string
+  /** 真实服务对已认证的单项本人任务回复提供的只读入口；工作区仍独立验权。 */
+  taskCard?: AssignedTaskCard
   /** 回合阶段，只出现在 agent 消息上；流式期间 text 随增量增长。历史消息缺省视为 settled。 */
   phase?: TurnPhase
   /** 思考折叠行内容：模型另出的中文教学化摘要，不是原始推理（docs/agent-page-design.md 已确认 2026-10-09）。 */

@@ -6,7 +6,7 @@ import { PREP_BUILD } from '../workspace/mode'
 import { getSessionState } from '../workspace/session'
 import { getModelSettings, personalModelOptions, saveModelSettings, useModelSettings } from '../lib/modelSettings'
 import { learningApi } from '../bridge/agentApi'
-import type { ChatMessage, ProjectTask } from '../bridge/types'
+import type { AssignedTaskCard, ChatMessage, ProjectTask } from '../bridge/types'
 import {
   MODELS,
   MODEL_CHANGE_EVENT,
@@ -427,7 +427,7 @@ export default function AgentPage() {
                       onQuizAnswer={PREP_BUILD && stored >= 0 ? answerQuiz(stored) : undefined}
                       genCardSlots={PREP_BUILD && stored >= 0 ? genCardHandlers(stored) : undefined}
                     >
-                      {msg.taskId
+                      {msg.taskCard && !PREP_BUILD ? <AssignedTaskEntryCard task={msg.taskCard} /> : msg.taskId
                         ? (() => {
                             const task = tasks.find((t) => t.id === msg.taskId)
                             return task ? <TaskEntryCard task={task} /> : null
@@ -508,6 +508,27 @@ export default function AgentPage() {
           onCancel={() => setPicking(null)}
         />
       )}
+    </div>
+  )
+}
+
+/** 真实任务仅有分配、课程和开放状态；完成度、阶段与截止日期未由服务端提供。 */
+function AssignedTaskEntryCard({ task }: { task: AssignedTaskCard }) {
+  const navigate = useNavigate()
+  return (
+    <div className="msg-task-card">
+      <div className="msg-task-top">
+        <StatusChip status={task.availability === 'active' ? '已分配' : '任务已暂停'} />
+        {task.courseName && <span className="msg-task-course">{task.courseName}</span>}
+      </div>
+      <h4>{task.title}</h4>
+      <div className="msg-task-meta">
+        <span>{task.availability === 'active' ? '当前开放' : '当前暂停'}</span>
+        <span>完成状态未知</span>
+      </div>
+      <button className="primary msg-task-enter" onClick={() => navigate('/task/' + encodeURIComponent(task.assignmentId))}>
+        <IconText name="arrow-right" position="end">进入任务</IconText>
+      </button>
     </div>
   )
 }

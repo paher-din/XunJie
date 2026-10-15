@@ -19,6 +19,46 @@ async function install(page: Page, handle: (route: Route, path: string) => Promi
   })
 }
 
+test('单项任务回复卡从历史进入同一分配的真实工作区路由', async ({ page }) => {
+  const cid = 'task-card-conversation', assignmentId = 'task-card-assignment', activityId = 'task-card-activity', courseId = 'task-card-course'
+  const taskCard = { assignmentId, courseName: '数字逻辑', title: '同步计数器', availability: 'active' }
+  const assignment = { assignmentId, activityVersionId: activityId, studentId: 'alice', assignmentRevision: 1,
+    active: true, status: 'active', reasons: { individual: '', activity: '' }, activityControlRevision: 1 }
+  const activity = { activityVersionId: activityId, courseId, activityControlRevision: 1, status: 'active',
+    runtimeProfileVersionId: 'task-card-profile', helpPolicy: { versionId: 'task-card-policy', helpAllowed: true,
+      wholeSolutionAllowed: false, limitedCheckHelpAllowed: false, description: 'Synthetic task card' },
+    content: { audience: 'student', materials: [{ status: 'redacted' }], content: {
+      projectTitle: taskCard.title, problem: '合成协议检查', audience: 'student', artifact: 'Code',
+      studentBackground: '', timeConstraints: '', routes: [], goals: [], tasks: [], observations: [],
+      rubricCriteria: [], milestones: [], helpPolicyVersionId: 'task-card-policy',
+    } } }
+  const reads: string[] = []
+  await install(page, async (route, path) => {
+    reads.push(path)
+    if (path === '/api/session') { await envelope(route, { userId: 'alice', courses: [{ courseId, role: 'student' }], csrfToken: 'synthetic-csrf' }); return true }
+    if (path === '/api/model-settings') { await envelope(route, config()); return true }
+    if (path === '/api/agent/conversations') { await envelope(route, [{ id: cid, title: taskCard.title, updatedAt: at }]); return true }
+    if (path === `/api/agent/conversations/${cid}`) { await envelope(route, { id: cid, title: taskCard.title, updatedAt: at,
+      messages: [{ role: 'user', text: '同步计数器怎么做？', at }, { role: 'agent', text: '同步计数器先画状态图。', phase: 'settled', at, taskCard }] }); return true }
+    if (path === `/api/courses/${courseId}/assignments`) { await envelope(route, [{ ...assignment, executionKind: 'textscope' }]); return true }
+    if (path === `/api/assignments/${assignmentId}/bootstrap`) { await envelope(route, { assignment, recoveryGeneration: 'task-card-generation' }); return true }
+    if (path === `/api/assignments/${assignmentId}`) { await envelope(route, assignment); return true }
+    if (path === `/api/activities/${activityId}`) { await envelope(route, activity); return true }
+    return false
+  })
+  await page.goto(`${REAL_URL}/#/agent/${cid}`)
+  const card = page.locator('.chat-message.agent .msg-task-card')
+  await expect(card).toContainText('同步计数器')
+  await expect(card).toContainText('完成状态未知')
+  await expect(card).not.toContainText('截止')
+  await card.getByRole('button', { name: '进入任务' }).click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/task/${assignmentId}`)
+  await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
+  expect(reads).toContain(`/api/assignments/${assignmentId}/bootstrap`)
+  await page.goto(`${REAL_URL}/#/agent/${cid}`)
+  await expect(page.locator('.chat-message.agent .msg-task-card')).toContainText('同步计数器')
+})
+
 for (const trigger of ['Enter', '发送键'] as const) {
   test(`首页吉祥物${trigger}发送后立即进入对话，原问题只接纳一次`, async ({ page }) => {
     const cid = 'home-handoff', tid = 'home-turn', question = `首页${trigger}提问`
