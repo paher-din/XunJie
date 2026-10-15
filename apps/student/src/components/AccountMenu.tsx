@@ -4,6 +4,7 @@ import { useAccount } from '../lib/account'
 import { AccountAvatar } from './AccountAvatar'
 import { useSession } from './SessionEntry'
 import { PREP_BUILD } from '../workspace/mode'
+import { displayAccountName } from '../lib/displayNames'
 
 /** 菜单挂点：展开态账号胶囊上方（pill）／收起态轨道头像右侧（rail）。 */
 export type AccountAnchor = 'pill' | 'rail'
@@ -27,7 +28,7 @@ const delay = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties
 export function AccountMenu({ open, anchor, onProfile, onSettings, onLogout }: AccountMenuProps) {
   const account = useAccount()
   const session = useSession()
-  const name = !PREP_BUILD && session.session ? session.session.userId : account.name
+  const name = !PREP_BUILD && session.session ? displayAccountName(session.session.userId) : account.name
   return (
     <div className={'account-menu am-' + anchor + (open ? ' on' : '')} role="menu" aria-hidden={!open}>
       <div className="am-head" style={delay(30)}>
