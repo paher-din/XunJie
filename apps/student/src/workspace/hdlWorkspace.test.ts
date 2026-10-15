@@ -6,6 +6,7 @@ import type { Receipt, WorkspaceHead } from './workspaceContracts'
 import { HdlWorkspace } from './hdlWorkspace'
 import type { HdlBuildView, HdlExecutionBinding, HdlRuntimeProfile, HdlSessionView, HdlTraceView } from './hdlContracts'
 import { textHash } from './confirmation'
+import { freezeHdl } from './hdlStore'
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), persist: vi.fn(), authority: vi.fn(), rows: new Map<string, OutboxRecord>() }))
 vi.mock('./http', async original => ({ ...await original<object>(), apiGet: mocks.get, apiPostFrozen: mocks.post }))
@@ -57,9 +58,11 @@ function fixture(existing = true, execution?: HdlExecutionBinding) {
     build.request.identity.recoveryGeneration = execution.nodeGeneration
     build.result!.identity.recoveryGeneration = execution.nodeGeneration
     if (session) session.identity.recoveryGeneration = execution.nodeGeneration
+  }
+  if (existing) {
     const common = { purpose: 'student_run', scope: { courseId: context.courseId, studentId: context.userId, attemptId: aid },
       recoveryGeneration: context.trustedRecoveryGeneration, status: 'succeeded', stopRequested: false, expectedRevision: head.attempt.attemptRevision,
-      decisionEpoch: 0, attemptCount: 1, acceptedAt: '2026-10-14T00:00:00Z', deadline: '2026-10-14T01:00:00Z', execution }
+      decisionEpoch: 0, attemptCount: 1, acceptedAt: '2026-10-14T00:00:00Z', deadline: '2026-10-14T01:00:00Z', ...(execution ? { execution } : {}) }
     head.jobs.push({ ...common, kind: 'hdl_build', jobId: build.jobId, runId: bid, requestReceiptId: 'build-receipt' },
       { ...common, kind: 'hdl_program', jobId: (programResponse.result as { jobId: string }).jobId, runId: sid, requestReceiptId: programResponse.receiptId })
   }
@@ -144,6 +147,42 @@ it('restores a node-bound Build/Session/Trace from authorized head Jobs in a bro
   expect(f.client.current.session?.identity.recoveryGeneration).toBe('separate-node-generation')
   expect(f.client.current.operation?.sessionId).toBe(sid)
   expect(f.client.current.canInteract).toBe(true)
+  expect(mocks.post).not.toHaveBeenCalled()
+})
+it('restores current authorized history instead of an absent object referenced by an old confirmed receipt', async () => {
+  const f = fixture(true, { nodeId: 'robert', nodeGeneration: 'separate-node-generation' })
+  const command = await freezeHdl(context, 'hdl.program', { expectedAttemptRevision: 3, buildId: 'absent-old-build' })
+  const row: OutboxRecord = { ...command, state: 'confirmed', receipt: {
+    ...clone(programResponse), requestHash: command.requestHash,
+    identity: { ...clone(programResponse.identity), idempotencyKey: command.commandKey },
+    result: { sessionId: 'absent-old-session', operationId: 'absent-old-session', jobId: 'absent-old-job' },
+  } }
+  mocks.rows.clear(); mocks.rows.set(row.commandKey, clone(row))
+  mocks.get.mockImplementation(async (path: string) => {
+    if (path.includes('absent-old')) throw new Error('FORBIDDEN: object is not in current server history')
+    return f.get(path)
+  })
+  await f.client.initialize()
+  expect(f.client.current.phase).toBe('ready')
+  expect(f.client.current.build?.request.identity.id).toBe(bid)
+  expect(f.client.current.session?.sessionId).toBe(sid)
+  expect(f.client.current.canBuild).toBe(true)
+  expect(f.client.current.canInteract).toBe(true)
+  expect(mocks.get.mock.calls.some(([path]) => path.includes('absent-old'))).toBe(false)
+  expect(mocks.rows.get(row.commandKey)).toEqual(row)
+  expect(mocks.post).not.toHaveBeenCalled()
+})
+it('does not let an older initialization failure overwrite a newer restored Session', async () => {
+  const f = fixture()
+  let rejectOld!: (error: Error) => void
+  f.confirmation.readHead.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectOld = reject }))
+  const old = f.client.initialize()
+  await f.client.initialize()
+  expect(f.client.current.phase).toBe('ready')
+  rejectOld(new Error('old initialization read failed'))
+  await old
+  expect(f.client.current.phase).toBe('ready')
+  expect(f.client.current.session?.sessionId).toBe(sid)
   expect(mocks.post).not.toHaveBeenCalled()
 })
 it('keeps a Build destination through lost ACK and selection changes, without routing Session controls by the new selection', async () => {

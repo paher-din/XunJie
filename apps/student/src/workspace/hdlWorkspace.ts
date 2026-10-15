@@ -95,31 +95,42 @@ export class HdlWorkspace {
   }
   /** Only authorized reads; never replays an outbox or implicitly creates a Session. */
   async initialize(): Promise<void> {
-    if (!this.valid || !this.context.attemptId) return
-    const epoch = this.epoch, valid = () => this.valid && this.epoch === epoch
+    if (!this.valid || !this.context.attemptId || this.writing) return
+    const epoch = ++this.epoch, valid = () => this.valid && this.epoch === epoch
     this.readable = false; this.controlsCurrent = false
     this.publish({ phase: 'reading', notice: null })
     try {
       const head = await this.workspace.readHead()
       if (!valid() || !head) throw new Error('当前工作区未确认')
       const rows = await hdlStore.commands(this.context)
-      if (!valid() || !await this.authority()) return
+      if (!valid() || !await this.authority() || !valid()) return
       const pending = hdlStore.pending(rows), confirmed = hdlStore.confirmed(rows, this.context)
       const oldGeneration = pending.some(row => !sameGeneration(row.context, this.context))
       this.publish({ commands: rows, pending: pending.length > 0, command: pending[0] ?? this.state.command,
         unknown: pending.length > 0, phase: pending.length ? 'request-unknown' : 'reading',
         notice: oldGeneration ? '代际已经变化，原 HDL 请求保留为待核对；禁止换键重做。' : pending.length ? '原 HDL 请求结果待确认，请核对原请求。' : null })
-      if (!this.buildId && !this.sessionId) {
-        for (const row of confirmed) { await verifyHdlCommand(row); if (!this.valid) return; this.acceptCommand(row) }
-        // A different browser may lack the original outbox. Existing authorized Jobs provide IDs, never creation permission.
-        const jobs = head.jobs.filter(v => ['hdl_build', 'hdl_program', 'hdl_interact'].includes(String(record(v).kind)))
-          .map(v => verifyHdlJob(v, this.context)).sort((a, b) => Date.parse(a.acceptedAt) - Date.parse(b.acceptedAt))
-        if (!this.buildId) this.buildId = jobs.filter(j => j.kind === 'hdl_build').at(-1)?.runId ?? null
-        if (!this.sessionId) this.sessionId = jobs.filter(j => j.kind === 'hdl_program').at(-1)?.runId ?? null
-        if (!this.selectedJob && jobs.length) { const j = jobs.at(-1)!; this.selectedJob = { jobId: j.jobId, objectId: j.runId } }
+      // A stored receipt proves a past ACK, not that its objects exist on the current server.
+      // Restore IDs from this authorized head; keep every local command, especially unknown requests.
+      const jobs = head.jobs.filter(v => ['hdl_build', 'hdl_program', 'hdl_interact'].includes(String(record(v).kind)))
+        .map(v => verifyHdlJob(v, this.context)).sort((a, b) => Date.parse(a.acceptedAt) - Date.parse(b.acceptedAt))
+      const buildId = jobs.filter(j => j.kind === 'hdl_build').at(-1)?.runId ?? null
+      const sessionId = jobs.filter(j => j.kind === 'hdl_program').at(-1)?.runId ?? null
+      const latestJob = jobs.at(-1)
+      if (buildId !== this.buildId) this.publish({ build: null })
+      if (sessionId !== this.sessionId) {
+        this.cursor = -1
+        this.publish({ session: null, sessionBuild: null, operation: null, trace: null })
       }
+      this.buildId = buildId; this.sessionId = sessionId
+      this.selectedJob = latestJob ? { jobId: latestJob.jobId, objectId: latestJob.runId, receiptId: latestJob.requestReceiptId } : null
+      if (!latestJob) this.publish({ job: null })
+      const obsolete = confirmed.some(row => row.kind !== 'hdl.stop' && !jobs.some(job =>
+        job.jobId === record(row.receipt!.result).jobId && job.requestReceiptId === row.receipt!.receiptId))
       await this.read()
-    } catch (error) { if (this.valid) this.failure(error, false) }
+      if (valid() && obsolete && !this.state.unknown && !this.state.notice) {
+        this.publish({ notice: '本机旧操作记录已保留，当前构建与会话按服务器记录恢复。' })
+      }
+    } catch (error) { if (valid()) this.failure(error, false) }
   }
   /** One bounded read batch, preserving original IDs and immutable result provenance. */
   async read(): Promise<void> {
