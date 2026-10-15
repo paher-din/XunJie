@@ -510,7 +510,9 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           onToast={showToast}
           boardBody={isHdl ? <HdlBoardPane session={hdl.state.session} result={hdl.state.operation} inputs={hdlInputs}
             pending={hdlPending} disabled={!runPermitted || !hdl.state.canInteract || !hdlResultCurrent}
-            bindings={hdlExecution?.configuration.board.bindings} currentNotice={hdlNotice} onInteract={onHdlInteract} /> : undefined}
+            bindings={hdlExecution?.configuration.board.bindings} currentNotice={hdlNotice} onInteract={onHdlInteract}
+            canLoad={runPermitted && hdl.state.canProgram} onLoad={onHdlLoad}
+            readBusy={hdl.state.busy || hdl.state.phase === 'reading'} onRead={hdl.read} /> : undefined}
           waveBody={isHdl ? <HdlTracePane session={hdl.state.session} result={hdl.state.operation} pending={hdlPending}
             currentNotice={hdlNotice} /> : undefined}
           designBody={<div style={{position:'relative',height:'100%',width:'100%',display:'flex',flexDirection:'column'}}>

@@ -1,0 +1,60 @@
+{
+  "ownedContainersRemoved": [
+    {
+      "name": "xunjie-dlc-build-7dec285e1dacbca0713ea6ed4f1433a8b0788e2849eb4efa7d2b181916d9812c-ports",
+      "id": "5aa0b86aaa14a65f905f089e47b38b65d5075919a7319929e77b46fd272d01bf",
+      "stateBeforeRemoval": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-15T06:14:55.561529441Z",
+        "FinishedAt": "2026-10-15T06:14:56.254122568Z"
+      }
+    },
+    {
+      "name": "xunjie-dlc-build-7dec285e1dacbca0713ea6ed4f1433a8b0788e2849eb4efa7d2b181916d9812c-compile",
+      "id": "4c02428e4598182baa6cc193a8838ff6f16ef07cba429f92e99426b4b5991086",
+      "stateBeforeRemoval": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-15T06:14:56.717619846Z",
+        "FinishedAt": "2026-10-15T06:14:56.865751627Z"
+      }
+    },
+    {
+      "name": "xunjie-dlc-session-759d6303252b8f9cf503d1ceaf985bd6986a57c611696051cd5c909f46f9f7dc",
+      "id": "8bb92f3c39c266bfc4e8df751f2ec0b0db813067e428d2432d624ed77d02a07e",
+      "stateBeforeRemoval": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-15T06:14:57.581356211Z",
+        "FinishedAt": "2026-10-15T06:15:02.374595417Z"
+      }
+    }
+  ],
+  "ownedStateRemoved": true,
+  "ownedSourceRemoved": true,
+  "workerMainPidsZero": true,
+  "originalConfigUntouched": true,
+  "sessionIdReadFromArchivedCreatedEnvelope": true
+}

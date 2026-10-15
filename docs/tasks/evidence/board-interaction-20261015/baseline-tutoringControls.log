@@ -1,0 +1,60 @@
+
+Running 1 test using 1 worker
+
+(node:33940) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  x  1 [chromium] › e2e\tutoringControls.spec.ts:232:1 › 已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留 (17.7s)
+
+
+  1) [chromium] › e2e\tutoringControls.spec.ts:232:1 › 已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留 ────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByTestId('tutor-facts')
+    Expected substring: "展示：本机已发生"
+    Received string:    "收到：已确认 · 展示：未发生 · 回应：未回应"
+    Timeout: 10000ms
+
+    Call log:
+      - Expect "toContainText" getByTestId('tutor-facts') with timeout 10000ms
+      - waiting for getByTestId('tutor-facts')
+        20 × locator resolved to <p data-testid="tutor-facts">…</p>
+           - unexpected value "收到：已确认 · 展示：未发生 · 回应：未回应"
+
+
+      235 |   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('先给一个项目提示，提醒样例另属合成准备数据')
+      236 |   await page.getByRole('button',{name:'发送辅导问题',exact:true}).click()
+    > 237 |   await expect(page.getByTestId('tutor-facts')).toContainText('展示：本机已发生')
+          |                                                 ^
+      238 |   const original=await page.getByTestId('tutor-message').getAttribute('data-action-id')
+      239 |   await page.getByRole('button',{name:'收起辅导',exact:true}).click()
+      240 |   await page.getByRole('button',{name:'任务信息',exact:true}).click()
+        at D:\XunJie_Project\hdl-virtual-board-baseline-20261015\apps\student\e2e\tutoringControls.spec.ts:237:49
+
+    Error Context: test-results\tutoringControls-已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\tutoringControls-已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\tutoringControls-已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e\tutoringControls.spec.ts:232:1 › 已收到但未展示的合成提醒在关闭后取消，再开启不复活旧内容，原主动帮助保留 ─────────

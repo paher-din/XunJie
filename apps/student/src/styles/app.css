@@ -4324,6 +4324,11 @@ h3 {
 .ws-pbtn:active {
   transform: translateY(0.5px);
 }
+.ws-sw:disabled,
+.ws-pbtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .ws-board-note {
   font-size: 12px;
   color: var(--muted);

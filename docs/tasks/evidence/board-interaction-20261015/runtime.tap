@@ -1,0 +1,174 @@
+TAP version 13
+# Subtest: target VM: every board input reaches real HDL with persistent state, scan, four values and confirmed stop
+    # Subtest: SW0: high and low reach the corresponding real LED
+    ok 1 - SW0: high and low reach the corresponding real LED
+      ---
+      duration_ms: 166.575032
+      type: 'test'
+      ...
+    # Subtest: SW1: high and low reach the corresponding real LED
+    ok 2 - SW1: high and low reach the corresponding real LED
+      ---
+      duration_ms: 165.372627
+      type: 'test'
+      ...
+    # Subtest: SW2: high and low reach the corresponding real LED
+    ok 3 - SW2: high and low reach the corresponding real LED
+      ---
+      duration_ms: 161.947353
+      type: 'test'
+      ...
+    # Subtest: SW3: high and low reach the corresponding real LED
+    ok 4 - SW3: high and low reach the corresponding real LED
+      ---
+      duration_ms: 159.034981
+      type: 'test'
+      ...
+    # Subtest: SW4: high and low reach the corresponding real LED
+    ok 5 - SW4: high and low reach the corresponding real LED
+      ---
+      duration_ms: 151.631826
+      type: 'test'
+      ...
+    # Subtest: SW5: high and low reach the corresponding real LED
+    ok 6 - SW5: high and low reach the corresponding real LED
+      ---
+      duration_ms: 158.844659
+      type: 'test'
+      ...
+    # Subtest: SW6: high and low reach the corresponding real LED
+    ok 7 - SW6: high and low reach the corresponding real LED
+      ---
+      duration_ms: 155.570888
+      type: 'test'
+      ...
+    # Subtest: SW7: high and low reach the corresponding real LED
+    ok 8 - SW7: high and low reach the corresponding real LED
+      ---
+      duration_ms: 180.605353
+      type: 'test'
+      ...
+    # Subtest: SW8: high and low reach the corresponding real LED
+    ok 9 - SW8: high and low reach the corresponding real LED
+      ---
+      duration_ms: 235.503592
+      type: 'test'
+      ...
+    # Subtest: SW9: high and low reach the corresponding real LED
+    ok 10 - SW9: high and low reach the corresponding real LED
+      ---
+      duration_ms: 222.035823
+      type: 'test'
+      ...
+    # Subtest: SW10: high and low reach the corresponding real LED
+    ok 11 - SW10: high and low reach the corresponding real LED
+      ---
+      duration_ms: 191.917713
+      type: 'test'
+      ...
+    # Subtest: SW11: high and low reach the corresponding real LED
+    ok 12 - SW11: high and low reach the corresponding real LED
+      ---
+      duration_ms: 191.176413
+      type: 'test'
+      ...
+    # Subtest: SW12: high and low reach the corresponding real LED
+    ok 13 - SW12: high and low reach the corresponding real LED
+      ---
+      duration_ms: 190.35602
+      type: 'test'
+      ...
+    # Subtest: SW13: high and low reach the corresponding real LED
+    ok 14 - SW13: high and low reach the corresponding real LED
+      ---
+      duration_ms: 169.205896
+      type: 'test'
+      ...
+    # Subtest: SW14: high and low reach the corresponding real LED
+    ok 15 - SW14: high and low reach the corresponding real LED
+      ---
+      duration_ms: 164.608438
+      type: 'test'
+      ...
+    # Subtest: SW15: high and low reach the corresponding real LED
+    ok 16 - SW15: high and low reach the corresponding real LED
+      ---
+      duration_ms: 162.387484
+      type: 'test'
+      ...
+    # Subtest: BTN0: distinct press and release reach real HDL
+    ok 17 - BTN0: distinct press and release reach real HDL
+      ---
+      duration_ms: 158.660966
+      type: 'test'
+      ...
+    # Subtest: BTN1: distinct press and release reach real HDL
+    ok 18 - BTN1: distinct press and release reach real HDL
+      ---
+      duration_ms: 200.136453
+      type: 'test'
+      ...
+    # Subtest: BTN2: distinct press and release reach real HDL
+    ok 19 - BTN2: distinct press and release reach real HDL
+      ---
+      duration_ms: 163.098944
+      type: 'test'
+      ...
+    # Subtest: BTN3: distinct press and release reach real HDL
+    ok 20 - BTN3: distinct press and release reach real HDL
+      ---
+      duration_ms: 187.724359
+      type: 'test'
+      ...
+    # Subtest: BTN4: distinct press and release reach real HDL
+    ok 21 - BTN4: distinct press and release reach real HDL
+      ---
+      duration_ms: 159.897485
+      type: 'test'
+      ...
+    # Subtest: the same engine retains counter state across explicit advances and releases
+    ok 22 - the same engine retains counter state across explicit advances and releases
+      ---
+      duration_ms: 230.733409
+      type: 'test'
+      ...
+    # Subtest: RESET_N low resets registers and release preserves the reset state
+    ok 23 - RESET_N low resets registers and release preserves the reset state
+      ---
+      duration_ms: 152.415473
+      type: 'test'
+      ...
+    # Subtest: a finite real scan contains all eight active-low anodes and stable segments
+    ok 24 - a finite real scan contains all eight active-low anodes and stable segments
+      ---
+      duration_ms: 81.944522
+      type: 'test'
+      ...
+    # Subtest: unknown/high impedance, multiple anodes and all-off come from the actual HDL
+    ok 25 - unknown/high impedance, multiple anodes and all-off come from the actual HDL
+      ---
+      duration_ms: 343.7895
+      type: 'test'
+      ...
+    # Subtest: stop confirms the original instance exit and preserves its final result
+    ok 26 - stop confirms the original instance exit and preserves its final result
+      ---
+      duration_ms: 268.859374
+      type: 'test'
+      ...
+    1..26
+ok 1 - target VM: every board input reaches real HDL with persistent state, scan, four values and confirmed stop
+  ---
+  duration_ms: 7928.069999
+  type: 'test'
+  ...
+# Retained synthetic board evidence: /tmp/xunjie-board-inputs-c0BCIm
+1..1
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8189.338804

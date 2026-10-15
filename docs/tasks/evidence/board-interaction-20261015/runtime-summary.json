@@ -1,0 +1,28 @@
+{
+  "observedAt": "2026-10-15T06:16:25.462Z",
+  "scope": "temporary current source; original immutable container images; maintenance dispatch bypasses readiness without registering it",
+  "testSource": "/tmp/xunjie-board-source-5ca133e5-6c10-4ebd-a653-9c9eca585c74/apps/teaching/runner/hdl-board-inputs.runtime.test.ts",
+  "originalConfig": "/opt/xunjie-runner/config.dlc.robert.json",
+  "isolatedState": "/tmp/xunjie-board-inputs-c0BCIm",
+  "originalGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+  "engine": {
+    "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+    "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+    "buildImage": "sha256:6a0e6ee8ab6bffc7a4fc999c5dbdcf68f058ed04cb13f053730e7209e3efad0d",
+    "runtimeImage": "sha256:6a3c202ccc35152020f156ad4d9665f08cb45ff9893fe5c51b6be9e788243ca5",
+    "sourceHash": "7f4ec4f3d3ce420c41265f0011746557424ded9630f9b2b53e9833d382677852"
+  },
+  "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+  "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+  "operationCount": 52,
+  "finalSequence": 52,
+  "finalSimTimePs": "730000",
+  "finalStatus": "stopped",
+  "terminationConfirmed": true,
+  "tests": 27,
+  "passed": 27,
+  "failed": 0,
+  "skipped": 0,
+  "evidenceArchiveHash": "640f32624fa23d195461bbbb3a74e53328b690a3319bff3591872dfcdd28754f",
+  "originalConfigAndValidationByteUnchanged": true
+}

@@ -1,0 +1,2358 @@
+{
+  "scope": {
+    "courseId": "synthetic-board-f4e37048-1b6b-434d-bec1-6b270d9f56d7",
+    "studentId": "synthetic-board-student",
+    "attemptId": "ac7ecdab-6bb2-4dba-9159-99df690cef77",
+    "activityVersionId": "synthetic-full-inputs"
+  },
+  "buildRequest": {
+    "identity": {
+      "id": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "commandId": "fc81dbdd-0671-4685-ba67-553a464ddca7",
+      "requestHash": "e814e6099c42bbf84c0d2006d40d77d04e544c932274b5b199a536ad733172cb",
+      "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "scope": {
+        "courseId": "synthetic-board-f4e37048-1b6b-434d-bec1-6b270d9f56d7",
+        "studentId": "synthetic-board-student",
+        "attemptId": "ac7ecdab-6bb2-4dba-9159-99df690cef77",
+        "activityVersionId": "synthetic-full-inputs"
+      }
+    },
+    "snapshot": {
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "hashFormat": "sha256-manifest-v1",
+      "files": [
+        {
+          "fileId": "synthetic-top",
+          "path": "top.sv",
+          "documentVersion": 1,
+          "text": "module top(input clk,input [15:0] sw,input [4:0] btn,input reset_n,\noutput [15:0] led,output [7:0] an,output [6:0] seg,output dp);\nreg [6:0] count=0; reg [2:0] scan=0;\nalways @(posedge clk) begin\n  if(!reset_n) begin count<=0; scan<=0; end\n  else begin if(btn[0]) count<=count+1; scan<=scan+1; end\nend\nassign led=sw^{11'b0,btn};\nassign an=sw[14]?8'hff:sw[13]?8'hfc:~(8'b1<<scan);\nassign seg=sw[15]?7'bx0z1010:count;\nassign dp=sw[15]?1'bz:reset_n;\nendmodule\n",
+          "contentHash": "9cce4411dac2df6583b8a881a665f5d459a58d77e64fd2ea08804ad07e8135ef"
+        }
+      ],
+      "hash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372"
+    },
+    "board": {
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "topModule": "top",
+      "bindings": [
+        {
+          "signal": "clock",
+          "offset": 0,
+          "port": "clk",
+          "portOffset": 0,
+          "width": 1
+        },
+        {
+          "signal": "switches",
+          "offset": 0,
+          "port": "sw",
+          "portOffset": 0,
+          "width": 16
+        },
+        {
+          "signal": "buttons",
+          "offset": 0,
+          "port": "btn",
+          "portOffset": 0,
+          "width": 5
+        },
+        {
+          "signal": "resetN",
+          "offset": 0,
+          "port": "reset_n",
+          "portOffset": 0,
+          "width": 1
+        },
+        {
+          "signal": "leds",
+          "offset": 0,
+          "port": "led",
+          "portOffset": 0,
+          "width": 16
+        },
+        {
+          "signal": "anodes",
+          "offset": 0,
+          "port": "an",
+          "portOffset": 0,
+          "width": 8
+        },
+        {
+          "signal": "segments",
+          "offset": 0,
+          "port": "seg",
+          "portOffset": 0,
+          "width": 7
+        },
+        {
+          "signal": "dp",
+          "offset": 0,
+          "port": "dp",
+          "portOffset": 0,
+          "width": 1
+        }
+      ]
+    },
+    "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1"
+  },
+  "initial": {
+    "operationId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+    "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+    "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+    "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+    "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+    "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+    "mappingVersion": "synthetic-all-inputs-v1",
+    "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+    "sequence": 0,
+    "sessionRevision": 1,
+    "frames": [
+      {
+        "simTimePs": "0",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111110",
+        "segments": "0000000",
+        "dp": "1"
+      }
+    ],
+    "finalFrame": {
+      "simTimePs": "0",
+      "switches": "0000000000000000",
+      "buttons": "00000",
+      "resetN": "1",
+      "leds": "0000000000000000",
+      "anodes": "11111110",
+      "segments": "0000000",
+      "dp": "1"
+    },
+    "sampleCount": 1,
+    "droppedFrames": 0,
+    "coverage": "complete",
+    "resultHash": "da34d92c18d7acaadbd28496e64a6bfb6599aaffc5d933eb012652f1b34e2ee7"
+  },
+  "observations": [
+    {
+      "operationId": "4451a640-5007-4ce2-86bc-851cebea87ed",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 1,
+      "sessionRevision": 2,
+      "frames": [
+        {
+          "simTimePs": "10000",
+          "switches": "0000000000000001",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11111101",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "10000",
+        "switches": "0000000000000001",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000001",
+        "anodes": "11111101",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "57c0aa128d44a3a3713314994152c205cd2b749e2036f41d8287dd2aaa90191d"
+    },
+    {
+      "operationId": "3d5dd38f-93de-43fc-afaf-7671452765c1",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 2,
+      "sessionRevision": 3,
+      "frames": [
+        {
+          "simTimePs": "20000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "20000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111011",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "fb426c2ba679b83ced4a3721910f04ae040272da545125e4d4273d5bf8d29d40"
+    },
+    {
+      "operationId": "b932647d-20af-4118-bb00-89b28a0d816c",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 3,
+      "sessionRevision": 4,
+      "frames": [
+        {
+          "simTimePs": "30000",
+          "switches": "0000000000000010",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000010",
+          "anodes": "11110111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "30000",
+        "switches": "0000000000000010",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000010",
+        "anodes": "11110111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "708fab7e4188870e6cf3960eff420105204ecc064674e242b195310103912503"
+    },
+    {
+      "operationId": "02d3b0f5-7c7b-4391-b311-13ed02637627",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 4,
+      "sessionRevision": 5,
+      "frames": [
+        {
+          "simTimePs": "40000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11101111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "40000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11101111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "dd17a3f3d1e4b841faa15ffb6aa19a6cda7ccf6ba0c4aaf7088ae2bc31f6141e"
+    },
+    {
+      "operationId": "c11e68c2-0909-41ac-9638-a6b6281f77d2",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 5,
+      "sessionRevision": 6,
+      "frames": [
+        {
+          "simTimePs": "50000",
+          "switches": "0000000000000100",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000100",
+          "anodes": "11011111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "50000",
+        "switches": "0000000000000100",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000100",
+        "anodes": "11011111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "61fa98413c9f18fbba580d701bb374db0c00f8ca12c1df8460d7021e8469ff3e"
+    },
+    {
+      "operationId": "301eacf9-af2d-41cb-9b02-e7d6e11274f0",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 6,
+      "sessionRevision": 7,
+      "frames": [
+        {
+          "simTimePs": "60000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "10111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "60000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "10111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "dabc860ff5258709f795c9d0c1132752b49327a7794671d26780ef749459311a"
+    },
+    {
+      "operationId": "45a02974-8a69-48fa-9827-a7456e21f07a",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 7,
+      "sessionRevision": 8,
+      "frames": [
+        {
+          "simTimePs": "70000",
+          "switches": "0000000000001000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000001000",
+          "anodes": "01111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "70000",
+        "switches": "0000000000001000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000001000",
+        "anodes": "01111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "61b516a9caf88e4d8abf9af880245c052f5790205ee50e53c443c624a364991e"
+    },
+    {
+      "operationId": "2300b8e8-bfc8-40dc-aa55-c59ecbc787e0",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 8,
+      "sessionRevision": 9,
+      "frames": [
+        {
+          "simTimePs": "80000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "80000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111110",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "c8f9e3e962ce145a4609d14b47c7bc9b8e4a9246813906f0fa0de65480ab4d8b"
+    },
+    {
+      "operationId": "d2123329-52fd-4299-bfd6-c5aa2fa9531c",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 9,
+      "sessionRevision": 10,
+      "frames": [
+        {
+          "simTimePs": "90000",
+          "switches": "0000000000010000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000010000",
+          "anodes": "11111101",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "90000",
+        "switches": "0000000000010000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000010000",
+        "anodes": "11111101",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "3bbd1be3f65f5c853c2ea047f8d223f0f4d0c0d0f2f61fa59a8a363203d36d65"
+    },
+    {
+      "operationId": "3a177ba9-e554-4a54-b2eb-ab4d9bda41cf",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 10,
+      "sessionRevision": 11,
+      "frames": [
+        {
+          "simTimePs": "100000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "100000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111011",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "1041e6f1595d83aaa6db45f751193339f154b12abcb7c2450a2896c31b5e893a"
+    },
+    {
+      "operationId": "ff41a7dc-febe-4863-adcc-f5a363199460",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 11,
+      "sessionRevision": 12,
+      "frames": [
+        {
+          "simTimePs": "110000",
+          "switches": "0000000000100000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000100000",
+          "anodes": "11110111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "110000",
+        "switches": "0000000000100000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000100000",
+        "anodes": "11110111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "8760255cc59a5d41fbc6eaabf920995221756c4d7499d4bad55885ab65d556cb"
+    },
+    {
+      "operationId": "f0f7c1ff-14aa-44fb-901d-6b3a80af4c3b",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 12,
+      "sessionRevision": 13,
+      "frames": [
+        {
+          "simTimePs": "120000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11101111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "120000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11101111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "c5f36fbcc3afd55e671737dde80336b97d1194ac31ea8022de4f098dcd6b95ed"
+    },
+    {
+      "operationId": "be5fda32-ec11-4142-8df5-c97d75dee311",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 13,
+      "sessionRevision": 14,
+      "frames": [
+        {
+          "simTimePs": "130000",
+          "switches": "0000000001000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000001000000",
+          "anodes": "11011111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "130000",
+        "switches": "0000000001000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000001000000",
+        "anodes": "11011111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "07b3e40a93c521820d46f07973044e80ab61727b8c061ba456658373f34c756d"
+    },
+    {
+      "operationId": "9d65471d-b327-490e-b0e4-cd0cf2dc5f51",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 14,
+      "sessionRevision": 15,
+      "frames": [
+        {
+          "simTimePs": "140000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "10111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "140000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "10111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "923f2e78bba289138d8df041059fde118e4ca4e592d582f3454e38f8139f8148"
+    },
+    {
+      "operationId": "bea55cc4-1fb6-46a9-9b02-5da74d83efc5",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 15,
+      "sessionRevision": 16,
+      "frames": [
+        {
+          "simTimePs": "150000",
+          "switches": "0000000010000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000010000000",
+          "anodes": "01111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "150000",
+        "switches": "0000000010000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000010000000",
+        "anodes": "01111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "b3615788f56b0b4beb1f1ed1a2c0413867ce17a3c36997b3780a306969c882dc"
+    },
+    {
+      "operationId": "08e4885f-91ac-43b4-99dc-dd909ac32024",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 16,
+      "sessionRevision": 17,
+      "frames": [
+        {
+          "simTimePs": "160000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "160000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111110",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "e653aa2bd145d214d3aaaa2fb5658dd6a375e316da10400bff428f4b2e334973"
+    },
+    {
+      "operationId": "38dd1bc2-3182-479e-a9db-7f8210ce92bc",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 17,
+      "sessionRevision": 18,
+      "frames": [
+        {
+          "simTimePs": "170000",
+          "switches": "0000000100000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000100000000",
+          "anodes": "11111101",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "170000",
+        "switches": "0000000100000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000100000000",
+        "anodes": "11111101",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "8c8177f3110fcf04a4fcb6b77b604f35a935828ad85ade7ee59698d3374ffa1e"
+    },
+    {
+      "operationId": "e14e7f84-cb20-4b71-8bc9-deac0482fb85",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 18,
+      "sessionRevision": 19,
+      "frames": [
+        {
+          "simTimePs": "180000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "180000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111011",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "fd3ac1d0163f757f9c093f73138a8de32241517e5fb0bfcb183af31786b0697e"
+    },
+    {
+      "operationId": "6d2668f9-fb56-4678-a48a-3f9f73c9862d",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 19,
+      "sessionRevision": 20,
+      "frames": [
+        {
+          "simTimePs": "190000",
+          "switches": "0000001000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000001000000000",
+          "anodes": "11110111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "190000",
+        "switches": "0000001000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000001000000000",
+        "anodes": "11110111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "5fec0d8d4fa7c18adb983417b4b35de68ea0f4163d6ab7dc1e7e358e7d14d74e"
+    },
+    {
+      "operationId": "58b580ee-f53b-4c6b-922b-3fade2a24fd3",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 20,
+      "sessionRevision": 21,
+      "frames": [
+        {
+          "simTimePs": "200000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11101111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "200000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11101111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "8cd224099bd4e24d5c45ba815eadf8727e77efe983baaec482aad406e1880c15"
+    },
+    {
+      "operationId": "b8c9f044-3026-46c0-95a0-7f80e6530ece",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 21,
+      "sessionRevision": 22,
+      "frames": [
+        {
+          "simTimePs": "210000",
+          "switches": "0000010000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000010000000000",
+          "anodes": "11011111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "210000",
+        "switches": "0000010000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000010000000000",
+        "anodes": "11011111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "a24ed9d1558aa4cd2b77baafe4b83629101455aa4f93926318925d4a1e84a238"
+    },
+    {
+      "operationId": "5370d77e-042b-43a5-a380-c03ed0538591",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 22,
+      "sessionRevision": 23,
+      "frames": [
+        {
+          "simTimePs": "220000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "10111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "220000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "10111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "096061902236c93fe96ea5e2d908d313adf7560b4bbe5128988b82e42d0b1642"
+    },
+    {
+      "operationId": "d3fe6aa2-fed5-402a-b322-85e7ba23a85f",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 23,
+      "sessionRevision": 24,
+      "frames": [
+        {
+          "simTimePs": "230000",
+          "switches": "0000100000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000100000000000",
+          "anodes": "01111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "230000",
+        "switches": "0000100000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000100000000000",
+        "anodes": "01111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "6bfb3c1a2245d6aa10961bc3e5b07aac6a18d1d609057bfcba2f4e99bf403fd5"
+    },
+    {
+      "operationId": "9ae76398-4af4-427a-84c1-0138830a742d",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 24,
+      "sessionRevision": 25,
+      "frames": [
+        {
+          "simTimePs": "240000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "240000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111110",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "4d74da39715dc3c0ecc9572c3c013d6730bf804e2856a8d16aa3c405505d99fa"
+    },
+    {
+      "operationId": "bb7a92cc-4083-4807-995b-2120ab9a28ea",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 25,
+      "sessionRevision": 26,
+      "frames": [
+        {
+          "simTimePs": "250000",
+          "switches": "0001000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0001000000000000",
+          "anodes": "11111101",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "250000",
+        "switches": "0001000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0001000000000000",
+        "anodes": "11111101",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "ea5cb61d6f119b99b8da8ffa5f6dbb8f8e2904c988761455ef27b270719c7839"
+    },
+    {
+      "operationId": "d45999e1-b406-4bfe-9837-cd8189f5aca1",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 26,
+      "sessionRevision": 27,
+      "frames": [
+        {
+          "simTimePs": "260000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "260000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111011",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "b101cd8d53baba556a451fedc7f290fa2445f52db210f2094c934ae2f9c7f8a3"
+    },
+    {
+      "operationId": "7edc6321-8676-4be2-8966-1c4ecf1f422e",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 27,
+      "sessionRevision": 28,
+      "frames": [
+        {
+          "simTimePs": "270000",
+          "switches": "0010000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0010000000000000",
+          "anodes": "11111100",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "270000",
+        "switches": "0010000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0010000000000000",
+        "anodes": "11111100",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "06936485af6779499f17f961bac3008506f584e77a5404a8aafa3b891ef2c936"
+    },
+    {
+      "operationId": "af9c8ac2-d889-4c8b-a241-d524ac09a23b",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 28,
+      "sessionRevision": 29,
+      "frames": [
+        {
+          "simTimePs": "280000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11101111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "280000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11101111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "4f638831768b67a7271fd3562261ce79e2ade60b5efcd1fd2001a4d59f8c1ab6"
+    },
+    {
+      "operationId": "8b43d996-629c-4a46-bb8c-54f2e2439436",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 29,
+      "sessionRevision": 30,
+      "frames": [
+        {
+          "simTimePs": "290000",
+          "switches": "0100000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0100000000000000",
+          "anodes": "11111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "290000",
+        "switches": "0100000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0100000000000000",
+        "anodes": "11111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "b8c470de0e2af347afa229fa82c6c3ba9357b502abc3ad8a764af6d11e7c4e02"
+    },
+    {
+      "operationId": "78a620e3-1ec1-4a4e-9311-f2780ae722d0",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 30,
+      "sessionRevision": 31,
+      "frames": [
+        {
+          "simTimePs": "300000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "10111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "300000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "10111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "ea0f8d0729b39d8651075e2e2d7e80facd2675b2bf12989209125e179474fbd0"
+    },
+    {
+      "operationId": "689da0d3-d540-4eb2-955f-5855dbffd26e",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 31,
+      "sessionRevision": 32,
+      "frames": [
+        {
+          "simTimePs": "310000",
+          "switches": "1000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "1000000000000000",
+          "anodes": "01111111",
+          "segments": "x0z1010",
+          "dp": "z"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "310000",
+        "switches": "1000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "1000000000000000",
+        "anodes": "01111111",
+        "segments": "x0z1010",
+        "dp": "z"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "786780206b35d52ba9e09e49b3b20721f778187827e4b4567fc2ab5850fad03b"
+    },
+    {
+      "operationId": "0b71bc8d-da86-453e-98ac-21d1f9724ee3",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 32,
+      "sessionRevision": 33,
+      "frames": [
+        {
+          "simTimePs": "320000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "320000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111110",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "b52da672d9e00eb113eec0f93c8d3b5b359630aed23d5b1c7605ac2d7d1fbcdc"
+    },
+    {
+      "operationId": "b7784870-8ea6-469f-b721-46ee32cba229",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 33,
+      "sessionRevision": 34,
+      "frames": [
+        {
+          "simTimePs": "330000",
+          "switches": "0000000000000000",
+          "buttons": "00001",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11111101",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "330000",
+        "switches": "0000000000000000",
+        "buttons": "00001",
+        "resetN": "1",
+        "leds": "0000000000000001",
+        "anodes": "11111101",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "ec8b0445d3ea42e7cdbe5be2839eefd3ada6dc3961521cf90a505ce51cdb32fa"
+    },
+    {
+      "operationId": "45f5df0e-b0c0-45bf-ba9a-7fd93b8e44c0",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 34,
+      "sessionRevision": 35,
+      "frames": [
+        {
+          "simTimePs": "340000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "340000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111011",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "c0110ed35a5daabeca1eaee855a20db193ec25ef1f80e70ce08671442fa7b8f7"
+    },
+    {
+      "operationId": "5e0e1943-3877-4331-adba-33d0a0b852a7",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 35,
+      "sessionRevision": 36,
+      "frames": [
+        {
+          "simTimePs": "350000",
+          "switches": "0000000000000000",
+          "buttons": "00010",
+          "resetN": "1",
+          "leds": "0000000000000010",
+          "anodes": "11110111",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "350000",
+        "switches": "0000000000000000",
+        "buttons": "00010",
+        "resetN": "1",
+        "leds": "0000000000000010",
+        "anodes": "11110111",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "06963d919ab6e509fc06e1979f203c8a31fb290e68621d0925e8aaa8fbd66cb8"
+    },
+    {
+      "operationId": "a88e79be-f8d3-4277-bc0c-b5c46fb851f1",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 36,
+      "sessionRevision": 37,
+      "frames": [
+        {
+          "simTimePs": "360000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11101111",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "360000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11101111",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "49794a96d7dbbd284c89f25836bec6225cd42cc47353248b560a728470ff86ad"
+    },
+    {
+      "operationId": "645de5d6-0861-4f77-b20b-0027e2361244",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 37,
+      "sessionRevision": 38,
+      "frames": [
+        {
+          "simTimePs": "370000",
+          "switches": "0000000000000000",
+          "buttons": "00100",
+          "resetN": "1",
+          "leds": "0000000000000100",
+          "anodes": "11011111",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "370000",
+        "switches": "0000000000000000",
+        "buttons": "00100",
+        "resetN": "1",
+        "leds": "0000000000000100",
+        "anodes": "11011111",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "b10d1d2a44fa35a4eee25491c9b683707bf6f6892ec5300fca494ede3c5a472b"
+    },
+    {
+      "operationId": "77c5cb64-7ff7-4105-b95d-f04417af792d",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 38,
+      "sessionRevision": 39,
+      "frames": [
+        {
+          "simTimePs": "380000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "10111111",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "380000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "10111111",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "f3d966e266d19b9441ffd4b74669cdc62a3197654bda6c18c2c59ba09367bd7d"
+    },
+    {
+      "operationId": "d3e7b3a4-7884-464f-ab31-a0181d0aedc8",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 39,
+      "sessionRevision": 40,
+      "frames": [
+        {
+          "simTimePs": "390000",
+          "switches": "0000000000000000",
+          "buttons": "01000",
+          "resetN": "1",
+          "leds": "0000000000001000",
+          "anodes": "01111111",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "390000",
+        "switches": "0000000000000000",
+        "buttons": "01000",
+        "resetN": "1",
+        "leds": "0000000000001000",
+        "anodes": "01111111",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "7da3ee7c7d1c5c5039e84514ab140d619852a8e212e5ed7c667a0e8a72ad0fe3"
+    },
+    {
+      "operationId": "3532fc03-db4a-49c1-91a7-838e0beca6a7",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 40,
+      "sessionRevision": 41,
+      "frames": [
+        {
+          "simTimePs": "400000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "400000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111110",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "1208bb971136a48c535099ac311dc7d61f65a2d7889cbd261bb0f4cd493b9e97"
+    },
+    {
+      "operationId": "18479010-bb3c-43db-9294-9553a497890e",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 41,
+      "sessionRevision": 42,
+      "frames": [
+        {
+          "simTimePs": "410000",
+          "switches": "0000000000000000",
+          "buttons": "10000",
+          "resetN": "1",
+          "leds": "0000000000010000",
+          "anodes": "11111101",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "410000",
+        "switches": "0000000000000000",
+        "buttons": "10000",
+        "resetN": "1",
+        "leds": "0000000000010000",
+        "anodes": "11111101",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "5afa56af08d25e3f2a092a177f73ac12d8fe090560e52067d4afc81176004141"
+    },
+    {
+      "operationId": "d27b06e9-94a4-4ca4-b861-369ee61d5ee8",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 42,
+      "sessionRevision": 43,
+      "frames": [
+        {
+          "simTimePs": "420000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000001",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "420000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111011",
+        "segments": "0000001",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "03e09b605300b61e465e6777e953069e8f15b0f93b5e2fab21580eee082c6a97"
+    },
+    {
+      "operationId": "0c5227c3-711f-4bec-8b30-8d8372e89d42",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 43,
+      "sessionRevision": 44,
+      "frames": [
+        {
+          "simTimePs": "430000",
+          "switches": "0000000000000000",
+          "buttons": "00001",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11110111",
+          "segments": "0000010",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "440000",
+          "switches": "0000000000000000",
+          "buttons": "00001",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11101111",
+          "segments": "0000011",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "450000",
+          "switches": "0000000000000000",
+          "buttons": "00001",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "11011111",
+          "segments": "0000100",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "450000",
+        "switches": "0000000000000000",
+        "buttons": "00001",
+        "resetN": "1",
+        "leds": "0000000000000001",
+        "anodes": "11011111",
+        "segments": "0000100",
+        "dp": "1"
+      },
+      "sampleCount": 3,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "88e75f798c79600507532751f2e3fb9e38d80c207db21896b2d9c38a1fca30b1"
+    },
+    {
+      "operationId": "876aeca1-48b7-4b43-b7f8-3e69f27aa646",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 44,
+      "sessionRevision": 45,
+      "frames": [
+        {
+          "simTimePs": "460000",
+          "switches": "0000000000000000",
+          "buttons": "00001",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "10111111",
+          "segments": "0000101",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "470000",
+          "switches": "0000000000000000",
+          "buttons": "00001",
+          "resetN": "1",
+          "leds": "0000000000000001",
+          "anodes": "01111111",
+          "segments": "0000110",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "470000",
+        "switches": "0000000000000000",
+        "buttons": "00001",
+        "resetN": "1",
+        "leds": "0000000000000001",
+        "anodes": "01111111",
+        "segments": "0000110",
+        "dp": "1"
+      },
+      "sampleCount": 2,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "5e1f00c06a565bf8dadebcd803b1fb6e61ec64fabf4907d7467a900f0d8fd4e6"
+    },
+    {
+      "operationId": "73fed386-d310-4486-864d-37ff934a12b8",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 45,
+      "sessionRevision": 46,
+      "frames": [
+        {
+          "simTimePs": "480000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000110",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "490000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111101",
+          "segments": "0000110",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "500000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000110",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "500000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111011",
+        "segments": "0000110",
+        "dp": "1"
+      },
+      "sampleCount": 3,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "403b24ae8056f5b2f1987cec854dd64e287f02b20a5315d0b509440b7f4ebabf"
+    },
+    {
+      "operationId": "7a20dd2b-08b9-4592-8a65-29adff52a9a8",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 46,
+      "sessionRevision": 47,
+      "frames": [
+        {
+          "simTimePs": "510000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "0",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "0"
+        },
+        {
+          "simTimePs": "520000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "0",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "0"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "520000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "0",
+        "leds": "0000000000000000",
+        "anodes": "11111110",
+        "segments": "0000000",
+        "dp": "0"
+      },
+      "sampleCount": 2,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "3ae4e969361eace0181fb780542e1f11ce9fbbf40a0c1151dcb5807c2d70f9a1"
+    },
+    {
+      "operationId": "4df39e06-015c-46aa-bfa7-dc4114bbf681",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 47,
+      "sessionRevision": 48,
+      "frames": [
+        {
+          "simTimePs": "530000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111101",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "530000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111101",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "53c1507c704ae85aebba9cd06c13bdf9c1cea24832653e3cd1e97235f8baa6bb"
+    },
+    {
+      "operationId": "7dfe313c-a936-4e05-b887-3255674a0e42",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 48,
+      "sessionRevision": 49,
+      "frames": [
+        {
+          "simTimePs": "540000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "550000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11110111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "560000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11101111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "570000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11011111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "580000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "10111111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "590000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "01111111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "600000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "610000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111101",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "620000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111011",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "630000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11110111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "640000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11101111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "650000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11011111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "660000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "10111111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "670000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "01111111",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "680000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111110",
+          "segments": "0000000",
+          "dp": "1"
+        },
+        {
+          "simTimePs": "690000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11111101",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "690000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11111101",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 16,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "e5ac6e2d78ae79c7e31a80049215a0a24224c0da2f47224898d0177f3cdf66a6"
+    },
+    {
+      "operationId": "e98b2730-2716-4b73-a8ab-e451c6bb17a7",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 49,
+      "sessionRevision": 50,
+      "frames": [
+        {
+          "simTimePs": "700000",
+          "switches": "1000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "1000000000000000",
+          "anodes": "11111011",
+          "segments": "x0z1010",
+          "dp": "z"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "700000",
+        "switches": "1000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "1000000000000000",
+        "anodes": "11111011",
+        "segments": "x0z1010",
+        "dp": "z"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "c4af1972ca8fea9bb499386eeb02ccb29138b1653518126024a2b9a7c3802cf2"
+    },
+    {
+      "operationId": "7eff159a-54dd-44e8-bac1-7b531bc9ad4c",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 50,
+      "sessionRevision": 51,
+      "frames": [
+        {
+          "simTimePs": "710000",
+          "switches": "0010000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0010000000000000",
+          "anodes": "11111100",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "710000",
+        "switches": "0010000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0010000000000000",
+        "anodes": "11111100",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "c9ae42fcae40d696ff0f882ed31cca26a2647585ba18e6582d9f1d54a12f0b68"
+    },
+    {
+      "operationId": "acc6d097-831f-458b-bfab-2ab712bb5b5f",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 51,
+      "sessionRevision": 52,
+      "frames": [
+        {
+          "simTimePs": "720000",
+          "switches": "0100000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0100000000000000",
+          "anodes": "11111111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "720000",
+        "switches": "0100000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0100000000000000",
+        "anodes": "11111111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "e68071ae4a96e9c4d57110cc8222e4263cc1f8b5fadc9f39f03deacdf84b5775"
+    },
+    {
+      "operationId": "f63eaacc-cba2-44a3-a517-aa1481bdab35",
+      "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+      "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+      "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+      "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+      "mappingVersion": "synthetic-all-inputs-v1",
+      "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+      "sequence": 52,
+      "sessionRevision": 53,
+      "frames": [
+        {
+          "simTimePs": "730000",
+          "switches": "0000000000000000",
+          "buttons": "00000",
+          "resetN": "1",
+          "leds": "0000000000000000",
+          "anodes": "11011111",
+          "segments": "0000000",
+          "dp": "1"
+        }
+      ],
+      "finalFrame": {
+        "simTimePs": "730000",
+        "switches": "0000000000000000",
+        "buttons": "00000",
+        "resetN": "1",
+        "leds": "0000000000000000",
+        "anodes": "11011111",
+        "segments": "0000000",
+        "dp": "1"
+      },
+      "sampleCount": 1,
+      "droppedFrames": 0,
+      "coverage": "complete",
+      "resultHash": "90335c86afe34a13eaf50f099ff5110f80d114a633920dd500074d080a261fe8"
+    }
+  ],
+  "finalSession": {
+    "sessionId": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+    "identity": {
+      "id": "27238e95-9e0b-4c04-9958-5c9ab0a3cb7e",
+      "commandId": "b40e8ce2-71b6-4a93-99c7-7a6b2f97fb65",
+      "requestHash": "4e0d490164fc7b1f98a8e32cdb8b284b9249325941676a728243bdb69ab3d6e5",
+      "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "scope": {
+        "courseId": "synthetic-board-f4e37048-1b6b-434d-bec1-6b270d9f56d7",
+        "studentId": "synthetic-board-student",
+        "attemptId": "ac7ecdab-6bb2-4dba-9159-99df690cef77",
+        "activityVersionId": "synthetic-full-inputs"
+      }
+    },
+    "buildId": "35aed60f-181a-4d13-aece-c2db563f0ea1",
+    "snapshotId": "6bc2bac9-5661-4c0f-825a-459c368b68cf",
+    "snapshotHash": "2a16671d07587c82201c175546f2f5a82ff31f3bd786c5c21ee0493b1ef38372",
+    "boardProfileVersion": "nexys4-ddr-rev-c-v1",
+    "mappingVersion": "synthetic-all-inputs-v1",
+    "engineVersion": "iverilog-12.0-ubuntu-12.0-2build2",
+    "runtimeProfileVersion": "hdl-iverilog12-nexys4ddr-v1",
+    "sessionRevision": 54,
+    "confirmedSequence": 52,
+    "simTimePs": "730000",
+    "status": "stopped",
+    "terminationConfirmed": true,
+    "stopRequested": true,
+    "createdAt": "2026-10-15T06:14:57.082Z",
+    "lastOperationAt": "2026-10-15T06:15:02.299Z",
+    "deadline": "2026-10-15T06:44:57.100Z",
+    "failureKind": "stopped"
+  }
+}
