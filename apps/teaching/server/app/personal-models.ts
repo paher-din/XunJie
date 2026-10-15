@@ -11,6 +11,7 @@ export function personalModels(options:PersonalModelsOptions,authorize:(request:
   const service=createPersonalAgentService({directory:options.directory,authorize,transport,callsEnabled:()=>options.callsEnabled!==false});
   const studentHelp:TutoringAppOptions['studentHelp']={...original,
     requestLimits:{inactivityTimeoutMs:PERSONAL_MODEL_IDLE_MS,maximumCalls:1},
+    modelConfigRevisionForStudent:studentId=>service.configurationRevision(studentId),
     budgetAvailable:scope=>Boolean(service.selection(scope.studentId)),
     versionsForStudent:studentId=>({...original.versions,modelConfig:service.selection(studentId)?.version??'personal-unconfigured'}),
     providerForStudent:(studentId,version)=>compatibleTutoringProvider(requirePersonalSelection(service.selection(studentId),version),transport),

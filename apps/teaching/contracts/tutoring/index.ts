@@ -99,6 +99,7 @@ export type LearnerAnalysisRequest = {
 };
 
 export type StudentHelpCommandInput = {
+  expectedModelConfigRevision?:number;
   expectedAttemptRevision: number;
   recoveryGeneration: string;
   question: string;

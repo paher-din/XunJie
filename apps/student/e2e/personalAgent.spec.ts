@@ -255,3 +255,54 @@ test('服务端未返回实际用量时不显示零用量或演示容量环', as
   await expect(page.locator('.ctx-ring')).toHaveCount(0)
   await expect(page.locator('.chat-disclaimer')).not.toContainText('实际用量')
 })
+
+for(const existing of [false,true])test(`${existing?'现有会话':'旧页'}配置版本不能悄悄换档发送，冲突后刷新选择并保留原问题`,async({page})=>{
+  let current=config(),reads=0,starts=0;let sent:Record<string,unknown>|undefined;
+  const cid=existing?'existing-model-conversation':'fresh-model-conversation';
+  const previous=existing?[{role:'user',text:'上一条已回答的问题',at},{role:'agent',text:'上一条回答',phase:'settled',at}]:[];
+  current.efforts[current.defaultModelId]='最高';
+  await install(page,async(route,path)=>{
+    if(path==='/api/model-settings'){reads++;await envelope(route,current);return true}
+    if(path==='/api/agent/turns'){
+      sent=route.request().postDataJSON();starts++;
+      if(sent?.expectedModelConfigRevision===current.revision){await envelope(route,{conversationId:cid,turnId:'fresh-model-turn',message:{role:'agent',text:'已按核对后的配置回复',phase:'settled',at}});return true}
+      await route.fulfill({status:409,json:{requestId:'stale-model',error:{code:'VERSION_CONFLICT',message:'Model changed',retryable:false,recovery:'Reload model settings'}}});return true;
+    }
+    if(path===`/api/agent/conversations/${cid}`){await envelope(route,{id:cid,title:'核对配置',updatedAt:at,messages:[...previous,...(starts>1?[{role:'user',text:'配置冲突时仍保留的原问题',at},{role:'agent',text:'已按核对后的配置回复',phase:'settled',at}]:[])]});return true}
+    return false;
+  });
+  await page.goto(`${REAL_URL}/#/agent${existing?'/'+cid:''}`);
+  await expect(page.getByRole('button',{name:'切换思考强度',exact:true})).toContainText('最高');
+  const displayedRevision=current.revision;
+  current={...current,revision:2,efforts:{[current.defaultModelId]:'低'}};
+  await page.getByRole('textbox',{name:'向 Agent 提问'}).fill('配置冲突时仍保留的原问题');
+  await page.getByRole('button',{name:'发送消息',exact:true}).click();
+  await expect(page.getByRole('alert').last()).toBeVisible();
+  expect(sent?.expectedModelConfigRevision).toBe(displayedRevision);
+  await expect(page.getByRole('button',{name:'切换思考强度',exact:true})).toContainText('低');
+  await expect(page.locator('.chat-message.user').last()).toContainText('配置冲突时仍保留的原问题');
+  expect(reads).toBeGreaterThan(1);
+  expect(starts).toBe(1);
+  await page.getByRole('button',{name:'重试',exact:true}).click();
+  await expect(page.locator('.chat-message.agent').last()).toContainText('已按核对后的配置回复');
+  expect(starts).toBe(2);expect(sent?.expectedModelConfigRevision).toBe(2);
+  expect(sent?.text).toBe('配置冲突时仍保留的原问题');
+});
+
+test('同账号另一页保存强度后，当前页同步服务端确认的选择',async({page})=>{
+  let current=config();current.efforts[current.defaultModelId]='最高';
+  const handle=async(route:Route,path:string)=>{
+    if(path!=='/api/model-settings')return false;
+    if(route.request().method()==='POST'){
+      const body=route.request().postDataJSON();current={...current,...body,revision:current.revision+1,providers:current.providers};
+    }
+    await envelope(route,current);return true;
+  };
+  await install(page,handle);await page.goto(`${REAL_URL}/#/agent`);
+  await expect(page.getByRole('button',{name:'切换思考强度',exact:true})).toContainText('最高');
+  const other=await page.context().newPage();await install(other,handle);
+  await other.goto(`${REAL_URL}/#/settings/model`);
+  await other.getByRole('radio',{name:'低',exact:true}).click();
+  await expect.poll(()=>current.efforts[current.defaultModelId]).toBe('低');
+  await expect(page.getByRole('button',{name:'切换思考强度',exact:true})).toContainText('低');
+});

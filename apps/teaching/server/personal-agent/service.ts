@@ -29,6 +29,7 @@ type Turn={turnId:string;conversationId:string;userId:string;messageId:string;me
   acceptedAt:number;deadline:number|null;callCount:number;status:'running'|'settled'|'stopped'|'failed';usage?:{status:'actual';inputTokens:number;outputTokens:number}|{status:'unknown'}};
 type Conversation={id:string;userId:string;title:string;updatedAt:string;pinned:boolean;archived:boolean;ids:string[]};
 const turnInput=z.strictObject({conversationId:identifier.nullable(),mode:z.enum(['send','retry','resume']),
+  expectedModelConfigRevision:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
   text:z.string().max(32000).optional(),requestKey:z.string().min(1).max(128)});
 const textInput=z.string().trim().min(1).max(32000);
 const parse=<T>(schema:z.ZodType<T>,value:unknown):T=>{const result=schema.safeParse(value);if(!result.success)throw new ApiError('INVALID_REQUEST');return result.data;};
@@ -198,6 +199,7 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       const previous=store.get('SELECT request_hash,turn_json FROM agent_turns WHERE user_id=? AND request_key=?',userId,input.requestKey);
       if(previous){if(previous.request_hash!==requestHash)throw new ApiError('IDEMPOTENCY_CONFLICT');return {turn:JSON.parse(String(previous.turn_json)) as Turn};}
       if(closing)throw new ApiError('DEPENDENCY_UNAVAILABLE');
+      if(input.expectedModelConfigRevision!==undefined&&input.expectedModelConfigRevision!==config(userId).revision)throw new ApiError('VERSION_CONFLICT');
       noRunningForAccount(userId);
       const selected=selection(userId);if(!selected)throw new ApiError('INVALID_CONFIGURATION');
       const at=stamp();
@@ -336,5 +338,5 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
     }
     closePromise=Promise.allSettled([...active.values()].map(task=>task.promise)).then(()=>store.close());return closePromise;
   }
-  return {register,selection,close};
+  return {register,selection,configurationRevision:(userId:string)=>config(userId).revision,close};
 }

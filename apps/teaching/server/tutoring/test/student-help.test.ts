@@ -37,7 +37,7 @@ const versions = {
 };
 
 async function fixture(teacherAgent = false, suppliedProvider?: ModelProvider, liveClock = false,
-  personal:Pick<Parameters<typeof createTutoringApp>[0]['studentHelp'],'versionsForStudent'|'providerForStudent'>={}) {
+  personal:Pick<Parameters<typeof createTutoringApp>[0]['studentHelp'],'versionsForStudent'|'providerForStudent'|'modelConfigRevisionForStudent'>={}) {
   const db = createTeachingDatabase();
   let time = Date.now();
   let clockStepMs = 0;
@@ -339,6 +339,18 @@ test('personal model selection fixes accepted provenance, rejects queued changes
     const history=await f.service.app.inject({url:`/api/attempts/${setup.attemptId}/teaching-records`,headers:setup.teacher});
     const messages=history.json().data.messages as {authorKind:string;envelope:{versions:{modelConfigVersion:string}}}[];
     assert.equal(messages.find(message=>message.authorKind==='model')?.envelope.versions.modelConfigVersion,'personal-student-2');
+  }finally{await f.close();}
+});
+
+test('stale personal configuration rejects help before replacing any job or persisting the question',async()=>{
+  const f=await fixture(false,undefined,false,{modelConfigRevisionForStudent:()=>2});
+  try{
+    const setup=await setupProject(f),before=await attemptView(f,setup.student,setup.attemptId);
+    const stale=await command(f.service.app,setup.student,`/api/attempts/${setup.attemptId}/help`,{
+      expectedAttemptRevision:before.attempt.attemptRevision,expectedModelConfigRevision:1,question:'Do not send using an unseen model.'});
+    assert.equal(stale.statusCode,409,stale.body);assert.equal(stale.json().error.code,'VERSION_CONFLICT');
+    assert.equal((await attemptView(f,setup.student,setup.attemptId)).attempt.attemptRevision,before.attempt.attemptRevision);
+    assert.equal(f.db.withTransaction(tx=>tx.get("SELECT COUNT(*) AS n FROM jobs WHERE purpose='student_help'")?.n),0);
   }finally{await f.close();}
 });
 

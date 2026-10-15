@@ -15,6 +15,7 @@ export type CompatibleTransport = {
 export type PersonalAgentService = {
   register(app:FastifyInstance):void;
   selection(userId:string):ModelSelection|undefined;
+  configurationRevision(userId:string):number;
   close():Promise<void>;
 };
 export type PersonalAgentOptions = {directory:string;authorize(request:FastifyRequest):string;

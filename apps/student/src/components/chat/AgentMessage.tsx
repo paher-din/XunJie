@@ -256,7 +256,9 @@ function FailureCard({
 }) {
   const [dismissed, setDismissed] = useState(false)
   const failure = message.failure!
-  const copy: (typeof FAILURE_COPY)['network'] = failure.code === 'DEADLINE_EXCEEDED'||failure.code==='PROVIDER_IDLE_TIMEOUT'
+  const copy: (typeof FAILURE_COPY)['network'] = failure.code==='MODEL_CONFIGURATION_CHANGED'
+    ? {title:'模型配置已改变，请核对后重试',actions:['retry','dismiss']}
+    : failure.code === 'DEADLINE_EXCEEDED'||failure.code==='PROVIDER_IDLE_TIMEOUT'
     ? { title: failure.code==='PROVIDER_IDLE_TIMEOUT'?'模型连接长时间无响应':'等待模型响应超时', actions: ['retry', 'dismiss'] }
     : failure.code === 'PROVIDER_PAYMENT_REQUIRED'
       ? { title: '供应商余额不足', actions: ['dismiss'] }

@@ -56,6 +56,7 @@ const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const natural = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const studentHelpCommandSchema = z.strictObject({
   expectedAttemptRevision: revision,
+  expectedModelConfigRevision:natural.optional(),
   recoveryGeneration: id,
   question: z.string().max(16_384),
   objectRef: objectRef.optional(),
@@ -92,6 +93,7 @@ export type TutoringAppOptions = TeachingRecordsOptions & {
     versions: TrustedModelContext["versions"];
     /** Trusted personal configuration, selected on acceptance and captured before dispatch. */
     versionsForStudent?: (studentId:string)=>TrustedModelContext["versions"];
+    modelConfigRevisionForStudent?:(studentId:string)=>number;
     providerForStudent?: (studentId:string,modelConfigVersion:string)=>ModelProvider;
     requestLimits?:{inactivityTimeoutMs?:number;maximumCalls:number};
     readLearnerState?: LearnerStateReader;
@@ -180,6 +182,8 @@ export async function createTutoringApp(options: TutoringAppOptions) {
           (value) => studentHelpCommandResultSchema.parse(value),
         );
         if (previous) return { ...previous, replayed: true };
+        if(input.expectedModelConfigRevision!==undefined&&input.expectedModelConfigRevision!==studentHelp.modelConfigRevisionForStudent?.(actor.userId))
+          throw new ApiError('VERSION_CONFLICT');
         let acceptedHdlBasis:HdlHelpBasis|undefined;
         if(input.hdlSelection){
           if(!studentHelp.readHdlContext)throw new ApiError('DEPENDENCY_UNAVAILABLE');

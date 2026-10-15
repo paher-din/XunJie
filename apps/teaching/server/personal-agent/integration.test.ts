@@ -220,6 +220,20 @@ test('all configured model efforts are validated, and large declared contexts ar
   assert.equal(good.status,200);assert.equal(good.body.data.providers[0].models[0].contextWindow,'2000000');
 });
 
+test('stale page model revision rejects a new turn before recording or calling the provider',async t=>{
+  let calls=0;
+  const fixture=await setup({...immediateTransport,async complete(){calls++;return {text:'verified'};}});t.after(fixture.cleanup);
+  await fixture.request('POST','/api/model-settings',settings());
+  const stale=await fixture.request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'keep original question',requestKey:'stale-page',expectedModelConfigRevision:0});
+  assert.equal(stale.status,409);assert.equal(stale.body.error?.code,'VERSION_CONFLICT');assert.equal(calls,0);
+  assert.deepEqual((await fixture.request('GET','/api/agent/conversations')).body.data,[]);
+  const current=await fixture.request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'keep original question',requestKey:'fresh-page',expectedModelConfigRevision:1});
+  assert.equal(current.status,200);await pause();assert.equal(calls,1);
+  await fixture.request('POST','/api/model-settings',settings({expectedRevision:1}));
+  const replay=await fixture.request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'keep original question',requestKey:'fresh-page',expectedModelConfigRevision:1});
+  assert.equal(replay.body.data.turnId,current.body.data.turnId);assert.equal(calls,1);
+});
+
 test('thinking has no total deadline; actual activity renews only the network idle window',async t=>{
   let calls=0;
   let activity:(()=>void|Promise<void>)|undefined;

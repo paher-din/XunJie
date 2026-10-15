@@ -5,6 +5,7 @@ import type { TutorCommand } from './tutoringStore'
 // HTTP/protocol/storage exceptions and all other details remain in the diagnostic channel.
 const studentGuards = new Set([
   '当前尝试未读取，问题未发送',
+  '模型配置正在读取或保存，请确认后再发送。',
   '等待期间已停止帮助，原问题未发送。',
   '限定检查进行中，当前不能发送辅导问题。',
   '限定检查状态尚未确认，请重新读取后再求助。',

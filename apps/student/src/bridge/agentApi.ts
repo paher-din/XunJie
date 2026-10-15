@@ -4,7 +4,7 @@ import { learningApi as mock } from './mockAdapter'
 import { apiGet, apiPost } from '../workspace/http'
 import { PREP_BUILD } from '../workspace/mode'
 import { getSessionState } from '../workspace/session'
-import { getModelSettings } from '../lib/modelSettings'
+import { getModelSettings,reloadOnModelConfigConflict,ModelConfigurationChangedError } from '../lib/modelSettings'
 
 const opts = { mode: 'real' as const, timeoutMs: 15_000 }
 function identity() { const s = getSessionState(); return `${s.epoch}:${s.session?.userId ?? ''}` }
@@ -68,8 +68,15 @@ class RealAgentApi {
     const active = { session: captured, stopRequested: false } as NonNullable<RealAgentApi['active']>
     this.active = active
     try {
-      let view = turnView(await this.post('/agent/turns', { conversationId: input.conversationId, mode,
-        ...(mode === 'send' ? { text: input.text } : {}), requestKey: crypto.randomUUID() }))
+      let raw:unknown;
+      try{raw=await this.post('/agent/turns', { conversationId: input.conversationId, mode,
+        expectedModelConfigRevision:configuration.data.revision,
+        ...(mode === 'send' ? { text: input.text } : {}), requestKey: crypto.randomUUID() })}
+      catch(error){
+        if(await reloadOnModelConfigConflict(error,configuration.data.revision))throw new ModelConfigurationChangedError();
+        throw error;
+      }
+      let view = turnView(raw)
       assertCurrent(captured)
       if (input.conversationId && view.conversationId !== input.conversationId) throw new Error('回合归属不一致，请重新读取会话。')
       active.turnId = view.turnId

@@ -388,7 +388,7 @@ export default function AgentPage() {
                       key={key}
                       message={msg}
                       onResume={i === lastAgentRow && !!conversationId ? turn.resume : undefined}
-                      onRetry={i === lastAgentRow && !!conversationId ? turn.retry : undefined}
+                      onRetry={i === lastAgentRow && (!!conversationId||msg.failure?.code==='MODEL_CONFIGURATION_CHANGED') ? turn.retry : undefined}
                       onSwitchModel={i === lastAgentRow && !!conversationId ? switchModelAndRetry : undefined}
                       onQuizAnswer={PREP_BUILD && stored >= 0 ? answerQuiz(stored) : undefined}
                       genCardSlots={PREP_BUILD && stored >= 0 ? genCardHandlers(stored) : undefined}

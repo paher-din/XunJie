@@ -13,6 +13,7 @@ import { confirmationRepository } from './confirmationDb'
 import { tutoringRequest } from './tutoringTransport'
 import { describeError, reportDiagnostic } from './diagnostics'
 import { tutoringCommandFailureNotice, tutoringFailureNotice, tutoringReadRejectionNotice } from './tutoringNotice'
+import {getModelSettings,reloadOnModelConfigConflict} from '../lib/modelSettings'
 
 export interface TutoringState { ledger: TutorLedger | null; busy: boolean; synchronized: boolean; notice: string | null; history?:TutorHistoryState; limitedCheck?:boolean|null; sendingKey?:string|null }
 /** One owner serializes durable facts. Never create another global ContextGuard. */
@@ -337,6 +338,8 @@ export class TutoringWorkspace {
     // Capture intent before the queue or HTTP wait; a later stop must fence this older send.
     const issuedStopVersion=this.stopVersion, originalObject=objectRef?structuredClone(objectRef):undefined
     const originalSelection=hdlSelection?structuredClone(hdlSelection):undefined,issuedHdlVersion=this.hdlVersion
+    const modelSettings=this.context.mode==='real'?getModelSettings():undefined;
+    const expectedModelConfigRevision=modelSettings?.data?.revision;
     return this.enqueue(async () => {
     if(issuedStopVersion!==this.stopVersion) {this.publish({notice:'等待期间已停止帮助，原问题未发送。'});return}
     if (!question.trim() || !this.state.ledger) return
@@ -346,6 +349,7 @@ export class TutoringWorkspace {
     }
     this.publish({ busy: true, notice: null })
     try {
+      if(modelSettings?.loading||modelSettings?.saving)throw new Error('模型配置正在读取或保存，请确认后再发送。');
       const head = await tutoringRequest(this.confirmation.readHead({controlsOnly:true}))
       if(!this.valid())return
       if(!head) {
@@ -369,6 +373,7 @@ export class TutoringWorkspace {
         issuedStopVersion,
         path: `/attempts/${encodeURIComponent(this.context.attemptId!)}/help`,
         wireJson: JSON.stringify({ question, expectedAttemptRevision: head.attempt.attemptRevision,
+          ...(expectedModelConfigRevision!==undefined?{expectedModelConfigRevision}:{}),
           recoveryGeneration: this.context.trustedRecoveryGeneration, ...(originalObject ? { objectRef:originalObject } : {}),
           ...(originalSelection?{hdlSelection:originalSelection}:{}) }) }
       ledger.commands.push(command); await this.persist(ledger)
@@ -476,7 +481,9 @@ export class TutoringWorkspace {
       command.error = e instanceof Error ? e.message : String(e)
       if (e instanceof WorkspaceRequestError && e.failure.kind === 'api' && !e.failure.error.retryable) command.state = 'rejected'
       await this.persist(ledger)
-      this.publish({ notice: tutoringCommandFailureNotice(command, e) })
+      const changed=command.kind==='help'&&await reloadOnModelConfigConflict(e,JSON.parse(command.wireJson).expectedModelConfigRevision);
+      if(!this.valid())return;
+      this.publish({ notice: changed?'模型配置已在其他页面改变，请核对当前选择后重新发送。原问题已保留。':tutoringCommandFailureNotice(command, e) })
     } finally {
       if(this.state.sendingKey===key)this.publish({sendingKey:null})
     }
