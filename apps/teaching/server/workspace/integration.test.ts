@@ -230,6 +230,7 @@ function controlledRunner() {
       return { data: { ready: true,...syntheticProfile,recoveryGeneration: 'generation',fingerprint,
         validation: { passed: true,fingerprintHash: createHash('sha256').update(JSON.stringify(fingerprint)).digest('hex'),validatedAt: new Date().toISOString() } } };
     }
+    if(command.op==='editor_diagnostics')throw new Error('Synthetic editor diagnostics unavailable');
     const id = command.op === 'submit' ? command.submission.identity.runId : command.identity.runId;
     if (command.op === 'submit') {
       submits++; accepted.set(id,command.submission); facts.set(id,{ identity: command.submission.identity,state: 'running',reserved: true,stopRequested: false,units: ['synthetic-unit'],pending: [] });

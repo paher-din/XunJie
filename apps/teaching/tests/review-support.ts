@@ -179,6 +179,7 @@ export function syntheticNode(outcome: 'plain_pass'|'forged_check'|'compile_erro
   const values = new Map<string,{record: Record<string,unknown>;fact: Record<string,unknown>}>();
   return async command => {
     if (command.op === 'readiness') throw new Error('Readiness is provided by the fixture');
+    if(command.op==='editor_diagnostics')throw new Error('Synthetic editor diagnostics unavailable');
     const id = command.op === 'submit' ? command.submission.identity.runId : command.identity.runId;
     if (command.op === 'submit') {
       const submission = command.submission,identity = submission.identity;

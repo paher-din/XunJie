@@ -17,7 +17,7 @@ export async function createI0App(options:I0AppOptions) {
   const tables=options.db.withTransaction(tx=>tx.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").map(row=>String(row.name)));
   if (JSON.stringify(tables)!==JSON.stringify(approvedTables)) throw new ApiError('INVALID_CONFIGURATION');
   const admission={accepting:true};
-  const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
+  const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit','editor_diagnostics'],readiness:'readiness'}):undefined;
   let host:ReturnType<typeof attachOriginalJobHost>;
   const {tutoring,...base}=options;
   const guarded={...base,...(runner?{runner}:{}),checkReadiness:async()=>{

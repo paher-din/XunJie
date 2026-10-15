@@ -127,6 +127,7 @@ test('review: real RunControl preparation failure ends check without fabricating
     }
     if (request.op === 'cancel') return { data: await control.cancelRun('synthetic-application',request.identity) };
     if (request.op === 'readResult') return { data: await control.readResult('synthetic-application',request.identity) ?? null };
+    if(request.op==='editor_diagnostics')throw new Error('Synthetic editor diagnostics unavailable');
     return { data: await control.queryRun('synthetic-application',request.identity) ?? null };
   };
   const f = await fixture(transport);
