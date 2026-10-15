@@ -5,6 +5,7 @@
 ## 从这里开始
 
 - **了解产品：** 按 [PRD](docs/product/PRD.md) → [MVP_SPEC](docs/product/MVP_SPEC.md) → [TECH_DESIGN](docs/product/TECH_DESIGN.md) 阅读。首版 C / TextScope Core → Report 与数字逻辑增量的范围、限额及验收以基线和批准任务为准。
+- **修改学生 UI：** 页面、组件、样式与交互改动前先读本仓库 [DESIGN.md](docs/DESIGN.md)，沿用已交付设计与语义图标；产品、权限、数据和真实状态仍以产品基线及当前获准任务为准。
 - **领取或继续任务：** 先读 [AGENTS.md](AGENTS.md)，再按 [TEAM_WORK_PLAN](docs/planning/TEAM_WORK_PLAN.md) 找对应任务，核对最新负责人决定、进入条件、授权写集和交付状态。
 - **运行学生前端：** 使用下方准备入口；正常业务服务的接线条件见 [学生 README](apps/student/README.md)。
 - **接收模块交付：** 按下方任务入口与原 Issue 回交证据，区分材料已交、联调通过、失败和未执行。
@@ -21,7 +22,7 @@ npm run dev:prep
 
 正常模式、浏览器端口、真实 Chrome、专项/全量测试及故障回放见 [学生运行说明](apps/student/README.md)；来源、许可与同步边界见 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。正常请求失败不回退到 fixture。
 
-Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)：`xunjie-local.ps1 start` 复用专用执行 VM 和原35表合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；新版个人通道由本人在设置页保存并启用 Key 后生效，`-DisablePersonalModels` 可总停用；`-EnableModel` 仅保留旧环境 Key 通道。登录使用该说明中的实际分配深链；首页设计 Demo 不替代正常任务入口。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
+Robert 已准备的完整本机 C/HDL 环境使用 [本机工具入口](tools/i0-hdl/README.md)：`xunjie-local.ps1 start` 复用专用执行 VM 和原35表合成库，正常 HTTPS 为 `https://127.0.0.1:3444`；新版个人通道由本人在设置页保存并启用 Key 后生效，`-DisablePersonalModels` 可总停用；`-EnableModel` 仅保留旧环境 Key 通道。登录后从[首页真实任务入口](docs/tasks/I0-UI_REAL_HOME_ENTRY.md)选择本人课程与分配，也可沿用实际分配深链。首页沿用原问候、学习看板和任务卡；后端尚无完成率/时长汇总，看板按本轮授权展示明确标注的[演示统计](docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)，本人真实分配数量与任务入口独立保留。真实浏览器与模型记录见 [HDL 验收包](docs/tasks/evidence/ui30-hdl-20261015/handoff.md)和 [C 辅导与两课程整合](docs/tasks/I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
 
 学生前端的交付检查在 `apps/student` 执行：
 

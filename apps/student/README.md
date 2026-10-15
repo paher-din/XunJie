@@ -7,6 +7,8 @@ XunJie 主仓库的学生端前端工程。首次内容由设计仓库 `XunJie_D
 [MVP_SPEC](../../docs/product/MVP_SPEC.md) → [TECH_DESIGN](../../docs/product/TECH_DESIGN.md)。
 设计仓库的说明只作为 UI 来源参考（见下方「设计参考」），其中与主仓库冲突的业务描述不继承为契约。
 
+页面、组件、样式或交互修改前先读主仓库 [DESIGN.md](../../docs/DESIGN.md)，遵循其中的视觉与交互规则，复用原有组件；缺真实数据时按实际可用字段呈现，不另写一套简化 UI。
+
 ## 运行
 
 需要 Node 24（与 `apps/teaching` 已批准的工具环境同一大版本）。本机默认 Node 更高时，
@@ -73,12 +75,12 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 
 真实模式沿 `/#/task/<assignmentId>` 获准分配深链，读取当前 Session、授权 bootstrap、固定活动与公开材料，
 在同一工作区接入确认作品和辅导。载入只读，创建 Attempt、保存、冻结和求助仍需明确操作；
-未登录时在原深链显示账号/密码表单，登录成功继续读取获准任务；首页也可登录，之后使用课程提供的任务链接。
+未登录时显示账号/密码表单；从深链登录后继续原任务，从首页登录后选择本人获准的学生课程与分配。当前35表两课程宿主提供真实任务列表，标题来自固定活动学生投影；课程按服务端课程标识展示，暂停任务标明暂停。正常首页沿用原“问候/日期→学习看板→课程与任务”结构、默认任务完成/热力卡、编辑与添加托盘及内嵌任务入口。当前后端没有完成率、活跃时长汇总接口，按负责人本轮授权，仅看板使用源 `demoDashboard` / `demoTasks` 并标注“演示统计”；演示完成比例与本人真实分配数分开显示，内嵌“当前获准任务”入口仍打开本人真实任务，不生成学习记录。课程内沿用原任务卡、搜索和已分配/暂停筛选，不把分配有效状态当作学习进度。列表失败可重试，原授权深链仍可使用；旧 C-only 宿主未提供列表，不回退演示任务。原入口与组件恢复见[首页真实任务入口](../../docs/tasks/I0-UI_REAL_HOME_ENTRY.md)、[原看板接回](../../docs/tasks/I0-UI_HOME_DASHBOARD_RECONNECT.md)；本轮数据核查与验证见[看板展示数据](../../docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)。
 会话失效后重新登录同账号可恢复该账号的本机草稿；首页账号菜单及工作区「退出」实际结束服务端会话。
 退出未确认时先重试退出，不能将网络失败显示为成功；账号改变立即隔离旧展示与在途响应。
 密码不进入本机存储；身份/CSRF 只取服务端 Session。登录/会话请求等待上限15秒，失败不自动重试。
 缺权限或可信代际时显示不可用条件，不硬编码正式 ID、不遍历猜测、不回退准备数据。
-分配列表和跨设备 Attempt 发现不在本批范围；同一浏览器的已有原请求与引用仍沿确认库恢复。
+跨设备 Attempt 发现未提供；同一浏览器的已有原请求与引用仍沿确认库恢复。
 正常宿主须由维护者提供受控 HTTPS、现有配置/数据库与节点来源，接线与隔离服务证据见
 [真实入口记录](../../docs/tasks/I0-B_REAL_ENTRY.md)和[正常宿主组合](../../docs/tasks/I0-B_HOST_COMPOSITION.md)。
 
@@ -150,7 +152,7 @@ e2e/          Playwright 检查：真实 Vite 页面上的准备模式与真实�
 public/       品牌 IP 与字体资产（导入来源）
 ```
 
-`src/bridge/` 的 Mock 适配器是导入来源自带的演示数据层，驱动首页任务卡、看板与 Agent 对话页；
+`src/bridge/` 的 Mock 适配器是导入来源自带的演示数据层，驱动准备模式首页任务卡/看板与演示 Agent 对话页；正常首页课程及任务使用真实分配读取，仅看板按本轮授权使用原演示统计并明确标注。
 它**不是** I0-A 的传输层。I0-A 的工作区数据只走 `src/workspace/` 的窄 HTTP 客户端，
 两者不共享身份、草稿或运行状态。
 
@@ -219,9 +221,9 @@ CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装�
 
 ## 设计参考
 
-导入来源自带的说明文档留在设计仓库，按固定提交查阅（不随本目录同步）：
+设计系统已接收到主仓库；其余来源说明按固定提交查阅：
 
-- 设计系统令牌：[docs/DESIGN.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/DESIGN.md)
+- 设计系统与 UI 修改规范：[DESIGN.md](../../docs/DESIGN.md)
 - 首页 / 课程任务 / 工作区：[docs/home-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/home-design.md)
 - Agent 对话页：[docs/agent-page-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/agent-page-design.md)
 - 设置页信息架构：[docs/settings-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/settings-design.md)

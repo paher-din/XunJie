@@ -27,6 +27,7 @@ import { PREP_BUILD } from '../workspace/mode'
 import { useModelSettings } from '../lib/modelSettings'
 import { getSessionState } from '../workspace/session'
 import { logoutSession } from '../workspace/session'
+import { displayAccountName } from '../lib/displayNames'
 
 /** 历史会话按单一时间流分组：今天 / 昨天 / 更早（2026-10-11 由四档收成三档——「近 7 天」并进
     「更早」：最近两档已经由今天、昨天担起来，2 天以前统一算更早，不再切一个 7 天的口子）。 */
@@ -785,7 +786,7 @@ export default function AppShell() {
               }}
             >
               <AccountAvatar />
-              <span className="account-name">{!PREP_BUILD && session.session ? session.session.userId : account.name}</span>
+              <span className="account-name">{!PREP_BUILD && session.session ? displayAccountName(session.session.userId) : account.name}</span>
               <Icon name="sort-vertical" size={14} className="account-chev" />
             </button>
             <AccountMenu

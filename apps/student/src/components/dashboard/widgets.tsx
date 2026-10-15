@@ -4,8 +4,10 @@ import type { MouseEvent } from 'react'
 import type { DashboardData, ProjectTask } from '../../bridge/types'
 
 export interface WidgetProps {
-  data: DashboardData
-  tasks: ProjectTask[]
+  data: Partial<DashboardData>
+  /** null 表示宿主尚未提供学习完成状态，与已知的空任务列表区分。 */
+  tasks: ProjectTask[] | null
+  taskCount?: number
   now: Date
   bindTip: (text: string) => {
     onMouseEnter: (e: MouseEvent<Element>) => void
@@ -14,6 +16,10 @@ export interface WidgetProps {
   /** 在任意坐标（视口 CSS px）直接显示悬停提示 */
   showTip: (x: number, y: number, text: string) => void
   hideTip: () => void
+}
+
+function EmptyWidget({ children }: { children: React.ReactNode }) {
+  return <div className="db-fill"><div className="db-foot-note">{children}</div></div>
 }
 
 const fmtDay = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`
@@ -28,9 +34,9 @@ interface SemDay {
 }
 
 /** 开学至今的逐日数据，转成 Date 对象。 */
-function useSemDays(data: DashboardData): SemDay[] {
+function useSemDays(data: Partial<DashboardData>): SemDay[] {
   return useMemo(
-    () => data.activity.map((a) => ({ d: new Date(a.date + 'T00:00:00'), v: a.hours })),
+    () => data.activity?.map((a) => ({ d: new Date(a.date + 'T00:00:00'), v: a.hours })) ?? [],
     [data],
   )
 }
@@ -64,8 +70,10 @@ export function HeatWidget({ data, now, bindTip, showTip, hideTip }: WidgetProps
         </div>
       </div>
       <div className="db-fill">
-        {view === 'daily' && <HeatDaily weeks={weeks} todayKey={todayKey} bindTip={bindTip} />}
-        {view === 'weekly' && <HeatWeekly weeks={weeks} showTip={showTip} hideTip={hideTip} />}
+        {sem.length === 0 ? <EmptyWidget>暂无学习时长统计</EmptyWidget> : <>
+          {view === 'daily' && <HeatDaily weeks={weeks} todayKey={todayKey} bindTip={bindTip} />}
+          {view === 'weekly' && <HeatWeekly weeks={weeks} showTip={showTip} hideTip={hideTip} />}
+        </>}
       </div>
     </>
   )
@@ -284,7 +292,12 @@ function HeatWeekly({
 }
 
 /* ---- 任务完成（进度条样式） ---- */
-export function TaskProgressWidget({ tasks }: WidgetProps) {
+export function TaskProgressWidget({ tasks, taskCount }: WidgetProps) {
+  if (tasks === null) return <>
+    <div className="db-big">—<small> / {taskCount ?? '—'} 个任务</small></div>
+    <div className="db-goal-track" aria-label="任务完成进度暂无统计" />
+    <div className="db-foot-note">完成进度暂无统计</div>
+  </>
   const done = tasks.filter((t) => t.status === '已完成').length
   const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 1000) / 10 : 0
   const lastDone = tasks
@@ -319,11 +332,15 @@ export function TaskProgressWidget({ tasks }: WidgetProps) {
 
 /* ---- 学习投入构成（马赛克占比块） ---- */
 export function MosaicWidget({ data, bindTip }: WidgetProps) {
+  const { composition, compositionTotalHours } = data
+  if (!composition?.length || compositionTotalHours === undefined) {
+    return <EmptyWidget>暂无学习投入统计</EmptyWidget>
+  }
   return (
     <>
       <div className="db-mosaic">
-        {data.composition.map((s) => {
-          const h = ((data.compositionTotalHours * s.percent) / 100).toFixed(1)
+        {composition.map((s) => {
+          const h = ((compositionTotalHours * s.percent) / 100).toFixed(1)
           return (
             <div
               key={s.label}
@@ -352,6 +369,7 @@ const BADGE_ICONS: Record<string, IconName> = {
 }
 
 export function BadgesWidget({ data }: WidgetProps) {
+  if (!data.badges?.length) return <EmptyWidget>暂无成就徽章</EmptyWidget>
   return (
     <>
       <div className="db-badges">
@@ -373,6 +391,7 @@ export function BadgesWidget({ data }: WidgetProps) {
 /* ---- 知识掌握雷达 ---- */
 export function RadarWidget({ data }: WidgetProps) {
   const axes = data.radar
+  if (!axes?.length) return <EmptyWidget>暂无知识掌握统计</EmptyWidget>
   const cx = 110
   const cy = 105
   const R = 78
@@ -421,6 +440,7 @@ export function RadarWidget({ data }: WidgetProps) {
 
 /* ---- 里程碑时间线 ---- */
 export function TimelineWidget({ data }: WidgetProps) {
+  if (!data.milestones?.length) return <EmptyWidget>暂无里程碑记录</EmptyWidget>
   return (
     <>
       <div className="db-tl">
@@ -437,6 +457,7 @@ export function TimelineWidget({ data }: WidgetProps) {
 
 /* ---- 周节奏气泡矩阵 ---- */
 export function PunchWidget({ data, bindTip }: WidgetProps) {
+  if (!data.punch?.length) return <EmptyWidget>暂无学习时段统计</EmptyWidget>
   const days = ['一', '二', '三', '四', '五', '六', '日']
   return (
     <>
@@ -474,6 +495,7 @@ export function PunchWidget({ data, bindTip }: WidgetProps) {
 
 /* ---- 渐变面积趋势 · 近30天 ---- */
 export function TrendWidget({ data }: WidgetProps) {
+  if (!data.activity?.length) return <EmptyWidget>暂无学习时长统计</EmptyWidget>
   const days = data.activity.slice(-30)
   const W = 980
   const H = 160
@@ -527,6 +549,7 @@ export function TrendWidget({ data }: WidgetProps) {
 
 /* ---- 环形进度 ---- */
 export function RingWidget({ tasks }: WidgetProps) {
+  if (tasks === null) return <EmptyWidget>完成进度暂无统计</EmptyWidget>
   const done = tasks.filter((t) => t.status === '已完成').length
   const p = tasks.length > 0 ? done / tasks.length : 0
   const r = 54
@@ -579,6 +602,7 @@ export function RingWidget({ tasks }: WidgetProps) {
 
 /* ---- 连续学习火焰 ---- */
 export function StreakWidget({ data, now }: WidgetProps) {
+  if (!data.activity?.length) return <EmptyWidget>暂无连续学习统计</EmptyWidget>
   const map = new Map(data.activity.map((a) => [a.date, a.hours]))
   let streak = 0
   const cursor = new Date(now)
@@ -614,6 +638,7 @@ export function StreakWidget({ data, now }: WidgetProps) {
 
 /* ---- 知识点掌握度列表 ---- */
 export function MasteryWidget({ data }: WidgetProps) {
+  if (!data.mastery?.length) return <EmptyWidget>暂无知识点掌握统计</EmptyWidget>
   return (
     <>
       {data.mastery.map((m) => (
@@ -632,6 +657,7 @@ export function MasteryWidget({ data }: WidgetProps) {
 /* ---- 等级 / XP 卡 ---- */
 export function XpWidget({ data }: WidgetProps) {
   const { xp } = data
+  if (!xp) return <EmptyWidget>暂无成长等级统计</EmptyWidget>
   return (
     <>
       <div className="db-xp-row">
@@ -659,6 +685,7 @@ export function XpWidget({ data }: WidgetProps) {
 
 /* ---- 近7日柱状 ---- */
 export function Bars7Widget({ data, now, bindTip }: WidgetProps) {
+  if (!data.activity?.length) return <EmptyWidget>暂无学习时长统计</EmptyWidget>
   const days = data.activity.slice(-7)
   const max = Math.max(...days.map((x) => x.hours), 1)
   const names = ['一', '二', '三', '四', '五', '六', '日']

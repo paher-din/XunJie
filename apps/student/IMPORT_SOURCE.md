@@ -119,13 +119,14 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 2. 禁止用新的 `app/` 覆盖 `apps/student/`。禁止 reset、删除或整文件覆盖来解决冲突。
 3. 视觉与业务混合的提交逐项合并；同文件冲突保留两侧改动后人工处理，共享文件保留主仓库业务语义。
 4. 每次同步在本文件追加「同步记录」，写明接收来源 commit、审阅的差异范围、实际合入的文件、冲突处理与验证命令/结果。
-5. 来源仓库的设计说明（`docs/DESIGN.md`、`docs/home-design.md` 等）按固定公开链接查阅，作为 UI 来源参考；其中桌面宿主、匿名本地使用、自动引导、能力百分比等与主仓库冲突的业务描述不继承为正式契约。业务规则一律以 [PRD](../../docs/product/PRD.md) → [MVP_SPEC](../../docs/product/MVP_SPEC.md) → [TECH_DESIGN](../../docs/product/TECH_DESIGN.md) 为准。
+5. 设计系统已按负责人2026-10-15指令接收到主仓库 [DESIGN.md](../../docs/DESIGN.md)，此后页面/组件/样式/交互修改先读此本地规范。其余来源设计说明（如 `docs/home-design.md`）按固定公开链接查阅；其中桌面宿主、匿名本地使用、自动引导、能力百分比等与主仓库冲突的业务描述不继承为正式契约。业务规则一律以 [PRD](../../docs/product/PRD.md) → [MVP_SPEC](../../docs/product/MVP_SPEC.md) → [TECH_DESIGN](../../docs/product/TECH_DESIGN.md) 为准。
 
 ### 同步记录
 
 | 日期 | 上次已接收来源 | 新来源 | 合入范围 | 验证 |
 | --- | --- | --- | --- | --- |
 | 2026-10-15 | `16558426ce70524218eacbf7ce8fde35681c0503`（此前选择性接收至 06B） | `8df47963ebf9d4b27a4c3b084c8c5304f3d6e23c`（远程 main） | 按固定差异接收独立聊天页的学生消息复制/编辑、时间戳、流式 Markdown/表格/代码、概念卡、跟随滚动、无障碍与落定交接；对应 `components/chat`、`lib/chatTime/messageBlocks`、`AgentPage`、`useAgentTurn`、桥接类型/准备演示与聊天样式/图标用途。`AppShell` 只接 REPLACE 保留挂载键并保留真实 Session/退出；`AgentMessage` 保留显式 `sourceLabel` 和 `.agentmark` 样式；`types` 保留主仓库扩展，`vite.config` 只扩展 TSX 测试匹配。不接收设计 `WorkspacePage`、Vite 其他配置和设计文档。真实通道另外接同源 API，不继承演示回复或历史时间估计 | 最终前端620项测试、typecheck/build及独立聊天7项Chrome协议检查通过；分层结果见 [个人模型与真实聊天任务](../../docs/tasks/I0_UI_MODEL_CONFIGURATION_REAL_CHAT.md)。来源流式 Hook 补 SSR 的 `window` 判定，不改学生辅导来源/回执语义 |
+| 2026-10-15 | `a9bb1dd`（设计规范原固定来源） | `16558426ce70524218eacbf7ce8fde35681c0503`（当前源HEAD；DESIGN与a9bb1dd同blob） | 仅接收 `docs/DESIGN.md` 到主仓库同路径，规则/frontmatter保持，适配本仓库代码路径与固定来源链接；源文件保留。首页复用原任务卡，修正课程图案按语义匹配，业务接线独立维护 | 来源末改 `5a9486b`、blob `67d96c1c0e52e7601a3c74137e89e66742d7b476`；验证见[设计对齐任务](../../docs/tasks/I0-UI_DESIGN_ALIGNMENT.md) |
 | 2026-10-12 | `a124fee`（06A 已接收组件） | `16558426ce70524218eacbf7ce8fde35681c0503`（06B，仅本地提交） | 仅接收纯受控 `RunHistoryPanel.tsx/.css` 和 `RunPanel.tsx` 可选历史入口；逐字节一致，主仓库页面接线与业务读取/校验/下载独立维护，不同步设计演示页面 | 设计 Node 24 下 106 项测试、含 tsc 构建与 props/SSR 通过；主仓库专项 Chromium 10/10、1280px 浅深截图与来源核对通过；最终工程检查见 [06B](../../docs/tasks/I0_UI_06B_RUN_HISTORY.md) |
 | 2026-10-12 | `ad89519`（已有 05 接收范围） | `b4b857d6ec39f10be8112afaa6e9769dc6cb0e27` → `0e9d0af3e029d8c3611515ac1ce1e6936033e148`（06 设计先行，均仅本地提交，未推送） | 只审阅并逐字节接收 `app/src/components/workspace/RunPanel.tsx` 与 `RunPanel.css`，包含纯 props Core 入口/参数/只读结果及仅存在 Core 入口时的顶栏间距修正；业务传输、原请求/确认及存储在主仓库 workspace 维护，未接收其他来源文件 | 设计 `npm run build`（含 tsc）通过；主仓库 Chromium 1280px 浅/深色与交互、最终检查见 [06 任务记录](../../docs/tasks/I0_UI_06_RUN_RESULTS.md)；两文件来源一致性另核 sha256 |
 | 2026-10-12 | `0e9d0af`（06 接收组件） | `a124fee8422bf2ca940ddc807344ae7936d7dac7`（06A，仅本地提交） | 仅接收 `app/src/components/workspace/RunPanel.tsx` 的可选纯 props 停止/核对控件；现有页面/样式/其余来源不变 | 设计 typecheck/build 通过；主仓库逐字节核对和浏览器/工程结果见 [06A](../../docs/tasks/I0_UI_06A_RUN_CONTROL.md) |
@@ -139,6 +140,12 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 ## 5. 导入后本目录的改动
 
 导入内容与来源逐字节一致；此后本目录的改动由 XunJie 的任务文档记录，不回写设计仓库。
+
+2026-10-15，[原首页看板接回](../../docs/tasks/I0-UI_HOME_DASHBOARD_RECONNECT.md)再次只读对照 Design HEAD `16558426ce70524218eacbf7ce8fde35681c0503` 与本地 DESIGN.md；本批没有新增来源文件导入。主仓库复用已有 `DashboardSection`、原 widgets、问候日期、任务卡及搜索/筛选结构，只接本人真实分配与缺失统计空态；保留原默认看板、编辑/移出/添加托盘和内嵌任务入口。完成率、时长等无来源统计保持未知，不以演示值替代；本轮验证结果由该任务记录承载。
+
+同日，负责人在[看板展示数据任务](../../docs/tasks/I0-UI_DASHBOARD_DISPLAY_DATA.md)中明确允许没有真实统计时使用虚构数据供展示，调整上一批的未知态要求。核查当前35表宿主无完成率/活跃时长汇总接口后，原 `DashboardSection` 接已有源 `demoDashboard` / `demoTasks`，新增“演示统计”标注；演示完成比例与真实分配数量分开，内嵌“当前获准任务”仍使用本人真实分配。本批无新增来源文件导入、不回写 Design，也不生成学习记录；验证状态见该任务。
+
+同日按负责人指令补[首页姓名与课程名](../../docs/tasks/I0-UI_HOME_DISPLAY_NAMES.md)：本机测试ID仅在显示层映射为Robert/小林、程序设计基础/数字逻辑与部件设计，复用原首页、菜单和头像，课程/任务请求、路由和隔离身份仍用原ID。无新增源文件导入，不回写Design。
 
 | 日期 | 任务 | 改动 |
 | --- | --- | --- |
