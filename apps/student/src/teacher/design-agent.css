@@ -1,0 +1,26 @@
+.tda-panel { margin: 20px 0; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); min-width: 0; }
+.tda-panel > summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+.tda-panel > summary span { margin-left: 12px; color: var(--muted); font-size: 13px; font-weight: 400; }
+.tda-panel p { margin: 12px 0; line-height: 1.7; overflow-wrap: anywhere; }
+.tda-panel .td-fields { border: 0; padding: 0; margin-top: 16px; min-width: 0; }
+.tda-choices { margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.tda-choices legend { font-size: 13px; color: var(--muted); }
+.tda-choices label { display: inline-flex; gap: 8px; align-items: flex-start; margin: 6px 16px 6px 0; font-size: 13px; }
+.tda-choices input { flex: none; margin-top: 4px; accent-color: var(--accent); }
+.tda-references > div { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.tda-references small { display: block; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.tda-panel .td-btn { margin: 4px 8px 4px 0; white-space: normal; }
+.tda-job { padding: 12px 0; overflow-wrap: anywhere; }
+.tda-restore { margin: 16px 0; }
+.tda-proposal { border-top: 1px solid var(--line); padding-top: 20px; min-width: 0; overflow-wrap: anywhere; }
+.tda-proposal h2 { font-size: 20px; }
+.tda-proposal h3 { font-size: 17px; }
+.tda-proposal article { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.tda-proposal dl > div { margin: 12px 0; }
+.tda-proposal dt { color: var(--muted); font-size: 13px; }
+.tda-proposal dd { margin: 4px 0 0; }
+.tda-proposal ul { padding-left: 20px; }
+.tda-proposal summary { cursor: pointer; padding: 12px 0; }
+.tda-diff { border: 1px solid var(--line); padding: 12px; margin: 12px 0; border-radius: 8px; }
+.tda-diff > div { padding: 8px 0; }
+@media (max-width: 680px) { .tda-panel { padding: 16px; } .tda-panel > summary span { display: block; margin: 8px 0 0; } }

@@ -1,0 +1,14 @@
+
+Running 7 tests using 1 worker
+
+(node:23820) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\teacher-design-ai.spec.ts:72:1 › 预算关闭如实失败，未授权材料不进入设计上下文 (4.6s)
+  ok 2 [chromium] › e2e\teacher-design-ai.spec.ts:79:1 › 根候选显式选择并采用为新草稿；刷新恢复只读取不重新生成 (7.8s)
+  ok 3 [chromium] › e2e\teacher-design-ai.spec.ts:97:1 › 已有蓝图局部建议只PATCH允许字段；教师编辑后不能覆盖 (3.5s)
+  ok 4 [chromium] › e2e\teacher-design-ai.spec.ts:106:1 › 局部采纳冲突不覆盖当前编辑 (3.5s)
+  ok 5 [chromium] › e2e\teacher-design-ai.spec.ts:115:1 › 局部采纳显式保存为新revision，并保持原蓝图ID (3.6s)
+  ok 6 [chromium] › e2e\teacher-design-ai.spec.ts:124:1 › 量规试评须显式认可样例，结果只提供建议 (3.6s)
+  ok 7 [chromium] › e2e\teacher-design-ai.spec.ts:137:1 › 未知响应核对原请求保留字节与幂等键，运行中可取消 (3.3s)
+
+  7 passed (34.4s)
