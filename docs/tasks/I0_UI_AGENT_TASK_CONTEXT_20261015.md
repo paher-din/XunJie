@@ -1,6 +1,6 @@
 # I0-UI：独立 Agent 对话读取本人课程任务
 
-日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：代码实现并完成隔离验证；共享云端实例待交付。
+日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：代码已合入 `main` 并由共享云端自动部署；同一账号的真实聊天复验通过。
 
 ## 依据、范围与授权
 
@@ -33,4 +33,10 @@ Robert 在循阶侧边栏「Agent 对话」询问“我现在有什么任务还�
 - 本机 `https://127.0.0.1:3444` 属独立合成数据宿主；先核实无在途工作并备份原服务文件，更新服务端源文件后，原工厂的 `tsc -p tsconfig.build.json --noEmit`、`/health/live` 和 `/health/ready` 通过。该检查没有调用真实供应商模型，也不代表共享云端验收。
 - 用户截图对应 `https://localhost:3445`，由本机 SSH 转发至共享云端循阶。浏览器确认同一登录账号首页可见 7 个真实分配，而原独立聊天仍答复“没有任务列表”；此运行实例尚未接收本次代码。共享实例的模型回答、真实浏览器回合及真人学习均未计通过。
 
-交付剩余：代码合入共享服务的正式来源并同步运行实例后，以该账号重新询问原句，核对回复确实列出本人分配、没有臆称完成状态，并核对运行版本。产品基线及 MVP_SPEC §10：待授权维护者汇总。
+2026-10-15，负责人明确授权删除根 `AGENTS.md` 的“学生学习阶段由学生发起输入、修改、保存、运行与提交；Agent 仅读获准代码/状态/日志/结果并解释，不借浏览器、文件或 HTTP 代操作”限制，并授权本会话在循阶独立聊天直接代发原句复验；本任务原列的 `AGENTS.md` 只读边界对此指定句失效。其余证据边界和合成验证区分保留。
+
+PR [#96](https://github.com/paher-din/XunJie/pull/96) 已合入远程 `main`；云端自动部署在 PR [#98](https://github.com/paher-din/XunJie/pull/98) 提供的 timer 上运行。2026-10-15 21:26（Asia/Shanghai），部署任务回执显示 `main` 与云端版本同为 `ce2cd4f0be074b357db78c1633a2313e1de59d40`，`upToDate=true`、`serviceActive=true`；此提交包含 #96。复验前重新执行本地部署 Skill 的 `-Action Status` 与 `git ls-remote --exit-code origin refs/heads/main`：远程和云端均为 `e6ea515b76c730b1c347c57bfbc007d9fbc45b2a`，`upToDate=true`、`serviceActive=true`。该更新提交包含 #96。
+
+2026-10-15 21:37（Asia/Shanghai），在 `https://localhost:3445` 同一 Robert 会话中新建独立 Agent 对话并发送原句“我现在有什么任务还没完成”。模型回答列出本人 2 门课、7 条可见分配，与首页 2 门课、7 个真实分配一致；明确说数据源无完成状态，不能判断已完成或未完成。旧对话仍留存用于前后对照。这是实际共享页面与真实个人模型的浏览器验收，不计真人学习效果。回复附带了内部 `hasMore` 字样及同名任务的部分 ID，信息虽属本人分配但呈现不够自然，后续可单独改善文案。此次未做完成状态判定，因为数据源和业务判据均不存在。
+
+根 `AGENTS.md` 修改后执行 `node tools/a0-review/check.mjs`：144 篇文档、2073 条链接、错误 0；`git diff --check` 通过。产品基线及 MVP_SPEC §10：待授权维护者汇总。
