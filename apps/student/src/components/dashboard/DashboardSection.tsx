@@ -70,6 +70,7 @@ export function DashboardSection({
   now,
   continueSlot,
   storageKey = LAYOUT_KEY,
+  demoStatistics = false,
 }: {
   data: Partial<DashboardData>
   tasks: ProjectTask[] | null
@@ -77,6 +78,7 @@ export function DashboardSection({
   now: Date
   continueSlot?: React.ReactNode
   storageKey?: string
+  demoStatistics?: boolean
 }) {
   const [layout, setLayout] = useState(() => loadLayout(storageKey))
   const [editing, setEditing] = useState(false)
@@ -114,7 +116,10 @@ export function DashboardSection({
     <section className={`dash-section${editing ? ' editing' : ''}`}>
       <div className="dash-sec-head">
         <h2>学习看板</h2>
-        <span className="period">{data.semesterStart ? '本学期' : '全部任务'}</span>
+        <span className="period" title={demoStatistics ? '完成率、学习时长等为演示数据，课程和任务入口来自真实服务' : undefined}>
+          {demoStatistics ? '演示统计' : data.semesterStart ? '本学期' : '全部任务'}
+        </span>
+        {demoStatistics && taskCount !== undefined && <span className="db-side">真实分配 {taskCount} 个任务</span>}
         <button className="outline db-edit-btn" onClick={() => setEditing((v) => !v)}>
           <IconText name={editing ? 'check' : 'pen'}>{editing ? '完成' : '编辑'}</IconText>
         </button>
