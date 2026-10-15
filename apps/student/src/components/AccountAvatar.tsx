@@ -10,7 +10,7 @@ import { displayAccountName } from '../lib/displayNames'
 export function AccountAvatar({ className = '' }: { className?: string }) {
   const account = useAccount()
   const session = useSession()
-  const name = !PREP_BUILD && session.session ? displayAccountName(session.session.userId) : account.name
+  const name = !PREP_BUILD && session.session ? displayAccountName(session.session.userId, session.session.displayName) : account.name
   const avatar = !PREP_BUILD && session.session ? null : account.avatar
   if (avatar) {
     return (

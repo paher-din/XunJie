@@ -765,7 +765,7 @@ export default function AppShell() {
               }}
             >
               <AccountAvatar />
-              <span className="account-name">{!PREP_BUILD && session.session ? displayAccountName(session.session.userId) : account.name}</span>
+              <span className="account-name">{!PREP_BUILD && session.session ? displayAccountName(session.session.userId, session.session.displayName) : account.name}</span>
               <Icon name="sort-vertical" size={14} className="account-chev" />
             </button>
             <AccountMenu

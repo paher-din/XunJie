@@ -1,0 +1,25 @@
+{
+  "observedAtUtc": "2026-10-15T05:09:56.050532+00:00",
+  "health": {
+    "/health/live": 200,
+    "/health/ready": 200,
+    "/": 200
+  },
+  "disabledLoginStatus": {
+    "synthetic-i0-student-a": 401,
+    "synthetic-i0-student-peer": 401
+  },
+  "activeStudents": 1,
+  "activeTeachers": 2,
+  "businessTables": 35,
+  "historyPreserved": {
+    "attempts": true,
+    "workspace_files": true,
+    "artifact_snapshots": true,
+    "workspace_runs": true,
+    "workspace_submissions": true,
+    "oldActivityVersions": true
+  },
+  "vm": "active",
+  "host": "MainPID=503\nNRestarts=0\nActiveState=active"
+}

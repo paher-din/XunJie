@@ -60,7 +60,8 @@ export type CourseRole = 'teacher' | 'student'
 /** GET `/api/session` 的 `data`。 */
 export interface SessionView {
   userId: string
-  courses: Array<{ courseId: string; role: CourseRole }>
+  displayName?: string
+  courses: Array<{ courseId: string; role: CourseRole; name?: string }>
   csrfToken: string
 }
 
@@ -79,6 +80,7 @@ export interface LogoutView {
 /** GET `/api/assignments/:id` 的 `data`（`assignmentViewSchema`）。 */
 export interface AssignmentView {
   assignmentId: string
+  displayTitle?: string
   activityVersionId: string
   studentId: string
   assignmentRevision: number
