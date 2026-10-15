@@ -49,6 +49,7 @@ XUNJIE_E2E_PREP_PORT=5603 XUNJIE_E2E_REAL_PORT=5604 CI=1 npm run test:e2e
 
 三个覆盖值仅影响测试，范围为 1024～65535，仍严格使用指定端口且互不相同；`dev:prep` 默认 5601 不变。
 浏览器 harness 为 prep、real 和重启用独立服务分别使用 `.playwright/node_modules/.vite-<角色>-<端口>` 预优化缓存，避免相同 mode 或共享依赖的工作树互相替换模块。缓存路径保留 `node_modules` 段，使预优化依赖不被当成应用源码再次转换。由 harness 设置 `XUNJIE_VITE_CACHE_DIR`，通常无需手工配置；普通开发命令继续沿用原 mode 缓存。
+缓存、异步前置与原12项失败的逐项复验见[续查记录](../../docs/tasks/I0-UI_BROWSER_REGRESSION_FIX.md)。
 
 `XUNJIE_E2E_RESTART_PORT`（默认 5611）是 [07](../../docs/tasks/I0_UI_07_BROWSER_HANDOFF.md) 的
 「准备进程重启」用例独占的端口：那条用例自己拉起并**杀掉**一个 dev:prep 来复现换 epoch，

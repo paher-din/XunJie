@@ -111,6 +111,7 @@ test('替换help和旧Job取消均丢ACK，分别核对原命令后不会把旧�
   await page.unroute(oldJobUrl);await page.unroute(oldCancelUrl);await page.unroute('**/__i0prep/api/attempts/*/help')
   await expect(page.getByRole('button',{name:'核对原辅导请求'})).toBeEnabled()
   await page.getByRole('button',{name:'核对原辅导请求'}).click()
+  await expect(page.getByTestId('tutor-job')).not.toHaveAttribute('title',old.jobId)
   await expect(page.getByTestId('tutor-job')).toContainText('已请求停止 · cancelled')
   const newJobText=await page.getByTestId('tutor-job').textContent()
   const newJobId=await page.getByTestId('tutor-job').getAttribute('title')

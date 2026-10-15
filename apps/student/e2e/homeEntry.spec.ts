@@ -162,6 +162,8 @@ test('没有学生课程或课程没有分配时显示真实空态，不补演�
   // The approved teacher-only default is the teacher workspace. Exercise the
   // student empty state with an authenticated account that has no course roles.
   state.courses['account-a'] = []
+  await page.reload()
+  await expect(page.getByText('当前账号没有教师课程', {exact:true})).toBeVisible()
   await page.goto(`${REAL_URL}/#/`)
   await expect(page.locator('.account-name')).toHaveText('account-a')
   await expect(page.getByText('暂无获准的学生课程与任务', { exact: true })).toBeVisible()

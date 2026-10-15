@@ -102,7 +102,9 @@ test('取消请求失效时仍靠会话代次拒收旧 Session 成功与旧 401'
       bootstrapReached(); await held
       await route.fulfill({ status: 401, json: expired }); bootstrapDelivered(); return
     }
-    if (data === undefined) await route.fulfill({ status: 401, json: expired })
+    if (data === undefined) await route.fulfill(identity
+      ? {status:404,json:{requestId:'auth-protocol-missing',error:{code:'NOT_FOUND',message:'Synthetic missing route',retryable:false,recovery:'Read the current authorized state'}}}
+      : {status:401,json:expired})
     else await route.fulfill({ json: { requestId: 'auth-protocol', data } })
   })
   try {
