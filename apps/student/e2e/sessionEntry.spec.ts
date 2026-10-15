@@ -96,6 +96,8 @@ test('取消请求失效时仍靠会话代次拒收旧 Session 成功与旧 401'
       }
     } else if (path === '/api/courses/protocol-course/assignments' && identity) {
       data = []
+    } else if (path === '/api/agent/conversations' && identity) {
+      data = []
     } else if (path === '/api/assignments/authorized-link/bootstrap') {
       bootstrapReached(); await held
       await route.fulfill({ status: 401, json: expired }); bootstrapDelivered(); return

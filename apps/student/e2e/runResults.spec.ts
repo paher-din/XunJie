@@ -69,14 +69,19 @@ test('运行轮询断线暂停、隐藏降频且有次数上限，主动只读�
   let reads = 0
   page.on('request', r => { if (r.method() === 'GET' && /\/api\/jobs\/[^/]+$/.test(r.url())) reads++ })
   await selectRun(page, snapshot.snapshotId, snapshot.files.find(f => f.path === 'main.c')!.fileId, '')
-  await page.getByRole('button', { name: '运行此快照', exact: true }).click()
-  await expect(page.locator('.core-run-result')).toContainText('运行中')
   await page.clock.install()
   await page.clock.pauseAt(new Date())
+  await page.getByRole('button', { name: '运行此快照', exact: true }).click()
+  await expect(page.locator('.core-run-result')).toContainText('运行中')
+  await expect(page.getByRole('button', { name: '停止此运行', exact: true })).toBeEnabled()
+  await expect.poll(() => reads).toBe(2)
   await page.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
     document.dispatchEvent(new Event('visibilitychange'))
   })
+  // Let React commit the environment change and replace the visible timer before
+  // advancing nine seconds in one virtual-clock action (including animation frames).
+  await page.clock.runFor(50)
   let before = reads
   await page.clock.runFor(9000)
   expect(reads).toBe(before)
@@ -86,6 +91,7 @@ test('运行轮询断线暂停、隐藏降频且有次数上限，主动只读�
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false })
     window.dispatchEvent(new Event('offline'))
   })
+  await page.clock.runFor(50)
   before = reads
   await page.clock.runFor(30_000)
   expect(reads).toBe(before)
@@ -94,6 +100,7 @@ test('运行轮询断线暂停、隐藏降频且有次数上限，主动只读�
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
     window.dispatchEvent(new Event('online')); document.dispatchEvent(new Event('visibilitychange'))
   })
+  await page.clock.runFor(50)
   // 接受回执后有两次初始 Job GET，之后最多 60 次自动读取。
   // A response finishing does not mean async authority/IDB checks have published it.
   // Advance time until the exact budget is reached, without assuming one completed

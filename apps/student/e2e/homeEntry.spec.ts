@@ -44,6 +44,8 @@ async function protocol(page: Page) {
       await route.fulfill({ status: 401, json: error('UNAUTHENTICATED') }); return
     } else if (path === '/api/session') {
       data = { userId: state.identity, displayName: state.names[state.identity], courses: state.courses[state.identity] ?? [], csrfToken: `csrf-${state.identity}` }
+    } else if (path === '/api/agent/conversations') {
+      data = []
     } else if (/^\/api\/courses\/[^/]+\/assignments$/.test(path)) {
       const courseId = decodeURIComponent(path.split('/')[3])
       if (await state.list?.(route, courseId, state.identity)) return
@@ -153,7 +155,15 @@ test('真实首页读取本人两课程与固定标题，暂停可查看，卡�
 test('没有学生课程或课程没有分配时显示真实空态，不补演示任务', async ({ page }) => {
   const state = await protocol(page)
   state.courses['account-a'] = [{ courseId: 'teacher-only', role: 'teacher' }]
-  await loginHome(page)
+  await page.goto(`${REAL_URL}/#/`)
+  await loginThroughForm(page, 'account-a', 'synthetic-only')
+  await expect(page).toHaveURL(/#\/teacher$/)
+  expect(state.reads.some(read => read.path.includes('/assignments'))).toBe(false)
+  // The approved teacher-only default is the teacher workspace. Exercise the
+  // student empty state with an authenticated account that has no course roles.
+  state.courses['account-a'] = []
+  await page.goto(`${REAL_URL}/#/`)
+  await expect(page.locator('.account-name')).toHaveText('account-a')
   await expect(page.getByText('暂无获准的学生课程与任务', { exact: true })).toBeVisible()
   await expect(page.locator('.dash-section .db-side').filter({ hasText: '真实分配' })).toHaveText('真实分配 0 个任务')
   await expect(page.locator('.dash-section .period')).toHaveText('演示统计')
@@ -229,7 +239,7 @@ test('列表故障保持失败并可明确重试，恢复后只展示原接口�
     await route.fulfill({ status: 503, json: error('DEPENDENCY_UNAVAILABLE') }); return true
   }
   await loginHome(page)
-  await expect(page.getByRole('alert')).toContainText('暂时无法读取课程与任务，请重试')
+  await expect(page.getByRole('alert').filter({hasText:'暂时无法读取课程与任务'})).toContainText('暂时无法读取课程与任务，请重试')
   await expect(page.locator('.course-tile, .task-card, .db-continue')).toHaveCount(0)
   await expect(page.locator('.dash-section .db-side').filter({ hasText: '真实分配' })).toHaveCount(0)
   expect(state.reads.filter(read => read.path === '/api/courses/course-c/assignments')).toHaveLength(1)

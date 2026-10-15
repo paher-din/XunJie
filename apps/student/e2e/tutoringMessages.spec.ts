@@ -71,6 +71,7 @@ test('教学页真实IDB事务中止：正文/游标/待received一起回滚，�
   expect(receipts).toEqual([]);expect(help).toHaveLength(1)
   const original=payloads[0]!
   expect(original.actionId).toBeTruthy();expect(original.deliveryId).toBeTruthy()
+  await page.unrouteAll({behavior:'wait'})
   await page.reload();await expect(page.locator('.cw')).toBeVisible()
   await expect.poll(async()=> (await tutorLedger(page))[0]?.messages[0]?.facts.received?.state).toBe('confirmed')
   const recovered=(await tutorLedger(page))[0]!

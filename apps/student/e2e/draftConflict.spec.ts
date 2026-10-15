@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { localState, sceneUrl, typeIn } from './helpers'
+import { localState, sceneUrl, trackBusinessWrites, typeIn } from './helpers'
 
 /**
  * I0_UI_03 CAS 修复：真实 UI/IndexedDB/HTTP。04A 已交付冲突条与「载入另一处正文/用本页正文继续」选择，
@@ -27,10 +27,7 @@ for (const reload of ['page', 'workspace'] as const) {
     await typeIn(other, '// other-tab-winner\n')
     await expect(other.locator('.cw-protect')).toHaveAttribute('data-status', 'protected')
     const winner = (await localState(other)).drafts[0]
-    const posts: string[] = []
-    page.on('request', r => {
-      if (r.method() === 'POST' && r.url().includes('/api/attempts/')) posts.push(r.url())
-    })
+    const posts = trackBusinessWrites(page)
 
     await typeIn(page, '// this-tab-loser\n')
     await expect(page.locator('.cw-protect')).toHaveAttribute('data-status', 'failed')

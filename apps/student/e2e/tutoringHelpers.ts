@@ -6,3 +6,9 @@ export async function revealTutorBody(message: Locator) {
   await expect(body).toHaveText(/\S/)
   await body.scrollIntoViewIfNeeded()
 }
+
+export async function revealTutorSource(message: Locator) {
+  const details = message.locator('details.tutor-details')
+  if (await details.getAttribute('open') === null) await details.locator('summary').click()
+  await expect(message.getByTestId('tutor-source')).toBeVisible()
+}

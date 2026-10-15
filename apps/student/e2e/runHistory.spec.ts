@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { confirmSave, edit, localState, serverHead } from './helpers'
+import { confirmSave, edit, localState, serverHead, trackBusinessWrites } from './helpers'
 import { fixedProject, selectRun, setRunScript } from './runHelpers'
 
 async function seedHistory(page: Page, snapshotId: string, sample: string) {
@@ -50,8 +50,7 @@ test('比较两次已回执关联运行，各保留旧快照与本机参数，�
   await page.getByRole('button', { name: '运行此快照', exact: true }).click()
   await expect(page.locator('.core-run-result')).toContainText('编译失败')
   const secondRun = await page.locator('.core-run-result').getAttribute('data-run-id')
-  const before = await localState(page), writes: string[] = []
-  page.on('request', r => { if (r.method() !== 'GET') writes.push(r.url()) })
+  const before = await localState(page), writes = trackBusinessWrites(page)
   await page.getByRole('button', { name: '历史运行与产物', exact: true }).click()
   await choose(page, 'A', firstRun!)
   await choose(page, 'B', secondRun!)
@@ -79,8 +78,7 @@ test('另一浏览器缺本机请求仍能比较公开历史与未知/失败，�
   const first = await seedHistory(page, head.snapshots[0]!.snapshotId, 'check')
   const second = await seedHistory(page, head.snapshots[0]!.snapshotId, 'unknown')
   const fresh = await browser.newContext()
-  const other = await fresh.newPage(), posts: string[] = []
-  other.on('request', r => { if (r.method() === 'POST' && !r.url().endsWith('/sessions')) posts.push(r.url()) })
+  const other = await fresh.newPage(), posts = trackBusinessWrites(other)
   await other.goto(page.url())
   await expect(other.getByText('已冻结快照 v1')).toBeVisible()
   await openHistory(other)
@@ -97,8 +95,7 @@ test('另一浏览器缺本机请求仍能比较公开历史与未知/失败，�
 test('公开文件完整验证后安全查看与合法下载，字节保留 BOM/CRLF 且无写请求', async ({ page }) => {
   const head = await fixedProject(page, 'history-download'), snapshot = head.snapshots[0]!
   const reference = await seedHistory(page, snapshot.snapshotId, 'complete')
-  const before = await localState(page), writes: string[] = []
-  page.on('request', r => { if (r.method() !== 'GET') writes.push(r.url()) })
+  const before = await localState(page), writes = trackBusinessWrites(page)
   await openHistory(page); await choose(page, 'A', reference.runId)
   const region = side(page, 'A')
   await region.getByText('查看 report.txt', { exact: true }).focus()
@@ -223,8 +220,7 @@ test('损坏本机请求关联时不借用表单或其他记录的参数，公�
   }, runId)
   await page.reload()
   await expect(page.getByText('已冻结快照 v1')).toBeVisible()
-  const writes: string[] = []
-  page.on('request', r => { if (r.method() !== 'GET') writes.push(r.url()) })
+  const writes = trackBusinessWrites(page)
   await openHistory(page); await choose(page, 'A', runId!)
   await expect(side(page, 'A')).toContainText('历史运行参数不可回取')
   await expect(side(page, 'A')).toContainText('SYNTHETIC Core result')

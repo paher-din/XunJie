@@ -34,7 +34,11 @@ export async function create(page: Page, name = 'main.c') {
 
 /** 输入正文但不等待落盘；落盘结果（保护/冲突条）由调用方用 expect 等待。 */
 export async function typeIn(page: Page, text: string) {
-  await page.locator('.monaco-editor textarea').first().focus()
+  const input = page.locator('.monaco-editor textarea').first()
+  // Monaco 0.57 sets this to "none" while readOnly. A receipt can precede
+  // authority revalidation; pending requests and paused-but-editable work still use "both".
+  await expect(input).toHaveAttribute('aria-autocomplete', 'both')
+  await input.focus()
   await page.keyboard.insertText(text)
 }
 

@@ -485,6 +485,7 @@ test('快照 GET 清单的 ID 顺序不覆盖刚冻结的快照', async ({ page 
   await expect(page.getByText('已冻结快照 v2')).toBeVisible()
   await page.reload()
   await expect(page.getByText('已冻结快照 v2')).toBeVisible()
+  await page.unrouteAll({ behavior: 'wait' })
 })
 
 test('首次创建 ACK 未绑定 Attempt 时也不能覆盖另一标签已接纳 g2', async ({ page, context }) => {
