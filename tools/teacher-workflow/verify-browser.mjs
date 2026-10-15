@@ -35,7 +35,7 @@ const plan = {
     'Student UI: read real feedback, explicitly consume permission, edit, confirm and freeze a new version, submit again.',
     'Read-only GETs: verify original snapshot hash and first submission remain, second submission targets new snapshot, feedback history persists.',
     'Teacher review UI: explicitly copy the source into an independent follow-up draft, verify exact source ancestry and unchanged fixed activity.',
-    'Chrome screenshots and overflow reads at widths 720 and 390 for design, review list/detail and student submission panel.'],
+    'Chrome screenshots and overflow reads at widths 1440, 720 and 390 for design, review list/detail and student submission panel.'],
   boundaries: ['All business writes use visible UI controls and keyboard events.', 'No model calls, runs, migrations, browser tracing, cookie export or credentials in output.',
     'Only owned local synthetic accounts; --resume reuses exact public IDs/title and never silently replaces an unknown command.'],
 };
@@ -56,7 +56,7 @@ const secrets = [];
 const redact = value => secrets.reduce((text, secret) => secret ? text.split(secret).join('[redacted]') : text, String(value))
   .replace(/(x-csrf-token|password|set-cookie|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]');
 const result = { ...plan, mode: 'run', startedAtUtc: new Date().toISOString(), status: 'running',
-  title: checkpoint.title, checks: [], layouts: [], network: [], pageErrors: [], failures: [], notExecuted: [] };
+  title: checkpoint.title, checks: [], layouts: [], screenshots: [], network: [], pageErrors: [], failures: [], notExecuted: [] };
 const persist = () => {
   writeFileSync(checkpointFile, JSON.stringify(checkpoint, null, 2) + '\n');
   writeFileSync(publicFile, JSON.stringify(result, null, 2) + '\n');
@@ -115,6 +115,10 @@ try {
     await page.getByLabel('密码', { exact: true }).fill(account.password);
     await uiWrite(page, '/api/sessions', account.id, () => page.getByRole('button', { name: '登录', exact: true }).click(), true);
     await expect(page.getByLabel('密码', { exact: true })).toHaveCount(0);
+    const entryScripts = await page.locator('script[type="module"][src]').evaluateAll(elements => elements.map(element => new URL(element.src))
+      .filter(url => url.origin === location.origin).map(url => url.pathname));
+    result.entryJS ??= [];
+    result.entryJS.push({ actor: account.id, paths: entryScripts }); persist();
   }
   async function uiWrite(page, path, actorId, click, login = false) {
     const waiting = page.waitForResponse(response => new URL(response.url()).origin === origin && new URL(response.url()).pathname === path && ['POST', 'PATCH'].includes(response.request().method()));
@@ -132,6 +136,16 @@ try {
       throw new Error(`UI_WRITE_RECEIPT_MISMATCH:${path}`);
     }
     result.checks.push({ name: `ui-write-confirmed:${path}`, passed: true, status: response.status(), actor: actorId }); persist();
+    if (path.endsWith('/sync') && ['save-revision-one', 'save-revision-two'].includes(checkpoint.pending)) {
+      const sourceKey = checkpoint.pending === 'save-revision-one' ? 'firstSource' : 'secondSource';
+      const source = checkpoint[sourceKey];
+      const file = receipt.result.files?.find(file => file.path === sourceFile);
+      if (!source || !file || file.contentHash !== source.contentHash) throw new Error('SYNC_RECEIPT_MUST_MATCH_CAPTURED_UI_ORIGINAL');
+      checkpoint[sourceKey] = { ...source, receipt: { receiptId: receipt.receiptId, commandId: receipt.commandId,
+        requestHash: receipt.requestHash, actorId, attemptId: checkpoint.attemptId, recoveryGeneration: receipt.identity.recoveryGeneration,
+        workspaceRevision: receipt.result.workspaceRevision, fileId: file.fileId, documentVersion: file.documentVersion, contentHash: file.contentHash } };
+      persist();
+    }
     return receipt.result;
   }
   async function get(page, path) {
@@ -161,6 +175,8 @@ try {
   async function screenshot(page, name) {
     if (await page.locator('input[type="password"]').count()) throw new Error('NEVER_CAPTURE_CREDENTIAL_ENTRY');
     await page.screenshot({ path: resolve(output, `${name}.png`), fullPage: true });
+    result.screenshots.push({ file: `${name}.png`, viewport: page.viewportSize(), capturedAtUtc: new Date().toISOString() });
+    persist();
   }
 
   currentStage = 'teacher-login-and-design';
@@ -187,8 +203,13 @@ try {
       await expect(studentVisibility).not.toBeChecked(); await expect(tutorVisibility).not.toBeChecked(); await expect(teacherDesign).not.toBeChecked();
       check('new-material-three-purpose-defaults-false', true);
       await dialog.getByLabel(/^资料名称/).fill(privateTitle);
-      await dialog.getByLabel('所属课程', { exact: true }).selectOption(courseId);
-      await dialog.getByLabel('资料分类', { exact: true }).selectOption('private_answer');
+      // A wrapping native label contains the select's option text too. Locate the
+      // visible field heading, then its sole combobox, rather than exact label text.
+      const materialCourse = dialog.locator('label.t-rm-field').filter({ hasText: /^所属课程/ }).getByRole('combobox');
+      const materialKind = dialog.locator('label.t-rm-field').filter({ hasText: /^资料分类/ }).getByRole('combobox');
+      await expect(materialCourse).toHaveCount(1); await expect(materialKind).toHaveCount(1);
+      await materialCourse.selectOption(courseId); await expect(materialCourse).toHaveValue(courseId);
+      await materialKind.selectOption('private_answer'); await expect(materialKind).toHaveValue('private_answer');
       await expect(studentVisibility).toBeDisabled(); await expect(studentVisibility).not.toBeChecked();
       await expect(tutorVisibility).toBeDisabled(); await expect(tutorVisibility).not.toBeChecked();
       check('private-answer-student-and-tutor-disabled', true);
@@ -321,11 +342,18 @@ try {
   async function saveAndFreeze(second = false) {
     await showEditor();
     let state = await head();
+    const sourceKey = second ? 'secondSource' : 'firstSource';
+    const saveIntent = second ? 'save-revision-two' : 'save-revision-one';
     const versionWord = second ? 'two' : 'one';
-    const text = courseKind === 'c' ? `#include <stdio.h>\nint main(void) { puts("Synthetic teacher workflow revision ${versionWord}"); return 0; }\n`
+    const insertedText = courseKind === 'c' ? `#include <stdio.h>\nint main(void) { puts("Synthetic teacher workflow revision ${versionWord}"); return 0; }\n`
       : `// Synthetic teacher workflow revision ${versionWord}\nmodule main(input wire a, output wire y);\n  assign y = ${second ? '~a' : 'a'};\nendmodule\n`;
-    const savedAlready = state.files.some(file => file.path === sourceFile && file.text === text && file.lifecycle === 'active');
-    unresolved(second ? 'save-revision-two' : 'save-revision-one', savedAlready);
+    let source = checkpoint[sourceKey];
+    let text = source?.text;
+    const savedAlready = !!source && state.files.some(file => file.path === sourceFile && file.text === text && file.contentHash === source.contentHash &&
+      createHash('sha256').update(file.text).digest('hex') === source.contentHash && file.lifecycle === 'active');
+    if (checkpoint.pending === saveIntent) unresolved(saveIntent, savedAlready && !!source?.receipt &&
+      source.receipt.workspaceRevision === state.attempt.workspaceRevision && state.files.some(file => file.fileId === source.receipt.fileId &&
+        file.documentVersion === source.receipt.documentVersion && file.contentHash === source.receipt.contentHash));
     if (!state.files.some(file => file.path === sourceFile && file.lifecycle === 'active')) {
       await studentPage.getByRole('button', { name: '新建文件', exact: true }).first().click();
       await studentPage.getByRole('textbox', { name: '新文件名', exact: true }).fill(sourceFile);
@@ -333,12 +361,24 @@ try {
     }
     if (!savedAlready) {
       const editor = studentPage.locator('.monaco-editor textarea.inputarea').first();
-      await editor.focus(); await studentPage.keyboard.press('Control+A'); await studentPage.keyboard.insertText(text);
+      await editor.focus(); await studentPage.keyboard.press('Control+A'); await studentPage.keyboard.insertText(insertedText);
       await expect(studentPage.locator('.cw-protect')).toHaveText('本机草稿已保护');
-      intent(second ? 'save-revision-two' : 'save-revision-one');
+      // Read the full selected native textarea after Monaco's own editing rules.
+      // This harness creates short LF-only files; partial/invalid UI reads stop.
+      await editor.focus(); await studentPage.keyboard.press('Control+A');
+      text = await editor.inputValue();
+      const selection = await editor.evaluate(element => ({ start: element.selectionStart, end: element.selectionEnd, length: element.value.length }));
+      check(second ? 'second-ui-original-captured' : 'first-ui-original-captured', selection.start === 0 && selection.end === text.length &&
+        selection.length === text.length && text.length > 0 && text.length <= 4096 && !text.includes('\r') && !text.startsWith('\uFEFF') &&
+        text.includes(`Synthetic teacher workflow revision ${versionWord}`));
+      source = { path: sourceFile, text, contentHash: createHash('sha256').update(text).digest('hex'), capturedFrom: 'monaco-native-textarea-full-selection' };
+      checkpoint[sourceKey] = source; persist();
+      intent(saveIntent);
       const saved = await uiWrite(studentPage, `/api/attempts/${checkpoint.attemptId}/sync`, studentId, () => studentPage.getByRole('button', { name: '确认保存', exact: true }).click());
-      check(second ? 'second-save-receipt' : 'first-save-receipt', Number.isSafeInteger(saved.workspaceRevision) && Array.isArray(saved.files));
-      state = await until(head, value => value.files.some(file => file.path === sourceFile && file.text === text), 'confirmed-source');
+      check(second ? 'second-save-receipt' : 'first-save-receipt', Number.isSafeInteger(saved.workspaceRevision) &&
+        saved.files.some(file => file.path === sourceFile && file.contentHash === source.contentHash));
+      state = await until(head, value => value.files.some(file => file.path === sourceFile && file.text === text && file.contentHash === source.contentHash &&
+        createHash('sha256').update(file.text).digest('hex') === source.contentHash), 'confirmed-source');
     }
     complete(second ? 'second-save-confirmed' : 'first-save-confirmed');
     await expect(studentPage.getByRole('button', { name: '冻结确认作品', exact: true })).toBeEnabled();
@@ -438,7 +478,7 @@ try {
     check('reopen-permission-receipt', !!granted.grantId && granted.submissionId === checkpoint.firstSubmissionId && granted.status === 'reviewed');
     context = await until(review, value => value.reopen.actionable === true, 'revision-permission');
   }
-  complete('permission-granted', { grantId: context.reopen.grantId });
+  complete('permission-granted', { grantId: context.reopen.grantId ?? checkpoint.grantId });
 
   currentStage = 'student-explicit-revision-and-second-submission';
   state = await head();
@@ -534,7 +574,7 @@ try {
     result.layouts.push({ name, width, ...measurements, screenshot: file, passed: measurements.pageWidth <= width + 1 && measurements.region.every(region => region.scrollWidth <= region.width + 1) });
     persist();
   }
-  for (const width of [720, 390]) {
+  for (const width of [1440, 720, 390]) {
     await layout(teacherPage, `/#/teacher/design/${checkpoint.blueprintId}`, 'teacher-design', width,
       () => expect(teacherPage.getByLabel('项目标题', { exact: true })).toHaveValue(checkpoint.title));
     await layout(teacherPage, '/#/teacher/review', 'teacher-review-list', width,
@@ -545,6 +585,7 @@ try {
       await expect(studentPage.getByRole('button', { name: '提交与反馈', exact: true })).toBeEnabled();
       await studentPage.getByRole('button', { name: '提交与反馈', exact: true }).click();
       await expect(studentPage.getByRole('heading', { name: '固定提交历史', exact: false })).toBeVisible();
+      await expect(studentPage.getByTestId('submission-feedback-panel')).toContainText(revisedSummary);
     });
   }
   check('responsive-document-no-horizontal-overflow', result.layouts.every(layout => layout.passed));
@@ -552,7 +593,7 @@ try {
   check('writes-only-original-ui-endpoints', result.network.filter(entry => entry.method !== 'GET').every(entry =>
     ['POST', 'PATCH'].includes(entry.method) && /^\/api\/(sessions|courses\/[^/]+\/(blueprints|resources)|blueprints\/[^/]+(?:\/checks|\/releases)?|activities\/[^/]+\/assignments|assignments\/[^/]+\/attempts|attempts\/[^/]+\/(sync|snapshots|submissions|feedback|reopen|controls))$/.test(entry.path)));
   complete('complete'); result.status = 'passed'; result.completedAtUtc = new Date().toISOString(); persist();
-  process.stdout.write(JSON.stringify({ status: result.status, checks: result.checks.length, screenshots: result.layouts.length + 3,
+  process.stdout.write(JSON.stringify({ status: result.status, checks: result.checks.length, screenshots: result.screenshots.length,
     publicResult: publicFile, checkpoint: checkpointFile }, null, 2) + '\n');
 } catch (error) {
   result.status = 'failed'; result.failedStage = currentStage; result.failures.push({ stage: currentStage, message: redact(error?.message ?? error).slice(0, 3000) });

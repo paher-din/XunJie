@@ -1,0 +1,1249 @@
+{
+  "mode": "run",
+  "origin": "https://127.0.0.1:3444",
+  "strictTLS": true,
+  "accounts": [
+    "synthetic-robert-teacher",
+    "synthetic-robert-student-b"
+  ],
+  "courseId": "synthetic-robert-course-hdl",
+  "steps": [
+    "For a new draft only: import a synthetic private_answer through Materials, assert student/tutor disabled and false, allow teacher design, then attach its fixed version.",
+    "Teacher UI: edit confirmed hdl preset, save, run design checks, inspect student/tutor/teacher projections including private-material redaction, release and assign the matching synthetic student.",
+    "Student UI: explicitly create Attempt, create main.v, edit, confirm save, freeze and explicitly submit.",
+    "Teacher UI: inspect fixed source, save formal feedback with selected snapshot evidence, revise the same feedback thread, grant permission.",
+    "Student UI: read real feedback, explicitly consume permission, edit, confirm and freeze a new version, submit again.",
+    "Read-only GETs: verify original snapshot hash and first submission remain, second submission targets new snapshot, feedback history persists.",
+    "Teacher review UI: explicitly copy the source into an independent follow-up draft, verify exact source ancestry and unchanged fixed activity.",
+    "Chrome screenshots and overflow reads at widths 1440, 720 and 390 for design, review list/detail and student submission panel."
+  ],
+  "boundaries": [
+    "All business writes use visible UI controls and keyboard events.",
+    "No model calls, runs, migrations, browser tracing, cookie export or credentials in output.",
+    "Only owned local synthetic accounts; --resume reuses exact public IDs/title and never silently replaces an unknown command."
+  ],
+  "startedAtUtc": "2026-10-15T05:59:07.068Z",
+  "status": "failed",
+  "title": "教师真实流程验证 hdl 2026-10-15T05-57-32-790Z",
+  "checks": [
+    {
+      "name": "teacher-workbench-owned-course",
+      "passed": true
+    },
+    {
+      "name": "new-material-three-purpose-defaults-false",
+      "passed": true
+    },
+    {
+      "name": "private-answer-student-and-tutor-disabled",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/courses/synthetic-robert-course-hdl/resources",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-teacher"
+    },
+    {
+      "name": "private-resource-receipt-exact-permissions",
+      "passed": true
+    },
+    {
+      "name": "stored-private-material-scoped-and-isolated",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/courses/synthetic-robert-course-hdl/blueprints",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-teacher"
+    },
+    {
+      "name": "blueprint-create-result",
+      "passed": true
+    },
+    {
+      "name": "saved-draft-binds-private-fixed-version",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/checks",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-teacher"
+    },
+    {
+      "name": "design-check-result-exact-revision",
+      "passed": true
+    },
+    {
+      "name": "role-preview-student",
+      "passed": true
+    },
+    {
+      "name": "private-material-redacted-student",
+      "passed": true
+    },
+    {
+      "name": "role-preview-tutor",
+      "passed": true
+    },
+    {
+      "name": "private-material-redacted-tutor",
+      "passed": true
+    },
+    {
+      "name": "role-preview-teacher-validator",
+      "passed": true
+    },
+    {
+      "name": "private-material-present-only-teacher-projection",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/releases",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-teacher"
+    },
+    {
+      "name": "release-result-exact-revision",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/activities/83492d2e-8658-47dc-b8b1-12d86ac8deb5/assignments",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-teacher"
+    },
+    {
+      "name": "assignment-receipt-single-owned-student",
+      "passed": true
+    },
+    {
+      "name": "ui-assignment-exact-student",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/assignments/ba36c0f9-4b48-4ec0-8539-545c77260d0e/attempts",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-student-b"
+    },
+    {
+      "name": "attempt-create-receipt",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/sync",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-student-b"
+    },
+    {
+      "name": "first-save-receipt",
+      "passed": true
+    }
+  ],
+  "layouts": [],
+  "screenshots": [
+    {
+      "file": "role-preview-student.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T05:59:11.582Z"
+    },
+    {
+      "file": "role-preview-tutor.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T05:59:11.672Z"
+    },
+    {
+      "file": "role-preview-teacher-validator.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T05:59:11.783Z"
+    }
+  ],
+  "network": [
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 401
+    },
+    {
+      "actor": "teacher",
+      "method": "POST",
+      "path": "/api/sessions",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "POST",
+      "path": "/api/courses/synthetic-robert-course-hdl/resources",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "POST",
+      "path": "/api/courses/synthetic-robert-course-hdl/blueprints",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "POST",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/checks",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/previews",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/previews",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/previews",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/previews",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/previews",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/previews",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "POST",
+      "path": "/api/blueprints/4e57fbd9-3fd9-4f69-9c4b-872f5e6a07cb/releases",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "POST",
+      "path": "/api/activities/83492d2e-8658-47dc-b8b1-12d86ac8deb5/assignments",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 401
+    },
+    {
+      "actor": "student",
+      "method": "POST",
+      "path": "/api/sessions",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/model-settings",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/agent/conversations",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/assignments/ba36c0f9-4b48-4ec0-8539-545c77260d0e/bootstrap",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/activities/83492d2e-8658-47dc-b8b1-12d86ac8deb5",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/resources/20b85e34-f2ea-4038-8f19-915c738f3699",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "POST",
+      "path": "/api/assignments/ba36c0f9-4b48-4ec0-8539-545c77260d0e/attempts",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/teaching-records",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/teaching-records",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "POST",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/sync",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "status": 200
+    }
+  ],
+  "pageErrors": [],
+  "failures": [
+    {
+      "stage": "student-create-and-submit",
+      "message": "WAIT_FAILED:confirmed-source"
+    }
+  ],
+  "notExecuted": [],
+  "failedStage": "student-create-and-submit",
+  "completedAtUtc": "2026-10-15T05:59:45.121Z"
+}

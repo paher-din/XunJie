@@ -1,0 +1,42 @@
+{
+  "scope": "owned-local-synthetic-only",
+  "courseId": "synthetic-robert-course-hdl",
+  "studentId": "synthetic-robert-student-b",
+  "attemptId": "469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+  "firstSource": {
+    "path": "main.v",
+    "text": "// Synthetic teacher workflow revision one\nmodule main(input wire a, output wire y);\n  assign y = a;\n  endmodule\n  ",
+    "contentHash": "92e925349532bc01be75f46b9c26d3a11808f42094c3fed0a914777673f3a5f4",
+    "capturedFrom": "exact-retained-original-sync-and-authorized-get",
+    "receipt": {
+      "receiptId": "5bacbbec-2ce5-493a-b888-deea4a106870",
+      "commandId": "f07ab0a6-28a3-4a1a-9fb5-c3147f695530",
+      "requestHash": "cc850024b6980f4bcdfaf717a33d0752d5426eb9781e463b7db98e9e65ce72c4",
+      "actorId": "synthetic-robert-student-b",
+      "attemptId": "469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "workspaceRevision": 1,
+      "fileId": "f04012b2-f9b6-4f1e-9056-6a6ef0ec100c",
+      "documentVersion": 1,
+      "contentHash": "92e925349532bc01be75f46b9c26d3a11808f42094c3fed0a914777673f3a5f4"
+    }
+  },
+  "secondSource": {
+    "path": "main.v",
+    "text": "// Synthetic teacher workflow revision two\nmodule main(input wire a, output wire y);\n  assign y = ~a;\n  endmodule\n  ",
+    "contentHash": "76bbee49ed7955065acff6f838f058b1a45a4606732ffd5d13d0c86f79304686",
+    "capturedFrom": "monaco-native-textarea-full-selection",
+    "receipt": {
+      "receiptId": "ee9df6af-e197-4da5-b8f9-2b58a80af262",
+      "commandId": "703ad0ee-9850-46b0-9f6f-b9ba1f8a94e3",
+      "requestHash": "6a7a24095eed815ee623616388f7165220d1cedbfc0574bd6ff50378a49662fc",
+      "actorId": "synthetic-robert-student-b",
+      "attemptId": "469a1d9e-b2a5-4729-a7ff-c0ca97e0782e",
+      "recoveryGeneration": "synthetic-generation-c6772623-ba28-4c50-a853-337f77382452",
+      "workspaceRevision": 2,
+      "fileId": "f04012b2-f9b6-4f1e-9056-6a6ef0ec100c",
+      "documentVersion": 2,
+      "contentHash": "76bbee49ed7955065acff6f838f058b1a45a4606732ffd5d13d0c86f79304686"
+    }
+  }
+}

@@ -1,0 +1,849 @@
+{
+  "mode": "run",
+  "origin": "https://127.0.0.1:3444",
+  "strictTLS": true,
+  "accounts": [
+    "synthetic-robert-teacher",
+    "synthetic-robert-student-a"
+  ],
+  "courseId": "synthetic-robert-course-c",
+  "steps": [
+    "For a new draft only: import a synthetic private_answer through Materials, assert student/tutor disabled and false, allow teacher design, then attach its fixed version.",
+    "Teacher UI: edit confirmed c preset, save, run design checks, inspect student/tutor/teacher projections including private-material redaction, release and assign the matching synthetic student.",
+    "Student UI: explicitly create Attempt, create main.c, edit, confirm save, freeze and explicitly submit.",
+    "Teacher UI: inspect fixed source, save formal feedback with selected snapshot evidence, revise the same feedback thread, grant permission.",
+    "Student UI: read real feedback, explicitly consume permission, edit, confirm and freeze a new version, submit again.",
+    "Read-only GETs: verify original snapshot hash and first submission remain, second submission targets new snapshot, feedback history persists.",
+    "Teacher review UI: explicitly copy the source into an independent follow-up draft, verify exact source ancestry and unchanged fixed activity.",
+    "Chrome screenshots and overflow reads at widths 1440, 720 and 390 for design, review list/detail and student submission panel."
+  ],
+  "boundaries": [
+    "All business writes use visible UI controls and keyboard events.",
+    "No model calls, runs, migrations, browser tracing, cookie export or credentials in output.",
+    "Only owned local synthetic accounts; --resume reuses exact public IDs/title and never silently replaces an unknown command."
+  ],
+  "startedAtUtc": "2026-10-15T06:08:57.668Z",
+  "status": "passed",
+  "title": "教师真实流程验证 c 2026-10-15T05-34-01-823Z",
+  "checks": [
+    {
+      "name": "teacher-workbench-owned-course",
+      "passed": true
+    },
+    {
+      "name": "ui-assignment-exact-student",
+      "passed": true
+    },
+    {
+      "name": "ui-write-confirmed:/api/assignments/b2119956-9419-4eb2-a8b3-3e1a3750e201/attempts",
+      "passed": true,
+      "status": 200,
+      "actor": "synthetic-robert-student-a"
+    },
+    {
+      "name": "existing-attempt-opened-without-replacement",
+      "passed": true
+    },
+    {
+      "name": "first-submission-fixed-selected-snapshot",
+      "passed": true
+    },
+    {
+      "name": "formal-feedback-revision-preserves-history",
+      "passed": true
+    },
+    {
+      "name": "old-snapshot-hash-unchanged",
+      "passed": true
+    },
+    {
+      "name": "two-distinct-fixed-submissions",
+      "passed": true
+    },
+    {
+      "name": "new-submission-awaits-teacher",
+      "passed": true
+    },
+    {
+      "name": "latest-review-bound-to-second-snapshot",
+      "passed": true
+    },
+    {
+      "name": "feedback-revisions-preserved-after-resubmit",
+      "passed": true
+    },
+    {
+      "name": "three-competency-lines-present-with-explicit-counts",
+      "passed": true,
+      "details": {
+        "counts": {
+          "domain": 0,
+          "project": 0,
+          "ai_collaboration": 0
+        }
+      }
+    },
+    {
+      "name": "followup-original-source-available",
+      "passed": true
+    },
+    {
+      "name": "fixed-activity-preserved-across-copy-resume",
+      "passed": true
+    },
+    {
+      "name": "followup-is-independent-with-exact-source",
+      "passed": true
+    },
+    {
+      "name": "followup-copy-keeps-fixed-activity-byte-identical",
+      "passed": true
+    },
+    {
+      "name": "responsive-document-no-horizontal-overflow",
+      "passed": true
+    },
+    {
+      "name": "no-browser-pageerrors",
+      "passed": true
+    },
+    {
+      "name": "writes-only-original-ui-endpoints",
+      "passed": true
+    }
+  ],
+  "layouts": [
+    {
+      "name": "teacher-design",
+      "width": 1440,
+      "viewport": 1440,
+      "pageWidth": 1440,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 1170,
+          "scrollWidth": 1170
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-design-1440.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-review-list",
+      "width": 1440,
+      "viewport": 1440,
+      "pageWidth": 1440,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 1170,
+          "scrollWidth": 1170
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-review-list-1440.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-review-detail",
+      "width": 1440,
+      "viewport": 1440,
+      "pageWidth": 1440,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 1170,
+          "scrollWidth": 1170
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-review-detail-1440.png",
+      "passed": true
+    },
+    {
+      "name": "student-submission",
+      "width": 1440,
+      "viewport": 1440,
+      "pageWidth": 1440,
+      "region": [
+        {
+          "className": "ws-submission",
+          "width": 1378,
+          "scrollWidth": 1378
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "student-submission-1440.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-design",
+      "width": 720,
+      "viewport": 720,
+      "pageWidth": 720,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 499,
+          "scrollWidth": 499
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-design-720.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-review-list",
+      "width": 720,
+      "viewport": 720,
+      "pageWidth": 720,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 604,
+          "scrollWidth": 604
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-review-list-720.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-review-detail",
+      "width": 720,
+      "viewport": 720,
+      "pageWidth": 720,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 637,
+          "scrollWidth": 637
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-review-detail-720.png",
+      "passed": true
+    },
+    {
+      "name": "student-submission",
+      "width": 720,
+      "viewport": 720,
+      "pageWidth": 720,
+      "region": [
+        {
+          "className": "ws-submission",
+          "width": 658,
+          "scrollWidth": 658
+        }
+      ],
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "className": "ws-head-run",
+          "right": 1111
+        },
+        {
+          "tag": "SPAN",
+          "className": "ws-run-actions",
+          "right": 927
+        },
+        {
+          "tag": "BUTTON",
+          "className": "ws-btn solid",
+          "right": 747
+        }
+      ],
+      "screenshot": "student-submission-720.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-design",
+      "width": 390,
+      "viewport": 390,
+      "pageWidth": 390,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 308,
+          "scrollWidth": 308
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-design-390.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-review-list",
+      "width": 390,
+      "viewport": 390,
+      "pageWidth": 390,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 308,
+          "scrollWidth": 308
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-review-list-390.png",
+      "passed": true
+    },
+    {
+      "name": "teacher-review-detail",
+      "width": 390,
+      "viewport": 390,
+      "pageWidth": 390,
+      "region": [
+        {
+          "className": "t-main",
+          "width": 308,
+          "scrollWidth": 308
+        }
+      ],
+      "overflowing": [],
+      "screenshot": "teacher-review-detail-390.png",
+      "passed": true
+    },
+    {
+      "name": "student-submission",
+      "width": 390,
+      "viewport": 390,
+      "pageWidth": 390,
+      "region": [
+        {
+          "className": "ws-submission",
+          "width": 328,
+          "scrollWidth": 328
+        }
+      ],
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "className": "ws-head-run",
+          "right": 1111
+        }
+      ],
+      "screenshot": "student-submission-390.png",
+      "passed": true
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "teacher-design-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:03.004Z"
+    },
+    {
+      "file": "teacher-review-list-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:03.080Z"
+    },
+    {
+      "file": "teacher-review-detail-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:03.247Z"
+    },
+    {
+      "file": "student-submission-1440.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:03.580Z"
+    },
+    {
+      "file": "teacher-design-720.png",
+      "viewport": {
+        "width": 720,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:03.686Z"
+    },
+    {
+      "file": "teacher-review-list-720.png",
+      "viewport": {
+        "width": 720,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:03.750Z"
+    },
+    {
+      "file": "teacher-review-detail-720.png",
+      "viewport": {
+        "width": 720,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:03.914Z"
+    },
+    {
+      "file": "student-submission-720.png",
+      "viewport": {
+        "width": 720,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:04.010Z"
+    },
+    {
+      "file": "teacher-design-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:04.091Z"
+    },
+    {
+      "file": "teacher-review-list-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:04.136Z"
+    },
+    {
+      "file": "teacher-review-detail-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:04.379Z"
+    },
+    {
+      "file": "student-submission-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 1000
+      },
+      "capturedAtUtc": "2026-10-15T06:09:04.466Z"
+    }
+  ],
+  "network": [
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 401
+    },
+    {
+      "actor": "teacher",
+      "method": "POST",
+      "path": "/api/sessions",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 401
+    },
+    {
+      "actor": "student",
+      "method": "POST",
+      "path": "/api/sessions",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/model-settings",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/agent/conversations",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/assignments/b2119956-9419-4eb2-a8b3-3e1a3750e201/bootstrap",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/activities/9caab364-321d-4aec-bfb2-e917a6ee0009",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/resources/b3145cc9-8237-4e86-b120-cb4d9c6aa55c",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/session",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "POST",
+      "path": "/api/assignments/b2119956-9419-4eb2-a8b3-3e1a3750e201/attempts",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/snapshots/059e20ed-b283-4812-943c-07f7cd2097c4",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/teaching-records",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/events",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/snapshots/059e20ed-b283-4812-943c-07f7cd2097c4",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/teaching-records",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/assignments/b2119956-9419-4eb2-a8b3-3e1a3750e201",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/recovery",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/feedback",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-c/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/courses/synthetic-robert-course-hdl/teacher-workbench",
+      "status": 200
+    },
+    {
+      "actor": "teacher",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/review-context",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f",
+      "status": 200
+    },
+    {
+      "actor": "student",
+      "method": "GET",
+      "path": "/api/attempts/fefbc0a7-f86e-4139-80db-35230c639f6f/events",
+      "status": 200
+    }
+  ],
+  "pageErrors": [],
+  "failures": [],
+  "notExecuted": [
+    {
+      "name": "new-private-resource-isolation",
+      "reason": "Pre-existing saved draft and fixed activity kept unchanged; private material setup runs only before a new draft is created."
+    }
+  ],
+  "entryJS": [
+    {
+      "actor": "synthetic-robert-teacher",
+      "paths": [
+        "/assets/index-B66OM0mG.js"
+      ]
+    },
+    {
+      "actor": "synthetic-robert-student-a",
+      "paths": [
+        "/assets/index-B66OM0mG.js"
+      ]
+    }
+  ],
+  "objects": {
+    "blueprintId": "00466ff3-6f99-4556-b9c4-20475a16e2af",
+    "activityId": "9caab364-321d-4aec-bfb2-e917a6ee0009",
+    "assignmentId": "b2119956-9419-4eb2-a8b3-3e1a3750e201",
+    "attemptId": "fefbc0a7-f86e-4139-80db-35230c639f6f",
+    "firstSnapshotId": "059e20ed-b283-4812-943c-07f7cd2097c4",
+    "firstSnapshotHash": "b51f1b1c78ef5240cf55ce302dac96a2ab0ccd4efc53026831653b1fed9fcdf8",
+    "firstSubmissionId": "24aee2bd-6415-49a1-a1fb-59d5f4c981c8",
+    "secondSnapshotId": "aab8f3a4-27ba-4107-8852-b1bc324d8d14",
+    "secondSnapshotHash": "0d95a113611b4251af8902c61f956640ebe023c8ba3e63c9c1d2f89a01ad4532",
+    "secondSubmissionId": "8fd0c31c-5001-4bd8-9b4b-d97e40f9ce54",
+    "feedbackId": "3b03cc9d-07dc-4a82-926a-fef3dbc0adad",
+    "feedbackThreadRevision": 2,
+    "grantId": "895d3c9f-fcb1-49f5-801f-bde7401561b9",
+    "followupBlueprintId": "9b07fc5a-4ab9-4558-8376-4cdf3c6ac7d1",
+    "followupSourceBlueprintId": "00466ff3-6f99-4556-b9c4-20475a16e2af",
+    "followupSourceRevision": 1,
+    "fixedActivityBeforeCopySha256": "9662c147eca75521898f1e9e46e95d39818e23abc13731a7d4d4bce0a5cec177"
+  },
+  "privateIsolation": {
+    "status": "not_executed",
+    "reason": "Pre-existing saved draft and fixed activity kept unchanged; private material setup runs only before a new draft is created."
+  },
+  "completedAtUtc": "2026-10-15T06:09:04.470Z"
+}
