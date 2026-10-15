@@ -1,9 +1,10 @@
 import type { SyntheticDatabase } from '../db/transaction.ts';
-import { readActivity } from '../design/activities.ts';
+import { activityView } from '../design/activities.ts';
 import { hasDisplayColumn, optionalDisplayText } from '../access/display-text.ts';
 import type { StudentTaskSnapshot } from './types.ts';
 
 const MAX_TASKS = 100;
+const MAX_SCANNED_ASSIGNMENTS = 1_000;
 
 /** A read-only, account-scoped summary. Assignment availability is not completion. */
 export function readStudentTasks(db: SyntheticDatabase, userId: string): StudentTaskSnapshot {
@@ -19,19 +20,38 @@ export function readStudentTasks(db: SyntheticDatabase, userId: string): Student
       JOIN courses c ON c.id=a.course_id
       JOIN activity_controls ac ON ac.activity_id=a.activity_id
       WHERE a.student_id=? AND m.role='student' AND m.active=1 AND u.disabled_at_ms IS NULL
-      ORDER BY a.course_id,a.id LIMIT ?`, userId, MAX_TASKS + 1);
-    const hasMore = rows.length > MAX_TASKS;
-    const tasks = rows.slice(0, MAX_TASKS).map(row => {
+      ORDER BY a.course_id,a.id LIMIT ?`, userId, MAX_SCANNED_ASSIGNMENTS + 1);
+    // A truncated scan cannot choose the same representative as the home.
+    if (rows.length > MAX_SCANNED_ASSIGNMENTS) throw new Error('Student task snapshot exceeds scan limit.');
+    const visible: StudentTaskSnapshot['tasks'] = [];
+    const positions = new Map<string, number>();
+    for (const row of rows) {
       const courseId = String(row.course_id);
-      const activity = readActivity(tx, courseId, String(row.activity_id));
-      const title = optionalDisplayText(row.display_title) ?? optionalDisplayText(activity.draft.content.projectTitle);
+      // Use the same authorized student projection as the course home, including
+      // visible materials. Private activity fields must never define a chat task.
+      const activity = activityView(tx, { userId, courseId, role: 'student' }, String(row.activity_id));
+      const displayTitle = optionalDisplayText(row.display_title);
+      const title = displayTitle ?? optionalDisplayText(activity.content.content.projectTitle);
       if (!title) throw new Error('Fixed activity title unavailable.');
       const courseName = optionalDisplayText(row.course_name);
-      return {
+      const availability = row.assignment_status === 'active' && row.activity_status === 'active' ? 'active' as const : 'paused' as const;
+      const task = {
         assignmentId: String(row.id), courseId, ...(courseName ? { courseName } : {}), title,
-        availability: row.assignment_status === 'active' && row.activity_status === 'active' ? 'active' as const : 'paused' as const,
+        availability,
       };
-    });
-    return { tasks, hasMore };
+      const identity = JSON.stringify([
+        courseId, userId, 'execution' in activity ? 'hdl_board' : 'textscope', displayTitle ?? null,
+        activity.content, activity.helpPolicy, activity.runtimeProfileVersionId, activity.execution ?? null,
+      ]);
+      const position = positions.get(identity);
+      if (position === undefined) {
+        positions.set(identity, visible.length);
+        visible.push(task);
+      } else if (availability === 'active' || visible[position]!.availability === 'paused') {
+        // The home prefers an available assignment, then the last ID in its stable list.
+        visible[position] = task;
+      }
+    }
+    return { tasks: visible.slice(0, MAX_TASKS), hasMore: visible.length > MAX_TASKS };
   });
 }

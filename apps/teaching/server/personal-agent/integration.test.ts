@@ -12,7 +12,9 @@ import { openPersonalAgentStore } from './store.ts';
 import { openCredential, sealCredential } from './credentials.ts';
 import { CompatibleRequestError } from '../tutoring/openai-compatible.ts';
 import { InputLimitError } from '../tutoring/providers.ts';
-import type { CompatibleTransport } from './types.ts';
+import { fixture as digitalLogicFixture, allocate as allocateDigitalLogic, command as digitalLogicCommand } from '../../tests/dl-a-support.ts';
+import { readStudentTasks } from './student-tasks.ts';
+import type { CompatibleMessage, CompatibleTransport } from './types.ts';
 
 const secret='offline-test-secret-NEVER-RETURN-FULL';
 const provider={id:'test',name:'Offline integration provider',baseUrl:'https://public.example/v1',apiKey:secret,
@@ -166,6 +168,82 @@ test('a settled reply gets one durable card only for a uniquely named assignment
   assignments.push({assignmentId:'assignment-c',courseId:'course-a',courseName:'数字逻辑',title:'同步计数器',availability:'active'});
   reply='同步计数器可以先画状态图。';
   assert.equal((await send('我该怎么做同步计数器？','ambiguous-task-card')).turn.message.taskCard,undefined);
+});
+
+test('independent chat folds repeated HDL ALU allocations into one workspace card',async t=>{
+  const course=await digitalLogicFixture();t.after(()=>course.close());
+  const teacher=await course.login('teacher');
+  const student=await course.login('student');
+  const source=await allocateDigitalLogic(course,teacher,student);
+  const fixed=course.db.withTransaction(tx=>tx.get('SELECT activity_json FROM activity_versions WHERE id=?',source.activityId));
+  assert.ok(fixed);
+  const baseContent=(JSON.parse(String(fixed.activity_json)) as {draft:{content:Record<string,unknown>}}).draft.content;
+  assert.notEqual(baseContent.projectTitle,'四位算术逻辑单元');
+  const publish=async(problem=String(baseContent.problem))=>{
+    const draft=await digitalLogicCommand(course,teacher,'/api/courses/logic-course/blueprints',{
+      mode:'manual',content:{...baseContent,problem},
+    });
+    assert.equal(draft.statusCode,200,draft.body);
+    const blueprintId=String(draft.json().data.result.draft.blueprintId);
+    const checks=await digitalLogicCommand(course,teacher,`/api/blueprints/${blueprintId}/checks`,{expectedRevision:1});
+    assert.equal(checks.statusCode,200,checks.body);
+    assert.deepEqual(checks.json().data.result.report.blocking,[]);
+    const release=await digitalLogicCommand(course,teacher,`/api/blueprints/${blueprintId}/releases`,{expectedRevision:1,confirmed:true});
+    assert.equal(release.statusCode,200,release.body);
+    const activityId=String(release.json().data.result.activityVersionId);
+    const allocation=await digitalLogicCommand(course,teacher,`/api/activities/${activityId}/assignments`,{
+      expectedActivityControlRevision:1,studentIds:['student'],
+    });
+    assert.equal(allocation.statusCode,200,allocation.body);
+    return String(allocation.json().data.result.assignments[0].assignmentId);
+  };
+  const duplicateIds:string[]=[source.assignmentId];
+  for(let index=1;index<4;index++)duplicateIds.push(await publish());
+  course.db.withTransaction(tx=>{
+    for(const id of duplicateIds)tx.run('UPDATE assignments SET display_title=? WHERE id=?','四位算术逻辑单元',id);
+  });
+  const preferred=duplicateIds.toSorted().at(-1)!;
+  const visible=readStudentTasks(course.db,'student');
+  assert.equal(visible.hasMore,false);
+  assert.deepEqual(visible.tasks.filter(task=>task.title==='四位算术逻辑单元').map(task=>task.assignmentId),[preferred]);
+  const summaries=await course.app.inject({url:'/api/courses/logic-course/assignments',headers:student});
+  assert.equal(summaries.statusCode,200,summaries.body);
+  assert.equal(summaries.json().data.length,4);
+  assert.ok(summaries.json().data.every((summary:{executionKind:string})=>summary.executionKind==='hdl_board'));
+
+  const prompts:CompatibleMessage[][]=[];
+  const agent=await setup({...immediateTransport,async complete(input){
+    prompts.push(input.messages);return {text:'四位算术逻辑单元可以先核对输入与预期结果。'};
+  }},userId=>readStudentTasks(course.db,userId));
+  t.after(agent.cleanup);
+  const {request}=agent;
+  await request('POST','/api/model-settings',settings(), 'student');
+  const accepted=await request('POST','/api/agent/turns',{
+    conversationId:null,mode:'send',text:'四位算术逻辑单元这个任务情况怎么样',requestKey:'alu-visible',
+  },'student');
+  assert.equal(accepted.status,200);await pause();
+  const turn=(await request('GET',`/api/agent/turns/${accepted.body.data.turnId}`,undefined,'student')).body.data;
+  const history=(await request('GET',`/api/agent/conversations/${accepted.body.data.conversationId}`,undefined,'student')).body.data;
+  assert.equal(turn.message.taskCard?.assignmentId,preferred);
+  assert.deepEqual(history.messages.at(-1).taskCard,turn.message.taskCard);
+  const prompt=JSON.stringify(prompts[0]);
+  assert.match(prompt,/四位算术逻辑单元/);
+  assert.ok(duplicateIds.filter(id=>prompt.includes(id)).length===1);
+  assert.ok(!prompt.includes('PRIVATE_BODY'));
+  const workspace=await course.app.inject({url:`/api/assignments/${preferred}/bootstrap`,headers:student});
+  assert.equal(workspace.statusCode,200,workspace.body);
+
+  const paused=await digitalLogicCommand(course,teacher,`/api/assignments/${preferred}/controls`,{
+    expectedAssignmentRevision:1,action:'pause',reason:'Synthetic availability change',
+  });
+  assert.equal(paused.statusCode,200,paused.body);
+  assert.equal(readStudentTasks(course.db,'student').tasks.find(task=>task.title==='四位算术逻辑单元')?.assignmentId,
+    duplicateIds.toSorted().at(-2));
+
+  const different=await publish('A changed ALU learning goal');
+  course.db.withTransaction(tx=>tx.run('UPDATE assignments SET display_title=? WHERE id=?','四位算术逻辑单元',different));
+  const separate=readStudentTasks(course.db,'student').tasks.filter(task=>task.title==='四位算术逻辑单元');
+  assert.deepEqual(separate.map(task=>task.assignmentId).toSorted(),[duplicateIds.toSorted().at(-2)!,different].toSorted());
 });
 
 test('an inline image above Fastify default body size remains sendable and durable after a service restart',async t=>{
