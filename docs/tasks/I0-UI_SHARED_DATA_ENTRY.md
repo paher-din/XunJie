@@ -96,3 +96,5 @@
 产品基线及MVP_SPEC §10：待授权维护者汇总。
 
 文档检查：`node tools/a0-review/check.mjs` 为127篇、1949条内部链接、`errors=[]`；本任务暂存写集空白检查通过。依赖/lock、保护基线及主checkout并行改动未入本批提交。
+
+交付入口：[PR #89](https://github.com/paher-din/XunJie/pull/89)，基于 `a1b1235` 沿原 `i0/ui-frontend` 推送，实施提交 `92a128e`；main 合入状态由该 PR 提供可核查记录。成员接入请直接使用随 PR 的共享入口，不沿旧本机课程种子重建数据。

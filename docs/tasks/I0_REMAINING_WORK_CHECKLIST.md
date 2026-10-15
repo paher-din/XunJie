@@ -17,7 +17,7 @@
 
 ## 当前批次
 
-当前四项均已完成；本批为[统一共享数据和演示账号](I0-UI_SHARED_DATA_ENTRY.md)。此前[看板演示统计](I0-UI_DASHBOARD_DISPLAY_DATA.md)由[PR #86](https://github.com/paher-din/XunJie/pull/86)交付；[原看板](I0-UI_HOME_DASHBOARD_RECONNECT.md)与[真实任务入口](I0-UI_REAL_HOME_ENTRY.md)分别由[PR #85](https://github.com/paher-din/XunJie/pull/85)、[PR #82](https://github.com/paher-din/XunJie/pull/82)交付。原 C 对象、回执与固定包见[C 辅导与两课程整合](I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
+当前四项均已完成；本批[统一共享数据和演示账号](I0-UI_SHARED_DATA_ENTRY.md)由[PR #89](https://github.com/paher-din/XunJie/pull/89)交付。此前[看板演示统计](I0-UI_DASHBOARD_DISPLAY_DATA.md)由[PR #86](https://github.com/paher-din/XunJie/pull/86)交付；[原看板](I0-UI_HOME_DASHBOARD_RECONNECT.md)与[真实任务入口](I0-UI_REAL_HOME_ENTRY.md)分别由[PR #85](https://github.com/paher-din/XunJie/pull/85)、[PR #82](https://github.com/paher-din/XunJie/pull/82)交付。原 C 对象、回执与固定包见[C 辅导与两课程整合](I0-UI_CORE_REAL_TUTOR_DELIVERY.md)。
 
 [PR #79](https://github.com/paher-din/XunJie/pull/79) 与[补证 PR #81](https://github.com/paher-din/XunJie/pull/81) 已合 main；[HDL 正式交付](evidence/ui30-hdl-20261015/handoff.md)直接复用，本批补齐 C 场景及共享资料引用接缝，没有重复 HDL 实现。
 
