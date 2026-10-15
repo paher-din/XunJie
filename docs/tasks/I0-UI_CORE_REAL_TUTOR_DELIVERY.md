@@ -12,7 +12,7 @@ Robert 要求完成清单中当前可做的全部必做项，已授权普通 Git
 
 写集：本文、清单、必要的 UI C 接缝及去敏证据，README 只同步入口。产品/规划/参考/规范、数据库/schema、秘密文件和他人工作树只读；HDL 复用原会话正式交付。
 
-本次真实引用阅读复现“资料暂不可用”：页面只取首个 project 引用，资料 resolver 又只认识裸 resourceVersionId，未适配原服务端段落摘要引用。修复写集限 `PrepWorkspacePage.tsx`、`workspace/tutoringReturn.ts` 和对应测试；复用现有公开段落元数据、摘要工具及材料授权/内容核对，不改 API/schema/共享字段。按实际混合引用模式先跑红回归，再修复并用原 Action 复验。
+本次真实引用阅读复现“资料暂不可用”：页面只取首个 project 引用，资料 resolver 又只认识裸 resourceVersionId，未适配原服务端段落摘要引用。修复写集限 `PrepWorkspacePage.tsx`、`workspace/tutoringReturn.ts` 和对应测试；复用现有公开段落元数据、摘要工具及材料授权/内容核对，不改 API/schema/共享字段。实际混合引用回归先红，修复后定向测试及原 Action 浏览器复验均通过。
 
 ## 固定交付与验证
 
@@ -40,4 +40,13 @@ Robert 要求完成清单中当前可做的全部必做项，已授权普通 Git
 
 共享 Chrome 标签换账号曾由会话守卫中断 C 求助，未产生模型调用；改用内置浏览器独立登录，保留同一 C 对象。首次 C Help `6bf2173d-e6b1-4fe9-8fd6-ea89fbc5a1f6` 在模型默认关闭时 failed/budget_exhausted，调用次数 0；显式启用原模型入口并发起新问题后成功，失败记录保留。只读导出首次 Linux helper 路径错误、Chrome 读高超时分别改用现有 D 盘导出工具及新页面复核解决。
 
-C 合成接棒与重跑已完成；引用阅读修复的真实混合引用回归先红（27/28 通过，目标用例失败），修复后28/28通过，typecheck退出0。正常 `rtk npm run build` 已退出0（原大 chunk 提示保留）；接下来用同一原 Action 复验资料阅读后，合入本批 PR #80。2026-10-15 03:26（Asia/Shanghai）通过原 HDL 页面停止回交后遗留的临时 Session，终态 failed / terminationConfirmed=true（不计正常停止通过），未结 Job / 未终止 Session 均为 0，见[实际终态收据](evidence/ui-core-c-20261015/cleanup-receipt.json)和[原页面](evidence/ui-core-c-20261015/hdl-cleanup.png)。随后用原工具核业务退出，再按默认 start 恢复 modelEnabled=false、同 VM/代际/指纹、live/ready200，见[启动收据](evidence/ui-core-c-20261015/model-disabled-start.json)。C 原 received/displayed 和待人工回应状态保持。
+C 合成接棒与重跑已完成；引用阅读修复的真实混合引用回归先红（27/28 通过，目标用例失败），修复后28/28通过，typecheck退出0。正常 `rtk npm run build` 已退出0（原大 chunk 提示保留）；同一原 Action 的实际资料阅读与返回作品复验已通过，见下方最终交付。2026-10-15 03:26（Asia/Shanghai）通过原 HDL 页面停止回交后遗留的临时 Session，终态 failed / terminationConfirmed=true（不计正常停止通过），未结 Job / 未终止 Session 均为 0，见[实际终态收据](evidence/ui-core-c-20261015/cleanup-receipt.json)和[原页面](evidence/ui-core-c-20261015/hdl-cleanup.png)。随后用原工具核业务退出，再按默认 start 恢复 modelEnabled=false、同 VM/代际/指纹、live/ready200，见[启动收据](evidence/ui-core-c-20261015/model-disabled-start.json)。该次重启时保留原 received/displayed 和尚未回应状态；本次受委托的明确回应见上方 seq244。
+## 最终交付
+
+固定源码 `3b6d456c9d5b980459f38579668d6e5135de83a2`，仅本次两处资料引用生产改动及对应回归；实际验证命令为 `rtk npm test -- tutoringReturn.test.ts`（先27/28、修复后28/28）、`rtk npm run typecheck` 和 `rtk npm run build`（均退出0）。[最终产物清单](evidence/ui-core-c-20261015/ui-final-manifest.json)：sourceDirty=false，143文件逐字节接收，35项边界扫描零命中，入口 `index-Vp85Hfk0.js`；ZIP 5,653,628 bytes / SHA256 `0df283a20b4cb7feac2ffea550b476b4f5a2b7b13d046d07b702764ef09e6b9b`。
+
+仅在未结 Job/未终止 Session 均0后，用原工具停止既有业务宿主，确认两个健康入口不可用，再切换本机静态目录并按默认 start 启动。原静态目录保留为本机回滚副本；数据库、配置、密钥、执行 VM 及代际未更换。[最终启动收据](evidence/ui-core-c-20261015/final-runtime.json)确认 modelEnabled=false、VM未新启动、原双指纹与代际一致、live/ready200。首次关停观测包装因没有外部退出码而提前报错，未执行换版；重新按实际健康响应核对后完成。
+
+实际浏览器已加载新入口；同一 Action `0b8386a1…` 的“查看引用资料”现能显示《TextScope Core 本机合成工程验证公开说明》获准正文，返回后 main.c v3 原文不变。见[真实阅读页面](evidence/ui-core-c-20261015/c-reference-fixed.png)与[浏览器断言和后台重读](evidence/ui-core-c-20261015/reference-browser.json)。13组 C 业务对象与接棒终态一致，无新增 Job/Run/Action/Message/回执；未结 Job/未终止 Session 均0。首次直接比较发现 PowerShell 把新快照创建时间 `.900Z` 导出为 `.9Z`，已明确校对同一时刻后仅统一该字段表示；原导出、时间差异及哈希均保留，没有修改业务记录。
+
+本轮两项必做的 UI 工程结果已完成，交付入口为 [PR #80](https://github.com/paher-din/XunJie/pull/80)；普通推送与合并沿用负责人已有授权，以 PR 实际状态为准。合成接棒、模型正文事实、引用可读与版本因果分别有证据，本结论不代签人工课程审阅或真人学习效果。

@@ -1,0 +1,48 @@
+{
+  "kind": "browser-observation",
+  "scope": "Robert-delegated Agent synthetic engineering validation",
+  "observedAtUtc": "2026-10-15T02:16:51.890Z",
+  "sourceCommit": "3b6d456c9d5b980459f38579668d6e5135de83a2",
+  "entryScripts": [
+    "/assets/index-Vp85Hfk0.js"
+  ],
+  "actionId": "0b8386a1-7c5b-46ba-8e68-4b9d35072890",
+  "originalSource": "原 Job：234e761a-e533-4bbc-b61f-faa9d8800900 · 原 Message：e604bf44-88b3-4efe-879a-3f31d0ecf89e\n\n回答来源：原运行 998797da-8259-4890-8032-2f6f34fbdb03 · 原快照 1ac0f3a4-d347-415f-8170-6c8d8927fb74 · 原政策：synthetic-robert-course-c-help\n\n只核对原对象，不定位或替换当前作品。",
+  "facts": "收到：已确认 · 展示：本机已发生 · 回应：明确回应",
+  "reader": {
+    "title": "TextScope Core 本机合成工程验证公开说明",
+    "actualPublicBodyVisible": true,
+    "unavailableHeadingVisible": false
+  },
+  "returnEditorText": "#include <stdio.h>\nint main(void) {\n  puts(\"Robert local C core\");\n  return 0;\n}\n",
+  "backendReadonlyRecheck": {
+    "observedAtUtc": "2026-10-15T02:19:12.075Z",
+    "comparedWith": "after-final-c.json",
+    "collectionsCompared": [
+      "assignments",
+      "attempts",
+      "files",
+      "snapshots",
+      "jobs",
+      "builds",
+      "sessions",
+      "runs",
+      "actions",
+      "messages",
+      "deliveries",
+      "teachingReceipts",
+      "commandReceipts"
+    ],
+    "unchanged": true,
+    "timestampRepresentationDifferences": [
+      {
+        "field": "runs.fb685583-7896-4eb4-8cfd-6053da36b100.submission_json.snapshot.createdAt",
+        "exported": "2026-10-15T02:05:17.9Z",
+        "authoritative": "2026-10-15T02:05:17.900Z",
+        "reason": "PowerShell ConvertFrom-Json formatted the same timestamp with shorter fractional seconds"
+      }
+    ],
+    "unfinishedJobs": 0,
+    "unterminatedSessions": 0
+  }
+}
