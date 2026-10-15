@@ -119,12 +119,13 @@ git -C <XunJie_Design> archive a9bb1dd016489d3e60e0b45933e440296c1194d8 app \
 2. 禁止用新的 `app/` 覆盖 `apps/student/`。禁止 reset、删除或整文件覆盖来解决冲突。
 3. 视觉与业务混合的提交逐项合并；同文件冲突保留两侧改动后人工处理，共享文件保留主仓库业务语义。
 4. 每次同步在本文件追加「同步记录」，写明接收来源 commit、审阅的差异范围、实际合入的文件、冲突处理与验证命令/结果。
-5. 来源仓库的设计说明（`docs/DESIGN.md`、`docs/home-design.md` 等）按固定公开链接查阅，作为 UI 来源参考；其中桌面宿主、匿名本地使用、自动引导、能力百分比等与主仓库冲突的业务描述不继承为正式契约。业务规则一律以 [PRD](../../docs/product/PRD.md) → [MVP_SPEC](../../docs/product/MVP_SPEC.md) → [TECH_DESIGN](../../docs/product/TECH_DESIGN.md) 为准。
+5. 设计系统已按负责人2026-10-15指令接收到主仓库 [DESIGN.md](../../docs/DESIGN.md)，此后页面/组件/样式/交互修改先读此本地规范。其余来源设计说明（如 `docs/home-design.md`）按固定公开链接查阅；其中桌面宿主、匿名本地使用、自动引导、能力百分比等与主仓库冲突的业务描述不继承为正式契约。业务规则一律以 [PRD](../../docs/product/PRD.md) → [MVP_SPEC](../../docs/product/MVP_SPEC.md) → [TECH_DESIGN](../../docs/product/TECH_DESIGN.md) 为准。
 
 ### 同步记录
 
 | 日期 | 上次已接收来源 | 新来源 | 合入范围 | 验证 |
 | --- | --- | --- | --- | --- |
+| 2026-10-15 | `a9bb1dd`（设计规范原固定来源） | `16558426ce70524218eacbf7ce8fde35681c0503`（当前源HEAD；DESIGN与a9bb1dd同blob） | 仅接收 `docs/DESIGN.md` 到主仓库同路径，规则/frontmatter保持，适配本仓库代码路径与固定来源链接；源文件保留。首页复用原任务卡，修正课程图案按语义匹配，业务接线独立维护 | 来源末改 `5a9486b`、blob `67d96c1c0e52e7601a3c74137e89e66742d7b476`；验证见[设计对齐任务](../../docs/tasks/I0-UI_DESIGN_ALIGNMENT.md) |
 | 2026-10-12 | `a124fee`（06A 已接收组件） | `16558426ce70524218eacbf7ce8fde35681c0503`（06B，仅本地提交） | 仅接收纯受控 `RunHistoryPanel.tsx/.css` 和 `RunPanel.tsx` 可选历史入口；逐字节一致，主仓库页面接线与业务读取/校验/下载独立维护，不同步设计演示页面 | 设计 Node 24 下 106 项测试、含 tsc 构建与 props/SSR 通过；主仓库专项 Chromium 10/10、1280px 浅深截图与来源核对通过；最终工程检查见 [06B](../../docs/tasks/I0_UI_06B_RUN_HISTORY.md) |
 | 2026-10-12 | `ad89519`（已有 05 接收范围） | `b4b857d6ec39f10be8112afaa6e9769dc6cb0e27` → `0e9d0af3e029d8c3611515ac1ce1e6936033e148`（06 设计先行，均仅本地提交，未推送） | 只审阅并逐字节接收 `app/src/components/workspace/RunPanel.tsx` 与 `RunPanel.css`，包含纯 props Core 入口/参数/只读结果及仅存在 Core 入口时的顶栏间距修正；业务传输、原请求/确认及存储在主仓库 workspace 维护，未接收其他来源文件 | 设计 `npm run build`（含 tsc）通过；主仓库 Chromium 1280px 浅/深色与交互、最终检查见 [06 任务记录](../../docs/tasks/I0_UI_06_RUN_RESULTS.md)；两文件来源一致性另核 sha256 |
 | 2026-10-12 | `0e9d0af`（06 接收组件） | `a124fee8422bf2ca940ddc807344ae7936d7dac7`（06A，仅本地提交） | 仅接收 `app/src/components/workspace/RunPanel.tsx` 的可选纯 props 停止/核对控件；现有页面/样式/其余来源不变 | 设计 typecheck/build 通过；主仓库逐字节核对和浏览器/工程结果见 [06A](../../docs/tasks/I0_UI_06A_RUN_CONTROL.md) |

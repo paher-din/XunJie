@@ -12,6 +12,7 @@ interface AssignmentSummary {
 
 export interface HomeAssignment extends AssignmentSummary {
   title: string
+  goal?: string
 }
 
 export interface HomeCourse {
@@ -38,7 +39,9 @@ export async function loadHomeCourses(session: SessionView): Promise<HomeCourse[
         activity.content?.audience !== 'student' || typeof title !== 'string' || !title.trim()) {
         throw new Error('任务说明不可用，请重新读取。')
       }
-      return { ...summary, title }
+      const goals = activity.content.content.goals ?? []
+      const goal = goals.find(item => item.core)?.title ?? goals[0]?.title
+      return { ...summary, title, goal }
     }))
     return { courseId, assignments }
   }))

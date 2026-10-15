@@ -7,6 +7,8 @@ XunJie 主仓库的学生端前端工程。首次内容由设计仓库 `XunJie_D
 [MVP_SPEC](../../docs/product/MVP_SPEC.md) → [TECH_DESIGN](../../docs/product/TECH_DESIGN.md)。
 设计仓库的说明只作为 UI 来源参考（见下方「设计参考」），其中与主仓库冲突的业务描述不继承为契约。
 
+页面、组件、样式或交互修改前先读主仓库 [DESIGN.md](../../docs/DESIGN.md)，遵循其中的视觉与交互规则，复用原有组件；缺真实数据时按实际可用字段呈现，不另写一套简化 UI。
+
 ## 运行
 
 需要 Node 24（与 `apps/teaching` 已批准的工具环境同一大版本）。本机默认 Node 更高时，
@@ -219,9 +221,9 @@ CI 一律新起，避免断言打在陈旧进程上）。首次使用需安装�
 
 ## 设计参考
 
-导入来源自带的说明文档留在设计仓库，按固定提交查阅（不随本目录同步）：
+设计系统已接收到主仓库；其余来源说明按固定提交查阅：
 
-- 设计系统令牌：[docs/DESIGN.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/DESIGN.md)
+- 设计系统与 UI 修改规范：[DESIGN.md](../../docs/DESIGN.md)
 - 首页 / 课程任务 / 工作区：[docs/home-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/home-design.md)
 - Agent 对话页：[docs/agent-page-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/agent-page-design.md)
 - 设置页信息架构：[docs/settings-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/settings-design.md)
