@@ -17,10 +17,10 @@
 
 开工时工作副本为 `codex/b4-p4-core-verification@69cc6f3`，早于本次回交。远端只读核对确认 PR #81 已普通合并：head `1a3ba967bd03ca047fb5e39f22a63214038a4aeb`，merge `ac49334218c8cfe1e4aa945355e982ddaf3638f3`。随后实际同步到：
 
-- 首次同步到 `upstream/main = fork/main = 4fdf2f0f9ddaa51c93e971476a1e4598cf55217f`；任务期间上游合入 PR #88 并推进到 `a1b123537187344503906f7674a3009b1658da0d`，最终再次纯快进 fork/main；全程无分叉或强推；
-- 当前任务分支 `codex/b-ui30-hdl-handoff` 最初从 `upstream/main@4fdf2f0` 创建，随后以普通 merge 接入最新 `upstream/main@a1b1235`，没有重写已推送历史；
+- 首次同步到 `upstream/main = fork/main = 4fdf2f0f9ddaa51c93e971476a1e4598cf55217f`；任务期间上游先后合入 PR #88、#89 并推进到 `d77c9cc8efdab1a55c54c5b711f2cf8fce8f1ed3`，每次均纯快进 fork/main；全程无分叉或强推；
+- 当前任务分支 `codex/b-ui30-hdl-handoff` 最初从 `upstream/main@4fdf2f0` 创建，随后以普通 merge 依次接入 `upstream/main@a1b1235` 与最新 `upstream/main@d77c9cc`，没有重写已推送历史；
 - `origin` 与 `fork` 指向同一 `scy404/XunJie`，其中 `origin` 的 SSH fetch 因本机无对应公钥失败，已使用正常工作的 HTTPS `fork` remote 完成读取与推送；
-- 本地 `main` 被另一个受管理工作树占用；在只读确认该工作树干净、旧提交为 `upstream/main` 的纯祖先后，已用 `--ff-only` 快进到 `a1b1235`，并改为跟踪正常工作的 HTTPS `fork/main`。当前本地 main、fork/main 与 upstream/main 完全一致。
+- 本地 `main` 被另一个受管理工作树占用；在只读确认该工作树干净、旧提交为 `upstream/main` 的纯祖先后，已用 `--ff-only` 快进，并改为跟踪正常工作的 HTTPS `fork/main`；提交 PR 前再次同步到 `d77c9cc`。当前本地 main、fork/main 与 upstream/main 完全一致。
 
 因此实际接纳在包含 PR #79/#81 及后续主线的最新固定树执行，没有在旧树制作替代实现。
 
@@ -119,11 +119,11 @@
 | 命令/检查 | 结果 |
 | --- | --- |
 | `git fetch --all --prune` | HTTPS fork/upstream 成功；同一 fork 的 SSH `origin` 因 publickey 失败，未影响 HTTPS 同步。 |
-| `git push fork upstream/main:refs/heads/main` | fork/main 先从 `8b41303` 纯快进到 `4fdf2f0`；最终回读发现上游新增 PR #88 后，再纯快进到 `a1b1235`。 |
-| `git merge --no-edit upstream/main` | 当前任务分支普通合并最新 `a1b1235`，无冲突、无历史重写；只接纳上游既有 UI 显示名改动。 |
+| `git push fork upstream/main:refs/heads/main` | fork/main 从 `8b41303` 依次纯快进到 `4fdf2f0`、`a1b1235` 与提交 PR 前最新的 `d77c9cc`。 |
+| `git merge --no-edit upstream/main` | 当前任务分支普通合并到最新 `d77c9cc`，无冲突、无历史重写；只接纳上游既有 UI 改动。 |
 | `node docs/tasks/evidence/ui30-hdl-20261015/verify-completion.mjs` | `verified`；只核公开归档一致性。 |
 | `node docs/tasks/evidence/b-ui30-hdl-20261015/verify-b-handoff.mjs` | `verified`；链 A、链 B、budget-off、transport 和 model-off 边界全部通过。 |
-| `node tools/a0-review/check.mjs` | 128 份文档、1959 条内部链接、`errors=[]`。 |
+| `node tools/a0-review/check.mjs` | 合并最新主线后复跑：129 份文档、1967 条内部链接、`errors=[]`。 |
 | `git diff --check` | 通过；原 UI JSON 只出现 Git 的 CRLF 提示，blob hash 与 HEAD 相同，无内容差异。 |
 
 B 专用校验器只读取 JSON/JSONL/截图文件存在性，可在本机 Node `v24.14.1` 安全执行；它不加载教学服务、数据库、SDK 或模型。项目正式教学运行时仍固定 Node `v24.21.0`，本轮没有用错误运行时冒充业务回归。没有启动浏览器/节点/业务宿主，没有读取凭据或模型 key，没有外部 provider 请求，也没有修改 UI/A/C/产品/规划文件。原未跟踪 `.trae/` 保留且不纳入交付。
