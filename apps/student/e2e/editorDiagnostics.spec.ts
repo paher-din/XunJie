@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import { start, create, edit, confirmSave, serverHead, setAttemptState } from './helpers'
 import { installHdlProtocolFixture } from './hdlProtocolFixture'
 import { loginThroughForm } from './sessionHost'
+import { openWorkspaceMenu } from './workspaceControls'
 
 test('normal mode diagnostics keep their selected node and discard late results after a switch; offline does not save drafts', async ({ page }) => {
   const protocol = await installHdlProtocolFixture(page)
@@ -37,6 +38,7 @@ test('normal mode diagnostics keep their selected node and discard late results 
     await page.locator('.monaco-editor textarea').first().focus(); await page.keyboard.press('ControlOrMeta+a'); await page.keyboard.insertText('int value = ;\n')
     await expect(check.locator('summary')).toContainText('暂不可用')
     expect(requests).toHaveLength(0)
+    await openWorkspaceMenu(page, '执行电脑设置')
     await selector.selectOption('member'); await requested
     await selector.selectOption('robert')
     await expect(check.locator('summary')).toContainText('暂不可用')

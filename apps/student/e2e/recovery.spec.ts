@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { create, edit, holdAck, identities, localState, newestSync, setFault, start, syntheticUpdate, trackSync } from './helpers'
@@ -250,7 +251,7 @@ test('RECOVERY_REQUIRED 停止旧重试，重新读取后仍保留草稿与旧�
 
   // 重新读取：服务已经明确拒绝过这条旧代际原命令 → 只留事实，不再要求重读、也不再挡新保存
   const beforeReload = posts.length
-  await page.getByRole('button', { name: '重新读取' }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await expect(page.locator('.ws-run-state')).toHaveText('上一次保存已过期')
   await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('上一次保存没有生效，草稿还在，可以重新保存。')
@@ -361,7 +362,7 @@ test('重放期间主动重读工作区，旧加载的回执不回灌当前工�
   await page.getByRole('button', { name: '重试上次保存' }).click()
   await held.ready
   await edit(page, '// edited during replay\n')
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   held.release()
 

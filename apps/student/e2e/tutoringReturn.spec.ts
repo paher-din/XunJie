@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test, type Page } from '@playwright/test'
 import { revealTutorBody } from './tutoringHelpers'
 import { confirmSave, create, edit, localState, newestSync, openFileMenu, serverHead, start } from './helpers'
@@ -5,7 +6,7 @@ import { confirmSave, create, edit, localState, newestSync, openFileMenu, server
 // Actual reading/return, refresh and another tab's file lifecycle all use the current UI.
 // Initial raw EOL data is seeded via the existing draft repository, never a return constructor.
 async function exampleMessage(page: Page) {
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await page.getByRole('textbox', { name: '就这个任务提问' }).fill('给一个相邻边界测试例子，我会返回原作品自己试。')
   await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
   await revealTutorBody(page.getByTestId('tutor-message'))
@@ -169,7 +170,7 @@ test('未确认作品命令跨只读资料返回保持原字节，混合EOL/非B
   const position = (await page.locator('.cw-status').innerText()).match(/行 \d+，列 \d+/)?.[0]
   const visibleLines = await page.locator('.view-lines .view-line').allTextContents()
   expect(position).toBeTruthy()
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   const writes = forbiddenWrites(page)
   await page.getByRole('button', { name: '查看获准类似例子', exact: true }).focus()
   await page.keyboard.press('Enter')

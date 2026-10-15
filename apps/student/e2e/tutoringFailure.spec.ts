@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect, type Locator, type Page, type Route } from '@playwright/test'
 import { start, create, edit, localState } from './helpers'
 
@@ -56,7 +57,7 @@ test('辅导events、历史与help公开失败只显示中文恢复提示，保�
       requests.push({ key: request.headers()['idempotency-key']!, wireJson: request.postData()! })
     }
   })
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   const pane = page.getByTestId('tutoring-pane')
   const question = page.getByRole('textbox', { name: '就这个任务提问' })
   const originalQuestion = '帮我检查这个起点，我会自行修改和保存。'

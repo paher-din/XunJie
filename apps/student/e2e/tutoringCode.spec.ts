@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect, type Page } from '@playwright/test'
 import { fixedProject, recoverRunContext } from './runHelpers'
 import { revealTutorSource } from './tutoringHelpers'
@@ -5,7 +6,7 @@ import { confirmSave, create, edit, localState, openFileMenu, start, serverHead,
 import type { TutorPage, TutorPayload } from '../src/workspace/tutoringContracts'
 
 async function askCode(page: Page, question: string) {
-  await page.getByRole('button', { name: '就这个文件求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就这个文件求助')
   await expect(page.getByTestId('tutor-object')).toContainText('sample.txt')
   await page.getByRole('textbox', { name: '就这个任务提问' }).fill(question)
   await page.getByRole('button', { name: '发送辅导问题', exact: true }).click()
@@ -80,13 +81,13 @@ test('确认文件/精确选区核对后显式求助，修改草稿后阻止旧�
   const head=await fixedProject(page,'tutor-code-selection'), snapshot=head.snapshots[0]!, file=snapshot.files.find(f=>f.path==='sample.txt')!
   const writes:Array<{path:string;body:Record<string,unknown>}>=[]
   page.on('request',r=> {if(r.method()==='POST'&&/\/(help|sync|snapshots|runs)$/.test(new URL(r.url()).pathname))writes.push({path:new URL(r.url()).pathname,body:JSON.parse(r.postData()!)})})
-  await page.getByRole('button',{name:'就这个文件求助'}).click()
+  await clickWorkspaceAction(page, '就这个文件求助')
   await expect(page.getByTestId('tutor-object')).toContainText('sample.txt')
   expect(writes).toEqual([])
   await page.getByRole('button',{name:'收起辅导'}).click()
   const editor=page.locator('.monaco-editor textarea').first()
   await editor.focus();await page.keyboard.press('ControlOrMeta+a')
-  await page.getByRole('button',{name:'就所选代码求助'}).click()
+  await clickWorkspaceAction(page, '就所选代码求助')
   await expect(page.getByTestId('tutor-object')).toContainText('行 1–2')
   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('请解释这个选区中的边界')
   await page.getByRole('button',{name:'发送辅导问题'}).click()
@@ -99,9 +100,9 @@ test('确认文件/精确选区核对后显式求助，修改草稿后阻止旧�
   await page.getByRole('button',{name:'收起辅导'}).click()
   await editor.focus();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText('// unconfirmed')
   await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
-  await page.getByRole('button',{name:'就所选代码求助'}).click()
+  await clickWorkspaceAction(page, '就所选代码求助')
   await expect(page.getByRole('status')).toContainText('草稿有未确认修改')
-  await page.getByRole('button',{name:'就项目求助'}).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await expect(page.getByTestId('tutor-source')).toContainText('本机草稿已修改')
   await expect(page.getByTestId('tutor-source')).toContainText(`原快照 ${snapshot.snapshotId}`)
   expect(writes.filter(r=>!r.path.endsWith('/help'))).toEqual([])
@@ -110,10 +111,10 @@ test('确认文件/精确选区核对后显式求助，修改草稿后阻止旧�
 test('没有快照的代码问题只说明缺口，不偷偷确认/冻结；开放项目问题不要求代码',async({page})=> {
   await start(page,'tutor-no-snapshot');await create(page);await edit(page,'\uFEFF// 😀\r\nint x;\r// original\n')
   const writes:string[]=[];page.on('request',r=> {if(r.method()==='POST'&&/\/(help|sync|snapshots)$/.test(r.url()))writes.push(r.url())})
-  await page.getByRole('button',{name:'就这个文件求助'}).click()
+  await clickWorkspaceAction(page, '就这个文件求助')
   await expect(page.getByRole('status')).toContainText('求助不会自动保存')
   expect(writes).toEqual([])
-  await page.getByRole('button',{name:'就项目求助'}).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await page.getByRole('textbox',{name:'就这个任务提问'}).fill('如何寻找起点？')
   await page.getByRole('button',{name:'发送辅导问题'}).click()
   await expect(page.getByTestId('tutor-message')).toHaveCount(1)
@@ -136,7 +137,7 @@ test('已显示的代码回答经历原文件回收及同名重建，仍保留�
   await openFileMenu(page)
   await page.locator('[data-fileid] button[aria-label="回收 sample.txt"]').click()
   await confirmSave(page, 2)
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await revealTutorSource(message)
   await expect(source).toContainText(`原快照 ${snapshot.snapshotId}`)
   await expect(source).toContainText(`sample.txt · 文件版本 ${original.documentVersion}`)
@@ -159,7 +160,7 @@ test('已显示的代码回答经历原文件回收及同名重建，仍保留�
   const position = (await page.locator('.cw-status').innerText()).match(/行 \d+，列 \d+/)?.[0]
   expect(position).toBeTruthy()
   const localBefore = await localState(page), writes = trackBusinessWrites(page)
-  await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+  await clickWorkspaceAction(page, '就项目求助')
   await revealTutorSource(message)
   await expect(source).toContainText(`原快照 ${snapshot.snapshotId}`)
   await expect(source).toContainText(`sample.txt · 文件版本 ${original.documentVersion}`)
@@ -192,10 +193,10 @@ test('旧代码回答在同一页面切换当前Attempt并重读后才到达，�
     // Change only the existing dev scenario selector, then use the normal reload control.
     // The document and its pending old HTTP promise survive; no new public protocol is introduced.
     await page.evaluate(url => history.replaceState(history.state, '', url), nextUrl)
-    await page.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(page, '重新读取')
     await expect(page.locator('.cw')).toBeVisible()
     expect((await serverHead(page)).attempt.attemptId).toBe(nextHead.attempt.attemptId)
-    await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+    await clickWorkspaceAction(page, '就项目求助')
     await expect(page.getByTestId('tutor-history')).toContainText('暂无可回取')
     const rendered = await observeRenderedActions(page)
     held.release(); await held.delivered
@@ -223,9 +224,9 @@ test('原代际代码正文在恢复并重读后迟到，不展示或补回执�
     const rotated = await recoverRunContext(page)
     expect(rotated.status).toBe(200); expect(rotated.after).not.toBe(rotated.before)
     expect(old.generation).toBe(rotated.before)
-    await page.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(page, '重新读取')
     await expect(page.locator('.cw')).toBeVisible()
-    await page.getByRole('button', { name: '就项目求助', exact: true }).click()
+    await clickWorkspaceAction(page, '就项目求助')
     await expect(page.getByTestId('tutor-history')).toContainText('暂无可回取')
     const rendered = await observeRenderedActions(page)
     held.release(); await held.delivered

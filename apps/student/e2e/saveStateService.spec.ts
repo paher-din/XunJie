@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { confirmSave, create, edit, openFileMenu, trackBusinessWrites, trackSync, typeIn } from './helpers'
@@ -120,7 +121,7 @@ test('实际暂停：既有 active 文件 update 可保存，新建、回收、�
     expect(paused.status).toBe('paused')
     const baseline = await service.control({ kind: 'inspect', attemptId })
     const writes = trackBusinessWrites(page)
-    await page.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(page, '重新读取')
     await expect(page.locator('.cw-access')).toHaveAttribute('data-kind', 'paused')
     await openFileMenu(page)
     const newFile = page.locator('.cw-filemenu').getByRole('menuitem', { name: '新建文件', exact: true })
@@ -174,7 +175,7 @@ test('实际 submitted/reviewed：正文只读，保存、冻结、新建、回�
       expect((await service.control({ kind: 'state', attemptId, state })).status).toBe(state)
       const baseline = await service.control({ kind: 'inspect', attemptId })
       const writes = trackBusinessWrites(page)
-      await page.getByRole('button', { name: '重新读取', exact: true }).click()
+      await clickWorkspaceAction(page, '重新读取')
       await expect(page.locator('.cw-access')).toHaveAttribute('data-kind', 'read-only')
       await expect(page.locator('.cw-access')).toContainText('终态')
       await page.getByRole('tab', { name: 'main.c', exact: true }).click()
@@ -242,7 +243,7 @@ test('实际 VERSION_CONFLICT 保留原草稿与拒绝事实，重读比较后�
     expect(JSON.parse(oldCommand.wireJson).expectedWorkspaceRevision).toBe(1)
     const beforeReread = await service.control({ kind: 'inspect', attemptId })
     expect(beforeReread.attempt!.files[0]!.text).toContain('other writer')
-    await page.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(page, '重新读取')
     await expect(page.locator('.ws-run-state')).toHaveText('作品有更新')
     expect(saves).toHaveLength(1)
     expect((await service.control({ kind: 'inspect', attemptId })).requests.businessWrites).toBe(beforeReread.requests.businessWrites)

@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { createHash, randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { create, edit, identities, openFileMenu, trackSync } from './helpers'
@@ -144,7 +145,7 @@ test('HTTPS 代际轮换拒绝旧保存：显式重读同Attempt保留草稿后�
     expect((await host.control({ kind: 'inspect', attemptId: id })).attemptCounts).toEqual(before.attemptCounts)
     expect((await local(page)).drafts[0]!.text).toBe(draft)
     await expect(page.getByRole('button', { name: '重试上次保存' })).toHaveCount(0)
-    await page.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(page, '重新读取')
     await expect(page.locator('.cw')).toBeVisible()
     await expect(page.locator('.view-lines')).toContainText('generation-newer-draft')
     await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeEnabled()
@@ -183,9 +184,9 @@ for (const heldRead of [1, 2]) test(`HTTPS 迟到代际读取${heldRead}不能�
       const response = await route.fetch(); arrived(); await held
       try { await route.fulfill({ response }) } finally { delivered() }
     })
-    await page.getByRole('button', { name: '重新读取', exact: true }).click(); await ready
+    await clickWorkspaceAction(page, '重新读取'); await ready
     await host.control({ kind: 'generation', value: 'race-generation-three' })
-    await sibling.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(sibling, '重新读取')
     await expect(sibling.locator('.cw')).toBeVisible()
     await expect.poll(async () => (await local(sibling)).heads[0]!.context.trustedRecoveryGeneration).toBe('race-generation-three')
     const before = await host.control({ kind: 'inspect' })
@@ -221,7 +222,7 @@ test('HTTPS 换代际并重读较新作品后，迟到旧ACK只留历史不回�
     const accepted = await head(sibling, host, id)
     await publicSync(sibling, host, id, [{ kind: 'update', fileId: accepted.files[0]!.fileId,
       baseVersion: accepted.files[0]!.documentVersion, text: 'new-generation-authority\n' }])
-    await sibling.getByRole('button', { name: '重新读取', exact: true }).click()
+    await clickWorkspaceAction(sibling, '重新读取')
     await expect.poll(async () => (await local(sibling)).heads[0]!.workspace.workspaceRevision).toBe(3)
     release(); await finished
     await expect.poll(async () => (await local(sibling)).commands.find(row => row.commandKey === posts[0]!.key)!.state).toBe('historical')

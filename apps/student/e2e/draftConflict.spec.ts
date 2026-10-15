@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test } from '@playwright/test'
 import { localState, sceneUrl, trackBusinessWrites, typeIn } from './helpers'
 
@@ -56,7 +57,7 @@ for (const reload of ['page', 'workspace'] as const) {
 
     // 学生明确刷新，读取赢家正文与修订后解除本次加载的锁；候选不清空。
     if (reload === 'page') await page.reload()
-    else await page.getByRole('button', { name: '重新读取', exact: true }).click()
+    else await clickWorkspaceAction(page, '重新读取')
     await expect(page.locator('.view-lines')).toContainText('other-tab-winner')
     await expect(page.locator('.view-lines')).not.toContainText('this-tab-loser')
     await expect(page.locator('.cw-protect')).toHaveAttribute('data-status', 'protected')

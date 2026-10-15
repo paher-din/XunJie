@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { REAL_URL } from './env'
@@ -98,6 +99,7 @@ async function mockProtocol(page: Page, options: { paused?: boolean; generation?
     seen.push({ path, method, body, headers })
     let data: unknown
     if (path === '/api/session' && signedIn) data = { userId: ids.student, courses: [{ courseId: ids.course, role: 'student' }], csrfToken: 'protocol-csrf' }
+    else if (path === `/api/courses/${ids.course}/assignments`) data = [{ ...view, executionKind: 'textscope' }]
     else if (path === `/api/assignments/${ids.assignment}/bootstrap`) data = { assignment: view, recoveryGeneration: options.generation ?? ids.generation }
     else if (path === `/api/assignments/${ids.assignment}`) data = view
     else if (path === `/api/activities/${ids.activity}`) data = activity
@@ -126,13 +128,28 @@ async function mockProtocol(page: Page, options: { paused?: boolean; generation?
 }
 
 test.describe('real 入口协议替身（非真实宿主验收）', () => {
+  test('旧任务权限失效后可返回本人任务并打开有效分配，导航不产生业务写入', async ({ page }) => {
+    const seen = await mockProtocol(page)
+    await page.goto(`${REAL_URL}/#/task/revoked-assignment`)
+    await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'unavailable')
+    await expect(page.locator('.ts-unavailable-reason')).toContainText('当前账号无法访问这个任务')
+    await expect(page.locator('.cw')).toHaveCount(0)
+    await page.getByRole('link', { name: '返回我的任务', exact: true }).click()
+    await expect(page).toHaveURL(`${REAL_URL}/#/`)
+    await expect(page.getByRole('heading', { name: '协议检查的 C 项目', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '进入任务', exact: true }).click()
+    await expect(page).toHaveURL(`${REAL_URL}/#/task/${ids.assignment}`)
+    await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
+    expect(seen.every(item => item.method === 'GET')).toBe(true)
+  })
+
   test('只读载入→学生明确创建→同本机刷新恢复；不使用准备身份/端点', async ({ page }) => {
     const seen = await mockProtocol(page)
     const fixtureRequests: string[] = []
     page.on('request', request => { if (request.url().includes('__i0prep')) fixtureRequests.push(request.url()) })
     await page.goto(`${REAL_URL}/#/task/${ids.assignment}`)
     await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
-    await expect(page.locator('.ts-badge')).toContainText('真实分配')
+    await expect(page.locator('.ts-badge')).toContainText('工作区 · 就绪')
     const start = page.getByRole('button', { name: '开始 Attempt', exact: true })
     await expect(start).toBeEnabled()
     await expect(page.locator('.ts-synth-flag')).toHaveCount(0)
@@ -156,7 +173,7 @@ test.describe('real 入口协议替身（非真实宿主验收）', () => {
     await expect(page.locator('.ts-taskinfo')).not.toContainText('身份与会话（合成）')
     await page.keyboard.press('Escape')
     await expect(page.locator('.ws-popveil')).toHaveCount(0)
-    await page.getByRole('button', { name: '退出', exact: true }).click()
+    await clickWorkspaceAction(page, '退出')
     await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
     await expect(page.locator('.cw')).toHaveCount(0)
   })

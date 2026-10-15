@@ -1,0 +1,47 @@
+/* Workspace controls use the existing design tokens in both themes. */
+.ws-organized .ws-head { min-height: 56px; height: auto; padding: 10px 20px; gap: 12px; flex-wrap: wrap; }
+.ws-head-utilities { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.ws-organized .ws-head-tabs { flex: 1 1 240px; }
+.ws-commandbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--shell-bg); flex: none; }
+.ws-organized .ws-head-run { flex: 1 1 520px; min-width: 0; flex-wrap: wrap; gap: 12px 24px; }
+.ws-confirmation { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.ws-confirmation-status { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ws-confirmation-status .ws-flow { font-size: 12px; white-space: normal; flex-wrap: wrap; gap: 6px; }
+.ws-confirmation-status .ws-flow.synced { background: none; border: 0; padding: 0; }
+.ws-confirmation .ws-run-actions { gap: 6px; flex-wrap: wrap; }
+.ws-confirmation-hint { flex-basis: 100%; color: var(--danger-deep, var(--ink-soft)); font-size: 13px; overflow-wrap: anywhere; }
+.ws-snapshot-status { font-size: 12px; color: var(--muted); }
+.ws-execution-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.ws-execution-controls .ws-run-actions { gap: 6px; flex-wrap: wrap; }
+.ws-execution-summary { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
+.ws-execution-summary .ws-flow { font-size: 12px; color: var(--muted); }
+.ws-organized .ws-btn, .ws-control-popover .ws-btn { min-height: 32px; height: auto; padding: 6px 10px; font-size: 13px; line-height: 1.5; }
+.ws-disclosure { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.ws-disclosure[aria-expanded='true'] { background: var(--hover-bg); border-color: var(--line-strong); }
+.ws-disclosure.needs-attention { color: var(--tint-amber-fg); }
+.ws-control-popover { position: fixed; z-index: 160; width: 320px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; padding: 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--raised); color: var(--ink); box-shadow: 0 8px 28px rgba(28,36,48,.14); font-size: 13px; }
+.ws-popover-heading { padding: 2px 4px 10px; font-weight: 600; }
+.ws-control-popover > .ws-btn { display: flex; width: 100%; justify-content: flex-start; margin-top: 4px; text-align: left; white-space: normal; border-color: transparent; }
+.ws-control-popover > .ws-btn:hover { background: var(--hover-bg); }
+.ws-control-popover p { margin: 4px 4px 10px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.ws-control-field { display: flex; flex-direction: column; gap: 6px; margin: 10px 4px; color: var(--muted); font-size: 12px; }
+.ws-control-field select, .ws-control-popover .ws-execution-node select { width: 100%; min-width: 0; height: 36px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 0 10px; font: inherit; font-size: 13px; }
+.ws-control-popover .ws-execution-node { flex-wrap: wrap; padding: 4px; }
+.ws-control-popover .ws-execution-status { white-space: normal; max-width: none; flex: 1; }
+.ws-control-popover .ws-popover-divider { border-top: 1px solid var(--line); margin: 10px 0; }
+.ws-organized .ts-badge { background: none; border: 0; padding: 0; color: var(--muted); }
+.ws-organized .ts-badge b { font-weight: 400; }
+.ws-organized .ts-badge .ws-disclosure { color: var(--muted); }
+.ws-organized :is(button, select):focus-visible, .ws-control-popover :is(button, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 1000px) {
+  .ws-organized .ws-head, .ws-commandbar { padding-inline: 12px; }
+  .ws-execution-controls { margin-left: 0; }
+  .ws-organized .ws-head-run { gap: 12px; }
+}
+@media (max-width: 600px) {
+  .ws-head-utilities { width: 100%; margin-left: 40px; }
+  .ws-organized .ws-head-tabs { flex-basis: 200px; }
+  .ws-confirmation { align-items: flex-start; }
+  .ws-confirmation-status { flex-basis: 100%; }
+  .ws-commandbar { max-height: 40dvh; overflow-y: auto; }
+}

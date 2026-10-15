@@ -177,7 +177,13 @@ export async function loadWorkspaceInit(guard: ContextGuard): Promise<WorkspaceI
       `/assignments/${encodeURIComponent(assignmentId)}/bootstrap`,
     )
     if (read.kind === 'stale') return { kind: 'stale' }
-    if (read.kind === 'failed') return unavailable('assignment', '这项分配没有读取成功，请核对任务链接或重新登录。', read.error)
+    if (read.kind === 'failed') {
+      const failure = failureOf(read.error)
+      const forbidden = failure?.kind === 'api' && failure.status === 403 && failure.error.code === 'FORBIDDEN'
+      return unavailable('assignment', forbidden
+        ? '当前账号无法访问这个任务。课程或任务范围可能已调整，请返回“我的任务”选择当前可访问的任务。'
+        : '这项分配没有读取成功，请核对任务链接或重新登录。', read.error)
+    }
     if (!validId(read.data?.recoveryGeneration)) return unavailable('assignment', '工作区恢复状态没有读取完整，请重新读取。')
     assignment = read.data.assignment
     recoveryGeneration = read.data.recoveryGeneration

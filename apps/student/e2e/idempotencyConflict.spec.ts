@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { expect, test } from '@playwright/test'
 import { create, edit, identities, localState, newestSync, serverHead, start, trackSync } from './helpers'
 
@@ -97,7 +98,7 @@ test('同键异正文被真实 authority 拒绝：保留较新草稿，刷新和
   await expect(page.getByRole('button', { name: '确认保存', exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: '重试上次保存', exact: true })).toHaveCount(0)
   expect(posts).toHaveLength(1)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await expect(page.locator('.ws-head-run [role=alert]')).toHaveText(hint)
   await expect(page.locator('.view-lines')).toContainText('edit after sending')

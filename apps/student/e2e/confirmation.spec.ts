@@ -1,3 +1,4 @@
+import { clickWorkspaceAction } from './workspaceControls'
 import { test, expect, type Page } from '@playwright/test'
 import { PREP_URL } from './env'
 import { create, holdAck, localState, sceneUrl, start, syntheticUpdate, typeIn } from './helpers'
@@ -224,7 +225,7 @@ test('g2 回退头读取后 g1 ACK 到达，只保留旧请求事实与草稿', 
     return { status: response.status, before: data.recoveryGeneration, after: (await response.json()).data.recoveryGeneration }
   })
   expect(rotated.status).toBe(200); expect(rotated.after).not.toBe(rotated.before)
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   // 这条旧代际原命令尚未被服务拒绝，因此仍要求先重新读取（结论与操作都在可见处）
   await expect(page.locator('.ws-head-run [role=alert]'))
     .toHaveText('这里的工作区已经过期，草稿已保留。请先重新读取，再决定怎么保存。')
@@ -245,7 +246,7 @@ test('同身份退出再进入后迟到 ACK 不接纳到当前加载', async ({ 
   const held = await holdAck(page)
   await page.getByRole('button', { name: '确认保存', exact: true }).click()
   await held.ready
-  await page.getByRole('button', { name: '退出', exact: true }).click()
+  await clickWorkspaceAction(page, '退出')
   await expect(page.locator('.ts-badge')).toHaveAttribute('data-status', 'ready')
   await expect(page.locator('.ws-flow')).toContainText('确认作品 v1')
   held.release()
@@ -400,7 +401,7 @@ test('同 revision 的不同确认摘要不可按到达顺序接纳', async ({ p
     body.data.files[0].text = 'contradiction\n'; body.data.files[0].contentHash = hash
     await route.fulfill({ response, json: body })
   })
-  await page.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(page, '重新读取')
   // 学生只看到「没读成功、请重读」；同版本清单冲突这类原因进控制台
   await expect(page.locator('.ws-head-run [role=alert]')).toHaveText('作品没有读取成功，请重新读取。')
   const local = await localState(page)
@@ -513,7 +514,7 @@ test('首次创建 ACK 未绑定 Attempt 时也不能覆盖另一标签已接纳
   release()
   await expect.poll(async () => (await localState(other)).commands.find((c: { kind: string }) => c.kind === 'attempt.create')!.state).toBe('historical')
   expect((await localState(other)).workspace!.workspaceRevision).toBe(0)
-  await other.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(other, '重新读取')
   await expect(other.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(other.locator('.ws-head-run [role=alert]')).toHaveCount(0)
 })
@@ -549,7 +550,7 @@ test('创建事务已提交但 UI 还在 await 时切换 g2，旧后续读取不
   await page.evaluate(() => (window as unknown as { releaseAck: () => void }).releaseAck())
   await expect(page.locator('.ws-head-run [role=alert]')).toBeVisible()
   expect((await localState(other)).workspace!.workspaceRevision).toBe(0)
-  await other.getByRole('button', { name: '重新读取', exact: true }).click()
+  await clickWorkspaceAction(other, '重新读取')
   await expect(other.locator('.ws-flow')).toContainText('确认作品 v0')
   await expect(other.locator('.ws-head-run [role=alert]')).toHaveCount(0)
 })

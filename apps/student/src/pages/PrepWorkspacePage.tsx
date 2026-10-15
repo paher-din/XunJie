@@ -48,6 +48,7 @@ import { useEditorDiagnostics } from '../workspace/useEditorDiagnostics'
 import { createTutorHdlCurrent, type TutorHdlSelection } from '../workspace/tutoringHdl'
 import { SubmissionFeedbackPanel } from '../components/workspace/SubmissionFeedbackPanel'
 import { ExecutionNodeSelect } from '../components/workspace/ExecutionNodeSelect'
+import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 
 type ReturnOrigin={fileId:string;path:string;documentVersion:number|null}
 const readingMarkerKey=(c:CommandContext)=>`tutor:return:${JSON.stringify([c.mode,c.userId,c.courseId,c.assignmentId,
@@ -484,7 +485,7 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
   }
 
   return (
-    <div className="ws">
+    <div className="ws ws-organized">
       <header className="ws-head">
         <div className="ws-navbtns">
           <button
@@ -499,18 +500,31 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           </button>
         </div>
         <div className="ws-head-tabs" ref={setTabsSlot} />
-        <PrepBadge
-          status={init.status}
-          loadEpoch={init.loadEpoch}
-          signingOut={signingOut}
-          onSignOut={onSignOut}
-        />
-        {!PREP_BUILD && init.init?.kind === 'ready' && <ExecutionNodeSelect userId={init.init.session.userId} kind={isHdl ? 'hdl' : 'c'}
-          busy={hdl.state.busy || run.state.phase === 'submitting' || run.state.controlBusy}
-          onChange={() => { if (isHdl) hdl.read(); else run.read() }} />}
-        <div className="ws-head-run" ref={setRunSlot}
-          style={isHdl ? { minWidth: 0, flex: '1 1 0', overflowX: 'auto' } : undefined} />
+        <div className="ws-head-utilities">
+          {c?.attemptId && <WorkspacePopover label="求助" icon="chat-round-dots" closeOnAction>
+            <p>选择要讨论的对象，继续在同一个项目中获得帮助。</p>
+            {c?.attemptId && <button type="button" className="ws-btn ghost" onClick={()=>{ setTutorObject(undefined);setCodeBasis(null);setHdlSelection(undefined); setTutorOpen(true) }}>就项目求助</button>}
+            {isHdl && <button type="button" className="ws-btn ghost" disabled={hdlPending || !hdlResultCurrent || !hdl.state.canInteract}
+              onClick={() => onHdlHelp(true)}>引用当前板卡求助</button>}
+            {c?.attemptId && !runOpen && <>
+              <label className="ws-control-field">引用的确认版本<select aria-label="代码求助快照" value={codeSnapshotId||confirmation.state.snapshot?.snapshotId||''} onChange={e=>setCodeSnapshotId(e.target.value)}>
+                {!confirmation.state.snapshots.length && <option value="">尚无确认快照</option>}
+                {confirmation.state.snapshots.map(s=><option key={s.snapshotId} value={s.snapshotId}>求助快照 v{s.workspaceRevision}</option>)}
+              </select></label>
+              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('file')}>就这个文件求助</button>
+              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('selection')}>就所选代码求助</button>
+            </>}
+          </WorkspacePopover>}
+          {c?.attemptId && c.mode === 'real' && <button type="button" className="ws-btn ghost" onClick={() => {
+              setVersionSelection(null); confirmation.client?.closeComparison(); setRunOpen(false); setSubmissionOpen(true)
+            }}>提交与反馈</button>}
+          {!tutorOpen && tutor.state.ledger?.job && !tutor.state.ledger.job.stopRequested && <button type="button" className="ws-btn ghost" onClick={()=>void tutor.client?.stop()}>停止这次帮助</button>}
+          <PrepBadge status={init.status} loadEpoch={init.loadEpoch} signingOut={signingOut} onSignOut={onSignOut} />
+        </div>
       </header>
+      <div className="ws-commandbar" aria-label="工作区操作">
+        <div className="ws-head-run" ref={setRunSlot} />
+      </div>
 
       <div className="ws-body">
         <CenterToolArea
@@ -527,23 +541,6 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
           waveBody={isHdl ? <HdlTracePane session={hdl.state.session} result={hdl.state.operation} pending={hdlPending}
             currentNotice={hdlNotice} /> : undefined}
           designBody={<div style={{position:'relative',height:'100%',width:'100%',display:'flex',flexDirection:'column'}}>
-            {c?.attemptId && <div className="ws-chatbind" style={{display:'flex',gap:8,flexWrap:'wrap',flexShrink:0}}>
-            {c.mode === 'real' && <button type="button" className="ws-btn ghost" onClick={() => {
-              setVersionSelection(null); confirmation.client?.closeComparison(); setRunOpen(false); setSubmissionOpen(true)
-            }}>提交与反馈</button>}
-            {c?.attemptId && <button type="button" className="ws-btn ghost" onClick={()=>{ setTutorObject(undefined);setCodeBasis(null);setHdlSelection(undefined); setTutorOpen(true) }}>就项目求助</button>}
-            {isHdl && <button type="button" className="ws-btn ghost" disabled={hdlPending || !hdlResultCurrent || !hdl.state.canInteract}
-              onClick={() => onHdlHelp(true)}>引用当前板卡求助</button>}
-            {c?.attemptId && !runOpen && <>
-              <select aria-label="代码求助快照" value={codeSnapshotId||confirmation.state.snapshot?.snapshotId||''} onChange={e=>setCodeSnapshotId(e.target.value)}>
-                {!confirmation.state.snapshots.length && <option value="">尚无确认快照</option>}
-                {confirmation.state.snapshots.map(s=><option key={s.snapshotId} value={s.snapshotId}>求助快照 v{s.workspaceRevision}</option>)}
-              </select>
-              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('file')}>就这个文件求助</button>
-              <button type="button" className="ws-btn ghost" onClick={()=>void onCodeHelp('selection')}>就所选代码求助</button>
-            </>}
-            {!tutorOpen && tutor.state.ledger?.job && !tutor.state.ledger.job.stopRequested && <button type="button" className="ws-btn ghost" onClick={()=>void tutor.client?.stop()}>停止这次帮助</button>}
-            </div>}
             <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}} inert={!!example} aria-hidden={!!example}>
             {submissionOpen && confirmation.client
             ? <SubmissionFeedbackPanel confirmation={confirmation.client} snapshots={confirmation.state.snapshots}
@@ -610,20 +607,6 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
               </div>}
             </div>}
           runCluster={<>
-            {c?.attemptId && !isHdl && <CoreRunEntry onOpen={() => { setSubmissionOpen(false); setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
-            {isHdl && c?.attemptId && <>
-              <select aria-label="HDL 确认快照" value={hdlSnapshotId} onChange={event => setHdlSnapshotId(event.target.value)} disabled={hdlPending}>
-                <option value="">选择确认快照</option>
-                {confirmation.state.snapshots.map(snapshot => <option key={snapshot.snapshotId} value={snapshot.snapshotId}>确认作品 v{snapshot.workspaceRevision}</option>)}
-              </select>
-              <HdlRunCluster build={hdl.state.build} session={hdl.state.session} busy={hdlPending} unknown={hdl.state.unknown}
-                readBusy={hdl.state.busy || hdl.state.phase === 'reading'}
-                notice={hdl.state.notice} snapshotLabel={hdlSnapshot ? `所选确认作品 v${hdlSnapshot.workspaceRevision}` : undefined}
-                canBuild={runPermitted && hdl.state.canBuild && !!hdlSnapshot} canLoad={runPermitted && hdl.state.canProgram}
-                canStop={runPermitted && hdl.state.canStop} onBuild={onHdlBuild} onLoad={onHdlLoad} onStop={onHdlStop} onRefresh={hdl.read} />
-              {hdl.state.pending && <button type="button" className="ws-btn ghost" disabled={hdl.state.busy}
-                onClick={() => { tutor.client?.setHdlCurrent(null); void hdl.client?.reconcile() }}>核对原 HDL 请求</button>}
-            </>}
             <ConfirmationCluster
             phase={init.status !== 'ready' ? 'loading' : !confirmation.state.attempt && !(assignment ?? (init.init?.kind === 'ready' ? init.init.assignment : null))?.active
               ? 'readonly' : confirmation.state.phase}
@@ -664,6 +647,31 @@ export default function PrepWorkspacePage({ assignmentId }: { assignmentId?: str
             canCompareVersions={project.loaded && versionOptions.length > 0 && !compareOpen}
             onCompareVersions={() => setVersionSelection(defaultVersionPair(versionOptions))}
           />
+            <div className="ws-execution-controls">
+              {!PREP_BUILD && init.init?.kind === 'ready' && <ExecutionNodeSelect userId={init.init.session.userId} kind={isHdl ? 'hdl' : 'c'}
+          busy={hdl.state.busy || run.state.phase === 'submitting' || run.state.controlBusy}
+          onChange={() => { if (isHdl) hdl.read(); else run.read() }} />}
+
+            {c?.attemptId && !isHdl && <CoreRunEntry onOpen={() => { setSubmissionOpen(false); setVersionSelection(null); confirmation.client?.closeComparison(); setHistoryOpen(false); setRunOpen(true) }} />}
+            {isHdl && c?.attemptId && <>
+              <WorkspacePopover label="构建设置" icon="settings">
+                <p>构建使用所选确认快照；草稿不会自动保存或装载。</p>
+                <label className="ws-control-field">构建版本
+              <select aria-label="HDL 确认快照" value={hdlSnapshotId} onChange={event => setHdlSnapshotId(event.target.value)} disabled={hdlPending}>
+                <option value="">选择确认快照</option>
+                {confirmation.state.snapshots.map(snapshot => <option key={snapshot.snapshotId} value={snapshot.snapshotId}>确认作品 v{snapshot.workspaceRevision}</option>)}
+              </select></label>
+                {!hdl.state.unknown && <button type="button" className="ws-btn ghost" disabled={hdl.state.busy || hdl.state.phase === 'reading'} onClick={hdl.read}>核对 HDL 状态</button>}
+              </WorkspacePopover>
+              <HdlRunCluster build={hdl.state.build} session={hdl.state.session} busy={hdlPending} unknown={hdl.state.unknown}
+                readBusy={hdl.state.busy || hdl.state.phase === 'reading'}
+                notice={hdl.state.notice} snapshotLabel={hdlSnapshot ? `所选确认作品 v${hdlSnapshot.workspaceRevision}` : '请先在构建设置中选择快照'}
+                canBuild={runPermitted && hdl.state.canBuild && !!hdlSnapshot} canLoad={runPermitted && hdl.state.canProgram}
+                canStop={runPermitted && hdl.state.canStop} onBuild={onHdlBuild} onLoad={onHdlLoad} onStop={onHdlStop} onRefresh={hdl.read} />
+              {hdl.state.pending && <button type="button" className="ws-btn ghost" disabled={hdl.state.busy}
+                onClick={() => { tutor.client?.setHdlCurrent(null); void hdl.client?.reconcile() }}>核对原 HDL 请求</button>}
+            </>}
+            </div>
             {/* 04A 比较入口：只在比较有意义的结论（版本冲突/待重读/业务键冲突/历史）出现；
                 其余结论的重试与重读动作在 ConfirmationCluster 里，不提供丢弃比较 */}
             {comparison === null && versionComparison === null && confirmation.state.pending && confirmation.state.outcome &&
@@ -742,16 +750,13 @@ function PrepBadge({
   onSignOut: () => void
 }) {
   return (
-    <span className="ts-badge" data-status={status} style={{ flex: '0 0 auto' }}>
-      <Icon name="shield-check" size={15} tone="neutral" />
-      <b>{PREP_BUILD ? PREP_ENTRY_LABEL : '真实分配'}</b>
-      {/* 模式与就绪状态可见；loadEpoch 排障值不充当服务端版本。 */}
-      <span className="ts-badge-meta" data-load-epoch={loadEpoch || undefined}>
-        {statusText(status)}
-      </span>
-      <button type="button" className="textbtn" disabled={signingOut} onClick={onSignOut}>
-        <IconText name="logout-2" position="end">{signingOut ? '结束中…' : '退出'}</IconText>
-      </button>
+    <span className="ts-badge" data-status={status} data-load-epoch={loadEpoch || undefined}>
+      <WorkspacePopover label={PREP_BUILD ? PREP_ENTRY_LABEL : `工作区 · ${statusText(status)}`} icon="shield-check" closeOnAction attention={status !== 'ready'}>
+        <p>{PREP_BUILD ? PREP_ENTRY_LABEL : '真实分配'} · {statusText(status)}</p>
+        <button type="button" className="ws-btn ghost" disabled={signingOut} onClick={onSignOut}>
+          <IconText name="logout-2">{signingOut ? '结束中…' : '退出'}</IconText>
+        </button>
+      </WorkspacePopover>
     </span>
   )
 }
