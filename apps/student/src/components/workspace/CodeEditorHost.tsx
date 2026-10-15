@@ -16,6 +16,7 @@ import {
 } from './monacoSetup'
 import { codeRangeModelOffsets, codeSelectionRange,
   type CodeRange, type CodeSelectionResult } from '../../workspace/tutoringObject'
+import type { EditorDiagnosticMarkers } from '../../workspace/editorDiagnostics'
 
 /**
  * 多文件代码编辑器的宿主：一个编辑器实例 + 每个文件实例一个 model。
@@ -94,10 +95,11 @@ export interface CodeEditorHostProps {
   onTextChange: (fileId: string, text: string) => void
   onCursorChange: (position: { line: number; column: number } | null) => void
   onSelectionChange?: (result: CodeSelectionResult) => void
+  diagnostics?: EditorDiagnosticMarkers
 }
 
 export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(function CodeEditorHost(
-  { workspaceKey, fileId, language, initialText, readOnly, readOnlyReason, onTextChange, onCursorChange, onSelectionChange },
+  { workspaceKey, fileId, language, initialText, readOnly, readOnlyReason, onTextChange, onCursorChange, onSelectionChange, diagnostics },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -204,6 +206,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
           contentSubscription?.dispose()
           const model = editor?.getModel()
           contentSubscription = model?.onDidChangeContent((event) => {
+            monaco.editor.setModelMarkers(model, 'xunjie-editor-diagnostics', [])
             if (editor?.getModel() !== model || event.isFlush) return
             const key = keyOf(workspaceKey, fileOf(model.uri.path))
             const state = originals.get(key)
@@ -356,6 +359,29 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     originals.set(key, { history: new OriginalEditHistory(initialText, model.getAlternativeVersionId()), projection })
     notifySelection()
   }, [status, workspaceKey, fileId, initialText])
+
+  useEffect(() => {
+    const monaco = monacoRef.current, model = editorRef.current?.getModel()
+    if (status !== 'ready' || !monaco || !model) return
+    for (const registered of models.values()) monaco.editor.setModelMarkers(registered, 'xunjie-editor-diagnostics', [])
+    const state = fileId && originals.get(keyOf(workspaceKey, fileId))
+    if (!diagnostics || diagnostics.fileId !== fileId || !state || state.history.current !== diagnostics.originalText) return
+    const markers: import('monaco-editor/editor/editor.api').editor.IMarkerData[] = []
+    for (const issue of diagnostics.diagnostics) {
+      const line = issue.line ? diagnostics.originalText.split('\n')[issue.line - 1]?.replace(/\r$/, '') : undefined
+      const range = issue.range ?? (line !== undefined && issue.line ? {
+        startLine: issue.line, startColumn: 1, endLine: issue.line, endColumn: Math.max(2, line.length + 1),
+      } : undefined)
+      const offsets = range && codeRangeModelOffsets(diagnostics.originalText, range)
+      if (!offsets) continue
+      const start = model.getPositionAt(offsets[0]), end = model.getPositionAt(offsets[1])
+      markers.push({ startLineNumber: start.lineNumber, startColumn: start.column, endLineNumber: end.lineNumber, endColumn: end.column,
+        message: issue.message, source: issue.range ? '编辑检查' : '编辑检查（整行定位）',
+        severity: issue.severity === 'warning' ? monaco.MarkerSeverity.Warning : issue.severity === 'info' ? monaco.MarkerSeverity.Info : monaco.MarkerSeverity.Error })
+    }
+    monaco.editor.setModelMarkers(model, 'xunjie-editor-diagnostics', markers)
+    return () => { if (!model.isDisposed()) monaco.editor.setModelMarkers(model, 'xunjie-editor-diagnostics', []) }
+  }, [status, workspaceKey, fileId, initialText, diagnostics])
 
   /* 3. 只读态跟随工作区可写性变化 */
   useEffect(() => {

@@ -25,6 +25,7 @@ import { createWorkspaceWorker } from './worker.ts';
 import { readResultFiles } from './result-files.ts';
 import { z } from 'zod';
 import type { createHdlWorkspace } from './hdl.ts';
+import { registerEditorDiagnostics } from './editor-diagnostics.ts';
 
 // A5 attaches its formal-feedback read through `recovery`; without it the recovery view keeps reporting `unavailable`.
 // A DB-backed attachment needs the transaction C4's own authorized read is already running in; `withTransaction` is
@@ -66,6 +67,7 @@ export async function createWorkspaceApp(options: WorkspaceAppOptions) {
   function read<T>(request: FastifyRequest, id: string, work: (tx: Transaction, state: WorkspaceState, actor: ActorContext) => T) {
     return access.withAuthorizedResource(request, tx => locate(tx, id), 'read', (tx, actor) => work(tx, loadWorkspace(tx, id), actor));
   }
+  registerEditorDiagnostics(app, read, options.runner, currentGeneration, attemptId);
   function execute(request: FastifyRequest, target: string | ((tx: Transaction) => string), command: string, expectedGeneration: string,
     apply: (tx: Transaction, state: WorkspaceState, context: CommandContext) => ReturnType<typeof syncCommand>, stopReason = 'explicit_command',
     runPurposes?: CommandContext['runPurposes'], use: ResourceUse = 'write') {

@@ -161,15 +161,15 @@ export function trackSync(page: Page) {
 /**
  * 记录全部业务写命令（创建 Attempt / sync / snapshot / run / cancel）。
  *
- * 与 `trackSync` 的区别：状态闸类用例要证明的是「一条业务写命令都没离开浏览器」，
- * 所以范围是全部非 GET 业务路径；准备模式的登录 POST /sessions 是会话建立，不算业务命令。
+ * 与 `trackSync` 的区别：状态闸类用例要证明的是「一条业务写命令都没离开浏览器」。
+ * 登录 POST /sessions 与只读分析 POST /editor-diagnostics 不写业务作品；后者的暂停禁发另有专项断言。
  */
 export function trackBusinessWrites(page: Page) {
   const writes: string[] = []
   page.on('request', request => {
     if (request.method() === 'GET') return
     const path = new URL(request.url()).pathname
-    if (path.endsWith('/sessions')) return
+    if (path.endsWith('/sessions') || path.endsWith('/editor-diagnostics')) return
     writes.push(`${request.method()} ${path}`)
   })
   return writes

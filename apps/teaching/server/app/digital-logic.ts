@@ -50,7 +50,7 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  approvedProfile(tx,attemptId){if(!admission.accepting||!latest)return undefined;const attempt=readAttempt(tx,attemptId),runtime=readActivity(tx,attempt.courseId,attempt.activityVersionId).runtimeProfile;
  if(!('kind' in runtime)||canonical(runtime.configuration.runtime)!==canonical(latest.profile)||runtime.contentHash!==configurationHash(runtime.configuration))return undefined;
  return {board:runtime.configuration.board,runtime:runtime.configuration.runtime};}});
- const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit'],readiness:'readiness'}):undefined;
+ const runner=options.runner?guardHostTransport(options.runner,admission,{dispatch:['submit','editor_diagnostics'],readiness:'readiness'}):undefined;
  let host:ReturnType<typeof attachOriginalJobHost>;
  const compose=(base:TutoringAppOptions)=>options.review?createReviewApp({...base,review:options.review}):createTutoringApp(base);
  const personal:ReturnType<typeof personalModels>|undefined=options.personalModels?personalModels(options.personalModels,

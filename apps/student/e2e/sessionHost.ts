@@ -72,7 +72,7 @@ async function reachable(base: string) {
 }
 
 /** 复用已获准的隔离 HTTPS/SQLite 宿主。密码只走私有 stdin，不写日志/trace。 */
-export async function startSessionHost(options: { runs?: boolean } = {}) {
+export async function startSessionHost(options: { runs?: boolean; diagnosticsConfig?: string } = {}) {
   const password = randomBytes(32).toString('base64url')
   const port = await new Promise<number>((accept, reject) => {
     const listener = createServer()
@@ -88,7 +88,8 @@ export async function startSessionHost(options: { runs?: boolean } = {}) {
   const node = process.env.XUNJIE_E2E_SERVICE_NODE
   if (!node) throw new Error('Approved teaching runtime required')
   const child = process.platform === 'win32'
-    ? spawn('wsl.exe', ['-d', 'Ubuntu', '--cd', linuxPath, '--', node, 'server/app/i0-browser-fixture.ts'], { stdio: 'pipe', windowsHide: true })
+    ? spawn('wsl.exe', ['-d', 'Ubuntu', ...(process.env.XUNJIE_E2E_SERVICE_USER ? ['-u', process.env.XUNJIE_E2E_SERVICE_USER] : []),
+      '--cd', linuxPath, '--', node, 'server/app/i0-browser-fixture.ts'], { stdio: 'pipe', windowsHide: true })
     : spawn(node, ['server/app/i0-browser-fixture.ts'], { cwd: teaching, stdio: 'pipe' })
   const pending = new Map<string, { accept(value: unknown): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>()
   let stopping = false
@@ -171,7 +172,8 @@ export async function startSessionHost(options: { runs?: boolean } = {}) {
       if (code !== 0) throw new Error('Isolated HTTPS exited with failure')
     } finally { clearTimeout(timer); output.close() }
   })()
-  child.stdin.write(JSON.stringify({ synthetic: true, port, password, ...(options.runs ? { runs: true } : {}) }) + '\n')
+  child.stdin.write(JSON.stringify({ synthetic: true, port, password, ...(options.runs ? { runs: true } : {}),
+    ...(options.diagnosticsConfig ? { diagnosticsConfig: options.diagnosticsConfig } : {}) }) + '\n')
   try {
     const service = await ready
     if (service.synthetic !== true) throw new Error('Synthetic host required')

@@ -7,6 +7,8 @@ import { CodeEditorHost, type CodeEditorHandle } from './CodeEditorHost'
 import { FileStrip, type FileStripHandle } from './FileStrip'
 import type { ProjectWorkspace } from './useProjectWorkspace'
 import type { CodeSelectionResult } from '../../workspace/tutoringObject'
+import { diagnosticStatusText } from '../../workspace/editorDiagnostics'
+import type { useEditorDiagnostics } from '../../workspace/useEditorDiagnostics'
 
 /**
  * 程序设计课程的核心工具：多文件代码编辑区。
@@ -26,9 +28,10 @@ export interface CodeWorkspaceProps {
   /** 辅导/返回组件只能读取或定位当前实例，不能通过此 handle 修改正文。 */
   editorHandleRef?: Ref<CodeEditorHandle>
   onSelectionChange?: (result: CodeSelectionResult) => void
+  diagnostics?: ReturnType<typeof useEditorDiagnostics>
 }
 
-export function CodeWorkspace({ ws, workspaceKey, editorHandleRef, onSelectionChange }: CodeWorkspaceProps) {
+export function CodeWorkspace({ ws, workspaceKey, editorHandleRef, onSelectionChange, diagnostics }: CodeWorkspaceProps) {
   const editorRef = useRef<CodeEditorHandle>(null)
   const stripRef = useRef<FileStripHandle>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -136,9 +139,22 @@ export function CodeWorkspace({ ws, workspaceKey, editorHandleRef, onSelectionCh
           onTextChange={(fileId, text) => ws.setDraft(fileId, text)}
           onCursorChange={setCursor}
           onSelectionChange={onSelectionChange}
+          diagnostics={diagnostics?.markers}
         />
       )}
 
+      {diagnostics && active && <details className="cw-diagnostics" aria-label="编辑检查">
+        <summary>{diagnostics.result?.status === 'ready' && diagnostics.result.diagnostics.length
+          ? `编辑检查：${diagnostics.result.diagnostics.filter(item => item.severity === 'error').length} 个错误，${diagnostics.result.diagnostics.filter(item => item.severity === 'warning').length} 个警告`
+          : diagnosticStatusText[diagnostics.status]}</summary>
+        {diagnostics.result?.status === 'ready' ? <>
+          <p>静态分析当前草稿，未保存或运行程序；无诊断不代表课程验收通过。</p>
+          <ul>{diagnostics.result.diagnostics.map((issue, index) => <li key={index}>
+            <span>{issue.severity === 'error' ? '错误' : issue.severity === 'warning' ? '警告' : '提示'}：{issue.message}</span>
+            {issue.path && <span> · {issue.path}{issue.line ? `:${issue.line}${issue.range ? `:${issue.range.startColumn}` : '（整行定位）'}` : ''}</span>}
+          </li>)}</ul>
+        </> : diagnostics.status === 'paused' ? <p>采集暂停、限定检查或当前任务不可编辑时，不发送代码做自动检查。</p> : null}
+      </details>}
       <StatusBar file={active} ws={ws} cursor={cursor} text={activeText} />
     </div>
   )

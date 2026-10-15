@@ -1,0 +1,33 @@
+{
+  "activated": true,
+  "service": "xunjie-shared-demo.service",
+  "previousPid": 503,
+  "pid": 1852,
+  "health": 200,
+  "originalHostBackup": "/mnt/d/tmp/xunjie-editor-live-20261015/host-shared.before.mjs",
+  "backend": "/opt/xunjie-runner/tests/editor-final-20261015-ktx1xE/apps/teaching",
+  "staticDirectory": "/mnt/d/tmp/xunjie-editor-live-20261015/student-dist",
+  "recordsUnchanged": true,
+  "before": {
+    "application_control": "d098f036bc2c29cc037beab8a8704fde77c1160304feaa5e3a63a3045da10c53",
+    "attempts": "50fe8cdb49ae139ec494c308769136a527606868aa891948fc8d61b84b9fc368",
+    "workspace_files": "786dd1d5346433714777712965ac4ef319255089620bcb6d5e9a16f88c83c98c",
+    "artifact_snapshots": "37e2c9822a3a9cc8bc7c42a97b41549d304c7f6326cd2d40d576979afb3378c8",
+    "jobs": "ad6b415307904aaf46eb7998a0f12808a0c6441922e7653ddd64f5d838882c7e",
+    "hdl_builds": "c0f9b13c77065e74f346ae65b3bae5adc3ee1665a7125da54f252467620190dd",
+    "hdl_sessions": "32cd0e156202150de534a9c0d6aca1662d2d551f03caffc058e5b24d6591935c",
+    "hdl_operations": "7af76726b4e550cb753b65cc0ff3873b7ef29bc5ad448ad8676982b30d7459e3",
+    "teaching_messages": "76980123be903c919df492fde7ef230de266d5d897d1ce4822d79cbd0fe17e7c"
+  },
+  "after": {
+    "application_control": "d098f036bc2c29cc037beab8a8704fde77c1160304feaa5e3a63a3045da10c53",
+    "attempts": "50fe8cdb49ae139ec494c308769136a527606868aa891948fc8d61b84b9fc368",
+    "workspace_files": "786dd1d5346433714777712965ac4ef319255089620bcb6d5e9a16f88c83c98c",
+    "artifact_snapshots": "37e2c9822a3a9cc8bc7c42a97b41549d304c7f6326cd2d40d576979afb3378c8",
+    "jobs": "ad6b415307904aaf46eb7998a0f12808a0c6441922e7653ddd64f5d838882c7e",
+    "hdl_builds": "c0f9b13c77065e74f346ae65b3bae5adc3ee1665a7125da54f252467620190dd",
+    "hdl_sessions": "32cd0e156202150de534a9c0d6aca1662d2d551f03caffc058e5b24d6591935c",
+    "hdl_operations": "7af76726b4e550cb753b65cc0ff3873b7ef29bc5ad448ad8676982b30d7459e3",
+    "teaching_messages": "76980123be903c919df492fde7ef230de266d5d897d1ce4822d79cbd0fe17e7c"
+  }
+}
