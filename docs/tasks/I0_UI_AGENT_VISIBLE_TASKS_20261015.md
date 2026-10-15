@@ -1,6 +1,6 @@
 # I0-UI：独立 Agent 与首页使用一致的可见任务
 
-日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：代码与合成验证完成，待交付；共享实例尚未运行本次代码。
+日期：2026-10-15（Asia/Shanghai）。负责人：Robert；实施：本会话 Agent。状态：PR #109 待审查；共享实例尚未运行本次代码。
 
 ## 依据、授权与范围
 
@@ -25,6 +25,8 @@ Robert 报告：课程首页「四位算术逻辑单元」只有一张任务卡�
 - `integration.test.ts` 新增四次发布同一 HDL 活动并设置与活动标题不同的 ALU 展示标题的正式应用夹具：改动前 23/24 通过，首版新用例准确复现原始四条而预期一条的失败；修复后 24/24 通过，验证 `hdl_board` 学生分配、本轮模型上下文只含一个 ALU 分配 ID、成功落定及历史消息的卡指向该 ID、该 ID 的授权工作区 bootstrap 可读、暂停代表后选择另一开放分配，以及同名不同正文继续分开。既有 `student-tasks.test.ts` 1/1 通过，仍覆盖跨账号、非学生成员、私有内容和暂停不等于完成。`apps/teaching` 的本地 `tsc --noEmit` 通过。
 - Windows 本机 Node 为 24.15，低于项目固定的 24.21；包脚本运行时门禁未跳过。专项测试由 `node --input-type=module -e` 注册只对缺失包回退到同锁文件 D 盘教学目录的依赖解析，再导入上述测试文件执行。当前工作树运行 `npm ci --ignore-scripts --engine-strict=false --no-audit --no-fund` 后，直接运行 `node node_modules/typescript/bin/tsc --noEmit` 通过。这里是本机离线合成验证，不是正式包脚本门禁、真实模型或共享云端验收。
 - 共享 HTTPS 页面的新 Chrome 标签在修复前读到本账号数字逻辑课程只有一个 ALU 卡；点击进入 `/#/task/f4caed76-39b5-461a-bc5f-2325d8495d69`，工作区显示就绪，未开始 Attempt。用户随后确认首页现为一张卡。本次服务端代码尚未在该实例运行，Agent 新回复和卡片的浏览器复验待代码交付后进行；旧历史消息不会自动改写。
-- `apps/student/README.md` 同步独立对话的可见任务折叠、卡片与旧深链行为；仓库根 `node tools/a0-review/check.mjs` 为 148 篇文档、2011 条链接、`errors=[]`；`git diff --check` 通过。交付时复查本任务写集及新主线差异。
+- `apps/student/README.md` 同步独立对话的可见任务折叠、卡片与旧深链行为。合并最新 `origin/main@514a4cd9f6ae128e01ec874571e5d7036355166f` 后，服务端专项 25/25、本地 `tsc --noEmit`、仓库根 `node tools/a0-review/check.mjs`（149 篇文档、2011 条链接、`errors=[]`）和 `git diff --check origin/main...HEAD` 均通过；主线同期新增的工作区 Attempt 恢复文件无本任务写集重叠。
+
+交付：本任务提交 `e10f515` 与最新主线合并后推送到 `codex/agent-visible-task-cards`，创建 [PR #109](https://github.com/paher-din/XunJie/pull/109)。PR 可合并，检查列表为空，不计 CI 通过；尚未合并。主线合并会触发共享实例自动部署，依工作空间的生产部署红线须取得覆盖范围的负责人同意。获同意后再确认部署版本，并在合成账号下分别复验真实模型新会话与旧会话追问。旧历史消息仍保留原回复，不回填。
 
 产品基线及 MVP_SPEC §10：待授权维护者汇总。
