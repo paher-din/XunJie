@@ -201,7 +201,7 @@ export class ConfirmationWorkspace {
         reportDiagnostic('context.changed', { reason: 'local attempt reference belongs to another recovery generation',
           attemptId: this.context.attemptId, recoveryGeneration: this.context.trustedRecoveryGeneration,
           preparationEpoch: this.context.preparationEpoch })
-        this.publish({ error: '工作区已重新加载，草稿保留；请重新读取后再保存。' })
+        if (this.context.mode === 'preparation') this.publish({ error: '工作区已重新加载，草稿保留；请重新读取后再保存。' })
         if (import.meta.env.DEV && this.context.mode === 'preparation' && !this.context.attemptId) {
           const c = this.context
           await confirmationRepository.acceptPreparationEpoch(c, () => this.valid(guard), async () => {
@@ -213,7 +213,11 @@ export class ConfirmationWorkspace {
           if (!this.valid(guard)) return
         }
       }
-      if (!this.context.attemptId && reference.attemptId) { this.bindAttempt(reference.attemptId); guard = this.guard }
+      // Real bootstrap supplies the authorized current Attempt, including an explicit null.
+      // A retained local reference is only evidence, never a fallback to a stale server ID.
+      if (this.context.mode === 'preparation' && !this.context.attemptId && reference.attemptId) {
+        this.bindAttempt(reference.attemptId); guard = this.guard
+      }
       if (this.context.attemptId) await this.readHead()
       else this.publish({ phase: 'idle' })
       if (!this.valid(guard)) return
@@ -275,7 +279,8 @@ export class ConfirmationWorkspace {
           `/assignments/${encodeURIComponent(c.assignmentId!)}/bootstrap`, this.opts())
         return current() && bootstrap.recoveryGeneration === c.trustedRecoveryGeneration &&
           bootstrap.assignment.assignmentId === c.assignmentId && bootstrap.assignment.studentId === c.userId &&
-          bootstrap.assignment.activityVersionId === c.activityVersionId
+          bootstrap.assignment.activityVersionId === c.activityVersionId &&
+          (c.mode !== 'real' || bootstrap.currentAttemptId === c.attemptId)
       })
       if (!current()) return null
       if (workspace.workspaceRevision !== head.attempt.workspaceRevision) {
@@ -285,7 +290,7 @@ export class ConfirmationWorkspace {
       // C2 清单按 ID 排列，不代表创建先后；同时间时保留本次明确冻结的选择。
       const latest = [...head.snapshots].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
         (a.snapshotId === this.state.snapshot?.snapshotId ? -1 : b.snapshotId === this.state.snapshot?.snapshotId ? 1 : a.snapshotId.localeCompare(b.snapshotId)))[0] ?? null
-      this.publish({ workspace, attempt: head.attempt, snapshot: latest, snapshots: head.snapshots,
+      this.publish({ workspace, attempt: head.attempt, snapshot: latest, snapshots: head.snapshots, error: null,
         phase: this.state.pending ? this.state.phase : ['submitted', 'reviewed'].includes(head.attempt.status) ? 'readonly' : 'ready' })
       return head
     } catch (e) {

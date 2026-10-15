@@ -10,6 +10,7 @@ import { registerI0Static } from './i0-static.ts';
 import type { Transaction } from '../db/transaction.ts';
 import { availableRuntime } from '../design/readiness.ts';
 import { optionalDisplayText } from '../access/display-text.ts';
+import { readAttempt } from '../db/records-adapter.ts';
 
 export type HostAdmission = { accepting:boolean };
 export function guardHostTransport<Command extends {op:string}>(
@@ -138,13 +139,23 @@ export function attachOriginalJobHost(service:OriginalService,options:HostOption
       if (!recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
       const availability = assignmentAvailability(tx,actor.courseId,id,assignment.student_id);
       const displayTitle = optionalDisplayText(assignment.display_title);
+      const currentAttemptId = actor.role === 'student' ? (() => {
+        const rows = tx.all('SELECT attempt_id FROM attempts WHERE assignment_id=? AND student_id=? AND course_id=?',
+          id, actor.userId, actor.courseId);
+        if (rows.length > 1) throw new ApiError('PERSISTENCE_UNAVAILABLE');
+        if (!rows.length) return null;
+        const attempt = readAttempt(tx, String(rows[0]!.attempt_id));
+        if (attempt.assignmentId !== id || attempt.studentId !== actor.userId || attempt.courseId !== actor.courseId ||
+          attempt.activityVersionId !== assignment.activity_id) throw new ApiError('PERSISTENCE_UNAVAILABLE');
+        return attempt.attemptId;
+      })() : undefined;
       return assignmentBootstrapSchema.parse({recoveryGeneration,assignment:{
         assignmentId:id,activityVersionId:assignment.activity_id,studentId:assignment.student_id,
         assignmentRevision:assignment.assignment_revision,active:availability.active,status:assignment.status,
         reasons:{individual:assignment.individual_reason,activity:assignment.activity_reason},
         activityControlRevision:availability.activityControlRevision,
         ...(displayTitle ? {displayTitle} : {}),
-      }});
+      }, ...(actor.role === 'student' ? {currentAttemptId} : {})});
     },false);
     return {requestId:request.id,data};
   });
