@@ -60,10 +60,10 @@ async function protocol(page: Page) {
   return state
 }
 
-async function loginHome(page: Page, account = 'account-a') {
+async function loginHome(page: Page, account = 'account-a', displayName = account) {
   await page.goto(`${REAL_URL}/#/`)
   await loginThroughForm(page, account, 'synthetic-only')
-  await expect(page.locator('.account-name')).toHaveText(account)
+  await expect(page.locator('.account-name')).toHaveText(displayName)
 }
 
 test('真实首页读取本人两课程与固定标题，暂停可查看，卡片沿原路由返回后可再进入', async ({ page }) => {
@@ -163,13 +163,41 @@ test('没有学生课程或课程没有分配时显示真实空态，不补演�
   ]
   await page.reload()
   await expect(page.getByRole('button', { name: /课程 empty-course/ }).locator('[data-icon="structure"]')).toBeVisible()
-  await expect(page.getByRole('button', { name: /课程 synthetic-robert-course-hdl/ }).locator('[data-icon="virtual-board"]')).toBeVisible()
-  await expect(page.getByRole('button', { name: /课程 synthetic-robert-course-c/ }).locator('[data-icon="code-square"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /数字逻辑与部件设计/ }).locator('[data-icon="virtual-board"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: /程序设计基础/ }).locator('[data-icon="code-square"]')).toBeVisible()
   await page.getByRole('button', { name: /课程 empty-course/ }).click()
   await expect(page.getByText('此课程暂无分配任务', { exact: true })).toBeVisible()
   await expect(page.locator('.task-card, .db-continue')).toHaveCount(0)
   expect(state.reads.some(read => read.path.startsWith('/api/activities/'))).toBe(false)
   expect(state.reads.some(read => read.path.startsWith('/__i0prep/'))).toBe(false)
+})
+
+test('首页姓名与课程别名只改变显示，Session身份、课程参数和任务入口继续使用原ID', async ({ page }) => {
+  const state = await protocol(page)
+  const account = 'synthetic-robert-student-a', course = 'synthetic-robert-course-c'
+  state.courses[account] = [{ courseId: course, role: 'student' }, { courseId: 'synthetic-robert-course-hdl', role: 'student' }]
+  state.assignments[course] = [assignment('display-c', account)]
+  state.titles['activity-display-c'] = { courseId: course, title: '原本人 C 任务', goal: '原固定目标' }
+  await loginHome(page, account, 'Robert')
+  await expect(page.locator('.intro h1')).toHaveText(/，Robert$/)
+  await expect(page.locator('.account-pill .avatar')).toHaveText('R')
+  await expect(page.locator('.content')).not.toContainText('synthetic-robert')
+  await expect(page.locator('.db-continue .course-tag')).toHaveText('项目任务 · 程序设计基础')
+  await expect(page.getByRole('button', { name: /数字逻辑与部件设计.*查看任务/ })).toBeVisible()
+  await page.locator('.account-pill').click()
+  await expect(page.getByRole('menu').filter({ visible: true }).locator('.am-name')).toHaveText('Robert')
+  await page.locator('.account-pill').click()
+  await page.getByRole('button', { name: /程序设计基础.*查看任务/ }).click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/?course=${course}`)
+  await expect(page.locator('.course-breadcrumb strong')).toHaveText('程序设计基础')
+  await page.getByRole('textbox', { name: '搜索任务', exact: true }).fill('程序设计基础')
+  await expect(page.locator('.task-card')).toHaveCount(1)
+  await page.locator('.task-card').click()
+  await expect(page).toHaveURL(`${REAL_URL}/#/task/display-c`)
+  await expect(page.locator('.ts-badge')).toContainText('不可用')
+  expect(state.identity).toBe(account)
+  expect(state.reads.some(read => read.path === `/api/courses/${course}/assignments`)).toBe(true)
+  expect(state.reads.some(read => read.path === '/api/assignments/display-c/bootstrap')).toBe(true)
 })
 
 test('列表故障保持失败并可明确重试，恢复后只展示原接口任务', async ({ page }) => {

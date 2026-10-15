@@ -1,6 +1,7 @@
 import { avatarTone, useAccount } from '../lib/account'
 import { useSession } from './SessionEntry'
 import { PREP_BUILD } from '../workspace/mode'
+import { displayAccountName } from '../lib/displayNames'
 
 /**
  * 账户头像：自定义头像（图片）优先，未设置时为渐变泡泡 + 首字母
@@ -9,7 +10,7 @@ import { PREP_BUILD } from '../workspace/mode'
 export function AccountAvatar({ className = '' }: { className?: string }) {
   const account = useAccount()
   const session = useSession()
-  const name = !PREP_BUILD && session.session ? session.session.userId : account.name
+  const name = !PREP_BUILD && session.session ? displayAccountName(session.session.userId) : account.name
   const avatar = !PREP_BUILD && session.session ? null : account.avatar
   if (avatar) {
     return (
