@@ -13,6 +13,7 @@
 .t-live-history { border-top: 1px solid var(--line); padding: 16px 0; font-size: 13px; line-height: 1.9; }
 .t-live-history p { margin: 8px 0; overflow-wrap: anywhere; }
 .t-live-review .t-rm-claim, .t-live-review .t-rm-panel, .t-live-review .t-rm-filter-label { min-width: 0; }
+.t-live-review .t-rm-observation > .t-rm-mono { display: block; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .t-live-review .t-rm-claim p, .t-live-review .t-rm-panel p, .t-live-review .t-rm-caption, .t-live-preserved { overflow-wrap: anywhere; }
 .t-live-reference { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
 .t-live-reference > .t-rm-reference { max-width: 100%; white-space: normal; text-align: left; }
