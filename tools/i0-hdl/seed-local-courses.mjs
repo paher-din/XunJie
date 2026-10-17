@@ -14,7 +14,7 @@ const coursePlans = [
   { kind: 'hdl_board', courseId: 'synthetic-robert-course-hdl', studentId: 'synthetic-robert-student-b',
     title: 'HDL 板卡本机合成工程验证', domain: '解释输入、四态信号与有限 Trace', artifact: 'HDL 源码、真实输出与核查记录' },
 ];
-const referencePath = 'docs/tasks/evidence/dla-continuation-20261014/real-hdl-final-frozen.json';
+const referencePath = 'tools/i0-hdl/fixtures/hdl-reference.json';
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const marker = 'xunjie-robert-local-course-seed-v1';
 const digest = value => createHash('sha256').update(value).digest('hex');

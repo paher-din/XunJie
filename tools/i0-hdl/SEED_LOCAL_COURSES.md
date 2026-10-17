@@ -15,7 +15,7 @@
   --apply
 ```
 
-`--teaching-root` 是正常业务宿主所用源码的 `apps/teaching` 绝对路径，复用其原契约/schema 与校验函数。工具自身所在仓库需要保留已入库的公开 HDL 固定配置证据 `docs/tasks/evidence/dla-continuation-20261014/real-hdl-final-frozen.json`。
+`--teaching-root` 是正常业务宿主所用源码的 `apps/teaching` 绝对路径，复用其原契约/schema 与校验函数。工具自身所在仓库需要保留公开合成 HDL 协议 fixture `tools/i0-hdl/fixtures/hdl-reference.json`。
 
 配置不放密码，采用以下形状，全部路径是本机绝对路径；配置及 initializer 为普通文件、非符号链接、权限 0600：
 

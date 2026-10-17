@@ -263,11 +263,11 @@ components:
 
 接收日期：2026-10-15。来源为 XunJie_Design 的 [docs/DESIGN.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/DESIGN.md)。接收时来源仓库 HEAD 为 `16558426ce70524218eacbf7ce8fde35681c0503`；源文件最后修改提交为 `5a9486b4d33e43e4116c36aa537c6c9940771f73`，内容与首次导入的已发布提交 `a9bb1dd016489d3e60e0b45933e440296c1194d8` 完全相同（Git blob `67d96c1c0e52e7601a3c74137e89e66742d7b476`）。未导入的设计页、原型与研究证据链接固定到该已发布来源；本仓库代码路径已改为 `apps/student/`。原文件保留，设计取值与规则照录。
 
-本文件用于此后学生端的视觉与交互改动；产品范围、权限、数据、真实状态与验收以主仓库 [PRD](product/PRD.md)、[MVP_SPEC](product/MVP_SPEC.md)、[TECH_DESIGN](product/TECH_DESIGN.md) 和当前获准任务为准。设计示例中的看板、进度、课程状态等不代表已有真实业务字段；不得用演示数据填补。正文的“合并结果”及 2026-10-11 测试、对比度与实屏验收均是来源仓库的历史记录，不是本次主仓库的新验证；来源映射与后续同步边界见 [IMPORT_SOURCE](../apps/student/IMPORT_SOURCE.md)。
+本文件用于学生端的视觉与交互设计。2026-10-18 移至仓库根目录，继续作为新一轮开发的 UI 设计规范；产品范围、权限、数据与验收以负责人本轮明确要求为准。设计示例中的看板、进度、课程状态等不代表已有真实业务字段；不得用演示数据填补。正文的“合并结果”及 2026-10-11 测试、对比度与实屏验收均是来源仓库的历史记录，不是本次主仓库的新验证；导入来源的历史记录见 [IMPORT_SOURCE](apps/student/IMPORT_SOURCE.md)。
 
 ## Overview
 
-学习空间是「循阶」学生端界面的设计系统，覆盖首页、课程任务、Agent 对话页、任务工作区四个已确认页面。系统从零逐因素定稿（①配色 → ⑩ IP 与插画，2026-10-01 至 2026-10-10 全部结项），每个因素都做过变体 library 原型评审，结论汇于本文档。本文档是 token 的权威来源；**合并已于 2026-10-11 执行完毕**——[apps/student/src/styles/tokens.css](../apps/student/src/styles/tokens.css)、[apps/student/src/styles/app.css](../apps/student/src/styles/app.css)、[apps/student/src/icons/icons.css](../apps/student/src/icons/icons.css) 与 [apps/student/src/components/dashboard/widgets.tsx](../apps/student/src/components/dashboard/widgets.tsx) 已是本文档的可执行形态，落地清单与逐值复核见 [docs/prototypes/design-system/README.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/prototypes/design-system/README.md) 的「2026-10-11 落地记录」与本文 Source Analysis。
+学习空间是「循阶」学生端界面的设计系统，覆盖首页、课程任务、Agent 对话页、任务工作区四个已确认页面。系统从零逐因素定稿（①配色 → ⑩ IP 与插画，2026-10-01 至 2026-10-10 全部结项），每个因素都做过变体 library 原型评审，结论汇于本文档。本文档是 token 的权威来源；**合并已于 2026-10-11 执行完毕**——[apps/student/src/styles/tokens.css](apps/student/src/styles/tokens.css)、[apps/student/src/styles/app.css](apps/student/src/styles/app.css)、[apps/student/src/icons/icons.css](apps/student/src/icons/icons.css) 与 [apps/student/src/components/dashboard/widgets.tsx](apps/student/src/components/dashboard/widgets.tsx) 已是本文档的可执行形态，落地清单与逐值复核见 [docs/prototypes/design-system/README.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/prototypes/design-system/README.md) 的「2026-10-11 落地记录」与本文 Source Analysis。
 
 系统性格由三处咬合决定：
 
@@ -300,7 +300,7 @@ components:
 
 ## Typography
 
-三套字体族各司其职：**正文 / 控件 = 系统栈**（`sans`，不引入正文 webfont）；**标题衬线 = 霞鹜文楷**（`serif`），仅用于 h1–h3，自托管于 [apps/student/public/fonts/lxgw-wenkai-regular.woff2](../apps/student/public/fonts/lxgw-wenkai-regular.woff2)；**等宽 = 系统等宽栈**（`mono`），用于数值、版本号、token 计数。已知约束：文楷目前只自托管 Regular 一档，标题的 600 由浏览器合成加粗。
+三套字体族各司其职：**正文 / 控件 = 系统栈**（`sans`，不引入正文 webfont）；**标题衬线 = 霞鹜文楷**（`serif`），仅用于 h1–h3，自托管于 [apps/student/public/fonts/lxgw-wenkai-regular.woff2](apps/student/public/fonts/lxgw-wenkai-regular.woff2)；**等宽 = 系统等宽栈**（`mono`），用于数值、版本号、token 计数。已知约束：文楷目前只自托管 Regular 一档，标题的 600 由浏览器合成加粗。
 
 字号阶梯 = Apple 系统阶 9 级 **11 / 12 / 13 / 15 / 17 / 20 / 22 / 28 / 34**，吸附规则等距最近、平局向上。已确认落点：正文 `14 → 15`（body 的 `font:` 简写整体升半档）、h1 `29 → 28`、h2/h3 `16 → 17`、品牌行 `16 → 17`。
 
@@ -400,12 +400,12 @@ components:
 
 ## Usage Rights
 
-- **霞鹜文楷（LXGW WenKai）**：SIL Open Font License 1.1（Copyright 2021-2023 LXGW，含 The Klee Project Authors 部分）；完整条款见 [apps/student/public/fonts/OFL.txt](../apps/student/public/fonts/OFL.txt)。自托管分发，正文层不使用。
+- **霞鹜文楷（LXGW WenKai）**：SIL Open Font License 1.1（Copyright 2021-2023 LXGW，含 The Klee Project Authors 部分）；完整条款见 [apps/student/public/fonts/OFL.txt](apps/student/public/fonts/OFL.txt)。自托管分发，正文层不使用。
 - **Solar 图标**：作者 480 Design（`https://github.com/480-Design/Solar-Icon-Set`），SVG 取自已确认评审稿的 Iconify Solar 集合本地快照；许可 **CC BY 4.0**。`file-presentation-linear.svg` 是衍生图形（保留 Solar 文件轮廓 + 自绘演示框），继续按 CC BY 4.0 标注；其余图形路径未修改。
 - **OpenMoji**（成就徽章、火焰资产）：作者 HfG Schwäbisch Gmünd 与 OpenMoji contributors，来源 Iconify OpenMoji 集合本地快照；许可 **CC BY-SA 4.0**。原 SVG 路径保留；修改图形时记录改动并沿用 CC BY-SA 4.0。未解锁态由 CSS 降饱和显示，徽章外框、等级数字与文字是独立界面元素。
 - **项目专属图形**：`learning-space` / `assistant-mark` / `virtual-board` / `digital-waveform` / `load-board` / `insert-prompt` / `unpin` / `analogy` 为本项目自绘，归属学习空间项目，未另行指定公共开源许可。
 - **既有品牌资源**：`brand-deepseek-native.svg` / `brand-mimo-native.svg` 沿用仓库原有资产记录，本轮未重新核验；不以通用图标库许可覆盖品牌图形或商标。
-- 所有资产随应用本地分发、不在运行时访问外部 CDN；逐项来源与许可见 [apps/student/src/icons/ATTRIBUTION.md](../apps/student/src/icons/ATTRIBUTION.md)，摘要见 [apps/student/src/icons/provenance.json](../apps/student/src/icons/provenance.json)，正式分发时随第三方资源说明保留。
+- 所有资产随应用本地分发、不在运行时访问外部 CDN；逐项来源与许可见 [apps/student/src/icons/ATTRIBUTION.md](apps/student/src/icons/ATTRIBUTION.md)，摘要见 [apps/student/src/icons/provenance.json](apps/student/src/icons/provenance.json)，正式分发时随第三方资源说明保留。
 
 ## Source Analysis
 
@@ -418,11 +418,11 @@ components:
 | [docs/home-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/home-design.md) | 首页 / 课程任务 / Agent 入口 / 任务工作区的已确认设计：inset 外壳、248px 侧栏、沉浸模式、看板与个人资料卡、图标落点 |
 | [docs/agent-page-design.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/agent-page-design.md) | Agent 对话页的回合、思考、流式与消息内块（页面骨架与输入框仍以 home-design 为准） |
 | [CONTEXT.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/CONTEXT.md) | 领域词汇：循阶、项目任务、学生画像、学科工具包、虚拟开发板、虚拟烧录等，文案与类型命名的对齐依据 |
-| [apps/student/src/styles/tokens.css](../apps/student/src/styles/tokens.css) | 现役语义 token（`--accent`、状态语义四组、`--panel-shadow`、`--panel-radius`、`--line`、`--shell-bg`、`course-0/1/2`、文字阶）——2026-10-11 已按本文档换值（12 处）；原 `prototype-styles.css` 的中性覆盖层已于 2026-10-10 并入 `app.css`，文件随之删除 |
-| [apps/student/src/styles/app.css](../apps/student/src/styles/app.css) | 组件现状值（吸附对象）：35 种阴影、24 种圆角、27 个字号、38 种间距、26 档时长——本文件的阶梯即对它们的收敛结果 |
-| [apps/student/src/icons/README.md](../apps/student/src/icons/README.md) + [apps/student/src/icons/ATTRIBUTION.md](../apps/student/src/icons/ATTRIBUTION.md) | ⑧ 图标体系：取用接口、Solar Linear / Bold / OpenMoji 分工、图文对齐规则与全部许可声明 |
-| [apps/student/public/fonts/](../apps/student/public/fonts/) | 霞鹜文楷自托管资产与 `OFL.txt`（[apps/student/src/styles/fonts.css](../apps/student/src/styles/fonts.css) 已备好 `@font-face`） |
-| [apps/student/src/lib/theme.ts](../apps/student/src/lib/theme.ts) + [apps/student/index.html](../apps/student/index.html) 内联脚本 | 深色模式机制：偏好三态（`theme.v1`）、系统深浅订阅、首屏防闪与 `data-theme` 落点；深色取值见本文「深色模式」一节 |
+| [apps/student/src/styles/tokens.css](apps/student/src/styles/tokens.css) | 现役语义 token（`--accent`、状态语义四组、`--panel-shadow`、`--panel-radius`、`--line`、`--shell-bg`、`course-0/1/2`、文字阶）——2026-10-11 已按本文档换值（12 处）；原 `prototype-styles.css` 的中性覆盖层已于 2026-10-10 并入 `app.css`，文件随之删除 |
+| [apps/student/src/styles/app.css](apps/student/src/styles/app.css) | 组件现状值（吸附对象）：35 种阴影、24 种圆角、27 个字号、38 种间距、26 档时长——本文件的阶梯即对它们的收敛结果 |
+| [apps/student/src/icons/README.md](apps/student/src/icons/README.md) + [apps/student/src/icons/ATTRIBUTION.md](apps/student/src/icons/ATTRIBUTION.md) | ⑧ 图标体系：取用接口、Solar Linear / Bold / OpenMoji 分工、图文对齐规则与全部许可声明 |
+| [apps/student/public/fonts/](apps/student/public/fonts/) | 霞鹜文楷自托管资产与 `OFL.txt`（[apps/student/src/styles/fonts.css](apps/student/src/styles/fonts.css) 已备好 `@font-face`） |
+| [apps/student/src/lib/theme.ts](apps/student/src/lib/theme.ts) + [apps/student/index.html](apps/student/index.html) 内联脚本 | 深色模式机制：偏好三态（`theme.v1`）、系统深浅订阅、首屏防闪与 `data-theme` 落点；深色取值见本文「深色模式」一节 |
 
 **合并结果（2026-10-11）**：`tokens.css` 12 处、`app.css` 599 处、`icons.css` 6 处、`widgets.tsx` 15 处，全部按本文档取值改写完成——h1–h3 的 `font-family` 三行、去胶囊的 badge 族、l2 面板族与 o2 浮层三档、⑨⑩ 的落地注意（时间线 now 描边、热力两代值、`.db-flame` 去光晕、`course-cover-ph` 装饰伪元素）均已落在源码；`prototype-styles.css` 的中性覆盖层已并入 `app.css` 并删除。逐值复核方式与残留定性见 [docs/prototypes/design-system/README.md](https://github.com/wubq511/XunJie_Design/blob/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/prototypes/design-system/README.md) 的「2026-10-11 落地记录」，证据快照与复跑工具见 [docs/research/design-system-landing-2026-10-11/](https://github.com/wubq511/XunJie_Design/tree/a9bb1dd016489d3e60e0b45933e440296c1194d8/docs/research/design-system-landing-2026-10-11/)；⑧ 图标按目录 README 继续维护。
 
@@ -436,13 +436,13 @@ components:
 
 ### 深色模式（2026-10-11）
 
-浅色仍是本系统的默认表达：纯白画布、亮底深字状态、近黑主按钮。深色是**同一套角色集的炭灰对应值**，不新增角色，也不改变字号 / 间距 / 圆角 / 分层 / 动效的任何取值。切换机制、键名与验收记录见 [apps/student/src/lib/theme.ts](../apps/student/src/lib/theme.ts)。
+浅色仍是本系统的默认表达：纯白画布、亮底深字状态、近黑主按钮。深色是**同一套角色集的炭灰对应值**，不新增角色，也不改变字号 / 间距 / 圆角 / 分层 / 动效的任何取值。切换机制、键名与验收记录见 [apps/student/src/lib/theme.ts](apps/student/src/lib/theme.ts)。
 
 **主题机制**：偏好三态 `light / dark / system`（localStorage 键 `theme.v1`，缺失或非法值一律按跟随系统）；实际主题写到 `<html data-theme>` 并同步 `color-scheme`；`index.html` 的内联脚本在首屏绘制前先落一次，避免刷新闪白，React 启动后接管。显式选择后系统深浅变化不再覆盖；跟随系统时实时跟随，并在页面重新可见 / 从 bfcache 返回时补一次核对。
 
-入口是侧栏底部「外观」按钮，点开为浅色 / 深色 / 跟随系统三选一菜单。**按钮图标取实际生效的深浅**——浅色用太阳 `sun`、深色用月亮 `moon`，跟随系统时同样显示当前生效的那一枚，不固定停在某一种；提示写出偏好与当前值（「外观 · 跟随系统（当前浅色）」）。菜单三项用太阳 / 月亮 / 本机 `laptop` 表达三个偏好，选中项打 ✓。`sun` 是本地图标快照没有太阳图形时按 Solar Linear 同风格补绘的项目自绘图形，登记见 [apps/student/src/icons/ATTRIBUTION.md](../apps/student/src/icons/ATTRIBUTION.md)。
+入口是侧栏底部「外观」按钮，点开为浅色 / 深色 / 跟随系统三选一菜单。**按钮图标取实际生效的深浅**——浅色用太阳 `sun`、深色用月亮 `moon`，跟随系统时同样显示当前生效的那一枚，不固定停在某一种；提示写出偏好与当前值（「外观 · 跟随系统（当前浅色）」）。菜单三项用太阳 / 月亮 / 本机 `laptop` 表达三个偏好，选中项打 ✓。`sun` 是本地图标快照没有太阳图形时按 Solar Linear 同风格补绘的项目自绘图形，登记见 [apps/student/src/icons/ATTRIBUTION.md](apps/student/src/icons/ATTRIBUTION.md)。
 
-**深色取值**（[apps/student/src/styles/tokens.css](../apps/student/src/styles/tokens.css) 的 `:root[data-theme='dark']` 为唯一来源）：
+**深色取值**（[apps/student/src/styles/tokens.css](apps/student/src/styles/tokens.css) 的 `:root[data-theme='dark']` 为唯一来源）：
 
 | 角色 | 深色 | 说明 |
 | --- | --- | --- |
