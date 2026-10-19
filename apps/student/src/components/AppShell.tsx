@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from 'react'
@@ -28,6 +29,16 @@ import { useModelSettings } from '../lib/modelSettings'
 import { getSessionState } from '../workspace/session'
 import { logoutSession } from '../workspace/session'
 import { displayAccountName } from '../lib/displayNames'
+import { HomeNavigationProvider } from '../lib/homeCourseNavigation'
+
+const NARROW_NAV_QUERY = '(width < 1024px)'
+function subscribeNarrowNavigation(notify: () => void) {
+  const media = window.matchMedia(NARROW_NAV_QUERY)
+  media.addEventListener('change', notify)
+  return () => media.removeEventListener('change', notify)
+}
+const narrowNavigation = () => window.matchMedia(NARROW_NAV_QUERY).matches
+const serverNavigation = () => false
 
 /** 历史会话按单一时间流分组：今天 / 昨天 / 更早（2026-10-11 由四档收成三档——「近 7 天」并进
     「更早」：最近两档已经由今天、昨天担起来，2 天以前统一算更早，不再切一个 7 天的口子）。 */
@@ -149,7 +160,11 @@ export default function AppShell() {
   const inWorkspace = location.pathname.startsWith('/task')
 
   const [composerOpen, setComposerOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const narrowWindow = useSyncExternalStore(subscribeNarrowNavigation, narrowNavigation, serverNavigation)
+  // null follows the window; either explicit choice lasts for this shell session.
+  const [sidebarOverride, setSidebarOverride] = useState<boolean | null>(null)
+  const sidebarCollapsed = sidebarOverride ?? narrowWindow
+  const sidebarToggleRef = useRef<HTMLButtonElement>(null)
   const [accountMenu, setAccountMenu] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
@@ -160,6 +175,15 @@ export default function AppShell() {
   const themeBtnRef = useRef<HTMLButtonElement>(null)
   // 收起态轨道弹出的对话历史面板：null 关闭 / history 由 ✧ 打开 / search 由搜索图标打开并聚焦
   const [railPanel, setRailPanel] = useState<'history' | 'search' | null>(null)
+  const railTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const railPanelRef = useRef<HTMLDivElement>(null)
+  const closeRailPanel = useCallback(() => {
+    const trigger = railTriggerRef.current
+    if (trigger?.isConnected && !trigger.closest('[inert]') && trigger.getAttribute('aria-hidden') !== 'true') {
+      trigger.focus({ preventScroll: true })
+    }
+    setRailPanel(null)
+  }, [])
   const [convSearch, setConvSearch] = useState('')
   // 会话行管理（2026-10-10 确认）：⋯ 菜单 → 重命名（行内输入）/ 删除（就地二次确认）；
   // 长历史滚动自动加载，convShown 为当前可见条数
@@ -199,6 +223,15 @@ export default function AppShell() {
   const panelSearchRef = useRef<HTMLInputElement>(null)
   // 轨道与悬浮面板只在侧栏收起且非工作区沉浸态时生效
   const railVisible = sidebarCollapsed && !inWorkspace
+  const railPanelVisible = railVisible && onAgent && railPanel !== null
+
+  // Moving focus out of a just-hidden navigation region prevents an invisible Tab stop.
+  useLayoutEffect(() => {
+    if (document.activeElement?.closest('[inert]')) {
+      const target = inWorkspace ? mainRef.current?.querySelector<HTMLElement>('button') : sidebarToggleRef.current
+      target?.focus({ preventScroll: true })
+    }
+  }, [sidebarCollapsed, inWorkspace, onAgent, railPanelVisible])
 
   // 侧栏要连归档一起取（归档箱与搜索跨两组命中都要用），与 AgentPage 的「首次使用」判定分开一条缓存
   const conversations = useQuery({
@@ -280,6 +313,8 @@ export default function AppShell() {
     return () => main.removeEventListener('scroll', onScroll)
   }, [])
   useLayoutEffect(() => {
+    // Home owns per-history-entry course positioning once its data is ready.
+    if (location.pathname === '/') return
     const main = mainRef.current
     if (navType === 'POP') {
       const y = scrollPos.current.get(location.pathname)
@@ -322,7 +357,7 @@ export default function AppShell() {
       }
       if (e.key === 'Escape') {
         setComposerOpen(false)
-        setRailPanel(null)
+        if (railPanelVisible) closeRailPanel()
         setAccountMenu(false)
         closeConvMenu()
         setConvConfirming(null)
@@ -331,7 +366,7 @@ export default function AppShell() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onHome, closeConvMenu])
+  }, [onHome, closeConvMenu, railPanelVisible, closeRailPanel])
 
   // 外观菜单：点击菜单外任意处收起；关闭后焦点回到触发按钮（键盘用户可继续操作）
   useEffect(() => {
@@ -363,8 +398,14 @@ export default function AppShell() {
     setThemeMenu(false)
   }, [sidebarCollapsed])
   useEffect(() => {
-    if (railPanel === 'search') panelSearchRef.current?.focus()
-  }, [railPanel])
+    if (!onAgent || inWorkspace) setRailPanel(null)
+  }, [onAgent, inWorkspace])
+  useEffect(() => {
+    if (railPanelVisible) {
+      const target = archiveOpen ? railPanelRef.current?.querySelector<HTMLElement>('button') : panelSearchRef.current
+      target?.focus({ preventScroll: true })
+    }
+  }, [railPanelVisible, railPanel, archiveOpen])
 
   function showToast(text: string) {
     setToast(text)
@@ -750,7 +791,7 @@ export default function AppShell() {
         'shell' + (inWorkspace ? ' immersive' : '') + (sidebarCollapsed ? ' collapsed' : '')
       }
     >
-      <aside className="sidebar">
+      <aside className="sidebar" inert={sidebarCollapsed || inWorkspace} aria-hidden={sidebarCollapsed || inWorkspace ? true : undefined}>
         <div className="brand xunjie-brand">
           <XunjieLogo format="horizontal" label="循阶" />
         </div>
@@ -767,7 +808,7 @@ export default function AppShell() {
               <span className="navicon"><Icon name="chat-round-dots" size={20} variant={onAgent ? 'bold' : 'linear'} /></span>Agent 对话
             </button>
           </div>
-          <div className={onAgent ? 'agent-sub open' : 'agent-sub'}>
+          <div className={onAgent ? 'agent-sub open' : 'agent-sub'} inert={!onAgent} aria-hidden={!onAgent ? true : undefined}>
             <div className="agent-sub-inner">{convPane(undefined, () => {})}</div>
           </div>
         </nav>
@@ -827,17 +868,20 @@ export default function AppShell() {
         </div>
       </aside>
       <main className="main" ref={mainRef}>
-        <div
-          className={'page-enter' + (enterKey ? '' : ' revisit')}
-          key={enterMountKey}
-        >
-          <Outlet />
-        </div>
+        <HomeNavigationProvider scope={`${session.epoch}:${session.session?.userId ?? 'prep'}`}>
+          <div
+            className={'page-enter' + (enterKey ? '' : ' revisit')}
+            key={onHome ? 'home' : enterMountKey}
+          >
+            <Outlet />
+          </div>
+        </HomeNavigationProvider>
       </main>
       {!inWorkspace && (
         <button
           className="sidebar-toggle"
-          onClick={() => setSidebarCollapsed((c) => !c)}
+          ref={sidebarToggleRef}
+          onClick={() => setSidebarOverride(!sidebarCollapsed)}
           aria-label="切换边栏"
           aria-expanded={!sidebarCollapsed}
           title="切换边栏"
@@ -847,7 +891,7 @@ export default function AppShell() {
       )}
       {/* 收起态左侧轨道：图标与展开态各行同坐标（2026-10-11 加「已归档」，位置跟着展开区走），
           淡入与侧栏淡出同位对接 */}
-      <div className={'rail' + (railVisible ? ' on' : '')}>
+      <div className={'rail' + (railVisible ? ' on' : '')} inert={!railVisible} aria-hidden={!railVisible ? true : undefined}>
         <button
           className={'railbtn r-home' + (onHome ? ' active' : '')}
           onClick={() => {
@@ -861,8 +905,14 @@ export default function AppShell() {
         </button>
         <button
           className={'railbtn r-agent' + (onAgent ? ' active' : '')}
-          onClick={() => {
-            if (onAgent) setRailPanel((p) => (p ? null : 'history'))
+          onClick={event => {
+            if (onAgent) {
+              if (railPanel) closeRailPanel()
+              else {
+                railTriggerRef.current = event.currentTarget
+                setRailPanel('history')
+              }
+            }
             else {
               // 非 Agent 页点 ✧ 直接开新会话（2026-10-01 用户确认）
               navigate('/agent')
@@ -895,11 +945,13 @@ export default function AppShell() {
             (onAgent && archivedConvs.length > 0 ? '' : ' off') +
             (archiveOpen && railPanel === 'history' ? ' active' : '')
           }
-          onClick={() => {
+          onClick={event => {
             // 与展开态入口行同一档：箱子开着就收（连面板一起收），收起就开箱并顶出面板
             const next = !(archiveOpen && railPanel === 'history')
+            railTriggerRef.current = event.currentTarget
             openArchive(next)
-            setRailPanel(next ? 'history' : null)
+            if (next) setRailPanel('history')
+            else closeRailPanel()
           }}
           title="已归档"
           aria-label="已归档"
@@ -911,9 +963,13 @@ export default function AppShell() {
         </button>
         <button
           className={'railbtn r-search' + (onAgent ? '' : ' off')}
-          onClick={() => {
+          onClick={event => {
             setArchiveOpen(false)
-            setRailPanel((p) => (p === 'search' ? null : 'search'))
+            if (railPanel === 'search') closeRailPanel()
+            else {
+              railTriggerRef.current = event.currentTarget
+              setRailPanel('search')
+            }
           }}
           title="搜索对话"
           aria-label="搜索对话"
@@ -937,9 +993,10 @@ export default function AppShell() {
           <AccountMenu open={accountMenu && railVisible} anchor="rail" {...accountActions} />
         </div>
       </div>
-      {railVisible && railPanel && <div className="railshade" onClick={() => setRailPanel(null)} />}
-      <div className={'railpanel' + (railVisible && railPanel ? ' on' : '')}>
-        {convPane(panelSearchRef, () => setRailPanel(null))}
+      {railPanelVisible && <div className="railshade" onClick={closeRailPanel} />}
+      <div className={'railpanel' + (railPanelVisible ? ' on' : '')} ref={railPanelRef}
+        inert={!railPanelVisible} aria-hidden={!railPanelVisible ? true : undefined}>
+        {convPane(panelSearchRef, closeRailPanel)}
       </div>
       {onHome && (
         <>
