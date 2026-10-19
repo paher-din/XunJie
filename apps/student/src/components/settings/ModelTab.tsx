@@ -15,11 +15,12 @@ import { PREP_BUILD } from '../../workspace/mode'
 import { Section, RadioCard, Seg, Field } from './controls'
 import { ProviderDialog } from './ProviderDialog'
 import { ModelDialog } from './ModelDialog'
+import { ModelSettingsFeedback } from './ModelSettingsFeedback'
 import type { TabProps } from '../../pages/SettingsPage'
 
 const EFFORTS = ['低', '高', '最高'] as const
 
-export function ModelTab({ toast }: TabProps) {
+export function ModelTab({ toast, inlineFeedback = false }: TabProps & { inlineFeedback?: boolean }) {
   const local = useSettings()
   const remote = useModelSettings()
   const [prepModel, setPrepModel] = useState(() => localStorage.getItem(MODEL_KEY) ?? MODELS[0].id)
@@ -32,6 +33,7 @@ export function ModelTab({ toast }: TabProps) {
   const [results, setResults] = useState<Record<string, TestResult>>({})
   const [confirmingDel, setConfirmingDel] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  const [savedRevision, setSavedRevision] = useState<number | null>(null)
 
   const providers = PREP_BUILD ? local.providers : remote.data?.providers ?? []
   const modelId = PREP_BUILD ? prepModel : remote.data?.defaultModelId ?? ''
@@ -58,6 +60,17 @@ export function ModelTab({ toast }: TabProps) {
     }
   }
 
+  // Only an acknowledged save can produce the student page's success message.
+  // Keep this presentation state local; the shared store and teacher UI are unchanged.
+  const persistSettings = async (patch: Parameters<typeof saveModelSettings>[0]) => {
+    if (inlineFeedback) {
+      setNotice('')
+      setSavedRevision(null)
+    }
+    await saveModelSettings(patch)
+    if (inlineFeedback) setSavedRevision(getModelSettings().data?.revision ?? null)
+  }
+
   const pickModel = (id: string) => {
     if (PREP_BUILD) {
       setPrepModel(id)
@@ -65,7 +78,7 @@ export function ModelTab({ toast }: TabProps) {
       window.dispatchEvent(new Event(MODEL_CHANGE_EVENT))
       return
     }
-    void act(() => saveModelSettings({ defaultModelId: id }))
+    void act(() => persistSettings({ defaultModelId: id }))
   }
 
   const replaceProviders = async (next: ModelProvider[]) => {
@@ -83,7 +96,7 @@ export function ModelTab({ toast }: TabProps) {
       ? current?.enabled ?? false
       : false
 
-    await saveModelSettings({ providers: next, defaultModelId, enabled })
+    await persistSettings({ providers: next, defaultModelId, enabled })
   }
 
   const persistProvider = async (p: ModelProvider) => {
@@ -127,30 +140,48 @@ export function ModelTab({ toast }: TabProps) {
     )
   }
 
+  const configActions = (
+    <>
+      <button
+        className="outline"
+        disabled={remote.loading || remote.saving}
+        onClick={() => {
+          if (inlineFeedback) { setNotice(''); setSavedRevision(null) }
+          void loadModelSettings()
+        }}
+      >
+        重新读取配置
+      </button>
+      <button
+        className="primary"
+        disabled={disabled || (!remote.data?.enabled && options.length === 0)}
+        onClick={() => void act(() => persistSettings({ enabled: !remote.data?.enabled }))}
+      >
+        {remote.saving ? '保存中…' : remote.data?.enabled ? '停用个人模型' : '启用个人模型'}
+      </button>
+    </>
+  )
+
   return (
     <>
       {!PREP_BUILD && (
         <Section title="个人模型配置">
           <p>配置仅属于当前登录账号。保存并启用后，下一次发送使用所选模型。</p>
-          <button
-            className="outline"
-            disabled={remote.loading || remote.saving}
-            onClick={() => void loadModelSettings()}
-          >
-            重新读取配置
-          </button>
-          <button
-            className="primary"
-            disabled={disabled || (!remote.data?.enabled && options.length === 0)}
-            onClick={() => void act(() => saveModelSettings({ enabled: !remote.data?.enabled }))}
-          >
-            {remote.saving ? '保存中…' : remote.data?.enabled ? '停用个人模型' : '启用个人模型'}
-          </button>
-          <p role="status">
-            {remote.loading ? '正在读取配置…' : remote.data?.enabled ? '个人模型已启用' : '个人模型未启用'}
-            {remote.data && !remote.data.callsEnabled ? ' · 管理员已停用模型调用' : ''}
-          </p>
-          {(remote.error || notice) && <p role="alert">{notice || remote.error}</p>}
+          {inlineFeedback ? (
+            <>
+              <div className="st-model-actions">{configActions}</div>
+              <ModelSettingsFeedback {...remote} error={notice || remote.error} savedRevision={savedRevision} />
+            </>
+          ) : (
+            <>
+              {configActions}
+              <p role="status">
+                {remote.loading ? '正在读取配置…' : remote.data?.enabled ? '个人模型已启用' : '个人模型未启用'}
+                {remote.data && !remote.data.callsEnabled ? ' · 管理员已停用模型调用' : ''}
+              </p>
+              {(remote.error || notice) && <p role="alert">{notice || remote.error}</p>}
+            </>
+          )}
         </Section>
       )}
 
@@ -179,7 +210,7 @@ export function ModelTab({ toast }: TabProps) {
                 value={remote.data?.efforts[modelId] ?? ''}
                 onChange={level => {
                   if (!PREP_BUILD && modelId && !disabled) {
-                    void act(() => saveModelSettings({
+                    void act(() => persistSettings({
                       efforts: { ...remote.data?.efforts, [modelId]: level },
                     }))
                   }

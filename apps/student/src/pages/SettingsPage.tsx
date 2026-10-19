@@ -41,7 +41,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="settings">
+    <div className="settings student-settings">
       <aside className="st-nav">
         <h1 className="st-title">设置</h1>
         <nav aria-label="设置导航">
@@ -63,7 +63,7 @@ export default function SettingsPage() {
           {active === 'account' && <AccountTab toast={showToast} />}
           {active === 'portrait' && <PortraitTab toast={showToast} />}
           {active === 'agent' && <AgentTab />}
-          {active === 'model' && <ModelTab toast={showToast} />}
+          {active === 'model' && <ModelTab toast={showToast} inlineFeedback />}
           {active === 'privacy' && <PrivacyTab toast={showToast} />}
           {active === 'about' && <AboutTab toast={showToast} />}
         </div>
