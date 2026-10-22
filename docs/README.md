@@ -14,7 +14,10 @@
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
 | 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |
-| AI SDK Core 与有限自研运行时的取舍 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |
+| 教学状态、执行控制与有限运行时的初步取舍 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |
+| 三协议实际端点、SDK 验证与模型连接层选择 | [端点评估与工程判断](references/2026-10-23-model-endpoint-assessment.md) |
+| 固定版本 SDK 如何保留原生续接数据 | [SDK 源码调查](references/2026-10-22-model-protocol-sdk-research.md) |
+| Agent 如何阅读 PDF，以及循阶的按页读取路线 | [PDF 能力调查](references/2026-10-22-agent-pdf-capabilities-research.md) |
 | 项目领域术语 | [CONTEXT.md](../CONTEXT.md) |
 | 最早的产品愿景 | [最初 idea](<基于个性化学生画像的引导式项目制教学测验 Agent 系统.md>) |
 | 原聊天中每条用户消息 | [用户原话](references/2026-10-18-user-discussion.md) |

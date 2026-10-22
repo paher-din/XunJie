@@ -169,21 +169,24 @@ IP 是教学动作的呈现载体。TeachingAction 表达为什么介入、说�
 | 可移植历史 | 学生问题、引用、可见回应与已完成结果 |
 | 原生续接记录 | 与调用路线绑定的协议块、签名、工具调用身份和服务端续接信息 |
 
-AI SDK Core 是本轮选定的可替换模型调用层，选择依据是其调用原语足以支持当前有限运行，允许循阶控制工具执行顺序，并复用流式调用与协议适配。选型不依赖仓库已安装它。原生回放依赖 provider 元数据和实际方言，仍需端点验证；必要的方言 adapter 属于 Gateway。[核对依据](references/2026-10-18-architecture-checks.md#模型调用层)
+模型连接层根据 [三协议模型接入：第三方端点能力、适配与原生续接](https://github.com/paher-din/XunJie/issues/115) 的本轮调查，采用直接协议 SDK 加薄 adapter：`openai` 承接 Chat / Responses，`@anthropic-ai/sdk` 承接 Messages。首批基线分别为 `7.42.0` 与 `1.1.0`。完整原生助手内容用于续接，应用事件用于展示与运行协调；教学工具执行仍由运行层决定。[实际端点与 SDK 证据](references/2026-10-23-model-endpoint-assessment.md)
 
 | 路线 | 可复用的部分 | 本轮判断 |
 | --- | --- | --- |
-| AI SDK Core + 有界 driver | 模型协议适配、流、工具 schema、结构化生成 | 本轮采用；执行顺序直接可控，承担必要的运行记录、步骤与恢复实现 |
+| 直接协议 SDK + 薄 adapter | HTTP、SSE、原生响应、取消与错误对象；部分原生流聚合 | 模型连接层采用；自行维护方言规则和事件/用量/错误归一化，完整运行循环另议 |
+| AI SDK Core + 有界 driver | 模型协议适配、流、工具 schema、结构化生成 | 此前候选；本轮未选作连接基础。固定 OpenAI provider 的两条 Responses 路线实测存在原生保真或流校验失败 |
 | Pi core + pi-ai | 有状态内层循环、输入队列、上下文准备、工具前后钩子 | 可行备选；并不因实时交互而优于或弱于 Core，取舍在于是否复用其循环与消息模型 |
 | DeepSeek Harness | 更完整的插件、会话日志和运行框架 | 借鉴其机制；整体接入需与 Cordis/profile/SessionEvent 模型集成，当前收益尚不足以确定采用 |
 
-该选择是当前范围内的成本判断，没有经过三个内核的接入原型或性能竞赛。Pi 的钩子也可能满足相同顺序；若后续需要大量队列、恢复与循环设施，应在 ModelPort/RunDriver 边界比较复用成本。教学证据、作品权限和执行记录无论采用哪种循环都要由循阶维护。[比较依据与限制](references/2026-10-18-architecture-checks.md#内核取舍的工程判断)
+本次只选择模型连接层，完整 Agent 内核由 [总体架构与复用取舍：模块边界、Agent 内核和部署方式](https://github.com/paher-din/XunJie/issues/119) 决定，没有进行完整内核接入原型或性能竞赛。Pi 的钩子也可能满足相同顺序；若需要队列、恢复与循环设施，应在 ModelPort/RunDriver 边界比较复用成本。教学证据、作品权限和执行记录无论采用哪种循环都要由循阶维护。[既有比较与限制](references/2026-10-18-architecture-checks.md#内核取舍的工程判断)
 
 更换 baseURL 不等于完成协议适配。参数、角色、工具格式、流事件、错误、用量和 reasoning 续接均需按实际端点核验。三协议的架构承诺与每个真实端点的互操作结果分别记录；不承诺任意兼容端点都支持所有高级能力。
 
 切换路线默认在工具请求已结清的步骤边界重建模型上下文。学生会话保持连续；旧端点的签名与 response ID 不直接带入新端点。重试、切路线和副作用恢复共享运行记录及预算。
 
 实时更新采用符合当前路线续接规则的方式：优先追加新的观察和工具结果；需要更换 system、工具集合或压缩历史时，使用端点明确支持的机制，或在完成工具往返后开始新续接段。运行时每步重新检查实际可用权限，不等于每步任意改写协议前缀。对部分 Messages 模型，前缀修改会影响旧 thinking 的有效性；实际第三方端点分别验证。[原生续接约束](https://platform.claude.com/docs/en/build-with-claude/preserved-thinking#keeping-the-prefix-unchanged)
+
+图像输入是首版必需能力。PDF 采用文档工具按需读页，返回文字、页图及绑定文档版本的页码引用；扫描页可先经视觉读取，确需搜索时再加 OCR。具体渲染库与执行位置归工具宿主议题，引用交互归工作区议题。真实 Agent 实现及能力边界见 [PDF 调查](references/2026-10-22-agent-pdf-capabilities-research.md)；当前图像互操作结果不等于 PDF 端到端验收。
 
 ## 交互式生成 UI
 

@@ -1,0 +1,1744 @@
+{
+  "status": "research-evidence-not-design-approval",
+  "runtime": "Node.js v26.0.0 built-in fetch; no SDK",
+  "recordedRequestCount": 58,
+  "additionalDiagnosticRequests": 1,
+  "records": [
+    {
+      "at": "2026-10-22T16:00:21.893Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": false,
+      "status": 400,
+      "errorCode": "invalid_request_error",
+      "ms": 170,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:21.899Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": false,
+      "status": 400,
+      "errorCode": "invalid_request_error",
+      "ms": 149,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:22.762Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "image-understanding",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 228,
+        "completion_tokens": 3,
+        "total_tokens": 231,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 228
+      },
+      "ms": 865,
+      "leftRightColorsMatched": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:22.848Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "image-understanding",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 228,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 3,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 231
+      },
+      "ms": 947,
+      "leftRightColorsMatched": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:22.872Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "structured-output-sample",
+      "ok": false,
+      "status": 400,
+      "errorCode": "invalid_request_error",
+      "ms": 110,
+      "schemaValid": false,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:22.946Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "invalid-output-schema",
+      "ok": false,
+      "status": 400,
+      "errorCode": "invalid_request_error",
+      "ms": 74,
+      "invalidSchemaRejected": true,
+      "run": "forced-tool-initial",
+      "interpretation": "valid schema was also rejected; this does not prove strict schema validation"
+    },
+    {
+      "at": "2026-10-22T16:00:23.669Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "client-cancellation",
+      "ok": true,
+      "status": 200,
+      "cancelledAfterText": true,
+      "serverCancellation": "unknown",
+      "usageAfterCancellation": "unknown",
+      "events": [
+        "chat.chunk"
+      ],
+      "ms": 722,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:23.762Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": false,
+      "status": 400,
+      "errorCode": "invalid_request_error",
+      "ms": 92,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:23.804Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "structured-output-sample",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 69,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 7,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 76
+      },
+      "ms": 956,
+      "schemaValid": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:23.866Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "invalid-output-schema",
+      "ok": false,
+      "status": 400,
+      "errorCode": "invalid_request_error",
+      "ms": 61,
+      "invalidSchemaRejected": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:24.745Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "image-understanding",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 228,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 3
+      },
+      "ms": 982,
+      "leftRightColorsMatched": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:24.775Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "client-cancellation",
+      "ok": true,
+      "status": 200,
+      "cancelledAfterText": true,
+      "serverCancellation": "unknown",
+      "usageAfterCancellation": "unknown",
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.output_text.delta"
+      ],
+      "ms": 908,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:25.783Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "structured-output-sample",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 13,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 11
+      },
+      "ms": 1038,
+      "schemaValid": false,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:26.604Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "invalid-output-schema",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 13,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 10
+      },
+      "ms": 821,
+      "invalidSchemaRejected": false,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:27.460Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "client-cancellation",
+      "ok": true,
+      "status": 200,
+      "cancelledAfterText": true,
+      "serverCancellation": "unknown",
+      "usageAfterCancellation": "unknown",
+      "events": [
+        "message_start",
+        "content_block_start",
+        "ping",
+        "content_block_delta"
+      ],
+      "ms": 856,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:34.353Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 32,
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.reasoning_summary_part.added",
+        "response.reasoning_summary_text.delta",
+        "response.reasoning_summary_text.done",
+        "response.reasoning_summary_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "usage": {
+        "input_tokens": 339,
+        "output_tokens": 71,
+        "total_tokens": 410,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 31
+        }
+      },
+      "ms": 6892,
+      "native": {
+        "types": [
+          "reasoning",
+          "function_call"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": true
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:34.368Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 13,
+      "events": [
+        "chat.chunk"
+      ],
+      "usage": {
+        "prompt_tokens": 340,
+        "completion_tokens": 39,
+        "total_tokens": 379,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 9592,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "tool_calls"
+        ],
+        "reasoningPresent": false,
+        "toolCount": 1
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:35.815Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 440,
+        "output_tokens": 13,
+        "total_tokens": 453,
+        "input_tokens_details": {
+          "cached_tokens": 256
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "ms": 1459,
+      "nonceMatched": true,
+      "native": {
+        "types": [
+          "message"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:36.851Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 133,
+        "completion_tokens": 82,
+        "total_tokens": 215,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 68,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 2483,
+      "nonceMatched": true,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content"
+        ],
+        "reasoningPresent": true,
+        "toolCount": 0
+      },
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:37.730Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "append-workspace-observation",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 487,
+        "output_tokens": 53,
+        "total_tokens": 540,
+        "input_tokens_details": {
+          "cached_tokens": 384
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 40
+        }
+      },
+      "ms": 1914,
+      "run": "forced-tool-initial",
+      "semanticAcceptance": "not-established; original text matcher was insufficient"
+    },
+    {
+      "at": "2026-10-22T16:00:38.858Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "append-workspace-observation",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 249,
+        "completion_tokens": 81,
+        "total_tokens": 330,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 128,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 67,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 2006,
+      "run": "forced-tool-initial",
+      "semanticAcceptance": "not-established; original text matcher was insufficient"
+    },
+    {
+      "at": "2026-10-22T16:00:39.892Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "image-understanding",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 228,
+        "output_tokens": 3,
+        "total_tokens": 231,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "ms": 2161,
+      "leftRightColorsMatched": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:41.785Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "image-understanding",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 254,
+        "completion_tokens": 262,
+        "total_tokens": 516,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 258,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 2926,
+      "leftRightColorsMatched": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:41.836Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "structured-output-sample",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 69,
+        "output_tokens": 7,
+        "total_tokens": 76,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "ms": 1942,
+      "schemaValid": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:43.774Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "structured-output-sample",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 103,
+        "completion_tokens": 25,
+        "total_tokens": 128,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 18,
+          "image_tokens": 0
+        },
+        "cache_creation_input_tokens": 0
+      },
+      "ms": 1988,
+      "schemaValid": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:45.778Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "invalid-output-schema",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 82,
+        "completion_tokens": 60,
+        "total_tokens": 142,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 53,
+          "image_tokens": 0
+        },
+        "cache_creation_input_tokens": 0
+      },
+      "ms": 2004,
+      "invalidSchemaRejected": false,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:48.381Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "client-cancellation",
+      "ok": true,
+      "status": 200,
+      "cancelledAfterText": true,
+      "serverCancellation": "unknown",
+      "usageAfterCancellation": "unknown",
+      "events": [
+        "chat.chunk"
+      ],
+      "ms": 2602,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:51.399Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "invalid-output-schema",
+      "ok": false,
+      "status": 400,
+      "errorCode": "invalid_request_error",
+      "ms": 9563,
+      "invalidSchemaRejected": true,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:00:52.822Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "client-cancellation",
+      "ok": true,
+      "status": 200,
+      "cancelledAfterText": true,
+      "serverCancellation": "unknown",
+      "usageAfterCancellation": "unknown",
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.output_text.delta"
+      ],
+      "ms": 1423,
+      "run": "forced-tool-initial"
+    },
+    {
+      "at": "2026-10-22T16:02:04.803Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 22,
+      "events": [
+        "chat.chunk"
+      ],
+      "usage": {
+        "prompt_tokens": 339,
+        "completion_tokens": 48,
+        "total_tokens": 387,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 339
+      },
+      "ms": 991,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "tool_calls"
+        ],
+        "reasoningPresent": false,
+        "toolCount": 1
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:04.812Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 30,
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.output_text.delta",
+        "response.output_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "usage": {
+        "input_tokens": 339,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 48,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 387
+      },
+      "ms": 932,
+      "native": {
+        "types": [
+          "message",
+          "function_call"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:05.327Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 417,
+        "completion_tokens": 13,
+        "total_tokens": 430,
+        "prompt_tokens_details": {
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 256,
+        "prompt_cache_miss_tokens": 161
+      },
+      "ms": 519,
+      "nonceMatched": true,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content"
+        ],
+        "reasoningPresent": false,
+        "toolCount": 0
+      },
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:05.375Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 414,
+        "input_tokens_details": {
+          "cached_tokens": 256
+        },
+        "output_tokens": 12,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 426
+      },
+      "ms": 563,
+      "nonceMatched": true,
+      "native": {
+        "types": [
+          "message"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:06.071Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "append-workspace-observation",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 464,
+        "completion_tokens": 62,
+        "total_tokens": 526,
+        "prompt_tokens_details": {
+          "cached_tokens": 256
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 49
+        },
+        "prompt_cache_hit_tokens": 256,
+        "prompt_cache_miss_tokens": 208
+      },
+      "ms": 744,
+      "run": "auto-tool-followup",
+      "semanticAcceptance": "not-established; original text matcher was insufficient"
+    },
+    {
+      "at": "2026-10-22T16:02:06.744Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "append-workspace-observation",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 460,
+        "input_tokens_details": {
+          "cached_tokens": 256
+        },
+        "output_tokens": 132,
+        "output_tokens_details": {
+          "reasoning_tokens": 88
+        },
+        "total_tokens": 592
+      },
+      "ms": 1368,
+      "run": "auto-tool-followup",
+      "semanticAcceptance": "not-established; original text matcher was insufficient"
+    },
+    {
+      "at": "2026-10-22T16:02:07.087Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 38,
+      "events": [
+        "message_start",
+        "content_block_start",
+        "ping",
+        "content_block_delta",
+        "content_block_stop",
+        "message_delta",
+        "message_stop"
+      ],
+      "usage": {
+        "input_tokens": 211,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 128,
+        "output_tokens": 59
+      },
+      "ms": 1015,
+      "native": {
+        "types": [
+          "thinking",
+          "tool_use"
+        ],
+        "signaturePresent": true,
+        "reasoningPresent": true
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:07.932Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 171,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 256,
+        "output_tokens": 14
+      },
+      "ms": 845,
+      "nonceMatched": true,
+      "native": {
+        "types": [
+          "thinking",
+          "text"
+        ],
+        "signaturePresent": true,
+        "reasoningPresent": true
+      },
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:09.757Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "append-workspace-observation",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 219,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 256,
+        "output_tokens": 334
+      },
+      "ms": 1824,
+      "run": "auto-tool-followup",
+      "semanticAcceptance": "not-established; original text matcher was insufficient"
+    },
+    {
+      "at": "2026-10-22T16:02:09.782Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 37,
+      "events": [
+        "chat.chunk"
+      ],
+      "usage": {
+        "prompt_tokens": 340,
+        "completion_tokens": 112,
+        "total_tokens": 452,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 72,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 3034,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content",
+          "tool_calls"
+        ],
+        "reasoningPresent": true,
+        "toolCount": 1
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:11.453Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 482,
+        "completion_tokens": 15,
+        "total_tokens": 497,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 1671,
+      "nonceMatched": true,
+      "native": {
+        "fields": [
+          "role",
+          "content"
+        ],
+        "reasoningPresent": false,
+        "toolCount": 0
+      },
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:11.747Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 17,
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.output_item.done",
+        "response.completed"
+      ],
+      "usage": {
+        "input_tokens": 339,
+        "output_tokens": 40,
+        "total_tokens": 379,
+        "input_tokens_details": {
+          "cached_tokens": 256
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "ms": 1990,
+      "native": {
+        "types": [
+          "function_call"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:13.127Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "append-workspace-observation",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 532,
+        "completion_tokens": 68,
+        "total_tokens": 600,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 384,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 53,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 1673,
+      "run": "auto-tool-followup",
+      "semanticAcceptance": "not-established; original text matcher was insufficient"
+    },
+    {
+      "at": "2026-10-22T16:02:13.427Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 407,
+        "output_tokens": 13,
+        "total_tokens": 420,
+        "input_tokens_details": {
+          "cached_tokens": 256
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "ms": 1679,
+      "nonceMatched": true,
+      "native": {
+        "types": [
+          "message"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "run": "auto-tool-followup"
+    },
+    {
+      "at": "2026-10-22T16:02:15.019Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "append-workspace-observation",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 454,
+        "output_tokens": 13,
+        "total_tokens": 467,
+        "input_tokens_details": {
+          "cached_tokens": 384
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "ms": 1592,
+      "run": "auto-tool-followup",
+      "semanticAcceptance": "not-established; original text matcher was insufficient"
+    },
+    {
+      "at": "2026-10-22T16:08:00.336Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 354,
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.reasoning_text.delta",
+        "response.reasoning_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "usage": {
+        "input_tokens": 403,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 373,
+        "output_tokens_details": {
+          "reasoning_tokens": 333
+        },
+        "total_tokens": 776
+      },
+      "ms": 2029,
+      "native": {
+        "types": [
+          "reasoning",
+          "function_call"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": true
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "nonempty-reasoning-followup"
+    },
+    {
+      "at": "2026-10-22T16:08:00.477Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 418,
+      "events": [
+        "chat.chunk"
+      ],
+      "usage": {
+        "prompt_tokens": 403,
+        "completion_tokens": 445,
+        "total_tokens": 848,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 405
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 403
+      },
+      "ms": 2194,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content",
+          "tool_calls"
+        ],
+        "reasoningPresent": true,
+        "toolCount": 1
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "nonempty-reasoning-followup"
+    },
+    {
+      "at": "2026-10-22T16:08:01.185Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 876,
+        "completion_tokens": 11,
+        "total_tokens": 887,
+        "prompt_tokens_details": {
+          "cached_tokens": 640
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 640,
+        "prompt_cache_miss_tokens": 236
+      },
+      "ms": 708,
+      "nonceMatched": true,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content"
+        ],
+        "reasoningPresent": false,
+        "toolCount": 0
+      },
+      "run": "nonempty-reasoning-followup"
+    },
+    {
+      "at": "2026-10-22T16:08:01.443Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 807,
+        "input_tokens_details": {
+          "cached_tokens": 640
+        },
+        "output_tokens": 14,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 821
+      },
+      "ms": 1101,
+      "nonceMatched": true,
+      "native": {
+        "types": [
+          "message"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "run": "nonempty-reasoning-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:09.571Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 29,
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.output_text.delta",
+        "response.output_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "usage": {
+        "input_tokens": 358,
+        "input_tokens_details": {
+          "cached_tokens": 128
+        },
+        "output_tokens": 47,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 405
+      },
+      "ms": 762,
+      "native": {
+        "types": [
+          "message",
+          "function_call"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:09.602Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 22,
+      "events": [
+        "chat.chunk"
+      ],
+      "usage": {
+        "prompt_tokens": 358,
+        "completion_tokens": 49,
+        "total_tokens": 407,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 9
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 230
+      },
+      "ms": 819,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content",
+          "tool_calls"
+        ],
+        "reasoningPresent": true,
+        "toolCount": 1
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:10.284Z",
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 658,
+        "input_tokens_details": {
+          "cached_tokens": 384
+        },
+        "output_tokens": 46,
+        "output_tokens_details": {
+          "reasoning_tokens": 13
+        },
+        "total_tokens": 704
+      },
+      "ms": 702,
+      "nonceMatched": true,
+      "toolImageColorsMatched": true,
+      "imagePlacement": "native-tool-result-image",
+      "native": {
+        "types": [
+          "reasoning",
+          "message"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": true
+      },
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:10.467Z",
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 664,
+        "completion_tokens": 38,
+        "total_tokens": 702,
+        "prompt_tokens_details": {
+          "cached_tokens": 384
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 13
+        },
+        "prompt_cache_hit_tokens": 384,
+        "prompt_cache_miss_tokens": 280
+      },
+      "ms": 865,
+      "nonceMatched": true,
+      "toolImageColorsMatched": true,
+      "imagePlacement": "paired-tool-result-plus-adjacent-user-image",
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content"
+        ],
+        "reasoningPresent": true,
+        "toolCount": 0
+      },
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:11.151Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 25,
+      "events": [
+        "message_start",
+        "content_block_start",
+        "ping",
+        "content_block_delta",
+        "content_block_stop",
+        "message_delta",
+        "message_stop"
+      ],
+      "usage": {
+        "input_tokens": 230,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 128,
+        "output_tokens": 46
+      },
+      "ms": 867,
+      "native": {
+        "types": [
+          "thinking",
+          "tool_use"
+        ],
+        "signaturePresent": true,
+        "reasoningPresent": true
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:11.886Z",
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 270,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 384,
+        "output_tokens": 50
+      },
+      "ms": 735,
+      "nonceMatched": true,
+      "toolImageColorsMatched": true,
+      "imagePlacement": "native-tool-result-image",
+      "native": {
+        "types": [
+          "thinking",
+          "text"
+        ],
+        "signaturePresent": true,
+        "reasoningPresent": true
+      },
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:13.343Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 20,
+      "events": [
+        "chat.chunk"
+      ],
+      "usage": {
+        "prompt_tokens": 359,
+        "completion_tokens": 51,
+        "total_tokens": 410,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 2876,
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "tool_calls"
+        ],
+        "reasoningPresent": false,
+        "toolCount": 1
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:14.682Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "streamed-tool-request",
+      "ok": true,
+      "status": 200,
+      "terminal": true,
+      "eventCount": 24,
+      "events": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.output_text.delta",
+        "response.output_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "usage": {
+        "input_tokens": 358,
+        "output_tokens": 46,
+        "total_tokens": 404,
+        "input_tokens_details": {
+          "cached_tokens": 256
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "ms": 2795,
+      "native": {
+        "types": [
+          "message",
+          "function_call"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": false
+      },
+      "callIdentityPresent": true,
+      "toolSchemaSampleValid": true,
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:15.255Z",
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 667,
+        "completion_tokens": 49,
+        "total_tokens": 716,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 256,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": {
+          "audio_tokens": 0,
+          "reasoning_tokens": 24,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        }
+      },
+      "ms": 1911,
+      "nonceMatched": true,
+      "toolImageColorsMatched": true,
+      "imagePlacement": "paired-tool-result-plus-adjacent-user-image",
+      "native": {
+        "fields": [
+          "role",
+          "content",
+          "reasoning_content"
+        ],
+        "reasoningPresent": true,
+        "toolCount": 0
+      },
+      "run": "tool-produced-image-followup"
+    },
+    {
+      "at": "2026-10-22T16:16:16.793Z",
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "test": "tool-result-native-replay",
+      "ok": true,
+      "status": 200,
+      "usage": {
+        "input_tokens": 697,
+        "output_tokens": 46,
+        "total_tokens": 743,
+        "input_tokens_details": {
+          "cached_tokens": 256
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 20
+        }
+      },
+      "ms": 2110,
+      "nonceMatched": true,
+      "toolImageColorsMatched": true,
+      "imagePlacement": "native-tool-result-image",
+      "native": {
+        "types": [
+          "reasoning",
+          "message"
+        ],
+        "signaturePresent": false,
+        "reasoningPresent": true
+      },
+      "run": "tool-produced-image-followup"
+    }
+  ]
+}
