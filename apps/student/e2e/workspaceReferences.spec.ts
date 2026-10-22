@@ -322,10 +322,11 @@ test('长代码全选后滚到中段，可见选区仍保留询问入口', async
   expect(await refs(page).first().locator('pre').textContent()).toContain('// middle-scroll 99')
 })
 
-test('长单行代码全选后横向滚到中段，可见选区仍保留询问入口', async ({ page }) => {
+for (const lineCount of [1, 3]) test(`${lineCount} 行超宽代码全选后横向滚到中段，可见选区仍保留询问入口`, async ({ page }) => {
   await start(page)
   await page.getByLabel('demo.sv', { exact: true }).scrollIntoViewIfNeeded()
-  const text = '// horizontal-start ' + 'selected_code '.repeat(100) + 'horizontal-end'
+  const text = Array.from({ length: lineCount }, (_, index) =>
+    `// horizontal-start ${index} ` + 'selected_code '.repeat(100) + 'horizontal-end').join('\n')
   await selectCode(page)
   await page.keyboard.insertText(text)
   await expect(page.locator('.monaco-editor .view-lines')).toContainText('horizontal-end')

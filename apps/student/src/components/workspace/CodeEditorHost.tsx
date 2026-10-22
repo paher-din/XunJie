@@ -197,17 +197,22 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
         return { left: box.left + visible.left, right: box.left + visible.left,
           top: box.top + Math.max(0, visible.top), bottom: box.top + Math.min(box.height, visible.top + visible.height) }
       }
-      // getVisibleRanges ignores horizontal scrolling. A selected display line can
-      // cross the entire content viewport with neither endpoint inside it.
+      // Visible ranges exclude folded model lines but ignore horizontal scrolling.
+      // Clip each selected line to the content viewport, including interior lines.
       for (const range of visibleSelections) {
         if (!range) continue
-        const start = current.editor.getScrolledVisiblePosition(range.getStartPosition())
-        const end = current.editor.getScrolledVisiblePosition(range.getEndPosition())
-        if (!start || !end || start.top !== end.top || start.top + start.height <= 0 || start.top >= box.height) continue
-        const left = Math.max(layout.contentLeft, Math.min(start.left, end.left))
-        const right = Math.min(layout.contentLeft + layout.contentWidth, Math.max(start.left, end.left))
-        if (left < right) return { left: box.left + left, right: box.left + right,
-          top: box.top + Math.max(0, start.top), bottom: box.top + Math.min(box.height, start.top + start.height) }
+        for (let lineNumber = range.startLineNumber; lineNumber <= range.endLineNumber; lineNumber++) {
+          const startColumn = lineNumber === range.startLineNumber ? range.startColumn : 1
+          const endColumn = lineNumber === range.endLineNumber ? range.endColumn : current.model.getLineMaxColumn(lineNumber)
+          if (startColumn >= endColumn) continue
+          const start = current.editor.getScrolledVisiblePosition({ lineNumber, column: startColumn })
+          const end = current.editor.getScrolledVisiblePosition({ lineNumber, column: endColumn })
+          if (!start || !end || start.top !== end.top || start.top + start.height <= 0 || start.top >= box.height) continue
+          const left = Math.max(layout.contentLeft, Math.min(start.left, end.left))
+          const right = Math.min(layout.contentLeft + layout.contentWidth, Math.max(start.left, end.left))
+          if (left < right) return { left: box.left + left, right: box.left + right,
+            top: box.top + Math.max(0, start.top), bottom: box.top + Math.min(box.height, start.top + start.height) }
+        }
       }
       return null
     },
