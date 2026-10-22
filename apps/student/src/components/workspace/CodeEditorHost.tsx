@@ -68,6 +68,8 @@ export interface CodeEditorHandle {
   saveViewState(): CodeEditorViewState
   /** 只读捕获当前单选区与原文，不暴露 Monaco model 作为服务端身份。 */
   captureSelection(): CodeSelectionResult
+  /** 当前选区端点的视口几何；只读，不移动光标或滚动。 */
+  selectionClientRect?(): { left: number; top: number; right: number; bottom: number } | null
   /** 仅定位当前同一实例/原文；不打开别的文件，不修改正文或保存。 */
   revealOriginalRange(location: CodeEditorLocation): { ok: true } | { ok: false; reason: string }
 }
@@ -94,7 +96,8 @@ export interface CodeEditorHostProps {
   readOnlyReason: string | null
   onTextChange: (fileId: string, text: string) => void
   onCursorChange: (position: { line: number; column: number } | null) => void
-  onSelectionChange?: (result: CodeSelectionResult) => void
+  /** Interaction is present only for an explicit Monaco mouse/keyboard selection, never focus or API restore. */
+  onSelectionChange?: (result: CodeSelectionResult, interaction?: 'mouse' | 'keyboard') => void
   diagnostics?: EditorDiagnosticMarkers
 }
 
@@ -148,7 +151,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     return { ok: true, selection: Object.freeze({ workspaceKey: current.identity.workspaceKey,
       fileId: current.identity.fileId!, originalText, modelStart, modelEnd }) }
   }
-  const notifySelection = () => selectionRef.current?.(captureSelection())
+  const notifySelection = (interaction?: 'mouse' | 'keyboard') => selectionRef.current?.(captureSelection(), interaction)
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -169,6 +172,21 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       return view
     },
     captureSelection,
+    selectionClientRect: () => {
+      const current = currentOriginal(), host = hostRef.current
+      if (!current || !host) return null
+      const selection = current.editor.getSelection()
+      if (!selection || selection.isEmpty()) return null
+      const box = host.getBoundingClientRect()
+      for (const position of [selection.getPosition(), selection.getSelectionStart()]) {
+        const visible = current.editor.getScrolledVisiblePosition(position)
+        if (!visible || visible.top + visible.height < 0 || visible.top > box.height ||
+          visible.left < 0 || visible.left > box.width) continue
+        return { left: box.left + visible.left, right: box.left + visible.left,
+          top: box.top + visible.top, bottom: box.top + visible.top + visible.height }
+      }
+      return null
+    },
     revealOriginalRange: (location) => {
       const current = currentOriginal()
       if (!current || location.workspaceKey !== current.identity.workspaceKey ||
@@ -246,7 +264,10 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
           editor.onDidChangeModel(watchModel),
           { dispose: () => contentSubscription?.dispose() },
         )
-        disposables.push(editor.onDidChangeCursorSelection(notifySelection))
+        disposables.push(editor.onDidChangeCursorSelection(event => notifySelection(
+          event.reason === monaco.editor.CursorChangeReason.Explicit && (event.source === 'mouse' || event.source === 'keyboard')
+            ? event.source : undefined,
+        )))
         disposables.push(
           editor.onDidChangeCursorPosition((event) => {
             const model = editor?.getModel()

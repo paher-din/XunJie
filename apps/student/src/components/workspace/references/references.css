@@ -1,0 +1,24 @@
+.wr-toolbar { position: fixed; z-index: 100; max-width: calc(100vw - 16px); border: 1px solid var(--line); border-radius: 12px; background: var(--raised); box-shadow: var(--shadow-menu); padding: 6px; }
+.wr-toolbar button, .wr-button, .wr-composer button { min-height: 32px; padding: 4px 12px; color: var(--ink-soft); background: var(--paper); border: 1px solid var(--line-strong); border-radius: 8px; font: 400 13px/1.5 var(--font-sans); cursor: pointer; }
+.wr-toolbar button:hover, .wr-button:hover, .wr-composer button:hover { background: var(--hover-bg); }
+.wr-toolbar button:focus-visible, .wr-button:focus-visible, .wr-composer button:focus-visible, .wr-composer textarea:focus-visible, .wr-text-source:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wr-text-source { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.9; color: var(--ink); user-select: text; }
+.wr-code-source { height: 320px; min-width: 0; }
+.wr-code-source .cw-editor-wrap { height: 100%; }
+.wr-composer { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--panel-shadow); min-width: 0; color: var(--ink); }
+.wr-composer header, .wr-reference-heading, .wr-send { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wr-composer h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.wr-references { margin: 16px 0; }
+.wr-references ol { padding: 0; margin: 0; list-style: none; display: grid; gap: 8px; max-height: 36vh; overflow: auto; }
+.wr-references li { border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-width: 0; }
+.wr-reference-heading button:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent-deep); }
+.wr-reference-heading button:last-child { flex-shrink: 0; }
+.wr-references pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; margin: 8px 0 0; font: 400 13px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wr-composer label { display: block; margin-bottom: 8px; font-size: 13px; }
+.wr-composer textarea { box-sizing: border-box; width: 100%; min-height: 120px; resize: vertical; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); padding: 12px; color: var(--ink); font: 400 15px/1.7 var(--font-sans); }
+.wr-composer .wr-primary { background: var(--primary); color: var(--on-primary); }
+.wr-composer .wr-primary:hover { background: var(--primary-hover); }
+.wr-composer button:disabled { cursor: default; opacity: .55; }
+.wr-send { margin-top: 10px; flex-wrap: wrap; }
+.wr-hint, .wr-notice { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.wr-notice { margin-bottom: 0; overflow-wrap: anywhere; }

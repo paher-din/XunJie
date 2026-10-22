@@ -1,0 +1,28 @@
+.wr-preview { box-sizing: border-box; height: 100dvh; overflow: auto; background: var(--shell-bg); color: var(--ink); padding: 24px; font: 400 15px/1.5 var(--font-sans); }
+.wr-preview h1 { font: 600 28px/1.5 'LXGW WenKai', 'Kaiti SC', serif; margin: 4px 0; }
+.wr-preview h2 { font: 600 17px/1.5 'LXGW WenKai', 'Kaiti SC', serif; margin: 0 0 12px; }
+.wr-preview h3 { font: 400 17px/1.5 'LXGW WenKai', 'Kaiti SC', serif; }
+.wr-preview-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.wr-preview-top p { color: var(--muted); font-size: 13px; margin: 4px 0; }
+.wr-preview label { display: grid; gap: 6px; font-size: 13px; }
+.wr-preview input, .wr-preview select { box-sizing: border-box; min-width: 0; max-width: 100%; height: 32px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 4px 8px; background: var(--paper); color: var(--ink); font: inherit; }
+.wr-preview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 24px; align-items: start; }
+.wr-preview-materials, .wr-preview-side { display: grid; gap: 16px; min-width: 0; }
+.wr-preview-side { position: sticky; top: 0; }
+.wr-preview-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--panel-shadow); min-width: 0; }
+.wr-preview-card header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.wr-preview-card header span { color: var(--muted); font-size: 12px; }
+.wr-preview-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.wr-preview-actions button { min-height: 32px; padding: 4px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink-soft); font: 400 13px/1.5 var(--font-sans); cursor: pointer; }
+.wr-preview-actions button:hover { background: var(--hover-bg); }
+.wr-preview button:focus-visible, .wr-preview select:focus-visible, .wr-preview input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wr-preview-receiver p { font-size: 13px; color: var(--muted); }
+.wr-preview-receiver pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; font: 400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wr-preview-receiver .wr-preview-actions { margin-top: 12px; }
+@media (max-width: 800px) {
+  .wr-preview { padding: 12px; }
+  .wr-preview-top { flex-direction: column; gap: 12px; }
+  .wr-preview-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .wr-preview-side { position: static; }
+  .wr-preview-card { padding: 16px; }
+}
