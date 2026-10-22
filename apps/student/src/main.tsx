@@ -17,6 +17,8 @@ const IconBoardPage = lazy(() => import('./icons/IconBoard'))
 const BrandBoardPage = lazy(() => import('./brand/BrandBoard'))
 const TeacherApp = lazy(() => import('./teacher/TeacherApp'))
 const TeacherPreview = import.meta.env.DEV ? lazy(() => import('./teacher/TeacherPreview')) : null
+const WorkspaceReferencesPreview = import.meta.env.DEV ? lazy(() => import('./pages/previews/WorkspaceReferencesPreview')) : null
+const GuidancePreview = import.meta.env.DEV ? lazy(() => import('./pages/previews/GuidancePreview')) : null
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
@@ -24,6 +26,8 @@ const queryClient = new QueryClient({
 
 // hash 路由：桌面宿主直接加载静态资源，无需服务端路由回退。
 const router = createHashRouter([
+  ...(WorkspaceReferencesPreview ? [{ path: 'dev/workspace-references', element: <Suspense fallback={<div>加载选区引用验收页…</div>}><WorkspaceReferencesPreview /></Suspense> }] : []),
+  ...(GuidancePreview ? [{ path: 'dev/guidance', element: <Suspense fallback={<div>加载引导展示验收页…</div>}><GuidancePreview /></Suspense> }] : []),
   ...(TeacherPreview ? [{ path: 'teacher/preview/*', element: <Suspense fallback={<div>加载教师预览…</div>}><TeacherPreview /></Suspense> }] : []),
   { path: 'teacher/*', element: <SessionEntry><Suspense fallback={<div>加载教师工作台…</div>}><TeacherApp /></Suspense></SessionEntry> },
   { path: 'icons', element: <Suspense fallback={<div>加载图标看板…</div>}><IconBoardPage /></Suspense> },

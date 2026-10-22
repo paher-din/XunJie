@@ -1,0 +1,26 @@
+.guidance-preview { height: 100dvh; overflow: auto; padding: 24px; background: var(--shell-bg); color: var(--ink); font: 15px/1.5 var(--font-sans); box-sizing: border-box; }
+.guidance-preview h1 { font-size: 28px; margin: 0; }
+.guidance-preview h2 { font-size: 17px; }
+.guidance-preview header p { color: var(--muted); margin: 8px 0 16px; }
+.guidance-preview-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+.guidance-preview-controls button, .guidance-preview-controls select, .guidance-preview-target { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink-soft); padding: 6px 12px; min-height: 32px; font: 13px/1.5 var(--font-sans); cursor: pointer; }
+.guidance-preview-controls label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.guidance-preview button:hover { background: var(--hover-bg); }
+.guidance-preview :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.guidance-preview-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; }
+.guidance-preview-stage { position: relative; height: 560px; min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: var(--panel-shadow); }
+.guidance-preview-scroll { height: 100%; overflow: auto; border-radius: inherit; }
+.guidance-preview-work { min-height: 1100px; padding: 20px; }
+.guidance-preview-work label, .guidance-preview-card label { display: grid; gap: 8px; }
+.guidance-preview input, .guidance-preview-card input { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--paper); color: var(--ink); font: 13px/1.5 var(--font-sans); }
+.guidance-preview-target { display: block; white-space: nowrap; }
+.guidance-preview-work p { color: var(--muted); margin-top: 80px; font-size: 13px; }
+.guidance-preview-receipts { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); min-width: 0; }
+.guidance-preview-receipts p { font-size: 13px; }
+.guidance-preview-receipts ol { padding-left: 20px; font-size: 12px; overflow-wrap: anywhere; }
+.guidance-preview-card p { margin: 8px 0; }
+@media (max-width: 760px) {
+  .guidance-preview { padding: 12px; }
+  .guidance-preview-layout { grid-template-columns: minmax(0, 1fr); }
+  .guidance-preview-stage { height: 480px; }
+}

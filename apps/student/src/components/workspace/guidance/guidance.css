@@ -1,0 +1,26 @@
+.guidance-scope { position: absolute; inset: 0; pointer-events: none; }
+.guidance-presentation { position: fixed; z-index: 56; width: 320px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; box-sizing: border-box; }
+.guidance-presentation.guidance-card { width: 400px; }
+.guidance-presentation[data-state='quiet'] { width: 56px; }
+.guidance-bubble { display: flex; flex-direction: column; width: 100%; min-height: 0; overflow: hidden; pointer-events: auto; background: var(--inverse); color: var(--on-inverse); border-radius: 12px; box-shadow: var(--shadow-menu); font: 13px/1.7 var(--font-sans); }
+.guidance-card .guidance-bubble { background: var(--raised); color: var(--ink); border: 1px solid var(--line); }
+.guidance-content { padding: 14px 16px; min-height: 0; overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.guidance-content > * { max-width: 100%; }
+.guidance-label { font-size: 11px; margin-bottom: 6px; }
+.guidance-card .guidance-label { color: var(--muted); }
+.guidance-title { display: block; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.guidance-text { white-space: pre-wrap; }
+.guidance-status { margin-bottom: 6px; font-weight: 500; }
+.guidance-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 16px 14px; flex: 0 0 auto; max-height: 45%; overflow: auto; }
+.guidance-actions button { min-height: 32px; max-width: 100%; overflow-wrap: anywhere; padding: 6px 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink-soft); font: 500 13px/1.5 var(--font-sans); cursor: pointer; }
+.guidance-card .guidance-actions .guidance-primary { background: var(--primary); color: var(--on-primary); }
+.guidance-actions button:hover { background: var(--chip-bg); color: var(--ink); }
+.guidance-actions button:disabled { cursor: default; color: var(--muted); background: var(--chip-bg); }
+.guidance-companion { flex: 0 0 56px; width: 56px; height: 56px; padding: 0; border: 0; border-radius: 12px; background: none; box-shadow: none; pointer-events: auto; cursor: pointer; }
+.guidance-companion svg { width: 100%; height: 100%; }
+.guidance-companion[aria-hidden='true'] { pointer-events: none; cursor: default; }
+.guidance-presentation :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.guidance-companion:focus-visible { outline-color: var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .guidance-presentation, .guidance-presentation * { animation: none !important; transition: none !important; }
+}
