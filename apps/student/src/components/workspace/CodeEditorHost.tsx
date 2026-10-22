@@ -183,12 +183,12 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       const box = host.getBoundingClientRect()
       const layout = current.editor.getLayoutInfo()
       const positions = [selection.getPosition(), selection.getSelectionStart()]
+      const visibleSelections = current.editor.getVisibleRanges()
+        .map(range => selection.intersectRanges(range)).filter(range => range && !range.isEmpty())
       // Both original endpoints can be offscreen while the middle remains selected.
       // Monaco supplies model ranges even for wrapped/folded text; DOM rows are virtual.
-      for (const range of current.editor.getVisibleRanges()) {
-        const intersection = selection.intersectRanges(range)
-        if (intersection && !intersection.isEmpty())
-          positions.push(intersection.getStartPosition(), intersection.getEndPosition())
+      for (const range of visibleSelections) {
+        if (range) positions.push(range.getStartPosition(), range.getEndPosition())
       }
       for (const position of positions) {
         const visible = current.editor.getScrolledVisiblePosition(position)
@@ -196,6 +196,18 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
           visible.left < layout.contentLeft || visible.left > layout.contentLeft + layout.contentWidth) continue
         return { left: box.left + visible.left, right: box.left + visible.left,
           top: box.top + Math.max(0, visible.top), bottom: box.top + Math.min(box.height, visible.top + visible.height) }
+      }
+      // getVisibleRanges ignores horizontal scrolling. A selected display line can
+      // cross the entire content viewport with neither endpoint inside it.
+      for (const range of visibleSelections) {
+        if (!range) continue
+        const start = current.editor.getScrolledVisiblePosition(range.getStartPosition())
+        const end = current.editor.getScrolledVisiblePosition(range.getEndPosition())
+        if (!start || !end || start.top !== end.top || start.top + start.height <= 0 || start.top >= box.height) continue
+        const left = Math.max(layout.contentLeft, Math.min(start.left, end.left))
+        const right = Math.min(layout.contentLeft + layout.contentWidth, Math.max(start.left, end.left))
+        if (left < right) return { left: box.left + left, right: box.left + right,
+          top: box.top + Math.max(0, start.top), bottom: box.top + Math.min(box.height, start.top + start.height) }
       }
       return null
     },

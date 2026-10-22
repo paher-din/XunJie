@@ -321,3 +321,27 @@ test('长代码全选后滚到中段，可见选区仍保留询问入口', async
   expect(await refs(page).first().locator('pre').textContent()).toContain('// 样例代码：中文 🧩\r\nmodule demo;')
   expect(await refs(page).first().locator('pre').textContent()).toContain('// middle-scroll 99')
 })
+
+test('长单行代码全选后横向滚到中段，可见选区仍保留询问入口', async ({ page }) => {
+  await start(page)
+  await page.getByLabel('demo.sv', { exact: true }).scrollIntoViewIfNeeded()
+  const text = '// horizontal-start ' + 'selected_code '.repeat(100) + 'horizontal-end'
+  await selectCode(page)
+  await page.keyboard.insertText(text)
+  await expect(page.locator('.monaco-editor .view-lines')).toContainText('horizontal-end')
+  await selectCode(page)
+  const slider = page.locator('.monaco-editor .scrollbar.horizontal .slider').first()
+  const track = page.locator('.monaco-editor .scrollbar.horizontal').first()
+  const thumb = (await slider.boundingBox())!, rail = (await track.boundingBox())!
+  await page.mouse.move(thumb.x + thumb.width / 2, thumb.y + thumb.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(rail.x + rail.width / 2, thumb.y + thumb.height / 2, { steps: 12 })
+  await page.mouse.up()
+  const middle = (await slider.boundingBox())!
+  expect(middle.x).toBeGreaterThan(rail.x + rail.width / 4)
+  expect(middle.x + middle.width).toBeLessThan(rail.x + rail.width * 3 / 4)
+  await expect(ask(page)).toBeVisible()
+  await ask(page).click()
+  await expect(refs(page)).toHaveCount(1)
+  expect(await refs(page).first().locator('pre').textContent()).toBe(text)
+})
