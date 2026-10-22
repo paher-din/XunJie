@@ -68,7 +68,9 @@ export interface CodeEditorHandle {
   saveViewState(): CodeEditorViewState
   /** 只读捕获当前单选区与原文，不暴露 Monaco model 作为服务端身份。 */
   captureSelection(): CodeSelectionResult
-  /** 当前选区端点的视口几何；只读，不移动光标或滚动。 */
+  /** 正文输入是否拥有焦点；查找、替换和其他 widget 的输入不算正文。 */
+  hasTextFocus?(): boolean
+  /** 当前选区可见部分的视口几何；只读，不移动光标或滚动。 */
   selectionClientRect?(): { left: number; top: number; right: number; bottom: number } | null
   /** 仅定位当前同一实例/原文；不打开别的文件，不修改正文或保存。 */
   revealOriginalRange(location: CodeEditorLocation): { ok: true } | { ok: false; reason: string }
@@ -172,18 +174,28 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
       return view
     },
     captureSelection,
+    hasTextFocus: () => editorRef.current?.hasTextFocus() ?? false,
     selectionClientRect: () => {
       const current = currentOriginal(), host = hostRef.current
       if (!current || !host) return null
       const selection = current.editor.getSelection()
       if (!selection || selection.isEmpty()) return null
       const box = host.getBoundingClientRect()
-      for (const position of [selection.getPosition(), selection.getSelectionStart()]) {
+      const layout = current.editor.getLayoutInfo()
+      const positions = [selection.getPosition(), selection.getSelectionStart()]
+      // Both original endpoints can be offscreen while the middle remains selected.
+      // Monaco supplies model ranges even for wrapped/folded text; DOM rows are virtual.
+      for (const range of current.editor.getVisibleRanges()) {
+        const intersection = selection.intersectRanges(range)
+        if (intersection && !intersection.isEmpty())
+          positions.push(intersection.getStartPosition(), intersection.getEndPosition())
+      }
+      for (const position of positions) {
         const visible = current.editor.getScrolledVisiblePosition(position)
-        if (!visible || visible.top + visible.height < 0 || visible.top > box.height ||
-          visible.left < 0 || visible.left > box.width) continue
+        if (!visible || visible.top + visible.height <= 0 || visible.top >= box.height ||
+          visible.left < layout.contentLeft || visible.left > layout.contentLeft + layout.contentWidth) continue
         return { left: box.left + visible.left, right: box.left + visible.left,
-          top: box.top + visible.top, bottom: box.top + visible.top + visible.height }
+          top: box.top + Math.max(0, visible.top), bottom: box.top + Math.min(box.height, visible.top + visible.height) }
       }
       return null
     },

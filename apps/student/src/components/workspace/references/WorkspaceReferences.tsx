@@ -162,7 +162,7 @@ export function WorkspaceReferenceList() {
         <div className="wr-reference-heading"><button type="button" onClick={() => locate(ref)}
           aria-label={`定位引用 ${index + 1}：${ref.sourceName}`}>{ref.sourceName}</button>
           <button type="button" aria-label={`移除引用 ${index + 1}`} onClick={() => remove(ref.id)}>移除</button></div>
-        <pre>{ref.text}</pre>
+        <pre data-kind={ref.kind}>{ref.text}</pre>
       </li>)}</ol>}
   </section>
 }

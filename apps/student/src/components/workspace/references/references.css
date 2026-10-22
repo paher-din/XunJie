@@ -13,7 +13,8 @@
 .wr-references li { border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-width: 0; }
 .wr-reference-heading button:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent-deep); }
 .wr-reference-heading button:last-child { flex-shrink: 0; }
-.wr-references pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; margin: 8px 0 0; font: 400 13px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wr-references pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; margin: 8px 0 0; font: 400 13px/1.7 var(--font-sans); }
+.wr-references pre[data-kind="code"] { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .wr-composer label { display: block; margin-bottom: 8px; font-size: 13px; }
 .wr-composer textarea { box-sizing: border-box; width: 100%; min-height: 120px; resize: vertical; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); padding: 12px; color: var(--ink); font: 400 15px/1.7 var(--font-sans); }
 .wr-composer .wr-primary { background: var(--primary); color: var(--on-primary); }

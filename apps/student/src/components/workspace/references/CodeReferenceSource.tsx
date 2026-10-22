@@ -21,9 +21,9 @@ export function CodeReferenceSource({ sourceName, ...props }: CodeReferenceSourc
   const { workspaceKey, register, select, clearSelection } = useWorkspaceReferences()
   const editor = useRef<CodeEditorHandle>(null), root = useRef<HTMLDivElement>(null)
   const latest = useRef({ props, sourceName }); latest.current = { props, sourceName }
-  const gesture = useRef<{ fileId: string | null; token: object; kind: 'mouse' | 'keyboard'; changed: boolean } | undefined>(undefined), frame = useRef(0)
+  const gesture = useRef<{ fileId: string | null; token: object; kind: 'mouse' | 'keyboard'; changed: boolean; selectAll?: boolean } | undefined>(undefined), frame = useRef(0)
   const capture = (result?: CodeSelectionResult, committed?: object, interaction?: 'mouse' | 'keyboard') => {
-    if (gesture.current?.kind === 'mouse' && interaction === 'mouse') gesture.current.changed = true
+    if (gesture.current && gesture.current.kind === interaction) gesture.current.changed = true
     const current = latest.current
     const candidate = codeReferenceSelection(result ?? editor.current?.captureSelection() ?? { ok: false, reason: '' },
       current.sourceName, () => editor.current?.selectionClientRect?.() ?? null)
@@ -49,8 +49,10 @@ export function CodeReferenceSource({ sourceName, ...props }: CodeReferenceSourc
     const completed = gesture.current
     if (!completed) return
     gesture.current = undefined
-    // Scrollbars, minimap and focus clicks do not constitute a new selection.
-    if (completed.kind === 'mouse' && !completed.changed) return
+    // Require Monaco's explicit selection event, except reselecting the same full text.
+    // Focus checks also exclude find/replace and embedded widget inputs.
+    if (completed.kind === 'keyboard' && !editor.current?.hasTextFocus?.()) return
+    if (!completed.changed && !completed.selectAll) return
     cancelAnimationFrame(frame.current)
     frame.current = requestAnimationFrame(() => {
       if (latest.current.props.fileId === completed.fileId) captureRef.current(undefined, completed.token)
@@ -68,8 +70,13 @@ export function CodeReferenceSource({ sourceName, ...props }: CodeReferenceSourc
   }, [props.fileId])
   return <div ref={root} className="wr-code-source" aria-label={sourceName}
     onKeyUpCapture={finish} onPointerDownCapture={() => { gesture.current = { fileId: props.fileId, token: {}, kind: 'mouse', changed: false } }} onKeyDownCapture={event => {
-      if ((event.shiftKey && /^(Arrow|Home|End|Page)/.test(event.key)) || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a'))
-        gesture.current = { fileId: props.fileId, token: {}, kind: 'keyboard', changed: false }
+      if (!editor.current?.hasTextFocus?.() || event.nativeEvent.isComposing) {
+        gesture.current = undefined
+        return
+      }
+      const selectAll = (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'a'
+      if ((event.shiftKey && /^(Arrow|Home|End|Page)/.test(event.key)) || selectAll)
+        gesture.current = { fileId: props.fileId, token: {}, kind: 'keyboard', changed: false, selectAll }
     }}>
     <CodeEditorHost ref={editor} {...props} workspaceKey={workspaceKey} onSelectionChange={(result, interaction) => capture(result, undefined, interaction)} />
   </div>
