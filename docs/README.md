@@ -9,6 +9,7 @@
 | 需要了解什么 | 阅读入口 |
 | --- | --- |
 | 后续研究、讨论、原型与重构决策 | [学生端 Agent 与工作区重新设计：数字逻辑与部件设计先行](https://github.com/paher-din/XunJie/issues/112) |
+| 与研究并行的三项已授权实施范围 | [选区引用、IP 展示层与开发自检规范](specs/README.md) |
 | 初步架构候选、模块职责与关键流程 | [学生端 Agent 架构](student-agent-architecture.md) |
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
