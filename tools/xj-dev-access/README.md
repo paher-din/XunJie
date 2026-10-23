@@ -42,7 +42,7 @@ node tools/xj-dev-access/prepare-deployment.mjs --commit FULL_SHA --output NEW_D
 | SSH 设备 key 与策略 | `/etc/ssh/xunjie-dev-access-candidate129/keys/`、`sshd_config.d/62-xunjie-dev-access-candidate129.conf` |
 | 接入备份 | `/var/backups/xunjie/dev-access-candidate129/`，服务用户 0700 |
 
-installer 只创建自己的 `xj-access-c129` 服务账号、`xjd_*` 设备账号组与 SSH snippet。固定 sudoers 只放行 root-owned Python helper 的固定路径和参数。helper 的输入在 stdin；只允许 install/ensure/revoke，按稳定 device UUID 生成账户、持久阶段回执，撤销先删该 key，再精确关闭该用户 SSH 进程。未知账户、端口或所有权冲突拒绝处理。
+installer 只创建自己的 `xj-access-c129` 服务账号、`xjd_*` 设备账号组与 SSH snippet。固定 sudoers 只放行 root-owned Python helper 的固定路径和参数。helper 的输入在 stdin；只允许 install/ensure/revoke，按稳定 device UUID 生成账户、持久阶段回执，撤销先删该 key，再精确关闭该用户 SSH 进程。未知账户、端口或所有权冲突拒绝处理。sshd 的 PermitOpen/PermitListen 各用一条 directive 列出完整批准目标，单设备 authorized_keys 仍收窄到该设备获准节点。应用 socket 请求有 15 秒总截止，半截响应/aborted/error 明确失败并释放管理串行队列，失败撤销保留 deny 后可重试。
 
 ## 生命周期、恢复与清理
 
