@@ -69,7 +69,9 @@ function audit(root) {
 }
 function windowsOwner(root) {
   if (process.platform !== 'win32') return;
-  const script = "$i=[Security.Principal.WindowsIdentity]::GetCurrent(); $o=(Get-Acl -LiteralPath $env:XJ_DELETE_ROOT).GetOwner([Security.Principal.SecurityIdentifier]).Value; if ($o -ne $i.User.Value -and $o -ne $i.Owner.Value) { exit 1 }";
+  // Read the same ACL through .NET: Get-Acl module autoload can fail in a Node
+  // child even when the interactive SSH PowerShell can load that cmdlet.
+  const script = "$i=[Security.Principal.WindowsIdentity]::GetCurrent(); $o=[IO.Directory]::GetAccessControl($env:XJ_DELETE_ROOT).GetOwner([Security.Principal.SecurityIdentifier]).Value; if ($o -ne $i.User.Value -and $o -ne $i.Owner.Value) { exit 1 }";
   try { execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { env: { ...process.env, XJ_DELETE_ROOT: root }, stdio: 'ignore', timeout: 15000 }); }
   catch { refuse('ENVIRONMENT_UNSAFE', '无法确认 Windows 环境目录属于当前用户。'); }
 }

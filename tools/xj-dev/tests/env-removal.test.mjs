@@ -58,6 +58,10 @@ test('delete is explicit, missing environments are idempotent and unknown direct
   writeFileSync(env.stateFile, JSON.stringify(state));
   assert.equal(f.run('delete', instance).failure.code, 'ENVIRONMENT_UNREGISTERED');
   assert.equal(json(env.stateFile).envId, 'foreign-id');
+  writeFileSync(env.stateFile, JSON.stringify({ ...state, envId: environmentId(worktree, instance), instance: 'foreign-instance' }));
+  assert.equal(f.run('delete', instance).failure.code, 'ENVIRONMENT_UNREGISTERED');
+  writeFileSync(env.stateFile, JSON.stringify({ ...state, envId: environmentId(worktree, instance), worktree: f.root }));
+  assert.equal(f.run('delete', instance).failure.code, 'ENVIRONMENT_UNREGISTERED');
 });
 
 test('delete rejects root and nested directory links without changing either destination', t => {
@@ -186,12 +190,15 @@ test('real CLI down/delete/rebuild isolate two environments and keep original mu
     assert.equal(f.run('delete', a).failure.code, 'ENVIRONMENT_UNKNOWN_OBJECT');
     for (const component of Object.values(f.run('status', a).processes)) assert.equal(component.running, true);
     assert.equal(existsSync(unknown), true); rmSync(unknown);
-    const recordFile = join(A.pids, 'gateway.json'), original = readFileSync(recordFile);
+    // Backend is checked after gateway/vite: a foreign late record must still
+    // abort the whole preflight before either earlier component is stopped.
+    const recordFile = join(A.pids, 'backend.json'), original = readFileSync(recordFile);
+    const ownGateway = json(join(A.pids, 'gateway.json')).pid, ownBackend = json(recordFile).pid;
     writeFileSync(recordFile, JSON.stringify({ ...json(recordFile), pid: upB.processes.gateway.pid }));
     try {
       assert.equal(f.run('delete', a).failure.code, 'ENVIRONMENT_FOREIGN_PROCESS');
       assert.equal(processAlive(upB.processes.gateway.pid), true);
-      assert.equal(processAlive(json(join(A.pids, 'backend.json')).pid), true);
+      assert.equal(processAlive(ownGateway), true); assert.equal(processAlive(ownBackend), true);
       assert.equal(hash(A.baselineCredentials), oldCredentials);
     } finally { writeFileSync(recordFile, original); }
   });
