@@ -10,7 +10,9 @@ on:
 
 concurrency:
   group: cloud-release
-  cancel-in-progress: false
+  # Deployment converges on the main HEAD only; a superseded commit is never
+  # deployed, so its in-flight build is cancelled instead of queued.
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -24,6 +26,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: |
+            apps/student/package-lock.json
+            apps/teaching/package-lock.json
       - name: Build the student interface
         working-directory: apps/student
         run: |
