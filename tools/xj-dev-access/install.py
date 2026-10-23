@@ -15,7 +15,7 @@ import sys
 ROOT = Path('/opt/xunjie-dev-access')
 CONFIG = Path('/etc/xunjie-dev-access-candidate129')
 DATA = Path('/var/lib/xunjie-dev-access-candidate129')
-BACKUPS = Path('/var/backups/xunjie/dev-access-candidate129')
+BACKUPS = Path('/var/backups/xunjie-dev-access-candidate129')
 USER = 'xj-access-c129'
 FILES = {
     'apps/teaching/server/access/local-socket.ts',
@@ -55,6 +55,7 @@ def main(source):
         directory.chmod(0o700)
     CONFIG.mkdir(parents=True, exist_ok=True, mode=0o750)
     os.chown(CONFIG, 0, account.pw_gid)
+    CONFIG.chmod(0o750)
     key = DATA / 'credential.key'
     if not key.exists():
         descriptor = os.open(key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -97,6 +98,19 @@ def main(source):
             target = release / f['path']; target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source / f['path'], target); target.chmod(0o644)
         shutil.copyfile(source / 'deployment.json', release / 'deployment.json')
+    # mkdir(parents=True) follows the installer's 0077 umask for intermediate
+    # source directories too. Source is public, root-owned and non-writable by
+    # the service; every component must explicitly permit traversal/read.
+    for directory in (ROOT, ROOT / 'releases', release):
+        require(directory.is_dir() and not directory.is_symlink() and directory.stat().st_uid == 0, 'SOURCE_DIRECTORY_INVALID')
+        directory.chmod(0o755)
+    for f in receipt['files']:
+        parent = (release / f['path']).parent
+        while parent != release:
+            require(parent.is_dir() and not parent.is_symlink() and parent.stat().st_uid == 0, 'SOURCE_DIRECTORY_INVALID')
+            parent.chmod(0o755)
+            parent = parent.parent
+    (release / 'deployment.json').chmod(0o644)
     # Root owns every release and current link. The service can execute only
     # this exact fixed helper, with request data on stdin and no extra args.
     ROOT.mkdir(parents=True, exist_ok=True)

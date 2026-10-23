@@ -40,7 +40,7 @@ node tools/xj-dev-access/prepare-deployment.mjs --commit FULL_SHA --output NEW_D
 | 应用账号控制 | 候选业务显式开启的独立 Unix socket；目录组可穿越、socket 0660，仅业务和接入账号共享组 |
 | 固定系统执行器回执 | `/var/lib/xunjie-dev-access-candidate129-system/`，root 0700 |
 | SSH 设备 key 与策略 | `/etc/ssh/xunjie-dev-access-candidate129/keys/`、`sshd_config.d/62-xunjie-dev-access-candidate129.conf` |
-| 接入备份 | `/var/backups/xunjie/dev-access-candidate129/`，服务用户 0700 |
+| 接入备份 | `/var/backups/xunjie-dev-access-candidate129/`，服务用户 0700 |
 
 installer 只创建自己的 `xj-access-c129` 服务账号、`xjd_*` 设备账号组与 SSH snippet。固定 sudoers 只放行 root-owned Python helper 的固定路径和参数。helper 的输入在 stdin；只允许 install/ensure/revoke，按稳定 device UUID 生成账户、持久阶段回执，撤销先删该 key，再精确关闭该用户 SSH 进程。未知账户、端口或所有权冲突拒绝处理。sshd 的 PermitOpen/PermitListen 各用一条 directive 列出完整批准目标，单设备 authorized_keys 仍收窄到该设备获准节点。应用 socket 请求有 15 秒总截止，半截响应/aborted/error 明确失败并释放管理串行队列，失败撤销保留 deny 后可重试。
 
@@ -50,7 +50,7 @@ installer 只创建自己的 `xj-access-c129` 服务账号、`xjd_*` 设备账�
 
 两处本机控制 socket 使用相同 OS 锁与 inode 回执：重复进程明确拒绝；无 listen 的 close 不清理路径；SIGKILL 后只恢复已记录且连接拒绝的自有 socket。libuv 绑定唯一私有名称，公共入口使用硬链接，close 按 inode 清理，外来替换保留。`.lease.sqlite` 是永久锁，不删除；未知 socket 不自动接管。
 
-`access snapshot` 输入 `{destination:'/var/backups/xunjie/dev-access-candidate129/NAME.sqlite'}`，输出一致 SQLite Backup API 副本、配套 `.key`、无秘密 `.json` 回执。恢复时停止目标接入服务，将数据库与对应 key 安装到新隔离数据目录，恢复同一 serviceId，核对 integrity/外键后启动；原备份保留。业务库与账号控制 registry 由候选业务备份流程另存，两套存储的一致副本不等于跨进程原子快照。撤销回执、加密 key 和成员数据属于维护者备份，不进入 repro。
+`access snapshot` 输入 `{destination:'/var/backups/xunjie-dev-access-candidate129/NAME.sqlite'}`，输出一致 SQLite Backup API 副本、配套 `.key`、无秘密 `.json` 回执。恢复时停止目标接入服务，将数据库与对应 key 安装到新隔离数据目录，恢复同一 serviceId，核对 integrity/外键后启动；原备份保留。业务库与账号控制 registry 由候选业务备份流程另存，两套存储的一致副本不等于跨进程原子快照。撤销回执、加密 key 和成员数据属于维护者备份，不进入 repro。
 
 保留候选供 #131/#133 使用。消费者释放后，先停接入 unit，再撤销并核对本服务设备连接；只删除表中本服务的 unit/配置/release/数据/SSH snippet 和账户。备份按维护者保留策略处理。删除 snippet 后运行 `sshd -t` 再 reload；正式业务、原节点与 owner 身份不在清理范围。
 
