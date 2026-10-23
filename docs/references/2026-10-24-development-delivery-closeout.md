@@ -10,7 +10,7 @@
 | 工程与审查修复 | 负责人独立 9e7：xj-dev 181 pass/1 platform skip，teaching 542 pass/23 external skip；eb3 证书/delete/remote TLS 25/25；原基线、CA 并发、gateway 生命周期、status 与教师消费者缺陷均经定点源码复核 closed；55ed harness 两项失败边界修复由 lead 与负责人分别验证 11/11，Spec 原 P2 closed；40dcc 后续 stop guard 的 worker 全 harness 12/12、lead 故障专项 4/4 | closed 指已定位源码缺陷，不替代平台/业务/容量验收；40dcc 的最终审查回执待补 |
 | 加密备份工具 | `2393b66`、`72b3250`、`6e9e52a`：11/11，含活跃 WAL、命名多库、同名配置、凭据解密、密钥排除、损坏库拒绝与版本 1 归档恢复；新脚本已安装，Linux 跨文件系统实际恢复 71 文件/6 库通过并清理 | 最终 scope、新归档与恢复等完整新窗口及预算完成 |
 | 云端隔离恢复 | 71 文件、6 库 integrity/FK 通过；5 个模型凭据、15 个 access 凭据、6 个 active SSH 映射与 3 对 TLS key/cert 核对通过；独立端口真实登录/课程读取通过 | 最终 runtime/config 稳定后的新归档及独立设备复核 |
-| 实际产品隔离 | 初次 CI `40006389514`、source `c896c52`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200。当前实际候选已严格激活 `70d170a` | 最新 70d 产物的隔离业务读回纳入最终恢复；不以旧 c896 结果冒称已测新产物，不代表未发布的普通用户安装包 |
+| 实际产品隔离 | 初次 CI `40006389514`、source `c896c52`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200。当前实际候选已严格激活 `70d170a` | 最终实际产物的隔离业务读回纳入最终恢复；不以旧 c896 结果冒称已测 70d 或后续产物，不代表未发布的普通用户安装包 |
 | fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；原 Windows 已完成严格 TLS、双角色闭环、新基线独立副本、团队编号真实 restore/verify 和自有 SSH 中断恢复；新的 Windows 补验完成真实云端保存/冻结/固定提交、教师反馈 UI 读回及拆除前 active revoke，专属进程/CA trust/敏感材料已清理 | Mac 正常系统信任仍待确认；Windows 原 partial 回执保留，新覆盖以独立 topup 报告补充 |
 | 采集默认源码 | 静态 canary 已由 `2e23535` 改为运行时生成，guard 未改；负责人独立 0ea 默认 `collectCode` 840 文件/约 6.27MB 通过，根范围未缩小；Windows 原 context 默认 baseline publish 通过 | 最终交付 SHA 及新的平台补验回执继续对应记录 |
 | Windows 签名 | `496493a`：worker Mac 21/21、Windows 默认 PATH 7/7；lead 独立 client/signer 18/18；实际旧 client 失败后 fixed CLI 原 key join 成功，无 PATH 修改；fresh Windows 原邀请/home/key join 亦通过 | 不修改 Linux access 服务；完整成员流程单独记录 |
@@ -18,6 +18,20 @@
 | 真实模型 | c896 两项 Mimo 产品 turn 认证失败保留；另获授权的两项 DeepSeek 产品 turn usage 为 82/16、82/33；新 70d 完整窗口 T/S1 两项均 settled/exactOK、calls1，actual usage 各为 83/2；原正式 store 未改 | 模型互操作成功不替代普通 API 延迟、真实执行节点或教学效果验收 |
 | 真实执行节点 | 候选未登记 execution node，运行/检查正确拒绝未就绪能力；原 robert QEMU/WSL 保持 stopped | 本轮未做真实执行节点互操作 |
 | 教学效果 | 未测 | 不由工程或模型可调用性推导 |
+
+## Attempt scope 补丁的固定树验证
+
+70d 延迟失败后，新增显式 attempt scope 读取以减少无关 receipt 水合。默认全课程读取保留；后续 `3d3d3ca` 补齐 event.payloadRef 指向同课程另一 attempt receipt 时的完整校验，避免 scoped 误走对象 fallback。Spec 对该 P2 的最小复核已 closed，Standards 最后两文件 delta 回执仍待负责人收齐。
+
+负责人独立工程 gate 分别对应以下固定源码树；三次是重复验证不同树，计数不能相加，skip 不算通过：
+
+| 固定源码 | 组成与边界 | teaching pass / skip / fail |
+| --- | --- | --- |
+| `9c7f48818b8d31625c9bbac21a3dadfe1a08569f` | worker 单分支，尚不含 integration 已有 S3 教师消费者修复 | 545 / 23 / 0 |
+| `d55e94d2e6118e9557e3a0cbfbf49498b8f17e85` | 吸收 9c 后的组合树，保留 S3；当时 payloadRef P2 尚未关闭 | 554 / 23 / 0 |
+| `e03a3c9035282683c1fdcba0d5b5746b8c256587` | 吸收 3d3 后的最终组合树，保留 S3，Spec P2 closed | 556 / 23 / 0 |
+
+e03 的 typecheck/build、diffcheck 和默认 `collectCode`（841 文件、6,276,679 bytes、原 guard）由负责人独立通过，push 后 remote 一致，已开始 dispatch exact e03 cloud-release；这不表示 CI 已成功或候选已激活。lead 的最终组合定点 gate 为 13/13，且三个 S3 文件相对 d55 无差异。e03 尚未生成新的 active cfg，也未替换云端 70d。后续须核对 actual CI artifact，并在同 512MiB mixed 短预检有充分余量后，才由负责人协调 planned activation 和完整容量复测；工程 green 不抵消前述真实容量失败。
 
 ## 备份与恢复实测
 
