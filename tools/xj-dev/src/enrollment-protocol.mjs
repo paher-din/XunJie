@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -14,18 +14,84 @@ export class AccessError extends Error {
 export function requireAccess(value, code = 'INVALID_REQUEST', status = 400) {
   if (!value) throw new AccessError(code, status);
 }
-export function privateJson(file) {
+// Windows chmod does not protect secrets. Use a protected current-SID DACL for
+// every shared private-file API, including owner invitation exports.
+function windowsPrivatePath(file, directory, protect) {
+  const script = `
+$ErrorActionPreference = 'Stop'
+$p = $env:XJ_PRIVATE_PATH
+$item = Get-Item -LiteralPath $p -Force
+if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'reparse' }
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$acl = Get-Acl -LiteralPath $p
+if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value) { throw 'owner' }
+${protect ? `
+$acl = New-Object Security.AccessControl.${directory ? 'DirectorySecurity' : 'FileSecurity'}
+$acl.SetOwner($sid)
+$acl.SetAccessRuleProtection($true, $false)
+$rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', '${directory ? 'ContainerInherit, ObjectInherit' : 'None'}', 'None', 'Allow')
+$acl.AddAccessRule($rule)
+Set-Acl -LiteralPath $p -AclObject $acl
+$acl = Get-Acl -LiteralPath $p
+` : ''}
+${directory || protect ? "if (-not $acl.AreAccessRulesProtected) { throw 'inheritance' }" : ''}
+$own = $false
+foreach ($r in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
+  if ($r.AccessControlType -eq 'Allow') {
+    if ($r.IdentityReference.Value -ne $sid.Value) { throw 'other principal' }
+    if (($r.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -eq [Security.AccessControl.FileSystemRights]::FullControl) { $own = $true }
+  }
+}
+if (-not $own) { throw 'missing owner access' }
+`;
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], {
+    env: { ...process.env, XJ_PRIVATE_PATH: file }, stdio: 'ignore', windowsHide: true, timeout: 15000,
+  });
+  requireAccess(result.status === 0, 'PRIVATE_FILE_REQUIRED');
+}
+function ownedPath(file, directory) {
   const stat = lstatSync(file);
-  requireAccess(stat.isFile() && !stat.isSymbolicLink() && stat.size <= 1024 * 1024 && (process.platform === 'win32' || !(stat.mode & 0o077)), 'PRIVATE_FILE_REQUIRED');
+  requireAccess(!stat.isSymbolicLink() && (directory ? stat.isDirectory() : stat.isFile()) &&
+    (process.platform === 'win32' || stat.uid === process.getuid()), 'PRIVATE_FILE_REQUIRED');
+  return stat;
+}
+export function ensurePrivateDirectory(directory) {
+  if (!existsSync(directory)) {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+  }
+  const stat = ownedPath(directory, true);
+  if (process.platform === 'win32') windowsPrivatePath(directory, true, true);
+  else requireAccess(!(stat.mode & 0o077), 'PRIVATE_FILE_REQUIRED');
+  return directory;
+}
+export function assertPrivateFile(file) {
+  const stat = ownedPath(file, false);
+  requireAccess(stat.size <= 1024 * 1024, 'PRIVATE_FILE_REQUIRED');
+  if (process.platform === 'win32') windowsPrivatePath(file, false, false);
+  else requireAccess(!(stat.mode & 0o077), 'PRIVATE_FILE_REQUIRED');
+  return file;
+}
+export function writePrivateFile(file, bytes) {
+  mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+  if (existsSync(file)) ownedPath(file, false);
+  const temporary = `${file}.${opaque()}.tmp`;
+  try {
+    // Protect the empty file before any secret bytes are written.
+    closeSync(openSync(temporary, 'wx', 0o600));
+    if (process.platform === 'win32') windowsPrivatePath(temporary, false, true);
+    writeFileSync(temporary, bytes);
+    assertPrivateFile(temporary);
+    renameSync(temporary, file);
+    if (process.platform !== 'win32') chmodSync(file, 0o600);
+    assertPrivateFile(file);
+  } finally { rmSync(temporary, { force: true }); }
+}
+export function privateJson(file) {
+  assertPrivateFile(file);
   return JSON.parse(readFileSync(file, 'utf8'));
 }
 export function writePrivateJson(file, value) {
-  mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
-  const temporary = `${file}.${opaque()}.tmp`;
-  try {
-    writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-    renameSync(temporary, file); chmodSync(file, 0o600);
-  } finally { rmSync(temporary, { force: true }); }
+  writePrivateFile(file, JSON.stringify(value, null, 2) + '\n');
 }
 export function publicKey(value) {
   requireAccess(typeof value === 'string' && value.length < 512, 'INVALID_PUBLIC_KEY');
