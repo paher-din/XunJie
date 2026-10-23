@@ -7,15 +7,15 @@
 | 范围 | 已核实结果 | 待完成项 |
 | --- | --- | --- |
 | CA 使用说明 | `eaa60ca`：Mac 用户 login keychain、Windows LocalMachine Root 的权限/系统确认、指纹读回与精确移除；跳过 HTTPS 校验不计通过 | fresh Mac 的实际系统信任确认仍在处理；不以证书存在代替正常 Chromium TLS |
-| 工程与审查修复 | 负责人独立 9e7：xj-dev 181 pass/1 platform skip，teaching 542 pass/23 external skip；eb3 证书/delete/remote TLS 25/25；原基线、CA 并发、gateway 生命周期、status 与教师消费者缺陷均经定点源码复核 closed；55ed harness 两项失败边界修复由 lead 与负责人分别验证 11/11 | closed 指已定位源码缺陷，不替代平台/业务/容量验收；4e79 harness 修复的两轴源码复核继续 |
+| 工程与审查修复 | 负责人独立 9e7：xj-dev 181 pass/1 platform skip，teaching 542 pass/23 external skip；eb3 证书/delete/remote TLS 25/25；原基线、CA 并发、gateway 生命周期、status 与教师消费者缺陷均经定点源码复核 closed；55ed harness 两项失败边界修复由 lead 与负责人分别验证 11/11，Spec 原 P2 closed | closed 指已定位源码缺陷，不替代平台/业务/容量验收；Standards 另确认 await 后 stop guard，Aquinas 在实测结束后补修与故障回归 |
 | 加密备份工具 | `2393b66`、`72b3250`、`6e9e52a`：11/11，含活跃 WAL、命名多库、同名配置、凭据解密、密钥排除、损坏库拒绝与版本 1 归档恢复；新脚本已安装，Linux 跨文件系统实际恢复 71 文件/6 库通过并清理 | 最终 scope、新归档与恢复等完整新窗口及预算完成 |
 | 云端隔离恢复 | 71 文件、6 库 integrity/FK 通过；5 个模型凭据、15 个 access 凭据、6 个 active SSH 映射与 3 对 TLS key/cert 核对通过；独立端口真实登录/课程读取通过 | 最终 runtime/config 稳定后的新归档及独立设备复核 |
 | 实际产品隔离 | 初次 CI `40006389514`、source `c896c52`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200。当前实际候选已严格激活 `70d170a` | 最新 70d 产物的隔离业务读回纳入最终恢复；不以旧 c896 结果冒称已测新产物，不代表未发布的普通用户安装包 |
 | fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；原 Windows 已完成严格 TLS、双角色闭环、新基线独立副本、团队编号真实 restore/verify 和自有 SSH 中断恢复；新的 Windows 补验完成真实云端保存/冻结/固定提交、教师反馈 UI 读回及拆除前 active revoke，专属进程/CA trust/敏感材料已清理 | Mac 正常系统信任仍待确认；Windows 原 partial 回执保留，新覆盖以独立 topup 报告补充 |
 | 采集默认源码 | 静态 canary 已由 `2e23535` 改为运行时生成，guard 未改；负责人独立 0ea 默认 `collectCode` 840 文件/约 6.27MB 通过，根范围未缩小；Windows 原 context 默认 baseline publish 通过 | 最终交付 SHA 及新的平台补验回执继续对应记录 |
 | Windows 签名 | `496493a`：worker Mac 21/21、Windows 默认 PATH 7/7；lead 独立 client/signer 18/18；实际旧 client 失败后 fixed CLI 原 key join 成功，无 PATH 修改；fresh Windows 原邀请/home/key join 亦通过 | 不修改 Linux access 服务；完整成员流程单独记录 |
-| 容量与资源 | c896 完整 905 秒的 3503/3503 请求匹配服务端指标、零 non2xx/5xx；普通 API p95 1090.234ms，延迟失败保留。70d 的两项读取优化有隔离短预检与工程回归；负责人已放行 Aquinas 核对冻结运行态后启动新 905 | 新窗口实际 T0/结果以 Aquinas 回执为准；短预检不算正式通过，资源预算尚未应用 |
-| 真实模型 | c896 窗口中两项 Mimo 产品 turn 认证失败；另获授权切换后，两项 DeepSeek 产品 turn 均 settled/exactOK、calls1，actual usage 分别 82/16 与 82/33；原正式 store 未改 | 下一窗口使用已准备的 revision 2，再记录实际产品调用与 OSS；transport 成功和 controlled transport 不替代产品 E2E |
+| 容量与资源 | c896 普通 API p95 1090.234ms 失败保留；新 70d 完整 905 秒执行和审计结束，3227/3227 指标匹配、零 non2xx/5xx，普通 API 3219 项 p95 1053.110ms，仍未达到 500ms | 执行成功和短预检不算容量延迟通过；最终资源预算及运行态安排由负责人决定 |
+| 真实模型 | c896 两项 Mimo 产品 turn 认证失败保留；另获授权的两项 DeepSeek 产品 turn usage 为 82/16、82/33；新 70d 完整窗口 T/S1 两项均 settled/exactOK、calls1，actual usage 各为 83/2；原正式 store 未改 | 模型互操作成功不替代普通 API 延迟、真实执行节点或教学效果验收 |
 | 真实执行节点 | 候选未登记 execution node，运行/检查正确拒绝未就绪能力；原 robert QEMU/WSL 保持 stopped | 本轮未做真实执行节点互操作 |
 | 教学效果 | 未测 | 不由工程或模型可调用性推导 |
 
@@ -47,9 +47,15 @@ live backup 配置现已登记 `133-runtime.conf`，并将实际存在的 `/var/
 
 ## 容量证据与预算边界
 
-完整来源、业务基数/增量审计、模型与 OSS、失败和隔离诊断见[容量 worker 报告](../../tools/i0-cloud/capacity-133-report.md)。`adc8ab2` harness 原 8/8 通过后，两轴分别确认上传错误独立记录与异步失败收束两项 P2；`4e79a80` 修复已合入 `55ed4dd`，lead 与负责人各自 11/11，包含 3 个真实业务工厂加受控外部依赖的故障用例。两轴对精确修复继续只读复核，不因测试绿便宣布审查结束。18 个原 JS 与 1 个 Python 语法通过，20 个原新增文件及本次 2 个改动文件通过原秘密扫描。
+完整来源、业务基数/增量审计、模型与 OSS、失败和隔离诊断见[容量 worker 报告](../../tools/i0-cloud/capacity-133-report.md)。`adc8ab2` harness 原 8/8 通过后，两轴分别确认上传错误独立记录与异步失败收束两项 P2；`4e79a80` 修复已合入 `55ed4dd`，lead 与负责人各自 11/11，包含 3 个真实业务工厂加受控外部依赖的故障用例。Spec 原 P2 已复核 closed；Standards 另确认 await pause 返回后、publish 前须再检查 stop。Aquinas 在本次实测结束后补这一 guard 与确定性交错测试，运行中的文件未修改。18 个原 JS 与 1 个 Python 语法通过，20 个原新增文件及 4e 的 2 个改动文件通过原秘密扫描。
 
-Windows 补验和清理完成后，负责人已放行 Aquinas 对 source/PID/配置做冻结读回，再启动预备 run `6e9a5416` 的新 905；实际 runId、T0、起止及统计以其持久回执为准，本文件尚不记录最终结果。窗口内 runtime/server/model/config/limits、已加载 harness、额外业务写入和手工 snapshot 均冻结。`completed` 只代表执行收束，容量通过还需服务端延迟、资源和独立数据库审计；OSS 或模型失败不能因为普通窗口继续便记为通过。
+Windows 补验和清理完成后，负责人放行的实际 run 为 `6e9a5416-e0b1-4866-8f5d-a4513687dee7`，steady T0 为 2026-10-23 21:14:32.768 UTC（北京时间 2026-10-24 05:14:32.768），21:29:56.575 UTC 完成；905 秒业务窗口连同 drain/audit 共 923.807 秒。实际 harness 为 `4e79a80`；lead 从 run.json 核对三个 harness 文件均与该固定提交摘要一致，并从原请求和服务端记录重算得到同样的汇总。该轮无 fatal，未触发上述晚到 pause 的失败分支，后续 guard 不冒称是本轮已运行版本。
+
+新窗口 3227/3227 个 requestId 匹配，missing/non2xx/5xx 均为 0；普通 API 3219 项 p95 **1053.110ms，仍超过 500ms 目标**。四个原自有 attempt 按 base 加 delta 增加 465 次保存、48 次保存幂等重放、77 次提交及反馈；worker 的独立只读 DB 审计通过 exact version/hash/receipt，integrity ok、FK 0。两次真实 OSS 分别为 6,273,409/6,274,156 bytes，耗时 4.534/3.159 秒，均 published。两项 DeepSeek 实际产品 turn 均 settled/exactOK、calls1，各为 actual usage 83 input/2 output。`completed/executionDrained:true` 与这些正向结果不能抵消延迟失败。
+
+资源摘要覆盖执行起止附近的 184 个采样、927.448 秒，完整 192 行另行保留。candidate 平均 CPU 125.58%（单核百分比），5 秒采样 `memory.current` 最大 165.781MiB；lifetime peak 从 245.027MiB 增至 339.930MiB，包含本轮正常登录峰，不能用稀疏采样最大值替代它。access current 最大 42.961MiB，host available 最低 913.531MiB。candidate/access/formal PID 均保持 131947/131948/91972，restart 0，OOM/max/high 增量 0，配置摘要保持 `5720f0e3…`。负载及本次 sampler 已停止，最终预算、runtime 和归档时点等负责人安排；没有因执行成功应用预算或提前 snapshot。
+
+本轮证据目录为 `~/.codex/artifacts/xj133-capacity/20261024-70d170a-6e9a5416/`，包括 `run.json`、`server-summary.json`、`resource-summary.json`、`independent-db-audit.json`；lead 的本地原始记录重算与固定 hash 核对为 `~/.codex/artifacts/xj133-closeout/lead-70d-6e9a-evidence-recalculation.json`。后续诊断或复测须保留这次失败、原历史规模和统计口径。
 
 下表只引用旧 c896 完整窗口，不能替代新 70d 验收：
 
@@ -77,4 +83,4 @@ Windows 最终 21:01:46 UTC 读回：自有进程、新增 CA trust、DB 载荷�
 
 本轮已清理自己创建的隔离进程和明文恢复目录。之后以全新 file-only 临时成员经同一持久服务完成公开 CLI invite/join，再真实 fetch 原已发布编号；`cacheHit:false`、6,273,409 bytes、完整摘要与原包一致，未手传 ZIP。该 smoke 不创建 SSH/应用账号或受管后台进程，不执行 restore/verify；结束只撤销自己新建的成员并删除专属私有 home/下载缓存。证据为 `post-cleanup-smoke.json`，共享包和基线保留。
 
-真实 daily timer 已在 2026-10-24 03:00:26–03:00:27 使用当时扩展的备份配置完成，`Result=success`、`ExecMainStatus=0`；它早于 70d 配置登记，不声称已包含后来的材料。周备 timer 保持 active，未额外制造第二次周备。新完整容量窗口、fresh Mac 正常系统认证、最终稳定配置归档/独立恢复与最新产物隔离读回仍需补齐，本文不预报通过。
+真实 daily timer 已在 2026-10-24 03:00:26–03:00:27 使用当时扩展的备份配置完成，`Result=success`、`ExecMainStatus=0`；它早于 70d 配置登记，不声称已包含后来的材料。周备 timer 保持 active，未额外制造第二次周备。容量延迟仍未达标；fresh Mac 正常系统认证、最终稳定配置归档/独立恢复与最新产物隔离读回仍需补齐，本文不预报通过。
