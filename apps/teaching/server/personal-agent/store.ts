@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
-import { closeSync, existsSync, lstatSync, mkdirSync, openSync, realpathSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { closeSync, existsSync, lstatSync, mkdirSync, openSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 import { personalAgentSchema } from './schema.ts';
 import { credentialKey } from './credentials.ts';
 
@@ -14,7 +14,9 @@ export function openPersonalAgentStore(directory:string) {
   if(!isAbsolute(directory))throw new Error('Absolute personal storage directory required.');
   mkdirSync(directory,{recursive:true,mode:0o700});
   const stat=lstatSync(directory);
-  if(!stat.isDirectory()||stat.isSymbolicLink()||realpathSync(directory)!==resolve(directory)
+  // Only the final component must be a real, non-symlink directory under the caller's control. Ancestor symlinks
+  // (macOS /var→/private/var, symlinked home or tool directories) are the caller's own environment and stay valid.
+  if(!stat.isDirectory()||stat.isSymbolicLink()
     ||(process.platform!=='win32'&&(stat.mode&0o077)!==0))throw new Error('Controlled personal storage directory required.');
   const file=join(directory,'personal-agent.sqlite'),fresh=!existsSync(file);
   if(!fresh){const existing=lstatSync(file);if(!existing.isFile()||existing.isSymbolicLink()||existing.nlink!==1
