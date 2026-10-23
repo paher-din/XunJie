@@ -191,6 +191,9 @@ test('real CLI down/delete/rebuild isolate two environments and keep original mu
     assert.equal(f.run('delete', a).failure.code, 'ENVIRONMENT_UNKNOWN_OBJECT');
     for (const component of Object.values(f.run('status', a).processes)) assert.equal(component.running, true);
     assert.equal(existsSync(unknown), true); rmSync(unknown);
+    const foreignLockFile = join(A.lockFile, 'foreign.sqlite'); writeFileSync(foreignLockFile, 'foreign lock material');
+    assert.equal(f.run('delete', a).failure.code, 'ENVIRONMENT_UNKNOWN_OBJECT');
+    assert.equal(readFileSync(foreignLockFile, 'utf8'), 'foreign lock material'); rmSync(foreignLockFile);
     // Backend is checked after gateway/vite: a foreign late record must still
     // abort the whole preflight before either earlier component is stopped.
     const recordFile = join(A.pids, 'backend.json'), original = readFileSync(recordFile);

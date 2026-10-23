@@ -16,6 +16,8 @@ const files = new Set(['environment.json', 'backend-config.json', 'gateway-confi
 for (const name of Object.keys(components)) files.add(`.stop-${name}`);
 for (const name of [...files]) if (name.endsWith('.json')) files.add(name + '.tmp');
 const children = {
+  lock: new Set(['mutex.sqlite']),
+  'selection.lock': new Set(['mutex.sqlite']),
   data: new Set(['xunjie.sqlite', 'xunjie.sqlite-wal', 'xunjie.sqlite-shm', 'xunjie.sqlite-journal', 'baseline.json', 'baseline.json.tmp']),
   secrets: new Set(['signing-secret', 'baseline-accounts.json']),
   tls: new Set(['key.pem', 'cert.pem', 'request.csr', 'extensions.txt']),
