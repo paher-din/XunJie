@@ -5,8 +5,8 @@ import { textHash } from './confirmation'
 import type { CommandContext, OutboxRecord } from './frozenCommand'
 import type { HdlJobView, HdlRuntimeProfile, HdlSessionView } from './hdlContracts'
 
-// Archived server/real-node responses are protocol evidence, not a new live acceptance run.
-const evidence = JSON.parse(readFileSync(new URL('../../../../docs/tasks/evidence/dla-continuation-20261014/real-hdl-final-frozen.json', import.meta.url), 'utf8'))
+// Frozen public synthetic server/real-node responses are protocol fixtures, not a new live acceptance run.
+const evidence = JSON.parse(readFileSync(new URL('../../../../tools/i0-hdl/fixtures/hdl-reference.json', import.meta.url), 'utf8'))
 type Http = { method: string; path: string; body: { data: Record<string, unknown> } }
 const http: Http[] = evidence.http
 const context: CommandContext = { mode: 'real', preparationEpoch: null, trustedRecoveryGeneration: evidence.generation, loadEpoch: 1,

@@ -1,0 +1,76 @@
+# Builds the Linux production runtime artifact for the shared host and publishes
+# it as a GitHub Release (tag cloud-<commit>). Build success never deploys by
+# itself: the server-side deploy tooling downloads, verifies and switches.
+name: cloud-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cloud-release
+  # Deployment converges on the main HEAD only; a superseded commit is never
+  # deployed, so its in-flight build is cancelled instead of queued.
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish-runtime-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: |
+            apps/student/package-lock.json
+            apps/teaching/package-lock.json
+      - name: Build the student interface
+        working-directory: apps/student
+        run: |
+          npm ci --include=dev --no-audit --no-fund
+          npm run build
+      - name: Install teaching production dependencies
+        working-directory: apps/teaching
+        run: npm ci --omit=dev --no-audit --no-fund
+      - name: Assemble the verifiable runtime artifact
+        run: |
+          node tools/i0-cloud/build-runtime-artifact.mjs \
+            --source . \
+            --output "$RUNNER_TEMP/artifact" \
+            --commit "$GITHUB_SHA" \
+            --git-tree "$(git rev-parse 'HEAD^{tree}')" \
+            --expected-platform linux-x64 \
+            --expected-node-version v24.21.0 \
+            | tee "$RUNNER_TEMP/artifact-summary.json"
+          test "$(node -e 'process.stdout.write(require(process.env.RUNNER_TEMP + "/artifact-summary.json").status)')" = built
+      - name: Publish the artifact release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: cloud-${{ github.sha }}
+        run: |
+          summary="$RUNNER_TEMP/artifact-summary.json"
+          notes=$(node -e '
+            const summary = require(process.env.RUNNER_TEMP + "/artifact-summary.json");
+            process.stdout.write(`Runtime artifact for ${summary.commit}\n\n- platform: ${summary.platform}\n- node: ${summary.nodeVersion}\n- artifact sha256: ${summary.artifactSha256}\n- archive bytes: ${summary.archiveBytes}\n- static files: ${summary.staticFiles}\n- runtime files: ${summary.runtimeFiles}\n");
+          ')
+          # A re-run for the same commit replaces its release; publication itself stays atomic (draft first).
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/artifact/manifest.json" \
+            "$RUNNER_TEMP/artifact/runtime.tar.gz" \
+            --draft --title "Cloud runtime $GITHUB_SHA" --notes "$notes"
+          gh release edit "$TAG" --draft=false
+      - name: Prune superseded artifact releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          keep=5
+          gh release list --limit 100 --json tagName --jq '.[].tagName' \
+            | grep -E '^cloud-[0-9a-f]{40}$' | head -n -"$keep" \
+            | xargs -r -n 1 gh release delete --yes --cleanup-tag || true

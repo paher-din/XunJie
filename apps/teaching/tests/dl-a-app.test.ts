@@ -157,7 +157,7 @@ test('HDL host reuses the authorized I0 bootstrap with current generation and or
   const assignment=await f.app.inject({url:'/api/assignments/'+item.assignmentId,headers:student});
   const response=await f.app.inject({url:'/api/assignments/'+item.assignmentId+'/bootstrap',headers:student});
   assert.equal(response.statusCode,200,response.body);
-  assert.deepEqual(response.json().data,{assignment:assignment.json().data,recoveryGeneration:'generation'});
+  assert.deepEqual(response.json().data,{assignment:assignment.json().data,recoveryGeneration:'generation',currentAttemptId:item.attemptId});
   assert.equal(response.headers['cache-control'],'no-store');
   assert.deepEqual(await view(f,student,item.attemptId),before);
   assert.equal((await f.app.inject({url:'/api/assignments/'+item.assignmentId+'/bootstrap',headers:other})).statusCode,403);

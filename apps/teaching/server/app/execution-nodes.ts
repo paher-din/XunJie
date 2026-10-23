@@ -25,7 +25,9 @@ export function executionNodes(nodes:ExecutionNode[],legacyNodeId?:string){
    return response;
   }});
  }
- if(!entries.size||legacyNodeId&&!entries.has(legacyNodeId))throw new ApiError('INVALID_CONFIGURATION');
+ // An empty list is an explicit deployment without execution nodes: construction and readiness succeed,
+ // and every real dispatch still fails closed (RUNTIME_NOT_READY / RECOVERY_REQUIRED / DEPENDENCY_UNAVAILABLE).
+ if(legacyNodeId&&!entries.has(legacyNodeId))throw new ApiError('INVALID_CONFIGURATION');
  function node(binding:ExecutionBinding){const value=entries.get(binding.nodeId);if(!value||value.recoveryGeneration!==binding.nodeGeneration)throw new ApiError('RECOVERY_REQUIRED');return value;}
  function selected(request:FastifyRequest):ExecutionBinding{
   const id=request.headers['x-xunjie-execution-node'];

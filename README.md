@@ -10,6 +10,8 @@
 
 </div>
 
+项目正在进行新一轮设计与重构，学生端架构候选及 GitHub 决策地图见[本轮架构与设计](docs/README.md)。开发规则见 [AGENTS.md](AGENTS.md)，UI 设计遵循根目录 [DESIGN.md](DESIGN.md)。旧文档及其证据已移入 [docs/archive/](docs/archive/)，停止使用和维护，不作为本轮开发依据。以下使用说明对应现有演示实现。
+
 ## 功能概览
 
 | 功能 | 可以做什么 |
@@ -34,7 +36,7 @@
 
 AI 功能需课程环境启用模型服务；支持个人配置的环境中，可在设置页填写模型服务与 API Key。
 
-教师项目设计页提供“AI 协助设计”：可请求项目候选、局部建议或量规试评，教师显式采纳后才写入草稿。它需要宿主配置真实 provider 和独立教师预算；个人模型设置不自动开启该预算。本地实现、验证与待确认接线见[本轮任务](docs/tasks/I1_TEACHER_DESIGN_AI_UI_20261015.md)。
+教师项目设计页提供“AI 协助设计”：可请求项目候选、局部建议或量规试评，教师显式采纳后才写入草稿。它需要宿主配置真实 provider 和独立教师预算；个人模型设置不自动开启该预算。
 
 ### 本地界面预览
 
@@ -52,10 +54,12 @@ npm run dev:prep
 <details>
 <summary>开发者文档</summary>
 
-[协作规范](AGENTS.md) · [产品需求](docs/product/PRD.md) · [首版范围](docs/product/MVP_SPEC.md) · [技术设计](docs/product/TECH_DESIGN.md) · [任务计划](docs/planning/TEAM_WORK_PLAN.md) · [任务记录](docs/tasks/)
+[本轮架构与设计](docs/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [学生端运行说明](apps/student/README.md)
+
+本地全栈开发环境（网关 + 后端 + 前端，含独立开发数据基线）见 [tools/xj-dev](tools/xj-dev/README.md)。
 
 ## 开发 skills
 
-项目技能位于 [skills/](skills/)，首次接入见[配置说明](docs/tasks/W1_CODEX_SKILLS_CONFIG.md)。使用与修改范围遵循 [AGENTS.md](AGENTS.md)。
+项目技能位于 [skills/](skills/)，按当前任务需要选用，使用与修改范围遵循 [AGENTS.md](AGENTS.md)。
 
 </details>

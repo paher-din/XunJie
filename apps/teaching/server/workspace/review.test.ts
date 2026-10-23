@@ -115,7 +115,7 @@ test('review: current teacher reads retained workspace, snapshot and run after s
   } finally { await f.close(); }
 });
 
-test('review: real RunControl preparation failure ends check without fabricating a RunRecord', async () => {
+test('review: real RunControl preparation failure ends check without fabricating a RunRecord', { skip: process.platform !== 'linux' }, async () => {
   const root = mkdtempSync(join(tmpdir(),'xunjie-c2-review-control-'));
   const control = new RunControl(root,'generation',actor => actor === 'synthetic-application',async () => true);
   let identity: RunIdentity | undefined;

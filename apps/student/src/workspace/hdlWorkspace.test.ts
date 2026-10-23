@@ -26,7 +26,7 @@ vi.mock('./confirmationDb', async original => ({ ...await original<object>(), co
   noteRejection: async () => {}, rejectRun: async (key: string) => { mocks.rows.get(key)!.state = 'historical' },
 } }))
 
-const raw = JSON.parse(readFileSync(new URL('../../../../docs/tasks/evidence/dla-continuation-20261014/real-hdl-final-frozen.json', import.meta.url), 'utf8'))
+const raw = JSON.parse(readFileSync(new URL('../../../../tools/i0-hdl/fixtures/hdl-reference.json', import.meta.url), 'utf8'))
 type Http = { path: string; method: string; body: { data: Record<string, unknown> } }
 const http: Http[] = raw.http, aid = raw.objects.attemptId, sid = raw.session.sessionId, bid = raw.successfulBuild.buildId
 const goldenBuild = http.filter(r => r.path === `/api/hdl/builds/${bid}` && r.body.data.status === 'succeeded').at(-1)!.body.data as unknown as HdlBuildView

@@ -1,0 +1,506 @@
+{
+  "status": "research-evidence-not-design-approval",
+  "runtime": "Node.js v26.0.0; isolated temporary npm installation; no repository dependencies changed",
+  "at": "2026-10-22T16:34:52.347Z",
+  "recordedRequestCount": 20,
+  "maxRetries": 0,
+  "maxOutputTokens": 2048,
+  "timeoutMs": 60000,
+  "aiSdkVersions": {
+    "ai": "7.0.136",
+    "deepseek": "3.0.63",
+    "openai": "4.0.99",
+    "anthropic": "4.0.85"
+  },
+  "evidenceScope": "One streamed tool request and one tool-result continuation per case. Synthetic register task plus random nonce generated after tool request. Outgoing request history compared with original native data in memory; no reasoning text, signatures, tool IDs or credentials retained.",
+  "importantLimitations": [
+    "Command Code AI SDK continuation was a diagnostic probe after stream validation error; it is not an accepted tool execution path. All tools were synthetic and side-effect-free.",
+    "Direct SDK paths use low-level Chat/Responses stream iteration plus Messages stream.finalMessage(); no other high-level helper is covered. Chat reassembly covers observed text, reasoning_content and tool_calls fields; no blanket guarantee for unknown extensions.",
+    "No PDF parsing, rendering, SDK image replay, process-restart replay, production build or teaching effect evaluated."
+  ],
+  "aiSdkRecords": [
+    {
+      "provider": "deepseek",
+      "protocol": "chat",
+      "sdk": "@ai-sdk/deepseek",
+      "model": "deepseek-flash",
+      "httpStatus": 200,
+      "url": "https://api.deepseek.com/v1/chat/completions",
+      "rawEventTypes": [
+        "chat.completion.chunk"
+      ],
+      "rawReasoningChars": 831,
+      "normalizedReasoningChars": 831,
+      "normalizedReasoningExact": true,
+      "rawSignaturePresent": false,
+      "normalizedPartTypes": [
+        "reasoning",
+        "tool-call"
+      ],
+      "toolRequestValid": true,
+      "finishReason": "tool-calls",
+      "errors": [],
+      "warnings": [],
+      "streamTypes": [
+        "start",
+        "start-step",
+        "reasoning-start",
+        "reasoning-delta",
+        "reasoning-end",
+        "tool-input-start",
+        "tool-input-delta",
+        "tool-input-end",
+        "tool-call",
+        "finish-step",
+        "finish"
+      ],
+      "secondHttpStatus": 200,
+      "historySerialized": true,
+      "replayReasoningChars": 831,
+      "replayReasoningExact": true,
+      "replaySignatureExact": null,
+      "replayTypes": [
+        "user",
+        "assistant",
+        "tool"
+      ],
+      "nonceMatched": true,
+      "secondFinishReason": "stop",
+      "secondErrors": [],
+      "sdkVersion": "3.0.63",
+      "diagnosticContinuationAfterError": false,
+      "nativeReplayAccepted": true
+    },
+    {
+      "provider": "deepseek",
+      "protocol": "messages",
+      "sdk": "@ai-sdk/anthropic",
+      "model": "deepseek-flash",
+      "httpStatus": 200,
+      "url": "https://api.deepseek.com/anthropic/v1/messages",
+      "rawEventTypes": [
+        "message_start",
+        "content_block_start",
+        "ping",
+        "content_block_delta",
+        "content_block_stop",
+        "message_delta",
+        "message_stop"
+      ],
+      "rawReasoningChars": 713,
+      "normalizedReasoningChars": 713,
+      "normalizedReasoningExact": true,
+      "rawSignaturePresent": true,
+      "normalizedPartTypes": [
+        "custom",
+        "reasoning",
+        "tool-call"
+      ],
+      "toolRequestValid": true,
+      "finishReason": "tool-calls",
+      "errors": [],
+      "warnings": [],
+      "streamTypes": [
+        "start",
+        "start-step",
+        "custom",
+        "reasoning-start",
+        "reasoning-delta",
+        "reasoning-end",
+        "tool-input-start",
+        "tool-input-delta",
+        "tool-input-end",
+        "tool-call",
+        "finish-step",
+        "finish"
+      ],
+      "secondHttpStatus": 200,
+      "historySerialized": true,
+      "replayReasoningChars": 713,
+      "replayReasoningExact": true,
+      "replaySignatureExact": true,
+      "replayTypes": [
+        "thinking",
+        "tool_use"
+      ],
+      "nonceMatched": true,
+      "secondFinishReason": "stop",
+      "secondErrors": [],
+      "sdkVersion": "4.0.85",
+      "diagnosticContinuationAfterError": false,
+      "nativeReplayAccepted": true
+    },
+    {
+      "provider": "commandcode",
+      "protocol": "chat",
+      "sdk": "@ai-sdk/deepseek",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "httpStatus": 200,
+      "url": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "rawEventTypes": [
+        "chat.completion.chunk"
+      ],
+      "rawReasoningChars": 1144,
+      "normalizedReasoningChars": 1144,
+      "normalizedReasoningExact": true,
+      "rawSignaturePresent": false,
+      "normalizedPartTypes": [
+        "reasoning",
+        "tool-call"
+      ],
+      "toolRequestValid": true,
+      "finishReason": "tool-calls",
+      "errors": [],
+      "warnings": [],
+      "streamTypes": [
+        "start",
+        "start-step",
+        "reasoning-start",
+        "reasoning-delta",
+        "reasoning-end",
+        "tool-input-start",
+        "tool-input-delta",
+        "tool-input-end",
+        "tool-call",
+        "finish-step",
+        "finish"
+      ],
+      "secondHttpStatus": 200,
+      "historySerialized": true,
+      "replayReasoningChars": 1144,
+      "replayReasoningExact": true,
+      "replaySignatureExact": null,
+      "replayTypes": [
+        "user",
+        "assistant",
+        "tool"
+      ],
+      "nonceMatched": true,
+      "secondFinishReason": "stop",
+      "secondErrors": [],
+      "sdkVersion": "3.0.63",
+      "diagnosticContinuationAfterError": false,
+      "nativeReplayAccepted": true
+    },
+    {
+      "provider": "deepseek",
+      "protocol": "responses",
+      "sdk": "@ai-sdk/openai",
+      "model": "deepseek-flash",
+      "httpStatus": 200,
+      "url": "https://api.deepseek.com/v1/responses",
+      "rawEventTypes": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.reasoning_text.delta",
+        "response.reasoning_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "rawReasoningChars": 768,
+      "normalizedReasoningChars": 0,
+      "normalizedReasoningExact": false,
+      "rawSignaturePresent": false,
+      "normalizedPartTypes": [
+        "reasoning",
+        "tool-call"
+      ],
+      "toolRequestValid": true,
+      "finishReason": "tool-calls",
+      "errors": [],
+      "warnings": [],
+      "streamTypes": [
+        "start",
+        "start-step",
+        "reasoning-start",
+        "reasoning-end",
+        "tool-input-start",
+        "tool-input-delta",
+        "tool-input-end",
+        "tool-call",
+        "finish-step",
+        "finish"
+      ],
+      "secondHttpStatus": 200,
+      "historySerialized": true,
+      "replayReasoningChars": 0,
+      "replayReasoningExact": false,
+      "replaySignatureExact": null,
+      "replayTypes": [
+        "user",
+        "reasoning",
+        "function_call",
+        "function_call_output"
+      ],
+      "replayReasoningKeys": [
+        [
+          "type",
+          "id",
+          "encrypted_content",
+          "summary"
+        ]
+      ],
+      "nonceMatched": true,
+      "secondFinishReason": "stop",
+      "secondErrors": [],
+      "sdkVersion": "4.0.99",
+      "diagnosticContinuationAfterError": false,
+      "nativeReplayAccepted": false
+    },
+    {
+      "provider": "commandcode",
+      "protocol": "responses",
+      "sdk": "@ai-sdk/openai",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "httpStatus": 200,
+      "url": "https://api.commandcode.ai/provider/v1/responses",
+      "rawEventTypes": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.reasoning_summary_part.added",
+        "response.reasoning_summary_text.delta",
+        "response.reasoning_summary_text.done",
+        "response.reasoning_summary_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "rawReasoningChars": 2094,
+      "normalizedReasoningChars": 2094,
+      "normalizedReasoningExact": true,
+      "rawSignaturePresent": false,
+      "normalizedPartTypes": [
+        "reasoning",
+        "tool-call"
+      ],
+      "toolRequestValid": true,
+      "finishReason": "error",
+      "errors": [
+        {
+          "name": "AI_TypeValidationError",
+          "eventType": "response.output_item.added",
+          "itemType": "function_call",
+          "missingRequiredField": "arguments"
+        }
+      ],
+      "warnings": [],
+      "streamTypes": [
+        "start",
+        "start-step",
+        "reasoning-start",
+        "reasoning-delta",
+        "reasoning-end",
+        "error",
+        "tool-input-end",
+        "tool-call",
+        "finish-step",
+        "finish"
+      ],
+      "secondHttpStatus": 200,
+      "historySerialized": true,
+      "replayReasoningChars": 0,
+      "replayReasoningExact": false,
+      "replaySignatureExact": null,
+      "replayTypes": [
+        "user",
+        "function_call",
+        "function_call_output"
+      ],
+      "replayReasoningKeys": [],
+      "nonceMatched": true,
+      "secondFinishReason": "stop",
+      "secondErrors": [],
+      "sdkVersion": "4.0.99",
+      "diagnosticContinuationAfterError": true,
+      "nativeReplayAccepted": false
+    }
+  ],
+  "directSdkRecords": [
+    {
+      "provider": "deepseek",
+      "protocol": "responses",
+      "model": "deepseek-flash",
+      "sdk": "openai",
+      "version": "7.42.0",
+      "httpStatus": 200,
+      "url": "https://api.deepseek.com/v1/responses",
+      "eventTypes": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.reasoning_text.delta",
+        "response.reasoning_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "responseStatus": "completed",
+      "reasoningChars": 1024,
+      "reasoningKeys": [
+        [
+          "type",
+          "id",
+          "status",
+          "content",
+          "summary",
+          "encrypted_content"
+        ]
+      ],
+      "functionAddedKeys": [
+        [
+          "type",
+          "id",
+          "status",
+          "arguments",
+          "call_id",
+          "name"
+        ]
+      ],
+      "toolRequestValid": true,
+      "secondHttpStatus": 200,
+      "secondResponseStatus": "completed",
+      "nativeOutputReplayedExactly": true,
+      "historySerialized": true,
+      "nonceMatched": true,
+      "usagePresent": true,
+      "nativeReplayAccepted": true
+    },
+    {
+      "provider": "commandcode",
+      "protocol": "responses",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "sdk": "openai",
+      "version": "7.42.0",
+      "httpStatus": 200,
+      "url": "https://api.commandcode.ai/provider/v1/responses",
+      "eventTypes": [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.reasoning_summary_part.added",
+        "response.reasoning_summary_text.delta",
+        "response.reasoning_summary_text.done",
+        "response.reasoning_summary_part.done",
+        "response.output_item.done",
+        "response.function_call_arguments.delta",
+        "response.function_call_arguments.done",
+        "response.completed"
+      ],
+      "responseStatus": "completed",
+      "reasoningChars": 1054,
+      "reasoningKeys": [
+        [
+          "id",
+          "type",
+          "summary",
+          "status"
+        ]
+      ],
+      "functionAddedKeys": [
+        [
+          "call_id",
+          "name",
+          "type",
+          "id",
+          "status"
+        ]
+      ],
+      "toolRequestValid": true,
+      "secondHttpStatus": 200,
+      "secondResponseStatus": "completed",
+      "nativeOutputReplayedExactly": true,
+      "historySerialized": true,
+      "nonceMatched": true,
+      "usagePresent": true,
+      "nativeReplayAccepted": true
+    },
+    {
+      "provider": "deepseek",
+      "protocol": "chat",
+      "model": "deepseek-flash",
+      "sdk": "openai",
+      "version": "7.42.0",
+      "reasoningChars": 1252,
+      "finishReason": "tool_calls",
+      "toolRequestValid": true,
+      "eventTypes": [
+        "chat.completion.chunk"
+      ],
+      "secondHttpStatus": 200,
+      "secondFinishReason": "stop",
+      "historySerialized": true,
+      "nativeAssistantReplayedExactly": true,
+      "nonceMatched": true,
+      "usagePresent": true,
+      "httpStatus": 200,
+      "url": "https://api.deepseek.com/v1/chat/completions",
+      "nativeReplayAccepted": true
+    },
+    {
+      "provider": "deepseek",
+      "protocol": "messages",
+      "model": "deepseek-flash",
+      "sdk": "@anthropic-ai/sdk",
+      "version": "1.1.0",
+      "reasoningChars": 896,
+      "signaturePresent": true,
+      "aggregateThinkingExact": true,
+      "aggregateSignatureExact": true,
+      "finishReason": "tool_use",
+      "toolRequestValid": true,
+      "eventTypes": [
+        "message_start",
+        "content_block_start",
+        "content_block_delta",
+        "content_block_stop",
+        "message_delta",
+        "message_stop"
+      ],
+      "secondHttpStatus": 200,
+      "secondFinishReason": "end_turn",
+      "historySerialized": true,
+      "nativeAssistantReplayedExactly": true,
+      "nonceMatched": true,
+      "usagePresent": true,
+      "httpStatus": 200,
+      "url": "https://api.deepseek.com/anthropic/v1/messages",
+      "nativeReplayAccepted": true
+    },
+    {
+      "provider": "commandcode",
+      "protocol": "chat",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "sdk": "openai",
+      "version": "7.42.0",
+      "reasoningChars": 913,
+      "finishReason": "tool_calls",
+      "toolRequestValid": true,
+      "eventTypes": [
+        "chat.completion.chunk"
+      ],
+      "secondHttpStatus": 200,
+      "secondFinishReason": "stop",
+      "historySerialized": true,
+      "nativeAssistantReplayedExactly": true,
+      "nonceMatched": true,
+      "usagePresent": true,
+      "httpStatus": 200,
+      "url": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "nativeReplayAccepted": true
+    }
+  ],
+  "directSdkVersions": {
+    "openai": "7.42.0",
+    "@anthropic-ai/sdk": "1.1.0"
+  }
+}
