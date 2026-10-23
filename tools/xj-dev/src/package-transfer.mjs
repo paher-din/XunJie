@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, rmSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeSync } from 'node:fs';
 import { request } from 'node:https';
 import { join } from 'node:path';
-import { authenticatedRequest, loadDevice } from './enrollment-client.mjs';
+import { authenticatedRequest, loadDevice, readRegistration } from './enrollment-client.mjs';
 import { assertPrivateFile, digest as hexDigest, ensurePrivateDirectory, privateJson, writePrivateFile, writePrivateJson } from './enrollment-protocol.mjs';
 import { CliError } from './envelope.mjs';
 import { inspectRepro, checkReproCompatibility } from './repro.mjs';
@@ -12,6 +12,7 @@ import { acquireLock } from './state.mjs';
 
 const PART = 8 * 1024 * 1024, MAX = ARCHIVE_LIMITS.zip, PRIVATE_ZIP = { maxBytes: MAX };
 const SCHEMA = 'xj-dev/package-transfer-v1';
+const activeNamespaces = new Set();
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const reproId = value => typeof value === 'string' && value.startsWith('xjp_') && uuid(value.slice(4));
 const sha = value => typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value);
@@ -68,8 +69,16 @@ function locations(context, deviceFile) {
   return { root, device, indexFile: join(root, 'index.json') };
 }
 async function locked(context, deviceFile, work) {
-  const paths = locations(context, deviceFile), lock = acquireLock({ root: paths.root, lockFile: join(paths.root, 'operation-lock') });
-  try { return await work(paths); } finally { lock.release(); }
+  const paths = locations(context, deviceFile);
+  // Do not reopen/close a POSIX lock inode already held by this process. The
+  // permanent SQLite mutex still excludes other processes and releases on exit.
+  if (activeNamespaces.has(paths.root)) throw fail('LOCK_HELD', true);
+  activeNamespaces.add(paths.root);
+  let lock;
+  try {
+    lock = acquireLock({ root: paths.root, lockFile: join(paths.root, 'operation-lock') });
+    return await work(paths);
+  } finally { try { lock?.release(); } finally { activeNamespaces.delete(paths.root); } }
 }
 function indexAt(paths) {
   if (!existsSync(paths.indexFile)) return { schema: SCHEMA, operations: {} };
@@ -339,4 +348,43 @@ export async function fetchRepro(context, { deviceFile, reproId: id } = {}) {
     }
     throw fail('OBJECT_PRECONDITION_FAILED');
   }));
+}
+
+// Delete only one verified, currently retrievable download cache. Uploads,
+// partial bytes and permanent operation-lock guards are outside this write set.
+export async function pruneCache(context, { deviceFile, reproId: id } = {}) {
+  return safe(async () => {
+    deviceFile ??= readRegistration({ home: context.home })?.deviceFile;
+    need(deviceFile, 'DEVICE_NOT_REGISTERED');
+    return locked(context, deviceFile, async paths => {
+      need(reproId(id), 'INVALID_REPRO_ID');
+      const resolved = await api(deviceFile, 'resolve', { reproId: id, offset: 0 });
+      const current = record(resolved?.record);
+      need(current.reproId === id && current.state === 'published' && validETag(resolved.etag), 'PACKAGE_NOT_READY');
+      grant(resolved.authorization, 'GET', { range: 'bytes=0-', 'if-match': resolved.etag });
+      const cache = join(paths.root, 'cache'), pointer = join(cache, id + '.json');
+      if (!existsSync(pointer)) return { state: 'cache-absent', reproId: id, removedBytes: 0 };
+      const saved = privateJson(pointer);
+      need(saved?.schema === SCHEMA && saved.record?.reproId === id && validETag(saved.etag), 'CACHE_UNSAFE');
+      record(saved.record, current);
+      const root = ensurePrivateDirectory(join(cache, current.digest.slice(7))), ready = join(root, 'ready.zip');
+      const entries = readdirSync(root);
+      need(!entries.includes('partial.zip'), 'CACHE_IN_USE');
+      need(entries.length === 1 && entries[0] === 'ready.zip', 'CACHE_UNSAFE');
+      await usable(context, ready, current, root);
+      let retainedShared = false;
+      // A different stable ID can reference the same digest. Its cache remains
+      // available; malformed/unknown metadata is preserved without deletion.
+      for (const name of readdirSync(cache)) {
+        if (name === id + '.json' || /^[0-9a-f]{64}$/.test(name)) continue;
+        need(name.endsWith('.json') && reproId(name.slice(0, -5)), 'CACHE_UNSAFE');
+        const reference = privateJson(join(cache, name));
+        need(reference?.schema === SCHEMA && reference.record?.reproId === name.slice(0, -5) && validETag(reference.etag), 'CACHE_UNSAFE');
+        if (record(reference.record).digest === current.digest) retainedShared = true;
+      }
+      if (!retainedShared) rmSync(ready);
+      rmSync(pointer);
+      return { state: 'cache-deleted', reproId: id, digest: current.digest, removedBytes: retainedShared ? 0 : current.bytes, retainedShared };
+    });
+  });
 }

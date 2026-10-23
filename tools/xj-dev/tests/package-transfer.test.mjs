@@ -5,7 +5,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:https';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { getCACertificates, setDefaultCACertificates } from 'node:tls';
 import { pathToFileURL } from 'node:url';
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../src/certificates.mjs';
@@ -16,7 +16,7 @@ import { encodeZip, digest, jsonBytes } from '../src/repro-archive.mjs';
 import { LOCKFILES, LOCK_DIGEST_ALGORITHM, lockfileDigest } from '../src/repro-code.mjs';
 import { schemaFingerprint } from '../src/repro-data.mjs';
 import { inspectRepro } from '../src/repro.mjs';
-import { crc64XZ, publishFrozen, resumeUpload, fetchRepro } from '../src/package-transfer.mjs';
+import { crc64XZ, publishFrozen, resumeUpload, fetchRepro, pruneCache } from '../src/package-transfer.mjs';
 
 const worktree = join(import.meta.dirname, '../../..'), PART = 8 * 1024 * 1024;
 let shared, ca, cert, schema, previousCA;
@@ -292,13 +292,13 @@ test('a competing process cannot operate the same member transfer namespace; the
   const download = fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
   await pending;
   try {
+    await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'LOCK_HELD' });
     const script = `import {fetchRepro} from ${JSON.stringify(pathToFileURL(join(import.meta.dirname, '../src/package-transfer.mjs')).href)};
       try {await fetchRepro(JSON.parse(process.argv[1]),JSON.parse(process.argv[2]));process.exitCode=1;} catch(e) {console.log(e.code);}`;
     const child = spawn(process.execPath, ['--input-type=module', '-e', script, JSON.stringify(f.context), JSON.stringify({ deviceFile: f.deviceFile, reproId: source.reproId })], { stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.resume();
     assert.equal(await new Promise(done => child.once('close', done)), 0); assert.equal(output.trim(), 'LOCK_HELD');
-  } finally { release(); }
-  await download;
+  } finally { release(); await download; }
   const namespace = join(f.context.home, 'transfers', readdirSync(join(f.context.home, 'transfers'))[0]);
   assert.ok(lstatSync(join(namespace, 'operation-lock', 'mutex.sqlite')).isFile());
   assert.equal((await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId })).cacheHit, true);
@@ -379,4 +379,48 @@ test('broad permissions and symlinked transfer state are rejected before network
   rmSync(result.file); symlinkSync(outside, result.file);
   await assert.rejects(() => resumeUpload(f.context, { deviceFile: f.deviceFile, transferId: result.transferId }), { code: 'PRIVATE_FILE_REQUIRED' });
   assert.equal(readFileSync(outside, 'utf8'), 'must survive'); assert.equal(f.calls.length, before);
+});
+
+test('explicit cache deletion reauthorizes and verifies one ready ZIP, preserves frozen uploads and can fetch again', async t => {
+  const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const cache = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+  const result = await pruneCache(f.context, { reproId: source.reproId });
+  assert.equal(result.state, 'cache-deleted'); assert.equal(result.removedBytes, f.bytes.length);
+  assert.equal(existsSync(cache.file), false); assert.deepEqual(readFileSync(source.file), f.bytes);
+  const mutex = join(dirname(dirname(dirname(cache.file))), 'operation-lock', 'mutex.sqlite');
+  assert.ok(lstatSync(mutex).isFile());
+  assert.equal(JSON.stringify(result).includes(f.secret), false);
+  const again = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+  assert.deepEqual(readFileSync(again.file), f.bytes); assert.equal(f.gets.length, 2);
+});
+
+test('cache deletion preserves revoked, corrupt, partial and unknown local contents', async t => {
+  const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const cache = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+  f.controls.revoked = true;
+  await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'DEVICE_REVOKED' });
+  assert.deepEqual(readFileSync(cache.file), f.bytes); f.controls.revoked = false;
+  const unknown = join(dirname(cache.file), 'keep-this-note'); writeFileSync(unknown, 'unknown user data');
+  await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'CACHE_UNSAFE' });
+  assert.equal(readFileSync(unknown, 'utf8'), 'unknown user data'); assert.deepEqual(readFileSync(cache.file), f.bytes); rmSync(unknown);
+  const partial = join(dirname(cache.file), 'partial.zip'); writeFileSync(partial, f.bytes.subarray(0, 321), { mode: 0o600 });
+  await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'CACHE_IN_USE' });
+  assert.equal(readFileSync(partial).length, 321); assert.deepEqual(readFileSync(cache.file), f.bytes); rmSync(partial);
+  writeFileSync(cache.file, 'damaged but retained');
+  await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'DIGEST_MISMATCH' });
+  assert.equal(readFileSync(cache.file, 'utf8'), 'damaged but retained'); assert.deepEqual(readFileSync(source.file), f.bytes);
+});
+
+test('deleting one stable ID preserves a shared digest still referenced by another ID', async t => {
+  const f = await fixture(t), first = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const second = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes), idempotencyKey: randomUUID() });
+  assert.notEqual(first.reproId, second.reproId);
+  const cache = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: first.reproId });
+  await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: second.reproId });
+  const result = await pruneCache(f.context, { reproId: first.reproId });
+  assert.equal(result.retainedShared, true); assert.equal(result.removedBytes, 0); assert.deepEqual(readFileSync(cache.file), f.bytes);
+  assert.equal((await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: second.reproId })).cacheHit, true);
+  const last = await pruneCache(f.context, { reproId: second.reproId });
+  assert.equal(last.removedBytes, f.bytes.length); assert.equal(existsSync(cache.file), false);
+  assert.deepEqual(readFileSync(first.file), f.bytes); assert.deepEqual(readFileSync(second.file), f.bytes);
 });
