@@ -22,9 +22,11 @@ $ErrorActionPreference = 'Stop'
 $p = $env:XJ_PRIVATE_PATH
 $item = Get-Item -LiteralPath $p -Force
 if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'reparse' }
-$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$sid = $identity.User
 $acl = Get-Acl -LiteralPath $p
-if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value) { throw 'owner' }
+$owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+if ($owner -ne $sid.Value ${protect ? "-and $owner -ne $identity.Owner.Value" : ''}) { throw 'owner' }
 ${protect ? `
 $acl = New-Object Security.AccessControl.${directory ? 'DirectorySecurity' : 'FileSecurity'}
 $acl.SetOwner($sid)
@@ -34,6 +36,7 @@ $acl.AddAccessRule($rule)
 Set-Acl -LiteralPath $p -AclObject $acl
 $acl = Get-Acl -LiteralPath $p
 ` : ''}
+if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value) { throw 'owner' }
 ${directory || protect ? "if (-not $acl.AreAccessRulesProtected) { throw 'inheritance' }" : ''}
 $own = $false
 foreach ($r in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
