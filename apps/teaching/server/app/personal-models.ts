@@ -10,21 +10,24 @@ import {readJobs} from '../db/records-adapter.ts';
 import type {ModelSelection, PersonalAgentService, CompatibleTransport} from '../personal-agent/types.ts';
 import type {TrustedModelContext} from '../../contracts/tutoring/index.ts';
 import type {TeacherAgentOptions} from '../design/teacher-agent.ts';
+import {budgetedTransport,createModelBudget,type ModelBudget} from '../personal-agent/model-budget.ts';
 
-export type PersonalModelsOptions={directory:string;callsEnabled?:boolean};
+export type PersonalModelsOptions={directory:string;callsEnabled?:boolean;transport?:CompatibleTransport;modelBudget?:ModelBudget};
 export function personalModels(options:PersonalModelsOptions,authorize:(request:FastifyRequest)=>string,
   original:TutoringAppOptions['studentHelp'],db:SyntheticDatabase) {
-  const transport=createCompatibleTransport();
-  const service=createPersonalAgentService({directory:options.directory,authorize,transport,callsEnabled:()=>options.callsEnabled!==false,
+  const modelBudget=options.modelBudget??createModelBudget();
+  const transport=budgetedTransport(options.transport??createCompatibleTransport(),modelBudget);
+  const service=createPersonalAgentService({directory:options.directory,authorize,transport,modelBudget,callsEnabled:()=>options.callsEnabled!==false,
     readStudentTasks:userId=>readStudentTasks(db,userId)});
   const studentHelp:TutoringAppOptions['studentHelp']={...original,
+    modelBudget,
     requestLimits:{inactivityTimeoutMs:PERSONAL_MODEL_IDLE_MS,maximumCalls:1},
     modelConfigRevisionForStudent:studentId=>service.configurationRevision(studentId),
-    budgetAvailable:scope=>Boolean(service.selection(scope.studentId)),
-    versionsForStudent:studentId=>({...original.versions,modelConfig:service.selection(studentId)?.version??'personal-unconfigured'}),
+    budgetAvailable:scope=>Boolean(service.selection(scope.studentId,false)),
+    versionsForStudent:studentId=>({...original.versions,modelConfig:service.selection(studentId,false)?.version??'personal-unconfigured'}),
     providerForStudent:(studentId,version)=>compatibleTutoringProvider(requirePersonalSelection(service.selection(studentId),version),transport),
   };
-  return {...service,studentHelp,transport};
+  return {...service,studentHelp,transport,modelBudget};
 }
 
 const persistedUsageList = z.array(z.discriminatedUnion('status', [
@@ -64,20 +67,21 @@ export function teacherDesignRoundCalls(tx:Transaction,actorId:string,courseId:s
  */
 export function teacherDesignAgentOptions(options:{service:PersonalAgentService;transport:CompatibleTransport;
   approval:TeacherDesignApprovalValues;personalCallsEnabled:()=>boolean}):
-  Pick<TeacherAgentOptions,'providerForTeacher'|'versionsForTeacher'|'budgetAvailableInTransaction'> {
+  Pick<TeacherAgentOptions,'providerForTeacher'|'versionsForTeacher'|'budgetAvailableInTransaction'|'modelBudget'> {
   const {service,transport,approval,personalCallsEnabled} = options;
   return {
+    ...(service.modelBudget?{modelBudget:service.modelBudget}:{}),
     providerForTeacher:({actorId,modelConfig}) =>
       compatibleTutoringProvider(requirePersonalSelection(service.selection(actorId),modelConfig),transport),
     versionsForTeacher:({actorId}) => ({
-      modelConfig:service.selection(actorId)?.version ?? 'personal-unconfigured',
+      modelConfig:service.selection(actorId,false)?.version ?? 'personal-unconfigured',
       prompt:'teacher-design-v1',schema:'teacher-design-v1',policy:'teacher-design-v1',
     } satisfies TrustedModelContext['versions']),
     budgetAvailableInTransaction:(tx,{actorId,courseId,usages}) => {
       if (!personalCallsEnabled()) return false;
       if (!approval.allowedTeacherIds.includes(actorId) || !approval.allowedCourseIds.includes(courseId)) return false;
       if (usages.length >= approval.maximumCallsPerRequest) return false;
-      const selection:ModelSelection|undefined = service.selection(actorId);
+      const selection:ModelSelection|undefined = service.selection(actorId,false);
       if (!selection) return false;
       if ((selection.maxOutputTokens ?? 4096) > approval.maximumOutputTokens) return false;
       return teacherDesignRoundCalls(tx,actorId,courseId,approval.roundStartsAtMs) < approval.maximumCallsPerRound;

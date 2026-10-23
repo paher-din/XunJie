@@ -45,6 +45,7 @@ import {
   type AuthorizedStudentHelpRuntime,
 } from "./service.ts";
 import type { ModelProvider } from "./providers.ts";
+import {budgetedProvider,ModelQueueError,modelQueueFailure,type ModelBudget} from "../personal-agent/model-budget.ts";
 import type { StudentHelpCurrentState } from "./context.ts";
 import type { TeachingBasisCurrent } from '../records/teaching.ts';
 import { hdlHelpSelectionSchema,type HdlHelpSelection,type HdlHelpBasis } from '../../contracts/workspace/hdl-help.ts';
@@ -90,6 +91,7 @@ export type LearnerStateReader = (tx: Transaction,scope: {courseId: string;stude
 
 export type TutoringAppOptions = TeachingRecordsOptions & {
   studentHelp: {
+    modelBudget?:ModelBudget;
     versions: TrustedModelContext["versions"];
     /** Trusted personal configuration, selected on acceptance and captured before dispatch. */
     versionsForStudent?: (studentId:string)=>TrustedModelContext["versions"];
@@ -425,122 +427,144 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       preparation: StudentHelpPreparationOptions,
       runtime: Omit<AuthorizedStudentHelpRuntime, "updateJob" | "budgetAvailable">,
     ) {
-      const authorized = authorizeStudentHelp(request, idValue, jobId, preparation);
-      // Resolve once before the first call: queued changes are rejected; an in-flight
-      // call keeps its captured provider instead of silently switching credentials.
-      let selectedProvider=runtime.provider;
-      if(studentHelp.providerForStudent){
-        try{selectedProvider=studentHelp.providerForStudent(authorized.job.scope.studentId!,authorized.versions.modelConfig);}
-        catch(error){
-          // Execute through the original gate so a missing/changed configuration is
-          // a terminal truthful Job outcome and still uses the original call ledger.
-          selectedProvider={generate:async()=>{throw error;}};
+      const execute = async (signal:AbortSignal|undefined) => {
+        const authorized = authorizeStudentHelp(request, idValue, jobId, preparation);
+        if(studentHelp.modelBudget&&authorized.job.inactivityTimeoutMs&&authorized.job.status==='queued'){
+          authorized.job={...authorized.job,deadline:new Date(now()+authorized.job.inactivityTimeoutMs).toISOString()};
         }
-      }
-      const updateJob: AuthorizedStudentHelpRuntime["updateJob"] = (expectedJobId, update) =>
-        withHelpTransaction(request,idValue,jobId,'student_help',(tx) => {
-          currentGeneration(authorized.job.recoveryGeneration);
-          const current = readTeachingJob(tx, authorized.job.scope.courseId, expectedJobId);
-          if (!current || current.scope.studentId !== authorized.job.scope.studentId ||
-            current.scope.attemptId !== authorized.job.scope.attemptId) {
-            throw new ApiError("STATE_CONFLICT");
+        // Resolve once before the first call: queued changes are rejected; an in-flight
+        // call keeps its captured provider instead of silently switching credentials.
+        let selectedProvider=runtime.provider;
+        if(studentHelp.providerForStudent){
+          try{selectedProvider=studentHelp.providerForStudent(authorized.job.scope.studentId!,authorized.versions.modelConfig);}
+          catch(error){
+            // Execute through the original gate so a missing/changed configuration is
+            // a terminal truthful Job outcome and still uses the original call ledger.
+            selectedProvider={generate:async()=>{throw error;}};
           }
-          const next = update(current);
-          saveJob(tx, next);
-          currentGeneration(authorized.job.recoveryGeneration);
-          return next;
-        });
-      const readCurrent: AuthorizedStudentHelpRuntime["readCurrent"] = async (signal) => {
-        const {hdl:_runtimeHdl,...state} = await runtime.readCurrent(signal);
-        const current = withHelpTransaction(request,idValue,jobId,'read',(tx) => {
-          const job = readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId);
-          if (!job || !job.scope.studentId || !job.scope.attemptId) throw new ApiError("STATE_CONFLICT");
-          const learner = studentHelp.readLearnerState?.(tx,{
-            courseId: job.scope.courseId,studentId: job.scope.studentId,attemptId: job.scope.attemptId,
-          });
-          let hdl:ReturnType<typeof projectHdlHelpCurrentState>|undefined;
-          if(authorized.hdl&&studentHelp.readHdlContext){
-            const selected=readTeachingMessageByJob(tx,job.scope.courseId,job.jobId)?.envelope;
-            if(selected?.kind==='student_question'&&selected.hdlSelection){
-              try{
-                const current=projectHdlHelpCurrentState(studentHelp.readHdlContext(tx,
-                  {userId:job.scope.studentId,courseId:job.scope.courseId,role:'student'},idValue,selected.hdlSelection,options.currentGeneration()));
-                if(selected.hdlBasis&&canonical(selected.hdlBasis)===canonical(current))hdl=current;
-              }
-              catch(error){if(!(error instanceof ApiError))throw error;}
+        }
+        const updateJob: AuthorizedStudentHelpRuntime["updateJob"] = (expectedJobId, update) =>
+          withHelpTransaction(request,idValue,jobId,'student_help',(tx) => {
+            currentGeneration(authorized.job.recoveryGeneration);
+            const current = readTeachingJob(tx, authorized.job.scope.courseId, expectedJobId);
+            if (!current || current.scope.studentId !== authorized.job.scope.studentId ||
+              current.scope.attemptId !== authorized.job.scope.attemptId) {
+              throw new ApiError("STATE_CONFLICT");
             }
-          }
-          return {job,learner,hdl};
-        });
-        return {
-          ...state,
-          ...(current.learner ? {learnerStateRevision: current.learner.learnerStateRevision} : {}),
-          jobStatus: current.job.status,
-          stopRequested: current.job.stopRequested,
-          recoveryGeneration: current.job.recoveryGeneration,
-          ...(current.hdl?{hdl:current.hdl}:{}),
-          objectAvailable:state.objectAvailable&&(!authorized.hdl||!!current.hdl),
-        };
-      };
-      const studentId = authorized.job.scope.studentId;
-      const authorizedAttemptId = authorized.job.scope.attemptId;
-      if (!studentId || !authorizedAttemptId) throw new ApiError("STATE_CONFLICT");
-      const execution = await executeAuthorizedStudentHelp(authorized, {
-        ...runtime,
-        ...studentHelp.requestLimits,
-        provider:selectedProvider,
-        budgetAvailable: () => studentHelp.budgetAvailable({
-          courseId: authorized.job.scope.courseId,
-          studentId,
-          attemptId: authorizedAttemptId,
-        }),
-        readCurrent,
-        updateJob,
-      });
-      if (execution.outcome.outcome !== "success") return execution;
-      const bodyJson = JSON.stringify(execution.outcome.body);
-      const completeTeaching = instance.workspace.teaching.completeTeaching;
-      if (!completeTeaching) throw new ApiError("DEPENDENCY_UNAVAILABLE");
-      const completion = {
-        recoveryGeneration: authorized.job.recoveryGeneration,
-        jobId: authorized.job.jobId,
-        leaseToken: runtime.leaseToken,
-        bodyJson,
-        versions: teachingVersions(
-          authorized.activity.activityVersionId,
-          authorized.activity.helpPolicy.versionId,
-          execution.versions,
-        ),
-        usage: execution.outcome.usage.status === "actual"
-          ? execution.outcome.usage
-          : { status: "unknown" as const, reason: "provider_status_unknown" },
-        calls: execution.outcome.calls,
-        elapsedMs: execution.outcome.elapsedMs,
-        basis: {
-          attemptRevision: authorized.job.expectedRevision,
-          decisionEpoch: authorized.job.decisionEpoch,
-          captureRevision: authorized.current.captureRevision,
-          relatedStateRevision: authorized.learnerStateRevision,
-          ...(authorized.objectRef ? { objectRef: authorized.objectRef } : {}),
-          ...(authorized.hdl?{hdl:projectHdlHelpCurrentState(authorized.hdl)}:{}),
-          inputRefs: execution.authorizedReferenceIds.filter((referenceId) => !referenceId.startsWith("assistance:")),
-          assistanceRefs: execution.authorizedReferenceIds.filter((referenceId) => referenceId.startsWith("assistance:")),
-          coverageRefs: [],
-        },
-      };
-      const delivery = request ? completeTeaching(request, idValue, completion)
-        : withHelpTransaction(undefined,idValue,jobId,'read',tx => {
-          currentGeneration(completion.recoveryGeneration);
-          return completeTeachingInTransaction(tx, {
-            scope:{courseId:authorized.job.scope.courseId,studentId,attemptId:authorizedAttemptId},
-            jobId,leaseToken:completion.leaseToken,generation:completion.recoveryGeneration,
-            now:new Date(now()).toISOString(),bodyJsonText:completion.bodyJson,
-            versions:completion.versions,usage:completion.usage,calls:completion.calls,
-            elapsedMs:completion.elapsedMs,basis:completion.basis,messageId:randomUUID(),actionId:randomUUID(),
-            ...(isTeachingBasisCurrent?{isBasisCurrent:isTeachingBasisCurrent}:{}),
+            const admissionCurrent=studentHelp.modelBudget&&current.status==='queued'&&authorized.job.inactivityTimeoutMs
+              ?{...current,deadline:authorized.job.deadline}:current;
+            const next = update(admissionCurrent);
+            saveJob(tx, next);
+            currentGeneration(authorized.job.recoveryGeneration);
+            return next;
           });
+        const readCurrent: AuthorizedStudentHelpRuntime["readCurrent"] = async (signal) => {
+          const {hdl:_runtimeHdl,...state} = await runtime.readCurrent(signal);
+          const current = withHelpTransaction(request,idValue,jobId,'read',(tx) => {
+            const job = readTeachingJob(tx, authorized.job.scope.courseId, authorized.job.jobId);
+            if (!job || !job.scope.studentId || !job.scope.attemptId) throw new ApiError("STATE_CONFLICT");
+            const learner = studentHelp.readLearnerState?.(tx,{
+              courseId: job.scope.courseId,studentId: job.scope.studentId,attemptId: job.scope.attemptId,
+            });
+            let hdl:ReturnType<typeof projectHdlHelpCurrentState>|undefined;
+            if(authorized.hdl&&studentHelp.readHdlContext){
+              const selected=readTeachingMessageByJob(tx,job.scope.courseId,job.jobId)?.envelope;
+              if(selected?.kind==='student_question'&&selected.hdlSelection){
+                try{
+                  const current=projectHdlHelpCurrentState(studentHelp.readHdlContext(tx,
+                    {userId:job.scope.studentId,courseId:job.scope.courseId,role:'student'},idValue,selected.hdlSelection,options.currentGeneration()));
+                  if(selected.hdlBasis&&canonical(selected.hdlBasis)===canonical(current))hdl=current;
+                }
+                catch(error){if(!(error instanceof ApiError))throw error;}
+              }
+            }
+            return {job,learner,hdl};
+          });
+          return {
+            ...state,
+            ...(current.learner ? {learnerStateRevision: current.learner.learnerStateRevision} : {}),
+            jobStatus: current.job.status,
+            stopRequested: current.job.stopRequested,
+            recoveryGeneration: current.job.recoveryGeneration,
+            ...(current.hdl?{hdl:current.hdl}:{}),
+            objectAvailable:state.objectAvailable&&(!authorized.hdl||!!current.hdl),
+          };
+        };
+        const studentId = authorized.job.scope.studentId;
+        const authorizedAttemptId = authorized.job.scope.attemptId;
+        if (!studentId || !authorizedAttemptId) throw new ApiError("STATE_CONFLICT");
+        const execution = await executeAuthorizedStudentHelp(authorized, {
+          ...runtime,
+          ...(signal?{signal}:{}),
+          ...studentHelp.requestLimits,
+          provider:studentHelp.modelBudget?budgetedProvider(selectedProvider,studentHelp.modelBudget):selectedProvider,
+          budgetAvailable: () => studentHelp.budgetAvailable({
+            courseId: authorized.job.scope.courseId,
+            studentId,
+            attemptId: authorizedAttemptId,
+          }),
+          readCurrent,
+          updateJob,
         });
-      return { ...execution, delivery };
+        if (execution.outcome.outcome !== "success") return execution;
+        const bodyJson = JSON.stringify(execution.outcome.body);
+        const completeTeaching = instance.workspace.teaching.completeTeaching;
+        if (!completeTeaching) throw new ApiError("DEPENDENCY_UNAVAILABLE");
+        const completion = {
+          recoveryGeneration: authorized.job.recoveryGeneration,
+          jobId: authorized.job.jobId,
+          leaseToken: runtime.leaseToken,
+          bodyJson,
+          versions: teachingVersions(
+            authorized.activity.activityVersionId,
+            authorized.activity.helpPolicy.versionId,
+            execution.versions,
+          ),
+          usage: execution.outcome.usage.status === "actual"
+            ? execution.outcome.usage
+            : { status: "unknown" as const, reason: "provider_status_unknown" },
+          calls: execution.outcome.calls,
+          elapsedMs: execution.outcome.elapsedMs,
+          basis: {
+            attemptRevision: authorized.job.expectedRevision,
+            decisionEpoch: authorized.job.decisionEpoch,
+            captureRevision: authorized.current.captureRevision,
+            relatedStateRevision: authorized.learnerStateRevision,
+            ...(authorized.objectRef ? { objectRef: authorized.objectRef } : {}),
+            ...(authorized.hdl?{hdl:projectHdlHelpCurrentState(authorized.hdl)}:{}),
+            inputRefs: execution.authorizedReferenceIds.filter((referenceId) => !referenceId.startsWith("assistance:")),
+            assistanceRefs: execution.authorizedReferenceIds.filter((referenceId) => referenceId.startsWith("assistance:")),
+            coverageRefs: [],
+          },
+        };
+        const delivery = request ? completeTeaching(request, idValue, completion)
+          : withHelpTransaction(undefined,idValue,jobId,'read',tx => {
+            currentGeneration(completion.recoveryGeneration);
+            return completeTeachingInTransaction(tx, {
+              scope:{courseId:authorized.job.scope.courseId,studentId,attemptId:authorizedAttemptId},
+              jobId,leaseToken:completion.leaseToken,generation:completion.recoveryGeneration,
+              now:new Date(now()).toISOString(),bodyJsonText:completion.bodyJson,
+              versions:completion.versions,usage:completion.usage,calls:completion.calls,
+              elapsedMs:completion.elapsedMs,basis:completion.basis,messageId:randomUUID(),actionId:randomUUID(),
+              ...(isTeachingBasisCurrent?{isBasisCurrent:isTeachingBasisCurrent}:{}),
+            });
+          });
+        return { ...execution, delivery };
+      };
+      if(!studentHelp.modelBudget)return execute(runtime.signal);
+      const initial = authorizeStudentHelp(request,idValue,jobId,preparation);
+      try {
+        return await studentHelp.modelBudget.run({memberId:initial.job.scope.studentId!,
+          payloadBytes:Buffer.byteLength(JSON.stringify(initial)),...(runtime.signal?{signal:runtime.signal}:{})},execute);
+      } catch(error) {
+        if(!(error instanceof ModelQueueError))throw error;
+        return {jobId:initial.job.jobId,requestReceiptId:initial.job.requestReceiptId,
+          scope:{courseId:initial.job.scope.courseId,userId:initial.job.scope.studentId!,attemptId:initial.job.scope.attemptId!},
+          expectedAttemptRevision:initial.job.expectedRevision,decisionEpoch:initial.job.decisionEpoch,
+          activityVersionId:initial.activity.activityVersionId,helpPolicyVersionId:initial.activity.helpPolicy.versionId,
+          learnerStateRevision:initial.learnerStateRevision,...(initial.objectRef?{objectRef:initial.objectRef}:{}),
+          authorizedReferenceIds:[],versions:initial.versions,outcome:modelQueueFailure(error)} satisfies StudentHelpExecutionResult;
+      }
     },
     async processJob(jobId: string, provider: ModelProvider, signal?: AbortSignal): Promise<StudentHelpExecutionResult> {
       const scope = options.db.withTransaction(tx => {
@@ -573,16 +597,18 @@ export async function createTutoringApp(options: TutoringAppOptions) {
       };
       const execution=await tutoring.executeStudentHelp(undefined,scope,jobId,preparation,
         {provider,leaseToken,readCurrent,now,...(signal?{signal}:{})});
-      if(execution.outcome.outcome!=='success') options.db.withTransaction(tx=> {
+      const failure=execution.outcome;
+      if(failure.outcome!=='success') options.db.withTransaction(tx=> {
         const row=tx.get('SELECT course_id FROM jobs WHERE job_id=?',jobId);
         if(typeof row?.course_id!=='string') throw new ApiError('STATE_CONFLICT');
         const job=readTeachingJob(tx,row.course_id,jobId);
         // A late failure cannot overwrite a stop/new lease/generation or terminal success.
-        if(!job||job.status!=='running'||job.leaseToken!==leaseToken||job.stopRequested
-          ||job.recoveryGeneration!==options.currentGeneration()) return;
+        const unsentQueue=failure.code.startsWith('MODEL_QUEUE_')&&failure.calls===0;
+        if(!job||job.stopRequested||job.recoveryGeneration!==options.currentGeneration()
+          ||!(job.status==='running'&&job.leaseToken===leaseToken||unsentQueue&&job.status==='queued'&&job.attemptCount===0))return;
         const outcome=execution.outcome.outcome;
         saveJob(tx,{...job,status:outcome==='timed_out'?'timed_out':outcome==='stale'?'stale':outcome==='cancelled'?'cancelled':'failed',
-          failure:outcome,...(outcome==='cancelled'||outcome==='stale'?{stopRequested:true}:{})});
+          failure:unsentQueue?failure.code:outcome,...(outcome==='cancelled'||outcome==='stale'?{stopRequested:true}:{})});
       });
       return execution;
     },

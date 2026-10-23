@@ -5,7 +5,7 @@ import type {
 } from "../../contracts/tutoring/index.ts";
 import type { Job } from "../../contracts/records/index.ts";
 import { claimJob, recordModelCall,renewModelActivity } from "../records/jobs.ts";
-import { generateStudentHelp } from "./core.ts";
+import { CALL_VERDICT_WINDOW_MS, generateStudentHelp } from "./core.ts";
 import {
   assembleStudentHelpRequest,
   createStudentHelpCurrentGuard,
@@ -87,6 +87,8 @@ export async function executeAuthorizedStudentHelp(
     checkCurrent: createStudentHelpCurrentGuard(authorizedInput, runtime.readCurrent),
     priorCalls: trustedJob.attemptCount,
     now,
+    // Only the provider's confirmed unsent/released verdict can undo a reservation.
+    callVerdictWindowMs: CALL_VERDICT_WINDOW_MS,
     ...(runtime.maximumCalls?{maximumCalls:runtime.maximumCalls}:{}),
     ...(runtime.inactivityTimeoutMs?{inactivityTimeoutMs:runtime.inactivityTimeoutMs}:{}),
   });
