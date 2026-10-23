@@ -14,7 +14,10 @@ import {storeHdlConfiguration,fixedHdlRuntime,availableHdlRuntime,configurationH
 import {readDraft,draftCourse} from '../design/storage.ts';
 import {queryRuntime,availableRuntime} from '../design/readiness.ts';
 import {readActivity,readAssignment} from '../design/activities.ts';
-import {readAttempt,saveAttempt,finishRecordCommand,readRecordCommand,stopAttemptJobs} from '../db/records-adapter.ts';
+import {readAttempt,saveAttempt,finishRecordCommand,readRecordCommand,stopAttemptJobs,saveJob} from '../db/records-adapter.ts';
+import {cancelJob} from '../records/jobs.ts';
+import {MODEL_QUEUE_LIMITS} from '../personal-agent/model-budget.ts';
+import {loadTeacherRequest} from '../design/teacher-storage.ts';
 import {parseRequest} from './validation.ts';
 import {ApiError} from './errors.ts';
 import {canonical} from '../records/commands.ts';
@@ -177,25 +180,59 @@ export async function createDigitalLogicApplication(options:DigitalLogicApplicat
  const teaching=originalTeachingConsumer(instance,{...options,currentGeneration},options.tutoringProvider??{
   generate:async()=>{throw new ApiError('DEPENDENCY_UNAVAILABLE');},
  },admission);
+ const teacherTasks=new Map<string,{actorId:string;controller:AbortController;task:Promise<unknown>}>();
+ // Submit enough distinct teachers for the shared budget to select runnable work, without
+ // retaining an unbounded batch or filling its wait queue with a single busy member.
+ const teacherTaskLimit=MODEL_QUEUE_LIMITS.active+MODEL_QUEUE_LIMITS.waiting;
+ function stopTeacherJobs(tx:Transaction){
+  for(const row of tx.all("SELECT job_id FROM jobs WHERE purpose='teacher_design' AND status IN ('queued','running','outcome_unknown','cancelling')"))
+   saveJob(tx,cancelJob(loadTeacherRequest(tx,String(row.job_id)).job));
+ }
+ app.addHook('preClose',async()=>{
+  try {options.db.withTransaction(stopTeacherJobs);}
+  finally {for(const {controller} of teacherTasks.values())controller.abort();}
+ });
  try {host=attachOriginalJobHost(instance,{...options,currentGeneration},{
   admission,
   startAdditional:teaching.start,
   additionalReady:teaching.isHealthy,
   async consumeAdditional(){
-   if(instance.teacherAgent){
-    const jobs=options.db.withTransaction(tx=>tx.all("SELECT job_id FROM jobs WHERE purpose='teacher_design' AND status IN ('queued','running','outcome_unknown','cancelling')").map(row=>String(row.job_id)));
-    for(const jobId of jobs)await instance.teacherAgent.processJob(jobId);
+   if(instance.teacherAgent&&admission.accepting){
+    const jobs=options.db.withTransaction(tx=>tx.all("SELECT j.job_id,j.status,r.actor_id,json_extract(j.job_json,'$.deadline') AS deadline FROM jobs j JOIN teacher_design_requests r ON r.job_id=j.job_id WHERE j.purpose='teacher_design' AND j.status IN ('queued','running','outcome_unknown','cancelling') ORDER BY json_extract(j.job_json,'$.acceptedAt'),j.rowid"));
+    if(!teacherDesignAgent?.modelBudget){
+     for(const row of jobs)await instance.teacherAgent.processJob(String(row.job_id));
+     return;
+    }
+    const members=new Set([...teacherTasks.values()].map(value=>value.actorId));
+    for(const row of jobs){
+     const jobId=String(row.job_id),actorId=String(row.actor_id);
+     if(teacherTasks.has(jobId))continue;
+     // Recovery and expired DB backlog never dispatch a model or take a budget entry.
+     if(row.status!=='queued'||Date.parse(String(row.deadline))<=now()){
+      await instance.teacherAgent.processJob(jobId);continue;
+     }
+     if(teacherTasks.size>=teacherTaskLimit||members.has(actorId))continue;
+     const controller=new AbortController();
+     const task=instance.teacherAgent.processJob(jobId,controller.signal)
+      .catch(()=>{app.log.error({errorCode:'DEPENDENCY_UNAVAILABLE'},'Original teacher job reconciliation failed.');})
+      .finally(()=>teacherTasks.delete(jobId));
+     teacherTasks.set(jobId,{actorId,controller,task});members.add(actorId);
+    }
    }
   },
   stopInTransaction(tx){
    teaching.stopInTransaction(tx);
+   stopTeacherJobs(tx);
    for(const row of tx.all('SELECT DISTINCT attempt_id FROM hdl_sessions WHERE termination_confirmed=0')){
     const attempt=readAttempt(tx,String(row.attempt_id));
     hdl.stopInTransaction(tx,attempt.attemptId,'application_shutdown',generation);
     saveAttempt(tx,{...attempt,attemptRevision:attempt.attemptRevision+1,decisionEpoch:attempt.decisionEpoch+1});
    }
   },
-  stopAdditional:teaching.stop,
+  async stopAdditional(){
+   for(const {controller} of teacherTasks.values())controller.abort();
+   await Promise.all([teaching.stop(),Promise.allSettled([...teacherTasks.values()].map(value=>value.task))]);
+  },
   reconcile:()=>hdl.reconcileStops(),
  });} catch(error) {await app.close();throw error;}
  // Member PCs can be offline during an ECS restart. Reconciliation starts after listen in the original consumer.
