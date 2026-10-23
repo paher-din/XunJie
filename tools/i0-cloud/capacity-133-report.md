@@ -123,4 +123,6 @@ main 串行运行同 512MiB、同 seed SHA `953751236860111f5e21d97e29eaf16b5e15
 
 建议业务 **MemoryHigh384MiB / MemoryMax512MiB** 并保留已测 ss16，无需本场景升至768MiB；接入 **MemoryHigh128MiB / MemoryMax256MiB**。这是五人业务、两短模型和两次直传的预算建议，应用/持久化/读回由 main/lead 独立完成，不在本轮 worker 测量结果中冒称已应用。
 
+随后 main 实际采用并持久读回的是另一组明确预算：candidate **High448MiB/Max512MiB、CPUWeight200**，formal **High512MiB/Max768MiB、CPUWeight200**，access **High128MiB/Max256MiB、TasksMax64**。properties与内核cgroup值一致，PID/ExecStart均不变；formal仍旧d07、PID91972/原argv，未重启或加入ss16。回执为仓库外 `~/.codex/artifacts/xj133-resource-budgets-20261024/applied.json`。这是测量结束后的运维事实，不能倒写为本轮测量参数；原始sealed artifacts与worker初始建议均保持原样。shared新模板只有下次安装时才默认ss16。
+
 负载 PID47473 已退出，采样 PID143246 已确认身份后停止，所有分支已 executionDrained，额外云审计也已结束。之后只做本地证据封存和本文件编辑；不再起负载、模型或 OSS。五 actors 的私有 home/端口等待 main 统一清理，本 worker 不自行撤销，不改正式 main/服务/limits 或有效恢复材料。
