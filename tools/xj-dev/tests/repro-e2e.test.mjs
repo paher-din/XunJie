@@ -33,7 +33,7 @@ function resign(entries) {
   return encodeZip(entries);
 }
 
-test('capture before stale-editor save; restore actual code/data to another worktree and reproduce VERSION_CONFLICT', { timeout: 300_000 }, async t => {
+test('capture before stale-editor save; restore actual code/data to another worktree and reproduce VERSION_CONFLICT', { timeout: process.platform === 'win32' ? 600_000 : 300_000 }, async t => {
   const root = mkdtempSync(join(tmpdir(), 'xj-repro-e2e-'));
   const previousHome = process.env.XJ_DEV_HOME; process.env.XJ_DEV_HOME = join(root, 'home');
   const source = resolveContext({ worktree, instance: 'repro-' + process.pid });
