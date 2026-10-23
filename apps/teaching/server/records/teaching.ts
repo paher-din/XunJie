@@ -628,9 +628,10 @@ export type CoverageInterval = {attemptId: string;captureRevision: number;state:
 export function readCoverageIntervals(tx: Transaction, attemptId: string): {attemptId: string;captureRevision: number;collecting: boolean;
   cutoffServerSeq: number;intervals: CoverageInterval[]} {
   const attempt = requireAttempt(tx, attemptId);
-  const receipts = readRecords(tx, attempt.courseId).receipts.filter(receipt => receipt.identity.actorId === attempt.studentId)
-    .sort((left, right) => left.serverSeq - right.serverSeq);
-  const controls = new Map(tx.all("SELECT * FROM workspace_process_records WHERE attempt_id=? AND kind='coverage'", attemptId)
+  const rows = tx.all("SELECT * FROM workspace_process_records WHERE attempt_id=? AND kind='coverage'", attemptId);
+  const receipts = readRecords(tx, attempt.courseId, attemptId, rows.map(row => String(row.receipt_id))).receipts
+    .filter(receipt => receipt.identity.actorId === attempt.studentId).sort((left, right) => left.serverSeq - right.serverSeq);
+  const controls = new Map(rows
     .map(row => [String(row.receipt_id), { revision: Number(row.capture_revision),
       record: persisted(z.strictObject({ collecting: z.boolean(), occurredAt: z.iso.datetime() }), String(row.record_json), 'coverage') }]));
   const intervals: CoverageInterval[] = [];
