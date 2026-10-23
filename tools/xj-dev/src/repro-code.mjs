@@ -14,15 +14,47 @@ export function excludedPath(path) {
     || path.startsWith('docs/archive/');
 }
 
+function privateInvitation(value, sensitive) {
+  // An invitation's generic `secret` is private only in its own access envelope.
+  // Parse JSON first so nested metadata cannot join fields from unrelated objects.
+  let parsed;
+  try { parsed = JSON.parse(value); } catch { /* Source literals and log lines may surround the JSON. */ }
+  const pending = [parsed];
+  while (pending.length) {
+    const item = pending.pop();
+    if (!item || typeof item !== 'object') continue;
+    if (item.protocol === 'xj-dev/access-v1' && sensitive(item.secret)) return true;
+    pending.push(...Object.values(item));
+  }
+  if (parsed !== undefined) return false;
+  for (const [object] of value.matchAll(/\{(?:[^{}"']|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')*\}/g)) {
+    if (/(?:^|[,{])\s*["']?protocol["']?\s*:\s*["']xj-dev\/access-v1["']/.test(object)
+      && [...object.matchAll(/(?:^|[,{])\s*["']?secret["']?\s*:\s*["']([^"'\n]{8,})["']/g)].some(match => sensitive(match[1]))) return true;
+  }
+  return false;
+}
+
+function privateOssRequest(value, sensitive) {
+  // Keep each query separate: an ordinary Signature or access ID alone is metadata.
+  for (const [, query] of value.matchAll(/\?([^\s"'<>`#\\]+)/g)) {
+    const params = [...new URLSearchParams(query.replaceAll('&amp;', '&'))];
+    const has = name => params.some(([key, text]) => key.toLowerCase() === name && sensitive(text));
+    if (has('x-oss-signature') || has('security-token') || has('x-oss-security-token')
+      || has('ossaccesskeyid') && has('signature')) return true;
+  }
+  return [...value.matchAll(/(?:^|[\r\n])(?:x-oss-)?security-token\s*:\s*([^\s"'<>]+)/gi)].some(match => sensitive(match[1]));
+}
+
 // Free-form material is opt-in; reject recognizable credentials rather than silently changing evidence.
 export function assertShareable(bytes, label = '选中内容') {
   const value = Buffer.isBuffer(bytes) ? bytes.toString('utf8') : String(bytes);
-  const assignments = [...value.matchAll(/["']?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|signing[_-]?secret|private[_-]?key)["']?\s*[:=]\s*["']([^"'\n]{8,})["']/gi)];
+  const assignments = [...value.matchAll(/["']?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|signing[_-]?secret|private[_-]?key|invitation[_-]?secret|(?:x-oss-)?security[_-]?token|x-oss-signature)["']?\s*[:=]\s*["']([^"'\n]{8,})["']/gi)];
   // Explicitly invalid fixtures are public test inputs, not credentials. Everything else stays checked.
   const fixture = text => /^(?:synthetic(?:[-_ ]|$)|test(?:[-_ ]|$)|invalid(?:[-_ ]|$)|unconfigured$|placeholder$|changeme$)/i.test(text)
     || text === 'offline-test-key' || /(?:^|[-_ ])not[-_ ]a[-_ ]real[-_ ](?:credential|key|secret)/i.test(text);
+  const sensitive = text => typeof text === 'string' && text.length >= 8 && !fixture(text);
   if (/-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{24,}|gh[pousr]_[A-Za-z0-9]{25,})\b/.test(value)
-    || assignments.some(match => !fixture(match[1]))) {
+    || assignments.some(match => sensitive(match[1])) || privateInvitation(value, sensitive) || privateOssRequest(value, sensitive)) {
     throw reproError('SECRET_DETECTED', `${label} 包含疑似凭据；请缩小范围或先清理后重新采集。`);
   }
 }

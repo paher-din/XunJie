@@ -177,7 +177,7 @@ node tools/xj-dev/xj-dev.mjs node disconnect
 
 ### 配置与公开接缝
 
-成员接入工具可写出 [connection.example.json](connection.example.json) 的 `xj-dev/connection-v1`。必填 `host`、`port`、`browserUser`、`applicationPort`、`browserOrigin`、`identityFile`、`knownHostsFile`、`caFile`；路径相对配置文件解析。可选 `expectedBackendVersion` 是显式兼容约束，不是观测版本。文件应放仓库外受限目录，私钥正文和账号密码不进入 CLI 输出。
+新成员由 `join` 自动生成 `xj-dev/connection-v1`，不再提供手填连接模板。兼容既有已批准配置；协议必填 `host`、`port`、`browserUser`、`applicationPort`、`browserOrigin`、`identityFile`、`knownHostsFile`、`caFile`；路径相对配置文件解析。可选 `expectedBackendVersion` 是显式兼容约束，不是观测版本。文件应放仓库外受限目录，私钥正文和账号密码不进入 CLI 输出。
 
 节点可额外提供 `nodeId`、`nodeUser`、`localRunnerPort`、`remoteRunnerPort`，可选 `nodeIdentityFile`。工具只做原登记节点的反向转发；连接成功只证明传输，不证明 runner 授权、generation 或实际执行通过。没有节点时页面与普通业务仍可用。任务绑定和未知结果沿原业务契约保留，不静默重派。
 
@@ -257,3 +257,14 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 平台状态：macOS 与 Windows 11 x64（10.0.26200.9711）已实机验收，均使用 Node 24.21.0。
 
 Windows 实测结果（2026-10-23）：xj-dev 23/23；student 类型检查、构建及 684 项测试通过；teaching 类型检查、构建及 525 项测试通过（另有 24 项依赖外部执行环境的测试跳过）。Chromium 完成登录、课程、保存、冻结、提交、教师反馈和学生读取，并实际修改组件源码验证 HMR。另验证后端源码修改后仅 backend 重启、API 响应更新，以及 down 后自有 PID 全部退出、重启保留原反馈。验收结束已停止该环境，保留独立开发数据。执行节点、模型与教学效果不在本次验证范围内。
+
+
+## 一次性邀请与设备登记
+
+`join --invitation-file FILE [--mode local|cloud-api|cloud]` 自动准备设备 key、签名登记与连接配置，默认启动 local；`refresh [--device-file FILE]` 用原设备刷新授权。当前工作树的日常 cloud `up`/`use` 自动使用已登记配置。`--no-start` 仅登记，未启动不算完整验收。命令只返回安全 ID、页面与私有文件路径，应用测试账号位于 `enrollment.accountFile`，不出现在日志或 JSON 中。
+
+成员 home 下 `enrollment/<service摘要>/<invitationId>/` 保留原 key 与 stage；同 key 中断重试只继续未完成阶段。成功生成新的私有 generation，最后发布指针；失败保留旧配置。新邀请使用新设备 key，旧 key 丢失时领取新设备邀请。Unix 私有文件检查 owner/0600，Windows 使用共享当前用户 NTFS DACL；不要把私有材料复制进工作树或复现包。
+
+维护者通过 `access <invite|inspect|revoke-invitation|revoke-device|revoke-member|snapshot> --admin-config FILE [--input-file FILE] [--out-file FILE]` 复用既有 owner SSH。生成邀请必须指定私有 out-file，渠道由维护者选择。普通设备仅批准端口转发；团队身份与应用 teacher/student 角色独立，节点另外授权。
+
+协议、系统权限、双进程生命周期、独立服务安装与备份见[接入服务](../xj-dev-access/README.md)，成员操作见[统一接入说明](../../docs/development-access-operations.md#当前工具入口)。标准产品 runtime 不含开发 service/helper/protocol。旧已批准 connection-v1 仍兼容；新成员无需手工改 key、host、port 或 pin。

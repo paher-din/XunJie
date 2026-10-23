@@ -37,6 +37,10 @@ function sourceFixture(root) {
   mkdirSync(join(root, 'tools/i0-cloud'), { recursive: true });
   writeFileSync(join(root, 'tools/i0-cloud/cloud-host.mjs'), 'export const host = \'original\';\n');
   writeFileSync(join(root, 'tools/i0-cloud/build-runtime-artifact.test-helper.md'), 'not part of the runtime\n');
+  for (const file of ['tools/xj-dev/src/enrollment-protocol.mjs', 'tools/xj-dev-access/server.mjs', 'tools/xj-dev-access/application-adapter.mjs', 'tools/xj-dev-access/access.test.mjs']) {
+    mkdirSync(dirname(join(root, file)), { recursive: true });
+    writeFileSync(join(root, file), 'export const fixture = true;\n');
+  }
   return dist;
 }
 
@@ -85,10 +89,14 @@ test('runtime artifact carries per-file digests, pre-compressed static outputs a
     for (const excluded of ['apps/teaching/server/access.test.ts', 'apps/teaching/server/tests/fixture.ts',
       'apps/teaching/contracts/__tests__/access.ts', 'apps/teaching/runner/test/cases.ts',
       'tools/i0-cloud/build-runtime-artifact.mjs', 'tools/i0-cloud/build-runtime-artifact.test-helper.md',
+      'apps/teaching/tools/xj-dev-access/access.test.mjs',
+      'apps/teaching/tools/xj-dev-access/server.mjs', 'apps/teaching/tools/xj-dev/src/enrollment-protocol.mjs',
+      'tools/xj-dev-access/server.mjs', 'tools/xj-dev/src/enrollment-protocol.mjs',
       'apps/student/src/main.tsx']) {
       assert.equal(runtimeFiles[excluded], undefined, excluded);
     }
     assert.equal(runtimeFiles['apps/teaching/server/main.ts'], sha256(readFileSync(join(root, 'apps/teaching/server/main.ts'))));
+    assert.equal(manifest.runtimeFiles.some(file => file.path.includes('xj-dev')), false, 'standard product runtime excludes development facilities');
     // Every manifest entry also records its byte size so the server can compare
     // the release shape with stat calls alone in the steady state.
     const sizeOf = files => Object.fromEntries(files.map(file => [file.path, file.bytes]));

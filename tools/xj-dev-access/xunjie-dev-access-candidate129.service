@@ -1,0 +1,27 @@
+[Unit]
+Description=XunJie candidate development enrollment
+After=network.target xunjie-candidate-128.service
+Requires=xunjie-candidate-128.service
+
+[Service]
+Type=simple
+User=xj-access-c129
+Group=xj-access-c129
+Environment=NODE_ENV=production
+WorkingDirectory=/opt/xunjie-dev-access/current
+ExecStart=/opt/xunjie/node/bin/node /opt/xunjie-dev-access/current/tools/xj-dev-access/server.mjs /etc/xunjie-dev-access-candidate129/service.json
+Restart=on-failure
+RestartSec=3
+RuntimeDirectory=xunjie-dev-access-candidate129
+RuntimeDirectoryMode=0700
+UMask=0077
+PrivateTmp=true
+ProtectHome=true
+# The only permitted privilege transition is the root-owned fixed helper in sudoers.
+# NoNewPrivileges/ProtectSystem would also prevent its scoped user/key operations.
+MemoryMax=256M
+TasksMax=64
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

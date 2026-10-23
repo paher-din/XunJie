@@ -5,6 +5,8 @@ import { failureEnvelope, printResult, resultEnvelope } from './src/envelope.mjs
 import { PINNED_NODE, TOOL_VERSION } from './src/paths.mjs';
 import { locatePinnedRuntime } from './src/runtime.mjs';
 import { reproRoute, baselineRoute } from './src/repro-routes.mjs';
+import { joinRoute, refreshRoute } from './src/enrollment-routes.mjs';
+import { accessRoute } from './src/enrollment-admin.mjs';
 
 const HELP = `xj-dev — XunJie 本地全栈开发环境
 
@@ -18,6 +20,10 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
   down      停止本工作树登记的各模式及节点连接；不删除任何数据
   use <local|cloud-api|cloud>  检查成功后切换入口；原页面保持原数据目标
   node <connect|status|disconnect>  管理已登记节点回连，不重发或改派任务
+  join --invitation-file FILE [--mode local|cloud-api|cloud] [--no-start]  登记本机并启动
+  refresh [--device-file FILE]  用原设备身份刷新配置，不重新领取邀请
+  access <invite|inspect|revoke-invitation|revoke-device|revoke-member|snapshot>
+            --admin-config FILE [--input-file FILE] [--out-file FILE]
   repro     capture --context FILE --out ZIP / inspect ZIP / restore ZIP [--target DIR] / verify ZIP
   baseline  list / publish --context FILE --version VERSION / use VERSION [--target DIR]
 
@@ -35,6 +41,8 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
     重复 up 沿用数据不重置；重置 = down 后删除对应环境目录。
   - local：本地前后端与独立数据；cloud-api：本地 Vite/HMR + 云端 API/共享数据；
     cloud：云端部署页面/API/共享数据。切换不搬数据、不升基线、不上传代码、不部署。
+  - 邀请/设备/维护配置从受限文件读取；只输出安全 ID 和私有文件路径，不输出秘密。
+    join默认启动local；云端测试身份的凭据只保存在enrollment.accountFile。
   - 连接由后台受管进程监督；网络故障有限退避恢复，权限/主机身份失败停止重试。
     恢复不重放业务写入。不同模式使用固定入口、独立 Cookie 命名及 browser.profile。
 `;
@@ -49,7 +57,7 @@ function parseArgs(argv) {
     if (arg === '--instance') { options.instance = argv[++index]; continue; }
     // Subcommands own their arguments; only the global environment flags above
     // are consumed here. #130 registers their handlers in commandRoutes below.
-    if (['repro', 'baseline'].includes(options.command)) { options.extraArgs.push(arg); continue; }
+    if (['repro', 'baseline', 'join', 'refresh', 'access'].includes(options.command)) { options.extraArgs.push(arg); continue; }
     if (arg === '--connection') { options.connection = argv[++index]; continue; }
     if (arg === '--identity') { options.identity = argv[++index]; continue; }
     if (arg.startsWith('--')) throw Object.assign(new Error(`未知选项：${arg}`), { code: 'UNKNOWN_ARGUMENT' });
@@ -76,6 +84,9 @@ async function main() {
   }
   const { resolveContext, doctor, up, status, down, useMode, nodeCommand } = await import('./src/commands.mjs');
   const commandRoutes = {
+    join: joinRoute,
+    refresh: refreshRoute,
+    access: accessRoute,
     repro: reproRoute,
     baseline: baselineRoute,
     doctor: (context) => doctor(context),
