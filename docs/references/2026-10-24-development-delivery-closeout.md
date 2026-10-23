@@ -10,11 +10,11 @@
 | 工程与审查修复 | 负责人独立 9e7：xj-dev 181 pass/1 platform skip，teaching 542 pass/23 external skip；eb3 证书/delete/remote TLS 25/25；原基线、CA 并发、gateway 生命周期、status 与教师消费者缺陷均经定点源码复核 closed；55ed harness 两项失败边界修复由 lead 与负责人分别验证 11/11，Spec 原 P2 closed；40dcc 后续 stop guard 的 worker 全 harness 12/12、lead 故障专项 4/4 | closed 指已定位源码缺陷，不替代平台/业务/容量验收；40dcc 的最终审查回执待补 |
 | 加密备份工具 | `2393b66`、`72b3250`、`6e9e52a`：11/11，含活跃 WAL、命名多库、同名配置、凭据解密、密钥排除、损坏库拒绝与版本 1 归档恢复；新脚本已安装，Linux 跨文件系统实际恢复 71 文件/6 库通过并清理 | 最终 scope、新归档与恢复等完整新窗口及预算完成 |
 | 云端隔离恢复 | 71 文件、6 库 integrity/FK 通过；5 个模型凭据、15 个 access 凭据、6 个 active SSH 映射与 3 对 TLS key/cert 核对通过；独立端口真实登录/课程读取通过 | 最终 runtime/config 稳定后的新归档及独立设备复核 |
-| 实际产品隔离 | 初次 CI `40006389514`、source `c896c52`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200。当前实际候选已严格激活 `70d170a` | 最终实际产物的隔离业务读回纳入最终恢复；不以旧 c896 结果冒称已测 70d 或后续产物，不代表未发布的普通用户安装包 |
+| 实际产品隔离 | 初次 CI `40006389514`、source `c896c52`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200。当前实际候选已严格激活 `e03a3c9`、显式 ss16 | 最终实际产物的隔离业务读回纳入最终恢复；不以旧 c896 结果冒称已测 70d/e03，不代表未发布的普通用户安装包 |
 | fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；原 Windows 已完成严格 TLS、双角色闭环、新基线独立副本、团队编号真实 restore/verify 和自有 SSH 中断恢复；新的 Windows 补验完成真实云端保存/冻结/固定提交、教师反馈 UI 读回及拆除前 active revoke，专属进程/CA trust/敏感材料已清理 | Mac 正常系统信任仍待确认；Windows 原 partial 回执保留，新覆盖以独立 topup 报告补充 |
 | 采集默认源码 | 静态 canary 已由 `2e23535` 改为运行时生成，guard 未改；负责人独立 0ea 默认 `collectCode` 840 文件/约 6.27MB 通过，根范围未缩小；Windows 原 context 默认 baseline publish 通过 | 最终交付 SHA 及新的平台补验回执继续对应记录 |
 | Windows 签名 | `496493a`：worker Mac 21/21、Windows 默认 PATH 7/7；lead 独立 client/signer 18/18；实际旧 client 失败后 fixed CLI 原 key join 成功，无 PATH 修改；fresh Windows 原邀请/home/key join 亦通过 | 不修改 Linux access 服务；完整成员流程单独记录 |
-| 容量与资源 | c896 普通 API p95 1090.234ms 失败保留；新 70d 完整 905 秒执行和审计结束，3227/3227 指标匹配、零 non2xx/5xx，普通 API 3219 项 p95 1053.110ms，仍未达到 500ms | 执行成功和短预检不算容量延迟通过；最终资源预算及运行态安排由负责人决定 |
+| 容量与资源 | c896 普通 API p95 1090.234ms 失败保留；70d 完整 905 秒执行和审计结束，3227/3227 指标匹配、零 non2xx/5xx，普通 API 3219 项 p95 1053.110ms，仍未达到 500ms；e03+ss16 已激活并开放下一窗口，结果待完成 | 执行成功、激活成功和短预检不算容量延迟通过；预算尚未应用，最终资源安排由负责人决定 |
 | 真实模型 | c896 两项 Mimo 产品 turn 认证失败保留；另获授权的两项 DeepSeek 产品 turn usage 为 82/16、82/33；新 70d 完整窗口 T/S1 两项均 settled/exactOK、calls1，actual usage 各为 83/2；原正式 store 未改 | 模型互操作成功不替代普通 API 延迟、真实执行节点或教学效果验收 |
 | 真实执行节点 | 候选未登记 execution node，运行/检查正确拒绝未就绪能力；原 robert QEMU/WSL 保持 stopped | 本轮未做真实执行节点互操作 |
 | 教学效果 | 未测 | 不由工程或模型可调用性推导 |
@@ -35,6 +35,8 @@ e03 的 typecheck/build、diffcheck 和默认 `collectCode`（841 文件、6,276
 
 后续回执：exact e03 CI `40035400632` 成功，strictprefetch 核对 4,787 runtime/503 static 文件及 Linux x64 Node24.21/native SQLite，target 为 `/opt/xunjie/candidates/133-e03a3c9`。负责人仅执行 prepare，新配置 `/var/lib/xunjie/capacity-133/application-e03a3c9.json` 为 0600/xunjie，SHA256 `14cd7c609a1656d558558e18b37a50da1f266f76a841e9575d86e26d2d0a6567`，只改 staticDirectory，旧70d cfg SHA不变。顺序为 strictprefetch/review → prepare → 使用实际 cfg SHA 的 same512 mixed 短测 → 有充分余量后 activate；短测依赖新 cfg，因此不是 prepare 的前置条件。prepare 回执为 `activated:false`，live 仍70d/空 Node flags/PID131947、131948、91972，未因配置已存在将其登记为 active snapshot。
 
+再后续 actual activation 回执：负责人已完成 e03 的计划内激活，显式 argv `--max-semi-space-size=16`；candidate/access/formal PID 为142780/142786/91972，NRestarts均0，strict TLS/static/source及本次 ready 请求对应的新PID onResponse指标通过，formal PID未变。激活前 Backup API 一致副本 SHA256 `953751236860111f5e21d97e29eaf16b5e154e033685622b213ce0acbed8563c` 与 commonseed 相同。依据本机 `~/.codex/artifacts/xj133-ci-e03a3c9/activation-result.json`，lead只读该回执，未访问云端。负责人已开放下一905窗口；planned restart 不算意外 restart，也不代表容量达标。窗口内冻结 backup/deploy/unit/config/limits/额外登录及额外server，未采最终snapshot、未应用预算。
+
 ## 备份与恢复实测
 
 新增配置保留原正式课程库、原个人模型及签名/TLS/执行连接恢复材料，额外登记 candidate 课程库、原候选/新候选个人模型 store 与 key、account-control registry/config、access SQLite/credential.key、服务与系统配置、TLS/公开 CA、受管 SSH 公钥映射与固定 helper 回执。完整字段契约见[备份说明](../../tools/i0-cloud/README.md#加密备份与隔离恢复)。
@@ -49,6 +51,8 @@ e03 的 typecheck/build、diffcheck 和默认 `collectCode`（841 文件、6,276
 
 live backup 配置现已登记 `133-runtime.conf`，并将实际存在的 `/var/lib/xunjie/capacity-133/application-70d170a.json` 独立映射为 `candidate/capacity/application-70d170a.json`；旧 `application.json` 保留为 c896 回退材料，未创建的 1aa 配置未登记。新配置为 0600/xunjie，摘要 `5720f0e3cceca68386f1c0075f6ab09bed2616ba69167b3facd5ef63dd0dc4b0`，当前模型目录/key 仍为 capacity 独立 store，T/S1 已是 DeepSeek revision 2。此处只更新覆盖范围，尚未生成包含它们的新归档。测量窗口内不手工 snapshot；最终 budget dropin 由负责人应用后再登记、采集并隔离恢复。
 
+e03 激活后的当前窗口不修改上述 live policy。最终依赖完成后，scope 必须再加入实际 active `application-e03a3c9.json` 的独立 archive 路径并保留70d/c896回退配置，收录最终实际 DropInPaths 后重新加密采集；现在的离线映射不冒称已改定时备份或已有最终current归档。
+
 成员私钥仅在成员设备。access CA signing key 留在 owner 本机受限目录，不在服务器归档；服务器归档包含现行公开 CA、TLS leaf 私钥和证书。保留 owner 独立受限副本或重新签发/邀请的恢复策略，不能声称从服务器备份恢复了成员私钥或 owner CA signing key。
 
 脱敏证据集中在负责人本机 `~/.codex/artifacts/xj133-closeout/`：`cloud-backup-configuration.json`、`cloud-encrypted-backup.json`、`cloud-restore.json`、`cloud-restore-relations.json`、`product-isolation.json`。进度入口为 `~/.codex/artifacts/xj133-closeout-progress.json`。证据不含 key/token/password；实际归档与恢复材料走受限管理路径。
@@ -57,7 +61,7 @@ live backup 配置现已登记 `133-runtime.conf`，并将实际存在的 `/var/
 
 初次产品隔离采用已严格预取验证的不可变目录 `/opt/xunjie/candidates/133-c896c52`，核对 4,787 个 runtime 和 503 个静态文件摘要。测试子进程仅获得 PATH、空的独立 HOME、NODE_ENV；不读取成员 connection/邀请、OSS 配置或 access account-control socket。测试操作者从隔离备份取得既有身份用于实际登录，产品子进程只使用普通应用配置与隔离业务库，未调用接入服务取得登录权限。
 
-当前实际候选为 `/opt/xunjie/candidates/133-70d170a`，source `70d170ab6a7665a973d514b28eedb5a0532d17ee`；负责人已核对 CI binding、摘要、native SQLite、静态及健康接口。计划切换后 candidate/access/formal PID 分别为 131947/131948/91972，restart 读回均为 0。与原 capacity 配置相比，新配置只更改 staticDirectory，复用同 DB/TLS/Origin/model store。后续 CLI、harness 和文档至 55ed 的产品运行文件相对 70d 零差异；harness 也不进入 runtime 装配清单。新正式窗口固定这份产物与原历史数据。
+70d 窗口使用的实际候选为 `/opt/xunjie/candidates/133-70d170a`，source `70d170ab6a7665a973d514b28eedb5a0532d17ee`；负责人已核对 CI binding、摘要、native SQLite、静态及健康接口。当时计划切换后 candidate/access/formal PID 分别为 131947/131948/91972，restart 读回均为 0。与原 capacity 配置相比，新配置只更改 staticDirectory，复用同 DB/TLS/Origin/model store。后续 CLI、harness 和文档至 55ed 的产品运行文件相对 70d 零差异；harness 也不进入 runtime 装配清单。6e9a 窗口固定这份产物与原历史数据，不能将其结果改记为后续 e03。
 
 正式 d07 旧产物实例与兼容部署器继续保留；首个 bound main Release 尚未由负责人发布，不能提前用 strict candidate 部署器覆盖正式部署器。现行 access source `3825f98d20ae470e8ee3febaa7cc0bbb51c38382` 与私有 OSS 目录作为团队入口保留，不能为了清场删除唯一可用服务或已发布包/基线。资源预算待真实容量数据后由负责人决定，不以历史 MemoryPeak 或空闲采样代替。
 
