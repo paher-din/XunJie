@@ -1,6 +1,6 @@
 # 本轮架构与设计
 
-本轮从“数字逻辑与部件设计”的学习活动出发，重新设计学生端 Agent 与可装配学习工作区，并确定重构路线。初步架构是讨论输入，后续使用 GitHub Wayfinder 逐项研究和决策；旧实现及本轮工程候选均可被替换或推翻，不限于补齐缺口。
+本轮面向真实使用中的多种课程，重新设计学生端 Agent 与可装配学习工作区，并确定重构路线。“数字逻辑与部件设计”是开发、演示与验证阶段的首条已设计样例，其活动流程和帮助策略不构成所有课程的限制。初步架构是讨论输入，后续使用 GitHub Wayfinder 逐项研究和决策；旧实现及本轮工程候选均可被替换或推翻，不限于补齐缺口。
 
 当前云端共享数据和部分服务是尽量小的开发协作环境，用于减少成员设备、环境与数据差异造成的调试难以复现；它不决定产品运行拓扑或首版存储。教师仍设计课程运行方案，尽量由学生本地执行。依据见[需求与决策记录 L7](student-agent-decisions.md#开发协作与产品运行边界l7)。
 
@@ -12,6 +12,8 @@
 | 与研究并行的两项已授权实施范围 | [选区引用与 IP 展示层规范](specs/README.md) |
 | 初步架构候选、模块职责与关键流程 | [学生端 Agent 架构](student-agent-architecture.md) |
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
+| 已确认的学生主动性设置与无扰检测首版路线、后续验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |
+| 活动恢复、学习证据、学生画像纠正与教师共享边界 | [连续教学方案](references/2026-10-23-continuous-learning-proposal.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
 | 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |
 | 教学状态、执行控制与有限运行时的初步取舍 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |
