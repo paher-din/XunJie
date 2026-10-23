@@ -8,9 +8,9 @@
 | --- | --- | --- |
 | CA 使用说明 | `eaa60ca`：Mac 用户 login keychain、Windows LocalMachine Root 的权限/系统确认、指纹读回与精确移除；跳过 HTTPS 校验不计通过 | fresh Mac 的实际系统信任确认仍在处理；不以证书存在代替正常 Chromium TLS |
 | 工程与审查修复 | 负责人独立 9e7：xj-dev 181 pass/1 platform skip，teaching 542 pass/23 external skip；eb3 证书/delete/remote TLS 25/25；原基线、CA 并发、gateway 生命周期、status 与教师消费者缺陷均经定点源码复核 closed；55ed harness 两项失败边界修复由 lead 与负责人分别验证 11/11，Spec 原 P2 closed；40dcc 后续 stop guard 的 worker 全 harness 12/12、lead 故障专项 4/4 | closed 指已定位源码缺陷，不替代平台/业务/容量验收；40dcc 的最终审查回执待补 |
-| 加密备份工具 | `2393b66`、`72b3250`、`6e9e52a`：11/11，含活跃 WAL、命名多库、同名配置、凭据解密、密钥排除、损坏库拒绝与版本 1 归档恢复；新脚本已安装，Linux 跨文件系统实际恢复 71 文件/6 库通过并清理 | 最终 scope、新归档与恢复等完整新窗口及预算完成 |
-| 云端隔离恢复 | 71 文件、6 库 integrity/FK 通过；5 个模型凭据、15 个 access 凭据、6 个 active SSH 映射与 3 对 TLS key/cert 核对通过；独立端口真实登录/课程读取通过 | 最终 runtime/config 稳定后的新归档及独立设备复核 |
-| 实际产品隔离 | 初次 CI `40006389514`、source `c896c52`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200。当前实际候选已严格激活 `e03a3c9`、显式 ss16 | 最终实际产物的隔离业务读回纳入最终恢复；不以旧 c896 结果冒称已测 70d/e03，不代表未发布的普通用户安装包 |
+| 加密备份工具 | 工具11/11；旧71文件/6库实测保留；e03实际预算应用后另取precleanup加密归档，89文件/6库隔离恢复通过并清理私有明文 | Mac认证与临时成员清理后仍须取新的final snapshot，precleanup不冒称最终current |
+| 云端隔离恢复 | 新precleanup：89文件SHA、6库integrity/FK、5个模型凭据、18个access凭据、6组active SSH映射、3对TLS通过；9个dropin含8个budget文件 | 新密文已交main独立Mac恢复；各库一致不等于跨存储原子快照 |
+| 实际产品隔离 | e03实际CI产物5290项摘要通过，无开发服务/OSS SDK/团队凭据路径；从precleanup恢复正式DB，空HOME/最小env、无dev/OSS/account-control/modelnetwork，strict TLS的page/login/session/courses均200；ss16与/proc argv一致 | 是普通产品HTTP启动读回，未做新的浏览器/教学效果验收，也不代表正式main已发布e03 |
 | fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；原 Windows 已完成严格 TLS、双角色闭环、新基线独立副本、团队编号真实 restore/verify 和自有 SSH 中断恢复；新的 Windows 补验完成真实云端保存/冻结/固定提交、教师反馈 UI 读回及拆除前 active revoke，专属进程/CA trust/敏感材料已清理 | Mac 正常系统信任仍待确认；Windows 原 partial 回执保留，新覆盖以独立 topup 报告补充 |
 | 采集默认源码 | 静态 canary 已由 `2e23535` 改为运行时生成，guard 未改；负责人独立 0ea 默认 `collectCode` 840 文件/约 6.27MB 通过，根范围未缩小；Windows 原 context 默认 baseline publish 通过 | 最终交付 SHA 及新的平台补验回执继续对应记录 |
 | Windows 签名 | `496493a`：worker Mac 21/21、Windows 默认 PATH 7/7；lead 独立 client/signer 18/18；实际旧 client 失败后 fixed CLI 原 key join 成功，无 PATH 修改；fresh Windows 原邀请/home/key join 亦通过 | 不修改 Linux access 服务；完整成员流程单独记录 |
@@ -56,6 +56,18 @@ e03 激活后的当前窗口不修改上述 live policy。最终依赖完成后�
 成员私钥仅在成员设备。access CA signing key 留在 owner 本机受限目录，不在服务器归档；服务器归档包含现行公开 CA、TLS leaf 私钥和证书。保留 owner 独立受限副本或重新签发/邀请的恢复策略，不能声称从服务器备份恢复了成员私钥或 owner CA signing key。
 
 脱敏证据集中在负责人本机 `~/.codex/artifacts/xj133-closeout/`：`cloud-backup-configuration.json`、`cloud-encrypted-backup.json`、`cloud-restore.json`、`cloud-restore-relations.json`、`product-isolation.json`。进度入口为 `~/.codex/artifacts/xj133-closeout-progress.json`。证据不含 key/token/password；实际归档与恢复材料走受限管理路径。
+
+### e03 预算应用后的 precleanup 归档
+
+本次独立操作明确为 `precleanup-as-of-now`，Mac系统认证及五个临时成员/端口清理尚未完成，`currentSnapshotCleanupConfirmedByOwner:false`、`isFinalCurrentSnapshot:false`。final脚本及其cleanup guard字节未改；precleanup使用独立scope/config副本、归档label、恢复目录和回执。global日备policy未改，也未撤销任何成员。之后撤销或新业务写入会使本归档成为历史状态，不能直接改名冒称final current。
+
+密文 `precleanup-be6e7-20261023T233033Z-b2609e78.xunjiebak` 为2,503,704 bytes，SHA256 `dbbe16c144c33ee597c697879e508bd2bb64816b5daf8b02abc70554ff54dcdb`。原正式scope、70d/c896回退配置与模型材料保留，新增实际e03 cfg、133-runtime及8个system.control budget dropin；89文件、6库均经安装版Backup API/AES工具处理。备份key本身不入包，未复制服务器key。
+
+独立恢复核对89文件摘要、6库integrity/FK；原正式/原候选/当前候选模型凭据分别解密3/0/2项，access key可解密18项成员凭据，registry对应6个active和7个deny账号；6组active SSH公钥映射、21份helper回执及3对TLS关系通过。这是采集时状态，不是永久成员清单，也不等于跨存储原子快照。
+
+同一恢复中启动actual e03 artifact：5290项runtime/static摘要、禁止路径检查通过，空HOME、仅PATH/HOME/NODE_ENV，恢复的正式DB与签名/TLS、无dev/OSS/account-control/modelstore/执行节点。批准owner-local现行普通账号仅经内存stdin，strict TLS的ready/page/login/session/courses全部200，返回e03 source，零模型网络调用。自有子进程146516已停、18446端口释放；三个私有明文目录、临时app cfg及远端payload精确清理。只读postflight确认原三个live unit/PID/ExecStart/limits、e03 cfg和9个dropin及global日备policy均未变。
+
+本机密文与manifest/关系/product/清理回执位于受限 `~/.config/xunjie-cloud/backup-recovery/precleanup-133-e03a3c9-20261024-be6e716e/`（目录0700、文件0600），交main独立Mac恢复。操作脚本与摘要为 `~/.codex/artifacts/xj133-precleanup-e03-20261024-be6e716e/result-summary.json`、`postflight-readonly.json`；原71文件归档与c896隔离证据保持原样。最终仍待Mac认证、精确撤销和清理后重新采集final snapshot。
 
 ## 产品产物与运行态边界
 
