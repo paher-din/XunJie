@@ -2,7 +2,7 @@
 
 本目录保存共享应用部署与成员本机执行的通用基础设施。共享页面、API 和课程数据库运行在同一业务宿主；C/HDL 在成员各自已准备的独立执行节点运行。连接工具不初始化账号、课程、数据库、VM 或节点 ledger。
 
-实际服务地址、SSH 身份、成员节点、端口、主机公钥 pin 与 HTTPS 证书只保存在仓库外的私下交接材料中，由负责人单独发送给获准成员。下文说明公开接口，不包含可直接连接的配置。新的统一工具状态与替换计划见[开发工具说明](../../docs/development-tooling.md)，不要把设计中的 `xj-dev` 当作当前已有命令。
+实际服务地址、SSH 身份、成员节点、端口、主机公钥 pin 与 HTTPS 证书只保存在仓库外的私下交接材料中，由负责人单独发送给获准成员。下文说明公开接口，不包含可直接连接的配置。现有 `xj-dev` 接入、模式、基线与复现入口见[开发工具说明](../../docs/development-tooling.md)；本目录保留云端宿主、发布、备份和容量工具。
 
 | 文件 | 用途 |
 | --- | --- |
@@ -19,6 +19,9 @@
 | `backup.example.json` | 加密备份配置字段示例；密钥文件路径由维护者在仓库外持有 |
 | `xunjie-backup-daily/weekly.service` / `.timer` | 日备保留 7 份、周备保留 4 份的定时加密备份模板 |
 | `xunjie-monitor.service` / `.timer` / `monitoring.example.json` | 独立只读采样、CMS 自定义指标上报与受限凭据路径模板 |
+| `capacity-run.mjs` / `capacity-workflow.mjs` | 五个独立成员的真实业务负载、既有自有历史复用及 base/delta 审计 |
+| `capacity-collect.mjs` / `capacity-sample.py` / `capacity-analysis.mjs` | 服务端 requestId 延迟匹配、资源采样与 CPU/IO/内存归因 |
+| [capacity-133-report.md](capacity-133-report.md) | 完整窗口、模型、隔离诊断与短预检的分项证据，保留失败及未测边界 |
 
 ## 按产物发布：CI 构建与云端切换
 
@@ -86,6 +89,14 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 前端构建产物在 CI 阶段预压缩（`.br`/`.gz` 边车，仅小于原文件时生成），宿主静态处理器按 `Accept-Encoding` 选择边车，不做请求期压缩；带内容摘要的 `/assets/**` 返回 `immutable` 一年缓存，入口 HTML 返回 `no-cache` 并带构建期摘要 ETag，新版本与回退各自引用独立发布目录，不会混用资源。2 MiB 以内的小产物一次写出，更大的文件流式转发，不在业务进程整体读入。回环访问的成员页面转发沿用既有 HTTPS 链路。
 
 资源预算候选值见 `xunjie-shared.service` 注释与[运行策略](../../docs/development-access-operations.md)：业务单元预算需先实测五人峰值再启用；维护单元（发布、备份）已按低 CPU/IO 权重与内存上限配置。部署与备份共用同一把 flock 维护锁串行，业务优先。
+
+## 容量负载与回执
+
+维护者使用 Node 24.21.0，在负责人明确安排的窗口运行 `node tools/i0-cloud/capacity-run.mjs <private-run-config.json>`。私有配置引用五个不同 member/device 的身份文件，固定已核验的 `expectedSource`、905 秒窗口及证据目录；收到明确 T0 后才设置 `windowApproved:true` 并启动。配置、账号和 key 不进入 Git 或命令参数正文。版本、端口、TLS、Session 和原自有项目归属均由实际接口复核。
+
+重复验收通过 `previousAuditFile` 复用原四个自有 assignment/attempt，核对身份、起点 hash/version、旧提交和反馈，并按原基数加本轮增量审计；保留原数据规模与失败证据。`run.json` 记录 PID、阶段、请求数及进度；工具调用超时后先核对进程和进度，已有 run 不重复启动。服务切换、预算变更、备份快照和其他业务写入由负责人安排在窗口之外。
+
+完成后用 `node tools/i0-cloud/capacity-collect.mjs <private-run-config.json>` 匹配服务器生成的 requestId，普通 API p95 使用服务端耗时并包含正常登录；客户端 RTT、真实模型、OSS 和 controlled transport 结果分别报告。资源报告区分窗口采样的 `memory.current` 与包含历史的 lifetime peak，核对 PID/restart/OOM 增量与 host available。`capacity-profile*.mjs` / `capacity-hydration-patch.mjs` / `capacity-precheck.mjs` 用于隔离副本诊断；微基准与短预检保留各自来源，完整新 CI 产物的正式窗口另行验收。产品 runtime 的装配清单只包含本目录的 `cloud-host.mjs`，这些容量工具不随产品产物分发。
 
 ## 成员连接入口
 
