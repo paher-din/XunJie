@@ -114,6 +114,22 @@ def manifest_for(root: Path, commit: str, tree: str, index: bytes, script: bytes
     }
 
 
+def branch_bundle(manifest: bytes, archive: bytes, prefix: str = "xunjie-cloud-artifacts",
+                  extra: tuple[str, bytes] | None = None,
+                  names: tuple[str, str] = ("manifest.json", "runtime.tar.gz")) -> bytes:
+    """A CI-shaped cloud-artifacts branch tarball."""
+    output = io.BytesIO()
+    contents = [(prefix + "/" + names[0], manifest), (prefix + "/" + names[1], archive)]
+    if extra is not None:
+        contents.append((prefix + "/" + extra[0], extra[1]))
+    with tarfile.open(fileobj=output, mode="w:gz") as bundle:
+        for name, content in contents:
+            entry = tarfile.TarInfo(name)
+            entry.size = len(content)
+            bundle.addfile(entry, io.BytesIO(content))
+    return output.getvalue()
+
+
 def pack_archive(root: Path) -> bytes:
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode="w:gz") as archive:
@@ -189,6 +205,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
             "statusFile": str(self.status_file),
             "backupDirectory": str(self.backup_directory),
             "artifactTagPrefix": "cloud",
+            "artifactBranch": "cloud-artifacts",
             "minimumFreeBytes": 5 * GIB,
             "warningFreeBytes": 10 * GIB,
             "keepReleases": 3,
@@ -225,12 +242,13 @@ class ArtifactDeploymentTests(unittest.TestCase):
                                "size": len(self.tarball)},
         }
         self.deployment.published_release = mock.Mock(return_value=self.release_assets)
-        self.deployment.download_asset = mock.Mock(side_effect=self.download_asset)
+        self.deployment.download_artifact_files = mock.Mock(side_effect=self.download_artifact_files)
 
-    def download_asset(self, asset: dict, destination: Path, limit: int, code: str) -> int:
-        content = json.dumps(self.manifest).encode() if asset["name"] == "manifest.json" else self.tarball
-        Path(destination).write_bytes(content)
-        return len(content)
+    def download_artifact_files(self, manifest_path: Path, archive_path: Path) -> dict:
+        manifest = json.dumps(self.manifest).encode()
+        manifest_path.write_bytes(manifest)
+        archive_path.write_bytes(self.tarball)
+        return {"manifest.json": len(manifest), "runtime.tar.gz": len(self.tarball)}
 
     def backup(self, current_release: Path) -> dict:
         self.assertEqual(Path(current_release).resolve(), self.old_release.resolve())
@@ -265,7 +283,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.assertEqual(result["status"], "unchanged")
         self.assertTrue(result["upToDate"])
         self.deployment.published_release.assert_not_called()
-        self.deployment.download_asset.assert_not_called()
+        self.deployment.download_artifact_files.assert_not_called()
         self.deployment.restart_service.assert_not_called()
         self.assert_previous_release()
 
@@ -281,7 +299,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
         runtime_file.write_bytes(damaged)
         result = self.deployment.apply()
         self.assertEqual(result["status"], "unchanged")
-        self.deployment.download_asset.assert_not_called()
+        self.deployment.download_artifact_files.assert_not_called()
         self.assert_previous_release()
 
     def test_truncated_release_file_breaks_the_unchanged_shortcut(self) -> None:
@@ -298,7 +316,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(result["code"], "ARTIFACT_PENDING")
         self.assert_previous_release()
-        self.deployment.download_asset.assert_not_called()
+        self.deployment.download_artifact_files.assert_not_called()
         self.deployment.backup.assert_not_called()
         self.deployment.restart_service.assert_not_called()
         status = json.loads(self.status_file.read_text(encoding="utf-8"))
@@ -560,6 +578,46 @@ class ArtifactDeploymentTests(unittest.TestCase):
                 self.deployment.download_asset(
                     {"name": "runtime.tar.gz", "url": "https://api.github.com/repos/example-team/xunjie/releases/assets/2", "size": len(content)},
                     self.work / "asset3.bin", len(content) - 1, "ARTIFACT_DOWNLOAD_FAILED")
+
+    def test_download_artifact_files_unpacks_the_branch_bundle(self) -> None:
+        method = deploy_artifact.ArtifactDeployment.download_artifact_files.__get__(self.deployment)
+        manifest = json.dumps(self.manifest).encode()
+        url = "https://codeload.github.com/example-team/xunjie/tar.gz/refs/heads/cloud-artifacts"
+        responses = {url: GithubResponse(branch_bundle(manifest, self.tarball), url)}
+        manifest_path = self.work / "manifest.json"
+        archive_path = self.work / "runtime.tar.gz"
+        with mock.patch.object(deploy_artifact.urllib.request, "urlopen",
+                               side_effect=self.github_responses(responses)):
+            sizes = method(manifest_path, archive_path)
+        self.assertEqual(manifest_path.read_bytes(), manifest)
+        self.assertEqual(archive_path.read_bytes(), self.tarball)
+        self.assertEqual(sizes["runtime.tar.gz"], len(self.tarball))
+        self.assertEqual(sizes["manifest.json"], len(manifest))
+        self.assertFalse(list(self.work.glob("bundle-*.tar.gz")))
+
+    def test_download_artifact_files_rejects_malformed_bundles(self) -> None:
+        method = deploy_artifact.ArtifactDeployment.download_artifact_files.__get__(self.deployment)
+        manifest = json.dumps(self.manifest).encode()
+        url = "https://codeload.github.com/example-team/xunjie/tar.gz/refs/heads/cloud-artifacts"
+        mixed = io.BytesIO()
+        with tarfile.open(fileobj=mixed, mode="w:gz") as bundle:
+            for name, content in (("one/manifest.json", manifest), ("one/runtime.tar.gz", self.tarball),
+                                  ("two/stray.txt", b"stray")):
+                entry = tarfile.TarInfo(name)
+                entry.size = len(content)
+                bundle.addfile(entry, io.BytesIO(content))
+        cases = {
+            "stray file": branch_bundle(manifest, self.tarball, extra=("readme.md", b"extra")),
+            "wrong names": branch_bundle(manifest, self.tarball, names=("a.json", "b.tar.gz")),
+            "two prefixes": mixed.getvalue(),
+        }
+        for label, bundle in cases.items():
+            responses = {url: GithubResponse(bundle, url)}
+            with mock.patch.object(deploy_artifact.urllib.request, "urlopen",
+                                   side_effect=self.github_responses(responses)):
+                with self.assertRaises(deploy_artifact.DeploymentError, msg=label):
+                    method(self.work / "m.json", self.work / "a.tar.gz")
+            self.assertFalse((self.work / "m.json").exists(), label)
 
     # --- status ----------------------------------------------------------------
 
