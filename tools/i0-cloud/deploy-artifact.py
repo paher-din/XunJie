@@ -106,18 +106,21 @@ class ArtifactDeployment:
         self.config = config
         expected = {'repositoryUrl', 'releasesDirectory', 'currentLink', 'workDirectory', 'nodeBinDirectory',
                     'applicationConfigFile', 'applicationService', 'healthUrl', 'statusFile', 'backupDirectory',
-                    'artifactTagPrefix', 'minimumFreeBytes', 'warningFreeBytes', 'keepReleases', 'keepBackups'}
+                    'artifactTagPrefix', 'artifactBranch', 'minimumFreeBytes', 'warningFreeBytes',
+                    'keepReleases', 'keepBackups'}
         require(set(config) == expected, 'INVALID_DEPLOYMENT_CONFIG')
         source = urlsplit(config['repositoryUrl'])
         require(source.scheme == 'https' and source.hostname and not source.username and not source.password
                 and not source.query and not source.fragment, 'PUBLIC_HTTPS_REPOSITORY_REQUIRED')
         for key in expected - {'repositoryUrl', 'applicationService', 'healthUrl', 'artifactTagPrefix',
-                                'minimumFreeBytes', 'warningFreeBytes', 'keepReleases', 'keepBackups'}:
+                                'artifactBranch', 'minimumFreeBytes', 'warningFreeBytes',
+                                'keepReleases', 'keepBackups'}:
             require(isinstance(config[key], str) and Path(config[key]).is_absolute(), 'ABSOLUTE_DEPLOYMENT_PATH_REQUIRED')
         for key in ('minimumFreeBytes', 'warningFreeBytes', 'keepReleases', 'keepBackups'):
             require(isinstance(config[key], int) and not isinstance(config[key], bool) and config[key] > 0, 'INVALID_DEPLOYMENT_CONFIG')
         require(config['keepReleases'] >= 2 and config['warningFreeBytes'] >= config['minimumFreeBytes'], 'INVALID_DEPLOYMENT_CONFIG')
         require(re.fullmatch(r'[a-z][a-z0-9-]{0,31}', config['artifactTagPrefix']) is not None, 'INVALID_ARTIFACT_TAG_PREFIX')
+        require(re.fullmatch(r'[a-z][a-z0-9-]{0,31}', config['artifactBranch']) is not None, 'INVALID_ARTIFACT_BRANCH')
         require(re.fullmatch(r'[A-Za-z0-9_.-]+\.service', config['applicationService']) is not None, 'INVALID_APPLICATION_SERVICE')
         health = urlsplit(config['healthUrl'])
         require(health.scheme == 'https' and health.hostname in ('localhost', '127.0.0.1', '::1')
@@ -276,6 +279,55 @@ class ArtifactDeployment:
                 os.unlink(destination)
                 raise
         return total
+
+    # The release asset CDN is unreachable from the host region, so the bytes
+    # travel through the CI-maintained artifact branch tarball on codeload.
+    # Integrity stays bound to the official manifest: the archive digest and
+    # per-file digests are verified right after this download.
+    def download_artifact_files(self, manifest_path, archive_path):
+        owner, repository = self.github_repository()
+        url = ('https://codeload.github.com/' + owner + '/' + repository
+               + '/tar.gz/refs/heads/' + self.config['artifactBranch'])
+        bundle = self.work / ('bundle-' + uuid.uuid4().hex + '.tar.gz')
+        try:
+            with self.github_open(url, allow_hosts=API_HOSTS) as response:
+                descriptor = os.open(bundle, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                try:
+                    with os.fdopen(descriptor, 'wb') as output:
+                        total = 0
+                        while True:
+                            chunk = response.read(1024 * 1024)
+                            if not chunk:
+                                break
+                            total += len(chunk)
+                            require(total <= ARTIFACT_LIMIT + MANIFEST_LIMIT, 'ARTIFACT_DOWNLOAD_FAILED')
+                            output.write(chunk)
+                except Exception:
+                    os.unlink(bundle)
+                    raise
+            with tarfile.open(bundle, 'r:gz') as source:
+                members = [member for member in source.getmembers() if member.isfile()]
+                require(len(members) == 2, 'ARTIFACT_BUNDLE_INVALID')
+                prefixes = {member.name.rsplit('/', 1)[0] for member in members if '/' in member.name}
+                require(len(prefixes) == 1, 'ARTIFACT_BUNDLE_INVALID')
+                by_name = {member.name.rsplit('/', 1)[-1]: member for member in members}
+                require(set(by_name) == {'manifest.json', 'runtime.tar.gz'}, 'ARTIFACT_BUNDLE_INVALID')
+                for name, destination, limit in (('manifest.json', manifest_path, MANIFEST_LIMIT),
+                                                 ('runtime.tar.gz', archive_path, ARTIFACT_LIMIT)):
+                    member = by_name[name]
+                    require(member.size <= limit, 'ARTIFACT_DOWNLOAD_FAILED')
+                    with source.extractfile(member) as reader:
+                        descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        try:
+                            with os.fdopen(descriptor, 'wb') as output:
+                                shutil.copyfileobj(reader, output)
+                        except Exception:
+                            os.unlink(destination)
+                            raise
+            return {name: member.size for name, member in by_name.items()}
+        finally:
+            if bundle.exists():
+                bundle.unlink()
 
     def read_application(self):
         application = read_json(self.config['applicationConfigFile'])
@@ -696,21 +748,17 @@ try{
             tree = self.remote_tree(commit)
             staging = Path(tempfile.mkdtemp(prefix='staging-', dir=self.work))
             manifest_path = self.work / ('manifest-' + uuid.uuid4().hex + '.json')
-            try:
-                self.download_asset(release_assets['manifest.json'], manifest_path, MANIFEST_LIMIT, 'MANIFEST_DOWNLOAD_FAILED')
-                manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-            finally:
-                if manifest_path.exists():
-                    manifest_path.unlink()
-            manifest = self.validate_manifest(manifest, commit, tree)
             archive = self.work / ('artifact-' + uuid.uuid4().hex + '.tar.gz')
             try:
-                self.download_asset(release_assets['runtime.tar.gz'], archive, ARTIFACT_LIMIT, 'ARTIFACT_DOWNLOAD_FAILED')
+                self.download_artifact_files(manifest_path, archive)
+                manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+                manifest = self.validate_manifest(manifest, commit, tree)
                 require(digest_file(archive) == manifest['artifactSha256'], 'ARTIFACT_DIGEST_MISMATCH')
                 self.extract_artifact(archive, staging)
             finally:
-                if archive.exists():
-                    archive.unlink()
+                for path in (manifest_path, archive):
+                    if path.exists():
+                        path.unlink()
             self.verify_tree(staging, manifest)
             release = self.releases / ('main-' + commit)
             if release.exists():

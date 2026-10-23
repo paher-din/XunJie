@@ -73,6 +73,19 @@ jobs:
             "$RUNNER_TEMP/artifact/runtime.tar.gz" \
             --draft --title "Cloud runtime $GITHUB_SHA" --notes "$notes"
           gh release edit "$TAG" --draft=false
+      - name: Mirror the artifact to the cloud-artifacts branch
+        # The release asset CDN is unreachable from the server region, while
+        # codeload tarballs transfer at full speed; the orphan branch is
+        # force-pushed so the repository never accumulates artifact history.
+        run: |
+          git config user.name "cloud-release-bot"
+          git config user.email "actions@github.com"
+          git checkout --orphan cloud-artifacts
+          git rm -rf --quiet .
+          cp "$RUNNER_TEMP/artifact/manifest.json" "$RUNNER_TEMP/artifact/runtime.tar.gz" .
+          git add manifest.json runtime.tar.gz
+          git commit -m "Cloud runtime artifact for $GITHUB_SHA"
+          git push --force origin cloud-artifacts
       - name: Prune superseded artifact releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
