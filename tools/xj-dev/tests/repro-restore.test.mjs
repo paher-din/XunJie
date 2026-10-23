@@ -160,7 +160,7 @@ test('environment publication failure rolls back its own data/worktree; a newly 
 
 test('Windows restores to a fresh task-owned drive-root target with matching canonical path and environment ID',
   { skip: process.platform !== 'win32' }, async () => {
-    const target = join(parse(root).root, `xj130-review-${randomUUID()}`), home = join(root, 'drive-root-home');
+    const target = join(parse(worktree).root, `xj130-review-${randomUUID()}`), home = join(root, 'drive-root-home');
     assert.equal(existsSync(target), false); targets.push(target);
     try {
       const result = await launch(home, target).result;

@@ -170,8 +170,10 @@ export async function restoreRepro(context, { file, target, expectedDigest, base
   const id = environmentId(canonicalTarget), envPaths = environmentPaths(context.home, id);
   // Reserve the filesystem target, not just one CLI home. Keep the permanent OS
   // mutex inode after release, as required by state.mjs (#139).
-  const reservation = acquireLock({ root: dirname(canonicalTarget),
-    lockFile: join(dirname(canonicalTarget), `.xj-repro-restore-${environmentId(canonicalTarget.normalize('NFC').toLowerCase())}.lock`) });
+  const lockFile = join(dirname(canonicalTarget), `.xj-repro-restore-${environmentId(canonicalTarget.normalize('NFC').toLowerCase())}.lock`);
+  // Initialize the owned mutex directory itself: recursive mkdir of a Windows
+  // drive root fails with EPERM even when that root already exists.
+  const reservation = acquireLock({ root: lockFile, lockFile });
   let scratch, created = false, ownsEnvironment = false;
   try {
     if (existsSync(canonicalTarget)) throw reproError('TARGET_EXISTS', '恢复目标已存在，请选择新的工作树目录。');
