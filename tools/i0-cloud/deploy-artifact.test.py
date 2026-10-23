@@ -36,6 +36,7 @@ LATER_COMMIT = "3" * 40
 TREE = "4" * 40
 LATER_TREE = "5" * 40
 ENTRY_JS = "/assets/index-test.js"
+ARTIFACT_COMMIT = '6' * 40
 GIB = 1024 * 1024 * 1024
 
 
@@ -205,7 +206,6 @@ class ArtifactDeploymentTests(unittest.TestCase):
             "statusFile": str(self.status_file),
             "backupDirectory": str(self.backup_directory),
             "artifactTagPrefix": "cloud",
-            "artifactBranch": "cloud-artifacts",
             "minimumFreeBytes": 5 * GIB,
             "warningFreeBytes": 10 * GIB,
             "keepReleases": 3,
@@ -241,10 +241,17 @@ class ArtifactDeploymentTests(unittest.TestCase):
             "runtime.tar.gz": {"name": "runtime.tar.gz", "url": "https://api.github.com/repos/example-team/xunjie/releases/assets/2",
                                "size": len(self.tarball)},
         }
-        self.deployment.published_release = mock.Mock(return_value=self.release_assets)
+        self.refresh_release_assets()
+        self.publication = {'assets': self.release_assets, 'artifactCommit': ARTIFACT_COMMIT}
+        self.deployment.published_release = mock.Mock(return_value=self.publication)
         self.deployment.download_artifact_files = mock.Mock(side_effect=self.download_artifact_files)
 
-    def download_artifact_files(self, manifest_path: Path, archive_path: Path) -> dict:
+    def refresh_release_assets(self):
+        for name, content in (('manifest.json', json.dumps(self.manifest).encode()), ('runtime.tar.gz', self.tarball)):
+            self.release_assets[name].update(size=len(content), digest='sha256:' + sha256(content))
+
+    def download_artifact_files(self, manifest_path: Path, archive_path: Path, artifact_commit: str) -> dict:
+        self.assertEqual(artifact_commit, ARTIFACT_COMMIT)
         manifest = json.dumps(self.manifest).encode()
         manifest_path.write_bytes(manifest)
         archive_path.write_bytes(self.tarball)
@@ -267,6 +274,8 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.assertEqual(self.current.resolve(), self.old_release.resolve())
 
     def assert_failed_with(self, code: str) -> None:
+        if code != 'RELEASE_ASSET_DIGEST_MISMATCH':
+            self.refresh_release_assets()
         with self.assertRaises(deploy_artifact.DeploymentError) as raised:
             self.deployment.apply()
         self.assertEqual(raised.exception.code, code)
@@ -361,6 +370,13 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.deployment.restart_service.assert_not_called()
         self.assertFalse((self.releases / ("main-" + NEW_COMMIT)).exists())
 
+    def test_branch_bundle_must_match_published_release_digests(self) -> None:
+        self.release_assets['manifest.json']['digest'] = 'sha256:' + '0' * 64
+        self.release_assets['runtime.tar.gz']['digest'] = 'sha256:' + '0' * 64
+        self.assert_failed_with('RELEASE_ASSET_DIGEST_MISMATCH')
+        self.deployment.backup.assert_not_called()
+        self.deployment.restart_service.assert_not_called()
+
     def test_manifest_commit_mismatch_refuses_switch(self) -> None:
         self.deployment.remote_tree = mock.Mock(return_value=LATER_TREE)
         self.assert_failed_with("MANIFEST_TREE_MISMATCH")
@@ -437,7 +453,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.assert_failed_with("REMOTE_MAIN_CHANGED")
         self.deployment.backup.assert_not_called()
         self.deployment.restart_service.assert_not_called()
-        self.assertTrue((self.releases / ("main-" + NEW_COMMIT)).exists())
+        self.assertFalse((self.releases / ("main-" + NEW_COMMIT)).exists())
 
     def test_redeploy_of_same_commit_with_broken_manifest_rebuilds_release(self) -> None:
         # A legacy deployment.json without per-file lists cannot prove alignment; the artifact for the
@@ -461,6 +477,8 @@ class ArtifactDeploymentTests(unittest.TestCase):
         release = self.releases / name
         if not release.exists():
             write_release(release, "a" * 40, TREE, b"console.log('old');\n", name)
+        manifest = json.loads((release / 'deployment.json').read_text())
+        (release / 'health-verified.json').write_text(json.dumps({'commit': manifest['commit'], 'verifiedAt': '2026-10-23T00:00:00Z'}))
         stamp = time.time() - age
         os.utime(release, (stamp, stamp))
         return release
@@ -496,6 +514,21 @@ class ArtifactDeploymentTests(unittest.TestCase):
         remaining = sorted(path.name for path in self.backup_directory.glob("main-deploy-*.sqlite"))
         self.assertEqual(len(remaining), 3)
         self.assertTrue(unrelated.exists())
+
+    def test_failed_candidates_never_displace_successful_rollback_versions(self) -> None:
+        good = self.make_release('main-' + '7' * 40, 200)
+        (good / 'health-verified.json').write_text(json.dumps({'commit': 'a' * 40, 'verifiedAt': '2026-10-23T00:00:00Z'}))
+        os.utime(good, (time.time() - 200, time.time() - 200))
+        other_good = self.make_release('main-' + '8' * 40, 100)
+        (other_good / 'health-verified.json').write_text(json.dumps({'commit': 'a' * 40, 'verifiedAt': '2026-10-23T00:00:00Z'}))
+        os.utime(other_good, (time.time() - 100, time.time() - 100))
+        failed = [self.make_release('main-' + char * 40, age) for char, age in [('9', 2), ('b', 1)]]
+        for path in failed:
+            (path / 'health-verified.json').unlink()
+        self.deployment.prune_releases()
+        self.assertTrue(good.is_dir())
+        self.assertTrue(other_good.is_dir())
+        self.assertTrue(all(not candidate.exists() for candidate in failed))
 
     def test_stale_staging_and_legacy_build_files_are_cleaned_under_lock(self) -> None:
         stale = self.work / "staging-crashed"
@@ -534,14 +567,18 @@ class ArtifactDeploymentTests(unittest.TestCase):
         ref = {"ref": "refs/heads/main", "object": {"type": "commit", "sha": NEW_COMMIT}}
         commit = {"sha": NEW_COMMIT, "tree": {"sha": TREE}}
         release = {"tag_name": "cloud-" + NEW_COMMIT, "draft": False, "assets": [
-            {"name": "manifest.json", "url": prefix + "releases/assets/1", "size": 10},
-            {"name": "runtime.tar.gz", "url": prefix + "releases/assets/2", "size": 20},
+            {"name": "manifest.json", "url": prefix + "releases/assets/1", "size": 10, "digest": 'sha256:' + 'a' * 64},
+            {"name": "runtime.tar.gz", "url": prefix + "releases/assets/2", "size": 20, "digest": 'sha256:' + 'b' * 64},
         ]}
+        binding = {'commit': NEW_COMMIT, 'artifactCommit': ARTIFACT_COMMIT, 'manifestSha256': 'a' * 64, 'artifactSha256': 'b' * 64}
+        release['body'] = '<!-- xunjie-artifact-v1 ' + json.dumps(binding) + ' -->'
+        artifact_tag = 'cloud-artifact-' + 'a' * 64
         responses = {
             prefix + "git/ref/heads/main": ref,
             prefix + "git/commits/" + NEW_COMMIT: commit,
             prefix + "releases/tags/cloud-" + NEW_COMMIT: release,
             prefix + "releases/tags/cloud-" + LATER_COMMIT: None,
+            prefix + 'git/ref/tags/' + artifact_tag: {'ref': 'refs/tags/' + artifact_tag, 'object': {'type': 'commit', 'sha': ARTIFACT_COMMIT}},
         }
         for name in ("remote_commit", "remote_tree", "published_release"):
             setattr(self.deployment, name, getattr(deploy_artifact.ArtifactDeployment, name).__get__(self.deployment))
@@ -550,45 +587,34 @@ class ArtifactDeploymentTests(unittest.TestCase):
             self.assertEqual(self.deployment.remote_commit(), NEW_COMMIT)
             self.assertEqual(self.deployment.remote_tree(NEW_COMMIT), TREE)
             assets = self.deployment.published_release(NEW_COMMIT)
-            self.assertEqual(set(assets), {"manifest.json", "runtime.tar.gz"})
+            self.assertEqual(set(assets['assets']), {"manifest.json", "runtime.tar.gz"})
+            self.assertEqual(assets['artifactCommit'], ARTIFACT_COMMIT)
             self.assertIsNone(self.deployment.published_release(LATER_COMMIT))
-        self.assertEqual(requests.call_count, 4)
+        self.assertEqual(requests.call_count, 5)
 
-    def test_download_asset_streams_from_allowed_hosts_only(self) -> None:
-        self.deployment.download_asset = deploy_artifact.ArtifactDeployment.download_asset.__get__(self.deployment)
-        destination = self.work / "asset.bin"
-        content = b"artifact bytes"
-        responses = {
-            "https://api.github.com/repos/example-team/xunjie/releases/assets/2":
-                GithubResponse(content, "https://objects.githubusercontent.com/got/123"),
-            "https://api.github.com/repos/example-team/xunjie/releases/assets/3":
-                GithubResponse(content, "https://evil.example/got/123"),
-        }
-        with mock.patch.object(deploy_artifact.urllib.request, "urlopen",
-                               side_effect=self.github_responses(responses)):
-            self.assertEqual(self.deployment.download_asset(
-                {"name": "runtime.tar.gz", "url": "https://api.github.com/repos/example-team/xunjie/releases/assets/2", "size": len(content)},
-                destination, 1024, "ARTIFACT_DOWNLOAD_FAILED"), len(content))
-            self.assertEqual(destination.read_bytes(), content)
-            with self.assertRaises(deploy_artifact.DeploymentError):
-                self.deployment.download_asset(
-                    {"name": "runtime.tar.gz", "url": "https://api.github.com/repos/example-team/xunjie/releases/assets/3", "size": len(content)},
-                    self.work / "asset2.bin", 1024, "ARTIFACT_DOWNLOAD_FAILED")
-            with self.assertRaises(deploy_artifact.DeploymentError):
-                self.deployment.download_asset(
-                    {"name": "runtime.tar.gz", "url": "https://api.github.com/repos/example-team/xunjie/releases/assets/2", "size": len(content)},
-                    self.work / "asset3.bin", len(content) - 1, "ARTIFACT_DOWNLOAD_FAILED")
+    def test_github_downloads_reject_nonofficial_endpoints_and_redirect_targets(self):
+        with mock.patch.object(deploy_artifact.urllib.request, 'urlopen') as request:
+            for url in ('http://codeload.github.com/repo', 'https://evil.example/repo',
+                        'https://user@codeload.github.com/repo', 'https://codeload.github.com/repo?redirect=1'):
+                with self.assertRaisesRegex(deploy_artifact.DeploymentError, 'OFFICIAL_GITHUB_HTTPS_REQUIRED'):
+                    self.deployment.github_open(url)
+            request.assert_not_called()
+        response = GithubResponse(b'bytes', 'https://evil.example/archive')
+        with mock.patch.object(deploy_artifact.urllib.request, 'urlopen', return_value=response):
+            with self.assertRaisesRegex(deploy_artifact.DeploymentError, 'GITHUB_RESPONSE_REJECTED'):
+                self.deployment.github_open('https://codeload.github.com/repo')
+        self.assertTrue(response.closed)
 
     def test_download_artifact_files_unpacks_the_branch_bundle(self) -> None:
         method = deploy_artifact.ArtifactDeployment.download_artifact_files.__get__(self.deployment)
         manifest = json.dumps(self.manifest).encode()
-        url = "https://codeload.github.com/example-team/xunjie/tar.gz/refs/heads/cloud-artifacts"
+        url = "https://codeload.github.com/example-team/xunjie/tar.gz/6666666666666666666666666666666666666666"
         responses = {url: GithubResponse(branch_bundle(manifest, self.tarball), url)}
         manifest_path = self.work / "manifest.json"
         archive_path = self.work / "runtime.tar.gz"
         with mock.patch.object(deploy_artifact.urllib.request, "urlopen",
                                side_effect=self.github_responses(responses)):
-            sizes = method(manifest_path, archive_path)
+            sizes = method(manifest_path, archive_path, ARTIFACT_COMMIT)
         self.assertEqual(manifest_path.read_bytes(), manifest)
         self.assertEqual(archive_path.read_bytes(), self.tarball)
         self.assertEqual(sizes["runtime.tar.gz"], len(self.tarball))
@@ -598,7 +624,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
     def test_download_artifact_files_rejects_malformed_bundles(self) -> None:
         method = deploy_artifact.ArtifactDeployment.download_artifact_files.__get__(self.deployment)
         manifest = json.dumps(self.manifest).encode()
-        url = "https://codeload.github.com/example-team/xunjie/tar.gz/refs/heads/cloud-artifacts"
+        url = "https://codeload.github.com/example-team/xunjie/tar.gz/6666666666666666666666666666666666666666"
         mixed = io.BytesIO()
         with tarfile.open(fileobj=mixed, mode="w:gz") as bundle:
             for name, content in (("one/manifest.json", manifest), ("one/runtime.tar.gz", self.tarball),
@@ -616,7 +642,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
             with mock.patch.object(deploy_artifact.urllib.request, "urlopen",
                                    side_effect=self.github_responses(responses)):
                 with self.assertRaises(deploy_artifact.DeploymentError, msg=label):
-                    method(self.work / "m.json", self.work / "a.tar.gz")
+                    method(self.work / "m.json", self.work / "a.tar.gz", ARTIFACT_COMMIT)
             self.assertFalse((self.work / "m.json").exists(), label)
 
     # --- status ----------------------------------------------------------------
@@ -645,6 +671,60 @@ class ArtifactDeploymentTests(unittest.TestCase):
         status = self.deployment.status()
         self.assertEqual(status["health"], {"failed": "READY_CHECK_FAILED"})
         self.assertTrue(any("health check failed" in action for action in status["actions"]))
+
+    def test_github_outage_does_not_hide_local_health_or_watermarks(self) -> None:
+        self.deployment.remote_commit = mock.Mock(side_effect=deploy_artifact.DeploymentError('GITHUB_REQUEST_FAILED'))
+        status = self.deployment.status()
+        self.assertIsNone(status['remoteCommit'])
+        self.assertEqual(status['health']['ready'], 'ready')
+        self.assertGreater(status['disk']['freeBytes'], 0)
+        self.assertTrue(any('GitHub main could not be checked' in action for action in status['actions']))
+
+    def monitor_config(self):
+        return {'credentialsFile': str(self.root / 'monitor-credentials.json'), 'groupId': '0',
+                'dimensions': {'application': 'xunjie-shared'}, 'statusFile': str(self.root / 'monitor-status.json')}
+
+    def test_monitor_dry_run_reports_watermarks_and_failure_without_credentials_or_writes(self) -> None:
+        self.status_file.write_text(json.dumps({'status': 'failed', 'rollback': 'previous_release_restarted'}))
+        self.deployment.available_memory_bytes = mock.Mock(return_value=300 * 1024 * 1024)
+        self.deployment.free_bytes = mock.Mock(return_value=4 * GIB)
+        with mock.patch.object(deploy_artifact.http.client, 'HTTPSConnection') as connection:
+            result = self.deployment.monitor(self.monitor_config(), dry_run=True)
+        metrics = {entry['MetricName']: entry['Value'] for entry in result['metrics']}
+        self.assertEqual(metrics['xunjie_application_healthy'], 1)
+        self.assertEqual(metrics['xunjie_deployment_failed'], 1)
+        self.assertEqual(metrics['xunjie_disk_free_bytes'], 4 * GIB)
+        self.assertEqual(metrics['xunjie_memory_available_bytes'], 300 * 1024 * 1024)
+        connection.assert_not_called()
+        self.assertFalse(Path(self.monitor_config()['statusFile']).exists())
+
+    def test_monitor_posts_signed_cms_metrics_and_never_prints_credentials(self) -> None:
+        settings = self.monitor_config()
+        Path(settings['credentialsFile']).write_text(json.dumps({'accessKeyId': 'invalid-monitor-id', 'accessKeySecret': 'invalid-monitor-secret'}))
+        connection = mock.MagicMock()
+        connection.getresponse.return_value.status = 200
+        connection.getresponse.return_value.read.return_value = b'{"Code":"200"}'
+        with mock.patch.object(deploy_artifact.http.client, 'HTTPSConnection', return_value=connection):
+            result = self.deployment.monitor(settings)
+        self.assertEqual(result['status'], 'reported')
+        body = deploy_artifact.urllib.parse.parse_qs(connection.request.call_args.args[2])
+        self.assertEqual(body['Action'], ['PutCustomMetric'])
+        self.assertIn('Signature', body)
+        self.assertIn('MetricList.1.MetricName', body)
+        self.assertNotIn('invalid-monitor', json.dumps(result))
+        self.assertTrue(Path(settings['statusFile']).is_file())
+        connection.close.assert_called_once()
+
+    def test_monitor_cms_rejection_is_a_failure_not_a_successful_sample(self) -> None:
+        settings = self.monitor_config()
+        Path(settings['credentialsFile']).write_text(json.dumps({'accessKeyId': 'invalid-monitor-id', 'accessKeySecret': 'invalid-monitor-secret'}))
+        connection = mock.MagicMock()
+        connection.getresponse.return_value.status = 200
+        connection.getresponse.return_value.read.return_value = b'{"Code":"InvalidAccessKeyId"}'
+        with mock.patch.object(deploy_artifact.http.client, 'HTTPSConnection', return_value=connection):
+            with self.assertRaisesRegex(deploy_artifact.DeploymentError, 'CMS_REPORT_FAILED'):
+                self.deployment.monitor(settings)
+        self.assertFalse(Path(settings['statusFile']).exists())
 
 
 if __name__ == "__main__":

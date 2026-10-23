@@ -1,0 +1,21 @@
+[Unit]
+Description=Report XunJie health, release outcome and resource watermarks to Alibaba CloudMonitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 /usr/local/lib/xunjie/deploy-artifact.py --config /etc/xunjie/deployment.json --monitor-config /etc/xunjie/monitoring.json
+TimeoutStartSec=120
+CPUWeight=20
+IOWeight=50
+Nice=10
+MemoryHigh=64M
+MemoryMax=128M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/xunjie/maintenance
+UMask=0077
+LimitCORE=0

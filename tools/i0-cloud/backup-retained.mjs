@@ -111,6 +111,9 @@ export async function createEncryptedBackup(options) {
       const root = settings.personalModelsDirectory;
       require(existsSync(root) && lstatSync(root).isDirectory(), 'PERSONAL_MODELS_DIRECTORY_REQUIRED');
       for (const file of walkFiles(root)) {
+        // SQLite Backup API already incorporates committed WAL pages. Copying
+        // the live source journal onto that snapshot can replay another epoch.
+        if (/\.(?:sqlite|sqlite3|db)-(?:wal|shm|journal)$/.test(file)) continue;
         const relativePath = relative(root, file).split('\\').join('/');
         const target = join(staging, 'personal-models', relativePath);
         mkdirSync(dirname(target), { recursive: true });
