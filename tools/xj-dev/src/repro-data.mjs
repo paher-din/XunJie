@@ -183,6 +183,7 @@ async function createSharedDatabase(teachingDir, file, rows) {
 }
 
 export async function restoreData(teachingDir, sourceFile, metadata, envPaths, baselineVersion) {
+  const scope = parseScope(metadata.scope);
   const Driver = databaseDriver(teachingDir), source = new Driver(sourceFile, { readonly: true, fileMustExist: true });
   const rows = {};
   try {
@@ -192,7 +193,17 @@ export async function restoreData(teachingDir, sourceFile, metadata, envPaths, b
     for (const table of tableNames) {
       const records = source.prepare(`SELECT * FROM "${table}"`).all();
       if (!SHARED_TABLES.includes(table) && records.length) throw reproError('UNSHAREABLE_DATA', '包内含旧会话、队列或不允许共享的记录。');
-      if (SHARED_TABLES.includes(table)) rows[table] = records;
+      if (SHARED_TABLES.includes(table)) {
+        if (records.length !== metadata.tables?.[table]) throw reproError('INVALID_DATA', '共享库记录数与清单不符。');
+        for (const row of records) {
+          if ((table === 'users' && !scope.userIds.includes(row.id)) || (table === 'courses' && !scope.courseIds.includes(row.id))
+            || ('course_id' in row && !scope.courseIds.includes(row.course_id)) || ('attempt_id' in row && !scope.attemptIds.includes(row.attempt_id))
+            || ['user_id', 'student_id', 'actor_id', 'teacher_id', 'created_by', 'controlled_by', 'granted_by'].some(key => row[key] && !scope.userIds.includes(row[key]))) throw reproError('SCOPE_VIOLATION', '包内业务记录超出声明的课程/成员/任务范围。');
+          assertPayloadScope(row, scope);
+          for (const value of Object.values(row)) if (typeof value === 'string') assertShareable(value, '包内业务载荷');
+        }
+        rows[table] = records;
+      }
     }
     for (const user of rows.users) {
       if (!Buffer.isBuffer(user.password_hash) || !user.password_hash.equals(Buffer.alloc(64)) || !user.salt.equals(Buffer.alloc(16)) || user.disabled_at_ms !== 1) {

@@ -13,6 +13,15 @@ export const baselineAccounts = [
   { id: 'synthetic-student', loginName: 'synthetic-student', displayName: '基线学生', role: 'student' },
 ];
 
+export function baselineAccountsFor(envPaths) {
+  if (!existsSync(envPaths.baselineFile)) return baselineAccounts;
+  const record = JSON.parse(readFileSync(envPaths.baselineFile, 'utf8'));
+  if (!Array.isArray(record.accounts) || record.accounts.some(a => typeof a.loginName !== 'string' || !['teacher', 'student'].includes(a.role))) {
+    throw new CliError('baseline', 'BASELINE_MARKER_INVALID', '基线账号标记无效。', { recovery: '检查 data/baseline.json，不覆盖已有数据。' });
+  }
+  return record.accounts;
+}
+
 const manifest = {
   synthetic: true,
   recoveryGeneration: 'generation',

@@ -113,7 +113,8 @@ test('capture before stale-editor save; restore actual code/data to another work
   assert.equal(withDb(receiver, db => JSON.parse(db.prepare('SELECT attempt_json FROM attempts').get().attempt_json).workspaceRevision), attempt.workspaceRevision, 'restored the pre-trigger revision');
   assert.equal(withDb(receiver, db => db.prepare('SELECT count(*) AS n FROM sessions').get().n), 0);
   assert.equal(withDb(receiver, db => db.prepare('SELECT count(*) AS n FROM jobs').get().n), 0);
-  await up(receiver, () => {});
+  const receiverUp = await up(receiver, () => {});
+  assert.deepEqual(receiverUp.accounts.list.map(a => a.loginName).sort(), restored.data.accounts.map(a => a.loginName).sort(), 'public up reports regenerated account names');
   const verified = await verifyRepro(receiver, { file });
   assert.equal(verified.ok, true, JSON.stringify(verified.verification));
   assert.equal(verified.verification.reproduction, 'verified');
@@ -143,6 +144,27 @@ test('capture before stale-editor save; restore actual code/data to another work
     withDb(source, db => db.prepare("UPDATE attempts SET attempt_json=json_set(attempt_json,'$.ownerId','unselected-member') WHERE attempt_id=?").run(before.attempt_id));
     await assert.rejects(() => captureRepro(source, { contextFile, out: join(root, 'bad-scope.zip') }), { code: 'SCOPE_VIOLATION' });
     withDb(source, db => db.prepare("UPDATE attempts SET attempt_json=json_remove(attempt_json,'$.ownerId') WHERE attempt_id=?").run(before.attempt_id));
+  });
+
+  await t.test('after-incident and uncertain external scenes remain unverified; queued source jobs cannot resume in restored data', async () => {
+    withDb(source, db => {
+      const receipt = db.prepare("SELECT receipt_id FROM command_receipts WHERE course_id='synthetic-textscope-c' LIMIT 1").get();
+      db.prepare('INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?)').run('old-queued-job', 'synthetic-textscope-c', 'synthetic-student', before.attempt_id,
+        receipt.receipt_id, 'student_help', 'queued', 0, generation, JSON.stringify({ state: 'queued', marker: 'OLD_QUEUE_CANARY' }));
+    });
+    for (const [name, scene] of [['after', { start: 'after-incident' }], ['uncertain', { externalUncertainty: true }]]) {
+      const nextSpec = { ...spec, scenario: { ...spec.scenario, ...scene } };
+      const nextContext = join(root, `${name}-context.json`), nextFile = join(root, `${name}.zip`), nextTarget = join(root, `${name}-target`);
+      writeFileSync(nextContext, JSON.stringify(nextSpec)); targets.push(nextTarget);
+      await captureRepro(source, { contextFile: nextContext, out: nextFile });
+      await restoreRepro(source, { file: nextFile, target: nextTarget });
+      const context = resolveContext({ worktree: nextTarget }); receivers.push(context);
+      const result = await verifyRepro(context, { file: nextFile });
+      assert.equal(result.verification.reproduction, 'unverified');
+      const db = new Driver(context.env.database, { readonly: true });
+      try { assert.equal(db.prepare('SELECT count(*) AS n FROM jobs').get().n, 0); } finally { db.close(); }
+      assert.equal(readFileSync(context.env.database).includes(Buffer.from('OLD_QUEUE_CANARY')), false);
+    }
   });
 
   await t.test('immutable baseline publish/list/use preserve both the previous environment and other members', async () => {

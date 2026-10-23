@@ -36,14 +36,14 @@ export async function verifyRepro(context, { file, expectedDigest }) {
   if (!existsSync(receiptFile)) throw reproError('NOT_RESTORED', '当前工作树没有恢复回执。请在新恢复的工作树执行 verify。');
   const receipt = JSON.parse(readFileSync(receiptFile, 'utf8'));
   if (receipt.packageDigest !== checked.package.digest || receipt.target !== context.worktree) throw reproError('DIGEST_MISMATCH', '当前环境的恢复回执不属于此包。');
-  const state = loadState(context.env);
-  if (!state?.ports || !componentRunning(context.env, 'backend').running || !componentRunning(context.env, 'gateway').running) throw reproError('ENVIRONMENT_NOT_RUNNING', '先审阅代码并显式 up 恢复环境，再执行 verify。');
   const { scenario } = checked;
   if (scenario.start !== 'before-trigger' || scenario.externalUncertainty
     || Object.values(checked.package.manifest.conditions.capabilities).some(v => !['not-required', false].includes(v))) {
     return { package: checked.package, verification: { generated: true, restored: true, reproduction: 'unverified',
       reason: '只有事后现场、依赖不确定外部响应或需要单独配置执行/模型能力；未执行并且未标记已复现。' } };
   }
+  const state = loadState(context.env);
+  if (!state?.ports || !componentRunning(context.env, 'backend').running || !componentRunning(context.env, 'gateway').running) throw reproError('ENVIRONMENT_NOT_RUNNING', '先审阅代码并显式 up 恢复环境，再执行 verify。');
   for (const step of scenario.steps) {
     if (!step || !['GET', 'POST'].includes(step.method) || typeof step.path !== 'string' || !/^\/api\/[A-Za-z0-9_/?=&%.-]+$/.test(step.path)
       || /(?:\.\.|%2e|%2f|%5c)/i.test(step.path) || !Number.isInteger(step.expect?.status) || typeof step.actorId !== 'string') {

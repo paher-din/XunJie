@@ -66,6 +66,7 @@ function localFile(root, path) {
 }
 
 export function collectCode(worktree, scratch, spec = {}) {
+  const startedAt = new Date().toISOString();
   const roots = spec.roots ?? CODE_ROOTS;
   const selected = spec.paths ?? [];
   if (!Array.isArray(roots) || !roots.length || !Array.isArray(selected)) throw reproError('INVALID_CONTEXT', 'code.roots/paths 必须是路径数组。');
@@ -118,6 +119,7 @@ export function collectCode(worktree, scratch, spec = {}) {
   const sourceDigest = digest(jsonBytes([...files].sort(([a], [b]) => a.localeCompare(b, 'en')).map(([path, bytes]) => ({ path, digest: digest(bytes) }))));
   return { bytes: readFileSync(bundle), sourceFiles: files, manifest: {
     sourceCommit, exportedCommit, sourceDigest, roots, selectedChanges: changes,
+    consistency: { startedAt, finishedAt: new Date().toISOString(), kind: 'fixed-git-tree-with-explicit-file-overlays', crossStorageAtomic: false },
     representation: 'self-contained-git-bundle-selected-snapshot',
     history: '原提交号仅作来源；bundle 携带该提交已选源码及明确选定的本地差异，不携带历史、作者身份或无关路径。',
     files: [...files].map(([path, bytes]) => ({ path, bytes: bytes.length, digest: digest(bytes), mode: modes.get(path) ?? '100644' })),

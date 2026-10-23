@@ -14,6 +14,9 @@ function readJson(bytes, label) {
 }
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 export function loadReproContext(file) {
+  if (!existsSync(file)) throw reproError('RESOURCE_MISSING', '采集 context 文件不存在。');
+  if (lstatSync(file).isSymbolicLink() || !lstatSync(file).isFile()) throw reproError('UNSAFE_PATH', 'context 必须是普通文件。');
+  if (lstatSync(file).size > 1024 * 1024) throw reproError('PACKAGE_LIMIT', 'context 大小超过 1 MiB。');
   const value = readJson(readFileSync(file), 'context');
   if (!record(value) || value.formatVersion !== 'xj-repro-context/1' || !record(value.scenario) || !['before-trigger', 'after-incident'].includes(value.scenario.start)
     || typeof value.scenario.title !== 'string' || !value.scenario.title.trim() || !Array.isArray(value.scenario.steps) || !value.scenario.steps.length
