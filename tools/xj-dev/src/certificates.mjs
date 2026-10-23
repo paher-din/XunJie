@@ -56,10 +56,10 @@ export function ensureEnvironmentCertificate(envPaths, ca) {
 export function certificateTrustHint(home) {
   const certFile = join(home, 'ca', 'ca-cert.pem');
   if (process.platform === 'darwin') {
-    return `信任开发 CA（每台机器一次）：security add-trusted-cert -d -r trustRoot -k ~/Library/Keychains/login.keychain-db "${certFile}"；不信任也可用浏览器临时继续。`;
+    return `信任本次开发 CA：security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db "${certFile}"；按系统提示确认并核对证书指纹。浏览器须正常验证 HTTPS；精确信任/撤销步骤见 tools/xj-dev/README.md。`;
   }
   if (process.platform === 'win32') {
-    return `信任开发 CA（每台机器一次）：certutil -addstore -user ROOT "${certFile}"；不信任也可用浏览器临时继续。`;
+    return `信任本次开发 CA：${certFile}；在有 LocalMachine Root 写权限的 PowerShell 中用 .NET X509Store('Root','LocalMachine') 添加并按指纹读回（可能需管理员/UAC 确认）。CurrentUser Root 在部分主机不支持写入；具体脚本与精确撤销见 tools/xj-dev/README.md。浏览器须正常验证 HTTPS。`;
   }
-  return `把开发 CA 加入系统或浏览器信任库：${certFile}；不信任也可用浏览器临时继续。`;
+  return `把本次开发 CA 加入系统或浏览器信任库并核对指纹：${certFile}；按系统要求确认权限，浏览器须正常验证 HTTPS。精确撤销见 tools/xj-dev/README.md。`;
 }
