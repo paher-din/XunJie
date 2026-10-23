@@ -1,6 +1,6 @@
 # 开发协作工具：Agent 操作、复现包与产品隔离
 
-更新：2026-10-23。状态：`tools/xj-dev` 提供本地全栈、三模式切换及受管页面/登记节点连接；平台与真实连接的验收范围见其 README。成员接入与复现包另按对应实施票交付。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
+更新：2026-10-23。状态：`tools/xj-dev` 提供本地全栈、三模式切换及受管页面/登记节点连接；平台与真实连接的验收范围见其 README。本地复现包与基线版本已交付；成员接入另按对应实施票交付。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
 
 ## 新 Agent 的工具入口
 
@@ -13,7 +13,7 @@
 | 后端构建/启动：`npm run build`、`npm start` | 在 `apps/teaching/` 使用 [package.json](../apps/teaching/package.json) 声明的精确 Node 版本及锁文件；核对[启动入口](../apps/teaching/server/main.ts)的业务配置条件 | 普通无业务配置启动仅提供基础健康服务；完整课程服务需要明确的配置与初始化数据，不能把进程启动或健康响应当作本地课程环境已准备好 |
 | 云端页面与 API：`xj-dev use cloud/cloud-api` | [模式与连接](../tools/xj-dev/README.md#模式与受管连接)；需要获准的配置、SSH 私钥、主机 pin 与 HTTPS CA | 受管连接恢复、固定入口与 Cookie 隔离；不上传代码、创建成员或部署 |
 | 已登记节点：`xj-dev node connect/status/disconnect` | 同一 README；另需已准备并登记的节点、端口与身份 | 迁移原回连能力；不安装 VM、初始化节点、重发或改派任务，隧道成功与执行业务验收分开报告 |
-| `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down、use、node；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
+| `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down、use、node、repro、baseline；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
 
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 
@@ -57,42 +57,39 @@
 
 ## 获取与更新数据基线
 
-首次 `up` 读取该代码版本声明的推荐基线，把它解析成固定版本与摘要，自动下载、校验并建立独立可写副本。后续启动复用该副本，不随团队最新基线变化而自动重置。
+`baseline list/publish/use` 已实现本地固定版本。首次 `up` 使用代码内置 `local-baseline-1`，后续启动复用本工作树数据。发布基线不会改变其他环境；团队传输独立于本地版本目录，尚需对应传输能力。
 
-| 操作 | 建议接口 | 结果 |
+| 操作 | 已实现接口 | 结果 |
 | --- | --- | --- |
-| 查看可用起点 | `xj-dev baseline list --json` | 显示版本、说明、兼容代码/结构和资源体积 |
-| 改用某个基线 | `xj-dev baseline use <ref> --json` | 保留旧环境，新建匹配当前代码的副本并切入；不覆盖已有工作 |
-| 让团队采用新起点 | `xj-dev baseline publish --context <file> --json` | 维护者把经过整理和验证的场景发布为新的不可变基线 |
+| 查看固定起点 | `xj-dev baseline list --json` | 已发布版本、完整摘要、schema 与体积；另报告内置起点 |
+| 显式采用版本 | `xj-dev baseline use <version> [--target <new-dir>] --json` | 验证兼容后新建工作树与独立数据，返回继续开发路径；旧环境保留 |
+| 发布新起点 | `xj-dev baseline publish --context <file> --version <version> --json` | 从明确选定的课程/成员/任务构造允许共享的包；本地同名版本不可覆盖 |
 
-“用最新基线”只在该次操作时解析最新指向，完成后固定版本。若新基线与当前分支不兼容，返回条件和匹配版本，不暗中迁移或切代码。仅需分享问题时发布复现包即可，无需提升为所有人的默认基线。
-
-例如 A、B 都从 B12 建立副本；A 发布新基线 B13 后，B 仍在 B12 上继续工作。B 让 Agent 使用 B13 时，工具创建新副本，同时保留 B12 的现场。课程和资源靠版本与摘要对齐，各自的可写数据继续独立。
+不维护可变 `latest` 指向，版本不符直接失败，不暗中迁移 schema 或切换原分支。A 发布 B13 后，B 继续使用 B12；只有 B 显式 `use B13` 才新建副本。发布不改变场景验证状态。完整 context、命令及失败处理见 [xj-dev 复现与基线示例](../tools/xj-dev/README.md#复现包与基线)。
 
 ## 复现包的形态
 
-采用普通 ZIP，示意文件名为 `xj-repro-<id>.zip`。开发者通常传递复现编号；文件可独立下载和检查，也能在离线时直接交接。包格式用显式版本控制，不依赖某种编码 Agent 的私有会话格式。
+`repro capture/inspect/restore/verify` 已交付本地文件闭环。格式为普通 ZIP `xj-repro/1`，不依赖编码 Agent 的私有会话或外部服务：
 
 ```text
-xj-repro-<id>.zip
-  manifest.json      # 格式版本、来源、代码/数据兼容条件、依赖与能力要求
-  scenario.json      # 起始状态、入口、输入、步骤、预期和实际结果
-  code/              # 基准提交引用、必要代码补丁及选中的未跟踪源码
-  data/              # 新建的场景数据库或可重复导入的业务记录
-  assets/            # 场景确实依赖的课程资源和作品文件
-  evidence/          # 经筛选的日志、截图或响应样例
-  checksums.json     # 除摘要表自身外的文件摘要；整个 ZIP 的摘要另用于定位和传输校验
+manifest.json       # 格式/工具、来源、源码清单、schema/基线、工具条件、采集边界与生成状态
+scenario.json       # before-trigger / after-incident、输入、步骤、预期与现象
+code/source.bundle  # 自包含 Git 源码快照，包括明确选中的未提交/未跟踪文件
+data/shared.sqlite # 从一致 SQLite 视图重建的新业务库
+assets/             # 明确选中的必要资源（可选）
+evidence/           # 经筛选的证据（可选）
+checksums.json      # 除自身之外的逐文件 SHA-256；整个 ZIP 另有完整摘要
 ```
 
-`manifest.json` 至少包含 `formatVersion`、创建工具版本、Git 来源与提交、源码摘要、数据/schema/基线版本、锁文件摘要、必要运行时版本、采集范围、缺失能力，以及包处于“仅保留现场”还是“已验证复现”的状态。外部依赖必须固定版本和摘要，并能由接收方取得；首版优先完整携带小型场景数据与必要资源，避免手动凑齐多个包。
+代码默认携带两个工程及开发工具的已提交源码，`code.roots` 可缩小范围，`code.paths` 指定必要的本地差异。未选的 dirty/untracked 工作不进入包。未推送提交的所选源码通过 bundle 转移；原提交号只作来源，不要求接收端取得该 SHA，也不分发整段历史、作者身份或无关路径。ZIP、bundle、源码与资源按原字节校验；依赖条件单独声明 `sha256:utf8-lf/v1`，仅归一 CRLF→LF 以兼容 Windows checkout，真实依赖变更仍拒绝。
 
-代码引用必须在接收端可取得。未提交改动可用补丁携带；仅存在于发送方的本地提交，需补充相对可取得基准的源码差异或必要的 Git bundle。不能只写一个对方无法取得的 commit，也不要求为了交接问题而先合并代码。
+`data.scope.courseIds/userIds/attemptIds` 为必须的非空范围。工具先取得单库一致读取视图，再用当前可信 schema 按白名单、业务引用与 JSON 成员归属校验构造新库；不直接分发原库删行后的文件。原密码、会话、模型 Key、个人模型数据、SSH 私钥、机器身份、其他成员记录与旧执行/模型队列排除。角色的登录名和密码在恢复环境重建，秘密只在仓库外受限文件。无法表达的引用或疑似秘密阻止采集。
 
-数据库先做一致采集，再从允许共享的业务对象及依赖构造新的场景库；不把原始运行库删掉几行后直接分发。课程库、个人模型数据、附件和浏览器现场分别记录采集边界，不能把单个 SQLite 的一致备份说成整个系统的原子快照。涉及跨存储状态的场景，需暂停该开发环境的相关写入并核对引用，或明确记录无法保证一致的部分。基础备份机制见 [SQLite Backup API](https://www.sqlite.org/backup.html)。
+SQLite 事务、源码与附件分别记录边界；清单明确 `crossStorageAtomic: false` 和未采集的个人模型、浏览器、节点及外部服务，不声称全系统原子快照。缺附件、摘要错误、版本不匹配或危险路径均准确失败。ZIP 和 bundle 内路径均在建立工作树前检查，跨平台大小写冲突、文件/目录冲突、越界和特殊文件会拒绝。
 
-登录会话、密码、模型 Key、SSH 私钥、个人模型加密密钥和机器身份不进包；本地角色与登录凭据在恢复时重新建立。运行队列、节点绑定与模型待执行请求不直接作为可消费任务导入；需要测试这些机制时，用明确的隔离场景重新构造。浏览器问题只导出必要状态，不能把整个浏览器配置目录作为附件。
+默认 `restore` 建立新的 detached Git 工作树和新的数据/身份环境，保护原分支与业务库；恢复不执行包内脚本、Git hook/filter、安装、迁移或启动。Agent 审阅源码后单独 `up`。`verify` 是显式的同源业务 HTTP 步骤执行，使用恢复后的登录身份，结果写在环境回执中；不执行任意 shell/JS。
 
-**故障发生后的数据库未必是复现起点。** Agent 要记录触发前的基线或检查点和后续操作；若只拿到事后状态，包可以用于排查，但标为“现场已保存、复现未验证”。模型响应、并发时序和外部服务故障也可能无法逐次重现，应分别记录真实条件和可重复播放的样例。
+**生成、恢复与复现分别报告。** 不可变 ZIP 的清单始终保存生成时的未验证状态；只有实际执行了声明步骤并观察到预期状态/错误码，恢复回执才记录 `verified`。事后现场、外部响应不确定或执行/模型条件缺失保持 `unverified`。已有 ZIP 的同请求重试只校验复用，不重新抓取变化中的现场。完整示例与常见失败见 [工具 README](../tools/xj-dev/README.md#复现包与基线)。
 
 ## 传递方式
 
@@ -134,7 +131,7 @@ sequenceDiagram
 
 这样不同编码 Agent 可以调用同一套 CLI，不需要各自在对话中临时拼装启动脚本。一次性邀请、自动登记与文件授权由一个轻量开发接入服务完成，不运行编码 Agent。保留这些直接减少成员操作的能力；首版不额外建设独立账号密码体系、OAuth 登录、管理后台、通用权限框架或 MCP 服务。只有实际接入条件要求时才增加对应适配。
 
-以下是建议接口，**目前不可直接执行，`xj-dev` 只是仓库内 CLI 的示意名称**：
+下表逐项标明本地已实现能力；未标注已实现的接口仍为建议，调用前核对当前帮助：
 
 | 建议接口 | 职责 |
 | --- | --- |
@@ -142,13 +139,13 @@ sequenceDiagram
 | `xj-dev doctor --json` | 返回依赖、配置、网络与所需能力的检查结果及可执行的恢复动作 |
 | `xj-dev up --json` | 启动或恢复当前工作树所选模式；新工作树默认本地全栈，首次准备固定基线 |
 | `xj-dev use <local|cloud-api|cloud> --json` | 检查并切换运行配置，返回代码来源、数据归属和入口；不迁移数据或部署 |
-| `xj-dev baseline list/use/publish ... --json` | 管理版本化起点；切换创建新副本，发布受维护者权限约束 |
+| `xj-dev baseline list/use/publish ... --json`（本地已实现） | 固定版本本地发布/查看/显式采用；新建工作树保留旧环境，团队授权与传输另行接入 |
 | `xj-dev member invite/revoke ... --json` | 维护者管理团队加入与撤销，设备可独立管理 |
 | `xj-dev status --json` / `xj-dev down --json` | 查询环境，或停止本工具管理的进程；停止不等于删除数据 |
 | `xj-dev node connect/status/disconnect ... --json` | 按需管理现有已登记执行节点的受管回连；不安装执行器或决定产品运行方案 |
-| `xj-dev repro pack --context <file> --json` | 根据 Agent 提供的结构化场景说明，采集并校验本地包 |
+| `xj-dev repro capture --context <file> --out <zip> --json`（已实现） | 采集并校验本地包；`inspect <zip>` 检查包与完整摘要 |
 | `xj-dev repro share --context <file> --json` | 一次完成采集、校验和上传；也支持上传已经生成的包 |
-| `xj-dev repro open <ref-or-zip> --json` | 下载、校验、恢复到新的隔离工作树与数据环境，返回复现入口与未满足条件 |
+| `xj-dev repro restore <zip> [--target <new-dir>] --json`（本地已实现） | 校验并恢复新工作树和数据，显式 `up` 后 `repro verify <zip>` 记录实际 HTTP 步骤结果；团队下载另行接入 |
 
 `member invite` 默认准备普通开发权限，由维护者通过已有管理通道生成限时、单设备邀请；具体字段与重试规则见[首次接入](development-access-operations.md#首次使用的目标流程)。邀请交接后由成员 Agent 继续，不要求成员手工编辑 SSH 配置、复制公钥到服务器或每天重新建立隧道。
 
@@ -156,7 +153,7 @@ sequenceDiagram
 
 环境以仓库与工作树身份区分，拥有独立的数据、个人模型目录、浏览器身份和服务进程。反复 `up` 不重置数据；并行 Agent 操作同一环境时，由工具协调锁与进程归属。端口冲突、服务异常退出和版本不符都返回明确状态，不能靠 Agent 猜一个成功日志。只有显式清理操作才删除环境，且只删除工具登记的资源。
 
-`open` 默认新建环境，不覆盖接收者正在开发的分支或数据库。先核对包版本、源码与 schema，再恢复；不能悄悄迁到最新版本。解包限制在目标目录内，包内说明作为数据读取，不自动执行携带的任意脚本。需要运行的启动、迁移与场景动作来自当前已审查的工具实现及匹配版本的仓库。
+`restore` 默认新建环境，不覆盖接收者正在开发的分支或数据库。先核对包版本、源码与 schema，再恢复；不能悄悄迁到最新版本。解包限制在目标目录内，包内说明作为数据读取，不自动执行携带的任意脚本。需要运行的启动、迁移与场景动作来自当前已审查的工具实现及匹配版本的仓库。
 
 Agent 的收尾需区分“包已生成”“包已上传”“环境已恢复”“问题已复现”。恢复成功不自动等于问题重现；步骤可由浏览器/API 自动化执行，也可以是需人工配合的硬件动作。工具提供事实，Agent 据此报告和继续排查。
 
@@ -210,7 +207,7 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 | --- | --- | --- |
 | 原 PowerShell 页面/节点入口与公共 SSH 解析器 | 已迁入 `xj-dev use` / `node` / `src/connection.mjs` 并删除（#128） | 单一跨平台连接路径，旧获准配置仅由新解析器只读适配 |
 | 原连接 JSON 示例 | 已迁入 [connection.example.json](../tools/xj-dev/connection.example.json) 并删除旧模板（#128） | `sshd-members.example.conf` 仍是有效的服务端权限模板，继续保留 |
-| `tools/i0-hdl/xunjie-local.ps1`、`local-application-host.mjs`、旧业务初始化/证据脚本及对应测试 | 已由 `tools/xj-dev` 替代并删除（#127） | 执行 VM 准备（`local-node-setup.*`）、冻结镜像接收、`fixtures/hdl-reference.json` 与 `seed-local-courses.mjs` 仍被引用，保留在 [i0-hdl README](../tools/i0-hdl/README.md) 说明；`seed-local-courses.mjs` 的独立 `--apply` 流程默认指向退役宿主 3444 不再可用，保留是因 `i0-cloud/publish-demo-projects.mjs` 复用其 `verifyCompletionReceipt` |
+| `tools/i0-hdl/xunjie-local.ps1`、`local-application-host.mjs`、旧业务初始化/证据脚本及对应测试 | 已由 `tools/xj-dev` 替代并删除（#127） | 执行 VM 准备（`local-node-setup.*`）、冻结镜像接收、`fixtures/hdl-reference.json` 与 `seed-local-courses.mjs` 仍被引用，保留在 [i0-hdl README](../tools/i0-hdl/README.md) 说明；`seed-local-courses.mjs` 指向退役宿主的独立 CLI 和无调用场景逻辑已删除（#130），仅保留 `i0-cloud/publish-demo-projects.mjs` 复用的 `verifyCompletionReceipt` |
 | `tools/i0-hdl/README.md`、`tools/teacher-workflow/`、`tools/a0-review/` 及相关调用；`tools/i0-ui55/README.md`、`tools/i0-shared/README.md` | 旧操作步骤、占位说明与受控验证工具已删除（#127；a0-review 的检查对象文档已不存在且无引用），i0-hdl README 改写为保留范围说明 | 活跃源码、Skill、README 与当前设计文档中的旧命令、路径和链接已同步清零；`apps/teaching/tests/evidence/` 下的历史验收证据是当时的事实快照，保留旧文件名，不作为当前用法；历史事实留在 Git 历史与归档 |
 | 仓库外旧连接文件、SSH 配置片段、专属证书、登记密钥、启动记录与受管进程 | 可能仍由成员或当前运行环境使用 | 迁移时生成本工具拥有资源的清单，完成目标切换再移除失效项；仅处理明确归属的旧资源，不扫描删除通用 SSH 配置、其他项目或业务数据 |
 | `cloud-host.mjs`、在用 systemd 服务和执行节点 | `sync-main.py` 及其同步单元已被 CI 产物发布链路（构建器、GitHub Release、`deploy-artifact.py` 与新部署单元）替代并删除；其余仍承担当前业务或执行职责 | 复用或按明确替代方案迁移；不能因为目录带旧阶段名就判断无用。对应替代完成时再删除失效实现和配置 |

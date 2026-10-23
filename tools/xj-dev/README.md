@@ -61,6 +61,73 @@ $ node tools/xj-dev/xj-dev.mjs up --json
 - `down` 只停止本环境登记的进程（按命令行归属核对），不删数据；重复 `up` 幂等，沿用原数据。
 - 重置环境 = `down` 后删除对应环境目录再 `up`（重新播种基线）。
 
+## 复现包与基线
+
+本地文件闭环已实现，不需要邀请服务、云存储或模型 Key。`repro capture/inspect/restore/verify` 分别负责采集、校验、恢复、显式执行声明式 HTTP 步骤；生成和恢复均不自动声称问题已复现。
+
+完整示例：保存“两个编辑现场先后保存，旧版本返回 `VERSION_CONFLICT`”的触发前起点。先 `up`，再从现有业务库读取实际任务引用创建 context（下面为 macOS / Git Bash，PowerShell 可将 JS 保存为仓库根临时 `.mjs` 后执行）：
+
+```sh
+node tools/xj-dev/xj-dev.mjs up --json
+node --input-type=module <<'JS'
+import {writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {resolveContext} from './tools/xj-dev/src/commands.mjs';
+import {databaseDriver} from './tools/xj-dev/src/repro-data.mjs';
+const context = resolveContext();
+const Driver = databaseDriver(context.repo.teaching);
+const db = new Driver(context.env.database, {readonly: true});
+const row = db.prepare("SELECT * FROM attempts WHERE course_id='synthetic-textscope-c' LIMIT 1").get();
+const attempt = JSON.parse(row.attempt_json);
+const generation = db.prepare('SELECT recovery_generation FROM application_control').get().recovery_generation;
+db.close();
+const body = {recoveryGeneration: generation, expectedWorkspaceRevision: attempt.workspaceRevision,
+  clientId: 'stale-editor', clientSeq: 1,
+  operations: [{kind: 'create', clientFileKey: 'first', path: 'stale-editor.txt', text: 'first tab saved'}]};
+const spec = {formatVersion: 'xj-repro-context/1', code: {paths: []},
+  data: {scope: {courseIds: ['synthetic-textscope-c'], userIds: ['synthetic-teacher', 'synthetic-student'], attemptIds: [row.attempt_id]}},
+  scenario: {title: '旧编辑现场保存冲突', start: 'before-trigger', expected: '旧版本不覆盖新保存', observed: 'HTTP 409 VERSION_CONFLICT',
+    capabilities: {execution: 'not-required', models: 'not-required'}, steps: [
+      {actorId: 'synthetic-student', method: 'POST', path: `/api/attempts/${row.attempt_id}/sync`, body, expect: {status: 200}},
+      {actorId: 'synthetic-student', method: 'POST', path: `/api/attempts/${row.attempt_id}/sync`,
+        body: {...body, clientSeq: 2}, expect: {status: 409, errorCode: 'VERSION_CONFLICT'}}]}};
+const file = join(context.home, 'stale-editor-context.json');
+writeFileSync(file, JSON.stringify(spec, null, 2));
+console.log(file);
+JS
+node tools/xj-dev/xj-dev.mjs repro capture --context ~/.xunjie/xj-dev/stale-editor-context.json --out ~/.xunjie/xj-dev/stale-editor.zip
+node tools/xj-dev/xj-dev.mjs repro inspect ~/.xunjie/xj-dev/stale-editor.zip
+node tools/xj-dev/xj-dev.mjs repro restore ~/.xunjie/xj-dev/stale-editor.zip --digest sha256:<capture返回的完整摘要>
+# 审阅恢复结果的源码后，用返回的新工作树路径继续；旧环境保持原样。
+node tools/xj-dev/xj-dev.mjs up --worktree "<返回的environment.worktree>"
+node tools/xj-dev/xj-dev.mjs repro verify ~/.xunjie/xj-dev/stale-editor.zip --worktree "<返回的environment.worktree>"
+```
+
+路径以输出为准；`XJ_DEV_HOME` 改根时同步调整示例路径。`restore --target <不存在的目录>` 可指定新工作树。正常依赖按锁安装，恢复本身不会运行 `npm`、任何包内脚本、Git hook/filter、schema 迁移或旧队列；`up` 是审阅后的单独操作。`verify` 仅在匹配包摘要的已恢复本地环境中，使用重新生成的角色身份发送同源 HTTP 请求，回执记录真实状态/错误码，不记录 Cookie、CSRF 或密码。
+
+采集契约：
+
+- `code.roots` 可缩小源码范围，默认包含两个工程、xj-dev 和根规范；`code.paths` 只列必要的未提交或选定未跟踪文件，未选差异保持提交版本。自包含 `code/source.bundle` 携带所选源码快照，未推送源码无需接收方取得原提交；原 SHA 只作来源，不携带历史或作者身份。源码与 bundle 摘要按原始字节校验。
+- `data.scope` 必须给出 `courseIds/userIds/attemptIds`。工具从一致 SQLite 读取结果按白名单和业务引用构建新库，原库的页面、会话、密码、个人模型、节点绑定、执行/模型队列与其他成员记录均不分发。恢复后账号名为 `repro-<摘要前缀>`，新密码只在新环境的 `secrets/baseline-accounts.json`。无法安全表达的引用直接失败。
+- `assets` / `evidence` 是明确选择的文件数组，如 `[{"path":"relative/file.txt","name":"notes.txt"}]`；默认均为空。附件采集时间分别记录，缺资源或疑似秘密会拒绝。SQLite 一致视图不代表跨存储原子快照，缺失的个人模型/浏览器/外部服务条件在清单中明确列出。
+- 仅依赖条件摘要采用 `sha256:utf8-lf/v1`（仅归一化 CRLF→LF），支持 Windows 干净 checkout 的行尾变化；真实锁内容变化仍拒绝。ZIP、源码和资源摘要始终保留原始字节规则。
+- `scenario.start` 为 `before-trigger` 或 `after-incident`。后者、`externalUncertainty: true`，或声明执行/模型能力为必需时，自动验证保持 `unverified`，能力需单独准备；自然语言步骤可保存，自动验证只接受示例中的 HTTP 数据格式。可识别的无效 synthetic fixture 保留，真实秘密拒绝。
+- 已完成的同请求 ZIP 再次 `capture` 只校验并返回 `reused: true`，不会从变化后的现场重新采集。修改内容要用新文件名。ZIP 限制为 128 MiB、展开总量 256 MiB、单文件 64 MiB、10000 文件，拒绝路径越界、特殊文件和跨平台路径冲突。
+
+基线版本保存在 `XJ_DEV_HOME/baselines/<version>/`，发布只影响本机目录；团队传输由后续独立能力提供：
+
+```sh
+node tools/xj-dev/xj-dev.mjs baseline publish --context ~/.xunjie/xj-dev/stale-editor-context.json --version course-b1
+node tools/xj-dev/xj-dev.mjs baseline list
+node tools/xj-dev/xj-dev.mjs baseline use course-b1 --target "<新的工作树绝对路径>"
+```
+
+同名版本不可覆盖；`latest` 不作为可变指针。`use` 验证兼容后返回新工作树和新数据副本，Agent 在该路径继续开发；原工作树、浏览器与数据保留，其他成员不自动升级。发布基线也不会把未验证的场景变成已复现。
+
+公开模块供文件传输复用：`captureRepro(context, {contextFile, out})`、`inspectRepro(file, {expectedDigest})`、`restoreRepro(context, {file, target, expectedDigest})`，位于 `src/repro.mjs`。返回 `package: {path, digest, bytes, formatVersion, manifest}`；格式 `xj-repro/1`，整个 ZIP 摘要为 `sha256:<64位hex>`。完整文件先通过 `inspectRepro`，再登记/传输；重试复用原 ZIP。
+
+常见失败：`DIGEST_MISMATCH` 重新取得正确文件；`RESOURCE_MISSING` 补齐范围或附件；`LOCKFILE_MISMATCH`/`SCHEMA_MISMATCH`/`TOOL_VERSION_MISMATCH`/`NODE_VERSION_MISMATCH` 使用清单对应条件，保持旧环境；`TARGET_EXISTS` 选新目录；`UNSAFE_PATH`/`SECRET_DETECTED`/`SCOPE_VIOLATION` 修正采集范围后新建包；`BASELINE_EXISTS` 发布新版本；`NOT_RESTORED`/`ENVIRONMENT_NOT_RUNNING` 在返回的恢复工作树审阅并 `up`。失败不会覆盖当前分支或业务库。
+
 ## 能力边界
 
 | 能力 | 状态 |
