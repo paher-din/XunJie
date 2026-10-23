@@ -131,7 +131,7 @@ node tools/xj-dev/xj-dev.mjs repro verify ~/.xunjie/xj-dev/stale-editor.zip --wo
 - `scenario.start` 为 `before-trigger` 或 `after-incident`。后者、`externalUncertainty: true`，或声明执行/模型能力为必需时，自动验证保持 `unverified`，能力需单独准备。`inspect` 和 `verify` 均拒绝空或无效步骤；非空自然语言步骤可保存，自动验证只接受示例中的 HTTP 数据格式，并要求实际观察到全部步骤结果。可识别的无效 synthetic fixture 保留，真实秘密拒绝。
 - 已完成的同请求 ZIP 再次 `capture` 只校验并返回 `reused: true`，不会从变化后的现场重新采集。修改内容要用新文件名。ZIP 限制为 128 MiB、展开总量 256 MiB、单文件 64 MiB、10000 文件，拒绝路径越界、特殊文件和跨平台路径冲突。
 
-基线版本保存在 `XJ_DEV_HOME/baselines/<version>/`，发布只影响本机目录；团队传输由后续独立能力提供：
+基线版本保存在 `XJ_DEV_HOME/baselines/<version>/`，发布只影响本机目录；团队传输使用下节稳定编号：
 
 ```sh
 node tools/xj-dev/xj-dev.mjs baseline publish --context ~/.xunjie/xj-dev/stale-editor-context.json --version course-b1
@@ -273,6 +273,28 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 
 Windows 实测结果（2026-10-23）：xj-dev 23/23；student 类型检查、构建及 684 项测试通过；teaching 类型检查、构建及 525 项测试通过（另有 24 项依赖外部执行环境的测试跳过）。Chromium 完成登录、课程、保存、冻结、提交、教师反馈和学生读取，并实际修改组件源码验证 HMR。另验证后端源码修改后仅 backend 重启、API 响应更新，以及 down 后自有 PID 全部退出、重启保留原反馈。验收结束已停止该环境，保留独立开发数据。执行节点、模型与教学效果不在本次验证范围内。
 
+
+## 团队复现编号与直传
+
+团队成员使用独立的 `file:publish` / `file:read` 设备能力。`page` 或 `node:*` 不隐含文件权限；文件设备可以仅登记，不创建 SSH 账号或应用测试身份。新工作树默认复用该 home 的登记指针，也可显式 `--device-file FILE`。云端配置只在独立 access 服务内，产品和本地文件复现不依赖 OSS SDK。
+
+```sh
+node tools/xj-dev/xj-dev.mjs repro share frozen.zip --digest sha256:<完整摘要>
+node tools/xj-dev/xj-dev.mjs repro resume xjp_<UUID>
+node tools/xj-dev/xj-dev.mjs repro fetch xjp_<UUID>
+node tools/xj-dev/xj-dev.mjs repro restore xjp_<UUID> --target /absolute/new-worktree
+node tools/xj-dev/xj-dev.mjs up --worktree /absolute/new-worktree
+node tools/xj-dev/xj-dev.mjs repro verify xjp_<UUID> --worktree /absolute/new-worktree
+node tools/xj-dev/xj-dev.mjs repro cache-delete xjp_<UUID>
+```
+
+先 `capture` 冻结 ZIP，再 `share`：发送方校验包、保存私有冻结副本，登记稳定 `xjp_` 编号，按 8 MiB 分片直传私有 OSS。默认单包 128 MiB、成员 256 MiB、团队 1 GiB；未完成上传也预留配额。服务端 ListParts 核对每片 size/MD5，再 Complete/HEAD 核对总 size 和 CRC64/XZ 后才发布；SHA256 是发布者声明，接收端必须完整复算，不声称 ECS 读取文件计算 SHA。
+
+`resume` 复用原 ZIP 和幂等请求，已由 OSS 确认的分片不重传；失败输出 `transfer` 投影，保留编号、冻结路径与确认进度。`fetch` 只下载、校验和检查兼容；`restore ID` 自动取得同一 ZIP 后建立隔离环境。`verify` 才显式执行真实业务 HTTP 步骤，上传和恢复均不会自动宣称问题已重现。已校验缓存按摘要复用，续传使用带引号 ETag、Range 与 If-Match；摘要/长度/CRC/兼容性不符拒绝作为可用包。
+
+授权最长 300 秒，可重新申请；URL 只在内存中使用，文件从 OSS 公网端点直接流向设备，不经 ECS 3 Mbps 出口。URL/STS 不进入 argv、日志、普通结果或复现包。撤销后不再签发新 URL；此前 URL 的精确过期时间和剩余毫秒由 revoke/inspect 报告，不能声称立即使已签名 URL 失效。
+
+维护者沿现有 owner 管理通道使用 `access package-quota` 查看限额/预留，`package-baselines` 查看引用，`package-baseline --input-file FILE` 登记 `{name,version,reproId}`。同 name/version 只允许同一不可变编号，不能覆盖他人内容。`package-cleanup --input-file FILE` 接受 `{transferId}`，只清理失败 multipart 与本工具未发布的对象；已发布或被引用的场景保留。存储失败时先 deny，确认该条目拥有的 multipart 与已完成对象均已清除后才释放预留配额，可重试。`repro cache-delete ID` 经在线授权、独占锁与私有路径校验后清理可再取缓存，也可显式清掉损坏 ready 或已满长但校验失败的 partial，再 `fetch ID` 恢复。有效的共享缓存保留；短 partial、混合布局、未知文件、上传冻结包及永久锁守卫均保留。
 
 ## 一次性邀请与设备登记
 

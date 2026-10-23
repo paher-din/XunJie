@@ -9,7 +9,7 @@ export async function accessRoute(context, options) {
     if (!['--admin-config', '--input-file', '--out-file'].includes(flag) || !value || flags[flag]) throw new CliError('arguments', 'ACCESS_ARGUMENTS_INVALID', 'access <invite|inspect|revoke-invitation|revoke-device|revoke-member|snapshot> --admin-config FILE [--input-file FILE] [--out-file FILE]');
     flags[flag] = value;
   }
-  if (!['invite', 'inspect', 'revoke-invitation', 'revoke-device', 'revoke-member', 'snapshot'].includes(operation) || !flags['--admin-config'] || operation === 'invite' && !flags['--out-file']) throw new CliError('arguments', 'ACCESS_ARGUMENTS_INVALID', '生成邀请必须指定 --out-file；配置与输入从私有文件读取。');
+  if (!['invite', 'inspect', 'revoke-invitation', 'revoke-device', 'revoke-member', 'snapshot', 'package-quota', 'package-baselines', 'package-baseline', 'package-cleanup'].includes(operation) || !flags['--admin-config'] || operation === 'invite' && !flags['--out-file']) throw new CliError('arguments', 'ACCESS_ARGUMENTS_INVALID', '生成邀请必须指定 --out-file；配置与输入从私有文件读取。');
   let config, input;
   try { config = privateJson(flags['--admin-config']); input = flags['--input-file'] ? privateJson(flags['--input-file']) : {}; }
   catch { throw new CliError('enrollment', 'ADMIN_PRIVATE_FILE_REQUIRED', '需要受限的维护配置或输入文件。'); }

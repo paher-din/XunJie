@@ -1,6 +1,6 @@
 # 开发成员接入、远程权限与云端运行
 
-更新：2026-10-23。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。一次性邀请、设备证明、join/refresh、受限 SSH 与动态应用账号控制已有 #129 工程实现；真实新候选验收仍在进行，对象存储尚未实施。资源策略工具已交付，业务预算启用与五人容量由 #133 验证。当前服务器的实测事实见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，已交付的产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
+更新：2026-10-24。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。一次性邀请、设备证明、join/refresh、受限 SSH 与动态应用账号控制已有 #129 工程实现；真实新候选验收仍在进行，对象存储尚未实施。资源策略工具已交付，业务预算启用与五人容量由 #133 验证。当前服务器的实测事实见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，已交付的产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
 
 ## 当前工具入口
 
@@ -10,7 +10,9 @@
 
 已绑定邀请只恢复同一把 key，服务端不再把它作为可交给另一设备的未用邀请。设备撤销关闭该设备已有 SSH 并阻止新连接，保留其他设备；成员撤销还动态禁用应用身份及已有 session，作品保留。普通设备只有批准端口转发，无 owner shell、管理 socket 或任意系统配置权限，node 能力另授。
 
-部署目录、固定 helper、协议/#131 接缝、systemd 生命周期和备份恢复见[接入服务说明](../tools/xj-dev-access/README.md)。标准产品不含开发服务；只显式配置通用本机 account-control 时接收受控账号事务。真实验收与工程测试分别报告，不能把本地受控系统边界测试当成云端加入成功。
+独立文件能力 `file:read`/`file:publish` 用于同服务的包目录与短期 OSS 授权；page/node 不自动授予文件权限，file-only 登记不创建 SSH 或应用账号。团队交接使用稳定编号，操作见 [团队复现编号与直传](../tools/xj-dev/README.md#团队复现编号与直传)。已签 URL 最长300秒，撤销停止新授权并报告已发 URL 剩余有效期。
+
+部署目录、固定 helper、设备 proof、包目录、systemd 生命周期和备份恢复见[接入服务说明](../tools/xj-dev-access/README.md)。标准产品不含开发服务；只显式配置通用本机 account-control 时接收受控账号事务。真实验收与工程测试分别报告，不能把本地受控系统边界测试当成云端加入成功。
 
 ## 首次使用的目标流程
 

@@ -66,14 +66,15 @@ export function ensurePrivateDirectory(directory) {
   else requireAccess(!(stat.mode & 0o077), 'PRIVATE_FILE_REQUIRED');
   return directory;
 }
-export function assertPrivateFile(file) {
+export function assertPrivateFile(file, { maxBytes = 1024 * 1024 } = {}) {
   const stat = ownedPath(file, false);
-  requireAccess(stat.size <= 1024 * 1024, 'PRIVATE_FILE_REQUIRED');
+  requireAccess(Number.isSafeInteger(maxBytes) && maxBytes >= 0 && stat.size <= maxBytes, 'PRIVATE_FILE_REQUIRED');
   if (process.platform === 'win32') windowsPrivatePath(file, false, false);
   else requireAccess(!(stat.mode & 0o077), 'PRIVATE_FILE_REQUIRED');
   return file;
 }
-export function writePrivateFile(file, bytes) {
+export function writePrivateFile(file, bytes, { maxBytes = 1024 * 1024 } = {}) {
+  requireAccess(Number.isSafeInteger(maxBytes) && maxBytes >= 0 && Buffer.byteLength(bytes) <= maxBytes, 'PRIVATE_FILE_REQUIRED');
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   if (existsSync(file)) ownedPath(file, false);
   const temporary = `${file}.${opaque()}.tmp`;
@@ -82,10 +83,10 @@ export function writePrivateFile(file, bytes) {
     closeSync(openSync(temporary, 'wx', 0o600));
     if (process.platform === 'win32') windowsPrivatePath(temporary, false, true);
     writeFileSync(temporary, bytes);
-    assertPrivateFile(temporary);
+    assertPrivateFile(temporary, { maxBytes });
     renameSync(temporary, file);
     if (process.platform !== 'win32') chmodSync(file, 0o600);
-    assertPrivateFile(file);
+    assertPrivateFile(file, { maxBytes });
   } finally { rmSync(temporary, { force: true }); }
 }
 export function privateJson(file) {
