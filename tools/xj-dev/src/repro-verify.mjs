@@ -10,7 +10,7 @@ import { componentRunning } from './processes.mjs';
 function http(origin, method, path, body, auth) {
   return new Promise((resolve, reject) => {
     const encoded = body === undefined ? undefined : JSON.stringify(body);
-    const req = request(origin + path, { method, rejectUnauthorized: false, headers: {
+    const req = request(origin + path, { method, agent: false, rejectUnauthorized: false, headers: {
       origin, connection: 'close', ...(encoded ? { 'content-type': 'application/json' } : {}),
       ...(auth ? { cookie: auth.cookie, 'x-csrf-token': auth.csrf, 'idempotency-key': randomUUID() } : {}),
     } }, res => {
