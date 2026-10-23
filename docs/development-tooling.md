@@ -13,7 +13,7 @@
 | 后端构建/启动：`npm run build`、`npm start` | 在 `apps/teaching/` 使用 [package.json](../apps/teaching/package.json) 声明的精确 Node 版本及锁文件；核对[启动入口](../apps/teaching/server/main.ts)的业务配置条件 | 普通无业务配置启动仅提供基础健康服务；完整课程服务需要明确的配置与初始化数据，不能把进程启动或健康响应当作本地课程环境已准备好 |
 | 云端页面与 API：`xj-dev use cloud/cloud-api` | [模式与连接](../tools/xj-dev/README.md#模式与受管连接)；需要获准的配置、SSH 私钥、主机 pin 与 HTTPS CA | 受管连接恢复、固定入口与 Cookie 隔离；不上传代码、创建成员或部署 |
 | 已登记节点：`xj-dev node connect/status/disconnect` | 同一 README；另需已准备并登记的节点、端口与身份 | 迁移原回连能力；不安装 VM、初始化节点、重发或改派任务，隧道成功与执行业务验收分开报告 |
-| `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down、use、node、join/refresh/access、repro、baseline；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
+| `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down/delete、use、node、join/refresh/access、repro、baseline；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
 
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 
@@ -143,6 +143,7 @@ sequenceDiagram
 | `xj-dev access invite/inspect/revoke-invitation/revoke-device/revoke-member/snapshot --admin-config FILE ...`（工程已实现） | 复用 owner SSH 管理独立服务；invite 必须私有 out-file，撤销与备份可重试 |
 | `xj-dev refresh [--device-file FILE]`（工程已实现） | 以原设备 proof 更新私有配置，保留失败前的已用 generation |
 | `xj-dev status --json` / `xj-dev down --json` | 查询环境，或停止本工具管理的进程；停止不等于删除数据 |
+| `xj-dev delete --json` | 显式删除当前工作树/实例所选模式的已登记环境数据；整体预检归属，持原锁删除载荷并保留永久锁守卫，其他环境、源码及全局接入材料/缓存/包保留 |
 | `xj-dev node connect/status/disconnect ... --json` | 按需管理现有已登记执行节点的受管回连；不安装执行器或决定产品运行方案 |
 | `xj-dev repro capture --context <file> --out <zip> --json`（已实现） | 采集并校验本地包；`inspect <zip>` 检查包与完整摘要 |
 | `xj-dev repro share --context <file> --json` | 一次完成采集、校验和上传；也支持上传已经生成的包 |
@@ -153,6 +154,8 @@ sequenceDiagram
 每个命令返回带版本的 JSON：成功状态、环境 ID、产物或页面地址、能力状态、检查结果和下一步；失败返回稳定错误码、失败阶段与可重试方式。日志与最终结果分开，凭据不出现在输出中。`share` 失败后保留已经完成的本地包，重试上传无需重新抓取变化中的现场。
 
 环境以仓库与工作树身份区分，拥有独立的数据、个人模型目录、浏览器身份和服务进程。反复 `up` 不重置数据；并行 Agent 操作同一环境时，由工具协调锁与进程归属。端口冲突、服务异常退出和版本不符都返回明确状态，不能靠 Agent 猜一个成功日志。只有显式清理操作才删除环境，且只删除工具登记的资源。
+
+停止用 `down`；重建已登记环境用 `delete` 后 `up`，不手工删除环境根或锁。`delete` 拒绝无有效登记的陌生目录、符号链接、未知子项和外来 PID；不存在/已删除有明确幂等结果。永久 SQLite 锁 inode 保留，使 Windows 删除与并发 `up` 继续使用同一把锁。具体范围、结果字段和中断恢复见 [停止与显式删除](../tools/xj-dev/README.md#停止与显式删除)。
 
 `restore` 默认新建环境，不覆盖接收者正在开发的分支或数据库。先核对包版本、源码与 schema，再恢复；不能悄悄迁到最新版本。解包限制在目标目录内，包内说明作为数据读取，不自动执行携带的任意脚本。需要运行的启动、迁移与场景动作来自当前已审查的工具实现及匹配版本的仓库。
 

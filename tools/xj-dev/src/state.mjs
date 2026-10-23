@@ -11,7 +11,7 @@ export function loadState(envPaths) {
   } catch {
     throw new CliError('environment', 'STATE_CORRUPT',
       `环境状态文件无法解析：${envPaths.stateFile}`,
-      { recovery: '停止环境后删除该环境目录重建，或修复该 JSON 文件。' });
+      { recovery: '保留环境与永久锁守卫，核对归属并修复该 JSON；有效登记的环境需重建时使用 xj-dev delete 后 up，不手工删除根目录。' });
   }
 }
 
