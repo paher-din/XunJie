@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { X509Certificate } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../src/certificates.mjs';
+import { environmentId, environmentPaths } from '../src/paths.mjs';
 
 // Real Node processes, SQLite locks and OpenSSL. Barriers only pause actual
 // operations; they do not replace certificate generation or lock acquisition.
@@ -23,13 +24,22 @@ function pause() {
 const originalExec = cp.execFileSync;
 cp.execFileSync = function(file, args, ...options) {
   if (barrier === 'generation' && file === 'openssl' && args.includes('-x509')) pause();
-  return originalExec.call(this, file, args, ...options);
+  const result = originalExec.call(this, file, args, ...options);
+  if (barrier === 'leaf-generation' && file === 'openssl' && args[0] === 'req' && !args.includes('-x509')) pause();
+  if (barrier === 'leaf-signing' && file === 'openssl' && args[0] === 'x509' && args.includes('-req')) pause();
+  return result;
 };
 const originalLink = fs.linkSync;
 fs.linkSync = function(source, destination) {
   const result = originalLink.call(this, source, destination);
   if (barrier === 'key-publication' && resolve(destination) === resolve(home, 'ca', 'ca-key.pem')) pause();
   if (barrier === 'cert-publication' && resolve(destination) === resolve(home, 'ca', 'ca-cert.pem')) pause();
+  return result;
+};
+const originalRename = fs.renameSync;
+fs.renameSync = function(source, destination) {
+  const result = originalRename.call(this, source, destination);
+  if (barrier === 'leaf-publication' && resolve(destination) === resolve(home, 'envs', id, 'tls', 'cert.pem')) pause();
   return result;
 };
 const sqlite = createRequire(import.meta.url)('node:sqlite');
@@ -64,6 +74,27 @@ process.on('message', message => {
 process.send({ ready: true });
 `;
 const moduleUrl = new URL('../src/certificates.mjs', import.meta.url).href;
+const worktree = realpathSync(join(import.meta.dirname, '../../..'));
+
+function registeredEnvironment(f, instance = 'certificate-recovery') {
+  const id = environmentId(worktree, instance);
+  const paths = environmentPaths(f.home, id);
+  const ca = ensureCertificateAuthority(f.home);
+  const leaf = ensureEnvironmentCertificate(paths, ca);
+  writeFileSync(paths.stateFile, JSON.stringify({ version: 1, envId: id, worktree, instance }));
+  return { id, paths, ca, leaf, instance };
+}
+
+function publicDelete(f, instance) {
+  const result = spawnSync(process.execPath, [join(worktree, 'tools/xj-dev/xj-dev.mjs'), 'delete',
+    '--worktree', worktree, '--instance', instance, '--json'], {
+    env: { ...process.env, XJ_DEV_HOME: f.home }, encoding: 'utf8', timeout: 30000,
+  });
+  assert.ok(result.stdout, 'public delete returned no JSON: ' + result.stderr);
+  const body = JSON.parse(result.stdout);
+  assert.equal(result.status === 0, body.ok, JSON.stringify(body.failure));
+  return body;
+}
 
 function fixture(t) {
   const home = mkdtempSync(join(tmpdir(), 'xj133-certificates-'));
@@ -180,6 +211,72 @@ for (const barrier of ['generation', 'key-publication', 'cert-publication']) {
     verify(f.home, 'one');
     verify(f.home, 'two');
     assert.equal(existsSync(join(f.home, 'ca', '.pending')), false);
+  });
+}
+
+for (const barrier of ['leaf-generation', 'leaf-signing', 'leaf-publication']) {
+  for (const retry of [true, false]) {
+    test(`leaf death at ${barrier}, ${retry ? 'retry then' : 'direct'} public delete removes owned staging`, { timeout: 30000 }, async t => {
+      const f = fixture(t);
+      const env = registeredEnvironment(f);
+      const root = readFileSync(env.ca.certFile);
+      rmSync(env.leaf.certFile); // Exercise repair of an already registered environment.
+      const creator = await childFor(f, env.id, barrier);
+      creator.send('up');
+      await until(() => existsSync(join(f.home, env.id + '.paused')));
+      const exited = new Promise(done => creator.once('exit', done));
+      creator.kill('SIGKILL');
+      await exited;
+      assert.ok(readdirSync(env.paths.tls).some(name => !['key.pem', 'cert.pem'].includes(name)), 'death left real staging material');
+      const guard = join(env.paths.lockFile, 'mutex.sqlite');
+      const inode = lstatSync(guard).ino;
+      if (retry) {
+        const successor = await childFor(f, env.id);
+        const result = await successor.up();
+        assert.equal(result.ok, true, JSON.stringify(result));
+        assert.equal(result.leafCreated, barrier !== 'leaf-publication', 'valid leaf fast path must also clean staging');
+        verify(f.home, env.id);
+      }
+      const deletion = publicDelete(f, env.instance);
+      assert.equal(deletion.ok, true, JSON.stringify(deletion.failure));
+      assert.equal(deletion.deletion.result, 'deleted');
+      assert.equal(existsSync(env.paths.tls), false);
+      assert.equal(lstatSync(guard).ino, inode);
+      assert.deepEqual(readFileSync(env.ca.certFile), root);
+      assert.equal(publicDelete(f, env.instance).deletion.result, 'already-deleted');
+    });
+  }
+}
+
+test('retry and public delete preserve unregistered initialization directories', t => {
+  const f = fixture(t), env = registeredEnvironment(f);
+  const foreign = join(env.paths.tls, '.initialize-Ab12cD'); // Exact old mkdtemp shape still proves no ownership.
+  mkdirSync(foreign);
+  writeFileSync(join(foreign, 'key.pem'), 'foreign directory sentinel');
+  assert.throws(() => ensureEnvironmentCertificate(env.paths, env.ca), { code: 'CERTIFICATE_STAGING_UNREGISTERED' });
+  assert.equal(publicDelete(f, env.instance).failure.code, 'ENVIRONMENT_UNKNOWN_OBJECT');
+  assert.equal(readFileSync(join(foreign, 'key.pem'), 'utf8'), 'foreign directory sentinel');
+  assert.equal(existsSync(env.paths.stateFile), true);
+});
+
+for (const kind of ['directory', 'symlink', 'hardlink']) {
+  test(`staging ${kind} is preserved and rejected by retry and public delete`, t => {
+    const f = fixture(t), env = registeredEnvironment(f);
+    const pending = join(env.paths.tls, 'key.pending.pem');
+    const foreign = join(f.home, 'foreign');
+    if (kind === 'directory') { mkdirSync(pending); writeFileSync(join(pending, 'keep.txt'), 'keep'); }
+    if (kind === 'symlink') {
+      mkdirSync(foreign); writeFileSync(join(foreign, 'keep.txt'), 'keep');
+      symlinkSync(foreign, pending, process.platform === 'win32' ? 'junction' : 'dir');
+    }
+    if (kind === 'hardlink') { writeFileSync(foreign, 'keep'); linkSync(foreign, pending); }
+    assert.throws(() => ensureEnvironmentCertificate(env.paths, env.ca), { code: 'CERTIFICATE_UNSAFE' });
+    const deletion = publicDelete(f, env.instance);
+    assert.equal(deletion.failure.code, kind === 'directory' ? 'ENVIRONMENT_UNKNOWN_OBJECT' : 'ENVIRONMENT_UNSAFE');
+    assert.equal(kind === 'hardlink' ? readFileSync(foreign, 'utf8')
+      : readFileSync(join(kind === 'directory' ? pending : foreign, 'keep.txt'), 'utf8'), 'keep');
+    assert.equal(existsSync(env.paths.stateFile), true);
+    if (kind === 'symlink') unlinkSync(pending);
   });
 }
 

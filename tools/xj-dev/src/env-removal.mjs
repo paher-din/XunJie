@@ -20,7 +20,7 @@ const children = {
   'selection.lock': new Set(['mutex.sqlite']),
   data: new Set(['xunjie.sqlite', 'xunjie.sqlite-wal', 'xunjie.sqlite-shm', 'xunjie.sqlite-journal', 'baseline.json', 'baseline.json.tmp']),
   secrets: new Set(['signing-secret', 'baseline-accounts.json']),
-  tls: new Set(['key.pem', 'cert.pem', 'request.csr', 'extensions.txt']),
+  tls: new Set(['key.pem', 'cert.pem', 'key.pending.pem', 'cert.pending.pem', 'request.csr', 'extensions.txt']),
   pids: new Set(Object.keys(components).map(name => name + '.json')),
   logs: new Set(Object.keys(components).map(name => name + '.log')),
 };

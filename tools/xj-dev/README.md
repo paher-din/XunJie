@@ -40,7 +40,7 @@ $ node tools/xj-dev/xj-dev.mjs up --json
 
 `up` 输出的 `page.url` 是唯一的浏览器入口（`https://127.0.0.1:<端口>`）。首次按下节信任本次本地开发 CA，再使用正常证书校验打开页面。浏览器证书告警、临时继续、`ignoreHTTPSErrors` 或关闭 TLS 校验都不能作为 HTTPS/浏览器验收通过。
 
-本地 `status` 的 frontend/API 可用性取决于本环境归属进程及经本 home CA 严格校验的网关探测；未启动、`down` 后或组件故障时不报告可用。`status.ok` 表示完整入口就绪；`doctor.ok` 仍表示前置检查通过，停止状态不影响该前置结论。
+`status` 通过本 home CA 严格校验所选模式网关的页面/API，并结合归属进程与云模式连接状态报告能力；未启动、`down` 后或组件故障时不报告完整入口就绪。`status.ok` 表示完整入口就绪；`doctor.ok` 仍表示前置检查通过，停止状态不影响该前置结论。
 
 ### 开发 CA 的系统信任与精确撤销
 
@@ -294,6 +294,8 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 | `BASELINE_FAILED` | 重试 `up`；曾成功登记的环境可显式 `delete` 后 `up`，无有效登记时保留现场检查 |
 | `BASELINE_MARKER_MISSING` / `BASELINE_MARKER_INVALID` / `BASELINE_CREDENTIALS_MISSING` / `BASELINE_CREDENTIALS_INVALID` / `BASELINE_INCOMPLETE` | 保留已有数据库与凭据，从可信备份恢复匹配的标记/账号材料，不自动重置账号或业务数据 |
 | `CA_INCOMPLETE` / `CA_INVALID` | 保留 `home/ca` 与永久锁，恢复同一根的配对材料；不删除或轮换已受信任 CA |
+| `CERTIFICATE_STAGING_UNREGISTERED` | 发现 096 遗留且无归属记录的 `tls/.initialize-*`，原对象保持；核对来源与归属后再决定恢复，工具不按目录名前缀或 PEM 内容自动认领/清理 |
+| `CERTIFICATE_UNSAFE` | TLS 目录或固定暂存对象类型/归属不符，或存在符号链接、硬链接；整批候选保留，先检查现场，不放宽未知路径保护 |
 | `GATEWAY_TLS_INVALID` / `GATEWAY_RESTART_REQUIRED` | 在原工作树、同一 `XJ_DEV_HOME`、instance 和所选模式执行 `down` 后 `up`，重载修复后的叶证书；保留原 CA、数据与入口，不接管外来进程 |
 | `LOCK_HELD` | 另一进程正在操作同一锁；等待后重试，进程退出会自动释放 OS 锁，勿删除锁目录 |
 | `LOCK_LEGACY` | 遇到已退出 holder 的有效旧 JSON 锁；停止所有旧版 CLI、确认无操作后，将该文件移到原路径之外保留，再使用新版重试 |
@@ -305,11 +307,17 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 
 首次本地基线先持久保存随机凭据，再构造私有数据库与标记，最后发布数据库。初始化中断时复用已保存的凭据；已有数据库缺少完整材料会明确失败并保留现场。共享 CA 在 home 级锁内完成同代配对发布，中断后只恢复可验证的同一根；叶证书修复时 `up` 仅重启本环境 gateway，保持端口、Origin、数据与其他组件。若此前在磁盘修复后中断、运行进程仍持旧叶证书，严格 TLS 检查会拒绝假成功，按上表 down/up 恢复。
 
+叶证书的新流程只使用 `tls/key.pending.pem`、`tls/cert.pending.pem` 和既有 `request.csr`、`extensions.txt` 固定暂存文件。重试在复用有效 leaf 前也整体验证这些候选，再清理当前用户的普通单链接文件；显式 `delete` 仅接受这些精确名称，并继续检查登记、类型、归属和进程。真实进程在生成、签发、发布阶段被 SIGKILL 后，重试再 delete 与直接 delete 均有行为回归覆盖；原 CA 与永久锁 inode 保留。
+
+`096e7c6` 旧流程生成的随机 `tls/.initialize-*` 没有持久归属记录，无法安全自动迁移。即使名称或 PEM 内容形似工具产物，工具仍保留目录：`up` 明确返回 `CERTIFICATE_STAGING_UNREGISTERED`，`delete` 继续返回 `ENVIRONMENT_UNKNOWN_OBJECT`，不安全类型返回对应 unsafe 错误。此类历史现场需独立核实来源与归属；未知对象保持不动，不能通过放宽 allowlist 或递归删除恢复。新固定格式的中断恢复通过不代表旧随机目录已自动恢复。
+
 首次创建先在锁目录的私有 `.initialize-*` 子目录中完成数据库，再用不覆盖目标的硬链接原子发布。多个创建者始终使用同一个已完整初始化的文件；目录创建或初始化期间被中断，下一次可继续初始化。持有期间保留 `BEGIN IMMEDIATE` 事务及连接，正常释放只关闭自身连接，异常退出由 OS 释放，不按 PID、文件年龄或解析失败删除锁。不同路径各自独立，释放后目录与数据库继续保留。需要支持 SQLite 文件锁与硬链接的本地文件系统；不能创建硬链接时会明确失败。
 
 0.1.0 把非 JSON 当 stale 的删除逻辑无法非递归删除新目录，因此不能偷走新版锁。遇旧 JSON 时，新版不自动迁移或删除：活 PID 返回 `LOCK_HELD`，格式完整且 PID 已退出返回 `LOCK_LEGACY`，空文件、损坏或未知内容返回 `LOCK_UNSAFE`。升级时先停止所有旧版 CLI 操作，确认旧 holder 已退出，再将旧锁文件改名保存到锁路径之外，之后运行新版。PID 复用或无法确认归属时保留对象并检查，不根据时间猜测。不要在旧版 CLI 仍运行时移动锁，也不要通过删环境数据来处理锁失败。
 
 内部 SQLite 的最终组件同样拒绝符号链接、外来数据库及非预期 `-journal`/`-wal`/`-shm` 文件，不执行未知数据库恢复。创建进程被强制结束可能留下未发布的 `.initialize-*` 目录，它们不持有公共锁；停完相关 CLI 后可将这些目录移出保留或清理，正常初始化的临时目录会自动清理。不要在 holder 存活时删除或替换公共锁目录/数据库。
+
+上述未发布 SQLite 初始化目录的恢复说明仅适用于锁目录；TLS 旧随机暂存按其无登记的保留/报错边界处理。
 
 工具版本同步升级为 `0.2.0`。复现包继续要求工具版本精确一致；冻结的 `0.1.0` 包不会被默认为兼容，应由对应版本恢复，或用新版重新采集场景。原包证据保持不变。
 
