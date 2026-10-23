@@ -33,6 +33,8 @@
 
 e03 的 typecheck/build、diffcheck 和默认 `collectCode`（841 文件、6,276,679 bytes、原 guard）由负责人独立通过，push 后 remote 一致，已开始 dispatch exact e03 cloud-release；这不表示 CI 已成功或候选已激活。lead 的最终组合定点 gate 为 13/13，且三个 S3 文件相对 d55 无差异。e03 尚未生成新的 active cfg，也未替换云端 70d。后续须核对 actual CI artifact，并在同 512MiB mixed 短预检有充分余量后，才由负责人协调 planned activation 和完整容量复测；工程 green 不抵消前述真实容量失败。
 
+后续回执：exact e03 CI `40035400632` 成功，strictprefetch 核对 4,787 runtime/503 static 文件及 Linux x64 Node24.21/native SQLite，target 为 `/opt/xunjie/candidates/133-e03a3c9`。负责人仅执行 prepare，新配置 `/var/lib/xunjie/capacity-133/application-e03a3c9.json` 为 0600/xunjie，SHA256 `14cd7c609a1656d558558e18b37a50da1f266f76a841e9575d86e26d2d0a6567`，只改 staticDirectory，旧70d cfg SHA不变。顺序为 strictprefetch/review → prepare → 使用实际 cfg SHA 的 same512 mixed 短测 → 有充分余量后 activate；短测依赖新 cfg，因此不是 prepare 的前置条件。prepare 回执为 `activated:false`，live 仍70d/空 Node flags/PID131947、131948、91972，未因配置已存在将其登记为 active snapshot。
+
 ## 备份与恢复实测
 
 新增配置保留原正式课程库、原个人模型及签名/TLS/执行连接恢复材料，额外登记 candidate 课程库、原候选/新候选个人模型 store 与 key、account-control registry/config、access SQLite/credential.key、服务与系统配置、TLS/公开 CA、受管 SSH 公钥映射与固定 helper 回执。完整字段契约见[备份说明](../../tools/i0-cloud/README.md#加密备份与隔离恢复)。
