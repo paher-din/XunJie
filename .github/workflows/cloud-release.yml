@@ -57,7 +57,14 @@ jobs:
           summary="$RUNNER_TEMP/artifact-summary.json"
           notes=$(node -e '
             const summary = require(process.env.RUNNER_TEMP + "/artifact-summary.json");
-            process.stdout.write(`Runtime artifact for ${summary.commit}\n\n- platform: ${summary.platform}\n- node: ${summary.nodeVersion}\n- artifact sha256: ${summary.artifactSha256}\n- archive bytes: ${summary.archiveBytes}\n- static files: ${summary.staticFiles}\n- runtime files: ${summary.runtimeFiles}\n");
+            process.stdout.write(
+              "Runtime artifact for " + summary.commit + "\n\n" +
+              "- platform: " + summary.platform + "\n" +
+              "- node: " + summary.nodeVersion + "\n" +
+              "- artifact sha256: " + summary.artifactSha256 + "\n" +
+              "- archive bytes: " + summary.archiveBytes + "\n" +
+              "- static files: " + summary.staticFiles + "\n" +
+              "- runtime files: " + summary.runtimeFiles + "\n");
           ')
           # A re-run for the same commit replaces its release; publication itself stays atomic (draft first).
           gh release delete "$TAG" --yes --cleanup-tag || true
