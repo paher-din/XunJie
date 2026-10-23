@@ -152,7 +152,7 @@ export async function modeStatus(context) {
   return {
     ok: Boolean(available && (selection.mode === 'cloud' || vite.running)),
     mode: selection.mode,
-    environment: { id: context.id, worktree: context.worktree, root: ctx.env.root, mode: selection.mode },
+    environment: { id: ctx.id, worktree: context.worktree, root: ctx.env.root, mode: selection.mode },
     page: { url: `https://127.0.0.1:${state.ports.gateway}`, serving: gateway.running && (selection.mode === 'cloud' ? available : vite.running), apiReady: available },
     sources: { frontend: selection.mode === 'cloud-api' ? 'worktree apps/student via Vite' : connection.business?.deployedFrontend ?? state.business?.deployedFrontend, backend: connection.business ?? state.business },
     data: { ownership: 'cloud-shared', target: state.target, localDatabase: context.env.database, note: '此入口固定写共享集成库；本地副本保持原样。' },

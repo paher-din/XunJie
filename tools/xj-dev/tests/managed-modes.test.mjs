@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, request } from 'node:https';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -12,7 +13,8 @@ import { CONNECTION_SCHEMA, checkBackend, classifySshFailure, loadConnection, ss
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../src/certificates.mjs';
 import { environmentPaths } from '../src/paths.mjs';
 import { resolveContext } from '../src/commands.mjs';
-import { loadSelection, selectionFile, useMode } from '../src/modes.mjs';
+import { deleteEnvironment } from '../src/env-removal.mjs';
+import { loadSelection, modeStatus, selectionFile, useMode } from '../src/modes.mjs';
 
 test('连接材料只接受核准格式、精确主机 pin、有效 HTTPS Origin 和登记节点', () => {
   const root = mkdtempSync(join(tmpdir(), 'xj-connection-'));
@@ -64,6 +66,34 @@ test('切换目标配置失败与未知模式保留原入口、现场和选择�
     await assert.rejects(useMode(context, 'cloud-api', { connection: file }), { code: 'HOST_IDENTITY_CHANGED' });
     assert.deepEqual(loadSelection(context), selected);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('云模式公开状态与删除返回相同的派生环境 ID/root，保留 local 上下文', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xj-mode-identity-'));
+  const context = resolveContext({ worktree: resolve(import.meta.dirname, '../../..'), instance: 'mode-identity' });
+  context.home = root; context.env = environmentPaths(root, context.id);
+  mkdirSync(context.env.root, { recursive: true });
+  try {
+    for (const mode of ['cloud', 'cloud-api']) {
+      const target = 'approved-target';
+      const id = createHash('sha256').update(`${context.id}:${mode}:${target}`).digest('hex').slice(0, 12);
+      const env = environmentPaths(root, id);
+      mkdirSync(env.root);
+      writeFileSync(env.stateFile, JSON.stringify({ version: 1, envId: id, mode, target, worktree: context.worktree,
+        ports: { gateway: 24000, backend: 24001, vite: 24002 } }));
+      writeFileSync(selectionFile(context), JSON.stringify({ mode, targets: { [mode]: { id, mode, root: env.root } } }));
+      const status = await modeStatus(context);
+      assert.equal(status.environment.id, id);
+      assert.equal(status.environment.root, env.root);
+      assert.equal(status.environment.mode, mode);
+      assert.notEqual(status.environment.id, context.id);
+      const deleted = await deleteEnvironment(context);
+      assert.equal(deleted.deletion.result, 'deleted');
+      assert.deepEqual(deleted.environment, { ...status.environment, instance: context.instance });
+      assert.equal(context.env.root, environmentPaths(root, context.id).root);
+      assert.equal(loadSelection(context).mode, mode);
+    }
+  } finally { rmSync(root, { recursive: true, force: true, maxRetries: 3 }); }
 });
 
 // These are controlled HTTPS boundary tests, not evidence of a live cloud login.
