@@ -344,6 +344,8 @@ node tools/xj-dev/xj-dev.mjs repro cache-delete xjp_<UUID>
 
 成员 home 下 `enrollment/<service摘要>/<invitationId>/` 保留原 key 与 stage；同 key 中断重试只继续未完成阶段。成功生成新的私有 generation，最后发布指针；失败保留旧配置。新邀请使用新设备 key，旧 key 丢失时领取新设备邀请。Unix 私有文件检查 owner/0600，Windows 使用共享当前用户 NTFS DACL；不要把私有材料复制进工作树或复现包。
 
+Windows 自动探测可完成 SSHSIG 的签名工具；若 Win32 OpenSSH 的 stdin 签名不工作，会有界跳过并选用已安装的 Git for Windows OpenSSH，不修改 PATH，也不更换连接转发使用的 SSH。若仍报 `DEVICE_SIGNING_FAILED`，保留同一邀请/home/key，核对 Git/OpenSSH 安装和可执行性，修复后显式重试；不要通过换 key 或重发邀请掩盖客户端签名失败。
+
 维护者通过 `access <invite|inspect|revoke-invitation|revoke-device|revoke-member|snapshot> --admin-config FILE [--input-file FILE] [--out-file FILE]` 复用既有 owner SSH。生成邀请必须指定私有 out-file，渠道由维护者选择。普通设备仅批准端口转发；团队身份与应用 teacher/student 角色独立，节点另外授权。
 
 协议、系统权限、双进程生命周期、独立服务安装与备份见[接入服务](../xj-dev-access/README.md)，成员操作见[统一接入说明](../../docs/development-access-operations.md#当前工具入口)。标准产品 runtime 不含开发 service/helper/protocol。旧已批准 connection-v1 仍兼容；新成员无需手工改 key、host、port 或 pin。
