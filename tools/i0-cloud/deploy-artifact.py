@@ -37,7 +37,7 @@ MANIFEST_VERSION = 1
 MANIFEST_LIMIT = 8 * 1024 * 1024
 ARTIFACT_LIMIT = 1024 * 1024 * 1024
 API_HOSTS = frozenset({'api.github.com', 'codeload.github.com'})
-ASSET_HOSTS = frozenset({'api.github.com', 'github.com', 'objects.githubusercontent.com'})
+ASSET_HOSTS = frozenset({'api.github.com', 'github.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com'})
 RELEASE_PATTERN = re.compile(r'main-[0-9a-f]{40}(?:-[0-9a-f]{12})?')
 BACKUP_PATTERN = re.compile(r'main-deploy-\d+-[0-9a-f]{32}\.sqlite')
 

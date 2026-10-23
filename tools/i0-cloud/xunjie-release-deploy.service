@@ -7,7 +7,9 @@ Wants=network-online.target
 Type=oneshot
 User=root
 ExecStart=/usr/bin/python3 /usr/local/lib/xunjie/deploy-artifact.py --config /etc/xunjie/deployment.json
-TimeoutStartSec=10min
+# The CI artifact download can take minutes on a slow CDN route towards
+# release-assets.githubusercontent.com; do not kill a healthy transfer.
+TimeoutStartSec=30min
 # Maintenance yields to the shared business: lower CPU/IO weight, modest memory ceiling.
 # The 512 MiB ceiling covers download, per-file verification, extraction and the SQLite
 # backup; measure an actual run's MemoryPeak before tightening it.
