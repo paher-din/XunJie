@@ -17,6 +17,8 @@ export function connectionError(code, retryable = false) {
     CLOUD_UNREACHABLE: '云端连接不可达；保留当前数据目标。',
     NODE_OFFLINE: '已登记执行节点的本机监听端口离线；任务绑定和未知结果保持原样。',
     PORT_IN_USE: '连接端口被其他进程占用；不接管该进程。',
+    SSH_CONFIGURATION_INVALID: 'OpenSSH 配置或参数不可用；停止自动重试。',
+    SSH_UNAVAILABLE: '没有可执行的 OpenSSH；停止自动重试。',
   }[code] ?? code, { retryable, recovery: retryable ? '恢复网络或节点后重新执行 up/node connect；查看 status。' : '核对获准配置与身份后显式重试；不自动接受新主机身份。' });
 }
 
@@ -64,7 +66,7 @@ export function loadConnection(file, options = {}) {
     const nodeFields = ['nodeId', 'nodeUser', 'remoteRunnerPort', 'localRunnerPort'];
     if (nodeFields.some(k => c[k] !== undefined) && (!/^[A-Za-z0-9_-]{1,64}$/.test(c.nodeId ?? '') || !userValid(c.nodeUser) || !portValid(c.remoteRunnerPort) || !portValid(c.localRunnerPort))) throw connectionError('CONNECTION_INVALID');
     if (c.nodeIdentityFile) c.nodeIdentityFile = regular(pathFrom(base, c.nodeIdentityFile));
-    c.id = createHash('sha256').update(JSON.stringify([c.host, c.port, c.browserUser, c.applicationPort, c.browserOrigin, c.identityFile, readFileSync(c.knownHostsFile, 'utf8'), readFileSync(c.caFile, 'utf8'), c.nodeId, c.nodeUser, c.remoteRunnerPort, c.localRunnerPort, c.nodeIdentityFile])).digest('hex').slice(0, 12);
+    c.id = createHash('sha256').update(JSON.stringify([c.host, c.port, c.browserUser, c.applicationPort, c.browserOrigin, c.identityFile, readFileSync(c.knownHostsFile, 'utf8'), readFileSync(c.caFile, 'utf8'), c.nodeId, c.nodeUser, c.remoteRunnerPort, c.localRunnerPort, c.nodeIdentityFile, c.expectedBackendVersion, c.bindAddress])).digest('hex').slice(0, 12);
     return c;
   } catch (error) {
     if (error instanceof CliError) throw error;
@@ -73,10 +75,12 @@ export function loadConnection(file, options = {}) {
 }
 
 export function sshArguments(c, kind, localPort) {
-  const nullFile = process.platform === 'win32' ? 'NUL' : '/dev/null';
-  const args = ['-F', nullFile, '-N', '-T', '-p', String(c.port), '-i', kind === 'node' ? c.nodeIdentityFile ?? c.identityFile : c.identityFile];
+  const sshPath = value => process.platform === 'win32' ? value.replaceAll('\\', '/') : value;
+  // OpenSSH's explicit "none" also works with Git for Windows, whose POSIX
+  // layer interprets NUL as an ordinary filename rather than the Windows device.
+  const args = ['-F', 'none', '-N', '-T', '-p', String(c.port), '-i', sshPath(kind === 'node' ? c.nodeIdentityFile ?? c.identityFile : c.identityFile)];
   if (kind === 'node') args.push('-v');
-  for (const option of ['StrictHostKeyChecking=yes', `UserKnownHostsFile=${c.knownHostsFile}`, `GlobalKnownHostsFile=${nullFile}`, 'HostKeyAlgorithms=ssh-ed25519', 'UpdateHostKeys=no', 'IdentitiesOnly=yes', 'IdentityAgent=none', 'BatchMode=yes', 'PreferredAuthentications=publickey', 'PasswordAuthentication=no', 'KbdInteractiveAuthentication=no', 'ExitOnForwardFailure=yes', 'ForwardAgent=no', 'ForwardX11=no', 'ConnectTimeout=5', 'ServerAliveInterval=5', 'ServerAliveCountMax=2']) args.push('-o', option);
+  for (const option of ['StrictHostKeyChecking=yes', `UserKnownHostsFile="${sshPath(c.knownHostsFile)}"`, `GlobalKnownHostsFile="${sshPath(c.knownHostsFile)}"`, 'HostKeyAlgorithms=ssh-ed25519', 'UpdateHostKeys=no', 'IdentitiesOnly=yes', 'IdentityAgent=none', 'BatchMode=yes', 'PreferredAuthentications=publickey', 'PasswordAuthentication=no', 'KbdInteractiveAuthentication=no', 'ExitOnForwardFailure=yes', 'ForwardAgent=no', 'ForwardX11=no', 'ConnectTimeout=5', 'ServerAliveInterval=5', 'ServerAliveCountMax=2']) args.push('-o', option);
   if (c.bindAddress) {
     // Forward destinations remain loopback even when a source address is selected.
     if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(c.bindAddress)) throw connectionError('CONNECTION_INVALID');
@@ -90,8 +94,10 @@ export function sshArguments(c, kind, localPort) {
 }
 
 export function classifySshFailure(stderr) {
+  if (/ssh executable unavailable/i.test(stderr)) return connectionError('SSH_UNAVAILABLE');
+  if (/Bad configuration option|Bad owner or permissions|terminating, .*bad configuration|unknown option/i.test(stderr)) return connectionError('SSH_CONFIGURATION_INVALID');
   if (/REMOTE HOST IDENTIFICATION HAS CHANGED|Host key verification failed|No .* host key is known/i.test(stderr)) return connectionError('HOST_IDENTITY_CHANGED');
-  if (/Permission denied|Authentication failed|Load key .*:|sign_and_send_pubkey/i.test(stderr)) return connectionError('PERMISSION_REVOKED');
+  if (/Permission denied|Authentication failed|Load key .*:|sign_and_send_pubkey|administratively prohibited|forwarding.*not permitted|port forwarding.*disabled/i.test(stderr)) return connectionError('PERMISSION_REVOKED');
   if (/Address already in use|cannot listen to port|remote port forwarding failed/i.test(stderr)) return connectionError('PORT_IN_USE');
   return connectionError('CLOUD_UNREACHABLE', true);
 }
@@ -119,6 +125,8 @@ export async function checkBackend(c, localPort) {
   const asset = page.text.match(/src="(\/assets\/[^"<>]+\.js)"/)?.[1];
   if (page.status !== 200 || !asset) throw connectionError('BACKEND_INCOMPATIBLE');
   const version = ready.headers['x-xunjie-version'] ?? null;
+  if (version !== null && (typeof version !== 'string' || !/^[0-9a-f]{40}$/.test(version))) throw connectionError('BACKEND_INCOMPATIBLE');
+  if (ready.headers['x-xunjie-protocol'] && ready.headers['x-xunjie-protocol'] !== 'xunjie/session-v1') throw connectionError('BACKEND_INCOMPATIBLE');
   if (c.expectedBackendVersion && version !== c.expectedBackendVersion) throw connectionError('BACKEND_INCOMPATIBLE');
   return { protocol: 'xunjie/session-v1', backendVersion: version, versionSource: version ? 'server' : 'not-exposed', deployedFrontend: asset, checkedAt: new Date().toISOString() };
 }

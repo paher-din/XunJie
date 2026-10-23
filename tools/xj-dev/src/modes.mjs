@@ -45,10 +45,16 @@ async function startConnection(context, c, runtime, localPort, kind = 'page') {
   while (Date.now() < deadline) {
     const status = readStatus(context, kind);
     if (status.state === 'ready' && Date.now() - Date.parse(status.checkedAt) < 45000) return status;
-    if (status.state === 'stopped' || !componentRunning(context.env, name).running) throw connectionError(status.failure?.code ?? 'CLOUD_UNREACHABLE', status.failure?.retryable ?? false);
+    if (status.state === 'stopped' || !componentRunning(context.env, name).running) {
+      // A terminal SSH failure may be published between the first read and the
+      // process check. Read its final reason instead of losing it to a generic error.
+      const finalStatus = readStatus(context, kind);
+      throw connectionError(finalStatus.failure?.code ?? 'CLOUD_UNREACHABLE', finalStatus.failure?.retryable ?? false);
+    }
     await delay(200);
   }
-  throw connectionError('CLOUD_UNREACHABLE', true);
+  const lastStatus = readStatus(context, kind);
+  throw connectionError(lastStatus.failure?.code ?? 'CLOUD_UNREACHABLE', lastStatus.failure?.retryable ?? true);
 }
 
 async function prepareRemote(context, mode, options, log) {
@@ -85,7 +91,9 @@ async function prepareRemote(context, mode, options, log) {
     mkdirSync(ctx.env.browserProfile, { recursive: true });
     state = { version: 1, mode, envId: ctx.id, ports, worktree: ctx.worktree, connectionFile: c.file, identityFile: c.identityFile, target: c.id, browserOrigin: c.browserOrigin, business: connection.business, createdAt: state?.createdAt ?? new Date().toISOString() };
     saveState(ctx.env, state);
-    return { id: ctx.id, root: ctx.env.root, mode, connectionFile: c.file, identityFile: c.identityFile };
+    // Persist an identity override only when the caller explicitly selected it.
+    // Otherwise up must reread the approved config, including rotated key paths.
+    return { id: ctx.id, root: ctx.env.root, mode, connectionFile: c.file, ...(options.identity ? { identityFile: c.identityFile } : {}) };
   } catch (error) {
     for (const name of created.reverse()) await stopComponent(ctx.env, name);
     throw error;
@@ -108,7 +116,7 @@ export async function useMode(context, mode, options = {}, log = () => {}) {
       const { upLocal } = await import('./commands.mjs');
       await upLocal(context, log);
     } else {
-      options = { ...options, connection: options.connection ?? selection.targets?.[mode]?.connectionFile, identity: options.identity ?? selection.targets?.[mode]?.identityFile };
+      options = { ...options, connection: options.connection ?? selection.targets?.[mode]?.connectionFile, identity: options.identity ?? (options.connection ? undefined : selection.targets?.[mode]?.identityFile) };
       if (!options.connection) throw connectionError('CONNECTION_INVALID');
       const entry = await prepareRemote(context, mode, options, log);
       selection.targets ??= {};
@@ -141,7 +149,7 @@ export async function modeStatus(context) {
   const vite = componentRunning(ctx.env, 'vite');
   const available = gateway.running && connection.state === 'ready' && componentRunning(ctx.env, 'connection').running && Date.now() - Date.parse(connection.checkedAt) < 45000;
   return {
-    ok: Boolean(available),
+    ok: Boolean(available && (selection.mode === 'cloud' || vite.running)),
     mode: selection.mode,
     environment: { id: context.id, worktree: context.worktree, root: ctx.env.root, mode: selection.mode },
     page: { url: `https://127.0.0.1:${state.ports.gateway}`, serving: gateway.running && (selection.mode === 'cloud' ? available : vite.running), apiReady: available },
@@ -155,21 +163,28 @@ export async function modeStatus(context) {
 }
 
 export async function modeDown(context) {
-  const selection = loadSelection(context);
-  const stopped = [];
-  for (const entry of [...Object.values(selection.targets ?? {}), ...(selection.retained ?? [])]) {
-    const ctx = selectedContext(context, entry);
-    for (const name of ['gateway', 'vite', 'node-connection', 'connection']) stopped.push(await stopComponent(ctx.env, name));
-  }
-  await stopComponent(context.env, 'node-connection');
-  const { downLocal } = await import('./commands.mjs');
-  const local = await downLocal(context);
-  return { ...local, stopped: [...local.stopped, ...stopped], mode: selection.mode };
+  const lock = acquireLock({ ...context.env, lockFile: join(context.env.root, 'selection.lock') });
+  try {
+    const selection = loadSelection(context);
+    const stopped = [];
+    const entries = new Map([...Object.values(selection.targets ?? {}), ...(selection.retained ?? [])].map(entry => [entry.id, entry]));
+    for (const entry of entries.values()) {
+      const ctx = selectedContext(context, entry);
+      const targetLock = acquireLock(ctx.env);
+      try {
+        for (const name of ['gateway', 'vite', 'node-connection', 'connection']) stopped.push(await stopComponent(ctx.env, name));
+      } finally { targetLock.release(); }
+    }
+    await stopComponent(context.env, 'node-connection');
+    const { downLocal } = await import('./commands.mjs');
+    const local = await downLocal(context);
+    return { ...local, stopped: [...local.stopped, ...stopped], mode: selection.mode };
+  } finally { lock.release(); }
 }
 
 export async function nodeCommand(context, action, options = {}) {
   if (!['connect', 'status', 'disconnect'].includes(action)) throw new CliError('arguments', 'UNKNOWN_NODE_ACTION', 'node connect|status|disconnect');
-  const lock = acquireLock(context.env);
+  const lock = acquireLock({ ...context.env, lockFile: join(context.env.root, 'selection.lock') });
   let started = false;
   try {
     if (action === 'disconnect') return { stopped: await stopComponent(context.env, 'node-connection'), tasks: '原节点绑定与未知结果不变；不重发或改派。' };

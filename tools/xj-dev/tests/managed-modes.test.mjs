@@ -34,8 +34,11 @@ test('连接材料只接受核准格式、精确主机 pin、有效 HTTPS Origin
     writeFileSync(file, JSON.stringify({ ...config, host: 'other.test' }));
     assert.throws(() => loadConnection(file), { code: 'HOST_IDENTITY_CHANGED' });
     assert.equal(classifySshFailure('Permission denied (publickey).').retryable, false);
+    assert.equal(classifySshFailure('channel 1: open failed: administratively prohibited').code, 'PERMISSION_REVOKED');
     assert.equal(classifySshFailure('REMOTE HOST IDENTIFICATION HAS CHANGED').code, 'HOST_IDENTITY_CHANGED');
     assert.equal(classifySshFailure('Connection timed out').retryable, true);
+    assert.equal(classifySshFailure('NUL: line 1: Bad configuration option').code, 'SSH_CONFIGURATION_INVALID');
+    assert.equal(classifySshFailure('ssh executable unavailable').retryable, false);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -50,6 +53,16 @@ test('切换目标配置失败与未知模式保留原入口、现场和选择�
     assert.equal(loadSelection(context).mode, 'local');
     await assert.rejects(useMode(context, 'unknown'), { code: 'UNKNOWN_MODE' });
     assert.throws(() => readFileSync(selectionFile(context)), { code: 'ENOENT' });
+    // An explicitly reselected config must not inherit a stale identity override.
+    const selected = { mode: 'local', targets: { 'cloud-api': { connectionFile: 'old.json', identityFile: join(root, 'removed-key') } } };
+    writeFileSync(selectionFile(context), JSON.stringify(selected));
+    writeFileSync(join(root, 'identity'), 'invalid-test-private-key-placeholder');
+    writeFileSync(join(root, 'known_hosts'), 'other.test ssh-ed25519 AAAA\n');
+    writeFileSync(join(root, 'ca.pem'), 'invalid-test-certificate-placeholder');
+    const file = join(root, 'rotated.json');
+    writeFileSync(file, JSON.stringify({ schema: CONNECTION_SCHEMA, host: 'example.test', port: 22, browserUser: 'browser', identityFile: 'identity', knownHostsFile: 'known_hosts', caFile: 'ca.pem', browserOrigin: 'https://localhost:3445', applicationPort: 3444 }));
+    await assert.rejects(useMode(context, 'cloud-api', { connection: file }), { code: 'HOST_IDENTITY_CHANGED' });
+    assert.deepEqual(loadSelection(context), selected);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
