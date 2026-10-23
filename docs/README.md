@@ -23,7 +23,7 @@
 | 原聊天中每条用户消息 | [用户原话](references/2026-10-18-user-discussion.md) |
 | 原聊天交付的架构附件 | [2026-10-18 架构底稿](references/XunJie_Student_Agent_Architecture_2026-10-18.md) |
 | 当前实现差距与关键技术前提 | [架构事实核对](references/2026-10-18-architecture-checks.md) |
-| 首条 ALU 的本地执行方向、契约与实测证据 | [本地执行方案草案](references/2026-10-23-local-execution-proposal.md) |
+| 跨课程执行、教师低门槛准备与首条 ALU 的运行方向 | [本地执行决议](https://github.com/paher-din/XunJie/issues/114#issuecomment-6363162710)及[讨论与实测记录](references/2026-10-23-local-execution-proposal.md) |
 | SystemVerilog 浏览器工具链与原生打包的来源核对 | [本地执行技术调查](references/2026-10-23-systemverilog-local-execution-research.md) |
 | 浏览器、本机组件与远端执行的早期比较 | [执行位置研究](references/2026-10-18-execution-topology-research.md) |
 
