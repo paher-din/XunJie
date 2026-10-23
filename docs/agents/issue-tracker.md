@@ -1,6 +1,14 @@
 # Issue tracker：GitHub
 
-本项目的设计议题和工作地图使用 [paher-din/XunJie](https://github.com/paher-din/XunJie/issues) 的 GitHub Issues。当前地图入口见 [docs/README.md](../README.md)。通过 `gh` CLI 操作；多行正文先写入临时 UTF-8 文件，再使用 `--body-file`，完成后删除临时文件。
+本项目的设计议题、实施规范和工作项使用 [paher-din/XunJie](https://github.com/paher-din/XunJie/issues) 的 GitHub Issues。当前入口见 [docs/README.md](../README.md)。优先使用可用的 GitHub 连接工具；原生关系等未覆盖操作通过 `gh` CLI 完成。用 CLI 提交多行正文时先写入临时 UTF-8 文件，再使用 `--body-file`，发布核对完成后删除不再需要的临时文件。
+
+## 实施规范与实施票
+
+- 已明确需求通过 `to-spec` 发布规范，使用仓库现有 `ready-for-agent` 标签；这与尚待研究/讨论的 Wayfinder 决策票不同，不给未决设计票批量添加该标签。
+- `to-tickets` 将规范拆成可独立验收的实施子议题，按实际依赖发布，并使用原生 sub-issue 和 dependency 关系。母票承载规范，实施选择所有阻塞项均已完成的子票，不并行把母票当作另一份重复实现任务。
+- 正文写用户行为与验收标准；建立原生阻塞关系后，不再维护一份依赖状态清单。相关议题通过链接提供背景，只有真正阻止开始的工作才设置为 blocker。
+- 具体票的执行遵循当前用户授权与相应实施 Skill；不因规范/建票就自动开始开发、认领、合并或发布服务。拆票不关闭或改写已有设计票/母票正文。
+- 本地发布稿用于审阅，GitHub 发布并核对后删除，保留实际议题链接；仓库设计文档记录设计与源码说明，不复制实时 issue 状态。
 
 ## Wayfinding operations
 
@@ -36,6 +44,6 @@ gh api --paginate repos/paher-din/XunJie/issues/<number>/dependencies/blocked_by
 
 分页查询要读完所有页。若列表响应缺少依赖摘要，逐个读取议题及其 `dependencies/blocked_by`，以阻塞项是否关闭为准；缺字段不能当作没有阻塞。当前仓库已确认提供原生关系，后续不改用正文中的非原生依赖清单。
 
-本轮只建图并发布，所有议题保持开放、未认领，后续按前沿逐项研究与讨论。GitHub 上的地图及原生关系是状态依据，本地不维护另一份 issue 状态。
+建图时议题初始保持开放、未认领；这不是当前所有议题的状态声明。GitHub 上的地图、实施规范及其原生关系是状态依据，后续按对应前沿推进，本地不维护另一份 issue 状态。
 
 参考：[GitHub sub-issues API](https://docs.github.com/en/rest/issues/sub-issues)、[GitHub issue dependencies API](https://docs.github.com/en/rest/issues/issue-dependencies)。
