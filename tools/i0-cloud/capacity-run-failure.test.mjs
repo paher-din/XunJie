@@ -23,7 +23,7 @@ function controlledWait(ms,value,{signal}){
   });
 }
 
-async function setup(t,publish){
+async function setup(t,publish,{wait=controlledWait,transferAtSeconds=[0,1],onBusinessFailureText,onClose}={}){
   const f=await fixture(undefined,{review:{versions:{modelConfigVersion:'disabled',promptVersion:'disabled',schemaVersion:'review-v1',analysisVersion:'review-v1'}}});
   await allocate(f,await f.login('teacher'),await f.login(),false);
   f.db.withTransaction(tx=>{for(const id of ['capacity-s3','capacity-s4']){
@@ -40,16 +40,18 @@ async function setup(t,publish){
   const files=['one.zip','two.zip'].map((name,i)=>{const file=join(root,name);writeFileSync(file,i?'fixture-two-bytes':'fixture-one');return file;});
   const config={windowApproved:true,seconds:905,expectedSource:source,runId:randomUUID(),actorsFile:privateFile('actors.json',{actors}),
     evidenceDirectory:join(root,'evidence'),courseId:'course',ports:Object.fromEntries(labels.map((label,i)=>[label,100+i])),
-    modelAtSeconds:0,modelConfigRevision:2,transferAtSeconds:[0,1],transferFiles:files};
+    modelAtSeconds:0,modelConfigRevision:2,transferAtSeconds,transferFiles:files};
   const state={uploadCalls:0,uploadFinished:0,closed:0,sendsAfterClose:0,fatalBusiness:false,requests:[],outcome:null};
   const synthetic=(data,status=200)=>({status,headers:{'x-request-id':randomUUID()},text:JSON.stringify({data}),bytes:10});
   const transportFactory=({port})=>{const label=labels[port-100];let closed=false;return {
-    close(){if(!closed){closed=true;state.closed++;}},
+    close(){if(!closed){closed=true;state.closed++;onClose?.(state);}},
     async send(input){
       if(closed){state.sendsAfterClose++;throw new Error('synthetic closed request');}
       state.requests.push({label,method:input.method,url:input.url});
-      if(state.fatalBusiness&&label==='S1'&&input.method==='GET'&&/^\/api\/attempts\/[^/]+$/.test(input.url))
-        return {...synthetic(null,503),text:JSON.stringify({error:{code:'DEPENDENCY_UNAVAILABLE',message:'synthetic-sensitive-response'}})};
+      if(state.fatalBusiness&&label==='S1'&&input.method==='GET'&&/^\/api\/attempts\/[^/]+$/.test(input.url)){
+        const response=synthetic(null,503);Object.defineProperty(response,'text',{get(){onBusinessFailureText?.();
+          return JSON.stringify({error:{code:'DEPENDENCY_UNAVAILABLE',message:'synthetic-sensitive-response'}});}});return response;
+      }
       if(input.url==='/health/live')return {...synthetic({}),headers:{'x-xunjie-version':source}};
       if(input.url==='/api/model-settings')return synthetic({revision:2});
       if(input.url==='/api/agent/turns')return synthetic({turnId:randomUUID()});
@@ -60,7 +62,7 @@ async function setup(t,publish){
   };};
   t.mock.timers.enable({apis:['Date','setTimeout','setInterval'],now:Date.now()});
   const oldExit=process.exitCode;
-  const running=runCapacity(config,{transportFactory,wait:controlledWait,publish:async(...args)=>{
+  const running=runCapacity(config,{transportFactory,wait,publish:async(...args)=>{
     state.uploadCalls++;const value=await publish(state,...args);state.uploadFinished++;return value;
   }}).then(value=>{state.outcome={value};},error=>{state.outcome={error};});
   const receipt=()=>{const file=join(config.evidenceDirectory,'run.json');return existsSync(file)?JSON.parse(readFileSync(file,'utf8')):null;};
@@ -130,4 +132,38 @@ for(const late of ['published','failed'])test(`business failure drains a late ${
     assert.equal(h.state.sendsAfterClose,0);
     assert.equal(JSON.parse(events.trim().split('\n').at(-1)).phase,'failed');
   }finally{upload.resolve(published(11));await flush();await h.close();}
+});
+
+test('a fulfilled upload wait whose continuation follows fatal never starts publication',async t=>{
+  let releaseUploadWait,waitFulfilled=false,firstCloseSawFulfilled=false;
+  const h=await setup(t,async()=>published(11),{
+    transferAtSeconds:[1.234,2],
+    wait(ms,value,{signal}){
+      if(ms!==1234)return controlledWait(ms,value,{signal});
+      // Like a timer: fulfillment removes its abort listener. A later abort cannot undo it.
+      return new Promise((resolve,reject)=>{
+        const abort=()=>reject(new Error('synthetic aborted upload wait'));
+        signal.addEventListener('abort',abort,{once:true});
+        releaseUploadWait=()=>{signal.removeEventListener('abort',abort);waitFulfilled=true;resolve(value);};
+      });
+    },
+    onBusinessFailureText(){
+      // The HTTP rejection propagates through the real client/workflow to track(). Fulfill the timer
+      // after those rejection reactions are queued, just before fatal runs and before upload resumes.
+      queueMicrotask(()=>queueMicrotask(()=>queueMicrotask(()=>releaseUploadWait())));
+    },
+    onClose(state){if(state.closed===1)firstCloseSawFulfilled=waitFulfilled;},
+  });
+  try{
+    assert.equal(typeof releaseUploadWait,'function');h.state.fatalBusiness=true;
+    await h.tick(0);await until(()=>h.state.outcome);
+    assert.equal(waitFulfilled,true);assert.equal(firstCloseSawFulfilled,true,'wait really fulfilled before fatal closed transports');
+    assert.equal(h.state.uploadCalls,0,'a continuation resumed in draining must not start publish');
+    const final=h.receipt();assert.equal(h.state.outcome.error?.code,'CAPACITY_RUN_FAILED');
+    assert.equal(final.executionDrained,true);assert.equal(final.phase,'failed');
+    assert.equal(final.failureCode,'CAPACITY_HTTP_NON_200');assert.equal(final.failureDetails.status,503);
+    assert(final.transfers.every(row=>row.state==='not_started'));assert.equal(h.state.sendsAfterClose,0);
+    const stable=JSON.stringify(final),events=h.events();await h.tick(910_000);
+    assert.equal(JSON.stringify(h.receipt()),stable);assert.equal(h.events(),events);assert.equal(h.state.uploadCalls,0);
+  }finally{releaseUploadWait?.();await flush();await h.close();}
 });
