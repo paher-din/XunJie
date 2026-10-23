@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { get as httpsGet } from 'node:https';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from './certificates.mjs';
@@ -24,6 +25,18 @@ function modeContext(context, mode, c) {
 }
 function readStatus(ctx, kind = 'page') {
   try { return JSON.parse(readFileSync(join(ctx.env.root, `${kind}-connection-status.json`), 'utf8')); } catch { return { state: 'disconnected' }; }
+}
+function gatewayResponds(context, port, path) {
+  return new Promise(done => {
+    let request;
+    try {
+      request = httpsGet(`https://127.0.0.1:${port}${path}`, {
+        ca: readFileSync(join(context.home, 'ca', 'ca-cert.pem')), rejectUnauthorized: true, agent: false,
+      }, response => { response.resume(); done(response.statusCode === 200); });
+    } catch { done(false); return; }
+    request.on('error', () => done(false));
+    request.setTimeout(1500, () => request.destroy());
+  });
 }
 async function freePort(context, name, port) {
   if (componentRunning(context.env, name).running || await portFree(port)) return;
@@ -164,18 +177,24 @@ export async function modeStatus(context) {
   const connection = readStatus(ctx);
   const gateway = componentRunning(ctx.env, 'gateway');
   const vite = componentRunning(ctx.env, 'vite');
-  const available = gateway.running && connection.state === 'ready' && componentRunning(ctx.env, 'connection').running && Date.now() - Date.parse(connection.checkedAt) < 45000;
+  const supervisor = componentRunning(ctx.env, 'connection');
+  const connected = connection.state === 'ready' && supervisor.running && Date.now() - Date.parse(connection.checkedAt) < 45000;
+  const [pageReady, apiReady] = gateway.running && state?.ports?.gateway
+    ? await Promise.all([gatewayResponds(ctx, state.ports.gateway, '/'), gatewayResponds(ctx, state.ports.gateway, '/health/ready')])
+    : [false, false];
+  const available = Boolean(connected && apiReady);
+  const serving = Boolean(pageReady && (selection.mode === 'cloud' ? connected : vite.running));
   return {
-    ok: Boolean(available && (selection.mode === 'cloud' || vite.running)),
+    ok: available && serving,
     mode: selection.mode,
     environment: { id: ctx.id, worktree: context.worktree, root: ctx.env.root, mode: selection.mode },
-    page: { url: `https://127.0.0.1:${state.ports.gateway}`, serving: gateway.running && (selection.mode === 'cloud' ? available : vite.running), apiReady: available },
+    page: { url: `https://127.0.0.1:${state.ports.gateway}`, serving, apiReady: available },
     sources: { frontend: selection.mode === 'cloud-api' ? 'worktree apps/student via Vite' : connection.business?.deployedFrontend ?? state.business?.deployedFrontend, backend: connection.business ?? state.business },
     data: { ownership: 'cloud-shared', target: state.target, localDatabase: context.env.database, note: '此入口固定写共享集成库；本地副本保持原样。' },
     browser: { profile: ctx.env.browserProfile, cookieIsolation: 'mode-and-target' },
-    connection: { ...connection, supervisorRunning: componentRunning(ctx.env, 'connection').running },
-    capabilities: { frontend: { available: gateway.running, hmr: selection.mode === 'cloud-api' && vite.running }, api: { available }, execution: { available: false, reason: '页面连接不证明节点业务就绪；node status 单独报告。' }, models: { available: false, reason: '未验证云端模型调用。' } },
-    next: available ? ['打开 page.url；旧页面保持原数据目标。'] : ['恢复条件后重试 up；不会自动改用本地数据。'],
+    connection: { ...connection, supervisorRunning: supervisor.running },
+    capabilities: { frontend: { available: serving, hmr: serving && selection.mode === 'cloud-api' }, api: { available }, execution: { available: false, reason: '页面连接不证明节点业务就绪；node status 单独报告。' }, models: { available: false, reason: '未验证云端模型调用。' } },
+    next: available && serving ? ['打开 page.url；旧页面保持原数据目标。'] : ['恢复条件后重试 up；不会自动改用本地数据。'],
   };
 }
 
