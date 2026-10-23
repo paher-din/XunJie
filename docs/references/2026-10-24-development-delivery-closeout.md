@@ -14,8 +14,8 @@
 | fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；原 Windows 已完成严格 TLS、双角色闭环、新基线独立副本、团队编号真实 restore/verify 和自有 SSH 中断恢复；新的 Windows 补验完成真实云端保存/冻结/固定提交、教师反馈 UI 读回及拆除前 active revoke，专属进程/CA trust/敏感材料已清理 | Mac 正常系统信任仍待确认；Windows 原 partial 回执保留，新覆盖以独立 topup 报告补充 |
 | 采集默认源码 | 静态 canary 已由 `2e23535` 改为运行时生成，guard 未改；负责人独立 0ea 默认 `collectCode` 840 文件/约 6.27MB 通过，根范围未缩小；Windows 原 context 默认 baseline publish 通过 | 最终交付 SHA 及新的平台补验回执继续对应记录 |
 | Windows 签名 | `496493a`：worker Mac 21/21、Windows 默认 PATH 7/7；lead 独立 client/signer 18/18；实际旧 client 失败后 fixed CLI 原 key join 成功，无 PATH 修改；fresh Windows 原邀请/home/key join 亦通过 | 不修改 Linux access 服务；完整成员流程单独记录 |
-| 容量与资源 | c896 普通 API p95 1090.234ms 失败保留；70d 完整 905 秒执行和审计结束，3227/3227 指标匹配、零 non2xx/5xx，普通 API 3219 项 p95 1053.110ms，仍未达到 500ms；e03+ss16 已激活并开放下一窗口，结果待完成 | 执行成功、激活成功和短预检不算容量延迟通过；预算尚未应用，最终资源安排由负责人决定 |
-| 真实模型 | c896 两项 Mimo 产品 turn 认证失败保留；另获授权的两项 DeepSeek 产品 turn usage 为 82/16、82/33；新 70d 完整窗口 T/S1 两项均 settled/exactOK、calls1，actual usage 各为 83/2；原正式 store 未改 | 模型互操作成功不替代普通 API 延迟、真实执行节点或教学效果验收 |
+| 容量与资源 | c896 p95 1090.234ms、70d p95 1053.110ms 两次失败保留；e03+ss16 的62779aba完整窗口3097/3097匹配、零missing/duplicate/non2xx/5xx，普通API3089项p95 262.266ms，按固定500ms口径通过；lead从原始记录重算一致，main已持久应用预算并读回 | 仅对应这轮固定源码、数据规模和负载；Mac认证、精确撤销、最终current归档仍分别验收 |
+| 真实模型 | c896 两项 Mimo 认证失败保留；70d 两项 DeepSeek settled/exactOK、calls1、actual usage各83/2；e03两项亦settled/exactOK、calls1，actual usage为83/14和83/12；原正式store未改 | 模型互操作成功不替代真实执行节点或教学效果验收；各轮结果分别保留 |
 | 真实执行节点 | 候选未登记 execution node，运行/检查正确拒绝未就绪能力；原 robert QEMU/WSL 保持 stopped | 本轮未做真实执行节点互操作 |
 | 教学效果 | 未测 | 不由工程或模型可调用性推导 |
 
@@ -67,6 +67,22 @@ e03 激活后的当前窗口不修改上述 live policy。最终依赖完成后�
 
 ## 容量证据与预算边界
 
+e03 完整窗口 `62779aba-a131-476b-ab7b-bf5fdedd3de2` 已完成；北京时间2026-10-24 06:56:09.246 steady 至07:11:23.691完成收束，914.445秒，`executionDrained:true`。实际source `e03a3c9`、harness `capacity-run.mjs` SHA前缀 `5198feda`、cfg `14cd7c60…`、ss16起终一致；candidate/access/formal PID仍142780/142786/91972，restart均0。后面的70d/c896失败证据保持历史来源，不改记为本次成功。
+
+| e03 测量 | 实际结果 | 判断边界 |
+| --- | --- | --- |
+| 服务端普通API | 3089项（含5次正常登录和完整workbench），p95 262.266ms；3097总请求全部200，missing/duplicate均0 | 按原500ms总体p95口径通过；129条workbench p95为401.488ms，登录单独p95仍879.646ms，不声称每次请求都低于500ms |
+| 业务读回与历史 | 新增436次save、45次幂等重放、71次submit/feedback；API与独立只读DB审计的base+delta、hash/version吻合，integrity ok/FK0 | 旧2124条receipt/audit、326 snapshot、161 submission/feedback逐行摘要missing/changed均0；增长至3059/3059/470/232/232，历史未清空 |
+| 模型与传输 | 两项真实DeepSeek settled/exactOK、各calls1，actual usage83/14、83/12；两次OSS 6,273,409/6,274,156 bytes均published，3.651/3.221秒 | 实际产品调用与传输结果，不替代真实执行节点/教学效果 |
+| candidate资源 | 184个窗口采样覆盖登录和收束；sampled memory.current最大169.93MiB，cgroup lifetime peak从201.19增至329.15MiB；平均CPU48.986%单核 | 短scrypt峰值会被采样遗漏，使用cgroup peak保留；测量时MemoryHigh仍infinity、MemoryMax512MiB |
+| access与宿主 | access sampled最大43,728,896 bytes、peak44,814,336 bytes；host MemAvailable最低953,126,912 bytes（908.973MiB）；PID/restart/OOM/max/high均无增量 | 测量时access MemoryMax256MiB；worker初始预算建议与负责人最终选择分开记录，不能据建议声称已应用 |
+
+原始证据为 `~/.codex/artifacts/xj133-capacity/20261024-e03a3c9-62779aba/` 的请求/服务端指标、资源样本、`independent-db-audit.json`、`retained-history-audit.json` 和 `postflight-runtime.json`。lead仅离线重算requestId关联/p95、184样本内存/CPU/host最低值，并核对前轮base及API/DB审计关系，结果在 `~/.codex/artifacts/xj133-closeout/lead-e03-62779-evidence-recalculation.json`；没有由lead重新查询云DB。负责人独立raw gate亦通过，`main-independent-verdict.json`可直接满足最终scope的成功verdict契约；worker最终报告和29文件seal已收齐，lead逐项核对SHA。worker负载/采样/审计已停，五actor及隧道仍留给负责人精确收尾。完整capacity通过不等于预算实际读回、Mac系统认证、精确撤销、最终加密snapshot/隔离恢复已完成。
+
+负责人据本轮实测确定：正式shared模板在`[Service]`内启用CPUWeight200/MemoryHigh512M/MemoryMax768M，access模板High128M/Max256M并保持TasksMax64。该依据是candidate本轮含登录的329.152MiB cgroup peak与真实五人负载，不用formal旧283MB idle峰。现行formal仍旧d07、PID91972/原argv，未重启未发布；负责人已以持久`systemctl set-property`应用正式512/768+CPU200，没有安装替换formal unit或发布器。当前candidate仍使用更严格Max512M，High448M/CPU200；access为High128M/Max256M、Tasks64。实际properties与内核memory.high/max/cpu.weight一致，high/max/oom/oom_kill累积均0，所有PID/ExecStart不变；回执为 `~/.codex/artifacts/xj133-resource-budgets-20261024/applied.json`，有效预算dropins位于 `/etc/systemd/system.control/<unit>.d/50-*.conf`，最终scope必须完整收录。
+
+下一次安装shared新模板，ExecStart才默认采用已在e03验证的`--max-semi-space-size=16`；正式现行argv没有据此改变，candidate实际已使用ss16。这两个unit模板不在产品runtime清单内，本次更新不重建e03产物。
+
 完整来源、业务基数/增量审计、模型与 OSS、失败和隔离诊断见[容量 worker 报告](../../tools/i0-cloud/capacity-133-report.md)。`adc8ab2` harness 原 8/8 通过后，两轴分别确认上传错误独立记录与异步失败收束两项 P2；`4e79a80` 修复已合入 `55ed4dd`，lead 与负责人各自 11/11，包含 3 个真实业务工厂加受控外部依赖的故障用例。Spec 原 P2 已复核 closed；Standards 另确认 await pause 返回后、publish 前须再检查 stop。Aquinas 在本次实测结束后以 `40dcc9e` 补此 guard，运行中的文件未修改；确定性交错测试证明等待已 fulfilled 后 fatal 先到时不会 publish，失败首因与终态不变。worker 全 harness 12/12、lead 四项故障回归 4/4，最终审查回执另行核对。18 个原 JS 与 1 个 Python 语法通过，20 个原新增文件及 4e/40dcc 的改动文件通过原秘密扫描。
 
 Windows 补验和清理完成后，负责人放行的实际 run 为 `6e9a5416-e0b1-4866-8f5d-a4513687dee7`，steady T0 为 2026-10-23 21:14:32.768 UTC（北京时间 2026-10-24 05:14:32.768），21:29:56.575 UTC 完成；905 秒业务窗口连同 drain/audit 共 923.807 秒。实际 harness 为 `4e79a80`；lead 从 run.json 核对三个 harness 文件均与该固定提交摘要一致，并从原请求和服务端记录重算得到同样的汇总。该轮无 fatal，未触发上述晚到 pause 的失败分支，后续 guard 不冒称是本轮已运行版本。
@@ -107,4 +123,4 @@ Nash 的旧 Windows 副本只读库存为 `~/.codex/artifacts/xj133-windows-resi
 
 本轮已清理自己创建的隔离进程和明文恢复目录。之后以全新 file-only 临时成员经同一持久服务完成公开 CLI invite/join，再真实 fetch 原已发布编号；`cacheHit:false`、6,273,409 bytes、完整摘要与原包一致，未手传 ZIP。该 smoke 不创建 SSH/应用账号或受管后台进程，不执行 restore/verify；结束只撤销自己新建的成员并删除专属私有 home/下载缓存。证据为 `post-cleanup-smoke.json`，共享包和基线保留。
 
-真实 daily timer 已在 2026-10-24 03:00:26–03:00:27 使用当时扩展的备份配置完成，`Result=success`、`ExecMainStatus=0`；它早于 70d 配置登记，不声称已包含后来的材料。周备 timer 保持 active，未额外制造第二次周备。容量延迟仍未达标；fresh Mac 正常系统认证、最终稳定配置归档/独立恢复与最新产物隔离读回仍需补齐，本文不预报通过。
+真实 daily timer 已在 2026-10-24 03:00:26–03:00:27 使用当时扩展的备份配置完成，`Result=success`、`ExecMainStatus=0`；它早于 70d 配置登记，不声称已包含后来的材料。周备 timer 保持 active，未额外制造第二次周备。e03本轮容量已按固定口径通过；预算持久读回、fresh Mac正常系统认证与精确撤销、最终稳定配置归档/独立恢复及最新产物隔离读回仍需补齐，本文不预报这些步骤通过。

@@ -19,6 +19,7 @@ PrivateTmp=true
 ProtectHome=true
 # The only permitted privilege transition is the root-owned fixed helper in sudoers.
 # NoNewPrivileges/ProtectSystem would also prevent its scoped user/key operations.
+MemoryHigh=128M
 MemoryMax=256M
 TasksMax=64
 TimeoutStopSec=30
