@@ -1,0 +1,6 @@
+{
+  "credentialsFile": "/etc/xunjie/monitoring-credentials.json",
+  "groupId": "0",
+  "dimensions": { "application": "xunjie-shared" },
+  "statusFile": "/var/lib/xunjie/maintenance/monitoring.json"
+}

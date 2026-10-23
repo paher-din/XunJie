@@ -21,34 +21,48 @@
 
 ## 按产物发布：CI 构建与云端切换
 
-服务器不再构建源码。发布链路是：CI 在 `main` 每次推送后用 ubuntu-24.04 x64 + Node 24.21.0 构建（[cloud-release workflow](../../.github/workflows/cloud-release.yml)），`build-runtime-artifact.mjs` 装配与运行目录相同布局的产物（前端 dist 含 `.gz`/`.br` 预压缩与 `asset-digests.json` 摘要表、teaching 生产依赖含 linux-x64 原生模块、后端运行源码），写出 `manifest.json`（来源提交、git tree、平台、Node 版本、逐文件 sha256 与字节数、入口摘要、tarball 摘要）并作为 `cloud-<commit>` 标签的 GitHub Release 资产发布（先 draft 后发布，保证原子可见）；同一产物还 force-push 到 `cloud-artifacts` 孤儿分支，供服务器经 codeload 拉取（Release 资产 CDN 在服务器所在地域不可达，codeload 通道实测满速；孤儿分支每次整体替换，仓库不累积产物历史）。CI 侧只保留最近 5 个 `cloud-*` Release。
+服务器不再构建源码。CI 使用 ubuntu-24.04 x64 + Node 24.21.0，产出含逐文件摘要的 `manifest.json` 和 `runtime.tar.gz`。两文件先写入孤儿提交，由 `cloud-artifact-<manifest sha256>` 不可变 tag 保持可达，再公开 `cloud-<source commit>` Release。Release 正文的 `xunjie-artifact-v1` JSON 绑定来源提交、产物提交、manifest 与 archive 摘要；Release asset API 的摘要和字节数必须与之匹配。相同来源提交的已绑定公开 Release 不被重跑替换。
+
+服务器经 codeload 的**完整产物提交 SHA**下载，完全不使用可变镜像分支。`main` 推送与 integration 的 `workflow_dispatch` 都可产生精确来源版本的候选，但只有部署器读取到的精确 main HEAD 能进入共享业务发布；候选构建不移动 main 或共享镜像引用。同一 ref 不取消在途发布，同一 SHA 的跨 ref 运行串行，避免发布中途被取消或重复替换。远端候选 workflow 由维护者同步 integration 后触发，构建通过不代表 main 已发布。CI 保留最近 5 份 Release，并额外保护 main 与当前 integration HEAD；删除 Release 时一并删除其所属产物 tag。
 
 `deploy-artifact.py` 在服务器上只做校验、备份、装配与切换：
 
 1. 经 GitHub API 核对 `main` HEAD 提交与 tree，按 `cloud-<commit>` 查找已发布 Release；产物未就绪时返回 `blocked`/`ARTIFACT_PENDING`，业务保持现状。
-2. 从 `codeload.github.com` 流式拉取 `artifactBranch` 分支 tarball（总量上限 1 GiB + 8 MiB），解出 manifest 与 runtime tarball，核对 tarball 摘要后解包到受控 staging（仅允许 `apps/student`、`apps/teaching`、`tools/i0-cloud/cloud-host.mjs` 路径），逐文件重算 sha256 与 manifest 精确比对，入口 HTML/JS 规则与静态摘要表也必须一致。
+2. 从 `codeload.github.com` 按 Release 绑定的不可变产物提交流式拉取 tarball（总量上限 1 GiB + 8 MiB），解出 manifest 与 runtime tarball，先核对两者与 Release asset 的摘要和字节数，再核对 manifest 内 archive 摘要后解包到受控 staging（仅允许 `apps/student`、`apps/teaching`、`tools/i0-cloud/cloud-host.mjs` 路径），逐文件重算 sha256 与 manifest 精确比对，入口 HTML/JS 规则与静态摘要表也必须一致。
 3. 磁盘可用空间低于 `minimumFreeBytes`（建议 5 GiB）时拒绝下载与装配（`blocked`/`LOW_DISK`），低于 `warningFreeBytes`（建议 10 GiB）只告警；已有业务不受影响。
 4. SQLite 一致备份当前库（保留最近 `keepBackups` 份部署备份），切换 `current` 符号链接、重启服务，并用 `/health/live`、`/health/ready` 与实际返回的 index/入口 JS 摘要做健康探测；失败自动切回上一个 release 并重启、复测。
-5. 成功后按保留策略清理发布目录：当前版本 + 最近 `keepReleases - 1` 个可回退版本 + 带 `.pinned` 标记的固定版本；清理只作用于部署脚本拥有的 `main-<commit>` 目录，不触碰业务数据、备份目录或外来文件。发布与清理由同一 flock 串行，备份单元复用同一把锁（见下）。
+5. 成功后按保留策略清理发布目录：当前版本 + 最近 `keepReleases - 1` 个带 `health-verified.json` 成功记录的可回退版本 + 带 `.pinned` 标记的固定版本；清理只作用于部署脚本拥有的 `main-<commit>` 目录，不触碰业务数据、备份目录或外来文件。失败候选不会取得成功记录，并在回退完成后清除；当前旧版仅在进程、文件形状及实际返回资源健康核对成功后补记成功状态。首次迁移应先在隔离宿主验证需要保留的旧回退版本，不能将未验收目录直接标成成功。发布与清理由同一 flock 串行，备份单元复用同一把锁（见下）。
 
 每 5 分钟的定时运行在已是最新时不重新哈希整个运行目录：只按 manifest 逐文件记录的路径与字节数做 stat 形状比对，再探测健康；内容级校验发生在每次下载装配新产物时（逐文件 sha256）与健康探测（实际返回的 index/入口 JS 摘要）。
 
 发布信任边界：Release 发布权限与 `main` 推送权限等同（GitHub contents:write），摘要校验防护传输与装配损坏，不改变来源信任；构建成功不等于发布成功——只有健康探测通过才算部署完成。发布不初始化或迁移业务数据，不合并代码。
 
-服务器迁移（替换旧 `sync-main.py` 源码构建路径）：复制 `deploy-artifact.py` 与 `backup-retained.mjs` 到 `/usr/local/lib/xunjie/`（两者都是服务器基础设施，不随业务产物分发），部署配置改为下表字段（删除 `buildUser`），安装 `xunjie-release-deploy.service/.timer` 与备份单元后 `systemctl disable --now xunjie-main-sync.timer` 并删除旧单元与 `/usr/local/lib/xunjie/sync-main.py`；脚本会自动清掉工作目录里旧构建残留（`source-*.tar.gz`、`npm-cache`、`sync-main.lock`）。合并本分支的 `main` 推送需先等一次 `cloud-release` workflow 产出 `cloud-<commit>` Release，再切换服务器单元。
+服务器迁移（替换旧 `sync-main.py` 源码构建路径）：复制 `deploy-artifact.py` 与 `backup-retained.mjs` 到 `/usr/local/lib/xunjie/`（两者都是服务器基础设施，不随业务产物分发），部署配置改为下表字段（删除 `buildUser`、`artifactBranch`），安装 `xunjie-release-deploy.service/.timer` 与备份单元后 `systemctl disable --now xunjie-main-sync.timer` 并删除旧单元与 `/usr/local/lib/xunjie/sync-main.py`；脚本会自动清掉工作目录里旧构建残留（`source-*.tar.gz`、`npm-cache`、`sync-main.lock`）。合并本分支的 `main` 推送需先等一次 `cloud-release` workflow 产出 `cloud-<commit>` Release，再切换服务器单元。
 
 | `deploy-artifact.py` 配置字段（仓库外 `/etc/xunjie/deployment.json`） | 说明 |
 | --- | --- |
 | `repositoryUrl` / `releasesDirectory` / `currentLink` / `workDirectory` / `nodeBinDirectory` / `applicationConfigFile` / `applicationService` / `healthUrl` / `statusFile` / `backupDirectory` | 与原部署配置同义；`nodeBinDirectory` 仍用于部署前 SQLite 一致备份 |
-| `artifactTagPrefix` / `artifactBranch` | CI Release 标签前缀与产物镜像分支名，当前为 `cloud` / `cloud-artifacts` |
+| `artifactTagPrefix` | CI Release 标签前缀，当前为 `cloud`；产物 tag 为此前缀 + `-artifact-<manifest sha256>` |
 | `minimumFreeBytes` / `warningFreeBytes` | 低磁盘拒绝/预警阈值（字节） |
 | `keepReleases` / `keepBackups` | 可回退发布目录数（含当前）与部署备份数 |
 
 `--status` 输出远端/已部署提交、健康、磁盘与内存水位、CPU 核数与负载、发布与备份清单、上次部署结果和 `actions` 维护建议；接到既有云监控即可（建议告警：发布单元失败、`status=failed`、磁盘越过两级阈值、`MemAvailable` 低于 384 MiB、负载持续超过两倍核数、业务服务非 active）。低磁盘恢复动作用 `--prune` 只执行清理。
 
+## 持续监控
+
+`xunjie-monitor.service/.timer` 每 5 分钟独立调用只读状态采集，向既有阿里云 CMS 上报应用健康、上次发布失败、磁盘可用字节、可用内存、每核负载与 GitHub 可达性；稳态发布 timer 的 `unchanged` 输出不能替代采样。GitHub 请求失败时仍报告本机健康与资源。`monitoring.example.json` 是配置模板；`credentialsFile` 使用仓库外 0600 文件，仅含 `accessKeyId` / `accessKeySecret`，对应独立 RAM 上报身份，只允许 `cms:PutCustomMetric`，不复制管理员凭据。当前上报端点是北京地域 CMS API。
+
+安装标准 C++ 云监控 agent 采集 OS 指标，并在 CMS 配置资源阈值及自定义健康/发布结果告警。按 [官方安装说明](https://help.aliyun.com/zh/cms/cloudmonitor-1-0/user-guide/install-and-uninstall-the-cloudmonitor-agent-for-cpp/) 选择当前脚本，勿复用失效 URL；若无需日志采集，安装时设置 `INSTALL_LOONGCOLLECTOR=false`。采样器只写受限监控状态文件，不修改应用数据或触发部署。以下 dry-run 既不上报指标，也不发送通知：
+
+```sh
+sudo python3 /usr/local/lib/xunjie/deploy-artifact.py --config /etc/xunjie/deployment.json --monitor-config /etc/xunjie/monitoring.json --dry-run
+```
+
+验收分别记录 agent 运行、CMS 可查询到的新鲜指标、规则阈值/维度/联系组及正常状态；不以创建规则代替指标入库，不主动制造生产故障或发送测试通知。维护者负责受限凭据的轮换与撤销。
+
 ## 加密备份与隔离恢复
 
-`backup-retained.mjs` 把课程库（SQLite Backup API 一致副本，前后做 integrity/外键检查）、个人模型存储目录（库文件一致副本 + 密钥材料原样复制）和 `extraFiles`（签名密钥、TLS 材料、应用配置）打成 tar 后以 AES-256-GCM 加密写入 `outputDirectory`，文件名 `<label>-<时间>-<随机>.xunjiebak`（0600）。密钥取自维护者独享的 key file（`openssl rand 32` 生成，保存在仓库与备份目标之外），私钥与密钥内容不进入日志或输出。
+`backup-retained.mjs` 把课程库（SQLite Backup API 一致副本，前后做 integrity/外键检查）、个人模型存储目录（库文件一致副本 + 密钥材料原样复制，排除源库 WAL/SHM/journal）和 `extraFiles`（签名密钥、TLS 材料、应用配置）打成 tar 后以 AES-256-GCM 加密写入 `outputDirectory`，文件名 `<label>-<时间>-<随机>.xunjiebak`（0600）。密钥应另存独立设备的受限副本（例如负责人 Mac 的 `~/.config/xunjie-cloud/backup-recovery/`，目录 0700、文件 0600）；这不等于已保存离线介质。仅保存在同一服务器不能支持整机丢失后的恢复。密钥取自维护者独享的 key file（`openssl rand 32` 生成，保存在仓库与备份目标之外），私钥与密钥内容不进入日志或输出。
 
 恢复必须指向空的隔离目录：`--restore <archive> --key-file <file> --target <empty-dir> --teaching-root <dir>`，脚本解密验签、解包后逐文件核对摘要，并对每个库文件做只读 integrity/外键检查，全部通过才报告 `restored`。密钥错误或归档被篡改时认证失败且目标目录不被写入。接入服务尚未交付，其数据不在本备份范围内，本票不声称全链路备份验收。
 

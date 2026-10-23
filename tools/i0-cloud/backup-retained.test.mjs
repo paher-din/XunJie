@@ -6,9 +6,10 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { createEncryptedBackup, restoreEncryptedBackup } from './backup-retained.mjs';
 
-const REPOSITORY = dirname(dirname(dirname(import.meta.url.replace(/^file:\/\//, ''))));
+const REPOSITORY = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const TEACHING_ROOT = join(REPOSITORY, 'apps/teaching');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 
@@ -119,6 +120,36 @@ test('restore refuses wrong keys and tampered archives without populating the ta
     await assert.rejects(restoreEncryptedBackup({ restore: archive, keyFile: join(root, 'backup.key'),
       target: root, teachingRoot: TEACHING_ROOT }), /TARGET_MUST_BE_ISOLATED/);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('live WAL database is backed up without source sidecars and restores committed writes', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-wal-'));
+  let source;
+  let directory;
+  try {
+    writeFileSync(join(root, 'backup.key'), 'fixture-maintainer-key-material');
+    const fixture = writeBackupConfig(root);
+    directory = fixture.directory;
+    const Driver = createRequire(join(TEACHING_ROOT, 'package.json'))('better-sqlite3');
+    const database = join(fixture.settings.personalModelsDirectory, 'personal-agent.sqlite');
+    source = new Driver(database);
+    source.pragma('journal_mode = WAL');
+    source.pragma('wal_autocheckpoint = 0');
+    source.prepare('INSERT INTO submissions VALUES (?, ?, ?)').run('in-wal', 'teacher', 'committed in WAL');
+    assert.ok(statSync(database + '-wal').size > 0);
+    const backup = await createEncryptedBackup(backupOptions(root));
+    assert.ok(backup.files.every(file => !/-wal$|-shm$|-journal$/.test(file)));
+    const target = join(root, 'restored');
+    const result = await restoreEncryptedBackup({ restore: backup.path, keyFile: join(root, 'backup.key'), target, teachingRoot: TEACHING_ROOT });
+    assert.equal(result.databasesVerified.length, 2);
+    const restored = new Driver(join(target, 'personal-models/personal-agent.sqlite'), { readonly: true });
+    try { assert.equal(restored.prepare('SELECT content FROM submissions WHERE id = ?').pluck().get('in-wal'), 'committed in WAL'); }
+    finally { restored.close(); }
+  } finally {
+    source?.close();
+    rmSync(root, { recursive: true, force: true });
+    if (directory) rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('retention keeps only the newest archives of each label', async () => {

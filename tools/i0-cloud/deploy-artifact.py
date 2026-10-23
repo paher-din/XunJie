@@ -7,7 +7,9 @@ retained database, assembles the release and switches, rolling back to the
 previous release when the candidate fails its health probe.
 """
 import argparse
+import base64
 import hashlib
+import hmac
 import http.client
 import json
 import os
@@ -24,7 +26,7 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from html.parser import HTMLParser
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlencode, urlsplit
 import urllib.error
 import urllib.request
 import uuid
@@ -37,7 +39,6 @@ MANIFEST_VERSION = 1
 MANIFEST_LIMIT = 8 * 1024 * 1024
 ARTIFACT_LIMIT = 1024 * 1024 * 1024
 API_HOSTS = frozenset({'api.github.com', 'codeload.github.com'})
-ASSET_HOSTS = frozenset({'api.github.com', 'github.com', 'objects.githubusercontent.com', 'release-assets.githubusercontent.com'})
 RELEASE_PATTERN = re.compile(r'main-[0-9a-f]{40}(?:-[0-9a-f]{12})?')
 BACKUP_PATTERN = re.compile(r'main-deploy-\d+-[0-9a-f]{32}\.sqlite')
 
@@ -106,21 +107,20 @@ class ArtifactDeployment:
         self.config = config
         expected = {'repositoryUrl', 'releasesDirectory', 'currentLink', 'workDirectory', 'nodeBinDirectory',
                     'applicationConfigFile', 'applicationService', 'healthUrl', 'statusFile', 'backupDirectory',
-                    'artifactTagPrefix', 'artifactBranch', 'minimumFreeBytes', 'warningFreeBytes',
+                    'artifactTagPrefix', 'minimumFreeBytes', 'warningFreeBytes',
                     'keepReleases', 'keepBackups'}
         require(set(config) == expected, 'INVALID_DEPLOYMENT_CONFIG')
         source = urlsplit(config['repositoryUrl'])
         require(source.scheme == 'https' and source.hostname and not source.username and not source.password
                 and not source.query and not source.fragment, 'PUBLIC_HTTPS_REPOSITORY_REQUIRED')
         for key in expected - {'repositoryUrl', 'applicationService', 'healthUrl', 'artifactTagPrefix',
-                                'artifactBranch', 'minimumFreeBytes', 'warningFreeBytes',
+                                'minimumFreeBytes', 'warningFreeBytes',
                                 'keepReleases', 'keepBackups'}:
             require(isinstance(config[key], str) and Path(config[key]).is_absolute(), 'ABSOLUTE_DEPLOYMENT_PATH_REQUIRED')
         for key in ('minimumFreeBytes', 'warningFreeBytes', 'keepReleases', 'keepBackups'):
             require(isinstance(config[key], int) and not isinstance(config[key], bool) and config[key] > 0, 'INVALID_DEPLOYMENT_CONFIG')
         require(config['keepReleases'] >= 2 and config['warningFreeBytes'] >= config['minimumFreeBytes'], 'INVALID_DEPLOYMENT_CONFIG')
         require(re.fullmatch(r'[a-z][a-z0-9-]{0,31}', config['artifactTagPrefix']) is not None, 'INVALID_ARTIFACT_TAG_PREFIX')
-        require(re.fullmatch(r'[a-z][a-z0-9-]{0,31}', config['artifactBranch']) is not None, 'INVALID_ARTIFACT_BRANCH')
         require(re.fullmatch(r'[A-Za-z0-9_.-]+\.service', config['applicationService']) is not None, 'INVALID_APPLICATION_SERVICE')
         health = urlsplit(config['healthUrl'])
         require(health.scheme == 'https' and health.hostname in ('localhost', '127.0.0.1', '::1')
@@ -201,6 +201,7 @@ class ArtifactDeployment:
             response = urllib.request.urlopen(request, timeout=60, context=ssl.create_default_context())
         except urllib.error.HTTPError as error:
             if allow_missing and error.code == 404:
+                error.close()
                 return None
             self.log_failure('GITHUB_REQUEST_FAILED', '', str(error))
             raise DeploymentError('GITHUB_REQUEST_FAILED') from None
@@ -258,36 +259,36 @@ class ArtifactDeployment:
         assets = release.get('assets')
         require(release.get('tag_name') == tag and release.get('draft') is False and isinstance(assets, list)
                 and {asset.get('name') for asset in assets} >= {'manifest.json', 'runtime.tar.gz'}, 'INVALID_RELEASE_ASSETS')
-        return {name: asset for asset in assets for name in (asset.get('name'),) if name}
+        assets = {asset['name']: asset for asset in assets if asset.get('name') in ('manifest.json', 'runtime.tar.gz')}
+        for name, limit in (('manifest.json', MANIFEST_LIMIT), ('runtime.tar.gz', ARTIFACT_LIMIT)):
+            asset = assets[name]
+            require(re.fullmatch(r'sha256:[0-9a-f]{64}', str(asset.get('digest', ''))) is not None
+                    and isinstance(asset.get('size'), int) and 0 < asset['size'] <= limit, 'INVALID_RELEASE_ASSETS')
+        binding = re.findall(r'<!-- xunjie-artifact-v1 (\{[^\n]+\}) -->', release.get('body') or '')
+        require(len(binding) == 1, 'RELEASE_BINDING_REQUIRED')
+        try:
+            binding = json.loads(binding[0])
+        except ValueError:
+            raise DeploymentError('RELEASE_BINDING_REQUIRED') from None
+        require(isinstance(binding, dict) and set(binding) == {'commit', 'artifactCommit', 'manifestSha256', 'artifactSha256'}
+                and binding['commit'] == commit
+                and re.fullmatch(r'[0-9a-f]{40}', str(binding['artifactCommit'])) is not None
+                and assets['manifest.json']['digest'] == 'sha256:' + str(binding['manifestSha256'])
+                and assets['runtime.tar.gz']['digest'] == 'sha256:' + str(binding['artifactSha256']), 'RELEASE_BINDING_MISMATCH')
+        artifact_tag = self.config['artifactTagPrefix'] + '-artifact-' + binding['manifestSha256']
+        reference = self.github_json('https://api.github.com/repos/' + owner + '/' + repository + '/git/ref/tags/' + artifact_tag)
+        require(reference.get('ref') == 'refs/tags/' + artifact_tag
+                and reference.get('object', {}).get('type') == 'commit'
+                and reference['object'].get('sha') == binding['artifactCommit'], 'ARTIFACT_REFERENCE_MISMATCH')
+        return {'assets': assets, 'artifactCommit': binding['artifactCommit']}
 
-    def download_asset(self, asset, destination, limit, code):
-        require(isinstance(asset.get('url'), str) and isinstance(asset.get('size'), int)
-                and 0 < asset['size'] <= limit, code)
-        with self.github_open(asset['url'], accept='application/octet-stream', allow_hosts=ASSET_HOSTS) as response:
-            descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            try:
-                with os.fdopen(descriptor, 'wb') as output:
-                    total = 0
-                    while True:
-                        chunk = response.read(1024 * 1024)
-                        if not chunk:
-                            break
-                        total += len(chunk)
-                        require(total <= limit, code)
-                        output.write(chunk)
-            except Exception:
-                os.unlink(destination)
-                raise
-        return total
-
-    # The release asset CDN is unreachable from the host region, so the bytes
-    # travel through the CI-maintained artifact branch tarball on codeload.
-    # Integrity stays bound to the official manifest: the archive digest and
-    # per-file digests are verified right after this download.
-    def download_artifact_files(self, manifest_path, archive_path):
+    # The immutable artifact commit stays reachable through its content-addressed
+    # tag. Neither a concurrent publication nor a rollback can move this URL.
+    def download_artifact_files(self, manifest_path, archive_path, artifact_commit):
+        require(re.fullmatch(r'[0-9a-f]{40}', str(artifact_commit)) is not None, 'ARTIFACT_REFERENCE_MISMATCH')
         owner, repository = self.github_repository()
         url = ('https://codeload.github.com/' + owner + '/' + repository
-               + '/tar.gz/refs/heads/' + self.config['artifactBranch'])
+               + '/tar.gz/' + artifact_commit)
         bundle = self.work / ('bundle-' + uuid.uuid4().hex + '.tar.gz')
         try:
             with self.github_open(url, allow_hosts=API_HOSTS) as response:
@@ -382,7 +383,11 @@ class ArtifactDeployment:
                 continue
             manifest_path = child / 'deployment.json'
             manifest = read_json(manifest_path) if manifest_path.exists() else {}
+            verification_path = child / 'health-verified.json'
+            verification = read_json(verification_path) if verification_path.exists() else {}
             entries.append({'name': child.name, 'path': child, 'commit': manifest.get('commit'),
+                            'verified': bool(manifest.get('commit') and verification.get('commit') == manifest['commit']
+                                             and isinstance(verification.get('verifiedAt'), str)),
                             'pinned': (child / '.pinned').is_file(), 'modifiedAt': child.stat().st_mtime})
         return sorted(entries, key=lambda entry: entry['modifiedAt'], reverse=True)
 
@@ -392,7 +397,7 @@ class ArtifactDeployment:
         entries = self.release_entries()
         keep = 0
         for entry in entries:
-            if entry['path'] == current or entry['pinned'] or keep < self.config['keepReleases'] - 1:
+            if entry['path'] == current or entry['pinned'] or (entry['verified'] and keep < self.config['keepReleases'] - 1):
                 keep = keep + 1 if entry['path'] != current and not entry['pinned'] else keep
                 continue
             shutil.rmtree(entry['path'])
@@ -422,6 +427,10 @@ class ArtifactDeployment:
         for path in self.work.glob('staging-*'):
             if path.is_dir() and not path.is_symlink():
                 shutil.rmtree(path)
+        for pattern in ('bundle-*.tar.gz', 'artifact-*.tar.gz', 'manifest-*.json'):
+            for path in self.work.glob(pattern):
+                if path.is_file() and not path.is_symlink():
+                    path.unlink()
 
     # --- artifact verification -------------------------------------------------
 
@@ -565,6 +574,12 @@ class ArtifactDeployment:
         write_json(release / 'deployment.json', manifest)
         (release / 'deployment.json').chmod(0o644)
 
+    def mark_verified(self, release, manifest):
+        path = release / 'health-verified.json'
+        if not path.exists():
+            write_json(path, {'commit': manifest['commit'], 'verifiedAt': utc_now()})
+            path.chmod(0o644)
+
     def backup(self, current_release):
         application = self.read_application()
         directory = Path(self.config['backupDirectory'])
@@ -643,7 +658,10 @@ try{
 
     def status(self):
         self.read_only = True
-        remote = self.remote_commit()
+        try:
+            remote = self.remote_commit()
+        except (OSError, ValueError, DeploymentError):
+            remote = None
         manifest = self.deployed_manifest()
         deployed = manifest.get('commit')
         active = self.service_active()
@@ -658,7 +676,7 @@ try{
                 aligned = False
                 health = {'failed': error.code if isinstance(error, DeploymentError) else 'HEALTH_HTTP_FAILED'}
         artifact = None
-        if remote != deployed or not aligned:
+        if remote is not None and (remote != deployed or not aligned):
             try:
                 artifact = self.published_release(remote) is not None
             except (OSError, ValueError, DeploymentError):
@@ -678,7 +696,9 @@ try{
                                + self.config['applicationService'] + ' and the last deployment status')
             else:
                 actions.append('deployed release does not match its manifest: redeploy with the release tooling or roll back')
-        if remote != deployed:
+        if remote is None:
+            actions.append('GitHub main could not be checked: local business health is reported independently')
+        elif remote != deployed:
             if artifact:
                 actions.append('a published artifact for ' + remote + ' is waiting: run the deploy service or its timer')
             elif artifact is None:
@@ -707,6 +727,58 @@ try{
                              for entry in releases],
                 'lastDeployment': previous, 'actions': actions}
 
+    def monitor(self, settings, dry_run=False):
+        require(set(settings) == {'credentialsFile', 'groupId', 'dimensions', 'statusFile'}
+                and isinstance(settings['groupId'], str) and settings['groupId'].isdigit()
+                and isinstance(settings['dimensions'], dict) and settings['dimensions']
+                and all(isinstance(k, str) and isinstance(v, str) and re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', k)
+                        and re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', v) for k, v in settings['dimensions'].items())
+                and all(isinstance(settings[k], str) and Path(settings[k]).is_absolute()
+                        for k in ('credentialsFile', 'statusFile')), 'INVALID_MONITOR_CONFIG')
+        snapshot = self.status()
+        values = {'xunjie_application_healthy': int(snapshot['serviceActive'] and snapshot['health'] is not None
+                                                  and snapshot['health'].get('ready') == 'ready'),
+                  'xunjie_deployment_failed': int((snapshot['lastDeployment'] or {}).get('status') == 'failed'),
+                  'xunjie_disk_free_bytes': snapshot['disk']['freeBytes'],
+                  'xunjie_memory_available_bytes': snapshot['memoryAvailableBytes'],
+                  'xunjie_cpu_load_per_core': snapshot['loadAverage'][0] / snapshot['cpuCount']
+                      if snapshot['loadAverage'] and snapshot['cpuCount'] else None,
+                  'xunjie_github_reachable': int(snapshot['remoteCommit'] is not None)}
+        metrics = [{'MetricName': name, 'Value': value} for name, value in values.items() if value is not None]
+        result = {'status': 'dry-run' if dry_run else 'reported', 'at': utc_now(), 'metrics': metrics,
+                  'health': snapshot['health'], 'actions': snapshot['actions']}
+        if not dry_run:
+            credentials = read_json(settings['credentialsFile'])
+            require(set(credentials) == {'accessKeyId', 'accessKeySecret'}
+                    and all(isinstance(value, str) and value for value in credentials.values()), 'INVALID_MONITOR_CREDENTIALS')
+            dimensions = json.dumps(settings['dimensions'], sort_keys=True, separators=(',', ':'))
+            params = {'Action': 'PutCustomMetric', 'Version': '2019-01-01', 'Format': 'JSON',
+                      'AccessKeyId': credentials['accessKeyId'], 'SignatureMethod': 'HMAC-SHA1',
+                      'SignatureVersion': '1.0', 'SignatureNonce': uuid.uuid4().hex,
+                      'Timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+            for index, metric in enumerate(metrics, 1):
+                for key, value in {'MetricName': metric['MetricName'], 'GroupId': settings['groupId'], 'Type': '0',
+                                   'Dimensions': dimensions, 'Values': json.dumps({'value': metric['Value']}),
+                                   'Time': str(int(time.time() * 1000))}.items():
+                    params['MetricList.' + str(index) + '.' + key] = value
+            canonical = '&'.join(quote(key, safe='~') + '=' + quote(value, safe='~') for key, value in sorted(params.items()))
+            signing = ('POST&%2F&' + quote(canonical, safe='~')).encode()
+            params['Signature'] = base64.b64encode(hmac.new((credentials['accessKeySecret'] + '&').encode(), signing, hashlib.sha1).digest()).decode()
+            connection = http.client.HTTPSConnection('metrics.cn-beijing.aliyuncs.com', timeout=30, context=ssl.create_default_context())
+            try:
+                connection.request('POST', '/', urlencode(params), {'Content-Type': 'application/x-www-form-urlencoded'})
+                response = connection.getresponse()
+                payload = response.read(1024 * 1024 + 1)
+                require(response.status == 200 and len(payload) <= 1024 * 1024, 'CMS_REPORT_FAILED')
+                answer = json.loads(payload)
+                require(str(answer.get('Code')) == '200', 'CMS_REPORT_FAILED')
+            except (OSError, ValueError, http.client.HTTPException):
+                raise DeploymentError('CMS_REPORT_FAILED') from None
+            finally:
+                connection.close()
+            write_json(settings['statusFile'], result)
+        return result
+
     def apply(self):
         self.read_only = False
         previous = self.current_release()
@@ -715,6 +787,7 @@ try{
         switched = False
         backup = None
         commit = None
+        release = None
         try:
             commit = self.remote_commit()
             current_manifest = self.deployed_manifest()
@@ -722,7 +795,18 @@ try{
                 try:
                     require(self.service_matches_current(), 'RUNNING_RELEASE_MISMATCH')
                     self.probe_once(current_manifest)
+                    self.mark_verified(previous, current_manifest)
                     return {'status': 'unchanged', 'remoteCommit': commit, 'deployedCommit': commit, 'upToDate': True, 'serviceActive': True}
+                except (OSError, ValueError, DeploymentError, http.client.HTTPException):
+                    pass
+            # Adopt a legacy current release only after independently checking
+            # its running process, file shape and served assets. Candidates
+            # receive this marker only after the post-switch probe succeeds.
+            if current_manifest and self.service_active() and self.tree_shape_matches(previous, current_manifest):
+                try:
+                    require(self.service_matches_current(), 'RUNNING_RELEASE_MISMATCH')
+                    self.probe_once(current_manifest)
+                    self.mark_verified(previous, current_manifest)
                 except (OSError, ValueError, DeploymentError, http.client.HTTPException):
                     pass
             self.work.mkdir(parents=True, exist_ok=True, mode=0o755)
@@ -750,7 +834,11 @@ try{
             manifest_path = self.work / ('manifest-' + uuid.uuid4().hex + '.json')
             archive = self.work / ('artifact-' + uuid.uuid4().hex + '.tar.gz')
             try:
-                self.download_artifact_files(manifest_path, archive)
+                self.download_artifact_files(manifest_path, archive, release_assets['artifactCommit'])
+                for name, path in (('manifest.json', manifest_path), ('runtime.tar.gz', archive)):
+                    asset = release_assets['assets'][name]
+                    require(path.stat().st_size == asset['size'] and 'sha256:' + digest_file(path) == asset['digest'],
+                            'RELEASE_ASSET_DIGEST_MISMATCH')
                 manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
                 manifest = self.validate_manifest(manifest, commit, tree)
                 require(digest_file(archive) == manifest['artifactSha256'], 'ARTIFACT_DIGEST_MISMATCH')
@@ -775,6 +863,7 @@ try{
             self.restart_service()
             self.probe(manifest)
             require(self.service_matches_current(), 'RUNNING_RELEASE_MISMATCH')
+            self.mark_verified(release, manifest)
             pruned_releases = self.prune_releases()
             result = {'status': 'deployed', 'commit': commit, 'gitTree': manifest['gitTree'],
                       'artifactSha256': manifest['artifactSha256'], 'indexSha256': manifest['indexSha256'],
@@ -797,6 +886,9 @@ try{
                     rollback = 'previous_release_restarted'
                 except Exception:
                     rollback = 'failed'
+            if release is not None and release != previous and release != self.current_release() \
+                    and not (release / 'health-verified.json').exists() and not (release / '.pinned').exists():
+                shutil.rmtree(release)
             actual = self.deployed_manifest().get('commit')
             self.write_status({'status': 'failed', 'code': code, 'attemptedCommit': commit,
                                'deployedCommit': actual, 'rollback': rollback, 'backup': backup, 'at': utc_now()})
@@ -810,9 +902,16 @@ def main():
     parser.add_argument('--config', required=True)
     parser.add_argument('--status', action='store_true')
     parser.add_argument('--prune', action='store_true')
+    parser.add_argument('--monitor-config')
+    parser.add_argument('--dry-run', action='store_true')
     arguments = parser.parse_args()
     require(sys.platform == 'linux' and platform_module.machine() in ('x86_64', 'amd64') and os.geteuid() == 0, 'LINUX_ROOT_REQUIRED')
     deployment = ArtifactDeployment(read_json(arguments.config))
+    require(sum((arguments.status, arguments.prune, bool(arguments.monitor_config))) <= 1
+            and (not arguments.dry_run or arguments.monitor_config), 'EXCLUSIVE_OPERATION_REQUIRED')
+    if arguments.monitor_config:
+        print(json.dumps(deployment.monitor(read_json(arguments.monitor_config), dry_run=arguments.dry_run), separators=(',', ':')))
+        return
     if arguments.status:
         print(json.dumps(deployment.status(), separators=(',', ':')))
         return
