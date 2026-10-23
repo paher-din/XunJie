@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createPrivateKey, randomBytes, X509Certificate } from 'node:crypto';
-import { chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CliError } from './envelope.mjs';
 import { acquireLock } from './state.mjs';
@@ -117,17 +117,19 @@ export function ensureEnvironmentCertificate(envPaths, ca) {
   const certFile = join(envPaths.tls, 'cert.pem');
   if (!validAuthority(ca.keyFile, ca.certFile)) invalidAuthority('CA_INVALID');
   const authority = new X509Certificate(readFileSync(ca.certFile));
+  cleanLeafStaging(envPaths.tls);
   if (validLeaf(keyFile, certFile, authority)) return { keyFile, certFile, created: false };
   requireOpenssl();
   mkdirSync(envPaths.tls, { recursive: true, mode: 0o700 });
-  // Callers hold the environment lock. Generate and verify a replacement before
-  // touching the old leaf; an interrupted pair is repaired on the next up.
-  const temporary = mkdtempSync(join(envPaths.tls, '.initialize-'));
+  // Callers hold the environment lock. Exact reserved files (also recognized
+  // by managed delete) survive process death without unregistered directories.
+  // Validate a replacement before touching the old leaf; retry cleans staging
+  // even if publication completed just before the previous process died.
   try {
-    const stagedKey = join(temporary, 'key.pem');
-    const stagedCert = join(temporary, 'cert.pem');
-    const csrFile = join(temporary, 'request.csr');
-    const extensionFile = join(temporary, 'extensions.txt');
+    const stagedKey = join(envPaths.tls, 'key.pending.pem');
+    const stagedCert = join(envPaths.tls, 'cert.pending.pem');
+    const csrFile = join(envPaths.tls, 'request.csr');
+    const extensionFile = join(envPaths.tls, 'extensions.txt');
     writeFileSync(extensionFile, 'subjectAltName=IP:127.0.0.1,DNS:localhost\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n');
     openssl(['req', '-newkey', 'rsa:2048', '-keyout', stagedKey, '-out', csrFile, '-nodes', '-subj', '/CN=127.0.0.1']);
     openssl(['x509', '-req', '-in', csrFile, '-CA', ca.certFile, '-CAkey', ca.keyFile,
@@ -139,7 +141,34 @@ export function ensureEnvironmentCertificate(envPaths, ca) {
     renameSync(stagedKey, keyFile);
     renameSync(stagedCert, certFile);
     return { keyFile, certFile, created: true };
-  } finally { rmSync(temporary, { recursive: true, force: true }); }
+  } finally { cleanLeafStaging(envPaths.tls); }
+}
+
+function cleanLeafStaging(directory) {
+  function owned(file, isDirectory) {
+    let entry;
+    try { entry = lstatSync(file); }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    if (entry.isSymbolicLink() || !(isDirectory ? entry.isDirectory() : entry.isFile())
+      || (!isDirectory && entry.nlink !== 1) || (process.platform !== 'win32' && entry.uid !== process.getuid())) {
+      throw new CliError('certificates', 'CERTIFICATE_UNSAFE', 'TLS 暂存路径不是当前用户的普通单链接文件或真实目录，已保留现场。',
+        { recovery: '核对本环境 TLS 路径的类型与归属；不自动清理符号链接、外来目录或未知对象。' });
+    }
+    return true;
+  }
+  if (!owned(directory, true)) return;
+  // 096 used random directories without an ownership record. Their prefix or
+  // plausible PEM contents cannot prove provenance; never adopt or erase them.
+  for (const name of readdirSync(directory)) {
+    if (!name.startsWith('.initialize-')) continue;
+    owned(join(directory, name), true);
+    throw new CliError('certificates', 'CERTIFICATE_STAGING_UNREGISTERED', '发现旧版未登记的 TLS 暂存目录，无法证明归属，已保留现场。',
+      { recovery: '保留旧目录并核对其来源与归属；工具不会按 .initialize-* 前缀认领或删除。新生成流程使用固定受管暂存文件。' });
+  }
+  const files = ['key.pending.pem', 'cert.pending.pem', 'request.csr', 'extensions.txt']
+    .map(name => join(directory, name)).filter(file => owned(file, false));
+  // Audit all candidates before removing any file; never recurse into staging.
+  for (const file of files) rmSync(file, { force: true });
 }
 
 function validLeaf(keyFile, certFile, authority) {
