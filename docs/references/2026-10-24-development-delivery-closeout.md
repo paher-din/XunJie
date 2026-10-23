@@ -93,13 +93,17 @@ Windows 补验和清理完成后，负责人放行的实际 run 为 `6e9a5416-e0
 
 新增 Windows topup 使用独立 home/member、自有云任务，client `eb3d5fc`、实际 server `70d170a`。真实 Edge 严格 TLS 下完成保存 200、冻结 200、显式固定版本提交 200，并从学生 UI 读取教师反馈 revision 1。2026-10-23 20:52:57 UTC 在 gateway/Vite/SSH/Session 仍存活时发出 ready，负责人 20:54:35–20:54:37 UTC 撤销；原浏览器 Session 与自有 attempt 请求实际返回 `503 PERMISSION_REVOKED`，原 SSH 退出、supervisor stopped/retryable=false，重试计数 2 在后续 196.556 秒内稳定；原 key refresh 得到 `DEVICE_REVOKED`。没有观察到直接 backend 401；缓存页面和已显示反馈仍可读，云端数据访问已阻断。所有拒绝读回完成后才 teardown，未重放浏览器写入。
 
-Windows 最终 21:01:46 UTC 读回：自有进程、新增 CA trust、DB 载荷和敏感材料均为 0；专属 clone/邀请/identity/CA 目录已移除，永久锁守卫和共享历史保留。完整补验与 35 个引用证据校验见仓库外 `~/.codex/artifacts/xj133-windows-topup-20261024/topup-report.json`、`evidence-validation.json`；它们补充原报告，未重跑或改写原完整验收。真实节点、模型及教学效果不在该补验范围。`CLOUD-UI-01`（个人资料静态身份/本地来源文案与云首页不一致）作为 fresh 报告的未修观察保留，没有据此证明服务端泄漏。
+Windows topup 最终 21:01:46 UTC 读回：本次 topup 自有进程、新增 CA trust、DB 载荷和敏感材料均为 0；专属 clone/邀请/identity/CA 目录已移除，永久锁守卫和共享历史保留。这只覆盖 topup 专属范围，不包含旧 bulk 测试副本。完整补验与 35 个引用证据校验见仓库外 `~/.codex/artifacts/xj133-windows-topup-20261024/topup-report.json`、`evidence-validation.json`；它们补充原报告，未重跑或改写原完整验收。真实节点、模型及教学效果不在该补验范围。`CLOUD-UI-01`（个人资料静态身份/本地来源文案与云首页不一致）作为 fresh 报告的未修观察保留，没有据此证明服务端泄漏。
 
 ## 旧入口核对与清理边界
 
 活跃代码/文档扫描排除 `docs/archive/`、`node_modules/`、`dist/`。原 PowerShell 成员连接、旧本机宿主、源码构建 `sync-main.py` 与单元已退役；云端只读确认旧脚本不存在、`xunjie-main-sync.timer` 为 not-found。当前 `xunjie-release-deploy.timer`、备份 timers 与业务/接入服务保留。
 
 `tools/i0-cloud` 的业务宿主、正式旧协议发布器、备份和节点准备仍有实际用途，保留；`connection.mjs` 对既有批准 owner 配置的只读适配继续用于维护兼容，不恢复手工成员接入流程。仓库外连接 README 已改为当前 invite/join/use 入口，只改 XunJie 说明；owner SSH、accounts.private.txt、backup-recovery 及其他项目未改。用户原 root.zcode、无关分支和已 stopped 的 robert QEMU/WSL 不在清理范围。
+
+Nash 的旧 Windows 副本只读库存为 `~/.codex/artifacts/xj133-windows-residue-inventory.json`：`D:\xj126-shepherd-20261023\repo` 仍有24项已跟踪改动和19个未跟踪文件，未证明可丢，整个副本及依赖保留。Ubuntu 保持 Stopped，`/home/wubq/xj126-134-linux` 当前是否存在未知，未启动或挂载以补查。旧私有测试载荷的生命周期、目标 cwd/打开句柄覆盖仍有未知，独有日志及恢复证据已列出并在原位置保留；不能宣称 Windows 旧 bulk 测试副本已全部清干净。清理仅覆盖可证明属于本轮且已无用的对象，保留未提交内容符合当前范围。
+
+库存本身遗留的 probe PID38920 经创建时间、可执行文件、父子关系和自有代码摘要核对后精确终止，launcher PID48992 随后也读回 gone；未触碰 parent PID47464、产品进程或 WSL，没有删除 Windows 文件。独立收尾回执 `~/.codex/artifacts/xj133-windows-residue-inventory-self-cleanup.json` 保留两次尝试及最终 gone 读回，原库存和证据未改。此处仅确认这两个库存进程的结束，不据此推断未知旧载荷或句柄已消失；通用 SSH、有效恢复材料、用户 root.zcode 和无关分支继续保留。
 
 本轮已清理自己创建的隔离进程和明文恢复目录。之后以全新 file-only 临时成员经同一持久服务完成公开 CLI invite/join，再真实 fetch 原已发布编号；`cacheHit:false`、6,273,409 bytes、完整摘要与原包一致，未手传 ZIP。该 smoke 不创建 SSH/应用账号或受管后台进程，不执行 restore/verify；结束只撤销自己新建的成员并删除专属私有 home/下载缓存。证据为 `post-cleanup-smoke.json`，共享包和基线保留。
 
