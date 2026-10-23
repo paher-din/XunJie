@@ -13,6 +13,12 @@ function readJson(bytes, label) {
   try { return JSON.parse(bytes.toString('utf8')); } catch { throw reproError('INVALID_MANIFEST', `${label} 不是有效 JSON。`); }
 }
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+function requireLocal(context) {
+  const selection = join(context.env.root, 'selection.json');
+  if (existsSync(selection) && readJson(readFileSync(selection), 'selection').mode !== 'local') {
+    throw reproError('LOCAL_DATA_REQUIRED', '本地复现采集只读取本工作树的独立业务库；先显式 use local，不采集或冒充云端现场。');
+  }
+}
 export function loadReproContext(file) {
   if (!existsSync(file)) throw reproError('RESOURCE_MISSING', '采集 context 文件不存在。');
   if (lstatSync(file).isSymbolicLink() || !lstatSync(file).isFile()) throw reproError('UNSAFE_PATH', 'context 必须是普通文件。');
@@ -95,6 +101,7 @@ export async function captureRepro(context, { contextFile, out }) {
     if (previous.package.manifest.requestDigest !== requestDigest) throw reproError('PACKAGE_EXISTS', '目标 ZIP 已属于另一采集请求，请使用新文件名。');
     return { ...previous, reused: true };
   }
+  requireLocal(context);
   const lock = acquireLock(context.env);
   const scratch = mkdtempSync(join(context.env.root, 'repro-capture-'));
   try {

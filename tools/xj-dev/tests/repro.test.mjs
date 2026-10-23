@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import { ARCHIVE_LIMITS, decodeZip, digest, encodeZip, jsonBytes, safeEntry } from '../src/repro-archive.mjs';
 import { assertShareable, collectCode, git, restoreCode, validateCodePaths } from '../src/repro-code.mjs';
-import { inspectRepro, lockfileDigest } from '../src/repro.mjs';
+import { captureRepro, inspectRepro, lockfileDigest } from '../src/repro.mjs';
 
 const worktree = resolve(import.meta.dirname, '../../..');
 function scratch(t) {
@@ -45,6 +45,14 @@ test('lock conditions normalize only CRLF while source paths reject casefold and
   assert.notEqual(digest(lf), digest(crlf));
   assert.notEqual(lockfileDigest(lf), lockfileDigest(Buffer.from('{\n  "version": "2"\n}\n')));
   for (const paths of [['File.ts', 'file.ts'], ['A', 'a/b.ts'], ['.GIT/config']]) assert.throws(() => validateCodePaths(paths), { code: 'UNSAFE_PATH' });
+});
+
+test('capture refuses to present a retained local database as the currently selected cloud scene', async t => {
+  const root = scratch(t), contextFile = join(root, 'context.json'), out = join(root, 'scene.zip');
+  writeFileSync(join(root, 'selection.json'), JSON.stringify({ mode: 'cloud-api' }));
+  writeFileSync(contextFile, JSON.stringify({ formatVersion: 'xj-repro-context/1', scenario: { title: 'scene', start: 'before-trigger', steps: ['manual'], expected: 'expected', observed: 'observed' } }));
+  await assert.rejects(() => captureRepro({ env: { root } }, { contextFile, out }), { code: 'LOCAL_DATA_REQUIRED' });
+  assert.equal(existsSync(out), false);
 });
 
 test('real repository default roots can produce a portable bundle (including existing synthetic fixtures)', t => {

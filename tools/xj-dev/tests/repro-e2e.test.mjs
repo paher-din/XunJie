@@ -1,7 +1,7 @@
 // Real local business API in two Git worktrees; no execution/model/network-service substitute.
 import assert from 'node:assert/strict';
 import { request } from 'node:https';
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
@@ -41,7 +41,13 @@ test('capture before stale-editor save; restore actual code/data to another work
   const receivers = [], targets = [];
   t.after(async () => {
     for (const context of [source, ...receivers]) await down(context);
-    for (const target of targets) if (existsSync(target)) git(worktree, ['worktree', 'remove', '--force', target]);
+    for (const target of targets) if (existsSync(target)) {
+      for (const app of ['student', 'teaching']) {
+        const dependencies = join(target, 'apps', app, 'node_modules');
+        if (existsSync(dependencies) && lstatSync(dependencies).isSymbolicLink()) unlinkSync(dependencies);
+      }
+      git(worktree, ['worktree', 'remove', '--force', target]);
+    }
     if (previousHome === undefined) delete process.env.XJ_DEV_HOME; else process.env.XJ_DEV_HOME = previousHome;
     rmSync(root, { recursive: true, force: true, maxRetries: 3 });
   });
@@ -97,6 +103,14 @@ test('capture before stale-editor save; restore actual code/data to another work
     assert.equal(result.status, step.expect.status, JSON.stringify(result.body));
     if (step.expect.errorCode) assert.equal(result.body.error.code, step.expect.errorCode);
   }
+  if (process.env.XJ_REPRO_EXPORT_DIR) {
+    mkdirSync(process.env.XJ_REPRO_EXPORT_DIR, { recursive: true });
+    copyFileSync(file, join(process.env.XJ_REPRO_EXPORT_DIR, 'mac-scene.zip'));
+    writeFileSync(join(process.env.XJ_REPRO_EXPORT_DIR, 'source-result.json'), JSON.stringify({
+      packageDigest: captured.package.digest, platform: process.platform, node: process.version,
+      source: 'real-local-business-https', results: [[200, null], [409, 'VERSION_CONFLICT']], capturedBeforeTrigger: true,
+    }, null, 2));
+  }
   const retry = await captureRepro(source, { contextFile, out: file });
   assert.equal(retry.reused, true); assert.equal(retry.package.digest, captured.package.digest, 'retry does not collect the post-trigger scene');
 
@@ -134,6 +148,15 @@ test('capture before stale-editor save; restore actual code/data to another work
       const bad = join(root, `bad-${field}.zip`); writeFileSync(bad, resign(modified));
       await assert.rejects(() => restoreRepro(source, { file: bad, target: join(root, `target-${field}`) }), { code });
       assert.equal(existsSync(join(root, `target-${field}`)), false);
+    }
+    for (const kind of ['lock', 'schema']) {
+      const modified = decodeZip(readFileSync(file)), manifest = JSON.parse(modified.get('manifest.json'));
+      if (kind === 'lock') manifest.conditions.lockfiles['apps/student/package-lock.json'] = digest('different dependency');
+      else manifest.data.schema = digest('incompatible schema');
+      modified.set('manifest.json', jsonBytes(manifest));
+      const bad = join(root, `bad-${kind}.zip`); writeFileSync(bad, resign(modified));
+      await assert.rejects(() => restoreRepro(source, { file: bad, target: join(root, `target-${kind}`) }), { code: kind === 'lock' ? 'LOCKFILE_MISMATCH' : 'SCHEMA_MISMATCH' });
+      assert.equal(existsSync(join(root, `target-${kind}`)), false);
     }
     const modified = decodeZip(readFileSync(file)); modified.delete('code/source.bundle');
     const missing = join(root, 'missing.zip'); writeFileSync(missing, resign(modified));
