@@ -71,6 +71,14 @@ async function prepareRemote(context, mode, options, log) {
     for (const [name, port] of [['gateway', ports.gateway], ['connection', ports.backend], ...(mode === 'cloud-api' ? [['vite', ports.vite]] : [])]) await freePort(ctx, name, port);
     const ca = ensureCertificateAuthority(context.home);
     const certificate = ensureEnvironmentCertificate(ctx.env, ca);
+    if (certificate.created && componentRunning(ctx.env, 'gateway').running) {
+      log('环境证书已更新，重启本环境 gateway（数据与入口保持原样）');
+      const stopped = await stopComponent(ctx.env, 'gateway');
+      if (['stop-failed', 'skipped-foreign'].includes(stopped.result)) {
+        throw new CliError('certificates', 'GATEWAY_RESTART_REQUIRED', '无法安全重启持有旧证书的 gateway。',
+          { recovery: '在同一工作树、instance 与模式执行 down 后 up；保留原 CA 和环境数据，不接管外来进程。' });
+      }
+    }
     for (const name of ['connection', 'vite', 'gateway']) if (!componentRunning(ctx.env, name).running) created.push(name);
     const connection = await startConnection(ctx, c, runtime, ports.backend);
     if (mode === 'cloud-api') {
@@ -88,7 +96,15 @@ async function prepareRemote(context, mode, options, log) {
       spawnComponent(ctx.env, 'gateway', runtime.path, ctx.repo.gatewayScript, ['--config', configFile], { envId: ctx.id });
     }
     const { get } = await import('node:https');
-    await waitHttp(() => new Promise(done => { const req = get(`https://127.0.0.1:${ports.gateway}/health/ready`, { ca: readFileSync(ca.certFile) }, res => { res.resume(); done(res.statusCode === 200); }); req.on('error', () => done(false)); req.setTimeout(1500, () => req.destroy()); }), 'HTTPS gateway');
+    await waitHttp(() => new Promise((done, reject) => {
+      const req = get(`https://127.0.0.1:${ports.gateway}/health/ready`, { ca: readFileSync(ca.certFile), rejectUnauthorized: true }, res => { res.resume(); done(res.statusCode === 200); });
+      req.on('error', error => {
+        if (/CERT|TLS|SELF_SIGNED|UNABLE_TO_VERIFY/.test(error.code ?? '')) reject(new CliError('certificates', 'GATEWAY_TLS_INVALID', '运行中的 gateway 未通过本环境 CA 的 HTTPS 校验。',
+          { recovery: '在同一工作树、instance 与模式执行 down 后 up，重新加载已修复证书；保留原 CA 和环境数据。' }));
+        else done(false);
+      });
+      req.setTimeout(1500, () => req.destroy());
+    }), 'HTTPS gateway');
     mkdirSync(ctx.env.browserProfile, { recursive: true });
     state = { version: 1, mode, envId: ctx.id, ports, worktree: ctx.worktree, connectionFile: c.file, identityFile: c.identityFile, target: c.id, browserOrigin: c.browserOrigin, business: connection.business, createdAt: state?.createdAt ?? new Date().toISOString() };
     saveState(ctx.env, state);

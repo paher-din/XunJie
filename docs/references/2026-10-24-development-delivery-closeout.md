@@ -8,11 +8,12 @@
 | --- | --- | --- |
 | CA 使用说明 | `eaa60ca`：Mac 用户 login keychain、Windows LocalMachine Root 的权限/系统确认、指纹读回与精确移除；跳过 HTTPS 校验不计通过 | fresh Mac 的实际系统信任确认仍在处理；不以证书存在代替正常 Chromium TLS |
 | 工程观测 | `c0225bc`：已有日志 sink 启用时，仅记录服务端 requestId/method/注册 route 模板/status/durationMs；metrics/errors 9/9 | 五人持续负载与延迟结论由容量报告提供 |
-| 加密备份工具 | `2393b66`：10/10，含活跃 WAL、命名多库、同名配置、凭据解密、密钥排除、错误输入与版本 1 归档恢复 | 本轮新归档的负责人 Mac 独立恢复 |
+| 加密备份工具 | `2393b66`、`72b3250`、`6e9e52a`：11/11，含活跃 WAL、命名多库、同名配置、凭据解密、密钥排除、损坏库拒绝与版本 1 归档恢复；Linux 跨文件系统实际恢复 71 文件/6 库通过并清理 | 损坏库保护的新脚本安装与最终 scope 采集等测量窗口结束 |
 | 云端隔离恢复 | 71 文件、6 库 integrity/FK 通过；5 个模型凭据、15 个 access 凭据、6 个 active SSH 映射与 3 对 TLS key/cert 核对通过；独立端口真实登录/课程读取通过 | 最终 runtime/config 稳定后的新归档及独立设备复核 |
 | 实际产品隔离 | CI `40006389514`、source `c896c520a64a40b6860dce279692be5f0481115c`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200 | 这验证 Linux CI runtime；不代表另一个未发布的普通用户安装包 |
-| fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；Windows 严格 TLS 本地页面与双角色登录通过 | Windows 默认 OpenSSH 签名已交专属修复会话；完整跨机最终结果待修复后验收 |
-| 采集默认源码 | 新 metrics 测试中的静态秘密字段 canary 被现有 guard 拒绝，Mac 直接扫描与 Windows baseline publish 均复现 | 交 metrics 作者修测试 fixture，保留原秘密拒绝规则；不能以缩小 roots 计默认路径通过 |
+| fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；Windows 严格 TLS、本地双角色保存/提交/反馈闭环及原 key join 通过 | fresh Windows 新基线、云模式与跨机复现的最终回执仍待齐备 |
+| 采集默认源码 | 静态 canary 引起的拒绝已由作者 `2e23535` 改为运行时生成，guard 未改；独立 metrics/errors 9/9，组合默认采集 833 文件通过，Windows 原 context 默认 baseline publish 通过 | fresh 平台完整新副本与跨机最终回执继续收集 |
+| Windows 签名 | `496493a`：worker Mac 21/21、Windows 默认 PATH 7/7；lead 独立 client/signer 18/18；实际旧 client 失败后 fixed CLI 原 key join 成功，无 PATH 修改；fresh Windows 原邀请/home/key join 亦通过 | 不修改 Linux access 服务；完整成员流程单独记录 |
 | 真实模型/执行 | 新候选模型 store/key 已独立准备，原个人配置保持 | 两次真实模型调用、五人 ≥900 秒与传输/故障边界由容量验收记录；本票未启动原 robert QEMU/WSL 节点 |
 | 教学效果 | 未测 | 不由工程或模型可调用性推导 |
 
@@ -23,6 +24,10 @@
 云端归档 `closeout133-20261023T185305Z-204247a0.xunjiebak` 为 558,241 bytes，SHA256 `907024a2cbe131db2b47d9ca7b5253289aee2d9a04b52c2371bd5e34e512a154`。它包含 71 个文件、6 个经 Backup API 复制并校验的 SQLite 库；加密 key 本身不在归档中。独立恢复使用新的目录、业务端口 18444 和 account socket，模型网络调用关闭、执行节点为空；实际 `/health/ready`、登录、session、课程读取均 200，所属进程已停止。
 
 3 个模型存储的凭据解密计数为原正式 3、原候选 0、新候选 2。access 对应 key 能解密 15 个成员凭据，核对 6 个 active account-control 身份及 5 个 deny 状态；这些是该次采集的观察数，不是永久成员清单。6 个 active SSH 映射与 helper 回执核对，TLS 私钥/证书匹配且 access CA 验签通过。每个库独立一致，配置/公钥映射分别采集；这些关系在该次恢复中通过，不等于跨存储原子快照。
+
+负责人 Mac 已独立验证同一归档：71 个文件 SHA 全匹配，6 库 integrity/FK、4 个凭据 key 长度和 3 对 TLS key/cert 通过，明文已清理。加密归档与独立受限 key 副本保留在 backup-recovery；证据为 `main-mac-independent-verification.json`、`main-mac-independent-restore.json`。
+
+这份归档采集于切换前，业务 source 为 `fb5830e`；新 capacity 模型是当时的准备材料，不据目录存在宣称已激活。之后新建的 `133-runtime.conf` 与最终容量 budget dropin 尚未在此归档中。最终 scope 必须从运行中 unit 的 effective ExecStart/DropInPaths、实际配置、source 与 limits 读回，连同 dropin 原路径映射再采集新归档；不得用旧归档声称恢复了新 runtime/预算。
 
 成员私钥仅在成员设备。access CA signing key 留在 owner 本机受限目录，不在服务器归档；服务器归档包含现行公开 CA、TLS leaf 私钥和证书。保留 owner 独立受限副本或重新签发/邀请的恢复策略，不能声称从服务器备份恢复了成员私钥或 owner CA signing key。
 

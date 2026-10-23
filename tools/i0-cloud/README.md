@@ -71,7 +71,7 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 
 `backup-retained.mjs` 把课程库（SQLite Backup API 一致副本，前后做 integrity/外键检查）、个人模型存储目录（库文件一致副本 + 密钥材料原样复制，排除源库 WAL/SHM/journal）和 `extraFiles`（签名密钥、TLS 材料、应用配置）打成 tar 后以 AES-256-GCM 加密写入 `outputDirectory`，文件名 `<label>-<时间>-<随机>.xunjiebak`（0600）。密钥应另存独立设备的受限副本（例如负责人 Mac 的 `~/.config/xunjie-cloud/backup-recovery/`，目录 0700、文件 0600）；这不等于已保存离线介质。仅保存在同一服务器不能支持整机丢失后的恢复。密钥取自维护者独享的 key file（`openssl rand 32` 生成，保存在仓库与备份目标之外），私钥与密钥内容不进入日志或输出。
 
-现有配置字段保持兼容；[配置示例](backup.example.json)新增 `databases`、`directories`、`recoveryFiles`，每项为 `{ "source": "绝对源路径", "path": "归档内相对路径" }`。它们分别用于显式登记活跃库、带模型 store/key 的目录及非数据库恢复材料；不同服务的同名 `service.json`/`application.json` 应放在不同归档路径，重复或越界路径拒绝。目录内按 SQLite 文件头识别数据库（不依赖扩展名），统一使用 Backup API 并排除 WAL/SHM/journal；`extraFiles`/`recoveryFiles` 不允许裸复制数据库或日志。symlink/特殊对象拒绝，备份加密 key 本身及其硬链接禁止进入归档。目录只列维护者核定的恢复材料，不递归打包整个 `/etc` 或成员 home。
+现有配置字段保持兼容；[配置示例](backup.example.json)新增 `databases`、`directories`、`recoveryFiles`，每项为 `{ "source": "绝对源路径", "path": "归档内相对路径" }`。它们分别用于显式登记活跃库、带模型 store/key 的目录及非数据库恢复材料；不同服务的同名 `service.json`/`application.json` 应放在不同归档路径，重复或越界路径拒绝。目录内按 SQLite 文件头与 `.sqlite/.sqlite3/.db` 后缀识别数据库，统一使用 Backup API 并排除 WAL/SHM/journal；损坏或创建中的库明确失败，不降为普通文件。`extraFiles`/`recoveryFiles` 不允许裸复制数据库或日志。symlink/特殊对象拒绝，备份加密 key 本身及其硬链接禁止进入归档。目录只列维护者核定的恢复材料，不递归打包整个 `/etc` 或成员 home。
 
 完整恢复清单应包括：正式课程库/原个人模型、活跃候选业务库/个人模型 store 与对应 key、account-control registry/config、access SQLite 与对应 `credential.key`、应用签名/TLS/CA 配置、服务单元、受管 SSH 映射与固定 helper/回执。实际路径按当前持久服务核定，示例不是可直接部署配置。成员设备私钥只在成员本机，服务器归档不包含它；服务器持有的受管公钥映射可备份。短期签名 URL、当前 socket/PID、活跃 WAL 不作为恢复材料。
 

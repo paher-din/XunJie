@@ -15,11 +15,45 @@ export const baselineAccounts = [
 
 export function baselineAccountsFor(envPaths) {
   if (!existsSync(envPaths.baselineFile)) return baselineAccounts;
-  const record = JSON.parse(readFileSync(envPaths.baselineFile, 'utf8'));
-  if (!Array.isArray(record.accounts) || record.accounts.some(a => typeof a.loginName !== 'string' || !['teacher', 'student'].includes(a.role))) {
-    throw new CliError('baseline', 'BASELINE_MARKER_INVALID', '基线账号标记无效。', { recovery: '检查 data/baseline.json，不覆盖已有数据。' });
+  return readBaselineRecord(envPaths).accounts;
+}
+
+function incompleteBaseline(code, message) {
+  return new CliError('baseline', code, message, {
+    recovery: '保留数据库与已有凭据，检查 data/baseline.json 和 secrets/baseline-accounts.json；从可信备份恢复缺失材料，不自动重置已有账号或数据。',
+  });
+}
+
+function validAccounts(accounts) {
+  return Array.isArray(accounts) && accounts.length > 0
+    && accounts.every(a => a && typeof a.loginName === 'string' && a.loginName.length > 0 && ['teacher', 'student'].includes(a.role))
+    && new Set(accounts.map(a => a.loginName)).size === accounts.length;
+}
+
+function readBaselineRecord(envPaths) {
+  if (!existsSync(envPaths.baselineFile)) {
+    throw incompleteBaseline('BASELINE_MARKER_MISSING', '数据库已存在但缺少基线标记（data/baseline.json），无法确认基线版本与归属。');
   }
-  return record.accounts;
+  let record;
+  try { record = JSON.parse(readFileSync(envPaths.baselineFile, 'utf8')); } catch { /* report no file contents */ }
+  if (!record || typeof record.version !== 'string' || !record.version || !validAccounts(record.accounts)) {
+    throw incompleteBaseline('BASELINE_MARKER_INVALID', '基线版本或账号标记无效。');
+  }
+  return record;
+}
+
+function readCredentials(envPaths, accounts) {
+  if (!existsSync(envPaths.baselineCredentials)) {
+    throw incompleteBaseline('BASELINE_CREDENTIALS_MISSING', '基线缺少登录凭据，不能将现有数据库视为初始化完成。');
+  }
+  let credentials;
+  try { credentials = JSON.parse(readFileSync(envPaths.baselineCredentials, 'utf8')); } catch { /* never include secret input */ }
+  if (!validAccounts(credentials) || credentials.length !== accounts.length
+    || credentials.some(a => typeof a.password !== 'string' || !a.password.length
+      || !accounts.some(expected => expected.loginName === a.loginName && expected.role === a.role))) {
+    throw incompleteBaseline('BASELINE_CREDENTIALS_INVALID', '基线登录凭据无效或与账号标记不一致。');
+  }
+  return credentials;
 }
 
 const manifest = {
@@ -51,14 +85,23 @@ async function login(app, loginName, password) {
 
 export async function ensureBaseline(teachingDir, envPaths, log) {
   if (existsSync(envPaths.database)) {
-    if (!existsSync(envPaths.baselineFile)) {
-      throw new CliError('baseline', 'BASELINE_MARKER_MISSING',
-        '数据库已存在但缺少基线标记（data/baseline.json），无法确认该数据的基线版本与归属。',
-        { recovery: '保留现场；有有效环境登记时显式 xj-dev delete 后 up 重新建立基线，无有效登记时先检查归属，不手工删除环境根或永久锁。' });
-    }
-    const record = JSON.parse(readFileSync(envPaths.baselineFile, 'utf8'));
+    const record = readBaselineRecord(envPaths);
+    readCredentials(envPaths, record.accounts);
     return { created: false, version: record.version };
   }
+  if (existsSync(envPaths.database + '-wal') || existsSync(envPaths.database + '-shm')) {
+    throw incompleteBaseline('BASELINE_INCOMPLETE', '数据库缺失但仍有 SQLite 现场文件，不能自动重建。');
+  }
+  if (existsSync(envPaths.baselineFile)) {
+    const record = readBaselineRecord(envPaths);
+    if (record.version !== BASELINE_VERSION || record.source
+      || record.accounts.length !== baselineAccounts.length
+      || !record.accounts.every(a => baselineAccounts.some(expected => expected.loginName === a.loginName && expected.role === a.role))) {
+      throw incompleteBaseline('BASELINE_INCOMPLETE', '已有基线标记不属于待完成的本地初始化，不能自动重建。');
+    }
+    readCredentials(envPaths, record.accounts);
+  }
+  const savedCredentials = existsSync(envPaths.baselineCredentials) ? readCredentials(envPaths, baselineAccounts) : undefined;
   const importFromTeaching = module => import(pathToFileURL(join(teachingDir, module)).href);
   const { createApplicationDatabase } = await importFromTeaching('server/db/transaction.ts');
   const { initializeSyntheticApplication } = await importFromTeaching('server/app/initialize.ts');
@@ -72,12 +115,18 @@ export async function ensureBaseline(teachingDir, envPaths, log) {
   mkdirSync(envPaths.data, { recursive: true });
   mkdirSync(envPaths.secrets, { recursive: true, mode: 0o700 });
   log('首次启动：构造固定最小基线（账号、课程、任务、作品草稿）');
-  const credentials = baselineAccounts.map(account => ({ ...account, password: randomBytes(12).toString('hex') }));
+  const credentials = baselineAccounts.map(account => ({ ...account,
+    password: savedCredentials?.find(saved => saved.loginName === account.loginName).password ?? randomBytes(12).toString('hex'),
+  }));
   const versions = { modelConfig: 'unconfigured', prompt: 'unconfigured', schema: 'unconfigured', policy: 'unconfigured' };
   const node = support.syntheticNode();
   const cNode = support.controlledRunner();
   let db;
   try {
+    // Persist random passwords before seeding. An interrupted retry reuses them;
+    // the final DB rename is the publication point for a complete baseline.
+    if (!savedCredentials) writeJsonAtomic(envPaths.baselineCredentials,
+      credentials.map(({ loginName, role, password }) => ({ loginName, role, password })));
     db = createApplicationDatabase(seedingFile, 'digital-logic-review-application');
     await initializeSyntheticApplication({ ...manifest, accounts: credentials.map(({ role: _role, ...account }) => account) },
       { runner: cNode.transport, hdlTransport: node.transport }, [support.runtime], db);
@@ -113,8 +162,6 @@ export async function ensureBaseline(teachingDir, envPaths, log) {
     db.close();
     db = undefined;
     renameSync(seedingFile, envPaths.database);
-    writeJsonAtomic(envPaths.baselineCredentials,
-      credentials.map(({ loginName, role, password }) => ({ loginName, role, password })));
     return { created: true, version: BASELINE_VERSION };
   } catch (error) {
     if (db) db.close();
