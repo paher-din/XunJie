@@ -49,6 +49,7 @@ def install(config):
             run('/usr/sbin/groupadd', '--system', group)
     KEYS.mkdir(parents=True, exist_ok=True, mode=0o755)
     KEYS.parent.chmod(0o755)
+    KEYS.chmod(0o755)
     opens = '    PermitOpen ' + ' '.join('127.0.0.1:' + str(port) for port in config['applicationPorts'])
     common = f'''    AuthenticationMethods publickey
     PasswordAuthentication no
