@@ -1,6 +1,6 @@
 # 开发协作工具：Agent 操作、复现包与产品隔离
 
-更新：2026-10-23。状态：本地全栈闭环已由 `tools/xj-dev` 交付（诊断/启动/状态/停止，HTTPS 单一入口 + 独立数据基线）；成员接入、复现包与 `use` 切换仍未实现。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
+更新：2026-10-23。状态：`tools/xj-dev` 提供本地全栈、三模式切换及受管页面/登记节点连接；平台与真实连接的验收范围见其 README。成员接入与复现包另按对应实施票交付。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
 
 ## 新 Agent 的工具入口
 
@@ -11,9 +11,9 @@
 | 前端准备预览：`npm run dev:prep` | 在 `apps/student/` 按锁文件安装依赖；使用项目要求的 Node 24。见 [package.json](../apps/student/package.json)、[运行说明](../apps/student/README.md) | 使用合成数据预览页面；不是完整本地业务后端，不连接真实执行节点或模型 |
 | 真实前端开发：`npm run dev` | 同一工程；核对 [Vite 配置](../apps/student/vite.config.ts) 的来源与 API 接线 | 当前只启动前端，源码尚无 API 代理；单独启动此命令不能宣称已经连上本地或云端后端 |
 | 后端构建/启动：`npm run build`、`npm start` | 在 `apps/teaching/` 使用 [package.json](../apps/teaching/package.json) 声明的精确 Node 版本及锁文件；核对[启动入口](../apps/teaching/server/main.ts)的业务配置条件 | 普通无业务配置启动仅提供基础健康服务；完整课程服务需要明确的配置与初始化数据，不能把进程启动或健康响应当作本地课程环境已准备好 |
-| 云端页面转发：`connect.ps1` | [云工具 README](../tools/i0-cloud/README.md)；`-Help` 查看帮助。连接需要获准的 `IdentityFile`、`ConnectionFile` 和主机信任材料 | 接入现有云端页面/API；不上传本地代码、不创建成员、不自动重连。脚本使用 Windows 网络命令，不能仅因安装了 PowerShell 就宣称 macOS 可用 |
-| 已登记执行节点回连：`connect-node.ps1` | 同一 README 和 `-Help`；另需已准备并登记的节点、端口与身份 | 连接既有执行节点，不负责安装 VM、初始化节点或决定未来产品执行方案 |
-| `xj-dev` 本地全栈 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | 已实现 doctor/up/status/down：本工作树独立环境的 Vite 热更新 + 真实后端 + HTTPS 网关 + 固定最小基线；不提供执行节点与模型调用，成员接入、复现包与 `use` 切换仍待实现 |
+| 云端页面与 API：`xj-dev use cloud/cloud-api` | [模式与连接](../tools/xj-dev/README.md#模式与受管连接)；需要获准的配置、SSH 私钥、主机 pin 与 HTTPS CA | 受管连接恢复、固定入口与 Cookie 隔离；不上传代码、创建成员或部署 |
+| 已登记节点：`xj-dev node connect/status/disconnect` | 同一 README；另需已准备并登记的节点、端口与身份 | 迁移原回连能力；不安装 VM、初始化节点、重发或改派任务，隧道成功与执行业务验收分开报告 |
+| `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down、use、node；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
 
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 
@@ -35,7 +35,7 @@
 
 ## 切换本地与云端
 
-用一个 `use` 入口选择运行配置；新工作树默认 `local`，已经使用的工作树保留上次选择。`up` 启动或恢复所选配置。以下均是待实现接口。
+用 `use` 选择模式；新工作树默认 `local`，已经使用的工作树保留上次选择。`up` 启动或恢复所选模式；`down` 停止该工作树登记的各模式进程，保留所有数据。首次云端切换传 `--connection <获准配置文件>`，之后复用已记录路径。
 
 | 对 Agent 说 | 建议接口 | 页面和数据的实际去向 |
 | --- | --- | --- |
@@ -47,11 +47,13 @@
 
 切换配置不复制或合并数据库，也不自动更新数据基线。回到本地后继续使用原本地副本；云端模式中的修改仍留在共享集成库。开启 `cloud` 与将代码部署到云端是两个独立动作。
 
-运行配置绑定明确的浏览器身份、HTTPS 来源和数据目标。不能在旧页面仍可发请求时，将同一个入口的后端从本地库悄悄改到云端库。工具对自己管理的页面核对待保存状态后重新打开对应入口；保存未完成时保留现场并报告，不自动把草稿发到另一环境。已有后台任务不因切换自动取消，停止服务另行管理。
+运行配置绑定明确的浏览器身份、HTTPS 来源和数据目标。不能在旧页面仍可发请求时，将同一个入口的后端从本地库悄悄改到云端库。工具返回目标入口，旧页面及未保存状态留在原来源；不自动把草稿发到另一环境。已有后台任务不因切换自动取消，停止服务另行管理。
 
-当前云端只认可配置中的精确 Origin，且云宿主限制回环主机名；不能任意换个端口就宣称云端联调可用。首版让云端两种视图复用被认可的入口，并管理本工具拥有的隧道/页面代理；它们可按入口资源互斥切换，不承诺任意并行。本地全栈使用独立来源与浏览器身份。只更换端口不足以隔离 Cookie。
+各模式和连接目标分配固定入口，旧页面保持原目标，可同时打开。所有本地网关对 Cookie 使用环境/模式专属 `__Host-` 名称，转发时仅接受本入口的会话；不能用端口代替 Cookie 隔离。独立浏览器 profile 路径也会输出，供 Agent 显式打开。
 
-网关对浏览器保持同源：本地开发资源和 HMR 到 Vite，`/api/*`、`/health/live`、`/health/ready` 到选定后端。实现时保留 Origin、Cookie 和 CSRF 校验；多入口支持需在明确来源配置及登录测试后扩展，不能靠取消校验实现切换。
+网关对浏览器保持同源：`cloud-api` 的开发模块与 HMR 到本地 Vite，API 和健康检查经 SSH 到云端 HTTPS；`cloud` 全部页面/API 到云端。网关先精确核对浏览器 Host/Origin，才把通过校验的 Origin 映射至获准配置的 canonical Origin；云端仍精确校验该 Origin 与 CSRF。SSH pin 与 HTTPS CA 均严格校验。运行版本从业务健康响应的 `x-xunjie-version` 读取，不信任连接配置里的版本值；旧部署未公开时明确报告 `not-exposed`。
+
+监督进程正常时每 10 秒做只读业务探活；连接失败后最多六轮、上限 16 秒退避恢复。权限撤销、主机/TLS 身份变化和接口不兼容停止重试，云端失败不改数据目标。恢复不重放业务请求。节点回连仍绑定原登记 ID，`node status` 只报告传输状态，真实执行与未知结果仍由原业务契约处理。
 
 ## 获取与更新数据基线
 
@@ -206,8 +208,8 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 
 | 已核对的范围 | 当前事实 | 实施时的处理 |
 | --- | --- | --- |
-| `tools/i0-cloud/connect.ps1`、`connect-node.ps1`、`ssh-common.ps1` | 当前连接实现，分别涉及页面转发、节点回连与配置校验 | 新工具接管相应能力后删除旧入口；仍有用的校验逻辑移入同一工具实现，不长期维护两套命令。节点适配未替换前，不能连带删除在用的回连能力 |
-| `tools/i0-cloud/connection.example.json`、`sshd-members.example.conf` | 现用配置字段与权限模板 | 配置生成由新工具负责后删除旧模板与旧字段；必要部署模板只在新工具中保留一份，实测主机校验和转发权限继续成立 |
+| 原 PowerShell 页面/节点入口与公共 SSH 解析器 | 已迁入 `xj-dev use` / `node` / `src/connection.mjs` 并删除（#128） | 单一跨平台连接路径，旧获准配置仅由新解析器只读适配 |
+| 原连接 JSON 示例 | 已迁入 [connection.example.json](../tools/xj-dev/connection.example.json) 并删除旧模板（#128） | `sshd-members.example.conf` 仍是有效的服务端权限模板，继续保留 |
 | `tools/i0-hdl/xunjie-local.ps1`、`local-application-host.mjs`、旧业务初始化/证据脚本及对应测试 | 已由 `tools/xj-dev` 替代并删除（#127） | 执行 VM 准备（`local-node-setup.*`）、冻结镜像接收、`fixtures/hdl-reference.json` 与 `seed-local-courses.mjs` 仍被引用，保留在 [i0-hdl README](../tools/i0-hdl/README.md) 说明；`seed-local-courses.mjs` 的独立 `--apply` 流程默认指向退役宿主 3444 不再可用，保留是因 `i0-cloud/publish-demo-projects.mjs` 复用其 `verifyCompletionReceipt` |
 | `tools/i0-hdl/README.md`、`tools/teacher-workflow/`、`tools/a0-review/` 及相关调用；`tools/i0-ui55/README.md`、`tools/i0-shared/README.md` | 旧操作步骤、占位说明与受控验证工具已删除（#127；a0-review 的检查对象文档已不存在且无引用），i0-hdl README 改写为保留范围说明 | 活跃源码、Skill、README 与当前设计文档中的旧命令、路径和链接已同步清零；`apps/teaching/tests/evidence/` 下的历史验收证据是当时的事实快照，保留旧文件名，不作为当前用法；历史事实留在 Git 历史与归档 |
 | 仓库外旧连接文件、SSH 配置片段、专属证书、登记密钥、启动记录与受管进程 | 可能仍由成员或当前运行环境使用 | 迁移时生成本工具拥有资源的清单，完成目标切换再移除失效项；仅处理明确归属的旧资源，不扫描删除通用 SSH 配置、其他项目或业务数据 |
@@ -217,4 +219,4 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 
 清理验收同时看文件删除和引用消失：活跃代码与当前说明不再引导使用旧命令；配置没有只由旧入口消费的字段；正常启动、停止、连接与节点能力按保留范围仍可用；干净 checkout 能从统一入口完成已交付流程。历史事实报告若保留旧文件名，应明确是当时事实，不能保留断裂的“当前用法”链接。`docs/archive/` 继续遵守仓库归档隔离规则，不因清理任务恢复为当前操作依据。
 
-本轮已交付 `tools/xj-dev` CLI（macOS 与 Windows 实测通过 doctor/up/status/down、双环境隔离、幂等启动、端口冲突诊断与浏览器全链路验收；Windows 另验证后端源码修改、停止进程及重启保留反馈），并删除其替代的旧本机宿主实现与占位说明；成员接入、复现包、`use` 切换与普通用户安装流程仍未改变。
+本轮已交付 `tools/xj-dev` CLI（macOS 与 Windows 实测通过 doctor/up/status/down、双环境隔离、幂等启动、端口冲突诊断与浏览器全链路验收；Windows 另验证后端源码修改、停止进程及重启保留反馈），并删除其替代的旧本机宿主实现与占位说明；三模式 `use` 与受管页面/登记节点连接已由 #128 接管；成员接入、复现包与普通用户安装流程另按对应票交付。

@@ -1,0 +1,11 @@
+{
+  "schema": "xj-dev/connection-v1",
+  "host": "REPLACE_WITH_APPROVED_HOST",
+  "port": 22,
+  "browserUser": "REPLACE_WITH_APPROVED_USER",
+  "identityFile": "REPLACE_WITH_PRIVATE_KEY_PATH",
+  "knownHostsFile": "known_hosts",
+  "caFile": "cloud-server.cert.pem",
+  "browserOrigin": "https://localhost:3445",
+  "applicationPort": 3444
+}

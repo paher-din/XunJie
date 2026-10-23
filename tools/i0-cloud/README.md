@@ -9,12 +9,8 @@
 | `cloud-host.mjs` | 组合既有业务应用、消费者及正常关停，HTTPS 仅监听回环；不迁移课程库 |
 | `xunjie-shared.service` | 单进程业务服务的部署约定、持久目录、文件权限及候选资源预算模板 |
 | `application-config.example.json` | 部署配置字段示例；占位内容不可运行 |
-| `connect.ps1` | 依赖私下 `ConnectionFile` 的受限页面转发工具 |
-| `connect-node.ps1` | 依赖私下 `ConnectionFile` 的登记执行节点回连工具 |
-| `ssh-common.ps1` | 私有配置校验、公钥认证及严格主机校验 |
 | `prepare-demo-data.mjs` | 对已备份共享合成库追加教学班、成员和发布前置；不新建表、不造学习记录 |
 | `publish-demo-projects.mjs` | 按私有计划通过原教师 API 固定版本并分配，保留幂等回执 |
-| `connection.example.json` | 连接字段示例；`registered=false` 与占位端口会被拒绝 |
 | `sshd-members.example.conf` | 页面与执行身份分离的 Match 结构示例，含不可直接安装的占位项 |
 | `build-runtime-artifact.mjs` | CI 内装配 Linux 生产运行产物：预压缩静态资源、逐文件摘要与 manifest；不在服务器上运行 |
 | `deploy-artifact.py` | 服务器下载并校验 CI 产物、备份、装配、切换与失败回退；`--status` 只读、`--prune` 只清理 |
@@ -64,21 +60,11 @@
 
 资源预算候选值见 `xunjie-shared.service` 注释与[运行策略](../../docs/development-access-operations.md)：业务单元预算需先实测五人峰值再启用；维护单元（发布、备份）已按低 CPU/IO 权重与内存上限配置。部署与备份共用同一把 flock 维护锁串行，业务优先。
 
-## 当前连接工具怎么调用
+## 成员连接入口
 
-脚本要求 PowerShell 7、OpenSSH 和预登记的身份。页面脚本还使用 Windows 的 `Get-NetTCPConnection`；macOS 上不能仅安装 PowerShell 后照搬，应按该设备已有的获准私有接入说明连接。未来统一工具的 Windows/macOS 支持需要分别验收。
+页面、API 与原登记节点连接已统一迁入 [xj-dev 模式与受管连接](../xj-dev/README.md#模式与受管连接)。原 PowerShell 连接入口、重复配置解析器和旧 JSON 示例已删除。使用现有获准配置调用 `xj-dev use cloud-api/cloud --connection <file>` 或 `xj-dev node connect --connection <file>`；身份不在配置时传 `--identity <私钥路径>`。
 
-从仓库根查看帮助，再使用维护者已交接的实际文件路径：
-
-```powershell
-pwsh -NoProfile -File tools/i0-cloud/connect.ps1 -Help
-pwsh -NoProfile -File tools/i0-cloud/connect.ps1 -IdentityFile '<本人私钥文件路径>' -ConnectionFile '<获准连接配置路径>'
-pwsh -NoProfile -File tools/i0-cloud/connect-node.ps1 -Help
-```
-
-节点回连使用相同的 `IdentityFile`、`ConnectionFile` 参数形式，但身份、端口和节点必须是该成员已登记的配置。示例 JSON 的占位值不能用于连接；可选 `BindAddress` 仅按私有接入说明使用。工具使用私钥文件，不应打印其内容。
-
-连接保持在前台，`Ctrl+C` 结束该连接；当前脚本没有断开后的自动监督重启。端口占用时报告失败，不接管现有进程；SSH 退出失败时抛出错误。SSH 连通后还要检查对应 HTTPS 页面、登录和所需能力；页面可用不等于执行节点就绪。连接不会上传本地代码、建立本地前后端开发环境或创建测试账号。
+新入口管理隧道监督、严格 SSH pin、HTTPS CA、固定数据目标与隔离 Cookie；节点传输、真实执行业务和模型调用分别报告。它不初始化账号、课程、数据库、VM 或节点 ledger。本目录保留业务宿主、发布、备份及 SSH 服务端权限模板。
 
 维护者按私下部署记录核定实际路径、服务用户、节点绑定和访问权限。应用沿现有35表或显式启用的41表课程库及登记节点启动；两种模式均复用原组合并核对精确表结构；个人模型存储按获准配置启用，不复制旧个人模型库或 Key。运行时配置、机密、数据库、真实公钥 pin 和证书均不随源码分发。
 
