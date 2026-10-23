@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>循阶 · 工作区交互状态原型</title>
+<style>
+/* Standalone copy of the roles used from DESIGN.md / styles/tokens.css. */
+:root{--paper:#fff;--shell-bg:#f9f9f8;--ink:#1f2328;--ink-soft:#42474d;--muted:#656d76;--line:#e8e8e6;--line-strong:#e0e0de;--hover-bg:#f4f4f2;--chip-bg:#f1f1ef;--primary:#1f2328;--on-primary:#fff;--accent:#007aff;--accent-deep:#0059d0;--accent-soft:#eef3fd;--status-progress-bg:#cffafe;--status-progress-fg:#155e75;--status-pending-bg:#fef9c3;--status-pending-fg:#854d0e;--status-done-bg:#ecfccb;--status-done-fg:#3f6212;--status-overdue-bg:#ffe4e6;--status-overdue-fg:#9f1239;--panel-shadow:0 1px 2px rgba(24,34,57,.05);--font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;--font-serif:'LXGW WenKai','Kaiti SC','STKaiti',serif;--font-mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--shell-bg);color:var(--ink);font:15px/1.5 var(--font-sans)}main{max-width:1440px;margin:auto;padding:24px}h1,h2,h3{font-family:var(--font-serif);font-weight:600;margin:0 0 12px}h1{font-size:28px;letter-spacing:-.4px}h2,h3{font-size:17px}p{margin:0 0 12px}a{color:var(--accent-deep)}small,.small{font-size:12px;color:var(--muted)}.muted{color:var(--muted)}.eyebrow{font-size:12px;letter-spacing:1px;color:var(--muted);margin-bottom:8px}.intro{max-width:980px;margin-bottom:20px}.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--panel-shadow);min-width:0}.grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr);gap:16px}.stack{display:grid;gap:16px;align-content:start}.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.between{justify-content:space-between}.space{margin-top:16px}.inset{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}.badge{display:inline-block;border-radius:6px;padding:4px 8px;font-size:12px;background:var(--chip-bg);color:var(--ink-soft)}.progress{background:var(--status-progress-bg);color:var(--status-progress-fg)}.pending{background:var(--status-pending-bg);color:var(--status-pending-fg)}.done{background:var(--status-done-bg);color:var(--status-done-fg)}.overdue{background:var(--status-overdue-bg);color:var(--status-overdue-fg)}button,select{font:400 13px/1.5 var(--font-sans);color:var(--ink-soft);border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;min-height:32px;padding:4px 16px;cursor:pointer}button:hover{background:var(--hover-bg)}button:disabled{cursor:default;opacity:.5}.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}.primary:hover{background:var(--ink-soft)}button:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.subtle{border-color:transparent;padding:4px 8px;color:var(--accent-deep)}.notice{border-left:2px solid var(--accent);padding:8px 12px;background:var(--accent-soft);font-size:13px;margin:12px 0}.code{font:13px/1.7 var(--font-mono);background:var(--shell-bg);border:1px solid var(--line);border-radius:8px;padding:16px;white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;user-select:text}.reading{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.reading div{background:var(--shell-bg);border-radius:8px;padding:12px}.reading strong{font:600 22px/1.5 var(--font-mono);display:block}.reading small{display:block}textarea{width:100%;font:15px/1.5 var(--font-sans);color:var(--ink);background:var(--paper);padding:12px;border:1px solid var(--line-strong);border-radius:8px;min-height:84px;resize:vertical}.ref{border:1px solid var(--line);border-radius:8px;margin:8px 0;padding:8px 12px;font-size:13px}.ref blockquote{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-soft)}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.tabs [aria-selected=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-deep)}.steps{display:grid;gap:8px}.step{display:flex;align-items:center;gap:12px}.step span{font-size:13px;color:var(--muted)}.step button{min-width:180px;text-align:left}.env{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}th{font-weight:600;color:var(--ink-soft)}details{margin:12px 0}summary{cursor:pointer;font-size:13px;color:var(--accent-deep)}ul{padding-left:20px}li{margin-bottom:6px}.events{max-height:220px;overflow:auto;padding-left:24px;font-size:13px}.empty{color:var(--muted);font-size:13px;padding:12px 0}.mono{font-family:var(--font-mono)}.footer{padding:16px 0 0;color:var(--muted);font-size:12px}#toast{min-height:44px}.sr{position:absolute;left:-10000px}#toolbar{border:1px solid var(--line);background:var(--paper);padding:8px;border-radius:12px;box-shadow:var(--panel-shadow);margin-top:8px}button[data-action=RESET]{margin-left:auto}dialog{max-width:640px;width:calc(100% - 32px);border:1px solid var(--line);border-radius:16px;padding:20px;color:var(--ink);background:var(--paper)}dialog::backdrop{background:rgba(31,35,40,.35)}
+@media(max-width:900px){main{padding:16px}.grid{grid-template-columns:1fr}.reading{grid-template-columns:repeat(2,1fr)}.step{align-items:flex-start;flex-direction:column;gap:4px}.panel{padding:16px}.step button{width:100%}}
+</style>
+<main>
+ <header class="intro">
+  <div class="eyebrow">循阶 / 工作区交互 / 可丢弃的讨论原型</div>
+  <h1>继续编辑，过去的依据不变</h1>
+  <p>试一试：学生一边改作品、一边实验和提问，最后交给教师的内容能否始终对得上？</p>
+  <p class="small">本页只演示状态关系，所有保存、同步、实验和接收回执都是内存模拟；不执行 HDL、不调用模型、不交付真实教师。真正刷新本页会重置全部内容。下方“模拟刷新恢复”只模拟保存边界。</p>
+  <p class="small">已确认：新代码明确运行后生效，实验输入即时作用于已运行代码；明确发送／提交后等待相关内容同步并自动完成，等待中可取消；同一浏览器恢复已保存的作品、实验输入、草稿和待发动作，中断实验不自动重跑。具体异常提示与交互细节仍待体验反馈。</p>
+ </header>
+ <div id="toast" class="notice" role="status" aria-live="polite"></div>
+ <div class="grid">
+  <div class="stack">
+   <section class="panel" aria-label="作品与实验">
+    <div class="bar between"><h2>ALU 工作区</h2><span id="saveState"></span></div>
+    <div class="bar"><span class="badge">SystemVerilog · 示例片段</span><span id="networkState" class="small"></span></div>
+    <pre id="code" class="code" tabindex="0" aria-label="可选择的作品代码"></pre>
+    <div class="bar"><button data-action="EDIT">修改示例作品</button><button data-action="SELECT_WORK">选取代码片段</button><button class="primary" data-action="RUN">运行当前作品</button></div>
+    <div id="toolbar" hidden><span class="small">已选中内容</span> <button data-action="ASK">询问 Agent</button></div>
+    <div id="runState" class="space"></div>
+    <div class="inset">
+     <div class="bar between"><h3>实验输入与观察</h3><span class="badge">模拟读数</span></div>
+     <div class="bar"><label>A <select id="inputA" aria-label="实验输入 A"><option value="15">15</option><option value="7">7</option><option value="0">0</option></select></label><label>B <select id="inputB" aria-label="实验输入 B"><option value="1">1</option><option value="9">9</option><option value="0">0</option></select></label><button data-action="TOGGLE_CIN">切换 Cin</button></div>
+     <div id="readings" class="reading"></div>
+     <div id="resultState" class="small"></div>
+     <div class="bar space"><button data-action="SELECT_BOARD">引用板信号</button><button data-action="SELECT_WAVE">引用波形片段</button></div>
+     <p class="small space">每次观察保留实际使用的代码与输入。这里的数值由两个预设样例生成，不能用来判断任意 SystemVerilog 的正确性。</p>
+    </div>
+   </section>
+   <section class="panel" aria-label="教师交付">
+    <h2>交给教师</h2>
+    <div id="submissionPreview"></div>
+    <div class="bar space"><button class="primary" data-action="SUBMIT">提交给教师</button><span class="small">模拟交付 · 点击时固定内容</span></div>
+    <div id="submissions"></div>
+   </section>
+  </div>
+  <div class="stack">
+   <section class="panel" aria-label="Agent 对话">
+    <div class="bar between"><h2>Agent 对话</h2><button id="chatToggle" data-action="CHAT"></button></div>
+    <div id="chatBody">
+     <p class="small">选择代码、板信号或波形后，引用自动加入这里；只有明确发送才交给 Agent。</p>
+     <div id="refs"></div>
+     <label for="question" class="sr">准备发送的问题</label><textarea id="question" placeholder="写下自己的问题…"></textarea>
+     <div class="bar space"><button class="primary" data-action="SEND">发送问题</button><span class="small">发送等待不妨碍继续编辑</span></div>
+    </div>
+    <div id="chatClosed" class="empty">对话已收起。选择内容后使用“询问 Agent”。</div>
+    <div id="messages"></div>
+   </section>
+   <section class="panel" aria-label="当前对应关系">
+    <h2>当前对应关系</h2>
+    <div id="relations"></div>
+    <div class="bar space"><button data-action="GUIDE">生成示例教学动作</button><button data-action="ACT_GUIDE">执行该动作</button></div>
+    <p id="guidance" class="small space"></p>
+   </section>
+  </div>
+ </div>
+ <section class="panel space" aria-label="引导走查">
+  <div class="bar between"><h2>按情形走一遍</h2><button data-action="RESET">重置自由探索</button></div>
+  <p class="small">每次切换情形都会重置模型。按顺序点按钮，观察上方内容；也可以随时使用工作区按钮自由探索。</p>
+  <div id="tabs" class="tabs" role="tablist" aria-label="情形"></div>
+  <div id="walkthrough" role="tabpanel"></div>
+  <div class="env">
+   <h3>模拟环境</h3><p class="small">这些按钮代替真实异步完成事件，便于停在中间状态。产品中不需要学生操作这些按钮。</p>
+   <div class="bar"><button data-action="PERSIST">本机保存完成</button><button data-action="SYNC">同步一项依据</button><button data-action="FINISH">一次实验完成</button><button data-action="NETWORK" id="networkToggle"></button><button data-action="REFRESH">模拟刷新恢复</button><button data-action="QUERY">查询交付回执</button></div>
+   <details><summary>制造异常与对象变化</summary><div class="bar space"><button data-action="FAIL_SAVE">本机保存失败</button><button data-action="RETRY_SAVE">恢复本机保存</button><button data-action="DROP_RECEIPT">下次交付丢失回执</button><button data-action="REMOVE_SOURCE">移除代码对象</button><button data-action="RECREATE_SOURCE">新建同名代码对象</button></div></details>
+  </div>
+ </section>
+ <details class="panel space" id="inspector">
+  <summary>设计观察区：状态归属、输入身份与事件（不属于学生界面）</summary>
+  <p class="small space">内部身份只在此展示。自动保存、同步、运行、选区引用、提交分别表达，不用单一“当前版本”代替全部关系。</p>
+  <div id="facts" class="space"></div><div id="intents" class="space"></div>
+  <h3 class="space">候选最小契约</h3>
+  <table><thead><tr><th>对象 / 所属层</th><th>保留什么</th><th>不会被什么改写</th></tr></thead><tbody>
+   <tr><td>作品与本机保存队列 / 工作区</td><td>稳定对象身份、内容身份、实际内容、本机确认、远端确认；先确认本机保存，再标为已保存</td><td>旧同步确认不能把后续编辑标成已同步</td></tr>
+   <tr><td>实验 / 工具运行层</td><td>发起者、工具与环境版本、实际作品、参数、每次观察、完成或中断状态</td><td>编辑器的新内容、后续开关操作、迟到的旧实验</td></tr>
+   <tr><td>引用 / 输入区与消息</td><td>选中副本、源对象身份、来源内容身份、类型化范围；板信号／波形附实验和观察身份</td><td>原文修改、工具重启、同名对象；不能定位时仍保留当时内容</td></tr>
+   <tr><td>发送意图 / 工作区</td><td>点击时的问题、引用、相关作品与实验；稳定请求身份、等待／可取消／结果未知／已接收状态</td><td>后续输入和编辑；等待只针对本次相关依据，不追着最新作品跑</td></tr>
+   <tr><td>教师交付 / 提交接收方</td><td>点击时作品、关键证据及缺项、解释、帮助与判断来源；接收方回执是交付成功依据</td><td>自动保存、重复请求、后续画像修正；后续修订另有关联记录</td></tr>
+   <tr><td>临时呈现 / 前端</td><td>焦点、展开、浮层位置和待选择状态；草稿、实验输入与待发动作按已确认范围恢复</td><td>不能以已显示、已点击冒充模型完成、运行成功或教师已收到</td></tr>
+  </tbody></table>
+  <p class="small space">工程事件候选：WorkChanged → LocalPersisted → RemoteAccepted；RunRequested → RunFinished / RunInterrupted；ReferenceSelected；MessageRequested / SubmissionRequested → Cancelled / ReceiptUnknown / Accepted；GuidanceActionRequested → Revalidated / Expired。版本、时间戳、请求身份、课程／任务归属由宿主补齐，具体存储与工具发布协议由后续议题承接。</p>
+  <h3>需要保持的不变量</h3><ul class="small"><li>当前作品、实际实验输入、已发送引用和教师交付可以不同，差异必须可解释，过去的内容不可被新编辑替换。</li><li>选择和加入引用不发模型请求；发送时引用原样保留，当前作品作为独立上下文，不冒充引用原文。</li><li>本机保存失败不能显示已保存，也不能发起依赖尚未保存输入的实验或交付。</li><li>断线不阻止已准备工具的本地操作；服务端 Agent 与提交只等待自己依赖的内容。工具未缓存或环境不可用不在本页模拟范围。</li><li>回执未知先查询同一请求身份，不能制造第二份交付。尚未发出的意图可以取消；已被接收方接受的不承诺撤回。</li><li>过期教学动作重新核对作品、实验、目标、课程权限和学生设置；页面不直接拥有教学事实。此样例只演示作品与实验两项变化。</li><li>同名对象不是同一来源。引用保留原始副本，定位失败不猜测新对象。</li></ul>
+  <h3>事件记录</h3><ol id="events" class="events"></ol>
+ </details>
+ <footer class="footer">来源：<a href="https://github.com/paher-din/XunJie/issues/116">工作区交互与状态：自动保存、选区引用、执行依据和提交</a> · 2026-10-24 · 原型不是生产实现或教学效果证据。</footer>
+</main>
+<dialog id="receiptDialog"><h2>当时的内容</h2><div id="receiptBody"></div><form method="dialog"><button class="space">关闭</button></form></dialog>
+<script>
+/* Pure in-memory model. No DOM, network, database or real HDL execution. */
+const WorkspaceModel = (() => {
+ const copy = value => structuredClone(value);
+ const source = carry => carry ? "// 示例：保留完整和的第 5 位\nassign {Cout, F} = {1'b0, A} + {1'b0, B} + Cin;" : "// 示例：尚未保留进位\nassign F = A + B + Cin;\nassign Cout = 1'b0;";
+ const fact = (s,id) => s.facts.find(f=>f.id===id);
+ const current = s => fact(s,s.workId);
+ const latestObservation = s => fact(s,s.observationId);
+ const id = (s,kind) => kind + '-' + (++s.seq);
+ const say = (s,message) => {s.notice=message;s.events.push(message)};
+ function initial(){return {seq:1,online:true,saveFailed:false,sourceNumber:1,sourceExists:true,workId:'work-1',facts:[{id:'work-1',kind:'work',objectId:'alu-source-1',label:'alu.sv',text:source(false),carry:false,durable:true,synced:true}],inputs:{a:15,b:1,cin:0},chat:false,selection:null,draft:{question:'为什么低 4 位为 0，进位却没有亮？',refs:[]},draftBackup:{question:'为什么低 4 位为 0，进位却没有亮？',refs:[]},inputsBackup:{a:15,b:1,cin:0},draftDirty:false,runs:[],loaded:null,observationId:null,intents:[],remoteReceipts:{},dropReceipt:false,guidance:null,events:[],notice:'从下方选一个情形开始，或直接修改作品。模拟环境由你手动推进。'}}
+ function observe(s,run,inputs){const w=fact(s,run.workId),sum=inputs.a+inputs.b+inputs.cin;const o={id:id(s,'observation'),kind:'observation',objectId:run.id,label:'板信号 / 波形样例',workId:w.id,runId:run.id,inputs:copy(inputs),f:sum&15,cout:w.carry?Number(sum>15):0,durable:false,synced:false};s.facts.push(o);s.observationId=o.id;return o}
+ function addReference(s,r){const key=JSON.stringify([r.sourceId,r.factId,r.kind,r.range,r.text]);if(s.draft.refs.some(x=>x.key===key)){say(s,'这处内容已在引用区，不重复添加。');return}s.draft.refs.push({...copy(r),id:id(s,'reference'),key});s.draftDirty=true;say(s,'引用已加入，内容固定在选中时；尚未发送。')}
+ function select(s,a){let r;if(a.kind==='work'){if(!s.sourceExists){say(s,'代码对象已移除，不能选择。');return}const w=current(s);r={kind:'code',sourceId:w.objectId,factId:w.id,label:'alu.sv · 代码',range:a.range||'示例片段',text:a.text||w.text}}else{const o=latestObservation(s);if(!o){say(s,'还没有实验结果，先运行并完成一次实验。');return}r={kind:a.kind,sourceId:o.objectId,factId:o.id,label:a.kind==='wave'?'波形 · 稳定采样片段':'虚拟板 · 本次读数',range:a.kind==='wave'?'样例 10–20 ns':'A / B / Cin / F / Cout',text:`A=${o.inputs.a}, B=${o.inputs.b}, Cin=${o.inputs.cin}; F=${o.f}, Cout=${o.cout}`,runId:o.runId,workId:o.workId}}if(s.chat)addReference(s,r);else{s.selection=r;say(s,'出现“询问 Agent”入口；选择本身没有发送任何内容。')}}
+ function request(s,kind){if(!s.sourceExists){say(s,'当前作品对象已移除，请先恢复作品。');return}if(kind==='message'&&!s.draft.question.trim()){say(s,'先写下自己的问题，再发送。');return}const workId=s.workId;const refs=kind==='message'?copy(s.draft.refs):[];const observationIds=kind==='submission'?s.facts.filter(f=>f.kind==='observation').map(f=>f.id):[];const existing=kind==='submission'&&s.intents.find(i=>i.kind==='submission'&&i.workId===workId&&JSON.stringify(i.observationIds)===JSON.stringify(observationIds)&&i.status!=='cancelled');if(existing){say(s,'同一内容已有提交请求，继续使用原请求和回执；没有创建第二份交付。');return}const runsAtRequest=kind==='submission'?s.runs.map(r=>({id:r.id,workId:r.workId,phase:r.phase})):[];const deps=[...new Set([workId,...refs.map(r=>r.factId),...observationIds])];const intent={id:id(s,kind),kind,workId,refs,observationIds,runsAtRequest,question:kind==='message'?s.draft.question:'',deps,status:'saving',durable:false,missing:kind==='submission'?['两条自选预测用例尚未记录','用例理由和解释尚未填写']:[]};s.intents.push(intent);if(kind==='message'){s.draft={question:'',refs:[]};s.draftDirty=true}say(s,kind==='message'?'已固定本次问题与引用；等待本机保存和相关内容同步，可取消。':'已固定本次交付；失败与缺项如实保留。教师收到后才显示提交成功。')}
+ function progress(s){for(const r of s.runs)if(r.phase==='saving'&&fact(s,r.workId).durable)r.phase='running';for(const intent of s.intents){if(intent.status==='saving'&&intent.durable)intent.status='waiting';if(intent.status!=='waiting'||!s.online||!intent.deps.every(k=>fact(s,k)?.synced))continue;const receipt=s.remoteReceipts[intent.id]||{id:'receipt-'+intent.id,intent:copy(intent)};s.remoteReceipts[intent.id]=receipt;if(s.dropReceipt){intent.status='unknown';s.dropReceipt=false;say(s,'接收方已处理，但回执未到达：结果未知。请查询原请求，不重复交付。')}else{intent.status='accepted';say(s,intent.kind==='message'?'示例 Agent 接收方已收到固定的问题与依据；没有生成模型回答。':'教师示例接收方已收到本次内容；后续编辑不会改变这次交付。')}}}
+ function reduce(previous,action){const s=copy(previous),a=typeof action==='string'?{type:action}:action;
+  switch(a.type){
+   case 'RESET':return initial();
+   case 'EDIT':{if(!s.sourceExists){say(s,'代码对象已移除，请先新建对象。');break}const old=current(s),w={...old,id:id(s,'work'),carry:!old.carry,text:source(!old.carry),durable:false,synced:false};s.facts.push(w);s.workId=w.id;say(s,'作品已修改，正在自动保存；此前的实验、引用和交付仍对应当时内容。');break}
+   case 'QUESTION':s.draft.question=a.value;s.draftDirty=true;break;
+   case 'SELECT_WORK':select(s,{...a,kind:'work'});break;
+   case 'SELECT_BOARD':select(s,{kind:'board'});break;
+   case 'SELECT_WAVE':select(s,{kind:'wave'});break;
+   case 'ASK':if(s.selection){addReference(s,s.selection);s.selection=null;s.chat=true}break;
+   case 'CHAT':s.chat=!s.chat;s.selection=null;say(s,s.chat?'对话已展开，已有草稿仍在。':'对话已收起，问题与引用仍保留。');break;
+   case 'REMOVE_REF':s.draft.refs=s.draft.refs.filter(r=>r.id!==a.id);s.draftDirty=true;say(s,'只移除草稿中的引用，原始作品没有变化。');break;
+   case 'RUN':if(!s.sourceExists){say(s,'代码对象已移除，无法运行。');break}s.runs.push({id:id(s,'run'),workId:s.workId,inputs:copy(s.inputs),phase:current(s).durable?'running':'saving'});say(s,'本次运行已固定点击时的作品与输入；可以继续编辑。');break;
+   case 'FINISH':{const run=s.runs.find(r=>r.phase==='running');if(!run){say(s,'没有正在运行的实验；保存尚未完成或运行已中断。');break}run.phase='finished';const latest=s.runs.at(-1);const oldObservation=s.observationId;observe(s,run,run.inputs);if(run.id===latest.id){s.loaded={runId:run.id,workId:run.workId};if(JSON.stringify(run.inputs)!==JSON.stringify(s.inputs))observe(s,run,s.inputs)}else{s.observationId=oldObservation}say(s,run.id===latest.id?'实验完成，保留实际运行的作品；新编辑不改变本次结果。':'较早的实验已完成并留档，不替换较新实验的展示。');break}
+   case 'INPUT':case 'TOGGLE_CIN':if(a.type==='TOGGLE_CIN')s.inputs.cin=1-s.inputs.cin;else s.inputs[a.key]=a.value;if(s.loaded)observe(s,{id:s.loaded.runId,workId:s.loaded.workId},s.inputs);s.draftDirty=true;say(s,s.loaded?'输入即时作用于已运行的代码；新增一次观察，旧观察保持不变。':'输入已调整，运行完成后才能观察结果。');break;
+   case 'SEND':request(s,'message');break;
+   case 'SUBMIT':request(s,'submission');break;
+   case 'PERSIST':if(s.saveFailed){say(s,'本机保存失败，不能声称已保存；相关运行和发送继续等待。');break}for(const f of s.facts)f.durable=true;for(const i of s.intents)i.durable=true;s.draftBackup=copy(s.draft);s.inputsBackup=copy(s.inputs);s.draftDirty=false;say(s,'模拟本机保存完成；相关运行可以开始，远端接收仍需同步。');break;
+   case 'SYNC':{if(!s.online){say(s,'网络已断开；本机已保存内容仍在，尚未同步。');break}const f=s.facts.find(x=>x.durable&&!x.synced);if(f){f.synced=true;say(s,'一项已保存依据完成同步；后续未同步内容不会被误标为已同步。')}else say(s,'没有待同步的已保存依据。');break}
+   case 'NETWORK':s.online=!s.online;say(s,s.online?'网络恢复，等待中的请求将按各自固定的依据继续。':'网络断开；可继续本地编辑和使用已准备的实验工具。');break;
+   case 'CANCEL':{const i=s.intents.find(i=>i.id===a.id)||s.intents.find(i=>['saving','waiting'].includes(i.status));if(!i||!['saving','waiting'].includes(i.status)){say(s,'当前没有可取消的待发请求；已接收或结果未知的请求不能承诺撤回。');break}i.status='cancelled';say(s,'已取消等待中的请求；固定内容仍可查看，需要时可恢复问题草稿。');break}
+   case 'RESTORE_DRAFT':{const i=s.intents.find(i=>i.id===a.id);if(i?.kind==='message'){if(s.draft.question||s.draft.refs.length){say(s,'已有新的草稿，先处理它再恢复旧问题，避免覆盖。');break}s.chat=true;s.draft={question:i.question,refs:copy(i.refs)};s.draftDirty=true;say(s,'已恢复当时的问题与引用，重新发送会创建新的明确请求。')}break}
+   case 'QUERY':if(!s.online){say(s,'网络未恢复，尚不能查询接收方。');break}for(const i of s.intents.filter(i=>i.status==='unknown')){i.status=s.remoteReceipts[i.id]?'accepted':'waiting'}say(s,'已按原请求身份查询，复用已有回执，没有新增交付。');break;
+   case 'REFRESH':{const lost=s.facts.some(f=>!f.durable)||s.intents.some(i=>!i.durable)||s.draftDirty;s.facts=s.facts.filter(f=>f.durable);s.workId=s.facts.filter(f=>f.kind==='work'&&f.objectId==='alu-source-'+s.sourceNumber).at(-1)?.id||s.facts.find(f=>f.kind==='work').id;s.intents=s.intents.filter(i=>i.durable);s.draft=copy(s.draftBackup);s.inputs=copy(s.inputsBackup);s.draftDirty=false;s.chat=false;s.selection=null;s.loaded=null;s.observationId=s.facts.filter(f=>f.kind==='observation').at(-1)?.id||null;for(const r of s.runs)if(['running','saving'].includes(r.phase))r.phase='interrupted';s.guidance=null;say(s,lost?'恢复到已完成本机保存的内容；未确认保存的部分未恢复。中断实验不会自动重跑。':'已恢复本机保存内容与待发请求；历史结果可看，实验需重新运行后才能操作。');break}
+   case 'FAIL_SAVE':s.saveFailed=true;say(s,'已模拟本机存储不可用；界面必须明确显示保存失败。');break;
+   case 'RETRY_SAVE':s.saveFailed=false;say(s,'本机存储恢复；下一次保存确认后才能继续依赖它的操作。');break;
+   case 'DROP_RECEIPT':s.dropReceipt=true;say(s,'下次接收后将模拟回执丢失，用来观察结果未知与查询恢复。');break;
+   case 'REMOVE_SOURCE':s.sourceExists=false;s.selection=null;say(s,'代码对象已移除，旧引用仍保存原内容，不能按文件名重定位。');break;
+   case 'RECREATE_SOURCE':{if(s.sourceExists){say(s,'先移除当前对象，再模拟新建同名对象。');break}s.sourceNumber++;s.sourceExists=true;const w={id:id(s,'work'),kind:'work',objectId:'alu-source-'+s.sourceNumber,label:'alu.sv',text:source(false),carry:false,durable:false,synced:false};s.facts.push(w);s.workId=w.id;s.loaded=null;s.observationId=null;say(s,'新建了同名文件，但对象身份不同；旧引用不会偷偷指向它。');break}
+   case 'GUIDE':s.guidance={workId:s.workId,observationId:s.observationId,used:false};say(s,'已生成“比较这次进位”的示例动作，绑定当时作品与实验。');break;
+   case 'ACT_GUIDE':if(!s.guidance){say(s,'还没有示例教学动作。');break}if(s.guidance.workId!==s.workId||s.guidance.observationId!==s.observationId||!s.sourceExists){say(s,'这条教学动作的依据已变化；保留历史解释，重新检查后再给当前建议。');break}if(s.guidance.used){say(s,'该动作已执行，不重复写入教学事实。');break}s.guidance.used=true;say(s,'当前依据仍匹配，示例动作已接受；不修改学生代码。');break;
+  }progress(s);return s;
+ }
+ return {initial,reduce,fact,current,latestObservation};
+})();
+</script>
+<script>
+/* Thin throwaway page shell. */
+let state=WorkspaceModel.initial(),activeScenario=0,step=0;
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const badge=(text,kind='')=>`<span class="badge ${kind}">${esc(text)}</span>`;
+const workName=id=>{const w=WorkspaceModel.fact(state,id);return w?.kind==='work'?(w.carry?'保留进位的示例':'未保留进位的示例'):'无'};
+const statusName={saving:'等待本机保存',waiting:'等待相关内容同步',unknown:'结果未知 · 待查询',accepted:'已收到回执',cancelled:'已取消'};
+const statusClass={saving:'pending',waiting:'pending',unknown:'overdue',accepted:'done',cancelled:''};
+const scenarios=[
+ {name:'正常进行',why:'选区只进入草稿。真正发送前，问题、引用和作品被固定；远端确认后才算收到。',steps:[['修改作品','EDIT','自动保存进行中'],['本机保存完成','PERSIST','可以本地运行'],['同步相关作品','SYNC','远端已具有该作品'],['选择代码','SELECT_WORK','出现询问入口，没有发送'],['询问 Agent','ASK','打开对话并添加引用'],['发送问题','SEND','固定问题与依据'],['保存发送意图','PERSIST','示例接收方收到，不生成回答']]},
+ {name:'运行中继续修改',why:'新修改不进入已发起的实验；开关仍操作已运行代码。再次运行才使用新代码。',steps:[['运行起始作品','RUN','固定起始作品和 A=15、B=1'],['继续修改作品','EDIT','编辑器已有新代码'],['完成较早实验','FINISH','显示旧结果，并提示修改尚未运行'],['切换输入 Cin','TOGGLE_CIN','即时观察已运行的旧代码'],['本机保存完成','PERSIST','保存新作品和观察'],['运行新作品','RUN','明确使用新代码'],['完成新实验','FINISH','板信号现在来自新作品']]},
+ {name:'等待时又改了',why:'请求只等待点击时所需的内容。后续编辑不改变问题，也不能让已经发送的问题一直追着最新作品等待。',steps:[['修改作品','EDIT','产生待同步内容'],['选中修改后的代码','SELECT_WORK','固定选中内容'],['询问 Agent','ASK','可以继续组织问题'],['发送问题','SEND','本次依赖已固定'],['再次修改作品','EDIT','这是后续的新内容'],['完成本机保存','PERSIST','新旧内容都保存在本机'],['只同步较早依据','SYNC','问题已被接收，最新编辑仍待同步']]},
+ {name:'断线恢复交付',why:'明确提交后等待，恢复网络自动完成；等待中取消则不交付。允许失败和缺项，不等于任务通过。',steps:[['断开网络','NETWORK','不影响已准备的本地操作'],['修改作品','EDIT','产生新内容'],['提交给教师','SUBMIT','固定当前作品，可取消'],['完成本机保存','PERSIST','待发动作也已保存'],['模拟刷新恢复','REFRESH','同设备恢复待发动作'],['恢复网络','NETWORK','还缺相关内容，继续等待'],['同步相关依据','SYNC','教师示例接收方收到一次交付'],['继续编辑','EDIT','教师收到的内容保持不变']]},
+ {name:'取消待发动作',why:'取消的是尚未发出的固定请求。网络恢复后不再交付；恢复问题草稿不能覆盖新写的问题。',steps:[['断开网络','NETWORK','使请求进入等待'],['选择代码','SELECT_WORK','固定内容'],['询问 Agent','ASK','打开输入区'],['发送问题','SEND','明确发送但尚未交付'],['完成本机保存','PERSIST','待发动作已保存'],['取消等待','CANCEL','阻止恢复网络后继续交付'],['恢复网络','NETWORK','仍为已取消，接收方没有记录']]},
+ {name:'旧引用与同名对象',why:'通用引用由内容副本和来源组成。来源不存在时仍能解释当时内容，不能按名称套到新的对象上。',steps:[['选择原代码','SELECT_WORK','准备原内容'],['询问 Agent','ASK','引用进入草稿'],['移除原对象','REMOVE_SOURCE','引用仍在，来源已不可用'],['新建同名对象','RECREATE_SOURCE','新对象不是旧来源'],['发送问题','SEND','引用仍是旧内容，当前作品单独记录'],['完成本机保存','PERSIST','保存新作品与待发问题'],['同步新作品','SYNC','收到原引用和独立的当前作品']]},
+ {name:'板信号、波形与旧动作',why:'非文本引用固定实验、观察和范围。后续输入变化不改旧引用；教学动作执行前重新检查依据。',steps:[['运行作品','RUN','建立实验'],['实验完成','FINISH','获得板信号和波形样例'],['引用板信号','SELECT_BOARD','引用实际观察'],['询问 Agent','ASK','对话展开'],['引用波形片段','SELECT_WAVE','多处引用并存'],['生成教学动作','GUIDE','绑定当时的观察'],['切换输入 Cin','TOGGLE_CIN','出现新观察，旧引用不变'],['执行旧教学动作','ACT_GUIDE','依据过期，停止旧动作并提示重新检查']]},
+ {name:'回执丢失',why:'请求可能已经完成，界面却没收到回执。此时查询同一请求；不能重复交付，也不能谎称未提交。',steps:[['模拟下次回执丢失','DROP_RECEIPT','接收端会收到，前端暂时未知'],['提交当前内容','SUBMIT','固定当前内容'],['完成本机保存','PERSIST','状态变为结果未知'],['查询原请求回执','QUERY','找到已有交付，只有一份收据'],['再次查询','QUERY','仍是同一份交付']]},
+ {name:'本机保存失败',why:'必须区分正在保存、已保存在本机与已同步。存储失败时继续保留屏幕内容，但不声称已可靠保存。',steps:[['制造保存失败','FAIL_SAVE','本机存储不可用'],['修改作品','EDIT','内容仍在屏幕上'],['尝试运行','RUN','等待输入先可靠保存'],['保存确认失败','PERSIST','不能运行，也不能称为已保存'],['恢复本机保存','RETRY_SAVE','故障已解除'],['保存完成','PERSIST','运行可以开始'],['实验完成','FINISH','现在有真实对应关系的模拟结果']]}
+];
+function staleReference(r){const f=WorkspaceModel.fact(state,r.factId);if(r.kind==='code'){if(!state.sourceExists||r.sourceId!==WorkspaceModel.current(state).objectId)return '来源已不可用，保留当时副本';return r.factId!==state.workId?'原文已变化，仍引用选中时内容':'来源仍匹配'}return f?'保留该次观察，可查看历史内容':'历史观察当前不可用，副本仍在'}
+function referenceHTML(r,removable=false){return `<div class="ref"><div class="bar between"><strong>${esc(r.label)}</strong>${removable?`<button class="subtle" data-remove="${r.id}">移除</button>`:''}</div><blockquote>${esc(r.text)}</blockquote><div class="small">${esc(staleReference(r))} · ${esc(r.range)}</div></div>`}
+function intentHTML(i){return `<div class="inset"><div class="bar between">${badge(statusName[i.status],statusClass[i.status])}<button class="subtle" data-receipt="${i.id}">查看当时内容</button></div><p class="small space">${i.kind==='message'?esc(i.question):'教师交付 · '+esc(workName(i.workId))}${i.workId!==state.workId?' · 当前作品已有变化':''}</p>${['saving','waiting'].includes(i.status)?`<button data-cancel="${i.id}">取消等待</button>`:''}${i.status==='cancelled'&&i.kind==='message'?`<button data-restore="${i.id}">恢复为草稿</button>`:''}</div>`}
+function render(){const w=WorkspaceModel.current(state),o=WorkspaceModel.latestObservation(state),run=state.runs.at(-1),dirty=!w.durable;
+ $('toast').textContent=state.notice;
+ $('code').textContent=state.sourceExists?w.text:'代码对象已移除。旧引用和过去的实验仍保留。';
+ $('saveState').innerHTML=state.saveFailed?badge('本机保存失败','overdue'):dirty?badge('正在保存','progress'):!w.synced?badge('已保存在本机 · 待同步','pending'):badge('已保存','done');
+ $('networkState').textContent=state.online?'网络已连接':'网络中断 · 本地操作可继续';$('networkToggle').textContent=state.online?'断开网络':'恢复网络';
+ $('toolbar').hidden=!state.selection||state.chat;
+ const phase={saving:'等待本机保存后运行',running:'实验运行中',finished:'本次实验已完成',interrupted:'实验已中断，需重新运行'};
+ $('runState').innerHTML=run?`${badge(phase[run.phase],run.phase==='finished'?'done':'pending')} ${state.loaded?.workId!==state.workId?'<span class="small">修改尚未运行</span>':''}`:'<span class="small">尚未运行，选择运行即可开始。</span>';
+ $('inputA').value=state.inputs.a;$('inputB').value=state.inputs.b;
+ $('readings').innerHTML=[['当前输入 Cin',state.inputs.cin],['结果 F',o?o.f:'—'],['结果 Cout',o?o.cout:'—'],['观察时输入 A / B',o?`${o.inputs.a} / ${o.inputs.b}`:'—']].map(([k,v])=>`<div><small>${esc(k)}</small><strong>${esc(v)}</strong></div>`).join('');
+ $('resultState').textContent=o?`${state.loaded?'当前已运行代码的观察':'历史观察，尚未重新运行'} · ${workName(o.workId)} · 观察时 Cin=${o.inputs.cin}${o.workId!==state.workId?'。当前作品已变化，本结果不验证新内容。':''}`:'还没有观察结果。';
+ $('chatToggle').textContent=state.chat?'收起对话':'打开对话';$('chatBody').hidden=!state.chat;$('chatClosed').hidden=state.chat;
+ $('refs').innerHTML=state.draft.refs.map(r=>referenceHTML(r,true)).join('')||'<div class="empty">还没有引用。可以选择不同位置的内容，一起提问。</div>';
+ if(document.activeElement!==$('question'))$('question').value=state.draft.question;
+ $('messages').innerHTML=state.intents.filter(i=>i.kind==='message').map(intentHTML).join('');
+ const observations=state.facts.filter(f=>f.kind==='observation');
+ $('submissionPreview').innerHTML=`<p>${esc(workName(state.workId))}</p><p class="small">已有 ${observations.length} 条实验观察；两条自选预测用例、用例理由与解释尚未填写。可以带失败或缺项交付。</p><p class="small">${o&&o.workId===state.workId?'当前作品已有实验观察；这不表示全部功能通过或已经掌握。':'当前作品尚未验证；旧实验只作为过程记录。'}</p>${state.runs.some(r=>['running','saving'].includes(r.phase))?'<p class="small">还有实验尚未结束；本次交付会如实标注，不等待它或在事后补入结果。</p>':''}`;
+ $('submissions').innerHTML=state.intents.filter(i=>i.kind==='submission').map(intentHTML).join('');
+ const sent=state.intents.filter(i=>i.kind==='message').at(-1),delivered=state.intents.filter(i=>i.kind==='submission'&&i.status==='accepted').at(-1);
+ $('relations').innerHTML=`<table><tbody><tr><th>正在编辑</th><td>${esc(workName(state.workId))}</td></tr><tr><th>实验实际使用</th><td>${o?esc(workName(o.workId)):'尚无实验'}</td></tr><tr><th>最近发送</th><td>${sent?esc(workName(sent.workId))+' · '+esc(statusName[sent.status]):'尚未发送'}</td></tr><tr><th>教师已收到</th><td>${delivered?esc(workName(delivered.workId)):'尚无已确认交付'}</td></tr></tbody></table>`;
+ $('guidance').textContent=state.guidance?`示例动作：比较这次进位。${state.guidance.used?'已经执行。':state.guidance.workId!==state.workId||state.guidance.observationId!==state.observationId?'依据已变化。':'等待学生操作。'}`:'可以生成一个教学动作，再修改作品或实验输入，观察旧动作如何失效。';
+ $('tabs').innerHTML=scenarios.map((s,i)=>`<button role="tab" id="scenario-${i}" aria-controls="walkthrough" aria-selected="${i===activeScenario}" data-scenario="${i}">${esc(s.name)}</button>`).join('');
+ const scenario=scenarios[activeScenario];$('walkthrough').setAttribute('aria-labelledby','scenario-'+activeScenario);
+ $('walkthrough').innerHTML=`<p>${esc(scenario.why)}</p><div class="steps">${scenario.steps.map(([name,action,why],i)=>`<div class="step"><button data-step="${i}" ${i!==step?'disabled':''}>${i<step?'✓':i+1} · ${esc(name)}</button><span>${esc(why)}</span></div>`).join('')}</div>${step===scenario.steps.length?'<p class="space small">本情形已走完，可自由操作或切换其他情形。</p>':''}`;
+ $('facts').innerHTML='<h3>作品和观察</h3><table><thead><tr><th>身份</th><th>内容与来源</th><th>本机</th><th>远端</th></tr></thead><tbody>'+state.facts.map(f=>`<tr><td class="mono">${esc(f.id)}</td><td>${f.kind==='work'?esc(f.objectId)+' · '+esc(workName(f.id)):esc(f.workId)+' / '+esc(f.runId)+` · A=${f.inputs.a},B=${f.inputs.b},Cin=${f.inputs.cin} → F=${f.f},Cout=${f.cout}`}</td><td>${f.durable?'已确认':'未确认'}</td><td>${f.synced?'已确认':'未确认'}</td></tr>`).join('')+'</tbody></table>';
+ $('intents').innerHTML='<h3>固定请求</h3><table><thead><tr><th>身份</th><th>等待的依据</th><th>状态</th></tr></thead><tbody>'+state.intents.map(i=>`<tr><td class="mono">${esc(i.id)}</td><td class="mono">${esc(i.deps.join(', '))}</td><td>${esc(statusName[i.status])}</td></tr>`).join('')+`</tbody></table><p class="small space">接收方记录：${Object.keys(state.remoteReceipts).length} 份。本次草稿${state.draftDirty?'尚未完成本机保存':'已完成本机保存'}。</p>`;
+ $('events').innerHTML=state.events.slice(-30).map(e=>`<li>${esc(e)}</li>`).join('');
+}
+function dispatch(a){state=WorkspaceModel.reduce(state,a);render()}
+function showReceipt(id){const i=state.intents.find(x=>x.id===id),w=WorkspaceModel.fact(state,i.workId);$('receiptBody').innerHTML=`${badge(statusName[i.status],statusClass[i.status])}<p class="space">${i.kind==='message'?esc(i.question):'固定的教师交付'}</p><pre class="code">${esc(w?.text||'该内容尚未可靠保存，当前不可恢复')}</pre>${i.refs.map(r=>referenceHTML(r)).join('')}${i.observationIds.map(id=>{const o=WorkspaceModel.fact(state,id);return o?`<p class="small">${esc(workName(o.workId))} · A=${o.inputs.a}, B=${o.inputs.b}, Cin=${o.inputs.cin} → F=${o.f}, Cout=${o.cout}</p>`:''}).join('')}${(i.runsAtRequest||[]).filter(r=>r.phase!=='finished').map(r=>`<p class="small">提交时实验${r.phase==='interrupted'?'已中断':'尚未结束'}；稍后结果不会自动加入此次交付。</p>`).join('')}${i.missing.map(m=>`<p class="small">缺项：${esc(m)}</p>`).join('')}<p class="small">本内容固定于点击时。当前编辑和实验不会替换它。</p>`;$('receiptDialog').showModal()}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.scenario!==undefined){activeScenario=Number(b.dataset.scenario);step=0;state=WorkspaceModel.initial();render();return}if(b.dataset.step!==undefined){const n=Number(b.dataset.step);if(n===step){step++;dispatch(scenarios[activeScenario].steps[n][1])}return}if(b.dataset.remove){dispatch({type:'REMOVE_REF',id:b.dataset.remove});return}if(b.dataset.cancel){dispatch({type:'CANCEL',id:b.dataset.cancel});return}if(b.dataset.restore){dispatch({type:'RESTORE_DRAFT',id:b.dataset.restore});return}if(b.dataset.receipt){showReceipt(b.dataset.receipt);return}if(b.dataset.action){if(b.dataset.action==='RESET')step=0;dispatch(b.dataset.action)}});
+$('question').addEventListener('input',e=>{state=WorkspaceModel.reduce(state,{type:'QUESTION',value:e.target.value})});
+for(const [name,key]of[['inputA','a'],['inputB','b']])$(name).addEventListener('change',e=>dispatch({type:'INPUT',key,value:Number(e.target.value)}));
+function captureCodeSelection(){const sel=window.getSelection();if(!sel||sel.isCollapsed||!sel.rangeCount)return;const range=sel.getRangeAt(0);if(!$('code').contains(range.startContainer)||!$('code').contains(range.endContainer))return;const before=range.cloneRange();before.selectNodeContents($('code'));before.setEnd(range.startContainer,range.startOffset);const start=before.toString().length,text=range.toString();if(!text.trim())return;dispatch({type:'SELECT_WORK',text,range:`字符 ${start}–${start+text.length}`})}
+$('code').addEventListener('mouseup',captureCodeSelection);$('code').addEventListener('keyup',e=>{if(e.shiftKey)captureCodeSelection()});
+render();
+</script>
+</html>
