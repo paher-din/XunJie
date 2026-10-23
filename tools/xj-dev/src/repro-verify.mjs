@@ -2,7 +2,7 @@ import { request } from 'node:https';
 import { existsSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { inspectRepro } from './repro.mjs';
+import { inspectRepro, validateScenario } from './repro.mjs';
 import { reproError } from './repro-archive.mjs';
 import { loadState, writeJsonAtomic } from './state.mjs';
 import { componentRunning } from './processes.mjs';
@@ -10,7 +10,7 @@ import { componentRunning } from './processes.mjs';
 function http(origin, method, path, body, auth) {
   return new Promise((resolve, reject) => {
     const encoded = body === undefined ? undefined : JSON.stringify(body);
-    const req = request(origin + path, { method, rejectUnauthorized: false, headers: {
+    const req = request(origin + path, { method, agent: false, rejectUnauthorized: false, headers: {
       origin, connection: 'close', ...(encoded ? { 'content-type': 'application/json' } : {}),
       ...(auth ? { cookie: auth.cookie, 'x-csrf-token': auth.csrf, 'idempotency-key': randomUUID() } : {}),
     } }, res => {
@@ -42,14 +42,9 @@ export async function verifyRepro(context, { file, expectedDigest }) {
     return { package: checked.package, verification: { generated: true, restored: true, reproduction: 'unverified',
       reason: '只有事后现场、依赖不确定外部响应或需要单独配置执行/模型能力；未执行并且未标记已复现。' } };
   }
+  validateScenario(scenario, { automated: true });
   const state = loadState(context.env);
   if (!state?.ports || !componentRunning(context.env, 'backend').running || !componentRunning(context.env, 'gateway').running) throw reproError('ENVIRONMENT_NOT_RUNNING', '先审阅代码并显式 up 恢复环境，再执行 verify。');
-  for (const step of scenario.steps) {
-    if (!step || !['GET', 'POST'].includes(step.method) || typeof step.path !== 'string' || !/^\/api\/[A-Za-z0-9_/?=&%.-]+$/.test(step.path)
-      || /(?:\.\.|%2e|%2f|%5c)/i.test(step.path) || !Number.isInteger(step.expect?.status) || typeof step.actorId !== 'string') {
-      throw reproError('UNSUPPORTED_STEPS', '自动验证只支持明确的 actorId、同源 /api/ HTTP 步骤与预期状态；自然语言步骤需人工验证。');
-    }
-  }
   const origin = `https://127.0.0.1:${state.ports.gateway}`;
   const credentials = JSON.parse(readFileSync(context.env.baselineCredentials, 'utf8')), sessions = new Map(), results = [];
   for (const step of scenario.steps) {
@@ -65,7 +60,7 @@ export async function verifyRepro(context, { file, expectedDigest }) {
     results.push({ method: step.method, path: step.path, status: response.status, errorCode: response.body.error?.code ?? null, matched });
     if (!matched) break;
   }
-  const reproduced = results.length === scenario.steps.length && results.every(result => result.matched);
+  const reproduced = results.length > 0 && results.length === scenario.steps.length && results.every(result => result.matched);
   const verification = { generated: true, restored: true, reproduction: reproduced ? 'verified' : 'not-reproduced',
     verifiedAt: new Date().toISOString(), evidence: 'real-local-business-https', results };
   writeJsonAtomic(receiptFile, { ...receipt, verification });
