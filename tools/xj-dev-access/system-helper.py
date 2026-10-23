@@ -49,7 +49,7 @@ def install(config):
             run('/usr/sbin/groupadd', '--system', group)
     KEYS.mkdir(parents=True, exist_ok=True, mode=0o755)
     KEYS.parent.chmod(0o755)
-    opens = '\n'.join('    PermitOpen 127.0.0.1:' + str(port) for port in config['applicationPorts'])
+    opens = '    PermitOpen ' + ' '.join('127.0.0.1:' + str(port) for port in config['applicationPorts'])
     common = f'''    AuthenticationMethods publickey
     PasswordAuthentication no
     KbdInteractiveAuthentication no
@@ -63,7 +63,7 @@ def install(config):
 '''
     content = f'Match Group {NODE_GROUP}\n    AllowTcpForwarding yes\n' + common
     listens = config.get('nodes', {})
-    content += ''.join('    PermitListen 127.0.0.1:' + str(node['remoteRunnerPort']) + '\n' for node in listens.values()) if listens else '    PermitListen none\n'
+    content += '    PermitListen ' + ' '.join('127.0.0.1:' + str(node['remoteRunnerPort']) for node in listens.values()) + '\n' if listens else '    PermitListen none\n'
     content += f'Match Group {PAGE_GROUP}\n    AllowTcpForwarding local\n    PermitListen none\n' + common + 'Match all\n'
     old = FRAGMENT.read_text() if FRAGMENT.exists() else None
     try:
@@ -77,6 +77,13 @@ def install(config):
         raise
     run('/usr/bin/systemctl', 'reload', 'ssh.service')
     return {'installed': True}
+
+
+def authorized_key_line(fields, application_ports, nodes):
+    options = ['restrict', 'port-forwarding']
+    options += ['permitopen="127.0.0.1:' + str(port) + '"' for port in application_ports]
+    options += ['permitlisten="127.0.0.1:' + str(node['remoteRunnerPort']) + '"' for node in nodes]
+    return ','.join(options) + ' ' + ' '.join(fields) + '\n'
 
 
 def matching_processes(user, uid):
@@ -134,10 +141,7 @@ def operate(request, config):
             run('/usr/sbin/useradd', '--system', '--no-create-home', '--home-dir', home, '--shell', '/usr/sbin/nologin', '--gid', group, '--password', '*', user)
             account = pwd.getpwnam(user)
         ensure(account.pw_dir == home and account.pw_shell == '/usr/sbin/nologin' and account.pw_gid == grp.getgrnam(group).gr_gid, 'ACCOUNT_OWNERSHIP_CONFLICT')
-        options = ['restrict', 'port-forwarding']
-        options += ['permitopen="127.0.0.1:' + str(port) + '"' for port in config['applicationPorts']]
-        options += ['permitlisten="127.0.0.1:' + str(node['remoteRunnerPort']) + '"' for node in nodes]
-        atomic(KEYS / user, ','.join(options) + ' ' + ' '.join(fields) + '\n', 0o644)
+        atomic(KEYS / user, authorized_key_line(fields, config['applicationPorts'], nodes), 0o644)
         receipt['uid'] = account.pw_uid
         atomic(receipt_file, json.dumps(receipt))
         return {'username': user, 'sshReady': True}

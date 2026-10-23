@@ -18,18 +18,35 @@ export function systemOperation(command, input) {
     child.stdin.end(JSON.stringify(input));
   });
 }
-export function applicationOperation(socketPath, operation, body) {
+export function applicationOperation(socketPath, operation, body, { timeoutMs = 15000 } = {}) {
   return new Promise((accept, reject) => {
-    const req = request({ socketPath, path: `/${operation}`, method: 'POST', headers: { 'content-type': 'application/json' }, timeout: 15000 }, res => {
+    let settled = false, deadline, response;
+    const finish = (error, data) => {
+      if (settled) return;
+      settled = true; clearTimeout(deadline);
+      if (error) { response?.destroy(); req.destroy(); reject(error); }
+      else accept(data);
+    };
+    const unavailable = () => finish(new AccessError('APPLICATION_CONTROL_UNAVAILABLE', 503));
+    const req = request({ socketPath, path: `/${operation}`, method: 'POST', headers: { 'content-type': 'application/json' } }, res => {
+      response = res;
       let output = '';
-      res.on('data', bytes => { output += bytes; if (output.length > 65536) req.destroy(); });
-      res.on('end', () => {
-        try { const result = JSON.parse(output); requireAccess(res.statusCode === 200 && result.ok, /^[A-Z_]+$/.test(result.code ?? '') ? result.code : 'APPLICATION_IDENTITY_FAILED', 503); accept(result.data); }
-        catch (error) { reject(error instanceof AccessError ? error : new AccessError('APPLICATION_IDENTITY_FAILED', 503)); }
+      res.on('data', bytes => { output += bytes; if (output.length > 65536) unavailable(); });
+      res.once('aborted', unavailable);
+      res.once('error', unavailable);
+      res.once('close', () => { if (!res.complete) unavailable(); });
+      res.once('end', () => {
+        try {
+          const result = JSON.parse(output);
+          requireAccess(res.statusCode === 200 && result.ok, /^[A-Z_]+$/.test(result.code ?? '') ? result.code : 'APPLICATION_IDENTITY_FAILED', 503);
+          finish(undefined, result.data);
+        } catch (error) { finish(error instanceof AccessError ? error : new AccessError('APPLICATION_IDENTITY_FAILED', 503)); }
       });
     });
-    req.on('error', () => reject(new AccessError('APPLICATION_CONTROL_UNAVAILABLE', 503)));
-    req.on('timeout', () => req.destroy());
+    // A socket inactivity timeout alone cannot bound headers + a partial/trickle
+    // body. Every terminal path settles once and clears this total deadline.
+    deadline = setTimeout(unavailable, timeoutMs);
+    req.once('error', unavailable);
     req.end(JSON.stringify(body));
   });
 }
