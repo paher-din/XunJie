@@ -136,7 +136,9 @@ export async function runCapacity(config,{transportFactory=httpsTransport,publis
     const uploads=track('uploads',async()=>{try{
       for(const [index,at]of config.transferAtSeconds.entries()){
         if(stop)break;
-        await pause(Math.max(0,steadyAt+at*1000-Date.now()));const actor=clients[index],file=config.transferFiles[index],began=performance.now();
+        await pause(Math.max(0,steadyAt+at*1000-Date.now()));
+        if(stop)break;
+        const actor=clients[index],file=config.transferFiles[index],began=performance.now();
         const transfer=transfers[index];transfer.state='uploading';progress();
         try{
           const result=await publish({home:actor.home},{deviceFile:actor.deviceFile,file,expectedDigest:'sha256:'+hash(readFileSync(file)),idempotencyKey:randomUUID()});
