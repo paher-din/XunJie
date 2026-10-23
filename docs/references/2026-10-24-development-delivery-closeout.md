@@ -7,14 +7,14 @@
 | 范围 | 已核实结果 | 待完成项 |
 | --- | --- | --- |
 | CA 使用说明 | `eaa60ca`：Mac 用户 login keychain、Windows LocalMachine Root 的权限/系统确认、指纹读回与精确移除；跳过 HTTPS 校验不计通过 | fresh Mac 的实际系统信任确认仍在处理；不以证书存在代替正常 Chromium TLS |
-| 工程与审查修复 | 负责人独立 9e7：xj-dev 181 pass/1 platform skip，teaching 542 pass/23 external skip；eb3 证书/delete/remote TLS 25/25；原基线、CA 并发、gateway 生命周期、status 与教师消费者缺陷均经定点源码复核 closed | closed 指已定位源码缺陷，不替代平台/业务/容量验收；harness delta 独立复核继续 |
+| 工程与审查修复 | 负责人独立 9e7：xj-dev 181 pass/1 platform skip，teaching 542 pass/23 external skip；eb3 证书/delete/remote TLS 25/25；原基线、CA 并发、gateway 生命周期、status 与教师消费者缺陷均经定点源码复核 closed；55ed harness 两项失败边界修复由 lead 与负责人分别验证 11/11 | closed 指已定位源码缺陷，不替代平台/业务/容量验收；4e79 harness 修复的两轴源码复核继续 |
 | 加密备份工具 | `2393b66`、`72b3250`、`6e9e52a`：11/11，含活跃 WAL、命名多库、同名配置、凭据解密、密钥排除、损坏库拒绝与版本 1 归档恢复；新脚本已安装，Linux 跨文件系统实际恢复 71 文件/6 库通过并清理 | 最终 scope、新归档与恢复等完整新窗口及预算完成 |
 | 云端隔离恢复 | 71 文件、6 库 integrity/FK 通过；5 个模型凭据、15 个 access 凭据、6 个 active SSH 映射与 3 对 TLS key/cert 核对通过；独立端口真实登录/课程读取通过 | 最终 runtime/config 稳定后的新归档及独立设备复核 |
 | 实际产品隔离 | 初次 CI `40006389514`、source `c896c52`：5,290 文件摘要通过，无开发服务/OSS SDK/团队凭据路径；空 HOME、无开发/OSS/account-control 接线，严格 TLS 下页面/登录/课程均 200。当前实际候选已严格激活 `70d170a` | 最新 70d 产物的隔离业务读回纳入最终恢复；不以旧 c896 结果冒称已测新产物，不代表未发布的普通用户安装包 |
-| fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；原 Windows 已完成严格 TLS、双角色闭环、新基线独立副本、团队编号真实 restore/verify 和自有 SSH 中断恢复 | Mac 正常系统信任仍待确认；Windows 新独立 member 已用 eb3 join，云任务写入与 active revoke 补验进行中 |
+| fresh 成员 | Mac 已真实 join、三模式、按团队编号恢复并验证 `200 → 409 VERSION_CONFLICT`、新基线隔离与显式停止/删除；原 Windows 已完成严格 TLS、双角色闭环、新基线独立副本、团队编号真实 restore/verify 和自有 SSH 中断恢复；新的 Windows 补验完成真实云端保存/冻结/固定提交、教师反馈 UI 读回及拆除前 active revoke，专属进程/CA trust/敏感材料已清理 | Mac 正常系统信任仍待确认；Windows 原 partial 回执保留，新覆盖以独立 topup 报告补充 |
 | 采集默认源码 | 静态 canary 已由 `2e23535` 改为运行时生成，guard 未改；负责人独立 0ea 默认 `collectCode` 840 文件/约 6.27MB 通过，根范围未缩小；Windows 原 context 默认 baseline publish 通过 | 最终交付 SHA 及新的平台补验回执继续对应记录 |
 | Windows 签名 | `496493a`：worker Mac 21/21、Windows 默认 PATH 7/7；lead 独立 client/signer 18/18；实际旧 client 失败后 fixed CLI 原 key join 成功，无 PATH 修改；fresh Windows 原邀请/home/key join 亦通过 | 不修改 Linux access 服务；完整成员流程单独记录 |
-| 容量与资源 | c896 完整 905 秒的 3503/3503 请求匹配服务端指标、零 non2xx/5xx；普通 API p95 1090.234ms，延迟失败保留。70d 的两项读取优化有隔离短预检与工程回归 | 新 70d 完整窗口尚无 T0；短预检不算正式通过，资源预算尚未应用 |
+| 容量与资源 | c896 完整 905 秒的 3503/3503 请求匹配服务端指标、零 non2xx/5xx；普通 API p95 1090.234ms，延迟失败保留。70d 的两项读取优化有隔离短预检与工程回归；负责人已放行 Aquinas 核对冻结运行态后启动新 905 | 新窗口实际 T0/结果以 Aquinas 回执为准；短预检不算正式通过，资源预算尚未应用 |
 | 真实模型 | c896 窗口中两项 Mimo 产品 turn 认证失败；另获授权切换后，两项 DeepSeek 产品 turn 均 settled/exactOK、calls1，actual usage 分别 82/16 与 82/33；原正式 store 未改 | 下一窗口使用已准备的 revision 2，再记录实际产品调用与 OSS；transport 成功和 controlled transport 不替代产品 E2E |
 | 真实执行节点 | 候选未登记 execution node，运行/检查正确拒绝未就绪能力；原 robert QEMU/WSL 保持 stopped | 本轮未做真实执行节点互操作 |
 | 教学效果 | 未测 | 不由工程或模型可调用性推导 |
@@ -41,13 +41,15 @@ live backup 配置现已登记 `133-runtime.conf`，并将实际存在的 `/var/
 
 初次产品隔离采用已严格预取验证的不可变目录 `/opt/xunjie/candidates/133-c896c52`，核对 4,787 个 runtime 和 503 个静态文件摘要。测试子进程仅获得 PATH、空的独立 HOME、NODE_ENV；不读取成员 connection/邀请、OSS 配置或 access account-control socket。测试操作者从隔离备份取得既有身份用于实际登录，产品子进程只使用普通应用配置与隔离业务库，未调用接入服务取得登录权限。
 
-当前实际候选为 `/opt/xunjie/candidates/133-70d170a`，source `70d170ab6a7665a973d514b28eedb5a0532d17ee`；负责人已核对 CI binding、摘要、native SQLite、静态及健康接口。计划切换后 candidate/access/formal PID 分别为 131947/131948/91972，restart 读回均为 0。与原 capacity 配置相比，新配置只更改 staticDirectory，复用同 DB/TLS/Origin/model store。后续 eb3 CLI 与 0ea harness 的产品运行文件相对 70d 零差异；harness 也不进入 runtime 装配清单。下一正式窗口固定这份产物与原历史数据。
+当前实际候选为 `/opt/xunjie/candidates/133-70d170a`，source `70d170ab6a7665a973d514b28eedb5a0532d17ee`；负责人已核对 CI binding、摘要、native SQLite、静态及健康接口。计划切换后 candidate/access/formal PID 分别为 131947/131948/91972，restart 读回均为 0。与原 capacity 配置相比，新配置只更改 staticDirectory，复用同 DB/TLS/Origin/model store。后续 CLI、harness 和文档至 55ed 的产品运行文件相对 70d 零差异；harness 也不进入 runtime 装配清单。新正式窗口固定这份产物与原历史数据。
 
 正式 d07 旧产物实例与兼容部署器继续保留；首个 bound main Release 尚未由负责人发布，不能提前用 strict candidate 部署器覆盖正式部署器。现行 access source `3825f98d20ae470e8ee3febaa7cc0bbb51c38382` 与私有 OSS 目录作为团队入口保留，不能为了清场删除唯一可用服务或已发布包/基线。资源预算待真实容量数据后由负责人决定，不以历史 MemoryPeak 或空闲采样代替。
 
 ## 容量证据与预算边界
 
-完整来源、业务基数/增量审计、模型与 OSS、失败和隔离诊断见[容量 worker 报告](../../tools/i0-cloud/capacity-133-report.md)。`adc8ab2` harness 独立 8/8，负责人同样 8/8；18 个 JS 与 1 个 Python 语法通过，20 个新增文件通过原秘密扫描。下一 run `6e9a5416` 已准备，尚无 T0、`windowApproved=false`，等待 Windows 补验后由负责人安排。
+完整来源、业务基数/增量审计、模型与 OSS、失败和隔离诊断见[容量 worker 报告](../../tools/i0-cloud/capacity-133-report.md)。`adc8ab2` harness 原 8/8 通过后，两轴分别确认上传错误独立记录与异步失败收束两项 P2；`4e79a80` 修复已合入 `55ed4dd`，lead 与负责人各自 11/11，包含 3 个真实业务工厂加受控外部依赖的故障用例。两轴对精确修复继续只读复核，不因测试绿便宣布审查结束。18 个原 JS 与 1 个 Python 语法通过，20 个原新增文件及本次 2 个改动文件通过原秘密扫描。
+
+Windows 补验和清理完成后，负责人已放行 Aquinas 对 source/PID/配置做冻结读回，再启动预备 run `6e9a5416` 的新 905；实际 runId、T0、起止及统计以其持久回执为准，本文件尚不记录最终结果。窗口内 runtime/server/model/config/limits、已加载 harness、额外业务写入和手工 snapshot 均冻结。`completed` 只代表执行收束，容量通过还需服务端延迟、资源和独立数据库审计；OSS 或模型失败不能因为普通窗口继续便记为通过。
 
 下表只引用旧 c896 完整窗口，不能替代新 70d 验收：
 
@@ -61,7 +63,11 @@ live backup 配置现已登记 `133-runtime.conf`，并将实际存在的 `/var/
 
 保留原 1103 receipt 一致副本的两次 40 秒诊断都为 212/212 服务端记录、零 non2xx/5xx。a8 单项补丁普通 API p95 460.129ms、workbench 中位数 499.312ms/五并发尖峰 1182.841ms；加 2b hydration 后分别为 332.875ms、169.010ms/782.469ms。它们支持严格构建/激活后的完整复测，尖峰与来源继续保留。当前业务 512MiB/access 256MiB 沿用原参数；access 128MiB 仅为未应用、未压限验收的候选，最终预算及 dropin 仍由负责人依据新完整窗口决定。
 
-原 Windows 已撤销成员通过原 key refresh 实际得到 `DEVICE_REVOKED`；当时六个环境已 down/delete，因此没有测活隧道/Session 失效。新的 Windows 补验使用独立 home、member 和自有云任务；须在进程/Session 保持存活并明确 ready 后再由负责人撤销，尚不预报结果。`CLOUD-UI-01`（个人资料静态身份/本地来源文案与云首页不一致）作为 fresh 报告的未修观察保留，没有据此证明服务端泄漏。
+原 Windows 已撤销成员通过原 key refresh 实际得到 `DEVICE_REVOKED`；当时六个环境已 down/delete，因此原 partial 报告没有活隧道/Session 失效覆盖，原报告与其摘要保持不变。
+
+新增 Windows topup 使用独立 home/member、自有云任务，client `eb3d5fc`、实际 server `70d170a`。真实 Edge 严格 TLS 下完成保存 200、冻结 200、显式固定版本提交 200，并从学生 UI 读取教师反馈 revision 1。2026-10-23 20:52:57 UTC 在 gateway/Vite/SSH/Session 仍存活时发出 ready，负责人 20:54:35–20:54:37 UTC 撤销；原浏览器 Session 与自有 attempt 请求实际返回 `503 PERMISSION_REVOKED`，原 SSH 退出、supervisor stopped/retryable=false，重试计数 2 在后续 196.556 秒内稳定；原 key refresh 得到 `DEVICE_REVOKED`。没有观察到直接 backend 401；缓存页面和已显示反馈仍可读，云端数据访问已阻断。所有拒绝读回完成后才 teardown，未重放浏览器写入。
+
+Windows 最终 21:01:46 UTC 读回：自有进程、新增 CA trust、DB 载荷和敏感材料均为 0；专属 clone/邀请/identity/CA 目录已移除，永久锁守卫和共享历史保留。完整补验与 35 个引用证据校验见仓库外 `~/.codex/artifacts/xj133-windows-topup-20261024/topup-report.json`、`evidence-validation.json`；它们补充原报告，未重跑或改写原完整验收。真实节点、模型及教学效果不在该补验范围。`CLOUD-UI-01`（个人资料静态身份/本地来源文案与云首页不一致）作为 fresh 报告的未修观察保留，没有据此证明服务端泄漏。
 
 ## 旧入口核对与清理边界
 
@@ -71,4 +77,4 @@ live backup 配置现已登记 `133-runtime.conf`，并将实际存在的 `/var/
 
 本轮已清理自己创建的隔离进程和明文恢复目录。之后以全新 file-only 临时成员经同一持久服务完成公开 CLI invite/join，再真实 fetch 原已发布编号；`cacheHit:false`、6,273,409 bytes、完整摘要与原包一致，未手传 ZIP。该 smoke 不创建 SSH/应用账号或受管后台进程，不执行 restore/verify；结束只撤销自己新建的成员并删除专属私有 home/下载缓存。证据为 `post-cleanup-smoke.json`，共享包和基线保留。
 
-真实 daily timer 已在 2026-10-24 03:00:26–03:00:27 使用当时扩展的备份配置完成，`Result=success`、`ExecMainStatus=0`；它早于 70d 配置登记，不声称已包含后来的材料。周备 timer 保持 active，未额外制造第二次周备。新完整容量窗口、fresh 补验、最终稳定配置归档/独立恢复与最新产物隔离读回仍需补齐，本文不预报通过。
+真实 daily timer 已在 2026-10-24 03:00:26–03:00:27 使用当时扩展的备份配置完成，`Result=success`、`ExecMainStatus=0`；它早于 70d 配置登记，不声称已包含后来的材料。周备 timer 保持 active，未额外制造第二次周备。新完整容量窗口、fresh Mac 正常系统认证、最终稳定配置归档/独立恢复与最新产物隔离读回仍需补齐，本文不预报通过。

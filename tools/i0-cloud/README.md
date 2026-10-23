@@ -96,6 +96,8 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 
 重复验收通过 `previousAuditFile` 复用原四个自有 assignment/attempt，核对身份、起点 hash/version、旧提交和反馈，并按原基数加本轮增量审计；保留原数据规模与失败证据。`run.json` 记录 PID、阶段、请求数及进度；工具调用超时后先核对进程和进度，已有 run 不重复启动。服务切换、预算变更、备份快照和其他业务写入由负责人安排在窗口之外。
 
+每次计划上传分别记录 actor、计划字节数、耗时及成功或安全失败码；OSS 失败保留为失败，继续普通业务窗口及第二次上传。业务致命失败进入 `draining`，停止新请求、等待所有已发分支收束后写入 `executionDrained:true` 和稳定终态，保留首个失败原因。`completed` 表示执行收束；外部能力失败仍以退出码 1 和 `executionPassed:false` 报告。执行成功时 `overallPassed:null`，等待服务端延迟、资源与独立数据库审计后再判断容量是否通过。
+
 完成后用 `node tools/i0-cloud/capacity-collect.mjs <private-run-config.json>` 匹配服务器生成的 requestId，普通 API p95 使用服务端耗时并包含正常登录；客户端 RTT、真实模型、OSS 和 controlled transport 结果分别报告。资源报告区分窗口采样的 `memory.current` 与包含历史的 lifetime peak，核对 PID/restart/OOM 增量与 host available。`capacity-profile*.mjs` / `capacity-hydration-patch.mjs` / `capacity-precheck.mjs` 用于隔离副本诊断；微基准与短预检保留各自来源，完整新 CI 产物的正式窗口另行验收。产品 runtime 的装配清单只包含本目录的 `cloud-host.mjs`，这些容量工具不随产品产物分发。
 
 ## 成员连接入口
