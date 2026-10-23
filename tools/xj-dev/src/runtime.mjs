@@ -1,6 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, normalize } from 'node:path';
 import { CliError } from './envelope.mjs';
 import { PINNED_NODE, toolHome } from './paths.mjs';
 
@@ -23,7 +23,13 @@ export function locatePinnedRuntime(env = process.env, home = toolHome(env)) {
   candidates.push('node');
   for (const candidate of candidates) {
     const version = nodeVersion(candidate);
-    if (version === PINNED_NODE) return { path: candidate, version };
+    if (version === PINNED_NODE) {
+      try {
+        const path = isAbsolute(candidate) ? candidate
+          : execFileSync(candidate, ['-p', 'process.execPath'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        if (isAbsolute(path) && existsSync(path)) return { path: normalize(path), version };
+      } catch { continue; }
+    }
   }
   throw new CliError('runtime', 'NODE_VERSION_MISMATCH',
     `需要精确的 Node ${PINNED_NODE}（当前进程 ${process.version}，PATH 与受管目录均未找到）。`,
@@ -33,13 +39,26 @@ export function locatePinnedRuntime(env = process.env, home = toolHome(env)) {
 
 export function npmCliJs(nodePath) {
   const dir = dirname(nodePath);
-  const prefix = dir.endsWith('bin') ? dirname(dir) : dir;
-  return join(prefix, 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  const candidates = [
+    join(dir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    join(dir, 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    join(dirname(dir), 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+  ];
+  const cli = candidates.find(existsSync);
+  if (!cli) throw new CliError('dependencies', 'NPM_MISSING', `选定运行时缺少 npm：${nodePath}`,
+    { recovery: '安装包含 npm 的完整 Node 发行版，不要只复制 node 可执行文件。' });
+  return cli;
 }
 
 export function runNode(nodePath, args, options = {}) {
+  const env = { ...process.env, ...options.env };
+  const pathKey = Object.keys(options.env ?? {}).find(key => key.toLowerCase() === 'path')
+    ?? Object.keys(process.env).find(key => key.toLowerCase() === 'path') ?? 'PATH';
+  const searchPath = env[pathKey] ?? '';
+  for (const key of Object.keys(env)) if (key.toLowerCase() === 'path') delete env[key];
+  env[pathKey] = [dirname(nodePath), searchPath].filter(Boolean).join(delimiter);
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(nodePath, args, { stdio: ['ignore', 'pipe', 'pipe'], ...options });
+    const child = spawn(nodePath, args, { stdio: ['ignore', 'pipe', 'pipe'], ...options, env });
     let stdout = '', stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -10,7 +10,44 @@ import { PINNED_NODE, environmentId, environmentPaths, findWorktreeRoot, toolHom
 import { allocatePorts, basePortFor, portFree } from '../src/ports.mjs';
 import { acquireLock, loadState, saveState } from '../src/state.mjs';
 import { componentRunning, spawnComponent, stopComponent } from '../src/processes.mjs';
-import { dependenciesFresh, locatePinnedRuntime } from '../src/runtime.mjs';
+import { dependenciesFresh, locatePinnedRuntime, npmCliJs, runNode } from '../src/runtime.mjs';
+
+test('runNode keeps npm lifecycle node on the selected runtime', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'xj-shadow-node-'));
+  try {
+    const shadow = join(directory, process.platform === 'win32' ? 'node.exe' : 'node');
+    writeFileSync(shadow, process.platform === 'win32' ? 'invalid executable' : '#!/bin/sh\necho v99.0.0\n');
+    chmodSync(shadow, 0o755);
+    const result = await runNode(process.execPath, ['-e',
+      `const {execFileSync}=require('node:child_process'); process.stdout.write(execFileSync('node',['--version'],{encoding:'utf8'}));`],
+    { env: { PATH: directory } });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stdout.trim(), PINNED_NODE);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('npmCliJs locates POSIX and Windows distribution layouts', () => {
+  const root = mkdtempSync(join(tmpdir(), 'xj-npm-layout-'));
+  try {
+    for (const [name, executable, relative] of [
+      ['posix', join('bin', 'node'), join('lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')],
+      ['windows', 'node.exe', join('node_modules', 'npm', 'bin', 'npm-cli.js')],
+      [join('windows', 'bin'), 'node.exe', join('node_modules', 'npm', 'bin', 'npm-cli.js')],
+    ]) {
+      const prefix = join(root, name);
+      const cli = join(prefix, relative);
+      mkdirSync(dirname(cli), { recursive: true });
+      writeFileSync(cli, '');
+      assert.equal(npmCliJs(join(prefix, executable)), cli);
+    }
+    assert.throws(() => npmCliJs(join(root, 'missing', 'node')),
+      error => error instanceof CliError && error.code === 'NPM_MISSING');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 assert.equal(process.version, PINNED_NODE,
   `xj-dev 测试必须由受管 Node ${PINNED_NODE} 运行（当前 ${process.version}）；先 node tools/xj-dev/xj-dev.mjs doctor 确认定位。`);
@@ -23,9 +60,14 @@ function tempDir(label) {
 }
 
 function fakeNode(directory, version) {
-  const file = join(directory, 'fake-node');
-  writeFileSync(file, `#!/bin/sh\necho ${version}\n`);
-  chmodSync(file, 0o755);
+  const file = join(directory, process.platform === 'win32' ? `node-${version}.exe` : 'fake-node');
+  if (process.platform === 'win32') {
+    if (version === PINNED_NODE) copyFileSync(process.execPath, file);
+    else writeFileSync(file, 'invalid executable');
+  } else {
+    writeFileSync(file, `#!/bin/sh\necho ${version}\n`);
+    chmodSync(file, 0o755);
+  }
   return file;
 }
 
@@ -177,6 +219,14 @@ test('runtime：XJ_DEV_NODE_24 优先且按版本过滤候选', () => {
   const located = locatePinnedRuntime({ XJ_DEV_NODE_24: wrong }, '');
   assert.equal(located.version, PINNED_NODE);
   assert.notEqual(located.path, wrong);
+  const originalDirectory = process.cwd();
+  try {
+    process.chdir(dirname(process.execPath));
+    const selected = locatePinnedRuntime({ XJ_DEV_NODE_24: process.platform === 'win32' ? '.\\node.exe' : './node' }, '');
+    assert.equal(selected.path, process.execPath);
+  } finally {
+    process.chdir(originalDirectory);
+  }
 });
 
 test('dependenciesFresh：以锁文件与安装标记的 mtime 判断', () => {
