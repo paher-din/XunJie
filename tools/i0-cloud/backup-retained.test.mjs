@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createCipheriv, createHash, randomBytes } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createEncryptedBackup, restoreEncryptedBackup } from './backup-retained.mjs';
+import { openAccessStore } from '../xj-dev-access/store.mjs';
 
 const REPOSITORY = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const TEACHING_ROOT = join(REPOSITORY, 'apps/teaching');
@@ -200,5 +201,136 @@ test('the CLI runs a full backup and restore round trip', async () => {
     const bad = spawnSync(process.execPath, [script], { encoding: 'utf8' });
     assert.equal(bad.status, 2);
     assert.match(bad.stderr, /Usage:/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('named live databases and duplicate config basenames restore with usable access credentials', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-access-'));
+  let access;
+  let restoredAccess;
+  let model;
+  try {
+    writeFileSync(join(root, 'backup.key'), randomBytes(32));
+    const { settings } = writeBackupConfig(root);
+    const candidate = createSqliteFixture(join(root, 'candidate.db'));
+    const models = join(root, 'candidate-models'); mkdirSync(models);
+    const store = createSqliteFixture(join(models, 'store')); // No extension: detect SQLite header.
+    const Driver = createRequire(join(TEACHING_ROOT, 'package.json'))('better-sqlite3');
+    model = new Driver(store); model.pragma('journal_mode = WAL'); model.pragma('wal_autocheckpoint = 0');
+    model.prepare('INSERT INTO submissions VALUES (?, ?, ?)').run('model-wal', 'teacher', 'model WAL row');
+    writeFileSync(join(models, 'credentials.key'), randomBytes(32));
+    const accessKey = join(root, 'credential.key'); writeFileSync(accessKey, randomBytes(32));
+    access = openAccessStore(join(root, 'access.sqlite'), accessKey, 'backup-service');
+    const invitation = access.createInvitation({ label: 'backup member', teamRole: 'developer', appRole: 'student',
+      courseId: 'backup-course', capabilities: ['page', 'file:read'], ttlSeconds: 60 });
+    const credentials = access.credentials(invitation.memberId);
+    const configA = join(root, 'formal'); const configB = join(root, 'candidate');
+    mkdirSync(configA); mkdirSync(configB);
+    writeFileSync(join(configA, 'service.json'), JSON.stringify({ serviceId: 'formal' }));
+    writeFileSync(join(configB, 'service.json'), JSON.stringify({ serviceId: 'backup-service' }));
+    Object.assign(settings, {
+      databases: [{ source: candidate, path: 'candidate/course.sqlite' }, { source: join(root, 'access.sqlite'), path: 'access/access.sqlite' }],
+      directories: [{ source: models, path: 'candidate/personal-models' }],
+      recoveryFiles: [{ source: accessKey, path: 'access/credential.key' },
+        { source: join(configA, 'service.json'), path: 'formal/service.json' },
+        { source: join(configB, 'service.json'), path: 'access/service.json' }],
+    });
+    writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+    const backup = await createEncryptedBackup(backupOptions(root));
+    assert.ok(backup.files.every(file => !/-(wal|shm|journal)$/.test(file)));
+    const target = join(root, 'isolated');
+    const restored = await restoreEncryptedBackup({ restore: backup.path, keyFile: join(root, 'backup.key'), target, teachingRoot: TEACHING_ROOT });
+    assert.equal(restored.databasesVerified.length, 5);
+    assert.equal(JSON.parse(readFileSync(join(target, 'formal/service.json'))).serviceId, 'formal');
+    assert.equal(JSON.parse(readFileSync(join(target, 'access/service.json'))).serviceId, 'backup-service');
+    restoredAccess = openAccessStore(join(target, 'access/access.sqlite'), join(target, 'access/credential.key'), 'backup-service');
+    assert.deepEqual(restoredAccess.credentials(invitation.memberId), credentials);
+    assert.equal(restoredAccess.inspect().members.length, 1);
+    const restoredModel = new Driver(join(target, 'candidate/personal-models/store'), { readonly: true });
+    try { assert.equal(restoredModel.prepare('SELECT content FROM submissions WHERE id=?').pluck().get('model-wal'), 'model WAL row'); }
+    finally { restoredModel.close(); }
+    const manifest = JSON.parse(readFileSync(join(target, 'backup-manifest.json')));
+    assert.equal(manifest.version, 2);
+    assert.match(manifest.consistency, /not a cross-storage atomic snapshot/);
+    assert.equal(manifest.files.find(file => file.path === 'access/access.sqlite').method, 'sqlite-backup');
+    assert.ok(!readFileSync(backup.path).includes(Buffer.from(credentials.password)));
+  } finally { restoredAccess?.close(); access?.close(); model?.close(); rmSync(root, { recursive: true, force: true }); }
+});
+
+test('ordinary recovery files cannot silently copy a SQLite database or journal', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-raw-db-'));
+  try {
+    writeFileSync(join(root, 'backup.key'), randomBytes(32));
+    const disguised = createSqliteFixture(join(root, 'looks-like-config'));
+    const { settings } = writeBackupConfig(root, { extraFiles: [disguised] });
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /SQLITE_REQUIRES_BACKUP_API/);
+    settings.extraFiles = [];
+    settings.recoveryFiles = [{ source: disguised, path: 'config/current.json' }];
+    writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /SQLITE_REQUIRES_BACKUP_API/);
+    writeFileSync(join(root, 'active.sqlite-wal'), 'committed pages must not be copied');
+    settings.recoveryFiles = [{ source: join(root, 'active.sqlite-wal'), path: 'config/journal' }];
+    writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /SQLITE_REQUIRES_BACKUP_API/);
+    assert.ok(!existsSync(settings.outputDirectory));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the encryption key stays outside the archive even through a hardlink or directory source', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-key-'));
+  try {
+    const key = join(root, 'backup.key'); writeFileSync(key, randomBytes(32));
+    const { settings } = writeBackupConfig(root, { extraFiles: [key] });
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /BACKUP_KEY_MUST_STAY_OUTSIDE_ARCHIVE/);
+    settings.extraFiles = [];
+    const material = join(root, 'materials'); mkdirSync(material);
+    linkSync(key, join(material, 'renamed-key'));
+    settings.directories = [{ source: material, path: 'recovery' }];
+    writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /BACKUP_KEY_MUST_STAY_OUTSIDE_ARCHIVE/);
+    assert.ok(!existsSync(settings.outputDirectory));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('unsafe source objects, destination traversal and collisions fail before archive publication', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-paths-'));
+  try {
+    writeFileSync(join(root, 'backup.key'), randomBytes(32));
+    const { settings } = writeBackupConfig(root);
+    const material = join(root, 'materials'); mkdirSync(material);
+    writeFileSync(join(root, 'config.json'), '{}');
+    symlinkSync(join(root, 'config.json'), join(material, 'linked.json'));
+    settings.directories = [{ source: material, path: 'recovery' }];
+    writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /SOURCE_UNSAFE_OBJECT/);
+    settings.directories = [];
+    for (const path of ['../escape', '/absolute', 'C:/drive', 'one\\two', 'backup-manifest.json']) {
+      settings.recoveryFiles = [{ source: join(root, 'config.json'), path }];
+      writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+      await assert.rejects(createEncryptedBackup(backupOptions(root)), /BACKUP_PATH_REQUIRED/);
+    }
+    settings.recoveryFiles = [{ source: join(root, 'config.json'), path: 'course/synthetic.sqlite' }];
+    writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /BACKUP_PATH_COLLISION/);
+    assert.ok(!existsSync(settings.outputDirectory));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('version one archives remain recoverable after the named-source extension', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-v1-'));
+  try {
+    const key = randomBytes(32); writeFileSync(join(root, 'backup.key'), key);
+    const payload = join(root, 'payload'); mkdirSync(join(payload, 'course'), { recursive: true });
+    const database = createSqliteFixture(join(payload, 'course/synthetic.sqlite'));
+    writeFileSync(join(payload, 'backup-manifest.json'), JSON.stringify({ format: 'xunjie-encrypted-backup', version: 1,
+      label: 'legacy', createdAt: '2026-10-23T00:00:00Z', files: [{ path: 'course/synthetic.sqlite', sha256: sha256(readFileSync(database)) }] }));
+    const plain = join(root, 'legacy.tar.gz');
+    execFileSync('tar', ['-czf', plain, '-C', payload, 'course', 'backup-manifest.json']);
+    const iv = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', createHash('sha256').update(key).digest(), iv);
+    const encrypted = Buffer.concat([cipher.update(readFileSync(plain)), cipher.final()]);
+    const archive = join(root, 'legacy.xunjiebak');
+    writeFileSync(archive, Buffer.concat([encrypted, Buffer.from('XJB1'), iv, cipher.getAuthTag()]));
+    const restored = await restoreEncryptedBackup({ restore: archive, keyFile: join(root, 'backup.key'), target: join(root, 'restored'), teachingRoot: TEACHING_ROOT });
+    assert.deepEqual(restored.databasesVerified, ['course/synthetic.sqlite']);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

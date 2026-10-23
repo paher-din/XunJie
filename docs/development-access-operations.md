@@ -1,6 +1,6 @@
 # 开发成员接入、远程权限与云端运行
 
-更新：2026-10-24。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。一次性邀请、设备证明、join/refresh、受限 SSH 与动态应用账号控制已有 #129 工程实现；真实新候选验收仍在进行，对象存储尚未实施。资源策略工具已交付，业务预算启用与五人容量由 #133 验证。当前服务器的实测事实见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，已交付的产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
+更新：2026-10-24。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。一次性邀请、设备证明、join/refresh、受限 SSH、动态应用账号控制与私有 OSS 直传已交付；#133 继续独立新设备、容量与恢复验收。资源策略工具已交付，业务预算启用与五人容量由 #133 验证。当前服务器的实测事实见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，已交付的产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
 
 ## 当前工具入口
 

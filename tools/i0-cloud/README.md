@@ -71,9 +71,13 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 
 `backup-retained.mjs` 把课程库（SQLite Backup API 一致副本，前后做 integrity/外键检查）、个人模型存储目录（库文件一致副本 + 密钥材料原样复制，排除源库 WAL/SHM/journal）和 `extraFiles`（签名密钥、TLS 材料、应用配置）打成 tar 后以 AES-256-GCM 加密写入 `outputDirectory`，文件名 `<label>-<时间>-<随机>.xunjiebak`（0600）。密钥应另存独立设备的受限副本（例如负责人 Mac 的 `~/.config/xunjie-cloud/backup-recovery/`，目录 0700、文件 0600）；这不等于已保存离线介质。仅保存在同一服务器不能支持整机丢失后的恢复。密钥取自维护者独享的 key file（`openssl rand 32` 生成，保存在仓库与备份目标之外），私钥与密钥内容不进入日志或输出。
 
-恢复必须指向空的隔离目录：`--restore <archive> --key-file <file> --target <empty-dir> --teaching-root <dir>`，脚本解密验签、解包后逐文件核对摘要，并对每个库文件做只读 integrity/外键检查，全部通过才报告 `restored`。密钥错误或归档被篡改时认证失败且目标目录不被写入。接入服务尚未交付，其数据不在本备份范围内，本票不声称全链路备份验收。
+现有配置字段保持兼容；[配置示例](backup.example.json)新增 `databases`、`directories`、`recoveryFiles`，每项为 `{ "source": "绝对源路径", "path": "归档内相对路径" }`。它们分别用于显式登记活跃库、带模型 store/key 的目录及非数据库恢复材料；不同服务的同名 `service.json`/`application.json` 应放在不同归档路径，重复或越界路径拒绝。目录内按 SQLite 文件头识别数据库（不依赖扩展名），统一使用 Backup API 并排除 WAL/SHM/journal；`extraFiles`/`recoveryFiles` 不允许裸复制数据库或日志。symlink/特殊对象拒绝，备份加密 key 本身及其硬链接禁止进入归档。目录只列维护者核定的恢复材料，不递归打包整个 `/etc` 或成员 home。
 
-每个 SQLite 副本各自一致，多个库与额外文件按顺序采集，不构成跨存储原子快照。本轮已将真实加密备份与密钥存于负责人 Mac 的受限目录，并在该设备独立恢复 10 文件、核验两库；这验证现有业务恢复材料可用，不等于整机重建、离线介质或跨库同一时刻恢复。
+完整恢复清单应包括：正式课程库/原个人模型、活跃候选业务库/个人模型 store 与对应 key、account-control registry/config、access SQLite 与对应 `credential.key`、应用签名/TLS/CA 配置、服务单元、受管 SSH 映射与固定 helper/回执。实际路径按当前持久服务核定，示例不是可直接部署配置。成员设备私钥只在成员本机，服务器归档不包含它；服务器持有的受管公钥映射可备份。短期签名 URL、当前 socket/PID、活跃 WAL 不作为恢复材料。
+
+恢复必须指向空的隔离目录：`--restore <archive> --key-file <file> --target <empty-dir> --teaching-root <dir>`，脚本先解密认证、逐文件核对摘要并对每个库做只读 integrity/外键检查，全部通过才移入目标并报告 `restored`；版本 1 归档仍可恢复。密钥错误或归档被篡改时目标不被写入。再将恢复配置中的路径、端口、socket 改为新的隔离目录，核对 TLS key/cert、模型/账号凭据解密关系与实际业务读回；不能仅凭文件数宣称全链路可恢复，也不能用原服务配置启动第二个写同库的实例。
+
+每个 SQLite 副本各自一致，多个库与额外文件按顺序采集，不构成跨存储原子快照。版本 2 的加密 manifest 记录逐项来源、采集方法与起止时间；这些路径及秘密仍只存在加密归档中。先前正式业务备份曾在负责人 Mac 独立恢复 10 文件、核验两库；新增接入/候选范围的实际恢复证据另行记录，不沿用旧计数冒充验收，也不等于整机重建或离线介质。
 
 日常运行由 `xunjie-backup-daily.timer`（03:00，保留 7 份）与 `xunjie-backup-weekly.timer`（周日 03:30，保留 4 份）触发；按 label 分别清理，只删除本脚本命名的归档。两个备份单元的 `ExecStart` 用 `flock` 持有部署脚本同一把锁（`<workDirectory>/deploy-artifact.lock`），部署与备份、备份与备份互不重叠；换部署配置时需同步单元里的锁路径。恢复演练应在隔离环境（独立目录、无生产配置）执行一次并记录结果，不要在生产数据目录上直接演练。
 
