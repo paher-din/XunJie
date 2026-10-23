@@ -6,7 +6,9 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=root
-ExecStart=/usr/bin/python3 /usr/local/lib/xunjie/deploy-artifact.py --config /etc/xunjie/deployment.json --monitor-config /etc/xunjie/monitoring.json
+# Keep the sampler independent of the production deployer until main adopts the
+# bound Release protocol. This copy is only invoked with --monitor-config.
+ExecStart=/usr/bin/python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xunjie/monitoring-deployment.json --monitor-config /etc/xunjie/monitoring.json
 TimeoutStartSec=120
 CPUWeight=20
 IOWeight=50

@@ -35,7 +35,7 @@ function backupOptions(root, { label = 'daily', keep = 7 } = {}) {
 }
 
 function writeBackupConfig(root, { personalModels = true, extraFiles = [] } = {}) {
-  const directory = mkdtempSync(join(tmpdir(), 'xunjie-backup-source-'));
+  const directory = mkdtempSync(join(root, 'source-'));
   const courseDatabaseFile = createSqliteFixture(join(directory, 'synthetic.sqlite'));
   const settings = {
     courseDatabaseFile,

@@ -38,6 +38,7 @@ MANIFEST_FORMAT = 'xunjie-runtime-artifact'
 MANIFEST_VERSION = 1
 MANIFEST_LIMIT = 8 * 1024 * 1024
 ARTIFACT_LIMIT = 1024 * 1024 * 1024
+MEMORY_WARNING_BYTES = 384 * 1024 * 1024
 API_HOSTS = frozenset({'api.github.com', 'codeload.github.com'})
 RELEASE_PATTERN = re.compile(r'main-[0-9a-f]{40}(?:-[0-9a-f]{12})?')
 BACKUP_PATTERN = re.compile(r'main-deploy-\d+-[0-9a-f]{32}\.sqlite')
@@ -710,7 +711,7 @@ try{
         elif disk['warning']:
             actions.append('disk is below the warning line: run --prune to drop superseded releases and deploy backups')
         memory = self.available_memory_bytes()
-        if memory is not None and memory < 384 * 1024 * 1024:
+        if memory is not None and memory < MEMORY_WARNING_BYTES:
             actions.append('available memory is low: inspect the application service before it degrades')
         try:
             load = [round(value, 2) for value in os.getloadavg()]
@@ -738,12 +739,17 @@ try{
         snapshot = self.status()
         values = {'xunjie_application_healthy': int(snapshot['serviceActive'] and snapshot['health'] is not None
                                                   and snapshot['health'].get('ready') == 'ready'),
-                  'xunjie_deployment_failed': int((snapshot['lastDeployment'] or {}).get('status') == 'failed'),
+                  'xunjie_deployment_healthy': int(bool(snapshot['lastDeployment'])
+                                                  and snapshot['lastDeployment'].get('status') != 'failed'),
                   'xunjie_disk_free_bytes': snapshot['disk']['freeBytes'],
                   'xunjie_memory_available_bytes': snapshot['memoryAvailableBytes'],
                   'xunjie_cpu_load_per_core': snapshot['loadAverage'][0] / snapshot['cpuCount']
                       if snapshot['loadAverage'] and snapshot['cpuCount'] else None,
-                  'xunjie_github_reachable': int(snapshot['remoteCommit'] is not None)}
+                  'xunjie_github_reachable': int(snapshot['remoteCommit'] is not None),
+                  'xunjie_memory_healthy': int(snapshot['memoryAvailableBytes'] >= MEMORY_WARNING_BYTES)
+                      if snapshot['memoryAvailableBytes'] is not None else None,
+                  'xunjie_disk_warning_healthy': int(not snapshot['disk']['warning']),
+                  'xunjie_disk_floor_healthy': int(not snapshot['disk']['blocked'])}
         metrics = [{'MetricName': name, 'Value': value} for name, value in values.items() if value is not None]
         result = {'status': 'dry-run' if dry_run else 'reported', 'at': utc_now(), 'metrics': metrics,
                   'health': snapshot['health'], 'actions': snapshot['actions']}
