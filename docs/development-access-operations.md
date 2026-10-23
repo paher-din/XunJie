@@ -100,12 +100,12 @@ CLI 与文件存储能简化已经加入团队的成员操作，但不能自行�
 
 采用一套共享业务实例，个人开发分支运行在成员本地。服务器不为每位成员启动独立前后端，也不运行 C/HDL 编译虚拟机或本地模型。新增开发接入进程只处理少量元数据。
 
-以下数值是 **2–5 人场景的初始验收候选，不是已应用配置**：
+以下内存/CPU预算已依据 #133 的 e03 五成员完整窗口确定为模板值，实际主机已由负责人通过持久set-property应用，properties与内核cgroup值读回一致，所有PID/ExecStart不变；其余策略仍按各自验收边界判断，不据模板存在声称全部生效：
 
 | 资源 | 初始策略 | 验证与调整条件 |
 | --- | --- | --- |
-| 常驻内存 | 应用以 512 MiB 软阈值、768 MiB 最后上限作为候选；接入进程以 128/256 MiB 作为候选；常态保留至少 512 MiB 可用内存 | 用真实图片、模型上下文和五人操作测峰值后再应用；当前空闲用量不能证明这些上限足够 |
-| CPU | 业务权重高于维护任务；后台维护串行；云端不再构建，产物由 CI 产生后拉取校验 | 维护单元模板已设低权重（`CPUWeight=20`、`Nice=10`），部署与备份单元共用同一把 flock 维护锁互斥；业务单元候选权重待实测峰值后启用 |
+| 常驻内存 | 正式shared模板High512/Max768 MiB；本轮candidate保留Max512、设High448 MiB；access High128/Max256 MiB；常态保留至少512 MiB可用内存 | e03窗口candidate cgroup peak329.152 MiB（含登录）、access42.738 MiB、host最低908.973 MiB；不是正式旧idle峰。实际应用/读回由负责人处理，不据模板变更声称已生效 |
+| CPU | 正式/candidate业务CPUWeight200高于维护任务；后台维护串行；云端不再构建，产物由CI产生后拉取校验 | e03窗口candidate平均48.986%单核；维护模板保持`CPUWeight=20`、`Nice=10`，部署与备份共用同一把flock维护锁；业务权重持久读回另留回执 |
 | 模型调用 | 单进程共享预算：全局 2、每成员 1；最多 20 等待、120 秒、等待 payload 合计 32 MiB；个人对话/学生帮助/教师设计共用 | [预算与错误语义](../apps/teaching/server/personal-agent/README.md)；以上为待 #133 五人 900 秒实测调整的候选值，取消须等实际上游收尾才返还名额，不将等待或外部模型延迟当作 ECS CPU 不足 |
 | 场景导出/恢复 | 每个目标环境一项写操作；云端导出一次一项；压缩优先在成员本机完成 | 不对同一课程库并行启动多个可写后端或任意压缩任务 |
 | 文件传输 | 大文件直达对象存储；每成员先按一项、团队最多两项重传敏感的大文件操作；按摘要缓存与去重 | 以成员实际网络测续传和首次基线耗时；控制对象存储用量，不让客户端持有无限写凭据 |
@@ -114,7 +114,7 @@ CLI 与文件存储能简化已经加入团队的成员操作，但不能自行�
 
 私有复现 bucket 的 ECS RAM role 只授予 `team/*` 对象的 `GetObject`、`PutObject`、`DeleteObject`、`ListParts`、`AbortMultipartUpload`。`ListMultipartUploads` 单独授予这个专用 bucket 的 bucket 资源；它不支持 `oss:Prefix` 条件，附加该条件会使请求返回 403。`oss:Prefix` 用于 ListObjects，不能照搬到 multipart 列举，详见[官方 RAM action 表](https://www.alibabacloud.com/help/en/ram/api-object-storage-service)。此角色不授予 `ListObjects`、`ListBuckets` 或存储管理权限。服务始终按目录记录的精确 owned key 列举、过滤和清理；成员设备只得到该 key/分片/Range 的短期签名 URL，不得到 role 或 STS 凭据。
 
-发布采用 CI 构建后由云端拉取经过校验的运行产物：构建器在 GitHub Actions 上产出带逐文件摘要的产物并发布 Release，`deploy-artifact.py` 下载校验、装配、切换并在健康探测失败时回退到上一个版本及其备份。原生依赖与 Linux、CPU 架构和项目 Node 版本在构建与部署两端核对，不复制成员电脑的 `node_modules`。正式服务器已于 2026-10-23 从源码构建迁到旧产物协议，旧源码部署脚本与单元已删除。新增不可变产物 tag + bound Release 协议已通过 integration 候选 CI，正式 main 仍运行 `d07dc339` 的旧协议；在负责人决定合 main、首个 bound main Release 就绪前，保留兼容的正式发布器与 `artifactBranch` 配置，不将 strict candidate 部署器直接覆盖生产。切换顺序见[云基础设施模板](../tools/i0-cloud/README.md)。业务单元内存预算仍以候选注释保留，测出真实五人峰值后由 #133 验证启用，不把维护任务样本当作容量结论。
+发布采用 CI 构建后由云端拉取经过校验的运行产物：构建器在 GitHub Actions 上产出带逐文件摘要的产物并发布 Release，`deploy-artifact.py` 下载校验、装配、切换并在健康探测失败时回退到上一个版本及其备份。原生依赖与 Linux、CPU 架构和项目 Node 版本在构建与部署两端核对，不复制成员电脑的 `node_modules`。正式服务器已于 2026-10-23 从源码构建迁到旧产物协议，旧源码部署脚本与单元已删除。新增不可变产物 tag + bound Release 协议已通过 integration 候选 CI，正式 main 仍运行 `d07dc339` 的旧协议；在负责人决定合 main、首个 bound main Release 就绪前，保留兼容的正式发布器与 `artifactBranch` 配置，不将 strict candidate 部署器直接覆盖生产。切换顺序见[云基础设施模板](../tools/i0-cloud/README.md)。预算属性现位于unit模板的`[Service]`内；负责人仅通过持久set-property更新现行正式服务预算，不重启、不替换unit，原PID91972/argv保持。只有下次安装新shared模板才默认加入已在e03候选验证的ss16，不能声称正式旧d07已经使用该flag。
 
 静态资源已在构建阶段预压缩（gzip 与 brotli 边车）：带内容摘要的资源一年不可变缓存，HTML 入口 no-cache 并以 ETag 协商，新版本与回退各用独立发布目录，不混用资源。静态服务对不超过 2 MiB 的文件一次写出，更大的文件流式转发，不在业务进程内整体读入大文件。业务数据与开发成员数据使用独立存储，备份也覆盖各自恢复所需内容。
 

@@ -7,7 +7,7 @@
 | 文件 | 用途 |
 | --- | --- |
 | `cloud-host.mjs` | 组合既有业务应用、消费者及正常关停，HTTPS 仅监听回环；不迁移课程库 |
-| `xunjie-shared.service` | 单进程业务服务的部署约定、持久目录、文件权限及候选资源预算模板 |
+| `xunjie-shared.service` | 单进程业务服务的部署约定、持久目录、文件权限及资源预算模板 |
 | `application-config.example.json` | 部署配置字段示例；占位内容不可运行 |
 | `prepare-demo-data.mjs` | 对已备份共享合成库追加教学班、成员和发布前置；不新建表、不造学习记录 |
 | `publish-demo-projects.mjs` | 按私有计划通过原教师 API 固定版本并分配，保留幂等回执 |
@@ -88,7 +88,11 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 
 前端构建产物在 CI 阶段预压缩（`.br`/`.gz` 边车，仅小于原文件时生成），宿主静态处理器按 `Accept-Encoding` 选择边车，不做请求期压缩；带内容摘要的 `/assets/**` 返回 `immutable` 一年缓存，入口 HTML 返回 `no-cache` 并带构建期摘要 ETag，新版本与回退各自引用独立发布目录，不会混用资源。2 MiB 以内的小产物一次写出，更大的文件流式转发，不在业务进程整体读入。回环访问的成员页面转发沿用既有 HTTPS 链路。
 
-资源预算候选值见 `xunjie-shared.service` 注释与[运行策略](../../docs/development-access-operations.md)：业务单元预算需先实测五人峰值再启用；维护单元（发布、备份）已按低 CPU/IO 权重与内存上限配置。部署与备份共用同一把 flock 维护锁串行，业务优先。
+资源预算依据为 #133 的 e03+ss16 五成员完整窗口：普通 API（含登录）p95 262.266ms，candidate cgroup peak 329.152MiB（含登录峰），access peak 42.738MiB，host最低可用908.973MiB，无OOM/restart；不以正式服务旧idle峰作为五人峰值。[shared模板](xunjie-shared.service) 的 `[Service]` 已设 `CPUWeight=200`、`MemoryHigh=512M`、`MemoryMax=768M`，下次安装该模板的 `ExecStart` 默认显式 `--max-semi-space-size=16`；[access模板](../xj-dev-access/xunjie-dev-access-candidate129.service) 为High128M/Max256M、TasksMax64。
+
+当前正式服务仍运行旧d07、PID91972及原argv，未重启、未发布，也不能据模板变更声称它已有ss16。负责人已用持久 `systemctl set-property` 应用正式CPU200/High512M/Max768M；已测candidate保留更严格Max512M，设High448M/CPU200，access为High128M/Max256M、Tasks64。实际properties、内核cgroup值及所有PID/ExecStart不变均已读回，回执为仓库外 `xj133-resource-budgets-20261024/applied.json`；预算dropins位于 `/etc/systemd/system.control/<unit>.d/`，没有安装替换formal unit或发布器。这些unit模板不在产品runtime清单内，不需重建e03产物。完整来源和边界见[#133交付核查](../../docs/references/2026-10-24-development-delivery-closeout.md)。
+
+维护单元（发布、备份）继续使用低CPU/IO权重与内存上限；部署与备份共用同一把flock维护锁串行，业务优先。后续调整按[运行策略](../../docs/development-access-operations.md)核对实测与实际生效配置。
 
 ## 容量负载与回执
 
