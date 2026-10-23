@@ -3,7 +3,8 @@ import { X509Certificate } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { request } from 'node:https';
 import { basename, dirname, join as pathJoin, resolve } from 'node:path';
-import { ACCESS_PROTOCOL, assertPrivateFile, digest, ensurePrivateDirectory, opaque, privateJson, publicKey, signProof, writePrivateFile, writePrivateJson } from './enrollment-protocol.mjs';
+import { ACCESS_PROTOCOL, assertPrivateFile, digest, ensurePrivateDirectory, opaque, privateJson, publicKey, writePrivateFile, writePrivateJson } from './enrollment-protocol.mjs';
+import { enrollmentKeygen, signEnrollmentProof } from './enrollment-ssh.mjs';
 import { CliError } from './envelope.mjs';
 import { loadConnection } from './connection.mjs';
 import { toolHome } from './paths.mjs';
@@ -139,7 +140,7 @@ export function prepareEnrollment({ home, invitationFile, inviteFile } = {}) {
       }
       if (!existsSync(paths.identityFile)) {
         need(!stage.registration && !stage.publicKey, 'DEVICE_KEY_MISSING');
-        const generated = spawnSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'xj-dev-device', '-f', paths.identityFile],
+        const generated = spawnSync(enrollmentKeygen(), ['-q', '-t', 'ed25519', '-N', '', '-C', 'xj-dev-device', '-f', paths.identityFile],
           { stdio: 'ignore', timeout: 10000, windowsHide: true });
         need(generated.status === 0, 'DEVICE_KEY_CREATION_FAILED');
         // ssh-keygen writes inside our private directory. Republish through the
@@ -158,7 +159,7 @@ export function prepareEnrollment({ home, invitationFile, inviteFile } = {}) {
 }
 function keyFor(paths) {
   assertPrivateFile(paths.identityFile);
-  const generated = spawnSync('ssh-keygen', ['-y', '-f', paths.identityFile], { encoding: 'utf8', timeout: 10000,
+  const generated = spawnSync(enrollmentKeygen(), ['-y', '-f', paths.identityFile], { encoding: 'utf8', timeout: 10000,
     stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true });
   need(generated.status === 0, 'DEVICE_KEY_INVALID');
   try { return publicKey(generated.stdout); } catch { throw fail('DEVICE_KEY_INVALID'); }
@@ -202,7 +203,7 @@ async function signed(stage, paths, path, body) {
   need(!used.some(item => item.idHash === idHash || item.nonceHash === nonceHash), 'CHALLENGE_REUSED');
   stage.usedProofs = [...used, { idHash, nonceHash, expiresAt: challenge.expiresAt }];
   writePrivateJson(paths.deviceFile, stage); // Persist consumption before signing/sending; retries obtain a new challenge.
-  return http(stage.trust, path, { challengeId: challenge.challengeId, signature: signProof(paths.identityFile, challenge), body });
+  return http(stage.trust, path, { challengeId: challenge.challengeId, signature: signEnrollmentProof(paths.identityFile, challenge), body });
 }
 function publish(stage, paths, response) {
   need(object(response), 'ACCESS_RESPONSE_INVALID');
