@@ -1,0 +1,13 @@
+{
+  "templateOnly": true,
+  "courseDatabaseFile": "/var/lib/xunjie/retained-tmp/REPLACE_WITH_RETAINED_DATABASE_DIRECTORY/synthetic.sqlite",
+  "personalModelsDirectory": "/var/lib/xunjie/retained-tmp/REPLACE_WITH_PERSONAL_MODELS_DIRECTORY",
+  "extraFiles": [
+    "/etc/xunjie/signing-secret.txt",
+    "/etc/xunjie/tls/server.key.pem",
+    "/etc/xunjie/tls/server.cert.pem",
+    "/etc/xunjie/application-config.json"
+  ],
+  "outputDirectory": "/var/backups/xunjie/encrypted",
+  "teachingRoot": "/opt/xunjie/current/apps/teaching"
+}

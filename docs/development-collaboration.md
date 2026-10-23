@@ -68,7 +68,7 @@ flowchart TB
 | 当前数据库为本地文件 SQLite，WAL 与事务锁已启用，宿主核对精确表集合与恢复代际 | 保留 SQLite 可以建立独立副本；不能把跨机器共享文件当作数据库接入方案，也不能假定不同分支兼容同一数据结构 | [transaction.ts](../apps/teaching/server/db/transaction.ts)、[cloud-host.mjs](../tools/i0-cloud/cloud-host.mjs) |
 | 消费者扫描库中的待处理任务，宿主关闭会取消相关未结束任务；HDL 关闭处理未终止会话 | 多个分支后端共用一份可写课程库，生命周期会互相影响；分测试账号不足以隔离它们 | [worker.ts](../apps/teaching/server/workspace/worker.ts)、[original-job-host.ts](../apps/teaching/server/app/original-job-host.ts)、[digital-logic.ts](../apps/teaching/server/app/digital-logic.ts) |
 | 个人模型存储是另一份 SQLite 和加密密钥；启动时处理库中所有遗留运行中回合 | 只复制课程库不等于完整复现；不同本地后端也不能共用同一个人模型存储目录 | [store.ts](../apps/teaching/server/personal-agent/store.ts)、[service.ts](../apps/teaching/server/personal-agent/service.ts) |
-| 部署脚本已有 SQLite 一致备份与完整性检查 | 能复用备份方式，但部署备份还不是可分发的开发基线 | [sync-main.py](../tools/i0-cloud/sync-main.py) |
+| 备份与部署脚本已有 SQLite 一致备份、完整性与外键检查，加密归档可恢复到隔离目标 | 能复用备份方式；服务器例行部署备份与例行加密备份由 systemd 单元承担 | [backup-retained.mjs](../tools/i0-cloud/backup-retained.mjs)、[deploy-artifact.py](../tools/i0-cloud/deploy-artifact.py) |
 | 旧本机宿主已退役并删除；新开发入口 `tools/xj-dev` 已交付（本地全栈 + 独立数据基线）。隔离工厂与浏览器服务测试仍在 | 开发环境一律从 xj-dev 进入；不要恢复旧命令，测试 fixture 也不等于完整开发环境 | [xj-dev README](../tools/xj-dev/README.md)、[initialize.ts](../apps/teaching/server/app/initialize.ts)、[i0-browser-fixture.ts](../apps/teaching/server/app/i0-browser-fixture.ts) |
 
 SQLite 官方建议让数据库引擎与文件位于同一机器；跨网络共享数据库文件与通过 API 访问服务是不同路径。[SQLite 网络访问说明](https://www.sqlite.org/useovernet.html)。备份应使用一致复制机制，现有实现使用 Backup API，不能把运行中的 `.sqlite` 文件随手复制就当作完整场景。[SQLite Backup API](https://www.sqlite.org/backup.html)。

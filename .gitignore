@@ -17,3 +17,6 @@ Thumbs.db
 node_modules/
 dist/
 .env
+
+# Python
+__pycache__/
