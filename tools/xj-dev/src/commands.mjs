@@ -11,7 +11,7 @@ import { acquireLock, loadState, saveState } from './state.mjs';
 import { allocatePorts, portFree } from './ports.mjs';
 import { componentRunning, spawnComponent, stopComponent } from './processes.mjs';
 import { certificateTrustHint, ensureCertificateAuthority, ensureEnvironmentCertificate, opensslAvailable } from './certificates.mjs';
-import { BASELINE_VERSION, baselineAccounts, ensureBaseline } from './baseline.mjs';
+import { BASELINE_VERSION, baselineAccountsFor, ensureBaseline } from './baseline.mjs';
 
 const COMPONENTS = ['gateway', 'backend', 'vite'];
 
@@ -54,7 +54,7 @@ function dataBlock(context) {
 
 function accountsBlock(context) {
   return {
-    list: baselineAccounts.map(({ loginName, role }) => ({ loginName, role })),
+    list: baselineAccountsFor(context.env).map(({ loginName, role }) => ({ loginName, role })),
     credentials: {
       file: context.env.baselineCredentials,
       note: '密码只写在该文件（0600）中，不进入 JSON 输出与日志；首次 up 构造基线时随机生成。',

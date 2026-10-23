@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { failureEnvelope, printResult, resultEnvelope } from './src/envelope.mjs';
 import { PINNED_NODE, TOOL_VERSION } from './src/paths.mjs';
 import { locatePinnedRuntime } from './src/runtime.mjs';
+import { reproRoute, baselineRoute } from './src/repro-routes.mjs';
 
 const HELP = `xj-dev — XunJie 本地全栈开发环境
 
@@ -17,6 +18,8 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
   down      停止本工具管理的进程；不删除任何数据
   use <local|cloud-api|cloud>  检查成功后切换入口；原页面保持原数据目标
   node <connect|status|disconnect>  管理已登记节点回连，不重发或改派任务
+  repro     capture --context FILE --out ZIP / inspect ZIP / restore ZIP [--target DIR] / verify ZIP
+  baseline  list / publish --context FILE --version VERSION / use VERSION [--target DIR]
 
 全局选项：
   --json            以 JSON 输出结果（默认即为 JSON；日志始终在 stderr）
@@ -73,6 +76,8 @@ async function main() {
   }
   const { resolveContext, doctor, up, status, down, useMode, nodeCommand } = await import('./src/commands.mjs');
   const commandRoutes = {
+    repro: reproRoute,
+    baseline: baselineRoute,
     doctor: (context) => doctor(context),
     up: (context, options, log) => up(context, log),
     status: (context) => status(context),

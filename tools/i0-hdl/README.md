@@ -11,7 +11,7 @@
 | `receive-frozen-images.mjs` / `receive-frozen-images.ps1`（及测试） | 接收冻结执行镜像的受控通道 |
 | `receive-public-base-materials.ps1` | 接收公开基础材料 |
 | `fixtures/hdl-reference.json` | HDL 参考事实，`apps/student` 工作区测试直接读取 |
-| `seed-local-courses.mjs` | 合成课程/验收回执的共享构造模块；`tools/i0-cloud/publish-demo-projects.mjs` 引用其 `verifyCompletionReceipt` |
+| `seed-local-courses.mjs` | 仅保留 `tools/i0-cloud/publish-demo-projects.mjs` 使用的 `verifyCompletionReceipt`；退役宿主的独立场景 CLI 已删除。新场景与交接使用 `xj-dev baseline/repro` |
 
 ## 边界
 
