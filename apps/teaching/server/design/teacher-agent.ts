@@ -6,12 +6,13 @@ import type { createAccessApp } from '../access/app.ts';
 import type { Transaction } from '../db/transaction.ts';
 import type { Job } from '../../contracts/records/index.ts';
 import type { ModelUsage, TrustedModelContext, TutoringOutcome, TeacherGenerationBody } from '../../contracts/tutoring/index.ts';
-import { InputLimitError, type ModelProvider } from '../tutoring/providers.ts';
-import { generateTeacherProposal } from '../tutoring/core.ts';
+import { InputLimitError,ProviderCallNotStartedError,type ModelProvider } from '../tutoring/providers.ts';
+import { CALL_VERDICT_WINDOW_MS,generateTeacherProposal } from '../tutoring/core.ts';
 import { claimJob, recordModelCall, finishJob, cancelJob, recoverJob } from '../records/jobs.ts';
 import { canonical } from '../records/commands.ts';
 import { finishRecordCommand, enqueueStoredJob, saveJob } from '../db/records-adapter.ts';
 import { ApiError, domainError } from '../app/errors.ts';
+import {budgetedProvider,ModelQueueError,type ModelBudget} from '../personal-agent/model-budget.ts';
 import { parseRequest } from '../app/validation.ts';
 import { contentPatchSchema } from '../../contracts/design/draft.ts';
 import { agentCreateSchema, adoptProposalSchema, teacherBodySchema, proposalRequestSchema, rubricTrialRequestSchema } from '../../contracts/design/proposals.ts';
@@ -21,6 +22,7 @@ import { loadTeacherRequest, saveTeacherRequest, saveUsages, selectReferences, t
   type StoredTeacherRequest, type DesignProposal } from './teacher-storage.ts';
 
 export interface TeacherAgentOptions {
+  modelBudget?:ModelBudget;
   provider: ModelProvider; versions: TrustedModelContext['versions'];
   budgetAvailable: (context:{courseId:string;actorId:string;usages:readonly ModelUsage[]}) => boolean;
   /**
@@ -277,85 +279,113 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
     });
   }
   async function processJob(jobId:string) {
-    const claimed = persisted(tx => {
-      const work = original(tx,jobId),{input,job} = work;
-      if (job.status === 'running') {
-        const recovered = recoverJob(job,timeString(now()));
-        if (recovered.status !== job.status) progress(tx,work,recovered); return undefined;
-      }
-      if (job.status !== 'queued') return undefined;
-      if (!teacherContextCurrent(tx,input,versionsFor(input.actorId,input.courseId))) { progress(tx,work,{...job,status:'stale',failure:'stale_context'}); return undefined; }
-      const next = claimJob(job,randomUUID(),job.deadline,job.recoveryGeneration,timeString(now())); progress(tx,work,next);
-      return next.status === 'running' ? {...work,job:next} : undefined;
-    });
-    if (!claimed) return undefined;
-    const {input,job} = claimed;
-    const controller = new AbortController(); inFlight.set(jobId,controller);
-    const checkCurrent = () => persisted(tx => {
-      const work = original(tx,jobId);
-      if (work.job.stopRequested || work.job.status === 'cancelled') return 'cancelled' as const;
-      return work.job.leaseToken === job.leaseToken && work.job.status === 'running'
-        && teacherContextCurrent(tx,work.input,versionsFor(work.input.actorId,work.input.courseId)) ? 'current' as const : 'stale' as const;
-    });
-    let budgetDenied = false;
-    // The approved personal model is bound to the accepted request; a configuration change since then is refused
-    // by the resolver instead of silently dispatching the new model.
-    const resolveProvider = () => config.providerForTeacher
-      ? config.providerForTeacher({actorId:input.actorId,courseId:input.courseId,modelConfig:input.versions.modelConfig})
-      : config.provider;
-    const provider:ModelProvider = {generate:async request => {
-      const callIndex = persisted(tx => {
-        const work = original(tx,jobId);
-        if (!teacherContextCurrent(tx,work.input,versionsFor(work.input.actorId,work.input.courseId))) throw new ApiError('STATE_CONFLICT');
-        if (!budget(tx,work.input,work.usages)) { budgetDenied = true; throw new ApiError('BUDGET_EXHAUSTED'); }
-        const next = recordModelCall(work.job,job.leaseToken!,job.recoveryGeneration,timeString(now()));
-        progress(tx,work,next,() => saveUsages(tx,jobId,[...work.usages,{status:'unknown'}])); return next.attemptCount-1;
+    if(inFlight.has(jobId)){
+      persisted(tx=>{const work=original(tx,jobId),recovered=recoverJob(work.job,timeString(now()));
+        if(recovered.status!==work.job.status)progress(tx,work,recovered);});
+      return undefined;
+    }
+    const controller=new AbortController();inFlight.set(jobId,controller);
+    const queuedAt=now();
+    const execute=async(signal:AbortSignal)=>{
+      const claimed = persisted(tx => {
+        const work = original(tx,jobId),{input,job} = work;
+        if (job.status === 'running') {
+          const recovered = recoverJob(job,timeString(now()));
+          if (recovered.status !== job.status) progress(tx,work,recovered); return undefined;
+        }
+        if (job.status !== 'queued') return undefined;
+        if (!teacherContextCurrent(tx,input,versionsFor(input.actorId,input.courseId))) { progress(tx,work,{...job,status:'stale',failure:'stale_context'}); return undefined; }
+        // Only the new model-budget wait is excluded from the existing 45-second round.
+        const admittedAt=now(),deadline=config.modelBudget?timeString(Date.parse(job.deadline)+Math.max(0,admittedAt-queuedAt)):job.deadline;
+        const next = claimJob({...job,deadline},randomUUID(),deadline,job.recoveryGeneration,timeString(admittedAt)); progress(tx,work,next);
+        return next.status === 'running' ? {...work,job:next} : undefined;
       });
-      let response;
-      try { response = await resolveProvider().generate(request); }
-      catch (error) {
-        if (error instanceof InputLimitError) persisted(tx => {
+      if (!claimed) return undefined;
+      const {input,job} = claimed;
+      const checkCurrent = () => persisted(tx => {
+        const work = original(tx,jobId);
+        if (work.job.stopRequested || work.job.status === 'cancelled') return 'cancelled' as const;
+        return work.job.leaseToken === job.leaseToken && work.job.status === 'running'
+          && teacherContextCurrent(tx,work.input,versionsFor(work.input.actorId,work.input.courseId)) ? 'current' as const : 'stale' as const;
+      });
+      let budgetDenied = false;
+      // The approved personal model is bound to the accepted request; a configuration change since then is refused
+      // by the resolver instead of silently dispatching the new model.
+      const resolveProvider = () => config.providerForTeacher
+        ? config.providerForTeacher({actorId:input.actorId,courseId:input.courseId,modelConfig:input.versions.modelConfig})
+        : config.provider;
+      const provider:ModelProvider = {generate:async request => {
+        const callIndex = persisted(tx => {
           const work = original(tx,jobId);
-          // Only this provider's proven unsent, last reservation may be released.
-          // A lost lease/slot intentionally replaces InputLimitError with STATE_CONFLICT.
-          if (work.job.leaseToken !== job.leaseToken || work.job.attemptCount !== callIndex+1
-            || work.usages[callIndex]?.status !== 'unknown') throw new ApiError('STATE_CONFLICT');
-          progress(tx,work,{...work.job,attemptCount:callIndex},() => saveUsages(tx,jobId,work.usages.slice(0,callIndex)));
+          if (!teacherContextCurrent(tx,work.input,versionsFor(work.input.actorId,work.input.courseId))) throw new ApiError('STATE_CONFLICT');
+          if (!budget(tx,work.input,work.usages)) { budgetDenied = true; throw new ApiError('BUDGET_EXHAUSTED'); }
+          const next = recordModelCall(work.job,job.leaseToken!,job.recoveryGeneration,timeString(now()));
+          progress(tx,work,next,() => saveUsages(tx,jobId,[...work.usages,{status:'unknown'}])); return next.attemptCount-1;
         });
+        let response;
+        try {
+          const selected=resolveProvider();
+          response = await (config.modelBudget?budgetedProvider(selected,config.modelBudget):selected).generate(request);
+        }
+        catch (error) {
+          if (error instanceof InputLimitError||error instanceof ProviderCallNotStartedError&&error.reservation==='none') {
+            persisted(tx => {
+              const work = original(tx,jobId);
+              // Only this provider's proven unsent, last reservation may be released.
+              // A lost lease/slot intentionally replaces InputLimitError with STATE_CONFLICT.
+              if (work.job.leaseToken !== job.leaseToken || work.job.attemptCount !== callIndex+1
+                || work.usages[callIndex]?.status !== 'unknown') throw new ApiError('STATE_CONFLICT');
+              progress(tx,work,{...work.job,attemptCount:callIndex},() => saveUsages(tx,jobId,work.usages.slice(0,callIndex)));
+            });
+            if(error instanceof ProviderCallNotStartedError)throw error.withReservation('released');
+          }
+          throw error;
+        }
+        if (response.usage) persisted(tx => {
+          const work = original(tx,jobId);
+          if (work.job.leaseToken !== job.leaseToken || callIndex >= work.usages.length) throw new ApiError('STATE_CONFLICT');
+          const usages = [...work.usages]; usages[callIndex] = response.usage!;
+          progress(tx,work,work.job,() => saveUsages(tx,jobId,usages));
+        });
+        return response;
+      }};
+      let outcome = await generateTeacherProposal({
+        context:{jobId,purpose:'teacher_design',scope:{courseId:input.courseId,userId:input.actorId},
+          authorizedReferenceIds:input.references.map(ref => ref.id),acceptedAtMs:config.modelBudget?Date.parse(job.deadline)-45000:Date.parse(job.acceptedAt),deadlineAtMs:Date.parse(job.deadline),
+          budgetAvailable:persisted(tx => budget(tx,input,claimed.usages)),versions:input.versions},mode:input.mode,
+        request:JSON.stringify({teacherRequest:input.request,blueprint:input.baseline,allowedFields:input.allowedFields,sampleReferenceIds:input.sampleReferenceIds}),
+        signal,
+        references:input.references.map(ref => ({id:ref.id,content:ref.content})),blueprintId:input.blueprintId,baseRevision:input.baseRevision,
+      },{provider,checkCurrent,now,callVerdictWindowMs:CALL_VERDICT_WINDOW_MS});
+      if (budgetDenied) outcome = {outcome:'budget_exhausted',code:'BUDGET_EXHAUSTED',retryable:false,calls:outcome.calls,usage:outcome.usage};
+      if (outcome.outcome === 'success') {
+        try { persisted(tx => validateBody(original(tx,jobId),outcome.outcome === 'success' ? outcome.body : null)); }
+        catch (error) {
+          if (!(error instanceof ApiError) || !['INVALID_REQUEST','INVALID_REFERENCE'].includes(error.code)) throw error;
+          outcome = {outcome:'rejected',code:error.code,retryable:false,calls:outcome.calls,usage:outcome.usage};
+        }
+      }
+      const delivery:TeacherResultDelivery = {jobId,leaseToken:job.leaseToken!,recoveryGeneration:job.recoveryGeneration,outcome,...(outcome.outcome === 'success' ? {bodyJson:JSON.stringify(outcome.body)} : {})};
+      try { const result = receiveResult(delivery); return {delivery,result}; }
+      catch (error) {
+        if (error instanceof ApiError && error.code === 'PERSISTENCE_UNAVAILABLE') throw new TeacherResultCommitError(delivery);
         throw error;
       }
-      if (response.usage) persisted(tx => {
-        const work = original(tx,jobId);
-        if (work.job.leaseToken !== job.leaseToken || callIndex >= work.usages.length) throw new ApiError('STATE_CONFLICT');
-        const usages = [...work.usages]; usages[callIndex] = response.usage!;
-        progress(tx,work,work.job,() => saveUsages(tx,jobId,usages));
-      });
-      return response;
-    }};
+    };
     try {
-    let outcome = await generateTeacherProposal({
-      context:{jobId,purpose:'teacher_design',scope:{courseId:input.courseId,userId:input.actorId},
-        authorizedReferenceIds:input.references.map(ref => ref.id),acceptedAtMs:Date.parse(job.acceptedAt),deadlineAtMs:Date.parse(job.deadline),
-        budgetAvailable:persisted(tx => budget(tx,input,claimed.usages)),versions:input.versions},mode:input.mode,
-      request:JSON.stringify({teacherRequest:input.request,blueprint:input.baseline,allowedFields:input.allowedFields,sampleReferenceIds:input.sampleReferenceIds}),
-      signal:controller.signal,
-      references:input.references.map(ref => ({id:ref.id,content:ref.content})),blueprintId:input.blueprintId,baseRevision:input.baseRevision,
-    },{provider,checkCurrent,now});
-    if (budgetDenied) outcome = {outcome:'budget_exhausted',code:'BUDGET_EXHAUSTED',retryable:false,calls:outcome.calls,usage:outcome.usage};
-    if (outcome.outcome === 'success') {
-      try { persisted(tx => validateBody(original(tx,jobId),outcome.outcome === 'success' ? outcome.body : null)); }
-      catch (error) {
-        if (!(error instanceof ApiError) || !['INVALID_REQUEST','INVALID_REFERENCE'].includes(error.code)) throw error;
-        outcome = {outcome:'rejected',code:error.code,retryable:false,calls:outcome.calls,usage:outcome.usage};
-      }
-    }
-    const delivery:TeacherResultDelivery = {jobId,leaseToken:job.leaseToken!,recoveryGeneration:job.recoveryGeneration,outcome,...(outcome.outcome === 'success' ? {bodyJson:JSON.stringify(outcome.body)} : {})};
-    try { const result = receiveResult(delivery); return {delivery,result}; }
-    catch (error) {
-      if (error instanceof ApiError && error.code === 'PERSISTENCE_UNAVAILABLE') throw new TeacherResultCommitError(delivery);
-      throw error;
-    }
-    } finally { inFlight.delete(jobId); }
+      if(!config.modelBudget)return await execute(controller.signal);
+      const initial=persisted(tx=>original(tx,jobId));
+      return await config.modelBudget.run({memberId:initial.input.actorId,
+        payloadBytes:Buffer.byteLength(JSON.stringify(initial.input)),signal:controller.signal},execute);
+    } catch(error) {
+      if(!(error instanceof ModelQueueError))throw error;
+      persisted(tx=>{
+        const work=original(tx,jobId),job=work.job;
+        if(job.status!=='queued'||job.stopRequested||job.attemptCount!==0)return;
+        progress(tx,work,{...job,status:error.code==='MODEL_QUEUE_CANCELLED'?'cancelled':error.code==='MODEL_QUEUE_TIMEOUT'?'timed_out':'failed',failure:error.code});
+      });
+      return undefined;
+    } finally {inFlight.delete(jobId);}
   }
   return {enqueue,processJob,receiveResult,assertPatch,readJob:readJobRequest,cancelJob:cancelJobRequest};
 }
