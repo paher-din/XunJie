@@ -63,6 +63,16 @@ export function createApp(options: AppOptions = {}) {
     return payload;
   });
 
+  if(options.logDestination)app.addHook('onResponse',(request,reply,done)=>{
+    const template=request.routeOptions.url;
+    // Only registered API/health templates; never request.url, params or error text.
+    const route=template&&(template.startsWith('/api/')||template.startsWith('/health/'))?template:'<other>';
+    options.logDestination!.write(JSON.stringify({requestId:request.id,
+      method:['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS'].includes(request.method)?request.method:'OTHER',
+      route,status:reply.statusCode,durationMs:reply.elapsedTime})+'\n');
+    done();
+  });
+
   app.get('/health/live', async (request) => ({
     requestId: request.id,
     data: { status: 'alive' },
