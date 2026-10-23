@@ -23,10 +23,10 @@ export function resolveContext(options = {}) {
   return { worktree, instance, home, id, env: environmentPaths(home, id), repo: repoPaths(worktree) };
 }
 
-function capabilitiesBlock() {
+function capabilitiesBlock({ frontend = false, api = false } = {}) {
   return {
-    frontend: { available: true, hmr: true, source: 'worktree apps/student via Vite' },
-    api: { available: true, source: 'worktree apps/teaching（源码直接运行）' },
+    frontend: { available: frontend, hmr: frontend, source: 'worktree apps/student via Vite' },
+    api: { available: api, source: 'worktree apps/teaching（源码直接运行）' },
     execution: { available: false, reason: '本地闭环未接入执行节点；运行/仿真请求返回 RUNTIME_NOT_READY' },
     models: { available: false, reason: '未配置模型凭据，个人模型调用已停用' },
   };
@@ -124,6 +124,19 @@ async function componentStatuses(context) {
   return result;
 }
 
+async function localReadiness(state, statuses) {
+  let page;
+  if (state?.ports && statuses.gateway.running) {
+    const base = `https://127.0.0.1:${state.ports.gateway}`;
+    const [pageProbe, apiProbe] = await Promise.all([probe(`${base}/`, true), probe(`${base}/health/ready`, true)]);
+    page = { url: base, serving: pageProbe.ok && pageProbe.status === 200, apiReady: apiProbe.ok && apiProbe.status === 200 };
+  }
+  return { page, capabilities: capabilitiesBlock({
+    frontend: Boolean(statuses.gateway.running && statuses.vite.running && page?.serving),
+    api: Boolean(statuses.gateway.running && statuses.backend.running && page?.apiReady),
+  }) };
+}
+
 export async function doctor(context) {
   const checks = [];
   let runtime;
@@ -162,6 +175,7 @@ export async function doctor(context) {
   });
   const state = loadState(context.env);
   const statuses = await componentStatuses(context);
+  const { capabilities } = await localReadiness(state, statuses);
   const running = COMPONENTS.filter(name => statuses[name].running);
   checks.push({
     name: 'environment', ok: true,
@@ -174,7 +188,7 @@ export async function doctor(context) {
     ok,
     environment: environmentBlock(context, state),
     checks,
-    capabilities: capabilitiesBlock(),
+    capabilities,
     pinnedRuntime: PINNED_NODE,
     next: ok ? ['xj-dev up --json'] : ['按 recovery 修复失败检查后重试 doctor'],
   };
@@ -330,7 +344,7 @@ export async function upLocal(context, log = () => {}) {
         ...(refreshed[name].record?.pid ? { pid: refreshed[name].record.pid } : {}),
         port: ports[name],
       }])),
-      capabilities: capabilitiesBlock(),
+      capabilities: capabilitiesBlock({ frontend: refreshed.gateway.running && refreshed.vite.running, api: refreshed.gateway.running && refreshed.backend.running }),
       accounts: accountsBlock(context),
       stages,
       next: [`浏览器打开 https://127.0.0.1:${ports.gateway}（首次按 tools/xj-dev/README.md 完成开发 CA 系统信任与指纹核对，保持 HTTPS 校验开启）`, 'xj-dev status --json 查看状态'],
@@ -358,16 +372,7 @@ export async function statusLocal(context) {
       ...(ports ? { port: ports[name] } : {}),
     };
   }
-  let page;
-  if (ports && statuses.gateway.running) {
-    const pageProbe = await probe(`https://127.0.0.1:${ports.gateway}/`, true);
-    const apiProbe = await probe(`https://127.0.0.1:${ports.gateway}/health/ready`, true);
-    page = {
-      url: `https://127.0.0.1:${ports.gateway}`,
-      serving: pageProbe.ok && pageProbe.status === 200,
-      apiReady: apiProbe.ok && apiProbe.status === 200,
-    };
-  }
+  const { page, capabilities } = await localReadiness(state, statuses);
   const baselineDrift = state && state.baselineVersion !== BASELINE_VERSION;
   const checks = [
     ...COMPONENTS.map(name => ({ name: `process:${name}`, ok: statuses[name].running === true })),
@@ -377,6 +382,7 @@ export async function statusLocal(context) {
     ] : []),
   ];
   return {
+    ok: capabilities.frontend.available && capabilities.api.available,
     environment: environmentBlock(context, state),
     processes,
     ...(page ? { page } : {}),
@@ -386,7 +392,7 @@ export async function statusLocal(context) {
       pinned: BASELINE_VERSION,
       ...(baselineDrift ? { note: '环境基线与代码固定版本不同；已有数据保持不变，不会自动重置' } : {}),
     },
-    capabilities: capabilitiesBlock(),
+    capabilities,
     browser: {
       profile: context.env.browserProfile,
       note: '使用该目录作为浏览器用户数据目录（如 --user-data-dir）可得到本环境独立的浏览器身份',
