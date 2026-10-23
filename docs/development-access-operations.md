@@ -110,6 +110,8 @@ CLI 与文件存储能简化已经加入团队的成员操作，但不能自行�
 | ECS 磁盘 | 可用空间低于 10 GiB 预警，低于 5 GiB 拒绝下载装配新产物与大包落盘，优先保持既有业务 | 部署脚本已实现两级磁盘门槛与下载限长；整体磁盘、包配额与缓存大小分别计算，避免只看数据库文件大小 |
 | 版本与缓存 | 保留当前版本、最近若干成功回退版本（`keepReleases`）及显式固定版本；失败装配临时目录自动清理，旧 Release 与备份按保留数裁剪 | 部署脚本已实现发布目录保留策略、`.pinned` 固定版本与 `--prune`；清理只作用于部署自有目录，不触及业务数据与已发布场景 |
 
+私有复现 bucket 的 ECS RAM role 只授予 `team/*` 对象的 `GetObject`、`PutObject`、`DeleteObject`、`ListParts`、`AbortMultipartUpload`。`ListMultipartUploads` 单独授予这个专用 bucket 的 bucket 资源；它不支持 `oss:Prefix` 条件，附加该条件会使请求返回 403。`oss:Prefix` 用于 ListObjects，不能照搬到 multipart 列举，详见[官方 RAM action 表](https://www.alibabacloud.com/help/en/ram/api-object-storage-service)。此角色不授予 `ListObjects`、`ListBuckets` 或存储管理权限。服务始终按目录记录的精确 owned key 列举、过滤和清理；成员设备只得到该 key/分片/Range 的短期签名 URL，不得到 role 或 STS 凭据。
+
 发布采用 CI 构建后由云端拉取经过校验的运行产物：构建器在 GitHub Actions 上产出带逐文件摘要的产物并发布 Release，`deploy-artifact.py` 下载校验、装配、切换并在健康探测失败时回退到上一个版本及其备份。原生依赖与 Linux、CPU 架构和项目 Node 版本在构建与部署两端核对，不复制成员电脑的 `node_modules`。正式服务器已于 2026-10-23 从源码构建迁到旧产物协议，旧源码部署脚本与单元已删除。新增不可变产物 tag + bound Release 协议已通过 integration 候选 CI，正式 main 仍运行 `d07dc339` 的旧协议；在负责人决定合 main、首个 bound main Release 就绪前，保留兼容的正式发布器与 `artifactBranch` 配置，不将 strict candidate 部署器直接覆盖生产。切换顺序见[云基础设施模板](../tools/i0-cloud/README.md)。业务单元内存预算仍以候选注释保留，测出真实五人峰值后由 #133 验证启用，不把维护任务样本当作容量结论。
 
 静态资源已在构建阶段预压缩（gzip 与 brotli 边车）：带内容摘要的资源一年不可变缓存，HTML 入口 no-cache 并以 ETag 协商，新版本与回退各用独立发布目录，不混用资源。静态服务对不超过 2 MiB 的文件一次写出，更大的文件流式转发，不在业务进程内整体读入大文件。业务数据与开发成员数据使用独立存储，备份也覆盖各自恢复所需内容。
