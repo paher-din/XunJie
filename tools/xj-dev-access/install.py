@@ -21,7 +21,7 @@ FILES = {
     'apps/teaching/server/access/local-socket.ts',
     'tools/xj-dev/src/enrollment-protocol.mjs',
     *('tools/xj-dev-access/' + p for p in ['server.mjs', 'store.mjs', 'identity.mjs', 'adapters.mjs', 'admin.mjs',
-       'system-helper.py', 'install.py', 'xunjie-dev-access-candidate129.service']),
+       'system-helper.py', 'install.py', 'prepare-tls.py', 'xunjie-dev-access-candidate129.service']),
 }
 
 

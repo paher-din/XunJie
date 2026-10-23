@@ -30,6 +30,8 @@ node tools/xj-dev-access/prepare-deployment.mjs --commit FULL_SHA --output NEW_D
 
 输出 `deployment.json` 记录 sourceCommit 和白名单文件的 SHA256；只取 `git show FULL_SHA:path`，当前 dirty 内容不会混入。白名单包含服务、协议、root helper、systemd、installer，以及无外部依赖的产品通用 `local-socket.ts`。通过既有 owner SSH 传到独立目录后，以 root 执行该目录的 `tools/xj-dev-access/install.py SOURCE_DIRECTORY`。installer 核对全部摘要、固定路径和既有不可变 release；安装到 `/opt/xunjie-dev-access/releases/FULL_SHA`，root 控制 `current` 链接。它不修改产品 manifest、正式 current 或正式数据库。
 
+TLS 材料由 owner 运行 `python3 tools/xj-dev-access/prepare-tls.py --service-config FILE --output NEW_PRIVATE_DIRECTORY` 生成：CA 具备 critical CA:TRUE/keyCertSign/cRLSign 与 SKI/AKI，leaf 具备 CA:FALSE、serverAuth、endpoint SAN；测试用真实 Python/OpenSSL strict TLS 握手。CA signing key 只保留 owner 私有目录，服务器只接收 leaf key/cert 与公开 CA。轮换只作用于 8443；旧邀请信任材料对应旧 CA，应撤销临时试验身份并新发邀请。
+
 首次由 owner 通过私有 stdin 准备 `/etc/xunjie-dev-access-candidate129/service.json`、`system.json`、HTTPS key/cert/CA 与批准的 SSH pin、业务 CA。`service.json` 指向下表固定路径，还需 `serviceId`、可信 `https://HOST:8443` endpoint、`listenHost`/`port`、`tls:{keyFile,certFile,caFile}`、`knownHostsFile`、`cloudCaFile`、`courseIds`、`target:{schema:'xj-dev/connection-v1',host,port,browserOrigin,applicationPort}`、`applicationSocket`；`systemCommand` 固定为 `['sudo','-n','/usr/bin/python3','/opt/xunjie-dev-access/current/tools/xj-dev-access/system-helper.py']`。`system.json` 由 root 独占，只有批准的 `applicationPorts` 和可选 `nodes`，服务请求不能选择路径或 shell。
 
 | 归属 | 路径/入口 |

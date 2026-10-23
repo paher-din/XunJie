@@ -9,7 +9,7 @@ export const DEPLOYMENT_FILES = [
   'apps/teaching/server/access/local-socket.ts',
   'tools/xj-dev/src/enrollment-protocol.mjs',
   ...['server.mjs', 'store.mjs', 'identity.mjs', 'adapters.mjs', 'admin.mjs', 'system-helper.py',
-    'install.py', 'xunjie-dev-access-candidate129.service'].map(file => 'tools/xj-dev-access/' + file),
+    'install.py', 'prepare-tls.py', 'xunjie-dev-access-candidate129.service'].map(file => 'tools/xj-dev-access/' + file),
 ];
 export function prepareDeployment(commit, output, cwd = process.cwd()) {
   if (!/^[a-f0-9]{40}$/.test(commit) || existsSync(output)) throw new Error('FIXED_COMMIT_AND_NEW_DIRECTORY_REQUIRED');
