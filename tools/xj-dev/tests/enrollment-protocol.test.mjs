@@ -38,3 +38,18 @@ test('shared private output protects both invitation JSON and device files; reje
     assertPrivateFile(keyLike);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('large transfer files retain the same permission boundary while invitation size stays limited', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'xj-private-large-'));
+  try {
+    ensurePrivateDirectory(directory);
+    const file = join(directory, 'package.zip'), bytes = Buffer.alloc(1024 * 1024 + 1);
+    assert.throws(() => writePrivateFile(file, bytes), { code: 'PRIVATE_FILE_REQUIRED' });
+    writePrivateFile(file, bytes, { maxBytes: 128 * 1024 * 1024 });
+    assert.throws(() => assertPrivateFile(file), { code: 'PRIVATE_FILE_REQUIRED' });
+    assertPrivateFile(file, { maxBytes: 128 * 1024 * 1024 });
+    if (process.platform === 'win32') assert.equal(spawnSync('icacls.exe', [file, '/grant', '*S-1-5-32-545:(R)'], { stdio: 'ignore' }).status, 0);
+    else chmodSync(file, 0o644);
+    assert.throws(() => assertPrivateFile(file, { maxBytes: 128 * 1024 * 1024 }), { code: 'PRIVATE_FILE_REQUIRED' });
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
