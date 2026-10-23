@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -34,7 +34,7 @@ test('shared private output protects both invitation JSON and device files; reje
       assert.deepEqual(privateJson(file), { repaired: true });
     }
     const keyLike = join(directory, 'key');
-    writeFileSync(keyLike, 'private-fixture', { mode: 0o600 });
+    writePrivateFile(keyLike, 'private-fixture');
     assertPrivateFile(keyLike);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
