@@ -9,6 +9,7 @@ node tools/xj-dev/xj-dev.mjs doctor     # 检查运行时、依赖、证书与�
 node tools/xj-dev/xj-dev.mjs up         # 启动（或恢复）本工作树的环境
 node tools/xj-dev/xj-dev.mjs status     # 查看进程、入口、数据归属与能力状态
 node tools/xj-dev/xj-dev.mjs down       # 停止本工具管理的进程；不删除数据
+node tools/xj-dev/xj-dev.mjs delete     # 显式删除所选模式的已登记环境数据；保留永久锁守卫
 ```
 
 - 所有命令把版本化 JSON（`xj-dev/result-v1`）写到 stdout，日志在 stderr；失败按 `stage`/`code` 诊断并给出恢复动作。`--json` 可省略。
@@ -59,7 +60,21 @@ $ node tools/xj-dev/xj-dev.mjs up --json
 - 数据库、个人模型目录、浏览器配置目录、证书与日志全部在环境目录内；`status` 的 `browser.profile` 可传给浏览器 `--user-data-dir` 得到独立浏览器身份。
 - 端口按环境身份确定性分配（24000 起三连段），冲突时报 `PORT_IN_USE` 并指出占用者，不动他人进程。
 - `down` 只停止本环境登记的进程（按命令行归属核对），不删数据；重复 `up` 幂等，沿用原数据。
-- 重置环境 = `down` 后删除对应环境目录再 `up`（重新播种基线）。
+- 重置已登记环境 = `delete` 后 `up`；本地模式重新播种固定兼容基线。不要手工递归删除环境根或永久锁目录。
+
+### 停止与显式删除
+
+`down` 停止当前工作树/实例登记的各模式进程与连接，保留数据。`delete` 只删除当前工作树/实例**所选模式**的已登记环境：先整体核对持久 `environment.json` 中的 ID、规范工作树/实例或模式身份、真实目录、子项及 PID 归属，再停止该环境进程，删除业务数据库、个人模型数据、浏览器身份、局部证书、日志和进程状态。其他模式/实例目录、源 Git 工作树、全局 CA、运行时、依赖、设备/邀请/账号材料、OSS 缓存和包保留；环境内的接入材料引用、模式选择及 `repro/` 证据也保留。
+
+```sh
+node tools/xj-dev/xj-dev.mjs down --instance experiment --json
+node tools/xj-dev/xj-dev.mjs delete --instance experiment --json
+node tools/xj-dev/xj-dev.mjs up --instance experiment --json
+```
+
+删除全过程持有原 `selection.lock/` 与目标 `lock/` 的 SQLite OS 锁，永久目录/SQLite inode 不移动、不替换、不删除。Windows 不尝试删除已打开的锁文件；保留锁守卫不表示保留已删除的数据现场。结构化输出 `deletion.result` 为 `deleted`、`already-deleted` 或 `not-present`，回执 `deletion.json` 供中断后显式重试；后续 `up` 仍争用相同 inode，再重建所选环境。
+
+并发操作返回 `LOCK_HELD`；未知/损坏登记返回 `ENVIRONMENT_UNREGISTERED`，未知子项返回 `ENVIRONMENT_UNKNOWN_OBJECT`，符号链接/特殊对象返回 `ENVIRONMENT_UNSAFE`，外来 PID 返回 `ENVIRONMENT_FOREIGN_PROCESS`，变化中的登记返回 `ENVIRONMENT_CHANGED`。这些情况先保留现场、核对归属。没有有效登记的陌生目录不会被自动认领。文件占用或删除中断返回 `ENVIRONMENT_DELETE_FAILED`，关闭占用该环境文件的程序后重试同一命令，不删除锁来恢复。
 
 ## 复现包与基线
 
@@ -232,8 +247,8 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 | `NODE_VERSION_MISMATCH` | 按输出安装精确 Node 24.21.0 到受管目录，或设 `XJ_DEV_NODE_24` 指向它 |
 | `PORT_IN_USE` | 停止占用进程后重试；若占用者是本环境残留进程，先 `down` |
 | `HEALTH_TIMEOUT` | 看环境目录 `logs/` 下对应组件日志 |
-| `BASELINE_FAILED` | 重试 `up`；持续失败时 `down` 后删除环境数据目录重新播种 |
-| `BASELINE_MARKER_MISSING` | 数据库在但基线标记缺失（曾手工删改）；`down` 后删除环境目录重建 |
+| `BASELINE_FAILED` | 重试 `up`；曾成功登记的环境可显式 `delete` 后 `up`，无有效登记时保留现场检查 |
+| `BASELINE_MARKER_MISSING` | 数据库在但基线标记缺失；有有效环境登记时用 `delete` 后 `up`，不手工删除根目录或锁 |
 | `LOCK_HELD` | 另一进程正在操作同一锁；等待后重试，进程退出会自动释放 OS 锁，勿删除锁目录 |
 | `LOCK_LEGACY` | 遇到已退出 holder 的有效旧 JSON 锁；停止所有旧版 CLI、确认无操作后，将该文件移到原路径之外保留，再使用新版重试 |
 | `LOCK_UNSAFE` | 锁路径未知、损坏、尚未写完、是符号链接，或内部不是工具专用 SQLite；原对象保持不动，停止相关 CLI 后检查权限、路径和内容并保留现场，不删除业务库 |

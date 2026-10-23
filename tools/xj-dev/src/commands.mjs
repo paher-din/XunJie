@@ -418,3 +418,4 @@ export async function downLocal(context) {
 }
 
 export { modeUp as up, modeStatus as status, modeDown as down, useMode, nodeCommand } from './modes.mjs';
+export { deleteEnvironment } from './env-removal.mjs';
