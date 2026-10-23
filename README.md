@@ -56,6 +56,8 @@ npm run dev:prep
 
 [本轮架构与设计](docs/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [学生端运行说明](apps/student/README.md)
 
+本地全栈开发环境（网关 + 后端 + 前端，含独立开发数据基线）见 [tools/xj-dev](tools/xj-dev/README.md)。
+
 ## 开发 skills
 
 项目技能位于 [skills/](skills/)，按当前任务需要选用，使用与修改范围遵循 [AGENTS.md](AGENTS.md)。

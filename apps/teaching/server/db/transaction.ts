@@ -7,7 +7,7 @@ import { workspaceSchema } from '../workspace/schema.ts';
 import { teachingSchema } from '../records/schema.ts';
 import { designSchema } from './design-schema.ts';
 import { createRequire } from 'node:module';
-import { closeSync, lstatSync, mkdtempSync, openSync, realpathSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -67,8 +67,7 @@ function validateSyntheticFile(file: string) {
   }
 }
 
-export function openSyntheticDatabase(file: string) {
-  validateSyntheticFile(file);
+function openVerifiedDatabase(file: string) {
   const db = new Driver(file, { fileMustExist: true });
   try {
     db.pragma('foreign_keys=ON', { simple: true });
@@ -122,7 +121,46 @@ export function openSyntheticDatabase(file: string) {
   } catch (error) { db.close(); throw error; }
 }
 
-export type SyntheticDatabase = ReturnType<typeof openSyntheticDatabase>;
+export function openSyntheticDatabase(file: string) {
+  validateSyntheticFile(file);
+  return openVerifiedDatabase(file);
+}
+
+/** Persistent application databases live at an explicit caller-owned path; the tmpdir factories above stay synthetic-only. */
+function validatePersistentDatabaseFile(file: string, create: boolean) {
+  if (!isAbsolute(file)) throw new Error('An absolute application database path is required.');
+  const directory = dirname(file);
+  // Only the final component must be a real, non-symlink directory. Ancestor symlinks (macOS /var→/private/var,
+  // symlinked home directories) are the caller's own environment and stay valid.
+  if (!existsSync(directory) || !lstatSync(directory).isDirectory() || lstatSync(directory).isSymbolicLink()) {
+    throw new Error('Invalid application database directory.');
+  }
+  const stat = existsSync(file) ? lstatSync(file) : undefined;
+  if (create) {
+    if (stat) throw new Error('Application database file already exists.');
+    return;
+  }
+  if (!stat || stat.isSymbolicLink() || !stat.isFile()) throw new Error('An existing application database file is required.');
+}
+
+export function openApplicationDatabase(file: string): ApplicationDatabase {
+  validatePersistentDatabaseFile(file, false);
+  return openVerifiedDatabase(file);
+}
+
+export function createApplicationDatabase(file: string, scope: ApplicationDatabaseScope): ApplicationDatabase {
+  assertApplicationScope(scope);
+  validatePersistentDatabaseFile(file, true);
+  closeSync(openSync(file, 'wx', 0o600));
+  applyDatabaseScope(file, scope);
+  return openApplicationDatabase(file);
+}
+
+/** The same handle serves tmpdir synthetic factories and explicit persistent application databases. */
+export type ApplicationDatabase = ReturnType<typeof openSyntheticDatabase>;
+
+/** @deprecated Historical name kept for existing callers; new code uses ApplicationDatabase. */
+export type SyntheticDatabase = ApplicationDatabase;
 
 /** Explicit maintenance operation; opening or starting an application never migrates its database. */
 export function migrateDisplayMetadata(file: string): { addedColumns: string[] } {
@@ -181,31 +219,53 @@ export function assertDigitalLogicApplicationDatabase(db:SyntheticDatabase,revie
  if(JSON.stringify(names)!==JSON.stringify(expected))throw new Error('Digital logic application requires the explicit '+expected.length+'-table scope.');
 }
 export function createDigitalLogicApplicationDatabase(): SyntheticDatabase {
- assertApprovedScope(digitalLogicApplicationTables,[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,teacherDesignSchema,hdlSchema,digitalLogicSchema],'Digital logic application');
+ assertApplicationScope('digital-logic-application');
  return createFreshDatabase('digital-logic-application');
 }
 // Opt-in only. Callers must obtain authorization for this exact 41-table composition before initialization.
 export function createDigitalLogicReviewApplicationDatabase(): SyntheticDatabase {
- assertApprovedScope([...digitalLogicApplicationTables,...reviewTableNames].sort(),[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,teacherDesignSchema,hdlSchema,digitalLogicSchema,reviewSchema],'Digital logic review application');
+ assertApplicationScope('digital-logic-review-application');
  return createFreshDatabase('digital-logic-review-application');
+}
+function assertApplicationScope(scope: ApplicationDatabaseScope) {
+ if (scope === 'digital-logic-application') {
+  assertApprovedScope(digitalLogicApplicationTables,[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,teacherDesignSchema,hdlSchema,digitalLogicSchema],'Digital logic application');
+ } else {
+  assertApprovedScope([...digitalLogicApplicationTables,...reviewTableNames].sort(),[schema,designSchema,completionSchema,workspaceSchema,teachingSchema,teacherDesignSchema,hdlSchema,digitalLogicSchema,reviewSchema],'Digital logic review application');
+ }
 }
 function assertApprovedScope(approvedTables:string[],schemas:string[],name:string) {
   const declaredTables = schemas.flatMap(sql=>[...sql.matchAll(/CREATE TABLE\s+([a-z_][a-z0-9_]*)/gi)].map(match=>match[1]!)).sort();
   if(JSON.stringify(declaredTables)!==JSON.stringify(approvedTables))
     throw new Error(name+' initialization requires the approved '+approvedTables.length+'-table scope; authorize a changed composition before creating a database.');
 }
-function createFreshDatabase(kind: 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'review' | 'digital-logic' | 'digital-logic-application' | 'digital-logic-review-application'): SyntheticDatabase {
+export type ApplicationDatabaseScope = 'digital-logic-application' | 'digital-logic-review-application';
+type DatabaseKind = 'access' | 'design' | 'completion' | 'workspace' | 'teacher-design' | 'teaching' | 'review' | 'digital-logic' | ApplicationDatabaseScope;
+const scopeSchemas: Record<DatabaseKind, string[]> = {
+  'access': [schema],
+  'design': [schema, designSchema],
+  'completion': [schema, designSchema, completionSchema],
+  'workspace': [schema, designSchema, completionSchema, workspaceSchema],
+  'teacher-design': [schema, designSchema, completionSchema, workspaceSchema, teacherDesignSchema],
+  'teaching': [schema, designSchema, completionSchema, workspaceSchema, teachingSchema],
+  'review': [schema, designSchema, completionSchema, workspaceSchema, teachingSchema, reviewSchema],
+  'digital-logic': [schema, designSchema, completionSchema, workspaceSchema, teachingSchema, hdlSchema],
+  'digital-logic-application': [schema, designSchema, completionSchema, workspaceSchema, teachingSchema, teacherDesignSchema, hdlSchema, digitalLogicSchema],
+  'digital-logic-review-application': [schema, designSchema, completionSchema, workspaceSchema, teachingSchema, teacherDesignSchema, hdlSchema, digitalLogicSchema, reviewSchema],
+};
+function applyDatabaseScope(file: string, kind: DatabaseKind) {
+  const db = new Driver(file, { fileMustExist: true });
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    try { for (const sql of scopeSchemas[kind]) db.exec(sql); db.exec('COMMIT'); }
+    catch (error) { db.exec('ROLLBACK'); throw error; }
+  } finally { db.close(); }
+}
+function createFreshDatabase(kind: DatabaseKind): SyntheticDatabase {
   const directory = mkdtempSync(join(realpathSync(tmpdir()), ['completion','workspace','teacher-design','teaching','review','digital-logic','digital-logic-application','digital-logic-review-application'].includes(kind) ? 'xunjie-a12-completion-' : kind === 'design' ? 'xunjie-a2-s2-' : 'xunjie-a1-p2-'));
   const file = join(directory, 'synthetic.sqlite');
   closeSync(openSync(file, 'wx', 0o600));
   validateSyntheticFile(file);
-  const db = new Driver(file, { fileMustExist: true });
-  try {
-    db.exec('BEGIN IMMEDIATE');
-    try { db.exec(schema); if (kind !== 'access') db.exec(designSchema); if (kind !== 'design' && kind !== 'access') db.exec(completionSchema);
-      if (kind === 'workspace' || kind === 'teacher-design' || kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(workspaceSchema);
-      if (kind === 'teacher-design' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(teacherDesignSchema); if (kind === 'teaching' || kind === 'review' || kind === 'digital-logic' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(teachingSchema); if (kind === 'review' || kind === 'digital-logic-review-application') db.exec(reviewSchema); if (kind === 'digital-logic' || kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(hdlSchema); if (kind === 'digital-logic-application' || kind === 'digital-logic-review-application') db.exec(digitalLogicSchema); db.exec('COMMIT'); }
-    catch (error) { db.exec('ROLLBACK'); throw error; }
-  } finally { db.close(); }
+  applyDatabaseScope(file, kind);
   return openSyntheticDatabase(file);
 }

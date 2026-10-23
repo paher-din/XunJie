@@ -1,6 +1,6 @@
 # 开发协作工具：Agent 操作、复现包与产品隔离
 
-更新：2026-10-23。状态：整体开发方式已确认；本文细化工程建议，命令、文件格式与传输入口尚未实现。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
+更新：2026-10-23。状态：本地全栈闭环已由 `tools/xj-dev` 交付（诊断/启动/状态/停止，HTTPS 单一入口 + 独立数据基线）；成员接入、复现包与 `use` 切换仍未实现。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
 
 ## 新 Agent 的工具入口
 
@@ -13,8 +13,7 @@
 | 后端构建/启动：`npm run build`、`npm start` | 在 `apps/teaching/` 使用 [package.json](../apps/teaching/package.json) 声明的精确 Node 版本及锁文件；核对[启动入口](../apps/teaching/server/main.ts)的业务配置条件 | 普通无业务配置启动仅提供基础健康服务；完整课程服务需要明确的配置与初始化数据，不能把进程启动或健康响应当作本地课程环境已准备好 |
 | 云端页面转发：`connect.ps1` | [云工具 README](../tools/i0-cloud/README.md)；`-Help` 查看帮助。连接需要获准的 `IdentityFile`、`ConnectionFile` 和主机信任材料 | 接入现有云端页面/API；不上传本地代码、不创建成员、不自动重连。脚本使用 Windows 网络命令，不能仅因安装了 PowerShell 就宣称 macOS 可用 |
 | 已登记执行节点回连：`connect-node.ps1` | 同一 README 和 `-Help`；另需已准备并登记的节点、端口与身份 | 连接既有执行节点，不负责安装 VM、初始化节点或决定未来产品执行方案 |
-| `xj-dev` CLI、基线/复现包、一次性邀请接入 | 本文和[成员流程](development-access-operations.md)是待实现契约；实际包入口未来位于 `tools/xj-dev/` | 目前不存在可执行 CLI，以下示意命令不得当作现成功能调用 |
-| `xunjie-local.ps1` 等旧本机入口 | [退役状态说明](../tools/i0-hdl/README.md)；清理范围见本文末尾 | 原专用本机业务宿主已退役，不作为新成员安装或新的本地全栈入口 |
+| `xj-dev` 本地全栈 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | 已实现 doctor/up/status/down：本工作树独立环境的 Vite 热更新 + 真实后端 + HTTPS 网关 + 固定最小基线；不提供执行节点与模型调用，成员接入、复现包与 `use` 切换仍待实现 |
 
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 
@@ -209,8 +208,8 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 | --- | --- | --- |
 | `tools/i0-cloud/connect.ps1`、`connect-node.ps1`、`ssh-common.ps1` | 当前连接实现，分别涉及页面转发、节点回连与配置校验 | 新工具接管相应能力后删除旧入口；仍有用的校验逻辑移入同一工具实现，不长期维护两套命令。节点适配未替换前，不能连带删除在用的回连能力 |
 | `tools/i0-cloud/connection.example.json`、`sshd-members.example.conf` | 现用配置字段与权限模板 | 配置生成由新工具负责后删除旧模板与旧字段；必要部署模板只在新工具中保留一份，实测主机校验和转发权限继续成立 |
-| `tools/i0-hdl/xunjie-local.ps1`、`local-application-host.mjs`、旧业务初始化/证据脚本及对应测试 | 旧专用本机业务宿主已退役，但相关文件仍存在 | 逐项核对引用与用途，删除只服务退役宿主的代码和测试；共享的业务构造与仍使用的执行 VM/镜像准备能力另行保留或迁移，不按目录名整批删除 |
-| `tools/i0-hdl/README.md`、`tools/teacher-workflow/README.md` 及相关调用；`tools/i0-ui55/README.md`、`tools/i0-shared/README.md` | 存在旧操作步骤、旧入口调用或仅供历史跳转的占位说明 | 删除过时步骤和无用占位文件，仍需使用的教师操作改接新入口；同步清理活跃源码、测试、Skill、README 与当前设计文档中的旧命令、路径和链接 |
+| `tools/i0-hdl/xunjie-local.ps1`、`local-application-host.mjs`、旧业务初始化/证据脚本及对应测试 | 已由 `tools/xj-dev` 替代并删除（#127） | 执行 VM 准备（`local-node-setup.*`）、冻结镜像接收、`fixtures/hdl-reference.json` 与 `seed-local-courses.mjs` 仍被引用，保留在 [i0-hdl README](../tools/i0-hdl/README.md) 说明；`seed-local-courses.mjs` 的独立 `--apply` 流程默认指向退役宿主 3444 不再可用，保留是因 `i0-cloud/publish-demo-projects.mjs` 复用其 `verifyCompletionReceipt` |
+| `tools/i0-hdl/README.md`、`tools/teacher-workflow/`、`tools/a0-review/` 及相关调用；`tools/i0-ui55/README.md`、`tools/i0-shared/README.md` | 旧操作步骤、占位说明与受控验证工具已删除（#127；a0-review 的检查对象文档已不存在且无引用），i0-hdl README 改写为保留范围说明 | 活跃源码、Skill、README 与当前设计文档中的旧命令、路径和链接已同步清零；`apps/teaching/tests/evidence/` 下的历史验收证据是当时的事实快照，保留旧文件名，不作为当前用法；历史事实留在 Git 历史与归档 |
 | 仓库外旧连接文件、SSH 配置片段、专属证书、登记密钥、启动记录与受管进程 | 可能仍由成员或当前运行环境使用 | 迁移时生成本工具拥有资源的清单，完成目标切换再移除失效项；仅处理明确归属的旧资源，不扫描删除通用 SSH 配置、其他项目或业务数据 |
 | `cloud-host.mjs`、`sync-main.py`、在用 systemd 服务和执行节点 | 承担当前业务、部署或执行职责 | 复用或按明确替代方案迁移；不能因为目录带旧阶段名就判断无用。对应替代完成时再删除失效实现和配置 |
 
@@ -218,4 +217,4 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 
 清理验收同时看文件删除和引用消失：活跃代码与当前说明不再引导使用旧命令；配置没有只由旧入口消费的字段；正常启动、停止、连接与节点能力按保留范围仍可用；干净 checkout 能从统一入口完成已交付流程。历史事实报告若保留旧文件名，应明确是当时事实，不能保留断裂的“当前用法”链接。`docs/archive/` 继续遵守仓库归档隔离规则，不因清理任务恢复为当前操作依据。
 
-本轮已补充项目 Skill、现有工具说明、实施边界与清理设计；尚未创建 CLI、运行端到端验收、配置文件交换入口、删除旧实现或改变普通用户的安装流程。
+本轮已交付 `tools/xj-dev` CLI（macOS 实测通过 doctor/up/status/down、双环境隔离、幂等启动、端口冲突诊断与浏览器全链路验收），并删除其替代的旧本机宿主实现与占位说明；成员接入、复现包、`use` 切换与普通用户安装流程仍未改变。

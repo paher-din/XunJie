@@ -37,7 +37,8 @@ export default defineConfig({
       ? { channel: process.env.XUNJIE_E2E_BROWSER_CHANNEL }
       : {}) },
   }],
-  webServer: [
+  // xj-dev 验收（xjDevBaseline.spec.ts）直连运行中的环境，不需要也不应拉起 prep/real 服务。
+  webServer: process.env.XUNJIE_XJ_DEV_URL ? [] : [
     {
       command: `npm run dev:prep -- --port ${PREP_PORT}`,
       env: { XUNJIE_VITE_CACHE_DIR: `.playwright/node_modules/.vite-prep-${PREP_PORT}` },

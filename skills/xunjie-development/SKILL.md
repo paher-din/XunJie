@@ -17,7 +17,8 @@ description: XunJie 团队开发环境与协作。用于启动开发环境、切
 
 | 用户要做什么 | 阅读与判断 |
 | --- | --- |
-| 启动、切回本地、联调云端 API、查看团队版本 | [模式切换](../../docs/development-tooling.md#切换本地与云端)：确认前端来源、后端版本和数据归属，再操作对应环境 |
+| 启动、停止、查看本地全栈环境 | [xj-dev README](../../tools/xj-dev/README.md)：已实现 doctor/up/status/down；每个工作树独立数据与端口，macOS 已验收、Windows 未实测 |
+| 切换本地与云端、联调云端 API、查看团队版本 | [模式切换](../../docs/development-tooling.md#切换本地与云端)：`use` 切换仍未实现；确认前端来源、后端版本和数据归属，再操作对应环境 |
 | 获取或更新起点数据 | [数据基线](../../docs/development-tooling.md#获取与更新数据基线)：查兼容版本，确认复用原副本还是建立新副本 |
 | 打包、分享或打开问题 | [复现包与传递](../../docs/development-tooling.md#复现包的形态)：收集触发前状态、代码版本、步骤与预期；区分保存现场和验证复现 |
 | 首次加入、权限变化、连接故障 | [成员接入与运行](../../docs/development-access-operations.md)：复用已授权的私有接入材料，检查设备、权限与失败阶段 |
