@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import textwrap
 import time
 import unittest
 import urllib.error
@@ -725,6 +726,88 @@ class ArtifactDeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(deploy_artifact.DeploymentError, 'CMS_REPORT_FAILED'):
                 self.deployment.monitor(settings)
         self.assertFalse(Path(settings['statusFile']).exists())
+
+
+class ArtifactPublicationWorkflowTests(unittest.TestCase):
+    def test_cancelled_publication_reuses_verified_content_tag_on_rerun(self):
+        # Execute the actual workflow shell against a temporary local bare repo.
+        # Only GitHub Release API calls are replaced; no GitHub/network writes.
+        workflow = SCRIPT.parents[2] / '.github/workflows/cloud-release.yml'
+        step = workflow.read_text().split('      - name: Publish an immutable artifact and its bound release\n', 1)[1]
+        script = textwrap.dedent(step.split('        run: |\n', 1)[1].split('      - name:', 1)[0])
+        with tempfile.TemporaryDirectory(prefix='xunjie-publication-test-') as temporary:
+            root = Path(temporary)
+            source = root / 'source'
+            source.mkdir()
+            def git(*args, cwd=source):
+                return subprocess.check_output(['git', *args], cwd=cwd, text=True, stderr=subprocess.DEVNULL).strip()
+            git('init', '-q', '-b', 'main')
+            (source / 'source.txt').write_text('source commit')
+            git('add', '.')
+            git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'source')
+            commit = git('rev-parse', 'HEAD')
+            remote = root / 'origin.git'
+            git('clone', '--bare', '--quiet', str(source), str(remote))
+            runtime = root / 'runner'
+            artifact = runtime / 'artifact'
+            artifact.mkdir(parents=True)
+            (artifact / 'manifest.json').write_text(json.dumps({'commit': commit, 'artifactSha256': sha256(b'archive')}))
+            (artifact / 'runtime.tar.gz').write_bytes(b'archive')
+            (runtime / 'artifact-summary.json').write_text(json.dumps({'commit': commit, 'artifactSha256': sha256(b'archive')}))
+            commands = root / 'bin'
+            commands.mkdir()
+            gh = commands / 'gh'
+            gh.write_text('#!/usr/bin/env python3\n' + textwrap.dedent('''
+                import json, os, pathlib, sys
+                args=sys.argv[1:]
+                state=pathlib.Path(os.environ['GH_TEST_STATE'])
+                if args[:2]==['release','view']:
+                    if not state.exists():sys.exit(1)
+                    print(state.read_text())
+                elif args[:2]==['release','delete']:
+                    state.unlink(missing_ok=True)
+                elif args[:2]==['release','create']:
+                    body=pathlib.Path(args[args.index('--notes-file')+1]).read_text()
+                    state.write_text(json.dumps({'isDraft':True,'body':body}))
+                    if os.environ.get('CANCEL_PUBLICATION')=='1':sys.exit(130)
+                elif args[:2]==['release','edit']:
+                    value=json.loads(state.read_text());value['isDraft']=False
+                    state.write_text(json.dumps(value))
+                else:sys.exit(2)
+            '''))
+            gh.chmod(0o755)
+            state = root / 'release.json'
+            environment = {**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH'],
+                           'RUNNER_TEMP': str(runtime), 'GITHUB_SHA': commit, 'TAG': 'cloud-' + commit,
+                           'GH_TEST_STATE': str(state)}
+            def publish(index, cancel=False):
+                checkout = root / ('checkout-' + str(index))
+                git('clone', '--quiet', str(remote), str(checkout))
+                env = {**environment, 'CANCEL_PUBLICATION': '1' if cancel else '0',
+                       'GIT_AUTHOR_DATE': f'2026-10-23T10:0{index}:00Z', 'GIT_COMMITTER_DATE': f'2026-10-23T10:0{index}:00Z'}
+                return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], cwd=checkout,
+                                      env=env, capture_output=True, text=True)
+            first = publish(1, cancel=True)
+            self.assertEqual(first.returncode, 130, first.stderr)
+            self.assertTrue(json.loads(state.read_text())['isDraft'])
+            tag = 'refs/tags/cloud-artifact-' + sha256((artifact / 'manifest.json').read_bytes())
+            original = git('--git-dir=' + str(remote), 'rev-parse', tag)
+            second = publish(2)
+            self.assertEqual(second.returncode, 0, second.stderr)
+            self.assertEqual(git('--git-dir=' + str(remote), 'rev-parse', tag), original)
+            release = json.loads(state.read_text())
+            self.assertFalse(release['isDraft'])
+            binding = json.loads(re.search(r'<!-- xunjie-artifact-v1 (\{[^\n]+\}) -->', release['body'])[1])
+            self.assertEqual(binding['artifactCommit'], original)
+            # A conflicting archive under the same manifest name must not reuse
+            # the tag or make a Release public, even after an interrupted run.
+            release['isDraft'] = True
+            state.write_text(json.dumps(release))
+            (artifact / 'runtime.tar.gz').write_bytes(b'different archive')
+            third = publish(3)
+            self.assertNotEqual(third.returncode, 0)
+            self.assertTrue(json.loads(state.read_text())['isDraft'])
+            self.assertEqual(git('--git-dir=' + str(remote), 'rev-parse', tag), original)
 
 
 if __name__ == "__main__":

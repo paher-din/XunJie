@@ -9,10 +9,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Candidate integration runs must not cancel main publications. Never cancel
-  # a publication between its immutable artifact tag and the visible Release.
+  # Only the newest commit on each ref needs a build. Cancellation leaves at
+  # most an immutable tag/draft; the Release becomes visible only after upload.
   group: cloud-release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -73,9 +73,25 @@ jobs:
           git add manifest.json runtime.tar.gz
           git commit -m "Cloud runtime artifact for $GITHUB_SHA"
           artifact_commit=$(git rev-parse HEAD)
-          git tag "$artifact_tag"
-          # No force-push or moving branch is used to deliver artifact bytes.
-          git push origin "refs/tags/$artifact_tag"
+          reuse_artifact_tag() {
+            git fetch --no-tags origin "refs/tags/$artifact_tag"
+            existing_commit=$(git rev-parse FETCH_HEAD)
+            test "$(git cat-file -t "$existing_commit")" = commit
+            test "$(git rev-parse "$existing_commit^{tree}")" = "$(git rev-parse 'HEAD^{tree}')"
+            artifact_commit="$existing_commit"
+          }
+          # A cancelled run may already have pushed this exact content tag.
+          # Compare both files through the tree, then reuse its existing commit;
+          # a new commit timestamp must never require overwriting the tag.
+          if git ls-remote --exit-code --tags origin "refs/tags/$artifact_tag" > /dev/null; then
+            reuse_artifact_tag
+          else
+            git tag "$artifact_tag"
+            # Handle a tag published between the existence check and our push.
+            if ! git push origin "refs/tags/$artifact_tag"; then
+              reuse_artifact_tag
+            fi
+          fi
           export ARTIFACT_COMMIT="$artifact_commit" MANIFEST_SHA256="$manifest_sha"
           node -e '
             const fs=require("node:fs");
@@ -107,12 +123,25 @@ jobs:
             const fs=require("node:fs");const cp=require("node:child_process");
             const releases=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/releases.json","utf8")).flat();
             const heads=new Set(fs.readFileSync(process.env.RUNNER_TEMP+"/protected-heads.txt","utf8").trim().split(/\n/).map(x=>x.split(/\s/)[0]));
-            let keep=0;
-            for(const release of releases.filter(r=>!r.draft && /^cloud-[0-9a-f]{40}$/.test(r.tag_name))){
-              if(heads.has(release.tag_name.slice(6)) || keep++<5)continue;
+            const cutoff=Date.now()-24*60*60*1000;
+            const removed=new Set();let keep=0;
+            for(const release of releases.filter(r=>/^cloud-[0-9a-f]{40}$/.test(r.tag_name))){
+              if(heads.has(release.tag_name.slice(6)))continue;
+              if(release.draft ? Date.parse(release.created_at)>=cutoff : keep++<5)continue;
               cp.execFileSync("gh",["release","delete",release.tag_name,"--yes","--cleanup-tag"]);
+              removed.add(release.id);
+            }
+            const referenced=new Set();
+            for(const release of releases.filter(r=>!removed.has(r.id))){
               const match=/<!-- xunjie-artifact-v1 (\{[^\n]+\}) -->/.exec(release.body||"");
-              if(match){const b=JSON.parse(match[1]);if(/^[0-9a-f]{64}$/.test(b.manifestSha256))
-                cp.execFileSync("git",["push","origin",":refs/tags/cloud-artifact-"+b.manifestSha256]);}
+              if(match)referenced.add(JSON.parse(match[1]).artifactCommit);
+            }
+            const refs=JSON.parse(cp.execFileSync("gh",["api","--paginate","--slurp",
+              "repos/"+process.env.GITHUB_REPOSITORY+"/git/matching-refs/tags/cloud-artifact-"],{encoding:"utf8"})).flat();
+            for(const ref of refs){
+              if(!/^refs\/tags\/cloud-artifact-[0-9a-f]{64}$/.test(ref.ref) || ref.object.type!=="commit" || referenced.has(ref.object.sha))continue;
+              const commit=JSON.parse(cp.execFileSync("gh",["api","repos/"+process.env.GITHUB_REPOSITORY+"/git/commits/"+ref.object.sha],{encoding:"utf8"}));
+              // A grace period protects another ref still uploading a draft.
+              if(Date.parse(commit.committer.date)<cutoff)cp.execFileSync("git",["push","origin",":"+ref.ref]);
             }
           '
