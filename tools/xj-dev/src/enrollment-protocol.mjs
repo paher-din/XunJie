@@ -20,11 +20,10 @@ function windowsPrivatePath(file, directory, protect) {
   const script = `
 $ErrorActionPreference = 'Stop'
 $p = $env:XJ_PRIVATE_PATH
-$item = Get-Item -LiteralPath $p -Force
-if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'reparse' }
+if (([IO.File]::GetAttributes($p) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'reparse' }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $sid = $identity.User
-$acl = Get-Acl -LiteralPath $p
+$acl = [IO.${directory ? 'Directory' : 'File'}]::GetAccessControl($p)
 $owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
 if ($owner -ne $sid.Value ${protect ? "-and $owner -ne $identity.Owner.Value" : ''}) { throw 'owner' }
 ${protect ? `
@@ -33,8 +32,8 @@ $acl.SetOwner($sid)
 $acl.SetAccessRuleProtection($true, $false)
 $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', '${directory ? 'ContainerInherit, ObjectInherit' : 'None'}', 'None', 'Allow')
 $acl.AddAccessRule($rule)
-Set-Acl -LiteralPath $p -AclObject $acl
-$acl = Get-Acl -LiteralPath $p
+[IO.${directory ? 'Directory' : 'File'}]::SetAccessControl($p, $acl)
+$acl = [IO.${directory ? 'Directory' : 'File'}]::GetAccessControl($p)
 ` : ''}
 if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value) { throw 'owner' }
 ${directory || protect ? "if (-not $acl.AreAccessRulesProtected) { throw 'inheritance' }" : ''}
