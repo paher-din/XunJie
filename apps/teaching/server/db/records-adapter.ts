@@ -131,7 +131,7 @@ export function readRecords(tx: Transaction, courseId: string, attemptId?: strin
         OR (e.course_id=? AND (json_extract(e.object_ref_json,'$.scope.attemptId') IS NULL OR json_extract(e.object_ref_json,'$.scope.attemptId')=?))
         OR r.target=? OR substr(r.target,1,length(?))=?)) OR r.receipt_id IN (SELECT value FROM json_each(?)))`,
       courseId, attemptId, courseId, attemptId, attemptId, targetPrefix, targetPrefix, related);
-  const receipts = receiptRows.map(row => {
+  const readReceipt = (row: (typeof receiptRows)[number]) => {
     const receipt = persisted(receiptSchema, String(row.result_json)) as CommandReceipt;
     if (receipt.receiptId !== row.receipt_id || receipt.commandId !== row.command_id || receipt.identity.actorId !== row.actor_id
       || receipt.identity.scope.courseId !== courseId || receipt.identity.scope.courseId !== row.course_id || 'shared.' + receipt.identity.command !== row.command
@@ -139,7 +139,8 @@ export function readRecords(tx: Transaction, courseId: string, attemptId?: strin
       || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.requestHash !== row.request_hash
       || receipt.serverSeq !== row.server_seq) throw new Error('Invalid persisted receipt scope.');
     return receipt;
-  });
+  };
+  const receipts = receiptRows.map(readReceipt);
   // Index this validated read only; never reuse persisted data across transactions or authorization checks.
   const receiptById = new Map(receipts.map(receipt => [receipt.receiptId, receipt]));
   const receiptBySequence = new Map(receipts.map(receipt => [receipt.serverSeq, receipt]));
@@ -148,27 +149,43 @@ export function readRecords(tx: Transaction, courseId: string, attemptId?: strin
     : tx.all(`SELECT * FROM audit_events WHERE (course_id=? AND command LIKE 'shared.%'
         AND (json_extract(object_ref_json,'$.scope.attemptId') IS NULL OR json_extract(object_ref_json,'$.scope.attemptId')=?))
         OR server_seq IN (SELECT value FROM json_each(?))`, courseId, attemptId, JSON.stringify(receipts.map(receipt => receipt.serverSeq)));
-  const events = eventRows
+  const checkedEvents = eventRows
     .map(row => {
       const event = persisted(eventSchema, String(row.object_ref_json)) as AuditEvent;
       if (event.eventId !== row.event_id || event.serverSeq !== row.server_seq || event.scope.courseId !== row.course_id
         || 'shared.' + event.type !== row.command || Date.parse(event.occurredAt) !== row.committed_at_ms) throw new Error('Invalid persisted event scope.');
-      const receipt = receiptById.get(event.payloadRef ?? '');
-      // An event may reference the object it is about (a teaching delivery, receipt or stop request) instead of
-      // its command receipt; those rows still have to agree with the row that owns them.
-      if (!receipt) {
-        const owner = receiptBySequence.get(event.serverSeq);
-        if (!owner || owner.committedAt !== event.occurredAt || owner.identity.actorId !== row.actor_id || owner.commandId !== row.command_id
-          || owner.identity.target !== row.target || owner.identity.recoveryGeneration !== row.recovery_generation
-          || !sameScope(owner.identity.scope, event.scope)) throw new Error('Invalid persisted receipt/event association.');
-        return event;
-      }
-      if (!sameScope(receipt.identity.scope, event.scope) || receipt.identity.actorId !== row.actor_id
-        || receipt.commandId !== row.command_id || receipt.identity.target !== row.target
-        || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.serverSeq !== event.serverSeq
-        || receipt.committedAt !== event.occurredAt) throw new Error('Invalid persisted receipt/event association.');
-      return event;
+      return { row, event };
     });
+  // A scoped read must distinguish real object refs from receipts outside the selected attempt.
+  // Match the full reader's course/shared boundary and validate every referenced receipt in full.
+  if (attemptId !== undefined) {
+    const unresolvedRefs = [...new Set(checkedEvents.flatMap(({ event }) =>
+      event.payloadRef && !receiptById.has(event.payloadRef) ? [event.payloadRef] : []))];
+    if (unresolvedRefs.length) {
+      for (const row of tx.all(`SELECT * FROM command_receipts WHERE course_id=? AND command LIKE 'shared.%'
+        AND receipt_id IN (SELECT value FROM json_each(?))`, courseId, JSON.stringify(unresolvedRefs))) {
+        const receipt = readReceipt(row);
+        receiptById.set(receipt.receiptId, receipt);
+      }
+    }
+  }
+  const events = checkedEvents.map(({ row, event }) => {
+    const receipt = receiptById.get(event.payloadRef ?? '');
+    // An event may reference the object it is about (a teaching delivery, receipt or stop request) instead of
+    // its command receipt; those rows still have to agree with the row that owns them.
+    if (!receipt) {
+      const owner = receiptBySequence.get(event.serverSeq);
+      if (!owner || owner.committedAt !== event.occurredAt || owner.identity.actorId !== row.actor_id || owner.commandId !== row.command_id
+        || owner.identity.target !== row.target || owner.identity.recoveryGeneration !== row.recovery_generation
+        || !sameScope(owner.identity.scope, event.scope)) throw new Error('Invalid persisted receipt/event association.');
+      return event;
+    }
+    if (!sameScope(receipt.identity.scope, event.scope) || receipt.identity.actorId !== row.actor_id
+      || receipt.commandId !== row.command_id || receipt.identity.target !== row.target
+      || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.serverSeq !== event.serverSeq
+      || receipt.committedAt !== event.occurredAt) throw new Error('Invalid persisted receipt/event association.');
+    return event;
+  });
   return { receipts, events, jobs, commandAliases: [],
     serverSeq: Number(tx.get('SELECT COALESCE(MAX(server_seq),0) AS seq FROM audit_events')!.seq) };
 }

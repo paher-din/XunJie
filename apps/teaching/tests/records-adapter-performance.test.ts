@@ -71,6 +71,45 @@ test('explicit attempt scope retains no-attempt course jobs/roots and object pay
   }finally{f.close();}
 });
 
+test('scoped events reject payload refs to another attempt receipt just like the full course read',()=>{
+  const f=fixture(2,true);try{
+    f.db.withTransaction(tx=>{
+      const row=tx.get('SELECT object_ref_json FROM audit_events WHERE event_id=?','event-1')!;
+      const event=JSON.parse(String(row.object_ref_json));event.payloadRef='receipt-2';
+      tx.run('UPDATE audit_events SET object_ref_json=? WHERE event_id=?',JSON.stringify(event),'event-1');
+    });
+    assert.throws(()=>f.read(),/Invalid persisted receipt\/event association\./);
+    assert.throws(()=>f.db.withTransaction(tx=>readRecords(tx,f.course,'own-attempt')),
+      /Invalid persisted receipt\/event association\./);
+  }finally{f.close();}
+});
+
+test('scoped object payload refs keep the full reader course/shared receipt lookup boundary',()=>{
+  for(const boundary of ['foreign-course','non-shared']){
+    const f=fixture(2,true);try{
+      f.db.withTransaction(tx=>{
+        if(boundary==='foreign-course'){
+          tx.run('INSERT INTO courses(id) VALUES(?)','foreign-course');
+          const receipt=JSON.parse(String(tx.get('SELECT result_json FROM command_receipts WHERE receipt_id=?','receipt-2')!.result_json));
+          const event=JSON.parse(String(tx.get('SELECT object_ref_json FROM audit_events WHERE event_id=?','event-2')!.object_ref_json));
+          receipt.identity.scope.courseId='foreign-course';event.scope.courseId='foreign-course';
+          tx.run('UPDATE command_receipts SET course_id=?,result_json=? WHERE receipt_id=?','foreign-course',JSON.stringify(receipt),'receipt-2');
+          tx.run('UPDATE audit_events SET course_id=?,object_ref_json=? WHERE event_id=?','foreign-course',JSON.stringify(event),'event-2');
+        }else{
+          tx.run('UPDATE command_receipts SET command=?,result_json=? WHERE receipt_id=?','external.object','{}','receipt-2');
+          tx.run('UPDATE audit_events SET command=?,object_ref_json=? WHERE event_id=?','external.object','{}','event-2');
+        }
+        const event=JSON.parse(String(tx.get('SELECT object_ref_json FROM audit_events WHERE event_id=?','event-1')!.object_ref_json));
+        event.payloadRef='receipt-2';
+        tx.run('UPDATE audit_events SET object_ref_json=? WHERE event_id=?',JSON.stringify(event),'event-1');
+      });
+      const full=f.read(),scoped=f.db.withTransaction(tx=>readRecords(tx,f.course,'own-attempt'));
+      assert.deepEqual(scoped.events,full.events,boundary);assert.deepEqual(scoped.receipts,full.receipts,boundary);
+      assert.equal(scoped.events[0]!.payloadRef,'receipt-2');
+    }finally{f.close();}
+  }
+});
+
 test('2124-receipt four-attempt benchmark keeps exact target ACKs and global order without a latency acceptance claim',t=>{
   const f=fixture(2124,'distributed');try{
     const samples:{fullMs:number;scopedMs:number}[]=[];
