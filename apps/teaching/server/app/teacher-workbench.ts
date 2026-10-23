@@ -4,8 +4,7 @@ import { teacherWorkbenchSchema } from '../../contracts/design/workbench.ts';
 import type { createVerificationApp } from '../access/app.ts';
 import { activityView, readActivity, readAssignment } from '../design/activities.ts';
 import { readDraft, readMaterial } from '../design/storage.ts';
-import { readAttempt } from '../db/records-adapter.ts';
-import { loadWorkspace } from '../workspace/storage.ts';
+import { loadCourseWorkspaces } from '../workspace/storage.ts';
 import { latestSubmission } from '../workspace/submissions.ts';
 import { parseRequest } from './validation.ts';
 import { ApiError } from './errors.ts';
@@ -46,9 +45,8 @@ export function registerTeacherWorkbench(app: FastifyInstance, access: Access, c
           ...(displayTitle ? { displayTitle } : {}),
           active: assignment.status === 'active' && control?.status === 'active' && members.some(member => member.userId === assignment.student_id) };
       });
-      const attempts = tx.all('SELECT attempt_id FROM attempts WHERE course_id=? ORDER BY attempt_id', courseId).map(row => {
-        const attempt = readAttempt(tx, String(row.attempt_id));
-        const latest = latestSubmission(loadWorkspace(tx, attempt.attemptId));
+      const attempts = loadCourseWorkspaces(tx, courseId).map(state => {
+        const attempt = state.attempt, latest = latestSubmission(state);
         return {
           attemptId: attempt.attemptId, courseId: attempt.courseId, studentId: attempt.studentId,
           assignmentId: attempt.assignmentId, activityVersionId: attempt.activityVersionId,

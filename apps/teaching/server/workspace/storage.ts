@@ -22,6 +22,7 @@ export function bindingKeys(identity: CommandIdentity) {
 }
 export function readWorkspaceRecords(tx: Transaction, courseId: string, identity?: CommandIdentity): Records {
   const records = readRecords(tx, courseId);
+  const receiptById = new Map(records.receipts.map(receipt => [receipt.receiptId, receipt]));
   if (identity) {
     const original = tx.get('SELECT course_id,recovery_generation FROM command_receipts WHERE actor_id=? AND command=? AND target=? AND idempotency_key=?',
       identity.actorId, 'shared.' + identity.command, identity.target, identity.idempotencyKey);
@@ -29,13 +30,13 @@ export function readWorkspaceRecords(tx: Transaction, courseId: string, identity
     if (original && original.course_id !== courseId) throw new ApiError('IDEMPOTENCY_CONFLICT');
     for (const item of bindingKeys(identity)) {
       const row = tx.get('SELECT receipt_id FROM workspace_command_bindings WHERE kind=? AND key_json=?', item.kind, item.key);
-      if (row && !records.receipts.some(receipt => receipt.receiptId === row.receipt_id)) throw new ApiError('IDEMPOTENCY_CONFLICT');
-      const original = records.receipts.find(receipt => receipt.receiptId === row?.receipt_id);
+      const original = row ? receiptById.get(String(row.receipt_id)) : undefined;
+      if (row && !original) throw new ApiError('IDEMPOTENCY_CONFLICT');
       if (original && original.identity.recoveryGeneration !== identity.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
     }
   }
   for (const row of tx.all("SELECT * FROM workspace_command_bindings WHERE kind='public'")) {
-    const original = records.receipts.find(receipt => receipt.receiptId === row.receipt_id);
+    const original = receiptById.get(String(row.receipt_id));
     if (!original) continue;
     const alias: unknown = JSON.parse(String(row.identity_json));
     // A binding cannot change the original account, command, scope, generation or sync key.
@@ -50,6 +51,21 @@ export function readWorkspaceRecords(tx: Transaction, courseId: string, identity
 }
 export function loadWorkspace(tx: Transaction, attemptId: string, identity?: CommandIdentity): WorkspaceState {
   const attempt = readAttempt(tx, attemptId), records = readWorkspaceRecords(tx, attempt.courseId, identity);
+  return hydrateWorkspace(tx, attempt, records);
+}
+/** Read-only composition for one authorized, synchronous course transaction. No state survives this call. */
+export function loadCourseWorkspaces(tx: Transaction, courseId: string): WorkspaceState[] {
+  const attempts = tx.all('SELECT attempt_id FROM attempts WHERE course_id=? ORDER BY attempt_id', courseId)
+    .map(row => readAttempt(tx, String(row.attempt_id)));
+  if (!attempts.length) return [];
+  const records = readWorkspaceRecords(tx, courseId);
+  return attempts.map(attempt => {
+    if (attempt.courseId !== courseId) throw new Error('Invalid persisted attempt scope.');
+    return hydrateWorkspace(tx, attempt, records);
+  });
+}
+function hydrateWorkspace(tx: Transaction, attempt: WorkspaceState['attempt'], records: Records): WorkspaceState {
+  const attemptId = attempt.attemptId;
   const files = tx.all('SELECT * FROM workspace_files WHERE attempt_id=? ORDER BY file_id', attemptId).map(row => {
     const file = checked(fileSchema, String(row.file_json));
     if (file.fileId !== row.file_id || file.attemptId !== row.attempt_id || file.path !== row.path
