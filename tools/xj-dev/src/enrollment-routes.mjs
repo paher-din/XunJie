@@ -38,6 +38,7 @@ export async function joinRoute(context, options, log) {
   if (!['local', 'cloud-api', 'cloud'].includes(mode)) throw new CliError('arguments', 'UNKNOWN_MODE', '模式必须为 local、cloud-api 或 cloud。');
   const { joinEnrollment } = await import('./enrollment-client.mjs');
   const enrollment = publish(context, await joinEnrollment({ home: context.home, invitationFile: args['--invitation-file'] }));
+  if (!enrollment.identity.capabilities.includes('page')) return { enrollment, started: false, next: ['设备仅获文件权限；使用 repro share/fetch，不建立页面或 SSH 连接。'] };
   if (args['--no-start']) return { enrollment, started: false, next: ['up 或 use cloud；尚未验收环境启动。'] };
   const { useMode } = await import('./modes.mjs');
   const environment = await useMode(context, mode, { connection: enrollment.connectionFile }, log);

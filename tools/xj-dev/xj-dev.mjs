@@ -7,6 +7,7 @@ import { locatePinnedRuntime } from './src/runtime.mjs';
 import { reproRoute, baselineRoute } from './src/repro-routes.mjs';
 import { joinRoute, refreshRoute } from './src/enrollment-routes.mjs';
 import { accessRoute } from './src/enrollment-admin.mjs';
+import { transferProjection } from './src/package-routes.mjs';
 
 const HELP = `xj-dev — XunJie 本地全栈开发环境
 
@@ -25,7 +26,10 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
   refresh [--device-file FILE]  用原设备身份刷新配置，不重新领取邀请
   access <invite|inspect|revoke-invitation|revoke-device|revoke-member|snapshot>
             --admin-config FILE [--input-file FILE] [--out-file FILE]
+  access <package-quota|package-baselines|package-baseline|package-cleanup> --admin-config FILE [--input-file FILE]
   repro     capture --context FILE --out ZIP / inspect ZIP / restore ZIP [--target DIR] / verify ZIP
+  repro     share ZIP [--digest SHA256] / resume ID / fetch ID / cache-delete ID [--device-file FILE]
+            restore/verify 也接受稳定 ID，按设备授权下载、校验，再恢复或执行复现步骤
   baseline  list / publish --context FILE --version VERSION / use VERSION [--target DIR]
 
 全局选项：
@@ -125,7 +129,8 @@ async function main() {
     printResult(envelope);
     if (!envelope.ok) process.exitCode = 1;
   } catch (error) {
-    printResult(failureEnvelope(TOOL_VERSION, command, error));
+    const transfer = transferProjection(error?.transfer);
+    printResult(failureEnvelope(TOOL_VERSION, command, error, transfer ? { transfer } : {}));
     process.exitCode = 1;
   }
 }

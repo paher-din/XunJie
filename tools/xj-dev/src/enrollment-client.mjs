@@ -14,10 +14,13 @@ const object = value => value !== null && typeof value === 'object' && !Array.is
 const id = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 const serverCodes = new Set(['INVITATION_INVALID', 'INVITATION_EXPIRED', 'INVITATION_KEY_MISMATCH', 'DEVICE_ALREADY_REGISTERED',
   'DEVICE_REVOKED', 'DEVICE_NOT_READY', 'DEVICE_KEY_MISMATCH', 'PROOF_EXPIRED_OR_REPLAYED', 'PROOF_INVALID', 'RATE_LIMITED',
-  'ACCESS_UNAVAILABLE', 'APPLICATION_CONTROL_UNAVAILABLE', 'SSH_RECEIPT_INVALID', 'CAPABILITY_DENIED']);
+  'ACCESS_UNAVAILABLE', 'APPLICATION_CONTROL_UNAVAILABLE', 'SSH_RECEIPT_INVALID', 'CAPABILITY_DENIED', 'PACKAGES_UNAVAILABLE',
+  'TRANSFER_NOT_FOUND', 'TRANSFER_NOT_OWNED', 'TRANSFER_FAILED', 'UPLOAD_CONFLICT', 'PACKAGE_METADATA_INVALID', 'PACKAGE_TOO_LARGE',
+  'MEMBER_QUOTA_EXCEEDED', 'TEAM_QUOTA_EXCEEDED', 'PART_INVALID', 'PART_CONFLICT', 'UPLOAD_INCOMPLETE', 'OBJECT_MISMATCH',
+  'PACKAGE_NOT_READY', 'ETAG_CHANGED', 'OBJECT_STORAGE_UNAVAILABLE']);
 function fail(code) {
   return new CliError('enrollment', code, `开发接入未完成（${code}）。`, {
-    retryable: ['ACCESS_UNREACHABLE', 'ACCESS_UNAVAILABLE', 'APPLICATION_CONTROL_UNAVAILABLE', 'RATE_LIMITED'].includes(code),
+    retryable: ['ACCESS_UNREACHABLE', 'ACCESS_UNAVAILABLE', 'APPLICATION_CONTROL_UNAVAILABLE', 'RATE_LIMITED', 'PACKAGES_UNAVAILABLE', 'OBJECT_STORAGE_UNAVAILABLE'].includes(code),
     recovery: '保留现有设备和连接；核对邀请、主机信任与服务状态后，使用同一设备文件显式重试。',
   });
 }
@@ -89,7 +92,7 @@ function resolveDevice(input = {}) {
 function identity(value, previous) {
   need(object(value) && id(value.memberId) && id(value.deviceId) && ['developer', 'maintainer'].includes(value.teamRole)
     && Array.isArray(value.capabilities) && value.capabilities.length > 0
-    && value.capabilities.every(cap => cap === 'page' || /^node:[A-Za-z0-9_-]{1,64}$/.test(cap)), 'IDENTITY_MISMATCH');
+    && value.capabilities.every(cap => ['page', 'file:read', 'file:publish'].includes(cap) || /^node:[A-Za-z0-9_-]{1,64}$/.test(cap)), 'IDENTITY_MISMATCH');
   if (previous) need(value.memberId === previous.memberId && value.deviceId === previous.deviceId, 'IDENTITY_MISMATCH');
   return { memberId: value.memberId, deviceId: value.deviceId, teamRole: value.teamRole, capabilities: [...new Set(value.capabilities)] };
 }
@@ -102,7 +105,9 @@ function visible(stage, paths) {
     directory(generation);
     result.identity = identity(stage.registration.identity);
     result.connectionFile = pathJoin(generation, 'connection.json'); result.accountFile = pathJoin(generation, 'account.json');
-    for (const file of [result.connectionFile, result.accountFile]) assertPrivateFile(file);
+    if (result.identity.capabilities.includes('page')) {
+      for (const file of [result.connectionFile, result.accountFile]) assertPrivateFile(file);
+    } else { delete result.connectionFile; delete result.accountFile; }
   }
   return result;
 }
@@ -200,8 +205,20 @@ async function signed(stage, paths, path, body) {
   return http(stage.trust, path, { challengeId: challenge.challengeId, signature: signProof(paths.identityFile, challenge), body });
 }
 function publish(stage, paths, response) {
-  need(object(response) && object(response.connection) && object(response.account), 'ACCESS_RESPONSE_INVALID');
+  need(object(response), 'ACCESS_RESPONSE_INVALID');
   const who = identity(response.identity, stage.registration?.identity), supplied = response.connection;
+  if (!who.capabilities.includes('page')) {
+    need(response.connection === undefined && response.account === undefined, 'ACCESS_RESPONSE_INVALID');
+    // File-only identities never acquire an SSH account or product credential.
+    // Keep an empty private generation so the same atomic registration pointer
+    // and recovery behavior apply to both enrollment shapes.
+    const name = 'generation-' + opaque(); directory(pathJoin(paths.base, name));
+    stage.registration = { generation: name, identity: who }; delete stage.invitationSecret;
+    writePrivateJson(paths.deviceFile, stage);
+    writePrivateJson(pathJoin(paths.root, 'registration.json'), { schema: RESULT, deviceFile: paths.deviceFile });
+    return visible(stage, paths);
+  }
+  need(object(response.connection) && object(response.account), 'ACCESS_RESPONSE_INVALID');
   const expectedPins = pins(stage.trust.sshKnownHosts);
   need(equal(pins(supplied.knownHosts), expectedPins), 'HOST_IDENTITY_CHANGED');
   need(equal(certificates(supplied.caPem), certificates(stage.trust.cloudCaPem)), 'TLS_IDENTITY_CHANGED');

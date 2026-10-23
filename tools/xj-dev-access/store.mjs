@@ -42,7 +42,7 @@ export function openAccessStore(file, credentialKeyFile, serviceId, now = Date.n
     requireAccess(input && ['developer', 'maintainer'].includes(input.teamRole) && ['student', 'teacher'].includes(input.appRole), 'INVALID_ROLE');
     requireAccess(typeof input.label === 'string' && input.label.length > 0 && input.label.length <= 128 && typeof input.courseId === 'string', 'INVALID_REQUEST');
     requireAccess(Number.isInteger(input.ttlSeconds) && input.ttlSeconds >= 1 && input.ttlSeconds <= 86400, 'INVALID_EXPIRY');
-    requireAccess(Array.isArray(input.capabilities) && input.capabilities.every(c => c === 'page' || /^node:[A-Za-z0-9_-]{1,64}$/.test(c)), 'INVALID_CAPABILITY');
+    requireAccess(Array.isArray(input.capabilities) && input.capabilities.length > 0 && input.capabilities.every(c => ['page', 'file:read', 'file:publish'].includes(c) || /^node:[A-Za-z0-9_-]{1,64}$/.test(c)), 'INVALID_CAPABILITY');
     const secret = opaque(), id = randomUUID(), memberId = input.memberId ?? randomUUID();
     return tx(() => {
       const existing = member(memberId);
@@ -61,7 +61,7 @@ export function openAccessStore(file, credentialKeyFile, serviceId, now = Date.n
   }
   function issueChallenge(input) {
     const key = publicKey(input.publicKey), isEnrollment = input.path === '/v1/enroll';
-    requireAccess(input.method === 'POST' && ['/v1/enroll', '/v1/config', '/v1/identity'].includes(input.path) && /^[a-f0-9]{64}$/.test(input.bodyHash), 'INVALID_PROOF_TARGET');
+    requireAccess(input.method === 'POST' && ['/v1/enroll', '/v1/config', '/v1/identity', ...['upload','upload-status','upload-parts','complete','resolve'].map(p => '/v1/packages/' + p)].includes(input.path) && /^[a-f0-9]{64}$/.test(input.bodyHash), 'INVALID_PROOF_TARGET');
     let subject;
     if (isEnrollment) {
       const i = invitation(input.invitationSecret); subject = `invite:${i.id}`;

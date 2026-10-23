@@ -57,7 +57,7 @@
 
 ## 获取与更新数据基线
 
-`baseline list/publish/use` 已实现本地固定版本。首次 `up` 使用代码内置 `local-baseline-1`，后续启动复用本工作树数据。发布基线不会改变其他环境；团队传输独立于本地版本目录，尚需对应传输能力。
+`baseline list/publish/use` 已实现本地固定版本。首次 `up` 使用代码内置 `local-baseline-1`，后续启动复用本工作树数据。发布基线不会改变其他环境；团队传输与本地版本目录独立，使用下文的稳定编号与设备文件能力。
 
 | 操作 | 已实现接口 | 结果 |
 | --- | --- | --- |
@@ -93,7 +93,7 @@ SQLite 事务、源码与附件分别记录边界；清单明确 `crossStorageAt
 
 ## 传递方式
 
-根据[服务器实测](references/2026-10-23-development-server-assessment.md)，公网出口只有 3 Mbps。当前建议采用 **ECS 管权限与包目录，私有对象存储直接收发文件**：客户端向独立开发接入服务申请短期授权后直传对象存储，大文件不经过共享应用进程或 ECS 出口。SFTP 保留为小包过渡方式，不作为全部课程材料的长期传输路径。对象存储尚未开通。
+根据[服务器实测](references/2026-10-23-development-server-assessment.md)，公网出口只有 3 Mbps。现使用 **ECS 管权限与包目录，私有 OSS 直接收发文件**：客户端通过设备 proof 申请指定分片或 Range 的短期授权，大文件不经过共享应用进程或 ECS 出口。入口是 `repro share ZIP`、`resume ID`、`fetch ID` 和 `restore ID`；完整步骤、配额及失败恢复见[团队复现编号与直传](../tools/xj-dev/README.md#团队复现编号与直传)。
 
 ```mermaid
 sequenceDiagram
@@ -117,13 +117,11 @@ sequenceDiagram
     B->>B: 校验并建立隔离环境，执行复现步骤
 ```
 
-编号包含存储标识、发布者命名空间与完整内容摘要；界面可显示短编号，实际交接使用完整引用。对象路径由工具规则构造，不由包内任意 URL 指定。每人仅发布自己的包，团队成员可读取获授权对象。上传完成并核对对象及摘要后才将目录条目标为已发布；同内容可复用，内容变化得到新编号。接收端校验摘要，不能把上传中断后的文件视为可用包。
+稳定 `xjp_` 编号绑定不可变目录记录中的发布者、摘要声明、格式和工具版本；短期 URL 不作为交接编号。对象路径由工具规则构造，不由包内任意 URL 指定。每人仅发布自己的包，团队成员可读取获授权对象。ListParts/Complete/HEAD 核对 size 和 CRC64/XZ 后才发布；SHA256 为发布者声明，消费方完整复算。同幂等请求复用同一编号，内容变化得到新编号。接收端校验摘要，不能把上传中断后的文件视为可用包。
 
-内容摘要保证接收方能检测到内容变化，不等于无限存储。按成员、单包与团队设置配额，达到上限时停止新增并报告；保留仍被引用的基线与场景。清理失败上传和可重新取得的本地缓存，与删除已发布协作证据分开处理。已发布内容不得被工具覆盖；需要变更时发布新包。大且稳定的课程资源可独立按摘要保存，由工具自动补齐缺失资源，避免每个场景重复上传。
+内容摘要保证接收方能检测到内容变化，不等于无限存储。按成员、单包与团队设置配额，达到上限时停止新增并报告；保留仍被引用的基线与场景。清理失败上传和可重新取得的本地缓存，与删除已发布协作证据分开处理。已发布内容不得被工具覆盖；需要变更时发布新包。当前传输单个已冻结复现 ZIP，包内资源边界仍由采集清单决定。
 
-如使用 SFTP 过渡，仓库现有[成员 SSH 配置](../tools/i0-cloud/sshd-members.example.conf)中的 `MaxSessions 0` 会禁止 SFTP，会需要独立受限身份与目录。[OpenSSH 配置说明](https://man.openbsd.org/sshd_config#MaxSessions)。对象存储方案可采用[短期上传授权](https://www.alibabacloud.com/help/en/oss/user-guide/upload-files-using-presigned-urls)和[短期下载授权](https://www.alibabacloud.com/help/en/oss/developer-reference/python-download-using-a-presigned-url)，长期云端凭据不下发成员。本轮未修改服务器或成员权限。
-
-上传和给同事发消息是两个动作。默认工具返回可直接复制的编号与交接文本；开发者明确指定发往某个 Issue 或沟通渠道时，Agent 再通过对应工具发送。ZIP 是备用交接方式，不要求团队每天手动收发文件。存储适配器可以替换，包格式和 Agent 操作入口保持独立。
+上传和给同事发消息是两个动作。默认工具返回可直接复制的编号与交接文本；开发者明确指定发往某个 Issue 或沟通渠道时，Agent 再通过对应工具发送。ZIP 是备用交接方式，不要求团队每天手动收发文件。当前只实现北京私有 OSS 路径；标准产品不加载其 SDK 或凭据。
 
 ## 工具结构与 Agent 接口
 
@@ -146,10 +144,10 @@ sequenceDiagram
 | `xj-dev delete --json` | 显式删除当前工作树/实例所选模式的已登记环境数据；整体预检归属，持原锁删除载荷并保留永久锁守卫，其他环境、源码及全局接入材料/缓存/包保留 |
 | `xj-dev node connect/status/disconnect ... --json` | 按需管理现有已登记执行节点的受管回连；不安装执行器或决定产品运行方案 |
 | `xj-dev repro capture --context <file> --out <zip> --json`（已实现） | 采集并校验本地包；`inspect <zip>` 检查包与完整摘要 |
-| `xj-dev repro share --context <file> --json` | 一次完成采集、校验和上传；也支持上传已经生成的包 |
-| `xj-dev repro restore <zip> [--target <new-dir>] --json`（本地已实现） | 校验并恢复新工作树和数据，显式 `up` 后 `repro verify <zip>` 记录实际 HTTP 步骤结果；团队下载另行接入 |
+| `xj-dev repro share <zip> [--digest SHA256]` / `resume ID` / `fetch ID` | 冻结后直传、原编号断点恢复、按编号下载并校验；失败保留 transfer 回执与原 ZIP |
+| `xj-dev repro restore <zip或ID> [--target <new-dir>]` | 稳定编号先授权下载并校验，再恢复隔离环境；显式 `up` 后 `repro verify <zip或ID>` 记录实际 HTTP 步骤结果 |
 
-`access invite` 明确指定 developer/maintainer、应用 teacher/student 及 page/node 范围，由维护者通过已有管理通道生成限时、单设备邀请；具体字段与重试规则见[当前接入入口](development-access-operations.md#当前工具入口)。邀请交接后由成员 Agent 继续，不要求成员手工编辑 SSH 配置、复制公钥到服务器或每天重新建立隧道。
+`access invite` 明确指定 developer/maintainer、应用 teacher/student 及 page/node/file 范围，由维护者通过已有管理通道生成限时、单设备邀请；具体字段与重试规则见[当前接入入口](development-access-operations.md#当前工具入口)。邀请交接后由成员 Agent 继续，不要求成员手工编辑 SSH 配置、复制公钥到服务器或每天重新建立隧道。
 
 每个命令返回带版本的 JSON：成功状态、环境 ID、产物或页面地址、能力状态、检查结果和下一步；失败返回稳定错误码、失败阶段与可重试方式。日志与最终结果分开，凭据不出现在输出中。`share` 失败后保留已经完成的本地包，重试上传无需重新抓取变化中的现场。
 

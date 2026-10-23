@@ -10,25 +10,35 @@
 
 网络身份与应用 `teacher|student` 角色分别授予；`teamRole` 不授予 owner shell。普通设备只可转发批准的业务端口，执行节点须另获 `node:<id>` 能力。维护入口只通过既有 owner SSH 开放，公网不存在成员管理路由。
 
-## 固定协议与 #131 接缝
+## 设备证明与文件授权
 
 公共接口为 `GET /health/live`，以及 `POST /v1/challenges|enroll|config|identity`。响应为 `{ok:true,data}` 或 `{ok:false,code}`。challenge 输入：`{publicKey,method:'POST',path,bodyHash,invitationSecret?或deviceId?}`；后续请求为 `{challengeId,signature,body}`，其中 enroll body 是 `{invitationSecret}`，已登记 body 是 `{deviceId}`。
 
 `bodyHash` 为 `SHA256(JSON.stringify(body))`。`enrollment-protocol.mjs` 的 `proofMessage` 固定序列化 protocol、serviceId、challengeId、nonce、expiresAt、method、path、bodyHash，使用 OpenSSH SSHSIG 的 `xunjie-dev-access-v1` namespace。服务端 challenge TTL 60 秒，一次消费；签名前客户端持久记录已用 challenge/nonce 摘要。私钥只由本机 OpenSSH 使用。
 
-服务端 `identity.mjs` 导出 `authenticateDevice(store,envelope,path,capability?)`；store 导出设备、成员、challenge、事务和审计接口。#131 在同一个 service/store 扩展批准路由即可，需同步扩展 `issueChallenge` 的路径白名单。客户端导出 `loadDevice`、`authenticatedRequest(deviceFile,path,body)`；后者自动绑定 deviceId，返回内部私有响应，不能直接打印。这里没有 OSS SDK 或长期云凭据。
+服务端 `identity.mjs` 导出 `authenticateDevice(store,envelope,path,capability?)`；store 导出设备、成员、challenge、事务和审计接口。客户端 `authenticatedRequest(deviceFile,path,body)` 自动绑定 deviceId；返回的授权数据仅供内部使用，不可直接打印。
+
+五条 POST 路由 `/v1/packages/upload|upload-status|upload-parts|complete|resolve` 使用同一 proof，challenge 白名单已扩展。前四条要求 `file:publish` 且仅操作本人 member 的上传，resolve 要求 `file:read`，只读已发布团队包。file-only enroll 不创建 SSH/应用账号；page-only 不能访问文件路由。
+
+`upload` 输入 `{idempotencyKey,digest,bytes,crc64,formatVersion:'xj-repro/1',toolVersion:'0.2.0'}`，digest 为 `sha256:<hex>`，crc64 为 unsigned decimal string；返回 `{transferId,record,partSize,partCount,limits}`，transferId 等于 record.reproId。record 固定 publisherId、摘要声明、bytes、crc64、格式/工具版本及创建/发布时间。同 member/key 重试只能同内容。
+
+`upload-status {transferId}` 附带 OSS 确认的 `parts:[{partNumber,bytes,etag,contentMD5}]`；`upload-parts {transferId,parts:[{partNumber,bytes,contentMD5}]}` 冻结每片声明，再返回对应 `{method,url,headers,expiresAt,allowedHost}`。MD5 为原始16字节的 Base64。`complete {transferId}` 只经 ListParts/Complete/HEAD 验证后返回 published record，Complete 丢响应可用同 key 的 HEAD 恢复。`resolve {reproId,offset,etag?}` 返回 `{record,etag,authorization}`；续传 offset>0 要求原带引号 ETag，offset==bytes 不签 URL。下载绑定 Range/If-Match；URL host 必须匹配唯一批准公网 bucket。
+
+目录与配额位于同一 access SQLite：默认 128 MiB/package、256 MiB/member、1 GiB/team，事务预留 uploading+published，失败 abort 未完成时继续占预留。已发布对象不可覆盖或经失败清理删除，baseline name/version 为不可变引用。`access package-quota|package-baselines|package-baseline|package-cleanup` 复用 owner UDS；输入结构和成员步骤见 [CLI](../xj-dev/README.md#团队复现编号与直传)。
+
+独立 `packages` 配置包含 bucket、region:`oss-cn-beijing`、prefix:`team/`、roleName 和可选 limits。唯一存储路径为阿里云 OSS；只有独立 server 安装固定 `ali-oss@6.23.0`。IMDSv2 取同批短期凭据后构造新 SDK client，公共 URL 最长300秒；按 SDK签名时间精确报告过期。撤销后拒绝新授权，既有 URL 不会即时失效。存储队列独立于账号/撤销队列，签名返回前重查设备存活。SHA256是 publisher claim+consumer复算；服务端只核 OSS size/CRC64，不下载完整包。
 
 ## 独立部署
 
 普通产品产物继续由原 cloud-release CI 交付。产品侧仅显式配置 `cloud-host.mjs --account-control FILE` 时启用本机 adapter；配置包含绝对 `socketPath`、`stateFile`、`accountPrefix`、获准 `courseIds` 和可选 `socketGid`。应用配置必须给出原有 `allowedLoginUserIds`，与当前 active managed identities 合并；新的 login 和已有 session 都实时检查。禁用调用产品原账号事务，保留作品，不重启业务。
 
-开发服务单独从已提交的 SHA 装配，无 npm 依赖，也不在 ECS 构建：
+开发服务单独从已提交的 SHA 装配，在开发机按该提交的 lock 安装纯 JS 生产依赖，不在 ECS 构建：
 
 ```sh
 node tools/xj-dev-access/prepare-deployment.mjs --commit FULL_SHA --output NEW_DIRECTORY
 ```
 
-输出 `deployment.json` 记录 sourceCommit 和白名单文件的 SHA256；只取 `git show FULL_SHA:path`，当前 dirty 内容不会混入。白名单包含服务、协议、root helper、systemd、installer，以及无外部依赖的产品通用 `local-socket.ts`。通过既有 owner SSH 传到独立目录后，以 root 执行该目录的 `tools/xj-dev-access/install.py SOURCE_DIRECTORY`。installer 核对全部摘要、固定路径和既有不可变 release；安装到 `/opt/xunjie-dev-access/releases/FULL_SHA`，root 控制 `current` 链接。它不修改产品 manifest、正式 current 或正式数据库。
+输出 v2 `deployment.json` 记录 sourceCommit、白名单文件、lock 与所有依赖文件的 SHA256；源码只取 `git show FULL_SHA:path`，当前 dirty 内容不会混入。固定 Node24.21 的 npm ci 使用 ignore-scripts/omit-dev/bin-links=false，拒绝 native、平台专用依赖和符号链接。白名单包含服务、协议、root helper、systemd、installer、锁定 SDK，以及无外部依赖的产品通用 `local-socket.ts`。通过既有 owner SSH 传到独立目录后，以 root 执行该目录的 `tools/xj-dev-access/install.py SOURCE_DIRECTORY`。installer 核对完整文件摘要、固定路径和既有不可变 release；只复制已装配文件，服务器不运行 npm。标准产品产物不包含该部署包，也不修改产品 manifest、正式 current 或正式数据库。
 
 TLS 材料由 owner 运行 `python3 tools/xj-dev-access/prepare-tls.py --service-config FILE --output NEW_PRIVATE_DIRECTORY` 生成：CA 具备 critical CA:TRUE/keyCertSign/cRLSign 与 SKI/AKI，leaf 具备 CA:FALSE、serverAuth、endpoint SAN；测试用真实 Python/OpenSSL strict TLS 握手。CA signing key 只保留 owner 私有目录，服务器只接收 leaf key/cert 与公开 CA。轮换只作用于 8443；旧邀请信任材料对应旧 CA，应撤销临时试验身份并新发邀请。
 
