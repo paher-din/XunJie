@@ -278,13 +278,16 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
       generation(delivery.recoveryGeneration); return {proposalId,resultHash};
     });
   }
-  async function processJob(jobId:string) {
+  async function processJob(jobId:string,signal?:AbortSignal) {
     if(inFlight.has(jobId)){
       persisted(tx=>{const work=original(tx,jobId),recovered=recoverJob(work.job,timeString(now()));
         if(recovered.status!==work.job.status)progress(tx,work,recovered);});
       return undefined;
     }
     const controller=new AbortController();inFlight.set(jobId,controller);
+    const abort=()=>controller.abort();
+    signal?.addEventListener('abort',abort,{once:true});
+    if(signal?.aborted)abort();
     const queuedAt=now();
     const execute=async(signal:AbortSignal)=>{
       const claimed = persisted(tx => {
@@ -375,6 +378,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
     try {
       if(!config.modelBudget)return await execute(controller.signal);
       const initial=persisted(tx=>original(tx,jobId));
+      if(initial.job.status!=='queued'||Date.parse(initial.job.deadline)<=queuedAt)return await execute(controller.signal);
       return await config.modelBudget.run({memberId:initial.input.actorId,
         payloadBytes:Buffer.byteLength(JSON.stringify(initial.input)),signal:controller.signal},execute);
     } catch(error) {
@@ -385,7 +389,7 @@ export function registerTeacherAgent(app:FastifyInstance,access:Access,options:D
         progress(tx,work,{...job,status:error.code==='MODEL_QUEUE_CANCELLED'?'cancelled':error.code==='MODEL_QUEUE_TIMEOUT'?'timed_out':'failed',failure:error.code});
       });
       return undefined;
-    } finally {inFlight.delete(jobId);}
+    } finally {signal?.removeEventListener('abort',abort);inFlight.delete(jobId);}
   }
   return {enqueue,processJob,receiveResult,assertPatch,readJob:readJobRequest,cancelJob:cancelJobRequest};
 }
