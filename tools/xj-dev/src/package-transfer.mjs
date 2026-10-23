@@ -254,12 +254,22 @@ export async function resumeUpload(context, { deviceFile, transferId } = {}) {
 }
 
 function validETag(value) { return typeof value === 'string' && /^"[^"\x00-\x20\x7f]{1,256}"$/.test(value); }
-async function usable(context, file, current, root) {
+function inspectedContent(file, current) {
   assertPrivateFile(file, PRIVATE_ZIP);
   const checked = inspectRepro(file, { expectedDigest: current.digest });
   need(checked.package.bytes === current.bytes && checked.package.formatVersion === current.formatVersion
     && checked.package.manifest.tool?.version === current.toolVersion, 'OBJECT_MISMATCH');
   need(crc64XZ(readFileSync(file)) === current.crc64, 'OBJECT_MISMATCH');
+  return checked;
+}
+const invalidCacheContent = error => error instanceof CliError && ['repro', 'transfer'].includes(error.stage);
+async function usable(context, file, current, root) {
+  let checked;
+  try { checked = inspectedContent(file, current); }
+  catch (error) {
+    if (invalidCacheContent(error)) error.recovery = `下载缓存校验失败，保留上传冻结包；显式执行 xj-dev repro cache-delete ${current.reproId}，再用 repro fetch ${current.reproId} 重新授权下载。`;
+    throw error;
+  }
   const scratch = mkdtempSync(join(root, 'compatibility-'));
   try { await checkReproCompatibility(context, checked.package.manifest, scratch); }
   finally { rmSync(scratch, { recursive: true, force: true, maxRetries: 3 }); }
@@ -350,8 +360,8 @@ export async function fetchRepro(context, { deviceFile, reproId: id } = {}) {
   }));
 }
 
-// Delete only one verified, currently retrievable download cache. Uploads,
-// partial bytes and permanent operation-lock guards are outside this write set.
+// Delete one registered, currently retrievable download cache, including corrupt
+// completed bytes. Uploads, resumable partials and permanent locks stay intact.
 export async function pruneCache(context, { deviceFile, reproId: id } = {}) {
   return safe(async () => {
     deviceFile ??= readRegistration({ home: context.home })?.deviceFile;
@@ -367,11 +377,23 @@ export async function pruneCache(context, { deviceFile, reproId: id } = {}) {
       const saved = privateJson(pointer);
       need(saved?.schema === SCHEMA && saved.record?.reproId === id && validETag(saved.etag), 'CACHE_UNSAFE');
       record(saved.record, current);
-      const root = ensurePrivateDirectory(join(cache, current.digest.slice(7))), ready = join(root, 'ready.zip');
+      const root = ensurePrivateDirectory(join(cache, current.digest.slice(7)));
       const entries = readdirSync(root);
-      need(!entries.includes('partial.zip'), 'CACHE_IN_USE');
-      need(entries.length === 1 && entries[0] === 'ready.zip', 'CACHE_UNSAFE');
-      await usable(context, ready, current, root);
+      need(entries.every(name => ['ready.zip', 'partial.zip'].includes(name)), 'CACHE_UNSAFE');
+      need(entries.length !== 2, 'CACHE_IN_USE');
+      need(entries.length === 1, 'CACHE_UNSAFE');
+      const file = join(root, entries[0]);
+      // Cleanup does not read oversized files, but still checks the same private
+      // owner/DACL and non-symlink requirements before considering any unlink.
+      assertPrivateFile(file, { maxBytes: Number.MAX_SAFE_INTEGER });
+      const owned = lstatSync(file), partial = entries[0] === 'partial.zip';
+      if (partial) need(owned.size >= current.bytes, 'CACHE_IN_USE');
+      let contentValid = owned.size === current.bytes;
+      if (contentValid) {
+        try { inspectedContent(file, current); }
+        catch (error) { if (!invalidCacheContent(error)) throw error; contentValid = false; }
+      }
+      if (partial) need(!contentValid, 'CACHE_IN_USE');
       let retainedShared = false;
       // A different stable ID can reference the same digest. Its cache remains
       // available; malformed/unknown metadata is preserved without deletion.
@@ -382,9 +404,17 @@ export async function pruneCache(context, { deviceFile, reproId: id } = {}) {
         need(reference?.schema === SCHEMA && reference.record?.reproId === name.slice(0, -5) && validETag(reference.etag), 'CACHE_UNSAFE');
         if (record(reference.record).digest === current.digest) retainedShared = true;
       }
-      if (!retainedShared) rmSync(ready);
+      // Only valid shared bytes remain useful to another ID. Removing corrupt
+      // bytes leaves those IDs' pointers intact so their next fetch starts at 0.
+      retainedShared &&= contentValid;
+      const latest = lstatSync(file);
+      const latestEntries = readdirSync(root);
+      need(['dev', 'ino', 'size', 'mtimeMs', 'ctimeMs'].every(key => latest[key] === owned[key])
+        && latestEntries.length === 1 && latestEntries[0] === entries[0], 'CACHE_IN_USE');
+      assertPrivateFile(file, { maxBytes: Number.MAX_SAFE_INTEGER });
+      if (!retainedShared) rmSync(file);
       rmSync(pointer);
-      return { state: 'cache-deleted', reproId: id, digest: current.digest, removedBytes: retainedShared ? 0 : current.bytes, retainedShared };
+      return { state: 'cache-deleted', reproId: id, digest: current.digest, removedBytes: retainedShared ? 0 : owned.size, retainedShared };
     });
   });
 }

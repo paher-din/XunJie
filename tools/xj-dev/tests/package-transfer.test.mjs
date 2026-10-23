@@ -394,7 +394,7 @@ test('explicit cache deletion reauthorizes and verifies one ready ZIP, preserves
   assert.deepEqual(readFileSync(again.file), f.bytes); assert.equal(f.gets.length, 2);
 });
 
-test('cache deletion preserves revoked, corrupt, partial and unknown local contents', async t => {
+test('cache deletion preserves revoked, partial and unknown local contents', async t => {
   const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
   const cache = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
   f.controls.revoked = true;
@@ -406,9 +406,40 @@ test('cache deletion preserves revoked, corrupt, partial and unknown local conte
   const partial = join(dirname(cache.file), 'partial.zip'); writeFileSync(partial, f.bytes.subarray(0, 321), { mode: 0o600 });
   await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'CACHE_IN_USE' });
   assert.equal(readFileSync(partial).length, 321); assert.deepEqual(readFileSync(cache.file), f.bytes); rmSync(partial);
-  writeFileSync(cache.file, 'damaged but retained');
-  await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'DIGEST_MISMATCH' });
-  assert.equal(readFileSync(cache.file, 'utf8'), 'damaged but retained'); assert.deepEqual(readFileSync(source.file), f.bytes);
+  assert.deepEqual(readFileSync(source.file), f.bytes);
+});
+
+test('a corrupt ready cache can be explicitly deleted and the same ID fetched again without touching other content', async t => {
+  const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const cached = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+  const otherBytes = makePackage(f.file, { title: 'unrelated scene' });
+  const other = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(otherBytes) });
+  const otherCache = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: other.reproId });
+  const bad = Buffer.from(f.bytes); bad[30] ^= 1; writeFileSync(cached.file, bad);
+  for (let retry = 0; retry < 2; retry++) await assert.rejects(() => fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId }), error => {
+    assert.equal(error.code, 'DIGEST_MISMATCH'); assert.ok(error.recovery.includes(`repro cache-delete ${source.reproId}`)); return true;
+  });
+  const cleaned = await pruneCache(f.context, { reproId: source.reproId });
+  assert.equal(cleaned.state, 'cache-deleted'); assert.equal(cleaned.removedBytes, bad.length);
+  assert.equal(existsSync(cached.file), false); assert.deepEqual(readFileSync(source.file), f.bytes);
+  assert.deepEqual(readFileSync(otherCache.file), otherBytes); assert.deepEqual(readFileSync(other.file), otherBytes);
+  const repaired = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+  assert.equal(repaired.cacheHit, false); assert.deepEqual(readFileSync(repaired.file), f.bytes);
+  assert.equal(f.gets.at(-1).offset, 0);
+});
+
+test('a full-length corrupt partial has a public cleanup and fresh download recovery path', async t => {
+  const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  f.controls.corrupt = true;
+  await assert.rejects(() => fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId }), { code: 'DIGEST_MISMATCH' });
+  f.controls.corrupt = false;
+  await assert.rejects(() => fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId }), { code: 'DIGEST_MISMATCH' });
+  assert.equal(f.gets.length, 1, 'full-length poisoned state previously selected authorization:null on retry');
+  const cleaned = await pruneCache(f.context, { reproId: source.reproId });
+  assert.equal(cleaned.state, 'cache-deleted'); assert.equal(cleaned.removedBytes, f.bytes.length);
+  const repaired = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+  assert.deepEqual(readFileSync(repaired.file), f.bytes); assert.deepEqual(f.gets.map(g => g.offset), [0, 0]);
+  assert.deepEqual(readFileSync(source.file), f.bytes);
 });
 
 test('deleting one stable ID preserves a shared digest still referenced by another ID', async t => {
@@ -423,4 +454,33 @@ test('deleting one stable ID preserves a shared digest still referenced by anoth
   const last = await pruneCache(f.context, { reproId: second.reproId });
   assert.equal(last.removedBytes, f.bytes.length); assert.equal(existsSync(cache.file), false);
   assert.deepEqual(readFileSync(first.file), f.bytes); assert.deepEqual(readFileSync(second.file), f.bytes);
+});
+
+test('repairing corrupt shared bytes preserves other IDs and lets each fetch recover under current authorization', async t => {
+  const f = await fixture(t), first = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const second = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes), idempotencyKey: randomUUID() });
+  const cache = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: first.reproId });
+  await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: second.reproId });
+  const bad = Buffer.from(f.bytes); bad[30] ^= 1; writeFileSync(cache.file, bad);
+  const repaired = await pruneCache(f.context, { reproId: first.reproId });
+  assert.equal(repaired.retainedShared, false); assert.equal(existsSync(cache.file), false);
+  const cacheRoot = dirname(dirname(cache.file));
+  assert.ok(existsSync(join(cacheRoot, second.reproId + '.json')));
+  const other = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: second.reproId });
+  assert.equal(other.cacheHit, false); assert.deepEqual(readFileSync(other.file), f.bytes);
+  assert.equal((await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: first.reproId })).cacheHit, true);
+  assert.deepEqual(readFileSync(first.file), f.bytes); assert.deepEqual(readFileSync(second.file), f.bytes);
+});
+
+test('cache repair refuses broad permissions and foreign symlinks even when the contents fail validation', { skip: process.platform === 'win32' }, async t => {
+  const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const cache = await fetchRepro(f.context, { deviceFile: f.deviceFile, reproId: source.reproId });
+  const bad = Buffer.from(f.bytes); bad[30] ^= 1; writeFileSync(cache.file, bad); chmodSync(cache.file, 0o644);
+  await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'PRIVATE_FILE_REQUIRED' });
+  assert.deepEqual(readFileSync(cache.file), bad); chmodSync(cache.file, 0o600);
+  const outside = join(f.root, 'foreign-cache'); writeFileSync(outside, 'foreign bytes', { mode: 0o600 });
+  rmSync(cache.file); symlinkSync(outside, cache.file);
+  await assert.rejects(() => pruneCache(f.context, { reproId: source.reproId }), { code: 'PRIVATE_FILE_REQUIRED' });
+  assert.ok(lstatSync(cache.file).isSymbolicLink()); assert.equal(readFileSync(outside, 'utf8'), 'foreign bytes');
+  assert.deepEqual(readFileSync(source.file), f.bytes);
 });
