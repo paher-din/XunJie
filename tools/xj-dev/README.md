@@ -105,13 +105,15 @@ node tools/xj-dev/xj-dev.mjs repro verify ~/.xunjie/xj-dev/stale-editor.zip --wo
 
 路径以输出为准；`XJ_DEV_HOME` 改根时同步调整示例路径。`restore --target <不存在的目录>` 可指定新工作树。正常依赖按锁安装，恢复本身不会运行 `npm`、任何包内脚本、Git hook/filter、schema 迁移或旧队列；`up` 是审阅后的单独操作。`verify` 仅在匹配包摘要的已恢复本地环境中，使用重新生成的角色身份发送同源 HTTP 请求，回执记录真实状态/错误码，不记录 Cookie、CSRF 或密码。
 
+恢复以真实父目录与目标 `basename` 组合规范路径，预检查、Git 工作树、数据环境 ID 和目标预留使用同一路径，支持盘符根目录下的新目录。目标父目录中的 `.xj-repro-restore-<ID>.lock/` 使用永久 SQLite OS 锁，跨 `XJ_DEV_HOME` 互斥；竞争者返回 `LOCK_HELD` 或 `TARGET_EXISTS`。释放锁保留目录，请勿删除正在使用的锁。失败只回滚本次拥有的新工作树、数据和 Git 工作树登记，保留已有环境。
+
 采集契约：
 
 - `code.roots` 可缩小源码范围，默认包含两个工程、xj-dev 和根规范；`code.paths` 只列必要的未提交或选定未跟踪文件，未选差异保持提交版本。自包含 `code/source.bundle` 携带所选源码快照，未推送源码无需接收方取得原提交；原 SHA 只作来源，不携带历史或作者身份。源码与 bundle 摘要按原始字节校验。
-- `data.scope` 必须给出 `courseIds/userIds/attemptIds`。工具从一致 SQLite 读取结果按白名单和业务引用构建新库，原库的页面、会话、密码、个人模型、节点绑定、执行/模型队列与其他成员记录均不分发。恢复后账号名为 `repro-<摘要前缀>`，新密码只在新环境的 `secrets/baseline-accounts.json`。无法安全表达的引用直接失败。
+- `data.scope` 必须给出 `courseIds/userIds/attemptIds`。工具从一致 SQLite 读取结果按白名单和业务引用构建新库，原库的页面、会话、密码、个人模型、节点绑定、执行/模型队列与其他成员记录均不分发。选中任务的幂等绑定、原回执和对应审计作为必要依赖保留，支持成功保存后以相同 `clientId/clientSeq`、新 `idempotency-key` 重试；同课程其他成员及同成员其他任务的绑定和自由文本不随之扩大采集。恢复后账号名为 `repro-<摘要前缀>`，新密码只在新环境的 `secrets/baseline-accounts.json`。无法安全表达的引用直接失败。
 - `assets` / `evidence` 是明确选择的文件数组，如 `[{"path":"relative/file.txt","name":"notes.txt"}]`；默认均为空。附件采集时间分别记录，缺资源或疑似秘密会拒绝。SQLite 一致视图不代表跨存储原子快照，缺失的个人模型/浏览器/外部服务条件在清单中明确列出。
-- 仅依赖条件摘要采用 `sha256:utf8-lf/v1`（仅归一化 CRLF→LF），支持 Windows 干净 checkout 的行尾变化；真实锁内容变化仍拒绝。ZIP、源码和资源摘要始终保留原始字节规则。
-- `scenario.start` 为 `before-trigger` 或 `after-incident`。后者、`externalUncertainty: true`，或声明执行/模型能力为必需时，自动验证保持 `unverified`，能力需单独准备；自然语言步骤可保存，自动验证只接受示例中的 HTTP 数据格式。可识别的无效 synthetic fixture 保留，真实秘密拒绝。
+- 仅依赖条件摘要采用 `sha256:utf8-lf/v1`（仅归一化 CRLF→LF），同时核对接收工作树和已验证 bundle 的实际锁文件，支持 Windows 干净 checkout 的行尾变化；真实锁内容变化在发布新目标之前拒绝。ZIP、源码和资源摘要始终保留原始字节规则。
+- `scenario.start` 为 `before-trigger` 或 `after-incident`。后者、`externalUncertainty: true`，或声明执行/模型能力为必需时，自动验证保持 `unverified`，能力需单独准备。`inspect` 和 `verify` 均拒绝空或无效步骤；非空自然语言步骤可保存，自动验证只接受示例中的 HTTP 数据格式，并要求实际观察到全部步骤结果。可识别的无效 synthetic fixture 保留，真实秘密拒绝。
 - 已完成的同请求 ZIP 再次 `capture` 只校验并返回 `reused: true`，不会从变化后的现场重新采集。修改内容要用新文件名。ZIP 限制为 128 MiB、展开总量 256 MiB、单文件 64 MiB、10000 文件，拒绝路径越界、特殊文件和跨平台路径冲突。
 
 基线版本保存在 `XJ_DEV_HOME/baselines/<version>/`，发布只影响本机目录；团队传输由后续独立能力提供：
@@ -126,9 +128,9 @@ node tools/xj-dev/xj-dev.mjs baseline use course-b1 --target "<新的工作树�
 
 公开模块供文件传输复用：`captureRepro(context, {contextFile, out})`、`inspectRepro(file, {expectedDigest})`、`restoreRepro(context, {file, target, expectedDigest})`，位于 `src/repro.mjs`。返回 `package: {path, digest, bytes, formatVersion, manifest}`；格式 `xj-repro/1`，整个 ZIP 摘要为 `sha256:<64位hex>`。完整文件先通过 `inspectRepro`，再登记/传输；重试复用原 ZIP。
 
-复现实测（2026-10-23）：macOS 从触发前采集，另一真实 Git 工作树恢复后经业务 HTTPS 得到 `200 → 409 VERSION_CONFLICT`；同一 ZIP 传到 Windows 11 的 CRLF checkout，在 Node 24.21.0 下通过公开 CLI 恢复、启动及相同步骤（1/1，73.9 秒），保留接收端分支与工作区。该现场验证业务版本冲突的确定行为，不声称发现产品缺陷。ZIP 摘要为 `sha256:9c1b97578fcfcf931e63c38f3048dc9c7a8620149296305c161b2d166d5d797f`，采集源码提交 `10e5b12`。依赖复用锁内容一致的预安装原生模块，未在恢复时运行安装脚本。浏览器交互、真实执行节点、模型响应与教学效果未在此项验收。
+早期 0.1.0 复现实测（2026-10-23，非本轮 0.2.0 验收）：macOS 从触发前采集，另一真实 Git 工作树恢复后经业务 HTTPS 得到 `200 → 409 VERSION_CONFLICT`；同一 ZIP 传到 Windows 11 的 CRLF checkout，在 Node 24.21.0 下通过公开 CLI 恢复、启动及相同步骤（1/1，73.9 秒），保留接收端分支与工作区。该现场验证业务版本冲突的确定行为，不声称发现产品缺陷。ZIP 摘要为 `sha256:9c1b97578fcfcf931e63c38f3048dc9c7a8620149296305c161b2d166d5d797f`，采集源码提交 `10e5b12`。依赖复用锁内容一致的预安装原生模块，未在恢复时运行安装脚本。浏览器交互、真实执行节点、模型响应与教学效果未在此项验收。
 
-专项测试：`node --test tools/xj-dev/tests/repro.test.mjs tools/xj-dev/tests/repro-e2e.test.mjs`。设置 `XJ_REPRO_EXPORT_DIR` 可从 e2e 导出触发前 ZIP 与实际发送端结果；跨机传递这两个文件后，设置 `XJ_REPRO_TRANSFER_ZIP`、`XJ_REPRO_TRANSFER_DIGEST`、`XJ_REPRO_DEPENDENCIES_FROM`（锁内容一致的已安装工程根），运行 `node --test tools/xj-dev/tests/repro-transfer.mjs`，通过公开 CLI 验证接收端；它要求真实材料，不以替身补齐。测试各自停止进程并清理临时工作树、数据和依赖链接。
+专项测试：`node --test tools/xj-dev/tests/repro.test.mjs tools/xj-dev/tests/repro-restore.test.mjs tools/xj-dev/tests/repro-e2e.test.mjs`。设置 `XJ_REPRO_EXPORT_DIR` 可从 e2e 导出版本冲突和成功同步后重试两类触发前 ZIP 与实际发送端结果；跨机传递文件后，设置 `XJ_REPRO_TRANSFER_ZIP`、`XJ_REPRO_TRANSFER_DIGEST`、`XJ_REPRO_DEPENDENCIES_FROM`（锁内容一致的已安装工程根），运行 `node --test tools/xj-dev/tests/repro-transfer.mjs`，通过公开 CLI 验证接收端。`XJ_REPRO_TRANSFER_RESULT` 可指定对应发送端结果 JSON（重试包必须指定）；`XJ_REPRO_TRANSFER_EVIDENCE` 可保存接收端实际观察结果。它要求真实材料，不以替身补齐。测试各自停止进程并清理临时工作树、数据和依赖链接；盘符根目录用例仅在 Windows 创建带随机 ID 的本测试目标，macOS 跳过该用例。
 
 常见失败：`DIGEST_MISMATCH` 重新取得正确文件；`RESOURCE_MISSING` 补齐范围或附件；`LOCKFILE_MISMATCH`/`SCHEMA_MISMATCH`/`TOOL_VERSION_MISMATCH`/`NODE_VERSION_MISMATCH` 使用清单对应条件，保持旧环境；`TARGET_EXISTS` 选新目录；`LOCAL_DATA_REQUIRED` 先显式回到本地模式，工具不冒充或采集云端现场；`UNSAFE_PATH`/`SECRET_DETECTED`/`SCOPE_VIOLATION` 修正采集范围后新建包；`BASELINE_EXISTS` 发布新版本；`NOT_RESTORED`/`ENVIRONMENT_NOT_RUNNING` 在返回的恢复工作树审阅并 `up`。失败不会覆盖当前分支或业务库。
 

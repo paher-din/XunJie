@@ -1,18 +1,36 @@
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, posix, win32 } from 'node:path';
 import { REPRO_FORMAT, ARCHIVE_LIMITS, decodeZip, digest, encodeZip, jsonBytes, reproError, safeEntry } from './repro-archive.mjs';
-import { assertShareable, collectCode, excludedPath, git, restoreCode } from './repro-code.mjs';
+import { assertShareable, collectCode, excludedPath, git, restoreCode, LOCKFILES, LOCK_DIGEST_ALGORITHM, lockfileDigest } from './repro-code.mjs';
 import { collectData, restoreData, schemaFingerprint } from './repro-data.mjs';
 import { environmentId, environmentPaths, PINNED_NODE, TOOL_VERSION } from './paths.mjs';
 import { acquireLock, writeJsonAtomic } from './state.mjs';
 
-const LOCKFILES = ['apps/student/package-lock.json', 'apps/teaching/package-lock.json', 'tools/xj-dev/package.json'];
-export const LOCK_DIGEST_ALGORITHM = 'sha256:utf8-lf/v1';
-export const lockfileDigest = bytes => digest(Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n')));
+export { LOCK_DIGEST_ALGORITHM, lockfileDigest } from './repro-code.mjs';
+export function canonicalRestoreTarget(destination, realParent, platform = process.platform) {
+  const paths = platform === 'win32' ? win32 : posix;
+  return paths.join(realParent, paths.basename(destination));
+}
 function readJson(bytes, label) {
   try { return JSON.parse(bytes.toString('utf8')); } catch { throw reproError('INVALID_MANIFEST', `${label} 不是有效 JSON。`); }
 }
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+export function validateScenario(scenario, { automated = false, code = 'INVALID_SCENARIO' } = {}) {
+  if (!record(scenario) || !['before-trigger', 'after-incident'].includes(scenario.start)
+    || typeof scenario.title !== 'string' || !scenario.title.trim() || typeof scenario.expected !== 'string' || typeof scenario.observed !== 'string'
+    || !Array.isArray(scenario.steps) || scenario.steps.length === 0) throw reproError(code, '场景需要有效起点、标题、预期/现象及非空步骤。');
+  let manual = false;
+  for (const step of scenario.steps) {
+    if (typeof step === 'string' && step.trim()) { manual = true; continue; }
+    if (!record(step) || typeof step.actorId !== 'string' || !step.actorId.trim() || !['GET', 'POST'].includes(step.method)
+      || typeof step.path !== 'string' || !/^\/api\/[A-Za-z0-9_/?=&%.-]+$/.test(step.path) || /(?:\.\.|%2e|%2f|%5c)/i.test(step.path)
+      || !record(step.expect) || !Number.isInteger(step.expect.status) || step.expect.status < 100 || step.expect.status > 599
+      || (step.expect.errorCode !== undefined && (typeof step.expect.errorCode !== 'string' || !step.expect.errorCode.trim()))) {
+      throw reproError(code, '步骤必须是非空自然语言，或含角色、同源 /api/ 路径及预期 HTTP 状态的有效步骤。');
+    }
+  }
+  if (automated && manual) throw reproError('UNSUPPORTED_STEPS', '自然语言步骤已保存，需人工执行；自动验证只接受明确的业务 HTTP 步骤。');
+}
 function requireLocal(context) {
   const selection = join(context.env.root, 'selection.json');
   if (existsSync(selection) && readJson(readFileSync(selection), 'selection').mode !== 'local') {
@@ -24,11 +42,10 @@ export function loadReproContext(file) {
   if (lstatSync(file).isSymbolicLink() || !lstatSync(file).isFile()) throw reproError('UNSAFE_PATH', 'context 必须是普通文件。');
   if (lstatSync(file).size > 1024 * 1024) throw reproError('PACKAGE_LIMIT', 'context 大小超过 1 MiB。');
   const value = readJson(readFileSync(file), 'context');
-  if (!record(value) || value.formatVersion !== 'xj-repro-context/1' || !record(value.scenario) || !['before-trigger', 'after-incident'].includes(value.scenario.start)
-    || typeof value.scenario.title !== 'string' || !value.scenario.title.trim() || !Array.isArray(value.scenario.steps) || !value.scenario.steps.length
-    || typeof value.scenario.expected !== 'string' || typeof value.scenario.observed !== 'string') {
+  if (!record(value) || value.formatVersion !== 'xj-repro-context/1') {
     throw reproError('INVALID_CONTEXT', 'context 需要 xj-repro-context/1、起点类型、标题、步骤、预期与现象。');
   }
+  validateScenario(value.scenario, { code: 'INVALID_CONTEXT' });
   // Claims from the caller are never promoted to a verified reproduction result.
   delete value.scenario.verified; delete value.scenario.verification;
   assertShareable(jsonBytes(value.scenario), '场景说明');
@@ -65,6 +82,7 @@ function inspect(file, { expectedDigest } = {}) {
   }
   if (digest(entries.get('data/shared.sqlite')) !== manifest.data.digest || digest(entries.get('code/source.bundle')) !== manifest.code.bundleDigest) throw reproError('DIGEST_MISMATCH', '资源与清单摘要不符。');
   const scenario = readJson(entries.get('scenario.json'), 'scenario');
+  validateScenario(scenario);
   return { package: packageResult(file, bytes, manifest), entries, scenario };
 }
 export function inspectRepro(file, options = {}) {
@@ -147,22 +165,29 @@ export async function checkReproCompatibility(context, manifest, scratch) {
 export async function restoreRepro(context, { file, target, expectedDigest, baselineVersion }) {
   const checked = inspect(file, { expectedDigest }), manifest = checked.package.manifest;
   const destination = resolve(target ?? join(dirname(context.worktree), 'xj-repro-' + checked.package.digest.slice(7, 19)));
-  if (existsSync(destination)) throw reproError('TARGET_EXISTS', '恢复目标已存在，请选择新的工作树目录。');
   if (!existsSync(dirname(destination)) || lstatSync(dirname(destination)).isSymbolicLink()) throw reproError('UNSAFE_PATH', '目标父目录必须是已存在的真实目录。');
-  const canonicalTarget = join(realpathSync(dirname(destination)), basename(destination));
+  const canonicalTarget = canonicalRestoreTarget(destination, realpathSync(dirname(destination)));
   const id = environmentId(canonicalTarget), envPaths = environmentPaths(context.home, id);
-  if (existsSync(envPaths.root)) throw reproError('TARGET_EXISTS', '目标已有数据环境，请选择新目录。');
-  mkdirSync(context.home, { recursive: true });
-  const scratch = mkdtempSync(join(context.home, 'repro-restore-'));
-  let created = false;
+  // Reserve the filesystem target, not just one CLI home. Keep the permanent OS
+  // mutex inode after release, as required by state.mjs (#139).
+  const reservation = acquireLock({ root: dirname(canonicalTarget),
+    lockFile: join(dirname(canonicalTarget), `.xj-repro-restore-${environmentId(canonicalTarget.normalize('NFC').toLowerCase())}.lock`) });
+  let scratch, created = false, ownsEnvironment = false;
   try {
+    if (existsSync(canonicalTarget)) throw reproError('TARGET_EXISTS', '恢复目标已存在，请选择新的工作树目录。');
+    if (existsSync(envPaths.root)) throw reproError('TARGET_EXISTS', '目标已有数据环境，请选择新目录。');
+    mkdirSync(context.home, { recursive: true });
+    scratch = mkdtempSync(join(context.home, 'repro-restore-'));
     await checkReproCompatibility(context, manifest, scratch);
     const bundleFile = join(scratch, 'source.bundle'), dataFile = join(scratch, 'shared.sqlite');
     writeFileSync(bundleFile, checked.entries.get('code/source.bundle'));
     writeFileSync(dataFile, checked.entries.get('data/shared.sqlite'));
     const stagedEnv = environmentPaths(join(scratch, 'staged'), id);
     const restored = await restoreData(context.repo.teaching, dataFile, manifest.data, stagedEnv, baselineVersion);
-    restoreCode(context.worktree, bundleFile, manifest.code, scratch, canonicalTarget); created = true;
+    restoreCode(context.worktree, bundleFile, manifest.code, scratch, canonicalTarget, manifest.conditions); created = true;
+    mkdirSync(dirname(envPaths.root), { recursive: true });
+    try { mkdirSync(envPaths.root, { mode: 0o700 }); ownsEnvironment = true; }
+    catch (error) { if (error.code === 'EEXIST') throw reproError('TARGET_EXISTS', '目标数据环境已被其他操作创建，保留其原样。'); throw error; }
     // Copy only fresh data and newly generated secrets, never runtime files or browser state.
     mkdirSync(envPaths.data, { recursive: true }); mkdirSync(envPaths.secrets, { recursive: true, mode: 0o700 });
     for (const key of ['database', 'baselineFile', 'baselineCredentials']) writeFileSync(envPaths[key], readFileSync(stagedEnv[key]), { mode: 0o600, flag: 'wx' });
@@ -177,7 +202,10 @@ export async function restoreRepro(context, { file, target, expectedDigest, base
       verification: receipt.verification, next: [`xj-dev up --worktree ${canonicalTarget}`, '恢复不会安装依赖、启动服务或执行包内脚本；审阅源码后显式 up。'] };
   } catch (error) {
     if (created) { try { git(context.worktree, ['worktree', 'remove', '--force', canonicalTarget]); } catch { /* retain recovery location */ } }
-    rmSync(envPaths.root, { recursive: true, force: true });
+    if (ownsEnvironment) rmSync(envPaths.root, { recursive: true, force: true, maxRetries: 3 });
     throw error;
-  } finally { rmSync(scratch, { recursive: true, force: true, maxRetries: 3 }); }
+  } finally {
+    try { if (scratch) rmSync(scratch, { recursive: true, force: true, maxRetries: 3 }); }
+    finally { reservation.release(); }
+  }
 }

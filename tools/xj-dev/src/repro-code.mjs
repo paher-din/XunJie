@@ -4,6 +4,9 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { digest, jsonBytes, reproError, safeEntry } from './repro-archive.mjs';
 
 export const CODE_ROOTS = ['apps/student/', 'apps/teaching/', 'tools/xj-dev/', 'README.md', 'AGENTS.md', 'CONTEXT.md', 'DESIGN.md', '.gitignore'];
+export const LOCKFILES = ['apps/student/package-lock.json', 'apps/teaching/package-lock.json', 'tools/xj-dev/package.json'];
+export const LOCK_DIGEST_ALGORITHM = 'sha256:utf8-lf/v1';
+export const lockfileDigest = bytes => digest(Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n')));
 export function excludedPath(path) {
   return /(?:^|\/)(?:\.git|node_modules|dist|coverage|evidence|hdl\.evidence|secrets|browser-profile)(?:\/|$)/i.test(path)
     || /^(?:personal-agent|personal-models)(?:\/|$)/i.test(path)
@@ -127,7 +130,7 @@ export function collectCode(worktree, scratch, spec = {}) {
 }
 
 // Decode objects without checking out attacker-controlled code or running filters/hooks.
-export function restoreCode(repository, bundle, metadata, scratch, target) {
+export function restoreCode(repository, bundle, metadata, scratch, target, conditions) {
   const quarantine = join(scratch, 'quarantine.git'); mkdirSync(quarantine);
   git(quarantine, ['init', '--bare', '-q']);
   git(quarantine, ['bundle', 'verify', bundle]);
@@ -147,6 +150,13 @@ export function restoreCode(repository, bundle, metadata, scratch, target) {
     const bytes = git(quarantine, ['cat-file', 'blob', oid], { encoding: null });
     if (digest(bytes) !== item.digest || bytes.length !== item.bytes) throw reproError('CODE_DIGEST_MISMATCH', 'bundle 源码摘要不符。');
     assertShareable(bytes, '包内源码'); files.set(path, bytes);
+  }
+  if (conditions) {
+    if (conditions.lockfileDigestAlgorithm !== LOCK_DIGEST_ALGORITHM) throw reproError('FORMAT_MISMATCH', '依赖条件摘要算法不受支持。');
+    for (const path of LOCKFILES) {
+      if (!files.has(path)) throw reproError('RESOURCE_MISSING', `已校验 bundle 缺少依赖条件文件 ${path}。`);
+      if (lockfileDigest(files.get(path)) !== conditions.lockfiles[path]) throw reproError('LOCKFILE_MISMATCH', `bundle 内 ${path} 与清单依赖条件不符，未发布恢复目标。`);
+    }
   }
   // Import verified objects, then create a genuine detached Git worktree with checkout disabled.
   // Files are written ourselves: Git checkout would invoke local smudge filters from attributes.
