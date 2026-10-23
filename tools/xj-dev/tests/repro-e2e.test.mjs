@@ -16,7 +16,7 @@ import { listBaselines, publishBaseline, useBaseline } from '../src/baseline-ver
 const worktree = resolve(import.meta.dirname, '../../..');
 function api(origin, method, path, body, auth) {
   return new Promise((resolveResult, reject) => {
-    const req = request(origin + path, { method, rejectUnauthorized: false, headers: {
+    const req = request(origin + path, { method, agent: false, rejectUnauthorized: false, headers: {
       origin, connection: 'close', ...(body ? { 'content-type': 'application/json' } : {}),
       ...(auth ? { cookie: auth.cookie, 'x-csrf-token': auth.csrf, 'idempotency-key': crypto.randomUUID() } : {}),
     } }, res => { let text = ''; res.setEncoding('utf8'); res.on('data', c => text += c); res.on('end', () => resolveResult({ status: res.statusCode, body: JSON.parse(text), cookies: res.headers['set-cookie'] })); });
