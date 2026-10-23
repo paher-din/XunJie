@@ -40,6 +40,8 @@ $ node tools/xj-dev/xj-dev.mjs up --json
 
 `up` 输出的 `page.url` 是唯一的浏览器入口（`https://127.0.0.1:<端口>`）。首次按下节信任本次本地开发 CA，再使用正常证书校验打开页面。浏览器证书告警、临时继续、`ignoreHTTPSErrors` 或关闭 TLS 校验都不能作为 HTTPS/浏览器验收通过。
 
+本地 `status` 的 frontend/API 可用性取决于本环境归属进程及经本 home CA 严格校验的网关探测；未启动、`down` 后或组件故障时不报告可用。`status.ok` 表示完整入口就绪；`doctor.ok` 仍表示前置检查通过，停止状态不影响该前置结论。
+
 ### 开发 CA 的系统信任与精确撤销
 
 CA 路径以 `doctor`/`up` 的提示为准，默认是 `~/.xunjie/xj-dev/ca/ca-cert.pem`；`XJ_DEV_HOME` 改根时须使用对应文件。先核对这是自己本次环境的 CA，记录指纹与导入前是否已存在，只撤销本次新增的信任。系统要求密码、管理员权限或 UAC 时由本机所有者确认，工具不会绕过系统确认。邀请内的远端 CA 用于工具连接校验，本节导入的是浏览器访问本机入口所用的开发 CA。
@@ -290,14 +292,18 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 | `PORT_IN_USE` | 停止占用进程后重试；若占用者是本环境残留进程，先 `down` |
 | `HEALTH_TIMEOUT` | 看环境目录 `logs/` 下对应组件日志 |
 | `BASELINE_FAILED` | 重试 `up`；曾成功登记的环境可显式 `delete` 后 `up`，无有效登记时保留现场检查 |
-| `BASELINE_MARKER_MISSING` | 数据库在但基线标记缺失；有有效环境登记时用 `delete` 后 `up`，不手工删除根目录或锁 |
+| `BASELINE_MARKER_MISSING` / `BASELINE_MARKER_INVALID` / `BASELINE_CREDENTIALS_MISSING` / `BASELINE_CREDENTIALS_INVALID` / `BASELINE_INCOMPLETE` | 保留已有数据库与凭据，从可信备份恢复匹配的标记/账号材料，不自动重置账号或业务数据 |
+| `CA_INCOMPLETE` / `CA_INVALID` | 保留 `home/ca` 与永久锁，恢复同一根的配对材料；不删除或轮换已受信任 CA |
+| `GATEWAY_TLS_INVALID` / `GATEWAY_RESTART_REQUIRED` | 在原工作树、同一 `XJ_DEV_HOME`、instance 和所选模式执行 `down` 后 `up`，重载修复后的叶证书；保留原 CA、数据与入口，不接管外来进程 |
 | `LOCK_HELD` | 另一进程正在操作同一锁；等待后重试，进程退出会自动释放 OS 锁，勿删除锁目录 |
 | `LOCK_LEGACY` | 遇到已退出 holder 的有效旧 JSON 锁；停止所有旧版 CLI、确认无操作后，将该文件移到原路径之外保留，再使用新版重试 |
 | `LOCK_UNSAFE` | 锁路径未知、损坏、尚未写完、是符号链接，或内部不是工具专用 SQLite；原对象保持不动，停止相关 CLI 后检查权限、路径和内容并保留现场，不删除业务库 |
 
 ### 锁格式与中断恢复（0.2.0）
 
-`acquireLock(...).release()` 保持同步接口。每个锁路径（环境的 `lock`、模式的 `selection.lock`、基线的 `publish.lock`）现在是永久目录，内部 `mutex.sqlite` 仅保存工具锁标识，与业务 `data/xunjie.sqlite` 无关。精确 Node 24.21.0 的内置 `node:sqlite` 在获取锁时延迟加载，普通 CLI 可先定位并转入受管 Node；不增加依赖或常驻服务。
+`acquireLock(...).release()` 保持同步接口。每个锁路径（环境的 `lock`、模式的 `selection.lock`、基线的 `publish.lock`、共享 CA 的 `home/ca/initialization.lock`）现在是永久目录，内部 `mutex.sqlite` 仅保存工具锁标识，与业务 `data/xunjie.sqlite` 无关。精确 Node 24.21.0 的内置 `node:sqlite` 在获取锁时延迟加载，普通 CLI 可先定位并转入受管 Node；不增加依赖或常驻服务。
+
+首次本地基线先持久保存随机凭据，再构造私有数据库与标记，最后发布数据库。初始化中断时复用已保存的凭据；已有数据库缺少完整材料会明确失败并保留现场。共享 CA 在 home 级锁内完成同代配对发布，中断后只恢复可验证的同一根；叶证书修复时 `up` 仅重启本环境 gateway，保持端口、Origin、数据与其他组件。若此前在磁盘修复后中断、运行进程仍持旧叶证书，严格 TLS 检查会拒绝假成功，按上表 down/up 恢复。
 
 首次创建先在锁目录的私有 `.initialize-*` 子目录中完成数据库，再用不覆盖目标的硬链接原子发布。多个创建者始终使用同一个已完整初始化的文件；目录创建或初始化期间被中断，下一次可继续初始化。持有期间保留 `BEGIN IMMEDIATE` 事务及连接，正常释放只关闭自身连接，异常退出由 OS 释放，不按 PID、文件年龄或解析失败删除锁。不同路径各自独立，释放后目录与数据库继续保留。需要支持 SQLite 文件锁与硬链接的本地文件系统；不能创建硬链接时会明确失败。
 
