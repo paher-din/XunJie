@@ -1,0 +1,16 @@
+[Unit]
+Description=Daily encrypted backup of retained XunJie business data and recovery materials
+After=xunjie-shared.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/xunjie/node/bin/node /opt/xunjie/current/tools/i0-cloud/backup-retained.mjs --config /etc/xunjie/backup.json --key-file /etc/xunjie/backup.key --label daily --keep 7
+TimeoutStartSec=10min
+CPUWeight=20
+IOWeight=50
+Nice=15
+MemoryHigh=128M
+MemoryMax=256M
+LimitCORE=0
+UMask=0077

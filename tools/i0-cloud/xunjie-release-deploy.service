@@ -1,0 +1,20 @@
+[Unit]
+Description=Deploy the verified CI runtime artifact for the fixed XunJie main revision
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 /usr/local/lib/xunjie/deploy-artifact.py --config /etc/xunjie/deployment.json
+TimeoutStartSec=10min
+# Maintenance yields to the shared business: lower CPU/IO weight, modest memory ceiling.
+# The 512 MiB ceiling covers download, per-file verification, extraction and the SQLite
+# backup; measure an actual run's MemoryPeak before tightening it.
+CPUWeight=20
+IOWeight=50
+Nice=10
+MemoryHigh=256M
+MemoryMax=512M
+LimitCORE=0
+UMask=0077

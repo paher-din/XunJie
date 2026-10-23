@@ -1,0 +1,10 @@
+[Unit]
+Description=Check for a published XunJie runtime artifact and deploy it
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=5min
+Unit=xunjie-release-deploy.service
+
+[Install]
+WantedBy=timers.target

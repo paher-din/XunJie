@@ -63,6 +63,90 @@ test('normal host serves only built public assets and rejects escaped or hidden 
   } finally { await service.close(); await f.close(); }
 });
 
+test('static host serves pre-compressed build outputs with version-matched caching and streaming bodies', async () => {
+  const { mkdtempSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { brotliCompressSync, gzipSync } = await import('node:zlib');
+  const digest = (value: Buffer | string) => createHash('sha256').update(value).digest('hex');
+  const dist = mkdtempSync(join(tmpdir(),'xunjie-i0-static-cached-'));
+  mkdirSync(join(dist,'assets'));
+  const html = '<!doctype html><script type="module" src="/assets/index-1a.js"></script>';
+  const bundle = 'export const bundled = ' + 'x'.repeat(64) + ';';
+  const picture = Buffer.alloc(5*1024*1024,7);
+  const brotli = brotliCompressSync(bundle), zipped = gzipSync(bundle);
+  writeFileSync(join(dist,'index.html'),html);
+  writeFileSync(join(dist,'assets','index-1a.js'),bundle);
+  writeFileSync(join(dist,'assets','index-1a.js.br'),brotli);
+  writeFileSync(join(dist,'assets','index-1a.js.gz'),zipped);
+  writeFileSync(join(dist,'assets','board-2b.png'),picture);
+  writeFileSync(join(dist,'asset-digests.json'),JSON.stringify({
+    'index.html':digest(html),'assets/index-1a.js':digest(bundle),'assets/board-2b.png':digest(picture),
+  }));
+  const f = await fixture();
+  const service = await createI0App({db:f.db,origin:'https://synthetic.example',signingSecret:f.signingSecret,
+    now:f.timestamp,currentGeneration:f.generation,staticDirectory:dist});
+  try {
+    const index = await service.app.inject({url:'/'});
+    assert.equal(index.statusCode,200,index.body);
+    assert.equal(index.body,html);
+    assert.equal(index.headers['cache-control'],'no-cache');
+    assert.equal(index.headers['vary'],'accept-encoding');
+    assert.equal(index.headers['etag'],`"${digest(html)}"`);
+    const revalidated = await service.app.inject({url:'/',headers:{'if-none-match':index.headers['etag']}});
+    assert.equal(revalidated.statusCode,304);
+    assert.equal(revalidated.body,'');
+
+    const brotliResponse = await service.app.inject({url:'/assets/index-1a.js',headers:{'accept-encoding':'gzip, deflate, br'}});
+    assert.equal(brotliResponse.statusCode,200);
+    assert.equal(brotliResponse.headers['content-encoding'],'br');
+    assert.equal(brotliResponse.headers['content-length'],String(brotli.length));
+    assert.equal(brotliResponse.headers['cache-control'],'public, max-age=31536000, immutable');
+    assert.equal(brotliResponse.headers['etag'],`"${digest(bundle)}-br"`);
+    assert.deepEqual(brotliResponse.rawPayload,brotli);
+    const gzipResponse = await service.app.inject({url:'/assets/index-1a.js',headers:{'accept-encoding':'gzip'}});
+    assert.equal(gzipResponse.headers['content-encoding'],'gzip');
+    assert.deepEqual(gzipResponse.rawPayload,zipped);
+    const identityResponse = await service.app.inject({url:'/assets/index-1a.js',headers:{'accept-encoding':'deflate'}});
+    assert.equal(identityResponse.headers['content-encoding'],undefined);
+    assert.equal(identityResponse.body,bundle);
+    assert.equal(identityResponse.headers['etag'],`"${digest(bundle)}"`);
+    assert.equal((await service.app.inject({url:'/assets/index-1a.js',headers:{'accept-encoding':'br;q=0, gzip'}})).headers['content-encoding'],'gzip');
+
+    const image = await service.app.inject({url:'/assets/board-2b.png'});
+    assert.equal(image.statusCode,200);
+    assert.equal(image.headers['cache-control'],'public, max-age=31536000, immutable');
+    assert.equal(image.headers['vary'],undefined);
+    assert.equal(image.headers['content-length'],String(picture.length));
+    assert.deepEqual(image.rawPayload,picture);
+    for (const url of ['/assets/index-1a.js.br','/assets/index-1a.js.gz','/asset-digests.json']) {
+      assert.notEqual((await service.app.inject({url})).statusCode,200,url);
+    }
+  } finally { await service.close(); await f.close(); }
+});
+
+test('static host keeps serving when the build carries no digest map', async () => {
+  const { mkdtempSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dist = mkdtempSync(join(tmpdir(),'xunjie-i0-static-mapless-'));
+  mkdirSync(join(dist,'assets'));
+  writeFileSync(join(dist,'index.html'),'<h1>Mapless UI</h1>');
+  writeFileSync(join(dist,'assets','app.js'),'export const mapless = true;');
+  const f = await fixture();
+  const service = await createI0App({db:f.db,origin:'https://synthetic.example',signingSecret:f.signingSecret,
+    now:f.timestamp,currentGeneration:f.generation,staticDirectory:dist});
+  try {
+    const index = await service.app.inject({url:'/'});
+    assert.equal(index.statusCode,200);
+    assert.equal(index.body,'<h1>Mapless UI</h1>');
+    assert.equal(index.headers['etag'],undefined);
+    assert.equal(index.headers['cache-control'],'no-cache');
+    assert.equal((await service.app.inject({url:'/assets/app.js'})).body,'export const mapless = true;');
+  } finally { await service.close(); await f.close(); }
+});
+
+
 
 test('normal consumer runs original job without manual worker calls and shutdown confirms its stop', async () => {
   const { setTimeout: delay } = await import('node:timers/promises');

@@ -23,3 +23,9 @@ ReadWritePaths=/var/lib/xunjie
 
 [Install]
 WantedBy=multi-user.target
+# Candidate resource budgets; uncomment only after measuring real five-member
+# traffic (watch `systemctl show xunjie-shared -p MemoryPeak` during a load run).
+# Observed single-user cgroup peak: ~201 MiB (2026-10-23 server assessment).
+#CPUWeight=200
+#MemoryHigh=512M
+#MemoryMax=768M
