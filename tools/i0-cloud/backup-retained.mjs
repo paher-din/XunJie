@@ -98,6 +98,7 @@ function walkFiles(root) {
 }
 
 const sqliteHeader = Buffer.from('SQLite format 3\0');
+const databaseName = file => /\.(?:sqlite|sqlite3|db)$/i.test(file);
 function isDatabase(file) {
   const descriptor = openSync(file, constants.O_RDONLY);
   try {
@@ -143,13 +144,13 @@ export async function createEncryptedBackup(options) {
     const folded = path.toLowerCase();
     require(!plan.some(entry => entry.path.toLowerCase() === folded || entry.path.toLowerCase().startsWith(folded + '/')
       || folded.startsWith(entry.path.toLowerCase() + '/')), 'BACKUP_PATH_COLLISION');
-    if (!database) require(!isDatabase(source) && !/-(?:wal|shm|journal)$/.test(source), 'SQLITE_REQUIRES_BACKUP_API');
+    if (!database) require(!databaseName(source) && !isDatabase(source) && !/-(?:wal|shm|journal)$/.test(source), 'SQLITE_REQUIRES_BACKUP_API');
     plan.push({ source, path, database });
   };
   const addDirectory = (source, path) => {
     for (const file of walkFiles(source)) {
       if (/-(?:wal|shm|journal)$/.test(file)) continue;
-      add(file, path + '/' + relative(source, file).split('\\').join('/'), isDatabase(file));
+      add(file, path + '/' + relative(source, file).split('\\').join('/'), databaseName(file) || isDatabase(file));
     }
   };
   add(settings.courseDatabaseFile, 'course/synthetic.sqlite', true);
