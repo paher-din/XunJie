@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, rmSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeSync } from 'node:fs';
 import { request } from 'node:https';
 import { join } from 'node:path';
-import { authenticatedRequest, loadDevice } from './enrollment-client.mjs';
+import { authenticatedRequest, loadDevice, readRegistration } from './enrollment-client.mjs';
 import { assertPrivateFile, digest as hexDigest, ensurePrivateDirectory, privateJson, writePrivateFile, writePrivateJson } from './enrollment-protocol.mjs';
 import { CliError } from './envelope.mjs';
 import { inspectRepro, checkReproCompatibility } from './repro.mjs';
@@ -12,6 +12,7 @@ import { acquireLock } from './state.mjs';
 
 const PART = 8 * 1024 * 1024, MAX = ARCHIVE_LIMITS.zip, PRIVATE_ZIP = { maxBytes: MAX };
 const SCHEMA = 'xj-dev/package-transfer-v1';
+const activeNamespaces = new Set();
 const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const reproId = value => typeof value === 'string' && value.startsWith('xjp_') && uuid(value.slice(4));
 const sha = value => typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value);
@@ -68,8 +69,16 @@ function locations(context, deviceFile) {
   return { root, device, indexFile: join(root, 'index.json') };
 }
 async function locked(context, deviceFile, work) {
-  const paths = locations(context, deviceFile), lock = acquireLock({ root: paths.root, lockFile: join(paths.root, 'operation-lock') });
-  try { return await work(paths); } finally { lock.release(); }
+  const paths = locations(context, deviceFile);
+  // Do not reopen/close a POSIX lock inode already held by this process. The
+  // permanent SQLite mutex still excludes other processes and releases on exit.
+  if (activeNamespaces.has(paths.root)) throw fail('LOCK_HELD', true);
+  activeNamespaces.add(paths.root);
+  let lock;
+  try {
+    lock = acquireLock({ root: paths.root, lockFile: join(paths.root, 'operation-lock') });
+    return await work(paths);
+  } finally { try { lock?.release(); } finally { activeNamespaces.delete(paths.root); } }
 }
 function indexAt(paths) {
   if (!existsSync(paths.indexFile)) return { schema: SCHEMA, operations: {} };
@@ -245,12 +254,22 @@ export async function resumeUpload(context, { deviceFile, transferId } = {}) {
 }
 
 function validETag(value) { return typeof value === 'string' && /^"[^"\x00-\x20\x7f]{1,256}"$/.test(value); }
-async function usable(context, file, current, root) {
+function inspectedContent(file, current) {
   assertPrivateFile(file, PRIVATE_ZIP);
   const checked = inspectRepro(file, { expectedDigest: current.digest });
   need(checked.package.bytes === current.bytes && checked.package.formatVersion === current.formatVersion
     && checked.package.manifest.tool?.version === current.toolVersion, 'OBJECT_MISMATCH');
   need(crc64XZ(readFileSync(file)) === current.crc64, 'OBJECT_MISMATCH');
+  return checked;
+}
+const invalidCacheContent = error => error instanceof CliError && ['repro', 'transfer'].includes(error.stage);
+async function usable(context, file, current, root) {
+  let checked;
+  try { checked = inspectedContent(file, current); }
+  catch (error) {
+    if (invalidCacheContent(error)) error.recovery = `下载缓存校验失败，保留上传冻结包；显式执行 xj-dev repro cache-delete ${current.reproId}，再用 repro fetch ${current.reproId} 重新授权下载。`;
+    throw error;
+  }
   const scratch = mkdtempSync(join(root, 'compatibility-'));
   try { await checkReproCompatibility(context, checked.package.manifest, scratch); }
   finally { rmSync(scratch, { recursive: true, force: true, maxRetries: 3 }); }
@@ -339,4 +358,63 @@ export async function fetchRepro(context, { deviceFile, reproId: id } = {}) {
     }
     throw fail('OBJECT_PRECONDITION_FAILED');
   }));
+}
+
+// Delete one registered, currently retrievable download cache, including corrupt
+// completed bytes. Uploads, resumable partials and permanent locks stay intact.
+export async function pruneCache(context, { deviceFile, reproId: id } = {}) {
+  return safe(async () => {
+    deviceFile ??= readRegistration({ home: context.home })?.deviceFile;
+    need(deviceFile, 'DEVICE_NOT_REGISTERED');
+    return locked(context, deviceFile, async paths => {
+      need(reproId(id), 'INVALID_REPRO_ID');
+      const resolved = await api(deviceFile, 'resolve', { reproId: id, offset: 0 });
+      const current = record(resolved?.record);
+      need(current.reproId === id && current.state === 'published' && validETag(resolved.etag), 'PACKAGE_NOT_READY');
+      grant(resolved.authorization, 'GET', { range: 'bytes=0-', 'if-match': resolved.etag });
+      const cache = join(paths.root, 'cache'), pointer = join(cache, id + '.json');
+      if (!existsSync(pointer)) return { state: 'cache-absent', reproId: id, removedBytes: 0 };
+      const saved = privateJson(pointer);
+      need(saved?.schema === SCHEMA && saved.record?.reproId === id && validETag(saved.etag), 'CACHE_UNSAFE');
+      record(saved.record, current);
+      const root = ensurePrivateDirectory(join(cache, current.digest.slice(7)));
+      const entries = readdirSync(root);
+      need(entries.every(name => ['ready.zip', 'partial.zip'].includes(name)), 'CACHE_UNSAFE');
+      need(entries.length !== 2, 'CACHE_IN_USE');
+      need(entries.length === 1, 'CACHE_UNSAFE');
+      const file = join(root, entries[0]);
+      // Cleanup does not read oversized files, but still checks the same private
+      // owner/DACL and non-symlink requirements before considering any unlink.
+      assertPrivateFile(file, { maxBytes: Number.MAX_SAFE_INTEGER });
+      const owned = lstatSync(file), partial = entries[0] === 'partial.zip';
+      if (partial) need(owned.size >= current.bytes, 'CACHE_IN_USE');
+      let contentValid = owned.size === current.bytes;
+      if (contentValid) {
+        try { inspectedContent(file, current); }
+        catch (error) { if (!invalidCacheContent(error)) throw error; contentValid = false; }
+      }
+      if (partial) need(!contentValid, 'CACHE_IN_USE');
+      let retainedShared = false;
+      // A different stable ID can reference the same digest. Its cache remains
+      // available; malformed/unknown metadata is preserved without deletion.
+      for (const name of readdirSync(cache)) {
+        if (name === id + '.json' || /^[0-9a-f]{64}$/.test(name)) continue;
+        need(name.endsWith('.json') && reproId(name.slice(0, -5)), 'CACHE_UNSAFE');
+        const reference = privateJson(join(cache, name));
+        need(reference?.schema === SCHEMA && reference.record?.reproId === name.slice(0, -5) && validETag(reference.etag), 'CACHE_UNSAFE');
+        if (record(reference.record).digest === current.digest) retainedShared = true;
+      }
+      // Only valid shared bytes remain useful to another ID. Removing corrupt
+      // bytes leaves those IDs' pointers intact so their next fetch starts at 0.
+      retainedShared &&= contentValid;
+      const latest = lstatSync(file);
+      const latestEntries = readdirSync(root);
+      need(['dev', 'ino', 'size', 'mtimeMs', 'ctimeMs'].every(key => latest[key] === owned[key])
+        && latestEntries.length === 1 && latestEntries[0] === entries[0], 'CACHE_IN_USE');
+      assertPrivateFile(file, { maxBytes: Number.MAX_SAFE_INTEGER });
+      if (!retainedShared) rmSync(file);
+      rmSync(pointer);
+      return { state: 'cache-deleted', reproId: id, digest: current.digest, removedBytes: retainedShared ? 0 : owned.size, retainedShared };
+    });
+  });
 }
