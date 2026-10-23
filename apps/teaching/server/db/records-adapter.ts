@@ -21,9 +21,11 @@ const jobSchema = z.strictObject({ jobId: id, kind: id, purpose: purposeSchema, 
   acceptedAt: time, deadline: time, attemptCount: natural.max(3), inactivityTimeoutMs:z.number().int().positive().max(2147483647).optional(),leaseToken: id.optional(), leaseUntil: time.optional(),
   runId: id.optional(), resultRef: id.optional(), resultHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), failure: id.optional(),
   execution:z.strictObject({nodeId:z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),nodeGeneration:id}).optional() });
+// Construct the recursive JSON validator once; each persisted receipt is still validated on every read.
+const jsonValueSchema = z.json();
 const receiptSchema = z.strictObject({ receiptId: id, commandId: id, identity: identitySchema, requestHash: z.string().regex(/^[a-f0-9]{64}$/),
   // JSON validation must not normalize client file keys such as "__proto__" in the original ACK.
-  result: z.unknown().refine(value => z.json().safeParse(value).success), serverSeq: z.number().int().positive(), committedAt: time });
+  result: z.unknown().refine(value => jsonValueSchema.safeParse(value).success), serverSeq: z.number().int().positive(), committedAt: time });
 const eventSchema = z.strictObject({ eventId: id, serverSeq: z.number().int().positive(), scope: scopeSchema, type: id,
   occurredAt: time, source: z.enum(['student_command', 'trusted_service']), payloadRef: id.optional() });
 const objectRefSchema = z.discriminatedUnion('kind', [
@@ -121,17 +123,20 @@ export function readRecords(tx: Transaction, courseId: string): Records {
       || receipt.serverSeq !== row.server_seq) throw new Error('Invalid persisted receipt scope.');
     return receipt;
   });
+  // Index this validated read only; never reuse persisted data across transactions or authorization checks.
+  const receiptById = new Map(receipts.map(receipt => [receipt.receiptId, receipt]));
+  const receiptBySequence = new Map(receipts.map(receipt => [receipt.serverSeq, receipt]));
   const events = tx.all("SELECT * FROM audit_events WHERE course_id=? AND command LIKE 'shared.%'", courseId)
     .map(row => {
       const event = persisted(eventSchema, String(row.object_ref_json)) as AuditEvent;
       if (event.eventId !== row.event_id || event.serverSeq !== row.server_seq || event.scope.courseId !== row.course_id
         || 'shared.' + event.type !== row.command || Date.parse(event.occurredAt) !== row.committed_at_ms) throw new Error('Invalid persisted event scope.');
-      const receipt = receipts.find(item => item.receiptId === event.payloadRef);
+      const receipt = receiptById.get(event.payloadRef ?? '');
       // An event may reference the object it is about (a teaching delivery, receipt or stop request) instead of
       // its command receipt; those rows still have to agree with the row that owns them.
       if (!receipt) {
-        const owner = receipts.find(item => item.serverSeq === event.serverSeq && item.committedAt === event.occurredAt);
-        if (!owner || owner.identity.actorId !== row.actor_id || owner.commandId !== row.command_id
+        const owner = receiptBySequence.get(event.serverSeq);
+        if (!owner || owner.committedAt !== event.occurredAt || owner.identity.actorId !== row.actor_id || owner.commandId !== row.command_id
           || owner.identity.target !== row.target || owner.identity.recoveryGeneration !== row.recovery_generation
           || !sameScope(owner.identity.scope, event.scope)) throw new Error('Invalid persisted receipt/event association.');
         return event;
