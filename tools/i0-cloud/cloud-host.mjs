@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -6,8 +6,8 @@ import { pathToFileURL } from 'node:url';
 const values = new Map();
 for (let index = 2; index < process.argv.length; index += 2) {
   const name = process.argv[index], value = process.argv[index + 1];
-  if (!['--config', '--teaching-root'].includes(name) || !value || values.has(name)) {
-    throw new Error('Use --config <controlled-file> and --teaching-root <release/apps/teaching>.');
+  if (!['--config', '--teaching-root', '--port'].includes(name) || !value || values.has(name)) {
+    throw new Error('Use --config <controlled-file>, --teaching-root <release/apps/teaching>, and optional --port <loopback-port>.');
   }
   values.set(name, value);
 }
@@ -23,17 +23,20 @@ try {
   if (process.platform !== 'linux' || process.version !== 'v24.21.0') {
     throw new Error('Linux Node24.21.0 required.');
   }
-  const teachingRoot = resolve(values.get('--teaching-root') ?? '/opt/xunjie/current/apps/teaching');
+  const teachingRoot = realpathSync(resolve(values.get('--teaching-root') ?? '/opt/xunjie/current/apps/teaching'));
   const configFile = resolve(values.get('--config') ?? '/etc/xunjie/application-config.json');
+  const port = Number(values.get('--port') ?? 3444);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Valid loopback port required.');
   const load = relative => import(pathToFileURL(`${teachingRoot}/${relative}`).href);
   const { readApplicationConfig, readI0SigningSecret } = await load('server/app/config.ts');
   const { openSyntheticDatabase } = await load('server/db/transaction.ts');
   const { executionTransports } = await load('server/app/execution-transport.ts');
   const { createDigitalLogicApplication } = await load('server/app/digital-logic.ts');
+  const { registerDeploymentIdentity } = await load('server/app/deployment-identity.ts');
   const config = readApplicationConfig(configFile);
   const browserOrigin = new URL(config.origin);
   if (!['localhost', '127.0.0.1', '[::1]'].includes(browserOrigin.hostname) || config.tutoring?.callsAuthorized ||
-      config.tutoring?.apiKeyFile || !config.executionNodes?.length || config.ssh) {
+      config.tutoring?.apiKeyFile || !config.executionNodes || config.ssh) {
     throw new Error('Cloud shared configuration with registered execution nodes and disabled legacy model calls required.');
   }
   if (config.teacherDesign && !config.personalModels) {
@@ -65,9 +68,11 @@ try {
     studentHelp: { versions, budgetAvailable: () => false },
     teacherAgent: { versions, budgetAvailable: () => false, provider: { generate: async () => { throw new Error('Model unavailable.'); } } },
   });
+  const manifestFile = resolve(teachingRoot, '../../deployment.json');
+  if (existsSync(manifestFile)) registerDeploymentIdentity(service.app, JSON.parse(readFileSync(manifestFile, 'utf8')));
   process.once('SIGTERM', () => { void shutdown().catch(() => { process.exitCode = 1; }); });
   process.once('SIGINT', () => { void shutdown().catch(() => { process.exitCode = 1; }); });
-  await service.app.listen({ host: '127.0.0.1', port: 3444 });
+  await service.app.listen({ host: '127.0.0.1', port });
   service.startConsumer(config.consumerIntervalMs);
   process.stdout.write(JSON.stringify({ kind: 'cloud-shared-ready', origin: config.origin, databaseTables: config.review ? 41 : 35, executionNodes: executionNodes.map(node => node.nodeId) }) + '\n');
 } catch {

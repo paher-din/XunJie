@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { processAlive } from './state.mjs';
@@ -42,12 +42,14 @@ export function spawnComponent(envPaths, name, nodePath, script, args, options =
   mkdirSync(envPaths.logs, { recursive: true });
   mkdirSync(envPaths.pids, { recursive: true });
   const logFd = openSync(join(envPaths.logs, `${name}.log`), 'a');
+  if (options.cooperativeStop) rmSync(join(envPaths.root, `.stop-${name}`), { force: true });
   const child = spawn(nodePath, [script, ...args], {
     detached: true,
     stdio: ['ignore', logFd, logFd],
     cwd: options.cwd,
     env: { ...process.env, ...(options.env || {}) },
   });
+  closeSync(logFd);
   child.unref();
   const record = {
     pid: child.pid,
@@ -56,6 +58,7 @@ export function spawnComponent(envPaths, name, nodePath, script, args, options =
     scriptMarker: script.split(/[\\/]/).pop(),
     startedAtMs: Date.now(),
     startedAt: new Date().toISOString(),
+    ...(options.cooperativeStop ? { cooperativeStop: true } : {}),
   };
   writeFileSync(join(envPaths.pids, `${name}.json`), JSON.stringify(record, null, 2) + '\n');
   child.once('exit', code => {
@@ -80,7 +83,10 @@ export async function stopComponent(envPaths, name) {
     rmSync(record.file, { force: true });
     return { component: name, result: 'not-running' };
   }
-  process.kill(record.pid, 'SIGTERM');
+  // Windows SIGTERM terminates Node immediately, skipping its signal handlers.
+  // A cooperative request lets connection supervisors first reap their SSH child.
+  if (record.cooperativeStop) writeFileSync(join(envPaths.root, `.stop-${name}`), 'stop');
+  else process.kill(record.pid, 'SIGTERM');
   for (let waited = 0; waited < 50 && processAlive(record.pid); waited++) await delay(100);
   if (processAlive(record.pid)) {
     process.kill(record.pid, 'SIGKILL');

@@ -206,12 +206,13 @@ async function spawnGateway(context, runtime, ports, certificate) {
   mkdirSync(context.env.root, { recursive: true });
   writeFileSync(configFile, JSON.stringify({
     port: ports.gateway, backendPort: ports.backend, vitePort: ports.vite,
+    cookieName: `__Host-xunjie-${context.id}-local`,
     keyFile: certificate.keyFile, certFile: certificate.certFile,
   }, null, 2));
   return spawnComponent(context.env, 'gateway', runtime.path, context.repo.gatewayScript, ['--config', configFile], { envId: context.id });
 }
 
-async function portConflictError(context, component, port) {
+export async function portConflictError(context, component, port) {
   let owner = '未知进程';
   try {
     const { execFileSync } = await import('node:child_process');
@@ -225,7 +226,7 @@ async function portConflictError(context, component, port) {
     { recovery: '停止占用进程后重试；不要手动改环境端口文件。若占用者竟是本环境残留进程，先运行 xj-dev down。' });
 }
 
-export async function up(context, log) {
+export async function upLocal(context, log = () => {}) {
   const lock = acquireLock(context.env);
   const stages = [];
   const startedNow = [];
@@ -345,7 +346,7 @@ export async function up(context, log) {
   }
 }
 
-export async function status(context) {
+export async function statusLocal(context) {
   const state = loadState(context.env);
   const statuses = await componentStatuses(context);
   const ports = state?.ports;
@@ -398,7 +399,7 @@ export async function status(context) {
   };
 }
 
-export async function down(context) {
+export async function downLocal(context) {
   const lock = acquireLock(context.env);
   try {
     const stopped = [];
@@ -415,3 +416,5 @@ export async function down(context) {
     lock.release();
   }
 }
+
+export { modeUp as up, modeStatus as status, modeDown as down, useMode, nodeCommand } from './modes.mjs';

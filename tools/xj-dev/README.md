@@ -70,6 +70,56 @@ $ node tools/xj-dev/xj-dev.mjs up --json
 | 运行/仿真执行节点 | 未接线：运行请求明确返回 `RUNTIME_NOT_READY` |
 | 个人/教师模型调用 | 未配置凭据，调用停用 |
 
+## 模式与受管连接
+
+```sh
+node tools/xj-dev/xj-dev.mjs use local
+node tools/xj-dev/xj-dev.mjs use cloud-api --connection /path/to/approved-connection.json
+node tools/xj-dev/xj-dev.mjs use cloud --connection /path/to/approved-connection.json
+node tools/xj-dev/xj-dev.mjs node connect --connection /path/to/approved-node-connection.json
+node tools/xj-dev/xj-dev.mjs node status
+node tools/xj-dev/xj-dev.mjs node disconnect
+```
+
+| 模式 | 前端 | 后端与数据 |
+| --- | --- | --- |
+| `local`（默认） | 当前工作树 Vite/HMR | 当前工作树源码、独立 SQLite；返回时沿用原现场 |
+| `cloud-api` | 当前工作树 Vite/HMR，模块保持本地 | 选定云端 HTTPS API 与健康接口，共享集成库 |
+| `cloud` | 已部署页面与静态资源 | 选定云端后端，共享集成库 |
+
+`up` 恢复上次模式，`status` 报告来源、版本、目标与能力。先检查目标连接和 session/health 契约，成功才原子更新当前入口；失败保留原入口。切换不复制数据库、升级基线、上传代码或部署。旧标签页始终使用原目标，未保存草稿不会因切换写到另一环境。`down` 停止本工作树登记的全部模式及节点连接，保留数据。
+
+每个环境/模式/目标有固定 HTTPS 入口、专属 `__Host-` Cookie 名称与 `browser.profile`。即使在同一浏览器 context 打开多个入口，会话也分别转发。网关精确校验本地 Host/Origin 后，才映射到配置的云端 canonical Origin；云端原有 Origin、Cookie、CSRF 验证继续执行。SSH 使用公钥、预先核定的 ed25519 pin、禁密码/agent；HTTPS 使用获准 CA 校验证书和主机名，不关闭 TLS 验证。端口冲突报告真实占用者，不接管其他程序。
+
+后台 supervisor 监督自己创建的 SSH：正常每 10 秒只读探活，网络或休眠故障最多六轮退避（1/2/4/8/16 秒），成功后重新检查业务；权限撤销、SSH/TLS 身份变化或接口不兼容停止重试，显式修复后 `up` 重试。恢复不重复业务写入。Windows 通过停止请求让 supervisor 先结束 SSH 子进程。
+
+后端实际提交来自业务 host 的健康响应 `x-xunjie-version`，协议为 `x-xunjie-protocol: xunjie/session-v1`。host 启动时从已校验的 release `deployment.json` 固定该身份；普通成员无需管理员 shell。连接配置中的版本值不作事实；旧部署没有 metadata 时输出 `versionSource: not-exposed`，不能算版本验收通过。
+
+### 配置与公开接缝
+
+成员接入工具可写出 [connection.example.json](connection.example.json) 的 `xj-dev/connection-v1`。必填 `host`、`port`、`browserUser`、`applicationPort`、`browserOrigin`、`identityFile`、`knownHostsFile`、`caFile`；路径相对配置文件解析。可选 `expectedBackendVersion` 是显式兼容约束，不是观测版本。文件应放仓库外受限目录，私钥正文和账号密码不进入 CLI 输出。
+
+节点可额外提供 `nodeId`、`nodeUser`、`localRunnerPort`、`remoteRunnerPort`，可选 `nodeIdentityFile`。工具只做原登记节点的反向转发；连接成功只证明传输，不证明 runner 授权、generation 或实际执行通过。没有节点时页面与普通业务仍可用。任务绑定和未知结果沿原业务契约保留，不静默重派。
+
+现有 `version: 1, registered: true` 配置由同一解析器只读适配，私钥可用 `--identity` 提供；CA 可复用旁边的 `cloud-server.cert.pem`。负责人旧配置使用旁边 `ssh.conf` 的已核定 browser 别名解析身份/pin 路径，无需新邀请，也不改全局 SSH。原 PowerShell 页面、节点脚本和重复解析器已删除。
+
+供接入工具与复现工具复用：`src/connection.mjs` 导出 `CONNECTION_SCHEMA`、`loadConnection(file, { identity })`、`sshArguments(connection, kind, localPort)`、`checkBackend(connection, localPort)`；`commands.mjs` 保留模式感知 `up/status/down`，本地实现另导出 `upLocal/statusLocal/downLocal`。CLI 的简单 `commandRoutes` 可注册额外命令，子命令参数放 `options.extraArgs`。
+
+### 模式验收
+
+```sh
+# 普通测试包含受控 HTTPS 边界；不能代替真实云端验收
+node --test tools/xj-dev/tests/managed-modes.test.mjs
+# 真实 SSH/云端/浏览器；账号文件只从私有路径读取，不开启 trace
+cd apps/student
+XUNJIE_XJ_DEV_URL=managed \
+XUNJIE_CLOUD_CONNECTION=/path/to/approved-connection.json \
+XUNJIE_CLOUD_ACCOUNT_FILE=/path/to/private-accounts.txt \
+node node_modules/@playwright/test/cli.js test xjDevModes --workers=1
+```
+
+测试分别覆盖同 context 的两个本地环境及两种云模式、实际本地 HMR、登录与 CSRF、未保存现场、失败保留选择、真实 SSH 中断后的业务恢复及真实版本 header。可通过 `XUNJIE_LOCAL_SECOND_WORKTREE` 指定第二工作树；未指定时第二实例使用独立数据。缺少配置时跳过，跳过不算通过。平台、节点实际执行与教学效果需分别报告。
+
 ## 测试
 
 ```sh
