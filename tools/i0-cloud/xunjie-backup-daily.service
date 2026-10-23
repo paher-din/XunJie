@@ -7,7 +7,7 @@ Type=oneshot
 User=root
 # The lock path must be <workDirectory>/deploy-artifact.lock from /etc/xunjie/deployment.json,
 # so a backup never overlaps a release deployment (both hold the same flock).
-ExecStart=/usr/bin/flock -w 2400 /var/lib/xunjie/work/deploy-artifact.lock /opt/xunjie/node/bin/node /opt/xunjie/current/tools/i0-cloud/backup-retained.mjs --config /etc/xunjie/backup.json --key-file /etc/xunjie/backup.key --label daily --keep 7
+ExecStart=/usr/bin/flock -w 2400 /var/lib/xunjie/work/deploy-artifact.lock /opt/xunjie/node/bin/node /usr/local/lib/xunjie/backup-retained.mjs --config /etc/xunjie/backup.json --key-file /etc/xunjie/backup.key --label daily --keep 7
 TimeoutStartSec=45min
 CPUWeight=20
 IOWeight=50
