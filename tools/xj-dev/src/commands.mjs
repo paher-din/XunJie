@@ -333,7 +333,7 @@ export async function upLocal(context, log = () => {}) {
       capabilities: capabilitiesBlock(),
       accounts: accountsBlock(context),
       stages,
-      next: [`浏览器打开 https://127.0.0.1:${ports.gateway}（首次需信任开发 CA 或临时继续）`, 'xj-dev status --json 查看状态'],
+      next: [`浏览器打开 https://127.0.0.1:${ports.gateway}（首次按 tools/xj-dev/README.md 完成开发 CA 系统信任与指纹核对，保持 HTTPS 校验开启）`, 'xj-dev status --json 查看状态'],
     };
   } catch (error) {
     for (const name of startedNow.reverse()) {
