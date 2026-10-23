@@ -6,17 +6,17 @@ import { pathToFileURL } from 'node:url';
 const values = new Map();
 for (let index = 2; index < process.argv.length; index += 2) {
   const name = process.argv[index], value = process.argv[index + 1];
-  if (!['--config', '--teaching-root', '--port'].includes(name) || !value || values.has(name)) {
-    throw new Error('Use --config <controlled-file>, --teaching-root <release/apps/teaching>, and optional --port <loopback-port>.');
+  if (!['--config', '--teaching-root', '--port', '--account-control'].includes(name) || !value || values.has(name)) {
+    throw new Error('Use --config <controlled-file>, --teaching-root <release/apps/teaching>, and optional --port <loopback-port>, --account-control <private-file>.');
   }
   values.set(name, value);
 }
 
-let db, service;
+let db, service, accessControl;
 let closing;
 const shutdown = () => closing ??= (async () => {
-  try { await service?.shutdown(); }
-  finally { db?.close(); }
+  try { await accessControl?.close(); }
+  finally { try { await service?.shutdown(); } finally { db?.close(); } }
 })();
 
 try {
@@ -50,9 +50,14 @@ try {
   if (generation !== config.recoveryGeneration) throw new Error('Application recovery control mismatch.');
   const versions = { modelConfig: 'disabled', prompt: 'disabled', schema: 'disabled', policy: 'disabled' };
   const executionNodes = config.executionNodes.map(({ ssh, ...node }) => ({ ...node, ...executionTransports(ssh) }));
+  if (values.has('--account-control')) {
+    const { createLocalAccountControl } = await load('server/access/account-control.ts');
+    accessControl = await createLocalAccountControl(resolve(values.get('--account-control')), { db, staticAllowed: config.allowedLoginUserIds });
+  }
   service = await createDigitalLogicApplication({
     db, origin: config.origin, signingSecret: readI0SigningSecret(config.signingSecretFile),
     ...(config.allowedLoginUserIds ? { allowedLoginUserIds: config.allowedLoginUserIds } : {}),
+    ...(accessControl ? { loginAuthorization: accessControl.loginAuthorization } : {}),
     https: { key: readFileSync(config.tls.keyFile), cert: readFileSync(config.tls.certFile) },
     executionNodes, ...(config.legacyExecutionNodeId ? { legacyExecutionNodeId: config.legacyExecutionNodeId } : {}),
     approvedHdlRuntimes: config.approvedHdlRuntimes,
@@ -69,6 +74,7 @@ try {
     teacherAgent: { versions, budgetAvailable: () => false, provider: { generate: async () => { throw new Error('Model unavailable.'); } } },
   });
   const manifestFile = resolve(teachingRoot, '../../deployment.json');
+  if (accessControl) await accessControl.listen(service);
   if (existsSync(manifestFile)) registerDeploymentIdentity(service.app, JSON.parse(readFileSync(manifestFile, 'utf8')));
   process.once('SIGTERM', () => { void shutdown().catch(() => { process.exitCode = 1; }); });
   process.once('SIGINT', () => { void shutdown().catch(() => { process.exitCode = 1; }); });

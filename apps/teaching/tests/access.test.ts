@@ -10,7 +10,7 @@ import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 
 const origin = 'https://synthetic.example';
-async function fixture(logDestination?: { write(message: string): void }) {
+async function fixture(logDestination?: { write(message: string): void }, loginAuthorization?: (userId: string) => boolean) {
   const db = createSyntheticDatabase();
   const password = randomBytes(32).toString('base64url');
   const record = await createPasswordRecord(password);
@@ -22,7 +22,7 @@ async function fixture(logDestination?: { write(message: string): void }) {
   });
   let now = Date.now();
   const signingSecret = randomBytes(48).toString('hex');
-  const verification = await createVerificationApp({ db, origin, signingSecret, now: () => now, ...(logDestination ? { logDestination } : {}) });
+  const verification = await createVerificationApp({ db, origin, signingSecret, now: () => now, ...(logDestination ? { logDestination } : {}), ...(loginAuthorization ? { loginAuthorization } : {}) });
   verification.app.get('/fixture/course/:id', req => ({ requestId: req.id, data: verification.access.authorizeCourse(req, (req.params as { id: string }).id) }));
   verification.app.post('/fixture/teacher/:id', req => ({ requestId: req.id, data: verification.access.authorizeCourse(req, (req.params as { id: string }).id, 'teacher') }));
   return { ...verification, db, password, signingSecret, clock: () => now, advance: (ms: number) => { now += ms; }, close: async () => { await verification.app.close(); db.close(); } };
@@ -35,6 +35,23 @@ async function login(f: Awaited<ReturnType<typeof fixture>>) {
 function cookieHeader(response: { cookies: { name: string; value: string }[] }) {
   return response.cookies.filter(c => c.value).map(c => `${c.name}=${encodeURIComponent(c.value)}`).join('; ');
 }
+
+test('optional live login policy gates both new logins and existing sessions without restarting', async () => {
+  let allowed = false;
+  const f = await fixture(undefined, id => allowed && id === 'user');
+  const attempt = () => f.app.inject({ method: 'POST', url: '/api/sessions', headers: { origin }, payload: { loginName: 'learner', password: f.password } });
+  try {
+    assert.equal((await attempt()).statusCode, 401);
+    allowed = true;
+    const session = await login(f);
+    assert.equal((await f.app.inject({ url: '/api/session', headers: { cookie: session.cookie } })).statusCode, 200);
+    allowed = false;
+    assert.equal((await f.app.inject({ url: '/api/session', headers: { cookie: session.cookie } })).statusCode, 401);
+    assert.equal((await attempt()).statusCode, 401);
+    allowed = true;
+    assert.equal((await attempt()).statusCode, 200);
+  } finally { await f.close(); }
+});
 
 test('login persists a Secure session and server-side course identity; logout revokes it', async () => {
   const f = await fixture();

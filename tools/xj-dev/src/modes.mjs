@@ -6,6 +6,7 @@ import { ensureCertificateAuthority, ensureEnvironmentCertificate } from './cert
 import { connectionError, loadConnection } from './connection.mjs';
 import { CliError } from './envelope.mjs';
 import { environmentPaths } from './paths.mjs';
+import { enrollmentSelection } from './enrollment-routes.mjs';
 import { allocatePorts, portFree } from './ports.mjs';
 import { componentRunning, spawnComponent, stopComponent } from './processes.mjs';
 import { ensureDependencies, locatePinnedRuntime } from './runtime.mjs';
@@ -116,7 +117,7 @@ export async function useMode(context, mode, options = {}, log = () => {}) {
       const { upLocal } = await import('./commands.mjs');
       await upLocal(context, log);
     } else {
-      options = { ...options, connection: options.connection ?? selection.targets?.[mode]?.connectionFile, identity: options.identity ?? (options.connection ? undefined : selection.targets?.[mode]?.identityFile) };
+      options = { ...options, connection: options.connection ?? enrollmentSelection(context)?.connectionFile ?? selection.targets?.[mode]?.connectionFile, identity: options.identity ?? (options.connection ? undefined : selection.targets?.[mode]?.identityFile) };
       if (!options.connection) throw connectionError('CONNECTION_INVALID');
       const entry = await prepareRemote(context, mode, options, log);
       selection.targets ??= {};
@@ -189,7 +190,7 @@ export async function nodeCommand(context, action, options = {}) {
   try {
     if (action === 'disconnect') return { stopped: await stopComponent(context.env, 'node-connection'), tasks: '原节点绑定与未知结果不变；不重发或改派。' };
     if (action === 'status') return { connection: readStatus(context, 'node'), supervisorRunning: componentRunning(context.env, 'node-connection').running, executionVerified: false, tasks: '未改变绑定或业务任务。' };
-    const file = options.connection;
+    const file = options.connection ?? enrollmentSelection(context)?.connectionFile;
     if (!file) throw connectionError('CONNECTION_INVALID');
     const c = loadConnection(file, { identity: options.identity });
     if (!c.nodeId) throw connectionError('NODE_OFFLINE');

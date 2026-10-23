@@ -1,6 +1,6 @@
 # 开发协作工具：Agent 操作、复现包与产品隔离
 
-更新：2026-10-23。状态：`tools/xj-dev` 提供本地全栈、三模式切换及受管页面/登记节点连接；平台与真实连接的验收范围见其 README。本地复现包与基线版本已交付；成员接入另按对应实施票交付。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
+更新：2026-10-23。状态：`tools/xj-dev` 提供本地全栈、三模式切换及受管页面/登记节点连接；平台与真实连接的验收范围见其 README。本地复现包与基线版本已交付；join/refresh/access 已有 #129 工程实现，真实新候选验收仍在进行。已确认的要求是：开发者使用 Agent，尽量简化中间操作，工具只服务开发阶段，普通用户本地安装不依赖它们。上层方案见[开发协作环境](development-collaboration.md)。
 
 ## 新 Agent 的工具入口
 
@@ -13,7 +13,7 @@
 | 后端构建/启动：`npm run build`、`npm start` | 在 `apps/teaching/` 使用 [package.json](../apps/teaching/package.json) 声明的精确 Node 版本及锁文件；核对[启动入口](../apps/teaching/server/main.ts)的业务配置条件 | 普通无业务配置启动仅提供基础健康服务；完整课程服务需要明确的配置与初始化数据，不能把进程启动或健康响应当作本地课程环境已准备好 |
 | 云端页面与 API：`xj-dev use cloud/cloud-api` | [模式与连接](../tools/xj-dev/README.md#模式与受管连接)；需要获准的配置、SSH 私钥、主机 pin 与 HTTPS CA | 受管连接恢复、固定入口与 Cookie 隔离；不上传代码、创建成员或部署 |
 | 已登记节点：`xj-dev node connect/status/disconnect` | 同一 README；另需已准备并登记的节点、端口与身份 | 迁移原回连能力；不安装 VM、初始化节点、重发或改派任务，隧道成功与执行业务验收分开报告 |
-| `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down、use、node、repro、baseline；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
+| `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down、use、node、join/refresh/access、repro、baseline；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
 
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 
@@ -135,19 +135,20 @@ sequenceDiagram
 
 | 建议接口 | 职责 |
 | --- | --- |
-| `xj-dev join --invitation-file <file> --json` | 从受限邀请材料完成设备登记、配置取得和连通检查；邀请不放在命令参数或日志正文，必要时完成系统证书确认 |
+| `xj-dev join --invitation-file <file> [--mode local|cloud-api|cloud] --json`（工程已实现） | 从受限邀请材料完成设备登记、配置取得和连通检查；邀请不放在命令参数或日志正文，必要时完成系统证书确认 |
 | `xj-dev doctor --json` | 返回依赖、配置、网络与所需能力的检查结果及可执行的恢复动作 |
 | `xj-dev up --json` | 启动或恢复当前工作树所选模式；新工作树默认本地全栈，首次准备固定基线 |
 | `xj-dev use <local|cloud-api|cloud> --json` | 检查并切换运行配置，返回代码来源、数据归属和入口；不迁移数据或部署 |
 | `xj-dev baseline list/use/publish ... --json`（本地已实现） | 固定版本本地发布/查看/显式采用；新建工作树保留旧环境，团队授权与传输另行接入 |
-| `xj-dev member invite/revoke ... --json` | 维护者管理团队加入与撤销，设备可独立管理 |
+| `xj-dev access invite/inspect/revoke-invitation/revoke-device/revoke-member/snapshot --admin-config FILE ...`（工程已实现） | 复用 owner SSH 管理独立服务；invite 必须私有 out-file，撤销与备份可重试 |
+| `xj-dev refresh [--device-file FILE]`（工程已实现） | 以原设备 proof 更新私有配置，保留失败前的已用 generation |
 | `xj-dev status --json` / `xj-dev down --json` | 查询环境，或停止本工具管理的进程；停止不等于删除数据 |
 | `xj-dev node connect/status/disconnect ... --json` | 按需管理现有已登记执行节点的受管回连；不安装执行器或决定产品运行方案 |
 | `xj-dev repro capture --context <file> --out <zip> --json`（已实现） | 采集并校验本地包；`inspect <zip>` 检查包与完整摘要 |
 | `xj-dev repro share --context <file> --json` | 一次完成采集、校验和上传；也支持上传已经生成的包 |
 | `xj-dev repro restore <zip> [--target <new-dir>] --json`（本地已实现） | 校验并恢复新工作树和数据，显式 `up` 后 `repro verify <zip>` 记录实际 HTTP 步骤结果；团队下载另行接入 |
 
-`member invite` 默认准备普通开发权限，由维护者通过已有管理通道生成限时、单设备邀请；具体字段与重试规则见[首次接入](development-access-operations.md#首次使用的目标流程)。邀请交接后由成员 Agent 继续，不要求成员手工编辑 SSH 配置、复制公钥到服务器或每天重新建立隧道。
+`access invite` 明确指定 developer/maintainer、应用 teacher/student 及 page/node 范围，由维护者通过已有管理通道生成限时、单设备邀请；具体字段与重试规则见[当前接入入口](development-access-operations.md#当前工具入口)。邀请交接后由成员 Agent 继续，不要求成员手工编辑 SSH 配置、复制公钥到服务器或每天重新建立隧道。
 
 每个命令返回带版本的 JSON：成功状态、环境 ID、产物或页面地址、能力状态、检查结果和下一步；失败返回稳定错误码、失败阶段与可重试方式。日志与最终结果分开，凭据不出现在输出中。`share` 失败后保留已经完成的本地包，重试上传无需重新抓取变化中的现场。
 
@@ -206,7 +207,7 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 | 已核对的范围 | 当前事实 | 实施时的处理 |
 | --- | --- | --- |
 | 原 PowerShell 页面/节点入口与公共 SSH 解析器 | 已迁入 `xj-dev use` / `node` / `src/connection.mjs` 并删除（#128） | 单一跨平台连接路径，旧获准配置仅由新解析器只读适配 |
-| 原连接 JSON 示例 | 已迁入 [connection.example.json](../tools/xj-dev/connection.example.json) 并删除旧模板（#128） | `sshd-members.example.conf` 仍是有效的服务端权限模板，继续保留 |
+| 原连接 JSON 示例 | #129 以 join 自动生成配置，已删除手填 connection 示例；既有已批准 connection-v1 继续兼容 | 新成员由固定 helper 配置受限 SSH；`sshd-members.example.conf` 只供既有预发身份维护，不作为新成员加入步骤 |
 | `tools/i0-hdl/xunjie-local.ps1`、`local-application-host.mjs`、旧业务初始化/证据脚本及对应测试 | 已由 `tools/xj-dev` 替代并删除（#127） | 执行 VM 准备（`local-node-setup.*`）、冻结镜像接收、`fixtures/hdl-reference.json` 与 `seed-local-courses.mjs` 仍被引用，保留在 [i0-hdl README](../tools/i0-hdl/README.md) 说明；`seed-local-courses.mjs` 指向退役宿主的独立 CLI 和无调用场景逻辑已删除（#130），仅保留 `i0-cloud/publish-demo-projects.mjs` 复用的 `verifyCompletionReceipt` |
 | `tools/i0-hdl/README.md`、`tools/teacher-workflow/`、`tools/a0-review/` 及相关调用；`tools/i0-ui55/README.md`、`tools/i0-shared/README.md` | 旧操作步骤、占位说明与受控验证工具已删除（#127；a0-review 的检查对象文档已不存在且无引用），i0-hdl README 改写为保留范围说明 | 活跃源码、Skill、README 与当前设计文档中的旧命令、路径和链接已同步清零；`apps/teaching/tests/evidence/` 下的历史验收证据是当时的事实快照，保留旧文件名，不作为当前用法；历史事实留在 Git 历史与归档 |
 | 仓库外旧连接文件、SSH 配置片段、专属证书、登记密钥、启动记录与受管进程 | 可能仍由成员或当前运行环境使用 | 迁移时生成本工具拥有资源的清单，完成目标切换再移除失效项；仅处理明确归属的旧资源，不扫描删除通用 SSH 配置、其他项目或业务数据 |
@@ -216,4 +217,4 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 
 清理验收同时看文件删除和引用消失：活跃代码与当前说明不再引导使用旧命令；配置没有只由旧入口消费的字段；正常启动、停止、连接与节点能力按保留范围仍可用；干净 checkout 能从统一入口完成已交付流程。历史事实报告若保留旧文件名，应明确是当时事实，不能保留断裂的“当前用法”链接。`docs/archive/` 继续遵守仓库归档隔离规则，不因清理任务恢复为当前操作依据。
 
-本轮已交付 `tools/xj-dev` CLI（macOS 与 Windows 实测通过 doctor/up/status/down、双环境隔离、幂等启动、端口冲突诊断与浏览器全链路验收；Windows 另验证后端源码修改、停止进程及重启保留反馈），并删除其替代的旧本机宿主实现与占位说明；三模式 `use` 与受管页面/登记节点连接已由 #128 接管；成员接入、复现包与普通用户安装流程另按对应票交付。
+本轮已交付 `tools/xj-dev` CLI（macOS 与 Windows 实测通过 doctor/up/status/down、双环境隔离、幂等启动、端口冲突诊断与浏览器全链路验收；Windows 另验证后端源码修改、停止进程及重启保留反馈），并删除其替代的旧本机宿主实现与占位说明；三模式 `use` 与受管页面/登记节点连接已由 #128 接管；成员接入已有 #129 工程实现，复现包与基线由 #130 交付；真实新候选接入与普通用户安装隔离分别验收。

@@ -10,7 +10,7 @@ import { ApiError, domainError } from '../app/errors.ts';
 import { parseRequest } from '../app/validation.ts';
 import type { SyntheticDatabase, Transaction } from '../db/transaction.ts';
 import { createPasswordVerifier, type PasswordRecord } from './password.ts';
-import { absoluteLifetime, createSessionStore, digest, readActiveSession } from './session-store.ts';
+import { absoluteLifetime, createSessionStore, digest, loginPermitted, readActiveSession } from './session-store.ts';
 import { sessionViewSchema } from '../../contracts/access/index.ts';
 import { hasDisplayColumn, optionalDisplayText } from './display-text.ts';
 
@@ -20,6 +20,8 @@ export interface VerificationOptions extends AppOptions {
   signingSecret: string;
   now?: () => number;
   allowedLoginUserIds?:string[];
+  /** Optional host policy, evaluated for every new login and existing session. */
+  loginAuthorization?: (userId: string) => boolean;
 }
 const loginSchema = z.strictObject({ loginName: z.string().min(1).max(128), password: z.string().min(1).max(1024) });
 const windowLength = 15 * 60 * 1000;
@@ -32,7 +34,7 @@ export async function createAccessApp(options: VerificationOptions) {
   const db = options.db;
   if(options.allowedLoginUserIds&&(!options.allowedLoginUserIds.length||options.allowedLoginUserIds.some(id=>typeof id!=='string'||!id||id.length>128)
     ||new Set(options.allowedLoginUserIds).size!==options.allowedLoginUserIds.length))throw new ApiError('INVALID_CONFIGURATION');
-  const allowedLoginUsers=options.allowedLoginUserIds?new Set(options.allowedLoginUserIds):undefined;
+  const allowedLoginUsers=options.loginAuthorization ?? (options.allowedLoginUserIds?new Set(options.allowedLoginUserIds):undefined);
   const app = createApp(options);
   const persistence = createSessionStore(db, now, allowedLoginUsers);
   const verifyPassword = await createPasswordVerifier();
@@ -158,7 +160,7 @@ export async function createAccessApp(options: VerificationOptions) {
     const record: PasswordRecord | undefined = user && Buffer.isBuffer(user.password_hash) && Buffer.isBuffer(user.salt)
       ? { hash: user.password_hash, salt: user.salt } : undefined;
     const valid = await verifyPassword(input.password, record);
-    if (!valid || !user || user.disabled_at_ms !== null || allowedLoginUsers&&!allowedLoginUsers.has(String(user.id))) {
+    if (!valid || !user || user.disabled_at_ms !== null || !loginPermitted(allowedLoginUsers,String(user.id))) {
       persisted(tx => { for (const bucket of reservations) tx.run('UPDATE login_attempt_windows SET failure_count=failure_count+1 WHERE kind=? AND bucket_hash=? AND window_start_ms=?', bucket.kind, bucket.hash, bucket.start); });
       throw new ApiError('UNAUTHENTICATED');
     }

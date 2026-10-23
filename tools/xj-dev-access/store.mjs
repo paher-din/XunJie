@@ -1,18 +1,22 @@
 import { DatabaseSync, backup } from 'node:sqlite';
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from 'node:crypto';
-import { chmodSync, mkdirSync, readFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { digest, opaque, publicKey, requireAccess, verifyProof } from '../xj-dev/src/enrollment-protocol.mjs';
 
 export function openAccessStore(file, credentialKeyFile, serviceId, now = Date.now) {
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   const key = readFileSync(credentialKeyFile); requireAccess(key.length === 32, 'CREDENTIAL_KEY_INVALID');
+  if (existsSync(file)) {
+    const stat = lstatSync(file), header = stat.isFile() && !stat.isSymbolicLink() && stat.size >= 100 ? readFileSync(file).subarray(0, 100) : null;
+    requireAccess(header?.subarray(0, 16).toString() === 'SQLite format 3\0' && header.readUInt32BE(68) === 0x584a4143, 'ACCESS_DATABASE_INVALID');
+  }
   const db = new DatabaseSync(file); chmodSync(file, 0o600);
-  db.exec(`PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;
+  db.exec(`PRAGMA application_id=${0x584a4143}; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;
     CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS members (id TEXT PRIMARY KEY, label TEXT NOT NULL, team_role TEXT NOT NULL, course_id TEXT NOT NULL, app_role TEXT NOT NULL, credential TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'active');
     CREATE TABLE IF NOT EXISTS invitations (id TEXT PRIMARY KEY, secret_hash TEXT UNIQUE NOT NULL, member_id TEXT NOT NULL REFERENCES members(id), expires_at INTEGER NOT NULL, capabilities TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'available', device_id TEXT);
-    CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, member_id TEXT NOT NULL REFERENCES members(id), public_key TEXT UNIQUE NOT NULL, capabilities TEXT NOT NULL, ssh_ready INTEGER NOT NULL DEFAULT 0, app_ready INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL DEFAULT 'pending', close_ready INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, member_id TEXT NOT NULL REFERENCES members(id), public_key TEXT UNIQUE NOT NULL, capabilities TEXT NOT NULL, ssh_username TEXT, ssh_ready INTEGER NOT NULL DEFAULT 0, app_ready INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL DEFAULT 'pending', close_ready INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS challenges (id TEXT PRIMARY KEY, subject TEXT NOT NULL, public_key TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL, method TEXT NOT NULL, path TEXT NOT NULL, body_hash TEXT NOT NULL, consumed INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, at INTEGER NOT NULL, operation TEXT NOT NULL, resource_id TEXT NOT NULL, result TEXT NOT NULL);`);
   db.prepare("INSERT OR IGNORE INTO metadata VALUES ('serviceId',?)").run(serviceId);
@@ -97,14 +101,14 @@ export function openAccessStore(file, credentialKeyFile, serviceId, now = Date.n
     db, tx, member, device, activeDevice, createInvitation, issueChallenge, authenticateProof,
     credentials: id => unseal(member(id).credential),
     identity(id) { const d = activeDevice(id), m = member(d.member_id); return { memberId: m.id, deviceId: d.id, teamRole: m.team_role, capabilities: JSON.parse(d.capabilities) }; },
-    stage(id, stage) { requireAccess(['ssh_ready', 'app_ready'].includes(stage)); activeDevice(id); db.prepare(`UPDATE devices SET ${stage}=1 WHERE id=?`).run(id); },
+    stage(id, stage, receipt = {}) { requireAccess(['ssh_ready', 'app_ready'].includes(stage)); activeDevice(id); db.prepare(`UPDATE devices SET ${stage}=1 WHERE id=?`).run(id); if (receipt.username) db.prepare('UPDATE devices SET ssh_username=? WHERE id=?').run(receipt.username, id); },
     activate(id) { activeDevice(id); db.prepare("UPDATE devices SET state='active' WHERE id=? AND ssh_ready=1 AND app_ready=1").run(id); },
     denyDevice(id) { requireAccess(device(id), 'DEVICE_NOT_FOUND', 404); tx(() => { db.prepare("UPDATE devices SET state='revoked' WHERE id=?").run(id); db.prepare("UPDATE invitations SET state='revoked' WHERE device_id=?").run(id); audit('revoke-device', id, 'denied'); }); },
     closed(id) { db.prepare('UPDATE devices SET close_ready=1 WHERE id=?').run(id); audit('revoke-device', id, 'closed'); },
     denyMember(id) { requireAccess(member(id), 'MEMBER_NOT_FOUND', 404); tx(() => { db.prepare("UPDATE members SET state='revoked' WHERE id=?").run(id); db.prepare("UPDATE invitations SET state='revoked' WHERE member_id=?").run(id); db.prepare("UPDATE devices SET state='revoked' WHERE member_id=?").run(id); audit('revoke-member', id, 'denied'); }); return db.prepare('SELECT * FROM devices WHERE member_id=?').all(id); },
     revokeInvitation(id) { requireAccess(db.prepare('SELECT id FROM invitations WHERE id=? AND device_id IS NULL').get(id), 'INVITATION_ALREADY_BOUND', 409); db.prepare("UPDATE invitations SET state='revoked' WHERE id=?").run(id); },
     inspect() { return { members: db.prepare('SELECT id,label,team_role,course_id,app_role,state FROM members').all(), devices: db.prepare('SELECT id,member_id,capabilities,ssh_ready,app_ready,state,close_ready FROM devices').all(), invitations: db.prepare('SELECT id,member_id,expires_at,state,device_id FROM invitations').all() }; },
-    async snapshot(destination) { await backup(db, destination); chmodSync(destination, 0o600); },
+    async snapshot(destination) { requireAccess(!existsSync(destination), 'BACKUP_TARGET_EXISTS'); await backup(db, destination); chmodSync(destination, 0o600); },
     close() { db.close(); },
   };
 }

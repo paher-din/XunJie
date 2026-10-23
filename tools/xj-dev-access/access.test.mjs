@@ -14,13 +14,13 @@ function fixture() {
   for (const key of keys) execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key], { stdio: 'ignore' });
   const keyFile = join(root, 'credential.key'); writeFileSync(keyFile, randomBytes(32), { mode: 0o600 });
   let clock = Date.now();
-  const store = openAccessStore(join(root, 'access.sqlite'), keyFile, 'test-access-service', () => clock);
+  let store = openAccessStore(join(root, 'access.sqlite'), keyFile, 'test-access-service', () => clock);
   const invite = options => store.createInvitation({ label: 'test member', teamRole: 'developer', appRole: 'student', courseId: 'synthetic-course', ttlSeconds: 60, capabilities: ['page'], ...options });
   const proof = (invitation, index = 0, path = '/v1/enroll', body = { invitationSecret: invitation.secret }) => {
     const challenge = store.issueChallenge({ publicKey: readFileSync(keys[index] + '.pub', 'utf8'), invitationSecret: invitation.secret, method: 'POST', path, bodyHash: digest(JSON.stringify(body)) });
     return { challengeId: challenge.challengeId, signature: signProof(keys[index], challenge), body };
   };
-  return { root, store, keys, invite, proof, advance: ms => { clock += ms; }, close() { store.close(); rmSync(root, { force: true, recursive: true }); } };
+  return { root, get store() { return store; }, keys, invite, proof, advance: ms => { clock += ms; }, reopen() { store.close(); store = openAccessStore(join(root, 'access.sqlite'), keyFile, 'test-access-service', () => clock); }, close() { store.close(); rmSync(root, { force: true, recursive: true }); } };
 }
 
 test('first valid key binds one device; same-key recovery is idempotent and proof replay is rejected', () => {
@@ -63,5 +63,23 @@ test('device/member deny persists before cleanup; other devices remain active an
     f.store.denyMember(a.memberId);
     assert.throws(() => f.store.identity(db.id), { code: 'DEVICE_REVOKED' });
     assert.equal(f.store.inspect().devices.length, 2, 'retained records are not deleted');
+  } finally { f.close(); }
+});
+
+test('restart and consistent snapshot retain device binding, completed stages and encrypted credentials', async () => {
+  const f = fixture();
+  try {
+    const i = f.invite(), d = f.store.authenticateProof(f.proof(i), '/v1/enroll');
+    const credentialDigest = digest(f.store.credentials(i.memberId).password);
+    f.store.stage(d.id, 'ssh_ready', { username: 'xjd_' + d.id.replaceAll('-', '').slice(0, 28) });
+    f.reopen();
+    assert.equal(f.store.device(d.id).ssh_ready, 1);
+    assert.equal(f.store.device(d.id).app_ready, 0);
+    assert.equal(digest(f.store.credentials(i.memberId).password), credentialDigest);
+    assert.equal(f.store.authenticateProof(f.proof(i), '/v1/enroll').id, d.id);
+    const snapshot = join(f.root, 'snapshot.sqlite');
+    await f.store.snapshot(snapshot);
+    const copy = openAccessStore(snapshot, join(f.root, 'credential.key'), 'test-access-service');
+    try { assert.equal(copy.device(d.id).ssh_ready, 1); } finally { copy.close(); }
   } finally { f.close(); }
 });
