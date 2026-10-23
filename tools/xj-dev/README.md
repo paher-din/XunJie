@@ -14,6 +14,8 @@ node tools/xj-dev/xj-dev.mjs down       # 停止本工具管理的进程；不�
 - 所有命令把版本化 JSON（`xj-dev/result-v1`）写到 stdout，日志在 stderr；失败按 `stage`/`code` 诊断并给出恢复动作。`--json` 可省略。
 - `--worktree <dir>` 显式指定工作树（默认从当前目录向上查找 `.git`）；`--instance <name>` 在同一工作树再起一套完全独立的环境（端口、数据、浏览器身份均隔离）。
 - 运行时需要精确的 Node 24.21.0；CLI 会自动重定向到受管运行时（`~/.xunjie/xj-dev/runtime/`，缺失时按 doctor 的恢复提示安装）。
+- `better-sqlite3@13.0.3` 按锁文件从源码构建。Windows 需 Python 3 与 Visual Studio 2022 Build Tools 的「使用 C++ 的桌面开发」工作负载（含 Windows SDK）。可用 `winget install --id Microsoft.VisualStudio.2022.BuildTools --exact --override "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"` 安装构建工具。
+- 开发证书生成需要 OpenSSL 在 PATH 中可用；Windows 可使用 Git for Windows 或 MSYS2 提供的 OpenSSL。
 
 一次完整会话（输出为要点节选，实际为单个 JSON）：
 
@@ -96,4 +98,6 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 | `BASELINE_MARKER_MISSING` | 数据库在但基线标记缺失（曾手工删改）；`down` 后删除环境目录重建 |
 | `LOCK_HELD` | 另一进程正在操作该环境；确认其退出后可删环境目录中的 `lock` |
 
-平台状态：macOS 已完整验收（工程 + 浏览器）；Windows 尚未实测。
+平台状态：macOS 与 Windows 11 x64（10.0.26200.9711）已实机验收，均使用 Node 24.21.0。
+
+Windows 实测结果（2026-10-23）：xj-dev 23/23；student 类型检查、构建及 684 项测试通过；teaching 类型检查、构建及 525 项测试通过（另有 24 项依赖外部执行环境的测试跳过）。Chromium 完成登录、课程、保存、冻结、提交、教师反馈和学生读取，并实际修改组件源码验证 HMR。另验证后端源码修改后仅 backend 重启、API 响应更新，以及 down 后自有 PID 全部退出、重启保留原反馈。验收结束已停止该环境，保留独立开发数据。执行节点、模型与教学效果不在本次验证范围内。
