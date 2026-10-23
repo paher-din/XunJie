@@ -6,7 +6,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
-import { closeSync, constants, copyFileSync, createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, constants, copyFileSync, cpSync, createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -264,7 +264,11 @@ export async function restoreEncryptedBackup(options) {
         } finally { db.close(); }
       }
       mkdirSync(target, { recursive: true, mode: 0o700 });
-      for (const entry of readdirSync(extracted)) renameSync(join(extracted, entry), join(target, entry));
+      for (const entry of readdirSync(extracted)) {
+        // A recovery target can be on another volume. These are verified,
+        // offline files; copying preserves that support without invoking mv.
+        cpSync(join(extracted, entry), join(target, entry), { recursive: true, force: false, errorOnExist: true });
+      }
       return { status: 'restored', target, files: manifest.files.map(entry => entry.path), databasesVerified: verified,
         label: manifest.label, createdAt: manifest.createdAt };
     } finally {
