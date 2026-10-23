@@ -276,6 +276,23 @@ test('ordinary recovery files cannot silently copy a SQLite database or journal'
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('damaged or unfinished database files cannot be archived as ordinary model data', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-broken-db-'));
+  try {
+    writeFileSync(join(root, 'backup.key'), randomBytes(32));
+    const { settings } = writeBackupConfig(root);
+    const broken = join(settings.personalModelsDirectory, 'unfinished.db');
+    writeFileSync(broken, 'not a SQLite database');
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /file is not a database|SOURCE_DATABASE_INTEGRITY_FAILED/);
+    assert.ok(!existsSync(settings.outputDirectory));
+    settings.personalModelsDirectory = '';
+    settings.extraFiles = [broken];
+    writeFileSync(join(root, 'backup-config.json'), JSON.stringify(settings));
+    await assert.rejects(createEncryptedBackup(backupOptions(root)), /SQLITE_REQUIRES_BACKUP_API/);
+    assert.ok(!existsSync(settings.outputDirectory));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the encryption key stays outside the archive even through a hardlink or directory source', async () => {
   const root = mkdtempSync(join(tmpdir(), 'xunjie-backup-key-'));
   try {
