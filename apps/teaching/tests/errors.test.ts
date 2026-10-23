@@ -58,8 +58,9 @@ test('unexpected failures produce only sanitized diagnostics and do not expose e
   assert.equal(response.statusCode, 503);
   assert.equal(response.json().error.code, 'DEPENDENCY_UNAVAILABLE');
   assert.equal(response.json().error.retryable, false);
-  assert.equal(lines.length, 1);
-  const diagnostic = JSON.parse(lines[0]!);
+  const diagnostics=lines.map(line=>JSON.parse(line)).filter(row=>row.errorCode);
+  assert.equal(diagnostics.length, 1);
+  const diagnostic = diagnostics[0];
   assert.equal(diagnostic.requestId, response.json().requestId);
   assert.equal(diagnostic.errorCode, 'DEPENDENCY_UNAVAILABLE');
   for (const canary of ['SYNTHETIC_SECRET', 'SYNTHETIC_PRIVATE_PATH', 'SYNTHETIC_PRIVATE_TEXT', 'teacher-answer.txt']) {

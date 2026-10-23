@@ -38,10 +38,52 @@ $ node tools/xj-dev/xj-dev.mjs up --json
 
 ## 首次启动之后
 
-`up` 输出的 `page.url` 是唯一的浏览器入口（`https://127.0.0.1:<端口>`）。首次需信任本地开发 CA（按 doctor/up 输出提示执行一次 `security add-trusted-cert`），或在浏览器临时继续。
+`up` 输出的 `page.url` 是唯一的浏览器入口（`https://127.0.0.1:<端口>`）。首次按下节信任本次本地开发 CA，再使用正常证书校验打开页面。浏览器证书告警、临时继续、`ignoreHTTPSErrors` 或关闭 TLS 校验都不能作为 HTTPS/浏览器验收通过。
 
-撤销 CA 信任（不再需要本地环境时）：macOS 在「钥匙串访问」中删除 `XunJie Local Development CA` 证书，或执行
-`security delete-certificate -c "XunJie Local Development CA"`；再删除 `~/.xunjie/xj-dev/ca/`。Windows 用 `certmgr.msc` 在「受信任的根证书颁发机构」中删除同名证书。
+### 开发 CA 的系统信任与精确撤销
+
+CA 路径以 `doctor`/`up` 的提示为准，默认是 `~/.xunjie/xj-dev/ca/ca-cert.pem`；`XJ_DEV_HOME` 改根时须使用对应文件。先核对这是自己本次环境的 CA，记录指纹与导入前是否已存在，只撤销本次新增的信任。系统要求密码、管理员权限或 UAC 时由本机所有者确认，工具不会绕过系统确认。邀请内的远端 CA 用于工具连接校验，本节导入的是浏览器访问本机入口所用的开发 CA。
+
+macOS 使用当前用户的 login keychain（按系统提示确认）：
+
+```sh
+CA="$HOME/.xunjie/xj-dev/ca/ca-cert.pem" # 使用 doctor/up 给出的实际路径
+openssl x509 -in "$CA" -noout -fingerprint -sha256
+openssl x509 -in "$CA" -noout -fingerprint -sha1
+security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$CA"
+```
+
+在「钥匙串访问」中按该证书指纹核对信任并重新打开浏览器。结束本次验收、确认没有环境仍使用它后，只删除本次新增的那张证书：`security delete-certificate -Z <本次CA的SHA1指纹去掉冒号> "$HOME/Library/Keychains/login.keychain-db"`。不要按同名 CN 批量删除，也不要移除原先已有的证书。
+
+Windows 在有 **LocalMachine Root 写权限**的 PowerShell 中执行下列脚本；普通会话权限不足时需由本机所有者打开管理员 PowerShell 并确认 UAC。实际 Windows 主机曾对 `CurrentUser Root` 的 Add 返回 `ERROR_NOT_SUPPORTED`；同机所有者使用下述 LocalMachine 方法已完成添加、指纹读回与精确移除。能 Open 不代表能 Add，必须检查读回结果：
+
+```powershell
+$caPath = Join-Path $env:USERPROFILE '.xunjie\xj-dev\ca\ca-cert.pem' # 替换为实际路径
+$pem = [IO.File]::ReadAllText($caPath)
+$der = [Convert]::FromBase64String(($pem -replace '-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s', ''))
+$ca = [Security.Cryptography.X509Certificates.X509Certificate2]::new($der)
+$thumbprint = $ca.Thumbprint
+$store = [Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
+$store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+try {
+  $existed = @($store.Certificates | Where-Object Thumbprint -eq $thumbprint).Count -gt 0
+  if (-not $existed) { $store.Add($ca) }
+  if (@($store.Certificates | Where-Object Thumbprint -eq $thumbprint).Count -ne 1) { throw 'CA readback failed' }
+  [pscustomobject]@{ Thumbprint = $thumbprint; ExistedBefore = $existed; Readback = $true }
+} finally { $store.Close() }
+```
+
+记录输出，重新打开浏览器并确认正常 HTTPS。清理时仅当 `ExistedBefore` 为 `False`、确认没有环境仍使用此 CA，才在同等权限 PowerShell 中重新加载**同一 CA 文件**并按同一指纹移除：
+
+```powershell
+$store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+try {
+  @($store.Certificates | Where-Object Thumbprint -eq $thumbprint) | ForEach-Object { $store.Remove($_) }
+  if (@($store.Certificates | Where-Object Thumbprint -eq $thumbprint).Count -ne 0) { throw 'CA removal readback failed' }
+} finally { $store.Close() }
+```
+
+不要清空 Root store、按证书名称批量移除或删除其他用户/项目的 CA。若策略阻止系统信任，报告具体权限/策略障碍，交本机所有者处理；这不算浏览器通过。
 
 固定基线 `local-baseline-1` 提供账号 `synthetic-teacher`（教师）与 `synthetic-student`（学生，已分配 C 与数字逻辑任务）。
 **密码不进入仓库与 CLI 输出**：首次构造基线时随机生成，只写在该环境的 `secrets/baseline-accounts.json`（0600，仓库外；`up`/`status` 输出的 `accounts.credentials.file` 给出路径）。
