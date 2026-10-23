@@ -14,6 +14,7 @@
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
 | 已确认的学生主动性设置与无扰检测首版路线、后续验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |
 | 活动恢复、学习证据、学生画像纠正与教师共享边界 | [连续教学方案](references/2026-10-23-continuous-learning-proposal.md) |
+| 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | [工作区交互与状态决议](https://github.com/paher-din/XunJie/issues/116#issuecomment-6370870664)及[可操作原型](../apps/student/prototypes/workspace-state.README.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
 | 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |
 | 教学状态、执行控制与有限运行时的初步取舍 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |
