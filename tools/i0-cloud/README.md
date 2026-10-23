@@ -25,7 +25,7 @@
 
 ## 按产物发布：CI 构建与云端切换
 
-服务器不再构建源码。发布链路是：CI 在 `main` 每次推送后用 ubuntu-24.04 x64 + Node 24.21.0 构建（[cloud-release workflow](../../.github/workflows/cloud-release.yml)），`build-runtime-artifact.mjs` 装配与运行目录相同布局的产物（前端 dist 含 `.gz`/`.br` 预压缩与 `asset-digests.json` 摘要表、teaching 生产依赖含 linux-x64 原生模块、后端运行源码），写出 `manifest.json`（来源提交、git tree、平台、Node 版本、逐文件 sha256、入口摘要、tarball 摘要）并作为 `cloud-<commit>` 标签的 GitHub Release 资产发布（先 draft 后发布，保证原子可见）。CI 侧只保留最近 5 个 `cloud-*` Release。
+服务器不再构建源码。发布链路是：CI 在 `main` 每次推送后用 ubuntu-24.04 x64 + Node 24.21.0 构建（[cloud-release workflow](../../.github/workflows/cloud-release.yml)），`build-runtime-artifact.mjs` 装配与运行目录相同布局的产物（前端 dist 含 `.gz`/`.br` 预压缩与 `asset-digests.json` 摘要表、teaching 生产依赖含 linux-x64 原生模块、后端运行源码），写出 `manifest.json`（来源提交、git tree、平台、Node 版本、逐文件 sha256 与字节数、入口摘要、tarball 摘要）并作为 `cloud-<commit>` 标签的 GitHub Release 资产发布（先 draft 后发布，保证原子可见）。CI 侧只保留最近 5 个 `cloud-*` Release。
 
 `deploy-artifact.py` 在服务器上只做校验、备份、装配与切换：
 
@@ -33,7 +33,9 @@
 2. 下载 manifest 与 tarball（流式落盘，分别限 8 MiB / 1 GiB），核对 tarball 摘要后解包到受控 staging（仅允许 `apps/student`、`apps/teaching`、`tools/i0-cloud/cloud-host.mjs` 路径），逐文件重算 sha256 与 manifest 精确比对，入口 HTML/JS 规则与静态摘要表也必须一致。
 3. 磁盘可用空间低于 `minimumFreeBytes`（建议 5 GiB）时拒绝下载与装配（`blocked`/`LOW_DISK`），低于 `warningFreeBytes`（建议 10 GiB）只告警；已有业务不受影响。
 4. SQLite 一致备份当前库（保留最近 `keepBackups` 份部署备份），切换 `current` 符号链接、重启服务，并用 `/health/live`、`/health/ready` 与实际返回的 index/入口 JS 摘要做健康探测；失败自动切回上一个 release 并重启、复测。
-5. 成功后按保留策略清理发布目录：当前版本 + 最近 `keepReleases - 1` 个可回退版本 + 带 `.pinned` 标记的固定版本；清理只作用于部署脚本拥有的 `main-<commit>` 目录，不触碰业务数据、备份目录或外来文件。发布与清理由同一 flock 串行。
+5. 成功后按保留策略清理发布目录：当前版本 + 最近 `keepReleases - 1` 个可回退版本 + 带 `.pinned` 标记的固定版本；清理只作用于部署脚本拥有的 `main-<commit>` 目录，不触碰业务数据、备份目录或外来文件。发布与清理由同一 flock 串行，备份单元复用同一把锁（见下）。
+
+每 5 分钟的定时运行在已是最新时不重新哈希整个运行目录：只按 manifest 逐文件记录的路径与字节数做 stat 形状比对，再探测健康；内容级校验发生在每次下载装配新产物时（逐文件 sha256）与健康探测（实际返回的 index/入口 JS 摘要）。
 
 发布信任边界：Release 发布权限与 `main` 推送权限等同（GitHub contents:write），摘要校验防护传输与装配损坏，不改变来源信任；构建成功不等于发布成功——只有健康探测通过才算部署完成。发布不初始化或迁移业务数据，不合并代码。
 
@@ -46,7 +48,7 @@
 | `minimumFreeBytes` / `warningFreeBytes` | 低磁盘拒绝/预警阈值（字节） |
 | `keepReleases` / `keepBackups` | 可回退发布目录数（含当前）与部署备份数 |
 
-`--status` 输出远端/已部署提交、健康、磁盘与内存水位、发布与备份清单、上次部署结果和 `actions` 维护建议；接到既有云监控即可（建议告警：发布单元失败、`status=failed`、磁盘越过两级阈值、`MemAvailable` 低于 384 MiB、业务服务非 active）。低磁盘恢复动作用 `--prune` 只执行清理。
+`--status` 输出远端/已部署提交、健康、磁盘与内存水位、CPU 核数与负载、发布与备份清单、上次部署结果和 `actions` 维护建议；接到既有云监控即可（建议告警：发布单元失败、`status=failed`、磁盘越过两级阈值、`MemAvailable` 低于 384 MiB、负载持续超过两倍核数、业务服务非 active）。低磁盘恢复动作用 `--prune` 只执行清理。
 
 ## 加密备份与隔离恢复
 
@@ -54,13 +56,13 @@
 
 恢复必须指向空的隔离目录：`--restore <archive> --key-file <file> --target <empty-dir> --teaching-root <dir>`，脚本解密验签、解包后逐文件核对摘要，并对每个库文件做只读 integrity/外键检查，全部通过才报告 `restored`。密钥错误或归档被篡改时认证失败且目标目录不被写入。接入服务尚未交付，其数据不在本备份范围内，本票不声称全链路备份验收。
 
-日常运行由 `xunjie-backup-daily.timer`（03:00，保留 7 份）与 `xunjie-backup-weekly.timer`（周日 03:30，保留 4 份）触发；按 label 分别清理，只删除本脚本命名的归档。恢复演练应在隔离环境（独立目录、无生产配置）执行一次并记录结果，不要在生产数据目录上直接演练。
+日常运行由 `xunjie-backup-daily.timer`（03:00，保留 7 份）与 `xunjie-backup-weekly.timer`（周日 03:30，保留 4 份）触发；按 label 分别清理，只删除本脚本命名的归档。两个备份单元的 `ExecStart` 用 `flock` 持有部署脚本同一把锁（`<workDirectory>/deploy-artifact.lock`），部署与备份、备份与备份互不重叠；换部署配置时需同步单元里的锁路径。恢复演练应在隔离环境（独立目录、无生产配置）执行一次并记录结果，不要在生产数据目录上直接演练。
 
 ## 静态资源与资源预算
 
 前端构建产物在 CI 阶段预压缩（`.br`/`.gz` 边车，仅小于原文件时生成），宿主静态处理器按 `Accept-Encoding` 选择边车，不做请求期压缩；带内容摘要的 `/assets/**` 返回 `immutable` 一年缓存，入口 HTML 返回 `no-cache` 并带构建期摘要 ETag，新版本与回退各自引用独立发布目录，不会混用资源。2 MiB 以内的小产物一次写出，更大的文件流式转发，不在业务进程整体读入。回环访问的成员页面转发沿用既有 HTTPS 链路。
 
-资源预算候选值见 `xunjie-shared.service` 注释与[运行策略](../../docs/development-access-operations.md)：业务单元预算需先实测五人峰值再启用；维护单元（发布、备份）已按低 CPU/IO 权重与内存上限配置。维护操作经 flock 串行，业务优先。
+资源预算候选值见 `xunjie-shared.service` 注释与[运行策略](../../docs/development-access-operations.md)：业务单元预算需先实测五人峰值再启用；维护单元（发布、备份）已按低 CPU/IO 权重与内存上限配置。部署与备份共用同一把 flock 维护锁串行，业务优先。
 
 ## 当前连接工具怎么调用
 

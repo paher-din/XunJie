@@ -384,10 +384,11 @@ class ArtifactDeployment:
             require(isinstance(entries, list) and entries, 'MANIFEST_FILE_LIST_REQUIRED')
             paths = set()
             for entry in entries:
-                require(isinstance(entry, dict) and set(entry) == {'path', 'sha256'}, 'MANIFEST_FILE_LIST_REQUIRED')
+                require(isinstance(entry, dict) and set(entry) == {'path', 'sha256', 'bytes'}, 'MANIFEST_FILE_LIST_REQUIRED')
                 name = PurePosixPath(entry['path'])
                 require(not name.is_absolute() and '..' not in name.parts and name.parts
-                        and re.fullmatch(r'[0-9a-f]{64}', entry['sha256']) is not None, 'MANIFEST_FILE_LIST_REQUIRED')
+                        and re.fullmatch(r'[0-9a-f]{64}', entry['sha256']) is not None
+                        and isinstance(entry['bytes'], int) and entry['bytes'] >= 0, 'MANIFEST_FILE_LIST_REQUIRED')
                 require(entry['path'] not in paths, 'MANIFEST_FILE_LIST_REQUIRED')
                 paths.add(entry['path'])
         for key in ('indexSha256', 'entryJsSha256', *(('artifactSha256',) if require_artifact_digest else ())):
@@ -429,6 +430,11 @@ class ArtifactDeployment:
     def file_digests(self, root, prefix):
         root = Path(root)
         return {prefix + path.relative_to(root).as_posix(): digest_file(path)
+                for path in sorted(root.rglob('*')) if path.is_file() and not path.is_symlink()}
+
+    def file_sizes(self, root, prefix):
+        root = Path(root)
+        return {prefix + path.relative_to(root).as_posix(): path.stat().st_size
                 for path in sorted(root.rglob('*')) if path.is_file() and not path.is_symlink()}
 
     def static_entry(self, dist):
@@ -476,6 +482,22 @@ class ArtifactDeployment:
             self.verify_tree(release, manifest)
             return True
         except (OSError, ValueError, KeyError, DeploymentError):
+            return False
+
+    # Steady-state check for the every-five-minutes timer and --status: a full
+    # digest pass over node_modules would compete with the business for CPU and
+    # IO, so an already-verified release is only compared by path and size.
+    # Truncation, deletions and stray files are caught; in-place same-size
+    # damage is left to the publish-time verify and the served-asset probe.
+    def tree_shape_matches(self, release, manifest):
+        try:
+            expected = {entry['path']: entry['bytes']
+                        for key in ('runtimeFiles', 'staticFiles') for entry in manifest[key]}
+            actual = {**self.file_sizes(release / 'apps/teaching', 'apps/teaching/'),
+                      **self.file_sizes(release / 'tools/i0-cloud', 'tools/i0-cloud/'),
+                      **self.file_sizes(release / 'apps/student/dist', '')}
+            return actual == expected
+        except (OSError, ValueError, KeyError, TypeError):
             return False
 
     # --- release assembly, backup, switch and health ---------------------------
@@ -573,7 +595,7 @@ try{
         manifest = self.deployed_manifest()
         deployed = manifest.get('commit')
         active = self.service_active()
-        aligned = active and self.matches_manifest(self.current_release(), manifest)
+        aligned = active and self.tree_shape_matches(self.current_release(), manifest)
         health = None
         if aligned:
             try:
@@ -618,10 +640,17 @@ try{
         memory = self.available_memory_bytes()
         if memory is not None and memory < 384 * 1024 * 1024:
             actions.append('available memory is low: inspect the application service before it degrades')
+        try:
+            load = [round(value, 2) for value in os.getloadavg()]
+        except OSError:
+            load = None
+        cpus = os.cpu_count()
+        if load is not None and cpus and load[0] > 2 * cpus:
+            actions.append('cpu load is above twice the vCPU count: inspect the application and maintenance units')
         return {'remoteCommit': remote, 'deployedCommit': deployed,
                 'upToDate': remote == deployed and aligned, 'serviceActive': active, 'health': health,
                 'artifactPublished': artifact, 'disk': disk,
-                'memoryAvailableBytes': memory,
+                'memoryAvailableBytes': memory, 'cpuCount': cpus, 'loadAverage': load,
                 'releases': [{'name': entry['name'], 'commit': entry['commit'], 'pinned': entry['pinned']}
                              for entry in releases],
                 'lastDeployment': previous, 'actions': actions}
@@ -637,7 +666,7 @@ try{
         try:
             commit = self.remote_commit()
             current_manifest = self.deployed_manifest()
-            if current_manifest.get('commit') == commit and self.service_active() and self.matches_manifest(previous, current_manifest):
+            if current_manifest.get('commit') == commit and self.service_active() and self.tree_shape_matches(previous, current_manifest):
                 try:
                     require(self.service_matches_current(), 'RUNNING_RELEASE_MISMATCH')
                     self.probe_once(current_manifest)

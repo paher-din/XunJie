@@ -97,10 +97,12 @@ def manifest_for(root: Path, commit: str, tree: str, index: bytes, script: bytes
                       for path in static_files if path.name != "asset-digests.json"}
     (dist / "asset-digests.json").write_text(json.dumps(static_digests), encoding="utf-8")
     static_files = sorted(path for path in dist.rglob("*") if path.is_file())
-    static_entries = [{"path": path.relative_to(dist).as_posix(), "sha256": sha256(path.read_bytes())} for path in static_files]
+    static_entries = [{"path": path.relative_to(dist).as_posix(), "sha256": sha256(path.read_bytes()),
+                       "bytes": path.stat().st_size} for path in static_files]
     runtime_entries = []
     for base, prefix in ((root / "apps/teaching", "apps/teaching/"), (root / "tools/i0-cloud", "tools/i0-cloud/")):
-        runtime_entries += [{"path": prefix + path.relative_to(base).as_posix(), "sha256": sha256(path.read_bytes())}
+        runtime_entries += [{"path": prefix + path.relative_to(base).as_posix(), "sha256": sha256(path.read_bytes()),
+                             "bytes": path.stat().st_size}
                             for path in sorted(base.rglob("*")) if path.is_file()]
     return {
         "format": "xunjie-runtime-artifact", "version": 1, "commit": commit, "gitTree": tree,
@@ -266,6 +268,29 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.deployment.download_asset.assert_not_called()
         self.deployment.restart_service.assert_not_called()
         self.assert_previous_release()
+
+    def test_steady_state_does_not_rehash_the_runtime_tree(self) -> None:
+        self.deployment.remote_commit = mock.Mock(return_value=OLD_COMMIT)
+        runtime_file = self.old_release / "apps/teaching/server/main.ts"
+        original = runtime_file.read_bytes()
+        damaged = b"export const runtime = 'damage!!';\n"
+        # Same-size in-place damage must stay invisible to the every-five-minutes
+        # run: the timer only compares paths and sizes, publish-time verification
+        # and the served-asset probe own content integrity.
+        self.assertEqual(len(damaged), len(original))
+        runtime_file.write_bytes(damaged)
+        result = self.deployment.apply()
+        self.assertEqual(result["status"], "unchanged")
+        self.deployment.download_asset.assert_not_called()
+        self.assert_previous_release()
+
+    def test_truncated_release_file_breaks_the_unchanged_shortcut(self) -> None:
+        self.deployment.remote_commit = mock.Mock(return_value=OLD_COMMIT)
+        (self.old_release / "apps/teaching/server/main.ts").write_bytes(b"truncated")
+        # The size-only shape check detects the truncation and the deploy path
+        # re-runs; the fixture artifact is for another commit, so verification
+        # fails and rolls back without touching the current release.
+        self.assert_failed_with("MANIFEST_COMMIT_MISMATCH")
 
     def test_missing_artifact_blocks_deploy_and_keeps_business_running(self) -> None:
         self.deployment.published_release = mock.Mock(return_value=None)

@@ -139,7 +139,8 @@ function copyRuntime(source, runtime) {
 }
 
 function fileDigests(root, prefix) {
-  return listFiles(root).map(path => ({ path: prefix + relative(root, path).split('\\').join('/'), sha256: sha256File(path) }));
+  return listFiles(root).map(path => ({ path: prefix + relative(root, path).split('\\').join('/'),
+    sha256: sha256File(path), bytes: statSync(path).size }));
 }
 
 function packTarball(runtime, archive) {

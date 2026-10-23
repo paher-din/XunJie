@@ -5,8 +5,10 @@ After=xunjie-shared.service
 [Service]
 Type=oneshot
 User=root
-ExecStart=/opt/xunjie/node/bin/node /opt/xunjie/current/tools/i0-cloud/backup-retained.mjs --config /etc/xunjie/backup.json --key-file /etc/xunjie/backup.key --label weekly --keep 4
-TimeoutStartSec=10min
+# The lock path must be <workDirectory>/deploy-artifact.lock from /etc/xunjie/deployment.json,
+# so a backup never overlaps a release deployment (both hold the same flock).
+ExecStart=/usr/bin/flock -w 2400 /var/lib/xunjie/work/deploy-artifact.lock /opt/xunjie/node/bin/node /opt/xunjie/current/tools/i0-cloud/backup-retained.mjs --config /etc/xunjie/backup.json --key-file /etc/xunjie/backup.key --label weekly --keep 4
+TimeoutStartSec=45min
 CPUWeight=20
 IOWeight=50
 Nice=15

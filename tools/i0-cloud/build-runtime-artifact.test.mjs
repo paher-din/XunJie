@@ -89,6 +89,12 @@ test('runtime artifact carries per-file digests, pre-compressed static outputs a
       assert.equal(runtimeFiles[excluded], undefined, excluded);
     }
     assert.equal(runtimeFiles['apps/teaching/server/main.ts'], sha256(readFileSync(join(root, 'apps/teaching/server/main.ts'))));
+    // Every manifest entry also records its byte size so the server can compare
+    // the release shape with stat calls alone in the steady state.
+    const sizeOf = files => Object.fromEntries(files.map(file => [file.path, file.bytes]));
+    assert.equal(sizeOf(manifest.staticFiles)['index.html'], statSync(join(dist, 'index.html')).size);
+    assert.equal(sizeOf(manifest.runtimeFiles)['apps/teaching/node_modules/zod/index.js'],
+      statSync(join(root, 'apps/teaching/node_modules/zod/index.js')).size);
 
     const listing = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' }).trim().split('\n');
     for (const name of ['apps/student/dist/index.html', 'apps/student/dist/asset-digests.json',

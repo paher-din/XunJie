@@ -5,7 +5,7 @@
 // the maintainer and is never read into logs or output.
 
 import { spawnSync } from 'node:child_process';
-import { createCipheriv, createDecipheriv, createHash } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { closeSync, constants, copyFileSync, createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -149,7 +149,7 @@ export async function createEncryptedBackup(options) {
 
 async function encryptFile(plain, archive, keyFile) {
   const key = createHash('sha256').update(readFileSync(keyFile)).digest();
-  const iv = createHash('sha256').update(String(process.hrtime.bigint()) + plain).digest().subarray(0, IV_BYTES);
+  const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const descriptor = openSync(archive, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
   closeSync(descriptor);
