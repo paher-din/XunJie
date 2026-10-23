@@ -693,9 +693,12 @@ class ArtifactDeploymentTests(unittest.TestCase):
             result = self.deployment.monitor(self.monitor_config(), dry_run=True)
         metrics = {entry['MetricName']: entry['Value'] for entry in result['metrics']}
         self.assertEqual(metrics['xunjie_application_healthy'], 1)
-        self.assertEqual(metrics['xunjie_deployment_failed'], 1)
+        self.assertEqual(metrics['xunjie_deployment_healthy'], 0)
         self.assertEqual(metrics['xunjie_disk_free_bytes'], 4 * GIB)
         self.assertEqual(metrics['xunjie_memory_available_bytes'], 300 * 1024 * 1024)
+        self.assertEqual(metrics['xunjie_memory_healthy'], 0)
+        self.assertEqual(metrics['xunjie_disk_warning_healthy'], 0)
+        self.assertEqual(metrics['xunjie_disk_floor_healthy'], 0)
         connection.assert_not_called()
         self.assertFalse(Path(self.monitor_config()['statusFile']).exists())
 
@@ -761,7 +764,22 @@ class ArtifactPublicationWorkflowTests(unittest.TestCase):
                 import json, os, pathlib, sys
                 args=sys.argv[1:]
                 state=pathlib.Path(os.environ['GH_TEST_STATE'])
-                if args[:2]==['release','view']:
+                if args[:1]==['release'] and args[1] in ['delete','create','edit']:
+                    with pathlib.Path(os.environ['GH_TEST_MUTATIONS']).open('a') as log:
+                        log.write(json.dumps(args)+'\\n')
+                if args[0]=='api' and '--include' in args:
+                    failure=os.environ.get('QUERY_FAILURE','')
+                    if failure=='transport':sys.exit(1)
+                    if failure in ['403','503']:
+                        print('HTTP/2.0 '+failure+' Error\\r\\n\\r\\n{}');sys.exit(1)
+                    if failure=='malformed':
+                        print('HTTP/2.0 200 OK\\r\\n\\r\\nnot-json');sys.exit(0)
+                    if not state.exists():
+                        print('HTTP/2.0 404 Not Found\\n\\n{}');sys.exit(1)
+                    value=json.loads(state.read_text())
+                    print('HTTP/2.0 200 OK\\n\\n'+json.dumps({'draft':value['isDraft'],'body':value['body']}))
+                elif args[:2]==['release','view']:
+                    if os.environ.get('QUERY_FAILURE'):sys.exit(1)
                     if not state.exists():sys.exit(1)
                     print(state.read_text())
                 elif args[:2]==['release','delete']:
@@ -777,19 +795,22 @@ class ArtifactPublicationWorkflowTests(unittest.TestCase):
             '''))
             gh.chmod(0o755)
             state = root / 'release.json'
+            mutations = root / 'release-mutations.jsonl'
             environment = {**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH'],
                            'RUNNER_TEMP': str(runtime), 'GITHUB_SHA': commit, 'TAG': 'cloud-' + commit,
-                           'GH_TEST_STATE': str(state)}
-            def publish(index, cancel=False):
+                           'GITHUB_REPOSITORY': 'fixture/runtime',
+                           'GH_TEST_STATE': str(state), 'GH_TEST_MUTATIONS': str(mutations)}
+            def publish(index, cancel=False, query_failure=''):
                 checkout = root / ('checkout-' + str(index))
                 git('clone', '--quiet', str(remote), str(checkout))
-                env = {**environment, 'CANCEL_PUBLICATION': '1' if cancel else '0',
+                env = {**environment, 'CANCEL_PUBLICATION': '1' if cancel else '0', 'QUERY_FAILURE': query_failure,
                        'GIT_AUTHOR_DATE': f'2026-10-23T10:0{index}:00Z', 'GIT_COMMITTER_DATE': f'2026-10-23T10:0{index}:00Z'}
                 return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], cwd=checkout,
                                       env=env, capture_output=True, text=True)
             first = publish(1, cancel=True)
             self.assertEqual(first.returncode, 130, first.stderr)
             self.assertTrue(json.loads(state.read_text())['isDraft'])
+            self.assertEqual([json.loads(line)[1] for line in mutations.read_text().splitlines()], ['create'])
             tag = 'refs/tags/cloud-artifact-' + sha256((artifact / 'manifest.json').read_bytes())
             original = git('--git-dir=' + str(remote), 'rev-parse', tag)
             second = publish(2)
@@ -799,6 +820,18 @@ class ArtifactPublicationWorkflowTests(unittest.TestCase):
             self.assertFalse(release['isDraft'])
             binding = json.loads(re.search(r'<!-- xunjie-artifact-v1 (\{[^\n]+\}) -->', release['body'])[1])
             self.assertEqual(binding['artifactCommit'], original)
+            published = state.read_bytes()
+            operations = mutations.read_bytes()
+            rerun = publish(0)
+            self.assertEqual(rerun.returncode, 0, rerun.stderr)
+            self.assertEqual(state.read_bytes(), published)
+            self.assertEqual(mutations.read_bytes(), operations, 'published bound Release must be reused without mutations')
+            for index, failure in enumerate(['403', '503', 'transport', 'malformed'], 4):
+                with self.subTest(query_failure=failure):
+                    unknown = publish(index, query_failure=failure)
+                    self.assertNotEqual(unknown.returncode, 0, 'unknown query errors must not authorize replacing a Release')
+                    self.assertEqual(state.read_bytes(), published)
+                    self.assertEqual(mutations.read_bytes(), operations, 'query failure must not mutate Releases')
             # A conflicting archive under the same manifest name must not reuse
             # the tag or make a Release public, even after an interrupted run.
             release['isDraft'] = True

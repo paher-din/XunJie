@@ -57,12 +57,38 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: cloud-${{ github.sha }}
         run: |
-          # An already-bound published release is immutable, including on re-run.
-          if gh release view "$TAG" --json isDraft,body > "$RUNNER_TEMP/existing-release.json" 2>/dev/null; then
-            if node -e 'const r=require(process.env.RUNNER_TEMP+"/existing-release.json");process.exit(!r.isDraft && r.body.includes("<!-- xunjie-artifact-v1 ") ? 0 : 1)'; then
-              exit 0
-            fi
+          # HTTP 404 is the only lookup failure that authorizes creation.
+          # Permission, transport and server errors must preserve any Release.
+          if gh api --include "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > "$RUNNER_TEMP/release-query.http"; then
+            export RELEASE_QUERY_EXIT=0
+          else
+            export RELEASE_QUERY_EXIT=$?
           fi
+          node -e '
+            const fs=require("node:fs");
+            const http=fs.readFileSync(process.env.RUNNER_TEMP+"/release-query.http","utf8");
+            const status=/^HTTP\/[0-9.]+ ([0-9]{3})[^\n]*\n/.exec(http);
+            let decision;
+            if(status?.[1]==="404" && process.env.RELEASE_QUERY_EXIT!=="0")decision="absent";
+            else if(status?.[1]==="200" && process.env.RELEASE_QUERY_EXIT==="0"){
+              const body=http.split(/\r?\n\r?\n/).slice(1).join("\n\n");
+              const release=JSON.parse(body);
+              if(typeof release.draft!=="boolean" || typeof release.body!=="string")throw Error("Invalid Release lookup response");
+              if(release.draft)decision="replace";
+              else if(!release.body.includes("<!-- xunjie-artifact-v1 "))decision="replace";
+              else {
+                const match=/<!-- xunjie-artifact-v1 (\{[^\n]+\}) -->/.exec(release.body);
+                if(!match)throw Error("Published binding is malformed; preserve Release");
+                const b=JSON.parse(match[1]);
+                if(b.commit!==process.env.GITHUB_SHA || !/^[0-9a-f]{40}$/.test(b.artifactCommit)
+                  || !/^[0-9a-f]{64}$/.test(b.manifestSha256) || !/^[0-9a-f]{64}$/.test(b.artifactSha256))throw Error("Published binding is invalid; preserve Release");
+                decision="reuse";
+              }
+            } else throw Error("Release lookup did not return a confirmed 200/404; preserve Release");
+            fs.writeFileSync(process.env.RUNNER_TEMP+"/release-decision.txt",decision);
+          '
+          decision=$(cat "$RUNNER_TEMP/release-decision.txt")
+          if test "$decision" = reuse; then exit 0; fi
           manifest_sha=$(sha256sum "$RUNNER_TEMP/artifact/manifest.json" | cut -d ' ' -f 1)
           artifact_tag="cloud-artifact-$manifest_sha"
           git config user.name "cloud-release-bot"
@@ -104,7 +130,7 @@ jobs:
           '
           # Legacy unbound releases/drafts may be replaced once during migration.
           # The content-addressed artifact tag is already reachable before this.
-          gh release delete "$TAG" --yes --cleanup-tag || true
+          if test "$decision" = replace; then gh release delete "$TAG" --yes --cleanup-tag; fi
           gh release create "$TAG" \
             "$RUNNER_TEMP/artifact/manifest.json" \
             "$RUNNER_TEMP/artifact/runtime.tar.gz" \
