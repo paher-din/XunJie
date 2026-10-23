@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs';
 import { request } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { AccessError, requireAccess } from '../xj-dev/src/enrollment-protocol.mjs';
@@ -19,7 +20,7 @@ export function adminRequest(socketPath, operation, input) {
 
 // This private stdio endpoint is invoked only through the owner's SSH pipe. Its
 // caller captures the response and writes invitation material to a private file.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
     const socket = process.argv[2]; requireAccess(typeof socket === 'string' && socket.startsWith('/run/'), 'ADMIN_SOCKET_REQUIRED');
     let text = ''; for await (const bytes of process.stdin) { text += bytes; requireAccess(Buffer.byteLength(text) <= 16384, 'REQUEST_TOO_LARGE'); }

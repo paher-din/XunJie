@@ -1,7 +1,7 @@
 // Separate developer-service source bundle. Never added to product artifacts.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -27,7 +27,7 @@ export function prepareDeployment(commit, output, cwd = process.cwd()) {
   writeFileSync(resolve(output, 'deployment.json'), JSON.stringify(receipt, null, 2) + '\n');
   return receipt;
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
     const args = process.argv.slice(2);
     if (args.length !== 4 || args[0] !== '--commit' || args[2] !== '--output') throw new Error('ARGUMENTS_REQUIRED');

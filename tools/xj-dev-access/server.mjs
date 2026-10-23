@@ -1,6 +1,6 @@
 import { createServer as httpsServer } from 'node:https';
 import { createServer as httpServer } from 'node:http';
-import { chmodSync, copyFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ACCESS_PROTOCOL, AccessError, privateJson, requireAccess, writePrivateJson } from '../xj-dev/src/enrollment-protocol.mjs';
 import { openAccessStore } from './store.mjs';
@@ -134,7 +134,7 @@ export function createAccessService(config, adapters = {}) {
   };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   let service;
   try {
     requireAccess(process.version === 'v24.21.0' && process.platform === 'linux', 'LINUX_NODE_24_REQUIRED');
