@@ -12,6 +12,7 @@ import { databaseDriver } from '../src/repro-data.mjs';
 import { decodeZip, digest, encodeZip, jsonBytes } from '../src/repro-archive.mjs';
 import { git } from '../src/repro-code.mjs';
 import { listBaselines, publishBaseline, useBaseline } from '../src/baseline-versions.mjs';
+import { bindingKeys } from '../../../apps/teaching/server/workspace/storage.ts';
 
 const worktree = resolve(import.meta.dirname, '../../..');
 function api(origin, method, path, body, auth) {
@@ -32,7 +33,7 @@ function resign(entries) {
   return encodeZip(entries);
 }
 
-test('capture before stale-editor save; restore actual code/data to another worktree and reproduce VERSION_CONFLICT', { timeout: 300_000 }, async t => {
+test('capture before stale-editor save; restore actual code/data to another worktree and reproduce VERSION_CONFLICT', { timeout: process.platform === 'win32' ? 600_000 : 300_000 }, async t => {
   const root = mkdtempSync(join(tmpdir(), 'xj-repro-e2e-'));
   const previousHome = process.env.XJ_DEV_HOME; process.env.XJ_DEV_HOME = join(root, 'home');
   const source = resolveContext({ worktree, instance: 'repro-' + process.pid });
@@ -138,6 +139,69 @@ test('capture before stale-editor save; restore actual code/data to another work
   assert.equal(git(worktree, ['rev-parse', 'HEAD']), sourceHead);
   assert.equal(git(worktree, ['status', '--porcelain']), sourceStatus);
   await down(receiver);
+
+  await t.test('a successful sync captured before a same-clientSeq retry preserves its original receipt and aliases', async () => {
+    const retrySpec = { ...spec, scenario: { ...spec.scenario, title: 'same-clientSeq retry after a successful save',
+      expected: '重复 clientId/clientSeq 返回原成功回执', observed: 'HTTP 200，作品版本不重复增长', steps: [spec.scenario.steps[0]] } };
+    const retryContext = join(root, 'retry-context.json'), retryFile = join(root, 'retry.zip'), retryTarget = join(root, 'retry-receiver');
+    writeFileSync(retryContext, JSON.stringify(retrySpec)); targets.push(retryTarget);
+    const version = withDb(source, db => JSON.parse(db.prepare('SELECT attempt_json FROM attempts WHERE attempt_id=?').get(before.attempt_id).attempt_json).workspaceRevision);
+    // Seed well-formed unrelated history in this same course, including the selected
+    // student's other task. Its free text, audit and reverse bindings must stay out.
+    withDb(source, db => {
+      const original = db.prepare('SELECT * FROM command_receipts WHERE command=?').get('shared.workspace.sync');
+      const event = db.prepare('SELECT * FROM audit_events WHERE server_seq=?').get(original.server_seq);
+      for (const [suffix, actor] of [['other-task', 'synthetic-student'], ['other-member', 'unselected-member']]) {
+        const attemptId = `unselected-${suffix}`, marker = `UNSELECTED_${suffix.toUpperCase().replaceAll('-', '_')}_HISTORY`;
+        const replace = value => JSON.parse(JSON.stringify(value).replaceAll(before.attempt_id, attemptId).replaceAll('synthetic-student', actor));
+        const row = replace(before), attempt = JSON.parse(row.attempt_json);
+        db.prepare('INSERT INTO attempts VALUES (?,?,?,?,?,?,?,?)').run(attemptId, row.course_id, actor, row.assignment_id, row.activity_id,
+          row.attempt_revision, row.decision_epoch, JSON.stringify(attempt));
+        const receipt = replace(JSON.parse(original.result_json)), audit = replace(JSON.parse(event.object_ref_json));
+        receipt.receiptId = `${suffix}-receipt`; receipt.commandId = `${suffix}-command`;
+        receipt.serverSeq = Number(db.prepare('SELECT MAX(server_seq)+1 AS n FROM audit_events').get().n);
+        receipt.identity.idempotencyKey = suffix; receipt.result.reviewCanary = marker;
+        audit.eventId = `${suffix}-event`; audit.serverSeq = receipt.serverSeq; audit.payloadRef = receipt.receiptId;
+        db.prepare('INSERT INTO audit_events VALUES (?,?,?,?,?,?,?,?,?,?)').run(receipt.serverSeq, audit.eventId, actor, original.course_id,
+          receipt.commandId, event.command, receipt.identity.target, JSON.stringify(audit), original.recovery_generation, event.committed_at_ms);
+        db.prepare('INSERT INTO command_receipts VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(receipt.receiptId, receipt.commandId, actor, original.course_id,
+          original.command, receipt.identity.target, suffix, original.request_hash, original.recovery_generation, receipt.serverSeq, JSON.stringify(receipt));
+        for (const key of bindingKeys(receipt.identity)) db.prepare('INSERT INTO workspace_command_bindings VALUES (?,?,?,?)')
+          .run(key.kind, key.key, receipt.receiptId, JSON.stringify(receipt.identity));
+      }
+    });
+    const capturedRetry = await captureRepro(source, { contextFile: retryContext, out: retryFile });
+    const retryEntries = decodeZip(readFileSync(retryFile));
+    for (const marker of ['UNSELECTED_OTHER_TASK_HISTORY', 'UNSELECTED_OTHER_MEMBER_HISTORY', 'unselected-other-task', 'unselected-other-member'])
+      assert.equal(retryEntries.get('data/shared.sqlite').includes(Buffer.from(marker)), false);
+    assert.equal(capturedRetry.package.manifest.data.tables.command_receipts, captured.package.manifest.data.tables.command_receipts + 1);
+    assert.equal(capturedRetry.package.manifest.data.tables.audit_events, captured.package.manifest.data.tables.audit_events + 1);
+    assert.equal(capturedRetry.package.manifest.data.tables.workspace_command_bindings, captured.package.manifest.data.tables.workspace_command_bindings + 2);
+    const repeated = await api(running.page.url, 'POST', retrySpec.scenario.steps[0].path, body, auth);
+    assert.equal(repeated.status, 200, JSON.stringify(repeated.body));
+    assert.equal(repeated.body.data.replayed, true);
+    const restoredRetry = await restoreRepro(source, { file: retryFile, target: retryTarget });
+    const retryReceiver = resolveContext({ worktree: retryTarget }); receivers.push(retryReceiver);
+    for (const app of ['student', 'teaching']) {
+      symlinkSync(join(worktree, 'apps', app, 'node_modules'), join(retryTarget, 'apps', app, 'node_modules'), 'junction');
+      utimesSync(join(retryTarget, 'apps', app, 'package-lock.json'), new Date(0), new Date(0));
+    }
+    await up(retryReceiver, () => {});
+    const retried = await verifyRepro(retryReceiver, { file: retryFile });
+    assert.equal(retried.ok, true, JSON.stringify(retried.verification));
+    assert.deepEqual(retried.verification.results.map(result => result.status), [200]);
+    assert.ok(capturedRetry.package.manifest.data.tables.workspace_command_bindings >= 2);
+    assert.ok(capturedRetry.package.manifest.data.tables.command_receipts >= 1);
+    assert.equal(withDb(retryReceiver, db => JSON.parse(db.prepare('SELECT attempt_json FROM attempts').get().attempt_json).workspaceRevision), version);
+    assert.equal(withDb(retryReceiver, db => db.prepare('SELECT count(*) AS n FROM jobs').get().n), 0);
+    if (process.env.XJ_REPRO_EXPORT_DIR) {
+      copyFileSync(retryFile, join(process.env.XJ_REPRO_EXPORT_DIR, 'retry-scene.zip'));
+      writeFileSync(join(process.env.XJ_REPRO_EXPORT_DIR, 'retry-source-result.json'), JSON.stringify({ packageDigest: capturedRetry.package.digest,
+        platform: process.platform, node: process.version, source: 'real-local-business-https', results: [[200, null]],
+        capturedBeforeRetry: true, receiver: retried.verification, restored: restoredRetry.verification }, null, 2));
+    }
+    await down(retryReceiver);
+  });
 
   await t.test('compatibility, digest and missing-resource failures preserve the receiving worktree', async () => {
     await assert.rejects(() => restoreRepro(source, { file, target }), { code: 'TARGET_EXISTS' });

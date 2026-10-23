@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import { ARCHIVE_LIMITS, decodeZip, digest, encodeZip, jsonBytes, safeEntry } from '../src/repro-archive.mjs';
 import { assertShareable, collectCode, git, restoreCode, validateCodePaths } from '../src/repro-code.mjs';
-import { captureRepro, inspectRepro, lockfileDigest } from '../src/repro.mjs';
+import { canonicalRestoreTarget, captureRepro, inspectRepro, lockfileDigest } from '../src/repro.mjs';
+import { verifyRepro } from '../src/repro-verify.mjs';
 
 const worktree = resolve(import.meta.dirname, '../../..');
 function scratch(t) {
@@ -13,6 +14,29 @@ function scratch(t) {
   t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 3 }));
   return root;
 }
+function scenarioPackage(file, steps) {
+  const code = Buffer.from('bundle'), data = Buffer.from('database');
+  const entries = new Map([
+    ['code/source.bundle', code], ['data/shared.sqlite', data],
+    ['scenario.json', jsonBytes({ title: 'review scenario', start: 'before-trigger', expected: 'expected', observed: 'observed', steps })],
+    ['manifest.json', jsonBytes({ formatVersion: 'xj-repro/1', code: { exportedCommit: 'commit', files: [], bundleDigest: digest(code) },
+      data: { schema: 'schema', digest: digest(data) }, conditions: { lockfiles: {}, capabilities: {} }, resources: { assets: [], evidence: [] },
+      verification: { generated: true, restored: false, reproduction: 'unverified' } })],
+  ]);
+  entries.set('checksums.json', jsonBytes(Object.fromEntries([...entries].map(([path, bytes]) => [path, digest(bytes)]))));
+  writeFileSync(file, encodeZip(entries));
+}
+
+test('inspection and verification reject empty or malformed steps; manual descriptions remain saveable', async t => {
+  const root = scratch(t), file = join(root, 'scenario.zip');
+  for (const steps of [[], [null], [{}], [' '], [42], [{ actorId: '', method: 'POST', path: '/api/session', expect: { status: 200 } }]]) {
+    scenarioPackage(file, steps);
+    assert.throws(() => inspectRepro(file), { code: 'INVALID_SCENARIO' });
+    await assert.rejects(() => verifyRepro({ env: { root } }, { file }), { code: 'INVALID_SCENARIO' });
+  }
+  scenarioPackage(file, ['教师暂停任务后重试保存，记录实际提示。']);
+  assert.equal(inspectRepro(file).verification.reproduction, 'unverified');
+});
 test('ZIP roundtrip is deterministic and rejects traversal, symlinks, truncation, bombs and name collisions', () => {
   const entries = new Map([['manifest.json', jsonBytes({ version: 1 })], ['data/example', Buffer.from('payload')]]);
   const zip = encodeZip(entries);
@@ -46,6 +70,12 @@ test('lock conditions normalize only CRLF while source paths reject casefold and
   assert.notEqual(digest(lf), digest(crlf));
   assert.notEqual(lockfileDigest(lf), lockfileDigest(Buffer.from('{\n  "version": "2"\n}\n')));
   for (const paths of [['File.ts', 'file.ts'], ['A', 'a/b.ts'], ['.GIT/config']]) assert.throws(() => validateCodePaths(paths), { code: 'UNSAFE_PATH' });
+});
+
+test('canonical restore paths preserve the first character below POSIX and Windows roots', () => {
+  assert.equal(canonicalRestoreTarget('/scene', '/', 'darwin'), '/scene');
+  assert.equal(canonicalRestoreTarget('D:\\scene', 'D:\\', 'win32'), 'D:\\scene');
+  assert.equal(canonicalRestoreTarget('/var/scene', '/private/var', 'darwin'), '/private/var/scene');
 });
 
 test('capture refuses to present a retained local database as the currently selected cloud scene', async t => {

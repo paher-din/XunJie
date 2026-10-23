@@ -67,6 +67,10 @@ function assertPayloadScope(row, scope) {
 // One read transaction gives a consistent SQLite view; no original database pages are distributed.
 export async function collectData(context, scratch, spec) {
   const scope = parseScope(spec?.scope), Driver = databaseDriver(context.repo.teaching);
+  const load = module => import(pathToFileURL(join(context.repo.teaching, module)).href);
+  const [{ readCommandIdentity }, { bindingKeys }, { canonical, sameScope }] = await Promise.all([
+    load('server/db/records-adapter.ts'), load('server/workspace/storage.ts'), load('server/records/commands.ts'),
+  ]);
   if (!existsSync(context.env.database)) throw reproError('RESOURCE_MISSING', '尚无本地业务库，先建立触发前环境。');
   if (lstatSync(context.env.database).isSymbolicLink() || !lstatSync(context.env.database).isFile()) throw reproError('UNSAFE_PATH', '源业务库必须是本环境的普通文件。');
   const source = new Driver(context.env.database, { readonly: true, fileMustExist: true });
@@ -104,6 +108,30 @@ export async function collectData(context, scratch, spec) {
         if ('created_by' in row && !scope.userIds.includes(row.created_by)) return false;
         return true;
       });
+    }
+    // Bindings are reverse dependencies of selected attempts. FK traversal alone
+    // cannot discover these idempotency facts when process collection is off.
+    const receipts = new Map(all.command_receipts.map(row => [row.receipt_id, row]));
+    for (const binding of all.workspace_command_bindings) {
+      const raw = JSON.parse(binding.identity_json);
+      if (!scope.attemptIds.includes(raw?.scope?.attemptId)) continue;
+      const identity = readCommandIdentity(raw), receipt = receipts.get(binding.receipt_id);
+      const attempt = attemptRows.find(row => row.attempt_id === identity.scope.attemptId);
+      if (!scope.courseIds.includes(identity.scope.courseId) || !scope.userIds.includes(identity.actorId)
+        || !scope.userIds.includes(identity.scope.studentId) || !receipt
+        || identity.scope.courseId !== attempt.course_id || identity.scope.studentId !== attempt.student_id
+        || receipt.actor_id !== identity.actorId || receipt.course_id !== identity.scope.courseId) {
+        throw reproError('SCOPE_VIOLATION', '任务幂等绑定依赖范围外成员、课程或缺失回执。');
+      }
+      const original = readCommandIdentity(JSON.parse(receipt.result_json).identity);
+      if (!sameScope(identity.scope, original.scope) || identity.actorId !== original.actorId || identity.command !== original.command
+        || identity.target !== original.target || identity.recoveryGeneration !== original.recoveryGeneration
+        || canonical(identity.sync ?? null) !== canonical(original.sync ?? null)
+        || !bindingKeys(identity).some(key => key.kind === binding.kind && key.key === binding.key_json)) {
+        throw reproError('INVALID_DATA', '任务幂等绑定与原回执不一致。');
+      }
+      rows.workspace_command_bindings.push(binding);
+      if (!rows.command_receipts.includes(receipt)) rows.command_receipts.push(receipt);
     }
     // Pull exact referenced receipts/audit events; fail closed on references outside the declared scope.
     let changed = true;
