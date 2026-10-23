@@ -54,7 +54,7 @@ export async function ensureBaseline(teachingDir, envPaths, log) {
     if (!existsSync(envPaths.baselineFile)) {
       throw new CliError('baseline', 'BASELINE_MARKER_MISSING',
         '数据库已存在但缺少基线标记（data/baseline.json），无法确认该数据的基线版本与归属。',
-        { recovery: '若非手工改动导致，停止环境后删除该环境目录，重新 up 构造全新基线。' });
+        { recovery: '保留现场；有有效环境登记时显式 xj-dev delete 后 up 重新建立基线，无有效登记时先检查归属，不手工删除环境根或永久锁。' });
     }
     const record = JSON.parse(readFileSync(envPaths.baselineFile, 'utf8'));
     return { created: false, version: record.version };
@@ -123,6 +123,6 @@ export async function ensureBaseline(teachingDir, envPaths, log) {
     rmSync(seedingFile + '-shm', { force: true });
     throw new CliError('baseline', 'BASELINE_FAILED',
       `最小基线构造失败：${error && error.message || error}`,
-      { retryable: true, recovery: '重试 xj-dev up；持续失败时删除该环境数据目录后会重新构造。' });
+      { retryable: true, recovery: '重试 xj-dev up；曾成功登记的环境可显式 xj-dev delete 后 up，无有效登记时保留现场检查。' });
   }
 }

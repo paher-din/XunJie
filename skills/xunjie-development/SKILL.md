@@ -17,7 +17,7 @@ description: XunJie 团队开发环境与协作。用于启动开发环境、切
 
 | 用户要做什么 | 阅读与判断 |
 | --- | --- |
-| 启动、停止、查看本地全栈环境 | [xj-dev README](../../tools/xj-dev/README.md)：已实现 doctor/up/status/down；每个工作树独立数据与端口；macOS 与 Windows 已实机验收，平台前置条件和验证范围见该 README |
+| 启动、停止、删除、查看本地全栈环境 | [xj-dev README](../../tools/xj-dev/README.md)：doctor/up/status/down/delete；停止保留数据，显式 delete 仅删除当前所选模式的已登记环境载荷，保留永久锁守卫，不手工 rm 环境根；每个工作树独立数据与端口，平台前置条件和验证范围见该 README |
 | 切换本地与云端、联调云端 API、查看团队版本 | [模式切换](../../docs/development-tooling.md#切换本地与云端)：调用 `use`；从 JSON 核对固定入口、前后端来源、实际版本和数据归属。旧部署的版本 `not-exposed` 属于未验证；连接失败保留原模式 |
 | 获取或更新起点数据 | [数据基线](../../docs/development-tooling.md#获取与更新数据基线)：`baseline list/publish/use` 已实现本地固定版本；`use` 返回新工作树，按返回路径继续，旧副本保留 |
 | 打包、检查或恢复问题 | [复现完整示例与失败处理](../../tools/xj-dev/README.md#复现包与基线)：先准备触发前起点与明确的源码、课程/成员/任务范围，执行 `repro capture/inspect/restore`；审阅新工作树并显式 `up` 后才运行 `repro verify` |

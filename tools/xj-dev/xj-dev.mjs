@@ -18,6 +18,7 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
   up        启动（或恢复）当前所选模式；新工作树默认本地全栈
   status    查看环境、进程、页面入口、数据归属与能力状态
   down      停止本工作树登记的各模式及节点连接；不删除任何数据
+  delete    显式删除当前工作树/实例所选模式的已登记环境数据；保留永久锁守卫
   use <local|cloud-api|cloud>  检查成功后切换入口；原页面保持原数据目标
   node <connect|status|disconnect>  管理已登记节点回连，不重发或改派任务
   join --invitation-file FILE [--mode local|cloud-api|cloud] [--no-start]  登记本机并启动
@@ -38,7 +39,7 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
 说明：
   - 运行时需要精确的 Node ${PINNED_NODE}；doctor 会报告定位结果与安装方式。
   - 环境数据在仓库外工具目录（XJ_DEV_HOME，默认 ~/.xunjie/xj-dev/envs/<环境ID>/），
-    重复 up 沿用数据不重置；重置 = down 后删除对应环境目录。
+    重复 up 沿用数据不重置；显式 delete 删除已登记环境数据，之后 up 重建。
   - local：本地前后端与独立数据；cloud-api：本地 Vite/HMR + 云端 API/共享数据；
     cloud：云端部署页面/API/共享数据。切换不搬数据、不升基线、不上传代码、不部署。
   - 邀请/设备/维护配置从受限文件读取；只输出安全 ID 和私有文件路径，不输出秘密。
@@ -82,7 +83,7 @@ async function main() {
     process.stdout.write(HELP);
     return;
   }
-  const { resolveContext, doctor, up, status, down, useMode, nodeCommand } = await import('./src/commands.mjs');
+  const { resolveContext, doctor, up, status, down, deleteEnvironment, useMode, nodeCommand } = await import('./src/commands.mjs');
   const commandRoutes = {
     join: joinRoute,
     refresh: refreshRoute,
@@ -93,6 +94,7 @@ async function main() {
     up: (context, options, log) => up(context, log),
     status: (context) => status(context),
     down: (context) => down(context),
+    delete: (context) => deleteEnvironment(context),
     use: (context, options, log) => useMode(context, options.argument, options, log),
     node: (context, options) => nodeCommand(context, options.argument, options),
   };
