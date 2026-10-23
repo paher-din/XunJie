@@ -23,7 +23,7 @@
 
 服务器不再构建源码。CI 使用 ubuntu-24.04 x64 + Node 24.21.0，产出含逐文件摘要的 `manifest.json` 和 `runtime.tar.gz`。两文件先写入孤儿提交，由 `cloud-artifact-<manifest sha256>` 不可变 tag 保持可达，再公开 `cloud-<source commit>` Release。Release 正文的 `xunjie-artifact-v1` JSON 绑定来源提交、产物提交、manifest 与 archive 摘要；Release asset API 的摘要和字节数必须与之匹配。相同来源提交的已绑定公开 Release 不被重跑替换。
 
-服务器经 codeload 的**完整产物提交 SHA**下载，完全不使用可变镜像分支。`main` 推送与 integration 的 `workflow_dispatch` 都可产生精确来源版本的候选，但只有部署器读取到的精确 main HEAD 能进入共享业务发布；候选构建不移动 main 或共享镜像引用。同一 ref 不取消在途发布，同一 SHA 的跨 ref 运行串行，避免发布中途被取消或重复替换。远端候选 workflow 由维护者同步 integration 后触发，构建通过不代表 main 已发布。CI 保留最近 5 份 Release，并额外保护 main 与当前 integration HEAD；删除 Release 时一并删除其所属产物 tag。
+服务器经 codeload 的**完整产物提交 SHA**下载，完全不使用可变镜像分支。`main` 推送与 integration 的 `workflow_dispatch` 都可产生精确来源版本的候选，但只有部署器读取到的精确 main HEAD 能进入共享业务发布；候选构建不移动 main 或共享镜像引用。同一 ref 只构建最新提交，取消旧运行时最多留下不可变 tag 或未公开 draft；同一 SHA 的跨 ref 运行串行。中断重跑发现同名 tag 时，先核对远端提交的 tree 与本次两文件完全一致，再复用原 SHA，避免提交时间不同造成 tag 冲突。远端候选 workflow 由维护者同步 integration 后触发，构建通过不代表 main 已发布。CI 保留最近 5 份 Release，并额外保护 main 与当前 integration HEAD；无引用产物 tag 和未完成 draft 经过 24 小时宽限后清理，仍被 Release 引用的 tag 始终保留。
 
 `deploy-artifact.py` 在服务器上只做校验、备份、装配与切换：
 
