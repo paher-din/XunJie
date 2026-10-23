@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
+import { pathToFileURL } from 'node:url';
 import { environmentId, environmentPaths, PINNED_NODE } from '../src/paths.mjs';
 import { processAlive } from '../src/state.mjs';
 
@@ -145,7 +146,7 @@ async function pausedCli(f, command, instance, t) {
   const name = randomUUID(), ready = join(f.root, name + '.ready'), resume = join(f.root, name + '.continue');
   const module = join(f.root, 'barrier.mjs'); writeFileSync(module, preload);
   const env = f.paths(instance);
-  const child = spawn(process.execPath, ['--import', module, ...f.args(command, instance)], {
+  const child = spawn(process.execPath, ['--import', pathToFileURL(module).href, ...f.args(command, instance)], {
     env: { ...process.env, XJ_DEV_HOME: f.home, XJ_DELETE_BARRIER_KIND: command, XJ_DELETE_BARRIER_TARGET: command === 'up' ? join(env.lockFile, 'mutex.sqlite') : env.data,
       XJ_DELETE_BARRIER_READY: ready, XJ_DELETE_BARRIER_CONTINUE: resume }, stdio: ['ignore', 'pipe', 'pipe'],
   });
