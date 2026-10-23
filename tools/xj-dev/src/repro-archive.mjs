@@ -38,8 +38,8 @@ export function encodeZip(entries) {
   const names = new Set();
   for (const [name, input] of [...entries].sort(([a], [b]) => a.localeCompare(b, 'en'))) {
     safeEntry(name);
-    if (names.has(name.toLowerCase())) throw reproError('UNSAFE_PATH', '包内存在大小写冲突。');
-    names.add(name.toLowerCase());
+    if (names.has(name.normalize('NFC').toLowerCase())) throw reproError('UNSAFE_PATH', '包内存在大小写或 Unicode 规范化冲突。');
+    names.add(name.normalize('NFC').toLowerCase());
     const data = Buffer.from(input), filename = Buffer.from(name), compressed = deflateRawSync(data);
     total += data.length;
     if (data.length > ARCHIVE_LIMITS.entry || total > ARCHIVE_LIMITS.total) throw reproError('PACKAGE_LIMIT', '包内容超出限制。');
@@ -87,8 +87,8 @@ export function decodeZip(zip) {
     const rawName = zip.subarray(position + 46, position + 46 + nameLength), name = rawName.toString('utf8');
     if (!Buffer.from(name).equals(rawName)) invalid();
     safeEntry(name);
-    if (names.has(name.toLowerCase())) throw reproError('UNSAFE_PATH', 'ZIP 包含重复或大小写冲突的文件。');
-    names.add(name.toLowerCase());
+    if (names.has(name.normalize('NFC').toLowerCase())) throw reproError('UNSAFE_PATH', 'ZIP 包含重复或大小写/Unicode 冲突的文件。');
+    names.add(name.normalize('NFC').toLowerCase());
     if (offset + 30 > start || zip.readUInt32LE(offset) !== 0x04034b50
       || zip.readUInt16LE(offset + 6) !== flags || zip.readUInt16LE(offset + 8) !== method
       || zip.readUInt32LE(offset + 14) !== crc || zip.readUInt32LE(offset + 18) !== compressed

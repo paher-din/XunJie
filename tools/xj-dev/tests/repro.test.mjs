@@ -20,6 +20,7 @@ test('ZIP roundtrip is deterministic and rejects traversal, symlinks, truncation
   assert.deepEqual(encodeZip(entries), zip);
   for (const path of ['../evil', '/absolute', 'C:/evil', 'a\\b', 'x/./y', 'x//y', 'NUL.txt', 'a.']) assert.throws(() => safeEntry(path), { code: 'UNSAFE_PATH' });
   assert.throws(() => encodeZip(new Map([['a', Buffer.alloc(0)], ['A', Buffer.alloc(0)]])), { code: 'UNSAFE_PATH' });
+  assert.throws(() => encodeZip(new Map([['é', Buffer.alloc(0)], ['e\u0301', Buffer.alloc(0)]])), { code: 'UNSAFE_PATH' });
   assert.throws(() => decodeZip(zip.subarray(0, zip.length - 1)), { code: 'INVALID_ZIP' });
   const corrupted = Buffer.from(zip); corrupted[40] ^= 1;
   assert.throws(() => decodeZip(corrupted));

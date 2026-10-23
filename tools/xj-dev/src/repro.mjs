@@ -1,5 +1,5 @@
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { REPRO_FORMAT, ARCHIVE_LIMITS, decodeZip, digest, encodeZip, jsonBytes, reproError, safeEntry } from './repro-archive.mjs';
 import { assertShareable, collectCode, excludedPath, git, restoreCode } from './repro-code.mjs';
 import { collectData, restoreData, schemaFingerprint } from './repro-data.mjs';
@@ -149,7 +149,7 @@ export async function restoreRepro(context, { file, target, expectedDigest, base
   const destination = resolve(target ?? join(dirname(context.worktree), 'xj-repro-' + checked.package.digest.slice(7, 19)));
   if (existsSync(destination)) throw reproError('TARGET_EXISTS', '恢复目标已存在，请选择新的工作树目录。');
   if (!existsSync(dirname(destination)) || lstatSync(dirname(destination)).isSymbolicLink()) throw reproError('UNSAFE_PATH', '目标父目录必须是已存在的真实目录。');
-  const canonicalTarget = join(realpathSync(dirname(destination)), destination.slice(dirname(destination).length + 1));
+  const canonicalTarget = join(realpathSync(dirname(destination)), basename(destination));
   const id = environmentId(canonicalTarget), envPaths = environmentPaths(context.home, id);
   if (existsSync(envPaths.root)) throw reproError('TARGET_EXISTS', '目标已有数据环境，请选择新目录。');
   mkdirSync(context.home, { recursive: true });

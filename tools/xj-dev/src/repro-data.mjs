@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { assertShareable } from './repro-code.mjs';
@@ -68,6 +68,7 @@ function assertPayloadScope(row, scope) {
 export async function collectData(context, scratch, spec) {
   const scope = parseScope(spec?.scope), Driver = databaseDriver(context.repo.teaching);
   if (!existsSync(context.env.database)) throw reproError('RESOURCE_MISSING', '尚无本地业务库，先建立触发前环境。');
+  if (lstatSync(context.env.database).isSymbolicLink() || !lstatSync(context.env.database).isFile()) throw reproError('UNSAFE_PATH', '源业务库必须是本环境的普通文件。');
   const source = new Driver(context.env.database, { readonly: true, fileMustExist: true });
   const startedAt = new Date().toISOString();
   const rows = {};

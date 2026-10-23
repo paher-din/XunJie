@@ -126,7 +126,11 @@ node tools/xj-dev/xj-dev.mjs baseline use course-b1 --target "<新的工作树�
 
 公开模块供文件传输复用：`captureRepro(context, {contextFile, out})`、`inspectRepro(file, {expectedDigest})`、`restoreRepro(context, {file, target, expectedDigest})`，位于 `src/repro.mjs`。返回 `package: {path, digest, bytes, formatVersion, manifest}`；格式 `xj-repro/1`，整个 ZIP 摘要为 `sha256:<64位hex>`。完整文件先通过 `inspectRepro`，再登记/传输；重试复用原 ZIP。
 
-常见失败：`DIGEST_MISMATCH` 重新取得正确文件；`RESOURCE_MISSING` 补齐范围或附件；`LOCKFILE_MISMATCH`/`SCHEMA_MISMATCH`/`TOOL_VERSION_MISMATCH`/`NODE_VERSION_MISMATCH` 使用清单对应条件，保持旧环境；`TARGET_EXISTS` 选新目录；`UNSAFE_PATH`/`SECRET_DETECTED`/`SCOPE_VIOLATION` 修正采集范围后新建包；`BASELINE_EXISTS` 发布新版本；`NOT_RESTORED`/`ENVIRONMENT_NOT_RUNNING` 在返回的恢复工作树审阅并 `up`。失败不会覆盖当前分支或业务库。
+复现实测（2026-10-23）：macOS 从触发前采集，另一真实 Git 工作树恢复后经业务 HTTPS 得到 `200 → 409 VERSION_CONFLICT`；同一 ZIP 传到 Windows 11 的 CRLF checkout，在 Node 24.21.0 下通过公开 CLI 恢复、启动及相同步骤（1/1，73.9 秒），保留接收端分支与工作区。该现场验证业务版本冲突的确定行为，不声称发现产品缺陷。ZIP 摘要为 `sha256:9c1b97578fcfcf931e63c38f3048dc9c7a8620149296305c161b2d166d5d797f`，采集源码提交 `10e5b12`。依赖复用锁内容一致的预安装原生模块，未在恢复时运行安装脚本。浏览器交互、真实执行节点、模型响应与教学效果未在此项验收。
+
+专项测试：`node --test tools/xj-dev/tests/repro.test.mjs tools/xj-dev/tests/repro-e2e.test.mjs`。设置 `XJ_REPRO_EXPORT_DIR` 可从 e2e 导出触发前 ZIP 与实际发送端结果；跨机传递这两个文件后，设置 `XJ_REPRO_TRANSFER_ZIP`、`XJ_REPRO_TRANSFER_DIGEST`、`XJ_REPRO_DEPENDENCIES_FROM`（锁内容一致的已安装工程根），运行 `node --test tools/xj-dev/tests/repro-transfer.mjs`，通过公开 CLI 验证接收端；它要求真实材料，不以替身补齐。测试各自停止进程并清理临时工作树、数据和依赖链接。
+
+常见失败：`DIGEST_MISMATCH` 重新取得正确文件；`RESOURCE_MISSING` 补齐范围或附件；`LOCKFILE_MISMATCH`/`SCHEMA_MISMATCH`/`TOOL_VERSION_MISMATCH`/`NODE_VERSION_MISMATCH` 使用清单对应条件，保持旧环境；`TARGET_EXISTS` 选新目录；`LOCAL_DATA_REQUIRED` 先显式回到本地模式，工具不冒充或采集云端现场；`UNSAFE_PATH`/`SECRET_DETECTED`/`SCOPE_VIOLATION` 修正采集范围后新建包；`BASELINE_EXISTS` 发布新版本；`NOT_RESTORED`/`ENVIRONMENT_NOT_RUNNING` 在返回的恢复工作树审阅并 `up`。失败不会覆盖当前分支或业务库。
 
 ## 能力边界
 
