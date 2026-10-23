@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { loginThroughForm } from './sessionHost'
+import { edit, openFileMenu, trackBusinessWrites } from './helpers'
 
 // Real cloud acceptance: no interception, fixtures, mock accounts, or TLS bypass
 // on the SSH->cloud leg. Browser TLS uses the existing local-development CA flow.
@@ -13,8 +16,8 @@ const accountFile = process.env.XUNJIE_CLOUD_ACCOUNT_FILE
 const root = resolve(process.cwd(), '../..')
 const cliFile = resolve(root, 'tools/xj-dev/xj-dev.mjs')
 
-function cli(args: string[], failure = false) {
-  const result = spawnSync(process.execPath, [cliFile, ...args], { encoding: 'utf8', timeout: 120_000 })
+function cli(args: string[], failure = false, env = process.env) {
+  const result = spawnSync(process.execPath, [cliFile, ...args], { encoding: 'utf8', timeout: 120_000, env })
   const body = JSON.parse(result.stdout)
   expect(body.ok, body.failure?.code).toBe(!failure)
   return body
@@ -49,7 +52,21 @@ test('真实三模式：同context身份隔离、草稿固定目标、本地HMR�
     await pageA.goto(local.page.url)
     await loginThroughForm(pageA, 'synthetic-student', localPassword(local))
     await expect.poll(async () => (await pageA.request.get(local.page.url + '/api/session')).status()).toBe(200)
-    await pageA.evaluate(() => { const draft = document.createElement('textarea'); draft.id = 'mode-draft'; draft.value = 'unsaved-local-draft'; document.body.append(draft) })
+    const assignments = await (await pageA.request.get(local.page.url + '/api/courses/synthetic-textscope-c/assignments')).json()
+    const assignment = assignments.data[0].assignmentId as string
+    const bootstrap = await (await pageA.request.get(local.page.url + `/api/assignments/${assignment}/bootstrap`)).json()
+    const attemptUrl = local.page.url + `/api/attempts/${bootstrap.data.currentAttemptId}`
+    const revision = (await (await pageA.request.get(attemptUrl)).json()).data.attempt.workspaceRevision
+    await pageA.goto(local.page.url + `/#/task/${assignment}`)
+    await expect(pageA.locator('.cw')).toBeVisible()
+    const writes = trackBusinessWrites(pageA)
+    await openFileMenu(pageA)
+    await pageA.locator('.cw-filemenu').getByRole('menuitem', { name: '新建文件', exact: true }).click()
+    const fileName = `mode-unsaved-${Date.now().toString(36)}.txt`
+    await pageA.getByRole('textbox', { name: '新文件名' }).fill(fileName)
+    await pageA.getByRole('textbox', { name: '新文件名' }).press('Enter')
+    const draft = `mode-draft-${Date.now().toString(36)}`
+    await edit(pageA, draft)
     await pageB.goto(second.page.url)
     await loginThroughForm(pageB, 'synthetic-student', localPassword(second))
     await expect.poll(async () => (await pageB.request.get(second.page.url + '/api/session')).status()).toBe(200)
@@ -100,7 +117,9 @@ test('真实三模式：同context身份隔离、草稿固定目标、本地HMR�
     const cloudSession = (await (await cloudPage.request.get(cloud.page.url + '/api/session')).json()).data
     expect((await cloudPage.request.post(cloud.page.url + '/api/logout', { headers: { origin: cloud.page.url, 'x-csrf-token': cloudSession.csrfToken } })).status()).toBe(200)
     expect((await apiPage.request.get(cloudApi.page.url + '/api/session')).status()).toBe(200)
-    expect(await pageA.locator('#mode-draft').inputValue()).toBe('unsaved-local-draft')
+    await expect(pageA.locator('.monaco-editor .view-lines').first()).toContainText(draft)
+    expect(writes).toEqual([])
+    expect((await (await pageA.request.get(attemptUrl)).json()).data.attempt.workspaceRevision).toBe(revision)
     const returned = cli(['use', 'local'])
     expect(returned.page.url).toBe(local.page.url)
     expect(returned.data.database).toBe(local.data.database)
@@ -143,4 +162,35 @@ test('真实云端健康响应公开运行中后端提交，配置版本不能�
     expect(environment.sources.backend.versionSource).toBe('server')
     expect(environment.sources.backend.backendVersion).toMatch(/^[0-9a-f]{40}$/)
   } finally { cli(['down']) }
+})
+
+test('真实SSH权限/主机pin/TLS/版本不符分别停止，保留原环境', async () => {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'xj mode negatives ')))
+  const env = { ...process.env, XJ_DEV_HOME: join(directory, 'tool-home') }
+  const { loadConnection } = await import(pathToFileURL(resolve(root, 'tools/xj-dev/src/connection.mjs')).href)
+  const current = loadConnection(connection)
+  const config = { schema: 'xj-dev/connection-v1', host: current.host, port: current.port, browserUser: current.browserUser, applicationPort: current.applicationPort, browserOrigin: current.browserOrigin, identityFile: current.identityFile, knownHostsFile: current.knownHostsFile, caFile: current.caFile }
+  try {
+    const local = cli(['use', 'local'], false, env)
+    const key = join(directory, 'unregistered')
+    execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key], { stdio: 'ignore' })
+    const knownHosts = join(directory, 'unrelated known hosts')
+    const host = current.port === 22 ? current.host : `[${current.host}]:${current.port}`
+    const publicKey = readFileSync(key + '.pub', 'utf8').trim().split(/\s+/).slice(0, 2).join(' ')
+    writeFileSync(knownHosts, `${host} ${publicKey}\n`)
+    for (const [overrides, expected] of [
+      [{ identityFile: key }, 'PERMISSION_REVOKED'],
+      ...(current.browserUser === 'xj-candidate-128' ? [[{ applicationPort: 13447 }, 'PERMISSION_REVOKED'] as const] : []),
+      [{ knownHostsFile: knownHosts }, 'HOST_IDENTITY_CHANGED'],
+      [{ caFile: resolve(local.environment.root, '../../ca/ca-cert.pem') }, 'TLS_IDENTITY_CHANGED'],
+      [{ expectedBackendVersion: '0'.repeat(40) }, 'BACKEND_INCOMPATIBLE'],
+    ] as const) {
+      const file = join(directory, 'negative.json')
+      writeFileSync(file, JSON.stringify({ ...config, ...overrides }))
+      const failed = cli(['use', 'cloud-api', '--connection', file], true, env)
+      expect(failed.failure.code).toBe(expected)
+      expect(failed.failure.retryable).toBe(false)
+      expect(cli(['status'], false, env).page.url).toBe(local.page.url)
+    }
+  } finally { cli(['down'], false, env); rmSync(directory, { recursive: true, force: true }) }
 })

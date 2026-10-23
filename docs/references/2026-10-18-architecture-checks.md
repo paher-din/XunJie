@@ -15,7 +15,7 @@
 | 通用个人模型传输固定请求 `/chat/completions`。 | 三协议路线、能力声明与原生续接不是现成能力。 | [兼容传输](../../apps/teaching/server/tutoring/openai-compatible.ts#L140) |
 | 生成沙箱已有初始化和状态回传；真实聊天的卡片持久化、小测等入口仍不可用。 | 可复用 iframe 生命周期与桥接经验，统一工作区对象持久化和教学事件链仍待补齐。 | [沙箱消息](../../apps/student/src/bridge/genSandbox.ts#L40)、[真实 API](../../apps/student/src/bridge/agentApi.ts#L158) |
 | 现有数据库事务接口要求同步、不可嵌套，直接操作 SQLite。 | 增加 PostgreSQL 不是换连接字符串；双数据库会增加实际适配与验收工作。 | [事务接口](../../apps/teaching/server/db/transaction.ts#L93) |
-| 应用支持登记多执行节点；节点主动用 SSH 反向隧道接入业务服务，浏览器提交登记的节点 ID。 | 已有“服务在云端、编译在学生电脑”的静态协议基础，源码与结果仍经业务服务；不能把本地计算等同于离线或数据不上云。 | [多节点组合](../../apps/teaching/server/app/digital-logic.ts#L47)、[节点选择](../../apps/teaching/server/app/execution-nodes.ts#L30)、[回连脚本](../../tools/i0-cloud/connect-node.ps1#L25) |
+| 应用支持登记多执行节点；节点主动用 SSH 反向隧道接入业务服务，浏览器提交登记的节点 ID。 | 已有“服务在云端、编译在学生电脑”的静态协议基础，源码与结果仍经业务服务；不能把本地计算等同于离线或数据不上云。 | [多节点组合](../../apps/teaching/server/app/digital-logic.ts#L47)、[节点选择](../../apps/teaching/server/app/execution-nodes.ts#L30)、[现行回连入口](../../tools/xj-dev/README.md#模式与受管连接)（原脚本已由 #128 替代） |
 | 执行协议已有 query/submit/cancel/readResult，并保持任务的原节点与代际；现有节点选择函数只检查登记与代际。 | 可复用意图、结果和恢复语义；用户配对、节点归属与使用权限仍需明确。不能把登记节点自动视为所有学生都可使用。 | [执行协议](../../apps/teaching/server/records/runner.ts#L54)、[节点绑定](../../apps/teaching/server/app/execution-nodes.ts#L29) |
 | HDL 执行依赖 Linux 容器、资源约束、无网络、只读输入与 AppArmor 等机制。 | 隔离由执行环境提供；跨平台本地运行需要实际安装与兼容验证，不能简单替换成普通子进程。 | [容器执行参数](../../apps/teaching/runner/hdl-executor.ts#L16) |
 | 教师工作台读取 Attempt、提交和快照；教师 Agent 复用模型与辅导模块。 | 学生端重构仍要决定共享接口与旧数据如何过渡；教师端“不展开设计”不等于没有影响。 | [教师工作台](../../apps/teaching/server/app/teacher-workbench.ts#L49)、[教师模型依赖](../../apps/teaching/server/design/teacher-agent.ts#L9) |

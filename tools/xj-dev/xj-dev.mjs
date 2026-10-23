@@ -12,9 +12,9 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
 
 命令：
   doctor    检查运行时、仓库、依赖、openssl、证书与当前环境状态
-  up        启动（或恢复）本工作树的本地全栈环境：Vite 热更新 + 真实后端 + HTTPS 网关 + 独立数据
+  up        启动（或恢复）当前所选模式；新工作树默认本地全栈
   status    查看环境、进程、页面入口、数据归属与能力状态
-  down      停止本工具管理的进程；不删除任何数据
+  down      停止本工作树登记的各模式及节点连接；不删除任何数据
   use <local|cloud-api|cloud>  检查成功后切换入口；原页面保持原数据目标
   node <connect|status|disconnect>  管理已登记节点回连，不重发或改派任务
 

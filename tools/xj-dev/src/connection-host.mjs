@@ -21,14 +21,16 @@ export function tcpReady(port) {
   });
 }
 async function stopChild() {
-  if (!child || child.exitCode !== null) return;
+  if (!child || !child.pid || child.exitCode !== null || child.signalCode !== null) return;
   const current = child;
   current.kill('SIGTERM');
   await Promise.race([new Promise(done => current.once('exit', done)), delay(2000)]);
-  if (current.exitCode === null) current.kill('SIGKILL');
-  await Promise.race([new Promise(done => current.once('exit', done)), delay(1000)]);
+  if (current.exitCode === null && current.signalCode === null) {
+    current.kill('SIGKILL');
+    await Promise.race([new Promise(done => current.once('exit', done)), delay(1000)]);
+  }
 }
-const shutdown = () => { stopping = true; wake?.(); void stopChild(); };
+const shutdown = () => { if (stopping) return; stopping = true; wake?.(); void stopChild(); };
 const pause = ms => new Promise(done => { const timer = setTimeout(done, ms); wake = () => { clearTimeout(timer); done(); }; });
 process.once('SIGTERM', shutdown);
 process.once('SIGINT', shutdown);
@@ -44,7 +46,7 @@ try {
       let stderr = '', exited = false;
       child = spawn('ssh', sshArguments(c, config.kind, config.localPort), { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
       child.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-8192); });
-      child.once('error', () => { exited = true; });
+      child.once('error', () => { stderr = 'ssh executable unavailable'; exited = true; });
       child.once('exit', () => { exited = true; });
       const startedAt = Date.now();
       let lastHealthy = 0;
@@ -64,6 +66,8 @@ try {
           lastHealthy = Date.now();
           attempts = 0;
         } catch (error) {
+          const transportFailure = classifySshFailure(stderr);
+          if (!transportFailure.retryable) { failure = transportFailure; break; }
           if (!error.retryable) { failure = error; break; }
           // Allow initial SSH handshake, but bound recovery of an unresponsive
           // connection. No requests with business writes are replayed here.

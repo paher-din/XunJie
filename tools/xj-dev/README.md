@@ -101,6 +101,8 @@ node tools/xj-dev/xj-dev.mjs node disconnect
 
 节点可额外提供 `nodeId`、`nodeUser`、`localRunnerPort`、`remoteRunnerPort`，可选 `nodeIdentityFile`。工具只做原登记节点的反向转发；连接成功只证明传输，不证明 runner 授权、generation 或实际执行通过。没有节点时页面与普通业务仍可用。任务绑定和未知结果沿原业务契约保留，不静默重派。
 
+未显式传 `--identity` 时，后续 `up` 重新读取配置中的身份路径；显式覆盖会随当前选择保留。再次传 `--connection` 会以该配置重新选择身份，避免沿用旧覆盖阻碍密钥轮换。
+
 现有 `version: 1, registered: true` 配置由同一解析器只读适配，私钥可用 `--identity` 提供；CA 可复用旁边的 `cloud-server.cert.pem`。负责人旧配置使用旁边 `ssh.conf` 的已核定 browser 别名解析身份/pin 路径，无需新邀请，也不改全局 SSH。原 PowerShell 页面、节点脚本和重复解析器已删除。
 
 供接入工具与复现工具复用：`src/connection.mjs` 导出 `CONNECTION_SCHEMA`、`loadConnection(file, { identity })`、`sshArguments(connection, kind, localPort)`、`checkBackend(connection, localPort)`；`commands.mjs` 保留模式感知 `up/status/down`，本地实现另导出 `upLocal/statusLocal/downLocal`。CLI 的简单 `commandRoutes` 可注册额外命令，子命令参数放 `options.extraArgs`。
@@ -119,6 +121,12 @@ node node_modules/@playwright/test/cli.js test xjDevModes --workers=1
 ```
 
 测试分别覆盖同 context 的两个本地环境及两种云模式、实际本地 HMR、登录与 CSRF、未保存现场、失败保留选择、真实 SSH 中断后的业务恢复及真实版本 header。可通过 `XUNJIE_LOCAL_SECOND_WORKTREE` 指定第二工作树；未指定时第二实例使用独立数据。缺少配置时跳过，跳过不算通过。平台、节点实际执行与教学效果需分别报告。
+
+2026-10-23 模式验收：macOS arm64、Windows 11 x64 均使用 Node 24.21.0，xj-dev 26/26；两个平台均对独立 ECS 候选完成四项真实浏览器验收（未拦截 API、未替换业务响应）。候选运行 CI 提交 `22221889626d69f781b5e40a249ed1a8844519ca` 的 Linux 产物，普通受限 SSH 转发身份可从健康响应读取实际版本；候选使用独立合成基线及无节点配置，未修改正式演示库。macOS 另以两个真实工作树核对同 context 会话隔离。真实连接恢复使用 macOS 暂停 SSH 流和 Windows 终止 SSH 进程注入中断，恢复原会话并确认没有重复隧道。
+
+权限、错误 host pin、错误 TLS CA、版本不符与 SSH 转发策略拒绝均通过真实连接失败验收；Windows 还核对原登记节点离线时 `NODE_OFFLINE`、状态与断开。在线执行节点、C/HDL 实验、物理系统休眠、模型调用及教学效果未在本票验收。受控 HTTPS 单元测试与这些实机证据分别记录。
+
+两平台重复登录验收需协调目标账号的登录窗口；本次并行复验触发过正常的账号限流，受影响用例随后顺序补跑通过，未修改限流策略或清理计数。
 
 ## 测试
 
