@@ -73,6 +73,18 @@ def main(source):
             and service['backupDirectory'] == str(BACKUPS) and service['adminSocket'] == '/run/xunjie-dev-access-candidate129/admin.sock', 'SERVICE_PATHS_INVALID')
     os.chown(CONFIG / 'service.json', account.pw_uid, account.pw_gid); (CONFIG / 'service.json').chmod(0o600)
     (CONFIG / 'system.json').chmod(0o600)
+    # All bootstrap trust files are copied into this service's own directory.
+    # Grant only the service UID access; a root-owned 0600 TLS key would make
+    # an otherwise valid installation fail at the first non-root start.
+    trust_files = [*service['tls'].values(), service['knownHostsFile'], service['cloudCaFile']]
+    for name in trust_files:
+        file = Path(name)
+        require(file.parent == CONFIG and file.is_file() and not file.is_symlink()
+                and file.stat().st_uid in {0, account.pw_uid} and file.stat().st_size <= 1024 * 1024
+                and not file.stat().st_mode & 0o022, 'TRUST_FILE_INVALID')
+        os.chown(file, account.pw_uid, account.pw_gid); file.chmod(0o600)
+    system = json.loads((CONFIG / 'system.json').read_text())
+    require(service['target']['applicationPort'] in system['applicationPorts'], 'APPLICATION_PORT_NOT_GRANTED')
     release = ROOT / 'releases' / receipt['sourceCommit']
     if release.exists():
         for f in receipt['files']:
