@@ -10,7 +10,7 @@
 | 打包、检查或恢复问题 | [复现包](../../../tools/xj-dev/README.md#复现包与基线)：先确认触发前/事后现场及课程/成员/任务范围；将必要 dirty/untracked 文件显式选入 `code.paths`。capture/inspect/restore 后，审阅新工作树并显式 up 才执行 verify |
 | 分享编号、续传、按编号下载或清缓存 | [团队复现编号与直传](../../../tools/xj-dev/README.md#团队复现编号与直传)：先冻结 ZIP，再 share；失败保留原 ZIP 与 transfer ID 并 resume。fetch 只校验下载，verify 才记录实际复现；文件权限与 page/node 分开 |
 | 已有身份失效、权限更新或补齐接入 | [成员接入入口](../../../docs/development-access-operations.md#成员接入入口)：复用本人设备和现有授权；缺失邀请只要附件或路径。更新用 refresh，失败保留同一 home/key；不重讲首引导 |
-| 维护者管理邀请、撤销或备份 | [维护者入口](../../../docs/development-access-operations.md#维护者入口)：只有本次管理任务授权成立才使用 access。备份材料与普通成员邀请、团队复现包分开 |
+| 维护者管理邀请、撤销或备份 | 邀请/撤销读[维护者入口](../../../docs/development-access-operations.md#维护者入口)；服务现状与备份恢复读[当前交接入口](../../../docs/references/2026-10-24-team-development-handoff.md#负责人备份与恢复)。按本次管理授权操作；备份材料与普通成员邀请、团队复现包分开 |
 | 实现或替换开发工具 | [实施与旧入口清理](../../../docs/development-tooling.md#工作项与实施时机)：依据当前任务及实现更新 CLI 帮助与工具事实，不把规划写成已交付 |
 | 决定学生编译/仿真位置 | [课程运行议题](https://github.com/paher-din/XunJie/issues/114)及当前产品契约；开发环境的云端位置不能决定学生产品架构 |
 
