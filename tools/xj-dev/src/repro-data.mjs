@@ -82,6 +82,9 @@ function assertPayloadScope(row, scope) {
 // One read transaction gives a consistent SQLite view; no original database pages are distributed.
 export async function collectData(context, scratch, spec) {
   const scope = parseScope(spec?.scope), Driver = databaseDriver(context.repo.teaching);
+  if (spec.includeUnstartedAssignments !== undefined && typeof spec.includeUnstartedAssignments !== 'boolean') {
+    throw reproError('INVALID_SCOPE', 'includeUnstartedAssignments 必须是显式布尔值。');
+  }
   const load = module => import(pathToFileURL(join(context.repo.teaching, module)).href);
   const [{ readCommandIdentity }, { bindingKeys }, { canonical, sameScope }] = await Promise.all([
     load('server/db/records-adapter.ts'), load('server/workspace/storage.ts'), load('server/records/commands.ts'),
@@ -104,7 +107,16 @@ export async function collectData(context, scratch, spec) {
     }
     const attemptRows = all.attempts.filter(row => scope.attemptIds.includes(row.attempt_id));
     const assignments = new Set(attemptRows.map(row => row.assignment_id));
-    const activities = new Set(attemptRows.map(row => row.activity_id));
+    // A course baseline also needs allocated work that nobody has opened yet.
+    // Keep ordinary repro captures limited to their explicitly selected attempts.
+    if (spec.includeUnstartedAssignments) {
+      const started = new Set(all.attempts.map(row => row.assignment_id));
+      for (const assignment of all.assignments) {
+        if (!started.has(assignment.id) && scope.courseIds.includes(assignment.course_id)
+          && scope.userIds.includes(assignment.student_id)) assignments.add(assignment.id);
+      }
+    }
+    const activities = new Set(all.assignments.filter(row => assignments.has(row.id)).map(row => row.activity_id));
     for (const table of SHARED_TABLES) {
       rows[table] = all[table].filter(row => {
         if (table === 'application_control') return true;
@@ -201,7 +213,9 @@ export async function collectData(context, scratch, spec) {
   await createSharedDatabase(context.repo.teaching, file, rows);
   const marker = JSON.parse(readFileSync(context.env.baselineFile, 'utf8'));
   return { bytes: readFileSync(file), manifest: {
-    schema, baselineVersion: marker.version, scope, tables: Object.fromEntries(Object.entries(rows).map(([table, data]) => [table, data.length])),
+    schema, baselineVersion: marker.version, scope,
+    ...(spec.includeUnstartedAssignments ? { includeUnstartedAssignments: true } : {}),
+    tables: Object.fromEntries(Object.entries(rows).map(([table, data]) => [table, data.length])),
     consistency: { kind: 'single-sqlite-read-transaction', startedAt, finishedAt: new Date().toISOString(),
       crossStorageAtomic: false, missing: ['个人模型、浏览器状态、执行节点、外部服务均未采集；外部资源单独校验，不构成跨存储原子快照。'] },
     exclusions: DATA_EXCLUSIONS,
