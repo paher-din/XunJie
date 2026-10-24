@@ -1,16 +1,16 @@
 import { request } from 'node:https';
 import { existsSync, readFileSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, X509Certificate } from 'node:crypto';
 import { join } from 'node:path';
 import { inspectRepro, validateScenario } from './repro.mjs';
 import { reproError } from './repro-archive.mjs';
 import { loadState, writeJsonAtomic } from './state.mjs';
 import { componentRunning } from './processes.mjs';
 
-function http(origin, method, path, body, auth) {
+function http(origin, ca, method, path, body, auth) {
   return new Promise((resolve, reject) => {
     const encoded = body === undefined ? undefined : JSON.stringify(body);
-    const req = request(origin + path, { method, agent: false, rejectUnauthorized: false, headers: {
+    const req = request(origin + path, { method, agent: false, ca, rejectUnauthorized: true, headers: {
       origin, connection: 'close', ...(encoded ? { 'content-type': 'application/json' } : {}),
       ...(auth ? { cookie: auth.cookie, 'x-csrf-token': auth.csrf, 'idempotency-key': randomUUID() } : {}),
     } }, res => {
@@ -23,7 +23,9 @@ function http(origin, method, path, body, auth) {
       });
     });
     req.setTimeout(10000, () => req.destroy(new Error('timeout')));
-    req.on('error', () => reject(reproError('REPLAY_FAILED', '本地业务请求失败，请检查已恢复环境的服务状态。')));
+    req.on('error', error => reject(/CERT|TLS|SELF_SIGNED|UNABLE_TO_VERIFY/.test(error.code ?? '')
+      ? reproError('GATEWAY_TLS_INVALID', '复现验证未通过本环境 CA 的服务器身份校验，未记录新的复现结果。')
+      : reproError('REPLAY_FAILED', '本地业务请求失败，请检查已恢复环境的服务状态。')));
     req.end(encoded);
   });
 }
@@ -45,17 +47,26 @@ export async function verifyRepro(context, { file, expectedDigest }) {
   validateScenario(scenario, { automated: true });
   const state = loadState(context.env);
   if (!state?.ports || !componentRunning(context.env, 'backend').running || !componentRunning(context.env, 'gateway').running) throw reproError('ENVIRONMENT_NOT_RUNNING', '先审阅代码并显式 up 恢复环境，再执行 verify。');
+  let ca;
+  try {
+    ca = readFileSync(join(context.home, 'ca', 'ca-cert.pem'));
+    new X509Certificate(ca);
+  } catch (error) {
+    throw error.code === 'ENOENT'
+      ? reproError('CA_MISSING', '复现验证缺少本环境受管 CA，未发送登录或业务请求。')
+      : reproError('CA_INVALID', '本环境受管 CA 无法读取或格式无效，未发送登录或业务请求。');
+  }
   const origin = `https://127.0.0.1:${state.ports.gateway}`;
   const credentials = JSON.parse(readFileSync(context.env.baselineCredentials, 'utf8')), sessions = new Map(), results = [];
   for (const step of scenario.steps) {
     if (!sessions.has(step.actorId)) {
       const account = credentials.find(a => a.id === step.actorId);
       if (!account) throw reproError('RESOURCE_MISSING', '步骤的登录角色不在恢复账号中。');
-      const login = await http(origin, 'POST', '/api/sessions', { loginName: account.loginName, password: account.password });
+      const login = await http(origin, ca, 'POST', '/api/sessions', { loginName: account.loginName, password: account.password });
       if (login.status !== 200) throw reproError('REPLAY_FAILED', '恢复账号无法登录。');
       sessions.set(step.actorId, { cookie: login.cookies.map(v => v.split(';')[0]).join('; '), csrf: login.body.data.csrfToken });
     }
-    const response = await http(origin, step.method, step.path, step.body, sessions.get(step.actorId));
+    const response = await http(origin, ca, step.method, step.path, step.body, sessions.get(step.actorId));
     const matched = response.status === step.expect.status && (!step.expect.errorCode || response.body.error?.code === step.expect.errorCode);
     results.push({ method: step.method, path: step.path, status: response.status, errorCode: response.body.error?.code ?? null, matched });
     if (!matched) break;

@@ -1,6 +1,7 @@
 // Real local business API in two Git worktrees; no execution/model/network-service substitute.
 import assert from 'node:assert/strict';
 import { request } from 'node:https';
+import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -13,6 +14,7 @@ import { decodeZip, digest, encodeZip, jsonBytes } from '../src/repro-archive.mj
 import { git } from '../src/repro-code.mjs';
 import { listBaselines, publishBaseline, useBaseline } from '../src/baseline-versions.mjs';
 import { bindingKeys } from '../../../apps/teaching/server/workspace/storage.ts';
+import { ensureCertificateAuthority } from '../src/certificates.mjs';
 
 const worktree = resolve(import.meta.dirname, '../../..');
 function api(origin, method, path, body, auth) {
@@ -130,7 +132,24 @@ test('capture before stale-editor save; restore actual code/data to another work
   assert.equal(withDb(receiver, db => db.prepare('SELECT count(*) AS n FROM jobs').get().n), 0);
   const receiverUp = await up(receiver, () => {});
   assert.deepEqual(receiverUp.accounts.list.map(a => a.loginName).sort(), restored.data.accounts.map(a => a.loginName).sort(), 'public up reports regenerated account names');
-  const verified = await verifyRepro(receiver, { file });
+  const receiptFile = join(receiver.env.root, 'repro-receipt.json'), beforeVerification = readFileSync(receiptFile);
+  const loginCount = withDb(receiver, db => db.prepare('SELECT count(*) AS n FROM sessions').get().n);
+  const wrongHome = join(root, 'wrong-verifier-home'); ensureCertificateAuthority(wrongHome);
+  const invalidHome = join(root, 'invalid-verifier-home'); mkdirSync(join(invalidHome, 'ca'), { recursive: true });
+  writeFileSync(join(invalidHome, 'ca/ca-cert.pem'), 'invalid test CA');
+  for (const [home, code] of [[wrongHome, 'GATEWAY_TLS_INVALID'], [join(root, 'missing-verifier-home'), 'CA_MISSING'], [invalidHome, 'CA_INVALID']]) {
+    await assert.rejects(() => verifyRepro({ ...receiver, home }, { file }), { code });
+    assert.equal(withDb(receiver, db => db.prepare('SELECT count(*) AS n FROM sessions').get().n), loginCount, 'untrusted TLS must fail before the login request reaches the business service');
+    assert.deepEqual(readFileSync(receiptFile), beforeVerification, 'TLS failures cannot upgrade the reproduction receipt');
+    assert.equal(withDb(receiver, db => JSON.parse(db.prepare('SELECT attempt_json FROM attempts').get().attempt_json).workspaceRevision), attempt.workspaceRevision);
+  }
+  // Invoke the current trusted CLI against the restored target, rather than
+  // executing a verifier from the transferred snapshot.
+  const replay = spawnSync(process.execPath, [join(worktree, 'tools/xj-dev/xj-dev.mjs'), 'repro', 'verify', file, '--worktree', target], {
+    env: { ...process.env, XJ_DEV_HOME: receiver.home }, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 30000,
+  });
+  const verified = JSON.parse(replay.stdout);
+  assert.equal(replay.status, 0, JSON.stringify(verified.failure));
   assert.equal(verified.ok, true, JSON.stringify(verified.verification));
   assert.equal(verified.verification.reproduction, 'verified');
   assert.equal(verified.verification.evidence, 'real-local-business-https');
