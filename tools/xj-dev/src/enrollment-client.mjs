@@ -19,11 +19,18 @@ const serverCodes = new Set(['INVITATION_INVALID', 'INVITATION_EXPIRED', 'INVITA
   'ACCESS_UNAVAILABLE', 'APPLICATION_CONTROL_UNAVAILABLE', 'SSH_RECEIPT_INVALID', 'CAPABILITY_DENIED', 'PACKAGES_UNAVAILABLE',
   'TRANSFER_NOT_FOUND', 'TRANSFER_NOT_OWNED', 'TRANSFER_FAILED', 'UPLOAD_CONFLICT', 'PACKAGE_METADATA_INVALID', 'PACKAGE_TOO_LARGE',
   'MEMBER_QUOTA_EXCEEDED', 'TEAM_QUOTA_EXCEEDED', 'PART_INVALID', 'PART_CONFLICT', 'UPLOAD_INCOMPLETE', 'OBJECT_MISMATCH',
-  'PACKAGE_NOT_READY', 'ETAG_CHANGED', 'OBJECT_STORAGE_UNAVAILABLE']);
+  'PACKAGE_NOT_READY', 'ETAG_CHANGED', 'OBJECT_STORAGE_UNAVAILABLE',
+  'GITHUB_NOT_CONFIGURED', 'GITHUB_NOT_APPROVED', 'GITHUB_AUTHORIZATION_DENIED', 'GITHUB_SESSION_EXPIRED', 'GITHUB_SESSION_INVALID',
+  'GITHUB_SESSION_SECRET_INVALID', 'GITHUB_LOGIN_INVALID', 'GITHUB_REQUEST_INVALID', 'GITHUB_RATE_LIMITED', 'GITHUB_POLICY_CHANGED',
+  'GITHUB_UPSTREAM_INVALID', 'GITHUB_UPSTREAM_UNAVAILABLE', 'GITHUB_ACCOUNT_INVALID', 'GITHUB_ACCOUNT_NOT_FOUND',
+  'GITHUB_CONFIGURATION_INVALID', 'GITHUB_ID_INVALID', 'GITHUB_INVITATION_INVALID', 'MEMBER_REVOKED', 'MEMBER_CONFLICT']);
 function fail(code) {
   return new CliError('enrollment', code, `开发接入未完成（${code}）。`, {
-    retryable: ['ACCESS_UNREACHABLE', 'ACCESS_UNAVAILABLE', 'APPLICATION_CONTROL_UNAVAILABLE', 'RATE_LIMITED', 'PACKAGES_UNAVAILABLE', 'OBJECT_STORAGE_UNAVAILABLE'].includes(code),
-    recovery: '保留现有设备和连接；核对邀请、主机信任与服务状态后，使用同一设备文件显式重试。',
+    retryable: ['ACCESS_UNREACHABLE', 'ACCESS_UNAVAILABLE', 'APPLICATION_CONTROL_UNAVAILABLE', 'RATE_LIMITED', 'PACKAGES_UNAVAILABLE', 'OBJECT_STORAGE_UNAVAILABLE',
+      'GITHUB_UPSTREAM_UNAVAILABLE', 'GITHUB_UPSTREAM_INVALID', 'GITHUB_RATE_LIMITED'].includes(code),
+    recovery: code.startsWith('GITHUB_')
+      ? '保留同一工具 home 后继续 login；待批准时只告知维护者本人 GitHub 用户名，不提供密码或 token。'
+      : '保留现有设备和连接；核对邀请、主机信任与服务状态后，使用同一设备文件显式重试。',
   });
 }
 function need(condition, code = 'ENROLLMENT_STATE_INVALID') { if (!condition) throw fail(code); }
@@ -57,15 +64,18 @@ function pins(value) {
   need(lines.length > 0 && lines.length <= 32, 'HOST_IDENTITY_CHANGED'); return [...new Set(lines)].sort();
 }
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-function trustFrom(invite) {
-  need(invite?.protocol === ACCESS_PROTOCOL && typeof invite.serviceId === 'string' && invite.serviceId.length > 0 && invite.serviceId.length <= 128
-    && id(invite.invitationId) && typeof invite.secret === 'string' && invite.secret.length >= 16 && invite.secret.length <= 128
-    && Number.isSafeInteger(invite.expiresAt), 'INVITATION_INVALID');
+export function enrollmentTrust(invite) {
+  need(invite?.protocol === ACCESS_PROTOCOL && typeof invite.serviceId === 'string' && invite.serviceId.length > 0 && invite.serviceId.length <= 128, 'INVITATION_INVALID');
   let endpoint;
   try { endpoint = new URL(invite.endpoint); } catch { throw fail('INVITATION_INVALID'); }
   need(endpoint.protocol === 'https:' && !endpoint.username && !endpoint.password && !endpoint.search && !endpoint.hash && endpoint.pathname === '/', 'INVITATION_INVALID');
   certificates(invite.caPem); certificates(invite.cloudCaPem); pins(invite.sshKnownHosts);
   return { endpoint: endpoint.origin, caPem: invite.caPem, cloudCaPem: invite.cloudCaPem, sshKnownHosts: invite.sshKnownHosts };
+}
+function trustFrom(invite) {
+  need(id(invite?.invitationId) && typeof invite.secret === 'string' && invite.secret.length >= 16 && invite.secret.length <= 128
+    && Number.isSafeInteger(invite.expiresAt), 'INVITATION_INVALID');
+  return enrollmentTrust(invite);
 }
 function location(stage, deviceFile) {
   need(stage?.schema === STAGE && typeof stage.serviceId === 'string' && id(stage.invitationId) && object(stage.trust));
@@ -171,7 +181,7 @@ function keyFor(paths) {
   need(generated.status === 0, 'DEVICE_KEY_INVALID');
   try { return publicKey(generated.stdout); } catch { throw fail('DEVICE_KEY_INVALID'); }
 }
-function http(trust, path, body) {
+export function enrollmentRequest(trust, path, body) {
   return new Promise((accept, reject) => {
     const bytes = JSON.stringify(body);
     need(Buffer.byteLength(bytes) <= 16384, 'REQUEST_TOO_LARGE');
@@ -190,10 +200,13 @@ function http(trust, path, body) {
       });
     });
     req.setTimeout(10000, () => req.destroy());
+    const deadline = setTimeout(() => req.destroy(), 10000);
+    req.once('close', () => clearTimeout(deadline));
     req.on('error', error => reject(fail(/CERT|TLS|SELF_SIGNED|UNABLE_TO_VERIFY/.test(error.code ?? '') ? 'TLS_IDENTITY_CHANGED' : 'ACCESS_UNREACHABLE')));
     req.end(bytes);
   });
 }
+const http = enrollmentRequest;
 async function signed(stage, paths, path, body) {
   need(/^\/v1\/[a-z][a-z0-9/-]*$/.test(path) && !path.includes('..'), 'INVALID_REQUEST');
   const key = keyFor(paths), bodyHash = digest(JSON.stringify(body));

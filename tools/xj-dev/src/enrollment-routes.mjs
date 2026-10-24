@@ -71,6 +71,23 @@ export async function joinRoute(context, options, log) {
   const environment = await useMode(context, mode, { connection: enrollment.connectionFile }, log);
   return { ...environment, enrollment, started: true };
 }
+export async function loginRoute(context, options, log) {
+  const args = argumentsFor(options, ['--service', '--wait-seconds', '--mode', '--no-start']);
+  const mode = args['--mode'] ?? 'local';
+  if (!['local', 'cloud-api', 'cloud'].includes(mode)) throw new CliError('arguments', 'UNKNOWN_MODE', '模式必须为 local、cloud-api 或 cloud。');
+  const wait = args['--wait-seconds'] ?? '0';
+  if (!/^(?:[0-9]|[1-5][0-9]|60)$/.test(wait)) throw new CliError('arguments', 'GITHUB_WAIT_INVALID', '--wait-seconds 必须为 0–60 的整数。');
+  const { githubLogin } = await import('./github-login.mjs');
+  const result = await githubLogin({ home: context.home,
+    serviceFile: args['--service'] ?? join(context.worktree, 'tools/xj-dev/team-service.json'), waitSeconds: Number(wait) });
+  if (result.state !== 'registered') return { ...result, started: false };
+  const enrollment = publish(context, result.enrollment);
+  if (args['--no-start'] || !enrollment.identity.capabilities.includes('page')) return { ...result, enrollment, started: false,
+    next: ['登记完成；按获授能力选择数据基线和启动模式。'] };
+  const { useMode } = await import('./modes.mjs');
+  const environment = await useMode(context, mode, { connection: enrollment.connectionFile }, log);
+  return { ...environment, ...result, enrollment, started: true };
+}
 export async function refreshRoute(context, options) {
   const args = argumentsFor(options, ['--device-file']);
   const deviceFile = args['--device-file'] ?? enrollmentSelection(context)?.deviceFile;

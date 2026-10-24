@@ -9,7 +9,7 @@ export const DEPLOYMENT_FILES = [
   'apps/teaching/server/access/local-socket.ts',
   'tools/xj-dev/src/enrollment-protocol.mjs',
   ...['server.mjs', 'store.mjs', 'identity.mjs', 'adapters.mjs', 'admin.mjs', 'system-helper.py',
-    'install.py', 'prepare-tls.py', 'package-store.mjs', 'packages.mjs', 'oss-storage.mjs', 'package.json', 'package-lock.json',
+    'install.py', 'prepare-tls.py', 'package-store.mjs', 'packages.mjs', 'github-login.mjs', 'oss-storage.mjs', 'package.json', 'package-lock.json',
     'xunjie-dev-access-candidate129.service'].map(file => 'tools/xj-dev-access/' + file),
 ];
 export function prepareDeployment(commit, output, cwd = process.cwd(), { installDependencies = false } = {}) {

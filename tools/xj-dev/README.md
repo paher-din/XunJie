@@ -43,6 +43,10 @@ $ node tools/xj-dev/xj-dev.mjs up --json
 
 `status` 通过本 home CA 严格校验所选模式网关的页面/API，并结合归属进程与云模式连接状态报告能力；未启动、`down` 后或组件故障时不报告完整入口就绪。`status.ok` 表示完整入口就绪；`doctor.ok` 仍表示前置检查通过，停止状态不影响该前置结论。
 
+### 手动登录与账号文件
+
+Agent先核对页面所属模式，再从实时 `status` 取得本地 `accounts.credentials.file`；云端受管身份使用登记结果 `enrollment.accountFile`（同home可通过 `readRegistration({home})` 查询）。这些是仓库外的私有文件，Agent可提供绝对路径链接或在编辑器打开，供本人手动查看和登录；密码不复制到聊天或日志。团队基线恢复后重新生成本地密码，不能拿云端演示密码登录本地副本。仅文件权限的身份没有云端应用账号。
+
 ### 开发 CA 的系统信任与精确撤销
 
 CA 路径以 `doctor`/`up` 的提示为准，默认是 `~/.xunjie/xj-dev/ca/ca-cert.pem`；`XJ_DEV_HOME` 改根时须使用对应文件。先核对这是自己本次环境的 CA，记录指纹与导入前是否已存在，只撤销本次新增的信任。系统要求密码、管理员权限或 UAC 时由本机所有者确认，工具不会绕过系统确认。邀请内的远端 CA 用于工具连接校验，本节导入的是浏览器访问本机入口所用的开发 CA。
@@ -387,6 +391,21 @@ node tools/xj-dev/xj-dev.mjs repro cache-delete xjp_<UUID>
 授权最长 300 秒，可重新申请；URL 只在内存中使用，文件从 OSS 公网端点直接流向设备，不经 ECS 3 Mbps 出口。URL/STS 不进入 argv、日志、普通结果或复现包。撤销后不再签发新 URL；此前 URL 的精确过期时间和剩余毫秒由 revoke/inspect 报告，不能声称立即使已签名 URL 失效。
 
 维护者沿现有 owner 管理通道使用 `access package-quota` 查看限额/预留，`package-baselines` 查看引用，`package-baseline --input-file FILE` 登记 `{name,version,reproId}`。同 name/version 只允许同一不可变编号，不能覆盖他人内容。 `package-baseline-retire --input-file FILE` 接受 `{name,version,reproId,reason}`，将旧起点从成员列表退役；`package-baselines` 仍显示 `retiredAt` 与原因。退役可幂等重试，原版本不能重新登记；原包、摘要和稳定编号保留，按编号交接仍可用，不释放已发布包配额。`package-cleanup --input-file FILE` 接受 `{transferId}`，只清理失败 multipart 与本工具未发布的对象；已发布或被引用的场景保留。存储失败时先 deny，确认该条目拥有的 multipart 与已完成对象均已清除后才释放预留配额，可重试。`repro cache-delete ID` 经在线授权、独占锁与私有路径校验后清理可再取缓存，也可显式清掉损坏 ready 或已满长但校验失败的 partial，再 `fetch ID` 恢复。有效的共享缓存保留；短 partial、混合布局、未知文件、上传冻结包及永久锁守卫均保留。
+
+## GitHub 登录与首次接入
+
+```sh
+node tools/xj-dev/xj-dev.mjs login --no-start
+node tools/xj-dev/xj-dev.mjs login --wait-seconds 60 --no-start
+```
+
+首次命令返回 `state: authorization-required`、GitHub确认链接和短码，Agent打开确认页面并引导本人授权；后续命令有限等待并续接。`ok:true` 且仍为待授权状态不代表已登记。GitHub要求等待超过60秒时返回 `retryAfterMs`，后续按时间继续，不密集请求。授权成功返回 `state: registered`、本人设备身份及私有账号/连接文件路径；`--no-start`便于先选团队固定基线再启动。省略该参数时，获授page的身份按 `--mode local|cloud-api|cloud` 启动，默认local。已有登记先用原设备刷新，GitHub临时不可达不要求日常设备重新授权。
+
+默认读取随可信checkout分发的 [team-service.json](team-service.json)，其中只有服务地址、公开CA、SSH主机公钥和OAuth应用公开client ID，无邀请或私钥；`--service FILE`用于明确选择另一可信部署。不能从陌生响应接受新信任或关闭TLS。服务/应用描述变化时保留现有设备与现场，核对维护者发布的描述再处理。默认home下 `github-login/<service摘要>/` 保存限时会话，私有session bearer不输出；GitHub token/device_code只留服务端加密存储。完成登记后客户端清除会话bearer，日常用设备key证明身份。
+
+维护者按GitHub固定numeric ID预先批准课程、应用角色及能力；知道仓库地址或能读取公开仓库不授予云权限。未批准时返回 `GITHUB_NOT_APPROVED`，只需告知维护者自己的GitHub用户名，批准后重新调用login。本人取消、会话过期或策略更新后，未登记的会话可在下一次显式login重新开始；已准备的设备不会暗中换key。已有成员/设备撤销继续生效，不能靠GitHub重登恢复。
+
+维护者使用 `access github-approve --admin-config FILE --input-file FILE`，输入 `{githubLogin,label,teamRole,appRole,courseId,capabilities,memberId?}`；服务解析官方用户名为固定ID，`memberId`仅用于绑定既有active且角色/课程一致的身份。`access github-list --admin-config FILE`返回无秘密名单；`access github-deny --input-file FILE`输入 `{githubId}`，先持久拒绝，再撤销该成员全部设备及应用会话，保留作品。撤销清理失败可重试同一操作。管理权限沿owner SSH通道，成员不取得owner凭据。
 
 ## 一次性邀请与设备登记
 

@@ -21,7 +21,17 @@ export function openAccessStore(file, credentialKeyFile, serviceId, now = Date.n
     CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, at INTEGER NOT NULL, operation TEXT NOT NULL, resource_id TEXT NOT NULL, result TEXT NOT NULL);`);
   db.prepare("INSERT OR IGNORE INTO metadata VALUES ('serviceId',?)").run(serviceId);
   requireAccess(db.prepare("SELECT value FROM metadata WHERE key='serviceId'").get().value === serviceId, 'SERVICE_ID_CHANGED');
-  const tx = work => { db.exec('BEGIN IMMEDIATE'); try { const out = work(); db.exec('COMMIT'); return out; } catch (e) { db.exec('ROLLBACK'); throw e; } };
+  let transactionDepth = 0;
+  const tx = work => {
+    const nested = transactionDepth > 0, savepoint = `xj_access_${transactionDepth}`;
+    db.exec(nested ? `SAVEPOINT ${savepoint}` : 'BEGIN IMMEDIATE'); transactionDepth++;
+    try {
+      const out = work(); requireAccess(!out?.then, 'ASYNC_TRANSACTION_UNSUPPORTED');
+      db.exec(nested ? `RELEASE ${savepoint}` : 'COMMIT'); return out;
+    } catch (error) {
+      db.exec(nested ? `ROLLBACK TO ${savepoint}; RELEASE ${savepoint}` : 'ROLLBACK'); throw error;
+    } finally { transactionDepth--; }
+  };
   const audit = (operation, id, result) => db.prepare('INSERT INTO audit(at,operation,resource_id,result) VALUES (?,?,?,?)').run(now(), operation, id, result);
   const seal = value => {
     const iv = randomBytes(12), cipher = createCipheriv('aes-256-gcm', key, iv);
@@ -98,7 +108,7 @@ export function openAccessStore(file, credentialKeyFile, serviceId, now = Date.n
     });
   }
   return {
-    db, tx, member, device, activeDevice, createInvitation, issueChallenge, authenticateProof,
+    db, tx, member, device, activeDevice, createInvitation, issueChallenge, authenticateProof, seal, unseal,
     credentials: id => unseal(member(id).credential),
     identity(id) { const d = activeDevice(id), m = member(d.member_id); return { memberId: m.id, deviceId: d.id, teamRole: m.team_role, capabilities: JSON.parse(d.capabilities) }; },
     stage(id, stage, receipt = {}) { requireAccess(['ssh_ready', 'app_ready'].includes(stage)); activeDevice(id); db.prepare(`UPDATE devices SET ${stage}=1 WHERE id=?`).run(id); if (receipt.username) db.prepare('UPDATE devices SET ssh_username=? WHERE id=?').run(receipt.username, id); },

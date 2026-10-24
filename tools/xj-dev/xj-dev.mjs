@@ -5,7 +5,7 @@ import { failureEnvelope, printResult, resultEnvelope } from './src/envelope.mjs
 import { PINNED_NODE, TOOL_VERSION } from './src/paths.mjs';
 import { locatePinnedRuntime } from './src/runtime.mjs';
 import { reproRoute, baselineRoute } from './src/repro-routes.mjs';
-import { joinRoute, refreshRoute } from './src/enrollment-routes.mjs';
+import { joinRoute, refreshRoute, loginRoute } from './src/enrollment-routes.mjs';
 import { accessRoute } from './src/enrollment-admin.mjs';
 import { transferProjection } from './src/package-routes.mjs';
 
@@ -22,11 +22,14 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
   delete    显式删除当前工作树/实例所选模式的已登记环境数据；保留永久锁守卫
   use <local|cloud-api|cloud>  检查成功后切换入口；原页面保持原数据目标
   node <connect|status|disconnect>  管理已登记节点回连，不重发或改派任务
+  login [--service FILE] [--wait-seconds 0–60] [--mode local|cloud-api|cloud] [--no-start]
+            首次用 GitHub 确认后自动登记；已有身份复用，不需要邀请附件
   join (--invitation-file FILE | --invitation-stdin) [--mode local|cloud-api|cloud] [--no-start]
             登记本机并启动；stdin 仅接受非终端受控输入的完整邀请 JSON，最多 256 KiB
   refresh [--device-file FILE]  用原设备身份刷新配置，不重新领取邀请
   access <invite|inspect|revoke-invitation|revoke-device|revoke-member|snapshot>
             --admin-config FILE [--input-file FILE] [--out-file FILE]
+  access <github-approve|github-list|github-deny> --admin-config FILE [--input-file FILE]
   access <package-quota|package-baselines|package-baseline|package-baseline-retire|package-cleanup> --admin-config FILE [--input-file FILE]
   repro     capture --context FILE --out ZIP / inspect ZIP / restore ZIP [--target DIR] / verify ZIP
   repro     share ZIP --digest SHA256 / resume ID / fetch ID / cache-delete ID [--device-file FILE]
@@ -67,7 +70,7 @@ function parseArgs(argv) {
     if (arg === '--instance') { options.instance = argv[++index]; continue; }
     // Subcommands own their arguments; only the global environment flags above
     // are consumed here. #130 registers their handlers in commandRoutes below.
-    if (['repro', 'baseline', 'join', 'refresh', 'access'].includes(options.command)) { options.extraArgs.push(arg); continue; }
+    if (['repro', 'baseline', 'join', 'refresh', 'login', 'access'].includes(options.command)) { options.extraArgs.push(arg); continue; }
     if (arg === '--connection') { options.connection = argv[++index]; continue; }
     if (arg === '--identity') { options.identity = argv[++index]; continue; }
     if (arg.startsWith('--')) throw Object.assign(new Error(`未知选项：${arg}`), { code: 'UNKNOWN_ARGUMENT' });
@@ -94,6 +97,7 @@ async function main() {
   }
   const { resolveContext, doctor, up, status, down, deleteEnvironment, useMode, nodeCommand } = await import('./src/commands.mjs');
   const commandRoutes = {
+    login: loginRoute,
     join: joinRoute,
     refresh: refreshRoute,
     access: accessRoute,

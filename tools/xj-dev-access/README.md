@@ -4,9 +4,13 @@
 
 ## 成员与维护入口
 
-维护者用现有 owner SSH profile 调用 `xj-dev access`，通过本机管理 socket 生成或撤销邀请。`invite` 必须指定 `--out-file`，其 JSON 包含秘密，由维护者选择交接渠道。邀请与管理配置均经共享私有文件 API 检查：Unix owner/0600，Windows 当前用户 NTFS DACL；内容不进 argv 或普通 CLI 输出。
+默认新成员通过 `xj-dev login`：GitHub网页确认后，服务以预先批准的numeric ID识别用户，内部生成受限邀请并沿原proof/enrollment完成本机设备登记与应用账号准备；成员不交接邀请文件。`login`已有登记时直接刷新原设备。公开服务说明只含地址、公开CA/SSH pin与OAuth应用client ID；GitHub device_code/token不返回客户端，会话bearer仅保存在客户端私有home。日常设备认证不依赖再次访问GitHub。
 
-成员将完整邀请交给 Agent，由 Agent 执行 `xj-dev join --invitation-file FILE`，无需手建 JSON。宿主具备受控秘密 stdin 时，也可用 `join --invitation-stdin`：仅非终端输入，完整原始 JSON 最多 256 KiB，与文件选项互斥，不将秘密放入 args、环境变量或 stdout/stderr，也不生成中转邀请文件。无秘密输入能力时继续用受限文件路径。默认启动独立 local；用 `--mode cloud-api|cloud` 连接获准候选。`--no-start` 只登记，不代表开发环境已验收。`refresh` 用现有设备 proof 更新私有配置。CLI 返回安全身份和 `deviceFile`、`connectionFile`、`accountFile` 路径；登录凭据只在 `accountFile`。两种邀请输入方式复用同一登记位置与 key，成功后可刷新原设备，中断后保留同一 home/key 继续。
+owner SSH/UDS管理命令 `github-approve` 从官方用户名解析固定用户ID，批准角色、课程和能力；`github-list`查看名单，`github-deny`先持久拒绝并沿原撤销链关闭SSH和应用会话。绑定原active成员需显式memberId且角色课程一致，已撤销成员不能因再次GitHub登录而恢复。成员名单、设备和原始应用凭据共用access SQLite与加密key，GitHub会话敏感字段加密保存。
+
+服务公共登录接口是 `POST /v1/github/start {sessionSecret}` 和 `/v1/github/poll {sessionId,sessionSecret}`。start为同一随机bearer幂等取得Github链接/短码与时限；poll遵循upstream interval/slow_down，完成后幂等返回加密保存的内部邀请。请求secret从客户端私有随机生成，只有哈希进服务端索引，响应不回显；公开短码是给本人在GitHub页面确认用的。限制每peer和全局活动会话，过期清理敏感载荷；网络请求不占全局账号撤销队列。生产GitHub传输只允许固定官方端点、严格TLS、无重定向和有限截止。
+
+`join --invitation-file FILE` / `--invitation-stdin`继续用于明确的维护兼容交接，邀请不进argv或普通输出；`--no-start`只登记，`--mode`选择后续local/cloud-api/cloud。`refresh`用原设备proof更新私有配置。CLI仅返回安全ID与device/connection/account文件路径，应用登录凭据留在accountFile。完整用户与维护命令见[GitHub接入说明](../xj-dev/README.md#github-登录与首次接入)。
 
 网络身份与应用 `teacher|student` 角色分别授予；`teamRole` 不授予 owner shell。普通设备只可转发批准的业务端口，执行节点须另获 `node:<id>` 能力。维护入口只通过既有 owner SSH 开放，公网不存在成员管理路由。
 
@@ -46,7 +50,7 @@ node tools/xj-dev-access/prepare-deployment.mjs --commit FULL_SHA --output NEW_D
 
 TLS 材料由 owner 运行 `python3 tools/xj-dev-access/prepare-tls.py --service-config FILE --output NEW_PRIVATE_DIRECTORY` 生成：CA 具备 critical CA:TRUE/keyCertSign/cRLSign 与 SKI/AKI，leaf 具备 CA:FALSE、serverAuth、endpoint SAN；测试用真实 Python/OpenSSL strict TLS 握手。CA signing key 只保留 owner 私有目录，服务器只接收 leaf key/cert 与公开 CA。轮换只作用于 8443；旧邀请信任材料对应旧 CA，应撤销临时试验身份并新发邀请。
 
-首次由 owner 通过私有 stdin 准备 `/etc/xunjie-dev-access-candidate129/service.json`、`system.json`、HTTPS key/cert/CA 与批准的 SSH pin、业务 CA。`service.json` 指向下表固定路径，还需 `serviceId`、可信 `https://HOST:8443` endpoint、`listenHost`/`port`、`tls:{keyFile,certFile,caFile}`、`knownHostsFile`、`cloudCaFile`、`courseIds`、`target:{schema:'xj-dev/connection-v1',host,port,browserOrigin,applicationPort}`、`applicationSocket`；`systemCommand` 固定为 `['sudo','-n','/usr/bin/python3','/opt/xunjie-dev-access/current/tools/xj-dev-access/system-helper.py']`。`system.json` 由 root 独占，只有批准的 `applicationPorts` 和可选 `nodes`，服务请求不能选择路径或 shell。
+首次由 owner 通过私有 stdin 准备 `/etc/xunjie-dev-access-candidate129/service.json`、`system.json`、HTTPS key/cert/CA 与批准的 SSH pin、业务 CA。`service.json` 指向下表固定路径，还需可选 `github:{clientId}`（启用GitHub接入时必填）、`serviceId`、可信 `https://HOST:8443` endpoint、`listenHost`/`port`、`tls:{keyFile,certFile,caFile}`、`knownHostsFile`、`cloudCaFile`、`courseIds`、`target:{schema:'xj-dev/connection-v1',host,port,browserOrigin,applicationPort}`、`applicationSocket`；`systemCommand` 固定为 `['sudo','-n','/usr/bin/python3','/opt/xunjie-dev-access/current/tools/xj-dev-access/system-helper.py']`。`system.json` 由 root 独占，只有批准的 `applicationPorts` 和可选 `nodes`，服务请求不能选择路径或 shell。
 
 | 归属 | 路径/入口 |
 | --- | --- |

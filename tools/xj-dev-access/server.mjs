@@ -8,6 +8,7 @@ import { authenticateDevice } from './identity.mjs';
 import { applicationOperation, systemOperation } from './adapters.mjs';
 import { localSocket } from '../../apps/teaching/server/access/local-socket.ts';
 import { createPackages } from './packages.mjs';
+import { createGithubLogin } from './github-login.mjs';
 
 async function readBody(req) {
   let body = '';
@@ -29,6 +30,17 @@ export function createAccessService(config, adapters = {}) {
   // live device state again after signing and before exposing its URL.
   let fileQueue = Promise.resolve();
   const fileSerial = work => { const next = fileQueue.then(work); fileQueue = next.catch(() => {}); return next; };
+  const issueInvitation = input => {
+    requireAccess(config.courseIds.includes(input.courseId), 'COURSE_NOT_GRANTED', 403);
+    requireAccess(Array.isArray(input.capabilities) && input.capabilities.length > 0 && input.capabilities.every(cap => ['page','file:read','file:publish'].includes(cap) || input.capabilities.includes('page') && cap.startsWith('node:') && config.nodes?.[cap.slice(5)]), 'CAPABILITY_NOT_GRANTED', 403);
+    const invitation = store.createInvitation(input);
+    return { protocol: ACCESS_PROTOCOL, serviceId: config.serviceId, endpoint: config.endpoint,
+      caPem: readFileSync(config.tls.caFile, 'utf8'), sshKnownHosts: readFileSync(config.knownHostsFile, 'utf8'),
+      cloudCaPem: readFileSync(config.cloudCaFile, 'utf8'), ...invitation };
+  };
+  const github = config.github ? createGithubLogin(store, config, { now: adapters.now, fetch: adapters.githubFetch, issueInvitation }) : undefined;
+  let githubQueue = Promise.resolve();
+  const githubSerial = work => { const next = githubQueue.then(work); githubQueue = next.catch(() => {}); return next; };
   const configuration = id => {
     const d = store.activeDevice(id); requireAccess(d.state === 'active', 'DEVICE_NOT_READY', 409);
     const m = store.member(d.member_id), capabilities = JSON.parse(d.capabilities);
@@ -59,28 +71,29 @@ export function createAccessService(config, adapters = {}) {
     await system({ operation: 'revoke', deviceId: id }); store.closed(id);
     return { deviceId: id, denied: true, connectionsClosed: true, ...packages?.catalog.outstanding([id]) };
   }
+  async function revokeMember(id) {
+    const devices = store.denyMember(id), failed = [];
+    try { if (devices.some(d => JSON.parse(d.capabilities).includes('page'))) await application('disable', { externalId: id }); } catch { failed.push('application'); }
+    for (const device of devices.filter(d => !d.close_ready)) {
+      try { await system({ operation: 'revoke', deviceId: device.id }); store.closed(device.id); }
+      catch { failed.push(device.id); }
+    }
+    requireAccess(!failed.length, 'REVOCATION_INCOMPLETE', 503);
+    return { memberId: id, denied: true, devicesClosed: devices.length, applicationDisabled: true, ...packages?.catalog.outstanding(devices.map(d => d.id)) };
+  }
   async function admin(operation, input) {
-    if (operation === 'invite') {
-      requireAccess(config.courseIds.includes(input.courseId), 'COURSE_NOT_GRANTED', 403);
-      requireAccess(Array.isArray(input.capabilities) && input.capabilities.length > 0 && input.capabilities.every(cap => ['page','file:read','file:publish'].includes(cap) || input.capabilities.includes('page') && cap.startsWith('node:') && config.nodes?.[cap.slice(5)]), 'CAPABILITY_NOT_GRANTED', 403);
-      const i = store.createInvitation(input);
-      return { protocol: ACCESS_PROTOCOL, serviceId: config.serviceId, endpoint: config.endpoint,
-        caPem: readFileSync(config.tls.caFile, 'utf8'), sshKnownHosts: readFileSync(config.knownHostsFile, 'utf8'), cloudCaPem: readFileSync(config.cloudCaFile, 'utf8'), ...i };
+    if (operation === 'invite') return issueInvitation(input);
+    if (operation.startsWith('github-')) {
+      requireAccess(github, 'GITHUB_NOT_CONFIGURED', 503);
+      const result = await github.admin(operation, input);
+      if (operation === 'github-deny' && store.member(result.memberId)) return { ...result, revocation: await serial(() => revokeMember(result.memberId)) };
+      return result;
     }
     if (operation === 'inspect') { const state = store.inspect(); return { ...state, ...(packages ? { fileAuthorizations: state.devices.map(d => ({ deviceId: d.id, ...packages.catalog.outstanding([d.id]) })) } : {}) }; }
     if (operation.startsWith('package-')) { requireAccess(packages, 'PACKAGES_UNAVAILABLE', 503); return fileSerial(() => packages.admin(operation, input)); }
     if (operation === 'revoke-invitation') { store.revokeInvitation(input.invitationId); return { invitationId: input.invitationId, revoked: true }; }
     if (operation === 'revoke-device') return revokeDevice(input.deviceId);
-    if (operation === 'revoke-member') {
-      const devices = store.denyMember(input.memberId), failed = [];
-      try { if (devices.some(d => JSON.parse(d.capabilities).includes('page'))) await application('disable', { externalId: input.memberId }); } catch { failed.push('application'); }
-      for (const d of devices.filter(device => !device.close_ready)) {
-        try { await system({ operation: 'revoke', deviceId: d.id }); store.closed(d.id); }
-        catch { failed.push(d.id); }
-      }
-      requireAccess(!failed.length, 'REVOCATION_INCOMPLETE', 503);
-      return { memberId: input.memberId, denied: true, devicesClosed: devices.length, applicationDisabled: true, ...packages?.catalog.outstanding(devices.map(d => d.id)) };
-    }
+    if (operation === 'revoke-member') return revokeMember(input.memberId);
     if (operation === 'snapshot') {
       const file = input.destination;
       requireAccess(typeof file === 'string' && file.startsWith(config.backupDirectory + '/') && /^[A-Za-z0-9_-]+\.sqlite$/.test(file.slice(config.backupDirectory.length + 1)), 'BACKUP_PATH_INVALID');
@@ -105,6 +118,14 @@ export function createAccessService(config, adapters = {}) {
       const input = await readBody(req);
       let data;
       if (req.url === '/v1/challenges') data = store.issueChallenge(input);
+      else if (req.url === '/v1/github/start') {
+        requireAccess(github, 'GITHUB_NOT_CONFIGURED', 503);
+        data = { ...await githubSerial(() => github.start(input, { peer: req.socket.remoteAddress })), clientId: config.github.clientId };
+      }
+      else if (req.url === '/v1/github/poll') {
+        requireAccess(github, 'GITHUB_NOT_CONFIGURED', 503);
+        data = await githubSerial(() => github.poll(input));
+      }
       else if (req.url === '/v1/enroll') data = await serial(() => enroll(input));
       else if (req.url === '/v1/config') { const identity = authenticateDevice(store, input, req.url); data = configuration(identity.deviceId); }
       else if (req.url === '/v1/identity') data = authenticateDevice(store, input, req.url);
@@ -123,7 +144,7 @@ export function createAccessService(config, adapters = {}) {
     try {
       requireAccess(req.method === 'POST', 'METHOD_NOT_ALLOWED', 405);
       const body = await readBody(req), operation = req.url.slice(1);
-      const data = operation.startsWith('package-') ? await admin(operation, body) : await serial(() => admin(operation, body));
+      const data = /^(?:package-|github-)/.test(operation) ? await admin(operation, body) : await serial(() => admin(operation, body));
       reply(res, 200, { ok: true, data });
     }
     catch (error) { reply(res, error instanceof AccessError ? error.status : 503, { ok: false, code: error instanceof AccessError ? error.code : 'ACCESS_UNAVAILABLE' }); }
@@ -149,7 +170,7 @@ export function createAccessService(config, adapters = {}) {
       if (closed) return; closed = true;
       publicServer.closeAllConnections(); adminServer.closeAllConnections();
       await Promise.all([new Promise(done => publicServer.close(done)), adminEndpoint.close(adminServer)]);
-      await Promise.all([queue, fileQueue]); store.close();
+      await Promise.all([queue, fileQueue, githubQueue]); store.close();
     },
   };
 }

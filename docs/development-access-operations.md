@@ -1,6 +1,6 @@
 # 开发成员接入、远程权限与云端运行
 
-更新：2026-10-24。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。一次性邀请、设备证明、join/refresh、受限 SSH、动态应用账号控制与私有 OSS 直传已交付；既有新设备、容量及恢复验收范围见[#133 交付核查](references/2026-10-24-development-delivery-closeout.md)。本轮共享环境以以下承接事实为准，服务器先前实测见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
+更新：2026-10-24。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。GitHub批准名单与浏览器设备授权、兼容邀请、设备证明、login/join/refresh、受限 SSH、动态应用账号控制与私有 OSS 直传已交付；既有新设备、容量及恢复验收范围见[#133 交付核查](references/2026-10-24-development-delivery-closeout.md)。本轮共享环境以以下承接事实为准，服务器先前实测见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
 
 ## 本轮共享环境
 
@@ -14,33 +14,23 @@
 
 ## 当前工具入口
 
-新成员在已发现项目 Skill 的编码 Agent 中只需调用 `$xunjie-development`。Agent 按[首次上手 reference](../skills/xunjie-development/references/onboarding.md)检查配置、依赖及本人身份；已有授权直接复用，缺少邀请只问一次附件或路径。以下命令供 Agent 执行，不要求成员自己准备 JSON、创建文件、配置 SSH/CA 或提供口令。
+新成员在已发现项目 Skill 的编码 Agent 中只需调用 `$xunjie-development`。Agent 按[首次上手 reference](../skills/xunjie-development/references/onboarding.md)检查配置、依赖及本人身份；已有授权直接复用，首次以GitHub网页确认完成接入，名单缺项由维护者补齐。以下命令供 Agent 执行，不要求成员自己准备 JSON、创建文件、配置 SSH/CA 或提供口令。
 
 ### 成员接入入口
 
-本节集中维护邀请输入方式；Skill 不另存一套命令配方。先核对当前 `node tools/xj-dev/xj-dev.mjs --help` 与实现。Agent 接到完整邀请附件后，可以通过受控的非终端 stdin 传入完整 JSON：
+首次由Agent调用 `node tools/xj-dev/xj-dev.mjs login --no-start`，打开返回的GitHub确认链接并提示短码及应用名，再用 `login --wait-seconds 60 --no-start`续接。成员只需完成GitHub网页确认，不需要准备邀请文件、设备公钥或连接参数。`authorization-required`仅表示待确认，`registered`才表示登记完成；`--no-start`仍不表示页面已验收。命令与故障恢复的完整契约见[GitHub接入说明](../tools/xj-dev/README.md#github-登录与首次接入)。
 
-```sh
-node tools/xj-dev/xj-dev.mjs join --invitation-stdin --json
-```
+工具从可信checkout内 `tools/xj-dev/team-service.json`取得非秘密服务说明并严格验证TLS，成功后沿原enrollment协议自动生成本机key、取得受管身份和账号/连接文件。GitHub token不发送到成员电脑；原设备/同home registration优先复用。未批准时只需维护者登记本人的GitHub用户名；不要把个人PAT、owner SSH或云厂商密钥交给接入流程。
 
-由 Agent 的进程调用 API 将附件字节写入子进程 stdin，最多 256 KiB；不把正文拼进 shell 命令、argv 或日志，不让成员在终端粘贴。此入口复用现有登记协议，不代表云端已部署本轮其他新接口。已有受限文件继续兼容：
+首次空工作树先登记、按锁文件准备依赖，再 `baseline use ... --team --version VERSION --here`，最后启动，避免先播种内置库。云端账号路径是 `enrollment.accountFile`，本地账号由 `status`的 `accounts.credentials.file` 返回；成员需要手动登录时，Agent提供正确环境的私有文件入口供本人查看。
 
-```sh
-node tools/xj-dev/xj-dev.mjs join --invitation-file /path/to/private-invitation.json --json
-```
-
-已有受限文件直接传路径，两种输入互斥；邀请附件由 Agent 接收和处理，不要求成员手建文件。旧 checkout 若只支持文件入口，由 Agent 将附件放入仓库外受限文件，Unix owner/0600、Windows 当前用户 NTFS DACL 保护，再调用兼容入口。邀请正文不进入聊天回显或 Git。具体输入校验与恢复方式见[工具说明](../tools/xj-dev/README.md#一次性邀请与设备登记)。本地命令落地与云端实测分别报告。
-
-`join` 默认建立 local；需要共享环境时指定 `--mode cloud-api|cloud`。首次要在当前工作树导入团队固定基线时加 `--no-start`，先登记、准备依赖并 `baseline use ... --team --version VERSION --here`，再启动，避免先播种内置数据。工具生成独立设备 key、证明持有、取得受信 CA/pin 和配置；云端本人应用账号只写 `enrollment.accountFile`，本地测试账号只读当前环境返回的 `accounts.credentials.file`。成功后日常 `up`/`use` 复用登记配置，权限变化用 `refresh`。`--no-start` 只登记，不计完整环境启动。中断保留相同 home、邀请和 key 重试；丢失 key 才需新设备邀请。
-
-当前工作树尚未绑定但同一 home 已登记时，先读取现有安全注册结果，再用 `refresh --device-file FILE` 绑定并更新该工作树的配置，不要求再次找邀请。只有获授 `page` 才检查云端页面；file-only 身份不创建 SSH 或应用账号。既有获准 connection-v1 仍可复用，不要求重新拼装主机、端口、pin 或 CA。
+旧邀请 `join --invitation-file FILE` / `--invitation-stdin`继续兼容明确的维护交接，正文由私有文件或受控stdin输入，不放argv、聊天或日志；默认新成员流程使用GitHub。`refresh`沿用原设备，失败保留同home/key。node权限仍须单独授予，真实执行与模型能力单独验收。
 
 ### 维护者入口
 
 维护者使用 `xj-dev access invite --admin-config FILE --input-file FILE --out-file FILE`，通过既有 owner SSH 管理独立服务。邀请 out-file 含秘密，Unix owner/0600、Windows 当前用户 NTFS DACL 保护；交接渠道由维护者选择。`inspect`、`revoke-invitation`、`revoke-device`、`revoke-member` 和 `snapshot` 复用该入口，管理 socket 不在公网开放。
 
-普通成员只领取给本人的受限邀请和应用身份。owner SSH、备份管理员、云厂商凭据及备份恢复材料留在维护流程，不能作为成员上手材料分发，也不能以现有备份能读为理由给普通成员使用。
+维护者通过 `access github-approve|github-list|github-deny` 管理批准名单；字段、绑定原身份和撤销语义见[工具契约](../tools/xj-dev/README.md#github-登录与首次接入)。批准记录位于access SQLite，使用固定GitHub ID，用户名只是可更新显示信息。普通成员通过本人GitHub取得受限设备和应用身份。owner SSH、备份管理员、云厂商凭据及备份恢复材料留在维护流程，不能作为成员上手材料分发，也不能以现有备份能读为理由给普通成员使用。
 
 已绑定邀请只恢复同一把 key，服务端不再把它作为可交给另一设备的未用邀请。设备撤销关闭该设备已有 SSH 并阻止新连接，保留其他设备；成员撤销还动态禁用应用身份及已有 session，作品保留。普通设备只有批准端口转发，无 owner shell、管理 socket 或任意系统配置权限，node 能力另授。
 
@@ -163,7 +153,7 @@ CLI 与文件存储能简化已经加入团队的成员操作，但不能自行�
 
 ## 完成标准
 
-1. 新 Windows、macOS 设备通过一次性邀请及必要系统确认完成加入，无需成员手改连接文件或要求维护者再手填公钥；中断重试不生成重复账号、设备或环境。邀请过期、重复领取、登记后撤销均有明确结果。
+1. 新 Windows、macOS 设备通过GitHub批准身份、浏览器确认及必要系统确认完成加入，无需成员手改连接文件或要求维护者再手填公钥；中断重试不生成重复账号、设备或环境。邀请过期、重复领取、登记后撤销均有明确结果。
 2. 五位成员同时执行登录、课程查看、编辑保存与提交反馈；同时包含模型队列和文件传输，记录内存、错误率及普通 API 延迟，验证资源竞争时的行为。负载时长、延迟与错误率的通过目标集中在[正式规范的 Testing Decisions](https://github.com/paher-din/XunJie/issues/126#testing-decisions)，不把本文件候选资源参数当作已经验证的容量。
 3. 网络切换和休眠恢复后能自动重连；成员撤销关闭目标连接并阻止新授权，其他成员不受影响；大文件失败可续传。
 4. 本地、云端后端、云端部署三种模式切换不混用数据与浏览器现场；基线更新保留旧副本；模式切换不会自动部署。
