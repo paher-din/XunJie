@@ -9,6 +9,8 @@ description: XunJie 成员首次上手与日常开发协作。用于准备开发
 
 先解析 Skill 真实路径并确认项目根；宿主使用安装副本时先定位当前项目的源目录。仓库链接以 `skills/xunjie-development/` 为基准，不能从 `.agents/skills/` 别名、用户级安装目录或进程 cwd 猜路径。
 
+仅找不到含当前开发工具的正确 XunJie checkout（未 clone，或只有缺少工具的 main）时，读取 [获取项目源码](references/bootstrap.md)；已有可用 checkout 时跳过该参考。
+
 ## 判断本次任务
 
 - **只读咨询**：按问题核实状态并回答；不启动、登记、导入基线或写首引导标记。
