@@ -39,9 +39,26 @@ Agent 按[数据基线](../development-tooling.md#获取与更新数据基线)�
 
 本地恢复团队基线时为11个测试身份重新生成随机密码；从 `up/status` 的 `accounts.credentials.file` 取得受限文件，Agent按需要登录，密码不进Git或普通输出。云端成员加入后取得自己的应用账号，文件路径由 `enrollment.accountFile` 返回；它与本地基线账号独立。原演示账号未因承接而重置，负责人资料仍在仓库外的 `~/.config/xunjie-cloud/accounts.private.txt`，不作为全员共用账号。
 
+## GitHub 接入与首批成员
+
+已在负责人 `wubq511` 名下注册 `XunJie Development Access` OAuth应用并开启Device Flow，公开client ID为 `Ov23liVvSJjyCIG3k5VF`，仅请求公开身份，不申请仓库读写范围。应用管理入口为 GitHub Settings → Developer settings → OAuth Apps；未创建client secret，注册页保留的loopback回调不参与设备授权。成员只需在GitHub页面确认身份和短码，由服务端完成身份解析；批准记录使用固定GitHub numeric ID，公开仓库可读或未来贡献记录不会自动增加权限。
+
+| GitHub用户名 | 固定ID | 团队角色 | 云端应用角色/范围 |
+| --- | --- | --- | --- |
+| `wubq511` | `231859783` | maintainer，绑定原Robert身份 | teacher / `synthetic-i0-course-a`，page与文件读写 |
+| `paher-din` | `209876481` | developer | teacher / 同上，page与文件读写 |
+| `czr112` | `232176190` | developer | teacher / 同上，page与文件读写 |
+| `scy404` | `240625698` | developer | teacher / 同上，page与文件读写 |
+
+四项批准已由owner通道写入并读回；后三位首次完成本人GitHub确认时才创建应用账号和设备，当前仍为not-enrolled。名单不授予owner SSH、云厂商权限或执行节点。维护命令与用户流程见[GitHub接入契约](../../tools/xj-dev/README.md#github-登录与首次接入)，实时名单用 `access github-list` 查询。
+
+接入服务部署源码为 `d55d137fb27e305f788edbac966a2f1123d05c4e`，共享业务仍为原e03进程。Mac和Windows各用独立工具home完成真实GitHub授权、设备登记、受管SSH连接、云端网关严格TLS、应用登录/session/logout 200。GitHub网页确认在Mac浏览器完成；Windows使用经SSH运行的固定提交工具源码快照及Node24.21，不把该结果写成Windows产品浏览器或整仓checkout验收。此前全量tar传输遇到三个课程/文档非运行文件名的Windows解包错误，已改用明确选定的工具/运行源码完成验证，原Windowsdirty工作副本保持。Mac相关16个测试文件122项通过，独立审查发现的三项撤销/信任/重试问题均修复并复核；工程与实机证据分别保存。
+
+两台临时设备已通过原revoke-device链路关闭，CLI后续访问均被拒绝；临时会话敏感载荷、两端home/source、传输包和进程均已清理。四人名单与Robert原日常设备保留。模型、真实编译/仿真及教学效果未在本轮重测。
+
 ## 成员使用
 
-从 [项目 Skill](../../skills/xunjie-development/SKILL.md) 进入。首次调用时按需获取仓库、检查依赖和已有身份，缺少接入材料只索取一次本人邀请附件或路径；Agent 完成操作并主动介绍场景和数据归属。邀请是限时、一次性且绑定设备的加入凭证；日常复用设备身份，不重复领取。
+从 [项目 Skill](../../skills/xunjie-development/SKILL.md) 进入。首次调用时按需获取仓库、检查依赖和已有身份，首次走GitHub网页确认，Agent自动登记并主动介绍场景和数据归属；普通成员无需传邀请附件。已有设备复用proof/refresh，功能介绍只展示一次。
 
 首次空环境先登记但不启动，再导入团队起点，最后启动；不先播种内置库再覆盖。普通成员不需要负责人 SSH、云厂商凭据、CA 签发私钥或备份解密密钥。系统确实要求证书/安装确认时才由设备所有者完成。功能说明展示状态独立保存，后续会话仅补缺项并处理当前任务。
 
@@ -52,6 +69,8 @@ Windows 使用独立临时源码与 pinned Node24.21.0，登记、团队目录/�
 ## 负责人备份与恢复
 
 只在负责人要求备份、恢复、运行维护或排查凭据时读取本节；普通成员首次引导不加载这些材料。
+
+GitHub接入上线后的最新归档为 `/var/lib/xunjie/backup-archives/github-ready-20261024T155720Z-6ecdf635.xunjiebak`，901140 bytes，SHA256 `c78f0161b61ebba6944040eac0fe37633dd517d31e66e258cee7cb63852589c1`。Mac副本在 `~/.config/xunjie-cloud/backup-recovery/github-ready-20261024/`。已独立恢复92文件/6库，核对摘要、外键、TLS/CA、模型和22份access凭据；四人批准名单、1个日常SSH映射及2个临时设备撤销状态均正确，临时GitHub会话载荷已清除，恢复明文也已删除。下文旧归档保留各自时点的恢复范围，不替代最新快照。
 
 负责人 Mac 的持续入口为 `~/.config/xunjie-cloud/README.md` → `CURRENT-STATE.md`，其中记录现行管理配置、签发材料、证书到期、设备登记和页面入口。秘密内容不进入 Git。恢复工具及契约见 [加密备份与隔离恢复](../../tools/i0-cloud/README.md#加密备份与隔离恢复)。
 

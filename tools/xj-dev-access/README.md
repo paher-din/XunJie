@@ -68,13 +68,13 @@ installer 只创建自己的 `xj-access-c129` 服务账号、`xjd_*` 设备账�
 
 ## 生命周期、恢复与清理
 
-安装后由 owner `systemctl start xunjie-dev-access-candidate129.service`，确认 HTTPS CA/pin 和候选应用 socket 就绪后再 `enable`。模板依赖独立 `xunjie-candidate-128.service`，候选业务本身也需持久 unit 才能开机恢复。只更新候选，正式服务、发布 timer 和 owner SSH 保持原归属。
+安装后由 owner `systemctl start xunjie-dev-access-candidate129.service`，确认 HTTPS CA/pin 和候选应用 socket 就绪后再 `enable`。模板依赖独立 `xunjie-candidate-128.service`，候选业务本身也需持久 unit 才能开机恢复。接入更新只重启其自身，保持共享业务、owner SSH及现行备份/监控timer。旧d07业务和旧发布timer已退役，当前状态见团队交接入口。
 
 两处本机控制 socket 使用相同 OS 锁与 inode 回执：重复进程明确拒绝；无 listen 的 close 不清理路径；SIGKILL 后只恢复已记录且连接拒绝的自有 socket。libuv 绑定唯一私有名称，公共入口使用硬链接，close 按 inode 清理，外来替换保留。`.lease.sqlite` 是永久锁，不删除；未知 socket 不自动接管。
 
 `access snapshot` 输入 `{destination:'/var/backups/xunjie-dev-access-candidate129/NAME.sqlite'}`，输出一致 SQLite Backup API 副本、配套 `.key`、无秘密 `.json` 回执。恢复时停止目标接入服务，将数据库与对应 key 安装到新隔离数据目录，恢复同一 serviceId，核对 integrity/外键后启动；原备份保留。业务库与账号控制 registry 由候选业务备份流程另存，两套存储的一致副本不等于跨进程原子快照。撤销回执、加密 key 和成员数据属于维护者备份，不进入 repro。
 
-保留候选供 #131/#133 使用。消费者释放后，先停接入 unit，再撤销并核对本服务设备连接；只删除表中本服务的 unit/配置/release/数据/SSH snippet 和账户。备份按维护者保留策略处理。删除 snippet 后运行 `sshd -t` 再 reload；正式业务、原节点与 owner 身份不在清理范围。
+现行接入服务承担长期团队协作，技术名沿用旧候选编号。整体退役时，先停接入unit，再撤销并核对本服务设备连接；只删除表中本服务的 unit/配置/release/数据/SSH snippet 和账户。备份按维护者保留策略处理。删除 snippet 后运行 `sshd -t` 再 reload；正式业务、原节点与 owner 身份不在清理范围。
 
 ## 验证边界
 
