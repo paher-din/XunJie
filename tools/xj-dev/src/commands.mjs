@@ -64,7 +64,9 @@ function accountsBlock(context) {
 
 function probe(url, ca) {
   return new Promise(resolvePromise => {
-    const request = (ca ? httpsGet : httpGet)(url, ca ? { ca, rejectUnauthorized: true } : {}, response => {
+    // Ownership queries can block the event loop past a pooled socket's idle
+    // lifetime. Each readiness check must observe a fresh connection.
+    const request = (ca ? httpsGet : httpGet)(url, { agent: false, ...(ca ? { ca, rejectUnauthorized: true } : {}) }, response => {
       response.resume();
       resolvePromise({ ok: true, status: response.statusCode });
     });
