@@ -116,7 +116,7 @@ node skills/xunjie-development/scripts/intro-state.mjs mark-shown --worktree <�
 
 ### 本轮推荐起点
 
-建议团队默认选择固定 `name: team-demo`、`version: 2026-10-24-v1`；对应本地发布版本名为 `team-demo-20261024-v1`。**当前处于准备发布阶段，尚待负责人提供真实稳定 ID 与摘要收据；此处不表示已上传、已登记或已成功采用。** 收据到位后，Agent 通过 `baseline list --team` 核对该固定条目；当前工作树首次导入用 `baseline use team-demo --team --version 2026-10-24-v1 --here`，已有环境保持原样，需要该版本时采用隔离副本，不改成可变 `latest`。
+团队已选定固定起点 `name: team-demo`、`version: 2026-10-24-v1`；对应本地发布版本名为 `team-demo-20261024-v1`。Agent 通过 `baseline list --team` 核对实际发布条目、稳定 ID 与完整摘要；目录中不存在时报告尚未发布，不自动换版本。当前工作树首次导入用 `baseline use team-demo --team --version 2026-10-24-v1 --here`，已有环境保持原样，需要该版本时采用隔离副本，不改成可变 `latest`。
 
 便携范围为 4 门课程、11 个重新生成本地凭据的账号、全部 27 个 assignment、9 个 attempt、14 份 snapshot、3 个 submission 和 4 个 feedback。本轮通过显式 `includeUnstartedAssignments` 选项保留其中 18 个尚未开始的任务，不再截断为已开启的 9 个任务。包不携带原口令、会话、模型配置或机器连接；恢复账号仅供新本地副本使用，实际执行与模型能力须另行核实。
 
