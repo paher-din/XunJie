@@ -175,7 +175,7 @@ node tools/xj-dev/xj-dev.mjs repro verify ~/.xunjie/xj-dev/stale-editor.zip --wo
 - `scenario.start` 为 `before-trigger` 或 `after-incident`。后者、`externalUncertainty: true`，或声明执行/模型能力为必需时，自动验证保持 `unverified`，能力需单独准备。`inspect` 和 `verify` 均拒绝空或无效步骤；非空自然语言步骤可保存，自动验证只接受示例中的 HTTP 数据格式，并要求实际观察到全部步骤结果。可识别的无效 synthetic fixture 保留，真实秘密拒绝。
 - 已完成的同请求 ZIP 再次 `capture` 只校验并返回 `reused: true`，不会从变化后的现场重新采集。修改内容要用新文件名。ZIP 限制为 128 MiB、展开总量 256 MiB、单文件 64 MiB、10000 文件，拒绝路径越界、特殊文件和跨平台路径冲突。
 
-基线版本保存在 `XJ_DEV_HOME/baselines/<version>/`，发布只影响本机目录；团队传输使用下节稳定编号：
+本地基线版本保存在 `XJ_DEV_HOME/baselines/<version>/`，发布只影响本机目录；不带 `--team` 的既有命令保持本地行为，结果标记 `scope: local`：
 
 ```sh
 node tools/xj-dev/xj-dev.mjs baseline publish --context ~/.xunjie/xj-dev/stale-editor-context.json --version course-b1
@@ -184,6 +184,18 @@ node tools/xj-dev/xj-dev.mjs baseline use course-b1 --target "<新的工作树�
 ```
 
 同名版本不可覆盖；`latest` 不作为可变指针。`use` 验证兼容后返回新工作树和新数据副本，Agent 在该路径继续开发；原工作树、浏览器与数据保留，其他成员不自动升级。发布基线也不会把未验证的场景变成已复现。
+
+成员已登记并获 `file:read` 后，可以列举服务器已发布的团队基线，并明确采用其中一个 name/version：
+
+```sh
+node tools/xj-dev/xj-dev.mjs baseline list --team
+node tools/xj-dev/xj-dev.mjs baseline use NAME --team --version VERSION --target "<新的工作树绝对路径>"
+node tools/xj-dev/xj-dev.mjs up --worktree "<返回的 environment.worktree>"
+```
+
+这两个团队命令都可加 `--device-file FILE`；默认取当前工作树的登记身份，再回退到当前 home 的登记指针。`list --team` 返回 `scope: team`、名称、固定版本、稳定 `reproId`、完整 `digest`、体积与登记时间；不需要 SSH/page 或发布能力。`use NAME --team` 必须显式提供 `--version VERSION`，不接受 `latest`，也不自动挑最大版本。按目录的 name/version 绑定不可变包编号与摘要，经既有 fetch 完整校验下载，再将所选摘要传入 restore；已有目标工作树或数据环境会拒绝。默认目标为源工作树旁的 `xj-baseline-<name>-<version>-<摘要前缀>`；实际规范路径见 `environment.worktree`。结果同时给出所选基线、`previous.preserved`、独立本地数据路径和下一步 `up`。尚未启动或复现时保持相应未验证状态。
+
+团队基线由维护者先分享冻结包，再通过下节的 `access package-baseline` 登记不可变引用；成员的列举/使用不会发布新基线、修改服务器数据或切换原工作树。
 
 公开模块供文件传输复用：`captureRepro(context, {contextFile, out})`、`inspectRepro(file, {expectedDigest})`、`restoreRepro(context, {file, target, expectedDigest})`，位于 `src/repro.mjs`。返回 `package: {path, digest, bytes, formatVersion, manifest}`；格式 `xj-repro/1`，整个 ZIP 摘要为 `sha256:<64位hex>`。完整文件先通过 `inspectRepro`，再登记/传输；重试复用原 ZIP。
 
@@ -366,7 +378,9 @@ node tools/xj-dev/xj-dev.mjs repro cache-delete xjp_<UUID>
 
 ## 一次性邀请与设备登记
 
-`join --invitation-file FILE [--mode local|cloud-api|cloud]` 自动准备设备 key、签名登记与连接配置，默认启动 local；`refresh [--device-file FILE]` 用原设备刷新授权。当前工作树的日常 cloud `up`/`use` 自动使用已登记配置。`--no-start` 仅登记，未启动不算完整验收。命令只返回安全 ID、页面与私有文件路径，应用测试账号位于 `enrollment.accountFile`，不出现在日志或 JSON 中。
+`join (--invitation-file FILE | --invitation-stdin) [--mode local|cloud-api|cloud] [--no-start]` 自动准备设备 key、签名登记与连接配置，默认启动 local；`refresh [--device-file FILE]` 用原设备刷新授权。当前工作树的日常 cloud `up`/`use` 自动使用已登记配置。`--no-start` 仅登记，未启动不算完整验收。命令只返回安全 ID、页面与私有文件路径，应用测试账号位于 `enrollment.accountFile`，不出现在日志或 JSON 中。
+
+Member 将维护者交付的完整邀请交给 Agent，无需手建 JSON。Agent/宿主具备受控秘密 stdin 时，用 `join --invitation-stdin` 将原始邀请 JSON 写入子进程 stdin 并关闭输入：不把正文放在命令参数、shell 字面量、环境变量或输出里。stdin 只接受非终端输入，原始字节最多 256 KiB（含空白），拒绝空输入、无效 JSON、超限或与 `--invitation-file` 并用；不提供终端粘贴/回显输入流程。秘密只在内存及既有私有登记状态中处理，不创建邀请中转文件。没有 OS/宿主秘密输入能力时，继续使用现有受限邀请文件的路径。两种方式使用相同 service/invitation 登记位置；成功后重试刷新原设备，中断后保持同一 home/key 继续，不重新生成 key。
 
 成员 home 下 `enrollment/<service摘要>/<invitationId>/` 保留原 key 与 stage；同 key 中断重试只继续未完成阶段。成功生成新的私有 generation，最后发布指针；失败保留旧配置。新邀请使用新设备 key，旧 key 丢失时领取新设备邀请。Unix 私有文件检查 owner/0600，Windows 使用共享当前用户 NTFS DACL；不要把私有材料复制进工作树或复现包。
 

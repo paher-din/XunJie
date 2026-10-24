@@ -21,6 +21,15 @@ export function createPackages(access, config, { storage, now = Date.now } = {})
   return {
     catalog,
     async handle(operation, identity, input) {
+      // The existing resolve proof target already requires file:read. Catalog
+      // reads neither sign object URLs nor expose owner/admin operations.
+      if (operation === 'resolve' && input.catalog === 'baselines') {
+        return { baselines: catalog.baselines().map(baseline => {
+          const p = catalog.get(baseline.reproId);
+          requireAccess(p.state === 'published', 'PACKAGE_NOT_READY', 409);
+          return { ...baseline, digest: p.digest, bytes: p.bytes };
+        }) };
+      }
       if (operation === 'upload') {
         let p = catalog.reservation(identity, input);
         if (p.state === 'uploading' && !p.upload_id) p = catalog.setUpload(p.id, await objects.initiate(p.object_key));

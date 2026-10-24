@@ -11,6 +11,7 @@ import { toolHome } from './paths.mjs';
 import { acquireLock } from './state.mjs';
 
 const STAGE = 'xj-dev/enrollment-stage-v1', RESULT = 'xj-dev/registration-v1';
+export const MAX_INVITATION_STDIN_BYTES = 256 * 1024;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const id = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 const serverCodes = new Set(['INVITATION_INVALID', 'INVITATION_EXPIRED', 'INVITATION_KEY_MISMATCH', 'DEVICE_ALREADY_REGISTERED',
@@ -122,9 +123,15 @@ async function lockedAsync(paths, work) {
 }
 
 // All public results below omit invitation secrets, credentials and proof bytes.
-export function prepareEnrollment({ home, invitationFile, inviteFile } = {}) {
+export function prepareEnrollment({ home, invitationFile, inviteFile, invitationBytes } = {}) {
   try {
-    const invite = privateJson(invitationFile ?? inviteFile), trust = trustFrom(invite), root = enrollmentRoot(home);
+    let invite;
+    if (invitationBytes !== undefined) {
+      need(!invitationFile && !inviteFile && Buffer.isBuffer(invitationBytes)
+        && invitationBytes.length > 0 && invitationBytes.length <= MAX_INVITATION_STDIN_BYTES, 'INVITATION_INVALID');
+      try { invite = JSON.parse(invitationBytes.toString('utf8')); } catch { throw fail('INVITATION_INVALID'); }
+    } else invite = privateJson(invitationFile ?? inviteFile);
+    const trust = trustFrom(invite), root = enrollmentRoot(home);
     const service = directory(pathJoin(root, digest(invite.serviceId).slice(0, 24))), base = directory(pathJoin(service, invite.invitationId));
     const paths = { root, base, deviceFile: pathJoin(base, 'stage.json'), identityFile: pathJoin(base, 'device_ed25519') };
     return locked(paths, () => {
@@ -249,7 +256,7 @@ function publish(stage, paths, response) {
 }
 export async function joinEnrollment(options = {}) {
   try {
-    const prepared = options.invitationFile || options.inviteFile ? prepareEnrollment(options) : undefined;
+    const prepared = options.invitationFile || options.inviteFile || options.invitationBytes !== undefined ? prepareEnrollment(options) : undefined;
     const file = prepared?.deviceFile ?? resolveDevice(options); need(file, 'DEVICE_NOT_PREPARED');
     const { paths } = stateAt(file);
     return await lockedAsync(paths, async () => {

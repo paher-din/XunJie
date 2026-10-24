@@ -6,7 +6,7 @@
 
 维护者用现有 owner SSH profile 调用 `xj-dev access`，通过本机管理 socket 生成或撤销邀请。`invite` 必须指定 `--out-file`，其 JSON 包含秘密，由维护者选择交接渠道。邀请与管理配置均经共享私有文件 API 检查：Unix owner/0600，Windows 当前用户 NTFS DACL；内容不进 argv 或普通 CLI 输出。
 
-成员执行 `xj-dev join --invitation-file FILE`。默认启动独立 local；用 `--mode cloud-api|cloud` 连接获准候选。`--no-start` 只登记，不代表开发环境已验收。`refresh` 用现有设备 proof 更新私有配置。CLI 返回安全身份和 `deviceFile`、`connectionFile`、`accountFile` 路径；登录凭据只在 `accountFile`。不同邀请各用独立 key，同一邀请中断保留原 key 继续。
+成员将完整邀请交给 Agent，由 Agent 执行 `xj-dev join --invitation-file FILE`，无需手建 JSON。宿主具备受控秘密 stdin 时，也可用 `join --invitation-stdin`：仅非终端输入，完整原始 JSON 最多 256 KiB，与文件选项互斥，不将秘密放入 args、环境变量或 stdout/stderr，也不生成中转邀请文件。无秘密输入能力时继续用受限文件路径。默认启动独立 local；用 `--mode cloud-api|cloud` 连接获准候选。`--no-start` 只登记，不代表开发环境已验收。`refresh` 用现有设备 proof 更新私有配置。CLI 返回安全身份和 `deviceFile`、`connectionFile`、`accountFile` 路径；登录凭据只在 `accountFile`。两种邀请输入方式复用同一登记位置与 key，成功后可刷新原设备，中断后保留同一 home/key 继续。
 
 网络身份与应用 `teacher|student` 角色分别授予；`teamRole` 不授予 owner shell。普通设备只可转发批准的业务端口，执行节点须另获 `node:<id>` 能力。维护入口只通过既有 owner SSH 开放，公网不存在成员管理路由。
 
@@ -23,6 +23,8 @@
 `upload` 输入 `{idempotencyKey,digest,bytes,crc64,formatVersion:'xj-repro/1',toolVersion:'0.2.0'}`，digest 为 `sha256:<hex>`，crc64 为 unsigned decimal string；返回 `{transferId,record,partSize,partCount,limits}`，transferId 等于 record.reproId。record 固定 publisherId、摘要声明、bytes、crc64、格式/工具版本及创建/发布时间。同 member/key 重试只能同内容。
 
 `upload-status {transferId}` 附带 OSS 确认的 `parts:[{partNumber,bytes,etag,contentMD5}]`；`upload-parts {transferId,parts:[{partNumber,bytes,contentMD5}]}` 冻结每片声明，再返回对应 `{method,url,headers,expiresAt,allowedHost}`。MD5 为原始16字节的 Base64。`complete {transferId}` 只经 ListParts/Complete/HEAD 验证后返回 published record，Complete 丢响应可用同 key 的 HEAD 恢复。`resolve {reproId,offset,etag?}` 返回 `{record,etag,authorization}`；续传 offset>0 要求原带引号 ETag，offset==bytes 不签 URL。下载绑定 Range/If-Match；URL host 必须匹配唯一批准公网 bucket。
+
+团队基线列举复用已授权的 `POST /v1/packages/resolve` proof target，body 为 `{catalog:'baselines'}`（客户端自动绑定 deviceId），同样要求 `file:read`。packages handler 列举现有 `catalog.baselines()`，仅返回 `{baselines:[{name,version,reproId,createdAt,digest,bytes}]}`，不签对象 URL、不暴露存储 key 或管理配置，不扩展发布/管理能力；page-only、publish-only 和已撤销设备不能读取。维护者的 owner 管理入口保持独立。成员通过 `baseline list --team [--device-file FILE]` 查看，使用 `baseline use NAME --team --version VERSION [--target DIR] [--device-file FILE]` 固定 name/version，校验下载摘要后建立隔离本地副本，不隐含 latest 或覆盖旧数据。该能力需要运行包含本改动的接入服务；本地工程测试不表示云端已经部署或验收。
 
 目录与配额位于同一 access SQLite：默认 128 MiB/package、256 MiB/member、1 GiB/team，事务预留 uploading+published，失败 abort 未完成时继续占预留。已发布对象不可覆盖或经失败清理删除，baseline name/version 为不可变引用。`access package-quota|package-baselines|package-baseline|package-cleanup` 复用 owner UDS；输入结构和成员步骤见 [CLI](../xj-dev/README.md#团队复现编号与直传)。
 

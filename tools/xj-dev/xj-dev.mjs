@@ -22,7 +22,8 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
   delete    显式删除当前工作树/实例所选模式的已登记环境数据；保留永久锁守卫
   use <local|cloud-api|cloud>  检查成功后切换入口；原页面保持原数据目标
   node <connect|status|disconnect>  管理已登记节点回连，不重发或改派任务
-  join --invitation-file FILE [--mode local|cloud-api|cloud] [--no-start]  登记本机并启动
+  join (--invitation-file FILE | --invitation-stdin) [--mode local|cloud-api|cloud] [--no-start]
+            登记本机并启动；stdin 仅接受非终端受控输入的完整邀请 JSON，最多 256 KiB
   refresh [--device-file FILE]  用原设备身份刷新配置，不重新领取邀请
   access <invite|inspect|revoke-invitation|revoke-device|revoke-member|snapshot>
             --admin-config FILE [--input-file FILE] [--out-file FILE]
@@ -31,6 +32,9 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
   repro     share ZIP --digest SHA256 / resume ID / fetch ID / cache-delete ID [--device-file FILE]
             restore/verify 也接受稳定 ID，按设备授权下载、校验，再恢复或执行复现步骤
   baseline  list / publish --context FILE --version VERSION / use VERSION [--target DIR]
+  baseline  list --team [--device-file FILE]
+  baseline  use NAME --team --version VERSION [--target DIR] [--device-file FILE]
+            选择团队固定版本，校验不可变编号/摘要后新建本地隔离副本；不接受 latest
 
 全局选项：
   --json            以 JSON 输出结果（默认即为 JSON；日志始终在 stderr）
@@ -46,7 +50,7 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
     重复 up 沿用数据不重置；显式 delete 删除已登记环境数据，之后 up 重建。
   - local：本地前后端与独立数据；cloud-api：本地 Vite/HMR + 云端 API/共享数据；
     cloud：云端部署页面/API/共享数据。切换不搬数据、不升基线、不上传代码、不部署。
-  - 邀请/设备/维护配置从受限文件读取；只输出安全 ID 和私有文件路径，不输出秘密。
+  - 邀请从受限文件或受控 stdin 读取，设备/维护配置从受限文件读取；不输出秘密。
     join默认启动local；云端测试身份的凭据只保存在enrollment.accountFile。
   - 连接由后台受管进程监督；网络故障有限退避恢复，权限/主机身份失败停止重试。
     恢复不重放业务写入。不同模式使用固定入口、独立 Cookie 命名及 browser.profile。
