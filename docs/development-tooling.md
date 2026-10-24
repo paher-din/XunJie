@@ -1,6 +1,6 @@
 # 开发协作工具：Agent 操作、复现包与产品隔离
 
-更新：2026-10-24。状态：`tools/xj-dev` 提供本地全栈、三模式切换、受管页面/登记节点连接、显式环境删除，以及复现包/基线、join/refresh/access 与私有 OSS 直传。平台与真实连接边界见其 README，#133 正在完成 fresh 设备、五人容量、备份恢复和实际产品产物隔离验收。开发者通过 Agent 使用这些工具；普通用户产品安装不依赖它们。上层说明见[开发协作环境](development-collaboration.md)。
+更新：2026-10-24。状态：`tools/xj-dev` 提供本地全栈、三模式切换、受管页面/登记节点连接、显式环境删除，以及复现包/基线、join/refresh/access 与私有 OSS 直传。#133已独立完成e03五人容量、普通产品隔离、Mac正常浏览器/业务和Windows未推送/dirty源码跨机Testing6，固定公开verify严格校验受管CA；临时身份/环境精确清理及final 90文件/6库双端恢复均完成，真实日备覆盖24份helper和9个dropin。历史失败、平台限制及未测项见[交付核查](references/2026-10-24-development-delivery-closeout.md)。开发者通过Agent使用这些工具；普通用户产品安装不依赖它们。上层说明见[开发协作环境](development-collaboration.md)。
 
 ## 新 Agent 的工具入口
 
@@ -87,7 +87,7 @@ checksums.json      # 除自身之外的逐文件 SHA-256；整个 ZIP 另有完
 
 SQLite 事务、源码与附件分别记录边界；清单明确 `crossStorageAtomic: false` 和未采集的个人模型、浏览器、节点及外部服务，不声称全系统原子快照。缺附件、摘要错误、版本不匹配或危险路径均准确失败。ZIP 和 bundle 内路径均在建立工作树前检查，跨平台大小写冲突、文件/目录冲突、越界和特殊文件会拒绝。
 
-默认 `restore` 建立新的 detached Git 工作树和新的数据/身份环境，保护原分支与业务库；恢复不执行包内脚本、Git hook/filter、安装、迁移或启动。Agent 审阅源码后单独 `up`。`verify` 是显式的同源业务 HTTP 步骤执行，使用恢复后的登录身份，结果写在环境回执中；不执行任意 shell/JS。
+默认 `restore` 建立新的 detached Git 工作树和新的数据/身份环境，保护原分支与业务库；恢复不执行包内脚本、Git hook/filter、安装、迁移或启动。Agent 审阅源码后单独 `up`。`verify` 是显式的同源业务 HTTP 步骤执行，使用恢复后的登录身份，登录与每一步均以该 home 的受管 CA 严格认证网关；通过可信 CLI 指定 `--worktree <新恢复target>` 并保持同一 `XJ_DEV_HOME`。缺失、无效或不匹配 CA 时拒绝，不改全局信任、不关闭 TLS 校验或写入新的成功验证回执；结果写在环境回执中，不执行任意 shell/JS。
 
 **生成、恢复与复现分别报告。** 不可变 ZIP 的清单始终保存生成时的未验证状态；只有实际执行了声明步骤并观察到预期状态/错误码，恢复回执才记录 `verified`。事后现场、外部响应不确定或执行/模型条件缺失保持 `unverified`。已有 ZIP 的同请求重试只校验复用，不重新抓取变化中的现场。完整示例与常见失败见 [工具 README](../tools/xj-dev/README.md#复现包与基线)。
 
@@ -116,6 +116,8 @@ sequenceDiagram
     B->>S: 直接取得包
     B->>B: 校验并建立隔离环境，执行复现步骤
 ```
+
+file-only冷下载无需先安装业务SQLite依赖：`fetch`保留授权、完整性、ZIP/清单/资源与不依赖业务模块的Node/工具/锁条件校验，结果仅为downloaded，schema/dependencies尚未检查。`restore`发布目标前仍完整检查runtime/lock/schema及包内条件；缺依赖按`DEPENDENCIES_NOT_READY`的公开recovery，在当前可信checkout显式`doctor`、`use local`准备依赖和本地服务，健康后切换本地入口，原云端数据/页面/未保存草稿保留原目标。普通`up`沿用已选模式，不替代这一本地准备动作；不从包内执行安装。完整partial/ready缓存仍重新授权再复用，细节见[工具README](../tools/xj-dev/README.md#团队复现编号与直传)。
 
 稳定 `xjp_` 编号绑定不可变目录记录中的发布者、摘要声明、格式和工具版本；短期 URL 不作为交接编号。对象路径由工具规则构造，不由包内任意 URL 指定。每人仅发布自己的包，团队成员可读取获授权对象。ListParts/Complete/HEAD 核对 size 和 CRC64/XZ 后才发布；SHA256 为发布者声明，消费方完整复算。同幂等请求复用同一编号，内容变化得到新编号。接收端校验摘要，不能把上传中断后的文件视为可用包。
 

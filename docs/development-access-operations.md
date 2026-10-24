@@ -31,7 +31,7 @@
 
 维护者发出的邀请已经表达接入授权，成员领取时不重复审批。系统证书信任等操作只在操作系统要求时由本人确认；地址、端口、身份、主机 pin 和连接文件由工具处理。登记后的日常连接使用本机设备身份，不反复领取邀请。工具不能要求成员复制公钥到服务器、手编 SSH 配置或每次手开隧道。
 
-浏览器访问本机入口前，按[开发 CA 信任与精确撤销](../tools/xj-dev/README.md#开发-ca-的系统信任与精确撤销)完成正常系统信任。macOS 使用用户 login keychain；Windows 的 CurrentUser Root 在实际主机不支持 Add，改用具有写权限的 .NET LocalMachine Root，完成必要权限确认并按指纹读回。临时跳过证书告警或禁用 TLS 校验不计通过；结束验收只移除本次新增的确切 CA。
+浏览器访问本机入口前，按[开发 CA 信任与精确撤销](../tools/xj-dev/README.md#开发-ca-的系统信任与精确撤销)完成正常系统信任。macOS 使用用户 login keychain；Windows 的 CurrentUser Root 在实际主机不支持 Add，改用具有写权限的 .NET LocalMachine Root，完成必要权限确认并按指纹读回。临时跳过证书告警或禁用 TLS 校验不计通过；结束验收只移除本次新增的确切CA；macOS按SHA256精确删除时使用`-t`同时移除该证书的当前用户trust，不清理原先已有或其他域的信任。
 
 初次接入之外，正常使用只需“启动开发”“切到云端后端”“回本地”。重装系统或换新电脑时领取新设备邀请；旧设备可单独撤销。维护者的现有管理通道用于首次部署和故障恢复，不变成成员正常加入时必须手动配公钥的步骤。若以后需要企业身份校验或跨组织成员自动同步，再引入现成身份提供方；当前不把 GitHub OAuth 作为前置。
 
@@ -122,7 +122,7 @@ CLI 与文件存储能简化已经加入团队的成员操作，但不能自行�
 
 现有阿里云 CMS 已接入 CPU、可用内存、磁盘、服务健康与发布结果监控：标准 C++ agent 已运行，独立 systemd 采样器每 5 分钟上报；健康与发布结果采用 0/1 指标，内存低于 384 MiB、磁盘低于 10/5 GiB 分别上报不健康标记。CMS 已配置自定义指标 `< 1` 连续两次、粒度 300 秒的规则，CPU 沿用既有 85% 连续三次、粒度 300 秒的规则；均复用既有联系组。部署脚本 `--status` 输出水位、当前与可回退版本、备份、上次发布结果及 `actions`。配置、凭据范围及维护步骤见[监控说明](../tools/i0-cloud/README.md#持续监控)，CMS 实际点与规则状态见[验收记录](references/2026-10-23-cloud-release-review-fixes.md)。只检查正常状态、配置和 dry-run，未主动发送测试通知。e03五成员完整窗口已按固定普通API整体p95≤500ms通过（实测262.266ms）；该结论来自独立负载/业务/资源回执，不由CMS正常状态推导，也不替代未测队列/故障场景。
 
-备份由 `backup-retained.mjs` 装入正式维护路径，现已扩展至正式/候选课程与模型 store/key、account-control、access SQLite/credential.key、TLS/公开 CA、受管 SSH 与 helper 回执。数据库统一使用 Backup API、完整性/外键检查，恢复材料以 AES-256-GCM 加密；日备保留 7、周备保留 4，备份 key 自身不入归档。切换前 71 文件/6 库已在云端验证凭据与真实登录读回，并在负责人 Mac 独立恢复校验；预算已持久应用，真实daily policy现包含actual e03 cfg、9个有效dropin及22份helper回执，原formal scope/rollback保留。五容量身份及smoke身份退休后的87文件/6库新归档，云端与main独立Mac关系恢复均通过；明确为post-capacity/pre-Mac、isFinalCurrentSnapshot:false，Mac认证及其精确撤销后仍需新final快照。当前证据、准备态/活跃配置和未完成项集中在[#133 交付核查](references/2026-10-24-development-delivery-closeout.md)。包含秘密的材料不混入团队复现包；独立设备副本不等于离线介质，各库一致不等于跨存储原子快照。接入服务自身 snapshot 仍可独立使用，路径 `/var/backups/xunjie-dev-access-candidate129/`。
+备份由`backup-retained.mjs`装入正式维护路径，覆盖正式/候选课程与模型store/key、account-control、access SQLite/credential.key、TLS/公开CA、受管SSH与helper回执。数据库统一使用Backup API及integrity/FK检查，秘密材料仅以AES-256-GCM加密；日备保留7、周备保留4，backup.key自身不入包。最终日备真实覆盖e03配置、9个有效dropin和24份helper，原formal scope/rollback保留；所有临时身份和私密载荷精确清理后新取final 90文件/6库，云端与main独立Mac全SHA、DB、key/TLS、凭据AES及9目标身份退役关系均通过，恢复明文已删。先前71/89/87文件归档保持原采集时点与原审计。完整摘要、实际预算与未测边界见[#133交付核查](references/2026-10-24-development-delivery-closeout.md)。包含秘密的材料不混入团队复现包；独立设备副本不等于离线介质，各库一致不等于跨存储原子快照。接入服务自身snapshot仍独立可用，路径`/var/backups/xunjie-dev-access-candidate129/`。
 
 先按上述职责分配与候选参数验证，不因低配规格直接购买升级。若 2–5 人的目标工作流在构建和大文件移出后仍持续内存紧张，再评估 4 GiB 规格；若问题来自 3 Mbps 出口，则针对文件路径或带宽处理，不能靠增加 CPU 解决。对象存储有独立资源与费用，开通前需明确区域、容量/流量预算和生命周期；本轮复用了现有ECS/CMS，并经负责人授权配置了私有复现bucket/RAM role；未购买ECS或带宽升级，资源范围另按受限ops回执记录。
 
@@ -135,4 +135,4 @@ CLI 与文件存储能简化已经加入团队的成员操作，但不能自行�
 5. 低磁盘、服务重启、发布失败与备份恢复都有可验证结果；普通用户产品安装不携带或连接开发接入服务。
 6. 每个替换阶段完成[旧入口清理](development-tooling.md#旧连接实现配置与说明的替换清理)，仓库中被替代的连接实现、配置与使用说明实际删除，保留能力的调用已迁移；不以新增一套可用工具代替清理交付。
 
-云端发布、监控与恢复的本轮实测范围见[验收记录](references/2026-10-23-cloud-release-review-fixes.md)：正式旧产物链路运行、integration 新协议托管 CI、独立故障宿主低磁盘/候选失败回退及成功保留、现有业务真实加密备份的 Mac 隔离恢复。正式 main 新协议切换仍待负责人发布决定；Windows成员补验、实际业务预算、e03五人容量、扩展接入备份两端恢复及actual e03普通产品隔离均已有独立回执；Mac正常系统信任/其身份清理与后续final快照仍pending，真实执行节点及教学效果未测。
+云端发布、监控与恢复的本轮实测范围见[验收记录](references/2026-10-23-cloud-release-review-fixes.md)及[#133交付核查](references/2026-10-24-development-delivery-closeout.md)：正式旧产物链路、integration候选CI、低磁盘/失败回退、e03五人容量/预算、实际产品隔离及final 90文件/6库两端恢复均有证据。fresh Mac正常Chrome、本地完整业务、teacher云端draft、三模式和精确身份/CA/home清理已独立通过；辅助native checker仍false、teacher-only云端未测student完整loop的边界保留。Windows unpublished/dirty跨机Testing6、fixed健康返回及2c0cead固定入口公开strict verify已main独立通过，全部3请求strict CA/TLS1.3 authorized；两个file-only身份/邀请revoked、device close_ready=1、helper denied，原key均DEVICE_REVOKED，两端专属环境/私密载荷精确清理、36项封存及main全局release均完成。旧版两次健康误报和旧公开verify关闭TLS的历史保留，后者不计strict TLS通过。正式main新协议发布仍由负责人决定，真实执行节点及教学效果未测。
