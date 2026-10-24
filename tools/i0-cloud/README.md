@@ -84,7 +84,7 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 
 日常运行由 `xunjie-backup-daily.timer`（03:00，保留 7 份）与 `xunjie-backup-weekly.timer`（周日 03:30，保留 4 份）触发；按 label 分别清理，只删除本脚本命名的归档。两个备份单元的 `ExecStart` 用 `flock` 持有部署脚本同一把锁（`<workDirectory>/deploy-artifact.lock`），部署与备份、备份与备份互不重叠；换部署配置时需同步单元里的锁路径。恢复演练应在隔离环境（独立目录、无生产配置）执行一次并记录结果，不要在生产数据目录上直接演练。
 
-#133当前恢复范围已在真实daily policy补齐actual e03配置、全部9个有效dropin及22份helper回执，formal scope和70d/c896回退材料保留，未登记不存在的1aa配置。五个容量身份及file-only smoke身份退休后，另取post-capacity/pre-Mac归档：87文件/6库，云端与main独立Mac恢复的摘要、integrity/FK、key/TLS、active/deny/SSH关系均通过，恢复明文已清。它标记isFinalCurrentSnapshot:false；Mac系统认证/精确清理后仍取新final快照，不能把Mac解密恢复通过当作系统信任完成。更新后的定时策略已实际写入，但未到下一timer触发时间；当前/历史归档及密文摘要见[交付核查](../../docs/references/2026-10-24-development-delivery-closeout.md#五成员退休后的当前日备与新归档)。
+#133最终真实daily policy已覆盖actual e03配置、全部9个有效dropin及实际枚举的24份helper，formal scope和70d/c896回退材料保留，未登记不存在的1aa配置。Mac/Windows实际验收、临时身份精确退休及私密载荷清理完成后，另取post-cleanup-final-current密文：90文件/6库，云端与main独立Mac恢复全部SHA、integrity/FK、4个key长度、模型/access凭据AES、3对TLS/CA、9身份退役及active/deny/SSH关系通过，恢复明文和payload均已清理。71/89/87文件历史快照保持原时点与原审计，不改写；Mac严格浏览器与辅助native诊断false的边界分别保留。更新后的日备尚未到下次timer触发，不将人工归档冒称定时器再次执行。密文摘要与完整证据见[最终恢复记录](../../docs/references/2026-10-24-development-delivery-closeout.md#最终清理后的加密归档与两端恢复)。
 
 ## 静态资源与资源预算
 

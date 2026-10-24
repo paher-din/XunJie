@@ -55,7 +55,7 @@ openssl x509 -in "$CA" -noout -fingerprint -sha1
 security add-trusted-cert -r trustRoot -k "$HOME/Library/Keychains/login.keychain-db" "$CA"
 ```
 
-在「钥匙串访问」中按该证书指纹核对信任并重新打开浏览器。结束本次验收、确认没有环境仍使用它后，只删除本次新增的那张证书：`security delete-certificate -Z <本次CA的SHA1指纹去掉冒号> "$HOME/Library/Keychains/login.keychain-db"`。不要按同名 CN 批量删除，也不要移除原先已有的证书。
+在「钥匙串访问」中按该证书指纹核对信任并重新打开浏览器。结束本次验收、确认没有环境仍使用它后，仅对本次新增且指纹匹配的证书执行：`security delete-certificate -Z <本次CA的SHA256指纹去掉冒号> -t "$HOME/Library/Keychains/login.keychain-db"`；`-t` 同时清除该证书的当前用户 trust 设置。不要按同名 CN 批量删除，也不要移除原先已有的证书或信任。
 
 Windows 在有 **LocalMachine Root 写权限**的 PowerShell 中执行下列脚本；普通会话权限不足时需由本机所有者打开管理员 PowerShell 并确认 UAC。实际 Windows 主机曾对 `CurrentUser Root` 的 Add 返回 `ERROR_NOT_SUPPORTED`；同机所有者使用下述 LocalMachine 方法已完成添加、指纹读回与精确移除。能 Open 不代表能 Add，必须检查读回结果：
 
@@ -162,7 +162,7 @@ node tools/xj-dev/xj-dev.mjs up --worktree "<返回的environment.worktree>"
 node tools/xj-dev/xj-dev.mjs repro verify ~/.xunjie/xj-dev/stale-editor.zip --worktree "<返回的environment.worktree>"
 ```
 
-路径以输出为准；`XJ_DEV_HOME` 改根时同步调整示例路径。`restore --target <不存在的目录>` 可指定新工作树。正常依赖按锁安装，恢复本身不会运行 `npm`、任何包内脚本、Git hook/filter、schema 迁移或旧队列；`up` 是审阅后的单独操作。`verify` 仅在匹配包摘要的已恢复本地环境中，使用重新生成的角色身份发送同源 HTTP 请求，回执记录真实状态/错误码，不记录 Cookie、CSRF 或密码。
+路径以输出为准；`XJ_DEV_HOME` 改根时同步调整示例路径。`restore --target <不存在的目录>` 可指定新工作树。正常依赖按锁安装，恢复本身不会运行 `npm`、任何包内脚本、Git hook/filter、schema 迁移或旧队列；`up` 是审阅后的单独操作。`verify` 仅在匹配包摘要的已恢复本地环境中，使用重新生成的角色身份发送同源 HTTP 请求；登录及每一步均以同一 home 的 `ca/ca-cert.pem` 严格校验服务器证书，不生成 CA 或修改全局信任。调用可信 CLI 时用 `--worktree <新恢复target>` 明确目标，保持原 `XJ_DEV_HOME`。回执记录真实状态/错误码，不记录 Cookie、CSRF 或密码；缺失、无效或不匹配的 CA 不产生新的成功验证回执。
 
 恢复以真实父目录与目标 `basename` 组合规范路径，预检查、Git 工作树、数据环境 ID 和目标预留使用同一路径，支持盘符根目录下的新目录。目标父目录中的 `.xj-repro-restore-<ID>.lock/` 使用永久 SQLite OS 锁，跨 `XJ_DEV_HOME` 互斥；竞争者返回 `LOCK_HELD` 或 `TARGET_EXISTS`。释放锁保留目录，请勿删除正在使用的锁。失败只回滚本次拥有的新工作树、数据和 Git 工作树登记，保留已有环境。
 
@@ -267,6 +267,10 @@ node node_modules/@playwright/test/cli.js test xjDevModes --workers=1
 
 两平台重复登录验收需协调目标账号的登录窗口；本次并行复验触发过正常的账号限流，受影响用例随后顺序补跑通过，未修改限流策略或清理计数。
 
+2026-10-24 fresh Mac补验固定actual e03：新Chrome profile正常TLS1.3/200，无HTTPS忽略/证书绕过flags/CDP ignore/注入anchor；本地baseline学生保存/固定提交/教师反馈闭环、teacher专用云邀请的draft写入、三模式来源及Cookie/CSRF/HMR/draft边界通过。自有身份/进程、精确CA证书及用户trust、私密home已清理，main独立核对PASS。辅助native SecTrust/security verify仍false，且teacher-only云邀请未测cloud student整套闭环，不能扩大为全部能力通过；完整事实、操作者介入和未测项见[交付核查](../../docs/references/2026-10-24-development-delivery-closeout.md#fresh-mac完整验收与精确清理)。
+
+2026-10-24跨机补验：同一6,334,801-byte团队包带未推送提交与选中dirty源码，经Windows冷fetch、公开doctor/use local准备、隔离restore及固定可信CLI公开verify完成真实200→409；841源码摘要一致，登录与两步业务请求均strict CA/TLS1.3 authorized。临时身份/环境/私密载荷精确清理及final 90文件/6库两端恢复均已独立核验。旧版两次use local误报、旧公开verify关闭TLS的失败历史不抹去；工程计数、浏览器范围及未测项见[交付核查](../../docs/references/2026-10-24-development-delivery-closeout.md)。
+
 ## 测试
 
 ```sh
@@ -289,6 +293,8 @@ XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBase
 | 失败 | 处理 |
 | --- | --- |
 | `NODE_VERSION_MISMATCH` | 按输出安装精确 Node 24.21.0 到受管目录，或设 `XJ_DEV_NODE_24` 指向它 |
+| `repro/DEPENDENCIES_NOT_READY` | 当前可信接收 checkout 的数据库依赖缺失或 native 模块无法加载，schema 尚未检查、恢复目标未发布。按 `recovery` 在该 checkout 显式运行 `doctor --worktree <可信checkout>`，再运行 `use local --worktree <可信checkout>`；后者准备依赖、启动本地服务，健康检查通过后切换本地入口，原云数据、已有页面和未保存草稿保留原目标。成功后重试 `restore`，不从包内执行安装或脚本 |
+| `repro/CA_MISSING` / `repro/CA_INVALID` / `repro/GATEWAY_TLS_INVALID` | 核对可信 CLI 的 `--worktree` 是否为新恢复目标、`XJ_DEV_HOME` 是否与该环境一致，以及受管 CA 与网关证书是否匹配；缺失或损坏时保留现场并恢复匹配材料，不轮换根或关闭 TLS 校验。未认证服务身份时不发送登录凭据，原验证回执保持 |
 | `PORT_IN_USE` | 停止占用进程后重试；若占用者是本环境残留进程，先 `down` |
 | `HEALTH_TIMEOUT` | 看环境目录 `logs/` 下对应组件日志 |
 | `BASELINE_FAILED` | 重试 `up`；曾成功登记的环境可显式 `delete` 后 `up`，无有效登记时保留现场检查 |
@@ -346,7 +352,13 @@ node tools/xj-dev/xj-dev.mjs repro cache-delete xjp_<UUID>
 
 先 `capture` 冻结 ZIP，再 `share`：发送方校验包、保存私有冻结副本，登记稳定 `xjp_` 编号，按 8 MiB 分片直传私有 OSS。默认单包 128 MiB、成员 256 MiB、团队 1 GiB；未完成上传也预留配额。服务端 ListParts 核对每片 size/MD5，再 Complete/HEAD 核对总 size 和 CRC64/XZ 后才发布；SHA256 是发布者声明，接收端必须完整复算，不声称 ECS 读取文件计算 SHA。
 
-`resume` 复用原 ZIP 和幂等请求，已由 OSS 确认的分片不重传；失败输出 `transfer` 投影，保留编号、冻结路径与确认进度。`fetch` 只下载、校验和检查兼容；`restore ID` 自动取得同一 ZIP 后建立隔离环境。`verify` 才显式执行真实业务 HTTP 步骤，上传和恢复均不会自动宣称问题已重现。已校验缓存按摘要复用，续传使用带引号 ETag、Range 与 If-Match；摘要/长度/CRC/兼容性不符拒绝作为可用包。
+`resume` 复用原 ZIP 和幂等请求，已由 OSS 确认的分片不重传；失败输出 `transfer` 投影，保留编号、冻结路径与确认进度。
+
+`fetch` 按当前设备权限下载，检查大小、CRC64/XZ、完整 SHA256、ZIP/清单/资源与声明内容自洽，并校验精确 Node、工具版本、锁文件摘要算法及当前可信 checkout 的锁文件内容。file-only 冷下载不安装业务依赖、不启动业务、不导入业务 schema，也不执行包内代码。成功返回 `state=downloaded`、`restored=false`、`reproduction=unverified`；`compatibility.dependencies` 和 `compatibility.schema` 为 `not-checked`，`compatibility.runnable` 为 `unverified`。下载成功不表示当前 checkout 已具备恢复或运行条件。
+
+`restore`（本地 ZIP 或团队 ID）在发布目标工作树和数据环境前，仍完整检查可信接收 checkout 的 runtime、工具、锁文件和业务 schema，随后交叉核对包内数据库及 bundle 的锁条件。缺依赖或 native 模块不可加载时明确返回 `repro/DEPENDENCIES_NOT_READY`，按 `recovery` 在当前可信 checkout 先显式 `doctor`，再执行 `use local`。后者准备 student/teaching 依赖、启动本地服务，并在健康检查通过后切换当前本地入口；原云端数据、已有页面和未保存草稿留在各原目标。普通 `up` 沿用已选模式，不能承诺在 `cloud`/`cloud-api` 下完成这项本地依赖准备。成功后重试 `restore`；恢复自身不暗中 npm、不切换模式、不启动业务，也不执行包内脚本。恢复后仍须审阅新工作树，显式对新目标 `up`，再用 `verify` 执行真实业务 HTTP 步骤；下载、恢复和复现分别报告。
+
+原失败留下完整有效的 `partial` 时，可对同一 ID 正常 `fetch`：重新授权并复用已下载字节，不重新采集或无谓重传正文。已有 `ready` 缓存也每次重新授权、校验和检查上述兼容条件；续传使用带引号 ETag、Range 与 If-Match。撤销、摘要/长度/CRC、缺资源或相应兼容条件不符仍拒绝，失败保留现有包、环境与永久锁。
 
 授权最长 300 秒，可重新申请；URL 只在内存中使用，文件从 OSS 公网端点直接流向设备，不经 ECS 3 Mbps 出口。URL/STS 不进入 argv、日志、普通结果或复现包。撤销后不再签发新 URL；此前 URL 的精确过期时间和剩余毫秒由 revoke/inspect 报告，不能声称立即使已签名 URL 失效。
 
