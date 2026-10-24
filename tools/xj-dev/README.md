@@ -17,6 +17,7 @@ node tools/xj-dev/xj-dev.mjs delete     # 显式删除所选模式的已登记�
 - 运行时需要精确的 Node 24.21.0；CLI 会自动重定向到受管运行时（`~/.xunjie/xj-dev/runtime/`，缺失时按 doctor 的恢复提示安装）。
 - `better-sqlite3@13.0.3` 按锁文件从源码构建。Windows 需 Python 3 与 Visual Studio 2022 Build Tools 的「使用 C++ 的桌面开发」工作负载（含 Windows SDK）。可用 `winget install --id Microsoft.VisualStudio.2022.BuildTools --exact --override "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"` 安装构建工具。
 - 开发证书生成需要 OpenSSL 在 PATH 中可用；Windows 可使用 Git for Windows 或 MSYS2 提供的 OpenSSL。
+- Windows 保持默认的 `~/.xunjie/xj-dev` 工具目录。本轮主机的 .NET ACL 接口在过深私有文件路径上失败；自定义很长的 `XJ_DEV_HOME` 尚未通过。遇到 `PRIVATE_FILE_REQUIRED` 时核对路径和 ACL，保留原设备密钥与数据，不通过取消文件保护或重新登记掩盖错误。
 
 一次完整会话（输出为要点节选，实际为单个 JSON）：
 
