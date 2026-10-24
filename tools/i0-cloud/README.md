@@ -84,6 +84,8 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 
 日常运行由 `xunjie-backup-daily.timer`（03:00，保留 7 份）与 `xunjie-backup-weekly.timer`（周日 03:30，保留 4 份）触发；按 label 分别清理，只删除本脚本命名的归档。两个备份单元的 `ExecStart` 用 `flock` 持有部署脚本同一把锁（`<workDirectory>/deploy-artifact.lock`），部署与备份、备份与备份互不重叠；换部署配置时需同步单元里的锁路径。恢复演练应在隔离环境（独立目录、无生产配置）执行一次并记录结果，不要在生产数据目录上直接演练。
 
+#133当前恢复范围已在真实daily policy补齐actual e03配置、全部9个有效dropin及22份helper回执，formal scope和70d/c896回退材料保留，未登记不存在的1aa配置。五个容量身份及file-only smoke身份退休后，另取post-capacity/pre-Mac归档：87文件/6库，云端与main独立Mac恢复的摘要、integrity/FK、key/TLS、active/deny/SSH关系均通过，恢复明文已清。它标记isFinalCurrentSnapshot:false；Mac系统认证/精确清理后仍取新final快照，不能把Mac解密恢复通过当作系统信任完成。更新后的定时策略已实际写入，但未到下一timer触发时间；当前/历史归档及密文摘要见[交付核查](../../docs/references/2026-10-24-development-delivery-closeout.md#五成员退休后的当前日备与新归档)。
+
 ## 静态资源与资源预算
 
 前端构建产物在 CI 阶段预压缩（`.br`/`.gz` 边车，仅小于原文件时生成），宿主静态处理器按 `Accept-Encoding` 选择边车，不做请求期压缩；带内容摘要的 `/assets/**` 返回 `immutable` 一年缓存，入口 HTML 返回 `no-cache` 并带构建期摘要 ETag，新版本与回退各自引用独立发布目录，不会混用资源。2 MiB 以内的小产物一次写出，更大的文件流式转发，不在业务进程整体读入。回环访问的成员页面转发沿用既有 HTTPS 链路。
