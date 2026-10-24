@@ -4,7 +4,7 @@
 
 ## 新 Agent 的工具入口
 
-项目统一入口为 [xunjie-development Skill](../skills/xunjie-development/SKILL.md)。Skill 决定何时读什么、如何选择操作和核对结果；本节及对应工具 README 维护工具事实，参数以当前源码和命令帮助为准。仓库根 `AGENTS.md` 提供条件入口，不要求开发者记住 Skill 名称。
+项目统一入口为 [xunjie-development Skill](../skills/xunjie-development/SKILL.md)。新成员只需调用 `$xunjie-development`，Agent 先检查已有配置、依赖和本人身份，再补齐接入并介绍一次；后续按当前任务直接执行。只读咨询不初始化。Skill 主文只做判断，首次流程和日常操作分别按需进入 references，不要求成员预读文档或找命令。本节及对应工具 README 维护工具事实，参数以当前源码和命令帮助为准。
 
 | 当前工具 | 如何找到用法与前置条件 | 能做什么、不能据此声称什么 |
 | --- | --- | --- |
@@ -19,6 +19,46 @@
 
 工具 README 随实现放在 `tools/xj-dev/README.md`，按已交付能力逐项更新；现阶段不创建空目录或假入口。让未参与设计的 Agent 通过根规范和 Skill，能回答“现在能用什么、命令怎么调用、数据在哪里、失败怎么办”，并完成一条已实现流程，才算说明交付完成。
 
+## 安装与发现
+
+Skill 的 Git 源码在 `skills/xunjie-development/`。这不是 Codex 文档列出的仓库发现路径；Codex 从当前目录向上到仓库根扫描 `.agents/skills`，支持跟随 Skill 目录软链。团队在每个 checkout 的 `.agents/skills/xunjie-development` 建立指向真实源目录的发现入口；当前 `.gitignore` 忽略 `/.agents/skills/`，因此 clone 或新建工作树后需由 Agent 检查安装，不能假定链接随 Git 自动出现。上述扫描与软链支持已核对 [OpenAI 官方技能文档](https://learn.chatgpt.com/docs/build-skills)。
+
+由 Agent 在确认的仓库根操作，先检查入口是否存在以及目标是否正确，保留未知文件和其他 Skill；仅入口缺失时创建：
+
+```sh
+# macOS / POSIX：目录软链的相对目标以 .agents/skills/ 为基准
+mkdir -p .agents/skills
+ln -s ../../skills/xunjie-development .agents/skills/xunjie-development
+```
+
+```powershell
+# Windows：本机目录 junction，目标取实际绝对路径；已有入口不覆盖
+New-Item -ItemType Directory -Path .agents\skills -Force | Out-Null
+$skillTarget = (Resolve-Path skills\xunjie-development).Path
+New-Item -ItemType Junction -Path .agents\skills\xunjie-development -Target $skillTarget
+```
+
+PowerShell 的 `Junction` 用法见 [Microsoft New-Item 文档](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/new-item?view=powershell-5.1)。junction 是本项目的 Windows 安装方案，不能仅凭文件可读就声称当前 Codex 版本已发现；必须在该宿主的技能列表/选择器确认 `xunjie-development` 并实际调用。若链接受系统限制，由 Agent 按该宿主支持的方式安装完整 Skill 目录并维护同步；不是让成员复制主文。官方说明变更可自动发现，未出现时重启 Codex；重启本身不算发现验收。
+
+安装后核对 `SKILL.md`、references 可读，且入口的真实路径等于源目录。仓库文档链接从真实 `skills/xunjie-development/` 解析，references 中的仓库链接多上一层；不能从发现别名或进程 cwd 解算。采用安装副本的宿主，应定位当前项目源码后再读取仓库文档，不能按用户级安装路径的 `../..` 猜仓库。其他 Agent、远程电脑、容器及新工作树都需重新检查各自的发现机制；本页不承诺跨宿主自动发现。
+
+2026-10-24 本机核查：Codex CLI 0.163.0 的 `skills/list` 在临时目录通过上述相对软链发现该 Skill，返回真实源码路径、`scope: repo`、`enabled: true`。集成工作树随后由主 Agent 安装同目标入口，并保持 ignored；新 checkout 仍按上面的检查处理。该结果不代替其他宿主的发现或 Windows junction 实测。
+
+## 首引导状态
+
+环境、依赖和连接优先复用 `doctor`、`status` 与本人已登记设备；它们决定要补什么，不证明成员听过介绍。Skill 的[极小状态脚本](../skills/xunjie-development/scripts/intro-state.mjs)只补充工具没有记录的“说明已展示”事实，在新会话也能查询：
+
+```sh
+node skills/xunjie-development/scripts/intro-state.mjs status --worktree <项目根>
+node skills/xunjie-development/scripts/intro-state.mjs mark-shown --worktree <项目根>
+```
+
+`status` 只读，不创建目录。`mark-shown` **只在 Agent 已向成员实际展示一次功能、场景、数据归属和能力缺口后调用**，不能在准备好文案、运行 `join --no-start` 或启动命令成功时自动标记。初始化或云接入失败且尚未介绍时保持 `introShown: false`；若已实际解释可用部分与失败缺口，可标记“已展示”，后续只续缺失步骤。
+
+脚本不提供“接入完成”字段，始终返回 `readiness: not-checked`；就绪、权限、版本和数据目标每次从真实工具核实。标记为真但环境没启动时照常准备/恢复，不重讲；缺失标记但已有注册/环境时复用它们，完成首次介绍后再标记。只读询问不初始化、不登记、不写标记；用户明确要求重听时才再介绍。
+
+标记位于工具 home 的 `onboarding/<Git common directory 真实路径的 SHA-256>.json`，默认在 `~/.xunjie/xj-dev` 下，遵守 `XJ_DEV_HOME`。同仓库各工作树及新进程共享，只存 schema 与展示时间；不存成员 ID、凭据、环境成功状态或业务数据。复用工具既有私有文件 API 原子写入，Unix 目录/文件为 0700/0600、Windows 使用当前用户受限 DACL，拒绝将标记放入 Git 工作树或 Git 元数据目录。损坏或不可信标记报错并保留，不擅自重置。换宿主仍先核对该宿主真实登记及环境，标记不代表连接已经恢复。
+
 ## 预期体验
 
 人负责说明任务和现象，开发 Agent 负责选择操作、补齐上下文与检查结果，固定程序负责环境、数据和文件操作。这里的开发 Agent 指协助团队开发的编码 Agent，与产品里的学生端 Agent 无关。
@@ -29,7 +69,7 @@
 | “把这个反馈异常打包，放到团队共享位置” | 整理现象与步骤；采集指定场景和代码状态；校验包；上传 | 一个复现编号、简短交接说明、已验证到哪一步 |
 | “打开这个复现编号，排查原因” | 下载校验；还原对应代码到隔离工作树；建立独立数据与浏览器环境；按步骤复现 | 环境入口、复现结果和下一步排查依据 |
 
-日常无需手动复制数据库、编辑环境文件或操作压缩包。首次使用仍需完成仓库与工具链准备、成员访问配置，以及操作系统要求的开发证书信任；工具检测并引导这些一次性步骤。模型凭据和真实执行节点只在任务确实需要时配置。
+日常无需手动复制数据库、编辑环境文件或操作压缩包。首次 Agent 自行检查和复用仓库、工具链与成员配置，只把缺失邀请合并询问一次；成员拖附件或给路径即可。操作系统要求的开发证书信任由本人确认，Agent 处理具体步骤。准备后主动解释功能、场景、数据归属与未就绪项，后续不重复首引导。模型凭据和真实执行节点只在任务确实需要时配置。
 
 成员邀请、首次登记、连接恢复和 2–5 人的服务器资源策略见[成员接入与云端运行](development-access-operations.md)。下面的命令统一由开发 Agent 调用，普通产品界面不增加开发模式切换入口。
 
@@ -57,15 +97,28 @@
 
 ## 获取与更新数据基线
 
-`baseline list/publish/use` 已实现本地固定版本。首次 `up` 使用代码内置 `local-baseline-1`，后续启动复用本工作树数据。发布基线不会改变其他环境；团队传输与本地版本目录独立，使用下文的稳定编号与设备文件能力。
+`baseline list/publish/use` 提供本地固定版本；`--team` 查询经设备身份认证的团队目录，并按名称与明确版本恢复。本地 CLI 已接入团队目录协议，实际服务是否支持、目录是否有条目须在线核实，不能据此声称云端新接口已发布或已选定团队基线。首次 `up` 使用代码内置 `local-baseline-1`，后续启动复用本工作树数据。发布基线不会改变其他环境；团队目录与本地版本目录独立。
 
 | 操作 | 已实现接口 | 结果 |
 | --- | --- | --- |
 | 查看固定起点 | `xj-dev baseline list --json` | 已发布版本、完整摘要、schema 与体积；另报告内置起点 |
 | 显式采用版本 | `xj-dev baseline use <version> [--target <new-dir>] --json` | 验证兼容后新建工作树与独立数据，返回继续开发路径；旧环境保留 |
 | 发布新起点 | `xj-dev baseline publish --context <file> --version <version> --json` | 从明确选定的课程/成员/任务构造允许共享的包；本地同名版本不可覆盖 |
+| 查看团队目录 | `xj-dev baseline list --team [--device-file FILE] --json` | 使用本人已登记设备及 `file:read` 权限，返回当前可用的固定名称、版本、稳定编号与完整摘要；旧服务或空目录按真实结果报告 |
+| 采用团队固定版本 | `xj-dev baseline use NAME --team --version VERSION [--target <new-dir>] [--device-file FILE] --json` | 重新认证并校验目录、编号和摘要，通过既有 fetch/restore 建立隔离副本；只按负责人/成员明确选择的固定版本采用，旧环境保留 |
+| 首次导入当前工作树 | `xj-dev baseline use NAME --team --version VERSION --here [--device-file FILE] --json` | 只对所选 local 模式尚无数据库、基线、凭据或环境状态的工作树导入首次数据；不新建工作树、不改源码、不启动。与 `--target` 互斥，已有环境明确拒绝且保留 |
 
 不维护可变 `latest` 指向，版本不符直接失败，不暗中迁移 schema 或切换原分支。A 发布 B13 后，B 继续使用 B12；只有 B 显式 `use B13` 才新建副本。发布不改变场景验证状态。完整 context、命令及失败处理见 [xj-dev 复现与基线示例](../tools/xj-dev/README.md#复现包与基线)。
+
+团队目录条目由维护者将已共享的包登记为固定 name/version；普通成员查询和采用不需要管理凭据。目录查询失败或不存在目标版本时停止该操作，保留本地环境，不猜测 `latest`、替代版本或自动发布。首次上手不强制导入团队数据；只有任务需要一致起点且已有明确版本选择时采用。
+
+首次要用团队数据时，先 `join ... --no-start` 或复用已登记设备，准备好锁文件依赖，再查询并 `use ... --here`，最后启动本地环境。不要先 `up` 播种内置起点，再以 `--here` 覆盖；依赖缺失先单独安装，已有环境也不通过 delete 伪装成首次导入。普通不带 `--here` 的采用/复现恢复仍另建隔离副本；`--here` 只导入数据，当前源码与包内来源分开报告，不能算问题已复现。
+
+### 本轮推荐起点
+
+建议团队默认选择固定 `name: team-demo`、`version: 2026-10-24-v1`；对应本地发布版本名为 `team-demo-20261024-v1`。**当前处于准备发布阶段，尚待负责人提供真实稳定 ID 与摘要收据；此处不表示已上传、已登记或已成功采用。** 收据到位后，Agent 通过 `baseline list --team` 核对该固定条目；当前工作树首次导入用 `baseline use team-demo --team --version 2026-10-24-v1 --here`，已有环境保持原样，需要该版本时采用隔离副本，不改成可变 `latest`。
+
+便携范围为 4 门课程、11 个重新生成本地凭据的账号、全部 27 个 assignment、9 个 attempt、14 份 snapshot、3 个 submission 和 4 个 feedback。本轮通过显式 `includeUnstartedAssignments` 选项保留其中 18 个尚未开始的任务，不再截断为已开启的 9 个任务。包不携带原口令、会话、模型配置或机器连接；恢复账号仅供新本地副本使用，实际执行与模型能力须另行核实。
 
 ## 复现包的形态
 
@@ -139,7 +192,7 @@ file-only冷下载无需先安装业务SQLite依赖：`fetch`保留授权、完�
 | `xj-dev doctor --json` | 返回依赖、配置、网络与所需能力的检查结果及可执行的恢复动作 |
 | `xj-dev up --json` | 启动或恢复当前工作树所选模式；新工作树默认本地全栈，首次准备固定基线 |
 | `xj-dev use <local|cloud-api|cloud> --json` | 检查并切换运行配置，返回代码来源、数据归属和入口；不迁移数据或部署 |
-| `xj-dev baseline list/use/publish ... --json`（本地已实现） | 固定版本本地发布/查看/显式采用；新建工作树保留旧环境，团队授权与传输另行接入 |
+| `xj-dev baseline list/use/publish ... --json`、`list --team` / `use NAME --team --version VERSION` | 本地固定版本和经本人设备认证的团队目录；采用后新建工作树保留旧环境。云端接口与目录可用性另按在线结果核实 |
 | `xj-dev access invite/inspect/revoke-invitation/revoke-device/revoke-member/snapshot --admin-config FILE ...`（工程已实现） | 复用 owner SSH 管理独立服务；invite 必须私有 out-file，撤销与备份可重试 |
 | `xj-dev refresh [--device-file FILE]`（工程已实现） | 以原设备 proof 更新私有配置，保留失败前的已用 generation |
 | `xj-dev status --json` / `xj-dev down --json` | 查询环境，或停止本工具管理的进程；停止不等于删除数据 |

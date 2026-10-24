@@ -1,12 +1,46 @@
 # 开发成员接入、远程权限与云端运行
 
-更新：2026-10-24。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。一次性邀请、设备证明、join/refresh、受限 SSH、动态应用账号控制与私有 OSS 直传已交付；#133 继续独立新设备、容量与恢复验收。资源策略工具已交付，业务预算启用与五人容量由 #133 验证。当前服务器的实测事实见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，已交付的产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
+更新：2026-10-24。范围为 Robert 确认的 **2–5 人同时开发，Windows 与 macOS 均可接入**。一次性邀请、设备证明、join/refresh、受限 SSH、动态应用账号控制与私有 OSS 直传已交付；既有新设备、容量及恢复验收范围见[#133 交付核查](references/2026-10-24-development-delivery-closeout.md)。本轮共享环境以以下承接事实为准，服务器先前实测见[配置与运行核查](references/2026-10-23-development-server-assessment.md)。模式切换与基线操作见[开发工具设计](development-tooling.md)，产物发布与加密备份工具见[云基础设施模板](../tools/i0-cloud/README.md)。
+
+## 本轮共享环境
+
+2026-10-24 负责人已确认完成共享业务承接：原 `xunjie-shared.service` 与 `xunjie-release-deploy.timer` 均为 inactive/disabled，当前唯一共享业务进程沿用技术名 `xunjie-candidate-128.service`。活动数据库为 `/var/lib/xunjie/retained-tmp/xunjie-a12-completion-team20261024/synthetic.sqlite`，原数据原路径保留用于回退；旧技术名不代表仍同时运行另一套正式共享业务。
+
+活动数据来源于原正式环境的 4 门课程、11 个账号、27 个 assignment、9 个 attempt、14 个 snapshot、3 个 submission 和 4 个 feedback，继承原 3 份模型配置；共享验收产生的 232 份提交污染已移出活动数据。e03 新版独立 preflight 已通过教师/学生 strict TLS、login、session、courses 200 检查。上述检查不等于本轮团队基线已发布，也不证明编译/仿真、模型调用或教学效果通过；Agent 仍核对当前工具报告的版本与能力。
+
+开发接入服务已按 `prepareDeployment` 与 installer 校验部署源码 `dad6a9fc3a1e89a01a683aab90b58c1ff1587f17`，共享业务进程保持原承接实例。该部署事实与团队目录条目发布/成员实际恢复分别核对，不由新 CLI 帮助推导成功。
+
+本轮推荐的便携起点及尚待收据的发布状态见[本轮推荐起点](development-tooling.md#本轮推荐起点)。普通成员只通过本人获准的应用/文件接口访问；该服务技术名、数据库路径和下文维护说明都不授予主机 shell 或备份管理员权限。
 
 ## 当前工具入口
 
+新成员在已发现项目 Skill 的编码 Agent 中只需调用 `$xunjie-development`。Agent 按[首次上手 reference](../skills/xunjie-development/references/onboarding.md)检查配置、依赖及本人身份；已有授权直接复用，缺少邀请只问一次附件或路径。以下命令供 Agent 执行，不要求成员自己准备 JSON、创建文件、配置 SSH/CA 或提供口令。
+
+### 成员接入入口
+
+本节集中维护邀请输入方式；Skill 不另存一套命令配方。先核对当前 `node tools/xj-dev/xj-dev.mjs --help` 与实现。Agent 接到完整邀请附件后，可以通过受控的非终端 stdin 传入完整 JSON：
+
+```sh
+node tools/xj-dev/xj-dev.mjs join --invitation-stdin --json
+```
+
+由 Agent 的进程调用 API 将附件字节写入子进程 stdin，最多 256 KiB；不把正文拼进 shell 命令、argv 或日志，不让成员在终端粘贴。此入口复用现有登记协议，不代表云端已部署本轮其他新接口。已有受限文件继续兼容：
+
+```sh
+node tools/xj-dev/xj-dev.mjs join --invitation-file /path/to/private-invitation.json --json
+```
+
+已有受限文件直接传路径，两种输入互斥；邀请附件由 Agent 接收和处理，不要求成员手建文件。旧 checkout 若只支持文件入口，由 Agent 将附件放入仓库外受限文件，Unix owner/0600、Windows 当前用户 NTFS DACL 保护，再调用兼容入口。邀请正文不进入聊天回显或 Git。具体输入校验与恢复方式见[工具说明](../tools/xj-dev/README.md#一次性邀请与设备登记)。本地命令落地与云端实测分别报告。
+
+`join` 默认建立 local；需要共享环境时指定 `--mode cloud-api|cloud`。首次要在当前工作树导入团队固定基线时加 `--no-start`，先登记、准备依赖并 `baseline use ... --team --version VERSION --here`，再启动，避免先播种内置数据。工具生成独立设备 key、证明持有、取得受信 CA/pin 和配置；云端本人应用账号只写 `enrollment.accountFile`，本地测试账号只读当前环境返回的 `accounts.credentials.file`。成功后日常 `up`/`use` 复用登记配置，权限变化用 `refresh`。`--no-start` 只登记，不计完整环境启动。中断保留相同 home、邀请和 key 重试；丢失 key 才需新设备邀请。
+
+当前工作树尚未绑定但同一 home 已登记时，先读取现有安全注册结果，再用 `refresh --device-file FILE` 绑定并更新该工作树的配置，不要求再次找邀请。只有获授 `page` 才检查云端页面；file-only 身份不创建 SSH 或应用账号。既有获准 connection-v1 仍可复用，不要求重新拼装主机、端口、pin 或 CA。
+
+### 维护者入口
+
 维护者使用 `xj-dev access invite --admin-config FILE --input-file FILE --out-file FILE`，通过既有 owner SSH 管理独立服务。邀请 out-file 含秘密，Unix owner/0600、Windows 当前用户 NTFS DACL 保护；交接渠道由维护者选择。`inspect`、`revoke-invitation`、`revoke-device`、`revoke-member` 和 `snapshot` 复用该入口，管理 socket 不在公网开放。
 
-成员执行 `xj-dev join --invitation-file FILE`，默认建立 local；需要共享候选时指定 `--mode cloud-api|cloud`。工具生成独立设备 key、证明持有、取得受信 CA/pin 和配置；账号凭据只写 `enrollment.accountFile`。成功后日常 `up`/`use` 复用当前登记配置，权限变化用 `refresh`。`--no-start` 只登记，不计完整环境启动。中断保留相同 home、邀请和 key 重试；丢失 key 用新设备邀请。
+普通成员只领取给本人的受限邀请和应用身份。owner SSH、备份管理员、云厂商凭据及备份恢复材料留在维护流程，不能作为成员上手材料分发，也不能以现有备份能读为理由给普通成员使用。
 
 已绑定邀请只恢复同一把 key，服务端不再把它作为可交给另一设备的未用邀请。设备撤销关闭该设备已有 SSH 并阻止新连接，保留其他设备；成员撤销还动态禁用应用身份及已有 session，作品保留。普通设备只有批准端口转发，无 owner shell、管理 socket 或任意系统配置权限，node 能力另授。
 
@@ -16,7 +50,7 @@
 
 ## 首次使用的目标流程
 
-维护者生成限时的一次性邀请，成员把邀请交给自己的开发 Agent 并说“帮我加入团队并启动开发环境”。Agent 调用 `join`，自动生成本机设备密钥、登记公钥、取得配置并验收连接。首版通过可信渠道交接邀请来授予该成员的有限权限，不要求先建立另一套账号密码或 OAuth 登录。
+维护者生成限时的一次性邀请。成员首次调用 `$xunjie-development` 后，Agent 先复用已有材料，缺失时只需成员拖邀请附件或给路径；随后自动登记、准备本地及获准云连接，主动解释可用功能、适用场景、数据归属与实际缺口。首次之后直接执行正常任务，不重复介绍；跨会话记录的[当前边界与最小实现建议](development-tooling.md#首引导状态)另列。邀请本身授予该成员的有限权限，不要求先建立另一套账号密码或 OAuth 登录。
 
 | 阶段 | 由谁处理 | 结果 |
 | --- | --- | --- |
@@ -25,7 +59,8 @@
 | 设备登记 | 工具在本机生成设备专用密钥，用邀请提交公钥并证明持有对应私钥 | 成员与设备分别拥有 ID；邀请绑定该设备后不能登记另一把密钥；私钥留在本机 |
 | 配置下发 | 开发接入服务返回获准目标、主机身份、能力范围、基线目录和连接配置 | 不要求成员填写主机地址、账号、端口和 `known_hosts` |
 | 信任与连接检查 | 工具准备开发 HTTPS 证书信任，检查 SSH、应用健康和文件访问 | 系统确实要求交互时再提示成员完成；不通过跳过验证伪装为连接成功 |
-| 本地环境建立 | 工具获取固定基线、生成本地测试身份、启动本地前后端 | 返回页面和当前模式；首次无需安装不相关的 VM 或配置模型 Key |
+| 本地环境建立 | 已有数据复用；首次按已核实的固定团队起点 `--here` 导入后启动，或使用明确说明的内置起点 | 返回页面、模式及数据归属；不假定团队基线已发布，不覆盖已有数据；首次无需安装不相关的 VM 或配置模型 Key |
+| 首次介绍 | Agent 用本次真实结果解释本地开发、云端 API/页面、固定基线、复现交接及自然语言用法 | 明确哪些写本地、哪些写共享数据，执行/模型等能力是否真的就绪；后续只补待完成项 |
 
 邀请持有人可领取其范围内的权限，因此邀请属于秘密接入材料：服务端保存摘要及到期/使用状态，CLI 从受限文件或秘密输入读取，不放入命令参数、日志或复现包。维护者可撤销未使用邀请。网络中断后，同一设备凭持有证明继续未完成步骤，不新增重复账号或把邀请重新开放给其他设备。
 
