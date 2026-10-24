@@ -1,0 +1,706 @@
+[WebServer] (node:27352) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:10020) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 32 tests using 2 workers
+
+(node:16116) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21804) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok  2 [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择学生，真实student角色进入/task/authorized-link (4.6s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok  3 [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择教师，真实teacher角色进入/teacher (3.6s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok  4 [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择教师，真实student角色进入/ (4.2s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok  1 [chromium] › e2e\homeEntry.spec.ts:75:1 › 真实首页读取本人两课程与固定标题，暂停可查看，卡片沿原路由返回后可再进入 (15.1s)
+  ok  5 [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择学生，真实teacher角色进入/teacher (3.5s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok  7 [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择教师，真实teacher角色进入/teacher/settings/model (4.4s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok  8 [chromium] › e2e\sessionEntry.spec.ts:61:1 › 登录入口键盘与浅深主题；限流、错误信封和断网保留真实失败 (3.8s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+  ok  6 [chromium] › e2e\homeEntry.spec.ts:157:1 › 没有学生课程或课程没有分配时显示真实空态，不补演示任务 (10.0s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+  ok  9 [chromium] › e2e\sessionEntry.spec.ts:99:1 › 会话入口等待有上限，超时不冒充登录成功或自动重试 (3.0s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+  ok 11 [chromium] › e2e\sessionEntry.spec.ts:122:1 › 取消请求失效时仍靠会话代次拒收旧 Session 成功与旧 401 (4.5s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 10 [chromium] › e2e\homeEntry.spec.ts:191:1 › 首页读取后端姓名课程和任务标题，搜索及原ID路由保持，缺字段回退原表示 (8.4s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 13 [chromium] › e2e\homeEntry.spec.ts:235:1 › 列表故障保持失败并可明确重试，恢复后只展示原接口任务 (3.9s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 12 [chromium] › e2e\teacher-model-settings.spec.ts:53:1 › 教师设置复用供应商保存、模型能力、强度、连接测试和脱敏持久读取 (7.4s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+  ok 15 [chromium] › e2e\teacher-model-settings.spec.ts:99:1 › 教师预览不加载个人模型配置，学生误入教师设置回本人首页 (3.8s)
+(node:25760) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 14 [chromium] › e2e\homeEntry.spec.ts:260:1 › 列表401重新登录，首页真实退出换账号后拒收迟到旧列表 (7.8s)
+(node:35676) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 16 [chromium] › e2e\real-mode.spec.ts:14:3 › 真实模式 › 不挂载准备 fixture，准备深链不冒充合成成功 (6.8s)
+  ok 18 [chromium] › e2e\real-mode.spec.ts:35:3 › 真实模式 › 真实 /api 没有可回退的数据源（H-01 缺口如实暴露） (59ms)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 17 [chromium] › e2e\teacher-ui.spec.ts:22:1 › 教师概览按课程过滤，项目搜索与状态筛选沿真实页面工作 (6.8s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+  ok 19 [chromium] › e2e\real-mode.spec.ts:56:3 › 真实模式 › 原数字逻辑演示在真实模式下同样保留 (7.2s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+  ok 20 [chromium] › e2e\teacher-ui.spec.ts:47:1 › 导入私有材料默认关闭学生和辅导可见性，三个角色预览分别裁剪 (10.7s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+  ok 22 [chromium] › e2e\teacher-ui.spec.ts:92:1 › 材料异步读取期间禁止改写字段，取消后的迟到内容不污染下一份导入 (8.0s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 23 [chromium] › e2e\teacher-ui.spec.ts:143:1 › 设计草稿保存后刷新恢复，核对固定版本再明确选择合成学生分配 (16.1s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 24 [chromium] › e2e\teacher-ui.spec.ts:199:1 › 学生审阅深链追溯原始证据，纠正有理由和引用，反馈后才发放修订许可 (7.4s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 25 [chromium] › e2e\teacher-ui.spec.ts:241:1 › 学生账号误入教师入口回到本人首页，不读取教师课程或出现示例记录 (2.9s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 26 [chromium] › e2e\teacher-ui.spec.ts:260:1 › 真实分配读取失败明确显示错误，重试只读真实接口且不回退预览 (3.8s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 27 [chromium] › e2e\teacher-ui.spec.ts:297:1 › 真实工作台按教师课程读取活动，未提交和审阅显示实际零值 (4.2s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 28 [chromium] › e2e\teacher-ui.spec.ts:333:1 › 课程学生名单读取真实成员与分配，未开始不生成尝试或审阅入口，按课程筛选 (5.2s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+  ok 29 [chromium] › e2e\teacher-ui.spec.ts:383:1 › 720与390宽度主要页面无水平溢出，主题切换与刷新保留偏好 (7.2s)
+  x  21 [chromium] › e2e\real-mode.spec.ts:129:3 › real 入口协议替身（非真实宿主验收） › 只读载入→学生明确创建→同本机刷新恢复；不使用准备身份/端点 (1.0m)
+(node:46056) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+  ok 30 [chromium] › e2e\real-mode.spec.ts:163:3 › real 入口协议替身（非真实宿主验收） › 暂停分配可以阅读，不能首次创建 (3.3s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 31 [chromium] › e2e\real-mode.spec.ts:172:5 › real 入口协议替身（非真实宿主验收） › 缺代际不进入，不回 fixture (2.4s)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  ok 32 [chromium] › e2e\real-mode.spec.ts:172:5 › real 入口协议替身（非真实宿主验收） › 跨学生不进入，不回 fixture (2.6s)
+
+
+  1) [chromium] › e2e\real-mode.spec.ts:129:3 › real 入口协议替身（非真实宿主验收） › 只读载入→学生明确创建→同本机刷新恢复；不使用准备身份/端点
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '退出', exact: true })
+        - locator resolved to <button type="button" class="textbtn">…</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <span class="icon-text-label">波形</span> from <div class="ws-head-tabs">…</div> subtree intercepts pointer events
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <span class="icon-text-label">波形</span> from <div class="ws-head-tabs">…</div> subtree intercepts pointer events
+        - retrying click action
+          - waiting 100ms
+        89 × waiting for element to be visible, enabled and stable
+           - element is visible, enabled and stable
+           - scrolling into view if needed
+           - done scrolling
+           - <span class="icon-text-label">波形</span> from <div class="ws-head-tabs">…</div> subtree intercepts pointer events
+         - retrying click action
+           - waiting 500ms
+        - waiting for element to be visible, enabled and stable
+
+
+      157 |     await page.keyboard.press('Escape')
+      158 |     await expect(page.locator('.ws-popveil')).toHaveCount(0)
+    > 159 |     await page.getByRole('button', { name: '退出', exact: true }).click()
+          |                                                                 ^
+      160 |     await expect(page.getByRole('heading', { name: '登录学习空间' })).toBeVisible()
+      161 |     await expect(page.locator('.cw')).toHaveCount(0)
+      162 |   })
+        at D:\XunJie\apps\student\e2e\real-mode.spec.ts:159:65
+
+    Error Context: ..\..\.tmp\teacher-ui-review-fix-20261015\green\real-mode-real-入口协议替身（非真实宿-505af-入→学生明确创建→同本机刷新恢复；不使用准备身份-端点-chromium\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\..\.tmp\teacher-ui-review-fix-20261015\green\real-mode-real-入口协议替身（非真实宿-505af-入→学生明确创建→同本机刷新恢复；不使用准备身份-端点-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\..\.tmp\teacher-ui-review-fix-20261015\green\real-mode-real-入口协议替身（非真实宿-505af-入→学生明确创建→同本机刷新恢复；不使用准备身份-端点-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e\real-mode.spec.ts:129:3 › real 入口协议替身（非真实宿主验收） › 只读载入→学生明确创建→同本机刷新恢复；不使用准备身份/端点
+  31 passed (2.4m)

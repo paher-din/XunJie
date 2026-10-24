@@ -1,0 +1,54 @@
+[WebServer] (node:2944) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:42348) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:45224) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/xunjie-logo/master.json instead of /public/brand/xunjie-logo/master.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/xunjie-logo/master.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/registration.json instead of /public/brand/sprout/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/accessories/registration.json instead of /public/brand/sprout/accessories/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/accessories/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/registration.json instead of /public/brand/sprout/rig/registration.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/registration.json?url.
+[WebServer] Assets in public directory cannot be imported from JavaScript.
+[WebServer] If you intend to import that asset, put the file in the src directory, and use /src/brand/sprout/rig/eye-masks.json instead of /public/brand/sprout/rig/eye-masks.json.
+[WebServer] If you intend to use the URL of that asset, use /brand/sprout/rig/eye-masks.json?url.
+  x  1 [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择教师，真实teacher角色进入/teacher/settings/model (18.8s)
+
+
+  1) [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择教师，真实teacher角色进入/teacher/settings/model ────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('heading', { name: '登录教师工作台', exact: true })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('heading', { name: '登录教师工作台', exact: true }) with timeout 10000ms
+      - waiting for getByRole('heading', { name: '登录教师工作台', exact: true })
+
+
+      33 |     })
+      34 |     await page.goto(`${REAL_URL}/#${scenario.path}`)
+    > 35 |     await expect(page.getByRole('heading', { name: scenario.path.startsWith('/teacher') ? '登录教师工作台' : '登录学习空间', exact: true })).toBeVisible()
+         |                                                                                                                                 ^
+      36 |     await page.getByRole('group', { name: '登录身份' }).getByRole('button', { name: scenario.selected, exact: true }).click()
+      37 |     await expect(page.getByRole('button', { name: scenario.selected, exact: true })).toHaveAttribute('aria-pressed', 'true')
+      38 |     await expect(page.getByRole('heading', { name: scenario.selected === '教师' ? '登录教师工作台' : '登录学习空间', exact: true })).toBeVisible()
+        at D:\XunJie\apps\student\e2e\sessionEntry.spec.ts:35:129
+
+    Error Context: ..\..\.tmp\teacher-ui-review-fix-20261015\red\sessionEntry-统一登录选择教师，真实teacher角色进入-teacher-settings-model-chromium\error-context.md
+
+  1 failed
+    [chromium] › e2e\sessionEntry.spec.ts:17:3 › 统一登录选择教师，真实teacher角色进入/teacher/settings/model ─────

@@ -30,7 +30,7 @@ function LoginForm({ onEntryIntent }: { onEntryIntent: (role: EntryRole) => void
     <main className="session-entry">
       <section className="session-card" aria-labelledby="session-title">
         <XunjieLogo format="horizontal" label="循阶" />
-        <h1 id="session-title">登录学习空间</h1>
+        <h1 id="session-title">{entryRole === 'teacher' ? '登录教师工作台' : '登录学习空间'}</h1>
         <p>{entryRole === 'teacher' ? '使用教师账号登录，查看任教课程与固定活动。' : '使用课程提供的账号登录，继续打开获准的任务。'}</p>
         <div className="st-seg session-role-switch" role="group" aria-label="登录身份">
           {(['student', 'teacher'] as const).map(role => <button key={role} type="button"

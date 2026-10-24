@@ -1,0 +1,11 @@
+[
+ "GET /api/session -> 401 identity=null",
+ "GET /api/session -> 401 identity=null",
+ "POST /api/sessions body={\"loginName\":\"account-a\",\"password\":\"synthetic-only\"}",
+ "POST /api/sessions -> 200 identity=account-a",
+ "GET /api/session -> 200 identity=account-a",
+ "GET /api/session -> 200 identity=account-a",
+ "GET /api/model-settings -> 401 identity=account-a",
+ "GET /api/agent/conversations -> 401 identity=account-a",
+ "GET /api/session -> 200 identity=account-a"
+]

@@ -1,0 +1,468 @@
+TAP version 13
+# Subtest: A5: formative feedback cites a submission without moving the learning stage
+ok 1 - A5: formative feedback cites a submission without moving the learning stage
+  ---
+  duration_ms: 3603.0814
+  type: 'test'
+  ...
+# Subtest: A5: a feedback thread can only be revised inside the scope that owns it
+ok 2 - A5: a feedback thread can only be revised inside the scope that owns it
+  ---
+  duration_ms: 2760.8521
+  type: 'test'
+  ...
+# Subtest: A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
+ok 3 - A5: the review context keeps an unresolvable competency listed and narrows history to this attempt
+  ---
+  duration_ms: 2697.0023
+  type: 'test'
+  ...
+# Subtest: A5: reviewing an old submission reports the snapshot it bound, not the later working tree
+ok 4 - A5: reviewing an old submission reports the snapshot it bound, not the later working tree
+  ---
+  duration_ms: 3073.5874
+  type: 'test'
+  ...
+# Subtest: A5: a dispute against feedback whose basis moved on is appended as history, not refused
+ok 5 - A5: a dispute against feedback whose basis moved on is appended as history, not refused
+  ---
+  duration_ms: 3374.1443
+  type: 'test'
+  ...
+# Subtest: A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
+ok 6 - A5: a teacher reads one attempt context with artifact, help and competency facts kept apart
+  ---
+  duration_ms: 2477.2222
+  type: 'test'
+  ...
+# Subtest: A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
+ok 7 - A5: formal feedback saves in its own record and moves a submitted attempt to reviewed in one transaction
+  ---
+  duration_ms: 2370.3331
+  type: 'test'
+  ...
+# Subtest: A5: two feedback threads report a scope version the next write can actually use
+ok 8 - A5: two feedback threads report a scope version the next write can actually use
+  ---
+  duration_ms: 2416.2453
+  type: 'test'
+  ...
+# Subtest: A5: feedback revisions append, stay readable and keep the submission they evaluated
+ok 9 - A5: feedback revisions append, stay readable and keep the submission they evaluated
+  ---
+  duration_ms: 2347.6338
+  type: 'test'
+  ...
+# Subtest: A5: the revision permission keeps the artifact read-only until the student consumes it
+ok 10 - A5: the revision permission keeps the artifact read-only until the student consumes it
+  ---
+  duration_ms: 2446.6415
+  type: 'test'
+  ...
+# Subtest: A5: a permission may save the formal feedback for the same submission in one command
+ok 11 - A5: a permission may save the formal feedback for the same submission in one command
+  ---
+  duration_ms: 2308.2254
+  type: 'test'
+  ...
+# Subtest: A5: a student dispute resolves against the exact saved feedback and its evaluated claims
+ok 12 - A5: a student dispute resolves against the exact saved feedback and its evaluated claims
+  ---
+  duration_ms: 2351.5001
+  type: 'test'
+  ...
+# Subtest: A5: a failing feedback write rolls the record and the stage change back together
+ok 13 - A5: a failing feedback write rolls the record and the stage change back together
+  ---
+  duration_ms: 2391.9454
+  type: 'test'
+  ...
+# Subtest: A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
+ok 14 - A5: the recovery view reports the real formal feedback and the attempt lifecycle links up end to end
+  ---
+  duration_ms: 2533.8371
+  type: 'test'
+  ...
+# Subtest: A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
+ok 15 - A5: the next project version is copied from the reviewed blueprint and assigned as a new attempt
+  ---
+  duration_ms: 3541.9476
+  type: 'test'
+  ...
+# Subtest: A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
+ok 16 - A5: the follow-up attempt reads applicable valid history and carries no withdrawn or unrelated claims
+  ---
+  duration_ms: 3147.7857
+  type: 'test'
+  ...
+# Subtest: A4: authenticated self-report has its own revision and never manufactures a claim
+ok 17 - A4: authenticated self-report has its own revision and never manufactures a claim
+  ---
+  duration_ms: 3287.1255
+  type: 'test'
+  ...
+# Subtest: A4: original analysis bytes and IDs survive replay and reopening without becoming teacher judgment
+ok 18 - A4: original analysis bytes and IDs survive replay and reopening without becoming teacher judgment
+  ---
+  duration_ms: 3538.2303
+  type: 'test'
+  ...
+# Subtest: A4: teacher withdrawal is versioned, stops old analysis, and blocks renamed reuse of the same basis
+ok 19 - A4: teacher withdrawal is versioned, stops old analysis, and blocks renamed reuse of the same basis
+  ---
+  duration_ms: 2943.1133
+  type: 'test'
+  ...
+# Subtest: A4: student dispute contests the current basis while historical disputes cannot overwrite later judgment
+ok 20 - A4: student dispute contests the current basis while historical disputes cannot overwrite later judgment
+  ---
+  duration_ms: 4590.0813
+  type: 'test'
+  ...
+# Subtest: A4: B2 preparation automatically reads the real current learner state and ignores injected preparation state
+not ok 21 - A4: B2 preparation automatically reads the real current learner state and ignores injected preparation state
+  ---
+  duration_ms: 2672.646
+  type: 'test'
+  location: 'D:\\XunJie\\apps\\teaching\\tests\\review.test.ts:112:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+
+      assert.ok(!JSON.stringify(refs).includes('900'))
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///<repo>/apps/teaching/tests/review.test.ts:126:77)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: A4: C3 final transaction archives an old learner-state help result with original IDs and prevents delivery
+ok 22 - A4: C3 final transaction archives an old learner-state help result with original IDs and prevents delivery
+  ---
+  duration_ms: 2503.068
+  type: 'test'
+  ...
+# Subtest: A4: undelivered pending help is rechecked against A before first delivery and marked as revised
+ok 23 - A4: undelivered pending help is rechecked against A before first delivery and marked as revised
+  ---
+  duration_ms: 2406.2845
+  type: 'test'
+  ...
+# Subtest: A4: B2 running guard uses persisted A revision even when the external current reader is stale
+ok 24 - A4: B2 running guard uses persisted A revision even when the external current reader is stale
+  ---
+  duration_ms: 2351.6958
+  type: 'test'
+  ...
+# Subtest: A4: actual B2 worker to C3 composition closes the last-guard-to-commit race
+ok 25 - A4: actual B2 worker to C3 composition closes the last-guard-to-commit race
+  ---
+  duration_ms: 2410.7178
+  type: 'test'
+  ...
+# Subtest: A4: any late teacher transaction failure rolls back decision, state, epochs, stopped jobs, actions, events, and receipt
+ok 26 - A4: any late teacher transaction failure rolls back decision, state, epochs, stopped jobs, actions, events, and receipt
+  ---
+  duration_ms: 2762.1384
+  type: 'test'
+  ...
+# Subtest: A4: completed analysis replays by original Job and exact hash rather than an expired execution lease
+ok 27 - A4: completed analysis replays by original Job and exact hash rather than an expired execution lease
+  ---
+  duration_ms: 2367.7484
+  type: 'test'
+  ...
+# Subtest: A4: original analysis, Job completion, state, event, and receipt are one real transaction
+ok 28 - A4: original analysis, Job completion, state, event, and receipt are one real transaction
+  ---
+  duration_ms: 2555.414
+  type: 'test'
+  ...
+# Subtest: A4: invalid raw analyses and forged target versions remain archived rejections, never effective claims or student raw text
+ok 29 - A4: invalid raw analyses and forged target versions remain archived rejections, never effective claims or student raw text
+  ---
+  duration_ms: 2844.2583
+  type: 'test'
+  ...
+# Subtest: A4: duplicate snapshot IDs cannot resurrect a withdrawn basis, but genuinely changed work can provide a new basis
+ok 30 - A4: duplicate snapshot IDs cannot resurrect a withdrawn basis, but genuinely changed work can provide a new basis
+  ---
+  duration_ms: 2391.0438
+  type: 'test'
+  ...
+# Subtest: A4: transitive claim dependencies are contested and a changed analysis version cannot revive their primitive basis
+ok 31 - A4: transitive claim dependencies are contested and a changed analysis version cannot revive their primitive basis
+  ---
+  duration_ms: 2321.8632
+  type: 'test'
+  ...
+# Subtest: A4: evidence queues enforce real membership, owner, course, and visible exact resource scope
+ok 32 - A4: evidence queues enforce real membership, owner, course, and visible exact resource scope
+  ---
+  duration_ms: 3203.2617
+  type: 'test'
+  ...
+# Subtest: A4: stdout and a bare passed verdict cannot replace exact trusted course-check provenance
+ok 33 - A4: stdout and a bare passed verdict cannot replace exact trusted course-check provenance
+  ---
+  duration_ms: 2306.5254
+  type: 'test'
+  ...
+# Subtest: A4: an actual stored compiler failure remains a tool gap instead of unsupported certainty about the learner
+ok 34 - A4: an actual stored compiler failure remains a tool gap instead of unsupported certainty about the learner
+  ---
+  duration_ms: 2333.8554
+  type: 'test'
+  ...
+# Subtest: A4: repeating the same checked work under a new Run ID does not revive a withdrawn basis or create another observation group
+ok 35 - A4: repeating the same checked work under a new Run ID does not revive a withdrawn basis or create another observation group
+  ---
+  duration_ms: 2553.2741
+  type: 'test'
+  ...
+# Subtest: A4: stale underlying context is unavailable in the current projection and cannot be laundered through a claim reference
+ok 36 - A4: stale underlying context is unavailable in the current projection and cannot be laundered through a claim reference
+  ---
+  duration_ms: 2195.6587
+  type: 'test'
+  ...
+# Subtest: A4: self-report invalidation returns committed stop identities and rolls back entirely on a late failure
+ok 37 - A4: self-report invalidation returns committed stop identities and rolls back entirely on a late failure
+  ---
+  duration_ms: 2176.9239
+  type: 'test'
+  ...
+# Subtest: A4: teacher correction preserves original ordinary runs and displayed-help receipts while new B2 context excludes withdrawn claims
+ok 38 - A4: teacher correction preserves original ordinary runs and displayed-help receipts while new B2 context excludes withdrawn claims
+  ---
+  duration_ms: 2915.7164
+  type: 'test'
+  ...
+# Subtest: A4: declared unknowns cannot be discarded by an unresolved=false flag
+ok 39 - A4: declared unknowns cannot be discarded by an unresolved=false flag
+  ---
+  duration_ms: 2208.4749
+  type: 'test'
+  ...
+# Subtest: A4: original analysis currentness gates are checked again at completion
+    # Subtest: deadline
+    ok 1 - deadline
+      ---
+      duration_ms: 2331.7812
+      type: 'test'
+      ...
+    # Subtest: configuration
+    ok 2 - configuration
+      ---
+      duration_ms: 2188.1051
+      type: 'test'
+      ...
+    # Subtest: state
+    ok 3 - state
+      ---
+      duration_ms: 3242.2272
+      type: 'test'
+      ...
+    # Subtest: context
+    ok 4 - context
+      ---
+      duration_ms: 2676.4725
+      type: 'test'
+      ...
+    # Subtest: capture
+    ok 5 - capture
+      ---
+      duration_ms: 2651.3666
+      type: 'test'
+      ...
+    # Subtest: assignment
+    ok 6 - assignment
+      ---
+      duration_ms: 2477.0987
+      type: 'test'
+      ...
+    # Subtest: membership
+    ok 7 - membership
+      ---
+      duration_ms: 3106.8721
+      type: 'test'
+      ...
+    # Subtest: generation
+    ok 8 - generation
+      ---
+      duration_ms: 2505.1276
+      type: 'test'
+      ...
+    1..8
+ok 40 - A4: original analysis currentness gates are checked again at completion
+  ---
+  duration_ms: 21183.8332
+  type: 'test'
+  ...
+# Subtest: A4: an old goal version check cannot establish a claim for a new fixed activity goal version
+ok 41 - A4: an old goal version check cannot establish a claim for a new fixed activity goal version
+  ---
+  duration_ms: 2597.8197
+  type: 'test'
+  ...
+# Subtest: A4: non-UTF8 scalar text cannot occupy the original analysis slot or be silently normalized
+ok 42 - A4: non-UTF8 scalar text cannot occupy the original analysis slot or be silently normalized
+  ---
+  duration_ms: 2359.7845
+  type: 'test'
+  ...
+# Subtest: A4: teacher replacement requires a new verified basis and defer preserves uncertainty and decision history
+ok 43 - A4: teacher replacement requires a new verified basis and defer preserves uncertainty and decision history
+  ---
+  duration_ms: 2624.7342
+  type: 'test'
+  ...
+# Subtest: A4: a late dispute write failure restores the prior basis, epochs, Job, events, and retry identity
+ok 44 - A4: a late dispute write failure restores the prior basis, epochs, Job, events, and retry identity
+  ---
+  duration_ms: 3047.213
+  type: 'test'
+  ...
+# Subtest: A4: paused collection blocks a new passive analysis and explicit analysis cannot erase its assistance gap
+ok 45 - A4: paused collection blocks a new passive analysis and explicit analysis cannot erase its assistance gap
+  ---
+  duration_ms: 2535.8164
+  type: 'test'
+  ...
+# Subtest: A4: candidate admission wins before an old teacher form and the stale form cannot overwrite it
+ok 46 - A4: candidate admission wins before an old teacher form and the stale form cannot overwrite it
+  ---
+  duration_ms: 2611.2919
+  type: 'test'
+  ...
+# Subtest: A4: an evidence storage outage rolls back analysis rather than becoming a model rejection
+ok 47 - A4: an evidence storage outage rolls back analysis rather than becoming a model rejection
+  ---
+  duration_ms: 2411.8968
+  type: 'test'
+  ...
+# Subtest: A4: a damaged original queue receipt cannot grant an analysis execution lease
+ok 48 - A4: a damaged original queue receipt cannot grant an analysis execution lease
+  ---
+  duration_ms: 2343.6907
+  type: 'test'
+  ...
+# Subtest: A4: a teacher decision reference inherits its primitive basis and cannot launder a later withdrawal
+ok 49 - A4: a teacher decision reference inherits its primitive basis and cannot launder a later withdrawal
+  ---
+  duration_ms: 2396.9152
+  type: 'test'
+  ...
+# Subtest: A4: an in-flight explicit analysis survives capture changes and retains the original binding and real coverage gap
+ok 50 - A4: an in-flight explicit analysis survives capture changes and retains the original binding and real coverage gap
+  ---
+  duration_ms: 2449.3009
+  type: 'test'
+  ...
+# Subtest: A4: received help without a display receipt remains an unresolved assistance gap
+ok 51 - A4: received help without a display receipt remains an unresolved assistance gap
+  ---
+  duration_ms: 2555.3887
+  type: 'test'
+  ...
+# Subtest: A4: event delivery checks current revision without requiring the full evidence projection
+ok 52 - A4: event delivery checks current revision without requiring the full evidence projection
+  ---
+  duration_ms: 2454.1555
+  type: 'test'
+  ...
+# Subtest: A4: review and dispute receipts distinguish first commit and replay without another state change
+ok 53 - A4: review and dispute receipts distinguish first commit and replay without another state change
+  ---
+  duration_ms: 2667.897
+  type: 'test'
+  ...
+# Subtest: A4: independent fresh factory stays within the approved table scope and retains its database
+ok 54 - A4: independent fresh factory stays within the approved table scope and retains its database
+  ---
+  duration_ms: 38.9621
+  type: 'test'
+  ...
+# A4 projection measurement: 3 claims sharing one workspace, snapshot reads=1; next authorized read observes correction.
+# Subtest: A4: one authorized projection reuses workspace reads but the next read sees corrected state
+ok 55 - A4: one authorized projection reuses workspace reads but the next read sees corrected state
+  ---
+  duration_ms: 2661.6256
+  type: 'test'
+  ...
+# Subtest: A4: missing persisted Run input or entry files reject analysis as an invalid reference
+    # Subtest: input
+    ok 1 - input
+      ---
+      duration_ms: 2832.0651
+      type: 'test'
+      ...
+    # Subtest: entry
+    ok 2 - entry
+      ---
+      duration_ms: 2772.2084
+      type: 'test'
+      ...
+    1..2
+ok 56 - A4: missing persisted Run input or entry files reject analysis as an invalid reference
+  ---
+  duration_ms: 5606.4638
+  type: 'test'
+  ...
+# Subtest: A4: reconciling a revised basis preserves the original student cancellation reason
+ok 57 - A4: reconciling a revised basis preserves the original student cancellation reason
+  ---
+  duration_ms: 3076.8651
+  type: 'test'
+  ...
+# Subtest: 41-table teacher review and independent personal-model settings coexist in one host without a model call
+ok 58 - 41-table teacher review and independent personal-model settings coexist in one host without a model call
+  ---
+  duration_ms: 3211.1414
+  type: 'test'
+  ...
+# Subtest: normal teacher workbench requires explicit 41-table composition and retains the default 35-table host
+ok 59 - normal teacher workbench requires explicit 41-table composition and retains the default 35-table host
+  ---
+  duration_ms: 1401.1316
+  type: 'test'
+  ...
+# Subtest: normal review host exposes only the responsible teacher discovery; reads do not start assigned attempts
+ok 60 - normal review host exposes only the responsible teacher discovery; reads do not start assigned attempts
+  ---
+  duration_ms: 3244.0858
+  type: 'test'
+  ...
+# Subtest: retained databases without display columns keep session, course, assignment, bootstrap and teacher workbench reads usable
+ok 61 - retained databases without display columns keep session, course, assignment, bootstrap and teacher workbench reads usable
+  ---
+  duration_ms: 3651.5729
+  type: 'test'
+  ...
+# Subtest: normal C host fixes submission, saves feedback, grants and consumes student revision without replacing history
+ok 62 - normal C host fixes submission, saves feedback, grants and consumes student revision without replacing history
+  ---
+  duration_ms: 3291.2034
+  type: 'test'
+  ...
+# Subtest: normal HDL host fixes submission, saves feedback, grants and consumes student revision without replacing history
+ok 63 - normal HDL host fixes submission, saves feedback, grants and consumes student revision without replacing history
+  ---
+  duration_ms: 2645.3688
+  type: 'test'
+  ...
+1..63
+# tests 73
+# suites 0
+# pass 72
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 129220.9281

@@ -1,0 +1,27 @@
+command: node --test --test-name-pattern=review.test.ts single test, 25 repeats; Node v24.21.0
+run 1: pass
+run 2: pass
+run 3: pass
+run 4: pass
+run 5: pass
+run 6: pass
+run 7: pass
+run 8: pass
+run 9: pass
+run 10: pass
+run 11: pass
+run 12: pass
+run 13: pass
+run 14: pass
+run 15: pass
+run 16: pass
+run 17: pass
+run 18: pass
+run 19: FAIL not ok 1 - A4: B2 preparation automatically reads the real current learner state and ignores injected preparation state
+run 20: pass
+run 21: pass
+run 22: pass
+run 23: pass
+run 24: pass
+run 25: pass
+summary: 25 runs, 1 failures, 24 passes

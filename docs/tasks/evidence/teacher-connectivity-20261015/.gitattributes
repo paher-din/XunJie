@@ -1,0 +1,3 @@
+# Preserve the bytes referenced by evidence manifests, including failed logs.
+*.txt -text
+*.json -text
