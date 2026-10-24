@@ -33,8 +33,9 @@ const HELP = `xj-dev — XunJie 本地全栈开发环境
             restore/verify 也接受稳定 ID，按设备授权下载、校验，再恢复或执行复现步骤
   baseline  list / publish --context FILE --version VERSION / use VERSION [--target DIR]
   baseline  list --team [--device-file FILE]
-  baseline  use NAME --team --version VERSION [--target DIR] [--device-file FILE]
+  baseline  use NAME --team --version VERSION [--target DIR | --here] [--device-file FILE]
             选择团队固定版本，校验不可变编号/摘要后新建本地隔离副本；不接受 latest
+            --here 只导入当前工作树尚未初始化的 local 数据；不替换源码，不覆盖或升级
 
 全局选项：
   --json            以 JSON 输出结果（默认即为 JSON；日志始终在 stderr）

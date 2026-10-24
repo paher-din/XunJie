@@ -185,6 +185,8 @@ node tools/xj-dev/xj-dev.mjs baseline use course-b1 --target "<新的工作树�
 
 同名版本不可覆盖；`latest` 不作为可变指针。`use` 验证兼容后返回新工作树和新数据副本，Agent 在该路径继续开发；原工作树、浏览器与数据保留，其他成员不自动升级。发布基线也不会把未验证的场景变成已复现。
 
+用于课程起点的基线 context 可显式设置 `data.includeUnstartedAssignments: true`。除选中 attempt 所需任务外，额外包含选定 `courseIds/userIds` 范围内、当前尚无任何 attempt 的 assignment 及必要 activity，避免只分发已打开任务而漏掉未开始任务。仍需有效的非空 `data.scope.courseIds/userIds/attemptIds`；范围外成员、其他已开始任务的 attempt/作品和旧执行队列不会因此加入，原有引用与秘密检查继续生效。该选项只接受布尔值，默认关闭，普通 repro 的选定 attempt 范围不变；启用后清单记录 `data.includeUnstartedAssignments: true`。
+
 成员已登记并获 `file:read` 后，可以列举服务器已发布的团队基线，并明确采用其中一个 name/version：
 
 ```sh
@@ -194,6 +196,15 @@ node tools/xj-dev/xj-dev.mjs up --worktree "<返回的 environment.worktree>"
 ```
 
 这两个团队命令都可加 `--device-file FILE`；默认取当前工作树的登记身份，再回退到当前 home 的登记指针。`list --team` 返回 `scope: team`、名称、固定版本、稳定 `reproId`、完整 `digest`、体积与登记时间；不需要 SSH/page 或发布能力。`use NAME --team` 必须显式提供 `--version VERSION`，不接受 `latest`，也不自动挑最大版本。按目录的 name/version 绑定不可变包编号与摘要，经既有 fetch 完整校验下载，再将所选摘要传入 restore；已有目标工作树或数据环境会拒绝。默认目标为源工作树旁的 `xj-baseline-<name>-<version>-<摘要前缀>`；实际规范路径见 `environment.worktree`。结果同时给出所选基线、`previous.preserved`、独立本地数据路径和下一步 `up`。尚未启动或复现时保持相应未验证状态。
+
+首次 clone 后要直接在当前工作树开发，可显式使用 `--here`，仅初始化当前工作树/instance 尚未初始化的本地数据。计划采用团队基线时，先用 `join ... --no-start` 登记，再导入，最后 `up`；默认 join/up 已建立本地数据后不能再用 `--here` 覆盖：
+
+```sh
+node tools/xj-dev/xj-dev.mjs baseline use NAME --team --version VERSION --here
+node tools/xj-dev/xj-dev.mjs up
+```
+
+`--here` 与 `--target` 互斥，所选模式必须为 `local`（未选择时默认 local）；保留当前源码、未提交/未跟踪文件、分支与 Git 工作树登记，不恢复包内源码或另建工作树。仍完整执行设备授权、TLS、下载大小/CRC/SHA256、包内容与 metadata 校验，并核对当前可信 checkout 的精确 Node、工具、依赖、lockfile 和 schema。工具在 `selection.lock` 与当前环境锁内再次确认数据库、基线 marker、SQLite `-wal/-shm/-journal`、环境 state 和凭据不存在，data/secrets 目录若已存在必须为空；拒绝任何已有数据或半初始化现场。先在仓库外 staging 中调用 restoreData 校验/构造数据并生成新私有凭据，发布前再检查，发布失败回滚本次产物，保留永久锁与原有内容。返回 `initializedHere: true`、`code.changed: false`、固定基线和当前实际数据路径，`started: false`；同一 worktree/instance 显式 `up` 后复用该数据。它只用于首次导入，不能覆盖、重置或升级已有环境；默认不带 `--here` 时仍另建隔离工作树。导入不表示包内问题已复现。
 
 团队基线由维护者先分享冻结包，再通过下节的 `access package-baseline` 登记不可变引用；成员的列举/使用不会发布新基线、修改服务器数据或切换原工作树。
 

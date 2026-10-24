@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import fs, { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { createServer, request } from 'node:https';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -21,6 +22,7 @@ import { baselineRoute } from '../src/repro-routes.mjs';
 import { LOCKFILES, git } from '../src/repro-code.mjs';
 import { decodeZip, digest, encodeZip, jsonBytes } from '../src/repro-archive.mjs';
 import { crc64XZ } from '../src/package-transfer.mjs';
+import { acquireLock } from '../src/state.mjs';
 
 const checkout = realpathSync(join(import.meta.dirname, '../../..'));
 
@@ -212,5 +214,154 @@ test('team baseline catalog and pinned use retain read-only authorization, diges
     let stdout = ''; child.stdout.on('data', bytes => stdout += bytes); child.stderr.resume();
     assert.equal(await new Promise((done, reject) => { child.once('error', reject); child.once('close', done); }), 0);
     const result = JSON.parse(stdout); assert.equal(result.scope, 'team'); assert.equal(result.baselines.length, 3);
+  });
+});
+
+test('--here initializes only empty local data, preserving current code and rejecting partial or concurrent environments', { timeout: 120000 }, async t => {
+  const f = await fixture(t);
+  await f.publish('course-start', '0.2.0-fixed');
+  const cold = instance => {
+    const id = environmentId(f.context.worktree, instance);
+    return { ...f.context, instance, id, env: environmentPaths(f.home, id) };
+  };
+  const use = (context, extra = [], name = 'course-start') => baselineRoute(context, { extraArgs: ['use', name, '--team', '--version', '0.2.0-fixed', '--here', ...extra] });
+  const absent = context => {
+    for (const file of [context.env.database, context.env.baselineFile, context.env.baselineCredentials, context.env.stateFile]) assert.equal(existsSync(file), false);
+    assert.equal(readdirSync(f.home).some(name => name.startsWith('baseline-import-')), false);
+  };
+  await t.test('imports into the same worktree without replacing dirty/untracked source or adding Git worktrees', async () => {
+    const context = cold('first');
+    mkdirSync(context.env.data, { recursive: true }); mkdirSync(context.env.secrets);
+    writeFileSync(join(context.worktree, 'README.md'), 'my current local source\n');
+    writeFileSync(join(context.worktree, 'local-only.txt'), 'must survive\n');
+    const head = git(context.worktree, ['rev-parse', 'HEAD']), status = git(context.worktree, ['status', '--porcelain']);
+    const worktrees = git(context.worktree, ['worktree', 'list', '--porcelain']);
+    const result = await use(context);
+    assert.equal(result.initializedHere, true); assert.equal(result.started, false); assert.equal(result.code.changed, false);
+    assert.equal(result.environment.worktree, context.worktree); assert.equal(result.environment.root, context.env.root);
+    assert.equal(result.data.database, context.env.database); assert.equal(result.verification.reproduction, 'unverified');
+    assert.equal(result.baseline.digest, digest(f.bytes));
+    const marker = JSON.parse(readFileSync(context.env.baselineFile));
+    assert.equal(marker.version, '0.2.0-fixed'); assert.equal(marker.teamBaseline.reproId, result.baseline.reproId);
+    assert.equal(git(context.worktree, ['rev-parse', 'HEAD']), head); assert.equal(git(context.worktree, ['status', '--porcelain']), status);
+    assert.equal(git(context.worktree, ['worktree', 'list', '--porcelain']), worktrees);
+    assert.equal(readFileSync(join(context.worktree, 'README.md'), 'utf8'), 'my current local source\n');
+    assert.equal(readFileSync(join(context.worktree, 'local-only.txt'), 'utf8'), 'must survive\n');
+    const before = digest(readFileSync(context.env.database));
+    assert.deepEqual(await ensureBaseline(context.repo.teaching, context.env, () => {}), { created: false, version: '0.2.0-fixed' });
+    await assert.rejects(use(context), { code: 'TARGET_EXISTS' });
+    assert.equal(digest(readFileSync(context.env.database)), before);
+  });
+
+  await t.test('each existing DB/marker/sidecar/state/credential or unknown data file blocks initialization without touching bytes', async () => {
+    const samples = ['database', 'baselineFile', 'stateFile', 'baselineCredentials', 'wal', 'shm', 'journal', 'state-temp', 'unknown'];
+    const calls = f.downloads.length;
+    for (const name of samples) {
+      const context = cold(name), env = context.env;
+      const file = ({ wal: env.database + '-wal', shm: env.database + '-shm', journal: env.database + '-journal', 'state-temp': env.stateFile + '.tmp', unknown: join(env.data, 'foreign.txt') })[name] ?? env[name];
+      mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, 'preserve ' + name);
+      await assert.rejects(use(context), { code: 'TARGET_EXISTS' });
+      assert.equal(readFileSync(file, 'utf8'), 'preserve ' + name);
+      if (file !== env.database) assert.equal(existsSync(env.database), false);
+    }
+    assert.equal(f.downloads.length, calls);
+    for (const mode of ['cloud', 'cloud-api']) {
+      const context = cold(mode); mkdirSync(context.env.root, { recursive: true });
+      const selection = join(context.env.root, 'selection.json'); writeFileSync(selection, JSON.stringify({ mode, targets: {} }));
+      await assert.rejects(use(context), { code: 'LOCAL_DATA_REQUIRED' }); absent(context);
+      assert.equal(JSON.parse(readFileSync(selection)).mode, mode);
+    }
+    await assert.rejects(use(cold('conflict'), ['--target', join(f.root, 'unused')]), { code: 'INVALID_ARGUMENTS' });
+    await assert.rejects(baselineRoute(cold('local-flag'), { extraArgs: ['use', 'local-v1', '--here'] }), { code: 'INVALID_ARGUMENTS' });
+  });
+
+  await t.test('the checks repeat after fetch and under both locks; a concurrent up/selection change cannot win unnoticed', async () => {
+    for (const which of ['data', 'selection']) {
+      const context = cold('held-' + which);
+      const lock = acquireLock(which === 'data' ? context.env : { ...context.env, lockFile: join(context.env.root, 'selection.lock') });
+      try { await assert.rejects(use(context), { code: 'LOCK_HELD' }); absent(context); }
+      finally { lock.release(); }
+    }
+    for (const which of ['data', 'selection']) {
+      const context = cold('race-' + which);
+      f.controls.catalog = () => {
+        const file = which === 'data' ? context.env.database : join(context.env.root, 'selection.json');
+        mkdirSync(dirname(file), { recursive: true });
+        writeFileSync(file, which === 'data' ? 'foreign DB won the race' : JSON.stringify({ mode: 'cloud' }));
+      };
+      try {
+        await assert.rejects(use(context), { code: which === 'data' ? 'TARGET_EXISTS' : 'LOCAL_DATA_REQUIRED' });
+        assert.equal(existsSync(context.env.baselineFile), false); assert.equal(existsSync(context.env.baselineCredentials), false);
+        if (which === 'data') assert.equal(readFileSync(context.env.database, 'utf8'), 'foreign DB won the race');
+      } finally { delete f.controls.catalog; }
+    }
+  });
+
+  await t.test('schema, dependencies, lockfiles and account metadata must all match before live publication', async () => {
+    const variant = mutate => {
+      const entries = decodeZip(f.bytes), manifest = JSON.parse(entries.get('manifest.json'));
+      mutate(manifest); entries.set('manifest.json', jsonBytes(manifest));
+      entries.set('checksums.json', jsonBytes(Object.fromEntries([...entries].filter(([path]) => path !== 'checksums.json').map(([path, bytes]) => [path, digest(bytes)]))));
+      return encodeZip(entries);
+    };
+    await f.publish('wrong-schema', '0.2.0-fixed', variant(m => { m.data.schema = digest('different schema'); }));
+    await f.publish('wrong-accounts', '0.2.0-fixed', variant(m => { m.data.accounts[0].id = 'missing-user'; }));
+    for (const [name, code] of [['wrong-schema', 'SCHEMA_MISMATCH'], ['wrong-accounts', 'INVALID_DATA']]) {
+      const context = cold(name); await assert.rejects(use(context, [], name), { code }); absent(context);
+    }
+    const missing = cold('missing-deps'); missing.repo = { ...missing.repo, teaching: join(f.root, 'no-dependencies') };
+    await assert.rejects(use(missing), { code: 'DEPENDENCIES_NOT_READY' }); absent(missing);
+    const changed = cold('changed-lock'), file = join(changed.worktree, LOCKFILES[0]), original = readFileSync(file);
+    writeFileSync(file, Buffer.concat([original, Buffer.from('\nreal lock change\n')]));
+    try { await assert.rejects(use(changed), { code: 'LOCKFILE_MISMATCH' }); absent(changed); }
+    finally { writeFileSync(file, original); }
+  });
+
+  await t.test('staging errors and a failed final rename leave no half environment and preserve prior empty directories', async () => {
+    const context = cold('publish-failure');
+    mkdirSync(context.env.data, { recursive: true }); mkdirSync(context.env.secrets);
+    const original = fs.renameSync;
+    fs.renameSync = (from, to, ...args) => {
+      if (to === context.env.data) {
+        assert.equal(existsSync(context.env.baselineCredentials), true, 'credentials must be ready before data publication');
+        throw Object.assign(new Error('controlled publish failure'), { code: 'ENOSPC' });
+      }
+      return original(from, to, ...args);
+    };
+    syncBuiltinESMExports();
+    try { await assert.rejects(use(context), { code: 'ENOSPC' }); }
+    finally { fs.renameSync = original; syncBuiltinESMExports(); }
+    absent(context); assert.deepEqual(readdirSync(context.env.data), []); assert.deepEqual(readdirSync(context.env.secrets), []);
+    // The final check also protects against non-cooperating writes while the
+    // staged restore awaits hashing. Verify both cooperative locks are held.
+    const raced = cold('staging-race'), write = fs.writeFileSync;
+    let injected = false;
+    fs.writeFileSync = (file, ...args) => {
+      if (!injected && typeof file === 'string' && file.includes('baseline-import-') && file.endsWith('baseline.json.tmp')) {
+        injected = true;
+        assert.throws(() => acquireLock(raced.env), { code: 'LOCK_HELD' });
+        assert.throws(() => acquireLock({ ...raced.env, lockFile: join(raced.env.root, 'selection.lock') }), { code: 'LOCK_HELD' });
+        mkdirSync(raced.env.data); write(raced.env.database, 'preserve late DB');
+      }
+      return write(file, ...args);
+    };
+    syncBuiltinESMExports();
+    try { await assert.rejects(use(raced), { code: 'TARGET_EXISTS' }); }
+    finally { fs.writeFileSync = write; syncBuiltinESMExports(); }
+    assert.equal(injected, true); assert.equal(readFileSync(raced.env.database, 'utf8'), 'preserve late DB');
+    assert.equal(existsSync(raced.env.baselineFile), false); assert.equal(existsSync(raced.env.secrets), false);
+    assert.equal(readdirSync(f.home).some(name => name.startsWith('baseline-import-')), false);
+  });
+
+  await t.test('public CLI --here imports data in the specified current checkout instance', async () => {
+    const instance = 'here-cli', env = environmentPaths(f.home, environmentId(checkout, instance));
+    const child = spawn(process.execPath, [join(checkout, 'tools/xj-dev/xj-dev.mjs'), 'baseline', 'use', 'course-start', '--team', '--version', '0.2.0-fixed', '--here', '--worktree', checkout, '--instance', instance], {
+      env: { ...process.env, XJ_DEV_HOME: f.home }, stdio: ['ignore', 'pipe', 'pipe'], timeout: 20000,
+    });
+    let stdout = ''; child.stdout.on('data', bytes => stdout += bytes); child.stderr.resume();
+    assert.equal(await new Promise((done, reject) => { child.once('error', reject); child.once('close', done); }), 0, stdout);
+    const result = JSON.parse(stdout);
+    assert.equal(result.environment.worktree, checkout); assert.equal(result.environment.root, env.root);
+    assert.equal(result.initializedHere, true); assert.equal(existsSync(env.database), true); assert.equal(existsSync(env.stateFile), false);
   });
 });

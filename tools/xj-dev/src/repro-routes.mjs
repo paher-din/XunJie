@@ -9,7 +9,7 @@ function parse(options) {
   while (args.length) {
     const value = args.shift();
     if (!value.startsWith('--')) { positional.push(value); continue; }
-    if (value === '--team' && !(value in flags)) { flags[value] = true; continue; }
+    if (['--team', '--here'].includes(value) && !(value in flags)) { flags[value] = true; continue; }
     if (!['--context', '--out', '--target', '--digest', '--version', '--device-file', '--idempotency-key'].includes(value) || value in flags || !args.length || args[0].startsWith('--')) throw reproError('INVALID_ARGUMENTS', '复现/基线参数无效或缺值。');
     flags[value] = args.shift();
   }
@@ -38,13 +38,13 @@ export async function reproRoute(context, options) {
 export async function baselineRoute(context, options) {
   const { verb, positional, flags } = parse(options);
   const team = flags['--team'] === true;
-  const allowed = team ? { list: ['--team', '--device-file'], use: ['--team', '--version', '--target', '--device-file'] }
+  const allowed = team ? { list: ['--team', '--device-file'], use: ['--team', '--version', '--target', '--here', '--device-file'] }
     : { list: [], publish: ['--context', '--version'], use: ['--target'] };
   if (!allowed[verb] || Object.keys(flags).some(flag => !allowed[verb].includes(flag)) || (verb !== 'use' && positional.length)) throw reproError('INVALID_ARGUMENTS', 'baseline 参数与子命令不匹配，支持 list/publish/use。');
   if (positional.length > 1) throw reproError('INVALID_ARGUMENTS', 'baseline use 只接受一个版本。');
   if (verb === 'list') return team ? listTeamBaselines(context, { deviceFile: flags['--device-file'] }) : listBaselines(context);
   if (verb === 'publish') return publishBaseline(context, { version: flags['--version'], contextFile: flags['--context'] });
-  if (verb === 'use') return team ? useTeamBaseline(context, { name: positional[0], version: flags['--version'], target: flags['--target'], deviceFile: flags['--device-file'] })
+  if (verb === 'use') return team ? useTeamBaseline(context, { name: positional[0], version: flags['--version'], target: flags['--target'], here: flags['--here'], deviceFile: flags['--device-file'] })
     : useBaseline(context, { version: positional[0], target: flags['--target'] });
   throw reproError('INVALID_ARGUMENTS', 'baseline 支持 list/publish/use。');
 }
