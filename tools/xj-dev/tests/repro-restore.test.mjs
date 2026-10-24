@@ -45,7 +45,16 @@ import cp from 'node:child_process';
 import fs from 'node:fs';
 import {resolve,join} from 'node:path';
 import {syncBuiltinESMExports} from 'node:module';
-const originalSpawn=cp.spawnSync, originalWrite=fs.writeFileSync;
+const originalSpawn=cp.spawnSync, originalAsyncSpawn=cp.spawn, originalWrite=fs.writeFileSync;
+cp.spawn=function(command,args,options){
+  if(process.env.XJ_REVIEW_INSTALL_FROM && args[1]==='ci' && args[0].endsWith('npm-cli.js')){
+    const app=options.cwd.endsWith('student')?'student':'teaching';
+    fs.appendFileSync(process.env.XJ_REVIEW_INSTALL_TRACE,app+'\\n');
+    fs.symlinkSync(join(process.env.XJ_REVIEW_INSTALL_FROM,'apps',app,'node_modules'),join(options.cwd,'node_modules'),process.platform==='win32'?'junction':'dir');
+    return originalAsyncSpawn.call(this,command,['-e',''],options);
+  }
+  return originalAsyncSpawn.call(this,command,args,options);
+};
 cp.spawnSync=function(command,args,options){
   const index=args.indexOf('worktree');
   if(command==='git' && args[index+1]==='add' && process.env.XJ_REVIEW_DELAY==='yes'){
@@ -97,15 +106,18 @@ function launchCli(home, args, controls = {}, receiver = worktree) {
 function launch(home, target, controls = {}) {
   return launchCli(home, ['repro', 'restore', file, '--target', target], controls);
 }
-
-test('a real captured scene restores from a cold checkout only after explicit dependency preparation', async t => {
-  const receiver = join(root, 'cold-source'), target = join(root, 'cold-restored'), home = join(root, 'cold-home');
+function coldCheckout(receiver, localStartup = false) {
   mkdirSync(receiver); git(receiver, ['init', '-q']);
-  for (const path of [...codePaths, 'apps/teaching', 'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
+  for (const path of [...codePaths, 'apps/teaching', ...(localStartup ? ['apps/student'] : []), 'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
     mkdirSync(dirname(join(receiver, path)), { recursive: true });
     cpSync(join(worktree, path), join(receiver, path), { recursive: true,
       filter: source => !['node_modules', 'dist', 'coverage', 'evidence'].includes(basename(source)) });
   }
+}
+
+test('a real captured scene restores from a cold checkout only after explicit dependency preparation', async t => {
+  const receiver = join(root, 'cold-source'), target = join(root, 'cold-restored'), home = join(root, 'cold-home');
+  coldCheckout(receiver);
   t.after(() => { if (existsSync(target)) git(receiver, ['worktree', 'remove', '--force', target]); });
   const args = ['repro', 'restore', file, '--target', target], original = readFileSync(join(receiver, 'README.md'));
   const missing = await launchCli(home, args, {}, receiver).result;
@@ -123,6 +135,52 @@ test('a real captured scene restores from a cold checkout only after explicit de
   assert.ok(existsSync(environmentPaths(home, environmentId(target)).database));
   assert.equal(existsSync(join(target, 'apps/teaching/node_modules')), false);
   assert.deepEqual(readFileSync(join(receiver, 'README.md')), original);
+});
+
+for (const mode of ['cloud', 'cloud-api']) test(`public missing-dependency recovery prepares local from selected ${mode} and preserves its scene`, { timeout: 90000 }, async t => {
+  const receiver = join(root, `cold-${mode}`), target = join(root, `recovered-${mode}`), home = join(root, `home-${mode}`);
+  coldCheckout(receiver, true);
+  const local = environmentPaths(home, environmentId(receiver)), remote = environmentPaths(home, environmentId(receiver, mode));
+  mkdirSync(local.root, { recursive: true }); mkdirSync(remote.data, { recursive: true }); mkdirSync(remote.browserProfile, { recursive: true });
+  const selectionFile = join(local.root, 'selection.json');
+  const selection = { mode, targets: { [mode]: { id: environmentId(receiver, mode), root: remote.root,
+    connectionFile: join(root, 'unavailable-cloud.json') } } };
+  writeFileSync(selectionFile, JSON.stringify(selection));
+  const data = join(remote.data, 'shared-scene'), draft = join(remote.browserProfile, 'draft');
+  writeFileSync(data, 'synthetic cloud scene'); writeFileSync(draft, 'synthetic unsaved cloud draft');
+  t.after(async () => {
+    await launchCli(home, ['down'], {}, receiver).result;
+    if (existsSync(target)) git(receiver, ['worktree', 'remove', '--force', target]);
+  });
+  const restoreArgs = ['repro', 'restore', file, '--target', target];
+  const missing = await launchCli(home, restoreArgs, {}, receiver).result;
+  assert.equal(missing.envelope.failure.code, 'DEPENDENCIES_NOT_READY');
+  assert.deepEqual(JSON.parse(readFileSync(selectionFile)), selection, 'restore must not silently change the selected mode');
+  assert.equal(existsSync(target), false); assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  // Execute the actual commands advertised by the failure, including their
+  // worktree. Only npm's network/install subprocess is controlled; the public
+  // mode routing, both dependency requests, native driver and services are real.
+  const commands = [...missing.envelope.failure.recovery.matchAll(/node "([^"]+)" ([a-z]+(?: [a-z]+)?) --worktree "([^"]+)"/g)];
+  assert.equal(commands.length, 2);
+  const trace = join(root, `installs-${mode}`);
+  for (const [, script, command, worktreeArgument] of commands) {
+    assert.equal(script, join(receiver, 'tools/xj-dev/xj-dev.mjs')); assert.equal(worktreeArgument, receiver);
+    const prepared = await launchCli(home, command.split(' '), { XJ_REVIEW_INSTALL_FROM: worktree, XJ_REVIEW_INSTALL_TRACE: trace }, receiver).result;
+    assert.equal(prepared.status, 0, JSON.stringify(prepared.envelope.failure));
+    if (command === 'doctor') assert.deepEqual(JSON.parse(readFileSync(selectionFile)), selection);
+    else {
+      assert.equal(prepared.envelope.mode, 'local');
+      assert.equal(Object.values(prepared.envelope.processes).every(process => process.running), true);
+    }
+  }
+  assert.deepEqual(readFileSync(trace, 'utf8').trim().split('\n'), ['student', 'teaching']);
+  assert.deepEqual(JSON.parse(readFileSync(selectionFile)), { ...selection, mode: 'local' });
+  const restored = await launchCli(home, restoreArgs, {}, receiver).result;
+  assert.equal(restored.status, 0, JSON.stringify(restored.envelope.failure));
+  assert.equal(restored.envelope.verification.restored, true);
+  assert.equal(restored.envelope.verification.reproduction, 'unverified');
+  assert.equal(readFileSync(data, 'utf8'), 'synthetic cloud scene');
+  assert.equal(readFileSync(draft, 'utf8'), 'synthetic unsaved cloud draft');
 });
 async function ready(file) {
   const deadline = Date.now() + 30000;

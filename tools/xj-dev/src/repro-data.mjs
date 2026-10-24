@@ -36,7 +36,7 @@ export async function schemaFingerprint(teachingDir, scratch) {
       && !error.message?.startsWith('Could not locate the bindings file.')) throw error;
     const failure = reproError('DEPENDENCIES_NOT_READY', '当前可信工作树的业务数据库依赖缺失或无法加载；尚未检查 schema，未恢复目标。');
     const worktree = dirname(dirname(teachingDir)), cli = join(worktree, 'tools/xj-dev/xj-dev.mjs');
-    failure.recovery = `在当前可信工作树先运行 node "${cli}" doctor --worktree "${worktree}"，再显式运行 node "${cli}" up --worktree "${worktree}" 自动准备依赖与本地环境；成功后重试 restore。不要从复现包执行安装或脚本。`;
+    failure.recovery = `在当前可信工作树先运行 node "${cli}" doctor --worktree "${worktree}"，再显式运行 node "${cli}" use local --worktree "${worktree}"。后者会准备该可信 checkout 的依赖、启动本地环境，并在健康检查通过后切换本地入口；原云端数据、已有页面和未保存草稿保留原目标。成功后重试 restore；restore 本身不安装依赖、不切换模式、不执行包内脚本。`;
     throw failure;
   }
   const { createApplicationDatabase } = await import(pathToFileURL(join(teachingDir, 'server/db/transaction.ts')).href);

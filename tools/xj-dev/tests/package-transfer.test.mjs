@@ -308,7 +308,7 @@ test('cold restore reports dependency preparation and preserves the target and e
   const result = await receiverCli(f, receiver, ['repro', 'restore', f.file, '--target', target]);
   assert.equal(result.status, 1); assert.equal(result.failure.stage, 'repro');
   assert.equal(result.failure.code, 'DEPENDENCIES_NOT_READY');
-  assert.match(result.failure.recovery, /doctor/); assert.match(result.failure.recovery, /up/);
+  assert.match(result.failure.recovery, /doctor/); assert.match(result.failure.recovery, /use local/);
   assert.ok(result.failure.recovery.includes(receiver));
   assert.equal(readFileSync(canary, 'utf8'), 'keep current work');
   assert.equal(existsSync(target), false); assert.equal(existsSync(join(f.context.home, 'envs')), false);
