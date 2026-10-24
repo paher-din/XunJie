@@ -14,7 +14,7 @@ import { createPackages } from '../../xj-dev-access/packages.mjs';
 import { authenticatedRequest, joinEnrollment } from '../src/enrollment-client.mjs';
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../src/certificates.mjs';
 import { environmentId, environmentPaths, repoPaths } from '../src/paths.mjs';
-import { writePrivateJson } from '../src/enrollment-protocol.mjs';
+import { ACCESS_PROTOCOL, writePrivateJson } from '../src/enrollment-protocol.mjs';
 import { ensureBaseline } from '../src/baseline.mjs';
 import { databaseDriver } from '../src/repro-data.mjs';
 import { captureRepro } from '../src/repro.mjs';
@@ -25,6 +25,7 @@ import { crc64XZ } from '../src/package-transfer.mjs';
 import { acquireLock } from '../src/state.mjs';
 
 const checkout = realpathSync(join(import.meta.dirname, '../../..'));
+const fixtureTimeout = process.platform === 'win32' ? 600000 : 120000;
 
 // Real access HTTPS/proof/SQLite, real ZIP/fetch/restore. Only object storage and
 // privileged OS/account adapters are controlled; this is not cloud acceptance.
@@ -72,6 +73,19 @@ async function fixture(t) {
     courseIds: ['course'], target: { schema: 'xj-dev/connection-v1', host: 'approved.test', port: 22, browserOrigin: 'https://localhost:13445', applicationPort: 13444 },
     packages: { bucket: 'fixture-bucket', prefix: 'team/' } };
   service = createAccessService(config, { storage, system: async input => ({ username: 'xjd_' + input.deviceId.replaceAll('-', '').slice(0, 28) }), application: async () => ({}) });
+  const catalog = createPackages(service.store, config.packages, { storage }).catalog;
+  const admin = async (operation, input) => {
+    if (process.platform !== 'win32') return adminRequest(config.adminSocket, operation, input);
+    // The deployed access host uses a Unix-only owner socket. On Windows seed
+    // its controlled owner state directly; every client request still crosses
+    // the real HTTPS/proof/live-capability boundary below.
+    if (operation === 'invite') return { protocol: ACCESS_PROTOCOL, serviceId: config.serviceId, endpoint: config.endpoint,
+      caPem: readFileSync(ca.certFile, 'utf8'), cloudCaPem: readFileSync(ca.certFile, 'utf8'), sshKnownHosts: readFileSync(pins, 'utf8'),
+      ...service.store.createInvitation(input) };
+    if (operation === 'package-baseline') return catalog.addBaseline(input);
+    assert.equal(operation, 'revoke-device');
+    service.store.denyDevice(input.deviceId); service.store.closed(input.deviceId);
+  };
   // Exercise client binding against a conflicting/malformed catalog response,
   // while retaining the real service's proof and download authorization checks.
   service.publicServer.on('request', (_req, res) => {
@@ -84,9 +98,12 @@ async function fixture(t) {
       return end.call(this, bytes, ...args);
     };
   });
-  await service.listen(); config.endpoint = `https://127.0.0.1:${service.publicServer.address().port}`;
+  if (process.platform === 'win32') {
+    await new Promise((accept, reject) => { service.publicServer.once('error', reject); service.publicServer.listen(0, '127.0.0.1', accept); });
+  } else await service.listen();
+  config.endpoint = `https://127.0.0.1:${service.publicServer.address().port}`;
   const enroll = async (label, capabilities) => {
-    const invite = await adminRequest(config.adminSocket, 'invite', { label, teamRole: 'developer', appRole: 'student', courseId: 'course', capabilities, ttlSeconds: 60 });
+    const invite = await admin('invite', { label, teamRole: 'developer', appRole: 'student', courseId: 'course', capabilities, ttlSeconds: 60 });
     const invitationFile = join(root, label + '.json'); writePrivateJson(invitationFile, invite);
     return joinEnrollment({ home: label === 'reader' ? home : join(root, label + '-home'), invitationFile });
   };
@@ -107,22 +124,21 @@ async function fixture(t) {
     data: { scope: { courseIds: ['synthetic-textscope-c'], userIds: ['synthetic-teacher', 'synthetic-student'], attemptIds: [attemptId] } },
     scenario: { title: 'team baseline fixture', start: 'before-trigger', steps: ['review isolated data'], expected: 'original is preserved', observed: 'unverified' } }));
   const file = join(root, 'baseline.zip'), captured = await captureRepro(context, { contextFile, out: file }), bytes = readFileSync(file);
-  const catalog = createPackages(service.store, config.packages, { storage }).catalog;
   const publish = async (name, version, packageBytes = bytes) => {
     const p = catalog.reservation(publisher.identity, { idempotencyKey: randomUUID(), digest: digest(packageBytes), bytes: packageBytes.length,
       crc64: crc64XZ(packageBytes), formatVersion: 'xj-repro/1', toolVersion: '0.2.0' });
     const head = { bytes: p.bytes, crc64: p.crc64, etag: '"immutable-fixture"' };
     objects.set(p.object_key, { id: p.id, bytes: packageBytes, etag: head.etag, head });
     catalog.publish(p.id, head);
-    await adminRequest(config.adminSocket, 'package-baseline', { name, version, reproId: p.id });
+    await admin('package-baseline', { name, version, reproId: p.id });
     return p.id;
   };
   const route = args => baselineRoute(context, { extraArgs: args });
   const target = label => { const path = join(root, label); targets.push(path); return path; };
-  return { root, home, context, reader, publisher, page, config, service, route, target, publish, bytes, captured, catalog, controls, downloads };
+  return { root, home, context, reader, publisher, page, config, service, admin, route, target, publish, bytes, captured, catalog, controls, downloads };
 }
 
-test('team baseline catalog and pinned use retain read-only authorization, digest binding and previous data', { timeout: 120000 }, async t => {
+test('team baseline catalog and pinned use retain read-only authorization, digest binding and previous data', { timeout: fixtureTimeout }, async t => {
   const f = await fixture(t);
   const entries = decodeZip(f.bytes), scenario = JSON.parse(entries.get('scenario.json'));
   entries.set('scenario.json', jsonBytes({ ...scenario, title: 'newer baseline fixture' }));
@@ -140,7 +156,7 @@ test('team baseline catalog and pinned use retain read-only authorization, diges
     for (const device of [f.page, f.publisher]) await assert.rejects(authenticatedRequest(device.deviceFile, '/v1/packages/resolve', { catalog: 'baselines' }), { code: 'CAPABILITY_DENIED' });
     await assert.rejects(authenticatedRequest(f.reader.deviceFile, '/v1/packages/upload', {}), { code: 'CAPABILITY_DENIED' });
     await assert.rejects(authenticatedRequest(f.reader.deviceFile, '/v1/packages/upload-status', { transferId: chosen }), { code: 'CAPABILITY_DENIED' });
-    await adminRequest(f.config.adminSocket, 'revoke-device', { deviceId: f.publisher.identity.deviceId });
+    await f.admin('revoke-device', { deviceId: f.publisher.identity.deviceId });
     await assert.rejects(authenticatedRequest(f.publisher.deviceFile, '/v1/packages/resolve', { catalog: 'baselines' }), { code: 'DEVICE_REVOKED' });
     const before = f.catalog.baselines();
     const listed = await authenticatedRequest(f.reader.deviceFile, '/v1/packages/resolve', { catalog: 'baselines', operation: 'package-baseline', name: 'injected', version: 'v1', reproId: chosen });
@@ -217,7 +233,7 @@ test('team baseline catalog and pinned use retain read-only authorization, diges
   });
 });
 
-test('--here initializes only empty local data, preserving current code and rejecting partial or concurrent environments', { timeout: 120000 }, async t => {
+test('--here initializes only empty local data, preserving current code and rejecting partial or concurrent environments', { timeout: fixtureTimeout }, async t => {
   const f = await fixture(t);
   await f.publish('course-start', '0.2.0-fixed');
   const cold = instance => {
