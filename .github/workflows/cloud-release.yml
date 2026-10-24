@@ -1,0 +1,173 @@
+# Builds the Linux production runtime artifact for the shared host and publishes
+# it as a GitHub Release (tag cloud-<commit>). Build success never deploys by
+# itself: the server-side deploy tooling downloads, verifies and switches.
+name: cloud-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Only the newest commit on each ref needs a build. Cancellation leaves at
+  # most an immutable tag/draft; the Release becomes visible only after upload.
+  group: cloud-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish-runtime-artifact:
+    concurrency:
+      group: cloud-artifact-${{ github.sha }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: |
+            apps/student/package-lock.json
+            apps/teaching/package-lock.json
+      - name: Build the student interface
+        working-directory: apps/student
+        run: |
+          npm ci --include=dev --no-audit --no-fund
+          npm run build
+      - name: Install teaching production dependencies
+        working-directory: apps/teaching
+        run: npm ci --omit=dev --no-audit --no-fund
+      - name: Assemble the verifiable runtime artifact
+        run: |
+          node tools/i0-cloud/build-runtime-artifact.mjs \
+            --source . \
+            --output "$RUNNER_TEMP/artifact" \
+            --commit "$GITHUB_SHA" \
+            --git-tree "$(git rev-parse 'HEAD^{tree}')" \
+            --expected-platform linux-x64 \
+            --expected-node-version v24.21.0 \
+            | tee "$RUNNER_TEMP/artifact-summary.json"
+          test "$(node -e 'process.stdout.write(require(process.env.RUNNER_TEMP + "/artifact-summary.json").status)')" = built
+      - name: Publish an immutable artifact and its bound release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: cloud-${{ github.sha }}
+        run: |
+          # HTTP 404 is the only lookup failure that authorizes creation.
+          # Permission, transport and server errors must preserve any Release.
+          if gh api --include "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > "$RUNNER_TEMP/release-query.http"; then
+            export RELEASE_QUERY_EXIT=0
+          else
+            export RELEASE_QUERY_EXIT=$?
+          fi
+          node -e '
+            const fs=require("node:fs");
+            const http=fs.readFileSync(process.env.RUNNER_TEMP+"/release-query.http","utf8");
+            const status=/^HTTP\/[0-9.]+ ([0-9]{3})[^\n]*\n/.exec(http);
+            let decision;
+            if(status?.[1]==="404" && process.env.RELEASE_QUERY_EXIT!=="0")decision="absent";
+            else if(status?.[1]==="200" && process.env.RELEASE_QUERY_EXIT==="0"){
+              const body=http.split(/\r?\n\r?\n/).slice(1).join("\n\n");
+              const release=JSON.parse(body);
+              if(typeof release.draft!=="boolean" || typeof release.body!=="string")throw Error("Invalid Release lookup response");
+              if(release.draft)decision="replace";
+              else if(!release.body.includes("<!-- xunjie-artifact-v1 "))decision="replace";
+              else {
+                const match=/<!-- xunjie-artifact-v1 (\{[^\n]+\}) -->/.exec(release.body);
+                if(!match)throw Error("Published binding is malformed; preserve Release");
+                const b=JSON.parse(match[1]);
+                if(b.commit!==process.env.GITHUB_SHA || !/^[0-9a-f]{40}$/.test(b.artifactCommit)
+                  || !/^[0-9a-f]{64}$/.test(b.manifestSha256) || !/^[0-9a-f]{64}$/.test(b.artifactSha256))throw Error("Published binding is invalid; preserve Release");
+                decision="reuse";
+              }
+            } else throw Error("Release lookup did not return a confirmed 200/404; preserve Release");
+            fs.writeFileSync(process.env.RUNNER_TEMP+"/release-decision.txt",decision);
+          '
+          decision=$(cat "$RUNNER_TEMP/release-decision.txt")
+          if test "$decision" = reuse; then exit 0; fi
+          manifest_sha=$(sha256sum "$RUNNER_TEMP/artifact/manifest.json" | cut -d ' ' -f 1)
+          artifact_tag="cloud-artifact-$manifest_sha"
+          git config user.name "cloud-release-bot"
+          git config user.email "actions@github.com"
+          git checkout --orphan cloud-artifact-candidate
+          git rm -rf --quiet .
+          cp "$RUNNER_TEMP/artifact/manifest.json" "$RUNNER_TEMP/artifact/runtime.tar.gz" .
+          git add manifest.json runtime.tar.gz
+          git commit -m "Cloud runtime artifact for $GITHUB_SHA"
+          artifact_commit=$(git rev-parse HEAD)
+          reuse_artifact_tag() {
+            git fetch --no-tags origin "refs/tags/$artifact_tag"
+            existing_commit=$(git rev-parse FETCH_HEAD)
+            test "$(git cat-file -t "$existing_commit")" = commit
+            test "$(git rev-parse "$existing_commit^{tree}")" = "$(git rev-parse 'HEAD^{tree}')"
+            artifact_commit="$existing_commit"
+          }
+          # A cancelled run may already have pushed this exact content tag.
+          # Compare both files through the tree, then reuse its existing commit;
+          # a new commit timestamp must never require overwriting the tag.
+          if git ls-remote --exit-code --tags origin "refs/tags/$artifact_tag" > /dev/null; then
+            reuse_artifact_tag
+          else
+            git tag "$artifact_tag"
+            # Handle a tag published between the existence check and our push.
+            if ! git push origin "refs/tags/$artifact_tag"; then
+              reuse_artifact_tag
+            fi
+          fi
+          export ARTIFACT_COMMIT="$artifact_commit" MANIFEST_SHA256="$manifest_sha"
+          node -e '
+            const fs=require("node:fs");
+            const summary=require(process.env.RUNNER_TEMP+"/artifact-summary.json");
+            const binding={commit:summary.commit,artifactCommit:process.env.ARTIFACT_COMMIT,
+              manifestSha256:process.env.MANIFEST_SHA256,artifactSha256:summary.artifactSha256};
+            fs.writeFileSync(process.env.RUNNER_TEMP+"/release-notes.md",
+              "Runtime artifact for " + summary.commit + "\n\n" +
+              "<!-- xunjie-artifact-v1 " + JSON.stringify(binding) + " -->\n");
+          '
+          # Legacy unbound releases/drafts may be replaced once during migration.
+          # The content-addressed artifact tag is already reachable before this.
+          if test "$decision" = replace; then gh release delete "$TAG" --yes --cleanup-tag; fi
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/artifact/manifest.json" \
+            "$RUNNER_TEMP/artifact/runtime.tar.gz" \
+            --target "$GITHUB_SHA" --draft --title "Cloud runtime $GITHUB_SHA" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$TAG" --draft=false
+      - name: Prune superseded artifact releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Keep recent releases and protect both main and integration HEADs. Never
+          # delete a Release currently needed for either branch's HEAD.
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/releases.json"
+          git ls-remote origin refs/heads/main refs/heads/codex/development-collaboration-integration > "$RUNNER_TEMP/protected-heads.txt"
+          node -e '
+            const fs=require("node:fs");const cp=require("node:child_process");
+            const releases=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/releases.json","utf8")).flat();
+            const heads=new Set(fs.readFileSync(process.env.RUNNER_TEMP+"/protected-heads.txt","utf8").trim().split(/\n/).map(x=>x.split(/\s/)[0]));
+            const cutoff=Date.now()-24*60*60*1000;
+            const removed=new Set();let keep=0;
+            for(const release of releases.filter(r=>/^cloud-[0-9a-f]{40}$/.test(r.tag_name))){
+              if(heads.has(release.tag_name.slice(6)))continue;
+              if(release.draft ? Date.parse(release.created_at)>=cutoff : keep++<5)continue;
+              cp.execFileSync("gh",["release","delete",release.tag_name,"--yes","--cleanup-tag"]);
+              removed.add(release.id);
+            }
+            const referenced=new Set();
+            for(const release of releases.filter(r=>!removed.has(r.id))){
+              const match=/<!-- xunjie-artifact-v1 (\{[^\n]+\}) -->/.exec(release.body||"");
+              if(match)referenced.add(JSON.parse(match[1]).artifactCommit);
+            }
+            const refs=JSON.parse(cp.execFileSync("gh",["api","--paginate","--slurp",
+              "repos/"+process.env.GITHUB_REPOSITORY+"/git/matching-refs/tags/cloud-artifact-"],{encoding:"utf8"})).flat();
+            for(const ref of refs){
+              if(!/^refs\/tags\/cloud-artifact-[0-9a-f]{64}$/.test(ref.ref) || ref.object.type!=="commit" || referenced.has(ref.object.sha))continue;
+              const commit=JSON.parse(cp.execFileSync("gh",["api","repos/"+process.env.GITHUB_REPOSITORY+"/git/commits/"+ref.object.sha],{encoding:"utf8"}));
+              // A grace period protects another ref still uploading a draft.
+              if(Date.parse(commit.committer.date)<cutoff)cp.execFileSync("git",["push","origin",":"+ref.ref]);
+            }
+          '

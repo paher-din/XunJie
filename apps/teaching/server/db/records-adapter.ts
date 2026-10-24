@@ -21,9 +21,11 @@ const jobSchema = z.strictObject({ jobId: id, kind: id, purpose: purposeSchema, 
   acceptedAt: time, deadline: time, attemptCount: natural.max(3), inactivityTimeoutMs:z.number().int().positive().max(2147483647).optional(),leaseToken: id.optional(), leaseUntil: time.optional(),
   runId: id.optional(), resultRef: id.optional(), resultHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), failure: id.optional(),
   execution:z.strictObject({nodeId:z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),nodeGeneration:id}).optional() });
+// Construct the recursive JSON validator once; each persisted receipt is still validated on every read.
+const jsonValueSchema = z.json();
 const receiptSchema = z.strictObject({ receiptId: id, commandId: id, identity: identitySchema, requestHash: z.string().regex(/^[a-f0-9]{64}$/),
   // JSON validation must not normalize client file keys such as "__proto__" in the original ACK.
-  result: z.unknown().refine(value => z.json().safeParse(value).success), serverSeq: z.number().int().positive(), committedAt: time });
+  result: z.unknown().refine(value => jsonValueSchema.safeParse(value).success), serverSeq: z.number().int().positive(), committedAt: time });
 const eventSchema = z.strictObject({ eventId: id, serverSeq: z.number().int().positive(), scope: scopeSchema, type: id,
   occurredAt: time, source: z.enum(['student_command', 'trusted_service']), payloadRef: id.optional() });
 const objectRefSchema = z.discriminatedUnion('kind', [
@@ -78,8 +80,11 @@ export function saveAttempt(tx: Transaction, attempt: Attempt) {
   const saved = readAttempt(tx, checked.attemptId);
   if (JSON.stringify(saved) !== JSON.stringify(checked)) throw new ApiError('FORBIDDEN');
 }
-export function readJobs(tx: Transaction, courseId: string): Job[] {
-  return tx.all('SELECT * FROM jobs WHERE course_id=?', courseId).map(row => {
+export function readJobs(tx: Transaction, courseId: string, attemptId?: string): Job[] {
+  const rows = attemptId === undefined ? tx.all('SELECT * FROM jobs WHERE course_id=?', courseId)
+    : tx.all(`SELECT * FROM jobs WHERE course_id=? AND (attempt_id IS NULL OR attempt_id=?
+      OR json_extract(job_json,'$.scope.attemptId') IS NULL OR json_extract(job_json,'$.scope.attemptId')=?)`, courseId, attemptId, attemptId);
+  return rows.map(row => {
     const job = persisted(jobSchema, String(row.job_json)) as Job;
     if (job.jobId !== row.job_id || job.scope.courseId !== row.course_id || (job.scope.studentId ?? null) !== row.student_id
       || (job.scope.attemptId ?? null) !== row.attempt_id || job.requestReceiptId !== row.request_receipt_id
@@ -111,48 +116,87 @@ export function saveJob(tx: Transaction, input: Job) {
   const saved = readJobs(tx, job.scope.courseId).find(row => row.jobId === job.jobId);
   if (JSON.stringify(saved) !== JSON.stringify(job)) throw new ApiError('FORBIDDEN');
 }
-export function readRecords(tx: Transaction, courseId: string): Records {
-  const receipts = tx.all("SELECT * FROM command_receipts WHERE course_id=? AND command LIKE 'shared.%'", courseId).map(row => {
+// An explicit attempt keeps course-level roots/jobs and all referenced owners. Omitted scope is the full course.
+// SQL JSON fields select candidates only; the same complete row/JSON/association checks still validate them below.
+export function readRecords(tx: Transaction, courseId: string, attemptId?: string, relatedReceiptIds: string[] = []): Records {
+  if (attemptId !== undefined && (typeof attemptId !== 'string' || !attemptId)) throw new ApiError('INVALID_REQUEST');
+  const jobs = readJobs(tx, courseId, attemptId);
+  const related = JSON.stringify([...new Set([...relatedReceiptIds, ...jobs.map(job => job.requestReceiptId)])]);
+  const targetPrefix = '/api/attempts/' + encodeURIComponent(attemptId ?? '') + '/';
+  const receiptRows = attemptId === undefined
+    ? tx.all("SELECT * FROM command_receipts WHERE course_id=? AND command LIKE 'shared.%'", courseId)
+    : tx.all(`SELECT r.* FROM command_receipts r LEFT JOIN audit_events e ON e.server_seq=r.server_seq
+      WHERE r.command LIKE 'shared.%' AND ((r.course_id=? AND (
+        json_extract(r.result_json,'$.identity.scope.attemptId') IS NULL OR json_extract(r.result_json,'$.identity.scope.attemptId')=?
+        OR (e.course_id=? AND (json_extract(e.object_ref_json,'$.scope.attemptId') IS NULL OR json_extract(e.object_ref_json,'$.scope.attemptId')=?))
+        OR r.target=? OR substr(r.target,1,length(?))=?)) OR r.receipt_id IN (SELECT value FROM json_each(?)))`,
+      courseId, attemptId, courseId, attemptId, attemptId, targetPrefix, targetPrefix, related);
+  const readReceipt = (row: (typeof receiptRows)[number]) => {
     const receipt = persisted(receiptSchema, String(row.result_json)) as CommandReceipt;
     if (receipt.receiptId !== row.receipt_id || receipt.commandId !== row.command_id || receipt.identity.actorId !== row.actor_id
-      || receipt.identity.scope.courseId !== courseId || 'shared.' + receipt.identity.command !== row.command
+      || receipt.identity.scope.courseId !== courseId || receipt.identity.scope.courseId !== row.course_id || 'shared.' + receipt.identity.command !== row.command
       || receipt.identity.target !== row.target || receipt.identity.idempotencyKey !== row.idempotency_key
       || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.requestHash !== row.request_hash
       || receipt.serverSeq !== row.server_seq) throw new Error('Invalid persisted receipt scope.');
     return receipt;
-  });
-  const events = tx.all("SELECT * FROM audit_events WHERE course_id=? AND command LIKE 'shared.%'", courseId)
+  };
+  const receipts = receiptRows.map(readReceipt);
+  // Index this validated read only; never reuse persisted data across transactions or authorization checks.
+  const receiptById = new Map(receipts.map(receipt => [receipt.receiptId, receipt]));
+  const receiptBySequence = new Map(receipts.map(receipt => [receipt.serverSeq, receipt]));
+  const eventRows = attemptId === undefined
+    ? tx.all("SELECT * FROM audit_events WHERE course_id=? AND command LIKE 'shared.%'", courseId)
+    : tx.all(`SELECT * FROM audit_events WHERE (course_id=? AND command LIKE 'shared.%'
+        AND (json_extract(object_ref_json,'$.scope.attemptId') IS NULL OR json_extract(object_ref_json,'$.scope.attemptId')=?))
+        OR server_seq IN (SELECT value FROM json_each(?))`, courseId, attemptId, JSON.stringify(receipts.map(receipt => receipt.serverSeq)));
+  const checkedEvents = eventRows
     .map(row => {
       const event = persisted(eventSchema, String(row.object_ref_json)) as AuditEvent;
       if (event.eventId !== row.event_id || event.serverSeq !== row.server_seq || event.scope.courseId !== row.course_id
         || 'shared.' + event.type !== row.command || Date.parse(event.occurredAt) !== row.committed_at_ms) throw new Error('Invalid persisted event scope.');
-      const receipt = receipts.find(item => item.receiptId === event.payloadRef);
-      // An event may reference the object it is about (a teaching delivery, receipt or stop request) instead of
-      // its command receipt; those rows still have to agree with the row that owns them.
-      if (!receipt) {
-        const owner = receipts.find(item => item.serverSeq === event.serverSeq && item.committedAt === event.occurredAt);
-        if (!owner || owner.identity.actorId !== row.actor_id || owner.commandId !== row.command_id
-          || owner.identity.target !== row.target || owner.identity.recoveryGeneration !== row.recovery_generation
-          || !sameScope(owner.identity.scope, event.scope)) throw new Error('Invalid persisted receipt/event association.');
-        return event;
-      }
-      if (!sameScope(receipt.identity.scope, event.scope) || receipt.identity.actorId !== row.actor_id
-        || receipt.commandId !== row.command_id || receipt.identity.target !== row.target
-        || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.serverSeq !== event.serverSeq
-        || receipt.committedAt !== event.occurredAt) throw new Error('Invalid persisted receipt/event association.');
-      return event;
+      return { row, event };
     });
-  return { receipts, events, jobs: readJobs(tx, courseId), commandAliases: [],
+  // A scoped read must distinguish real object refs from receipts outside the selected attempt.
+  // Match the full reader's course/shared boundary and validate every referenced receipt in full.
+  if (attemptId !== undefined) {
+    const unresolvedRefs = [...new Set(checkedEvents.flatMap(({ event }) =>
+      event.payloadRef && !receiptById.has(event.payloadRef) ? [event.payloadRef] : []))];
+    if (unresolvedRefs.length) {
+      for (const row of tx.all(`SELECT * FROM command_receipts WHERE course_id=? AND command LIKE 'shared.%'
+        AND receipt_id IN (SELECT value FROM json_each(?))`, courseId, JSON.stringify(unresolvedRefs))) {
+        const receipt = readReceipt(row);
+        receiptById.set(receipt.receiptId, receipt);
+      }
+    }
+  }
+  const events = checkedEvents.map(({ row, event }) => {
+    const receipt = receiptById.get(event.payloadRef ?? '');
+    // An event may reference the object it is about (a teaching delivery, receipt or stop request) instead of
+    // its command receipt; those rows still have to agree with the row that owns them.
+    if (!receipt) {
+      const owner = receiptBySequence.get(event.serverSeq);
+      if (!owner || owner.committedAt !== event.occurredAt || owner.identity.actorId !== row.actor_id || owner.commandId !== row.command_id
+        || owner.identity.target !== row.target || owner.identity.recoveryGeneration !== row.recovery_generation
+        || !sameScope(owner.identity.scope, event.scope)) throw new Error('Invalid persisted receipt/event association.');
+      return event;
+    }
+    if (!sameScope(receipt.identity.scope, event.scope) || receipt.identity.actorId !== row.actor_id
+      || receipt.commandId !== row.command_id || receipt.identity.target !== row.target
+      || receipt.identity.recoveryGeneration !== row.recovery_generation || receipt.serverSeq !== event.serverSeq
+      || receipt.committedAt !== event.occurredAt) throw new Error('Invalid persisted receipt/event association.');
+    return event;
+  });
+  return { receipts, events, jobs, commandAliases: [],
     serverSeq: Number(tx.get('SELECT COALESCE(MAX(server_seq),0) AS seq FROM audit_events')!.seq) };
 }
 function recordCommandState(tx: Transaction, identity: CommandIdentity, fields: unknown, generation: string) {
   if (identity.sync) throw new ApiError('INVALID_REQUEST'); // C2 owns sync-alias persistence, outside this approved seven-table batch.
   if (identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');
-  const global = tx.get('SELECT course_id,recovery_generation FROM command_receipts WHERE actor_id=? AND command=? AND target=? AND idempotency_key=?',
+  const global = tx.get('SELECT receipt_id,course_id,recovery_generation FROM command_receipts WHERE actor_id=? AND command=? AND target=? AND idempotency_key=?',
     identity.actorId, 'shared.' + identity.command, identity.target, identity.idempotencyKey);
   if (global && global.recovery_generation !== generation) throw new ApiError('RECOVERY_REQUIRED');
   if (global && global.course_id !== identity.scope.courseId) throw new ApiError('IDEMPOTENCY_CONFLICT');
-  const records = readRecords(tx, identity.scope.courseId);
+  const records = readRecords(tx, identity.scope.courseId, identity.scope.attemptId, global ? [String(global.receipt_id)] : []);
   const original = records.receipts.find(receipt => receipt.identity.actorId === identity.actorId && receipt.identity.command === identity.command
     && receipt.identity.target === identity.target && receipt.identity.idempotencyKey === identity.idempotencyKey);
   if (original && original.identity.recoveryGeneration !== generation) throw new ApiError('RECOVERY_REQUIRED');

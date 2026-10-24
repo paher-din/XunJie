@@ -1,0 +1,11 @@
+[Unit]
+Description=Sample XunJie health and resource watermarks every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=15s
+Unit=xunjie-monitor.service
+
+[Install]
+WantedBy=timers.target

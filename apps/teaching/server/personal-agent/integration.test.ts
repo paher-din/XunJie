@@ -23,6 +23,27 @@ const settings=(overrides:Record<string,unknown>={})=>({expectedRevision:0,enabl
 const pause=()=>new Promise<void>(resolve=>setImmediate(resolve));
 const image={name:'sample.png',dataUrl:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC'};
 
+test('three accounts share two upstream slots; an idempotent waiting turn can be cancelled without a call',async t=>{
+  const started:string[]=[],releases:Array<()=>void>=[];
+  const fixture=await setup({...immediateTransport,async complete({selection}){
+    started.push(selection.userId);await new Promise<void>(resolve=>releases.push(resolve));return {text:'done'};
+  }});
+  t.after(async()=>{for(const release of releases)release();await fixture.cleanup();});
+  for(const user of ['alice','bob','carol'])await fixture.request('POST','/api/model-settings',settings(),user);
+  const turns:any[]=[];
+  for(const user of ['alice','bob','carol'])turns.push((await fixture.request('POST','/api/agent/turns',
+    {conversationId:null,mode:'send',text:'one bounded question',requestKey:'shared-budget'},user)).body.data);
+  await pause();assert.deepEqual(started,['alice','bob']);
+  const repeated=await fixture.request('POST','/api/agent/turns',
+    {conversationId:null,mode:'send',text:'one bounded question',requestKey:'shared-budget'},'carol');
+  assert.equal(repeated.body.data.turnId,turns[2].turnId);
+  assert.equal(repeated.body.data.message.phase,'waiting');
+  await fixture.request('POST',`/api/agent/turns/${turns[2].turnId}/stop`,{},'carol');
+  for(const release of releases)release();await pause();await pause();
+  assert.deepEqual(started,['alice','bob']);
+  assert.equal((await fixture.request('GET',`/api/agent/turns/${turns[2].turnId}`,undefined,'carol')).body.data.message.phase,'stopped');
+});
+
 test('history identifies only the original live turn for refresh recovery; reads never call the provider',async t=>{
   let release!:(value:{text:string})=>void,calls=0;
   const fixture=await setup({...immediateTransport,async complete(input){calls++;input.onText?.('first chunk');return new Promise(resolve=>{release=resolve;});}});
@@ -334,9 +355,9 @@ test('turn acceptance is idempotent, account isolated and editing preserves the 
 
 test('stop persists partial text, rejects late updates and resume is one new provider call with the retained prefix',async t=>{
   let calls=0,lateText:((text:string)=>void)|undefined;
-  const transport:CompatibleTransport={...immediateTransport,async complete({onText,messages}){
+  const transport:CompatibleTransport={...immediateTransport,async complete({onText,messages,signal}){
     calls++;
-    if(calls===1){lateText=onText;onText?.('partial ');return new Promise(()=>{});}
+    if(calls===1){lateText=onText;onText?.('partial ');return new Promise(resolve=>signal.addEventListener('abort',()=>resolve({text:'late completion'}),{once:true}));}
     assert.ok(messages.some(message=>message.role==='assistant'&&message.content==='partial '));
     onText?.('continued');return {text:'continued'};
   }};
@@ -464,7 +485,7 @@ test('stale page model revision rejects a new turn before recording or calling t
 test('thinking has no total deadline; actual activity renews only the network idle window',async t=>{
   let calls=0;
   let activity:(()=>void|Promise<void>)|undefined;
-  const fixture=await setup({...immediateTransport,async complete({onText,onActivity}){calls++;activity=onActivity;onText?.('bounded partial');return new Promise(()=>{});}});
+  const fixture=await setup({...immediateTransport,async complete({onText,onActivity,signal}){calls++;activity=onActivity;onText?.('bounded partial');return new Promise(resolve=>signal.addEventListener('abort',()=>resolve({text:'late completion'}),{once:true}));}});
   t.after(fixture.cleanup);await fixture.request('POST','/api/model-settings',settings());
   t.mock.timers.enable({apis:['setTimeout']});
   const accepted=await fixture.request('POST','/api/agent/turns',{conversationId:null,mode:'send',text:'question',requestKey:'timeout'});

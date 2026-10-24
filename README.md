@@ -56,6 +56,20 @@ npm run dev:prep
 
 [本轮架构与设计](docs/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [学生端运行说明](apps/student/README.md)
 
+### 成员开发上手
+
+在本仓库的编码 Agent 中调用一次：
+
+```text
+$xunjie-development
+```
+
+Agent 检查并复用本机配置、依赖与本人身份，准备本地环境及获准的云连接，再介绍可用功能、适用场景、数据归属和未就绪能力。缺少邀请时，只需把维护者给本人的邀请拖给 Agent 或提供文件路径；无需手建文件、填写连接配置或复制长提示。
+
+首次介绍后，直接说“启动开发”“本地页面连云端后端”“回本地”或描述问题即可。Agent 用[仓库外展示标记](docs/development-tooling.md#首引导状态)在新会话识别已介绍状态，只续缺失步骤；标记不代表连接成功，只读询问也不会初始化环境。
+
+若宿主尚未发现 Skill，让 Agent 按[安装与发现](docs/development-tooling.md#安装与发现)建立本机入口；换电脑、工作树或 Agent 宿主需重新核对发现路径。完整 CLI 说明按任务查阅 [tools/xj-dev](tools/xj-dev/README.md)，不要求成员预读。
+
 ## 开发 skills
 
 项目技能位于 [skills/](skills/)，按当前任务需要选用，使用与修改范围遵循 [AGENTS.md](AGENTS.md)。

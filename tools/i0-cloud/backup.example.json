@@ -1,0 +1,28 @@
+{
+  "templateOnly": true,
+  "courseDatabaseFile": "/var/lib/xunjie/retained-tmp/REPLACE_WITH_RETAINED_DATABASE_DIRECTORY/synthetic.sqlite",
+  "personalModelsDirectory": "/var/lib/xunjie/retained-tmp/REPLACE_WITH_PERSONAL_MODELS_DIRECTORY",
+  "extraFiles": [
+    "/etc/xunjie/signing-secret.txt",
+    "/etc/xunjie/tls/server.key.pem",
+    "/etc/xunjie/tls/server.cert.pem",
+    "/etc/xunjie/application-config.json"
+  ],
+  "databases": [
+    { "source": "/var/lib/xunjie/REPLACE_WITH_ACTIVE_CANDIDATE/synthetic.sqlite", "path": "candidate/course.sqlite" },
+    { "source": "/var/lib/REPLACE_WITH_ACCESS_SERVICE/access.sqlite", "path": "access/access.sqlite" }
+  ],
+  "directories": [
+    { "source": "/var/lib/xunjie/REPLACE_WITH_CANDIDATE_MODELS", "path": "candidate/personal-models" }
+  ],
+  "recoveryFiles": [
+    { "source": "/var/lib/xunjie/REPLACE_WITH_ACTIVE_CANDIDATE/application.json", "path": "candidate/application.json" },
+    { "source": "/var/lib/xunjie/REPLACE_WITH_ACTIVE_CANDIDATE/account-control.json", "path": "candidate/account-control.json" },
+    { "source": "/var/lib/xunjie/REPLACE_WITH_ACTIVE_CANDIDATE/account-control-state.json", "path": "candidate/account-control-state.json" },
+    { "source": "/var/lib/REPLACE_WITH_ACCESS_SERVICE/credential.key", "path": "access/credential.key" },
+    { "source": "/etc/REPLACE_WITH_ACCESS_SERVICE/service.json", "path": "access/service.json" },
+    { "source": "/etc/REPLACE_WITH_ACCESS_SERVICE/system.json", "path": "access/system.json" }
+  ],
+  "outputDirectory": "/var/backups/xunjie/encrypted",
+  "teachingRoot": "/opt/xunjie/current/apps/teaching"
+}

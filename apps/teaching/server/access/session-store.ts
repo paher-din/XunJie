@@ -10,16 +10,19 @@ declare module 'fastify' {
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export const absoluteLifetime = 8 * 60 * 60 * 1000;
 export const idleLifetime = 30 * 60 * 1000;
+export type LoginAuthorization = ReadonlySet<string> | ((userId: string) => boolean);
+export const loginPermitted = (authorization: LoginAuthorization | undefined, userId: string) =>
+  !authorization || (typeof authorization === 'function' ? authorization(userId) : authorization.has(userId));
 
-export function readActiveSession(tx: Transaction, token: string, now: number, allowedLoginUsers?:ReadonlySet<string>) {
+export function readActiveSession(tx: Transaction, token: string, now: number, allowedLoginUsers?:LoginAuthorization) {
   const row=tx.get(`SELECT s.* FROM sessions s JOIN users u ON u.id=s.user_id
     WHERE s.token_hash=? AND s.revoked_at_ms IS NULL AND u.disabled_at_ms IS NULL
     AND s.created_at_ms<=? AND s.last_active_at_ms<=? AND s.absolute_expires_at_ms>?
     AND s.last_active_at_ms+1800000>?`, digest(token), now, now, now, now);
-  return row&&(!allowedLoginUsers||allowedLoginUsers.has(String(row.user_id)))?row:undefined;
+  return row&&loginPermitted(allowedLoginUsers,String(row.user_id))?row:undefined;
 }
 
-export function createSessionStore(db: SyntheticDatabase, now: () => number, allowedLoginUsers?:ReadonlySet<string>) {
+export function createSessionStore(db: SyntheticDatabase, now: () => number, allowedLoginUsers?:LoginAuthorization) {
   const grants = new Map<string, { userId: string; csrfHash: string; passwordHash: Buffer }>();
   const store: SessionStore = {
     get(token, callback) {
@@ -49,7 +52,7 @@ export function createSessionStore(db: SyntheticDatabase, now: () => number, all
           }
           if (grant.userId !== session.userId || grant.csrfHash !== session.csrfHash) throw new ApiError('UNAUTHENTICATED');
           const user = tx.get('SELECT id FROM users WHERE id=? AND password_hash=? AND disabled_at_ms IS NULL', grant.userId, grant.passwordHash);
-          if (!user || allowedLoginUsers&&!allowedLoginUsers.has(String(user.id))) throw new ApiError('UNAUTHENTICATED');
+          if (!user || !loginPermitted(allowedLoginUsers,String(user.id))) throw new ApiError('UNAUTHENTICATED');
           const timestamp = now();
           tx.run(`INSERT INTO sessions(token_hash,user_id,created_at_ms,last_active_at_ms,absolute_expires_at_ms,csrf_hash)
             VALUES (?,?,?,?,?,?)`, digest(token), grant.userId, timestamp, timestamp, timestamp + absoluteLifetime, grant.csrfHash);

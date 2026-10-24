@@ -15,6 +15,12 @@
 | 已确认的学生主动性设置与无扰检测首版路线、后续验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |
 | 活动恢复、学习证据、学生画像纠正与教师共享边界 | [连续教学方案](references/2026-10-23-continuous-learning-proposal.md) |
 | 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | [工作区交互与状态决议](https://github.com/paher-din/XunJie/issues/116#issuecomment-6370870664)及[可操作原型](../apps/student/prototypes/workspace-state.README.md) |
+| 本地修改前后端、共享数据与复现场景的开发协作方式 | [开发协作方案（方向已确认）](development-collaboration.md) |
+| 新 Agent 从哪里了解可用工具、如何操作和回答开发者 | [开发协作 Skill](../skills/xunjie-development/SKILL.md) → [工具状态与使用说明](development-tooling.md#新-agent-的工具入口) |
+| 开发工具的实现范围、与产品议题的关系及旧入口删除 | [工具设计与实施计划](development-tooling.md#工作项与实施时机) |
+| 开发协作规范、用户故事、验收标准及实施子票 | [开发协作工具规范](https://github.com/paher-din/XunJie/issues/126) |
+| 成员首次接入、远程权限、连接恢复及 2–5 人云端运行策略 | [成员接入与云端运行](development-access-operations.md) |
+| 当前开发服务器的配置、资源占用及性能适配依据 | [服务器核查（2026-10-23）](references/2026-10-23-development-server-assessment.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
 | 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |
 | 教学状态、执行控制与有限运行时的初步取舍 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |

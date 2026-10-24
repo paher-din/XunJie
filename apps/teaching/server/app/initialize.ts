@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {createDigitalLogicApplicationDatabase} from '../db/transaction.ts';
+import {createDigitalLogicApplicationDatabase,type SyntheticDatabase} from '../db/transaction.ts';
 import {createPasswordRecord} from '../access/password.ts';
 import {storePolicy,storeRule} from '../design/activities.ts';
 import {availableHdlRuntime} from '../design/hdl-configurations.ts';
@@ -22,14 +22,14 @@ export const syntheticManifestSchema=z.strictObject({synthetic:z.literal(true),r
  const memberships=new Set<string>();for(const member of input.memberships){const key=JSON.stringify([member.courseId,member.userId]);if(memberships.has(key)||!courses.includes(member.courseId)||!input.accounts.some(account=>account.id===member.userId))ctx.addIssue({code:'custom',message:'Invalid synthetic membership.'});memberships.add(key);}
  for(const course of courses)for(const role of ['teacher','student'])if(!input.memberships.some(member=>member.courseId===course&&member.role===role))ctx.addIssue({code:'custom',message:'Each synthetic course requires both roles.'});
 });
-export async function initializeSyntheticApplication(input:unknown,transport:{runner:RunnerTransport;hdlTransport:HdlTransport},approved:z.infer<typeof hdlRuntimeSchema>[]){
+export async function initializeSyntheticApplication(input:unknown,transport:{runner:RunnerTransport;hdlTransport:HdlTransport},approved:z.infer<typeof hdlRuntimeSchema>[],target?:SyntheticDatabase){
  const manifest=syntheticManifestSchema.parse(input),runtimes=approved.map(value=>hdlRuntimeSchema.parse(value));
  const hdl=await availableHdlRuntime(transport.hdlTransport,runtimes),c=await availableRuntime(transport.runner);
  if(!c||hdl.recoveryGeneration!==manifest.recoveryGeneration||c.recoveryGeneration!==manifest.recoveryGeneration)throw new Error('Approved current execution generation required.');
  const accounts:Array<{id:string;loginName:string;displayName?:string;record:Awaited<ReturnType<typeof createPasswordRecord>>}>=[];
  for(const account of manifest.accounts)accounts.push({id:account.id,loginName:account.loginName,...(account.displayName?{displayName:account.displayName}:{}),record:await createPasswordRecord(account.password)});
  const courses=manifest.courses.map(course=>typeof course==='string'?{id:course}:course);
- const db=createDigitalLogicApplicationDatabase();
+ const db=target??createDigitalLogicApplicationDatabase();
  try{db.withTransaction(tx=>{
   for(const account of accounts)tx.run('INSERT INTO users(id,login_name,password_hash,salt,algorithm,n,r,p,key_length,display_name) VALUES (?,?,?,?,?,?,?,?,?,?)',account.id,account.loginName,account.record.hash,account.record.salt,'scrypt',131072,8,1,64,account.displayName??null);
   for(const course of courses)tx.run('INSERT INTO courses(id,name) VALUES (?,?)',course.id,'name' in course?course.name??null:null);
@@ -39,7 +39,7 @@ export async function initializeSyntheticApplication(input:unknown,transport:{ru
    storeRule(tx,actor,{versionId:'textscope-core-v1',validatorVersion:'textscope-validator-v2',limitedHelp:true,description:'Original TextScope core checks'},Date.now());
   }
   tx.run('INSERT INTO application_control(singleton,recovery_generation,control_revision,initialized_at_ms) VALUES (1,?,1,?)',manifest.recoveryGeneration,Date.now());
- });return db;}catch(error){db.close();throw error;}
+ });return db;}catch(error){if(!target)db.close();throw error;}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{const config=z.strictObject({ssh:sshConfigurationSchema,approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),manifest:syntheticManifestSchema}).parse(readControlledJson(process.argv[2]??''));

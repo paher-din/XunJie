@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { ApiError } from '../app/errors.ts';
-import { InputLimitError } from '../tutoring/providers.ts';
+import { InputLimitError,ProviderCallNotStartedError } from '../tutoring/providers.ts';
+import {budgetedTransport,createModelBudget,ModelQueueError} from './model-budget.ts';
 import { CompatibleRequestError } from '../tutoring/openai-compatible.ts';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { openCredential, sealCredential, type SealedCredential } from './credentials.ts';
@@ -76,6 +77,7 @@ function normalizeBaseUrl(value:string):string {
 
 export function createPersonalAgentService(options:PersonalAgentOptions):PersonalAgentService {
   const store=openPersonalAgentStore(options.directory),now=options.now??Date.now;
+  const modelBudget=options.modelBudget??createModelBudget(),transport=budgetedTransport(options.transport,modelBudget);
   let closing=false,persistenceUnavailable=false;
   const active=new Map<string,{controller:AbortController;promise:Promise<void>}>();
   const stamp=()=>new Date(now()).toISOString();
@@ -90,7 +92,7 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       efforts:current.value.efforts,callsEnabled:callsEnabled(),providers:current.value.providers.map(({credential,...provider})=>({...provider,
         hasKey:Boolean(credential),keyHint:credential?.hint??''}))};
   }
-  function selection(userId:string):ModelSelection|undefined {
+  function selection(userId:string,withCredential=true):ModelSelection|undefined {
     if(persistenceUnavailable)throw new ApiError('PERSISTENCE_UNAVAILABLE');
     if(!callsEnabled())return;
     const current=config(userId),value=current.value;
@@ -102,7 +104,7 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
         const level=rawEffort==='低'?'low':rawEffort==='高'?'high':rawEffort==='最高'?'max':rawEffort;
         const reasoningEffort=(level==='low'||level==='high'||level==='max')&&model.reasoningLevels.includes(level)?level:undefined;
         return {userId,version:version(userId,current.revision),providerId:provider.id,baseUrl:provider.baseUrl,
-          model:model.id,apiKey:openCredential(store.key,userId,provider.id,provider.credential),
+          model:model.id,apiKey:withCredential?openCredential(store.key,userId,provider.id,provider.credential):'',
           contextWindow:Number(model.contextWindow)||16384,maxOutputTokens:Number(model.maxOutput)||4096,inputTypes:model.inputTypes,
           ...(reasoningEffort?{reasoningEffort}:{})};
       }
@@ -174,70 +176,80 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       turn.usage={status:'unknown'};writeTurn(turn);}
   }});
 
-  async function execute(turnId:string,selected:ModelSelection,messages:CompatibleMessage[],controller:AbortController,prefix:string){
-    const userId=selected.userId;
-    const idle=inactivityGuard(controller.signal);
+  async function execute(userId:string,turnId:string,messages:CompatibleMessage[],controller:AbortController,prefix:string,
+    payloadBytes:number,reauthorize:()=>string){
+    let idle:ReturnType<typeof inactivityGuard>|undefined,selected:ModelSelection|undefined;
     try {
-      let turn=readTurn(userId,turnId);
-      if(turn.status!=='running')return;
-      if(!callsEnabled())throw new ApiError('BUDGET_EXHAUSTED');
-      const remainingMs=turn.deadline===null?Infinity:turn.deadline-now();
-      if(remainingMs<=0)throw new Error('PERSONAL_TIMEOUT');
-      turn.callCount=1;store.transaction(()=>writeTurn(turn));
-      const aborted=new Promise<never>((_,reject)=>{
-        const fail=()=>reject(new Error('PERSONAL_ABORTED'));
-        if(idle.signal.aborted)fail();else idle.signal.addEventListener('abort',fail,{once:true});
+      await modelBudget.run({memberId:userId,payloadBytes,signal:controller.signal},async signal=>{
+        let turn=readTurn(userId,turnId);
+        if(turn.status!=='running')return;
+        if(reauthorize()!==userId)throw new ApiError('FORBIDDEN');
+        if(!callsEnabled())throw new ApiError('BUDGET_EXHAUSTED');
+        if(selection(userId,false)?.version!==turn.configVersion)throw new ApiError('VERSION_CONFLICT');
+        selected=selection(userId);if(!selected)throw new ApiError('INVALID_CONFIGURATION');
+        const activity=inactivityGuard(signal);idle=activity;
+        const remainingMs=turn.deadline===null?Infinity:turn.deadline-now();
+        if(remainingMs<=0)throw new Error('PERSONAL_TIMEOUT');
+        turn.callCount=1;store.transaction(()=>writeTurn(turn));
+        const aborted=new Promise<never>((_,reject)=>{
+          const fail=()=>reject(new Error('PERSONAL_ABORTED'));
+          if(activity.signal.aborted)fail();else activity.signal.addEventListener('abort',fail,{once:true});
+        });
+        const result=await Promise.race([transport.complete({selection:selected,messages,signal:activity.signal,remainingMs,onActivity:()=>activity.touch(),
+          onThinking(){
+            activity.touch();
+            if(closing)return;
+            const current=readTurn(userId,turnId);if(current.status!=='running'||current.message.phase==='streaming'||current.message.phase==='thinking')return;
+            current.message.phase='thinking';store.transaction(()=>writeTurn(current));
+          },
+          onText(text){
+            activity.touch();
+            if(closing)return;
+            const current=readTurn(userId,turnId);if(current.status!=='running')return;
+            // The transport callback supplies the accumulated text, not a fabricated local reply.
+            current.message.text=prefix+text;current.message.phase='streaming';store.transaction(()=>writeTurn(current));
+          }}),aborted]);
+        turn=readTurn(userId,turnId);if(turn.status!=='running')return;
+        turn.message.text=prefix+result.text;turn.message.phase='settled';turn.status='settled';turn.usage=result.usage??{status:'unknown'};
+        // Card lookup uses the final reply and current account assignments. A failed optional
+        // lookup never changes an otherwise successful model response into a failed turn.
+        if(options.readStudentTasks){
+          try{
+            const snapshot=options.readStudentTasks(userId);
+            if(!snapshot.hasMore){
+              const taskCard=referencedTask(turn.message.text,snapshot.tasks);
+              if(taskCard)turn.message.taskCard=taskCard;
+            }
+          }catch{/* No verified assignment means no card. */}
+        }
+        store.transaction(()=>writeTurn(turn));
       });
-      const result=await Promise.race([options.transport.complete({selection:selected,messages,signal:idle.signal,remainingMs,onActivity:()=>idle.touch(),
-        onThinking(){
-          idle.touch();
-          if(closing)return;
-          const current=readTurn(userId,turnId);if(current.status!=='running'||current.message.phase==='streaming'||current.message.phase==='thinking')return;
-          current.message.phase='thinking';store.transaction(()=>writeTurn(current));
-        },
-        onText(text){
-          idle.touch();
-          if(closing)return;
-          const current=readTurn(userId,turnId);if(current.status!=='running')return;
-          // The transport callback supplies the accumulated text, not a fabricated local reply.
-          current.message.text=prefix+text;current.message.phase='streaming';store.transaction(()=>writeTurn(current));
-        }}),aborted]);
-      turn=readTurn(userId,turnId);if(turn.status!=='running')return;
-      turn.message.text=prefix+result.text;turn.message.phase='settled';turn.status='settled';turn.usage=result.usage??{status:'unknown'};
-      // Card lookup uses the final reply and current account assignments. A failed optional
-      // lookup never changes an otherwise successful model response into a failed turn.
-      if(options.readStudentTasks){
-        try{
-          const snapshot=options.readStudentTasks(userId);
-          if(!snapshot.hasMore){
-            const taskCard=referencedTask(turn.message.text,snapshot.tasks);
-            if(taskCard)turn.message.taskCard=taskCard;
-          }
-        }catch{/* No verified assignment means no card. */}
-      }
-      store.transaction(()=>writeTurn(turn));
     } catch(error){
-      const turn=readTurn(userId,turnId);if(turn.status!=='running')return;
-      const timedOut=idle.expired||(turn.deadline!==null&&now()>=turn.deadline)||(error instanceof Error&&error.message==='PERSONAL_TIMEOUT');
+      const turn=readTurn(userId,turnId);
+      const unsent=error instanceof InputLimitError||error instanceof ProviderCallNotStartedError&&error.reservation==='none';
+      if(unsent){turn.callCount=0;store.transaction(()=>writeTurn(turn));}
+      if(turn.status!=='running')return;
+      const timedOut=idle?.expired||(turn.deadline!==null&&now()>=turn.deadline)||(error instanceof Error&&error.message==='PERSONAL_TIMEOUT');
       turn.status='failed';turn.message.phase='failed';turn.usage=error instanceof CompatibleRequestError&&error.usage?error.usage:{status:'unknown'};
       const providerKind=error instanceof CompatibleRequestError?error.kind:undefined;
       const providerStatus=error instanceof CompatibleRequestError?error.status:undefined;
       const localQuota=error instanceof ApiError&&error.code==='BUDGET_EXHAUSTED';
-      const quota=localQuota||providerKind==='http'&&(providerStatus===429||providerStatus===402);
+      const quota=localQuota||error instanceof ModelQueueError&&error.code==='MODEL_QUEUE_FULL'||providerKind==='http'&&(providerStatus===429||providerStatus===402);
       const inputLimit=error instanceof InputLimitError;
       // A strict transport preflight failure proves that its persisted reservation was never sent.
-      if(inputLimit)turn.callCount=0;
       turn.message.failure={reason:quota?'quota':timedOut||providerKind==='network'||providerKind==='timeout'?'network':'model',
-        code:inputLimit?'INPUT_LIMIT_EXCEEDED':timedOut||providerKind==='timeout'?'PROVIDER_IDLE_TIMEOUT'
+        code:error instanceof ModelQueueError?error.code:inputLimit?'INPUT_LIMIT_EXCEEDED':error instanceof ProviderCallNotStartedError?'MODEL_QUEUE_CANCELLED':timedOut||providerKind==='timeout'?'PROVIDER_IDLE_TIMEOUT'
+          :error instanceof ApiError&&error.code==='VERSION_CONFLICT'?'VERSION_CONFLICT'
+          :error instanceof ApiError&&error.code==='FORBIDDEN'?'FORBIDDEN'
           :localQuota?'BUDGET_EXHAUSTED':providerKind==='http'&&providerStatus===429?'RATE_LIMITED':providerKind==='http'&&providerStatus===402?'PROVIDER_PAYMENT_REQUIRED'
           :providerKind==='auth'?'PROVIDER_AUTHENTICATION_FAILED':providerKind==='not-found'?'MODEL_NOT_FOUND'
           :providerKind==='invalid-url'?'INVALID_PROVIDER_URL':providerKind==='output-limit'?'OUTPUT_LIMIT_EXCEEDED'
           :providerKind==='empty'?'EMPTY_MODEL_RESPONSE':providerKind==='filtered'?'PROVIDER_CONTENT_FILTERED':providerKind==='protocol'?'PROVIDER_PROTOCOL_ERROR'
           :providerKind==='http'?'PROVIDER_HTTP_ERROR':'DEPENDENCY_UNAVAILABLE'};
       store.transaction(()=>writeTurn(turn));
-    } finally{idle.dispose();selected.apiKey='';}
+    } finally{idle?.dispose();if(selected)selected.apiKey='';}
   }
-  function acceptTurn(userId:string,raw:unknown){
+  function acceptTurn(userId:string,raw:unknown,reauthorize:()=>string){
     const input=parse(turnInput,raw),requestHash=hash(JSON.stringify(input));
     if(input.mode!=='send'&&input.images!==undefined)throw new ApiError('INVALID_REQUEST');
     const accepted=store.transaction(()=>{
@@ -246,7 +258,7 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       if(closing)throw new ApiError('DEPENDENCY_UNAVAILABLE');
       if(input.expectedModelConfigRevision!==undefined&&input.expectedModelConfigRevision!==config(userId).revision)throw new ApiError('VERSION_CONFLICT');
       noRunningForAccount(userId);
-      const selected=selection(userId);if(!selected)throw new ApiError('INVALID_CONFIGURATION');
+      const selected=selection(userId,false);if(!selected)throw new ApiError('INVALID_CONFIGURATION');
       const at=stamp();
       let current:Conversation;
       if(input.conversationId)current=conversation(userId,input.conversationId);
@@ -295,11 +307,12 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       store.run('INSERT INTO agent_turns(turn_id,conversation_id,user_id,request_key,request_hash,turn_json) VALUES(?,?,?,?,?,?)',
         turnId,current.id,userId,input.requestKey,requestHash,JSON.stringify(turn));
       saveMessage(userId,current.id,messageId,turn.message,turnId);current.ids.push(messageId);current.updatedAt=at;setBranch(current);
-      return {turn,selected,messages,prefix};
+      return {turn,messages,prefix};
     });
-    if('selected' in accepted&&accepted.selected&&accepted.messages){
-      const controller=new AbortController(),{turn,selected,messages,prefix}=accepted;
-      const promise=Promise.resolve().then(()=>execute(turn.turnId,selected,messages,controller,prefix))
+    if('messages' in accepted&&accepted.messages){
+      const controller=new AbortController(),{turn,messages,prefix}=accepted;
+      const payloadBytes=Buffer.byteLength(JSON.stringify(messages))+Buffer.byteLength(JSON.stringify(raw));
+      const promise=Promise.resolve().then(()=>execute(userId,turn.turnId,messages,controller,prefix,payloadBytes,reauthorize))
         .catch(()=>{persistenceUnavailable=true;}).finally(()=>active.delete(turn.turnId));
       active.set(turn.turnId,{controller,promise});
     }
@@ -318,14 +331,17 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
     app.post('/api/model-settings/test',async request=>{
       const userId=user(request),input=parse(z.strictObject({providerId:identifier.optional(),baseUrl:z.string().max(2048).optional(),apiKey:z.string().max(4096).optional()}),request.body);
       if(!callsEnabled())throw new ApiError('BUDGET_EXHAUSTED');
-      const provider=input.providerId?config(userId).value.providers.find(item=>item.id===input.providerId):undefined;
-      const baseUrl=normalizeBaseUrl(input.baseUrl??provider?.baseUrl??'');
-      const apiKey=input.apiKey?.trim()||(provider?.credential?openCredential(store.key,userId,provider.id,provider.credential):'');
-      if(!apiKey)throw new ApiError('INVALID_CONFIGURATION');
-      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
-      try{return envelope(request,await options.transport.test({baseUrl,apiKey,signal:controller.signal}));}
-      catch{return envelope(request,{ok:false,kind:controller.signal.aborted?'timeout':'network'});}
-      finally{clearTimeout(timer);}
+      try{return await modelBudget.run({memberId:userId,payloadBytes:Buffer.byteLength(JSON.stringify(input))},async signal=>{
+        user(request);if(!callsEnabled())throw new ApiError('BUDGET_EXHAUSTED');
+        const provider=input.providerId?config(userId).value.providers.find(item=>item.id===input.providerId):undefined;
+        const baseUrl=normalizeBaseUrl(input.baseUrl??provider?.baseUrl??'');
+        const apiKey=input.apiKey?.trim()||(provider?.credential?openCredential(store.key,userId,provider.id,provider.credential):'');
+        if(!apiKey)throw new ApiError('INVALID_CONFIGURATION');
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+        try{return envelope(request,await transport.test({baseUrl,apiKey,signal:AbortSignal.any([signal,controller.signal])}));}
+        catch{return envelope(request,{ok:false,kind:controller.signal.aborted?'timeout':'network'});}
+        finally{clearTimeout(timer);}
+      });}catch(error){if(error instanceof ModelQueueError)return envelope(request,{ok:false,kind:'unavailable',code:error.code});throw error;}
     });
     app.get('/api/agent/conversations',request=>{
       const userId=user(request),query=parse(z.strictObject({includeArchived:z.enum(['true','false']).optional()}),request.query);
@@ -375,7 +391,7 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
         setBranch(current);return {id};
       });return envelope(request,result);
     });
-    app.post('/api/agent/turns',{bodyLimit:IMAGE_REQUEST_BYTES},request=>envelope(request,acceptTurn(user(request),request.body)));
+    app.post('/api/agent/turns',{bodyLimit:IMAGE_REQUEST_BYTES},request=>envelope(request,acceptTurn(user(request),request.body,()=>user(request))));
     app.get('/api/agent/turns/:id',request=>{
       const userId=user(request),id=parse(z.strictObject({id:identifier}),request.params).id,turn=readTurn(userId,id);conversation(userId,turn.conversationId);
       return envelope(request,response(turn));
@@ -393,7 +409,7 @@ export function createPersonalAgentService(options:PersonalAgentOptions):Persona
       try{const row=store.get('SELECT user_id FROM agent_turns WHERE turn_id=?',id);if(row)stopTurn(String(row.user_id),id);}
       catch{persistenceUnavailable=true;}finally{active.get(id)?.controller.abort();}
     }
-    closePromise=Promise.allSettled([...active.values()].map(task=>task.promise)).then(()=>store.close());return closePromise;
+    closePromise=Promise.all([modelBudget.close(),Promise.allSettled([...active.values()].map(task=>task.promise))]).then(()=>store.close());return closePromise;
   }
-  return {register,selection,configurationRevision:(userId:string)=>config(userId).revision,close};
+  return {register,selection,configurationRevision:(userId:string)=>config(userId).revision,close,modelBudget};
 }

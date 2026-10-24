@@ -946,11 +946,24 @@ h3 {
   padding: 4px 6px;
   margin-left: 8px;
 }
+.home-page .course-region {
+  container-type: inline-size;
+  container-name: course-region;
+}
+.home-page .course-region[data-course-selected='true'] {
+  /* Leave enough scroll range to align the heading even for one task or an empty course.
+     Main inset 20 + heading gap 24 - section margin 26 + bottom padding 110 + 32. */
+  min-height: calc(100dvh - 160px);
+}
+.home-page .course-region h2:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
 .task-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px 16px;
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
@@ -963,8 +976,8 @@ h3 {
 .filter {
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 11px;
-  color: var(--faint);
+  font-size: 12px;
+  color: var(--muted);
 }
 .filter.active {
   background: var(--chip-bg);
@@ -975,7 +988,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 172px;
+  width: 224px;
   padding: 6px 8px;
   background: transparent;
   border-bottom: 1px solid var(--line-strong);
@@ -1077,7 +1090,8 @@ h3 {
 .course-cover {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 128px;
+  flex-shrink: 0;
   object-fit: cover;
   outline: 1px solid var(--outline-soft);
   outline-offset: -1px;
@@ -1087,7 +1101,8 @@ h3 {
   display: grid;
   place-items: center;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 128px;
+  flex-shrink: 0;
   font-size: 28px;
   position: relative;
   overflow: hidden;
@@ -1109,7 +1124,9 @@ h3 {
   color: var(--course-2-fg);
 }
 .course-tile-body {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   padding: 14px 16px 0;
 }
 .course-tile h3 {
@@ -1124,6 +1141,7 @@ h3 {
 }
 .course-tile-foot {
   display: block;
+  margin-top: auto;
   padding: 12px 0 0;
 }
 .cb-primary {
@@ -1180,12 +1198,13 @@ h3 {
 .task-card h3 {
   font-size: 15px;
   line-height: 1.5;
-  margin: 12px 0 6px;
+  margin: 12px 0 8px;
 }
 .task-card p {
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.7;
   color: var(--muted);
-  margin: 0 0 18px;
+  margin: 0 0 16px;
 }
 .task-card .progresslabel {
   margin-top: auto;
@@ -1195,6 +1214,7 @@ h3 {
 }
 .card-foot {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
   gap: 10px;
   font-size: 11px;
@@ -1209,7 +1229,7 @@ h3 {
 }
 .task-card-without-progress .card-foot {
   margin-top: auto;
-  padding-top: 18px;
+  padding-top: 16px;
 }
 .empty {
   padding: 40px;
@@ -3848,9 +3868,6 @@ h3 {
   .content {
     padding: 28px 26px;
   }
-  .course-tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   /* 窄屏不挂常显的入口胶囊（照旧）；输入气泡本身照常可用，开态不藏。
      收起态的淡出先播完再 visibility 藏起（延迟写在 .ask 的 --ask-vis 上），
      展开方向是 0s、立刻可见。 */
@@ -3860,11 +3877,24 @@ h3 {
     pointer-events: none;
   }
 }
-@media (max-width: 950px) {
-  .course-tiles,
+@container course-region (width < 856px) {
+  .course-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container course-region (width < 568px) {
+  .course-tiles {
+    grid-template-columns: 1fr;
+  }
+}
+@container course-region (width < 652px) {
   .task-card-grid {
     grid-template-columns: 1fr;
   }
+}
+@container course-region (width < 720px) {
+  .task-toolbar { flex-direction: column; align-items: stretch; }
+  .search { width: 100%; }
 }
 @media (max-width: 850px) {
   .dash-grid {
@@ -10169,4 +10199,95 @@ button.st-check.checked:hover {
   .tutor-chatpop .ws-chatpop-head { padding: 8px 12px; font-size: 13px; gap: 4px; }
   .tutor-chatpop .ws-chatbody { padding: 16px; }
   .tutor-chatpop .ws-chatinput { padding: 10px 12px 6px; }
+}
+
+/* Approved student typography (2026-10-19). Page scopes protect workspace tutoring.
+   Keep all existing font families, including WenKai and the 600-weight greeting. */
+.home-page .db-continue h3 {
+  font-weight: 600;
+}
+.home-page .course-tile h3,
+.home-page .prep-entry h2 {
+  font-weight: 500;
+}
+.home-page .course-tag {
+  font-size: 12px;
+  color: var(--accent-deep);
+}
+.home-page .course-tag .dot {
+  color: var(--accent);
+}
+.home-page .db-hm-months,
+.home-page .sectionhead small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.home-page .db-side,
+.home-page .db-foot-note {
+  font-size: 12px;
+}
+.home-page .db-continue p {
+  font-size: 13px;
+}
+.agent-layout .turn-body {
+  line-height: 1.7;
+}
+.agent-layout .msg-task-card h4 {
+  font-weight: 500;
+}
+.agent-layout .msg-task-course {
+  font-size: 12px;
+}
+.agent-layout .chat-disclaimer {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* UI optimization part 2: student Agent/settings only; workspace and teacher keep their styles. */
+.agent-layout {
+  --agent-content-width: 780px;
+}
+.agent-layout .chat-inner,
+.agent-layout .chat-composer-inner {
+  max-width: var(--agent-content-width);
+}
+.agent-layout .prompt-input {
+  box-shadow: var(--panel-shadow);
+}
+.agent-layout .prompt-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--panel-shadow), var(--focus-glow);
+}
+.student-settings .st-effort-panel {
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.student-settings .st-effort-panel .st-field {
+  gap: 8px;
+}
+.student-settings .st-seg-item {
+  min-height: 32px;
+}
+.student-settings .st-inline .st-save {
+  height: 36px;
+}
+.student-settings .st-model-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.student-settings .st-model-feedback {
+  min-height: 18px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.student-settings .st-model-feedback[data-status='error'] {
+  color: var(--danger-deep);
 }

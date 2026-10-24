@@ -1,0 +1,12 @@
+{
+  "name": "@xunjie/xj-dev",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "XunJie development environments: local full-stack startup with isolated per-worktree data.",
+  "engines": { "node": "24.21.0" },
+  "bin": { "xj-dev": "./xj-dev.mjs" },
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\""
+  }
+}

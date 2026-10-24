@@ -20,23 +20,52 @@ export function bindingKeys(identity: CommandIdentity) {
   return [{ kind: 'public', key: canonical([identity.actorId,identity.command,identity.target,identity.idempotencyKey]) },
     ...(identity.sync ? [{ kind: 'sync', key: canonical([identity.actorId,identity.scope.attemptId,identity.sync.clientId,identity.sync.clientSeq]) }] : [])];
 }
-export function readWorkspaceRecords(tx: Transaction, courseId: string, identity?: CommandIdentity): Records {
-  const records = readRecords(tx, courseId);
+export function readWorkspaceRecords(tx: Transaction, courseId: string, identity?: CommandIdentity, attemptId?: string): Records {
+  const original = identity ? tx.get('SELECT receipt_id,course_id,recovery_generation FROM command_receipts WHERE actor_id=? AND command=? AND target=? AND idempotency_key=?',
+    identity.actorId, 'shared.' + identity.command, identity.target, identity.idempotencyKey) : undefined;
+  const requestedBindings = identity ? bindingKeys(identity).map(item => tx.get('SELECT receipt_id FROM workspace_command_bindings WHERE kind=? AND key_json=?', item.kind, item.key)) : [];
+  // Deny a stale/global foreign key before adding its owner to the scoped hydration set. These are rejection
+  // guards only; any receipt we actually use still passes the complete schema/row checks below.
   if (identity) {
-    const original = tx.get('SELECT course_id,recovery_generation FROM command_receipts WHERE actor_id=? AND command=? AND target=? AND idempotency_key=?',
-      identity.actorId, 'shared.' + identity.command, identity.target, identity.idempotencyKey);
     if (original && original.recovery_generation !== identity.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
     if (original && original.course_id !== courseId) throw new ApiError('IDEMPOTENCY_CONFLICT');
-    for (const item of bindingKeys(identity)) {
-      const row = tx.get('SELECT receipt_id FROM workspace_command_bindings WHERE kind=? AND key_json=?', item.kind, item.key);
-      if (row && !records.receipts.some(receipt => receipt.receiptId === row.receipt_id)) throw new ApiError('IDEMPOTENCY_CONFLICT');
-      const original = records.receipts.find(receipt => receipt.receiptId === row?.receipt_id);
+    for (const row of requestedBindings) if (row) {
+      const owner = tx.get('SELECT course_id,recovery_generation FROM command_receipts WHERE receipt_id=?', row.receipt_id!);
+      if (!owner) throw new ApiError('IDEMPOTENCY_CONFLICT');
+      if (owner.recovery_generation !== identity.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
+      if (owner.course_id !== courseId) throw new ApiError('IDEMPOTENCY_CONFLICT');
+    }
+  }
+  // JSON scope is only a seed: bindings and durable workspace foreign keys also pull their receipt owners in.
+  const scopedAliases = attemptId === undefined ? [] : tx.all(`SELECT * FROM workspace_command_bindings WHERE kind='public'
+    AND json_extract(identity_json,'$.scope.courseId')=? AND (json_extract(identity_json,'$.scope.attemptId') IS NULL
+      OR json_extract(identity_json,'$.scope.attemptId')=?)`, courseId, attemptId);
+  const references = attemptId === undefined ? [] : tx.all(`SELECT receipt_id FROM workspace_process_records WHERE attempt_id=?
+    UNION SELECT receipt_id FROM workspace_submissions WHERE attempt_id=?
+    UNION SELECT receipt_id FROM workspace_reopen_grants WHERE attempt_id=?
+    UNION SELECT consumed_receipt_id AS receipt_id FROM workspace_reopen_grants WHERE attempt_id=? AND consumed_receipt_id IS NOT NULL
+    UNION SELECT j.request_receipt_id AS receipt_id FROM workspace_runs r JOIN jobs j ON r.job_id=j.job_id WHERE r.attempt_id=?`,
+    attemptId, attemptId, attemptId, attemptId, attemptId);
+  const relatedIds = [...scopedAliases, ...references, ...requestedBindings, original].filter(row => row !== undefined).map(row => String(row.receipt_id));
+  const records = readRecords(tx, courseId, attemptId, relatedIds);
+  const receiptById = new Map(records.receipts.map(receipt => [receipt.receiptId, receipt]));
+  if (identity) {
+    for (const row of requestedBindings) {
+      const original = row ? receiptById.get(String(row.receipt_id)) : undefined;
+      if (row && !original) throw new ApiError('IDEMPOTENCY_CONFLICT');
       if (original && original.identity.recoveryGeneration !== identity.recoveryGeneration) throw new ApiError('RECOVERY_REQUIRED');
     }
   }
-  for (const row of tx.all("SELECT * FROM workspace_command_bindings WHERE kind='public'")) {
-    const original = records.receipts.find(receipt => receipt.receiptId === row.receipt_id);
-    if (!original) continue;
+  const aliases = attemptId === undefined ? tx.all("SELECT * FROM workspace_command_bindings WHERE kind='public'")
+    : [...new Map([...scopedAliases, ...tx.all(`SELECT * FROM workspace_command_bindings WHERE kind='public'
+      AND receipt_id IN (SELECT value FROM json_each(?))`, JSON.stringify(records.receipts.map(receipt => receipt.receiptId)))]
+      .map(row => [String(row.key_json), row])).values()];
+  for (const row of aliases) {
+    const original = receiptById.get(String(row.receipt_id));
+    if (!original) {
+      if (attemptId !== undefined) throw new Error('Invalid persisted command binding.');
+      continue;
+    }
     const alias: unknown = JSON.parse(String(row.identity_json));
     // A binding cannot change the original account, command, scope, generation or sync key.
     const value = readCommandIdentity(alias);
@@ -49,7 +78,22 @@ export function readWorkspaceRecords(tx: Transaction, courseId: string, identity
   return records;
 }
 export function loadWorkspace(tx: Transaction, attemptId: string, identity?: CommandIdentity): WorkspaceState {
-  const attempt = readAttempt(tx, attemptId), records = readWorkspaceRecords(tx, attempt.courseId, identity);
+  const attempt = readAttempt(tx, attemptId), records = readWorkspaceRecords(tx, attempt.courseId, identity, attemptId);
+  return hydrateWorkspace(tx, attempt, records);
+}
+/** Read-only composition for one authorized, synchronous course transaction. No state survives this call. */
+export function loadCourseWorkspaces(tx: Transaction, courseId: string): WorkspaceState[] {
+  const attempts = tx.all('SELECT attempt_id FROM attempts WHERE course_id=? ORDER BY attempt_id', courseId)
+    .map(row => readAttempt(tx, String(row.attempt_id)));
+  if (!attempts.length) return [];
+  const records = readWorkspaceRecords(tx, courseId);
+  return attempts.map(attempt => {
+    if (attempt.courseId !== courseId) throw new Error('Invalid persisted attempt scope.');
+    return hydrateWorkspace(tx, attempt, records);
+  });
+}
+function hydrateWorkspace(tx: Transaction, attempt: WorkspaceState['attempt'], records: Records): WorkspaceState {
+  const attemptId = attempt.attemptId;
   const files = tx.all('SELECT * FROM workspace_files WHERE attempt_id=? ORDER BY file_id', attemptId).map(row => {
     const file = checked(fileSchema, String(row.file_json));
     if (file.fileId !== row.file_id || file.attemptId !== row.attempt_id || file.path !== row.path
@@ -176,9 +220,11 @@ const syncRecordSchema = z.strictObject({ operations: z.array(fileOperationSchem
   workspaceRevision: z.number().int().nonnegative(), occurredAt: z.iso.datetime() });
 const coverageRecordSchema = z.strictObject({ collecting: z.boolean(), occurredAt: z.iso.datetime() });
 export function readProcessRecords(tx: Transaction, attemptId: string) {
-  const attempt = readAttempt(tx,attemptId), records = readRecords(tx,attempt.courseId);
-  return tx.all(`SELECT p.* FROM workspace_process_records p JOIN command_receipts r ON p.receipt_id=r.receipt_id
-    WHERE p.attempt_id=? ORDER BY r.server_seq`,attemptId).map(row => {
+  const attempt = readAttempt(tx,attemptId);
+  const rows = tx.all(`SELECT p.* FROM workspace_process_records p JOIN command_receipts r ON p.receipt_id=r.receipt_id
+    WHERE p.attempt_id=? ORDER BY r.server_seq`,attemptId);
+  const records = readRecords(tx,attempt.courseId,attemptId,rows.map(row => String(row.receipt_id)));
+  return rows.map(row => {
     const receipt = records.receipts.find(item => item.receiptId === row.receipt_id);
     if (!receipt || receipt.identity.scope.attemptId !== attemptId || receipt.identity.scope.studentId !== attempt.studentId
       || receipt.identity.actorId !== attempt.studentId) throw new Error('Invalid persisted process scope.');

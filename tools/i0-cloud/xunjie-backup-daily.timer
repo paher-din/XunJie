@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the daily XunJie encrypted backup at 03:00
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+Unit=xunjie-backup-daily.service
+
+[Install]
+WantedBy=timers.target

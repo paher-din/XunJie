@@ -24,6 +24,7 @@ import { PREP_ENTRY_COURSE, PREP_ENTRY_GOAL, PREP_ENTRY_LABEL, PREP_ENTRY_NOTE, 
 import { useSession } from '../components/SessionEntry'
 import { loadHomeCourses, type HomeCourse } from '../workspace/home'
 import { displayAccountName, displayCourseName, displayProjectName } from '../lib/displayNames'
+import { useHomeCourseNavigation } from '../lib/homeCourseNavigation'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
 const ASSIGNMENT_FILTERS = ['全部', '已分配', '任务已暂停'] as const
@@ -54,7 +55,7 @@ export default function HomePage() {
 function RealHomePage() {
   const session = useSession()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const snapshot = useQuery({
     queryKey: ['home', 'real', session.epoch, session.session?.userId],
     queryFn: () => loadHomeCourses(session.session!),
@@ -62,6 +63,7 @@ function RealHomePage() {
   })
   const courses = snapshot.data ?? []
   const selected = courses.find(course => course.courseId === searchParams.get('course'))
+  const navigation = useHomeCourseNavigation(selected?.courseId ?? null, snapshot.isSuccess)
   const [statusFilter, setStatusFilter] = useState<typeof ASSIGNMENT_FILTERS[number]>('全部')
   const [query, setQuery] = useState('')
   const search = query.trim().toLowerCase()
@@ -75,7 +77,7 @@ function RealHomePage() {
   const greeting = hour < 12 ? '上午好' : hour < 18 ? '下午好' : '晚上好'
   const cardsRef = useRef<HTMLDivElement>(null)
   const hover = useFluidHover(cardsRef)
-  return <div className="content">
+  return <div className="content home-page">
     <div className="intro">
       <h1>{greeting}，{displayAccountName(session.session!.userId, session.session!.displayName)}</h1>
       <span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span>
@@ -94,9 +96,9 @@ function RealHomePage() {
           </button>
         </div>
       </div>} />
-    <div>
+    <div className="course-region" data-course-selected={!!selected} ref={navigation.regionRef}>
     <div className="sectionhead">
-      <h2>{selected ? '课程与任务' : '我的课程'}<small>{selected ? `${selected.assignments.length} 个任务` : `${courses.length} 门`}</small></h2>
+      <h2 ref={navigation.headingRef} tabIndex={-1}>{selected ? '课程与任务' : '我的课程'}<small>{selected ? `${selected.assignments.length} 个任务` : `${courses.length} 门`}</small></h2>
       <button className="outline" type="button" disabled={snapshot.isFetching} onClick={() => { void snapshot.refetch() }}>刷新任务</button>
     </div>
     {snapshot.isPending ? <p role="status">正在读取课程与任务…</p>
@@ -106,7 +108,7 @@ function RealHomePage() {
       </div>
       : selected ? <>
         <div className="course-breadcrumb">
-          <button onClick={() => setSearchParams({})}><IconText name="alt-arrow-left">全部课程</IconText></button>
+          <button onClick={event => navigation.setCourse(null, event.detail === 0)}><IconText name="alt-arrow-left">全部课程</IconText></button>
           <span>/</span><strong>{displayCourseName(selected.courseId, selected.name)}</strong>
         </div>
         <TaskToolbar filters={ASSIGNMENT_FILTERS} value={statusFilter} onFilter={setStatusFilter} query={query} onQuery={setQuery} />
@@ -124,7 +126,7 @@ function RealHomePage() {
           titleOf={id => displayCourseName(id, courses.find(course => course.courseId === id)?.name)}
           summaryOf={id => `${courses.find(course => course.courseId === id)!.assignments.length} 个分配任务`}
           toneOf={id => realCourseTone(courses.find(course => course.courseId === id)!)}
-          onOpen={id => setSearchParams({ course: id })} />}
+          onOpen={navigation.setCourse} />}
     </div>
   </div>
 }
@@ -136,18 +138,19 @@ function PreparationHomePage() {
   })
   const navigate = useNavigate()
   // 选中课程放在 URL 查询串里：工作区返回（历史回退）时能恢复到课程任务视图
-  const [searchParams, setSearchParams] = useSearchParams()
-  const setCourse = (c: string | null) => setSearchParams(c ? { course: c } : {})
+  const [searchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState<'全部' | TaskStatus>('全部')
   const [query, setQuery] = useState('')
+
+  const courseParam = searchParams.get('course')
+  const course = courseParam && snapshot.data?.tasks.some(task => task.course === courseParam) ? courseParam : null
+  const navigation = useHomeCourseNavigation(course, !!snapshot.data)
 
   if (!snapshot.data) return null
   const { tasks, dashboard } = snapshot.data
   const now = new Date(snapshot.data.now)
 
   const courses = [...new Set(tasks.map((t) => t.course))]
-  const courseParam = searchParams.get('course')
-  const course = courseParam && courses.includes(courseParam) ? courseParam : null
   // 零待完成课程保留显示，排在有待完成任务的课程之后；同组保持原顺序。
   const sortedCourses = [...courses].sort(
     (a, b) => Number(pendingCount(tasks, a) === 0) - Number(pendingCount(tasks, b) === 0),
@@ -161,7 +164,7 @@ function PreparationHomePage() {
     : []
 
   return (
-    <div className="content">
+    <div className="content home-page">
       <div className="intro">
         <h1>{greeting}，Robert</h1>
         <span className="date">
@@ -216,9 +219,9 @@ function PreparationHomePage() {
         }
       />
 
-      <div>
+      <div className="course-region" data-course-selected={!!course} ref={navigation.regionRef}>
         <div className="sectionhead">
-          <h2>
+          <h2 ref={navigation.headingRef} tabIndex={-1}>
             {course ? '课程与任务' : '我的课程'}
             <small>
               {course
@@ -233,12 +236,12 @@ function PreparationHomePage() {
             courses={sortedCourses}
             toneOf={(c) => courses.indexOf(c)}
             tasks={tasks}
-            onOpen={setCourse}
+            onOpen={navigation.setCourse}
           />
         ) : (
           <>
             <div className="course-breadcrumb">
-              <button onClick={() => setCourse(null)}><IconText name="alt-arrow-left">全部课程</IconText></button>
+              <button onClick={event => navigation.setCourse(null, event.detail === 0)}><IconText name="alt-arrow-left">全部课程</IconText></button>
               <span>/</span>
               <strong>{course}</strong>
             </div>
@@ -295,7 +298,7 @@ function CourseTiles({
   courses: string[]
   toneOf: (course: string) => number
   tasks: ProjectTask[]
-  onOpen: (course: string) => void
+  onOpen: (course: string, keyboard: boolean) => void
   titleOf?: (course: string) => string
   summaryOf?: (course: string) => string
 }) {
@@ -311,11 +314,12 @@ function CourseTiles({
       {courses.map((c, i) => (
         <CourseTile
           key={c}
+          courseId={c}
           course={titleOf(c)}
           index={i}
           tone={toneOf(c)}
           summary={summaryOf ? summaryOf(c) : pendingCount(tasks, c) > 0 ? pendingCount(tasks, c) + ' 个待完成' : '暂无待完成任务'}
-          onOpen={() => onOpen(c)}
+          onOpen={keyboard => onOpen(c, keyboard)}
           registerItem={hover.registerItem}
         />
       ))}
@@ -324,6 +328,7 @@ function CourseTiles({
 }
 
 function CourseTile({
+  courseId,
   course,
   index,
   tone,
@@ -331,11 +336,12 @@ function CourseTile({
   onOpen,
   registerItem,
 }: {
+  courseId: string
   course: string
   index: number
   tone: number
   summary: string
-  onOpen: () => void
+  onOpen: (keyboard: boolean) => void
   registerItem: (index: number, el: HTMLElement | null) => void
 }) {
   const tileRef = useRef<HTMLButtonElement>(null)
@@ -343,7 +349,7 @@ function CourseTile({
   const [imgFailed, setImgFailed] = useState(false)
   const cover = COURSE_COVERS[course]
   return (
-    <button ref={tileRef} className="course-tile" onClick={onOpen}>
+    <button ref={tileRef} className="course-tile" data-course-id={courseId} onClick={event => onOpen(event.detail === 0)}>
       {cover && !imgFailed ? (
         <img className="course-cover" src={cover} alt="" onError={() => setImgFailed(true)} />
       ) : (
