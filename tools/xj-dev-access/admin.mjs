@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { AccessError, requireAccess } from '../xj-dev/src/enrollment-protocol.mjs';
 
 export function adminRequest(socketPath, operation, input) {
-  requireAccess(['invite', 'inspect', 'revoke-invitation', 'revoke-device', 'revoke-member', 'snapshot', 'package-quota', 'package-baselines', 'package-baseline', 'package-cleanup'].includes(operation), 'ADMIN_OPERATION_INVALID');
+  requireAccess(['invite', 'inspect', 'revoke-invitation', 'revoke-device', 'revoke-member', 'snapshot', 'package-quota', 'package-baselines', 'package-baseline', 'package-baseline-retire', 'package-cleanup'].includes(operation), 'ADMIN_OPERATION_INVALID');
   return new Promise((accept, reject) => {
     const req = request({ socketPath, path: '/' + operation, method: 'POST', headers: { 'content-type': 'application/json' }, timeout: 20000 }, res => {
       let output = '';

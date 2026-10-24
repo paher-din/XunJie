@@ -22,7 +22,9 @@ export function openPackageStore(access, configuration, now = Date.now) {
     UNIQUE(publisher_id,idempotency_key));
     CREATE TABLE IF NOT EXISTS package_parts (package_id TEXT NOT NULL REFERENCES packages(id), number INTEGER NOT NULL, bytes INTEGER NOT NULL, md5 TEXT NOT NULL, PRIMARY KEY(package_id,number));
     CREATE TABLE IF NOT EXISTS package_grants (id INTEGER PRIMARY KEY, package_id TEXT NOT NULL REFERENCES packages(id), device_id TEXT NOT NULL REFERENCES devices(id), expires_at INTEGER NOT NULL);
-    CREATE TABLE IF NOT EXISTS package_baselines (name TEXT NOT NULL, version TEXT NOT NULL, package_id TEXT NOT NULL REFERENCES packages(id), created_at INTEGER NOT NULL, PRIMARY KEY(name,version));`);
+    CREATE TABLE IF NOT EXISTS package_baselines (name TEXT NOT NULL, version TEXT NOT NULL, package_id TEXT NOT NULL REFERENCES packages(id), created_at INTEGER NOT NULL, PRIMARY KEY(name,version));
+    CREATE TABLE IF NOT EXISTS package_baseline_retirements (name TEXT NOT NULL, version TEXT NOT NULL, retired_at INTEGER NOT NULL, reason TEXT NOT NULL,
+      PRIMARY KEY(name,version), FOREIGN KEY(name,version) REFERENCES package_baselines(name,version));`);
   const scope = JSON.stringify([configuration.bucket, configuration.prefix]);
   db.prepare("INSERT OR IGNORE INTO metadata VALUES ('packageStorage',?)").run(scope);
   requireAccess(db.prepare("SELECT value FROM metadata WHERE key='packageStorage'").get().value === scope, 'PACKAGE_STORAGE_CHANGED');
@@ -96,9 +98,27 @@ export function openPackageStore(access, configuration, now = Date.now) {
       const p = get(input.reproId); requireAccess(p.state === 'published', 'PACKAGE_NOT_READY', 409);
       return tx(() => { const old = db.prepare('SELECT * FROM package_baselines WHERE name=? AND version=?').get(input.name, input.version);
         requireAccess(!old || old.package_id === p.id, 'BASELINE_IMMUTABLE', 409);
+        requireAccess(!db.prepare('SELECT 1 FROM package_baseline_retirements WHERE name=? AND version=?').get(input.name, input.version), 'BASELINE_RETIRED', 409);
         db.prepare('INSERT OR IGNORE INTO package_baselines VALUES (?,?,?,?)').run(input.name, input.version, p.id, now()); return { name: input.name, version: input.version, record: record(p) }; });
     },
-    baselines() { return db.prepare('SELECT name,version,package_id AS reproId,created_at AS createdAt FROM package_baselines ORDER BY name,version').all(); },
+    retireBaseline(input) {
+      requireAccess(typeof input.reason === 'string' && input.reason.trim().length > 0 && input.reason.length <= 256, 'BASELINE_INVALID');
+      requireAccess(typeof input.name === 'string' && typeof input.version === 'string' && packageId(input.reproId), 'BASELINE_INVALID');
+      return tx(() => {
+        const old = db.prepare('SELECT * FROM package_baselines WHERE name=? AND version=?').get(input.name, input.version);
+        requireAccess(old, 'BASELINE_NOT_FOUND', 404);
+        requireAccess(old.package_id === input.reproId, 'BASELINE_IMMUTABLE', 409);
+        db.prepare('INSERT OR IGNORE INTO package_baseline_retirements VALUES (?,?,?,?)').run(input.name, input.version, now(), input.reason.trim());
+        const retired = db.prepare('SELECT retired_at AS retiredAt,reason FROM package_baseline_retirements WHERE name=? AND version=?').get(input.name, input.version);
+        return { name: input.name, version: input.version, reproId: old.package_id, ...retired };
+      });
+    },
+    baselines({ includeRetired = false } = {}) {
+      if (includeRetired) return db.prepare(`SELECT b.name,b.version,b.package_id AS reproId,b.created_at AS createdAt,r.retired_at AS retiredAt,r.reason
+        FROM package_baselines b LEFT JOIN package_baseline_retirements r USING(name,version) ORDER BY b.name,b.version`).all();
+      return db.prepare(`SELECT b.name,b.version,b.package_id AS reproId,b.created_at AS createdAt FROM package_baselines b
+        WHERE NOT EXISTS (SELECT 1 FROM package_baseline_retirements r WHERE r.name=b.name AND r.version=b.version) ORDER BY b.name,b.version`).all();
+    },
     cleaned(id) { db.prepare("UPDATE packages SET cleanup_ready=1 WHERE id=? AND state='failed'").run(id); },
     fail(id) { return tx(() => { const p = get(id); requireAccess(p.state !== 'published' && !db.prepare('SELECT 1 FROM package_baselines WHERE package_id=?').get(id), 'PUBLISHED_PACKAGE_RETAINED', 409);
       db.prepare("UPDATE packages SET state='failed' WHERE id=?").run(id); return get(id); }); },

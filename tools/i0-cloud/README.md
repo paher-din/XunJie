@@ -41,9 +41,9 @@
 
 发布信任边界：Release 发布权限与 `main` 推送权限等同（GitHub contents:write），摘要校验防护传输与装配损坏，不改变来源信任；构建成功不等于发布成功——只有健康探测通过才算部署完成。发布不初始化或迁移业务数据，不合并代码。
 
-2026-10-23 的正式实例已完成源码构建→旧产物协议迁移：`sync-main.py` 及旧 `xunjie-main-sync` 单元已删除，工作目录不再保留源码构建路径。正式业务仍运行 `d07dc339`，其 main workflow 产生 unbound Release，正式部署器与 `deployment.json` 的 `artifactBranch` 因兼容需要暂时保留。不能先安装本版 strict 部署器或删掉该字段，否则下次旧 workflow 发布会被拒绝。
+2026-10-23 的源码构建→旧产物协议迁移已被后续共享业务承接取代。`sync-main.py`、旧源码构建单元，以及旧 d07 的自动部署单元/发布器/部署配置均已从主机移除；现行 e03 共享业务与监控使用独立的部署配置和链接。原业务数据继续保留恢复副本。
 
-本版 strict 协议的切换顺序：先由负责人决定合 main，等待该 main 的首个 bound `cloud-<commit>` Release 就绪并核实 asset 摘要；在维护锁下更新正式部署器和配置（删除 `artifactBranch`，字段见下表），完成健康发布及回退核对后再清理旧镜像分支。此前仅在独立 candidate 使用本版部署器和隔离配置、端口与数据副本，不能修改 `current` 下的业务产物来绕过 main。`backup-retained.mjs` 的 WAL 修复与独立监控不依赖新 Release 格式，可以先应用。服务器基础设施脚本不随业务产物分发。
+后续发布使用本版 strict 协议：先取得负责人选定版本对应的 bound `cloud-<commit>` Release 并核实 asset 摘要；在维护锁下核对现行共享服务、数据路径和部署配置，再完成健康发布及回退核对。旧 `artifactBranch` 兼容流程已退役，不恢复旧自动发布器。当前集成分支仍未合 main，不能把候选验收或工具更新写成 main 已发布。服务器基础设施脚本不随业务产物分发。
 
 | `deploy-artifact.py` 配置字段（仓库外 `/etc/xunjie/deployment.json`） | 说明 |
 | --- | --- |
@@ -92,7 +92,7 @@ sudo python3 /usr/local/lib/xunjie/deploy-artifact-candidate.py --config /etc/xu
 
 资源预算依据为 #133 的 e03+ss16 五成员完整窗口：普通 API（含登录）p95 262.266ms，candidate cgroup peak 329.152MiB（含登录峰），access peak 42.738MiB，host最低可用908.973MiB，无OOM/restart；不以正式服务旧idle峰作为五人峰值。[shared模板](xunjie-shared.service) 的 `[Service]` 已设 `CPUWeight=200`、`MemoryHigh=512M`、`MemoryMax=768M`，下次安装该模板的 `ExecStart` 默认显式 `--max-semi-space-size=16`；[access模板](../xj-dev-access/xunjie-dev-access-candidate129.service) 为High128M/Max256M、TasksMax64。
 
-当前正式服务仍运行旧d07、PID91972及原argv，未重启、未发布，也不能据模板变更声称它已有ss16。负责人已用持久 `systemctl set-property` 应用正式CPU200/High512M/Max768M；已测candidate保留更严格Max512M，设High448M/CPU200，access为High128M/Max256M、Tasks64。实际properties、内核cgroup值及所有PID/ExecStart不变均已读回，回执为仓库外 `xj133-resource-budgets-20261024/applied.json`；预算dropins位于 `/etc/systemd/system.control/<unit>.d/`，没有安装替换formal unit或发布器。这些unit模板不在产品runtime清单内，不需重建e03产物。完整来源和边界见[#133交付核查](../../docs/references/2026-10-24-development-delivery-closeout.md)。
+2026-10-24 共享业务已承接原课程数据，现运行 `xunjie-candidate-128.service` 的 e03+ss16 产物，High448M/Max512M、CPUWeight200；access 为 High128M/Max256M、TasksMax64。原 `xunjie-shared.service`、旧自动发布 service/timer、旧 `deploy-artifact.py` 和旧部署配置已从主机移除；上述 shared 模板保留为可复用源码，不能据此认定主机仍运行旧 d07。备份单元已改为依赖现行业务，策略不再引用删除文件；监控沿用现行候选部署器。服务和恢复入口见[团队交接](../../docs/references/2026-10-24-team-development-handoff.md)。
 
 维护单元（发布、备份）继续使用低CPU/IO权重与内存上限；部署与备份共用同一把flock维护锁串行，业务优先。后续调整按[运行策略](../../docs/development-access-operations.md)核对实测与实际生效配置。
 

@@ -386,7 +386,7 @@ node tools/xj-dev/xj-dev.mjs repro cache-delete xjp_<UUID>
 
 授权最长 300 秒，可重新申请；URL 只在内存中使用，文件从 OSS 公网端点直接流向设备，不经 ECS 3 Mbps 出口。URL/STS 不进入 argv、日志、普通结果或复现包。撤销后不再签发新 URL；此前 URL 的精确过期时间和剩余毫秒由 revoke/inspect 报告，不能声称立即使已签名 URL 失效。
 
-维护者沿现有 owner 管理通道使用 `access package-quota` 查看限额/预留，`package-baselines` 查看引用，`package-baseline --input-file FILE` 登记 `{name,version,reproId}`。同 name/version 只允许同一不可变编号，不能覆盖他人内容。`package-cleanup --input-file FILE` 接受 `{transferId}`，只清理失败 multipart 与本工具未发布的对象；已发布或被引用的场景保留。存储失败时先 deny，确认该条目拥有的 multipart 与已完成对象均已清除后才释放预留配额，可重试。`repro cache-delete ID` 经在线授权、独占锁与私有路径校验后清理可再取缓存，也可显式清掉损坏 ready 或已满长但校验失败的 partial，再 `fetch ID` 恢复。有效的共享缓存保留；短 partial、混合布局、未知文件、上传冻结包及永久锁守卫均保留。
+维护者沿现有 owner 管理通道使用 `access package-quota` 查看限额/预留，`package-baselines` 查看引用，`package-baseline --input-file FILE` 登记 `{name,version,reproId}`。同 name/version 只允许同一不可变编号，不能覆盖他人内容。 `package-baseline-retire --input-file FILE` 接受 `{name,version,reproId,reason}`，将旧起点从成员列表退役；`package-baselines` 仍显示 `retiredAt` 与原因。退役可幂等重试，原版本不能重新登记；原包、摘要和稳定编号保留，按编号交接仍可用，不释放已发布包配额。`package-cleanup --input-file FILE` 接受 `{transferId}`，只清理失败 multipart 与本工具未发布的对象；已发布或被引用的场景保留。存储失败时先 deny，确认该条目拥有的 multipart 与已完成对象均已清除后才释放预留配额，可重试。`repro cache-delete ID` 经在线授权、独占锁与私有路径校验后清理可再取缓存，也可显式清掉损坏 ready 或已满长但校验失败的 partial，再 `fetch ID` 恢复。有效的共享缓存保留；短 partial、混合布局、未知文件、上传冻结包及永久锁守卫均保留。
 
 ## 一次性邀请与设备登记
 

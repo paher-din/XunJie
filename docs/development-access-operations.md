@@ -4,11 +4,11 @@
 
 ## 本轮共享环境
 
-2026-10-24 负责人已确认完成共享业务承接：原 `xunjie-shared.service` 与 `xunjie-release-deploy.timer` 均为 inactive/disabled，当前唯一共享业务进程沿用技术名 `xunjie-candidate-128.service`。活动数据库为 `/var/lib/xunjie/retained-tmp/xunjie-a12-completion-team20261024/synthetic.sqlite`，原数据原路径保留用于回退；旧技术名不代表仍同时运行另一套正式共享业务。
+2026-10-24 负责人已确认完成共享业务承接：原 `xunjie-shared.service`、`xunjie-release-deploy.service/timer` 与旧自动发布器已移除（LoadState=not-found），当前唯一共享业务进程沿用技术名 `xunjie-candidate-128.service`。活动数据库为 `/var/lib/xunjie/retained-tmp/xunjie-a12-completion-team20261024/synthetic.sqlite`，原数据原路径保留用于回退；旧技术名不代表仍同时运行另一套正式共享业务。
 
 活动数据来源于原正式环境的 4 门课程、11 个账号、27 个 assignment、9 个 attempt、14 个 snapshot、3 个 submission 和 4 个 feedback，继承原 3 份模型配置；共享验收产生的 232 份提交污染已移出活动数据。e03 新版独立 preflight 已通过教师/学生 strict TLS、login、session、courses 200 检查。上述检查不等于本轮团队基线已发布，也不证明编译/仿真、模型调用或教学效果通过；Agent 仍核对当前工具报告的版本与能力。
 
-开发接入服务已按 `prepareDeployment` 与 installer 校验部署源码 `dad6a9fc3a1e89a01a683aab90b58c1ff1587f17`，共享业务进程保持原承接实例。该部署事实与团队目录条目发布/成员实际恢复分别核对，不由新 CLI 帮助推导成功。
+开发接入服务按 `prepareDeployment` 与 installer 校验部署；本轮增加固定基线退役能力，共享业务进程保持原承接实例。实际接入源码版本由 `/opt/xunjie-dev-access/current/deployment.json` 核对。该部署事实与团队目录条目发布/成员实际恢复分别核对，不由新 CLI 帮助推导成功。
 
 团队选定的便携起点及在线核对方式见[本轮推荐起点](development-tooling.md#本轮推荐起点)。普通成员只通过本人获准的应用/文件接口访问；该服务技术名、数据库路径和下文维护说明都不授予主机 shell 或备份管理员权限。
 
@@ -149,7 +149,7 @@ CLI 与文件存储能简化已经加入团队的成员操作，但不能自行�
 
 私有复现 bucket 的 ECS RAM role 只授予 `team/*` 对象的 `GetObject`、`PutObject`、`DeleteObject`、`ListParts`、`AbortMultipartUpload`。`ListMultipartUploads` 单独授予这个专用 bucket 的 bucket 资源；它不支持 `oss:Prefix` 条件，附加该条件会使请求返回 403。`oss:Prefix` 用于 ListObjects，不能照搬到 multipart 列举，详见[官方 RAM action 表](https://www.alibabacloud.com/help/en/ram/api-object-storage-service)。此角色不授予 `ListObjects`、`ListBuckets` 或存储管理权限。服务始终按目录记录的精确 owned key 列举、过滤和清理；成员设备只得到该 key/分片/Range 的短期签名 URL，不得到 role 或 STS 凭据。
 
-发布采用 CI 构建后由云端拉取经过校验的运行产物：构建器在 GitHub Actions 上产出带逐文件摘要的产物并发布 Release，`deploy-artifact.py` 下载校验、装配、切换并在健康探测失败时回退到上一个版本及其备份。原生依赖与 Linux、CPU 架构和项目 Node 版本在构建与部署两端核对，不复制成员电脑的 `node_modules`。正式服务器已于 2026-10-23 从源码构建迁到旧产物协议，旧源码部署脚本与单元已删除。新增不可变产物 tag + bound Release 协议已通过 integration 候选 CI，正式 main 仍运行 `d07dc339` 的旧协议；在负责人决定合 main、首个 bound main Release 就绪前，保留兼容的正式发布器与 `artifactBranch` 配置，不将 strict candidate 部署器直接覆盖生产。切换顺序见[云基础设施模板](../tools/i0-cloud/README.md)。预算属性现位于unit模板的`[Service]`内；负责人仅通过持久set-property更新现行正式服务预算，不重启、不替换unit，原PID91972/argv保持。只有下次安装新shared模板才默认加入已在e03候选验证的ss16，不能声称正式旧d07已经使用该flag。
+当前共享业务运行已验证的 e03 产物，显式使用 `--max-semi-space-size=16`；旧 d07 业务、旧自动发布单元和旧发布器已退役。后续发布使用经校验的 CI 产物，按当前共享服务、配置和静态链接制定切换，不能恢复旧定时器或把候选部署器直接改为无人值守发布。原库和原个人模型仍由备份策略覆盖。资源预算与运行时状态以当前 unit 和 cgroup 为准；历史窗口证据见[#133交付核查](references/2026-10-24-development-delivery-closeout.md)。
 
 静态资源已在构建阶段预压缩（gzip 与 brotli 边车）：带内容摘要的资源一年不可变缓存，HTML 入口 no-cache 并以 ETag 协商，新版本与回退各用独立发布目录，不混用资源。静态服务对不超过 2 MiB 的文件一次写出，更大的文件流式转发，不在业务进程内整体读入大文件。业务数据与开发成员数据使用独立存储，备份也覆盖各自恢复所需内容。
 

@@ -71,8 +71,9 @@ export function createPackages(access, config, { storage, now = Date.now } = {})
     },
     async admin(operation, input) {
       if (operation === 'package-quota') return catalog.quota(input.memberId);
-      if (operation === 'package-baselines') return { baselines: catalog.baselines() };
+      if (operation === 'package-baselines') return { baselines: catalog.baselines({ includeRetired: true }) };
       if (operation === 'package-baseline') return catalog.addBaseline(input);
+      if (operation === 'package-baseline-retire') return catalog.retireBaseline(input);
       requireAccess(operation === 'package-cleanup', 'ADMIN_OPERATION_INVALID');
       // Deny before abort. Retries remain possible without touching published or
       // referenced objects, even when the storage operation temporarily fails.

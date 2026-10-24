@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { openAccessStore } from './store.mjs';
 import { createPackages } from './packages.mjs';
-import { PART_SIZE } from './package-store.mjs';
+import { PART_SIZE, openPackageStore } from './package-store.mjs';
 import { AccessError } from '../xj-dev/src/enrollment-protocol.mjs';
 
 function fixture(limits) {
@@ -100,5 +100,50 @@ test('download requires the published immutable HEAD and matching resume ETag; n
     await assert.rejects(f.packages.handle('resolve', f.b, { reproId: transferId, offset: 1, etag: '"other"' }), { code: 'ETAG_CHANGED' });
     const result = await f.packages.handle('resolve', f.b, { reproId: transferId, offset: PART_SIZE + 7, etag: '"multipart-fixed"' });
     assert.equal(result.authorization, null);
+  } finally { f.close(); }
+});
+
+test('retiring a baseline hides the member catalog but preserves its immutable reference, package and audit', async () => {
+  const f = fixture();
+  try {
+    const { transferId } = await f.packages.handle('upload', f.a, f.input());
+    f.fill(transferId); await f.packages.handle('complete', f.a, { transferId });
+    const baseline = { name: 'acceptance', version: 'v1', reproId: transferId };
+    await f.packages.admin('package-baseline', baseline);
+    await f.packages.admin('package-baseline', { ...baseline, name: 'team' });
+    const before = await f.packages.handle('resolve', f.b, { catalog: 'baselines' });
+    assert.equal(before.baselines.length, 2);
+    await assert.rejects(f.packages.admin('package-baseline-retire', { ...baseline, reason: ' ' }), { code: 'BASELINE_INVALID' });
+    await assert.rejects(f.packages.admin('package-baseline-retire', { ...baseline, name: 'missing', reason: 'superseded' }), { code: 'BASELINE_NOT_FOUND' });
+    await assert.rejects(f.packages.admin('package-baseline-retire', { ...baseline, reproId: 'xjp_' + randomUUID(), reason: 'superseded' }), { code: 'BASELINE_IMMUTABLE' });
+    const retired = await f.packages.admin('package-baseline-retire', { ...baseline, reason: 'superseded by team' });
+    assert.ok(retired.retiredAt > 0);
+    assert.deepEqual(await f.packages.admin('package-baseline-retire', { ...baseline, reason: 'retry' }), retired);
+    assert.deepEqual((await f.packages.handle('resolve', f.b, { catalog: 'baselines', includeRetired: true })).baselines, [before.baselines[1]]);
+    const audit = (await f.packages.admin('package-baselines', {})).baselines;
+    assert.equal(audit.find(b => b.name === 'acceptance').reason, 'superseded by team');
+    await assert.rejects(f.packages.admin('package-baseline', baseline), { code: 'BASELINE_RETIRED' });
+    await assert.rejects(f.packages.admin('package-cleanup', { transferId }), { code: 'PUBLISHED_PACKAGE_RETAINED' });
+    assert.equal(f.packages.catalog.get(transferId).state, 'published');
+    const result = await f.packages.handle('resolve', f.b, { reproId: transferId, offset: f.packages.catalog.get(transferId).bytes, etag: '"multipart-fixed"' });
+    assert.equal(result.record.reproId, transferId);
+    const reopened = openPackageStore(f.access, { bucket: 'fixture-bucket', prefix: 'team/' });
+    assert.equal(reopened.baselines().length, 1);
+    assert.equal(reopened.baselines({ includeRetired: true }).find(b => b.name === 'acceptance').retiredAt, retired.retiredAt);
+    assert.equal(f.access.db.prepare('PRAGMA foreign_key_check').all().length, 0);
+  } finally { f.close(); }
+});
+
+test('opening an existing catalog adds retirement support without changing its published baseline', async () => {
+  const f = fixture();
+  try {
+    const { transferId } = await f.packages.handle('upload', f.a, f.input());
+    f.fill(transferId); await f.packages.handle('complete', f.a, { transferId });
+    await f.packages.admin('package-baseline', { name: 'legacy', version: 'v1', reproId: transferId });
+    const before = f.packages.catalog.baselines();
+    f.access.db.exec('DROP TABLE package_baseline_retirements');
+    const upgraded = openPackageStore(f.access, { bucket: 'fixture-bucket', prefix: 'team/' });
+    assert.deepEqual(upgraded.baselines(), before);
+    assert.equal(upgraded.get(transferId).state, 'published');
   } finally { f.close(); }
 });

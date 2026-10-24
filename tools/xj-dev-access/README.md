@@ -28,7 +28,7 @@
 
 首次本地初始化可将 `--target DIR` 换成 `--here`：完整保留授权、TLS、摘要、metadata/schema 和可信 checkout 依赖兼容检查，仅向当前工作树尚未初始化的 local 环境导入数据，不恢复源码或新增 Git 工作树。锁内拒绝已有数据库/marker/SQLite sidecar/凭据/环境 state；它不提供覆盖或升级入口。默认不带 `--here` 时仍使用隔离副本。详细边界见 [CLI 基线说明](../xj-dev/README.md#复现包与基线)。
 
-目录与配额位于同一 access SQLite：默认 128 MiB/package、256 MiB/member、1 GiB/team，事务预留 uploading+published，失败 abort 未完成时继续占预留。已发布对象不可覆盖或经失败清理删除，baseline name/version 为不可变引用。`access package-quota|package-baselines|package-baseline|package-cleanup` 复用 owner UDS；输入结构和成员步骤见 [CLI](../xj-dev/README.md#团队复现编号与直传)。
+目录与配额位于同一 access SQLite：默认 128 MiB/package、256 MiB/member、1 GiB/team，事务预留 uploading+published，失败 abort 未完成时继续占预留。已发布对象不可覆盖或经失败清理删除，baseline name/version 为不可变引用。维护者可退役目录条目：成员列表隐藏，原编号与包保留供追溯，原版本不能重新登记。`access package-quota|package-baselines|package-baseline|package-baseline-retire|package-cleanup` 复用 owner UDS；输入结构和成员步骤见 [CLI](../xj-dev/README.md#团队复现编号与直传)。
 
 独立 `packages` 配置包含 bucket、region:`oss-cn-beijing`、prefix:`team/`、roleName 和可选 limits。唯一存储路径为阿里云 OSS；只有独立 server 安装固定 `ali-oss@6.23.0`。IMDSv2 取同批短期凭据后构造新 SDK client，公共 URL 最长300秒；按 SDK签名时间精确报告过期。撤销后拒绝新授权，既有 URL 不会即时失效。存储队列独立于账号/撤销队列，签名返回前重查设备存活。SHA256是 publisher claim+consumer复算；服务端只核 OSS size/CRC64，不下载完整包。
 

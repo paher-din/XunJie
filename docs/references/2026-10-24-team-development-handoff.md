@@ -7,9 +7,9 @@
 | 单元 | 当前用途与状态 |
 | --- | --- |
 | `xunjie-candidate-128.service` | 唯一常驻共享业务，运行已验证的 `e03a3c9` 产物；技术名保留兼容现有接入与系统策略 |
-| `xunjie-dev-access-candidate129.service` | 成员邀请、设备权限、团队目录和私有 OSS 授权；接入源码为 `dad6a9f` |
-| `xunjie-shared.service` | 原 `d07dc33` 业务已停止并禁用，原库、配置和恢复材料保留作回退 |
-| `xunjie-release-deploy.timer` | 已停止并禁用，避免旧发布流程重新启动原业务 |
+| `xunjie-dev-access-candidate129.service` | 成员邀请、设备权限、团队目录和私有 OSS 授权；包含固定基线退役，源码以 current/deployment.json 为准 |
+| `xunjie-shared.service` | 原业务服务定义及资源 dropin 已删除；原库、配置和加密恢复材料保留 |
+| `xunjie-release-deploy.timer` | 旧 service/timer、自动发布器和部署配置已删除，不再有旧自动发布入口 |
 | 日/周备份、健康监控 timer | 保持启用；监控已指向现行业务，实际 CMS 上报成功，页面与静态资源摘要匹配 |
 
 现行配置为 `/var/lib/xunjie/team-development/application-v1.json`，业务库为 `/var/lib/xunjie/retained-tmp/xunjie-a12-completion-team20261024/synthetic.sqlite`。路径保留当前宿主的兼容约束，不代表临时数据可以删除。静态资源通过 `/opt/xunjie/development-current` 指向 `/opt/xunjie/candidates/133-e03a3c9`，监控与运行进程核对同一份产物。
@@ -31,9 +31,13 @@
 
 包已上传私有 OSS、登记为固定目录条目，并通过公开 CLI 在负责人 Mac 的当前工作树执行 `--here` 导入成功，未替换源码。18条尚未开始的任务通过显式 `data.includeUnstartedAssignments: true` 保留；普通复现采集仍只包含明确选定的 attempt。原密码、登录会话、模型凭据、机器连接与浏览器身份不进入该包，恢复时重新生成本地密码。
 
-Agent 按[数据基线](../development-tooling.md#获取与更新数据基线)在线核对条目，再采用固定版本。已有环境保持数据，需要另一版本时另建隔离副本。团队目录中的 `acceptance-conflict / 0.2.0-20261024` 是历史交接验收场景，不是本轮默认起点。
+Agent 按[数据基线](../development-tooling.md#获取与更新数据基线)在线核对条目，再采用固定版本。已有环境保持数据，需要另一版本时另建隔离副本。`acceptance-conflict / 0.2.0-20261024` 已从成员目录退役；其约6 MB不可变包及编号保留作历史验收追溯。维护者可查退役原因，原版本不可复用，日常采用 `team-demo`。
 
 内置 `local-baseline-1` 是 [baseline.mjs](../../tools/xj-dev/src/baseline.mjs) 中的最小场景生成逻辑，包含在 Git 中。实际 SQLite、随机密码和成员设备材料位于仓库外；团队基线 ZIP 位于私有 OSS，Git 中仅保留使用说明和版本线索。
+
+## 账号来源
+
+本地恢复团队基线时为11个测试身份重新生成随机密码；从 `up/status` 的 `accounts.credentials.file` 取得受限文件，Agent按需要登录，密码不进Git或普通输出。云端成员加入后取得自己的应用账号，文件路径由 `enrollment.accountFile` 返回；它与本地基线账号独立。原演示账号未因承接而重置，负责人资料仍在仓库外的 `~/.config/xunjie-cloud/accounts.private.txt`，不作为全员共用账号。
 
 ## 成员使用
 
@@ -51,13 +55,15 @@ Windows 使用独立临时源码与 pinned Node24.21.0，登记、团队目录/�
 
 负责人 Mac 的持续入口为 `~/.config/xunjie-cloud/README.md` → `CURRENT-STATE.md`，其中记录现行管理配置、签发材料、证书到期、设备登记和页面入口。秘密内容不进入 Git。恢复工具及契约见 [加密备份与隔离恢复](../../tools/i0-cloud/README.md#加密备份与隔离恢复)。
 
-当前云端加密备份为 `/var/lib/xunjie/backup-archives/team-ready-20261024T123848Z-8d7746b2.xunjiebak`。Mac 独立副本在 `~/.config/xunjie-cloud/backup-recovery/team-ready-20261024/`，摘要为 `711e05d90e24ae312c71cb99f02a80fb1636333d4edf7949ff6a6bea31b51f84`，896,132 bytes。解密密钥为相邻上级目录的 `backup.key`，32 bytes、0600，密钥自身不进入备份。
+数据承接时的加密备份为 `/var/lib/xunjie/backup-archives/team-ready-20261024T123848Z-8d7746b2.xunjiebak`。Mac 独立副本在 `~/.config/xunjie-cloud/backup-recovery/team-ready-20261024/`，摘要为 `711e05d90e24ae312c71cb99f02a80fb1636333d4edf7949ff6a6bea31b51f84`，896,132 bytes。解密密钥为相邻上级目录的 `backup.key`，32 bytes、0600，密钥自身不进入备份。
 
 该归档包含93文件、6个SQLite库，覆盖原业务回退、现行共享数据/模型、接入服务与凭据、运行配置、资源dropin、健康监控和25份helper回执。Mac已在新的隔离目录解密恢复：全部SHA、6库完整性/外键、3对TLS/CA、模型凭据3/0/3项、22项access凭据，以及1名active成员与受管SSH映射的关系检查通过。每个库独立一致，不是跨存储原子快照，也不等于已从空主机重新部署全部服务。
 
 恢复始终写入新的空隔离目录。验证后再为目标主机重建路径、端口和socket；现行业务需重建上述 `development-current` 链接并取得对应已验证产物。不要用仍指向原库的配置启动第二个写进程。设备私钥与owner CA签发私钥不在服务器备份中；保留本机受限材料，丢失设备时通过新设备邀请恢复身份。
 
 内置合成场景可以重新生成；课程作品、模型凭据和成员接入状态需要保留恢复材料。已有日备7份、周备4份按各自标签保留，切换前和本轮收尾归档另存。Mac独立副本不等于断开的离线介质；物理离线副本尚未制作。
+
+旧服务退役前另有 `pre-retirement` 加密归档，Mac已独立恢复97文件、6库并核对账号/模型/TLS关系，明文已删除。退役后备份策略移除9个已删除源文件，保留原库并改用现行产物加载SQLite驱动。退役回执与最新归档/独立恢复结果从负责人 `CURRENT-STATE.md` 的退役段落进入；恢复旧快照时不自动重新启用其中的旧服务。
 
 ## 证据入口
 
