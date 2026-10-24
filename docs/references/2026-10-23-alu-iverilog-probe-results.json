@@ -1,0 +1,58 @@
+{
+  "scope": "CLI on this host only; no browser, Windows, installer, network or sandbox acceptance",
+  "platform": {
+    "system": "Darwin",
+    "release": "27.0.0",
+    "machine": "arm64"
+  },
+  "compiler": "Icarus Verilog version 13.0 (stable) (v13_0)",
+  "runtime": "Icarus Verilog runtime version 13.0 (stable) (v13_0)",
+  "testbench_sha256": "e6f9501cd6a76e7ad502ea96420376ad181e5c62d1d36c0b2ddf057abe569a7b",
+  "compiler_arguments": [
+    "-g2012",
+    "-Wall",
+    "-s",
+    "tb"
+  ],
+  "correct": {
+    "vectors": 4096,
+    "mismatches": 0,
+    "unknown_outputs": 0,
+    "compile_ms": 12.427,
+    "simulation_and_output_ms": 15.917,
+    "source_sha256": "b1cc86df923404ffd79a5c3567df35fa3116d327b04add2cbf42ac1fc725ff7a",
+    "rows_sha256": "3860148aec303b9db2ca17fb388e7f444e2b59ece58bd438b13e293bf38253c5",
+    "vcd_bytes": 176357,
+    "vcd_has_definitions_and_final_timestamp": true,
+    "diagnostics": ""
+  },
+  "lost_carry_negative_control": {
+    "vectors": 4096,
+    "mismatches": 256,
+    "unknown_outputs": 0,
+    "compile_ms": 10.102,
+    "simulation_and_output_ms": 15.237,
+    "source_sha256": "3e3584ca76a1fe3cd1852fdb3f5d0303a3b33d985ee3457615366f8dcf9e6b96",
+    "rows_sha256": "f3199dca83ee0c9b2f8a781a894dcd1a5597117a4eab6d9fc6c17d7011a4be00",
+    "vcd_bytes": 175541,
+    "vcd_has_definitions_and_final_timestamp": true,
+    "diagnostics": ""
+  },
+  "unknown_reserved_negative_control": {
+    "vectors": 4096,
+    "mismatches": 1536,
+    "unknown_outputs": 1536,
+    "compile_ms": 10.797,
+    "simulation_and_output_ms": 21.772,
+    "source_sha256": "40003dd724416410ac2ee853def5791eec10ef7cbd91a83c320ec6ae0d8d5f75",
+    "rows_sha256": "5f2effbb518ac778345fa96dc5f560c0347d3912f168bd323680676264b3c48b",
+    "vcd_bytes": 191707,
+    "vcd_has_definitions_and_final_timestamp": true,
+    "diagnostics": ""
+  },
+  "bounded_process_probe": {
+    "timeout_ms": 250,
+    "observed_ms": 252.481,
+    "direct_child_terminated": true
+  }
+}

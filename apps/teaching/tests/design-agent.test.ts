@@ -1,5 +1,6 @@
 import type { Transaction } from '../server/db/transaction.ts';
 import { TeacherResultCommitError } from '../server/design/teacher-agent.ts';
+import {createModelBudget,type ModelBudget} from '../server/personal-agent/model-budget.ts';
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +16,7 @@ const candidate = { kind: 'candidates', candidates: [{ problem: 'Count words', a
   artifact: 'A tested C program', routes: ['scan', 'tokenize'], goals: ['Compare two routes'],
   constraints: ['One week'], unresolved: ['Teacher must confirm three competency domains'], resourceRefs: [] }] };
 const versions = { modelConfig: 'synthetic-v1', prompt: 'teacher-v1', schema: 'teacher-v1', policy: 'teacher-v1' };
-async function fixture(steps: SyntheticStep[] = [{ body: candidate }],suppliedProvider?:ModelProvider,liveClock=false) {
+async function fixture(steps: SyntheticStep[] = [{ body: candidate }],suppliedProvider?:ModelProvider,liveClock=false,modelBudget?:ModelBudget) {
   let db = createTeacherDesignDatabase(), time = Date.now(), generation = 'generation',clockStep = 0;
   const password = randomBytes(32).toString('hex'), secret = randomBytes(48).toString('hex');
   const record = await createPasswordRecord(password);
@@ -40,7 +41,7 @@ async function fixture(steps: SyntheticStep[] = [{ body: candidate }],suppliedPr
     }}));
   }});
   const options = () => ({ db:database(), origin, signingSecret: secret, currentGeneration: () => generation, now: () => { if (liveClock) return Date.now(); const current=time; time+=clockStep; return current; },
-    teacherAgent: { provider, versions: liveClock ? { ...versions, modelConfig: 'deepseek-flash-p2-real-v1' } : versions, budgetAvailable: () => budget } });
+    teacherAgent: { provider, versions: liveClock ? { ...versions, modelConfig: 'deepseek-flash-p2-real-v1' } : versions, budgetAvailable: () => budget,...(modelBudget?{modelBudget}:{}) } });
   let service = await createDesignApp(options());
   async function login(user = 'teacher') {
     const res = await service.app.inject({ method:'POST',url:'/api/sessions',headers:{origin},payload:{loginName:user,password} });
@@ -310,6 +311,19 @@ test('queueing counts toward the 45-second deadline and expired jobs cannot gene
     const job = await getJob(f,headers,jobId);
     assert.equal(job.status,'timed_out'); assert.equal(job.attemptCount,0); assert.equal(job.proposalId,undefined);
   } finally { await f.close(); }
+});
+test('the optional model budget excludes its wait from the teacher execution deadline and elapsed time',async()=>{
+  const budget=createModelBudget(),f=await fixture(undefined,undefined,false,budget);
+  let release!:()=>void;const held=budget.run({memberId:'teacher',payloadBytes:1},()=>new Promise<void>(resolve=>{release=resolve;}));
+  try{
+    const teacher=await f.login(),res=await start(f,teacher),jobId=res.json().data.result.jobId;
+    const pending=f.service.teacherAgent!.processJob(jobId);await new Promise<void>(resolve=>setImmediate(resolve));
+    assert.equal((await getJob(f,teacher,jobId)).attemptCount,0);f.advance(60_000);
+    release();await held;const completed=await pending;
+    assert.equal(completed!.delivery.outcome.outcome,'success');
+    if(completed!.delivery.outcome.outcome==='success')assert.equal(completed!.delivery.outcome.elapsedMs,0);
+    const job=await getJob(f,teacher,jobId);assert.equal(job.status,'succeeded');assert.equal(job.attemptCount,1);
+  }finally{release?.();await budget.close();await f.close();}
 });
 test('concurrent workers cannot claim the same round and an expired original lease is not retried',async () => {
   const g = gate(),f = await fixture([g.step]);

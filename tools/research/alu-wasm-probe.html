@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>ALU WASM research probe</title>
+<h1>ALU WASM research probe</h1><pre id="status">Starting pinned-artifact experiment…</pre>
+<script type="module">
+const view = document.querySelector('#status');
+const fixture = await (await fetch('/fixture.json')).json();
+const report = {scope:'Loopback-hosted browser experiment only; no installer, Windows, production UI or teaching acceptance',
+  userAgent:navigator.userAgent, startedAt:new Date().toISOString(), results:[]};
+const workerSource = `
+let base, fixture;
+const time = () => performance.now();
+const hash = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), x=>x.toString(16).padStart(2,'0')).join('');
+const stage = name => postMessage({kind:'stage',name});
+self.onmessage = async ({data}) => {
+  base=data.base; fixture=data.fixture;
+  try {
+    stage('load-modules'); const started=time();
+    const [ppFactory, ivlFactory, vvpFactory] = await Promise.all(['ivlpp','ivl','vvp'].map(async name => {
+      const factory=(await import(base+'/'+name+'.js')).default;
+      const bytes=new Uint8Array(await (await fetch(base+'/'+name+'.wasm')).arrayBuffer());
+      return options=>factory({...options,wasmBinary:bytes});
+    }));
+    const loadMs=time()-started, ppOut=[], diagnostics=[];
+    let dut=fixture.dut, tb=fixture.testbench
+      .replace('integer i;', 'integer i, selected;')
+      .replace('for (i = 0; i < 4096; i = i + 1)',
+        'selected = -1; if ($value$plusargs("CASE=%d", selected)) begin end\\n'+
+        '  for (i = selected < 0 ? 0 : selected; i < (selected < 0 ? 4096 : selected + 1); i = i + 1)');
+    if(data.mode==='lost-carry') dut=dut.replace('{Cout,F} =','F =');
+    if(data.mode==='unknown') dut=dut.replace("default: begin F = 4'b0000;","default: begin F = 4'bxxxx;");
+    if(data.mode==='spin' || data.mode==='zero-spin') {
+      dut='module alu; endmodule';
+      tb='module tb; reg bit_value; initial begin bit_value=0; forever '+(data.mode==='spin'?'#1 ':'')+'bit_value=~bit_value; end endmodule';
+    }
+    stage('preprocess'); let stamp=time();
+    const pp=await ppFactory({print:s=>ppOut.push(s),printErr:s=>diagnostics.push(s)});
+    pp.FS.writeFile('/design.sv',dut+'\\n'); pp.FS.writeFile('/tb.sv',tb+'\\n');
+    const ppExit=pp.callMain(['-L','/design.sv','/tb.sv']);
+    if(ppExit) throw new Error('preprocess exit '+ppExit+' '+diagnostics.join('\\n'));
+    const preprocessMs=time()-stamp;
+    stage('compile'); stamp=time();
+    const compiler=await ivlFactory({print:()=>{},printErr:s=>diagnostics.push(s)});
+    compiler.FS.writeFile('/ivl.conf',['basedir:/','module:system.vpi','generation:2012','generation:no-specify',
+      'out:/out.vvp','iwidth:32','widthcap:65536','functor:cprop','functor:nodangle','flag:DLL=vvp.tgt',''].join('\\n'));
+    compiler.FS.writeFile('/src.v',ppOut.join('\\n')+'\\n');
+    const compileExit=compiler.callMain(['-C/ivl.conf','--','/src.v']);
+    if(compileExit) throw new Error('compile exit '+compileExit+' '+diagnostics.join('\\n'));
+    const program=compiler.FS.readFile('/out.vvp');
+    const compileMs=time()-stamp;
+    async function simulate(selected) {
+      const rows=[], otherOutput=[]; const start=time();
+      const runtime=await vvpFactory({print:s=>{if(s.startsWith('ROW '))rows.push(s);else otherOutput.push(s);},printErr:s=>diagnostics.push(s)});
+      runtime.FS.writeFile('/sim.vvp',program);
+      if(data.mode==='spin'||data.mode==='zero-spin') stage('executing-spin');
+      const exit=runtime.callMain(selected===undefined?['/sim.vvp']:['/sim.vvp','+CASE='+selected]);
+      if(exit) throw new Error('simulation exit '+exit+' '+diagnostics.concat(otherOutput).join(' | '));
+      const vcd=runtime.FS.readFile('/trace.vcd',{encoding:'utf8'});
+      return {rows,vcd,ms:time()-start};
+    }
+    stage('simulate'); const first=await simulate();
+    let mismatches=0, unknown=0, complete=first.rows.length===4096;
+    const normalized=[];
+    first.rows.forEach((line,index)=>{
+      const [,number,f,c]=line.split(' '), i=Number(number);
+      complete&&=i===index;
+      const control=i>>9, a=(i>>5)&15, b=(i>>1)&15, cin=i&1;
+      const sum=a+b+cin;
+      const expected=control===4?sum&15:({0:(~a)&15,1:a&b,2:a|b,3:a^b}[control]??0);
+      const carry=control===4?sum>>4:0;
+      const x=/[xz]/.test(f+c); if(x)unknown++;
+      if(x||parseInt(f,2)!==expected||parseInt(c,2)!==carry)mismatches++;
+      normalized.push([number,f,c].join(' '));
+    });
+    const warm=[], singleInputs=[];
+    if(data.mode==='correct') for(let i=0;i<3;i++) {stage('repeat-simulation'); const result=await simulate(); warm.push(result.ms);}
+    if(data.mode==='correct') for(const [index,expected] of [[2529,'ROW 2529 0000 1'],[1204,'ROW 1204 1111 0'],[2084,'ROW 2084 0011 0']]) {
+      stage('single-input'); const result=await simulate(index);
+      singleInputs.push({inputIndex:index,rows:result.rows,ms:result.ms,matched:result.rows.length===1&&result.rows[0]===expected});
+    }
+    postMessage({kind:'done', result:{mode:data.mode,loadMs,preprocessMs,compileMs,simulationMs:first.ms,
+      repeatedSimulationMs:warm,singleInputs,complete,vectors:first.rows.length,mismatches,unknown,
+      rowsSha256:await hash(normalized.join('\\n')),vcdBytes:new TextEncoder().encode(first.vcd).length,
+      vcdHasFinalTimestamp:first.vcd.includes('#4096000'),diagnostics,totalMs:time()-started}});
+  } catch(error) {postMessage({kind:'error',message:String(error),stack:error.stack});}
+};`;
+const workerUrl=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'}));
+async function probe(mode) {
+  return await new Promise(resolve=>{
+    const worker=new Worker(workerUrl,{type:'module'}); let last='starting',timer,spinTimer;
+    const done=result=>{clearTimeout(timer);clearTimeout(spinTimer);worker.terminate();resolve(result);};
+    const reset=()=>{clearTimeout(timer);timer=setTimeout(()=>done({mode,error:'stage wall-clock timeout',stage:last,limitMs:30000}),30000);};
+    reset();
+    worker.onerror=event=>done({mode,error:event.message,stage:last});
+    worker.onmessage=({data})=>{
+      if(data.kind==='stage') {last=data.name;reset();view.textContent=mode+': '+last+'\n'+JSON.stringify(report,null,2);
+        if(last==='executing-spin') {const started=performance.now();spinTimer=setTimeout(()=>done({mode,terminatedByHost:true,observedMs:performance.now()-started}),250);}}
+      if(data.kind==='done') done(data.result);
+      if(data.kind==='error') done({mode,error:data.message,stage:last});
+    };
+    worker.postMessage({base:location.origin,fixture,mode});
+  });
+}
+try {
+  for(const mode of ['correct','lost-carry','unknown','spin','zero-spin','recovery']) {
+    const result=await probe(mode==='recovery'?'correct':mode);
+    if(mode==='recovery') result.mode='recovery';
+    report.results.push(result);
+    if(result.error) break;
+  }
+  report.finishedAt=new Date().toISOString();
+  report.passed=report.results.length===6
+    && report.results.every(result=>!result.error)
+    && report.results[0].complete && report.results[0].mismatches===0
+    && report.results[0].singleInputs.every(result=>result.matched)
+    && report.results[1].mismatches===256 && report.results[2].unknown===1536
+    && report.results[3].terminatedByHost && report.results[4].terminatedByHost
+    && report.results[5].complete && report.results[5].mismatches===0;
+  report.hasRuntimeDiagnostics=report.results.some(result=>result.diagnostics?.length>0);
+  await fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report)});
+  view.textContent=(report.passed?'PASS':'INCOMPLETE OR FAILED')+'\n'+JSON.stringify(report,null,2);
+} catch(error) {view.textContent='ERROR '+String(error);}
+finally {URL.revokeObjectURL(workerUrl);}
+</script></html>

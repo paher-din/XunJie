@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createPrivateKey, randomBytes, X509Certificate } from 'node:crypto';
+import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CliError } from './envelope.mjs';
+import { acquireLock } from './state.mjs';
 
 export function opensslAvailable() {
   try {
@@ -26,40 +28,164 @@ export function ensureCertificateAuthority(home) {
   const directory = join(home, 'ca');
   const keyFile = join(directory, 'ca-key.pem');
   const certFile = join(directory, 'ca-cert.pem');
-  if (existsSync(keyFile) && existsSync(certFile)) return { keyFile, certFile, created: false };
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const lock = acquireCaLock(directory);
+  try {
+    const pending = join(directory, '.pending');
+    const pendingKey = join(pending, 'ca-key.pem');
+    const pendingCert = join(pending, 'ca-cert.pem');
+    // Recheck only after acquiring the shared home guard. Environment locks
+    // protect different roots and cannot serialize this shared trust anchor.
+    if (existsSync(keyFile) && existsSync(certFile)) {
+      if (!validAuthority(keyFile, certFile)) invalidAuthority('CA_INVALID');
+      if (validAuthority(pendingKey, pendingCert) && readFileSync(pendingCert).equals(readFileSync(certFile))) {
+        rmSync(pending, { recursive: true, force: true });
+      }
+      return { keyFile, certFile, created: false };
+    }
+    const partial = existsSync(keyFile) || existsSync(certFile);
+    if (partial) {
+      // A killed publisher may have linked only one file. Complete it solely
+      // from its matching staged generation; never regenerate an existing root.
+      const key = existsSync(keyFile) ? keyFile : pendingKey;
+      const cert = existsSync(certFile) ? certFile : pendingCert;
+      if (!validAuthority(key, cert)) invalidAuthority('CA_INCOMPLETE');
+    } else if (!validAuthority(pendingKey, pendingCert)) {
+      requireOpenssl();
+      mkdirSync(pending, { recursive: true, mode: 0o700 });
+      openssl(['req', '-x509', '-newkey', 'rsa:2048', '-keyout', pendingKey, '-out', pendingCert,
+        '-days', '3650', '-nodes', '-subj', '/CN=XunJie Local Development CA',
+        '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign,cRLSign']);
+      chmodSync(pendingKey, 0o600);
+      if (!validAuthority(pendingKey, pendingCert)) invalidAuthority('CA_INVALID');
+    }
+    // Atomic, no-replace publication. Keep the staged pair until both links
+    // exist, so process death between links remains recoverable on Windows too.
+    if (!existsSync(keyFile)) linkSync(pendingKey, keyFile);
+    if (!existsSync(certFile)) linkSync(pendingCert, certFile);
+    rmSync(pending, { recursive: true, force: true });
+    return { keyFile, certFile, created: true };
+  } finally { lock.release(); }
+}
+
+function acquireCaLock(directory) {
+  const paths = { root: directory, lockFile: join(directory, 'initialization.lock') };
+  const deadline = Date.now() + 15000;
+  const wait = new Int32Array(new SharedArrayBuffer(4));
+  // The public synchronous API is used during startup. Briefly wait for a
+  // concurrent first up, then preserve the existing retryable LOCK_HELD result.
+  while (true) {
+    try { return acquireLock(paths); }
+    catch (error) {
+      if (error.code !== 'LOCK_HELD' || Date.now() >= deadline) throw error;
+      Atomics.wait(wait, 0, 0, 25);
+    }
+  }
+}
+
+function invalidAuthority(code) {
+  throw new CliError('certificates', code, '开发 CA 不完整、损坏或证书与密钥不匹配；已保留原有信任根。',
+    { recovery: '保留 home/ca 与永久锁守卫，恢复同一 CA 的配对材料后重试；不要删除或重新生成已受信任的根证书。' });
+}
+
+function certificatePair(keyFile, certFile) {
+  try {
+    const cert = new X509Certificate(readFileSync(certFile));
+    return cert.checkPrivateKey(createPrivateKey(readFileSync(keyFile))) ? cert : undefined;
+  } catch { return undefined; }
+}
+
+function validAuthority(keyFile, certFile) {
+  const cert = certificatePair(keyFile, certFile);
+  return cert?.ca && cert.checkIssued(cert) && cert.verify(cert.publicKey) && currentlyValid(cert);
+}
+
+function currentlyValid(cert) {
+  return Date.parse(cert.validFrom) <= Date.now() && Date.parse(cert.validTo) > Date.now();
+}
+
+function requireOpenssl() {
   if (!opensslAvailable()) {
     throw new CliError('certificates', 'OPENSSL_MISSING',
       '生成本地开发证书需要 openssl，但当前 PATH 中没有。',
       { recovery: 'macOS 自带 LibreSSL 可直接用；Windows 安装 Git for Windows 或 OpenSSL 后重试。' });
   }
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  openssl(['req', '-x509', '-newkey', 'rsa:2048', '-keyout', keyFile, '-out', certFile,
-    '-days', '3650', '-nodes', '-subj', '/CN=XunJie Local Development CA',
-    '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign,cRLSign']);
-  return { keyFile, certFile, created: true };
 }
 
 export function ensureEnvironmentCertificate(envPaths, ca) {
   const keyFile = join(envPaths.tls, 'key.pem');
   const certFile = join(envPaths.tls, 'cert.pem');
-  if (existsSync(keyFile) && existsSync(certFile)) return { keyFile, certFile, created: false };
-  mkdirSync(envPaths.tls, { recursive: true });
-  const csrFile = join(envPaths.tls, 'request.csr');
-  const extensionFile = join(envPaths.tls, 'extensions.txt');
-  writeFileSync(extensionFile, 'subjectAltName=IP:127.0.0.1,DNS:localhost\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n');
-  openssl(['req', '-newkey', 'rsa:2048', '-keyout', keyFile, '-out', csrFile, '-nodes', '-subj', '/CN=127.0.0.1']);
-  openssl(['x509', '-req', '-in', csrFile, '-CA', ca.certFile, '-CAkey', ca.keyFile,
-    '-CAcreateserial', '-days', '825', '-out', certFile, '-extfile', extensionFile]);
-  return { keyFile, certFile, created: true };
+  if (!validAuthority(ca.keyFile, ca.certFile)) invalidAuthority('CA_INVALID');
+  const authority = new X509Certificate(readFileSync(ca.certFile));
+  cleanLeafStaging(envPaths.tls);
+  if (validLeaf(keyFile, certFile, authority)) return { keyFile, certFile, created: false };
+  requireOpenssl();
+  mkdirSync(envPaths.tls, { recursive: true, mode: 0o700 });
+  // Callers hold the environment lock. Exact reserved files (also recognized
+  // by managed delete) survive process death without unregistered directories.
+  // Validate a replacement before touching the old leaf; retry cleans staging
+  // even if publication completed just before the previous process died.
+  try {
+    const stagedKey = join(envPaths.tls, 'key.pending.pem');
+    const stagedCert = join(envPaths.tls, 'cert.pending.pem');
+    const csrFile = join(envPaths.tls, 'request.csr');
+    const extensionFile = join(envPaths.tls, 'extensions.txt');
+    writeFileSync(extensionFile, 'subjectAltName=IP:127.0.0.1,DNS:localhost\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n');
+    openssl(['req', '-newkey', 'rsa:2048', '-keyout', stagedKey, '-out', csrFile, '-nodes', '-subj', '/CN=127.0.0.1']);
+    openssl(['x509', '-req', '-in', csrFile, '-CA', ca.certFile, '-CAkey', ca.keyFile,
+      '-set_serial', `0x${randomBytes(16).toString('hex')}`, '-days', '825', '-out', stagedCert, '-extfile', extensionFile]);
+    chmodSync(stagedKey, 0o600);
+    if (!validLeaf(stagedKey, stagedCert, authority)) {
+      throw new CliError('certificates', 'CERTIFICATE_FAILED', '新生成的环境证书未通过 CA、密钥或 HTTPS 用途校验。');
+    }
+    renameSync(stagedKey, keyFile);
+    renameSync(stagedCert, certFile);
+    return { keyFile, certFile, created: true };
+  } finally { cleanLeafStaging(envPaths.tls); }
+}
+
+function cleanLeafStaging(directory) {
+  function owned(file, isDirectory) {
+    let entry;
+    try { entry = lstatSync(file); }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    if (entry.isSymbolicLink() || !(isDirectory ? entry.isDirectory() : entry.isFile())
+      || (!isDirectory && entry.nlink !== 1) || (process.platform !== 'win32' && entry.uid !== process.getuid())) {
+      throw new CliError('certificates', 'CERTIFICATE_UNSAFE', 'TLS 暂存路径不是当前用户的普通单链接文件或真实目录，已保留现场。',
+        { recovery: '核对本环境 TLS 路径的类型与归属；不自动清理符号链接、外来目录或未知对象。' });
+    }
+    return true;
+  }
+  if (!owned(directory, true)) return;
+  // 096 used random directories without an ownership record. Their prefix or
+  // plausible PEM contents cannot prove provenance; never adopt or erase them.
+  for (const name of readdirSync(directory)) {
+    if (!name.startsWith('.initialize-')) continue;
+    owned(join(directory, name), true);
+    throw new CliError('certificates', 'CERTIFICATE_STAGING_UNREGISTERED', '发现旧版未登记的 TLS 暂存目录，无法证明归属，已保留现场。',
+      { recovery: '保留旧目录并核对其来源与归属；工具不会按 .initialize-* 前缀认领或删除。新生成流程使用固定受管暂存文件。' });
+  }
+  const files = ['key.pending.pem', 'cert.pending.pem', 'request.csr', 'extensions.txt']
+    .map(name => join(directory, name)).filter(file => owned(file, false));
+  // Audit all candidates before removing any file; never recurse into staging.
+  for (const file of files) rmSync(file, { force: true });
+}
+
+function validLeaf(keyFile, certFile, authority) {
+  const cert = certificatePair(keyFile, certFile);
+  return cert && !cert.ca && cert.checkIssued(authority) && cert.verify(authority.publicKey)
+    && currentlyValid(cert)
+    && cert.checkIP('127.0.0.1') && cert.checkHost('localhost', { subject: 'never' })
+    && cert.keyUsage?.includes('1.3.6.1.5.5.7.3.1');
 }
 
 export function certificateTrustHint(home) {
   const certFile = join(home, 'ca', 'ca-cert.pem');
   if (process.platform === 'darwin') {
-    return `信任开发 CA（每台机器一次）：security add-trusted-cert -d -r trustRoot -k ~/Library/Keychains/login.keychain-db "${certFile}"；不信任也可用浏览器临时继续。`;
+    return `信任本次开发 CA：security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db "${certFile}"；按系统提示确认并核对证书指纹。浏览器须正常验证 HTTPS；精确信任/撤销步骤见 tools/xj-dev/README.md。`;
   }
   if (process.platform === 'win32') {
-    return `信任开发 CA（每台机器一次）：certutil -addstore -user ROOT "${certFile}"；不信任也可用浏览器临时继续。`;
+    return `信任本次开发 CA：${certFile}；在有 LocalMachine Root 写权限的 PowerShell 中用 .NET X509Store('Root','LocalMachine') 添加并按指纹读回（可能需管理员/UAC 确认）。CurrentUser Root 在部分主机不支持写入；具体脚本与精确撤销见 tools/xj-dev/README.md。浏览器须正常验证 HTTPS。`;
   }
-  return `把开发 CA 加入系统或浏览器信任库：${certFile}；不信任也可用浏览器临时继续。`;
+  return `把本次开发 CA 加入系统或浏览器信任库并核对指纹：${certFile}；按系统要求确认权限，浏览器须正常验证 HTTPS。精确撤销见 tools/xj-dev/README.md。`;
 }

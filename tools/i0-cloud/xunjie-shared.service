@@ -9,7 +9,7 @@ Group=xunjie
 WorkingDirectory=/opt/xunjie/current
 Environment=NODE_ENV=production
 Environment=TMPDIR=/var/lib/xunjie/retained-tmp
-ExecStart=/opt/xunjie/node/bin/node /opt/xunjie/current/tools/i0-cloud/cloud-host.mjs --config /etc/xunjie/application-config.json --teaching-root /opt/xunjie/current/apps/teaching
+ExecStart=/opt/xunjie/node/bin/node --max-semi-space-size=16 /opt/xunjie/current/tools/i0-cloud/cloud-host.mjs --config /etc/xunjie/application-config.json --teaching-root /opt/xunjie/current/apps/teaching
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM
@@ -20,12 +20,12 @@ ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
 ReadWritePaths=/var/lib/xunjie
+# #133 e03 five-member 905s run: ordinary API p95 262.266ms,
+# candidate cgroup peak 329.152MiB including login; not formal idle usage.
+# Formal budget headroom; the measured candidate retains its stricter 512M max.
+CPUWeight=200
+MemoryHigh=512M
+MemoryMax=768M
 
 [Install]
 WantedBy=multi-user.target
-# Candidate resource budgets; uncomment only after measuring real five-member
-# traffic (watch `systemctl show xunjie-shared -p MemoryPeak` during a load run).
-# Observed single-user cgroup peak: ~201 MiB (2026-10-23 server assessment).
-#CPUWeight=200
-#MemoryHigh=512M
-#MemoryMax=768M

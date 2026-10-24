@@ -6,7 +6,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
-import { closeSync, constants, copyFileSync, createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, constants, copyFileSync, cpSync, createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -72,19 +72,51 @@ async function consistentDatabaseCopy(Driver, source, destination) {
   } finally {
     db.close();
   }
+  const snapshot = new Driver(destination, { fileMustExist: true });
+  try {
+    // The private snapshot has no live writer. Normalize its journal mode so
+    // verification does not introduce WAL/SHM sidecars into the archive.
+    snapshot.pragma('journal_mode = DELETE');
+    require(snapshot.pragma('integrity_check', { simple: true }) === 'ok'
+      && snapshot.pragma('foreign_key_check').length === 0, 'BACKUP_DATABASE_INTEGRITY_FAILED');
+  } finally { snapshot.close(); }
 }
 
 function walkFiles(root) {
+  require(lstatSync(root).isDirectory() && !lstatSync(root).isSymbolicLink(), 'SOURCE_DIRECTORY_REQUIRED');
   const files = [];
   const visit = directory => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) visit(path);
       else if (entry.isFile() && !entry.isSymbolicLink()) files.push(path);
+      else throw new BackupError('SOURCE_UNSAFE_OBJECT');
     }
   };
   visit(root);
   return files.sort();
+}
+
+const sqliteHeader = Buffer.from('SQLite format 3\0');
+const databaseName = file => /\.(?:sqlite|sqlite3|db)$/i.test(file);
+function isDatabase(file) {
+  const descriptor = openSync(file, constants.O_RDONLY);
+  try {
+    const header = Buffer.alloc(sqliteHeader.length);
+    return readSync(descriptor, header, 0, header.length, 0) === header.length && header.equals(sqliteHeader);
+  } finally { closeSync(descriptor); }
+}
+
+function archivePath(path) {
+  require(typeof path === 'string' && path.length > 0 && !/[\\:\x00-\x1f]/.test(path)
+    && path.split('/').every(part => part && part !== '.' && part !== '..')
+    && !['archive.tar.gz', 'backup-manifest.json'].includes(path.split('/')[0]), 'BACKUP_PATH_REQUIRED');
+  return path;
+}
+
+function namedSource(entry) {
+  require(entry && typeof entry.source === 'string' && isAbsolute(entry.source), 'BACKUP_CONFIG_REQUIRED');
+  return { source: entry.source, path: archivePath(entry.path) };
 }
 
 export async function createEncryptedBackup(options) {
@@ -97,42 +129,54 @@ export async function createEncryptedBackup(options) {
   require(typeof settings.teachingRoot === 'string' && isAbsolute(settings.teachingRoot), 'BACKUP_CONFIG_REQUIRED');
   require(Array.isArray(settings.extraFiles) && settings.extraFiles.every(file => typeof file === 'string' && isAbsolute(file)), 'BACKUP_CONFIG_REQUIRED');
   require(settings.personalModelsDirectory === '' || (typeof settings.personalModelsDirectory === 'string' && isAbsolute(settings.personalModelsDirectory)), 'BACKUP_CONFIG_REQUIRED');
+  require(settings.databases === undefined || Array.isArray(settings.databases), 'BACKUP_CONFIG_REQUIRED');
+  require(settings.directories === undefined || Array.isArray(settings.directories), 'BACKUP_CONFIG_REQUIRED');
+  require(settings.recoveryFiles === undefined || Array.isArray(settings.recoveryFiles), 'BACKUP_CONFIG_REQUIRED');
   const Driver = loadDriver(settings.teachingRoot);
-
+  const keyStat = lstatSync(keyFile);
+  require(keyStat.isFile() && !keyStat.isSymbolicLink() && keyStat.size > 0, 'BACKUP_KEY_REQUIRED');
+  const plan = [];
+  const add = (source, path, database) => {
+    const info = lstatSync(source);
+    require(info.isFile() && !info.isSymbolicLink(), 'SOURCE_FILE_REQUIRED');
+    require(info.dev !== keyStat.dev || info.ino !== keyStat.ino, 'BACKUP_KEY_MUST_STAY_OUTSIDE_ARCHIVE');
+    archivePath(path);
+    const folded = path.toLowerCase();
+    require(!plan.some(entry => entry.path.toLowerCase() === folded || entry.path.toLowerCase().startsWith(folded + '/')
+      || folded.startsWith(entry.path.toLowerCase() + '/')), 'BACKUP_PATH_COLLISION');
+    if (!database) require(!databaseName(source) && !isDatabase(source) && !/-(?:wal|shm|journal)$/.test(source), 'SQLITE_REQUIRES_BACKUP_API');
+    plan.push({ source, path, database });
+  };
+  const addDirectory = (source, path) => {
+    for (const file of walkFiles(source)) {
+      if (/-(?:wal|shm|journal)$/.test(file)) continue;
+      add(file, path + '/' + relative(source, file).split('\\').join('/'), databaseName(file) || isDatabase(file));
+    }
+  };
+  add(settings.courseDatabaseFile, 'course/synthetic.sqlite', true);
+  if (settings.personalModelsDirectory) addDirectory(settings.personalModelsDirectory, 'personal-models');
+  for (const item of settings.databases ?? []) { const entry = namedSource(item); add(entry.source, entry.path, true); }
+  for (const item of settings.directories ?? []) { const entry = namedSource(item); addDirectory(entry.source, entry.path); }
+  for (const file of settings.extraFiles) add(file, 'extra/' + file.split('/').pop(), false);
+  for (const item of settings.recoveryFiles ?? []) { const entry = namedSource(item); add(entry.source, entry.path, false); }
   const staging = mkdtempSync(join(tmpdir(), 'xunjie-backup-'));
   const contents = [];
   try {
-    mkdirSync(join(staging, 'course'), { recursive: true });
-    const courseCopy = join(staging, 'course', 'synthetic.sqlite');
-    await consistentDatabaseCopy(Driver, settings.courseDatabaseFile, courseCopy);
-    contents.push({ path: 'course/synthetic.sqlite', sha256: sha256File(courseCopy), source: settings.courseDatabaseFile });
-
-    if (settings.personalModelsDirectory) {
-      const root = settings.personalModelsDirectory;
-      require(existsSync(root) && lstatSync(root).isDirectory(), 'PERSONAL_MODELS_DIRECTORY_REQUIRED');
-      for (const file of walkFiles(root)) {
-        const relativePath = relative(root, file).split('\\').join('/');
-        const target = join(staging, 'personal-models', relativePath);
-        mkdirSync(dirname(target), { recursive: true });
-        if (file.endsWith('.sqlite')) await consistentDatabaseCopy(Driver, file, target);
-        else copyFileSync(file, target);
-        contents.push({ path: 'personal-models/' + relativePath, sha256: sha256File(target), source: file });
-      }
+    for (const entry of plan) {
+      const target = join(staging, entry.path);
+      mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
+      const startedAt = new Date().toISOString();
+      if (entry.database) await consistentDatabaseCopy(Driver, entry.source, target);
+      else copyFileSync(entry.source, target);
+      contents.push({ path: entry.path, sha256: sha256File(target), source: entry.source,
+        method: entry.database ? 'sqlite-backup' : 'file-copy', startedAt, completedAt: new Date().toISOString() });
     }
-    const names = new Set();
-    mkdirSync(join(staging, 'extra'), { recursive: true });
-    for (const file of settings.extraFiles) {
-      const name = file.split('/').pop();
-      require(!names.has(name), 'EXTRA_FILE_NAME_COLLISION');
-      names.add(name);
-      copyFileSync(file, join(staging, 'extra', name));
-      contents.push({ path: 'extra/' + name, sha256: sha256File(join(staging, 'extra', name)), source: file });
-    }
-    const manifest = { format: 'xunjie-encrypted-backup', version: 1, label, createdAt: new Date().toISOString(), files: contents };
+    const manifest = { format: 'xunjie-encrypted-backup', version: 2, label, createdAt: new Date().toISOString(),
+      consistency: 'per-database; not a cross-storage atomic snapshot', files: contents };
     writeFileSync(join(staging, 'backup-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
     const plain = join(staging, 'archive.tar.gz');
-    if (spawnSync('tar', ['-czf', plain, '-C', staging, 'course', ...(settings.personalModelsDirectory ? ['personal-models'] : []), 'extra', 'backup-manifest.json'],
+    if (spawnSync('tar', ['-czf', plain, '-C', staging, ...new Set(contents.map(entry => entry.path.split('/')[0])), 'backup-manifest.json'],
       { stdio: ['ignore', 'ignore', 'pipe'] }).status !== 0) throw new BackupError('TARBALL_FAILED');
 
     mkdirSync(settings.outputDirectory, { recursive: true, mode: 0o700 });
@@ -196,32 +240,35 @@ export async function restoreEncryptedBackup(options) {
       mkdirSync(extracted);
       require(spawnSync('tar', ['-xzf', plain, '-C', extracted]).status === 0, 'ARCHIVE_CORRUPT');
       const manifest = readJson(join(extracted, 'backup-manifest.json'));
-      require(manifest.format === 'xunjie-encrypted-backup' && Array.isArray(manifest.files), 'ARCHIVE_MANIFEST_REQUIRED');
+      require(manifest.format === 'xunjie-encrypted-backup' && [1, 2].includes(manifest.version)
+        && Array.isArray(manifest.files), 'ARCHIVE_MANIFEST_REQUIRED');
+      const expectedFiles = new Set(['backup-manifest.json']);
       for (const entry of manifest.files) {
+        archivePath(entry.path);
+        require(!expectedFiles.has(entry.path), 'ARCHIVE_MANIFEST_REQUIRED');
+        expectedFiles.add(entry.path);
         const path = join(extracted, entry.path);
-        require(existsSync(path) && sha256File(path) === entry.sha256, 'ARCHIVE_FILE_DIGEST_MISMATCH');
+        require(existsSync(path) && lstatSync(path).isFile() && !lstatSync(path).isSymbolicLink()
+          && sha256File(path) === entry.sha256, 'ARCHIVE_FILE_DIGEST_MISMATCH');
       }
-      mkdirSync(target, { recursive: true });
-      if (spawnSync('mv', [join(extracted, 'course'), join(extracted, 'personal-models'), join(extracted, 'extra'),
-        join(extracted, 'backup-manifest.json'), target].filter(source => existsSync(source))).status !== 0) {
-        throw new BackupError('RESTORE_FAILED');
-      }
+      require(walkFiles(extracted).every(file => expectedFiles.has(relative(extracted, file).split('\\').join('/'))), 'ARCHIVE_UNLISTED_FILE');
       const Driver = loadDriver(teachingRoot);
       const verified = [];
-      const personalModels = join(target, 'personal-models');
-      const candidates = ['course/synthetic.sqlite',
-        ...(existsSync(personalModels)
-          ? walkFiles(personalModels).filter(file => file.endsWith('.sqlite')).map(file => relative(target, file))
-          : [])];
-      for (const file of candidates) {
-        const database = join(target, file);
-        if (!existsSync(database)) continue;
+      for (const entry of manifest.files) {
+        const database = join(extracted, entry.path);
+        if (entry.method !== 'sqlite-backup' && !isDatabase(database)) continue;
         const db = new Driver(database, { readonly: true, fileMustExist: true });
         try {
           require(db.pragma('integrity_check', { simple: true }) === 'ok' && db.pragma('foreign_key_check').length === 0,
             'RESTORE_INTEGRITY_FAILED');
-          verified.push(file);
+          verified.push(entry.path);
         } finally { db.close(); }
+      }
+      mkdirSync(target, { recursive: true, mode: 0o700 });
+      for (const entry of readdirSync(extracted)) {
+        // A recovery target can be on another volume. These are verified,
+        // offline files; copying preserves that support without invoking mv.
+        cpSync(join(extracted, entry), join(target, entry), { recursive: true, force: false, errorOnExist: true });
       }
       return { status: 'restored', target, files: manifest.files.map(entry => entry.path), databasesVerified: verified,
         label: manifest.label, createdAt: manifest.createdAt };

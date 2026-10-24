@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { CliError } from './envelope.mjs';
 
-export const TOOL_VERSION = '0.1.0';
+export const TOOL_VERSION = '0.2.0';
 export const PINNED_NODE = 'v24.21.0';
 
 export function toolHome(env = process.env) {

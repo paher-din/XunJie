@@ -45,7 +45,7 @@ function listFiles(root, { excludeTests = false, allowCommandShims = false } = {
         if (excludeTests && ['test', 'tests', '__tests__'].includes(entry.name)) continue;
         visit(path);
       } else if (entry.isFile()) {
-        if (excludeTests && entry.name.endsWith('.test.ts')) continue;
+        if (excludeTests && /\.test\.(?:ts|mjs)$/.test(entry.name)) continue;
         files.push(path);
       } else if (entry.isSymbolicLink()) {
         const within = relative(root, path).split('\\').join('/');

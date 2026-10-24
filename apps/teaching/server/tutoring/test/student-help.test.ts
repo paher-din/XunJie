@@ -1321,6 +1321,43 @@ test("an input-limit rejection before the invoker releases only its unsent persi
   assert.equal(persisted.job().attemptCount, 1);
 });
 
+for(const boundary of ['cancelled','timed_out'] as const)test(`${boundary} without an unsent verdict conservatively retains the student call and reservation`,async t=>{
+  const expected=authorizedContext(),controller=new AbortController();
+  t.mock.timers.enable({apis:['setTimeout']});
+  let entered!:()=>void,finish!:(value:{body:ReturnType<typeof validBody>})=>void,calls=0,settled=false;
+  const started=new Promise<void>(resolve=>{entered=resolve;});
+  const upstream=new Promise<{body:ReturnType<typeof validBody>}>(resolve=>{finish=resolve;});
+  const provider:ModelProvider={async generate(){calls++;entered();await upstream;settled=true;return {body:validBody('project:activity')};}};
+  const persisted=persistedRuntime(expected,provider,()=>currentState(expected));
+  try{
+    const pending=executeAuthorizedStudentHelp(expected,{...persisted.runtime,signal:controller.signal});
+    await started;
+    if(boundary==='cancelled')controller.abort();else t.mock.timers.tick(45_001);
+    await new Promise<void>(resolve=>setImmediate(resolve));t.mock.timers.tick(251);
+    const result=await pending;
+    assert.equal(result.outcome.outcome,boundary);assert.equal(result.outcome.calls,1);
+    assert.deepEqual(result.outcome.usage,{status:'unknown'});assert.equal(persisted.job().attemptCount,1);
+    assert.equal(settled,false);assert.equal(calls,1);
+    finish({body:validBody('project:activity')});await new Promise<void>(resolve=>setImmediate(resolve));
+    assert.equal(persisted.job().attemptCount,1,'a late response is never proof that the call was unsent');
+  }finally{finish({body:validBody('project:activity')});}
+});
+
+test('an unsent student verdict whose reservation could not be released still counts the held call',async()=>{
+  const expected=authorizedContext(),controller=new AbortController();let calls=0;
+  const provider:ModelProvider={async generate(){
+    calls++;controller.abort();throw new ProviderCallNotStartedError('cancelled','Offline proof: no upstream dispatch');
+  }};
+  const persisted=persistedRuntime(expected,provider,()=>currentState(expected));
+  const result=await executeAuthorizedStudentHelp(expected,{...persisted.runtime,signal:controller.signal,
+    updateJob(jobId,update){return persisted.runtime.updateJob(jobId,current=>{
+      const next=update(current);if(next.attemptCount<current.attemptCount)throw new Error('Synthetic reservation release failure');return next;
+    });},
+  });
+  assert.equal(result.outcome.outcome,'cancelled');assert.equal(result.outcome.calls,1);
+  assert.deepEqual(result.outcome.usage,{status:'unknown'});assert.equal(persisted.job().attemptCount,1);assert.equal(calls,1);
+});
+
 function claim(
   claimId: string,
   competencyId: string,

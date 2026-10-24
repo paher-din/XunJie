@@ -93,7 +93,7 @@ after(() => {
       cwd: worktree, env: { ...process.env, XJ_DEV_HOME: home }, encoding: 'utf8', timeout: 120_000,
     });
   }
-  rmSync(home, { recursive: true, force: true });
+  rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 test('实例 A up：三进程就绪、单一 HTTPS 入口、基线播种', { timeout: 300_000 }, () => {

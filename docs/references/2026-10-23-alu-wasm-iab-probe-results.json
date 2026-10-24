@@ -1,0 +1,196 @@
+{
+  "scope": "Loopback-hosted browser experiment only; no installer, Windows, production UI or teaching acceptance",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "startedAt": "2026-10-23T09:51:39.741Z",
+  "results": [
+    {
+      "mode": "correct",
+      "loadMs": 8.900000005960464,
+      "preprocessMs": 5,
+      "compileMs": 21.099999994039536,
+      "simulationMs": 29.599999994039536,
+      "repeatedSimulationMs": [
+        16.900000005960464,
+        15.699999988079071,
+        17.200000017881393
+      ],
+      "singleInputs": [
+        {
+          "inputIndex": 2529,
+          "rows": [
+            "ROW 2529 0000 1"
+          ],
+          "ms": 2.699999988079071,
+          "matched": true
+        },
+        {
+          "inputIndex": 1204,
+          "rows": [
+            "ROW 1204 1111 0"
+          ],
+          "ms": 1.9000000059604645,
+          "matched": true
+        },
+        {
+          "inputIndex": 2084,
+          "rows": [
+            "ROW 2084 0011 0"
+          ],
+          "ms": 1.800000011920929,
+          "matched": true
+        }
+      ],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 0,
+      "unknown": 0,
+      "rowsSha256": "3860148aec303b9db2ca17fb388e7f444e2b59ece58bd438b13e293bf38253c5",
+      "vcdBytes": 189545,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [
+        "error: Failed to open 'system.vpi' because:",
+        "     : dynamic linking not enabled"
+      ],
+      "totalMs": 123.09999999403954
+    },
+    {
+      "mode": "lost-carry",
+      "loadMs": 5.4000000059604645,
+      "preprocessMs": 4.699999988079071,
+      "compileMs": 17.900000005960464,
+      "simulationMs": 27.799999982118607,
+      "repeatedSimulationMs": [],
+      "singleInputs": [],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 256,
+      "unknown": 0,
+      "rowsSha256": "f3199dca83ee0c9b2f8a781a894dcd1a5597117a4eab6d9fc6c17d7011a4be00",
+      "vcdBytes": 187913,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [
+        "error: Failed to open 'system.vpi' because:",
+        "     : dynamic linking not enabled"
+      ],
+      "totalMs": 57.69999998807907
+    },
+    {
+      "mode": "unknown",
+      "loadMs": 4.0999999940395355,
+      "preprocessMs": 4.199999988079071,
+      "compileMs": 18,
+      "simulationMs": 29.200000017881393,
+      "repeatedSimulationMs": [],
+      "singleInputs": [],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 1536,
+      "unknown": 1536,
+      "rowsSha256": "5f2effbb518ac778345fa96dc5f560c0347d3912f168bd323680676264b3c48b",
+      "vcdBytes": 204895,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [
+        "error: Failed to open 'system.vpi' because:",
+        "     : dynamic linking not enabled"
+      ],
+      "totalMs": 57.39999997615814
+    },
+    {
+      "mode": "spin",
+      "terminatedByHost": true,
+      "observedMs": 252.90000000596046
+    },
+    {
+      "mode": "zero-spin",
+      "terminatedByHost": true,
+      "observedMs": 252.5
+    },
+    {
+      "mode": "recovery",
+      "loadMs": 4.4000000059604645,
+      "preprocessMs": 4.699999988079071,
+      "compileMs": 10,
+      "simulationMs": 24.400000005960464,
+      "repeatedSimulationMs": [
+        18,
+        17.799999982118607,
+        16.600000023841858
+      ],
+      "singleInputs": [
+        {
+          "inputIndex": 2529,
+          "rows": [
+            "ROW 2529 0000 1"
+          ],
+          "ms": 2.9000000059604645,
+          "matched": true
+        },
+        {
+          "inputIndex": 1204,
+          "rows": [
+            "ROW 1204 1111 0"
+          ],
+          "ms": 1.5,
+          "matched": true
+        },
+        {
+          "inputIndex": 2084,
+          "rows": [
+            "ROW 2084 0011 0"
+          ],
+          "ms": 1.199999988079071,
+          "matched": true
+        }
+      ],
+      "complete": true,
+      "vectors": 4096,
+      "mismatches": 0,
+      "unknown": 0,
+      "rowsSha256": "3860148aec303b9db2ca17fb388e7f444e2b59ece58bd438b13e293bf38253c5",
+      "vcdBytes": 189545,
+      "vcdHasFinalTimestamp": true,
+      "diagnostics": [
+        "error: Failed to open 'system.vpi' because:",
+        "     : dynamic linking not enabled"
+      ],
+      "totalMs": 103.40000000596046
+    }
+  ],
+  "finishedAt": "2026-10-23T09:51:40.641Z",
+  "passed": true,
+  "hasRuntimeDiagnostics": true,
+  "upstream_commit": "dc391801af44ec8e99fcdc12c12a3d9a47a5758b",
+  "artifacts": [
+    {
+      "file": "ivlpp.js",
+      "bytes": 160083,
+      "sha256": "97d41e9cd11588b7bdbc952873cd71658165e6bd7938c5d39275cedb9ddad405"
+    },
+    {
+      "file": "ivlpp.wasm",
+      "bytes": 121092,
+      "sha256": "039bfd9a34d5fb527f1309a680a8361c259bd4d6d4d1e6e91020e28da39487c0"
+    },
+    {
+      "file": "ivl.js",
+      "bytes": 66100,
+      "sha256": "a2f56ba8611135d43971053605fb013550dc30d1671e9808a7f82ab02838e915"
+    },
+    {
+      "file": "ivl.wasm",
+      "bytes": 1670232,
+      "sha256": "8e909e2d9c7e7ee7a59c25694fa923eae3d60b78993b6e42cc2f53701dc42cea"
+    },
+    {
+      "file": "vvp.js",
+      "bytes": 67164,
+      "sha256": "7bb3762198fb5297726bdd0714b4bcc2ac09d99122deefba544d45c6beaebb05"
+    },
+    {
+      "file": "vvp.wasm",
+      "bytes": 909906,
+      "sha256": "c38bf14a399b66a226fecc90285f35f465eeb759bf37aee59f6aed9cb7e948bd"
+    }
+  ],
+  "fixture_sha256": "ec9caf3b91747ff04d1afc0531a111a7b267fbdb9e91d9747323dec850746dfd"
+}

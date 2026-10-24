@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { get as httpGet } from 'node:http';
 import { get as httpsGet } from 'node:https';
@@ -11,7 +11,7 @@ import { acquireLock, loadState, saveState } from './state.mjs';
 import { allocatePorts, portFree } from './ports.mjs';
 import { componentRunning, spawnComponent, stopComponent } from './processes.mjs';
 import { certificateTrustHint, ensureCertificateAuthority, ensureEnvironmentCertificate, opensslAvailable } from './certificates.mjs';
-import { BASELINE_VERSION, baselineAccounts, ensureBaseline } from './baseline.mjs';
+import { BASELINE_VERSION, baselineAccountsFor, ensureBaseline } from './baseline.mjs';
 
 const COMPONENTS = ['gateway', 'backend', 'vite'];
 
@@ -23,10 +23,10 @@ export function resolveContext(options = {}) {
   return { worktree, instance, home, id, env: environmentPaths(home, id), repo: repoPaths(worktree) };
 }
 
-function capabilitiesBlock() {
+function capabilitiesBlock({ frontend = false, api = false } = {}) {
   return {
-    frontend: { available: true, hmr: true, source: 'worktree apps/student via Vite' },
-    api: { available: true, source: 'worktree apps/teaching（源码直接运行）' },
+    frontend: { available: frontend, hmr: frontend, source: 'worktree apps/student via Vite' },
+    api: { available: api, source: 'worktree apps/teaching（源码直接运行）' },
     execution: { available: false, reason: '本地闭环未接入执行节点；运行/仿真请求返回 RUNTIME_NOT_READY' },
     models: { available: false, reason: '未配置模型凭据，个人模型调用已停用' },
   };
@@ -54,7 +54,7 @@ function dataBlock(context) {
 
 function accountsBlock(context) {
   return {
-    list: baselineAccounts.map(({ loginName, role }) => ({ loginName, role })),
+    list: baselineAccountsFor(context.env).map(({ loginName, role }) => ({ loginName, role })),
     credentials: {
       file: context.env.baselineCredentials,
       note: '密码只写在该文件（0600）中，不进入 JSON 输出与日志；首次 up 构造基线时随机生成。',
@@ -62,14 +62,16 @@ function accountsBlock(context) {
   };
 }
 
-function probe(url, tls = false) {
+function probe(url, ca) {
   return new Promise(resolvePromise => {
-    const request = (tls ? httpsGet : httpGet)(url, tls ? { rejectUnauthorized: false } : {}, response => {
+    // Ownership queries can block the event loop past a pooled socket's idle
+    // lifetime. Each readiness check must observe a fresh connection.
+    const request = (ca ? httpsGet : httpGet)(url, { agent: false, ...(ca ? { ca, rejectUnauthorized: true } : {}) }, response => {
       response.resume();
       resolvePromise({ ok: true, status: response.statusCode });
     });
     request.setTimeout(5000, () => request.destroy(new Error('probe timeout')));
-    request.on('error', () => resolvePromise({ ok: false }));
+    request.on('error', error => resolvePromise({ ok: false, code: error.code }));
   });
 }
 
@@ -124,6 +126,23 @@ async function componentStatuses(context) {
   return result;
 }
 
+async function localReadiness(context, state, statuses) {
+  let page;
+  if (state?.ports && statuses.gateway.running) {
+    const base = `https://127.0.0.1:${state.ports.gateway}`;
+    const caFile = join(context.home, 'ca/ca-cert.pem');
+    const ca = existsSync(caFile) ? readFileSync(caFile) : undefined;
+    const [pageProbe, apiProbe] = ca
+      ? await Promise.all([probe(`${base}/`, ca), probe(`${base}/health/ready`, ca)])
+      : [{ ok: false }, { ok: false }];
+    page = { url: base, serving: pageProbe.ok && pageProbe.status === 200, apiReady: apiProbe.ok && apiProbe.status === 200 };
+  }
+  return { page, capabilities: capabilitiesBlock({
+    frontend: Boolean(statuses.gateway.running && statuses.vite.running && page?.serving),
+    api: Boolean(statuses.gateway.running && statuses.backend.running && page?.apiReady),
+  }) };
+}
+
 export async function doctor(context) {
   const checks = [];
   let runtime;
@@ -162,6 +181,7 @@ export async function doctor(context) {
   });
   const state = loadState(context.env);
   const statuses = await componentStatuses(context);
+  const { capabilities } = await localReadiness(context, state, statuses);
   const running = COMPONENTS.filter(name => statuses[name].running);
   checks.push({
     name: 'environment', ok: true,
@@ -174,7 +194,7 @@ export async function doctor(context) {
     ok,
     environment: environmentBlock(context, state),
     checks,
-    capabilities: capabilitiesBlock(),
+    capabilities,
     pinnedRuntime: PINNED_NODE,
     next: ok ? ['xj-dev up --json'] : ['按 recovery 修复失败检查后重试 doctor'],
   };
@@ -206,12 +226,13 @@ async function spawnGateway(context, runtime, ports, certificate) {
   mkdirSync(context.env.root, { recursive: true });
   writeFileSync(configFile, JSON.stringify({
     port: ports.gateway, backendPort: ports.backend, vitePort: ports.vite,
+    cookieName: `__Host-xunjie-${context.id}-local`,
     keyFile: certificate.keyFile, certFile: certificate.certFile,
   }, null, 2));
   return spawnComponent(context.env, 'gateway', runtime.path, context.repo.gatewayScript, ['--config', configFile], { envId: context.id });
 }
 
-async function portConflictError(context, component, port) {
+export async function portConflictError(context, component, port) {
   let owner = '未知进程';
   try {
     const { execFileSync } = await import('node:child_process');
@@ -225,7 +246,7 @@ async function portConflictError(context, component, port) {
     { recovery: '停止占用进程后重试；不要手动改环境端口文件。若占用者竟是本环境残留进程，先运行 xj-dev down。' });
 }
 
-export async function up(context, log) {
+export async function upLocal(context, log = () => {}) {
   const lock = acquireLock(context.env);
   const stages = [];
   const startedNow = [];
@@ -249,6 +270,15 @@ export async function up(context, log) {
         rmSync(status.record.file, { force: true });
         statuses[name] = { running: false };
       }
+    }
+    if (certificate.created && statuses.gateway.running) {
+      log('环境证书已更新，重启本环境 gateway（数据与入口保持原样）');
+      const stopped = await stopComponent(context.env, 'gateway');
+      if (['stop-failed', 'skipped-foreign'].includes(stopped.result)) {
+        throw new CliError('certificates', 'GATEWAY_RESTART_REQUIRED', '无法安全重启持有旧证书的 gateway。',
+          { recovery: '在同一工作树、instance 与模式执行 down 后 up；保留原 CA 和环境数据，不接管外来进程。' });
+      }
+      statuses.gateway = componentRunning(context.env, 'gateway');
     }
     let ports = state?.ports;
     if (!ports) {
@@ -300,9 +330,14 @@ export async function up(context, log) {
       startedNow.push('gateway');
       log(`启动 gateway（https://127.0.0.1:${ports.gateway}）`);
     }
+    const gatewayCa = readFileSync(ca.certFile);
     await waitFor('gateway', async () => {
-      const api = await probe(`https://127.0.0.1:${ports.gateway}/health/ready`, true);
-      const page = await probe(`https://127.0.0.1:${ports.gateway}/`, true);
+      const api = await probe(`https://127.0.0.1:${ports.gateway}/health/ready`, gatewayCa);
+      if (/CERT|TLS|SELF_SIGNED|UNABLE_TO_VERIFY/.test(api.code ?? '')) {
+        throw new CliError('certificates', 'GATEWAY_TLS_INVALID', '运行中的 gateway 未通过本环境 CA 的 HTTPS 校验。',
+          { recovery: '在同一工作树、instance 与模式执行 down 后 up，重新加载已修复证书；保留原 CA 和环境数据。' });
+      }
+      const page = await probe(`https://127.0.0.1:${ports.gateway}/`, gatewayCa);
       return { ok: api.ok && api.status === 200 && page.ok && page.status === 200, status: api.status };
     }, 30000, componentDiagnosis(context, 'gateway'));
     stages.push({ name: 'health:gateway', ok: true });
@@ -329,10 +364,10 @@ export async function up(context, log) {
         ...(refreshed[name].record?.pid ? { pid: refreshed[name].record.pid } : {}),
         port: ports[name],
       }])),
-      capabilities: capabilitiesBlock(),
+      capabilities: capabilitiesBlock({ frontend: refreshed.gateway.running && refreshed.vite.running, api: refreshed.gateway.running && refreshed.backend.running }),
       accounts: accountsBlock(context),
       stages,
-      next: [`浏览器打开 https://127.0.0.1:${ports.gateway}（首次需信任开发 CA 或临时继续）`, 'xj-dev status --json 查看状态'],
+      next: [`浏览器打开 https://127.0.0.1:${ports.gateway}（首次按 tools/xj-dev/README.md 完成开发 CA 系统信任与指纹核对，保持 HTTPS 校验开启）`, 'xj-dev status --json 查看状态'],
     };
   } catch (error) {
     for (const name of startedNow.reverse()) {
@@ -345,7 +380,7 @@ export async function up(context, log) {
   }
 }
 
-export async function status(context) {
+export async function statusLocal(context) {
   const state = loadState(context.env);
   const statuses = await componentStatuses(context);
   const ports = state?.ports;
@@ -357,16 +392,7 @@ export async function status(context) {
       ...(ports ? { port: ports[name] } : {}),
     };
   }
-  let page;
-  if (ports && statuses.gateway.running) {
-    const pageProbe = await probe(`https://127.0.0.1:${ports.gateway}/`, true);
-    const apiProbe = await probe(`https://127.0.0.1:${ports.gateway}/health/ready`, true);
-    page = {
-      url: `https://127.0.0.1:${ports.gateway}`,
-      serving: pageProbe.ok && pageProbe.status === 200,
-      apiReady: apiProbe.ok && apiProbe.status === 200,
-    };
-  }
+  const { page, capabilities } = await localReadiness(context, state, statuses);
   const baselineDrift = state && state.baselineVersion !== BASELINE_VERSION;
   const checks = [
     ...COMPONENTS.map(name => ({ name: `process:${name}`, ok: statuses[name].running === true })),
@@ -376,6 +402,7 @@ export async function status(context) {
     ] : []),
   ];
   return {
+    ok: capabilities.frontend.available && capabilities.api.available,
     environment: environmentBlock(context, state),
     processes,
     ...(page ? { page } : {}),
@@ -385,7 +412,7 @@ export async function status(context) {
       pinned: BASELINE_VERSION,
       ...(baselineDrift ? { note: '环境基线与代码固定版本不同；已有数据保持不变，不会自动重置' } : {}),
     },
-    capabilities: capabilitiesBlock(),
+    capabilities,
     browser: {
       profile: context.env.browserProfile,
       note: '使用该目录作为浏览器用户数据目录（如 --user-data-dir）可得到本环境独立的浏览器身份',
@@ -398,7 +425,7 @@ export async function status(context) {
   };
 }
 
-export async function down(context) {
+export async function downLocal(context) {
   const lock = acquireLock(context.env);
   try {
     const stopped = [];
@@ -415,3 +442,6 @@ export async function down(context) {
     lock.release();
   }
 }
+
+export { modeUp as up, modeStatus as status, modeDown as down, useMode, nodeCommand } from './modes.mjs';
+export { deleteEnvironment } from './env-removal.mjs';

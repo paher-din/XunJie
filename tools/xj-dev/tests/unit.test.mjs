@@ -154,19 +154,17 @@ test('lock：持有者存活时第二次获取报 LOCK_HELD，释放后可再获
   first.release();
   const second = acquireLock(paths);
   second.release();
-  assert.equal(existsSync(paths.lockFile), false);
+  assert.equal(existsSync(paths.lockFile), true, '永久锁目录保留，release 仅释放 OS 锁');
+  assert.doesNotThrow(() => second.release());
 });
 
-test('lock：持有进程已退出时接管用锁；release 不删他人锁', () => {
+test('lock：旧 JSON 锁保持原字节，退出后要求显式迁移', () => {
   const paths = environmentPaths(tempDir('lock'), 'env-stale');
   mkdirSync(paths.root, { recursive: true });
-  writeFileSync(paths.lockFile, JSON.stringify({ pid: 2 ** 22, token: 'dead', at: new Date().toISOString() }));
-  const lock = acquireLock(paths);
-  const held = JSON.parse(readFileSync(paths.lockFile, 'utf8'));
-  assert.equal(held.token, lock.token);
-  writeFileSync(paths.lockFile, JSON.stringify({ pid: process.pid, token: 'someone-else' }));
-  lock.release();
-  assert.equal(existsSync(paths.lockFile), true, '他人的锁不被 release 删除');
+  const original = JSON.stringify({ pid: 2 ** 22, token: 'dead', at: new Date().toISOString() });
+  writeFileSync(paths.lockFile, original);
+  assert.throws(() => acquireLock(paths), error => error instanceof CliError && error.code === 'LOCK_LEGACY');
+  assert.equal(readFileSync(paths.lockFile, 'utf8'), original);
 });
 
 test('processes：spawn/识别/停止自有进程，外来 pid 不动', async () => {

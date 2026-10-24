@@ -83,7 +83,7 @@ const executionNodeSchema=z.strictObject({nodeId:z.string().regex(/^[A-Za-z0-9_-
  recoveryGeneration:z.string().min(1).max(128),ssh:sshConfigurationSchema});
 export const applicationConfigSchema=z.strictObject({databaseFile:existingFile,origin:i0ConfigSchema.shape.origin,
  allowedLoginUserIds:allowedLoginUserIdsSchema.optional(),
- tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema.optional(),executionNodes:z.array(executionNodeSchema).min(1).max(16).optional(),legacyExecutionNodeId:z.string().min(1).max(64).optional(),
+ tls:i0ConfigSchema.shape.tls,signingSecretFile:existingFile,ssh:sshConfigurationSchema.optional(),executionNodes:z.array(executionNodeSchema).max(16).optional(),legacyExecutionNodeId:z.string().min(1).max(64).optional(),
  approvedHdlRuntimes:z.array(hdlRuntimeSchema).min(1),recoveryGeneration:z.string().min(1).max(128),
  staticDirectory:i0ConfigSchema.shape.staticDirectory.optional(),consumerIntervalMs:i0ConfigSchema.shape.consumerIntervalMs,
  tutoring:i0ConfigSchema.shape.tutoring,personalModels:personalModelsSchema.optional(),teacherDesign:teacherDesignSchema.optional(),review:z.strictObject({enabled:z.literal(true)}).optional()})
