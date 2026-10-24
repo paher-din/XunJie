@@ -2,17 +2,17 @@ import assert from 'node:assert/strict';
 import { before, after, test } from 'node:test';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:https';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { getCACertificates, setDefaultCACertificates } from 'node:tls';
 import { pathToFileURL } from 'node:url';
 import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../src/certificates.mjs';
-import { environmentPaths, PINNED_NODE, TOOL_VERSION } from '../src/paths.mjs';
+import { environmentId, environmentPaths, PINNED_NODE, TOOL_VERSION } from '../src/paths.mjs';
 import { ACCESS_PROTOCOL, digest as hexDigest, publicKey, verifyProof, writePrivateJson } from '../src/enrollment-protocol.mjs';
 import { joinEnrollment } from '../src/enrollment-client.mjs';
-import { encodeZip, digest, jsonBytes } from '../src/repro-archive.mjs';
+import { decodeZip, encodeZip, digest, jsonBytes } from '../src/repro-archive.mjs';
 import { LOCKFILES, LOCK_DIGEST_ALGORITHM, lockfileDigest } from '../src/repro-code.mjs';
 import { schemaFingerprint } from '../src/repro-data.mjs';
 import { inspectRepro } from '../src/repro.mjs';
@@ -44,6 +44,35 @@ function makePackage(file, { large = false, incompatible = false, title = 'trans
   entries.set('manifest.json', jsonBytes(manifest));
   entries.set('checksums.json', jsonBytes(Object.fromEntries([...entries].map(([path, bytes]) => [path, digest(bytes)]))));
   const bytes = encodeZip(entries); writeFileSync(file, bytes); return bytes;
+}
+
+function coldReceiver(root) {
+  const receiver = join(root, 'cold-receiver');
+  mkdirSync(receiver);
+  assert.equal(spawnSync('git', ['init', '--quiet', receiver]).status, 0);
+  for (const path of [...LOCKFILES, 'apps/student/package.json', 'apps/teaching/package.json', 'apps/teaching/server',
+    'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
+    mkdirSync(dirname(join(receiver, path)), { recursive: true });
+    cpSync(join(worktree, path), join(receiver, path), { recursive: true });
+  }
+  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  return receiver;
+}
+async function receiverCli(f, receiver, args) {
+  // A new process and a physical source copy prevent an installed producer's
+  // module cache or node_modules ancestry from hiding a cold receiver failure.
+  const child = spawn(process.execPath, [join(receiver, 'tools/xj-dev/xj-dev.mjs'), ...args, '--worktree', receiver], {
+    env: { ...process.env, XJ_DEV_HOME: f.context.home, NODE_EXTRA_CA_CERTS: ca.certFile }, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let stdout = ''; child.stdout.on('data', chunk => stdout += chunk); child.stderr.resume();
+  const status = await new Promise((done, reject) => { child.on('error', reject); child.on('close', done); });
+  return { status, ...JSON.parse(stdout) };
+}
+function changeManifest(f, mutate) {
+  const entries = decodeZip(f.bytes), manifest = JSON.parse(entries.get('manifest.json'));
+  mutate(manifest); entries.set('manifest.json', jsonBytes(manifest));
+  entries.set('checksums.json', jsonBytes(Object.fromEntries([...entries].filter(([path]) => path !== 'checksums.json').map(([path, bytes]) => [path, digest(bytes)]))));
+  f.bytes = encodeZip(entries); writeFileSync(f.file, f.bytes);
 }
 
 // Real TLS and OpenSSH proof at the public boundary; this deliberately is not
@@ -244,6 +273,94 @@ test('download authenticates, verifies complete SHA and compatibility, then auth
   assert.deepEqual(readFileSync(downloaded.file), f.bytes);
 });
 
+test('cold receiver downloads and reauthorizes a complete partial without business dependencies', async t => {
+  const f = await fixture(t), receiver = coldReceiver(f.root);
+  const source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const args = ['repro', 'fetch', source.reproId, '--device-file', f.deviceFile];
+  const downloaded = await receiverCli(f, receiver, args);
+  assert.equal(downloaded.ok, true, JSON.stringify(downloaded.failure));
+  assert.equal(downloaded.state, 'downloaded');
+  assert.equal(downloaded.restored, false); assert.equal(downloaded.reproduction, 'unverified');
+  assert.deepEqual(downloaded.compatibility, { format: 'supported', node: 'matched', toolVersion: 'matched',
+    lockfileDigestAlgorithm: 'supported', lockfiles: 'matched', dependencies: 'not-checked', schema: 'not-checked', runnable: 'unverified' });
+  assert.deepEqual(readFileSync(downloaded.file), f.bytes);
+  // Preserve the full, valid partial left by the old compatibility failure;
+  // recovery must authorize offset=bytes and reuse it without a second GET.
+  const partial = join(dirname(downloaded.file), 'partial.zip');
+  cpSync(downloaded.file, partial); rmSync(downloaded.file);
+  const resumed = await receiverCli(f, receiver, args);
+  assert.equal(resumed.ok, true, JSON.stringify(resumed.failure));
+  assert.deepEqual(readFileSync(resumed.file), f.bytes); assert.equal(f.gets.length, 1);
+  const cached = await receiverCli(f, receiver, args);
+  assert.equal(cached.cacheHit, true); assert.equal(f.gets.length, 1);
+  assert.deepEqual(cached.compatibility, downloaded.compatibility);
+  f.controls.revoked = true;
+  const denied = await receiverCli(f, receiver, args);
+  assert.equal(denied.failure.code, 'DEVICE_REVOKED');
+  assert.deepEqual(readFileSync(cached.file), f.bytes);
+  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  assert.equal(existsSync(join(f.context.home, 'envs')), false);
+});
+
+test('cold restore reports dependency preparation and preserves the target and existing state', async t => {
+  const f = await fixture(t), receiver = coldReceiver(f.root), target = join(f.root, 'restore-target');
+  const canary = join(receiver, 'existing-work'); writeFileSync(canary, 'keep current work');
+  const result = await receiverCli(f, receiver, ['repro', 'restore', f.file, '--target', target]);
+  assert.equal(result.status, 1); assert.equal(result.failure.stage, 'repro');
+  assert.equal(result.failure.code, 'DEPENDENCIES_NOT_READY');
+  assert.match(result.failure.recovery, /doctor/); assert.match(result.failure.recovery, /up/);
+  assert.ok(result.failure.recovery.includes(receiver));
+  assert.equal(readFileSync(canary, 'utf8'), 'keep current work');
+  assert.equal(existsSync(target), false); assert.equal(existsSync(join(f.context.home, 'envs')), false);
+  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+});
+
+test('cold downloads still reject Node, tool, lock algorithm and checkout lock mismatches', async t => {
+  for (const [code, mutate] of [
+    ['NODE_VERSION_MISMATCH', m => m.conditions.node = 'v0.0.0'],
+    ['TOOL_VERSION_MISMATCH', m => m.conditions.toolVersion = 'future'],
+    ['FORMAT_MISMATCH', m => m.conditions.lockfileDigestAlgorithm = 'future'],
+    ['LOCKFILE_MISMATCH', m => m.conditions.lockfiles[LOCKFILES[0]] = digest('different lock')],
+  ]) {
+    const f = await fixture(t), receiver = coldReceiver(f.root);
+    const source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+    // Model an already catalogued package from another tool version. The
+    // current publisher correctly refuses to create that package itself.
+    changeManifest(f, mutate);
+    const entry = f.records.get(source.reproId); entry.body = f.bytes;
+    entry.record.digest = digest(f.bytes); entry.record.bytes = f.bytes.length; entry.record.crc64 = crc64XZ(f.bytes);
+    const result = await receiverCli(f, receiver, ['repro', 'fetch', source.reproId, '--device-file', f.deviceFile]);
+    assert.equal(result.status, 1); assert.equal(result.failure.code, code);
+    const cache = join(f.context.home, 'transfers', readdirSync(join(f.context.home, 'transfers'))[0], 'cache', digest(f.bytes).slice(7));
+    assert.deepEqual(readFileSync(join(cache, 'partial.zip')), f.bytes);
+    assert.equal(existsSync(join(cache, 'ready.zip')), false);
+    assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  }
+});
+
+test('downloaded schema remains unverified and prepared restore rejects mismatch before changing target or cache', async t => {
+  const f = await fixture(t), receiver = coldReceiver(f.root), target = join(f.root, 'incompatible-target');
+  changeManifest(f, manifest => manifest.data.schema = digest('different schema'));
+  const source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
+  const args = [source.reproId, '--device-file', f.deviceFile];
+  const downloaded = await receiverCli(f, receiver, ['repro', 'fetch', ...args]);
+  assert.equal(downloaded.ok, true, JSON.stringify(downloaded.failure));
+  assert.equal(downloaded.compatibility.schema, 'not-checked');
+  const pointer = join(dirname(dirname(downloaded.file)), source.reproId + '.json'), before = readFileSync(pointer);
+  const canary = join(receiver, 'original-state'); writeFileSync(canary, 'retain original state');
+  const missing = await receiverCli(f, receiver, ['repro', 'restore', ...args, '--target', target]);
+  assert.equal(missing.failure.code, 'DEPENDENCIES_NOT_READY');
+  symlinkSync(join(worktree, 'apps/teaching/node_modules'), join(receiver, 'apps/teaching/node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  const prepared = await receiverCli(f, receiver, ['repro', 'restore', ...args, '--target', target]);
+  assert.equal(prepared.failure.code, 'SCHEMA_MISMATCH');
+  assert.equal(existsSync(target), false); assert.equal(existsSync(join(f.context.home, 'envs')), false);
+  assert.equal(readFileSync(canary, 'utf8'), 'retain original state');
+  assert.deepEqual(readFileSync(pointer), before); assert.deepEqual(readFileSync(downloaded.file), f.bytes);
+  assert.equal(f.gets.length, 1);
+  const guard = join(f.root, `.xj-repro-restore-${environmentId(target.normalize('NFC').toLowerCase())}.lock`);
+  assert.ok(lstatSync(join(guard, 'mutex.sqlite')).isFile(), 'restore keeps its permanent mutex after rejection');
+});
+
 test('an interrupted download resumes with Range and If-Match from the bytes actually received', async t => {
   const f = await fixture(t), source = await publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest(f.bytes) });
   f.controls.interruptGET = true;
@@ -339,8 +456,8 @@ test('wrong digest, malformed ZIP and incompatible manifest fail without being p
   await assert.rejects(() => publishFrozen(f.context, { deviceFile: f.deviceFile, file: f.file, expectedDigest: digest('oversize') }), { code: 'PACKAGE_LIMIT' });
   assert.equal(f.calls.length, 0);
   const g = await fixture(t), result = await publishFrozen(g.context, { deviceFile: g.deviceFile, file: g.file, expectedDigest: digest(g.bytes) });
-  // An old package can legitimately be catalogued; receiving it must still
-  // compare against this machine's actual dependency/schema/tool conditions.
+  // An old package can legitimately be catalogued; downloading must still
+  // compare the checkout's static conditions. Schema is checked on restore.
   const oldBytes = makePackage(join(g.root, 'old.zip'), { incompatible: true });
   const entry = g.records.get(result.reproId); entry.body = oldBytes;
   entry.record.digest = digest(oldBytes); entry.record.bytes = oldBytes.length; entry.record.crc64 = crc64XZ(oldBytes);

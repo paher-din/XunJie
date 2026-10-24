@@ -24,10 +24,25 @@ export function databaseDriver(teachingDir) {
   return createRequire(join(teachingDir, 'package.json'))('better-sqlite3');
 }
 export async function schemaFingerprint(teachingDir, scratch) {
+  // Test the locally installed native dependency before importing application
+  // code. A cold receiver needs a public preparation action, not a raw loader
+  // error (or a transfer-state error after sanitization).
+  let Driver;
+  try {
+    Driver = databaseDriver(teachingDir);
+    const probe = new Driver(':memory:'); probe.close();
+  } catch (error) {
+    if (!['MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND', 'ERR_DLOPEN_FAILED'].includes(error.code)
+      && !error.message?.startsWith('Could not locate the bindings file.')) throw error;
+    const failure = reproError('DEPENDENCIES_NOT_READY', '当前可信工作树的业务数据库依赖缺失或无法加载；尚未检查 schema，未恢复目标。');
+    const worktree = dirname(dirname(teachingDir)), cli = join(worktree, 'tools/xj-dev/xj-dev.mjs');
+    failure.recovery = `在当前可信工作树先运行 node "${cli}" doctor --worktree "${worktree}"，再显式运行 node "${cli}" up --worktree "${worktree}" 自动准备依赖与本地环境；成功后重试 restore。不要从复现包执行安装或脚本。`;
+    throw failure;
+  }
   const { createApplicationDatabase } = await import(pathToFileURL(join(teachingDir, 'server/db/transaction.ts')).href);
   const file = join(scratch, 'schema.sqlite');
   const handle = createApplicationDatabase(file, 'digital-logic-review-application'); handle.close();
-  const Driver = databaseDriver(teachingDir), db = new Driver(file);
+  const db = new Driver(file);
   try { return fingerprint(db); } finally { db.close(); }
 }
 function fingerprint(db) {
