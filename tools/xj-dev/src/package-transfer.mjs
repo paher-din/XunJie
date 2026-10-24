@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { closeSync, existsSync, lstatSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, openSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeSync } from 'node:fs';
 import { request } from 'node:https';
 import { join } from 'node:path';
 import { authenticatedRequest, loadDevice, readRegistration } from './enrollment-client.mjs';
 import { assertPrivateFile, digest as hexDigest, ensurePrivateDirectory, privateJson, writePrivateFile, writePrivateJson } from './enrollment-protocol.mjs';
 import { CliError } from './envelope.mjs';
-import { inspectRepro, checkReproCompatibility } from './repro.mjs';
+import { inspectRepro, checkReproConditions } from './repro.mjs';
 import { ARCHIVE_LIMITS, digest, REPRO_FORMAT } from './repro-archive.mjs';
 import { TOOL_VERSION } from './paths.mjs';
 import { acquireLock } from './state.mjs';
@@ -263,20 +263,18 @@ function inspectedContent(file, current) {
   return checked;
 }
 const invalidCacheContent = error => error instanceof CliError && ['repro', 'transfer'].includes(error.stage);
-async function usable(context, file, current, root) {
+function validateDownload(context, file, current) {
   let checked;
   try { checked = inspectedContent(file, current); }
   catch (error) {
     if (invalidCacheContent(error)) error.recovery = `下载缓存校验失败，保留上传冻结包；显式执行 xj-dev repro cache-delete ${current.reproId}，再用 repro fetch ${current.reproId} 重新授权下载。`;
     throw error;
   }
-  const scratch = mkdtempSync(join(root, 'compatibility-'));
-  try { await checkReproCompatibility(context, checked.package.manifest, scratch); }
-  finally { rmSync(scratch, { recursive: true, force: true, maxRetries: 3 }); }
+  return checkReproConditions(context, checked.package.manifest);
 }
-function downloaded(file, current, cacheHit) {
+function downloaded(file, current, cacheHit, compatibility) {
   return { state: 'downloaded', reproId: current.reproId, digest: current.digest, bytes: current.bytes,
-    file, cacheHit, inspected: true, record: current, restored: false, reproduction: 'unverified' };
+    file, cacheHit, inspected: true, record: current, compatibility, restored: false, reproduction: 'unverified' };
 }
 
 export async function fetchRepro(context, { deviceFile, reproId: id } = {}) {
@@ -315,9 +313,9 @@ export async function fetchRepro(context, { deviceFile, reproId: id } = {}) {
       const root = ensurePrivateDirectory(join(cache, current.digest.slice(7)));
       const ready = join(root, 'ready.zip'), partial = join(root, 'partial.zip');
       if (existsSync(ready)) {
-        await usable(context, ready, current, root);
+        const compatibility = validateDownload(context, ready, current);
         writePrivateJson(pointer, { schema: SCHEMA, record: current, etag: resolved.etag });
-        return downloaded(ready, current, true);
+        return downloaded(ready, current, true, compatibility);
       }
       if (previous && offset && previous.etag !== resolved.etag) {
         if (existsSync(partial)) { assertPrivateFile(partial, PRIVATE_ZIP); rmSync(partial); }
@@ -352,9 +350,9 @@ export async function fetchRepro(context, { deviceFile, reproId: id } = {}) {
           continue;
         } finally { closeSync(fd); if (reset && existsSync(partial)) rmSync(partial); }
       } else need(resolved.authorization === null, 'TRANSFER_RESPONSE_INVALID');
-      await usable(context, partial, current, root);
+      const compatibility = validateDownload(context, partial, current);
       renameSync(partial, ready);
-      return downloaded(ready, current, false);
+      return downloaded(ready, current, false, compatibility);
     }
     throw fail('OBJECT_PRECONDITION_FAILED');
   }));

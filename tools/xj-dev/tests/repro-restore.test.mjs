@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, parse, resolve } from 'node:path';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, parse, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -78,8 +78,9 @@ after(() => {
   rmSync(root, { recursive: true, force: true, maxRetries: 3 });
 });
 
-function launchCli(home, args, controls = {}) {
-  const child = spawn(process.execPath, ['--import', pathToFileURL(preload).href, cli, ...args, '--worktree', worktree],
+function launchCli(home, args, controls = {}, receiver = worktree) {
+  const receiverCli = receiver === worktree ? cli : join(receiver, 'tools/xj-dev/xj-dev.mjs');
+  const child = spawn(process.execPath, ['--import', pathToFileURL(preload).href, receiverCli, ...args, '--worktree', receiver],
     { env: { ...process.env, XJ_DEV_HOME: home, ...controls }, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '', stderr = '';
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
@@ -96,6 +97,33 @@ function launchCli(home, args, controls = {}) {
 function launch(home, target, controls = {}) {
   return launchCli(home, ['repro', 'restore', file, '--target', target], controls);
 }
+
+test('a real captured scene restores from a cold checkout only after explicit dependency preparation', async t => {
+  const receiver = join(root, 'cold-source'), target = join(root, 'cold-restored'), home = join(root, 'cold-home');
+  mkdirSync(receiver); git(receiver, ['init', '-q']);
+  for (const path of [...codePaths, 'apps/teaching', 'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
+    mkdirSync(dirname(join(receiver, path)), { recursive: true });
+    cpSync(join(worktree, path), join(receiver, path), { recursive: true,
+      filter: source => !['node_modules', 'dist', 'coverage', 'evidence'].includes(basename(source)) });
+  }
+  t.after(() => { if (existsSync(target)) git(receiver, ['worktree', 'remove', '--force', target]); });
+  const args = ['repro', 'restore', file, '--target', target], original = readFileSync(join(receiver, 'README.md'));
+  const missing = await launchCli(home, args, {}, receiver).result;
+  assert.equal(missing.envelope.failure.code, 'DEPENDENCIES_NOT_READY');
+  assert.equal(existsSync(target), false);
+  assert.equal(existsSync(environmentPaths(home, environmentId(target)).root), false);
+  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  // Reuse the test host's installed native dependency to model the explicit
+  // preparation boundary. Restore itself must never install or start services.
+  symlinkSync(join(worktree, 'apps/teaching/node_modules'), join(receiver, 'apps/teaching/node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  const prepared = await launchCli(home, args, {}, receiver).result;
+  assert.equal(prepared.status, 0, JSON.stringify(prepared.envelope.failure));
+  assert.equal(prepared.envelope.verification.restored, true);
+  assert.equal(prepared.envelope.verification.reproduction, 'unverified');
+  assert.ok(existsSync(environmentPaths(home, environmentId(target)).database));
+  assert.equal(existsSync(join(target, 'apps/teaching/node_modules')), false);
+  assert.deepEqual(readFileSync(join(receiver, 'README.md')), original);
+});
 async function ready(file) {
   const deadline = Date.now() + 30000;
   while (!existsSync(file)) { assert.ok(Date.now() < deadline, 'delayed restore reached git worktree add'); await delay(20); }

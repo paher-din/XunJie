@@ -151,7 +151,9 @@ export async function captureRepro(context, { contextFile, out }) {
   } finally { rmSync(scratch, { recursive: true, force: true, maxRetries: 3 }); lock.release(); }
 }
 
-export async function checkReproCompatibility(context, manifest, scratch) {
+// Download checks only conditions readable from the approved checkout. Native
+// dependencies and schema are checked separately before any restore target is created.
+export function checkReproConditions(context, manifest) {
   if (manifest.conditions.node !== process.version || manifest.conditions.node !== PINNED_NODE) throw reproError('NODE_VERSION_MISMATCH', '复现需要清单声明的精确 Node 运行时。');
   if (manifest.conditions.toolVersion !== TOOL_VERSION) throw reproError('TOOL_VERSION_MISMATCH', '复现包需要不同工具版本。');
   if (manifest.conditions.lockfileDigestAlgorithm !== LOCK_DIGEST_ALGORITHM) throw reproError('FORMAT_MISMATCH', '依赖条件摘要算法不受支持。');
@@ -159,6 +161,12 @@ export async function checkReproCompatibility(context, manifest, scratch) {
     if (!existsSync(join(context.worktree, path))) throw reproError('RESOURCE_MISSING', `接收端缺少 ${path}。`);
     if (lockfileDigest(readFileSync(join(context.worktree, path))) !== manifest.conditions.lockfiles[path]) throw reproError('LOCKFILE_MISMATCH', `接收端 ${path} 不匹配；请使用相应代码/依赖条件。`);
   }
+  return { format: 'supported', node: 'matched', toolVersion: 'matched', lockfileDigestAlgorithm: 'supported',
+    lockfiles: 'matched', dependencies: 'not-checked', schema: 'not-checked', runnable: 'unverified' };
+}
+
+export async function checkReproCompatibility(context, manifest, scratch) {
+  checkReproConditions(context, manifest);
   if (await schemaFingerprint(context.repo.teaching, scratch) !== manifest.data.schema) throw reproError('SCHEMA_MISMATCH', '接收端 schema 与包不符，不执行迁移。');
 }
 
