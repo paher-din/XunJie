@@ -1,0 +1,690 @@
+{
+  "date": "2026-10-27",
+  "runtime": "v24.18.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "piCoreVersion": "1.4.0",
+  "providerCalls": 0,
+  "productionCode": false,
+  "cases": 69,
+  "results": [
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "normal",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "partial",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_interrupted",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "save_failure",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "failed",
+      "error": "fixture persistence failure"
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "before_complete",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_outcome_unknown",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "after_complete",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "after_accept",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "wait",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "cancel_wait",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "cancelled",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "budget",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "budget_exhausted",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "revoked",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "chat",
+      "scenario": "changed_object",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "normal",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "partial",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_interrupted",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "save_failure",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "failed",
+      "error": "fixture persistence failure"
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "before_complete",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_outcome_unknown",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "after_complete",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "after_accept",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "wait",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "cancel_wait",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "cancelled",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "budget",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "budget_exhausted",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "revoked",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "responses",
+      "scenario": "changed_object",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "normal",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "partial",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_interrupted",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "save_failure",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "failed",
+      "error": "fixture persistence failure"
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "before_complete",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_outcome_unknown",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "after_complete",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "after_accept",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "wait",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "cancel_wait",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "cancelled",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "budget",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "budget_exhausted",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "revoked",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "self",
+      "protocol": "messages",
+      "scenario": "changed_object",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "normal",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "partial",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_interrupted",
+      "error": "fixture missing successful terminal"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "save_failure",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "failed",
+      "error": "fixture persistence failure"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "before_complete",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_outcome_unknown",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "after_complete",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "after_accept",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "wait",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "cancel_wait",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "cancelled",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "budget",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "budget_exhausted",
+      "error": "fixture budget exhausted"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "revoked",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "chat",
+      "scenario": "changed_object",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "normal",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "partial",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_interrupted",
+      "error": "fixture missing successful terminal"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "save_failure",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "failed",
+      "error": "fixture persistence failure"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "before_complete",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_outcome_unknown",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "after_complete",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "after_accept",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "wait",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "cancel_wait",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "cancelled",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "budget",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "budget_exhausted",
+      "error": "fixture budget exhausted"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "revoked",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "responses",
+      "scenario": "changed_object",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "normal",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "partial",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_interrupted",
+      "error": "fixture missing successful terminal"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "save_failure",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "failed",
+      "error": "fixture persistence failure"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "before_complete",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 0,
+      "status": "model_outcome_unknown",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "after_complete",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "after_accept",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "wait",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 1,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "cancel_wait",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "cancelled",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "budget",
+      "passed": true,
+      "modelAttempts": 1,
+      "effects": 1,
+      "status": "budget_exhausted",
+      "error": "fixture budget exhausted"
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "revoked",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "mode": "pi-core",
+      "protocol": "messages",
+      "scenario": "changed_object",
+      "passed": true,
+      "modelAttempts": 2,
+      "effects": 0,
+      "status": "completed",
+      "error": null
+    },
+    {
+      "scenario": "bare-core-assistant-resume",
+      "expectedLimitation": true,
+      "observed": "Cannot continue from message role: assistant",
+      "modelAttempts": 0
+    },
+    {
+      "scenario": "async-persistence-barrier",
+      "passed": true,
+      "toolsBeforeRelease": 0,
+      "toolsAfterRelease": 1
+    },
+    {
+      "scenario": "per-agent-cancellation",
+      "passed": true,
+      "cancelled": "aborted",
+      "independent": "stop"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "recordedAt": "2026-10-27T07:46:25.895Z",
+  "runtime": {
+    "node": "v24.18.0",
+    "executable": "/opt/homebrew/Cellar/node@24/24.18.0/bin/node",
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "27.0.0",
+    "macOS": "27.0.1",
+    "npm": "11.16.0",
+    "targetNode": "24.21.0",
+    "targetRuntimeAcceptance": false
+  },
+  "source": {
+    "repository": "https://github.com/deepseek-ai/deepseek-harness",
+    "commit": "22ddee3792402c3e70ec5f86a63c3e3e895a2f60",
+    "version": "0.2.1-rc.3",
+    "archiveSHA256": "aac1a309de68ada068d9658ac173caabcfb3ed21e638bdf192f0abe37bb14d0b",
+    "sourceDir": "/tmp/xunjie-harness-probe.oIcWQf",
+    "businessSourceModified": false
+  },
+  "packageInstallAttempt": {
+    "exitCode": 1,
+    "command": "npm install --ignore-scripts --no-audit --no-fund --save-exact @deepseek-ai/cordis@4.0.5 @deepseek-ai/dsh-agent-loop@0.2.1-rc.3 @deepseek-ai/dsh-session-checkpoint-policy@0.2.1-rc.3 @deepseek-ai/dsh-session-persistence-jsonl@0.2.1-rc.3 @deepseek-ai/dsh-tool-executor-native@0.2.1-rc.3",
+    "stderr": [
+      "npm error code E404",
+      "npm error 404 Not Found - GET https://registry.npmjs.org/@deepseek-ai%2fdsh-tool-executor-native - Not found",
+      "npm error 404 The requested resource @deepseek-ai/dsh-tool-executor-native@0.2.1-rc.3 could not be found or you do not have permission to access it."
+    ],
+    "agentLoopRegistryVersion": "0.2.1-rc.3",
+    "agentLoopIntegrity": "sha512-H9fuiuaBv/IBvw2Ja3G+EZmUC+nwvOEXUH2BJtQNVs4bSEtb2L+f/eqFsX2pWXGFR6ptUQBteJzGLFzEQJgFSg=="
+  },
+  "dependencies": {
+    "@deepseek-ai/node-addon-system": "0.1.2",
+    "@js-temporal/polyfill": "0.5.1",
+    "esbuild": "0.25.12",
+    "p-limit": "7.3.3",
+    "zod": "4.4.3"
+  },
+  "installationScripts": false,
+  "realModelCalls": 0,
+  "codingToolsRegistered": [],
+  "retained": [
+    "probe.mjs",
+    "build.mjs",
+    "results.json",
+    "run.log",
+    "build.log",
+    "build-inputs.json",
+    "consumer-package.json",
+    "consumer-package-lock.json",
+    "environment.json",
+    "report.md"
+  ],
+  "validation": {
+    "scenarios": 17,
+    "expectedContractGaps": 1,
+    "cancellationCases": 2,
+    "hardCrashRecoveries": 6,
+    "uniqueBuildInputs": 152,
+    "fixedUpstreamSourceInputs": 150,
+    "probeAndFixtureInputs": 2,
+    "localReportLinksChecked": 14,
+    "upstreamReferencePathsChecked": 13,
+    "syntaxChecks": [
+      "build.mjs",
+      "probe.mjs"
+    ],
+    "finalProbeExitCode": 0
+  },
+  "completedAt": "2026-10-27T07:49:06.826Z",
+  "cleanup": {
+    "sourceAndDependencies": "removed after realpath, package identity and source archive hash verification",
+    "runtimeData": "mkdtemp(tmpdir()/xunjie-harness-data-*), removed in probe finally",
+    "npmUserCache": "normal package-manager cache retained; no application dependencies installed"
+  }
+}

@@ -8,7 +8,8 @@
 | 切换本地、云端 API、云端页面 | [模式切换](../../../docs/development-tooling.md#切换本地与云端)：调用 use，核对代码来源、版本、数据目标与能力；失败保留原模式。`not-exposed` 代表版本未验证 |
 | 手动登录/查看测试账号 | 只读下节[手动登录与查看测试账号](#手动登录与查看测试账号)，按当前模式取得实际私有文件路径，供本人查看；无需重跑首引导或 GitHub 授权 |
 | 更新数据起点、查询团队固定基线 | [数据基线](../../../docs/development-tooling.md#获取与更新数据基线)：明确固定版本后采用；首次未初始化的当前工作树可用 `--here` 只导入数据，已有环境保留并另建隔离副本，按返回路径继续。不自行挑选或发布团队基线 |
-| 打包、检查或恢复问题 | [复现包](../../../tools/xj-dev/README.md#复现包与基线)：先确认触发前/事后现场及课程/成员/任务范围；将必要 dirty/untracked 文件显式选入 `code.paths`。capture/inspect/restore 后，审阅新工作树并显式 up 才执行 verify |
+| 打包、检查或恢复业务状态问题 | [复现包](../../../tools/xj-dev/README.md#复现包与基线)：先确认触发前/事后现场及课程/成员/任务范围；将必要 dirty/untracked 文件显式选入 `code.paths`。capture/inspect/restore 后，审阅新工作树并显式 up 才执行 verify |
+| 分享 Agent 调用/评估结果、接收调试包或比较修复前后 | [Agent 调试包交接](agent-debugging.md)：核对包类型支持，选定 Run/case、冻结报告与导出、按编号移交；阅读、平台导入与重新运行分别验证 |
 | 分享编号、续传、按编号下载或清缓存 | [团队复现编号与直传](../../../tools/xj-dev/README.md#团队复现编号与直传)：先冻结 ZIP，再 share；失败保留原 ZIP 与 transfer ID 并 resume。fetch 只校验下载，verify 才记录实际复现；文件权限与 page/node 分开 |
 | 已有身份失效、权限更新或补齐接入 | 只读[GitHub 接入与身份续用](onboarding.md#github-接入与身份续用)：已有本人登记优先 refresh；首次登记走 login，待批准只需告知维护者 GitHub 用户名。保留同一 home/key，只续缺项，不重讲首引导 |
 | 维护者批准 GitHub、管理邀请、撤销或备份 | 仅明确的维护者任务读[维护者入口](../../../docs/development-access-operations.md#维护者入口)。GitHub 名单 owner 命令契约为 `access github-approve` / `access github-list` / `access github-deny`，参数和可用性以实时帮助与服务响应为准。服务现状与备份恢复读[当前交接入口](../../../docs/references/2026-10-24-team-development-handoff.md#负责人备份与恢复)，旧基线退役读[团队目录维护](../../../tools/xj-dev/README.md#团队复现编号与直传)。按本次管理授权操作；管理凭据只留在维护者设备 |

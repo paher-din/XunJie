@@ -1,0 +1,227 @@
+{
+  "node": "v24.18.0",
+  "packages": {
+    "pi-durable": "1.4.0",
+    "pi-ai": "1.4.0",
+    "chord": "1.4.0",
+    "typebox": "1.3.27"
+  },
+  "scenarios": {
+    "normal-chat": {
+      "first": {
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      "second": null,
+      "events": [
+        "model:1",
+        "native_saved",
+        "beforeTool",
+        "execute",
+        "effect",
+        "model:2"
+      ],
+      "settlement": "done",
+      "reason": null,
+      "toolResult": "observation complete",
+      "checks": {
+        "raw": true,
+        "saveBeforeExecute": true,
+        "done": true
+      }
+    },
+    "normal-responses": {
+      "first": {
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      "second": null,
+      "events": [
+        "model:1",
+        "native_saved",
+        "beforeTool",
+        "execute",
+        "effect",
+        "model:2"
+      ],
+      "settlement": "done",
+      "reason": null,
+      "toolResult": "observation complete",
+      "checks": {
+        "raw": true,
+        "saveBeforeExecute": true,
+        "done": true
+      }
+    },
+    "normal-messages": {
+      "first": {
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      "second": null,
+      "events": [
+        "model:1",
+        "native_saved",
+        "beforeTool",
+        "execute",
+        "effect",
+        "model:2"
+      ],
+      "settlement": "done",
+      "reason": null,
+      "toolResult": "observation complete",
+      "checks": {
+        "raw": true,
+        "saveBeforeExecute": true,
+        "done": true
+      }
+    },
+    "failure-chat": {
+      "first": {
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      "second": null,
+      "events": [
+        "model:1"
+      ],
+      "settlement": "unanswered",
+      "reason": "model_error",
+      "toolResult": null,
+      "checks": {
+        "noExecution": true
+      }
+    },
+    "unsafe-responses": {
+      "first": {
+        "status": null,
+        "signal": "SIGKILL",
+        "stderr": ""
+      },
+      "second": {
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      "events": [
+        "model:1",
+        "native_saved",
+        "beforeTool",
+        "execute",
+        "effect",
+        "crash",
+        "model:2"
+      ],
+      "settlement": "done",
+      "reason": null,
+      "toolResult": "<harness>\n[error] Tool course_observe was interrupted and may have partially run\n</harness>",
+      "checks": {
+        "crashed": true,
+        "noReplay": true,
+        "hostQueriesOriginalReceipt": true,
+        "interrupted": true,
+        "noRepeatFirstModel": true,
+        "rawAfterRestart": true
+      }
+    },
+    "safe-messages": {
+      "first": {
+        "status": null,
+        "signal": "SIGKILL",
+        "stderr": ""
+      },
+      "second": {
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      "events": [
+        "model:1",
+        "native_saved",
+        "beforeTool",
+        "execute",
+        "effect",
+        "crash",
+        "execute",
+        "execution_auth_denied",
+        "model:2"
+      ],
+      "settlement": "done",
+      "reason": null,
+      "toolResult": "authorization revoked",
+      "checks": {
+        "crashed": true,
+        "replayed": true,
+        "hookSkipped": true,
+        "executionDenied": true,
+        "oneEffect": true
+      }
+    },
+    "budget-chat": {
+      "first": {
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      "second": null,
+      "events": [
+        "model:1",
+        "native_saved",
+        "beforeTool",
+        "execute",
+        "effect",
+        "model:2"
+      ],
+      "settlement": "unanswered",
+      "reason": "model_error",
+      "toolResult": null,
+      "checks": {
+        "hostDeniedSecond": true
+      }
+    }
+  },
+  "wait": {
+    "resume": {
+      "createPid": 50112,
+      "resumePid": 50113,
+      "checkpoint": {
+        "status": "sleeping",
+        "checkpoint": {
+          "phase": "receipt"
+        },
+        "until": 100
+      },
+      "terminal": "completed",
+      "delivered": true,
+      "checks": {
+        "differentProcess": true,
+        "sleeping": true,
+        "expectedDelivery": true,
+        "expectedOutcome": true
+      }
+    },
+    "cancel": {
+      "createPid": 50114,
+      "resumePid": 50116,
+      "checkpoint": {
+        "status": "sleeping",
+        "checkpoint": {
+          "phase": "receipt"
+        },
+        "until": 100
+      },
+      "terminal": "aborted",
+      "delivered": false,
+      "checks": {
+        "differentProcess": true,
+        "sleeping": true,
+        "expectedDelivery": true,
+        "expectedOutcome": true
+      }
+    }
+  }
+}

@@ -1,0 +1,165 @@
+<div id="xj-process-preview" class="viz-dotted-background">
+  <div class="xj-stage">
+    <div class="xj-preview-controls">
+      <label for="xj-scene">查看情境</label>
+      <select id="xj-scene">
+        <option value="diagnosis">课程实验诊断</option>
+        <option value="steering">运行中追加引导</option>
+        <option value="selfstudy">个人自主学习</option>
+      </select>
+      <span class="xj-demo-label">交互示意 · 合成内容</span>
+    </div>
+    <section class="xj-window" aria-label="循阶学习对话示意">
+      <header class="xj-chrome">
+        <div><strong>循阶</strong><span class="xj-context">数字逻辑 · ALU</span></div>
+        <details class="xj-settings">
+          <summary>交互设置</summary>
+          <div class="xj-settings-body">
+            <label for="xj-mode">运行中的新消息</label>
+            <select id="xj-mode"><option value="steer">引导当前任务</option><option value="queue">本轮结束后处理</option></select>
+            <span>只影响之后发送的消息。</span>
+          </div>
+        </details>
+      </header>
+      <div class="xj-conversation">
+        <div class="xj-student"><p id="xj-question">这次结果为什么不对？帮我看看溢出判断。</p><span id="xj-reference">引用 · 本次波形、对应作品</span></div>
+        <div class="xj-agent" aria-label="Agent 处理过程">
+          <div class="xj-status" role="status" aria-live="polite"><span class="xj-status-dot" aria-hidden="true"></span><span id="xj-status-text">已完成检查</span></div>
+          <p class="xj-commentary" id="xj-commentary">已对照本次波形和补码范围，下面把实际观察与判断分开。</p>
+          <details id="xj-thinking" class="xj-process-row">
+            <summary><span>思考摘要</span><span class="xj-row-preview" id="xj-thinking-preview">核对输入、结果与判断条件</span></summary>
+            <p id="xj-thinking-text">先确认学生引用的是哪一次实验，再核对输入的有符号含义。区分进位信号与有符号范围，避免把数学推断说成新实验的实际结果。</p>
+          </details>
+          <details id="xj-tools" class="xj-process-row">
+            <summary><span id="xj-tool-label">查阅依据 · 2 项</span><span class="xj-row-preview">完成</span></summary>
+            <div class="xj-tool-content">
+              <div class="xj-tool-item"><strong id="xj-source-one">读取本次波形</strong><span id="xj-source-one-detail">对应所选作品 · a=0111，b=0001</span><code id="xj-tool-result">result=1000　carry=0　overflow=0</code></div>
+              <div class="xj-tool-item"><strong id="xj-source-two">查阅课程材料</strong><span id="xj-source-two-detail">补码表示范围 · 第 3 页</span><span id="xj-source-two-result">4 位有符号数的范围是 −8 到 7。</span></div>
+            </div>
+          </details>
+          <details id="xj-skipped" class="xj-process-row" hidden>
+            <summary><span>运行当前用例</span><span class="xj-row-preview">未执行</span></summary>
+            <p>收到“先不要运行”的引导后，尚未开始的调用已停止派发；本轮没有启动新的实验。</p>
+          </details>
+          <div class="xj-answer" id="xj-answer">
+            <p><strong>这次有符号结果超出了 4 位补码范围。</strong></p>
+            <p>输入是 7 和 1；数学结果为 8，已经超过最大值 7。实际记录却是 <code>overflow=0</code>，因此需要检查当前的溢出判断。</p>
+            <p class="xj-secondary">以上依据是你选中的那次实验；本轮没有改动作品。</p>
+          </div>
+        </div>
+        <div class="xj-followup" id="xj-followup" hidden>
+          <p>先不要运行，先解释进位和溢出的区别。</p>
+          <span id="xj-followup-state">已收到，等待本次生成结束后调整</span>
+        </div>
+        <div id="xj-pending" class="xj-pending" hidden>排队 1 条 · 等待本轮结束后处理</div>
+        <div class="xj-compose">
+          <label for="xj-input" class="xj-compose-label">追加消息示例</label>
+          <textarea id="xj-input" rows="2" readonly>先不要运行，先解释进位和溢出的区别。</textarea>
+          <div class="xj-compose-actions"><span id="xj-send-mode">新消息将引导当前任务</span><button type="button" id="xj-send">发送</button></div>
+        </div>
+      </div>
+    </section>
+    <div class="xj-sim-controls" id="xj-sim-controls" hidden><button type="button" id="xj-advance">模拟本次生成结束</button><span>只切换示意状态</span></div>
+  </div>
+</div>
+<style>
+#xj-process-preview { --xj-canvas:light-dark(#ffffff,#1f1f1f); --xj-side:light-dark(#f9f9f8,#262626); --xj-line:light-dark(#e8e8e6,#3a3a3a); --xj-ink:light-dark(#1f2328,#ededed); --xj-soft:light-dark(#42474d,#c8c8c8); --xj-muted:light-dark(#656d76,#acacac); --xj-chip:light-dark(#f1f1ef,#343434); --xj-accent:light-dark(#0059d0,#6cb2ff); --xj-primary:light-dark(#1f2328,#ededed); --xj-primary-text:light-dark(#ffffff,#1f1f1f); --xj-active:light-dark(#155e75,#67e8f9); --xj-done:light-dark(#3f6212,#bef264); --xj-wait:light-dark(#854d0e,#fde047); color:var(--xj-ink); font:400 15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif; padding:16px 12px; }
+#xj-process-preview * {box-sizing:border-box;}
+#xj-process-preview [hidden] {display:none !important;}
+#xj-process-preview .xj-stage {max-width:704px;margin:0 auto;}
+#xj-process-preview .xj-preview-controls {display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 12px;font-size:13px;color:var(--xj-muted);padding-right:90px;}
+#xj-process-preview select {color:var(--xj-ink);background:var(--xj-canvas);border:1px solid var(--xj-line);border-radius:8px;font:inherit;padding:4px 8px;min-height:32px;max-width:100%;}
+#xj-process-preview .xj-demo-label {font-size:12px;}
+#xj-process-preview .xj-window {background:var(--xj-canvas);border:1px solid var(--xj-line);border-radius:16px;overflow:hidden;}
+#xj-process-preview .xj-chrome {display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--xj-line);}
+#xj-process-preview strong {font-weight:500;}
+#xj-process-preview .xj-context {font-size:12px;color:var(--xj-muted);margin-left:12px;}
+#xj-process-preview .xj-settings {font-size:13px;text-align:right;max-width:248px;}
+#xj-process-preview summary {user-select:none;}
+#xj-process-preview .xj-settings summary {min-height:32px;color:var(--xj-muted);}
+#xj-process-preview .xj-settings-body {display:grid;gap:8px;padding:12px 0 0;text-align:left;}
+#xj-process-preview .xj-settings-body span {font-size:12px;color:var(--xj-muted);}
+#xj-process-preview .xj-conversation {padding:20px;}
+#xj-process-preview p {margin:0;}
+#xj-process-preview .xj-student {padding:12px 16px;border-radius:12px;background:var(--xj-chip);margin-left:48px;}
+#xj-process-preview .xj-student span {display:block;font-size:12px;color:var(--xj-muted);margin-top:6px;}
+#xj-process-preview .xj-agent {margin:24px 0;}
+#xj-process-preview .xj-status {display:flex;align-items:center;gap:8px;font-size:13px;color:var(--xj-muted);}
+#xj-process-preview .xj-status-dot {display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--xj-done);flex-shrink:0;}
+#xj-process-preview[data-scene="steering"] .xj-status-dot {background:var(--xj-active);}
+#xj-process-preview .xj-commentary {color:var(--xj-soft);font-size:13px;margin:8px 0 12px;}
+#xj-process-preview .xj-process-row {border-bottom:1px solid var(--xj-line);font-size:13px;}
+#xj-process-preview .xj-process-row summary {display:flex;align-items:center;gap:8px;padding:8px 0;min-height:36px;list-style:none;}
+#xj-process-preview .xj-process-row summary::before {content:"›";color:var(--xj-muted);font-size:17px;width:12px;flex-shrink:0;}
+#xj-process-preview .xj-process-row[open] summary::before {content:"⌄";}
+#xj-process-preview .xj-row-preview {color:var(--xj-muted);font-size:12px;margin-left:auto;text-align:right;}
+#xj-process-preview .xj-process-row > p {padding:0 0 12px 20px;color:var(--xj-soft);}
+#xj-process-preview .xj-tool-content {padding:0 0 12px 20px;display:grid;gap:12px;}
+#xj-process-preview .xj-tool-item {display:grid;gap:4px;color:var(--xj-soft);}
+#xj-process-preview .xj-tool-item > span {font-size:12px;}
+#xj-process-preview code {font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;overflow-wrap:anywhere;background:var(--xj-chip);color:var(--xj-soft);border-radius:4px;padding:2px 4px;}
+#xj-process-preview .xj-answer {padding-top:20px;}
+#xj-process-preview .xj-answer p+p {margin-top:10px;}
+#xj-process-preview .xj-secondary {font-size:12px;color:var(--xj-muted);}
+#xj-process-preview .xj-followup {background:var(--xj-chip);padding:12px 16px;margin:0 0 16px 48px;border-radius:12px;}
+#xj-process-preview .xj-followup span {display:block;color:var(--xj-muted);font-size:12px;margin-top:6px;}
+#xj-process-preview .xj-pending {color:var(--xj-wait);font-size:13px;margin-bottom:12px;}
+#xj-process-preview .xj-compose {border:1px solid var(--xj-line);border-radius:12px;padding:12px;}
+#xj-process-preview .xj-compose-label {font-size:12px;color:var(--xj-muted);}
+#xj-process-preview textarea {resize:vertical;display:block;width:100%;border:0;color:var(--xj-ink);background:var(--xj-canvas);font:inherit;min-height:54px;padding:8px 0;}
+#xj-process-preview textarea::placeholder {color:var(--xj-muted);}
+#xj-process-preview .xj-compose-actions {display:flex;justify-content:space-between;gap:12px;align-items:center;}
+#xj-process-preview .xj-compose-actions span {font-size:12px;color:var(--xj-muted);}
+#xj-process-preview button {border:1px solid var(--xj-line);border-radius:8px;min-height:32px;padding:4px 12px;background:var(--xj-canvas);color:var(--xj-ink);font-family:inherit;font-size:13px;line-height:1.5;font-weight:400;}
+#xj-process-preview #xj-send {background:var(--xj-primary);color:var(--xj-primary-text);border-color:var(--xj-primary);}
+#xj-process-preview .xj-sim-controls {display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:12px;}
+#xj-process-preview .xj-sim-controls span {font-size:12px;color:var(--xj-muted);}
+@media (max-width:460px) {#xj-process-preview {padding:12px 4px;} #xj-process-preview .xj-preview-controls {padding-right:0;} #xj-process-preview .xj-chrome,#xj-process-preview .xj-conversation {padding:16px;} #xj-process-preview .xj-chrome {flex-wrap:wrap;} #xj-process-preview .xj-settings {max-width:100%;} #xj-process-preview .xj-student,#xj-process-preview .xj-followup {margin-left:12px;} #xj-process-preview .xj-row-preview {max-width:48%;} #xj-process-preview .xj-context {display:block;margin:4px 0 0;} #xj-process-preview textarea {font-size:16px;}}
+@media (pointer:coarse) {#xj-process-preview button,#xj-process-preview select,#xj-process-preview summary {min-height:44px;}}
+</style>
+<script>
+(() => {
+  const root=document.getElementById('xj-process-preview');
+  root.querySelectorAll('button,select,summary').forEach(control=>control.classList.add('cursor-interaction'));
+  const el=id=>root.querySelector('#'+id);
+  const scene=el('xj-scene'), mode=el('xj-mode');
+  const initial=window.openai?.widgetState?.privateContent;
+  const state={scene:['diagnosis','steering','selfstudy'].includes(initial?.scene)?initial.scene:'diagnosis',mode:initial?.mode==='queue'?'queue':'steer',acceptedMode:initial?.acceptedMode==='queue'?'queue':'steer',advanced:!!initial?.advanced,customMessage:typeof initial?.customMessage==='string'?initial.customMessage:''};
+  const save=()=>window.openai?.setWidgetState?.({modelContent:{scene:state.scene,newMessageMode:state.mode},privateContent:{...state}})?.catch(()=>{});
+  const text=(id,value)=>{el(id).textContent=value;};
+  function render() {
+    root.dataset.scene=state.scene;scene.value=state.scene;mode.value=state.mode;
+    const isSteer=state.scene==='steering',self=state.scene==='selfstudy';
+    root.querySelector('.xj-context').textContent=self?'个人空间 · 自主学习':'数字逻辑 · ALU';
+    text('xj-question',self?'请解释我选中的这一页，并给一个相近的小练习。':'这次结果为什么不对？帮我看看溢出判断。');
+    text('xj-reference',self?'引用 · 我的补码笔记，第 3 页':'引用 · 本次波形、对应作品');
+    text('xj-status-text',isSteer?(state.advanced?(state.acceptedMode==='queue'?'已开始新一轮':'已根据引导调整'):'正在生成'):'已完成检查');
+    text('xj-commentary',self?'先解释你选择的材料，再给一个便于自己尝试的例子。':isSteer?(state.advanced?(state.acceptedMode==='queue'?'上一轮已完成，现在回应你的补充。':'先解释概念；尚未开始的实验没有执行。'):'正在比较实际结果和判断条件。'):'已对照本次波形和补码范围，下面把实际观察与判断分开。');
+    text('xj-thinking-preview',self?'围绕这一页解释，再给练习':'核对输入、结果与判断条件');
+    text('xj-thinking-text',self?'根据学生选中的段落解释表示范围，并区分数值与位模式。先给一个相近例子，再把练习留给学生。':'先确认学生引用的是哪一次实验，再核对输入的有符号含义。区分进位信号与有符号范围，避免把数学推断说成新实验的实际结果。');
+    text('xj-tool-label',self?'读取个人资料 · 1 项':'查阅依据 · 2 项');
+    text('xj-source-one',self?'读取选中的资料页':'读取本次波形');
+    text('xj-source-one-detail',self?'我的补码笔记 · 第 3 页':'对应所选作品 · a=0111，b=0001');
+    text('xj-tool-result',self?'原文片段：4 位补码表示 −8 到 7。':'result=1000　carry=0　overflow=0');
+    el('xj-source-two').parentElement.hidden=self;
+    el('xj-followup').hidden=!isSteer;el('xj-sim-controls').hidden=!isSteer;
+    el('xj-followup').querySelector('p').textContent=state.customMessage||'先不要运行，先解释进位和溢出的区别。';
+    el('xj-skipped').hidden=!(isSteer&&state.advanced&&state.acceptedMode==='steer');
+    el('xj-pending').hidden=!(isSteer&&state.acceptedMode==='queue'&&!state.advanced);
+    text('xj-followup-state',state.acceptedMode==='queue'?(state.advanced?'已开始新一轮 · 回应你的补充':'已接收 · 等待本轮结束后处理'):state.advanced?'已纳入本轮 · 先解释，未启动新实验':'已收到，等待本次生成结束后调整');
+    text('xj-send-mode',state.mode==='steer'?'新消息将引导当前任务':'新消息将在本轮结束后处理');
+    el('xj-advance').disabled=state.advanced;
+    text('xj-advance',state.acceptedMode==='queue'?(state.advanced?'已模拟本轮结束':'模拟本轮交付结束'):state.advanced?'已模拟采纳引导':'模拟本次生成结束');
+    const answer=el('xj-answer');answer.hidden=isSteer&&!state.advanced;
+    if(self) answer.innerHTML='<p><strong>补码位数固定时，可表示的数值范围也固定。</strong></p><p>4 位补码能表示 −8 到 7。位模式 <code>1000</code> 按有符号数解释是 −8，不能把它直接当作数学结果 8。</p><p>你可以试着判断：<code>0011 + 0001</code> 的结果还在这个范围内吗？</p><p class="xj-secondary">来源：你选中的个人笔记，第 3 页。</p>';
+    else if(isSteer&&state.advanced) answer.innerHTML='<p><strong>进位和有符号溢出观察的是两件不同的事。</strong></p><p>进位看是否产生了最高位之外的一位；有符号溢出看数学结果是否超出当前位数可表示的范围。</p><p class="xj-secondary">'+(state.acceptedMode==='queue'?'这条补充在上一轮交付后开始处理。':'已按你的补充调整。本轮没有新运行，也没有修改作品。')+'</p>';
+    else answer.innerHTML='<p><strong>这次有符号结果超出了 4 位补码范围。</strong></p><p>输入是 7 和 1；数学结果为 8，已经超过最大值 7。实际记录却是 <code>overflow=0</code>，因此需要检查当前的溢出判断。</p><p class="xj-secondary">以上依据是你选中的那次实验；本轮没有改动作品。</p>';
+  }
+  scene.addEventListener('change',()=>{state.scene=scene.value;state.advanced=false;state.customMessage='';state.acceptedMode=state.mode;render();save();});
+  mode.addEventListener('change',()=>{state.mode=mode.value;render();save();});
+  el('xj-advance').addEventListener('click',()=>{state.advanced=true;render();save();});
+  el('xj-send').addEventListener('click',()=>{state.customMessage=el('xj-input').value;state.scene='steering';state.acceptedMode=state.mode;state.advanced=false;render();save();});
+  window.addEventListener('openai:set_globals',event=>{const stored=event.detail?.globals?.widgetState?.privateContent;if(!stored)return;if(['diagnosis','steering','selfstudy'].includes(stored.scene))state.scene=stored.scene;state.mode=stored.mode==='queue'?'queue':'steer';state.acceptedMode=stored.acceptedMode==='queue'?'queue':'steer';state.advanced=!!stored.advanced;state.customMessage=typeof stored.customMessage==='string'?stored.customMessage:'';render();});
+  render();
+})();
+</script>

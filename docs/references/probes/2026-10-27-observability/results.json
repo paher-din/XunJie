@@ -1,0 +1,253 @@
+{
+  "scope": "Synthetic local UI and selected-record transfer probe; no model calls, no production integration",
+  "host": {
+    "cpu": "Apple M5",
+    "ramGiB": 16,
+    "platform": "macOS arm64"
+  },
+  "guest": {
+    "cpu": 4,
+    "ramGiB": 6,
+    "engine": "Docker 29.5.2",
+    "virtualization": "Colima 0.10.3 / Lima 2.2.1 / VZ"
+  },
+  "startups": [
+    {
+      "platform": "phoenix",
+      "startupSeconds": 16.66,
+      "readyAt": "2026-10-27T11:10:43.062207+00:00",
+      "imageDownloadExcluded": true
+    },
+    {
+      "platform": "phoenix-copy",
+      "startupSeconds": 20.76,
+      "readyAt": "2026-10-27T11:16:14.602218+00:00",
+      "imageDownloadExcluded": true
+    },
+    {
+      "platform": "langfuse",
+      "startupSeconds": 25.32,
+      "readyAt": "2026-10-27T11:21:59.015199+00:00",
+      "imageDownloadExcluded": true
+    },
+    {
+      "platform": "langfuse-copy",
+      "startupSeconds": 24.82,
+      "readyAt": "2026-10-27T11:40:47.536004+00:00",
+      "imageDownloadExcluded": true
+    }
+  ],
+  "measurements": [
+    {
+      "phase": "runtime-baseline",
+      "at": "2026-10-27T11:09:26.647729+00:00",
+      "containers": []
+    },
+    {
+      "phase": "phoenix-ready",
+      "at": "2026-10-27T11:11:14.455535+00:00",
+      "containers": [
+        {
+          "Name": "xj-phx-trial-phoenix-1",
+          "MemUsage": "453.4MiB / 5.773GiB",
+          "CPUPerc": "3.73%"
+        }
+      ]
+    },
+    {
+      "phase": "phoenix-seeded",
+      "at": "2026-10-27T11:13:39.641240+00:00",
+      "containers": [
+        {
+          "Name": "xj-phx-trial-phoenix-1",
+          "MemUsage": "461.3MiB / 5.773GiB",
+          "CPUPerc": "1.56%"
+        }
+      ]
+    },
+    {
+      "phase": "langfuse-ready",
+      "at": "2026-10-27T11:22:31.970730+00:00",
+      "containers": [
+        {
+          "Name": "xj-lf-trial-langfuse-web-1",
+          "MemUsage": "1.074GiB / 5.773GiB",
+          "CPUPerc": "0.88%"
+        },
+        {
+          "Name": "xj-lf-trial-langfuse-worker-1",
+          "MemUsage": "652.2MiB / 5.773GiB",
+          "CPUPerc": "1.50%"
+        },
+        {
+          "Name": "xj-lf-trial-postgres-1",
+          "MemUsage": "101.4MiB / 5.773GiB",
+          "CPUPerc": "0.03%"
+        },
+        {
+          "Name": "xj-lf-trial-redis-1",
+          "MemUsage": "18.64MiB / 5.773GiB",
+          "CPUPerc": "0.67%"
+        },
+        {
+          "Name": "xj-lf-trial-clickhouse-1",
+          "MemUsage": "573MiB / 5.773GiB",
+          "CPUPerc": "4.38%"
+        },
+        {
+          "Name": "xj-lf-trial-minio-1",
+          "MemUsage": "138.6MiB / 5.773GiB",
+          "CPUPerc": "3.03%"
+        }
+      ]
+    },
+    {
+      "phase": "langfuse-seeded",
+      "at": "2026-10-27T11:27:20.098474+00:00",
+      "containers": [
+        {
+          "Name": "xj-lf-trial-langfuse-web-1",
+          "MemUsage": "771MiB / 5.773GiB",
+          "CPUPerc": "0.63%"
+        },
+        {
+          "Name": "xj-lf-trial-langfuse-worker-1",
+          "MemUsage": "650.9MiB / 5.773GiB",
+          "CPUPerc": "2.09%"
+        },
+        {
+          "Name": "xj-lf-trial-postgres-1",
+          "MemUsage": "125.2MiB / 5.773GiB",
+          "CPUPerc": "3.74%"
+        },
+        {
+          "Name": "xj-lf-trial-redis-1",
+          "MemUsage": "18.82MiB / 5.773GiB",
+          "CPUPerc": "0.69%"
+        },
+        {
+          "Name": "xj-lf-trial-clickhouse-1",
+          "MemUsage": "791.9MiB / 5.773GiB",
+          "CPUPerc": "3.71%"
+        },
+        {
+          "Name": "xj-lf-trial-minio-1",
+          "MemUsage": "146.2MiB / 5.773GiB",
+          "CPUPerc": "3.17%"
+        }
+      ]
+    }
+  ],
+  "phoenixRoundtrip": {
+    "spans": 24,
+    "annotations": 6,
+    "experiments": {
+      "baseline": 3,
+      "candidate": 3
+    },
+    "spanFieldsEqual": true,
+    "scoreFieldsEqual": true,
+    "experimentOutputsAndScoresEqual": true,
+    "duplicateImport": "400: {\"error\": \"Request contains invalid or duplicate spans\", \"total_received\": 24, \"total_queued\": 0, \"total_duplicates\": 24, \"to",
+    "noModelCalls": true,
+    "limits": "Synthetic small-data probe; original reviewer identity/timestamps and all prompt history not restored"
+  },
+  "langfuseRoundtrip": {
+    "observations": 24,
+    "scores": 6,
+    "experimentItems": 6,
+    "experiments": 2,
+    "selectedObservationFieldsEqual": true,
+    "scoreFieldsEqual": true,
+    "experimentFieldsEqual": true,
+    "newDatasetIdMapped": true,
+    "noModelCalls": true,
+    "limits": "API export millisecond time precision; no original authors/audit state or complete OTLP fidelity guarantee; duplicate ingestion not tested"
+  },
+  "images": [
+    {
+      "Id": "sha256:623813cbf1bbd4811456bb4936f21666ae50a1fbf862cf59ea0e3ca824b6b114",
+      "RepoTags": [
+        "arizephoenix/phoenix:version-20.26.1"
+      ],
+      "RepoDigests": [
+        "arizephoenix/phoenix@sha256:623813cbf1bbd4811456bb4936f21666ae50a1fbf862cf59ea0e3ca824b6b114"
+      ],
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Size": 321640447
+    },
+    {
+      "Id": "sha256:71b04842ecff8fe0dd15c7bbb1acd6e0555735e393a8108c43feb4b8d0adf9e6",
+      "RepoTags": [
+        "docker.langfuse.com/langfuse/langfuse:4.70.1"
+      ],
+      "RepoDigests": [
+        "docker.langfuse.com/langfuse/langfuse@sha256:71b04842ecff8fe0dd15c7bbb1acd6e0555735e393a8108c43feb4b8d0adf9e6"
+      ],
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Size": 307164888
+    },
+    {
+      "Id": "sha256:3976a73de84a29999ff4573398e240127b8a92012421ce5eec61cd57f087d8ca",
+      "RepoTags": [
+        "docker.langfuse.com/langfuse/langfuse-worker:4.70.1"
+      ],
+      "RepoDigests": [
+        "docker.langfuse.com/langfuse/langfuse-worker@sha256:3976a73de84a29999ff4573398e240127b8a92012421ce5eec61cd57f087d8ca"
+      ],
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Size": 370794248
+    },
+    {
+      "Id": "sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe",
+      "RepoTags": [
+        "postgres:17"
+      ],
+      "RepoDigests": [
+        "postgres@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe"
+      ],
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Size": 159992780
+    },
+    {
+      "Id": "sha256:bd28fff4b665fdf1b73e8b5b73ec05d2f858f4fa3c8ea0d7c9bc09f7f6bf7039",
+      "RepoTags": [
+        "redis:7"
+      ],
+      "RepoDigests": [
+        "redis@sha256:bd28fff4b665fdf1b73e8b5b73ec05d2f858f4fa3c8ea0d7c9bc09f7f6bf7039"
+      ],
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Size": 44202955
+    },
+    {
+      "Id": "sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6",
+      "RepoTags": [
+        "clickhouse/clickhouse-server:25.12"
+      ],
+      "RepoDigests": [
+        "clickhouse/clickhouse-server@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6"
+      ],
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Size": 228595260
+    },
+    {
+      "Id": "sha256:a1d2b3516a41296510f7fb49184c18b88287fa8f35cf3ce5c047289053b94964",
+      "RepoTags": [
+        "cgr.dev/chainguard/minio:latest"
+      ],
+      "RepoDigests": [
+        "cgr.dev/chainguard/minio@sha256:a1d2b3516a41296510f7fb49184c18b88287fa8f35cf3ce5c047289053b94964"
+      ],
+      "Architecture": "arm64",
+      "Os": "linux",
+      "Size": 58371458
+    }
+  ]
+}

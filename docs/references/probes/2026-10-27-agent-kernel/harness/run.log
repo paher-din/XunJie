@@ -1,0 +1,34 @@
+RUN normal chat
+OK normal chat
+RUN normal responses
+OK normal responses
+RUN normal messages
+OK normal messages
+RUN terminal error
+OK terminal error
+RUN terminal aborted
+OK terminal aborted
+RUN terminal max-tokens
+OK terminal max-tokens
+RUN terminal missing
+OK terminal missing
+RUN terminal missing-guarded
+OK terminal missing-guarded
+RUN cancel model
+OK cancel model
+RUN cancel tool
+OK cancel tool
+RUN unknown tool name
+OK unknown tool name
+RUN recover complete chat
+OK recover complete chat
+RUN recover complete responses
+OK recover complete responses
+RUN recover complete messages
+OK recover complete messages
+RUN recover unknown chat
+OK recover unknown chat
+RUN recover unknown responses
+OK recover unknown responses
+RUN recover unknown messages
+OK recover unknown messages

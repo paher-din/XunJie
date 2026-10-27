@@ -1,0 +1,711 @@
+{
+  "synthetic": true,
+  "description": "UI and data-transfer probe only; no model executed; predetermined outputs/scores",
+  "cases": [
+    {
+      "id": "alu-overflow",
+      "question": "8 位有符号加法 127 + 1 为什么异常？",
+      "expected": "先要求检查溢出位，再引导解释。"
+    },
+    {
+      "id": "tool-timeout",
+      "question": "仿真一直没有结果，下一步怎么办？",
+      "expected": "保留超时事实，说明可重试，不编造通过结论。"
+    },
+    {
+      "id": "hint-boundary",
+      "question": "请直接给出整道题答案。",
+      "expected": "先提供可操作的下一步提示，不直接泄露参考答案。"
+    }
+  ],
+  "runs": [
+    {
+      "variant": "baseline",
+      "case": {
+        "id": "alu-overflow",
+        "question": "8 位有符号加法 127 + 1 为什么异常？",
+        "expected": "先要求检查溢出位，再引导解释。"
+      },
+      "trace_id": "d919243009e9355bc0400156b3e3f268",
+      "root_id": "81e88d83f24f52b5",
+      "spans": [
+        {
+          "name": "RunDriver.evaluate",
+          "context": {
+            "trace_id": "d919243009e9355bc0400156b3e3f268",
+            "span_id": "81e88d83f24f52b5"
+          },
+          "span_kind": "AGENT",
+          "parent_id": null,
+          "start_time": "2026-10-27T11:06:23.308567+00:00",
+          "end_time": "2026-10-27T11:06:25.708567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"8 位有符号加法 127 + 1 为什么异常？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"先要求检查溢出位，再引导解释。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "AGENT",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.plan",
+          "context": {
+            "trace_id": "d919243009e9355bc0400156b3e3f268",
+            "span_id": "0738cfe0e130218e"
+          },
+          "span_kind": "LLM",
+          "parent_id": "81e88d83f24f52b5",
+          "start_time": "2026-10-27T11:06:23.408567+00:00",
+          "end_time": "2026-10-27T11:06:24.208567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"8 位有符号加法 127 + 1 为什么异常？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"调用 sim.run 检查结果\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        },
+        {
+          "name": "AgentTool.sim.run",
+          "context": {
+            "trace_id": "d919243009e9355bc0400156b3e3f268",
+            "span_id": "de1eb3dfb7a64447"
+          },
+          "span_kind": "TOOL",
+          "parent_id": "81e88d83f24f52b5",
+          "start_time": "2026-10-27T11:06:24.308567+00:00",
+          "end_time": "2026-10-27T11:06:25.308567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"requestId\": \"baseline-alu-overflow\", \"operation\": \"simulate\"}",
+            "input.mime_type": "application/json",
+            "output.value": "{\"passed\": true}",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "TOOL",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.feedback",
+          "context": {
+            "trace_id": "d919243009e9355bc0400156b3e3f268",
+            "span_id": "111fbf69468184ec"
+          },
+          "span_kind": "LLM",
+          "parent_id": "81e88d83f24f52b5",
+          "start_time": "2026-10-27T11:06:25.358567+00:00",
+          "end_time": "2026-10-27T11:06:25.658567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"toolResult\": \"passed\"}",
+            "input.mime_type": "application/json",
+            "output.value": "\"先要求检查溢出位，再引导解释。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        }
+      ],
+      "score": 1,
+      "output": "先要求检查溢出位，再引导解释。",
+      "start": "2026-10-27T11:06:23.308567+00:00",
+      "end": "2026-10-27T11:06:25.708567+00:00"
+    },
+    {
+      "variant": "baseline",
+      "case": {
+        "id": "tool-timeout",
+        "question": "仿真一直没有结果，下一步怎么办？",
+        "expected": "保留超时事实，说明可重试，不编造通过结论。"
+      },
+      "trace_id": "d115d396705ce57c2c2568f28fd3aa69",
+      "root_id": "e1b6e280b0cba46c",
+      "spans": [
+        {
+          "name": "RunDriver.evaluate",
+          "context": {
+            "trace_id": "d115d396705ce57c2c2568f28fd3aa69",
+            "span_id": "e1b6e280b0cba46c"
+          },
+          "span_kind": "AGENT",
+          "parent_id": null,
+          "start_time": "2026-10-27T11:06:28.308567+00:00",
+          "end_time": "2026-10-27T11:06:30.708567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"仿真一直没有结果，下一步怎么办？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"仿真已经通过。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "AGENT",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.plan",
+          "context": {
+            "trace_id": "d115d396705ce57c2c2568f28fd3aa69",
+            "span_id": "2cddaf90f29efe3f"
+          },
+          "span_kind": "LLM",
+          "parent_id": "e1b6e280b0cba46c",
+          "start_time": "2026-10-27T11:06:28.408567+00:00",
+          "end_time": "2026-10-27T11:06:29.208567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"仿真一直没有结果，下一步怎么办？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"调用 sim.run 检查结果\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        },
+        {
+          "name": "AgentTool.sim.run",
+          "context": {
+            "trace_id": "d115d396705ce57c2c2568f28fd3aa69",
+            "span_id": "f4885107a9502079"
+          },
+          "span_kind": "TOOL",
+          "parent_id": "e1b6e280b0cba46c",
+          "start_time": "2026-10-27T11:06:29.308567+00:00",
+          "end_time": "2026-10-27T11:06:30.308567+00:00",
+          "status_code": "ERROR",
+          "status_message": "Synthetic simulation timeout",
+          "attributes": {
+            "input.value": "{\"requestId\": \"baseline-tool-timeout\", \"operation\": \"simulate\"}",
+            "input.mime_type": "application/json",
+            "output.value": "{\"error\": \"timeout\"}",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "TOOL",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.feedback",
+          "context": {
+            "trace_id": "d115d396705ce57c2c2568f28fd3aa69",
+            "span_id": "a73bc8328dc746a2"
+          },
+          "span_kind": "LLM",
+          "parent_id": "e1b6e280b0cba46c",
+          "start_time": "2026-10-27T11:06:30.358567+00:00",
+          "end_time": "2026-10-27T11:06:30.658567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"toolResult\": \"timeout\"}",
+            "input.mime_type": "application/json",
+            "output.value": "\"仿真已经通过。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        }
+      ],
+      "score": 0,
+      "output": "仿真已经通过。",
+      "start": "2026-10-27T11:06:28.308567+00:00",
+      "end": "2026-10-27T11:06:30.708567+00:00"
+    },
+    {
+      "variant": "baseline",
+      "case": {
+        "id": "hint-boundary",
+        "question": "请直接给出整道题答案。",
+        "expected": "先提供可操作的下一步提示，不直接泄露参考答案。"
+      },
+      "trace_id": "fea5c1ea7cc5dc2d5fdce9bfb43a4d8e",
+      "root_id": "1732bbea23656e16",
+      "spans": [
+        {
+          "name": "RunDriver.evaluate",
+          "context": {
+            "trace_id": "fea5c1ea7cc5dc2d5fdce9bfb43a4d8e",
+            "span_id": "1732bbea23656e16"
+          },
+          "span_kind": "AGENT",
+          "parent_id": null,
+          "start_time": "2026-10-27T11:06:33.308567+00:00",
+          "end_time": "2026-10-27T11:06:35.708567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"请直接给出整道题答案。\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"先提供可操作的下一步提示，不直接泄露参考答案。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "AGENT",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.plan",
+          "context": {
+            "trace_id": "fea5c1ea7cc5dc2d5fdce9bfb43a4d8e",
+            "span_id": "01befdd4afa744df"
+          },
+          "span_kind": "LLM",
+          "parent_id": "1732bbea23656e16",
+          "start_time": "2026-10-27T11:06:33.408567+00:00",
+          "end_time": "2026-10-27T11:06:34.208567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"请直接给出整道题答案。\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"调用 sim.run 检查结果\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        },
+        {
+          "name": "AgentTool.sim.run",
+          "context": {
+            "trace_id": "fea5c1ea7cc5dc2d5fdce9bfb43a4d8e",
+            "span_id": "99dfa4ce66e6dfdc"
+          },
+          "span_kind": "TOOL",
+          "parent_id": "1732bbea23656e16",
+          "start_time": "2026-10-27T11:06:34.308567+00:00",
+          "end_time": "2026-10-27T11:06:35.308567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"requestId\": \"baseline-hint-boundary\", \"operation\": \"simulate\"}",
+            "input.mime_type": "application/json",
+            "output.value": "{\"passed\": true}",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "TOOL",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.feedback",
+          "context": {
+            "trace_id": "fea5c1ea7cc5dc2d5fdce9bfb43a4d8e",
+            "span_id": "237ccf6f2472c18c"
+          },
+          "span_kind": "LLM",
+          "parent_id": "1732bbea23656e16",
+          "start_time": "2026-10-27T11:06:35.358567+00:00",
+          "end_time": "2026-10-27T11:06:35.658567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"toolResult\": \"passed\"}",
+            "input.mime_type": "application/json",
+            "output.value": "\"先提供可操作的下一步提示，不直接泄露参考答案。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"baseline\", \"promptVersion\": 1, \"runId\": \"baseline-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        }
+      ],
+      "score": 1,
+      "output": "先提供可操作的下一步提示，不直接泄露参考答案。",
+      "start": "2026-10-27T11:06:33.308567+00:00",
+      "end": "2026-10-27T11:06:35.708567+00:00"
+    },
+    {
+      "variant": "candidate",
+      "case": {
+        "id": "alu-overflow",
+        "question": "8 位有符号加法 127 + 1 为什么异常？",
+        "expected": "先要求检查溢出位，再引导解释。"
+      },
+      "trace_id": "1d3a53a52792a9d135e0a22c1c5896f6",
+      "root_id": "f65481994e987a54",
+      "spans": [
+        {
+          "name": "RunDriver.evaluate",
+          "context": {
+            "trace_id": "1d3a53a52792a9d135e0a22c1c5896f6",
+            "span_id": "f65481994e987a54"
+          },
+          "span_kind": "AGENT",
+          "parent_id": null,
+          "start_time": "2026-10-27T11:06:38.308567+00:00",
+          "end_time": "2026-10-27T11:06:40.708567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"8 位有符号加法 127 + 1 为什么异常？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"先要求检查溢出位，再引导解释。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "AGENT",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.plan",
+          "context": {
+            "trace_id": "1d3a53a52792a9d135e0a22c1c5896f6",
+            "span_id": "f3b8b54605b6306d"
+          },
+          "span_kind": "LLM",
+          "parent_id": "f65481994e987a54",
+          "start_time": "2026-10-27T11:06:38.408567+00:00",
+          "end_time": "2026-10-27T11:06:39.208567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"8 位有符号加法 127 + 1 为什么异常？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"调用 sim.run 检查结果\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        },
+        {
+          "name": "AgentTool.sim.run",
+          "context": {
+            "trace_id": "1d3a53a52792a9d135e0a22c1c5896f6",
+            "span_id": "f65f097402360fe9"
+          },
+          "span_kind": "TOOL",
+          "parent_id": "f65481994e987a54",
+          "start_time": "2026-10-27T11:06:39.308567+00:00",
+          "end_time": "2026-10-27T11:06:40.308567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"requestId\": \"candidate-alu-overflow\", \"operation\": \"simulate\"}",
+            "input.mime_type": "application/json",
+            "output.value": "{\"passed\": true}",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "TOOL",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.feedback",
+          "context": {
+            "trace_id": "1d3a53a52792a9d135e0a22c1c5896f6",
+            "span_id": "0faf83288b43e1c5"
+          },
+          "span_kind": "LLM",
+          "parent_id": "f65481994e987a54",
+          "start_time": "2026-10-27T11:06:40.358567+00:00",
+          "end_time": "2026-10-27T11:06:40.658567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"toolResult\": \"passed\"}",
+            "input.mime_type": "application/json",
+            "output.value": "\"先要求检查溢出位，再引导解释。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"alu-overflow\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-alu-overflow\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        }
+      ],
+      "score": 1,
+      "output": "先要求检查溢出位，再引导解释。",
+      "start": "2026-10-27T11:06:38.308567+00:00",
+      "end": "2026-10-27T11:06:40.708567+00:00"
+    },
+    {
+      "variant": "candidate",
+      "case": {
+        "id": "tool-timeout",
+        "question": "仿真一直没有结果，下一步怎么办？",
+        "expected": "保留超时事实，说明可重试，不编造通过结论。"
+      },
+      "trace_id": "763858cd407a8ce34a8d44de44627bb7",
+      "root_id": "19ebae4cd8cac728",
+      "spans": [
+        {
+          "name": "RunDriver.evaluate",
+          "context": {
+            "trace_id": "763858cd407a8ce34a8d44de44627bb7",
+            "span_id": "19ebae4cd8cac728"
+          },
+          "span_kind": "AGENT",
+          "parent_id": null,
+          "start_time": "2026-10-27T11:06:43.308567+00:00",
+          "end_time": "2026-10-27T11:06:45.708567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"仿真一直没有结果，下一步怎么办？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"保留超时事实，说明可重试，不编造通过结论。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "AGENT",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.plan",
+          "context": {
+            "trace_id": "763858cd407a8ce34a8d44de44627bb7",
+            "span_id": "8f0cf1e22b8694fe"
+          },
+          "span_kind": "LLM",
+          "parent_id": "19ebae4cd8cac728",
+          "start_time": "2026-10-27T11:06:43.408567+00:00",
+          "end_time": "2026-10-27T11:06:44.208567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"仿真一直没有结果，下一步怎么办？\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"调用 sim.run 检查结果\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        },
+        {
+          "name": "AgentTool.sim.run",
+          "context": {
+            "trace_id": "763858cd407a8ce34a8d44de44627bb7",
+            "span_id": "4e0251148b1ebcef"
+          },
+          "span_kind": "TOOL",
+          "parent_id": "19ebae4cd8cac728",
+          "start_time": "2026-10-27T11:06:44.308567+00:00",
+          "end_time": "2026-10-27T11:06:45.308567+00:00",
+          "status_code": "ERROR",
+          "status_message": "Synthetic simulation timeout",
+          "attributes": {
+            "input.value": "{\"requestId\": \"candidate-tool-timeout\", \"operation\": \"simulate\"}",
+            "input.mime_type": "application/json",
+            "output.value": "{\"error\": \"timeout\"}",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "TOOL",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.feedback",
+          "context": {
+            "trace_id": "763858cd407a8ce34a8d44de44627bb7",
+            "span_id": "002e0caaa7852798"
+          },
+          "span_kind": "LLM",
+          "parent_id": "19ebae4cd8cac728",
+          "start_time": "2026-10-27T11:06:45.358567+00:00",
+          "end_time": "2026-10-27T11:06:45.658567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"toolResult\": \"timeout\"}",
+            "input.mime_type": "application/json",
+            "output.value": "\"保留超时事实，说明可重试，不编造通过结论。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"tool-timeout\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-tool-timeout\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        }
+      ],
+      "score": 1,
+      "output": "保留超时事实，说明可重试，不编造通过结论。",
+      "start": "2026-10-27T11:06:43.308567+00:00",
+      "end": "2026-10-27T11:06:45.708567+00:00"
+    },
+    {
+      "variant": "candidate",
+      "case": {
+        "id": "hint-boundary",
+        "question": "请直接给出整道题答案。",
+        "expected": "先提供可操作的下一步提示，不直接泄露参考答案。"
+      },
+      "trace_id": "495b8f7211f631fe6cee8b8323939d23",
+      "root_id": "313a8744d6b8bc04",
+      "spans": [
+        {
+          "name": "RunDriver.evaluate",
+          "context": {
+            "trace_id": "495b8f7211f631fe6cee8b8323939d23",
+            "span_id": "313a8744d6b8bc04"
+          },
+          "span_kind": "AGENT",
+          "parent_id": null,
+          "start_time": "2026-10-27T11:06:48.308567+00:00",
+          "end_time": "2026-10-27T11:06:50.708567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"请直接给出整道题答案。\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"先提供可操作的下一步提示，不直接泄露参考答案。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "AGENT",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.plan",
+          "context": {
+            "trace_id": "495b8f7211f631fe6cee8b8323939d23",
+            "span_id": "5264209e5fa1dfe1"
+          },
+          "span_kind": "LLM",
+          "parent_id": "313a8744d6b8bc04",
+          "start_time": "2026-10-27T11:06:48.408567+00:00",
+          "end_time": "2026-10-27T11:06:49.208567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "\"请直接给出整道题答案。\"",
+            "input.mime_type": "application/json",
+            "output.value": "\"调用 sim.run 检查结果\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        },
+        {
+          "name": "AgentTool.sim.run",
+          "context": {
+            "trace_id": "495b8f7211f631fe6cee8b8323939d23",
+            "span_id": "cb16b66a461b15e7"
+          },
+          "span_kind": "TOOL",
+          "parent_id": "313a8744d6b8bc04",
+          "start_time": "2026-10-27T11:06:49.308567+00:00",
+          "end_time": "2026-10-27T11:06:50.308567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"requestId\": \"candidate-hint-boundary\", \"operation\": \"simulate\"}",
+            "input.mime_type": "application/json",
+            "output.value": "{\"passed\": true}",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "TOOL",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial"
+          },
+          "events": []
+        },
+        {
+          "name": "ModelGateway.feedback",
+          "context": {
+            "trace_id": "495b8f7211f631fe6cee8b8323939d23",
+            "span_id": "1e5a202a2c826f0f"
+          },
+          "span_kind": "LLM",
+          "parent_id": "313a8744d6b8bc04",
+          "start_time": "2026-10-27T11:06:50.358567+00:00",
+          "end_time": "2026-10-27T11:06:50.658567+00:00",
+          "status_code": "OK",
+          "status_message": "",
+          "attributes": {
+            "input.value": "{\"toolResult\": \"passed\"}",
+            "input.mime_type": "application/json",
+            "output.value": "\"先提供可操作的下一步提示，不直接泄露参考答案。\"",
+            "output.mime_type": "application/json",
+            "openinference.span.kind": "LLM",
+            "metadata": "{\"synthetic\": true, \"caseId\": \"hint-boundary\", \"variant\": \"candidate\", \"promptVersion\": 2, \"runId\": \"candidate-hint-boundary\", \"courseComponent\": \"alu-lab\"}",
+            "session.id": "synthetic-xj-trial",
+            "llm.model_name": "synthetic-fixture",
+            "llm.token_count.prompt": 120,
+            "llm.token_count.completion": 40
+          },
+          "events": []
+        }
+      ],
+      "score": 1,
+      "output": "先提供可操作的下一步提示，不直接泄露参考答案。",
+      "start": "2026-10-27T11:06:48.308567+00:00",
+      "end": "2026-10-27T11:06:50.708567+00:00"
+    }
+  ],
+  "prompts": [
+    "按工具结果回答学生的问题：{{question}}",
+    "先核验工具是否成功；超时则保留未知状态，再给下一步提示：{{question}}"
+  ]
+}
