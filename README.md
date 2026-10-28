@@ -10,7 +10,7 @@
 
 </div>
 
-项目正在进行新一轮设计与重构，学生端架构候选及 GitHub 决策地图见[本轮架构与设计](docs/README.md)。开发规则见 [AGENTS.md](AGENTS.md)，UI 设计遵循根目录 [DESIGN.md](DESIGN.md)。旧文档及其证据已移入 [docs/archive/](docs/archive/)，停止使用和维护，不作为本轮开发依据。以下使用说明对应现有演示实现。
+项目正在进行新一轮设计与重构，已定设计、Wayfinder 本地决议和实施总览见[本轮架构与设计](docs/student-agent-implementation/README.md)。开发规则见 [AGENTS.md](AGENTS.md)，UI 设计遵循根目录 [DESIGN.md](DESIGN.md)。旧文档及其证据已移入 [docs/archive/](docs/archive/)，停止使用和维护，不作为本轮开发依据。以下使用说明对应现有演示实现。
 
 ## 功能概览
 
@@ -54,7 +54,7 @@ npm run dev:prep
 <details>
 <summary>开发者文档</summary>
 
-[本轮架构与设计](docs/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [学生端运行说明](apps/student/README.md)
+[本轮架构与设计](docs/student-agent-implementation/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [学生端运行说明](apps/student/README.md)
 
 ### 成员开发上手
 

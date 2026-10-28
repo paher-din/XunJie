@@ -23,7 +23,7 @@
 
 负责人于 2026-10-27 要求将选定调用、案例与评估结果的分享过程加入 Skill。沿用 [xunjie-development](../skills/xunjie-development/SKILL.md)，在[Agent 调试包参考](../skills/xunjie-development/references/agent-debugging.md)维护发送、接收、导入和重跑流程；这是既有开发交接的一个分支，复用成员身份、文件权限和稳定编号，因此不另建独立 Skill。后续 Agent 开发与案例回归会持续使用该分支，关键是避免把平台查看、文件下载与真实复现混为完成。
 
-当前工具事实：`xj-repro/1` 业务复现与团队直传已经实现；纯 Agent 调试包的采集、受限包类型扩展和 Phoenix 导入仍待实现。Skill 先核对当前能力，缺口存在时交付可读材料和明确状态，不生成不可执行命令。包内容与共享设计只在[接入设计](references/2026-10-27-agent-evaluation-integration.md#分享的具体形式与交接步骤)维护。
+当前工具事实：`xj-repro/1` 业务复现与团队直传已经实现；纯 Agent 调试包的采集、受限包类型扩展和 Phoenix 导入仍待实现。Skill 先核对当前能力，缺口存在时交付可读材料和明确状态，不生成不可执行命令。包内容与共享设计只在[接入设计](student-agent-implementation/references/2026-10-27-agent-evaluation-integration.md#分享的具体形式与交接步骤)维护。
 
 本次维护验证：Skill 格式校验、12 个相关 Markdown 的 208 个本地目标、50 个标题锚点与代码围栏检查通过。独立 Agent 只读演练了“上传两组 Agent 实验”“仅查看同事的 Phoenix JSON”“只检查/下载业务复现包”三个请求：前两者准确识别未实现的采集/导入阶段、继续可读材料处理，第三者保留已有 inspect/fetch 路径；未生成虚假编号或把下载当作复现。此为指令行为走查，未做新旧 Skill 效率对照、宿主自动触发测试或真实云端/平台交付验收。
 

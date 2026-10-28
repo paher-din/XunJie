@@ -4,7 +4,7 @@
 
 负责人已确认主线为**设计并验证 ALU 行为**，允许使用语言内置运算符；活动语言为 **SystemVerilog**。主线保留五种核心操作，减法扩展，允许带失败或缺项交付；本活动 Agent 只解释，不修改学生代码。起始工程、学生源文件和示例按 SystemVerilog 设计，旧课件中的 Verilog 示例作为补充参考，使用前核对语言与工具兼容性。
 
-前置概念以 2026 数字逻辑课程的前三节理论课为依据。**讲过不等于已掌握**，资料中的全部内容也不自动成为本次活动的考核要求。[活动设计与验收场景](../docs/references/2026-10-23-alu-activity-design.md)提供配套说明，最终范围和验收目标统一记录在 [数字逻辑与部件设计：首条学习活动与验收目标](https://github.com/paher-din/XunJie/issues/113#issuecomment-6348000023) 的决议中。
+前置概念以 2026 数字逻辑课程的前三节理论课为依据。**讲过不等于已掌握**，资料中的全部内容也不自动成为本次活动的考核要求。[活动设计与验收场景](../docs/student-agent-implementation/references/2026-10-23-alu-activity-design.md)提供配套说明，最终范围和验收目标统一记录在 [数字逻辑与部件设计：首条学习活动与验收目标](https://github.com/paher-din/XunJie/issues/113#issuecomment-6348000023) 的决议中。
 
 ## 资料索引
 

@@ -4,7 +4,7 @@
 
 这是 wayfinder 决策材料，按负责人要求与决议文档统一保存在 `codex/student-agent-wayfinder`；不是生产页面。单文件原型位于 [workspace-state.prototype.html](workspace-state.prototype.html)，直接用浏览器打开即可，无需安装依赖或启动应用。也可以在此目录运行 `python3 -m http.server 5633 --bind 127.0.0.1` 后访问该文件。
 
-负责人已确认整体交互“符合预期，可据此形成决议”。最终决定见[工作区交互与状态决议](https://github.com/paher-din/XunJie/issues/116#issuecomment-6370870664)，下文保留原型说明和验证范围，具体协议与生产实现由后续议题承接。
+负责人已确认整体交互“符合预期，可据此形成决议”。最终决定已完整收录到[本地工作区交互与状态决议](../../../docs/student-agent-implementation/wayfinder/student-agent/workspace-state.md)，并保留[GitHub 确认来源](https://github.com/paher-din/XunJie/issues/116#issuecomment-6370870664)；下文保留原型说明和验证范围，具体协议与生产实现由实施工作包承接。
 
 ## 已经由负责人确认
 

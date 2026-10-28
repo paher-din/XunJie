@@ -1,54 +1,17 @@
-# 本轮架构与设计
-
-本轮面向真实使用中的多种课程，设计长期使用的学生端 Agent 与可装配学习工作区，并确定重构路线。“数字逻辑与部件设计”是开发、演示与验证阶段的首条已设计样例，其活动流程和帮助策略不构成所有课程的限制。总体运行、部署与 Agent 能力已形成具体工程方案；本轮补齐默认 steering/可改排队、过程展示与无课程自主学习，并用能力表和完整请求走查说明行为。产品要求和工程选择分别记录；总体设计已按[最终决议](https://github.com/paher-din/XunJie/issues/119#issuecomment-6443526782)定稿，存储、迁移与实施验收转入后续主题；设计不等于实现或验收通过。
-
-当前云端共享数据和部分服务是尽量小的开发协作环境，用于减少成员设备、环境与数据差异造成的调试难以复现；它不决定产品运行拓扑或存储选型。教师仍设计课程运行方案，尽量由学生本地执行。依据见[需求与决策记录 L7](student-agent-decisions.md#开发协作与产品运行边界l7)。
-
-议题、依赖和当前可推进的主题以 [GitHub 决策地图：学生端 Agent 与工作区重新设计](https://github.com/paher-din/XunJie/issues/112) 为准。按连贯主题组织议题，允许跨会话推进，不按固定 token 上限拆分；本地不复制一份议题状态清单。
+# 项目文档
 
 | 需要了解什么 | 阅读入口 |
 | --- | --- |
-| 后续研究、讨论、原型与重构决策 | [学生端 Agent 与工作区重新设计：数字逻辑与部件设计先行](https://github.com/paher-din/XunJie/issues/112) |
-| 与研究并行的两项已授权实施范围 | [选区引用与 IP 展示层规范](specs/README.md) |
-| 长期目标架构、领域职责与产品流程 | [学生端 Agent 架构](student-agent-architecture.md) |
-| 模块、内核、持久运行、部署组合与演进契约 | [总体运行与部署设计](references/2026-10-27-overall-architecture-proposal.md) |
-| Agent tools、Skills、MCP、plugin、提示词的覆盖审计与术语口径 | [Agent 设计覆盖审计](references/2026-10-27-agent-design-coverage-audit.md) |
-| Agent 定义、工具、Skills/MCP/Plugin、Prompt/上下文/Memory 与交付 | [Agent 能力与质量契约](references/2026-10-27-agent-capabilities-design.md) |
-| 默认引导/排队、工具与思考摘要显示、无课程自主学习 | [Agent 交互设计](references/2026-10-27-agent-interaction-design.md) |
-| DeepSeek Harness / Pi 的实际新消息介入时点、收尾和无模型探针 | [steering 调度研究](references/2026-10-27-agent-steering-research.md) |
-| OpenCode / Claude Code 的工具记录、thinking 和等待状态 | [过程显示研究](references/2026-10-27-agent-progress-display-research.md) |
-| 后续开发调试、Prompt 迭代和评估平台选择 | [Langfuse、Phoenix、LangSmith 与 Braintrust 比较](references/2026-10-27-agent-observability-evaluation-research.md) |
-| 两平台在 M5 上的功能、界面、资源与独立实例移交实测 | [Phoenix 与 Langfuse 本机试用](references/2026-10-27-observability-local-trial.md) |
-| 本机调试、选定案例共享与开源发布边界 | [本机 Phoenix 与调试包协作](references/2026-10-27-agent-evaluation-integration.md) |
-| 个人本地、学校与混合部署的产品参照 | [Open WebUI、Dify、Immich 与 Supabase 部署研究](references/2026-10-27-deployment-patterns-research.md) |
-| 自有循环、Pi core/durable 与 DeepSeek Harness 的当前事实 | [Agent 内核复用研究](references/2026-10-27-agent-kernel-reuse-research.md) |
-| 内核比较的可复现代码、故障情形与实际结果 | [隔离接入探针](references/probes/2026-10-27-agent-kernel/README.md) |
-| Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
-| 已确认的学生主动性设置与无扰检测路线、验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |
-| 活动恢复、学习证据、学生画像纠正与教师共享边界 | [连续教学方案](references/2026-10-23-continuous-learning-proposal.md) |
-| 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | [工作区交互与状态决议](https://github.com/paher-din/XunJie/issues/116#issuecomment-6370870664)及[可操作原型](../apps/student/prototypes/workspace-state.README.md) |
-| 教师组件库、组件接入、生成内容状态与版本更新 | [课程工具与生成内容决议](https://github.com/paher-din/XunJie/issues/117)、[讨论方案](references/2026-10-26-course-tool-host-proposal.md)及[宿主技术研究](references/2026-10-26-course-tool-host-research.md) |
-| 本地修改前后端、共享数据与复现场景的开发协作方式 | [开发协作方案（方向已确认）](development-collaboration.md) |
-| 新 Agent 从哪里了解可用工具、如何操作和回答开发者 | [开发协作 Skill](../skills/xunjie-development/SKILL.md) → [工具状态与使用说明](development-tooling.md#新-agent-的工具入口) |
-| 开发工具的实现范围、与产品议题的关系及旧入口删除 | [工具设计与实施计划](development-tooling.md#工作项与实施时机) |
-| 开发协作规范、用户故事、验收标准及实施子票 | [开发协作工具规范](https://github.com/paher-din/XunJie/issues/126) |
-| 成员首次接入、远程权限、连接恢复及 2–5 人云端运行策略 | [成员接入与云端运行](development-access-operations.md) |
-| 当前开发服务器的配置、资源占用及性能适配依据 | [服务器核查（2026-10-23）](references/2026-10-23-development-server-assessment.md) |
-| GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
-| 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |
-| 自有持久 RunDriver 的长期选择、替代方案与维护责任 | [ADR 0002](adr/0002-own-teaching-state-and-effect-control.md) |
-| 三协议实际端点、SDK 验证与模型连接层选择 | [端点评估与工程判断](references/2026-10-23-model-endpoint-assessment.md) |
-| 固定版本 SDK 如何保留原生续接数据 | [SDK 源码调查](references/2026-10-22-model-protocol-sdk-research.md) |
-| Agent 如何阅读 PDF，以及循阶的按页读取路线 | [PDF 能力调查](references/2026-10-22-agent-pdf-capabilities-research.md) |
-| 项目领域术语 | [CONTEXT.md](../CONTEXT.md) |
-| 最早的产品愿景 | [最初 idea](<基于个性化学生画像的引导式项目制教学测验 Agent 系统.md>) |
-| 原聊天中每条用户消息 | [用户原话](references/2026-10-18-user-discussion.md) |
-| 原聊天交付的架构附件 | [2026-10-18 架构底稿](references/XunJie_Student_Agent_Architecture_2026-10-18.md) |
-| 当前实现差距与关键技术前提 | [架构事实核对](references/2026-10-18-architecture-checks.md) |
-| 跨课程执行、教师低门槛准备与首条 ALU 的运行方向 | [本地执行决议](https://github.com/paher-din/XunJie/issues/114#issuecomment-6363162710)及[讨论与实测记录](references/2026-10-23-local-execution-proposal.md) |
-| SystemVerilog 浏览器工具链与原生打包的来源核对 | [本地执行技术调查](references/2026-10-23-systemverilog-local-execution-research.md) |
-| 浏览器、本机组件与远端执行的早期比较 | [执行位置研究](references/2026-10-18-execution-topology-research.md) |
+| 整个产品项目的 ideation 来源 | [最初产品想法](<基于个性化学生画像的引导式项目制教学测验 Agent 系统.md>) |
+| 学生端 Agent 的设计、Wayfinder 决议、研究材料与实施工作包 | [student-agent-implementation](student-agent-implementation/README.md) |
+| 本地前后端、共享数据和独立复现环境 | [开发协作](development-collaboration.md) |
+| 已有开发工具、入口与使用边界 | [开发工具](development-tooling.md) |
+| 成员接入、权限和云端运行 | [接入与运维](development-access-operations.md) |
+| 开发协作工具规范与实施子票 | [开发协作工具规范](https://github.com/paher-din/XunJie/issues/126) |
+| 开发环境的资源、交付和运行核查 | [服务器核查](references/2026-10-23-development-server-assessment.md)、[交付核查](references/2026-10-24-development-delivery-closeout.md)、[团队交接](references/2026-10-24-team-development-handoff.md) |
+| 已完成的界面优化与验证 | [UI 优化记录](ui-optimization/README.md) |
+| GitHub 议题、原生依赖和后续会话工作方式 | [Issue tracker](agents/issue-tracker.md) |
+| 学生端架构决定及其理由 | [教师运行方案](student-agent-implementation/adr/0001-teacher-owned-course-execution-plan.md)、[持久 RunDriver](student-agent-implementation/adr/0002-own-teaching-state-and-effect-control.md) |
+| 领域术语与 UI 设计规范 | [CONTEXT.md](../CONTEXT.md)、[DESIGN.md](../DESIGN.md) |
 
-架构与决策记录随本轮讨论更新。最初 idea、用户原话和架构附件作为来源保留；其中的建议、技术核验声明和落地顺序不自动成为本轮已批准决定。最初 idea 中的教师设计、教学分析和跨学生案例库描述整体愿景，本轮教师端范围以决策记录为准。
-
-本目录的设计状态与代码实现状态分别记录。产品要求、工程选择和具体确认来源已在决策记录中区分；端点、生产恢复、安装、渲染器和性能仍需实测。工程测试、浏览器验收与教学效果分别记录。历史归档的使用规则见 [AGENTS.md](../AGENTS.md)。
+开发协作环境与产品部署分别设计。项目边界见 [AGENTS.md](../AGENTS.md)；`archive/` 停止维护，只有明确追溯历史时读取。

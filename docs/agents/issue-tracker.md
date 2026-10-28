@@ -16,7 +16,7 @@
 - 决策票通过 GitHub 原生 sub-issue 关系挂到地图，只使用 `wayfinder:research`、`wayfinder:prototype`、`wayfinder:grilling` 或 `wayfinder:task` 类型标签。不要给设计议题添加实现就绪标签。
 - `research` 由 Agent 调查事实；`prototype` 与 `grilling` 需要负责人参与。按当前地图的 Notes 决定何时启动研究，不在建图时擅自替负责人回答或关闭议题。
 - 每场开始先读取地图，再按子议题顺序查询开放、未认领、无开放阻塞项的前沿。开始处理前，用 `gh issue edit <number> --repo paher-din/XunJie --add-assignee @me` 认领。
-- 依赖使用原生 issue dependencies。解决时先发表评论记录结论和证据，再关闭该议题，最后在地图 Decisions so far 添加“标题链接 + 一句结论”。详细决策只保存在议题中；架构文档需要同步时注明来源。
+- 依赖使用原生 issue dependencies。解决时先发表评论记录结论和证据，再关闭该议题，最后在地图 Decisions so far 添加“标题链接 + 一句结论”。最终评论保留原始确认来源；按当前项目需要，将完整结论和研究材料收录到本地并注明来源与后续确认。学生端本轮入口为 [student-agent-implementation](../student-agent-implementation/README.md)，本地文档不复制动态认领和完成状态。
 - 新问题先创建议题，再连接依赖；尚不能准确表述的问题留在 Not yet specified，超出地图目的的内容放 Out of scope。
 - 面向用户始终以议题标题及链接称呼，不以编号代替名称。HTTP 参数仍使用对应数字身份。
 
