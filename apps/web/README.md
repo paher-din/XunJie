@@ -42,7 +42,7 @@ npm run test:e2e -w @xunjie/web  # Playwright 浏览器验收
 
 两个 Web 开发入口都在启动 Vite 前自动构建公共契约，干净安装后可直接预览。
 运行单个 Web 测试可用 `npm test -w @xunjie/web -- --run <测试路径>`；应先构建公共契约，或先运行上述开发/根构建入口。
-生产产物不包含准备 fixture。更多构建、测试分组和后续包接入见[工程入口](../../docs/engineering-entrypoints.md)。
+生产产物不包含准备 fixture。更多构建、测试分组和后续包接入见[工程入口](../../docs/student-agent-implementation/engineering-entrypoints.md)。
 
 `dev:prep` 与 `test:e2e` 用固定端口 + `--strictPort`：本机常同时跑着设计仓库的 dev server
 （5180 / 5199 / 5290 等），端口漂移会让断言打到错误的进程上。端口被占时命令会直接失败。

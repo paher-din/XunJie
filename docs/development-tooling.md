@@ -15,7 +15,7 @@
 | 已登记节点：`xj-dev node connect/status/disconnect` | 同一 README；另需已准备并登记的节点、端口与身份 | 迁移原回连能力；不安装 VM、初始化节点、重发或改派任务，隧道成功与执行业务验收分开报告 |
 | `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down/delete、use、node、join/refresh/access、repro、baseline；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
 
-以上 npm 命令的工作目录均为仓库根。根 `npm run typecheck`、`npm run build`、`npm test` 是 workspace 的统一检查入口；不再分别安装 Web 和后端依赖或维护 app 锁文件。公共 wire 契约经 `@xunjie/contracts` 的公开导出使用，浏览器导出及传递依赖不含 Node 专属库；内部 schema、repository 和权限投影留在后端，viewmodel 留在 Web。测试分组、环境标志及后续运行安装与存储接入见[工程交接](engineering-entrypoints.md)。
+以上 npm 命令的工作目录均为仓库根。根 `npm run typecheck`、`npm run build`、`npm test` 是 workspace 的统一检查入口；不再分别安装 Web 和后端依赖或维护 app 锁文件。公共 wire 契约经 `@xunjie/contracts` 的公开导出使用，浏览器导出及传递依赖不含 Node 专属库；内部 schema、repository 和权限投影留在后端，viewmodel 留在 Web。测试分组、环境标志及后续运行安装与存储接入见[工程交接](student-agent-implementation/engineering-entrypoints.md)。
 
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 

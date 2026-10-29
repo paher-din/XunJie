@@ -54,7 +54,7 @@ npm run dev:prep -w @xunjie/web
 <details>
 <summary>开发者文档</summary>
 
-[本轮架构与设计](docs/student-agent-implementation/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [Web 运行说明](apps/web/README.md) · [工程入口与后续接入](docs/engineering-entrypoints.md)
+[本轮架构与设计](docs/student-agent-implementation/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [Web 运行说明](apps/web/README.md) · [工程入口与后续接入](docs/student-agent-implementation/engineering-entrypoints.md)
 
 师生共用 `apps/web`（`@xunjie/web`）；后端与既有 runner 位于 `apps/server`（`@xunjie/server`）；真实跨端 wire 契约从 `packages/contracts`（`@xunjie/contracts`）的公开导出消费。依赖统一在仓库根执行 `npm ci`，使用根 `package-lock.json`。
 

@@ -31,7 +31,7 @@ if (args.includes('--list')) {
   process.exit(0);
 }
 if (external) {
-  console.log('External tests require their documented Linux VM, image/toolchain or approved model environment; see docs/engineering-entrypoints.md.');
+  console.log('External tests require their documented Linux VM, image/toolchain or approved model environment; see docs/student-agent-implementation/engineering-entrypoints.md.');
 }
 const run = (binary, argv) => {
   const result = spawnSync(binary, argv, { cwd, stdio: 'inherit' });
