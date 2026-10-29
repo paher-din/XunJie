@@ -7,4 +7,3 @@ export class RunnerError extends Error {
     this.code = code;
   }
 }
-

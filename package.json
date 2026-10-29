@@ -9,7 +9,7 @@
     "preinstall": "node apps/server/tools/check-runtime.mjs",
     "build": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/server && npm run build -w @xunjie/web",
     "typecheck": "npm run build -w @xunjie/contracts && npm run typecheck --workspaces --if-present",
-    "test": "npm run build -w @xunjie/contracts && npm run test -w @xunjie/contracts && npm run test -w @xunjie/server && npm run test -w @xunjie/web && node scripts/test.mjs tools",
+    "test": "npm run build -w @xunjie/contracts && npm run test -w packages -w apps --if-present && node scripts/test.mjs tools",
     "test:external": "node scripts/test.mjs server --external",
     "test:external:tools": "node scripts/test.mjs tools --external",
     "test:tools": "node scripts/test.mjs tools",

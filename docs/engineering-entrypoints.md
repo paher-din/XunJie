@@ -28,7 +28,7 @@ npm test
 
 [scripts/build-server.mjs](../scripts/build-server.mjs)先清空 `apps/server/dist`，再按[生产配置](../apps/server/tsconfig.build.json)编译，并检查实际输出；发现测试、fixtures、support 或验收宿主等测试专用文件即失败。仅在 tsconfig 中排除文件不足以阻止 import 把它们带回产物。发布清单与依赖仍须核对，现行云端打包入口是 [build-runtime-artifact.mjs](../tools/i0-cloud/build-runtime-artifact.mjs)。
 
-根 `npm test` 运行公共契约、后端、Web、全部本地工具测试（含 Python 部署测试）。后端与工具共用 [scripts/test.mjs](../scripts/test.mjs)：
+根 `npm test` 运行 `packages`、`apps` 下声明了测试脚本的 workspace，以及全部本地工具测试（含 Python 部署测试）；新增 workspace 无需再加入一份手写工程列表。后端、契约与工具共用 [scripts/test.mjs](../scripts/test.mjs)：
 
 ```sh
 node scripts/test.mjs server --list

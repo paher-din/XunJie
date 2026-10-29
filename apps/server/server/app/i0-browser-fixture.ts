@@ -79,7 +79,7 @@ try {
   const https={key:readFileSync(keyFile),cert:readFileSync(certFile)};
   async function compose() {
     const service=await createI0App({db:f.db,origin:base,signingSecret:f.signingSecret,currentGeneration:()=>generation,now:currentTime,
-      https,staticDirectory:resolve('../student/dist'),consumerIntervalMs:50,
+      https,staticDirectory:resolve('../web/dist'),consumerIntervalMs:50,
       ...(transport?{runner:transport}:{}),
       tutoring:{studentHelp:{versions:{modelConfig:'deepseek-flash-v1',prompt:'student-help-v1',schema:'student-help-v1',policy:'help-v1'},
         budgetAvailable:()=>true},provider}});

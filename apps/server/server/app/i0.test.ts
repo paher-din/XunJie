@@ -368,7 +368,7 @@ test('normal host serves the unchanged real UI build and authorized session over
   const {fileURLToPath}=await import('node:url');
   const {readFileSync}=await import('node:fs');
   const f=await fixture(),student=await f.login();
-  const staticDirectory=fileURLToPath(new URL('../../../student/dist/',import.meta.url));
+  const staticDirectory=fileURLToPath(new URL('../../../web/dist/',import.meta.url));
   const service=await createI0App({db:f.db,origin:'https://synthetic.example',signingSecret:f.signingSecret,now:f.timestamp,
     currentGeneration:f.generation,staticDirectory});
   try{
@@ -377,7 +377,7 @@ test('normal host serves the unchanged real UI build and authorized session over
     assert.equal(index.status,200);
     const html=await index.text();
     assert.match(html,/id="root"/);
-    assert.equal(html,readFileSync(new URL('../../../student/dist/index.html',import.meta.url),'utf8'));
+    assert.equal(html,readFileSync(new URL('../../../web/dist/index.html',import.meta.url),'utf8'));
     const bundle=html.match(/src="([^"]+\.js)"/)?.[1];
     assert.ok(bundle);
     const asset=await fetch(address+bundle);
