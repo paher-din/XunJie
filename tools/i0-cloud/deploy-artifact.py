@@ -588,6 +588,11 @@ class ArtifactDeployment:
 
     def backup(self, current_release):
         application = self.read_application()
+        package_file = current_release / 'apps/server/package.json'
+        if not package_file.is_file():
+            # The first upgrade still takes its backup with the previous release's driver.
+            package_file = current_release / 'apps/teaching/package.json'
+        require(package_file.is_file(), 'CURRENT_RUNTIME_PACKAGE_REQUIRED')
         directory = Path(self.config['backupDirectory'])
         directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         require(not directory.is_symlink(), 'CONTROLLED_BACKUP_DIRECTORY_REQUIRED')
@@ -609,7 +614,7 @@ try{
 }finally{db.close();}
 """
         result = self.checked([str(Path(self.config['nodeBinDirectory']) / 'node'), '--input-type=module', '-e', program],
-                              'CONSISTENT_BACKUP_FAILED', input=json.dumps({'packageFile': str(current_release / 'apps/server/package.json'),
+                              'CONSISTENT_BACKUP_FAILED', input=json.dumps({'packageFile': str(package_file),
                                   'databaseFile': application['databaseFile'], 'backupFile': str(destination)}), timeout=120)
         return json.loads(result)
 

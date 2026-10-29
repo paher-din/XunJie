@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -265,6 +266,27 @@ class ArtifactDeploymentTests(unittest.TestCase):
         contents = self.database.read_bytes()
         destination.write_bytes(contents)
         return {"path": str(destination), "sha256": sha256(contents)}
+
+    def test_upgrade_backs_up_committed_records_with_the_previous_runtime_layout(self) -> None:
+        shutil.rmtree(self.old_release / 'apps/server')
+        shutil.rmtree(self.old_release / 'node_modules')
+        previous_app = self.old_release / 'apps/teaching'
+        previous_app.mkdir(parents=True)
+        (previous_app / 'package.json').write_text('{"type":"module"}\n', encoding='utf-8')
+        (previous_app / 'node_modules').symlink_to(SCRIPT.parents[2] / 'node_modules', target_is_directory=True)
+        (self.node / 'node').symlink_to(Path(shutil.which('node')).resolve())
+        self.database.unlink()
+        with contextlib.closing(sqlite3.connect(self.database)) as database, database:
+            database.execute('CREATE TABLE records (body TEXT NOT NULL)')
+            database.execute('INSERT INTO records VALUES (?)', ('confirmed before upgrade',))
+        self.deployment.run = deploy_artifact.ArtifactDeployment.run.__get__(self.deployment)
+
+        receipt = deploy_artifact.ArtifactDeployment.backup(self.deployment, self.old_release)
+
+        with contextlib.closing(sqlite3.connect(receipt['path'])) as backup:
+            self.assertEqual(backup.execute('SELECT body FROM records').fetchall(), [('confirmed before upgrade',)])
+        self.assertEqual(receipt['sha256'], sha256(Path(receipt['path']).read_bytes()))
+        self.assert_previous_release()
 
     def release_commit(self) -> str | None:
         release = self.current.resolve()
