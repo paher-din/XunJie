@@ -6,6 +6,8 @@
 
 PostgreSQL engine 为 **18.6**，theseus 分发版本为 **18.6.1**；最后一位是打包修订，不是数据库 minor。[上游 release](https://github.com/theseus-rs/postgresql-binaries/releases/tag/18.6.1) 的 archive SHA256 和大小已核实，三平台分别采用 `aarch64-apple-darwin.tar.gz`、`x86_64-pc-windows-msvc.zip`、`x86_64-unknown-linux-gnu.tar.gz`。确切 URL、字节数和摘要均在资源清单中；URL 追加 `.sha256`、`.manifest.json`、`.spdx.json` 可定位上游校验、逐文件清单与 SBOM。[来源验证说明](https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/provenance.md)
 
+Windows 分发在每个 PostgreSQL `.exe` 旁增加 `UTF-8` 进程 manifest，源文件为 [windows-postgres.manifest](../../scripts/windows-postgres.manifest)。固定上游工具没有嵌入 manifest；此附加文件由 Windows 在进程启动时读取，使中文安装/数据路径使用一致编码，保留 UTF8 数据库与 `C` collation，不修改上游 `.exe` 字节或系统代码页。来源为 [Microsoft 进程代码页说明](https://learn.microsoft.com/en-us/windows/apps/design/globalizing/use-utf8-code-page)。`distribution.json` 的 PostgreSQL 资源记录新增文件列表及逐文件摘要，上游 archive 摘要继续对应原始下载。Windows 启动参数使用实际空值关闭 Unix socket；运行管理以 `pg_ctl -w` 的退出结果完成启动检查，并释放其输出管道，避免已启动的 PostgreSQL 继承句柄导致等待服务退出。
+
 Node.js 固定 **24.21.0**，使用官方 darwin-arm64 tar.gz、win-x64 zip、linux-x64 tar.xz；摘要逐项取自 [官方 SHASUMS256.txt](https://nodejs.org/dist/v24.21.0/SHASUMS256.txt)。资源清单同时保留签名清单来源；本构建器校验固定摘要，不将摘要校验冒充 GPG、Authenticode 或公证验证。
 
 PostgreSQL 完整目录保留 `LICENSE`、`dependency-notices/`、运行库、扩展、share 数据和构建来源记录。其主体适用 [PostgreSQL License](https://www.postgresql.org/about/licence/)，整包还包括 GPL/LGPL 等第三方组件，不能把整包标为仅 PostgreSQL License；再分发须处理对应 notices 和源码义务。Node 在完整上游 archive 校验与解包后，仅保留实际 Node 执行文件及完整 [LICENSE 与第三方条款](https://github.com/nodejs/node/blob/v24.21.0/LICENSE)，不携带 npm、npx、headers、tests 和其他文档；不修改保留文件的内容。`distribution.json` 明确记录此受控子集及保留路径。bundle 的 npm 依赖另收集至 `app/licenses/` 和 `app/licenses.json`。
@@ -13,8 +15,8 @@ PostgreSQL 完整目录保留 `LICENSE`、`dependency-notices/`、运行库、�
 | 产品目标 | 当前先决条件与未完成项 |
 | --- | --- |
 | darwin-arm64 | theseus 基线 macOS 15.0+、Apple Silicon；Mac 包七项基础工具实际 `--version` 返回 18.6，`postgres` 仅 ad-hoc 签名，无 TeamIdentifier。当前产品输出 unsigned；签名、公证按用户要求暂不做，不作为本轮构建阻塞，Gatekeeper 未验收。 |
-| win32-x64 | Windows 11 x64 为产品验收目标；上游依赖未随包携带的 VC++ v14 Runtime，仍需主流程解决安装或 app-local 提供及分发许可。PG18 Authenticode 和干净机执行未独立核实。 |
-| linux-x64 | 首个实际学校组合为 Ubuntu 24.04.5 x64、glibc 2.39；独立包运行已验证，真实跨机直连仍受网络阻塞，结果见[运行证据](evidence/wp01-network-macos-linux.json)。上游 archive 的 ABI 下限仍为 glibc >=2.36 与对应 ELF loader，不是 musl 包。Node 还要求 kernel >=4.18。 |
+| win32-x64 | Windows 11 x64 为产品验收目标；实机 build 26200、非提升令牌已通过独立包验收，既有 VC++ 14.50.35719 的 vcruntime/msvcp 实际从 System32 加载。上游未随包携带 VC++ v14 Runtime；干净机的安装或 app-local 准备及分发许可仍需解决。 |
+| linux-x64 | 首个实际学校组合为 Ubuntu 24.04.5 x64、glibc 2.39；独立包运行、Mac 到学校的真实公网 HTTPS 认证/重连/撤销已验证，结果见[运行证据](evidence/wp01-network-macos-linux.json)。上游 archive 的 ABI 下限仍为 glibc >=2.36 与对应 ELF loader，不是 musl 包。Node 还要求 kernel >=4.18。 |
 
 以上平台边界以 [theseus 支持策略](https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md) 及 [Node 24.21.0 平台说明](https://github.com/nodejs/node/blob/v24.21.0/BUILDING.md) 为依据。
 

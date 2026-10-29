@@ -1,5 +1,6 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import { mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
@@ -31,9 +32,30 @@ export const pgTool = (resources: RuntimeResources, name: string): string => {
   return join(resources.postgresBin, name + (process.platform === 'win32' ? '.exe' : ''));
 };
 export async function runPg(resources: RuntimeResources, tool: string, args: string[]): Promise<string> {
+  const env = { ...process.env, LC_ALL: 'C', LANG: 'C', PGCONNECT_TIMEOUT: '5' };
+  if (process.platform === 'win32' && tool === 'pg_ctl' && args[0] === 'start') {
+    // On Windows the started server can retain pg_ctl's output pipe handles.
+    // pg_ctl -w's exit is the startup result; waiting for pipe close would wait
+    // for the server to stop. Keep its diagnostics, then release our pipe ends.
+    const child = spawn(pgTool(resources, tool), args, { windowsHide: true, shell: false, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '', timedOut = false;
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => { stdout = (stdout + chunk).slice(-64 * 1024); });
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => { stderr = (stderr + chunk).slice(-64 * 1024); });
+    const timer = setTimeout(() => { timedOut = true; child.kill(); }, 60_000);
+    try {
+      const [code, signal] = await once(child, 'exit') as [number | null, NodeJS.Signals | null];
+      if (code !== 0 || timedOut) throw Object.assign(new Error(stderr.trim() || stdout.trim() || 'PostgreSQL startup failed.'), {
+        code: timedOut ? 'ETIMEDOUT' : code, signal,
+      });
+      return stdout;
+    } finally {
+      clearTimeout(timer);
+      child.stdout.destroy(); child.stderr.destroy();
+    }
+  }
   const { stdout } = await exec(pgTool(resources, tool), args, {
     windowsHide: true, timeout: 60_000, maxBuffer: 4 * 1024 * 1024,
-    env: { ...process.env, LC_ALL: 'C', LANG: 'C', PGCONNECT_TIMEOUT: '5' },
+    env,
   });
   return stdout;
 }
@@ -162,7 +184,7 @@ export async function startDatabase(root: string, resources: RuntimeResources, c
   if (!running) {
     const { binding } = await readJson<ManagedDatabase>(join(root, 'database.json'));
     await runPg(resources, 'pg_ctl', ['start', '-D', data, '-l', join(root, 'postgres.log'), '-w', '-t', '30',
-      '-o', `-h 127.0.0.1 -p ${binding.port} -c timezone=UTC -c unix_socket_directories=''`]);
+      '-o', `-h 127.0.0.1 -p ${binding.port} -c timezone=UTC -c unix_socket_directories=${process.platform === 'win32' ? '' : "''"}`]);
   }
   await inspectDatabase(root, config);
 }

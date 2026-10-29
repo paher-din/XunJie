@@ -2,7 +2,7 @@
 
 本目录提供 issue #143 的产品运行底座 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。本票不交付课程业务、学生实验执行或 Agent 能力；安装或启动成功不代表课程、Agent 或教学效果验收通过。
 
-这是产品运行底座的候选交付。完整工程门禁、Mac 实际包安装/启停/故障恢复、Linux 独立包运行及同机 HTTPS 连接已经验证，具体结果、限制和可重复入口见[运行交接](../../docs/student-agent-implementation/runtime-acceptance.md)。Windows 实机待负责人回家后继续，真实跨机公网连接仍受端口链路阻塞。签名、公证按负责人要求移出本轮；不宣称完整课程产品或自动更新已交付。
+这是产品运行底座的候选交付。完整工程门禁、Mac/Windows 实际包安装、启停、隔离与故障恢复、Linux 独立包运行及 Mac→学校 Linux 的真实公网 HTTPS 认证、断连重连和撤销已经验证。Windows Chrome/Edge 基础页面由负责人实机确认；各平台证据、限制和可重复入口见[运行交接](../../docs/student-agent-implementation/runtime-acceptance.md)。签名、公证按负责人要求移出本轮；不宣称完整课程产品或自动更新已交付。
 
 ## 入口与环境目录
 

@@ -274,7 +274,23 @@ export async function packageProduct(options) {
       await unpackArchive(archive, asset, destination);
       if (id === 'node') await selectNodeRuntime(destination, asset.executable);
       const tools = id === 'node' ? [asset.executable] : catalog.postgres.requiredTools.map(name => `bin/${name}${platform === 'win32-x64' ? '.exe' : ''}`);
-      resources.push(await resourceRecord(id, spec, asset, destination, tools));
+      const additions = [];
+      if (id === 'postgres' && platform === 'win32-x64') {
+        // These pinned executables have no embedded manifest. Windows reads the
+        // adjacent manifest before starting each process, including PG children.
+        // This fixes non-ASCII paths without changing upstream executable bytes
+        // or the user's system code page.
+        for (const name of (await readdir(join(destination, 'bin'))).filter(name => name.endsWith('.exe')).sort()) {
+          const manifest = `bin/${name}.manifest`;
+          await cp(join(root, 'scripts/windows-postgres.manifest'), join(destination, manifest));
+          additions.push(manifest);
+        }
+      }
+      const record = await resourceRecord(id, spec, asset, destination, [...tools, ...additions]);
+      if (additions.length) record.distribution = { ...record.distribution, additionalFiles: additions,
+        upstreamFileContentsModified: false, windowsProcessCodePage: 'UTF-8',
+        manifestSource: 'https://learn.microsoft.com/en-us/windows/apps/design/globalizing/use-utf8-code-page' };
+      resources.push(record);
     }
     const application = await buildApplication(join(staging, 'app'));
     for (const file of await walk(web)) {

@@ -106,10 +106,16 @@ async function consume(file, checksOnly) {
   }
   console.log(JSON.stringify(result));
 }
-async function remoteAction(action, base, publicIp) {
+async function remoteAction(action, base, publicIp, schoolPort) {
   assert(/^\/tmp\/xunjie-network-[a-zA-Z0-9-]+$/.test(base), 'Unexpected disposable remote directory');
   assert.equal((await readFile(path.join(base, '.owned-probe'), 'utf8')).trim(), path.basename(base));
   assert.notEqual(process.getuid(), 0, 'PostgreSQL must run as a normal user');
+  if (action === 'remove') {
+    const cleanup = await remoteAction('cleanup', base, publicIp, schoolPort);
+    assert.equal(cleanup.safeToRemove, true);
+    await rm(base, { recursive: true });
+    return { temporaryRemoved: true };
+  }
   const school = path.join(base, '学校 环境');
   const peer = path.join(base, '同机 组件');
   const pkg = path.join(base, '独立 产品包');
@@ -140,7 +146,8 @@ async function remoteAction(action, base, publicIp) {
   }
   if (action === 'setup') {
     await prepareTools(base);
-    const port = await freePort();
+    const port = schoolPort === undefined ? await freePort() : Number(schoolPort);
+    assert(Number.isInteger(port) && port > 1024 && port <= 65535, 'School port must be an unprivileged TCP port');
     await save(path.join(base, 'school-config.json'), { profile: 'school', database: { mode: 'managed' },
       host: '0.0.0.0', port, publicEndpoint: `https://${publicIp}:${port}`,
       tls: { certificateFile: path.join(base, 'server.crt'), keyFile: path.join(base, 'server.key') } });
@@ -262,25 +269,50 @@ async function main(values) {
       systemChanges: 'none; no firewall/proxy/service/permission/trust-store changes',
       networkOutage: 'controlled stop of this test school listener and its own PG; no OS network modification' },
     acceptance: { linux: 'running', linuxSameHost: 'not-run', crossMachineDirect: 'not-run', browser: 'not-run',
-      teachingEffectiveness: 'not-run', cleanMachine: 'not-run', windows: 'deferred-until-user-home', signingNotarization: 'excluded-by-user' } };
+      teachingEffectiveness: 'not-run', cleanMachine: 'not-run', windows: 'not-run-by-this-probe', signingNotarization: 'excluded-by-user' } };
   const base = await mkdtemp(path.join(os.tmpdir(), 'xunjie-network-'));
   const remote = `/tmp/xunjie-network-${randomUUID()}`;
   const sshConfig = path.resolve(values['ssh-config']);
   const host = values['ssh-host'] ?? 'xunjie-cloud';
   const publicIp = values['public-ip'] ?? '101.201.141.133';
+  const schoolPort = values['school-port'];
+  if (schoolPort !== undefined) assert(/^\d+$/.test(schoolPort) && Number(schoolPort) > 1024 && Number(schoolPort) <= 65535, 'Invalid --school-port');
   assert(/^\d{1,3}(?:\.\d{1,3}){3}$/.test(publicIp));
   assert(/^[a-zA-Z0-9_-]+$/.test(host));
   let remoteCreated = false, remoteRuntimeAttempted = false, localInstalled = false;
   const localRoot = path.join(base, 'Mac 本机组件');
   const ca = path.join(base, 'ca.crt');
   const macCli = (command, extra = [], options = {}) => cli(base, command, localRoot, extra, { ca, ...options });
-  const ssh = (script, options = {}) => run('/usr/bin/ssh', ['-F', sshConfig, '-o', 'BatchMode=yes', '-o', 'ClearAllForwardings=yes', '-o', 'ConnectTimeout=15', host, script], options);
+  const sshOptions = ['-F', sshConfig, '-o', 'BatchMode=yes', '-o', 'ClearAllForwardings=yes', '-o', 'ConnectTimeout=15',
+    '-o', 'ControlMaster=auto', '-o', 'ControlPersist=60', '-o', `ControlPath=${path.join(base, 'ssh-control')}`];
+  const ssh = (script, options = {}) => run('/usr/bin/ssh', [...sshOptions, host, script], options);
   const remoteRun = async action => {
     const command = [path.join(remote, '独立 产品包/resources/node/bin/node'), path.join(remote, 'probe.mjs'), '--remote', action, '--base', remote, '--public-ip', publicIp];
+    if (schoolPort !== undefined) command.push('--school-port', schoolPort);
     return JSON.parse((await ssh(command.map(quote).join(' '))).stdout);
   };
-  const transfer = (source, dest, download = false) => run('/usr/bin/scp', ['-q', '-F', sshConfig, '-o', 'BatchMode=yes', '-o', 'ClearAllForwardings=yes',
+  const transfer = (source, dest, download = false) => run('/usr/bin/scp', ['-q', ...sshOptions,
     ...(download ? [`${host}:${source}`, dest] : [source, `${host}:${dest}`])]);
+  const cleanupUnstartedRemote = async () => {
+    // A failed upload/extraction may not have installed Node or this probe yet.
+    // The selected Ubuntu host's Python performs only this owned-directory cleanup.
+    const script = `import json, os, pathlib, re, shutil, sys
+base = pathlib.Path(sys.argv[1])
+assert re.fullmatch(r'/tmp/xunjie-network-[a-zA-Z0-9-]+', str(base))
+assert not base.is_symlink() and base.stat().st_uid == os.getuid()
+assert (base / '.owned-probe').read_text().strip() == base.name
+for entry in pathlib.Path('/proc').iterdir():
+    if not entry.name.isdigit():
+        continue
+    try:
+        executable = str((entry / 'exe').resolve(strict=True))
+    except (OSError, RuntimeError):
+        continue
+    assert not executable.startswith(str(base) + '/'), 'Owned process is still running'
+shutil.rmtree(base)
+print(json.dumps({'safeToRemove': True, 'productNeverExecuted': True, 'temporaryRemoved': True}))`;
+    return JSON.parse((await ssh(`/usr/bin/python3 -c ${quote(script)} ${quote(remote)}`)).stdout);
+  };
   async function stage(name, work) {
     const started = performance.now();
     try {
@@ -430,14 +462,16 @@ async function main(values) {
     } else report.cleanup.local = { servicesStopped: true, installed: false };
     if (remoteCreated) {
       try {
-        report.cleanup.remote = remoteRuntimeAttempted ? await remoteRun('cleanup')
-          : { safeToRemove: true, productNeverExecuted: true };
-        assert.equal(report.cleanup.remote.safeToRemove, true);
-        await ssh(`test "$(cat ${quote(remote + '/.owned-probe')})" = ${quote(path.basename(remote))} && rm -rf -- ${quote(remote)} && test ! -e ${quote(remote)}`);
-        report.cleanup.remote.temporaryRemoved = true;
+        if (remoteRuntimeAttempted) {
+          report.cleanup.remote = await remoteRun('cleanup');
+          assert.equal(report.cleanup.remote.safeToRemove, true);
+          report.cleanup.remote.temporaryRemoved = (await remoteRun('remove')).temporaryRemoved;
+        } else report.cleanup.remote = await cleanupUnstartedRemote();
       } catch (error) { report.cleanup.remote = { error: redact(error.message), temporaryRetained: remote }; report.status = 'failed'; }
     }
     // Secrets are removed even if a runtime stop needs diagnosis; never remove live roots.
+    const closedControl = await run('/usr/bin/ssh', [...sshOptions, '-O', 'exit', host], { allowFailure: true, timeout: 10_000 });
+    report.cleanup.sshControlClosed = closedControl.code === 0 || closedControl.stderr.includes('No such file or directory');
     for (const name of ['ca.key', 'server.key', 'server.csr', 'ca.srl', 'mac-grant.json', 'mac-connection.json']) await rm(path.join(base, name), { force: true });
     report.cleanup.localSecretsRemoved = true;
     if (report.cleanup.local.servicesStopped) {
@@ -455,13 +489,15 @@ async function main(values) {
 
 const { values } = parseArgs({ options: { help: { type: 'boolean' }, consumer: { type: 'string' }, 'checks-only': { type: 'boolean' },
   remote: { type: 'string' }, base: { type: 'string' }, 'mac-package': { type: 'string' }, 'linux-package': { type: 'string' },
-  'ssh-config': { type: 'string' }, 'ssh-host': { type: 'string' }, 'public-ip': { type: 'string' }, out: { type: 'string' } } });
-if (values.help) console.log(`Usage: <Node24> scripts/probe-product-network.mjs --mac-package DIR --linux-package DIR --ssh-config FILE --out FILE [--ssh-host xunjie-cloud] [--public-ip 101.201.141.133]
+  'ssh-config': { type: 'string' }, 'ssh-host': { type: 'string' }, 'public-ip': { type: 'string' }, 'school-port': { type: 'string' }, out: { type: 'string' } } });
+if (values.help) console.log(`Usage: <Node24> scripts/probe-product-network.mjs --mac-package DIR --linux-package DIR --ssh-config FILE --out FILE [--ssh-host xunjie-cloud] [--public-ip 101.201.141.133] [--school-port 38195]
 Uses prebuilt COMPLETE packages. No shared build/dist mutation, installation, system trust, firewall, proxy or service changes.
 SSH deploys/observes a fresh /tmp directory as a non-root user; no tunnels. Product HTTPS is a direct public-IP test.
+The selected Ubuntu test host needs Python 3 for cleanup when package transfer/extraction fails before Node is available.
+--school-port selects a dedicated ingress port already allowed by the deployment's network policy; this probe does not change that policy.
 Always attempts to stop owned daemons/PG before removing its own directories and temporary secrets.
 Blocked public transport is recorded as partial-network-blocked, never as cross-machine acceptance.
 Separate consumer calls only the public createOutboundConnection API for runtime.status; no course or Agent claims.`);
 else if (values.consumer) consume(values.consumer, values['checks-only']).catch(error => { console.error(redact(error.message)); process.exitCode = 1; });
-else if (values.remote) remoteAction(values.remote, values.base, values['public-ip']).then(value => console.log(JSON.stringify(value))).catch(error => { console.error(redact(error.message)); process.exitCode = 1; });
+else if (values.remote) remoteAction(values.remote, values.base, values['public-ip'], values['school-port']).then(value => console.log(JSON.stringify(value))).catch(error => { console.error(redact(error.message)); process.exitCode = 1; });
 else main(values).catch(error => { console.error(redact(error.message)); process.exitCode = 1; });
