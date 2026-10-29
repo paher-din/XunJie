@@ -1,0 +1,32 @@
+Storage acceptance raw log: C:\Users\h\AppData\Local\Temp\xj-storage-144-kix07l\consumer\.verification\storage-2026-10-29T16-28-11-301Z\native.log
+▶ real HTTP sessions recover stable receipts and bytes after response loss on file and S3
+  ✔ file (17070.12ms)
+  ✔ s3 (15039.9333ms)
+✔ real HTTP sessions recover stable receipts and bytes after response loss on file and S3 (32114.2783ms)
+✔ real lost/timed-out COMMIT acknowledgements resolve by original identity without replay (15642.168ms)
+✔ killing a real transaction process discards state, receipt and outbox together (10775.1107ms)
+✔ owner migrations are serialized, immutable, and upgrades require the same closed maintenance path (15921.8912ms)
+▶ real file and pinned S3 bytes survive publication rollback, reopening, retained snapshots and collection
+  ✔ file (963.6687ms)
+  ✔ s3 (877.2745ms)
+✔ real file and pinned S3 bytes survive publication rollback, reopening, retained snapshots and collection (17333.3858ms)
+✔ real reference creation and deletion claims cannot delete a newly retained object (15533.4845ms)
+✔ upload does not hold a database transaction and maintenance drains its durable in-flight identity (9861.691ms)
+✔ actual missing, corrupt, partial and denied bytes never become a published reference (6437.4231ms)
+✔ a killed uploader leaves a durable unresolved identity; maintenance fails closed until the same bytes are reconciled (6909.2411ms)
+✔ duplicate upload identities wait for the original PUT, so a delayed writer cannot recreate a collected object (5128.3515ms)
+✔ real S3 timeout with stale conflicting or matching payload bytes stays unresolved until the original PUT completes (5838.0063ms)
+✔ real S3 preserves immutable bytes across a client process restart and conditional write races (4349.1416ms)
+✔ real S3 lost upload reply is reconciled by reading the same key without another PUT (41.3564ms)
+✔ two real sessions atomically receive one stable request and preserve its receipt after reopening (16443.9678ms)
+✔ conditional updates, uniqueness and cross-row effects either commit together or leave no receipt (15257.3353ms)
+✔ environment/service roles isolate identical identifiers and preserve actual PostgreSQL value semantics (9926.0774ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67321.5357
+Storage acceptance passed: C:\Users\h\AppData\Local\Temp\xj-storage-144-kix07l\native-result.json
