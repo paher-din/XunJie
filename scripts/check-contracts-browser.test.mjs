@@ -79,6 +79,17 @@ for (const builtin of ['node:fs', 'fs']) {
   });
 }
 
+for (const environment of ['production', 'development']) {
+  test(`checks Node dependencies guarded by the ${environment} environment`, (t) => {
+    const root = fixture(t, './dist/index.js', {
+      'dist/index.js': `if (process.env.NODE_ENV === ${JSON.stringify(environment)}) require('node:fs'); export const ready = true;`,
+    });
+    const result = check(root);
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stderr, /Could not resolve "node:fs"/);
+  });
+}
+
 test('ignores private files and null exports', (t) => {
   const root = fixture(t, { '.': './dist/index.js', './private': null }, {
     'dist/private.js': 'export { readFile } from "node:fs";',

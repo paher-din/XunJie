@@ -48,6 +48,8 @@ async function main() {
         bundle: true,
         write: false,
         treeShaking: false,
+        // Preserve environment branches so dependencies in either mode are checked.
+        define: { 'process.env.NODE_ENV': 'process.env.NODE_ENV' },
         metafile: true,
         logLevel: 'silent',
         logOverride: {

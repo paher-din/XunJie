@@ -3,6 +3,7 @@ import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { marked } from 'marked';
+import { decodeHTMLStrict } from 'entities';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const excludedDirectories = new Set([
@@ -66,8 +67,9 @@ export function checkDocLinks({ root = repoRoot, files } = {}) {
   for (const file of selected) {
     const source = readFileSync(file, 'utf8').replace(/\r\n?/g, '\n');
     for (const { href, line } of linksWithLines(source)) {
-      if (/^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(href)) continue;
-      const path = href.split(/[?#]/, 1)[0];
+      const decoded = decodeHTMLStrict(href);
+      if (/^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(decoded)) continue;
+      const path = decoded.split(/[?#]/, 1)[0];
       if (!path) continue;
       checked++;
       let target;

@@ -71,6 +71,24 @@ test('ignores fenced/inline code and remote or fragment-only links, preserves fa
   ]);
 });
 
+test('resolves character references before query and fragment separators while preserving literal ampersands', t => {
+  const { root, write } = fixture(t);
+  write('README.md', [
+    '[numeric](READM&#69;.md)',
+    '[named](A&amp;B.md)',
+    '[unicode](caf&eacute;.md)',
+    '[fragment](README.md&num;section)',
+    '[query](README.md?x=1&amp;y=2)',
+    '[literal](literal&copy.md)',
+  ].join('\n'));
+  write('A&B.md');
+  write('café.md');
+  write('literal&copy.md');
+  const result = checkDocLinks({ root, files: ['README.md'] });
+  assert.equal(result.checked, 6);
+  assert.deepEqual(result.failures, []);
+});
+
 test('CLI reports reference/image failures and malformed encoding with nonzero exit', t => {
   const { write, run } = fixture(t);
   write('README.md', '# title\n\n[bad][ref]\n![bad image](missing.png)\n[bad encoding](bad%zz.md)\n\n[ref]: gone.md\n');
