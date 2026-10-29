@@ -15,7 +15,7 @@ PostgreSQL 完整目录保留 `LICENSE`、`dependency-notices/`、运行库、�
 | 产品目标 | 当前先决条件与未完成项 |
 | --- | --- |
 | darwin-arm64 | theseus 基线 macOS 15.0+、Apple Silicon；Mac 包七项基础工具实际 `--version` 返回 18.6，`postgres` 仅 ad-hoc 签名，无 TeamIdentifier。当前产品输出 unsigned；签名、公证按用户要求暂不做，不作为本轮构建阻塞，Gatekeeper 未验收。 |
-| win32-x64 | Windows 11 x64 为产品验收目标；实机 build 26200、非提升令牌已通过独立包验收，既有 VC++ 14.50.35719 的 vcruntime/msvcp 实际从 System32 加载。上游未随包携带 VC++ v14 Runtime。产品仅在 managed PG 路径检测依赖，并从微软固定内容地址下载 14.51.36247.0 安装器，校验 SHA-256 与 Microsoft Authenticode；缺项/旧版返回 `installation-required` 和安装入口，许可/UAC由本人完成后重试。未将微软安装器或 DLL 字节再分发进产品包；安装后就绪尚未实测。 |
+| win32-x64 | Windows 11 x64 为产品验收目标；实机 build 26200、非提升令牌已通过 r3 独立包验收，当时 VC++ 14.50.35719 的 vcruntime/msvcp 从 System32 加载。上游未随包携带 VC++ v14 Runtime。产品仅在 managed PG 路径检测依赖，并从微软固定内容地址下载 14.51.36247.0 安装器，校验 SHA-256 与 Microsoft Authenticode；缺项/旧版返回 `installation-required` 和安装入口，许可/UAC由本人完成后重试。未将微软安装器或 DLL 字节再分发进产品包。随后实际运行微软安装器升级至 14.51，r5 非提升安装、启动和 ready 已通过；安装器返回 3010 要求稍后重启，宿主未重启。[实测范围](evidence/wp01-clean-windows.json) |
 | linux-x64 | 首个实际学校组合为 Ubuntu 24.04.5 x64、glibc 2.39；独立包运行、Mac 到学校的真实公网 HTTPS 认证/重连/撤销已验证，结果见[运行证据](evidence/wp01-network-macos-linux.json)。上游 archive 的 ABI 下限仍为 glibc >=2.36 与对应 ELF loader，不是 musl 包。Node 还要求 kernel >=4.18。 |
 
 以上平台边界以 [theseus 支持策略](https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md) 及 [Node 24.21.0 平台说明](https://github.com/nodejs/node/blob/v24.21.0/BUILDING.md) 为依据。

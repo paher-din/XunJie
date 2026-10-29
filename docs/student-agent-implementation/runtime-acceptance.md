@@ -51,6 +51,7 @@ npm run package:product -- --platform win32-x64
 | Mac 原生依赖 | 10 个入口、20 个 Mach-O 文件、62 条传递动态库依赖均解析到包内或 macOS 系统库；未发现 Homebrew 等外部依赖。[链接审计](evidence/wp01-macos-linkage.json) |
 | Windows 已验收 r3 包 | Windows 11 Home China x64 / build 26200，非提升令牌、隔离 PATH、仓库外中文/空格路径，r3 实际 ZIP 校验后解包，19/19 阶段通过；包括 A/B 隔离、重复启停、卸载重装保留数据、端口/目录占用、启动中断、残留进程、强杀事务恢复及 dump/restore。[Windows 包证据](evidence/wp01-package-windows.json) |
 | Windows 新增依赖准备 | 共享 API 和 CLI 都先验证环境，再检查 managed PG 的 VC++ 依赖；缺项时只准备微软安装器并返回人工安装入口，坏缓存给出路径和重下方法。实际非提升 Windows 检查与回归见[依赖证据](evidence/wp01-clean-windows.json)，不沿用 r3 的 19 阶段为新候选背书。 |
+| Windows r5 安装后就绪 | 实际执行微软安装器，将既有 VC++ 14.50 升至 14.51.36247；r5 ZIP 在非提升用户、仅包内 Node 和 Windows 系统工具的 PATH 下完成 `prepare / install / start / status / stop / delete`，PG 18.6 和 HTTP 状态均 ready，网页文档返回 200。安装器返回 3010 要求稍后重启；未重启宿主，未声明重启后通过。[安装、就绪与清理](evidence/wp01-clean-windows.json) |
 | 实际 ZIP | 已验收 Mac ZIP 解包后首次安装、启动和卸载保留数据往返；Windows r3 从校验后的原始 ZIP 展开执行完整包探针；[归档验证](evidence/wp01-archive-roundtrip.json)。三平台归档及摘要索引位于仓库根 `dist/`，每个归档的验证范围按其记录，未发布。 |
 | PG 工具与迁移 | 17.10→17.11 同目录 minor、17.11→18.6 独立目录逻辑迁移，15 阶段通过；保留角色、约束、序列与数据的核对。[升级证据](evidence/wp01-postgres-upgrade.json) |
 | 学校 Linux | Ubuntu 24.04.5 x64 / glibc 2.39，普通用户从独立包启停、重启、查询 PG；同机及 Mac 到学校的真实公网 HTTPS 身份/能力、断连重连与撤销通过。[网络证据](evidence/wp01-network-macos-linux.json) |
@@ -60,10 +61,10 @@ npm run package:product -- --platform win32-x64
 
 跨机公网 HTTPS 已通过。读取云机实际安全组后确认：原规则只允许 TCP 22/8443 和 ICMP，未放行临时 38195 端口，因此请求在 guest OS 之前超时。临时为实际客户端 IPv4 `/32` 放行 TCP 38195 后，Mac 独立包主动直连学校 Linux 独立包，真实认证、环境/服务身份、协议与必需/可选能力检查、断连报错、重连恢复及撤销后的 HTTP 401 均通过；来源环境身份和归属保持不变。SSH 仅用于部署和观察，没有产品隧道。数据库全程仅回环监听。验收后停止并移除双方测试服务、数据库、临时凭据和测试目录，撤销本次安全组规则，并读回确认原规则集合不变。该证据不表示已发布长期公共服务；今后学校部署仍需为选定的 HTTPS 入口设置对应网络策略。
 
-Windows 实测发现并修复了三个发布阻塞：中文路径下的 PG 进程代码页、Windows 空 Unix socket 参数，以及 PG 子进程继承输出句柄造成的启动等待。r3 ZIP 为 86,075,517 bytes；A/B 首次安装约 7.85/6.02 秒、首次 start 命令约 4.38/4.48 秒，所属进程树空闲 working-set 求和约 181 MiB/环境，约 5.7 秒采样窗口内 CPU 增量为 0。共享页可能重复计数，短窗口的 0 不代表持续无 CPU 开销。该机已安装并实际加载 VC++ 14.50.35719；干净机上的 Runtime 准备没有执行，不将已有依赖冒充产品已提供。源码修复后的 `npm run verify` 五阶段及 5 项 Mac 原生 PG 回归通过，原始记录在 `.verification/2026-10-29T11-52-11-512Z-KxGjQD/`。
+Windows 实测发现并修复了三个发布阻塞：中文路径下的 PG 进程代码页、Windows 空 Unix socket 参数，以及 PG 子进程继承输出句柄造成的启动等待。r3 ZIP 为 86,075,517 bytes；A/B 首次安装约 7.85/6.02 秒、首次 start 命令约 4.38/4.48 秒，所属进程树空闲 working-set 求和约 181 MiB/环境，约 5.7 秒采样窗口内 CPU 增量为 0。共享页可能重复计数，短窗口的 0 不代表持续无 CPU 开销。r3 验收时该机已安装并实际加载 VC++ 14.50.35719；该轮未准备依赖。随后 r5 的实际升级和启动证据独立记录，不将既有宿主升级称为干净 OS 安装。源码修复后的 `npm run verify` 五阶段及 5 项 Mac 原生 PG 回归通过，原始记录在 `.verification/2026-10-29T11-52-11-512Z-KxGjQD/`。
 
 本轮没有把干净 OS 虚拟机、完整电源状态或浏览器故障矩阵扩成门禁。Tart VM、26.6 GB 系统镜像和 Windows QEMU/ISO 准备已取消并清理；记录见 [Mac 清理](evidence/wp01-clean-macos.json) 与 [Windows 清理及依赖准备](evidence/wp01-clean-windows.json)。S0 人工观察时，探针的等待窗口提前结束并停止服务，使负责人看到页面失联；该轮不作产品恢复通过结论，也不把脚本行为归为产品故障。原 Windows 环境已由非提升交互任务恢复，状态页暂保留供负责人检查，实际路径、任务和状态见电源证据中的 `modernStandbyAttempt.pageRecovery`。
 
-微软安装器的许可/UAC及安装后就绪尚未执行；已完成的是固定版本的检测、官方直接下载、摘要与签名验证、旧版本/坏缓存和产品调用路径检查。具体结果以当前分发元数据与证据为准。当前跨机证据仅覆盖记录的 Mac→学校 Linux 组合及 `runtime.status`，资源样本属于隔离底座实例；均不推导业务、容量或教学效果。
+此前将实际安装留作人工步骤后，负责人追问是否必要；本轮随后通过现有提升 SSH 执行已校验的微软安装器，使用 `/install /passive /norestart` 完成一次实际升级，再由非提升任务验证 r5 的依赖检查、安装和就绪。产品本身仍只准备安装器，不自动安装。Windows 注册表和三个实际 DLL 均为 14.51.36247；微软日志记录安装成功、要求重启且未重启。临时探针的 PATH 和删除返回值记录问题经核对均属于探针；产品安装、运行、停止及删除已实际完成，测试任务、数据和包目录已清理，原 52486 页面仍为原身份 ready。此项覆盖已有 Windows 宿主升级后的最小运行路径，不代替 r3 完整 19 阶段，也没有新增 Chrome 人工操作。当前跨机证据仅覆盖记录的 Mac→学校 Linux 组合及 `runtime.status`，资源样本属于隔离底座实例；均不推导业务、容量或教学效果。
 
 依赖修复后的最终工程检查为 `.verification/2026-10-29T13-54-56-719Z-TfbDzn/summary.json`，五阶段通过；产品运行本地回归 44/44。Standards / Spec 定向复核均确认已发现问题修复，无剩余发现。新 Windows 候选 `dist/XunJie-runtime-2026-10-29-windows-x64-r5.zip` 为 86,082,153 bytes，SHA-256 `928faca45e1e02e3f71bcefcf7a2ff1dbbe56558d6922e01ca8744665e442092`，归档内 40 项程序/资源摘要均核对一致；完整原生运行的历史证据仍对应 r3。

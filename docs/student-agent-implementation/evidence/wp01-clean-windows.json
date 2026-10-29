@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "https://github.com/paher-din/XunJie/issues/143",
   "status": "cancelled-by-scope-change",
-  "updatedAt": "2026-10-29T13:59:30.735949+00:00",
+  "updatedAt": "2026-10-29T14:14:07.199351+00:00",
   "scope": "Clean OS VM acceptance cancelled; retain only useful Windows VC++ product prerequisite provisioning and its real regressions.",
   "cleanGuestPassed": false,
   "cleanWindowsAcceptancePassed": false,
@@ -53,7 +53,7 @@
     "upstreamBuildMetadata": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip.manifest.json",
     "licenseUrl": "https://visualstudio.microsoft.com/license-terms/vs2026-ga-visualcpp-v14-redist-runtime/",
     "installerBundled": false,
-    "installerExecuted": false,
+    "installerExecuted": true,
     "installerEntry": "C:\\Users\\h\\AppData\\Local\\XunJie\\prerequisites\\vc14-x64-14.51.36247\\VC_redist.x64.exe",
     "installerArguments": [
       "/install",
@@ -121,7 +121,6 @@
       "windowsRemotePackage": "built; PG/helper/installer metadata absent; temporary output removed",
       "initialWrongNodeRun": "Node26 rejected by existing Node24.21 lifecycle contract; correct-runtime rerun passed43/43"
     },
-    "nativeReadyAfterManualInstall": "not executed: no Microsoft installation/terms/UAC performed during this task",
     "candidate": "dist/product-win32-x64-r5",
     "files": [
       "apps/local-runtime/src/cli.ts",
@@ -138,10 +137,147 @@
       "directory": "dist/product-win32-x64-r5",
       "zipSha256": "928faca45e1e02e3f71bcefcf7a2ff1dbbe56558d6922e01ca8744665e442092",
       "entryHashesVerifiedByMain": 40
+    },
+    "nativeReadyAfterInstall": "passed in non-elevated actual r5 package; Windows installer returned 3010 requiring later host reboot",
+    "nativeInstallation": {
+      "status": "success-reboot-required",
+      "startedAt": "2026-10-29T14:05:29.0739025Z",
+      "finishedAt": "2026-10-29T14:07:05.1076420Z",
+      "versionBefore": "v14.50.35719.00",
+      "versionAfter": "v14.51.36247.00",
+      "installer": "C:\\Users\\h\\AppData\\Local\\XunJie\\prerequisites\\vc14-x64-14.51.36247\\VC_redist.x64.exe",
+      "sha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+      "signature": "Valid; Microsoft Corporation; verified immediately before invocation",
+      "arguments": [
+        "/install",
+        "/passive",
+        "/norestart",
+        "/log",
+        "<owned temporary log path>"
+      ],
+      "exitCode": 3010,
+      "rebootRequired": true,
+      "automaticRestartAllowed": false,
+      "agentRequestedHostReboot": false,
+      "method": "one acceptance install through existing elevated SSH, /passive /norestart; product still only prepares installer",
+      "scope": "existing physical Windows 11 runtime upgrade, not clean OS installation",
+      "pageBefore": {
+        "state": "ready",
+        "environmentId": "eeebb719-c7b9-4677-a925-f1e3601f643d"
+      },
+      "cleanup": {
+        "logSummary": [
+          "[C524:80EC][2026-10-29T22:07:05]i399: Apply complete, result: 0x0, restart: Required, ba requested restart:  No",
+          "[C524:80EC][2026-10-29T22:07:05]i500: Shutting down, exit code: 0xbc2",
+          "[C524:80EC][2026-10-29T22:07:05]i007: Exit code: 0xbc2, restarting: No"
+        ],
+        "temporaryLogDirectoryRemoved": true,
+        "installerCachePreserved": true
+      }
+    },
+    "nativeReadyVerification": {
+      "status": "passed",
+      "startedAt": "2026-10-29T14:09:44.149Z",
+      "stages": [
+        {
+          "command": "prepare",
+          "status": "ready"
+        },
+        {
+          "command": "install",
+          "state": "installed"
+        },
+        {
+          "command": "start",
+          "state": "ready"
+        },
+        {
+          "command": "status",
+          "state": "ready"
+        },
+        {
+          "command": "stop",
+          "state": "stopped"
+        },
+        {
+          "command": "delete",
+          "exitCode": 0,
+          "result": null,
+          "independentlyVerified": true
+        }
+      ],
+      "token": {
+        "user": "h",
+        "elevated": false
+      },
+      "runtime": {
+        "version": "v14.51.36247.00",
+        "toolchainFamilyFloor": "14.51",
+        "installed": true,
+        "dlls": [
+          {
+            "path": "C:\\Windows\\System32\\vcruntime140.dll",
+            "acceptable": true,
+            "name": "vcruntime140.dll",
+            "version": "14.51.36247.0"
+          },
+          {
+            "path": "C:\\Windows\\System32\\vcruntime140_1.dll",
+            "acceptable": true,
+            "name": "vcruntime140_1.dll",
+            "version": "14.51.36247.0"
+          },
+          {
+            "path": "C:\\Windows\\System32\\msvcp140.dll",
+            "acceptable": true,
+            "name": "msvcp140.dll",
+            "version": "14.51.36247.0"
+          }
+        ],
+        "ready": true,
+        "registryView": "Registry64",
+        "productAcceptedMinimum": "14.51.36247.0",
+        "minimumMeaning": "Conservative pinned product policy; exact upstream compiler patch minimum not established"
+      },
+      "ready": {
+        "state": "ready",
+        "environmentId": "0378ddd2-7663-4d02-b66c-46b281d330cf",
+        "endpoint": "http://127.0.0.1:61777",
+        "postgres": [
+          {
+            "name": "PostgreSQL",
+            "required": true,
+            "state": "ready",
+            "detail": "18.6"
+          }
+        ],
+        "pageStatus": 200
+      },
+      "finishedAt": "2026-10-29T14:10:05.759Z",
+      "harnessRecordingIssue": {
+        "afterSuccessfulProductDelete": true,
+        "message": "Cannot read properties of null (reading 'state')",
+        "cause": "Probe treated successful JSON null from delete as an object. The API removes owned data and intentionally retains root marker/locks. Independent checks confirmed only those remained and no process was running; lab then removed."
+      },
+      "cleanup": {
+        "remainingOwnedProcesses": 0,
+        "onlyMarkerAndLocksRemainedBeforeLabCleanup": true,
+        "environmentDataDeleted": true,
+        "taskRemoved": true,
+        "pageAfter": {
+          "state": "ready",
+          "environmentId": "eeebb719-c7b9-4677-a925-f1e3601f643d"
+        },
+        "rootRemoved": true,
+        "reviewPageTouched": false
+      },
+      "archiveSha256": "928faca45e1e02e3f71bcefcf7a2ff1dbbe56558d6922e01ca8744665e442092",
+      "browser": "HTTP and served document only; no new Chrome interaction claimed",
+      "firstHarnessAttempt": "PATH omitted the standard Windows PowerShell directory; prepare passed, install stopped before initialization. Corrected temporary harness PATH and reran; no product source changed."
     }
   },
   "remainingWork": [
-    "Human Windows installer terms/UAC and subsequent native ready recheck, only when requested; no automatic installation."
+    "Microsoft installer returned 3010: host restart requested, no automatic restart performed and no post-reboot observation claimed. Current non-elevated product ready verification passed."
   ],
   "noCommitOrPush": true,
   "reviewFixHostCheck": {
