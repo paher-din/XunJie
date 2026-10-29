@@ -20,7 +20,7 @@
 | `@xunjie/product-runtime/connections` | 持久范围授权/撤销、认证握手及已登记能力调用；连接核对目标环境、服务、协议和必要能力；主动出站连接，无回连学生私网端口的要求 |
 | `@xunjie/product-runtime/maintenance` | 登记 owner 的 closeWrites、closeDispatch、drain、validate、resume；必需参与者缺失或动作失败保持封闭；记录回调交由可信宿主持久保存 |
 
-PG 初始化条件固定为 engine **18.6**、UTF8、libc `C` collation、UTC；未额外要求扩展。资源下载来源、确切摘要、架构、许可和运行依赖见[资源清单](runtime-resources.md)。`database()` 的管理凭据用于底座装配；#144 负责按所属服务创建 schema/角色及正常业务凭据，不应让业务 owner 共用管理者权限。事务、资源发布与持久 outbox 仍由 #144 实现，完整备份升级与接管由 #145 实现。
+PG 初始化条件固定为 engine **18.6**、UTF8、libc `C` collation、UTC；未额外要求扩展。资源下载来源、确切摘要、架构、许可和运行依赖见[资源清单](runtime-resources.md)。`database()` 的管理凭据用于底座装配；#144 的所属服务 schema/角色、正常业务凭据、事务、资源发布和持久 outbox 见[存储接入与验收](storage-acceptance.md)，业务 owner 不共用管理者权限。完整备份升级与接管由 #145 实现。
 
 调用方先按自身环境/服务登记授权，把 token 经私密文件传入本机，公开连接配置只保存 `credentialRef`。重连沿用原目标，不回退数据库、服务或模型。只有显式登记且实际实现的能力可授权；基础测试消费者不冒充课程、Agent 或业务接收回执。
 

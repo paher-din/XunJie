@@ -24,7 +24,8 @@
     "ai": "7.0.136",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.5",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@xunjie/storage": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "24.19.1",

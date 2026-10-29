@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, wr
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { gunzipSync } from 'node:zlib';
+import { pathToFileURL } from 'node:url';
 import { buildRuntimeArtifact } from './build-runtime-artifact.mjs';
 
 const sha256 = value => createHash('sha256').update(value).digest('hex');
@@ -41,9 +42,15 @@ function sourceFixture(root) {
   mkdirSync(join(root, 'packages/contracts/dist'), { recursive: true });
   writeFileSync(join(root, 'packages/contracts/package.json'), JSON.stringify({name:'@xunjie/contracts',type:'module',exports:'./dist/index.js'}));
   writeFileSync(join(root, 'packages/contracts/dist/index.js'), 'export const contract = true;');
+  mkdirSync(join(root, 'packages/storage/dist/tests'), { recursive: true });
+  writeFileSync(join(root, 'packages/storage/package.json'), JSON.stringify({name:'@xunjie/storage',type:'module',exports:'./dist/index.js'}));
+  writeFileSync(join(root, 'packages/storage/dist/index.js'), 'export const storageFixture = true;');
+  writeFileSync(join(root, 'packages/storage/dist/tests/not-shipped.js'), 'throw new Error("test-only");');
+  writeFileSync(join(teaching, 'dist/server/main.js'), 'export {storageFixture} from "@xunjie/storage";');
   writeFileSync(join(root, 'package.json'), '{"private":true,"type":"module"}');
   mkdirSync(join(root, 'node_modules/@xunjie'), { recursive: true });
   symlinkSync('../../packages/contracts', join(root, 'node_modules/@xunjie/contracts'));
+  symlinkSync('../../packages/storage', join(root, 'node_modules/@xunjie/storage'));
   symlinkSync('../../apps/server', join(root, 'node_modules/@xunjie/server'));
   mkdirSync(join(root, 'tools/i0-cloud'), { recursive: true });
   writeFileSync(join(root, 'tools/i0-cloud/cloud-host.mjs'), 'export const host = \'original\';\n');
@@ -93,6 +100,7 @@ test('runtime artifact carries per-file digests, pre-compressed static outputs a
     const runtimeFiles = entryMap(manifest.runtimeFiles);
     for (const name of ['apps/server/dist/server/main.js', 'apps/server/dist/contracts/access.js', 'apps/server/dist/runner/snapshot.js',
       'apps/server/package.json', 'package-lock.json', 'node_modules/@xunjie/contracts/dist/index.js',
+      'node_modules/@xunjie/storage/dist/index.js', 'node_modules/@xunjie/storage/package.json',
       'node_modules/zod/index.js', 'node_modules/.package-lock.json',
       'node_modules/better-sqlite3/prebuilds/linux-x64.node', 'tools/i0-cloud/cloud-host.mjs']) {
       assert.ok(runtimeFiles[name], `runtime file missing: ${name}`);
@@ -134,6 +142,12 @@ test('runtime artifact carries per-file digests, pre-compressed static outputs a
         readFileSync(join(root, 'apps/server/dist/server/main.js'), 'utf8'));
       assert.equal(readFileSync(join(extracted, 'apps/web/dist/assets/index-test.js.br')).toString('hex'),
         readFileSync(join(dist, 'assets/index-test.js.br')).toString('hex'));
+      const consumer = spawnSync(process.execPath, ['--input-type=module', '-e',
+        'const module=await import(process.argv[1]);process.stdout.write(String(module.storageFixture));',
+        pathToFileURL(join(extracted, 'apps/server/dist/server/main.js')).href], {encoding:'utf8'});
+      assert.equal(consumer.status,0,consumer.stderr);
+      assert.equal(consumer.stdout,'true');
+      assert.equal(runtimeFiles['node_modules/@xunjie/storage/dist/tests/not-shipped.js'],undefined);
     } finally { rmSync(extracted, { recursive: true, force: true }); }
     assert.ok(statSync(archive).size > 0);
   } finally { rmSync(root, { recursive: true, force: true }); }

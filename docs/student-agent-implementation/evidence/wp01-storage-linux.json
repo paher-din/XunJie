@@ -1,0 +1,46 @@
+{
+  "formatVersion": 1,
+  "issue": 144,
+  "startedAt": "2026-10-29T15:52:12.797Z",
+  "system": {
+    "platform": "linux",
+    "arch": "x64",
+    "release": "6.8.0-139-generic",
+    "node": "v24.21.0",
+    "distribution": "Ubuntu 24.04.5 LTS"
+  },
+  "sourceSha256": "4423d0d3578dceb5fdf7f160f92f83ac36c190ea422db6b382c4a18bbfcb7d12",
+  "postgres": {
+    "version": "postgres (PostgreSQL) 18.6",
+    "binarySha256": "5bc8957ed11c87924a63120ac01cca1a33068702ab434b58ee892605224f93e0",
+    "initialization": "UTF8; libc C/C; UTC; plpgsql only"
+  },
+  "s3": {
+    "version": "version 30GB 4.50 ec8f9793502c59ce3381cc4151bfc0806afd92e8 linux amd64",
+    "releaseUrl": "https://github.com/seaweedfs/seaweedfs/releases/tag/4.50",
+    "assetUrl": "https://github.com/seaweedfs/seaweedfs/releases/download/4.50/linux_amd64.tar.gz",
+    "archiveSha256": "8fc88061421a74d1cd486d1cd9dc5874d6495f9ed17fed8fa677bb16bd195b07",
+    "binarySha256": "0c6d5539b58357d8a1cceb098dc6f086e8aa2f50c1d1072c7442618e6130fb25"
+  },
+  "tests": [
+    "apps/server/tests/storage-sample/storage-sample.runtime.test.mjs",
+    "packages/storage/test/faults.runtime.test.mjs",
+    "packages/storage/test/resources.runtime.test.mjs",
+    "packages/storage/test/s3.runtime.test.mjs",
+    "packages/storage/test/transactions.runtime.test.mjs"
+  ],
+  "status": "passed",
+  "exitCode": 0,
+  "durationMs": 40468,
+  "finishedAt": "2026-10-29T15:52:53.343Z",
+  "counts": {
+    "tests": 20,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "rawLog": {
+    "file": "wp01-storage-linux.log",
+    "sha256": "1b552eac983baf2bb5a2e934634210d345d1aca8ecfd76eb9e10ef1620f50743"
+  }
+}

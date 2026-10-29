@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const [target, ...args] = process.argv.slice(2);
-if (!['server', 'contracts', 'product-runtime', 'tools', 'checks'].includes(target) || args.some(arg => !['--external', '--list'].includes(arg))) {
-  throw new Error('Usage: node scripts/test.mjs <server|contracts|product-runtime|tools|checks> [--external] [--list]');
+if (!['server', 'contracts', 'product-runtime', 'storage', 'tools', 'checks'].includes(target) || args.some(arg => !['--external', '--list'].includes(arg))) {
+  throw new Error('Usage: node scripts/test.mjs <server|contracts|product-runtime|storage|tools|checks> [--external] [--list]');
 }
 const external = args.includes('--external');
-const cwd = join(root, { server: 'apps/server', contracts: 'packages/contracts', 'product-runtime': 'packages/product-runtime', tools: 'tools', checks: 'scripts' }[target]);
+const cwd = join(root, { server: 'apps/server', contracts: 'packages/contracts', 'product-runtime': 'packages/product-runtime', storage: 'packages/storage', tools: 'tools', checks: 'scripts' }[target]);
 const discovered = globSync('**/*.test.{ts,mjs,py}', {
   cwd, exclude: ['**/node_modules/**', '**/dist/**', '**/evidence/**'],
 }).sort();

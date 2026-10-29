@@ -31,11 +31,14 @@ const runtimeCopies = [
   ['package-lock.json', 'package-lock.json', false],
   ['packages/contracts/package.json', 'node_modules/@xunjie/contracts/package.json', false],
   ['packages/contracts/dist', 'node_modules/@xunjie/contracts/dist', true],
+  ['packages/storage/package.json', 'node_modules/@xunjie/storage/package.json', false],
+  ['packages/storage/dist', 'node_modules/@xunjie/storage/dist', true],
   ['tools/i0-cloud/cloud-host.mjs', 'tools/i0-cloud/cloud-host.mjs', false],
 ];
 const workspaceLinks = new Map([
   ['@xunjie/web', 'apps/web'], ['@xunjie/server', 'apps/server'],
   ['@xunjie/contracts', 'packages/contracts'], ['@xunjie/xj-dev', 'tools/xj-dev'],
+  ['@xunjie/storage', 'packages/storage'],
   ['@xunjie/dev-access', 'tools/xj-dev-access'],
 ]);
 const testDirectories = new Set(['test', 'tests', '__tests__', 'fixtures', '__fixtures__']);

@@ -23,6 +23,10 @@
     "./product-runtime": {
       "types": "./dist/product-runtime.d.ts",
       "import": "./dist/product-runtime.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "import": "./dist/storage.js"
     }
   },
   "scripts": {
