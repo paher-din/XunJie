@@ -6,8 +6,8 @@ import { pathToFileURL } from 'node:url';
 const values = new Map();
 for (let index = 2; index < process.argv.length; index += 2) {
   const name = process.argv[index], value = process.argv[index + 1];
-  if (!['--config', '--teaching-root', '--port', '--account-control'].includes(name) || !value || values.has(name)) {
-    throw new Error('Use --config <controlled-file>, --teaching-root <release/apps/teaching>, and optional --port <loopback-port>, --account-control <private-file>.');
+  if (!['--config', '--server-root', '--port', '--account-control'].includes(name) || !value || values.has(name)) {
+    throw new Error('Use --config <controlled-file>, --server-root <release/apps/server>, and optional --port <loopback-port>, --account-control <private-file>.');
   }
   values.set(name, value);
 }
@@ -23,16 +23,16 @@ try {
   if (process.platform !== 'linux' || process.version !== 'v24.21.0') {
     throw new Error('Linux Node24.21.0 required.');
   }
-  const teachingRoot = realpathSync(resolve(values.get('--teaching-root') ?? '/opt/xunjie/current/apps/teaching'));
+  const serverRoot = realpathSync(resolve(values.get('--server-root') ?? '/opt/xunjie/current/apps/server'));
   const configFile = resolve(values.get('--config') ?? '/etc/xunjie/application-config.json');
   const port = Number(values.get('--port') ?? 3444);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Valid loopback port required.');
-  const load = relative => import(pathToFileURL(`${teachingRoot}/${relative}`).href);
-  const { readApplicationConfig, readI0SigningSecret } = await load('server/app/config.ts');
-  const { openSyntheticDatabase } = await load('server/db/transaction.ts');
-  const { executionTransports } = await load('server/app/execution-transport.ts');
-  const { createDigitalLogicApplication } = await load('server/app/digital-logic.ts');
-  const { registerDeploymentIdentity } = await load('server/app/deployment-identity.ts');
+  const load = relative => import(pathToFileURL(`${serverRoot}/${relative}`).href);
+  const { readApplicationConfig, readI0SigningSecret } = await load('dist/server/app/config.js');
+  const { openSyntheticDatabase } = await load('dist/server/db/transaction.js');
+  const { executionTransports } = await load('dist/server/app/execution-transport.js');
+  const { createDigitalLogicApplication } = await load('dist/server/app/digital-logic.js');
+  const { registerDeploymentIdentity } = await load('dist/server/app/deployment-identity.js');
   const config = readApplicationConfig(configFile);
   const browserOrigin = new URL(config.origin);
   if (!['localhost', '127.0.0.1', '[::1]'].includes(browserOrigin.hostname) || config.tutoring?.callsAuthorized ||
@@ -51,7 +51,7 @@ try {
   const versions = { modelConfig: 'disabled', prompt: 'disabled', schema: 'disabled', policy: 'disabled' };
   const executionNodes = config.executionNodes.map(({ ssh, ...node }) => ({ ...node, ...executionTransports(ssh) }));
   if (values.has('--account-control')) {
-    const { createLocalAccountControl } = await load('server/access/account-control.ts');
+    const { createLocalAccountControl } = await load('dist/server/access/account-control.js');
     accessControl = await createLocalAccountControl(resolve(values.get('--account-control')), { db, staticAllowed: config.allowedLoginUserIds });
   }
   service = await createDigitalLogicApplication({
@@ -73,7 +73,7 @@ try {
     studentHelp: { versions, budgetAvailable: () => false },
     teacherAgent: { versions, budgetAvailable: () => false, provider: { generate: async () => { throw new Error('Model unavailable.'); } } },
   });
-  const manifestFile = resolve(teachingRoot, '../../deployment.json');
+  const manifestFile = resolve(serverRoot, '../../deployment.json');
   if (accessControl) await accessControl.listen(service);
   if (existsSync(manifestFile)) registerDeploymentIdentity(service.app, JSON.parse(readFileSync(manifestFile, 'utf8')));
   process.once('SIGTERM', () => { void shutdown().catch(() => { process.exitCode = 1; }); });

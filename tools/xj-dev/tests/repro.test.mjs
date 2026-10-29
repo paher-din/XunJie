@@ -91,7 +91,7 @@ test('real repository default roots can produce a portable bundle (including exi
   const code = collectCode(worktree, root);
   assert.ok(code.manifest.files.length > 500);
   assert.ok(code.bytes.length > 0);
-  assert.ok(code.manifest.files.some(f => f.path === 'apps/teaching/tests/application-database.test.ts'));
+  assert.ok(code.manifest.files.some(f => f.path === 'apps/server/tests/application-database.test.ts'));
   assert.ok(code.manifest.files.every(f => !f.path.startsWith('docs/archive/')));
   const imported = join(root, 'import'); mkdirSync(imported);
   git(imported, ['init', '-q']);

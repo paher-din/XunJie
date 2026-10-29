@@ -1,0 +1,19 @@
+{
+  "name": "@xunjie/workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.21.0" },
+  "workspaces": ["apps/*", "packages/*", "tools/xj-dev", "tools/xj-dev-access"],
+  "scripts": {
+    "preinstall": "node apps/server/tools/check-runtime.mjs",
+    "build": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/server && npm run build -w @xunjie/web",
+    "typecheck": "npm run build -w @xunjie/contracts && npm run typecheck --workspaces --if-present",
+    "test": "npm run build -w @xunjie/contracts && npm run test -w @xunjie/contracts && npm run test -w @xunjie/server && npm run test -w @xunjie/web && node scripts/test.mjs tools",
+    "test:external": "node scripts/test.mjs server --external",
+    "test:external:tools": "node scripts/test.mjs tools --external",
+    "test:tools": "node scripts/test.mjs tools",
+    "test:e2e": "npm run test:e2e -w @xunjie/web",
+    "verify": "npm run typecheck && npm run build && npm test"
+  }
+}

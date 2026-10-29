@@ -114,7 +114,7 @@ async function importBaselineHere(context, baseline, transfer) {
     if (digest(bytes) !== baseline.digest) throw reproError('DIGEST_MISMATCH', '团队基线缓存在导入前发生变化。');
     const source = join(scratch, 'shared.sqlite'), staged = environmentPaths(join(scratch, 'staged'), context.id);
     writeFileSync(source, decodeZip(bytes).get('data/shared.sqlite'), { mode: 0o600 });
-    const restored = await restoreData(context.repo.teaching, source, manifest.data, staged, baseline.version);
+    const restored = await restoreData(context.repo.server, source, manifest.data, staged, baseline.version);
     const credentials = JSON.parse(readFileSync(staged.baselineCredentials, 'utf8'));
     if (credentials.length !== accounts.length || credentials.some(c => !accounts.some(a => a.id === c.id && a.loginName === c.loginName && a.role === c.role))) {
       throw reproError('INVALID_DATA', '团队基线账号与包内用户不符，未初始化当前环境。');

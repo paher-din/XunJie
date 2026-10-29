@@ -189,11 +189,11 @@ steering 的接收、待发工具的派发许可、下一请求的上下文绑�
 
 | 已有机制 | 本轮建议 | 源码依据 |
 | --- | --- | --- |
-| 工作区草稿、固定命令、持久 outbox、接收回执 | 复用可靠保存和身份去重机制；去除学生手动确认/冻结的必经步骤，扩展到非代码对象和工具状态 | [frozenCommand.ts](../../../apps/student/src/workspace/frozenCommand.ts)、[confirmationDb.ts](../../../apps/student/src/workspace/confirmationDb.ts) |
-| 有界教学 job 的领取、预算、版本核对与未知结果 | 复用状态转移和核对思路；与模型步骤、工具命令及投递记录建立明确关联 | [jobs.ts](../../../apps/teaching/server/records/jobs.ts) |
-| 全局个人聊天与课程 `student_help` 两条路径 | 统一领域依据与运行基础；保留适当入口和可见对话，不让两套状态分别认定同一活动 | [personal-agent/service.ts](../../../apps/teaching/server/personal-agent/service.ts)、[tutoring/application.ts](../../../apps/teaching/server/tutoring/application.ts) |
-| 个人模型配置、预算、流式输出与取消 | 审核后复用边界机制；文本历史重建和 Chat-only 传输不能充当三协议原生续接实现 | [personal-agent/service.ts](../../../apps/teaching/server/personal-agent/service.ts)、[tutoring/openai-compatible.ts](../../../apps/teaching/server/tutoring/openai-compatible.ts) |
-| 工作区页面的课程组件分支、演示草稿 scope 和预置辅导 | 保留可用交互组件；替换装配与数据来源，接入真实课程组件实例和连续活动 | [WorkspacePage.tsx](../../../apps/student/src/pages/WorkspacePage.tsx) |
+| 工作区草稿、固定命令、持久 outbox、接收回执 | 复用可靠保存和身份去重机制；去除学生手动确认/冻结的必经步骤，扩展到非代码对象和工具状态 | [frozenCommand.ts](../../../apps/web/src/workspace/frozenCommand.ts)、[confirmationDb.ts](../../../apps/web/src/workspace/confirmationDb.ts) |
+| 有界教学 job 的领取、预算、版本核对与未知结果 | 复用状态转移和核对思路；与模型步骤、工具命令及投递记录建立明确关联 | [jobs.ts](../../../apps/server/server/records/jobs.ts) |
+| 全局个人聊天与课程 `student_help` 两条路径 | 统一领域依据与运行基础；保留适当入口和可见对话，不让两套状态分别认定同一活动 | [personal-agent/service.ts](../../../apps/server/server/personal-agent/service.ts)、[tutoring/application.ts](../../../apps/server/server/tutoring/application.ts) |
+| 个人模型配置、预算、流式输出与取消 | 审核后复用边界机制；文本历史重建和 Chat-only 传输不能充当三协议原生续接实现 | [personal-agent/service.ts](../../../apps/server/server/personal-agent/service.ts)、[tutoring/openai-compatible.ts](../../../apps/server/server/tutoring/openai-compatible.ts) |
+| 工作区页面的课程组件分支、演示草稿 scope 和预置辅导 | 保留可用交互组件；替换装配与数据来源，接入真实课程组件实例和连续活动 | [WorkspacePage.tsx](../../../apps/web/src/pages/WorkspacePage.tsx) |
 
 例如个人聊天进程重启后把未完回合标成失败、用量未知；课程 job 则能记录 `outcome_unknown`。这说明已有谨慎恢复机制，但还不存在贯穿模型步骤、工具效果、教学投递的一份可查询运行记录。不能仅因有 SQLite 或会话日志就宣称新活动能恢复。
 

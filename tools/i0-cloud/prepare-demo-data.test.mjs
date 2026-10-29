@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fixture, allocate } from '../../apps/teaching/tests/dl-a-support.ts';
+import { fixture, allocate } from '../../apps/server/tests/dl-a-support.ts';
 import { prepareDemoData } from './prepare-demo-data.mjs';
 import { validatePublicationPlan } from './publish-demo-projects.mjs';
 

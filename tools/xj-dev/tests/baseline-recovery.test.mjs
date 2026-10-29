@@ -8,11 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { ensureBaseline } from '../src/baseline.mjs';
 import { environmentPaths } from '../src/paths.mjs';
-import { openApplicationDatabase } from '../../../apps/teaching/server/db/transaction.ts';
-import { createDigitalLogicApplication } from '../../../apps/teaching/server/app/digital-logic.ts';
-import { runtime } from '../../../apps/teaching/tests/dl-a-support.ts';
+import { openApplicationDatabase } from '../../../apps/server/server/db/transaction.ts';
+import { createDigitalLogicApplication } from '../../../apps/server/server/app/digital-logic.ts';
+import { runtime } from '../../../apps/server/tests/dl-a-support.ts';
 
-const teaching = fileURLToPath(new URL('../../../apps/teaching', import.meta.url));
+const teaching = fileURLToPath(new URL('../../../apps/server', import.meta.url));
 const baselineUrl = new URL('../src/baseline.mjs', import.meta.url).href;
 const origin = 'https://synthetic.example';
 const injection = `

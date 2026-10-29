@@ -155,7 +155,7 @@ python3 tools/research/probe-alu-iverilog.py --output docs/student-agent-impleme
 
 一次本机样本的正确模型编译约 12 ms，仿真与输出约 16 ms。这只是已安装工具的 CLI 测量，不含首次下载、打包、浏览器渲染、同步与通信，不能作为跨设备延迟承诺。
 
-现有旧代码的 ALU 验证契约是 2800 组采样、1296 组排除（`apps/teaching/contracts/runner/alu.ts`）；新活动要求全部 4096 组，不能直接沿用旧检查通过作为新活动验收。
+现有旧代码的 ALU 验证契约是 2800 组采样、1296 组排除（`apps/server/contracts/runner/alu.ts`）；新活动要求全部 4096 组，不能直接沿用旧检查通过作为新活动验收。
 
 ## 固定 WASM 的浏览器证据
 

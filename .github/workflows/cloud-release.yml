@@ -30,21 +30,19 @@ jobs:
         with:
           node-version: 24.21.0
           cache: npm
-          cache-dependency-path: |
-            apps/student/package-lock.json
-            apps/teaching/package-lock.json
-      - name: Build the student interface
-        working-directory: apps/student
+          cache-dependency-path: package-lock.json
+      - name: Install the workspace toolchain
+        run: npm ci --include=dev --no-audit --no-fund
+      - name: Check the workspace
         run: |
-          npm ci --include=dev --no-audit --no-fund
-          npm run build
-      - name: Install teaching production dependencies
-        working-directory: apps/teaching
-        run: npm ci --omit=dev --no-audit --no-fund
+          npm run verify
+      - name: Install only production runtime dependencies
+        run: node tools/i0-cloud/prepare-production-runtime.mjs . "$RUNNER_TEMP/production"
       - name: Assemble the verifiable runtime artifact
         run: |
           node tools/i0-cloud/build-runtime-artifact.mjs \
             --source . \
+            --dependencies "$RUNNER_TEMP/production" \
             --output "$RUNNER_TEMP/artifact" \
             --commit "$GITHUB_SHA" \
             --git-tree "$(git rev-parse 'HEAD^{tree}')" \

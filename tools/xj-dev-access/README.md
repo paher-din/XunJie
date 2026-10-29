@@ -46,7 +46,7 @@ owner SSH/UDS管理命令 `github-approve` 从官方用户名解析固定用户I
 node tools/xj-dev-access/prepare-deployment.mjs --commit FULL_SHA --output NEW_DIRECTORY
 ```
 
-输出 v2 `deployment.json` 记录 sourceCommit、白名单文件、lock 与所有依赖文件的 SHA256；源码只取 `git show FULL_SHA:path`，当前 dirty 内容不会混入。固定 Node24.21 的 npm ci 使用 ignore-scripts/omit-dev/bin-links=false，拒绝 native、平台专用依赖和符号链接。白名单包含服务、协议、root helper、systemd、installer、锁定 SDK，以及无外部依赖的产品通用 `local-socket.ts`。通过既有 owner SSH 传到独立目录后，以 root 执行该目录的 `tools/xj-dev-access/install.py SOURCE_DIRECTORY`。installer 核对完整文件摘要、固定路径和既有不可变 release；只复制已装配文件，服务器不运行 npm。标准产品产物不包含该部署包，也不修改产品 manifest、正式 current 或正式数据库。
+输出 v2 `deployment.json` 记录 sourceCommit、白名单文件、lock 与所有依赖文件的 SHA256；源码只取 `git show FULL_SHA:path`，当前 dirty 内容不会混入。固定 Node24.21 的根 npm ci 只选择 @xunjie/dev-access workspace，使用 ignore-scripts/omit-dev/bin-links=false。依赖由根 package-lock.json 锁定并装配在根 node_modules；workspace 链接不复制到部署包，拒绝 native 依赖和其他符号链接。白名单包含服务、协议、root helper、systemd、installer、锁定 SDK，以及无外部依赖的产品通用 `local-socket.ts`。通过既有 owner SSH 传到独立目录后，以 root 执行该目录的 `tools/xj-dev-access/install.py SOURCE_DIRECTORY`。installer 核对完整文件摘要、固定路径和既有不可变 release；只复制已装配文件，服务器不运行 npm。标准产品产物不包含该部署包，也不修改产品 manifest、正式 current 或正式数据库。
 
 TLS 材料由 owner 运行 `python3 tools/xj-dev-access/prepare-tls.py --service-config FILE --output NEW_PRIVATE_DIRECTORY` 生成：CA 具备 critical CA:TRUE/keyCertSign/cRLSign 与 SKI/AKI，leaf 具备 CA:FALSE、serverAuth、endpoint SAN；测试用真实 Python/OpenSSL strict TLS 握手。CA signing key 只保留 owner 私有目录，服务器只接收 leaf key/cert 与公开 CA。轮换只作用于 8443；旧邀请信任材料对应旧 CA，应撤销临时试验身份并新发邀请。
 

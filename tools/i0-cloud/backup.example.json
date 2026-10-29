@@ -24,5 +24,5 @@
     { "source": "/etc/REPLACE_WITH_ACCESS_SERVICE/system.json", "path": "access/system.json" }
   ],
   "outputDirectory": "/var/backups/xunjie/encrypted",
-  "teachingRoot": "/opt/xunjie/current/apps/teaching"
+  "teachingRoot": "/opt/xunjie/current/apps/server"
 }

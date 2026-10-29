@@ -99,8 +99,8 @@ try {
 
 ## 修改代码后的验证回路
 
-- **前端**（`apps/student/src/**`）：Vite 经同一 HTTPS 入口热更新，保存即生效，无需重启。
-- **后端**（`apps/teaching/server/**`、`apps/teaching/contracts/**`）：重新执行 `xj-dev up`——检测到源码较新会只重启 backend，数据不动；随后重放 API 或页面操作验证。
+- **前端**（`apps/web/src/**`）：Vite 经同一 HTTPS 入口热更新，保存即生效，无需重启。
+- **后端**（`apps/server/server/**`、`apps/server/contracts/**`）：重新执行 `xj-dev up`——检测到源码较新会只重启 backend，数据不动；随后重放 API 或页面操作验证。
 - **不生效时的诊断**：`status --json` 的 `checks` 给出进程与网关/API 探活结论；组件日志在环境目录 `logs/`。
 
 ## 隔离模型
@@ -139,7 +139,7 @@ import {join} from 'node:path';
 import {resolveContext} from './tools/xj-dev/src/commands.mjs';
 import {databaseDriver} from './tools/xj-dev/src/repro-data.mjs';
 const context = resolveContext();
-const Driver = databaseDriver(context.repo.teaching);
+const Driver = databaseDriver(context.repo.server);
 const db = new Driver(context.env.database, {readonly: true});
 const row = db.prepare("SELECT * FROM attempts WHERE course_id='synthetic-textscope-c' LIMIT 1").get();
 const attempt = JSON.parse(row.attempt_json);
@@ -280,11 +280,11 @@ node tools/xj-dev/xj-dev.mjs node disconnect
 # 普通测试包含受控 HTTPS 边界；不能代替真实云端验收
 node --test tools/xj-dev/tests/managed-modes.test.mjs
 # 真实 SSH/云端/浏览器；账号文件只从私有路径读取，不开启 trace
-cd apps/student
+cd apps/web
 XUNJIE_XJ_DEV_URL=managed \
 XUNJIE_CLOUD_CONNECTION=/path/to/approved-connection.json \
 XUNJIE_CLOUD_ACCOUNT_FILE=/path/to/private-accounts.txt \
-node node_modules/@playwright/test/cli.js test xjDevModes --workers=1
+npm run test:e2e -w @xunjie/web -- xjDevModes --workers=1
 ```
 
 测试分别覆盖同 context 的两个本地环境及两种云模式、实际本地 HMR、登录与 CSRF、未保存现场、失败保留选择、真实 SSH 中断后的业务恢复及真实版本 header。可通过 `XUNJIE_LOCAL_SECOND_WORKTREE` 指定第二工作树；未指定时第二实例使用独立数据。缺少配置时跳过，跳过不算通过。平台、节点实际执行与教学效果需分别报告。
@@ -312,7 +312,7 @@ cd tools/xj-dev && npm test
 
 ```sh
 node tools/xj-dev/xj-dev.mjs up
-cd apps/student
+cd apps/web
 XUNJIE_XJ_DEV_URL=https://127.0.0.1:<网关端口> npx playwright test xjDevBaseline
 ```
 

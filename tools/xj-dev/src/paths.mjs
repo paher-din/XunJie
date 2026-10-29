@@ -52,10 +52,11 @@ export function environmentPaths(home, id) {
 
 export function repoPaths(worktreeRoot) {
   return {
-    student: join(worktreeRoot, 'apps', 'student'),
-    teaching: join(worktreeRoot, 'apps', 'teaching'),
-    studentLockfile: join(worktreeRoot, 'apps', 'student', 'package-lock.json'),
-    teachingLockfile: join(worktreeRoot, 'apps', 'teaching', 'package-lock.json'),
+    web: join(worktreeRoot, 'apps', 'web'),
+    server: join(worktreeRoot, 'apps', 'server'),
+    root: worktreeRoot,
+    lockfile: join(worktreeRoot, 'package-lock.json'),
+    viteBin: join(worktreeRoot, 'node_modules/vite/bin/vite.js'),
     backendHostScript: join(worktreeRoot, 'tools', 'xj-dev', 'src', 'backend-host.mjs'),
     gatewayScript: join(worktreeRoot, 'tools', 'xj-dev', 'src', 'gateway.mjs'),
   };

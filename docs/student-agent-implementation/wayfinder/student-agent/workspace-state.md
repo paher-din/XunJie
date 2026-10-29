@@ -2,7 +2,7 @@
 
 来源：[GitHub 最终决议](https://github.com/paher-din/XunJie/issues/116#issuecomment-6370870664)。已于 2026-10-29 收录最终决议正文。正文中的“本次”“尚未”等状态指该票收束时；研究结论、版本与实测不等于当前实现或新的验收结果。后续确认见[本地决议索引](README.md#后续确认)。
 
-本地配套材料：[交互原型与验证边界](../../../../apps/student/prototypes/workspace-state.README.md) · [可操作原型](../../../../apps/student/prototypes/workspace-state.prototype.html) · [已交付的选区引用组件](../../specs/workspace-selection-references.md)。
+本地配套材料：[交互原型与验证边界](../../../../apps/web/prototypes/workspace-state.README.md) · [可操作原型](../../../../apps/web/prototypes/workspace-state.prototype.html) · [已交付的选区引用组件](../../specs/workspace-selection-references.md)。
 
 ## 原决议
 

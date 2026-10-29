@@ -9,7 +9,7 @@ Group=xunjie
 WorkingDirectory=/opt/xunjie/current
 Environment=NODE_ENV=production
 Environment=TMPDIR=/var/lib/xunjie/retained-tmp
-ExecStart=/opt/xunjie/node/bin/node --max-semi-space-size=16 /opt/xunjie/current/tools/i0-cloud/cloud-host.mjs --config /etc/xunjie/application-config.json --teaching-root /opt/xunjie/current/apps/teaching
+ExecStart=/opt/xunjie/node/bin/node --max-semi-space-size=16 /opt/xunjie/current/tools/i0-cloud/cloud-host.mjs --config /etc/xunjie/application-config.json --server-root /opt/xunjie/current/apps/server
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM

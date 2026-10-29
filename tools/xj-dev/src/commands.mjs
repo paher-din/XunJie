@@ -25,8 +25,8 @@ export function resolveContext(options = {}) {
 
 function capabilitiesBlock({ frontend = false, api = false } = {}) {
   return {
-    frontend: { available: frontend, hmr: frontend, source: 'worktree apps/student via Vite' },
-    api: { available: api, source: 'worktree apps/teaching（源码直接运行）' },
+    frontend: { available: frontend, hmr: frontend, source: 'worktree apps/web via Vite' },
+    api: { available: api, source: 'worktree apps/server（源码直接运行）' },
     execution: { available: false, reason: '本地闭环未接入执行节点；运行/仿真请求返回 RUNTIME_NOT_READY' },
     models: { available: false, reason: '未配置模型凭据，个人模型调用已停用' },
   };
@@ -101,7 +101,7 @@ function componentDiagnosis(context, name) {
 
 function newestSourceMtimeMs(teachingDir) {
   let newest = 0;
-  for (const scope of ['server', 'contracts']) {
+  for (const scope of ['server', 'contracts', '../../packages/contracts/src']) {
     const walk = directory => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
         const path = join(directory, entry.name);
@@ -152,12 +152,12 @@ export async function doctor(context) {
   } catch (error) {
     checks.push({ name: 'runtime', ok: false, detail: error.message, recovery: error.recovery });
   }
-  const repository = ['apps/student/package.json', 'apps/student/package-lock.json', 'apps/teaching/package.json', 'apps/teaching/package-lock.json']
+  const repository = ['package.json', 'package-lock.json', 'apps/web/package.json', 'apps/server/package.json', 'packages/contracts/package.json']
     .every(relative => existsSync(join(context.worktree, relative)));
   checks.push(repository
     ? { name: 'repository', ok: true, detail: context.worktree }
-    : { name: 'repository', ok: false, detail: 'apps/student 或 apps/teaching 的清单/锁文件缺失', recovery: '确认在完整 XunJie 工作树中运行。' });
-  for (const [name, dir] of [['student', context.repo.student], ['teaching', context.repo.teaching]]) {
+    : { name: 'repository', ok: false, detail: 'apps/web 或 apps/server 的清单/锁文件缺失', recovery: '确认在完整 XunJie 工作树中运行。' });
+  for (const [name, dir] of [['workspace', context.worktree]]) {
     checks.push(dependenciesFresh(dir)
       ? { name: `dependencies:${name}`, ok: true, detail: '已安装且与锁文件一致' }
       : { name: `dependencies:${name}`, ok: true, detail: '未安装或锁文件较新，首次 up 将自动 npm ci' });
@@ -204,7 +204,7 @@ async function spawnBackend(context, runtime, ports) {
   const configFile = join(context.env.root, 'backend-config.json');
   mkdirSync(context.env.root, { recursive: true });
   writeFileSync(configFile, JSON.stringify({
-    teachingDir: context.repo.teaching,
+    teachingDir: context.repo.server,
     databaseFile: context.env.database,
     personalModelsDirectory: context.env.personalModels,
     signingSecretFile: context.env.signingSecret,
@@ -215,10 +215,10 @@ async function spawnBackend(context, runtime, ports) {
 }
 
 async function spawnVite(context, runtime, ports) {
-  const viteBin = join(context.repo.student, 'node_modules', 'vite', 'bin', 'vite.js');
+  const viteBin = context.repo.viteBin;
   return spawnComponent(context.env, 'vite', runtime.path,
     viteBin, ['--host', '127.0.0.1', '--port', String(ports.vite), '--strictPort', '--clearScreen', 'false', '--mode', `xjdev${context.id}`],
-    { envId: context.id, cwd: context.repo.student, env: { XUNJIE_VITE_CACHE_DIR: context.env.viteCache } });
+    { envId: context.id, cwd: context.repo.web, env: { XUNJIE_VITE_CACHE_DIR: context.env.viteCache } });
 }
 
 async function spawnGateway(context, runtime, ports, certificate) {
@@ -254,8 +254,7 @@ export async function upLocal(context, log = () => {}) {
     const runtime = locatePinnedRuntime(process.env, context.home);
     stages.push({ name: 'runtime', ok: true, detail: runtime.path });
 
-    await ensureDependencies(runtime.path, context.repo.student, log);
-    await ensureDependencies(runtime.path, context.repo.teaching, log);
+    await ensureDependencies(runtime.path, context.worktree, log);
     stages.push({ name: 'dependencies', ok: true });
 
     const ca = ensureCertificateAuthority(context.home);
@@ -292,13 +291,13 @@ export async function upLocal(context, log = () => {}) {
     }
     stages.push({ name: 'ports', ok: true, detail: `gateway=${ports.gateway} backend=${ports.backend} vite=${ports.vite}` });
 
-    const baseline = await ensureBaseline(context.repo.teaching, context.env, log);
+    const baseline = await ensureBaseline(context.repo.server, context.env, log);
     ensureSigningSecret(context.env);
     mkdirSync(context.env.browserProfile, { recursive: true });
     stages.push({ name: 'baseline', ok: true, detail: baseline.created ? `已构造 ${baseline.version}` : `沿用 ${baseline.version}` });
 
     const backendStatus = statuses.backend;
-    if (backendStatus.running && newestSourceMtimeMs(context.repo.teaching) > (backendStatus.record.startedAtMs ?? 0)) {
+    if (backendStatus.running && newestSourceMtimeMs(context.repo.server) > (backendStatus.record.startedAtMs ?? 0)) {
       log('后端源码较新，重启 backend');
       await stopComponent(context.env, 'backend');
       backendStatus.running = false;

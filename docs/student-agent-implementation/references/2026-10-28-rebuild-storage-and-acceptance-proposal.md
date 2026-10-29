@@ -22,9 +22,9 @@
 | 浏览器 IndexedDB | 未同步作品、候选副本、界面状态、固定命令和 outbox | 新旧命名空间分开；保留旧现场，导入作品须是显式操作，不消费旧 outbox |
 | 执行节点文件 | 命令账本、输入展开文件、构建与 HDL 会话状态 | 不自动导入新执行队列；需要保留的诊断样本按来源标注，不能冒充新执行结果 |
 
-源码入口：[教学数据库](../../../apps/teaching/server/db/transaction.ts)、[个人 Agent 存储](../../../apps/teaching/server/personal-agent/store.ts)、[浏览器存储](../../../apps/student/src/workspace/draftDb.ts)、[执行账本](../../../apps/teaching/runner/controller.ts)、[HDL 账本](../../../apps/teaching/runner/hdl-ledger.ts)。
+源码入口：[教学数据库](../../../apps/server/server/db/transaction.ts)、[个人 Agent 存储](../../../apps/server/server/personal-agent/store.ts)、[浏览器存储](../../../apps/web/src/workspace/draftDb.ts)、[执行账本](../../../apps/server/runner/controller.ts)、[HDL 账本](../../../apps/server/runner/hdl-ledger.ts)。
 
-教师发布、学生读取和教师反馈目前共享同一后端。新旧前后端按新契约一起调整，不为了兼容旧 DTO 增加一层永久接口。必须继续实现的是已定产品行为：固定课程与组件版本、按主体投影材料、固定提交、持续摘要、反馈与修订；接口 URL 和旧 Attempt 表不是不可更改的产品要求。相关入口：[教师发布](../../../apps/student/src/teacher/LiveDesignPage.tsx)、[学生任务入口](../../../apps/student/src/workspace/home.ts)、[工作区接口](../../../apps/teaching/server/workspace/application.ts)、[教师审阅接口](../../../apps/teaching/server/review/application.ts)。
+教师发布、学生读取和教师反馈目前共享同一后端。新旧前后端按新契约一起调整，不为了兼容旧 DTO 增加一层永久接口。必须继续实现的是已定产品行为：固定课程与组件版本、按主体投影材料、固定提交、持续摘要、反馈与修订；接口 URL 和旧 Attempt 表不是不可更改的产品要求。相关入口：[教师发布](../../../apps/web/src/teacher/LiveDesignPage.tsx)、[学生任务入口](../../../apps/web/src/workspace/home.ts)、[工作区接口](../../../apps/server/server/workspace/application.ts)、[教师审阅接口](../../../apps/server/server/review/application.ts)。
 
 ## 第二个样本：STAT 20 / Flights
 

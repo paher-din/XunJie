@@ -17,11 +17,11 @@
 
 | 位置 | 实际行为 | 对本轮的影响 |
 | --- | --- | --- |
-| `apps/teaching/server/personal-agent/types.ts` | `ModelSelection` 没有独立协议字段；`CompatibleMessage` 只表示文本、图片和三种会话角色 | 不能表达完整工具往返、原生 reasoning、签名或 Responses items |
-| `apps/teaching/server/tutoring/openai-compatible.ts` | 调用 `/chat/completions`，解析可见文本及 usage；reasoning 只触发活动指示 | 当前通道不是三协议调用层；HTTP 成功不能证明工具与续接成立 |
+| `apps/server/server/personal-agent/types.ts` | `ModelSelection` 没有独立协议字段；`CompatibleMessage` 只表示文本、图片和三种会话角色 | 不能表达完整工具往返、原生 reasoning、签名或 Responses items |
+| `apps/server/server/tutoring/openai-compatible.ts` | 调用 `/chat/completions`，解析可见文本及 usage；reasoning 只触发活动指示 | 当前通道不是三协议调用层；HTTP 成功不能证明工具与续接成立 |
 | 同上 | 结构化任务发送 `json_object` 和 schema 提示词 | 是 JSON 生成与应用校验路径，不等于服务端 strict JSON Schema |
-| `apps/teaching/server/personal-agent/service.ts` | 历史保存文本和图片；resume 追加部分回答与“请继续” | 这是产品层继续回答，不是协议原生续接 |
-| `apps/teaching/package-lock.json` | 锁定 `ai@7.0.136`、`@ai-sdk/deepseek@3.0.63`、`@ai-sdk/provider@4.0.26`、`@ai-sdk/provider-utils@5.0.58` | 当前工作区未安装这些包；OpenAI、OpenAI-compatible、Anthropic provider 未在此 lock 中。不能把下面 raw HTTP 结果写成这些 SDK 的端点验证 |
+| `apps/server/server/personal-agent/service.ts` | 历史保存文本和图片；resume 追加部分回答与“请继续” | 这是产品层继续回答，不是协议原生续接 |
+| 研究时的后端独立锁文件（迁移后统一使用[根锁文件](../../../package-lock.json)） | 当时锁定 `ai@7.0.136`、`@ai-sdk/deepseek@3.0.63`、`@ai-sdk/provider@4.0.26`、`@ai-sdk/provider-utils@5.0.58` | 研究时工作区未安装这些包；OpenAI、OpenAI-compatible、Anthropic provider 未在当时的 lock 中。不能把下面 raw HTTP 结果写成这些 SDK 的端点验证 |
 
 只读配置盘点找到两家选定服务的现有凭据与协议入口。凭据仅在内存用于请求授权服务，没有写入源码、日志或本证据。
 

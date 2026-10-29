@@ -46,8 +46,8 @@ export async function prepareModels(input){
     const config=JSON.parse(readFileSync('/var/lib/xunjie/candidate-129/application.json','utf8'));
     config.personalModels={directory,callsEnabled:true};
     const runtimeRoot=resolve(input.teachingRoot,'../..');
-    if(!existsSync(join(runtimeRoot,'apps/student/dist/index.html')))throw new Error('CAPACITY_STATIC_ARTIFACT_MISSING');
-    config.staticDirectory=join(runtimeRoot,'apps/student/dist');
+    if(!existsSync(join(runtimeRoot,'apps/web/dist/index.html')))throw new Error('CAPACITY_STATIC_ARTIFACT_MISSING');
+    config.staticDirectory=join(runtimeRoot,'apps/web/dist');
     const configFile=join(input.targetRoot,'application.json');writeFileSync(configFile,JSON.stringify(config,null,2)+'\n',{flag:'wx',mode:0o600});
     const receipt={schema:'xunjie/capacity-model-preparation-v1',at:new Date().toISOString(),sourceReadOnly:true,
       sourceConfigurationDigest:sourceDigest,sourceServiceInitialized:false,sourceSettingsUnchanged:true,

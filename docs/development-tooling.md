@@ -8,12 +8,14 @@
 
 | 当前工具 | 如何找到用法与前置条件 | 能做什么、不能据此声称什么 |
 | --- | --- | --- |
-| 前端准备预览：`npm run dev:prep` | 在 `apps/student/` 按锁文件安装依赖；使用项目要求的 Node 24。见 [package.json](../apps/student/package.json)、[运行说明](../apps/student/README.md) | 使用合成数据预览页面；不是完整本地业务后端，不连接真实执行节点或模型 |
-| 真实前端开发：`npm run dev` | 同一工程；核对 [Vite 配置](../apps/student/vite.config.ts) 的来源与 API 接线 | 当前只启动前端，源码尚无 API 代理；单独启动此命令不能宣称已经连上本地或云端后端 |
-| 后端构建/启动：`npm run build`、`npm start` | 在 `apps/teaching/` 使用 [package.json](../apps/teaching/package.json) 声明的精确 Node 版本及锁文件；核对[启动入口](../apps/teaching/server/main.ts)的业务配置条件 | 普通无业务配置启动仅提供基础健康服务；完整课程服务需要明确的配置与初始化数据，不能把进程启动或健康响应当作本地课程环境已准备好 |
+| 前端准备预览：`npm run dev:prep -w @xunjie/web` | 在仓库根执行 `npm ci`，统一使用根锁文件；使用项目要求的 Node 24。见 [根 package.json](../package.json)、[Web package.json](../apps/web/package.json)、[运行说明](../apps/web/README.md) | 师生共用 Web 应用；此模式使用合成数据预览页面，不连接真实执行节点或模型 |
+| 真实前端开发：`npm run dev -w @xunjie/web` | 在仓库根运行；核对 [Vite 配置](../apps/web/vite.config.ts) 的来源与 API 接线 | 当前只启动前端，源码尚无 API 代理；单独启动此命令不能宣称已经连上本地或云端后端 |
+| 后端构建/启动：`npm run build`、`npm start -w @xunjie/server` | 在仓库根安装和构建，构建包含公共契约；使用 [后端 package.json](../apps/server/package.json) 声明的精确 Node 版本，核对[启动入口](../apps/server/server/main.ts)的业务配置条件 | 普通无业务配置启动仅提供基础健康服务；完整课程服务需要明确的配置与初始化数据，不能把进程启动或健康响应当作本地课程环境已准备好 |
 | 云端页面与 API：`xj-dev use cloud/cloud-api` | [模式与连接](../tools/xj-dev/README.md#模式与受管连接)；需要获准的配置、SSH 私钥、主机 pin 与 HTTPS CA | 受管连接恢复、固定入口与 Cookie 隔离；不上传代码、创建成员或部署 |
 | 已登记节点：`xj-dev node connect/status/disconnect` | 同一 README；另需已准备并登记的节点、端口与身份 | 迁移原回连能力；不安装 VM、初始化节点、重发或改派任务，隧道成功与执行业务验收分开报告 |
 | `xj-dev` 开发 CLI | [tools/xj-dev README](../tools/xj-dev/README.md)；`node tools/xj-dev/xj-dev.mjs --help` | doctor/up/status/down/delete、use、node、join/refresh/access、repro、baseline；本地独立数据与固定基线；所选模式、前后端来源、共享数据目标和连接状态见 JSON |
+
+以上 npm 命令的工作目录均为仓库根。根 `npm run typecheck`、`npm run build`、`npm test` 是 workspace 的统一检查入口；不再分别安装 Web 和后端依赖或维护 app 锁文件。公共 wire 契约经 `@xunjie/contracts` 的公开导出使用，浏览器导出及传递依赖不含 Node 专属库；内部 schema、repository 和权限投影留在后端，viewmodel 留在 Web。测试分组、环境标志及后续运行安装与存储接入见[工程交接](engineering-entrypoints.md)。
 
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 
@@ -238,7 +240,7 @@ Agent 的收尾需区分“包已生成”“包已上传”“环境已恢复�
 
 这并不意味着产品源码绝对零修改。例如当前宿主把浏览器 Origin 端口与监听端口绑定，可能需要拆清配置和启动组合接口。此类修改应是正常运行能力的整理；包传输、种子数据和开发身份留在开发工具中。不要只依赖 `NODE_ENV` 分支把整套开发设施隐藏在产品进程里。
 
-云端运行产物由 [CI 构建器](../tools/i0-cloud/build-runtime-artifact.mjs)按固定白名单装配（`apps/student/dist`、教学端运行目录与云宿主脚本），新根目录工具包不会自动被该路径带入；[教学后端构建配置](../apps/teaching/tsconfig.build.json)目前编译 `server` 与 `contracts`。这些是可利用的边界，不能替代未来普通用户本地安装包的验证。开发专用入口不能为方便而放进会整体发布的 `server` 目录。
+云端运行产物由 [CI 构建器](../tools/i0-cloud/build-runtime-artifact.mjs)按发布清单装配 Web 产物（`apps/web/dist`）、后端运行文件、公共契约及运行依赖与云宿主脚本；具体输入以该构建器及[后端构建配置](../apps/server/tsconfig.build.json)为准。生产编译输入与发布清单应排除共置测试、fixtures 和验收宿主；开发工具包不因位于仓库内就自动成为产品依赖。这些边界不能替代未来普通用户本地安装包的验证。
 
 交付时要验证依赖方向与实际打包清单，并从干净的产品安装产物启动：没有开发工具目录、团队凭据和共享存储网络连接，正常功能仍可使用。源码仓库包含开发工具，与用户安装必须使用它们，是两个不同条件。
 
@@ -274,7 +276,7 @@ Robert 明确要求：新工具接管后，删除代码库中用不上的旧连�
 | 原 PowerShell 页面/节点入口与公共 SSH 解析器 | 已迁入 `xj-dev use` / `node` / `src/connection.mjs` 并删除（#128） | 单一跨平台连接路径，旧获准配置仅由新解析器只读适配 |
 | 原连接 JSON 示例 | #129 以 join 自动生成配置，已删除手填 connection 示例；既有已批准 connection-v1 继续兼容 | 新成员由固定 helper 配置受限 SSH；`sshd-members.example.conf` 只供既有预发身份维护，不作为新成员加入步骤 |
 | `tools/i0-hdl/xunjie-local.ps1`、`local-application-host.mjs`、旧业务初始化/证据脚本及对应测试 | 已由 `tools/xj-dev` 替代并删除（#127） | 执行 VM 准备（`local-node-setup.*`）、冻结镜像接收、`fixtures/hdl-reference.json` 与 `seed-local-courses.mjs` 仍被引用，保留在 [i0-hdl README](../tools/i0-hdl/README.md) 说明；`seed-local-courses.mjs` 指向退役宿主的独立 CLI 和无调用场景逻辑已删除（#130），仅保留 `i0-cloud/publish-demo-projects.mjs` 复用的 `verifyCompletionReceipt` |
-| `tools/i0-hdl/README.md`、`tools/teacher-workflow/`、`tools/a0-review/` 及相关调用；`tools/i0-ui55/README.md`、`tools/i0-shared/README.md` | 旧操作步骤、占位说明与受控验证工具已删除（#127；a0-review 的检查对象文档已不存在且无引用），i0-hdl README 改写为保留范围说明 | 活跃源码、Skill、README 与当前设计文档中的旧命令、路径和链接已同步清零；`apps/teaching/tests/evidence/` 下的历史验收证据是当时的事实快照，保留旧文件名，不作为当前用法；历史事实留在 Git 历史与归档 |
+| `tools/i0-hdl/README.md`、`tools/teacher-workflow/`、`tools/a0-review/` 及相关调用；`tools/i0-ui55/README.md`、`tools/i0-shared/README.md` | 旧操作步骤、占位说明与受控验证工具已删除（#127；a0-review 的检查对象文档已不存在且无引用），i0-hdl README 改写为保留范围说明 | 活跃源码、Skill、README 与当前设计文档中的旧命令、路径和链接已同步清零；`apps/server/tests/evidence/` 下的历史验收证据是当时的事实快照，保留旧文件名，不作为当前用法；历史事实留在 Git 历史与归档 |
 | 仓库外旧连接文件、SSH 配置片段、专属证书、登记密钥、启动记录与受管进程 | 可能仍由成员或当前运行环境使用 | 迁移时生成本工具拥有资源的清单，完成目标切换再移除失效项；仅处理明确归属的旧资源，不扫描删除通用 SSH 配置、其他项目或业务数据 |
 | `cloud-host.mjs`、在用 systemd 服务和执行节点 | `sync-main.py` 及其同步单元已被 CI 产物发布链路（构建器、GitHub Release、`deploy-artifact.py` 与新部署单元）替代并删除；其余仍承担当前业务或执行职责 | 复用或按明确替代方案迁移；不能因为目录带旧阶段名就判断无用。对应替代完成时再删除失效实现和配置 |
 

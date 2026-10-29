@@ -115,13 +115,13 @@ test('capture rejects new private material in committed source, selected overlay
   }
   const materialPath = 'handoff/arbitrary-name.txt'; mkdirSync(join(repo, 'handoff'));
   git(repo, ['add', '.']); git(repo, ['commit', '-qm', 'safe source']);
-  const teaching = join(worktree, 'apps/teaching'), env = environmentPaths(join(root, 'home'), 'private-material');
+  const teaching = join(worktree, 'apps/server'), env = environmentPaths(join(root, 'home'), 'private-material');
   await ensureBaseline(teaching, env, () => {});
   const Driver = databaseDriver(teaching), db = new Driver(env.database);
   let attempt;
   try { attempt = db.prepare("SELECT attempt_id FROM attempts WHERE course_id='synthetic-textscope-c'").get().attempt_id; }
   finally { db.close(); }
-  const context = { worktree: repo, env, repo: { teaching } };
+  const context = { worktree: repo, env, repo: { server: teaching } };
   const spec = {
     formatVersion: 'xj-repro-context/1', code: { roots: LOCKFILES },
     data: { scope: { courseIds: ['synthetic-textscope-c'], userIds: ['synthetic-teacher', 'synthetic-student'], attemptIds: [attempt] } },

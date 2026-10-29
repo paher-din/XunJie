@@ -167,7 +167,7 @@ export function checkReproConditions(context, manifest) {
 
 export async function checkReproCompatibility(context, manifest, scratch) {
   checkReproConditions(context, manifest);
-  if (await schemaFingerprint(context.repo.teaching, scratch) !== manifest.data.schema) throw reproError('SCHEMA_MISMATCH', '接收端 schema 与包不符，不执行迁移。');
+  if (await schemaFingerprint(context.repo.server, scratch) !== manifest.data.schema) throw reproError('SCHEMA_MISMATCH', '接收端 schema 与包不符，不执行迁移。');
 }
 
 export async function restoreRepro(context, { file, target, expectedDigest, baselineVersion }) {
@@ -193,7 +193,7 @@ export async function restoreRepro(context, { file, target, expectedDigest, base
     writeFileSync(bundleFile, checked.entries.get('code/source.bundle'));
     writeFileSync(dataFile, checked.entries.get('data/shared.sqlite'));
     const stagedEnv = environmentPaths(join(scratch, 'staged'), id);
-    const restored = await restoreData(context.repo.teaching, dataFile, manifest.data, stagedEnv, baselineVersion);
+    const restored = await restoreData(context.repo.server, dataFile, manifest.data, stagedEnv, baselineVersion);
     restoreCode(context.worktree, bundleFile, manifest.code, scratch, canonicalTarget, manifest.conditions); created = true;
     mkdirSync(dirname(envPaths.root), { recursive: true });
     try { mkdirSync(envPaths.root, { mode: 0o700 }); ownsEnvironment = true; }

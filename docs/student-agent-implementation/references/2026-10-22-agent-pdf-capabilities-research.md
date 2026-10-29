@@ -239,9 +239,9 @@ PDF.js 的 API、Poppler、pypdf 都只是可复用零件。上表仍需循阶�
 [P1]: https://pypdf.readthedocs.io/en/stable/user/extract-text.html
 [P2]: https://mozilla.github.io/pdf.js/examples/
 [P3]: https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib-PDFPageProxy.html
-[X1]: ../../../apps/student/src/lib/chatImages.ts
-[X2]: ../../../apps/teaching/server/personal-agent/types.ts
-[X3]: ../../../apps/teaching/server/personal-agent/service.ts#L285
-[X4]: ../../../apps/student/src/workspace/tutoringObject.ts
+[X1]: ../../../apps/web/src/lib/chatImages.ts
+[X2]: ../../../apps/server/server/personal-agent/types.ts
+[X3]: ../../../apps/server/server/personal-agent/service.ts#L285
+[X4]: ../../../apps/web/src/workspace/tutoringObject.ts
 [X5]: ../student-agent-architecture.md#模型接入
 [X6]: 2026-10-23-model-endpoint-assessment.md

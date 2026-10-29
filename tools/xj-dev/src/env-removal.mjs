@@ -111,7 +111,7 @@ function processRecords(target) {
       || Boolean(value.cooperativeStop) !== ['connection', 'node-connection'].includes(name)) refuse('ENVIRONMENT_FOREIGN_PROCESS', '进程登记不属于当前环境，未停止任何进程。');
     const status = componentRunning(target.env, name);
     const command = status.commandLine?.replaceAll('\\', '/');
-    const expected = name === 'vite' ? join(target.repo.student, 'node_modules/vite/bin/vite.js') : join(target.worktree, 'tools/xj-dev/src', marker);
+    const expected = name === 'vite' ? target.repo.viteBin : join(target.worktree, 'tools/xj-dev/src', marker);
     if (status.foreign || status.running && (!command?.includes(expected.replaceAll('\\', '/'))
       || !command.includes(name === 'vite' ? `xjdev${target.id}` : target.env.root.replaceAll('\\', '/')))) refuse('ENVIRONMENT_FOREIGN_PROCESS', '登记 PID 已被外来进程使用，未停止任何进程。');
     records.push({ name, text: record.text });

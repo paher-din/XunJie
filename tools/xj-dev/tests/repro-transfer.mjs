@@ -1,3 +1,4 @@
+import { reuseWorkspaceDependencies } from './workspace-dependencies.mjs';
 // Explicit cross-machine acceptance: first export from repro-e2e with XJ_REPRO_EXPORT_DIR,
 // transfer the same ZIP, then run this file with node --test and the required environment below.
 import assert from 'node:assert/strict';
@@ -31,8 +32,8 @@ test('transferred ZIP restores on the receiving machine and observes the recorde
   t.after(() => {
     if (existsSync(target)) {
       run(['down', '--worktree', target]);
-      for (const app of ['student', 'teaching']) {
-        const dependencies = join(target, 'apps', app, 'node_modules');
+      {
+        const dependencies = join(target, 'node_modules');
         if (existsSync(dependencies) && lstatSync(dependencies).isSymbolicLink()) unlinkSync(dependencies);
       }
       git(worktree, ['worktree', 'remove', '--force', target]);
@@ -41,17 +42,16 @@ test('transferred ZIP restores on the receiving machine and observes the recorde
   });
   assert.equal(digest(readFileSync(file)), expectedDigest, 'the exact exported ZIP arrived');
   if (process.platform === 'win32') {
-    for (const app of ['student', 'teaching']) assert.ok(readFileSync(join(worktree, 'apps', app, 'package-lock.json'), 'utf8').includes('\r\n'), 'Windows receiver must exercise a real CRLF checkout');
+    assert.ok(readFileSync(join(worktree, 'package-lock.json'), 'utf8').includes('\r\n'), 'Windows receiver must exercise a real CRLF checkout');
   }
   const inspected = run(['repro', 'inspect', file, '--digest', expectedDigest]);
   assert.equal(inspected.verification.reproduction, 'unverified');
   const restored = run(['repro', 'restore', file, '--target', target, '--digest', expectedDigest]);
   assert.equal(restored.verification.restored, true); assert.equal(restored.verification.reproduction, 'unverified');
-  for (const app of ['student', 'teaching']) {
-    const existing = join(process.env.XJ_REPRO_DEPENDENCIES_FROM, 'apps', app);
-    assert.equal(lockfileDigest(readFileSync(join(existing, 'package-lock.json'))), lockfileDigest(readFileSync(join(target, 'apps', app, 'package-lock.json'))), 'preinstalled dependencies use the same pinned lock');
-    symlinkSync(join(existing, 'node_modules'), join(target, 'apps', app, 'node_modules'), 'junction');
-    utimesSync(join(target, 'apps', app, 'package-lock.json'), new Date(0), new Date(0));
+  {
+    const existing = process.env.XJ_REPRO_DEPENDENCIES_FROM;
+    assert.equal(lockfileDigest(readFileSync(join(existing, 'package-lock.json'))), lockfileDigest(readFileSync(join(target, 'package-lock.json'))), 'preinstalled dependencies use the same pinned lock');
+    reuseWorkspaceDependencies(existing, target);
   }
   const started = run(['up', '--worktree', target]);
   assert.equal(started.capabilities.execution.available, false); assert.equal(started.capabilities.models.available, false);

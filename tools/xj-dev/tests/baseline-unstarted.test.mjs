@@ -11,8 +11,8 @@ test('course baselines explicitly retain unopened assignments without widening t
   const root = mkdtempSync(join(tmpdir(), 'xj-unstarted-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const context = { env: environmentPaths(root, 'source'), repo: repoPaths(resolve(import.meta.dirname, '../../..')) };
-  await ensureBaseline(context.repo.teaching, context.env, () => {});
-  const Driver = databaseDriver(context.repo.teaching), db = new Driver(context.env.database);
+  await ensureBaseline(context.repo.server, context.env, () => {});
+  const Driver = databaseDriver(context.repo.server), db = new Driver(context.env.database);
   let attempt;
   try {
     attempt = db.prepare("SELECT * FROM attempts WHERE course_id='synthetic-textscope-c'").get();
@@ -52,7 +52,7 @@ test('course baselines explicitly retain unopened assignments without widening t
   assert.equal(selected.manifest.includeUnstartedAssignments, true);
   const file = join(root, 'selected.sqlite'); writeFileSync(file, selected.bytes);
   const restored = environmentPaths(root, 'restored');
-  await restoreData(context.repo.teaching, file, selected.manifest, restored, 'course-v1');
+  await restoreData(context.repo.server, file, selected.manifest, restored, 'course-v1');
   const result = new Driver(restored.database, { readonly: true });
   try {
     assert.deepEqual(result.prepare('SELECT id FROM assignments ORDER BY id').all().map(row => row.id).sort(), [attempt.assignment_id, 'unopened-c'].sort());

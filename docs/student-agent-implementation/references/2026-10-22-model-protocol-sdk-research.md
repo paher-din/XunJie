@@ -20,7 +20,7 @@
 
 ## 固定版本与证据边界
 
-本地核对的 HEAD 为 `1f29715edbabc1997bbbb61bd73319a56becd8a4`。`apps/teaching/package.json` 与 lock 固定 `ai@7.0.136`、`@ai-sdk/deepseek@3.0.63`；三个比较中的 provider 和两个直接协议 SDK 均不在该工程直接依赖中。
+本地核对的 HEAD 为 `1f29715edbabc1997bbbb61bd73319a56becd8a4`。当时后端 package.json 与 lock 固定 `ai@7.0.136`、`@ai-sdk/deepseek@3.0.63`；三个比较中的 provider 和两个直接协议 SDK 均不在当时的工程直接依赖中。迁移后的入口为 [apps/server/package.json](../../../apps/server/package.json)与[根锁文件](../../../package-lock.json)，不据此改写研究时的依赖结论。
 
 | 包 | 本次实际核对版本 | 与仓库关系 | 固定发布元数据 |
 | --- | --- | --- | --- |
@@ -38,7 +38,7 @@
 
 `openai@7.42.0` 的 registry `gitHead` 为 `802a3239e91b46c408c350e11ecff84b76fb17d4`；其余比较发布元数据没有提供 `gitHead`，故本文以**固定 npm 版本内的源码**为依据，不杜撰源码 commit。Core `7.0.136` 与 `7.0.148` 的 `src/generate-text/to-response-messages.ts` 本次比较内容相同；这不证明两版整体等价。
 
-本地实现另外核对了 `apps/teaching/server/tutoring/openai-compatible.ts` 与 `server/personal-agent/model-protocol.ts`：当前 transport 手写 `/chat/completions`，JSON 模式发送 `json_object`，返回以 text/usage 为中心；reasoning 识别用于活动指示。主线提供的云配置和端点结果不属于本研究独立核验范围。
+本地实现另外核对了 `apps/server/server/tutoring/openai-compatible.ts` 与 `server/personal-agent/model-protocol.ts`：当前 transport 手写 `/chat/completions`，JSON 模式发送 `json_object`，返回以 text/usage 为中心；reasoning 识别用于活动指示。主线提供的云配置和端点结果不属于本研究独立核验范围。
 
 ## 协议能力对照：只说明各官方契约
 

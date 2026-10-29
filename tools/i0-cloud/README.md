@@ -12,6 +12,7 @@
 | `prepare-demo-data.mjs` | 对已备份共享合成库追加教学班、成员和发布前置；不新建表、不造学习记录 |
 | `publish-demo-projects.mjs` | 按私有计划通过原教师 API 固定版本并分配，保留幂等回执 |
 | `sshd-members.example.conf` | 页面与执行身份分离的 Match 结构示例，含不可直接安装的占位项 |
+| `prepare-production-runtime.mjs` | 从根锁文件在新目录安装 server/contracts 的生产依赖，不修改工作树依赖 |
 | `build-runtime-artifact.mjs` | CI 内装配 Linux 生产运行产物：预压缩静态资源、逐文件摘要与 manifest；不在服务器上运行 |
 | `deploy-artifact.py` | 服务器下载并校验 CI 产物、备份、装配、切换与失败回退；`--status` 只读、`--prune` 只清理 |
 | `xunjie-release-deploy.service` / `.timer` | 服务器每 5 分钟按产物发布的低权重维护服务模板 |
@@ -25,14 +26,16 @@
 
 ## 按产物发布：CI 构建与云端切换
 
-服务器不再构建源码。CI 使用 ubuntu-24.04 x64 + Node 24.21.0，产出含逐文件摘要的 `manifest.json` 和 `runtime.tar.gz`。两文件先写入孤儿提交，由 `cloud-artifact-<manifest sha256>` 不可变 tag 保持可达，再公开 `cloud-<source commit>` Release。Release 正文的 `xunjie-artifact-v1` JSON 绑定来源提交、产物提交、manifest 与 archive 摘要；Release asset API 的摘要和字节数必须与之匹配。相同来源提交的已绑定公开 Release 不被重跑替换。
+服务器不再构建源码。CI 先在仓库根执行 `npm ci --include=dev` 和 `npm run verify`；随后用 `prepare-production-runtime.mjs . NEW_DIRECTORY` 隔离安装 server/contracts 生产依赖，并将该目录传给装配器 `--dependencies NEW_DIRECTORY`。产物包含 Web dist、server 编译后的 dist、根生产 node_modules 和实体化的 @xunjie/contracts/dist；不包含测试、fixtures、验收宿主或开发工具。`cloud-host.mjs --server-root RELEASE/apps/server` 仅加载 dist/server 的 JavaScript。CI 使用 ubuntu-24.04 x64 + Node 24.21.0，产出含逐文件摘要的 `manifest.json` 和 `runtime.tar.gz`。两文件先写入孤儿提交，由 `cloud-artifact-<manifest sha256>` 不可变 tag 保持可达，再公开 `cloud-<source commit>` Release。Release 正文的 `xunjie-artifact-v1` JSON 绑定来源提交、产物提交、manifest 与 archive 摘要；Release asset API 的摘要和字节数必须与之匹配。相同来源提交的已绑定公开 Release 不被重跑替换。
+
+WP01 路径迁移首次发布前，维护者需单独核对并更新宿主上已安装的 systemd unit（`--server-root RELEASE/apps/server`）和 application config（`staticDirectory: CURRENT/apps/web/dist`）。仓库模板变化不会改写主机配置：旧静态路径会在部署预检返回 `CURRENT_STATIC_DIRECTORY_REQUIRED`；旧 `--teaching-root` unit 也不能启动新入口。应在获准发布窗口核对配置、单元重载和回退版本兼容性后再切换。本轮仅更新源码与模板，未部署或修改宿主，工程通过不代表线上可用。
 
 本版部署器经 codeload 的**完整产物提交 SHA**下载，完全不使用可变镜像分支。`main` 推送与 integration 的 `workflow_dispatch` 都可产生精确来源版本的候选，但只有部署器读取到的精确 main HEAD 能进入共享业务发布；候选构建不移动 main 或共享镜像引用。同一 ref 只构建最新提交，取消旧运行时最多留下不可变 tag 或未公开 draft；同一 SHA 的跨 ref 运行串行。中断重跑发现同名 tag 时，先核对远端提交的 tree 与本次两文件完全一致，再复用原 SHA，避免提交时间不同造成 tag 冲突。Release 查询只有明确 HTTP 404 才按不存在创建；明确读到 draft 或旧 unbound Release 才允许替换，权限、网络、5xx 和异常响应一律失败并保留已有 Release。远端候选 workflow 由维护者同步 integration 后触发，构建通过不代表 main 已发布。CI 保留最近 5 份 Release，并额外保护 main 与当前 integration HEAD；无引用产物 tag 和未完成 draft 经过 24 小时宽限后清理，仍被 Release 引用的 tag 始终保留。
 
 `deploy-artifact.py` 在服务器上只做校验、备份、装配与切换：
 
 1. 经 GitHub API 核对 `main` HEAD 提交与 tree，按 `cloud-<commit>` 查找已发布 Release；产物未就绪时返回 `blocked`/`ARTIFACT_PENDING`，业务保持现状。
-2. 从 `codeload.github.com` 按 Release 绑定的不可变产物提交流式拉取 tarball（总量上限 1 GiB + 8 MiB），解出 manifest 与 runtime tarball，先核对两者与 Release asset 的摘要和字节数，再核对 manifest 内 archive 摘要后解包到受控 staging（仅允许 `apps/student`、`apps/teaching`、`tools/i0-cloud/cloud-host.mjs` 路径），逐文件重算 sha256 与 manifest 精确比对，入口 HTML/JS 规则与静态摘要表也必须一致。
+2. 从 `codeload.github.com` 按 Release 绑定的不可变产物提交流式拉取 tarball（总量上限 1 GiB + 8 MiB），解出 manifest 与 runtime tarball，先核对两者与 Release asset 的摘要和字节数，再核对 manifest 内 archive 摘要后解包到受控 staging（仅允许 `apps/web/dist`、`apps/server/dist`、server 清单、根生产 `node_modules`、根清单/锁文件及 `tools/i0-cloud/cloud-host.mjs`），逐文件重算 sha256 与 manifest 精确比对，入口 HTML/JS 规则与静态摘要表也必须一致。
 3. 磁盘可用空间低于 `minimumFreeBytes`（建议 5 GiB）时拒绝下载与装配（`blocked`/`LOW_DISK`），低于 `warningFreeBytes`（建议 10 GiB）只告警；已有业务不受影响。
 4. SQLite 一致备份当前库（保留最近 `keepBackups` 份部署备份），切换 `current` 符号链接、重启服务，并用 `/health/live`、`/health/ready` 与实际返回的 index/入口 JS 摘要做健康探测；失败自动切回上一个 release 并重启、复测。
 5. 成功后按保留策略清理发布目录：当前版本 + 最近 `keepReleases - 1` 个带 `health-verified.json` 成功记录的可回退版本 + 带 `.pinned` 标记的固定版本；清理只作用于部署脚本拥有的 `main-<commit>` 目录，不触碰业务数据、备份目录或外来文件。失败候选不会取得成功记录，并在回退完成后清除；当前旧版仅在进程、文件形状及实际返回资源健康核对成功后补记成功状态。首次迁移应先在隔离宿主验证需要保留的旧回退版本，不能将未验收目录直接标成成功。发布与清理由同一 flock 串行，备份单元复用同一把锁（见下）。

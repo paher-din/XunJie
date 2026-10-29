@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": true
+  },
+  "include": [
+    "server/**/*.ts",
+    "contracts/**/*.ts",
+    "runner/**/*.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/test/**",
+    "**/tests/**",
+    "**/fixtures/**",
+    "**/*.fixtures.ts",
+    "**/*-support.ts",
+    "server/workspace/test-child.ts",
+    "server/app/i0-browser-fixture.ts",
+    "server/app/i0-browser-runner.ts",
+    "runner/acceptance.ts",
+    "runner/hdl-acceptance.ts",
+    "runner/record-validation.ts"
+  ]
+}

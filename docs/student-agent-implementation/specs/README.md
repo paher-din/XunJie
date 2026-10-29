@@ -21,13 +21,13 @@
 
 ## 组件接入与本地验收
 
-在 `apps/student` 运行 `npm run dev`，使用终端显示的地址打开以下 hash 路由。两个验收入口及其样例仅在开发模式存在。
+在仓库根执行 `npm ci`，再运行 `npm run dev -w @xunjie/web`，使用终端显示的地址打开以下 hash 路由。两个验收入口及其样例仅在开发模式存在。
 
 | 能力 | 代码入口 | 开发验收路由 |
 | --- | --- | --- |
-| 选区工具条、文本与代码来源、问题草稿和引用 | [references/index.ts](../../../apps/student/src/components/workspace/references/index.ts) | `/#/dev/workspace-references` |
-| IP、文字与卡片的受控展示 | [GuidancePresentation.tsx](../../../apps/student/src/components/workspace/guidance/GuidancePresentation.tsx) | `/#/dev/guidance` |
-| 已有课程脚本适配 | [GuideLayer.tsx](../../../apps/student/src/components/workspace/GuideLayer.tsx) | 引导验收页的“旧脚本适配”，以及原有课程入口 |
+| 选区工具条、文本与代码来源、问题草稿和引用 | [references/index.ts](../../../apps/web/src/components/workspace/references/index.ts) | `/#/dev/workspace-references` |
+| IP、文字与卡片的受控展示 | [GuidancePresentation.tsx](../../../apps/web/src/components/workspace/guidance/GuidancePresentation.tsx) | `/#/dev/guidance` |
+| 已有课程脚本适配 | [GuideLayer.tsx](../../../apps/web/src/components/workspace/GuideLayer.tsx) | 引导验收页的“旧脚本适配”，以及原有课程入口 |
 
 引用由 `WorkspaceReferencesProvider` 按 `workspaceKey` 隔离；来源身份应标识实际对象，不能只用可能被复用的显示名称。`onSubmit` 只收到明确发送的问题、选中片段与来源范围，完整原文仅用于本地定位校验。接收回调成功后清理未被继续编辑的草稿，失败则保留。
 

@@ -81,11 +81,11 @@ function assertPayloadScope(row, scope) {
 
 // One read transaction gives a consistent SQLite view; no original database pages are distributed.
 export async function collectData(context, scratch, spec) {
-  const scope = parseScope(spec?.scope), Driver = databaseDriver(context.repo.teaching);
+  const scope = parseScope(spec?.scope), Driver = databaseDriver(context.repo.server);
   if (spec.includeUnstartedAssignments !== undefined && typeof spec.includeUnstartedAssignments !== 'boolean') {
     throw reproError('INVALID_SCOPE', 'includeUnstartedAssignments 必须是显式布尔值。');
   }
-  const load = module => import(pathToFileURL(join(context.repo.teaching, module)).href);
+  const load = module => import(pathToFileURL(join(context.repo.server, module)).href);
   const [{ readCommandIdentity }, { bindingKeys }, { canonical, sameScope }] = await Promise.all([
     load('server/db/records-adapter.ts'), load('server/workspace/storage.ts'), load('server/records/commands.ts'),
   ]);
@@ -207,10 +207,10 @@ export async function collectData(context, scratch, spec) {
     }
     source.exec('COMMIT');
   } finally { source.close(); }
-  const expected = await schemaFingerprint(context.repo.teaching, scratch);
+  const expected = await schemaFingerprint(context.repo.server, scratch);
   if (expected !== schema) throw reproError('SCHEMA_MISMATCH', '源业务库结构与当前代码不符；不会暗中迁移。');
   const file = join(scratch, 'shared.sqlite');
-  await createSharedDatabase(context.repo.teaching, file, rows);
+  await createSharedDatabase(context.repo.server, file, rows);
   const marker = JSON.parse(readFileSync(context.env.baselineFile, 'utf8'));
   return { bytes: readFileSync(file), manifest: {
     schema, baselineVersion: marker.version, scope,

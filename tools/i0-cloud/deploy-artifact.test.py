@@ -62,7 +62,7 @@ class GithubResponse(io.BytesIO):
 
 def artifact_tree(root: Path, script: bytes, marker: str) -> dict[str, bytes]:
     """A CI-shaped runtime tree with per-file digests."""
-    dist = root / "apps/student/dist"
+    dist = root / "apps/web/dist"
     (dist / "assets").mkdir(parents=True)
     index = ('<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>x</title></head>'
              + '<body><div id="root"></div><script type="module" crossorigin src="/assets/index-test.js"></script></body></html>').encode()
@@ -71,21 +71,21 @@ def artifact_tree(root: Path, script: bytes, marker: str) -> dict[str, bytes]:
     (dist / "assets/site.css").write_bytes(b".rule { color: black; }\n")
     (dist / "assets/index-test.js.br").write_bytes(b"\x0bcompressed-brotli-" + marker.encode())
     (dist / "assets/index-test.js.gz").write_bytes(b"\x1fcompressed-gzip-" + marker.encode())
-    teaching = root / "apps/teaching"
+    teaching = root / "apps/server"
     for name, content in {
-        "server/main.ts": b"export const runtime = 'teaching';\n",
-        "server/app.ts": b"export const app = true;\n",
-        "contracts/access.ts": b"export const authenticated = true;\n",
-        "runner/snapshot.ts": b"export const snapshot = 'fixed';\n",
+        "dist/server/main.js": b"export const runtime = 'teaching';\n",
+        "dist/server/app.js": b"export const app = true;\n",
+        "dist/contracts/access.js": b"export const authenticated = true;\n",
+        "dist/runner/snapshot.js": b"export const snapshot = 'fixed';\n",
         "package.json": b'{"type":"module"}\n',
         "package-lock.json": b'{"lockfileVersion":3}\n',
-        "tools/check-runtime.mjs": b"export const approved = 'v24.21.0';\n",
         "node_modules/zod/index.js": b"export const productionDependency = true;\n",
         "node_modules/better-sqlite3/prebuilds/linux-x64.node": b"fixture-native-production-module",
     }.items():
-        path = teaching / name
+        path = (root if name.startswith("node_modules/") or name == "package-lock.json" else teaching) / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
+    (root / "package.json").write_bytes(b'{"type":"module"}\n')
     cloud_host = root / "tools/i0-cloud/cloud-host.mjs"
     cloud_host.parent.mkdir(parents=True, exist_ok=True)
     cloud_host.write_bytes(b"export const host = 'original';\n")
@@ -93,7 +93,7 @@ def artifact_tree(root: Path, script: bytes, marker: str) -> dict[str, bytes]:
 
 
 def manifest_for(root: Path, commit: str, tree: str, index: bytes, script: bytes) -> dict:
-    dist = root / "apps/student/dist"
+    dist = root / "apps/web/dist"
     static_files = sorted(path for path in dist.rglob("*") if path.is_file())
     static_digests = {path.relative_to(dist).as_posix(): sha256(path.read_bytes())
                       for path in static_files if path.name != "asset-digests.json"}
@@ -102,10 +102,11 @@ def manifest_for(root: Path, commit: str, tree: str, index: bytes, script: bytes
     static_entries = [{"path": path.relative_to(dist).as_posix(), "sha256": sha256(path.read_bytes()),
                        "bytes": path.stat().st_size} for path in static_files]
     runtime_entries = []
-    for base, prefix in ((root / "apps/teaching", "apps/teaching/"), (root / "tools/i0-cloud", "tools/i0-cloud/")):
+    for base, prefix in ((root / "apps/server", "apps/server/"), (root / "tools/i0-cloud", "tools/i0-cloud/"), (root / "node_modules", "node_modules/")):
         runtime_entries += [{"path": prefix + path.relative_to(base).as_posix(), "sha256": sha256(path.read_bytes()),
                              "bytes": path.stat().st_size}
                             for path in sorted(base.rglob("*")) if path.is_file()]
+    runtime_entries += [{"path": name, "sha256": sha256((root / name).read_bytes()), "bytes": (root / name).stat().st_size} for name in ("package.json", "package-lock.json")]
     return {
         "format": "xunjie-runtime-artifact", "version": 1, "commit": commit, "gitTree": tree,
         "platform": "linux-x64", "nodeVersion": "v24.21.0", "builtAt": "2026-10-23T00:00:00Z",
@@ -182,7 +183,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.certificate = self.root / "private-ca.pem"
         self.certificate.write_text("fixture certificate", encoding="utf-8")
         self.application = {
-            "staticDirectory": str(self.current / "apps/student/dist"),
+            "staticDirectory": str(self.current / "apps/web/dist"),
             "databaseFile": str(self.database),
             "tls": {"certFile": str(self.certificate)},
         }
@@ -299,7 +300,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
 
     def test_steady_state_does_not_rehash_the_runtime_tree(self) -> None:
         self.deployment.remote_commit = mock.Mock(return_value=OLD_COMMIT)
-        runtime_file = self.old_release / "apps/teaching/server/main.ts"
+        runtime_file = self.old_release / "apps/server/dist/server/main.js"
         original = runtime_file.read_bytes()
         damaged = b"export const runtime = 'damage!!';\n"
         # Same-size in-place damage must stay invisible to the every-five-minutes
@@ -314,7 +315,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
 
     def test_truncated_release_file_breaks_the_unchanged_shortcut(self) -> None:
         self.deployment.remote_commit = mock.Mock(return_value=OLD_COMMIT)
-        (self.old_release / "apps/teaching/server/main.ts").write_bytes(b"truncated")
+        (self.old_release / "apps/server/dist/server/main.js").write_bytes(b"truncated")
         # The size-only shape check detects the truncation and the deploy path
         # re-runs; the fixture artifact is for another commit, so verification
         # fails and rolls back without touching the current release.
@@ -355,7 +356,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
         self.assertEqual(result["commit"], NEW_COMMIT)
         self.assertEqual(self.release_commit(), NEW_COMMIT)
         new_release = self.releases / ("main-" + NEW_COMMIT)
-        self.assertTrue((new_release / "apps/student/dist/index.html").is_file())
+        self.assertTrue((new_release / "apps/web/dist/index.html").is_file())
         self.assertEqual(json.loads((new_release / "deployment.json").read_text(encoding="utf-8"))["commit"], NEW_COMMIT)
         self.deployment.backup.assert_called_once()
         self.deployment.restart_service.assert_called_once()
@@ -388,7 +389,7 @@ class ArtifactDeploymentTests(unittest.TestCase):
 
     def test_file_digest_mismatch_refuses_switch(self) -> None:
         # The archive digest is self-consistent, but its contents no longer match the per-file digests.
-        module = self.artifact_root / "apps/teaching/node_modules/zod/index.js"
+        module = self.artifact_root / "node_modules/zod/index.js"
         module.write_bytes(b"export const tampered = true;\n")
         self.tarball = pack_archive(self.artifact_root)
         self.manifest["artifactSha256"] = sha256(self.tarball)
@@ -400,14 +401,14 @@ class ArtifactDeploymentTests(unittest.TestCase):
         output = io.BytesIO()
         with tarfile.open(fileobj=output, mode="w:gz") as archive:
             for name, content in [
-                ("apps/student/dist/index.html", b"<html>"),
+                ("apps/web/dist/index.html", b"<html>"),
                 ("../../../etc/passwd", b"unsafe"),
                 ("/absolute/path", b"unsafe"),
             ]:
                 entry = tarfile.TarInfo(name)
                 entry.size = len(content)
                 archive.addfile(entry, io.BytesIO(content))
-            link = tarfile.TarInfo("apps/student/dist/link")
+            link = tarfile.TarInfo("apps/web/dist/link")
             link.type = tarfile.SYMTYPE
             link.linkname = "/etc/passwd"
             archive.addfile(link)

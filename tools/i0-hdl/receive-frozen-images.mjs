@@ -1,3 +1,4 @@
+// Frozen 9fa76ad material retains apps/teaching; current checkout entrypoints use apps/server.
 import { createHash } from 'node:crypto';
 import { open, readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';

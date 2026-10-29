@@ -12,6 +12,7 @@
 | --- | --- |
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
 | 目标代码结构、依赖规则及各 WP 同步完成的结构改造 | [代码结构与实施节奏](student-agent-implementation-overview.md#代码结构与实施节奏)；取舍见 [ADR 0003](adr/0003-runtime-entrypoints-and-owned-modules.md) |
+| 当前工程入口、测试环境及 #143/#144 接入交接 | [工程入口与 WP01 交接](../engineering-entrypoints.md) |
 | 八个 Wayfinder 主题的完整结论、来源和后续修正 | [本地决议索引](wayfinder/student-agent/README.md) |
 | 本轮设计决策的讨论与确认来源 | [学生端 Agent 与工作区重新设计：数字逻辑与部件设计先行](https://github.com/paher-din/XunJie/issues/112) |
 | ALU 的学习目标、公开行为表、帮助边界和场景 | [活动决议](wayfinder/student-agent/alu-activity.md)及[活动设计](references/2026-10-23-alu-activity-design.md) |
@@ -35,7 +36,7 @@
 | Robert 已明确的要求、工程决定与待验证项 | [需求与决策记录](student-agent-decisions.md) |
 | 已确认的学生主动性设置与无扰检测路线、验证方法 | [跨课程主动引导方案](references/2026-10-23-proactive-guidance-proposal.md) |
 | 活动恢复、学习证据、学生画像纠正与教师共享边界 | [连续教学方案](references/2026-10-23-continuous-learning-proposal.md) |
-| 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | [工作区交互与状态决议](wayfinder/student-agent/workspace-state.md)及[可操作原型](../../apps/student/prototypes/workspace-state.README.md) |
+| 自动保存、实验输入、固定引用、待发动作与同浏览器恢复 | [工作区交互与状态决议](wayfinder/student-agent/workspace-state.md)及[可操作原型](../../apps/web/prototypes/workspace-state.README.md) |
 | 教师组件库、组件接入、生成内容状态与版本更新 | [课程组件决议](wayfinder/student-agent/course-components.md)、[详细设计](references/2026-10-26-course-tool-host-proposal.md)及[宿主技术研究](references/2026-10-26-course-tool-host-research.md) |
 | GitHub 议题、原生依赖与后续会话工作方式 | [Issue tracker](../agents/issue-tracker.md) |
 | 教师设计运行方案、本地优先的理由 | [ADR 0001](adr/0001-teacher-owned-course-execution-plan.md) |

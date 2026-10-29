@@ -89,7 +89,7 @@ flowchart TB
 
 ## 实时状态与自动保存
 
-本节按[工作区交互与状态决议](wayfinder/student-agent/workspace-state.md)同步设计边界；完整契约与不变量以该决议为准，[可操作原型](../../apps/student/prototypes/workspace-state.README.md)提供讨论证据，尚未接入真实保存、同步、实验或教师服务。
+本节按[工作区交互与状态决议](wayfinder/student-agent/workspace-state.md)同步设计边界；完整契约与不变量以该决议为准，[可操作原型](../../apps/web/prototypes/workspace-state.README.md)提供讨论证据，尚未接入真实保存、同步、实验或教师服务。
 
 学生修改先在界面生效，并在本机持久记录待同步操作；应用服务连续接收变化。合并传输应有最长等待时间，持续输入也会同步。断线恢复按操作身份去重补传。自动保存与实验运行分别进行，保存不等于重新装载或重新运行。
 

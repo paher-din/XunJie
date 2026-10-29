@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -10,7 +10,7 @@ import { PINNED_NODE, environmentId, environmentPaths, findWorktreeRoot, toolHom
 import { allocatePorts, basePortFor, portFree } from '../src/ports.mjs';
 import { acquireLock, loadState, saveState } from '../src/state.mjs';
 import { componentRunning, spawnComponent, stopComponent } from '../src/processes.mjs';
-import { dependenciesFresh, locatePinnedRuntime, npmCliJs, runNode } from '../src/runtime.mjs';
+import { dependenciesFresh, ensureDependencies, locatePinnedRuntime, npmCliJs, runNode } from '../src/runtime.mjs';
 
 test('runNode keeps npm lifecycle node on the selected runtime', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'xj-shadow-node-'));
@@ -241,4 +241,16 @@ test('dependenciesFresh：以锁文件与安装标记的 mtime 判断', () => {
   utimesSync(marker, past, past);
   utimesSync(lockfile, new Date(), new Date());
   assert.equal(dependenciesFresh(app), false);
+});
+
+
+test('stale shared dependency links never authorize npm ci against their owner', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'xj-shared-dependencies-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const owner = join(root, 'owner'), receiver = join(root, 'receiver');
+  mkdirSync(owner); mkdirSync(receiver);
+  const canary = join(owner, 'canary'); writeFileSync(canary, 'prepared shared graph');
+  symlinkSync(owner, join(receiver, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(() => ensureDependencies(process.execPath, receiver, () => {}), { code: 'LINKED_DEPENDENCIES_STALE' });
+  assert.equal(readFileSync(canary, 'utf8'), 'prepared shared graph');
 });
