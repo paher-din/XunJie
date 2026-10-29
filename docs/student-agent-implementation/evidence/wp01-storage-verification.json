@@ -1,0 +1,98 @@
+{
+  "formatVersion": 1,
+  "issue": 144,
+  "status": "passed",
+  "testedCommit": "28f4c896e6472d410708aa15579f5a6c6a5f90f7",
+  "nodeVersion": "v24.21.0",
+  "command": "npm run verify",
+  "startedAt": "2026-10-29T15:56:55.464Z",
+  "finishedAt": "2026-10-29T16:00:52.587Z",
+  "stages": [
+    {
+      "name": "typecheck",
+      "status": "passed",
+      "durationMs": 7370,
+      "exitCode": 0
+    },
+    {
+      "name": "build",
+      "status": "passed",
+      "durationMs": 13343,
+      "exitCode": 0
+    },
+    {
+      "name": "check:contracts:browser",
+      "status": "passed",
+      "durationMs": 227,
+      "exitCode": 0
+    },
+    {
+      "name": "check:docs",
+      "status": "passed",
+      "durationMs": 247,
+      "exitCode": 0
+    },
+    {
+      "name": "test",
+      "status": "passed",
+      "durationMs": 215933,
+      "exitCode": 0
+    }
+  ],
+  "groups": {
+    "checks": {
+      "tests": 28,
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0
+    },
+    "product-runtime": {
+      "tests": 44,
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0
+    },
+    "storage": {
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    "server": {
+      "tests": 660,
+      "passed": 643,
+      "failed": 0,
+      "skipped": 17
+    },
+    "tools": {
+      "tests": 305,
+      "passed": 304,
+      "failed": 0,
+      "skipped": 1
+    },
+    "web": {
+      "tests": 688,
+      "passed": 688,
+      "failed": 0
+    },
+    "python-tools": {
+      "tests": 34,
+      "passed": 34,
+      "failed": 0
+    }
+  },
+  "nativeStorage": {
+    "macos": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "linux": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "rawLogs": ".verification/2026-10-29T15-56-55-463Z-lPB8cu",
+  "cleanup": "Disposable PostgreSQL/S3 hosts, independent consumers and transfer archives stopped and removed."
+}

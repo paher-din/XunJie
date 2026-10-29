@@ -37,9 +37,11 @@ node scripts/storage-s3-fixture.mjs --stop --root /tmp/xunjie-storage-s3
 | Mac arm64 原生存储 | PostgreSQL 18.6、文件和 SeaweedFS 4.50，20/20 通过，0 跳过；包含真实 HTTP 双进程、COMMIT 回包丢失/超时、强杀、迁移及资源竞争。[结果](evidence/wp01-storage-macos.json) · [日志](evidence/wp01-storage-macos.log) |
 | Ubuntu 学校组合 | 实际 Ubuntu 24.04.5 LTS x64 / kernel 6.8，使用独立目录的相同 npm 包、PG 18.6 及固定 S3 后端；同套 20/20 通过，0 跳过。[结果](evidence/wp01-storage-linux.json) · [日志](evidence/wp01-storage-linux.log) |
 | 分发消费者 | 实际打包 contracts/storage/product-runtime，在仓库外独立安装；产品 module 严格类型检查无需内部 `@types/pg`，无工作树链接或测试宿主进入 package，Mac 与 Linux 的实际消费者通过同套案例。[分发证据](evidence/wp01-storage-distribution.json) |
-| 工程检查 | 当前类型检查、构建、浏览器契约及文档链接检查通过；完整门禁在提交包含新 lockfile 的 Git 快照后运行，最终结果随后记录。 |
+| 工程检查 | 提交 `28f4c89` 后以完整 Node 24.21.0 运行 `npm run verify`，类型检查、构建、浏览器契约、文档链接及全量回归五阶段通过；普通存储回归 14/14。既有外部环境条件跳过项仍单独记录，不当作运行成功。[门禁结果](evidence/wp01-storage-verification.json)；原始日志在 `.verification/2026-10-29T15-56-55-463Z-lPB8cu/`。 |
 | 实现审查 | Standards / Spec 分别复核；上传执行权、持久化确认、未知 PUT、备份 pin 及发布包发现的问题已修复，最终复核无剩余发现。 |
 | Windows | 本轮 `win` SSH 在 banner 阶段超时，未执行原生存储验收；Mac 上的 Windows IO 限制回归不当作 Windows 实机结果。 |
 | 浏览器与教学 | 本票没有新增 UI，未执行浏览器操作或教学效果研究；公共 storage wire 的浏览器依赖检查通过，不导入 Node driver。 |
 
 审查补充的关键反例包括：重复上传不得产生第二个 PUT；未知 PUT 不能被相同正文的旧对象确认；文件 GET 必须完成持久化屏障；备份 B 必须继续覆盖备份 A 的 pin；旧维护/schema 代际不得覆盖新状态。所有失败保持明确状态，不自动重放模型或工具。
+
+验收后已停止并删除双方临时 PostgreSQL/S3、独立消费者、私密配置及传输归档，保留本页证据与验证日志。首次完整回归使用了不含 npm 的产品 Node 子集，并遇到提交前 lockfile 与 Git 快照不一致；改用已有完整 Node 24.21.0、提交本票快照后重新执行门禁，全部通过，未为此修改旧复现/依赖兼容规则。
