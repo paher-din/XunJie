@@ -28,13 +28,13 @@ test('checks nested file, directory, image, angle and encoded targets with refer
   write('docs/target.md');
   write('docs/folder/readme.md');
   write('docs/image space.png');
-  write('docs/中文 #?.md');
+  write('docs/中文 #.md');
   write('docs/nested/README.md', [
     '[file](../target.md#heading)',
     '[directory](../folder/)',
     '![image](../image%20space.png)',
     '[angle](<../image space.png>)',
-    '[encoded](../%E4%B8%AD%E6%96%87%20%23%3F.md?raw=1#heading)',
+    '[encoded](../%E4%B8%AD%E6%96%87%20%23.md?raw=1#heading)',
     '[reference][doc]',
     '![reference image][image]',
     '[shortcut]',
@@ -113,7 +113,7 @@ test('default discovery includes tracked and moved/untracked docs, skips caches 
     write(path, '[bad](lost.md)');
   }
   mkdirSync(join(root, '.agents/skills'), { recursive: true });
-  symlinkSync(join(root, 'docs'), join(root, '.agents/skills/alias'), 'dir');
+  symlinkSync(join(root, 'docs'), join(root, '.agents/skills/alias'), process.platform === 'win32' ? 'junction' : 'dir');
   const result = run();
   assert.equal(result.status, 1);
   assert.match(result.stderr, /docs\/moved\.md:1: missing local target/);
