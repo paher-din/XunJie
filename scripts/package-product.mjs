@@ -9,7 +9,6 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { isSupportedPostgresVersion, supportedPostgresVersions } from '@xunjie/storage';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const catalogPath = join(root, 'scripts/product-resources.json');
@@ -251,7 +250,8 @@ export async function packageProduct(options) {
   const postgresVersion = options['postgres-version'] ?? catalog.postgres.version;
   const postgres = postgresVersion === catalog.postgres.version ? catalog.postgres
     : Object.hasOwn(catalog.postgresVersions ?? {}, postgresVersion) ? catalog.postgresVersions[postgresVersion] : undefined;
-  if (!isSupportedPostgresVersion(postgresVersion) || !postgres) throw new Error(`PostgreSQL version must be one of ${supportedPostgresVersions.join(', ')}.`);
+  const packagedVersions = [catalog.postgres.version, ...Object.keys(catalog.postgresVersions ?? {})];
+  if (!postgres) throw new Error(`PostgreSQL version must be one of ${packagedVersions.join(', ')}.`);
   if (!Object.hasOwn(catalog.platforms, platform)) throw new Error(`Unsupported platform: ${platform}`);
   if (!['full', 'remote'].includes(profile)) throw new Error('Profile must be full or remote.');
   const cache = resolve(options.cache ?? join(homedir(), '.cache/xunjie-product-runtime'));
