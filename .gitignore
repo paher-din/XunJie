@@ -17,6 +17,7 @@ Thumbs.db
 node_modules/
 dist/
 .env
+/.verification/
 
 # Python
 __pycache__/

@@ -36,6 +36,15 @@ jobs:
       - name: Check the workspace
         run: |
           npm run verify
+      - name: Save verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-${{ github.job }}
+          path: .verification/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Install only production runtime dependencies
         run: node tools/i0-cloud/prepare-production-runtime.mjs . "$RUNNER_TEMP/production"
       - name: Assemble the verifiable runtime artifact

@@ -17,6 +17,8 @@
 
 以上 npm 命令的工作目录均为仓库根。根 `npm run typecheck`、`npm run build`、`npm test` 是 workspace 的统一检查入口；不再分别安装 Web 和后端依赖或维护 app 锁文件。公共 wire 契约经 `@xunjie/contracts` 的公开导出使用，浏览器导出及传递依赖不含 Node 专属库；内部 schema、repository 和权限投影留在后端，viewmodel 留在 Web。测试分组、环境标志及后续运行安装与存储接入见[工程交接](student-agent-implementation/engineering-entrypoints.md)。
 
+完整检查使用 `npm run verify`，与 CI 共用公共契约浏览器检查、文档链接检查及工程回归；原始输出增量写入 `.verification/`。使用 RTK 时运行 `rtk bypass npm run verify`，以便实时看到阶段进度；日志定位和单项检查见[工程交接](student-agent-implementation/engineering-entrypoints.md#安装构建与测试)。
+
 未来工具每次交付都要同时更新 `--help`、此处可用状态及工具 README，至少覆盖：准确入口与工作目录、支持平台及版本、所需权限/配置从何取得、参数及一条完整示例、数据与进程副作用、输出与成功判据、常见失败及恢复方式、停止/卸载与清理边界。秘密只说明取得方式，不放实际值。
 
 工具 README 随实现放在 `tools/xj-dev/README.md`，按已交付能力逐项更新；现阶段不创建空目录或假入口。让未参与设计的 Agent 通过根规范和 Skill，能回答“现在能用什么、命令怎么调用、数据在哪里、失败怎么办”，并完成一条已实现流程，才算说明交付完成。

@@ -22,22 +22,28 @@ npm ci
 npm run typecheck
 npm run build
 npm test
+npm run verify
 ```
+
+`npm run verify` 与 CI 共用完整门禁，包含公共契约的浏览器打包检查和 Markdown 相对链接检查。用 `npm run verify -- --list` 查询阶段，`-- --help` 查看用法；查询不会执行检查。单独检查可运行 `npm run check:contracts:browser`（先构建 contracts）或 `npm run check:docs -- path/to/file.md`；省略文档路径时检查受维护的 Markdown，自动排除归档、缓存和测试证据，不请求外部 URL 或校验标题锚点。
+
+验证入口实时保存原始 stdout/stderr，并输出阶段、耗时和失败摘要。`.verification/latest.json` 指向本轮完整日志与阶段结果，每轮日志单独保存；CI 无论成功或失败均上传日志，保留 7 天。日志目录不进入 Git。使用 RTK 时执行 `rtk bypass npm run verify`，保留实时进度。
 
 根类型检查及测试入口先编译公共契约；根构建按 contracts → server → Web 排序。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
 
 [scripts/build-server.mjs](../../scripts/build-server.mjs)先清空 `apps/server/dist`，再按[生产配置](../../apps/server/tsconfig.build.json)编译，并检查实际输出；发现测试、fixtures、support 或验收宿主等测试专用文件即失败。仅在 tsconfig 中排除文件不足以阻止 import 把它们带回产物。发布清单与依赖仍须核对，现行云端打包入口是 [build-runtime-artifact.mjs](../../tools/i0-cloud/build-runtime-artifact.mjs)。
 
-根 `npm test` 运行 `packages`、`apps` 下声明了测试脚本的 workspace，以及全部本地工具测试（含 Python 部署测试）；新增 workspace 无需再加入一份手写工程列表。后端、契约与工具共用 [scripts/test.mjs](../../scripts/test.mjs)：
+根 `npm test` 运行验证脚本回归、`packages`、`apps` 下声明了测试脚本的 workspace，以及全部本地工具测试（含 Python 部署测试）；新增 workspace 无需再加入一份手写工程列表。后端、契约、工具与验证脚本共用 [scripts/test.mjs](../../scripts/test.mjs)：
 
 ```sh
 node scripts/test.mjs server --list
 node scripts/test.mjs tools --list
+node scripts/test.mjs checks --list
 npm run test:external -- --list
 npm run test:external:tools -- --list
 ```
 
-其接口为 `node scripts/test.mjs <server|contracts|tools> [--external] [--list]`：递归发现 `**/*.test.{ts,mjs,py}`，排除 `node_modules`、`dist`、`evidence`；`--list` 只列清单。Web 继续使用自身 Vitest 配置；浏览器测试单独从根 `npm run test:e2e` 进入。
+其接口为 `node scripts/test.mjs <server|contracts|tools|checks> [--external] [--list]`：递归发现 `**/*.test.{ts,mjs,py}`，排除 `node_modules`、`dist`、`evidence`；`--list` 只列清单。Web 继续使用自身 Vitest 配置；浏览器测试单独从根 `npm run test:e2e` 进入。
 
 | 分组 | 文件与环境 |
 | --- | --- |

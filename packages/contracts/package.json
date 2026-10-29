@@ -24,6 +24,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check:browser": "node ../../scripts/check-contracts-browser.mjs",
     "test": "node ../../scripts/test.mjs contracts"
   },
   "dependencies": {
