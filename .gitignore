@@ -16,6 +16,7 @@ Thumbs.db
 # Node
 node_modules/
 dist/
+dist-runtime/
 .env
 /.verification/
 

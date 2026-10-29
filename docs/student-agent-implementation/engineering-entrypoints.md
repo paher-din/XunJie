@@ -9,6 +9,7 @@
 | [apps/web](../../apps/web/package.json)，`@xunjie/web` | 师生共用浏览器应用；页面与权限投影区分身份。[运行说明](../../apps/web/README.md) |
 | [apps/server](../../apps/server/package.json)，`@xunjie/server` | 可组合后端与既有课程 runner。[启动入口](../../apps/server/server/main.ts)读取[宿主配置](../../apps/server/server/app/config.ts)；普通无业务配置启动只有基础健康服务。旧 runner 仍在 [runner/](../../apps/server/runner)，其搬迁不代表 WP03 执行改造完成。 |
 | [packages/contracts](../../packages/contracts/package.json)，`@xunjie/contracts` | 编译后的浏览器安全 wire 导出；当前根导出汇合 `./http` 与 `./editor-diagnostics`，分别提供响应/错误和编辑诊断数据及纯校验。Web 与后端从公开 package exports 消费。 |
+| [apps/local-runtime](../../apps/local-runtime/README.md)、[packages/product-runtime](../../packages/product-runtime/package.json) | 产品安装、进程、环境、部署连接与维护接入；`@xunjie/contracts/product-runtime` 提供对应 wire。实际资源、验证与后续项目见[运行交接](runtime-acceptance.md)。 |
 | [tools/xj-dev](../../tools/xj-dev/README.md) | 成员开发、三模式连接、独立基线与复现。当前内部工厂/测试夹具依赖仅用于开发；后续产品运行 package 不继承它们，产品底座接入与新对象复现归 WP13。 |
 
 `@xunjie/contracts` 的浏览器导出及传递依赖不含 Node 专属库，不从 runner/数据库的 `ReturnType` 推导公开 wire。内部 schema、repository 和权限投影留在后端，viewmodel 留在 Web；旧 `apps/server/contracts` 中未提取的内部类型不因此成为新产品长期公开协议。后续按事实 owner 增加真实消费者需要的导出，不跨 app 导入 implementation。
@@ -29,7 +30,7 @@ npm run verify
 
 验证入口实时保存原始 stdout/stderr，并输出阶段、耗时和失败摘要。`.verification/latest.json` 指向本轮完整日志与阶段结果，每轮日志单独保存；CI 无论成功或失败均上传日志，保留 7 天。日志目录不进入 Git。使用 RTK 时执行 `rtk bypass npm run verify`，保留实时进度。
 
-根类型检查及测试入口先编译公共契约；根构建按 contracts → server → Web 排序。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
+根类型检查先编译 contracts / product-runtime；根构建按 contracts → product-runtime → server → Web / 独立运行网页 → local-runtime 排序。测试先构建契约与独立网页，产品运行测试通过公开 package 执行。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
 
 [scripts/build-server.mjs](../../scripts/build-server.mjs)先清空 `apps/server/dist`，再按[生产配置](../../apps/server/tsconfig.build.json)编译，并检查实际输出；发现测试、fixtures、support 或验收宿主等测试专用文件即失败。仅在 tsconfig 中排除文件不足以阻止 import 把它们带回产物。发布清单与依赖仍须核对，现行云端打包入口是 [build-runtime-artifact.mjs](../../tools/i0-cloud/build-runtime-artifact.mjs)。
 
@@ -39,11 +40,13 @@ npm run verify
 node scripts/test.mjs server --list
 node scripts/test.mjs tools --list
 node scripts/test.mjs checks --list
+node scripts/test.mjs product-runtime --list
+npm run test:product-runtime:native
 npm run test:external -- --list
 npm run test:external:tools -- --list
 ```
 
-其接口为 `node scripts/test.mjs <server|contracts|tools|checks> [--external] [--list]`：递归发现 `**/*.test.{ts,mjs,py}`，排除 `node_modules`、`dist`、`evidence`；`--list` 只列清单。Web 继续使用自身 Vitest 配置；浏览器测试单独从根 `npm run test:e2e` 进入。
+其接口为 `node scripts/test.mjs <server|contracts|product-runtime|tools|checks> [--external] [--list]`：递归发现 `**/*.test.{ts,mjs,py}`，排除 `node_modules`、`dist`、`evidence`；`--list` 只列清单。产品原生 PG 测试为 `*.runtime.test.mjs`，进入 external 组，需 `XUNJIE_PRODUCT_POSTGRES_BIN` 指向固定完整 PG 18.6。Web 继续使用自身 Vitest 配置；浏览器测试单独从根 `npm run test:e2e` 进入。
 
 | 分组 | 文件与环境 |
 | --- | --- |
@@ -68,7 +71,7 @@ npm run test:external:tools -- --list
 
 | 票 | 继续使用的入口 | 仍待该票实现与验证 |
 | --- | --- | --- |
-| [#143 运行安装](https://github.com/paher-din/XunJie/issues/143) | `apps/web`、`apps/server` 宿主配置与 `@xunjie/contracts` 的公开 wire | 建立 `apps/local-runtime` 与 `packages/product-runtime`，负责环境身份、独立目录/凭据、进程生命周期、连接与维护参与；固定 PG/应用资源，并验证实际 Windows 11 x64、Apple Silicon macOS 安装包及学校/混合组合。 |
+| [#143 运行安装](https://github.com/paher-din/XunJie/issues/143) | 已建立 `apps/local-runtime`、`packages/product-runtime`、独立运行网页与环境 wire；[实际资源和验收](runtime-acceptance.md) | 继续目标设备安装与学校/真实跨机组合验收；Windows 实机待负责人回家后继续，签名/公证已由负责人移出本轮执行范围。 |
 | [#144 存储](https://github.com/paher-din/XunJie/issues/144) | 后端所属 module；[旧 SQLite 事务入口](../../apps/server/server/db/transaction.ts)与[个人模型存储](../../apps/server/server/personal-agent/store.ts)仅供核对现状，公开 wire 使用 `@xunjie/contracts` | 建立 `packages/storage`，实现 PostgreSQL 事务/迁移、所属资源发布/保留/GC 与维护参与；业务 module 拥有自己的表和规则。用真实 PG、文件/S3 后端及独立消费者验证竞争、未知提交与崩溃恢复。 |
 
-两票先协调环境/服务身份、凭据引用及维护参与 interface 和写集；运行安装提供资源与连接，存储提供事务与资源机制，不互相接管事实。存储可独立开发，最终关键事务验收使用运行安装探针固定的 PG 版本和初始化条件。这里仅说明后续归属，不预建上述工程；旧数据、DTO 或队列不自动接入新产品。工作区、原生执行、模型与 Agent 深化分别随所属 WP，备份升级与恢复交接按 WP01 对应后续票完成。
+运行安装提供资源与连接，存储提供事务与资源机制，不互相接管事实。环境/服务身份、凭据引用、维护参与 interface、PG 18.6 与初始化条件现从[产品运行交接](runtime-acceptance.md)消费；存储可独立开发并完成最终关键事务验收。旧数据、DTO 或队列不自动接入新产品。工作区、原生执行、模型与 Agent 深化分别随所属 WP，备份升级与恢复交接按 WP01 对应后续票完成。

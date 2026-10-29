@@ -1,0 +1,20 @@
+{
+  "name": "@xunjie/product-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./connections": { "types": "./dist/connections.d.ts", "import": "./dist/connections.js" },
+    "./maintenance": { "types": "./dist/maintenance.d.ts", "import": "./dist/maintenance.js" }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run build",
+    "test": "node ../../scripts/test.mjs product-runtime"
+  },
+  "dependencies": { "@xunjie/contracts": "0.1.0", "pg": "8.16.3" },
+  "devDependencies": { "@types/node": "24.19.1", "@types/pg": "8.15.6", "typescript": "~5.9.2" }
+}

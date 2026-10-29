@@ -19,6 +19,10 @@
     "./editor-diagnostics": {
       "types": "./dist/editor-diagnostics.d.ts",
       "import": "./dist/editor-diagnostics.js"
+    },
+    "./product-runtime": {
+      "types": "./dist/product-runtime.d.ts",
+      "import": "./dist/product-runtime.js"
     }
   },
   "scripts": {

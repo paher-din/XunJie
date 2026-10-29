@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:prep": "vite --mode prep --port 5601 --strictPort",
     "build": "tsc --noEmit && vite build",
+    "build:runtime": "tsc --noEmit && vite build --config vite.runtime.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",

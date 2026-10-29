@@ -5,15 +5,15 @@ import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const [target, ...args] = process.argv.slice(2);
-if (!['server', 'contracts', 'tools', 'checks'].includes(target) || args.some(arg => !['--external', '--list'].includes(arg))) {
-  throw new Error('Usage: node scripts/test.mjs <server|contracts|tools|checks> [--external] [--list]');
+if (!['server', 'contracts', 'product-runtime', 'tools', 'checks'].includes(target) || args.some(arg => !['--external', '--list'].includes(arg))) {
+  throw new Error('Usage: node scripts/test.mjs <server|contracts|product-runtime|tools|checks> [--external] [--list]');
 }
 const external = args.includes('--external');
-const cwd = join(root, { server: 'apps/server', contracts: 'packages/contracts', tools: 'tools', checks: 'scripts' }[target]);
+const cwd = join(root, { server: 'apps/server', contracts: 'packages/contracts', 'product-runtime': 'packages/product-runtime', tools: 'tools', checks: 'scripts' }[target]);
 const discovered = globSync('**/*.test.{ts,mjs,py}', {
   cwd, exclude: ['**/node_modules/**', '**/dist/**', '**/evidence/**'],
 }).sort();
-const isExternal = path => /\.runtime\.test\.ts$/.test(path)
+const isExternal = path => /\.runtime\.test\.(?:ts|mjs)$/.test(path)
   || ['runner/node.rpc.test.ts', 'server/tutoring/test/real-provider-failures.test.ts',
     'xj-dev-access/ssh-policy.test.py'].includes(path);
 const files = discovered.filter(path => isExternal(path) === external);

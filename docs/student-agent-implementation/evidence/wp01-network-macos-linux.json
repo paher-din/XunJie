@@ -1,0 +1,886 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/143",
+  "status": "partial-network-blocked",
+  "startedAt": "2026-10-29T08:23:20.028Z",
+  "stages": [
+    {
+      "name": "prepare-independent-packages-and-TLS",
+      "status": "passed",
+      "durationMs": 34024,
+      "result": {
+        "localTemporary": "/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/xunjie-network-KoRVJh",
+        "remoteTemporary": "/tmp/xunjie-network-afefa3b4-4601-4d61-8513-0939f26a6701",
+        "macSource": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64",
+        "linuxSource": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-linux-x64",
+        "transferredArchiveSha256": "2fa2cd9efed93f271bb8738bf26d6e6bdec83b5dbb1b3543097fa50575aa9a0e",
+        "probeSha256": "e9e4ae4d77207aad9f0ae2fd962c7dd8d440bf052a142eff2b1c308df5f9a89a",
+        "publicConsumerSha256": "adf62377e06b7d0c6c77145ddbdae29c1252826194aa39585ba592463c5a3b47",
+        "consumerPublicEntry": "packages/product-runtime/src/index.ts#createOutboundConnection; separately bundled outside either product",
+        "transferredArchiveBytes": 86449369,
+        "macDistributionSha256": "5a51e8c51c10e48ea69baf534b7d7dcf8ee6a126999bff6cb9778b6592280796",
+        "linuxDistributionSha256": "cf9eaf093733e5df829d30075864a9175ef4c925fa0652eac914ed2efad8034e",
+        "macCreatedAt": "2026-10-29T08:20:27.578Z",
+        "linuxCreatedAt": "2026-10-29T08:20:29.090Z",
+        "publicIp": "101.201.141.133",
+        "certificateSan": [
+          "101.201.141.133",
+          "127.0.0.1"
+        ],
+        "caTrust": "NODE_EXTRA_CA_CERTS in these test product/consumer subprocesses only; TLS verification enabled",
+        "remoteContains": "complete standalone Linux distribution, separate consumer, probe script, temporary TLS certificates/key; no source checkout or SSH credentials"
+      }
+    },
+    {
+      "name": "linux-native-install-start-status-stop-restart-PGquery",
+      "status": "passed",
+      "durationMs": 5567,
+      "result": {
+        "host": {
+          "uid": 1000,
+          "user": "xunjie-admin",
+          "osRelease": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+          "platform": "linux",
+          "architecture": "x64",
+          "kernel": "6.8.0-139-generic",
+          "libc": "glibc 2.39"
+        },
+        "package": {
+          "distributionSha256": "cf9eaf093733e5df829d30075864a9175ef4c925fa0652eac914ed2efad8034e",
+          "createdAt": "2026-10-29T08:20:29.090Z",
+          "resourceCatalogSha256": "0c8f6a1db0a61fb5175ecb6b32998c751b788e9d11f5af61db3397641becc37b",
+          "resources": [
+            {
+              "id": "node",
+              "version": "24.21.0",
+              "archive": {
+                "filename": "node-v24.21.0-linux-x64.tar.xz",
+                "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
+                "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+                "bytes": 31890184,
+                "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+                "archiveRoot": "node-v24.21.0-linux-x64"
+              }
+            },
+            {
+              "id": "postgres",
+              "version": "18.6",
+              "archive": {
+                "filename": "postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz",
+                "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz",
+                "sha256": "e84b02dd8d0ce5879fb697330a789231c8b8f8d958dae3ad4d90fecc710b1315",
+                "bytes": 40484450,
+                "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz.sha256",
+                "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz.manifest.json",
+                "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz.spdx.json",
+                "archiveRoot": "postgresql-18.6.1-x86_64-unknown-linux-gnu"
+              }
+            }
+          ],
+          "versions": {
+            "node": "v24.21.0",
+            "postgres": "postgres (PostgreSQL) 18.6"
+          },
+          "nodePath": "/tmp/xunjie-network-afefa3b4-4601-4d61-8513-0939f26a6701/独立 产品包/resources/node/bin/node",
+          "postgresBin": "/tmp/xunjie-network-afefa3b4-4601-4d61-8513-0939f26a6701/独立 产品包/resources/postgres/bin",
+          "path": "/tmp/xunjie-network-afefa3b4-4601-4d61-8513-0939f26a6701/tools",
+          "pathEntries": [
+            "dirname",
+            "sh"
+          ],
+          "hostNodeOrPostgresOnProductPath": false
+        },
+        "install": {
+          "state": "installed",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+            "installationId": "da10975e-1115-466a-b2de-07654d51d3e6",
+            "clientNamespace": "xunjie.v1.f974b5b6-9882-451b-841c-26c274f817b8",
+            "profile": "school",
+            "services": [
+              {
+                "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+                "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+                "unit": "client",
+                "endpoint": "https://101.201.141.133:38195",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "dependencies": []
+        },
+        "firstStart": {
+          "state": "ready",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+            "installationId": "da10975e-1115-466a-b2de-07654d51d3e6",
+            "clientNamespace": "xunjie.v1.f974b5b6-9882-451b-841c-26c274f817b8",
+            "profile": "school",
+            "services": [
+              {
+                "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+                "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+                "unit": "client",
+                "endpoint": "https://101.201.141.133:38195",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "endpoint": "https://101.201.141.133:38195",
+          "dependencies": [
+            {
+              "name": "PostgreSQL",
+              "required": true,
+              "state": "ready",
+              "detail": "18.6"
+            }
+          ]
+        },
+        "repeatedStartSameEnvironment": true,
+        "stop": {
+          "state": "stopped",
+          "pgCtlExit": 3
+        },
+        "restart": {
+          "state": "ready",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+            "installationId": "da10975e-1115-466a-b2de-07654d51d3e6",
+            "clientNamespace": "xunjie.v1.f974b5b6-9882-451b-841c-26c274f817b8",
+            "profile": "school",
+            "services": [
+              {
+                "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+                "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+                "unit": "client",
+                "endpoint": "https://101.201.141.133:38195",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "endpoint": "https://101.201.141.133:38195",
+          "dependencies": [
+            {
+              "name": "PostgreSQL",
+              "required": true,
+              "state": "ready",
+              "detail": "18.6"
+            }
+          ]
+        },
+        "sql": {
+          "version": "18.6",
+          "dataDirectory": "/tmp/xunjie-network-afefa3b4-4601-4d61-8513-0939f26a6701/学校 环境/pgdata",
+          "systemIdentifier": "7702002653702700311",
+          "encoding": "UTF8",
+          "timezone": "UTC",
+          "userTables": 0,
+          "databaseEndpoint": "127.0.0.1:40549"
+        },
+        "processOwnership": {
+          "daemonPid": 191893,
+          "postgresPid": 191909,
+          "executablePathsVerified": true
+        },
+        "serverKeyMode": 384,
+        "listener": {
+          "host": "0.0.0.0",
+          "port": 38195,
+          "endpoint": "https://101.201.141.133:38195"
+        }
+      }
+    },
+    {
+      "name": "linux-same-host-HTTPS-identity-capabilities-loss-reconnect-revocation",
+      "status": "passed",
+      "durationMs": 7366,
+      "result": {
+        "topology": "Linux component -> authenticated HTTPS 127.0.0.1 school (same host only)",
+        "source": {
+          "formatVersion": 1,
+          "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+          "installationId": "879f4396-eb1c-4d64-ac5a-24603af4df51",
+          "clientNamespace": "xunjie.v1.0fcd9c72-5f12-447d-ad1e-874e765eec11",
+          "profile": "remote",
+          "services": [
+            {
+              "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+              "serviceId": "4589f153-d0be-4459-a4b7-b5721c9fb3ee",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:37483",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "ready": {
+          "check": {
+            "state": "ready",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [
+              "runtime.status"
+            ],
+            "missingRequiredCapabilities": [],
+            "missingOptionalCapabilities": []
+          },
+          "response": {
+            "state": "ready",
+            "environment": {
+              "formatVersion": 1,
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "installationId": "da10975e-1115-466a-b2de-07654d51d3e6",
+              "clientNamespace": "xunjie.v1.f974b5b6-9882-451b-841c-26c274f817b8",
+              "profile": "school",
+              "services": [
+                {
+                  "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+                  "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+                  "unit": "client",
+                  "endpoint": "https://101.201.141.133:38195",
+                  "protocolVersion": 1,
+                  "capabilities": [
+                    "runtime.status"
+                  ]
+                }
+              ]
+            },
+            "endpoint": "https://101.201.141.133:38195",
+            "dependencies": [
+              {
+                "name": "PostgreSQL",
+                "required": true,
+                "state": "ready",
+                "detail": "18.6"
+              }
+            ]
+          },
+          "wrongIdentity": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "dd377d43-d8ee-4f1f-a7a6-6763b34949d6",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "http_409"
+          },
+          "wrongProtocol": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 2,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "http_409"
+          },
+          "missingRequired": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [
+              "runtime.status"
+            ],
+            "missingRequiredCapabilities": [
+              "probe.unimplemented"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "required_capability_unavailable"
+          },
+          "missingOptional": {
+            "state": "degraded",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [
+              "runtime.status"
+            ],
+            "missingRequiredCapabilities": [],
+            "missingOptionalCapabilities": [
+              "probe.unimplemented"
+            ]
+          },
+          "unconfiguredCapability": "capability_not_configured"
+        },
+        "peerReady": {
+          "state": "ready",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+            "installationId": "879f4396-eb1c-4d64-ac5a-24603af4df51",
+            "clientNamespace": "xunjie.v1.0fcd9c72-5f12-447d-ad1e-874e765eec11",
+            "profile": "remote",
+            "services": [
+              {
+                "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+                "serviceId": "4589f153-d0be-4459-a4b7-b5721c9fb3ee",
+                "unit": "client",
+                "endpoint": "http://127.0.0.1:37483",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "endpoint": "http://127.0.0.1:37483",
+          "dependencies": [
+            {
+              "name": "client:f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "required": true,
+              "state": "ready"
+            }
+          ]
+        },
+        "stop": {
+          "state": "stopped",
+          "pgCtlExit": 3
+        },
+        "lost": {
+          "check": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "connection_unavailable"
+          }
+        },
+        "peerLost": {
+          "state": "failed",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+            "installationId": "879f4396-eb1c-4d64-ac5a-24603af4df51",
+            "clientNamespace": "xunjie.v1.0fcd9c72-5f12-447d-ad1e-874e765eec11",
+            "profile": "remote",
+            "services": [
+              {
+                "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+                "serviceId": "4589f153-d0be-4459-a4b7-b5721c9fb3ee",
+                "unit": "client",
+                "endpoint": "http://127.0.0.1:37483",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "endpoint": "http://127.0.0.1:37483",
+          "dependencies": [
+            {
+              "name": "client:f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "required": true,
+              "state": "unavailable",
+              "detail": "connection_unavailable"
+            }
+          ]
+        },
+        "reconnect": {
+          "check": {
+            "state": "ready",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [
+              "runtime.status"
+            ],
+            "missingRequiredCapabilities": [],
+            "missingOptionalCapabilities": []
+          },
+          "response": {
+            "state": "ready",
+            "environment": {
+              "formatVersion": 1,
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "installationId": "da10975e-1115-466a-b2de-07654d51d3e6",
+              "clientNamespace": "xunjie.v1.f974b5b6-9882-451b-841c-26c274f817b8",
+              "profile": "school",
+              "services": [
+                {
+                  "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+                  "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+                  "unit": "client",
+                  "endpoint": "https://101.201.141.133:38195",
+                  "protocolVersion": 1,
+                  "capabilities": [
+                    "runtime.status"
+                  ]
+                }
+              ]
+            },
+            "endpoint": "https://101.201.141.133:38195",
+            "dependencies": [
+              {
+                "name": "PostgreSQL",
+                "required": true,
+                "state": "ready",
+                "detail": "18.6"
+              }
+            ]
+          },
+          "wrongIdentity": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "306ff661-3f48-40b5-83d2-57cd75b17d8a",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "http_409"
+          },
+          "wrongProtocol": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 2,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "http_409"
+          },
+          "missingRequired": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [
+              "runtime.status"
+            ],
+            "missingRequiredCapabilities": [
+              "probe.unimplemented"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "required_capability_unavailable"
+          },
+          "missingOptional": {
+            "state": "degraded",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [
+              "runtime.status"
+            ],
+            "missingRequiredCapabilities": [],
+            "missingOptionalCapabilities": [
+              "probe.unimplemented"
+            ]
+          },
+          "unconfiguredCapability": "capability_not_configured"
+        },
+        "revoked": {
+          "check": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://127.0.0.1:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "http_401"
+          }
+        },
+        "peerRevoked": {
+          "state": "failed",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+            "installationId": "879f4396-eb1c-4d64-ac5a-24603af4df51",
+            "clientNamespace": "xunjie.v1.0fcd9c72-5f12-447d-ad1e-874e765eec11",
+            "profile": "remote",
+            "services": [
+              {
+                "environmentId": "0fcd9c72-5f12-447d-ad1e-874e765eec11",
+                "serviceId": "4589f153-d0be-4459-a4b7-b5721c9fb3ee",
+                "unit": "client",
+                "endpoint": "http://127.0.0.1:37483",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "endpoint": "http://127.0.0.1:37483",
+          "dependencies": [
+            {
+              "name": "client:f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "required": true,
+              "state": "unavailable",
+              "detail": "http_401"
+            }
+          ]
+        },
+        "environmentOwnershipUnchanged": true,
+        "peerDatabase": null
+      }
+    },
+    {
+      "name": "mac-component-install-and-authorized-CLI-connect",
+      "status": "passed",
+      "durationMs": 6243,
+      "result": {
+        "installed": {
+          "state": "installed",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+            "installationId": "0b240722-7f2b-4360-9dd4-d7c32621fe71",
+            "clientNamespace": "xunjie.v1.f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+            "profile": "remote",
+            "services": [
+              {
+                "environmentId": "f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+                "serviceId": "b8797bc2-5030-4ac7-9fff-72b440021368",
+                "unit": "client",
+                "endpoint": "http://127.0.0.1:49460",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "dependencies": []
+        },
+        "connection": {
+          "connectionId": "96ef0c8b-6dc6-4365-8941-9c844f1fc52e",
+          "sourceEnvironmentId": "f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+          "sourceServiceId": "b8797bc2-5030-4ac7-9fff-72b440021368",
+          "target": {
+            "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+            "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+            "unit": "client",
+            "endpoint": "https://101.201.141.133:38195",
+            "protocolVersion": 1,
+            "capabilities": [
+              "runtime.status"
+            ]
+          },
+          "requiredCapabilities": [
+            "runtime.status"
+          ],
+          "optionalCapabilities": [],
+          "credentialRef": "network-82efc906-bf29-4d1d-8e43-5306cc34cc93"
+        },
+        "database": null,
+        "grantFileMode": 384
+      }
+    },
+    {
+      "name": "real-public-IP-HTTPS-product-connection",
+      "status": "blocked",
+      "durationMs": 15395,
+      "result": {
+        "status": "blocked",
+        "product": {
+          "check": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://101.201.141.133:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "timeout"
+          }
+        },
+        "macStatus": {
+          "state": "failed",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+            "installationId": "0b240722-7f2b-4360-9dd4-d7c32621fe71",
+            "clientNamespace": "xunjie.v1.f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+            "profile": "remote",
+            "services": [
+              {
+                "environmentId": "f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+                "serviceId": "b8797bc2-5030-4ac7-9fff-72b440021368",
+                "unit": "client",
+                "endpoint": "http://127.0.0.1:49460",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "endpoint": "http://127.0.0.1:49460",
+          "dependencies": [
+            {
+              "name": "client:f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "required": true,
+              "state": "unavailable",
+              "detail": "timeout"
+            }
+          ]
+        },
+        "directCurl": {
+          "code": 28,
+          "signal": null,
+          "stdout": "000",
+          "stderr": "curl: (28) SSL connection timeout"
+        },
+        "topology": "Mac -> https://101.201.141.133:38195 directly; no SSH tunnel",
+        "reason": "Public endpoint unreachable from this Mac; cause may be cloud network policy or path filtering; no policy was changed"
+      }
+    },
+    {
+      "name": "blocked-link-revocation-and-ownership-preservation",
+      "status": "passed",
+      "durationMs": 12294,
+      "result": {
+        "revoked": {
+          "check": {
+            "state": "unavailable",
+            "target": {
+              "environmentId": "f974b5b6-9882-451b-841c-26c274f817b8",
+              "serviceId": "f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "unit": "client",
+              "endpoint": "https://101.201.141.133:38195",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            },
+            "availableCapabilities": [],
+            "missingRequiredCapabilities": [
+              "runtime.status"
+            ],
+            "missingOptionalCapabilities": [],
+            "reason": "timeout"
+          }
+        },
+        "macStatus": {
+          "state": "failed",
+          "environment": {
+            "formatVersion": 1,
+            "environmentId": "f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+            "installationId": "0b240722-7f2b-4360-9dd4-d7c32621fe71",
+            "clientNamespace": "xunjie.v1.f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+            "profile": "remote",
+            "services": [
+              {
+                "environmentId": "f8ded67b-1789-41b4-9f4d-a41469ae92ec",
+                "serviceId": "b8797bc2-5030-4ac7-9fff-72b440021368",
+                "unit": "client",
+                "endpoint": "http://127.0.0.1:49460",
+                "protocolVersion": 1,
+                "capabilities": [
+                  "runtime.status"
+                ]
+              }
+            ]
+          },
+          "endpoint": "http://127.0.0.1:49460",
+          "dependencies": [
+            {
+              "name": "client:f1d1b9d9-0f0d-4b29-9aba-e82352e39965",
+              "required": true,
+              "state": "unavailable",
+              "detail": "timeout"
+            }
+          ]
+        },
+        "ownershipUnchanged": true,
+        "revocationOverPublicLink": "not-observable-while-transport-blocked"
+      }
+    }
+  ],
+  "macHost": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "osVersion": "Darwin Kernel Version 27.2.0: Wed Oct 14 23:48:06 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T8142"
+  },
+  "selectedSchoolCombination": "Ubuntu 24.04.5 LTS x64 / glibc 2.39 / bundled Node 24.21.0 / bundled PostgreSQL 18.6",
+  "scope": {
+    "capabilities": [
+      "runtime.status"
+    ],
+    "businessData": "none; new empty PG cluster only",
+    "ssh": "deployment and observation only; no tunnel; runtime has no SSH dependency",
+    "systemChanges": "none; no firewall/proxy/service/permission/trust-store changes",
+    "networkOutage": "controlled stop of this test school listener and its own PG; no OS network modification"
+  },
+  "acceptance": {
+    "linux": "passed",
+    "linuxSameHost": "passed",
+    "crossMachineDirect": "blocked",
+    "browser": "not-run",
+    "teachingEffectiveness": "not-run",
+    "cleanMachine": "not-run",
+    "windows": "deferred-until-user-home",
+    "signingNotarization": "excluded-by-user"
+  },
+  "cleanup": {
+    "local": {
+      "servicesStopped": true,
+      "database": "none",
+      "status": "stopped",
+      "ownedDaemonPid": 40329,
+      "daemonExitVerified": true,
+      "temporaryRemoved": true
+    },
+    "remote": {
+      "servicesStopped": true,
+      "postgresStopped": true,
+      "pgCtlExit": 3,
+      "ownedDaemonPids": [
+        192187
+      ],
+      "remainingOwnedProcesses": [],
+      "safeToRemove": true,
+      "temporaryRemoved": true
+    },
+    "localSecretsRemoved": true
+  },
+  "finishedAt": "2026-10-29T08:24:43.841Z",
+  "networkDiagnosis": {
+    "checkedAt": "2026-10-29T08:46:01.946Z",
+    "hostFirewall": {
+      "ufw": "inactive",
+      "iptablesInputPolicy": "ACCEPT",
+      "nftRuleset": "empty"
+    },
+    "macRouteInterface": "utun98",
+    "packetCapture": {
+      "durationSeconds": 20,
+      "publicWebPort": 8443,
+      "publicWebPortInboundPackets": 7,
+      "testPort": 38195,
+      "testPortInboundPackets": 0
+    },
+    "comparison": {
+      "port8443": "TLS reached the server; private issuer is not globally trusted",
+      "port38195": "TLS timeout through default route; TCP timeout when bound to en0"
+    },
+    "conclusion": "Traffic to the temporary test port was filtered before reaching the guest OS; cloud security-group or network egress filtering remains to be confirmed. No cloud security-group rules were inspected or changed."
+  }
+}

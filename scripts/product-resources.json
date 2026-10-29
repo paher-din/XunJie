@@ -1,0 +1,95 @@
+{
+  "formatVersion": 1,
+  "status": "unsigned-candidate",
+  "signing": { "status": "unsigned", "signingAndNotarization": "deferred-by-user", "buildBlocking": false },
+  "platforms": {
+    "darwin-arm64": {
+      "os": "darwin",
+      "architecture": "arm64",
+      "prerequisites": ["macOS >= 15.0", "Apple Silicon"],
+      "upstreamSignature": "PostgreSQL postgres executable inspected: ad-hoc, no TeamIdentifier; not a signed product distribution"
+    },
+    "win32-x64": {
+      "os": "win32",
+      "architecture": "x64",
+      "prerequisites": ["Windows 11 x64 is the product acceptance target; clean-machine acceptance is pending", "Microsoft Visual C++ v14 Runtime (vcruntime140 family), not bundled by theseus; installer/app-local provisioning and redistribution terms remain to be resolved"],
+      "upstreamSignature": "PostgreSQL 18.6.1 Authenticode not independently verified; product signing acceptance is pending"
+    },
+    "linux-x64": {
+      "os": "linux",
+      "architecture": "x64",
+      "prerequisites": ["Ubuntu 24.04.5 x64 with glibc 2.39 is the initial school-server combination", "Upstream archive ABI floor: glibc >= 2.36 and ld-linux-x86-64.so.2", "Node requires kernel >= 4.18; not an Alpine/musl package"],
+      "upstreamSignature": "Archive checksum and GitHub provenance are separate from OS executable signing"
+    }
+  },
+  "node": {
+    "version": "24.21.0",
+    "distribution": { "mode": "controlled-subset", "retainedFiles": ["platform executable", "LICENSE"], "excluded": ["npm", "npx", "headers", "tests", "documentation"], "archiveVerification": "Verify full upstream archive before extraction and subset selection" },
+    "source": "https://nodejs.org/dist/v24.21.0/",
+    "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+    "signatureSource": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt.sig",
+    "license": { "spdx": "MIT", "bundledThirdParty": "See the complete LICENSE file for bundled third-party terms", "url": "https://github.com/nodejs/node/blob/v24.21.0/LICENSE", "preserve": ["LICENSE"] },
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
+        "archiveRoot": "node-v24.21.0-darwin-arm64",
+        "bytes": 52909993,
+        "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+        "executable": "bin/node"
+      },
+      "win32-x64": {
+        "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip",
+        "archiveRoot": "node-v24.21.0-win-x64",
+        "bytes": 37618919,
+        "sha256": "158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541",
+        "executable": "node.exe"
+      },
+      "linux-x64": {
+        "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
+        "archiveRoot": "node-v24.21.0-linux-x64",
+        "bytes": 31890184,
+        "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+        "executable": "bin/node"
+      }
+    }
+  },
+  "postgres": {
+    "version": "18.6",
+    "distributionVersion": "18.6.1",
+    "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/18.6.1",
+    "supportPolicy": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md",
+    "provenanceGuide": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/provenance.md",
+    "license": {
+      "spdx": "PostgreSQL",
+      "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+      "url": "https://www.postgresql.org/about/licence/",
+      "preserve": ["LICENSE", "dependency-notices", "source-input.json", "build-manifest.json", "runtime-dependencies.json", "target-validation.json"],
+      "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+    },
+    "requiredTools": ["initdb", "postgres", "pg_ctl", "pg_controldata", "psql", "pg_dump", "pg_dumpall", "pg_restore", "pg_upgrade"],
+    "backupTools": ["psql", "pg_dump", "pg_dumpall", "pg_restore", "pg_upgrade", "pg_controldata"],
+    "platforms": {
+      "darwin-arm64": {
+        "target": "aarch64-apple-darwin",
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+        "archiveRoot": "postgresql-18.6.1-aarch64-apple-darwin",
+        "bytes": 88814625,
+        "sha256": "89e91cc80650a43d22c018b95ca356a0c9e15838a1182fed2880bfb5d7d9c9a6"
+      },
+      "win32-x64": {
+        "target": "x86_64-pc-windows-msvc",
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip",
+        "archiveRoot": "postgresql-18.6.1-x86_64-pc-windows-msvc",
+        "bytes": 48730935,
+        "sha256": "d82142f3a9a49be8467f0e87f5a079f627515539f94a070fe1463208fa8eb3c6"
+      },
+      "linux-x64": {
+        "target": "x86_64-unknown-linux-gnu",
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz",
+        "archiveRoot": "postgresql-18.6.1-x86_64-unknown-linux-gnu",
+        "bytes": 40484450,
+        "sha256": "e84b02dd8d0ce5879fb697330a789231c8b8f8d958dae3ad4d90fecc710b1315"
+      }
+    }
+  }
+}

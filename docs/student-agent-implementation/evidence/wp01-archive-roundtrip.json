@@ -1,0 +1,13 @@
+{
+  "archive": "XunJie-runtime-2026-10-29-macos-arm64.zip",
+  "status": "passed",
+  "startedAt": "2026-10-29T08:47:16.211Z",
+  "pathHasChineseAndSpaces": true,
+  "install": "installed",
+  "start": "ready",
+  "environmentId": "c0a6f37a-2eeb-4562-9c25-f112caf599d5",
+  "uninstallPreservesData": true,
+  "productUsesSourceRuntime": false,
+  "temporaryRemoved": true,
+  "finishedAt": "2026-10-29T08:47:39.947Z"
+}
