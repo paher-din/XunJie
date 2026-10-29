@@ -5,11 +5,23 @@ import { createServer as httpsServer } from 'node:https';
 import { extname, join, resolve, sep } from 'node:path';
 import type { RuntimeDependencyStatus, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
 import { createConnectionAuthority, createOutboundConnection } from './connections.js';
-import { acquireLock, assertRoot, atomicJson, processIdentity, readJson } from './io.js';
+import { acquireLock, assertRoot, atomicJson, exists, processIdentity, readJson } from './io.js';
 import { createMaintenanceCoordinator } from './maintenance.js';
 import type { MaintenanceParticipant } from './maintenance.js';
 import { inspectDatabase, resolveCredential, startDatabase, stopDatabase } from './postgres.js';
 import type { InstalledConfiguration } from './runtime.js';
+import { openProductRuntime } from './runtime.js';
+import { createRecoveryManager, RecoveryError } from './recovery.js';
+import { createRuntimeRecoveryOwner } from './runtime-recovery.js';
+import type { BackupPolicy, RecoveryOwner } from './recovery-types.js';
+
+export interface ProductHostOptions {
+  root: string;
+  participants?: MaintenanceParticipant[];
+  recoveryOwners?: readonly RecoveryOwner[];
+  /** Compose real owner modules after native PostgreSQL is available. */
+  createRecoveryOwners?: (context: { root: string; environment: RuntimeEnvironment }) => Promise<readonly RecoveryOwner[]>;
+}
 
 const send = (response: ServerResponse, code: number, value: unknown) => {
   response.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -24,15 +36,16 @@ const close = (server: Server) => new Promise<void>((done, reject) => {
 });
 
 /** School and local hosts compose this same lifecycle with their real owners. */
-export async function createProductRuntimeHost(options: { root: string; participants?: MaintenanceParticipant[] }) {
+export async function createProductRuntimeHost(options: ProductHostOptions) {
   const root = resolve(options.root);
   await assertRoot(root);
+  if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
   const release = await acquireLock(root, 'daemon', 0);
   try { return await createHost({ ...options, root }, release); }
   catch (error) { await release(); throw error; }
 }
 
-async function createHost(options: { root: string; participants?: MaintenanceParticipant[] }, release: () => Promise<void>) {
+async function createHost(options: ProductHostOptions, release: () => Promise<void>) {
   const root = options.root;
   let released = false;
   const releaseOnce = async () => { if (!released) { released = true; await release(); } };
@@ -45,19 +58,48 @@ async function createHost(options: { root: string; participants?: MaintenancePar
   let startupFailure: string | undefined;
   let gatesClosed = false;
   let stopping = false;
+  try { await startDatabase(root, config.resources, config.database); }
+  catch (error) { startupFailure = (error as Error).message; }
+  const suppliedOwners = [...(options.recoveryOwners ?? []), ...(!startupFailure && options.createRecoveryOwners
+    ? await options.createRecoveryOwners({ root, environment }) : [])];
   const maintenance = createMaintenanceCoordinator({
     requiredServiceIds: [service.serviceId, ...config.requiredServiceIds],
     record: state => atomicJson(join(root, 'maintenance.json'), state),
+    async beforeResume() {
+      if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
+      if (await exists(join(root, 'recovery-state.json'))
+        && !['active', 'activating'].includes((await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase)) throw new RecoveryError('target-isolated');
+    },
   });
-  maintenance.register({
+  const runtimeParticipant: MaintenanceParticipant = {
     descriptor: { serviceId: service.serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: ['installation'] },
     async closeWrites() { gatesClosed = true; },
     async closeDispatch() { gatesClosed = true; },
     async drain() {}, // This host owns no queued business work.
     async validate() { if (config.database.mode !== 'none') await inspectDatabase(root, config.database); },
-    async resume() { gatesClosed = false; },
-  });
+    async resume() {
+      if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
+      gatesClosed = false;
+    },
+  };
+  maintenance.register(runtimeParticipant);
   for (const participant of options.participants ?? []) maintenance.register(participant);
+  for (const owner of suppliedOwners) {
+    if (!maintenance.status().participants.some(item => item.serviceId === owner.participant.descriptor.serviceId)) maintenance.register(owner.participant);
+  }
+  const recovery = createRecoveryManager({ root, environment, maintenance,
+    requiredServiceIds: [service.serviceId, ...config.requiredServiceIds],
+    receiverIds: async () => (await readJson<InstalledConfiguration>(join(root, 'installation.json'))).connections
+      .map(item => `${item.target.environmentId}/${item.target.serviceId}`),
+    owners: [createRuntimeRecoveryOwner({ root, participant: runtimeParticipant,
+      requiredServiceIds: maintenance.status().participants.map(item => item.serviceId) }), ...suppliedOwners],
+  });
+  let scheduler: ReturnType<typeof setInterval> | undefined;
+  let scheduled = false;
+  async function authorityClosed() {
+    return gatesClosed || await exists(join(root, 'retired.json')) || await exists(join(root, 'recovery-state.json'))
+      && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
+  }
 
   async function status(): Promise<RuntimeStatus> {
     const dependencies: RuntimeDependencyStatus[] = [];
@@ -72,7 +114,7 @@ async function createHost(options: { root: string; participants?: MaintenancePar
       }
     }
     const latest = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
-    await Promise.all(latest.connections.map(async connection => {
+    await Promise.all((gatesClosed ? [] : latest.connections).map(async connection => {
       try {
         const result = await createOutboundConnection({ connection,
           credential: () => resolveCredential(root, connection.credentialRef), allowInsecureLoopback: true }).check();
@@ -92,7 +134,7 @@ async function createHost(options: { root: string; participants?: MaintenancePar
     const missing = maintenance.status().missingServiceIds;
     if (missing.length) dependencies.push({ name: 'maintenance-participants', required: true, state: 'unavailable', detail: missing.join(', ') });
     const state: RuntimeStatus['state'] = !initialized ? 'starting' : maintenance.status().phase === 'failed' ? 'failed'
-      : gatesClosed ? 'maintenance' : dependencies.some(value => value.required && value.state !== 'ready') ? 'failed'
+      : await authorityClosed() ? 'maintenance' : dependencies.some(value => value.required && value.state !== 'ready') ? 'failed'
         : dependencies.some(value => value.state !== 'ready') ? 'degraded' : 'ready';
     return { state, environment, endpoint, dependencies, ...(startupFailure ? { reason: startupFailure } : {}) };
   }
@@ -106,7 +148,7 @@ async function createHost(options: { root: string; participants?: MaintenancePar
       send(response, current.state === 'failed' ? 503 : 200, current); return;
     }
     if (pathname.startsWith('/runtime/control/')) { send(response, 404, { error: 'not_found' }); return; }
-    if (gatesClosed && (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/'))) {
+    if (await authorityClosed() && (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/'))) {
       send(response, 503, { error: 'maintenance' }); return;
     }
     if (await authority.handle(request, response)) return;
@@ -133,6 +175,56 @@ async function createHost(options: { root: string; participants?: MaintenancePar
   const controlServer = httpServer(handle(async (request, response) => {
     if (request.headers.authorization !== `Bearer ${controlToken}`) { send(response, 401, { error: 'unauthorized' }); return; }
     if (request.url === '/runtime/control/status' && request.method === 'GET') { send(response, 200, await status()); return; }
+    if (request.url === '/runtime/control/recovery' && request.method === 'POST') {
+      try {
+        const chunks: Buffer[] = []; let size = 0;
+        for await (const chunk of request) {
+          size += chunk.length;
+          if (size > 1024 * 1024) throw new RecoveryError('input-too-large');
+          chunks.push(Buffer.from(chunk));
+        }
+        const { action, input } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { action: string; input: any };
+        const policy = async () => readJson<BackupPolicy>(join(root, 'backup-policy.json'));
+        let result: unknown;
+        if (action === 'configure') { await recovery.configure(input); result = { configured: true }; }
+        else if (action === 'catalog') {
+          const saved = await exists(join(root, 'backup-policy.json')) ? await policy()
+            : await readJson<{ directory: string; recoveryKeyRef: string }>(join(root, 'last-backup-settings.json'));
+          const key = Buffer.from(await resolveCredential(root, saved.recoveryKeyRef), 'base64');
+          result = await recovery.catalog(input?.directory ?? saved.directory, key);
+        }
+        else if (action === 'backup') {
+          const saved = await exists(join(root, 'backup-policy.json')) ? await policy() : undefined;
+          const key = Buffer.from(await resolveCredential(root, input?.recoveryKeyRef ?? saved?.recoveryKeyRef ?? ''), 'base64');
+          result = await recovery.backup({ directory: input?.directory ?? saved?.directory, key,
+            keep: input?.keep ?? saved?.keep, minimumFreeBytes: input?.minimumFreeBytes ?? saved?.minimumFreeBytes,
+            leaveClosed: input?.leaveClosed === true });
+          await atomicJson(join(root, 'last-backup-settings.json'), { directory: input?.directory ?? saved?.directory,
+            recoveryKeyRef: input?.recoveryKeyRef ?? saved?.recoveryKeyRef });
+        } else if (action === 'resume') result = await recovery.resume();
+        else if (action === 'retire') result = await recovery.retire(input);
+        else if (action === 'fence-source') result = await authority.fenceSource(input);
+        else if (action === 'takeover') {
+          const source = openProductRuntime({ root: input.sourceRoot });
+          const receivers = (input.receivers ?? []) as { id: string; root: string }[];
+          result = await recovery.takeover({ source: { retire: value => source.recovery.retire(value) },
+            receivers: receivers.map(receiver => ({ id: receiver.id, async fence(sourceEnvironment, sourceServiceIds) {
+              const receiverRuntime = openProductRuntime({ root: receiver.root });
+              const target = (await receiverRuntime.status()).environment;
+              if (!target.services.some(item => receiver.id === `${target.environmentId}/${item.serviceId}`)) throw new RecoveryError('receiver-identity-conflict');
+              // Every source service identity is fenced at each receiving authority.
+              for (const serviceId of sourceServiceIds) await receiverRuntime.recovery.fenceSource({
+                sourceEnvironmentId: sourceEnvironment.environmentId, sourceServiceId: serviceId,
+              });
+              return { fenced: true };
+            } })),
+          });
+        } else throw new RecoveryError('unknown-action');
+        send(response, 200, result); return;
+      } catch (error) {
+        send(response, 409, { error: error instanceof RecoveryError ? error.code : 'maintenance-failed' }); return;
+      }
+    }
     if (request.url === '/runtime/control/stop' && request.method === 'POST') {
       try {
         await quiesce();
@@ -158,6 +250,8 @@ async function createHost(options: { root: string; participants?: MaintenancePar
     } catch (error) { stopping = false; throw error; }
   }
   async function shutdown() {
+    if (scheduler) clearInterval(scheduler);
+    for (const owner of suppliedOwners) await owner.close?.();
     await atomicJson(join(root, 'status.json'), { state: 'stopped', environment, dependencies: [] } satisfies RuntimeStatus);
     await Promise.all([close(publicServer), close(controlServer)]);
     await rm(join(root, 'instance.json'), { force: true });
@@ -177,12 +271,33 @@ async function createHost(options: { root: string; participants?: MaintenancePar
       endpoint: `http://127.0.0.1:${(controlServer.address() as { port: number }).port}` });
     process.on('SIGTERM', onSignal);
     process.on('SIGINT', onSignal);
-    try { await startDatabase(root, config.resources, config.database); }
-    catch (error) { startupFailure = (error as Error).message; }
     initialized = true;
+    const isolated = await exists(join(root, 'recovery-state.json'))
+      && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
+    const previousMaintenance = await exists(join(root, 'maintenance.json'))
+      ? await readJson<{ phase: string; reason?: string }>(join(root, 'maintenance.json')) : undefined;
+    if (isolated || previousMaintenance && previousMaintenance.phase !== 'open' && previousMaintenance.reason !== 'stop') {
+      await maintenance.enter(isolated ? 'isolated-restore' : 'interrupted-maintenance');
+    } else if (previousMaintenance?.reason === 'stop' && previousMaintenance.phase !== 'open' && suppliedOwners.length) {
+      await maintenance.enter('restart');
+      await maintenance.resume();
+    }
     await atomicJson(join(root, 'status.json'), await status());
     completeStartup();
-    return { status, stop, maintenance, environment, endpoint };
+    scheduler = setInterval(() => {
+      if (scheduled || gatesClosed || stopping) return;
+      scheduled = true;
+      void (async () => {
+        if (!await exists(join(root, 'backup-policy.json'))) return;
+        const policy = await readJson<BackupPolicy>(join(root, 'backup-policy.json'));
+        const key = Buffer.from(await resolveCredential(root, policy.recoveryKeyRef), 'base64');
+        const latest = (await recovery.catalog(policy.directory, key)).backups[0];
+        if (latest && Date.now() - Date.parse(latest.boundaryAt) < policy.intervalMs) return;
+        await recovery.backup({ directory: policy.directory, key, keep: policy.keep, minimumFreeBytes: policy.minimumFreeBytes });
+      })().catch(() => {}).finally(() => { scheduled = false; });
+    }, 10_000);
+    scheduler.unref();
+    return { status, stop, maintenance, recovery, environment, endpoint };
   } catch (error) {
     completeStartup();
     await Promise.allSettled([close(publicServer), close(controlServer)]);

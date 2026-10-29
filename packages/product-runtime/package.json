@@ -15,6 +15,6 @@
     "pretest": "npm run build",
     "test": "node ../../scripts/test.mjs product-runtime"
   },
-  "dependencies": { "@xunjie/contracts": "0.1.0", "pg": "8.16.3" },
+  "dependencies": { "@xunjie/contracts": "0.1.0", "@xunjie/storage": "0.1.0", "pg": "8.16.3" },
   "devDependencies": { "@types/node": "24.19.1", "@types/pg": "8.15.6", "typescript": "~5.9.2" }
 }

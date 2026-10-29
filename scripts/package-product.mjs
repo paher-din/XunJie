@@ -9,6 +9,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { isSupportedPostgresVersion, supportedPostgresVersions } from '@xunjie/storage';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const catalogPath = join(root, 'scripts/product-resources.json');
@@ -110,7 +111,7 @@ export function assertProductionGraph(metafile) {
     if (forbidden.test(path) || /(?:^|\/)pg-native(?:\/|$)|node_modules\/pg\/lib\/native(?:\/|\.)/.test(path)) {
       throw new Error(`Non-production dependency in product bundle: ${path}`);
     }
-    if (!/^(?:(?:(?:apps\/local-runtime|packages\/(?:product-runtime|contracts))\/)?node_modules\/|apps\/local-runtime\/src\/|packages\/product-runtime\/src\/|packages\/contracts\/(?:src|dist)\/)/.test(path)) {
+    if (!/^(?:(?:(?:apps\/local-runtime|packages\/(?:product-runtime|contracts|storage))\/)?node_modules\/|apps\/local-runtime\/src\/|packages\/(?:product-runtime|storage)\/src\/|packages\/contracts\/(?:src|dist)\/)/.test(path)) {
       throw new Error(`Dependency outside the product production graph: ${path}`);
     }
   }
@@ -170,7 +171,8 @@ export async function buildApplication(app) {
   const { build } = await import('esbuild');
   const result = await build({
     absWorkingDir: root,
-    entryPoints: { cli: 'apps/local-runtime/src/cli.ts', daemon: 'packages/product-runtime/src/daemon.ts' },
+    entryPoints: { cli: 'apps/local-runtime/src/cli.ts', daemon: 'packages/product-runtime/src/daemon.ts',
+      'product-runtime': 'packages/product-runtime/src/index.ts' },
     outdir: app, bundle: true, splitting: false, platform: 'node', target: 'node24', format: 'esm',
     packages: 'bundle', external: [...builtin], sourcemap: false, metafile: true, write: true,
     legalComments: 'eof', logLevel: 'warning',
@@ -180,6 +182,7 @@ export async function buildApplication(app) {
       name: 'product-production-only',
       setup(plugin) {
         plugin.onResolve({ filter: /^@xunjie\/product-runtime$/ }, () => ({ path: join(root, 'packages/product-runtime/src/index.ts') }));
+        plugin.onResolve({ filter: /^@xunjie\/storage$/ }, () => ({ path: join(root, 'packages/storage/src/index.ts') }));
         plugin.onResolve({ filter: /^@xunjie\/contracts(?:\/[^/]+)?$/ }, args => ({
           path: join(root, 'packages/contracts/src', `${args.path === '@xunjie/contracts' ? 'index' : args.path.split('/')[2]}.ts`),
         }));
@@ -196,7 +199,7 @@ export async function buildApplication(app) {
     }],
   });
   assertProductionGraph(result.metafile);
-  for (const name of ['cli.js', 'daemon.js']) await assertNoWorkspacePath(join(app, name));
+  for (const name of ['cli.js', 'daemon.js', 'product-runtime.js']) await assertNoWorkspacePath(join(app, name));
   const recordedMetafile = { ...result.metafile, outputs: Object.fromEntries(
     Object.entries(result.metafile.outputs).map(([path, details]) => [`app/${slash(relative(app, resolve(root, path)))}`, details]),
   ) };
@@ -245,10 +248,14 @@ export async function packageProduct(options) {
   const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
   const platform = options.platform ?? `${process.platform}-${process.arch}`;
   const profile = options.profile ?? 'full';
+  const postgresVersion = options['postgres-version'] ?? catalog.postgres.version;
+  const postgres = postgresVersion === catalog.postgres.version ? catalog.postgres
+    : Object.hasOwn(catalog.postgresVersions ?? {}, postgresVersion) ? catalog.postgresVersions[postgresVersion] : undefined;
+  if (!isSupportedPostgresVersion(postgresVersion) || !postgres) throw new Error(`PostgreSQL version must be one of ${supportedPostgresVersions.join(', ')}.`);
   if (!Object.hasOwn(catalog.platforms, platform)) throw new Error(`Unsupported platform: ${platform}`);
   if (!['full', 'remote'].includes(profile)) throw new Error('Profile must be full or remote.');
   const cache = resolve(options.cache ?? join(homedir(), '.cache/xunjie-product-runtime'));
-  const out = resolve(options.out ?? join(root, `dist/product-${platform}`));
+  const out = resolve(options.out ?? join(root, `dist/product-${platform}${postgresVersion === catalog.postgres.version ? '' : `-pg${postgresVersion}`}`));
   // Never delete arbitrary output paths, another agent's package, or a previous candidate.
   if (await exists(out)) throw new Error(`Output already exists; choose a new --out: ${out}`);
   await mkdir(dirname(out), { recursive: true });
@@ -266,14 +273,14 @@ export async function packageProduct(options) {
     } else await run('npm', webArgs);
     if (!await exists(join(web, 'index.html'))) throw new Error('Runtime web build did not produce index.html.');
     await mkdir(join(staging, 'resources'), { recursive: true });
-    const specifications = [['node', catalog.node], ...(profile === 'full' ? [['postgres', catalog.postgres]] : [])];
+    const specifications = [['node', catalog.node], ...(profile === 'full' ? [['postgres', postgres]] : [])];
     const archives = await Promise.all(specifications.map(async ([id, spec]) => ({ id, spec, asset: spec.platforms[platform], archive: await cachedArchive(cache, spec.platforms[platform]) })));
     const resources = [];
     for (const { id, spec, asset, archive } of archives) {
       const destination = join(staging, 'resources', id);
       await unpackArchive(archive, asset, destination);
       if (id === 'node') await selectNodeRuntime(destination, asset.executable);
-      const tools = id === 'node' ? [asset.executable] : catalog.postgres.requiredTools.map(name => `bin/${name}${platform === 'win32-x64' ? '.exe' : ''}`);
+      const tools = id === 'node' ? [asset.executable] : spec.requiredTools.map(name => `bin/${name}${platform === 'win32-x64' ? '.exe' : ''}`);
       const additions = [];
       if (id === 'postgres' && platform === 'win32-x64') {
         // These pinned executables have no embedded manifest. Windows reads the
@@ -309,7 +316,7 @@ export async function packageProduct(options) {
       if (/\.(?:js|json|html|css)$/i.test(file.name)) await assertNoWorkspacePath(file.path);
     }
     const runtimeResources = { nodePath: `resources/node/${catalog.node.platforms[platform].executable}`, nodeVersion: catalog.node.version,
-      ...(profile === 'full' ? { postgresBin: 'resources/postgres/bin', postgresVersion: catalog.postgres.version } : {}),
+      ...(profile === 'full' ? { postgresBin: 'resources/postgres/bin', postgresVersion: postgres.version } : {}),
       ...(windowsPrerequisitePath ? { windowsPrerequisitePath } : {}), webRoot: 'web' };
     await json(join(staging, 'resources.json'), runtimeResources);
     await json(join(staging, 'package.json'), { name: '@xunjie/product-distribution', private: true, type: 'module' });
@@ -325,11 +332,12 @@ export async function packageProduct(options) {
       formatVersion: 1, status: 'unsigned-candidate', platform, profile, createdAt: new Date().toISOString(),
       os: catalog.platforms[platform].os, architecture: catalog.platforms[platform].architecture,
       signing: catalog.signing,
-      prerequisites: catalog.platforms[platform].prerequisites, upstreamSignature: catalog.platforms[platform].upstreamSignature,
+      prerequisites: catalog.platforms[platform].prerequisites,
+      upstreamSignature: catalog.platforms[platform].upstreamSignature.replace(`PostgreSQL ${catalog.postgres.distributionVersion}`, `PostgreSQL ${postgres.distributionVersion}`),
       resources, application, entryHashes, resourceCatalogSha256: await sha256(catalogPath),
       ...(windowsPrerequisitePath ? { windowsPrerequisite: { ...catalog.windowsPrerequisite, helperPath: windowsPrerequisitePath,
         helperSha256: entryHashes[windowsPrerequisitePath].sha256, installerBundled: false } } : {}),
-      postgresBackupTools: profile === 'full' ? catalog.postgres.backupTools : [],
+      postgresBackupTools: profile === 'full' ? postgres.backupTools : [],
       verification: { archiveChecksums: 'passed', productionDependencyGraph: 'passed', workspacePathsInBundles: 'absent',
         nativeProcessProbes: 'not-run', backupUpgradeProbes: 'not-run', cleanMachineAcceptance: 'cancelled-by-owner',
         productSigning: 'deferred-by-user', notarization: 'deferred-by-user', gatekeeper: 'not-run' },
@@ -343,10 +351,10 @@ export async function packageProduct(options) {
 async function main() {
   const { values } = parseArgs({ strict: true, allowPositionals: false, options: {
     platform: { type: 'string' }, cache: { type: 'string' }, out: { type: 'string' },
-    profile: { type: 'string' }, help: { type: 'boolean', short: 'h' },
+    profile: { type: 'string' }, 'postgres-version': { type: 'string' }, help: { type: 'boolean', short: 'h' },
   } });
   if (values.help) {
-    console.log('Usage: node scripts/package-product.mjs [--platform darwin-arm64|win32-x64|linux-x64] [--cache DIR] [--out DIR] [--profile full|remote]\nDefault: current platform, ~/.cache/xunjie-product-runtime, <repo>/dist/product-<platform>, full.\nOutput must not already exist. --help never downloads or builds. System tar (and unzip for ZIP on macOS/Linux) are build dependencies only. All outputs are unsigned candidates.');
+    console.log('Usage: node scripts/package-product.mjs [--platform darwin-arm64|win32-x64|linux-x64] [--cache DIR] [--out DIR] [--profile full|remote] [--postgres-version 18.6|17.10|17.11]\nDefault: current platform, ~/.cache/xunjie-product-runtime, <repo>/dist/product-<platform>, full, PostgreSQL 18.6. Non-default PG versions append -pg<version> to the default output. Archives are cached by versioned upstream filename.\nOutput must not already exist. --help never downloads or builds. System tar (and unzip for ZIP on macOS/Linux) are build dependencies only. All outputs are unsigned candidates.');
     return;
   }
   await packageProduct(values);

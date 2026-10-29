@@ -9,12 +9,15 @@ import { runtimeConnectionSchema, runtimeEnvironmentSchema } from '@xunjie/contr
 import type { RuntimeConnection, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
 import { createConnectionAuthority } from './connections.js';
 import type { ConnectionAuthorization } from './connections.js';
-import { assertRoot, atomicJson, exists, initializeRoot, ownsProcess, processIdentity, readJson, removeOwned, withLock } from './io.js';
+import { acquireLock, assertRoot, atomicJson, exists, initializeRoot, ownsProcess, processIdentity, readJson, removeOwned, withLock } from './io.js';
 import type { ProcessOwner } from './io.js';
 import { databaseBinding, freePort, inspectDatabase, prepareDatabase, resolveCredential, stopDatabase, storeCredential } from './postgres.js';
 import type { DatabaseConfiguration, RuntimeResources } from './postgres.js';
 import { prepareProductPrerequisites, ProductInstallationRequiredError } from './prerequisites.js';
 import type { ProductPrerequisiteResult } from './prerequisites.js';
+import type { BackupPolicy, RecoveryManifest } from './recovery-types.js';
+import { RecoveryError } from './recovery.js';
+import type { RetirementProof } from './recovery.js';
 
 export interface InstallOptions {
   profile: RuntimeEnvironment['profile'];
@@ -43,6 +46,21 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
   const environmentPath = join(root, 'environment.json');
   const environment = async () => runtimeEnvironmentSchema.parse(await readJson(environmentPath));
   const configuration = async () => { await assertRoot(root); return readJson<InstalledConfiguration>(configPath); };
+  async function recoveryControl<T>(action: string, input?: unknown): Promise<T> {
+    await assertRoot(root);
+    const instance = await readJson<RunningInstance>(join(root, 'instance.json'));
+    if (!await ownsProcess(instance)) throw new RecoveryError('source-unreachable');
+    const response = await fetch(new URL('/runtime/control/recovery', instance.endpoint), {
+      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(300_000),
+      headers: { authorization: `Bearer ${await resolveCredential(root, 'control')}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ action, input }),
+    });
+    if (!response.ok) {
+      const failure = await response.json().catch(() => ({})) as { error?: string };
+      throw new RecoveryError(typeof failure.error === 'string' ? failure.error : 'control-failed');
+    }
+    return response.json() as Promise<T>;
+  }
 
   async function prepare(input?: InstallOptions, reinstall = false): Promise<ProductPrerequisiteResult> {
     if (input) runtimeEnvironmentSchema.shape.profile.parse(input.profile);
@@ -191,6 +209,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
       });
     },
     async start(): Promise<RuntimeStatus> {
+      if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
       await requirePrepared();
       return withLock(root, async () => {
         const config = await configuration();
@@ -231,6 +250,27 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
       });
     },
     status,
+    recovery: {
+      configure: (policy: BackupPolicy) => recoveryControl<{ configured: true }>('configure', policy),
+      catalog: (directory?: string) => recoveryControl<{ backups: RecoveryManifest[]; latest: unknown; operations: unknown[] }>('catalog', { directory }),
+      backup: (input: { directory?: string; recoveryKeyRef?: string; keep?: number; minimumFreeBytes?: number; leaveClosed?: boolean } = {}) => recoveryControl<RecoveryManifest>('backup', input),
+      resume: () => recoveryControl('resume'),
+      async retire(input: { backupId: string; targetInstallationId: string }): Promise<RetirementProof> {
+        await assertRoot(root);
+        if (await exists(join(root, 'retired.json'))) {
+          const proof = await readJson<RetirementProof>(join(root, 'retired.json'));
+          const expected = await environment();
+          if (proof.sourceEnvironmentId !== expected.environmentId || proof.sourceInstallationId !== expected.installationId
+            || proof.backupId !== input.backupId || proof.targetInstallationId !== input.targetInstallationId
+            || typeof proof.retiredAt !== 'string' || !Number.isFinite(Date.parse(proof.retiredAt))) throw new RecoveryError('retirement-conflict');
+          return { sourceEnvironmentId: proof.sourceEnvironmentId, sourceInstallationId: proof.sourceInstallationId,
+            targetInstallationId: proof.targetInstallationId, backupId: proof.backupId, retiredAt: proof.retiredAt };
+        }
+        return recoveryControl<RetirementProof>('retire', input);
+      },
+      fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; timeoutMs?: number }) => recoveryControl('fence-source', input),
+      takeover: (input: { sourceRoot: string; receivers: { id: string; root: string }[] }) => recoveryControl('takeover', input),
+    },
     async stop() { await assertRoot(root); return withLock(root, stopUnlocked); },
     async uninstall(): Promise<RuntimeStatus> {
       await assertRoot(root);
@@ -257,7 +297,14 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     },
     async connect(connection: RuntimeConnection, credential: string): Promise<void> {
       await assertRoot(root);
-      return withLock(root, async () => {
+      const release = await acquireLock(root, 'recovery');
+      try { return await withLock(root, async () => {
+        if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
+        const boundary = await exists(join(root, 'maintenance.json'))
+          ? await readJson<{ phase: string; reason?: string }>(join(root, 'maintenance.json')) : undefined;
+        if (boundary && boundary.phase !== 'open' && boundary.reason !== 'stop') throw new RecoveryError('configuration-in-maintenance');
+        if (await exists(join(root, 'recovery-state.json'))
+          && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active') throw new RecoveryError('target-isolated');
         const parsed = runtimeConnectionSchema.parse(connection);
         const descriptor = await environment();
         if (parsed.sourceEnvironmentId !== descriptor.environmentId || !descriptor.services.some(service => service.serviceId === parsed.sourceServiceId)) throw new Error('Connection source identity mismatch.');
@@ -265,7 +312,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         if (config.connections.some(value => value.connectionId === parsed.connectionId)) throw new Error('Connection already registered.');
         await storeCredential(root, parsed.credentialRef, credential);
         await atomicJson(configPath, { ...config, connections: [...config.connections, parsed] });
-      });
+      }); } finally { await release(); }
     },
     async authorize(input: ConnectionAuthorization) {
       await assertRoot(root);

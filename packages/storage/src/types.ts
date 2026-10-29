@@ -1,11 +1,12 @@
 import type { ResourceReference, StorageManifest, StorageOwner, StorageReceipt } from '@xunjie/contracts/storage';
 import type { MaintenanceParticipantDescriptor } from '@xunjie/contracts/product-runtime';
+import type { BlobBackend } from './blobs.js';
 
 export interface DatabaseConnection {
   host: string; port: number; database: string; user: string; password: string;
   ssl?: { ca: string };
 }
-export interface StorageBinding { owner: StorageOwner; schema: string; connection: DatabaseConnection; }
+export interface StorageBinding { owner: StorageOwner; schema: string; migratorRole: string; connection: DatabaseConnection; }
 export interface Migration { version: number; name: string; sql: string; }
 export interface QueryResult<T> { rows: T[]; rowCount: number; }
 
@@ -28,6 +29,8 @@ export interface StorageParticipant {
 export interface OwnedStorage {
   readonly owner: StorageOwner;
   readonly generation: string;
+  /** Host-only location for independent backup/restore placement checks. */
+  readonly resourceLocation?: BlobBackend['location'];
   request(input: { requestId: string; fingerprint: string }, effect: (tx: OwnedTransaction) => Promise<unknown>): Promise<StorageReceipt>;
   receipt(requestId: string, fingerprint?: string): Promise<StorageReceipt | null>;
   read<T extends Record<string, unknown> = Record<string, unknown>>(sql: string, values?: readonly unknown[]): Promise<QueryResult<T>>;
@@ -40,7 +43,7 @@ export interface OwnedStorage {
   readResourceObject(resourceId: string): Promise<Uint8Array>;
   collect(options: { olderThan: Date; limit?: number }): Promise<string[]>;
   participant(): StorageParticipant;
-  snapshot<T>(backupId: string, consume: (snapshot: { databaseSnapshot: string; manifest: StorageManifest }) => Promise<T>): Promise<T>;
+  snapshot<T>(backupId: string, consume: (snapshot: { databaseSnapshot: string; migratorRole: string; manifest: StorageManifest }) => Promise<T>): Promise<T>;
   releaseBackup(backupId: string): Promise<void>;
   validateManifest(manifest: StorageManifest): Promise<void>;
   close(): Promise<void>;

@@ -1,8 +1,11 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, readdir, unlink } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import type { RuntimeConnection, RuntimeService } from '@xunjie/contracts/product-runtime';
+import { acquireLock, atomicJson, ownsProcess, processIdentity } from './io.js';
+import type { ProcessOwner } from './io.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 1024 * 1024;
@@ -20,6 +23,12 @@ export class RuntimeConnectionError extends Error {
 export interface ConnectionSource {
   sourceEnvironmentId: string;
   sourceServiceId: string;
+}
+
+/** Receiver acknowledgement only; contains no grant or credential. */
+export interface SourceFenceProof extends ConnectionSource {
+  generation: number;
+  fencedAt: string;
 }
 
 export type CapabilityHandler = (
@@ -44,6 +53,11 @@ interface StoredGrant extends ConnectionAuthorization {
   targetEnvironmentId: string;
   targetServiceId: string;
   protocolVersion: number;
+  generation?: number;
+}
+
+interface StoredExecution extends ProcessOwner {
+  disconnected: boolean;
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -115,8 +129,89 @@ export function createConnectionAuthority(options: {
   const privateRoot = join(options.root, 'private');
   const grantsRoot = join(privateRoot, 'connections', service.environmentId, service.serviceId);
   const grantPath = (grantId: string) => join(grantsRoot, `${grantId}.json`);
+  const sourceRoot = (source: ConnectionSource) => join(grantsRoot, 'sources', source.sourceEnvironmentId, source.sourceServiceId);
+  const generationPath = (source: ConnectionSource) => join(sourceRoot(source), 'generation.json');
+  const executionsRoot = (source: ConnectionSource) => join(sourceRoot(source), 'active');
+  // Independent of operation/daemon locks: orchestration may already hold those.
+  const sourceScope = (source: ConnectionSource) => `connections-${service.environmentId}-${service.serviceId}-${source.sourceEnvironmentId}-${source.sourceServiceId}`;
+
+  function validateSource(source: ConnectionSource): void {
+    if (!uuid.test(source.sourceEnvironmentId) || !uuid.test(source.sourceServiceId)) {
+      throw new RuntimeConnectionError('invalid_source_identity');
+    }
+  }
+
+  async function prepareStorage(source: ConnectionSource): Promise<void> {
+    await mkdir(executionsRoot(source), { recursive: true, mode: 0o700 });
+    // Recursive mkdir does not change permissions on pre-existing private directories.
+    for (const directory of [privateRoot, join(privateRoot, 'connections'),
+      join(privateRoot, 'connections', service.environmentId), grantsRoot,
+      join(grantsRoot, 'sources'), join(grantsRoot, 'sources', source.sourceEnvironmentId), sourceRoot(source), executionsRoot(source)]) {
+      await chmod(directory, 0o700);
+    }
+  }
+
+  async function generation(source: ConnectionSource): Promise<number> {
+    try {
+      const value: unknown = JSON.parse(await readFile(generationPath(source), 'utf8'));
+      if (!record(value) || value.formatVersion !== 1 || !Number.isSafeInteger(value.generation)
+        || (value.generation as number) < 0) throw new Error('Invalid generation');
+      return value.generation as number;
+    } catch (error) {
+      if (errorCode(error) === 'ENOENT') return 0;
+      throw new RuntimeConnectionError('grant_storage_unavailable');
+    }
+  }
+
+  async function fenceSource(input: ConnectionSource & { timeoutMs?: number }): Promise<SourceFenceProof> {
+    const source = { sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: input.sourceServiceId };
+    validateSource(source);
+    const timeoutMs = input.timeoutMs ?? defaultTimeoutMs;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) {
+      throw new RuntimeConnectionError('invalid_timeout');
+    }
+    const deadline = Date.now() + timeoutMs;
+    const remaining = () => {
+      const ms = deadline - Date.now();
+      if (ms <= 0) throw new RuntimeConnectionError('timeout');
+      return ms;
+    };
+    try {
+      await prepareStorage(source);
+      const release = await acquireLock(options.root, sourceScope(source), remaining());
+      let next: number;
+      try {
+        remaining();
+        next = await generation(source) + 1;
+        if (!Number.isSafeInteger(next)) throw new RuntimeConnectionError('generation_exhausted');
+        await atomicJson(generationPath(source), { formatVersion: 1, generation: next });
+      } finally { await release(); }
+      // Release the admission lock while draining so handlers can finish and
+      // other fences can advance. No operation/daemon lock is acquired here.
+      while (true) {
+        const unlock = await acquireLock(options.root, sourceScope(source), remaining());
+        let drained: boolean;
+        try {
+          remaining();
+          const active = await readdir(executionsRoot(source));
+          for (const name of active.filter(name => name.endsWith('.json'))) {
+            const owner = JSON.parse(await readFile(join(executionsRoot(source), name), 'utf8')) as StoredExecution;
+            if (owner.disconnected || !await ownsProcess(owner)) throw new RuntimeConnectionError('fence_source_disconnected');
+          }
+          drained = !active.some(name => name.endsWith('.json'));
+        } finally { await unlock(); }
+        remaining();
+        if (drained) return { ...source, generation: next, fencedAt: new Date().toISOString() };
+        await delay(Math.min(10, remaining()));
+      }
+    } catch (error) {
+      if (error instanceof RuntimeConnectionError) throw error;
+      throw new RuntimeConnectionError(Date.now() >= deadline ? 'timeout' : 'grant_storage_unavailable');
+    }
+  }
 
   async function authorize(input: ConnectionAuthorization): Promise<ConnectionGrant> {
+    input = structuredClone(input);
     if (!uuid.test(input.sourceEnvironmentId) || !uuid.test(input.sourceServiceId)
       || !strings(input.capabilities) || input.capabilities.some((capability) => !handlers.has(capability))) {
       throw new RuntimeConnectionError('invalid_authorization');
@@ -132,13 +227,12 @@ export function createConnectionAuthority(options: {
       targetServiceId: service.serviceId,
       protocolVersion: service.protocolVersion,
     };
-    await mkdir(grantsRoot, { recursive: true, mode: 0o700 });
-    // Recursive mkdir does not change permissions on pre-existing private directories.
-    for (const directory of [privateRoot, join(privateRoot, 'connections'),
-      join(privateRoot, 'connections', service.environmentId), grantsRoot]) {
-      await chmod(directory, 0o700);
-    }
-    await writeFile(grantPath(grantId), JSON.stringify(grant), { mode: 0o600, flag: 'wx' });
+    await prepareStorage(input);
+    const release = await acquireLock(options.root, sourceScope(input));
+    try {
+      grant.generation = await generation(input);
+      await atomicJson(grantPath(grantId), grant);
+    } finally { await release(); }
     return {
       grantId, token, sourceEnvironmentId: grant.sourceEnvironmentId,
       sourceServiceId: grant.sourceServiceId, capabilities: [...grant.capabilities],
@@ -175,11 +269,14 @@ export function createConnectionAuthority(options: {
       || typeof value.tokenHash !== 'string' || !/^[0-9a-f]{64}$/.test(value.tokenHash)
       || !strings(value.capabilities) || typeof value.sourceEnvironmentId !== 'string'
       || typeof value.sourceServiceId !== 'string'
+      || !uuid.test(value.sourceEnvironmentId) || !uuid.test(value.sourceServiceId)
+      || (value.generation !== undefined && (!Number.isSafeInteger(value.generation) || (value.generation as number) < 0))
       || value.targetEnvironmentId !== service.environmentId || value.targetServiceId !== service.serviceId
       || value.protocolVersion !== service.protocolVersion
       || !timingSafeEqual(Buffer.from(value.tokenHash, 'hex'), Buffer.from(digest(token), 'hex'))
       || request.headers['x-runtime-source-environment-id'] !== value.sourceEnvironmentId
       || request.headers['x-runtime-source-service-id'] !== value.sourceServiceId) return undefined;
+    if ((value.generation ?? 0) !== await generation(value as unknown as ConnectionSource)) return undefined;
     return value as unknown as StoredGrant;
   }
 
@@ -231,16 +328,50 @@ export function createConnectionAuthority(options: {
       }
       const payload = await readPayload(request);
       // A revoked grant must not survive a slow request body or a cached handshake.
-      grant = await authenticate(request);
-      if (!grant) {
-        send(response, 401, { error: 'unauthorized' });
-        return true;
+      const source = { sourceEnvironmentId: grant.sourceEnvironmentId, sourceServiceId: grant.sourceServiceId };
+      const executionPath = join(executionsRoot(source), `${randomUUID()}.json`);
+      await prepareStorage(source);
+      const release = await acquireLock(options.root, sourceScope(source));
+      let owner: StoredExecution;
+      try {
+        grant = await authenticate(request);
+        if (!grant) {
+          send(response, 401, { error: 'unauthorized' });
+          return true;
+        }
+        const identity = await processIdentity(process.pid);
+        if (!identity) throw new RuntimeConnectionError('grant_storage_unavailable');
+        owner = { pid: process.pid, processIdentity: identity, disconnected: false };
+        await atomicJson(executionPath, owner);
+      } finally { await release(); }
+      let disconnectWrite = Promise.resolve();
+      let disconnectFailure: unknown;
+      const disconnected = () => {
+        // A transport close is not handler completion. Persist that distinction
+        // so another authority/process cannot turn it into a takeover proof.
+        disconnectWrite = (async () => {
+          const unlock = await acquireLock(options.root, sourceScope(source));
+          try { await atomicJson(executionPath, { ...owner, disconnected: true }); }
+          finally { await unlock(); }
+        })().catch(error => { disconnectFailure = error; });
+      };
+      response.once('close', disconnected);
+      if (response.destroyed) disconnected();
+      let result: unknown;
+      try {
+        if (response.destroyed) throw new RuntimeConnectionError('connection_unavailable');
+        result = await handler(payload, Object.freeze({
+          grantId: grant.grantId,
+          sourceEnvironmentId: grant.sourceEnvironmentId,
+          sourceServiceId: grant.sourceServiceId,
+        }));
+      } finally {
+        response.off('close', disconnected);
+        await disconnectWrite;
+        if (disconnectFailure) throw new RuntimeConnectionError('grant_storage_unavailable');
+        const unlock = await acquireLock(options.root, sourceScope(source));
+        try { await unlink(executionPath); } finally { await unlock(); }
       }
-      const result = await handler(payload, Object.freeze({
-        grantId: grant.grantId,
-        sourceEnvironmentId: grant.sourceEnvironmentId,
-        sourceServiceId: grant.sourceServiceId,
-      }));
       send(response, 200, { service: available(), result: result ?? null });
     } catch (error) {
       const code = error instanceof RuntimeConnectionError ? error.code : 'request_failed';
@@ -250,7 +381,7 @@ export function createConnectionAuthority(options: {
     }
     return true;
   }
-  return { authorize, revoke, handle };
+  return { authorize, revoke, fenceSource, handle };
 }
 
 export interface ConnectionCheck {

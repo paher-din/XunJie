@@ -6,6 +6,7 @@ import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import pg from 'pg';
+import { isSupportedPostgresVersion, supportedPostgresVersions } from '@xunjie/storage';
 import { atomicJson, exists, readJson } from './io.js';
 
 const exec = promisify(execFile);
@@ -149,8 +150,8 @@ export async function inspectDatabase(root: string, config: DatabaseConfiguratio
     const { rows: [row] } = await client.query(`SELECT current_setting('server_version') AS version,
       current_setting('server_encoding') AS encoding, current_setting('TimeZone') AS timezone,
       datcollate AS collate, oid::text AS database_oid ${identity} FROM pg_database WHERE datname = current_database()`);
-    if (!row || (verifyConfiguration && (Number.parseInt(row.version) !== 18 || row.encoding !== 'UTF8' || row.timezone !== 'UTC' || row.collate !== 'C'))) {
-      throw new Error('PostgreSQL requires major 18, UTF8, UTC and C collation.');
+    if (!row || (verifyConfiguration && (!isSupportedPostgresVersion(row.version.split(' ')[0]) || row.encoding !== 'UTF8' || row.timezone !== 'UTC' || row.collate !== 'C'))) {
+      throw new Error(`PostgreSQL requires a supported pinned version (${supportedPostgresVersions.join(', ')}), UTF8, UTC and C collation.`);
     }
     if (config.mode === 'managed') {
       const metadata = await readJson<ManagedDatabase>(join(root, 'database.json'));

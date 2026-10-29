@@ -4,6 +4,7 @@ import { storageOwnerSchema } from '@xunjie/contracts/storage';
 import type { StorageOwner } from '@xunjie/contracts/storage';
 import type { DatabaseConnection, Migration, StorageBinding } from './types.js';
 import { StorageError, storageFailure } from './errors.js';
+import { supportedPostgresVersions } from './postgres-policy.js';
 
 export const identifier = (value: string): string => '"' + value.replaceAll('"', '""') + '"';
 const digest = (value: string): string => createHash('sha256').update(value).digest('hex');
@@ -23,7 +24,11 @@ export async function inspectPostgres(client: pg.Client | pg.PoolClient): Promis
     current_setting('server_encoding') AS encoding, current_setting('TimeZone') AS timezone,
     datcollate, datctype, datlocprovider FROM pg_database WHERE datname=current_database()`);
   const extensions = (await client.query('SELECT extname FROM pg_extension ORDER BY extname')).rows.map(row => row.extname);
-  if (!row || row.version !== '180006' || row.encoding !== 'UTF8' || row.timezone !== 'UTC'
+  const supportedNumbers = supportedPostgresVersions.map(version => {
+    const [major, minor] = version.split('.').map(Number);
+    return String(major! * 10_000 + minor!);
+  });
+  if (!row || !supportedNumbers.includes(row.version) || row.encoding !== 'UTF8' || row.timezone !== 'UTC'
     || row.datcollate !== 'C' || row.datctype !== 'C' || row.datlocprovider !== 'c'
     || extensions.join(',') !== 'plpgsql') throw new StorageError('incompatible');
 }
@@ -124,7 +129,7 @@ export async function provisionStorage(options: {
     await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${schema} TO ${role}`);
     await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA ${schema} TO ${role}`);
     await client.query('COMMIT');
-    return { owner, schema: names.schema, connection: { ...options.admin, user: names.role, password: options.password } };
+    return { owner, schema: names.schema, migratorRole: names.migrator, connection: { ...options.admin, user: names.role, password: options.password } };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw storageFailure(error);
@@ -134,13 +139,20 @@ export async function provisionStorage(options: {
   }
 }
 
-export async function verifyBinding(client: pg.PoolClient, binding: StorageBinding, migrations: readonly Migration[]) {
+export async function verifyBinding(client: pg.PoolClient, binding: StorageBinding, migrations: readonly Migration[], restoring = false) {
   const names = storageNames(binding.owner);
   if (binding.schema !== names.schema || binding.connection.user !== names.role) throw new StorageError('forbidden');
+  const { rows: [marker] } = await client.query("SELECT shobj_description(oid,'pg_authid') AS marker FROM pg_roles WHERE rolname=$1", [names.migrator]);
+  if (!restoring && marker?.marker?.startsWith('xunjie-restore/1:')) {
+    let complete = false;
+    try { complete = JSON.parse(marker.marker.slice('xunjie-restore/1:'.length)).phase === 'complete'; } catch { /* fail closed */ }
+    if (!complete) throw new StorageError('maintenance');
+  }
   await inspectPostgres(client);
   const { rows: [role] } = await client.query(`SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,
     has_schema_privilege(current_user,'public','CREATE') AS public_create,
     has_schema_privilege(current_user,$1,'CREATE') AS owner_create,
+    has_database_privilege(current_user,current_database(),'CREATE') AS database_create,
     EXISTS(SELECT 1 FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=current_user)) AS memberships
     FROM pg_roles WHERE rolname=current_user`, [names.schema]);
   if (!role || Object.values(role).some(Boolean)) throw new StorageError('forbidden');

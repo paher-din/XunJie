@@ -1,10 +1,12 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
-import { constants } from 'node:fs';
+import { constants, realpathSync } from 'node:fs';
 import { link, lstat, mkdir, open, readdir, realpath, unlink } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 
 export interface BlobBackend {
   readonly id: string;
+  /** Host-only physical location. Never contains backend credentials. */
+  readonly location?: Readonly<{ kind: 'file'; root: string } | { kind: 's3'; endpoint: string; bucket: string }>;
   put(key: string, bytes: Uint8Array): Promise<void>;
   get(key: string): Promise<Uint8Array>;
   /** Caller must hold a durable PG row delete claim which serializes removal against uploads for this key. */
@@ -93,6 +95,20 @@ export function createFileBackend(options: { id: string; root: string }): BlobBa
   const { id } = options;
   validateId(id);
   const root = resolve(options.root);
+  // Resolve existing ancestors even before a new resource root is created.
+  // IO still uses the configured root so symlink rejection stays intact.
+  let ancestor = root;
+  const missing: string[] = [];
+  let physicalRoot: string;
+  for (;;) {
+    try { physicalRoot = join(realpathSync.native(ancestor), ...missing); break; }
+    catch (error) {
+      const parent = dirname(ancestor);
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || parent === ancestor) throw fileError(error);
+      missing.unshift(basename(ancestor)); ancestor = parent;
+    }
+  }
+  const location = Object.freeze({ kind: 'file' as const, root: physicalRoot });
   async function target(key: string, create: boolean): Promise<string> {
     validateKey(key);
     await directory(root, create);
@@ -108,6 +124,7 @@ export function createFileBackend(options: { id: string; root: string }): BlobBa
   }
   return {
     id,
+    get location() { return location; },
     async put(key, bytes) {
       const content = Uint8Array.from(bytes);
       let temporary: string | undefined;
@@ -205,6 +222,7 @@ export function createS3Backend(options: {
     || !Number.isInteger(timeout) || timeout <= 0 || timeout > 2_147_483_647) {
     throw new BlobError('unavailable', 'Invalid S3 configuration');
   }
+  const location = Object.freeze({ kind: 's3' as const, endpoint: endpoint.href.replace(/\/+$/, ''), bucket });
   const sha256 = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
   const hmac = (key: Uint8Array | string, text: string) => createHmac('sha256', key).update(text).digest();
 
@@ -261,6 +279,7 @@ export function createS3Backend(options: {
 
   return {
     id,
+    get location() { return location; },
     async put(key, bytes) {
       const content = Uint8Array.from(bytes);
       validateKey(key);

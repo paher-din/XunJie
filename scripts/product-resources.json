@@ -96,6 +96,134 @@
       }
     }
   },
+  "postgresVersions": {
+    "17.10": {
+      "version": "17.10",
+      "distributionVersion": "17.10.1",
+      "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.10.1",
+      "supportPolicy": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md",
+      "provenanceGuide": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/provenance.md",
+      "license": {
+        "spdx": "PostgreSQL",
+        "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+        "url": "https://www.postgresql.org/about/licence/",
+        "preserve": [
+          "LICENSE",
+          "dependency-notices",
+          "source-input.json",
+          "build-manifest.json",
+          "runtime-dependencies.json",
+          "target-validation.json"
+        ],
+        "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+      },
+      "requiredTools": [
+        "initdb",
+        "postgres",
+        "pg_ctl",
+        "pg_controldata",
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade"
+      ],
+      "backupTools": [
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade",
+        "pg_controldata"
+      ],
+      "platforms": {
+        "darwin-arm64": {
+          "target": "aarch64-apple-darwin",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-aarch64-apple-darwin.tar.gz",
+          "archiveRoot": "postgresql-17.10.1-aarch64-apple-darwin",
+          "bytes": 89980908,
+          "sha256": "6a4d10bb443043a5f2759727eb8f281e1ae88563c03a38df8066944d5409fbdb"
+        },
+        "win32-x64": {
+          "target": "x86_64-pc-windows-msvc",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-x86_64-pc-windows-msvc.zip",
+          "archiveRoot": "postgresql-17.10.1-x86_64-pc-windows-msvc",
+          "bytes": 48323801,
+          "sha256": "69589c6e4445c51d819879550060820f7f4df3742142cfeb5cb61cf316332f4a"
+        },
+        "linux-x64": {
+          "target": "x86_64-unknown-linux-gnu",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-x86_64-unknown-linux-gnu.tar.gz",
+          "archiveRoot": "postgresql-17.10.1-x86_64-unknown-linux-gnu",
+          "bytes": 40053819,
+          "sha256": "c3fa076025ceaf785b4ea182ed4da4c4171d97ef6397baa32d2292c7d040923e"
+        }
+      }
+    },
+    "17.11": {
+      "version": "17.11",
+      "distributionVersion": "17.11.1",
+      "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.11.1",
+      "supportPolicy": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md",
+      "provenanceGuide": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/provenance.md",
+      "license": {
+        "spdx": "PostgreSQL",
+        "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+        "url": "https://www.postgresql.org/about/licence/",
+        "preserve": [
+          "LICENSE",
+          "dependency-notices",
+          "source-input.json",
+          "build-manifest.json",
+          "runtime-dependencies.json",
+          "target-validation.json"
+        ],
+        "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+      },
+      "requiredTools": [
+        "initdb",
+        "postgres",
+        "pg_ctl",
+        "pg_controldata",
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade"
+      ],
+      "backupTools": [
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade",
+        "pg_controldata"
+      ],
+      "platforms": {
+        "darwin-arm64": {
+          "target": "aarch64-apple-darwin",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-aarch64-apple-darwin.tar.gz",
+          "archiveRoot": "postgresql-17.11.1-aarch64-apple-darwin",
+          "bytes": 90030572,
+          "sha256": "f4b2ff0587d80b6f22bf09ec2d133a3c2949b6423318d3fed0f4ddddddf2f004"
+        },
+        "win32-x64": {
+          "target": "x86_64-pc-windows-msvc",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-x86_64-pc-windows-msvc.zip",
+          "archiveRoot": "postgresql-17.11.1-x86_64-pc-windows-msvc",
+          "bytes": 48338921,
+          "sha256": "4dee656719d4182055219765c29c9e692993d14ba0d1b4344dd24a8ff7296782"
+        },
+        "linux-x64": {
+          "target": "x86_64-unknown-linux-gnu",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-x86_64-unknown-linux-gnu.tar.gz",
+          "archiveRoot": "postgresql-17.11.1-x86_64-unknown-linux-gnu",
+          "bytes": 40073705,
+          "sha256": "aa8e2e97574bd789119ac01f1dddcd7a038c84e5c308d7b753018618258f0fbd"
+        }
+      }
+    }
+  },
   "windowsPrerequisite": {
     "id": "microsoft-vc14-x64",
     "version": "14.51.36247.0",

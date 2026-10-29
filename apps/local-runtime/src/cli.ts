@@ -5,7 +5,9 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { spawn } from 'node:child_process';
-import { openProductRuntime, ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { openProductRuntime, restoreProductRecovery, upgradeProductRecovery, ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
+import type { BackupPolicy } from '@xunjie/product-runtime';
 
 type Runtime = ReturnType<typeof openProductRuntime>;
 type InstallOptions = NonNullable<Parameters<Runtime['install']>[0]>;
@@ -27,6 +29,14 @@ const commands: Record<string, readonly string[]> = {
   authorize: ['file', 'out', 'resources'],
   revoke: ['grant-id', 'resources'],
   connect: ['file', 'resources'],
+  'recovery-key': ['out'],
+  'backup-policy': ['file', 'resources'],
+  backup: ['file', 'resources'],
+  'backup-list': ['file', 'resources'],
+  restore: ['file', 'resources'],
+  upgrade: ['file', 'resources'],
+  takeover: ['file', 'resources'],
+  'maintenance-resume': ['resources'],
 };
 
 // Keep known secret values out of messages even if a downstream error includes them.
@@ -158,7 +168,7 @@ async function main(): Promise<void> {
 
   // Only install defaults to the bundled manifest. Other actions reuse saved resources.
   const resourcePath = typeof values.resources === 'string' ? values.resources
-    : ['install', 'prepare'].includes(command) ? fileURLToPath(new URL('../resources.json', import.meta.url)) : undefined;
+    : ['install', 'prepare', 'restore', 'upgrade'].includes(command) ? fileURLToPath(new URL('../resources.json', import.meta.url)) : undefined;
   const resources = resourcePath ? await resourcesFile(resourcePath) : undefined;
   const root = resolve(typeof values.root === 'string' ? values.root : defaultRoot());
   const openRuntime = (selected = resources): Runtime => openProductRuntime({
@@ -186,8 +196,90 @@ async function main(): Promise<void> {
     }
     return { ...config, profile } as InstallOptions;
   };
+  const recoveryTargetConfiguration = async (input: Record<string, unknown>) => {
+    type RestoreInput = Parameters<typeof restoreProductRecovery>[0];
+    let databaseCredential: string | undefined;
+    if (input.databaseCredentialFile !== undefined) {
+      if (typeof input.databaseCredentialFile !== 'string') throw new Error('databaseCredentialFile 必须是私密文件路径');
+      databaseCredential = (await readFile(resolve(input.databaseCredentialFile), 'utf8')).replace(/\r?\n$/, '');
+      if (!databaseCredential || /[\r\n]/.test(databaseCredential)) throw new Error('目标数据库凭据文件必须是单行非空凭据');
+      rememberSecret(databaseCredential);
+    }
+    return { database: input.database as RestoreInput['database'], databaseCredential,
+      installation: input.installation as RestoreInput['installation'] };
+  };
 
   switch (command) {
+    case 'recovery-key': {
+      const path = resolve(required('out'));
+      const destination = await open(path, 'wx', 0o600);
+      try { await destination.chmod(0o600); await destination.writeFile(randomBytes(32)); await destination.sync(); }
+      finally { await destination.close(); }
+      output({ path }); break;
+    }
+    case 'backup-policy': {
+      const input = await jsonFile(required('file'), '备份策略');
+      if (typeof input.keyFile !== 'string') throw new Error('备份策略需要 keyFile');
+      const key = await readFile(resolve(input.keyFile));
+      if (key.length < 32) throw new Error('恢复密钥至少需要 32 字节');
+      rememberSecret(key.toString('base64'));
+      const recoveryKeyRef = `recovery-${randomUUID()}`;
+      await run(() => runtime.setCredential(recoveryKeyRef, key.toString('base64')));
+      const { keyFile: _keyFile, ...policy } = input;
+      output(await run(() => runtime.recovery.configure({ ...policy, recoveryKeyRef } as unknown as BackupPolicy)));
+      break;
+    }
+    case 'backup': {
+      const input = values.file ? await jsonFile(required('file'), '备份') : {};
+      if (typeof input.keyFile === 'string') {
+        const key = await readFile(resolve(input.keyFile));
+        if (key.length < 32) throw new Error('恢复密钥至少需要 32 字节');
+        rememberSecret(key.toString('base64'));
+        const ref = `recovery-${randomUUID()}`;
+        await run(() => runtime.setCredential(ref, key.toString('base64')));
+        input.recoveryKeyRef = ref; delete input.keyFile;
+      }
+      output(await run(() => runtime.recovery.backup(input))); break;
+    }
+    case 'backup-list': {
+      const input = values.file ? await jsonFile(required('file'), '备份目录') : {};
+      output(await run(() => runtime.recovery.catalog(typeof input.directory === 'string' ? input.directory : undefined))); break;
+    }
+    case 'restore': {
+      const input = await jsonFile(required('file'), '恢复');
+      if (typeof input.backupDirectory !== 'string' || typeof input.keyFile !== 'string' || !resources) throw new Error('恢复需要 backupDirectory、keyFile 和目标 resources');
+      const key = await readFile(resolve(input.keyFile)); rememberSecret(key.toString('base64'));
+      const backupDirectory = input.backupDirectory;
+      const targetConfiguration = await recoveryTargetConfiguration(input);
+      const result = await run(() => restoreProductRecovery({ root, backupDirectory, key, resources,
+        ...targetConfiguration,
+        minimumFreeBytes: typeof input.minimumFreeBytes === 'number' ? input.minimumFreeBytes : undefined }));
+      await run(() => runtime.stop());
+      output({ phase: 'isolated', root, backupId: result.manifest.backupId }); break;
+    }
+    case 'upgrade': {
+      const input = await jsonFile(required('file'), '升级');
+      if (!['schema', 'pg-minor', 'pg-major'].includes(String(input.kind)) || typeof input.targetRoot !== 'string'
+        || typeof input.backupDirectory !== 'string' || typeof input.keyFile !== 'string' || !resources) throw new Error('升级需要 kind、targetRoot、backupDirectory、keyFile 和目标 resources');
+      const key = await readFile(resolve(input.keyFile)); rememberSecret(key.toString('base64'));
+      const ref = `recovery-${randomUUID()}`;
+      await run(() => runtime.setCredential(ref, key.toString('base64')));
+      const targetRoot = resolve(input.targetRoot), backupDirectory = input.backupDirectory;
+      const targetConfiguration = await recoveryTargetConfiguration(input);
+      const result = await run(() => upgradeProductRecovery({ kind: input.kind as 'schema' | 'pg-minor' | 'pg-major',
+        sourceRoot: root, root: targetRoot, backupDirectory, key, resources,
+        ...targetConfiguration,
+        backup: () => runtime.recovery.backup({ directory: backupDirectory, recoveryKeyRef: ref, leaveClosed: true }) }));
+      await run(() => openProductRuntime({ root: targetRoot }).stop());
+      output({ phase: 'isolated', root: targetRoot, backupId: result.manifest.backupId }); break;
+    }
+    case 'takeover': {
+      const input = await jsonFile(required('file'), '接管');
+      if (typeof input.sourceRoot !== 'string' || !Array.isArray(input.receivers)) throw new Error('接管需要 sourceRoot 与 receivers');
+      const sourceRoot = input.sourceRoot;
+      output(await run(() => runtime.recovery.takeover({ sourceRoot, receivers: input.receivers as { id: string; root: string }[] }))); break;
+    }
+    case 'maintenance-resume': output(await run(() => runtime.recovery.resume())); break;
     case 'prepare': {
       const options = await installOptions();
       const result = await run(() => runtime.prepare(options));

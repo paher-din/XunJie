@@ -10,7 +10,7 @@
 
 底座为每个 environment/service 创建独立 schema、无登录迁移角色和受限登录角色。普通连接没有 superuser、建库、建角色、角色成员资格和 schema DDL 权限；只能读写本 owner 的对象。已有共享数据库若给 `PUBLIC` 开放了 schema CREATE，应由其管理员调整，存储入口会明确拒绝此配置，不暗中修改其他应用的权限。
 
-原生引擎固定为安装票的 PostgreSQL **18.6**、UTF8、libc `C/C`、UTC，仅 `plpgsql`；本机和 Ubuntu 学校端运行同一 SQL。UUID、bigint/numeric 字符串、微秒时间文本、JSONB、bytea 都有实际往返案例。需要原字节的模型/工具记录使用资源，不能指望 JSONB 重编码保留字节。
+原生引擎默认使用安装票的 PostgreSQL **18.6**，维护升级另固定支持 **17.10、17.11**，其余版本明确拒绝；初始化使用 UTF8、libc `C/C`、UTC，仅 `plpgsql`；本机和 Ubuntu 学校端运行同一 SQL。UUID、bigint/numeric 字符串、微秒时间文本、JSONB、bytea 都有实际往返案例。需要原字节的模型/工具记录使用资源，不能指望 JSONB 重编码保留字节。
 
 迁移必须按 `1..N` 连续登记 `{version,name,sql}`，版本、名称和 SQL 摘要持久保存。已登记脚本不可修改、跳号或降级。会话级 advisory lock 拒绝并行迁移；角色、schema、业务迁移和账本在同一事务创建。已有 schema 升级先关闭写入，经同一入口应用新迁移，再用新版本 module 校验和开放；维护关闭及 schema 升级分别推进持久代际，旧句柄不能继续写。
 
@@ -49,9 +49,13 @@ GC 的 `olderThan` 是宿主明确给定的保留边界。候选对象与新引�
 
 把 `storage.participant()` 登记到 `@xunjie/product-runtime/maintenance`。关闭新写入等待已开始的事务，推进代际并持久关闸；关闭派发后排空上传/删除，恢复验证检查 schema 及全部被引用/保留的原字节，再重新开放。状态持久在 PostgreSQL；服务重启不会自动重新开放。旧 peer 需重新 `openStorage`；维护宿主自己的 participant 在成功 resume 后更新句柄代际。
 
-`snapshot(backupId, consume)` 仅允许关闸并排空后调用。它先持久保存资源清单及 pin，覆盖当前业务引用和既有备份的保留责任，再提供真实 `pg_export_snapshot()`，供同库逻辑导出导入快照。consume 完成前快照事务保持存活；调用方应在此期间完成数据库导出和资源复制。上传不使用这种长事务。清单记录 owner、schema/资源格式、代际、摘要和资源身份，不含秘密。
+`snapshot(backupId, consume)` 仅允许关闸并排空后调用。它先持久保存资源清单及 pin，覆盖全部已确认的 `ready` 资源（包括尚未被业务引用的上传）、当前业务引用和既有备份的保留责任，再提供真实 `pg_export_snapshot()`，供同库逻辑导出导入快照。consume 完成前快照事务保持存活；调用方应在此期间完成数据库导出和资源复制。上传不使用这种长事务。清单记录 owner、schema/资源格式、代际、摘要和资源身份，不含秘密。
 
 `validateManifest` 拒绝遗漏当前引用、重复身份、摘要/字节错误和版本不兼容；participant 另验证所有当前引用及备份 pin。备份 pin 跨重启保持，只有备份确实退役后才 `releaseBackup`。完整备份位置、逻辑还原、跨平台迁移、接管及唯一权威交接由 #145 编排，不由本包隐式恢复或外部重放。
+
+管理员恢复入口 `prepareStorageRestore({admin, owner, password})` 只接受未占用的目标 schema/角色，返回含 `migratorRole` 的 binding，临时授予该迁移角色创建 schema 的权限。维护宿主使用公开 binding 与原生 `pg_restore --role <migratorRole> --no-owner --no-acl` 还原完整所属 schema；不另枚举业务表。
+
+复制全部原始资源对象后，`finalizeStorageRestore({binding, admin, migrations, manifest, backend})` 撤销临时 DDL 权限、推进关闭的恢复代际，按 owner 登记的迁移检查实际结构、约束、序列、角色权限与读写能力，并校验引用资源。返回的 `OwnedStorage` 保持写入和派发关闭。新凭据须私密持久保存，生产维护适配器负责这一步；重启接入与完整操作见 [#145 维护交接](../../docs/student-agent-implementation/maintenance-acceptance.md)。失败不回退为开放状态，不靠新建业务请求或重放外部效果恢复资源。
 
 ## 错误语义
 

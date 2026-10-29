@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 const exec = promisify(execFile);
 export async function nativeFixture() {
   const bin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
-  if (!bin) throw new Error('XUNJIE_PRODUCT_POSTGRES_BIN must point to the pinned PostgreSQL 18.6 distribution.');
+  if (!bin) throw new Error('XUNJIE_PRODUCT_POSTGRES_BIN must point to a supported PostgreSQL 17.10, 17.11 or 18.6 distribution.');
   const root = await mkdtemp(join(tmpdir(), '循阶 storage '));
   const tool = name => join(bin, name + (process.platform === 'win32' ? '.exe' : ''));
   const env = { ...process.env, LANG: 'C', LC_ALL: 'C' };
@@ -32,7 +32,7 @@ export async function nativeFixture() {
     } finally { clearTimeout(timer); child.stdout.destroy(); child.stderr.destroy(); }
   };
   const { stdout } = await run('postgres', ['--version']);
-  if (!stdout.includes(' 18.6')) throw new Error('Storage acceptance requires PostgreSQL 18.6.');
+  if (!/PostgreSQL\) (?:17\.10|17\.11|18\.6)\s*$/.test(stdout)) throw new Error('Storage acceptance requires PostgreSQL 17.10, 17.11 or 18.6.');
   const password = randomBytes(32).toString('base64url');
   const passwordFile = join(root, 'password');
   await writeFile(passwordFile, password, { mode: 0o600 });

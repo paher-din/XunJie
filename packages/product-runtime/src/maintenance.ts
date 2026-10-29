@@ -24,6 +24,8 @@ export interface MaintenanceState {
 export function createMaintenanceCoordinator(options: {
   requiredServiceIds: string[];
   record: (state: MaintenanceState) => Promise<void>;
+  timeoutMs?: number;
+  beforeResume?: () => Promise<void>;
 }) {
   const required = [...new Set(options.requiredServiceIds)];
   const participants = new Map<string, MaintenanceParticipant>();
@@ -60,7 +62,13 @@ export function createMaintenanceCoordinator(options: {
   }
 
   async function all(actions: (() => Promise<void>)[]) {
-    const results = await Promise.allSettled(actions.map((action) => Promise.resolve().then(action)));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const pending = Promise.allSettled(actions.map((action) => Promise.resolve().then(action)));
+    // Closing/draining/validation can time out safely: none of them open a gate.
+    // Resume must confirm completion and is never abandoned in the background.
+    const results = await (phase === 'resuming' ? pending : Promise.race([pending,
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Maintenance participant timeout')), options.timeoutMs ?? 30_000); }),
+    ])).finally(() => { if (timer) clearTimeout(timer); });
     const failures = results.filter((result) => result.status === 'rejected');
     if (failures.length) {
       const causes: unknown[] = failures.map((result) => result.reason);
@@ -155,6 +163,7 @@ export function createMaintenanceCoordinator(options: {
       return exclusive(async () => {
         error = undefined;
         await check();
+        await options.beforeResume?.();
         await save('resuming');
         gatesClosed = false;
         drained = false;

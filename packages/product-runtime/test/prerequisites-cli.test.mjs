@@ -1,12 +1,135 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import { build } from 'esbuild';
-import { buildApplication } from '../../../scripts/package-product.mjs';
+import { assertProductionGraph, buildApplication } from '../../../scripts/package-product.mjs';
+
+const repository = fileURLToPath(new URL('../../../', import.meta.url));
+const packager = join(repository, 'scripts/package-product.mjs');
+const catalogPath = join(repository, 'scripts/product-resources.json');
+const execute = promisify(execFile);
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+
+test('the public packaging CLI selects versioned resources and emits an independently importable API', { skip: process.platform === 'win32' }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'xunjie-package-api-'));
+  try {
+    const cache = join(directory, 'cache');
+    await mkdir(cache);
+    const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
+    // Replace only the archive boundary with tiny local inputs. The real public
+    // CLI still extracts, bundles production entries, collects licenses, audits
+    // its metafile/paths and writes the final resources and distribution records.
+    const specifications = [catalog.node, catalog.postgres, ...Object.values(catalog.postgresVersions)];
+    for (const spec of specifications) {
+      const asset = spec.platforms['darwin-arm64'];
+      const source = join(directory, 'inputs', asset.archiveRoot);
+      for (const name of spec.license.preserve) {
+        const path = join(source, name);
+        if (name === 'dependency-notices') {
+          await mkdir(path, { recursive: true });
+          await writeFile(join(path, 'NOTICE'), 'fixture dependency license');
+        } else {
+          await mkdir(dirname(path), { recursive: true });
+          await writeFile(path, 'fixture license/build metadata');
+        }
+      }
+      const tools = spec === catalog.node ? [asset.executable] : spec.requiredTools.map(name => `bin/${name}`);
+      for (const tool of tools) {
+        await mkdir(dirname(join(source, tool)), { recursive: true });
+        await writeFile(join(source, tool), `fixture ${spec.version} ${tool}`);
+      }
+      const archive = join(cache, new URL(asset.url).pathname.split('/').at(-1));
+      await execute('tar', ['-czf', archive, '-C', dirname(source), asset.archiveRoot]);
+      const bytes = await readFile(archive);
+      asset.bytes = bytes.length;
+      asset.sha256 = digest(bytes);
+    }
+    const preload = join(directory, 'archive-boundary.mjs');
+    await writeFile(preload, `import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+const original = fs.readFile;
+fs.readFile = (path, ...args) => path === ${JSON.stringify(catalogPath)}
+  ? Promise.resolve(${JSON.stringify(JSON.stringify(catalog))}) : original(path, ...args);
+syncBuiltinESMExports();
+globalThis.fetch = () => { throw new Error('Packaging regression must never use the network'); };
+`);
+    const npm = join(directory, 'web-build.mjs');
+    await writeFile(npm, `import {mkdir,writeFile} from 'node:fs/promises';
+import {join} from 'node:path';
+const out=process.argv[process.argv.indexOf('--outDir')+1];
+await mkdir(out,{recursive:true}); await writeFile(join(out,'index.html'),'<html>fixture</html>');
+`);
+    const invoke = args => execute(process.execPath, ['--import', preload, packager, '--platform', 'darwin-arm64', '--cache', cache, ...args], {
+      cwd: directory, env: { ...process.env, npm_execpath: npm, NODE_OPTIONS: '', NODE_PATH: '' },
+    });
+    for (const version of ['18.6', '17.10', '17.11']) {
+      const out = join(directory, `candidate-${version}`);
+      // Omission is intentional: assert that the original default stays 18.6.
+      await invoke(['--out', out, ...(version === '18.6' ? [] : ['--postgres-version', version])]);
+      const resources = JSON.parse(await readFile(join(out, 'resources.json'), 'utf8'));
+      const manifest = JSON.parse(await readFile(join(out, 'distribution.json'), 'utf8'));
+      assert.equal(resources.postgresVersion, version);
+      assert.equal(resources.postgresBin, 'resources/postgres/bin');
+      const pg = manifest.resources.find(item => item.id === 'postgres');
+      const expected = version === '18.6' ? catalog.postgres : catalog.postgresVersions[version];
+      assert.equal(pg.version, version);
+      assert.equal(pg.distributionVersion, `${version}.1`);
+      assert.deepEqual(pg.license, expected.license);
+      assert.equal(pg.archive.url, expected.platforms['darwin-arm64'].url);
+      assert.equal(pg.archive.sha256, expected.platforms['darwin-arm64'].sha256);
+      assert.equal(pg.archive.bytes, expected.platforms['darwin-arm64'].bytes);
+      assert.equal(pg.archive.manifestSource, `${pg.archive.url}.manifest.json`);
+      assert.equal(await readFile(join(out, 'resources/postgres/dependency-notices/NOTICE'), 'utf8'), 'fixture dependency license');
+      const api = join(out, 'app/product-runtime.js');
+      assert.equal(manifest.entryHashes['app/product-runtime.js'].sha256, digest(await readFile(api)));
+      const metafile = JSON.parse(await readFile(join(out, 'app/metafile.json'), 'utf8'));
+      assert.equal(metafile.outputs['app/product-runtime.js'].entryPoint, 'packages/product-runtime/src/index.ts');
+      assertProductionGraph(metafile);
+      assert.ok(manifest.application.dependencies.some(item => item.name === 'pg' && item.version === '8.16.3'));
+      await assert.rejects(readFile(join(out, 'app/product-runtime.js.map')), { code: 'ENOENT' });
+      // Import from outside the repository, with no workspace/node_modules
+      // resolution. Exercise an actual public API without starting a service.
+      const environment = join(directory, `not-created-${version}`);
+      const code = `import {openProductRuntime,createProductRuntimeHost,resolveCredential,restoreProductRecovery,storage} from ${JSON.stringify(pathToFileURL(api).href)};
+if(typeof createProductRuntimeHost!=='function'||typeof resolveCredential!=='function') throw Error('Missing public export');
+if(typeof restoreProductRecovery!=='function'||typeof storage.provisionStorage!=='function'||typeof storage.openStorage!=='function') throw Error('Missing recovery/storage export');
+const runtime=openProductRuntime({root:${JSON.stringify(environment)},resources:{nodePath:process.execPath,nodeVersion:'24.21.0',webRoot:${JSON.stringify(out)}}});
+console.log(JSON.stringify(await runtime.prepare({profile:'remote'})));`;
+      const result = await execute(process.execPath, ['--input-type=module', '-e', code], {
+        cwd: directory, env: { ...process.env, NODE_PATH: '', NODE_OPTIONS: '' },
+      });
+      assert.equal(JSON.parse(result.stdout).status, 'ready');
+      await assert.rejects(readdir(environment), { code: 'ENOENT' });
+    }
+    // A remote package omits PG regardless of the selected source version.
+    const remote = join(directory, 'remote');
+    await invoke(['--profile', 'remote', '--postgres-version', '17.10', '--out', remote]);
+    const remoteResources = JSON.parse(await readFile(join(remote, 'resources.json'), 'utf8'));
+    assert.equal(Object.hasOwn(remoteResources, 'postgresVersion'), false);
+    assert.equal(Object.hasOwn(remoteResources, 'postgresBin'), false);
+    assert.deepEqual(JSON.parse(await readFile(join(remote, 'distribution.json'), 'utf8')).resources.map(item => item.id), ['node']);
+    const invalid = join(directory, 'invalid');
+    for (const version of ['17.12', '__proto__']) {
+      await assert.rejects(invoke(['--postgres-version', version, '--out', invalid]), error => {
+        assert.match(error.stderr, /PostgreSQL version must be/); return true;
+      });
+    }
+    await assert.rejects(readdir(invalid), { code: 'ENOENT' });
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('the bundle dependency guard rejects fixtures, unrelated modules and unbundled packages', () => {
+  for (const input of ['packages/product-runtime/test/host.ts', 'packages/product-runtime/src/fixtures/sample.ts', 'packages/storage/test/host.ts', 'apps/server/server/index.ts']) {
+    assert.throws(() => assertProductionGraph({ inputs: { [input]: {} }, outputs: {} }), /Non-production dependency|outside the product/);
+  }
+  assert.throws(() => assertProductionGraph({ inputs: {}, outputs: { api: { imports: [{ path: 'pg', external: true }] } } }), /Unbundled product dependency/);
+});
 
 test('packaged CLI gates managed install before data mutation and keeps read-only/remote/external paths inert', { skip: process.platform === 'win32' }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'xunjie-prereq-cli-'));

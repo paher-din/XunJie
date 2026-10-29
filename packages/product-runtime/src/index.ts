@@ -8,3 +8,9 @@ export { resolveCredential } from './postgres.js';
 export { createProductRuntimeHost } from './host.js';
 export * from './connections.js';
 export * from './maintenance.js';
+export * from './recovery.js';
+export type * from './recovery-types.js';
+export { restoreProductRecovery, upgradeProductRecovery, createRuntimeRecoveryTarget, recoveryDatabase } from './runtime-recovery.js';
+export { createStorageRecoveryOwner, createStorageRecoveryTarget, openRecoveredStorage } from './storage-recovery.js';
+/** Deployment assembly can provision owners using the same distributed storage implementation. */
+export * as storage from '@xunjie/storage';

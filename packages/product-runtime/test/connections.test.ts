@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
-import { createServer } from 'node:http';
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { createServer, request as httpRequest } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import type { TestContext } from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
+import { promisify } from 'node:util';
 import type { RuntimeConnection, RuntimeService } from '@xunjie/contracts/product-runtime';
 import {
   createConnectionAuthority, createOutboundConnection, RuntimeConnectionError,
@@ -222,6 +225,184 @@ test('disconnect and reconnect retain the original target, source and revoked gr
   const explicitlyRenewed = outbound(descriptor(receiver.target, identity), renewed.token);
   assert.equal((await explicitlyRenewed.check()).state, 'ready');
   assert.equal(otherCalls, 0);
+});
+
+test('source fencing invalidates every old token across reconnect, authority rebuilding and restored legacy grant files', async (t) => {
+  const receiver = await host(t);
+  const identity = source();
+  const otherIdentity = { ...identity, sourceServiceId: randomUUID() };
+  const otherGrant = await receiver.authority.authorize({ ...otherIdentity, capabilities: ['echo'] });
+  const grants = await Promise.all([0, 1].map(() => receiver.authority.authorize({ ...identity, capabilities: ['echo'] })));
+  const clients = grants.map(grant => outbound(descriptor(receiver.target, identity), grant.token));
+  // An installed pre-generation grant is accepted as generation zero.
+  const oldPath = join(receiver.root, 'private', 'connections', receiver.target.environmentId,
+    receiver.target.serviceId, `${grants[0]!.grantId}.json`);
+  const legacy = JSON.parse(await readFile(oldPath, 'utf8'));
+  delete legacy.generation;
+  const legacyFile = JSON.stringify(legacy);
+  await writeFile(oldPath, legacyFile);
+  // A pre-generation installation has neither generation nor execution directories.
+  await rm(join(receiver.root, 'private', 'connections', receiver.target.environmentId,
+    receiver.target.serviceId, 'sources', identity.sourceEnvironmentId), { recursive: true, force: true });
+  for (const client of clients) assert.equal(await client.request('echo', 'source-alive'), 'source-alive');
+  const before = Date.now();
+  const proof = await receiver.authority.fenceSource(identity);
+  assert.deepEqual(Object.keys(proof).sort(), ['fencedAt', 'generation', 'sourceEnvironmentId', 'sourceServiceId']);
+  assert.equal(proof.generation, 1);
+  assert.equal(proof.sourceEnvironmentId, identity.sourceEnvironmentId);
+  assert.equal(proof.sourceServiceId, identity.sourceServiceId);
+  assert.ok(Date.parse(proof.fencedAt) >= before);
+  for (const client of clients) {
+    assert.equal((await client.check()).reason, 'http_401');
+    await assert.rejects(client.request('echo'), hasCode('http_401'));
+  }
+  assert.equal(await outbound(descriptor(receiver.target, otherIdentity), otherGrant.token).request('echo', 'other'), 'other');
+  await receiver.restart();
+  for (const grant of grants) {
+    assert.equal((await outbound(descriptor(receiver.target, identity), grant.token).check()).reason, 'http_401');
+  }
+  await receiver.authority.revoke(grants[0]!.grantId);
+  await writeFile(oldPath, legacyFile);
+  receiver.reopen();
+  assert.equal((await clients[0]!.check()).reason, 'http_401');
+  const renewed = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  assert.equal(await outbound(descriptor(receiver.target, identity), renewed.token).request('echo', 'renewed'), 'renewed');
+  assert.equal((await clients[0]!.check()).reason, 'http_401');
+});
+
+test('source fencing waits for all parallel handlers, including those admitted by a previous authority', async (t) => {
+  const starts = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+  const finishes = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+  t.after(() => finishes.forEach(finish => finish.resolve()));
+  const receiver = await host(t, { echo: async (payload) => {
+    const index = payload as number;
+    starts[index]!.resolve();
+    await finishes[index]!.promise;
+    return index;
+  } });
+  const identity = source();
+  const grant = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  const client = outbound(descriptor(receiver.target, identity), grant.token, 3_000);
+  const requests = [client.request('echo', 0), client.request('echo', 1)];
+  await Promise.all(starts.map(start => start.promise));
+  receiver.reopen();
+  const fencing = receiver.authority.fenceSource({ ...identity, timeoutMs: 2_000 });
+  assert.equal(await Promise.race([fencing.then(() => true), delay(40, false)]), false);
+  assert.equal((await client.check()).reason, 'http_401');
+  finishes[0]!.resolve();
+  assert.equal(await requests[0], 0);
+  assert.equal(await Promise.race([fencing.then(() => true), delay(40, false)]), false);
+  finishes[1]!.resolve();
+  assert.equal(await requests[1], 1);
+  assert.equal((await fencing).generation, 1);
+});
+
+test('source fencing fails explicitly when an in-flight caller disconnects without stopping its handler', async (t) => {
+  const started = Promise.withResolvers<void>();
+  const finish = Promise.withResolvers<void>();
+  t.after(() => finish.resolve());
+  const receiver = await host(t, { echo: async () => {
+    started.resolve();
+    await finish.promise;
+  } });
+  const identity = source();
+  const grant = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  const client = outbound(descriptor(receiver.target, identity), grant.token, 2_000);
+  const requestFailure = assert.rejects(client.request('echo'), hasCode('connection_unavailable'));
+  await started.promise;
+  await close(receiver.server);
+  await requestFailure;
+  await assert.rejects(receiver.authority.fenceSource({ ...identity, timeoutMs: 300 }), hasCode('fence_source_disconnected'));
+  finish.resolve();
+});
+
+test('source fencing timeout never returns a proof or reopens an old authorization', async (t) => {
+  const started = Promise.withResolvers<void>();
+  const finish = Promise.withResolvers<void>();
+  t.after(() => finish.resolve());
+  const receiver = await host(t, { echo: async () => {
+    started.resolve();
+    await finish.promise;
+    return 'finished';
+  } });
+  const identity = source();
+  const grant = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  const client = outbound(descriptor(receiver.target, identity), grant.token, 2_000);
+  const request = client.request('echo');
+  await started.promise;
+  const before = Date.now();
+  await assert.rejects(receiver.authority.fenceSource({ ...identity, timeoutMs: 80 }), hasCode('timeout'));
+  assert.ok(Date.now() - before < 1_000);
+  receiver.reopen();
+  assert.equal((await client.check()).reason, 'http_401');
+  finish.resolve();
+  assert.equal(await request, 'finished');
+  assert.equal((await receiver.authority.fenceSource(identity)).generation, 2);
+  assert.equal((await client.check()).reason, 'http_401');
+});
+
+test('parallel fencing and authorization across authorities never lose a generation or upgrade an existing token', async (t) => {
+  const receiver = await host(t);
+  const identity = source();
+  const first = receiver.authority;
+  receiver.reopen();
+  const second = receiver.authority;
+  const [proofs, grants] = await Promise.all([
+    Promise.all([first.fenceSource(identity), second.fenceSource(identity), first.fenceSource(identity)]),
+    Promise.all([first.authorize({ ...identity, capabilities: ['echo'] }), second.authorize({ ...identity, capabilities: ['echo'] })]),
+  ]);
+  assert.deepEqual(proofs.map(proof => proof.generation).sort(), [1, 2, 3]);
+  assert.equal((await second.fenceSource(identity)).generation, 4);
+  for (const grant of grants) {
+    assert.equal((await outbound(descriptor(receiver.target, identity), grant.token).check()).reason, 'http_401');
+  }
+  const renewed = await first.authorize({ ...identity, capabilities: ['echo'] });
+  assert.equal(await outbound(descriptor(receiver.target, identity), renewed.token).request('echo', 'latest'), 'latest');
+});
+
+test('fencing from independent receiver processes persists after those processes exit', async (t) => {
+  const receiver = await host(t);
+  const identity = source();
+  const grant = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  const child = `
+    import { createConnectionAuthority } from '@xunjie/product-runtime/connections';
+    const [root, target, source] = process.argv.slice(1);
+    const authority = createConnectionAuthority({ root, service: JSON.parse(target), handlers: { echo: value => value } });
+    console.log(JSON.stringify(await authority.fenceSource({ ...JSON.parse(source), timeoutMs: 3000 })));
+  `;
+  const results = await Promise.all([0, 1].map(() => promisify(execFile)(process.execPath,
+    ['--input-type=module', '-e', child, receiver.root, JSON.stringify(receiver.target), JSON.stringify(identity)], { timeout: 5_000 })));
+  assert.deepEqual(results.map(result => JSON.parse(result.stdout).generation).sort(), [1, 2]);
+  receiver.reopen();
+  assert.equal((await outbound(descriptor(receiver.target, identity), grant.token).check()).reason, 'http_401');
+  assert.equal((await receiver.authority.fenceSource(identity)).generation, 3);
+});
+
+test('a slow capability body is authenticated again against the fenced generation before dispatch', async (t) => {
+  let calls = 0;
+  const receiver = await host(t, { echo: () => { calls++; return 'unexpected'; } });
+  const identity = source();
+  const grant = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  const request = httpRequest(`${receiver.target.endpoint}/runtime/capabilities/echo`, {
+    method: 'POST', headers: {
+      authorization: `Bearer ${grant.token}`, 'content-type': 'application/json',
+      'x-runtime-source-environment-id': identity.sourceEnvironmentId,
+      'x-runtime-source-service-id': identity.sourceServiceId,
+      'x-runtime-target-environment-id': receiver.target.environmentId,
+      'x-runtime-target-service-id': receiver.target.serviceId,
+      'x-runtime-protocol-version': String(receiver.target.protocolVersion),
+    },
+  });
+  t.after(() => request.destroy());
+  const response = once(request, 'response');
+  request.write('{"value":');
+  await delay(40);
+  await receiver.authority.fenceSource(identity);
+  request.end('1}');
+  const [received] = await response as [IncomingMessage];
+  received.resume();
+  assert.equal(received.statusCode, 401);
+  assert.equal(calls, 0);
 });
 
 async function wireHost(t: TestContext, responder: (request: IncomingMessage, response: ServerResponse, target: RuntimeService) => void) {

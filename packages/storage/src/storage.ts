@@ -23,13 +23,18 @@ function blobFailure(error: unknown): StorageError {
   return error instanceof BlobError ? new StorageError(error.code) : storageFailure(error);
 }
 
-export async function openStorage(options: {
+type OpenOptions = {
   binding: StorageBinding; migrations: readonly Migration[]; backend: BlobBackend; drainTimeoutMs?: number; queryTimeoutMs?: number;
-}): Promise<OwnedStorage> {
+};
+export function openStorage(options: OpenOptions): Promise<OwnedStorage> { return open(options, false); }
+/** Internal restore verification cannot admit callers until the administrator finalizes. */
+export function openRestoringStorage(options: OpenOptions): Promise<OwnedStorage> { return open(options, true); }
+async function open(options: OpenOptions, restoring: boolean): Promise<OwnedStorage> {
   const binding = structuredClone(options.binding);
   const migrations = options.migrations.map(item => ({ ...item }));
   const sourceBackend = options.backend;
-  const backend: BlobBackend = { id: sourceBackend.id, put: sourceBackend.put.bind(sourceBackend),
+  const location = sourceBackend.location === undefined ? undefined : Object.freeze({ ...sourceBackend.location });
+  const backend: BlobBackend = { id: sourceBackend.id, location, put: sourceBackend.put.bind(sourceBackend),
     get: sourceBackend.get.bind(sourceBackend), remove: sourceBackend.remove.bind(sourceBackend) };
   if (options.queryTimeoutMs !== undefined && (!Number.isInteger(options.queryTimeoutMs) || options.queryTimeoutMs < 1)) throw new StorageError('invalid');
   const pool = new pg.Pool({ ...binding.connection, max: 8, connectionTimeoutMillis: 5000,
@@ -50,7 +55,7 @@ export async function openStorage(options: {
   let initial: pg.PoolClient | undefined;
   try {
     initial = observe(await pool.connect());
-    generation = await verifyBinding(initial, binding, migrations);
+    generation = await verifyBinding(initial, binding, migrations, restoring);
   } catch (error) {
     initial?.release(); await pool.end(); throw storageFailure(error);
   }
@@ -58,8 +63,18 @@ export async function openStorage(options: {
   const owner = { ...binding.owner };
   const schemaVersion = migrationPlan(migrations).length;
   const ownerPrefix = `${owner.environmentId}/${owner.serviceId}`;
+  let gateTail = Promise.resolve();
+  function gate(action: () => Promise<void>): Promise<void> {
+    // Coordinators close writes and dispatch in parallel. One handle must
+    // observe its own committed generation before starting its next gate action;
+    // independent handles still compare against their original generation.
+    const result = gateTail.then(action);
+    gateTail = result.catch(() => {});
+    return result;
+  }
 
-  async function transaction<T>(action: (client: pg.PoolClient) => Promise<T>, config: { write?: boolean; requestId?: string; readOnly?: boolean } = {}): Promise<T> {
+  async function transaction<T>(action: (client: pg.PoolClient) => Promise<T>, config: { write?: boolean; requestId?: string; readOnly?: boolean; fence?: boolean; exclusive?: boolean } = {}): Promise<T> {
+    const expectedGeneration = generation;
     let client: pg.PoolClient | undefined;
     let committing = false;
     let broken = false;
@@ -67,10 +82,10 @@ export async function openStorage(options: {
       client = observe(await pool.connect());
       await client.query(config.readOnly ? 'BEGIN READ ONLY' : 'BEGIN');
       await client.query(`SET LOCAL search_path TO ${identifier(binding.schema)}, pg_catalog`);
-      if (config.write) {
-        const { rows: [state] } = await client.query('SELECT generation,writes_open FROM _storage_identity FOR SHARE');
-        if (state.generation !== generation) throw new StorageError('stale-generation');
-        if (!state.writes_open) throw new StorageError('maintenance');
+      if (config.write || config.fence || config.exclusive) {
+        const { rows: [state] } = await client.query(`SELECT generation,writes_open FROM _storage_identity${config.readOnly ? '' : config.exclusive ? ' FOR UPDATE' : ' FOR SHARE'}`);
+        if (state.generation !== expectedGeneration) throw new StorageError('stale-generation');
+        if (config.write && !state.writes_open) throw new StorageError('maintenance');
       }
       const result = await action(client);
       committing = true;
@@ -184,7 +199,7 @@ export async function openStorage(options: {
   async function drain() {
     const deadline = Date.now() + (options.drainTimeoutMs ?? 5000);
     for (;;) {
-      const { rows } = await transaction(client => client.query("SELECT resource_id,state FROM _storage_resources WHERE state IN ('uploading','deleting')"), { readOnly: true });
+      const { rows } = await transaction(client => client.query("SELECT resource_id,state FROM _storage_resources WHERE state IN ('uploading','deleting')"), { readOnly: true, fence: true });
       for (const row of rows.filter(row => row.state === 'deleting')) await deleteClaim(row.resource_id);
       if (!rows.length) return;
       if (Date.now() >= deadline) throw new StorageError('resource-busy');
@@ -194,13 +209,13 @@ export async function openStorage(options: {
   async function validate() {
     await drain();
     const resources = await transaction(async client => {
-      await verifyBinding(client, binding, migrations);
+      await verifyBinding(client, binding, migrations, restoring);
       const { rows } = await client.query(`SELECT DISTINCT r.reference,r.state FROM _storage_resources r
         WHERE EXISTS(SELECT 1 FROM _storage_references x WHERE x.resource_id=r.resource_id)
           OR EXISTS(SELECT 1 FROM _storage_pins p WHERE p.resource_id=r.resource_id)`);
       if (rows.some(row => row.state !== 'ready')) throw new StorageError('corrupt');
       return rows.map(row => resourceReferenceSchema.parse(row.reference));
-    }, { readOnly: true });
+    }, { readOnly: true, fence: true });
     for (const reference of resources) {
       if (reference.owner.environmentId !== owner.environmentId || reference.owner.serviceId !== owner.serviceId || reference.locator.backendId !== backend.id
         || reference.locator.key !== `${ownerPrefix}/${reference.resourceId}`) throw new StorageError('incompatible');
@@ -211,6 +226,7 @@ export async function openStorage(options: {
   const storage: OwnedStorage = {
     get owner() { return { ...owner }; },
     get generation() { return generation; },
+    get resourceLocation() { return location; },
     async request(input, effect) {
       validId(input.requestId); validId(input.fingerprint);
       // Confirmed retries remain readable while new writes are closed.
@@ -338,20 +354,26 @@ export async function openStorage(options: {
     participant() {
       return {
         descriptor: { serviceId: owner.serviceId, schemaVersion: `storage/1;owner/${schemaVersion}`,
-          resourceRoots: [backend.id], configurationRefs: [`storage:${owner.environmentId}:${owner.serviceId}`] },
+          resourceRoots: [location?.kind === 'file' ? location.root : location?.kind === 's3'
+            ? `s3:${location.endpoint}/${location.bucket}` : backend.id], configurationRefs: [`storage:${owner.environmentId}:${owner.serviceId}`] },
         async closeWrites() {
-          await transaction(async client => {
-            await client.query('UPDATE _storage_identity SET writes_open=false,generation=generation+1 WHERE writes_open');
+          return gate(async () => {
+            generation = await transaction(async client => {
+              const { rows: [row] } = await client.query('UPDATE _storage_identity SET writes_open=false,generation=generation+CASE WHEN writes_open THEN 1 ELSE 0 END RETURNING generation');
+              return row.generation as string;
+            }, { exclusive: true });
           });
         },
-        async closeDispatch() { await transaction(async client => { await client.query('UPDATE _storage_identity SET dispatch_open=false'); }); },
+        async closeDispatch() { return gate(async () => { await transaction(async client => { await client.query('UPDATE _storage_identity SET dispatch_open=false'); }, { exclusive: true }); }); },
         drain,
         validate,
         async resume() {
-          await validate();
-          generation = await transaction(async client => {
-            const { rows: [row] } = await client.query('UPDATE _storage_identity SET writes_open=true,dispatch_open=true RETURNING generation');
-            return row.generation as string;
+          return gate(async () => {
+            await validate();
+            generation = await transaction(async client => {
+              const { rows: [row] } = await client.query('UPDATE _storage_identity SET generation=generation+CASE WHEN NOT writes_open OR NOT dispatch_open THEN 1 ELSE 0 END,writes_open=true,dispatch_open=true RETURNING generation');
+              return row.generation as string;
+            }, { exclusive: true });
           });
         },
       };
@@ -364,16 +386,17 @@ export async function openStorage(options: {
         if (state.writes_open || state.dispatch_open) throw new StorageError('maintenance');
         const existing = (await client.query('SELECT manifest FROM _storage_backups WHERE backup_id=$1', [backupId])).rows[0];
         if (existing) return existing.manifest as StorageManifest;
+        // The schema dump also contains confirmed, not-yet-referenced uploads.
+        // Every ready row must remain usable after restore, including a later publication.
         const { rows } = await client.query(`SELECT r.resource_id,r.reference FROM _storage_resources r
-          WHERE (EXISTS(SELECT 1 FROM _storage_references x WHERE x.resource_id=r.resource_id)
-            OR EXISTS(SELECT 1 FROM _storage_pins p WHERE p.resource_id=r.resource_id)) AND r.state='ready'
+          WHERE r.state='ready'
           ORDER BY r.resource_id FOR UPDATE OF r`);
         const value: StorageManifest = { formatVersion: 1, backupId, owner, schemaVersion,
           generation: state.generation, resources: rows.map(row => resourceReferenceSchema.parse(row.reference)) };
         await client.query('INSERT INTO _storage_backups(backup_id,manifest) VALUES($1,$2)', [backupId,json(value)]);
         for (const row of rows) await client.query('INSERT INTO _storage_pins VALUES($1,$2)', [backupId,row.resource_id]);
         return value;
-      });
+      }, { exclusive: true });
       // Only maintenance uses a long-lived snapshot; uploads and regular requests
       // never wait for network inside a database transaction.
       const client = observe(await pool.connect());
@@ -384,13 +407,13 @@ export async function openStorage(options: {
         const { rows: [state] } = await client.query('SELECT writes_open,dispatch_open,generation FROM _storage_identity');
         if (state.writes_open || state.dispatch_open || state.generation !== manifest.generation) throw new StorageError('maintenance');
         const { rows: [row] } = await client.query('SELECT pg_export_snapshot() AS snapshot');
-        const result = await consume({ databaseSnapshot: row.snapshot as string, manifest });
+        const result = await consume({ databaseSnapshot: row.snapshot as string, migratorRole: binding.migratorRole, manifest });
         await client.query('COMMIT');
         return result;
       } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw storageFailure(error); }
       finally { client.release(); }
     },
-    async releaseBackup(backupId) { validId(backupId); await transaction(async client => { await client.query('DELETE FROM _storage_backups WHERE backup_id=$1', [backupId]); }); },
+    async releaseBackup(backupId) { validId(backupId); await transaction(async client => { await client.query('DELETE FROM _storage_backups WHERE backup_id=$1', [backupId]); }, { fence: true }); },
     async validateManifest(manifest) {
       if (manifest.formatVersion !== 1 || manifest.owner.environmentId !== owner.environmentId || manifest.owner.serviceId !== owner.serviceId || manifest.schemaVersion !== schemaVersion) throw new StorageError('incompatible');
       const ids = new Set(manifest.resources.map(reference => reference.resourceId));
