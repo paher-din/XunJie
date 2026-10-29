@@ -55,6 +55,18 @@ xunjie stop
 
 版本值必须反映候选包实际资源，示例不代表包已具备对应版本。`nodePath`、`postgresBin`、`webRoot` 的相对路径均以 resources.json 所在目录解析；绝对路径保留。`postgresBin`、`postgresVersion` 可省略，是否需要 PostgreSQL 由安装配置和库判断。后续命令使用安装时保存的资源；`--resources` 不替换已有安装配置，资源升级由后续恢复升级流程处理。
 
+## Windows 运行库准备
+
+managed PostgreSQL 在 Windows 上需要 Microsoft VC++ v14 x64。产品准备策略采用已核实的 14.51.36247.0 或更新版本；前述 14.50 宿主通过属于实际运行证据，不代表已确定上游完整支持下限。
+
+```sh
+xunjie prepare --profile local
+```
+
+依赖已就绪则返回 `ready`；缺失或旧版时，从微软固定内容地址下载到本人私有缓存，验证摘要、版本及微软签名后返回 `installation-required`（退出码 3），给出已验证安装器路径和重试说明。本人在微软窗口完成许可和系统权限操作后重试。准备完成不等于安装已完成，产品不自动接受条款或提权。`install / launch / start` 复用同一准备能力；remote、外部 PG、只读状态和停止流程不下载该依赖。
+
+直接调用共享 `openProductRuntime().install/start` 时，待安装结果由 `ProductInstallationRequiredError.result` 提供，环境身份和凭据尚未创建。缓存校验失败抛出 `ProductPrerequisitePreparationError`，含具体 `cachePath` 和 `recovery`；按指引移出原文件后重试即可重新下载。
+
 ## 已有 PostgreSQL
 
 维护者通过安装 JSON 明确选择已有数据库，不自动探测、接管或初始化既有 PostgreSQL：

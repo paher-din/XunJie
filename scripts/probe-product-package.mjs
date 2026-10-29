@@ -118,7 +118,7 @@ async function main(options) {
     environments: {}, stages: [], commands: [],
     acceptance: { engineering: 'running', browser: 'not-run', teachingEffectiveness: 'not-run',
       cleanMachine: 'not-run', windows: 'not-run', realSleepWake: 'not-run', crossMachine: 'not-run',
-      chromeEdge: 'not-run', doubleClickLaunch: 'not-run', signingNotarization: 'out-of-scope' },
+      chrome: 'not-run', edge: 'not-required-by-owner', doubleClickLaunch: 'not-run', signingNotarization: 'out-of-scope' },
     limitations: [
       'Only this recorded platform/host and package tree hash; a rebuilt candidate needs a fresh run.',
       'Independent SQL fixture only; no course, Agent, business persistence or teaching acceptance.',

@@ -14,6 +14,7 @@ export interface RuntimeResources {
   nodeVersion: string;
   postgresBin?: string;
   postgresVersion?: string;
+  windowsPrerequisitePath?: string;
   webRoot: string;
 }
 export type DatabaseConfiguration = { mode: 'managed' } | { mode: 'none' } | {

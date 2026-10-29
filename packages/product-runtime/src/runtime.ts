@@ -1,6 +1,6 @@
 import { spawn, execFile } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { mkdir, open, readFile, rm } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, readdir, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -13,6 +13,8 @@ import { assertRoot, atomicJson, exists, initializeRoot, ownsProcess, processIde
 import type { ProcessOwner } from './io.js';
 import { databaseBinding, freePort, inspectDatabase, prepareDatabase, resolveCredential, stopDatabase, storeCredential } from './postgres.js';
 import type { DatabaseConfiguration, RuntimeResources } from './postgres.js';
+import { prepareProductPrerequisites, ProductInstallationRequiredError } from './prerequisites.js';
+import type { ProductPrerequisiteResult } from './prerequisites.js';
 
 export interface InstallOptions {
   profile: RuntimeEnvironment['profile'];
@@ -35,12 +37,50 @@ export interface InstalledConfiguration {
 }
 export interface RunningInstance extends ProcessOwner { endpoint: string }
 
-export function openProductRuntime(options: { root: string; resources?: RuntimeResources }) {
+export function openProductRuntime(options: { root: string; resources?: RuntimeResources; windowsPrerequisitePath?: string }) {
   const root = resolve(options.root);
   const configPath = join(root, 'installation.json');
   const environmentPath = join(root, 'environment.json');
   const environment = async () => runtimeEnvironmentSchema.parse(await readJson(environmentPath));
   const configuration = async () => { await assertRoot(root); return readJson<InstalledConfiguration>(configPath); };
+
+  async function prepare(input?: InstallOptions, reinstall = false): Promise<ProductPrerequisiteResult> {
+    if (input) runtimeEnvironmentSchema.shape.profile.parse(input.profile);
+    let resources: RuntimeResources;
+    let database: DatabaseConfiguration;
+    if (await exists(configPath)) {
+      const config = await configuration();
+      const descriptor = await environment();
+      if (typeof config.installed !== 'boolean') throw new Error('Invalid product installation state.');
+      if (!config.installed && !reinstall) throw new Error('Install the product before preparing or starting it.');
+      if (reinstall && descriptor.profile !== input!.profile) throw new Error('Deployment profile change requires a separate environment.');
+      resources = config.resources; database = config.database;
+    } else {
+      if (!input) { await configuration(); throw new Error('Install the product before preparing or starting it.'); }
+      // Validate without creating even the root marker, identity or credentials.
+      if (await exists(root)) {
+        const entry = await lstat(root);
+        if (entry.isSymbolicLink()) throw new Error('Environment root cannot be a symbolic link.');
+        if (!entry.isDirectory()) throw new Error('Directory is occupied; select an empty product environment directory.');
+        if (await exists(join(root, '.xunjie-root'))) await assertRoot(root);
+        else if ((await readdir(root)).length) await assertRoot(root);
+        if (await exists(environmentPath) && (await environment()).profile !== input.profile) throw new Error('Environment identity/profile mismatch.');
+      }
+      if (!options.resources) throw new Error('Install requires resources from the product distribution.');
+      resources = options.resources;
+      database = input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' };
+    }
+    if (!database || !['managed', 'external', 'none'].includes(database.mode)) throw new Error('Invalid database mode in product installation.');
+    if (!resources || typeof resources.nodePath !== 'string' || typeof resources.webRoot !== 'string') throw new Error('Invalid resources in product installation.');
+    // A new product may supply its helper for old metadata. Saved Node/PG/data
+    // resources are never replaced, including during a reinstall.
+    const helper = resources.windowsPrerequisitePath ?? options.windowsPrerequisitePath ?? options.resources?.windowsPrerequisitePath;
+    return prepareProductPrerequisites(helper ? { ...resources, windowsPrerequisitePath: helper } : resources, database);
+  }
+  async function requirePrepared(input?: InstallOptions, reinstall = false): Promise<void> {
+    const result = await prepare(input, reinstall);
+    if (result.status === 'installation-required') throw new ProductInstallationRequiredError(result);
+  }
 
   async function control(action: 'status' | 'stop'): Promise<RuntimeStatus | null> {
     if (!await exists(join(root, 'instance.json'))) return null;
@@ -96,8 +136,10 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
   }
 
   return {
+    prepare: (input?: InstallOptions) => prepare(input),
     async install(input: InstallOptions = { profile: 'local' }): Promise<RuntimeStatus> {
       runtimeEnvironmentSchema.shape.profile.parse(input.profile);
+      await requirePrepared(input, true);
       await initializeRoot(root);
       return withLock(root, async () => {
         if (await exists(configPath)) {
@@ -149,7 +191,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
       });
     },
     async start(): Promise<RuntimeStatus> {
-      await assertRoot(root);
+      await requirePrepared();
       return withLock(root, async () => {
         const config = await configuration();
         if (!config.installed) throw new Error('Install the product before starting it.');

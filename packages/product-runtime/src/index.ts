@@ -1,4 +1,7 @@
 export { openProductRuntime } from './runtime.js';
+export { prepareProductPrerequisites } from './prerequisites.js';
+export { ProductInstallationRequiredError, ProductPrerequisitePreparationError } from './prerequisites.js';
+export type { ProductPrerequisiteResult } from './prerequisites.js';
 export type { InstallOptions } from './runtime.js';
 export type { RuntimeResources, DatabaseConfiguration, DatabaseBinding } from './postgres.js';
 export { resolveCredential } from './postgres.js';

@@ -15,7 +15,7 @@ PostgreSQL 完整目录保留 `LICENSE`、`dependency-notices/`、运行库、�
 | 产品目标 | 当前先决条件与未完成项 |
 | --- | --- |
 | darwin-arm64 | theseus 基线 macOS 15.0+、Apple Silicon；Mac 包七项基础工具实际 `--version` 返回 18.6，`postgres` 仅 ad-hoc 签名，无 TeamIdentifier。当前产品输出 unsigned；签名、公证按用户要求暂不做，不作为本轮构建阻塞，Gatekeeper 未验收。 |
-| win32-x64 | Windows 11 x64 为产品验收目标；实机 build 26200、非提升令牌已通过独立包验收，既有 VC++ 14.50.35719 的 vcruntime/msvcp 实际从 System32 加载。上游未随包携带 VC++ v14 Runtime；干净机的安装或 app-local 准备及分发许可仍需解决。 |
+| win32-x64 | Windows 11 x64 为产品验收目标；实机 build 26200、非提升令牌已通过独立包验收，既有 VC++ 14.50.35719 的 vcruntime/msvcp 实际从 System32 加载。上游未随包携带 VC++ v14 Runtime。产品仅在 managed PG 路径检测依赖，并从微软固定内容地址下载 14.51.36247.0 安装器，校验 SHA-256 与 Microsoft Authenticode；缺项/旧版返回 `installation-required` 和安装入口，许可/UAC由本人完成后重试。未将微软安装器或 DLL 字节再分发进产品包；安装后就绪尚未实测。 |
 | linux-x64 | 首个实际学校组合为 Ubuntu 24.04.5 x64、glibc 2.39；独立包运行、Mac 到学校的真实公网 HTTPS 认证/重连/撤销已验证，结果见[运行证据](evidence/wp01-network-macos-linux.json)。上游 archive 的 ABI 下限仍为 glibc >=2.36 与对应 ELF loader，不是 musl 包。Node 还要求 kernel >=4.18。 |
 
 以上平台边界以 [theseus 支持策略](https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md) 及 [Node 24.21.0 平台说明](https://github.com/nodejs/node/blob/v24.21.0/BUILDING.md) 为依据。
@@ -39,7 +39,7 @@ CLI 和 daemon 从生产源码分别经 esbuild 打包为 `app/cli.js`、`app/da
 
 每次打包先创建独立 staging，再无条件执行 `npm run build:runtime -w @xunjie/web -- --outDir <本次 staging/web 绝对路径>`，直接生成本次 `web/` 并遍历验证；不读取、复制或清空共享的 `apps/web/dist-runtime`，避免多平台构建与根 verify 争用产物。存在旧 `index.html` 不会跳过构建，构建失败或未生成入口则停止打包并清理本次 staging。调用优先使用 `process.env.npm_execpath`，其余沿用平台对应的 npm 分支。原生资源分别放在 `resources/node/`、`resources/postgres/`。根目录 `resources.json` 的 `nodePath`、`postgresBin`、`webRoot` 均相对该文件，版本为 Node 24.21.0、PG engine 18.6。根目录 `xunjie`（可执行 sh）或 `xunjie.cmd` 始终调用包内 Node 与 `app/cli.js`；无参数时自动执行 `launch`，有参数时原样透传，不查找宿主 Node。Mac 根目录还输出同样行为、可双击的 `循阶.command`，与 `xunjie` 脚本内容相同且具有执行权限。不生成 `.app`。
 
-`distribution.json` 保存平台、profile、unsigned-candidate 状态、原始 archive URL/摘要/校验清单与上游 manifest 来源、Node 受控子集与 PG 完整保留方式、许可与先决条件、npm 依赖及 notices、原生工具 entry hash、程序/网页/全部启动入口 hash 和资源清单 hash。它记录本次构建自身的检查结果，原生进程、备份升级和干净机验收为 `not-run`（外部探针结果另行记录）；签名和公证为 `deferred-by-user`，不阻塞本轮构建。它不是签名的更新清单。输出目录仅在构建成功后发布，失败会移除本次 staging。
+`distribution.json` 保存平台、profile、unsigned-candidate 状态、原始 archive URL/摘要/校验清单与上游 manifest 来源、Node 受控子集与 PG 完整保留方式、许可与先决条件、npm 依赖及 notices、原生工具 entry hash、程序/网页/全部启动入口 hash 和资源清单 hash。它记录本次构建自身的检查结果，原生进程和备份升级为 `not-run`（外部探针结果另行记录）；干净 OS 虚拟机验收已按本轮范围变更取消；签名和公证为 `deferred-by-user`，不阻塞本轮构建。它不是签名的更新清单。输出目录仅在构建成功后发布，失败会移除本次 staging。
 
 ## 后续真实探针
 

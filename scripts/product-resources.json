@@ -12,7 +12,11 @@
     "win32-x64": {
       "os": "win32",
       "architecture": "x64",
-      "prerequisites": ["Windows 11 x64 is the product acceptance target; clean-machine acceptance is pending", "Microsoft Visual C++ v14 Runtime (vcruntime140 family), not bundled by theseus; installer/app-local provisioning and redistribution terms remain to be resolved"],
+      "prerequisites": [
+        "Windows 11 x64",
+        "Managed PostgreSQL: Microsoft VC++ v14 x64; product preparation policy accepts 14.51.36247.0 or newer. The prior host probe on 14.50 is operational evidence, not a supported minimum. Remote/external PostgreSQL does not require the local runtime.",
+        "Product downloads a pinned Microsoft installer directly into the user cache, verifies SHA256 and Authenticode, then returns installation-required. The end user completes Microsoft terms/UAC and retries. No Microsoft installer/DLL is redistributed in the package."
+      ],
       "upstreamSignature": "PostgreSQL 18.6.1 Authenticode not independently verified; product signing acceptance is pending"
     },
     "linux-x64": {
@@ -91,5 +95,22 @@
         "sha256": "e84b02dd8d0ce5879fb697330a789231c8b8f8d958dae3ad4d90fecc710b1315"
       }
     }
+  },
+  "windowsPrerequisite": {
+    "id": "microsoft-vc14-x64",
+    "version": "14.51.36247.0",
+    "productAcceptedMinimum": "14.51.36247.0",
+    "toolchainFamilyObserved": "14.51",
+    "minimumProvenance": "Upstream 18.6.1 build-manifest identifies MSVC cl on Windows-2025Server but omits the exact compiler revision; PostgreSQL PE linker is 14.51. Microsoft requires runtime at least as new as build tools. The product conservatively pins the verified current official 14.51.36247 candidate, not an inferred exact upstream ABI minimum.",
+    "upstreamBuildMetadata": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip.manifest.json",
+    "microsoftVersionPolicy": "https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist",
+    "discoverySource": "https://aka.ms/vc14/vc_redist.x64.exe",
+    "url": "https://download.visualstudio.microsoft.com/download/pr/ebdab8e5-1d7b-4d9f-a11b-cbb1720c3b12/843068991DAAA1F73AD9F6239BCE4D0F6A07A51F18C37EA2A867E9BECA71295C/VC_redist.x64.exe",
+    "bytes": 18731856,
+    "sha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+    "distribution": "helper/metadata only; installer downloaded directly from Microsoft on target user machine, not bundled",
+    "redistributionPolicy": "Installer is downloaded directly from Microsoft on the end-user machine; no Microsoft installer or DLL bytes are included in the product package.",
+    "licenseUrl": "https://visualstudio.microsoft.com/license-terms/vs2026-ga-visualcpp-v14-redist-runtime/",
+    "redistributionSource": "https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files"
   }
 }

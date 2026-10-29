@@ -293,16 +293,29 @@ export async function packageProduct(options) {
       resources.push(record);
     }
     const application = await buildApplication(join(staging, 'app'));
+    const windowsPrerequisitePath = platform === 'win32-x64' && profile === 'full'
+      ? 'resources/prerequisites/windows-vc.ps1' : undefined;
+    if (windowsPrerequisitePath) {
+      const helperSource = await readFile(join(root, 'scripts/windows-prereq-prepare.ps1'), 'utf8');
+      for (const value of [catalog.windowsPrerequisite.version, catalog.windowsPrerequisite.url,
+        catalog.windowsPrerequisite.sha256, String(catalog.windowsPrerequisite.bytes)]) {
+        if (!helperSource.includes(value)) throw new Error('Windows prerequisite helper/catalog pins differ.');
+      }
+      await mkdir(dirname(join(staging, windowsPrerequisitePath)), { recursive: true });
+      await cp(join(root, 'scripts/windows-prereq-prepare.ps1'), join(staging, windowsPrerequisitePath));
+    }
     for (const file of await walk(web)) {
       if (/\.map$/i.test(file.name)) throw new Error(`Source map in product web: ${file.name}`);
       if (/\.(?:js|json|html|css)$/i.test(file.name)) await assertNoWorkspacePath(file.path);
     }
     const runtimeResources = { nodePath: `resources/node/${catalog.node.platforms[platform].executable}`, nodeVersion: catalog.node.version,
-      ...(profile === 'full' ? { postgresBin: 'resources/postgres/bin', postgresVersion: catalog.postgres.version } : {}), webRoot: 'web' };
+      ...(profile === 'full' ? { postgresBin: 'resources/postgres/bin', postgresVersion: catalog.postgres.version } : {}),
+      ...(windowsPrerequisitePath ? { windowsPrerequisitePath } : {}), webRoot: 'web' };
     await json(join(staging, 'resources.json'), runtimeResources);
     await json(join(staging, 'package.json'), { name: '@xunjie/product-distribution', private: true, type: 'module' });
     const launchers = await writeLaunchers(staging, platform);
     const entryHashes = {};
+    if (windowsPrerequisitePath) entryHashes[windowsPrerequisitePath] = { sha256: await sha256(join(staging, windowsPrerequisitePath)) };
     for (const directory of ['app', 'web']) {
       for (const file of await walk(join(staging, directory))) entryHashes[`${directory}/${file.name}`] = file.symlink
         ? { symlink: await readlink(file.path) } : { sha256: await sha256(file.path) };
@@ -314,9 +327,11 @@ export async function packageProduct(options) {
       signing: catalog.signing,
       prerequisites: catalog.platforms[platform].prerequisites, upstreamSignature: catalog.platforms[platform].upstreamSignature,
       resources, application, entryHashes, resourceCatalogSha256: await sha256(catalogPath),
+      ...(windowsPrerequisitePath ? { windowsPrerequisite: { ...catalog.windowsPrerequisite, helperPath: windowsPrerequisitePath,
+        helperSha256: entryHashes[windowsPrerequisitePath].sha256, installerBundled: false } } : {}),
       postgresBackupTools: profile === 'full' ? catalog.postgres.backupTools : [],
       verification: { archiveChecksums: 'passed', productionDependencyGraph: 'passed', workspacePathsInBundles: 'absent',
-        nativeProcessProbes: 'not-run', backupUpgradeProbes: 'not-run', cleanMachineAcceptance: 'not-run',
+        nativeProcessProbes: 'not-run', backupUpgradeProbes: 'not-run', cleanMachineAcceptance: 'cancelled-by-owner',
         productSigning: 'deferred-by-user', notarization: 'deferred-by-user', gatekeeper: 'not-run' },
     });
     await rename(staging, out);

@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { spawn } from 'node:child_process';
-import { openProductRuntime } from '@xunjie/product-runtime';
+import { openProductRuntime, ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
 
 type Runtime = ReturnType<typeof openProductRuntime>;
 type InstallOptions = NonNullable<Parameters<Runtime['install']>[0]>;
@@ -14,6 +14,7 @@ type Authorization = Parameters<Runtime['authorize']>[0];
 type Connection = Parameters<Runtime['connect']>[0];
 
 const commands: Record<string, readonly string[]> = {
+  prepare: ['config', 'profile', 'resources'],
   install: ['config', 'profile', 'resources'],
   launch: ['config', 'profile', 'resources'],
   start: ['resources'],
@@ -71,8 +72,8 @@ function defaultRoot(): string {
 async function resourcesFile(path: string): Promise<RuntimeResources> {
   const absolute = resolve(path);
   const value = await jsonFile(absolute, 'resources（安装需要应用包中的 resources.json，可用 --resources 指定）');
-  for (const key of ['nodePath', 'webRoot', 'postgresBin'] as const) {
-    if (key === 'postgresBin' && value[key] === undefined) continue;
+  for (const key of ['nodePath', 'webRoot', 'postgresBin', 'windowsPrerequisitePath'] as const) {
+    if ((key === 'postgresBin' || key === 'windowsPrerequisitePath') && value[key] === undefined) continue;
     if (typeof value[key] !== 'string' || !value[key].trim()) {
       throw new Error(`resources 缺少有效的 ${key}`);
     }
@@ -157,17 +158,20 @@ async function main(): Promise<void> {
 
   // Only install defaults to the bundled manifest. Other actions reuse saved resources.
   const resourcePath = typeof values.resources === 'string' ? values.resources
-    : command === 'install' ? fileURLToPath(new URL('../resources.json', import.meta.url)) : undefined;
+    : ['install', 'prepare'].includes(command) ? fileURLToPath(new URL('../resources.json', import.meta.url)) : undefined;
   const resources = resourcePath ? await resourcesFile(resourcePath) : undefined;
   const root = resolve(typeof values.root === 'string' ? values.root : defaultRoot());
-  let runtime = openProductRuntime({
+  const openRuntime = (selected = resources): Runtime => openProductRuntime({
     root,
-    ...(resources ? { resources } : {}),
+    ...(selected ? { resources: selected } : {}),
+    windowsPrerequisitePath: fileURLToPath(new URL('../resources/prerequisites/windows-vc.ps1', import.meta.url)),
   });
+  let runtime = openRuntime();
   const run = async <T>(operation: () => Promise<T>): Promise<T> => {
     try {
       return await operation();
     } catch (error) {
+      if (error instanceof ProductInstallationRequiredError || error instanceof ProductPrerequisitePreparationError) throw error;
       const detail = error instanceof Error ? error.message : 'Unknown runtime failure';
       // Preserve the actionable diagnostic; the final boundary below redacts
       // credentials read by this invocation and never prints a stack/configuration.
@@ -184,6 +188,13 @@ async function main(): Promise<void> {
   };
 
   switch (command) {
+    case 'prepare': {
+      const options = await installOptions();
+      const result = await run(() => runtime.prepare(options));
+      output(result);
+      if (result.status === 'installation-required') process.exitCode = 3;
+      break;
+    }
     case 'install': {
       const options = await installOptions();
       output(await run(() => runtime.install(options)));
@@ -203,7 +214,7 @@ async function main(): Promise<void> {
       });
       if (!current) {
         const bundled = resources ?? await resourcesFile(fileURLToPath(new URL('../resources.json', import.meta.url)));
-        runtime = openProductRuntime({ root, resources: bundled });
+        runtime = openRuntime(bundled);
         await run(() => runtime.install(options));
       } else if (current.state === 'uninstalled') {
         await run(() => runtime.install(options));
@@ -307,10 +318,14 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
+  if (error instanceof ProductInstallationRequiredError) {
+    output(error.result); process.exitCode = 3; return;
+  }
   let message = error instanceof Error ? error.message : '命令执行失败';
   for (const secret of [...secrets].sort((a, b) => b.length - a.length)) {
     message = message.split(secret).join('[redacted]');
   }
-  process.stderr.write(`${JSON.stringify({ message })}\n`);
+  const detail = error instanceof ProductPrerequisitePreparationError ? { code: error.code, cachePath: error.cachePath, recovery: error.recovery } : {};
+  process.stderr.write(`${JSON.stringify({ message, ...detail })}\n`);
   process.exitCode = 1;
 });

@@ -1,0 +1,460 @@
+{
+  "issue": "https://github.com/paher-din/XunJie/issues/143",
+  "kind": "macos-arm64-runtime-linkage-audit",
+  "status": "passed",
+  "checkedAt": "2026-10-29T13:26:02.126409+00:00",
+  "scope": "Bundled Node and required PostgreSQL tools, plus their transitive Mach-O dynamic library graph; optional extensions are outside this runtime contract",
+  "method": "otool -arch arm64 -l; resolve loader/executable/rpath through the load chain; allow only bundled files and macOS system library prefixes",
+  "distributionSha256": "5a51e8c51c10e48ea69baf534b7d7dcf8ee6a126999bff6cb9778b6592280796",
+  "entrypoints": [
+    "resources/node/bin/node",
+    "resources/postgres/bin/initdb",
+    "resources/postgres/bin/postgres",
+    "resources/postgres/bin/pg_ctl",
+    "resources/postgres/bin/pg_controldata",
+    "resources/postgres/bin/psql",
+    "resources/postgres/bin/pg_dump",
+    "resources/postgres/bin/pg_dumpall",
+    "resources/postgres/bin/pg_restore",
+    "resources/postgres/bin/pg_upgrade"
+  ],
+  "uniqueMachOFiles": 20,
+  "edges": [
+    {
+      "from": "resources/node/bin/node",
+      "load": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+      "weak": false,
+      "kind": "system",
+      "target": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+    },
+    {
+      "from": "resources/node/bin/node",
+      "load": "/System/Library/Frameworks/Security.framework/Versions/A/Security",
+      "weak": false,
+      "kind": "system",
+      "target": "/System/Library/Frameworks/Security.framework/Versions/A/Security"
+    },
+    {
+      "from": "resources/node/bin/node",
+      "load": "/usr/lib/libc++.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libc++.1.dylib"
+    },
+    {
+      "from": "resources/node/bin/node",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libcrypto.3.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libssl.3.dylib",
+      "load": "@loader_path/libcrypto.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libcrypto.3.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libssl.3.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libpq.5.dylib",
+      "load": "@loader_path/libssl.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libssl.3.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libpq.5.dylib",
+      "load": "@loader_path/libcrypto.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libcrypto.3.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libpq.5.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/initdb",
+      "load": "@loader_path/../lib/libpq.5.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libpq.5.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicudata.78.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicuuc.78.dylib",
+      "load": "@loader_path/libicudata.78.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libicudata.78.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicuuc.78.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicuuc.78.dylib",
+      "load": "/usr/lib/libc++.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libc++.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/initdb",
+      "load": "@loader_path/../lib/libicuuc.78.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libicuuc.78.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/initdb",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libzstd.1.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "@loader_path/../lib/libzstd.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libzstd.1.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/liblz4.1.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "@loader_path/../lib/liblz4.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/liblz4.1.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libxml2.16.dylib",
+      "load": "/usr/lib/libz.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libz.1.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libxml2.16.dylib",
+      "load": "/usr/lib/libiconv.2.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libiconv.2.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libxml2.16.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "@loader_path/../lib/libxml2.16.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libxml2.16.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "@loader_path/../lib/libssl.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libssl.3.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "@loader_path/../lib/libcrypto.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libcrypto.3.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "/usr/lib/libz.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libz.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicui18n.78.dylib",
+      "load": "@loader_path/libicuuc.78.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libicuuc.78.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicui18n.78.dylib",
+      "load": "@loader_path/libicudata.78.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libicudata.78.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicui18n.78.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libicui18n.78.dylib",
+      "load": "/usr/lib/libc++.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libc++.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "@loader_path/../lib/libicui18n.78.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libicui18n.78.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/postgres",
+      "load": "@loader_path/../lib/libicuuc.78.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libicuuc.78.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_ctl",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_controldata",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/psql",
+      "load": "@loader_path/../lib/libpq.5.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libpq.5.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libreadline.8.dylib",
+      "load": "/usr/lib/libncurses.5.4.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libncurses.5.4.dylib"
+    },
+    {
+      "from": "resources/postgres/lib/libreadline.8.dylib",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/psql",
+      "load": "@loader_path/../lib/libreadline.8.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libreadline.8.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/psql",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dump",
+      "load": "@loader_path/../lib/libpq.5.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libpq.5.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dump",
+      "load": "@loader_path/../lib/libzstd.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libzstd.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dump",
+      "load": "@loader_path/../lib/liblz4.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/liblz4.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dump",
+      "load": "@loader_path/../lib/libcrypto.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libcrypto.3.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dump",
+      "load": "/usr/lib/libz.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libz.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dump",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dumpall",
+      "load": "@loader_path/../lib/libpq.5.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libpq.5.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dumpall",
+      "load": "@loader_path/../lib/libzstd.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libzstd.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dumpall",
+      "load": "@loader_path/../lib/liblz4.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/liblz4.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dumpall",
+      "load": "@loader_path/../lib/libcrypto.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libcrypto.3.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dumpall",
+      "load": "/usr/lib/libz.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libz.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_dumpall",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_restore",
+      "load": "@loader_path/../lib/libpq.5.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libpq.5.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_restore",
+      "load": "@loader_path/../lib/libzstd.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libzstd.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_restore",
+      "load": "@loader_path/../lib/liblz4.1.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/liblz4.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_restore",
+      "load": "@loader_path/../lib/libcrypto.3.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libcrypto.3.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_restore",
+      "load": "/usr/lib/libz.1.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libz.1.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_restore",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_upgrade",
+      "load": "@loader_path/../lib/libpq.5.dylib",
+      "weak": false,
+      "kind": "bundled",
+      "target": "resources/postgres/lib/libpq.5.dylib"
+    },
+    {
+      "from": "resources/postgres/bin/pg_upgrade",
+      "load": "/usr/lib/libSystem.B.dylib",
+      "weak": false,
+      "kind": "system",
+      "target": "/usr/lib/libSystem.B.dylib"
+    }
+  ],
+  "failures": [],
+  "cleanVm": "not-run; removed from current scope by owner; actual relocated package/PATH and linkage evidence retained"
+}

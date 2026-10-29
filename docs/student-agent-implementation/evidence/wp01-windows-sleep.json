@@ -1,0 +1,203 @@
+{
+  "issue": "https://github.com/paher-din/XunJie/issues/143",
+  "status": "passed",
+  "startedAt": "2026-10-29T12:48:43.6959920Z",
+  "platform": "Windows 11 x64",
+  "powerState": "Device reports S0 low-power idle/connected support; actual transition is evidenced by the fresh Kernel-Power records below",
+  "signingNotarization": "excluded-by-user",
+  "browser": "not-exercised-by-this-power-probe",
+  "stages": [
+    "standalone-package-installed-ready-and-committed-fixture",
+    "actual-OS-sleep-resume-events-with-armed-wake-timer",
+    "same-runtime-database-identity-processes-and-committed-data-ready"
+  ],
+  "host": {
+    "version": "Microsoft Windows NT 10.0.26200.0",
+    "user": "LAPTOP-S7A4IQFU\\h",
+    "elevated": false
+  },
+  "powerCapabilities": "此系统上有以下睡眠状态:\r\n    待机 (S0 低电量待机) 连接的网络\r\n    休眠\r\n    快速启动\r\n\r\n此系统上没有以下睡眠状态:\r\n    待机 (S1)\r\n\t系统固件不支持此待机状态。\r\n\t当支持 S0 低电量待机时，禁用此待机状态。\r\n\r\n    待机 (S2)\r\n\t系统固件不支持此待机状态。\r\n\t当支持 S0 低电量待机时，禁用此待机状态。\r\n\r\n    待机 (S3)\r\n\t系统固件不支持此待机状态。\r\n\t当支持 S0 低电量待机时，禁用此待机状态。\r\n\r\n    混合睡眠\r\n\t待机(S3)不可用。\r\n\t虚拟机监控程序不支持此待机状态。\r\n\r\n",
+  "wakePolicy": "电源方案 GUID: b8a2c9f4-7d3e-4a1b-9c2f-5e8d6a3b1c4f  (Honor Performance)\r\n  子组 GUID: 238c9fa8-0aad-41ed-83f4-97be242c8f20  (睡眠)\r\n    GUID 别名: SUB_SLEEP\r\n    电源设置 GUID: bd3b718a-0680-4d9d-8ab2-e1d2b4ac806d  (允许使用唤醒定时器)\r\n      GUID 别名: RTCWAKE\r\n      可能的设置索引: 000\r\n      可能的设置友好名称: 禁用\r\n      可能的设置索引: 001\r\n      可能的设置友好名称: 启用\r\n      可能的设置索引: 002\r\n      可能的设置友好名称: 仅限重要的唤醒计算器\r\n    当前交流电源设置索引: 0x00000001\r\n    当前直流电源设置索引: 0x00000000\r\n\r\n",
+  "resumedEnvironmentId": "b10fee88-1de6-4859-9f3b-4f302ba5860c",
+  "before": {
+    "state": "ready",
+    "environment": {
+      "formatVersion": 1,
+      "environmentId": "b10fee88-1de6-4859-9f3b-4f302ba5860c",
+      "installationId": "dd51144b-893b-4f0f-bf23-632bca8f9313",
+      "clientNamespace": "xunjie.v1.b10fee88-1de6-4859-9f3b-4f302ba5860c",
+      "profile": "local",
+      "services": [
+        {
+          "environmentId": "b10fee88-1de6-4859-9f3b-4f302ba5860c",
+          "serviceId": "7fc28e41-2217-44e3-b937-d0d78d44a0de",
+          "unit": "client",
+          "endpoint": "http://127.0.0.1:54119",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        }
+      ]
+    },
+    "daemonPid": 48668,
+    "daemonCreatedAt": "2026-10-29T12:48:46.0413700Z",
+    "database": {
+      "identifier": "7702068713817340184",
+      "directory": "C:/Users/h/AppData/Local/Temp/xunjie-sleep-ff2d72efc6c3/environment/pgdata",
+      "value": "committed-before-sleep-eab572bb-3356-48fc-ab6f-2b21a3c34b2a",
+      "postmasterStarted": "2026-10-29T12:48:47.960963+00:00"
+    }
+  },
+  "phase": "wake-timer-armed",
+  "wakeAt": "2026-10-29T12:49:40.8547137Z",
+  "absoluteUtcWakeTimer": true,
+  "power": {
+    "requestedAt": "2026-10-29T12:48:55.8687078Z",
+    "suspendReturnedAt": "2026-10-29T12:50:15.0029839Z",
+    "elapsedMs": 79134.2761,
+    "wakeTimerSignalled": true,
+    "events": [
+      {
+        "id": 42,
+        "time": "2026-10-29T12:49:02.6377530Z",
+        "recordId": 142263
+      },
+      {
+        "id": 107,
+        "time": "2026-10-29T12:49:05.4901025Z",
+        "recordId": 142269
+      },
+      {
+        "id": 506,
+        "time": "2026-10-29T12:50:14.9879546Z",
+        "recordId": 142285
+      }
+    ],
+    "globalPowerPolicyChanged": false,
+    "observedEventPair": {
+      "entryRecordId": 142263,
+      "exitRecordId": 142269,
+      "durationMs": 2852.3489999999997
+    },
+    "wakeSource": "not-established; timer was armed and signalled, which does not independently establish the wake source",
+    "eventDetails": [
+      {
+        "id": 107,
+        "recordId": 142269,
+        "time": "2026-10-29T12:49:05.4901025Z",
+        "data": {
+          "EffectiveState": "5",
+          "TargetState": "5"
+        }
+      },
+      {
+        "id": 42,
+        "recordId": 142263,
+        "time": "2026-10-29T12:49:02.6377530Z",
+        "data": {
+          "TargetState": "5",
+          "EffectiveState": "5",
+          "Reason": "4"
+        }
+      }
+    ],
+    "transitionKind": "hibernate-S4"
+  },
+  "after": {
+    "state": "ready",
+    "environment": {
+      "formatVersion": 1,
+      "environmentId": "b10fee88-1de6-4859-9f3b-4f302ba5860c",
+      "installationId": "dd51144b-893b-4f0f-bf23-632bca8f9313",
+      "clientNamespace": "xunjie.v1.b10fee88-1de6-4859-9f3b-4f302ba5860c",
+      "profile": "local",
+      "services": [
+        {
+          "environmentId": "b10fee88-1de6-4859-9f3b-4f302ba5860c",
+          "serviceId": "7fc28e41-2217-44e3-b937-d0d78d44a0de",
+          "unit": "client",
+          "endpoint": "http://127.0.0.1:54119",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        }
+      ]
+    },
+    "daemonPid": 48668,
+    "daemonCreatedAt": "2026-10-29T12:48:46.0413700Z",
+    "database": {
+      "identifier": "7702068713817340184",
+      "directory": "C:/Users/h/AppData/Local/Temp/xunjie-sleep-ff2d72efc6c3/environment/pgdata",
+      "value": "committed-before-sleep-eab572bb-3356-48fc-ab6f-2b21a3c34b2a",
+      "postmasterStarted": "2026-10-29T12:48:47.960963+00:00"
+    }
+  },
+  "cleanup": {
+    "servicesStopped": true,
+    "postgresStopped": true,
+    "coordinatorMustRemoveAfterThisProbeExits": false,
+    "temporaryRemoved": true,
+    "remainingOwnedProcesses": [],
+    "ownedTasksRemoved": [
+      "XunJie-WP01-Sleep-ff2d72efc6c3",
+      "XunJie-WP01-Sleep-ff2d72efc6c3-Diagnosis"
+    ],
+    "globalPowerPolicyChanged": false,
+    "at": "2026-10-29T12:55:48.5555831Z"
+  },
+  "finishedAt": "2026-10-29T12:50:31.0891114Z",
+  "coordinator": {
+    "remote": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-sleep-ff2d72efc6c3",
+    "task": "XunJie-WP01-Sleep-ff2d72efc6c3",
+    "wakeTask": "XunJie-WP01-Sleep-ff2d72efc6c3-Wake",
+    "archiveSha256": "59351250431cfa590a564934db5fdaecbd9ace6326d11c40e7430b88034eadef",
+    "scriptSha256": "428f43ed27de7f1eca5793a69c15dcbd009fc6af931f6b81cdcb2a17fe04e450",
+    "ssh": "deployment and observation only",
+    "backupWakeTask": "cancelled after preparation failure; actual resume probe used absolute UTC waitable timer"
+  },
+  "preparationAttempt": {
+    "status": "failed",
+    "error": "Product start failed: ",
+    "sleepAttempted": false,
+    "runtimeLog": "listen EACCES: permission denied 127.0.0.1:54119",
+    "sameEnvironmentRetry": "explicit bind and public start later succeeded under the same non-elevated token, port and environment; cause of transient denial undetermined; no configuration/data changed"
+  },
+  "freshEventFilterFollowup": {
+    "result": "passed",
+    "excludedOlderSystemEvents": true,
+    "sameBeforeAfterSnapshot": true,
+    "scriptSha256": "7d8521d326d08834defcdffef85adda1b2414e1f0aed0e94cf67c7c0552559e0",
+    "scope": "Fresh event-pair validation applied to captured actual OS events; no second power transition inferred"
+  },
+  "acceptance": {
+    "hibernateRecovery": "passed",
+    "modernStandbyRecovery": "not-run-by-this-automatic-call",
+    "scope": "Fresh Kernel-Power TargetState=5/EffectiveState=5 establishes S4. Do not label it S0 or claim the planned 45-second sleep duration."
+  },
+  "modernStandbyAttempt": {
+    "status": "not-accepted",
+    "ownerPerformedSleepAndWake": true,
+    "browserReport": "site unreachable",
+    "probeStoppedServiceBeforeOwnerFinished": true,
+    "probeStoppedAt": "2026-10-29T13:12:42.0333784Z",
+    "scopeDecision": "Do not repeat additional sleep-state matrix in this round",
+    "pageRecovery": {
+      "url": "http://127.0.0.1:52486",
+      "environmentId": "eeebb719-c7b9-4677-a925-f1e3601f643d",
+      "sameEnvironmentPreserved": true,
+      "startedBy": "temporary non-elevated interactive-user task",
+      "lastIndependentHttpState": "ready",
+      "retainedForOwnerReview": true,
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-standby-c930a50d8b31\\environment",
+      "package": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-standby-c930a50d8b31\\package",
+      "task": "XunJie-WP01-Page-c930a50d8b31",
+      "taskExecutionTimeLimit": "PT0S",
+      "verifiedAfterStartupSshExited": true,
+      "packageRevision": "r3; does not include the new VC++ preparation path",
+      "lastCapturedAt": "2026-10-29T13:43:38.5998077Z"
+    }
+  },
+  "scriptScope": "Automatic power recovery probe only; manual matrix observer removed after owner scope reduction"
+}
