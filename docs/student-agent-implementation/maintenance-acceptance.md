@@ -1,8 +1,8 @@
 # #145 维护、备份、恢复与权威接管
 
-本页记录 [#145](https://github.com/paher-din/XunJie/issues/145) 的操作入口、可信宿主集成契约和待执行验收。运行生命周期见 [#143 运行交接](runtime-acceptance.md)，所属数据与资源见 [#144 存储接入](storage-acceptance.md)。[运行库](../../packages/product-runtime/README.md)提供编排，[产品 CLI](../../apps/local-runtime/README.md)负责薄装配。
+本页记录 [#145](https://github.com/paher-din/XunJie/issues/145) 的操作入口、可信宿主集成契约和实际验收。运行生命周期见 [#143 运行交接](runtime-acceptance.md)，所属数据与资源见 [#144 存储接入](storage-acceptance.md)。[运行库](../../packages/product-runtime/README.md)提供编排，[产品 CLI](../../apps/local-runtime/README.md)负责薄装配。
 
-本页实际验收状态全部为 `pending`，由主 agent 随后补真实宿主、包摘要、日志和 evidence。已有工程回归或其他票的通过记录不替代本票的原生恢复、升级及接管验收。
+本轮使用实际分发包完成 Mac arm64、Windows 11 x64 普通用户及 Ubuntu x64 的恢复验收，完成 Mac → Windows 逻辑导入和 Mac → Linux 公网 HTTPS 混合接管。[验收汇总](evidence/wp01-maintenance-summary.json)保存代码版本、七份包摘要、工程检查、浏览器边界与清理结果；完整阶段记录见下表。所有时间为 UTC，2026-10-29 19 时对应北京时间 2026-10-30 凌晨 3 时。
 
 ## 当前交付边界
 
@@ -26,7 +26,7 @@
 
 `restoreProductRecovery` / `upgradeProductRecovery` 接受目标 `database`、`databaseCredential` 和 `installation`。`databaseCredential` 为 string，仅在可信 API 内存中传参，库将其写入目标 database.credentialRef 对应的私有 credential；不把源密码恢复成目标登录凭据。`installation` 为 `Omit<InstallOptions, 'database' | 'requiredServiceIds'>`，支持 profile、host、port、publicEndpoint、tls，供目标学校服务配置新 TLS 入口；数据库单独传入，requiredServiceIds 从备份恢复。其他 owner target 仍由可信宿主通过 `targets` 装配，其数据库通过 `admin()` 等配置接入。
 
-CLI restore/upgrade JSON 现在支持 `database`、`databaseCredentialFile`、`installation`。密码文件为单行非空文本，可带一个末尾换行，保留有意义的空格；读取后加入错误输出 redaction。JSON 只放文件路径，不放明文密码；external 现场 probe 与最终 evidence 仍由主 agent 真实运行后填写。
+CLI restore/upgrade JSON 现在支持 `database`、`databaseCredentialFile`、`installation`。密码文件为单行非空文本，可带一个末尾换行，保留有意义的空格；读取后加入错误输出 redaction。JSON 只放文件路径，不放明文密码；external 的实际凭据轮换、重开和管理员责任见 [学校验收](evidence/wp01-maintenance-external.json)。
 
 ## CLI 操作
 
@@ -138,7 +138,7 @@ xunjie start --root /srv/xunjie/restored-new
 xunjie takeover --root /srv/xunjie/restored-new --file /secure/xunjie/takeover.json
 ```
 
-`start` 只启动已恢复目标的隔离控制宿主，不自动开写闸。只有源当前**最新且仍 held** 的备份可接管；普通备份默认 resume，或 held 后又 resume/创建更新备份，均不能用旧边界退休源，以免丢掉新写。源须可达并提供绑定 backupId、源/目标 installationId 的退休证明。源已停止、不可达、拒绝、超时，或 receiver 缺失、重复、身份不符、fencing 失败，都不能开闸；不提供源失联后的强制接管。
+`start` 只启动已恢复目标的隔离控制宿主，不自动开写闸。只有源当前**最新且仍 held** 的备份可接管；普通备份默认 resume，或 held 后又 resume/创建更新备份，均不能用旧边界退休源，以免丢掉新写。首次退休须由源提供绑定 backupId、源/目标 installationId 的持久证明；没有有效证明时，源不可达、拒绝、超时均不能开闸。若源已完成退休而回复丢失，可从已绑定的源 root 重读 `retired.json`；若目标已持久保存有效证明，接管重试复用它，无需源进程继续存活。receiver 缺失、重复、身份不符或 fencing 失败时仍保持隔离，不提供无证明的强制接管。
 
 CLI 经本机 root 的私有控制接口访问 source/receivers；root 映射不是远程 URL，不代表任意跨机器 CLI 控制已实现。每个 receiver 读取实际运行身份并核对 `environmentId/serviceId`，再对 manifest 全部源服务/owner service 身份 fencing。接收方持久推进 generation、拒绝旧 token，确认已接受的 capability handler 全部结束才返回无秘密 proof；断线/超时不返回可接管 proof。
 
@@ -205,9 +205,9 @@ xunjie maintenance-resume --root /srv/xunjie/source
 
 证据保留 backupId、边界时间、owner schema/engine 版本、artifact 摘要、耗时和错误分类；状态包括 `recovery-operations/`、`recovery-state.json`、`retired.json`、`upgrade-*.json`。保留失败现场与日志，公开 evidence 不附 key、token、密码、私钥、完整私密配置或业务正文。
 
-## 独立验收命令与待填证据
+## 独立验收命令与证据
 
-[probe-recovery.mjs](../../scripts/probe-recovery.mjs)由独立 agent 维护。它从候选包 `app/product-runtime.js` 装配自己的业务服务，自动切换到包内 Node，root 必须不存在且在仓库/产品包外。以下为待执行命令，不表示已经运行或通过：
+[probe-recovery.mjs](../../scripts/probe-recovery.mjs)由独立 agent 维护。它从候选包 `app/product-runtime.js` 装配自己的业务服务，自动切换到包内 Node，root 必须不存在且在仓库/产品包外。以下为可复现命令；本轮实际结果、工具与包摘要保存在随后列出的 evidence 中：
 
 ```sh
 node scripts/probe-recovery.mjs --help
@@ -222,14 +222,14 @@ node scripts/probe-recovery.mjs \
 
 各平台使用实际 full 原生包，Windows 普通用户终端换成本机绝对路径。`--old-package`、`--minor-package` 分别提供 17.10、17.11，主包提供 18.6。S3 配置遵循 [存储验收](storage-acceptance.md)固定后端，使用独立目标 bucket；配置不进日志。省略可选参数会跳过对应验收，跳过不算通过。
 
-跨操作系统仅导入验收使用脚本生成的原 `file-backups/<backupId>/`（含 manifest 与 artifacts）、`private/recovery-key.base64`、`portability-private.json`，通过私密渠道转移到另一宿主：
+跨操作系统仅导入验收使用脚本生成的原 `file-backups/<backupId>/`（含 manifest 与 artifacts）、`private/recovery-key.base64`、`portability.private.json`，通过私密渠道转移到另一宿主：
 
 ```sh
 node scripts/probe-recovery.mjs \
   --package /opt/xunjie-pg18 \
   --import-backup '/private/transfer/file-backups/<backupId>' \
   --key-file /private/transfer/recovery-key.base64 \
-  --expect-file /private/transfer/portability-private.json \
+  --expect-file /private/transfer/portability.private.json \
   --root /var/tmp/xunjie-portability-new \
   --out /var/tmp/xunjie-portability-evidence.json
 ```
@@ -240,16 +240,23 @@ node scripts/probe-recovery.mjs \
 
 | 验收范围 | 状态 | evidence |
 | --- | --- | --- |
-| 工程 build/typecheck、公开 API/CLI 回归、依赖图与文档链接 | pending | 待主 agent 填本票完整检查及包摘要 |
-| Mac arm64 独立包：文件资源、完整恢复、源仍在线的接管 | pending | 待实际宿主结果与日志 |
-| Windows x64 普通用户：中文/空格路径、工具、恢复与接管 | pending | 待实际宿主结果与日志 |
-| Linux x64 学校组合：数据、回执、资源与权威交接 | pending | 待实际宿主结果与日志 |
-| 跨操作系统材料转移与独立目标仅导入、保持隔离 | pending | 待源包/目标包、材料摘要与目标宿主证据 |
-| S3 独立 bucket 恢复、原字节及 pin | pending | 待配置与后端证据 |
-| 17.10 → 17.11 小版本升级 | pending | 待固定资源包与运行证据 |
-| 17.11 → 18.6 大版本升级 | pending | 待固定资源包与运行证据 |
-| 真实 owner schema 迁移与服务约束验证 | pending | 独立宿主样例、后续生产 WP 分别记录 |
-| 错 key、材料缺失/损坏、磁盘不足、不兼容、中断后原备份新目标重建、B 不变 | pending | 待失败分类、现场状态与重建证据 |
-| 源不可达/拒绝、漏 receiver、根身份不符、在途 handler、旧 token/代际拒绝 | pending | 待源、接收方和目标实际记录 |
-| 学校 external 目标 cluster、权限、工具及产品不拥有启停 | pending | 待管理员准备与现场集成证据 |
-| 浏览器与教学效果 | pending | 工程恢复结果不推导浏览器或教学结果，后续按实际范围记录 |
+| 工程 build/typecheck、完整测试、浏览器 contracts 与文档链接 | passed | [汇总](evidence/wp01-maintenance-summary.json)：`npm run verify` 五阶段通过；默认测试 1,799 项通过、18 项按原配置跳过。打包修正后另跑 3 项实际 bundle/CLI 检查通过 |
+| Mac arm64：文件资源、独立恢复、源仍在线接管、正常停启重开 | passed | [Mac 21 阶段](evidence/wp01-maintenance-macos.json)，28.546 秒；恢复凭据持久保存，新宿主/连接池重读原数据及原字节 |
+| Windows 11 x64：中文/空格路径、正常/异常退出、恢复与接管 | passed | [Windows 21 阶段](evidence/wp01-maintenance-windows.json)，280.643 秒；[普通用户令牌](evidence/wp01-maintenance-windows-token.json)确认 `elevated: false` |
+| Ubuntu x64：文件/S3、schema 与异常退出后的原备份重建 | passed | [Linux 18 阶段](evidence/wp01-maintenance-linux.json)，58.431 秒；Linux 本轮未运行 PG17 小/大版本，两条迁移由 Mac/Windows 分别完成 |
+| Mac → Windows 逻辑导出还原、原字节与回执、目标隔离 | passed | [跨平台仅导入](evidence/wp01-maintenance-macos-to-windows.json)，16.364 秒；同一 `39bcf692-c5a4-4aef-be91-479c45513b98`，未联系源或接管；[普通用户令牌](evidence/wp01-maintenance-portability-token.json) |
+| 文件与 S3 独立 bucket 恢复、保留 pin、原字节 | passed | Mac/Windows/Linux 各自完整维护恢复；S3 使用固定 SeaweedFS 4.50。真实跨机对象链路另见 [hybrid](evidence/wp01-maintenance-hybrid.json) |
+| 17.10 → 17.11 小版本升级与 17.11 → 18.6 大版本升级 | passed | Mac/Windows 各自完成；[CLI minor](evidence/wp01-maintenance-cli-minor.json)、[CLI major](evidence/wp01-maintenance-cli-major.json)另覆盖自动备份、保留策略、隔离与接管 |
+| owner schema 1 → 2、升级进程中途退出、原备份新目标重建 | passed | Mac/Windows/Linux 均在新 schema 实际还原后终止工作进程，再从原 backupId 重建并验证后接管；未来生产 owner 随所属 WP 补验 |
+| 错 key、缺失/损坏材料、空间、版本、占用目标及正常 B 保全 | passed | 三平台失败阶段；Mac/Windows 另拒绝“工具18.6、external 实际仍17.11”的伪升级。真实写盘不足见 [8 阶段](evidence/wp01-maintenance-disk-space.json)：256 MiB 新 RAM 目标在数据库已还原后的资源复制中不足，同备份在普通磁盘重建，原源/备份/B 不变 |
+| 源仍在线退休、断连、旧 token、旧进程/接收方重启、未知效果不重放 | passed | [真实 Mac → Linux 公网 HTTPS](evidence/wp01-maintenance-hybrid.json) 9 阶段；实际停止 bridge 注入断连，接管后旧 token 及接收方重启后的旧 token 均拒绝，新授权按原 effectId 取得原回执且 counter 不增加。缺 receiver、超时、失联无证明及退休重试另有公开 API 回归 |
+| 学校 external 空目标、凭据轮换、权限及启停责任 | passed | [Ubuntu external 7 阶段](evidence/wp01-maintenance-external.json)；管理员通过独立 provider 管理一次性 cluster，学校产品以 external 连接接入，学校 stop/uninstall 不停止或删除数据库；管理员重启后使用持久新 binding 重开 |
+| Chrome 与教学效果 | 部分执行 | Mac 桌面 Chrome 156 实际观察升级后 `ready → maintenance → ready`、PG18.6、新 installation 与恢复 namespace；Windows Chrome 和教学效果未执行，不计通过 |
+
+本轮文件备份边界分别为 Mac `2026-10-29T19:06:32.087Z`（备份 141 ms）、Windows `19:08:18.108Z`（662 ms）、Linux `19:07:53.793Z`（1,157 ms）；真实混合备份为 `19:08:03.031Z`（1,310 ms）。这些是小型独立验收服务的实际耗时，不是容量或性能承诺。每个 evidence 保留原 backupId、版本、artifact 摘要、阶段耗时与失败分类。
+
+最初一次全量验证在开发工具的临时快照中因缺少 `zod` / `better-sqlite3` 失败；切换到完整固定 Node/npm、完成 `npm ci` 并提交代码快照后，完整门禁通过，未放宽依赖或测试。随后打包器仅从固定资源 catalog 选择可构建版本，避免 `--help` 依赖预编译 storage；相关 bundle/CLI 检查另行通过。
+
+通用 CLI 通过本机私有 root 发起接管；真实跨机案例通过可信宿主的 SSH receiver adapter 调用相同公开编排与 authority API，数据与外部效果经过公网 HTTPS。该证据不表示已交付任意远程管理 CLI。学校 external 证明使用独立的一次性管理员 provider，未操作现有学校数据库。
+
+清理时停止所有本次宿主、PG 与 S3，删除一次性私密恢复材料和计划任务，卸载仅本次创建的 RAM 设备，并撤销临时 TCP38196 入站规则；规则集合与运行前完全一致。原生包可从固定缓存重建，公开 evidence 保留在仓库。签名、公证延续本轮暂不执行的决定。

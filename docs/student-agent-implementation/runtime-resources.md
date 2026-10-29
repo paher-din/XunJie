@@ -28,6 +28,8 @@ PostgreSQL 完整目录保留 `LICENSE`、`dependency-notices/`、运行库、�
 node scripts/package-product.mjs --help
 node scripts/package-product.mjs --platform darwin-arm64
 node scripts/package-product.mjs --platform win32-x64 --cache /outside/resource-cache --out /outside/windows-candidate
+node scripts/package-product.mjs --platform darwin-arm64 --postgres-version 17.10 --out /outside/mac-pg17.10
+node scripts/package-product.mjs --platform darwin-arm64 --postgres-version 17.11 --out /outside/mac-pg17.11
 node scripts/package-product.mjs --platform linux-x64 --profile remote --out /outside/remote-candidate
 ```
 
@@ -35,7 +37,7 @@ node scripts/package-product.mjs --platform linux-x64 --profile remote --out /ou
 
 每次命中缓存都重新核对原始 archive 的大小与 SHA256；失败立即拒绝，不使用旧解压目录，不回退系统可执行文件。新下载先写独立临时文件，摘要通过后才进入 archive 缓存、随后解包。`tar` 保留 symlink；macOS/Linux 处理 Windows ZIP 时使用系统 `unzip`，Windows 构建使用系统 `tar`。这些仅为构建依赖，产品运行不调用它们。已核实的 Mac archive 可复用此前来源调查的缓存；缓存里的旧解压目录不参与构建。
 
-CLI 和 daemon 从生产源码分别经 esbuild 打包为 `app/cli.js`、`app/daemon.js`；关闭 source map，不拆共享 chunk，保留 `new URL('./daemon.js', import.meta.url)` 的相邻文件约定。所有 npm/workspace 模块进入 bundle，只 external Node builtins；固定 `pg@8.16.3`，用 `createRequire` shim 兼容其 CJS 路径，禁用 native/Cloudflare 可选入口。metafile 检查禁止 test/tests/fixtures、验收宿主、非产品工程和非 builtin external，并检查输出不含原工作树绝对路径。
+CLI、daemon 和可信宿主 API 从生产源码分别经 esbuild 打包为 `app/cli.js`、`app/daemon.js`、`app/product-runtime.js`；API 还导出 `storage` namespace，供独立宿主通过分发包装配 owner。关闭 source map，不拆共享 chunk，保留 `new URL('./daemon.js', import.meta.url)` 的相邻文件约定。所有 npm/workspace 模块进入 bundle，只 external Node builtins；固定 `pg@8.16.3`，用 `createRequire` shim 兼容其 CJS 路径，禁用 native/Cloudflare 可选入口。metafile 检查禁止 test/tests/fixtures、验收宿主、非产品工程和非 builtin external，并检查输出不含原工作树绝对路径。
 
 每次打包先创建独立 staging，再无条件执行 `npm run build:runtime -w @xunjie/web -- --outDir <本次 staging/web 绝对路径>`，直接生成本次 `web/` 并遍历验证；不读取、复制或清空共享的 `apps/web/dist-runtime`，避免多平台构建与根 verify 争用产物。存在旧 `index.html` 不会跳过构建，构建失败或未生成入口则停止打包并清理本次 staging。调用优先使用 `process.env.npm_execpath`，其余沿用平台对应的 npm 分支。原生资源分别放在 `resources/node/`、`resources/postgres/`。根目录 `resources.json` 的 `nodePath`、`postgresBin`、`webRoot` 均相对该文件，版本为 Node 24.21.0、PG engine 18.6。根目录 `xunjie`（可执行 sh）或 `xunjie.cmd` 始终调用包内 Node 与 `app/cli.js`；无参数时自动执行 `launch`，有参数时原样透传，不查找宿主 Node。Mac 根目录还输出同样行为、可双击的 `循阶.command`，与 `xunjie` 脚本内容相同且具有执行权限。不生成 `.app`。
 
@@ -45,4 +47,4 @@ CLI 和 daemon 从生产源码分别经 esbuild 打包为 `app/cli.js`、`app/da
 
 主 agent 使用最终实际分发目录验证安装与进程管理、正常退出/强杀恢复、dump/restore 往返和维护工具。构建器只核对资源完整性，不初始化或启动数据库、不替代上述探针。
 
-已有同平台资源支持拟验证的 **17.10 →17.11 minor**（[17.10.1](https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.10.1) →[17.11.1](https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.11.1)）及 **17 →18 major**（17.11.1 →18.6.1）；17.11.1 三平台 manifest 已核对基础七工具。额外升级源包不随本构建器默认分发，需另行固定与校验，不能把 18.6.1 同时当作旧版和新版。PG18 的前一 minor 与 PG19 三平台资源未完成核实，不宣称这两条路径通过。
+资源清单已固定三平台 **17.10 →17.11 minor**（[17.10.1](https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.10.1) →[17.11.1](https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.11.1)）及 **17 →18 major**（17.11.1 →18.6.1）所需完整工具。构建器以 `--postgres-version 17.10|17.11|18.6` 选择；默认仍为 18.6。原始 archive 每次按固定大小和摘要核验，实际升级结果见 [#145 维护验收](maintenance-acceptance.md)。PG18 的前一 minor 与 PG19 三平台资源未完成核实，不宣称这两条路径通过。
