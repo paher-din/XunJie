@@ -34,7 +34,7 @@ export default defineConfig(({ command, mode }) => ({
     // Warm optimized modules can import CSS from a linked dependency's real path
     // without a fresh import-analysis pass to populate Vite's safeModulePaths.
     fs: { allow: [searchForWorkspaceRoot(fileURLToPath(new URL('.', import.meta.url))),
-      realpathSync(new URL('./node_modules', import.meta.url))] },
+      realpathSync(new URL('../../node_modules', import.meta.url))] },
   },
   test: {
     environment: 'node',
