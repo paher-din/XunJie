@@ -99,7 +99,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         if (entry.isSymbolicLink()) throw new Error('Environment root cannot be a symbolic link.');
         if (!entry.isDirectory()) throw new Error('Directory is occupied; select an empty product environment directory.');
         if (await exists(join(root, '.xunjie-root'))) await assertRoot(root);
-        else if ((await readdir(root)).length) await assertRoot(root);
+        else if ((await readdir(root)).length) throw new Error('Directory is occupied; select an empty product environment directory.');
         if (await exists(environmentPath) && (await environment()).profile !== input.profile) throw new Error('Environment identity/profile mismatch.');
       }
       if (!options.resources) throw new Error('Install requires resources from the product distribution.');

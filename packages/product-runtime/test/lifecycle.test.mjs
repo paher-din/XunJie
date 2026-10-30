@@ -156,7 +156,11 @@ for (const scenario of ['retired', 'isolated']) {
   });
 }
 
-test('delete preserves pending and retiring cleanup until a late export pin is released', { timeout: 10_000 }, async () => {
+test('delete preserves pending and retiring cleanup until a late export pin is released', {
+  // Windows verifies process creation identities through native PowerShell calls.
+  // Keep the export's 40 ms fault deadline while allowing the full OS lifecycle.
+  timeout: process.platform === 'win32' ? 120_000 : 10_000,
+}, async () => {
   const directory = await mkdtemp(join(tmpdir(), '循阶 delete late export '));
   const root = join(directory, 'environment');
   const backups = join(directory, 'backups');
@@ -300,7 +304,7 @@ test('an occupied directory is preserved instead of adopted or reinitialized', a
   const root = await mkdtemp(join(tmpdir(), '循阶 occupied '));
   await writeFile(join(root, 'existing.sqlite'), 'unrelated original data');
   try {
-    await assert.rejects(openProductRuntime({ root, resources }).install({ profile: 'remote' }), /occupied/i);
+    await assert.rejects(openProductRuntime({ root, resources }).install({ profile: 'remote' }), /Directory is occupied;/);
     assert.equal(await readFile(join(root, 'existing.sqlite'), 'utf8'), 'unrelated original data');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
