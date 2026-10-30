@@ -59,4 +59,18 @@ npm run check:docs
 - 全仓类型检查、全量构建、Web 688 项测试、7 个公共契约浏览器检查及本次 3 个文档的 27 个本地链接通过。全量 `npm test` 在文档发现测试创建符号链接时被 Windows `EPERM` 阻止，未完成后续 workspace；全仓文档扫描仍为上述 252 处原有断链。两轴代码复审未发现剩余可行动问题。
 - 产品运行库完整本地组另行执行：94 项通过、22 项失败、5 项跳过。18 个失败名称在此前 main 基线记录中已存在（连接/恢复超时等），另 4 个恢复文件用例因 Windows `EPERM` 无法创建符号链接；新增客户端撤销竞争回归通过。该组整体未通过，不作为绿色门禁。
 
-**未执行**：Apple Silicon Mac 的真实 Chrome 验收（本机无该硬件），因此本票的两平台浏览器验收尚未全部完成；Mac 项已汇总到 [#155](https://github.com/paher-din/XunJie/issues/155)，由负责人在 Apple Silicon Mac 上执行。真实跨机混合组合按规范归后续部署子票；教学效果不评估。上述未完成项不能用本机 API 结果代替，实施票暂不据此宣称完整关闭。
+### Apple Silicon Mac 验收（2026-10-31）
+
+macOS 27.2（build 26B123）、Apple Silicon arm64、Google Chrome 156.0.8078.79（Playwright 1.64 有头驱动本机安装的 Chrome，未使用自带 Chromium）、包内 Node 24.21.0 与 PostgreSQL 18.6。验收提交 `4bd2c0e`（在 `036d0b6` 基础上包含管理端撤销响应修复）；产品包 `product-darwin-arm64-r2` 从仓库外目录启动两个独立环境，`distribution.json` SHA-256 为 `ce72d00bbd872037ae67032a8c5f85a9333be12a063e607aa97e311c83f0c066`。工程检查与真实 Chrome 结果分别见 [原生 PG 证据](evidence/wp02-mac-native-postgres.json) 和 [Chrome 证据](evidence/wp02-mac-chrome.json)。
+
+- 工程与原生 PG：`npm run typecheck`、`npm run build` 通过；原生集成 8/8，覆盖设备组合禁止共享监听、个人与学校身份、成员撤销与重新授权、旧会话失效、两个 owner、客户端批准、重启保留、独立恢复接管，以及 `POST /api/learning/manage/connection` 返回 `{revoked:true}`。
+- 个人空间：[截图](evidence/wp02-mac-personal.png)。首次进入即显示个人学习空间，不需要学校账号、模型或测试数据；中文目标与多行起始问题建立活动；关闭后刷新仍为已关闭，可重新开始；`stop`/`start` 后同一环境身份与活动仍可读取；`?diagnostics=1` 展开后显示运行身份，普通入口不显示工程身份。
+- 学校空间：[截图](evidence/wp02-mac-school.png)。真实账号表单；错误密码被拒绝且不产生会话或新主体；成员登录后可建立、刷新并重开活动；退出后活动不再显示且旧会话返回 403；成员撤销后旧会话与新登录均被拒绝，重新授权后新登录成功而旧会话仍失效。
+- 已安装客户端：[截图](evidence/wp02-mac-client-connect.png)。客户端经学校认证页登录并批准，完成连接后通过代理建立学校活动；个人空间不可见该活动且直接读取为 404；客户端撤销后学校空间消失，私有目录中无 `school-client-*` grant。管理员用 `xunjie school-connection` 单独撤销连接时成员会话和重新登录仍有效、代理立即 403；客户端保留的过期入口在用户显式撤销后清除。
+- 隔离：第二个真实学校成员无法读取第一个成员的活动；伪造 `x-xj-space` 与身份头不能越权；个人与学校空间互不可读。
+- macOS 特有：[CA/HTTPS 证据](evidence/wp02-mac-ca-https.json)。login keychain 中证书指纹 `97:CE:10:42:91:9B:5D:9C:EA:78:35:B1:19:89:DB:67:38:6D:4E:57:87:94:43:5E:23:8D:F7:16:AD:A1:BB:27` 在验收前已存在，本次未新增导入或信任，因此结束时未撤销；Chrome 保持证书校验，HTTPS 入口返回 200。[物理中文输入法](evidence/wp02-mac-ime.json)、[截图](evidence/wp02-mac-ime.png)：用本机拼音输入法输入中文，Enter 换行且焦点保持在文本框，建立活动后原文保留；输入源已恢复 ABC。产品根为仓库外 `0700` 目录，包内 CLI 从 `/tmp` 运行仍为 ready，数据库绑定为包内 PostgreSQL 18.6。
+- 发现并修复：`POST /api/learning/manage/connection` 撤销成功后返回空 body，导致 `xunjie school-connection` 在服务端已撤销后仍报 `Unexpected end of JSON input`。路由现返回 `{revoked:true}`，原生集成新增该 HTTP 断言；修复后重新打包并完成上述客户端与管理员流程。
+
+限制：两个环境仍在同一 Mac 回环 HTTP 上运行，不证明跨机或公网 TLS；教学效果不评估。
+
+**未执行**：真实跨机混合组合按规范归后续部署子票；教学效果不评估。Windows 11 x64 与 Apple Silicon Mac 的真实 Chrome 验收均已完成，Mac 项及证据已记录于 [#155](https://github.com/paher-din/XunJie/issues/155)；上述未完成项不能用本机 API 结果代替。
