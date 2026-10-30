@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import { activitySchema } from '@xunjie/contracts/learning-data';
+import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { atomicJson, exists } from './io.js';
 import { resolveCredential } from './postgres.js';
@@ -34,8 +35,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       });
     } catch { throw new StorageError('unavailable'); }
     if (!response.ok) {
+      const failure = z.object({ error: z.enum(storageErrorCodes) }).safeParse(await response.json().catch(() => null));
+      if (failure.success) throw new StorageError(failure.data.error);
       const code = response.status === 403 ? 'forbidden' : response.status === 404 ? 'missing'
-        : response.status === 409 ? 'identity-conflict' : 'unavailable';
+        : 'unavailable';
       throw new StorageError(code);
     }
     return response.json() as Promise<unknown>;

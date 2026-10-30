@@ -19,9 +19,11 @@ export async function createProductLearningApplication(context: {
   root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration;
 }) {
   const { root, environment, configuration } = context;
+  const client = environment.profile === 'school' ? undefined : createSchoolClient(root, environment);
   const database = await databaseBinding(root, configuration.database);
+  if (!database && environment.profile === 'school') throw new Error('School identity requires PostgreSQL.');
   if (!database) return { owners: [], handle: createLearningEntry({ environment,
-    administratorToken: await resolveCredential(root, 'control'), client: createSchoolClient(root, environment) }) };
+    administratorToken: await resolveCredential(root, 'control'), client }) };
   const { credentialRef, ...connection } = database;
   const admin = { ...connection, password: await resolveCredential(root, credentialRef) };
   const opened: OwnedStorage[] = [];
@@ -69,7 +71,7 @@ export async function createProductLearningApplication(context: {
         resources: configuration.resources, resourceRoots: [join(root, 'learning-resources', module === space ? 'space-course' : 'learning-data')],
         validateService: async () => validate() }));
     }
-    return { owners, handle: createLearningEntry({ environment, spaces, learning, client: createSchoolClient(root, environment),
+    return { owners, handle: createLearningEntry({ environment, spaces, learning, client,
       target: { ...data.storage.owner, version: 1 }, administratorToken: await resolveCredential(root, 'control') }) };
   } catch (error) { await Promise.allSettled(opened.map(storage => storage.close())); throw error; }
 }

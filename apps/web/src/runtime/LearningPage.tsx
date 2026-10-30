@@ -17,7 +17,7 @@ const messages: Record<string, string> = {
 async function api(path: string, body?: unknown, key?: string, signal?: AbortSignal): Promise<unknown> {
   const response = await fetch('/api/learning/' + path, { method: body === undefined ? 'GET' : 'POST',
     headers: { 'content-type': 'application/json', ...(key ? { 'x-xj-space': key } : {}) },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal, credentials: 'same-origin' })
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ?? AbortSignal.timeout(10000), credentials: 'same-origin' })
   const result = await response.json()
   if (!response.ok) throw new Error(messages[result.error] ?? '操作结果尚未确认，请核对原请求后重试。')
   return result
@@ -43,6 +43,7 @@ export function LearningPage() {
   const [notice, setNotice] = useState('')
   const [reload, setReload] = useState(0)
   const epoch = useRef(0)
+  const formScope = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
   const identity = context?.identities.find(item => item.key === key)?.identity
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
@@ -50,7 +51,9 @@ export function LearningPage() {
   async function refreshContext(prefer?: string, generation = epoch.current) {
     const next = await api('context') as Context
     if (generation !== epoch.current) return
+    setOpened(null); setActivities(null)
     setContext(next)
+    setReload(value => value + 1)
     setKey(previous => prefer && next.identities.some(item => item.key === prefer) ? prefer
       : next.identities.some(item => item.key === previous) ? previous : next.identities[0]?.key ?? '')
   }
@@ -65,6 +68,9 @@ export function LearningPage() {
     const generation = ++epoch.current
     const controller = new AbortController()
     setActivities(null); setOpened(null); setError(''); setPendingRequest(null); setBusy(false)
+    if (formScope.current !== pendingKey) {
+      formScope.current = pendingKey; setGoal(''); setQuestion(''); setReference('')
+    }
     if (key && pendingKey) {
       try {
         const saved = localStorage.getItem(pendingKey)
@@ -81,6 +87,7 @@ export function LearningPage() {
   }, [key, pendingKey, reload])
 
   function switchSpace(next: string) {
+    if (next === key) return
     ++epoch.current; setKey(next); setOpened(null); setActivities(null); setError(''); setNotice('')
     setGoal(''); setQuestion(''); setReference(''); setBusy(false)
   }
@@ -126,7 +133,9 @@ export function LearningPage() {
       {context.identities.map(item => <button type="button" key={item.key} aria-pressed={item.key === key}
         onClick={() => switchSpace(item.key)}>{item.identity.kind === 'personal' ? '个人空间' : '学校空间'}
         {context.identities.filter(other => other.identity.kind === 'school').length > 1 && item.identity.kind === 'school' ? ` · ${item.identity.name}` : ''}</button>)}
-      <button type="button" disabled={busy} onClick={() => { setReload(value => value + 1); void action(() => refreshContext()) }}>刷新列表</button>
+      <button type="button" disabled={busy} onClick={() => void action(async generation => {
+        await refreshContext(undefined, generation)
+      })}>刷新列表</button>
     </nav>}
     {error && <p className="learning-error" role="alert">{error}</p>}
     {notice && <p role="status">{notice}</p>}
@@ -166,7 +175,7 @@ export function LearningPage() {
     {context && <section aria-labelledby="school-title"><h2 id="school-title">学校学习空间</h2>
       {context.identities.some(item => item.key === 'school') ? <button type="button" disabled={busy} onClick={() => void action(async generation => {
         await api('logout', {}); if (generation !== epoch.current) return
-        setOpened(null); setActivities(null); await refreshContext('personal', generation); setReload(value => value + 1)
+        setOpened(null); setActivities(null); await refreshContext('personal', generation)
       })}>退出学校登录</button> : context.profile === 'school' && <form onSubmit={event => { event.preventDefault(); void action(async generation => {
         await api('login', { loginName, password }); if (generation !== epoch.current) return
         setPassword(''); await refreshContext('school', generation)
@@ -180,13 +189,15 @@ export function LearningPage() {
         }) }}><label>学校入口<input type="url" required value={schoolEndpoint} onChange={event => setSchoolEndpoint(event.target.value)} /></label>
           <button type="submit" disabled={busy}>前往学校认证</button></form>
         {pendingConnection && <div><p><a href={pendingConnection.authorizationUrl} target="_blank" rel="noreferrer">打开学校认证页面</a></p>
-          <button type="button" disabled={busy} onClick={() => void action(async () => {
+          <button type="button" disabled={busy} onClick={() => void action(async generation => {
             const connection = await api('client/complete', { requestId: pendingConnection.requestId }) as { connectionId: string }
-            setPendingConnection(null); await refreshContext('school:' + connection.connectionId)
+            if (generation !== epoch.current) return
+            setPendingConnection(null); await refreshContext('school:' + connection.connectionId, generation)
           })}>已在学校批准，完成连接</button></div>}
       </details>}
-      {key.startsWith('school:') && <button type="button" disabled={busy} onClick={() => void action(async () => {
-        await api('connections/revoke', { connectionId: key.slice(7) }, key); switchSpace(context.identities.some(item => item.key === 'personal') ? 'personal' : '')
+      {key.startsWith('school:') && <button type="button" disabled={busy} onClick={() => void action(async generation => {
+        await api('connections/revoke', { connectionId: key.slice(7) }, key)
+        if (generation === epoch.current) switchSpace(context.identities.some(item => item.key === 'personal') ? 'personal' : '')
       })}>撤销此客户端连接</button>}
     </section>}
   </main>

@@ -88,6 +88,7 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
       const result = await tx.query(`UPDATE memberships SET active=$2 WHERE principal_id=$1
         AND principal_id IN (SELECT principal_id FROM accounts)`, [input.principalId, input.active]);
       if (result.rowCount !== 1) fail('missing');
+      if (!input.active) await tx.query('UPDATE sessions SET revoked=true WHERE principal_id=$1', [input.principalId]);
       return { principalId: input.principalId, active: input.active };
     });
   }

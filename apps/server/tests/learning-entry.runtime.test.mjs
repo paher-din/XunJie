@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
+import { createServer } from 'node:http';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -37,6 +38,15 @@ test('space identity persists and authorization follows current membership', { t
     const spaces = createSpaces(storage);
     const identity = await spaces.personal();
     assert.equal(identity.kind, 'personal');
+    await t.test('device profiles cannot expose an anonymous personal identity on a shared listener', async () => {
+      const sharedRoot = await mkdtemp(join(tmpdir(), 'xunjie-device-listener-'));
+      const shared = openProductRuntime({ root: sharedRoot, resources: {
+        nodePath: process.execPath, nodeVersion: '24.21.0',
+        webRoot: fileURLToPath(new URL('../../web/dist-runtime', import.meta.url)),
+      } });
+      await assert.rejects(shared.install({ profile: 'local', database: { mode: 'none' }, host: '0.0.0.0',
+        publicEndpoint: 'https://school.invalid:443', tls: { certificateFile: 'unused.pem', keyFile: 'unused.key' } }), /loopback/);
+    });
     await storage.close();
     storage = await openStorage(options);
     assert.deepEqual(await createSpaces(storage).personal(), identity);
@@ -50,6 +60,7 @@ test('space identity persists and authorization follows current membership', { t
       await school.setMembership({ requestId: randomUUID(), principalId: member.principalId, active: false });
       await assert.rejects(school.authenticate(session.token), { code: 'forbidden' });
       await school.setMembership({ requestId: randomUUID(), principalId: member.principalId, active: true });
+      await assert.rejects(school.authenticate(session.token), { code: 'forbidden' });
       assert.deepEqual((await school.login('student-a', password)).identity, member);
     });
     await t.test('independent learning owner creates one course-free activity and rejects other members', async () => {
@@ -150,6 +161,7 @@ test('space identity persists and authorization follows current membership', { t
           windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)),
         } });
         let schoolInstalled = false;
+        let proxy;
         try {
           await schoolRuntime.install({ profile: 'school' }); schoolInstalled = true;
           const schoolEndpoint = (await schoolRuntime.start()).endpoint;
@@ -157,10 +169,28 @@ test('space identity persists and authorization follows current membership', { t
             method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json', ...headers },
             ...(body === undefined ? {} : { body: JSON.stringify(body) }),
           });
+          let loseActivityReply = true;
+          proxy = createServer(async (request, response) => {
+            const chunks = [];
+            for await (const chunk of request) chunks.push(chunk);
+            const body = Buffer.concat(chunks);
+            const upstream = await fetch(new URL(request.url, schoolEndpoint), { method: request.method,
+              headers: { 'content-type': 'application/json', ...(request.headers.authorization ? { authorization: request.headers.authorization } : {}) },
+              ...(body.length ? { body } : {}) });
+            const text = await upstream.text();
+            if (loseActivityReply && request.method === 'POST' && request.url === '/api/learning/activities' && upstream.ok) {
+              loseActivityReply = false;
+              response.writeHead(409, { 'content-type': 'application/json' });
+              response.end(JSON.stringify({ error: 'commit-unknown' }));
+            } else { response.writeHead(upstream.status, { 'content-type': 'application/json' }); response.end(text); }
+          });
+          await new Promise(resolve => proxy.listen(0, '127.0.0.1', resolve));
+          const proxyEndpoint = `http://127.0.0.1:${proxy.address().port}`;
           const schoolPassword = randomUUID();
+          assert.equal((await schoolApi('client/start', { requestId: randomUUID(), schoolEndpoint: endpoint })).status, 403);
           assert.equal((await schoolApi('manage/members', { requestId: randomUUID(), loginName: 'school-member', password: schoolPassword },
             { authorization: `Bearer ${await resolveCredential(schoolRoot, 'control')}` })).status, 200);
-          const initiated = await api('client/start', { requestId: randomUUID(), schoolEndpoint });
+          const initiated = await api('client/start', { requestId: randomUUID(), schoolEndpoint: proxyEndpoint });
           assert.equal(initiated.status, 200);
           const pending = await initiated.json();
           const schoolLogin = await schoolApi('login', { loginName: 'school-member', password: schoolPassword });
@@ -171,15 +201,21 @@ test('space identity persists and authorization follows current membership', { t
           const connection = await completed.json();
           assert.notEqual(connection.identity.environmentId, activity.identity.environmentId);
           const schoolHeaders = { 'x-xj-space': 'school:' + connection.connectionId };
-          const schoolActivityResponse = await api('activities', { ...input, requestId: randomUUID(), goal: '学校里的活动' }, schoolHeaders);
-          assert.equal(schoolActivityResponse.status, 200);
-          const schoolActivity = await schoolActivityResponse.json();
+          const schoolInput = { ...input, requestId: randomUUID(), goal: '学校里的活动' };
+          const schoolActivityResponse = await api('activities', schoolInput, schoolHeaders);
+          assert.equal(schoolActivityResponse.status, 409);
+          assert.equal((await schoolActivityResponse.json()).error, 'commit-unknown');
+          const schoolActivity = await (await api('receipts/' + schoolInput.requestId, undefined, schoolHeaders)).json();
+          assert.deepEqual(await (await api('activities', schoolInput, schoolHeaders)).json(), schoolActivity);
           assert.deepEqual(schoolActivity.identity, connection.identity);
           assert.equal((await api('activities/' + schoolActivity.activityId, undefined, { 'x-xj-space': 'personal' })).status, 404);
           assert.equal((await schoolApi('connections/revoke', { connectionId: connection.connectionId }, { cookie: schoolCookie })).status, 200);
           assert.equal((await api('activities', undefined, schoolHeaders)).status, 403);
           assert.equal((await api('activities/' + activity.activityId, undefined, { 'x-xj-space': 'personal' })).status, 200);
-        } finally { if (schoolInstalled) await schoolRuntime.stop(); }
+        } finally {
+          if (proxy) await new Promise(resolve => proxy.close(resolve));
+          if (schoolInstalled) await schoolRuntime.stop();
+        }
       });
       await t.test('both production owners restore the original activity and fence old school sessions', { timeout: 180000 }, async () => {
         const { createLearningRecoveryTargets, restoreProductRecovery, recoveryDatabase } = await import('@xunjie/product-runtime');

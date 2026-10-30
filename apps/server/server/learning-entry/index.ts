@@ -72,6 +72,7 @@ export function createLearningEntry(options: {
       const method = request.method;
       let result: unknown;
       const remote = request.headers['x-xj-space'];
+      if (environment.profile === 'school' && (route.startsWith('client/') || typeof remote === 'string' && remote.startsWith('school:'))) throw new StorageError('forbidden');
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request) : undefined);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
