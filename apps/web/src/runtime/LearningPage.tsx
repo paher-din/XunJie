@@ -108,7 +108,8 @@ export function LearningPage() {
     setPendingRequest(input)
     const existing = await api('receipts/' + input.requestId, undefined, selected)
     const activity = activitySchema.parse(existing ?? await api('activities', input, selected))
-    localStorage.removeItem(scopeKey)
+    const saved = localStorage.getItem(scopeKey)
+    if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
     if (generation === epoch.current) {
       setPendingRequest(null); setOpened(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
       setGoal(''); setQuestion(''); setReference('')
