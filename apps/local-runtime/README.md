@@ -1,6 +1,6 @@
 # XunJie 产品 CLI（候选交付）
 
-本目录提供 issue #143/#145 的产品运行底座与维护恢复 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。这些底座入口不交付课程业务、学生实验执行或 Agent 能力；安装或启动成功不代表课程、Agent 或教学效果验收通过。
+本目录提供产品运行、维护恢复及学校成员管理 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。默认产品网页已接入[学习空间身份与活动](../../docs/student-agent-implementation/wp02-identity-activity.md)，`school-member` / `school-membership` 从仓库外私密输入建立成员或授予、撤销资格。安装或启动成功不代表课程、Agent 或教学效果验收通过。
 
 这是产品运行底座的候选交付。完整工程门禁、Mac/Windows 实际包安装、启停、隔离与故障恢复、Linux 独立包运行及 Mac→学校 Linux 的真实公网 HTTPS 认证、断连重连和撤销已经验证。Windows Chrome/Edge 基础页面由负责人实机确认；各平台证据、限制和可重复入口见[运行交接](../../docs/student-agent-implementation/runtime-acceptance.md)。签名、公证按负责人要求移出本轮；不宣称完整课程产品或自动更新已交付。
 

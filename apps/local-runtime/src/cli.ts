@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { openProductRuntime, restoreProductRecovery, upgradeProductRecovery, ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
+import { openProductRuntime, resolveCredential, restoreProductRecovery, upgradeProductRecovery, ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
 import type { BackupPolicy } from '@xunjie/product-runtime';
 
 type Runtime = ReturnType<typeof openProductRuntime>;
@@ -37,6 +37,8 @@ const commands: Record<string, readonly string[]> = {
   upgrade: ['file', 'resources'],
   takeover: ['file', 'resources'],
   'maintenance-resume': ['resources'],
+  'school-member': ['file', 'resources'],
+  'school-membership': ['file', 'resources'],
 };
 
 // Keep known secret values out of messages even if a downstream error includes them.
@@ -320,6 +322,20 @@ async function main(): Promise<void> {
       break;
     }
     case 'start': output(await run(() => runtime.start())); break;
+    case 'school-member':
+    case 'school-membership': {
+      const input = await jsonFile(required('file'), '学校成员操作');
+      if (typeof input.password === 'string') rememberSecret(input.password);
+      const status = await run(() => runtime.status());
+      if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
+      const response = await fetch(new URL(`/api/learning/manage/${command === 'school-member' ? 'members' : 'membership'}`, status.endpoint), {
+        method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) throw new Error(`学校成员操作未完成（${response.status}），请核对输入及当前授权`);
+      output(await response.json()); break;
+    }
     case 'status': output(await run(() => runtime.status())); break;
     case 'stop': output(await run(() => runtime.stop())); break;
     case 'uninstall': output(await run(() => runtime.uninstall())); break;

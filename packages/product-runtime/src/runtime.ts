@@ -47,6 +47,7 @@ const ownedEnvironmentEntries = new Set([
   'credentials', 'private', 'logs', 'status.json', 'instance.json', 'launch.json', 'maintenance.json',
   'postgres.log', 'installation.json', 'environment.json', 'backup-policy.json', 'last-backup-settings.json',
   'recovery-boundary.json', 'recovery-state.json', 'recovery-operations', 'retired.json',
+  'learning-resources',
 ]);
 const operationIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
 const generatedEnvironmentEntry = new RegExp(`^(?:(?:initializing-|\\.restore-)${operationIdPattern}|upgrade-${operationIdPattern}\\.json|\\.xj-recovery-[a-z0-9]{6})$`, 'i');

@@ -110,7 +110,7 @@ export function assertProductionGraph(metafile) {
     if (forbidden.test(path) || /(?:^|\/)pg-native(?:\/|$)|node_modules\/pg\/lib\/native(?:\/|\.)/.test(path)) {
       throw new Error(`Non-production dependency in product bundle: ${path}`);
     }
-    if (!/^(?:(?:(?:apps\/local-runtime|packages\/(?:product-runtime|contracts|storage))\/)?node_modules\/|apps\/local-runtime\/src\/|packages\/(?:product-runtime|storage)\/src\/|packages\/contracts\/(?:src|dist)\/)/.test(path)) {
+    if (!/^(?:(?:(?:apps\/local-runtime|packages\/(?:product-runtime|contracts|storage))\/)?node_modules\/|apps\/local-runtime\/src\/|apps\/server\/(?:dist\/)?server\/(?:spaces|learning-data|learning-entry)\/|packages\/(?:product-runtime|storage)\/src\/|packages\/contracts\/(?:src|dist)\/)/.test(path)) {
       throw new Error(`Dependency outside the product production graph: ${path}`);
     }
   }
@@ -180,6 +180,7 @@ export async function buildApplication(app) {
     plugins: [{
       name: 'product-production-only',
       setup(plugin) {
+        plugin.onResolve({ filter: /^@xunjie\/server\/learning-entry$/ }, () => ({ path: join(root, 'apps/server/server/learning-entry/index.ts') }));
         plugin.onResolve({ filter: /^@xunjie\/product-runtime$/ }, () => ({ path: join(root, 'packages/product-runtime/src/index.ts') }));
         plugin.onResolve({ filter: /^@xunjie\/storage$/ }, () => ({ path: join(root, 'packages/storage/src/index.ts') }));
         plugin.onResolve({ filter: /^@xunjie\/contracts(?:\/[^/]+)?$/ }, args => ({

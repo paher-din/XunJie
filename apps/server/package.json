@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": { "./learning-entry": { "types": "./dist/server/learning-entry/index.d.ts", "import": "./dist/server/learning-entry/index.js" } },
   "description": "XunJie composable backend and existing course runner",
   "engines": {
     "node": "24.21.0"

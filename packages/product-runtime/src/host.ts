@@ -21,6 +21,10 @@ export interface ProductHostOptions {
   recoveryOwners?: readonly RecoveryOwner[];
   /** Compose real owner modules after native PostgreSQL is available. */
   createRecoveryOwners?: (context: { root: string; environment: RuntimeEnvironment }) => Promise<readonly RecoveryOwner[]>;
+  createApplication?: (context: { root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration }) => Promise<{
+    owners: readonly RecoveryOwner[];
+    handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
+  } | undefined>;
 }
 
 const send = (response: ServerResponse, code: number, value: unknown) => {
@@ -60,7 +64,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   let stopping = false;
   try { await startDatabase(root, config.resources, config.database); }
   catch (error) { startupFailure = (error as Error).message; }
-  const suppliedOwners = [...(options.recoveryOwners ?? []), ...(!startupFailure && options.createRecoveryOwners
+  const application = !startupFailure && options.createApplication
+    ? await options.createApplication({ root, environment, configuration: config }) : undefined;
+  const suppliedOwners = [...(application?.owners ?? []), ...(options.recoveryOwners ?? []), ...(!startupFailure && options.createRecoveryOwners
     ? await options.createRecoveryOwners({ root, environment }) : [])];
   const maintenance = createMaintenanceCoordinator({
     requiredServiceIds: [service.serviceId, ...config.requiredServiceIds],
@@ -148,6 +154,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       send(response, current.state === 'failed' ? 503 : 200, current); return;
     }
     if (pathname.startsWith('/runtime/control/')) { send(response, 404, { error: 'not_found' }); return; }
+    if (pathname.startsWith('/api/learning/') && await authorityClosed()) { send(response, 503, { error: 'maintenance' }); return; }
+    if (application && await application.handle(request, response)) return;
     if (await authorityClosed() && (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/'))) {
       send(response, 503, { error: 'maintenance' }); return;
     }
