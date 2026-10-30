@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
@@ -21,7 +21,10 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
   async function read(id: string) {
-    const connection = connectionSchema.parse(JSON.parse(await resolveCredential(root, ref(id))));
+    let stored: string;
+    try { stored = await resolveCredential(root, ref(id)); }
+    catch { throw new StorageError('forbidden'); }
+    const connection = connectionSchema.parse(JSON.parse(stored));
     if (connection.clientNamespace !== environment.clientNamespace) throw new StorageError('forbidden');
     return connection;
   }
@@ -89,7 +92,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
     const value = await call(connection, route, body, true);
-    if (route === 'connections/revoke') return value;
+    if (route === 'connections/revoke') {
+      // A revoked grant must stop appearing as an available space; keep no local copy that could be replayed.
+      await rm(path(connectionId), { force: true });
+      return value;
+    }
     const check = (value: unknown) => {
       const activity = activitySchema.parse(value);
       if (JSON.stringify(activity.identity) !== JSON.stringify(connection.grant!.identity)

@@ -198,7 +198,8 @@ export function LearningPage() {
       </details>}
       {key.startsWith('school:') && <button type="button" disabled={busy} onClick={() => void action(async generation => {
         await api('connections/revoke', { connectionId: key.slice(7) }, key)
-        if (generation === epoch.current) switchSpace(context.identities.some(item => item.key === 'personal') ? 'personal' : '')
+        // The revoked connection is gone; re-read so the stale school space cannot be selected again.
+        if (generation === epoch.current) await refreshContext(context.identities.some(item => item.key === 'personal') ? 'personal' : undefined, generation)
       })}>撤销此客户端连接</button>}
     </section>}
   </main>

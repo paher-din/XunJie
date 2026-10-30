@@ -209,9 +209,12 @@ test('space identity persists and authorization follows current membership', { t
           assert.deepEqual(await (await api('activities', schoolInput, schoolHeaders)).json(), schoolActivity);
           assert.deepEqual(schoolActivity.identity, connection.identity);
           assert.equal((await api('activities/' + schoolActivity.activityId, undefined, { 'x-xj-space': 'personal' })).status, 404);
-          assert.equal((await schoolApi('connections/revoke', { connectionId: connection.connectionId }, { cookie: schoolCookie })).status, 200);
+          // Revoke through the installed client: the school revokes the grant and the client drops its local copy.
+          assert.equal((await api('connections/revoke', { connectionId: connection.connectionId }, schoolHeaders)).status, 200);
           assert.equal((await api('activities', undefined, schoolHeaders)).status, 403);
           assert.equal((await api('activities/' + activity.activityId, undefined, { 'x-xj-space': 'personal' })).status, 200);
+          const granted = await (await api('context')).json();
+          assert.equal(granted.identities.some(item => item.key.startsWith('school:')), false);
         } finally {
           if (proxy) await new Promise(resolve => proxy.close(resolve));
           if (schoolInstalled) await schoolRuntime.stop();

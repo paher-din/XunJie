@@ -39,10 +39,14 @@ npm run check:docs
 
 测试不使用内存数据库或身份头代替真实认证。双环境 HTTP 回归在同一 Windows 主机运行，不证明跨机网络或公网 TLS。普通测试发现器把此文件归入 external/native 组，默认 `npm test` 不代替它。
 
-2026-10-30 的新增原生集成 8 项及真实 HTTP 在途排空 1 项已通过；包括设备组合禁止共享监听、学校拒绝匿名设备代理、成员重新获授权后旧会话仍失效，以及真实 PostgreSQL 提交后丢回执、沿原请求查询与重试。全仓类型检查、构建、生产打包依赖检查、7 个公共契约的浏览器检查及本次文档链接检查通过。
+2026-10-30 的 Windows 11 x64（build 26200）、Node 24.21.0、PostgreSQL 18.6 验证结果：
 
-全量 `npm test` 未通过：该轮 22 项失败，主要是既有连接/恢复测试的短时限超时、Windows 文件软链权限及旧本地 socket 测试；其中缺少旧 Web 构建产物的一项在构建后单独重跑通过，不能据此把整轮改记为通过。Web 58 文件、688 项通过。工具回归另行运行但未通过，包含文件软链权限以及原开发环境占用依赖文件造成的安装失败；已核对并停止本工作树原开发进程、恢复锁文件依赖与原生模块，未重新运行整组工具测试。原开发数据库保留。
+- 原生集成 8/8 通过（[证据](evidence/wp02-native-postgres.json)）：设备组合禁止共享监听、学校拒绝匿名设备代理、学校登录与成员撤销、两个 owner 的独立活动、会话到期、客户端学校页面批准、客户端撤销后本地 grant 清除且再访问 403、真实 PostgreSQL 提交后丢回执沿原请求查询与重试、两个 owner 的备份恢复与接管。
+- 全仓类型检查、全量构建、7 个公共契约的浏览器导出检查及本次改动涉及的 9 份文档 115 个本地目标通过。
+- 真实桌面 Chrome 156.0.8078.76（Playwright 1.64 驱动已安装的 Google Chrome，有头模式）通过三条受影响入口（[证据](evidence/wp02-chrome-windows.json)、[个人活动](evidence/wp02-chrome-personal.png)、[学校登录](evidence/wp02-chrome-school.png)、[客户端连接](evidence/wp02-chrome-client-connect.png)）：个人活动建立/关闭/刷新/重开；学校账号登录、建立活动、退出后不再显示；已安装客户端经学校页面批准接入、代理建立学校活动、撤销连接后学校空间消失且本地无残留 grant。
+- 全量 `npm test` 仍有 21 项失败：product-runtime 18、storage 1、server 2，均为本机既有环境限制，不是本票新增行为。18 项连接/恢复用例在超时或恢复临时目录竞争下失败，`origin/main` 基线工作树（同一 `node_modules`）复现同一批失败（基线还因缺少 `dist-runtime` 多失败 11 项）；3 项依赖 Windows 文件符号链接，本机未开启 Developer Mode；server 的 `optional local account control ...` 报 `LOCAL_SOCKET_CONFLICT`，是旧本地控制 socket 用例在 Windows 文件模式位下的既有失败。Web 58 文件、688 项通过。
+- 工具组另行运行时，依赖外部 OSS/团队服务的用例单项等待 100 秒以上，未跑完即停止；本票未修改 `tools/`，该组结果不作为本票通过依据。
 
-受 Git 跟踪的 152 份维护文档、1040 个本地目标全部通过。默认全库检查另报 252 处断链，全部位于工作区原有的未跟踪 `.tmp/`、`docs/planning/` 和 `docs/tasks/`；这些材料未修改、暂存或提交。
+默认全库文档检查另报 252 处断链，全部位于工作区原有的未跟踪 `.tmp/`、`docs/planning/` 和 `docs/tasks/`；这些材料未修改、暂存或提交，受 Git 跟踪的文档单独检查通过。
 
-内嵌浏览器已操作个人活动建立、关闭、刷新与重开，仅为补充界面检查。桌面 Chrome 自动化启动返回 `accessibility window-opened handler did not become ready`，因此本次尚无 Windows Chrome 通过结论；Apple Silicon Mac、真实跨机组合亦未执行。教学效果未评估。以上尚未完成的验收不能用本机 API 结果代替，实施票暂不据此宣称完整关闭。
+**未执行**：Apple Silicon Mac 的真实 Chrome 验收（本机无该硬件），因此本票的两平台浏览器验收尚未全部完成；真实跨机混合组合按规范归后续部署子票；教学效果不评估。上述未完成项不能用本机 API 结果代替，实施票暂不据此宣称完整关闭。

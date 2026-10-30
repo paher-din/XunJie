@@ -1,0 +1,34 @@
+{
+  "formatVersion": 1,
+  "issue": 149,
+  "status": "passed",
+  "observedAt": "2026-10-30T12:36:00Z",
+  "platform": "Windows 11 家庭版 (build 26200) x64",
+  "runtime": "Node.js 24.21.0",
+  "database": "PostgreSQL 18.6 from the packaged product distribution",
+  "command": "node --test apps/server/tests/learning-entry.runtime.test.mjs",
+  "results": {
+    "tests": 8,
+    "pass": 8,
+    "fail": 0,
+    "skipped": 0,
+    "durationMs": 68392
+  },
+  "covers": [
+    "device profiles reject a shared listener and non-loopback endpoint",
+    "personal identity and space persist across storage reopen and product restart",
+    "school login verifies the real password and revocation invalidates existing sessions",
+    "a revoked member cannot log in again with an old session, but the original account and identity survive regrant",
+    "the learning owner creates one course-free activity, replays the same request identity, rejects changed input and hides other members' activities",
+    "activity close survives storage reopen and reopen returns to the list",
+    "client proof grants bind the school member and capabilities, and logout/revocation are independent",
+    "production daemon exposes the learning API, keeps the activity after restart and rejects forged identity headers",
+    "one installed client switches personal and school through the real school approval page",
+    "revoking through the client removes the local grant; the school space is no longer offered and proxied access returns 403",
+    "both business owners restore the original activity and fence old school sessions after recovery takeover"
+  ],
+  "limitations": [
+    "Both environments ran on the same Windows host; cross-machine networking is not covered by this issue.",
+    "Apple Silicon Mac was not executed."
+  ]
+}

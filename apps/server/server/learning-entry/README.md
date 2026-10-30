@@ -10,7 +10,7 @@
 | `POST login/logout` | 实际学校账号认证及退出；会话为环境专属 HttpOnly/SameSite cookie |
 | `POST manage/members` | 管理者创建成员，需本环境私有控制凭据 |
 | `POST manage/membership` | 管理者授予或撤销成员资格 |
-| `POST connections/start/approve/exchange/revoke` | 学校认证页面批准及可撤销客户端授权 |
+| `POST connections/start/approve/exchange/revoke` | 学校认证页面批准及可撤销客户端授权；撤销后学校拒绝原 grant，客户端删除本地副本 |
 | `POST client/start/complete` | 已安装客户端连接学校；verifier 与凭据留在客户端私有目录 |
 | `GET/POST activities` | 按完整身份列出或建立活动 |
 | `GET activities/:id` | 读取原活动；拒绝他人对象 |
