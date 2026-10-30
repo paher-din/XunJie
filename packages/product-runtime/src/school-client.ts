@@ -7,7 +7,7 @@ import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spa
 import { activitySchema } from '@xunjie/contracts/learning-data';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
-import { atomicJson, exists } from './io.js';
+import { acquireLock, atomicJson, exists } from './io.js';
 import { resolveCredential } from './postgres.js';
 
 const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spaceIdentitySchema,
@@ -20,6 +20,10 @@ type Connection = z.infer<typeof connectionSchema>;
 export function createSchoolClient(root: string, environment: RuntimeEnvironment) {
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
+  async function update<T>(id: string, operation: () => Promise<T>): Promise<T> {
+    const release = await acquireLock(root, ref(id));
+    try { return await operation(); } finally { await release(); }
+  }
   async function read(id: string) {
     let stored: string;
     try { stored = await resolveCredential(root, ref(id)); }
@@ -64,15 +68,17 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const endpoint = new URL(input.schoolEndpoint);
     if (endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash
       || endpoint.protocol !== 'https:' && !(endpoint.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(endpoint.hostname))) throw new StorageError('invalid');
-    let connection: Connection;
-    if (await exists(path(input.requestId))) {
-      connection = await read(input.requestId);
-      if (connection.schoolEndpoint !== endpoint.origin) throw new StorageError('identity-conflict');
-    } else {
-      connection = { requestId: input.requestId, schoolEndpoint: endpoint.origin, verifier: randomBytes(48).toString('base64url'),
+    const connection = await update(input.requestId, async () => {
+      if (await exists(path(input.requestId))) {
+        const existing = await read(input.requestId);
+        if (existing.schoolEndpoint !== endpoint.origin) throw new StorageError('identity-conflict');
+        return existing;
+      }
+      const created: Connection = { requestId: input.requestId, schoolEndpoint: endpoint.origin, verifier: randomBytes(48).toString('base64url'),
         clientId: randomUUID(), clientNamespace: environment.clientNamespace };
-      await atomicJson(path(input.requestId), connection);
-    }
+      await atomicJson(path(input.requestId), created);
+      return created;
+    });
     await call(connection, 'connections/start', { requestId: connection.requestId, clientId: connection.clientId,
       challenge: createHash('sha256').update(connection.verifier).digest('base64url') });
     return view(connection);
@@ -83,9 +89,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (grant.connectionId !== requestId) throw new StorageError('forbidden');
     if (connection.grant && (JSON.stringify(connection.grant.identity) !== JSON.stringify(grant.identity)
       || JSON.stringify(connection.grant.target) !== JSON.stringify(grant.target))) throw new StorageError('forbidden');
-    connection.grant = grant;
-    await atomicJson(path(requestId), connection);
-    return view(connection);
+    return update(requestId, async () => {
+      // Network exchange is outside the lock. Revocation or a new proof may have won while it was in flight.
+      const current = await read(requestId);
+      if (current.verifier !== connection.verifier) throw new StorageError('forbidden');
+      current.grant = grant;
+      await atomicJson(path(requestId), current);
+      return view(current);
+    });
   }
   async function forward(connectionId: string, route: string, body?: unknown) {
     if (!/^(?:activities(?:\/[0-9a-f-]{36})?|activity-status|receipts\/[0-9a-f-]{36}|connections\/revoke)$/.test(route)) throw new StorageError('forbidden');
@@ -96,12 +107,12 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     catch (error) {
       // The school may already have revoked this grant (or the membership): drop the local copy too.
       if (route !== 'connections/revoke' || !(error instanceof StorageError) || error.code !== 'forbidden') throw error;
-      await rm(path(connectionId), { force: true });
+      await update(connectionId, () => rm(path(connectionId), { force: true }));
       return { revoked: true };
     }
     if (route === 'connections/revoke') {
       // A revoked grant must stop appearing as an available space; keep no local copy that could be replayed.
-      await rm(path(connectionId), { force: true });
+      await update(connectionId, () => rm(path(connectionId), { force: true }));
       return value;
     }
     const check = (value: unknown) => {

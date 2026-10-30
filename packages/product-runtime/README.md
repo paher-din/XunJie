@@ -23,7 +23,7 @@ import {
 | `createProductRuntimeHost` | 通过 `recoveryOwners` 或数据库可用后执行的 `createRecoveryOwners` 装配业务 owner；`participants` 可登记其他维护参与者 |
 | `createRecoveryManager` | 绑定 environment、maintenance、owners、requiredServiceIds、receiverIds，编排同一关闭边界备份与目标接管 |
 | `restoreRecoverySet` | 认证完整备份，精确匹配全部 targets，空的独立目标恢复并验证，返回 `{ manifest, owners }`，保持 isolated |
-| `restoreProductRecovery` | 自动加入 runtime target，其余 owner 由 `targets` 提供；可提供目标 `database`、`databaseCredential` 与 `installation` |
+| `restoreProductRecovery` | 默认按认证后的备份装配 runtime、空间身份和学习数据 target；自定义宿主可用 `targets` 显式提供完整业务目标集合；可提供目标 `database`、`databaseCredential` 与 `installation` |
 | `upgradeProductRecovery` | `schema` / `pg-minor` / `pg-major`：从 callback 取得 held 备份，以目标 resources、database、databaseCredential、installation 在独立 root 恢复，完成后仍隔离 |
 | `createStorageRecoveryOwner/Target` | 对接 [storage](../storage/README.md) 的真实快照、schema、原资源、pin、迁移与 owner 服务验证 |
 | `openRecoveredStorage({ root, serviceId, migrations, backend })` | 重启时读取目标私有 binding，以恢复时生成的新凭据重新打开所属 storage；不恢复源登录凭据或自动开闸 |
@@ -48,7 +48,7 @@ storage owner 通过 `snapshot` 在快照事务存活期间完成逻辑导出与
 
 `restoreProductRecovery` / `upgradeProductRecovery` 的 `databaseCredential` 是 string，仅供可信 API 在内存中传入目标数据库密码；external 目标要求提供，库将其保存为目标 `database.credentialRef` 对应的私有 credential。`installation` 类型为 `Omit<InstallOptions, 'database' | 'requiredServiceIds'>`，支持 profile、host、port、publicEndpoint、tls，供学校部署选择目标 HTTPS/TLS 入口；数据库通过独立 `database` 参数指定，requiredServiceIds 从备份恢复。源 TLS 私钥不自动复用。
 
-CLI 的 restore/upgrade JSON 对应支持 `database`、`databaseCredentialFile` 和 `installation`；密码从单行私密文件读取，读后纳入错误输出 redaction，不将明文写进 JSON、argv 或日志。其他业务 owner targets 仍须由可信宿主提供。external 数据库维护使用带匹配 PostgreSQL 备份/还原工具的**完整管理分发包**；不含 PG 工具的 remote-client 包不能作为外部数据库维护入口。
+CLI 的 restore/upgrade JSON 对应支持 `database`、`databaseCredentialFile` 和 `installation`；密码从单行私密文件读取，读后纳入错误输出 redaction，不将明文写进 JSON、argv 或日志。默认产品的空间身份与学习数据 owner 自动恢复；其他业务 owner targets 仍须由可信宿主提供。external 数据库维护使用带匹配 PostgreSQL 备份/还原工具的**完整管理分发包**；不含 PG 工具的 remote-client 包不能作为外部数据库维护入口。
 
 ## 恢复与唯一写方
 

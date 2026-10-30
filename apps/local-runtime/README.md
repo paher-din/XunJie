@@ -161,7 +161,7 @@ xunjie takeover --root /srv/xunjie/restored-new --file /secure/xunjie/takeover.j
 
 备份目录独立于环境及文件资源根，key 外置保管。所有参与者同一关闭边界 freeze、排空及验证后才导出。恢复保留业务身份，但生成新 installation、client namespace、本地凭据和存储代际；连接描述保留，旧秘密不直接恢复成有效授权。只有最新仍 held 的备份可退休源；源不可达或 receiver 失败时目标保持隔离。接管后接收方重新 `authorize`，目标通过 `set-credential --ref <原连接的credentialRef> --file <仅含新token的私密文件>` 补齐已保留连接的凭据；`connect` 只登记新连接，不接受重复 connectionId。旧 token 在 receiver 重启或旧 grant 文件复活后仍拒绝。
 
-升级 kind 为 `schema|pg-minor|pg-major`；固定引擎 17.10/17.11/18.6，版本前进通过逻辑备份与新目标恢复完成。当前默认 daemon 只有 runtime owner；业务 owner 随 WP 装配，`schema` 没有实际注册迁移时报 `no-schema-upgrade-registered`。其他业务 targets 仍由[可信宿主公开 API](../../packages/product-runtime/README.md)提供。
+升级 kind 为 `schema|pg-minor|pg-major`；固定引擎 17.10/17.11/18.6，版本前进通过逻辑备份与新目标恢复完成。默认产品的 restore/upgrade 自动装配备份中的 runtime、空间身份和学习数据 owner，旧的 runtime-only 备份仍可恢复；`schema` 没有实际注册迁移时报 `no-schema-upgrade-registered`。其他业务 targets 仍由[可信宿主公开 API](../../packages/product-runtime/README.md)提供。
 
 restore/upgrade JSON 支持目标 `database`、`databaseCredentialFile` 与 `installation`。external 密码由单行非空私密文件读取，可带一个末尾换行，空格原样保留；读后加入错误输出 redaction，JSON/argv 不放明文密码。`installation` 支持 profile、host、port、publicEndpoint、tls（certificateFile、keyFile），用于目标学校 HTTPS 入口，不含 database/requiredServiceIds；数据库单独配置，必需参与者从备份恢复。完整 external/TLS JSON 示例见 [维护说明](../../docs/student-agent-implementation/maintenance-acceptance.md#最终-held-备份与恢复)。
 

@@ -3,6 +3,7 @@
 .learning-page a { color: var(--accent); text-underline-offset: 4px; }
 .learning-page .space-switcher { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; }
 .learning-page button[aria-pressed='true'], .learning-page .primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.learning-page .primary:hover:not(:disabled) { background: var(--primary-hover); }
 .learning-page button { min-height: 32px; padding: 0 16px; font-size: 13px; }
 .learning-page form { display: grid; gap: 16px; margin-top: 20px; max-width: 640px; }
 .learning-page label { display: grid; gap: 8px; color: var(--ink-soft); font-size: 13px; }

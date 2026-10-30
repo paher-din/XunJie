@@ -257,6 +257,7 @@ async function main(): Promise<void> {
       const result = await run(() => restoreProductRecovery({ root, backupDirectory, key, resources,
         ...targetConfiguration,
         minimumFreeBytes: typeof input.minimumFreeBytes === 'number' ? input.minimumFreeBytes : undefined }));
+      await run(async () => { for (const owner of result.owners) await owner.close?.(); });
       await run(() => runtime.stop());
       output({ phase: 'isolated', root, backupId: result.manifest.backupId }); break;
     }
@@ -273,6 +274,7 @@ async function main(): Promise<void> {
         sourceRoot: root, root: targetRoot, backupDirectory, key, resources,
         ...targetConfiguration,
         backup: () => runtime.recovery.backup({ directory: backupDirectory, recoveryKeyRef: ref, leaveClosed: true }) }));
+      await run(async () => { for (const owner of result.owners) await owner.close?.(); });
       await run(() => openProductRuntime({ root: targetRoot }).stop());
       output({ phase: 'isolated', root: targetRoot, backupId: result.manifest.backupId }); break;
     }

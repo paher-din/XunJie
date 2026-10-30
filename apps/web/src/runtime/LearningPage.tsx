@@ -122,7 +122,8 @@ export function LearningPage() {
     } catch (error) {
       // A rejected input can never succeed under this request identity; let the student edit again.
       if ((error as { code?: string }).code === 'invalid') {
-        localStorage.removeItem(scopeKey)
+        const saved = localStorage.getItem(scopeKey)
+        if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
         if (generation === epoch.current) setPendingRequest(null)
       }
       throw error

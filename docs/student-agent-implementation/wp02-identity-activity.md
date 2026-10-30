@@ -22,7 +22,7 @@ xunjie school-connection --root <学校环境目录> --file <仓库外连接撤�
 
 默认产品 daemon 为有数据库的组合登记空间与学习数据两个 owner，分别使用独立受限 schema 和迁移。两者加入 requiredServiceIds、维护参与者及完整备份；暂停新接收、排空、校验并恢复开放沿用 WP01。资源根为私有产品 root 下 `learning-resources`，活动与请求记录持续保留。
 
-可信恢复宿主调用 `createLearningRecoveryTargets({root,environment,resources,admin})`，与 `restoreProductRecovery` 装配；`environment` 取经过认证的源备份，`admin` 延后解析独立目标数据库。恢复后先保持隔离，使用生产模块重新启动，再经 WP01 接管流程开放。主体、空间、活动和服务身份保留，安装身份及客户端命名空间更新；原学校会话和客户端凭据不能直接用于恢复目标。
+默认产品 CLI 与 `restoreProductRecovery` 按认证后的源备份自动装配空间身份和学习数据恢复目标，旧的 runtime-only 备份继续只恢复运行库。自定义宿主可显式传入完整业务 `targets`，用 `createLearningRecoveryTargets({root,environment,resources,admin})` 构造学习模块目标；`environment` 取经过认证的源备份，`admin` 延后解析独立目标数据库。恢复后先保持隔离，使用生产模块重新启动，再经 WP01 接管流程开放。主体、空间、活动和服务身份保留，安装身份及客户端命名空间更新；原学校会话和客户端凭据不能直接用于恢复目标。
 
 ## 验证与限制
 
@@ -49,5 +49,14 @@ npm run check:docs
 - 工具组另行运行时，依赖外部 OSS/团队服务的用例单项等待 100 秒以上，未跑完即停止；本票未修改 `tools/`，该组结果不作为本票通过依据。
 
 默认全库文档检查另报 252 处断链，全部位于工作区原有的未跟踪 `.tmp/`、`docs/planning/` 和 `docs/tasks/`；这些材料未修改、暂存或提交，受 Git 跟踪的文档单独检查通过。
+
+### PR #156 审查修复复验（2026-10-30）
+
+- 迟到的 `invalid` 响应只清理同一请求；客户端确认在连接锁内重读凭据，撤销后不能重新写回旧 grant；主按钮悬停沿用 `--primary-hover`。
+- 新增 [页面回归](../../apps/web/e2e/learningEntry.spec.ts) 在桌面 Chrome 有头模式先复现失败、修复后通过：旧响应到达后刷新，仍可沿新请求 ID 查询。此测试控制 HTTP 响应以稳定制造竞争，不作为真实后端业务验收。浅、深色主按钮悬停另行实测，对比度分别为 10.71:1、11.23:1。
+- 新增 [客户端 HTTP 回归](../../packages/product-runtime/test/school-client.test.mjs) 先复现、后通过：真实安装客户端连接受控学校接口，撤销成功后释放迟到确认，学校空间不再出现。
+- 原生集成加 [正式 CLI 恢复回归](../../packages/product-runtime/test/learning-cli.runtime.test.mjs) 共 9/9 通过。正常 CLI 备份三 owner，恢复、保持隔离、接管并读回原活动；升级到达 `no-schema-upgrade-registered` 的正确拒绝，且关闭临时 owner。该用例不宣称存在新迁移的成功版本升级。
+- 全仓类型检查、全量构建、Web 688 项测试、7 个公共契约浏览器检查及本次 3 个文档的 27 个本地链接通过。全量 `npm test` 在文档发现测试创建符号链接时被 Windows `EPERM` 阻止，未完成后续 workspace；全仓文档扫描仍为上述 252 处原有断链。两轴代码复审未发现剩余可行动问题。
+- 产品运行库完整本地组另行执行：94 项通过、22 项失败、5 项跳过。18 个失败名称在此前 main 基线记录中已存在（连接/恢复超时等），另 4 个恢复文件用例因 Windows `EPERM` 无法创建符号链接；新增客户端撤销竞争回归通过。该组整体未通过，不作为绿色门禁。
 
 **未执行**：Apple Silicon Mac 的真实 Chrome 验收（本机无该硬件），因此本票的两平台浏览器验收尚未全部完成；Mac 项已汇总到 [#155](https://github.com/paher-din/XunJie/issues/155)，由负责人在 Apple Silicon Mac 上执行。真实跨机混合组合按规范归后续部署子票；教学效果不评估。上述未完成项不能用本机 API 结果代替，实施票暂不据此宣称完整关闭。
