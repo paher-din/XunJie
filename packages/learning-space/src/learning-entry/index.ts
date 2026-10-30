@@ -123,7 +123,7 @@ export function createLearningEntry(options: {
           await spaces.setMembership(input); result = { updated: true };
         } else if (route === 'manage/connection') {
           const input = z.object({ connectionId: z.uuid() }).strict().parse(body);
-          result = await spaces.adminRevokeConnection(input.connectionId);
+          await spaces.adminRevokeConnection(input.connectionId); result = { revoked: true };
         } else throw new StorageError('missing');
       } else if (route === 'connections/start' && method === 'POST') {
         const input = z.object({ requestId: z.uuid(), clientId: z.uuid(), challenge: z.string() }).strict().parse(await readLearningBody(request));
