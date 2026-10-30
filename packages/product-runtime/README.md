@@ -30,7 +30,7 @@ import {
 
 ## owner 与维护装配
 
-默认 daemon 在有数据库的产品组合中自动注册 runtime、空间身份和学习数据 owner，提供[真实学习入口](../../apps/server/server/learning-entry/README.md)；没有数据库的客户端组合可连接学校。课程发布、作品和 Agent 仍按后续子票接入。生产依赖不得导入 `scripts/probe-recovery.mjs`、其验收 owner 或测试宿主。
+默认 daemon 在有数据库的产品组合中自动注册 runtime、空间身份和学习数据 owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合可连接学校。课程发布、作品和 Agent 仍按后续子票接入。生产依赖不得导入 `scripts/probe-recovery.mjs`、其验收 owner 或测试宿主。
 
 `createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 提供两个 owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md)。
 

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { provisionStorage, openStorage, createFileBackend } from '@xunjie/storage';
-import { spaceMigrations, createSpaces } from '../server/spaces/index.ts';
+import { spaceMigrations, createSpaces } from '@xunjie/learning-space';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Set XUNJIE_PRODUCT_POSTGRES_BIN to a complete native PostgreSQL 18.6 distribution.');
@@ -64,7 +64,7 @@ test('space identity persists and authorization follows current membership', { t
       assert.deepEqual((await school.login('student-a', password)).identity, member);
     });
     await t.test('independent learning owner creates one course-free activity and rejects other members', async () => {
-      const { learningMigrations, createLearningData } = await import('../server/learning-data/index.ts');
+      const { learningMigrations, createLearningData } = await import('@xunjie/learning-space');
       const learningBinding = await provisionStorage({ admin: { ...connection, password: await resolveCredential(root, credentialRef) },
         owner: { environmentId: installed.environment.environmentId, serviceId: randomUUID() },
         password: randomUUID(), migrations: learningMigrations });
@@ -116,6 +116,16 @@ test('space identity persists and authorization follows current membership', { t
       await school.revokeConnection(member, grant.connectionId);
       await assert.rejects(school.authenticate(grant.token), { code: 'forbidden' });
       await assert.rejects(school.exchangeConnection(requestId, verifier), { code: 'forbidden' });
+      const adminRequest = randomUUID();
+      const adminVerifier = randomUUID() + randomUUID();
+      await school.beginConnection({ requestId: adminRequest, clientId: randomUUID(),
+        challenge: createHash('sha256').update(adminVerifier).digest('base64url') });
+      const adminSession = await school.login('client-member', password);
+      await school.approveConnection(adminSession.token, adminRequest);
+      const adminGrant = await school.exchangeConnection(adminRequest, adminVerifier);
+      await school.adminRevokeConnection(adminGrant.connectionId);
+      await assert.rejects(school.authenticate(adminGrant.token), { code: 'forbidden' });
+      assert.deepEqual((await school.login('client-member', password)).identity, member);
       const short = createSpaces(storage, { sessionLifetimeMs: 1000 });
       const expiring = await short.login('client-member', password);
       await delay(1100);

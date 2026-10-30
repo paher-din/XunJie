@@ -4,7 +4,7 @@
 
 ## 产品入口与事实边界
 
-[apps/local-runtime](../../apps/local-runtime/README.md)提供 `prepare / install / launch / start / status / stop / uninstall / delete / connect / authorize / revoke`，通过 `@xunjie/product-runtime` 消费同一套实现。产品包内含 Node 24.21.0、完整 PostgreSQL 18.6 工具、生产 CLI/daemon 及来自 `apps/web` 的独立运行状态网页；网页没有课程、成员或 Agent 演示数据，不加载旧业务 store、SQLite、IndexedDB 或 outbox。网页关闭不会停止服务。
+[apps/local-runtime](../../apps/local-runtime/README.md)提供 `prepare / install / launch / start / status / stop / uninstall / delete / connect / authorize / revoke`，通过 `@xunjie/product-runtime` 消费同一套实现。产品包内含 Node 24.21.0、完整 PostgreSQL 18.6 工具、生产 CLI/daemon 及来自 `apps/web` 的独立运行网页（默认学习空间入口，`?diagnostics=1` 查看运行状态）；网页没有课程、成员或 Agent 演示数据，不加载旧业务 store、SQLite、IndexedDB 或 outbox。网页关闭不会停止服务。
 
 环境、安装与服务身份均持久保存，新环境获得独立客户端命名空间、凭据、目录和端口。数据库与应用使用用户私有目录，PG 只监听回环。实例操作用独立进程锁协调，存活判断不依赖超时，睡眠本身不会成为清理进程锁的依据。停止 PG 前通过 SQL 核对 cluster identity 和实际 PGDATA；不删除已有数据库锁文件，不杀占用端口的外来进程。卸载保留数据，删除必须提供当前环境身份。
 

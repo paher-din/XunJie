@@ -19,7 +19,11 @@ async function api(path: string, body?: unknown, key?: string, signal?: AbortSig
     headers: { 'content-type': 'application/json', ...(key ? { 'x-xj-space': key } : {}) },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ?? AbortSignal.timeout(10000), credentials: 'same-origin' })
   const result = await response.json()
-  if (!response.ok) throw new Error(messages[result.error] ?? '操作结果尚未确认，请核对原请求后重试。')
+  if (!response.ok) {
+    const failure = new Error(messages[result.error] ?? '操作结果尚未确认，请核对原请求后重试。') as Error & { code?: string }
+    failure.code = result.error
+    throw failure
+  }
   return result
 }
 const errorText = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试。'
@@ -106,14 +110,27 @@ export function LearningPage() {
     // Persist the exact request before dispatch; an unknown result keeps this identity across reloads.
     localStorage.setItem(scopeKey, JSON.stringify(input))
     setPendingRequest(input)
-    const existing = await api('receipts/' + input.requestId, undefined, selected)
-    const activity = activitySchema.parse(existing ?? await api('activities', input, selected))
-    const saved = localStorage.getItem(scopeKey)
-    if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
-    if (generation === epoch.current) {
-      setPendingRequest(null); setOpened(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
-      setGoal(''); setQuestion(''); setReference('')
+    try {
+      const existing = await api('receipts/' + input.requestId, undefined, selected)
+      const activity = activitySchema.parse(existing ?? await api('activities', input, selected))
+      const saved = localStorage.getItem(scopeKey)
+      if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
+      if (generation === epoch.current) {
+        setPendingRequest(null); setOpened(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
+        setGoal(''); setQuestion(''); setReference('')
+      }
+    } catch (error) {
+      // A rejected input can never succeed under this request identity; let the student edit again.
+      if ((error as { code?: string }).code === 'invalid') {
+        localStorage.removeItem(scopeKey)
+        if (generation === epoch.current) setPendingRequest(null)
+      }
+      throw error
     }
+  }
+  function discardPending() {
+    if (pendingKey) localStorage.removeItem(pendingKey)
+    setPendingRequest(null); setGoal(''); setQuestion(''); setReference(''); setError('')
   }
   async function openActivity(activityId: string) {
     const generation = epoch.current
@@ -161,6 +178,7 @@ export function LearningPage() {
             <label>起始问题<textarea value={question} maxLength={10000} disabled={!!pendingRequest} onChange={event => setQuestion(event.target.value)} rows={3} /></label>
             <label>资料链接（可选）<input type="url" value={reference} disabled={!!pendingRequest} onChange={event => setReference(event.target.value)} placeholder="https://" /></label>
             {pendingRequest && <p className="detail">上次建立活动的结果尚未核对，将先查询原请求。</p>}
+            {pendingRequest && <button type="button" disabled={busy} onClick={discardPending}>放弃这次请求并重新填写</button>}
             <button className="primary" disabled={busy || !pendingRequest && !goal.trim() && !question.trim() && !reference}>
               {busy ? '正在处理…' : pendingRequest ? '核对并继续原请求' : '建立学习活动'}</button>
           </form>

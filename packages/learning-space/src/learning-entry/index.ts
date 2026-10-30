@@ -47,6 +47,12 @@ export function createLearningEntry(options: {
   const { spaces, learning, environment } = options;
   const cookieName = `xj_${environment.environmentId.replaceAll('-', '')}`;
   const endpoint = new URL(environment.services[0]!.endpoint);
+  // The same product may be opened as 127.0.0.1, localhost or [::1] on a loopback listener.
+  const allowedOrigins = new Set([endpoint.origin]);
+  if (['127.0.0.1', '[::1]', 'localhost'].includes(endpoint.hostname)) {
+    const port = endpoint.port ? `:${endpoint.port}` : '';
+    for (const host of ['127.0.0.1', 'localhost', '[::1]']) allowedOrigins.add(`${endpoint.protocol}//${host}${port}`);
+  }
   const cookieFlags = `; Path=/; HttpOnly; SameSite=Strict${endpoint.protocol === 'https:' ? '; Secure' : ''}`;
   function session(request: IncomingMessage) {
     return request.headers.cookie?.split(';').map(part => part.trim()).find(part => part.startsWith(cookieName + '='))?.slice(cookieName.length + 1) ?? '';
@@ -67,7 +73,7 @@ export function createLearningEntry(options: {
     const pathname = new URL(request.url ?? '/', endpoint).pathname;
     if (!pathname.startsWith('/api/learning/')) return false;
     try {
-      if (request.headers.origin && request.headers.origin !== endpoint.origin || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
+      if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
       const route = pathname.slice('/api/learning/'.length);
       const method = request.method;
       let result: unknown;
@@ -115,6 +121,9 @@ export function createLearningEntry(options: {
         } else if (route === 'manage/membership') {
           const input = z.object({ requestId: z.uuid(), principalId: z.uuid(), active: z.boolean() }).strict().parse(body);
           await spaces.setMembership(input); result = { updated: true };
+        } else if (route === 'manage/connection') {
+          const input = z.object({ connectionId: z.uuid() }).strict().parse(body);
+          result = await spaces.adminRevokeConnection(input.connectionId);
         } else throw new StorageError('missing');
       } else if (route === 'connections/start' && method === 'POST') {
         const input = z.object({ requestId: z.uuid(), clientId: z.uuid(), challenge: z.string() }).strict().parse(await readLearningBody(request));

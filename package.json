@@ -7,9 +7,9 @@
   "workspaces": ["apps/*", "packages/*", "tools/xj-dev", "tools/xj-dev-access"],
   "scripts": {
     "preinstall": "node apps/server/tools/check-runtime.mjs",
-    "build": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/server && npm run build -w @xunjie/product-runtime && npm run build -w @xunjie/web && npm run build:runtime -w @xunjie/web && npm run build -w @xunjie/local-runtime",
-    "typecheck": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/server && npm run build -w @xunjie/product-runtime && npm run typecheck --workspaces --if-present",
-    "test": "npm run test:checks && npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/server && npm run build:runtime -w @xunjie/web && npm run test -w packages -w apps --if-present && node scripts/test.mjs tools",
+    "build": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/learning-space && npm run build -w @xunjie/server && npm run build -w @xunjie/product-runtime && npm run build -w @xunjie/web && npm run build:runtime -w @xunjie/web && npm run build -w @xunjie/local-runtime",
+    "typecheck": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/learning-space && npm run build -w @xunjie/server && npm run build -w @xunjie/product-runtime && npm run typecheck --workspaces --if-present",
+    "test": "npm run test:checks && npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/learning-space && npm run build -w @xunjie/server && npm run build:runtime -w @xunjie/web && npm run test -w packages -w apps --if-present && node scripts/test.mjs tools",
     "test:checks": "node scripts/test.mjs checks",
     "check:contracts:browser": "npm run check:browser -w @xunjie/contracts",
     "check:docs": "node scripts/check-doc-links.mjs",
@@ -20,7 +20,7 @@
     "test:tools": "node scripts/test.mjs tools",
     "test:e2e": "npm run test:e2e -w @xunjie/web",
     "verify": "node apps/server/tools/check-runtime.mjs && node scripts/verify.mjs",
-    "test:storage:native": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/server && node scripts/probe-storage.mjs"
+    "test:storage:native": "npm run build -w @xunjie/contracts && npm run build -w @xunjie/storage && npm run build -w @xunjie/learning-space && npm run build -w @xunjie/server && node scripts/probe-storage.mjs"
   },
   "devDependencies": {
     "entities": "9.0.0",

@@ -3,10 +3,10 @@
 .learning-page a { color: var(--accent); text-underline-offset: 4px; }
 .learning-page .space-switcher { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; }
 .learning-page button[aria-pressed='true'], .learning-page .primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
-.learning-page button { min-height: 36px; }
+.learning-page button { min-height: 32px; padding: 0 16px; font-size: 13px; }
 .learning-page form { display: grid; gap: 16px; margin-top: 20px; max-width: 640px; }
 .learning-page label { display: grid; gap: 8px; color: var(--ink-soft); font-size: 13px; }
-.learning-page input, .learning-page textarea { width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--font-sans); }
+.learning-page input, .learning-page textarea { width: 100%; min-height: 36px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--font-sans); }
 .learning-page textarea { resize: vertical; }
 .learning-page form button { justify-self: start; }
 .learning-page section { padding-top: 24px; margin-top: 24px; }

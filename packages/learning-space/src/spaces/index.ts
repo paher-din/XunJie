@@ -184,11 +184,19 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
       return null;
     });
   }
+  async function adminRevokeConnection(connectionId: string) {
+    id.parse(connectionId);
+    await storage.request({ requestId: randomUUID(), fingerprint: digest({ connectionId }) }, async tx => {
+      const result = await tx.query("UPDATE sessions SET revoked=true WHERE connection_id=$1 AND kind='connection'", [connectionId]);
+      if (!result.rowCount) fail('missing');
+      return { revoked: true };
+    });
+  }
   async function validate() {
     const { rows } = await storage.read('SELECT target FROM learning_bindings');
     for (const row of rows) learningTargetSchema.parse(row.target);
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
   return { personal, createMember, setMembership, login, authenticate, bindMember, resolveBinding,
-    logout, beginConnection, approveConnection, exchangeConnection, revokeConnection, validate };
+    logout, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

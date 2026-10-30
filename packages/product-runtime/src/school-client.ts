@@ -91,7 +91,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (!/^(?:activities(?:\/[0-9a-f-]{36})?|activity-status|receipts\/[0-9a-f-]{36}|connections\/revoke)$/.test(route)) throw new StorageError('forbidden');
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
-    const value = await call(connection, route, body, true);
+    let value: unknown;
+    try { value = await call(connection, route, body, true); }
+    catch (error) {
+      // The school may already have revoked this grant (or the membership): drop the local copy too.
+      if (route !== 'connections/revoke' || !(error instanceof StorageError) || error.code !== 'forbidden') throw error;
+      await rm(path(connectionId), { force: true });
+      return { revoked: true };
+    }
     if (route === 'connections/revoke') {
       // A revoked grant must stop appearing as an available space; keep no local copy that could be replayed.
       await rm(path(connectionId), { force: true });

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "issue": 149,
   "status": "passed",
-  "observedAt": "2026-10-30T12:36:00Z",
+  "observedAt": "2026-10-30T14:00:00Z",
   "platform": "Windows 11 家庭版 (build 26200) x64",
   "runtime": "Node.js 24.21.0",
   "database": "PostgreSQL 18.6 from the packaged product distribution",
@@ -12,13 +12,14 @@
     "pass": 8,
     "fail": 0,
     "skipped": 0,
-    "durationMs": 68392
+    "durationMs": 69356
   },
   "covers": [
     "device profiles reject a shared listener and non-loopback endpoint",
     "personal identity and space persist across storage reopen and product restart",
     "school login verifies the real password and revocation invalidates existing sessions",
     "a revoked member cannot log in again with an old session, but the original account and identity survive regrant",
+    "an administrator can revoke one lost client connection without revoking the member",
     "the learning owner creates one course-free activity, replays the same request identity, rejects changed input and hides other members' activities",
     "activity close survives storage reopen and reopen returns to the list",
     "client proof grants bind the school member and capabilities, and logout/revocation are independent",

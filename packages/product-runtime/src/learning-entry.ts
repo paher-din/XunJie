@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
-import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData } from '@xunjie/server/learning-entry';
+import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { InstalledConfiguration } from './runtime.js';
 import { databaseBinding, resolveCredential, storeCredential } from './postgres.js';
