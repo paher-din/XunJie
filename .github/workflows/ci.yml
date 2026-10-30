@@ -26,6 +26,10 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci --include=dev --no-audit --no-fund
       - run: npm run verify
+      - name: Check legacy HDL node ledger
+        run: |
+          sudo install -d -m 0700 -o "$(id -un)" -g "$(id -gn)" /run/xunjie-dlc
+          node --test apps/server/runner/alu-node.runtime.test.ts
       - name: Save verification logs
         if: always()
         uses: actions/upload-artifact@v4
