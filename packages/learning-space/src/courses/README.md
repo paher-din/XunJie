@@ -9,9 +9,11 @@
 | `listCourses/readRelease` | 每次核验当前成员与课程资格，只构造学生开放投影；私有材料名称、正文和资源 locator 不下发 |
 | `readMaterial` | 按发布与材料身份核验资格、材料归属和资源完整性后返回字节；私有或未知材料统一不可见 |
 | `setAccess` | 管理者授予或撤销课程资格，不改变成员身份、既有活动归属或发布版本 |
-| `prepare/confirm/bindingResult` | 学习数据 owner 的跨 owner 活动关联准备、重新核验当前资格与资源完整性后的确认，以及原身份查询 |
+| `prepare/confirm/authorize` | 学习数据 owner 的跨 owner 活动关联准备、重新核验当前资格与资源完整性后的确认，以及读取/重开时的当前资格校验；`bindingResult` 提供原关联状态查询 |
 
-发布内容以规范化 JSON 存储并计算摘要；相同 `releaseId` 改内容、相同请求改输入或同一任务错绑均拒绝。修改课程内容必须产生新 `releaseId`。材料通过 `stageResource` 持久写入，并以 `<releaseId>:<materialId>` 引用保留；新增版本、撤权或关闭活动不解除旧版本及其材料。
+发布内容以规范化 JSON 存储并计算摘要；相同 `releaseId` 改内容、相同请求改输入或同一任务错绑均拒绝。修改课程内容必须产生新 `releaseId`。材料使用课程级资源 scope，同一 `materialId` 与相同内容可被后续版本复用；通过 `stageResource` 持久写入，并以 `<releaseId>:<materialId>` 引用保留；新增版本、撤权或关闭活动不解除旧版本及其材料。
+
+正式导入入口单次 JSON 请求上限为 64 MiB（包含所有资源），单个资源 `contentBase64` 上限同为 64 MiB；更大的课程应拆分为多个发布版本。重复的原登记请求先按 `requestId` 与输入摘要返回已存储结果，不要求重新读取本地资源。
 
 `spaceCourseMigrations` 是空间/课程 owner 的完整迁移集（既有空间版本 + 课程 schema）；生产运行时、维护参与者和恢复目标都消费它。`createCourses(storage, spaces).validate()` 校验课程/任务/发布/材料/引用/资格/关联/登记的一致性，资源字节完整性由 storage 参与者的校验覆盖。
 

@@ -33,7 +33,27 @@ async function api(path: string, body?: unknown, key?: string, signal?: AbortSig
 const errorText = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试。'
 const definitive = new Set(['invalid', 'forbidden', 'missing', 'corrupt', 'identity-conflict'])
 const published = (value: string) => new Date(value).toLocaleDateString('zh-CN')
-const bytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`
+const formatBytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`
+
+type CourseSectionsContent = Pick<CourseRelease, 'releaseId' | 'objectives' | 'requirements' | 'materials' | 'starterWorks' | 'capabilities'>
+function CourseSections({ content, level, busy, onMaterial }: {
+  content: CourseSectionsContent; level: 3 | 4; busy: boolean; onMaterial: (item: CourseMaterial) => void
+}) {
+  const Heading = level === 4 ? 'h4' : 'h3'
+  return <>
+    <Heading>学习目标</Heading><ul className="course-points">{content.objectives.map((item, index) => <li key={index}>{item}</li>)}</ul>
+    <Heading>任务要求</Heading><p className="preserve-lines">{content.requirements}</p>
+    <Heading>学习材料</Heading>
+    {content.materials.length === 0 ? <p className="detail">这个版本没有开放材料。</p>
+      : <ul className="material-list">{content.materials.map(item => <li key={item.materialId}>
+        <button type="button" disabled={busy} onClick={() => onMaterial(item)}>{item.title}</button>
+        <span className="detail">{item.mediaType} · {formatBytes(item.byteLength)}</span></li>)}</ul>}
+    {content.starterWorks.length > 0 && <><Heading>起始作品</Heading>
+      <ul className="course-points">{content.starterWorks.map(work => <li key={work.workId}>
+        <strong>{work.title}</strong>{work.description ? ` · ${work.description}` : ''}</li>)}</ul></>}
+    {content.capabilities.length > 0 && <p className="capability-note">固定能力引用：{content.capabilities.map(item => `${item.kind}/${item.objectId.slice(0, 8)}@${item.version}`).join('、')}。未接入前不提供运行或编辑。</p>}
+  </>
+}
 
 export function LearningPage() {
   useTheme()
@@ -226,7 +246,9 @@ export function LearningPage() {
     if (generation === epoch.current) setRelease(detail)
   }
   async function readMaterial(releaseId: string, item: CourseMaterial) {
+    const generation = epoch.current
     const content = courseMaterialContentSchema.parse(await api(`releases/${releaseId}/materials/${item.materialId}`, undefined, key))
+    if (generation !== epoch.current) return
     const binary = atob(content.contentBase64)
     const data = new Uint8Array(binary.length)
     for (let index = 0; index < binary.length; index++) data[index] = binary.charCodeAt(index)
@@ -259,16 +281,8 @@ export function LearningPage() {
         <h2 id="activity-title">{opened.course ? opened.course.taskTitle : opened.goal || opened.question || '资料学习'}</h2>
         {opened.course ? <>
           <p className="detail">{opened.course.courseName} · 固定版本 {opened.course.releaseId.slice(0, 8)} · 依据摘要 {opened.course.contentDigest.slice(0, 12)}</p>
-          <h3>学习目标</h3><ul className="course-points">{opened.course.objectives.map((item, index) => <li key={index}>{item}</li>)}</ul>
-          <h3>任务要求</h3><p className="preserve-lines">{opened.course.requirements}</p>
-          <h3>学习材料</h3>
-          {opened.course.materials.length === 0 ? <p className="detail">这个版本没有开放材料。</p>
-            : <ul className="material-list">{opened.course.materials.map(item => <li key={item.materialId}>
-              <button type="button" disabled={busy} onClick={() => void action(() => readMaterial(opened.course!.releaseId, item))}>{item.title}</button>
-              <span className="detail">{item.mediaType} · {bytes(item.byteLength)}</span></li>)}</ul>}
-          {opened.course.starterWorks.length > 0 && <><h3>起始作品</h3>
-            <ul className="course-points">{opened.course.starterWorks.map(work => <li key={work.workId}><strong>{work.title}</strong>{work.description ? ` · ${work.description}` : ''}</li>)}</ul></>}
-          {opened.course.capabilities.length > 0 && <p className="capability-note">固定能力引用：{opened.course.capabilities.map(item => `${item.kind}/${item.objectId.slice(0, 8)}@${item.version}`).join('、')}。未接入前不提供运行或编辑。</p>}
+          <CourseSections content={opened.course} level={3} busy={busy}
+            onMaterial={item => void action(() => readMaterial(opened.course!.releaseId, item))} />
         </> : <>
           {opened.question && opened.goal && <p className="preserve-lines">{opened.question}</p>}
           {opened.references.map((item, index) => <p key={index}><a href={item.url} target="_blank" rel="noreferrer">{item.label}</a></p>)}
@@ -297,16 +311,8 @@ export function LearningPage() {
           {release && <article className="release-detail" aria-labelledby="release-title">
             <h3 id="release-title">{release.taskTitle}</h3>
             <p className="detail">{release.courseName} · 发布 {published(release.publishedAt)} · 版本 {release.releaseId.slice(0, 8)}</p>
-            <h4>学习目标</h4><ul className="course-points">{release.objectives.map((item, index) => <li key={index}>{item}</li>)}</ul>
-            <h4>任务要求</h4><p className="preserve-lines">{release.requirements}</p>
-            <h4>学习材料</h4>
-            {release.materials.length === 0 ? <p className="detail">这个版本没有开放材料。</p>
-              : <ul className="material-list">{release.materials.map(item => <li key={item.materialId}>
-                <button type="button" disabled={busy} onClick={() => void action(() => readMaterial(release.releaseId, item))}>{item.title}</button>
-                <span className="detail">{item.mediaType} · {bytes(item.byteLength)}</span></li>)}</ul>}
-            {release.starterWorks.length > 0 && <><h4>起始作品</h4>
-              <ul className="course-points">{release.starterWorks.map(work => <li key={work.workId}>{work.title}{work.description ? ` · ${work.description}` : ''}</li>)}</ul></>}
-            {release.capabilities.length > 0 && <p className="capability-note">固定能力引用：{release.capabilities.map(item => `${item.kind}/${item.objectId.slice(0, 8)}@${item.version}`).join('、')}。未接入前不提供运行或编辑。</p>}
+            <CourseSections content={release} level={4} busy={busy}
+              onMaterial={item => void action(() => readMaterial(release.releaseId, item))} />
             {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
             <button type="button" className="primary" disabled={busy || !!coursePending} onClick={() => void action(() => startCourse(release.releaseId))}>从这一版本开始活动</button>
           </article>}

@@ -30,6 +30,8 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 - `access.json`：`{ requestId, courseId, principalId, active }`。
 - `result.json`：`{ requestId }`。
 - 私有材料与开放材料一起持久写入并保留引用，但不出现在学生投影或材料下载中。
+- 单次导入 JSON 请求上限 64 MiB（含全部资源），单个资源上限同为 64 MiB；更大课程需拆分为多个发布版本。
+- 重复登记先按 `requestId` 与输入摘要返回已存储结果，再读取本地资源；同一 `materialId` 与相同内容可被后续发布版本复用。
 
 ## 验收证据
 
@@ -38,11 +40,11 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 | 1 | 稳定身份与真实入口 | 课程/任务/发布使用独立 UUID；CLI 与 HTTP 管理入口经真实领域接口和 PostgreSQL；`course-releases.runtime.test.mjs` 的登记、查询、课程/任务/发布读取均未使用测试夹具或手工 SQL |
 | 2 | 完整不可变发布 | 发布固定目标、要求、开放/私有材料、起始作品与带版本的组件/执行器引用；相同 `releaseId` 改摘要、同一请求改内容均 409；修改须新 `releaseId`；Chrome 详情页显示固定版本与能力引用“未接入前不提供运行或编辑” |
 | 3 | 真实页面与自主活动 | 真实 Chrome（Windows 11 x64）用 `course-import` 登记后登录学生页，读到课程、任务、材料并从选定版本建立活动；刷新后活动仍在列表并可重开；自主活动建立与列表回归通过 |
-| 4 | 旧活动固定版本 | v1 建立活动后登记 v2，读取/重开仍为 v1；v1 材料缺失或损坏时读取、重开与新建明确失败，不回退最新版、不新建同名活动 |
+| 4 | 旧活动固定版本 | v1 建立活动后登记 v2，读取/重开仍为 v1；v1 材料缺失或损坏时读取、重开与新建明确失败，不回退最新版、不新建同名活动；列表仍保留该活动，打开时报告缺失/损坏 |
 | 5 | 后端私有隔离 | 学生列表/发布/材料/活动响应均不含私有材料名称或正文；私有材料直接读取 404；伪造发布、材料、其他学生活动请求分别 404/403；浏览器页面 DOM 不出现私有材料 |
 | 6 | 当前资格 | 撤销课程资格后列表投影为空、读取/新建/重开被拒，原活动记录保留；重新授予后原活动可重开；撤销成员后会话失效，重新登录后恢复；缺失、损坏、禁用与暂时不可用分别映射 |
 | 7 | 稳定操作与跨 owner | 相同登记请求返回原结果、改内容 409；相同活动请求返回同一活动 ID；prepare 中断、确认后回执丢失均按原身份续接且只产生一个活动；改发布 409；两侧各自短事务，无共享可写事务 |
-| 8 | 资源持久性 | `stageResource` 写入并重读，发布事务引用 `<releaseId>:<materialId>`；v2、撤权和关闭活动不回收 v1；材料文件删除返回 404、内容损坏返回 503 `corrupt`，不伪造内容；恢复后重新可读 |
+| 8 | 资源持久性 | `stageResource` 写入并重读，发布事务引用 `<releaseId>:<materialId>`；同一材料可被新版本复用；v2、撤权和关闭活动不回收 v1；材料文件删除返回 404、内容损坏返回 503 `corrupt`，不伪造内容；恢复后重新可读 |
 | 9 | 页面设计 | 使用既有 `learning-page`、色彩/排版/间距 token；目标与材料在详情首屏可发现；无存储节点选择、手动冻结或课程专用工作区分支；键盘使用原生按钮/链接 |
 | 10 | 迁移维护恢复 | 旧空间 v1–4、学习数据 v1 在真实 PG 上升级到新 schema，旧自主活动保留并可读取；新增发布/活动可用；备份、独立恢复、接管后发布、材料、课程活动与自主活动重开通过；`course-result` 在恢复目标可查询原登记 |
 | 11 | 平台与分项结果 | Windows 11 x64 工程、真实 Chrome 与已有自主活动回归通过；Apple Silicon Mac 未执行（见下）；教学效果未评估 |
@@ -60,9 +62,11 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 | 课程原生验收 | `node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs`（`XUNJIE_PRODUCT_POSTGRES_BIN`） | 3/3 通过：发布/投影/资格、跨 owner 续接、旧 schema 升级 |
 | CLI 备份恢复 | `node --test --test-concurrency=1 packages/product-runtime/test/learning-cli.runtime.test.mjs` | 1/1 通过：课程发布/材料/chrome 不可见项与自主活动随备份恢复，接管后重开 |
 | 既有 WP02 回归 | `node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs` | 8/8 通过：个人/学校身份、客户端授权、活动重开、恢复与旧会话隔离 |
-| 全量本地套件 | `npm test` | 结果见 `.verification/local-suite.log`；外部/原生套件需显式环境，不计入本地套件 |
+| 全量本地套件 | `npm test` | 退出码 1；失败集中在既有的 Windows 环境项：product-runtime 连接/恢复测试超时、symlink 用例 `EPERM`、server 的 `LOCAL_SOCKET_CONFLICT`，均位于本票未修改模块；web 58 个文件/688 项通过，本票改动模块没有失败。原始日志 `.verification/local-suite-2.log`（本机，未提交） |
 
-课程原生测试覆盖：重复登记/冲突、私有材料与伪造 ID、v1/v2 固定、重复活动请求、跨 owner prepare/confirm/提交中断续接、撤权/撤成员、材料删除/损坏、旧 schema 升级、资源随备份恢复。
+课程原生测试覆盖：重复登记/冲突（含无本地资源重试）、跨版本材料复用、私有材料与伪造 ID、v1/v2 固定、重复活动请求、跨 owner prepare/confirm/提交中断续接、撤权/撤成员、材料删除/损坏、旧 schema 升级、资源随备份恢复。
+
+两轴审查后的修正包括：登记先按 `requestId` 返回已存储结果；同 `materialId` 相同内容可在新版本复用；课程/任务/发布登记改为冲突安全的插入后复核；列表保留缺失/损坏版本（打开时报告），撤销资格仍隐藏；创建成功前经正式读取路径核实；材料读取增加空间切换代际保护；标题字号与衬线遵循 DESIGN.md。
 
 ## 浏览器验收
 
@@ -81,4 +85,4 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 - **Apple Silicon Mac**：本机无该平台，未执行原生 PG、Chrome 或受影响连接路径；需在 Mac 上复跑类型检查、课程原生测试与 Chrome 流程，并分别记录工程/浏览器/未执行项。
 - **教学效果**：本轮只验证工程与交互，未评估学生使用效果或学习收益。
 - **混合部署与跨机接管**：由 #154 继续验收；本票提供可消费的公开接口、迁移和恢复校验。
-- **全量本地套件**：若 `.verification/local-suite.log` 出现与本改动无关的既有失败或环境抖动，按实际日志记录，不当作本功能通过证据。
+- **全量本地套件**：`.verification/local-suite-2.log` 记录了当日失败；失败项位于未修改的连接/恢复测试、Windows symlink 特权与 `LOCAL_SOCKET_CONFLICT`。它们不计入本功能通过证据，也未被本次改动修复。

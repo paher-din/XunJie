@@ -76,6 +76,9 @@ test('course releases pin versions, project only open material and follow curren
     assert.equal(imported.value.materials.length, 2);
     assert.equal(imported.value.materials.find(item => item.access === 'private').title, '教师私有测试');
     assert.deepEqual((await api('manage/course-import', v1.manifest, admin)).value, imported.value);
+    const retryWithoutFiles = structuredClone(v1.manifest);
+    retryWithoutFiles.resources = [];
+    assert.deepEqual((await api('manage/course-import', retryWithoutFiles, admin)).value, imported.value);
     assert.equal((await api('manage/course-result', { requestId: v1.manifest.requestId }, admin)).value.contentDigest,
       imported.value.contentDigest);
     const changed = structuredClone(v1.manifest);
@@ -156,8 +159,8 @@ test('course releases pin versions, project only open material and follow curren
     assert.equal((await api('activities/' + created.value.activityId, undefined, { cookie })).status, 404);
     assert.equal((await api('courses', undefined, { cookie })).status, 200);
     const missingList = await api('activities', undefined, { cookie });
-    assert.equal(missingList.value.length, 1);
-    assert.equal(missingList.value[0].course.releaseId, releaseTwo);
+    assert.equal(missingList.value.length, 2);
+    assert.deepEqual(new Set(missingList.value.map(activity => activity.course.releaseId)), new Set([releaseOne, releaseTwo]));
     const missingRequest = randomUUID();
     assert.equal((await api('course-activities', { requestId: missingRequest, releaseId: releaseOne }, { cookie })).status, 404);
     assert.deepEqual((await api('course-activity-results/' + missingRequest, undefined, { cookie })).value,
@@ -179,6 +182,7 @@ test('course releases pin versions, project only open material and follow curren
     assert.equal(corruptCreate.status, 503);
     assert.equal(corruptCreate.value.error, 'corrupt');
     assert.equal((await api('course-activity-results/' + corruptRequest, undefined, { cookie })).value.state, 'rejected');
+    assert.equal((await api('activities', undefined, { cookie })).value.length, 2);
     await writeFile(materialPath, originalMaterial);
     assert.equal((await api('activities/' + created.value.activityId, undefined, { cookie })).status, 200);
     assert.equal((await api('activities', undefined, { cookie })).value.length, 2);
@@ -218,6 +222,23 @@ test('course releases pin versions, project only open material and follow curren
     assert.equal((await api('activities/' + created.value.activityId, undefined, { cookie: other.cookie })).status, 404);
     assert.equal((await api('course-activity-results/' + activityRequest, undefined, { cookie: other.cookie })).value, null);
     assert.equal((await api('releases/' + releaseOne, undefined, { cookie: other.cookie })).status, 403);
+
+    const reusedReleaseId = randomUUID();
+    const reuse = structuredClone(v1.manifest);
+    reuse.requestId = randomUUID();
+    reuse.release.releaseId = reusedReleaseId;
+    reuse.release.objectives = ['复用已发布材料并保留固定任务'];
+    reuse.release.requirements = '新版本复用同一材料，不改变旧活动。';
+    const reused = await api('manage/course-import', reuse, admin);
+    assert.equal(reused.status, 200);
+    const reusedRelease = await api('releases/' + reusedReleaseId, undefined, { cookie: second.cookie });
+    assert.equal(reusedRelease.status, 200);
+    assert.equal(reusedRelease.value.materials[0].materialId, v1.ids.studentMaterialId);
+    const reusedActivity = await api('course-activities', { requestId: randomUUID(), releaseId: reusedReleaseId }, { cookie: second.cookie });
+    assert.equal(reusedActivity.status, 200);
+    assert.equal(reusedActivity.value.course.releaseId, reusedReleaseId);
+    assert.equal((await api(`releases/${reusedReleaseId}/materials/${v1.ids.studentMaterialId}`, undefined, { cookie: second.cookie })).status, 200);
+    assert.equal((await api('activities', undefined, { cookie: second.cookie })).value.length, 4);
   });
 });
 

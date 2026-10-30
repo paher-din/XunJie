@@ -51,19 +51,18 @@ export async function validateLearningData(storage: OwnedStorage) {
     association_id,activity_id,state,binding,result,error FROM course_activity_requests`);
   for (const row of requests) {
     const state = requestResult(row);
-    const parsed = z.object({ requestId: z.uuid(), state: z.enum(['pending', 'accepted', 'rejected']),
-      activity: activitySchema.nullable(), error: z.string().nullable() }).strict().parse(state);
     if (row.binding !== null && row.binding !== undefined) {
       const binding = courseActivityBindingSchema.parse(row.binding);
       if (binding.releaseId !== row.release_id) throw new StorageError('corrupt');
     }
-    if (parsed.state === 'accepted') {
-      const activity = parsed.activity!;
-      if (activity.activityId !== row.activity_id || !activity.course || activity.course.releaseId !== row.release_id
+    if (state.state === 'accepted') {
+      const activity = state.activity;
+      if (!activity || activity.activityId !== row.activity_id || !activity.course
+        || activity.course.releaseId !== row.release_id
         || activity.identity.environmentId !== row.space_environment_id || activity.identity.spaceId !== row.space_id
         || activity.identity.principalId !== row.principal_id) throw new StorageError('corrupt');
     }
-    if (parsed.state === 'rejected' && !parsed.error) throw new StorageError('corrupt');
+    if (state.state === 'rejected' && !state.error) throw new StorageError('corrupt');
   }
 }
 
@@ -99,9 +98,12 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
       if (!activity.course) { visible.push(activity); continue; }
       try { await courseAuthorize(identity, activity); visible.push(activity); }
       catch (error) {
-        // Revoked eligibility or an unavailable old version removes the course projection;
-        // transient service failures must not turn the whole list into an empty success.
-        if (!(error instanceof StorageError) || !['forbidden', 'missing', 'corrupt'].includes(error.code)) throw error;
+        // Revoked eligibility hides the course projection. A lost or corrupt version still
+        // appears in the owner's own list; opening it reports the missing/corrupt basis.
+        if (!(error instanceof StorageError)) throw error;
+        if (error.code === 'forbidden') continue;
+        if (error.code === 'missing' || error.code === 'corrupt') { visible.push(activity); continue; }
+        throw error;
       }
     }
     return visible;
@@ -151,12 +153,12 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
       return requestResult(row);
     });
     const state = courseActivityResultSchema.parse(registered.result);
-    if (state.state === 'accepted') {
-      const activity = activitySchema.parse(state.activity);
-      await courseAuthorize(identity, activity);
-      return activity;
-    }
     if (state.state === 'rejected') throw new StorageError((state.error ?? 'missing') as 'missing');
+    const { rows: [current] } = await storage.read(`SELECT state,error FROM course_activity_requests
+      WHERE request_id=$1 AND space_environment_id=$2 AND space_id=$3 AND principal_id=$4`, [input.requestId, ...scope(identity)]);
+    if (!current) return fail('missing');
+    if (current.state === 'accepted') return open(identity, activityId);
+    if (current.state === 'rejected') throw new StorageError((current.error ?? 'missing') as 'missing');
     let prepared;
     try {
       prepared = await courseAuthority.prepare({ associationId, requestId: input.requestId, identity, target, activityId,
@@ -189,7 +191,8 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
         WHERE request_id=$1`, [input.requestId, JSON.stringify(activity)]);
       return activity;
     });
-    return activitySchema.parse(receipt.result);
+    // Confirm readability through the same public path before reporting success.
+    return open(identity, activitySchema.parse(receipt.result).activityId);
   }
   async function courseResult(identity: SpaceIdentity, requestId: string): Promise<CourseActivityResult | null> {
     await access(identity); z.uuid().parse(requestId);

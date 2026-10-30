@@ -1,14 +1,14 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
-import type { Migration, OwnedStorage, OwnedTransaction } from '@xunjie/storage';
+import type { Migration, OwnedStorage } from '@xunjie/storage';
 import {
   courseAccessInputSchema, courseActivityBindingSchema, courseBindingStateSchema, courseImportSchema,
   courseMaterialContentSchema, courseRegistrationResultSchema, courseReleaseSchema, courseDigestSchema,
 } from '@xunjie/contracts/courses';
 import type {
   CourseAccessInput, CourseBindingPointer, CourseBindingState, CourseConfirmInput, CoursePrepareInput,
-  CourseRegistrationResult, CourseRelease, CourseStarterWork, CourseCapability,
+  CourseRegistrationResult, CourseRelease, CourseStarterWork, CourseCapability, CourseImport,
 } from '@xunjie/contracts/courses';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -47,14 +47,14 @@ export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, 
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();
-const hex = courseDigestSchema;
+const digestSchema = courseDigestSchema;
 const fail = (code: 'forbidden' | 'invalid' | 'missing' | 'corrupt' | 'identity-conflict'): never => {
   throw new StorageError(code);
 };
 
 const storedMaterialSchema = z.object({
   materialId: uuid, title: z.string().min(1).max(300), mediaType: z.string().min(1).max(200),
-  access: z.enum(['student', 'private']), sha256: hex,
+  access: z.enum(['student', 'private']), sha256: digestSchema,
   byteLength: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
 }).strict();
 const storedContentSchema = z.object({
@@ -106,8 +106,8 @@ function decodeBase64(value: string): Buffer {
   return bytes;
 }
 
-function validateImport(value: unknown) {
-  let input;
+function planImport(value: unknown) {
+  let input: CourseImport;
   try { input = courseImportSchema.parse(value); } catch { return fail('invalid'); }
   const materialIds = new Set<string>(), paths = new Set<string>(), workIds = new Set<string>();
   for (const material of input.release.materials) {
@@ -120,31 +120,39 @@ function validateImport(value: unknown) {
   }
   const studentIds = new Set(input.release.materials.filter(item => item.access === 'student').map(item => item.materialId));
   if (input.release.starterWorks.some(work => work.materialId !== null && !studentIds.has(work.materialId))) fail('invalid');
+  const materials: StoredContent['materials'] = input.release.materials.map(material => ({ materialId: material.materialId,
+    title: material.title, mediaType: material.mediaType, access: material.access,
+    sha256: material.sha256, byteLength: material.byteLength }));
+  const content: StoredContent = { formatVersion: 1, courseId: input.course.courseId, taskId: input.task.taskId,
+    releaseId: input.release.releaseId, objectives: input.release.objectives, requirements: input.release.requirements,
+    materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[] };
+  storedContentSchema.parse(content);
+  return { input, content, materials, contentHash: contentDigest(content) };
+}
+function registrationFingerprint(plan: ReturnType<typeof planImport>) {
+  return digest({ course: plan.input.course, task: plan.input.task,
+    release: { releaseId: plan.input.release.releaseId, contentHash: plan.contentHash,
+      materials: plan.materials.map(item => ({ materialId: item.materialId, access: item.access,
+        sha256: item.sha256, byteLength: item.byteLength, mediaType: item.mediaType })) } });
+}
+function readImportResources(input: CourseImport): Map<string, Buffer> {
   const uploaded = new Map<string, Buffer>();
   for (const resource of input.resources) {
     if (uploaded.has(resource.path)) fail('invalid');
     uploaded.set(resource.path, decodeBase64(resource.contentBase64));
   }
   if (uploaded.size !== input.release.materials.length) fail('invalid');
-  const materials: StoredContent['materials'] = input.release.materials.map(material => {
+  for (const material of input.release.materials) {
     const bytes = uploaded.get(material.path);
     if (!bytes || bytes.byteLength !== material.byteLength
       || createHash('sha256').update(bytes).digest('hex') !== material.sha256) fail('invalid');
-    return { materialId: material.materialId, title: material.title, mediaType: material.mediaType,
-      access: material.access, sha256: material.sha256, byteLength: material.byteLength };
-  });
-  if (new Set(materials.map(item => item.materialId)).size !== materials.length) fail('invalid');
-  const content: StoredContent = { formatVersion: 1, courseId: input.course.courseId, taskId: input.task.taskId,
-    releaseId: input.release.releaseId, objectives: input.release.objectives, requirements: input.release.requirements,
-    materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[] };
-  storedContentSchema.parse(content);
-  return { input, content, materials, resources: uploaded };
+  }
+  return uploaded;
 }
 
 /** Only this module writes course facts; learning data reaches it through the narrow authority interface. */
 export function createCourses(storage: OwnedStorage, spaces: { authorize(identity: SpaceIdentity): Promise<void>;
   schoolSpace(): Promise<string> }) {
-  async function schoolSpace(): Promise<string> { return spaces.schoolSpace(); }
   async function accessActive(identity: SpaceIdentity, courseId: string): Promise<boolean> {
     const { rows } = await storage.read('SELECT 1 FROM course_access WHERE course_id=$1 AND space_id=$2 AND principal_id=$3 AND active',
       [courseId, identity.spaceId, identity.principalId]);
@@ -162,24 +170,9 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       FROM course_release_materials WHERE release_id=$1 ORDER BY material_id`, [releaseId]);
     return rows;
   }
-  async function resourceStates(ids: string[], query: Pick<OwnedTransaction, 'query'> | null = null) {
-    if (!ids.length) return new Map<string, string>();
-    const run = query ? query.query.bind(query) : storage.read.bind(storage);
-    const { rows } = await run('SELECT resource_id,state FROM _storage_resources WHERE resource_id = ANY($1::uuid[])', [ids]);
-    return new Map(rows.map(row => [row.resource_id as string, row.state as string]));
-  }
-  function absentState(states: Map<string, string>, ids: string[]): 'missing' | 'corrupt' | 'busy' | null {
+  async function verifyMaterialBytes(ids: string[]) {
     for (const id of ids) {
-      const state = states.get(id);
-      if (!state || state === 'deleted') return 'missing';
-      if (state === 'failed') return 'corrupt';
-      if (state !== 'ready') return 'busy';
-    }
-    return null;
-  }
-  async function ensureStudentResources(content: StoredContent) {
-    for (const material of studentMaterials(content)) {
-      try { await storage.readResource(material.materialId); }
+      try { await storage.readResource(id); }
       catch (error) {
         if (!(error instanceof StorageError)) throw error;
         if (['missing', 'resource-gone'].includes(error.code)) return fail('missing');
@@ -187,6 +180,9 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
         throw error;
       }
     }
+  }
+  async function ensureStudentResources(content: StoredContent) {
+    await verifyMaterialBytes(studentMaterials(content).map(item => item.materialId));
   }
   async function authorizedRelease(identity: SpaceIdentity, releaseId: string) {
     await spaces.authorize(identity);
@@ -200,44 +196,66 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
 
   async function registerRelease(value: unknown): Promise<CourseRegistrationResult> {
-    const { input, content, materials, resources } = validateImport(value);
-    const spaceId = await schoolSpace();
-    const contentHash = contentDigest(content);
+    const plan = planImport(value);
+    const { input, content, materials, contentHash } = plan;
+    const fingerprint = registrationFingerprint(plan);
+    // A repeated operation returns its stored result before any resource file is needed.
+    const existing = await storage.receipt(input.requestId, fingerprint);
+    if (existing) {
+      const result = courseRegistrationResultSchema.safeParse(existing.result);
+      return result.success ? result.data : fail('identity-conflict');
+    }
+    const resources = readImportResources(input);
+    const paths = new Map(input.release.materials.map(item => [item.materialId, item.path]));
+    const spaceId = await spaces.schoolSpace();
     for (const material of materials) {
       const reference = await storage.stageResource({ uploadId: material.materialId,
-        scope: `course/${content.courseId}/${content.releaseId}`, bytes: resources.get(input.release.materials
-          .find(item => item.materialId === material.materialId)!.path)!, mediaType: material.mediaType, contentVersion: 1 });
+        scope: `course/${content.courseId}`, bytes: resources.get(paths.get(material.materialId)!)!,
+        mediaType: material.mediaType, contentVersion: 1 });
       if (reference.resourceId !== material.materialId || reference.sha256 !== material.sha256
         || reference.byteLength !== material.byteLength || reference.mediaType !== material.mediaType) fail('invalid');
     }
-    const fingerprint = digest({ course: input.course, task: input.task,
-      release: { releaseId: input.release.releaseId, contentHash, materials: materials.map(item => ({ materialId: item.materialId,
-        access: item.access, sha256: item.sha256, byteLength: item.byteLength, mediaType: item.mediaType })) } });
     const receipt = await storage.request({ requestId: input.requestId, fingerprint }, async tx => {
-      const { rows: [existingCourse] } = await tx.query('SELECT space_id,name FROM courses WHERE course_id=$1', [content.courseId]);
-      let publishedAt: Date;
-      const { rows: [existingTask] } = await tx.query('SELECT course_id,title,summary FROM course_tasks WHERE task_id=$1', [content.taskId]);
-      const { rows: [existingRelease] } = await tx.query(`SELECT task_id,content_digest,published_at FROM course_releases
-        WHERE release_id=$1 FOR UPDATE`, [content.releaseId]);
-      if (existingCourse && (existingCourse.space_id !== spaceId || existingCourse.name !== input.course.name)) fail('identity-conflict');
-      if (existingTask && (existingTask.course_id !== content.courseId || existingTask.title !== input.task.title
-        || existingTask.summary !== input.task.summary)) fail('identity-conflict');
-      if (existingRelease) {
-        if (existingRelease.task_id !== content.taskId || existingRelease.content_digest !== contentHash) fail('identity-conflict');
-        publishedAt = existingRelease.published_at as Date;
+      const { rows: [course] } = await tx.query('SELECT space_id,name FROM courses WHERE course_id=$1', [content.courseId]);
+      if (course) {
+        if (course.space_id !== spaceId || course.name !== input.course.name) fail('identity-conflict');
       } else {
-        if (!existingCourse) await tx.query('INSERT INTO courses VALUES($1,$2,$3)', [content.courseId, spaceId, input.course.name]);
-        if (!existingTask) await tx.query('INSERT INTO course_tasks VALUES($1,$2,$3,$4)', [content.taskId, content.courseId,
-          input.task.title, input.task.summary]);
-        await tx.query('INSERT INTO course_releases(release_id,task_id,content_digest,content) VALUES($1,$2,$3,$4)',
-          [content.releaseId, content.taskId, contentHash, JSON.stringify(content)]);
+        await tx.query('INSERT INTO courses(course_id,space_id,name) VALUES($1,$2,$3) ON CONFLICT(course_id) DO NOTHING',
+          [content.courseId, spaceId, input.course.name]);
+        const { rows: [created] } = await tx.query('SELECT space_id,name FROM courses WHERE course_id=$1', [content.courseId]);
+        if (!created || created.space_id !== spaceId || created.name !== input.course.name) fail('identity-conflict');
+      }
+      const { rows: [task] } = await tx.query('SELECT course_id,title,summary FROM course_tasks WHERE task_id=$1', [content.taskId]);
+      if (task) {
+        if (task.course_id !== content.courseId || task.title !== input.task.title || task.summary !== input.task.summary) {
+          fail('identity-conflict');
+        }
+      } else {
+        await tx.query(`INSERT INTO course_tasks(task_id,course_id,title,summary) VALUES($1,$2,$3,$4)
+          ON CONFLICT(task_id) DO NOTHING`, [content.taskId, content.courseId, input.task.title, input.task.summary]);
+        const { rows: [created] } = await tx.query('SELECT course_id,title,summary FROM course_tasks WHERE task_id=$1',
+          [content.taskId]);
+        if (!created || created.course_id !== content.courseId || created.title !== input.task.title
+          || created.summary !== input.task.summary) fail('identity-conflict');
+      }
+      let publishedAt: Date;
+      const inserted = await tx.query(`INSERT INTO course_releases(release_id,task_id,content_digest,content)
+        VALUES($1,$2,$3,$4) ON CONFLICT(release_id) DO NOTHING RETURNING release_id`,
+        [content.releaseId, content.taskId, contentHash, JSON.stringify(content)]);
+      if (!inserted.rowCount) {
+        const { rows: [release] } = await tx.query(`SELECT task_id,content_digest,published_at FROM course_releases
+          WHERE release_id=$1`, [content.releaseId]);
+        if (!release || release.task_id !== content.taskId || release.content_digest !== contentHash) return fail('identity-conflict');
+        publishedAt = release.published_at as Date;
+      } else {
         for (const material of materials) {
           await tx.query(`INSERT INTO course_release_materials(release_id,material_id,access,title,media_type,sha256,byte_length)
             VALUES($1,$2,$3,$4,$5,$6,$7)`, [content.releaseId, material.materialId, material.access, material.title,
             material.mediaType, material.sha256, material.byteLength]);
           await tx.reference(`${content.releaseId}:${material.materialId}`, material.materialId);
         }
-        const { rows: [stamp] } = await tx.query('SELECT published_at FROM course_releases WHERE release_id=$1', [content.releaseId]);
+        const { rows: [stamp] } = await tx.query('SELECT published_at FROM course_releases WHERE release_id=$1',
+          [content.releaseId]);
         publishedAt = stamp!.published_at as Date;
       }
       const result = courseRegistrationResultSchema.parse({ kind: 'course-release', requestId: input.requestId,
@@ -361,14 +379,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       [input.associationId]);
     if (stored?.binding) {
       const binding = courseActivityBindingSchema.parse(stored.binding);
-      for (const material of binding.materials) {
-        try { await storage.readResource(material.materialId); }
-        catch (error) {
-          if (error instanceof StorageError && ['missing', 'resource-gone'].includes(error.code)) return fail('missing');
-          if (error instanceof StorageError && error.code === 'corrupt') return fail('corrupt');
-          throw error;
-        }
-      }
+      await verifyMaterialBytes(binding.materials.map(material => material.materialId));
     }
     const receipt = await storage.request({ requestId: `course-confirm:${input.associationId}`, fingerprint: digest(input) },
       async tx => {
@@ -394,11 +405,6 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
         const { rows: [release] } = await tx.query('SELECT content_digest FROM course_releases WHERE release_id=$1', [parsed.release_id]);
         if (!release) return reject('missing');
         if (release.content_digest !== binding.contentDigest) return reject('corrupt');
-        const ids = binding.materials.map(item => item.materialId);
-        const states = await resourceStates(ids, tx);
-        const absent = absentState(states, ids);
-        if (absent === 'busy') throw new StorageError('resource-busy');
-        if (absent) return reject(absent);
         await tx.query(`UPDATE course_activity_associations SET state='accepted',error=NULL,updated_at=clock_timestamp()
           WHERE association_id=$1`, [input.associationId]);
         return { associationId: input.associationId, state: 'accepted', binding, error: null };
@@ -415,7 +421,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
 
   async function authorize(identity: SpaceIdentity, pointer: CourseBindingPointer): Promise<void> {
-    uuid.parse(pointer.associationId); uuid.parse(pointer.releaseId); hex.parse(pointer.contentDigest);
+    uuid.parse(pointer.associationId); uuid.parse(pointer.releaseId); digestSchema.parse(pointer.contentDigest);
     const { row, content } = await authorizedRelease(identity, pointer.releaseId);
     if (row.content_digest !== pointer.contentDigest) return fail('corrupt');
     const { rows: [association] } = await storage.read(`SELECT state FROM course_activity_associations
@@ -446,6 +452,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
         const stored = rows.find(row => row.material_id === material.materialId);
         if (!stored || stored.access !== material.access || stored.title !== material.title || stored.media_type !== material.mediaType
           || stored.sha256 !== material.sha256 || Number(stored.byte_length) !== material.byteLength) fail('corrupt');
+        // Retention links are owner facts; storage exposes no read API for them.
         const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1',
           [`${release.release_id}:${material.materialId}`]);
         if (!links.length || links[0]!.resource_id !== material.materialId) fail('corrupt');
@@ -479,5 +486,5 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
 
   return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, setAccess,
-    prepare, confirm, bindingResult, authorize, validate, migrations: spaceCourseMigrations };
+    prepare, confirm, bindingResult, authorize, validate };
 }
