@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/143",
+  "status": "cancelled-by-scope-change",
+  "reason": "User withdrew clean-macOS VM acceptance from current scope because its benefit did not justify further work or resource use. No further VM preparation, installation, probe, or rerun is authorized by this task.",
+  "acceptanceDecision": "excluded-from-current-scope; no clean-install acceptance claimed",
+  "recordedAt": "2026-10-29T13:22:05.763886+00:00",
+  "sourceRevisionAtStart": "4394436",
+  "verifiedSources": {
+    "restoreImage": {
+      "url": "https://updates.cdn-apple.com/2026FallFCS/afcfc88e-bbe6-44bf-a5da-07c56eebc06c/UniversalMac_27.0_26A428_Restore.ipsw",
+      "bytes": 26626436228,
+      "sha256": "2a5d3c695d501022b7fad9adaffcf2627bcb867d993fb5662dcd41bac99a2836",
+      "wholeFileChecksumMatched": true
+    },
+    "tart": {
+      "version": "2.41.1",
+      "release": "https://github.com/openai/tart/releases/tag/2.41.1",
+      "archiveSha256": "e680a734febccfce7d4e910c1f7f13fc3b00f19a181c945e2d746de3214c32c2",
+      "signatureAuthority": "Developer ID Application: Cirrus Labs, Inc. (9M2P8L4D89)",
+      "signatureVerified": true
+    }
+  },
+  "historicalProgressBeforeScopeChange": {
+    "restoration": "completed before cancellation, macOS 27.0 / 26A428 arm64",
+    "configuredCpuCount": 4,
+    "configuredMemoryBytes": 6442450944,
+    "probeWasActuallyExecuted": true,
+    "lastProbeFinishedAt": "2026-10-29T13:15:39.117Z",
+    "lastProbeUid": 502,
+    "lastProbeAdminGroupMember": false,
+    "completedProbeStageCount": 7,
+    "candidateZipSha256": "64ee93ee59ab7ccd341abc684494c9b2f5c8d75b361ddcef3dec51da24f74cb7",
+    "note": "Historical execution facts only; this cancelled record does not grant clean-macOS installation acceptance. No 2-CPU rerun occurred."
+  },
+  "cleanup": {
+    "vmWasAlreadyStoppedAndDeletedBeforeLatestCancellation": true,
+    "taskOwnedProcessesAtCancellation": [],
+    "signalsSentDuringCancellation": [],
+    "noSystemWideVirtualMachineKill": true,
+    "remainingTartOrVirtualMachineProcesses": [],
+    "runningVMCount": 0,
+    "allocatedVcpuCount": 0,
+    "taskCacheDeleted": "/Users/robertwu/.cache/xunjie-clean-macos-143",
+    "taskCacheExistsAfterDeletion": false,
+    "ipSWAndTaskTartBinaryDeleted": true,
+    "rangeTailDownloadsHelpersAndTemporaryCredentialsRemoved": true,
+    "retainedTaskCache": [],
+    "removedLogicalFileBytes": 26705162620,
+    "removedAllocatedFileBytes": 26720960512,
+    "diskFreeBytesBeforeDeletion": 213389426688,
+    "diskFreeBytesAfterDeletion": 240110727168,
+    "observedDiskFreeIncreaseBytes": 26721300480,
+    "spaceMeasurementNote": "Allocated file bytes are from st_blocks; whole-volume free-space delta can also reflect concurrent host work.",
+    "probeScriptDeleted": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/probe-product-clean-macos.mjs",
+    "probeScriptExistsAfterDeletion": false,
+    "checkedAt": "2026-10-29T13:22:05.763886+00:00",
+    "additionalUnrunHostSleepProbeStoppedAndRemoved": true
+  },
+  "repositoryChangesThisTask": [
+    "docs/student-agent-implementation/evidence/wp01-clean-macos.json"
+  ],
+  "commitOrPushPerformed": false
+}

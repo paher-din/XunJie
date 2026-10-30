@@ -1,4 +1,5 @@
 #!/bin/bash
+# Frozen 9fa76ad material retains apps/teaching; current checkout entrypoints use apps/server.
 set -euo pipefail
 umask 077
 base=/opt/xunjie-runner

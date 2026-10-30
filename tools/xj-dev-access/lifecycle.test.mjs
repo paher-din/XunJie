@@ -12,8 +12,8 @@ import { ensureCertificateAuthority, ensureEnvironmentCertificate } from '../xj-
 import { environmentPaths } from '../xj-dev/src/paths.mjs';
 
 const serverModule = new URL('./server.mjs', import.meta.url).href;
-const controlModule = new URL('../../apps/teaching/server/access/account-control.ts', import.meta.url).href;
-const databaseModule = new URL('../../apps/teaching/server/db/transaction.ts', import.meta.url).href;
+const controlModule = new URL('../../apps/server/server/access/account-control.ts', import.meta.url).href;
+const databaseModule = new URL('../../apps/server/server/db/transaction.ts', import.meta.url).href;
 const processes = new Set();
 async function start(kind, configFile, skip = false) {
   const code = `

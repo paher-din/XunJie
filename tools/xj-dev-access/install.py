@@ -18,11 +18,13 @@ DATA = Path('/var/lib/xunjie-dev-access-candidate129')
 BACKUPS = Path('/var/backups/xunjie-dev-access-candidate129')
 USER = 'xj-access-c129'
 FILES = {
-    'apps/teaching/server/access/local-socket.ts',
+    'package.json', 'package-lock.json', 'apps/web/package.json', 'apps/server/package.json',
+    'packages/contracts/package.json', 'tools/xj-dev/package.json',
+    'apps/server/server/access/local-socket.ts',
     'tools/xj-dev/src/enrollment-protocol.mjs',
     *('tools/xj-dev-access/' + p for p in ['server.mjs', 'store.mjs', 'identity.mjs', 'adapters.mjs', 'admin.mjs',
        'system-helper.py', 'install.py', 'prepare-tls.py', 'package-store.mjs', 'packages.mjs', 'github-login.mjs', 'oss-storage.mjs',
-       'package.json', 'package-lock.json', 'xunjie-dev-access-candidate129.service']),
+       'package.json', 'xunjie-dev-access-candidate129.service']),
 }
 
 
@@ -42,12 +44,12 @@ def main(source):
     require({f['path'] for f in receipt['files']} == FILES and len(receipt['files']) == len(FILES), 'SOURCE_FILES_INVALID')
     dependency = receipt.get('dependencies', {})
     require(dependency.get('nodeVersion') == 'v24.21.0' and isinstance(dependency.get('files'), list) and dependency['files'], 'LOCKED_DEPENDENCIES_REQUIRED')
-    lock_file = source / 'tools/xj-dev-access/package-lock.json'
+    lock_file = source / 'package-lock.json'
     require(hashlib.sha256(lock_file.read_bytes()).hexdigest() == dependency.get('lockfileSha256'), 'DEPENDENCY_LOCK_INVALID')
     dependency_paths = set()
     for f in dependency['files']:
         p = f['path']
-        require(p.startswith('tools/xj-dev-access/node_modules/') and '\\' not in p and all(x not in ('', '.', '..') for x in p.split('/'))
+        require(p.startswith('node_modules/') and '\\' not in p and all(x not in ('', '.', '..') for x in p.split('/'))
                 and not p.lower().endswith(('.node', '.so', '.dylib', '.dll', '.exe')) and p not in dependency_paths, 'DEPENDENCY_PATH_INVALID')
         dependency_paths.add(p)
     all_files = receipt['files'] + dependency['files']

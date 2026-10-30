@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "issue": 142,
+  "status": "passed",
+  "observedAt": "2026-10-30T05:25:26Z",
+  "platform": "Windows 11 x64",
+  "browser": "Chrome 156.0.8078.48",
+  "observer": "Robert",
+  "method": "Human confirmation in this acceptance session",
+  "openedBy": "public xunjie launch under InteractiveToken/Limited",
+  "checks": [
+    "ready",
+    "PostgreSQL 18.6 ready",
+    "manual recheck",
+    "environment 9220d781 identity",
+    "close browser tab and revisit preserves service"
+  ],
+  "field": {
+    "state": "ready",
+    "environment": {
+      "formatVersion": 1,
+      "environmentId": "9220d781-bd19-4564-8786-8c323c1838bf",
+      "installationId": "7d7a6703-4bd4-4c01-b8b1-bfec5b5c57f9",
+      "clientNamespace": "xunjie.v1.9220d781-bd19-4564-8786-8c323c1838bf",
+      "profile": "local",
+      "services": [
+        {
+          "environmentId": "9220d781-bd19-4564-8786-8c323c1838bf",
+          "serviceId": "a3f1946a-7509-4193-a0fc-368163669550",
+          "unit": "client",
+          "endpoint": "http://127.0.0.1:58575",
+          "protocolVersion": 1,
+          "capabilities": [
+            "runtime.status"
+          ]
+        }
+      ]
+    },
+    "endpoint": "http://127.0.0.1:58575",
+    "dependencies": [
+      {
+        "name": "PostgreSQL",
+        "required": true,
+        "state": "ready",
+        "detail": "18.6"
+      }
+    ]
+  },
+  "scope": "Runtime status UI. Frontend asset digest is compared with the final rebuilt distribution; later changes affect runtime deletion and Windows file-sharing retries.",
+  "frontendSha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670",
+  "frontendMatchesPreviouslyAcceptedBundle": true
+}

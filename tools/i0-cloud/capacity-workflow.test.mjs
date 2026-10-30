@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {fixture,allocate} from '../../apps/teaching/tests/dl-a-support.ts';
+import {fixture,allocate} from '../../apps/server/tests/dl-a-support.ts';
 import {client,prepareProject,resumeProject,editAndSave,submit,reviewAndResume} from './capacity-workflow.mjs';
 
 test('capacity workflow uses the real Session/CSRF, creates its own project, proves exact save/replay and frozen feedback/reopen semantics',async()=>{

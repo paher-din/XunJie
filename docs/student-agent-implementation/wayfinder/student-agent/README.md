@@ -11,7 +11,7 @@
 | 首条学习活动、公开行为表与帮助策略 | [数字逻辑与部件设计](alu-activity.md) | [ALU 活动设计](../../references/2026-10-23-alu-activity-design.md)、[课程资料](../../../../course_matrial/README.md) |
 | 本地优先、设备准备与执行生命周期 | [本地执行](local-execution.md) | [执行方案与实测](../../references/2026-10-23-local-execution-proposal.md)、[工具链研究](../../references/2026-10-23-systemverilog-local-execution-research.md) |
 | 三协议、原生续接、多模态与 PDF | [模型接入](model-access.md) | [端点评估](../../references/2026-10-23-model-endpoint-assessment.md)、[SDK 研究](../../references/2026-10-22-model-protocol-sdk-research.md)、[PDF 研究](../../references/2026-10-22-agent-pdf-capabilities-research.md) |
-| 自动保存、固定引用、待发动作与恢复 | [工作区交互与状态](workspace-state.md) | [可操作原型与说明](../../../../apps/student/prototypes/workspace-state.README.md) |
+| 自动保存、固定引用、待发动作与恢复 | [工作区交互与状态](workspace-state.md) | [可操作原型与说明](../../../../apps/web/prototypes/workspace-state.README.md) |
 | 组件库、动态接入、生成内容与版本更新 | [课程组件](course-components.md) | [宿主设计](../../references/2026-10-26-course-tool-host-proposal.md)、[宿主技术研究](../../references/2026-10-26-course-tool-host-research.md) |
 | 主动性、连续活动、证据、画像与纠正 | [连续教学](continuous-learning.md) | [主动引导](../../references/2026-10-23-proactive-guidance-proposal.md)、[活动与画像](../../references/2026-10-23-continuous-learning-proposal.md)、[检测证据](../../references/2026-10-23-unobtrusive-guidance-evidence.md)、[实现调查](../../references/2026-10-23-unobtrusive-guidance-implementations.md) |
 | 模块、持久 Agent、能力扩展、交互与部署 | [总体架构](architecture.md) | [运行与部署](../../references/2026-10-27-overall-architecture-proposal.md)、[Agent 能力](../../references/2026-10-27-agent-capabilities-design.md)、[交互设计](../../references/2026-10-27-agent-interaction-design.md)、[调试评估](../../references/2026-10-27-agent-evaluation-integration.md) |

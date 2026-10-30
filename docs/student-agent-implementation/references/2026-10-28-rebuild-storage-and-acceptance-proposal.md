@@ -22,9 +22,9 @@
 | 浏览器 IndexedDB | 未同步作品、候选副本、界面状态、固定命令和 outbox | 新旧命名空间分开；保留旧现场，导入作品须是显式操作，不消费旧 outbox |
 | 执行节点文件 | 命令账本、输入展开文件、构建与 HDL 会话状态 | 不自动导入新执行队列；需要保留的诊断样本按来源标注，不能冒充新执行结果 |
 
-源码入口：[教学数据库](../../../apps/teaching/server/db/transaction.ts)、[个人 Agent 存储](../../../apps/teaching/server/personal-agent/store.ts)、[浏览器存储](../../../apps/student/src/workspace/draftDb.ts)、[执行账本](../../../apps/teaching/runner/controller.ts)、[HDL 账本](../../../apps/teaching/runner/hdl-ledger.ts)。
+源码入口：[教学数据库](../../../apps/server/server/db/transaction.ts)、[个人 Agent 存储](../../../apps/server/server/personal-agent/store.ts)、[浏览器存储](../../../apps/web/src/workspace/draftDb.ts)、[执行账本](../../../apps/server/runner/controller.ts)、[HDL 账本](../../../apps/server/runner/hdl-ledger.ts)。
 
-教师发布、学生读取和教师反馈目前共享同一后端。新旧前后端按新契约一起调整，不为了兼容旧 DTO 增加一层永久接口。必须继续实现的是已定产品行为：固定课程与组件版本、按主体投影材料、固定提交、持续摘要、反馈与修订；接口 URL 和旧 Attempt 表不是不可更改的产品要求。相关入口：[教师发布](../../../apps/student/src/teacher/LiveDesignPage.tsx)、[学生任务入口](../../../apps/student/src/workspace/home.ts)、[工作区接口](../../../apps/teaching/server/workspace/application.ts)、[教师审阅接口](../../../apps/teaching/server/review/application.ts)。
+教师发布、学生读取和教师反馈目前共享同一后端。新旧前后端按新契约一起调整，不为了兼容旧 DTO 增加一层永久接口。必须继续实现的是已定产品行为：固定课程与组件版本、按主体投影材料、固定提交、持续摘要、反馈与修订；接口 URL 和旧 Attempt 表不是不可更改的产品要求。相关入口：[教师发布](../../../apps/web/src/teacher/LiveDesignPage.tsx)、[学生任务入口](../../../apps/web/src/workspace/home.ts)、[工作区接口](../../../apps/server/server/workspace/application.ts)、[教师审阅接口](../../../apps/server/server/review/application.ts)。
 
 ## 第二个样本：STAT 20 / Flights
 
@@ -147,7 +147,7 @@ S3 后端是部署选项，不是本地安装的必需服务。选定实现须�
 | 连续教学与判断 | 规则先以可回放案例和只记录候选的方式检查受阻误报、有益探索、旧提示失效；返回保持活动暂停，学生画像异议可复核，教师持续摘要与固定提交分别保留来源与时点 |
 | 工作区与两样本 | 自动保存与固定发送/提交各有回执；数据变化不改写旧图表/结果；非文本引用固定依据；返回保持暂停和状态；无课程活动不伪造课程绑定 |
 | 组件与教师操作 | 现成任务从装配、检查/预览、发布到故障恢复可完成；记录阻碍、重复操作及工程介入；新版本提示受影响任务，更新失败保留原绑定，进行中活动继续旧版 |
-| 浏览器与设备 | Windows 11 x64、Apple Silicon Mac 的桌面 Chrome/Edge；固定实际版本，验证最终产品与安装路径，不能以单机研究探针代替 |
+| 浏览器与设备 | Windows 11 x64、Apple Silicon Mac 的桌面 Chrome；固定实际版本，验证最终产品与安装路径，不能以单机研究探针代替 |
 | 实际端点互操作 | Chat Completions、Responses、Anthropic Messages 的实际目标端点、原生续接、多模态、工具、取消/中断和能力缺项；仅 SDK 源码核对不算通过 |
 | 开发交接 | 成员 A 的固定问题由成员 B 在独立环境复现；记录代码/工具/配置/数据版本、实际步骤与结果；A 重置、升级或删除环境不影响 B |
 | 容量与部署 | 真实保存、事件、模型调度和工具结果组成的固定负载；记录延迟、冲突/锁等待、恢复和资源占用。先实测再声明支持规模，不从开发服务器规格外推学校容量 |

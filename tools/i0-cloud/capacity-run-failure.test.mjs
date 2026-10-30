@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join,dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {setImmediate as turn} from 'node:timers/promises';
-import {fixture,allocate} from '../../apps/teaching/tests/dl-a-support.ts';
+import {fixture,allocate} from '../../apps/server/tests/dl-a-support.ts';
 import {CliError} from '../xj-dev/src/envelope.mjs';
 import {runCapacity} from './capacity-run.mjs';
 

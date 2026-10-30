@@ -11,7 +11,7 @@ import { createEncryptedBackup, restoreEncryptedBackup } from './backup-retained
 import { openAccessStore } from '../xj-dev-access/store.mjs';
 
 const REPOSITORY = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const TEACHING_ROOT = join(REPOSITORY, 'apps/teaching');
+const TEACHING_ROOT = join(REPOSITORY, 'apps/server');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 
 function createSqliteFixture(path) {

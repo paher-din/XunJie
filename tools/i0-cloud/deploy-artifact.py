@@ -333,7 +333,7 @@ class ArtifactDeployment:
 
     def read_application(self):
         application = read_json(self.config['applicationConfigFile'])
-        require(application.get('staticDirectory') == str(self.current / 'apps/student/dist'), 'CURRENT_STATIC_DIRECTORY_REQUIRED')
+        require(application.get('staticDirectory') == str(self.current / 'apps/web/dist'), 'CURRENT_STATIC_DIRECTORY_REQUIRED')
         require(isinstance(application.get('databaseFile'), str) and Path(application['databaseFile']).is_absolute(), 'RETAINED_DATABASE_REQUIRED')
         require(isinstance(application.get('tls', {}).get('certFile'), str), 'TLS_CERTIFICATE_REQUIRED')
         return application
@@ -460,16 +460,17 @@ class ArtifactDeployment:
         return manifest
 
     def extract_artifact(self, archive, staging):
-        roots = (PurePosixPath('apps/student'), PurePosixPath('apps/teaching'))
+        roots = tuple(map(PurePosixPath, ('apps/web/dist', 'apps/server/dist', 'node_modules')))
+        files = set(map(PurePosixPath, ('package.json', 'package-lock.json', 'apps/server/package.json', 'tools/i0-cloud/cloud-host.mjs')))
         with tarfile.open(archive, mode='r:gz') as source:
             for member in source.getmembers():
                 name = PurePosixPath(member.name)
                 require(not name.is_absolute() and '..' not in name.parts and name.parts, 'UNSAFE_ARTIFACT_ARCHIVE')
-                if len(name.parts) == 1:
-                    require(member.isdir(), 'UNSAFE_ARTIFACT_ARCHIVE')
+                if len(name.parts) == 1 and member.isdir():
+                    require(name.parts[0] in ('apps', 'tools', 'node_modules'), 'UNSAFE_ARTIFACT_ARCHIVE')
                     continue
                 relative = name
-                if relative != PurePosixPath('tools/i0-cloud/cloud-host.mjs') and not any(
+                if relative not in files and not any(
                         relative == root or root in relative.parents for root in roots):
                     continue
                 destination = staging.joinpath(*relative.parts)
@@ -482,10 +483,7 @@ class ArtifactDeployment:
                         shutil.copyfileobj(input_file, output_file)
                     destination.chmod(0o755 if member.mode & 0o111 else 0o644)
                 elif member.issym():
-                    target = destination.parent / member.linkname
-                    require(not Path(member.linkname).is_absolute() and target.resolve().is_relative_to(staging.resolve()), 'UNSAFE_ARTIFACT_ARCHIVE')
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    destination.symlink_to(member.linkname)
+                    raise DeploymentError('UNSAFE_ARTIFACT_ARCHIVE')
                 else:
                     raise DeploymentError('UNSAFE_ARTIFACT_ARCHIVE')
 
@@ -514,16 +512,24 @@ class ArtifactDeployment:
         require(javascript.is_file() and not javascript.is_symlink(), 'BUILT_JAVASCRIPT_REQUIRED')
         return {'indexSha256': digest(content), 'entryJs': entry.path, 'entryJsSha256': digest_file(javascript)}
 
+    def runtime_files(self, release_root, measure):
+        result = {}
+        for root in ('apps/server', 'tools/i0-cloud', 'node_modules'):
+            require((release_root / root).is_dir(), 'RUNTIME_DIRECTORY_REQUIRED')
+            result.update(measure(release_root / root, root + '/'))
+        for name in ('package.json', 'package-lock.json'):
+            path = release_root / name
+            require(path.is_file() and not path.is_symlink(), 'RUNTIME_FILE_REQUIRED')
+            result[name] = digest_file(path) if measure == self.file_digests else path.stat().st_size
+        return result
+
     def verify_tree(self, release_root, manifest):
         expected_runtime = {entry['path']: entry['sha256'] for entry in manifest['runtimeFiles']}
         expected_static = {entry['path']: entry['sha256'] for entry in manifest['staticFiles']}
-        dist = release_root / 'apps/student/dist'
+        dist = release_root / 'apps/web/dist'
         actual_static = self.file_digests(dist, '')
         require(actual_static == expected_static, 'RUNTIME_FILE_DIGEST_MISMATCH')
-        for root, prefix in (('apps/teaching', 'apps/teaching/'), ('tools/i0-cloud', 'tools/i0-cloud/')):
-            require((release_root / root).is_dir(), 'RUNTIME_DIRECTORY_REQUIRED')
-        actual_runtime = {**self.file_digests(release_root / 'apps/teaching', 'apps/teaching/'),
-                          **self.file_digests(release_root / 'tools/i0-cloud', 'tools/i0-cloud/')}
+        actual_runtime = self.runtime_files(release_root, self.file_digests)
         require(actual_runtime == expected_runtime, 'RUNTIME_FILE_DIGEST_MISMATCH')
         digest_map_path = dist / 'asset-digests.json'
         require(digest_map_path.is_file(), 'STATIC_DIGEST_MAP_REQUIRED')
@@ -555,11 +561,10 @@ class ArtifactDeployment:
         try:
             expected = {entry['path']: entry['bytes']
                         for key in ('runtimeFiles', 'staticFiles') for entry in manifest[key]}
-            actual = {**self.file_sizes(release / 'apps/teaching', 'apps/teaching/'),
-                      **self.file_sizes(release / 'tools/i0-cloud', 'tools/i0-cloud/'),
-                      **self.file_sizes(release / 'apps/student/dist', '')}
+            actual = {**self.runtime_files(release, self.file_sizes),
+                      **self.file_sizes(release / 'apps/web/dist', '')}
             return actual == expected
-        except (OSError, ValueError, KeyError, TypeError):
+        except (OSError, ValueError, KeyError, TypeError, DeploymentError):
             return False
 
     # --- release assembly, backup, switch and health ---------------------------
@@ -583,6 +588,11 @@ class ArtifactDeployment:
 
     def backup(self, current_release):
         application = self.read_application()
+        package_file = current_release / 'apps/server/package.json'
+        if not package_file.is_file():
+            # The first upgrade still takes its backup with the previous release's driver.
+            package_file = current_release / 'apps/teaching/package.json'
+        require(package_file.is_file(), 'CURRENT_RUNTIME_PACKAGE_REQUIRED')
         directory = Path(self.config['backupDirectory'])
         directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         require(not directory.is_symlink(), 'CONTROLLED_BACKUP_DIRECTORY_REQUIRED')
@@ -604,7 +614,7 @@ try{
 }finally{db.close();}
 """
         result = self.checked([str(Path(self.config['nodeBinDirectory']) / 'node'), '--input-type=module', '-e', program],
-                              'CONSISTENT_BACKUP_FAILED', input=json.dumps({'packageFile': str(current_release / 'apps/teaching/package.json'),
+                              'CONSISTENT_BACKUP_FAILED', input=json.dumps({'packageFile': str(package_file),
                                   'databaseFile': application['databaseFile'], 'backupFile': str(destination)}), timeout=120)
         return json.loads(result)
 

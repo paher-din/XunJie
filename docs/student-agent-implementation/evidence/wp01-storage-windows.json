@@ -1,0 +1,120 @@
+{
+  "formatVersion": 1,
+  "issue": 144,
+  "startedAt": "2026-10-29T16:28:11.313Z",
+  "system": {
+    "platform": "win32",
+    "arch": "x64",
+    "release": "10.0.26200",
+    "node": "v24.21.0"
+  },
+  "sourceSha256": "099ed73d348edcc81de5cfa9263c9fe4d90ae1a64e65398b5ba5d30c9e3ca7f8",
+  "postgres": {
+    "version": "postgres (PostgreSQL) 18.6",
+    "binarySha256": "5fc1baf66a21e54405af63d11c0d5797a9f112a57ad502ec7f575ab0cc71d814",
+    "initialization": "UTF8; libc C/C; UTC; plpgsql only"
+  },
+  "s3": {
+    "version": "version 30GB 4.50 ec8f9793502c59ce3381cc4151bfc0806afd92e8 windows amd64",
+    "releaseUrl": "https://github.com/seaweedfs/seaweedfs/releases/tag/4.50",
+    "assetUrl": "https://github.com/seaweedfs/seaweedfs/releases/download/4.50/windows_amd64.zip",
+    "archiveSha256": "54581bd952fc26e22e291daa7fd52fc9bf51bdb4e3b34f6463da0d179f8a959c",
+    "binarySha256": "f9a4800c3d9a2790240d97604f864d2c71ce167649a69de1f7962af20ae7029b"
+  },
+  "tests": [
+    "apps\\server\\tests\\storage-sample\\storage-sample.runtime.test.mjs",
+    "packages\\storage\\test\\faults.runtime.test.mjs",
+    "packages\\storage\\test\\resources.runtime.test.mjs",
+    "packages\\storage\\test\\s3.runtime.test.mjs",
+    "packages\\storage\\test\\transactions.runtime.test.mjs"
+  ],
+  "status": "passed",
+  "exitCode": 0,
+  "durationMs": 67398,
+  "finishedAt": "2026-10-29T16:29:18.727Z",
+  "counts": {
+    "tests": 20,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "host": {
+    "user": "LAPTOP-S7A4IQFU\\h",
+    "elevated": false,
+    "os": "Microsoft Windows 11 家庭版 中文版",
+    "build": "26200",
+    "runLevel": "Limited",
+    "scheduledTaskResult": 0
+  },
+  "consumer": {
+    "strictTypecheckExit": 0,
+    "noWorkspaceSymlinks": true,
+    "withoutPgTypes": true,
+    "nativeDependencies": [],
+    "packageJavaScriptMatchesBuild": true,
+    "packages": {
+      "@xunjie/contracts": {
+        "version": "0.1.0",
+        "javaScriptSha256": "99a58d96182a7d648db1eee068363193a20b7899240ca37b8694e9de12ab0bd2",
+        "fileCount": 5
+      },
+      "@xunjie/storage": {
+        "version": "0.1.0",
+        "javaScriptSha256": "e8a0daff684729532dfbe6e9a0f0e4ee1148428bad21a381bd0075e74fd6c618",
+        "fileCount": 6
+      },
+      "@xunjie/product-runtime": {
+        "version": "0.1.0",
+        "javaScriptSha256": "59bdcdd25611fbba61491fa3556df633fb38a467ed08b129b80c3663684e4346",
+        "fileCount": 9
+      }
+    },
+    "nodeExecutableSha256": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32",
+    "dependencyPreparation": "Independent npm package install on macOS; portable JavaScript dependency graph executed on Windows; no host npm or native dependency modules used."
+  },
+  "implementationCommit": "28f4c896e6472d410708aa15579f5a6c6a5f90f7",
+  "provenanceNote": "Production module and packages match the previously accepted implementation. Windows startup pipe handling changed only the native test fixture. Full input hash also contains native Windows path separators.",
+  "rawLog": {
+    "file": "wp01-storage-windows.log",
+    "sha256": "8600f7a332b7cb2fe1f57aeea31466009869a9151ca9731534c58727f86a6f3d"
+  },
+  "packages": [
+    {
+      "name": "@xunjie/contracts",
+      "version": "0.1.0",
+      "sha256": "15dd97e4c831169fda7afe27dc405cda968d18a5bb5418c773aa288dcee61a7d"
+    },
+    {
+      "name": "@xunjie/storage",
+      "version": "0.1.0",
+      "sha256": "532a9270336e727e69855530e60fb99dff3989fbf23b027578f10e6490586557"
+    },
+    {
+      "name": "@xunjie/product-runtime",
+      "version": "0.1.0",
+      "sha256": "5f3c3fae2e2f100a4c654d5c0f6110fc595011fdb5cd9a4ad37ac5fc1d22d2c1"
+    }
+  ],
+  "harnessVerification": {
+    "macosNativePgRegression": {
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    "s3FixtureScriptSha256": "ee51379011e81f30ed3d50d15e23e0f1a1ea3623ad7de8362d15496cfd36e30e",
+    "s3FixtureWindowsStartupAndStop": "passed",
+    "s3FixtureOrdinaryUserIntegrity": 8192,
+    "syntaxChecks": "passed",
+    "productionCodeChanges": []
+  },
+  "cleanup": {
+    "labRemoved": true,
+    "tasksRemoved": true,
+    "ownedProcessCount": 0,
+    "capturedAt": "2026-10-29T16:43:54.4231180Z",
+    "s3FixtureRemoved": true,
+    "s3FixturePidStopped": 53192,
+    "s3TemporaryTasksRemoved": true
+  }
+}

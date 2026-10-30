@@ -6,7 +6,7 @@ import { ACCESS_PROTOCOL, AccessError, privateJson, requireAccess, writePrivateJ
 import { openAccessStore } from './store.mjs';
 import { authenticateDevice } from './identity.mjs';
 import { applicationOperation, systemOperation } from './adapters.mjs';
-import { localSocket } from '../../apps/teaching/server/access/local-socket.ts';
+import { localSocket } from '../../apps/server/server/access/local-socket.ts';
 import { createPackages } from './packages.mjs';
 import { createGithubLogin } from './github-login.mjs';
 

@@ -1,0 +1,95 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "kind": "standalone-distributed-product-recovery",
+  "status": "passed",
+  "startedAt": "2026-10-29T19:09:12.624Z",
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-portability-release",
+  "probeSha256": "1ce1fc4e30f7498c5e2cf8a5e39b36a5dde27e142df0973c02b959fbaac524ac",
+  "ownerSha256": "490891947f415a98c53e4ff1e00bdd1a205b23427bde29340a34daad880d878d",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "release": "10.0.26200",
+    "node": "v24.21.0",
+    "bundledNode": true
+  },
+  "packages": [
+    {
+      "path": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\xunjie-145-product-win18",
+      "entrySha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+      "resourcesSha256": "63e6690973073fbcff6fe22627ead16157b766a3ac35621a897dd3f15ca7be06",
+      "nodeSha256": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "18.6",
+      "postgresSha256": "5fc1baf66a21e54405af63d11c0d5797a9f112a57ad502ec7f575ab0cc71d814"
+    }
+  ],
+  "stages": [
+    {
+      "name": "cross-platform-import-isolated-service-api-verification",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:09:12.769Z",
+      "result": {
+        "isolated": true,
+        "pendingIntentsRejected": true,
+        "writesRejected": true,
+        "backupId": "39bcf692-c5a4-4aef-be91-479c45513b98",
+        "engineVersion": "18.6",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "fb4d85de-e694-4039-839f-e2e990076b88",
+          "installationId": "0296261e-19bc-47d8-96bf-f48b6d51b9ec",
+          "clientNamespace": "xunjie.v1.fb4d85de-e694-4039-839f-e2e990076b88.recovery.752a1c00-32ee-4c38-901d-5691647c1187",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "fb4d85de-e694-4039-839f-e2e990076b88",
+              "serviceId": "551fa402-6114-446a-b437-a6af10863db3",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:56960",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "sourcePlatform": "darwin",
+        "sourceEngineVersion": "18.6",
+        "targetPlatform": "win32",
+        "sourceContacted": false,
+        "takeoverAttempted": false,
+        "expectedFileSha256": "24c4be12db42595d695e38263ac8c329faac353c09a1e13acc0a9c72cae1f249",
+        "receiptCount": 2,
+        "rawAndOpaqueResourcesVerified": 2
+      },
+      "durationMs": 14505
+    }
+  ],
+  "skipped": [],
+  "cleanup": [
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-portability-release\\import-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    }
+  ],
+  "mode": "isolated-portability-import",
+  "interruptionCoverage": "Owned restore subprocess is terminated after real database/resource restore and before isolated state commit; no machine power loss.",
+  "recoveryKey": {
+    "keyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-portability-release\\private\\recovery-key.base64",
+    "generatedForThisRun": false,
+    "inputKeyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\portability-transfer\\private\\recovery-key.base64"
+  },
+  "importInputs": {
+    "backupDirectory": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\portability-transfer\\file-backups\\39bcf692-c5a4-4aef-be91-479c45513b98",
+    "expectFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\portability-transfer\\portability.private.json",
+    "inputKeyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\portability-transfer\\private\\recovery-key.base64",
+    "stagedKeyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-portability-release\\private\\recovery-key.base64"
+  },
+  "finishedAt": "2026-10-29T19:09:28.988Z",
+  "durationMs": 16364,
+  "retained": true
+}

@@ -1,0 +1,568 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "kind": "real-ramdisk-resource-copy-space-failure",
+  "status": "passed",
+  "startedAt": "2026-10-29T19:06:23.765Z",
+  "root": "/private/tmp/xunjie-145-disk-release",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "27.2.0",
+    "node": "v24.21.0",
+    "bundledNode": true
+  },
+  "package": {
+    "root": "/private/tmp/xunjie-145-release-mac18",
+    "apiSha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+    "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "nodeSha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b",
+    "postgresSha256": "d6688852af4db60285432f3bec9486e17b838c2f3f772b7484029abb0e4ff770",
+    "postgresVersion": "18.6"
+  },
+  "probeSha256": "81f099aadcf5740dd5ef6246bd3f29275b4c6e09e62485a0adce8e54766072ad",
+  "ownerSha256": "490891947f415a98c53e4ff1e00bdd1a205b23427bde29340a34daad880d878d",
+  "stages": [
+    {
+      "name": "new-256MiB-ram-volume",
+      "startedAt": "2026-10-29T19:06:23.830Z",
+      "status": "passed",
+      "result": {
+        "device": "/dev/disk4",
+        "label": "XJ145_789dfe53238343c9966c",
+        "mount": "/Volumes/XJ145_789dfe53238343c9966c",
+        "deviceBytes": 268435456,
+        "filesystem": "hfs",
+        "creation": "hdiutil attach -nomount ram://524288",
+        "format": "diskutil eraseVolume HFS+ <unique-label> <captured-new-device>",
+        "beforeRestore": {
+          "at": "2026-10-29T19:06:26.107Z",
+          "totalBytes": 268435456,
+          "availableBytes": 262123520,
+          "freeBytes": 262123520,
+          "blockSize": 4096
+        }
+      },
+      "durationMs": 2276
+    },
+    {
+      "name": "independent-B-sentinel",
+      "startedAt": "2026-10-29T19:06:26.107Z",
+      "status": "passed",
+      "result": {
+        "environmentId": "ea7ad697-3657-4fb9-8e06-6fa75b3e8b92",
+        "installationId": "5111a14d-98de-4ea1-8565-e0c765a9f9aa",
+        "database": "none",
+        "ready": true
+      },
+      "durationMs": 43
+    },
+    {
+      "name": "source-owner-real-PG-and-128MiB-resource",
+      "startedAt": "2026-10-29T19:06:26.151Z",
+      "status": "passed",
+      "result": {
+        "ready": true,
+        "provisionedAfterPGReady": true,
+        "requestId": "f12ae4b9-6eab-4044-885e-af4a097c3f1f",
+        "unknownIntentId": "f9581cc8-8ff9-4544-8c30-93ac85d8c9fb",
+        "resourceId": "086bef0c-28e4-4297-ba20-6cfafbbdb1f6",
+        "byteLength": 134217728,
+        "pattern": "ASCII data repeated 33554432 times",
+        "expectedSha256": "8c9bc739874c93cabbe422b97536924fd9303a91771eec226dc3bb915e497ddf",
+        "opaqueByteLength": 134217783,
+        "opaqueSha256": "da2d2e8af2d9548c16a69e27d513178221a97e2568c00b0b45e2717b91477758"
+      },
+      "durationMs": 5796
+    },
+    {
+      "name": "held-consistent-backup-and-source-snapshot",
+      "startedAt": "2026-10-29T19:06:31.961Z",
+      "status": "passed",
+      "result": {
+        "backupId": "282c1e66-15ff-47c4-bfaa-9fab2724259f",
+        "boundaryAt": "2026-10-29T19:06:32.049Z",
+        "completedAt": "2026-10-29T19:06:32.821Z",
+        "durationMs": 798,
+        "held": true,
+        "sourceSnapshotAt": "2026-10-29T19:06:33.367Z",
+        "snapshotDurationMs": 394,
+        "sourceByteScope": "All resource objects and immutable installation/environment/database/boundary metadata; live PGDATA is not byte-stable.",
+        "source": {
+          "objects": [
+            {
+              "path": "f1ba7694-8059-4843-967d-625d3bd7dcb9/b336220f-e0a8-47cd-bf44-7c6a4d4a506d/086bef0c-28e4-4297-ba20-6cfafbbdb1f6",
+              "byteLength": 134217783,
+              "sha256": "da2d2e8af2d9548c16a69e27d513178221a97e2568c00b0b45e2717b91477758"
+            }
+          ],
+          "configuration": [
+            {
+              "path": "installation.json",
+              "sha256": "e5a66ef363842cee914ec10b05940f05bb525d50e8a3dea0c598c7d818697f3f"
+            },
+            {
+              "path": "environment.json",
+              "sha256": "36ef036595cb41a2487f559d28a60f79c0898e1ab0a2ef1ceaf1c1cbcb13e41c"
+            },
+            {
+              "path": "database.json",
+              "sha256": "b0691e3477fb3e05dc32eca3d6f62aeb9b3bce6a9bcc6aedbc2ffeda79cce026"
+            },
+            {
+              "path": "recovery-boundary.json",
+              "sha256": "d57afd6766a88bd3fd78e9049f64f97bb22e01c6a731975b5a96fff5551b5359"
+            }
+          ],
+          "database": {
+            "schema": "xjs_fb48279513d220bb022be49147558467",
+            "readOnly": true,
+            "restoredRecords": 1,
+            "restoredReceipts": 1,
+            "unknownIntentId": "f9581cc8-8ff9-4544-8c30-93ac85d8c9fb",
+            "restoredMigrations": [
+              {
+                "name": "acceptance-records",
+                "version": 1
+              }
+            ],
+            "constraints": [
+              {
+                "kind": "c"
+              },
+              {
+                "kind": "p"
+              },
+              {
+                "kind": "u"
+              }
+            ],
+            "sequence": {
+              "is_called": true,
+              "last_value": "1"
+            },
+            "resourceRows": 1,
+            "heldBackupPins": 1,
+            "writesOpen": false,
+            "dispatchOpen": false
+          }
+        },
+        "backupFiles": [
+          {
+            "path": "artifacts/588a19b7-c495-4186-869b-5d67d90bbda9/recovery.json",
+            "byteLength": 1286,
+            "sha256": "8a99e59e093a50f14a6afbe78c425f1884d62805a998f7dc81c3878ec86613e4"
+          },
+          {
+            "path": "artifacts/588a19b7-c495-4186-869b-5d67d90bbda9/runtime.dump",
+            "byteLength": 1446,
+            "sha256": "9b4417196544a0508457d19c30f6f77faa94cff0f31e0f744ce3802f5afa8996"
+          },
+          {
+            "path": "artifacts/b336220f-e0a8-47cd-bf44-7c6a4d4a506d/086bef0c-28e4-4297-ba20-6cfafbbdb1f6.blob",
+            "byteLength": 134217811,
+            "sha256": "0e9017814793e451f63c08b8566183e902d41dd9f94d19bea67473d5317c0b15"
+          },
+          {
+            "path": "artifacts/b336220f-e0a8-47cd-bf44-7c6a4d4a506d/recovery.json",
+            "byteLength": 1486,
+            "sha256": "812405fc2daba13f148eebd4c19062e9303f6046b33014e441713db270978bec"
+          },
+          {
+            "path": "artifacts/b336220f-e0a8-47cd-bf44-7c6a4d4a506d/schema.dump",
+            "byteLength": 19744,
+            "sha256": "6c5674f20cf3e39cd52201daa746e37358a0e1a685abf1fbb41a92641a474918"
+          },
+          {
+            "path": "manifest.json",
+            "byteLength": 1767,
+            "sha256": "2169cffc4fbbbeedbe97a5f52a9a46b73ff3fe06b66807d9424644e21eff5855"
+          }
+        ]
+      },
+      "durationMs": 1406
+    },
+    {
+      "name": "actual-resource-copy-insufficient-space-after-restored-DB",
+      "startedAt": "2026-10-29T19:06:33.367Z",
+      "status": "passed",
+      "result": {
+        "error": "insufficient-space",
+        "preflightMinimumFreeBytes": 0,
+        "stagedObject": {
+          "byteLength": 134217783,
+          "sha256": "da2d2e8af2d9548c16a69e27d513178221a97e2568c00b0b45e2717b91477758"
+        },
+        "copyBoundary": {
+          "phase": "resource-copy-after-database-restore",
+          "database": {
+            "schema": "xjs_fb48279513d220bb022be49147558467",
+            "readOnly": true,
+            "restoredRecords": 1,
+            "restoredReceipts": 1,
+            "unknownIntentId": "f9581cc8-8ff9-4544-8c30-93ac85d8c9fb",
+            "restoredMigrations": [
+              {
+                "name": "acceptance-records",
+                "version": 1
+              }
+            ],
+            "constraints": [
+              {
+                "kind": "c"
+              },
+              {
+                "kind": "p"
+              },
+              {
+                "kind": "u"
+              }
+            ],
+            "sequence": {
+              "is_called": true,
+              "last_value": "1"
+            },
+            "resourceRows": 1,
+            "heldBackupPins": 1,
+            "writesOpen": false,
+            "dispatchOpen": false
+          },
+          "capacity": {
+            "at": "2026-10-29T19:06:34.314Z",
+            "totalBytes": 268435456,
+            "availableBytes": 86315008,
+            "freeBytes": 86315008,
+            "blockSize": 4096
+          },
+          "requiredObjectBytes": 134217783
+        },
+        "afterFailureCapacity": {
+          "at": "2026-10-29T19:06:34.342Z",
+          "totalBytes": 268435456,
+          "availableBytes": 220573696,
+          "freeBytes": 220573696,
+          "blockSize": 4096
+        },
+        "database": {
+          "schema": "xjs_fb48279513d220bb022be49147558467",
+          "readOnly": true,
+          "restoredRecords": 1,
+          "restoredReceipts": 1,
+          "unknownIntentId": "f9581cc8-8ff9-4544-8c30-93ac85d8c9fb",
+          "restoredMigrations": [
+            {
+              "name": "acceptance-records",
+              "version": 1
+            }
+          ],
+          "constraints": [
+            {
+              "kind": "c"
+            },
+            {
+              "kind": "p"
+            },
+            {
+              "kind": "u"
+            }
+          ],
+          "sequence": {
+            "is_called": true,
+            "last_value": "1"
+          },
+          "resourceRows": 1,
+          "heldBackupPins": 1,
+          "writesOpen": false,
+          "dispatchOpen": false
+        },
+        "neverActive": true,
+        "targetHostNeverStarted": true,
+        "onRestoredCalls": 0,
+        "backendGetCalls": 1,
+        "backendPutCalls": 0,
+        "state": "failed",
+        "operations": [
+          {
+            "kind": "restore",
+            "phase": "failed",
+            "error": "insufficient-space",
+            "startedAt": "2026-10-29T19:06:33.494Z",
+            "updatedAt": "2026-10-29T19:06:34.329Z"
+          }
+        ]
+      },
+      "durationMs": 975
+    },
+    {
+      "name": "source-backup-and-independent-B-unchanged-after-failure",
+      "startedAt": "2026-10-29T19:06:34.343Z",
+      "status": "passed",
+      "result": {
+        "sourceServiceAndObjectBytesUnchanged": true,
+        "sourceMetadataBytesUnchanged": true,
+        "backupAllBytesUnchanged": true,
+        "sourceSnapshotAt": "2026-10-29T19:06:34.813Z",
+        "snapshotDurationMs": 470,
+        "independentBReadyAndAllFilesUnchanged": true,
+        "sourceHeld": true
+      },
+      "durationMs": 470
+    },
+    {
+      "name": "same-backup-independent-normal-disk-rebuild",
+      "startedAt": "2026-10-29T19:06:34.814Z",
+      "status": "passed",
+      "result": {
+        "backupId": "282c1e66-15ff-47c4-bfaa-9fab2724259f",
+        "independentInstallation": true,
+        "independentPG": true,
+        "isolated": true,
+        "neverActivated": true,
+        "writesAndDispatchRejected": true,
+        "rotatedCredentialPersistedAndReopened": true,
+        "body": true,
+        "receipt": true,
+        "unknownIntentIdentity": true,
+        "constraintsAndSequence": true,
+        "rawBytes": 134217728,
+        "rawSha256": "8c9bc739874c93cabbe422b97536924fd9303a91771eec226dc3bb915e497ddf",
+        "opaqueBytes": 134217783,
+        "opaqueSha256": "da2d2e8af2d9548c16a69e27d513178221a97e2568c00b0b45e2717b91477758"
+      },
+      "durationMs": 3322
+    },
+    {
+      "name": "source-backup-and-independent-B-unchanged-after-rebuild",
+      "startedAt": "2026-10-29T19:06:38.137Z",
+      "status": "passed",
+      "result": {
+        "sourceServiceAndObjectBytesUnchanged": true,
+        "sourceMetadataBytesUnchanged": true,
+        "backupAllBytesUnchanged": true,
+        "sourceSnapshotAt": "2026-10-29T19:06:38.673Z",
+        "snapshotDurationMs": 536,
+        "independentBReadyAndAllFilesUnchanged": true,
+        "sourceHeld": true
+      },
+      "durationMs": 536
+    }
+  ],
+  "phases": [
+    {
+      "phase": "ram-device-attached",
+      "at": "2026-10-29T19:06:24.147Z",
+      "device": "/dev/disk4"
+    },
+    {
+      "phase": "storage-restore-started",
+      "at": "2026-10-29T19:06:34.212Z",
+      "actor": "ram-target"
+    },
+    {
+      "phase": "resource-copy-after-database-restore",
+      "at": "2026-10-29T19:06:34.314Z",
+      "database": {
+        "schema": "xjs_fb48279513d220bb022be49147558467",
+        "readOnly": true,
+        "restoredRecords": 1,
+        "restoredReceipts": 1,
+        "unknownIntentId": "f9581cc8-8ff9-4544-8c30-93ac85d8c9fb",
+        "restoredMigrations": [
+          {
+            "name": "acceptance-records",
+            "version": 1
+          }
+        ],
+        "constraints": [
+          {
+            "kind": "c"
+          },
+          {
+            "kind": "p"
+          },
+          {
+            "kind": "u"
+          }
+        ],
+        "sequence": {
+          "is_called": true,
+          "last_value": "1"
+        },
+        "resourceRows": 1,
+        "heldBackupPins": 1,
+        "writesOpen": false,
+        "dispatchOpen": false
+      },
+      "capacity": {
+        "at": "2026-10-29T19:06:34.314Z",
+        "totalBytes": 268435456,
+        "availableBytes": 86315008,
+        "freeBytes": 86315008,
+        "blockSize": 4096
+      },
+      "requiredObjectBytes": 134217783
+    },
+    {
+      "phase": "restore-failed-insufficient-space",
+      "at": "2026-10-29T19:06:34.343Z",
+      "actor": "ram-target"
+    },
+    {
+      "phase": "storage-restore-started",
+      "at": "2026-10-29T19:06:35.988Z",
+      "actor": "normal-disk-rebuild"
+    },
+    {
+      "phase": "independent-rebuild-isolated",
+      "at": "2026-10-29T19:06:38.136Z",
+      "actor": "normal-disk-rebuild",
+      "backupId": "282c1e66-15ff-47c4-bfaa-9fab2724259f"
+    }
+  ],
+  "cleanup": [
+    {
+      "name": "normal-disk-rebuild:host-stop",
+      "startedAt": "2026-10-29T19:06:38.674Z",
+      "status": "passed",
+      "result": {
+        "hadHost": false
+      }
+    },
+    {
+      "name": "ram-target:host-stop",
+      "startedAt": "2026-10-29T19:06:38.674Z",
+      "status": "passed",
+      "result": {
+        "hadHost": false
+      }
+    },
+    {
+      "name": "independent-B:host-stop",
+      "startedAt": "2026-10-29T19:06:38.674Z",
+      "status": "passed",
+      "result": {
+        "hadHost": true
+      }
+    },
+    {
+      "name": "source:host-stop",
+      "startedAt": "2026-10-29T19:06:38.679Z",
+      "status": "passed",
+      "result": {
+        "hadHost": true
+      }
+    },
+    {
+      "name": "all-owned-storage-pools-close",
+      "startedAt": "2026-10-29T19:06:38.803Z",
+      "status": "passed",
+      "result": {
+        "count": 3
+      }
+    },
+    {
+      "name": "normal-disk-rebuild:product-PG-stop",
+      "startedAt": "2026-10-29T19:06:38.803Z",
+      "status": "passed",
+      "result": {
+        "stopped": true
+      }
+    },
+    {
+      "name": "normal-disk-rebuild:disposable-data-remove",
+      "startedAt": "2026-10-29T19:06:38.928Z",
+      "status": "passed",
+      "result": {
+        "removed": true
+      }
+    },
+    {
+      "name": "ram-target:product-PG-stop",
+      "startedAt": "2026-10-29T19:06:39.031Z",
+      "status": "passed",
+      "result": {
+        "stopped": true
+      }
+    },
+    {
+      "name": "ram-target:disposable-data-remove",
+      "startedAt": "2026-10-29T19:06:39.154Z",
+      "status": "passed",
+      "result": {
+        "removed": true
+      }
+    },
+    {
+      "name": "independent-B:product-PG-stop",
+      "startedAt": "2026-10-29T19:06:39.177Z",
+      "status": "passed",
+      "result": {
+        "stopped": true
+      }
+    },
+    {
+      "name": "independent-B:disposable-data-remove",
+      "startedAt": "2026-10-29T19:06:39.190Z",
+      "status": "passed",
+      "result": {
+        "removed": true
+      }
+    },
+    {
+      "name": "source:product-PG-stop",
+      "startedAt": "2026-10-29T19:06:39.193Z",
+      "status": "passed",
+      "result": {
+        "stopped": true
+      }
+    },
+    {
+      "name": "source:disposable-data-remove",
+      "startedAt": "2026-10-29T19:06:39.213Z",
+      "status": "passed",
+      "result": {
+        "removed": true
+      }
+    },
+    {
+      "name": "detach-only-captured-new-RAM-device",
+      "startedAt": "2026-10-29T19:06:39.288Z",
+      "status": "passed",
+      "result": {
+        "device": "/dev/disk4",
+        "detached": true,
+        "force": false
+      }
+    },
+    {
+      "name": "private-key-backup-and-temporary-files-remove",
+      "startedAt": "2026-10-29T19:06:45.760Z",
+      "status": "passed",
+      "result": {
+        "privateKeyRemoved": true,
+        "encryptedBackupRemoved": true,
+        "temporaryFilesRemoved": true
+      }
+    }
+  ],
+  "scope": "Disposable owned installations only; physical capacity limit; no mocked ENOSPC; same held backup; isolated rebuild; no browser or teaching-effect acceptance.",
+  "volume": {
+    "device": "/dev/disk4",
+    "label": "XJ145_789dfe53238343c9966c",
+    "mount": "/Volumes/XJ145_789dfe53238343c9966c",
+    "deviceBytes": 268435456,
+    "filesystem": "hfs",
+    "creation": "hdiutil attach -nomount ram://524288",
+    "format": "diskutil eraseVolume HFS+ <unique-label> <captured-new-device>",
+    "beforeRestore": {
+      "at": "2026-10-29T19:06:26.107Z",
+      "totalBytes": 268435456,
+      "availableBytes": 262123520,
+      "freeBytes": 262123520,
+      "blockSize": 4096
+    }
+  },
+  "finishedAt": "2026-10-29T19:06:45.770Z",
+  "durationMs": 22005,
+  "disposableDataRemoved": true
+}

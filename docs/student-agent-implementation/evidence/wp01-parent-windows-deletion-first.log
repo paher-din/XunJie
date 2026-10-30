@@ -1,0 +1,17 @@
+✔ deleting a retired environment clears its state and permits a fresh authorized installation (34483.9177ms)
+✔ deleting a isolated environment clears its state and permits a fresh authorized installation (36929.285ms)
+✖ delete preserves pending and retiring cleanup until a late export pin is released (10011.5823ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 1
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 93984.3875
+
+✖ failing tests:
+
+test at packages\product-runtime\test\lifecycle.test.mjs:159:1
+✖ delete preserves pending and retiring cleanup until a late export pin is released (10011.5823ms)
+  'test timed out after 10000ms'

@@ -1,0 +1,36 @@
+{
+    "formatVersion":  1,
+    "issue":  142,
+    "status":  "passed",
+    "capturedAt":  "2026-10-30T06:05:16.6613174Z",
+    "stopped":  [
+                    {
+                        "root":  "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-142-SmluYE\\manual-field",
+                        "state":  "stopped"
+                    },
+                    {
+                        "root":  "C:\\Users\\h\\AppData\\Local\\Temp\\循阶 包 验收 cMcG8t\\环境 A",
+                        "state":  "stopped"
+                    },
+                    {
+                        "root":  "C:\\Users\\h\\AppData\\Local\\Temp\\循阶 包 验收 cMcG8t\\环境 B",
+                        "state":  "stopped"
+                    }
+                ],
+    "ownedProcessesRemaining":  0,
+    "tasksRemoved":  [
+                         "XunJie-WP01-142-SmluYE",
+                         "XunJie-WP01-142-View-SmluYE",
+                         "XunJie-WP01-142-R2-SmluYE",
+                         "XunJie-WP01-142-R3-SmluYE",
+                         "XunJie-WP01-142-R4-SmluYE",
+                         "XunJie-WP01-142-R5-SmluYE",
+                         "XunJie-WP01-142-R6-SmluYE"
+                     ],
+    "temporaryRootsRemoved":  [
+                                  "C:\\Users\\h\\AppData\\Local\\Temp\\循阶 包 验收 1juMYx",
+                                  "C:\\Users\\h\\AppData\\Local\\Temp\\循阶 包 验收 cMcG8t"
+                              ],
+    "labRootRemoved":  true,
+    "original143EnvironmentTouched":  false
+}

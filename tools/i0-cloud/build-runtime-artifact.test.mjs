@@ -6,13 +6,14 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, wr
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { gunzipSync } from 'node:zlib';
+import { pathToFileURL } from 'node:url';
 import { buildRuntimeArtifact } from './build-runtime-artifact.mjs';
 
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const COMMIT = '2'.repeat(40), TREE = '4'.repeat(40);
 
 function sourceFixture(root) {
-  const dist = join(root, 'apps/student/dist');
+  const dist = join(root, 'apps/web/dist');
   mkdirSync(join(dist, 'assets'), { recursive: true });
   writeFileSync(join(dist, 'index.html'),
     '<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>循阶</title></head>'
@@ -20,20 +21,37 @@ function sourceFixture(root) {
   writeFileSync(join(dist, 'assets', 'index-test.js'), 'export const value = ' + 'y'.repeat(512) + ';');
   writeFileSync(join(dist, 'assets', 'site.css'), '.rule { color: black; }\n'.repeat(16));
   writeFileSync(join(dist, 'assets', 'board.png'), Buffer.alloc(2048, 3));
-  const teaching = join(root, 'apps/teaching');
-  for (const name of ['server/main.ts', 'server/access.test.ts', 'server/tests/fixture.ts', 'contracts/access.ts',
-    'contracts/__tests__/access.ts', 'runner/snapshot.ts', 'runner/test/cases.ts', 'tools/check-runtime.mjs']) {
+  const teaching = join(root, 'apps/server');
+  for (const name of ['dist/server/main.js', 'dist/server/access.test.js', 'dist/server/tests/fixture.js', 'dist/contracts/access.js',
+    'dist/contracts/__tests__/access.js', 'dist/runner/snapshot.js', 'dist/runner/test/cases.js',
+    'dist/server/app/i0-browser-runner.js', 'dist/server/app/i0-browser-fixture.js', 'dist/server/workspace/test-child.js',
+    'dist/runner/acceptance.js', 'dist/runner/hdl-acceptance.js', 'dist/runner/record-validation.js',
+    'dist/server/design/design-support.js', 'dist/server/fixtures/sample.js', 'tools/check-runtime.mjs']) {
     mkdirSync(dirname(join(teaching, name)), { recursive: true });
     writeFileSync(join(teaching, name), `export const fixture = '${name}';\n`);
   }
   writeFileSync(join(teaching, 'package.json'), '{"type":"module"}\n');
-  writeFileSync(join(teaching, 'package-lock.json'), '{"lockfileVersion":3}\n');
+  writeFileSync(join(root, 'package-lock.json'), '{"lockfileVersion":3}\n');
   for (const name of ['node_modules/zod/index.js', 'node_modules/.package-lock.json', 'node_modules/better-sqlite3/prebuilds/linux-x64.node']) {
-    mkdirSync(dirname(join(teaching, name)), { recursive: true });
-    writeFileSync(join(teaching, name), `production dependency ${name}`);
+    mkdirSync(dirname(join(root, name)), { recursive: true });
+    writeFileSync(join(root, name), `production dependency ${name}`);
   }
-  mkdirSync(join(teaching, 'node_modules/.bin'), { recursive: true });
-  symlinkSync('../zod/index.js', join(teaching, 'node_modules/.bin/zod'));
+  writeFileSync(join(root, 'node_modules/.package-lock.json'), JSON.stringify({packages:{'node_modules/zod':{version:'1.0.0'}}}));
+  mkdirSync(join(root, 'node_modules/.bin'), { recursive: true });
+  symlinkSync('../zod/index.js', join(root, 'node_modules/.bin/zod'));
+  mkdirSync(join(root, 'packages/contracts/dist'), { recursive: true });
+  writeFileSync(join(root, 'packages/contracts/package.json'), JSON.stringify({name:'@xunjie/contracts',type:'module',exports:'./dist/index.js'}));
+  writeFileSync(join(root, 'packages/contracts/dist/index.js'), 'export const contract = true;');
+  mkdirSync(join(root, 'packages/storage/dist/tests'), { recursive: true });
+  writeFileSync(join(root, 'packages/storage/package.json'), JSON.stringify({name:'@xunjie/storage',type:'module',exports:'./dist/index.js'}));
+  writeFileSync(join(root, 'packages/storage/dist/index.js'), 'export const storageFixture = true;');
+  writeFileSync(join(root, 'packages/storage/dist/tests/not-shipped.js'), 'throw new Error("test-only");');
+  writeFileSync(join(teaching, 'dist/server/main.js'), 'export {storageFixture} from "@xunjie/storage";');
+  writeFileSync(join(root, 'package.json'), '{"private":true,"type":"module"}');
+  mkdirSync(join(root, 'node_modules/@xunjie'), { recursive: true });
+  symlinkSync('../../packages/contracts', join(root, 'node_modules/@xunjie/contracts'));
+  symlinkSync('../../packages/storage', join(root, 'node_modules/@xunjie/storage'));
+  symlinkSync('../../apps/server', join(root, 'node_modules/@xunjie/server'));
   mkdirSync(join(root, 'tools/i0-cloud'), { recursive: true });
   writeFileSync(join(root, 'tools/i0-cloud/cloud-host.mjs'), 'export const host = \'original\';\n');
   writeFileSync(join(root, 'tools/i0-cloud/build-runtime-artifact.test-helper.md'), 'not part of the runtime\n');
@@ -80,43 +98,56 @@ test('runtime artifact carries per-file digests, pre-compressed static outputs a
     assert.deepEqual(map, manifest.staticDigests);
 
     const runtimeFiles = entryMap(manifest.runtimeFiles);
-    for (const name of ['apps/teaching/server/main.ts', 'apps/teaching/contracts/access.ts', 'apps/teaching/runner/snapshot.ts',
-      'apps/teaching/package.json', 'apps/teaching/package-lock.json', 'apps/teaching/tools/check-runtime.mjs',
-      'apps/teaching/node_modules/zod/index.js', 'apps/teaching/node_modules/.package-lock.json',
-      'apps/teaching/node_modules/better-sqlite3/prebuilds/linux-x64.node', 'tools/i0-cloud/cloud-host.mjs']) {
+    for (const name of ['apps/server/dist/server/main.js', 'apps/server/dist/contracts/access.js', 'apps/server/dist/runner/snapshot.js',
+      'apps/server/package.json', 'package-lock.json', 'node_modules/@xunjie/contracts/dist/index.js',
+      'node_modules/@xunjie/storage/dist/index.js', 'node_modules/@xunjie/storage/package.json',
+      'node_modules/zod/index.js', 'node_modules/.package-lock.json',
+      'node_modules/better-sqlite3/prebuilds/linux-x64.node', 'tools/i0-cloud/cloud-host.mjs']) {
       assert.ok(runtimeFiles[name], `runtime file missing: ${name}`);
     }
-    for (const excluded of ['apps/teaching/server/access.test.ts', 'apps/teaching/server/tests/fixture.ts',
-      'apps/teaching/contracts/__tests__/access.ts', 'apps/teaching/runner/test/cases.ts',
+    for (const excluded of ['apps/server/dist/server/access.test.js', 'apps/server/dist/server/tests/fixture.js',
+      'apps/server/dist/contracts/__tests__/access.js', 'apps/server/dist/runner/test/cases.js',
       'tools/i0-cloud/build-runtime-artifact.mjs', 'tools/i0-cloud/build-runtime-artifact.test-helper.md',
-      'apps/teaching/tools/xj-dev-access/access.test.mjs',
-      'apps/teaching/tools/xj-dev-access/server.mjs', 'apps/teaching/tools/xj-dev/src/enrollment-protocol.mjs',
+      'apps/server/tools/xj-dev-access/access.test.mjs',
+      'apps/server/tools/xj-dev-access/server.mjs', 'apps/server/tools/xj-dev/src/enrollment-protocol.mjs',
       'tools/xj-dev-access/server.mjs', 'tools/xj-dev/src/enrollment-protocol.mjs',
-      'apps/student/src/main.tsx']) {
+      'apps/web/src/main.tsx']) {
       assert.equal(runtimeFiles[excluded], undefined, excluded);
     }
-    assert.equal(runtimeFiles['apps/teaching/server/main.ts'], sha256(readFileSync(join(root, 'apps/teaching/server/main.ts'))));
+    assert.equal(runtimeFiles['apps/server/dist/server/main.js'], sha256(readFileSync(join(root, 'apps/server/dist/server/main.js'))));
     assert.equal(manifest.runtimeFiles.some(file => file.path.includes('xj-dev')), false, 'standard product runtime excludes development facilities');
     // Every manifest entry also records its byte size so the server can compare
     // the release shape with stat calls alone in the steady state.
     const sizeOf = files => Object.fromEntries(files.map(file => [file.path, file.bytes]));
     assert.equal(sizeOf(manifest.staticFiles)['index.html'], statSync(join(dist, 'index.html')).size);
-    assert.equal(sizeOf(manifest.runtimeFiles)['apps/teaching/node_modules/zod/index.js'],
-      statSync(join(root, 'apps/teaching/node_modules/zod/index.js')).size);
+    assert.equal(sizeOf(manifest.runtimeFiles)['node_modules/zod/index.js'],
+      statSync(join(root, 'node_modules/zod/index.js')).size);
 
     const listing = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' }).trim().split('\n');
-    for (const name of ['apps/student/dist/index.html', 'apps/student/dist/asset-digests.json',
-      'apps/teaching/server/main.ts', 'apps/teaching/node_modules/zod/index.js', 'tools/i0-cloud/cloud-host.mjs']) {
+    for (const name of ['apps/web/dist/index.html', 'apps/web/dist/asset-digests.json',
+      'apps/server/dist/server/main.js', 'node_modules/zod/index.js', 'tools/i0-cloud/cloud-host.mjs']) {
       assert.ok(listing.includes(name), `tarball missing: ${name}`);
     }
-    assert.ok(listing.every(name => name.startsWith('apps/') || name.startsWith('tools/') || name === 'apps' || name === 'tools'));
+    assert.ok(listing.includes('node_modules/@xunjie/contracts/dist/index.js'));
+    assert.equal(runtimeFiles['node_modules/@xunjie/server/package.json'], undefined);
+    for (const excluded of ['dist/server/app/i0-browser-runner.js', 'dist/server/app/i0-browser-fixture.js',
+      'dist/server/workspace/test-child.js', 'dist/runner/acceptance.js', 'dist/runner/hdl-acceptance.js',
+      'dist/runner/record-validation.js', 'dist/server/design/design-support.js', 'dist/server/fixtures/sample.js']) {
+      assert.equal(runtimeFiles['apps/server/' + excluded], undefined, excluded);
+    }
     const extracted = mkdtempSync(join(tmpdir(), 'xunjie-artifact-extract-'));
     try {
       execFileSync('tar', ['-xzf', archive, '-C', extracted]);
-      assert.equal(readFileSync(join(extracted, 'apps/teaching/server/main.ts'), 'utf8'),
-        readFileSync(join(root, 'apps/teaching/server/main.ts'), 'utf8'));
-      assert.equal(readFileSync(join(extracted, 'apps/student/dist/assets/index-test.js.br')).toString('hex'),
+      assert.equal(readFileSync(join(extracted, 'apps/server/dist/server/main.js'), 'utf8'),
+        readFileSync(join(root, 'apps/server/dist/server/main.js'), 'utf8'));
+      assert.equal(readFileSync(join(extracted, 'apps/web/dist/assets/index-test.js.br')).toString('hex'),
         readFileSync(join(dist, 'assets/index-test.js.br')).toString('hex'));
+      const consumer = spawnSync(process.execPath, ['--input-type=module', '-e',
+        'const module=await import(process.argv[1]);process.stdout.write(String(module.storageFixture));',
+        pathToFileURL(join(extracted, 'apps/server/dist/server/main.js')).href], {encoding:'utf8'});
+      assert.equal(consumer.status,0,consumer.stderr);
+      assert.equal(consumer.stdout,'true');
+      assert.equal(runtimeFiles['node_modules/@xunjie/storage/dist/tests/not-shipped.js'],undefined);
     } finally { rmSync(extracted, { recursive: true, force: true }); }
     assert.ok(statSync(archive).size > 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -126,17 +157,17 @@ test('runtime artifact rejects unsupported symlinks, wrong inputs and platform m
   const root = mkdtempSync(join(tmpdir(), 'xunjie-artifact-reject-')), output = join(root, 'output');
   try {
     sourceFixture(root);
-    symlinkSync('../server/main.ts', join(root, 'apps/teaching/server/alias.ts'));
+    symlinkSync('./main.js', join(root, 'apps/server/dist/server/alias.js'));
     assert.throws(() => buildRuntimeArtifact({ source: root, output, commit: COMMIT, gitTree: TREE }), /RUNTIME_SYMLINK_UNSUPPORTED/);
-    rmSync(join(root, 'apps/teaching/server/alias.ts'));
+    rmSync(join(root, 'apps/server/dist/server/alias.js'));
 
-    const dist = join(root, 'apps/student/dist');
+    const dist = join(root, 'apps/web/dist');
     const entry = readFileSync(join(dist, 'index.html'), 'utf8');
     writeFileSync(join(dist, 'index.html'), entry.replace('/assets/index-test.js', 'https://cdn.example/app.js'));
     assert.throws(() => buildRuntimeArtifact({ source: root, output, commit: COMMIT, gitTree: TREE }), /SINGLE_BUILT_ENTRY_REQUIRED|LOCAL_BUILT_ENTRY_REQUIRED/);
     writeFileSync(join(dist, 'index.html'), entry);
 
-    rmSync(join(root, 'apps/teaching/contracts'), { recursive: true });
+    rmSync(join(root, 'apps/server/dist'), { recursive: true });
     assert.throws(() => buildRuntimeArtifact({ source: root, output, commit: COMMIT, gitTree: TREE }), /RUNTIME_INPUT_REQUIRED/);
 
     assert.throws(() => buildRuntimeArtifact({ source: root, output, commit: COMMIT, gitTree: TREE, expectedPlatform: 'other-platform' }), /PLATFORM_MISMATCH/);
@@ -183,7 +214,7 @@ test('manifest aggregates stay stable across repeated builds of the same inputs'
     assert.deepEqual(entryMap(one.runtimeFiles), entryMap(two.runtimeFiles));
     assert.deepEqual(entryMap(one.staticFiles), entryMap(two.staticFiles));
     // A rebuilt bundle must change its digest and therefore its immutable URL.
-    writeFileSync(join(second, 'apps/student/dist/assets/index-test.js'), 'export const changed = true;\n');
+    writeFileSync(join(second, 'apps/web/dist/assets/index-test.js'), 'export const changed = true;\n');
     const three = buildRuntimeArtifact({ source: second, output: join(second, 'output2'), commit: COMMIT, gitTree: TREE }).manifest;
     assert.notEqual(three.staticDigests['assets/index-test.js'], one.staticDigests['assets/index-test.js']);
     assert.notEqual(three.staticSha256, one.staticSha256);

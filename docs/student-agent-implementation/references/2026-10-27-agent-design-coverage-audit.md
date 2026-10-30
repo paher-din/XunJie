@@ -64,8 +64,8 @@
 1. [原始 U1](2026-10-18-user-discussion.md#u1)已经明确要求重新设计 runtime、工具使用、插件系统、MCP、adapter 与 gateway；[需求提取](../student-agent-decisions.md#原聊天逐条提取)也记录了这些要求。因此这是后续覆盖与收束的问题。
 2. [模型连接议题](https://github.com/paher-din/XunJie/issues/115)明确只处理模型连接和协议，不决定完整教学调度；其工具往返实验不能替代项目的 Agent tool 契约。[端点评估](2026-10-23-model-endpoint-assessment.md#从目标推导模型调用层)有 system/tools 变化与压缩的协议约束，但没有完整 PromptBuilder/ContextBuilder。
 3. [课程宿主契约](2026-10-26-course-tool-host-proposal.md#最小宿主契约建议)已规定组件级输入输出、状态和权限；[外部能力接入](2026-10-26-course-tool-host-proposal.md#外部能力的接入建议)说明 Skills/MCP 的角色。它们没有规定每次模型调用的工具清单、Skill 装载和完整 MCP client 生命周期。[技术研究](2026-10-26-course-tool-host-research.md#mcp--mcp-apps责任实际落在哪里)是协议事实，不能当项目接入已经完成。
-4. 当前个人 Agent 的[消息与 transport 类型](../../../apps/teaching/server/personal-agent/types.ts#L7)只有 system/user/assistant 及文本/用量返回；[请求构造](../../../apps/teaching/server/tutoring/openai-compatible.ts#L147)没有 tools。课程分析则使用[无工具、无副作用的结构化生成](../../../apps/teaching/server/tutoring/deepseek-sdk.ts#L55)。旧实现无法填补新设计的 tool_use 缺口，也不构成限制新设计的理由。
-5. [个人聊天 prompt 构造](../../../apps/teaching/server/personal-agent/service.ts#L295)、[课程上下文](../../../apps/teaching/server/tutoring/context.ts#L80)和[分析 promptVersion](../../../apps/teaching/server/tutoring/analysis.ts#L152)证明代码存在提示词和局部版本控制；不证明新的跨课程 Agent 已有提示分层、装配和升级规则。
+4. 当前个人 Agent 的[消息与 transport 类型](../../../apps/server/server/personal-agent/types.ts#L7)只有 system/user/assistant 及文本/用量返回；[请求构造](../../../apps/server/server/tutoring/openai-compatible.ts#L147)没有 tools。课程分析则使用[无工具、无副作用的结构化生成](../../../apps/server/server/tutoring/deepseek-sdk.ts#L55)。旧实现无法填补新设计的 tool_use 缺口，也不构成限制新设计的理由。
+5. [个人聊天 prompt 构造](../../../apps/server/server/personal-agent/service.ts#L295)、[课程上下文](../../../apps/server/server/tutoring/context.ts#L80)和[分析 promptVersion](../../../apps/server/server/tutoring/analysis.ts#L152)证明代码存在提示词和局部版本控制；不证明新的跨课程 Agent 已有提示分层、装配和升级规则。
 6. [连续教学方案](2026-10-23-continuous-learning-proposal.md)与[主动引导评估](2026-10-23-proactive-guidance-proposal.md#个人适应与整体改进分开验证)已有产品边界及部分评价设计；缺口是把它们接入每个 Agent 回合，而不是声称 Memory、学生控制或教学评估从未考虑。
 
 ## 为什么遗漏

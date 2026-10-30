@@ -23,7 +23,7 @@ let shared, ca, cert, schema, previousCA;
 before(async () => {
   shared = realpathSync(mkdtempSync(join(tmpdir(), 'xj-transfer-tls-')));
   ca = ensureCertificateAuthority(shared); cert = ensureEnvironmentCertificate(environmentPaths(shared, 'tls'), ca);
-  schema = await schemaFingerprint(join(worktree, 'apps/teaching'), shared);
+  schema = await schemaFingerprint(join(worktree, 'apps/server'), shared);
   previousCA = getCACertificates('default');
   setDefaultCACertificates([...previousCA, readFileSync(ca.certFile, 'utf8')]);
 });
@@ -50,12 +50,12 @@ function coldReceiver(root) {
   const receiver = join(root, 'cold-receiver');
   mkdirSync(receiver);
   assert.equal(spawnSync('git', ['init', '--quiet', receiver]).status, 0);
-  for (const path of [...LOCKFILES, 'apps/student/package.json', 'apps/teaching/package.json', 'apps/teaching/server',
+  for (const path of [...LOCKFILES, 'package.json', 'packages/contracts', 'apps/server/contracts', 'apps/web/package.json', 'apps/server/package.json', 'apps/server/server',
     'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
     mkdirSync(dirname(join(receiver, path)), { recursive: true });
-    cpSync(join(worktree, path), join(receiver, path), { recursive: true });
+    cpSync(join(worktree, path), join(receiver, path), { recursive: true, filter: source => !source.split(/[/\\]/).includes('node_modules') });
   }
-  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  assert.equal(existsSync(join(receiver, 'node_modules')), false);
   return receiver;
 }
 async function receiverCli(f, receiver, args) {
@@ -184,7 +184,7 @@ async function fixture(t, options) {
     caPem: readFileSync(ca.certFile, 'utf8'), cloudCaPem: readFileSync(ca.certFile, 'utf8'), sshKnownHosts: knownHosts, expiresAt: Date.now() + 60000 });
   const registration = await joinEnrollment({ home, invitationFile });
   t.after(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); rmSync(root, { recursive: true, force: true, maxRetries: 5 }); });
-  return { root, file, bytes, deviceFile: registration.deviceFile, context: { home, worktree, repo: { teaching: join(worktree, 'apps/teaching') } },
+  return { root, file, bytes, deviceFile: registration.deviceFile, context: { home, worktree, repo: { server: join(worktree, 'apps/server') } },
     controls, calls, puts, gets, grants, records, uploads, secret };
 }
 
@@ -298,7 +298,7 @@ test('cold receiver downloads and reauthorizes a complete partial without busine
   const denied = await receiverCli(f, receiver, args);
   assert.equal(denied.failure.code, 'DEVICE_REVOKED');
   assert.deepEqual(readFileSync(cached.file), f.bytes);
-  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  assert.equal(existsSync(join(receiver, 'node_modules')), false);
   assert.equal(existsSync(join(f.context.home, 'envs')), false);
 });
 
@@ -312,7 +312,7 @@ test('cold restore reports dependency preparation and preserves the target and e
   assert.ok(result.failure.recovery.includes(receiver));
   assert.equal(readFileSync(canary, 'utf8'), 'keep current work');
   assert.equal(existsSync(target), false); assert.equal(existsSync(join(f.context.home, 'envs')), false);
-  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  assert.equal(existsSync(join(receiver, 'node_modules')), false);
 });
 
 test('cold downloads still reject Node, tool, lock algorithm and checkout lock mismatches', async t => {
@@ -334,7 +334,7 @@ test('cold downloads still reject Node, tool, lock algorithm and checkout lock m
     const cache = join(f.context.home, 'transfers', readdirSync(join(f.context.home, 'transfers'))[0], 'cache', digest(f.bytes).slice(7));
     assert.deepEqual(readFileSync(join(cache, 'partial.zip')), f.bytes);
     assert.equal(existsSync(join(cache, 'ready.zip')), false);
-    assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+    assert.equal(existsSync(join(receiver, 'node_modules')), false);
   }
 });
 
@@ -350,7 +350,7 @@ test('downloaded schema remains unverified and prepared restore rejects mismatch
   const canary = join(receiver, 'original-state'); writeFileSync(canary, 'retain original state');
   const missing = await receiverCli(f, receiver, ['repro', 'restore', ...args, '--target', target]);
   assert.equal(missing.failure.code, 'DEPENDENCIES_NOT_READY');
-  symlinkSync(join(worktree, 'apps/teaching/node_modules'), join(receiver, 'apps/teaching/node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  symlinkSync(join(worktree, 'node_modules'), join(receiver, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
   const prepared = await receiverCli(f, receiver, ['repro', 'restore', ...args, '--target', target]);
   assert.equal(prepared.failure.code, 'SCHEMA_MISMATCH');
   assert.equal(existsSync(target), false); assert.equal(existsSync(join(f.context.home, 'envs')), false);

@@ -3,8 +3,9 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { dirname, join, resolve, sep } from 'node:path';
 import { digest, jsonBytes, reproError, safeEntry } from './repro-archive.mjs';
 
-export const CODE_ROOTS = ['apps/student/', 'apps/teaching/', 'tools/xj-dev/', 'README.md', 'AGENTS.md', 'CONTEXT.md', 'DESIGN.md', '.gitignore'];
-export const LOCKFILES = ['apps/student/package-lock.json', 'apps/teaching/package-lock.json', 'tools/xj-dev/package.json'];
+export const CODE_ROOTS = ['apps/web/', 'apps/server/', 'packages/', 'scripts/', 'tools/xj-dev/', 'tools/xj-dev-access/package.json',
+  'package.json', 'package-lock.json', 'tsconfig.json', 'README.md', 'AGENTS.md', 'CONTEXT.md', 'DESIGN.md', '.gitignore'];
+export const LOCKFILES = ['package-lock.json'];
 export const LOCK_DIGEST_ALGORITHM = 'sha256:utf8-lf/v1';
 export const lockfileDigest = bytes => digest(Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n')));
 export function excludedPath(path) {

@@ -93,10 +93,10 @@
 
 | 当前事实 | 接入判断 |
 | --- | --- |
-| [文件同步](../../../apps/teaching/contracts/workspace/index.ts)携带课程活动与作品版本；[过程记录](../../../apps/teaching/server/workspace/application.ts)只在相应收集状态下保存变更与依据 | 可复用作品及变化的来源；不假设每次编辑都已形成完整可分析轨迹，未收集区间必须保留缺失 |
-| [教学记录](../../../apps/teaching/contracts/records/index.ts)区分模型/学生作者、生成内容、投递和回执 | 可以绑定帮助前后事件；还需补充反馈维度、学生设置、策略版本与推断所用依据 |
-| [提示呈现](../../../apps/student/src/components/workspace/TutoringPane.tsx)检查页面可见、正文与视口相交、样式和有效状态；[回执入口](../../../apps/student/src/workspace/tutoringWorkspace.ts)再次校验 | 有“曾实际展示”的基础；当前不是阅读时长、注意力或理解检测器 |
-| [运行记录](../../../apps/teaching/server/workspace/worker.ts)绑定运行、作品及状态；[画像契约](../../../apps/teaching/contracts/review/index.ts)已有依据、反证、帮助情况及可修正判断 | 可区分工具故障、真实结果和学习判断；仍需统一跨工具语义，并保留 Agent/学生发起者归属 |
+| [文件同步](../../../apps/server/contracts/workspace/index.ts)携带课程活动与作品版本；[过程记录](../../../apps/server/server/workspace/application.ts)只在相应收集状态下保存变更与依据 | 可复用作品及变化的来源；不假设每次编辑都已形成完整可分析轨迹，未收集区间必须保留缺失 |
+| [教学记录](../../../apps/server/contracts/records/index.ts)区分模型/学生作者、生成内容、投递和回执 | 可以绑定帮助前后事件；还需补充反馈维度、学生设置、策略版本与推断所用依据 |
+| [提示呈现](../../../apps/web/src/components/workspace/TutoringPane.tsx)检查页面可见、正文与视口相交、样式和有效状态；[回执入口](../../../apps/web/src/workspace/tutoringWorkspace.ts)再次校验 | 有“曾实际展示”的基础；当前不是阅读时长、注意力或理解检测器 |
+| [运行记录](../../../apps/server/server/workspace/worker.ts)绑定运行、作品及状态；[画像契约](../../../apps/server/contracts/review/index.ts)已有依据、反证、帮助情况及可修正判断 | 可区分工具故障、真实结果和学习判断；仍需统一跨工具语义，并保留 Agent/学生发起者归属 |
 | 当前对象引用主要是 code/run/resource/project，辅导含 HDL 专用上下文 | 代码之外的文档、画布和其他课程对象，需要各自提供“发生了什么、依据是什么”的语义，不能只采集通用点击流 |
 
 浏览器的 [Page Visibility API](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)与 [Intersection Observer](https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API)提供页面状态和几何相交信息。结合本地可见性检查，可以用于排除未展示情形；将其用于“学生已经看过或理解”的判断没有依据。后台定时器还可能被节流，不能用墙钟时长直接计算有效学习时间。

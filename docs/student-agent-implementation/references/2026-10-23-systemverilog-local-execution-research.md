@@ -1,6 +1,6 @@
 # SystemVerilog ALU 本地执行：独立技术调查
 
-日期：2026-10-23。范围：Windows 11 x64、Apple Silicon Mac，桌面 Chrome/Edge；4 位组合 ALU、4096 组二值输入、自选用例、F/Cout 与按需波形。即时输入反馈、预测用例点一次运行、隐藏编译装载是负责人已确认要求。本备忘录提供技术证据与验证建议，不决定产品路线。
+日期：2026-10-23。浏览器验收范围已于 2026-10-29 按负责人要求收敛为桌面 Chrome。范围：Windows 11 x64、Apple Silicon Mac，桌面 Chrome；4 位组合 ALU、4096 组二值输入、自选用例、F/Cout 与按需波形。即时输入反馈、预测用例点一次运行、隐藏编译装载是负责人已确认要求。本备忘录提供技术证据与验证建议，不决定产品路线。
 
 **结论：Icarus/WASM 的 VeriSim 是最有希望的浏览器候选，已有可下载产物与实际浏览器编译、仿真、VCD 证据；还不能认定它满足课程交付。** 主线程随后完成了固定产物在 Mac 真实 Chrome 与内嵌 Chromium 中的课程 4096 组、负对照、单输入复用、Worker 停止与恢复探针，详见[运行方案与固定产物证据](2026-10-23-local-execution-proposal.md#固定-wasm-的浏览器证据)。仍需解决构建来源可复现、`system.vpi` 运行诊断，以及目标平台和产品集成验收。以下滚动部署烟测保留其原始条件，不与后续固定产物测试混为一项。
 
@@ -116,7 +116,7 @@ async function simulate(program, vcdName = 'trace.vcd', dataFiles = {}) {
 
 1. 按 OS/架构下载固定包、校验、解包，管理版本、失败恢复、更新和运行检测。完整套件较大；只提取 Icarus 的最小依赖包需要另做依赖闭包与两平台验证，暂无其可靠体积数据。
 2. 配置进程自己的环境与运行目录。[Windows environment.bat](https://github.com/YosysHQ/oss-cad-suite-build/blob/cc0058b9e9f0a0301c0e8eb72f51f2200b637fe0/default/patches/environment.bat) 设置 `bin/lib` 等路径；Windows 安装路径含空格、中文用户名需实测。macOS 上游 [activate](https://github.com/YosysHQ/oss-cad-suite-build/blob/cc0058b9e9f0a0301c0e8eb72f51f2200b637fe0/default/patches/activate) 使用 sudo 清除 quarantine，不能算已提供无干预产品安装器；签名、分发与系统确认体验仍需完成。
-3. 页面到本机执行组件的启动、检测、连接与停止。若采用 localhost 通道，[Chrome 的 LNA 文档](https://developer.chrome.com/blog/local-network-access)说明安全上下文及访问本地服务的权限；目标 Chrome/Edge 均需实际验证。若采用扩展 Native Messaging，[Chrome 文档](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)要求安装并登记 host，仍有首次引导成本。
+3. 页面到本机执行组件的启动、检测、连接与停止。若采用 localhost 通道，[Chrome 的 LNA 文档](https://developer.chrome.com/blog/local-network-access)说明安全上下文及访问本地服务的权限；目标 Chrome 均需实际验证。若采用扩展 Native Messaging，[Chrome 文档](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)要求安装并登记 host，仍有首次引导成本。
 4. Icarus 可直接复用 `.vvp`，通过 [plusargs](https://github.com/steveicarus/iverilog/blob/dfeee909ed9f20b4870dd93423156c0170c0e1ff/vvp/vvp.man.in#L74-L86)或输入文件传入用例；普通 HDL 编译运行不必引入旧自定义 VPI 链。若选 Native Verilator，学生每次改设计后的 C++ 编译/链接工具链也要由产品准备；[上游安装要求](https://github.com/verilator/verilator/blob/56ed47ee7c32c00ced3586687bd2555d08db396c/docs/guide/install.rst#L98-L126)和套件[生成 Makefile 的配置](https://github.com/YosysHQ/oss-cad-suite-build/blob/cc0058b9e9f0a0301c0e8eb72f51f2200b637fe0/default/scripts/verilator.sh)不能证明学生机器已具备这些工具。
 
 Docker/WSL 未被排除，但本次已找到直接分发原生工具的候选，不需要先把虚拟化设为前提。若后续采用 WSL，Microsoft 的[安装说明](https://learn.microsoft.com/en-us/windows/wsl/install)仍涉及管理员安装及重启；它能统一 Linux 工具环境，不能自动消除首次准备流程。
@@ -126,8 +126,8 @@ Docker/WSL 未被排除，但本次已找到直接分发原生工具的候选，
 以下固定产物课程探针、输入复用和 Worker 终止恢复，已由主线程在 Mac 的两种 Chromium 环境执行并留下记录；构建复现、其余平台及产品集成仍未完成。
 
 1. **固定产物烟测。** 从上述 commit 获取六文件并记录 digest，用独立 HTTP 页面/Worker 执行给出的调用链；复用主线程现有 DUT/testbench 和负对照，保存逐行 F/Cout 与 VCD。比较相同输入的实际输出，不要求不同引擎的 VCD 文件字节相等。
-2. **4096 全量。** 对 `{M,S,A,B,Cin}` 的 12 位组合逐个执行，要求索引完整且无重复、无排除；旧 [contracts/runner/alu.ts](../../../apps/teaching/contracts/runner/alu.ts) 的 `expected:2800/excluded:1296` 及旧测试不作通过证据。本次浏览器合成探针也不作课程功能通过证据。
+2. **4096 全量。** 对 `{M,S,A,B,Cin}` 的 12 位组合逐个执行，要求索引完整且无重复、无排除；旧 [contracts/runner/alu.ts](../../../apps/server/contracts/runner/alu.ts) 的 `expected:2800/excluded:1296` 及旧测试不作通过证据。本次浏览器合成探针也不作课程功能通过证据。
 3. **即时反馈与预测运行。** 不改源码时复用编译产物，测量输入变更到正确 F/Cout 显示，以及预测用例点一次运行的延迟；分别记录首次加载、缓存后加载、改源码重编译和只改输入。编译装载应保持产品要求的隐藏行为。此项决定现有 WASM 引擎经适配后是否足够，当前没有结论。
-4. **停止与恢复。** 在独立 Worker 中测试无限仿真和零时间死循环，由外部墙钟终止，随后能重新运行正常用例；`$finish`、模拟时间上限或合作式 pause 不能单独覆盖这两种情况。验证 X/Z、截断、漏赋值及编译诊断。Windows 11 x64 / Apple Silicon × Chrome / Edge 四格都记录准确版本；已完成的 Mac native 探针无需重复冒充新证据。
+4. **停止与恢复。** 在独立 Worker 中测试无限仿真和零时间死循环，由外部墙钟终止，随后能重新运行正常用例；`$finish`、模拟时间上限或合作式 pause 不能单独覆盖这两种情况。验证 X/Z、截断、漏赋值及编译诊断。Windows 11 x64 / Apple Silicon × Chrome 两格都记录准确版本；已完成的 Mac native 探针无需重复冒充新证据。
 
 **证据边界：** 本独立调查读取固定上游源码、构建和发布元数据，完成一个滚动部署浏览器烟测，并读取主线程 Mac native 结果。主线程随后补齐的固定 WASM 自托管与有界执行记录见上述链接；移植构建复现、Windows native、自动安装更新、完整目标浏览器矩阵、产品端到端即时反馈与教学效果仍未验证。

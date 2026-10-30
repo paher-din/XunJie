@@ -1,4 +1,5 @@
 #Requires -Version 7.0
+# Frozen 9fa76ad material retains apps/teaching; current checkout entrypoints use apps/server.
 [CmdletBinding()]
 param([ValidateSet('host','vm','pin','guest','fixtures','install','c-acceptance','hdl-install','hdl-acceptance','status','retain-logs')][string]$Stage='host', [switch]$KeepAlive,
   [string]$Repository=(Join-Path $PSScriptRoot '..\..'))

@@ -40,21 +40,27 @@ AI 功能需课程环境启用模型服务；支持个人配置的环境中，�
 
 ### 本地界面预览
 
-准备 Git 和 Node.js 24，在终端执行：
+准备 Git 和 Node.js 24.21.0，在终端执行：
 
 ```sh
 git clone https://github.com/paher-din/XunJie.git
-cd XunJie/apps/student
+cd XunJie
 npm ci
-npm run dev:prep
+npm run dev:prep -w @xunjie/web
 ```
 
-打开 `http://127.0.0.1:5601`。此模式使用演示数据，不连接真实课程、执行节点或模型；完整课程使用与服务接入见[运行说明](apps/student/README.md)。
+打开 `http://127.0.0.1:5601`。此模式使用演示数据，不连接真实课程、执行节点或模型；完整课程使用与服务接入见[运行说明](apps/web/README.md)。
 
 <details>
 <summary>开发者文档</summary>
 
-[本轮架构与设计](docs/student-agent-implementation/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [学生端运行说明](apps/student/README.md)
+[本轮架构与设计](docs/student-agent-implementation/README.md) · [领域术语](CONTEXT.md) · [协作规范](AGENTS.md) · [UI 设计规范](DESIGN.md) · [Web 运行说明](apps/web/README.md) · [工程入口与后续接入](docs/student-agent-implementation/engineering-entrypoints.md)
+
+师生共用 `apps/web`（`@xunjie/web`）；后端与既有 runner 位于 `apps/server`（`@xunjie/server`）；真实跨端 wire 契约从 `packages/contracts`（`@xunjie/contracts`）的公开导出消费；新 PostgreSQL 与所属资源机制见 [packages/storage](packages/storage/README.md)。依赖统一在仓库根执行 `npm ci`，使用根 `package-lock.json`。
+
+在仓库根执行 `npm run typecheck`、`npm run build`、`npm test`，分别完成 workspace 的类型检查、构建和测试。单工程开发命令使用 `-w` 指定 workspace，例如 `npm run dev -w @xunjie/web`；后端配置与启动边界见[开发工具](docs/development-tooling.md#新-agent-的工具入口)。
+
+完整门禁与 CI 共用 `npm run verify`，包含公共契约浏览器检查和 Markdown 相对链接检查。原始日志及阶段结果见 `.verification/latest.json`，用法见[工程入口与后续接入](docs/student-agent-implementation/engineering-entrypoints.md#安装构建与测试)。
 
 ### 成员开发上手
 

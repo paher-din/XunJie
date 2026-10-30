@@ -1,0 +1,30 @@
+✔ confirmed replacement is readable in a fresh process, with a held old snapshot on POSIX (160.8783ms)
+✔ concurrent processes replace whole documents without exposing missing or partial JSON (604.2269ms)
+▶ Windows sharing conflicts retry through rename, reopening and flushing without deleting the destination
+  ✔ rename (241.9522ms)
+  ✔ open (208.6678ms)
+  ✔ sync (222.6065ms)
+✔ Windows sharing conflicts retry through rename, reopening and flushing without deleting the destination (674.1068ms)
+✔ a persistent Windows rename denial reaches the deadline, preserves the original and cleans its temporary (2129.2414ms)
+✔ native Windows reader release allows replacement without a delete fallback (225.1077ms)
+✔ native Windows persistent reader blocks replacement only until the bounded deadline (2024.202ms)
+﹣ a real partial write failure preserves the original file and removes its temporary (0.2636ms) # POSIX RLIMIT_FSIZE fault injection; Windows has no /bin/sh ulimit
+✔ a file flush failure rejects without publishing and cleans the written temporary (110.3069ms)
+﹣ a parent flush failure rejects after publication and the same identity can be inspected and retried (0.1053ms) # Windows has no POSIX directory sync barrier
+▶ Windows JSON replacement reports a failed published-file flush and can retry the same identity
+  ✔ retired (169.3672ms)
+  ✔ generation (123.0065ms)
+  ✔ ordinary (127.6932ms)
+✔ Windows JSON replacement reports a failed published-file flush and can retry the same identity (420.722ms)
+✔ an actual rename conflict preserves the existing destination and cleans the completed temporary (2019.9027ms)
+✔ serialization failure leaves the original bytes untouched without a temporary (2.8914ms)
+✔ failed native storage backup releases committed pins so unreferenced file bytes can be collected (13240.7337ms)
+✔ native owner API, receipts, outbox identity and resource bytes survive an independent product restore (21802.01ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 35345.7888

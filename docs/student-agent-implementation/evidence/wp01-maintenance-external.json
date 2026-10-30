@@ -1,0 +1,198 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "kind": "school-external-database-distribution-recovery",
+  "status": "passed",
+  "startedAt": "2026-10-29T19:07:41.921Z",
+  "root": "/tmp/xunjie-145/external-release",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "release": "6.8.0-139-generic",
+    "node": "v24.21.0",
+    "bundledNode": true
+  },
+  "package": {
+    "root": "/tmp/xunjie-145/xunjie-145-product-linux18",
+    "postgresVersion": "18.6",
+    "apiSha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49"
+  },
+  "probeSha256": "4e2f4ec30442c0affea4bc9a76591d333669f8d954d0f430f435fa5f591f5f41",
+  "ownerSha256": "490891947f415a98c53e4ff1e00bdd1a205b23427bde29340a34daad880d878d",
+  "stages": [
+    {
+      "name": "independent-managed-providers",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:41.977Z",
+      "result": {
+        "A": {
+          "host": "127.0.0.1",
+          "port": 35639,
+          "database": "postgres",
+          "user": "xunjie"
+        },
+        "B": {
+          "host": "127.0.0.1",
+          "port": 41261,
+          "database": "postgres",
+          "user": "xunjie"
+        },
+        "separateClusters": true,
+        "sentinel": {
+          "owner": {
+            "environmentId": "9663e2dd-507a-48ce-a7e4-982655adc886",
+            "serviceId": "901c353e-4215-4a5b-a909-a50178cf195f"
+          },
+          "records": 2,
+          "receipts": 2,
+          "resources": [
+            {
+              "sha256": "967e11709ae2e1abd519172f28c3a02b2250a9611a55ba1bd8247c4445731df7",
+              "opaqueSha256": "2ee94d588de0f2cbd7ba83b7b917d957c883ad5a9cd488c17af9a0bbcb2105bd",
+              "byteLength": 30
+            },
+            {
+              "sha256": "1938289245377b627f518c30b05ffa37a24fb34b8c15df45a86167ab58386f57",
+              "opaqueSha256": "5fc5a658505a675aad0ef65b64496687d642d11e1a45e7035d98f00a2191190a",
+              "byteLength": 131091
+            }
+          ]
+        }
+      },
+      "durationMs": 10272
+    },
+    {
+      "name": "external-school-source-real-owner-and-seed",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:52.259Z",
+      "result": {
+        "owner": {
+          "environmentId": "621420f1-e2d9-4006-bfaa-df1d762462f4",
+          "serviceId": "cb5ba2f5-e0cc-4bfc-a676-452b16603b5c"
+        },
+        "records": 2,
+        "receipts": 2,
+        "resources": [
+          {
+            "sha256": "3e979ba14a343cf94f853d3e3342da9b2a69dc15fe86ffcb5c491f6ee4f97c18",
+            "opaqueSha256": "56be4159c10311a5f8f61460e8357db207a1e278eb86f3dd5ccae5a95a412d30",
+            "byteLength": 25
+          },
+          {
+            "sha256": "13017b3456e9a27f9293c94560656056150b5674978c3d8d95f5d7d2f78470e1",
+            "opaqueSha256": "589deaead788be0173d2b3330904b2de37d53ee299a9f05309b7fe6f479aaad5",
+            "byteLength": 131091
+          }
+        ]
+      },
+      "durationMs": 853
+    },
+    {
+      "name": "held-backup-and-failed-restore-protection",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:53.118Z",
+      "result": {
+        "backupId": "1dd3dcfc-1421-40a4-8651-bc6502c2e5b0",
+        "backupDirectory": "/tmp/xunjie-145/external-release/backups/1dd3dcfc-1421-40a4-8651-bc6502c2e5b0",
+        "held": true,
+        "failedRestoreRejected": true,
+        "backupCipherUnchanged": true,
+        "sourceAndIndependentBUnchanged": true
+      },
+      "durationMs": 1651
+    },
+    {
+      "name": "external-B-restore-isolated",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:54.773Z",
+      "result": {
+        "profile": "school",
+        "databaseMode": "external",
+        "isolated": true,
+        "readsVerified": true,
+        "writesAndDispatchClosed": true,
+        "ownerPreserved": true,
+        "targetCredentialRotated": true,
+        "targetDatabaseB": true,
+        "independentBUnchanged": true
+      },
+      "durationMs": 1866
+    },
+    {
+      "name": "takeover-source-retirement-and-new-writes",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:56.643Z",
+      "result": {
+        "sourceRetired": true,
+        "sourceResumeAndStartRejected": true,
+        "sourceWritesFenced": true,
+        "targetActive": true,
+        "idempotentReceiptPreserved": true,
+        "unknownIntentsPreserved": true,
+        "newSequence": "3",
+        "remoteReceiversRegistered": 0
+      },
+      "durationMs": 1160
+    },
+    {
+      "name": "school-stop-uninstall-do-not-manage-external-postgres",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:57.808Z",
+      "result": {
+        "bothSchoolsStoppedAndUninstalled": true,
+        "bothProvidersStillReady": true,
+        "sourceAndTargetDatabaseDataReadable": true,
+        "externalDatabaseIdentityUnchanged": true,
+        "independentBUnchanged": true
+      },
+      "durationMs": 630
+    },
+    {
+      "name": "administrator-restarts-B-and-school-reopens-private-target-binding",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:58.440Z",
+      "result": {
+        "providerBRestartedByAdministrator": true,
+        "newOwnerModuleAndPool": true,
+        "privateRotatedCredentialReopened": true,
+        "installationAndDataOwnerPreserved": true,
+        "originalReceiptsAndRawAndOpaqueBytesPreserved": true,
+        "independentBUnchanged": true,
+        "sequenceAfterRestart": "4",
+        "sourceCannotReopen": true
+      },
+      "durationMs": 4329
+    }
+  ],
+  "cleanup": [
+    {
+      "actor": "school-target",
+      "action": "host-stop",
+      "passed": true
+    },
+    {
+      "actor": "school-target",
+      "action": "runtime-stop",
+      "passed": true
+    },
+    {
+      "actor": "school-source",
+      "action": "runtime-stop",
+      "passed": true
+    },
+    {
+      "actor": "provider-B",
+      "action": "runtime-stop",
+      "passed": true
+    },
+    {
+      "actor": "provider-A",
+      "action": "runtime-stop",
+      "passed": true
+    }
+  ],
+  "scope": "Owned loopback providers A/B; file resources; no pre-existing database, remote receiver or public TLS endpoint.",
+  "finishedAt": "2026-10-29T19:08:03.450Z",
+  "retained": true,
+  "privateKeyFile": "/tmp/xunjie-145/external-release/private/recovery-key.base64"
+}

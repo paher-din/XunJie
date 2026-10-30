@@ -6,7 +6,7 @@
 
 ## 本轮已明确
 
-1. 首批正式验收目标为 Windows 11 x64 与 Apple Silicon Mac，使用桌面 Chrome/Edge。这是目标范围，不是已经通过的支持声明；具体 OS、浏览器版本随验收记录固定。
+1. 首批正式验收目标为 Windows 11 x64 与 Apple Silicon Mac，使用桌面 Chrome。这是目标范围，不是已经通过的支持声明；具体 OS、浏览器版本随验收记录固定。
 2. 允许安装组件，但产品应自动完成下载、安装、依赖配置、检测和更新，减少学生的繁琐流程。不能把环境搭建步骤转交给学生；负责人没有硬性排除某种底层技术，也没有同意将手工配置 WSL/Docker 作为默认准备方式。
 3. 首条 ALU 中，自由实验时改输入就更新实际结果；需要保留预测用例时，先写预测，再点一次“运行并比较”。编译、装载等内部步骤由系统处理。这是本活动的交互选择，不要求其他课程都有预测、自动重跑或编译步骤。
 4. 继续遵循既有原则：教师设计运行方案，本地优先，仅本地确实不能满足时使用课程明确配置的远端路径；学生不选择节点。首条 ALU 的安装准备在其 50–70 分钟活动预算之前完成，不据此设定其他课程的时长。
@@ -155,7 +155,7 @@ python3 tools/research/probe-alu-iverilog.py --output docs/student-agent-impleme
 
 一次本机样本的正确模型编译约 12 ms，仿真与输出约 16 ms。这只是已安装工具的 CLI 测量，不含首次下载、打包、浏览器渲染、同步与通信，不能作为跨设备延迟承诺。
 
-现有旧代码的 ALU 验证契约是 2800 组采样、1296 组排除（`apps/teaching/contracts/runner/alu.ts`）；新活动要求全部 4096 组，不能直接沿用旧检查通过作为新活动验收。
+现有旧代码的 ALU 验证契约是 2800 组采样、1296 组排除（`apps/server/contracts/runner/alu.ts`）；新活动要求全部 4096 组，不能直接沿用旧检查通过作为新活动验收。
 
 ## 固定 WASM 的浏览器证据
 
@@ -186,7 +186,7 @@ python3 tools/research/serve-alu-wasm-probe.py --output docs/student-agent-imple
 ## 实施与验收尚未完成的内容
 
 - 可复现的 WASM 移植构建、系统模块诊断修正、固定 Icarus 版本与编译选项；不承诺完整 SystemVerilog，明确课程支持的写法与未支持特性的诊断。
-- Windows 11 x64 与 Apple Silicon 的实际 Chrome/Edge 矩阵；未测试平台只作为验收目标。公网首次资源准备、缓存与更新失败恢复另测。
+- Windows 11 x64 与 Apple Silicon 的实际 Chrome 矩阵；未测试平台只作为验收目标。公网首次资源准备、缓存与更新失败恢复另测。
 - 产品中的连续输入、代码变化、X/Z、未驱动或遗漏赋值、事件顺序、刷新/断线/恢复、Agent 与学生并发，以及晚到结果分别取证；不能用探针页面替代工作区集成。
 - 编译/仿真的外部时间与输出/内存预算，Worker 可见能力与文件导入边界。Worker 本身不等于完整权限隔离，WASM 工具链仅获得明确的文件和宿主接口。
 - 如果将来启用本机组件，再验证其自动准备、实际执行隔离与通信；Chrome 的 [Local Network Access 文档](https://developer.chrome.com/blog/local-network-access/)涉及本地连接权限，不以历史行为推断目标版本兼容性。

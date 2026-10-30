@@ -95,9 +95,9 @@ async function prepareRemote(context, mode, options, log) {
     for (const name of ['connection', 'vite', 'gateway']) if (!componentRunning(ctx.env, name).running) created.push(name);
     const connection = await startConnection(ctx, c, runtime, ports.backend);
     if (mode === 'cloud-api') {
-      await ensureDependencies(runtime.path, ctx.repo.student, log);
+      await ensureDependencies(runtime.path, ctx.worktree, log);
       if (!componentRunning(ctx.env, 'vite').running) {
-        spawnComponent(ctx.env, 'vite', runtime.path, join(ctx.repo.student, 'node_modules/vite/bin/vite.js'), ['--host', '127.0.0.1', '--port', String(ports.vite), '--strictPort', '--clearScreen', 'false', '--mode', `xjdev${ctx.id}`], { envId: ctx.id, cwd: ctx.repo.student, env: { XUNJIE_VITE_CACHE_DIR: ctx.env.viteCache } });
+        spawnComponent(ctx.env, 'vite', runtime.path, ctx.repo.viteBin, ['--host', '127.0.0.1', '--port', String(ports.vite), '--strictPort', '--clearScreen', 'false', '--mode', `xjdev${ctx.id}`], { envId: ctx.id, cwd: ctx.repo.web, env: { XUNJIE_VITE_CACHE_DIR: ctx.env.viteCache } });
       }
       const { get } = await import('node:http');
       await waitHttp(() => new Promise(done => { const req = get(`http://127.0.0.1:${ports.vite}/`, res => { res.resume(); done(res.statusCode === 200); }); req.on('error', () => done(false)); req.setTimeout(1500, () => req.destroy()); }), 'Vite');
@@ -189,7 +189,7 @@ export async function modeStatus(context) {
     mode: selection.mode,
     environment: { id: ctx.id, worktree: context.worktree, root: ctx.env.root, mode: selection.mode },
     page: { url: `https://127.0.0.1:${state.ports.gateway}`, serving, apiReady: available },
-    sources: { frontend: selection.mode === 'cloud-api' ? 'worktree apps/student via Vite' : connection.business?.deployedFrontend ?? state.business?.deployedFrontend, backend: connection.business ?? state.business },
+    sources: { frontend: selection.mode === 'cloud-api' ? 'worktree apps/web via Vite' : connection.business?.deployedFrontend ?? state.business?.deployedFrontend, backend: connection.business ?? state.business },
     data: { ownership: 'cloud-shared', target: state.target, localDatabase: context.env.database, note: '此入口固定写共享集成库；本地副本保持原样。' },
     browser: { profile: ctx.env.browserProfile, cookieIsolation: 'mode-and-target' },
     connection: { ...connection, supervisorRunning: supervisor.running },

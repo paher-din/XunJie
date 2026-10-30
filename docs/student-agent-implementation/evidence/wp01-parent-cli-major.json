@@ -1,0 +1,158 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "startedAt": "2026-10-30T05:42:17.305Z",
+  "platform": "darwin",
+  "steps": [
+    {
+      "command": "install",
+      "passed": true
+    },
+    {
+      "command": "start",
+      "passed": true
+    },
+    {
+      "command": "install",
+      "passed": true
+    },
+    {
+      "command": "start",
+      "passed": true
+    },
+    {
+      "command": "recovery-key",
+      "passed": true
+    },
+    {
+      "command": "backup-policy",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "backup",
+      "passed": true
+    },
+    {
+      "command": "backup",
+      "passed": true
+    },
+    {
+      "command": "backup-list",
+      "passed": true
+    },
+    {
+      "command": "upgrade",
+      "passed": true
+    },
+    {
+      "command": "start",
+      "passed": true
+    },
+    {
+      "command": "maintenance-resume",
+      "rejected": true,
+      "message": "运行库操作失败（maintenance-resume）：Recovery: target-isolated"
+    },
+    {
+      "command": "takeover",
+      "passed": true
+    },
+    {
+      "command": "status",
+      "passed": true
+    },
+    {
+      "command": "start",
+      "rejected": true,
+      "message": "运行库操作失败（start）：Recovery: source-retired"
+    },
+    {
+      "command": "status",
+      "passed": true
+    }
+  ],
+  "status": "passed",
+  "scheduledBackup": {
+    "backupId": "756ec988-bcfe-41e7-b44d-01c913dd578c",
+    "boundaryAt": "2026-10-30T05:42:28.369Z"
+  },
+  "endpoint": "http://127.0.0.1:57681",
+  "targetRoot": "/private/tmp/xunjie-142-SmluYE/delivery-cli-major/target",
+  "backupId": "d357d1b9-b037-4be2-9ac0-e20bd1248406",
+  "environment": {
+    "formatVersion": 1,
+    "environmentId": "d3880058-fe09-4161-a8db-21b1e0fd6436",
+    "installationId": "284bc630-b93f-47e5-8d53-e0ea57d8370b",
+    "clientNamespace": "xunjie.v1.d3880058-fe09-4161-a8db-21b1e0fd6436.recovery.080ca336-5058-468c-85a5-071b5c950f3a",
+    "profile": "local",
+    "services": [
+      {
+        "environmentId": "d3880058-fe09-4161-a8db-21b1e0fd6436",
+        "serviceId": "aca557df-0ff5-46ba-81b8-5f15bb7167df",
+        "unit": "client",
+        "endpoint": "http://127.0.0.1:57681",
+        "protocolVersion": 1,
+        "capabilities": [
+          "runtime.status"
+        ]
+      }
+    ]
+  },
+  "engineUpgrade": true,
+  "originalBUnchanged": true,
+  "browser": "not-run",
+  "retainedRunning": true,
+  "finishedAt": "2026-10-30T05:42:32.124Z"
+}

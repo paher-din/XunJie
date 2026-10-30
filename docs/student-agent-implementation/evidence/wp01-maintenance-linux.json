@@ -1,0 +1,568 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "kind": "standalone-distributed-product-recovery",
+  "status": "passed",
+  "startedAt": "2026-10-29T19:07:42.294Z",
+  "root": "/tmp/xunjie-145/linux-release",
+  "probeSha256": "1ce1fc4e30f7498c5e2cf8a5e39b36a5dde27e142df0973c02b959fbaac524ac",
+  "ownerSha256": "490891947f415a98c53e4ff1e00bdd1a205b23427bde29340a34daad880d878d",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "release": "6.8.0-139-generic",
+    "node": "v24.21.0",
+    "bundledNode": true
+  },
+  "packages": [
+    {
+      "path": "/tmp/xunjie-145/xunjie-145-product-linux18",
+      "entrySha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+      "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+      "nodeSha256": "7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "18.6",
+      "postgresSha256": "5bc8957ed11c87924a63120ac01cca1a33068702ab434b58ee892605224f93e0"
+    }
+  ],
+  "stages": [
+    {
+      "name": "file-source-service-api-seed",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:49.045Z",
+      "result": {
+        "recordCount": 2,
+        "requestId": "15cdabb5-842c-4e65-811a-6709af1a5acf",
+        "effectRequestId": "4bdb3694-34bc-4c0e-af7f-d4caf81028bc",
+        "engineVersion": "18.6",
+        "resources": [
+          {
+            "resourceId": "aacac61e-61a5-48c9-95d7-cd7aac010acd",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "54a8ce1be7104f811bd3cef86a52a7f3ce84aa3f6b21fd024a9b13bbbbf3bd0d",
+            "opaqueByteLength": 86,
+            "backendId": "recovery-files"
+          },
+          {
+            "resourceId": "c52c1dce-86f1-4647-a47c-de2b0df2b03b",
+            "sha256": "1b0332f70f34a6fea3e88af75e9e70f26cb7b449bee5f6870a12aa8332df14de",
+            "byteLength": 131091,
+            "opaqueSha256": "af72c7feae71219b3a40d6a025bfa4ba11487a48a8d17004f7c29a8bf4c95855",
+            "opaqueByteLength": 131146,
+            "backendId": "recovery-files"
+          }
+        ]
+      },
+      "durationMs": 596
+    },
+    {
+      "name": "unrelated-B-service-api-seed",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:53.333Z",
+      "result": {
+        "recordCount": 2,
+        "requestId": "4e410c64-3993-4170-b848-7eb473864590",
+        "effectRequestId": "9f23a928-726e-45ee-a16d-bf6c3c4c7f26",
+        "engineVersion": "18.6",
+        "resources": [
+          {
+            "resourceId": "beb228d0-b572-434a-9bd8-001109d98fee",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "34b8f81723b0d26e75e3b31b1a7f0c4aee35f93ab678d117f24edc86ce7834a5",
+            "opaqueByteLength": 86,
+            "backendId": "recovery-files"
+          },
+          {
+            "resourceId": "461b1f8c-9b24-4cd2-aa70-69c3986dd5e0",
+            "sha256": "9e880f6cf19f56ec88992d458b2c82cee61a5d345bdce95634a330c393098475",
+            "byteLength": 131091,
+            "opaqueSha256": "c579b3b3ed921be451250b8dec1c67d7084f8d52e638586fef105c9fd5956240",
+            "opaqueByteLength": 131146,
+            "backendId": "recovery-files"
+          }
+        ]
+      },
+      "durationMs": 362
+    },
+    {
+      "name": "file-held-backup",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:53.698Z",
+      "result": {
+        "backupId": "cc9d2177-ff58-4bed-906e-561dace87073",
+        "boundaryAt": "2026-10-29T19:07:53.793Z",
+        "completedAt": "2026-10-29T19:07:54.872Z",
+        "durationMs": 1157,
+        "artifacts": [
+          {
+            "path": "18c83aa7-dd8f-4da8-9932-6aa1c50bb63f/aacac61e-61a5-48c9-95d7-cd7aac010acd.blob",
+            "sha256": "a11395ada32baf09233c279ad7cfcb9d591f10f600f8a902a3ddf3c110d827be",
+            "byteLength": 114
+          },
+          {
+            "path": "18c83aa7-dd8f-4da8-9932-6aa1c50bb63f/c52c1dce-86f1-4647-a47c-de2b0df2b03b.blob",
+            "sha256": "bff0313c20e217f052c2d2bd709df25fa87fbf0decc780586f45872836c35784",
+            "byteLength": 131174
+          },
+          {
+            "path": "18c83aa7-dd8f-4da8-9932-6aa1c50bb63f/recovery.json",
+            "sha256": "3f191b49ecd19f0276bccd934f4c96781e730e342403d8fff9b0cb40080b4e14",
+            "byteLength": 2056
+          },
+          {
+            "path": "18c83aa7-dd8f-4da8-9932-6aa1c50bb63f/schema.dump",
+            "sha256": "3cd74c76c5753cbe6a00c11dc794367b982ff6f7d61f5a1eefd99e3a8b532174",
+            "byteLength": 20132
+          },
+          {
+            "path": "94b70386-45f1-4d06-a5dd-505fba9cdcbe/recovery.json",
+            "sha256": "9a24cb59eb96041f2123305391cdb9d9d42159b277ec43cea7304207c72ba681",
+            "byteLength": 1301
+          },
+          {
+            "path": "94b70386-45f1-4d06-a5dd-505fba9cdcbe/runtime.dump",
+            "sha256": "ea7ee0cf78e1d7c1c7d2d54b5ce75ff079ed345d42546b56722ccda59cec3d1d",
+            "byteLength": 1446
+          }
+        ],
+        "services": [
+          {
+            "serviceId": "94b70386-45f1-4d06-a5dd-505fba9cdcbe",
+            "schemaVersion": "1",
+            "engineVersion": "18.6"
+          },
+          {
+            "serviceId": "18c83aa7-dd8f-4da8-9932-6aa1c50bb63f",
+            "schemaVersion": "storage/1;owner/1",
+            "engineVersion": "18.6"
+          }
+        ]
+      },
+      "durationMs": 1220
+    },
+    {
+      "name": "portability-export-private-inputs",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:54.932Z",
+      "result": {
+        "sourceRoot": "/tmp/xunjie-145/linux-release/file-source",
+        "expectFile": "/tmp/xunjie-145/linux-release/portability.private.json",
+        "keyFile": "/tmp/xunjie-145/linux-release/private/recovery-key.base64",
+        "backupDirectory": "/tmp/xunjie-145/linux-release/file-backups/cc9d2177-ff58-4bed-906e-561dace87073",
+        "manifestFile": "/tmp/xunjie-145/linux-release/file-backups/cc9d2177-ff58-4bed-906e-561dace87073/manifest.json",
+        "backupId": "cc9d2177-ff58-4bed-906e-561dace87073",
+        "privateExpectedEncoding": "explicit-base64-for-raw-and-opaque-bytes",
+        "generatedKeyFile": "/tmp/xunjie-145/linux-release/private/recovery-key.base64"
+      },
+      "durationMs": 11
+    },
+    {
+      "name": "file-restore-isolated-service-api-verification",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:54.955Z",
+      "result": {
+        "isolated": true,
+        "pendingIntentsRejected": true,
+        "writesRejected": true,
+        "backupId": "cc9d2177-ff58-4bed-906e-561dace87073",
+        "engineVersion": "18.6",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "7c0072bb-24ba-4736-a8b0-a129cbaa8364",
+          "installationId": "3260b658-bc07-40d0-b175-abfaefdacddc",
+          "clientNamespace": "xunjie.v1.7c0072bb-24ba-4736-a8b0-a129cbaa8364.recovery.35e5bbe4-5cc0-42b6-a79b-d5535d3670ea",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "7c0072bb-24ba-4736-a8b0-a129cbaa8364",
+              "serviceId": "94b70386-45f1-4d06-a5dd-505fba9cdcbe",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:41633",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        }
+      },
+      "durationMs": 5088
+    },
+    {
+      "name": "file-target-takeover-source-alive-and-constraints",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:00.051Z",
+      "result": {
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 2637
+    },
+    {
+      "name": "file-target-normal-stop-fresh-host-reopens-rotated-storage-and-writes",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:02.692Z",
+      "result": {
+        "root": "/tmp/xunjie-145/linux-release/file-restored",
+        "normalStopConfirmed": true,
+        "newHostCreated": true,
+        "newStorageModuleAndPool": true,
+        "persistedCredentialRef": "storage-18c83aa7-dd8f-4da8-9932-6aa1c50bb63f",
+        "credentialFile": "/tmp/xunjie-145/linux-release/file-restored/credentials/storage-18c83aa7-dd8f-4da8-9932-6aa1c50bb63f",
+        "rotatedTargetCredentialUsed": true,
+        "originalRowsReceiptsRawAndOpaqueBytesUnchanged": true,
+        "originalPendingIntentsUnchanged": true,
+        "sequenceBeforeStop": "5",
+        "expectedNextSequence": "6",
+        "actualNextSequence": "6",
+        "sourceHostReopenRejected": true
+      },
+      "durationMs": 1071
+    },
+    {
+      "name": "unrelated-B-not-modified-by-A-restore",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:03.766Z",
+      "result": {
+        "independentInstallationId": "34d2c446-1d70-42a2-93ff-0a7bb1f76829",
+        "stillReady": true,
+        "dataAndReceiptsAndBytesUnchanged": true
+      },
+      "durationMs": 85
+    },
+    {
+      "name": "missing-cipher",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:03.853Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 28
+    },
+    {
+      "name": "corrupt-cipher",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:03.882Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 25
+    },
+    {
+      "name": "wrong-recovery-key",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:03.910Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true,
+        "keyFile": "/tmp/xunjie-145/linux-release/private/wrong-recovery-key.base64"
+      },
+      "durationMs": 13
+    },
+    {
+      "name": "insufficient-space-preflight",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:03.928Z",
+      "result": {
+        "rejected": true,
+        "error": "insufficient-space",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 27
+    },
+    {
+      "name": "occupied-target-preserves-live-B",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:03.956Z",
+      "result": {
+        "rejected": true,
+        "error": "target-conflict",
+        "targetNeverEnabled": false,
+        "independentBUnmodified": true
+      },
+      "durationMs": 127
+    },
+    {
+      "name": "validation-interruption-and-same-backup-new-target-rebuild",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:04.086Z",
+      "result": {
+        "interruption": "validation-after-real-restore",
+        "failedTargetNeverEnabled": true,
+        "rebuiltInNewRoot": true,
+        "originalBackupId": "cc9d2177-ff58-4bed-906e-561dace87073",
+        "originalCipherUnchanged": true,
+        "rebuildIsolated": true
+      },
+      "durationMs": 4974
+    },
+    {
+      "name": "process-termination-mid-restore-and-same-backup-rebuild",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:09.063Z",
+      "result": {
+        "childReachedRealRestore": true,
+        "terminatedByParent": true,
+        "exitSignal": "SIGKILL",
+        "exitCode": null,
+        "interruptedPhase": "restoring",
+        "failedTargetNeverEnabled": true,
+        "originalBackupId": "cc9d2177-ff58-4bed-906e-561dace87073",
+        "sameBackupRebuiltInNewRoot": true,
+        "rebuildIsolated": true,
+        "orphanedManagedDatabaseStopped": true,
+        "originalCipherUnchanged": true
+      },
+      "durationMs": 5124
+    },
+    {
+      "name": "schema-upgrade-v1-to-v2-held-backup",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:14.190Z",
+      "result": {
+        "sourceVersion": "18.6",
+        "targetVersion": "18.6",
+        "backupId": "d5a36289-a48d-43d3-b92c-6a2b8240bea2",
+        "boundaryAt": "2026-10-29T19:08:16.040Z",
+        "backupDurationMs": 471,
+        "isolatedVerified": true,
+        "schemaVersion": 2,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 6042
+    },
+    {
+      "name": "process-termination-mid-schema-upgrade-and-actual-data-recovery",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:20.233Z",
+      "result": {
+        "childReachedRealRestore": true,
+        "terminatedByParent": true,
+        "exitSignal": "SIGKILL",
+        "exitCode": null,
+        "schemaVersion": 2,
+        "kind": "schema",
+        "sourceSchemaVersion": 1,
+        "targetSchemaVersion": 2,
+        "interruptedPhase": "restoring",
+        "sourceUpgradeJournalPreserved": true,
+        "originalBackupId": "93528837-0830-4ddd-af19-e11cd990544f",
+        "actualDataRestoredInFreshTarget": true,
+        "sameBackupUsed": true,
+        "originalCipherUnchanged": true,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 9851
+    },
+    {
+      "name": "s3-independent-bucket-round-trip-and-takeover",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:30.086Z",
+      "result": {
+        "fixtureVersion": "4.50",
+        "fixtureBinarySha256": "0c6d5539b58357d8a1cceb098dc6f086e8aa2f50c1d1072c7442618e6130fb25",
+        "backendId": "issue144-dcacdd1ce53f",
+        "sourceBucket": "issue144-dcacdd1ce53f",
+        "targetBucket": "recovery-44d2f1af18980599ff236e6e",
+        "targetBucketCreatedByHost": true,
+        "independentBuckets": true,
+        "backupId": "4fc710ab-234a-4e82-b214-8147cf82f405",
+        "boundaryAt": "2026-10-29T19:08:32.893Z",
+        "backupDurationMs": 830,
+        "resources": [
+          {
+            "resourceId": "efee13a3-b7e6-494f-bfa4-02e84615349f",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "d982fa15c6e1337a0f41d58b6025a17671e632d755155fca79db2d33b94fbfd3",
+            "opaqueByteLength": 86,
+            "backendId": "issue144-dcacdd1ce53f"
+          },
+          {
+            "resourceId": "a2c7e4c9-e21b-4fbd-a909-fdbebb63478b",
+            "sha256": "51b66c36a7d51fda965a9dfd483a1595fa766914c344241b82a306c490b70962",
+            "byteLength": 131091,
+            "opaqueSha256": "67dd7a4848d1d426636a2fd476bafab3cbd80e3d655ad2ceb2b8e53a96d8395d",
+            "opaqueByteLength": 131146,
+            "backendId": "issue144-dcacdd1ce53f"
+          }
+        ],
+        "isolatedVerified": true,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 7774
+    }
+  ],
+  "skipped": [
+    {
+      "name": "postgres-minor",
+      "reason": "old-and-minor-packages-required"
+    },
+    {
+      "name": "postgres-major",
+      "reason": "minor-package-required"
+    }
+  ],
+  "cleanup": [
+    {
+      "root": "/tmp/xunjie-145/linux-release/s3-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/s3-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/schema-rebuilt-after-process-exit",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/schema-process-crashed-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/schema-crash-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/schema-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/schema-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/rebuilt-after-process-termination",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/process-crashed-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/rebuilt-after-interruption",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/interrupted-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/failed-space",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/failed-wrong-key",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/failed-corrupt-cipher",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/failed-missing-cipher",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/file-restored",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/unrelated-B",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/tmp/xunjie-145/linux-release/file-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    }
+  ],
+  "mode": "complete-local-matrix",
+  "interruptionCoverage": "Owned restore subprocess is terminated after real database/resource restore and before isolated state commit; no machine power loss.",
+  "recoveryKey": {
+    "keyFile": "/tmp/xunjie-145/linux-release/private/recovery-key.base64",
+    "generatedForThisRun": true
+  },
+  "portability": {
+    "sourceRoot": "/tmp/xunjie-145/linux-release/file-source",
+    "expectFile": "/tmp/xunjie-145/linux-release/portability.private.json",
+    "keyFile": "/tmp/xunjie-145/linux-release/private/recovery-key.base64",
+    "backupDirectory": "/tmp/xunjie-145/linux-release/file-backups/cc9d2177-ff58-4bed-906e-561dace87073",
+    "manifestFile": "/tmp/xunjie-145/linux-release/file-backups/cc9d2177-ff58-4bed-906e-561dace87073/manifest.json",
+    "backupId": "cc9d2177-ff58-4bed-906e-561dace87073",
+    "privateExpectedEncoding": "explicit-base64-for-raw-and-opaque-bytes"
+  },
+  "finishedAt": "2026-10-29T19:08:40.725Z",
+  "durationMs": 58431,
+  "retained": true
+}

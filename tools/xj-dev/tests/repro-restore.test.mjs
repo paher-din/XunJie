@@ -18,7 +18,7 @@ import { decodeZip, digest, encodeZip, jsonBytes } from '../src/repro-archive.mj
 const worktree = resolve(import.meta.dirname, '../../..'), cli = join(worktree, 'tools/xj-dev/xj-dev.mjs');
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'xj-repro-restore-review-'))), targets = [];
 const file = join(root, 'scene.zip'), preload = join(root, 'controlled-boundary.mjs');
-const codePaths = ['apps/student/package-lock.json', 'apps/teaching/package-lock.json', 'tools/xj-dev/package.json', 'README.md'];
+const codePaths = ['package-lock.json', 'package.json', 'tools/xj-dev/package.json', 'README.md'];
 function ownedRegistrations() {
   const normalize = path => path.replaceAll('\\', '/');
   return git(worktree, ['worktree', 'list', '--porcelain']).split(/\r?\n\r?\n/)
@@ -29,8 +29,8 @@ before(async () => {
   const previous = process.env.XJ_DEV_HOME; process.env.XJ_DEV_HOME = join(root, 'source-home');
   const context = resolveContext({ worktree, instance: 'review' });
   if (previous === undefined) delete process.env.XJ_DEV_HOME; else process.env.XJ_DEV_HOME = previous;
-  await ensureBaseline(context.repo.teaching, context.env, () => {});
-  const Driver = databaseDriver(context.repo.teaching), db = new Driver(context.env.database, { readonly: true });
+  await ensureBaseline(context.repo.server, context.env, () => {});
+  const Driver = databaseDriver(context.repo.server), db = new Driver(context.env.database, { readonly: true });
   let attemptId;
   try { attemptId = db.prepare("SELECT attempt_id FROM attempts WHERE course_id='synthetic-textscope-c'").get().attempt_id; } finally { db.close(); }
   const contextFile = join(root, 'context.json');
@@ -48,9 +48,9 @@ import {syncBuiltinESMExports} from 'node:module';
 const originalSpawn=cp.spawnSync, originalAsyncSpawn=cp.spawn, originalWrite=fs.writeFileSync;
 cp.spawn=function(command,args,options){
   if(process.env.XJ_REVIEW_INSTALL_FROM && args[1]==='ci' && args[0].endsWith('npm-cli.js')){
-    const app=options.cwd.endsWith('student')?'student':'teaching';
+    const app='workspace';
     fs.appendFileSync(process.env.XJ_REVIEW_INSTALL_TRACE,app+'\\n');
-    fs.symlinkSync(join(process.env.XJ_REVIEW_INSTALL_FROM,'apps',app,'node_modules'),join(options.cwd,'node_modules'),process.platform==='win32'?'junction':'dir');
+    fs.symlinkSync(join(process.env.XJ_REVIEW_INSTALL_FROM,'node_modules'),join(options.cwd,'node_modules'),process.platform==='win32'?'junction':'dir');
     return originalAsyncSpawn.call(this,command,['-e',''],options);
   }
   return originalAsyncSpawn.call(this,command,args,options);
@@ -108,7 +108,7 @@ function launch(home, target, controls = {}) {
 }
 function coldCheckout(receiver, localStartup = false) {
   mkdirSync(receiver); git(receiver, ['init', '-q']);
-  for (const path of [...codePaths, 'apps/teaching', ...(localStartup ? ['apps/student'] : []), 'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
+  for (const path of [...codePaths, 'apps/server', ...(localStartup ? ['apps/web'] : []), 'packages/contracts', 'scripts', 'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
     mkdirSync(dirname(join(receiver, path)), { recursive: true });
     cpSync(join(worktree, path), join(receiver, path), { recursive: true,
       filter: source => !['node_modules', 'dist', 'coverage', 'evidence'].includes(basename(source)) });
@@ -124,16 +124,16 @@ test('a real captured scene restores from a cold checkout only after explicit de
   assert.equal(missing.envelope.failure.code, 'DEPENDENCIES_NOT_READY');
   assert.equal(existsSync(target), false);
   assert.equal(existsSync(environmentPaths(home, environmentId(target)).root), false);
-  assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  assert.equal(existsSync(join(receiver, 'node_modules')), false);
   // Reuse the test host's installed native dependency to model the explicit
   // preparation boundary. Restore itself must never install or start services.
-  symlinkSync(join(worktree, 'apps/teaching/node_modules'), join(receiver, 'apps/teaching/node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  symlinkSync(join(worktree, 'node_modules'), join(receiver, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
   const prepared = await launchCli(home, args, {}, receiver).result;
   assert.equal(prepared.status, 0, JSON.stringify(prepared.envelope.failure));
   assert.equal(prepared.envelope.verification.restored, true);
   assert.equal(prepared.envelope.verification.reproduction, 'unverified');
   assert.ok(existsSync(environmentPaths(home, environmentId(target)).database));
-  assert.equal(existsSync(join(target, 'apps/teaching/node_modules')), false);
+  assert.equal(existsSync(join(target, 'node_modules')), false);
   assert.deepEqual(readFileSync(join(receiver, 'README.md')), original);
 });
 
@@ -156,10 +156,10 @@ for (const mode of ['cloud', 'cloud-api']) test(`public missing-dependency recov
   const missing = await launchCli(home, restoreArgs, {}, receiver).result;
   assert.equal(missing.envelope.failure.code, 'DEPENDENCIES_NOT_READY');
   assert.deepEqual(JSON.parse(readFileSync(selectionFile)), selection, 'restore must not silently change the selected mode');
-  assert.equal(existsSync(target), false); assert.equal(existsSync(join(receiver, 'apps/teaching/node_modules')), false);
+  assert.equal(existsSync(target), false); assert.equal(existsSync(join(receiver, 'node_modules')), false);
   // Execute the actual commands advertised by the failure, including their
   // worktree. Only npm's network/install subprocess is controlled; the public
-  // mode routing, both dependency requests, native driver and services are real.
+  // mode routing, the workspace dependency request, native driver and services are real.
   const commands = [...missing.envelope.failure.recovery.matchAll(/node "([^"]+)" ([a-z]+(?: [a-z]+)?) --worktree "([^"]+)"/g)];
   assert.equal(commands.length, 2);
   const trace = join(root, `installs-${mode}`);
@@ -173,7 +173,7 @@ for (const mode of ['cloud', 'cloud-api']) test(`public missing-dependency recov
       assert.equal(Object.values(prepared.envelope.processes).every(process => process.running), true);
     }
   }
-  assert.deepEqual(readFileSync(trace, 'utf8').trim().split('\n'), ['student', 'teaching']);
+  assert.deepEqual(readFileSync(trace, 'utf8').trim().split('\n'), ['workspace']);
   assert.deepEqual(JSON.parse(readFileSync(selectionFile)), { ...selection, mode: 'local' });
   const restored = await launchCli(home, restoreArgs, {}, receiver).result;
   assert.equal(restored.status, 0, JSON.stringify(restored.envelope.failure));
@@ -268,7 +268,7 @@ test('verified bundle lock contents must match conditions before any target/envi
   for (const path of codePaths) {
     mkdirSync(dirname(join(repo, path)), { recursive: true });
     let bytes = readFileSync(join(worktree, path));
-    if (path === 'apps/teaching/package-lock.json') {
+    if (path === 'package-lock.json') {
       const lock = JSON.parse(bytes); lock.packages['node_modules/better-sqlite3'].version = '0.0.0-review'; bytes = jsonBytes(lock);
     }
     writeFileSync(join(repo, path), bytes);

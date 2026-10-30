@@ -1,0 +1,44 @@
+{
+  "name": "@xunjie/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-safe shared XunJie wire contracts and codecs",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "import": "./dist/http.js"
+    },
+    "./editor-diagnostics": {
+      "types": "./dist/editor-diagnostics.d.ts",
+      "import": "./dist/editor-diagnostics.js"
+    },
+    "./product-runtime": {
+      "types": "./dist/product-runtime.d.ts",
+      "import": "./dist/product-runtime.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "import": "./dist/storage.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check:browser": "node ../../scripts/check-contracts-browser.mjs",
+    "test": "node ../../scripts/test.mjs contracts"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.2"
+  }
+}

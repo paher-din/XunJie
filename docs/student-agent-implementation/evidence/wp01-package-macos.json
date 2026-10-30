@@ -1,0 +1,4371 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/143",
+  "kind": "relocated-product-package-black-box",
+  "status": "passed",
+  "startedAt": "2026-10-29T08:23:20.060Z",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "27.2.0",
+    "osVersion": "Darwin Kernel Version 27.2.0: Wed Oct 14 23:48:06 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T8142",
+    "machine": "arm64"
+  },
+  "harness": {
+    "executable": "/Users/robertwu/.cache/xunjie-product-runtime/node/bin/node",
+    "node": "v24.21.0",
+    "source": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/scripts/probe-product-package.mjs",
+    "imports": "Node builtins only"
+  },
+  "isolation": {
+    "childPath": "/usr/bin:/bin:/usr/sbin:/sbin",
+    "childLocale": "en_US.UTF-8",
+    "nodePathRemoved": true,
+    "nodeOptionsRemoved": true,
+    "inheritedPgConfigurationRemoved": true,
+    "sourceNodeNpmPostgresUsedByProduct": false,
+    "caveat": "PATH isolation on a developer Mac, not a clean machine or an OS sandbox",
+    "childCwd": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY"
+  },
+  "package": {
+    "source": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/dist/product-darwin-arm64",
+    "signing": "unsigned candidate; signing/notarization excluded from this round, not blockers",
+    "copy": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包",
+    "regularFileBytes": 388048234,
+    "files": 3911,
+    "symlinks": 4,
+    "treeSha256": "a64f4ea653d07013b46ae07c2e89495688c2ae2a8c86f02511d4ad5a09b0a1f0",
+    "distributionSha256": "5a51e8c51c10e48ea69baf534b7d7dcf8ee6a126999bff6cb9778b6592280796",
+    "createdAt": "2026-10-29T08:20:27.578Z",
+    "distributionStatus": "unsigned-candidate",
+    "toolVersions": {
+      "node": "v24.21.0",
+      "postgres": "postgres (PostgreSQL) 18.6",
+      "initdb": "initdb (PostgreSQL) 18.6",
+      "pg_ctl": "pg_ctl (PostgreSQL) 18.6",
+      "psql": "psql (PostgreSQL) 18.6",
+      "pg_dump": "pg_dump (PostgreSQL) 18.6",
+      "pg_restore": "pg_restore (PostgreSQL) 18.6"
+    }
+  },
+  "environments": {
+    "A": {
+      "root": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A",
+      "identity": {
+        "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+        "installationId": "4429ce0c-5a4a-452e-b2fb-f4d4da849602",
+        "clientNamespace": "xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+        "serviceIds": [
+          "812bbf2f-0b8e-40a1-aee4-85592c9ded51"
+        ],
+        "serviceEndpoints": [
+          "http://127.0.0.1:49235"
+        ]
+      },
+      "firstInstallMs": 4329.39,
+      "firstStartMs": 386.17,
+      "url": "http://127.0.0.1:49235",
+      "database": {
+        "host": "127.0.0.1",
+        "port": 49241,
+        "database": "postgres",
+        "user": "xunjie",
+        "credentialRef": "postgres-3d243d4a-1b66-47c1-aad1-854b57d2a024"
+      },
+      "postgres": {
+        "version": "18.6",
+        "serverPort": 49241,
+        "dataDirectory": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata",
+        "systemIdentifier": "7702002577190783632"
+      }
+    },
+    "B": {
+      "root": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B",
+      "identity": {
+        "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+        "installationId": "9c405217-b2b9-409c-b615-e844ebaa3aa1",
+        "clientNamespace": "xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e",
+        "serviceIds": [
+          "0b760fb7-7e1c-430a-961d-6c01f8e17fd5"
+        ],
+        "serviceEndpoints": [
+          "http://127.0.0.1:49255"
+        ]
+      },
+      "firstInstallMs": 826.55,
+      "firstStartMs": 386.74,
+      "url": "http://127.0.0.1:49255",
+      "database": {
+        "host": "127.0.0.1",
+        "port": 49256,
+        "database": "postgres",
+        "user": "xunjie",
+        "credentialRef": "postgres-3e20b051-6d43-4cba-9b8c-d6fc5c7f4d5f"
+      },
+      "postgres": {
+        "version": "18.6",
+        "serverPort": 49256,
+        "dataDirectory": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata",
+        "systemIdentifier": "7702002589093916064"
+      }
+    }
+  },
+  "stages": [
+    {
+      "name": "relocate-complete-package",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:20.061Z",
+      "result": {
+        "regularFileBytes": 388048234,
+        "files": 3911,
+        "symlinks": 4,
+        "treeSha256": "a64f4ea653d07013b46ae07c2e89495688c2ae2a8c86f02511d4ad5a09b0a1f0",
+        "externalChineseSpacePath": true,
+        "pathToolLookupAbsent": true,
+        "node": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node",
+        "pgBin": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin"
+      },
+      "durationMs": 14846.98
+    },
+    {
+      "name": "A-first-install",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:34.910Z",
+      "result": {
+        "state": "installed",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+          "installationId": "4429ce0c-5a4a-452e-b2fb-f4d4da849602",
+          "clientNamespace": "xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+              "serviceId": "812bbf2f-0b8e-40a1-aee4-85592c9ded51",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:49235",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "dependencies": []
+      },
+      "durationMs": 4329.44
+    },
+    {
+      "name": "A-first-start",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:39.240Z",
+      "result": {
+        "state": "ready",
+        "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+        "endpoint": "http://127.0.0.1:49235",
+        "daemonPid": 92019,
+        "postgresPid": 92205,
+        "rows": [
+          {
+            "id": 1,
+            "value": "A 已提交 循阶 包"
+          }
+        ],
+        "http": {
+          "url": "http://127.0.0.1:49235",
+          "httpStatus": 200,
+          "assets": [
+            "/assets/runtime-BKc4Woo_.js",
+            "/assets/runtime-DZBMYjmA.css"
+          ],
+          "browserInteraction": "not-run"
+        }
+      },
+      "durationMs": 731.29
+    },
+    {
+      "name": "B-first-install",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:39.972Z",
+      "result": {
+        "state": "installed",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+          "installationId": "9c405217-b2b9-409c-b615-e844ebaa3aa1",
+          "clientNamespace": "xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+              "serviceId": "0b760fb7-7e1c-430a-961d-6c01f8e17fd5",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:49255",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "dependencies": []
+      },
+      "durationMs": 826.55
+    },
+    {
+      "name": "B-first-start",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:40.799Z",
+      "result": {
+        "state": "ready",
+        "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+        "endpoint": "http://127.0.0.1:49255",
+        "daemonPid": 94750,
+        "postgresPid": 94935,
+        "rows": [
+          {
+            "id": 1,
+            "value": "B 已提交 循阶 包"
+          }
+        ],
+        "http": {
+          "url": "http://127.0.0.1:49255",
+          "httpStatus": 200,
+          "assets": [
+            "/assets/runtime-BKc4Woo_.js",
+            "/assets/runtime-DZBMYjmA.css"
+          ],
+          "browserInteraction": "not-run"
+        }
+      },
+      "durationMs": 711.47
+    },
+    {
+      "name": "A-B-independent-identities-ports-and-start",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:41.511Z",
+      "result": {
+        "ports": [
+          49235,
+          49255,
+          49241,
+          49256
+        ],
+        "A": {
+          "state": "ready",
+          "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+          "endpoint": "http://127.0.0.1:49235",
+          "daemonPid": 92019,
+          "postgresPid": 92205,
+          "rows": [
+            {
+              "id": 1,
+              "value": "A 已提交 循阶 包"
+            }
+          ]
+        },
+        "B": {
+          "state": "ready",
+          "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+          "endpoint": "http://127.0.0.1:49255",
+          "daemonPid": 94750,
+          "postgresPid": 94935,
+          "rows": [
+            {
+              "id": 1,
+              "value": "B 已提交 循阶 包"
+            }
+          ]
+        }
+      },
+      "durationMs": 355.63
+    },
+    {
+      "name": "repeated-start-reuses-both-instances",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:41.868Z",
+      "result": {
+        "A": {
+          "state": "ready",
+          "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+          "endpoint": "http://127.0.0.1:49235",
+          "daemonPid": 92019,
+          "postgresPid": 92205,
+          "rows": [
+            {
+              "id": 1,
+              "value": "A 已提交 循阶 包"
+            }
+          ]
+        },
+        "B": {
+          "state": "ready",
+          "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+          "endpoint": "http://127.0.0.1:49255",
+          "daemonPid": 94750,
+          "postgresPid": 94935,
+          "rows": [
+            {
+              "id": 1,
+              "value": "B 已提交 循阶 包"
+            }
+          ]
+        }
+      },
+      "durationMs": 1241.46
+    },
+    {
+      "name": "normal-stop-restart-and-two-way-isolation",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:43.111Z",
+      "result": {
+        "A": {
+          "stopped": {
+            "state": "stopped",
+            "daemonAbsent": true,
+            "postgresAbsent": true,
+            "observedProcessTreeAbsent": true
+          },
+          "restarted": {
+            "state": "ready",
+            "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+            "endpoint": "http://127.0.0.1:49235",
+            "daemonPid": 99990,
+            "postgresPid": 276,
+            "rows": [
+              {
+                "id": 1,
+                "value": "A 已提交 循阶 包"
+              }
+            ]
+          },
+          "peerUnchanged": true
+        },
+        "B": {
+          "stopped": {
+            "state": "stopped",
+            "daemonAbsent": true,
+            "postgresAbsent": true,
+            "observedProcessTreeAbsent": true
+          },
+          "restarted": {
+            "state": "ready",
+            "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+            "endpoint": "http://127.0.0.1:49255",
+            "daemonPid": 3049,
+            "postgresPid": 3236,
+            "rows": [
+              {
+                "id": 1,
+                "value": "B 已提交 循阶 包"
+              }
+            ]
+          },
+          "peerUnchanged": true
+        }
+      },
+      "durationMs": 2974.1
+    },
+    {
+      "name": "uninstall-reinstall-retains-committed-data-and-identity",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:46.086Z",
+      "result": {
+        "A": {
+          "stopped": {
+            "state": "uninstalled",
+            "daemonAbsent": true,
+            "postgresAbsent": true,
+            "observedProcessTreeAbsent": true
+          },
+          "restored": {
+            "state": "ready",
+            "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+            "endpoint": "http://127.0.0.1:49235",
+            "daemonPid": 5969,
+            "postgresPid": 6154,
+            "rows": [
+              {
+                "id": 1,
+                "value": "A 已提交 循阶 包"
+              }
+            ]
+          },
+          "databaseBindingRetained": true,
+          "peerUnchanged": true
+        },
+        "B": {
+          "stopped": {
+            "state": "uninstalled",
+            "daemonAbsent": true,
+            "postgresAbsent": true,
+            "observedProcessTreeAbsent": true
+          },
+          "restored": {
+            "state": "ready",
+            "environmentId": "4122fc43-9083-4f58-a373-f6234a84e51e",
+            "endpoint": "http://127.0.0.1:49255",
+            "daemonPid": 9008,
+            "postgresPid": 9193,
+            "rows": [
+              {
+                "id": 1,
+                "value": "B 已提交 循阶 包"
+              }
+            ]
+          },
+          "databaseBindingRetained": true,
+          "peerUnchanged": true
+        }
+      },
+      "durationMs": 3429.61
+    },
+    {
+      "name": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:49.517Z",
+      "result": {
+        "killedPostmasterPid": 6154,
+        "uncommittedInsertAcknowledged": true,
+        "idleInTransactionObserved": true,
+        "committedVisibleBeforeAndAfter": true,
+        "uncommittedAbsentAfterRecovery": true,
+        "sameClusterIdentifier": "7702002577190783632",
+        "stopped": {
+          "state": "stopped",
+          "daemonAbsent": true,
+          "postgresAbsent": true,
+          "observedProcessTreeAbsent": true
+        },
+        "recovered": {
+          "state": "ready",
+          "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+          "endpoint": "http://127.0.0.1:49235",
+          "daemonPid": 12819,
+          "postgresPid": 13004,
+          "rows": [
+            {
+              "id": 1,
+              "value": "A 已提交 循阶 包"
+            }
+          ]
+        },
+        "BUnchanged": true
+      },
+      "durationMs": 2057.68
+    },
+    {
+      "name": "bundled-basic-dump-restore-roundtrip",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:51.576Z",
+      "result": {
+        "dumpSha256": "bf616fd639ce1b4581ba18af8f02e1c23904b8a5d4d760565e7949fa0f534e98",
+        "bytes": 2083,
+        "restored": {
+          "state": "ready",
+          "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+          "endpoint": "http://127.0.0.1:49235",
+          "daemonPid": 12819,
+          "postgresPid": 13004,
+          "rows": [
+            {
+              "id": 1,
+              "value": "A 已提交 循阶 包"
+            }
+          ]
+        },
+        "BUnchanged": true,
+        "scope": "same-engine independent SQL schema only, no upgrade or full-product backup claim"
+      },
+      "durationMs": 626.29
+    },
+    {
+      "name": "http-entry-and-owned-idle-resource-samples",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:23:52.203Z",
+      "result": {
+        "A": {
+          "http": {
+            "url": "http://127.0.0.1:49235",
+            "httpStatus": 200,
+            "assets": [
+              "/assets/runtime-BKc4Woo_.js",
+              "/assets/runtime-DZBMYjmA.css"
+            ],
+            "browserInteraction": "not-run"
+          },
+          "idle": {
+            "settleMs": 4000,
+            "elapsedMs": 3153.95,
+            "samples": [
+              {
+                "atMs": 36230.02,
+                "daemon": {
+                  "pid": 12819,
+                  "ppid": 1,
+                  "rssKiB": 66560,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.12,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+                },
+                "postgres": [
+                  {
+                    "pid": 13004,
+                    "ppid": 1,
+                    "rssKiB": 22000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata -h 127.0.0.1 -p 49241 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 13046,
+                    "ppid": 13004,
+                    "rssKiB": 6000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 13058,
+                    "ppid": 13004,
+                    "rssKiB": 3824,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 13067,
+                    "ppid": 13004,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 13068,
+                    "ppid": 13004,
+                    "rssKiB": 5088,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 13069,
+                    "ppid": 13004,
+                    "rssKiB": 3568,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 13130,
+                    "ppid": 13004,
+                    "rssKiB": 3408,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 13131,
+                    "ppid": 13004,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 13132,
+                    "ppid": 13004,
+                    "rssKiB": 4704,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 123472,
+                "cpuSeconds": 0.15
+              },
+              {
+                "atMs": 37280.19,
+                "daemon": {
+                  "pid": 12819,
+                  "ppid": 1,
+                  "rssKiB": 66560,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.12,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+                },
+                "postgres": [
+                  {
+                    "pid": 13004,
+                    "ppid": 1,
+                    "rssKiB": 22000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata -h 127.0.0.1 -p 49241 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 13046,
+                    "ppid": 13004,
+                    "rssKiB": 6000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 13058,
+                    "ppid": 13004,
+                    "rssKiB": 3824,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 13067,
+                    "ppid": 13004,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 13068,
+                    "ppid": 13004,
+                    "rssKiB": 5088,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 13069,
+                    "ppid": 13004,
+                    "rssKiB": 3584,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 13130,
+                    "ppid": 13004,
+                    "rssKiB": 3408,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 13131,
+                    "ppid": 13004,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 13132,
+                    "ppid": 13004,
+                    "rssKiB": 4704,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 123488,
+                "cpuSeconds": 0.15
+              },
+              {
+                "atMs": 38335.51,
+                "daemon": {
+                  "pid": 12819,
+                  "ppid": 1,
+                  "rssKiB": 66560,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.12,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+                },
+                "postgres": [
+                  {
+                    "pid": 13004,
+                    "ppid": 1,
+                    "rssKiB": 22000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata -h 127.0.0.1 -p 49241 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 13046,
+                    "ppid": 13004,
+                    "rssKiB": 6000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 13058,
+                    "ppid": 13004,
+                    "rssKiB": 3824,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 13067,
+                    "ppid": 13004,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 13068,
+                    "ppid": 13004,
+                    "rssKiB": 5088,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 13069,
+                    "ppid": 13004,
+                    "rssKiB": 3584,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 13130,
+                    "ppid": 13004,
+                    "rssKiB": 3408,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 13131,
+                    "ppid": 13004,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 13132,
+                    "ppid": 13004,
+                    "rssKiB": 4704,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 123488,
+                "cpuSeconds": 0.15
+              },
+              {
+                "atMs": 39383.97,
+                "daemon": {
+                  "pid": 12819,
+                  "ppid": 1,
+                  "rssKiB": 66560,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.12,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+                },
+                "postgres": [
+                  {
+                    "pid": 13004,
+                    "ppid": 1,
+                    "rssKiB": 22000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata -h 127.0.0.1 -p 49241 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 13046,
+                    "ppid": 13004,
+                    "rssKiB": 6000,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 13058,
+                    "ppid": 13004,
+                    "rssKiB": 3824,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 13067,
+                    "ppid": 13004,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 13068,
+                    "ppid": 13004,
+                    "rssKiB": 5088,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 13069,
+                    "ppid": 13004,
+                    "rssKiB": 3600,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 13130,
+                    "ppid": 13004,
+                    "rssKiB": 3408,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 13131,
+                    "ppid": 13004,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 13132,
+                    "ppid": 13004,
+                    "rssKiB": 4704,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 123504,
+                "cpuSeconds": 0.15
+              }
+            ],
+            "maxRssKiB": 123504,
+            "intervalCpuPercentOfOneCore": 0,
+            "method": "/bin/ps owned daemon plus pg_ctl-identified postmaster and recursive descendants only; RSS is a sum (shared pages may overlap); interval CPU uses ps time resolution; psCpuPercent is also recorded, not used as interval CPU"
+          }
+        },
+        "B": {
+          "http": {
+            "url": "http://127.0.0.1:49255",
+            "httpStatus": 200,
+            "assets": [
+              "/assets/runtime-BKc4Woo_.js",
+              "/assets/runtime-DZBMYjmA.css"
+            ],
+            "browserInteraction": "not-run"
+          },
+          "idle": {
+            "settleMs": 4000,
+            "elapsedMs": 3145.43,
+            "samples": [
+              {
+                "atMs": 43444.58,
+                "daemon": {
+                  "pid": 9008,
+                  "ppid": 1,
+                  "rssKiB": 67408,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.14,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+                },
+                "postgres": [
+                  {
+                    "pid": 9193,
+                    "ppid": 1,
+                    "rssKiB": 21968,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata -h 127.0.0.1 -p 49256 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 9225,
+                    "ppid": 9193,
+                    "rssKiB": 4224,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 9226,
+                    "ppid": 9193,
+                    "rssKiB": 3616,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 9227,
+                    "ppid": 9193,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 9228,
+                    "ppid": 9193,
+                    "rssKiB": 3360,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 9229,
+                    "ppid": 9193,
+                    "rssKiB": 3552,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 9231,
+                    "ppid": 9193,
+                    "rssKiB": 3392,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 9232,
+                    "ppid": 9193,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 9233,
+                    "ppid": 9193,
+                    "rssKiB": 4752,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 120592,
+                "cpuSeconds": 0.17
+              },
+              {
+                "atMs": 44496.64,
+                "daemon": {
+                  "pid": 9008,
+                  "ppid": 1,
+                  "rssKiB": 67408,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.14,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+                },
+                "postgres": [
+                  {
+                    "pid": 9193,
+                    "ppid": 1,
+                    "rssKiB": 21968,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata -h 127.0.0.1 -p 49256 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 9225,
+                    "ppid": 9193,
+                    "rssKiB": 4224,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 9226,
+                    "ppid": 9193,
+                    "rssKiB": 3616,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 9227,
+                    "ppid": 9193,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 9228,
+                    "ppid": 9193,
+                    "rssKiB": 3360,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 9229,
+                    "ppid": 9193,
+                    "rssKiB": 3840,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 9231,
+                    "ppid": 9193,
+                    "rssKiB": 7584,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 9232,
+                    "ppid": 9193,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 9233,
+                    "ppid": 9193,
+                    "rssKiB": 4752,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 125072,
+                "cpuSeconds": 0.17
+              },
+              {
+                "atMs": 45545.39,
+                "daemon": {
+                  "pid": 9008,
+                  "ppid": 1,
+                  "rssKiB": 67408,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.14,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+                },
+                "postgres": [
+                  {
+                    "pid": 9193,
+                    "ppid": 1,
+                    "rssKiB": 21968,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata -h 127.0.0.1 -p 49256 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 9225,
+                    "ppid": 9193,
+                    "rssKiB": 4224,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 9226,
+                    "ppid": 9193,
+                    "rssKiB": 3616,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 9227,
+                    "ppid": 9193,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 9228,
+                    "ppid": 9193,
+                    "rssKiB": 3360,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 9229,
+                    "ppid": 9193,
+                    "rssKiB": 3856,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 9231,
+                    "ppid": 9193,
+                    "rssKiB": 7584,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 9232,
+                    "ppid": 9193,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 9233,
+                    "ppid": 9193,
+                    "rssKiB": 4752,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 125088,
+                "cpuSeconds": 0.17
+              },
+              {
+                "atMs": 46590.01,
+                "daemon": {
+                  "pid": 9008,
+                  "ppid": 1,
+                  "rssKiB": 67408,
+                  "psCpuPercent": 0,
+                  "cpuSeconds": 0.14,
+                  "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/app/daemon.js --root /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+                },
+                "postgres": [
+                  {
+                    "pid": 9193,
+                    "ppid": 1,
+                    "rssKiB": 21968,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0.03,
+                    "command": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres -D /private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata -h 127.0.0.1 -p 49256 -c timezone=UTC -c unix_socket_directories="
+                  },
+                  {
+                    "pid": 9225,
+                    "ppid": 9193,
+                    "rssKiB": 4224,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 0          "
+                  },
+                  {
+                    "pid": 9226,
+                    "ppid": 9193,
+                    "rssKiB": 3616,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 1          "
+                  },
+                  {
+                    "pid": 9227,
+                    "ppid": 9193,
+                    "rssKiB": 3248,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: io worker 2          "
+                  },
+                  {
+                    "pid": 9228,
+                    "ppid": 9193,
+                    "rssKiB": 3360,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: checkpointer           "
+                  },
+                  {
+                    "pid": 9229,
+                    "ppid": 9193,
+                    "rssKiB": 3856,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: background writer           "
+                  },
+                  {
+                    "pid": 9231,
+                    "ppid": 9193,
+                    "rssKiB": 7584,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: walwriter           "
+                  },
+                  {
+                    "pid": 9232,
+                    "ppid": 9193,
+                    "rssKiB": 5072,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: autovacuum launcher           "
+                  },
+                  {
+                    "pid": 9233,
+                    "ppid": 9193,
+                    "rssKiB": 4752,
+                    "psCpuPercent": 0,
+                    "cpuSeconds": 0,
+                    "command": "postgres: logical replication launcher           "
+                  }
+                ],
+                "rssKiB": 125088,
+                "cpuSeconds": 0.17
+              }
+            ],
+            "maxRssKiB": 125088,
+            "intervalCpuPercentOfOneCore": 0,
+            "method": "/bin/ps owned daemon plus pg_ctl-identified postmaster and recursive descendants only; RSS is a sum (shared pages may overlap); interval CPU uses ps time resolution; psCpuPercent is also recorded, not used as interval CPU"
+          }
+        }
+      },
+      "durationMs": 14418.15
+    },
+    {
+      "name": "keep-A-running-stop-and-remove-B",
+      "status": "passed",
+      "startedAt": "2026-10-29T08:24:06.623Z",
+      "result": {
+        "B": {
+          "state": "stopped",
+          "daemonAbsent": true,
+          "postgresAbsent": true,
+          "observedProcessTreeAbsent": true
+        },
+        "BRootRemoved": true,
+        "A": {
+          "state": "ready",
+          "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+          "endpoint": "http://127.0.0.1:49235",
+          "daemonPid": 12819,
+          "postgresPid": 13004,
+          "rows": [
+            {
+              "id": 1,
+              "value": "A 已提交 循阶 包"
+            }
+          ]
+        }
+      },
+      "durationMs": 795.64
+    }
+  ],
+  "commands": [
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/bin/sh",
+      "args": [
+        "-c",
+        "for tool in node npm psql pg_ctl pg_dump pg_restore; do if command -v \"$tool\" >/dev/null 2>&1; then echo \"unexpected PATH tool: $tool\"; exit 1; fi; done"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "",
+      "durationMs": 7.31
+    },
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/node/bin/node",
+      "args": [
+        "--version"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "v24.21.0",
+      "stderr": "",
+      "durationMs": 1727.39
+    },
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres",
+      "args": [
+        "--version"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "postgres (PostgreSQL) 18.6",
+      "stderr": "",
+      "durationMs": 5308.79
+    },
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/initdb",
+      "args": [
+        "--version"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "initdb (PostgreSQL) 18.6",
+      "stderr": "",
+      "durationMs": 1197.76
+    },
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "--version"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl (PostgreSQL) 18.6",
+      "stderr": "",
+      "durationMs": 536.07
+    },
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "--version"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "psql (PostgreSQL) 18.6",
+      "stderr": "",
+      "durationMs": 1074.43
+    },
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_dump",
+      "args": [
+        "--version"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_dump (PostgreSQL) 18.6",
+      "stderr": "",
+      "durationMs": 571.98
+    },
+    {
+      "stage": "relocate-complete-package",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_restore",
+      "args": [
+        "--version"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_restore (PostgreSQL) 18.6",
+      "stderr": "",
+      "durationMs": 579.22
+    },
+    {
+      "stage": "A-first-install",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "install",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A",
+        "--profile",
+        "local"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"installed\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 4329.21
+    },
+    {
+      "stage": "A-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 385.99
+    },
+    {
+      "stage": "A-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "database",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"host\":\"127.0.0.1\",\"port\":49241,\"database\":\"postgres\",\"user\":\"xunjie\",\"credentialRef\":\"postgres-3d243d4a-1b66-47c1-aad1-854b57d2a024\"}",
+      "stderr": "",
+      "durationMs": 93.27
+    },
+    {
+      "stage": "A-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"version\": \"18.6\", \"serverPort\": 49241, \"dataDirectory\": \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\", \"systemIdentifier\": \"7702002577190783632\"}",
+      "stderr": "",
+      "durationMs": 15.09
+    },
+    {
+      "stage": "A-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "",
+      "durationMs": 17.96
+    },
+    {
+      "stage": "A-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.5
+    },
+    {
+      "stage": "A-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.95
+    },
+    {
+      "stage": "A-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 92205)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.98
+    },
+    {
+      "stage": "B-first-install",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "install",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B",
+        "--profile",
+        "local"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"installed\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 826.5
+    },
+    {
+      "stage": "B-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 386.65
+    },
+    {
+      "stage": "B-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "database",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"host\":\"127.0.0.1\",\"port\":49256,\"database\":\"postgres\",\"user\":\"xunjie\",\"credentialRef\":\"postgres-3e20b051-6d43-4cba-9b8c-d6fc5c7f4d5f\"}",
+      "stderr": "",
+      "durationMs": 95.82
+    },
+    {
+      "stage": "B-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"version\": \"18.6\", \"serverPort\": 49256, \"dataDirectory\": \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\", \"systemIdentifier\": \"7702002589093916064\"}",
+      "stderr": "",
+      "durationMs": 14.5
+    },
+    {
+      "stage": "B-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "",
+      "durationMs": 17.74
+    },
+    {
+      "stage": "B-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 119.27
+    },
+    {
+      "stage": "B-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.84
+    },
+    {
+      "stage": "B-first-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 94935)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.93
+    },
+    {
+      "stage": "A-B-independent-identities-ports-and-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 117.15
+    },
+    {
+      "stage": "A-B-independent-identities-ports-and-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.78
+    },
+    {
+      "stage": "A-B-independent-identities-ports-and-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 92205)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.19
+    },
+    {
+      "stage": "A-B-independent-identities-ports-and-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.06
+    },
+    {
+      "stage": "A-B-independent-identities-ports-and-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.61
+    },
+    {
+      "stage": "A-B-independent-identities-ports-and-start",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 94935)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.97
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.73
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.61
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 92205)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.07
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 129.98
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 128.65
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 122.17
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 17.07
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 92205)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.21
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.43
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.86
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 94935)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.04
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 128.35
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 128.39
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 119.61
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.66
+    },
+    {
+      "stage": "repeated-start-reuses-both-instances",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 94935)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.24
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 120.12
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.64
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 94935)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.1
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "stop",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 243.53
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 94.69
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 3,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: no server running",
+      "stderr": "",
+      "durationMs": 3.2
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 117
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.78
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 94935)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.88
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 381.75
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.41
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 15.62
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 276)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.98
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 119.42
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.56
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 94935)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.95
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 123.18
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.74
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 276)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.01
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "stop",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 244.81
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 94.6
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 3,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: no server running",
+      "stderr": "",
+      "durationMs": 2.92
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 117.78
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.82
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 276)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.95
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 381.56
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.68
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.82
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 3236)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.88
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 116.06
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.55
+    },
+    {
+      "stage": "normal-stop-restart-and-two-way-isolation",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 276)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.03
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 119.37
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 16.7
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 3236)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.33
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "uninstall",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"uninstalled\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 246.27
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"uninstalled\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 94.75
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 3,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: no server running",
+      "stderr": "",
+      "durationMs": 2.93
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 119.58
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.62
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 3236)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.02
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "install",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A",
+        "--profile",
+        "local"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 109.81
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 382.14
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "database",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"host\":\"127.0.0.1\",\"port\":49241,\"database\":\"postgres\",\"user\":\"xunjie\",\"credentialRef\":\"postgres-3d243d4a-1b66-47c1-aad1-854b57d2a024\"}",
+      "stderr": "",
+      "durationMs": 107.79
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"version\": \"18.6\", \"serverPort\": 49241, \"dataDirectory\": \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\", \"systemIdentifier\": \"7702002577190783632\"}",
+      "stderr": "",
+      "durationMs": 20.72
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 139.93
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 15.35
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 6154)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.96
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.87
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.64
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 3236)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.94
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 122.12
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.57
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 6154)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.88
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "uninstall",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"uninstalled\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 244.48
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"uninstalled\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 93.23
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 3,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: no server running",
+      "stderr": "",
+      "durationMs": 3.02
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 117.95
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.22
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 6154)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.91
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "install",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B",
+        "--profile",
+        "local"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 110.2
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 378.72
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "database",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"host\":\"127.0.0.1\",\"port\":49256,\"database\":\"postgres\",\"user\":\"xunjie\",\"credentialRef\":\"postgres-3e20b051-6d43-4cba-9b8c-d6fc5c7f4d5f\"}",
+      "stderr": "",
+      "durationMs": 94.36
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"version\": \"18.6\", \"serverPort\": 49256, \"dataDirectory\": \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\", \"systemIdentifier\": \"7702002589093916064\"}",
+      "stderr": "",
+      "durationMs": 14.58
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 116.03
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 15.2
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.82
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 120.57
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.59
+    },
+    {
+      "stage": "uninstall-reinstall-retains-committed-data-and-identity",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 6154)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.08
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 121.16
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.44
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.86
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "1",
+      "stderr": "",
+      "durationMs": 16.48
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.97
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"systemIdentifier\": \"7702002577190783632\"}",
+      "stderr": "",
+      "durationMs": 14.34
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 6154)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.04
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "action": "SIGKILL",
+      "pid": 6154,
+      "ownership": "packaged pg_ctl status PID plus ps executable/data directory and public SQL data_directory"
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.89
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.46
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 2.94
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "stop",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 129.64
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 95.31
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 3,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: no server running",
+      "stderr": "",
+      "durationMs": 3.05
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "start",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 385.26
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 121.62
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 16.24
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.31
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "0",
+      "stderr": "",
+      "durationMs": 15.12
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"systemIdentifier\": \"7702002577190783632\"}",
+      "stderr": "",
+      "durationMs": 14.01
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.9
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 15.06
+    },
+    {
+      "stage": "managed-postgres-SIGKILL-stop-start-transaction-recovery",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.05
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 120.58
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.83
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.14
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_dump",
+      "args": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres",
+        "--format=custom",
+        "--schema=package_probe",
+        "--file",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/独立 样本.dump"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "",
+      "durationMs": 53.93
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "NOTICE:  drop cascades to table package_probe.records",
+      "durationMs": 15.36
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_restore",
+      "args": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres",
+        "--exit-on-error",
+        "--single-transaction",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/独立 样本.dump"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "",
+      "durationMs": 19.14
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.73
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.85
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.07
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49255\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 118.99
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49256",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"B 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.6
+    },
+    {
+      "stage": "bundled-basic-dump-restore-roundtrip",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.14
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.38
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.29
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 6.41
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.35
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 6.32
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 4.09
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.26
+    },
+    {
+      "stage": "http-entry-and-owned-idle-resource-samples",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 9193)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49256\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.05
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 122.66
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 19.09
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.06
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "stop",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 242.16
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"stopped\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"installationId\":\"9c405217-b2b9-409c-b615-e844ebaa3aa1\",\"clientNamespace\":\"xunjie.v1.4122fc43-9083-4f58-a373-f6234a84e51e\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"4122fc43-9083-4f58-a373-f6234a84e51e\",\"serviceId\":\"0b760fb7-7e1c-430a-961d-6c01f8e17fd5\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49255\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"dependencies\":[]}",
+      "stderr": "",
+      "durationMs": 97.68
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 B/pgdata"
+      ],
+      "code": 3,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: no server running",
+      "stderr": "",
+      "durationMs": 2.99
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/xunjie",
+      "args": [
+        "status",
+        "--root",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "{\"state\":\"ready\",\"environment\":{\"formatVersion\":1,\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"installationId\":\"4429ce0c-5a4a-452e-b2fb-f4d4da849602\",\"clientNamespace\":\"xunjie.v1.db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"profile\":\"local\",\"services\":[{\"environmentId\":\"db6dc8b7-7993-4be7-a6c5-6bb075c44d92\",\"serviceId\":\"812bbf2f-0b8e-40a1-aee4-85592c9ded51\",\"unit\":\"client\",\"endpoint\":\"http://127.0.0.1:49235\",\"protocolVersion\":1,\"capabilities\":[\"runtime.status\"]}]},\"endpoint\":\"http://127.0.0.1:49235\",\"dependencies\":[{\"name\":\"PostgreSQL\",\"required\":true,\"state\":\"ready\",\"detail\":\"18.6\"}]}",
+      "stderr": "",
+      "durationMs": 117.58
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/psql",
+      "args": [
+        "-X",
+        "-q",
+        "-A",
+        "-t",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "49241",
+        "--username",
+        "xunjie",
+        "--no-password",
+        "--dbname",
+        "postgres"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "[{\"id\": 1, \"value\": \"A 已提交 循阶 包\"}]",
+      "stderr": "",
+      "durationMs": 14.89
+    },
+    {
+      "stage": "keep-A-running-stop-and-remove-B",
+      "executable": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/pg_ctl",
+      "args": [
+        "status",
+        "-D",
+        "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata"
+      ],
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "pg_ctl: server is running (PID: 13004)\n/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/循阶 独立包/resources/postgres/bin/postgres \"-D\" \"/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY/环境 A/pgdata\" \"-h\" \"127.0.0.1\" \"-p\" \"49241\" \"-c\" \"timezone=UTC\" \"-c\" \"unix_socket_directories=\"",
+      "stderr": "",
+      "durationMs": 3.04
+    }
+  ],
+  "acceptance": {
+    "engineering": "passed",
+    "browser": "partial-macos-chrome",
+    "teachingEffectiveness": "not-run",
+    "cleanMachine": "not-run",
+    "windows": "not-run",
+    "realSleepWake": "not-run",
+    "crossMachine": "not-run",
+    "chromeEdge": "partial-macos-chrome",
+    "doubleClickLaunch": "not-run",
+    "signingNotarization": "out-of-scope"
+  },
+  "limitations": [
+    "Only this macOS/arm64 host and the package tree hash recorded here; a rebuilt candidate needs a fresh run.",
+    "Independent SQL fixture only; no course, Agent, business persistence or teaching acceptance.",
+    "Basic same-engine table dump/restore only; PostgreSQL 17 minor/major upgrade paths belong to the separate probe.",
+    "HTTP/asset availability is not browser interaction acceptance; no real sleep/wake or cross-machine exercise.",
+    "Idle CPU/RSS measures only each owned daemon and its PostgreSQL process tree; not a machine-wide product estimate."
+  ],
+  "temporaryPath": "/private/var/folders/nn/s5g8qnt93l30cz_m3svlc3gm0000gn/T/循阶 包 验收 kkfnOY",
+  "cleanup": {
+    "mode": "after-browser",
+    "allOwnedEnvironmentsStopped": true,
+    "postgresStatusExit": 3,
+    "daemonExitVerified": true,
+    "temporaryRemoved": true
+  },
+  "finishedAt": "2026-10-29T08:24:07.421Z",
+  "durationMs": 47361.86,
+  "browser": {
+    "browser": "Chrome",
+    "platform": "macOS arm64",
+    "exactVersion": "not-recorded-browser-security-policy-blocked-internal-version-page",
+    "url": "http://127.0.0.1:49235",
+    "environmentId": "db6dc8b7-7993-4be7-a6c5-6bb075c44d92",
+    "screenshot": "wp01-runtime-chrome.png",
+    "checks": [
+      "real packaged page and PostgreSQL 18.6 ready",
+      "manual refresh",
+      "environment identity matches CLI",
+      "stop clears stale ready status",
+      "restart returns original environment to ready",
+      "closing page leaves runtime ready"
+    ],
+    "theme": "light",
+    "colorScheme": "light",
+    "checkedAt": "2026-10-29T08:46:01.335Z",
+    "edge": "not-run",
+    "windows": "deferred-until-user-home"
+  }
+}

@@ -23,33 +23,47 @@ const compressibleExtensions = new Set(['.html', '.js', '.css', '.svg']);
 
 // [source, destination, exclude tests] — same layout the server-side release runs from.
 const runtimeCopies = [
-  ['apps/student/dist', 'apps/student/dist', false],
-  ['apps/teaching/node_modules', 'apps/teaching/node_modules', false],
-  ['apps/teaching/server', 'apps/teaching/server', true],
-  ['apps/teaching/contracts', 'apps/teaching/contracts', true],
-  ['apps/teaching/runner', 'apps/teaching/runner', true],
-  ['apps/teaching/package.json', 'apps/teaching/package.json', false],
-  ['apps/teaching/package-lock.json', 'apps/teaching/package-lock.json', false],
-  ['apps/teaching/tools/check-runtime.mjs', 'apps/teaching/tools/check-runtime.mjs', false],
+  ['apps/web/dist', 'apps/web/dist', false],
+  ['node_modules', 'node_modules', true],
+  ['apps/server/dist', 'apps/server/dist', true],
+  ['apps/server/package.json', 'apps/server/package.json', false],
+  ['package.json', 'package.json', false],
+  ['package-lock.json', 'package-lock.json', false],
+  ['packages/contracts/package.json', 'node_modules/@xunjie/contracts/package.json', false],
+  ['packages/contracts/dist', 'node_modules/@xunjie/contracts/dist', true],
+  ['packages/storage/package.json', 'node_modules/@xunjie/storage/package.json', false],
+  ['packages/storage/dist', 'node_modules/@xunjie/storage/dist', true],
   ['tools/i0-cloud/cloud-host.mjs', 'tools/i0-cloud/cloud-host.mjs', false],
 ];
+const workspaceLinks = new Map([
+  ['@xunjie/web', 'apps/web'], ['@xunjie/server', 'apps/server'],
+  ['@xunjie/contracts', 'packages/contracts'], ['@xunjie/xj-dev', 'tools/xj-dev'],
+  ['@xunjie/storage', 'packages/storage'],
+  ['@xunjie/dev-access', 'tools/xj-dev-access'],
+]);
+const testDirectories = new Set(['test', 'tests', '__tests__', 'fixtures', '__fixtures__']);
+const testFile = name => /\.(?:test|spec)\.(?:[cm]?[jt]sx?|d\.ts)(?:\.map)?$/.test(name)
+  || /(?:-support|i0-browser-fixture|i0-browser-runner|test-child|acceptance|hdl-acceptance|record-validation)\.(?:[cm]?js|d\.ts)(?:\.map)?$/.test(name);
+
 
 // Runtime resolution only needs real files; npm command shims under node_modules/.bin are not used by the server.
 
-function listFiles(root, { excludeTests = false, allowCommandShims = false } = {}) {
+function listFiles(root, { excludeTests = false, dependencyRoot = null } = {}) {
   const files = [];
   const visit = directory => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) {
-        if (excludeTests && ['test', 'tests', '__tests__'].includes(entry.name)) continue;
+        if (excludeTests && testDirectories.has(entry.name)) continue;
         visit(path);
       } else if (entry.isFile()) {
-        if (excludeTests && /\.test\.(?:ts|mjs)$/.test(entry.name)) continue;
+        if (excludeTests && testFile(entry.name)) continue;
         files.push(path);
       } else if (entry.isSymbolicLink()) {
         const within = relative(root, path).split('\\').join('/');
-        require(allowCommandShims && within.startsWith('.bin/'), 'RUNTIME_SYMLINK_UNSUPPORTED');
+        if (dependencyRoot && within.startsWith('.bin/')) continue;
+        const workspace = dependencyRoot && workspaceLinks.get(within);
+        require(workspace && realpathSync(path) === realpathSync(join(dependencyRoot, workspace)), 'RUNTIME_SYMLINK_UNSUPPORTED');
       }
     }
   };
@@ -65,7 +79,7 @@ function require(condition, code) {
 
 function parseArguments(argv) {
   const values = { '--source': process.cwd(), '--output': '', '--commit': '', '--git-tree': '',
-    '--expected-platform': '', '--expected-node-version': '' };
+    '--expected-platform': '', '--expected-node-version': '', '--dependencies': '' };
   const seen = new Set();
   for (let index = 0; index < argv.length; index += 2) {
     const name = argv[index], value = argv[index + 1];
@@ -79,6 +93,7 @@ function parseArguments(argv) {
   return {
     source: realpathSync(resolve(values['--source'])), output: resolve(values['--output']),
     commit: values['--commit'], gitTree: values['--git-tree'],
+    dependencies: values['--dependencies'] ? realpathSync(resolve(values['--dependencies'])) : undefined,
     expectedPlatform: values['--expected-platform'] || null,
     expectedNodeVersion: values['--expected-node-version'] || null,
   };
@@ -123,14 +138,14 @@ function writeDigestMap(dist) {
   return digests;
 }
 
-function copyRuntime(source, runtime) {
+function copyRuntime(source, runtime, dependencies = source) {
   for (const [from, to, excludeTests] of runtimeCopies) {
-    const origin = join(source, from);
+    const origin = join(from === 'node_modules' ? dependencies : source, from);
     require(existsSync(origin), 'RUNTIME_INPUT_REQUIRED');
     const destination = join(runtime, to);
     mkdirSync(dirname(destination), { recursive: true });
     if (lstatSync(origin).isFile()) { copyFileSync(origin, destination); continue; }
-    for (const path of listFiles(origin, { excludeTests, allowCommandShims: to === 'apps/teaching/node_modules' })) {
+    for (const path of listFiles(origin, { excludeTests, dependencyRoot: from === 'node_modules' ? dependencies : null })) {
       const target = join(runtime, to, relative(origin, path));
       mkdirSync(dirname(target), { recursive: true });
       copyFileSync(path, target);
@@ -144,7 +159,7 @@ function fileDigests(root, prefix) {
 }
 
 function packTarball(runtime, archive) {
-  const result = spawnSync('tar', ['-czf', archive, '-C', runtime, 'apps', 'tools'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const result = spawnSync('tar', ['-czf', archive, '-C', runtime, 'apps', 'tools', 'node_modules', 'package.json', 'package-lock.json'], { stdio: ['ignore', 'ignore', 'pipe'] });
   if (result.status !== 0) throw new BuildError('TARBALL_FAILED');
 }
 
@@ -153,7 +168,10 @@ export function buildRuntimeArtifact(options) {
   const platform = `${process.platform}-${process.arch}`;
   require(!expectedPlatform || platform === expectedPlatform, 'PLATFORM_MISMATCH');
   require(!expectedNodeVersion || process.version === expectedNodeVersion, 'NODE_VERSION_MISMATCH');
-  const dist = join(source, 'apps/student/dist');
+  const dependencyRoot = options.dependencies ?? source;
+  const installed = JSON.parse(readFileSync(join(dependencyRoot, 'node_modules/.package-lock.json'), 'utf8'));
+  require(!Object.values(installed.packages ?? {}).some(pkg => pkg.dev === true), 'PRODUCTION_DEPENDENCIES_REQUIRED');
+  const dist = join(source, 'apps/web/dist');
   const { entry, html } = parseEntry(dist);
   precompress(dist);
   const digests = writeDigestMap(dist);
@@ -162,10 +180,12 @@ export function buildRuntimeArtifact(options) {
   rmSync(runtime, { recursive: true, force: true });
   mkdirSync(runtime);
   try {
-    copyRuntime(source, runtime);
-    const staticFiles = fileDigests(join(runtime, 'apps/student/dist'), '');
-    const runtimeFiles = [...fileDigests(join(runtime, 'apps/teaching'), 'apps/teaching/'),
-      ...fileDigests(join(runtime, 'tools/i0-cloud'), 'tools/i0-cloud/')];
+    copyRuntime(source, runtime, options.dependencies);
+    const staticFiles = fileDigests(join(runtime, 'apps/web/dist'), '');
+    const runtimeFiles = [...fileDigests(join(runtime, 'apps/server'), 'apps/server/'),
+      ...fileDigests(join(runtime, 'tools/i0-cloud'), 'tools/i0-cloud/'),
+      ...fileDigests(join(runtime, 'node_modules'), 'node_modules/'),
+      ...['package.json', 'package-lock.json'].map(path => ({ path, sha256: sha256File(join(runtime, path)), bytes: statSync(join(runtime, path)).size }))];
     const aggregate = files => sha256(JSON.stringify(files.map(file => [file.path, file.sha256])));
     const manifest = {
       format: 'xunjie-runtime-artifact', version: 1, commit, gitTree, platform, nodeVersion: process.version,
@@ -192,7 +212,7 @@ function main() {
     options = parseArguments(process.argv.slice(2));
   } catch (error) {
     process.stderr.write('Usage: node tools/i0-cloud/build-runtime-artifact.mjs --source <repo-root> --output <dir> '
-      + '--commit <sha> --git-tree <sha> [--expected-platform linux-x64] [--expected-node-version v24.21.0]\n');
+      + '--commit <sha> --git-tree <sha> [--dependencies <production-workspace>] [--expected-platform linux-x64] [--expected-node-version v24.21.0]\n');
     if (error instanceof BuildError) process.stderr.write(error.message + '\n');
     process.exitCode = 2;
     return;

@@ -1,0 +1,376 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/143",
+  "status": "cancelled-by-scope-change",
+  "updatedAt": "2026-10-29T14:14:07.199351+00:00",
+  "scope": "Clean OS VM acceptance cancelled; retain only useful Windows VC++ product prerequisite provisioning and its real regressions.",
+  "cleanGuestPassed": false,
+  "cleanWindowsAcceptancePassed": false,
+  "cleanPhysicalMachine": false,
+  "vmWork": {
+    "guestOSInstalled": false,
+    "priorCapabilityProbe": "Portable QEMU WHPX paused empty-machine initialization and normal exit0 proved; this was never a Windows guest dependency proof.",
+    "cleanup": {
+      "deletedItems": [
+        "diagnostics",
+        "product-prereq-02a72920",
+        "qemu",
+        "Windows11-EnterpriseEval-26H2-zh-cn-x64.iso.download"
+      ],
+      "rootRemoved": true,
+      "root": "D:\\XunJie-clean-windows-test",
+      "cleanGuestPassed": false,
+      "ownedTaskAbsent": true,
+      "productCachePreserved": true,
+      "productCacheSha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+      "status": "cancelled-by-scope-change",
+      "otherVMsDriversHostFeaturesTouched": false
+    },
+    "removedRepositoryScripts": [
+      "scripts/probe-product-clean-windows.ps1",
+      "scripts/probe-product-clean-windows-whp.ps1",
+      "scripts/probe-product-clean-windows-qemu.ps1",
+      "scripts/windows-prereq-iso.ps1"
+    ],
+    "furtherVMWork": "cancelled; no ISO resume, TPM, console, VM installation or license workflow remains in scope"
+  },
+  "productPrerequisites": {
+    "status": "implemented-and-native-validated",
+    "commands": [
+      "prepare",
+      "install",
+      "launch",
+      "start"
+    ],
+    "activation": "Shared runtime.prepare/install/start validate environment and installed state before managed-Windows preparation; CLI only adapts typed errors/results. Existing saved resources are retained.",
+    "version": "14.51.36247.0",
+    "productAcceptedMinimum": "14.51.36247.0",
+    "minimumMeaning": "Explicit conservative product policy pin. The upstream build manifest identifies MSVC cl but omits exact compiler revision. PE linker14.51 is supporting evidence only; exact upstream ABI minimum is not asserted. Prior successful runtime14.50 operation remains historical evidence.",
+    "source": "https://download.visualstudio.microsoft.com/download/pr/ebdab8e5-1d7b-4d9f-a11b-cbb1720c3b12/843068991DAAA1F73AD9F6239BCE4D0F6A07A51F18C37EA2A867E9BECA71295C/VC_redist.x64.exe",
+    "bytes": 18731856,
+    "sha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+    "sourceAuthority": "https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist",
+    "upstreamBuildMetadata": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip.manifest.json",
+    "licenseUrl": "https://visualstudio.microsoft.com/license-terms/vs2026-ga-visualcpp-v14-redist-runtime/",
+    "installerBundled": false,
+    "installerExecuted": true,
+    "installerEntry": "C:\\Users\\h\\AppData\\Local\\XunJie\\prerequisites\\vc14-x64-14.51.36247\\VC_redist.x64.exe",
+    "installerArguments": [
+      "/install",
+      "/norestart"
+    ],
+    "endUserAction": "Open the returned verified installer, complete Microsoft terms/UAC manually, then rerun the original product command to recheck Registry64 and the three System32 DLLs. Product does not perform installation or accept terms.",
+    "nativeValidation": {
+      "user": "LAPTOP-S7A4IQFU\\h",
+      "elevated": false,
+      "status": "passed",
+      "readonlyCommands": [
+        {
+          "command": "--help",
+          "exit": 0
+        },
+        {
+          "command": "status",
+          "exit": 1
+        },
+        {
+          "command": "stop",
+          "exit": 1
+        }
+      ],
+      "readonlyExplanation": "status/stop used an intentionally absent root: exit1 was expected, with no cache/download side effect.",
+      "remotePrepareExit": 0,
+      "externalPrepareExit": 0,
+      "managedCommands": [
+        {
+          "command": "prepare",
+          "exit": 3,
+          "status": "installation-required"
+        },
+        {
+          "command": "install",
+          "exit": 3,
+          "status": "installation-required"
+        },
+        {
+          "command": "launch",
+          "exit": 3,
+          "status": "installation-required"
+        }
+      ],
+      "environmentCreated": false,
+      "cacheBefore": false,
+      "cacheAfterReadonly": false,
+      "cacheAfterRemoteAndExternal": false,
+      "runtimeVersionAfter": "v14.50.35719.00",
+      "signature": "Valid",
+      "independentSha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+      "badCachedInstallerRejected": true,
+      "badCachedInstallerExit": 1,
+      "probeTaskRemoved": true,
+      "remoteTemporaryPackageRemoved": true
+    },
+    "tests": {
+      "node": "24.21.0 bundled product runtime",
+      "suiteCommand": "dist/product-darwin-arm64/resources/node/bin/node scripts/test.mjs product-runtime",
+      "passed": 44,
+      "failed": 0,
+      "expandedSavedDatabaseRoutingCliRegression": "passed",
+      "typechecks": "local-runtime and product-runtime passed",
+      "windowsFullPackage": "built; helper hash verified and installer absent",
+      "windowsRemotePackage": "built; PG/helper/installer metadata absent; temporary output removed",
+      "initialWrongNodeRun": "Node26 rejected by existing Node24.21 lifecycle contract; correct-runtime rerun passed43/43"
+    },
+    "candidate": "dist/product-win32-x64-r5",
+    "files": [
+      "apps/local-runtime/src/cli.ts",
+      "packages/product-runtime/src/prerequisites.ts",
+      "packages/product-runtime/src/index.ts",
+      "packages/product-runtime/src/postgres.ts",
+      "scripts/package-product.mjs",
+      "scripts/product-resources.json",
+      "scripts/windows-prereq-prepare.ps1",
+      "packages/product-runtime/test/prerequisites.test.mjs",
+      "packages/product-runtime/test/prerequisites-cli.test.mjs"
+    ],
+    "candidateFromMain": {
+      "directory": "dist/product-win32-x64-r5",
+      "zipSha256": "928faca45e1e02e3f71bcefcf7a2ff1dbbe56558d6922e01ca8744665e442092",
+      "entryHashesVerifiedByMain": 40
+    },
+    "nativeReadyAfterInstall": "passed in non-elevated actual r5 package; Windows installer returned 3010 requiring later host reboot",
+    "nativeInstallation": {
+      "status": "success-reboot-required",
+      "startedAt": "2026-10-29T14:05:29.0739025Z",
+      "finishedAt": "2026-10-29T14:07:05.1076420Z",
+      "versionBefore": "v14.50.35719.00",
+      "versionAfter": "v14.51.36247.00",
+      "installer": "C:\\Users\\h\\AppData\\Local\\XunJie\\prerequisites\\vc14-x64-14.51.36247\\VC_redist.x64.exe",
+      "sha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+      "signature": "Valid; Microsoft Corporation; verified immediately before invocation",
+      "arguments": [
+        "/install",
+        "/passive",
+        "/norestart",
+        "/log",
+        "<owned temporary log path>"
+      ],
+      "exitCode": 3010,
+      "rebootRequired": true,
+      "automaticRestartAllowed": false,
+      "agentRequestedHostReboot": false,
+      "method": "one acceptance install through existing elevated SSH, /passive /norestart; product still only prepares installer",
+      "scope": "existing physical Windows 11 runtime upgrade, not clean OS installation",
+      "pageBefore": {
+        "state": "ready",
+        "environmentId": "eeebb719-c7b9-4677-a925-f1e3601f643d"
+      },
+      "cleanup": {
+        "logSummary": [
+          "[C524:80EC][2026-10-29T22:07:05]i399: Apply complete, result: 0x0, restart: Required, ba requested restart:  No",
+          "[C524:80EC][2026-10-29T22:07:05]i500: Shutting down, exit code: 0xbc2",
+          "[C524:80EC][2026-10-29T22:07:05]i007: Exit code: 0xbc2, restarting: No"
+        ],
+        "temporaryLogDirectoryRemoved": true,
+        "installerCachePreserved": true
+      }
+    },
+    "nativeReadyVerification": {
+      "status": "passed",
+      "startedAt": "2026-10-29T14:09:44.149Z",
+      "stages": [
+        {
+          "command": "prepare",
+          "status": "ready"
+        },
+        {
+          "command": "install",
+          "state": "installed"
+        },
+        {
+          "command": "start",
+          "state": "ready"
+        },
+        {
+          "command": "status",
+          "state": "ready"
+        },
+        {
+          "command": "stop",
+          "state": "stopped"
+        },
+        {
+          "command": "delete",
+          "exitCode": 0,
+          "result": null,
+          "independentlyVerified": true
+        }
+      ],
+      "token": {
+        "user": "h",
+        "elevated": false
+      },
+      "runtime": {
+        "version": "v14.51.36247.00",
+        "toolchainFamilyFloor": "14.51",
+        "installed": true,
+        "dlls": [
+          {
+            "path": "C:\\Windows\\System32\\vcruntime140.dll",
+            "acceptable": true,
+            "name": "vcruntime140.dll",
+            "version": "14.51.36247.0"
+          },
+          {
+            "path": "C:\\Windows\\System32\\vcruntime140_1.dll",
+            "acceptable": true,
+            "name": "vcruntime140_1.dll",
+            "version": "14.51.36247.0"
+          },
+          {
+            "path": "C:\\Windows\\System32\\msvcp140.dll",
+            "acceptable": true,
+            "name": "msvcp140.dll",
+            "version": "14.51.36247.0"
+          }
+        ],
+        "ready": true,
+        "registryView": "Registry64",
+        "productAcceptedMinimum": "14.51.36247.0",
+        "minimumMeaning": "Conservative pinned product policy; exact upstream compiler patch minimum not established"
+      },
+      "ready": {
+        "state": "ready",
+        "environmentId": "0378ddd2-7663-4d02-b66c-46b281d330cf",
+        "endpoint": "http://127.0.0.1:61777",
+        "postgres": [
+          {
+            "name": "PostgreSQL",
+            "required": true,
+            "state": "ready",
+            "detail": "18.6"
+          }
+        ],
+        "pageStatus": 200
+      },
+      "finishedAt": "2026-10-29T14:10:05.759Z",
+      "harnessRecordingIssue": {
+        "afterSuccessfulProductDelete": true,
+        "message": "Cannot read properties of null (reading 'state')",
+        "cause": "Probe treated successful JSON null from delete as an object. The API removes owned data and intentionally retains root marker/locks. Independent checks confirmed only those remained and no process was running; lab then removed."
+      },
+      "cleanup": {
+        "remainingOwnedProcesses": 0,
+        "onlyMarkerAndLocksRemainedBeforeLabCleanup": true,
+        "environmentDataDeleted": true,
+        "taskRemoved": true,
+        "pageAfter": {
+          "state": "ready",
+          "environmentId": "eeebb719-c7b9-4677-a925-f1e3601f643d"
+        },
+        "rootRemoved": true,
+        "reviewPageTouched": false
+      },
+      "archiveSha256": "928faca45e1e02e3f71bcefcf7a2ff1dbbe56558d6922e01ca8744665e442092",
+      "browser": "HTTP and served document only; no new Chrome interaction claimed",
+      "firstHarnessAttempt": "PATH omitted the standard Windows PowerShell directory; prepare passed, install stopped before initialization. Corrected temporary harness PATH and reran; no product source changed."
+    }
+  },
+  "remainingWork": [
+    "Microsoft installer returned 3010: host restart requested, no automatic restart performed and no post-reboot observation claimed. Current non-elevated product ready verification passed."
+  ],
+  "noCommitOrPush": true,
+  "reviewFixHostCheck": {
+    "nodePath": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-wp01-win-20261029-2127\\r3 candidate\\resources\\node\\node.exe",
+    "temp": "C:\\Users\\h\\AppData\\Local\\Temp",
+    "runtime": "v14.50.35719.00",
+    "nodeExists": false
+  },
+  "reviewFixNativeStage": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-prereq-review-b910b1db",
+  "reviewFixNativeTask": {
+    "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-prereq-review-b910b1db",
+    "runLevel": "Limited",
+    "task": "XunJie-prereq-review-b910b1db"
+  },
+  "reviewFixNativeResult": {
+    "status": "passed",
+    "startedAt": "2026-10-29T13:57:34.021Z",
+    "tests": [
+      "direct install typed gate before root/identity/credentials",
+      "CLI prepare/install JSON exit3 without environment mutation",
+      "missing root marker rejected before download in API/CLI",
+      "uninstalled rejected without helper/cache",
+      "direct start typed gate before daemon/log state",
+      "native bad cache bounded JSON/path/manual recovery; retained unchanged"
+    ],
+    "token": {
+      "user": "LAPTOP-S7A4IQFU\\h",
+      "elevated": false
+    },
+    "prepared": {
+      "status": "installation-required",
+      "installer": "C:\\Users\\h\\AppData\\Local\\XunJie\\prerequisites\\vc14-x64-14.51.36247\\VC_redist.x64.exe"
+    },
+    "badCache": {
+      "code": "VC_CACHE_HASH_MISMATCH",
+      "cachePath": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-prereq-review-b910b1db\\bad-cache\\VC_redist.x64.exe",
+      "recovery": "请核对该缓存路径，手动将该文件移出缓存并保留备份，再运行 xunjie prepare 从微软重新下载。不要运行此文件；程序不会自动删除或覆盖它。",
+      "unchanged": true,
+      "fixtureRemovedAfterVerification": true
+    },
+    "completedAt": "2026-10-29T13:57:42.983Z",
+    "checks": {
+      "invalidOrUninstalledBeforeDownload": "passed",
+      "publicLifecycleGateBeforeMutation": "passed",
+      "badCacheActionableDiagnosticAndPreservation": "passed"
+    }
+  },
+  "reviewFixCleanup": {
+    "productCacheSha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+    "taskRemoved": true,
+    "stageRemoved": true,
+    "taskStateBeforeRemoval": "Ready",
+    "productCachePreserved": true,
+    "parentPageRootAndTaskTouched": false,
+    "localStageRemoved": true
+  },
+  "reviewFixSummary": {
+    "status": "passed",
+    "sourceStableSinceUtc": "2026-10-29T13:47:47Z",
+    "noSourceChangesAfterParentVerifyStartedUtc": "2026-10-29T13:54:56Z",
+    "api": "runtime.prepare(input?: InstallOptions): Promise<ProductPrerequisiteResult>",
+    "installationError": {
+      "name": "ProductInstallationRequiredError",
+      "code": "PRODUCT_INSTALLATION_REQUIRED",
+      "result": "ProductPrerequisiteResult; CLI JSON/exit3"
+    },
+    "preparationError": {
+      "name": "ProductPrerequisitePreparationError",
+      "codeExample": "VC_CACHE_HASH_MISMATCH",
+      "fields": [
+        "cachePath",
+        "recovery"
+      ],
+      "cli": "bounded JSON/exit1; no raw PowerShell/XML echo"
+    },
+    "unchangedLifecycleReturnType": "install/start remain Promise<RuntimeStatus>",
+    "tests": {
+      "productRuntimePassed": 44,
+      "productRuntimeFailed": 0,
+      "typechecks": "product-runtime/local-runtime passed",
+      "nativeWindowsChecksPassed": 3,
+      "nativeWindowsElevated": false
+    },
+    "changedFilesThisReview": [
+      "apps/local-runtime/src/cli.ts",
+      "packages/product-runtime/src/runtime.ts",
+      "packages/product-runtime/src/prerequisites.ts",
+      "packages/product-runtime/src/index.ts",
+      "scripts/windows-prereq-prepare.ps1",
+      "packages/product-runtime/test/prerequisites-cli.test.mjs",
+      "packages/product-runtime/test/prerequisites-lifecycle.test.mjs",
+      "docs/student-agent-implementation/evidence/wp01-clean-windows.json"
+    ],
+    "finalVerifyAndBuild": "Main agent owns final verify/build. No additional matrix, VM or commit/push."
+  }
+}

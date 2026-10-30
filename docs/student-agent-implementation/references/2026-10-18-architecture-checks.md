@@ -6,23 +6,23 @@
 
 | 当前事实 | 对本轮设计的影响 | 源码入口 |
 | --- | --- | --- |
-| 工作区按 `hdl_board` 分流，注入不同运行和面板逻辑。 | 课程配置需要取代主页面课程分支；现有组件可以按能力重新封装。 | [PrepWorkspacePage.tsx](../../../apps/student/src/pages/PrepWorkspacePage.tsx#L74) |
-| 编辑后的防抖主要保护本机草稿；服务端保存与冻结由独立操作触发。 | 实时同步需要新的确认、补传和提问前协调契约，不能把当前本机保护视为已实现实时状态。 | [本机保护](../../../apps/student/src/components/workspace/useProjectWorkspace.ts#L336)、[保存与冻结](../../../apps/student/src/pages/PrepWorkspacePage.tsx#L636) |
-| 代码求助先要求已确认文件、快照，再捕获代码引用。 | 通用划选引用与取消手动保存前提需要同时改造。 | [onCodeHelp](../../../apps/student/src/pages/PrepWorkspacePage.tsx#L234) |
-| C 运行已绑定快照、输入、摘要与运行身份。 | 实际执行依据应保留为内部能力，由系统自动生成，不要求学生管理。 | [运行命令](../../../apps/teaching/server/workspace/commands.ts#L171) |
-| 学生辅导一次生成有限动作，明确禁止修改文件和运行代码；动作 schema 也固定这些行为为 false。 | 真正的工具型 Agent 需要重建执行与教学策略边界，不能只改提示词。 | [辅导策略](../../../apps/teaching/server/tutoring/core.ts#L89)、[动作定义](../../../apps/teaching/server/records/teaching.ts#L50) |
-| 演示 IP 使用 `COUNTER_GUIDE` 预置步骤。 | 已有视觉载体可复用，连续教学驱动仍需实现。 | [演示脚本](../../../apps/student/src/pages/WorkspacePage.tsx#L29) |
-| 通用个人模型传输固定请求 `/chat/completions`。 | 三协议路线、能力声明与原生续接不是现成能力。 | [兼容传输](../../../apps/teaching/server/tutoring/openai-compatible.ts#L140) |
-| 生成沙箱已有初始化和状态回传；真实聊天的卡片持久化、小测等入口仍不可用。 | 可复用 iframe 生命周期与桥接经验，统一工作区对象持久化和教学事件链仍待补齐。 | [沙箱消息](../../../apps/student/src/bridge/genSandbox.ts#L40)、[真实 API](../../../apps/student/src/bridge/agentApi.ts#L158) |
-| 现有数据库事务接口要求同步、不可嵌套，直接操作 SQLite。 | 增加 PostgreSQL 不是换连接字符串；双数据库会增加实际适配与验收工作。 | [事务接口](../../../apps/teaching/server/db/transaction.ts#L93) |
-| 应用支持登记多执行节点；节点主动用 SSH 反向隧道接入业务服务，浏览器提交登记的节点 ID。 | 已有“服务在云端、编译在学生电脑”的静态协议基础，源码与结果仍经业务服务；不能把本地计算等同于离线或数据不上云。 | [多节点组合](../../../apps/teaching/server/app/digital-logic.ts#L47)、[节点选择](../../../apps/teaching/server/app/execution-nodes.ts#L30)、[现行回连入口](../../../tools/xj-dev/README.md#模式与受管连接)（原脚本已由 #128 替代） |
-| 执行协议已有 query/submit/cancel/readResult，并保持任务的原节点与代际；现有节点选择函数只检查登记与代际。 | 可复用意图、结果和恢复语义；用户配对、节点归属与使用权限仍需明确。不能把登记节点自动视为所有学生都可使用。 | [执行协议](../../../apps/teaching/server/records/runner.ts#L54)、[节点绑定](../../../apps/teaching/server/app/execution-nodes.ts#L29) |
-| HDL 执行依赖 Linux 容器、资源约束、无网络、只读输入与 AppArmor 等机制。 | 隔离由执行环境提供；跨平台本地运行需要实际安装与兼容验证，不能简单替换成普通子进程。 | [容器执行参数](../../../apps/teaching/runner/hdl-executor.ts#L16) |
-| 教师工作台读取 Attempt、提交和快照；教师 Agent 复用模型与辅导模块。 | 学生端重构仍要决定共享接口与旧数据如何过渡；教师端“不展开设计”不等于没有影响。 | [教师工作台](../../../apps/teaching/server/app/teacher-workbench.ts#L49)、[教师模型依赖](../../../apps/teaching/server/design/teacher-agent.ts#L9) |
+| 工作区按 `hdl_board` 分流，注入不同运行和面板逻辑。 | 课程配置需要取代主页面课程分支；现有组件可以按能力重新封装。 | [PrepWorkspacePage.tsx](../../../apps/web/src/pages/PrepWorkspacePage.tsx#L74) |
+| 编辑后的防抖主要保护本机草稿；服务端保存与冻结由独立操作触发。 | 实时同步需要新的确认、补传和提问前协调契约，不能把当前本机保护视为已实现实时状态。 | [本机保护](../../../apps/web/src/components/workspace/useProjectWorkspace.ts#L336)、[保存与冻结](../../../apps/web/src/pages/PrepWorkspacePage.tsx#L636) |
+| 代码求助先要求已确认文件、快照，再捕获代码引用。 | 通用划选引用与取消手动保存前提需要同时改造。 | [onCodeHelp](../../../apps/web/src/pages/PrepWorkspacePage.tsx#L234) |
+| C 运行已绑定快照、输入、摘要与运行身份。 | 实际执行依据应保留为内部能力，由系统自动生成，不要求学生管理。 | [运行命令](../../../apps/server/server/workspace/commands.ts#L171) |
+| 学生辅导一次生成有限动作，明确禁止修改文件和运行代码；动作 schema 也固定这些行为为 false。 | 真正的工具型 Agent 需要重建执行与教学策略边界，不能只改提示词。 | [辅导策略](../../../apps/server/server/tutoring/core.ts#L89)、[动作定义](../../../apps/server/server/records/teaching.ts#L50) |
+| 演示 IP 使用 `COUNTER_GUIDE` 预置步骤。 | 已有视觉载体可复用，连续教学驱动仍需实现。 | [演示脚本](../../../apps/web/src/pages/WorkspacePage.tsx#L29) |
+| 通用个人模型传输固定请求 `/chat/completions`。 | 三协议路线、能力声明与原生续接不是现成能力。 | [兼容传输](../../../apps/server/server/tutoring/openai-compatible.ts#L140) |
+| 生成沙箱已有初始化和状态回传；真实聊天的卡片持久化、小测等入口仍不可用。 | 可复用 iframe 生命周期与桥接经验，统一工作区对象持久化和教学事件链仍待补齐。 | [沙箱消息](../../../apps/web/src/bridge/genSandbox.ts#L40)、[真实 API](../../../apps/web/src/bridge/agentApi.ts#L158) |
+| 现有数据库事务接口要求同步、不可嵌套，直接操作 SQLite。 | 增加 PostgreSQL 不是换连接字符串；双数据库会增加实际适配与验收工作。 | [事务接口](../../../apps/server/server/db/transaction.ts#L93) |
+| 应用支持登记多执行节点；节点主动用 SSH 反向隧道接入业务服务，浏览器提交登记的节点 ID。 | 已有“服务在云端、编译在学生电脑”的静态协议基础，源码与结果仍经业务服务；不能把本地计算等同于离线或数据不上云。 | [多节点组合](../../../apps/server/server/app/digital-logic.ts#L47)、[节点选择](../../../apps/server/server/app/execution-nodes.ts#L30)、[现行回连入口](../../../tools/xj-dev/README.md#模式与受管连接)（原脚本已由 #128 替代） |
+| 执行协议已有 query/submit/cancel/readResult，并保持任务的原节点与代际；现有节点选择函数只检查登记与代际。 | 可复用意图、结果和恢复语义；用户配对、节点归属与使用权限仍需明确。不能把登记节点自动视为所有学生都可使用。 | [执行协议](../../../apps/server/server/records/runner.ts#L54)、[节点绑定](../../../apps/server/server/app/execution-nodes.ts#L29) |
+| HDL 执行依赖 Linux 容器、资源约束、无网络、只读输入与 AppArmor 等机制。 | 隔离由执行环境提供；跨平台本地运行需要实际安装与兼容验证，不能简单替换成普通子进程。 | [容器执行参数](../../../apps/server/runner/hdl-executor.ts#L16) |
+| 教师工作台读取 Attempt、提交和快照；教师 Agent 复用模型与辅导模块。 | 学生端重构仍要决定共享接口与旧数据如何过渡；教师端“不展开设计”不等于没有影响。 | [教师工作台](../../../apps/server/server/app/teacher-workbench.ts#L49)、[教师模型依赖](../../../apps/server/server/design/teacher-agent.ts#L9) |
 
-现有教学记录区分交付、展示、确认和失效，可作为后续运行时证据记录的复用候选。迁移时保留其目的，不必沿用全部字段与表结构。[记录定义](../../../apps/teaching/server/records/teaching.ts#L40)
+现有教学记录区分交付、展示、确认和失效，可作为后续运行时证据记录的复用候选。迁移时保留其目的，不必沿用全部字段与表结构。[记录定义](../../../apps/server/server/records/teaching.ts#L40)
 
-当前个人模型通道要求公网 HTTPS，拒绝 localhost 和私网地址；计算节点本地化不会自动支持本地模型。若后续需要本地模型，需通过明确的受信连接机制实现，而非直接放开现有公网端点校验。[模型地址策略](../../../apps/teaching/server/tutoring/openai-compatible.ts#L24)
+当前个人模型通道要求公网 HTTPS，拒绝 localhost 和私网地址；计算节点本地化不会自动支持本地模型。若后续需要本地模型，需通过明确的受信连接机制实现，而非直接放开现有公网端点校验。[模型地址策略](../../../apps/server/server/tutoring/openai-compatible.ts#L24)
 
 ## 模型调用层
 

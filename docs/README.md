@@ -6,6 +6,7 @@
 | 学生端 Agent 的设计、Wayfinder 决议、研究材料与实施工作包 | [student-agent-implementation](student-agent-implementation/README.md) |
 | 本地前后端、共享数据和独立复现环境 | [开发协作](development-collaboration.md) |
 | 已有开发工具、入口与使用边界 | [开发工具](development-tooling.md) |
+| workspace 安装/构建/测试入口及运行安装、存储接入 | [工程入口与 WP01 交接](student-agent-implementation/engineering-entrypoints.md) |
 | 成员接入、权限和云端运行 | [接入与运维](development-access-operations.md) |
 | 开发协作工具规范与实施子票 | [开发协作工具规范](https://github.com/paher-din/XunJie/issues/126) |
 | 开发环境的资源、交付和运行核查 | [服务器核查](references/2026-10-23-development-server-assessment.md)、[交付核查](references/2026-10-24-development-delivery-closeout.md)、[团队交接](references/2026-10-24-team-development-handoff.md) |

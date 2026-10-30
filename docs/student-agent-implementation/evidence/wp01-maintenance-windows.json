@@ -1,0 +1,681 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "kind": "standalone-distributed-product-recovery",
+  "status": "passed",
+  "startedAt": "2026-10-29T19:07:59.275Z",
+  "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3",
+  "probeSha256": "1ce1fc4e30f7498c5e2cf8a5e39b36a5dde27e142df0973c02b959fbaac524ac",
+  "ownerSha256": "490891947f415a98c53e4ff1e00bdd1a205b23427bde29340a34daad880d878d",
+  "host": {
+    "platform": "win32",
+    "arch": "x64",
+    "release": "10.0.26200",
+    "node": "v24.21.0",
+    "bundledNode": true
+  },
+  "packages": [
+    {
+      "path": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\xunjie-145-product-win18",
+      "entrySha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+      "resourcesSha256": "63e6690973073fbcff6fe22627ead16157b766a3ac35621a897dd3f15ca7be06",
+      "nodeSha256": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "18.6",
+      "postgresSha256": "5fc1baf66a21e54405af63d11c0d5797a9f112a57ad502ec7f575ab0cc71d814"
+    },
+    {
+      "path": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\xunjie-145-product-win1710",
+      "entrySha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+      "resourcesSha256": "e7d1599a39e24ccee92e99395ba6c78ac05457fcda9fdbc5ca888fc8dc8738df",
+      "nodeSha256": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "17.10",
+      "postgresSha256": "ae9f92d896d02ea93085d828d95abbc4303c891a12fe0f15d9a1f7bb1a465b65"
+    },
+    {
+      "path": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\xunjie-145-product-win1711",
+      "entrySha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+      "resourcesSha256": "9415458141daf6f851b105ce2d582acf42b900a743173341a412529a865b8f0f",
+      "nodeSha256": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "17.11",
+      "postgresSha256": "84a1a79923aebabcbf4821b6fd489c39b69773a0aa0ce5c1fc75cf6a8bc2e5de"
+    }
+  ],
+  "stages": [
+    {
+      "name": "file-source-service-api-seed",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:08.231Z",
+      "result": {
+        "recordCount": 2,
+        "requestId": "ecab4aa9-da56-45e6-9b5c-f63cc3e0e5f9",
+        "effectRequestId": "641517eb-bf75-4525-b4d5-d289a313e22a",
+        "engineVersion": "18.6",
+        "resources": [
+          {
+            "resourceId": "9d0faea6-c25e-4f6e-8385-3edaf6db72e0",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "6318f6f2d49178f2871d92cf1eebf5e62cd7ee8e11578c8331e35787d394ae17",
+            "opaqueByteLength": 86,
+            "backendId": "recovery-files"
+          },
+          {
+            "resourceId": "d823bd3c-eaaf-4efe-9dc8-689d9bd74b06",
+            "sha256": "0ac2ad8d1ae5ffb212a7aa6d899becef49e86b6fba22b5f82644679ad93888f4",
+            "byteLength": 131091,
+            "opaqueSha256": "8d8c7b2e96025a660ed53563a8493064fcf23cbd66e406bb8c8ebf249f1574ee",
+            "opaqueByteLength": 131146,
+            "backendId": "recovery-files"
+          }
+        ]
+      },
+      "durationMs": 93
+    },
+    {
+      "name": "unrelated-B-service-api-seed",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:16.840Z",
+      "result": {
+        "recordCount": 2,
+        "requestId": "a1d2718a-c773-4eb1-b34d-0e3837c5cb36",
+        "effectRequestId": "6990abbd-aba2-4da0-bd87-c5995496b3b2",
+        "engineVersion": "18.6",
+        "resources": [
+          {
+            "resourceId": "24a485ca-8c70-458a-ada6-10ac3f7b96f0",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "076b47e785ac51a831d3fdc12c371c711c625aaf3c3aa563e99f2887ccd7865a",
+            "opaqueByteLength": 86,
+            "backendId": "recovery-files"
+          },
+          {
+            "resourceId": "27341cde-184e-4277-8693-703010cea983",
+            "sha256": "9c10e62ac1d976ec448c9d2b8509a0c66f2d557a0f0d2be20d43efd362e1e21d",
+            "byteLength": 131091,
+            "opaqueSha256": "1e87c87dc5d08a38d2ce5bdc9630b0b0a3879da5be58d6d35f4b92dbe40a707b",
+            "opaqueByteLength": 131146,
+            "backendId": "recovery-files"
+          }
+        ]
+      },
+      "durationMs": 95
+    },
+    {
+      "name": "file-held-backup",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:16.936Z",
+      "result": {
+        "backupId": "ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+        "boundaryAt": "2026-10-29T19:08:18.108Z",
+        "completedAt": "2026-10-29T19:08:18.747Z",
+        "durationMs": 662,
+        "artifacts": [
+          {
+            "path": "9c2c4ce0-8d5e-4800-8789-6244621d5b4d/9d0faea6-c25e-4f6e-8385-3edaf6db72e0.blob",
+            "sha256": "02c5d2f6c22117439ce4efa610704849f57e55af6446ddae30c0524e279a54ca",
+            "byteLength": 114
+          },
+          {
+            "path": "9c2c4ce0-8d5e-4800-8789-6244621d5b4d/d823bd3c-eaaf-4efe-9dc8-689d9bd74b06.blob",
+            "sha256": "c21a9d9040676b91ec940d4534ab7d71041c6df2029594b3847a8c0f91aad158",
+            "byteLength": 131174
+          },
+          {
+            "path": "9c2c4ce0-8d5e-4800-8789-6244621d5b4d/recovery.json",
+            "sha256": "f2267f5423cbcf05741559b907a3a0a53aafc0d32ccb17e9b2f28e5b70adb305",
+            "byteLength": 2087
+          },
+          {
+            "path": "9c2c4ce0-8d5e-4800-8789-6244621d5b4d/schema.dump",
+            "sha256": "8a487b41a518ca0c6210c50b26b8083c365f03c7f83ec3420edc551c7a2dfcd8",
+            "byteLength": 20121
+          },
+          {
+            "path": "d6b2cd24-6ee1-4f24-beb1-2431ffd74f31/recovery.json",
+            "sha256": "18eaf2e4775ff211241947303c6b3064ced2bff09927b93f183baaf49fef7326",
+            "byteLength": 1541
+          },
+          {
+            "path": "d6b2cd24-6ee1-4f24-beb1-2431ffd74f31/runtime.dump",
+            "sha256": "f454a30fe91d434a3f26b0b143fdda9858b71857d3964979cf2aa9c9394469d3",
+            "byteLength": 1446
+          }
+        ],
+        "services": [
+          {
+            "serviceId": "d6b2cd24-6ee1-4f24-beb1-2431ffd74f31",
+            "schemaVersion": "1",
+            "engineVersion": "18.6"
+          },
+          {
+            "serviceId": "9c2c4ce0-8d5e-4800-8789-6244621d5b4d",
+            "schemaVersion": "storage/1;owner/1",
+            "engineVersion": "18.6"
+          }
+        ]
+      },
+      "durationMs": 1827
+    },
+    {
+      "name": "portability-export-private-inputs",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:18.766Z",
+      "result": {
+        "sourceRoot": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-source",
+        "expectFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\portability.private.json",
+        "keyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\private\\recovery-key.base64",
+        "backupDirectory": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-backups\\ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+        "manifestFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-backups\\ebc90862-9c76-48d7-ac36-a9c0b45cf39f\\manifest.json",
+        "backupId": "ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+        "privateExpectedEncoding": "explicit-base64-for-raw-and-opaque-bytes",
+        "generatedKeyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\private\\recovery-key.base64"
+      },
+      "durationMs": 2
+    },
+    {
+      "name": "file-restore-isolated-service-api-verification",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:18.773Z",
+      "result": {
+        "isolated": true,
+        "pendingIntentsRejected": true,
+        "writesRejected": true,
+        "backupId": "ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+        "engineVersion": "18.6",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "7b380bb1-8a5b-4493-9541-6d870e759373",
+          "installationId": "24c3c50a-27d5-4a10-94d2-10bed89798fe",
+          "clientNamespace": "xunjie.v1.7b380bb1-8a5b-4493-9541-6d870e759373.recovery.0cbd8f93-51bb-4811-84ae-f1fd87a41d05",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "7b380bb1-8a5b-4493-9541-6d870e759373",
+              "serviceId": "d6b2cd24-6ee1-4f24-beb1-2431ffd74f31",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:64357",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        }
+      },
+      "durationMs": 8933
+    },
+    {
+      "name": "file-target-takeover-source-alive-and-constraints",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:27.708Z",
+      "result": {
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 5423
+    },
+    {
+      "name": "file-target-normal-stop-fresh-host-reopens-rotated-storage-and-writes",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:33.132Z",
+      "result": {
+        "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-restored",
+        "normalStopConfirmed": true,
+        "newHostCreated": true,
+        "newStorageModuleAndPool": true,
+        "persistedCredentialRef": "storage-9c2c4ce0-8d5e-4800-8789-6244621d5b4d",
+        "credentialFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-restored\\credentials\\storage-9c2c4ce0-8d5e-4800-8789-6244621d5b4d",
+        "rotatedTargetCredentialUsed": true,
+        "originalRowsReceiptsRawAndOpaqueBytesUnchanged": true,
+        "originalPendingIntentsUnchanged": true,
+        "sequenceBeforeStop": "5",
+        "expectedNextSequence": "6",
+        "actualNextSequence": "6",
+        "sourceHostReopenRejected": true
+      },
+      "durationMs": 3103
+    },
+    {
+      "name": "unrelated-B-not-modified-by-A-restore",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:36.236Z",
+      "result": {
+        "independentInstallationId": "de4a4101-b5af-4010-83ca-b15b1d67131c",
+        "stillReady": true,
+        "dataAndReceiptsAndBytesUnchanged": true
+      },
+      "durationMs": 115
+    },
+    {
+      "name": "missing-cipher",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:36.354Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 22
+    },
+    {
+      "name": "corrupt-cipher",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:36.378Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 20
+    },
+    {
+      "name": "wrong-recovery-key",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:36.399Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true,
+        "keyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\private\\wrong-recovery-key.base64"
+      },
+      "durationMs": 3
+    },
+    {
+      "name": "insufficient-space-preflight",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:36.404Z",
+      "result": {
+        "rejected": true,
+        "error": "insufficient-space",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 14
+    },
+    {
+      "name": "occupied-target-preserves-live-B",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:36.419Z",
+      "result": {
+        "rejected": true,
+        "error": "target-conflict",
+        "targetNeverEnabled": false,
+        "independentBUnmodified": true
+      },
+      "durationMs": 89
+    },
+    {
+      "name": "validation-interruption-and-same-backup-new-target-rebuild",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:36.510Z",
+      "result": {
+        "interruption": "validation-after-real-restore",
+        "failedTargetNeverEnabled": true,
+        "rebuiltInNewRoot": true,
+        "originalBackupId": "ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+        "originalCipherUnchanged": true,
+        "rebuildIsolated": true
+      },
+      "durationMs": 17729
+    },
+    {
+      "name": "process-termination-mid-restore-and-same-backup-rebuild",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:54.241Z",
+      "result": {
+        "childReachedRealRestore": true,
+        "terminatedByParent": true,
+        "exitSignal": "SIGKILL",
+        "exitCode": null,
+        "interruptedPhase": "restoring",
+        "failedTargetNeverEnabled": true,
+        "originalBackupId": "ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+        "sameBackupRebuiltInNewRoot": true,
+        "rebuildIsolated": true,
+        "orphanedManagedDatabaseStopped": true,
+        "originalCipherUnchanged": true
+      },
+      "durationMs": 19772
+    },
+    {
+      "name": "schema-upgrade-v1-to-v2-held-backup",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:09:14.015Z",
+      "result": {
+        "sourceVersion": "18.6",
+        "targetVersion": "18.6",
+        "backupId": "b5a8b129-3203-4217-a747-d85f22f3300f",
+        "boundaryAt": "2026-10-29T19:09:29.324Z",
+        "backupDurationMs": 627,
+        "isolatedVerified": true,
+        "schemaVersion": 2,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 30334
+    },
+    {
+      "name": "process-termination-mid-schema-upgrade-and-actual-data-recovery",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:09:44.350Z",
+      "result": {
+        "childReachedRealRestore": true,
+        "terminatedByParent": true,
+        "exitSignal": "SIGKILL",
+        "exitCode": null,
+        "schemaVersion": 2,
+        "kind": "schema",
+        "sourceSchemaVersion": 1,
+        "targetSchemaVersion": 2,
+        "interruptedPhase": "restoring",
+        "sourceUpgradeJournalPreserved": true,
+        "originalBackupId": "be845c9c-bc3b-4a73-b4b7-432e943a0dc7",
+        "actualDataRestoredInFreshTarget": true,
+        "sameBackupUsed": true,
+        "originalCipherUnchanged": true,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 36546
+    },
+    {
+      "name": "s3-independent-bucket-round-trip-and-takeover",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:10:20.898Z",
+      "result": {
+        "fixtureVersion": "4.50",
+        "fixtureBinarySha256": "f9a4800c3d9a2790240d97604f864d2c71ce167649a69de1f7962af20ae7029b",
+        "backendId": "issue144-e73fc3a1500d",
+        "sourceBucket": "issue144-e73fc3a1500d",
+        "targetBucket": "recovery-c8c3f046f48615a19d357ad1",
+        "targetBucketCreatedByHost": true,
+        "independentBuckets": true,
+        "backupId": "84cd7737-fe25-492e-8715-9d5af9883ddf",
+        "boundaryAt": "2026-10-29T19:10:30.534Z",
+        "backupDurationMs": 680,
+        "resources": [
+          {
+            "resourceId": "1f73a2b0-ac12-4999-a677-ea559860d381",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "98362a1bde31ffce4170e369aea946e2a100f4663b0ba2227a5f0f86d38e58e3",
+            "opaqueByteLength": 86,
+            "backendId": "issue144-e73fc3a1500d"
+          },
+          {
+            "resourceId": "fc5e3c60-2ff0-49bc-a28f-51fcf3aec845",
+            "sha256": "19da224d827df8a4b99c34849338d4a2efcf17dff1b4453c0a86b926aa606dbb",
+            "byteLength": 131091,
+            "opaqueSha256": "29930da87a6921d0ac0067880205574c0f4f314d12aa5cf137a515830f99287e",
+            "opaqueByteLength": 131146,
+            "backendId": "issue144-e73fc3a1500d"
+          }
+        ],
+        "isolatedVerified": true,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 25359
+    },
+    {
+      "name": "external-major-upgrade-refuses-unchanged-server-engine",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:10:46.260Z",
+      "result": {
+        "sourceEngineVersion": "17.11",
+        "requestedTargetVersion": "18.6",
+        "unchangedActualTargetVersion": "17.11",
+        "rejected": true,
+        "targetNeverEnabled": true,
+        "sourceResumedAndVerified": true,
+        "externalProviderStillReady": true,
+        "originalBackupUnchanged": true
+      },
+      "durationMs": 26784
+    },
+    {
+      "name": "pg-minor-17.10-to-17.11-product-upgrade",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:11:13.045Z",
+      "result": {
+        "sourceVersion": "17.10",
+        "targetVersion": "17.11",
+        "backupId": "f23dfcdf-4ada-45e0-bc90-deb34f621283",
+        "boundaryAt": "2026-10-29T19:11:23.040Z",
+        "backupDurationMs": 651,
+        "isolatedVerified": true,
+        "schemaVersion": 1,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 25246
+    },
+    {
+      "name": "pg-major-17.11-to-18.6-product-upgrade",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:11:38.293Z",
+      "result": {
+        "sourceVersion": "17.11",
+        "targetVersion": "18.6",
+        "backupId": "6c0f0b05-1b47-4312-a361-ec1c4883c8db",
+        "boundaryAt": "2026-10-29T19:11:48.512Z",
+        "backupDurationMs": 693,
+        "isolatedVerified": true,
+        "schemaVersion": 1,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 25503
+    }
+  ],
+  "skipped": [],
+  "cleanup": [
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\pg-major-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\pg-major-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\pg-minor-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\pg-minor-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\wrong-engine-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\unchanged-external-provider",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\wrong-engine-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\s3-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\s3-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\schema-rebuilt-after-process-exit",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\schema-process-crashed-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\schema-crash-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\schema-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\schema-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\rebuilt-after-process-termination",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\process-crashed-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\rebuilt-after-interruption",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\interrupted-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\failed-space",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\failed-wrong-key",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\failed-corrupt-cipher",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\failed-missing-cipher",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-restored",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\unrelated-B",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    }
+  ],
+  "mode": "complete-local-matrix",
+  "interruptionCoverage": "Owned restore subprocess is terminated after real database/resource restore and before isolated state commit; no machine power loss.",
+  "recoveryKey": {
+    "keyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\private\\recovery-key.base64",
+    "generatedForThisRun": true
+  },
+  "portability": {
+    "sourceRoot": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-source",
+    "expectFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\portability.private.json",
+    "keyFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\private\\recovery-key.base64",
+    "backupDirectory": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-backups\\ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+    "manifestFile": "C:\\Users\\h\\AppData\\Local\\Temp\\xunjie-145\\windows-r3\\file-backups\\ebc90862-9c76-48d7-ac36-a9c0b45cf39f\\manifest.json",
+    "backupId": "ebc90862-9c76-48d7-ac36-a9c0b45cf39f",
+    "privateExpectedEncoding": "explicit-base64-for-raw-and-opaque-bytes"
+  },
+  "finishedAt": "2026-10-29T19:12:39.918Z",
+  "durationMs": 280643,
+  "retained": true
+}

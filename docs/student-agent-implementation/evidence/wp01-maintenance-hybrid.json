@@ -1,0 +1,481 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "kind": "real-mac-linux-public-tls-hybrid-recovery",
+  "status": "passed",
+  "startedAt": "2026-10-29T19:07:38.618Z",
+  "publicEndpoint": "https://101.201.141.133:38196",
+  "root": "/private/tmp/xunjie-145-hybrid-release",
+  "keyFile": "/private/tmp/xunjie-145-hybrid-release/private/recovery-key.base64",
+  "source": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "27.2.0",
+    "node": "v24.21.0",
+    "bundledNode": true,
+    "runtimeRoot": "/private/tmp/xunjie-145-hybrid-release/source"
+  },
+  "target": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v24.21.0",
+    "database": "independent managed PostgreSQL on Mac",
+    "runtimeRoot": "/private/tmp/xunjie-145-hybrid-release/same-backup-rebuilt-target"
+  },
+  "school": {
+    "pid": 203347,
+    "running": true,
+    "stopping": false,
+    "service": {
+      "environmentId": "e5445671-3cbd-49a8-9f15-8a868f67e09f",
+      "serviceId": "dace54df-7fc8-4acd-936e-6815c3609420",
+      "unit": "tool-execution",
+      "endpoint": "https://101.201.141.133:38196",
+      "protocolVersion": 1,
+      "capabilities": [
+        "effect",
+        "status"
+      ]
+    },
+    "platform": "linux",
+    "arch": "x64",
+    "release": "6.8.0-139-generic",
+    "node": "v24.21.0",
+    "package": "/tmp/xunjie-145/xunjie-145-product-linux18",
+    "resources": {
+      "nodePath": "resources/node/bin/node",
+      "nodeVersion": "24.21.0",
+      "postgresBin": "resources/postgres/bin",
+      "postgresVersion": "18.6",
+      "webRoot": "web"
+    },
+    "bundleSha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+    "scriptSha256": "cba74c21170d181db393ff4bb074bbe6428aeb6ce5af2009c428f3df16117342",
+    "responsibility": {
+      "local": "Mac source/target own managed PostgreSQL and independent S3 buckets",
+      "school": "Independent restricted external effect receiver and TLS bridge to existing loopback Seaweed S3; no school PG installed; not teaching business data"
+    }
+  },
+  "package": {
+    "path": "/private/tmp/xunjie-145-release-mac18",
+    "nodeVersion": "24.21.0",
+    "postgresVersion": "18.6",
+    "entrySha256": "d8de88e16d40b620f698b7ea8e9f74eaee814653358ab7f687b08761d0451b49",
+    "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "nodeSha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b",
+    "postgresSha256": "d6688852af4db60285432f3bec9486e17b838c2f3f772b7484029abb0e4ff770"
+  },
+  "refs": {
+    "coordinatorSha256": "ce62ab31a55497108ecf6854213c060e5199163f8546bd98d046805b2c909e76",
+    "ownerSha256": "490891947f415a98c53e4ff1e00bdd1a205b23427bde29340a34daad880d878d",
+    "hostLocalSha256": "cba74c21170d181db393ff4bb074bbe6428aeb6ce5af2009c428f3df16117342",
+    "repositoryHead": "d7ad875c7d58b794b28d4bc294548f114ab3431c"
+  },
+  "storage": {
+    "backendId": "issue144-dcacdd1ce53f",
+    "endpoint": "https://101.201.141.133:38196",
+    "sourceBucket": "issue144-dcacdd1ce53f",
+    "isolatedBucket": "xj145-d577381240449fcc",
+    "rebuiltBucket": "xj145-fd6b7ce3c226502c"
+  },
+  "stages": [
+    {
+      "name": "school-independent-host-real-linux-identity",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:38.698Z",
+      "result": {
+        "platform": "linux",
+        "pid": 203347,
+        "service": {
+          "environmentId": "e5445671-3cbd-49a8-9f15-8a868f67e09f",
+          "serviceId": "dace54df-7fc8-4acd-936e-6815c3609420",
+          "unit": "tool-execution",
+          "endpoint": "https://101.201.141.133:38196",
+          "protocolVersion": 1,
+          "capabilities": [
+            "effect",
+            "status"
+          ]
+        },
+        "unauthenticatedStatusRejected": true
+      },
+      "durationMs": 3732
+    },
+    {
+      "name": "source-install-connect-before-host-and-seed-unknown-effect",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:42.433Z",
+      "result": {
+        "sourceEnvironment": {
+          "formatVersion": 1,
+          "environmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+          "installationId": "d88ba20a-e40a-4b62-871f-f66edae80e54",
+          "clientNamespace": "xunjie.v1.1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+              "serviceId": "48aed768-5322-4037-9a72-6e4b01c2a5f3",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:50157",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "owner": {
+          "environmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+          "serviceId": "975bcac4-576d-4283-ab2a-8733ca10f8fc"
+        },
+        "connectionRegisteredBeforeHost": true,
+        "engineVersion": "18.6",
+        "originalRequestId": "fa3d545e-69a0-40b6-b7f8-c4cca7a4829b",
+        "originalEffectId": "a567970b-f3a9-40c3-a8db-07a753ff05dd",
+        "originalReceipt": {
+          "requestId": "a567970b-f3a9-40c3-a8db-07a753ff05dd",
+          "receiptId": "946a8aeb-3fff-483b-a56d-86c45e06cc74",
+          "counter": 1,
+          "originalSource": {
+            "sourceEnvironmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+            "sourceServiceId": "48aed768-5322-4037-9a72-6e4b01c2a5f3"
+          },
+          "committedAt": "2026-10-29T19:07:50.140Z"
+        },
+        "outboxRemainsUnknown": true,
+        "resources": [
+          {
+            "reference": {
+              "formatVersion": 1,
+              "resourceId": "2e2af7f9-142e-4f54-8b52-6f0a6ef3b2ab",
+              "owner": {
+                "environmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+                "serviceId": "975bcac4-576d-4283-ab2a-8733ca10f8fc"
+              },
+              "scope": "recovery-acceptance",
+              "sha256": "f59f4c0feca37e0b129ea6bf01abfb15e07255d1750c0dde1106d57b7af5a88d",
+              "byteLength": 28,
+              "mediaType": "application/octet-stream",
+              "contentVersion": 1,
+              "locator": {
+                "backendId": "issue144-dcacdd1ce53f",
+                "key": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9/975bcac4-576d-4283-ab2a-8733ca10f8fc/2e2af7f9-142e-4f54-8b52-6f0a6ef3b2ab",
+                "writeId": "60d94521-cde6-4c8c-bd3b-77756bd6dc45"
+              }
+            },
+            "sha256": "f59f4c0feca37e0b129ea6bf01abfb15e07255d1750c0dde1106d57b7af5a88d",
+            "opaqueSha256": "fae05db6a99a41c7af5ea6e140dfc9fccf16037b9acaabb38d36c045e8eb45df",
+            "byteLength": 28
+          },
+          {
+            "reference": {
+              "formatVersion": 1,
+              "resourceId": "5e744bef-3cb7-44d4-bc5b-c403149c51f1",
+              "owner": {
+                "environmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+                "serviceId": "975bcac4-576d-4283-ab2a-8733ca10f8fc"
+              },
+              "scope": "recovery-acceptance",
+              "sha256": "560ca4c5b597a084e9240e863e404d4fa2ac20f965d08bf166139d799e443d02",
+              "byteLength": 131095,
+              "mediaType": "application/octet-stream",
+              "contentVersion": 1,
+              "locator": {
+                "backendId": "issue144-dcacdd1ce53f",
+                "key": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9/975bcac4-576d-4283-ab2a-8733ca10f8fc/5e744bef-3cb7-44d4-bc5b-c403149c51f1",
+                "writeId": "4d416422-b907-4c2f-b7c7-51664c46e5d5"
+              }
+            },
+            "sha256": "560ca4c5b597a084e9240e863e404d4fa2ac20f965d08bf166139d799e443d02",
+            "opaqueSha256": "9d6c14197dbe23e95f98423e501774963319d95deade2ab5298145021d5e7e6f",
+            "byteLength": 131095
+          }
+        ]
+      },
+      "durationMs": 8052
+    },
+    {
+      "name": "offline-public-bridge-backup-fails-before-held-boundary",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:07:50.486Z",
+      "result": {
+        "stopped": {
+          "stopped": true,
+          "pid": 203347,
+          "ownPidConfirmed": true
+        },
+        "backupRejected": "owner-export-unavailable",
+        "restoredConnection": true,
+        "unknownEffectNotReplayed": true,
+        "receiptAndCounterUnchanged": true
+      },
+      "durationMs": 12531
+    },
+    {
+      "name": "source-held-backup-with-real-receiver-id",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:03.020Z",
+      "result": {
+        "backupDirectory": "/private/tmp/xunjie-145-hybrid-release/backups/f9e1e62f-9a2c-44fe-b827-0400613a415c",
+        "backupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+        "boundaryAt": "2026-10-29T19:08:03.031Z",
+        "completedAt": "2026-10-29T19:08:04.337Z",
+        "durationMs": 1310,
+        "manifestSha256": "24b2ab83924d9216b0fadfba142a1d9eb185167644c6cbcadbda1ad33067bbd9",
+        "artifacts": [
+          {
+            "path": "48aed768-5322-4037-9a72-6e4b01c2a5f3/recovery.json",
+            "sha256": "e900a58db91c838986aca594d65da41d84e2493680ba5a41daf399ab18104d11",
+            "byteLength": 1979
+          },
+          {
+            "path": "48aed768-5322-4037-9a72-6e4b01c2a5f3/runtime.dump",
+            "sha256": "8b8c00ee351c9bd737f53e672f82506eed1a46c444a11be033ba811c0dc13ea9",
+            "byteLength": 1446
+          },
+          {
+            "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/2e2af7f9-142e-4f54-8b52-6f0a6ef3b2ab.blob",
+            "sha256": "3bc6dc8c427a0dcf9cb07408b9777671a2c8bd93d861b9cfc3b24e984d2c038f",
+            "byteLength": 111
+          },
+          {
+            "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/5e744bef-3cb7-44d4-bc5b-c403149c51f1.blob",
+            "sha256": "2ff412556d65ca6823e6cf3a816bf83e227f0592ff0c81254db0e88a7fe3c7a5",
+            "byteLength": 131178
+          },
+          {
+            "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/recovery.json",
+            "sha256": "abf41ec284791372f62d07da0c4eeea62b04941f817cb350d98ad047f7a71a7c",
+            "byteLength": 2075
+          },
+          {
+            "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/schema.dump",
+            "sha256": "64083f2d5c8b9f41d39b3cc23d82a0e9d11fec379029f0dbbc4ac4136623ed34",
+            "byteLength": 20193
+          }
+        ],
+        "receiverIds": [
+          "e5445671-3cbd-49a8-9f15-8a868f67e09f/dace54df-7fc8-4acd-936e-6815c3609420"
+        ],
+        "held": true
+      },
+      "durationMs": 1324
+    },
+    {
+      "name": "first-target-isolated-original-api-bytes-and-identities",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:04.344Z",
+      "result": {
+        "backupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+        "isolated": true,
+        "pendingRejected": "maintenance",
+        "writesRejected": "maintenance",
+        "environmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+        "installationId": "cc7098af-bac9-42b7-8e2c-8d25823a2487",
+        "originalServiceIdsPreserved": true,
+        "engineVersion": "18.6",
+        "recordsReceiptsAndRawOpaqueBytesVerified": true
+      },
+      "durationMs": 4117
+    },
+    {
+      "name": "offline-public-bridge-restore-fails-and-original-backup-survives",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:08.462Z",
+      "result": {
+        "stopped": {
+          "stopped": true,
+          "pid": 204245,
+          "ownPidConfirmed": true
+        },
+        "restoreRejected": "unavailable",
+        "failedTargetNeverActive": true,
+        "connectivityRestored": true,
+        "unknownEffectNotReplayed": true,
+        "sameBackupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+        "originalManifestAndArtifactsUnchanged": true
+      },
+      "durationMs": 10010
+    },
+    {
+      "name": "same-backup-new-independent-target-rebuild",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:18.473Z",
+      "result": {
+        "backupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+        "isolated": true,
+        "pendingRejected": "maintenance",
+        "writesRejected": "maintenance",
+        "environmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+        "installationId": "12adafbc-304b-424c-b69f-bb3ff8fa2790",
+        "originalServiceIdsPreserved": true,
+        "engineVersion": "18.6",
+        "recordsReceiptsAndRawOpaqueBytesVerified": true,
+        "sameBackupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+        "originalManifestAndArtifactsUnchanged": true
+      },
+      "durationMs": 3888
+    },
+    {
+      "name": "real-takeover-with-source-alive-and-ssh-authority-fence",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:22.362Z",
+      "result": {
+        "result": {
+          "phase": "active",
+          "backupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+          "installationId": "12adafbc-304b-424c-b69f-bb3ff8fa2790"
+        },
+        "fences": [
+          {
+            "fenced": true,
+            "proofs": [
+              {
+                "sourceEnvironmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+                "sourceServiceId": "48aed768-5322-4037-9a72-6e4b01c2a5f3",
+                "generation": 1,
+                "fencedAt": "2026-10-29T19:08:26.625Z"
+              },
+              {
+                "sourceEnvironmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+                "sourceServiceId": "975bcac4-576d-4283-ab2a-8733ca10f8fc",
+                "generation": 1,
+                "fencedAt": "2026-10-29T19:08:26.673Z"
+              }
+            ]
+          }
+        ],
+        "originalSourceStillAlive": true,
+        "resumeError": "source-retired",
+        "startError": "source-retired",
+        "oldEffectError": "http_401",
+        "oldTokenRejected": true,
+        "freshConnectionOldTokenRejected": true,
+        "unknownOutboxIDsAndReceiptPreserved": true
+      },
+      "durationMs": 6305
+    },
+    {
+      "name": "receiver-restart-keeps-fence-new-target-grant-original-effect-receipt",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:28.668Z",
+      "result": {
+        "stopped": {
+          "stopped": true,
+          "pid": 204745,
+          "ownPidConfirmed": true
+        },
+        "restartedPid": 205291,
+        "serviceIdentityStable": true,
+        "oldTokenStillRejectedAfterRestartAndNewAuthorization": true,
+        "newTargetGrantId": "60512e60-4683-4f3e-add2-9ce88b623255",
+        "originalEffectId": "a567970b-f3a9-40c3-a8db-07a753ff05dd",
+        "sameOriginalReceipt": {
+          "requestId": "a567970b-f3a9-40c3-a8db-07a753ff05dd",
+          "receiptId": "946a8aeb-3fff-483b-a56d-86c45e06cc74",
+          "counter": 1,
+          "originalSource": {
+            "sourceEnvironmentId": "1e54cf02-7f59-4fc9-b462-a4f5e8129da9",
+            "sourceServiceId": "48aed768-5322-4037-9a72-6e4b01c2a5f3"
+          },
+          "committedAt": "2026-10-29T19:07:50.140Z"
+        },
+        "counterBefore": 1,
+        "counterAfter": 1,
+        "noNewEffectIdOrUnknownReplay": true,
+        "sourceOutboxUnknownPreserved": true,
+        "targetRuntimeReadyWithReissuedCredential": true,
+        "sameBackupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+        "originalManifestAndArtifactsUnchanged": true
+      },
+      "durationMs": 8144
+    }
+  ],
+  "cleanup": [
+    {
+      "root": "/private/tmp/xunjie-145-hybrid-release/same-backup-rebuilt-target",
+      "ownHostPoolsAndManagedPgStopped": true,
+      "dataRetained": true
+    },
+    {
+      "root": "/private/tmp/xunjie-145-hybrid-release/offline-failed-target",
+      "ownHostPoolsAndManagedPgStopped": true,
+      "dataRetained": true
+    },
+    {
+      "root": "/private/tmp/xunjie-145-hybrid-release/isolated-target",
+      "ownHostPoolsAndManagedPgStopped": true,
+      "dataRetained": true
+    },
+    {
+      "root": "/private/tmp/xunjie-145-hybrid-release/source",
+      "ownHostPoolsAndManagedPgStopped": true,
+      "dataRetained": true
+    },
+    {
+      "schoolAcceptanceHost": {
+        "stopped": true,
+        "pid": 205291,
+        "ownPidConfirmed": true
+      }
+    },
+    {
+      "privateRemoteTransferFilesRemoved": 5
+    },
+    {
+      "retained": "Private roots, original encrypted backup/key, service receipts, source/target S3 objects; no other school services touched",
+      "schoolAcceptanceHostRunning": false
+    }
+  ],
+  "limitations": [
+    "Independent acceptance service; not teaching business data or teaching-effectiveness acceptance",
+    "No school PostgreSQL installed; Mac managed PG plus external school S3/effect receiver",
+    "Stops only the acceptance TLS bridge/receiver; does not interrupt or restart Seaweed, nginx or other school services"
+  ],
+  "responsibility": {
+    "local": "Mac source/target own managed PostgreSQL and independent S3 buckets",
+    "school": "Independent restricted external effect receiver and TLS bridge to existing loopback Seaweed S3; no school PG installed; not teaching business data"
+  },
+  "backup": {
+    "backupDirectory": "/private/tmp/xunjie-145-hybrid-release/backups/f9e1e62f-9a2c-44fe-b827-0400613a415c",
+    "backupId": "f9e1e62f-9a2c-44fe-b827-0400613a415c",
+    "boundaryAt": "2026-10-29T19:08:03.031Z",
+    "completedAt": "2026-10-29T19:08:04.337Z",
+    "durationMs": 1310,
+    "manifestSha256": "24b2ab83924d9216b0fadfba142a1d9eb185167644c6cbcadbda1ad33067bbd9",
+    "artifacts": [
+      {
+        "path": "48aed768-5322-4037-9a72-6e4b01c2a5f3/recovery.json",
+        "sha256": "e900a58db91c838986aca594d65da41d84e2493680ba5a41daf399ab18104d11",
+        "byteLength": 1979
+      },
+      {
+        "path": "48aed768-5322-4037-9a72-6e4b01c2a5f3/runtime.dump",
+        "sha256": "8b8c00ee351c9bd737f53e672f82506eed1a46c444a11be033ba811c0dc13ea9",
+        "byteLength": 1446
+      },
+      {
+        "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/2e2af7f9-142e-4f54-8b52-6f0a6ef3b2ab.blob",
+        "sha256": "3bc6dc8c427a0dcf9cb07408b9777671a2c8bd93d861b9cfc3b24e984d2c038f",
+        "byteLength": 111
+      },
+      {
+        "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/5e744bef-3cb7-44d4-bc5b-c403149c51f1.blob",
+        "sha256": "2ff412556d65ca6823e6cf3a816bf83e227f0592ff0c81254db0e88a7fe3c7a5",
+        "byteLength": 131178
+      },
+      {
+        "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/recovery.json",
+        "sha256": "abf41ec284791372f62d07da0c4eeea62b04941f817cb350d98ad047f7a71a7c",
+        "byteLength": 2075
+      },
+      {
+        "path": "975bcac4-576d-4283-ab2a-8733ca10f8fc/schema.dump",
+        "sha256": "64083f2d5c8b9f41d39b3cc23d82a0e9d11fec379029f0dbbc4ac4136623ed34",
+        "byteLength": 20193
+      }
+    ]
+  },
+  "completedAt": "2026-10-29T19:08:38.774Z"
+}

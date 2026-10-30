@@ -1,0 +1,1238 @@
+{
+  "formatVersion": 1,
+  "issue": 142,
+  "capturedAt": "2026-10-30T06:06:06.264Z",
+  "status": "passed",
+  "coreRevision": "5fe90e349e343d99dda1ac184aaea6bd08bbbf30",
+  "acceptanceBranch": "codex/wp01-parent-acceptance",
+  "specification": "docs/student-agent-implementation/specs/wp01-product-runtime-and-data.md",
+  "packages": {
+    "mac18": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "3e13f7f98d5185adcb9d6660eae1f4f14233fa1f90f9b92005221eb7c34806b3",
+      "entryHashes": {
+        "app/cli.js": {
+          "sha256": "bd04cf4ef993f1853dab897fb63cda769c251bd20f28f29714f95732fd05db52"
+        },
+        "app/daemon.js": {
+          "sha256": "9cd0f4498c3f015a805eebae76e4a53b3b9fe9f6b524bff986d5fbca2bd7b94e"
+        },
+        "app/licenses/pg-connection-string@2.14.1/LICENSE": {
+          "sha256": "2244b5486c4427001b6756a87b9a297d427c111dcc3ba64a097492a8979c23d0"
+        },
+        "app/licenses/pg-connection-string@2.14.1/package.json": {
+          "sha256": "53d453c5a426e69a11ff479e0d8a293505faa1833e6eb3ff7ceefdaac569e3ea"
+        },
+        "app/licenses/pg-int8@1.0.1/LICENSE": {
+          "sha256": "4e8e87ccdfc7e4b47fd89015f78468aa53b6bf43ab6e6e12d43e8f55294911de"
+        },
+        "app/licenses/pg-int8@1.0.1/package.json": {
+          "sha256": "147155887a41bb6f69ff98b3dde827b7e6a8214c3a71938da4babf8e12adff2e"
+        },
+        "app/licenses/pg-pool@3.14.0/LICENSE": {
+          "sha256": "4f15ee7fc2a72082859d7e0d12dfa4bcdd70b1c744ad3850d07780730ac08557"
+        },
+        "app/licenses/pg-pool@3.14.0/package.json": {
+          "sha256": "0a9924def9e06f791b09a44eaefb227f323a39199887f6ce17b44cb5a9193134"
+        },
+        "app/licenses/pg-protocol@1.16.1/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg-protocol@1.16.1/package.json": {
+          "sha256": "a4a4e23027b26c72be7729d045d0100ad9329959db0449c535fa7b2ba2e717c6"
+        },
+        "app/licenses/pg-types@2.2.0/package.json": {
+          "sha256": "3ec0293cb38cc8d9475e3eb32ac5f19d195bf9fccc8b19a0714e6ecd6e7c2cf0"
+        },
+        "app/licenses/pg-types@2.2.0/README.md": {
+          "sha256": "ecda9bca71d3f0cee4e600d1dd2bef336213f39ef2e8fca6a1a1c1c8723f643a"
+        },
+        "app/licenses/pg@8.16.3/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg@8.16.3/package.json": {
+          "sha256": "f7b678a8055c234669e8dd272dd624771e29d9f0e3a3353f15c3005ab1a5fd29"
+        },
+        "app/licenses/pgpass@1.0.5/package.json": {
+          "sha256": "d75240eb4fe759c10db9f903838275348676a8bdc1f329e20a833713cd7c99bd"
+        },
+        "app/licenses/pgpass@1.0.5/README.md": {
+          "sha256": "62549909404b5a0dcb2b4b74c9a930baf8095dbcfa1543c4ffc79378acd22b57"
+        },
+        "app/licenses/postgres-array@2.0.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-array@2.0.0/package.json": {
+          "sha256": "dcd6a505fcbc032b409ee2838ab2c776dea3a9cfe02b736364b6cb82a946665f"
+        },
+        "app/licenses/postgres-bytea@1.0.1/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-bytea@1.0.1/package.json": {
+          "sha256": "9125568c5fb51a65b8f11adb0080c2775b99ee82822d73bff8b56b2a9d47d7aa"
+        },
+        "app/licenses/postgres-date@1.0.7/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-date@1.0.7/package.json": {
+          "sha256": "03f9edefa96697072075e02df045cc61ed4ca2f8dfffb1ff87f4070bc3404151"
+        },
+        "app/licenses/postgres-interval@1.2.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-interval@1.2.0/package.json": {
+          "sha256": "cc3056db105e66c9128cb8a387cda782d5f1ae9281be90de0b8d26a90af89c57"
+        },
+        "app/licenses/split2@4.2.0/LICENSE": {
+          "sha256": "c372ef2fa1dfcb124ed807609751e75e3a009f108c5724916b489288fcb88a0c"
+        },
+        "app/licenses/split2@4.2.0/package.json": {
+          "sha256": "87b734c3087c8d9ed5d76d1bff00db30f960831ba8705dd18d73b180d08d2140"
+        },
+        "app/licenses/xtend@4.0.2/LICENSE": {
+          "sha256": "82e67379203d5794e7c44549847d8d64ae6904591381682360470898bd306821"
+        },
+        "app/licenses/xtend@4.0.2/package.json": {
+          "sha256": "b02ffef8cda96c5c3ee00a00390e63f608362c2ddfb3ed754e181d013a45d48a"
+        },
+        "app/licenses/zod@4.6.5/LICENSE": {
+          "sha256": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
+        },
+        "app/licenses/zod@4.6.5/package.json": {
+          "sha256": "a046ed85fa09571dba539fee9ef236152d12dabd1f229b014ec3bd2ebaad9000"
+        },
+        "app/licenses.json": {
+          "sha256": "8b56dd32aa1f0850a5071ed4eaa6dc1f0295343ecbd6431c63676c23aa30b436"
+        },
+        "app/metafile.json": {
+          "sha256": "f4d02bef5caeab7119ac634dfa71f50b8167041fd9d2706ba3bc56fc1b6ed458"
+        },
+        "app/product-runtime.js": {
+          "sha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0"
+        },
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": {
+          "sha256": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6"
+        },
+        "web/assets/runtime-BKc4Woo_.js": {
+          "sha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670"
+        },
+        "web/assets/runtime-DZBMYjmA.css": {
+          "sha256": "49b4262060d739edf150b31c0094e1ebb175895d5b1d44141c2f3094167b22e4"
+        },
+        "web/index.html": {
+          "sha256": "0f36eca5a3db8d13f8cad93647f65a6481bd5ffd23a257f2af6a5ba399c93ddc"
+        },
+        "resources.json": {
+          "sha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469"
+        },
+        "package.json": {
+          "sha256": "2e1be670228d3070c54c8b3af63bb0f7c38c44a0b2285b7121ed3f9c359a2747"
+        },
+        "xunjie": {
+          "sha256": "8adeb55d989d9fb528fe6cdf74573bbda93fb21795072aa30e783b069529ef59"
+        },
+        "循阶.command": {
+          "sha256": "8adeb55d989d9fb528fe6cdf74573bbda93fb21795072aa30e783b069529ef59"
+        }
+      },
+      "resources": [
+        {
+          "id": "node",
+          "version": "24.21.0",
+          "archive": {
+            "filename": "node-v24.21.0-darwin-arm64.tar.gz",
+            "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
+            "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+            "bytes": 52909993,
+            "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+            "archiveRoot": "node-v24.21.0-darwin-arm64"
+          },
+          "entryHashes": {
+            "bin/node": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+          }
+        },
+        {
+          "id": "postgres",
+          "version": "18.6",
+          "archive": {
+            "filename": "postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+            "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+            "sha256": "89e91cc80650a43d22c018b95ca356a0c9e15838a1182fed2880bfb5d7d9c9a6",
+            "bytes": 88814625,
+            "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.sha256",
+            "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.manifest.json",
+            "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz.spdx.json",
+            "archiveRoot": "postgresql-18.6.1-aarch64-apple-darwin"
+          },
+          "entryHashes": {
+            "bin/initdb": "4e043f105a92dc499ecb09dccda47cc9fa51136164deb27b736b902c16f8b11e",
+            "bin/postgres": "d6688852af4db60285432f3bec9486e17b838c2f3f772b7484029abb0e4ff770",
+            "bin/pg_ctl": "5853c3fdc3ef70c1dd57fe618d5960587d16665b61cd026cdd593033fa5307dd",
+            "bin/pg_controldata": "845e8f80435e9bc04fbcc2b63c58e53fb34f38a817acfaa9d058056afbc37eb6",
+            "bin/psql": "8977c163014533f59369a5606a221a2c39b635e9076057866bc5a782f75c6ec9",
+            "bin/pg_dump": "9737872967beb2b73445a9ae2cbbc6dcf17eecdcdea2137dcaa263e5780e5b9d",
+            "bin/pg_dumpall": "919a521284653ffee8f623e72ab40873ff9d7b780dd67c5f7bdcee72298667d5",
+            "bin/pg_restore": "469bbe82fce0696bfa4faf170f858db3e51cb3a0e56c7c106adcb654e0023942",
+            "bin/pg_upgrade": "5238511bd9278587b30ff7698de225a7355b98669214d0af8964e6fca0d737e3"
+          }
+        }
+      ],
+      "graph": "passed"
+    },
+    "mac1710": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "8c775f07cffb246651aa4d3e2a4eee626368afdf6698ca4d32d267e987dfc4ff",
+      "entryHashes": {
+        "app/cli.js": {
+          "sha256": "bd04cf4ef993f1853dab897fb63cda769c251bd20f28f29714f95732fd05db52"
+        },
+        "app/daemon.js": {
+          "sha256": "9cd0f4498c3f015a805eebae76e4a53b3b9fe9f6b524bff986d5fbca2bd7b94e"
+        },
+        "app/licenses/pg-connection-string@2.14.1/LICENSE": {
+          "sha256": "2244b5486c4427001b6756a87b9a297d427c111dcc3ba64a097492a8979c23d0"
+        },
+        "app/licenses/pg-connection-string@2.14.1/package.json": {
+          "sha256": "53d453c5a426e69a11ff479e0d8a293505faa1833e6eb3ff7ceefdaac569e3ea"
+        },
+        "app/licenses/pg-int8@1.0.1/LICENSE": {
+          "sha256": "4e8e87ccdfc7e4b47fd89015f78468aa53b6bf43ab6e6e12d43e8f55294911de"
+        },
+        "app/licenses/pg-int8@1.0.1/package.json": {
+          "sha256": "147155887a41bb6f69ff98b3dde827b7e6a8214c3a71938da4babf8e12adff2e"
+        },
+        "app/licenses/pg-pool@3.14.0/LICENSE": {
+          "sha256": "4f15ee7fc2a72082859d7e0d12dfa4bcdd70b1c744ad3850d07780730ac08557"
+        },
+        "app/licenses/pg-pool@3.14.0/package.json": {
+          "sha256": "0a9924def9e06f791b09a44eaefb227f323a39199887f6ce17b44cb5a9193134"
+        },
+        "app/licenses/pg-protocol@1.16.1/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg-protocol@1.16.1/package.json": {
+          "sha256": "a4a4e23027b26c72be7729d045d0100ad9329959db0449c535fa7b2ba2e717c6"
+        },
+        "app/licenses/pg-types@2.2.0/package.json": {
+          "sha256": "3ec0293cb38cc8d9475e3eb32ac5f19d195bf9fccc8b19a0714e6ecd6e7c2cf0"
+        },
+        "app/licenses/pg-types@2.2.0/README.md": {
+          "sha256": "ecda9bca71d3f0cee4e600d1dd2bef336213f39ef2e8fca6a1a1c1c8723f643a"
+        },
+        "app/licenses/pg@8.16.3/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg@8.16.3/package.json": {
+          "sha256": "f7b678a8055c234669e8dd272dd624771e29d9f0e3a3353f15c3005ab1a5fd29"
+        },
+        "app/licenses/pgpass@1.0.5/package.json": {
+          "sha256": "d75240eb4fe759c10db9f903838275348676a8bdc1f329e20a833713cd7c99bd"
+        },
+        "app/licenses/pgpass@1.0.5/README.md": {
+          "sha256": "62549909404b5a0dcb2b4b74c9a930baf8095dbcfa1543c4ffc79378acd22b57"
+        },
+        "app/licenses/postgres-array@2.0.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-array@2.0.0/package.json": {
+          "sha256": "dcd6a505fcbc032b409ee2838ab2c776dea3a9cfe02b736364b6cb82a946665f"
+        },
+        "app/licenses/postgres-bytea@1.0.1/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-bytea@1.0.1/package.json": {
+          "sha256": "9125568c5fb51a65b8f11adb0080c2775b99ee82822d73bff8b56b2a9d47d7aa"
+        },
+        "app/licenses/postgres-date@1.0.7/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-date@1.0.7/package.json": {
+          "sha256": "03f9edefa96697072075e02df045cc61ed4ca2f8dfffb1ff87f4070bc3404151"
+        },
+        "app/licenses/postgres-interval@1.2.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-interval@1.2.0/package.json": {
+          "sha256": "cc3056db105e66c9128cb8a387cda782d5f1ae9281be90de0b8d26a90af89c57"
+        },
+        "app/licenses/split2@4.2.0/LICENSE": {
+          "sha256": "c372ef2fa1dfcb124ed807609751e75e3a009f108c5724916b489288fcb88a0c"
+        },
+        "app/licenses/split2@4.2.0/package.json": {
+          "sha256": "87b734c3087c8d9ed5d76d1bff00db30f960831ba8705dd18d73b180d08d2140"
+        },
+        "app/licenses/xtend@4.0.2/LICENSE": {
+          "sha256": "82e67379203d5794e7c44549847d8d64ae6904591381682360470898bd306821"
+        },
+        "app/licenses/xtend@4.0.2/package.json": {
+          "sha256": "b02ffef8cda96c5c3ee00a00390e63f608362c2ddfb3ed754e181d013a45d48a"
+        },
+        "app/licenses/zod@4.6.5/LICENSE": {
+          "sha256": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
+        },
+        "app/licenses/zod@4.6.5/package.json": {
+          "sha256": "a046ed85fa09571dba539fee9ef236152d12dabd1f229b014ec3bd2ebaad9000"
+        },
+        "app/licenses.json": {
+          "sha256": "8b56dd32aa1f0850a5071ed4eaa6dc1f0295343ecbd6431c63676c23aa30b436"
+        },
+        "app/metafile.json": {
+          "sha256": "f4d02bef5caeab7119ac634dfa71f50b8167041fd9d2706ba3bc56fc1b6ed458"
+        },
+        "app/product-runtime.js": {
+          "sha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0"
+        },
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": {
+          "sha256": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6"
+        },
+        "web/assets/runtime-BKc4Woo_.js": {
+          "sha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670"
+        },
+        "web/assets/runtime-DZBMYjmA.css": {
+          "sha256": "49b4262060d739edf150b31c0094e1ebb175895d5b1d44141c2f3094167b22e4"
+        },
+        "web/index.html": {
+          "sha256": "0f36eca5a3db8d13f8cad93647f65a6481bd5ffd23a257f2af6a5ba399c93ddc"
+        },
+        "resources.json": {
+          "sha256": "a12914a0ef847852b242f4abf01c7e5d282acb5178a0f2c20c5543a910fadbb9"
+        },
+        "package.json": {
+          "sha256": "2e1be670228d3070c54c8b3af63bb0f7c38c44a0b2285b7121ed3f9c359a2747"
+        },
+        "xunjie": {
+          "sha256": "8adeb55d989d9fb528fe6cdf74573bbda93fb21795072aa30e783b069529ef59"
+        },
+        "循阶.command": {
+          "sha256": "8adeb55d989d9fb528fe6cdf74573bbda93fb21795072aa30e783b069529ef59"
+        }
+      },
+      "resources": [
+        {
+          "id": "node",
+          "version": "24.21.0",
+          "archive": {
+            "filename": "node-v24.21.0-darwin-arm64.tar.gz",
+            "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
+            "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+            "bytes": 52909993,
+            "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+            "archiveRoot": "node-v24.21.0-darwin-arm64"
+          },
+          "entryHashes": {
+            "bin/node": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+          }
+        },
+        {
+          "id": "postgres",
+          "version": "17.10",
+          "archive": {
+            "filename": "postgresql-17.10.1-aarch64-apple-darwin.tar.gz",
+            "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-aarch64-apple-darwin.tar.gz",
+            "sha256": "6a4d10bb443043a5f2759727eb8f281e1ae88563c03a38df8066944d5409fbdb",
+            "bytes": 89980908,
+            "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-aarch64-apple-darwin.tar.gz.sha256",
+            "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-aarch64-apple-darwin.tar.gz.manifest.json",
+            "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-aarch64-apple-darwin.tar.gz.spdx.json",
+            "archiveRoot": "postgresql-17.10.1-aarch64-apple-darwin"
+          },
+          "entryHashes": {
+            "bin/initdb": "fb5f2c1f0f5bf111f1994ee77777aebfb91601756e295bccbea6f755a913a34f",
+            "bin/postgres": "17998a435e988b850d01e926df9bc7e5a9a07f3f4b613d5e1e382de91fc28cc4",
+            "bin/pg_ctl": "012cc91de9332e39cc153a0f58ec5d4bb27322eadb97a731597725d9d4b682e3",
+            "bin/pg_controldata": "148142c445a21f83d1e32802c1d730eaa27eb4d81c18943661c218cb9411c641",
+            "bin/psql": "3142311a57a8f55d7fa9d89f3b2db7be3d1faa1d47e7fd5225d31e423bdde14a",
+            "bin/pg_dump": "a0b8263ac331a22cd5290e139cc3c787bf43329121a73642553a2bd243be850d",
+            "bin/pg_dumpall": "c2a63b0e57db026d30e89a0b672cc52e6ffffe54a517e264aa099a99c21c0bba",
+            "bin/pg_restore": "22445146c78c0692996e51089056fb2728948fcf93f9284c25204c71205700cc",
+            "bin/pg_upgrade": "733d03f6b0a233a776927fdd784dcf506649e6ed6e98c33db9d91d271479740b"
+          }
+        }
+      ],
+      "graph": "passed"
+    },
+    "mac1711": {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "distributionSha256": "bde0249ad4aea933bc45200406c68ccda7d56061aadd9e40397d715d0a1093fb",
+      "entryHashes": {
+        "app/cli.js": {
+          "sha256": "bd04cf4ef993f1853dab897fb63cda769c251bd20f28f29714f95732fd05db52"
+        },
+        "app/daemon.js": {
+          "sha256": "9cd0f4498c3f015a805eebae76e4a53b3b9fe9f6b524bff986d5fbca2bd7b94e"
+        },
+        "app/licenses/pg-connection-string@2.14.1/LICENSE": {
+          "sha256": "2244b5486c4427001b6756a87b9a297d427c111dcc3ba64a097492a8979c23d0"
+        },
+        "app/licenses/pg-connection-string@2.14.1/package.json": {
+          "sha256": "53d453c5a426e69a11ff479e0d8a293505faa1833e6eb3ff7ceefdaac569e3ea"
+        },
+        "app/licenses/pg-int8@1.0.1/LICENSE": {
+          "sha256": "4e8e87ccdfc7e4b47fd89015f78468aa53b6bf43ab6e6e12d43e8f55294911de"
+        },
+        "app/licenses/pg-int8@1.0.1/package.json": {
+          "sha256": "147155887a41bb6f69ff98b3dde827b7e6a8214c3a71938da4babf8e12adff2e"
+        },
+        "app/licenses/pg-pool@3.14.0/LICENSE": {
+          "sha256": "4f15ee7fc2a72082859d7e0d12dfa4bcdd70b1c744ad3850d07780730ac08557"
+        },
+        "app/licenses/pg-pool@3.14.0/package.json": {
+          "sha256": "0a9924def9e06f791b09a44eaefb227f323a39199887f6ce17b44cb5a9193134"
+        },
+        "app/licenses/pg-protocol@1.16.1/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg-protocol@1.16.1/package.json": {
+          "sha256": "a4a4e23027b26c72be7729d045d0100ad9329959db0449c535fa7b2ba2e717c6"
+        },
+        "app/licenses/pg-types@2.2.0/package.json": {
+          "sha256": "3ec0293cb38cc8d9475e3eb32ac5f19d195bf9fccc8b19a0714e6ecd6e7c2cf0"
+        },
+        "app/licenses/pg-types@2.2.0/README.md": {
+          "sha256": "ecda9bca71d3f0cee4e600d1dd2bef336213f39ef2e8fca6a1a1c1c8723f643a"
+        },
+        "app/licenses/pg@8.16.3/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg@8.16.3/package.json": {
+          "sha256": "f7b678a8055c234669e8dd272dd624771e29d9f0e3a3353f15c3005ab1a5fd29"
+        },
+        "app/licenses/pgpass@1.0.5/package.json": {
+          "sha256": "d75240eb4fe759c10db9f903838275348676a8bdc1f329e20a833713cd7c99bd"
+        },
+        "app/licenses/pgpass@1.0.5/README.md": {
+          "sha256": "62549909404b5a0dcb2b4b74c9a930baf8095dbcfa1543c4ffc79378acd22b57"
+        },
+        "app/licenses/postgres-array@2.0.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-array@2.0.0/package.json": {
+          "sha256": "dcd6a505fcbc032b409ee2838ab2c776dea3a9cfe02b736364b6cb82a946665f"
+        },
+        "app/licenses/postgres-bytea@1.0.1/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-bytea@1.0.1/package.json": {
+          "sha256": "9125568c5fb51a65b8f11adb0080c2775b99ee82822d73bff8b56b2a9d47d7aa"
+        },
+        "app/licenses/postgres-date@1.0.7/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-date@1.0.7/package.json": {
+          "sha256": "03f9edefa96697072075e02df045cc61ed4ca2f8dfffb1ff87f4070bc3404151"
+        },
+        "app/licenses/postgres-interval@1.2.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-interval@1.2.0/package.json": {
+          "sha256": "cc3056db105e66c9128cb8a387cda782d5f1ae9281be90de0b8d26a90af89c57"
+        },
+        "app/licenses/split2@4.2.0/LICENSE": {
+          "sha256": "c372ef2fa1dfcb124ed807609751e75e3a009f108c5724916b489288fcb88a0c"
+        },
+        "app/licenses/split2@4.2.0/package.json": {
+          "sha256": "87b734c3087c8d9ed5d76d1bff00db30f960831ba8705dd18d73b180d08d2140"
+        },
+        "app/licenses/xtend@4.0.2/LICENSE": {
+          "sha256": "82e67379203d5794e7c44549847d8d64ae6904591381682360470898bd306821"
+        },
+        "app/licenses/xtend@4.0.2/package.json": {
+          "sha256": "b02ffef8cda96c5c3ee00a00390e63f608362c2ddfb3ed754e181d013a45d48a"
+        },
+        "app/licenses/zod@4.6.5/LICENSE": {
+          "sha256": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
+        },
+        "app/licenses/zod@4.6.5/package.json": {
+          "sha256": "a046ed85fa09571dba539fee9ef236152d12dabd1f229b014ec3bd2ebaad9000"
+        },
+        "app/licenses.json": {
+          "sha256": "8b56dd32aa1f0850a5071ed4eaa6dc1f0295343ecbd6431c63676c23aa30b436"
+        },
+        "app/metafile.json": {
+          "sha256": "f4d02bef5caeab7119ac634dfa71f50b8167041fd9d2706ba3bc56fc1b6ed458"
+        },
+        "app/product-runtime.js": {
+          "sha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0"
+        },
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": {
+          "sha256": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6"
+        },
+        "web/assets/runtime-BKc4Woo_.js": {
+          "sha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670"
+        },
+        "web/assets/runtime-DZBMYjmA.css": {
+          "sha256": "49b4262060d739edf150b31c0094e1ebb175895d5b1d44141c2f3094167b22e4"
+        },
+        "web/index.html": {
+          "sha256": "0f36eca5a3db8d13f8cad93647f65a6481bd5ffd23a257f2af6a5ba399c93ddc"
+        },
+        "resources.json": {
+          "sha256": "545872317ffc07c1cccc81302d2f0ddb9990693eee19c9a0a8f40bd533061f05"
+        },
+        "package.json": {
+          "sha256": "2e1be670228d3070c54c8b3af63bb0f7c38c44a0b2285b7121ed3f9c359a2747"
+        },
+        "xunjie": {
+          "sha256": "8adeb55d989d9fb528fe6cdf74573bbda93fb21795072aa30e783b069529ef59"
+        },
+        "循阶.command": {
+          "sha256": "8adeb55d989d9fb528fe6cdf74573bbda93fb21795072aa30e783b069529ef59"
+        }
+      },
+      "resources": [
+        {
+          "id": "node",
+          "version": "24.21.0",
+          "archive": {
+            "filename": "node-v24.21.0-darwin-arm64.tar.gz",
+            "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
+            "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+            "bytes": 52909993,
+            "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+            "archiveRoot": "node-v24.21.0-darwin-arm64"
+          },
+          "entryHashes": {
+            "bin/node": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+          }
+        },
+        {
+          "id": "postgres",
+          "version": "17.11",
+          "archive": {
+            "filename": "postgresql-17.11.1-aarch64-apple-darwin.tar.gz",
+            "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-aarch64-apple-darwin.tar.gz",
+            "sha256": "f4b2ff0587d80b6f22bf09ec2d133a3c2949b6423318d3fed0f4ddddddf2f004",
+            "bytes": 90030572,
+            "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-aarch64-apple-darwin.tar.gz.sha256",
+            "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-aarch64-apple-darwin.tar.gz.manifest.json",
+            "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-aarch64-apple-darwin.tar.gz.spdx.json",
+            "archiveRoot": "postgresql-17.11.1-aarch64-apple-darwin"
+          },
+          "entryHashes": {
+            "bin/initdb": "a9c730b13fc214db3b6b87dcc1301e9c9e697b4066f6d34f124cdd845a2d48e1",
+            "bin/postgres": "22d94c0a0763e93e4846674e074bb1806606f20dcbaac3783235af4eb3dd0eec",
+            "bin/pg_ctl": "732ddb6c62dd8bc0f7c62952acc9687ef31db813d7813d0723da730f70310e6d",
+            "bin/pg_controldata": "977b344ef7ec2d7e539f5a78a14a831c74230e34b74b3ecf2515759d2713d839",
+            "bin/psql": "55f982675c488b8d9aef298f39f19f0788265ee986d21caef9c194a1f5cc2902",
+            "bin/pg_dump": "ae47a3b41da6b65ebce8cfc30d4fb1c0a6cffcff3c2abafc6095902eb1650ec1",
+            "bin/pg_dumpall": "2b933463c06d1693b31708a5260c872306d8cf134a8b37e5d1f3d7354b3ba8f0",
+            "bin/pg_restore": "162eb4404c4da7fa4ff13d69bb3ad9a30575a23ff4828aa17a59210c3c67c582",
+            "bin/pg_upgrade": "794cda4e26fa5471a74bdbec4731fdf5efc5aaae45671b4104a4b39159e62ac7"
+          }
+        }
+      ],
+      "graph": "passed"
+    },
+    "win18": {
+      "platform": "win32-x64",
+      "profile": "full",
+      "distributionSha256": "cbf4d88e30cab156e22f543aec1bd22ef57d77804f7aa57e181d026c0813c18c",
+      "entryHashes": {
+        "resources/prerequisites/windows-vc.ps1": {
+          "sha256": "517027eb6657a70f840f458d8b3ff96976709b3ad133ad8e1b865d411c9f094f"
+        },
+        "app/cli.js": {
+          "sha256": "bd04cf4ef993f1853dab897fb63cda769c251bd20f28f29714f95732fd05db52"
+        },
+        "app/daemon.js": {
+          "sha256": "9cd0f4498c3f015a805eebae76e4a53b3b9fe9f6b524bff986d5fbca2bd7b94e"
+        },
+        "app/licenses/pg-connection-string@2.14.1/LICENSE": {
+          "sha256": "2244b5486c4427001b6756a87b9a297d427c111dcc3ba64a097492a8979c23d0"
+        },
+        "app/licenses/pg-connection-string@2.14.1/package.json": {
+          "sha256": "53d453c5a426e69a11ff479e0d8a293505faa1833e6eb3ff7ceefdaac569e3ea"
+        },
+        "app/licenses/pg-int8@1.0.1/LICENSE": {
+          "sha256": "4e8e87ccdfc7e4b47fd89015f78468aa53b6bf43ab6e6e12d43e8f55294911de"
+        },
+        "app/licenses/pg-int8@1.0.1/package.json": {
+          "sha256": "147155887a41bb6f69ff98b3dde827b7e6a8214c3a71938da4babf8e12adff2e"
+        },
+        "app/licenses/pg-pool@3.14.0/LICENSE": {
+          "sha256": "4f15ee7fc2a72082859d7e0d12dfa4bcdd70b1c744ad3850d07780730ac08557"
+        },
+        "app/licenses/pg-pool@3.14.0/package.json": {
+          "sha256": "0a9924def9e06f791b09a44eaefb227f323a39199887f6ce17b44cb5a9193134"
+        },
+        "app/licenses/pg-protocol@1.16.1/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg-protocol@1.16.1/package.json": {
+          "sha256": "a4a4e23027b26c72be7729d045d0100ad9329959db0449c535fa7b2ba2e717c6"
+        },
+        "app/licenses/pg-types@2.2.0/package.json": {
+          "sha256": "3ec0293cb38cc8d9475e3eb32ac5f19d195bf9fccc8b19a0714e6ecd6e7c2cf0"
+        },
+        "app/licenses/pg-types@2.2.0/README.md": {
+          "sha256": "ecda9bca71d3f0cee4e600d1dd2bef336213f39ef2e8fca6a1a1c1c8723f643a"
+        },
+        "app/licenses/pg@8.16.3/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg@8.16.3/package.json": {
+          "sha256": "f7b678a8055c234669e8dd272dd624771e29d9f0e3a3353f15c3005ab1a5fd29"
+        },
+        "app/licenses/pgpass@1.0.5/package.json": {
+          "sha256": "d75240eb4fe759c10db9f903838275348676a8bdc1f329e20a833713cd7c99bd"
+        },
+        "app/licenses/pgpass@1.0.5/README.md": {
+          "sha256": "62549909404b5a0dcb2b4b74c9a930baf8095dbcfa1543c4ffc79378acd22b57"
+        },
+        "app/licenses/postgres-array@2.0.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-array@2.0.0/package.json": {
+          "sha256": "dcd6a505fcbc032b409ee2838ab2c776dea3a9cfe02b736364b6cb82a946665f"
+        },
+        "app/licenses/postgres-bytea@1.0.1/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-bytea@1.0.1/package.json": {
+          "sha256": "9125568c5fb51a65b8f11adb0080c2775b99ee82822d73bff8b56b2a9d47d7aa"
+        },
+        "app/licenses/postgres-date@1.0.7/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-date@1.0.7/package.json": {
+          "sha256": "03f9edefa96697072075e02df045cc61ed4ca2f8dfffb1ff87f4070bc3404151"
+        },
+        "app/licenses/postgres-interval@1.2.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-interval@1.2.0/package.json": {
+          "sha256": "cc3056db105e66c9128cb8a387cda782d5f1ae9281be90de0b8d26a90af89c57"
+        },
+        "app/licenses/split2@4.2.0/LICENSE": {
+          "sha256": "c372ef2fa1dfcb124ed807609751e75e3a009f108c5724916b489288fcb88a0c"
+        },
+        "app/licenses/split2@4.2.0/package.json": {
+          "sha256": "87b734c3087c8d9ed5d76d1bff00db30f960831ba8705dd18d73b180d08d2140"
+        },
+        "app/licenses/xtend@4.0.2/LICENSE": {
+          "sha256": "82e67379203d5794e7c44549847d8d64ae6904591381682360470898bd306821"
+        },
+        "app/licenses/xtend@4.0.2/package.json": {
+          "sha256": "b02ffef8cda96c5c3ee00a00390e63f608362c2ddfb3ed754e181d013a45d48a"
+        },
+        "app/licenses/zod@4.6.5/LICENSE": {
+          "sha256": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
+        },
+        "app/licenses/zod@4.6.5/package.json": {
+          "sha256": "a046ed85fa09571dba539fee9ef236152d12dabd1f229b014ec3bd2ebaad9000"
+        },
+        "app/licenses.json": {
+          "sha256": "8b56dd32aa1f0850a5071ed4eaa6dc1f0295343ecbd6431c63676c23aa30b436"
+        },
+        "app/metafile.json": {
+          "sha256": "f4d02bef5caeab7119ac634dfa71f50b8167041fd9d2706ba3bc56fc1b6ed458"
+        },
+        "app/product-runtime.js": {
+          "sha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0"
+        },
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": {
+          "sha256": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6"
+        },
+        "web/assets/runtime-BKc4Woo_.js": {
+          "sha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670"
+        },
+        "web/assets/runtime-DZBMYjmA.css": {
+          "sha256": "49b4262060d739edf150b31c0094e1ebb175895d5b1d44141c2f3094167b22e4"
+        },
+        "web/index.html": {
+          "sha256": "0f36eca5a3db8d13f8cad93647f65a6481bd5ffd23a257f2af6a5ba399c93ddc"
+        },
+        "resources.json": {
+          "sha256": "63e6690973073fbcff6fe22627ead16157b766a3ac35621a897dd3f15ca7be06"
+        },
+        "package.json": {
+          "sha256": "2e1be670228d3070c54c8b3af63bb0f7c38c44a0b2285b7121ed3f9c359a2747"
+        },
+        "xunjie.cmd": {
+          "sha256": "a22992d83ff5d9dd6e3a0c28d81eafe26124838955076cc2faff6e633b1614b7"
+        }
+      },
+      "resources": [
+        {
+          "id": "node",
+          "version": "24.21.0",
+          "archive": {
+            "filename": "node-v24.21.0-win-x64.zip",
+            "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip",
+            "sha256": "158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541",
+            "bytes": 37618919,
+            "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+            "archiveRoot": "node-v24.21.0-win-x64"
+          },
+          "entryHashes": {
+            "node.exe": "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32"
+          }
+        },
+        {
+          "id": "postgres",
+          "version": "18.6",
+          "archive": {
+            "filename": "postgresql-18.6.1-x86_64-pc-windows-msvc.zip",
+            "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip",
+            "sha256": "d82142f3a9a49be8467f0e87f5a079f627515539f94a070fe1463208fa8eb3c6",
+            "bytes": 48730935,
+            "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip.sha256",
+            "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip.manifest.json",
+            "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip.spdx.json",
+            "archiveRoot": "postgresql-18.6.1-x86_64-pc-windows-msvc"
+          },
+          "entryHashes": {
+            "bin/initdb.exe": "31edc9937a2e02bdf8f07d4af7ad560893bfcb32f618c5527d6fda300baa0361",
+            "bin/postgres.exe": "5fc1baf66a21e54405af63d11c0d5797a9f112a57ad502ec7f575ab0cc71d814",
+            "bin/pg_ctl.exe": "5cd6065a2847cfc9afd7111bfb37899a36fc65a70551646aaa79782a9c3bd547",
+            "bin/pg_controldata.exe": "732193823ac328bde1f8538fe4e67d74c19cc031d0f053fc7f38c62fe2b1cae1",
+            "bin/psql.exe": "af2e2c4d64174c7d786932afbe0a5a96f4357fbc10cddd566dac8f74a1804d0f",
+            "bin/pg_dump.exe": "251ea0d3ac3ae3b6039e537d8e9e6c542a248bd4356de064a991e4592d6f4a62",
+            "bin/pg_dumpall.exe": "6fc36761e2a4afc760e76517bdc3b0ab139b8ca3261f063de0e228bbf22f8703",
+            "bin/pg_restore.exe": "e25631c00689f60a9bb839697f819b7dcc6b9f511584de13738eac122c4f16d6",
+            "bin/pg_upgrade.exe": "41236741b7d8aea6fcd87d33fb17235a6f7761a2d8e4b042483fbaeba3ee8f30",
+            "bin/clusterdb.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/createdb.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/createuser.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/dropdb.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/dropuser.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/ecpg.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/initdb.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/oid2name.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_amcheck.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_archivecleanup.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_basebackup.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_checksums.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_combinebackup.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_config.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_controldata.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_createsubscriber.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_ctl.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_dump.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_dumpall.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_isready.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_receivewal.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_recvlogical.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_resetwal.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_restore.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_rewind.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_test_fsync.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_test_timing.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_upgrade.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_verifybackup.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_waldump.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pg_walsummary.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/pgbench.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/postgres.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/psql.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/python.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/reindexdb.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/test_cloexec.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/vacuumdb.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1",
+            "bin/vacuumlo.exe.manifest": "81253c200d76d5b605386ec918d8ee569d344c153c6c3485ecdee8177d9ce4e1"
+          }
+        }
+      ],
+      "graph": "passed"
+    },
+    "linux18": {
+      "platform": "linux-x64",
+      "profile": "full",
+      "distributionSha256": "55845bb3289bccfafa752dabce2d5e8c2c2fa4753dbda83a9a2c1294b4a996f3",
+      "entryHashes": {
+        "app/cli.js": {
+          "sha256": "bd04cf4ef993f1853dab897fb63cda769c251bd20f28f29714f95732fd05db52"
+        },
+        "app/daemon.js": {
+          "sha256": "9cd0f4498c3f015a805eebae76e4a53b3b9fe9f6b524bff986d5fbca2bd7b94e"
+        },
+        "app/licenses/pg-connection-string@2.14.1/LICENSE": {
+          "sha256": "2244b5486c4427001b6756a87b9a297d427c111dcc3ba64a097492a8979c23d0"
+        },
+        "app/licenses/pg-connection-string@2.14.1/package.json": {
+          "sha256": "53d453c5a426e69a11ff479e0d8a293505faa1833e6eb3ff7ceefdaac569e3ea"
+        },
+        "app/licenses/pg-int8@1.0.1/LICENSE": {
+          "sha256": "4e8e87ccdfc7e4b47fd89015f78468aa53b6bf43ab6e6e12d43e8f55294911de"
+        },
+        "app/licenses/pg-int8@1.0.1/package.json": {
+          "sha256": "147155887a41bb6f69ff98b3dde827b7e6a8214c3a71938da4babf8e12adff2e"
+        },
+        "app/licenses/pg-pool@3.14.0/LICENSE": {
+          "sha256": "4f15ee7fc2a72082859d7e0d12dfa4bcdd70b1c744ad3850d07780730ac08557"
+        },
+        "app/licenses/pg-pool@3.14.0/package.json": {
+          "sha256": "0a9924def9e06f791b09a44eaefb227f323a39199887f6ce17b44cb5a9193134"
+        },
+        "app/licenses/pg-protocol@1.16.1/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg-protocol@1.16.1/package.json": {
+          "sha256": "a4a4e23027b26c72be7729d045d0100ad9329959db0449c535fa7b2ba2e717c6"
+        },
+        "app/licenses/pg-types@2.2.0/package.json": {
+          "sha256": "3ec0293cb38cc8d9475e3eb32ac5f19d195bf9fccc8b19a0714e6ecd6e7c2cf0"
+        },
+        "app/licenses/pg-types@2.2.0/README.md": {
+          "sha256": "ecda9bca71d3f0cee4e600d1dd2bef336213f39ef2e8fca6a1a1c1c8723f643a"
+        },
+        "app/licenses/pg@8.16.3/LICENSE": {
+          "sha256": "192b8f5c96900f04a1271dec39688655d7416c1c6ea84a508e18b50d2b6751f3"
+        },
+        "app/licenses/pg@8.16.3/package.json": {
+          "sha256": "f7b678a8055c234669e8dd272dd624771e29d9f0e3a3353f15c3005ab1a5fd29"
+        },
+        "app/licenses/pgpass@1.0.5/package.json": {
+          "sha256": "d75240eb4fe759c10db9f903838275348676a8bdc1f329e20a833713cd7c99bd"
+        },
+        "app/licenses/pgpass@1.0.5/README.md": {
+          "sha256": "62549909404b5a0dcb2b4b74c9a930baf8095dbcfa1543c4ffc79378acd22b57"
+        },
+        "app/licenses/postgres-array@2.0.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-array@2.0.0/package.json": {
+          "sha256": "dcd6a505fcbc032b409ee2838ab2c776dea3a9cfe02b736364b6cb82a946665f"
+        },
+        "app/licenses/postgres-bytea@1.0.1/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-bytea@1.0.1/package.json": {
+          "sha256": "9125568c5fb51a65b8f11adb0080c2775b99ee82822d73bff8b56b2a9d47d7aa"
+        },
+        "app/licenses/postgres-date@1.0.7/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-date@1.0.7/package.json": {
+          "sha256": "03f9edefa96697072075e02df045cc61ed4ca2f8dfffb1ff87f4070bc3404151"
+        },
+        "app/licenses/postgres-interval@1.2.0/license": {
+          "sha256": "f057f36739d53d228a746de4440c1e0c644ecde06d6beab45337d39c9d12a393"
+        },
+        "app/licenses/postgres-interval@1.2.0/package.json": {
+          "sha256": "cc3056db105e66c9128cb8a387cda782d5f1ae9281be90de0b8d26a90af89c57"
+        },
+        "app/licenses/split2@4.2.0/LICENSE": {
+          "sha256": "c372ef2fa1dfcb124ed807609751e75e3a009f108c5724916b489288fcb88a0c"
+        },
+        "app/licenses/split2@4.2.0/package.json": {
+          "sha256": "87b734c3087c8d9ed5d76d1bff00db30f960831ba8705dd18d73b180d08d2140"
+        },
+        "app/licenses/xtend@4.0.2/LICENSE": {
+          "sha256": "82e67379203d5794e7c44549847d8d64ae6904591381682360470898bd306821"
+        },
+        "app/licenses/xtend@4.0.2/package.json": {
+          "sha256": "b02ffef8cda96c5c3ee00a00390e63f608362c2ddfb3ed754e181d013a45d48a"
+        },
+        "app/licenses/zod@4.6.5/LICENSE": {
+          "sha256": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
+        },
+        "app/licenses/zod@4.6.5/package.json": {
+          "sha256": "a046ed85fa09571dba539fee9ef236152d12dabd1f229b014ec3bd2ebaad9000"
+        },
+        "app/licenses.json": {
+          "sha256": "8b56dd32aa1f0850a5071ed4eaa6dc1f0295343ecbd6431c63676c23aa30b436"
+        },
+        "app/metafile.json": {
+          "sha256": "f4d02bef5caeab7119ac634dfa71f50b8167041fd9d2706ba3bc56fc1b6ed458"
+        },
+        "app/product-runtime.js": {
+          "sha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0"
+        },
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": {
+          "sha256": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6"
+        },
+        "web/assets/runtime-BKc4Woo_.js": {
+          "sha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670"
+        },
+        "web/assets/runtime-DZBMYjmA.css": {
+          "sha256": "49b4262060d739edf150b31c0094e1ebb175895d5b1d44141c2f3094167b22e4"
+        },
+        "web/index.html": {
+          "sha256": "0f36eca5a3db8d13f8cad93647f65a6481bd5ffd23a257f2af6a5ba399c93ddc"
+        },
+        "resources.json": {
+          "sha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469"
+        },
+        "package.json": {
+          "sha256": "2e1be670228d3070c54c8b3af63bb0f7c38c44a0b2285b7121ed3f9c359a2747"
+        },
+        "xunjie": {
+          "sha256": "8adeb55d989d9fb528fe6cdf74573bbda93fb21795072aa30e783b069529ef59"
+        }
+      },
+      "resources": [
+        {
+          "id": "node",
+          "version": "24.21.0",
+          "archive": {
+            "filename": "node-v24.21.0-linux-x64.tar.xz",
+            "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
+            "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+            "bytes": 31890184,
+            "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+            "archiveRoot": "node-v24.21.0-linux-x64"
+          },
+          "entryHashes": {
+            "bin/node": "7fde7b8afa198da66257f42ee2001d874c7355631e6d1579a5fb5ef1f246df4c"
+          }
+        },
+        {
+          "id": "postgres",
+          "version": "18.6",
+          "archive": {
+            "filename": "postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz",
+            "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz",
+            "sha256": "e84b02dd8d0ce5879fb697330a789231c8b8f8d958dae3ad4d90fecc710b1315",
+            "bytes": 40484450,
+            "sha256Source": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz.sha256",
+            "manifestSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz.manifest.json",
+            "sbomSource": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz.spdx.json",
+            "archiveRoot": "postgresql-18.6.1-x86_64-unknown-linux-gnu"
+          },
+          "entryHashes": {
+            "bin/initdb": "1eea6736714305a926e6aa673cb4b64ac956a23c75078fe44fc676fd6dee4b6f",
+            "bin/postgres": "5bc8957ed11c87924a63120ac01cca1a33068702ab434b58ee892605224f93e0",
+            "bin/pg_ctl": "b261aa6f97ff315d55543612890a03836b9494ac5de487f0b36c7d4a25cdb01c",
+            "bin/pg_controldata": "77843ce89e45d0464d39331972c274f63225668aa841752f742f6744ac17137f",
+            "bin/psql": "cc91facfa10c8e5f2071224948a236bb13f6fd316043d6b66371f91f44229e54",
+            "bin/pg_dump": "0b23a6c35823ca2aae74808d57e021b7aafbc7cfebe7c9a91dc32c25b94ec637",
+            "bin/pg_dumpall": "fd72845848b1c41ee601c1ce69feb22b986482057f257bd28d37b46b1ba5c467",
+            "bin/pg_restore": "53f175e1da238866178fcbf0aca21ff3b6213940d221069e76820b527b144e02",
+            "bin/pg_upgrade": "0606bced7fc97777cd9278c9073d8c4cf809dd0697795ceb6789fe5d9cf8fb1d"
+          }
+        }
+      ],
+      "graph": "passed"
+    }
+  },
+  "storage": {
+    "macos": {
+      "status": "passed",
+      "counts": {
+        "tests": 28,
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0
+      },
+      "sourceSha256": "097baad29b6588237d53dd95373e2120f15a8301188e405f46bba5fe453f7cf9",
+      "durationMs": 11373
+    },
+    "windows": {
+      "status": "passed",
+      "counts": {
+        "tests": 28,
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0
+      },
+      "sourceSha256": "d63c9ab5ccceda9b2d4afddb9212ae47bcff25696b83b4d3f2e0f4898c719c1f",
+      "durationMs": 124602
+    },
+    "linux": {
+      "status": "passed",
+      "counts": {
+        "tests": 28,
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0
+      },
+      "sourceSha256": "097baad29b6588237d53dd95373e2120f15a8301188e405f46bba5fe453f7cf9",
+      "durationMs": 68746
+    }
+  },
+  "results": {
+    "verification": "passed",
+    "macPackage": 13,
+    "windowsPackage": 19,
+    "macRecovery": 21,
+    "windowsIoAndStorageRecovery": {
+      "passed": 18,
+      "failed": 0,
+      "skipped": 2,
+      "skipReason": "POSIX-only partial write and directory sync fault injection"
+    },
+    "windowsDeletion": {
+      "retiredAndIsolatedPassed": 2,
+      "pendingAndRetiringPassed": 1,
+      "initialPendingTestCancelled": 1,
+      "retryReason": "10-second POSIX lifecycle test cap did not allow Windows process-identity checks; 40 ms export fault deadline retained"
+    },
+    "windowsBrowser": "passed-by-Robert",
+    "macBrowser": "passed",
+    "teachingEffectiveness": "not-run-out-of-scope"
+  },
+  "browser": {
+    "mac": {
+      "version": "Chrome 156.0.8078.79",
+      "endpoint": "http://127.0.0.1:57681",
+      "checks": [
+        "PG18.6 ready after major upgrade and takeover",
+        "new installation and recovery namespace"
+      ],
+      "beforeFinalDeletionAndWindowsRetryPatch": [
+        "ready",
+        "maintenance",
+        "ready",
+        "service stopped clears stale readiness",
+        "same identity ready after restart"
+      ],
+      "frontendSha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670"
+    },
+    "windows": {
+      "formatVersion": 1,
+      "issue": 142,
+      "status": "passed",
+      "observedAt": "2026-10-30T05:25:26Z",
+      "platform": "Windows 11 x64",
+      "browser": "Chrome 156.0.8078.48",
+      "observer": "Robert",
+      "method": "Human confirmation in this acceptance session",
+      "openedBy": "public xunjie launch under InteractiveToken/Limited",
+      "checks": [
+        "ready",
+        "PostgreSQL 18.6 ready",
+        "manual recheck",
+        "environment 9220d781 identity",
+        "close browser tab and revisit preserves service"
+      ],
+      "field": {
+        "state": "ready",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "9220d781-bd19-4564-8786-8c323c1838bf",
+          "installationId": "7d7a6703-4bd4-4c01-b8b1-bfec5b5c57f9",
+          "clientNamespace": "xunjie.v1.9220d781-bd19-4564-8786-8c323c1838bf",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "9220d781-bd19-4564-8786-8c323c1838bf",
+              "serviceId": "a3f1946a-7509-4193-a0fc-368163669550",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:58575",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        },
+        "endpoint": "http://127.0.0.1:58575",
+        "dependencies": [
+          {
+            "name": "PostgreSQL",
+            "required": true,
+            "state": "ready",
+            "detail": "18.6"
+          }
+        ]
+      },
+      "scope": "Runtime status UI. Frontend asset digest is compared with the final rebuilt distribution; later changes affect runtime deletion and Windows file-sharing retries.",
+      "frontendSha256": "9c8cc8f225e114f924d7bce8e569fc9adb0f8ade374abaa52f1ce643eb785670",
+      "frontendMatchesPreviouslyAcceptedBundle": true
+    }
+  },
+  "review": {
+    "standards": {
+      "initialFindings": 2,
+      "followUpFindings": 1,
+      "remainingInScope": 0
+    },
+    "spec": {
+      "initialFindings": 4,
+      "remainingInScope": 0
+    },
+    "physicalPowerLossVerified": false
+  },
+  "limitations": [
+    "Signing, notarization and Gatekeeper-specific acceptance deferred by owner.",
+    "Clean OS VM cancelled by owner; real ordinary-user hosts and isolated PATH used.",
+    "Windows metadata synchronization does not prove newly created ancestor-directory or physical power-loss durability.",
+    "Default host registers runtime owner only; production domain owners join in their own work packages.",
+    "Cross-machine HTTPS and Windows/Mac logical portability reuse audited subissue evidence; not rerun against all new acceptance patches.",
+    "General CLI takeover maps local private roots; cross-machine acceptance uses trusted host adapters.",
+    "S3 supplier support is fixed to SeaweedFS 4.50, not all vendors."
+  ],
+  "priorEvidence": {
+    "macos": {
+      "file": "wp01-maintenance-macos.json",
+      "sha256": "0df7278a7254e6f489bca2358700299f8b2333f4988f645082f35cf539599cd1",
+      "verified": true
+    },
+    "windows": {
+      "file": "wp01-maintenance-windows.json",
+      "sha256": "85144f1a85746c65cfaeebe6a5dc9f318ed25771bd0e452894adc653db410d46",
+      "verified": true
+    },
+    "linux": {
+      "file": "wp01-maintenance-linux.json",
+      "sha256": "e3c0c2d1b33ea269be08fa75328e05c732bae488d4ab4b63568e6488218d2996",
+      "verified": true
+    },
+    "external": {
+      "file": "wp01-maintenance-external.json",
+      "sha256": "f15e6650a3efba33a44be4d707fe8f561c2efeed6b307e9daa1cea8fba249a6a",
+      "verified": true
+    },
+    "hybrid": {
+      "file": "wp01-maintenance-hybrid.json",
+      "sha256": "6958d93449abad8a6c32389a550c133007952f68bb7e34e824c7500a349712d4",
+      "verified": true
+    },
+    "disk-space": {
+      "file": "wp01-maintenance-disk-space.json",
+      "sha256": "e4b2c61f81d4fee4367f835367b700e46b017d76eb850e79ff1c2238e1ac6c61",
+      "verified": true
+    },
+    "macos-to-windows": {
+      "file": "wp01-maintenance-macos-to-windows.json",
+      "sha256": "8e22364aa087d2c73b34672c771aca6019f31a2af857002f1ec16e46618dcc26",
+      "verified": true
+    },
+    "cli-major": {
+      "file": "wp01-maintenance-cli-major.json",
+      "sha256": "5aab722243864e096c8ced718364a4b36e1719137929c409ba0eaa5da4f9a5f1",
+      "verified": true
+    },
+    "cli-minor": {
+      "file": "wp01-maintenance-cli-minor.json",
+      "sha256": "4704b4b93b0267651d35f8cafe63c6d25ecb71dcf914262d9d0565e346b419ff",
+      "verified": true
+    }
+  },
+  "failuresResolved": [
+    "Windows held-reader test adjusted to native replacement semantics; bounded sharing retries added.",
+    "Native Windows recovery fixture supplied the actual bundled prerequisite helper.",
+    "Windows package probe moved from the Temp parent to an independent harness root.",
+    "School fixture official download timed out; the same pinned binary was transferred and verified on host."
+  ],
+  "cleanup": {
+    "status": "passed",
+    "platforms": {
+      "macos": {
+        "file": "wp01-parent-cleanup-macos.json",
+        "sha256": "dfe930cb408469405fa9ca901d63881af27a88890c790e770e2247757ede2672",
+        "status": "passed"
+      },
+      "windows": {
+        "file": "wp01-parent-cleanup-windows.json",
+        "sha256": "f687f792b5ba4280b57c8169c084cb25030da71a28072870dc9b075535760665",
+        "status": "passed"
+      },
+      "linux": {
+        "file": "wp01-parent-cleanup-linux.json",
+        "sha256": "b1b3849a6da5e40716143dc70cdb769719fa3e38f25a6506146de5b2768b0926",
+        "status": "passed"
+      }
+    },
+    "temporaryCredentialsAndRecoveryKeysRemoved": true,
+    "existingWindows143AndSchoolServicesPreserved": true
+  },
+  "inventory": {
+    "verification.json": {
+      "file": "wp01-parent-verification.json",
+      "sha256": "6ef8505c250c6487a3b1c6144e11a8866026a388facb6ba585e5cf5e2fe1d247"
+    },
+    "package-macos.json": {
+      "file": "wp01-parent-package-macos.json",
+      "sha256": "19c5e1dd77c90c334879ef28fe53c363febd89d588e50d6b1e92c45286c81a02"
+    },
+    "recovery-macos.json": {
+      "file": "wp01-parent-recovery-macos.json",
+      "sha256": "d840035ad4098bbd73c732badbc109b8ec79b46072db51d3f87c19028898ad40"
+    },
+    "cli-major.json": {
+      "file": "wp01-parent-cli-major.json",
+      "sha256": "e5691d276b3ac5bfe6346107ba8302a20f78f38ecf071075d08979440ab96ad3"
+    },
+    "browser-windows.json": {
+      "file": "wp01-parent-browser-windows.json",
+      "sha256": "174e23f2ab257a027ef852442260c168550f9f47f276fc33f2bc20ceee5614bd"
+    },
+    "chrome-macos.png": {
+      "file": "wp01-parent-chrome-macos.png",
+      "sha256": "69e34ed0ef41da0016d0f801714f64e066d461ac7a0c0a467a73cfdf10bb4637"
+    },
+    "recovery-resource-retry.json": {
+      "file": "wp01-parent-recovery-resource-retry.json",
+      "sha256": "e4467d657f80417d6104593a79c2f2ebdc1c0ff55ed0871f5eb60b78f7057eaf"
+    },
+    "recovery-initialization-failure.json": {
+      "file": "wp01-parent-recovery-initialization-failure.json",
+      "sha256": "8dee35c23ae3800f968b440b0d7525080f4a540cdfe45772060e8a374e7fcb2e"
+    },
+    "prior-evidence-audit.json": {
+      "file": "wp01-parent-prior-evidence-audit.json",
+      "sha256": "610c1e13c92ddb04c23c5478f4b5ae72c54d16b9f01bad9dab6428c8737e9983"
+    },
+    "storage-input-digests.json": {
+      "file": "wp01-parent-storage-input-digests.json",
+      "sha256": "2406053bef4872611c7ee5514838bddb6e491ac602ec0f20b5a7ed81c0b7abcd"
+    },
+    "storage-macos.json": {
+      "file": "wp01-parent-storage-macos.json",
+      "sha256": "c38b2cd3c31feea12b0976c46e5411429ee7290d029f480283acf3ecb9a51b4e"
+    },
+    "storage-macos.log": {
+      "file": "wp01-parent-storage-macos.log",
+      "sha256": "a811403e0d6a884fffa8b91bb8668c745b66106a4ac5e05151bb03a7157b6493"
+    },
+    "storage-windows.json": {
+      "file": "wp01-parent-storage-windows.json",
+      "sha256": "b5981d55b0cd46e125785778fc8ec7b4f67f8039d70e39afc0adde88a9849e49"
+    },
+    "storage-windows.log": {
+      "file": "wp01-parent-storage-windows.log",
+      "sha256": "f6c6ced809e0a1332da582a0be0642b42697a8ca0f7017b1b4489947ba06f7b4"
+    },
+    "storage-linux.json": {
+      "file": "wp01-parent-storage-linux.json",
+      "sha256": "5a7ced4118c530d5933e0984ac3030ad87b80e1a671d187841f6ed7caab2c8a8"
+    },
+    "storage-linux.log": {
+      "file": "wp01-parent-storage-linux.log",
+      "sha256": "164a1bd3d94a332ed28beeba21ffa4a0c6286c391a0c890a58de030073c01154"
+    },
+    "package-windows.json": {
+      "file": "wp01-parent-package-windows.json",
+      "sha256": "6fde3b6c9480c46fd5d66669a34b704e4caa1921c3c4f4fd258704f6e04c2e2a"
+    },
+    "windows-token.json": {
+      "file": "wp01-parent-windows-token.json",
+      "sha256": "a1606060531334334dcf8574116301ededceec5ab0068ea918570f73d09cc785"
+    },
+    "windows-recovery-native.log": {
+      "file": "wp01-parent-windows-recovery-native.log",
+      "sha256": "c930606befb506923e47e5cd1198aa7f4bf42865a5cc1904cc54198019419b9d"
+    },
+    "windows-deletion-first.log": {
+      "file": "wp01-parent-windows-deletion-first.log",
+      "sha256": "1f1d2878b8f7b85d8d47d32765e18b32c175a038207450cbe6c9bcd62addc395"
+    },
+    "windows-deletion-retry.log": {
+      "file": "wp01-parent-windows-deletion-retry.log",
+      "sha256": "e425f14d93419f41990ff317d4971dd99dbb7780b5b5cfc903e668d03c181f15"
+    }
+  },
+  "followUpValidation": {
+    "coreRevision": "5fe90e349e343d99dda1ac184aaea6bd08bbbf30",
+    "change": "Clear occupied-directory diagnostic",
+    "checks": [
+      "product-runtime build",
+      "focused occupied-directory regression",
+      "final native distribution: Mac13, Win19",
+      "final same-package Mac recovery21"
+    ]
+  },
+  "acceptanceFindingsResolved": [
+    "environment deletion residue",
+    "deletion while timed-out export cleanup is pending",
+    "failed and retired backup pins",
+    "JSON synchronization and transient Windows sharing conflicts",
+    "restored connection reauthorization instructions",
+    "current native storage coverage and occupied-directory diagnostics"
+  ]
+}

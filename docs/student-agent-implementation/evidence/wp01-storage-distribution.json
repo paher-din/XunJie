@@ -1,0 +1,61 @@
+{
+  "formatVersion": 1,
+  "status": "passed",
+  "sourceSha256": "4423d0d3578dceb5fdf7f160f92f83ac36c190ea422db6b382c4a18bbfcb7d12",
+  "checks": {
+    "isolatedPackageInstall": true,
+    "publicConsumerStrictTypecheckWithoutPgTypes": true,
+    "runtimeJavaScriptMatchesBuild": true,
+    "noWorkspaceSymlinks": true,
+    "packageExcludesTestHosts": true
+  },
+  "macosCounts": {
+    "tests": 20,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "linuxCounts": {
+    "tests": 20,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "packages": [
+    {
+      "name": "@xunjie/contracts",
+      "version": "0.1.0",
+      "fileCount": 11,
+      "sha256": "15dd97e4c831169fda7afe27dc405cda968d18a5bb5418c773aa288dcee61a7d",
+      "integrity": "sha512-hfZqIRdWTQrW4HMPR/xO1kRRR910QTtenNeIR6Sylqm68gFvFI1iHWDUml4BB87g70fX20IoBl4lC9Ebp7zZNQ=="
+    },
+    {
+      "name": "@xunjie/storage",
+      "version": "0.1.0",
+      "fileCount": 14,
+      "sha256": "532a9270336e727e69855530e60fb99dff3989fbf23b027578f10e6490586557",
+      "integrity": "sha512-5qFyhfHrqvxx/5z9ofJ4WnRvtIOtnvUjjA3rOe/k8TDn5O2fABf7srE44r8X2neYeND2d6uIjmgiH5LKrYTGfg=="
+    },
+    {
+      "name": "@xunjie/product-runtime",
+      "version": "0.1.0",
+      "fileCount": 19,
+      "sha256": "5f3c3fae2e2f100a4c654d5c0f6110fc595011fdb5cd9a4ad37ac5fc1d22d2c1",
+      "integrity": "sha512-M7KgaTKITkvmIAwTBekDr0kf/WAPtbO/Fh5zDzjUeFVQ/g3+XoOp6bMXw/dbnAyeP42u0vV6YNHwwCvTHzcjKg=="
+    }
+  ],
+  "windows": {
+    "counts": {
+      "tests": 20,
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "sourceSha256": "099ed73d348edcc81de5cfa9263c9fe4d90ae1a64e65398b5ba5d30c9e3ca7f8",
+    "evidence": "wp01-storage-windows.json",
+    "strictTypecheckWithoutPgTypes": true,
+    "sameProductionJavaScript": true,
+    "noWorkspaceSymlinks": true,
+    "nativeDependencyModules": []
+  }
+}

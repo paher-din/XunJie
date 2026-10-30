@@ -6,10 +6,12 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const DEPLOYMENT_FILES = [
-  'apps/teaching/server/access/local-socket.ts',
+  'package.json', 'package-lock.json', 'apps/web/package.json', 'apps/server/package.json',
+  'packages/contracts/package.json', 'tools/xj-dev/package.json',
+  'apps/server/server/access/local-socket.ts',
   'tools/xj-dev/src/enrollment-protocol.mjs',
   ...['server.mjs', 'store.mjs', 'identity.mjs', 'adapters.mjs', 'admin.mjs', 'system-helper.py',
-    'install.py', 'prepare-tls.py', 'package-store.mjs', 'packages.mjs', 'github-login.mjs', 'oss-storage.mjs', 'package.json', 'package-lock.json',
+    'install.py', 'prepare-tls.py', 'package-store.mjs', 'packages.mjs', 'github-login.mjs', 'oss-storage.mjs', 'package.json',
     'xunjie-dev-access-candidate129.service'].map(file => 'tools/xj-dev-access/' + file),
 ];
 export function prepareDeployment(commit, output, cwd = process.cwd(), { installDependencies = false } = {}) {
@@ -29,18 +31,18 @@ export function prepareDeployment(commit, output, cwd = process.cwd(), { install
     if (process.version !== 'v24.21.0') throw new Error('PINNED_NODE_REQUIRED');
     const npm = process.platform === 'win32' ? resolve(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js') : resolve(dirname(process.execPath), '../lib/node_modules/npm/bin/npm-cli.js');
     if (!existsSync(npm)) throw new Error('PINNED_NPM_REQUIRED');
-    const dependencyRoot = resolve(output, 'tools/xj-dev-access');
-    const installed = spawnSync(process.execPath, [npm, 'ci', '--ignore-scripts', '--omit=dev', '--bin-links=false', '--no-audit', '--no-fund'], {
+    const dependencyRoot = output;
+    const installed = spawnSync(process.execPath, [npm, 'ci', '--workspace', '@xunjie/dev-access', '--include-workspace-root=false', '--ignore-scripts', '--omit=dev', '--bin-links=false', '--no-audit', '--no-fund'], {
       cwd: dependencyRoot, timeout: 180000, stdio: ['ignore', 'pipe', 'pipe'],
     });
     if (installed.status !== 0) throw new Error('LOCKED_DEPENDENCIES_REQUIRED');
     const lock = readFileSync(resolve(dependencyRoot, 'package-lock.json'));
-    const parsed = JSON.parse(lock);
-    if (Object.values(parsed.packages).some(p => p.hasInstallScript || p.os || p.cpu)) throw new Error('PORTABLE_JAVASCRIPT_DEPENDENCIES_REQUIRED');
     const dependencies = [];
     const walk = path => {
       for (const name of readdirSync(resolve(output, path)).sort()) {
         const child = path + '/' + name, stat = lstatSync(resolve(output, child));
+        if (stat.isSymbolicLink() && child === 'node_modules/@xunjie/dev-access'
+          && realpathSync(resolve(output, child)) === realpathSync(resolve(output, 'tools/xj-dev-access'))) continue;
         if (stat.isSymbolicLink() || !stat.isFile() && !stat.isDirectory()) throw new Error('DEPENDENCY_PATH_INVALID');
         if (stat.isDirectory()) walk(child);
         else {
@@ -49,7 +51,7 @@ export function prepareDeployment(commit, output, cwd = process.cwd(), { install
         }
       }
     };
-    walk('tools/xj-dev-access/node_modules');
+    walk('node_modules');
     receipt.dependencies = { lockfileSha256: createHash('sha256').update(lock).digest('hex'), nodeVersion: process.version, files: dependencies };
   }
   writeFileSync(resolve(output, 'deployment.json'), JSON.stringify(receipt, null, 2) + '\n');

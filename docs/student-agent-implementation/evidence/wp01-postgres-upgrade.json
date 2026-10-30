@@ -1,0 +1,735 @@
+{
+  "schemaVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/143",
+  "kind": "standalone-native-postgresql-tool-availability",
+  "status": "passed",
+  "startedAt": "2026-10-29T07:35:23.512Z",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "27.2.0",
+    "osVersion": "Darwin Kernel Version 27.2.0: Wed Oct 14 23:48:06 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T8142",
+    "machine": "arm64",
+    "node": "v24.21.0",
+    "macOSVersion": "27.2"
+  },
+  "path": {
+    "minor": "17.10 -> 17.11, same PGDATA after normal stop",
+    "major": "17.11 -> 18.6, logical custom dump + globals -> new PGDATA"
+  },
+  "artifacts": {
+    "old": {
+      "release": "17.10.1",
+      "engineVersion": "17.10",
+      "target": "aarch64-apple-darwin",
+      "bin": "/Users/robertwu/.cache/xunjie-product-runtime/postgresql-17.10.1-aarch64-apple-darwin/bin",
+      "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.10.1",
+      "archiveUrl": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-aarch64-apple-darwin.tar.gz",
+      "checksumSource": "https://api.github.com/repos/theseus-rs/postgresql-binaries/releases/tags/17.10.1 (asset digest)",
+      "sha256": "6a4d10bb443043a5f2759727eb8f281e1ae88563c03a38df8066944d5409fbdb",
+      "sha256Verified": true,
+      "manifestSha256": "bc8e5e02a7726f3c7c4749287509f7010f59a6404bdf3f77c7b61d068700c326",
+      "extractedFilesVerified": 3795
+    },
+    "minor": {
+      "release": "17.11.1",
+      "engineVersion": "17.11",
+      "target": "aarch64-apple-darwin",
+      "bin": "/Users/robertwu/.cache/xunjie-product-runtime/postgresql-17.11.1-aarch64-apple-darwin/bin",
+      "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.11.1",
+      "archiveUrl": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-aarch64-apple-darwin.tar.gz",
+      "checksumSource": "https://api.github.com/repos/theseus-rs/postgresql-binaries/releases/tags/17.11.1 (asset digest)",
+      "sha256": "f4b2ff0587d80b6f22bf09ec2d133a3c2949b6423318d3fed0f4ddddddf2f004",
+      "sha256Verified": true,
+      "manifestSha256": "c6432ccc963ce3a5ebcdb48a044f27bc872b83c615645482439a16718a9ff694",
+      "extractedFilesVerified": 3795
+    },
+    "new": {
+      "release": "18.6.1",
+      "engineVersion": "18.6",
+      "target": "aarch64-apple-darwin",
+      "bin": "/Users/robertwu/.cache/xunjie-product-runtime/postgresql-18.6.1-aarch64-apple-darwin/bin",
+      "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/18.6.1",
+      "archiveUrl": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+      "checksumSource": "https://api.github.com/repos/theseus-rs/postgresql-binaries/releases/tags/18.6.1 (asset digest)",
+      "sha256": "89e91cc80650a43d22c018b95ca356a0c9e15838a1182fed2880bfb5d7d9c9a6",
+      "sha256Verified": true,
+      "manifestSha256": "7126c2932b039398d34f3cd8aa44e4765dd9281fe4bd8655ef48c36f6e553102",
+      "extractedFilesVerified": 3868
+    }
+  },
+  "toolVersions": {
+    "old": {
+      "postgres": "postgres (PostgreSQL) 17.10",
+      "initdb": "initdb (PostgreSQL) 17.10",
+      "pg_ctl": "pg_ctl (PostgreSQL) 17.10",
+      "psql": "psql (PostgreSQL) 17.10",
+      "pg_dump": "pg_dump (PostgreSQL) 17.10",
+      "pg_dumpall": "pg_dumpall (PostgreSQL) 17.10",
+      "pg_restore": "pg_restore (PostgreSQL) 17.10",
+      "pg_upgrade": "pg_upgrade (PostgreSQL) 17.10"
+    },
+    "minor": {
+      "postgres": "postgres (PostgreSQL) 17.11",
+      "initdb": "initdb (PostgreSQL) 17.11",
+      "pg_ctl": "pg_ctl (PostgreSQL) 17.11",
+      "psql": "psql (PostgreSQL) 17.11",
+      "pg_dump": "pg_dump (PostgreSQL) 17.11",
+      "pg_dumpall": "pg_dumpall (PostgreSQL) 17.11",
+      "pg_restore": "pg_restore (PostgreSQL) 17.11",
+      "pg_upgrade": "pg_upgrade (PostgreSQL) 17.11"
+    },
+    "new": {
+      "postgres": "postgres (PostgreSQL) 18.6",
+      "initdb": "initdb (PostgreSQL) 18.6",
+      "pg_ctl": "pg_ctl (PostgreSQL) 18.6",
+      "psql": "psql (PostgreSQL) 18.6",
+      "pg_dump": "pg_dump (PostgreSQL) 18.6",
+      "pg_dumpall": "pg_dumpall (PostgreSQL) 18.6",
+      "pg_restore": "pg_restore (PostgreSQL) 18.6",
+      "pg_upgrade": "pg_upgrade (PostgreSQL) 18.6"
+    }
+  },
+  "stages": [
+    {
+      "name": "artifact-and-tool-preflight",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:23.517Z",
+      "result": {
+        "noPathLookup": true,
+        "toolCount": 24,
+        "pgUpgrade": "version checked only; logical major selected"
+      },
+      "durationMs": 24247
+    },
+    {
+      "name": "17.10-initdb-start-fixture",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:47.778Z",
+      "result": {
+        "settings": {
+          "port": 55564,
+          "ctype": "C",
+          "listen": "127.0.0.1",
+          "collate": "C",
+          "version": "17.10",
+          "encoding": "UTF8",
+          "timezone": "UTC",
+          "checksums": "on",
+          "version_num": 170010,
+          "scram_verifier": true,
+          "locale_provider": "c",
+          "password_encryption": "scram-sha-256"
+        },
+        "rows": [
+          {
+            "id": 1,
+            "utc": "2026-10-29T00:01:02.123456Z",
+            "bytes": "00ff10e4b8ad",
+            "label": "循阶 中文 空格",
+            "amount": "1234567890123456.7890",
+            "payload": {
+              "list": [
+                1,
+                true,
+                null
+              ],
+              "nested": {
+                "ok": false
+              },
+              "中文": "循阶"
+            }
+          },
+          {
+            "id": 2,
+            "utc": "2000-01-01T00:00:00.000001Z",
+            "bytes": "deadbeef0001",
+            "label": "第二行 🚀",
+            "amount": "-0.0001",
+            "payload": {
+              "count": 0,
+              "empty": ""
+            }
+          }
+        ],
+        "structure": {
+          "owner": "probe_owner",
+          "roles": [
+            {
+              "name": "probe_owner",
+              "login": false,
+              "superuser": false
+            },
+            {
+              "name": "probe_reader",
+              "login": false,
+              "superuser": false
+            }
+          ],
+          "not_null": true,
+          "sequence": {
+            "is_called": true,
+            "last_value": 2
+          },
+          "membership": true,
+          "constraints": [
+            {
+              "name": "records_amount_check",
+              "type": "c",
+              "validated": true
+            },
+            {
+              "name": "records_label_unique",
+              "type": "u",
+              "validated": true
+            },
+            {
+              "name": "records_pk",
+              "type": "p",
+              "validated": true
+            }
+          ],
+          "reader_insert": false,
+          "reader_select": true
+        },
+        "constraintEnforcement": [
+          "primary-key",
+          "unique",
+          "check",
+          "not-null"
+        ],
+        "matchesIndependentExpectations": true
+      },
+      "durationMs": 2112
+    },
+    {
+      "name": "17.10-normal-stop",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:49.891Z",
+      "result": {
+        "normalShutdown": true,
+        "mode": "fast",
+        "postmasterPidRemoved": true
+      },
+      "durationMs": 110
+    },
+    {
+      "name": "17.11-in-place-minor-start-and-verify",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:50.001Z",
+      "result": {
+        "samePgdata": true,
+        "settings": {
+          "port": 55564,
+          "ctype": "C",
+          "listen": "127.0.0.1",
+          "collate": "C",
+          "version": "17.11",
+          "encoding": "UTF8",
+          "timezone": "UTC",
+          "checksums": "on",
+          "version_num": 170011,
+          "scram_verifier": true,
+          "locale_provider": "c",
+          "password_encryption": "scram-sha-256"
+        },
+        "rows": [
+          {
+            "id": 1,
+            "utc": "2026-10-29T00:01:02.123456Z",
+            "bytes": "00ff10e4b8ad",
+            "label": "循阶 中文 空格",
+            "amount": "1234567890123456.7890",
+            "payload": {
+              "list": [
+                1,
+                true,
+                null
+              ],
+              "nested": {
+                "ok": false
+              },
+              "中文": "循阶"
+            }
+          },
+          {
+            "id": 2,
+            "utc": "2000-01-01T00:00:00.000001Z",
+            "bytes": "deadbeef0001",
+            "label": "第二行 🚀",
+            "amount": "-0.0001",
+            "payload": {
+              "count": 0,
+              "empty": ""
+            }
+          }
+        ],
+        "structure": {
+          "owner": "probe_owner",
+          "roles": [
+            {
+              "name": "probe_owner",
+              "login": false,
+              "superuser": false
+            },
+            {
+              "name": "probe_reader",
+              "login": false,
+              "superuser": false
+            }
+          ],
+          "not_null": true,
+          "sequence": {
+            "is_called": true,
+            "last_value": 2
+          },
+          "membership": true,
+          "constraints": [
+            {
+              "name": "records_amount_check",
+              "type": "c",
+              "validated": true
+            },
+            {
+              "name": "records_label_unique",
+              "type": "u",
+              "validated": true
+            },
+            {
+              "name": "records_pk",
+              "type": "p",
+              "validated": true
+            }
+          ],
+          "reader_insert": false,
+          "reader_select": true
+        },
+        "constraintEnforcement": [
+          "primary-key",
+          "unique",
+          "check",
+          "not-null"
+        ],
+        "matchesIndependentExpectations": true
+      },
+      "durationMs": 720
+    },
+    {
+      "name": "17.11-normal-stop-before-major",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:50.721Z",
+      "result": {
+        "normalShutdown": true,
+        "mode": "fast",
+        "postmasterPidRemoved": true
+      },
+      "durationMs": 109
+    },
+    {
+      "name": "17.11-restart-for-logical-export",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:50.830Z",
+      "result": {
+        "settings": {
+          "port": 55564,
+          "ctype": "C",
+          "listen": "127.0.0.1",
+          "collate": "C",
+          "version": "17.11",
+          "encoding": "UTF8",
+          "timezone": "UTC",
+          "checksums": "on",
+          "version_num": 170011,
+          "scram_verifier": true,
+          "locale_provider": "c",
+          "password_encryption": "scram-sha-256"
+        },
+        "rows": [
+          {
+            "id": 1,
+            "utc": "2026-10-29T00:01:02.123456Z",
+            "bytes": "00ff10e4b8ad",
+            "label": "循阶 中文 空格",
+            "amount": "1234567890123456.7890",
+            "payload": {
+              "list": [
+                1,
+                true,
+                null
+              ],
+              "nested": {
+                "ok": false
+              },
+              "中文": "循阶"
+            }
+          },
+          {
+            "id": 2,
+            "utc": "2000-01-01T00:00:00.000001Z",
+            "bytes": "deadbeef0001",
+            "label": "第二行 🚀",
+            "amount": "-0.0001",
+            "payload": {
+              "count": 0,
+              "empty": ""
+            }
+          }
+        ],
+        "structure": {
+          "owner": "probe_owner",
+          "roles": [
+            {
+              "name": "probe_owner",
+              "login": false,
+              "superuser": false
+            },
+            {
+              "name": "probe_reader",
+              "login": false,
+              "superuser": false
+            }
+          ],
+          "not_null": true,
+          "sequence": {
+            "is_called": true,
+            "last_value": 2
+          },
+          "membership": true,
+          "constraints": [
+            {
+              "name": "records_amount_check",
+              "type": "c",
+              "validated": true
+            },
+            {
+              "name": "records_label_unique",
+              "type": "u",
+              "validated": true
+            },
+            {
+              "name": "records_pk",
+              "type": "p",
+              "validated": true
+            }
+          ],
+          "reader_insert": false,
+          "reader_select": true
+        },
+        "constraintEnforcement": [
+          "primary-key",
+          "unique",
+          "check",
+          "not-null"
+        ],
+        "matchesIndependentExpectations": true
+      },
+      "durationMs": 216
+    },
+    {
+      "name": "18.6-tools-dump-17.11-custom-and-globals",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:51.045Z",
+      "result": {
+        "dumpFormat": "custom",
+        "dumpBytes": 4505,
+        "dumpSha256": "1a162e04feb498a698492816674f62f38b5b4273b076359849481f3c384fb69f",
+        "globalsBytes": 901,
+        "globalsRolePasswords": "excluded",
+        "globalsRolesPresent": [
+          "probe_admin",
+          "probe_owner",
+          "probe_reader"
+        ],
+        "restoreListReadable": true
+      },
+      "durationMs": 96
+    },
+    {
+      "name": "18.6-new-cluster-initdb-and-start",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:51.142Z",
+      "result": {
+        "separatePgdata": true,
+        "sourcePgVersion": "17",
+        "destinationPgVersion": "18"
+      },
+      "durationMs": 866
+    },
+    {
+      "name": "18.6-restore-globals-and-custom-dump",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:52.008Z",
+      "result": {
+        "globalsRestored": true,
+        "bootstrapRoleCreateOmitted": "probe_admin only; ALTER retained",
+        "customRestored": true,
+        "ownershipAndAclRestored": true
+      },
+      "durationMs": 44
+    },
+    {
+      "name": "18.6-independent-data-role-sequence-constraint-verification",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:52.052Z",
+      "result": {
+        "settings": {
+          "port": 55565,
+          "ctype": "C",
+          "listen": "127.0.0.1",
+          "collate": "C",
+          "version": "18.6",
+          "encoding": "UTF8",
+          "timezone": "UTC",
+          "checksums": "on",
+          "version_num": 180006,
+          "scram_verifier": true,
+          "locale_provider": "c",
+          "password_encryption": "scram-sha-256"
+        },
+        "rows": [
+          {
+            "id": 1,
+            "utc": "2026-10-29T00:01:02.123456Z",
+            "bytes": "00ff10e4b8ad",
+            "label": "循阶 中文 空格",
+            "amount": "1234567890123456.7890",
+            "payload": {
+              "list": [
+                1,
+                true,
+                null
+              ],
+              "nested": {
+                "ok": false
+              },
+              "中文": "循阶"
+            }
+          },
+          {
+            "id": 2,
+            "utc": "2000-01-01T00:00:00.000001Z",
+            "bytes": "deadbeef0001",
+            "label": "第二行 🚀",
+            "amount": "-0.0001",
+            "payload": {
+              "count": 0,
+              "empty": ""
+            }
+          }
+        ],
+        "structure": {
+          "owner": "probe_owner",
+          "roles": [
+            {
+              "name": "probe_owner",
+              "login": false,
+              "superuser": false
+            },
+            {
+              "name": "probe_reader",
+              "login": false,
+              "superuser": false
+            }
+          ],
+          "not_null": true,
+          "sequence": {
+            "is_called": true,
+            "last_value": 2
+          },
+          "membership": true,
+          "constraints": [
+            {
+              "name": "records_amount_check",
+              "type": "c",
+              "validated": true
+            },
+            {
+              "name": "records_label_unique",
+              "type": "u",
+              "validated": true
+            },
+            {
+              "name": "records_pk",
+              "type": "p",
+              "validated": true
+            }
+          ],
+          "reader_insert": false,
+          "reader_select": true
+        },
+        "constraintEnforcement": [
+          "primary-key",
+          "unique",
+          "check",
+          "not-null"
+        ],
+        "matchesIndependentExpectations": true
+      },
+      "durationMs": 106
+    },
+    {
+      "name": "18.6-next-sequence-value",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:52.158Z",
+      "result": {
+        "expected": 3,
+        "actual": 3
+      },
+      "durationMs": 15
+    },
+    {
+      "name": "17.11-source-retained-and-unchanged",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:52.173Z",
+      "result": {
+        "sourceDataNotOverwritten": true,
+        "settings": {
+          "port": 55564,
+          "ctype": "C",
+          "listen": "127.0.0.1",
+          "collate": "C",
+          "version": "17.11",
+          "encoding": "UTF8",
+          "timezone": "UTC",
+          "checksums": "on",
+          "version_num": 170011,
+          "scram_verifier": true,
+          "locale_provider": "c",
+          "password_encryption": "scram-sha-256"
+        },
+        "rows": [
+          {
+            "id": 1,
+            "utc": "2026-10-29T00:01:02.123456Z",
+            "bytes": "00ff10e4b8ad",
+            "label": "循阶 中文 空格",
+            "amount": "1234567890123456.7890",
+            "payload": {
+              "list": [
+                1,
+                true,
+                null
+              ],
+              "nested": {
+                "ok": false
+              },
+              "中文": "循阶"
+            }
+          },
+          {
+            "id": 2,
+            "utc": "2000-01-01T00:00:00.000001Z",
+            "bytes": "deadbeef0001",
+            "label": "第二行 🚀",
+            "amount": "-0.0001",
+            "payload": {
+              "count": 0,
+              "empty": ""
+            }
+          }
+        ],
+        "structure": {
+          "owner": "probe_owner",
+          "roles": [
+            {
+              "name": "probe_owner",
+              "login": false,
+              "superuser": false
+            },
+            {
+              "name": "probe_reader",
+              "login": false,
+              "superuser": false
+            }
+          ],
+          "not_null": true,
+          "sequence": {
+            "is_called": true,
+            "last_value": 2
+          },
+          "membership": true,
+          "constraints": [
+            {
+              "name": "records_amount_check",
+              "type": "c",
+              "validated": true
+            },
+            {
+              "name": "records_label_unique",
+              "type": "u",
+              "validated": true
+            },
+            {
+              "name": "records_pk",
+              "type": "p",
+              "validated": true
+            }
+          ],
+          "reader_insert": false,
+          "reader_select": true
+        },
+        "constraintEnforcement": [
+          "primary-key",
+          "unique",
+          "check",
+          "not-null"
+        ],
+        "matchesIndependentExpectations": true
+      },
+      "durationMs": 93
+    },
+    {
+      "name": "18.6-normal-stop",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:52.266Z",
+      "result": {
+        "normalShutdown": true,
+        "mode": "fast",
+        "postmasterPidRemoved": true
+      },
+      "durationMs": 109
+    },
+    {
+      "name": "17.11-final-normal-stop",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:52.376Z",
+      "result": {
+        "normalShutdown": true,
+        "mode": "fast",
+        "postmasterPidRemoved": true
+      },
+      "durationMs": 111
+    },
+    {
+      "name": "cleanup",
+      "status": "passed",
+      "startedAt": "2026-10-29T07:35:52.487Z",
+      "result": {
+        "allOwnedInstancesStopped": true,
+        "temporaryDirectoryRemoved": true,
+        "passwordsDumpsAndLogsRemoved": true
+      },
+      "durationMs": 162
+    }
+  ],
+  "limitations": [
+    "Tool availability and fixture compatibility on this macOS arm64 host only; not full WP145 backup/recovery product acceptance.",
+    "No pg_upgrade migration (version availability only); selected major route is logical migration.",
+    "No Windows, clean-machine installation, offline installer, signing, notarization or Gatekeeper acceptance.",
+    "No crash, ENOSPC, interrupted restore, large database performance, arbitrary extensions, tablespaces, replication or cross-OS migration coverage.",
+    "Globals use --no-role-passwords; probe roles are NOLOGIN. Login password migration is not covered.",
+    "Only throwaway probe data is deleted after validation; no product cluster or external database is opened.",
+    "Checksums use upstream HTTPS release digests and manifests; no independent release-signature verification."
+  ],
+  "isolation": {
+    "temporaryPathContainsChineseAndSpaces": true,
+    "dataDirectoriesDistinct": true,
+    "sourcePort": 55564,
+    "destinationPort": 55565,
+    "listener": "127.0.0.1",
+    "passwordFileMode": "0600",
+    "temporaryDirectoryMode": "0700"
+  },
+  "finishedAt": "2026-10-29T07:35:52.649Z",
+  "durationMs": 29137
+}

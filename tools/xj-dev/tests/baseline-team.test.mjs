@@ -115,8 +115,8 @@ async function fixture(t) {
   }
   git(worktree, ['add', '.']); git(worktree, ['commit', '-qm', 'isolated baseline fixture']);
   const context = { home, worktree, instance: '', id: environmentId(worktree), env: environmentPaths(home, environmentId(worktree)), repo: repoPaths(checkout) };
-  await ensureBaseline(context.repo.teaching, context.env, () => {});
-  const Driver = databaseDriver(context.repo.teaching), db = new Driver(context.env.database);
+  await ensureBaseline(context.repo.server, context.env, () => {});
+  const Driver = databaseDriver(context.repo.server), db = new Driver(context.env.database);
   let attemptId;
   try { attemptId = db.prepare("SELECT attempt_id FROM attempts WHERE course_id='synthetic-textscope-c'").get().attempt_id; } finally { db.close(); }
   const contextFile = join(root, 'context.json');
@@ -264,7 +264,7 @@ test('--here initializes only empty local data, preserving current code and reje
     assert.equal(readFileSync(join(context.worktree, 'README.md'), 'utf8'), 'my current local source\n');
     assert.equal(readFileSync(join(context.worktree, 'local-only.txt'), 'utf8'), 'must survive\n');
     const before = digest(readFileSync(context.env.database));
-    assert.deepEqual(await ensureBaseline(context.repo.teaching, context.env, () => {}), { created: false, version: '0.2.0-fixed' });
+    assert.deepEqual(await ensureBaseline(context.repo.server, context.env, () => {}), { created: false, version: '0.2.0-fixed' });
     await assert.rejects(use(context), { code: 'TARGET_EXISTS' });
     assert.equal(digest(readFileSync(context.env.database)), before);
   });
@@ -325,7 +325,7 @@ test('--here initializes only empty local data, preserving current code and reje
     for (const [name, code] of [['wrong-schema', 'SCHEMA_MISMATCH'], ['wrong-accounts', 'INVALID_DATA']]) {
       const context = cold(name); await assert.rejects(use(context, [], name), { code }); absent(context);
     }
-    const missing = cold('missing-deps'); missing.repo = { ...missing.repo, teaching: join(f.root, 'no-dependencies') };
+    const missing = cold('missing-deps'); missing.repo = { ...missing.repo, server: join(f.root, 'no-dependencies') };
     await assert.rejects(use(missing), { code: 'DEPENDENCIES_NOT_READY' }); absent(missing);
     const changed = cold('changed-lock'), file = join(changed.worktree, LOCKFILES[0]), original = readFileSync(file);
     writeFileSync(file, Buffer.concat([original, Buffer.from('\nreal lock change\n')]));

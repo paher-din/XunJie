@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, globSync, lstatSync, readFileSync, statSync } from 'node:fs';
 import { delimiter, dirname, isAbsolute, join, normalize } from 'node:path';
 import { CliError } from './envelope.mjs';
 import { PINNED_NODE, toolHome } from './paths.mjs';
@@ -71,17 +71,35 @@ export function dependenciesFresh(appDir) {
   const marker = join(appDir, 'node_modules', '.package-lock.json');
   const lockfile = join(appDir, 'package-lock.json');
   if (!existsSync(marker) || !existsSync(lockfile)) return false;
-  return statSync(lockfile).mtimeMs <= statSync(marker).mtimeMs;
+  const manifest = join(appDir, 'package.json');
+  const workspace = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
+  const patterns = workspace.workspaces?.packages ?? workspace.workspaces ?? [];
+  const manifests = globSync(patterns.map(pattern => pattern.replace(/\/$/, '') + '/package.json'), { cwd: appDir });
+  return [lockfile, ...(existsSync(manifest) ? [manifest] : []), ...manifests.map(path => join(appDir, path))]
+    .every(path => statSync(path).mtimeMs <= statSync(marker).mtimeMs);
 }
 
 export async function ensureDependencies(nodePath, appDir, log) {
-  if (dependenciesFresh(appDir)) return { installed: false };
-  log(`安装依赖：${appDir}（npm ci）`);
-  const result = await runNode(nodePath, [npmCliJs(nodePath), 'ci'], { cwd: appDir });
-  if (result.code !== 0) {
-    throw new CliError('dependencies', 'DEPENDENCY_INSTALL_FAILED',
-      `npm ci 失败：${appDir}。${result.stderr.trim().split('\n').pop() || ''}`.trim(),
-      { retryable: true, recovery: '核对锁文件与网络后重试 xj-dev up；完整输出见环境日志。' });
+  let installed = false;
+  if (!dependenciesFresh(appDir) || !existsSync(join(appDir, 'node_modules/vite/bin/vite.js'))
+    || !existsSync(join(appDir, 'node_modules/typescript/bin/tsc'))) {
+    if (existsSync(join(appDir, 'node_modules')) && lstatSync(join(appDir, 'node_modules')).isSymbolicLink()) {
+      throw new CliError('dependencies', 'LINKED_DEPENDENCIES_STALE',
+        '链接的共享依赖与当前 workspace 不匹配，未执行安装。',
+        { recovery: '先准备共享依赖来源；或移除本工作树的 node_modules 链接，再在根目录安装依赖。' });
+    }
+    installed = true;
+    log(`安装依赖：${appDir}（npm ci --include=dev）`);
+    const result = await runNode(nodePath, [npmCliJs(nodePath), 'ci', '--include=dev'], { cwd: appDir });
+    if (result.code !== 0) {
+      throw new CliError('dependencies', 'DEPENDENCY_INSTALL_FAILED',
+        `npm ci 失败：${appDir}。${result.stderr.trim().split('\n').pop() || ''}`.trim(),
+        { retryable: true, recovery: '核对锁文件与网络后重试 xj-dev up；完整输出见环境日志。' });
+    }
   }
-  return { installed: true };
+  // Public contracts export compiled products. Source-based dev hosts still need those exports.
+  const built = await runNode(nodePath, [npmCliJs(nodePath), 'run', 'build', '--workspace', '@xunjie/contracts'], { cwd: appDir });
+  if (built.code !== 0) throw new CliError('dependencies', 'CONTRACT_BUILD_FAILED',
+    '公共契约构建失败。', { recovery: '在仓库根运行 npm run build --workspace @xunjie/contracts，修复错误后重试。' });
+  return { installed };
 }

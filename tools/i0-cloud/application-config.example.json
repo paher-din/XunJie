@@ -7,7 +7,7 @@
     "certFile": "/etc/xunjie/tls/server.cert.pem"
   },
   "signingSecretFile": "/etc/xunjie/signing-secret.txt",
-  "staticDirectory": "/opt/xunjie/current/apps/student/dist",
+  "staticDirectory": "/opt/xunjie/current/apps/web/dist",
   "recoveryGeneration": "REPLACE_WITH_EXISTING_APPLICATION_GENERATION",
   "approvedHdlRuntimes": [],
   "executionNodes": [

@@ -1,3 +1,4 @@
+import { reuseWorkspaceDependencies } from './workspace-dependencies.mjs';
 // Real local business API in two Git worktrees; no execution/model/network-service substitute.
 import assert from 'node:assert/strict';
 import { request } from 'node:https';
@@ -13,7 +14,7 @@ import { databaseDriver } from '../src/repro-data.mjs';
 import { decodeZip, digest, encodeZip, jsonBytes } from '../src/repro-archive.mjs';
 import { git } from '../src/repro-code.mjs';
 import { listBaselines, publishBaseline, useBaseline } from '../src/baseline-versions.mjs';
-import { bindingKeys } from '../../../apps/teaching/server/workspace/storage.ts';
+import { bindingKeys } from '../../../apps/server/server/workspace/storage.ts';
 import { ensureCertificateAuthority } from '../src/certificates.mjs';
 
 const worktree = resolve(import.meta.dirname, '../../..');
@@ -27,7 +28,7 @@ function api(origin, method, path, body, auth) {
   });
 }
 function withDb(context, fn) {
-  const Driver = databaseDriver(context.repo.teaching), db = new Driver(context.env.database);
+  const Driver = databaseDriver(context.repo.server), db = new Driver(context.env.database);
   try { return fn(db); } finally { db.close(); }
 }
 function resign(entries) {
@@ -45,8 +46,8 @@ test('capture before stale-editor save; restore actual code/data to another work
   t.after(async () => {
     for (const context of [source, ...receivers]) await down(context);
     for (const target of targets) if (existsSync(target)) {
-      for (const app of ['student', 'teaching']) {
-        const dependencies = join(target, 'apps', app, 'node_modules');
+      {
+        const dependencies = join(target, 'node_modules');
         if (existsSync(dependencies) && lstatSync(dependencies).isSymbolicLink()) unlinkSync(dependencies);
       }
       git(worktree, ['worktree', 'remove', '--force', target]);
@@ -85,7 +86,7 @@ test('capture before stale-editor save; restore actual code/data to another work
   assert.ok(captured.package.manifest.data.tables.attempts === 1);
   assert.ok(captured.package.manifest.data.tables.users === 2);
   const entries = decodeZip(readFileSync(file)), shared = join(root, 'shared.sqlite'); writeFileSync(shared, entries.get('data/shared.sqlite'));
-  const Driver = databaseDriver(source.repo.teaching), sharedDb = new Driver(shared, { readonly: true });
+  const Driver = databaseDriver(source.repo.server), sharedDb = new Driver(shared, { readonly: true });
   try {
     for (const table of ['sessions', 'jobs', 'hdl_sessions', 'workspace_runs']) assert.equal(sharedDb.prepare(`SELECT count(*) AS n FROM ${table}`).get().n, 0);
     assert.equal(sharedDb.prepare("SELECT count(*) AS n FROM users WHERE id='unselected-member'").get().n, 0);
@@ -123,9 +124,8 @@ test('capture before stale-editor save; restore actual code/data to another work
   assert.notEqual(restored.environment.root, source.env.root);
   const receiver = resolveContext({ worktree: target }); receivers.push(receiver);
   // Preinstalled local dependencies are reused for this acceptance, never installed during restore.
-  for (const app of ['student', 'teaching']) {
-    symlinkSync(join(worktree, 'apps', app, 'node_modules'), join(target, 'apps', app, 'node_modules'), 'junction');
-    utimesSync(join(target, 'apps', app, 'package-lock.json'), new Date(0), new Date(0));
+  {
+    reuseWorkspaceDependencies(worktree, target);
   }
   assert.equal(withDb(receiver, db => JSON.parse(db.prepare('SELECT attempt_json FROM attempts').get().attempt_json).workspaceRevision), attempt.workspaceRevision, 'restored the pre-trigger revision');
   assert.equal(withDb(receiver, db => db.prepare('SELECT count(*) AS n FROM sessions').get().n), 0);
@@ -201,9 +201,8 @@ test('capture before stale-editor save; restore actual code/data to another work
     assert.equal(repeated.body.data.replayed, true);
     const restoredRetry = await restoreRepro(source, { file: retryFile, target: retryTarget });
     const retryReceiver = resolveContext({ worktree: retryTarget }); receivers.push(retryReceiver);
-    for (const app of ['student', 'teaching']) {
-      symlinkSync(join(worktree, 'apps', app, 'node_modules'), join(retryTarget, 'apps', app, 'node_modules'), 'junction');
-      utimesSync(join(retryTarget, 'apps', app, 'package-lock.json'), new Date(0), new Date(0));
+    {
+      reuseWorkspaceDependencies(worktree, retryTarget);
     }
     await up(retryReceiver, () => {});
     const retried = await verifyRepro(retryReceiver, { file: retryFile });
@@ -234,7 +233,7 @@ test('capture before stale-editor save; restore actual code/data to another work
     }
     for (const kind of ['lock', 'schema']) {
       const modified = decodeZip(readFileSync(file)), manifest = JSON.parse(modified.get('manifest.json'));
-      if (kind === 'lock') manifest.conditions.lockfiles['apps/student/package-lock.json'] = digest('different dependency');
+      if (kind === 'lock') manifest.conditions.lockfiles['package-lock.json'] = digest('different dependency');
       else manifest.data.schema = digest('incompatible schema');
       modified.set('manifest.json', jsonBytes(manifest));
       const bad = join(root, `bad-${kind}.zip`); writeFileSync(bad, resign(modified));

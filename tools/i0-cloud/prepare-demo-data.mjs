@@ -39,7 +39,7 @@ function intact(db) {
 
 /** Maintenance only: no HTTP, login, execution, model request, schema change or old-record rewrite. */
 export async function prepareDemoData(options) {
-  const teachingRoot = resolve(options.teachingRoot ?? join(dirname(fileURLToPath(import.meta.url)), '../../apps/teaching'));
+  const teachingRoot = resolve(options.teachingRoot ?? join(dirname(fileURLToPath(import.meta.url)), '../../apps/server'));
   const load = relative => import(pathToFileURL(join(teachingRoot, relative)).href);
   const [{ assertDigitalLogicApplicationDatabase }, activities, { finishRecordCommand }, { activityCommandResults }] = await Promise.all([
     load('server/db/transaction.ts'), load('server/design/activities.ts'), load('server/db/records-adapter.ts'), load('contracts/design/results.ts'),

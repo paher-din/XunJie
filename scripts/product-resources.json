@@ -1,0 +1,244 @@
+{
+  "formatVersion": 1,
+  "status": "unsigned-candidate",
+  "signing": { "status": "unsigned", "signingAndNotarization": "deferred-by-user", "buildBlocking": false },
+  "platforms": {
+    "darwin-arm64": {
+      "os": "darwin",
+      "architecture": "arm64",
+      "prerequisites": ["macOS >= 15.0", "Apple Silicon"],
+      "upstreamSignature": "PostgreSQL postgres executable inspected: ad-hoc, no TeamIdentifier; not a signed product distribution"
+    },
+    "win32-x64": {
+      "os": "win32",
+      "architecture": "x64",
+      "prerequisites": [
+        "Windows 11 x64",
+        "Managed PostgreSQL: Microsoft VC++ v14 x64; product preparation policy accepts 14.51.36247.0 or newer. The prior host probe on 14.50 is operational evidence, not a supported minimum. Remote/external PostgreSQL does not require the local runtime.",
+        "Product downloads a pinned Microsoft installer directly into the user cache, verifies SHA256 and Authenticode, then returns installation-required. The end user completes Microsoft terms/UAC and retries. No Microsoft installer/DLL is redistributed in the package."
+      ],
+      "upstreamSignature": "PostgreSQL 18.6.1 Authenticode not independently verified; product signing acceptance is pending"
+    },
+    "linux-x64": {
+      "os": "linux",
+      "architecture": "x64",
+      "prerequisites": ["Ubuntu 24.04.5 x64 with glibc 2.39 is the initial school-server combination", "Upstream archive ABI floor: glibc >= 2.36 and ld-linux-x86-64.so.2", "Node requires kernel >= 4.18; not an Alpine/musl package"],
+      "upstreamSignature": "Archive checksum and GitHub provenance are separate from OS executable signing"
+    }
+  },
+  "node": {
+    "version": "24.21.0",
+    "distribution": { "mode": "controlled-subset", "retainedFiles": ["platform executable", "LICENSE"], "excluded": ["npm", "npx", "headers", "tests", "documentation"], "archiveVerification": "Verify full upstream archive before extraction and subset selection" },
+    "source": "https://nodejs.org/dist/v24.21.0/",
+    "sha256Source": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt",
+    "signatureSource": "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt.sig",
+    "license": { "spdx": "MIT", "bundledThirdParty": "See the complete LICENSE file for bundled third-party terms", "url": "https://github.com/nodejs/node/blob/v24.21.0/LICENSE", "preserve": ["LICENSE"] },
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-darwin-arm64.tar.gz",
+        "archiveRoot": "node-v24.21.0-darwin-arm64",
+        "bytes": 52909993,
+        "sha256": "bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057",
+        "executable": "bin/node"
+      },
+      "win32-x64": {
+        "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip",
+        "archiveRoot": "node-v24.21.0-win-x64",
+        "bytes": 37618919,
+        "sha256": "158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541",
+        "executable": "node.exe"
+      },
+      "linux-x64": {
+        "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
+        "archiveRoot": "node-v24.21.0-linux-x64",
+        "bytes": 31890184,
+        "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+        "executable": "bin/node"
+      }
+    }
+  },
+  "postgres": {
+    "version": "18.6",
+    "distributionVersion": "18.6.1",
+    "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/18.6.1",
+    "supportPolicy": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md",
+    "provenanceGuide": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/provenance.md",
+    "license": {
+      "spdx": "PostgreSQL",
+      "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+      "url": "https://www.postgresql.org/about/licence/",
+      "preserve": ["LICENSE", "dependency-notices", "source-input.json", "build-manifest.json", "runtime-dependencies.json", "target-validation.json"],
+      "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+    },
+    "requiredTools": ["initdb", "postgres", "pg_ctl", "pg_controldata", "psql", "pg_dump", "pg_dumpall", "pg_restore", "pg_upgrade"],
+    "backupTools": ["psql", "pg_dump", "pg_dumpall", "pg_restore", "pg_upgrade", "pg_controldata"],
+    "platforms": {
+      "darwin-arm64": {
+        "target": "aarch64-apple-darwin",
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-aarch64-apple-darwin.tar.gz",
+        "archiveRoot": "postgresql-18.6.1-aarch64-apple-darwin",
+        "bytes": 88814625,
+        "sha256": "89e91cc80650a43d22c018b95ca356a0c9e15838a1182fed2880bfb5d7d9c9a6"
+      },
+      "win32-x64": {
+        "target": "x86_64-pc-windows-msvc",
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip",
+        "archiveRoot": "postgresql-18.6.1-x86_64-pc-windows-msvc",
+        "bytes": 48730935,
+        "sha256": "d82142f3a9a49be8467f0e87f5a079f627515539f94a070fe1463208fa8eb3c6"
+      },
+      "linux-x64": {
+        "target": "x86_64-unknown-linux-gnu",
+        "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-unknown-linux-gnu.tar.gz",
+        "archiveRoot": "postgresql-18.6.1-x86_64-unknown-linux-gnu",
+        "bytes": 40484450,
+        "sha256": "e84b02dd8d0ce5879fb697330a789231c8b8f8d958dae3ad4d90fecc710b1315"
+      }
+    }
+  },
+  "postgresVersions": {
+    "17.10": {
+      "version": "17.10",
+      "distributionVersion": "17.10.1",
+      "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.10.1",
+      "supportPolicy": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md",
+      "provenanceGuide": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/provenance.md",
+      "license": {
+        "spdx": "PostgreSQL",
+        "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+        "url": "https://www.postgresql.org/about/licence/",
+        "preserve": [
+          "LICENSE",
+          "dependency-notices",
+          "source-input.json",
+          "build-manifest.json",
+          "runtime-dependencies.json",
+          "target-validation.json"
+        ],
+        "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+      },
+      "requiredTools": [
+        "initdb",
+        "postgres",
+        "pg_ctl",
+        "pg_controldata",
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade"
+      ],
+      "backupTools": [
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade",
+        "pg_controldata"
+      ],
+      "platforms": {
+        "darwin-arm64": {
+          "target": "aarch64-apple-darwin",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-aarch64-apple-darwin.tar.gz",
+          "archiveRoot": "postgresql-17.10.1-aarch64-apple-darwin",
+          "bytes": 89980908,
+          "sha256": "6a4d10bb443043a5f2759727eb8f281e1ae88563c03a38df8066944d5409fbdb"
+        },
+        "win32-x64": {
+          "target": "x86_64-pc-windows-msvc",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-x86_64-pc-windows-msvc.zip",
+          "archiveRoot": "postgresql-17.10.1-x86_64-pc-windows-msvc",
+          "bytes": 48323801,
+          "sha256": "69589c6e4445c51d819879550060820f7f4df3742142cfeb5cb61cf316332f4a"
+        },
+        "linux-x64": {
+          "target": "x86_64-unknown-linux-gnu",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.10.1/postgresql-17.10.1-x86_64-unknown-linux-gnu.tar.gz",
+          "archiveRoot": "postgresql-17.10.1-x86_64-unknown-linux-gnu",
+          "bytes": 40053819,
+          "sha256": "c3fa076025ceaf785b4ea182ed4da4c4171d97ef6397baa32d2292c7d040923e"
+        }
+      }
+    },
+    "17.11": {
+      "version": "17.11",
+      "distributionVersion": "17.11.1",
+      "source": "https://github.com/theseus-rs/postgresql-binaries/releases/tag/17.11.1",
+      "supportPolicy": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/support-policy.md",
+      "provenanceGuide": "https://github.com/theseus-rs/postgresql-binaries/blob/main/docs/provenance.md",
+      "license": {
+        "spdx": "PostgreSQL",
+        "bundledThirdParty": "Additional licenses including GPL/LGPL apply to bundled dependencies; see dependency-notices",
+        "url": "https://www.postgresql.org/about/licence/",
+        "preserve": [
+          "LICENSE",
+          "dependency-notices",
+          "source-input.json",
+          "build-manifest.json",
+          "runtime-dependencies.json",
+          "target-validation.json"
+        ],
+        "redistribution": "Preserve the full distribution and third-party notices; bundled GPL/LGPL components have their own source/redistribution obligations. This is not a PostgreSQL-license-only archive."
+      },
+      "requiredTools": [
+        "initdb",
+        "postgres",
+        "pg_ctl",
+        "pg_controldata",
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade"
+      ],
+      "backupTools": [
+        "psql",
+        "pg_dump",
+        "pg_dumpall",
+        "pg_restore",
+        "pg_upgrade",
+        "pg_controldata"
+      ],
+      "platforms": {
+        "darwin-arm64": {
+          "target": "aarch64-apple-darwin",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-aarch64-apple-darwin.tar.gz",
+          "archiveRoot": "postgresql-17.11.1-aarch64-apple-darwin",
+          "bytes": 90030572,
+          "sha256": "f4b2ff0587d80b6f22bf09ec2d133a3c2949b6423318d3fed0f4ddddddf2f004"
+        },
+        "win32-x64": {
+          "target": "x86_64-pc-windows-msvc",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-x86_64-pc-windows-msvc.zip",
+          "archiveRoot": "postgresql-17.11.1-x86_64-pc-windows-msvc",
+          "bytes": 48338921,
+          "sha256": "4dee656719d4182055219765c29c9e692993d14ba0d1b4344dd24a8ff7296782"
+        },
+        "linux-x64": {
+          "target": "x86_64-unknown-linux-gnu",
+          "url": "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.11.1/postgresql-17.11.1-x86_64-unknown-linux-gnu.tar.gz",
+          "archiveRoot": "postgresql-17.11.1-x86_64-unknown-linux-gnu",
+          "bytes": 40073705,
+          "sha256": "aa8e2e97574bd789119ac01f1dddcd7a038c84e5c308d7b753018618258f0fbd"
+        }
+      }
+    }
+  },
+  "windowsPrerequisite": {
+    "id": "microsoft-vc14-x64",
+    "version": "14.51.36247.0",
+    "productAcceptedMinimum": "14.51.36247.0",
+    "toolchainFamilyObserved": "14.51",
+    "minimumProvenance": "Upstream 18.6.1 build-manifest identifies MSVC cl on Windows-2025Server but omits the exact compiler revision; PostgreSQL PE linker is 14.51. Microsoft requires runtime at least as new as build tools. The product conservatively pins the verified current official 14.51.36247 candidate, not an inferred exact upstream ABI minimum.",
+    "upstreamBuildMetadata": "https://github.com/theseus-rs/postgresql-binaries/releases/download/18.6.1/postgresql-18.6.1-x86_64-pc-windows-msvc.zip.manifest.json",
+    "microsoftVersionPolicy": "https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist",
+    "discoverySource": "https://aka.ms/vc14/vc_redist.x64.exe",
+    "url": "https://download.visualstudio.microsoft.com/download/pr/ebdab8e5-1d7b-4d9f-a11b-cbb1720c3b12/843068991DAAA1F73AD9F6239BCE4D0F6A07A51F18C37EA2A867E9BECA71295C/VC_redist.x64.exe",
+    "bytes": 18731856,
+    "sha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+    "distribution": "helper/metadata only; installer downloaded directly from Microsoft on target user machine, not bundled",
+    "redistributionPolicy": "Installer is downloaded directly from Microsoft on the end-user machine; no Microsoft installer or DLL bytes are included in the product package.",
+    "licenseUrl": "https://visualstudio.microsoft.com/license-terms/vs2026-ga-visualcpp-v14-redist-runtime/",
+    "redistributionSource": "https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files"
+  }
+}
