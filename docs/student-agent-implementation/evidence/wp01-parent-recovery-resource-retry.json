@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "firstRun": {
+    "file": "wp01-parent-recovery-initialization-failure.json",
+    "status": "failed",
+    "stage": "pg-major-17.11-to-18.6-product-upgrade",
+    "error": "operation-failed",
+    "location": "PostgreSQL initialization before installation.json",
+    "sourceBackupId": "60001646-10f3-41d7-8ee0-5d17dec9b22e"
+  },
+  "hostObservation": {
+    "sysvSharedMemorySegmentLimit": 32,
+    "segmentsAfterFailureCleanup": 13,
+    "oldAcceptanceDatabasesStopped": 10,
+    "segmentsAfterOldStopsAndSuccessfulRetry": 3
+  },
+  "action": "Stop only prior acceptance environments, then rerun the same package in an independent root",
+  "retry": {
+    "file": "wp01-parent-recovery-macos.json",
+    "status": "passed",
+    "passedStages": 21
+  },
+  "interpretation": "The observed initialization failure is consistent with shared-memory segment exhaustion during accumulated acceptance runs. The original initdb stderr was not retained, so the exact cause is not claimed as proven. No OS limits were changed; failed source, backup and target were preserved until review and cleanup."
+}

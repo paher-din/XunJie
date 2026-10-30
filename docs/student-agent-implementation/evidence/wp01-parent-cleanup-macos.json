@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "issue": 142,
+  "status": "passed",
+  "capturedAt": "2026-10-30T06:07:13.571Z",
+  "stopped": [
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-cli-major/source",
+      "state": "stopped"
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-cli-major/target",
+      "state": "stopped"
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-cli-major/unrelated-B",
+      "state": "stopped"
+    }
+  ],
+  "previousAcceptanceEnvironmentsStopped": 10,
+  "s3Stopped": true,
+  "ownedProcessesRemaining": 0,
+  "labRootRemoved": true,
+  "priorRelocatedPackageRemoved": true,
+  "rebuildableNativeArchiveCachesRetained": true,
+  "privateRecoveryKeysAndFixtureCredentialsRemoved": true
+}

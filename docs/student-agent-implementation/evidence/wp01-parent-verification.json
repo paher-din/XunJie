@@ -1,0 +1,62 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-30T05:26:21.033Z",
+  "finishedAt": "2026-10-30T05:30:53.495Z",
+  "cwd": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie",
+  "nodeVersion": "v24.21.0",
+  "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-10-30T05-26-21-032Z-Rlb3Pi/verify.log",
+  "summaryFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-10-30T05-26-21-032Z-Rlb3Pi/summary.json",
+  "exitCode": 0,
+  "stages": [
+    {
+      "name": "typecheck",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:26:21.035Z",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-10-30T05-26-21-032Z-Rlb3Pi/01-typecheck.log",
+      "finishedAt": "2026-10-30T05:26:28.729Z",
+      "durationMs": 7694,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "build",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:26:28.730Z",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-10-30T05-26-21-032Z-Rlb3Pi/02-build.log",
+      "finishedAt": "2026-10-30T05:26:41.629Z",
+      "durationMs": 12899,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "check:contracts:browser",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:26:41.630Z",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-10-30T05-26-21-032Z-Rlb3Pi/03-check-contracts-browser.log",
+      "finishedAt": "2026-10-30T05:26:41.855Z",
+      "durationMs": 225,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "check:docs",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:26:41.856Z",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-10-30T05-26-21-032Z-Rlb3Pi/04-check-docs.log",
+      "finishedAt": "2026-10-30T05:26:42.098Z",
+      "durationMs": 242,
+      "exitCode": 0,
+      "signal": null
+    },
+    {
+      "name": "test",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:26:42.098Z",
+      "logFile": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/2026-10-30T05-26-21-032Z-Rlb3Pi/05-test.log",
+      "finishedAt": "2026-10-30T05:30:53.495Z",
+      "durationMs": 251397,
+      "exitCode": 0,
+      "signal": null
+    }
+  ]
+}

@@ -499,25 +499,27 @@ async function main(options) {
         child.stderr.setEncoding('utf8').on('data', data => { stderr += data; });
         child.on('error', error => { spawnError = error.message; });
         const closed = new Promise(resolve => child.once('close', resolve));
-        let instance; let starting;
+        let launch;
         const deadline = Date.now() + 20000;
         while (Date.now() < deadline && child.exitCode === null && !spawnError) {
           try {
-            instance = JSON.parse(await readFile(path.join(a.root, 'instance.json'), 'utf8'));
-            const response = await fetch(new URL('/runtime/status', a.endpoint), { signal: AbortSignal.timeout(1000) });
-            starting = await response.json(); if (starting.state === 'starting') break;
-          } catch { /* Wait for the actual daemon's public listener. */ }
+            // The launch journal is only the fault-injection trigger. Reading
+            // public status waits for a listener and can miss the starting
+            // interval entirely on Windows. Final assertions still use the
+            // public CLI/API and the actual owned process, never this filename.
+            const value = JSON.parse(await readFile(path.join(a.root, 'launch.json'), 'utf8'));
+            if (Number.isSafeInteger(value.pid) && value.pid > 1 && value.pid !== child.pid) { launch = value; break; }
+          } catch { /* Wait for this interrupted CLI to publish its owned daemon. */ }
           await delay(10);
         }
         try {
-          assert.equal(starting?.state, 'starting', `Did not observe startup before interruption: ${redact(stderr || spawnError || '')}`);
-          sameIdentity(a, starting);
+          assert.ok(launch && child.exitCode === null, `Did not observe an owned daemon before the CLI completed: ${redact(stderr || spawnError || '')}`);
           process.kill(child.pid, 'SIGKILL'); await closed; transactions.delete(child);
-          report.commands.push({ stage: activeStage, action: 'SIGKILL-starting-cli', pid: child.pid, ownedChild: true, daemonPid: instance.pid, observedState: 'starting' });
+          report.commands.push({ stage: activeStage, action: 'SIGKILL-starting-cli', pid: child.pid, ownedChild: true, daemonPid: launch.pid, observedBoundary: 'daemon-launched-cli-pending' });
           await start(a); const recovered = await check(a);
-          assert.equal(recovered.daemonPid, instance.pid, 'Retry spawned a duplicate daemon');
+          assert.equal(recovered.daemonPid, launch.pid, 'Retry spawned a duplicate daemon');
           assert.deepEqual(await check(b), peer);
-          return { interruptedCliPid: child.pid, observedState: 'starting', recovered, daemonReused: true, BUnchanged: true };
+          return { interruptedCliPid: child.pid, observedBoundary: 'daemon-launched-cli-pending', recovered, daemonReused: true, BUnchanged: true };
         } finally { if (child.exitCode === null) child.kill('SIGKILL'); transactions.delete(child); }
       });
       await stage('killed-daemon-residual-postgres-stop-and-restart', async () => {

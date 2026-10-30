@@ -1,0 +1,47 @@
+{
+  "macos": {
+    "file": "wp01-maintenance-macos.json",
+    "sha256": "0df7278a7254e6f489bca2358700299f8b2333f4988f645082f35cf539599cd1",
+    "verified": true
+  },
+  "windows": {
+    "file": "wp01-maintenance-windows.json",
+    "sha256": "85144f1a85746c65cfaeebe6a5dc9f318ed25771bd0e452894adc653db410d46",
+    "verified": true
+  },
+  "linux": {
+    "file": "wp01-maintenance-linux.json",
+    "sha256": "e3c0c2d1b33ea269be08fa75328e05c732bae488d4ab4b63568e6488218d2996",
+    "verified": true
+  },
+  "external": {
+    "file": "wp01-maintenance-external.json",
+    "sha256": "f15e6650a3efba33a44be4d707fe8f561c2efeed6b307e9daa1cea8fba249a6a",
+    "verified": true
+  },
+  "hybrid": {
+    "file": "wp01-maintenance-hybrid.json",
+    "sha256": "6958d93449abad8a6c32389a550c133007952f68bb7e34e824c7500a349712d4",
+    "verified": true
+  },
+  "disk-space": {
+    "file": "wp01-maintenance-disk-space.json",
+    "sha256": "e4b2c61f81d4fee4367f835367b700e46b017d76eb850e79ff1c2238e1ac6c61",
+    "verified": true
+  },
+  "macos-to-windows": {
+    "file": "wp01-maintenance-macos-to-windows.json",
+    "sha256": "8e22364aa087d2c73b34672c771aca6019f31a2af857002f1ec16e46618dcc26",
+    "verified": true
+  },
+  "cli-major": {
+    "file": "wp01-maintenance-cli-major.json",
+    "sha256": "5aab722243864e096c8ced718364a4b36e1719137929c409ba0eaa5da4f9a5f1",
+    "verified": true
+  },
+  "cli-minor": {
+    "file": "wp01-maintenance-cli-minor.json",
+    "sha256": "4704b4b93b0267651d35f8cafe63c6d25ecb71dcf914262d9d0565e346b419ff",
+    "verified": true
+  }
+}

@@ -1,0 +1,671 @@
+{
+  "formatVersion": 1,
+  "issue": 145,
+  "kind": "standalone-distributed-product-recovery",
+  "status": "failed",
+  "startedAt": "2026-10-30T05:42:17.335Z",
+  "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery",
+  "probeSha256": "1ce1fc4e30f7498c5e2cf8a5e39b36a5dde27e142df0973c02b959fbaac524ac",
+  "ownerSha256": "490891947f415a98c53e4ff1e00bdd1a205b23427bde29340a34daad880d878d",
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "27.2.0",
+    "node": "v24.21.0",
+    "bundledNode": true
+  },
+  "packages": [
+    {
+      "path": "/private/tmp/xunjie-142-SmluYE/accepted-mac18",
+      "entrySha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0",
+      "resourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+      "nodeSha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "18.6",
+      "postgresSha256": "d6688852af4db60285432f3bec9486e17b838c2f3f772b7484029abb0e4ff770"
+    },
+    {
+      "path": "/private/tmp/xunjie-142-SmluYE/accepted-mac1710",
+      "entrySha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0",
+      "resourcesSha256": "a12914a0ef847852b242f4abf01c7e5d282acb5178a0f2c20c5543a910fadbb9",
+      "nodeSha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "17.10",
+      "postgresSha256": "17998a435e988b850d01e926df9bc7e5a9a07f3f4b613d5e1e382de91fc28cc4"
+    },
+    {
+      "path": "/private/tmp/xunjie-142-SmluYE/accepted-mac1711",
+      "entrySha256": "9d63dc34ed2ad090d59024c68e683a2d43925e28f1ae0a20ca4676480c9428e0",
+      "resourcesSha256": "545872317ffc07c1cccc81302d2f0ddb9990693eee19c9a0a8f40bd533061f05",
+      "nodeSha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b",
+      "nodeVersion": "24.21.0",
+      "postgresVersion": "17.11",
+      "postgresSha256": "22d94c0a0763e93e4846674e074bb1806606f20dcbaac3783235af4eb3dd0eec"
+    }
+  ],
+  "stages": [
+    {
+      "name": "file-source-service-api-seed",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:18.315Z",
+      "result": {
+        "recordCount": 2,
+        "requestId": "3f49318f-9765-4938-a862-0fc4ec722651",
+        "effectRequestId": "ae0c118c-265d-4caa-a6d7-2921471d8490",
+        "engineVersion": "18.6",
+        "resources": [
+          {
+            "resourceId": "b6241a87-e685-4cf1-a294-276ad415090d",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "916d02a003a3e2a57b138971510e59a29890174c28fa7633db41d5980c72c445",
+            "opaqueByteLength": 86,
+            "backendId": "recovery-files"
+          },
+          {
+            "resourceId": "4db1a2dd-fbcc-4bc1-8c05-3f81b701be76",
+            "sha256": "e9883f48e6e8a00f0d2397b5f0378d39379c820b6b6cdc408eff10ca1247833b",
+            "byteLength": 131091,
+            "opaqueSha256": "ac6ccd94bda84cda91afae60c2d0f685506d767fc41439de292c3d5c061cf9ed",
+            "opaqueByteLength": 131146,
+            "backendId": "recovery-files"
+          }
+        ]
+      },
+      "durationMs": 56
+    },
+    {
+      "name": "unrelated-B-service-api-seed",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:19.071Z",
+      "result": {
+        "recordCount": 2,
+        "requestId": "0ad75a73-4c25-4e74-9c03-6997315b51c5",
+        "effectRequestId": "2a1c85d7-7375-4c5f-a519-56bb0c259072",
+        "engineVersion": "18.6",
+        "resources": [
+          {
+            "resourceId": "8bd0256d-315d-4ffa-9d74-76af3a36d374",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "5d24973bf6b1056b58f6db8f01f7691fab1fdcac293670ed08a1902172030175",
+            "opaqueByteLength": 86,
+            "backendId": "recovery-files"
+          },
+          {
+            "resourceId": "922200ce-1a55-42d0-aa05-198112579373",
+            "sha256": "535ae2500ed6ae5223929f86275b804ec5bf20d028fab17675678e8c32da6c53",
+            "byteLength": 131091,
+            "opaqueSha256": "7cfb01b409e4dc6a5915ef1fb37db2eb7c9d330c325ecac1a2baf952a73cc3ac",
+            "opaqueByteLength": 131146,
+            "backendId": "recovery-files"
+          }
+        ]
+      },
+      "durationMs": 141
+    },
+    {
+      "name": "file-held-backup",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:19.213Z",
+      "result": {
+        "backupId": "30c183a0-fdac-44ae-9d20-8e04993a9530",
+        "boundaryAt": "2026-10-30T05:42:19.272Z",
+        "completedAt": "2026-10-30T05:42:19.474Z",
+        "durationMs": 242,
+        "artifacts": [
+          {
+            "path": "5d218db0-a938-48f3-bd25-f669f0fadd57/4db1a2dd-fbcc-4bc1-8c05-3f81b701be76.blob",
+            "sha256": "20c502344c993e314d5373a672a13859ddcc25a155cca4d335b9bb175e3e366c",
+            "byteLength": 131174
+          },
+          {
+            "path": "5d218db0-a938-48f3-bd25-f669f0fadd57/b6241a87-e685-4cf1-a294-276ad415090d.blob",
+            "sha256": "60bc3da1cfa8fc384b76d921c77befe21d7076a3e17acbe51b37fb33c379ddc9",
+            "byteLength": 114
+          },
+          {
+            "path": "5d218db0-a938-48f3-bd25-f669f0fadd57/recovery.json",
+            "sha256": "2282648396507b1f90329b054748089f8bef3c185d7dc6641b484eb80d0bf7da",
+            "byteLength": 2075
+          },
+          {
+            "path": "5d218db0-a938-48f3-bd25-f669f0fadd57/schema.dump",
+            "sha256": "bf803140a6df8d83da31c2ff51d3a6258d32672cfac7a899a561815dd87586ad",
+            "byteLength": 20122
+          },
+          {
+            "path": "d4c5d1db-23b6-445f-9514-30021370ac2c/recovery.json",
+            "sha256": "537ce3779e44b282561503984979f750a475ed6f980a1a2eb040909767e38a40",
+            "byteLength": 1310
+          },
+          {
+            "path": "d4c5d1db-23b6-445f-9514-30021370ac2c/runtime.dump",
+            "sha256": "d587fd81f8773c1281280156a1864eec71dbd69aa4a4d4bc7998ecde5dd29ec6",
+            "byteLength": 1446
+          }
+        ],
+        "services": [
+          {
+            "serviceId": "d4c5d1db-23b6-445f-9514-30021370ac2c",
+            "schemaVersion": "1",
+            "engineVersion": "18.6"
+          },
+          {
+            "serviceId": "5d218db0-a938-48f3-bd25-f669f0fadd57",
+            "schemaVersion": "storage/1;owner/1",
+            "engineVersion": "18.6"
+          }
+        ]
+      },
+      "durationMs": 290
+    },
+    {
+      "name": "portability-export-private-inputs",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:19.504Z",
+      "result": {
+        "sourceRoot": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-source",
+        "expectFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/portability.private.json",
+        "keyFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/private/recovery-key.base64",
+        "backupDirectory": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-backups/30c183a0-fdac-44ae-9d20-8e04993a9530",
+        "manifestFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-backups/30c183a0-fdac-44ae-9d20-8e04993a9530/manifest.json",
+        "backupId": "30c183a0-fdac-44ae-9d20-8e04993a9530",
+        "privateExpectedEncoding": "explicit-base64-for-raw-and-opaque-bytes",
+        "generatedKeyFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/private/recovery-key.base64"
+      },
+      "durationMs": 1
+    },
+    {
+      "name": "file-restore-isolated-service-api-verification",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:19.506Z",
+      "result": {
+        "isolated": true,
+        "pendingIntentsRejected": true,
+        "writesRejected": true,
+        "backupId": "30c183a0-fdac-44ae-9d20-8e04993a9530",
+        "engineVersion": "18.6",
+        "environment": {
+          "formatVersion": 1,
+          "environmentId": "59dac3fb-3d85-4b43-92ed-4ff8fce564d6",
+          "installationId": "a4782a2f-b760-4d90-8198-86675a074b25",
+          "clientNamespace": "xunjie.v1.59dac3fb-3d85-4b43-92ed-4ff8fce564d6.recovery.bd5406b3-2f4e-4bb2-8893-862e95c112aa",
+          "profile": "local",
+          "services": [
+            {
+              "environmentId": "59dac3fb-3d85-4b43-92ed-4ff8fce564d6",
+              "serviceId": "d4c5d1db-23b6-445f-9514-30021370ac2c",
+              "unit": "client",
+              "endpoint": "http://127.0.0.1:57382",
+              "protocolVersion": 1,
+              "capabilities": [
+                "runtime.status"
+              ]
+            }
+          ]
+        }
+      },
+      "durationMs": 860
+    },
+    {
+      "name": "file-target-takeover-source-alive-and-constraints",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:20.366Z",
+      "result": {
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 302
+    },
+    {
+      "name": "file-target-normal-stop-fresh-host-reopens-rotated-storage-and-writes",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:20.668Z",
+      "result": {
+        "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-restored",
+        "normalStopConfirmed": true,
+        "newHostCreated": true,
+        "newStorageModuleAndPool": true,
+        "persistedCredentialRef": "storage-5d218db0-a938-48f3-bd25-f669f0fadd57",
+        "credentialFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-restored/credentials/storage-5d218db0-a938-48f3-bd25-f669f0fadd57",
+        "rotatedTargetCredentialUsed": true,
+        "originalRowsReceiptsRawAndOpaqueBytesUnchanged": true,
+        "originalPendingIntentsUnchanged": true,
+        "sequenceBeforeStop": "5",
+        "expectedNextSequence": "6",
+        "actualNextSequence": "6",
+        "sourceHostReopenRejected": true
+      },
+      "durationMs": 412
+    },
+    {
+      "name": "unrelated-B-not-modified-by-A-restore",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:21.080Z",
+      "result": {
+        "independentInstallationId": "7ef8b921-935f-433a-9301-116285f4a7e6",
+        "stillReady": true,
+        "dataAndReceiptsAndBytesUnchanged": true
+      },
+      "durationMs": 12
+    },
+    {
+      "name": "missing-cipher",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:21.092Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 4
+    },
+    {
+      "name": "corrupt-cipher",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:21.096Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 3
+    },
+    {
+      "name": "wrong-recovery-key",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:21.100Z",
+      "result": {
+        "rejected": true,
+        "error": "invalid-recovery",
+        "targetNeverEnabled": true,
+        "keyFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/private/wrong-recovery-key.base64"
+      },
+      "durationMs": 1
+    },
+    {
+      "name": "insufficient-space-preflight",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:21.101Z",
+      "result": {
+        "rejected": true,
+        "error": "insufficient-space",
+        "targetNeverEnabled": true
+      },
+      "durationMs": 5
+    },
+    {
+      "name": "occupied-target-preserves-live-B",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:21.106Z",
+      "result": {
+        "rejected": true,
+        "error": "target-conflict",
+        "targetNeverEnabled": false,
+        "independentBUnmodified": true
+      },
+      "durationMs": 15
+    },
+    {
+      "name": "validation-interruption-and-same-backup-new-target-rebuild",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:21.122Z",
+      "result": {
+        "interruption": "validation-after-real-restore",
+        "failedTargetNeverEnabled": true,
+        "rebuiltInNewRoot": true,
+        "originalBackupId": "30c183a0-fdac-44ae-9d20-8e04993a9530",
+        "originalCipherUnchanged": true,
+        "rebuildIsolated": true
+      },
+      "durationMs": 1590
+    },
+    {
+      "name": "process-termination-mid-restore-and-same-backup-rebuild",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:22.713Z",
+      "result": {
+        "childReachedRealRestore": true,
+        "terminatedByParent": true,
+        "exitSignal": "SIGKILL",
+        "exitCode": null,
+        "interruptedPhase": "restoring",
+        "failedTargetNeverEnabled": true,
+        "originalBackupId": "30c183a0-fdac-44ae-9d20-8e04993a9530",
+        "sameBackupRebuiltInNewRoot": true,
+        "rebuildIsolated": true,
+        "orphanedManagedDatabaseStopped": true,
+        "originalCipherUnchanged": true
+      },
+      "durationMs": 1771
+    },
+    {
+      "name": "schema-upgrade-v1-to-v2-held-backup",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:24.484Z",
+      "result": {
+        "sourceVersion": "18.6",
+        "targetVersion": "18.6",
+        "backupId": "a43cbbdb-579d-4f44-bff2-3b7bd982ee66",
+        "boundaryAt": "2026-10-30T05:42:25.229Z",
+        "backupDurationMs": 183,
+        "isolatedVerified": true,
+        "schemaVersion": 2,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 2047
+    },
+    {
+      "name": "process-termination-mid-schema-upgrade-and-actual-data-recovery",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:26.531Z",
+      "result": {
+        "childReachedRealRestore": true,
+        "terminatedByParent": true,
+        "exitSignal": "SIGKILL",
+        "exitCode": null,
+        "schemaVersion": 2,
+        "kind": "schema",
+        "sourceSchemaVersion": 1,
+        "targetSchemaVersion": 2,
+        "interruptedPhase": "restoring",
+        "sourceUpgradeJournalPreserved": true,
+        "originalBackupId": "2443ce22-05f9-4da0-90f6-8313851d275c",
+        "actualDataRestoredInFreshTarget": true,
+        "sameBackupUsed": true,
+        "originalCipherUnchanged": true,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 3650
+    },
+    {
+      "name": "s3-independent-bucket-round-trip-and-takeover",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:30.184Z",
+      "result": {
+        "fixtureVersion": "4.50",
+        "fixtureBinarySha256": "415ed1a7926aaafd299ec15ae57547a2af2765585eafa78ecc4a7460fc75a504",
+        "backendId": "issue144-d6ebabfed995",
+        "sourceBucket": "issue144-d6ebabfed995",
+        "targetBucket": "recovery-d58e81e73a139fa635c3d90f",
+        "targetBucketCreatedByHost": true,
+        "independentBuckets": true,
+        "backupId": "a6e33f2b-c66f-48be-99ea-9f608badf4a2",
+        "boundaryAt": "2026-10-30T05:42:31.061Z",
+        "backupDurationMs": 220,
+        "resources": [
+          {
+            "resourceId": "936b998a-c5d4-4a23-8235-6a65ba293d58",
+            "sha256": "f1e59f8f882aeec0dfd213198ff95ae1fb9b16ba401f41d756bfd0908a32d2bd",
+            "byteLength": 31,
+            "opaqueSha256": "1585f8e53a261a95e84d34bc97ed57f2c85f8128161efd5261e945e6f26305bb",
+            "opaqueByteLength": 86,
+            "backendId": "issue144-d6ebabfed995"
+          },
+          {
+            "resourceId": "5a7ae5a2-8a8d-487f-9ff0-742ff96b32eb",
+            "sha256": "2fa9df0485e4bd0b8cfabe6009a3807f4e073a976f561d3f73c2ff5838b7e9e4",
+            "byteLength": 131091,
+            "opaqueSha256": "946f100d59709bd9e6124f0a777c5bd3619d06dc80260f4b6b31663aca55ae66",
+            "opaqueByteLength": 131146,
+            "backendId": "issue144-d6ebabfed995"
+          }
+        ],
+        "isolatedVerified": true,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 2592
+    },
+    {
+      "name": "external-major-upgrade-refuses-unchanged-server-engine",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:32.777Z",
+      "result": {
+        "sourceEngineVersion": "17.11",
+        "requestedTargetVersion": "18.6",
+        "unchangedActualTargetVersion": "17.11",
+        "rejected": true,
+        "targetNeverEnabled": true,
+        "sourceResumedAndVerified": true,
+        "externalProviderStillReady": true,
+        "originalBackupUnchanged": true
+      },
+      "durationMs": 1953
+    },
+    {
+      "name": "pg-minor-17.10-to-17.11-product-upgrade",
+      "status": "passed",
+      "startedAt": "2026-10-30T05:42:34.730Z",
+      "result": {
+        "sourceVersion": "17.10",
+        "targetVersion": "17.11",
+        "backupId": "88433393-64f6-4a1f-b875-a60c35297102",
+        "boundaryAt": "2026-10-30T05:42:35.606Z",
+        "backupDurationMs": 183,
+        "isolatedVerified": true,
+        "schemaVersion": 1,
+        "active": true,
+        "originalSourceStillAlive": true,
+        "sourceResumeRejected": true,
+        "sourceStartRejected": true,
+        "unknownEffectIdentityPreserved": true,
+        "pendingIntentIdentityPreserved": true,
+        "nextSequence": "3",
+        "primaryKeyAndUniqueAndCheckConstraints": true
+      },
+      "durationMs": 2229
+    },
+    {
+      "name": "pg-major-17.11-to-18.6-product-upgrade",
+      "status": "failed",
+      "startedAt": "2026-10-30T05:42:36.960Z",
+      "error": "operation-failed",
+      "failureSite": {
+        "file": "probe-recovery.mjs",
+        "line": 425,
+        "column": 25
+      },
+      "durationMs": 1335
+    }
+  ],
+  "skipped": [],
+  "cleanup": [
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/pg-major-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/pg-major-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/pg-minor-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/pg-minor-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/wrong-engine-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/unchanged-external-provider",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/wrong-engine-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/s3-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/s3-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/schema-rebuilt-after-process-exit",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/schema-process-crashed-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/schema-crash-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/schema-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/schema-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/rebuilt-after-process-termination",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/process-crashed-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/rebuilt-after-interruption",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/interrupted-target",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/failed-space",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/failed-wrong-key",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/failed-corrupt-cipher",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/failed-missing-cipher",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-restored",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/unrelated-B",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    },
+    {
+      "root": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-source",
+      "hostsStopped": true,
+      "poolsClosed": true,
+      "databaseStopped": true
+    }
+  ],
+  "mode": "complete-local-matrix",
+  "interruptionCoverage": "Owned restore subprocess is terminated after real database/resource restore and before isolated state commit; no machine power loss.",
+  "recoveryKey": {
+    "keyFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/private/recovery-key.base64",
+    "generatedForThisRun": true
+  },
+  "portability": {
+    "sourceRoot": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-source",
+    "expectFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/portability.private.json",
+    "keyFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/private/recovery-key.base64",
+    "backupDirectory": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-backups/30c183a0-fdac-44ae-9d20-8e04993a9530",
+    "manifestFile": "/private/tmp/xunjie-142-SmluYE/delivery-recovery/file-backups/30c183a0-fdac-44ae-9d20-8e04993a9530/manifest.json",
+    "backupId": "30c183a0-fdac-44ae-9d20-8e04993a9530",
+    "privateExpectedEncoding": "explicit-base64-for-raw-and-opaque-bytes"
+  },
+  "error": "operation-failed",
+  "finishedAt": "2026-10-30T05:42:41.521Z",
+  "durationMs": 24186,
+  "retained": true
+}

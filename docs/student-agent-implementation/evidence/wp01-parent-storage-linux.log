@@ -1,0 +1,38 @@
+▶ real HTTP sessions recover stable receipts and bytes after response loss on file and S3
+  ✔ file (22720.183432ms)
+  ✔ s3 (23571.88013ms)
+✔ real HTTP sessions recover stable receipts and bytes after response loss on file and S3 (46359.360191ms)
+✔ real lost/timed-out COMMIT acknowledgements resolve by original identity without replay (9662.953307ms)
+✔ killing a real transaction process discards state, receipt and outbox together (8375.347216ms)
+✔ owner migrations are serialized, immutable, and upgrades require the same closed maintenance path (8263.890994ms)
+▶ real file and pinned S3 bytes survive publication rollback, reopening, retained snapshots and collection
+  ✔ file (2907.400645ms)
+  ✔ s3 (3144.971641ms)
+✔ real file and pinned S3 bytes survive publication rollback, reopening, retained snapshots and collection (11638.944422ms)
+✔ real reference creation and deletion claims cannot delete a newly retained object (7408.719704ms)
+✔ upload does not hold a database transaction and maintenance drains its durable in-flight identity (6108.518122ms)
+✔ actual missing, corrupt, partial and denied bytes never become a published reference (8275.32105ms)
+✔ a killed uploader leaves a durable unresolved identity; maintenance fails closed until the same bytes are reconciled (9009.876541ms)
+✔ duplicate upload identities wait for the original PUT, so a delayed writer cannot recreate a collected object (5580.265465ms)
+✔ real S3 timeout with stale conflicting or matching payload bytes stays unresolved until the original PUT completes (5046.481776ms)
+✔ a confirmed upload can still be published by its original identity after independent recovery (14763.611434ms)
+✔ old maintenance peers cannot close, drain or reopen a newer persistent generation (6639.43982ms)
+✔ finalization rejects a missing domain constraint and keeps the target fenced for diagnosis and retry (16979.453912ms)
+✔ a complete native schema dump restores receipts, resources, constraints and sequence state behind closed gates (12546.616191ms)
+✔ missing referenced bytes and a rewound sequence fail closed; repairing them retains the original identities (5601.289438ms)
+✔ a manifest from another backup generation cannot finalize or enable the restored owner (3529.043167ms)
+✔ restored constraint definitions alone do not accept rows that violate a foreign key (3735.374809ms)
+✔ prepare refuses foreign schemas and roles; finalization refuses an unreserved binding and a replaced schema owner (3195.160365ms)
+✔ real S3 preserves immutable bytes across a client process restart and conditional write races (4593.784302ms)
+✔ real S3 lost upload reply is reconciled by reading the same key without another PUT (546.425055ms)
+✔ two real sessions atomically receive one stable request and preserve its receipt after reopening (6794.051016ms)
+✔ conditional updates, uniqueness and cross-row effects either commit together or leave no receipt (5260.805991ms)
+✔ environment/service roles isolate identical identifiers and preserve actual PostgreSQL value semantics (5390.150324ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68643.659304
