@@ -50,4 +50,4 @@ npm run check:docs
 
 默认全库文档检查另报 252 处断链，全部位于工作区原有的未跟踪 `.tmp/`、`docs/planning/` 和 `docs/tasks/`；这些材料未修改、暂存或提交，受 Git 跟踪的文档单独检查通过。
 
-**未执行**：Apple Silicon Mac 的真实 Chrome 验收（本机无该硬件），因此本票的两平台浏览器验收尚未全部完成；真实跨机混合组合按规范归后续部署子票；教学效果不评估。上述未完成项不能用本机 API 结果代替，实施票暂不据此宣称完整关闭。
+**未执行**：Apple Silicon Mac 的真实 Chrome 验收（本机无该硬件），因此本票的两平台浏览器验收尚未全部完成；Mac 项已汇总到 [#155](https://github.com/paher-din/XunJie/issues/155)，由负责人在 Apple Silicon Mac 上执行。真实跨机混合组合按规范归后续部署子票；教学效果不评估。上述未完成项不能用本机 API 结果代替，实施票暂不据此宣称完整关闭。
