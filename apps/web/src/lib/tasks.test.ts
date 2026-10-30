@@ -98,7 +98,8 @@ describe('展示辅助', () => {
     expect(pendingCount(tasks, 'C')).toBe(2)
   })
 
-  it('formatDeadline 输出「9月30日 23:59」格式', () => {
-    expect(formatDeadline('2026-09-30T23:59:00+08:00')).toBe('9月30日 23:59')
+  it('formatDeadline 按本地时间输出「9月30日 23:59」格式', () => {
+    const deadline = new Date(2026, 8, 30, 23, 59).toISOString()
+    expect(formatDeadline(deadline)).toBe('9月30日 23:59')
   })
 })
