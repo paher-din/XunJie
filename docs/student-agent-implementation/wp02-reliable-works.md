@@ -42,6 +42,8 @@ Chrome 用例自己建立隔离产品环境；这里的 `XUNJIE_XJ_DEV_URL` 只�
 
 Windows 11 x64（build 26200），Node 24.21.0、PostgreSQL 18.6，本机安装的 Google Chrome 156.0.8078.76，有头执行；没有用 Playwright 自带 Chromium 代替。
 
+验收代码提交为 `a19c19f782c39f939eb29113512f24d309afb845`；其后的提交只补本节证据。记录见 [工程结果](evidence/wp02-works-windows-engineering.json)、[Chrome 逐项结果](evidence/wp02-works-windows-chrome.json)、[浅色截图](evidence/wp02-works-windows-light.png) 与 [深色截图](evidence/wp02-works-windows-dark.png)。截图已经目视核对，编辑器显示实际中文正文。
+
 - 全仓类型检查、全量构建、7 个公共契约浏览器导出检查通过；最后的页面修复重新执行类型检查与产品页构建通过。
 - 原生 PostgreSQL 集成 **10/10 通过，0 跳过**：作品 API、身份/活动路径、正式 CLI 恢复及 schema 升级校验。作品断言覆盖中文/BOM/CRLF、重命名与删除重建身份、不可变历史资源、较大二进制与 JSON 状态、请求幂等、竞争、跨主体隔离、重启、三 owner 备份恢复接管和恢复命名空间隔离。
 - 桌面 Chrome **14/14 通过，0 跳过**：真实 Monaco、IndexedDB、产品 API、原生 PG 和文件资源。覆盖离线编辑与重载续传、迟到/丢失回执、持续输入、初次和持续存储拒绝后自动恢复、导航失败/迟到导航、双标签本机竞争、独立浏览器上下文远端竞争、旧编辑器 model 隔离、UTF-8 BOM/CRLF、退出学校登录与切换空间交错。截图额外等待真实正文渲染后采集。
