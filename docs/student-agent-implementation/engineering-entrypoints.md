@@ -63,6 +63,7 @@ npm run test:external:tools -- --list
 | [Docker runtime](../../apps/server/runner/docker.runtime.test.ts) | Linux、`XUNJIE_C1_RUNTIME=1`、`XUNJIE_C1_RUNTIME_IMAGE` 为实际镜像摘要；需要既有专用 Docker/socket、编译镜像及挂载条件。 |
 | [node RPC](../../apps/server/runner/node.rpc.test.ts)、[编辑诊断 runtime](../../apps/server/runner/editor-diagnostics.runtime.test.ts) | Linux、`XUNJIE_C1_SSH=1`；`XUNJIE_C1_HOST_BASE` 默认 `/opt/xunjie-runner/vm`，其中需已有 SSH keys/known_hosts 及目标 VM。编辑诊断另需 `XUNJIE_EDITOR_NODE_CONFIG` 指向目标节点配置。 |
 | [HDL runtime](../../apps/server/runner/hdl.runtime.test.ts)、[板输入 runtime](../../apps/server/runner/hdl-board-inputs.runtime.test.ts) | `XUNJIE_DLC_CONFIG` 指向已有 HDL 节点配置，包含实际容器/工具链条件；板输入案例还检查 Linux。 |
+| [ALU 节点账本 runtime](../../apps/server/runner/alu-node.runtime.test.ts) | Linux，需预先准备当前节点用户可写的 `/run/xunjie-dlc`；验证真实节点的不可变元数据、占用拒绝及私有结果边界。经 `npm run test:external` 进入，默认工程门禁保留纯 ALU 逻辑测试。 |
 | 本地组内 [ALU](../../apps/server/runner/alu-check.test.ts)和 [HDL clock](../../apps/server/runner/hdl-clock.test.ts)的真实工具链案例 | Linux 且设置 `XUNJIE_DLC_TOOLCHAIN`，指向已有 Icarus 工具链；其他子案例保留自身平台条件。 |
 | 本地组内 [workspace integration](../../apps/server/server/workspace/integration.test.ts)、[runs](../../apps/server/server/workspace/runs.test.ts)及 [design activities](../../apps/server/tests/design-activities.test.ts)的 VM 案例 | 前两者使用 `XUNJIE_C2_RUNTIME=1`；integration 从 `XUNJIE_C2_SSH_CONFIG` 读取 JSON，runs 还检查 Linux 并使用 `/opt/xunjie-runner/vm/keys` 与 `127.0.0.1:2222` 的既有节点；design 使用 `XUNJIE_A2_RUNTIME=1` 与 `XUNJIE_A2_SSH_CONFIG` 配置文件。 |
 
