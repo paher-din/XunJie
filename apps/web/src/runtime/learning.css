@@ -17,3 +17,26 @@
 .learning-page .preserve-lines { white-space: pre-wrap; }
 .learning-page details { margin-top: 20px; }
 .learning-page :disabled { opacity: .7; }
+.learning-page .course-list { display: grid; gap: 16px; margin-top: 20px; }
+.learning-page .course-card { border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; background: var(--paper); }
+.learning-page .course-card h3 { margin: 0 0 8px; font-size: 18px; }
+.learning-page .course-task { padding: 12px 0; border-top: 1px solid var(--line); }
+.learning-page .course-task:first-of-type { border-top: none; padding-top: 0; }
+.learning-page .course-task h4 { margin: 0 0 4px; font-size: 15px; }
+.learning-page .release-list { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 0; margin: 12px 0 0; }
+.learning-page .release-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.learning-page .release-list .detail { margin: 0; }
+.learning-page .release-detail { border: 1px solid var(--line-strong); border-radius: 12px; padding: 20px; background: var(--sunken); }
+.learning-page .release-detail h3 { margin-top: 0; }
+.learning-page .release-detail h4 { margin: 20px 0 8px; font-size: 14px; color: var(--ink-soft); }
+.learning-page .release-detail ul { margin: 0; padding-left: 20px; }
+.learning-page .material-list { list-style: none; padding: 0; display: grid; gap: 8px; }
+.learning-page .material-list li { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.learning-page .course-pending { border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: 8px; padding: 12px 16px; margin-top: 16px; display: grid; gap: 8px; justify-items: start; }
+.learning-page .course-badge { margin-left: 8px; color: var(--muted); font-size: 12px; }
+.learning-page .capability-note { margin: 16px 0 0; color: var(--muted); font-size: 13px; }
+.learning-page .material-note { margin-top: 12px; }
+.learning-page .course-points li, .learning-page .course-card li, .learning-page .release-detail li { border-top: none; padding: 4px 0; }
+.learning-page .release-list li { padding: 0; }
+.learning-page .material-list li { padding: 8px 0; border-top: none; border-bottom: 1px solid var(--line); }
+.learning-page .release-detail .primary { margin-top: 20px; }

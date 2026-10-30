@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { spaceIdentitySchema, learningTargetSchema } from './spaces.js';
+import { courseActivityBindingSchema } from './courses.js';
 
 /** Learning-data owner wire. Course releases and works have their own subsequent contracts. */
 export const createActivitySchema = z.object({ requestId: z.uuid(), goal: z.string().max(4000),
@@ -9,5 +10,10 @@ export const createActivitySchema = z.object({ requestId: z.uuid(), goal: z.stri
 export type CreateActivity = z.infer<typeof createActivitySchema>;
 export const activitySchema = z.object({ activityId: z.uuid(), identity: spaceIdentitySchema,
   target: learningTargetSchema, goal: z.string(), question: z.string(), references: createActivitySchema.shape.references,
-  status: z.enum(['open', 'closed']), createdAt: z.string() }).strict();
+  status: z.enum(['open', 'closed']), createdAt: z.string(), course: courseActivityBindingSchema.optional() }).strict();
 export type LearningActivity = z.infer<typeof activitySchema>;
+
+export const courseActivityResultSchema = z.object({ requestId: z.uuid(),
+  state: z.enum(['pending', 'accepted', 'rejected']), activity: activitySchema.nullable(),
+  error: z.string().nullable() }).strict();
+export type CourseActivityResult = z.infer<typeof courseActivityResultSchema>;

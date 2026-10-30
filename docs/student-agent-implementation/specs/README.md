@@ -11,7 +11,7 @@
 
 | 实施票 | 文档 | 文档性质 |
 | --- | --- | --- |
-| [课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150) | [实施方案与验收计划](wp02-course-task-releases.md) | 基于母规范的待审工程方案，不代表产品实现或验收通过 |
+| [课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150) | [实施方案与验收计划](wp02-course-task-releases.md) · [实施与验收记录](../wp02-course-releases-acceptance.md) | 已实施（`codex/wp02`，未合并 main）；工程与 Windows Chrome 验收完成，Mac 与教学效果未执行 |
 
 ## 已有前端能力
 

@@ -63,6 +63,16 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     });
     return receipt.result as SpaceIdentity;
   }
+  async function schoolSpace(): Promise<string> {
+    const receipt = await storage.request({ requestId: `school-space:${storage.owner.serviceId}`, fingerprint: 'school-space-v1' }, async tx => {
+      const proposed = randomUUID();
+      await tx.query("INSERT INTO spaces VALUES($1,'school','学校学习空间') ON CONFLICT(kind) DO NOTHING", [proposed]);
+      const { rows: [space] } = await tx.query("SELECT id FROM spaces WHERE kind='school'");
+      if (!space) return fail('missing');
+      return space.id;
+    });
+    return receipt.result as string;
+  }
   async function createMember(input: { requestId: string; loginName: string; password: string }): Promise<SpaceIdentity> {
     id.parse(input.requestId);
     z.string().min(1).max(100).regex(/^[a-zA-Z0-9_.@-]+$/).parse(input.loginName);
@@ -197,6 +207,6 @@ export function createSpaces(storage: OwnedStorage, options: { sessionLifetimeMs
     for (const row of rows) learningTargetSchema.parse(row.target);
     await storage.read('SELECT a.principal_id FROM accounts a JOIN memberships m ON m.principal_id=a.principal_id');
   }
-  return { personal, createMember, setMembership, login, authenticate, bindMember, resolveBinding,
+  return { personal, schoolSpace, createMember, setMembership, login, authenticate, authorize, bindMember, resolveBinding,
     logout, beginConnection, approveConnection, exchangeConnection, revokeConnection, adminRevokeConnection, validate };
 }

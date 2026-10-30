@@ -9,6 +9,7 @@
   ],
   "exports": {
     "./spaces": { "types": "./dist/spaces.d.ts", "import": "./dist/spaces.js" },
+    "./courses": { "types": "./dist/courses.d.ts", "import": "./dist/courses.js" },
     "./learning-data": { "types": "./dist/learning-data.d.ts", "import": "./dist/learning-data.js" },
     ".": {
       "types": "./dist/index.d.ts",

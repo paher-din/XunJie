@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import { open, readFile, unlink } from 'node:fs/promises';
+import { open, readFile, realpath, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { spawn } from 'node:child_process';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { openProductRuntime, resolveCredential, restoreProductRecovery, upgradeProductRecovery, ProductInstallationRequiredError, ProductPrerequisitePreparationError } from '@xunjie/product-runtime';
 import type { BackupPolicy } from '@xunjie/product-runtime';
 
@@ -40,6 +40,9 @@ const commands: Record<string, readonly string[]> = {
   'school-member': ['file', 'resources'],
   'school-membership': ['file', 'resources'],
   'school-connection': ['file', 'resources'],
+  'course-import': ['file', 'resources'],
+  'course-access': ['file', 'resources'],
+  'course-result': ['file', 'resources'],
 };
 
 // Keep known secret values out of messages even if a downstream error includes them.
@@ -211,6 +214,17 @@ async function main(): Promise<void> {
     return { database: input.database as RestoreInput['database'], databaseCredential,
       installation: input.installation as RestoreInput['installation'] };
   };
+  const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result', body: unknown, timeout = 15000) => {
+    const status = await run(() => runtime.status());
+    if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
+    const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
+      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeout),
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`课程管理操作未完成（${response.status}），请核对输入及当前授权`);
+    return response.json();
+  };
 
   switch (command) {
     case 'recovery-key': {
@@ -340,6 +354,43 @@ async function main(): Promise<void> {
       });
       if (!response.ok) throw new Error(`学校成员操作未完成（${response.status}），请核对输入及当前授权`);
       output(await response.json()); break;
+    }
+    case 'course-import': {
+      const manifestPath = resolve(required('file'));
+      const manifest = await jsonFile(manifestPath, '课程导入清单');
+      const release = object(manifest.release, '课程导入清单 release');
+      if (!Array.isArray(release.materials)) throw new Error('课程导入清单 release.materials 必须是数组');
+      if (manifest.resources !== undefined) throw new Error('课程导入清单不内嵌资源；资源按材料路径从清单所在目录读取');
+      const importRoot = await realpath(dirname(manifestPath));
+      const embedded: { path: string; contentBase64: string }[] = [];
+      for (const value of release.materials) {
+        const material = object(value, '课程导入材料');
+        if (typeof material.path !== 'string' || !material.path) throw new Error('课程导入材料缺少 path');
+        if (typeof material.sha256 !== 'string' || typeof material.byteLength !== 'number'
+          || !Number.isSafeInteger(material.byteLength) || material.byteLength < 0) {
+          throw new Error(`材料 ${material.path} 缺少有效的 sha256 或 byteLength`);
+        }
+        let absolute: string;
+        try { absolute = await realpath(resolve(importRoot, material.path)); }
+        catch { throw new Error(`无法读取材料 ${material.path}`); }
+        const confined = relative(importRoot, absolute);
+        if (!confined || confined.startsWith('..') || isAbsolute(confined)) throw new Error(`材料 ${material.path} 越出导入目录`);
+        let bytes: Buffer;
+        try { bytes = await readFile(absolute); } catch { throw new Error(`无法读取材料 ${material.path}`); }
+        if (createHash('sha256').update(bytes).digest('hex') !== material.sha256 || bytes.byteLength !== material.byteLength) {
+          throw new Error(`材料 ${material.path} 与清单的摘要或长度不一致`);
+        }
+        embedded.push({ path: material.path, contentBase64: bytes.toString('base64') });
+      }
+      output(await manageCourse('course-import', { ...manifest, resources: embedded }, 120000)); break;
+    }
+    case 'course-access': {
+      output(await manageCourse('course-access', await jsonFile(required('file'), '课程资格操作'))); break;
+    }
+    case 'course-result': {
+      const input = await jsonFile(required('file'), '课程登记查询');
+      if (typeof input.requestId !== 'string') throw new Error('课程登记查询需要 requestId');
+      output(await manageCourse('course-result', { requestId: input.requestId })); break;
     }
     case 'status': output(await run(() => runtime.status())); break;
     case 'stop': output(await run(() => runtime.stop())); break;

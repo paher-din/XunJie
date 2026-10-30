@@ -17,6 +17,10 @@
 | `GET activities/:id` | 读取原活动；拒绝他人对象 |
 | `POST activity-status` | 关闭或重新开始活动 |
 | `GET receipts/:id` | 查询当前主体原请求的结果，未知返回 null |
+| `GET courses` | 当前学校身份的已获准课程、任务与发布摘要 |
+| `GET releases/:id` / `GET releases/:id/materials/:materialId` | 读取明确发布版本的学生投影或开放材料；私有材料统一不可见 |
+| `POST course-activities` / `GET course-activity-results/:requestId` | 从选定发布版本建立课程绑定活动，或查询原请求的 pending/accepted/rejected |
+| `POST manage/course-import` / `manage/course-access` / `manage/course-result` | 管理者登记不可变发布、授予/撤销课程资格、查询原登记结果 |
 
 `x-xj-space` 只选择已认证空间，不接受主体身份注入。个人空间仅由本机产品组合提供；学校会话及客户端 grant 每次都核验当前学校授权。客户端失联或被拒绝后不会静默换到个人数据服务。跨源浏览器调用拒绝；共享学校监听沿用产品 HTTPS 配置。
 

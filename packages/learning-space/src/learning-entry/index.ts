@@ -5,15 +5,17 @@ import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
+import type { createCourses } from '../courses/index.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
+export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
 
-export async function readLearningBody(request: IncomingMessage): Promise<Record<string, unknown>> {
+export async function readLearningBody(request: IncomingMessage, limit = 65536): Promise<Record<string, unknown>> {
   if (!request.headers['content-type']?.startsWith('application/json')) throw new StorageError('invalid');
   let size = 0; const chunks: Buffer[] = [];
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > 65536) throw new StorageError('invalid');
+    if (size > limit) throw new StorageError('invalid');
     chunks.push(Buffer.from(chunk));
   }
   try { return z.record(z.string(), z.unknown()).parse(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
@@ -36,6 +38,7 @@ export function createLearningEntry(options: {
   target?: LearningTarget;
   spaces?: ReturnType<typeof createSpaces>;
   learning?: ReturnType<typeof createLearningData>;
+  courses?: ReturnType<typeof createCourses>;
   administratorToken: string;
   client?: {
     list(): Promise<{ key: string; identity: SpaceIdentity }[]>;
@@ -112,19 +115,31 @@ export function createLearningEntry(options: {
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
-        const body = await readLearningBody(request);
-        if (route === 'manage/members') {
-          const input = z.object({ requestId: z.uuid(), loginName: z.string(), password: z.string() }).strict().parse(body);
-          const identity = await spaces.createMember(input);
-          await spaces.bindMember(identity, options.target);
-          result = identity;
-        } else if (route === 'manage/membership') {
-          const input = z.object({ requestId: z.uuid(), principalId: z.uuid(), active: z.boolean() }).strict().parse(body);
-          await spaces.setMembership(input); result = { updated: true };
-        } else if (route === 'manage/connection') {
-          const input = z.object({ connectionId: z.uuid() }).strict().parse(body);
-          await spaces.adminRevokeConnection(input.connectionId); result = { revoked: true };
-        } else throw new StorageError('missing');
+        if (route === 'manage/course-import') {
+          if (!options.courses) throw new StorageError('forbidden');
+          result = await options.courses.registerRelease(await readLearningBody(request, 64 * 1024 * 1024));
+        } else if (route === 'manage/course-result') {
+          if (!options.courses) throw new StorageError('forbidden');
+          const input = z.object({ requestId: z.uuid() }).strict().parse(await readLearningBody(request));
+          result = await options.courses.registrationResult(input.requestId);
+        } else if (route === 'manage/course-access') {
+          if (!options.courses) throw new StorageError('forbidden');
+          result = await options.courses.setAccess(await readLearningBody(request) as never);
+        } else {
+          const body = await readLearningBody(request);
+          if (route === 'manage/members') {
+            const input = z.object({ requestId: z.uuid(), loginName: z.string(), password: z.string() }).strict().parse(body);
+            const identity = await spaces.createMember(input);
+            await spaces.bindMember(identity, options.target);
+            result = identity;
+          } else if (route === 'manage/membership') {
+            const input = z.object({ requestId: z.uuid(), principalId: z.uuid(), active: z.boolean() }).strict().parse(body);
+            await spaces.setMembership(input); result = { updated: true };
+          } else if (route === 'manage/connection') {
+            const input = z.object({ connectionId: z.uuid() }).strict().parse(body);
+            await spaces.adminRevokeConnection(input.connectionId); result = { revoked: true };
+          } else throw new StorageError('missing');
+        }
       } else if (route === 'connections/start' && method === 'POST') {
         const input = z.object({ requestId: z.uuid(), clientId: z.uuid(), challenge: z.string() }).strict().parse(await readLearningBody(request));
         result = await spaces.beginConnection(input);
@@ -137,6 +152,20 @@ export function createLearningEntry(options: {
       } else if (route === 'connections/revoke' && method === 'POST') {
         const input = z.object({ connectionId: z.uuid() }).strict().parse(await readLearningBody(request));
         await spaces.revokeConnection(await current(request), input.connectionId); result = { revoked: true };
+      } else if (route === 'courses' && method === 'GET') {
+        if (!options.courses) throw new StorageError('forbidden');
+        result = await options.courses.listCourses(await current(request));
+      } else if (route.startsWith('releases/') && method === 'GET') {
+        if (!options.courses) throw new StorageError('forbidden');
+        const parts = route.slice('releases/'.length).split('/');
+        if (parts.length === 1) result = await options.courses.readRelease(await current(request), parts[0]!);
+        else if (parts.length === 3 && parts[1] === 'materials') {
+          result = await options.courses.readMaterial(await current(request), parts[0]!, parts[2]!);
+        } else throw new StorageError('missing');
+      } else if (route === 'course-activities' && method === 'POST') {
+        result = await learning.createCourse(await current(request), await readLearningBody(request));
+      } else if (route.startsWith('course-activity-results/') && method === 'GET') {
+        result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
       } else if (route === 'activities' && method === 'GET') result = await learning.list(await current(request));
       else if (route === 'activities' && method === 'POST') {
         result = await learning.create(await current(request), await readLearningBody(request) as never);
