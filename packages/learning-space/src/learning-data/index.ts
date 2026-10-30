@@ -5,6 +5,7 @@ import type { OwnedStorage, Migration } from '@xunjie/storage';
 import { createActivitySchema, activitySchema } from '@xunjie/contracts/learning-data';
 import type { CreateActivity, LearningActivity } from '@xunjie/contracts/learning-data';
 import type { SpaceIdentity, SpaceAuthority } from '@xunjie/contracts/spaces';
+import { createWorks, workMigration, validateWorks } from './works.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
   CREATE TABLE activities (id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,space_id uuid NOT NULL,
@@ -12,12 +13,13 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
   CREATE INDEX activities_scope ON activities(space_environment_id,space_id,principal_id);
   CREATE TABLE activity_requests (request_id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,
     space_id uuid NOT NULL,principal_id uuid NOT NULL);
-` }];
+` }, workMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden'): never => { throw new StorageError(code); };
 
 export async function validateLearningData(storage: OwnedStorage) {
+  await validateWorks(storage);
   const { rows } = await storage.read('SELECT id,body,space_environment_id,space_id,principal_id FROM activities');
   for (const row of rows) {
     const a = activitySchema.parse(row.body);
@@ -81,5 +83,5 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
     });
     return activitySchema.parse(receipt.result);
   }
-  return { create, list, open, receipt, setStatus, validate: () => validateLearningData(storage) };
+  return { create, list, open, receipt, setStatus, works: createWorks(storage, open), validate: () => validateLearningData(storage) };
 }

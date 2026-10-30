@@ -99,7 +99,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     });
   }
   async function forward(connectionId: string, route: string, body?: unknown) {
-    if (!/^(?:activities(?:\/[0-9a-f-]{36})?|activity-status|receipts\/[0-9a-f-]{36}|connections\/revoke)$/.test(route)) throw new StorageError('forbidden');
+    if (!/^(?:activities(?:\/[0-9a-f-]{36})?|activity-status|receipts\/[0-9a-f-]{36}|connections\/revoke|workspaces\/[0-9a-f-]{36}(?:\/(?:receipts|contents)\/[0-9a-f-]{36})?)$/.test(route)) throw new StorageError('forbidden');
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
     let value: unknown;
@@ -115,6 +115,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       await update(connectionId, () => rm(path(connectionId), { force: true }));
       return value;
     }
+    if (route.startsWith('workspaces/')) return value;
     const check = (value: unknown) => {
       const activity = activitySchema.parse(value);
       if (JSON.stringify(activity.identity) !== JSON.stringify(connection.grant!.identity)

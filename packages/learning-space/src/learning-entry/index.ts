@@ -8,12 +8,12 @@ import type { createLearningData } from '../learning-data/index.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
 
-export async function readLearningBody(request: IncomingMessage): Promise<Record<string, unknown>> {
+export async function readLearningBody(request: IncomingMessage, limit = 65536): Promise<Record<string, unknown>> {
   if (!request.headers['content-type']?.startsWith('application/json')) throw new StorageError('invalid');
   let size = 0; const chunks: Buffer[] = [];
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > 65536) throw new StorageError('invalid');
+    if (size > limit) throw new StorageError('invalid');
     chunks.push(Buffer.from(chunk));
   }
   try { return z.record(z.string(), z.unknown()).parse(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
@@ -75,12 +75,14 @@ export function createLearningEntry(options: {
     try {
       if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
       const route = pathname.slice('/api/learning/'.length);
+      if (route.startsWith('workspaces/') && request.headers['x-xj-namespace']
+        && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
       const remote = request.headers['x-xj-space'];
       if (environment.profile === 'school' && (route.startsWith('client/') || typeof remote === 'string' && remote.startsWith('school:'))) throw new StorageError('forbidden');
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
-        result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request) : undefined);
+        result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request, route.startsWith('workspaces/') ? 8000000 : 65536) : undefined);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -137,6 +139,16 @@ export function createLearningEntry(options: {
       } else if (route === 'connections/revoke' && method === 'POST') {
         const input = z.object({ connectionId: z.uuid() }).strict().parse(await readLearningBody(request));
         await spaces.revokeConnection(await current(request), input.connectionId); result = { revoked: true };
+      } else if (route.startsWith('workspaces/')) {
+        const parts = route.split('/');
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        if (parts.length === 2 && method === 'GET') result = await learning.works.read(identity, parts[1]!);
+        else if (parts.length === 2 && method === 'POST') result = await learning.works.sync(identity, parts[1]!, await readLearningBody(request, 8000000) as never);
+        else if (parts.length === 4 && parts[2] === 'receipts' && method === 'GET') result = await learning.works.receipt(identity, parts[1]!, parts[3]!);
+        else if (parts.length === 4 && parts[2] === 'contents' && method === 'GET') result = await learning.works.content(identity, parts[1]!, parts[3]!);
+        else throw new StorageError('missing');
       } else if (route === 'activities' && method === 'GET') result = await learning.list(await current(request));
       else if (route === 'activities' && method === 'POST') {
         result = await learning.create(await current(request), await readLearningBody(request) as never);

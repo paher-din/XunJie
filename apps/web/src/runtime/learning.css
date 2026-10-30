@@ -17,3 +17,11 @@
 .learning-page .preserve-lines { white-space: pre-wrap; }
 .learning-page details { margin-top: 20px; }
 .learning-page :disabled { opacity: .7; }
+.learning-workspace nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.learning-workspace form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; max-width: none; margin-top: 12px; }
+.learning-workspace form label { flex: 1; min-width: 160px; }
+.learning-workspace .cw-editor-wrap { position: relative; height: 420px; margin-top: 16px; }
+.learning-workspace .cw-editor { width: 100%; height: 100%; }
+.work-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.work-comparison pre { overflow: auto; max-height: 320px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .work-comparison { grid-template-columns: 1fr; } }

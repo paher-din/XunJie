@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { activitySchema, createActivitySchema } from '@xunjie/contracts/learning-data'
 import type { LearningActivity, CreateActivity } from '@xunjie/contracts/learning-data'
-import type { SpaceIdentity } from '@xunjie/contracts/spaces'
+import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/spaces'
 import { useTheme } from '../lib/theme'
 import './learning.css'
+import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 
 type Context = { clientNamespace: string; profile: string; identities: { key: string; identity: SpaceIdentity }[] }
 type PendingConnection = { requestId: string; authorizationUrl: string }
@@ -31,6 +32,7 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : '
 export function LearningPage() {
   useTheme()
   const [context, setContext] = useState<Context | null>(null)
+  const [contextVerified, setContextVerified] = useState(true)
   const [key, setKey] = useState('')
   const [activities, setActivities] = useState<LearningActivity[] | null>(null)
   const [opened, setOpened] = useState<LearningActivity | null>(null)
@@ -47,15 +49,38 @@ export function LearningPage() {
   const [notice, setNotice] = useState('')
   const [reload, setReload] = useState(0)
   const epoch = useRef(0)
+  const authEpoch = useRef(0)
+  const currentView = useRef({ context, key })
+  currentView.current = { context, key }
+  const workspace = useRef<ActivityWorkspaceHandle>(null)
+  const requestedActivity = useRef(new URLSearchParams(location.search).get('activity'))
+  function rememberActivity(activity: LearningActivity | null) {
+    ++epoch.current
+    setBusy(false)
+    const url = new URL(location.href)
+    if (activity) { url.searchParams.set('activity', activity.activityId); url.searchParams.set('space', key) }
+    else { url.searchParams.delete('activity'); url.searchParams.delete('space') }
+    history.replaceState(null, '', url)
+    if (activity && context) {
+      try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${key}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* IndexedDB owns work protection. */ }
+    }
+    setOpened(activity)
+  }
   const formScope = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
   const identity = context?.identities.find(item => item.key === key)?.identity
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
 
   async function refreshContext(prefer?: string, generation = epoch.current) {
+    const authentication = authEpoch.current
+    await workspace.current?.leave()
     const next = await api('context') as Context
-    if (generation !== epoch.current) return
-    setOpened(null); setActivities(null)
+    if (generation !== epoch.current || authentication !== authEpoch.current) return
+    await workspace.current?.leave()
+    if (generation !== epoch.current || authentication !== authEpoch.current) return
+    rememberActivity(null); setActivities(null)
+    try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional reopening hint only. */ }
+    setContextVerified(true)
     setContext(next)
     setReload(value => value + 1)
     setKey(previous => prefer && next.identities.some(item => item.key === prefer) ? prefer
@@ -64,10 +89,47 @@ export function LearningPage() {
   useEffect(() => {
     let disposed = false
     void api('context').then(result => {
-      if (!disposed) { const next = result as Context; setContext(next); setKey(next.identities[0]?.key ?? '') }
-    }).catch(error => { if (!disposed) setError(errorText(error)) })
+      if (!disposed) { const next = result as Context; setContext(next);
+        try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
+        const preferred = new URLSearchParams(location.search).get('space')
+        setKey(next.identities.some(i => i.key === preferred) ? preferred! : next.identities[0]?.key ?? '') }
+    }).catch(error => {
+      if (disposed) return
+      try {
+        if ((error as { code?: string }).code === 'forbidden') throw error
+        const cached = JSON.parse(sessionStorage.getItem('xj.works-context.v1') ?? 'null') as Context | null
+        if (!cached || typeof cached.clientNamespace !== 'string') throw error
+        cached.identities.forEach(i => spaceIdentitySchema.parse(i.identity))
+        const preferred = new URLSearchParams(location.search).get('space')
+        const selected = cached.identities.find(i => i.key === preferred) ?? cached.identities[0]
+        if (!selected) throw error
+        setContextVerified(false); setContext(cached); setKey(selected.key)
+      } catch { setError(errorText(error)) }
+    })
     return () => { disposed = true }
   }, [])
+  useEffect(() => {
+    if (contextVerified || !context) return
+    let checking = false
+    const timer = setInterval(() => {
+      if (checking) return
+      checking = true
+      const generation = epoch.current
+      const authentication = authEpoch.current
+      const previous = workspace.current
+      void api('context').then(async value => {
+        if (generation !== epoch.current || authentication !== authEpoch.current) return
+        await previous?.leave()
+        if (generation !== epoch.current || authentication !== authEpoch.current) return
+        const next = value as Context
+        requestedActivity.current = opened?.activityId ?? null
+        setContext(next); setContextVerified(true); setReload(n => n + 1)
+        setKey(old => next.identities.some(i => i.key === old) ? old : next.identities[0]?.key ?? '')
+        try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
+      }).catch(() => {}).finally(() => { checking = false })
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [contextVerified, context, opened])
   useEffect(() => {
     const generation = ++epoch.current
     const controller = new AbortController()
@@ -76,6 +138,19 @@ export function LearningPage() {
       formScope.current = pendingKey; setGoal(''); setQuestion(''); setReference('')
     }
     if (key && pendingKey) {
+      if (!contextVerified && context) {
+        try {
+          const activityId = requestedActivity.current
+          const value = sessionStorage.getItem(`xj.works-activity.${context.clientNamespace}.${key}.${activityId}`)
+          if (value) {
+            const activity = activitySchema.parse(JSON.parse(value))
+            if (activity.identity.principalId !== identity?.principalId || activity.identity.spaceId !== identity?.spaceId
+              || activity.identity.environmentId !== identity?.environmentId) throw new Error('活动归属不匹配。')
+            setOpened(activity)
+          }
+        } catch { setError('无法读取原活动定位。已保留的作品没有被改动。') }
+        return () => { ++epoch.current; controller.abort() }
+      }
       try {
         const saved = localStorage.getItem(pendingKey)
         if (saved) {
@@ -84,14 +159,23 @@ export function LearningPage() {
         }
       } catch { setError('无法读取上次活动请求，请保留当前输入并检查浏览器存储。') }
       void api('activities', undefined, key, controller.signal).then(value => {
-        if (epoch.current === generation) setActivities((value as unknown[]).map(item => activitySchema.parse(item)))
+        if (epoch.current === generation) {
+          setActivities((value as unknown[]).map(item => activitySchema.parse(item)))
+          const activityId = requestedActivity.current
+          requestedActivity.current = null
+          if (activityId) void api('activities/' + activityId, undefined, key, controller.signal).then(value => {
+            if (epoch.current === generation) rememberActivity(activitySchema.parse(value))
+          }).catch(error => { if (epoch.current === generation) setError(errorText(error)) })
+        }
       }).catch(error => { if (epoch.current === generation && !controller.signal.aborted) setError(errorText(error)) })
     }
     return () => { ++epoch.current; controller.abort() }
   }, [key, pendingKey, reload])
 
-  function switchSpace(next: string) {
+  async function switchSpace(next: string) {
     if (next === key) return
+    try { await workspace.current?.leave() } catch { setError('本机内容尚未得到保护，请保留当前页面并复制或导出作品。'); return }
+    rememberActivity(null)
     ++epoch.current; setKey(next); setOpened(null); setActivities(null); setError(''); setNotice('')
     setGoal(''); setQuestion(''); setReference(''); setBusy(false)
   }
@@ -116,7 +200,7 @@ export function LearningPage() {
       const saved = localStorage.getItem(scopeKey)
       if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
       if (generation === epoch.current) {
-        setPendingRequest(null); setOpened(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
+        setPendingRequest(null); rememberActivity(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
         setGoal(''); setQuestion(''); setReference('')
       }
     } catch (error) {
@@ -134,9 +218,12 @@ export function LearningPage() {
     setPendingRequest(null); setGoal(''); setQuestion(''); setReference(''); setError('')
   }
   async function openActivity(activityId: string) {
+    await workspace.current?.leave()
     const generation = epoch.current
     const activity = activitySchema.parse(await api('activities/' + activityId, undefined, key))
-    if (generation === epoch.current) setOpened(activity)
+    if (generation !== epoch.current) return
+    await workspace.current?.leave()
+    if (generation === epoch.current) rememberActivity(activity)
   }
   async function changeStatus(activity: LearningActivity) {
     const generation = epoch.current
@@ -166,12 +253,14 @@ export function LearningPage() {
     </section>}
     {identity && <>
       {opened ? <section aria-labelledby="activity-title">
-        <button type="button" onClick={() => setOpened(null)}>返回活动列表</button>
+        <button type="button" onClick={() => void action(async () => { await workspace.current?.leave(); rememberActivity(null) })}>返回活动列表</button>
         <h2 id="activity-title">{opened.goal || opened.question || '资料学习'}</h2>
         {opened.question && opened.goal && <p className="preserve-lines">{opened.question}</p>}
         {opened.references.map((item, index) => <p key={index}><a href={item.url} target="_blank" rel="noreferrer">{item.label}</a></p>)}
         <p className="detail">{opened.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
         <button type="button" disabled={busy} onClick={() => void action(() => changeStatus(opened))}>{opened.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
+        {context && <ActivityWorkspace key={context.clientNamespace + key + opened.activityId} ref={workspace} activity={opened} spaceKey={key} namespace={context.clientNamespace}
+          authorized={contextVerified && opened.identity.environmentId === identity?.environmentId && opened.identity.spaceId === identity?.spaceId && opened.identity.principalId === identity?.principalId} />}
       </section> : <>
         <section aria-labelledby="new-activity-title"><h2 id="new-activity-title">开始一次自主学习</h2><p className="detail">从一个目标、问题或资料开始。</p>
           <form onSubmit={event => { event.preventDefault(); void action(createActivity) }}>
@@ -193,10 +282,25 @@ export function LearningPage() {
       </>}
     </>}
     {context && <section aria-labelledby="school-title"><h2 id="school-title">学校学习空间</h2>
-      {context.identities.some(item => item.key === 'school') ? <button type="button" disabled={busy} onClick={() => void action(async generation => {
-        await api('logout', {}); if (generation !== epoch.current) return
-        setOpened(null); setActivities(null); await refreshContext('personal', generation)
+      {context.identities.some(item => item.key === 'school') ? <button type="button" disabled={busy} onClick={() => void action(async () => {
+        const authentication = ++authEpoch.current
+        await workspace.current?.leave()
+        await api('logout', {}); if (authentication !== authEpoch.current) return
+        // Authentication outlives a view switch; a later login still supersedes this response.
+        if (currentView.current.key === 'school') await workspace.current?.leave()
+        if (authentication !== authEpoch.current || !currentView.current.context) return
+        ++authEpoch.current
+        const signedOut = { ...currentView.current.context, identities: currentView.current.context.identities.filter(item => item.key !== 'school') }
+        // The logout response already confirms this fact; clearing it must not depend on a later context request.
+        try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(signedOut)) } catch { /* Optional hint. */ }
+        setContext(signedOut)
+        if (currentView.current.key === 'school') {
+          rememberActivity(null); setActivities(null)
+          setKey(signedOut.identities.some(item => item.key === 'personal') ? 'personal' : signedOut.identities[0]?.key ?? '')
+          setReload(value => value + 1)
+        }
       })}>退出学校登录</button> : context.profile === 'school' && <form onSubmit={event => { event.preventDefault(); void action(async generation => {
+        ++authEpoch.current
         await api('login', { loginName, password }); if (generation !== epoch.current) return
         setPassword(''); await refreshContext('school', generation)
       }) }}><label>学校账号<input autoComplete="username" required value={loginName} onChange={event => setLoginName(event.target.value)} /></label>
@@ -216,6 +320,7 @@ export function LearningPage() {
           })}>已在学校批准，完成连接</button></div>}
       </details>}
       {key.startsWith('school:') && <button type="button" disabled={busy} onClick={() => void action(async generation => {
+        await workspace.current?.leave()
         await api('connections/revoke', { connectionId: key.slice(7) }, key)
         // The revoked connection is gone; re-read so the stale school space cannot be selected again.
         if (generation === epoch.current) await refreshContext(context.identities.some(item => item.key === 'personal') ? 'personal' : undefined, generation)
