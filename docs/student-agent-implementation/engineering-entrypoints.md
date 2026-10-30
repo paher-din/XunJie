@@ -30,7 +30,7 @@ npm run verify
 
 验证入口实时保存原始 stdout/stderr，并输出阶段、耗时和失败摘要。`.verification/latest.json` 指向本轮完整日志与阶段结果，每轮日志单独保存；CI 无论成功或失败均上传日志，保留 7 天。日志目录不进入 Git。使用 RTK 时执行 `rtk bypass npm run verify`，保留实时进度。
 
-根类型检查先编译 contracts / storage / product-runtime；根构建按 contracts → storage → product-runtime → server → Web / 独立运行网页 → local-runtime 排序。测试先构建契约与独立网页，产品运行和存储测试通过公开 package 执行。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
+根类型检查先编译 contracts / storage / server / product-runtime；根构建按 contracts → storage → server → product-runtime → Web / 独立运行网页 → local-runtime 排序。测试先构建契约与独立网页，产品运行和存储测试通过公开 package 执行。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
 
 [scripts/build-server.mjs](../../scripts/build-server.mjs)先清空 `apps/server/dist`，再按[生产配置](../../apps/server/tsconfig.build.json)编译，并检查实际输出；发现测试、fixtures、support 或验收宿主等测试专用文件即失败。仅在 tsconfig 中排除文件不足以阻止 import 把它们带回产物。发布清单与依赖仍须核对，现行云端打包入口是 [build-runtime-artifact.mjs](../../tools/i0-cloud/build-runtime-artifact.mjs)。
 

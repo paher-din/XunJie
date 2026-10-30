@@ -17,6 +17,7 @@ import { RecoveryError, restoreRecoverySet } from './recovery.js';
 import { verifyRecovery } from './recovery-files.js';
 import type { RecoveryOwner, RecoveryTarget } from './recovery-types.js';
 import type { RecoveryManifest } from './recovery-types.js';
+import { createLearningRecoveryTargets } from './learning-entry.js';
 
 export async function recoveryDatabase(root: string): Promise<RecoveryDatabaseConnection | null> {
   const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
@@ -137,11 +138,16 @@ export async function restoreProductRecovery(options: { root: string; backupDire
   const manifest = await verifyRecovery(options.backupDirectory, options.key);
   const runtimeId = manifest.source.services[0]?.serviceId;
   if (!runtimeId) throw new RecoveryError('runtime-participant-missing');
+  // Authenticated source descriptors identify the normal product's business owners.
+  // Explicit targets keep custom hosts in control of their complete owner set.
+  const targets = options.targets ?? (manifest.source.services.some(service => ['space-course', 'learning-data'].includes(service.unit))
+    ? createLearningRecoveryTargets({ root: options.root, environment: manifest.source, resources: options.resources,
+      admin: () => recoveryDatabase(options.root) }) : []);
   return restoreRecoverySet({ backupDirectory: options.backupDirectory, targetRoot: options.root, key: options.key,
     ...(options.minimumFreeBytes === undefined ? {} : { minimumFreeBytes: options.minimumFreeBytes }),
     targets: [createRuntimeRecoveryTarget({ root: options.root, resources: options.resources, serviceId: runtimeId,
       ...(options.database ? { database: options.database } : {}), databaseCredential: options.databaseCredential,
-      installation: options.installation }), ...(options.targets ?? [])] });
+      installation: options.installation }), ...targets] });
 }
 
 /** All upgrade kinds build an isolated target from a held, consistent logical backup. */
@@ -180,10 +186,15 @@ export async function upgradeProductRecovery(options: {
     const restored = await restoreProductRecovery({ root: options.root, backupDirectory: join(options.backupDirectory, manifest.backupId),
       key: options.key, resources: options.resources, targets: options.targets, database: options.database,
       databaseCredential: options.databaseCredential, installation: options.installation, minimumFreeBytes: options.minimumFreeBytes });
-    if (options.kind === 'schema' && restored.owners.every(owner => owner.participant.descriptor.schemaVersion
-      === manifest!.services.find(item => item.serviceId === owner.participant.descriptor.serviceId)?.schemaVersion)) throw new RecoveryError('no-schema-upgrade-registered');
-    await save('isolated', { backupId: manifest.backupId, sourceVersion, targetVersion: options.resources.postgresVersion });
-    return restored;
+    try {
+      if (options.kind === 'schema' && restored.owners.every(owner => owner.participant.descriptor.schemaVersion
+        === manifest!.services.find(item => item.serviceId === owner.participant.descriptor.serviceId)?.schemaVersion)) throw new RecoveryError('no-schema-upgrade-registered');
+      await save('isolated', { backupId: manifest.backupId, sourceVersion, targetVersion: options.resources.postgresVersion });
+      return restored;
+    } catch (error) {
+      await Promise.allSettled(restored.owners.map(owner => owner.close?.()));
+      throw error;
+    }
   } catch (error) {
     await save('failed', { backupId: manifest?.backupId, error: error instanceof RecoveryError ? error.code : 'upgrade-failed' });
     throw error;

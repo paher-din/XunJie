@@ -1,0 +1,64 @@
+{
+  "formatVersion": 1,
+  "issue": 149,
+  "status": "passed",
+  "observedAt": "2026-10-30T14:05:00Z",
+  "platform": "Windows 11 家庭版 (build 26200) x64",
+  "browser": "Google Chrome 156.0.8078.76",
+  "method": "Playwright 1.64 driving the installed Google Chrome in headed mode against product builds started by apps/local-runtime/dist/cli.js with PostgreSQL 18.6",
+  "product": {
+    "clientEnvironmentId": "a8e259bf-a312-440a-828b-db0424247315",
+    "clientNamespace": "xunjie.v1.a8e259bf-a312-440a-828b-db0424247315",
+    "clientEndpoint": "http://127.0.0.1:54763",
+    "schoolEnvironmentId": "1dc45d3e-943f-4c43-b685-a8622ad7d250",
+    "schoolNamespace": "xunjie.v1.1dc45d3e-943f-4c43-b685-a8622ad7d250",
+    "schoolEndpoint": "http://127.0.0.1:51275"
+  },
+  "flows": [
+    {
+      "name": "personal activity create, close, reload and reopen",
+      "result": "passed",
+      "steps": [
+        "first entry shows the personal learning space without an account",
+        "create an activity from a goal and a multi-line Chinese question",
+        "close the activity and observe the closed state",
+        "reload the page and find the same activity still closed",
+        "reopen it and observe the active state again"
+      ],
+      "screenshot": "wp02-chrome-personal.png"
+    },
+    {
+      "name": "school account login, activity and logout",
+      "result": "passed",
+      "steps": [
+        "school page shows the real account form",
+        "log in with the member created through xunjie school-member",
+        "create an activity and reopen it after reload",
+        "log out; the form returns and the activity is no longer shown"
+      ],
+      "screenshot": "wp02-chrome-school.png"
+    },
+    {
+      "name": "installed client connects a school through the school approval page",
+      "result": "passed",
+      "steps": [
+        "start a connection from the installed client with the school entry",
+        "open the authorization page on the school origin and log in",
+        "approve the client and complete the connection",
+        "switch to the school space and create an activity through the client proxy",
+        "revoke the connection; the school space disappears and the client keeps zero local grant files"
+      ],
+      "screenshot": "wp02-chrome-client-connect.png",
+      "localGrantsAfterRevoke": 0
+    }
+  ],
+  "console": {
+    "errors": [
+      "GET /favicon.ico returns 404 on the product web entry (cosmetic; no flow depends on it)"
+    ]
+  },
+  "limitations": [
+    "Apple Silicon Mac Chrome acceptance was not executed on this Windows host.",
+    "Both product instances ran on one Windows machine over loopback; this does not prove cross-machine networking or public TLS."
+  ]
+}

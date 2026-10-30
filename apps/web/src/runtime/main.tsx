@@ -5,6 +5,7 @@ import { readStatus } from './status'
 import { useTheme } from '../lib/theme'
 import '../styles/tokens.css'
 import './runtime.css'
+import { LearningPage } from './LearningPage'
 
 const labels: Record<RuntimeStatus['state'], string> = {
   installed: '已安装', starting: '启动中', ready: '就绪', degraded: '降级运行',
@@ -135,4 +136,4 @@ function RuntimePage() {
   </main>
 }
 
-createRoot(document.getElementById('root')!).render(<RuntimePage />)
+createRoot(document.getElementById('root')!).render(new URLSearchParams(location.search).has('diagnostics') ? <RuntimePage /> : <LearningPage />)

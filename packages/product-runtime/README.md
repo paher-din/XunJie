@@ -23,14 +23,16 @@ import {
 | `createProductRuntimeHost` | 通过 `recoveryOwners` 或数据库可用后执行的 `createRecoveryOwners` 装配业务 owner；`participants` 可登记其他维护参与者 |
 | `createRecoveryManager` | 绑定 environment、maintenance、owners、requiredServiceIds、receiverIds，编排同一关闭边界备份与目标接管 |
 | `restoreRecoverySet` | 认证完整备份，精确匹配全部 targets，空的独立目标恢复并验证，返回 `{ manifest, owners }`，保持 isolated |
-| `restoreProductRecovery` | 自动加入 runtime target，其余 owner 由 `targets` 提供；可提供目标 `database`、`databaseCredential` 与 `installation` |
+| `restoreProductRecovery` | 默认按认证后的备份装配 runtime、空间身份和学习数据 target；自定义宿主可用 `targets` 显式提供完整业务目标集合；可提供目标 `database`、`databaseCredential` 与 `installation` |
 | `upgradeProductRecovery` | `schema` / `pg-minor` / `pg-major`：从 callback 取得 held 备份，以目标 resources、database、databaseCredential、installation 在独立 root 恢复，完成后仍隔离 |
 | `createStorageRecoveryOwner/Target` | 对接 [storage](../storage/README.md) 的真实快照、schema、原资源、pin、迁移与 owner 服务验证 |
 | `openRecoveredStorage({ root, serviceId, migrations, backend })` | 重启时读取目标私有 binding，以恢复时生成的新凭据重新打开所属 storage；不恢复源登录凭据或自动开闸 |
 
 ## owner 与维护装配
 
-默认 daemon 当前只自动注册 runtime 自身。业务 owner 随各 WP 接入；storage 样例和独立恢复验收不代表生产课程/Agent 数据迁移完成。生产依赖不得导入 `scripts/probe-recovery.mjs`、其验收 owner 或测试宿主。
+默认 daemon 在有数据库的产品组合中自动注册 runtime、空间身份和学习数据 owner，提供[真实学习入口](../learning-space/src/learning-entry/README.md)；没有数据库的客户端组合可连接学校。课程发布、作品和 Agent 仍按后续子票接入。生产依赖不得导入 `scripts/probe-recovery.mjs`、其验收 owner 或测试宿主。
+
+`createProductLearningApplication` 装配生产业务和 HTTP，`createLearningRecoveryTargets` 提供两个 owner 的独立恢复目标，使用与验收限制见 [#149 交接](../../docs/student-agent-implementation/wp02-identity-activity.md)。
 
 每个 owner 提供 `MaintenanceParticipant` 与 `RecoveryOwner.export/release`，宿主以 requiredServiceIds 列明必需服务。全部参与者关闭新写/派发、排空并确认同一边界后才导出任何 owner。只注册 participant 而缺少 recovery owner、遗漏必需参与者或验证失败均不得生成可用完整备份。`resourceRoots` 须列出真实资源位置，备份目录不得与环境/文件资源根重叠。
 
@@ -46,7 +48,7 @@ storage owner 通过 `snapshot` 在快照事务存活期间完成逻辑导出与
 
 `restoreProductRecovery` / `upgradeProductRecovery` 的 `databaseCredential` 是 string，仅供可信 API 在内存中传入目标数据库密码；external 目标要求提供，库将其保存为目标 `database.credentialRef` 对应的私有 credential。`installation` 类型为 `Omit<InstallOptions, 'database' | 'requiredServiceIds'>`，支持 profile、host、port、publicEndpoint、tls，供学校部署选择目标 HTTPS/TLS 入口；数据库通过独立 `database` 参数指定，requiredServiceIds 从备份恢复。源 TLS 私钥不自动复用。
 
-CLI 的 restore/upgrade JSON 对应支持 `database`、`databaseCredentialFile` 和 `installation`；密码从单行私密文件读取，读后纳入错误输出 redaction，不将明文写进 JSON、argv 或日志。其他业务 owner targets 仍须由可信宿主提供。external 数据库维护使用带匹配 PostgreSQL 备份/还原工具的**完整管理分发包**；不含 PG 工具的 remote-client 包不能作为外部数据库维护入口。
+CLI 的 restore/upgrade JSON 对应支持 `database`、`databaseCredentialFile` 和 `installation`；密码从单行私密文件读取，读后纳入错误输出 redaction，不将明文写进 JSON、argv 或日志。默认产品的空间身份与学习数据 owner 自动恢复；其他业务 owner targets 仍须由可信宿主提供。external 数据库维护使用带匹配 PostgreSQL 备份/还原工具的**完整管理分发包**；不含 PG 工具的 remote-client 包不能作为外部数据库维护入口。
 
 ## 恢复与唯一写方
 

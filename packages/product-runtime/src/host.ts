@@ -21,6 +21,10 @@ export interface ProductHostOptions {
   recoveryOwners?: readonly RecoveryOwner[];
   /** Compose real owner modules after native PostgreSQL is available. */
   createRecoveryOwners?: (context: { root: string; environment: RuntimeEnvironment }) => Promise<readonly RecoveryOwner[]>;
+  createApplication?: (context: { root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration }) => Promise<{
+    owners: readonly RecoveryOwner[];
+    handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
+  } | undefined>;
 }
 
 const send = (response: ServerResponse, code: number, value: unknown) => {
@@ -51,6 +55,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   const releaseOnce = async () => { if (!released) { released = true; await release(); } };
   const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
   const environment = await readJson<RuntimeEnvironment>(join(root, 'environment.json'));
+  if (environment.profile !== 'school' && (!['127.0.0.1', '::1'].includes(config.host)
+    || !['127.0.0.1', '[::1]', 'localhost'].includes(new URL(environment.services[0]!.endpoint).hostname))) throw new Error('Device profiles require a loopback listener and endpoint.');
   if (!config.installed) { await releaseOnce(); throw new Error('Product is uninstalled.'); }
   const service = environment.services[0]!;
   const endpoint = service.endpoint;
@@ -58,9 +64,12 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   let startupFailure: string | undefined;
   let gatesClosed = false;
   let stopping = false;
+  let activeApplicationRequests = 0;
   try { await startDatabase(root, config.resources, config.database); }
   catch (error) { startupFailure = (error as Error).message; }
-  const suppliedOwners = [...(options.recoveryOwners ?? []), ...(!startupFailure && options.createRecoveryOwners
+  const application = !startupFailure && options.createApplication
+    ? await options.createApplication({ root, environment, configuration: config }) : undefined;
+  const suppliedOwners = [...(application?.owners ?? []), ...(options.recoveryOwners ?? []), ...(!startupFailure && options.createRecoveryOwners
     ? await options.createRecoveryOwners({ root, environment }) : [])];
   const maintenance = createMaintenanceCoordinator({
     requiredServiceIds: [service.serviceId, ...config.requiredServiceIds],
@@ -75,7 +84,13 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     descriptor: { serviceId: service.serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: ['installation'] },
     async closeWrites() { gatesClosed = true; },
     async closeDispatch() { gatesClosed = true; },
-    async drain() {}, // This host owns no queued business work.
+    async drain() {
+      const deadline = Date.now() + 15000;
+      while (activeApplicationRequests) {
+        if (Date.now() >= deadline) throw new Error('Learning requests have not drained.');
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    },
     async validate() { if (config.database.mode !== 'none') await inspectDatabase(root, config.database); },
     async resume() {
       if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
@@ -148,6 +163,14 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       send(response, current.state === 'failed' ? 503 : 200, current); return;
     }
     if (pathname.startsWith('/runtime/control/')) { send(response, 404, { error: 'not_found' }); return; }
+    if (pathname.startsWith('/api/learning/')) {
+      if (gatesClosed || stopping) { send(response, 503, { error: 'maintenance' }); return; }
+      activeApplicationRequests++;
+      try {
+        if (await authorityClosed() || gatesClosed || stopping) { send(response, 503, { error: 'maintenance' }); return; }
+        if (application && await application.handle(request, response)) return;
+      } finally { activeApplicationRequests--; }
+    }
     if (await authorityClosed() && (pathname === '/runtime/connect' || pathname.startsWith('/runtime/capabilities/'))) {
       send(response, 503, { error: 'maintenance' }); return;
     }

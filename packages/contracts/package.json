@@ -8,6 +8,8 @@
     "dist"
   ],
   "exports": {
+    "./spaces": { "types": "./dist/spaces.d.ts", "import": "./dist/spaces.js" },
+    "./learning-data": { "types": "./dist/learning-data.d.ts", "import": "./dist/learning-data.js" },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"

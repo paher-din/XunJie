@@ -9,6 +9,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const excludedDirectories = new Set([
   '.git', 'node_modules', 'dist', 'coverage', 'test-results', 'playwright-report',
 ]);
+const displayPath = (root, file) => relative(root, file).split(sep).join('/');
 
 function maintainedMarkdown(root, file) {
   const path = relative(root, file).split(sep).join('/');
@@ -62,7 +63,7 @@ export function checkDocLinks({ root = repoRoot, files } = {}) {
   const candidates = files === undefined ? discover(root) : files.map(file => resolve(root, file));
   const selected = [...new Set(candidates)].filter(file => maintainedMarkdown(root, file)).sort();
   const failures = candidates.filter(file => files !== undefined && !existsSync(file))
-    .map(file => `${relative(root, file)}:1: Markdown input does not exist`);
+    .map(file => `${displayPath(root, file)}:1: Markdown input does not exist`);
   let checked = 0;
   for (const file of selected) {
     const source = readFileSync(file, 'utf8').replace(/\r\n?/g, '\n');
@@ -76,12 +77,12 @@ export function checkDocLinks({ root = repoRoot, files } = {}) {
       try {
         target = resolve(dirname(file), decodeURIComponent(path));
       } catch {
-        failures.push(`${relative(root, file)}:${line}: invalid percent encoding in local target ${JSON.stringify(href)}`);
+        failures.push(`${displayPath(root, file)}:${line}: invalid percent encoding in local target ${JSON.stringify(href)}`);
         continue;
       }
       // Existence only: in particular, never open targets inside docs/archive/.
       if (!existsSync(target)) {
-        failures.push(`${relative(root, file)}:${line}: missing local target ${JSON.stringify(href)} (${relative(root, target)})`);
+        failures.push(`${displayPath(root, file)}:${line}: missing local target ${JSON.stringify(href)} (${displayPath(root, target)})`);
       }
     }
   }

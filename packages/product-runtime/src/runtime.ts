@@ -47,6 +47,7 @@ const ownedEnvironmentEntries = new Set([
   'credentials', 'private', 'logs', 'status.json', 'instance.json', 'launch.json', 'maintenance.json',
   'postgres.log', 'installation.json', 'environment.json', 'backup-policy.json', 'last-backup-settings.json',
   'recovery-boundary.json', 'recovery-state.json', 'recovery-operations', 'retired.json',
+  'learning-resources',
 ]);
 const operationIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
 const generatedEnvironmentEntry = new RegExp(`^(?:(?:initializing-|\\.restore-)${operationIdPattern}|upgrade-${operationIdPattern}\\.json|\\.xj-recovery-[a-z0-9]{6})$`, 'i');
@@ -193,12 +194,14 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         if (!await exists(join(resources.webRoot, 'index.html'))) throw new Error('Product web entry is missing.');
         const database = input.database ?? { mode: input.profile === 'remote' ? 'none' : 'managed' };
         const host = input.host === 'localhost' ? '127.0.0.1' : input.host ?? '127.0.0.1';
+        if (input.profile !== 'school' && !['127.0.0.1', '::1'].includes(host)) throw new Error('Device profiles require a loopback listener.');
         if (!['127.0.0.1', '::1', 'localhost'].includes(host) && !input.tls) throw new Error('A shared listener requires a TLS certificate and private key.');
         if (!['127.0.0.1', '::1'].includes(host) && !input.publicEndpoint) throw new Error('A shared listener requires its public HTTPS endpoint.');
         const port = input.port ?? await freePort();
         if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error('Invalid listener port.');
         const endpoint = input.publicEndpoint ?? `${input.tls ? 'https' : 'http'}://${host === '::1' ? '[::1]' : '127.0.0.1'}:${port}`;
         const target = new URL(endpoint);
+        if (input.profile !== 'school' && !['127.0.0.1', '[::1]', 'localhost'].includes(target.hostname)) throw new Error('Device profiles require a loopback endpoint.');
         if (target.username || target.password || target.search || target.hash || target.pathname !== '/'
           || !['https:', 'http:'].includes(target.protocol)
           || (!['127.0.0.1', '::1'].includes(host) && target.protocol !== 'https:')) throw new Error('Invalid public endpoint.');
