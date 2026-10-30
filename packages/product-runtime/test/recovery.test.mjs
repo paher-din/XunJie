@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,6 +44,165 @@ async function fixture(t) {
   const manager = createRecoveryManager({ root, environment, maintenance, owners: [a], requiredServiceIds: [serviceId] });
   return { directory, root, serviceId, environment, a, maintenance, manager, key: randomBytes(32) };
 }
+
+async function pinnedFixture(t, { count = 2, timeoutMs = 1_000 } = {}) {
+  const f = await fixture(t);
+  const owners = Array.from({ length: count }, () => owner(randomUUID()));
+  const pins = owners.map(() => new Set());
+  const releases = owners.map(() => []);
+  const directory = join(f.directory, 'backups');
+  const maintenance = createMaintenanceCoordinator({ requiredServiceIds: owners.map(o => o.participant.descriptor.serviceId), record: async () => {} });
+  owners.forEach((o, index) => {
+    const resume = o.participant.resume;
+    o.participant.resume = async () => { await o.beforeResume?.(); await resume(); };
+    maintenance.register(o.participant);
+    const original = o.export;
+    o.export = async input => { pins[index].add(input.backupId); return original(input); };
+    o.release = async id => {
+      assert.ok(!(await readdir(directory)).includes(id), 'retire from the usable directory before releasing any pin');
+      releases[index].push(id); pins[index].delete(id);
+    };
+  });
+  const reopen = () => createRecoveryManager({ root: f.root, environment: f.environment, maintenance, owners,
+    requiredServiceIds: owners.map(o => o.participant.descriptor.serviceId), timeoutMs });
+  return { ...f, owners, pins, releases, directory, maintenance, reopen, manager: reopen() };
+}
+
+test('failed multi-owner exports and encryption release every attempted owner pin after retirement', async t => {
+  for (const failure of ['export', 'ciphertext']) await t.test(failure, async t => {
+    const f = await pinnedFixture(t);
+    if (failure === 'export') {
+      const original = f.owners[1].export;
+      f.owners[1].export = async input => { await original(input); throw new Error('copy failed after pin commit'); };
+    }
+    await assert.rejects(f.manager.backup({ directory: f.directory, key: failure === 'ciphertext' ? new Uint8Array(1) : f.key }));
+    assert.deepEqual(f.pins.map(p => [...p]), [[], []]);
+    assert.deepEqual(f.releases.map(r => r.length), [1, 1]);
+    assert.deepEqual(await readdir(f.directory), []);
+    assert.deepEqual((await f.manager.catalog(f.directory, f.key)).backups, []);
+  });
+});
+
+test('verified backups retain pins when resume fails, and successful backups retain pins', async t => {
+  const f = await pinnedFixture(t);
+  f.owners[0].beforeResume = async () => { throw new Error('resume failed'); };
+  await assert.rejects(f.manager.backup({ directory: f.directory, key: f.key }));
+  const [first] = (await f.manager.catalog(f.directory, f.key)).backups;
+  assert.ok(first);
+  await f.reopen().cleanup();
+  assert.ok(f.pins.every(p => p.has(first.backupId)));
+  assert.deepEqual(f.releases, [[], []]);
+  delete f.owners[0].beforeResume;
+  await f.manager.resume();
+  const second = await f.manager.backup({ directory: f.directory, key: f.key });
+  assert.ok(f.pins.every(p => p.has(first.backupId) && p.has(second.backupId)));
+});
+
+test('failed release survives a manager restart and retries without losing later owner cleanup', async t => {
+  const f = await pinnedFixture(t);
+  const release = f.owners[0].release;
+  let denied = true;
+  f.owners[0].release = async id => { if (denied) throw new Error('release unavailable'); await release(id); };
+  await assert.rejects(f.manager.backup({ directory: f.directory, key: new Uint8Array(1) }));
+  const retired = await readdir(f.directory);
+  assert.equal(retired.length, 1);
+  assert.ok(retired[0].startsWith('.retired-'));
+  assert.deepEqual(f.pins.map(p => p.size), [1, 0], 'one failed release must not prevent the other owner from being cleaned');
+  await assert.rejects(f.reopen().cleanup());
+  denied = false;
+  await f.reopen().cleanup();
+  assert.deepEqual(f.pins.map(p => [...p]), [[], []]);
+  assert.deepEqual(await readdir(f.directory), []);
+});
+
+test('retention retries retired releases while preserving the newly verified backup pins', async t => {
+  const f = await pinnedFixture(t);
+  const first = await f.manager.backup({ directory: f.directory, key: f.key });
+  const release = f.owners[0].release;
+  f.owners[0].release = async () => { throw new Error('release unavailable'); };
+  await assert.rejects(f.manager.backup({ directory: f.directory, key: f.key, keep: 1 }));
+  const { backups } = await f.manager.catalog(f.directory, f.key);
+  assert.equal(backups.length, 1);
+  assert.notEqual(backups[0].backupId, first.backupId);
+  assert.ok(f.pins.every(p => p.has(backups[0].backupId)));
+  f.owners[0].release = release;
+  await f.reopen().cleanup();
+  assert.ok(f.pins.every(p => !p.has(first.backupId) && p.has(backups[0].backupId)));
+  assert.deepEqual(await readdir(f.directory), [backups[0].backupId]);
+});
+
+test('timeout returns before a late export establishes its pin, then cleans it without exporting the next owner', async t => {
+  for (const rejects of [false, true]) await t.test(`late export rejects=${rejects}`, async t => {
+    const f = await pinnedFixture(t, { timeoutMs: 40 });
+    const entered = Promise.withResolvers(), finish = Promise.withResolvers(), released = Promise.withResolvers();
+    t.after(() => finish.resolve());
+    const original = f.owners[0].export, release = f.owners[0].release;
+    let laterExports = 0;
+    f.owners[1].export = async () => { laterExports++; throw new Error('must not start'); };
+    f.owners[0].export = async input => {
+      entered.resolve(); await finish.promise;
+      const result = await original(input);
+      if (rejects) throw new Error('late copy failure');
+      return result;
+    };
+    f.owners[0].release = async id => { await release(id); released.resolve(); };
+    const rejected = assert.rejects(f.manager.backup({ directory: f.directory, key: f.key }), { code: 'timeout' });
+    await entered.promise;
+    await Promise.race([rejected, delay(2_000).then(() => assert.fail('timeout waited for the unfinished export'))]);
+    assert.deepEqual(f.releases, [[], []]);
+    await assert.rejects(f.reopen().cleanup(), { code: 'backup-export-pending' });
+    finish.resolve();
+    await Promise.race([released.promise, delay(2_000).then(() => assert.fail('late export pin was leaked'))]);
+    for (let attempt = 0; (await readdir(join(f.root, '.locks', 'recovery'))).length && attempt < 100; attempt++) await delay(10);
+    await f.reopen().cleanup();
+    assert.deepEqual(f.pins.map(p => [...p]), [[], []]);
+    assert.equal(laterExports, 0, 'an aborted export loop must never start the next owner');
+    assert.deepEqual(await readdir(f.directory), []);
+    assert.equal((await f.manager.catalog(f.directory, f.key)).latest.phase, 'failed');
+  });
+});
+
+test('a killed backup producer leaves durable cleanup that a fresh public manager can finish', { timeout: 10_000 }, async t => {
+  const f = await fixture(t);
+  const directory = join(f.directory, 'backups'), pinFile = join(f.root, 'durable-pin');
+  const child = spawn(process.execPath, ['--input-type=module', '-e', `
+    import { writeFile } from 'node:fs/promises';
+    import { join } from 'node:path';
+    import { createMaintenanceCoordinator, createRecoveryManager } from '@xunjie/product-runtime';
+    const { root, environment, serviceId, directory, pinFile } = JSON.parse(process.env.RECOVERY_CRASH_FIXTURE);
+    const participant = { descriptor: { serviceId, schemaVersion: '1', resourceRoots: [], configurationRefs: [] },
+      async closeWrites() {}, async closeDispatch() {}, async drain() {}, async validate() {}, async resume() {} };
+    const maintenance = createMaintenanceCoordinator({ requiredServiceIds: [serviceId], record: async () => {} });
+    maintenance.register(participant);
+    const manager = createRecoveryManager({ root, environment, maintenance, requiredServiceIds: [serviceId], owners: [{
+      participant, async release() {}, async export({ backupId, directory }) {
+        await writeFile(pinFile, backupId);
+        await writeFile(join(directory, 'partial'), 'unfinished copy');
+        process.send({ backupId });
+        await new Promise(() => { setInterval(() => {}, 1_000); });
+      },
+    }] });
+    await manager.backup({ directory, key: new Uint8Array(32) });
+  `], { env: { ...process.env, RECOVERY_CRASH_FIXTURE: JSON.stringify({ root: f.root, environment: f.environment,
+    serviceId: f.serviceId, directory, pinFile }) }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
+  t.after(() => { if (child.exitCode === null) child.kill('SIGKILL'); });
+  const [message] = await once(child, 'message');
+  const exited = once(child, 'exit'); child.kill('SIGKILL'); await exited;
+  let releases = 0;
+  f.a.release = async backupId => {
+    assert.equal(backupId, message.backupId);
+    assert.ok(!(await readdir(directory)).includes(backupId));
+    assert.equal(await readFile(pinFile, 'utf8'), backupId);
+    releases++; await rm(pinFile);
+  };
+  await f.manager.cleanup();
+  assert.equal(releases, 1);
+  assert.deepEqual(await readdir(directory), []);
+  const { latest, backups } = await f.manager.catalog(directory, f.key);
+  assert.equal(latest.phase, 'failed');
+  assert.equal(latest.error, 'interrupted-backup');
+  assert.deepEqual(backups, []);
+});
 
 test('a complete recovery set restores owner state and original effect identity while remaining isolated', async t => {
   const f = await fixture(t);

@@ -30,7 +30,7 @@ npm run verify
 
 验证入口实时保存原始 stdout/stderr，并输出阶段、耗时和失败摘要。`.verification/latest.json` 指向本轮完整日志与阶段结果，每轮日志单独保存；CI 无论成功或失败均上传日志，保留 7 天。日志目录不进入 Git。使用 RTK 时执行 `rtk bypass npm run verify`，保留实时进度。
 
-根类型检查先编译 contracts / product-runtime / storage；根构建按 contracts → product-runtime → storage → server → Web / 独立运行网页 → local-runtime 排序。测试先构建契约与独立网页，产品运行和存储测试通过公开 package 执行。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
+根类型检查先编译 contracts / storage / product-runtime；根构建按 contracts → storage → product-runtime → server → Web / 独立运行网页 → local-runtime 排序。测试先构建契约与独立网页，产品运行和存储测试通过公开 package 执行。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
 
 [scripts/build-server.mjs](../../scripts/build-server.mjs)先清空 `apps/server/dist`，再按[生产配置](../../apps/server/tsconfig.build.json)编译，并检查实际输出；发现测试、fixtures、support 或验收宿主等测试专用文件即失败。仅在 tsconfig 中排除文件不足以阻止 import 把它们带回产物。发布清单与依赖仍须核对，现行云端打包入口是 [build-runtime-artifact.mjs](../../tools/i0-cloud/build-runtime-artifact.mjs)。
 
@@ -72,7 +72,8 @@ npm run test:external:tools -- --list
 
 | 票 | 继续使用的入口 | 仍待该票实现与验证 |
 | --- | --- | --- |
-| [#143 运行安装](https://github.com/paher-din/XunJie/issues/143) | 已建立 `apps/local-runtime`、`packages/product-runtime`、独立运行网页与环境 wire；[实际资源和验收](runtime-acceptance.md) | 继续目标设备安装与学校/真实跨机组合验收；Windows 实机待负责人回家后继续，签名/公证已由负责人移出本轮执行范围。 |
-| [#144 存储](https://github.com/paher-din/XunJie/issues/144) | [packages/storage](../../packages/storage/README.md)、[实际 module 示例](../../apps/server/server/storage-sample/index.ts)及 `@xunjie/contracts/storage`；旧 SQLite 原件独立保留 | PostgreSQL 事务/迁移、所属资源发布/保留/GC 与维护参与；业务 module 拥有自己的表和规则。接入、错误和真实 PG/文件/S3/HTTP 故障证据见[存储交接](storage-acceptance.md)。 |
+| [#143 运行安装](https://github.com/paher-din/XunJie/issues/143) | `apps/local-runtime`、`packages/product-runtime`、独立运行网页与环境 wire；[实际资源和验收](runtime-acceptance.md) | 子票已完成目标设备、学校和真实跨机验收；本轮签名/公证排除，Windows 依赖和安装前提按实际证据记录。组合核对见[父票验收](wp01-acceptance.md)。 |
+| [#144 存储](https://github.com/paher-din/XunJie/issues/144) | [packages/storage](../../packages/storage/README.md)、[实际 module 示例](../../apps/server/server/storage-sample/index.ts)及 `@xunjie/contracts/storage`；旧 SQLite 原件独立保留 | 子票已交付 PostgreSQL 事务/迁移、资源发布/保留/GC 与维护接入。当前版本在 #145 修改后的补验、接口和故障范围见[父票验收](wp01-acceptance.md)及[存储交接](storage-acceptance.md)。 |
+| [#145 维护恢复](https://github.com/paher-din/XunJie/issues/145) | [公开运行库](../../packages/product-runtime/README.md)与[维护操作和证据](maintenance-acceptance.md) | 子票已交付一致备份、隔离还原、升级和权威接管；新业务 owner 随所属 WP 登记并完整验收，父票不预先声称其恢复已完成。 |
 
 运行安装提供资源与连接，存储提供事务与资源机制，不互相接管事实。环境/服务身份、凭据引用、维护参与 interface、PG 18.6 与初始化条件现从[产品运行交接](runtime-acceptance.md)消费；存储可独立开发并完成最终关键事务验收。旧数据、DTO 或队列不自动接入新产品。工作区、原生执行、模型与 Agent 深化分别随所属 WP，备份升级与恢复交接按 WP01 对应后续票完成。

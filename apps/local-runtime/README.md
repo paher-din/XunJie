@@ -134,7 +134,7 @@ token 只从文件读取，交给库持久化与连接，不在 stdout 回显。
 
 ## 维护、备份与恢复（#145）
 
-操作 JSON 的完整示例、独立目标约束、失败重建与验收矩阵见 [#145 维护验收](../../docs/student-agent-implementation/maintenance-acceptance.md)。本票实际验收状态全部先记 `pending`，独立脚本及其他票的工程结果不能替代本票实际 evidence。
+操作 JSON 的完整示例、独立目标约束、失败重建与实际验收矩阵见 [#145 维护验收](../../docs/student-agent-implementation/maintenance-acceptance.md)。父票的组合验收与证据适用范围见 [WP01 父票验收](../../docs/student-agent-implementation/wp01-acceptance.md)。
 
 ```sh
 xunjie recovery-key --out /secure/xunjie/recovery.key
@@ -159,13 +159,13 @@ xunjie takeover --root /srv/xunjie/restored-new --file /secure/xunjie/takeover.j
 
 除生成 key、离线恢复外，策略、目录、备份、接管和 resume 均调用在线宿主的私有控制接口。接管的 source/receivers 也须在线且本机 root 可访问；每个 receiver id 为实际 `environmentId/serviceId`，适配器核对运行身份，不能填任意 root 来替代所需接收方。无 receivers 的备份传空数组，不能漏掉 manifest 要求的接收方。
 
-备份目录独立于环境及文件资源根，key 外置保管。所有参与者同一关闭边界 freeze、排空及验证后才导出。恢复保留业务身份，但生成新 installation、client namespace、本地凭据和存储代际；连接描述保留，旧秘密不直接恢复成有效授权。只有最新仍 held 的备份可退休源；源不可达或 receiver 失败时目标保持隔离。接管后接收方重新 `authorize`，目标用新文件 `connect`，旧 token 在 receiver 重启或旧 grant 文件复活后仍拒绝。
+备份目录独立于环境及文件资源根，key 外置保管。所有参与者同一关闭边界 freeze、排空及验证后才导出。恢复保留业务身份，但生成新 installation、client namespace、本地凭据和存储代际；连接描述保留，旧秘密不直接恢复成有效授权。只有最新仍 held 的备份可退休源；源不可达或 receiver 失败时目标保持隔离。接管后接收方重新 `authorize`，目标通过 `set-credential --ref <原连接的credentialRef> --file <仅含新token的私密文件>` 补齐已保留连接的凭据；`connect` 只登记新连接，不接受重复 connectionId。旧 token 在 receiver 重启或旧 grant 文件复活后仍拒绝。
 
 升级 kind 为 `schema|pg-minor|pg-major`；固定引擎 17.10/17.11/18.6，版本前进通过逻辑备份与新目标恢复完成。当前默认 daemon 只有 runtime owner；业务 owner 随 WP 装配，`schema` 没有实际注册迁移时报 `no-schema-upgrade-registered`。其他业务 targets 仍由[可信宿主公开 API](../../packages/product-runtime/README.md)提供。
 
 restore/upgrade JSON 支持目标 `database`、`databaseCredentialFile` 与 `installation`。external 密码由单行非空私密文件读取，可带一个末尾换行，空格原样保留；读后加入错误输出 redaction，JSON/argv 不放明文密码。`installation` 支持 profile、host、port、publicEndpoint、tls（certificateFile、keyFile），用于目标学校 HTTPS 入口，不含 database/requiredServiceIds；数据库单独配置，必需参与者从备份恢复。完整 external/TLS JSON 示例见 [维护说明](../../docs/student-agent-implementation/maintenance-acceptance.md#最终-held-备份与恢复)。
 
-外部数据库的源备份、目标恢复及升级必须使用带匹配 PG 备份/还原工具的**完整管理分发包**；无 PG 工具的 remote-client 包不能作为维护入口。external cluster/database、权限、工具与服务启停仍由学校管理员准备及管理；恢复默认隔离，验收 evidence 等待实际学校 probe，不据参数支持宣称完成。
+外部数据库的源备份、目标恢复及升级必须使用带匹配 PG 备份/还原工具的**完整管理分发包**；无 PG 工具的 remote-client 包不能作为维护入口。external cluster/database、权限、工具与服务启停仍由学校管理员准备及管理；恢复默认隔离，实际学校 external 验收范围见维护验收的证据矩阵。
 
 ```sh
 xunjie upgrade --root /srv/xunjie/source --resources /opt/xunjie-pg18/resources.json --file /secure/xunjie/upgrade.json

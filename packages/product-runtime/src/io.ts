@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, readdir, rename, rm, writeFile, lstat } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { constants } from 'node:fs';
+import { mkdir, open, readFile, readdir, rename, rm, writeFile, lstat } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 
@@ -52,12 +54,75 @@ export async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, 'utf8')) as T;
 }
 
+// Windows readers/virus scanners can briefly deny rename or reopening for write.
+// EACCES/EPERM also include real permission failures: only retry for a bounded
+// shared window, then preserve the error. Never unlink the destination to move.
+async function retryWindowsSharing<T>(action: () => Promise<T>, deadline: number): Promise<T> {
+  let pauseMs = 10;
+  for (;;) {
+    try { return await action(); }
+    catch (error) {
+      const remaining = deadline - Date.now();
+      if (process.platform !== 'win32' || remaining <= 0
+        || !['EPERM', 'EACCES', 'EBUSY'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+      await delay(Math.min(pauseMs, remaining));
+      if (Date.now() >= deadline) throw error;
+      pauseMs = Math.min(pauseMs * 2, 100);
+    }
+  }
+}
+
+/**
+ * Publish complete JSON only after its file sync, then sync the POSIX parent.
+ * A rejection after rename has an unknown publication outcome: reread the
+ * original operation identity instead of assuming the previous value survived.
+ * Callers must prepare the parent; creation of its ancestors is not synced here.
+ *
+ * On Windows sync uses FlushFileBuffers. Reopen/sync the published file to
+ * flush its changed metadata for every caller, including authority changes;
+ * syncing only the temporary before rename does not request that barrier.
+ * Node exposes no Windows directory sync; this does not flush newly created
+ * ancestors or claim tested power-loss survival on arbitrary filesystems/devices.
+ * Do not suppress ordinary I/O errors, including the post-publication sync.
+ * https://learn.microsoft.com/en-us/windows/win32/fileio/file-caching
+ * https://github.com/postgres/postgres/blob/REL_18_STABLE/src/common/file_utils.c
+ * https://github.com/libuv/libuv/blob/v1.52.1/src/win/fs.c
+ */
 export async function atomicJson(path: string, value: unknown): Promise<void> {
+  const data = JSON.stringify(value, null, 2) + '\n';
   const temporary = `${path}.${randomUUID()}.tmp`;
+  // An unsuccessful exclusive open must not remove somebody else's file.
+  const file = await open(temporary, 'wx', 0o600);
+  let directory: FileHandle | undefined;
+  let published: FileHandle | undefined;
   try {
-    await writeFile(temporary, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-    await rename(temporary, path);
-  } finally { await rm(temporary, { force: true }); }
+    await file.writeFile(data);
+    await file.sync();
+    await file.close();
+    // One retry budget covers rename and the published-file flush together.
+    const sharingDeadline = Date.now() + 2_000;
+    await retryWindowsSharing(() => rename(temporary, path), sharingDeadline);
+    if (process.platform === 'win32') {
+      // FlushFileBuffers needs GENERIC_WRITE. Reopen by the new name after
+      // rename, as in PostgreSQL's durable_rename, not via a read-only handle.
+      published = await retryWindowsSharing(() => open(path, 'r+'), sharingDeadline);
+      await retryWindowsSharing(() => published!.sync(), sharingDeadline);
+      await published.close();
+    } else {
+      directory = await open(dirname(path), constants.O_RDONLY | constants.O_DIRECTORY);
+      await directory.sync();
+      await directory.close();
+    }
+  } catch (error) {
+    const failures = [error];
+    // Close before unlinking on Windows. Keep the original write/sync failure
+    // visible even if closing or removing the owned temporary also fails.
+    for (const cleanup of [() => published?.close(), () => directory?.close(), () => file.close(), () => rm(temporary, { force: true })]) {
+      try { await cleanup(); } catch (failure) { failures.push(failure); }
+    }
+    if (failures.length > 1) throw new AggregateError(failures, 'Atomic JSON write and cleanup failed.');
+    throw error;
+  }
 }
 
 export async function exists(path: string): Promise<boolean> {

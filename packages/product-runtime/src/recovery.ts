@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
-import { acquireLock, atomicJson, exists, initializeRoot, readJson } from './io.js';
+import { acquireLock, atomicJson, exists, initializeRoot, ownsProcess, processIdentity, readJson } from './io.js';
+import type { ProcessOwner } from './io.js';
 import type { createMaintenanceCoordinator } from './maintenance.js';
 import { checkIndependentDirectory, ensureRecoverySpace, sealRecovery, unsealRecovery, verifyRecovery } from './recovery-files.js';
 import type { BackupPolicy, OwnerRecoveryData, RecoveryManifest, RecoveryOperation, RecoveryOwner, RecoveryTarget } from './recovery-types.js';
@@ -19,6 +20,17 @@ const safeCode = (error: unknown): string => {
 const idPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const checkId = (id: string) => { if (!idPattern.test(id)) throw new RecoveryError('invalid-identity'); };
 type ServiceVersion = { serviceId: string; schemaVersion: string };
+// Private journal data lives with the existing operation, before any owner can pin.
+type BackupOperation = RecoveryOperation & { cleanup?: {
+  directory: string;
+  serviceIds: string[];
+  disposition: 'pending' | 'verified' | 'retiring' | 'released';
+  producer?: ProcessOwner;
+  error?: string;
+} };
+// Shared by managers in this process, including a replacement manager after a
+// timeout. Other processes rely on the durable OS creation identity instead.
+const producingBackups = new Set<string>();
 function versionsOf(owners: readonly RecoveryOwner[]): ServiceVersion[] {
   return owners.map(owner => ({ serviceId: owner.participant.descriptor.serviceId,
     schemaVersion: owner.participant.descriptor.schemaVersion })).sort((a,b) => a.serviceId.localeCompare(b.serviceId));
@@ -89,8 +101,8 @@ export function createRecoveryManager(options: {
     if (required.some(id => !ownerIds.includes(id)) || participants.some(id => !ownerIds.includes(id))
       || ownerIds.some(id => !participants.includes(id))) throw new RecoveryError('missing-recovery-participant');
   }
-  async function exclusive<T>(work: () => Promise<T>) {
-    const unlock = await acquireLock(root, 'recovery', 0);
+  async function exclusive<T>(work: () => Promise<T>, waitMs = 0) {
+    const unlock = await acquireLock(root, 'recovery', waitMs);
     try { return await work(); } finally { await unlock(); }
   }
   async function catalog(directory: string, key?: Uint8Array) {
@@ -111,19 +123,76 @@ export function createRecoveryManager(options: {
     backups.sort((a, b) => b.boundaryAt.localeCompare(a.boundaryAt));
     const operations: RecoveryOperation[] = [];
     if (await exists(join(root, 'recovery-operations'))) for (const entry of await readdir(join(root, 'recovery-operations'))) {
-      if (/^[0-9a-f-]{36}\.json$/.test(entry)) operations.push(await readJson(join(root, 'recovery-operations', entry)));
+      if (/^[0-9a-f-]{36}\.json$/.test(entry)) {
+        const { cleanup: _cleanup, ...state } = await readJson<BackupOperation>(join(root, 'recovery-operations', entry));
+        operations.push(state);
+      }
     }
     operations.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return { backups, unavailable, latest: operations[0] ?? null, operations };
   }
+  async function cleanBackup(state: BackupOperation) {
+    const pending = state.cleanup;
+    if (!pending || pending.disposition === 'verified' || pending.disposition === 'released') return;
+    // A timed-out producer can still establish pins. Process death or settlement,
+    // never the timeout itself, proves it cannot create another pin for this ID.
+    if (pending.producer && await ownsProcess(pending.producer)
+      && (pending.producer.pid !== process.pid || producingBackups.has(state.operationId))) throw new RecoveryError('backup-export-pending');
+    if (pending.disposition === 'pending' && state.phase !== 'failed') {
+      state.phase = 'failed'; state.error = 'interrupted-backup';
+    }
+    pending.disposition = 'retiring'; delete pending.producer; delete pending.error;
+    await record(root, state);
+    const old = join(pending.directory, state.backupId!);
+    const retired = join(pending.directory, `.retired-${state.backupId!}`);
+    if (await exists(old)) await rename(old, retired);
+    // A retry also visits already-retired directories, even without a manifest.
+    let failure: unknown;
+    for (const serviceId of [...pending.serviceIds]) {
+      try {
+        const owner = owners.find(item => item.participant.descriptor.serviceId === serviceId);
+        if (!owner) throw new RecoveryError('missing-recovery-participant');
+        await bounded(() => owner.release(state.backupId!), timeoutMs);
+        pending.serviceIds = pending.serviceIds.filter(id => id !== serviceId);
+        await record(root, state);
+      } catch (error) { failure ??= error; }
+    }
+    if (failure) throw failure;
+    await rm(retired, { recursive: true, force: true });
+    pending.disposition = 'released';
+    await record(root, state);
+  }
+  async function tryCleanBackup(state: BackupOperation) {
+    try { await cleanBackup(state); }
+    catch (error) {
+      if (state.cleanup) { state.cleanup.error = safeCode(error); await record(root, state); }
+      throw error instanceof RecoveryError ? error : new RecoveryError(safeCode(error));
+    }
+  }
+  async function retryCleanup() {
+    const directory = join(root, 'recovery-operations');
+    if (!await exists(directory)) return;
+    let failure: unknown;
+    for (const entry of await readdir(directory)) {
+      if (!/^[0-9a-f-]{36}\.json$/.test(entry)) continue;
+      const state = await readJson<BackupOperation>(join(directory, entry));
+      if (state.kind !== 'backup' || !state.cleanup) continue;
+      try { await tryCleanBackup(state); } catch (error) { failure ??= error; }
+    }
+    if (failure) throw failure;
+  }
+  /** Retry durable failed/interrupted backup cleanup without reopening the gates. */
+  async function cleanup() { return exclusive(retryCleanup); }
   async function backup(input: { directory: string; key: Uint8Array; minimumFreeBytes?: number; keep?: number; leaveClosed?: boolean }) {
     return exclusive(async () => {
-      const state = operation('backup', 'closing');
+      const state: BackupOperation = operation('backup', 'closing');
       const backupId = state.operationId;
       state.backupId = backupId;
-      let cleanupDirectory: string | undefined;
+      let exporting: Promise<void> | undefined;
+      let exportFinished = true;
       await record(root, state);
       try {
+        await retryCleanup();
         if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
         if (await exists(join(root, 'recovery-state.json'))
           && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active') throw new RecoveryError('target-isolated');
@@ -132,24 +201,33 @@ export function createRecoveryManager(options: {
         if (input.keep !== undefined && (!Number.isSafeInteger(input.keep) || input.keep < 1)) throw new RecoveryError('invalid-retention');
         await ensureRecoverySpace(input.directory, input.minimumFreeBytes ?? 64 * 1024 * 1024);
         const directory = join(resolve(input.directory), backupId);
+        const identity = await processIdentity(process.pid);
+        if (!identity) throw new RecoveryError('unknown-process-identity');
+        state.cleanup = { directory: resolve(input.directory), serviceIds: [], disposition: 'pending',
+          producer: { pid: process.pid, processIdentity: identity } };
+        producingBackups.add(backupId);
+        await record(root, state);
         await mkdir(directory, { mode: 0o700 });
-        cleanupDirectory = directory;
         const phase = options.maintenance.status().phase;
         if (phase === 'open' || phase === 'failed') await options.maintenance.enter(`backup:${backupId}`);
         else throw new RecoveryError('maintenance-already-entered');
         requireOwners();
         if (!options.maintenance.status().safeToStop) throw new RecoveryError('unconfirmed-boundary');
         const boundaryAt = new Date().toISOString();
-        state.phase = 'exporting'; await record(root, state);
+        state.phase = 'exporting'; state.cleanup.serviceIds = [...ownerIds]; await record(root, state);
         const versions: RecoveryManifest['services'] = [];
-        await bounded(async signal => {
+        await bounded(signal => exporting = (async () => {
+          exportFinished = false;
           for (const owner of owners) {
+            signal.throwIfAborted();
             const serviceId = owner.participant.descriptor.serviceId;
             const ownerDirectory = join(directory, 'payload', serviceId);
             await mkdir(ownerDirectory, { recursive: true, mode: 0o700 });
+            signal.throwIfAborted();
             const recovery = await owner.export({ backupId, directory: ownerDirectory, signal }).catch(error => {
               throw new RecoveryError(`owner-export-${safeCode(error)}`);
             });
+            signal.throwIfAborted();
             if (recovery.formatVersion !== 1 || recovery.schemaVersion !== owner.participant.descriptor.schemaVersion) {
               throw new RecoveryError('incompatible-owner-format');
             }
@@ -157,7 +235,7 @@ export function createRecoveryManager(options: {
             versions.push({ serviceId, schemaVersion: recovery.schemaVersion,
               ...(recovery.engineVersion ? { engineVersion: recovery.engineVersion } : {}) });
           }
-        }, timeoutMs);
+        })().finally(() => { exportFinished = true; }), timeoutMs);
         // Validation runs at the same closed boundary as exports and resource copies.
         await options.maintenance.validate();
         const manifest = await sealRecovery(directory, input.key, {
@@ -166,6 +244,9 @@ export function createRecoveryManager(options: {
           receiverIds: [...new Set(await receiverIds())].sort(),
         });
         await verifyRecovery(directory, input.key);
+        state.cleanup.disposition = 'verified'; delete state.cleanup.producer;
+        producingBackups.delete(backupId);
+        await record(root, state);
         await atomicJson(join(root, 'recovery-boundary.json'), { backupId, boundaryAt, held: Boolean(input.leaveClosed) });
         if (!input.leaveClosed) await options.maintenance.resume();
         state.phase = 'complete'; await record(root, state);
@@ -173,9 +254,28 @@ export function createRecoveryManager(options: {
         return manifest;
       } catch (error) {
         state.phase = 'failed'; state.error = safeCode(error);
+        if (exportFinished) {
+          producingBackups.delete(backupId);
+          if (state.cleanup) delete state.cleanup.producer;
+        }
         await record(root, state);
+        if (exportFinished) await tryCleanBackup(state).catch(() => {});
+        else {
+          // Never race journal writes with another manager's cleanup. Settlement
+          // also makes a retry in this process safe if the background lock fails.
+          const settled = async () => {
+            producingBackups.delete(backupId);
+            await exclusive(async () => {
+              const current = await readJson<BackupOperation>(join(root, 'recovery-operations', `${backupId}.json`));
+              delete current.cleanup!.producer;
+              await record(root, current);
+              await tryCleanBackup(current);
+            }, 60_000);
+          };
+          void exporting!.then(settled, settled).catch(() => {});
+        }
         throw error instanceof RecoveryError ? error : new RecoveryError(safeCode(error));
-      } finally { if (cleanupDirectory) await rm(join(cleanupDirectory, 'payload'), { recursive: true, force: true }); }
+      }
     });
   }
   async function retain(directory: string, key: Uint8Array, keep: number) {
@@ -184,11 +284,13 @@ export function createRecoveryManager(options: {
       const old = join(directory, candidate.backupId);
       const verified = await verifyRecovery(old, key);
       if (verified.source.environmentId !== environment.environmentId) throw new RecoveryError('backup-owner-conflict');
-      const retired = join(directory, `.retired-${candidate.backupId}`);
-      await rename(old, retired);
-      // Stop advertising the backup before releasing its durable source pins.
-      for (const owner of owners) await owner.release(candidate.backupId);
-      await rm(retired, { recursive: true, force: true });
+      const path = join(root, 'recovery-operations', `${candidate.backupId}.json`);
+      const state: BackupOperation = await exists(path) ? await readJson(path) : {
+        ...operation('backup', 'complete'), operationId: candidate.backupId, backupId: candidate.backupId,
+      };
+      state.cleanup = { directory: resolve(directory), serviceIds: candidate.services.map(item => item.serviceId), disposition: 'retiring' };
+      await record(root, state);
+      await tryCleanBackup(state);
     }
   }
   async function retire(input: { backupId: string; targetInstallationId: string }): Promise<RetirementProof> {
@@ -266,6 +368,7 @@ export function createRecoveryManager(options: {
       if (await exists(join(root, 'retired.json'))) throw new RecoveryError('source-retired');
       if (await exists(join(root, 'recovery-state.json'))
         && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active') throw new RecoveryError('target-isolated');
+      await retryCleanup();
       const result = await options.maintenance.resume();
       if (await exists(join(root, 'recovery-boundary.json'))) await atomicJson(join(root, 'recovery-boundary.json'), { held: false });
       return result;
@@ -278,7 +381,7 @@ export function createRecoveryManager(options: {
     await checkIndependentDirectory(root, policy.directory);
     await atomicJson(join(root, 'backup-policy.json'), { ...policy, directory: resolve(policy.directory) });
   }
-  return { backup, catalog, configure, retire, takeover, resume };
+  return { backup, catalog, cleanup, configure, retire, takeover, resume };
 }
 
 /** Restoring never enables a target or dispatches work. Only takeover can transfer authority. */

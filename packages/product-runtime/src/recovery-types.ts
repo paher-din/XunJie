@@ -10,8 +10,9 @@ export interface OwnerRecoveryData {
 }
 export interface RecoveryOwner {
   participant: MaintenanceParticipant;
-  /** All participants are closed and drained before the first owner exports. */
+  /** All participants are closed and drained before exports. Settle only once no more pins or files can be created, including after abort. */
   export(input: { backupId: string; directory: string; signal: AbortSignal }): Promise<OwnerRecoveryData>;
+  /** Idempotent, including unknown IDs; failed/interrupted releases are retried after directory retirement. */
   release(backupId: string): Promise<void>;
   close?(): Promise<void>;
 }

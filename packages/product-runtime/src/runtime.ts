@@ -40,6 +40,24 @@ export interface InstalledConfiguration {
 }
 export interface RunningInstance extends ProcessOwner { endpoint: string }
 
+// Only runtime-owned entries are deleted: other environments and resource/backup
+// locations are never traversed through configuration or blanket root removal.
+const ownedEnvironmentEntries = new Set([
+  'pgdata', 'database.json', 'external-database.json', 'preparing-database.json', 'initdb-password',
+  'credentials', 'private', 'logs', 'status.json', 'instance.json', 'launch.json', 'maintenance.json',
+  'postgres.log', 'installation.json', 'environment.json', 'backup-policy.json', 'last-backup-settings.json',
+  'recovery-boundary.json', 'recovery-state.json', 'recovery-operations', 'retired.json',
+]);
+const operationIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
+const generatedEnvironmentEntry = new RegExp(`^(?:(?:initializing-|\\.restore-)${operationIdPattern}|upgrade-${operationIdPattern}\\.json|\\.xj-recovery-[a-z0-9]{6})$`, 'i');
+const atomicEnvironmentTemporary = new RegExp(`\\.${operationIdPattern}\\.tmp$`, 'i');
+function isOwnedEnvironmentEntry(name: string): boolean {
+  // Interrupted atomicJson writes can retain secrets even after their published
+  // journal was removed. Match their original owned name, not arbitrary *.tmp.
+  const original = name.replace(atomicEnvironmentTemporary, '');
+  return ownedEnvironmentEntries.has(original) || generatedEnvironmentEntry.test(original);
+}
+
 export function openProductRuntime(options: { root: string; resources?: RuntimeResources; windowsPrerequisitePath?: string }) {
   const root = resolve(options.root);
   const configPath = join(root, 'installation.json');
@@ -283,12 +301,29 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     },
     async deleteEnvironment(input: { environmentId: string }): Promise<void> {
       await assertRoot(root);
-      return withLock(root, async () => {
+      const release = await acquireLock(root, 'recovery');
+      try { return await withLock(root, async () => {
         if (input.environmentId !== (await environment()).environmentId) throw new Error('Environment identity mismatch; refusing deletion.');
+        const operations = join(root, 'recovery-operations');
+        if (await exists(operations)) for (const name of await readdir(operations)) {
+          if (!/^[0-9a-f-]{36}\.json$/i.test(name)) continue;
+          const operation = await readJson<{ cleanup?: { disposition: string } }>(join(operations, name));
+          // The recovery lock is released when an export times out, even though
+          // its producer may still create pins. Only an owner-aware manager can
+          // confirm cleanup; deletion must preserve its evidence until then.
+          if (operation.cleanup && !['verified', 'released'].includes(operation.cleanup.disposition)) {
+            throw new RecoveryError('backup-cleanup-pending');
+          }
+        }
         await stopUnlocked();
-        for (const name of ['pgdata', 'database.json', 'external-database.json', 'credentials', 'private', 'logs', 'status.json', 'instance.json',
-          'launch.json', 'maintenance.json', 'postgres.log', 'installation.json', 'environment.json']) await removeOwned(root, name);
-      });
+        for (const name of await readdir(root)) {
+          if (name !== 'installation.json' && name !== 'environment.json' && isOwnedEnvironmentEntry(name)) await removeOwned(root, name);
+        }
+        // Keep identity/configuration until cleanup succeeds so a failed delete
+        // remains diagnosable and can be retried with the same environmentId.
+        await removeOwned(root, 'installation.json');
+        await removeOwned(root, 'environment.json');
+      }); } finally { await release(); }
     },
     async database() { const config = await configuration(); return databaseBinding(root, config.database); },
     async setCredential(ref: string, value: string) {

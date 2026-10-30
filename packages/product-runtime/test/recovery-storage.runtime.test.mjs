@@ -7,13 +7,69 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
 import { createProductRuntimeHost, openProductRuntime, recoveryDatabase, createStorageRecoveryOwner,
-  createStorageRecoveryTarget, restoreProductRecovery } from '@xunjie/product-runtime';
+  createStorageRecoveryTarget, restoreProductRecovery, createMaintenanceCoordinator, createRecoveryManager } from '@xunjie/product-runtime';
 import { createStorageSample, sampleMigrations } from '../../../apps/server/dist/server/storage-sample/index.js';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Set XUNJIE_PRODUCT_POSTGRES_BIN to the pinned native PostgreSQL distribution.');
 const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
+  ...(process.platform === 'win32' ? { windowsPrerequisitePath: process.env.XUNJIE_PRODUCT_WINDOWS_PREREQUISITE
+    ?? fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } : {}),
   webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)) };
+
+test('failed native storage backup releases committed pins so unreferenced file bytes can be collected', { timeout: 120_000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), '循阶 failed recovery GC '));
+  const root = join(directory, 'source');
+  const runtime = openProductRuntime({ root, resources });
+  const serviceId = randomUUID(), key = randomBytes(32);
+  const migrations = [{ version: 1, name: 'records', sql: 'CREATE TABLE records(id text PRIMARY KEY)' }];
+  let host, storage;
+  try {
+    const installed = await runtime.install({ profile: 'local', requiredServiceIds: [serviceId] });
+    let owner;
+    host = await createProductRuntimeHost({ root, async createRecoveryOwners() {
+      const binding = await provisionStorage({ admin: await recoveryDatabase(root),
+        owner: { environmentId: installed.environment.environmentId, serviceId }, password: randomBytes(32).toString('base64url'), migrations });
+      storage = await openStorage({ binding, migrations, backend: createFileBackend({ id: 'files', root: join(root, 'resources') }) });
+      owner = createStorageRecoveryOwner({ storage, binding, migrations, resources,
+        resourceRoots: [join(root, 'resources')], validateService: async () => {} });
+      return [owner];
+    } });
+    const reference = await storage.stageResource({ uploadId: randomUUID(), scope: 'records/failed-backup',
+      bytes: Buffer.from('unreferenced but pinned before pg_dump'), mediaType: 'application/octet-stream', contentVersion: 1 });
+    const collect = () => storage.collect({ olderThan: new Date(Date.now() + 60_000) });
+    // Use the public manager and the real storage recovery owner. The backend
+    // read fails only after snapshot committed _storage_backups/_storage_pins.
+    const exportOwner = owner.export;
+    let committedPin;
+    const read = storage.readResourceObject;
+    storage.readResourceObject = async id => {
+      assert.equal(id, reference.resourceId);
+      assert.equal((await storage.read('SELECT backup_id FROM _storage_backups WHERE backup_id=$1', [committedPin])).rowCount, 1);
+      assert.equal((await storage.read('SELECT resource_id FROM _storage_pins WHERE backup_id=$1 AND resource_id=$2',
+        [committedPin, reference.resourceId])).rowCount, 1, 'another pooled connection sees the committed pin before file-copy failure');
+      throw Object.assign(new Error('file copy failed after snapshot commit'), { code: 'copy-failed' });
+    };
+    owner.export = async input => { committedPin = input.backupId; return exportOwner(input); };
+    const maintenance = createMaintenanceCoordinator({ requiredServiceIds: [serviceId], record: async () => {} });
+    maintenance.register(owner.participant);
+    const manager = createRecoveryManager({ root, environment: installed.environment, maintenance, owners: [owner], requiredServiceIds: [serviceId] });
+    const backupDirectory = join(directory, 'backups');
+    await assert.rejects(manager.backup({ directory: backupDirectory, key }), { code: 'owner-export-copy-failed' });
+    assert.ok(committedPin);
+    assert.equal((await storage.read('SELECT backup_id FROM _storage_backups WHERE backup_id=$1', [committedPin])).rowCount, 0);
+    assert.equal((await storage.read('SELECT resource_id FROM _storage_pins WHERE backup_id=$1', [committedPin])).rowCount, 0);
+    storage.readResourceObject = read;
+    await manager.resume();
+    assert.deepEqual(await collect(), [reference.resourceId], 'a failed backup must no longer prevent file GC');
+    assert.deepEqual((await manager.catalog(backupDirectory, key)).backups, []);
+    await assert.rejects(storage.readResource(reference.resourceId), { code: 'resource-gone' });
+  } finally {
+    await host?.stop();
+    await runtime.stop().catch(() => {});
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test('native owner API, receipts, outbox identity and resource bytes survive an independent product restore', { timeout: 120_000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), '循阶 complete recovery '));

@@ -1,6 +1,6 @@
 # XunJie 产品运行库
 
-`@xunjie/product-runtime` 提供本机/学校可信宿主共用的运行生命周期、连接授权、维护、完整备份、隔离恢复及接管编排。CLI 见 [apps/local-runtime](../../apps/local-runtime/README.md)，既有运行交接见 [#143](../../docs/student-agent-implementation/runtime-acceptance.md)，#145 的命令、失败处理和待执行验收见 [维护与恢复](../../docs/student-agent-implementation/maintenance-acceptance.md)。
+`@xunjie/product-runtime` 提供本机/学校可信宿主共用的运行生命周期、连接授权、维护、完整备份、隔离恢复及接管编排。CLI 见 [apps/local-runtime](../../apps/local-runtime/README.md)，既有运行交接见 [#143](../../docs/student-agent-implementation/runtime-acceptance.md)，#145 的命令、失败处理和实际验收见 [维护与恢复](../../docs/student-agent-implementation/maintenance-acceptance.md)，组合结论见 [WP01 父票验收](../../docs/student-agent-implementation/wp01-acceptance.md)。
 
 ## 公开入口
 
@@ -36,6 +36,8 @@ import {
 
 storage owner 通过 `snapshot` 在快照事务存活期间完成逻辑导出与资源复制，保留业务引用、回执和既有备份 pin；target 校验迁移历史、独立数据库/资源位置和原字节，应用已登记迁移后通过 `validateService` 检查约束、回执及未决效果身份。备份退役后才释放 pin；未知外部效果不自动重放。
 
+`export` 的 Promise 完成后不得继续创建该备份的 pin 或文件；`release(backupId)` 必须幂等，也接受没有 pin 的身份。失败或中断的备份在 `recovery-operations/` 留下私密清理记录，先退役目录再逐 owner 释放 pin；清理失败可由可信宿主调用 `manager.cleanup()`，后续 backup/resume 也会重试。超时不等于导出已结束：忽略 abort 的 owner 结束或其进程退出之前，保留记录并拒绝清理；正常超时仍按期返回。已经验证的完整备份在 resume 或后续保留策略失败时继续保留 pin。旧候选版本没有清理记录的失败备份不自动推断或迁移。
+
 `RecoveryTarget.restore({ backupId, targetRoot, directory, recovery, signal })` 接收持久目标环境根 `targetRoot`；`directory` 是本 owner 的解密暂存目录，不能用作重启配置的持久位置。storage target 默认将包含新角色凭据的 binding 私密保存到 `targetRoot/credentials/storage-<serviceId>`，不依赖当前进程的 `onRestored` 回调保留凭据。
 
 目标宿主重启后，用公开 `openRecoveredStorage({ root, serviceId, migrations, backend })` 读取该目标 binding、校验 environment/service 身份并取得新的 `OwnedStorage` 句柄，再装配业务服务及维护/恢复参与者。`root` 指恢复后的目标，migrations 与 backend 由所属 module/可信宿主提供；秘密不写日志。此接口沿用持久维护闸和存储代际，不自动 resume、接管或复活源凭据，也通过候选包 `app/product-runtime.js` 导出。
@@ -52,7 +54,7 @@ CLI 的 restore/upgrade JSON 对应支持 `database`、`databaseCredentialFile` 
 
 takeover 要求最新且仍 held 的源备份、源 `retire` 绑定证明及全部 receiver。receiver id 为 `environmentId/serviceId`；默认 root 适配器核对实际 receiver 身份，再对源 environment 及全部传入 serviceIds 调用真实 authority 的 `fenceSource`。旧 grant 视为 generation 0；fence 持久推进代际，拒绝旧 token（含重启和旧文件复活），等待已接受 handler 全部结束才返回无秘密 proof。新 token 只能由 authorize 取得当前代际。
 
-源不可达/拒绝、receiver 缺失/身份错误、断线/超时或验证失败均不得启用目标；确认源退休、receiver fencing 及校验后才恢复写入/派发，失败重新封闸。退休源即使在线也不能 resume。active 后仍需接收方重新授权并登记新连接；能力就绪与权威交接分别判断。维护 resume 不能跳过目标隔离或源退休。
+源不可达/拒绝、receiver 缺失/身份错误、断线/超时或验证失败均不得启用目标；确认源退休、receiver fencing 及校验后才恢复写入/派发，失败重新封闸。退休源即使在线也不能 resume。active 后仍需接收方重新授权；恢复已保留的连接通过原 credentialRef 写入新凭据，新增连接才登记新描述。能力就绪与权威交接分别判断。维护 resume 不能跳过目标隔离或源退休。
 
 固定引擎为 17.10、17.11、18.6，升级走逻辑备份与独立目标恢复。失败保留原备份及现场，用兼容资源从原备份再还原到另一个独立目标；只换回旧 binary 不构成数据库回滚。学校 external 的独立目标 cluster、权限、工具及启停由管理员负责，产品不接管其服务生命周期。
 
@@ -65,4 +67,4 @@ npm test -w @xunjie/product-runtime
 node scripts/probe-recovery.mjs --help
 ```
 
-独立原生验收使用实际产品包与仓库外新 root，完整命令及全部 `pending` 状态见 [#145 维护验收](../../docs/student-agent-implementation/maintenance-acceptance.md#独立验收命令与待填证据)。普通回归、独立分发恢复、浏览器和教学结果分别记录，未执行不算通过。
+独立原生验收使用实际产品包与仓库外新 root，完整命令与证据见 [#145 维护验收](../../docs/student-agent-implementation/maintenance-acceptance.md#独立验收命令与证据)。普通回归、独立分发恢复、浏览器和教学结果分别记录，未执行不算通过。

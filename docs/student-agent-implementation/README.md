@@ -13,9 +13,10 @@
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
 | 目标代码结构、依赖规则及各 WP 同步完成的结构改造 | [代码结构与实施节奏](student-agent-implementation-overview.md#代码结构与实施节奏)；取舍见 [ADR 0003](adr/0003-runtime-entrypoints-and-owned-modules.md) |
 | 当前工程入口、测试环境及 #143/#144 接入交接 | [工程入口与 WP01 交接](engineering-entrypoints.md) |
+| #142 产品运行与数据底座的预期、实际效果及组合验收 | [WP01 父票验收](wp01-acceptance.md) |
 | #143 产品运行候选、公开接口、安装资源与实际验收 | [产品运行交接](runtime-acceptance.md)；[固定资源](runtime-resources.md) |
 | #144 PostgreSQL 事务、所属资源、维护接入与故障证据 | [存储接入与验收](storage-acceptance.md)；[package 使用说明](../../packages/storage/README.md) |
-| #145 维护、完整备份、隔离恢复、升级与权威接管 | [维护操作与待执行验收](maintenance-acceptance.md)；[运行库接入](../../packages/product-runtime/README.md) |
+| #145 维护、完整备份、隔离恢复、升级与权威接管 | [维护操作与验收](maintenance-acceptance.md)；[运行库接入](../../packages/product-runtime/README.md) |
 | 八个 Wayfinder 主题的完整结论、来源和后续修正 | [本地决议索引](wayfinder/student-agent/README.md) |
 | 本轮设计决策的讨论与确认来源 | [学生端 Agent 与工作区重新设计：数字逻辑与部件设计先行](https://github.com/paher-din/XunJie/issues/112) |
 | ALU 的学习目标、公开行为表、帮助边界和场景 | [活动决议](wayfinder/student-agent/alu-activity.md)及[活动设计](references/2026-10-23-alu-activity-design.md) |

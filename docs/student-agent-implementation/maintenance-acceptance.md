@@ -144,7 +144,13 @@ CLI 经本机 root 的私有控制接口访问 source/receivers；root 映射不
 
 所有接收方确认后，目标经历 `activating`，维护验证后恢复写入/派发，成功记录 `active`；失败重新封闸并保留隔离。源即使进程仍活着也已退休，不能再 resume/start。接管失败不自动撤销已经发生的源退休或 receiver fencing，须保留实际状态。
 
-接管后在每个接收方显式 `authorize` 签发当前 generation 的新 token，再将新连接文件交给目标 `connect`；见 [CLI 连接授权](../../apps/local-runtime/README.md#连接授权)。旧 token 不升级。`active` 与连接能力就绪分开判断：必需连接未重授权时不宣称服务 ready。共享目标的公网 HTTPS、TLS、端口与凭据需按新安装配置另行确认。
+接管后在每个接收方显式 `authorize` 签发当前 generation 的新 token。恢复已保留原连接描述，目标应将新 token 通过私密单行文件写回原连接的 `credentialRef`，不用重复登记同一 `connectionId`：
+
+```sh
+xunjie set-credential --root /srv/xunjie/restored-new --ref <原连接的credentialRef> --file /secure/xunjie/new-token.txt
+```
+
+`new-token.txt` 仅保存新 grant 的 `token` 字段，不是完整 grant JSON；秘密经私密文件交接，不写入 argv 或日志。只有登记新的连接描述时才使用 `connect`；重复 `connectionId` 会明确拒绝。见 [CLI 连接授权](../../apps/local-runtime/README.md#连接授权)。旧 token 不升级。`active` 与连接能力就绪分开判断：必需连接未重授权时不宣称服务 ready。共享目标的公网 HTTPS、TLS、端口与凭据需按新安装配置另行确认。
 
 ### 升级与失败重建
 
