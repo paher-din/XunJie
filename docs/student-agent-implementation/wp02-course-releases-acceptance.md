@@ -47,7 +47,7 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 | 8 | 资源持久性 | `stageResource` 写入并重读，发布事务引用 `<releaseId>:<materialId>`；同一材料可被新版本复用；v2、撤权和关闭活动不回收 v1；材料文件删除返回 404、内容损坏返回 503 `corrupt`，不伪造内容；恢复后重新可读 |
 | 9 | 页面设计 | 使用既有 `learning-page`、色彩/排版/间距 token；目标与材料在详情首屏可发现；无存储节点选择、手动冻结或课程专用工作区分支；键盘使用原生按钮/链接 |
 | 10 | 迁移维护恢复 | 旧空间 v1–4、学习数据 v1 在真实 PG 上升级到新 schema，旧自主活动保留并可读取；新增发布/活动可用；备份、独立恢复、接管后发布、材料、课程活动与自主活动重开通过；`course-result` 在恢复目标可查询原登记 |
-| 11 | 平台与分项结果 | Windows 11 x64 工程、真实 Chrome 与已有自主活动回归通过；Apple Silicon Mac 未执行（见下）；教学效果未评估 |
+| 11 | 平台与分项结果 | Windows 11 x64 工程、真实 Chrome 与已有自主活动回归通过；Apple Silicon Mac 工程、原生 PostgreSQL、真实 Chrome、学校直连与已安装客户端流程通过（2026-10-31，`6e7967a`，见下）；教学效果未评估 |
 
 ## 工程验证
 
@@ -85,9 +85,43 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 7. 已安装客户端经学校授权页连接后，在本地页面切换到学校空间，读取课程、发布、开放材料并从选定版本建立课程活动；证据截图 [客户端课程目录](evidence/wp02-course-chrome-client.png)、[客户端发布详情](evidence/wp02-course-chrome-client-release.png)。
 8. 学校直连证据截图：[课程目录](evidence/wp02-course-chrome-catalog.png)、[发布详情](evidence/wp02-course-chrome-release.png)、[课程活动](evidence/wp02-course-chrome-activity.png)、[刷新后重开](evidence/wp02-course-chrome-reopen.png)。
 
+## Apple Silicon Mac 验收（2026-10-31）
+
+macOS 27.2（26B123），arm64；Node 24.21.0、PostgreSQL 18.6 使用产品分发包；本机安装的 Google Chrome 156.0.8078.79 有头执行，未用 Playwright Chromium 代替。验收代码提交 `6e7967a83215829803dbc6a078a6f233b420046d`（工作树干净），包含本轮验收前修复的启动就绪 `1f66b7c` 与状态探针 `6e7967a`，以及活动恢复 `44cb40e`/`949e707`；#151 的编辑器与测试宿主修复见[作品验收的 Mac 节](wp02-reliable-works.md#apple-silicon-mac-验收2026-10-31)。
+
+工程结果：
+
+- `npm run typecheck` 通过（contracts、storage、learning-space、server、product-runtime、web、local-runtime）；`npm run package:product -- --platform darwin-arm64` 全量构建与打包通过；8 个公共契约导出 browser-safe；文档链接检查通过。
+- 课程原生 `course-releases.runtime.test.mjs` 4/4；学校代理 `school-client.test.mjs` 2/2；`learning-entry` + `learning-cli` + `works` 组合 10/10；均 0 失败、0 跳过。
+- `worksEditor.spec.ts` 15/15 通过（真实 Chrome、产品宿主、原生 PostgreSQL 与真实文件资源）。
+- 启动就绪压力：同一产品环境连续 `stop`/`start` 10 次，10/10 返回 `ready`。
+
+真实浏览器（学校直连 8 个流程、已安装客户端 5 个流程，全部通过）：
+
+1. 登录学生页读取获准课程、任务与固定版本；发布详情固定版本、摘要、目标、要求、开放材料、起始作品与能力引用；页面与响应不含教师私有材料，私有材料直读 404。
+2. 从 v1 建立活动；可靠编辑器自动保存中文作品；自主活动与课程活动并存。
+3. 刷新、关闭/重新开始与产品 stop/start 后仍为同一 v1 活动与作品字节。
+4. 登记 v2 后旧活动与作品不变；v1 仍可选且显示固定版本；最新发布显示 v2 要求与材料。
+5. 删除/损坏 v1 材料时打开明确报错、不回退 v2；恢复材料后原活动可读。
+6. IME 组合/换行/焦点、浅色/深色/窄屏在课程工作区可用。
+7. 撤销课程资格后目录投影消失，发布/活动/作品读取、新建、状态重放与活动结果查询均返回 403，自主活动保留；重新授予后原活动与作品恢复。
+8. 撤销成员后会话失效，重新登录后可恢复。
+9. 已安装客户端经学校授权页连接后读取课程、发布与开放材料，并从 v1 建立活动；刷新与客户端 stop/start 保持固定活动与作品；撤权在客户端返回 403 且个人作品保留；撤销连接移除学校空间并拒绝旧凭据；学校 stop 时报告不可用而非空课程，重启并刷新后目录恢复。
+
+证据：[Mac 工程结果](evidence/wp02-course-mac-engineering.json)、[Mac 直连与客户端结果](evidence/wp02-course-mac-manual.json)、截图 [课程目录](evidence/wp02-course-mac-catalog.png)、[发布详情](evidence/wp02-course-mac-release.png)、[课程活动](evidence/wp02-course-mac-activity.png)、[客户端](evidence/wp02-course-mac-client.png)、[浅色](evidence/wp02-course-mac-light.png)、[深色](evidence/wp02-course-mac-dark.png)、[窄屏](evidence/wp02-course-mac-narrow.png)。
+
+本轮修复与前后对比：
+
+- 产品重启后 `start()` 可能在维护门重新打开前就返回 `ready`，后续首个请求得到 503 `maintenance`。修复后同一产品环境 10/10 返回就绪，重启后的课程与作品读取通过（`1f66b7c`）。
+- `start()` 可在启动探针早于就绪标志时返回 `failed`（“PostgreSQL startup is in progress”）；修复为本次调用报告 `starting` 并重试查询（`6e7967a`），修复后压力 10/10。
+- 首次 `context` 请求暂时失败时，从 URL 直达的活动会被列表覆盖并丢失；修复后恢复时仍打开原活动（`44cb40e`/`949e707`）。恢复瞬间可能短暂显示列表后重新打开活动。
+- 验收宿主曾把 `devices['Desktop Chrome']` 的 Windows UA 带到 macOS Chrome，导致 Monaco 隐藏输入重复；改用真实 Chrome UA（`d417980`）。
+
+已知限制：IME 使用真实 Chrome 的 CDP 组字事件，未切换 macOS 系统中文输入法实测物理键击；全量 `npm test` 未在最终提交重跑；教学效果未评估；跨机部署与接管仍由 #154 验收。
+
 ## 未执行与交接
 
-- **Apple Silicon Mac**：本机无该平台，未执行原生 PG、Chrome 或受影响连接路径；需在 Mac 上复跑类型检查、课程原生测试与 Chrome 流程，并分别记录工程/浏览器/未执行项。
+- **Apple Silicon Mac 剩余项**：工程、原生 PostgreSQL、真实 Chrome、学校直连与已安装客户端流程已于 2026-10-31 在本机执行并通过（见上）；macOS 系统中文输入法的物理键击、全量 `npm test` 与教学效果仍未执行。
 - **教学效果**：本轮只验证工程与交互，未评估学生使用效果或学习收益。
 - **混合部署与跨机接管**：由 #154 继续验收；本票提供可消费的公开接口、迁移和恢复校验。
 - **全量本地套件**：`.verification/local-suite-2.log` 记录了当日失败；失败项位于未修改的连接/恢复测试、Windows symlink 特权与 `LOCAL_SOCKET_CONFLICT`。它们不计入本功能通过证据，也未被本次改动修复。
@@ -101,4 +135,4 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 - 全仓 `typecheck`、`build`、8 项公共契约浏览器导出检查通过；本次 4 文档、79 本地目标无断链。
 - Node 24.21.0、Windows 11 x64、真实 PostgreSQL 18.6：课程 4/4、CLI 恢复 1/1、学校代理 2/2、作品持久化与备份恢复 1/1，共 8/8 通过，0 跳过。
 - 本机桌面 Chrome 有头运行原 `worksEditor.spec.ts` 14/14 通过。整合复审另发现活动恢复先于课程目录返回时目录永久加载；新增真实服务回归先复现失败，修复为离开活动后重新加载列表，重建 runtime 并复跑新增用例 1/1 通过，Web 类型检查通过。两轴复审无剩余发现。
-- 整合后的 `npm test` 全量套件、Apple Silicon Mac 和教学效果未执行；上文旧提交的结果不冒充此次重新执行。产品运行测试只使用仓库外隔离临时环境，没有迁移已有用户环境。
+- 整合后的 `npm test` 全量套件与教学效果未执行；Apple Silicon Mac 已于 2026-10-31 在本机执行并通过（见上）；上文旧提交的 Windows 结果不冒充此次重新执行。产品运行测试只使用仓库外隔离临时环境，没有迁移已有用户环境。

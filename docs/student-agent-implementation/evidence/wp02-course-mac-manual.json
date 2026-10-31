@@ -1,0 +1,213 @@
+{
+  "formatVersion": 1,
+  "issue": 150,
+  "ticket": 155,
+  "status": "passed",
+  "observedAt": "2026-10-31T07:26:57.123Z",
+  "platform": "27.2 (26B123), arm64",
+  "runtime": "Node.js v24.21.0 (packaged product runtime)",
+  "database": "PostgreSQL 18.6 (packaged product distribution)",
+  "commit": "6e7967a83215829803dbc6a078a6f233b420046d",
+  "workingTreeDirty": false,
+  "direct": {
+    "endpoint": "http://127.0.0.1:54521",
+    "environmentId": "2c7d29f4-f1c6-4ea0-9abd-91b17d4746d6",
+    "flows": [
+      {
+        "name": "school catalogue, pinned release, open material and private isolation",
+        "result": "passed",
+        "steps": [
+          "the logged-in school page shows the granted course, task and latest release",
+          "release detail pins the v1 version, objectives, requirements, open material, starter work and capability references",
+          "release and material responses exclude the teacher-private material; direct private reads are 404",
+          "the open material is readable and downloadable; the page and response do not expose private tests"
+        ]
+      },
+      {
+        "name": "start a pinned v1 course activity with the reliable editor",
+        "result": "passed",
+        "steps": [
+          "starting from v1 creates one activity with the pinned release, digest and open material",
+          "the same reliable editor edits and auto-saves the course work with no save/freeze state"
+        ]
+      },
+      {
+        "name": "autonomous activity, reload, close/reopen and product restart keep the v1 identity",
+        "result": "passed",
+        "steps": [
+          "an autonomous activity is created alongside the course activity",
+          "reload keeps the course badge and reopens the same pinned v1 activity",
+          "close survives reload and 重新开始活动 reopens the same v1 activity",
+          "product stop/start keeps the same activity, v1 basis and work bytes"
+        ]
+      },
+      {
+        "name": "registering v2 does not change the old activity or its work",
+        "result": "passed",
+        "steps": [
+          "v2 is registered through the formal CLI and the original v1 registration receipt is still queryable",
+          "the old v1 release is still selectable and shows its pinned version after v2 registration",
+          "the existing activity and work stay on v1 after v2 registration",
+          "the latest release shows the v2 requirements, materials and exact version"
+        ]
+      },
+      {
+        "name": "missing and corrupt v1 material fail explicitly without falling back to v2",
+        "result": "passed",
+        "steps": [
+          "a missing v1 material reports a definite missing error and does not fall back to v2",
+          "restoring the material makes the original v1 activity readable again",
+          "a corrupt v1 material reports an explicit corrupt error instead of a substitute version"
+        ]
+      },
+      {
+        "name": "IME, light/dark and narrow layout in the course workspace",
+        "result": "passed",
+        "steps": [
+          "IME composition, newline and focus work in the course editor and synchronize",
+          "light, dark and narrow layouts keep the course material and editor controls usable"
+        ]
+      },
+      {
+        "name": "revoking course access rejects projections, reads and replayed requests; autonomous work remains",
+        "result": "passed",
+        "steps": [
+          "revoked eligibility hides the course projection, keeps the autonomous activity and rejects reads and replay with 403",
+          "regrant restores the course and the original activity with its v1 work"
+        ]
+      },
+      {
+        "name": "member and session revocation still invalidate the school session",
+        "result": "passed",
+        "steps": [
+          "revoking membership rejects the old session and a fresh login",
+          "regrant allows a fresh login; the school activity remains available"
+        ]
+      }
+    ],
+    "principalId": "b5b8eae6-9e30-476c-8f35-0b667ad2eb9a",
+    "courseActivityId": "5ab57230-a58e-4f86-a7be-7aef302d1098",
+    "v2ReleaseId": "b7bd1cf0-7a5c-4768-940a-7ed430b99f0e",
+    "revocationChecks": {
+      "release": 403,
+      "activity": 403,
+      "workspace": 403,
+      "create": 403,
+      "replay": 403,
+      "result": 403
+    }
+  },
+  "client": {
+    "endpoint": "http://127.0.0.1:54510",
+    "environmentId": "3faee838-5015-4611-b21a-d589b5071562",
+    "flows": [
+      {
+        "name": "the installed client connects the school and pins a course activity",
+        "result": "passed",
+        "steps": [
+          "the personal space creates an autonomous activity before connecting a school",
+          "the school approval page connects the installed client and exposes a school space",
+          "the client reads the course, open material and starts a v1-pinned activity through the school proxy",
+          "course work is read and auto-saved through the same workspace and owning service",
+          "the personal space cannot see the school course activity created through the client"
+        ]
+      },
+      {
+        "name": "client reload and restart reopen the pinned course activity and work",
+        "result": "passed",
+        "steps": [
+          "reload keeps the school course activity and its work through the client",
+          "client stop/start keeps the connection, pinned activity and work"
+        ]
+      },
+      {
+        "name": "course revocation is rejected in the client while personal work stays",
+        "result": "passed",
+        "steps": [
+          "revoked course reads, creation and replayed cache-state operations are rejected; personal work remains",
+          "regrant restores the client course projection"
+        ]
+      },
+      {
+        "name": "missing/corrupt material, unknown queries and disconnect are explicit in the client",
+        "result": "passed",
+        "steps": [
+          "a missing material in the client is an explicit missing error, not an empty course",
+          "restoring the material makes the client course activity readable again",
+          "a corrupt material in the client is an explicit corrupt error, not an empty course",
+          "an unknown course-activity request id returns null and is not interpreted as an empty course",
+          "an unreachable school is reported as unavailable, not as an empty course or a personal fallback",
+          "restarting the school restores the client course catalogue without reconnecting"
+        ]
+      },
+      {
+        "name": "revoking the client connection removes the school space and keeps personal work",
+        "result": "passed",
+        "steps": [
+          "revoking the connection removes the school entry, denies the old credential and keeps the personal activity"
+        ]
+      }
+    ],
+    "personalGoal": "个人自主活动-1f400a08",
+    "connectionId": "eeea5991-1d2a-4593-aa6c-328dba35aaaa",
+    "courseActivityId": "333c8789-78c8-4315-afc9-7a49a6848ef3",
+    "work": [
+      {
+        "objectId": "4123d781-70c8-4893-8122-0fbafda32d5d",
+        "name": "client.txt",
+        "kind": "text",
+        "contentId": "37dfd01e-10fb-40ea-9699-2276cbbd20cd",
+        "encoding": "utf8",
+        "mediaType": "text/plain",
+        "value": "客户端课程作品\n自动保存。"
+      }
+    ],
+    "revocationChecks": {
+      "release": 403,
+      "activity": 403,
+      "workspace": 403,
+      "create": 403,
+      "replay": 403,
+      "result": 403
+    },
+    "unknownResultQuery": {
+      "status": 200,
+      "value": null
+    }
+  },
+  "console": {
+    "errors": [
+      "school: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "school: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "school: Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "school: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "client: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "client: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "client: Event",
+      "client: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "client: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "client: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "client: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "client: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "client: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "client: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "client: Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "client: Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "client: Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "client: Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "client: Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "client: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  "browser": "Google Chrome 156.0.8078.79 (installed; Playwright headed)",
+  "course": {
+    "courseId": "62202eae-1566-4441-9549-4abfe405b327",
+    "taskId": "7c2bf69c-da86-4e4a-a0f0-9d0c8da1261b",
+    "v1ReleaseId": "c6f375fd-b9d7-4c61-b39c-2df04434b193",
+    "studentMaterialId": "15f457b2-360a-4dfc-bcb7-28746afe9a22",
+    "privateMaterialId": "71e76810-681b-4d65-9f6d-2d2aedfd9eb2",
+    "starterWorkId": "fd416093-8510-42a2-9b5e-b32c89cb3404",
+    "v1RequestId": "431a8885-2405-441b-a768-d8ec16f89fd6"
+  },
+  "completedAt": "2026-10-31T07:27:08.538Z"
+}

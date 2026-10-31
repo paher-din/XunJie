@@ -1,0 +1,102 @@
+{
+  "formatVersion": 1,
+  "issue": 151,
+  "ticket": 155,
+  "status": "passed",
+  "observedAt": "2026-10-31T07:19:53.241Z",
+  "platform": "27.2 (26B123), arm64",
+  "runtime": "Node.js v24.21.0 (packaged product runtime)",
+  "database": "PostgreSQL 18.6 (packaged product distribution)",
+  "commit": "6e7967a83215829803dbc6a078a6f233b420046d",
+  "workingTreeDirty": false,
+  "product": {
+    "endpoint": "http://127.0.0.1:53095",
+    "environmentId": "11ab805e-6f30-4484-b236-a1c387852906"
+  },
+  "flows": [
+    {
+      "name": "create a personal activity and open the reliable editor",
+      "result": "passed",
+      "steps": [
+        "personal entry creates an activity and opens 当前作品 with no manual save, freeze or persistent save state"
+      ]
+    },
+    {
+      "name": "create, edit, rename, delete and recreate a same-name file with stable identities",
+      "result": "passed",
+      "steps": [
+        "a new text file accepts multi-line Chinese through the real clipboard and synchronizes automatically",
+        "rename keeps the stable object and content identity",
+        "delete removes the current file from the head",
+        "same-name recreation receives a new object identity; the deleted tombstone identity is not recycled"
+      ]
+    },
+    {
+      "name": "retain UTF-8 BOM and CRLF of an immutable source while editing and reopening",
+      "result": "passed",
+      "steps": [
+        "editing appends text without normalizing the existing BOM and CRLF bytes",
+        "reload reads the same immutable source and displays the edited bytes"
+      ]
+    },
+    {
+      "name": "an opened activity survives API disconnection and reload, then continues its pending sync",
+      "result": "passed",
+      "steps": [
+        "while the API is unreachable the page reloads from local browser storage with the unpublished input",
+        "after reconnecting the original pending sync reaches the service without a refresh"
+      ]
+    },
+    {
+      "name": "late and lost confirmations never settle later editor content",
+      "result": "passed",
+      "steps": [
+        "a delayed confirmation settles only its own request; later input is never overwritten or settled",
+        "a dropped confirmation is recovered by querying the original request receipt",
+        "reload keeps the last protected body"
+      ]
+    },
+    {
+      "name": "continuous input advances durable local and remote content before typing stops",
+      "result": "passed",
+      "steps": [
+        "continuous typing advanced 8/30 characters durably before the student stopped"
+      ]
+    },
+    {
+      "name": "macOS Chrome IME composition, newline and focus in the actual editor",
+      "result": "passed",
+      "steps": [
+        "composition commits Chinese into the actual Monaco editor",
+        "Enter inserts a newline and keeps focus in the editor; the body synchronizes automatically"
+      ]
+    },
+    {
+      "name": "light, dark and narrow layouts keep the actual editor and its controls usable",
+      "result": "passed",
+      "steps": [
+        "light and dark page screenshots show the actual editor with Chinese content",
+        "narrow viewport shows the editor and file controls with no horizontal occlusion"
+      ]
+    },
+    {
+      "name": "product stop/start keeps the same activity body and object identities",
+      "result": "passed",
+      "steps": [
+        "stop/start returns a ready product endpoint and the same body and object identities are readable",
+        "reopening the activity from the list after restart shows the last protected Chinese body"
+      ]
+    }
+  ],
+  "console": {
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: net::ERR_CONNECTION_FAILED",
+      "Failed to load resource: net::ERR_CONNECTION_FAILED",
+      "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    ]
+  },
+  "browser": "Google Chrome 156.0.8078.79 (installed; Playwright headed)",
+  "activityId": "bdca23e4-5943-4e1c-bf43-4f194be48511",
+  "completedAt": "2026-10-31T07:20:17.385Z"
+}

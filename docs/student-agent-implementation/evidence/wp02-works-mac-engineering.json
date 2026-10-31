@@ -1,0 +1,92 @@
+{
+  "formatVersion": 1,
+  "issue": 151,
+  "ticket": 155,
+  "sourceCommit": "6e7967a83215829803dbc6a078a6f233b420046d",
+  "acceptedFromCommit": "5ba2f41",
+  "executedOn": "2026-10-31",
+  "platform": "macOS 27.2 (26B123), arm64",
+  "node": "24.21.0",
+  "postgres": "18.6 (packaged product distribution)",
+  "browser": "installed Google Chrome 156.0.8078.79 (headed; Playwright channel chrome)",
+  "typecheck": "passed (contracts, storage, learning-space, server, product-runtime, web, local-runtime)",
+  "build": "passed; package:product --platform darwin-arm64 built from sourceCommit",
+  "browserSafeContractExports": { "passed": 8 },
+  "docsCheck": { "markdown": 158, "localTargets": 1125, "failures": 0 },
+  "nativeIntegration": {
+    "command": "node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs packages/product-runtime/test/works.runtime.test.mjs",
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 17367.6495,
+    "coverage": [
+      "Chinese UTF-8 original bytes including BOM and CRLF",
+      "stable rename identity, deletion tombstone and same-name recreation",
+      "immutable historical content and resource retention",
+      "typed JSON state and large base64 resource",
+      "same request idempotency and changed-input rejection",
+      "independent client revision competition",
+      "school account authorization and expected subject mismatch",
+      "restart and three-owner backup, restore and takeover",
+      "old restore namespace rejection and historical content recovery",
+      "normal CLI schema upgrade validation"
+    ]
+  },
+  "courseNative": { "command": "node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs", "passed": 4, "failed": 0, "skipped": 0 },
+  "schoolClient": { "command": "node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs", "passed": 2, "failed": 0, "skipped": 0 },
+  "chromeRegression": {
+    "command": "XUNJIE_XJ_DEV_URL=isolated-native-product XUNJIE_E2E_BROWSER_CHANNEL=chrome npm exec -w @xunjie/web -- playwright test worksEditor.spec.ts --headed --workers=1",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "duration": "44.1s",
+    "evidence": "wp02-works-mac-chrome.json"
+  },
+  "manualAcceptance": { "evidence": "wp02-works-mac-manual.json", "passed": 9, "failed": 0, "screenshots": ["wp02-works-mac-light.png", "wp02-works-mac-dark.png", "wp02-works-mac-narrow.png", "wp02-works-mac-activity.png", "wp02-works-mac-recreated.png"] },
+  "startupReadinessStress": { "iterations": 10, "ready": 10, "product": "school profile, packaged darwin-arm64 product" },
+  "includedFixes": [
+    {
+      "commit": "1f66b7c",
+      "summary": "wait for restart gates before reporting readiness",
+      "before": "runtime.start() returned ready while maintenance gates were still closed; the first request after restart returned 503 maintenance (reproduced 10/10)",
+      "after": "initialized only after restart/recovery gates reopen; 10/10 restarts return ready and serve 200"
+    },
+    {
+      "commit": "d417980",
+      "summary": "attach the editor model before the textarea accepts input",
+      "before": "Monaco hidden textarea was focusable before model/original history existed; early keystrokes were silently lost",
+      "after": "model and original history attach before readiness; the failed-navigation E2E waits for the real failure and completed action"
+    },
+    {
+      "commit": "d417980",
+      "summary": "use the installed Chrome user agent in E2E",
+      "before": "devices['Desktop Chrome'] carried a Windows UA on macOS Chrome and duplicated Monaco hidden-textarea input",
+      "after": "XUNJIE_E2E_BROWSER_CHANNEL=chrome clears the spoofed UA; all 15 regressions pass"
+    },
+    {
+      "commit": "44cb40e",
+      "summary": "keep the requested activity across context recovery",
+      "before": "when the first context request failed, a URL-requested activity was cleared by the recovery poll and lost",
+      "after": "the requested activity survives recovery; deep links reopen after transient context failure"
+    },
+    {
+      "commit": "949e707",
+      "summary": "read the latest open activity during context recovery",
+      "before": "a recovery poll could finish after an activity opened and still clear it, briefly returning to the catalogue",
+      "after": "the poll reads the current view; the activity is reopened after recovery (a brief list render during the refetch remains possible)"
+    },
+    {
+      "commit": "6e7967a",
+      "summary": "report starting when a status probe predates readiness",
+      "before": "start() returned failed with 'PostgreSQL startup is in progress' when a probe began before initialization and the flag flipped mid-call (observed in acceptance run)",
+      "after": "that call reports starting, the CLI retries, and 10/10 restart stress tests return ready"
+    }
+  ],
+  "knownLimitations": [
+    "IME is verified through real Chrome CDP composition events; a physical macOS system Chinese IME keyboard run was not executed",
+    "the full npm test suite was not rerun at the final commit; Windows baseline failures remain documented separately",
+    "teaching effect is not evaluated",
+    "cross-machine deployment and takeover remain under #154"
+  ],
+  "teachingEffect": "not evaluated"
+}
