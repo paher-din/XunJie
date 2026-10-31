@@ -39,5 +39,8 @@ const run = (binary, argv) => {
   if (result.status !== 0) process.exit(result.status ?? 1);
 };
 const nodeFiles = files.filter(file => !file.endsWith('.py'));
-if (nodeFiles.length) run(process.execPath, ['--test', '--test-concurrency=4', ...nodeFiles]);
+// Real CLI tool tests rebuild this checkout's public contracts. A different
+// file must not import those same outputs while they are being written.
+const concurrency = target === 'tools' ? 1 : 4;
+if (nodeFiles.length) run(process.execPath, ['--test', `--test-concurrency=${concurrency}`, ...nodeFiles]);
 for (const file of files.filter(file => file.endsWith('.py'))) run('python3', [file]);
