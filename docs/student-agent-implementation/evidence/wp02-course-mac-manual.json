@@ -83,6 +83,46 @@
           "revoking membership rejects the old session and a fresh login",
           "regrant allows a fresh login; the school activity remains available"
         ]
+      },
+      {
+        "name": "physical macOS Chinese IME, Meta keys, newline and focus in the course editor",
+        "result": "passed",
+        "steps": [
+          "the pinned course activity opened its reliable editor with the existing course files",
+          "with the installed Doubao Pinyin input source selected, physical keystrokes composed 你好 and 世界 and committed candidates with Space; Return inserted a newline",
+          "Cmd+V pasted 粘贴中文; Cmd+Left, 开始, Cmd+Right and 结束 proved Meta cursor movement and composition at both ends of the line",
+          "focus moved to the filename input and back to the Monaco textarea without losing subsequent physical input",
+          "the workspace service returned 200 with 你好世界\\n开始粘贴中文结束"
+        ],
+        "evidence": {
+          "status": "passed",
+          "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+          "inputSourceNote": "Same live macOS input source as the works run; Apple SCIM Pinyin was not present in the live input-source set.",
+          "method": "OS-level key events via System Events to the Playwright-launched Chrome process after activating its pid",
+          "activityId": "5ab57230-a58e-4f86-a7be-7aef302d1098",
+          "file": "系统输入法-课程.txt",
+          "text": "你好世界\n开始粘贴中文结束",
+          "composition": [
+            "你好",
+            "世界",
+            "开始",
+            "结束"
+          ],
+          "newline": "Return inserted a real newline between 世界 and 开始",
+          "paste": "Cmd+V pasted 粘贴中文 from the macOS clipboard",
+          "metaCursor": [
+            "Cmd+Left moved the caret to line start before composing 开始",
+            "Cmd+Right moved the caret to line end before composing 结束"
+          ],
+          "focus": "focus moved to the filename input and back to the Monaco textarea; later physical input still landed in the editor",
+          "persisted": {
+            "status": 200,
+            "text": "你好世界\n开始粘贴中文结束"
+          },
+          "screenshot": "evidence/wp02-course-mac-system-ime.png",
+          "flowFile": "/tmp/xj-ime-result-course.json",
+          "observedAt": "2026-10-31T07:49:52.363Z"
+        }
       }
     ],
     "principalId": "b5b8eae6-9e30-476c-8f35-0b667ad2eb9a",
@@ -95,6 +135,35 @@
       "create": 403,
       "replay": 403,
       "result": 403
+    },
+    "systemIme": {
+      "status": "passed",
+      "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+      "inputSourceNote": "Same live macOS input source as the works run; Apple SCIM Pinyin was not present in the live input-source set.",
+      "method": "OS-level key events via System Events to the Playwright-launched Chrome process after activating its pid",
+      "activityId": "5ab57230-a58e-4f86-a7be-7aef302d1098",
+      "file": "系统输入法-课程.txt",
+      "text": "你好世界\n开始粘贴中文结束",
+      "composition": [
+        "你好",
+        "世界",
+        "开始",
+        "结束"
+      ],
+      "newline": "Return inserted a real newline between 世界 and 开始",
+      "paste": "Cmd+V pasted 粘贴中文 from the macOS clipboard",
+      "metaCursor": [
+        "Cmd+Left moved the caret to line start before composing 开始",
+        "Cmd+Right moved the caret to line end before composing 结束"
+      ],
+      "focus": "focus moved to the filename input and back to the Monaco textarea; later physical input still landed in the editor",
+      "persisted": {
+        "status": 200,
+        "text": "你好世界\n开始粘贴中文结束"
+      },
+      "screenshot": "evidence/wp02-course-mac-system-ime.png",
+      "flowFile": "/tmp/xj-ime-result-course.json",
+      "observedAt": "2026-10-31T07:49:52.363Z"
     }
   },
   "client": {

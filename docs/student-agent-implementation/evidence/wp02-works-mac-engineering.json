@@ -11,8 +11,14 @@
   "browser": "installed Google Chrome 156.0.8078.79 (headed; Playwright channel chrome)",
   "typecheck": "passed (contracts, storage, learning-space, server, product-runtime, web, local-runtime)",
   "build": "passed; package:product --platform darwin-arm64 built from sourceCommit",
-  "browserSafeContractExports": { "passed": 8 },
-  "docsCheck": { "markdown": 158, "localTargets": 1125, "failures": 0 },
+  "browserSafeContractExports": {
+    "passed": 8
+  },
+  "docsCheck": {
+    "markdown": 158,
+    "localTargets": 1125,
+    "failures": 0
+  },
   "nativeIntegration": {
     "command": "node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs packages/product-runtime/test/works.runtime.test.mjs",
     "passed": 10,
@@ -32,8 +38,18 @@
       "normal CLI schema upgrade validation"
     ]
   },
-  "courseNative": { "command": "node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs", "passed": 4, "failed": 0, "skipped": 0 },
-  "schoolClient": { "command": "node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs", "passed": 2, "failed": 0, "skipped": 0 },
+  "courseNative": {
+    "command": "node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "schoolClient": {
+    "command": "node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
   "chromeRegression": {
     "command": "XUNJIE_XJ_DEV_URL=isolated-native-product XUNJIE_E2E_BROWSER_CHANNEL=chrome npm exec -w @xunjie/web -- playwright test worksEditor.spec.ts --headed --workers=1",
     "passed": 15,
@@ -42,8 +58,23 @@
     "duration": "44.1s",
     "evidence": "wp02-works-mac-chrome.json"
   },
-  "manualAcceptance": { "evidence": "wp02-works-mac-manual.json", "passed": 9, "failed": 0, "screenshots": ["wp02-works-mac-light.png", "wp02-works-mac-dark.png", "wp02-works-mac-narrow.png", "wp02-works-mac-activity.png", "wp02-works-mac-recreated.png"] },
-  "startupReadinessStress": { "iterations": 10, "ready": 10, "product": "school profile, packaged darwin-arm64 product" },
+  "manualAcceptance": {
+    "evidence": "wp02-works-mac-manual.json",
+    "passed": 9,
+    "failed": 0,
+    "screenshots": [
+      "wp02-works-mac-light.png",
+      "wp02-works-mac-dark.png",
+      "wp02-works-mac-narrow.png",
+      "wp02-works-mac-activity.png",
+      "wp02-works-mac-recreated.png"
+    ]
+  },
+  "startupReadinessStress": {
+    "iterations": 10,
+    "ready": 10,
+    "product": "school profile, packaged darwin-arm64 product"
+  },
   "includedFixes": [
     {
       "commit": "1f66b7c",
@@ -83,10 +114,87 @@
     }
   ],
   "knownLimitations": [
-    "IME is verified through real Chrome CDP composition events; a physical macOS system Chinese IME keyboard run was not executed",
+    "the physical IME run used the installed Doubao Pinyin input source because Apple SCIM Pinyin was not present in the live input-source set",
     "the full npm test suite was not rerun at the final commit; Windows baseline failures remain documented separately",
     "teaching effect is not evaluated",
     "cross-machine deployment and takeover remain under #154"
   ],
-  "teachingEffect": "not evaluated"
+  "teachingEffect": "not evaluated",
+  "systemIme": {
+    "status": "passed",
+    "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "inputSourceNote": "The live macOS input-source set on this machine includes the installed Doubao Pinyin IME but not Apple SCIM Pinyin; this run used Doubao Pinyin as the physical macOS input method.",
+    "method": "OS-level key events via System Events sent to the Playwright-launched Chrome process after activating its pid; IME candidates committed with Space",
+    "activityId": "2c6b52f6-b1e5-4438-abfa-b6ae550f99a0",
+    "file": "系统输入法.txt",
+    "text": "你好世界\n开始粘贴中文结束",
+    "composition": [
+      "你好",
+      "世界",
+      "开始",
+      "结束"
+    ],
+    "newline": "Return inserted a real newline between 世界 and 开始",
+    "paste": "Cmd+V pasted 粘贴中文 from the macOS clipboard",
+    "metaCursor": [
+      "Cmd+Left moved the caret to line start before composing 开始",
+      "Cmd+Right moved the caret to line end before composing 结束"
+    ],
+    "focus": "focus moved to the filename input and back to the Monaco textarea; later physical input still landed in the editor",
+    "persisted": {
+      "status": 200,
+      "text": "你好世界\n开始粘贴中文结束"
+    },
+    "screenshot": "evidence/wp02-works-mac-system-ime.png",
+    "flowFile": "/tmp/xj-ime-result-works.json",
+    "observedAt": "2026-10-31T07:49:26.925Z"
+  },
+  "existingOwnerSchemaUpgrade": {
+    "status": "passed",
+    "sourceCommit": "c3308ac",
+    "finalEvidenceCommit": "0f8855698ef9e496dd89f3147407d7ddb24a1faf",
+    "sourceRoot": "/tmp/xj-v2-env",
+    "targetRoot": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/mac-completion/upgraded-env",
+    "schemaBefore": [
+      "1:course-free-activities",
+      "2:reliable-activity-works"
+    ],
+    "schemaAfter": [
+      "1:course-free-activities",
+      "2:reliable-activity-works",
+      "3:course-activity-coordination"
+    ],
+    "activityPreserved": true,
+    "workPreserved": true,
+    "work": {
+      "file": "升级原文.txt",
+      "objectId": "dcc4abd5-5279-45a5-92eb-b22c988fafb2",
+      "contentId": "968725e6-6c77-4020-8b3c-e2083323c133",
+      "bytes": 91,
+      "sha256": "dcb75a6cc643259bab0f226aff6e2156c1a228f5a676724607c5cb60c97fac80",
+      "bom": "efbbbf",
+      "crlfCount": 3
+    },
+    "restartCheck": {
+      "status": "passed",
+      "checkedAt": "2026-10-31T07:50:26.349107+00:00",
+      "endpoint": "http://127.0.0.1:57111",
+      "activityId": "718da31b-50da-44ad-8530-d3d1a7eec116",
+      "afterStopStart": true,
+      "file": "升级原文.txt",
+      "objectId": "dcc4abd5-5279-45a5-92eb-b22c988fafb2",
+      "contentId": "968725e6-6c77-4020-8b3c-e2083323c133",
+      "sameAsBeforeUpgrade": true,
+      "bytes": 91,
+      "sha256": "dcb75a6cc643259bab0f226aff6e2156c1a228f5a676724607c5cb60c97fac80",
+      "bom": "efbbbf",
+      "crlfCount": 3,
+      "files": [
+        "升级原文.txt"
+      ],
+      "uiEvidence": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/results/screenshots/wp02-course-mac-schema-upgrade.png"
+    },
+    "evidence": "evidence/wp02-course-mac-schema-upgrade.json",
+    "screenshot": "evidence/wp02-course-mac-schema-upgrade.png"
+  }
 }

@@ -94,6 +94,7 @@ macOS 27.2（26B123），arm64；Node 24.21.0、PostgreSQL 18.6 使用产品分�
 - `npm run typecheck` 通过（contracts、storage、learning-space、server、product-runtime、web、local-runtime）；`npm run package:product -- --platform darwin-arm64` 全量构建与打包通过；8 个公共契约导出 browser-safe；文档链接检查通过。
 - 课程原生 `course-releases.runtime.test.mjs` 4/4；学校代理 `school-client.test.mjs` 2/2；`learning-entry` + `learning-cli` + `works` 组合 10/10；均 0 失败、0 跳过。
 - `worksEditor.spec.ts` 15/15 通过（真实 Chrome、产品宿主、原生 PostgreSQL 与真实文件资源）。
+- 整合迁移谱系 **1/1 通过**：以 `c3308ac` 构建的真实 v2 作品库为源（迁移 1 `course-free-activities` + 2 `reliable-activity-works`），按正式隔离备份/恢复流程执行 `upgrade ... --file`（`kind: "schema"`）并接管；升级后迁移为 1/2/3（新增 `course-activity-coordination`），原活动与 BOM/CRLF 作品（91 字节、3 处 CRLF）的对象和内容标识不变，正式活动页显示原文，stop/start 后字节仍一致。普通启动路径未执行隐式迁移。见[升级证据](evidence/wp02-course-mac-schema-upgrade.json)。
 - 启动就绪压力：同一产品环境连续 `stop`/`start` 10 次，10/10 返回 `ready`。
 
 真实浏览器（学校直连 8 个流程、已安装客户端 5 个流程，全部通过）：
@@ -103,12 +104,12 @@ macOS 27.2（26B123），arm64；Node 24.21.0、PostgreSQL 18.6 使用产品分�
 3. 刷新、关闭/重新开始与产品 stop/start 后仍为同一 v1 活动与作品字节。
 4. 登记 v2 后旧活动与作品不变；v1 仍可选且显示固定版本；最新发布显示 v2 要求与材料。
 5. 删除/损坏 v1 材料时打开明确报错、不回退 v2；恢复材料后原活动可读。
-6. IME 组合/换行/焦点、浅色/深色/窄屏在课程工作区可用。
+6. IME 组合/换行/焦点、浅色/深色/窄屏在课程工作区可用；另以物理系统输入法执行课程编辑器验收：组字并选择候选（你好、世界、开始、结束）、Return 换行、Cmd+V 粘贴、Cmd+←/→ 光标与焦点切换均正常，正文为 `你好世界\n开始粘贴中文结束`。见[系统输入法截图](evidence/wp02-course-mac-system-ime.png)。
 7. 撤销课程资格后目录投影消失，发布/活动/作品读取、新建、状态重放与活动结果查询均返回 403，自主活动保留；重新授予后原活动与作品恢复。
 8. 撤销成员后会话失效，重新登录后可恢复。
 9. 已安装客户端经学校授权页连接后读取课程、发布与开放材料，并从 v1 建立活动；刷新与客户端 stop/start 保持固定活动与作品；撤权在客户端返回 403 且个人作品保留；撤销连接移除学校空间并拒绝旧凭据；学校 stop 时报告不可用而非空课程，重启并刷新后目录恢复。
 
-证据：[Mac 工程结果](evidence/wp02-course-mac-engineering.json)、[Mac 直连与客户端结果](evidence/wp02-course-mac-manual.json)、截图 [课程目录](evidence/wp02-course-mac-catalog.png)、[发布详情](evidence/wp02-course-mac-release.png)、[课程活动](evidence/wp02-course-mac-activity.png)、[客户端](evidence/wp02-course-mac-client.png)、[浅色](evidence/wp02-course-mac-light.png)、[深色](evidence/wp02-course-mac-dark.png)、[窄屏](evidence/wp02-course-mac-narrow.png)。
+证据：[Mac 工程结果](evidence/wp02-course-mac-engineering.json)、[Mac 直连与客户端结果](evidence/wp02-course-mac-manual.json)、[v2→v3 升级证据](evidence/wp02-course-mac-schema-upgrade.json)、截图 [课程目录](evidence/wp02-course-mac-catalog.png)、[发布详情](evidence/wp02-course-mac-release.png)、[课程活动](evidence/wp02-course-mac-activity.png)、[客户端](evidence/wp02-course-mac-client.png)、[浅色](evidence/wp02-course-mac-light.png)、[深色](evidence/wp02-course-mac-dark.png)、[窄屏](evidence/wp02-course-mac-narrow.png)、[升级后活动页](evidence/wp02-course-mac-schema-upgrade.png)、[系统输入法](evidence/wp02-course-mac-system-ime.png)。
 
 本轮修复与前后对比：
 
@@ -117,11 +118,11 @@ macOS 27.2（26B123），arm64；Node 24.21.0、PostgreSQL 18.6 使用产品分�
 - 首次 `context` 请求暂时失败时，从 URL 直达的活动会被列表覆盖并丢失；修复后恢复时仍打开原活动（`44cb40e`/`949e707`）。恢复瞬间可能短暂显示列表后重新打开活动。
 - 验收宿主曾把 `devices['Desktop Chrome']` 的 Windows UA 带到 macOS Chrome，导致 Monaco 隐藏输入重复；改用真实 Chrome UA（`d417980`）。
 
-已知限制：IME 使用真实 Chrome 的 CDP 组字事件，未切换 macOS 系统中文输入法实测物理键击；全量 `npm test` 未在最终提交重跑；教学效果未评估；跨机部署与接管仍由 #154 验收。
+已知限制：物理输入法验收使用本机已安装的豆包拼音；Apple SCIM 拼音不在当前实际启用的输入源列表中，未能以 Apple 的原生拼音实现复测。全量 `npm test` 未在最终提交重跑；教学效果未评估；跨机部署与接管仍由 #154 验收。
 
 ## 未执行与交接
 
-- **Apple Silicon Mac 剩余项**：工程、原生 PostgreSQL、真实 Chrome、学校直连与已安装客户端流程已于 2026-10-31 在本机执行并通过（见上）；macOS 系统中文输入法的物理键击、全量 `npm test` 与教学效果仍未执行。
+- **Apple Silicon Mac 剩余项**：工程、原生 PostgreSQL、真实 Chrome、学校直连与已安装客户端流程、v2→v3 迁移和系统中文输入法物理键击已于 2026-10-31 在本机执行并通过（见上）；全量 `npm test` 与教学效果仍未执行。
 - **教学效果**：本轮只验证工程与交互，未评估学生使用效果或学习收益。
 - **混合部署与跨机接管**：由 #154 继续验收；本票提供可消费的公开接口、迁移和恢复校验。
 - **全量本地套件**：`.verification/local-suite-2.log` 记录了当日失败；失败项位于未修改的连接/恢复测试、Windows symlink 特权与 `LOCAL_SOCKET_CONFLICT`。它们不计入本功能通过证据，也未被本次改动修复。

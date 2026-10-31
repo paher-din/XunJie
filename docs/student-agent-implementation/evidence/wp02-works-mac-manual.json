@@ -86,6 +86,45 @@
         "stop/start returns a ready product endpoint and the same body and object identities are readable",
         "reopening the activity from the list after restart shows the last protected Chinese body"
       ]
+    },
+    {
+      "name": "physical macOS Chinese IME composition, paste, newline, Meta cursor and focus",
+      "result": "passed",
+      "steps": [
+        "with the installed Doubao Pinyin input source selected, physical keystrokes composed 你好 and 世界 and committed candidates with Space",
+        "Return inserted a newline; Cmd+V pasted 粘贴中文 from the macOS clipboard",
+        "Cmd+Left moved the caret to line start and 开始 was composed there; after focusing the filename input and returning to the editor, Cmd+Right and 结束 were composed at line end",
+        "the service returned 200 with the final text 你好世界\\n开始粘贴中文结束"
+      ],
+      "evidence": {
+        "status": "passed",
+        "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "inputSourceNote": "The live macOS input-source set on this machine includes the installed Doubao Pinyin IME but not Apple SCIM Pinyin; this run used Doubao Pinyin as the physical macOS input method.",
+        "method": "OS-level key events via System Events sent to the Playwright-launched Chrome process after activating its pid; IME candidates committed with Space",
+        "activityId": "2c6b52f6-b1e5-4438-abfa-b6ae550f99a0",
+        "file": "系统输入法.txt",
+        "text": "你好世界\n开始粘贴中文结束",
+        "composition": [
+          "你好",
+          "世界",
+          "开始",
+          "结束"
+        ],
+        "newline": "Return inserted a real newline between 世界 and 开始",
+        "paste": "Cmd+V pasted 粘贴中文 from the macOS clipboard",
+        "metaCursor": [
+          "Cmd+Left moved the caret to line start before composing 开始",
+          "Cmd+Right moved the caret to line end before composing 结束"
+        ],
+        "focus": "focus moved to the filename input and back to the Monaco textarea; later physical input still landed in the editor",
+        "persisted": {
+          "status": 200,
+          "text": "你好世界\n开始粘贴中文结束"
+        },
+        "screenshot": "evidence/wp02-works-mac-system-ime.png",
+        "flowFile": "/tmp/xj-ime-result-works.json",
+        "observedAt": "2026-10-31T07:49:26.925Z"
+      }
     }
   ],
   "console": {

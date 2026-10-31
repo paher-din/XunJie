@@ -52,12 +52,14 @@ Windows 11 x64（build 26200），Node 24.21.0、PostgreSQL 18.6，本机安装�
 
 ## Apple Silicon Mac 验收（2026-10-31）
 
-macOS 27.2（26B123），arm64；Node 24.21.0、PostgreSQL 18.6（产品分发包），本机安装的 Google Chrome 156.0.8078.79 有头执行，未用 Playwright Chromium 代替。验收代码提交 `6e7967a83215829803dbc6a078a6f233b420046d`（工作树干净）。记录见 [工程结果](evidence/wp02-works-mac-engineering.json)、[Chrome 逐项结果](evidence/wp02-works-mac-chrome.json)、[手动验收](evidence/wp02-works-mac-manual.json)、[浅色截图](evidence/wp02-works-mac-light.png)、[深色截图](evidence/wp02-works-mac-dark.png)、[窄屏截图](evidence/wp02-works-mac-narrow.png)、[活动截图](evidence/wp02-works-mac-activity.png)、[删除后同名重建](evidence/wp02-works-mac-recreated.png)、[E2E 浅色](evidence/wp02-works-mac-e2e-light.png) 与 [E2E 深色](evidence/wp02-works-mac-e2e-dark.png)。截图已目视核对，编辑器显示实际中文正文。
+macOS 27.2（26B123），arm64；Node 24.21.0、PostgreSQL 18.6（产品分发包），本机安装的 Google Chrome 156.0.8078.79 有头执行，未用 Playwright Chromium 代替。验收代码提交 `6e7967a83215829803dbc6a078a6f233b420046d`（工作树干净）。记录见 [工程结果](evidence/wp02-works-mac-engineering.json)、[Chrome 逐项结果](evidence/wp02-works-mac-chrome.json)、[手动验收](evidence/wp02-works-mac-manual.json)、[浅色截图](evidence/wp02-works-mac-light.png)、[深色截图](evidence/wp02-works-mac-dark.png)、[窄屏截图](evidence/wp02-works-mac-narrow.png)、[活动截图](evidence/wp02-works-mac-activity.png)、[删除后同名重建](evidence/wp02-works-mac-recreated.png)、[E2E 浅色](evidence/wp02-works-mac-e2e-light.png)、[E2E 深色](evidence/wp02-works-mac-e2e-dark.png) 与 [系统输入法](evidence/wp02-works-mac-system-ime.png)；既有 owner 升级见[升级证据](evidence/wp02-course-mac-schema-upgrade.json)。截图已目视核对，编辑器显示实际中文正文。
 
 - 全仓 `typecheck` 通过；`package:product -- --platform darwin-arm64` 全量构建与打包通过；8 个公共契约导出 browser-safe；文档链接检查通过。
 - 原生 PostgreSQL 集成 **10/10 通过，0 跳过**（作品 API、身份/活动、正式 CLI 恢复与 schema 升级）；课程原生 4/4、学校代理 2/2 同次通过。
 - 桌面 Chrome 回归 **15/15 通过**：真实 Monaco、IndexedDB、产品 API、原生 PostgreSQL 与文件资源，覆盖离线编辑与重载续传、迟到/丢失回执、持续输入、初次与持续存储拒绝后恢复、导航失败、双标签竞争、远端冲突、BOM/CRLF、退出学校登录与切换空间。
 - 手动 Mac Chrome 验收 **9/9 通过**：个人活动与可靠编辑器、创建/重命名/删除/同名重建的稳定身份、BOM/CRLF 原文、断网后重载续传、迟到与丢失回执、持续输入、IME 组合/换行/焦点、浅色/深色/窄屏、产品 stop/start 保持活动与对象身份。
+- 物理 macOS 中文输入法 **1/1 通过**：用系统输入法物理键击组字并选择候选（你好、世界、开始、结束），Return 换行，Cmd+V 粘贴「粘贴中文」，Cmd+←/→ 移动光标，焦点切到文件名输入再回到编辑器后继续输入；服务读取正文为 `你好世界\n开始粘贴中文结束`。见[系统输入法截图](evidence/wp02-works-mac-system-ime.png)。
+- 既有 owner 真实 schema 升级 **1/1 通过**：以 `c3308ac` 构建的真实 v2 作品库（迁移 1 `course-free-activities` + 2 `reliable-activity-works`）为源，用正式 CLI 的备份输入执行 `upgrade ... --file`（`kind: "schema"`）恢复并接管到当前构建；升级后迁移为 1/2/3（新增 `course-activity-coordination`），原活动与 BOM/CRLF 作品对象、内容标识及 91 字节正文保持一致，stop/start 后再次读取仍字节相同。见[升级证据](evidence/wp02-course-mac-schema-upgrade.json)。
 - 启动就绪压力：同一产品环境连续 `stop`/`start` 10 次，10/10 返回 `ready`。
 
 本轮修复与前后对比：
@@ -68,4 +70,4 @@ macOS 27.2（26B123），arm64；Node 24.21.0、PostgreSQL 18.6（产品分发�
 - **活动恢复**：首次 `context` 请求暂时失败时，URL 直达的活动会被恢复轮询清空并落回列表；修复为保留最新已打开或 URL 请求的活动，恢复后仍打开原活动（`44cb40e`/`949e707`）。恢复瞬间可能短暂显示列表后重新打开活动。
 - **启动状态探针**：`start()` 可在探针早于就绪标志时返回 `failed`（“PostgreSQL startup is in progress”）。修复为本次调用报告 `starting` 并重试查询（`6e7967a`），修复后压力 10/10。
 
-已知限制：IME 使用真实 Chrome 的 CDP 组字事件，未切换 macOS 系统中文输入法实测物理键击；全量 `npm test` 未在最终提交重跑；教学效果未评估；跨机部署与接管仍由 #154 验收。
+已知限制：物理输入法验收使用本机已安装的豆包拼音；Apple SCIM 拼音不在当前实际启用的输入源列表中，未能以 Apple 的原生拼音实现复测。全量 `npm test` 未在最终提交重跑；教学效果未评估；跨机部署与接管仍由 #154 验收。

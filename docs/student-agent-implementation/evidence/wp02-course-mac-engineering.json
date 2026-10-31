@@ -11,12 +11,33 @@
   "browser": "installed Google Chrome 156.0.8078.79 (headed; Playwright channel chrome)",
   "typecheck": "passed (contracts, storage, learning-space, server, product-runtime, web, local-runtime)",
   "build": "passed; package:product --platform darwin-arm64 built from sourceCommit",
-  "browserSafeContractExports": { "passed": 8 },
-  "docsCheck": { "markdown": 158, "localTargets": 1125, "failures": 0 },
+  "browserSafeContractExports": {
+    "passed": 8
+  },
+  "docsCheck": {
+    "markdown": 158,
+    "localTargets": 1125,
+    "failures": 0
+  },
   "native": {
-    "course": { "command": "node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs", "passed": 4, "failed": 0, "skipped": 0 },
-    "schoolClient": { "command": "node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs", "passed": 2, "failed": 0, "skipped": 0 },
-    "learningEntryCliWorks": { "command": "node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs packages/product-runtime/test/works.runtime.test.mjs", "passed": 10, "failed": 0, "skipped": 0 }
+    "course": {
+      "command": "node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    "schoolClient": {
+      "command": "node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "learningEntryCliWorks": {
+      "command": "node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs packages/product-runtime/test/works.runtime.test.mjs",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    }
   },
   "chromeRegression": {
     "command": "XUNJIE_XJ_DEV_URL=isolated-native-product XUNJIE_E2E_BROWSER_CHANNEL=chrome npm exec -w @xunjie/web -- playwright test worksEditor.spec.ts --headed --workers=1",
@@ -31,12 +52,38 @@
     "directFlows": 8,
     "clientFlows": 5,
     "failed": 0,
-    "screenshots": ["wp02-course-mac-catalog.png", "wp02-course-mac-release.png", "wp02-course-mac-activity.png", "wp02-course-mac-client.png", "wp02-course-mac-light.png", "wp02-course-mac-dark.png", "wp02-course-mac-narrow.png"]
+    "screenshots": [
+      "wp02-course-mac-catalog.png",
+      "wp02-course-mac-release.png",
+      "wp02-course-mac-activity.png",
+      "wp02-course-mac-client.png",
+      "wp02-course-mac-light.png",
+      "wp02-course-mac-dark.png",
+      "wp02-course-mac-narrow.png"
+    ]
   },
-  "startupReadinessStress": { "iterations": 10, "ready": 10, "product": "school profile, packaged darwin-arm64 product" },
+  "startupReadinessStress": {
+    "iterations": 10,
+    "ready": 10,
+    "product": "school profile, packaged darwin-arm64 product"
+  },
   "evidenceChecks": {
-    "directRevocation": { "release": 403, "activity": 403, "workspace": 403, "create": 403, "replay": 403, "result": 403 },
-    "clientRevocation": { "release": 403, "activity": 403, "workspace": 403, "create": 403, "replay": 403, "result": 403 },
+    "directRevocation": {
+      "release": 403,
+      "activity": 403,
+      "workspace": 403,
+      "create": 403,
+      "replay": 403,
+      "result": 403
+    },
+    "clientRevocation": {
+      "release": 403,
+      "activity": 403,
+      "workspace": 403,
+      "create": 403,
+      "replay": 403,
+      "result": 403
+    },
     "expectedConsoleErrors": "404 for the favicon and deliberate 403/503 responses during revocation, school stop and restart"
   },
   "includedFixes": [
@@ -72,10 +119,87 @@
     }
   ],
   "knownLimitations": [
-    "IME is verified through real Chrome CDP composition events; a physical macOS system Chinese IME keyboard run was not executed",
+    "the physical IME run used the installed Doubao Pinyin input source because Apple SCIM Pinyin was not present in the live input-source set",
     "the full npm test suite was not rerun at the final commit; Windows baseline failures remain documented separately",
     "teaching effect is not evaluated",
     "cross-machine deployment and takeover remain under #154"
   ],
-  "teachingEffect": "not evaluated"
+  "teachingEffect": "not evaluated",
+  "migrationLineage": {
+    "status": "passed",
+    "sourceCommit": "c3308ac",
+    "finalEvidenceCommit": "0f8855698ef9e496dd89f3147407d7ddb24a1faf",
+    "sourceRoot": "/tmp/xj-v2-env",
+    "targetRoot": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/mac-completion/upgraded-env",
+    "schemaBefore": [
+      "1:course-free-activities",
+      "2:reliable-activity-works"
+    ],
+    "schemaAfter": [
+      "1:course-free-activities",
+      "2:reliable-activity-works",
+      "3:course-activity-coordination"
+    ],
+    "activityPreserved": true,
+    "workPreserved": true,
+    "work": {
+      "file": "升级原文.txt",
+      "objectId": "dcc4abd5-5279-45a5-92eb-b22c988fafb2",
+      "contentId": "968725e6-6c77-4020-8b3c-e2083323c133",
+      "bytes": 91,
+      "sha256": "dcb75a6cc643259bab0f226aff6e2156c1a228f5a676724607c5cb60c97fac80",
+      "bom": "efbbbf",
+      "crlfCount": 3
+    },
+    "restartCheck": {
+      "status": "passed",
+      "checkedAt": "2026-10-31T07:50:26.349107+00:00",
+      "endpoint": "http://127.0.0.1:57111",
+      "activityId": "718da31b-50da-44ad-8530-d3d1a7eec116",
+      "afterStopStart": true,
+      "file": "升级原文.txt",
+      "objectId": "dcc4abd5-5279-45a5-92eb-b22c988fafb2",
+      "contentId": "968725e6-6c77-4020-8b3c-e2083323c133",
+      "sameAsBeforeUpgrade": true,
+      "bytes": 91,
+      "sha256": "dcb75a6cc643259bab0f226aff6e2156c1a228f5a676724607c5cb60c97fac80",
+      "bom": "efbbbf",
+      "crlfCount": 3,
+      "files": [
+        "升级原文.txt"
+      ],
+      "uiEvidence": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/results/screenshots/wp02-course-mac-schema-upgrade.png"
+    },
+    "evidence": "evidence/wp02-course-mac-schema-upgrade.json",
+    "screenshot": "evidence/wp02-course-mac-schema-upgrade.png"
+  },
+  "systemIme": {
+    "status": "passed",
+    "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "inputSourceNote": "Same live macOS input source as the works run; Apple SCIM Pinyin was not present in the live input-source set.",
+    "method": "OS-level key events via System Events to the Playwright-launched Chrome process after activating its pid",
+    "activityId": "5ab57230-a58e-4f86-a7be-7aef302d1098",
+    "file": "系统输入法-课程.txt",
+    "text": "你好世界\n开始粘贴中文结束",
+    "composition": [
+      "你好",
+      "世界",
+      "开始",
+      "结束"
+    ],
+    "newline": "Return inserted a real newline between 世界 and 开始",
+    "paste": "Cmd+V pasted 粘贴中文 from the macOS clipboard",
+    "metaCursor": [
+      "Cmd+Left moved the caret to line start before composing 开始",
+      "Cmd+Right moved the caret to line end before composing 结束"
+    ],
+    "focus": "focus moved to the filename input and back to the Monaco textarea; later physical input still landed in the editor",
+    "persisted": {
+      "status": 200,
+      "text": "你好世界\n开始粘贴中文结束"
+    },
+    "screenshot": "evidence/wp02-course-mac-system-ime.png",
+    "flowFile": "/tmp/xj-ime-result-course.json",
+    "observedAt": "2026-10-31T07:49:52.363Z"
+  }
 }
