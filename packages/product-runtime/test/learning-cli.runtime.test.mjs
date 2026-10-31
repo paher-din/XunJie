@@ -7,6 +7,7 @@ import { cp, mkdir, mkdtemp, readFile, unlink, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveCredential } from '@xunjie/product-runtime';
 
 const execute = promisify(execFile);
 const productPackage = process.env.XUNJIE_PRODUCT_TEST_PACKAGE;
@@ -102,7 +103,38 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     const keyFile = join(directory, 'recovery-key');
     await writeFile(keyFile, randomBytes(32), { mode: 0o600 });
     const backupDirectory = join(directory, 'backups');
+    let latestWork = { revision: 1, files: [work] }, latestPublished = null;
+    let workClosed = false, publicationClosed = false;
+    const control = await resolveCredential(source, 'control');
+    const publicationBase = JSON.parse(await readFile(manifestFile, 'utf8'));
+    const writer = (async () => {
+      for (let i = 0; i < 100; i++) {
+        const files = [{ ...work, contentId: randomUUID(), value: '备份并发作品 ' + i + '\n' }];
+        const response = await fetch(new URL('/api/learning/workspaces/' + pinned.activityId, started.endpoint), { method: 'POST',
+          headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ requestId: randomUUID(), baseRevision: latestWork.revision, files }) });
+        if (response.status === 503) { workClosed = true; break; }
+        assert.equal(response.status, 200); latestWork = await response.json();
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+    })();
+    const publisher = (async () => {
+      for (let i = 0; i < 100; i++) {
+        const content = Buffer.from('并发发布的课程原材料 ' + i + '\n');
+        const materialId = randomUUID(), nextReleaseId = randomUUID();
+        const response = await fetch(new URL('/api/learning/manage/course-import', started.endpoint), { method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: 'Bearer ' + control }, body: JSON.stringify({ ...publicationBase,
+            requestId: randomUUID(), release: { ...publicationBase.release, releaseId: nextReleaseId,
+              materials: [{ materialId, title: '并发原材料', path: 'concurrent.md', mediaType: 'text/plain', access: 'student', sha256: sha256(content), byteLength: content.length }] },
+            resources: [{ path: 'concurrent.md', contentBase64: content.toString('base64') }] }) });
+        if (response.status === 503) { publicationClosed = true; break; }
+        assert.equal(response.status, 200); await response.json(); latestPublished = { materialId, releaseId: nextReleaseId, value: content.toString('utf8') };
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+    })();
     const backup = await run('backup', source, '--file', await input('backup', { keyFile, directory: backupDirectory, leaveClosed: true }));
+    await Promise.all([writer, publisher]);
+    assert.ok(latestWork.revision > 1 && latestPublished, 'real work and new resource publications must precede the held boundary');
+    assert.ok(workClosed && publicationClosed, 'closing must reject continuing producers instead of waiting for input to stop');
     assert.equal(backup.services.length, 3);
     const damagedBackup = join(directory, 'damaged-backup-copy');
     await cp(join(backupDirectory, backup.backupId), damagedBackup, { recursive: true });
@@ -140,8 +172,12 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     for (const suffix of ['', '/receipts/' + workRequest.requestId]) {
       const restoredWork = await fetch(new URL('/api/learning/workspaces/' + pinned.activityId + suffix, isolated.endpoint), { headers: { cookie: restoredCookie } });
       assert.equal(restoredWork.status, 200);
-      assert.deepEqual(await restoredWork.json(), { revision: 1, files: [work] });
+      assert.deepEqual(await restoredWork.json(), suffix ? { revision: 1, files: [work] } : latestWork);
     }
+    const concurrentMaterial = await fetch(new URL(`/api/learning/releases/${latestPublished.releaseId}/materials/${latestPublished.materialId}`, isolated.endpoint),
+      { headers: { cookie: restoredCookie } });
+    assert.equal(concurrentMaterial.status, 200);
+    assert.equal(Buffer.from((await concurrentMaterial.json()).contentBase64, 'base64').toString('utf8'), latestPublished.value);
     const queried = await run('course-result', target, '--file', await input('course-result', { requestId: imported.requestId }));
     assert.equal(queried.contentDigest, imported.contentDigest);
     // No schema migration was released: the CLI must reach that check, rather than fail assembling owners.

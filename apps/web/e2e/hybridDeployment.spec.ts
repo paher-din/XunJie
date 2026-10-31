@@ -70,7 +70,7 @@ test.afterAll(async () => {
   await writeFile(join(evidence, 'chrome-hybrid.json'), JSON.stringify({ measuredAt: new Date().toISOString(),
     platform: process.platform, osRelease: osRelease(), arch: process.arch, node: process.version,
     postgres: '18.6', browserVersion, browser: 'installed Chrome', headless: false,
-    topology: 'two independent native product daemons on this Windows host; NOT cross-machine evidence', results }, null, 2))
+    topology: 'two independent native product daemons on the same host; NOT cross-machine evidence', results }, null, 2))
 })
 
 for (const mode of ['personal', 'school-shared', 'hybrid-local-owner'] as const) {

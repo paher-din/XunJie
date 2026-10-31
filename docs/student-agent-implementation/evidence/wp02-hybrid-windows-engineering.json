@@ -1,0 +1,61 @@
+{
+  "implementationCommit": "f1eb009504a400bad3184f900e6cea3a8a8487db",
+  "baseCommit": "dff9be884026dbe4c14a8984af6e19af9abe7f89",
+  "executedOn": "2026-10-31",
+  "platform": "Windows 11 x64 build 26200",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "typecheck": "passed",
+  "build": "passed; final frontend was rebuilt after HTTP deadline changes",
+  "browserSafeContractExports": 8,
+  "docLinks": { "files": 7, "targets": 108, "failures": 0 },
+  "productionPackage": {
+    "platform": "win32-x64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "createdAt": "2026-10-31T08:30:26.881Z",
+    "distributionSha256": "063f48691fdfb81fbc348fe475af7f0183040df4fd305fc9c878388adecaf00b",
+    "command": "npm run package:product -- --platform win32-x64 --cache .verification/wp02/cache --out .verification/154/product-win32-x64",
+    "note": "CLI restore tests use this package's app, Web and native resources. Direct node invocation first failed in the existing Windows fallback command quoting path; the documented npm entry succeeded."
+  },
+  "nativeBusiness": {
+    "command": "node --test --test-concurrency=1 packages/product-runtime/test/hybrid-learning.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs",
+    "passed": 2, "failed": 0, "skipped": 0, "durationMs": 86849.8619,
+    "coverage": [
+      "school member fixed to the installed client's real learning-data owner",
+      "course version/material reads, original course request result and Chinese immutable work receipt",
+      "old expected subject and optional-only authority transport rejected",
+      "school outage retains original authority, recovery queries original receipt",
+      "course eligibility revocation and school connection revocation deny work access",
+      "three required owners and required school receiver in actual backup",
+      "independent isolated restore, missing receiver rejection, source retirement and old runtime grant fencing",
+      "new installation/namespace, reissued runtime grant and approved member connection read original activity/work/receipt",
+      "complete packaged CLI restores school course/material/activity/work and hides teacher-private material",
+      "missing backup artifact and wrong receiver identity are explicitly rejected",
+      "schema upgrade reaches no-schema-upgrade-registered; no new schema migration is claimed"
+    ]
+  },
+  "supplementalPackagedCliConcurrentBackup": {
+    "passed": 1, "failed": 0, "skipped": 0, "durationMs": 47786.6858,
+    "note": "This repeats the CLI case above with extra live producers, not an additional distinct end-to-end workflow.",
+    "coverage": "Continuous actual work writes and new course resource publications both commit before held backup and receive maintenance rejection at closure. Independent restore re-reads latest accepted work, newly published material and the original immutable work receipt."
+  },
+  "sshProcessBoundary": { "passed": 2, "failed": 0, "note": "External SSH process is mocked: verifies strict host checking, local shell=false and rejection of foreign receiver proof. Not real SSH/cross-machine evidence." },
+  "focusedIoConnections": { "passed": 47, "failed": 2, "skipped": 2, "failures": ["disconnect fixture cleanup ENOTEMPTY", "cold independent-process fencing 3-second timeout"] },
+  "fullTest": {
+    "command": "npm test", "status": "failed", "failures": 5,
+    "groups": {
+      "checks": { "passed": 27, "failed": 0, "skipped": 1 },
+      "product-runtime": { "passed": 117, "failed": 2, "skipped": 5 },
+      "storage": { "passed": 12, "failed": 1, "skipped": 1 },
+      "server": { "passed": 640, "failed": 2, "skipped": 19 },
+      "web": { "files": 58, "passed": 688, "failed": 0 },
+      "tools": { "status": "not reached after workspace aggregate failure" }
+    },
+    "failureContext": ["independent-process fencing timeout", "three Windows symlink EPERM cases", "legacy LOCAL_SOCKET_CONFLICT"]
+  },
+  "review": { "Standards": { "remainingCodeFindings": 0 }, "Spec": { "remainingCodeFindings": 0 } },
+  "realCrossMachine": { "status": "not executed", "reason": "Known school host pin is available; current Windows credential is denied for the documented deployment account. Existing handoff configurations provide page tunnels or scoped member access, not deployment authorization." },
+  "mac": { "status": "not executed", "issue": "https://github.com/paher-din/XunJie/issues/155" },
+  "teachingEffect": "not evaluated"
+}

@@ -52,4 +52,13 @@
 
 ## 验证记录
 
-工程、Windows Chrome、故障/恢复和未执行项将在最终交付登记。此前 WP01 学校主机为 101.201.141.133，现有受管配置可核对主机 pin，但本机凭据对部署用户 xunjie-admin 返回 Permission denied (publickey)。普通成员页面/文件权限不能替代部署权限，未修改现行共享服务。Mac 的实际执行集中 [#155](https://github.com/paher-din/XunJie/issues/155)；教学效果未评估。
+2026-10-31 Windows 11 x64（build 26200）、Node 24.21.0、PG 18.6、桌面 Chrome 156.0.8078.76，有头执行。产品实现提交 `f1eb009504a400bad3184f900e6cea3a8a8487db`；之后补充并发测试和证据，未改产品代码。见[工程/包/恢复记录](evidence/wp02-hybrid-windows-engineering.json)、[三条 Chrome 路径](evidence/wp02-hybrid-windows-chrome.json)、[个人截图](evidence/wp02-hybrid-windows-personal.png)、[学校共享截图](evidence/wp02-hybrid-windows-school-shared.png)、[混合截图](evidence/wp02-hybrid-windows-hybrid-local-owner.png)。实际截图已目视检查。
+
+- 全仓 typecheck、build、8 个公共契约浏览器导出检查通过。本次相关文档链接检查通过。
+- 混合原生与完整包 CLI 两项 **2/2 通过，0 跳过**。CLI 又补验连续作品写入与新课程资源发布并发于 held 备份；两侧生产者均先有真实提交，关闭后明确拒绝继续写入，独立恢复读取边界内最新作品、新材料及原回执，补验 **1/1 通过**，不重复计算为新增独立流程。
+- 新 Chrome 三条部署路径 **3/3 通过**；原编辑器/目录恢复等回归 **15/15 通过**，见[逐项记录](evidence/wp02-hybrid-windows-editor-regression.json)。它们都是同机原生产品进程，不能作为实际跨机证明。
+- SSH 外部进程边界两项通过，明确 mock SSH 进程，仅验证适配和错身份拒绝。真实远端 CLI/SSH 尚未执行。
+- 全量 npm test **整体未通过，5 项失败**：product-runtime 117 通过/2 失败/5 跳过；storage 12/1/1；server 640/2/19；Web 58 文件/688 项通过；checks 27 通过/1 跳过。失败为独立进程 fencing 超时、三项 Windows 符号链接 EPERM 和旧 LOCAL_SOCKET_CONFLICT。末尾 tools 组未到达。聚焦 IO/连接另测为 47 通过/2 失败/2 跳过，其中一项为断连夹具清理 ENOTEMPTY，一项为冷进程 fencing 超时；不把这些检查记为绿色。
+- Standards / Spec 两轴最终代码复审无剩余发现。真实跨机和 Mac 仍未执行，#154 暂不能标为完整验收通过。
+
+此前 WP01 学校主机为 101.201.141.133，现有受管配置可核对主机 pin，但本机凭据对部署用户 xunjie-admin 返回 Permission denied (publickey)。普通成员页面/文件权限不能替代部署权限，未修改现行共享服务。Mac 的实际执行集中 [#155](https://github.com/paher-din/XunJie/issues/155)；教学效果未评估。
