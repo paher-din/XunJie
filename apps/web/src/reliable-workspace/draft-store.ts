@@ -1,6 +1,6 @@
 import type { QuestionReferenceInput, QuestionWorkBasis } from '@xunjie/contracts/question-drafts'
 
-export interface DraftContent { question: string; references: QuestionReferenceInput[] }
+export interface DraftContent { question: string; references: QuestionReferenceInput[]; bases?: QuestionWorkBasis[] }
 export interface DraftConflict { source: 'local' | 'remote'; local: DraftContent; other: DraftContent
   at: number; remoteRevision: number; candidateId?: string }
 export interface DraftRecord extends DraftContent { key: string; draftId: string; localRevision: number

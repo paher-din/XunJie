@@ -290,7 +290,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         return recoveryControl<RetirementProof>('retire', input);
       },
       fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; timeoutMs?: number }) => recoveryControl('fence-source', input),
-      takeover: (input: { sourceRoot: string; receivers: { id: string; root: string }[] }) => recoveryControl('takeover', input),
+      takeover: (input: { sourceRoot: string; receivers: ({ id: string; root: string } | import('./ssh-recovery.js').SshRecoveryReceiver)[] }) => recoveryControl('takeover', input),
     },
     async stop() { await assertRoot(root); return withLock(root, stopUnlocked); },
     async uninstall(): Promise<RuntimeStatus> {
@@ -354,6 +354,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
     },
     async authorize(input: ConnectionAuthorization) {
       await assertRoot(root);
+      if (input.capabilities.includes('learning.authority')) return recoveryControl<import('./connections.js').ConnectionGrant>('authorize-capability', input);
       const service = (await environment()).services[0]!;
       return createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } }).authorize(input);
     },

@@ -249,6 +249,63 @@ test('course releases pin versions, project only open material and follow curren
   });
 });
 
+test('a deleted work accepts its selected historical basis without reviving the head', { timeout: 180000 }, async t => {
+  await withRuntime(t, async ({ endpoint }) => {
+    const api = async (path, body) => {
+      const response = await fetch(new URL('/api/learning/' + path, endpoint), { method: body === undefined ? 'GET' : 'POST',
+        headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+      return { status: response.status, value: await response.json() };
+    };
+    const activity = await api('activities', { requestId: randomUUID(), goal: 'Historical selection', question: '', references: [] });
+    const id = activity.value.activityId;
+    const file = { objectId: randomUUID(), contentId: randomUUID(), name: 'history.sv', kind: 'code',
+      encoding: 'utf8', mediaType: 'text/plain', value: 'module before;\nendmodule\n' };
+    assert.equal((await api('workspaces/' + id, { requestId: randomUUID(), baseRevision: 0, files: [file] })).status, 200);
+    const basis = { ...file, contentId: randomUUID(), value: 'module selected;\nendmodule\n' };
+    const empty = await api('drafts/' + id);
+    assert.equal((await api('workspaces/' + id, { requestId: randomUUID(), baseRevision: 1, files: [] })).status, 200);
+    const result = await api('drafts/' + id, { requestId: randomUUID(), draftId: empty.value.draftId, baseRevision: 0,
+      question: 'What did I select?', references: [{ referenceId: randomUUID(), source: { kind: 'work', objectId: file.objectId,
+        contentId: basis.contentId }, range: { kind: 'code', start: 0, end: basis.value.length }, copy: basis.value,
+        sourceName: file.name }], bases: [basis] });
+    assert.equal(result.status, 200);
+    assert.equal(result.value.references[0].copy, basis.value);
+    assert.deepEqual((await api('workspaces/' + id)).value, { revision: 2, files: [] });
+    assert.equal((await api('workspaces/' + id, { requestId: randomUUID(), baseRevision: 2, files: [basis] })).status, 409);
+  });
+});
+
+test('work reference bases keep their identity after a display-name change', { timeout: 180000 }, async t => {
+  await withRuntime(t, async ({ endpoint }) => {
+    const api = async (path, body) => {
+      const response = await fetch(new URL('/api/learning/' + path, endpoint), { method: body === undefined ? 'GET' : 'POST',
+        headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+      return { status: response.status, value: await response.json() };
+    };
+    const activity = await api('activities', { requestId: randomUUID(), goal: 'Renamed source', question: '', references: [] });
+    const id = activity.value.activityId;
+    const file = { objectId: randomUUID(), contentId: randomUUID(), name: 'before.sv', kind: 'code',
+      encoding: 'utf8', mediaType: 'text/plain', value: 'module renamed;\nendmodule\n' };
+    assert.equal((await api('workspaces/' + id, { requestId: randomUUID(), baseRevision: 0, files: [file] })).status, 200);
+    const empty = await api('drafts/' + id);
+    const source = { kind: 'work', objectId: file.objectId, contentId: file.contentId };
+    const reference = { referenceId: randomUUID(), source, range: { kind: 'code', start: 0, end: 6 },
+      copy: 'module', sourceName: file.name };
+    assert.equal((await api('drafts/' + id, { requestId: randomUUID(), draftId: empty.value.draftId, baseRevision: 0,
+      question: '', references: [reference], bases: [file] })).status, 200);
+    const renamed = { ...file, name: 'after.sv' };
+    assert.equal((await api('workspaces/' + id, { requestId: randomUUID(), baseRevision: 1, files: [renamed] })).status, 200);
+    const second = { ...reference, referenceId: randomUUID(), sourceName: renamed.name,
+      range: { kind: 'code', start: 7, end: 14 }, copy: 'renamed' };
+    const result = await api('drafts/' + id, { requestId: randomUUID(), draftId: empty.value.draftId, baseRevision: 1,
+      question: '', references: [reference, second], bases: [renamed] });
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.value.references.map(item => item.copy), ['module', 'renamed']);
+  });
+});
+
 test('course activities resume across prepared, confirmed and committed stages with one stable activity', { timeout: 300000 }, async t => {
   await withRuntime(t, async ({ root, runtime, environmentId: environment }) => {
     const database = await runtime.database();

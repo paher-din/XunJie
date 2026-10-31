@@ -1,50 +1,29 @@
+import { ReliableStateCoordinator } from './coordinator'
 import { workFilesSchema, workViewSchema } from '@xunjie/contracts/learning-data'
 import type { WorkFile, WorkView, WorkSync } from '@xunjie/contracts/learning-data'
 import { WorkStore, LocalCompetition, sameFiles, pendingFor, initialRecord } from './store'
 import type { WorkRecord, WorkConflict } from './store'
 
-export const LOCAL_MAX_WAIT_MS = 250
-export const NETWORK_MAX_WAIT_MS = 1000
+export { LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 export interface WorkTransport { read(): Promise<WorkView>; receipt(requestId: string): Promise<WorkView | null>; sync(input: WorkSync): Promise<WorkView> }
 export interface WorkspaceState { files: WorkFile[]; ready: boolean; error: string; conflict?: WorkConflict; conflictReady: boolean; editorEpoch: number }
 
 /** The page/editor's only change and recovery interface. No legacy database or execution ledger access. */
-export class ReliableWorkspace {
+export class ReliableWorkspace extends ReliableStateCoordinator {
   private record: WorkRecord
-  private dirty = false
   private editEpoch = 0
-  private protecting?: Promise<void>
-  private initializing?: Promise<void>
   private sending = false
-  private stopped = false
-  private disposed = false
-  private denied = false
-  private localTimer?: ReturnType<typeof setInterval>
-  private networkTimer?: ReturnType<typeof setInterval>
   private store = new WorkStore()
   private listeners = new Set<() => void>()
   state: WorkspaceState = { files: [], ready: false, error: '', conflictReady: false, editorEpoch: 0 }
-  constructor(readonly key: string, private transport: WorkTransport) { this.record = initialRecord(key, { revision: 0, files: [] }) }
+  constructor(readonly key: string, private transport: WorkTransport) { super(); this.record = initialRecord(key, { revision: 0, files: [] }) }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.state
   private notify(patch: Partial<WorkspaceState> = {}) { this.state = { ...this.state, ...patch, conflictReady: !this.dirty }; for (const listener of this.listeners) listener() }
-  async open() {
-    if (this.disposed || this.state.ready) return
-    this.localTimer ??= setInterval(() => {
-      if (this.state.ready) void this.protect().catch(() => {})
-      else if (!this.denied) void this.initialize().catch(() => {})
-    }, LOCAL_MAX_WAIT_MS)
-    this.networkTimer ??= setInterval(() => { void this.synchronize() }, NETWORK_MAX_WAIT_MS)
-    window.addEventListener('beforeunload', this.beforeUnload)
-    await this.initialize()
-    void this.synchronize()
-  }
-  private async initialize(): Promise<void> {
-    if (this.initializing) return this.initializing
-    this.initializing = this.load()
-    try { await this.initializing } finally { this.initializing = undefined }
-  }
-  private async load() {
+  protected ready() { return this.state.ready }
+  protected conflicted() { return !!this.state.conflict }
+  protected clearListeners() { this.listeners.clear() }
+  protected async load() {
     try {
       const local = await this.store.read(this.key)
       if (local) this.record = local
@@ -66,9 +45,6 @@ export class ReliableWorkspace {
       throw error
     }
   }
-  private beforeUnload = (event: BeforeUnloadEvent) => {
-    if (this.dirty) { event.preventDefault(); event.returnValue = '' }
-  }
   change(files: WorkFile[]) {
     workFilesSchema.parse(files)
     this.editEpoch++; this.dirty = true
@@ -86,12 +62,7 @@ export class ReliableWorkspace {
   }
   rename(objectId: string, name: string) { this.change(this.state.files.map(f => f.objectId === objectId ? { ...f, name } : f)) }
   remove(objectId: string) { this.change(this.state.files.filter(f => f.objectId !== objectId)) }
-  async protect(): Promise<void> {
-    if (this.protecting) { await this.protecting; if (this.dirty && !this.state.conflict) return this.protect(); return }
-    this.protecting = this.persist()
-    try { await this.protecting } finally { this.protecting = undefined }
-  }
-  private async persist() {
+  protected async persist() {
     const epoch = this.editEpoch
     const files = structuredClone(this.state.files)
     try {
@@ -129,7 +100,7 @@ export class ReliableWorkspace {
       throw error
     }
   }
-  private async synchronize() {
+  protected async synchronize() {
     if (this.stopped || this.denied || this.sending || !this.state.ready || this.state.conflict) return
     this.sending = true
     try {
@@ -201,13 +172,5 @@ export class ReliableWorkspace {
     this.record = saved; this.dirty = false
     this.notify({ files, conflict: undefined, error: '', editorEpoch: this.state.editorEpoch + 1 })
     void this.synchronize()
-  }
-  async leave(): Promise<void> { await this.protect(); if (this.dirty) return this.leave() }
-  suspend() { this.stopped = true; if (this.networkTimer) clearInterval(this.networkTimer) }
-  dispose() {
-    this.disposed = true
-    this.suspend(); if (this.localTimer) clearInterval(this.localTimer)
-    window.removeEventListener('beforeunload', this.beforeUnload)
-    this.listeners.clear()
   }
 }

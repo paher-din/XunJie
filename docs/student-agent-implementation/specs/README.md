@@ -9,6 +9,8 @@
 
 ## WP02 子票实施方案
 
+混合部署与恢复接管见 [#154 实施方案](wp02-hybrid-deployment.md) 与[生产操作及验收记录](../wp02-hybrid-deployment.md)。真实跨机与 Mac 结果分别登记，不以同机替代。
+
 | 实施票 | 文档 | 文档性质 |
 | --- | --- | --- |
 | [课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150) | [实施方案与验收计划](wp02-course-task-releases.md) · [实施与验收记录](../wp02-course-releases-acceptance.md) | 已实施（`codex/wp02`，未合并 main）；工程及 Windows/Mac 分项验证范围见验收记录，教学效果未评估 |

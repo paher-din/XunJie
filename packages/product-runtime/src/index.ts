@@ -8,6 +8,8 @@ export { resolveCredential } from './postgres.js';
 export { createProductRuntimeHost } from './host.js';
 export { createProductLearningApplication, createLearningRecoveryTargets } from './learning-entry.js';
 export * from './connections.js';
+export { createSshRecoveryReceiver } from './ssh-recovery.js';
+export type { SshRecoveryReceiver } from './ssh-recovery.js';
 export * from './maintenance.js';
 export * from './recovery.js';
 export type * from './recovery-types.js';

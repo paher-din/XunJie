@@ -1,10 +1,11 @@
+import { ReliableStateCoordinator, LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts'
 import type { QuestionDraftSync, QuestionDraftView, QuestionReferenceInput, QuestionWorkBasis } from '@xunjie/contracts/question-drafts'
 import { DraftStore, DraftLocalCompetition, initialDraftRecord, sameDraftContent } from './draft-store'
 import type { DraftConflict, DraftContent, DraftRecord, DraftSync } from './draft-store'
 
-export const LOCAL_DRAFT_MAX_WAIT_MS = 250
-export const NETWORK_DRAFT_MAX_WAIT_MS = 1000
+export const LOCAL_DRAFT_MAX_WAIT_MS = LOCAL_MAX_WAIT_MS
+export const NETWORK_DRAFT_MAX_WAIT_MS = NETWORK_MAX_WAIT_MS
 export interface QuestionDraftTransport {
   read(): Promise<QuestionDraftView>
   receipt(requestId: string): Promise<QuestionDraftView | null>
@@ -21,7 +22,7 @@ const inputReference = (reference: QuestionReferenceInput): QuestionReferenceInp
 })
 const inputReferences = (references: QuestionReferenceInput[]) => references.map(inputReference)
 const contentOf = (value: DraftContent): DraftContent => ({ question: value.question,
-  references: structuredClone(inputReferences(value.references)) })
+  references: structuredClone(inputReferences(value.references)), bases: structuredClone(value.bases ?? []) })
 function pendingFor(value: DraftContent, revision: number, bases: QuestionWorkBasis[], draftId: string): DraftSync {
   return { requestId: crypto.randomUUID(), draftId, baseRevision: revision,
     question: value.question, references: structuredClone(inputReferences(value.references)), bases: structuredClone(bases) }
@@ -40,23 +41,16 @@ function matchesPending(view: QuestionDraftView, pending: NonNullable<DraftRecor
 }
 
 /** The page's only question-draft authority; it never calls a model or business receiver. */
-export class ReliableQuestionDraft {
+export class ReliableQuestionDraft extends ReliableStateCoordinator {
   private record: DraftRecord
-  private dirty = false
   private editEpoch = 0
-  private protecting?: Promise<void>
-  private initializing?: Promise<void>
   private sending = false
-  private stopped = false
-  private disposed = false
-  private denied = false
-  private localTimer?: ReturnType<typeof setInterval>
-  private networkTimer?: ReturnType<typeof setInterval>
   private store = new DraftStore()
   private listeners = new Set<() => void>()
   state: QuestionDraftState = { ready: false, error: '', question: '', references: [],
     revision: 0, revisionId: null, conflictReady: true }
   constructor(readonly key: string, private transport: QuestionDraftTransport) {
+    super()
     this.record = initialDraftRecord(key, '')
   }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
@@ -70,23 +64,10 @@ export class ReliableQuestionDraft {
       revision: record.remoteRevision, revisionId: record.revisionId,
       conflict: record.conflict, ...extra })
   }
-  async open() {
-    if (this.disposed || this.state.ready) return
-    this.localTimer ??= setInterval(() => {
-      if (this.state.ready) void this.protect().catch(() => {})
-      else if (!this.denied) void this.initialize().catch(() => {})
-    }, LOCAL_DRAFT_MAX_WAIT_MS)
-    this.networkTimer ??= setInterval(() => { void this.synchronize() }, NETWORK_DRAFT_MAX_WAIT_MS)
-    window.addEventListener('beforeunload', this.beforeUnload)
-    await this.initialize()
-    void this.synchronize()
-  }
-  private async initialize(): Promise<void> {
-    if (this.initializing) return this.initializing
-    this.initializing = this.load()
-    try { await this.initializing } finally { this.initializing = undefined }
-  }
-  private async load() {
+  protected ready() { return this.state.ready }
+  protected conflicted() { return !!this.state.conflict }
+  protected clearListeners() { this.listeners.clear() }
+  protected async load() {
     try {
       let local = await this.store.read(this.key)
       if (!local) {
@@ -103,6 +84,7 @@ export class ReliableQuestionDraft {
       let conflict = local.conflict
       if (!conflict && candidates[0]) conflict = { source: 'local', local: contentOf(candidates[0].content),
         other: contentOf(local), at: local.localRevision, remoteRevision: local.remoteRevision, candidateId: candidates[0].id }
+      this.pendingBases = mergeBases(local.bases, conflict?.local.bases ?? [], (conflict?.local ?? local).references)
       if (!this.disposed) {
         this.record = { ...local, conflict }
         this.notify({ ready: true, error: '', question: conflict?.local.question ?? local.question,
@@ -117,28 +99,21 @@ export class ReliableQuestionDraft {
       throw error
     }
   }
-  private beforeUnload = (event: BeforeUnloadEvent) => {
-    if (this.dirty) { event.preventDefault(); event.returnValue = '' }
-  }
   change(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = []) {
     // Preserve a basis added after the last IndexedDB protection; typing must not drop it.
     const bases = mergeBases([...this.record.bases, ...this.pendingBases], addedBases, references)
     this.editEpoch++; this.dirty = true
     this.pendingBases = bases
-    const content = { question, references: structuredClone(inputReferences(references)) }
+    const content = { question, references: structuredClone(inputReferences(references)), bases }
     this.notify({ question, references: structuredClone(content.references),
       ...(this.state.conflict ? { conflict: { ...this.state.conflict, local: content } } : {}) })
   }
   private pendingBases: QuestionWorkBasis[] = []
-  async protect(): Promise<void> {
-    if (this.protecting) { await this.protecting; if (this.dirty && !this.state.conflict) return this.protect(); return }
-    this.protecting = this.persist()
-    try { await this.protecting } finally { this.protecting = undefined }
-  }
-  private async persist() {
+  protected async persist() {
     const epoch = this.editEpoch
-    const content = contentOf(this.state)
-    const bases = this.pendingBases.length ? this.pendingBases : mergeBases(this.record.bases, [], content.references)
+    const selected = contentOf(this.state)
+    const bases = this.pendingBases.length ? this.pendingBases : mergeBases(this.record.bases, [], selected.references)
+    const content = { ...selected, bases }
     try {
       if (this.dirty) {
         const conflict = this.state.conflict
@@ -156,7 +131,8 @@ export class ReliableQuestionDraft {
             pending: nextPending,
             ...(conflict ? { conflict: { ...conflict, local: content, at: previous.localRevision + 1 } } : {}) }
         }, { expected: this.record.localRevision, content })
-        this.record = saved; this.pendingBases = saved.bases
+        this.record = saved
+        this.pendingBases = epoch === this.editEpoch ? saved.bases : mergeBases(saved.bases, this.pendingBases, this.state.references)
         if (epoch === this.editEpoch) this.dirty = false
         if (this.state.conflict && saved.conflict) this.notify({ conflict: { ...saved.conflict, local: content } })
       } else {
@@ -170,7 +146,7 @@ export class ReliableQuestionDraft {
     } catch (error) {
       if (error instanceof DraftLocalCompetition) {
         this.record = error.current
-        const local = contentOf(this.state)
+        const local = contentOf({ ...this.state, bases })
         this.notify({ conflict: { source: 'local', local, other: contentOf(error.current),
           at: error.current.localRevision, remoteRevision: error.current.remoteRevision, candidateId: error.candidateId },
           error: error.message })
@@ -178,7 +154,7 @@ export class ReliableQuestionDraft {
       throw error
     }
   }
-  private async synchronize() {
+  protected async synchronize() {
     if (this.stopped || this.denied || this.sending || !this.state.ready || this.state.conflict) return
     this.sending = true
     let attempted: DraftSync | undefined
@@ -231,7 +207,7 @@ export class ReliableQuestionDraft {
           }
           await this.protect()
           this.dirty = true
-          const local = contentOf(this.state)
+          const local = contentOf({ ...this.state, bases: this.pendingBases })
           this.notify({ conflict: { source: 'remote', local, other: { question: other.question,
             references: inputReferences(other.references) }, at: this.record.localRevision,
             remoteRevision: other.revision }, error: '另一客户端修改了问题草稿，请比较并选择。' })
@@ -251,8 +227,10 @@ export class ReliableQuestionDraft {
     const conflict = this.state.conflict
     if (!conflict) return
     if (this.dirty) throw new Error('当前比较内容仍在保护中。')
-    const content = contentOf({ question, references })
-    const bases = mergeBases(this.record.bases, addedBases, content.references)
+    const selected = contentOf({ question, references })
+    const bases = mergeBases([...this.record.bases, ...this.pendingBases,
+      ...(conflict.local.bases ?? []), ...(conflict.other.bases ?? [])], addedBases, selected.references)
+    const content = { ...selected, bases }
     const saved = await this.store.change(this.key, current => {
       if (!current) throw new Error('本机草稿记录不可读。')
       const revision = conflict.source === 'remote' ? conflict.remoteRevision : current.remoteRevision
@@ -264,20 +242,5 @@ export class ReliableQuestionDraft {
     this.notify({ question: saved.question, references: structuredClone(saved.references), conflict: undefined,
       revision: saved.remoteRevision, revisionId: saved.revisionId, error: '' })
     void this.synchronize()
-  }
-  async leave(): Promise<void> { await this.protect(); if (this.dirty) return this.leave() }
-  suspend() { this.stopped = true; if (this.networkTimer) clearInterval(this.networkTimer) }
-  /** Re-authentication for the same workspace resumes the same record and pending identity. */
-  resume() {
-    if (this.disposed || !this.stopped) return
-    this.stopped = false
-    this.networkTimer ??= setInterval(() => { void this.synchronize() }, NETWORK_DRAFT_MAX_WAIT_MS)
-    void this.synchronize()
-  }
-  dispose() {
-    this.disposed = true
-    this.suspend(); if (this.localTimer) clearInterval(this.localTimer)
-    window.removeEventListener('beforeunload', this.beforeUnload)
-    this.listeners.clear()
   }
 }

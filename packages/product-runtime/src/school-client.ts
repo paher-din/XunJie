@@ -7,19 +7,29 @@ import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spa
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
+import { courseBindingStateSchema } from '@xunjie/contracts/courses';
+import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
+import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
+import type { createLearningData } from '@xunjie/learning-space';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
-import { acquireLock, atomicJson, exists } from './io.js';
+import { acquireLock, atomicJson, exists, readJson } from './io.js';
+import { createOutboundConnection, RuntimeConnectionError } from './connections.js';
+import type { InstalledConfiguration } from './runtime.js';
 import { resolveCredential } from './postgres.js';
 
 const grantSchema = z.object({ token: z.string().min(40).max(200), identity: spaceIdentitySchema,
   target: learningTargetSchema, connectionId: z.uuid(), capabilities: z.tuple([z.literal('activity:read'), z.literal('activity:write')]) });
 const connectionSchema = z.object({ requestId: z.uuid(), schoolEndpoint: z.url(), verifier: z.string(),
-  clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional() });
+  clientId: z.uuid(), clientNamespace: z.string(), grant: grantSchema.optional(),
+  localBinding: z.object({ runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().optional() });
 type Connection = z.infer<typeof connectionSchema>;
 
 /** Installed client retains only its own verifier and scoped grant, never the school's account database. */
-export function createSchoolClient(root: string, environment: RuntimeEnvironment) {
+export function createSchoolClient(root: string, environment: RuntimeEnvironment, local?: {
+  target: LearningTarget;
+  create(authority: SpaceAuthority, courses: CourseBindingAuthority): ReturnType<typeof createLearningData>;
+}) {
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
   async function update<T>(id: string, operation: () => Promise<T>): Promise<T> {
@@ -100,7 +110,82 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       return view(current);
     });
   }
-  async function forward(connectionId: string, route: string, body?: unknown) {
+  async function authorityCall(connection: Connection, runtimeConnectionId: string, operation: string, input?: unknown) {
+    const config = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+    const transport = config.connections.find(item => item.connectionId === runtimeConnectionId);
+    if (!local || !connection.grant || !transport || transport.sourceEnvironmentId !== local.target.environmentId
+      || transport.sourceServiceId !== local.target.serviceId || transport.target.environmentId !== connection.grant.identity.environmentId
+      || !transport.requiredCapabilities.includes('learning.authority')
+      || new URL(transport.target.endpoint).origin !== connection.schoolEndpoint) throw new StorageError('forbidden');
+    let value: unknown;
+    try {
+      value = await createOutboundConnection({ connection: transport, credential: () => resolveCredential(root, transport.credentialRef),
+        allowInsecureLoopback: true, timeoutMs: 15000 }).request('learning.authority', { token: connection.grant.token, operation, input });
+    } catch (error) {
+      throw new StorageError(error instanceof RuntimeConnectionError && ['http_401', 'http_403', 'credential_unavailable'].includes(error.code) ? 'forbidden' : 'unavailable');
+    }
+    const failure = z.object({ error: z.enum(storageErrorCodes) }).safeParse(value);
+    if (failure.success) throw new StorageError(failure.data.error);
+    return value;
+  }
+  async function checkLocal(connection: Connection, runtimeConnectionId: string) {
+    const result = z.object({ identity: spaceIdentitySchema, target: learningTargetSchema }).strict()
+      .parse(await authorityCall(connection, runtimeConnectionId, 'access'));
+    if (!local || JSON.stringify(result.identity) !== JSON.stringify(connection.grant!.identity)
+      || JSON.stringify(result.target) !== JSON.stringify(local.target)
+      || JSON.stringify(result.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
+    return result;
+  }
+  async function configureLocal(value: unknown) {
+    const input = z.object({ connectionId: z.uuid(), runtimeConnectionId: z.uuid(), target: learningTargetSchema }).strict().parse(value);
+    if (!local || JSON.stringify(input.target) !== JSON.stringify(local.target)) throw new StorageError('forbidden');
+    const connection = await read(input.connectionId);
+    await checkLocal(connection, input.runtimeConnectionId);
+    return update(input.connectionId, async () => {
+      const current = await read(input.connectionId);
+      if (current.grant?.token !== connection.grant?.token) throw new StorageError('forbidden');
+      if (current.localBinding && JSON.stringify(current.localBinding) !== JSON.stringify({ runtimeConnectionId: input.runtimeConnectionId, target: input.target })) throw new StorageError('identity-conflict');
+      current.localBinding = { runtimeConnectionId: input.runtimeConnectionId, target: input.target };
+      await atomicJson(path(input.connectionId), current);
+      return { identity: current.grant!.identity, target: input.target, configured: true };
+    });
+  }
+  async function localForward(connection: Connection, route: string, body?: unknown) {
+    const binding = connection.localBinding!;
+    const sameIdentity = (identity: unknown) => {
+      if (JSON.stringify(identity) !== JSON.stringify(connection.grant!.identity)) throw new StorageError('forbidden');
+    };
+    const learning = local!.create({ async resolveBinding(identity) {
+      sameIdentity(identity); return (await checkLocal(connection, binding.runtimeConnectionId)).target;
+    } }, {
+      async prepare(input) { sameIdentity(input.identity);
+        const { identity: _identity, target: _target, ...request } = input;
+        return courseBindingStateSchema.parse(await authorityCall(connection, binding.runtimeConnectionId, 'prepare', request)); },
+      async confirm(input) { return courseBindingStateSchema.parse(await authorityCall(connection, binding.runtimeConnectionId, 'confirm', input)); },
+      async authorize(identity, pointer) { sameIdentity(identity); await authorityCall(connection, binding.runtimeConnectionId, 'authorize', {
+        associationId: pointer.associationId, releaseId: pointer.releaseId, contentDigest: pointer.contentDigest }); },
+      async referenceText(identity, source) { sameIdentity(identity);
+        return z.object({ text: z.string() }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'referenceText', source)); },
+    });
+    const identity = connection.grant!.identity;
+    if (route === 'activities') return body === undefined ? learning.list(identity) : learning.create(identity, body as never);
+    if (route.startsWith('activities/')) return learning.open(identity, route.slice(11));
+    if (route === 'activity-status') return learning.setStatus(identity, body as never);
+    if (route.startsWith('receipts/')) return learning.receipt(identity, route.slice(9));
+    if (route === 'course-activities') return learning.createCourse(identity, body);
+    if (route.startsWith('course-activity-results/')) return learning.courseResult(identity, route.slice('course-activity-results/'.length));
+    const parts = route.split('/');
+    if (parts[0] === 'drafts') {
+      if (parts.length === 2) return body === undefined ? learning.drafts.read(identity, parts[1]!) : learning.drafts.sync(identity, parts[1]!, body);
+      if (parts[2] === 'receipts') return learning.drafts.receipt(identity, parts[1]!, parts[3]!);
+      return learning.drafts.revision(identity, parts[1]!, parts[3]!);
+    }
+    if (parts[0] !== 'workspaces') throw new StorageError('forbidden');
+    if (parts.length === 2) return body === undefined ? learning.works.read(identity, parts[1]!) : learning.works.sync(identity, parts[1]!, body as never);
+    if (parts[2] === 'receipts') return learning.works.receipt(identity, parts[1]!, parts[3]!);
+    return learning.works.content(identity, parts[1]!, parts[3]!);
+  }
+  async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string) {
     const id = '[0-9a-f-]{36}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
@@ -109,6 +194,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
+    if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
+      connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
+    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts)(\/|$)/.test(route)) {
+      if (!local) throw new StorageError('unavailable');
+      return localForward(connection, route, body);
+    }
+    if (!connection.localBinding && local && JSON.stringify(connection.grant.target) === JSON.stringify(local.target)
+      && !['connections/revoke', 'courses'].includes(route) && !route.startsWith('releases/')) throw new StorageError('unavailable');
     let value: unknown;
     try { value = await call(connection, route, body, true); }
     catch (error) {
@@ -151,5 +244,5 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route.startsWith('receipts/')) return value === null ? null : check(value);
     return value;
   }
-  return { list, start, complete, forward };
+  return { list, start, complete, configureLocal, forward };
 }

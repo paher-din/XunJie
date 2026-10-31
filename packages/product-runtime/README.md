@@ -1,5 +1,7 @@
 # XunJie 产品运行库
 
+学校身份/课程与客户端学习数据的组合、窄领域能力 `learning.authority`、`createSshRecoveryReceiver` 和正式接管配置见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。远端 SSH 仅承接维护，不是学生业务隧道。
+
 `@xunjie/product-runtime` 提供本机/学校可信宿主共用的运行生命周期、连接授权、维护、完整备份、隔离恢复及接管编排。CLI 见 [apps/local-runtime](../../apps/local-runtime/README.md)，既有运行交接见 [#143](../../docs/student-agent-implementation/runtime-acceptance.md)，#145 的命令、失败处理和实际验收见 [维护与恢复](../../docs/student-agent-implementation/maintenance-acceptance.md)，组合结论见 [WP01 父票验收](../../docs/student-agent-implementation/wp01-acceptance.md)。
 
 ## 公开入口

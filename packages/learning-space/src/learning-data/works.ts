@@ -132,15 +132,27 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
     const uploaded = bytes(file);
     await storage.stageResource({ uploadId: file.contentId, scope: `works/${activityId}/${file.objectId}`,
       bytes: uploaded, mediaType: file.mediaType, contentVersion: 1 });
-    const receipt = await storage.request({ requestId: `work-basis:${file.contentId}`,
-      fingerprint: digest({ identity, activityId, file }) }, async tx => {
+    const requestId = `work-basis:${file.contentId}`;
+    // Earlier receipts included the display name. Verify the immutable resource and
+    // owned content before accepting their replay, without treating a rename as new bytes.
+    const previous = await storage.receipt(requestId);
+    if (previous) {
+      const stored = await content(identity, activityId, file.contentId);
+      if (stored.objectId !== file.objectId || stored.kind !== file.kind || stored.encoding !== file.encoding
+        || stored.mediaType !== file.mediaType) throw new StorageError('identity-conflict');
+      return { objectId: file.objectId, contentId: file.contentId };
+    }
+    const { name: _name, ...immutableBasis } = file;
+    const receipt = await storage.request({ requestId,
+      fingerprint: digest({ identity, activityId, file: immutableBasis }) }, async tx => {
       await tx.query('INSERT INTO work_objects(object_id,activity_id,kind) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
         [file.objectId, activityId, file.kind]);
       const { rows: [object] } = await tx.query('SELECT activity_id,kind,deleted FROM work_objects WHERE object_id=$1 FOR UPDATE', [file.objectId]);
       if (!object || object.activity_id !== activityId || object.kind !== file.kind) throw new StorageError('identity-conflict');
       const { rows: [known] } = await tx.query('SELECT activity_id,object_id,encoding,media_type FROM work_contents WHERE content_id=$1', [file.contentId]);
       if (!known) {
-        if (object.deleted) throw new StorageError('missing');
+        // A retained selection can arrive after the current object was deleted.
+        // Register historical bytes without clearing its tombstone or moving the head.
         // A concurrent work sync may register the same immutable content first.
         await tx.query('INSERT INTO work_contents VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
           [file.contentId, activityId, file.objectId, file.encoding, file.mediaType]);

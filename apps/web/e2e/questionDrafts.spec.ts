@@ -265,6 +265,86 @@ test('an existing reliable workspace database upgrades without losing its work',
   }))).toEqual({ version: 2, stores: ['candidates', 'draftCandidates', 'drafts', 'workspaces'] })
 })
 
+async function draftDriver(page: Page, activityId: string) {
+  const { build } = await import('esbuild')
+  const bundle = await build({ entryPoints: [fileURLToPath(new URL('../src/reliable-workspace/draft.ts', import.meta.url))],
+    bundle: true, write: false, format: 'esm', platform: 'browser' })
+  await page.route('**/__draft_public_interface.js', route => route.fulfill({ contentType: 'application/javascript', body: bundle.outputFiles[0].text }))
+  await page.goto(endpoint + '/?diagnostics=1')
+  const context = await (await page.request.get(endpoint + '/api/learning/context')).json()
+  const identity = context.identities.find((item: { key: string }) => item.key === 'personal').identity
+  return { key: JSON.stringify([context.clientNamespace, identity.environmentId, identity.spaceId, identity.principalId, activityId]),
+    base: '/api/learning/drafts/' + activityId, moduleUrl: endpoint + '/__draft_public_interface.js' }
+}
+
+test('a restored draft resumes periodic sync after authentication recovers', async ({ page }) => {
+  const activityId = await personalActivity(page)
+  const driver = await draftDriver(page, activityId)
+  await page.evaluate(async ({ key, base, moduleUrl }) => {
+    const { ReliableQuestionDraft } = await import(moduleUrl)
+    const request = async (suffix: string, body?: unknown) => {
+      const response = await fetch(base + suffix, { method: body === undefined ? 'GET' : 'POST',
+        headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+      const result = await response.json()
+      if (!response.ok) throw Object.assign(new Error(result.error), { code: result.error })
+      return result
+    }
+    const draft = new ReliableQuestionDraft(key, { read: () => request(''),
+      receipt: (id: string) => request('/receipts/' + id), sync: (body: unknown) => request('', body) })
+    await draft.open()
+    draft.suspend()
+    draft.resume()
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    draft.change('After context recovery', [])
+  }, driver)
+  await expect.poll(async () => (await draftOf(page, activityId)).question, { timeout: 15000 }).toBe('After context recovery')
+})
+
+test('a local conflict candidate retains an unsynchronized code basis across reload', async ({ page }) => {
+  const activityId = await personalActivity(page)
+  const file = { objectId: randomUUID(), contentId: randomUUID(), name: 'retained.sv', kind: 'code',
+    encoding: 'utf8', mediaType: 'text/plain', value: 'module retained;\nendmodule\n' }
+  expect((await page.request.post(endpoint + '/api/learning/workspaces/' + activityId,
+    { headers: { 'x-xj-space': 'personal' }, data: { requestId: randomUUID(), baseRevision: 0, files: [file] } })).status()).toBe(200)
+  const basis = { ...file, contentId: randomUUID(), value: 'module selected;\nendmodule\n' }
+  const reference = { referenceId: randomUUID(), source: { kind: 'work', objectId: file.objectId, contentId: basis.contentId },
+    range: { kind: 'code', start: 0, end: basis.value.length }, copy: basis.value, sourceName: file.name }
+  const driver = await draftDriver(page, activityId)
+  await page.evaluate(async ({ key, base, moduleUrl, basis, reference }) => {
+    const { ReliableQuestionDraft } = await import(moduleUrl)
+    const request = async (suffix: string, body?: unknown) => {
+      const response = await fetch(base + suffix, { method: body === undefined ? 'GET' : 'POST',
+        headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+      const result = await response.json()
+      if (!response.ok) throw Object.assign(new Error(result.error), { code: result.error })
+      return result
+    }
+    const transport = { read: () => request(''), receipt: (id: string) => request('/receipts/' + id), sync: (body: unknown) => request('', body) }
+    const first = new ReliableQuestionDraft(key, transport), second = new ReliableQuestionDraft(key, transport)
+    await first.open(); await second.open()
+    first.suspend(); second.suspend()
+    first.change('Selected original', [reference], [basis])
+    second.change('The other tab wins the local transaction', [])
+    await second.protect()
+    await first.protect().catch(() => {})
+    if (!first.snapshot().conflict) throw new Error('The controlled local competition was not created')
+    first.dispose(); second.dispose()
+    const restored = new ReliableQuestionDraft(key, transport)
+    restored.suspend()
+    await restored.open()
+    const conflict = restored.snapshot().conflict
+    if (!conflict) throw new Error('The protected conflict candidate was not restored')
+    await restored.resolve(conflict.local.question, conflict.local.references)
+    restored.resume()
+  }, { ...driver, basis, reference })
+  await expect.poll(async () => (await draftOf(page, activityId)).references[0]?.copy, { timeout: 15000 }).toBe(basis.value)
+  const head = await (await page.request.get(endpoint + '/api/learning/workspaces/' + activityId,
+    { headers: { 'x-xj-space': 'personal' } })).json()
+  expect(head.files[0].value).toBe(file.value)
+})
+
 test('local storage refusal keeps memory and retries automatically', async ({ page }) => {
   const activityId = await personalActivity(page)
   await page.goto(endpoint + '/?activity=' + activityId)
