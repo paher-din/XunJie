@@ -294,7 +294,6 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       endpoint: `http://127.0.0.1:${(controlServer.address() as { port: number }).port}` });
     process.on('SIGTERM', onSignal);
     process.on('SIGINT', onSignal);
-    initialized = true;
     const isolated = await exists(join(root, 'recovery-state.json'))
       && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
     const previousMaintenance = await exists(join(root, 'maintenance.json'))
@@ -305,6 +304,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       await maintenance.enter('restart');
       await maintenance.resume();
     }
+    // start() must not observe readiness before a previous stop/restart gate reopens.
+    initialized = true;
     await atomicJson(join(root, 'status.json'), await status());
     completeStartup();
     scheduler = setInterval(() => {
