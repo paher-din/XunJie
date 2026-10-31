@@ -5,7 +5,7 @@ import type { Migration, OwnedStorage } from '@xunjie/storage';
 import {
   courseAccessInputSchema, courseActivityBindingSchema, courseBindingStateSchema, courseImportSchema,
   courseMaterialContentSchema, courseReferenceTextSourceSchema, courseRegistrationResultSchema, courseReleaseSchema,
-  courseDigestSchema,
+  courseDigestSchema, courseReferenceVerificationSchema,
 } from '@xunjie/contracts/courses';
 import type {
   CourseAccessInput, CourseBindingPointer, CourseBindingState, CourseConfirmInput, CoursePrepareInput,
@@ -14,6 +14,7 @@ import type {
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { spaceMigrations } from '../spaces/index.js';
+import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 
 export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'course-catalog-and-releases', sql: `
   CREATE TABLE courses (course_id uuid PRIMARY KEY,space_id uuid NOT NULL REFERENCES spaces(id),
@@ -370,6 +371,14 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     return { text: Buffer.from(bytes).toString('utf8') };
   }
 
+  async function verifyReference(identity: SpaceIdentity, value: unknown): Promise<void> {
+    let reference;
+    try { reference = courseReferenceVerificationSchema.parse(value); } catch { return fail('invalid'); }
+    const { text } = await referenceText(identity, reference.source);
+    if (referenceSelectionDigest(referenceTextSelection(text, reference.range)) !== reference.selectionDigest)
+      return fail('invalid');
+  }
+
   async function prepare(value: CoursePrepareInput): Promise<CourseBindingState> {
     const input = z.object({ associationId: uuid, requestId: uuid, identity: spaceIdentitySchema, target: learningTargetSchema,
       activityId: uuid, releaseId: uuid, inputDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict().parse(value);
@@ -521,6 +530,6 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     }
   }
 
-  return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, setAccess,
+  return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

@@ -132,9 +132,16 @@ export const courseReferenceTextSourceSchema = z.discriminatedUnion('kind', [
     contentDigest: courseDigestSchema, field: z.enum(['requirements']) }).strict(),
 ]);
 export type CourseReferenceTextSource = z.infer<typeof courseReferenceTextSourceSchema>;
-/** Current eligibility and exact release are rechecked; text is the immutable published source. */
+export const courseReferenceVerificationSchema = z.object({ source: courseReferenceTextSourceSchema,
+  range: z.object({ start: z.number().int().nonnegative(), end: z.number().int().positive() }).strict()
+    .refine(range => range.end > range.start && range.end - range.start <= 1_000_000),
+  // SHA-256 of the selected UTF-16LE code units; not the stored UTF-8 copyDigest.
+  selectionDigest: courseDigestSchema,
+}).strict();
+export type CourseReferenceVerification = z.infer<typeof courseReferenceVerificationSchema>;
+/** Verify the exact selection at its source owner without transporting the full material. */
 export interface CourseReferenceAuthority {
-  referenceText(identity: SpaceIdentity, source: CourseReferenceTextSource): Promise<{ text: string }>;
+  verifyReference(identity: SpaceIdentity, reference: CourseReferenceVerification): Promise<void>;
 }
 /** The learning-data owner consumes only this narrow, current-authority interface. */
 export interface CourseBindingAuthority extends CourseReferenceAuthority {

@@ -202,6 +202,10 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
       { headers: { cookie: restoredCookie } });
     assert.equal(restoredRevision.status, 200);
     assert.deepEqual(await restoredRevision.json(), savedDraft);
+    const restoredDraftReceipt = await fetch(new URL(`/api/learning/drafts/${pinned.activityId}/receipts/${draftInput.requestId}`, isolated.endpoint),
+      { headers: { cookie: restoredCookie } });
+    assert.equal(restoredDraftReceipt.status, 200);
+    assert.deepEqual(await restoredDraftReceipt.json(), savedDraft);
     assert.equal(savedDraft.references[0].copy, materialCopy);
     assert.equal(savedDraft.references[1].copy, codeCopy);
     for (const suffix of ['', '/receipts/' + workRequest.requestId]) {

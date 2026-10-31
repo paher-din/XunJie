@@ -5,8 +5,10 @@ import type { Migration, OwnedStorage } from '@xunjie/storage';
 import { questionDraftSyncSchema, questionDraftViewSchema, questionReferenceKey } from '@xunjie/contracts/question-drafts';
 import type { QuestionDraftSync, QuestionDraftView, QuestionReference } from '@xunjie/contracts/question-drafts';
 import { courseReferenceTextSourceSchema } from '@xunjie/contracts/courses';
+import type { CourseReferenceAuthority } from '@xunjie/contracts/courses';
 import type { LearningActivity } from '@xunjie/contracts/learning-data';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
 
 export const questionDraftMigration: Migration = { version: 4, name: 'question-drafts-and-fixed-references', sql: `
   CREATE TABLE question_drafts(draft_id uuid PRIMARY KEY,activity_id uuid NOT NULL REFERENCES activities(id),
@@ -32,27 +34,19 @@ function operationId(value: string) {
 }
 export const draftIdFor = (activityId: string) => operationId(`question-draft:${activityId}`);
 
-function splitsPair(text: string, offset: number): boolean {
-  const before = text.charCodeAt(offset - 1), after = text.charCodeAt(offset);
-  return (before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff) || (before === 13 && after === 10);
-}
-
 function verifiedCopy(text: string, reference: { range: { start: number; end: number }; copy: string }) {
-  const { start, end } = reference.range;
-  if (end > text.length || splitsPair(text, start) || splitsPair(text, end)
-    || text.slice(start, end) !== reference.copy || !reference.copy.trim()) return fail('invalid');
+  if (referenceTextSelection(text, reference.range) !== reference.copy) return fail('invalid');
 }
 
 type WorksBasis = {
   content(identity: SpaceIdentity, activityId: string, contentId: string): Promise<{ objectId: string; kind: string; value: string }>;
   registerBasis(identity: SpaceIdentity, activityId: string, basis: unknown): Promise<{ objectId: string; contentId: string }>;
 };
-type CourseText = { referenceText(identity: SpaceIdentity, source: unknown): Promise<{ text: string }> };
 
 export function createQuestionDrafts(storage: OwnedStorage, options: {
   activity(identity: SpaceIdentity, activityId: string): Promise<LearningActivity>;
   works: WorksBasis;
-  courses: CourseText | undefined;
+  courses: CourseReferenceAuthority | undefined;
 }) {
   const { activity: open, works, courses } = options;
   function empty(draftId: string): QuestionDraftView {
@@ -128,8 +122,8 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
           return fail('identity-conflict');
       }
       if (reference.range.kind !== 'text') return fail('invalid');
-      const text = (await courses!.referenceText(identity, source)).text;
-      verifiedCopy(text, reference);
+      await courses!.verifyReference(identity, { source, range: { start: reference.range.start, end: reference.range.end },
+        selectionDigest: referenceSelectionDigest(reference.copy) });
     }
     for (const contentId of bases.keys()) if (!used.has(contentId)) return fail('invalid');
   }

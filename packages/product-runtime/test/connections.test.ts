@@ -364,14 +364,17 @@ test('fencing from independent receiver processes persists after those processes
   const receiver = await host(t);
   const identity = source();
   const grant = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  // Windows queries immutable OS process identities through cold PowerShell
+  // processes. This case checks durable fencing, not the separate timeout contract.
+  const fenceTimeoutMs = process.platform === 'win32' ? 30_000 : 3_000;
   const child = `
     import { createConnectionAuthority } from '@xunjie/product-runtime/connections';
     const [root, target, source] = process.argv.slice(1);
     const authority = createConnectionAuthority({ root, service: JSON.parse(target), handlers: { echo: value => value } });
-    console.log(JSON.stringify(await authority.fenceSource({ ...JSON.parse(source), timeoutMs: 3000 })));
+    console.log(JSON.stringify(await authority.fenceSource({ ...JSON.parse(source), timeoutMs: ${fenceTimeoutMs} })));
   `;
   const results = await Promise.all([0, 1].map(() => promisify(execFile)(process.execPath,
-    ['--input-type=module', '-e', child, receiver.root, JSON.stringify(receiver.target), JSON.stringify(identity)], { timeout: 5_000 })));
+    ['--input-type=module', '-e', child, receiver.root, JSON.stringify(receiver.target), JSON.stringify(identity)], { timeout: fenceTimeoutMs + 5_000 })));
   assert.deepEqual(results.map(result => JSON.parse(result.stdout).generation).sort(), [1, 2]);
   receiver.reopen();
   assert.equal((await outbound(descriptor(receiver.target, identity), grant.token).check()).reason, 'http_401');
