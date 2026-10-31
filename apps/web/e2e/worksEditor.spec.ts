@@ -186,8 +186,14 @@ test('failed navigation leaves the editor able to continue automatic sync', asyn
   await page.getByRole('button', { name: '新建文件', exact: true }).click()
   await page.locator('.monaco-editor textarea').focus()
   await page.keyboard.insertText('导航前')
-  await page.route('**/api/learning/context', route => route.abort('connectionfailed'))
+  let aborted!: () => void
+  const failed = new Promise<void>(resolve => { aborted = resolve })
+  await page.route('**/api/learning/context', route => { aborted(); return route.abort('connectionfailed') })
   await page.getByRole('button', { name: '刷新列表', exact: true }).click()
+  // The request is issued only after leave() protects pending input; removing the route
+  // before it fails lets the navigation succeed and unmount the editor under the test.
+  await failed
+  await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled()
   await expect(page.locator('.monaco-editor')).toBeVisible()
   await page.unroute('**/api/learning/context')
   await page.locator('.monaco-editor textarea').focus()
