@@ -420,6 +420,14 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     return row ? associationState(row) : null;
   }
 
+  async function confirmForMember(identity: SpaceIdentity, input: CourseConfirmInput) {
+    await spaces.authorize(identity);
+    const { rows: [association] } = await storage.read(`SELECT association_id FROM course_activity_associations
+      WHERE association_id=$1 AND space_id=$2 AND principal_id=$3`, [uuid.parse(input.associationId), identity.spaceId, identity.principalId]);
+    if (!association) return fail('missing');
+    return confirm(input);
+  }
+
   async function authorize(identity: SpaceIdentity, pointer: CourseBindingPointer): Promise<void> {
     uuid.parse(pointer.associationId); uuid.parse(pointer.releaseId); digestSchema.parse(pointer.contentDigest);
     const { row, content } = await authorizedRelease(identity, pointer.releaseId);
@@ -486,5 +494,5 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
 
   return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, setAccess,
-    prepare, confirm, bindingResult, authorize, validate };
+    prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

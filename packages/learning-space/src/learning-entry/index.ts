@@ -44,7 +44,8 @@ export function createLearningEntry(options: {
     list(): Promise<{ key: string; identity: SpaceIdentity }[]>;
     start(input: { requestId: string; schoolEndpoint: string }): Promise<unknown>;
     complete(requestId: string): Promise<unknown>;
-    forward(connectionId: string, route: string, body?: unknown): Promise<unknown>;
+    configureLocal?(input: unknown): Promise<unknown>;
+    forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string): Promise<unknown>;
   };
 }) {
   const { spaces, learning, environment } = options;
@@ -85,11 +86,16 @@ export function createLearningEntry(options: {
       const remote = request.headers['x-xj-space'];
       if (environment.profile === 'school' && (route.startsWith('client/') || typeof remote === 'string' && remote.startsWith('school:'))) throw new StorageError('forbidden');
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
-        result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request, route.startsWith('workspaces/') ? 8000000 : 65536) : undefined);
+        const expected = request.headers['x-xj-expected-subject'];
+        if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
+        result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request, route.startsWith('workspaces/') ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
         result = await options.client.complete(z.object({ requestId: z.uuid() }).strict().parse(await readLearningBody(request)).requestId);
+      } else if (route === 'manage/local-binding' && method === 'POST' && options.client?.configureLocal) {
+        if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
+        result = await options.client.configureLocal(await readLearningBody(request));
       } else if (route === 'context' && method === 'GET') {
         const identities: { key: string; identity: SpaceIdentity }[] = [];
         if (environment.profile === 'local') {
@@ -130,9 +136,10 @@ export function createLearningEntry(options: {
         } else {
           const body = await readLearningBody(request);
           if (route === 'manage/members') {
-            const input = z.object({ requestId: z.uuid(), loginName: z.string(), password: z.string() }).strict().parse(body);
+            const input = z.object({ requestId: z.uuid(), loginName: z.string(), password: z.string(),
+              target: z.object({ environmentId: z.uuid(), serviceId: z.uuid(), version: z.literal(1) }).strict().optional() }).strict().parse(body);
             const identity = await spaces.createMember(input);
-            await spaces.bindMember(identity, options.target);
+            await spaces.bindMember(identity, input.target ?? options.target);
             result = identity;
           } else if (route === 'manage/membership') {
             const input = z.object({ requestId: z.uuid(), principalId: z.uuid(), active: z.boolean() }).strict().parse(body);
@@ -150,7 +157,8 @@ export function createLearningEntry(options: {
         await spaces.approveConnection(session(request), input.requestId); result = { approved: true };
       } else if (route === 'connections/exchange' && method === 'POST') {
         const input = z.object({ requestId: z.uuid(), verifier: z.string() }).strict().parse(await readLearningBody(request));
-        result = { ...await spaces.exchangeConnection(input.requestId, input.verifier), target: options.target };
+        const grant = await spaces.exchangeConnection(input.requestId, input.verifier);
+        result = { ...grant, target: await spaces.resolveBinding(grant.identity) };
       } else if (route === 'connections/revoke' && method === 'POST') {
         const input = z.object({ connectionId: z.uuid() }).strict().parse(await readLearningBody(request));
         await spaces.revokeConnection(await current(request), input.connectionId); result = { revoked: true };

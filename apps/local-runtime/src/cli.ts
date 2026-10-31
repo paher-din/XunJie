@@ -36,10 +36,12 @@ const commands: Record<string, readonly string[]> = {
   restore: ['file', 'resources'],
   upgrade: ['file', 'resources'],
   takeover: ['file', 'resources'],
+  'fence-source': ['file', 'resources'],
   'maintenance-resume': ['resources'],
   'school-member': ['file', 'resources'],
   'school-membership': ['file', 'resources'],
   'school-connection': ['file', 'resources'],
+  'learning-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
   'course-access': ['file', 'resources'],
   'course-result': ['file', 'resources'],
@@ -227,6 +229,18 @@ async function main(): Promise<void> {
   };
 
   switch (command) {
+    case 'fence-source': {
+      const input = await jsonFile(required('file'), '接收方失权核验');
+      if (typeof input.expectedReceiver !== 'string' || typeof input.sourceEnvironmentId !== 'string'
+        || !Array.isArray(input.sourceServiceIds) || !input.sourceServiceIds.length || input.sourceServiceIds.length > 100
+        || !input.sourceServiceIds.every(id => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id))) throw new Error('接收方核验输入无效');
+      const current = (await runtime.status()).environment;
+      if (!current.services.some(service => `${current.environmentId}/${service.serviceId}` === input.expectedReceiver)) throw new Error('receiver-identity-conflict');
+      for (const serviceId of input.sourceServiceIds as string[]) await runtime.recovery.fenceSource({
+        sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: serviceId });
+      output({ fenced: true, receiverId: input.expectedReceiver, sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceIds: input.sourceServiceIds });
+      break;
+    }
     case 'recovery-key': {
       const path = resolve(required('out'));
       const destination = await open(path, 'wx', 0o600);
@@ -341,12 +355,14 @@ async function main(): Promise<void> {
     case 'start': output(await run(() => runtime.start())); break;
     case 'school-member':
     case 'school-membership':
-    case 'school-connection': {
+    case 'school-connection':
+    case 'learning-binding': {
       const input = await jsonFile(required('file'), '学校成员操作');
       if (typeof input.password === 'string') rememberSecret(input.password);
       const status = await run(() => runtime.status());
       if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
-      const action = command === 'school-member' ? 'members' : command === 'school-membership' ? 'membership' : 'connection';
+      const action = command === 'school-member' ? 'members' : command === 'school-membership' ? 'membership'
+        : command === 'learning-binding' ? 'local-binding' : 'connection';
       const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
         method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
         headers: { 'content-type': 'application/json', authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` },

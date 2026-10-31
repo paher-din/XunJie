@@ -14,7 +14,7 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
         const response = await fetch(base + suffix, { method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store',
           headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
             'x-xj-expected-subject': [activity.identity.environmentId, activity.identity.spaceId, activity.identity.principalId].join('.') },
-          ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(10000) })
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000) })
         let value: unknown
         try { value = await response.json() } catch { throw Object.assign(new Error('原服务返回了不完整响应。'), { code: response.ok ? 'corrupt' : 'unavailable' }) }
         if (!response.ok) {

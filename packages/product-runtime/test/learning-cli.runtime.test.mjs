@@ -3,22 +3,28 @@ import { test } from 'node:test';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const execute = promisify(execFile);
-const cli = fileURLToPath(new URL('../../../apps/local-runtime/dist/cli.js', import.meta.url));
+const productPackage = process.env.XUNJIE_PRODUCT_TEST_PACKAGE;
+const cli = productPackage ? join(productPackage, 'app', 'cli.js') : fileURLToPath(new URL('../../../apps/local-runtime/dist/cli.js', import.meta.url));
+const packagedResources = productPackage ? JSON.parse(await readFile(join(productPackage, 'resources.json'), 'utf8')) : null;
+if (packagedResources) for (const name of ['nodePath', 'postgresBin', 'webRoot', 'windowsPrerequisitePath']) {
+  if (packagedResources[name]) packagedResources[name] = resolve(productPackage, packagedResources[name]);
+}
+const runtimeNode = packagedResources?.nodePath ?? process.execPath;
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
-if (!postgresBin) throw new Error('Set XUNJIE_PRODUCT_POSTGRES_BIN to the complete native PostgreSQL 18.6 distribution.');
+if (!postgresBin && !packagedResources) throw new Error('Set XUNJIE_PRODUCT_POSTGRES_BIN to the complete native PostgreSQL 18.6 distribution.');
 
 test('the normal CLI restores all learning owners and reaches schema upgrade validation', { timeout: 300000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'xj-learning-cli-'));
   const source = join(directory, 'source'), target = join(directory, 'target');
   const upgradeTarget = join(directory, 'upgrade-target');
   const resources = join(directory, 'resources.json');
-  await writeFile(resources, JSON.stringify({ nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
+  await writeFile(resources, JSON.stringify(packagedResources ?? { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
     postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) }));
   const input = async (name, value) => {
@@ -27,7 +33,7 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     return path;
   };
   const run = async (command, root, ...args) => {
-    const { stdout } = await execute(process.execPath, [cli, command, '--root', root, '--resources', resources, ...args],
+    const { stdout } = await execute(runtimeNode, [cli, command, '--root', root, '--resources', resources, ...args],
       { timeout: 180000, windowsHide: true });
     return JSON.parse(stdout);
   };
@@ -35,6 +41,14 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     await run('install', source, '--profile', 'local');
     const started = await run('start', source);
     assert.equal(started.state, 'ready');
+    const receiverId = started.environment.environmentId + '/' + started.environment.services[0].serviceId;
+    const fencedSource = randomUUID(), fencedService = randomUUID();
+    await assert.rejects(run('fence-source', source, '--file', await input('wrong-receiver', {
+      expectedReceiver: randomUUID() + '/' + randomUUID(), sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] })),
+    error => { assert.match(error.stderr, /receiver-identity-conflict/); return true; });
+    assert.deepEqual(await run('fence-source', source, '--file', await input('fence-source', {
+      expectedReceiver: receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] })), {
+      fenced: true, receiverId, sourceEnvironmentId: fencedSource, sourceServiceIds: [fencedService] });
     const body = { requestId: randomUUID(), goal: '通过正式 CLI 恢复活动', question: '', references: [] };
     const created = await fetch(new URL('/api/learning/activities', started.endpoint), { method: 'POST',
       headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' }, body: JSON.stringify(body) });
@@ -79,11 +93,22 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     assert.equal(courseActivity.status, 200);
     const pinned = await courseActivity.json();
     assert.equal(pinned.course.releaseId, releaseId);
+    const work = { objectId: randomUUID(), contentId: randomUUID(), name: '课程恢复.txt', kind: 'text', encoding: 'utf8',
+      mediaType: 'text/plain', value: '课程与作品在同一完整备份边界\n' };
+    const workRequest = { requestId: randomUUID(), baseRevision: 0, files: [work] };
+    const savedWork = await fetch(new URL('/api/learning/workspaces/' + pinned.activityId, started.endpoint), { method: 'POST',
+      headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(workRequest) });
+    assert.equal(savedWork.status, 200);
     const keyFile = join(directory, 'recovery-key');
     await writeFile(keyFile, randomBytes(32), { mode: 0o600 });
     const backupDirectory = join(directory, 'backups');
     const backup = await run('backup', source, '--file', await input('backup', { keyFile, directory: backupDirectory, leaveClosed: true }));
     assert.equal(backup.services.length, 3);
+    const damagedBackup = join(directory, 'damaged-backup-copy');
+    await cp(join(backupDirectory, backup.backupId), damagedBackup, { recursive: true });
+    await unlink(join(damagedBackup, 'artifacts', backup.artifacts[0].path));
+    await assert.rejects(run('restore', join(directory, 'missing-artifact-target'), '--file', await input('damaged-restore', {
+      keyFile, backupDirectory: damagedBackup })), error => { assert.match(error.stderr, /invalid-recovery|ENOENT|verification/); return true; });
     const restored = await run('restore', target, '--file', await input('restore', {
       keyFile, backupDirectory: join(backupDirectory, backup.backupId) }));
     assert.equal(restored.phase, 'isolated');
@@ -112,6 +137,11 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     const restoredActivity = await fetch(new URL('/api/learning/activities/' + pinned.activityId, isolated.endpoint), { headers: { cookie: restoredCookie } });
     assert.equal(restoredActivity.status, 200);
     assert.deepEqual(await restoredActivity.json(), pinned);
+    for (const suffix of ['', '/receipts/' + workRequest.requestId]) {
+      const restoredWork = await fetch(new URL('/api/learning/workspaces/' + pinned.activityId + suffix, isolated.endpoint), { headers: { cookie: restoredCookie } });
+      assert.equal(restoredWork.status, 200);
+      assert.deepEqual(await restoredWork.json(), { revision: 1, files: [work] });
+    }
     const queried = await run('course-result', target, '--file', await input('course-result', { requestId: imported.requestId }));
     assert.equal(queried.contentDigest, imported.contentDigest);
     // No schema migration was released: the CLI must reach that check, rather than fail assembling owners.

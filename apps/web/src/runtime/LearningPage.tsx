@@ -20,9 +20,12 @@ const messages: Record<string, string> = {
   corrupt: '课程材料或发布版本已损坏，请联系课程管理员。', 'resource-busy': '材料正在准备中，请稍后重试。',
 }
 async function api(path: string, body?: unknown, key?: string, signal?: AbortSignal): Promise<unknown> {
+  // Course coordination includes several authenticated owner calls; timeout still leaves the original request queryable.
+  const timeout = path === 'course-activities' || path === 'activity-status' ? 60000 : 30000
   const response = await fetch('/api/learning/' + path, { method: body === undefined ? 'GET' : 'POST',
     headers: { 'content-type': 'application/json', ...(key ? { 'x-xj-space': key } : {}) },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ?? AbortSignal.timeout(10000), credentials: 'same-origin' })
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ?? AbortSignal.timeout(timeout), credentials: 'same-origin' })
+    .catch(() => { throw Object.assign(new Error(messages.unavailable), { code: 'unavailable' }) })
   const result = await response.json()
   if (!response.ok) {
     const failure = new Error(messages[result.error] ?? '操作结果尚未确认，请核对原请求后重试。') as Error & { code?: string }

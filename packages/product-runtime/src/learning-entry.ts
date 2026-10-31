@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
 import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
-  createCourses, spaceCourseMigrations } from '@xunjie/learning-space';
+  createCourses, spaceCourseMigrations, createLearningAuthority } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { InstalledConfiguration } from './runtime.js';
 import { databaseBinding, resolveCredential, storeCredential } from './postgres.js';
@@ -74,7 +74,10 @@ export async function createProductLearningApplication(context: {
         resources: configuration.resources, resourceRoots: [join(root, 'learning-resources', module === space ? 'space-course' : 'learning-data')],
         validateService: validate }));
     }
-    return { owners, handle: createLearningEntry({ environment, spaces, learning, courses, client,
+    const localTarget = { ...data.storage.owner, version: 1 as const };
+    const schoolClient = environment.profile === 'school' ? undefined : createSchoolClient(root, environment, {
+      target: localTarget, create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority) });
+    return { owners, capabilities: { 'learning.authority': createLearningAuthority(spaces, courses) }, handle: createLearningEntry({ environment, spaces, learning, courses, client: schoolClient,
       target: { ...data.storage.owner, version: 1 }, administratorToken: await resolveCredential(root, 'control') }) };
   } catch (error) { await Promise.allSettled(opened.map(storage => storage.close())); throw error; }
 }
