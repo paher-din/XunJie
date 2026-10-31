@@ -3,7 +3,7 @@
   "issue": 152,
   "ticket": 155,
   "branch": "codex/wp02",
-  "acceptanceCodeCommit": "5c5a4acc9053fbde0a7ab8e1f578901d4ca94705",
+  "acceptanceCodeCommit": "53d1056875140201bc902459e7fb5490c6e7eb4e",
   "fixedAcceptancePoint": "ca1079f2fdc26a245c9957d1d78a4d7352c6b7ca",
   "note": "Acceptance ran on a successor of ca1079f; ca1079f..HEAD only adds the owner-verification handoff docs, a connection-test teardown fix and a fixture teardown fix. Two e2e stability fixes were made during this Mac acceptance and are recorded separately.",
   "platform": "macOS 27.2 (26B123), Apple Silicon arm64",
@@ -415,5 +415,7 @@
     "metaCursor": true,
     "newline": true,
     "limitation": "Doubao Pinyin was the active installed input source; Apple SCIM Pinyin was not exercised. Teaching effectiveness is not evaluated."
-  }
+  },
+  "productCodeCommit": "5c5a4ac",
+  "acceptanceHarnessCommit": "53d1056875140201bc902459e7fb5490c6e7eb4e"
 }

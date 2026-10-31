@@ -123,7 +123,7 @@
 
 ## Apple Silicon Mac 验收（2026-10-31）
 
-**验收代码提交：** `5c5a4ac`（`codex/wp02`；固定交接基点 `ca1079f2fdc26a245c9957d1d78a4d7352c6b7ca`。`ca1079f..5c5a4ac` 仅含负责人核验交接文档、连接测试清理与 fixture 清理；本轮发现并修正两处 e2e 平台稳定性问题，修正后的实际 SHA 以提交记录为准）。  
+**验收代码提交：** `53d1056875140201bc902459e7fb5490c6e7eb4e`（`codex/wp02`；产品代码基点 `5c5a4ac`，固定交接基点 `ca1079f2fdc26a245c9957d1d78a4d7352c6b7ca`。本提交包含两处 e2e 平台稳定性修正与 Mac 证据，未改变产品代码；`ca1079f..5c5a4ac` 仅含负责人核验交接文档、连接测试清理与 fixture 清理）。  
 **环境：** macOS 27.2（26B123），Apple Silicon arm64；Node 24.21.0；PostgreSQL 18.6（darwin-arm64 产品分发包）；本机安装的 Google Chrome 156.0.8078.79，有头执行，未使用 Playwright 自带 Chromium。产品包 `product-darwin-arm64-r1`，`distribution.json` SHA-256 `0e06af82fd9809e6a46a6ff52781d06bac23ff76c5fd75e6916651f36f4acd32`。  
 **隔离：** 产品根、数据库、导入文件和浏览器 profile 均在仓库外；未提交账号、token、数据库或带登录内容的 trace。
 
