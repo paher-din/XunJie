@@ -37,15 +37,30 @@ async function selectCode(page: Page) {
   await page.keyboard.press(`${modifier}+a`)
 }
 async function selectCodeFirstLine(page: Page) {
+  await page.locator('.monaco-editor textarea.inputarea').focus()
+  await page.keyboard.press('ArrowLeft')
   const line = page.locator('.monaco-editor .view-line').filter({ hasText: /样例代码：中文/ })
   await page.getByLabel('demo.sv', { exact: true }).scrollIntoViewIfNeeded()
   await expect(line).toContainText('// 样例代码：中文 🧩')
-  const box = await line.evaluate(element => {
+  const bounds = () => line.evaluate(element => {
     const range = document.createRange(); range.selectNodeContents(element)
     const rect = range.getBoundingClientRect()
-    return { left: rect.left, right: rect.right, y: rect.top + rect.height / 2 }
+    const text = document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode()!
+    const first = document.createRange(); first.setStart(text, 0); first.setEnd(text, 1)
+    const editor = element.closest('.monaco-editor')!.getBoundingClientRect()
+    return { left: rect.left + first.getBoundingClientRect().width * .4, right: rect.right,
+      y: rect.top + rect.height / 2, visible: rect.top >= editor.top && rect.bottom <= editor.bottom }
   })
-  await page.mouse.move(box.left + .2, box.y); await page.mouse.down()
+  let previous = '', stable = 0
+  await expect.poll(async () => {
+    const box = await bounds(), signature = JSON.stringify(box)
+    stable = signature === previous ? stable + 1 : 0
+    previous = signature
+    return box.visible && stable >= 2
+  }).toBe(true)
+  const box = await bounds()
+  // Start inside the first glyph rather than on Monaco's thin cursor overlay.
+  await page.mouse.move(box.left, box.y); await page.mouse.down()
   await page.mouse.move(box.right - .2, box.y, { steps: 12 }); await page.mouse.up()
 }
 async function receipt(page: Page) { return JSON.parse((await page.getByTestId('reference-receipt').textContent())!) }
