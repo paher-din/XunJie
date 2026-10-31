@@ -81,8 +81,8 @@ export function LearningPage() {
   const [reload, setReload] = useState(0)
   const epoch = useRef(0)
   const authEpoch = useRef(0)
-  const currentView = useRef({ context, key })
-  currentView.current = { context, key }
+  const currentView = useRef({ context, key, opened })
+  currentView.current = { context, key, opened }
   const workspace = useRef<ActivityWorkspaceHandle>(null)
   const requestedActivity = useRef(new URLSearchParams(location.search).get('activity'))
   function rememberActivity(activity: LearningActivity | null) {
@@ -163,8 +163,8 @@ export function LearningPage() {
         await previous?.leave()
         if (generation !== epoch.current || authentication !== authEpoch.current) return
         const next = value as Context
-        // 上下文恢复前来自 URL 的活动请求尚未被列表 effect 消费；覆盖为空会让原活动在恢复后消失。
-        requestedActivity.current = opened?.activityId ?? requestedActivity.current
+        // 恢复请求可能早于当前活动挂载完成；按最新视图保留已打开或 URL 请求的活动，避免恢复后落回列表。
+        requestedActivity.current = currentView.current.opened?.activityId ?? requestedActivity.current
         setContext(next); setContextVerified(true); setReload(n => n + 1)
         setKey(old => next.identities.some(i => i.key === old) ? old : next.identities[0]?.key ?? '')
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
