@@ -56,7 +56,8 @@ test('a managed school binding stores school activity works only in its installe
     await api(deviceStatus.endpoint, 'manage/local-binding', { connectionId: requestId, runtimeConnectionId, target }, deviceAdmin);
     const selected = { 'x-xj-space': 'school:' + requestId };
     const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID(), materialId = randomUUID();
-    const material = Buffer.from('# 混合部署课程\n原始学校开放材料。');
+    const materialText = '# 混合部署课程\n' + 'x'.repeat(1_100_000) + '\r\n选中😀尾部\r\n';
+    const material = Buffer.from(materialText);
     const manifest = { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '混合部署课程' },
       task: { taskId, title: '学校身份，本机作品', summary: '' },
       release: { releaseId, objectives: ['保持原版本'], requirements: '保存中文作品', materials: [{ materialId, title: '原材料',
@@ -81,9 +82,28 @@ test('a managed school binding stores school activity works only in its installe
           contentDigest: activity.course.contentDigest, field: 'requirements' },
           range: { kind: 'text', start: 0, end: manifest.release.requirements.length },
           copy: manifest.release.requirements, sourceName: 'Task requirements' },
+        { referenceId: randomUUID(), source: { kind: 'course-material', courseId, taskId, releaseId,
+          contentDigest: activity.course.contentDigest, materialId, mediaType: 'text/markdown',
+          materialSha256: createHash('sha256').update(material).digest('hex') },
+          range: { kind: 'text', start: materialText.indexOf('选中'), end: materialText.indexOf('选中') + '选中😀'.length },
+          copy: '选中😀', sourceName: 'Large school material' },
       ] };
     const savedDraft = await api(deviceStatus.endpoint, draftPath, draftInput, selected);
-    assert.equal(savedDraft.references.length, 2);
+    assert.equal(savedDraft.references.length, 3);
+    const changedCopy = structuredClone(draftInput);
+    changedCopy.requestId = randomUUID(); changedCopy.baseRevision = 1;
+    changedCopy.references[2].copy = '伪造副本';
+    assert.equal((await call(deviceStatus.endpoint, draftPath, changedCopy, selected)).status, 400);
+    const splitEmoji = structuredClone(draftInput);
+    splitEmoji.requestId = randomUUID(); splitEmoji.baseRevision = 1;
+    splitEmoji.references[2].range.end--;
+    splitEmoji.references[2].copy = splitEmoji.references[2].copy.slice(0, -1);
+    assert.equal((await call(deviceStatus.endpoint, draftPath, splitEmoji, selected)).status, 400);
+    const splitNewline = structuredClone(draftInput);
+    splitNewline.requestId = randomUUID(); splitNewline.baseRevision = 1;
+    splitNewline.references[2].range.start--;
+    splitNewline.references[2].copy = '\n' + splitNewline.references[2].copy;
+    assert.equal((await call(deviceStatus.endpoint, draftPath, splitNewline, selected)).status, 400);
     assert.deepEqual(await api(deviceStatus.endpoint, draftPath + '/receipts/' + draftInput.requestId, undefined, selected), savedDraft);
     assert.equal((await call(schoolStatus.endpoint, draftPath, undefined, { cookie })).status, 403);
     assert.equal((await call(deviceStatus.endpoint, 'workspaces/' + activity.activityId, undefined,
@@ -139,6 +159,7 @@ test('a managed school binding stores school activity works only in its installe
       assert.deepEqual(await api(isolated.endpoint, 'activities/' + activity.activityId, undefined, restoredSpace), activity);
       assert.deepEqual(await api(isolated.endpoint, draftPath, undefined, restoredSpace), savedDraft);
       assert.deepEqual(await api(isolated.endpoint, draftPath + '/revisions/' + savedDraft.revisionId, undefined, restoredSpace), savedDraft);
+      assert.deepEqual(await api(isolated.endpoint, draftPath + '/receipts/' + draftInput.requestId, undefined, restoredSpace), savedDraft);
       assert.equal((await call(isolated.endpoint, draftPath, undefined,
         { ...restoredSpace, 'x-xj-namespace': deviceStatus.environment.clientNamespace })).status, 403);
       assert.deepEqual(await api(isolated.endpoint, 'workspaces/' + activity.activityId, undefined, restoredSpace), { revision: 1, files: [file] });

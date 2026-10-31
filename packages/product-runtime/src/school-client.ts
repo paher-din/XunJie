@@ -164,8 +164,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       async confirm(input) { return courseBindingStateSchema.parse(await authorityCall(connection, binding.runtimeConnectionId, 'confirm', input)); },
       async authorize(identity, pointer) { sameIdentity(identity); await authorityCall(connection, binding.runtimeConnectionId, 'authorize', {
         associationId: pointer.associationId, releaseId: pointer.releaseId, contentDigest: pointer.contentDigest }); },
-      async referenceText(identity, source) { sameIdentity(identity);
-        return z.object({ text: z.string() }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'referenceText', source)); },
+      async verifyReference(identity, reference) { sameIdentity(identity);
+        z.object({ verified: z.literal(true) }).strict().parse(await authorityCall(connection, binding.runtimeConnectionId, 'verifyReference', reference)); },
     });
     const identity = connection.grant!.identity;
     if (route === 'activities') return body === undefined ? learning.list(identity) : learning.create(identity, body as never);
