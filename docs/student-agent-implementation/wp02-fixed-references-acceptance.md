@@ -1,6 +1,6 @@
 # WP02：固定引用与问题草稿恢复实施与验收记录
 
-日期：2026-10-31（Asia/Shanghai）。对应[固定引用与问题草稿恢复 #152](https://github.com/paher-din/XunJie/issues/152)，方案见[实施方案](specs/wp02-fixed-references-and-question-drafts.md)。本轮在 `codex/wp02` 工作树实施，未新建分支、未合并 `main`。本文记录当前工作树的实现与验证；未提交、推送或关闭 #152。
+日期：2026-10-31（Asia/Shanghai）。对应[固定引用与问题草稿恢复 #152](https://github.com/paher-din/XunJie/issues/152)，方案见[实施方案](specs/wp02-fixed-references-and-question-drafts.md)。本轮在 `codex/wp02` 实施，未新建分支、未合并 `main`。交接实现提交 `26f5653`；整合远程 #154 并修复审查问题的代码提交为 `9668bc5`。本票保持开放，后续验收与执行范围见本文交接节。
 
 **范围：** 课程文字/要求与作品代码选取、固定引用（稳定来源对象、不可变内容身份、类型化范围、原文副本）、可靠问题草稿（IndexedDB 与学习数据 owner）、刷新/活动切换恢复、来源变化与定位、跨客户端/双标签分歧、迟到确认、授权与私有隔离、迁移维护恢复。真实发送、模型调用、待发状态机、非文本组件引用和教师交付不在本轮。
 
@@ -49,7 +49,7 @@
 | 学校客户端代理 | `node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs` | 2/2 通过：课程与草稿路由转发、畸形响应、伪造路由 |
 | 学习入口回归 | `node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs` | 8/8 通过 |
 | CLI 备份恢复 | `node --test --test-concurrency=1 packages/product-runtime/test/learning-cli.runtime.test.mjs` | 1/1 通过：草稿修订/引用副本/历史修订随正式备份、隔离恢复与接管保留 |
-| 旧 schema 升级 | 同上课程套件中的 `existing owners upgrade...` | 学习数据 v1→v4、空间/课程升级后原自主活动、原作品可读，新草稿 schema 通过领域校验 |
+| 旧 schema 升级 | 同上课程套件中的 `existing owners upgrade...` | 学习数据 v2→v4、空间/课程升级后原自主活动、原作品可读，新草稿 schema 通过领域校验 |
 | 文档链接 | `npm run check:docs` | 160 个 Markdown、1178 个本地目标，0 失败 |
 | 草稿 Chrome 验收 | `npx playwright test e2e/questionDrafts.spec.ts`（真实 Chrome channel、生产宿主、原生 PostgreSQL） | 6/6 通过：课程文字/要求、空间与活动切换、代码 A→B/重命名/删除、v1→v2 IndexedDB、配额拒绝重试、双标签竞争、跨客户端冲突与迟到确认 |
 | 既有作品 Chrome 回归 | `npx playwright test e2e/worksEditor.spec.ts` | 15/15 通过（一次既有课程目录路由 teardown 抖动后复跑通过） |
@@ -74,16 +74,29 @@
 
 ## 迁移、维护与恢复
 
-- 学习数据迁移追加连续 v4；不改写既有 v1/v2/v3。升级测试由 v1 学习数据直接升级到当前谱系，保留原活动与原作品。
+- 学习数据迁移追加连续 v4；不改写既有 v1/v2/v3。升级测试由包含作品的 v2 学习数据升级到当前谱系，保留原活动与原作品。
 - 草稿 head、不可变修订、回执、作品内容引用在同一所属事务提交；外部作品登记、课程资格和材料读取在事务前完成。草稿不建立第二个资源库或独立同步引擎。
 - 备份/隔离恢复/接管验证覆盖课程、材料、自主活动、作品及草稿修订与引用副本；恢复前 `validateLearningData` 校验草稿 head/修订/回执、摘要、范围、作品归属与资源正文。教师私有材料仍不进入学习数据 owner。
 - 草稿同步失败不产生业务发送或模型副作用；发送入口只有禁用状态，没有占位成功回执。
 
 ## 未执行、限制与交接
 
-- **Apple Silicon Mac：** 本轮未执行。需在 Mac 上重新运行 `npm run typecheck`、`npm run build`、契约检查、课程/草稿真实 PG、学校代理、CLI 恢复、`questionDrafts.spec.ts`（真实 Chrome、生产宿主、真实 PostgreSQL）以及既有作品/选区回归，并把固定提交与命令登记到 [#155](https://github.com/paher-din/XunJie/issues/155)。当前工作树尚未提交，登记时须使用实际提交 SHA。
+- **Apple Silicon Mac：** 本轮未执行。固定代码提交为 `9668bc5a77cddaaf0b24b02e12dfbeaf3b909786`；具体待执行清单、命令及证据要求统一交接到 [#155](https://github.com/paher-din/XunJie/issues/155)，涵盖类型检查/构建、课程/草稿 PG、学校代理、本机 owner 混合路径、CLI 恢复、生产 Chrome 和公共接口恢复回归及既有作品/选区回归。登记不代表已通过。
 - **物理中文输入法：** 生产草稿输入区沿用既有组合输入判断；本轮 Windows Chrome 自动验收未使用物理系统输入法，Mac 也未复测。
 - **全量 `npm test`：** 已执行一次；退出码 1，失败集中在既有 Windows 环境项（连接/恢复/接管、远程环境生命周期、symlink 与路径校验），Web 688 项全通过，本票相关套件全部通过。该次全量运行早于最后两个草稿稳定性修正；最终代码已重跑本票全部定向套件。不能把该退出码写成全量通过；原始日志在本机 `/tmp/xj-full-test.log`，未提交。
 - **公开扩展：** 只交付文本、课程要求与代码。非文本组件、PDF/图片/外部页面、真实 Agent 发送、待发意图和接收回执由后续票承接。
 - **课程来源范围：** 课程活动草稿当前只接受该活动固定发布中的要求与开放文本材料；不跨课程或跨活动借用来源，也不在发布换版后改读 latest。
 - **历史保留策略：** 不新增自动 GC；作品删除、课程换版或活动关闭不提前回收仍被草稿修订引用的副本。
+
+## 收尾审查与 #154 接入（代码 `9668bc5`）
+
+保留远程 #154 的 `4565019` 和本票 `26f5653` 全部提交，整合到同一 `codex/wp02`。草稿在本机学习数据 owner 分流，课程文字经已认证的 `learning.authority/referenceText` 核验；学校直连及学校共享学习数据组合仍走原所属服务。补充混合测试覆盖草稿当前读取、原回执、撤权、独立恢复与历史修订，以及旧命名空间拒绝。
+
+两轴审查发现并修复：
+
+- 草稿暂停清除 interval 后，恢复未重建周期调度；作品/草稿现在复用 `ReliableStateCoordinator` 的初始化、保护互斥、定时调度及退出/恢复生命周期。
+- 本机草稿冲突候选未保存未同步引用的完整 `bases`；现在候选与主记录均保存，明确选择/重新加载时恢复，旧保护结果也不抹去等待期间新增的依据。
+- 作品删除先确认时，尚未到达的历史引用依据被拒绝；同 owner 的历史登记现在保留 tombstone、不推进作品 head，也不允许同身份复活为当前作品。
+- 内容依据操作指纹包含展示名，重命名后新范围引用产生身份冲突；现在以不可变内容核验身份，并兼容重命名前已保存的回执。
+
+两项后端原生回归先分别复现 404/409。两项前端补充回归在原 `26f5653` 的真实草稿公开接口上先复现周期同步不推进、恢复候选无法登记依据；修复后 2/2 通过。补充回归使用生产草稿类、真实 Chrome、IndexedDB 和真实 HTTP/PG，通过公开接口控制暂停和竞争，不能代替六项生产 UI 验收。最终整合验证结果在执行结束后补记；教学效果和 Mac 未执行。
