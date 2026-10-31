@@ -120,3 +120,32 @@
 合并后全仓类型检查与 9 项公共契约浏览器导出检查通过；课程/草稿及混合大材料、伪造副本、emoji/CRLF 范围与恢复的原生补验 **2/2 通过**；独立进程 fencing 的 Windows 冷启动期限修正另行 **1/1 通过**。这些是对上文既有场景的定向复跑，不累计为新增业务场景。Standards / Spec 补审无剩余发现。
 
 此次后端并行修正后未重跑全部 19 项、38 项 Chrome 和全量 npm test；上文的完整结果保留原验收阶段，不冒充在 `ca1079f` 全部重新执行。最终 Mac 交接使用包含此修正与鼠标测试修正的固定 `ca1079f`，所有 Mac 项仍待执行。
+
+## Apple Silicon Mac 验收（2026-10-31）
+
+**验收代码提交：** `5c5a4ac`（`codex/wp02`；固定交接基点 `ca1079f2fdc26a245c9957d1d78a4d7352c6b7ca`。`ca1079f..5c5a4ac` 仅含负责人核验交接文档、连接测试清理与 fixture 清理；本轮发现并修正两处 e2e 平台稳定性问题，修正后的实际 SHA 以提交记录为准）。  
+**环境：** macOS 27.2（26B123），Apple Silicon arm64；Node 24.21.0；PostgreSQL 18.6（darwin-arm64 产品分发包）；本机安装的 Google Chrome 156.0.8078.79，有头执行，未使用 Playwright 自带 Chromium。产品包 `product-darwin-arm64-r1`，`distribution.json` SHA-256 `0e06af82fd9809e6a46a6ff52781d06bac23ff76c5fd75e6916651f36f4acd32`。  
+**隔离：** 产品根、数据库、导入文件和浏览器 profile 均在仓库外；未提交账号、token、数据库或带登录内容的 trace。
+
+### 工程、原生 PostgreSQL 与全量测试
+
+- `npm ci`、`npm run typecheck`、`npm run build`、`npm run check:contracts:browser`、`npm run check:docs` 全部通过；公共契约 9 个导出 browser-safe（含新增 `question-drafts`），文档 162 个 Markdown、1194 个本地目标 0 失败。
+- 原生组合 **19/19 通过，0 跳过**：课程/草稿 7、身份入口 8、混合本机 owner 1、CLI 备份/隔离恢复/接管 1、学校代理 2。覆盖固定来源/范围/副本、私有隔离、原请求冲突、来源删除与历史修订、当前资格、跨主体/活动拒绝、升级保留旧活动/作品、未同步 A 先删除、重命名后另一范围、CLI 恢复原问题/引用副本/回执/历史 revisionId、v1/v2/v3/v4 谱系及 IndexedDB v1→v2 非破坏升级。
+- 全量 `npm test` **退出码 1，不通过**：checks 28/28；product-runtime 122/124（2 跳过）；storage 14/14；server 643/659（16 跳过）；Web 688/688；tools 299/305（5 失败、1 跳过）。5 项失败均为 `tools/xj-dev/tests/env-removal.test.mjs` 的 macOS 进程/删除锁用例，与本票改动无关；不以该运行作为绿色门禁。包内 Node 仅含 `node`，首次全量运行时 tools 组因缺少 npm 失败，已改用完整 Node 24.21.0 发行版重跑并保留上述结果。
+
+### 真实桌面 Chrome
+
+- 自动回归 **38 个不同用例全部通过**：`questionDrafts.spec.ts` 8（6 个生产 UI + 2 个公开接口恢复补充）、`worksEditor.spec.ts` 15、`hybridDeployment.spec.ts` 3、`workspaceReferences.spec.ts` 12；真实 Chrome、IndexedDB、生产宿主、HTTP、原生 PostgreSQL 与文件资源。
+- 首次批次 `questionDrafts` 25/26：课程文字鼠标拖选只选中“完成”两字。测试辅助函数改为等待字体与几何稳定、校验原生选区并重试真实指针拖选，断言未放宽；复跑 26/26。`workspaceReferences` 首次 11/12：macOS 上 Monaco 替换快捷键为 `Meta+Alt+F`，原 `Meta+H` 被系统当作隐藏；改用正确快捷键后 12/12。
+- 学校直连手动流程：真实课程文字与任务要求经“询问 Agent”关闭态进入引用，对话打开时新选择直接加入；问题与两条引用在刷新后恢复，服务端读回固定来源、范围和副本；发送禁用；教师私有材料不出现在页面或草稿响应。撤销课程资格后草稿与活动读取均 403，重新授予后原问题与两条引用恢复。
+- 已安装客户端手动流程：在绑定本机 learning-data owner 的学校空间组织问题与引用，草稿仅从设备 owner 读取（200），学校直读同名活动为 403；撤销客户端连接后设备与学校读取均 403，学校空间消失。
+- 响应式：浅色、深色和 420×900 窄窗口下引用与问题输入可读可操作，截图见证据。
+- 物理系统中文输入法：使用本机豆包拼音（`com.bytedance.inputmethod.doubaoime.pinyin`）经 System Events 物理键击，问题框得到 `你好世界\n开始结束中文`，代码文件得到 `你好世开始界\n结束中文`；覆盖组合输入、候选提交、Return 换行、焦点在文件名与输入区之间切换、Meta 光标移动，发送始终不可用，未用 `fill`/`insertText` 代替该结论。Apple SCIM 拼音未被实际启用，未复测。
+
+### 证据与限制
+
+- [工程、原生与全量测试结果](evidence/wp02-draft-mac-engineering.json)
+- [学校直连与客户端手动结果](evidence/wp02-draft-mac-manual.json)
+- [物理输入法结果](evidence/wp02-draft-mac-system-ime.json)
+- 截图：[课程草稿](evidence/wp02-draft-mac-chrome-course.png)、[代码草稿](evidence/wp02-draft-mac-chrome-code.png)、[草稿分歧](evidence/wp02-draft-mac-chrome-conflict.png)、[学校直连浅色](evidence/wp02-draft-mac-school-light.png)、[深色](evidence/wp02-draft-mac-school-dark.png)、[窄窗口](evidence/wp02-draft-mac-school-narrow.png)、[客户端草稿](evidence/wp02-draft-mac-client.png)、[系统输入法问题](evidence/wp02-draft-mac-system-ime-question.png)、[系统输入法代码](evidence/wp02-draft-mac-system-ime-code.png)
+- 同机两个产品进程不证明真实跨机部署或 SSH 接管；该范围仍归 #154。未评估教学效果。全量测试为红色，未执行/跳过项不计为通过。

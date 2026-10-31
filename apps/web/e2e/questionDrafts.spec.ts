@@ -58,20 +58,34 @@ const openComposer = async (page: Page) => {
 async function selectText(page: Page, label: string, text: string) {
   const source = page.getByLabel(label, { exact: true })
   await source.evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
-  const points = await source.evaluate((el, text) => {
-    const node = el.firstChild!, start = node.textContent!.indexOf(text), end = start + text.length
-    if (start < 0) throw new Error('Text not present')
-    const first = document.createRange(), last = document.createRange()
-    first.setStart(node, start); first.setEnd(node, start + 1)
-    last.setStart(node, end - 1); last.setEnd(node, end)
-    const a = first.getBoundingClientRect(), b = last.getBoundingClientRect()
-    return { x1: a.left + .2, y1: a.top + a.height / 2, x2: b.right - .2, y2: b.top + b.height / 2 }
-  }, text)
-  await page.mouse.click(points.x1, points.y1)
-  await page.mouse.move(points.x1, points.y1)
-  await page.mouse.down()
-  await page.mouse.move(points.x2, points.y2, { steps: 12 })
-  await page.mouse.up()
+  await page.evaluate(() => document.fonts.ready)
+  let points!: { x1: number; y1: number; x2: number; y2: number }
+  let previous = '', stable = 0
+  await expect.poll(async () => {
+    points = await source.evaluate((el, text) => {
+      const node = el.firstChild!, start = node.textContent!.indexOf(text), end = start + text.length
+      if (start < 0) throw new Error('Text not present')
+      const first = document.createRange(), last = document.createRange()
+      first.setStart(node, start); first.setEnd(node, start + 1)
+      last.setStart(node, end - 1); last.setEnd(node, end)
+      const a = first.getBoundingClientRect(), b = last.getBoundingClientRect()
+      return { x1: a.left + .2, y1: a.top + a.height / 2, x2: b.right - .2, y2: b.top + b.height / 2 }
+    }, text)
+    const signature = JSON.stringify(points)
+    stable = signature === previous ? stable + 1 : 0
+    previous = signature
+    return stable >= 2
+  }, { timeout: 5000 }).toBe(true)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.mouse.click(points.x1, points.y1)
+    await page.mouse.move(points.x1, points.y1)
+    await page.mouse.down()
+    await page.mouse.move(points.x2, points.y2, { steps: 16 })
+    await page.mouse.up()
+    if ((await page.evaluate(() => window.getSelection()?.toString() ?? '')).includes(text)) return
+    await page.waitForTimeout(100)
+  }
+  throw new Error('Real pointer selection did not select the requested text.')
 }
 async function selectAllCode(page: Page) {
   await page.locator('.monaco-editor').scrollIntoViewIfNeeded()

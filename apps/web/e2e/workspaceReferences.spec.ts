@@ -288,7 +288,9 @@ for (const widget of ['find', 'replace'] as const) test(`编辑器 ${widget} 输
   await expect(refs(page)).toHaveCount(0)
   await page.locator('.monaco-editor textarea.inputarea').focus()
   const modifier = await page.evaluate(() => navigator.userAgent.includes('Macintosh') ? 'Meta' : 'Control')
-  await page.keyboard.press(widget === 'find' ? `${modifier}+f` : `${modifier}+h`)
+  // Monaco uses Cmd+Option+F on macOS because Cmd+H is the system Hide shortcut.
+  const shortcut = widget === 'find' ? `${modifier}+f` : modifier === 'Meta' ? 'Meta+Alt+f' : `${modifier}+h`
+  await page.keyboard.press(shortcut)
   const input = page.locator(widget === 'find' ? '.find-widget .find-part textarea' : '.find-widget .replace-part textarea')
   await expect(input).toBeVisible()
   await input.fill('widget-only-query')

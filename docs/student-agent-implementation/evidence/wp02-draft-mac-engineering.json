@@ -1,0 +1,419 @@
+{
+  "recordedAt": "2026-10-31T15:31:51.739059+00:00",
+  "issue": 152,
+  "ticket": 155,
+  "branch": "codex/wp02",
+  "acceptanceCodeCommit": "5c5a4acc9053fbde0a7ab8e1f578901d4ca94705",
+  "fixedAcceptancePoint": "ca1079f2fdc26a245c9957d1d78a4d7352c6b7ca",
+  "note": "Acceptance ran on a successor of ca1079f; ca1079f..HEAD only adds the owner-verification handoff docs, a connection-test teardown fix and a fixture teardown fix. Two e2e stability fixes were made during this Mac acceptance and are recorded separately.",
+  "platform": "macOS 27.2 (26B123), Apple Silicon arm64",
+  "node": "24.21.0 (packaged)",
+  "postgres": "18.6 (packaged darwin-arm64)",
+  "chrome": {
+    "draftCommand": "XUNJIE_XJ_DEV_URL=isolated-native-product XUNJIE_E2E_BROWSER_CHANNEL=chrome npm exec -w @xunjie/web -- playwright test questionDrafts.spec.ts worksEditor.spec.ts hybridDeployment.spec.ts --headed --workers=1",
+    "referencesCommand": "XUNJIE_E2E_BROWSER_CHANNEL=chrome npm exec -w @xunjie/web -- playwright test workspaceReferences.spec.ts --headed --workers=1",
+    "questionDrafts": {
+      "passed": 8,
+      "failed": 0,
+      "cases": [
+        {
+          "name": "course text and requirements stay as fixed references through collapse, reload and activity switch",
+          "status": "passed",
+          "durationMs": 6050
+        },
+        {
+          "name": "code reference keeps original copy after rename and edit, and survives file deletion and reload",
+          "status": "passed",
+          "durationMs": 2624
+        },
+        {
+          "name": "an existing reliable workspace database upgrades without losing its work",
+          "status": "passed",
+          "durationMs": 307
+        },
+        {
+          "name": "a restored draft resumes periodic sync after authentication recovers",
+          "status": "passed",
+          "durationMs": 2326
+        },
+        {
+          "name": "a local conflict candidate retains an unsynchronized code basis across reload",
+          "status": "passed",
+          "durationMs": 363
+        },
+        {
+          "name": "local storage refusal keeps memory and retries automatically",
+          "status": "passed",
+          "durationMs": 1418
+        },
+        {
+          "name": "two actual tabs preserve both local drafts until an explicit choice",
+          "status": "passed",
+          "durationMs": 904
+        },
+        {
+          "name": "another client conflict keeps both drafts and a late acknowledgement never settles later input",
+          "status": "passed",
+          "durationMs": 4014
+        }
+      ]
+    },
+    "worksEditor": {
+      "passed": 15,
+      "failed": 0,
+      "cases": [
+        {
+          "name": "course catalog returns after activity restoration races with discovery",
+          "status": "passed",
+          "durationMs": 362
+        },
+        {
+          "name": "actual editor automatically protects and synchronizes Chinese original text across reload",
+          "status": "passed",
+          "durationMs": 2494
+        },
+        {
+          "name": "an opened activity survives API disconnection and reload, then continues its original pending sync",
+          "status": "passed",
+          "durationMs": 7081
+        },
+        {
+          "name": "late and lost confirmations never settle later editor content",
+          "status": "passed",
+          "durationMs": 7353
+        },
+        {
+          "name": "failed navigation leaves the editor able to continue automatic sync",
+          "status": "passed",
+          "durationMs": 2289
+        },
+        {
+          "name": "reopening an activity uses the latest body from another actual tab, not a retained editor model",
+          "status": "passed",
+          "durationMs": 6377
+        },
+        {
+          "name": "a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically",
+          "status": "passed",
+          "durationMs": 4595
+        },
+        {
+          "name": "two actual tabs preserve both local edits under simultaneous IndexedDB competition",
+          "status": "passed",
+          "durationMs": 2316
+        },
+        {
+          "name": "a remote conflict comparison includes input made while the original service read was delayed",
+          "status": "passed",
+          "durationMs": 3819
+        },
+        {
+          "name": "continuous input advances durable local and remote content before the student stops typing",
+          "status": "passed",
+          "durationMs": 4371
+        },
+        {
+          "name": "the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing",
+          "status": "passed",
+          "durationMs": 1363
+        },
+        {
+          "name": "successful navigation protects input entered immediately before its delayed response",
+          "status": "passed",
+          "durationMs": 593
+        },
+        {
+          "name": "initial storage refusal retries automatically after the browser permits transactions again",
+          "status": "passed",
+          "durationMs": 507
+        },
+        {
+          "name": "confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 1612
+        },
+        {
+          "name": "confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 1631
+        }
+      ]
+    },
+    "hybridDeployment": {
+      "passed": 3,
+      "failed": 0,
+      "cases": [
+        {
+          "name": "personal: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 1667
+        },
+        {
+          "name": "school-shared: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 1759
+        },
+        {
+          "name": "hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 4128
+        }
+      ]
+    },
+    "workspaceReferences": {
+      "passed": 12,
+      "failed": 0,
+      "cases": [
+        "e2e/workspaceReferences.spec.ts:68:1 › 关闭/打开两条路径：真实选择、焦点、去重、移除不复活、多引用和显式发送",
+        "e2e/workspaceReferences.spec.ts:111:1 › Monaco 原文保留 CRLF/emoji，键盘入口、来源编辑与定位不触发新引用",
+        "e2e/workspaceReferences.spec.ts:144:1 › 来源身份与工作区隔离，失效反馈和未登记控件排除",
+        "e2e/workspaceReferences.spec.ts:175:1 › 异步拒绝、接受期间新草稿与来源变化均不误清；中文组合输入不发送",
+        "e2e/workspaceReferences.spec.ts:206:1 › 窄窗口、滚动和减少动效仍能操作选区入口与引用",
+        "e2e/workspaceReferences.spec.ts:233:1 › 代码鼠标选区与普通文字可混合引用；移除后焦点通知不复活",
+        "e2e/workspaceReferences.spec.ts:264:1 › 缩放后工具条限制在可见视口，Escape 可撤销入口",
+        "e2e/workspaceReferences.spec.ts:282:52 › 编辑器 find 输入内全选不复活已移除代码引用",
+        "e2e/workspaceReferences.spec.ts:282:52 › 编辑器 replace 输入内全选不复活已移除代码引用",
+        "e2e/workspaceReferences.spec.ts:317:1 › 长代码全选后滚到中段，可见选区仍保留询问入口",
+        "e2e/workspaceReferences.spec.ts:342:33 › 1 行超宽代码全选后横向滚到中段，可见选区仍保留询问入口",
+        "e2e/workspaceReferences.spec.ts:342:33 › 3 行超宽代码全选后横向滚到中段，可见选区仍保留询问入口"
+      ]
+    },
+    "uniqueCasesPassed": 38,
+    "backend": "production product host, real Chrome, real IndexedDB, real HTTP, native PostgreSQL 18.6 and filesystem resources",
+    "firstRun": {
+      "questionDrafts": "25/26 on the first batch; the first course-text pointer selection selected only two characters. The helper was stabilized with document fonts, stable geometry and a verified real-pointer retry; assertions unchanged. Rerun 26/26.",
+      "workspaceReferences": "11/12; Monaco replace used Meta+H, which macOS treats as Hide. The test now uses Meta+Alt+F on macOS; assertions unchanged. Rerun 12/12."
+    },
+    "testHarnessFixes": [
+      "apps/web/e2e/questionDrafts.spec.ts: wait for fonts and stable geometry, verify the native selection and retry the real pointer drag",
+      "apps/web/e2e/workspaceReferences.spec.ts: use the macOS Monaco replace shortcut Meta+Alt+F"
+    ]
+  },
+  "productPackage": "/Users/robertwu/XunJie-acceptance/wp02-5c5a4ac/product-darwin-arm64-r1",
+  "productDistributionSha256": "0e06af82fd9809e6a46a6ff52781d06bac23ff76c5fd75e6916651f36f4acd32",
+  "gates": {
+    "npm ci": "passed",
+    "npm run typecheck": "passed",
+    "npm run build": "passed",
+    "npm run check:contracts:browser": "passed: 9 public exports, including @xunjie/contracts/question-drafts",
+    "npm run check:docs": "passed: 162 Markdown files, 1194 local targets, 0 failures"
+  },
+  "native": {
+    "command": "node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs packages/product-runtime/test/hybrid-learning.runtime.test.mjs packages/product-runtime/test/school-client.test.mjs apps/server/tests/learning-entry.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs",
+    "environment": "XUNJIE_PRODUCT_POSTGRES_BIN and XUNJIE_PRODUCT_TEST_PACKAGE point at the complete product package; real PostgreSQL 18.6 and filesystem resources",
+    "tests": 19,
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "breakdown": {
+      "courseAndDraft": {
+        "passed": 7,
+        "cases": [
+          "course releases pin versions, project only open material and follow current eligibility",
+          "a deleted work accepts its selected historical basis without reviving the head",
+          "work reference bases keep their identity after a display-name change",
+          "course activities resume across prepared, confirmed and committed stages with one stable activity",
+          "existing owners upgrade to course schema without losing autonomous state",
+          "installed client forwards course discovery, materials and pinned activities under the school grant",
+          "question drafts fix course and work references across edits, deletion and eligibility"
+        ]
+      },
+      "identity": {
+        "passed": 8,
+        "cases": [
+          "device profiles cannot expose an anonymous personal identity on a shared listener",
+          "school login is real and membership revocation invalidates existing sessions",
+          "independent learning owner creates one course-free activity and rejects other members",
+          "client proof grants are bound to the school member and independently revocable",
+          "production daemon exposes real learning APIs and reopens activities after restart",
+          "one installed client switches personal and school using actual school-page approval",
+          "both production owners restore the original activity and fence old school sessions"
+        ]
+      },
+      "hybridOwner": {
+        "passed": 1,
+        "case": "a managed school binding stores school activity works only in its installed client owner"
+      },
+      "cliRecovery": {
+        "passed": 1,
+        "case": "the normal CLI restores all learning owners and reaches schema upgrade validation"
+      },
+      "schoolProxy": {
+        "passed": 2,
+        "cases": [
+          "revoking a school connection wins over an already exchanged but delayed confirmation",
+          "installed client forwards the course surface and rejects malformed or foreign responses"
+        ]
+      }
+    },
+    "covered": [
+      "fixed source, range and copy; private isolation; original request conflict; deleted source with historical revision; current eligibility; cross-subject/activity rejection; upgrade preserving old activity/work",
+      "unsynchronized A selected, work deleted first, draft registered later; head stays deleted and the old object identity does not revive",
+      "reference registered, rename, another range of the same content; display name does not change content identity and the pre-rename receipt verifies",
+      "CLI full backup, isolated restore and takeover retain question, ordered references, copies, work basis, original request receipt and historical revisionId; concurrent business writes at the held boundary are covered by the existing backup regression",
+      "learning-data lineage v1/v2/v3/v4; old v2 works upgrade preserves text and activity; IndexedDB v1 to v2 is non-destructive"
+    ]
+  },
+  "manual": {
+    "recordedAt": "2026-10-31T15:20:19.296Z",
+    "issue": 152,
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v24.21.0",
+    "postgres": "18.6",
+    "chrome": "installed Google Chrome",
+    "productPackage": "/Users/robertwu/XunJie-acceptance/wp02-5c5a4ac/product-darwin-arm64-r1",
+    "school": {
+      "state": "ready",
+      "endpoint": "http://127.0.0.1:60667",
+      "environmentId": "ecc27708-dde4-4ed4-98b4-949c324bcb9d"
+    },
+    "device": {
+      "state": "ready",
+      "endpoint": "http://127.0.0.1:60669",
+      "environmentId": "690cf4a1-ca14-4c24-9100-60b4fc663a54"
+    },
+    "schoolDirect": {
+      "activityId": "6c7ed5ab-09b7-45e7-9fca-cd1784927bad",
+      "draftId": "151a0e2a-04f3-4bbd-92b9-d2130a9f56b4",
+      "revision": 1,
+      "question": "直连草稿验收：为什么需要边界输入？",
+      "references": [
+        {
+          "kind": "course-material",
+          "copy": "完成 4 位加减与逻辑运算。",
+          "copyDigest": "5e72a41966f985f8e39c894d3f9ec48c5651b697ad8ec912b01d55ddcb5c46ac",
+          "range": {
+            "kind": "text",
+            "start": 11,
+            "end": 25
+          }
+        },
+        {
+          "kind": "course-field",
+          "copy": "实现四种运算",
+          "copyDigest": "99c8a6725fe8454de08a84b16de2e0d910489ef28082ad855e01583faf3aa56b",
+          "range": {
+            "kind": "text",
+            "start": 0,
+            "end": 6
+          }
+        }
+      ],
+      "sendDisabled": true,
+      "privateMaterialVisible": false,
+      "reloadRestored": true,
+      "afterRevoke": {
+        "draftStatus": 403,
+        "activityStatus": 403
+      },
+      "afterRegrant": {
+        "question": "直连草稿验收：为什么需要边界输入？",
+        "references": 2
+      }
+    },
+    "clientHybrid": {
+      "hybridKey": "school:fa751fe7-faa8-4534-80b5-e88fcea9284f",
+      "activityId": "bcb52905-be66-45d2-a057-f89045056893",
+      "draftId": "faf24b35-9d47-4294-a6f6-233977aa6c39",
+      "owner": "device learning-data",
+      "deviceDraftStatus": 200,
+      "schoolDirectDraftStatus": 403,
+      "question": "客户端草稿验收：引用应保存在本机 owner。",
+      "references": [
+        "完成 4 位加减与逻辑运算。"
+      ],
+      "afterRevoke": {
+        "deviceDraftStatus": 403,
+        "schoolDraftStatus": 403,
+        "schoolSpaceGone": true
+      }
+    },
+    "responsive": {
+      "dark": {
+        "references": 2,
+        "questionVisible": true
+      },
+      "narrow": {
+        "viewport": "420x900",
+        "references": 2,
+        "questionBox": {
+          "x": 48,
+          "y": 647.6875,
+          "width": 324,
+          "height": 120
+        }
+      }
+    },
+    "limitations": [
+      "Two native product daemons on one Mac; this is not cross-machine or SSH takeover evidence.",
+      "Teaching effectiveness is not evaluated."
+    ]
+  },
+  "fullTest": {
+    "command": "npm test (full Node 24.21.0 distribution with npm on PATH; XUNJIE_PRODUCT_POSTGRES_BIN points at the packaged PostgreSQL 18.6 bin)",
+    "exitCode": 1,
+    "passed": false,
+    "groups": {
+      "checks": {
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0
+      },
+      "productRuntime": {
+        "passed": 122,
+        "failed": 0,
+        "skipped": 2
+      },
+      "storage": {
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0
+      },
+      "server": {
+        "passed": 643,
+        "failed": 0,
+        "skipped": 16
+      },
+      "tools": {
+        "passed": 299,
+        "failed": 5,
+        "skipped": 1
+      },
+      "web": {
+        "passed": 688,
+        "failed": 0
+      }
+    },
+    "failures": [
+      "tools/xj-dev/tests/env-removal.test.mjs: real CLI down/delete/rebuild ... (parent)",
+      "tools/xj-dev/tests/env-removal.test.mjs: up and another delete cannot enter after data removal while the deleting CLI still owns its mutex",
+      "tools/xj-dev/tests/env-removal.test.mjs: only owned payload is deleted; shared material, source, other environment and package evidence survive",
+      "tools/xj-dev/tests/env-removal.test.mjs: fresh up recreates the fixed baseline and uses the very same SQLite mutex",
+      "tools/xj-dev/tests/env-removal.test.mjs: death during deletion releases OS locks and an explicit retry completes the recorded operation"
+    ],
+    "note": "The five failures are macOS process/delete-lock semantics in tools/xj-dev, not files changed by #152. The full run is recorded as red and is not treated as a green gate. First full run with the packaged subset Node failed the tools group with NPM_MISSING; the rerun used a complete Node 24.21.0 distribution.",
+    "rawLog": ".verification/152-mac/full-test-fullnode.log (local only, not committed)"
+  },
+  "notExecuted": [
+    "teaching effectiveness",
+    "true cross-machine hybrid deployment and SSH takeover (owned by #154)"
+  ],
+  "limitations": [
+    "Two native product daemons on one Mac; this is not cross-machine evidence.",
+    "No teaching-effectiveness conclusion."
+  ],
+  "physicalIme": {
+    "status": "passed",
+    "evidenceFile": "docs/student-agent-implementation/evidence/wp02-draft-mac-system-ime.json",
+    "method": "OS-level System Events key events after activating the Playwright-launched Chrome process and returning focus from the omnibox with Escape; fill/insertText were not used for the conclusion.",
+    "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "question": "你好世界\\n开始结束中文",
+    "code": "你好世开始界\\n结束中文",
+    "sendDisabled": true,
+    "focusSwitch": true,
+    "metaCursor": true,
+    "newline": true,
+    "limitation": "Doubao Pinyin was the active installed input source; Apple SCIM Pinyin was not exercised. Teaching effectiveness is not evaluated."
+  }
+}
