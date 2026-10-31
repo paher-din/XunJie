@@ -56,6 +56,44 @@ test.afterAll(async () => {
   }, null, 2))
 })
 
+test('course catalog returns after activity restoration races with discovery', async ({ page }) => {
+  const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
+  const control = await resolveCredential(runtimeRoot, 'control');
+  const manage = async (path: string, body: unknown) => {
+    const response = await fetch(new URL('/api/learning/manage/' + path, endpoint), { method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + control }, body: JSON.stringify(body) });
+    expect(response.status).toBe(200);
+    return response.json();
+  };
+  await manage('course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '课程目录恢复' },
+    task: { taskId, title: '固定版本任务', summary: '' }, release: { releaseId, objectives: ['保持课程入口可用'],
+      requirements: '返回活动列表后可以继续选择课程。', materials: [], starterWorks: [], capabilities: [] }, resources: [] });
+  const password = randomUUID();
+  const loginName = 'catalog-session-' + randomUUID();
+  const member = await manage('members', { requestId: randomUUID(), loginName, password });
+  await manage('course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true });
+  const login = await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } });
+  expect(login.status()).toBe(200);
+  const created = await page.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
+  expect(created.status()).toBe(200);
+  const activity = await created.json();
+  let releaseDiscovery!: () => void;
+  const held = new Promise<void>(resolve => { releaseDiscovery = resolve });
+  let first = true;
+  await page.route('**/api/learning/courses', async route => {
+    const response = await route.fetch();
+    if (first) { first = false; await held }
+    await route.fulfill({ response });
+  });
+  try {
+    await page.goto(endpoint + '/?space=school&activity=' + activity.activityId);
+    await expect(page.locator('#activity-title')).toHaveText('固定版本任务');
+    releaseDiscovery();
+    await page.getByRole('button', { name: '返回活动列表', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '课程目录恢复', exact: true })).toBeVisible();
+  } finally { releaseDiscovery() }
+});
+
 test('actual editor automatically protects and synchronizes Chinese original text across reload', async ({ page }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
   await page.getByLabel('文件名', { exact: true }).fill('递归.c')

@@ -10,7 +10,7 @@
 | --- | --- |
 | 公共契约 | 新增 [`@xunjie/contracts/courses`](../../packages/contracts/src/courses.ts)：课程/任务/发布摘要、学生发布投影、材料内容、导入清单、资格输入、课程活动输入/绑定与跨 owner authority 类型；学习活动 wire 增加可选 `course` 固定绑定，旧活动无需迁移即可解析 |
 | 空间/课程 owner | 新增 [`courses`](../../packages/learning-space/src/courses/index.ts)：迁移 v5–v6（课程、任务、发布、材料、资格、关联、登记回执）、清单与资源校验、不可变发布登记、学生投影、材料读取、资格授予/撤销、`prepare/confirm/bindingResult/authorize`、领域校验；`schoolSpace()` 与课程模块共享同一 owner/schema |
-| 学习数据 owner | 迁移 v2（协调状态与固定绑定）和 `createCourse/courseResult`：`register -> prepare -> 持久 pending -> confirm -> 可见提交`，重复请求返回同一活动，阶段中断按原身份续接；读取、列出、重开、回执均重新核验当前课程资格和原版本 |
+| 学习数据 owner | 迁移 v3（协调状态与固定绑定，整合后接在 #151 的 v2 作品迁移之后）和 `createCourse/courseResult`：`register -> prepare -> 持久 pending -> confirm -> 可见提交`，重复请求返回同一活动，阶段中断按原身份续接；读取、列出、重开、回执均重新核验当前课程资格和原版本 |
 | HTTP | `/api/learning/` 新增 `GET courses`、`GET releases/:id`、`GET releases/:id/materials/:materialId`、`POST course-activities`、`GET course-activity-results/:requestId`；管理边界新增 `manage/course-import`、`manage/course-access`、`manage/course-result` |
 | 运行时 | 空间/课程 owner 使用 `spaceCourseMigrations`；课程校验接入维护参与者与恢复目标；学习数据 owner 注入课程 authority；课程资源随 `space-course` 资源根参与备份/恢复 |
 | CLI | `xunjie course-import --file <清单.json>`、`xunjie course-access --file`、`xunjie course-result --file`；清单资源按材料 `path` 从清单目录读取，拒绝越界、摘要或长度不一致 |
@@ -95,3 +95,10 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 ## 分支归并（2026-10-31）
 
 按负责人要求将 #150 的提交归并回 `codex/wp02`，保留 #151 既有提交；不合并 main。合并时保留 #151 的 learning-data v2 作品迁移，将课程协调迁移追加为 v3；原独立课程分支的数据库迁移谱系与此不同，旧证据只证明原验收提交。整合结果须重新验证，不能据此宣称 Mac 已通过。
+
+归并提交 `dd2300a` 同时保留 `c1720e1`（#150）和 `c3308ac`（原 wp02/#151）为祖先。课程与作品共用生产活动入口、课程授权、可靠工作区、HTTP 与学校代理。验收新增课程作品换版保持/撤权拒绝，以及原 v2 作品库升级到 v3 后原活动与作品保留。
+
+- 全仓 `typecheck`、`build`、8 项公共契约浏览器导出检查通过；本次 4 文档、79 本地目标无断链。
+- Node 24.21.0、Windows 11 x64、真实 PostgreSQL 18.6：课程 4/4、CLI 恢复 1/1、学校代理 2/2、作品持久化与备份恢复 1/1，共 8/8 通过，0 跳过。
+- 本机桌面 Chrome 有头运行原 `worksEditor.spec.ts` 14/14 通过。整合复审另发现活动恢复先于课程目录返回时目录永久加载；新增真实服务回归先复现失败，修复为离开活动后重新加载列表，重建 runtime 并复跑新增用例 1/1 通过，Web 类型检查通过。两轴复审无剩余发现。
+- 整合后的 `npm test` 全量套件、Apple Silicon Mac 和教学效果未执行；上文旧提交的结果不冒充此次重新执行。产品运行测试只使用仓库外隔离临时环境，没有迁移已有用户环境。

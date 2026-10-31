@@ -364,7 +364,10 @@ export function LearningPage() {
     </section>}
     {identity && <>
       {opened ? <section aria-labelledby="activity-title">
-        <button type="button" onClick={() => void action(async () => { await workspace.current?.leave(); rememberActivity(null); rememberMaterial(null) })}>返回活动列表</button>
+        <button type="button" onClick={() => void action(async () => {
+          await workspace.current?.leave(); rememberActivity(null); rememberMaterial(null)
+          setReload(value => value + 1)
+        })}>返回活动列表</button>
         <h2 id="activity-title">{opened.course ? opened.course.taskTitle : opened.goal || opened.question || '资料学习'}</h2>
         {opened.course ? <>
           <p className="detail">{opened.course.courseName} · 固定版本 {opened.course.releaseId.slice(0, 8)} · 依据摘要 {opened.course.contentDigest.slice(0, 12)}</p>
