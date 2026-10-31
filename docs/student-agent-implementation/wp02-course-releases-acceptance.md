@@ -63,7 +63,7 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 | CLI 备份恢复 | `node --test --test-concurrency=1 packages/product-runtime/test/learning-cli.runtime.test.mjs` | 1/1 通过：课程发布/材料/chrome 不可见项与自主活动随备份恢复，接管后重开 |
 | 学校客户端代理 | `node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs` | 2/2 通过：课程路由转发、响应 schema 校验、伪造身份拒绝、缓存状态撤权重放拒绝 |
 | 既有 WP02 回归 | `node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs` | 8/8 通过：个人/学校身份、客户端授权、活动重开、恢复与旧会话隔离 |
-| 全量本地套件 | `npm test` | 退出码 1；失败集中在既有的 Windows 环境项：product-runtime 连接/恢复测试超时、symlink 用例 `EPERM`、server 的 `LOCAL_SOCKET_CONFLICT`，均位于本票未修改模块；web 58 个文件/688 项通过，本票改动模块没有失败。原始日志 `.verification/local-suite-2.log`（本机，未提交） |
+| 全量本地套件 | `npm test` | 退出码 1；失败集中在既有的 Windows 环境项：product-runtime 连接/恢复测试超时、symlink 用例 `EPERM`、server 的 `LOCAL_SOCKET_CONFLICT`，均位于本票未修改模块；web 58 个文件/688 项通过，本票改动模块没有失败。原始日志 `.verification/local-suite-2.log`（本机，未提交）。二次审查修正后未重跑全量 `npm test`；已重跑 typecheck/build/契约/文档检查、school-client 2/2、课程原生 4/4、CLI 1/1、#149 8/8 与两种 Chrome 流程 |
 
 课程原生测试覆盖：重复登记/冲突（含无本地资源重试）、跨版本材料复用、私有材料与伪造 ID、v1/v2 固定、重复活动请求、跨 owner prepare/confirm/提交中断续接、撤权/撤成员、材料删除/损坏、旧 schema 升级、资源随备份恢复。学校客户端测试另覆盖课程路由转发、响应 schema 校验、伪造身份拒绝与撤权后缓存状态重放拒绝。
 
