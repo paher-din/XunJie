@@ -1,6 +1,6 @@
 # WP02：固定引用与问题草稿恢复实施与验收记录
 
-日期：2026-10-31（Asia/Shanghai）。对应[固定引用与问题草稿恢复 #152](https://github.com/paher-din/XunJie/issues/152)，方案见[实施方案](specs/wp02-fixed-references-and-question-drafts.md)。本轮在 `codex/wp02` 实施，未新建分支、未合并 `main`。交接实现提交 `26f5653`；整合远程 #154 并修复审查问题为 `9668bc5`，就绪竞态修复为 `a0c1c09`，最终验收固定提交为 `d4cbaf48ea5e1fbc435b464798bd059c7a6f2139`（含鼠标交互测试修正）。本票保持开放，后续验收与执行范围见本文交接节。
+日期：2026-10-31（Asia/Shanghai）。对应[固定引用与问题草稿恢复 #152](https://github.com/paher-din/XunJie/issues/152)，方案见[实施方案](specs/wp02-fixed-references-and-question-drafts.md)。本轮在 `codex/wp02` 实施，未新建分支、未合并 `main`。交接实现为 `26f5653`；整合 #154 与审查修复为 `9668bc5`，就绪竞态为 `a0c1c09`，鼠标测试修正为 `d4cbaf4`。随后保留远程大材料校验修复 `37122b4`，最终固定验收版本为 `ca1079f2fdc26a245c9957d1d78a4d7352c6b7ca`；分版本检查范围见末节。本票保持开放。
 
 **范围：** 课程文字/要求与作品代码选取、固定引用（稳定来源对象、不可变内容身份、类型化范围、原文副本）、可靠问题草稿（IndexedDB 与学习数据 owner）、刷新/活动切换恢复、来源变化与定位、跨客户端/双标签分歧、迟到确认、授权与私有隔离、迁移维护恢复。真实发送、模型调用、待发状态机、非文本组件引用和教师交付不在本轮。
 
@@ -11,7 +11,7 @@
 | 公共契约 | 新增 [`@xunjie/contracts/question-drafts`](../../packages/contracts/src/question-drafts.ts)：版本化草稿视图、同步输入与回执、来源联合（本人作品 / 课程材料 / 课程要求）、`text`/`code` 类型化 UTF-16 半开范围、选中副本与摘要、依据字段；未知来源类型与组件范围被严格拒绝。`courseReferenceTextSourceSchema` 与 `CourseReferenceAuthority` 增加课程来源只读核验 |
 | 作品 owner | [`works.registerBasis`](../../packages/learning-space/src/learning-data/works.ts) 在**不推进 head** 的前提下登记选择时的对象、`contentId`、正文与资源引用；内容可早于远端 head。历史内容在文件重命名、替换、删除后仍按原对象与资源保留 |
 | 课程 owner | [`referenceText`](../../packages/learning-space/src/courses/index.ts) 每次核验当前成员、课程资格与固定发布，返回开放 UTF-8 文本材料或发布要求；材料摘要/媒体类型与既定发布一致，私有材料统一不可见 |
-| 学习数据 owner | 迁移 v4（草稿 head、不可变修订、回执）与 [`createQuestionDrafts`](../../packages/learning-space/src/learning-data/drafts.ts)：按活动稳定 `draftId`、单调版本 CAS、稳定请求身份、原文范围/副本核验、按 `revisionId` 读取历史修订、作品内容保留关系、领域校验；不写课程表、不共享可写事务 |
+| 学习数据 owner | 迁移 v4（草稿 head、不可变修订、回执）与 [`createQuestionDrafts`](../../packages/learning-space/src/learning-data/drafts.ts)：按活动稳定 `draftId`、单调版本 CAS、稳定请求身份、原文范围/副本核验、按 `revisionId` 读取历史修订、作品内容保留关系、领域校验；课程选区最终经 owner `verifyReference` 核验，不传整份大材料；不写课程表、不共享可写事务 |
 | HTTP | `/api/learning/` 新增 `GET/POST drafts/:activityId`、`GET drafts/:activityId/receipts/:requestId`、`GET drafts/:activityId/revisions/:revisionId`；沿用真实会话/连接身份与预期主体检查。学校客户端代理加入草稿路由和响应 schema 校验 |
 | 可靠工作区 | IndexedDB `xunjie-reliable-works-v1` 非破坏升级到 v2，新增 `drafts`/`draftCandidates`；[`ReliableQuestionDraft`](../../apps/web/src/reliable-workspace/draft.ts) 复用 250ms 本机保护、1000ms 网络检查、稳定 pending、迟到确认保护、双标签候选、远端分歧与离开保护。旧作品记录保持可读 |
 | 生产页面 | [ActivityReferences](../../apps/web/src/runtime/ActivityReferences.tsx) 把同一活动的要求、开放文本材料与 Monaco 编辑器登记为来源；[DraftReferencesProvider](../../apps/web/src/components/workspace/references/DraftReferences.tsx) 以可靠草稿为唯一可变权威。输入区关闭时“询问 Agent”，打开时新选择直接加入；收起、刷新、活动/空间切换后恢复。发送按钮明确禁用并说明真实 Agent 尚未接入 |
@@ -81,7 +81,7 @@
 
 ## 未执行、限制与交接
 
-- **Apple Silicon Mac：** 本轮未执行。固定验收提交为 `d4cbaf48ea5e1fbc435b464798bd059c7a6f2139`；23 项待执行清单、真实命令及证据要求已登记到 [#155](https://github.com/paher-din/XunJie/issues/155)，涵盖类型检查/构建、课程/草稿 PG、学校代理、本机 owner 混合路径、CLI 恢复、生产 Chrome 和公共接口恢复回归及既有作品/选区回归。登记不代表已通过。
+- **Apple Silicon Mac：** 本轮未执行。固定验收提交为 `ca1079f2fdc26a245c9957d1d78a4d7352c6b7ca`；23 项待执行清单、真实命令及证据要求统一登记到 [#155](https://github.com/paher-din/XunJie/issues/155)，涵盖类型检查/构建、课程/草稿 PG、学校代理、本机 owner 混合路径、CLI 恢复、生产 Chrome 和公共接口恢复回归及既有作品/选区回归。登记不代表已通过。
 - **物理中文输入法：** 生产草稿输入区沿用既有组合输入判断；本轮 Windows Chrome 自动验收未使用物理系统输入法，Mac 也未复测。
 - **全量 `npm test`：** 已执行一次；退出码 1，失败集中在既有 Windows 环境项（连接/恢复/接管、远程环境生命周期、symlink 与路径校验），Web 688 项全通过，本票相关套件全部通过。该次全量运行早于最后两个草稿稳定性修正；最终代码已重跑本票全部定向套件。不能把该退出码写成全量通过；原始日志在本机 `/tmp/xj-full-test.log`，未提交。
 - **公开扩展：** 只交付文本、课程要求与代码。非文本组件、PDF/图片/外部页面、真实 Agent 发送、待发意图和接收回执由后续票承接。
@@ -112,3 +112,11 @@
 - 原选区套件首次 11/12，鼠标用例稳定复现。DOM 命中与事件诊断确认需要等待可见布局、避开光标覆盖层，并先通过正常编辑器导航折叠旧选区再真实拖选；不改生产选择算法，不直接设置选区，不放宽原文/去重断言。清除临时诊断代码后，完整选区套件最终 12/12。
 - 最终 `npm test` **退出码 1，不通过**：checks 27 通过/1 跳过；product-runtime 116/3/5、storage 12/1/1、server 640/2/19（通过/失败/跳过）；Web 688/0。6 项失败涉及两项 source fencing、三项 Windows symlink/路径权限以及 `LOCAL_SOCKET_CONFLICT`，均在本票未改动的用例中；不以未改动推断已证明其全部根因。`connections.test.ts` 断言失败后十余分钟未退出，仅终止该挂起子进程，让其余 workspace 完成；末尾 tools 未到达。本机完整日志 `.verification/152-final-full-test.log` 未提交，不把该运行记作绿色门禁。
 - Standards / Spec 最终复审无剩余发现。Mac、生产草稿输入的物理系统中文输入法、教学效果未执行；同机混合进程不代替 #154 实际跨机及 SSH 接管验收。#152 保持开放，PR 保持 OPEN，不合并 main。
+
+## 发布前保留并行修正（`ca1079f`）
+
+普通推送检测到远程新增 `37122b4` 后，未强推或覆盖：将它与本地 `228ab20` 合并，保留全部提交。课程来源现通过 source owner 的 `verifyReference` 校验固定发布、当前资格、UTF-16 范围与选中副本摘要，仅返回严格校验的确认；不再经受限 RPC 传整份大材料。`referenceText` 的原读取接口保留兼容，UTF-16LE 选区摘要与持久 UTF-8 `copyDigest` 分开。
+
+合并后全仓类型检查与 9 项公共契约浏览器导出检查通过；课程/草稿及混合大材料、伪造副本、emoji/CRLF 范围与恢复的原生补验 **2/2 通过**；独立进程 fencing 的 Windows 冷启动期限修正另行 **1/1 通过**。这些是对上文既有场景的定向复跑，不累计为新增业务场景。Standards / Spec 补审无剩余发现。
+
+此次后端并行修正后未重跑全部 19 项、38 项 Chrome 和全量 npm test；上文的完整结果保留原验收阶段，不冒充在 `ca1079f` 全部重新执行。最终 Mac 交接使用包含此修正与鼠标测试修正的固定 `ca1079f`，所有 Mac 项仍待执行。
