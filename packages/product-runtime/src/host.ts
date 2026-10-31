@@ -117,6 +117,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   }
 
   async function status(): Promise<RuntimeStatus> {
+    // A probe that began before readiness must not report failed after the flag flips mid-call.
+    const starting = !initialized;
     const dependencies: RuntimeDependencyStatus[] = [];
     if (config.database.mode !== 'none') {
       try {
@@ -148,7 +150,7 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     }));
     const missing = maintenance.status().missingServiceIds;
     if (missing.length) dependencies.push({ name: 'maintenance-participants', required: true, state: 'unavailable', detail: missing.join(', ') });
-    const state: RuntimeStatus['state'] = !initialized ? 'starting' : maintenance.status().phase === 'failed' ? 'failed'
+    const state: RuntimeStatus['state'] = !initialized || starting ? 'starting' : maintenance.status().phase === 'failed' ? 'failed'
       : await authorityClosed() ? 'maintenance' : dependencies.some(value => value.required && value.state !== 'ready') ? 'failed'
         : dependencies.some(value => value.state !== 'ready') ? 'degraded' : 'ready';
     return { state, environment, endpoint, dependencies, ...(startupFailure ? { reason: startupFailure } : {}) };
