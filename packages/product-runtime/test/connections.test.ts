@@ -33,9 +33,9 @@ async function close(server: Server): Promise<void> {
   await closed;
 }
 
-async function privateRoot(t: TestContext): Promise<string> {
+async function privateRoot(t: TestContext, beforeRemove?: () => Promise<void>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'xunjie-connections-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  t.after(async () => { await beforeRemove?.(); await rm(root, { recursive: true, force: true }); });
   return root;
 }
 
@@ -66,14 +66,22 @@ function hasCode(code: string) {
 }
 
 async function host(t: TestContext, handlers: Record<string, CapabilityHandler> = { echo: (payload) => payload }, root?: string) {
-  const directory = root ?? await privateRoot(t);
+  const requests = new Set<Promise<unknown>>();
+  let server: Server | undefined;
+  const dispose = async () => {
+    if (server) await close(server);
+    // A disconnected socket does not mean its admitted handler has finished.
+    await Promise.allSettled([...requests]);
+  };
+  const directory = root ?? await privateRoot(t, dispose);
   let authority: ReturnType<typeof createConnectionAuthority>;
-  const server = createServer((request, response) => {
-    void authority.handle(request, response).then((handled) => {
+  server = createServer((request, response) => {
+    const handling = authority.handle(request, response).then((handled) => {
       if (!handled) { response.writeHead(404); response.end(); }
-    }).catch(() => response.destroy());
+    }).catch(() => response.destroy()).finally(() => { requests.delete(handling); });
+    requests.add(handling);
   });
-  t.after(() => close(server));
+  t.after(dispose);
   const endpoint = await listen(server);
   const target = service(endpoint, Object.keys(handlers));
   authority = createConnectionAuthority({ root: directory, service: target, handlers });
