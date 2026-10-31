@@ -102,7 +102,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function forward(connectionId: string, route: string, body?: unknown) {
     const id = '[0-9a-f-]{36}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
-      `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|connections/revoke)$`).test(route)) {
+      `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -120,6 +120,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       await update(connectionId, () => rm(path(connectionId), { force: true }));
       return value;
     }
+    if (route.startsWith('workspaces/')) return value;
     const parsed = <T>(schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } }, candidate: unknown) => {
       const result = schema.safeParse(candidate);
       // A malformed school response is an upstream failure, not a user input error.

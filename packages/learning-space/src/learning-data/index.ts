@@ -7,6 +7,7 @@ import type { CreateActivity, LearningActivity, CourseActivityResult } from '@xu
 import { createCourseActivitySchema, courseActivityBindingSchema } from '@xunjie/contracts/courses';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { SpaceIdentity, SpaceAuthority } from '@xunjie/contracts/spaces';
+import { createWorks, workMigration, validateWorks } from './works.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
   CREATE TABLE activities (id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,space_id uuid NOT NULL,
@@ -14,7 +15,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
   CREATE INDEX activities_scope ON activities(space_environment_id,space_id,principal_id);
   CREATE TABLE activity_requests (request_id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,
     space_id uuid NOT NULL,principal_id uuid NOT NULL);
-` }, { version: 2, name: 'course-activity-coordination', sql: `
+` }, workMigration, { version: 3, name: 'course-activity-coordination', sql: `
   CREATE TABLE course_activity_requests (request_id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,
     space_id uuid NOT NULL,principal_id uuid NOT NULL,release_id uuid NOT NULL,association_id uuid NOT NULL,
     activity_id uuid NOT NULL,input_digest text NOT NULL,state text NOT NULL CHECK(state IN ('pending','accepted','rejected')),
@@ -40,6 +41,7 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 }
 
 export async function validateLearningData(storage: OwnedStorage) {
+  await validateWorks(storage);
   const { rows } = await storage.read('SELECT id,body,space_environment_id,space_id,principal_id FROM activities');
   for (const row of rows) {
     const a = activitySchema.parse(row.body);
@@ -242,5 +244,5 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
     await courseAuthorize(identity, activity);
     return activity;
   }
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, validate: () => validateLearningData(storage) };
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, works: createWorks(storage, open), validate: () => validateLearningData(storage) };
 }

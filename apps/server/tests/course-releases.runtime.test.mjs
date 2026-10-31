@@ -129,6 +129,11 @@ test('course releases pin versions, project only open material and follow curren
     assert.equal(created.value.course.contentDigest, imported.value.contentDigest);
     assert.equal(created.value.course.materials.length, 1);
     assert.ok(!JSON.stringify(created.value).includes('教师私有测试'));
+    const workspacePath = 'workspaces/' + created.value.activityId;
+    const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'course.txt', kind: 'text',
+      encoding: 'utf8', mediaType: 'text/plain', value: 'Course work survives release changes.' };
+    assert.deepEqual((await api(workspacePath, { requestId: randomUUID(), baseRevision: 0, files: [work] }, { cookie })).value,
+      { revision: 1, files: [work] });
     assert.deepEqual((await api('course-activities', { requestId: activityRequest, releaseId: releaseOne }, { cookie })).value,
       created.value);
     assert.deepEqual((await api('course-activity-results/' + activityRequest, undefined, { cookie })).value,
@@ -139,6 +144,7 @@ test('course releases pin versions, project only open material and follow curren
     assert.equal((await api('manage/course-import', v2.manifest, admin)).status, 200);
     assert.equal((await api('course-activities', { requestId: activityRequest, releaseId: releaseTwo }, { cookie })).status, 409);
     assert.equal((await api('activities/' + created.value.activityId, undefined, { cookie })).value.course.releaseId, releaseOne);
+    assert.equal((await api(workspacePath, undefined, { cookie })).value.files[0].value, work.value);
     assert.equal((await api('course-activities', { requestId: randomUUID(), releaseId: releaseTwo }, { cookie })).status, 200);
     assert.equal((await api('releases/' + releaseTwo, undefined, { cookie })).value.requirements, '第二版要求：加入减法扩展。');
     assert.equal((await api(`releases/${releaseOne}/materials/${v2.ids.studentMaterialId}`, undefined, { cookie })).status, 404);
@@ -190,6 +196,7 @@ test('course releases pin versions, project only open material and follow curren
     const revoked = await api('manage/course-access', { requestId: randomUUID(), courseId, principalId, active: false }, admin);
     assert.equal(revoked.status, 200);
     assert.equal((await api('activities/' + created.value.activityId, undefined, { cookie })).status, 403);
+    assert.equal((await api(workspacePath, undefined, { cookie })).status, 403);
     assert.deepEqual((await api('courses', undefined, { cookie })).value, { courses: [] });
     assert.equal((await api('releases/' + releaseOne, undefined, { cookie })).status, 403);
     assert.equal((await api('releases/' + releaseOne + '/materials/' + v1.ids.studentMaterialId, undefined, { cookie })).status, 403);
@@ -347,18 +354,21 @@ test('existing owners upgrade to course schema without losing autonomous state',
     const dataOwner = { environmentId: environment, serviceId: randomUUID() };
     const spacePassword = randomUUID(), dataPassword = randomUUID();
     const oldSpace = await provisionStorage({ admin, owner: spaceOwner, password: spacePassword, migrations: spaceMigrations });
-    const oldData = await provisionStorage({ admin, owner: dataOwner, password: dataPassword, migrations: learningMigrations.slice(0, 1) });
+    const oldData = await provisionStorage({ admin, owner: dataOwner, password: dataPassword, migrations: learningMigrations.slice(0, 2) });
     const backend = id => createFileBackend({ id, root: join(root, `${id}-files`) });
     let spaceStorage = await openStorage({ binding: oldSpace, migrations: spaceMigrations, backend: backend('space') });
-    let dataStorage = await openStorage({ binding: oldData, migrations: learningMigrations.slice(0, 1), backend: backend('data') });
+    let dataStorage = await openStorage({ binding: oldData, migrations: learningMigrations.slice(0, 2), backend: backend('data') });
     const memberPassword = randomUUID();
-    let member, legacy;
+    let member, legacy, legacyWorks;
     try {
       const spaces = createSpaces(spaceStorage);
       member = await spaces.createMember({ requestId: randomUUID(), loginName: 'upgrade-student', password: memberPassword });
       await spaces.bindMember(member, { ...dataOwner, version: 1 });
       const learning = createLearningData(dataStorage, spaces);
       legacy = await learning.create(member, { requestId: randomUUID(), goal: '升级前建立的活动', question: '', references: [] });
+      legacyWorks = await learning.works.sync(member, legacy.activityId, { requestId: randomUUID(), baseRevision: 0,
+        files: [{ objectId: randomUUID(), contentId: randomUUID(), name: 'before.txt', kind: 'text',
+          encoding: 'utf8', mediaType: 'text/plain', value: 'Existing WP02 work.' }] });
       for (const storage of [spaceStorage, dataStorage]) {
         const participant = storage.participant();
         await participant.closeWrites(); await participant.closeDispatch();
@@ -377,6 +387,7 @@ test('existing owners upgrade to course schema without losing autonomous state',
       const courses = createCourses(spaceStorage, spaces);
       const learning = createLearningData(dataStorage, spaces, courses);
       assert.deepEqual(await learning.open(member, legacy.activityId), legacy);
+      assert.deepEqual(await learning.works.read(member, legacy.activityId), legacyWorks);
       assert.equal((await learning.list(member)).length, 1);
       const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
       await courses.registerRelease(releaseFixture({ courseId, taskId, releaseId }).manifest);
