@@ -255,6 +255,17 @@ test('course activities resume across prepared, confirmed and committed stages w
       backend: createFileBackend({ id: 'space', root: join(root, 'space-files') }) });
     const dataStorage = await openStorage({ binding: dataBinding, migrations: learningMigrations,
       backend: createFileBackend({ id: 'data', root: join(root, 'data-files') }) });
+    let inTransaction = false;
+    const guardedData = new Proxy(dataStorage, { get(target, property) {
+      if (property === 'request') {
+        return (input, effect) => target.request(input, async tx => {
+          inTransaction = true;
+          try { return await effect(tx); } finally { inTransaction = false; }
+        });
+      }
+      const value = Reflect.get(target, property);
+      return typeof value === 'function' ? value.bind(target) : value;
+    } });
     try {
       const spaces = createSpaces(spaceStorage);
       const courses = createCourses(spaceStorage, spaces);
@@ -275,9 +286,12 @@ test('course activities resume across prepared, confirmed and committed stages w
           if (failure === 'confirmed') { failure = ''; await courses.confirm(input); throw new StorageError('unavailable'); }
           return courses.confirm(input);
         },
-        authorize: (identity, pointer) => courses.authorize(identity, pointer),
+        authorize: (identity, pointer) => {
+          if (inTransaction) throw new Error('course authorization must stay outside the activity transaction');
+          return courses.authorize(identity, pointer);
+        },
       };
-      const learning = createLearningData(dataStorage, spaces, flaky);
+      const learning = createLearningData(guardedData, spaces, flaky);
       const requestId = randomUUID();
       await assert.rejects(learning.createCourse(member, { requestId, releaseId }), { code: 'unavailable' });
       assert.equal((await learning.courseResult(member, requestId)).state, 'pending');
@@ -286,6 +300,9 @@ test('course activities resume across prepared, confirmed and committed stages w
       assert.deepEqual(await learning.createCourse(member, { requestId, releaseId }), first);
       assert.equal((await learning.list(member)).length, 1);
       assert.equal((await learning.courseResult(member, requestId)).state, 'accepted');
+      const statusRequest = randomUUID();
+      const closed = await learning.setStatus(member, { requestId: statusRequest, activityId: first.activityId, status: 'closed' });
+      assert.equal(closed.status, 'closed');
 
       failure = 'confirmed';
       const secondRequest = randomUUID();
@@ -301,7 +318,11 @@ test('course activities resume across prepared, confirmed and committed stages w
       await courses.setAccess({ requestId: randomUUID(), courseId, principalId: member.principalId, active: false });
       await assert.rejects(learning.createCourse(member, { requestId: revoked, releaseId }), { code: 'forbidden' });
       assert.equal((await learning.courseResult(member, revoked)).state, 'rejected');
+      await assert.rejects(learning.setStatus(member, { requestId: statusRequest, activityId: first.activityId, status: 'closed' }),
+        { code: 'forbidden' });
       await courses.setAccess({ requestId: randomUUID(), courseId, principalId: member.principalId, active: true });
+      const replayed = await learning.setStatus(member, { requestId: statusRequest, activityId: first.activityId, status: 'closed' });
+      assert.equal(replayed.status, 'closed');
       assert.equal((await learning.open(member, first.activityId)).course.releaseId, releaseId);
 
       const otherRelease = randomUUID();
@@ -368,4 +389,81 @@ test('existing owners upgrade to course schema without losing autonomous state',
       await Promise.allSettled([spaceStorage.close(), dataStorage.close()]);
     }
   });
+});
+
+test('installed client forwards course discovery, materials and pinned activities under the school grant', { timeout: 300000 }, async () => {
+  const schoolRoot = await mkdtemp(join(tmpdir(), 'xunjie-course-school-'));
+  const clientRoot = await mkdtemp(join(tmpdir(), 'xunjie-course-client-'));
+  const schoolRuntime = openProductRuntime({ root: schoolRoot, resources: resources() });
+  const clientRuntime = openProductRuntime({ root: clientRoot, resources: resources() });
+  const call = async (endpoint, path, body, headers = {}) => {
+    const response = await fetch(new URL('/api/learning/' + path, endpoint), { method: body === undefined ? 'GET' : 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    return { status: response.status, headers: response.headers, value: await response.json().catch(() => null) };
+  };
+  try {
+    await schoolRuntime.install({ profile: 'school' });
+    const school = await schoolRuntime.start();
+    await clientRuntime.install({ profile: 'local' });
+    const client = await clientRuntime.start();
+    const control = await resolveCredential(schoolRoot, 'control');
+    const admin = { authorization: `Bearer ${control}` };
+    const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
+    const fixture = releaseFixture({ courseId, taskId, releaseId });
+    assert.equal((await call(school.endpoint, 'manage/course-import', fixture.manifest, admin)).status, 200);
+    const password = randomUUID();
+    const member = await call(school.endpoint, 'manage/members', { requestId: randomUUID(), loginName: 'client-course', password }, admin);
+    assert.equal(member.status, 200);
+    assert.equal((await call(school.endpoint, 'manage/course-access', { requestId: randomUUID(), courseId,
+      principalId: member.value.principalId, active: true }, admin)).status, 200);
+    const logged = await call(school.endpoint, 'login', { loginName: 'client-course', password });
+    assert.equal(logged.status, 200);
+    const schoolCookie = logged.headers.get('set-cookie').split(';')[0];
+    const pending = await call(client.endpoint, 'client/start', { requestId: randomUUID(), schoolEndpoint: school.endpoint });
+    assert.equal(pending.status, 200);
+    assert.equal((await call(school.endpoint, 'connections/approve', { requestId: pending.value.requestId }, { cookie: schoolCookie })).status, 200);
+    const completed = await call(client.endpoint, 'client/complete', { requestId: pending.value.requestId });
+    assert.equal(completed.status, 200);
+    const connection = completed.value;
+    assert.equal(connection.identity.kind, 'school');
+    const remote = { 'x-xj-space': 'school:' + connection.connectionId };
+
+    assert.equal((await call(client.endpoint, 'manage/course-import', fixture.manifest, remote)).status, 403);
+    const catalog = await call(client.endpoint, 'courses', undefined, remote);
+    assert.equal(catalog.status, 200);
+    assert.equal(catalog.value.courses[0].tasks[0].releases[0].releaseId, releaseId);
+    const release = await call(client.endpoint, 'releases/' + releaseId, undefined, remote);
+    assert.equal(release.status, 200);
+    assert.equal(release.value.materials.length, 1);
+    assert.equal((await call(client.endpoint, `releases/${releaseId}/materials/${fixture.ids.privateMaterialId}`, undefined, remote)).status, 404);
+    const material = await call(client.endpoint, `releases/${releaseId}/materials/${fixture.ids.studentMaterialId}`, undefined, remote);
+    assert.equal(material.status, 200);
+    assert.equal(Buffer.from(material.value.contentBase64, 'base64').toString('utf8'), '# ALU 题目\n完成 4 位加减与逻辑运算。');
+    const activityRequest = randomUUID();
+    const created = await call(client.endpoint, 'course-activities', { requestId: activityRequest, releaseId }, remote);
+    assert.equal(created.status, 200);
+    assert.equal(created.value.course.releaseId, releaseId);
+    assert.deepEqual(created.value.identity, connection.identity);
+    assert.deepEqual((await call(client.endpoint, 'course-activities', { requestId: activityRequest, releaseId }, remote)).value,
+      created.value);
+    assert.equal((await call(client.endpoint, 'course-activity-results/' + activityRequest, undefined, remote)).value.state, 'accepted');
+    const statusRequest = randomUUID();
+    assert.equal((await call(client.endpoint, 'activity-status', { requestId: statusRequest,
+      activityId: created.value.activityId, status: 'closed' }, remote)).status, 200);
+
+    assert.equal((await call(school.endpoint, 'manage/course-access', { requestId: randomUUID(), courseId,
+      principalId: member.value.principalId, active: false }, admin)).status, 200);
+    assert.deepEqual((await call(client.endpoint, 'courses', undefined, remote)).value, { courses: [] });
+    assert.equal((await call(client.endpoint, 'releases/' + releaseId, undefined, remote)).status, 403);
+    assert.equal((await call(client.endpoint, 'activities/' + created.value.activityId, undefined, remote)).status, 403);
+    assert.equal((await call(client.endpoint, 'activity-status', { requestId: statusRequest,
+      activityId: created.value.activityId, status: 'closed' }, remote)).status, 403);
+    assert.equal((await call(client.endpoint, 'course-activity-results/' + activityRequest, undefined, remote)).status, 403);
+    assert.equal((await call(client.endpoint, 'connections/revoke', { connectionId: connection.connectionId }, remote)).status, 200);
+    assert.equal((await call(client.endpoint, 'courses', undefined, remote)).status, 403);
+  } finally {
+    await clientRuntime.stop().catch(() => {});
+    await schoolRuntime.stop().catch(() => {});
+  }
 });

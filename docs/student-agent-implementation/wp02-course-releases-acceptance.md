@@ -59,14 +59,18 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 | 构建 | `npm run build` | 通过 |
 | 公共契约浏览器检查 | `npm run check:contracts:browser` | 8 个公开导出均 browser-safe |
 | 文档链接 | `npm run check:docs` | 155 个 Markdown、1078 个本地目标、0 失败 |
-| 课程原生验收 | `node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs`（`XUNJIE_PRODUCT_POSTGRES_BIN`） | 3/3 通过：发布/投影/资格、跨 owner 续接、旧 schema 升级 |
+| 课程原生验收 | `node --test --test-concurrency=1 apps/server/tests/course-releases.runtime.test.mjs`（`XUNJIE_PRODUCT_POSTGRES_BIN`） | 4/4 通过：发布/投影/资格、跨 owner 续接、旧 schema 升级、已安装客户端课程转发 |
 | CLI 备份恢复 | `node --test --test-concurrency=1 packages/product-runtime/test/learning-cli.runtime.test.mjs` | 1/1 通过：课程发布/材料/chrome 不可见项与自主活动随备份恢复，接管后重开 |
+| 学校客户端代理 | `node --test --test-concurrency=1 packages/product-runtime/test/school-client.test.mjs` | 2/2 通过：课程路由转发、响应 schema 校验、伪造身份拒绝、缓存状态撤权重放拒绝 |
 | 既有 WP02 回归 | `node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs` | 8/8 通过：个人/学校身份、客户端授权、活动重开、恢复与旧会话隔离 |
 | 全量本地套件 | `npm test` | 退出码 1；失败集中在既有的 Windows 环境项：product-runtime 连接/恢复测试超时、symlink 用例 `EPERM`、server 的 `LOCAL_SOCKET_CONFLICT`，均位于本票未修改模块；web 58 个文件/688 项通过，本票改动模块没有失败。原始日志 `.verification/local-suite-2.log`（本机，未提交） |
 
-课程原生测试覆盖：重复登记/冲突（含无本地资源重试）、跨版本材料复用、私有材料与伪造 ID、v1/v2 固定、重复活动请求、跨 owner prepare/confirm/提交中断续接、撤权/撤成员、材料删除/损坏、旧 schema 升级、资源随备份恢复。
+课程原生测试覆盖：重复登记/冲突（含无本地资源重试）、跨版本材料复用、私有材料与伪造 ID、v1/v2 固定、重复活动请求、跨 owner prepare/confirm/提交中断续接、撤权/撤成员、材料删除/损坏、旧 schema 升级、资源随备份恢复。学校客户端测试另覆盖课程路由转发、响应 schema 校验、伪造身份拒绝与撤权后缓存状态重放拒绝。
 
-两轴审查后的修正包括：登记先按 `requestId` 返回已存储结果；同 `materialId` 相同内容可在新版本复用；课程/任务/发布登记改为冲突安全的插入后复核；列表保留缺失/损坏版本（打开时报告），撤销资格仍隐藏；创建成功前经正式读取路径核实；材料读取增加空间切换代际保护；标题字号与衬线遵循 DESIGN.md。
+两轴审查后的修正包括：登记先按 `requestId` 返回已存储结果；同 `materialId` 相同内容可在新版本复用；课程/任务/发布登记改为冲突安全的插入后复核；列表保留缺失/损坏版本（打开时报告），撤销资格仍隐藏；创建成功前经正式读取路径核实；材料读取增加空间切换代际保护；标题字号与衬线遵循 DESIGN.md。二次审查后完成以下修正：
+
+- 学校客户端代理加入 `courses`、`releases/:id`、开放材料、`course-activities`、`course-activity-results/:id` 路由，并按路由校验课程目录、发布、材料、活动结果和普通活动的响应 schema；伪造身份仍拒绝，未知管理路由仍 403。真实双运行时连接路径、假学校畸形响应和 Chrome 客户端流程均已回归。
+- `setStatus` 的课程资格/资源读取移出学习数据事务；活动行锁内只执行所属数据库读写。缓存关闭/重开回执返回前重新核验当前课程资格，撤权后的原请求返回 403。探针测试禁止在学习数据事务内调用课程授权。
 
 ## 浏览器验收
 
@@ -78,7 +82,8 @@ xunjie course-result --root <环境目录> --resources <resources.json> --file <
 4. 从选定版本开始活动，活动页显示固定版本与内容摘要。
 5. 刷新页面后活动仍在“我的学习活动”，可重开原版本。
 6. 建立自主活动后两者同时存在；撤销课程资格并刷新后课程投影消失、自主活动保留；重新授予后恢复。
-7. 证据截图：[课程目录](evidence/wp02-course-chrome-catalog.png)、[发布详情](evidence/wp02-course-chrome-release.png)、[课程活动](evidence/wp02-course-chrome-activity.png)、[刷新后重开](evidence/wp02-course-chrome-reopen.png)。
+7. 已安装客户端经学校授权页连接后，在本地页面切换到学校空间，读取课程、发布、开放材料并从选定版本建立课程活动；证据截图 [客户端课程目录](evidence/wp02-course-chrome-client.png)、[客户端发布详情](evidence/wp02-course-chrome-client-release.png)。
+8. 学校直连证据截图：[课程目录](evidence/wp02-course-chrome-catalog.png)、[发布详情](evidence/wp02-course-chrome-release.png)、[课程活动](evidence/wp02-course-chrome-activity.png)、[刷新后重开](evidence/wp02-course-chrome-reopen.png)。
 
 ## 未执行与交接
 

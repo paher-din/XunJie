@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
-import { activitySchema } from '@xunjie/contracts/learning-data';
+import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
+import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { acquireLock, atomicJson, exists } from './io.js';
@@ -99,7 +100,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     });
   }
   async function forward(connectionId: string, route: string, body?: unknown) {
-    if (!/^(?:activities(?:\/[0-9a-f-]{36})?|activity-status|receipts\/[0-9a-f-]{36}|connections\/revoke)$/.test(route)) throw new StorageError('forbidden');
+    const id = '[0-9a-f-]{36}';
+    if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
+      `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|connections/revoke)$`).test(route)) {
+      throw new StorageError('forbidden');
+    }
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
     let value: unknown;
@@ -115,13 +120,32 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       await update(connectionId, () => rm(path(connectionId), { force: true }));
       return value;
     }
-    const check = (value: unknown) => {
-      const activity = activitySchema.parse(value);
+    const parsed = <T>(schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } }, candidate: unknown) => {
+      const result = schema.safeParse(candidate);
+      // A malformed school response is an upstream failure, not a user input error.
+      if (!result.success) throw new StorageError('unavailable');
+      return result.data;
+    };
+    const check = (candidate: unknown) => {
+      const activity = parsed(activitySchema, candidate);
       if (JSON.stringify(activity.identity) !== JSON.stringify(connection.grant!.identity)
         || JSON.stringify(activity.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
       return activity;
     };
-    return Array.isArray(value) ? value.map(check) : value === null ? null : check(value);
+    if (route === 'courses') return parsed(courseCatalogSchema, value);
+    if (route.startsWith('releases/')) {
+      return route.split('/').length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);
+    }
+    if (route.startsWith('course-activity-results/')) {
+      if (value === null) return null;
+      const result = parsed(courseActivityResultSchema, value);
+      if (result.activity) check(result.activity);
+      return result;
+    }
+    if (route === 'course-activities' || route === 'activity-status' || route.startsWith('activities/')) return check(value);
+    if (route === 'activities') return Array.isArray(value) ? value.map(check) : check(value);
+    if (route.startsWith('receipts/')) return value === null ? null : check(value);
+    return value;
   }
   return { list, start, complete, forward };
 }

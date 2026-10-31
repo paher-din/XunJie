@@ -221,22 +221,26 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
   async function setStatus(identity: SpaceIdentity, value: { requestId: string; activityId: string; status: 'open' | 'closed' }) {
     await access(identity);
     const input = z.object({ requestId: z.uuid(), activityId: z.uuid(), status: z.enum(['open', 'closed']) }).strict().parse(value);
-    const courseAuthority = courses;
+    const { rows: [preview] } = await storage.read(`SELECT body FROM activities WHERE space_environment_id=$1
+      AND space_id=$2 AND principal_id=$3 AND id=$4`, [...scope(identity), input.activityId]);
+    if (!preview) return fail('missing');
+    const before = activitySchema.parse(preview.body);
+    // External eligibility and resource reads stay outside the activity transaction.
+    await courseAuthorize(identity, before);
     const receipt = await storage.request({ requestId: input.requestId, fingerprint: fingerprint({ identity, input }) }, async tx => {
       const { rows: [row] } = await tx.query(`SELECT body FROM activities WHERE space_environment_id=$1
         AND space_id=$2 AND principal_id=$3 AND id=$4 FOR UPDATE`, [...scope(identity), input.activityId]);
       if (!row) return fail('missing');
       const existing = activitySchema.parse(row.body);
-      if (existing.course) {
-        if (!courseAuthority) return fail('forbidden');
-        await courseAuthority.authorize(identity, existing.course);
-      }
       const activity = activitySchema.parse({ ...existing, status: input.status });
       await tx.query('UPDATE activities SET body=$2 WHERE id=$1', [input.activityId, JSON.stringify(activity)]);
       await tx.query('INSERT INTO activity_requests VALUES ($1,$2,$3,$4)', [input.requestId, ...scope(identity)]);
       return activity;
     });
-    return activitySchema.parse(receipt.result);
+    const activity = activitySchema.parse(receipt.result);
+    // Cached receipts must not bypass the current course projection either.
+    await courseAuthorize(identity, activity);
+    return activity;
   }
   return { create, createCourse, courseResult, list, open, receipt, setStatus, validate: () => validateLearningData(storage) };
 }
