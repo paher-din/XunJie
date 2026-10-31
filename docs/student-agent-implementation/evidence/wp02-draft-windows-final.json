@@ -1,0 +1,266 @@
+{
+  "recordedAt": "2026-10-31T14:51:26.843185+00:00",
+  "issue": 152,
+  "branch": "codex/wp02",
+  "productCodeCommit": "a0c1c09f8a6ba7c261c24340c22a026d2b737c50",
+  "acceptanceCommit": "d4cbaf48ea5e1fbc435b464798bd059c7a6f2139",
+  "platform": "Windows 11 x64",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "browser": "installed Google Chrome, headed",
+  "native": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "courseAndDraft": 7,
+    "identity": 8,
+    "hybridOwner": 1,
+    "cliRecovery": 1,
+    "schoolProxy": 2
+  },
+  "chrome": {
+    "questionDrafts": {
+      "measuredAt": "2026-10-31T14:25:08.643Z",
+      "platform": "win32",
+      "arch": "x64",
+      "osRelease": "10.0.26200",
+      "node": "v24.21.0",
+      "postgres": "18.6",
+      "browser": "installed Chrome",
+      "browserVersion": "156.0.8078.76",
+      "headless": false,
+      "backend": "production product host, native PostgreSQL and real filesystem resources",
+      "cases": [
+        {
+          "name": "course text and requirements stay as fixed references through collapse, reload and activity switch",
+          "status": "passed",
+          "durationMs": 7795
+        },
+        {
+          "name": "code reference keeps original copy after rename and edit, and survives file deletion and reload",
+          "status": "passed",
+          "durationMs": 6346
+        },
+        {
+          "name": "an existing reliable workspace database upgrades without losing its work",
+          "status": "passed",
+          "durationMs": 2131
+        },
+        {
+          "name": "a restored draft resumes periodic sync after authentication recovers",
+          "status": "passed",
+          "durationMs": 4023
+        },
+        {
+          "name": "a local conflict candidate retains an unsynchronized code basis across reload",
+          "status": "passed",
+          "durationMs": 1982
+        },
+        {
+          "name": "local storage refusal keeps memory and retries automatically",
+          "status": "passed",
+          "durationMs": 2337
+        },
+        {
+          "name": "two actual tabs preserve both local drafts until an explicit choice",
+          "status": "passed",
+          "durationMs": 2320
+        },
+        {
+          "name": "another client conflict keeps both drafts and a late acknowledgement never settles later input",
+          "status": "passed",
+          "durationMs": 5302
+        }
+      ]
+    },
+    "worksEditor": {
+      "measuredAt": "2026-10-31T14:17:32.241Z",
+      "platform": "win32",
+      "arch": "x64",
+      "osRelease": "10.0.26200",
+      "node": "v24.21.0",
+      "postgres": "18.6",
+      "browser": "installed Chrome",
+      "browserVersion": "156.0.8078.76",
+      "headless": false,
+      "backend": "production product host, native PostgreSQL and real filesystem resources",
+      "cases": [
+        {
+          "name": "course catalog returns after activity restoration races with discovery",
+          "status": "passed",
+          "durationMs": 1676
+        },
+        {
+          "name": "actual editor automatically protects and synchronizes Chinese original text across reload",
+          "status": "passed",
+          "durationMs": 4757
+        },
+        {
+          "name": "an opened activity survives API disconnection and reload, then continues its original pending sync",
+          "status": "passed",
+          "durationMs": 8408
+        },
+        {
+          "name": "late and lost confirmations never settle later editor content",
+          "status": "passed",
+          "durationMs": 6982
+        },
+        {
+          "name": "failed navigation leaves the editor able to continue automatic sync",
+          "status": "passed",
+          "durationMs": 3338
+        },
+        {
+          "name": "reopening an activity uses the latest body from another actual tab, not a retained editor model",
+          "status": "passed",
+          "durationMs": 6504
+        },
+        {
+          "name": "a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically",
+          "status": "passed",
+          "durationMs": 7750
+        },
+        {
+          "name": "two actual tabs preserve both local edits under simultaneous IndexedDB competition",
+          "status": "passed",
+          "durationMs": 5752
+        },
+        {
+          "name": "a remote conflict comparison includes input made while the original service read was delayed",
+          "status": "passed",
+          "durationMs": 7667
+        },
+        {
+          "name": "continuous input advances durable local and remote content before the student stops typing",
+          "status": "passed",
+          "durationMs": 6076
+        },
+        {
+          "name": "the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing",
+          "status": "passed",
+          "durationMs": 2782
+        },
+        {
+          "name": "successful navigation protects input entered immediately before its delayed response",
+          "status": "passed",
+          "durationMs": 1922
+        },
+        {
+          "name": "initial storage refusal retries automatically after the browser permits transactions again",
+          "status": "passed",
+          "durationMs": 1001
+        },
+        {
+          "name": "confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 3755
+        },
+        {
+          "name": "confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 3221
+        }
+      ]
+    },
+    "hybridDeployment": {
+      "measuredAt": "2026-10-31T14:23:44.751Z",
+      "platform": "win32",
+      "osRelease": "10.0.26200",
+      "arch": "x64",
+      "node": "v24.21.0",
+      "postgres": "18.6",
+      "browserVersion": "156.0.8078.76",
+      "browser": "installed Chrome",
+      "headless": false,
+      "topology": "two independent native product daemons on the same host; NOT cross-machine evidence",
+      "results": [
+        {
+          "name": "personal: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 5131
+        },
+        {
+          "name": "school-shared: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 6467
+        },
+        {
+          "name": "hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 21366
+        }
+      ]
+    },
+    "workspaceReferences": {
+      "passed": 12,
+      "failed": 0,
+      "firstRunPassed": 11,
+      "firstRunFailed": 1,
+      "fixtureCorrection": "Wait for visible stable geometry, focus and collapse the prior editor selection, then use actual pointer dragging inside the first glyph. Original copy and behavior assertions unchanged."
+    },
+    "uniqueCasesPassed": 38,
+    "scope": "six production draft UI cases plus two real draft public-interface recovery probes, fifteen editor cases, three deployment cases and twelve legacy selection cases"
+  },
+  "engineering": {
+    "typecheck": "passed",
+    "build": "passed",
+    "runtimeRebuildAfterUiFix": "passed",
+    "browserSafeExports": 9,
+    "webUnitTestsPassed": 688
+  },
+  "fullSuite": {
+    "exitCode": 1,
+    "passed": false,
+    "checks": {
+      "passed": 27,
+      "failed": 0,
+      "skipped": 1
+    },
+    "productRuntime": {
+      "passed": 116,
+      "failed": 3,
+      "skipped": 5
+    },
+    "storage": {
+      "passed": 12,
+      "failed": 1,
+      "skipped": 1
+    },
+    "server": {
+      "passed": 640,
+      "failed": 2,
+      "skipped": 19
+    },
+    "web": {
+      "passed": 688,
+      "failed": 0
+    },
+    "failures": [
+      "source fencing parallel-handler rejection",
+      "source fencing independent-process timeout",
+      "recovery file Windows symlink EPERM",
+      "storage Windows symlink EPERM",
+      "server LOCAL_SOCKET_CONFLICT",
+      "server persistent path validation Windows symlink"
+    ],
+    "stalledWorker": "connections.test.ts did not exit after failures; only that owned worker was terminated after more than ten minutes, allowing other workspaces to finish.",
+    "toolsGroup": "not reached after aggregate failure",
+    "rawLog": ".verification/152-final-full-test.log (local only)"
+  },
+  "redGreen": {
+    "deletedSourceBasis": "native 404 before fix, accepted historical content after fix without reviving the head",
+    "renamedBasis": "native 409 before fix, same immutable content accepted after display-name change",
+    "draftPublicInterface": "26f5653 source failed periodic resume and candidate-basis recovery; fixed production class passed 2/2 with real Chrome, IndexedDB, HTTP and PostgreSQL",
+    "draftReadiness": "delayed real draft GET exposed an enabled ask button before readiness; fixed button and shortcut gating passed production UI regression"
+  },
+  "notExecuted": [
+    "Apple Silicon Mac",
+    "physical system IME verification for production draft input",
+    "teaching effectiveness"
+  ],
+  "limitations": [
+    "Same-host hybrid processes do not prove cross-machine deployment or SSH takeover.",
+    "Full npm test is not green."
+  ],
+  "macTrackingIssue": "https://github.com/paher-din/XunJie/issues/155"
+}
