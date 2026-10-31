@@ -17,6 +17,8 @@ const results: { name: string; status?: string; durationMs: number }[] = []
 const evidence = fileURLToPath(new URL('../../../.verification/154', import.meta.url))
 
 test.beforeAll(async ({ browser }) => {
+  // Two independent native installations and authenticated owner binding precede UI assertions.
+  test.setTimeout(180000)
   await mkdir(evidence, { recursive: true })
   browserVersion = browser.version()
   const root = await mkdtemp(join(tmpdir(), 'xj-hybrid-chrome-'))

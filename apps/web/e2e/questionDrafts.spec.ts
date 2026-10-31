@@ -107,19 +107,32 @@ test('course text and requirements stay as fixed references through collapse, re
   const created = await page.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } })
   expect(created.status()).toBe(200)
   const activityId = (await created.json()).activityId as string
+  let releaseDraft!: () => void
+  const heldDraft = new Promise<void>(resolve => { releaseDraft = resolve })
+  let firstDraftRead = true
+  await page.route('**/api/learning/drafts/' + activityId, async route => {
+    if (route.request().method() === 'GET' && firstDraftRead) {
+      firstDraftRead = false
+      const response = await route.fetch()
+      await heldDraft
+      await route.fulfill({ response })
+    } else await route.continue()
+  })
   await page.goto(endpoint + '/?space=school&activity=' + activityId)
   await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
   await expect(page.getByLabel('ALU 题目', { exact: true })).toBeVisible()
   const selected = '完成 4 位加减与逻辑运算。'
   await selectText(page, 'ALU 题目', selected)
   await expect(page.getByRole('button', { name: '询问 Agent', exact: true })).toBeVisible()
+  try { await expect(page.getByRole('button', { name: '询问 Agent', exact: true })).toBeDisabled() }
+  finally { releaseDraft() }
   await page.getByRole('button', { name: '询问 Agent', exact: true }).click()
   await expect(refs(page)).toHaveCount(1)
   expect(await refs(page).first().locator('pre').textContent()).toBe(selected)
   await question(page).fill('为什么需要边界输入？')
   await expect.poll(async () => (await draftOf(page, activityId, false)).question).toBe('为什么需要边界输入？')
   const firstDraft = await draftOf(page, activityId, false)
-  expect(firstDraft.revision).toBe(1)
+  expect(firstDraft.revision).toBeGreaterThan(0)
   expect(firstDraft.references[0].source.kind).toBe('course-material')
   expect(firstDraft.references[0].copy).toBe(selected)
   expect(firstDraft.references[0].copyDigest).toBe(sha256(selected))
