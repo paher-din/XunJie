@@ -2,7 +2,7 @@
 
 对应 [#154](https://github.com/paher-din/XunJie/issues/154)，方案与测试边界见[实施方案](specs/wp02-hybrid-deployment.md)。同机多进程与旧 WP01 证据不代替本票实际跨机验收。
 
-当前产品修复基点为 `37122b4`，连接夹具清理修复为 `5c5a4ac`。本机原生业务、完整包 CLI 与桌面 Chrome 定向检查通过；Windows 全量仍有 4 项失败。真实跨机没有可用部署授权，Mac 按 #155 待执行，因此本票尚未完整验收通过。
+当前固定工程验收基点为 `29398b3`，产品修复基点为 `37122b4`，连接夹具清理修复为 `5c5a4ac`。本机原生业务、完整包 CLI 与桌面 Chrome 定向检查通过，固定基点的 Linux 完整 CI 通过；Windows 全量仍有 4 项失败。按负责人最新要求，真实跨机部署、断网恢复与 SSH fencing/接管统一纳入 [#155](https://github.com/paher-din/XunJie/issues/155) 的 Mac 工作，由 Apple Silicon Mac 客户端连接独立学校 Linux 主机执行并回填 #154；Windows 本轮不再单独等待跨机入口。上述分机项和 Mac 项均待执行，本票尚未完整验收通过。
 
 ## 部署绑定
 
@@ -78,8 +78,9 @@ PR #157 已补齐标题、实现及验收说明，保持 OPEN、未合并；[#15
 - 桌面 Chrome **26/26**（部署 3、草稿 8、作品 15）；草稿 8 项含 2 项公开接口补充回归。同伴就绪修正后，最终 `37122b4` 的部署/草稿 **11/11** 补验通过，不另算 11 个新场景。已目视检查[个人](evidence/wp02-hybrid-windows-integrated-personal.png)、[学校共享](evidence/wp02-hybrid-windows-integrated-school-shared.png)、[本机 owner](evidence/wp02-hybrid-windows-integrated-hybrid-local-owner.png)三张最终截图。
 - `37122b4` 的 Windows 全量 npm test 仍失败 **4** 项：product-runtime **118/1/5**、storage **12/1/1**、server **640/2/19**（通过/失败/跳过），Web **688** 项通过，checks **27** 通过/1 跳过。独立进程 fencing 已通过；剩余三项为 Windows symlink EPERM，一项为旧 account-control 的 LOCAL_SOCKET_CONFLICT。末尾 tools 未到达。
 - 同提交的 CI 类型、构建、契约和文档阶段通过，测试阶段唯一失败为断连夹具删目录的 ENOTEMPTY。已核对原始日志附件摘要；`5c5a4ac` 令夹具先关闭 HTTP、等待已接收请求结束再删目录，未弱化断连或超时断言。本机连接协议整组 **31/31、0 跳过**，两轴复审无新增发现。
-- `5c5a4ac` 的后续 Linux CI 中，产品运行组 **122/0/2**、存储 **14/0/0**、后端 **658/0/12**、Web **688**、checks **28** 通过；工具组 **294/10/1**，10 项均来自同一 before hook 的公共契约导出加载失败，Python 阶段未到达。源码与现有产物均有该导出，而多份真实 CLI 测试会重建同一 checkout 的 contracts/dist，证据支持读写竞争，但未直接捕获中间字节。当前工具组按文件串行、其他组仍并行 4，文件内并发断言不变；该调度修复提交时尚待完整 CI 复验，最终状态按 [PR 检查](https://github.com/paher-din/XunJie/pull/157/checks)的实际 SHA 核对。
+- `5c5a4ac` 的后续 Linux CI 中，产品运行组 **122/0/2**、存储 **14/0/0**、后端 **658/0/12**、Web **688**、checks **28** 通过；工具组 **294/10/1**，10 项均来自同一 before hook 的公共契约导出加载失败，Python 阶段未到达。源码与现有产物均有该导出，而多份真实 CLI 测试会重建同一 checkout 的 contracts/dist，证据支持读写竞争，但未直接捕获中间字节。`29398b3` 将工具组按文件串行、其他组仍并行 4，文件内并发断言不变。
+- 固定 `29398b3` 的 [Linux 完整 CI #26](https://github.com/paher-din/XunJie/actions/runs/41215137258) 已通过：Ubuntu 24.04、Node 24.21.0，类型、构建、9 个浏览器公共契约与文档检查通过；checks **28/0/0**、product-runtime **122/0/2**、storage **14/0/0**、server **658/0/12**、tools Node **304/0/1**（通过/失败/跳过），Web **688**、Python **34** 通过，另有 HDL ledger 检查通过。15 项跳过仍为跳过，不作为 Windows 专属、真实模型/执行或跨机证明。原始日志附件 SHA-256 为 `63b8392a0faa7e9d80325b623ccc6bd3b1a93a728ec9ac5c43d87c0fff8ba21a`；工程 JSON 的调度修复待验状态保留其提交时点，实际后续结果以本轮固定 SHA 和 CI 链接核对。
 
-另行补跑旧工具组时修复了本机缺失依赖和 OpenSSL 路径；该长运行期间分支有并行更新，不作为固定提交的整体通过证据。Linux CI、Windows 全量、定向原生、Chrome、真实跨机和教学效果分别报告。
+另行补跑旧工具组时修复了本机缺失依赖和 OpenSSL 路径；最终 Node **265/25/15**（通过/失败/跳过），Python 未到达，失败涉及 Git tar 路径优先级、Windows 链接/socket 约束与部分 CLI 超时。该长运行期间分支有并行更新，仅作诊断，不作为固定提交的整体通过证据。Linux CI、Windows 全量、定向原生、Chrome、真实跨机和教学效果分别报告。
 
-此前 WP01 学校主机为 101.201.141.133，现有受管配置可核对主机 pin，但本机凭据对部署用户 xunjie-admin 返回 Permission denied (publickey)。普通成员页面/文件权限不能替代部署权限，未修改现行共享服务。Mac 的实际执行集中 [#155](https://github.com/paher-din/XunJie/issues/155)；教学效果未评估。
+此前 WP01 学校主机为 101.201.141.133，现有受管配置可核对主机 pin，但本机凭据对部署用户 xunjie-admin 返回 Permission denied (publickey)。普通成员页面/文件权限不能替代部署权限，未修改现行共享服务。真实跨机所需的获准部署配置和测试目录由 #155 执行时核实；#155 的 24 项 #154 清单已经包含 Mac → 学校 Linux 的业务、故障和分机维护接管要求，本轮不增加重复清单、不将其勾选为通过。教学效果未评估。
