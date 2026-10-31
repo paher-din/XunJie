@@ -1,0 +1,54 @@
+{
+  "formatVersion": 1,
+  "issue": 149,
+  "ticket": 155,
+  "observedAt": "2026-10-30T16:40:58.799Z",
+  "platform": "macOS 27.2 (26B123), arm64",
+  "ca": {
+    "path": "/Users/robertwu/.xunjie/xj-dev/ca/ca-cert.pem",
+    "sha256": "97:CE:10:42:91:9B:5D:9C:EA:78:35:B1:19:89:DB:67:38:6D:4E:57:87:94:43:5E:23:8D:F7:16:AD:A1:BB:27",
+    "sha1": "82:DF:9D:57:43:71:07:A5:75:57:40:56:78:09:9B:23:4B:B7:B2:23",
+    "existedBefore": true,
+    "keychainMatches": 1,
+    "trustSettings": "No explicit admin trust setting; the user trust list does not include this fingerprint. The certificate was already present in the login keychain before this acceptance; no import or trust change was made, so no revocation was performed.",
+    "adminTrustDump": "SecTrustSettingsCopyCertificates: No Trust Settings were found.",
+    "userTrustListContainsCa": false
+  },
+  "https": {
+    "entry": "https://127.0.0.1:26454/",
+    "browser": "Google Chrome 156.0.8078.79",
+    "leaf": [
+      "subject=CN=127.0.0.1",
+      "issuer=CN=XunJie Local Development CA",
+      "sha256 Fingerprint=3C:E6:B2:28:D2:DF:4B:02:67:D6:F7:D3:3C:68:ED:0C:1D:97:94:53:56:45:39:9C:4E:8B:85:45:92:3B:5B:A1"
+    ],
+    "chainVerify": "Verify return code: 0 (ok)",
+    "page": {
+      "status": 200,
+      "title": "循阶",
+      "url": "https://127.0.0.1:26454/",
+      "certificateValidationBypass": false,
+      "errors": []
+    }
+  },
+  "cleanup": {
+    "caStillPresent": true
+  },
+  "sourceRevision": {
+    "commit": "4bd2c0e428375aa79e1a456567dda24a275c2093",
+    "baseCommit": "036d0b69ea0247df44c33e6019239db891d65b72",
+    "workingTreeDirty": false,
+    "note": "Acceptance build produced from the production sources at this commit; the product package bundles the same source."
+  },
+  "xjDev": {
+    "entry": "https://127.0.0.1:26454/",
+    "startedForThisCheck": true,
+    "stoppedAfterCheck": true,
+    "dataPreserved": true
+  },
+  "notes": [
+    "The exact CA fingerprint was present in the login keychain before this acceptance; no import or trust change was made.",
+    "Because no new trust was added, no revocation was performed; the pre-existing certificate was left untouched.",
+    "Chrome loaded the HTTPS entry with certificate validation enabled; no continue/warning/bypass was used."
+  ]
+}

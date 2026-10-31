@@ -3,7 +3,7 @@ import { submissionReference, referenceKey, snapshotReference, type ReferenceSel
   type ReferenceSubmission, type WorkspaceReference } from './model'
 import './references.css'
 
-interface ReferencesController {
+export interface ReferencesController {
   workspaceKey: string
   open: boolean
   setOpen(open: boolean): void
@@ -21,10 +21,18 @@ interface ReferencesController {
   submit(): Promise<void>
   busy: boolean
   notice: string
+  /** False when the real business receiver is not connected yet; drafts still persist. */
+  sendAvailable: boolean
+  draftReady: boolean
+  draftError: string
+  draftConflict?: { local: DraftReferenceContent; other: DraftReferenceContent }
+  draftConflictReady: boolean
+  resolveDraftConflict?(side: 'local' | 'other'): Promise<void> | void
 }
-const Context = createContext<ReferencesController | null>(null)
+export interface DraftReferenceContent { question: string; references: readonly WorkspaceReference[] }
+export const ReferencesContext = createContext<ReferencesController | null>(null)
 export function useWorkspaceReferences(): ReferencesController {
-  const value = useContext(Context)
+  const value = useContext(ReferencesContext)
   if (!value) throw new Error('WorkspaceReferencesProvider is required')
   return value
 }
@@ -150,8 +158,9 @@ function ReferencesSession({ workspaceKey, onSubmit, children }: WorkspaceRefere
       if (alive.current) setBusy(false)
     }
   }
-  return <Context.Provider value={{ workspaceKey, open, setOpen, question, setQuestion, references, pending,
-    select, clearSelection, ask, remove, locate, register, submit, busy, notice }}>{children}</Context.Provider>
+  return <ReferencesContext.Provider value={{ workspaceKey, open, setOpen, question, setQuestion, references, pending,
+    select, clearSelection, ask, remove, locate, register, submit, busy, notice, sendAvailable: true,
+    draftReady: true, draftError: '', draftConflictReady: true }}>{children}</ReferencesContext.Provider>
 }
 
 export function WorkspaceReferenceList() {
@@ -168,7 +177,8 @@ export function WorkspaceReferenceList() {
 }
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
 export function WorkspaceReferenceComposer() {
-  const { open, setOpen, question, setQuestion, submit, busy, notice } = useWorkspaceReferences()
+  const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
+    draftConflict, draftConflictReady, resolveDraftConflict } = useWorkspaceReferences()
   const input = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
   const questionId = useId()
@@ -176,19 +186,38 @@ export function WorkspaceReferenceComposer() {
   if (!open) return <button className="wr-button" type="button" onClick={() => setOpen(true)}>打开对话</button>
   return <section className="wr-composer" aria-label="Agent 问题草稿" data-reference-ui>
     <header><h2>询问 Agent</h2><button type="button" onClick={() => setOpen(false)}>收起对话</button></header>
+    {draftConflict && <div className="wr-conflict" role="alert">
+      <h3>问题草稿存在分歧</h3>
+      <p>本页与另一版本均保留，请比较后明确选择。</p>
+      <div className="wr-conflict-columns">
+        <div><h4>本页草稿</h4><p className="wr-conflict-question">{draftConflict.local.question || '（问题尚未填写）'}</p>
+          <ul>{draftConflict.local.references.map(reference => <li key={reference.id}>
+            <strong>{reference.sourceName}</strong><pre>{reference.text}</pre></li>)}</ul></div>
+        <div><h4>另一版本</h4><p className="wr-conflict-question">{draftConflict.other.question || '（问题尚未填写）'}</p>
+          <ul>{draftConflict.other.references.map(reference => <li key={reference.id}>
+            <strong>{reference.sourceName}</strong><pre>{reference.text}</pre></li>)}</ul></div>
+      </div>
+      <div className="wr-send">
+        <button type="button" disabled={!draftConflictReady} onClick={() => void resolveDraftConflict?.('local')}>采用本页草稿</button>
+        <button type="button" disabled={!draftConflictReady} onClick={() => void resolveDraftConflict?.('other')}>采用另一版本</button>
+      </div>
+    </div>}
+    {draftError && <p role="alert" className="wr-notice">{draftError}</p>}
     <WorkspaceReferenceList />
-    <form onSubmit={event => { event.preventDefault(); void submit() }}>
+    <form onSubmit={event => { event.preventDefault(); if (sendAvailable) void submit() }}>
       <label htmlFor={questionId}>你的问题</label>
-      <textarea ref={input} id={questionId} value={question}
+      <textarea ref={input} id={questionId} value={question} disabled={!draftReady}
         onChange={event => setQuestion(event.target.value)} placeholder="写下想讨论的问题…"
         onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
         onKeyDown={event => {
-          if (event.key === 'Enter' && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+          if (sendAvailable && event.key === 'Enter' && !event.shiftKey && !composing.current && !event.nativeEvent.isComposing && event.keyCode !== 229) {
             event.preventDefault(); void submit()
           }
         }} />
-      <div className="wr-send"><span className="wr-hint">Enter 发送 · Shift + Enter 换行</span>
-        <button className="wr-primary" type="submit" disabled={busy || !question.trim()}>{busy ? '发送中…' : '发送问题'}</button></div>
+      <div className="wr-send"><span className="wr-hint">{sendAvailable ? 'Enter 发送 · Shift + Enter 换行'
+        : '真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。'}</span>
+        <button className="wr-primary" type="submit" disabled={!sendAvailable || busy || !question.trim()}>
+          {sendAvailable ? busy ? '发送中…' : '发送问题' : '发送问题（尚未接入）'}</button></div>
     </form>
     <p role="status" className="wr-notice">{notice}</p>
   </section>

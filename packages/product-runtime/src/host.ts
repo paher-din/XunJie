@@ -5,6 +5,7 @@ import { createServer as httpsServer } from 'node:https';
 import { extname, join, resolve, sep } from 'node:path';
 import type { RuntimeDependencyStatus, RuntimeEnvironment, RuntimeStatus } from '@xunjie/contracts/product-runtime';
 import { createConnectionAuthority, createOutboundConnection } from './connections.js';
+import type { CapabilityHandler } from './connections.js';
 import { acquireLock, assertRoot, atomicJson, exists, processIdentity, readJson } from './io.js';
 import { createMaintenanceCoordinator } from './maintenance.js';
 import type { MaintenanceParticipant } from './maintenance.js';
@@ -13,6 +14,8 @@ import type { InstalledConfiguration } from './runtime.js';
 import { openProductRuntime } from './runtime.js';
 import { createRecoveryManager, RecoveryError } from './recovery.js';
 import { createRuntimeRecoveryOwner } from './runtime-recovery.js';
+import { createSshRecoveryReceiver } from './ssh-recovery.js';
+import type { SshRecoveryReceiver } from './ssh-recovery.js';
 import type { BackupPolicy, RecoveryOwner } from './recovery-types.js';
 
 export interface ProductHostOptions {
@@ -23,6 +26,7 @@ export interface ProductHostOptions {
   createRecoveryOwners?: (context: { root: string; environment: RuntimeEnvironment }) => Promise<readonly RecoveryOwner[]>;
   createApplication?: (context: { root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration }) => Promise<{
     owners: readonly RecoveryOwner[];
+    capabilities?: Readonly<Record<string, CapabilityHandler>>;
     handle(request: IncomingMessage, response: ServerResponse): Promise<boolean>;
   } | undefined>;
 }
@@ -117,6 +121,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   }
 
   async function status(): Promise<RuntimeStatus> {
+    // A probe that began before readiness must not report failed after the flag flips mid-call.
+    const starting = !initialized;
     const dependencies: RuntimeDependencyStatus[] = [];
     if (config.database.mode !== 'none') {
       try {
@@ -148,13 +154,24 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     }));
     const missing = maintenance.status().missingServiceIds;
     if (missing.length) dependencies.push({ name: 'maintenance-participants', required: true, state: 'unavailable', detail: missing.join(', ') });
-    const state: RuntimeStatus['state'] = !initialized ? 'starting' : maintenance.status().phase === 'failed' ? 'failed'
+    const state: RuntimeStatus['state'] = !initialized || starting ? 'starting' : maintenance.status().phase === 'failed' ? 'failed'
       : await authorityClosed() ? 'maintenance' : dependencies.some(value => value.required && value.state !== 'ready') ? 'failed'
         : dependencies.some(value => value.state !== 'ready') ? 'degraded' : 'ready';
     return { state, environment, endpoint, dependencies, ...(startupFailure ? { reason: startupFailure } : {}) };
   }
 
-  const authority = createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status() } });
+  const applicationCapabilities = Object.keys(application?.capabilities ?? {});
+  service.capabilities = ['runtime.status', ...applicationCapabilities];
+  await atomicJson(join(root, 'environment.json'), environment);
+  const applicationHandlers = Object.fromEntries(Object.entries(application?.capabilities ?? {}).map(([name, handler]) =>
+    [name, async (...args: Parameters<CapabilityHandler>) => {
+      activeApplicationRequests++;
+      try {
+        if (stopping || await authorityClosed()) throw new RecoveryError('maintenance');
+        return await handler(...args);
+      } finally { activeApplicationRequests--; }
+    }]));
+  const authority = createConnectionAuthority({ root, service, handlers: { 'runtime.status': () => status(), ...applicationHandlers } });
   async function publicRequest(request: IncomingMessage, response: ServerResponse) {
     const pathname = new URL(request.url ?? '/', 'http://runtime.invalid').pathname;
     if (request.method === 'GET' && pathname === '/runtime/environment') { send(response, 200, environment); return; }
@@ -209,7 +226,11 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         const { action, input } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { action: string; input: any };
         const policy = async () => readJson<BackupPolicy>(join(root, 'backup-policy.json'));
         let result: unknown;
-        if (action === 'configure') { await recovery.configure(input); result = { configured: true }; }
+        if (action === 'authorize-capability') {
+          if (await authorityClosed()) throw new RecoveryError('maintenance');
+          result = await authority.authorize(input);
+        }
+        else if (action === 'configure') { await recovery.configure(input); result = { configured: true }; }
         else if (action === 'catalog') {
           const saved = await exists(join(root, 'backup-policy.json')) ? await policy()
             : await readJson<{ directory: string; recoveryKeyRef: string }>(join(root, 'last-backup-settings.json'));
@@ -229,9 +250,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
         else if (action === 'fence-source') result = await authority.fenceSource(input);
         else if (action === 'takeover') {
           const source = openProductRuntime({ root: input.sourceRoot });
-          const receivers = (input.receivers ?? []) as { id: string; root: string }[];
+          const receivers = (input.receivers ?? []) as ({ id: string; root: string } | SshRecoveryReceiver)[];
           result = await recovery.takeover({ source: { retire: value => source.recovery.retire(value) },
-            receivers: receivers.map(receiver => ({ id: receiver.id, async fence(sourceEnvironment, sourceServiceIds) {
+            receivers: receivers.map(receiver => 'ssh' in receiver ? createSshRecoveryReceiver(receiver) : ({ id: receiver.id, async fence(sourceEnvironment, sourceServiceIds) {
               const receiverRuntime = openProductRuntime({ root: receiver.root });
               const target = (await receiverRuntime.status()).environment;
               if (!target.services.some(item => receiver.id === `${target.environmentId}/${item.serviceId}`)) throw new RecoveryError('receiver-identity-conflict');
@@ -294,7 +315,6 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       endpoint: `http://127.0.0.1:${(controlServer.address() as { port: number }).port}` });
     process.on('SIGTERM', onSignal);
     process.on('SIGINT', onSignal);
-    initialized = true;
     const isolated = await exists(join(root, 'recovery-state.json'))
       && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
     const previousMaintenance = await exists(join(root, 'maintenance.json'))
@@ -305,6 +325,8 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
       await maintenance.enter('restart');
       await maintenance.resume();
     }
+    // start() must not observe readiness before a previous stop/restart gate reopens.
+    initialized = true;
     await atomicJson(join(root, 'status.json'), await status());
     completeStartup();
     scheduler = setInterval(() => {

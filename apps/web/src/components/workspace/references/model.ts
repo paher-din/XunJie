@@ -1,4 +1,6 @@
-/** Ephemeral frontend references. No persistence or model-service contract is implied. */
+import type { QuestionReferenceSource, QuestionWorkBasis } from '@xunjie/contracts/question-drafts'
+
+/** Ephemeral frontend references; production persistence uses the reliable draft authority. */
 export interface ReferenceSnapshot {
   readonly workspaceKey: string
   /** Stable instance identity, never a display path. */
@@ -6,13 +8,17 @@ export interface ReferenceSnapshot {
   readonly sourceName: string
   readonly kind: 'text' | 'code'
   readonly text: string
-  /** Local-only original, used to reject stale locations. Never sent to onSubmit. */
-  readonly sourceText: string
+  /** Local-only original, used to reject stale locations. Never sent as a reference field. */
+  readonly sourceText?: string
+  /** Typed source object and immutable content identity; required for production drafts. */
+  readonly source?: QuestionReferenceSource
+  /** Full selected work snapshot registered as a fixed basis, never stored as reference copy. */
+  readonly basis?: QuestionWorkBasis
   /** Half-open UTF-16 offsets in the original, including its actual newline separators. */
   readonly range: Readonly<{ start: number; end: number }>
 }
 export interface WorkspaceReference extends ReferenceSnapshot { readonly id: string }
-export type SubmittedReference = Omit<WorkspaceReference, 'sourceText'>
+export type SubmittedReference = Omit<WorkspaceReference, 'sourceText' | 'basis'>
 export interface ReferenceSubmission {
   readonly workspaceKey: string
   readonly question: string
@@ -38,7 +44,8 @@ function splitsPair(text: string, offset: number): boolean {
 }
 export function snapshotReference(input: Omit<ReferenceSnapshot, 'text'>): ReferenceSnapshot | null {
   const { start, end } = input.range
-  if (!input.workspaceKey || !input.sourceId || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) ||
+  if (!input.workspaceKey || !input.sourceId || !input.sourceText ||
+    !Number.isSafeInteger(start) || !Number.isSafeInteger(end) ||
     start < 0 || end <= start || end > input.sourceText.length || splitsPair(input.sourceText, start) ||
     splitsPair(input.sourceText, end)) return null
   const text = input.sourceText.slice(start, end)
@@ -46,6 +53,6 @@ export function snapshotReference(input: Omit<ReferenceSnapshot, 'text'>): Refer
   return Object.freeze({ ...input, text, range: Object.freeze({ start, end }) })
 }
 export function submissionReference(ref: WorkspaceReference): SubmittedReference {
-  return Object.freeze({ id: ref.id, workspaceKey: ref.workspaceKey, sourceId: ref.sourceId, sourceName: ref.sourceName,
-    kind: ref.kind, text: ref.text, range: Object.freeze({ start: ref.range.start, end: ref.range.end }) })
+  const { sourceText: _sourceText, basis: _basis, ...rest } = ref
+  return Object.freeze({ ...rest, range: Object.freeze({ start: ref.range.start, end: ref.range.end }) })
 }

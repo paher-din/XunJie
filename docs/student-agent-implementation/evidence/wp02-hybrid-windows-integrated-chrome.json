@@ -1,0 +1,223 @@
+{
+  "fixCommit": "37122b49256619dece6edaf73f78d6a6f6a40063",
+  "finalMeasuredAt": "2026-10-31T14:40:06.893Z",
+  "platform": "win32",
+  "osRelease": "10.0.26200",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "browser": "installed Chrome",
+  "browserVersion": "156.0.8078.76",
+  "headless": false,
+  "topology": "two independent native product daemons on the same host; NOT cross-machine evidence",
+  "postSelectionFix": {
+    "source": "5e1e2ec with the selection fix later committed in 37122b4; before a0c1c09 UI readiness adjustment",
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "name": "e2e\\hybridDeployment.spec.ts:77:3 › personal: the production page automatically retains Chinese work and reopens the same activity",
+        "status": "passed",
+        "durationMs": 4200
+      },
+      {
+        "name": "e2e\\hybridDeployment.spec.ts:77:3 › school-shared: the production page automatically retains Chinese work and reopens the same activity",
+        "status": "passed",
+        "durationMs": 4400
+      },
+      {
+        "name": "e2e\\hybridDeployment.spec.ts:77:3 › hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity",
+        "status": "passed",
+        "durationMs": 5100
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:84:1 › course text and requirements stay as fixed references through collapse, reload and activity switch",
+        "status": "passed",
+        "durationMs": 6000
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:178:1 › code reference keeps original copy after rename and edit, and survives file deletion and reload",
+        "status": "passed",
+        "durationMs": 3900
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:230:1 › an existing reliable workspace database upgrades without losing its work",
+        "status": "passed",
+        "durationMs": 1100
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:280:1 › a restored draft resumes periodic sync after authentication recovers",
+        "status": "passed",
+        "durationMs": 3000
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:304:1 › a local conflict candidate retains an unsynchronized code basis across reload",
+        "status": "passed",
+        "durationMs": 1000
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:348:1 › local storage refusal keeps memory and retries automatically",
+        "status": "passed",
+        "durationMs": 1800
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:370:1 › two actual tabs preserve both local drafts until an explicit choice",
+        "status": "passed",
+        "durationMs": 1700
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:392:1 › another client conflict keeps both drafts and a late acknowledgement never settles later input",
+        "status": "passed",
+        "durationMs": 4300
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:59:1 › course catalog returns after activity restoration races with discovery",
+        "status": "passed",
+        "durationMs": 939
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:97:1 › actual editor automatically protects and synchronizes Chinese original text across reload",
+        "status": "passed",
+        "durationMs": 3900
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:121:1 › an opened activity survives API disconnection and reload, then continues its original pending sync",
+        "status": "passed",
+        "durationMs": 7200
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:143:1 › late and lost confirmations never settle later editor content",
+        "status": "passed",
+        "durationMs": 6300
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:183:1 › failed navigation leaves the editor able to continue automatic sync",
+        "status": "passed",
+        "durationMs": 3300
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:206:1 › reopening an activity uses the latest body from another actual tab, not a retained editor model",
+        "status": "passed",
+        "durationMs": 5800
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:232:1 › a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically",
+        "status": "passed",
+        "durationMs": 5900
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:255:1 › two actual tabs preserve both local edits under simultaneous IndexedDB competition",
+        "status": "passed",
+        "durationMs": 7300
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:294:1 › a remote conflict comparison includes input made while the original service read was delayed",
+        "status": "passed",
+        "durationMs": 6400
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:345:1 › continuous input advances durable local and remote content before the student stops typing",
+        "status": "passed",
+        "durationMs": 5600
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:364:1 › the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing",
+        "status": "passed",
+        "durationMs": 2200
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:379:1 › successful navigation protects input entered immediately before its delayed response",
+        "status": "passed",
+        "durationMs": 1500
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:399:1 › initial storage refusal retries automatically after the browser permits transactions again",
+        "status": "passed",
+        "durationMs": 994
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:409:51 › school workspace logout › confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication",
+        "status": "passed",
+        "durationMs": 3000
+      },
+      {
+        "name": "e2e\\worksEditor.spec.ts:409:51 › school workspace logout › confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication",
+        "status": "passed",
+        "durationMs": 3000
+      }
+    ]
+  },
+  "finalUiReadinessRecheck": {
+    "codeCommit": "37122b49256619dece6edaf73f78d6a6f6a40063",
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "name": "e2e\\hybridDeployment.spec.ts:79:3 › personal: the production page automatically retains Chinese work and reopens the same activity",
+        "status": "passed",
+        "durationMs": 4400
+      },
+      {
+        "name": "e2e\\hybridDeployment.spec.ts:79:3 › school-shared: the production page automatically retains Chinese work and reopens the same activity",
+        "status": "passed",
+        "durationMs": 4800
+      },
+      {
+        "name": "e2e\\hybridDeployment.spec.ts:79:3 › hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity",
+        "status": "passed",
+        "durationMs": 5800
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:84:1 › course text and requirements stay as fixed references through collapse, reload and activity switch",
+        "status": "passed",
+        "durationMs": 6500
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:191:1 › code reference keeps original copy after rename and edit, and survives file deletion and reload",
+        "status": "passed",
+        "durationMs": 4100
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:243:1 › an existing reliable workspace database upgrades without losing its work",
+        "status": "passed",
+        "durationMs": 1100
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:293:1 › a restored draft resumes periodic sync after authentication recovers",
+        "status": "passed",
+        "durationMs": 3000
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:317:1 › a local conflict candidate retains an unsynchronized code basis across reload",
+        "status": "passed",
+        "durationMs": 952
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:361:1 › local storage refusal keeps memory and retries automatically",
+        "status": "passed",
+        "durationMs": 1900
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:383:1 › two actual tabs preserve both local drafts until an explicit choice",
+        "status": "passed",
+        "durationMs": 1900
+      },
+      {
+        "name": "e2e\\questionDrafts.spec.ts:405:1 › another client conflict keeps both drafts and a late acknowledgement never settles later input",
+        "status": "passed",
+        "durationMs": 4400
+      }
+    ],
+    "note": "Repeats the three deployment and eight draft cases affected by a0c1c09; not eleven additional scenarios."
+  },
+  "visualReview": "All three final deployment screenshots inspected; Chinese work, course material and original space visible.",
+  "screenshots": [
+    "wp02-hybrid-windows-integrated-personal.png",
+    "wp02-hybrid-windows-integrated-school-shared.png",
+    "wp02-hybrid-windows-integrated-hybrid-local-owner.png"
+  ],
+  "realCrossMachine": "not executed",
+  "mac": "not executed; issue #155",
+  "teachingEffect": "not evaluated"
+}

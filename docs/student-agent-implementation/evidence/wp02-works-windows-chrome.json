@@ -1,0 +1,104 @@
+{
+  "measuredAt": "2026-10-30T18:29:45.123Z",
+  "platform": "win32",
+  "arch": "x64",
+  "osRelease": "10.0.26200",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "browser": "installed Chrome",
+  "browserVersion": "156.0.8078.76",
+  "headless": false,
+  "backend": "production product host, native PostgreSQL and real filesystem resources",
+  "cases": [
+    {
+      "name": "actual editor automatically protects and synchronizes Chinese original text across reload",
+      "status": "passed",
+      "durationMs": 3818
+    },
+    {
+      "name": "an opened activity survives API disconnection and reload, then continues its original pending sync",
+      "status": "passed",
+      "durationMs": 7287
+    },
+    {
+      "name": "late and lost confirmations never settle later editor content",
+      "status": "passed",
+      "durationMs": 6631
+    },
+    {
+      "name": "failed navigation leaves the editor able to continue automatic sync",
+      "status": "passed",
+      "durationMs": 3764
+    },
+    {
+      "name": "reopening an activity uses the latest body from another actual tab, not a retained editor model",
+      "status": "passed",
+      "durationMs": 5633
+    },
+    {
+      "name": "a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically",
+      "status": "passed",
+      "durationMs": 7589
+    },
+    {
+      "name": "two actual tabs preserve both local edits under simultaneous IndexedDB competition",
+      "status": "passed",
+      "durationMs": 7534
+    },
+    {
+      "name": "a remote conflict comparison includes input made while the original service read was delayed",
+      "status": "passed",
+      "durationMs": 6290
+    },
+    {
+      "name": "continuous input advances durable local and remote content before the student stops typing",
+      "status": "passed",
+      "durationMs": 5574
+    },
+    {
+      "name": "the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing",
+      "status": "passed",
+      "durationMs": 2143
+    },
+    {
+      "name": "successful navigation protects input entered immediately before its delayed response",
+      "status": "passed",
+      "durationMs": 1200
+    },
+    {
+      "name": "initial storage refusal retries automatically after the browser permits transactions again",
+      "status": "passed",
+      "durationMs": 833
+    },
+    {
+      "name": "confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication",
+      "status": "passed",
+      "durationMs": 2862
+    },
+    {
+      "name": "confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication",
+      "status": "passed",
+      "durationMs": 2818
+    }
+  ],
+  "sourceCommit": "a19c19f782c39f939eb29113512f24d309afb845",
+  "supplementalScreenshotRun": {
+    "measuredAt": "2026-10-30T18:30:32.74Z",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26200",
+    "node": "v24.21.0",
+    "postgres": "18.6",
+    "browser": "installed Chrome",
+    "browserVersion": "156.0.8078.76",
+    "headless": false,
+    "backend": "production product host, native PostgreSQL and real filesystem resources",
+    "cases": [
+      {
+        "name": "actual editor automatically protects and synchronizes Chinese original text across reload",
+        "status": "passed",
+        "durationMs": 3776
+      }
+    ]
+  }
+}

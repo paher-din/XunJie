@@ -62,6 +62,25 @@ function resetRegistryFor(workspaceKey: string): void {
   }
 }
 
+/** model 与原文历史必须先于任何可输入 DOM 就绪，否则早期按键只留在隐藏 textarea 里。 */
+function ensureModel(monaco: MonacoModule, workspaceKey: string, fileId: string, language: string, initialText: string): MonacoModel {
+  const key = keyOf(workspaceKey, fileId)
+  const existing = models.get(key)
+  if (existing) return existing
+  const uri = monaco.Uri.from({
+    scheme: 'xunjie-project',
+    authority: encodeURIComponent(workspaceKey),
+    path: `/${encodeURIComponent(fileId)}`,
+  })
+  // model 只拿 LF 显示投影；原文与可逆历史登记在 originals，编辑时打补丁回原文
+  const projection = projectOriginal(initialText)
+  const model = monaco.editor.getModel(uri) ?? monaco.editor.createModel(projection.modelText, language, uri)
+  model.setEOL(monaco.editor.EndOfLineSequence.LF)
+  originals.set(key, { history: new OriginalEditHistory(initialText, model.getAlternativeVersionId()), projection })
+  models.set(key, model)
+  return model
+}
+
 export interface CodeEditorHandle {
   focus(): void
   /** 记下当前文件的视图状态（光标 / 滚动 / 折叠），切换与卸载时调用。 */
@@ -293,6 +312,11 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
           editor.onDidChangeModel(watchModel),
           { dispose: () => contentSubscription?.dispose() },
         )
+        // Attach before exposing readiness so the hidden textarea never exists without its history.
+        const initialIdentity = identityRef.current
+        if (initialIdentity.fileId !== null) {
+          editor.setModel(ensureModel(monaco, initialIdentity.workspaceKey, initialIdentity.fileId, language, initialTextRef.current))
+        }
         disposables.push(editor.onDidChangeCursorSelection(event => notifySelection(
           event.reason === monaco.editor.CursorChangeReason.Explicit && (event.source === 'mouse' || event.source === 'keyboard')
             ? event.source : undefined,
@@ -361,21 +385,7 @@ export const CodeEditorHost = forwardRef<CodeEditorHandle, CodeEditorHostProps>(
     }
 
     const key = keyOf(workspaceKey, fileId)
-    let model = models.get(key)
-    if (!model) {
-      const uri = monaco.Uri.from({
-        scheme: 'xunjie-project',
-        authority: encodeURIComponent(workspaceKey),
-        path: `/${encodeURIComponent(fileId)}`,
-      })
-      // model 只拿 LF 显示投影；原文与可逆历史登记在 originals，编辑时打补丁回原文
-      const original = initialTextRef.current
-      const projection = projectOriginal(original)
-      model = monaco.editor.getModel(uri) ?? monaco.editor.createModel(projection.modelText, language, uri)
-      model.setEOL(monaco.editor.EndOfLineSequence.LF)
-      originals.set(key, { history: new OriginalEditHistory(original, model.getAlternativeVersionId()), projection })
-      models.set(key, model)
-    }
+    const model = ensureModel(monaco, workspaceKey, fileId, language, initialTextRef.current)
     if (model.getLanguageId() !== language) {
       monaco.editor.setModelLanguage(model, language)
     }

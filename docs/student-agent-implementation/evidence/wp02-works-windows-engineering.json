@@ -1,0 +1,46 @@
+{
+  "sourceCommit": "a19c19f782c39f939eb29113512f24d309afb845",
+  "executedOn": "2026-10-31",
+  "platform": "Windows 11 x64 build 26200",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "typecheck": "passed",
+  "build": "passed; final frontend changes also rebuilt with build:runtime",
+  "browserSafeContractExports": { "passed": 7 },
+  "nativeIntegration": {
+    "command": "node --test --test-concurrency=1 apps/server/tests/learning-entry.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs packages/product-runtime/test/works.runtime.test.mjs",
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 186640.1075,
+    "coverage": [
+      "Chinese UTF-8 original bytes including BOM and CRLF",
+      "stable rename identity, deletion tombstone, same-name recreation with new identity",
+      "immutable historical content and resource retention",
+      "typed JSON state and large base64 resource",
+      "same request idempotency and changed-input rejection",
+      "independent client revision competition",
+      "actual school account authorization and expected subject mismatch",
+      "restart and complete three-owner backup, restore and takeover",
+      "old restore namespace rejection and historical content/receipt recovery",
+      "normal CLI schema upgrade validation"
+    ]
+  },
+  "fullTest": {
+    "command": "npm test",
+    "status": "failed",
+    "groups": {
+      "checks": { "passed": 27, "failed": 0, "skipped": 1 },
+      "product-runtime": { "passed": 98, "failed": 18, "skipped": 5 },
+      "storage": { "passed": 12, "failed": 1, "skipped": 1 },
+      "server": { "passed": 640, "failed": 2, "skipped": 19 },
+      "web": { "files": 58, "passed": 688, "failed": 0 },
+      "tools": { "status": "not reached after workspace aggregate failure" }
+    },
+    "failureContext": "Same 21-failure distribution as the documented #149 Windows baseline: connection/recovery timeouts, Windows symlink EPERM and LOCAL_SOCKET_CONFLICT. Full suite is not a passing gate.",
+    "baselineRecord": "../wp02-identity-activity.md#验证与限制"
+  },
+  "review": { "Standards": { "remainingFindings": 0 }, "Spec": { "remainingFindings": 0 } },
+  "mac": { "status": "not executed", "trackingIssue": "https://github.com/paher-din/XunJie/issues/155" },
+  "teachingEffect": "not evaluated"
+}

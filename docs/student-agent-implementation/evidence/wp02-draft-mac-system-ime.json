@@ -1,0 +1,38 @@
+{
+  "recordedAt": "2026-10-31T15:53:38.892Z",
+  "issue": 152,
+  "platform": "darwin",
+  "arch": "arm64",
+  "macos": "27.2",
+  "chrome": "Google Chrome 156.0.8078.79",
+  "runtime": "Node v24.21.0, PostgreSQL 18.6 (packaged)",
+  "endpoint": "http://127.0.0.1:50369",
+  "activityId": "087bc287-bc1c-4d42-94ff-f736910a9ae8",
+  "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+  "inputSourceBefore": "doubao-pinyin",
+  "method": "OS-level System Events key events after activating the Playwright-launched Chrome browser process",
+  "question": {
+    "value": "你好世界\n开始结束中文",
+    "persisted": true,
+    "revision": 3,
+    "references": 0,
+    "sendDisabled": true,
+    "focusSwitch": true,
+    "activeElementBefore": {
+      "tag": "TEXTAREA",
+      "label": null
+    },
+    "newline": true
+  },
+  "code": {
+    "file": "系统输入法-草稿.txt",
+    "value": "你好世开始界\n结束中文",
+    "objectId": "f3b268da-48d7-486c-8bff-ba05f80bc3b1",
+    "contentId": "b48c71e1-96a5-4dc3-bf5c-cb4787064fb9",
+    "persisted": true,
+    "focusSwitch": true,
+    "metaCursor": true,
+    "newline": true
+  },
+  "limitation": "Doubao Pinyin was the active installed input source; Apple SCIM Pinyin was not exercised. Teaching effectiveness is not evaluated."
+}

@@ -33,9 +33,9 @@ async function close(server: Server): Promise<void> {
   await closed;
 }
 
-async function privateRoot(t: TestContext): Promise<string> {
+async function privateRoot(t: TestContext, beforeRemove?: () => Promise<void>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'xunjie-connections-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  t.after(async () => { await beforeRemove?.(); await rm(root, { recursive: true, force: true }); });
   return root;
 }
 
@@ -66,14 +66,22 @@ function hasCode(code: string) {
 }
 
 async function host(t: TestContext, handlers: Record<string, CapabilityHandler> = { echo: (payload) => payload }, root?: string) {
-  const directory = root ?? await privateRoot(t);
+  const requests = new Set<Promise<unknown>>();
+  let server: Server | undefined;
+  const dispose = async () => {
+    if (server) await close(server);
+    // A disconnected socket does not mean its admitted handler has finished.
+    await Promise.allSettled([...requests]);
+  };
+  const directory = root ?? await privateRoot(t, dispose);
   let authority: ReturnType<typeof createConnectionAuthority>;
-  const server = createServer((request, response) => {
-    void authority.handle(request, response).then((handled) => {
+  server = createServer((request, response) => {
+    const handling = authority.handle(request, response).then((handled) => {
       if (!handled) { response.writeHead(404); response.end(); }
-    }).catch(() => response.destroy());
+    }).catch(() => response.destroy()).finally(() => { requests.delete(handling); });
+    requests.add(handling);
   });
-  t.after(() => close(server));
+  t.after(dispose);
   const endpoint = await listen(server);
   const target = service(endpoint, Object.keys(handlers));
   authority = createConnectionAuthority({ root: directory, service: target, handlers });
@@ -364,14 +372,17 @@ test('fencing from independent receiver processes persists after those processes
   const receiver = await host(t);
   const identity = source();
   const grant = await receiver.authority.authorize({ ...identity, capabilities: ['echo'] });
+  // Windows queries immutable OS process identities through cold PowerShell
+  // processes. This case checks durable fencing, not the separate timeout contract.
+  const fenceTimeoutMs = process.platform === 'win32' ? 30_000 : 3_000;
   const child = `
     import { createConnectionAuthority } from '@xunjie/product-runtime/connections';
     const [root, target, source] = process.argv.slice(1);
     const authority = createConnectionAuthority({ root, service: JSON.parse(target), handlers: { echo: value => value } });
-    console.log(JSON.stringify(await authority.fenceSource({ ...JSON.parse(source), timeoutMs: 3000 })));
+    console.log(JSON.stringify(await authority.fenceSource({ ...JSON.parse(source), timeoutMs: ${fenceTimeoutMs} })));
   `;
   const results = await Promise.all([0, 1].map(() => promisify(execFile)(process.execPath,
-    ['--input-type=module', '-e', child, receiver.root, JSON.stringify(receiver.target), JSON.stringify(identity)], { timeout: 5_000 })));
+    ['--input-type=module', '-e', child, receiver.root, JSON.stringify(receiver.target), JSON.stringify(identity)], { timeout: fenceTimeoutMs + 5_000 })));
   assert.deepEqual(results.map(result => JSON.parse(result.stdout).generation).sort(), [1, 2]);
   receiver.reopen();
   assert.equal((await outbound(descriptor(receiver.target, identity), grant.token).check()).reason, 'http_401');

@@ -49,6 +49,8 @@ npm run test:external:tools -- --list
 
 其接口为 `node scripts/test.mjs <server|contracts|product-runtime|storage|tools|checks> [--external] [--list]`：递归发现 `**/*.test.{ts,mjs,py}`，排除 `node_modules`、`dist`、`evidence`；`--list` 只列清单。产品原生 PG 测试为 `*.runtime.test.mjs`，进入 external 组，需 `XUNJIE_PRODUCT_POSTGRES_BIN` 指向固定完整 PG 18.6。存储真实 PG/S3 与 HTTP 消费者由 `test:storage:native` 一并运行，另需 `XUNJIE_STORAGE_S3_CONFIG`，见[存储验收](storage-acceptance.md)。Web 继续使用自身 Vitest 配置；浏览器测试单独从根 `npm run test:e2e` 进入。
 
+工具组会启动真实 CLI 并重建同一 checkout 的公共契约产物，因此按文件串行，避免另一文件在编译写入期间导入同一产物；其他 Node 分组仍按 4 个文件并行。单个文件内刻意验证的并发、竞争和多进程场景保持原样。
+
 | 分组 | 文件与环境 |
 | --- | --- |
 | 后端外部组：`npm run test:external` | `**/*.runtime.test.ts`、`runner/node.rpc.test.ts`、`server/tutoring/test/real-provider-failures.test.ts`；需要对应 Linux VM、容器镜像/工具链或真实模型配置，具体标志见下表。 |

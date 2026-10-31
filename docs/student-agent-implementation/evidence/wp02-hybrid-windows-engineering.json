@@ -1,0 +1,275 @@
+{
+  "implementationCommit": "f1eb009504a400bad3184f900e6cea3a8a8487db",
+  "baseCommit": "dff9be884026dbe4c14a8984af6e19af9abe7f89",
+  "executedOn": "2026-10-31",
+  "platform": "Windows 11 x64 build 26200",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "typecheck": "passed",
+  "build": "passed; final frontend was rebuilt after HTTP deadline changes",
+  "browserSafeContractExports": 8,
+  "docLinks": { "files": 7, "targets": 108, "failures": 0 },
+  "productionPackage": {
+    "platform": "win32-x64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "createdAt": "2026-10-31T08:30:26.881Z",
+    "distributionSha256": "063f48691fdfb81fbc348fe475af7f0183040df4fd305fc9c878388adecaf00b",
+    "command": "npm run package:product -- --platform win32-x64 --cache .verification/wp02/cache --out .verification/154/product-win32-x64",
+    "note": "CLI restore tests use this package's app, Web and native resources. Direct node invocation first failed in the existing Windows fallback command quoting path; the documented npm entry succeeded."
+  },
+  "nativeBusiness": {
+    "command": "node --test --test-concurrency=1 packages/product-runtime/test/hybrid-learning.runtime.test.mjs packages/product-runtime/test/learning-cli.runtime.test.mjs",
+    "passed": 2, "failed": 0, "skipped": 0, "durationMs": 86849.8619,
+    "coverage": [
+      "school member fixed to the installed client's real learning-data owner",
+      "course version/material reads, original course request result and Chinese immutable work receipt",
+      "old expected subject and optional-only authority transport rejected",
+      "school outage retains original authority, recovery queries original receipt",
+      "course eligibility revocation and school connection revocation deny work access",
+      "three required owners and required school receiver in actual backup",
+      "independent isolated restore, missing receiver rejection, source retirement and old runtime grant fencing",
+      "new installation/namespace, reissued runtime grant and approved member connection read original activity/work/receipt",
+      "complete packaged CLI restores school course/material/activity/work and hides teacher-private material",
+      "missing backup artifact and wrong receiver identity are explicitly rejected",
+      "schema upgrade reaches no-schema-upgrade-registered; no new schema migration is claimed"
+    ]
+  },
+  "supplementalPackagedCliConcurrentBackup": {
+    "passed": 1, "failed": 0, "skipped": 0, "durationMs": 47786.6858,
+    "note": "This repeats the CLI case above with extra live producers, not an additional distinct end-to-end workflow.",
+    "coverage": "Continuous actual work writes and new course resource publications both commit before held backup and receive maintenance rejection at closure. Independent restore re-reads latest accepted work, newly published material and the original immutable work receipt."
+  },
+  "sshProcessBoundary": { "passed": 2, "failed": 0, "note": "External SSH process is mocked: verifies strict host checking, local shell=false and rejection of foreign receiver proof. Not real SSH/cross-machine evidence." },
+  "focusedIoConnections": { "passed": 47, "failed": 2, "skipped": 2, "failures": ["disconnect fixture cleanup ENOTEMPTY", "cold independent-process fencing 3-second timeout"] },
+  "fullTest": {
+    "command": "npm test", "status": "failed", "failures": 5,
+    "groups": {
+      "checks": { "passed": 27, "failed": 0, "skipped": 1 },
+      "product-runtime": { "passed": 117, "failed": 2, "skipped": 5 },
+      "storage": { "passed": 12, "failed": 1, "skipped": 1 },
+      "server": { "passed": 640, "failed": 2, "skipped": 19 },
+      "web": { "files": 58, "passed": 688, "failed": 0 },
+      "tools": { "status": "not reached after workspace aggregate failure" }
+    },
+    "failureContext": ["independent-process fencing timeout", "three Windows symlink EPERM cases", "legacy LOCAL_SOCKET_CONFLICT"]
+  },
+  "review": { "Standards": { "remainingCodeFindings": 0 }, "Spec": { "remainingCodeFindings": 0 } },
+  "followUpAcceptance": {
+    "executedOn": "2026-10-31",
+    "ci": {
+      "commit": "45650192b936f9963e7612479d95137c09539c02",
+      "status": "passed",
+      "url": "https://github.com/paher-din/XunJie/actions/runs/41186025564",
+      "scope": "npm run verify and the separate legacy HDL node ledger check; not cross-machine acceptance"
+    },
+    "fencingRegression": {
+      "before": "The independent-process persistence case also exhausted its fixed 3-second deadline when run alone on Windows.",
+      "change": "Only this persistence test uses a 30-second Windows budget plus 5 seconds for child exit; other platforms retain 3 seconds. Product deadlines and the dedicated timeout rejection test are unchanged.",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 3993.7519,
+      "coverage": [
+        "independent receiver process fencing survives exit and rejects old grants",
+        "timed-out fencing never returns proof or reopens authorization"
+      ],
+      "review": {
+        "Standards": 0,
+        "Spec": 0
+      }
+    },
+    "githubRegistration": {
+      "pullRequest": "https://github.com/paher-din/XunJie/pull/157",
+      "state": "open; not merged; title and acceptance description updated",
+      "macIssue": "https://github.com/paher-din/XunJie/issues/155",
+      "newUncheckedMacItems": 24,
+      "preservedPreviouslyCompletedItems": 67
+    },
+    "deploymentAccess": {
+      "status": "still unavailable after refreshing the existing registration",
+      "memberCapabilities": [
+        "file:publish",
+        "file:read",
+        "page"
+      ],
+      "documentation": [
+        "docs/references/2026-10-24-team-development-handoff.md: maintainer configuration is on the maintainer Mac; member registration does not grant owner SSH",
+        "docs/student-agent-implementation/runtime-acceptance.md: prior temporary school runtime and TCP38195 rule were cleaned up",
+        "docs/student-agent-implementation/maintenance-acceptance.md: prior temporary recovery deployment and TCP38196 rule were cleaned up"
+      ],
+      "note": "The documented school address and prior acceptance evidence do not supply a usable deployment credential or a currently running WP02 test service. No shared service or network policy was changed."
+    },
+    "integration": {
+      "baseCommit": "5e1e2ec0e7bf7ea4f1e7bcbc8716b03c18355bc4",
+      "uiReadinessCommit": "a0c1c09f8a6ba7c261c24340c22a026d2b737c50",
+      "fixCommit": "37122b49256619dece6edaf73f78d6a6f6a40063",
+      "typecheck": "passed; full selection-fix typecheck, then final Web typecheck after UI readiness integration",
+      "build": "passed; full integration build and final runtime Web/full product package builds",
+      "browserSafeContractExports": 9,
+      "largeMaterialRegression": {
+        "before": "Native HTTP draft sync returned 503 unavailable for a short selection from >1MiB school text.",
+        "change": "School owner verifies immutable source, UTF-16 range and UTF-16LE SHA-256, returning only verified:true. Stored copy stays at its learning-data owner.",
+        "rejects": [
+          "forged selection copy",
+          "split UTF-16 surrogate pair",
+          "split CRLF"
+        ],
+        "restoredDraftEvidence": [
+          "current revision",
+          "immutable historical revision",
+          "original request receipt",
+          "old namespace denied"
+        ]
+      },
+      "nativeBusinessAfterSelectionFix": {
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 148127.1413,
+        "source": "Selection fix on 5e1e2ec; backend code equals fixCommit. The later a0c1c09 change is UI-only and checked separately.",
+        "packageDistributionSha256": "1706abdd25a01a55ab26d757be7154e5894e12e45a4236b7c5d08339d458b7cb"
+      },
+      "finalPackage": {
+        "codeCommit": "37122b49256619dece6edaf73f78d6a6f6a40063",
+        "platform": "win32-x64",
+        "profile": "full",
+        "status": "unsigned-candidate",
+        "createdAt": "2026-10-31T14:37:59.118Z",
+        "distributionSha256": "5b6b07bc31c11a3df00dd88c83d9996c88a832c379c76f72235541175fd1c728"
+      },
+      "finalPackagedCliRecheck": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 55676.4414,
+        "note": "Rechecks the same CLI workflow using the final committed package; not an additional distinct workflow."
+      },
+      "chromeEvidence": "wp02-hybrid-windows-integrated-chrome.json",
+      "review": {
+        "Standards": 0,
+        "Spec": 0
+      }
+    },
+    "finalWindowsSuite": {
+      "codeCommit": "37122b49256619dece6edaf73f78d6a6f6a40063",
+      "command": "npm test",
+      "status": "failed",
+      "failures": 4,
+      "groups": {
+        "checks": {
+          "passed": 27,
+          "failed": 0,
+          "skipped": 1
+        },
+        "productRuntime": {
+          "passed": 118,
+          "failed": 1,
+          "skipped": 5
+        },
+        "storage": {
+          "passed": 12,
+          "failed": 1,
+          "skipped": 1
+        },
+        "server": {
+          "passed": 640,
+          "failed": 2,
+          "skipped": 19
+        },
+        "web": {
+          "files": 58,
+          "passed": 688,
+          "failed": 0
+        },
+        "tools": {
+          "status": "not reached after workspace aggregate failure"
+        }
+      },
+      "failuresRemaining": [
+        "three Windows symlink EPERM fixture failures",
+        "legacy account-control LOCAL_SOCKET_CONFLICT"
+      ],
+      "fencingPersistence": "passed in this full run; the former cold-process timeout was fixed"
+    },
+    "ciTeardownRepair": {
+      "failedCommit": "37122b49256619dece6edaf73f78d6a6f6a40063",
+      "failedRun": "https://github.com/paher-din/XunJie/actions/runs/41210932685",
+      "logArtifactSha256": "57aa88f9c01c13ce5549c5e264b3169888a24a7eec64ffbbcb81203c09b3737c",
+      "failure": "Only the disconnected-handler fixture teardown failed with ENOTEMPTY; its request handler had not finished when the temporary root was removed.",
+      "fixCommit": "5c5a4acc9053fbde0a7ab8e1f578901d4ca94705",
+      "change": "Close HTTP and await admitted authority.handle promises before removing a fixture-owned root. No product or behavioral assertions changed.",
+      "localConnections": {
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 7791.5432
+      },
+      "review": {
+        "Standards": 0,
+        "Spec": 0
+      }
+    },
+    "ciToolsSchedulingRepair": {
+      "failedCommit": "5c5a4acc9053fbde0a7ab8e1f578901d4ca94705",
+      "failedRun": "https://github.com/paher-din/XunJie/actions/runs/41213049127",
+      "logArtifactSha256": "7df7f5cefd1ee44ff3a8543660071193c5ba9a46cef94726fb3ec976e5fe2697",
+      "groups": {
+        "checks": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0
+        },
+        "productRuntime": {
+          "passed": 122,
+          "failed": 0,
+          "skipped": 2
+        },
+        "storage": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0
+        },
+        "server": {
+          "passed": 658,
+          "failed": 0,
+          "skipped": 12
+        },
+        "web": {
+          "passed": 688,
+          "failed": 0
+        },
+        "toolsNode": {
+          "passed": 294,
+          "failed": 10,
+          "skipped": 1
+        },
+        "toolsPython": {
+          "status": "not reached after Node failure"
+        }
+      },
+      "failure": "All ten failures came from the same repro-restore before hook reporting a missing editorDiagnosticsInput export.",
+      "evidence": "The export exists in source and current dist. Several CLI tool files unconditionally rebuild this checkout contracts while another file dynamically imports them.",
+      "inference": "Concurrent writes and imports of shared build outputs best explain the transient missing export; intermediate bytes were not captured.",
+      "change": "Only tools test files execute sequentially; other Node groups retain four files in parallel. Test cases and their internal concurrency assertions are unchanged.",
+      "schedulerLfSha256": "5f0bb483eb17c74da8f443759bcd487a6593af4eb78fef434cd6240dbc548363",
+      "verificationAtRecordCreation": "Full CI rerun is pending for the commit containing this scheduling change and evidence; check the matching PR SHA.",
+      "checks": "https://github.com/paher-din/XunJie/pull/157/checks"
+    },
+    "localRunnerChecks": {
+      "passed": 27,
+      "failed": 0,
+      "skipped": 1,
+      "durationMs": 3347.2836,
+      "note": "Executed with the managed Node, normal host permissions and the isolated test TEMP directory."
+    },
+    "finalDocumentLinks": {
+      "files": 3,
+      "targets": 55,
+      "failures": 0
+    }
+  },
+  "realCrossMachine": { "status": "not executed", "reason": "Known school host pin is available; current Windows credential is denied for the documented deployment account. Existing handoff configurations provide page tunnels or scoped member access, not deployment authorization." },
+  "mac": { "status": "not executed", "issue": "https://github.com/paher-din/XunJie/issues/155" },
+  "teachingEffect": "not evaluated"
+}

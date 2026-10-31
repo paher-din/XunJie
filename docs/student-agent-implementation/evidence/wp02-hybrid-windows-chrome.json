@@ -1,0 +1,30 @@
+{
+  "measuredAt": "2026-10-31T08:27:44.993Z",
+  "platform": "win32",
+  "osRelease": "10.0.26200",
+  "arch": "x64",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "browserVersion": "156.0.8078.76",
+  "browser": "installed Chrome",
+  "headless": false,
+  "topology": "two independent native product daemons on this Windows host; NOT cross-machine evidence",
+  "results": [
+    {
+      "name": "personal: the production page automatically retains Chinese work and reopens the same activity",
+      "status": "passed",
+      "durationMs": 4353
+    },
+    {
+      "name": "school-shared: the production page automatically retains Chinese work and reopens the same activity",
+      "status": "passed",
+      "durationMs": 4000
+    },
+    {
+      "name": "hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity",
+      "status": "passed",
+      "durationMs": 9319
+    }
+  ],
+  "sourceCommit": "f1eb009504a400bad3184f900e6cea3a8a8487db"
+}

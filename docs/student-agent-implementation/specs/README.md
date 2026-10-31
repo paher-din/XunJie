@@ -7,6 +7,15 @@
 | WP01 | [产品运行与数据底座](wp01-product-runtime-and-data.md) | [WP01：产品运行与数据底座](https://github.com/paher-din/XunJie/issues/142) | 工程入口与公共契约准备、原生 PostgreSQL 生命周期、独立环境与部署连接、所属事务和资源、备份升级及恢复交接 |
 | WP02 | [学习空间与可靠工作区](wp02-learning-space-and-reliable-workspace.md) | [WP02：学习空间与可靠工作区](https://github.com/paher-din/XunJie/issues/148) | 个人/学校身份与隔离、课程发布基础记录、可无课程活动、作品与固定引用、静默自动保存、待同步/待发意图及同浏览器恢复 |
 
+## WP02 子票实施方案
+
+混合部署与恢复接管见 [#154 实施方案](wp02-hybrid-deployment.md) 与[生产操作及验收记录](../wp02-hybrid-deployment.md)。真实跨机与 Mac 结果分别登记，不以同机替代。
+
+| 实施票 | 文档 | 文档性质 |
+| --- | --- | --- |
+| [课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150) | [实施方案与验收计划](wp02-course-task-releases.md) · [实施与验收记录](../wp02-course-releases-acceptance.md) | 已实施（`codex/wp02`，未合并 main）；工程及 Windows/Mac 分项验证范围见验收记录，教学效果未评估 |
+| [固定引用与问题草稿恢复](https://github.com/paher-din/XunJie/issues/152) | [实施方案与验收计划](wp02-fixed-references-and-question-drafts.md) · [实施与验收记录](../wp02-fixed-references-acceptance.md) | 已实施（`codex/wp02` 工作树，未提交/合并）；Windows 工程、真实 PG 与 Chrome 已验证，Mac 与教学效果未执行 |
+
 ## 已有前端能力
 
 以下保留此前已交付的两项前端能力规范与验收记录，供新工作包接入时复用。
