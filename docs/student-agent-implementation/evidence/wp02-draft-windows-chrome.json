@@ -1,0 +1,44 @@
+{
+  "measuredAt": "2026-10-31T11:13:05.818Z",
+  "platform": "win32",
+  "arch": "x64",
+  "osRelease": "10.0.26200",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "browser": "installed Chrome",
+  "browserVersion": "156.0.8078.76",
+  "headless": false,
+  "backend": "production product host, native PostgreSQL and real filesystem resources",
+  "cases": [
+    {
+      "name": "course text and requirements stay as fixed references through collapse, reload and activity switch",
+      "status": "passed",
+      "durationMs": 6364
+    },
+    {
+      "name": "code reference keeps original copy after rename and edit, and survives file deletion and reload",
+      "status": "passed",
+      "durationMs": 3429
+    },
+    {
+      "name": "an existing reliable workspace database upgrades without losing its work",
+      "status": "passed",
+      "durationMs": 1251
+    },
+    {
+      "name": "local storage refusal keeps memory and retries automatically",
+      "status": "passed",
+      "durationMs": 1800
+    },
+    {
+      "name": "two actual tabs preserve both local drafts until an explicit choice",
+      "status": "passed",
+      "durationMs": 1587
+    },
+    {
+      "name": "another client conflict keeps both drafts and a late acknowledgement never settles later input",
+      "status": "passed",
+      "durationMs": 4353
+    }
+  ]
+}

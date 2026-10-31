@@ -4,7 +4,8 @@ import { StorageError } from '@xunjie/storage';
 import type { Migration, OwnedStorage } from '@xunjie/storage';
 import {
   courseAccessInputSchema, courseActivityBindingSchema, courseBindingStateSchema, courseImportSchema,
-  courseMaterialContentSchema, courseRegistrationResultSchema, courseReleaseSchema, courseDigestSchema,
+  courseMaterialContentSchema, courseReferenceTextSourceSchema, courseRegistrationResultSchema, courseReleaseSchema,
+  courseDigestSchema,
 } from '@xunjie/contracts/courses';
 import type {
   CourseAccessInput, CourseBindingPointer, CourseBindingState, CourseConfirmInput, CoursePrepareInput,
@@ -325,8 +326,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       byteLength: Number(material.byte_length), sha256: material.sha256, contentBase64: Buffer.from(bytes).toString('base64') });
   }
 
-  async function setAccess(value: CourseAccessInput) {
-    const input = courseAccessInputSchema.parse(value);
+  async function setAccess(value: CourseAccessInput) {    const input = courseAccessInputSchema.parse(value);
     const receipt = await storage.request({ requestId: input.requestId, fingerprint: digest(input) }, async tx => {
       const { rows: [course] } = await tx.query('SELECT space_id FROM courses WHERE course_id=$1', [input.courseId]);
       if (!course) return fail('missing');
@@ -340,6 +340,34 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       return { courseId: input.courseId, principalId: input.principalId, active: input.active };
     });
     return receipt.result as { courseId: string; principalId: string; active: boolean };
+  }
+
+  function readableText(mediaType: string) {
+    return mediaType.startsWith('text/') || mediaType === 'application/json';
+  }
+
+  /** Current eligibility and the exact immutable release are rechecked before returning selectable text. */
+  async function referenceText(identity: SpaceIdentity, value: unknown): Promise<{ text: string }> {
+    let source;
+    try { source = courseReferenceTextSourceSchema.parse(value); } catch { return fail('invalid'); }
+    const { row, content } = await authorizedRelease(identity, source.releaseId);
+    if (row.course_id !== source.courseId || row.task_id !== source.taskId || row.content_digest !== source.contentDigest)
+      return fail('identity-conflict');
+    if (source.kind === 'course-field') return { text: content.requirements };
+    const { rows: [material] } = await storage.read(`SELECT access,media_type,sha256,byte_length
+      FROM course_release_materials WHERE release_id=$1 AND material_id=$2`, [source.releaseId, source.materialId]);
+    if (!material || material.access !== 'student') return fail('missing');
+    if (material.sha256 !== source.materialSha256 || material.media_type !== source.mediaType) return fail('identity-conflict');
+    if (!readableText(material.media_type as string)) return fail('invalid');
+    let bytes: Uint8Array;
+    try { bytes = await storage.readResource(source.materialId); }
+    catch (error) {
+      if (error instanceof StorageError && ['resource-gone', 'missing'].includes(error.code)) return fail('missing');
+      throw error;
+    }
+    if (bytes.byteLength !== Number(material.byte_length) || createHash('sha256').update(bytes).digest('hex') !== material.sha256)
+      return fail('corrupt');
+    return { text: Buffer.from(bytes).toString('utf8') };
   }
 
   async function prepare(value: CoursePrepareInput): Promise<CourseBindingState> {
@@ -485,6 +513,6 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     }
   }
 
-  return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, setAccess,
+  return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, setAccess,
     prepare, confirm, bindingResult, authorize, validate };
 }

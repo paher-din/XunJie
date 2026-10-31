@@ -79,6 +79,31 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     assert.equal(courseActivity.status, 200);
     const pinned = await courseActivity.json();
     assert.equal(pinned.course.releaseId, releaseId);
+    const draftWork = { objectId: randomUUID(), contentId: randomUUID(), name: 'restore.sv', kind: 'code',
+      encoding: 'utf8', mediaType: 'text/plain', value: '\uFEFF// 恢复草稿\r\nmodule restore;\r\nendmodule\r\n' };
+    const workSync = await fetch(new URL('/api/learning/workspaces/' + pinned.activityId, started.endpoint), { method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ requestId: randomUUID(), baseRevision: 0, files: [draftWork] }) });
+    assert.equal(workSync.status, 200);
+    const emptyDraft = await (await fetch(new URL('/api/learning/drafts/' + pinned.activityId, started.endpoint), { headers: { cookie } })).json();
+    const materialCopy = '# 恢复验收材料';
+    const codeCopy = 'module restore;';
+    const draftInput = { requestId: randomUUID(), draftId: emptyDraft.draftId, baseRevision: 0,
+      question: '恢复后固定引用仍应可读。', references: [
+        { referenceId: randomUUID(), source: { kind: 'course-material', courseId, taskId, releaseId,
+          contentDigest: imported.contentDigest, materialId: studentMaterialId, materialSha256: sha256(openText),
+          mediaType: 'text/markdown' }, range: { kind: 'text', start: 0, end: materialCopy.length },
+          copy: materialCopy, sourceName: '开放材料' },
+        { referenceId: randomUUID(), source: { kind: 'work', objectId: draftWork.objectId, contentId: draftWork.contentId },
+          range: { kind: 'code', start: draftWork.value.indexOf(codeCopy), end: draftWork.value.indexOf(codeCopy) + codeCopy.length },
+          copy: codeCopy, sourceName: 'restore.sv' },
+      ], bases: [draftWork] };
+    const draftSync = await fetch(new URL('/api/learning/drafts/' + pinned.activityId, started.endpoint), { method: 'POST',
+      headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(draftInput) });
+    assert.equal(draftSync.status, 200);
+    const savedDraft = await draftSync.json();
+    assert.equal(savedDraft.revision, 1);
+    assert.equal(savedDraft.references.length, 2);
     const keyFile = join(directory, 'recovery-key');
     await writeFile(keyFile, randomBytes(32), { mode: 0o600 });
     const backupDirectory = join(directory, 'backups');
@@ -112,6 +137,15 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     const restoredActivity = await fetch(new URL('/api/learning/activities/' + pinned.activityId, isolated.endpoint), { headers: { cookie: restoredCookie } });
     assert.equal(restoredActivity.status, 200);
     assert.deepEqual(await restoredActivity.json(), pinned);
+    const restoredDraft = await fetch(new URL('/api/learning/drafts/' + pinned.activityId, isolated.endpoint), { headers: { cookie: restoredCookie } });
+    assert.equal(restoredDraft.status, 200);
+    assert.deepEqual(await restoredDraft.json(), savedDraft);
+    const restoredRevision = await fetch(new URL(`/api/learning/drafts/${pinned.activityId}/revisions/${savedDraft.revisionId}`, isolated.endpoint),
+      { headers: { cookie: restoredCookie } });
+    assert.equal(restoredRevision.status, 200);
+    assert.deepEqual(await restoredRevision.json(), savedDraft);
+    assert.equal(savedDraft.references[0].copy, materialCopy);
+    assert.equal(savedDraft.references[1].copy, codeCopy);
     const queried = await run('course-result', target, '--file', await input('course-result', { requestId: imported.requestId }));
     assert.equal(queried.contentDigest, imported.contentDigest);
     // No schema migration was released: the CLI must reach that check, rather than fail assembling owners.

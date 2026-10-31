@@ -11,6 +11,7 @@
     "./spaces": { "types": "./dist/spaces.d.ts", "import": "./dist/spaces.js" },
     "./courses": { "types": "./dist/courses.d.ts", "import": "./dist/courses.js" },
     "./learning-data": { "types": "./dist/learning-data.d.ts", "import": "./dist/learning-data.js" },
+    "./question-drafts": { "types": "./dist/question-drafts.d.ts", "import": "./dist/question-drafts.js" },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"

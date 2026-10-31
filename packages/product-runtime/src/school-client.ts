@@ -6,6 +6,7 @@ import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
+import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { acquireLock, atomicJson, exists } from './io.js';
@@ -102,7 +103,8 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function forward(connectionId: string, route: string, body?: unknown) {
     const id = '[0-9a-f-]{36}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
-      `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?|connections/revoke)$`).test(route)) {
+      `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
@@ -133,6 +135,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         || JSON.stringify(activity.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
       return activity;
     };
+    if (route.startsWith('drafts/')) return value === null ? null : parsed(questionDraftViewSchema, value);
     if (route === 'courses') return parsed(courseCatalogSchema, value);
     if (route.startsWith('releases/')) {
       return route.split('/').length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);

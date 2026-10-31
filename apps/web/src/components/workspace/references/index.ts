@@ -1,4 +1,5 @@
 export { WorkspaceReferencesProvider, WorkspaceReferenceComposer, WorkspaceReferenceList, useWorkspaceReferences } from './WorkspaceReferences'
+export { DraftReferencesProvider } from './DraftReferences'
 export { SelectionToolbar } from './SelectionToolbar'
 export { TextReferenceSource, useTextReferenceSource } from './TextReferenceSource'
 export { CodeReferenceSource, codeReferenceSelection } from './CodeReferenceSource'

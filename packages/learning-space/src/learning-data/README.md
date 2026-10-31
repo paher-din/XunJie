@@ -10,4 +10,6 @@
 
 `learning.works.read/sync/receipt/content` 是 [#151 作品接口](../../../../docs/student-agent-implementation/wp02-reliable-works.md)：文本/代码文件、类型化资源与状态共用稳定对象和不可变内容身份；同步携带基线与请求身份，拒绝过期覆盖或同 ID 换内容。大内容先经资源后端持久化及重读校验，再同事务发布引用、版本和回执。历史内容保留引用；删除对象留下 tombstone，不因同名新建被复用。
 
-`learningMigrations` 登记活动、课程协调、作品及其请求索引；`validateLearningData` 校验活动身份、目标、课程绑定，以及作品 head、版本、资源归属、字节与回执。storage 的资源、维护、备份和恢复接口由产品宿主装配。活动与已发布内容持续保留，不按页面或活动关闭删除；问题草稿、固定引用和待发意图按后续子票接入。
+`works.registerBasis` 为[#152 固定引用](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)登记选择时的作品对象、内容、正文与资源引用，**不推进当前 head**，因此可以引用尚未同步或已被后续编辑替换的内容。`learning.drafts.read/sync/receipt/revision` 使用同一 owner 的活动与访问核验：每活动稳定 `draftId`、单调版本 CAS、不可变修订、稳定请求回执和按 `revisionId` 的历史读取；引用来源只接受本活动本人作品、活动固定发布的课程要求或开放文本材料。问题与引用在同一草稿修订中提交，作品内容登记和课程核验在所属事务前完成，不建立第二套同步引擎。
+
+`learningMigrations` 登记活动、课程协调、作品、草稿及其请求索引，当前末尾为 v4 `question-drafts-and-fixed-references`；`validateLearningData` 校验活动身份、目标、课程绑定，作品 head、版本、资源归属、字节与回执，以及草稿 head/修订/回执、引用范围/副本摘要、作品内容归属和资源正文。storage 的资源、维护、备份和恢复接口由产品宿主装配。活动与已发布内容持续保留，不按页面或活动关闭删除；真实待发意图由后续子票接入。

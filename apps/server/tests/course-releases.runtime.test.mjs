@@ -478,3 +478,164 @@ test('installed client forwards course discovery, materials and pinned activitie
     await schoolRuntime.stop().catch(() => {});
   }
 });
+
+test('question drafts fix course and work references across edits, deletion and eligibility', { timeout: 300000 }, async t => {
+  await withRuntime(t, async ({ root, endpoint }) => {
+    const control = await resolveCredential(root, 'control');
+    const admin = { authorization: `Bearer ${control}` };
+    const api = async (path, body, headers = {}) => {
+      const response = await fetch(new URL('/api/learning/' + path, endpoint), { method: body === undefined ? 'GET' : 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+      return { status: response.status, headers: response.headers, value: await response.json().catch(() => null) };
+    };
+    const studentText = '\uFEFF# ALU 题目\r\n完成 4 位加减与逻辑运算。';
+    const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID();
+    const fixture = releaseFixture({ courseId, taskId, releaseId, studentText });
+    const imported = await api('manage/course-import', fixture.manifest, admin);
+    assert.equal(imported.status, 200);
+    const password = randomUUID();
+    const member = await api('manage/members', { requestId: randomUUID(), loginName: 'draft-student', password }, admin);
+    const principalId = member.value.principalId;
+    await api('manage/course-access', { requestId: randomUUID(), courseId, principalId, active: true }, admin);
+    const logged = await api('login', { loginName: 'draft-student', password });
+    const cookie = logged.headers.get('set-cookie').split(';')[0];
+    const auth = { cookie };
+    const activity = await api('course-activities', { requestId: randomUUID(), releaseId }, auth);
+    assert.equal(activity.status, 200);
+    const activityId = activity.value.activityId;
+    const draftPath = 'drafts/' + activityId;
+    const empty = await api(draftPath, undefined, auth);
+    assert.equal(empty.status, 200);
+    assert.equal(empty.value.revision, 0);
+    assert.equal(empty.value.revisionId, null);
+    assert.deepEqual(empty.value.references, []);
+    const draftId = empty.value.draftId;
+
+    const workValue = '// 初始代码\nmodule demo;\nendmodule\n';
+    const work = { objectId: randomUUID(), contentId: randomUUID(), name: 'demo.sv', kind: 'code',
+      encoding: 'utf8', mediaType: 'text/plain', value: workValue };
+    assert.equal((await api('workspaces/' + activityId, { requestId: randomUUID(), baseRevision: 0, files: [work] }, auth)).status, 200);
+    const importedMaterial = fixture.manifest.release.materials[0];
+    const materialCopy = '完成 4 位加减与逻辑运算。';
+    const requirementsCopy = fixture.manifest.release.requirements.slice(0, 6);
+    const codeCopy = 'module demo;';
+    const materialStart = studentText.indexOf(materialCopy);
+    const requirementsStart = fixture.manifest.release.requirements.indexOf(requirementsCopy);
+    const codeStart = workValue.indexOf(codeCopy);
+    const courseBasis = { courseId, taskId, releaseId, contentDigest: imported.value.contentDigest };
+    const materialReference = { referenceId: randomUUID(), source: { kind: 'course-material', ...courseBasis,
+      materialId: importedMaterial.materialId, materialSha256: importedMaterial.sha256, mediaType: 'text/markdown' },
+      range: { kind: 'text', start: materialStart, end: materialStart + materialCopy.length },
+      copy: materialCopy, sourceName: 'ALU 题目' };
+    const requirementsReference = { referenceId: randomUUID(), source: { kind: 'course-field', ...courseBasis,
+      field: 'requirements' }, range: { kind: 'text', start: requirementsStart,
+      end: requirementsStart + requirementsCopy.length }, copy: requirementsCopy, sourceName: '任务要求' };
+    const workReference = { referenceId: randomUUID(), source: { kind: 'work', objectId: work.objectId,
+      contentId: work.contentId }, range: { kind: 'code', start: codeStart, end: codeStart + codeCopy.length },
+      copy: codeCopy, sourceName: 'demo.sv' };
+    const basisA = { objectId: work.objectId, contentId: work.contentId, name: work.name, kind: 'code',
+      encoding: 'utf8', mediaType: work.mediaType, value: workValue };
+    const requestId = randomUUID();
+    const draftInput = { requestId, draftId, baseRevision: 0, question: '请解释这段逻辑。',
+      references: [materialReference, requirementsReference, workReference], bases: [basisA] };
+    const first = await api(draftPath, draftInput, auth);
+    assert.equal(first.status, 200, JSON.stringify(first.value));
+    assert.equal(first.value.revision, 1);
+    assert.equal(typeof first.value.revisionId, 'string');
+    assert.equal(first.value.references.length, 3);
+    assert.equal(first.value.references[0].copy, materialCopy);
+    assert.equal(first.value.references[0].copyDigest, sha256(Buffer.from(materialCopy)));
+    assert.equal(first.value.references[1].copy, requirementsCopy);
+    assert.equal(first.value.references[2].source.contentId, work.contentId);
+    assert.ok(!JSON.stringify(first.value).includes('sourceText'));
+    assert.ok(!JSON.stringify(first.value).includes('教师私有测试'));
+    assert.deepEqual((await api(draftPath, undefined, auth)).value, first.value);
+    assert.deepEqual((await api(`drafts/${activityId}/receipts/${requestId}`, undefined, auth)).value, first.value);
+    assert.deepEqual((await api(`drafts/${activityId}/revisions/${first.value.revisionId}`, undefined, auth)).value, first.value);
+    assert.deepEqual((await api(draftPath, draftInput, auth)).value, first.value);
+    assert.equal((await api(draftPath, { ...draftInput, question: '改过的同一请求。' }, auth)).status, 409);
+    assert.equal((await api(draftPath, { ...draftInput, requestId: randomUUID() }, auth)).status, 409);
+    const forged = { ...workReference, referenceId: randomUUID(), copy: 'module other;' };
+    assert.equal((await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 1, question: '伪造副本。',
+      references: [materialReference, requirementsReference, forged], bases: [] }, auth)).status, 400);
+
+    const workValueB = '// 新代码\nmodule demo;\n  wire ready = 1;\nendmodule\n';
+    const workB = { ...work, contentId: randomUUID(), value: workValueB };
+    assert.equal((await api('workspaces/' + activityId, { requestId: randomUUID(), baseRevision: 1, files: [workB] }, auth)).status, 200);
+    assert.deepEqual((await api(draftPath, undefined, auth)).value, first.value);
+    const codeB = 'wire ready = 1;';
+    const codeBReference = { referenceId: randomUUID(), source: { kind: 'work', objectId: work.objectId,
+      contentId: workB.contentId }, range: { kind: 'code', start: workValueB.indexOf(codeB),
+      end: workValueB.indexOf(codeB) + codeB.length }, copy: codeB, sourceName: 'demo.sv' };
+    const stripped = references => references.map(({ copyDigest: _digest, ...reference }) => reference);
+    const second = await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 1,
+      question: '旧片段与当前代码分别是什么？', references: stripped(first.value.references).concat(codeBReference),
+      bases: [{ objectId: work.objectId, contentId: workB.contentId, name: workB.name, kind: 'code',
+        encoding: 'utf8', mediaType: workB.mediaType, value: workValueB }] }, auth);
+    assert.equal(second.status, 200);
+    assert.equal(second.value.revision, 2);
+    assert.equal(second.value.references.length, 4);
+    assert.equal(second.value.references[0].copy, materialCopy);
+    assert.equal(second.value.references[2].copy, codeCopy);
+    assert.equal(second.value.references[3].copy, codeB);
+
+    assert.equal((await api('workspaces/' + activityId, { requestId: randomUUID(), baseRevision: 2, files: [] }, auth)).status, 200);
+    const afterDelete = await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 2,
+      question: second.value.question, references: stripped(second.value.references), bases: [] }, auth);
+    assert.equal(afterDelete.status, 200);
+    assert.equal(afterDelete.value.revision, 3);
+    assert.deepEqual(afterDelete.value.references.map(reference => reference.copy),
+      second.value.references.map(reference => reference.copy));
+    assert.deepEqual((await api(`drafts/${activityId}/revisions/${first.value.revisionId}`, undefined, auth)).value, first.value);
+
+    const orphan = { objectId: randomUUID(), contentId: randomUUID(), name: 'orphan.sv', kind: 'code',
+      encoding: 'utf8', mediaType: 'text/plain', value: '// 未进入 head 的选择\nmodule orphan;\nendmodule\n' };
+    const orphanCopy = 'module orphan;';
+    const orphanReference = { referenceId: randomUUID(), source: { kind: 'work', objectId: orphan.objectId,
+      contentId: orphan.contentId }, range: { kind: 'code', start: orphan.value.indexOf(orphanCopy),
+      end: orphan.value.indexOf(orphanCopy) + orphanCopy.length }, copy: orphanCopy, sourceName: orphan.name };
+    const withBasis = await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 3,
+      question: afterDelete.value.question, references: stripped(afterDelete.value.references).concat(orphanReference),
+      bases: [orphan] }, auth);
+    assert.equal(withBasis.status, 200);
+    assert.equal(withBasis.value.revision, 4);
+    assert.equal(withBasis.value.references[4].copy, orphanCopy);
+    assert.deepEqual((await api('workspaces/' + activityId, undefined, auth)).value.revision, 3);
+    assert.equal((await api(`workspaces/${activityId}/contents/${orphan.contentId}`, undefined, auth)).value.value, orphan.value);
+    assert.equal((await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 4, question: '',
+      references: [{ ...orphanReference, referenceId: randomUUID(), range: { ...orphanReference.range, kind: 'text' } }],
+      bases: [] }, auth)).status, 409);
+
+    const secondActivity = await api('course-activities', { requestId: randomUUID(), releaseId }, auth);
+    assert.equal(secondActivity.status, 200);
+    const isolated = await api('drafts/' + secondActivity.value.activityId, undefined, auth);
+    assert.equal(isolated.value.revision, 0);
+    assert.equal((await api(`drafts/${secondActivity.value.activityId}/revisions/${first.value.revisionId}`, undefined, auth)).value, null);
+    const foreignWork = { ...workReference, referenceId: randomUUID(), copy: codeCopy };
+    assert.equal((await api('drafts/' + secondActivity.value.activityId, { requestId: randomUUID(),
+      draftId: isolated.value.draftId, baseRevision: 0, question: '', references: [foreignWork], bases: [] }, auth)).status, 404);
+    const privateReference = { referenceId: randomUUID(), source: { kind: 'course-material', ...courseBasis,
+      materialId: fixture.ids.privateMaterialId, materialSha256: sha256(Buffer.from('# 教师私有测试\n仅教师可见。')),
+      mediaType: 'text/markdown' }, range: { kind: 'text', start: 0, end: 2 }, copy: '# ', sourceName: '教师私有测试' };
+    assert.equal((await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 4, question: '',
+      references: [privateReference], bases: [] }, auth)).status, 404);
+
+    await api('manage/course-access', { requestId: randomUUID(), courseId, principalId, active: false }, admin);
+    assert.equal((await api(draftPath, undefined, auth)).status, 403);
+    assert.equal((await api(`drafts/${activityId}/revisions/${first.value.revisionId}`, undefined, auth)).status, 403);
+    assert.equal((await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 4, question: '撤权后写入。',
+      references: [], bases: [] }, auth)).status, 403);
+    await api('manage/course-access', { requestId: randomUUID(), courseId, principalId, active: true }, admin);
+    assert.deepEqual((await api(draftPath, undefined, auth)).value, withBasis.value);
+
+    const secondPassword = randomUUID();
+    const secondMember = await api('manage/members', { requestId: randomUUID(), loginName: 'draft-other', password: secondPassword }, admin);
+    await api('manage/course-access', { requestId: randomUUID(), courseId, principalId: secondMember.value.principalId, active: true }, admin);
+    const secondLogin = await api('login', { loginName: 'draft-other', password: secondPassword });
+    const other = { cookie: secondLogin.headers.get('set-cookie').split(';')[0] };
+    assert.equal((await api(draftPath, undefined, other)).status, 404);
+    assert.equal((await api(draftPath, { requestId: randomUUID(), draftId, baseRevision: 0, question: '他人草稿。',
+      references: [], bases: [] }, other)).status, 404);
+  });
+});

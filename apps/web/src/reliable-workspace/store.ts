@@ -1,5 +1,6 @@
 import type { WorkFile, WorkSync, WorkView } from '@xunjie/contracts/learning-data'
 import { workFilesSchema } from '@xunjie/contracts/learning-data'
+import { openWorkspaceDatabase } from './draft-store'
 
 export interface WorkConflict { source: 'local' | 'remote'; local: WorkFile[]; other: WorkFile[]; at: number; remoteRevision: number; candidateId?: string }
 export interface WorkRecord { key: string; localRevision: number; remoteRevision: number; confirmedFiles?: WorkFile[]; files: WorkFile[]; pending: WorkSync | null; conflict?: WorkConflict }
@@ -9,29 +10,8 @@ export class LocalCompetition extends Error {
 
 /** A new product namespace: never opens or consumes legacy workspace databases. */
 export class WorkStore {
-  private opening?: Promise<IDBDatabase>
-  private open() {
-    if (!this.opening) {
-      this.opening = new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('xunjie-reliable-works-v1', 1)
-        request.onupgradeneeded = () => {
-          request.result.createObjectStore('workspaces', { keyPath: 'key' })
-          request.result.createObjectStore('candidates', { keyPath: 'id' }).createIndex('scope', 'scope')
-        }
-        request.onsuccess = () => {
-          const db = request.result
-          db.onversionchange = () => { db.close(); this.opening = undefined }
-          resolve(db)
-        }
-        request.onerror = () => reject(request.error)
-        request.onblocked = () => reject(new Error('浏览器存储升级被其他页面阻止。'))
-      })
-      this.opening.catch(() => { this.opening = undefined })
-    }
-    return this.opening
-  }
   async read(key: string): Promise<WorkRecord | undefined> {
-    const db = await this.open()
+    const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {
       const tx = db.transaction('workspaces', 'readonly')
       const request = tx.objectStore('workspaces').get(key)
@@ -41,7 +21,7 @@ export class WorkStore {
     })
   }
   async candidates(key: string): Promise<{ id: string; scope: string; files: WorkFile[] }[]> {
-    const db = await this.open()
+    const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {
       const tx = db.transaction('candidates', 'readonly')
       const request = tx.objectStore('candidates').index('scope').getAll(key)
@@ -50,7 +30,7 @@ export class WorkStore {
     })
   }
   async candidate(id: string, scope: string, files: WorkFile[]): Promise<void> {
-    const db = await this.open()
+    const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {
       const tx = db.transaction('candidates', 'readwrite')
       tx.objectStore('candidates').put({ id, scope, files })
@@ -60,7 +40,7 @@ export class WorkStore {
   }
   async change(key: string, update: (current: WorkRecord | undefined) => WorkRecord,
     candidate?: { expected: number; files: WorkFile[] }, removeCandidate?: string): Promise<WorkRecord> {
-    const db = await this.open()
+    const db = await openWorkspaceDatabase()
     return new Promise((resolve, reject) => {
       const tx = db.transaction(['workspaces', 'candidates'], 'readwrite')
       const store = tx.objectStore('workspaces')

@@ -2,6 +2,8 @@
 
 正式产品的 [ActivityWorkspace](../runtime/ActivityWorkspace.tsx) 与现有 [Monaco 宿主](../components/workspace/CodeEditorHost.tsx) 通过 `ReliableWorkspace` 处理文件变化，不各自安排保存、冻结或同步。当前消费者是无课程活动；组件状态与资源使用相同的类型化 wire，不强制变成代码文件。需求和验证见 [#151 交接](../../../../docs/student-agent-implementation/wp02-reliable-works.md)。
 
+问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，使用同一个 IndexedDB 数据库的非破坏 v2 `drafts`/`draftCandidates` 分区；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 [#152 记录](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)。
+
 ## 对外接口
 
 `new ReliableWorkspace(key, transport)` 的 `key` 由产品恢复命名空间、空间所属环境、空间、主体、活动组成。`transport.read/receipt/sync` 始终访问原服务、原空间及活动；页面请求附带预期主体和恢复命名空间，真实服务认证后核对，不能将旧请求交给新登录主体。

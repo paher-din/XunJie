@@ -2,7 +2,7 @@
 
 日期：2026-10-31（Asia/Shanghai）。来源：[固定引用与问题草稿恢复 #152](https://github.com/paher-din/XunJie/issues/152)，上位约束见[学习空间与可靠工作区](wp02-learning-space-and-reliable-workspace.md)、[工作区状态决议](../wayfinder/student-agent/workspace-state.md)和[领域术语](../../../CONTEXT.md)。
 
-**状态：待审实施方案，仅文档，尚未实现或验收。** 当前方案在 `codex/wp02` 的 `e36b1bfb97693713c0dd777bbb054b8fe0659a18` 上核对；下文领域类型、接口名、存储安排及测试切片均为建议，不是已存在的 API，也不表示负责人逐项确认了内部设计。后续实施前审阅本方案及 TDD 边界。
+**状态：已在 `codex/wp02` 工作树实施（2026-10-31），尚未提交、推送或合并；实施与验收见[验收记录](../wp02-fixed-references-acceptance.md)。** 本文保留原方案、边界与 TDD 切片；实际接口、迁移和验证范围以验收记录及当前代码为准。方案最初在 `codex/wp02` 的 `e36b1bfb97693713c0dd777bbb054b8fe0659a18` 上核对。
 
 ## 目标与边界
 

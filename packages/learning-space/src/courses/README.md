@@ -8,6 +8,7 @@
 | `registrationResult` | 按原登记请求查询已持久化结果；未知返回 null |
 | `listCourses/readRelease` | 每次核验当前成员与课程资格，只构造学生开放投影；私有材料名称、正文和资源 locator 不下发 |
 | `readMaterial` | 按发布与材料身份核验资格、材料归属和资源完整性后返回字节；私有或未知材料统一不可见 |
+| `referenceText` | 为 #152 固定引用核验当前成员/课程资格与固定发布，返回开放 UTF-8 文本材料或发布要求；来源摘要、媒体类型与材料身份必须与所读发布一致，私有材料仍不可见 |
 | `setAccess` | 管理者授予或撤销课程资格，不改变成员身份、既有活动归属或发布版本 |
 | `prepare/confirm/authorize` | 学习数据 owner 的跨 owner 活动关联准备、重新核验当前资格与资源完整性后的确认，以及读取/重开时的当前资格校验；`bindingResult` 提供原关联状态查询 |
 

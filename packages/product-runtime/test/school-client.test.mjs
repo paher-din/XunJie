@@ -67,6 +67,11 @@ test('installed client forwards the course surface and rejects malformed or fore
   const digest = 'a'.repeat(64);
   const material = { materialId, title: '材料', mediaType: 'text/markdown', byteLength: 1, sha256: 'b'.repeat(64) };
   const publishedAt = new Date().toISOString();
+  const draftId = randomUUID(), draftRevisionId = randomUUID();
+  const draft = { draftId, revision: 1, revisionId: draftRevisionId, question: '固定引用问题', references: [{
+    referenceId: randomUUID(), source: { kind: 'work', objectId: randomUUID(), contentId: randomUUID() },
+    range: { kind: 'code', start: 0, end: 1 }, copy: 'x', sourceName: 'demo.sv', copyDigest: digest }] };
+  const malformedDraftActivityId = randomUUID();
   const catalog = { courses: [{ courseId, name: '课程', tasks: [{ taskId, title: '任务', summary: '',
     releases: [{ releaseId, contentDigest: digest, objectives: ['目标'], publishedAt }] }] }] };
   const release = { formatVersion: 1, courseId, taskId, releaseId, contentDigest: digest, objectives: ['目标'],
@@ -87,6 +92,10 @@ test('installed client forwards the course surface and rejects malformed or fore
     } else if (url.endsWith('/api/learning/course-activity-results/' + activity.activityId)) response.end('null');
     else if (url.endsWith('/api/learning/activities')) response.end(JSON.stringify(request.method === 'POST' ? activity : [activity]));
     else if (url.endsWith('/api/learning/course-activities')) response.end(JSON.stringify(activity));
+    else if (url.includes('/api/learning/drafts/')) {
+      if (url.endsWith('/drafts/' + malformedDraftActivityId)) response.end(JSON.stringify({ draftId }));
+      else response.end(JSON.stringify(draft));
+    }
     else if (url.endsWith('/api/learning/activities/' + activity.activityId)) {
       response.end(JSON.stringify({ ...activity, identity: { ...grant.identity, principalId: randomUUID() } }));
     } else if (url.endsWith('/api/learning/releases/' + malformedReleaseId)) response.end(JSON.stringify({ formatVersion: 1 }));
@@ -118,6 +127,13 @@ test('installed client forwards the course surface and rejects malformed or fore
     assert.equal((await api('activities', { requestId: randomUUID(), goal: '学校活动', question: '', references: [] }, remote)).status, 200);
     assert.equal((await api('activities/' + activity.activityId, undefined, remote)).status, 403);
     assert.equal((await api('releases/' + malformedReleaseId, undefined, remote)).status, 503);
+    assert.equal((await api('drafts/' + activity.activityId, undefined, remote)).value.question, '固定引用问题');
+    assert.equal((await api('drafts/' + activity.activityId, { requestId: randomUUID() }, remote)).value.revisionId, draftRevisionId);
+    assert.equal((await api('drafts/' + activity.activityId, { requestId: randomUUID(), content: 'x'.repeat(100000) }, remote)).status, 200);
+    assert.equal((await api(`drafts/${activity.activityId}/revisions/${draftRevisionId}`, undefined, remote)).status, 200);
+    assert.equal((await api(`drafts/${activity.activityId}/receipts/${randomUUID()}`, undefined, remote)).status, 200);
+    assert.equal((await api('drafts/' + malformedDraftActivityId, undefined, remote)).status, 503);
+    assert.equal((await api('drafts/not-a-uuid', undefined, remote)).status, 403);
     assert.equal((await api('manage/course-import', { requestId: randomUUID() }, remote)).status, 403);
   } finally {
     await host?.stop();

@@ -124,8 +124,20 @@ export interface CoursePrepareInput {
 }
 export interface CourseConfirmInput { associationId: string; requestId: string; inputDigest: string; }
 export interface CourseBindingPointer { associationId: string; releaseId: string; contentDigest: string; }
+export const courseReferenceTextSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('course-material'), courseId: z.uuid(), taskId: z.uuid(), releaseId: z.uuid(),
+    contentDigest: courseDigestSchema, materialId: z.uuid(), materialSha256: courseDigestSchema,
+    mediaType: z.string().min(1).max(200) }).strict(),
+  z.object({ kind: z.literal('course-field'), courseId: z.uuid(), taskId: z.uuid(), releaseId: z.uuid(),
+    contentDigest: courseDigestSchema, field: z.enum(['requirements']) }).strict(),
+]);
+export type CourseReferenceTextSource = z.infer<typeof courseReferenceTextSourceSchema>;
+/** Current eligibility and exact release are rechecked; text is the immutable published source. */
+export interface CourseReferenceAuthority {
+  referenceText(identity: SpaceIdentity, source: CourseReferenceTextSource): Promise<{ text: string }>;
+}
 /** The learning-data owner consumes only this narrow, current-authority interface. */
-export interface CourseBindingAuthority {
+export interface CourseBindingAuthority extends CourseReferenceAuthority {
   prepare(input: CoursePrepareInput): Promise<CourseBindingState>;
   confirm(input: CourseConfirmInput): Promise<CourseBindingState>;
   authorize(identity: SpaceIdentity, pointer: CourseBindingPointer): Promise<void>;

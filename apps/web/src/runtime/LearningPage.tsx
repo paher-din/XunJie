@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { activitySchema, createActivitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data'
 import type { LearningActivity, CreateActivity, CourseActivityResult } from '@xunjie/contracts/learning-data'
 import { courseCatalogSchema, courseReleaseSchema, courseMaterialContentSchema, createCourseActivitySchema } from '@xunjie/contracts/courses'
@@ -7,6 +7,8 @@ import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/space
 import { useTheme } from '../lib/theme'
 import './learning.css'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
+import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
+import { WorkspaceReferenceComposer, SelectionToolbar } from '../components/workspace/references'
 
 type Context = { clientNamespace: string; profile: string; identities: { key: string; identity: SpaceIdentity }[] }
 type PendingConnection = { requestId: string; authorizationUrl: string }
@@ -37,13 +39,14 @@ const published = (value: string) => new Date(value).toLocaleDateString('zh-CN')
 const formatBytes = (value: number) => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`
 
 type CourseSectionsContent = Pick<CourseRelease, 'releaseId' | 'objectives' | 'requirements' | 'materials' | 'starterWorks' | 'capabilities'>
-function CourseSections({ content, level, busy, onMaterial }: {
+function CourseSections({ content, level, busy, onMaterial, requirementsContent }: {
   content: CourseSectionsContent; level: 3 | 4; busy: boolean; onMaterial: (item: CourseMaterial) => void
+  requirementsContent?: ReactNode
 }) {
   const Heading = level === 4 ? 'h4' : 'h3'
   return <>
     <Heading>学习目标</Heading><ul className="course-points">{content.objectives.map((item, index) => <li key={index}>{item}</li>)}</ul>
-    <Heading>任务要求</Heading><p className="preserve-lines">{content.requirements}</p>
+    <Heading>任务要求</Heading>{requirementsContent ?? <p className="preserve-lines">{content.requirements}</p>}
     <Heading>学习材料</Heading>
     {content.materials.length === 0 ? <p className="detail">这个版本没有开放材料。</p>
       : <ul className="material-list">{content.materials.map(item => <li key={item.materialId}>
@@ -104,6 +107,9 @@ export function LearningPage() {
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
   const coursePendingKey = context && identity?.kind === 'school'
     ? `xj.course-activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
+  const activityAuthorized = !!opened && !!identity && contextVerified
+    && opened.identity.environmentId === identity.environmentId && opened.identity.spaceId === identity.spaceId
+    && opened.identity.principalId === identity.principalId
 
   function rememberMaterial(next: { title: string; url: string } | null) {
     if (materialUrl.current) URL.revokeObjectURL(materialUrl.current)
@@ -363,8 +369,9 @@ export function LearningPage() {
       <button type="button" className="primary" disabled={busy || !context?.identities.some(item => item.key === 'school')}
         onClick={() => void action(async () => { await api('connections/approve', { requestId: authorize }); setNotice('连接已批准，请返回原客户端完成连接。') })}>允许连接</button>
     </section>}
-    {identity && <>
-      {opened ? <section aria-labelledby="activity-title">
+    {context && identity && <>
+      {opened ? <ActivityReferences activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}>
+      <section aria-labelledby="activity-title">
         <button type="button" onClick={() => void action(async () => {
           await workspace.current?.leave(); rememberActivity(null); rememberMaterial(null)
           setReload(value => value + 1)
@@ -373,7 +380,9 @@ export function LearningPage() {
         {opened.course ? <>
           <p className="detail">{opened.course.courseName} · 固定版本 {opened.course.releaseId.slice(0, 8)} · 依据摘要 {opened.course.contentDigest.slice(0, 12)}</p>
           <CourseSections content={opened.course} level={3} busy={busy}
+            requirementsContent={<CourseRequirementsReference course={opened.course} />}
             onMaterial={item => void action(() => readMaterial(opened.course!.releaseId, item))} />
+          <CourseMaterialReferences activity={opened} course={opened.course} spaceKey={key} namespace={context.clientNamespace} />
         </> : <>
           {opened.question && opened.goal && <p className="preserve-lines">{opened.question}</p>}
           {opened.references.map((item, index) => <p key={index}><a href={item.url} target="_blank" rel="noreferrer">{item.label}</a></p>)}
@@ -381,9 +390,12 @@ export function LearningPage() {
         {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
         <p className="detail">{opened.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
         <button type="button" disabled={busy} onClick={() => void action(() => changeStatus(opened))}>{opened.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
-        {context && <ActivityWorkspace key={context.clientNamespace + key + opened.activityId} ref={workspace} activity={opened} spaceKey={key} namespace={context.clientNamespace}
-          authorized={contextVerified && opened.identity.environmentId === identity?.environmentId && opened.identity.spaceId === identity?.spaceId && opened.identity.principalId === identity?.principalId} />}
-      </section> : <>
+        <ActivityWorkspace key={context.clientNamespace + key + opened.activityId} ref={workspace} activity={opened} spaceKey={key} namespace={context.clientNamespace}
+          authorized={activityAuthorized} />
+        <WorkspaceReferenceComposer />
+        <SelectionToolbar />
+      </section>
+      </ActivityReferences> : <>
         {identity.kind === 'school' && <section aria-labelledby="course-title"><h2 id="course-title">课程任务</h2>
           {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对（版本 {coursePending.releaseId.slice(0, 8)}），将先查询原请求。</p>
             <button type="button" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>

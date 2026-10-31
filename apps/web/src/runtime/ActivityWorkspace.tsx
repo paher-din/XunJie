@@ -2,30 +2,23 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useState, useSyncE
 import { workViewSchema } from '@xunjie/contracts/learning-data'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
 import { ReliableWorkspace } from '../reliable-workspace'
-import { CodeEditorHost } from '../components/workspace/CodeEditorHost'
+import { CodeReferenceSource } from '../components/workspace/references'
+import { learningRequest, workspaceScope } from './learningTransport'
 
 export interface ActivityWorkspaceHandle { leave(): Promise<void> }
 export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean }>(
   function ActivityWorkspace({ activity, spaceKey, namespace, authorized }, ref) {
-    const scope = JSON.stringify([namespace, activity.identity.environmentId, activity.identity.spaceId, activity.identity.principalId, activity.activityId])
+    const scope = workspaceScope(namespace, activity)
     const workspace = useMemo(() => {
-      const base = '/api/learning/workspaces/' + activity.activityId
-      const request = async (suffix: string, body?: unknown) => {
-        const response = await fetch(base + suffix, { method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store',
-          headers: { 'content-type': 'application/json', 'x-xj-space': spaceKey, 'x-xj-namespace': namespace,
-            'x-xj-expected-subject': [activity.identity.environmentId, activity.identity.spaceId, activity.identity.principalId].join('.') },
-          ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(10000) })
-        let value: unknown
-        try { value = await response.json() } catch { throw Object.assign(new Error('原服务返回了不完整响应。'), { code: response.ok ? 'corrupt' : 'unavailable' }) }
-        if (!response.ok) {
-          const failure = value as { error?: string }
-          throw Object.assign(new Error(failure?.error ?? 'unavailable'), { code: failure?.error ?? 'unavailable' })
-        }
-        try { return value === null && suffix.startsWith('/receipts/') ? null : workViewSchema.parse(value) }
-        catch { throw Object.assign(new Error('原服务返回了不完整的作品数据。'), { code: 'corrupt' }) }
-      }
-      const instance = new ReliableWorkspace(scope, { read: async () => workViewSchema.parse(await request('')),
-        receipt: id => request('/receipts/' + id), sync: async input => workViewSchema.parse(await request('', input)) })
+      const base = 'workspaces/' + activity.activityId
+      const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, base + suffix, body)
+      const instance = new ReliableWorkspace(scope, {
+        read: async () => workViewSchema.parse(await request('')),
+        receipt: async id => {
+          const value = await request('/receipts/' + id)
+          return value === null ? null : workViewSchema.parse(value)
+        },
+        sync: async input => workViewSchema.parse(await request('', input)) })
       if (!authorized) instance.suspend()
       return instance
     }, [scope, activity.activityId, spaceKey, namespace, authorized])
@@ -78,9 +71,12 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
             <button type="submit" disabled={!!state.conflict}>重命名</button>
             <button type="button" disabled={!!state.conflict} onClick={() => attempt(() => workspace.remove(file.objectId))}>删除文件</button>
           </form>
-          {file.encoding === 'utf8' && ['text', 'code'].includes(file.kind) ? <CodeEditorHost key={state.editorEpoch} workspaceKey={editorNamespace + ':' + state.editorEpoch}
-            fileId={file.objectId} language={file.kind === 'text' ? 'plaintext' : /\.c(pp|c)?$/.test(file.name) ? 'cpp' : /\.v$/.test(file.name) ? 'verilog' : 'plaintext'}
+          {file.encoding === 'utf8' && ['text', 'code'].includes(file.kind) ? <CodeReferenceSource key={state.editorEpoch}
+            editorWorkspaceKey={editorNamespace + ':' + state.editorEpoch}
+            fileId={file.objectId} sourceName={file.name} language={file.kind === 'text' ? 'plaintext' : /\.c(pp|c)?$/.test(file.name) ? 'cpp' : /\.v$/.test(file.name) ? 'verilog' : 'plaintext'}
             initialText={file.value} readOnly={!!state.conflict} readOnlyReason={state.conflict ? '请先比较作品分歧' : null}
+            workBasis={() => ({ objectId: file.objectId, contentId: file.contentId, name: file.name,
+              kind: file.kind === 'text' ? 'text' : 'code', encoding: 'utf8', mediaType: file.mediaType })}
             onTextChange={(id, text) => attempt(() => workspace.edit(id, text))} onCursorChange={() => {}} />
             : <pre>{file.value}</pre>}
         </> : <p>从一个文本或代码文件开始。</p>}

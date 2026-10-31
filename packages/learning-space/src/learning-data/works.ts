@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { StorageError } from '@xunjie/storage';
 import type { OwnedStorage, Migration } from '@xunjie/storage';
-import { workSyncSchema, workViewSchema } from '@xunjie/contracts/learning-data';
+import { workFileSchema, workSyncSchema, workViewSchema } from '@xunjie/contracts/learning-data';
 import type { WorkFile, WorkView, WorkSync } from '@xunjie/contracts/learning-data';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 
@@ -16,6 +16,9 @@ export const workMigration: Migration = { version: 2, name: 'reliable-activity-w
     PRIMARY KEY(activity_id,revision));
 ` };
 type ManifestFile = Omit<WorkFile, 'value'>;
+const basisSchema = z.object({ objectId: z.uuid(), contentId: z.uuid(), name: workFileSchema.shape.name,
+  kind: z.enum(['text', 'code']), encoding: z.literal('utf8'), mediaType: z.string().min(1).max(200),
+  value: z.string().max(2000000) }).strict();
 const digest = (input: unknown) => createHash('sha256').update(JSON.stringify(input)).digest('hex');
 function bytes(file: WorkFile) {
   const result = Buffer.from(file.value, file.encoding === 'base64' ? 'base64' : 'utf8');
@@ -111,10 +114,44 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
   }
   async function content(identity: SpaceIdentity, activityId: string, contentId: string) {
     await authorize(identity, activityId); z.uuid().parse(contentId);
-    const { rows: [row] } = await storage.read('SELECT object_id,encoding,media_type FROM work_contents WHERE activity_id=$1 AND content_id=$2', [activityId, contentId]);
+    const { rows: [row] } = await storage.read(`SELECT c.object_id,c.encoding,c.media_type,o.kind
+      FROM work_contents c JOIN work_objects o ON o.object_id=c.object_id
+      WHERE c.activity_id=$1 AND c.content_id=$2`, [activityId, contentId]);
     if (!row) throw new StorageError('missing');
-    return { contentId, objectId: row.object_id, encoding: row.encoding, mediaType: row.media_type,
+    return { contentId, objectId: row.object_id as string, kind: row.kind as WorkFile['kind'],
+      encoding: row.encoding as WorkFile['encoding'], mediaType: row.media_type as string,
       value: Buffer.from(await storage.readResource(contentId)).toString(row.encoding === 'base64' ? 'base64' : 'utf8') };
   }
-  return { read, sync, receipt, content };
+  /**
+   * Fixed basis registration does not advance the current head. A selection may refer to content
+   * that was never published, or was replaced by later edits; its bytes are retained independently.
+   */
+  async function registerBasis(identity: SpaceIdentity, activityId: string, value: unknown) {
+    await authorize(identity, activityId); z.uuid().parse(activityId);
+    const file: WorkFile = basisSchema.parse(value);
+    const uploaded = bytes(file);
+    await storage.stageResource({ uploadId: file.contentId, scope: `works/${activityId}/${file.objectId}`,
+      bytes: uploaded, mediaType: file.mediaType, contentVersion: 1 });
+    const receipt = await storage.request({ requestId: `work-basis:${file.contentId}`,
+      fingerprint: digest({ identity, activityId, file }) }, async tx => {
+      await tx.query('INSERT INTO work_objects(object_id,activity_id,kind) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
+        [file.objectId, activityId, file.kind]);
+      const { rows: [object] } = await tx.query('SELECT activity_id,kind,deleted FROM work_objects WHERE object_id=$1 FOR UPDATE', [file.objectId]);
+      if (!object || object.activity_id !== activityId || object.kind !== file.kind) throw new StorageError('identity-conflict');
+      const { rows: [known] } = await tx.query('SELECT activity_id,object_id,encoding,media_type FROM work_contents WHERE content_id=$1', [file.contentId]);
+      if (!known) {
+        if (object.deleted) throw new StorageError('missing');
+        // A concurrent work sync may register the same immutable content first.
+        await tx.query('INSERT INTO work_contents VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
+          [file.contentId, activityId, file.objectId, file.encoding, file.mediaType]);
+      }
+      const { rows: [stored] } = await tx.query('SELECT activity_id,object_id,encoding,media_type FROM work_contents WHERE content_id=$1', [file.contentId]);
+      if (!stored || stored.activity_id !== activityId || stored.object_id !== file.objectId
+        || stored.encoding !== file.encoding || stored.media_type !== file.mediaType) throw new StorageError('identity-conflict');
+      await tx.reference('work-content/' + file.contentId, file.contentId);
+      return { objectId: file.objectId, contentId: file.contentId };
+    });
+    return receipt.result as { objectId: string; contentId: string };
+  }
+  return { read, sync, receipt, content, registerBasis };
 }

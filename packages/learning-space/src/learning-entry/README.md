@@ -21,11 +21,13 @@
 | `GET releases/:id` / `GET releases/:id/materials/:materialId` | 读取明确发布版本的学生投影或开放材料；私有材料统一不可见 |
 | `POST course-activities` / `GET course-activity-results/:requestId` | 从选定发布版本建立课程绑定活动，或查询原请求的 pending/accepted/rejected |
 | `POST manage/course-import` / `manage/course-access` / `manage/course-result` | 管理者登记不可变发布、授予/撤销课程资格、查询原登记结果 |
+| `GET/POST drafts/:activityId` | 读取或同步活动的问题草稿与固定引用；单次请求携带问题、引用顺序、范围/副本和未登记作品的固定依据 |
+| `GET drafts/:activityId/receipts/:requestId` / `revisions/:revisionId` | 查询原同步请求结果或按稳定修订身份读取历史草稿；未知返回 null |
 
 `x-xj-space` 只选择已认证空间，不接受主体身份注入。个人空间仅由本机产品组合提供；学校会话及客户端 grant 每次都核验当前学校授权。客户端失联或被拒绝后不会静默换到个人数据服务。跨源浏览器调用拒绝；共享学校监听沿用产品 HTTPS 配置。
 
 设备组合的监听及公开入口仅允许 loopback；学校共享组合不装配设备凭据代理。宿主关闭新入口后等待已接收的异步业务请求结束，包含远端派发和连接凭据持久化，超时不宣告安全排空。
 
-浏览器入口在 `apps/web/src/runtime`：先展示空间和活动，运行身份进入诊断。创建活动前保留准确请求身份，未知时查询原请求；列表读取失败单独反馈，不当成空列表。切换空间使旧异步呈现失效。本入口提供课程发布读取与课程活动，不提供作品编辑、实验执行或 Agent 接收。
+浏览器入口在 `apps/web/src/runtime`：先展示空间和活动，运行身份进入诊断。创建活动前保留准确请求身份，未知时查询原请求；列表读取失败单独反馈，不当成空列表。切换空间使旧异步呈现失效。本入口提供课程发布、课程活动、可靠作品与问题草稿；真实 Agent 发送、实验执行和教师交付尚未接入。
 
 完整使用与验证边界见 [交接说明](../../../../docs/student-agent-implementation/wp02-identity-activity.md)。

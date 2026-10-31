@@ -38,6 +38,9 @@
 .learning-page .capability-note { margin: 16px 0 0; color: var(--muted); font-size: 13px; }
 .learning-page .material-note { margin-top: 12px; }
 .learning-page .course-points li, .learning-page .course-card li, .learning-page .release-detail li { border-top: none; padding: 4px 0; }
+.learning-page .learning-material-text { border-top: 1px solid var(--line); padding: 12px 0; }
+.learning-page .learning-material-text h4 { margin: 0 0 8px; }
+.learning-page .wr-composer { margin-top: 20px; }
 .learning-page .release-list li { padding: 0; }
 .learning-page .material-list li { padding: 8px 0; border-top: none; border-bottom: 1px solid var(--line); }
 .learning-page .release-detail .primary { margin-top: 20px; }
