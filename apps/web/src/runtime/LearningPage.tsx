@@ -163,7 +163,8 @@ export function LearningPage() {
         await previous?.leave()
         if (generation !== epoch.current || authentication !== authEpoch.current) return
         const next = value as Context
-        requestedActivity.current = opened?.activityId ?? null
+        // 上下文恢复前来自 URL 的活动请求尚未被列表 effect 消费；覆盖为空会让原活动在恢复后消失。
+        requestedActivity.current = opened?.activityId ?? requestedActivity.current
         setContext(next); setContextVerified(true); setReload(n => n + 1)
         setKey(old => next.identities.some(i => i.key === old) ? old : next.identities[0]?.key ?? '')
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional hint. */ }
