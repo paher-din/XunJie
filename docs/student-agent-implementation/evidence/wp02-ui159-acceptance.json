@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "issue": "https://github.com/paher-din/XunJie/issues/159",
-  "recordedAt": "2026-11-01T16:02:43.814828+00:00",
+  "recordedAt": "2026-11-01T16:14:17.858721+00:00",
   "status": "implemented-and-verified-with-recorded-boundaries",
   "baselines": {
     "r1ToR8": "b45bb826bd364207e44158fd981a2d5e352043a8",
@@ -279,7 +279,35 @@
       "runId": 41323592648,
       "status": "completed",
       "url": "https://github.com/paher-din/XunJie/actions/runs/41323592648",
-      "scope": "Commit 66e56b3 contains all final product and test code. The following evidence-only commit records this result and the completed physical IME check; no product or test source changed."
+      "scope": "Commit 66e56b3 verified all final product/UI regression code. Later evidence commits record the physical IME result; a subsequent change stabilizes the inherited test-scheduler fixture only. The final PR Checks report the latest complete run."
+    },
+    "schedulerRegression": {
+      "origin": "Inherited main commit 4bf1e6042408a174b216dd167eac20fe76f62932",
+      "failedRun": {
+        "id": 41324359603,
+        "url": "https://github.com/paher-din/XunJie/actions/runs/41324359603",
+        "commit": "b98ffdf5ad96f8c229c1fb91422f4c6d3b443d2d",
+        "failedJobId": 124901414501,
+        "failedFile": "scripts/test-scheduler.test.mjs",
+        "failures": [
+          "global worker budget 4 spans groups and exclusive files form barriers",
+          "real lifecycle tasks share the global budget; helper-linked outputs stay isolated"
+        ],
+        "observedPeak": 3,
+        "expectedPeak": 4,
+        "otherVerificationJobsPassed": 9
+      },
+      "diagnosis": "The fixture held workers for only 80ms and assumed four children would all start inside that interval. Slow CI child startup made the exact peak assertion timing-dependent.",
+      "fix": "The first worker wave rendezvous on filesystem markers after recording each start. One first-wave process is deliberately delayed by 200ms. Existing exact-full-budget, maximum-budget, exclusive-barrier, output-isolation and logging assertions remain intact.",
+      "fileSha256": "4719566fbb9f7e6553f1f80796810424b405fad7596d318aec5cde6e9d843e07",
+      "localRerun": {
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 4711.727167,
+        "logSha256": "e569e96e5d2e74dc0df1f5ed90ed652c894455196343c31fcbf1e49d3faf72a7"
+      },
+      "scope": "Test fixture only; scheduler and product/UI source unchanged."
     }
   },
   "acceptedPackages": [
