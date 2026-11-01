@@ -89,7 +89,7 @@ export class ReliableActions {
       works: options.objectIds ? works.filter(file => options.objectIds!.includes(file.objectId)) : works, evidence: options.evidence ?? [] })
     if (options.objectIds?.some(id => !works.some(file => file.objectId === id))) throw new Error('所需作品已不在当前工作区。')
     const entry: LocalAction = { key: JSON.stringify([this.key, input.requestId]), scope: this.key,
-      input, phase: 'unprotected', cancelRequested: false, error: '' }
+      input, phase: 'unprotected', cancelRequested: false, preparationAttempted: false, error: '' }
     const existing = this.unprotected.get(input.requestId)
     if (existing && !matches(existing.input, input)) throw new Error('同一动作身份不能改变内容。')
     this.unprotected.set(input.requestId, entry)
@@ -171,6 +171,7 @@ export class ReliableActions {
       // Only an action that never reached its receiver can stop on local evidence alone;
       // a registered action keeps its phase until the original authority confirms the stop.
       const unsent = !current.remote && ['unprotected', 'waiting-dependencies'].includes(current.phase)
+        && (current.input.receiver.location === 'local' || current.preparationAttempted === false)
       return { ...current, history: false, cancelRequested: true, phase: unsent ? 'cancelled' : current.phase }
     })
     this.unprotected.delete(requestId)
@@ -269,7 +270,7 @@ export class ReliableActions {
       if (this.stopped || this.accessDenied() || this.disposed || this.cancellationRequests.has(item.input.requestId)) return
       if (!receipt) receipt = latest.cancelRequested ? await receiver.cancel(current.input.requestId, digest)
         : await receiver.accept(current.input, digest)
-      if (receipt) await this.storeLocalReceipt(current, receipt)
+      if (receipt) await this.settleDraft(await this.storeLocalReceipt(current, receipt))
     } catch (error) { this.rejectAccess(error) /* Remains unknown and queries this exact authority on recovery. */ }
   }
   private async run(item: LocalAction) {
@@ -339,6 +340,15 @@ export class ReliableActions {
     try {
       const remote = await this.transport.read(current.input.requestId)
       if (this.stopped || this.accessDenied()) return
+      if (!remote) {
+        // Once preparation can reach the owner, a lost ACK is an unknown result, not proof of no send.
+        current = await this.store.change(this.key, current.input.requestId, saved => {
+          if (!saved) throw new Error('原动作不可读。')
+          return terminal(saved) || saved.cancelRequested ? saved : { ...saved, preparationAttempted: true }
+        })
+        if (terminal(current) || current.cancelRequested || this.stopped || this.accessDenied()
+          || this.cancellationRequests.has(item.input.requestId)) return
+      }
       current = await this.acceptRemote(current, remote ?? await this.transport.prepare(current.input))
       if (terminal(current) || this.stopped || this.accessDenied() || this.cancellationRequests.has(item.input.requestId)) {
         if (current.phase === 'cancelled' && !this.stopped && !this.denied && current.remote?.state === 'prepared')
@@ -384,16 +394,16 @@ export class ReliableActions {
         if (this.stopped) return
         this.access.confirmed(); this.denied = false; this.notify({ active: true })
       }
+      // Resume a previously accepted draft before querying any unrelated receiver or capability.
+      for (const item of this.state.items.filter(item => item.phase === 'accepted' && !item.draftSettled && !item.history)) {
+        await this.settleDraft(item)
+      }
       const pendingCancellations = this.state.items.filter(item => item.cancelRequested && !item.history && !item.localReceipt
         && !['accepted', 'cancelled', 'failed'].includes(item.remote?.state ?? ''))
-      // A local receiver's cancellation belongs to this very action, so it completes before handoff.
-      await Promise.all(pendingCancellations.filter(item => item.input.receiver.location === 'local')
-        .map(item => this.verifyCancellation(item)))
+      // Each cancellation holds only its own action's mutex, so unrelated local handoffs keep moving.
+      const cancellations = pendingCancellations.map(item => this.verifyCancellation(item))
       // Local handoff must not wait for any remote capability or dependency query.
       await Promise.all(this.state.items.filter(item => item.input.receiver.location === 'local').map(item => this.run(item)))
-      // A remote cancellation query only starts here; a slow authority cannot hold back local handoff.
-      const remoteCancellations = pendingCancellations.filter(item => item.input.receiver.location === 'remote')
-        .map(item => this.verifyCancellation(item))
       let history: ActionView[] = []
       try {
         const receivers = await this.transport.capabilities()
@@ -413,12 +423,8 @@ export class ReliableActions {
       }
       await Promise.all(this.state.items.filter(item => item.input.receiver.location === 'remote' && !terminal(item) && !item.history).map(item => this.run(item)))
       await this.refresh()
-      // Remote cancellation queries still close inside this bounded tick for maintenance drain.
-      await Promise.all(remoteCancellations)
-      // A crash between receipt storage and draft settlement is safe to resume; tokens protect newer edits.
-      for (const item of this.state.items.filter(item => item.phase === 'accepted' && !item.draftSettled && !item.history)) {
-        await this.settleDraft(item)
-      }
+      // Cancellation queries stay tracked for maintenance drain, independently of unrelated handoffs.
+      await Promise.all(cancellations)
       if (!this.unprotected.size && !this.denied) this.notify({ error: '' })
     } catch { /* Retain contents and retry from the same identity on the next bounded tick. */ }
   }

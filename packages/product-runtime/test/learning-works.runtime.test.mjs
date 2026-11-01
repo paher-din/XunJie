@@ -8,12 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
-test.skip(!postgresBin, 'Requires native PostgreSQL 18.6.');
 
 /** A fixed basis registered for a pending action must survive an older manifest that lands afterwards;
  *  only objects that really leave the editable head are tombstoned. */
 test('a fixed basis registered before an older manifest lands stays publishable, while an explicit removal still deletes',
-  { timeout: 180000 }, async () => {
+  { timeout: 180000, skip: !postgresBin && 'Requires native PostgreSQL 18.6.' }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'xj-learning-works-'));
   const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
     webRoot: fileURLToPath(new URL('../../../apps/web/dist-runtime', import.meta.url)),

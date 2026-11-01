@@ -5,6 +5,8 @@ export type ActionPhase = 'unprotected' | 'waiting-dependencies' | 'ready' | 'di
 export interface LocalAction {
   key: string; scope: string; input: ActionInput; phase: ActionPhase; cancelRequested: boolean
   remote?: ActionView; error: string; history?: boolean; draftSettled?: boolean
+  /** Persisted before prepare; absent on legacy records means the send history is unknown. */
+  preparationAttempted?: boolean
   recovered?: Omit<ActionInput['draft'], 'token'> & { draftId: string }
   localReceipt?: ActionReceipt
 }

@@ -143,6 +143,7 @@ export function createConnectionAuthority(options: {
   const grantPath = (grantId: string) => join(grantsRoot, `${grantId}.json`);
   const sourceRoot = (source: ConnectionSource) => join(grantsRoot, 'sources', source.sourceEnvironmentId, source.sourceServiceId);
   const generationPath = (source: ConnectionSource) => join(sourceRoot(source), 'generation.json');
+  const unattributedFencePath = (source: ConnectionSource) => join(sourceRoot(source), 'unattributed-fence.json');
   const installationsRoot = (source: ConnectionSource) => join(sourceRoot(source), 'installations');
   const installationRoot = (source: ConnectionSource, installationId: string) => join(installationsRoot(source), installationId);
   const installationGenerationPath = (source: ConnectionSource, installationId: string) => join(installationRoot(source, installationId), 'generation.json');
@@ -249,7 +250,13 @@ export function createConnectionAuthority(options: {
         next = (scoped === undefined ? await generation(source) : await installationGeneration(source, scoped)) + 1;
         if (!Number.isSafeInteger(next)) throw new RuntimeConnectionError('generation_exhausted');
         await atomicJson(path, { formatVersion: 1, generation: next });
-        if (scoped !== undefined) await revokeUnattributedGrants(source);
+        if (scoped !== undefined) {
+          // No new unattributed grants can be issued. Persist their retirement even when none
+          // are on disk, so restoring an old grant file cannot undo it. Keep the shared source
+          // generation unchanged: already-authorized successor installations must stay usable.
+          await atomicJson(unattributedFencePath(source), { formatVersion: 1, generation: 1 });
+          await revokeUnattributedGrants(source);
+        }
       } finally { await release(); }
       // Release the admission lock while draining so handlers can finish and
       // other fences can advance. No operation/daemon lock is acquired here.
@@ -351,6 +358,8 @@ export function createConnectionAuthority(options: {
       || request.headers['x-runtime-source-environment-id'] !== value.sourceEnvironmentId
       || request.headers['x-runtime-source-service-id'] !== value.sourceServiceId) return undefined;
     if ((value.generation ?? 0) !== await generation(value as unknown as ConnectionSource)) return undefined;
+    if (value.sourceInstallationId === undefined
+      && await readGeneration(unattributedFencePath(value as unknown as ConnectionSource)) !== 0) return undefined;
     // Retirement of one installation must not invalidate its successor, so the installation
     // generation is checked in addition to the shared scope generation.
     if (value.sourceInstallationId !== undefined

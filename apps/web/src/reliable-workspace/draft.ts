@@ -249,8 +249,13 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
         const requestId = attempted.requestId
         const baseline = this.record
         try {
-          this.record = await this.store.change(this.key, saved => saved && saved.pending?.requestId === requestId
-            ? { ...saved, pendingRejected: true } : saved ?? baseline)
+          this.record = await this.store.change(this.key, saved => {
+            if (!saved || saved.pending?.requestId !== requestId) return saved ?? baseline
+            // A correction may already be protected while the invalid response is still in flight.
+            const corrected = !sameDraftContent(saved, saved.pending)
+            return { ...saved, pendingRejected: !corrected,
+              pending: corrected ? pendingFor(saved, saved.remoteRevision, saved.bases, saved.draftId) : saved.pending }
+          })
         } catch { /* the refusal is reported again on the next bounded tick */ }
         this.notifyRejected()
       } else if (code === 'forbidden' || code === 'stale-generation') {
@@ -264,6 +269,9 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   }
   async resolve(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = []) {
     await this.protect()
+    await this.withProtection(() => this.resolveProtected(question, references, addedBases))
+  }
+  private async resolveProtected(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[]) {
     const conflict = this.state.conflict
     if (!conflict) return
     if (this.dirty) throw new Error('当前比较内容仍在保护中。')

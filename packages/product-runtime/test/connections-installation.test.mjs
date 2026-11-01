@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,8 +26,9 @@ async function host(t, handler) {
   await once(server, 'listening');
   const service = { environmentId: randomUUID(), serviceId: randomUUID(), unit: 'tool-execution',
     endpoint: `http://127.0.0.1:${server.address().port}`, protocolVersion: 1, capabilities: ['echo'] };
-  const authority = createConnectionAuthority({ root, service, handlers: { echo: handler } });
-  return { root, service, authority };
+  let authority = createConnectionAuthority({ root, service, handlers: { echo: handler } });
+  return { root, service, get authority() { return authority; },
+    reopen() { authority = createConnectionAuthority({ root, service, handlers: { echo: handler } }); } };
 }
 
 async function invoke(service, identity, token, payload) {
@@ -134,4 +135,86 @@ test('an authorization is refused unless it binds the installation that will hol
     receiver.service.environmentId, receiver.service.serviceId, `${grant.grantId}.json`), 'utf8'));
   assert.equal(stored.sourceInstallationId, grant.sourceInstallationId);
   assert.equal(stored.installationGeneration, 0);
+});
+
+test('installation fencing rejects restored legacy grant files after reopening without retiring successor grants', async t => {
+  for (const absentDuringFence of [false, true]) {
+    await t.test(absentDuringFence ? 'legacy grant is absent during fencing and has no generation'
+      : 'legacy grant is present during fencing with generation zero', async t => {
+      let writes = 0;
+      const receiver = await host(t, payload => { writes++; return payload; });
+      const identity = { sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID() };
+      const retired = { ...identity, sourceInstallationId: randomUUID() };
+      const successor = { ...identity, sourceInstallationId: randomUUID() };
+      // This grant predates the fence: advancing the whole source would incorrectly revoke it.
+      const existingSuccessor = await receiver.authority.authorize({ ...successor, capabilities: ['echo'] });
+      const legacy = await forgeUnscopedGrant(receiver.root, receiver.service, identity);
+      const original = JSON.parse(await readFile(legacy.file, 'utf8'));
+      if (absentDuringFence) delete original.generation;
+      const originalBytes = JSON.stringify(original);
+      await writeFile(legacy.file, originalBytes, { mode: 0o600 });
+      assert.equal((await call(receiver.service, identity, legacy.token, 'before-fence')).status, 200);
+      if (absentDuringFence) await unlink(legacy.file);
+
+      await receiver.authority.fenceSource(retired);
+      assert.equal((await call(receiver.service, identity, legacy.token, 'after-fence')).status, 401);
+      await writeFile(legacy.file, originalBytes, { mode: 0o600 });
+      receiver.reopen();
+      assert.equal((await call(receiver.service, identity, legacy.token, 'restored')).status, 401);
+      assert.equal(writes, 1, 'restoring a grant file must not restore its ability to write');
+      assert.deepEqual(await call(receiver.service, identity, existingSuccessor.token, 'existing-successor'),
+        { status: 200, result: 'existing-successor' });
+      const renewed = await receiver.authority.authorize({ ...successor, capabilities: ['echo'] });
+      assert.equal((await call(receiver.service, identity, renewed.token, 'renewed')).status, 200);
+      // Source-wide fencing must still retire every scoped successor grant.
+      await receiver.authority.fenceSource(identity);
+      receiver.reopen();
+      for (const token of [legacy.token, existingSuccessor.token, renewed.token]) {
+        assert.equal((await call(receiver.service, identity, token, 'source-retired')).status, 401);
+      }
+      assert.equal(writes, 3);
+    });
+  }
+});
+
+test('installation fencing drains an admitted legacy handler while concurrent successor grants stay usable', async t => {
+  const started = Promise.withResolvers();
+  const finish = Promise.withResolvers();
+  const receiver = await host(t, async payload => {
+    if (payload === 'inflight') { started.resolve(); await finish.promise; }
+    return payload;
+  });
+  const identity = { sourceEnvironmentId: randomUUID(), sourceServiceId: randomUUID() };
+  const retired = { ...identity, sourceInstallationId: randomUUID() };
+  const successor = { ...identity, sourceInstallationId: randomUUID() };
+  const legacy = await forgeUnscopedGrant(receiver.root, receiver.service, identity);
+  const active = call(receiver.service, identity, legacy.token, 'inflight');
+  let fencing;
+  try {
+    await started.promise;
+    let drained = false;
+    fencing = receiver.authority.fenceSource({ ...retired, timeoutMs: 3_000 }).then(proof => {
+      drained = true; return proof;
+    });
+    const grant = await receiver.authority.authorize({ ...successor, capabilities: ['echo'] });
+    // Observe actual rejection instead of assuming the fence has landed after a fixed delay.
+    const deadline = Date.now() + 2_000;
+    let status;
+    do { status = (await call(receiver.service, identity, legacy.token, 'probe')).status; }
+    while (status !== 401 && Date.now() < deadline);
+    assert.equal(status, 401);
+    assert.equal(drained, false, 'revoking a credential does not finish its admitted handler');
+    assert.equal((await call(receiver.service, identity, grant.token, 'successor')).status, 200);
+    assert.equal(drained, false);
+    finish.resolve();
+    assert.deepEqual(await active, { status: 200, result: 'inflight' });
+    await fencing;
+    receiver.reopen();
+    assert.equal((await call(receiver.service, identity, grant.token, 'after-proof')).status, 200);
+    assert.equal((await call(receiver.service, identity, legacy.token, 'retired')).status, 401);
+  } finally {
+    finish.resolve();
+    await active;
+    await fencing;
+  }
 });

@@ -40,8 +40,14 @@ export abstract class ReliableStateCoordinator {
       if (this.dirty && !this.conflicted()) return this.protect()
       return
     }
-    this.protecting = this.persist()
-    try { await this.protecting } finally { this.protecting = undefined }
+    await this.withProtection(() => this.persist())
+  }
+  /** Explicit choices and periodic protection share a lifetime, including their in-memory updates. */
+  protected async withProtection(operation: () => Promise<void>): Promise<void> {
+    while (this.protecting) await this.protecting
+    const task = operation()
+    this.protecting = task
+    try { await task } finally { if (this.protecting === task) this.protecting = undefined }
   }
   private beforeUnload = (event: BeforeUnloadEvent) => {
     if (this.dirty) { event.preventDefault(); event.returnValue = '' }

@@ -171,6 +171,9 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   }
   async resolve(files: WorkFile[]) {
     await this.protect()
+    await this.withProtection(() => this.resolveProtected(files))
+  }
+  private async resolveProtected(files: WorkFile[]) {
     const conflict = this.state.conflict
     if (!conflict) return
     if (this.dirty) throw new Error('当前比较内容仍在保护中。')

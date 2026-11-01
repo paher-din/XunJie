@@ -301,7 +301,14 @@ test('source fencing waits for all parallel handlers, including those admitted b
   receiver.reopen();
   const fencing = receiver.authority.fenceSource({ ...identity, timeoutMs: 2_000 });
   assert.equal(await Promise.race([fencing.then(() => true), delay(40, false)]), false);
-  assert.equal((await client.check()).reason, 'http_401');
+  // Observe the admission fence, rather than assuming its filesystem write finished within 40ms.
+  const deadline = Date.now() + 1_500;
+  let admission = await client.check();
+  while (admission.reason !== 'http_401' && Date.now() < deadline) {
+    await delay(10);
+    admission = await client.check();
+  }
+  assert.equal(admission.reason, 'http_401');
   finishes[0]!.resolve();
   assert.equal(await requests[0], 0);
   assert.equal(await Promise.race([fencing.then(() => true), delay(40, false)]), false);
