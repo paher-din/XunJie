@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "issue": "https://github.com/paher-din/XunJie/issues/159",
-  "recordedAt": "2026-11-01T16:14:17.858721+00:00",
+  "recordedAt": "2026-11-01T17:21:16.485915+00:00",
   "status": "implemented-and-verified-with-recorded-boundaries",
   "baselines": {
     "r1ToR8": "b45bb826bd364207e44158fd981a2d5e352043a8",
@@ -307,7 +307,84 @@
         "durationMs": 4711.727167,
         "logSha256": "e569e96e5d2e74dc0df1f5ed90ed652c894455196343c31fcbf1e49d3faf72a7"
       },
-      "scope": "Test fixture only; scheduler and product/UI source unchanged."
+      "scope": "Test fixture only; scheduler and product/UI source unchanged.",
+      "hostedRerun": {
+        "conclusion": "success",
+        "headSha": "c4b0b80b1d5e025908e5968c8da9df2c42a876b6",
+        "jobs": [
+          {
+            "name": "verify / prepare",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124903905858"
+          },
+          {
+            "name": "verify / tests (server, 4/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297732"
+          },
+          {
+            "name": "verify / tests (tools, 1/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297735"
+          },
+          {
+            "name": "verify / tests (server, 3/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297777"
+          },
+          {
+            "name": "verify / tests (unit, 1/1)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297784"
+          },
+          {
+            "name": "verify / tests (tools, 2/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297791"
+          },
+          {
+            "name": "verify / tests (tools, 4/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297793"
+          },
+          {
+            "name": "verify / tests (server, 1/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297828"
+          },
+          {
+            "name": "verify / tests (server, 2/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297848"
+          },
+          {
+            "name": "verify / tests (tools, 3/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297873"
+          },
+          {
+            "name": "release",
+            "conclusion": "skipped",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904828424"
+          }
+        ],
+        "status": "completed",
+        "event": "pull_request",
+        "runId": 41325311370,
+        "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370",
+        "scope": "Complete verification after the inherited scheduler fixture repair at c4b0b80; all 10 verification jobs succeeded, release skipped by the PR condition. The supplemental Windows IME update changes documentation and evidence only."
+      }
     }
   },
   "acceptedPackages": [
@@ -2301,14 +2378,31 @@
     },
     "windowsWholeRepositoryEngineering": "not-rerun",
     "launcherDoubleClickOrGraphicalInstaller": "not-rerun",
-    "physicalWindowsIme": "not-run",
+    "physicalWindowsIme": {
+      "status": "passed-native-system-ime",
+      "report": "wp02-ui159-windows-system-ime.json",
+      "reportSha256": "ce4ee827c45f72e9fe313ac06d0da1967bdd99f846184e903ded22d3d277c2fe",
+      "signals": {
+        "editor": {
+          "trustedCompositions": 4,
+          "composingKeydowns": 27,
+          "trustedPastes": 1
+        },
+        "question": {
+          "trustedCompositions": 3,
+          "composingKeydowns": 20,
+          "trustedPastes": 1
+        }
+      },
+      "scope": "Installed Microsoft Pinyin via Win32 native virtual keys in headed installed Chrome; not a human hardware-keyboard observation."
+    },
     "teachingEffect": "not-evaluated",
     "realAgentExecutionTeacherReceivers": "not-delivered; production send unavailable, tests use a controlled receiver"
   },
   "screenshots": {
     "browser": "Chrome 156.0.8078.79",
     "beforeEntry": "Production host + PostgreSQL 18.6 + baseline dist-runtime",
-    "afterEntry": "Actual accepted-product-darwin-arm64 default entry, native PostgreSQL 18.6",
+    "afterEntry": "Accepted Mac default entry for UI comparisons; accepted Windows default entry for supplemental system-IME screenshots. Both use native PostgreSQL 18.6.",
     "comparison": "Before/after actual product use the same synthetic course, goals and file contents in separate environments; reference preview has different business data.",
     "files": [
       {
@@ -2520,6 +2614,36 @@
           "height": 1000
         },
         "theme": "light"
+      },
+      {
+        "file": "wp02-ui159-windows-system-ime-editor.png",
+        "sha256": "23df1867eb92f1f8c36e365b625465d33b9a6f4d1432b9bc227dcce9523d7812",
+        "kind": "windows-system-ime-editor",
+        "platform": "win32-x64",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-windows-system-ime-question.png",
+        "sha256": "6933ffce86fe0c1d2df58d9fa3d3e7f106666c9ceda36e0f6d3105860a4f8eea",
+        "kind": "windows-system-ime-question",
+        "platform": "win32-x64",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       }
     ],
     "beforeCapture": "Full-page captures with the same viewport; the previous long page exceeds viewport height."
@@ -2580,6 +2704,16 @@
       "clipboardRestored": true,
       "inputSourceRestored": true,
       "temporaryBrowserClosed": true
+    },
+    "windowsSystemIme": {
+      "checkedAt": "2026-11-01T17:18:37.6749431Z",
+      "rootRemoved": true,
+      "remainingOwnedProcesses": 0,
+      "remainingOwnedTasks": 0,
+      "runtimeStopped": "stopped",
+      "localTemporaryHelpersRemoved": true,
+      "localTransferArchiveRemoved": true,
+      "retained": "Original accepted candidates and necessary raw logs only; no private clipboard contents or browser profile committed."
     }
   },
   "acceptedPackagesRebuiltComparison": [
