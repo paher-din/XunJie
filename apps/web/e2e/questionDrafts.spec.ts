@@ -289,7 +289,7 @@ test('an existing reliable workspace database upgrades without losing its work',
       const db = request.result
       resolve({ version: db.version, stores: [...db.objectStoreNames] })
     }
-  }))).toEqual({ version: 2, stores: ['candidates', 'draftCandidates', 'drafts', 'workspaces'] })
+  }))).toEqual({ version: 3, stores: ['actions', 'candidates', 'draftCandidates', 'drafts', 'workspaces'] })
 })
 
 async function draftDriver(page: Page, activityId: string) {

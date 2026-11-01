@@ -198,6 +198,10 @@ test('production composer shows pending facts and late acceptance keeps the newe
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
     await expect(question).toHaveValue('发送后继续写的问题 B')
     await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/153/chrome-pending-and-new-draft.png', import.meta.url)), fullPage: true })
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await page.setViewportSize({ width: 420, height: 900 })
+    await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/153/chrome-action-dark-narrow.png', import.meta.url)), fullPage: true })
   } finally { unblock() }
 })
 
