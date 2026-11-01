@@ -1,0 +1,2742 @@
+{
+  "formatVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/159",
+  "recordedAt": "2026-11-01T17:21:16.485915+00:00",
+  "status": "implemented-and-verified-with-recorded-boundaries",
+  "baselines": {
+    "r1ToR8": "b45bb826bd364207e44158fd981a2d5e352043a8",
+    "mainDocumentationCommits": [
+      "0041e681269c15310d072e8124e23132280d81ad",
+      "0f2fd89b016c5c5e64a9019d5ba46ab73967d0b3"
+    ],
+    "implementationParent": "b6072100411a4f1cc7db682bb2c0f92e045ef96a",
+    "uiReference": {
+      "revision": "b6072100411a4f1cc7db682bb2c0f92e045ef96a",
+      "entry": "isolated dev:prep, / and /#/task/counter",
+      "scope": "UI reference only; HDL preview and product course are different business data"
+    },
+    "previousRepairEvidence": "wp02-pr157-repair-platform-acceptance.json",
+    "implementationCommit": "28b9e858028efcbb11560af0dc3e19026052e116",
+    "additionalMainCommit": "4bf1e6042408a174b216dd167eac20fe76f62932",
+    "integrationCommit": "ee750a27d2d4f932f1d1cb61442abc4c199bdd3b"
+  },
+  "sourceSha256": {
+    "apps/web/e2e/actionIntents.spec.ts": "aec243a79716689c0f0f8274290fa8dd18cef0da6d5f4483c418611695cc34a3",
+    "apps/web/e2e/hybridDeployment.spec.ts": "5ca25474fe6cc673f33fff25b530355f6f021ae666ed204f419e568a6325b934",
+    "apps/web/e2e/keyboardWorkflow.spec.ts": "29b43e6f1b92741c7120b9be13c9d7f7b8e3584084bae1fd6fb56609b56429f4",
+    "apps/web/e2e/learningEntry.spec.ts": "4a69bbb41a7a4d3b3392a1fcc63cfa6cc4f6e36765f9795b23d2fb9b8d99cab8",
+    "apps/web/e2e/productUi.spec.ts": "8f1694b6b4b8d9eca74e4991961e2da3e9a63cc87974104714ca2bb77c28bb28",
+    "apps/web/e2e/questionDrafts.spec.ts": "bd7b2b1273747ca558492d2243f6b0496713e3bb8d5721efbce034aff6d962cd",
+    "apps/web/e2e/reliableWorkspaceActions.spec.ts": "510e91306d61da023edd50f9c3fb0181f17222f46f9638aa83544e50b7f8118b",
+    "apps/web/e2e/support/product-ui.ts": "04259bfb40dacd34caa3b3a2bae15b047468f62b2099726a82dbb8328457a0e4",
+    "apps/web/e2e/worksEditor.spec.ts": "a9a4be669eda934d02c1472770b7595842413bacbd5d36c5dd97046dba50008c",
+    "apps/web/src/LegacyApp.tsx": "4467ed125c72e29543f2eced1ff242fb0b56dda4ff1d0e6bc4366271a8638c18",
+    "apps/web/src/components/AppShell.tsx": "c15c3543895f29ace39e8f947fbadef8beacd159222ac1f1f4239d1a305f5b7d",
+    "apps/web/src/components/ProductShell.tsx": "34058f2b491865b412fb98a28647eb9f0da06a51f2209c4af7da85395e3be5fb",
+    "apps/web/src/components/ShellFrame.tsx": "0142e15b30050d1830a3fbba2c5d823a6d5bb183d87a9f6d782c22ea693c1480",
+    "apps/web/src/components/home/LearningCards.tsx": "c3f9c97e2e8236e3ff821493f898a83aa07c23b74cc450bc2e04ba173cfe6948",
+    "apps/web/src/components/product-shell.css": "fb080c9c1b9bcee444884c2c5ccda6bae1babecf803e0ea08f539a8599cd6d55",
+    "apps/web/src/components/workspace/FileStrip.tsx": "e9dda559c8e2eefb111d4fc1244bfbbb867ec92cc2fef7f9fade3540a8d46608",
+    "apps/web/src/components/workspace/FileTabs.tsx": "82ef8a47644df661cdf3e7bb8763b0bae56cb7cfccb2d9f91e7e1e2b6f3b9372",
+    "apps/web/src/components/workspace/references/WorkspaceReferences.tsx": "843b3b3e12e109b70e29bee4a291f47962d2b729bec054518e6f9604ea1c42ed",
+    "apps/web/src/main.tsx": "750cf938815c0cbae2e076ce0a5bab7bc687c28e3c3a9aa0dc414fd5b3caf68f",
+    "apps/web/src/pages/HomePage.tsx": "2e59a49a4d40b5d24f91b3f4866162b030ea4479eacd69b2fb5af6e60ad9be92",
+    "apps/web/src/product/ActivityActions.tsx": "7ed23728f8a595da6e077459ac58a747f2f3dfb0c446e7895e8d9294fa3f6057",
+    "apps/web/src/product/ActivityPage.tsx": "dda21b2178c663b8ad55ce94c0fde96d6e80c7076e7c9644ae23ca25b0028ba6",
+    "apps/web/src/product/ActivityReferences.tsx": "9b575db62c198719be872ab04588d37d24191bc193f0834938b584ee9aaad0eb",
+    "apps/web/src/product/ActivitySession.ts": "ea80c4695d399832818f6cf49c8193b1dffbefde223bbfaaf419e2e994ccc16e",
+    "apps/web/src/product/ActivityWorkspace.tsx": "c31e0120f637b610f0ff508499080467740c656e47a303ff9d7130a62d5b38d5",
+    "apps/web/src/product/LearningApp.tsx": "9c1cb3f8242170a6816bd9d3d79b05cf67290d967571f9ac1977f9333b276c61",
+    "apps/web/src/product/learningTransport.ts": "4bfa68ec69758a3ae7e436232eec80a550e94a8686f74468c0bd95c5f6df8804",
+    "apps/web/src/product/product.css": "bd1dc004b26ded64b771f5daf022fdcb7010403e5b032a17b9141891f7bb2ccd",
+    "apps/web/src/runtime/DiagnosticsPage.tsx": "02daf04629709c1ba7c1f12710d4c9344894b0231d0a74ebe4ccc6e12e1ae09a",
+    "apps/web/src/runtime/main.tsx": "39e465a1780aeaa41a914040a694992b6455233425d8db5650cdf48a380d655c",
+    "apps/web/vite.runtime.config.ts": "886bf4b868fdc9d14e9cb052e7e1175fb0defd421ae1132ecd0dfa9f907b5f57",
+    "apps/web/src/components/workspace/RunPanel.tsx": "a311f9e4a2f50d10e00261ec070404071c9a4931324ca3a24f0684ed0cbc4fda"
+  },
+  "repairSourcePreservation": {
+    "packages/product-runtime/src/connections.ts": {
+      "expected": "c1355d8bbc455b40b59d43f35e1c19e2987627077dcff062582ddd25282be271",
+      "actual": "c1355d8bbc455b40b59d43f35e1c19e2987627077dcff062582ddd25282be271"
+    },
+    "packages/learning-space/src/learning-data/works.ts": {
+      "expected": "72b0485ca45dcf25a0c77770953116eb31f0d41109d15f94f5b56a5ab2ba295c",
+      "actual": "72b0485ca45dcf25a0c77770953116eb31f0d41109d15f94f5b56a5ab2ba295c"
+    },
+    "apps/web/src/reliable-workspace/coordinator.ts": {
+      "expected": "f1b4d9371ca50584ca7d9c51cc324149b1f6562bf96a623cb8ad5727a0d2d609",
+      "actual": "f1b4d9371ca50584ca7d9c51cc324149b1f6562bf96a623cb8ad5727a0d2d609"
+    },
+    "apps/web/src/reliable-workspace/draft.ts": {
+      "expected": "69531f9c3406e61da561ef5d8a14ac132a888893ac5199df9d1fd04ca7eaa861",
+      "actual": "69531f9c3406e61da561ef5d8a14ac132a888893ac5199df9d1fd04ca7eaa861"
+    },
+    "apps/web/src/reliable-workspace/index.ts": {
+      "expected": "85d84dee6bafa936e5e272d97afb5d5ba1fb9bf82cc4fd2d3da87cbed2888e64",
+      "actual": "85d84dee6bafa936e5e272d97afb5d5ba1fb9bf82cc4fd2d3da87cbed2888e64"
+    },
+    "apps/web/src/reliable-workspace/action-store.ts": {
+      "expected": "25af9f8da028e88d26e4c22caadbe2ef2053a22bf4ffa3738d4c9f94894db3ac",
+      "actual": "25af9f8da028e88d26e4c22caadbe2ef2053a22bf4ffa3738d4c9f94894db3ac"
+    },
+    "apps/web/src/reliable-workspace/actions.ts": {
+      "expected": "d607530e9266fbf2112c0bfff905538cd6307db038a674a234859d47d9eef865",
+      "actual": "d607530e9266fbf2112c0bfff905538cd6307db038a674a234859d47d9eef865"
+    }
+  },
+  "engineering": {
+    "webUnitTests": {
+      "passed": 688,
+      "scope": "Before final navigation-only adjustments; no backend or reliable-workspace sources modified."
+    },
+    "initialFullVerify": {
+      "status": "passed",
+      "nodeVersion": "v24.21.0",
+      "startedAt": "2026-11-01T14:14:37.586Z",
+      "finishedAt": "2026-11-01T14:20:48.979Z",
+      "summarySha256": "fd146ea9791d77d2fe7cc093a26c496648819585370542afee2d8be6726b1a36",
+      "stages": [
+        {
+          "name": "typecheck",
+          "status": "passed",
+          "durationMs": 10355,
+          "exitCode": 0
+        },
+        {
+          "name": "build",
+          "status": "passed",
+          "durationMs": 17312,
+          "exitCode": 0
+        },
+        {
+          "name": "check:contracts:browser",
+          "status": "passed",
+          "durationMs": 284,
+          "exitCode": 0
+        },
+        {
+          "name": "check:docs",
+          "status": "passed",
+          "durationMs": 260,
+          "exitCode": 0
+        },
+        {
+          "name": "test",
+          "status": "passed",
+          "durationMs": 343180,
+          "exitCode": 0
+        }
+      ],
+      "scope": "Before the final navigation fixes; subsequent Web typecheck, production build and affected browser cases passed. Existing test skips remain skips."
+    },
+    "afterMainIntegration": {
+      "sourceCommit": "ee750a27d2d4f932f1d1cb61442abc4c199bdd3b",
+      "status": "all-checks-passed-after-targeted-rerun",
+      "fullAttempt": {
+        "status": "failed",
+        "exitCode": 1,
+        "startedAt": "2026-11-01T15:46:17.898Z",
+        "finishedAt": "2026-11-01T15:50:45.173Z",
+        "summarySha256": "de2ea6a7bf1681aa86f8fae4831e36dcb989f752d046215631b82bf4ca7d9a61",
+        "stages": [
+          {
+            "name": "prepare",
+            "status": "passed",
+            "durationMs": 2576,
+            "tasks": 4,
+            "passed": 4
+          },
+          {
+            "name": "build:test",
+            "status": "passed",
+            "durationMs": 701,
+            "tasks": 1,
+            "passed": 1
+          },
+          {
+            "name": "unit",
+            "status": "passed",
+            "durationMs": 263993,
+            "tasks": 23,
+            "passed": 23
+          },
+          {
+            "name": "server",
+            "status": "passed",
+            "durationMs": 261078,
+            "tasks": 78,
+            "passed": 78
+          },
+          {
+            "name": "tools",
+            "status": "failed",
+            "durationMs": 193374,
+            "tasks": 45,
+            "passed": 44
+          }
+        ]
+      },
+      "targetedRerun": {
+        "file": "tools/xj-dev/tests/repro-e2e.test.mjs",
+        "status": "passed",
+        "passedTests": 6,
+        "failedTests": 0,
+        "skippedTests": 0,
+        "durationMs": 24593.421916,
+        "logSha256": "b830b500368573b8dca4198a73d49824902aef82e24986bab64a43b4f5fdfb75",
+        "reason": "Agent edited the acceptance JSON while the full verification was running. The reproduction test correctly rejected the changed Git status. No production or test assertion was changed; the complete file passed once workspace state stayed fixed."
+      },
+      "latestTaskResults": {
+        "prepare": {
+          "passed": 4,
+          "failed": 0
+        },
+        "build:test": {
+          "passed": 1,
+          "failed": 0
+        },
+        "unit": {
+          "passed": 23,
+          "failed": 0
+        },
+        "server": {
+          "passed": 78,
+          "failed": 0
+        },
+        "tools": {
+          "passed": 45,
+          "failed": 0
+        }
+      },
+      "priorIntegrationAttempt": {
+        "status": "failed",
+        "summarySha256": "5eae673ccd3f7cb1b3266ed3a3c44bd44a89f6eabaa3c5ca9ce2d7888a3eb4d1",
+        "reason": "Real xj-dev lifecycle tests detected stale dependency preparation after merging package manifests and started npm ci in the shared checkout while other tasks read those dependencies. Ran npm ci --include=dev before the next full attempt."
+      },
+      "scope": "The last full command exited 1 only for the workspace-status mutation above; report the targeted rerun separately, not as a new exit-0 full command. Existing environment-gated skips remain skips."
+    },
+    "hostedCI": {
+      "conclusion": "success",
+      "event": "pull_request",
+      "headSha": "66e56b3e674652a8ddb3d36773a675af8f471a4b",
+      "jobs": [
+        {
+          "conclusion": "success",
+          "name": "verify / prepare",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 4/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 1/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 1/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (unit, 1/1)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 3/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 3/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 2/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 4/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 2/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "name": "release",
+          "status": "completed"
+        }
+      ],
+      "runId": 41323592648,
+      "status": "completed",
+      "url": "https://github.com/paher-din/XunJie/actions/runs/41323592648",
+      "scope": "Commit 66e56b3 verified all final product/UI regression code. Later evidence commits record the physical IME result; a subsequent change stabilizes the inherited test-scheduler fixture only. The final PR Checks report the latest complete run."
+    },
+    "schedulerRegression": {
+      "origin": "Inherited main commit 4bf1e6042408a174b216dd167eac20fe76f62932",
+      "failedRun": {
+        "id": 41324359603,
+        "url": "https://github.com/paher-din/XunJie/actions/runs/41324359603",
+        "commit": "b98ffdf5ad96f8c229c1fb91422f4c6d3b443d2d",
+        "failedJobId": 124901414501,
+        "failedFile": "scripts/test-scheduler.test.mjs",
+        "failures": [
+          "global worker budget 4 spans groups and exclusive files form barriers",
+          "real lifecycle tasks share the global budget; helper-linked outputs stay isolated"
+        ],
+        "observedPeak": 3,
+        "expectedPeak": 4,
+        "otherVerificationJobsPassed": 9
+      },
+      "diagnosis": "The fixture held workers for only 80ms and assumed four children would all start inside that interval. Slow CI child startup made the exact peak assertion timing-dependent.",
+      "fix": "The first worker wave rendezvous on filesystem markers after recording each start. One first-wave process is deliberately delayed by 200ms. Existing exact-full-budget, maximum-budget, exclusive-barrier, output-isolation and logging assertions remain intact.",
+      "fileSha256": "4719566fbb9f7e6553f1f80796810424b405fad7596d318aec5cde6e9d843e07",
+      "localRerun": {
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 4711.727167,
+        "logSha256": "e569e96e5d2e74dc0df1f5ed90ed652c894455196343c31fcbf1e49d3faf72a7"
+      },
+      "scope": "Test fixture only; scheduler and product/UI source unchanged.",
+      "hostedRerun": {
+        "conclusion": "success",
+        "headSha": "c4b0b80b1d5e025908e5968c8da9df2c42a876b6",
+        "jobs": [
+          {
+            "name": "verify / prepare",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124903905858"
+          },
+          {
+            "name": "verify / tests (server, 4/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297732"
+          },
+          {
+            "name": "verify / tests (tools, 1/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297735"
+          },
+          {
+            "name": "verify / tests (server, 3/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297777"
+          },
+          {
+            "name": "verify / tests (unit, 1/1)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297784"
+          },
+          {
+            "name": "verify / tests (tools, 2/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297791"
+          },
+          {
+            "name": "verify / tests (tools, 4/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297793"
+          },
+          {
+            "name": "verify / tests (server, 1/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297828"
+          },
+          {
+            "name": "verify / tests (server, 2/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297848"
+          },
+          {
+            "name": "verify / tests (tools, 3/4)",
+            "conclusion": "success",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904297873"
+          },
+          {
+            "name": "release",
+            "conclusion": "skipped",
+            "status": "completed",
+            "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370/job/124904828424"
+          }
+        ],
+        "status": "completed",
+        "event": "pull_request",
+        "runId": 41325311370,
+        "url": "https://github.com/paher-din/XunJie/actions/runs/41325311370",
+        "scope": "Complete verification after the inherited scheduler fixture repair at c4b0b80; all 10 verification jobs succeeded, release skipped by the PR condition. The supplemental Windows IME update changes documentation and evidence only."
+      }
+    }
+  },
+  "acceptedPackages": [
+    {
+      "platform": "darwin-arm64",
+      "profile": "full",
+      "createdAt": "2026-11-01T14:45:04.578Z",
+      "manifestSha256": "8362995227b20c95d151af378a057b238cf71ee7285021d911842d69564588ac",
+      "webEntries": {
+        "web/assets/_.contribution-C3U3TMyk.js": "6eab9f536fc2cd68bf4f2373ee7552e31c0318f38c1c4a28bc49ca8465cd6c2b",
+        "web/assets/accessibility-X10htBGS.js": "574e12f1447ba56c53ab42c59469a521c966f0dcb7b1580e8b977ba36e84f3f9",
+        "web/assets/actionbar-DdRY9XKI.js": "e80bec61583e5efdf2e88be2c913d98fbb1561f4d2cd09c01b5d0994de5ab1d4",
+        "web/assets/actions-CawZG6aD.js": "fafce74e40d81a610ed3fab5fc673703e2719fadf5c9739e6dd653da9cdaf4d9",
+        "web/assets/actionViewItems-6agXuMD4.js": "4e16e2b14cb1e65713fc88ae94338e6a848e487f678e1ae233e6d27e29a4eca1",
+        "web/assets/actionViewItems-CvhnUcyN.css": "cd7d8f88464fef9a688ea27ecb288289d2e8e4e9e277eabf2c79808636e9accb",
+        "web/assets/actionWidget-CFhFk6hs.js": "6ea8e9767b6af306060a62b5b270c7c968e3b16fcd27b08659d455ce71185392",
+        "web/assets/actionWidget-DtLPlGY3.css": "8e076162e99b2229fa816549bbbfd725fabe30fa88732aed447589c9c2b72cb7",
+        "web/assets/aria-BQ0Fa-r7.css": "2f5bc24c33f1634d6c3a7b319dc32f51953c0767583ced60086f20202c186874",
+        "web/assets/aria-IqFvR9v7.js": "8369b69c9cd1aabd99439d581907b841fe8fa0a3b64f12454cb770e684080bbb",
+        "web/assets/autoIndent-BpbmB4wC.js": "e4b8a10340d0a2cc509c1133ef6ea1f9d8919d48b9d3c57d4db3175fd3311ebf",
+        "web/assets/autorun-CZun5-62.js": "10214c182bc5870bfc9bc6e408fce9f0d8cecf97627f1e364999fbf2feefe3a4",
+        "web/assets/button-CA-6CJJs.css": "3ef56c67e13189ace33a32fb6f1bb240bc62da5fa7812a26a54a9ba2010938fe",
+        "web/assets/button-DoclfJ76.js": "4e4bd408c089d2c27caa2cda7c7ed17a2d4aeab88a69b8dba3142d1df0e043aa",
+        "web/assets/clipboardService-BYOp1v5W.js": "2bfee05d0fe0c1b42ceba9592d8a619fda2c145cf9cfa2d45405d4de756fc286",
+        "web/assets/codicon-DF1abBS2.ttf": "77f902557231f95c4c71ae517d09a1a842753656f5f665086b3e5ad8095538da",
+        "web/assets/color-CK6dxYC2.js": "6ad354122af35fb5bde184fe64b5bbf221df81911aeaa109ad284b625dc986bc",
+        "web/assets/contextkeys-DHRrpHP4.js": "689fbf86f1495180bcfa5f9eeffcd8d7ba9dac715b7a04b4d3fbcbdf30d55a76",
+        "web/assets/contextView-B5d5ckIc.js": "8425facec09edd1b0a8c3fa6be84ad31d6e02ab7b3e4655ce2be831a2c4fe309",
+        "web/assets/coreCommands-CnwWAufH.js": "906c35b8369f3b228b47a173a44698934ccd5fd4b63a128ae2450bb1d989c88d",
+        "web/assets/cpp-BbWJElDN.js": "2c1afb37aaf5c69f7a69fcb6ad664fae21ec42024b2870473ddbbdcd2f8fa097",
+        "web/assets/cursorColumns-NI5P0Viq.js": "fe30dc1650f96d974fc4542b903a1665967f5fdb4daa70a34809b011bdde18d6",
+        "web/assets/cursorMoveCommands-D3O55em4.js": "45704e863650795bbc3db5828f9561cc52060d559b65ddac1d993742e6fef4eb",
+        "web/assets/cursorWordOperations-CCQhsnpd.js": "fba7bda5b655a70c55977c33b597d754cebee35395cf8713d36ceb41eeb5fa7a",
+        "web/assets/defaultStyles-B9e-3ad2.js": "d8c2ef918e5f4ae9c8a21c0c3fc65a1875762d150d15334c2edd6edf1d7fdfaa",
+        "web/assets/DiagnosticsPage-BODCIhsF.js": "e2d88a62e2118c3682335cbd1b9193e79762a9917d64f98be6f6d60e1222c9ad",
+        "web/assets/DiagnosticsPage-Cs5Df5_P.css": "5bb35a8c81eda9174d870138226f808528aa7a643d2cedaa76e567da8a3ad88d",
+        "web/assets/dialogs-BIF7RGvl.js": "08eb641d0bc27d7bc1c89fa1e138ffc8fcc35e628d9402d0de90bf2d627a07b5",
+        "web/assets/editOperation-9gMD_fLO.js": "22881e190b3e758292243a836d5233321aa5b6d8a0a15d079df1b8a05a95836b",
+        "web/assets/editor-sRB6dmGb.css": "5fad39acfed993a8c145797593e0b222e5e70937b05f83dc4d70158923062339",
+        "web/assets/editor.api-DtqYIzDi.js": "5476f2ae41799b5e9de504f324bb4893476135976e5718b0e44cbf886f892b06",
+        "web/assets/editor.worker-C0Ec0Cbg.js": "5c6bffa90891c225511f42a680a79b70f5418137ece00eeb87062df0da0513af",
+        "web/assets/editor.worker-CHzQTjO0.js": "e96f442eb216fe44bfb04d6d2d609159697ecb753729f37dac2fe1f83639f3b9",
+        "web/assets/editorBrowser-Ca_egve_.js": "a5665f39ae541ee6b355c4db3073b7ced40a6a09b0fe9900888141975c5cf371",
+        "web/assets/editorColorRegistry-Bgb0IUaH.js": "a00d44950d8ba05d083ed9e5ad55e62efac30e63262bbb999cb35978570324e3",
+        "web/assets/editorCommon-BwOdCC1S.js": "838e09bfa91e5c7bc11c8e22ca6e69e04d22339f0e3de0796882cd672f02bc14",
+        "web/assets/editorContextKeys-dqniairc.js": "23b49671031ea131a39c3ed0a3604aa5a52991cfba602f0e6d14fba70eee0020",
+        "web/assets/editorExtensions-C3eBJWSs.js": "9f327349aaa64706b666924bb12e816e76f27d319fb12f4cb7a24a732ebbe125",
+        "web/assets/editorOptions-BkUIZjyq.js": "a9addaa3be41352801809886bab07d7938d7e862c1db8a4a08550f136ec22a95",
+        "web/assets/extensions-DPbG0wzx.js": "58ac22c65dcc6136a54da4278730389a5289f434cee9b0681492aa2b5cd553f1",
+        "web/assets/findController--eizBYnI.js": "f8729b94e8efc8b6dc2c8e9a6c619ef0dc3a80ebaa6e19f7259a770bedbf47ac",
+        "web/assets/findController-As3NhRJO.css": "22f58d94a7e8f14bc288a98c71fe6fe499a086ccb59452b332bc8842ccf5b0be",
+        "web/assets/findInput-ChGy53_U.js": "16a9b581e14309cefddbe797f483bc3877b30db98c89122b3844af6245683fb9",
+        "web/assets/findInput-VW5HTh3_.css": "9080384a52d9b1eaf6228f01d81549cf7daf7465b792b39062a2c9c675007f0d",
+        "web/assets/findWidget-BO_Uy1OT.js": "bc31bdb761e5d2d73df56f38c4e56cc9a68e08109a56ae133191945666e78a7e",
+        "web/assets/findWidget-M2a9gl0R.css": "d7263627400b528cfef5f56c2b697a38df09133cc3465a13c8b806de4807ad71",
+        "web/assets/hover-CPHvP3SP.js": "2be62c64455dcf2cd60c9da22cee3c50cae09336829b8b4e655f04fb88ce1a33",
+        "web/assets/hoverWidget-BFdtlATq.css": "24bd62d66c4e4161c315ecf7f929d49e0555500023f31f888f4f5fa69824d0b5",
+        "web/assets/hoverWidget-JbYik-1O.js": "5f58fe452767f362addc7e9e601d91066e82ca51c4ffb5a6dd55f1d18ba80f67",
+        "web/assets/iconRegistry-BsaijO2U.js": "3ee5a9f76a2aac1154c7922f5db7efc21cb0e4a88a56d595ea62390b1601797a",
+        "web/assets/indentation-BUPEkbvE.js": "1bb5fbae5d66b14bff175f05cc21a3ca801d77b437c0caf7cb7b416f9410b088",
+        "web/assets/indentUtils-D7uFROOx.js": "aff17c1a8f898811458d3468478daa79b0dcf161c6fbd321177be7f5009ded4b",
+        "web/assets/jsonContributionRegistry-DfgOu-UK.js": "56ff4e8ffa8759fd1774801fed5f96e3cce996c7d9a53ae7732abae4c744e8db",
+        "web/assets/keybinding-Bbs6vGjI.js": "f7064036ae64e31fb436374fe743f3d870a11e10c61d7e2f1967ba7b93b727e6",
+        "web/assets/keybinding-CIhNjqFS.css": "6e2b3177dcc5b4a6ae1f5b571019b319b975834c99c4a361f872dde0c83c151e",
+        "web/assets/keybindingCancellation-CYPlNaLr.js": "93821d9d17f7df3f9cd2019c7002d7fe605eddd5ddcbb88277bb36db223ae2c8",
+        "web/assets/keybindingCancellation-HhictitA.css": "beb8adbe096d4ef6384b76e57dc410ed5e34eb930e69840723f15c436a0f5553",
+        "web/assets/keybindingLabels-Dtk8vS2d.css": "f419bd5e50fa7337a4124a0be58d51a0849af2ae8ce28f01e6240d6fdc63a2de",
+        "web/assets/keybindingLabels-DTMP2EiD.js": "9c03025d18d5b1120d0fe10e5182b847df302f74c385292c1217a0477f9f73ce",
+        "web/assets/languageConfigurationRegistry-Rl6LHyT9.js": "13129cdfac1002dcfc5e93b36c042ca26be4720038f1be8e4860a1b4cbcec4c4",
+        "web/assets/languageFeatures-pVm3mn6_.js": "6cec29df2377751feb41a8eb64bdb9782e8c34f8377820bb6b74388269be1d25",
+        "web/assets/lineTokens-Dk1yWC6Q.js": "471534c807183bf8e5f61e5b0ca7d61a54d3b4a718e9e06af3de5a71baf29e4d",
+        "web/assets/link-Daoow6VB.css": "1808672971908cbe7c750c362241cda9187d3db79272db7d8954e937c67ceb00",
+        "web/assets/link-DOGNm2I7.js": "fc9702a8c63326787c59d14a029ad960cc73a375e11fc95bf0c52859fa790e5e",
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6",
+        "web/assets/markdown-BFxVWTOG.js": "f22ad36fd7b2c5e0b0ab62c8496934cb476d7142e2d4cc258fb712137c8a9946",
+        "web/assets/markdownHoverParticipant-CywSgLSr.js": "d6141ec97c78ec7f3f7e7950641d382eef16f99d8cd841710eb9708c2b487361",
+        "web/assets/markdownRenderer-C2YUmC4i.js": "f079014f8af136398c8b4c9c45bf52e1a5279ed5de9dafa64b626acc70694aae",
+        "web/assets/markdownRenderer-DUHL6HNB.js": "6b1403f0e623f9010781fde4d7e11dcfbb5ae35e64839da809d676e9381a1d99",
+        "web/assets/marshalling-BAucfTd4.js": "d529d5c6b01ae641e4c5d48ac4eb47d5a331c14130864e5c2b9088e3d2d140e1",
+        "web/assets/messageController-Do3a81JH.css": "9fb6461e6efebef7b31545ebf4113d86b02c9cbf5ae072d0079d801b643b19c4",
+        "web/assets/messageController-tvtsiUDH.js": "2aefc5779e90836d9df8321e6e960bc4fa825201b3e655417a45754bbe7b93ac",
+        "web/assets/mime-CELncaOB.js": "70b234b1c7ae73f1daf8a30dda898f28b4fa9b3f7bb52d7c345f2305609a98d3",
+        "web/assets/model-DNcBvKv8.js": "e9dc9df0cf7feae0044dcb75c70d3513d9a21d9d96164e97e810b5d6265f4712",
+        "web/assets/nativeEditContextRegistry-AXP4aNCF.js": "0df5ff882efbcd916251aab63bc8bf65eda03c26eb9c104320bc9c329441d51d",
+        "web/assets/notification-B4MmM1na.js": "3bedf225ead3f2e5f2a1482403b1217c524cecae7c2e23eb3e836efdbf8cdded",
+        "web/assets/objects-CCXi9cv4.js": "cd5009b0cbbb4b60d9ccfa12b1ed84690b291e1c7c09932ab65281e58181ccbc",
+        "web/assets/observableCodeEditor-BCZ0orMO.css": "c299b57f43c246a747fa3856391783a56521152b254f8eb521d28d6d2c320e98",
+        "web/assets/observableCodeEditor-ClR3xCte.js": "cdf7c27af933fc16e20f9729f144a69b41533de2d841121f0e8e69d28e05426f",
+        "web/assets/opener-95CB-cX3.js": "3f0c3ee92421c72ceb88e8cdf29e3988dc59c075c4fb6f6193a071d42241d262",
+        "web/assets/python-5fi4czaL.js": "00e6084f0fda8b9a67f0fea9fef217024af482e2fe509322b18d36e88fa04bc9",
+        "web/assets/quickAccess-C8QtJD_7.js": "3b261782b34dbca4a12a428038720798c4916566f8b6760f32cdffe91e23b618",
+        "web/assets/quickInput-CsyOmr9X.js": "0f8f064ac846f9c8a41d84207990bd8b1125d559565b35b176f0f1ef4aeba73d",
+        "web/assets/range-COSjiKwM.js": "0f3bbfe9a71afcaa75764c3a1f3af8cd5f4076a63a6d14177906edd49a09d35e",
+        "web/assets/register-_-S9DiMO.css": "0c41dd940a98e4ac3dfcc0c06bff3f5f11f94242dd0f04819d54f5b2c3a4a340",
+        "web/assets/register-06zptQNp.js": "91b71c8338de0721c8229addf75458ba04db1ef433ebd52a7b4b388df0e6beb3",
+        "web/assets/register-B3Ib2Dy5.js": "3497198414e1494b7eb8e0fb2d3e510dd3bce6c9cec784aa1040e2cd590b1eca",
+        "web/assets/register-B6t2jEry.js": "ba521190ca6587e29fcd2d34b4e1f60e0b9d3a3542d05b845d985286ce430e83",
+        "web/assets/register-BbqJaxYy.js": "4eae6840dee90ae00ba5ad7f69fd438477aaaa8303a26a8db3c5f4c465158eca",
+        "web/assets/register-BCCzrpig.js": "fba369430729536ba7eba03cbbee7c1106bfb532aedf8993bd4933cdb52e5b02",
+        "web/assets/register-BCMe4kS6.js": "fac4b194c7bc4579ba862957fdd07eb7cce1bb46b04b69163044436ab872d458",
+        "web/assets/register-BE89dlG2.css": "534998cc686e2846d73b73dab527ac7079d8e0886275e6c844e08cc542d4d615",
+        "web/assets/register-Bf-8pghu.js": "bb1d125dca3cc871cc4a7ae6d88f42a9f2952738583aa7e30da92a0d86447c14",
+        "web/assets/register-BIsMXCRp.js": "3c87d4c6910138fc4796948bfb040d3d823a087da48551ed964937d30c217be0",
+        "web/assets/register-BNgPRG2T.css": "eb6c485c830ac466ffa3ff52e7a95c48427b1058781a74ecf5a3fd96b2f23c18",
+        "web/assets/register-BNl2MZMy.js": "f8364c4fc3fec120101c52b6e0b9a4f042bc7bd145a613e19297cd588c298b0c",
+        "web/assets/register-BQ6OOEY5.js": "292104a77c3b6cece9a529241d989d18ddcc49080bda5ab800f24e37e8d92f78",
+        "web/assets/register-BYBQ9_cM.js": "9674c77bf2dd0d700bb7f061623e292a33cc80be7d02598175767f2307d9fc56",
+        "web/assets/register-C0Mzs7-D.js": "aac588533751586f6622b171b1ec7fcbbfdf73ace6b9138afffa1e0d963016af",
+        "web/assets/register-C7vgbc7H.css": "29448b754666000ae2ed263bed52026ab9442b95c30975956b82c371207e359c",
+        "web/assets/register-C8H3kDLX.js": "3472b1e6e482fcf549965a989384424ae5bace689b536344ae7e20fcff7c93a4",
+        "web/assets/register-CAWkBH8q.js": "d162f0576639f5ba242f7175921fda99914d0b22690b53538b87612e4efcf564",
+        "web/assets/register-CDmEy0vV.js": "fb15b4f0d327f941602d8e3d26c62b7de6232f375483de387956d518cec6eb07",
+        "web/assets/register-CeMoug4p.js": "d44286ff08175236080c75c4019b115ca4d6a083fd8e9e1ac9aefdd6238a0116",
+        "web/assets/register-CSjhqA8K.js": "3d22a51e39dc78c8467d9749013f25355b51323f380b7fb745b8598ad093134d",
+        "web/assets/register-Ct2Kpt_-.js": "6e993f219c24a1a6ba1cc35ee48a276b936dc1148e29d2e89c294f2dc0373013",
+        "web/assets/register-CyWn7XZ4.css": "1e86cf9ccc0ad8fca633d04dab694bb97bc59355c9e457bff40b1db0bd3732f8",
+        "web/assets/register-DAnSE5Ht.js": "ad29f95e9a0eb857ef2532d4ecb952395bd452811f0872cdcbe945d5f38bf05f",
+        "web/assets/register-DbQ2Zor5.js": "b97f0735479665d5bb0d6122b2c85fdc261db8d04d47d40d87c67377e0200f1d",
+        "web/assets/register-DnLjAd4q.js": "7e7c32c0b9d8751c46a41ab30f6eafd20e029a26722d24039797559222c3071d",
+        "web/assets/register-HJbRf0Hl.css": "11a9aa60beefa907b4e4ba5f6f5990ee2c7ad396dbe216a260f3cd11ec71e58f",
+        "web/assets/register-Ir2Bw_z4.js": "aa8b1b32312c1344762c4182e7b080f457e8c361951a5ddf6665628aca9740ed",
+        "web/assets/register-M7ST5m-G.js": "0635a458473366235a5990fc6caca30ea7394ae1c92d7edaf851ff6949531a2d",
+        "web/assets/register-oc6MGeDW.js": "543928fb77ac16417824e17f9c88fc6749d4a0c36160211f3f83c93b641aaff1",
+        "web/assets/register-sMOSuGy7.js": "a731baa6bb6a807311c3a47543400096dbe4b12535aaa036a4ed5070146ad5f9",
+        "web/assets/register-VvSvELY2.css": "8df682effd2bd778cab4430e39555dbafe986c8ea9392d2e1d5822da5155ba2d",
+        "web/assets/register-YdNSa6b7.css": "1b72b598a4a340218a288c8f6366ddfb160387339684d6c484ec4ed21c8f78df",
+        "web/assets/register-z3ZdYKDr.css": "7c3a51ef7c1c152dbf21628fa6e15c202f53bec94e5ab267a0a9a0db0e2ba257",
+        "web/assets/replaceCommand-Cq_qwpcl.js": "7806865944b335985d5e967a6e9d61aa126b263c9ef1667d557d95f3424780a0",
+        "web/assets/runtime-2rS5nEgo.css": "c6115212f7db7133ff7ae2dc9327b5f2133a66770350f0fcb20574a115ef3305",
+        "web/assets/runtime-Co0G5MtN.js": "78ee007193512c4c21276d2625103eb1a2d90edfdd330645215309c2f7053555",
+        "web/assets/sash-C1IjcDEc.js": "fef5582c7bb5b1ff33ecb154c621debf86060a4d02edc8dc8b4e901a3dcef30b",
+        "web/assets/sash-CnFYCDYW.css": "013cf9d924b8c964323da93808ca910d8c39745e9dffaca06d666caa29683760",
+        "web/assets/selection-Cv4KLdDw.js": "f9f04cfccad77a7d282d80c7261251437880d76f4f69f8e56cb43dd95edf9cc5",
+        "web/assets/stableEditorScroll-Dvj07c7y.js": "9c5d296a7bacbdab297b47c245b6be5552e2f6455b0b03ba4407fc8cc88b0f73",
+        "web/assets/storage-DbB16Le2.js": "7db61198dbdea8d0e92083d5bcea86e9a0c3be054279671c7f30934520c419cd",
+        "web/assets/systemverilog-Bs9z6M-B.js": "d3d221457240d9ef84d754f36afd2825abae6347a8e3b3bb5b69b31ce3420dee",
+        "web/assets/tabFocus-7SSNp0Xe.js": "e24cc17ba7a37825a5abc0269d56b4f2e596e1ff9af4e4503d2e0876c1401280",
+        "web/assets/textModel-D_cPzfEi.js": "d767c2dcf21af41dbf3de005fda6ec0c4a4d57bffac02d97065fd641017fe47b",
+        "web/assets/textModelDefaults-jwCPjDQ2.js": "1e8a83d60762c2fe76d1286b1ee0f661495255c9855db3b9cc05bd5c9d0e2dfc",
+        "web/assets/toolbar-DoTYWObY.css": "91642401155fd066c21c571a201f9577fb9edd509a0f0338e376f62da8c2a7f6",
+        "web/assets/toolbar-HJeYzxGv.js": "957a350d56f34f81507f5f1c34679788b91d845561f14866293f5a1569e6f850",
+        "web/assets/trustedTypes-kT3NYhwx.js": "59354c9f5610f5e79969fb0af192bcf5b5a187aab8e5419a95668b288e03f09f",
+        "web/assets/viewModelDecoration-CDltqxcs.js": "d716054b3f5edaf208fe8291774c52be48cf1cc20481f0a161d208a0775e9afe",
+        "web/assets/wordCharacterClassifier-DuQGOcub.js": "fdf0822fec7826def1ad54421cd12fa862618bd010c0693da799b57435509dd7",
+        "web/assets/workspace-VK4zdFdS.js": "0a985c8f3ae36001392e1ab929aa4f1dfb4d13e6f0016eafd2fe3841ad4c0cb0",
+        "web/assets/workspaceTrust-gnpOkEgz.js": "b76d8ff2561f10ee861c973a0c77226095c72f94ccbe5056092fa225e4622f6d",
+        "web/brand/sprout/accessories/chalk-v1.png": "e1f9d224bc5f810eafa73e3f23d6c2b91eb71cf8304329f260081f79f05ebeb9",
+        "web/brand/sprout/accessories/glasses-v1.png": "20ab43e6b85a795208f3ced4432773aa0e5d060d67e17d06e7457907b09c7a12",
+        "web/brand/sprout/accessories/pencil-v1.png": "17247ca12ee4a141d4225a067ea731931c554117f04dd9e2bf62ac9d0a93e530",
+        "web/brand/sprout/accessories/pointer-v1.png": "a31f247f7ac505d294531a9ed27f2a5b52e793aab835cfb4273b7f00314b78e3",
+        "web/brand/sprout/accessories/registration.json": "466d6335031a080e5225f49c97654ccc9b659f4dc7e74094478a6b656de02a64",
+        "web/brand/sprout/chalk.svg": "89f738b70d4bab6c956f9564891868b9d1c2d136da2d18a83fe17c5e311c0331",
+        "web/brand/sprout/glasses.svg": "1173d9fec38857bfc45a00cc4142cf883ef2b9df7520f1dcf861797f6fce9720",
+        "web/brand/sprout/master.png": "e36865cbd4a52922bbfec77c3ca4f329ddc5e6aaf44648f13f806e40415adb9f",
+        "web/brand/sprout/none.svg": "65b0bd22a07d58a8734d1c98a5db14bd60ef3890858d7d42a5f1e98b723eada2",
+        "web/brand/sprout/pencil.svg": "9595d106e36ce33d86bef6c004fa8f0e1438cefff9829fe2c7e1ed34979a57da",
+        "web/brand/sprout/pointer.svg": "c06493550c623c153a35a6e8215ed423d1a3fce440c7d7a9ed0e5d73cdb840e8",
+        "web/brand/sprout/props.png": "34e872e1468f9301f8634f3b72c3abb0fd3d417e3ab2679398b754f376f4ad3a",
+        "web/brand/sprout/registration.json": "4fdf88fed1e0a3662b398d8a90d5917ba7b764599e4faaa62be7aa1a98321a16",
+        "web/brand/sprout/rig/eye-masks.json": "39912c3d79fd74963805ed4720f73b8d3a558ca6d1a379fb8834c06d1a079b2c",
+        "web/brand/sprout/rig/registration.json": "2d2804481c3ca6baacc05b1d4b699a1eafcf22b880c5941248ca0b7cbda4e2c9",
+        "web/brand/sprout/rig/underpaint-v1.png": "840ab98d154361a9a3d6b7922eac791507e20deef966eb6dd4dbe0aefd30c273",
+        "web/brand/xunjie-logo/favicon-32.png": "be807f6a44ca92a85c396286ba063d1807f66b27032437cad061b94ed876dd02",
+        "web/brand/xunjie-logo/mark-color.svg": "580c522426a23cfa60e2d6dd5ef048da510d536b35fcaa2032e9e5a8818b940b",
+        "web/brand/xunjie-logo/master.json": "3d7810463ef5ec98150f0f07830c44b30cae87ae4ceb0918fdca86e6539f36bd",
+        "web/fonts/lxgw-wenkai-regular.woff2": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6",
+        "web/fonts/OFL.txt": "932999b6451e2c5b61f93c9d9a34d22742f81e41a192d2ad65acc300ba942298",
+        "web/index.html": "96c81268fc0566874eec2057e0bf40d29626a650ef681a1326079b935599b19b"
+      },
+      "packagedBy": "scripts/package-product.mjs",
+      "archiveChecksums": "passed",
+      "productionDependencyGraph": "passed"
+    },
+    {
+      "platform": "win32-x64",
+      "profile": "full",
+      "createdAt": "2026-11-01T14:45:04.973Z",
+      "manifestSha256": "d22571fdd362b9379da45e90d5fc3d840df807df9e3cd601f7a6a8858fa1c6cf",
+      "webEntries": {
+        "web/assets/_.contribution-C3U3TMyk.js": "6eab9f536fc2cd68bf4f2373ee7552e31c0318f38c1c4a28bc49ca8465cd6c2b",
+        "web/assets/accessibility-X10htBGS.js": "574e12f1447ba56c53ab42c59469a521c966f0dcb7b1580e8b977ba36e84f3f9",
+        "web/assets/actionbar-DdRY9XKI.js": "e80bec61583e5efdf2e88be2c913d98fbb1561f4d2cd09c01b5d0994de5ab1d4",
+        "web/assets/actions-CawZG6aD.js": "fafce74e40d81a610ed3fab5fc673703e2719fadf5c9739e6dd653da9cdaf4d9",
+        "web/assets/actionViewItems-6agXuMD4.js": "4e16e2b14cb1e65713fc88ae94338e6a848e487f678e1ae233e6d27e29a4eca1",
+        "web/assets/actionViewItems-CvhnUcyN.css": "cd7d8f88464fef9a688ea27ecb288289d2e8e4e9e277eabf2c79808636e9accb",
+        "web/assets/actionWidget-CFhFk6hs.js": "6ea8e9767b6af306060a62b5b270c7c968e3b16fcd27b08659d455ce71185392",
+        "web/assets/actionWidget-DtLPlGY3.css": "8e076162e99b2229fa816549bbbfd725fabe30fa88732aed447589c9c2b72cb7",
+        "web/assets/aria-BQ0Fa-r7.css": "2f5bc24c33f1634d6c3a7b319dc32f51953c0767583ced60086f20202c186874",
+        "web/assets/aria-IqFvR9v7.js": "8369b69c9cd1aabd99439d581907b841fe8fa0a3b64f12454cb770e684080bbb",
+        "web/assets/autoIndent-BpbmB4wC.js": "e4b8a10340d0a2cc509c1133ef6ea1f9d8919d48b9d3c57d4db3175fd3311ebf",
+        "web/assets/autorun-CZun5-62.js": "10214c182bc5870bfc9bc6e408fce9f0d8cecf97627f1e364999fbf2feefe3a4",
+        "web/assets/button-CA-6CJJs.css": "3ef56c67e13189ace33a32fb6f1bb240bc62da5fa7812a26a54a9ba2010938fe",
+        "web/assets/button-DoclfJ76.js": "4e4bd408c089d2c27caa2cda7c7ed17a2d4aeab88a69b8dba3142d1df0e043aa",
+        "web/assets/clipboardService-BYOp1v5W.js": "2bfee05d0fe0c1b42ceba9592d8a619fda2c145cf9cfa2d45405d4de756fc286",
+        "web/assets/codicon-DF1abBS2.ttf": "77f902557231f95c4c71ae517d09a1a842753656f5f665086b3e5ad8095538da",
+        "web/assets/color-CK6dxYC2.js": "6ad354122af35fb5bde184fe64b5bbf221df81911aeaa109ad284b625dc986bc",
+        "web/assets/contextkeys-DHRrpHP4.js": "689fbf86f1495180bcfa5f9eeffcd8d7ba9dac715b7a04b4d3fbcbdf30d55a76",
+        "web/assets/contextView-B5d5ckIc.js": "8425facec09edd1b0a8c3fa6be84ad31d6e02ab7b3e4655ce2be831a2c4fe309",
+        "web/assets/coreCommands-CnwWAufH.js": "906c35b8369f3b228b47a173a44698934ccd5fd4b63a128ae2450bb1d989c88d",
+        "web/assets/cpp-BbWJElDN.js": "2c1afb37aaf5c69f7a69fcb6ad664fae21ec42024b2870473ddbbdcd2f8fa097",
+        "web/assets/cursorColumns-NI5P0Viq.js": "fe30dc1650f96d974fc4542b903a1665967f5fdb4daa70a34809b011bdde18d6",
+        "web/assets/cursorMoveCommands-D3O55em4.js": "45704e863650795bbc3db5828f9561cc52060d559b65ddac1d993742e6fef4eb",
+        "web/assets/cursorWordOperations-CCQhsnpd.js": "fba7bda5b655a70c55977c33b597d754cebee35395cf8713d36ceb41eeb5fa7a",
+        "web/assets/defaultStyles-B9e-3ad2.js": "d8c2ef918e5f4ae9c8a21c0c3fc65a1875762d150d15334c2edd6edf1d7fdfaa",
+        "web/assets/DiagnosticsPage-BODCIhsF.js": "e2d88a62e2118c3682335cbd1b9193e79762a9917d64f98be6f6d60e1222c9ad",
+        "web/assets/DiagnosticsPage-Cs5Df5_P.css": "5bb35a8c81eda9174d870138226f808528aa7a643d2cedaa76e567da8a3ad88d",
+        "web/assets/dialogs-BIF7RGvl.js": "08eb641d0bc27d7bc1c89fa1e138ffc8fcc35e628d9402d0de90bf2d627a07b5",
+        "web/assets/editOperation-9gMD_fLO.js": "22881e190b3e758292243a836d5233321aa5b6d8a0a15d079df1b8a05a95836b",
+        "web/assets/editor-sRB6dmGb.css": "5fad39acfed993a8c145797593e0b222e5e70937b05f83dc4d70158923062339",
+        "web/assets/editor.api-DtqYIzDi.js": "5476f2ae41799b5e9de504f324bb4893476135976e5718b0e44cbf886f892b06",
+        "web/assets/editor.worker-C0Ec0Cbg.js": "5c6bffa90891c225511f42a680a79b70f5418137ece00eeb87062df0da0513af",
+        "web/assets/editor.worker-CHzQTjO0.js": "e96f442eb216fe44bfb04d6d2d609159697ecb753729f37dac2fe1f83639f3b9",
+        "web/assets/editorBrowser-Ca_egve_.js": "a5665f39ae541ee6b355c4db3073b7ced40a6a09b0fe9900888141975c5cf371",
+        "web/assets/editorColorRegistry-Bgb0IUaH.js": "a00d44950d8ba05d083ed9e5ad55e62efac30e63262bbb999cb35978570324e3",
+        "web/assets/editorCommon-BwOdCC1S.js": "838e09bfa91e5c7bc11c8e22ca6e69e04d22339f0e3de0796882cd672f02bc14",
+        "web/assets/editorContextKeys-dqniairc.js": "23b49671031ea131a39c3ed0a3604aa5a52991cfba602f0e6d14fba70eee0020",
+        "web/assets/editorExtensions-C3eBJWSs.js": "9f327349aaa64706b666924bb12e816e76f27d319fb12f4cb7a24a732ebbe125",
+        "web/assets/editorOptions-BkUIZjyq.js": "a9addaa3be41352801809886bab07d7938d7e862c1db8a4a08550f136ec22a95",
+        "web/assets/extensions-DPbG0wzx.js": "58ac22c65dcc6136a54da4278730389a5289f434cee9b0681492aa2b5cd553f1",
+        "web/assets/findController--eizBYnI.js": "f8729b94e8efc8b6dc2c8e9a6c619ef0dc3a80ebaa6e19f7259a770bedbf47ac",
+        "web/assets/findController-As3NhRJO.css": "22f58d94a7e8f14bc288a98c71fe6fe499a086ccb59452b332bc8842ccf5b0be",
+        "web/assets/findInput-ChGy53_U.js": "16a9b581e14309cefddbe797f483bc3877b30db98c89122b3844af6245683fb9",
+        "web/assets/findInput-VW5HTh3_.css": "9080384a52d9b1eaf6228f01d81549cf7daf7465b792b39062a2c9c675007f0d",
+        "web/assets/findWidget-BO_Uy1OT.js": "bc31bdb761e5d2d73df56f38c4e56cc9a68e08109a56ae133191945666e78a7e",
+        "web/assets/findWidget-M2a9gl0R.css": "d7263627400b528cfef5f56c2b697a38df09133cc3465a13c8b806de4807ad71",
+        "web/assets/hover-CPHvP3SP.js": "2be62c64455dcf2cd60c9da22cee3c50cae09336829b8b4e655f04fb88ce1a33",
+        "web/assets/hoverWidget-BFdtlATq.css": "24bd62d66c4e4161c315ecf7f929d49e0555500023f31f888f4f5fa69824d0b5",
+        "web/assets/hoverWidget-JbYik-1O.js": "5f58fe452767f362addc7e9e601d91066e82ca51c4ffb5a6dd55f1d18ba80f67",
+        "web/assets/iconRegistry-BsaijO2U.js": "3ee5a9f76a2aac1154c7922f5db7efc21cb0e4a88a56d595ea62390b1601797a",
+        "web/assets/indentation-BUPEkbvE.js": "1bb5fbae5d66b14bff175f05cc21a3ca801d77b437c0caf7cb7b416f9410b088",
+        "web/assets/indentUtils-D7uFROOx.js": "aff17c1a8f898811458d3468478daa79b0dcf161c6fbd321177be7f5009ded4b",
+        "web/assets/jsonContributionRegistry-DfgOu-UK.js": "56ff4e8ffa8759fd1774801fed5f96e3cce996c7d9a53ae7732abae4c744e8db",
+        "web/assets/keybinding-Bbs6vGjI.js": "f7064036ae64e31fb436374fe743f3d870a11e10c61d7e2f1967ba7b93b727e6",
+        "web/assets/keybinding-CIhNjqFS.css": "6e2b3177dcc5b4a6ae1f5b571019b319b975834c99c4a361f872dde0c83c151e",
+        "web/assets/keybindingCancellation-CYPlNaLr.js": "93821d9d17f7df3f9cd2019c7002d7fe605eddd5ddcbb88277bb36db223ae2c8",
+        "web/assets/keybindingCancellation-HhictitA.css": "beb8adbe096d4ef6384b76e57dc410ed5e34eb930e69840723f15c436a0f5553",
+        "web/assets/keybindingLabels-Dtk8vS2d.css": "f419bd5e50fa7337a4124a0be58d51a0849af2ae8ce28f01e6240d6fdc63a2de",
+        "web/assets/keybindingLabels-DTMP2EiD.js": "9c03025d18d5b1120d0fe10e5182b847df302f74c385292c1217a0477f9f73ce",
+        "web/assets/languageConfigurationRegistry-Rl6LHyT9.js": "13129cdfac1002dcfc5e93b36c042ca26be4720038f1be8e4860a1b4cbcec4c4",
+        "web/assets/languageFeatures-pVm3mn6_.js": "6cec29df2377751feb41a8eb64bdb9782e8c34f8377820bb6b74388269be1d25",
+        "web/assets/lineTokens-Dk1yWC6Q.js": "471534c807183bf8e5f61e5b0ca7d61a54d3b4a718e9e06af3de5a71baf29e4d",
+        "web/assets/link-Daoow6VB.css": "1808672971908cbe7c750c362241cda9187d3db79272db7d8954e937c67ceb00",
+        "web/assets/link-DOGNm2I7.js": "fc9702a8c63326787c59d14a029ad960cc73a375e11fc95bf0c52859fa790e5e",
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6",
+        "web/assets/markdown-BFxVWTOG.js": "f22ad36fd7b2c5e0b0ab62c8496934cb476d7142e2d4cc258fb712137c8a9946",
+        "web/assets/markdownHoverParticipant-CywSgLSr.js": "d6141ec97c78ec7f3f7e7950641d382eef16f99d8cd841710eb9708c2b487361",
+        "web/assets/markdownRenderer-C2YUmC4i.js": "f079014f8af136398c8b4c9c45bf52e1a5279ed5de9dafa64b626acc70694aae",
+        "web/assets/markdownRenderer-DUHL6HNB.js": "6b1403f0e623f9010781fde4d7e11dcfbb5ae35e64839da809d676e9381a1d99",
+        "web/assets/marshalling-BAucfTd4.js": "d529d5c6b01ae641e4c5d48ac4eb47d5a331c14130864e5c2b9088e3d2d140e1",
+        "web/assets/messageController-Do3a81JH.css": "9fb6461e6efebef7b31545ebf4113d86b02c9cbf5ae072d0079d801b643b19c4",
+        "web/assets/messageController-tvtsiUDH.js": "2aefc5779e90836d9df8321e6e960bc4fa825201b3e655417a45754bbe7b93ac",
+        "web/assets/mime-CELncaOB.js": "70b234b1c7ae73f1daf8a30dda898f28b4fa9b3f7bb52d7c345f2305609a98d3",
+        "web/assets/model-DNcBvKv8.js": "e9dc9df0cf7feae0044dcb75c70d3513d9a21d9d96164e97e810b5d6265f4712",
+        "web/assets/nativeEditContextRegistry-AXP4aNCF.js": "0df5ff882efbcd916251aab63bc8bf65eda03c26eb9c104320bc9c329441d51d",
+        "web/assets/notification-B4MmM1na.js": "3bedf225ead3f2e5f2a1482403b1217c524cecae7c2e23eb3e836efdbf8cdded",
+        "web/assets/objects-CCXi9cv4.js": "cd5009b0cbbb4b60d9ccfa12b1ed84690b291e1c7c09932ab65281e58181ccbc",
+        "web/assets/observableCodeEditor-BCZ0orMO.css": "c299b57f43c246a747fa3856391783a56521152b254f8eb521d28d6d2c320e98",
+        "web/assets/observableCodeEditor-ClR3xCte.js": "cdf7c27af933fc16e20f9729f144a69b41533de2d841121f0e8e69d28e05426f",
+        "web/assets/opener-95CB-cX3.js": "3f0c3ee92421c72ceb88e8cdf29e3988dc59c075c4fb6f6193a071d42241d262",
+        "web/assets/python-5fi4czaL.js": "00e6084f0fda8b9a67f0fea9fef217024af482e2fe509322b18d36e88fa04bc9",
+        "web/assets/quickAccess-C8QtJD_7.js": "3b261782b34dbca4a12a428038720798c4916566f8b6760f32cdffe91e23b618",
+        "web/assets/quickInput-CsyOmr9X.js": "0f8f064ac846f9c8a41d84207990bd8b1125d559565b35b176f0f1ef4aeba73d",
+        "web/assets/range-COSjiKwM.js": "0f3bbfe9a71afcaa75764c3a1f3af8cd5f4076a63a6d14177906edd49a09d35e",
+        "web/assets/register-_-S9DiMO.css": "0c41dd940a98e4ac3dfcc0c06bff3f5f11f94242dd0f04819d54f5b2c3a4a340",
+        "web/assets/register-06zptQNp.js": "91b71c8338de0721c8229addf75458ba04db1ef433ebd52a7b4b388df0e6beb3",
+        "web/assets/register-B3Ib2Dy5.js": "3497198414e1494b7eb8e0fb2d3e510dd3bce6c9cec784aa1040e2cd590b1eca",
+        "web/assets/register-B6t2jEry.js": "ba521190ca6587e29fcd2d34b4e1f60e0b9d3a3542d05b845d985286ce430e83",
+        "web/assets/register-BbqJaxYy.js": "4eae6840dee90ae00ba5ad7f69fd438477aaaa8303a26a8db3c5f4c465158eca",
+        "web/assets/register-BCCzrpig.js": "fba369430729536ba7eba03cbbee7c1106bfb532aedf8993bd4933cdb52e5b02",
+        "web/assets/register-BCMe4kS6.js": "fac4b194c7bc4579ba862957fdd07eb7cce1bb46b04b69163044436ab872d458",
+        "web/assets/register-BE89dlG2.css": "534998cc686e2846d73b73dab527ac7079d8e0886275e6c844e08cc542d4d615",
+        "web/assets/register-Bf-8pghu.js": "bb1d125dca3cc871cc4a7ae6d88f42a9f2952738583aa7e30da92a0d86447c14",
+        "web/assets/register-BIsMXCRp.js": "3c87d4c6910138fc4796948bfb040d3d823a087da48551ed964937d30c217be0",
+        "web/assets/register-BNgPRG2T.css": "eb6c485c830ac466ffa3ff52e7a95c48427b1058781a74ecf5a3fd96b2f23c18",
+        "web/assets/register-BNl2MZMy.js": "f8364c4fc3fec120101c52b6e0b9a4f042bc7bd145a613e19297cd588c298b0c",
+        "web/assets/register-BQ6OOEY5.js": "292104a77c3b6cece9a529241d989d18ddcc49080bda5ab800f24e37e8d92f78",
+        "web/assets/register-BYBQ9_cM.js": "9674c77bf2dd0d700bb7f061623e292a33cc80be7d02598175767f2307d9fc56",
+        "web/assets/register-C0Mzs7-D.js": "aac588533751586f6622b171b1ec7fcbbfdf73ace6b9138afffa1e0d963016af",
+        "web/assets/register-C7vgbc7H.css": "29448b754666000ae2ed263bed52026ab9442b95c30975956b82c371207e359c",
+        "web/assets/register-C8H3kDLX.js": "3472b1e6e482fcf549965a989384424ae5bace689b536344ae7e20fcff7c93a4",
+        "web/assets/register-CAWkBH8q.js": "d162f0576639f5ba242f7175921fda99914d0b22690b53538b87612e4efcf564",
+        "web/assets/register-CDmEy0vV.js": "fb15b4f0d327f941602d8e3d26c62b7de6232f375483de387956d518cec6eb07",
+        "web/assets/register-CeMoug4p.js": "d44286ff08175236080c75c4019b115ca4d6a083fd8e9e1ac9aefdd6238a0116",
+        "web/assets/register-CSjhqA8K.js": "3d22a51e39dc78c8467d9749013f25355b51323f380b7fb745b8598ad093134d",
+        "web/assets/register-Ct2Kpt_-.js": "6e993f219c24a1a6ba1cc35ee48a276b936dc1148e29d2e89c294f2dc0373013",
+        "web/assets/register-CyWn7XZ4.css": "1e86cf9ccc0ad8fca633d04dab694bb97bc59355c9e457bff40b1db0bd3732f8",
+        "web/assets/register-DAnSE5Ht.js": "ad29f95e9a0eb857ef2532d4ecb952395bd452811f0872cdcbe945d5f38bf05f",
+        "web/assets/register-DbQ2Zor5.js": "b97f0735479665d5bb0d6122b2c85fdc261db8d04d47d40d87c67377e0200f1d",
+        "web/assets/register-DnLjAd4q.js": "7e7c32c0b9d8751c46a41ab30f6eafd20e029a26722d24039797559222c3071d",
+        "web/assets/register-HJbRf0Hl.css": "11a9aa60beefa907b4e4ba5f6f5990ee2c7ad396dbe216a260f3cd11ec71e58f",
+        "web/assets/register-Ir2Bw_z4.js": "aa8b1b32312c1344762c4182e7b080f457e8c361951a5ddf6665628aca9740ed",
+        "web/assets/register-M7ST5m-G.js": "0635a458473366235a5990fc6caca30ea7394ae1c92d7edaf851ff6949531a2d",
+        "web/assets/register-oc6MGeDW.js": "543928fb77ac16417824e17f9c88fc6749d4a0c36160211f3f83c93b641aaff1",
+        "web/assets/register-sMOSuGy7.js": "a731baa6bb6a807311c3a47543400096dbe4b12535aaa036a4ed5070146ad5f9",
+        "web/assets/register-VvSvELY2.css": "8df682effd2bd778cab4430e39555dbafe986c8ea9392d2e1d5822da5155ba2d",
+        "web/assets/register-YdNSa6b7.css": "1b72b598a4a340218a288c8f6366ddfb160387339684d6c484ec4ed21c8f78df",
+        "web/assets/register-z3ZdYKDr.css": "7c3a51ef7c1c152dbf21628fa6e15c202f53bec94e5ab267a0a9a0db0e2ba257",
+        "web/assets/replaceCommand-Cq_qwpcl.js": "7806865944b335985d5e967a6e9d61aa126b263c9ef1667d557d95f3424780a0",
+        "web/assets/runtime-2rS5nEgo.css": "c6115212f7db7133ff7ae2dc9327b5f2133a66770350f0fcb20574a115ef3305",
+        "web/assets/runtime-Co0G5MtN.js": "78ee007193512c4c21276d2625103eb1a2d90edfdd330645215309c2f7053555",
+        "web/assets/sash-C1IjcDEc.js": "fef5582c7bb5b1ff33ecb154c621debf86060a4d02edc8dc8b4e901a3dcef30b",
+        "web/assets/sash-CnFYCDYW.css": "013cf9d924b8c964323da93808ca910d8c39745e9dffaca06d666caa29683760",
+        "web/assets/selection-Cv4KLdDw.js": "f9f04cfccad77a7d282d80c7261251437880d76f4f69f8e56cb43dd95edf9cc5",
+        "web/assets/stableEditorScroll-Dvj07c7y.js": "9c5d296a7bacbdab297b47c245b6be5552e2f6455b0b03ba4407fc8cc88b0f73",
+        "web/assets/storage-DbB16Le2.js": "7db61198dbdea8d0e92083d5bcea86e9a0c3be054279671c7f30934520c419cd",
+        "web/assets/systemverilog-Bs9z6M-B.js": "d3d221457240d9ef84d754f36afd2825abae6347a8e3b3bb5b69b31ce3420dee",
+        "web/assets/tabFocus-7SSNp0Xe.js": "e24cc17ba7a37825a5abc0269d56b4f2e596e1ff9af4e4503d2e0876c1401280",
+        "web/assets/textModel-D_cPzfEi.js": "d767c2dcf21af41dbf3de005fda6ec0c4a4d57bffac02d97065fd641017fe47b",
+        "web/assets/textModelDefaults-jwCPjDQ2.js": "1e8a83d60762c2fe76d1286b1ee0f661495255c9855db3b9cc05bd5c9d0e2dfc",
+        "web/assets/toolbar-DoTYWObY.css": "91642401155fd066c21c571a201f9577fb9edd509a0f0338e376f62da8c2a7f6",
+        "web/assets/toolbar-HJeYzxGv.js": "957a350d56f34f81507f5f1c34679788b91d845561f14866293f5a1569e6f850",
+        "web/assets/trustedTypes-kT3NYhwx.js": "59354c9f5610f5e79969fb0af192bcf5b5a187aab8e5419a95668b288e03f09f",
+        "web/assets/viewModelDecoration-CDltqxcs.js": "d716054b3f5edaf208fe8291774c52be48cf1cc20481f0a161d208a0775e9afe",
+        "web/assets/wordCharacterClassifier-DuQGOcub.js": "fdf0822fec7826def1ad54421cd12fa862618bd010c0693da799b57435509dd7",
+        "web/assets/workspace-VK4zdFdS.js": "0a985c8f3ae36001392e1ab929aa4f1dfb4d13e6f0016eafd2fe3841ad4c0cb0",
+        "web/assets/workspaceTrust-gnpOkEgz.js": "b76d8ff2561f10ee861c973a0c77226095c72f94ccbe5056092fa225e4622f6d",
+        "web/brand/sprout/accessories/chalk-v1.png": "e1f9d224bc5f810eafa73e3f23d6c2b91eb71cf8304329f260081f79f05ebeb9",
+        "web/brand/sprout/accessories/glasses-v1.png": "20ab43e6b85a795208f3ced4432773aa0e5d060d67e17d06e7457907b09c7a12",
+        "web/brand/sprout/accessories/pencil-v1.png": "17247ca12ee4a141d4225a067ea731931c554117f04dd9e2bf62ac9d0a93e530",
+        "web/brand/sprout/accessories/pointer-v1.png": "a31f247f7ac505d294531a9ed27f2a5b52e793aab835cfb4273b7f00314b78e3",
+        "web/brand/sprout/accessories/registration.json": "466d6335031a080e5225f49c97654ccc9b659f4dc7e74094478a6b656de02a64",
+        "web/brand/sprout/chalk.svg": "89f738b70d4bab6c956f9564891868b9d1c2d136da2d18a83fe17c5e311c0331",
+        "web/brand/sprout/glasses.svg": "1173d9fec38857bfc45a00cc4142cf883ef2b9df7520f1dcf861797f6fce9720",
+        "web/brand/sprout/master.png": "e36865cbd4a52922bbfec77c3ca4f329ddc5e6aaf44648f13f806e40415adb9f",
+        "web/brand/sprout/none.svg": "65b0bd22a07d58a8734d1c98a5db14bd60ef3890858d7d42a5f1e98b723eada2",
+        "web/brand/sprout/pencil.svg": "9595d106e36ce33d86bef6c004fa8f0e1438cefff9829fe2c7e1ed34979a57da",
+        "web/brand/sprout/pointer.svg": "c06493550c623c153a35a6e8215ed423d1a3fce440c7d7a9ed0e5d73cdb840e8",
+        "web/brand/sprout/props.png": "34e872e1468f9301f8634f3b72c3abb0fd3d417e3ab2679398b754f376f4ad3a",
+        "web/brand/sprout/registration.json": "4fdf88fed1e0a3662b398d8a90d5917ba7b764599e4faaa62be7aa1a98321a16",
+        "web/brand/sprout/rig/eye-masks.json": "39912c3d79fd74963805ed4720f73b8d3a558ca6d1a379fb8834c06d1a079b2c",
+        "web/brand/sprout/rig/registration.json": "2d2804481c3ca6baacc05b1d4b699a1eafcf22b880c5941248ca0b7cbda4e2c9",
+        "web/brand/sprout/rig/underpaint-v1.png": "840ab98d154361a9a3d6b7922eac791507e20deef966eb6dd4dbe0aefd30c273",
+        "web/brand/xunjie-logo/favicon-32.png": "be807f6a44ca92a85c396286ba063d1807f66b27032437cad061b94ed876dd02",
+        "web/brand/xunjie-logo/mark-color.svg": "580c522426a23cfa60e2d6dd5ef048da510d536b35fcaa2032e9e5a8818b940b",
+        "web/brand/xunjie-logo/master.json": "3d7810463ef5ec98150f0f07830c44b30cae87ae4ceb0918fdca86e6539f36bd",
+        "web/fonts/lxgw-wenkai-regular.woff2": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6",
+        "web/fonts/OFL.txt": "932999b6451e2c5b61f93c9d9a34d22742f81e41a192d2ad65acc300ba942298",
+        "web/index.html": "96c81268fc0566874eec2057e0bf40d29626a650ef681a1326079b935599b19b"
+      },
+      "packagedBy": "scripts/package-product.mjs",
+      "archiveChecksums": "passed",
+      "productionDependencyGraph": "passed"
+    },
+    {
+      "platform": "linux-x64",
+      "profile": "full",
+      "createdAt": "2026-11-01T14:45:05.482Z",
+      "manifestSha256": "30fd03c45af3d34df31e08a3fe898e89dbd6d9d26d66fecbb11a70994fe6b977",
+      "webEntries": {
+        "web/assets/_.contribution-C3U3TMyk.js": "6eab9f536fc2cd68bf4f2373ee7552e31c0318f38c1c4a28bc49ca8465cd6c2b",
+        "web/assets/accessibility-X10htBGS.js": "574e12f1447ba56c53ab42c59469a521c966f0dcb7b1580e8b977ba36e84f3f9",
+        "web/assets/actionbar-DdRY9XKI.js": "e80bec61583e5efdf2e88be2c913d98fbb1561f4d2cd09c01b5d0994de5ab1d4",
+        "web/assets/actions-CawZG6aD.js": "fafce74e40d81a610ed3fab5fc673703e2719fadf5c9739e6dd653da9cdaf4d9",
+        "web/assets/actionViewItems-6agXuMD4.js": "4e16e2b14cb1e65713fc88ae94338e6a848e487f678e1ae233e6d27e29a4eca1",
+        "web/assets/actionViewItems-CvhnUcyN.css": "cd7d8f88464fef9a688ea27ecb288289d2e8e4e9e277eabf2c79808636e9accb",
+        "web/assets/actionWidget-CFhFk6hs.js": "6ea8e9767b6af306060a62b5b270c7c968e3b16fcd27b08659d455ce71185392",
+        "web/assets/actionWidget-DtLPlGY3.css": "8e076162e99b2229fa816549bbbfd725fabe30fa88732aed447589c9c2b72cb7",
+        "web/assets/aria-BQ0Fa-r7.css": "2f5bc24c33f1634d6c3a7b319dc32f51953c0767583ced60086f20202c186874",
+        "web/assets/aria-IqFvR9v7.js": "8369b69c9cd1aabd99439d581907b841fe8fa0a3b64f12454cb770e684080bbb",
+        "web/assets/autoIndent-BpbmB4wC.js": "e4b8a10340d0a2cc509c1133ef6ea1f9d8919d48b9d3c57d4db3175fd3311ebf",
+        "web/assets/autorun-CZun5-62.js": "10214c182bc5870bfc9bc6e408fce9f0d8cecf97627f1e364999fbf2feefe3a4",
+        "web/assets/button-CA-6CJJs.css": "3ef56c67e13189ace33a32fb6f1bb240bc62da5fa7812a26a54a9ba2010938fe",
+        "web/assets/button-DoclfJ76.js": "4e4bd408c089d2c27caa2cda7c7ed17a2d4aeab88a69b8dba3142d1df0e043aa",
+        "web/assets/clipboardService-BYOp1v5W.js": "2bfee05d0fe0c1b42ceba9592d8a619fda2c145cf9cfa2d45405d4de756fc286",
+        "web/assets/codicon-DF1abBS2.ttf": "77f902557231f95c4c71ae517d09a1a842753656f5f665086b3e5ad8095538da",
+        "web/assets/color-CK6dxYC2.js": "6ad354122af35fb5bde184fe64b5bbf221df81911aeaa109ad284b625dc986bc",
+        "web/assets/contextkeys-DHRrpHP4.js": "689fbf86f1495180bcfa5f9eeffcd8d7ba9dac715b7a04b4d3fbcbdf30d55a76",
+        "web/assets/contextView-B5d5ckIc.js": "8425facec09edd1b0a8c3fa6be84ad31d6e02ab7b3e4655ce2be831a2c4fe309",
+        "web/assets/coreCommands-CnwWAufH.js": "906c35b8369f3b228b47a173a44698934ccd5fd4b63a128ae2450bb1d989c88d",
+        "web/assets/cpp-BbWJElDN.js": "2c1afb37aaf5c69f7a69fcb6ad664fae21ec42024b2870473ddbbdcd2f8fa097",
+        "web/assets/cursorColumns-NI5P0Viq.js": "fe30dc1650f96d974fc4542b903a1665967f5fdb4daa70a34809b011bdde18d6",
+        "web/assets/cursorMoveCommands-D3O55em4.js": "45704e863650795bbc3db5828f9561cc52060d559b65ddac1d993742e6fef4eb",
+        "web/assets/cursorWordOperations-CCQhsnpd.js": "fba7bda5b655a70c55977c33b597d754cebee35395cf8713d36ceb41eeb5fa7a",
+        "web/assets/defaultStyles-B9e-3ad2.js": "d8c2ef918e5f4ae9c8a21c0c3fc65a1875762d150d15334c2edd6edf1d7fdfaa",
+        "web/assets/DiagnosticsPage-BODCIhsF.js": "e2d88a62e2118c3682335cbd1b9193e79762a9917d64f98be6f6d60e1222c9ad",
+        "web/assets/DiagnosticsPage-Cs5Df5_P.css": "5bb35a8c81eda9174d870138226f808528aa7a643d2cedaa76e567da8a3ad88d",
+        "web/assets/dialogs-BIF7RGvl.js": "08eb641d0bc27d7bc1c89fa1e138ffc8fcc35e628d9402d0de90bf2d627a07b5",
+        "web/assets/editOperation-9gMD_fLO.js": "22881e190b3e758292243a836d5233321aa5b6d8a0a15d079df1b8a05a95836b",
+        "web/assets/editor-sRB6dmGb.css": "5fad39acfed993a8c145797593e0b222e5e70937b05f83dc4d70158923062339",
+        "web/assets/editor.api-DtqYIzDi.js": "5476f2ae41799b5e9de504f324bb4893476135976e5718b0e44cbf886f892b06",
+        "web/assets/editor.worker-C0Ec0Cbg.js": "5c6bffa90891c225511f42a680a79b70f5418137ece00eeb87062df0da0513af",
+        "web/assets/editor.worker-CHzQTjO0.js": "e96f442eb216fe44bfb04d6d2d609159697ecb753729f37dac2fe1f83639f3b9",
+        "web/assets/editorBrowser-Ca_egve_.js": "a5665f39ae541ee6b355c4db3073b7ced40a6a09b0fe9900888141975c5cf371",
+        "web/assets/editorColorRegistry-Bgb0IUaH.js": "a00d44950d8ba05d083ed9e5ad55e62efac30e63262bbb999cb35978570324e3",
+        "web/assets/editorCommon-BwOdCC1S.js": "838e09bfa91e5c7bc11c8e22ca6e69e04d22339f0e3de0796882cd672f02bc14",
+        "web/assets/editorContextKeys-dqniairc.js": "23b49671031ea131a39c3ed0a3604aa5a52991cfba602f0e6d14fba70eee0020",
+        "web/assets/editorExtensions-C3eBJWSs.js": "9f327349aaa64706b666924bb12e816e76f27d319fb12f4cb7a24a732ebbe125",
+        "web/assets/editorOptions-BkUIZjyq.js": "a9addaa3be41352801809886bab07d7938d7e862c1db8a4a08550f136ec22a95",
+        "web/assets/extensions-DPbG0wzx.js": "58ac22c65dcc6136a54da4278730389a5289f434cee9b0681492aa2b5cd553f1",
+        "web/assets/findController--eizBYnI.js": "f8729b94e8efc8b6dc2c8e9a6c619ef0dc3a80ebaa6e19f7259a770bedbf47ac",
+        "web/assets/findController-As3NhRJO.css": "22f58d94a7e8f14bc288a98c71fe6fe499a086ccb59452b332bc8842ccf5b0be",
+        "web/assets/findInput-ChGy53_U.js": "16a9b581e14309cefddbe797f483bc3877b30db98c89122b3844af6245683fb9",
+        "web/assets/findInput-VW5HTh3_.css": "9080384a52d9b1eaf6228f01d81549cf7daf7465b792b39062a2c9c675007f0d",
+        "web/assets/findWidget-BO_Uy1OT.js": "bc31bdb761e5d2d73df56f38c4e56cc9a68e08109a56ae133191945666e78a7e",
+        "web/assets/findWidget-M2a9gl0R.css": "d7263627400b528cfef5f56c2b697a38df09133cc3465a13c8b806de4807ad71",
+        "web/assets/hover-CPHvP3SP.js": "2be62c64455dcf2cd60c9da22cee3c50cae09336829b8b4e655f04fb88ce1a33",
+        "web/assets/hoverWidget-BFdtlATq.css": "24bd62d66c4e4161c315ecf7f929d49e0555500023f31f888f4f5fa69824d0b5",
+        "web/assets/hoverWidget-JbYik-1O.js": "5f58fe452767f362addc7e9e601d91066e82ca51c4ffb5a6dd55f1d18ba80f67",
+        "web/assets/iconRegistry-BsaijO2U.js": "3ee5a9f76a2aac1154c7922f5db7efc21cb0e4a88a56d595ea62390b1601797a",
+        "web/assets/indentation-BUPEkbvE.js": "1bb5fbae5d66b14bff175f05cc21a3ca801d77b437c0caf7cb7b416f9410b088",
+        "web/assets/indentUtils-D7uFROOx.js": "aff17c1a8f898811458d3468478daa79b0dcf161c6fbd321177be7f5009ded4b",
+        "web/assets/jsonContributionRegistry-DfgOu-UK.js": "56ff4e8ffa8759fd1774801fed5f96e3cce996c7d9a53ae7732abae4c744e8db",
+        "web/assets/keybinding-Bbs6vGjI.js": "f7064036ae64e31fb436374fe743f3d870a11e10c61d7e2f1967ba7b93b727e6",
+        "web/assets/keybinding-CIhNjqFS.css": "6e2b3177dcc5b4a6ae1f5b571019b319b975834c99c4a361f872dde0c83c151e",
+        "web/assets/keybindingCancellation-CYPlNaLr.js": "93821d9d17f7df3f9cd2019c7002d7fe605eddd5ddcbb88277bb36db223ae2c8",
+        "web/assets/keybindingCancellation-HhictitA.css": "beb8adbe096d4ef6384b76e57dc410ed5e34eb930e69840723f15c436a0f5553",
+        "web/assets/keybindingLabels-Dtk8vS2d.css": "f419bd5e50fa7337a4124a0be58d51a0849af2ae8ce28f01e6240d6fdc63a2de",
+        "web/assets/keybindingLabels-DTMP2EiD.js": "9c03025d18d5b1120d0fe10e5182b847df302f74c385292c1217a0477f9f73ce",
+        "web/assets/languageConfigurationRegistry-Rl6LHyT9.js": "13129cdfac1002dcfc5e93b36c042ca26be4720038f1be8e4860a1b4cbcec4c4",
+        "web/assets/languageFeatures-pVm3mn6_.js": "6cec29df2377751feb41a8eb64bdb9782e8c34f8377820bb6b74388269be1d25",
+        "web/assets/lineTokens-Dk1yWC6Q.js": "471534c807183bf8e5f61e5b0ca7d61a54d3b4a718e9e06af3de5a71baf29e4d",
+        "web/assets/link-Daoow6VB.css": "1808672971908cbe7c750c362241cda9187d3db79272db7d8954e937c67ceb00",
+        "web/assets/link-DOGNm2I7.js": "fc9702a8c63326787c59d14a029ad960cc73a375e11fc95bf0c52859fa790e5e",
+        "web/assets/lxgw-wenkai-regular-HfU6dDKb.woff2": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6",
+        "web/assets/markdown-BFxVWTOG.js": "f22ad36fd7b2c5e0b0ab62c8496934cb476d7142e2d4cc258fb712137c8a9946",
+        "web/assets/markdownHoverParticipant-CywSgLSr.js": "d6141ec97c78ec7f3f7e7950641d382eef16f99d8cd841710eb9708c2b487361",
+        "web/assets/markdownRenderer-C2YUmC4i.js": "f079014f8af136398c8b4c9c45bf52e1a5279ed5de9dafa64b626acc70694aae",
+        "web/assets/markdownRenderer-DUHL6HNB.js": "6b1403f0e623f9010781fde4d7e11dcfbb5ae35e64839da809d676e9381a1d99",
+        "web/assets/marshalling-BAucfTd4.js": "d529d5c6b01ae641e4c5d48ac4eb47d5a331c14130864e5c2b9088e3d2d140e1",
+        "web/assets/messageController-Do3a81JH.css": "9fb6461e6efebef7b31545ebf4113d86b02c9cbf5ae072d0079d801b643b19c4",
+        "web/assets/messageController-tvtsiUDH.js": "2aefc5779e90836d9df8321e6e960bc4fa825201b3e655417a45754bbe7b93ac",
+        "web/assets/mime-CELncaOB.js": "70b234b1c7ae73f1daf8a30dda898f28b4fa9b3f7bb52d7c345f2305609a98d3",
+        "web/assets/model-DNcBvKv8.js": "e9dc9df0cf7feae0044dcb75c70d3513d9a21d9d96164e97e810b5d6265f4712",
+        "web/assets/nativeEditContextRegistry-AXP4aNCF.js": "0df5ff882efbcd916251aab63bc8bf65eda03c26eb9c104320bc9c329441d51d",
+        "web/assets/notification-B4MmM1na.js": "3bedf225ead3f2e5f2a1482403b1217c524cecae7c2e23eb3e836efdbf8cdded",
+        "web/assets/objects-CCXi9cv4.js": "cd5009b0cbbb4b60d9ccfa12b1ed84690b291e1c7c09932ab65281e58181ccbc",
+        "web/assets/observableCodeEditor-BCZ0orMO.css": "c299b57f43c246a747fa3856391783a56521152b254f8eb521d28d6d2c320e98",
+        "web/assets/observableCodeEditor-ClR3xCte.js": "cdf7c27af933fc16e20f9729f144a69b41533de2d841121f0e8e69d28e05426f",
+        "web/assets/opener-95CB-cX3.js": "3f0c3ee92421c72ceb88e8cdf29e3988dc59c075c4fb6f6193a071d42241d262",
+        "web/assets/python-5fi4czaL.js": "00e6084f0fda8b9a67f0fea9fef217024af482e2fe509322b18d36e88fa04bc9",
+        "web/assets/quickAccess-C8QtJD_7.js": "3b261782b34dbca4a12a428038720798c4916566f8b6760f32cdffe91e23b618",
+        "web/assets/quickInput-CsyOmr9X.js": "0f8f064ac846f9c8a41d84207990bd8b1125d559565b35b176f0f1ef4aeba73d",
+        "web/assets/range-COSjiKwM.js": "0f3bbfe9a71afcaa75764c3a1f3af8cd5f4076a63a6d14177906edd49a09d35e",
+        "web/assets/register-_-S9DiMO.css": "0c41dd940a98e4ac3dfcc0c06bff3f5f11f94242dd0f04819d54f5b2c3a4a340",
+        "web/assets/register-06zptQNp.js": "91b71c8338de0721c8229addf75458ba04db1ef433ebd52a7b4b388df0e6beb3",
+        "web/assets/register-B3Ib2Dy5.js": "3497198414e1494b7eb8e0fb2d3e510dd3bce6c9cec784aa1040e2cd590b1eca",
+        "web/assets/register-B6t2jEry.js": "ba521190ca6587e29fcd2d34b4e1f60e0b9d3a3542d05b845d985286ce430e83",
+        "web/assets/register-BbqJaxYy.js": "4eae6840dee90ae00ba5ad7f69fd438477aaaa8303a26a8db3c5f4c465158eca",
+        "web/assets/register-BCCzrpig.js": "fba369430729536ba7eba03cbbee7c1106bfb532aedf8993bd4933cdb52e5b02",
+        "web/assets/register-BCMe4kS6.js": "fac4b194c7bc4579ba862957fdd07eb7cce1bb46b04b69163044436ab872d458",
+        "web/assets/register-BE89dlG2.css": "534998cc686e2846d73b73dab527ac7079d8e0886275e6c844e08cc542d4d615",
+        "web/assets/register-Bf-8pghu.js": "bb1d125dca3cc871cc4a7ae6d88f42a9f2952738583aa7e30da92a0d86447c14",
+        "web/assets/register-BIsMXCRp.js": "3c87d4c6910138fc4796948bfb040d3d823a087da48551ed964937d30c217be0",
+        "web/assets/register-BNgPRG2T.css": "eb6c485c830ac466ffa3ff52e7a95c48427b1058781a74ecf5a3fd96b2f23c18",
+        "web/assets/register-BNl2MZMy.js": "f8364c4fc3fec120101c52b6e0b9a4f042bc7bd145a613e19297cd588c298b0c",
+        "web/assets/register-BQ6OOEY5.js": "292104a77c3b6cece9a529241d989d18ddcc49080bda5ab800f24e37e8d92f78",
+        "web/assets/register-BYBQ9_cM.js": "9674c77bf2dd0d700bb7f061623e292a33cc80be7d02598175767f2307d9fc56",
+        "web/assets/register-C0Mzs7-D.js": "aac588533751586f6622b171b1ec7fcbbfdf73ace6b9138afffa1e0d963016af",
+        "web/assets/register-C7vgbc7H.css": "29448b754666000ae2ed263bed52026ab9442b95c30975956b82c371207e359c",
+        "web/assets/register-C8H3kDLX.js": "3472b1e6e482fcf549965a989384424ae5bace689b536344ae7e20fcff7c93a4",
+        "web/assets/register-CAWkBH8q.js": "d162f0576639f5ba242f7175921fda99914d0b22690b53538b87612e4efcf564",
+        "web/assets/register-CDmEy0vV.js": "fb15b4f0d327f941602d8e3d26c62b7de6232f375483de387956d518cec6eb07",
+        "web/assets/register-CeMoug4p.js": "d44286ff08175236080c75c4019b115ca4d6a083fd8e9e1ac9aefdd6238a0116",
+        "web/assets/register-CSjhqA8K.js": "3d22a51e39dc78c8467d9749013f25355b51323f380b7fb745b8598ad093134d",
+        "web/assets/register-Ct2Kpt_-.js": "6e993f219c24a1a6ba1cc35ee48a276b936dc1148e29d2e89c294f2dc0373013",
+        "web/assets/register-CyWn7XZ4.css": "1e86cf9ccc0ad8fca633d04dab694bb97bc59355c9e457bff40b1db0bd3732f8",
+        "web/assets/register-DAnSE5Ht.js": "ad29f95e9a0eb857ef2532d4ecb952395bd452811f0872cdcbe945d5f38bf05f",
+        "web/assets/register-DbQ2Zor5.js": "b97f0735479665d5bb0d6122b2c85fdc261db8d04d47d40d87c67377e0200f1d",
+        "web/assets/register-DnLjAd4q.js": "7e7c32c0b9d8751c46a41ab30f6eafd20e029a26722d24039797559222c3071d",
+        "web/assets/register-HJbRf0Hl.css": "11a9aa60beefa907b4e4ba5f6f5990ee2c7ad396dbe216a260f3cd11ec71e58f",
+        "web/assets/register-Ir2Bw_z4.js": "aa8b1b32312c1344762c4182e7b080f457e8c361951a5ddf6665628aca9740ed",
+        "web/assets/register-M7ST5m-G.js": "0635a458473366235a5990fc6caca30ea7394ae1c92d7edaf851ff6949531a2d",
+        "web/assets/register-oc6MGeDW.js": "543928fb77ac16417824e17f9c88fc6749d4a0c36160211f3f83c93b641aaff1",
+        "web/assets/register-sMOSuGy7.js": "a731baa6bb6a807311c3a47543400096dbe4b12535aaa036a4ed5070146ad5f9",
+        "web/assets/register-VvSvELY2.css": "8df682effd2bd778cab4430e39555dbafe986c8ea9392d2e1d5822da5155ba2d",
+        "web/assets/register-YdNSa6b7.css": "1b72b598a4a340218a288c8f6366ddfb160387339684d6c484ec4ed21c8f78df",
+        "web/assets/register-z3ZdYKDr.css": "7c3a51ef7c1c152dbf21628fa6e15c202f53bec94e5ab267a0a9a0db0e2ba257",
+        "web/assets/replaceCommand-Cq_qwpcl.js": "7806865944b335985d5e967a6e9d61aa126b263c9ef1667d557d95f3424780a0",
+        "web/assets/runtime-2rS5nEgo.css": "c6115212f7db7133ff7ae2dc9327b5f2133a66770350f0fcb20574a115ef3305",
+        "web/assets/runtime-Co0G5MtN.js": "78ee007193512c4c21276d2625103eb1a2d90edfdd330645215309c2f7053555",
+        "web/assets/sash-C1IjcDEc.js": "fef5582c7bb5b1ff33ecb154c621debf86060a4d02edc8dc8b4e901a3dcef30b",
+        "web/assets/sash-CnFYCDYW.css": "013cf9d924b8c964323da93808ca910d8c39745e9dffaca06d666caa29683760",
+        "web/assets/selection-Cv4KLdDw.js": "f9f04cfccad77a7d282d80c7261251437880d76f4f69f8e56cb43dd95edf9cc5",
+        "web/assets/stableEditorScroll-Dvj07c7y.js": "9c5d296a7bacbdab297b47c245b6be5552e2f6455b0b03ba4407fc8cc88b0f73",
+        "web/assets/storage-DbB16Le2.js": "7db61198dbdea8d0e92083d5bcea86e9a0c3be054279671c7f30934520c419cd",
+        "web/assets/systemverilog-Bs9z6M-B.js": "d3d221457240d9ef84d754f36afd2825abae6347a8e3b3bb5b69b31ce3420dee",
+        "web/assets/tabFocus-7SSNp0Xe.js": "e24cc17ba7a37825a5abc0269d56b4f2e596e1ff9af4e4503d2e0876c1401280",
+        "web/assets/textModel-D_cPzfEi.js": "d767c2dcf21af41dbf3de005fda6ec0c4a4d57bffac02d97065fd641017fe47b",
+        "web/assets/textModelDefaults-jwCPjDQ2.js": "1e8a83d60762c2fe76d1286b1ee0f661495255c9855db3b9cc05bd5c9d0e2dfc",
+        "web/assets/toolbar-DoTYWObY.css": "91642401155fd066c21c571a201f9577fb9edd509a0f0338e376f62da8c2a7f6",
+        "web/assets/toolbar-HJeYzxGv.js": "957a350d56f34f81507f5f1c34679788b91d845561f14866293f5a1569e6f850",
+        "web/assets/trustedTypes-kT3NYhwx.js": "59354c9f5610f5e79969fb0af192bcf5b5a187aab8e5419a95668b288e03f09f",
+        "web/assets/viewModelDecoration-CDltqxcs.js": "d716054b3f5edaf208fe8291774c52be48cf1cc20481f0a161d208a0775e9afe",
+        "web/assets/wordCharacterClassifier-DuQGOcub.js": "fdf0822fec7826def1ad54421cd12fa862618bd010c0693da799b57435509dd7",
+        "web/assets/workspace-VK4zdFdS.js": "0a985c8f3ae36001392e1ab929aa4f1dfb4d13e6f0016eafd2fe3841ad4c0cb0",
+        "web/assets/workspaceTrust-gnpOkEgz.js": "b76d8ff2561f10ee861c973a0c77226095c72f94ccbe5056092fa225e4622f6d",
+        "web/brand/sprout/accessories/chalk-v1.png": "e1f9d224bc5f810eafa73e3f23d6c2b91eb71cf8304329f260081f79f05ebeb9",
+        "web/brand/sprout/accessories/glasses-v1.png": "20ab43e6b85a795208f3ced4432773aa0e5d060d67e17d06e7457907b09c7a12",
+        "web/brand/sprout/accessories/pencil-v1.png": "17247ca12ee4a141d4225a067ea731931c554117f04dd9e2bf62ac9d0a93e530",
+        "web/brand/sprout/accessories/pointer-v1.png": "a31f247f7ac505d294531a9ed27f2a5b52e793aab835cfb4273b7f00314b78e3",
+        "web/brand/sprout/accessories/registration.json": "466d6335031a080e5225f49c97654ccc9b659f4dc7e74094478a6b656de02a64",
+        "web/brand/sprout/chalk.svg": "89f738b70d4bab6c956f9564891868b9d1c2d136da2d18a83fe17c5e311c0331",
+        "web/brand/sprout/glasses.svg": "1173d9fec38857bfc45a00cc4142cf883ef2b9df7520f1dcf861797f6fce9720",
+        "web/brand/sprout/master.png": "e36865cbd4a52922bbfec77c3ca4f329ddc5e6aaf44648f13f806e40415adb9f",
+        "web/brand/sprout/none.svg": "65b0bd22a07d58a8734d1c98a5db14bd60ef3890858d7d42a5f1e98b723eada2",
+        "web/brand/sprout/pencil.svg": "9595d106e36ce33d86bef6c004fa8f0e1438cefff9829fe2c7e1ed34979a57da",
+        "web/brand/sprout/pointer.svg": "c06493550c623c153a35a6e8215ed423d1a3fce440c7d7a9ed0e5d73cdb840e8",
+        "web/brand/sprout/props.png": "34e872e1468f9301f8634f3b72c3abb0fd3d417e3ab2679398b754f376f4ad3a",
+        "web/brand/sprout/registration.json": "4fdf88fed1e0a3662b398d8a90d5917ba7b764599e4faaa62be7aa1a98321a16",
+        "web/brand/sprout/rig/eye-masks.json": "39912c3d79fd74963805ed4720f73b8d3a558ca6d1a379fb8834c06d1a079b2c",
+        "web/brand/sprout/rig/registration.json": "2d2804481c3ca6baacc05b1d4b699a1eafcf22b880c5941248ca0b7cbda4e2c9",
+        "web/brand/sprout/rig/underpaint-v1.png": "840ab98d154361a9a3d6b7922eac791507e20deef966eb6dd4dbe0aefd30c273",
+        "web/brand/xunjie-logo/favicon-32.png": "be807f6a44ca92a85c396286ba063d1807f66b27032437cad061b94ed876dd02",
+        "web/brand/xunjie-logo/mark-color.svg": "580c522426a23cfa60e2d6dd5ef048da510d536b35fcaa2032e9e5a8818b940b",
+        "web/brand/xunjie-logo/master.json": "3d7810463ef5ec98150f0f07830c44b30cae87ae4ceb0918fdca86e6539f36bd",
+        "web/fonts/lxgw-wenkai-regular.woff2": "159c4cc7b7373c1b8cb18b9aa58ec19909d9d4fed3d1f6a5bf135bbd5399a7a6",
+        "web/fonts/OFL.txt": "932999b6451e2c5b61f93c9d9a34d22742f81e41a192d2ad65acc300ba942298",
+        "web/index.html": "96c81268fc0566874eec2057e0bf40d29626a650ef681a1326079b935599b19b"
+      },
+      "packagedBy": "scripts/package-product.mjs",
+      "archiveChecksums": "passed",
+      "productionDependencyGraph": "passed"
+    }
+  ],
+  "windowsActualPackage": {
+    "distributionSha256": "d22571fdd362b9379da45e90d5fc3d840df807df9e3cd601f7a6a8858fa1c6cf",
+    "platform": "win32-x64",
+    "postgres": "postgres (PostgreSQL) 18.6",
+    "node": "v24.21.0"
+  },
+  "browserAcceptance": [
+    {
+      "platform": "darwin-arm64",
+      "osRelease": "27.2.0",
+      "node": "v24.21.0",
+      "postgres": "18.6",
+      "browser": "installed Google Chrome",
+      "browserVersion": "156.0.8078.79",
+      "headless": false,
+      "windowsTask": null,
+      "initialRun": {
+        "reportSha256": "eb266d6d5e5a82730328c6cf3f5332d621391022f53fc098c91d005ba870d9ee",
+        "stats": {
+          "startTime": "2026-11-01T14:50:43.017Z",
+          "duration": 113310.317,
+          "expected": 62,
+          "skipped": 0,
+          "unexpected": 1,
+          "flaky": 0
+        }
+      },
+      "targetedRerun": {
+        "reportSha256": "7622a11d8c7e64896104fc8198a3fa40228613e0ff7b6fcd83a77a3c8fd088d5",
+        "passed": 1,
+        "reason": "Refresh restores a closed discussion panel; open it before checking the same accepted record. Business assertions retained."
+      },
+      "distinctLatestResults": {
+        "passed": 63,
+        "failed": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "quota refusal sends nothing and an unsent cancellation survives a new workspace instance",
+          "status": "passed",
+          "durationMs": 2745
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "one workspace call durably captures A while later edits B continue and reload keeps the same action",
+          "status": "passed",
+          "durationMs": 1557
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "production composer shows pending facts and late acceptance keeps the newer question",
+          "status": "passed",
+          "durationMs": 3120,
+          "initialStatus": "failed",
+          "verification": "targeted-rerun-after-opening-integrated-discussion-panel"
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "rejected contents recover as an independent draft and merge only after an explicit choice",
+          "status": "passed",
+          "durationMs": 917
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "a local input receiver gets durable fixed typed inputs without waiting for any remote dependency",
+          "status": "passed",
+          "durationMs": 232
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "a new client namespace preserves the old queue and only explicit verified reconnection resumes its original identity",
+          "status": "passed",
+          "durationMs": 1632
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "reconnecting an unsent cancellation never revives a preparation whose reply was lost",
+          "status": "passed",
+          "durationMs": 1592
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "cancellation retains a trusted acceptance from another browser with independent local storage",
+          "status": "passed",
+          "durationMs": 763
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "explicit cancellation of server history from an independent browser reaches the original owner",
+          "status": "passed",
+          "durationMs": 1884
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "expired school membership blocks dispatch and original reauthorization resumes without another create",
+          "status": "passed",
+          "durationMs": 2299
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "known school access denial blocks a local receiver until original authorization returns",
+          "status": "passed",
+          "durationMs": 3493
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "two actual tabs cannot revive a cancellation committed before their resumed dispatch",
+          "status": "passed",
+          "durationMs": 1736
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "accepted but lost replies remain unknown through reopening and reconcile without changing identity or the new draft",
+          "status": "passed",
+          "durationMs": 463
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "accepted draft cleanup survives reopening when its first local write was refused",
+          "status": "passed",
+          "durationMs": 286
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "pausing during a real IndexedDB wait prevents a new local handoff",
+          "status": "passed",
+          "durationMs": 236
+        },
+        {
+          "file": "hybridDeployment.spec.ts",
+          "title": "personal: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 3442
+        },
+        {
+          "file": "hybridDeployment.spec.ts",
+          "title": "school-shared: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 2651
+        },
+        {
+          "file": "hybridDeployment.spec.ts",
+          "title": "hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 6029
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "default product entry uses shared UI and stable file identities through rename, deletion and recreation",
+          "status": "passed",
+          "durationMs": 5677
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "browser history cannot bypass a refused local protection transaction",
+          "status": "passed",
+          "durationMs": 2940
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "selection, fixed send and later input survive the integrated discussion panel and reload",
+          "status": "passed",
+          "durationMs": 3389
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "course content and shared navigation keep usable widths, theme and keyboard focus",
+          "status": "passed",
+          "durationMs": 3582
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "a late browser-history activity read cannot reopen the activity after forward returns to the list",
+          "status": "passed",
+          "durationMs": 747
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "course browser history retires both visible and in-flight release details from the other course",
+          "status": "passed",
+          "durationMs": 556
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "an initial activity reopen cannot undo browser back to the list while its read is pending",
+          "status": "passed",
+          "durationMs": 360
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "cross-space browser history waits for the destination list before reopening its activity",
+          "status": "passed",
+          "durationMs": 2864
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "a late older course result cannot clear the newer unknown request",
+          "status": "passed",
+          "durationMs": 821
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "course text and requirements stay as fixed references through collapse, reload and activity switch",
+          "status": "passed",
+          "durationMs": 9858
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "code reference keeps original copy after rename and edit, and survives file deletion and reload",
+          "status": "passed",
+          "durationMs": 3411
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "an existing reliable workspace database upgrades without losing its work",
+          "status": "passed",
+          "durationMs": 357
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "a restored draft resumes periodic sync after authentication recovers",
+          "status": "passed",
+          "durationMs": 2380
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "a local conflict candidate retains an unsynchronized code basis across reload",
+          "status": "passed",
+          "durationMs": 361
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "local storage refusal keeps memory and retries automatically",
+          "status": "passed",
+          "durationMs": 1668
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "two actual tabs preserve both local drafts until an explicit choice",
+          "status": "passed",
+          "durationMs": 1594
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "another client conflict keeps both drafts and a late acknowledgement never settles later input",
+          "status": "passed",
+          "durationMs": 5491
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "an unverifiable cancellation stays a recorded intent instead of reporting success",
+          "status": "passed",
+          "durationMs": 2226
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "a lost preparation acknowledgement cannot make an offline cancellation look confirmed",
+          "status": "passed",
+          "durationMs": 2114
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "an imported record keeps adopting authoritative facts instead of freezing at import time",
+          "status": "passed",
+          "durationMs": 3407
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "a local handoff is never blocked by an unrelated remote cancellation query",
+          "status": "passed",
+          "durationMs": 536
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "a local handoff is independent of another local receiver cancellation",
+          "status": "passed",
+          "durationMs": 264
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "question input during a conflict choice survives the protected resolution",
+          "status": "passed",
+          "durationMs": 904
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "work input during a conflict choice survives the protected resolution",
+          "status": "passed",
+          "durationMs": 921
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "a later edit from the other tab refreshes the draft comparison without replacing this page",
+          "status": "passed",
+          "durationMs": 574
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "a later edit from the other tab refreshes the work comparison without remounting the editor",
+          "status": "passed",
+          "durationMs": 505
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "a refused over-long draft keeps its text and syncs again after an edit",
+          "status": "passed",
+          "durationMs": 2222
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "an edit protected before an invalid response arrives syncs without another edit",
+          "status": "passed",
+          "durationMs": 2244
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "the protection timer during a draft conflict choice preserves subsequent input on reopen",
+          "status": "passed",
+          "durationMs": 1487
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "the protection timer during a work conflict choice preserves subsequent input on reopen",
+          "status": "passed",
+          "durationMs": 1496
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "course catalog returns after activity restoration races with discovery",
+          "status": "passed",
+          "durationMs": 736
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "actual editor automatically protects and synchronizes Chinese original text across reload",
+          "status": "passed",
+          "durationMs": 2925
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "an opened activity survives API disconnection and reload, then continues its original pending sync",
+          "status": "passed",
+          "durationMs": 7436
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "late and lost confirmations never settle later editor content",
+          "status": "passed",
+          "durationMs": 6308
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "failed navigation leaves the editor able to continue automatic sync",
+          "status": "passed",
+          "durationMs": 2743
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "reopening an activity uses the latest body from another actual tab, not a retained editor model",
+          "status": "passed",
+          "durationMs": 5746
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically",
+          "status": "passed",
+          "durationMs": 5325
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "two actual tabs preserve both local edits under simultaneous IndexedDB competition",
+          "status": "passed",
+          "durationMs": 3800
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "a remote conflict comparison includes input made while the original service read was delayed",
+          "status": "passed",
+          "durationMs": 4267
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "continuous input advances durable local and remote content before the student stops typing",
+          "status": "passed",
+          "durationMs": 4853
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing",
+          "status": "passed",
+          "durationMs": 1351
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "successful navigation protects input entered immediately before its delayed response",
+          "status": "passed",
+          "durationMs": 1305
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "initial storage refusal retries automatically after the browser permits transactions again",
+          "status": "passed",
+          "durationMs": 564
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 2008
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 2467
+        }
+      ]
+    },
+    {
+      "platform": "win32-x64",
+      "osRelease": "10.0.26200",
+      "node": "v24.21.0",
+      "postgres": "18.6",
+      "browser": "installed Google Chrome",
+      "browserVersion": "156.0.8078.79",
+      "headless": false,
+      "windowsTask": {
+        "logonType": "Interactive",
+        "runLevel": "Limited"
+      },
+      "initialRun": {
+        "reportSha256": "1536378ca98545d886eda49ada99cbba9675129e64ecf222b85d95b0c0949708",
+        "stats": {
+          "startTime": "2026-11-01T14:49:24.145Z",
+          "duration": 175813.157,
+          "expected": 62,
+          "skipped": 0,
+          "unexpected": 1,
+          "flaky": 0
+        }
+      },
+      "targetedRerun": {
+        "reportSha256": "3a1e69bf214fbb29209c2ba20db896c44549171ec64fd6a6ece4dc1894c47c67",
+        "passed": 1,
+        "reason": "Refresh restores a closed discussion panel; open it before checking the same accepted record. Business assertions retained."
+      },
+      "distinctLatestResults": {
+        "passed": 63,
+        "failed": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "quota refusal sends nothing and an unsent cancellation survives a new workspace instance",
+          "status": "passed",
+          "durationMs": 2889
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "one workspace call durably captures A while later edits B continue and reload keeps the same action",
+          "status": "passed",
+          "durationMs": 1752
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "production composer shows pending facts and late acceptance keeps the newer question",
+          "status": "passed",
+          "durationMs": 3842,
+          "initialStatus": "failed",
+          "verification": "targeted-rerun-after-opening-integrated-discussion-panel"
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "rejected contents recover as an independent draft and merge only after an explicit choice",
+          "status": "passed",
+          "durationMs": 1481
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "a local input receiver gets durable fixed typed inputs without waiting for any remote dependency",
+          "status": "passed",
+          "durationMs": 460
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "a new client namespace preserves the old queue and only explicit verified reconnection resumes its original identity",
+          "status": "passed",
+          "durationMs": 1863
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "reconnecting an unsent cancellation never revives a preparation whose reply was lost",
+          "status": "passed",
+          "durationMs": 1801
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "cancellation retains a trusted acceptance from another browser with independent local storage",
+          "status": "passed",
+          "durationMs": 1346
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "explicit cancellation of server history from an independent browser reaches the original owner",
+          "status": "passed",
+          "durationMs": 2411
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "expired school membership blocks dispatch and original reauthorization resumes without another create",
+          "status": "passed",
+          "durationMs": 2555
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "known school access denial blocks a local receiver until original authorization returns",
+          "status": "passed",
+          "durationMs": 3747
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "two actual tabs cannot revive a cancellation committed before their resumed dispatch",
+          "status": "passed",
+          "durationMs": 2031
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "accepted but lost replies remain unknown through reopening and reconcile without changing identity or the new draft",
+          "status": "passed",
+          "durationMs": 651
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "accepted draft cleanup survives reopening when its first local write was refused",
+          "status": "passed",
+          "durationMs": 542
+        },
+        {
+          "file": "actionIntents.spec.ts",
+          "title": "pausing during a real IndexedDB wait prevents a new local handoff",
+          "status": "passed",
+          "durationMs": 444
+        },
+        {
+          "file": "hybridDeployment.spec.ts",
+          "title": "personal: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 4125
+        },
+        {
+          "file": "hybridDeployment.spec.ts",
+          "title": "school-shared: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 4471
+        },
+        {
+          "file": "hybridDeployment.spec.ts",
+          "title": "hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity",
+          "status": "passed",
+          "durationMs": 18702
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "default product entry uses shared UI and stable file identities through rename, deletion and recreation",
+          "status": "passed",
+          "durationMs": 4822
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "browser history cannot bypass a refused local protection transaction",
+          "status": "passed",
+          "durationMs": 3645
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "selection, fixed send and later input survive the integrated discussion panel and reload",
+          "status": "passed",
+          "durationMs": 3202
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "course content and shared navigation keep usable widths, theme and keyboard focus",
+          "status": "passed",
+          "durationMs": 4138
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "a late browser-history activity read cannot reopen the activity after forward returns to the list",
+          "status": "passed",
+          "durationMs": 956
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "course browser history retires both visible and in-flight release details from the other course",
+          "status": "passed",
+          "durationMs": 875
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "an initial activity reopen cannot undo browser back to the list while its read is pending",
+          "status": "passed",
+          "durationMs": 655
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "cross-space browser history waits for the destination list before reopening its activity",
+          "status": "passed",
+          "durationMs": 2962
+        },
+        {
+          "file": "productUi.spec.ts",
+          "title": "a late older course result cannot clear the newer unknown request",
+          "status": "passed",
+          "durationMs": 1094
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "course text and requirements stay as fixed references through collapse, reload and activity switch",
+          "status": "passed",
+          "durationMs": 10982
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "code reference keeps original copy after rename and edit, and survives file deletion and reload",
+          "status": "passed",
+          "durationMs": 3785
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "an existing reliable workspace database upgrades without losing its work",
+          "status": "passed",
+          "durationMs": 791
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "a restored draft resumes periodic sync after authentication recovers",
+          "status": "passed",
+          "durationMs": 2553
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "a local conflict candidate retains an unsynchronized code basis across reload",
+          "status": "passed",
+          "durationMs": 604
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "local storage refusal keeps memory and retries automatically",
+          "status": "passed",
+          "durationMs": 1830
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "two actual tabs preserve both local drafts until an explicit choice",
+          "status": "passed",
+          "durationMs": 2159
+        },
+        {
+          "file": "questionDrafts.spec.ts",
+          "title": "another client conflict keeps both drafts and a late acknowledgement never settles later input",
+          "status": "passed",
+          "durationMs": 4914
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "an unverifiable cancellation stays a recorded intent instead of reporting success",
+          "status": "passed",
+          "durationMs": 2571
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "a lost preparation acknowledgement cannot make an offline cancellation look confirmed",
+          "status": "passed",
+          "durationMs": 2377
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "an imported record keeps adopting authoritative facts instead of freezing at import time",
+          "status": "passed",
+          "durationMs": 3655
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "a local handoff is never blocked by an unrelated remote cancellation query",
+          "status": "passed",
+          "durationMs": 661
+        },
+        {
+          "file": "reliableWorkspaceActions.spec.ts",
+          "title": "a local handoff is independent of another local receiver cancellation",
+          "status": "passed",
+          "durationMs": 432
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "question input during a conflict choice survives the protected resolution",
+          "status": "passed",
+          "durationMs": 1092
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "work input during a conflict choice survives the protected resolution",
+          "status": "passed",
+          "durationMs": 1130
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "a later edit from the other tab refreshes the draft comparison without replacing this page",
+          "status": "passed",
+          "durationMs": 780
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "a later edit from the other tab refreshes the work comparison without remounting the editor",
+          "status": "passed",
+          "durationMs": 727
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "a refused over-long draft keeps its text and syncs again after an edit",
+          "status": "passed",
+          "durationMs": 2434
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "an edit protected before an invalid response arrives syncs without another edit",
+          "status": "passed",
+          "durationMs": 2448
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "the protection timer during a draft conflict choice preserves subsequent input on reopen",
+          "status": "passed",
+          "durationMs": 1834
+        },
+        {
+          "file": "reliableWorkspaceDraft.spec.ts",
+          "title": "the protection timer during a work conflict choice preserves subsequent input on reopen",
+          "status": "passed",
+          "durationMs": 1662
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "course catalog returns after activity restoration races with discovery",
+          "status": "passed",
+          "durationMs": 951
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "actual editor automatically protects and synchronizes Chinese original text across reload",
+          "status": "passed",
+          "durationMs": 3708
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "an opened activity survives API disconnection and reload, then continues its original pending sync",
+          "status": "passed",
+          "durationMs": 5627
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "late and lost confirmations never settle later editor content",
+          "status": "passed",
+          "durationMs": 5785
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "failed navigation leaves the editor able to continue automatic sync",
+          "status": "passed",
+          "durationMs": 3247
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "reopening an activity uses the latest body from another actual tab, not a retained editor model",
+          "status": "passed",
+          "durationMs": 7844
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically",
+          "status": "passed",
+          "durationMs": 6627
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "two actual tabs preserve both local edits under simultaneous IndexedDB competition",
+          "status": "passed",
+          "durationMs": 4419
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "a remote conflict comparison includes input made while the original service read was delayed",
+          "status": "passed",
+          "durationMs": 6008
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "continuous input advances durable local and remote content before the student stops typing",
+          "status": "passed",
+          "durationMs": 5422
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing",
+          "status": "passed",
+          "durationMs": 1884
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "successful navigation protects input entered immediately before its delayed response",
+          "status": "passed",
+          "durationMs": 1848
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "initial storage refusal retries automatically after the browser permits transactions again",
+          "status": "passed",
+          "durationMs": 858
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 2652
+        },
+        {
+          "file": "worksEditor.spec.ts",
+          "title": "confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication",
+          "status": "passed",
+          "durationMs": 3219
+        }
+      ]
+    }
+  ],
+  "crosshost": {
+    "topology": "Apple Silicon Mac and independent Ubuntu school, direct public HTTPS; SSH for maintenance only",
+    "measuredAt": "2026-11-01T14:53:10.046Z",
+    "finishedAt": "2026-11-01T14:54:08.866Z",
+    "status": "passed",
+    "local": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "osRelease": "27.2.0",
+      "node": "v24.21.0"
+    },
+    "school": {
+      "os": "Ubuntu 24.04.5",
+      "arch": "x64",
+      "node": "v24.21.0",
+      "postgres": "18.6",
+      "distributionSha256": "30fd03c45af3d34df31e08a3fe898e89dbd6d9d26d66fecbb11a70994fe6b977"
+    },
+    "browser": {
+      "name": "installed Chrome",
+      "version": "156.0.8078.79",
+      "headless": false,
+      "tls": "certificate SPKI pinned in isolated Chrome; Node verifies the explicit CA and hostname"
+    },
+    "stages": [
+      {
+        "name": "strict-tls-and-real-native-packages",
+        "status": "passed",
+        "durationMs": 1139
+      },
+      {
+        "name": "school-default-page-login-course-and-reopen",
+        "status": "passed",
+        "durationMs": 21819
+      },
+      {
+        "name": "installed-client-real-school-approval",
+        "status": "passed",
+        "durationMs": 6867
+      },
+      {
+        "name": "hybrid-local-owner-files-fixed-reference-and-question",
+        "status": "passed",
+        "durationMs": 9784
+      },
+      {
+        "name": "actual-school-outage-and-recovery-keeps-later-input",
+        "status": "passed",
+        "durationMs": 10187
+      },
+      {
+        "name": "connection-revocation-exits-the-original-school-scope",
+        "status": "passed",
+        "durationMs": 347
+      }
+    ],
+    "localCleanup": true,
+    "scope": "Six new UI stages only. Earlier native backup, isolated restore and takeover evidence retained at the repair baseline, not rerun here."
+  },
+  "validationGaps": {
+    "systemPhysicalIme": {
+      "status": "passed",
+      "platform": "darwin-arm64",
+      "osRelease": "27.2.0",
+      "node": "v24.21.0",
+      "scope": "OS-level CGEvent HID keyboard injection through the installed Doubao Pinyin IME, not CDP text insertion or a human hardware-keyboard observation.",
+      "report": {
+        "startedAt": "2026-11-01T16:00:04.768Z",
+        "status": "passed",
+        "mechanism": "CGEvent HID keyboard events -> installed system IME -> actual Chrome -> packaged product -> native PostgreSQL",
+        "expected": "开始你好世界\n粘贴中文\n结束",
+        "steps": [
+          {
+            "step": "activate",
+            "front": "front=40817",
+            "ownedChrome": true,
+            "ancestors": [],
+            "foregroundExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          },
+          {
+            "step": "activate",
+            "front": "front=40817",
+            "ownedChrome": true,
+            "ancestors": [],
+            "foregroundExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          },
+          {
+            "step": "activate",
+            "front": "front=40817",
+            "ownedChrome": true,
+            "ancestors": [],
+            "foregroundExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          }
+        ],
+        "inputSourceBefore": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "foregroundBefore": "front=39694",
+        "nativeProbeCorrection": "Select the source after OS window activation; avoid re-selecting an already active IME between composed words.",
+        "focusAssertion": "OS GetFrontProcess across app round-trip; document.hasFocus under Playwright is not used for the result",
+        "browser": "156.0.8078.79",
+        "chromePid": 40817,
+        "inputSourceSelected": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "activeInputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "awayForeground": "front=39694",
+        "awayFocused": true,
+        "backFocused": true,
+        "editorRestarts": 0,
+        "actual": "开始你好世界\n粘贴中文\n结束",
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Escape",
+            "keyCode": 27,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "k",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "k",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "a",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ka",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "s",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai's",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai'sh",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai'shi",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "开始",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "开始",
+            "trusted": false
+          },
+          {
+            "type": "keydown",
+            "key": "n",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "n",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni'h",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "a",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni'ha",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "o",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni'hao",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "你好",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "你好",
+            "trusted": false
+          },
+          {
+            "type": "keydown",
+            "key": "s",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "s",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "sh",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "j",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi'j",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi'ji",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "e",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi'jie",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "世界",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "世界",
+            "trusted": false
+          },
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "keyCode": 13,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "v",
+            "keyCode": 86,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "paste",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "ArrowLeft",
+            "keyCode": 37,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "ArrowRight",
+            "keyCode": 39,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "keyCode": 13,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "j",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "j",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ji",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "e",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "s",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie's",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie'sh",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "u",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie'shu",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "结束",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "结束",
+            "trusted": false
+          }
+        ],
+        "signals": {
+          "compositionStarts": 4,
+          "composingKeydowns": 27,
+          "trustedPastes": 1
+        },
+        "afterReload": "开始你好世界\n粘贴中文\n结束",
+        "cleanup": true,
+        "finishedAt": "2026-11-01T16:00:34.353Z"
+      },
+      "reportSha256": "cbed01d5e216aa1b7568a3a2d6dfb29bfd377426a2bca6912167c638feec3449",
+      "previousProbeDiagnostics": {
+        "status": "pending-retest-console-locked",
+        "initialLockedProbe": {
+          "status": "not-run",
+          "reason": "macOS console is at loginwindow; native CGEvent inputs did not reach the Chrome process",
+          "frontProcess": {
+            "pid": 612,
+            "name": "loginwindow"
+          },
+          "probe": {
+            "before": "front=612",
+            "activated": "before=612 target=44277 activated=true",
+            "pid": 44277,
+            "frontAfter": "front=612",
+            "text": "",
+            "events": []
+          },
+          "browserImeProtocol": "covered by productUi.spec.ts on both target platforms"
+        },
+        "latestProbe": {
+          "startedAt": "2026-11-01T15:51:17.427Z",
+          "status": "failed",
+          "mechanism": "CGEvent HID keyboard events -> installed system IME -> actual Chrome -> packaged product -> native PostgreSQL",
+          "expected": "开始你好世界\n粘贴中文\n结束",
+          "steps": [
+            {
+              "step": "activate",
+              "front": "front=612",
+              "ownedChrome": false,
+              "ancestors": [
+                612,
+                1
+              ],
+              "foregroundExecutable": "/System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow"
+            }
+          ],
+          "inputSourceBefore": "com.apple.keylayout.ABC",
+          "foregroundBefore": "front=612",
+          "nativeProbeCorrection": "Select the source after OS window activation; avoid re-selecting an already active IME between composed words.",
+          "focusAssertion": "OS GetFrontProcess across app round-trip; document.hasFocus under Playwright is not used for the result",
+          "browser": "156.0.8078.79",
+          "chromePid": 35179,
+          "inputSourceSelected": "com.apple.keylayout.ABC",
+          "activeInputSource": "com.apple.keylayout.ABC",
+          "error": "Error: Foreground process is outside the isolated Chrome process tree: front=612",
+          "cleanup": true,
+          "finishedAt": "2026-11-01T15:51:23.489Z"
+        },
+        "earlierUnlockedAttempts": "Native CGEvent inputs produced real composition events and exact Chinese text/reload in early runs, but the wrapper incorrectly asserted document.hasFocus rather than OS foreground. Later probe calibration runs had partial/literal text or foreground interruptions and are not accepted as a completed physical IME run.",
+        "rawDiagnosticLogs": [
+          {
+            "file": "physical-current-accepted.log",
+            "sha256": "726a6fd87f87812f94d770db3e7c10b2c9b74a740cba7191c25759a0fedb7c6c"
+          },
+          {
+            "file": "physical-current-confirmed-source.log",
+            "sha256": "1d1f4499f57a7d7b666abd65bcf8c9c8ac2fca2f96467bc38461e8dad50b12cd"
+          },
+          {
+            "file": "physical-current-final.log",
+            "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+          },
+          {
+            "file": "physical-current-foreground-source.log",
+            "sha256": "01892c0c23c5fdab7d60d097ff8d2977105ecec5ea33738f9deb0dc99561aaa4"
+          },
+          {
+            "file": "physical-current-idle.log",
+            "sha256": "c1c99d66ba398eb52166c099d0e409e8a2834ec29dbf69dbd5379ef92f62e76e"
+          },
+          {
+            "file": "physical-current-rerun.log",
+            "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+          },
+          {
+            "file": "physical-current-stable-focus.log",
+            "sha256": "e7cec0a415555308c063577c55511e8b408503b00075c3200674b65fe93f5b7a"
+          },
+          {
+            "file": "physical-current-verified-process.log",
+            "sha256": "41479bf614da9df455f40be8742a506a61fb48f5042f03f8c6e0f98209e3b9a6"
+          },
+          {
+            "file": "physical-current.log",
+            "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+          }
+        ]
+      },
+      "probeCorrections": "Use OS GetFrontProcess and the isolated Chrome process tree rather than document.hasFocus under Playwright focus emulation. Select the system source after bringing the real window forward and avoid repeatedly selecting an already active IME. Final run after unlocking passed all content, persistence and OS focus checks."
+    },
+    "browserImeComposition": {
+      "status": "passed-on-both-target-platforms",
+      "expectedText": "你好\n世界",
+      "test": "productUi.spec.ts / course content and shared navigation keep usable widths, theme and keyboard focus",
+      "scope": "Chrome composition protocol, not physical system IME"
+    },
+    "legacyUiRegression": {
+      "initialPassed": 17,
+      "initialFailed": 1,
+      "targetedRerun": {
+        "passed": 1,
+        "failed": 0,
+        "logSha256": "3238e80b462e35f12806cf5b1e5368665917e41e34ae97e6768d5a5757e93f0a"
+      },
+      "latestDistinct": {
+        "passed": 18,
+        "failed": 0
+      },
+      "fix": "Core native selects explicitly support Home/End on all desktop platforms; preserve controlled snapshot/entry/operation state and existing run request checks. Monaco Tab-focus uses Ctrl+Shift+M on macOS and Ctrl+M elsewhere.",
+      "scope": "Headed installed Chrome on Apple Silicon Mac. Windows targeted legacy path not rerun."
+    },
+    "windowsWholeRepositoryEngineering": "not-rerun",
+    "launcherDoubleClickOrGraphicalInstaller": "not-rerun",
+    "physicalWindowsIme": {
+      "status": "passed-native-system-ime",
+      "report": "wp02-ui159-windows-system-ime.json",
+      "reportSha256": "ce4ee827c45f72e9fe313ac06d0da1967bdd99f846184e903ded22d3d277c2fe",
+      "signals": {
+        "editor": {
+          "trustedCompositions": 4,
+          "composingKeydowns": 27,
+          "trustedPastes": 1
+        },
+        "question": {
+          "trustedCompositions": 3,
+          "composingKeydowns": 20,
+          "trustedPastes": 1
+        }
+      },
+      "scope": "Installed Microsoft Pinyin via Win32 native virtual keys in headed installed Chrome; not a human hardware-keyboard observation."
+    },
+    "teachingEffect": "not-evaluated",
+    "realAgentExecutionTeacherReceivers": "not-delivered; production send unavailable, tests use a controlled receiver"
+  },
+  "screenshots": {
+    "browser": "Chrome 156.0.8078.79",
+    "beforeEntry": "Production host + PostgreSQL 18.6 + baseline dist-runtime",
+    "afterEntry": "Accepted Mac default entry for UI comparisons; accepted Windows default entry for supplemental system-IME screenshots. Both use native PostgreSQL 18.6.",
+    "comparison": "Before/after actual product use the same synthetic course, goals and file contents in separate environments; reference preview has different business data.",
+    "files": [
+      {
+        "file": "wp02-ui159-after-conflict.png",
+        "sha256": "caddb83d9127013b17070636ae4a3471db1475365fdb09b51b34477b3e47b9df",
+        "kind": "after-accepted-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-after-course.png",
+        "sha256": "e988ed914a98d147948515792ce22eccde66536bba06f4b2a8c80d0cb15827a3",
+        "kind": "after-accepted-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-after-home.png",
+        "sha256": "e63894932e0ca3cbb17ecbed8118fff67dcb93a8f994ca503360d28f34eca19d",
+        "kind": "after-accepted-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-after-personal.png",
+        "sha256": "d3461c71f21e309afbbc277044facb9c0815abe460de56cb393be3898b05e793",
+        "kind": "after-accepted-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-after-references.png",
+        "sha256": "478b5ef2bcc11bd2b6a80413c7c3023d95dc77b7e9f502bb85edf0af76bdd6e2",
+        "kind": "after-accepted-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-after-school-home.png",
+        "sha256": "cfd68074082f7ad1b3ed66544694056fc835e9312629db87a4725e2253679093",
+        "kind": "after-accepted-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-after-storage-failure.png",
+        "sha256": "b7d8388ab4ebda5eb7382116fdb1c2fd38239bd03c01a1c1944cd057f5b75c41",
+        "kind": "after-accepted-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-before-course.png",
+        "sha256": "29aeed4c067ceff304eb84eacee2eadadee34e85778cd094cf9b2ee93343475b",
+        "kind": "before-actual-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1887
+        }
+      },
+      {
+        "file": "wp02-ui159-before-home.png",
+        "sha256": "32759af95daaa03e24b8ec03182293703446ee05fb5362b0a23e0107a33a136d",
+        "kind": "before-actual-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1009
+        }
+      },
+      {
+        "file": "wp02-ui159-before-personal.png",
+        "sha256": "a0403969549bc1cd8bd74c4fc2e10ce643391054509ab005eb7bf76e38b1b02e",
+        "kind": "before-actual-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1270
+        }
+      },
+      {
+        "file": "wp02-ui159-crosshost-hybrid.png",
+        "sha256": "6ee274708ad39a0c9929075ae3428f577a3104ea96f02ccb7d2d81ca426d6dc7",
+        "kind": "public-crosshost-actual-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-crosshost-school.png",
+        "sha256": "f105363e0b96d10a5cb20a26b4c9ff90d9cc90230fa05a0db5a7a9b9bf2b7f91",
+        "kind": "public-crosshost-actual-product",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-reference-home.png",
+        "sha256": "8bfc978d32f1ccf4616737a5c8ee128a01b480a5a9773308f16d1129a46329d0",
+        "kind": "UI-reference-preview",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-reference-workspace.png",
+        "sha256": "4d8f89df80244086782d432c5da5dbd07b64342246731d48ad44d40d6214bab5",
+        "kind": "UI-reference-preview",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-system-ime.png",
+        "sha256": "bd74a472a1e541c487c7da02b0174682a1904054be4e4821f11273d91cad72ec",
+        "kind": "after-accepted-product-system-ime",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light"
+      },
+      {
+        "file": "wp02-ui159-windows-system-ime-editor.png",
+        "sha256": "23df1867eb92f1f8c36e365b625465d33b9a6f4d1432b9bc227dcce9523d7812",
+        "kind": "windows-system-ime-editor",
+        "platform": "win32-x64",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "file": "wp02-ui159-windows-system-ime-question.png",
+        "sha256": "6933ffce86fe0c1d2df58d9fa3d3e7f106666c9ceda36e0f6d3105860a4f8eea",
+        "kind": "windows-system-ime-question",
+        "platform": "win32-x64",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
+      }
+    ],
+    "beforeCapture": "Full-page captures with the same viewport; the previous long page exceeds viewport height."
+  },
+  "cleanup": {
+    "mac": {
+      "runtimes": [
+        {
+          "name": "xj-ui159-mac-package-Cy6Hic",
+          "state": "stopped",
+          "rootRemoved": true
+        },
+        {
+          "name": "xj-ui159-mac-package-mq2j1g",
+          "state": "stopped",
+          "rootRemoved": true
+        },
+        {
+          "name": "xj-ui159-CAA9s5",
+          "state": "stopped",
+          "rootRemoved": true
+        },
+        {
+          "name": "xj-ui159-LT8xEQ",
+          "state": "stopped",
+          "rootRemoved": true
+        },
+        {
+          "name": "xj-ui159-WLVkp6",
+          "state": "stopped",
+          "rootRemoved": true
+        }
+      ],
+      "privateSuiteRemoved": true,
+      "remainingTaskRoots": []
+    },
+    "windows": {
+      "rootRemoved": true,
+      "remainingOwnedProcesses": 0,
+      "remainingOwnedTasks": 0
+    },
+    "school": {
+      "rootRemoved": true,
+      "remainingOwnedProcesses": 0
+    },
+    "temporaryNetworkRules": {
+      "temporaryPort": 38196,
+      "remainingTaskRules": 0,
+      "requestId": "01A197B1-08A1-5AC5-A393-9969F3870C8C"
+    },
+    "cloudStop": {
+      "state": "stopped",
+      "pgRunning": false
+    },
+    "referenceWorktreeRemoved": true,
+    "physicalIme": {
+      "rootRemoved": true,
+      "clipboardRestored": true,
+      "inputSourceRestored": true,
+      "temporaryBrowserClosed": true
+    },
+    "windowsSystemIme": {
+      "checkedAt": "2026-11-01T17:18:37.6749431Z",
+      "rootRemoved": true,
+      "remainingOwnedProcesses": 0,
+      "remainingOwnedTasks": 0,
+      "runtimeStopped": "stopped",
+      "localTemporaryHelpersRemoved": true,
+      "localTransferArchiveRemoved": true,
+      "retained": "Original accepted candidates and necessary raw logs only; no private clipboard contents or browser profile committed."
+    }
+  },
+  "acceptedPackagesRebuiltComparison": [
+    {
+      "platform": "darwin-arm64",
+      "acceptedFiles": 159,
+      "rebuiltFiles": 159,
+      "matches": true,
+      "differentFiles": []
+    },
+    {
+      "platform": "win32-x64",
+      "acceptedFiles": 159,
+      "rebuiltFiles": 159,
+      "matches": true,
+      "differentFiles": []
+    },
+    {
+      "platform": "linux-x64",
+      "acceptedFiles": 159,
+      "rebuiltFiles": 159,
+      "matches": true,
+      "differentFiles": []
+    }
+  ]
+}

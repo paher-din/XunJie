@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useWorkspaceReferences } from './WorkspaceReferences'
 
 export function SelectionToolbar() {
-  const { pending, open, ask, clearSelection } = useWorkspaceReferences()
+  const { pending, open, ask, clearSelection, draftReady } = useWorkspaceReferences()
   const button = useRef<HTMLButtonElement>(null)
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
   useEffect(() => {
@@ -28,15 +28,16 @@ export function SelectionToolbar() {
     update()
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { clearSelection(pending.snapshot.sourceId); return }
-      if (event.altKey && event.key === 'Enter' && !event.isComposing) { event.preventDefault(); ask() }
+      if (event.altKey && event.key === 'Enter' && !event.isComposing && draftReady !== false) { event.preventDefault(); ask() }
     }
     document.addEventListener('keydown', key)
     return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', key) }
-  }, [pending, open, ask, clearSelection])
+  }, [pending, open, ask, clearSelection, draftReady])
   if (!pending || open) return null
   return createPortal(<div className="wr-toolbar" data-reference-ui style={{ left: position?.left ?? 8,
     top: position?.top ?? 8, visibility: position ? 'visible' : 'hidden' }}>
-    <button ref={button} type="button" aria-keyshortcuts="Alt+Enter" title="询问 Agent（Alt + Enter）"
+    <button ref={button} type="button" aria-keyshortcuts="Alt+Enter" disabled={draftReady === false}
+      title={draftReady === false ? '正在读取原问题草稿，请稍候' : '询问 Agent（Alt + Enter）'}
       onPointerDown={event => event.preventDefault()} onClick={ask}>询问 Agent</button>
   </div>, document.body)
 }

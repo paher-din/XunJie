@@ -1,0 +1,77 @@
+{
+  "executedOn": "2026-11-01",
+  "topology": "Apple Silicon Mac 客户端 + 独立学校 Ubuntu 24.04 x64 主机",
+  "heldBackups": {
+    "order": "先学校 held，再本机 held；两份分别取得，不称为分布式原子备份",
+    "school": {
+      "host": "101.201.141.133",
+      "root": "/home/xunjie-admin/xj154/roots/school",
+      "backupId": "db127ec3-1f88-4623-acd7-bb0fa4843485",
+      "boundaryAt": "2026-11-01T06:03:42.524Z",
+      "environmentId": "1a8650f0-29f8-4f05-b54f-92db5a868509",
+      "installationId": "57df19da-7bb4-41e9-9d42-7de612735b3d",
+      "openers": [
+        { "serviceId": "306d0eaa-ae25-4472-89b5-8cbccab54971", "unit": "client", "schemaVersion": "1" },
+        { "serviceId": "c167d65a-e820-47d8-93cd-bf1bcac7987d", "unit": "space-course", "schemaVersion": "storage/1;owner/6" },
+        { "serviceId": "29c40033-6436-4788-b976-e29b8c3af9d4", "unit": "learning-data", "schemaVersion": "storage/1;owner/4" }
+      ],
+      "artifacts": 10,
+      "receiverIds": [],
+      "held": true
+    },
+    "device": {
+      "host": "Apple Silicon Mac",
+      "root": "/Users/robertwu/xj-154/roots/device",
+      "backupId": "36f28f9d-183d-402b-a5ca-9d10fdcd160b",
+      "boundaryAt": "2026-11-01T06:03:46.685Z",
+      "environmentId": "c838b6ec-b57a-4f3c-bf98-36d48d339d39",
+      "installationId": "47ea74dc-01e8-4e59-a6d7-0af5eb88812e",
+      "openers": [
+        { "serviceId": "dd66e818-5ceb-4762-9137-36dcdf0ece4b", "unit": "client", "schemaVersion": "1" },
+        { "serviceId": "fdf0a85f-b496-4ae4-bbc9-bbacf47171d9", "unit": "space-course", "schemaVersion": "storage/1;owner/6" },
+        { "serviceId": "42431de5-f5b0-449f-9fa2-0673f3bf1167", "unit": "learning-data", "schemaVersion": "storage/1;owner/4" }
+      ],
+      "artifacts": 11,
+      "receiverIds": ["1a8650f0-29f8-4f05-b54f-92db5a868509/306d0eaa-ae25-4472-89b5-8cbccab54971"],
+      "held": true
+    },
+    "commonClosedInterval": {
+      "from": "2026-11-01T06:03:46.685Z",
+      "to": "2026-11-01T06:07:12.042Z",
+      "meaning": "两份 held 备份的重叠关闭区间：学校 06:03:42.524Z 先关，本机 06:03:46.685Z 后关，学校 06:07:12.042Z 以 maintenance-resume 重新接收；本机在区间后保持 held 并被接管退休"
+    },
+    "storage": {
+      "deviceDirectory": "/Users/robertwu/xj-154/backups/device",
+      "schoolDirectory": "/home/xunjie-admin/xj154/backups/school",
+      "key": "32 字节恢复密钥，私密保管于 ~/xj-154/keys/recovery.key 与学校 ~/xj154/keys/recovery.key（0600），不进公开 manifest"
+    }
+  },
+  "isolatedRestore": {
+    "source": "device held backup 36f28f9d-183d-402b-a5ca-9d10fdcd160b",
+    "targetRoot": "/Users/robertwu/xj-154/roots/restored",
+    "newInstallationId": "1016c6d0-51f7-4b8c-bf31-0029a2271c5a",
+    "newClientNamespace": "xunjie.v1.c838b6ec-b57a-4f3c-bf98-36d48d339d39.recovery.e2260755-c98a-4f77-82b3-24aec4317d2c",
+    "phase": "isolated",
+    "publicApiWhileIsolated": "503 maintenance（隔离目标不派发业务）",
+    "verifiedBy": "直接核对恢复后的 owner 数据库与资源摘要，逐项与 held 边界比较",
+    "checks": [
+      { "name": "成员、资格与 learning binding", "result": "passed", "detail": "memberships 1/1 且 active，learning_bindings 固定 42431de5…（learning-data owner）" },
+      { "name": "已存学习资源逐字节一致", "result": "passed", "detail": "5 个资源文件，两侧 sha256 集合完全相同" },
+      { "name": "活动、作品与作品回执", "result": "passed", "detail": "activity body / work_heads / work_versions(2) / work_receipts(2) 两侧完全相同，作品正文回读一致（同一 objectId 5393fe48…）" },
+      { "name": "草稿当前修订、历史修订与原请求回执", "result": "passed", "detail": "该安装在 held 边界无草稿（0/0/0）；草稿当前+历史+回执的恢复由 CLI 验收 1/1 覆盖（见 wp02-hybrid-mac-engineering.json cliRecovery）" }
+    ]
+  },
+  "failureScenarios": {
+    "missingParticipant": {
+      "method": "在真实恢复安装上移除 learning-data owner 的存储凭据，模拟参与者缺项",
+      "result": "运行库拒绝启动（runtime.log: Storage operation failed: forbidden），备份命令无法取得 instance.json，未产出任何备份目录，磁盘数据保留",
+      "recovery": "放回原凭据后实例重新启动，作品读回 200（revision 2）",
+      "guardReference": "backup 内部 missing-recovery-participant 断言由 packages/product-runtime/test/recovery.test.mjs 在同一次全量测试中覆盖"
+    },
+    "corruptedBackup": {
+      "method": "复制 held 备份到独立目录，翻转其中一个工件字节后再恢复",
+      "result": "restore 以 invalid-recovery 拒绝，目标目录 0 条目",
+      "originalIntact": "原备份 11 个工件 sha256 全部与 manifest 一致"
+    }
+  }
+}

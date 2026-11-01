@@ -5,7 +5,7 @@ import { setRunScript } from './runHelpers'
 /**
  * UI-PREP-03：一条学生操作路径全程使用真实键盘导航。
  * 唯一程序定位焦点是初始「开始 Attempt」；后续通过 Tab / Shift+Tab 到达控件，
- * 或接受界面自己的焦点恢复。Ctrl+M 是 Monaco 已有的「Tab 移动焦点」命令。
+ * 或接受界面自己的焦点恢复。Monaco 的「Tab 移动焦点」命令在 macOS 为 Ctrl+Shift+M，其他平台为 Ctrl+M。
  * 合成 authority 的另一处保存与 runner 状态仅用于构造版本冲突/停止确认；
  * 学生页面的每个业务命令仍由 Enter / Space 明确触发，不连接执行节点或模型。
  */
@@ -79,7 +79,7 @@ test('真实 Tab 路径完成新建/切换/保存/比较/冲突选择/Core停止
   const editor = page.locator('.cw .monaco-editor textarea').first()
   await expect(editor).toBeAttached()
   await tabTo(page, editor)
-  await page.keyboard.press('ControlOrMeta+m')
+  await page.keyboard.press(process.platform === 'darwin' ? 'Control+Shift+m' : 'Control+m')
   const initial = 'int main(void) { return 0; }\n'
   await page.keyboard.insertText(initial)
   await expect(page.locator('.cw-protect')).toHaveText('本机草稿已保护')
@@ -195,6 +195,10 @@ test('真实 Tab 路径完成新建/切换/保存/比较/冲突选择/Core停止
   const panel = page.getByRole('region', { name: 'Core 运行与结果', exact: true })
   const snapshotSelect = panel.getByRole('combobox', { name: '确认快照', exact: true })
   await tabTo(page, snapshotSelect)
+  await page.keyboard.press('End')
+  await expect(snapshotSelect).toHaveValue(snapshot.snapshotId)
+  await page.keyboard.press('Home')
+  await expect(snapshotSelect).toHaveValue('')
   await page.keyboard.press('End')
   await expect(snapshotSelect).toHaveValue(snapshot.snapshotId)
   await page.keyboard.press('Tab')

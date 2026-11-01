@@ -1,6 +1,10 @@
 # XunJie 产品 CLI（候选交付）
 
-本目录提供产品运行、维护恢复及学校成员管理 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。默认产品网页已接入[学习空间身份与活动](../../docs/student-agent-implementation/wp02-identity-activity.md)，`school-member` / `school-membership` / `school-connection` 从仓库外私密输入建立成员、授予或撤销资格、撤销指定客户端连接。安装或启动成功不代表课程、Agent 或教学效果验收通过。
+混合部署管理新增 `learning-binding --file` 与远端维护的 `fence-source --file`；成员创建支持首次固定 target，takeover 的 receiver 支持既有 SSH 部署配置。具体输入、认证边界及恢复顺序见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。原同机 receiver 的 `{id,root}` 仍受支持。
+
+本目录提供产品运行、维护恢复及学校成员管理 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。默认产品网页已接入[学习空间身份与活动](../../docs/student-agent-implementation/wp02-identity-activity.md)与[课程任务与固定发布版本](../../docs/student-agent-implementation/specs/wp02-course-task-releases.md)，`school-member` / `school-membership` / `school-connection` 从仓库外私密输入建立成员、授予或撤销资格、撤销指定客户端连接；`course-import` / `course-access` / `course-result` 消费版本化课程清单、授予/撤销课程资格并查询原登记结果。安装或启动成功不代表课程、Agent 或教学效果验收通过。
+
+`course-import --file <清单.json>` 从清单所在目录读取每个材料的 `path`，拒绝越出目录、摘要或长度不一致的文件；清单格式见 `@xunjie/contracts/courses` 的 `courseImportSchema`（不含 `resources` 字段）。单次导入请求上限 64 MiB（含所有资源），更大课程请拆分为多个发布版本。`course-access --file` 输入 `{requestId,courseId,principalId,active}`，`course-result --file` 输入 `{requestId}`。
 
 这是产品运行底座的候选交付。完整工程门禁、Mac/Windows 实际包安装、启停、隔离与故障恢复、Linux 独立包运行及 Mac→学校 Linux 的真实公网 HTTPS 认证、断连重连和撤销已经验证。Windows Chrome/Edge 基础页面由负责人实机确认；各平台证据、限制和可重复入口见[运行交接](../../docs/student-agent-implementation/runtime-acceptance.md)。签名、公证按负责人要求移出本轮；不宣称完整课程产品或自动更新已交付。
 
@@ -113,6 +117,7 @@ xunjie delete --root /private/environment --environment-id <environmentId>
 {
   "sourceEnvironmentId": "来源环境 UUID",
   "sourceServiceId": "来源服务 UUID",
+  "sourceInstallationId": "来源安装 UUID",
   "capabilities": ["目标实际支持的能力"]
 }
 ```
@@ -121,6 +126,8 @@ xunjie delete --root /private/environment --environment-id <environmentId>
 xunjie authorize --root /private/target --file /private/authorization.json --out /private/grant.json
 xunjie revoke --root /private/target --grant-id <grantId>
 ```
+
+授权必须绑定来源安装 ID：`sourceInstallationId` 取自来源环境真实的 `installationId`（`xunjie status --root <来源root>` 的 environment），缺失或不是 UUID 时命令直接报错，不产生 grant。这样来源实例的退休/失权（fence）能精确作废该实例持有的凭据，同一环境/服务的后继安装不受影响；无法归属到某个安装的旧授权会在按安装 fence 时被一并撤销。
 
 `--out` 的父目录须已存在，文件须不存在。CLI 以私有 `0600` 模式新建并写入完整 grant（含 token），stdout 仅返回 `{ "path": "绝对路径", "grantId": "…" }`。POSIX 模式不等同于 Windows ACL，Windows 文件访问限制需在目标平台验收。写入失败会尝试撤销已产生的授权，撤销失败会明确报错。妥善保管及交接 grant 文件，不将它提交或贴进日志。
 

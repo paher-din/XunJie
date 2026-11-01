@@ -1,0 +1,83 @@
+{
+  "executedOn": "2026-11-01",
+  "source": {
+    "root": "/Users/robertwu/xj-154/roots/device",
+    "environmentId": "c838b6ec-b57a-4f3c-bf98-36d48d339d39",
+    "installationId": "47ea74dc-01e8-4e59-a6d7-0af5eb88812e",
+    "backupId": "36f28f9d-183d-402b-a5ca-9d10fdcd160b"
+  },
+  "target": {
+    "root": "/Users/robertwu/xj-154/roots/restored",
+    "installationId": "1016c6d0-51f7-4b8c-bf31-0029a2271c5a",
+    "phase": "active"
+  },
+  "receiver": {
+    "id": "1a8650f0-29f8-4f05-b54f-92db5a868509/306d0eaa-ae25-4472-89b5-8cbccab54971",
+    "transport": "SSH 维护通道 ~/.config/xunjie-cloud/ssh.conf，BatchMode=yes、StrictHostKeyChecking=yes、ForwardAgent=no、ConnectTimeout=10",
+    "remoteRoot": "/home/xunjie-admin/xj154/roots/school",
+    "remoteCli": "/home/xunjie-admin/xj154/package/product-linux-x64/app/cli.js（完整包 fence-source，stdin 传入无秘密源 service 清单）"
+  },
+  "steps": [
+    {
+      "name": "缺 receiver 的接管被拒，目标保持隔离",
+      "status": "passed",
+      "detail": { "receivers": [], "error": "missing-receiver", "phaseAfter": "isolated", "sourceUntouched": true }
+    },
+    {
+      "name": "接收方 SSH 失联时不确认接管，目标保持隔离",
+      "status": "passed",
+      "detail": {
+        "host": "xj-unreachable（不在既有 SSH 配置内）",
+        "error": "receiver-unavailable",
+        "phaseAfter": "isolated",
+        "retirementProof": "已保存，可在同一 proof 下重试而无需二次退休"
+      }
+    },
+    {
+      "name": "源被退休后旧实例不能再承载业务",
+      "status": "passed",
+      "detail": {
+        "retiredFile": "retired.json 指向 targetInstallationId 1016c6d0…",
+        "maintenanceResume": "source-retired",
+        "start": "source-retired",
+        "businessHttpOnOldPort": "503 maintenance（写入与读取均拒绝）"
+      }
+    },
+    {
+      "name": "真实接管完成：先退休源，再经 SSH 让学校 fence 全部源 service",
+      "status": "passed",
+      "detail": {
+        "result": { "phase": "active", "backupId": "36f28f9d-183d-402b-a5ca-9d10fdcd160b", "installationId": "1016c6d0-51f7-4b8c-bf31-0029a2271c5a" },
+        "fencedServiceIds": [
+          "dd66e818-5ceb-4762-9137-36dcdf0ece4b",
+          "fdf0a85f-b496-4ae4-bbc9-bbacf47171d9",
+          "42431de5-f5b0-449f-9fa2-0673f3bf1167"
+        ],
+        "confirmation": "接收方 fence-source 返回 fenced:true 且 sourceServiceIds 完全匹配，否则不得标记为已接管",
+        "receiverFenceState": {
+          "path": "/home/xunjie-admin/xj154/roots/school/private/connections/1a8650f0…/306d0eaa…/sources/c838b6ec…/<sourceServiceId>/generation.json",
+          "generation": 1,
+          "sourceServiceIds": [
+            "dd66e818-5ceb-4762-9137-36dcdf0ece4b",
+            "42431de5-f5b0-449f-9fa2-0673f3bf1167",
+            "fdf0a85f-b496-4ae4-bbc9-bbacf47171d9"
+          ]
+        }
+      }
+    },
+    {
+      "name": "fence 后旧凭据在接收方立即失效",
+      "status": "passed",
+      "detail": { "oldGrant": "c9b84a0e… 的 token 访问学校 Courses 返回 403 forbidden", "note": "接收方 generation 递增，旧 token 不再被接纳" }
+    },
+    {
+      "name": "旧连接/旧 namespace 在新安装上不被接纳",
+      "status": "passed",
+      "detail": { "oldConnectionId": "fa771234…", "newInstallationRead": "403 forbidden", "reason": "新 installation 只承认重新批准后的成员连接" }
+    }
+  ],
+  "notes": [
+    "接管失败路径不替换旧 binary 当回滚：源保持 retired、原备份与现场保留，目标停在 isolated。",
+    "远端 fence 只走公开 CLI + 既有 SSH 配置；适配器不索取密钥、不允许 agent 转发。"
+  ]
+}

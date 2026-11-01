@@ -2,8 +2,10 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
-import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData } from '@xunjie/learning-space';
+import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
+  createCourses, spaceCourseMigrations, createLearningAuthority } from '@xunjie/learning-space';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
+import type { ActionIntentOptions } from '@xunjie/learning-space';
 import type { InstalledConfiguration } from './runtime.js';
 import { databaseBinding, resolveCredential, storeCredential } from './postgres.js';
 import { atomicJson, exists } from './io.js';
@@ -17,7 +19,7 @@ import { createSchoolClient } from './school-client.js';
 /** Normal product composition; no test hosts, account fixtures or legacy SQLite dependencies. */
 export async function createProductLearningApplication(context: {
   root: string; environment: RuntimeEnvironment; configuration: InstalledConfiguration;
-}) {
+}, actions: ActionIntentOptions = {}) {
   const { root, environment, configuration } = context;
   const client = environment.profile === 'school' ? undefined : createSchoolClient(root, environment);
   const database = await databaseBinding(root, configuration.database);
@@ -62,16 +64,27 @@ export async function createProductLearningApplication(context: {
       opened.push(storage);
       return { storage, binding, backend, migrations };
     }
-    const space = await owner('space-course', spaceMigrations);
+    const space = await owner('space-course', spaceCourseMigrations);
     const data = await owner('learning-data', learningMigrations);
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
-    const learning = createLearningData(data.storage, spaces);
-    for (const [module, validate] of [[space, spaces.validate], [data, learning.validate]] as const) {
-      owners.push(createStorageRecoveryOwner({ storage: module.storage, binding: module.binding, migrations: module.migrations,
+    const courses = createCourses(space.storage, spaces);
+    const learning = createLearningData(data.storage, spaces, courses, actions);
+    for (const [module, validate] of [[space, async () => { await spaces.validate(); await courses.validate(); }],
+      [data, learning.validate]] as const) {
+      const recoveryOwner = createStorageRecoveryOwner({ storage: module.storage, binding: module.binding, migrations: module.migrations,
         resources: configuration.resources, resourceRoots: [join(root, 'learning-resources', module === space ? 'space-course' : 'learning-data')],
-        validateService: async () => validate() }));
+        validateService: validate });
+      const participant = recoveryOwner.participant;
+      owners.push(module === data ? { ...recoveryOwner, participant: { ...participant,
+        async closeDispatch() { learning.intents.closeDispatch(); await participant.closeDispatch(); },
+        async drain() { await learning.intents.drain(); await participant.drain(); },
+        async resume() { await participant.resume(); learning.intents.resume(); },
+      } } : recoveryOwner);
     }
-    return { owners, handle: createLearningEntry({ environment, spaces, learning, client,
+    const localTarget = { ...data.storage.owner, version: 1 as const };
+    const schoolClient = environment.profile === 'school' ? undefined : createSchoolClient(root, environment, {
+      target: localTarget, create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions) });
+    return { owners, capabilities: { 'learning.authority': createLearningAuthority(spaces, courses) }, handle: createLearningEntry({ environment, spaces, learning, courses, client: schoolClient,
       target: { ...data.storage.owner, version: 1 }, administratorToken: await resolveCredential(root, 'control') }) };
   } catch (error) { await Promise.allSettled(opened.map(storage => storage.close())); throw error; }
 }
@@ -89,7 +102,12 @@ export function createLearningRecoveryTargets(options: {
     return createStorageRecoveryTarget({ owner: { environmentId: options.environment.environmentId, serviceId: descriptor.serviceId },
       admin: async () => { const value = await options.admin(); if (!value) throw new RecoveryError('target-database-required'); return value; },
       resources: options.resources, backend: createFileBackend({ id: unit, root: resourceRoot }), resourceRoots: [resourceRoot],
-      migrations: unit === 'space-course' ? spaceMigrations : learningMigrations,
-      validateService: storage => unit === 'space-course' ? createSpaces(storage).validate() : validateLearningData(storage) });
+      migrations: unit === 'space-course' ? spaceCourseMigrations : learningMigrations,
+      validateService: async storage => {
+        if (unit === 'learning-data') return validateLearningData(storage);
+        const spaces = createSpaces(storage);
+        await spaces.validate();
+        await createCourses(storage, spaces).validate();
+      } });
   });
 }

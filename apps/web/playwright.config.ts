@@ -32,9 +32,10 @@ export default defineConfig({
     name: 'chromium',
     // 默认用 Playwright 自带的 Chromium，保证任何人 `npm run test:e2e` 都能复现同一道门禁。
     // 验收要在**真实 Chrome** 上取证时设 XUNJIE_E2E_BROWSER_CHANNEL=chrome（本机安装的 Google Chrome），
-    // 只换浏览器实现，不换用例、不换断言。
+    // 只换浏览器实现，不换用例、不换断言。设备档位的 UA 固定为 Windows；在 macOS 上沿用会让
+    // Chrome 以 Windows 输入路径处理隐藏 textarea，重复插入正文，所以保留本机真实 UA。
     use: { ...devices['Desktop Chrome'], ...(process.env.XUNJIE_E2E_BROWSER_CHANNEL
-      ? { channel: process.env.XUNJIE_E2E_BROWSER_CHANNEL }
+      ? { channel: process.env.XUNJIE_E2E_BROWSER_CHANNEL, userAgent: undefined }
       : {}) },
   }],
   // xj-dev 验收（xjDevBaseline.spec.ts）直连运行中的环境，不需要也不应拉起 prep/real 服务。

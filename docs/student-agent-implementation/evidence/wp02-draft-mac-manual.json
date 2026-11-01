@@ -1,0 +1,100 @@
+{
+  "recordedAt": "2026-10-31T15:20:19.296Z",
+  "issue": 152,
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "chrome": "Google Chrome 156.0.8078.79",
+  "productPackage": "/Users/robertwu/XunJie-acceptance/wp02-5c5a4ac/product-darwin-arm64-r1",
+  "school": {
+    "state": "ready",
+    "endpoint": "http://127.0.0.1:60667",
+    "environmentId": "ecc27708-dde4-4ed4-98b4-949c324bcb9d"
+  },
+  "device": {
+    "state": "ready",
+    "endpoint": "http://127.0.0.1:60669",
+    "environmentId": "690cf4a1-ca14-4c24-9100-60b4fc663a54"
+  },
+  "schoolDirect": {
+    "activityId": "6c7ed5ab-09b7-45e7-9fca-cd1784927bad",
+    "draftId": "151a0e2a-04f3-4bbd-92b9-d2130a9f56b4",
+    "revision": 1,
+    "question": "直连草稿验收：为什么需要边界输入？",
+    "references": [
+      {
+        "kind": "course-material",
+        "copy": "完成 4 位加减与逻辑运算。",
+        "copyDigest": "5e72a41966f985f8e39c894d3f9ec48c5651b697ad8ec912b01d55ddcb5c46ac",
+        "range": {
+          "kind": "text",
+          "start": 11,
+          "end": 25
+        }
+      },
+      {
+        "kind": "course-field",
+        "copy": "实现四种运算",
+        "copyDigest": "99c8a6725fe8454de08a84b16de2e0d910489ef28082ad855e01583faf3aa56b",
+        "range": {
+          "kind": "text",
+          "start": 0,
+          "end": 6
+        }
+      }
+    ],
+    "sendDisabled": true,
+    "privateMaterialVisible": false,
+    "reloadRestored": true,
+    "afterRevoke": {
+      "draftStatus": 403,
+      "activityStatus": 403
+    },
+    "afterRegrant": {
+      "question": "直连草稿验收：为什么需要边界输入？",
+      "references": 2
+    }
+  },
+  "clientHybrid": {
+    "hybridKey": "school:fa751fe7-faa8-4534-80b5-e88fcea9284f",
+    "activityId": "bcb52905-be66-45d2-a057-f89045056893",
+    "draftId": "faf24b35-9d47-4294-a6f6-233977aa6c39",
+    "owner": "device learning-data",
+    "deviceDraftStatus": 200,
+    "schoolDirectDraftStatus": 403,
+    "question": "客户端草稿验收：引用应保存在本机 owner。",
+    "references": [
+      "完成 4 位加减与逻辑运算。"
+    ],
+    "afterRevoke": {
+      "deviceDraftStatus": 403,
+      "schoolDraftStatus": 403,
+      "schoolSpaceGone": true
+    }
+  },
+  "responsive": {
+    "dark": {
+      "references": 2,
+      "questionVisible": true
+    },
+    "narrow": {
+      "viewport": "420x900",
+      "references": 2,
+      "questionBox": {
+        "x": 48,
+        "y": 647.6875,
+        "width": 324,
+        "height": 120
+      }
+    }
+  },
+  "limitations": [
+    "Two native product daemons on one Mac; this is not cross-machine or SSH takeover evidence.",
+    "Teaching effectiveness is not evaluated."
+  ],
+  "ticket": 155,
+  "commit": "5c5a4acc9053fbde0a7ab8e1f578901d4ca94705",
+  "macos": "27.2 (26B123)",
+  "productDistributionSha256": "0e06af82fd9809e6a46a6ff52781d06bac23ff76c5fd75e6916651f36f4acd32"
+}

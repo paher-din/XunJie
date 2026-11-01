@@ -86,7 +86,8 @@ for (const scenario of ['retired', 'isolated']) {
       const peerEnvironment = (await peer.install({ profile: 'remote' })).environment;
       assert.equal((await peer.start()).state, 'ready');
       const authorization = { sourceEnvironmentId: peerEnvironment.environmentId,
-        sourceServiceId: peerEnvironment.services[0].serviceId, capabilities: ['runtime.status'] };
+        sourceServiceId: peerEnvironment.services[0].serviceId,
+        sourceInstallationId: peerEnvironment.installationId, capabilities: ['runtime.status'] };
       const oldGrant = await runtime.authorize(authorization);
       const check = (target, token) => createOutboundConnection({
         connection: { connectionId: randomUUID(), ...authorization, target,
@@ -278,7 +279,8 @@ test('optional capabilities degrade readiness, and revoked required connections 
     const { environment: target } = await b.install({ profile: 'remote' });
     await b.start();
     const grant = await b.authorize({ sourceEnvironmentId: source.environmentId,
-      sourceServiceId: source.services[0].serviceId, capabilities: ['runtime.status'] });
+      sourceServiceId: source.services[0].serviceId, sourceInstallationId: source.installationId,
+      capabilities: ['runtime.status'] });
     await a.connect({ connectionId: randomUUID(), sourceEnvironmentId: source.environmentId,
       sourceServiceId: source.services[0].serviceId, target: target.services[0],
       requiredCapabilities: ['runtime.status'], optionalCapabilities: ['model.not-configured'], credentialRef: 'school-test' }, grant.token);
@@ -337,7 +339,8 @@ test('a target in maintenance makes a required outbound capability unavailable u
     const { environment: b } = await target.install({ profile: 'remote' });
     host = await createProductRuntimeHost({ root: targetRoot });
     const grant = await target.authorize({ sourceEnvironmentId: a.environmentId,
-      sourceServiceId: a.services[0].serviceId, capabilities: ['runtime.status'] });
+      sourceServiceId: a.services[0].serviceId, sourceInstallationId: a.installationId,
+      capabilities: ['runtime.status'] });
     await source.connect({ connectionId: randomUUID(), sourceEnvironmentId: a.environmentId,
       sourceServiceId: a.services[0].serviceId, target: b.services[0],
       requiredCapabilities: ['runtime.status'], optionalCapabilities: [], credentialRef: 'target' }, grant.token);

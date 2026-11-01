@@ -28,7 +28,7 @@ Management in independent SSH action processes (saved package/config reused):
   node recovery-hybrid-host.mjs --root ROOT --action authorize
     --source-file SOURCE_JSON --private-out NEW_PRIVATE_GRANT_FILE
   node recovery-hybrid-host.mjs --root ROOT --action fence-source --source-file SOURCE_JSON
-authorize source JSON: {sourceEnvironmentId,sourceServiceId}; output file is the
+authorize source JSON: {sourceEnvironmentId,sourceServiceId,sourceInstallationId}; output file is the
 actual grant (including token); stdout contains only grantId, never token.
 fence source JSON: {sourceEnvironmentId,sourceServiceIds:[ALL original service IDs]};
 stdout returns only {fenced:true,proofs:[actual fenceSource proofs]}.
@@ -252,8 +252,13 @@ async function main(opt) {
     const out = resolve(opt['private-out']);
     const parent = await lstat(dirname(out));
     if (!parent.isDirectory() || (parent.mode & 0o077)) fail('private-output-directory-required');
+    // A grant must be bound to the source installation that holds it; otherwise fencing the
+    // retired instance could not retire this credential.
+    if (!uuid(source.sourceEnvironmentId) || !uuid(source.sourceServiceId)
+      || !uuid(source.sourceInstallationId)) fail('source-identity-and-installation-required');
     const grant = await authority.authorize({ sourceEnvironmentId: source.sourceEnvironmentId,
-      sourceServiceId: source.sourceServiceId, capabilities: ['effect','status'] });
+      sourceServiceId: source.sourceServiceId, sourceInstallationId: source.sourceInstallationId,
+      capabilities: ['effect','status'] });
     await save(out, grant, true);
     console.log(JSON.stringify({ authorized: true, grantId: grant.grantId, privateOut: out })); return;
   }

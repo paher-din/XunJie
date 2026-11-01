@@ -1,0 +1,133 @@
+{
+  "ticket": "#153 第 14 条：生产草稿与待发呈现的 Chrome 检查——Windows 11 x64 侧补做（#155 承接）",
+  "measuredAt": "2026-11-01T09:47:04.194Z",
+  "commit": "fbefd28d788a1b1275f37a706afd26c205bb921d",
+  "platform": "Windows 11 家庭版 26200 / Intel Core Ultra 9 285H / AMD64",
+  "packageNode": "v24.21.0 (bundled resources/node, runs the runtime)",
+  "hostNode": "v24.15.0 (D:\\nodejs, used only to run the playwright-core check script)",
+  "postgres": "18.6 (bundled)",
+  "browser": "installed Chrome 156.0.8078.79",
+  "package": {
+    "file": "product-win32-x64 (tar.gz)",
+    "sha256": "64a885c914f5863e2a4a28d4ec87fb691024706f82b65a4aa215a9359e3c89c8",
+    "bytes": 86446519
+  },
+  "scope": "生产组合界面 + 真实 PostgreSQL；出厂未注册正式业务接收器，发送按设计不可用；待发条目经公开接口 prepare 后由生产组件呈现",
+  "method": "经 SSH 在真实 Windows 主机安装 win32-x64 完整包并以分离进程启动；用 playwright-core 驱动已安装 Chrome（非下载内核）打开生产页面，断言组合区、发送可用性与待发记录区。",
+  "steps": {
+    "create-activity": {
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "activityId": "c27a7805-c37f-48a1-a394-81f7687ced4a"
+      }
+    },
+    "seed-workspace": {
+      "ok": true,
+      "detail": "workspace"
+    },
+    "send-unavailable": {
+      "ok": true,
+      "detail": {
+        "disabled": true,
+        "label": "发送问题（尚未接入）"
+      }
+    },
+    "send-hint": {
+      "ok": true,
+      "detail": "真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。"
+    },
+    "no-fake-record": {
+      "ok": true,
+      "detail": 0
+    },
+    "draft-persists": {
+      "ok": true,
+      "detail": "Windows 草稿先写一句"
+    },
+    "prepare-intent": {
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "state": "prepared"
+      }
+    },
+    "record-rendered": {
+      "ok": true,
+      "detail": {
+        "phase": "等待接收方",
+        "head": "待发与接收记录\n\n等待接收方\n\nWindows 待发问题 A\n查看这次固定内容\n取消这次动作\n核对并继续原动作"
+      }
+    },
+    "record-phase-known": {
+      "ok": true,
+      "detail": "等待接收方"
+    },
+    "record-count-one": {
+      "ok": true,
+      "detail": 1
+    },
+    "record-shows-fixed-work": {
+      "ok": true,
+      "detail": true
+    },
+    "fixed-question-unchanged": {
+      "ok": true,
+      "detail": "待发与接收记录\n\n等待接收方\n\nWindows 待发问题 A\n查看这次固定内容\n取消这次动作\n核对并继续原动作"
+    },
+    "no-duplicate": {
+      "ok": true,
+      "detail": 1
+    },
+    "draft-keeps-newer-text": {
+      "ok": true,
+      "detail": "发送后继续写的问题 B"
+    },
+    "dispatch-unavailable": {
+      "ok": true,
+      "detail": {
+        "status": 503,
+        "value": {
+          "error": "unavailable"
+        }
+      }
+    },
+    "server-state-not-accepted": {
+      "ok": true,
+      "detail": "prepared"
+    },
+    "record-cancelled": {
+      "ok": true,
+      "detail": "已取消"
+    },
+    "server-cancel-durable": {
+      "ok": true,
+      "detail": "cancelled"
+    }
+  },
+  "observed": {
+    "phases": {
+      "afterPrepare": "等待接收方",
+      "afterCancel": "已取消"
+    },
+    "dispatch": {
+      "status": 503,
+      "value": {
+        "error": "unavailable"
+      }
+    },
+    "httpFailures": []
+  },
+  "failures": [],
+  "notes": [
+    "该设备未注册正式业务接收器：发送按钮为「发送问题（尚未接入）」且 disabled，提示「真实 Agent 尚未接入；问题与引用会自动保存在原工作区，暂不能发送。」，页面不出现任何待发记录（0 条），符合「不显示假的成功」。",
+    "待发条目经公开接口 prepare 后由生产组件渲染（等待接收方），固定问题与固定作品可展开查看，后续编辑不回改固定输入、刷新后仍为 1 条。",
+    "派发在正式包中返回 503 unavailable，服务端状态保持 prepared，不伪装已发出。",
+    "取消经生产按钮完成，组件转为「已取消」并给出「恢复为独立草稿」，服务端状态为 cancelled。",
+    "经接口直接取消而页面不刷新时不会反映：actions.refresh() 只读本机存储，远端视图仅在本机缺该条目时导入。本轮改由生产按钮取消，未把该行为计入通过或失败。"
+  ],
+  "limitations": [
+    "未运行真实 Agent/教师接收器，不产生业务接受事实与教学效果结论",
+    "未验证 Windows 物理键盘级中文输入法"
+  ]
+}

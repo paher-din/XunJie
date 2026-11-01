@@ -1,0 +1,200 @@
+{
+  "ticket": "#153 第 18 项：分机备份/独立恢复/SSH fencing 接管后核实原接收事实、未结取消与新 namespace 隔离（#155 承接）",
+  "supersedes": "docs/student-agent-implementation/evidence/wp02-intents-mac-crosshost.json 中 takeoverOutcome.state=failed（修复前观察；本文件为修复后重跑）",
+  "measuredAt": "2026-11-01T09:32:15.689Z",
+  "commit": "dd474944ef0487e6ae3ec09e102c148de04fc6a3",
+  "platform": "darwin/arm64 macOS 27.2 Apple M5",
+  "node": "v24.21.0",
+  "topology": "macOS 完整 darwin-arm64 包（本机 PostgreSQL 18.6、client/space-course/learning-data 三个 owner）经公网 HTTPS 连接独立 Ubuntu 24.04.5 学校主机；接管阶段经 SSH 由学校执行 fence-source，接收器为主机级 SSH 接收器。",
+  "package": {
+    "darwinResourcesSha256": "54e3bfca6394b6d600a77eff946427123f2bbbf095a9563e6c731bd5b0159469",
+    "linuxBundleBytes": 88021952,
+    "note": "两平台均由修复提交打包；学校侧为同提交 linux-x64 包"
+  },
+  "seededFacts": {
+    "activityId": "60c0ad27-17d3-4276-9bea-7d978fa3ce2d",
+    "workObjectId": "5e92e2f2-29af-4199-acfc-74b44a58f504",
+    "workContentId": "ab1dde41-7493-4aac-b6d9-9cc464a152c1",
+    "workValue": "﻿甲\r\n乙😀\r\n",
+    "question": "为什么是甲而不是乙？",
+    "dispatchIntentId": "86bca7ff-e495-4c00-8c2c-688a47015b08",
+    "cancelIntentId": "503448e1-7e1c-4aa2-8344-bb6d28784a4e",
+    "dispatch": {
+      "status": 503,
+      "state": "prepared"
+    },
+    "cancel": {
+      "status": 200,
+      "state": "cancelled"
+    },
+    "workspaceRevision": 1
+  },
+  "connection": {
+    "connectionId": "c3563437-0e39-4419-b89b-648d5c47bfd7",
+    "grantId": "eff522cf-73ea-4d4a-8303-9bde2e052205",
+    "sourceInstallationId": "572ac321-0116-475f-a535-fe551e74e51a",
+    "registered": {
+      "registered": true
+    },
+    "dependencies": [
+      {
+        "name": "PostgreSQL",
+        "required": true,
+        "state": "ready",
+        "detail": "18.6"
+      },
+      {
+        "name": "client:d9c5fbf6-75f8-4ad6-bba8-58f11adc7a71",
+        "required": true,
+        "state": "ready"
+      }
+    ],
+    "state": "ready",
+    "school": {
+      "environmentId": "1adf830b-9a19-422c-a157-284b9d83e63b",
+      "installationId": "0f90dfe1-d2eb-4ddc-a166-ab62d2223eb5",
+      "clientServiceId": "d9c5fbf6-75f8-4ad6-bba8-58f11adc7a71",
+      "endpoint": "https://101.201.141.133:8443"
+    }
+  },
+  "heldBackup": {
+    "backupId": "797661b2-1541-4eb1-8d0c-cb23a4d48f26",
+    "artifacts": 9,
+    "receiverIds": [
+      "1adf830b-9a19-422c-a157-284b9d83e63b/d9c5fbf6-75f8-4ad6-bba8-58f11adc7a71"
+    ],
+    "services": [
+      {
+        "serviceId": "dacc146e-28ba-4859-9b84-d3c5a9e372ca",
+        "schemaVersion": "1",
+        "engineVersion": "18.6"
+      },
+      {
+        "serviceId": "02e58b9e-655f-4a83-bfed-65bc655caf34",
+        "schemaVersion": "storage/1;owner/6",
+        "engineVersion": "18.6"
+      },
+      {
+        "serviceId": "ec0a8920-ca33-4f5f-a06f-eb98e670c534",
+        "schemaVersion": "storage/1;owner/5",
+        "engineVersion": "18.6"
+      }
+    ]
+  },
+  "restore": {
+    "phase": "isolated",
+    "state": "maintenance",
+    "namespace": "xunjie.v1.21930173-0380-4139-ac22-ecf0f07c9fe8.recovery.ba7e9cbc-1c40-4785-b377-ba5bda3b26de",
+    "dependencies": [
+      {
+        "name": "PostgreSQL",
+        "required": true,
+        "state": "ready",
+        "detail": "18.6"
+      }
+    ]
+  },
+  "takeover": {
+    "result": {
+      "phase": "active",
+      "backupId": "797661b2-1541-4eb1-8d0c-cb23a4d48f26",
+      "installationId": "3f7fa3c1-914f-4b15-9274-4c7e8f3de1df"
+    },
+    "state": "ready",
+    "dependencies": [
+      {
+        "name": "PostgreSQL",
+        "required": true,
+        "state": "ready",
+        "detail": "18.6"
+      }
+    ],
+    "endpoint": "http://127.0.0.1:59357",
+    "namespace": "xunjie.v1.21930173-0380-4139-ac22-ecf0f07c9fe8.recovery.ba7e9cbc-1c40-4785-b377-ba5bda3b26de",
+    "installationId": "3f7fa3c1-914f-4b15-9274-4c7e8f3de1df"
+  },
+  "verifiedOnTarget": {
+    "works": {
+      "status": 200,
+      "revision": 1,
+      "value": "﻿甲\r\n乙😀\r\n"
+    },
+    "draft": {
+      "status": 200,
+      "question": "为什么是甲而不是乙？"
+    },
+    "intents": [
+      {
+        "requestId": "503448e1-7e1c-4aa2-8344-bb6d28784a4e",
+        "state": "cancelled",
+        "question": "为什么是甲而不是乙？",
+        "workValue": "﻿甲\r\n乙😀\r\n"
+      },
+      {
+        "requestId": "86bca7ff-e495-4c00-8c2c-688a47015b08",
+        "state": "prepared",
+        "question": "为什么是甲而不是乙？",
+        "workValue": "﻿甲\r\n乙😀\r\n"
+      }
+    ],
+    "namespace": {
+      "current": "xunjie.v1.21930173-0380-4139-ac22-ecf0f07c9fe8.recovery.ba7e9cbc-1c40-4785-b377-ba5bda3b26de",
+      "stale": "xunjie.v1.21930173-0380-4139-ac22-ecf0f07c9fe8",
+      "currentRead": 200,
+      "staleRead": 403,
+      "absentRead": 403
+    },
+    "retiredGrant": {
+      "handshake": 401
+    },
+    "retiredSourceStart": {
+      "error": "{\"message\":\"运行库操作失败（start）：Recovery: source-retired\"}\n"
+    }
+  },
+  "successorReconnected": {
+    "registered": {
+      "registered": true
+    },
+    "state": "ready",
+    "dependencies": [
+      {
+        "name": "PostgreSQL",
+        "required": true,
+        "state": "ready",
+        "detail": "18.6"
+      },
+      {
+        "name": "client:d9c5fbf6-75f8-4ad6-bba8-58f11adc7a71",
+        "required": true,
+        "state": "ready"
+      }
+    ],
+    "grantId": "5318f65c-2b5b-496f-9b11-9c3daa922248",
+    "sourceInstallationId": "3f7fa3c1-914f-4b15-9274-4c7e8f3de1df"
+  },
+  "schoolSide": {
+    "state": "ready",
+    "fencedInstallations": [
+      "572ac321-0116-475f-a535-fe551e74e51a"
+    ],
+    "fencedServices": [
+      "dacc146e-28ba-4859-9b84-d3c5a9e372ca",
+      "02e58b9e-655f-4a83-bfed-65bc655caf34",
+      "ec0a8920-ca33-4f5f-a06f-eb98e670c534"
+    ],
+    "note": "fence 只提升被退休 installation 的 generation，学校自身仍 ready；同环境同 service 的新 installation 重新授权后可正常握手"
+  },
+  "passed": [
+    "分机 held 备份声明学校 client 接收器，独立恢复到空目标进入 isolated",
+    "SSH fencing 接管返回 phase=active，目标运行库 ready（修复前为 failed）",
+    "接管目标重读作品字节（BOM/CRLF/emoji）、草稿问题、prepared 未结意图与 cancelled 意图，内容与播种一致",
+    "旧 namespace 403、当前 recovery namespace 200、不存在 namespace 403",
+    "被退休 installation 的 grant 在学校返回 401，源实例 start 报 source-retired",
+    "同环境新 installation 重新授权后握手成功，目标依赖 client:d9c5fbf6 回到 ready"
+  ],
+  "failed": [],
+  "limitations": [
+    "未运行真实 Agent/教师接收器：派发仍返回 503 unavailable，未结意图只证明「未派发事实可恢复」，不证明远端接受",
+    "ssh 接收器只证明 fencing 协议与身份粒度，不宣称 WP03/07/12 业务已接入"
+  ]
+}

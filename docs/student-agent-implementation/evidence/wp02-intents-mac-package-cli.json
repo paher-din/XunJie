@@ -1,0 +1,254 @@
+{
+  "ticket": "#153 固定依据与持久待发意图 —— Mac 工程与完整包 CLI 验收（#155 承接）",
+  "measuredAt": "2026-11-01T08:32:42Z",
+  "commit": "ba7964594c2622252b08ffc8b4ee2698f2b10b34",
+  "platform": {
+    "os": "macOS 27.2",
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "node": "v24.21.0",
+    "postgresql": "18.6 (产品包内置)",
+    "browser": "安装版 Google Chrome 156.0.8078.79（后续浏览器组使用）"
+  },
+  "artifact": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "tarSha256": "0a8dc6a63891292d0874cbfba47a9783106a5b00a1f82d6c53050897a30d9898",
+    "tarBytes": 131411109,
+    "resourceCatalogSha256": "9d64fbd2179c045176c2b470ab59de320be1e5e4b05f7b557d7fbe96fc130608",
+    "resources": [
+      {
+        "id": "node",
+        "version": "24.21.0"
+      },
+      {
+        "id": "postgres",
+        "version": "18.6"
+      }
+    ],
+    "testReceiverPresent": false,
+    "testReceiverCheck": "在包内 app/ 与 web/ 里检索 controlledActionReceiver / action-receiver 均无命中；app 内的 receivers 仅为 SSH 恢复接收器"
+  },
+  "gates": {
+    "typecheck": {
+      "exit": 0,
+      "note": "npm run typecheck 全仓通过"
+    },
+    "build": {
+      "exit": 0,
+      "note": "npm run build 通过；首次失败为本机安全删除外挂拦截 apps/server/dist（444 文件 > 50 阈值），对该次构建放行后通过，非产品缺陷"
+    },
+    "checkContractsBrowser": {
+      "exit": 0,
+      "note": "10 个公开导出均 browser-safe"
+    },
+    "checkDocs": {
+      "exit": 0,
+      "note": "165 个 Markdown 文件、1240 个本地目标、0 失败"
+    }
+  },
+  "runtimeIntents": {
+    "command": "node --test --test-concurrency=1 apps/server/tests/action-intents.runtime.test.mjs",
+    "tests": 6,
+    "pass": 6,
+    "fail": 0,
+    "skipped": 0,
+    "items": [
+      "固定输入且不替换后续作品/草稿 head",
+      "丢回包按原身份查询且工作区确认不等于业务接受",
+      "持久取消先于派发生效且迟到接受不描述为撤回",
+      "在途动作不跨成员或篡改 scope 泄漏",
+      "生产维护排空派发且完整恢复保留已接收集事实/取消请求/固定资源",
+      "显式 owner 迁移保留真实 v4 草稿与作品字节后才接纳 v5 动作"
+    ]
+  },
+  "runtimeRegression": {
+    "command": "node --test --test-concurrency=1 learning-entry.runtime + learning-cli.runtime + works.runtime + hybrid-learning.runtime + learning-drain",
+    "tests": 12,
+    "pass": 12,
+    "fail": 0,
+    "skipped": 0
+  },
+  "packageCli": {
+    "install": {
+      "root": "/tmp/xj153-run/root-a",
+      "profile": "local",
+      "environmentId": "7f9039cd-a3b3-4b03-8214-fd489c23a27b",
+      "installationId": "97b91ff8-b4f6-4f84-8059-ea0ea09f893c",
+      "units": [
+        "client",
+        "space-course",
+        "learning-data"
+      ],
+      "postgres": "18.6"
+    },
+    "seeded": {
+      "activityId": "9287b8cb-b502-4360-ac92-4e10f3e3c07b",
+      "workFile": "原文.txt",
+      "workObjectId": "5f27dc4e-99f6-478d-b9e8-0332365dcdd7",
+      "workContentId": "731f6a20-02e6-4e4d-8402-eb5ccb902261",
+      "workValue": "﻿甲\r\n乙😀\r\n",
+      "draftId": "5efe5a36-4c30-4c4b-a86f-2fc4563454dc",
+      "draftQuestion": "为什么是甲而不是乙？",
+      "preparedIntent": "13c9d6bc-d8b0-4507-abae-b003de48e580",
+      "cancelledIntent": "818b5820-fa03-4af3-9610-7b588664dacf"
+    },
+    "capabilities": {
+      "value": [],
+      "note": "未登记业务接收器时 capabilities 为空"
+    },
+    "dispatchWithoutReceiver": {
+      "status": 503,
+      "body": {
+        "error": "unavailable"
+      },
+      "note": "正式发送不可用；包内不含测试接收器"
+    },
+    "cancel": {
+      "status": 200
+    },
+    "backupThreeOwners": {
+      "backupId": "5336e422-27aa-431a-bc8e-aea18ce80417",
+      "boundaryAt": "2026-11-01T08:30:51.511Z",
+      "completedAt": "2026-11-01T08:30:51.753Z",
+      "artifacts": 10,
+      "services": [
+        {
+          "serviceId": "23ef0449-9c0f-41a4-83e6-01d8acbf3db0",
+          "schemaVersion": "1"
+        },
+        {
+          "serviceId": "b813ba2e-b1a3-459b-9a82-d9fe522ce518",
+          "schemaVersion": "storage/1;owner/6"
+        },
+        {
+          "serviceId": "b394b239-e08e-4012-a99d-51d2e9926325",
+          "schemaVersion": "storage/1;owner/5"
+        }
+      ],
+      "receiverIds": []
+    },
+    "heldBackup": {
+      "backupId": "ee0b3a72-beb9-4347-a805-7e45788b3c9f",
+      "boundaryAt": "2026-11-01T08:31:35.559Z",
+      "artifacts": 10
+    },
+    "restore": {
+      "target": "/tmp/xj153-run/root-c",
+      "phase": "isolated",
+      "backupId": "ee0b3a72-beb9-4347-a805-7e45788b3c9f"
+    },
+    "isolatedReadsWhileMaintenance": {
+      "activities": 503,
+      "workspaces": 503,
+      "drafts": 503,
+      "intents": 503,
+      "body": {
+        "error": "maintenance"
+      }
+    },
+    "takeover": {
+      "phase": "active",
+      "backupId": "ee0b3a72-beb9-4347-a805-7e45788b3c9f",
+      "installationId": "0060200c-2faa-4fb7-ac29-3ae5f05cee09",
+      "clientNamespace": "xunjie.v1.7f9039cd-a3b3-4b03-8214-fd489c23a27b.recovery.8564aa8a-8a91-43f2-a51b-779fb6234f97"
+    },
+    "afterTakeoverReads": {
+      "endpoint": "http://127.0.0.1:49441",
+      "activityCount": 4,
+      "activityReadStatus": 200,
+      "worksStatus": 200,
+      "worksRevision": 1,
+      "files": [
+        {
+          "name": "原文.txt",
+          "kind": "text",
+          "contentId": "731f6a20-02e6-4e4d-8402-eb5ccb902261",
+          "objectId": "5f27dc4e-99f6-478d-b9e8-0332365dcdd7",
+          "value": "﻿甲\r\n乙😀\r\n",
+          "bomPreserved": true,
+          "crlfPreserved": true
+        }
+      ],
+      "draftStatus": 200,
+      "draftQuestion": "为什么是甲而不是乙？",
+      "draftRevision": 1,
+      "capabilities": [],
+      "intentsListStatus": 200,
+      "intents": {
+        "13c9d6bc-d8b0-4507-abae-b003de48e580": {
+          "status": 200,
+          "state": "prepared",
+          "hasFixedInput": true,
+          "dependencies": [
+            {
+              "kind": "work",
+              "objectId": "5f27dc4e-99f6-478d-b9e8-0332365dcdd7",
+              "contentId": "731f6a20-02e6-4e4d-8402-eb5ccb902261"
+            }
+          ]
+        },
+        "818b5820-fa03-4af3-9610-7b588664dacf": {
+          "status": 200,
+          "state": "cancelled",
+          "hasFixedInput": true,
+          "dependencies": [
+            {
+              "kind": "work",
+              "objectId": "5f27dc4e-99f6-478d-b9e8-0332365dcdd7",
+              "contentId": "731f6a20-02e6-4e4d-8402-eb5ccb902261"
+            }
+          ]
+        }
+      }
+    },
+    "contentIdentity": {
+      "objectIdSame": true,
+      "contentIdSame": true,
+      "valueSame": true,
+      "bomPreserved": true,
+      "crlfPreserved": true
+    },
+    "namespaceRejection": [
+      {
+        "namespace": "old (xunjie.v1.7f9039cd-…)",
+        "status": 403
+      },
+      {
+        "namespace": "current (…recovery.8564aa8a…)",
+        "status": 200
+      },
+      {
+        "namespace": "absent",
+        "status": 200
+      }
+    ],
+    "sourceRetired": {
+      "command": "start --root root-a",
+      "error": "Recovery: source-retired"
+    },
+    "schemaUpgradeNotRegistered": {
+      "command": "upgrade --file {kind: schema}",
+      "error": "Recovery: no-schema-upgrade-registered"
+    },
+    "targetConflictGuard": {
+      "command": "restore into an already installed root",
+      "error": "Recovery: target-conflict",
+      "note": "恢复目标必须为空目录，已安装目标被拒绝"
+    },
+    "takeoverRequiresFreshHeldBackup": {
+      "error": "Recovery: fresh-held-backup-required",
+      "note": "源侧必须存在同一 backupId 的 held 边界，普通备份不足以接管"
+    }
+  },
+  "notes": [
+    "草稿的 draftId 由活动派生（draftIdFor(activityId)），客户端不能自造；先用 GET drafts/<activityId> 取规范 draftId。",
+    "意图 ID 即 prepare 请求的 requestId，取消与派发都以该 ID 作为路径段；派发请求体为空对象。",
+    "作品 bases 必须与已登记作品内容身份一致，否则 identity-conflict；本轮不写 basis，只验证草稿问题与作品本体。",
+    "接管必须先把源置为 held（leaveClosed）并用同一备份恢复到空目标，否则报 fresh-held-backup-required。"
+  ],
+  "limitations": [
+    "本轮为工程与 CLI 组，浏览器生产 UI 与物理输入法、跨机见另一份记录"
+  ]
+}

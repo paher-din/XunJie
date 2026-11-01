@@ -227,7 +227,8 @@ async function main(opt, pkg) {
       const ownerId = randomUUID();
       const installed = await original.runtime.install({ profile: 'local', host: '127.0.0.1', requiredServiceIds: [ownerId] });
       original.owner = { environmentId: installed.environment.environmentId, serviceId: ownerId };
-      original.identity = { sourceEnvironmentId: installed.environment.environmentId, sourceServiceId: installed.environment.services[0].serviceId };
+      original.identity = { sourceEnvironmentId: installed.environment.environmentId, sourceServiceId: installed.environment.services[0].serviceId,
+        sourceInstallationId: installed.environment.installationId };
       const authorization = await authorize(original.identity, 'source'); original.grant = authorization.grant;
       original.connection = connection(original.identity, service);
       await original.runtime.connect(original.connection, original.grant.token);
@@ -342,7 +343,8 @@ async function main(opt, pkg) {
       assert.equal((await outbound(original.connection, original.grant).check()).reason, 'http_401');
       await rejected(() => originalOutbound.request('effect', { requestId: original.effectId }), code => code === 'http_401');
       const env = rebuilt.host.environment;
-      const identity = { sourceEnvironmentId: env.environmentId, sourceServiceId: env.services[0].serviceId };
+      const identity = { sourceEnvironmentId: env.environmentId, sourceServiceId: env.services[0].serviceId,
+        sourceInstallationId: env.installationId };
       const fresh = await authorize(identity, 'target'); assert.notEqual(fresh.grant.grantId, original.grant.grantId);
       // Restored connection deliberately retains its original descriptor; replace
       // only the credential through the public API, never copied installation JSON.

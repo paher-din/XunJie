@@ -11,18 +11,41 @@ function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'xunjie-scheduler-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const script = join(root, 'worker.mjs');
+  writeFileSync(join(root, 'start.mjs'), `
+import {appendFileSync,readdirSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {setTimeout} from 'node:timers/promises';
+export async function start(log,name,barrier,participants,startupDelay=0) {
+  if(startupDelay)await setTimeout(Number(startupDelay));
+  appendFileSync(log,JSON.stringify({name,action:'start'})+'\\n');
+  if (!barrier) return;
+  writeFileSync(join(barrier,encodeURIComponent(name)), '');
+  const deadline=Date.now()+10000;
+  while(readdirSync(barrier).length<Number(participants)) {
+    if(Date.now()>deadline)throw Error('worker wave did not rendezvous');
+    await setTimeout(10);
+  }
+}
+`);
   writeFileSync(script, `
 import {appendFileSync} from 'node:fs';
 import {setTimeout} from 'node:timers/promises';
-const [log,name,wait,code] = process.argv.slice(2);
-appendFileSync(log,JSON.stringify({name,action:'start'})+'\\n');
+import {start} from './start.mjs';
+const [log,name,wait,code,barrier,participants,startupDelay] = process.argv.slice(2);
+await start(log,name,barrier,participants,startupDelay);
 console.log('stdout '+name); console.error('stderr '+name);
 await setTimeout(Number(wait));
 appendFileSync(log,JSON.stringify({name,action:'end'})+'\\n');
 process.exitCode=Number(code);
 `);
   const events = join(root, 'events.jsonl');
-  return { root, events, task: (name, group, exclusive = false, code = 0) => ({
+  return { root, events, barrier(tasks, participants) {
+    const directory = mkdtempSync(join(root, 'barrier-'));
+    // Hold the first wave until every worker logs its start; process startup
+    // speed must not determine whether the configured budget was exercised.
+    for (const [index, task] of tasks.slice(0, participants).entries())
+      task.args.push(directory, String(participants), index === participants - 1 ? '200' : '0');
+  }, task: (name, group, exclusive = false, code = 0) => ({
     name, group, exclusive, command: process.execPath, args: [script, events, name, '80', String(code)], cwd: root,
   }), summary: () => JSON.parse(readFileSync(join(root, '.verification/latest.json'), 'utf8')) };
 }
@@ -32,6 +55,7 @@ for (const jobs of [1, 2, 4]) {
     const f = fixture(t);
     const tasks = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((name, index) => f.task(name, index % 2 ? 'server' : 'unit'));
     tasks.splice(4, 0, f.task('sensitive-1', 'tools', true), f.task('sensitive-2', 'tools', true));
+    f.barrier(tasks, jobs);
     assert.equal(await runVerification({ root: f.root, options: { jobs }, phases: [tasks] }), 0);
     let active = new Set(), peak = 0;
     for (const event of readFileSync(f.events, 'utf8').trim().split('\n').map(JSON.parse)) {
@@ -96,8 +120,9 @@ test('real lifecycle tasks share the global budget; helper-linked outputs stay i
 import {appendFileSync,writeFileSync,realpathSync} from 'node:fs';
 import {join} from 'node:path';
 import {setTimeout} from 'node:timers/promises';
-const [events,name,target]=process.argv.slice(2);
-appendFileSync(events,JSON.stringify({name,action:'start'})+'\\n');
+import {start} from './start.mjs';
+const [events,name,target,barrier,participants,startupDelay]=process.argv.slice(2);
+await start(events,name,barrier,participants,startupDelay);
 if(realpathSync(join(target,'node_modules/@xunjie/contracts'))!==realpathSync(join(target,'packages/contracts')))throw Error('shared output alias');
 writeFileSync(join(target,'node_modules/@xunjie/contracts/dist/result.txt'),name);
 await setTimeout(120);
@@ -114,7 +139,9 @@ appendFileSync(events,JSON.stringify({name,action:'end'})+'\\n');
     targets.push({ target, name: task.name });
     tasks.push({ ...task, cwd: target, args: [worker, f.events, task.name, target] }, f.task('reader-' + index, 'server'));
   }
-  assert.equal(await runVerification({ root: f.root, options: { jobs: 4 }, phases: scheduleTestPhases(tasks) }), 0);
+  const phases = scheduleTestPhases(tasks);
+  f.barrier(phases[0], 4);
+  assert.equal(await runVerification({ root: f.root, options: { jobs: 4 }, phases }), 0);
   let active = 0, peak = 0;
   for (const event of readFileSync(f.events, 'utf8').trim().split('\n').map(JSON.parse)) {
     active += event.action === 'start' ? 1 : -1; peak = Math.max(peak, active);

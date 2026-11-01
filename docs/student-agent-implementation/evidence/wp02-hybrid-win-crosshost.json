@@ -1,0 +1,425 @@
+{
+  "ticket": "#154 混合部署与业务恢复接管 —— Windows 设备侧真实跨机补充（承接 #155）",
+  "measuredAt": "2026-11-01T08:23:01Z",
+  "commit": "a471ce61ee5219b146ff83100c56a425bde8a7a8",
+  "branch": "codex/wp02",
+  "platform": {
+    "device": {
+      "os": "Microsoft Windows 11 家庭版 中文版 10.0.26200 build 26200",
+      "arch": "AMD64",
+      "cpu": "Intel(R) Core(TM) Ultra 9 285H",
+      "node": "v24.21.0 (产品包内置)",
+      "postgresql": "18.6 (产品包内置)",
+      "browser": "已安装 Google Chrome 156.0.8078.79（有头，非 Playwright 自带 Chromium）",
+      "productRoot": "C:/Users/h/xj-win/root",
+      "endpoint": "http://127.0.0.1:58990"
+    },
+    "school": {
+      "os": "Ubuntu 24.04.5 LTS x86_64",
+      "node": "v24.21.0",
+      "postgresql": "18.6",
+      "profile": "school",
+      "endpoint": "https://101.201.141.133:8443",
+      "tls": "自签 CA + server.pem，仅本验收期使用"
+    }
+  },
+  "artifact": {
+    "file": "product-win32-x64 (tar pkg-win.tgz)",
+    "bytes": 86783792,
+    "sha256": "d425ee21f38dbcda16a369dc3d729454afbece1fc1bda0bfc1a26fea5c4f31a7",
+    "transferCheck": "打包件在本机与 Windows 主机字节数一致（86783792），sha256 由本机计算"
+  },
+  "topology": "Windows 11 设备侧完整产品包（本机 PostgreSQL、文件资源、三个 owner）通过公网 HTTPS 连接独立 Ubuntu 24.04 学校主机；不是同机两进程，不使用 SSH 隧道或改地址冒充跨机。",
+  "environments": {
+    "device": {
+      "environmentId": "04543806-34ea-4fc1-b81a-553f56fec3f3",
+      "profile": "local",
+      "services": [
+        {
+          "unit": "client",
+          "serviceId": "b12f820a-719b-4fa2-8aa4-f8f986b91ba8",
+          "endpoint": "http://127.0.0.1:58990"
+        },
+        {
+          "unit": "space-course",
+          "serviceId": "3a39709f-46fd-4d36-8c51-1b4e54a06566",
+          "endpoint": "http://127.0.0.1:58990"
+        },
+        {
+          "unit": "learning-data",
+          "serviceId": "e3e41141-bd6f-43ae-b6ad-eb173b5b0954",
+          "endpoint": "http://127.0.0.1:58990"
+        }
+      ]
+    },
+    "school": {
+      "environmentId": "dd2d1e89-a7aa-4f70-93b0-e162aca14acd",
+      "profile": "school",
+      "services": [
+        {
+          "unit": "client",
+          "serviceId": "d14ac21d-98a7-47bb-bb3d-c41b9995432f",
+          "endpoint": "https://101.201.141.133:8443",
+          "capabilities": [
+            "runtime.status",
+            "learning.authority"
+          ]
+        },
+        {
+          "unit": "space-course",
+          "serviceId": "7db02e14-726c-4bd1-a98f-f08d418025eb",
+          "endpoint": "https://101.201.141.133:8443"
+        },
+        {
+          "unit": "learning-data",
+          "serviceId": "e6c599c7-3c4d-4967-aaf1-0882e4a5a689",
+          "endpoint": "https://101.201.141.133:8443"
+        }
+      ]
+    }
+  },
+  "connection": {
+    "connectionId": "36889f61-c0f1-4d8e-9b7b-a964b1d87694",
+    "runtimeConnectionId": "a639cc32-df9a-4bf8-96b1-bd32ab4c0253",
+    "target": {
+      "environmentId": "dd2d1e89-a7aa-4f70-93b0-e162aca14acd",
+      "serviceId": "d14ac21d-98a7-47bb-bb3d-c41b9995432f",
+      "unit": "client",
+      "endpoint": "https://101.201.141.133:8443",
+      "protocolVersion": 1,
+      "capabilities": [
+        "runtime.status",
+        "learning.authority"
+      ]
+    },
+    "requiredCapabilities": [
+      "learning.authority"
+    ],
+    "credentialRef": "school-authority",
+    "binding": {
+      "spaceKey": "school:36889f61-c0f1-4d8e-9b7b-a964b1d87694",
+      "identity": {
+        "environmentId": "dd2d1e89-a7aa-4f70-93b0-e162aca14acd",
+        "spaceId": "bd9b37ba-3dfc-4cfd-a394-92e0dea17b59",
+        "principalId": "7606ad1f-ef7c-45e6-a360-cb0a304ab3af",
+        "kind": "school",
+        "name": "学校学习空间"
+      },
+      "target": {
+        "environmentId": "04543806-34ea-4fc1-b81a-553f56fec3f3",
+        "serviceId": "e3e41141-bd6f-43ae-b6ad-eb173b5b0954",
+        "version": 1
+      },
+      "configured": true
+    }
+  },
+  "courseBasis": {
+    "courseId": "7161e3d9-a239-45ff-9c13-f54904c46709",
+    "courseName": "跨机验收课程（Windows）",
+    "taskId": "050e975b-0b3c-4216-9dcf-fecfd002b77d",
+    "releaseId": "23b6d05e-6769-4af6-bb85-e22c6e1ff13a",
+    "contentDigest": "f7847b8593e678312e2ac97647f98648bce26078470c39feb17deed9ab68a855",
+    "materials": [
+      {
+        "title": "公开材料",
+        "path": "materials/open.md",
+        "access": "student"
+      },
+      {
+        "title": "私有材料",
+        "path": "materials/private.md",
+        "access": "private"
+      }
+    ]
+  },
+  "connectSteps": [
+    {
+      "name": "device page offers the school entry without a school account",
+      "status": "passed",
+      "detail": {
+        "host": "127.0.0.1:58990"
+      }
+    },
+    {
+      "name": "device starts a connection against the real school endpoint",
+      "status": "passed",
+      "detail": {
+        "href": "https://101.201.141.133:8443/?authorize=36889f61-c0f1-4d8e-9b7b-a964b1d87694",
+        "host": "101.201.141.133:8443",
+        "path": "/"
+      }
+    },
+    {
+      "name": "student signs in on the school page and approves the device",
+      "status": "passed",
+      "detail": {
+        "notice": "连接已批准，请返回原客户端完成连接。"
+      }
+    },
+    {
+      "name": "device completes the approved connection and shows the school space",
+      "status": "passed",
+      "detail": {
+        "connectionId": "36889f61-c0f1-4d8e-9b7b-a964b1d87694"
+      }
+    }
+  ],
+  "businessPaths": [
+    {
+      "mode": "personal",
+      "endpoint": "http://127.0.0.1:58990",
+      "steps": [
+        {
+          "name": "local personal activity can be created",
+          "status": "passed",
+          "detail": {
+            "goal": "personal-fs9vg0-学校身份与中文作品\n自动保存，重开不变。"
+          }
+        },
+        {
+          "name": "Chinese work is authored in the production editor",
+          "status": "passed",
+          "detail": {
+            "file": "中文原文.txt",
+            "chars": 36
+          }
+        },
+        {
+          "name": "autosave persists the exact Chinese text",
+          "status": "passed",
+          "detail": {
+            "value": "personal-fs9vg0-学校身份与中文作品\n自动保存，重开不变。",
+            "files": 1
+          }
+        },
+        {
+          "name": "closing and reopening the activity restores the same work",
+          "status": "passed",
+          "detail": {
+            "files": 1,
+            "reopenedActivity": "07972a52-dee2-4e7a-9a17-db06ae715aaf",
+            "value": "personal-fs9vg0-学校身份与中文作品\n自动保存，重开不变。"
+          }
+        }
+      ],
+      "activityId": "07972a52-dee2-4e7a-9a17-db06ae715aaf",
+      "spaceKey": "personal",
+      "status": "passed"
+    },
+    {
+      "mode": "school-shared",
+      "endpoint": "https://101.201.141.133:8443",
+      "steps": [
+        {
+          "name": "school account signs in on the school endpoint",
+          "status": "passed",
+          "detail": {
+            "loginName": "win154-shared-d44de070",
+            "owner": "school host learning-data (no device target)"
+          }
+        },
+        {
+          "name": "fixed released version is pinned before the activity starts",
+          "status": "passed",
+          "detail": {
+            "pinned": "跨机验收课程（Windows） · 固定版本 23b6d05e · 依据摘要 f7847b8593e6"
+          }
+        },
+        {
+          "name": "student reads the published material and its download link resolves",
+          "status": "passed",
+          "detail": {
+            "linkScheme": "blob:https://101.201.141",
+            "status": 200,
+            "bytes": 428,
+            "excerpt": "{\"materialId\":\"3cf357d8-e3a0-4337-b35a-4"
+          }
+        },
+        {
+          "name": "private material stays unreachable for a course member",
+          "status": "passed",
+          "detail": {
+            "privateUrl": "/api/learning/releases/23b6d05e-6769-4af6-bb85-e22c6e1ff13a/materials/2aeea451-8fab-4313-941b-a00de045c74f",
+            "status": 404,
+            "privateMaterialListedInPage": 0
+          }
+        },
+        {
+          "name": "the editor opens on the pinned activity",
+          "status": "passed",
+          "detail": {
+            "url": "https://101.201.141.133:8443/?activity=3e53266a-9cd7-4cf2-a421-e9e24b443082&space=school"
+          }
+        },
+        {
+          "name": "Chinese work is authored in the production editor",
+          "status": "passed",
+          "detail": {
+            "file": "中文原文.txt",
+            "chars": 41
+          }
+        },
+        {
+          "name": "autosave persists the exact Chinese text",
+          "status": "passed",
+          "detail": {
+            "value": "school-shared-5ysv1p-学校身份与中文作品\n自动保存，重开不变。",
+            "files": 1
+          }
+        },
+        {
+          "name": "closing and reopening the activity restores the same work",
+          "status": "passed",
+          "detail": {
+            "files": 1,
+            "reopenedActivity": "3e53266a-9cd7-4cf2-a421-e9e24b443082",
+            "value": "school-shared-5ysv1p-学校身份与中文作品\n自动保存，重开不变。"
+          }
+        }
+      ],
+      "failures": [],
+      "activityId": "3e53266a-9cd7-4cf2-a421-e9e24b443082",
+      "spaceKey": "school",
+      "status": "passed"
+    },
+    {
+      "mode": "hybrid-local-owner",
+      "endpoint": "http://127.0.0.1:58990",
+      "steps": [
+        {
+          "name": "fixed released version is pinned before the activity starts",
+          "status": "passed",
+          "detail": {
+            "pinned": "跨机验收课程（Windows） · 固定版本 23b6d05e · 依据摘要 f7847b8593e6"
+          }
+        },
+        {
+          "name": "student reads the published material and its download link resolves",
+          "status": "passed",
+          "detail": {
+            "linkScheme": "blob:http://127.0.0.1:58",
+            "status": 200,
+            "bytes": 428,
+            "excerpt": "{\"materialId\":\"3cf357d8-e3a0-4337-b35a-4"
+          }
+        },
+        {
+          "name": "private material stays unreachable for a course member",
+          "status": "passed",
+          "detail": {
+            "privateUrl": "/api/learning/releases/23b6d05e-6769-4af6-bb85-e22c6e1ff13a/materials/2aeea451-8fab-4313-941b-a00de045c74f",
+            "status": 404,
+            "privateMaterialListedInPage": 0
+          }
+        },
+        {
+          "name": "the editor opens on the pinned activity",
+          "status": "passed",
+          "detail": {
+            "url": "http://127.0.0.1:58990/?space=school%3A36889f61-c0f1-4d8e-9b7b-a964b1d87694&activity=386fa6bd-1b03-47d3-8107-291359ea468e"
+          }
+        },
+        {
+          "name": "Chinese work is authored in the production editor",
+          "status": "passed",
+          "detail": {
+            "file": "中文原文.txt",
+            "chars": 46
+          }
+        },
+        {
+          "name": "autosave persists the exact Chinese text",
+          "status": "passed",
+          "detail": {
+            "value": "hybrid-local-owner-4v0irw-学校身份与中文作品\n自动保存，重开不变。",
+            "files": 1
+          }
+        },
+        {
+          "name": "closing and reopening the activity restores the same work",
+          "status": "passed",
+          "detail": {
+            "files": 1,
+            "reopenedActivity": "386fa6bd-1b03-47d3-8107-291359ea468e",
+            "value": "hybrid-local-owner-4v0irw-学校身份与中文作品\n自动保存，重开不变。"
+          }
+        }
+      ],
+      "failures": [],
+      "activityId": "386fa6bd-1b03-47d3-8107-291359ea468e",
+      "spaceKey": "school:36889f61-c0f1-4d8e-9b7b-a964b1d87694",
+      "status": "passed"
+    }
+  ],
+  "disconnectAndRevocation": [
+    {
+      "phase": "baseline",
+      "activityId": "386fa6bd-1b03-47d3-8107-291359ea468e",
+      "files": 1,
+      "chars": 46,
+      "url": "http://127.0.0.1:58990/?space=school%3A36889f61-c0f1-4d8e-9b7b-a964b1d87694"
+    },
+    {
+      "phase": "school-stopped",
+      "read": 503,
+      "transport": null,
+      "personalRead": 200,
+      "pageStillOnHybridSpace": true
+    },
+    {
+      "phase": "school-restored",
+      "read": 200,
+      "files": 1,
+      "sameActivity": true,
+      "listedActivities": 3,
+      "duplicateOfSameActivity": 1
+    },
+    {
+      "phase": "access-revoked",
+      "read": 403,
+      "create": 403,
+      "createBody": "{\"error\":\"forbidden\"}",
+      "personalRead": 200
+    },
+    {
+      "phase": "access-regranted",
+      "read": 200,
+      "files": 1,
+      "sameActivity": true
+    },
+    {
+      "phase": "connection-revoked",
+      "schoolSpaceEntries": 1,
+      "read": 403,
+      "personalRead": 200
+    }
+  ],
+  "screenshots": [
+    "wp02-hybrid-win-connect-1-device.png",
+    "wp02-hybrid-win-connect-2-school-approve.png",
+    "wp02-hybrid-win-connect-3-device-connected.png",
+    "wp02-hybrid-win-business-personal.png",
+    "wp02-hybrid-win-business-school-shared.png",
+    "wp02-hybrid-win-business-hybrid.png",
+    "wp02-hybrid-win-school-stopped.png",
+    "wp02-hybrid-win-school-restored.png",
+    "wp02-hybrid-win-access-revoked.png",
+    "wp02-hybrid-win-connection-revoked.png"
+  ],
+  "notes": [
+    "学校主机原计划 38195，实测当前网络出站只放行 8443，其余端口在约 5000ms 后被 RST；因此把学校产品改绑 8443（同一 environmentId/serviceId，仅端口与 endpoint 变化），未使用 SSH 隧道或端口转发冒充直连。",
+    "connect 首轮报 invalid_value path ['target','unit']：connection.target 必须是完整 runtimeServiceSchema（含 unit/endpoint/protocolVersion/capabilities）。按学校 environment.json 取 services[0]（unit=client）补全后 registered:true。",
+    "学校共享路径需要一个未绑定设备 target 的学校成员（learning data 留在学校主机）；把绑定到设备 target 的混合成员用于纯学校网页会按设计被 403 拒绝，这不是缺陷。本轮另建成员 win154-shared-d44de070 并单独授予课程资格。",
+    "私有材料在页面中不列出（私有材料按钮计数 0），直接请求 /api/learning/releases/<releaseId>/materials/<私有 materialId> 返回 404；公开材料同一路径 200。",
+    "断连用产品 stop 真实停掉学校守护进程（8443 端口关闭、TCP 拒绝），设备侧混合空间读取返回 503 明确拒绝，未静默转存个人空间、未新建第二份作品；恢复后同一活动、单文件、原文一致，活动列表里该活动只出现 1 次。",
+    "撤销课程资格后混合空间读取与新建课程活动均 403 forbidden，个人自主活动仍 200；重新授权后回到同一活动与同一份作品。",
+    "撤销客户端连接（学校 manage/connection）后混合空间读取 403、个人自主活动 200；设备页个人学习空间与「连接学校提供的入口」恢复可见，学校连接入口不再可用。",
+    "「学校空间」作为导航标签仍存在（页面结构未变），但学校连接入口已变为「连接学校提供的入口」，因此本记录不宣称标签消失，只宣称连接入口不可用。",
+    "本地 Web 页面链接是 blob: URL（内容已读入页面内存），因此材料请求改用同一产品 API 路径校验，不通过下载链接直接取。"
+  ],
+  "limitations": [
+    "本轮只覆盖 Windows 设备侧跨机业务与撤权/断连；双侧 held 备份、独立恢复与 SSH fencing 接管仍以 Mac 侧证据为准，未在 Windows 侧重做。",
+    "未验证 Windows 物理键盘级中文输入法（仅 Playwright 文本输入），不宣称输入法结论。",
+    "未产生任何教学效果结论。"
+  ]
+}

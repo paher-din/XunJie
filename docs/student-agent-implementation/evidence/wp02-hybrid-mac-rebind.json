@@ -1,0 +1,82 @@
+{
+  "executedOn": "2026-11-01",
+  "installation": {
+    "root": "/Users/robertwu/xj-154/roots/restored",
+    "installationId": "1016c6d0-51f7-4b8c-bf31-0029a2271c5a",
+    "clientNamespace": "xunjie.v1.c838b6ec-b57a-4f3c-bf98-36d48d339d39.recovery.e2260755-c98a-4f77-82b3-24aec4317d2c",
+    "preservedBusinessIdentity": "environmentId c838b6ec…、learning-data owner 42431de5-… 不变"
+  },
+  "steps": [
+    {
+      "name": "接收方重新签发 WP01 授权（learning.authority）",
+      "status": "passed",
+      "detail": {
+        "command": "xunjie authorize --root <school> --file <源身份> --out <私密授权>",
+        "newGrantId": "8bf9ea1e-fc18-476d-a291-f9fd1bf7227a",
+        "capabilities": ["learning.authority"],
+        "previousGrant": "c9b84a0e-… 已被 fence 作废"
+      }
+    },
+    {
+      "name": "目标把新凭据写回保留连接的原 credentialRef",
+      "status": "passed",
+      "detail": { "command": "xunjie set-credential --ref school-runtime-154 --file <token>", "result": { "saved": true }, "noDuplicateConnect": true }
+    },
+    {
+      "name": "学校页面重新批准新成员连接",
+      "status": "passed",
+      "detail": {
+        "flow": "客户端页连接学校入口 → 学校页登录 hybrid-154-… → 允许连接 → 已在学校批准，完成连接",
+        "connectionId": "00797b17-d54c-4113-9f95-b1ae9603b5ef",
+        "screenshots": ["rebind-1-device.png", "rebind-2-school-approve.png", "rebind-3-device-connected.png"],
+        "prerequisite": "恢复目标本身不带旧连接凭据（restore 生成新凭据与新 client namespace），因此旧 token/旧 cookie 无法续用"
+      }
+    },
+    {
+      "name": "管理员重新执行 learning-binding",
+      "status": "passed",
+      "detail": {
+        "input": { "connectionId": "00797b17-…", "runtimeConnectionId": "830952d2-…", "target": { "environmentId": "c838b6ec-…", "serviceId": "42431de5-…", "version": 1 } },
+        "identity": { "environmentId": "1a8650f0-29f8-4f05-b54f-92db5a868509", "spaceId": "d21ad5d5-df3c-4a67-b62d-7f2a100d991c", "principalId": "e1455a98-c5d0-4b0f-ae5b-c722d1407922" },
+        "configured": true
+      }
+    },
+    {
+      "name": "新 installation 以新凭据与新 namespace 读回原课程与作品",
+      "status": "passed",
+      "detail": {
+        "courses": 200,
+        "courseId": "6954806d-a9dd-4139-b6bb-ec6b45a9e7ba",
+        "workspace": 200,
+        "objectId": "5393fe48-dfcc-4945-80c3-9178fe171fc4",
+        "revision": 2,
+        "textPreserved": true
+      }
+    },
+    {
+      "name": "新 installation 在正式编辑器里继续写入并自动保存",
+      "status": "passed",
+      "detail": {
+        "ui": "打开 https://…/??space=school:<新 connectionId>&activity=… ，课程标题、学校开放材料与恢复正文均可见；活动处于已关闭态，点「重新开始活动」后在 Monaco 编辑器末尾追加文本",
+        "revisionAfterWrite": 4,
+        "bytes": 107,
+        "tail": "自动保存，重开不变。\\n接管后继续写入。",
+        "screenshot": "rebind-4-editor.png",
+        "note": "写入经学校权威校验（成员绑定 + 运行连接环境/服务/版本）后落入本机 learning-data owner"
+      }
+    },
+    {
+      "name": "旧浏览器队列不自动重放",
+      "status": "passed",
+      "detail": {
+        "productBehaviour": "备份不含浏览器未同步内容；旧库与队列保留在旧 namespace，产品没有自动导入入口",
+        "observed": "接管后新实例只呈现 held 边界的作品（revision 2），未见旧页面队列内容被写入",
+        "recoveryPath": "需要取回时保留旧页面、导出原文与原请求身份，先核实主体/目标/原回执再显式续接"
+      }
+    }
+  ],
+  "residual": {
+    "degraded": "installation 状态为 degraded：optional 的 school-optional-154 连接未重签，按设计保持 unavailable；required 连接 ready",
+    "cleanup": "本轮两个半途而废的 school-client 凭据（未获学校批准，无 grant）保留在 credentials 目录，不影响绑定链"
+  }
+}

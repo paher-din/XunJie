@@ -1,0 +1,305 @@
+{
+  "formatVersion": 1,
+  "issue": "https://github.com/paher-din/XunJie/issues/159",
+  "status": "passed",
+  "acceptedAttempt": 4,
+  "startedAt": "2026-11-01T17:15:05.258Z",
+  "finishedAt": "2026-11-01T17:15:49.524Z",
+  "environment": {
+    "os": "Windows 11 Home Chinese",
+    "osRelease": "10.0.26200",
+    "arch": "x64",
+    "account": "ordinary interactive desktop task, RunLevel Limited",
+    "session": 1,
+    "elevated": false,
+    "browser": {
+      "name": "installed Google Chrome",
+      "version": "Chrome/156.0.8078.79",
+      "headless": false
+    },
+    "node": "v24.21.0",
+    "postgres": "18.6"
+  },
+  "candidate": {
+    "distributionSha256": "d22571fdd362b9379da45e90d5fc3d840df807df9e3cd601f7a6a8858fa1c6cf",
+    "appAndWebFileCount": 192,
+    "appAndWebSha256": "ec5232f8d5f77dbf8c086a2047a562510f965f4a85166c24b6ea8183c73810ea",
+    "localAndWindowsProductFilesMatch": true,
+    "transferMetadataFilesExcluded": 214,
+    "excludedFiles": "macOS AppleDouble names with ._ prefix",
+    "unchangedProductSourceFiles": 23,
+    "sourceBaseline": "c4b0b80b1d5e025908e5968c8da9df2c42a876b6",
+    "scope": "Reuse the complete Windows candidate already accepted for the 63 product scenarios. This is a supplemental system-IME run, not a rebuild or an installer acceptance."
+  },
+  "method": {
+    "pipeline": "Win32 SendInput virtual keys -> installed Microsoft Pinyin -> installed headed Chrome -> accepted product package -> native PostgreSQL",
+    "keyboard": "SendInput virtual-key events for ASCII pinyin, candidate confirmation, Enter, Ctrl+V and Ctrl+Home/End. No Unicode key injection or CDP text/composition insertion.",
+    "systemIme": "Installed Microsoft Pinyin selected with the existing TSF profile for the session; original profile restored afterward.",
+    "browserControl": "Product APIs seed a blank synthetic activity/file and read the persisted result. CDP only navigates/focuses controls, observes trusted events and rendered state, and captures screenshots; it does not insert the tested body text.",
+    "focus": "Native foreground PID is checked before every injection and must belong to the isolated headed Chrome. A separate owned native window supplies the OS focus-away/back step. No Playwright focus emulation.",
+    "scope": "System input pipeline using native key injection, not CDP text insertion or a human hardware-keyboard observation."
+  },
+  "stages": [
+    {
+      "name": "actual-package-and-native-owner",
+      "status": "passed",
+      "durationMs": 3419,
+      "detail": {
+        "state": "ready",
+        "dependencies": [
+          {
+            "name": "PostgreSQL",
+            "required": true,
+            "state": "ready",
+            "detail": "18.6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "headed-chrome-and-installed-microsoft-pinyin",
+      "status": "passed",
+      "durationMs": 3923,
+      "detail": {
+        "desktop": "Default",
+        "session": 1,
+        "elevated": false,
+        "provider": "Microsoft Pinyin",
+        "profile": {
+          "clsid": "81d4e9c9-1d3b-41bc-9e6c-4b40bf79e35e",
+          "guid": "fa550b04-5ad7-411f-a5ac-ca038ec515d7",
+          "languageId": 2052
+        },
+        "modeProbe": "Chrome uses TSF; no legacy IMM context was exposed. Trusted composition events and exact persisted Chinese text determine the result."
+      }
+    },
+    {
+      "name": "editor-native-composition-newline-and-system-paste",
+      "status": "passed",
+      "durationMs": 13125,
+      "detail": {
+        "text": "开始你好世界\n粘贴中文"
+      }
+    },
+    {
+      "name": "actual-os-focus-roundtrip-and-control-key-boundaries",
+      "status": "passed",
+      "durationMs": 5867,
+      "detail": {
+        "text": "开始你好世界\n粘贴中文\n结束",
+        "osFocusRoundTrip": {
+          "leftOwnedChrome": true,
+          "returnedToOwnedChrome": true,
+          "desktop": "Default"
+        }
+      }
+    },
+    {
+      "name": "editor-refresh-and-activity-reopen",
+      "status": "passed",
+      "durationMs": 852,
+      "detail": {
+        "expected": "开始你好世界\n粘贴中文\n结束",
+        "actual": "开始你好世界\n粘贴中文\n结束",
+        "afterRefresh": "开始你好世界\n粘贴中文\n结束",
+        "afterReopen": "开始你好世界\n粘贴中文\n结束",
+        "refresh": true,
+        "reopened": true
+      }
+    },
+    {
+      "name": "question-native-composition-paste-refresh-and-reopen",
+      "status": "passed",
+      "durationMs": 15596,
+      "detail": {
+        "expected": "你好世界\n粘贴中文\n结束",
+        "actual": "你好世界\n粘贴中文\n结束",
+        "afterRefresh": "你好世界\n粘贴中文\n结束",
+        "afterReopen": "你好世界\n粘贴中文\n结束",
+        "refresh": true,
+        "reopened": true,
+        "osFocusRoundTrip": {
+          "leftOwnedChrome": true,
+          "returnedToOwnedChrome": true,
+          "desktop": "Default"
+        }
+      }
+    }
+  ],
+  "signals": {
+    "editor": {
+      "trustedCompositions": 4,
+      "composingKeydowns": 27,
+      "trustedPastes": 1
+    },
+    "question": {
+      "trustedCompositions": 3,
+      "composingKeydowns": 20,
+      "trustedPastes": 1
+    }
+  },
+  "editor": {
+    "expected": "开始你好世界\n粘贴中文\n结束",
+    "actual": "开始你好世界\n粘贴中文\n结束"
+  },
+  "question": {
+    "expected": "你好世界\n粘贴中文\n结束",
+    "actual": "你好世界\n粘贴中文\n结束"
+  },
+  "trustedContentEvents": {
+    "editor": [
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "开始",
+        "target": "Editor content"
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "你好",
+        "target": "Editor content"
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "世界",
+        "target": "Editor content"
+      },
+      {
+        "type": "paste",
+        "trusted": true,
+        "target": "Editor content"
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "结束",
+        "target": "Editor content"
+      }
+    ],
+    "question": [
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "你好",
+        "target": "TEXTAREA"
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "世界",
+        "target": "TEXTAREA"
+      },
+      {
+        "type": "paste",
+        "trusted": true,
+        "target": "TEXTAREA"
+      },
+      {
+        "type": "compositionend",
+        "trusted": false,
+        "data": "结束",
+        "target": "TEXTAREA"
+      }
+    ]
+  },
+  "previousAttempts": [
+    {
+      "attempt": 1,
+      "status": "failed",
+      "accepted": false,
+      "startedAt": "2026-11-01T16:57:27.562Z",
+      "reason": "Foreground guard aborted before native input. The probe also attempted to restore an untouched empty clipboard and reported an error; later probes snapshot/restore the clipboard only around actual paste.",
+      "rawResultSha256": "a7c4ff485dfd440d9201bfe1cf4c3751b57f62e94ac2d9ed63ef82e739103ee9",
+      "runtimeStopped": "stopped"
+    },
+    {
+      "attempt": 2,
+      "status": "failed",
+      "accepted": false,
+      "startedAt": "2026-11-01T17:05:13.182Z",
+      "reason": "User activity moved the foreground to Edge. The native foreground guard stopped further key injection; clipboard was untouched and input source/foreground restoration succeeded.",
+      "rawResultSha256": "a4465ad977002f1bef4a6a4ae12daef966b466e68d71d3cbba448f1a34ae28d8",
+      "runtimeStopped": "stopped"
+    },
+    {
+      "attempt": 3,
+      "status": "failed",
+      "accepted": false,
+      "startedAt": "2026-11-01T17:07:52.615Z",
+      "reason": "Native editor composition, paste and OS focus round-trip passed, but the probe clicked an activity card before the asynchronous activity list finished loading. The probe was corrected to await the current document and the actual target element; product code was unchanged.",
+      "rawResultSha256": "de7c2394f39abb3bd7c195ac79d755b6e27d0fca0a983c49782e13e1cc2d355d",
+      "runtimeStopped": "stopped"
+    }
+  ],
+  "desktopRestoration": {
+    "clipboardRestored": true,
+    "clipboardTouched": true,
+    "profileRestored": true,
+    "foregroundRestored": true,
+    "insertedEvents": 128
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-01T17:18:37.6749431Z",
+    "rootRemoved": true,
+    "remainingOwnedProcesses": 0,
+    "remainingOwnedTasks": 0,
+    "runtimeStopped": "stopped",
+    "localTemporaryHelpersRemoved": true,
+    "localTransferArchiveRemoved": true,
+    "retained": "Original accepted candidates and necessary raw logs only; no private clipboard contents or browser profile committed."
+  },
+  "rawEvidence": {
+    "resultSha256": "445db86325a178b00b9ce4d05571d727e77acdaba87087adc7fd5c8d27ce42ad",
+    "nativeOperationsSha256": "375f123a3182b9f49da71ad8242fdeef8a7a006e8e7e69cc75eb75085ff76a11",
+    "browserLogSha256": "469f1d31c95cce1337f32e0120e52925293a335d0ed017b5406121440a7d0145",
+    "probeSourceSha256": {
+      "acceptance.mjs": "6cc8c050641df8c748fe01cdbd98e53dc9d33ef33405627c9f833cf65da9a538",
+      "WinNative.cs": "5f94da581dbc842dd81e65798307e4e4d891fe5bb35e74f7705c541a4426516a",
+      "probe.ps1": "0b37182b710902d9020b366bbb865786d782710769d589b3e143d3752ed6458f",
+      "inspect-package.mjs": "6405f265108044396cf80ba36b018bd61185540bb78df38e540db9a1fe86cc93",
+      "cleanup.cjs": "6f6f17ccc6a01408c7f9cee5b845ce17d1225c55efa2682b6e0864f65a9f7b58",
+      "run-native.ps1": "a70e2c04eab69d457463b66eeed033ce8d4807f413a9314a882f3d63023e9f94"
+    }
+  },
+  "screenshots": [
+    {
+      "file": "wp02-ui159-windows-system-ime-editor.png",
+      "sha256": "23df1867eb92f1f8c36e365b625465d33b9a6f4d1432b9bc227dcce9523d7812",
+      "kind": "windows-system-ime-editor",
+      "platform": "win32-x64",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "theme": "light",
+      "imagePixels": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "file": "wp02-ui159-windows-system-ime-question.png",
+      "sha256": "6933ffce86fe0c1d2df58d9fa3d3e7f106666c9ceda36e0f6d3105860a4f8eea",
+      "kind": "windows-system-ime-question",
+      "platform": "win32-x64",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "theme": "light",
+      "imagePixels": {
+        "width": 1440,
+        "height": 1000
+      }
+    }
+  ],
+  "notExecuted": [
+    "human hardware-keyboard observation",
+    "graphical installer or launcher double-click",
+    "Windows whole-repository engineering rerun",
+    "Windows legacy Core targeted keyboard rerun",
+    "teaching effect evaluation"
+  ]
+}

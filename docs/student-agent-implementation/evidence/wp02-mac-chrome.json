@@ -1,0 +1,187 @@
+{
+  "formatVersion": 1,
+  "issue": 149,
+  "ticket": 155,
+  "status": "passed",
+  "observedAt": "2026-10-30T16:38:57.816Z",
+  "platform": "macOS 27.2 (26B123), arm64",
+  "browser": "Google Chrome 156.0.8078.79 (installed; Playwright 1.64 headed)",
+  "runtime": "Node.js 24.21.0 (packaged product runtime)",
+  "database": "PostgreSQL 18.6 (packaged product distribution)",
+  "commit": "4bd2c0e428375aa79e1a456567dda24a275c2093",
+  "product": {
+    "environmentId": "7e0d0d6e-4754-42c3-b252-11f291da0a9f",
+    "clientNamespace": "xunjie.v1.7e0d0d6e-4754-42c3-b252-11f291da0a9f",
+    "endpoint": "http://127.0.0.1:51125",
+    "schoolEnvironmentId": "1c31beff-d213-4ed8-a344-0f11630d3437",
+    "schoolEndpoint": "http://127.0.0.1:51141",
+    "connectionId": "37fab573-b71b-4403-b3e1-bd23f83b7510",
+    "proxiedActivityId": "f43415fd-476e-4a4d-ab99-7993dba207fd"
+  },
+  "member": {
+    "loginName": "mac-student",
+    "principalId": "c655fdd3-59cc-477c-b065-90d8ff872488"
+  },
+  "flows": [
+    {
+      "name": "personal activity create, close, reload, reopen and diagnostics",
+      "result": "passed",
+      "steps": [
+        "first entry shows 个人学习空间 without a school account, model or fixture",
+        "create an activity from a Chinese goal and multi-line question; detail shows the exact text",
+        "close the activity and observe the closed state",
+        "reload keeps the activity closed; reopening offers and performs 重新开始活动",
+        "?diagnostics=1 shows the runtime identity; the normal entry does not"
+      ]
+    },
+    {
+      "name": "personal activity and identity survive a product stop/start",
+      "result": "passed",
+      "steps": [
+        "stop and start the product daemon; the environment identity is unchanged",
+        "after restart the same identity can read the same activity; no new principal or space is created"
+      ]
+    },
+    {
+      "name": "school account login, wrong password, activity and logout",
+      "result": "passed",
+      "steps": [
+        "school entry shows the real account form",
+        "a wrong password is rejected with no session and no school identity",
+        "log in with the member created through xunjie school-member",
+        "create a school activity and confirm the multi-line Chinese text",
+        "reload keeps the school activity and it can be reopened",
+        "logout returns to the form, hides the activity and invalidates the old session"
+      ]
+    },
+    {
+      "name": "membership revocation, regrant and old-session fencing",
+      "result": "passed",
+      "steps": [
+        "an administrator revokes membership: the existing session and new login are rejected",
+        "regrant allows a fresh login; the pre-revocation session stays invalid"
+      ]
+    },
+    {
+      "name": "installed client connects a school, writes through the proxy and revokes locally",
+      "result": "passed",
+      "steps": [
+        "the installed client starts a connection with the school entry",
+        "the school authorization page logs the member in and approves the client",
+        "after completing the connection the school space is available",
+        "switch to 学校空间 and create an activity through the client proxy",
+        "the personal space cannot see or read the school activity created through the proxy",
+        "revoking the connection removes the school space and leaves zero local school-client-* grants"
+      ]
+    },
+    {
+      "name": "administrator revokes one client connection without revoking the member",
+      "result": "passed",
+      "steps": [
+        "a second client connection is established for the administrator test",
+        "the administrator revokes one connection; the member and their session still work, the proxy is denied",
+        "the client drops its stale local grant when the revoked entry is explicitly removed"
+      ]
+    },
+    {
+      "name": "two members, two spaces and forged headers stay isolated",
+      "result": "passed",
+      "steps": [
+        "a second real school member is created through the administrator CLI",
+        "two school members cannot read each other's activities",
+        "forged x-xj-space and identity headers cannot escalate access",
+        "personal and school spaces stay isolated"
+      ]
+    },
+    {
+      "name": "Chrome IME composition and focus behavior in the learning form",
+      "result": "passed",
+      "steps": [
+        "Chrome IME composition commits Chinese text into the goal field",
+        "composition then Enter inserts a newline in the question textarea and keeps focus"
+      ]
+    },
+    {
+      "name": "macOS environment, private data directory and package independence",
+      "result": "passed",
+      "steps": [
+        "product roots are private 0700 directories outside the repository",
+        "the packaged CLI runs from /tmp with only packaged resources and reports ready",
+        "the packaged product reports the native PostgreSQL binding"
+      ]
+    }
+  ],
+  "console": {
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "explanation": {
+      "403": "Two expected 403 responses from the revoked-connection proxy checks after the administrator/client revocation.",
+      "404": "Two favicon.ico requests return 404 on the product web entry (cosmetic; no flow depends on it)."
+    }
+  },
+  "limitations": [
+    "Both product environments ran on one Apple Silicon Mac over loopback HTTP; cross-machine networking and public TLS are not covered.",
+    "The client keeps a stale local grant after an administrator-only revocation until the user explicitly revokes that entry; the server denies proxied access immediately.",
+    "Teaching effect is not assessed."
+  ],
+  "administratorRevocation": {
+    "staleSchoolSpaceVisibleUntilClientRevoke": true
+  },
+  "privateRoots": [
+    {
+      "root": "personal-env-8",
+      "mode": "700"
+    },
+    {
+      "root": "school-env-8",
+      "mode": "700"
+    }
+  ],
+  "packageIndependence": {
+    "cwd": "/tmp",
+    "state": "ready",
+    "endpoint": "http://127.0.0.1:51125"
+  },
+  "databaseBinding": {
+    "host": "127.0.0.1",
+    "port": 51131,
+    "database": "postgres"
+  },
+  "completedAt": "2026-10-30T16:39:02.768Z",
+  "productPackage": {
+    "path": "product-darwin-arm64-r2 (outside the repository)",
+    "createdAt": "2026-10-30T16:38:41.390Z",
+    "profile": "full",
+    "platform": "darwin-arm64",
+    "distributionSha256": "ce72d00bbd872037ae67032a8c5f85a9333be12a063e607aa97e311c83f0c066",
+    "nodeVersion": "24.21.0",
+    "postgresVersion": "18.6",
+    "driverVersion": "8.16.3",
+    "signing": {
+      "status": "unsigned",
+      "signingAndNotarization": "deferred-by-user",
+      "buildBlocking": false
+    }
+  },
+  "sourceRevision": {
+    "commit": "4bd2c0e428375aa79e1a456567dda24a275c2093",
+    "baseCommit": "036d0b69ea0247df44c33e6019239db891d65b72",
+    "workingTreeDirty": false,
+    "note": "Acceptance build produced from the production sources at this commit; the product package bundles the same source."
+  },
+  "fixesVerified": [
+    {
+      "defect": "POST /api/learning/manage/connection returned an empty body, so xunjie school-connection failed with Unexpected end of JSON input after revoking.",
+      "fix": "The route now returns {revoked:true} and the native integration test asserts the HTTP response."
+    }
+  ],
+  "relatedEvidence": [
+    "wp02-mac-native-postgres.json",
+    "wp02-mac-ca-https.json",
+    "wp02-mac-ime.json"
+  ]
+}

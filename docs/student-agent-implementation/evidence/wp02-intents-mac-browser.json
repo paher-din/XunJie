@@ -1,0 +1,223 @@
+{
+  "ticket": "#153 固定依据与持久待发意图 —— Mac 浏览器与物理输入法（#155 承接）",
+  "measuredAt": "2026-11-01T08:41:03Z",
+  "commit": "ba7964594c2622252b08ffc8b4ee2698f2b10b34",
+  "platform": {
+    "os": "macOS 27.2",
+    "arch": "arm64",
+    "node": "v24.21.0",
+    "postgresql": "18.6",
+    "browser": "已安装 Google Chrome 156.0.8078.79（XUNJIE_E2E_BROWSER_CHANNEL=chrome，有头）"
+  },
+  "actionIntents": {
+    "file": "apps/web/e2e/actionIntents.spec.ts",
+    "tests": 15,
+    "passed": 15,
+    "failed": 0,
+    "productionUi": [
+      "production composer shows pending facts and late acceptance keeps the newer question",
+      "rejected contents recover as an independent draft and merge only after an explicit choice"
+    ],
+    "publicInterfaceSupplements": 13,
+    "cases": [
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "quota refusal sends nothing and an unsent cancellation survives a new workspace instance"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "one workspace call durably captures A while later edits B continue and reload keeps the same action"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "production composer shows pending facts and late acceptance keeps the newer question"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "rejected contents recover as an independent draft and merge only after an explicit choice"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "a local input receiver gets durable fixed typed inputs without waiting for any remote dependency"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "a new client namespace preserves the old queue and only explicit verified reconnection resumes its original identity"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "reconnecting an unsent cancellation never revives a preparation whose reply was lost"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "cancellation retains a trusted acceptance from another browser with independent local storage"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "explicit cancellation of server history from an independent browser reaches the original owner"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "expired school membership blocks dispatch and original reauthorization resumes without another create"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "known school access denial blocks a local receiver until original authorization returns"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "two actual tabs cannot revive a cancellation committed before their resumed dispatch"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "accepted but lost replies remain unknown through reopening and reconcile without changing identity or the new draft"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "accepted draft cleanup survives reopening when its first local write was refused"
+      },
+      {
+        "file": "actionIntents.spec.ts",
+        "name": "pausing during a real IndexedDB wait prevents a new local handoff"
+      }
+    ]
+  },
+  "regression": {
+    "files": [
+      "questionDrafts.spec.ts",
+      "worksEditor.spec.ts",
+      "hybridDeployment.spec.ts"
+    ],
+    "tests": 26,
+    "passed": 26,
+    "failed": 0,
+    "cases": [
+      {
+        "file": "hybridDeployment.spec.ts",
+        "name": "personal: the production page automatically retains Chinese work and reopens the same activity"
+      },
+      {
+        "file": "hybridDeployment.spec.ts",
+        "name": "school-shared: the production page automatically retains Chinese work and reopens the same activity"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "course text and requirements stay as fixed references through collapse, reload and activity switch"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "code reference keeps original copy after rename and edit, and survives file deletion and reload"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "an existing reliable workspace database upgrades without losing its work"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "a restored draft resumes periodic sync after authentication recovers"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "a local conflict candidate retains an unsynchronized code basis across reload"
+      },
+      {
+        "file": "hybridDeployment.spec.ts",
+        "name": "hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "local storage refusal keeps memory and retries automatically"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "two actual tabs preserve both local drafts until an explicit choice"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "course catalog returns after activity restoration races with discovery"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "actual editor automatically protects and synchronizes Chinese original text across reload"
+      },
+      {
+        "file": "questionDrafts.spec.ts",
+        "name": "another client conflict keeps both drafts and a late acknowledgement never settles later input"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "an opened activity survives API disconnection and reload, then continues its original pending sync"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "late and lost confirmations never settle later editor content"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "failed navigation leaves the editor able to continue automatic sync"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "reopening an activity uses the latest body from another actual tab, not a retained editor model"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "two actual tabs preserve both local edits under simultaneous IndexedDB competition"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "a remote conflict comparison includes input made while the original service read was delayed"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "continuous input advances durable local and remote content before the student stops typing"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "successful navigation protects input entered immediately before its delayed response"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "initial storage refusal retries automatically after the browser permits transactions again"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "school workspace logout › confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication"
+      },
+      {
+        "file": "worksEditor.spec.ts",
+        "name": "school workspace logout › confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication"
+      }
+    ]
+  },
+  "physicalIme": {
+    "tool": "xjkeys",
+    "mechanism": "CGEventPost(.cghidEventTap, .hidSystemState)",
+    "inputMethod": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "accessibilityTrusted": true,
+    "question": "开始你好世界\n结束",
+    "work": "你好\n结束",
+    "dispatchCount": 0,
+    "intentsCreated": 0,
+    "signals": {
+      "keydowns": 30,
+      "composingKeydowns": 27,
+      "compositionStarts": 4,
+      "compositionUpdates": 27
+    },
+    "metaNavigationKeptText": true,
+    "verdict": "物理键盘级中文输入法在「你的问题」与真实 Monaco 中分别组合上屏；组合期间 keydown 均为 keyCode=229，composition 逐字母增长；Cmd+←/→ 后正文不变；全程 0 次派发、0 条意图，未提前发送。"
+  },
+  "limitations": [
+    "浏览器组与输入法组均在个人空间；跨机与接管见另一份记录",
+    "输入法只证明页面接受物理按键与不提前发送，不产生教学效果结论"
+  ]
+}

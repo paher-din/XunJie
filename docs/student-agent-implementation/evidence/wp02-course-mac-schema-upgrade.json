@@ -1,0 +1,112 @@
+{
+  "formatVersion": 1,
+  "issue": 150,
+  "ticket": 155,
+  "kind": "schema-upgrade",
+  "status": "passed",
+  "observedAt": "2026-10-31T07:44:44.424Z",
+  "platform": "macOS 27.2 (26B123), arm64",
+  "sourceRoot": "/tmp/xj-v2-env",
+  "targetRoot": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/mac-completion/upgraded-env",
+  "activityId": "718da31b-50da-44ad-8530-d3d1a7eec116",
+  "oldCommit": "c3308ac",
+  "finalCommit": "0f8855698ef9e496dd89f3147407d7ddb24a1faf",
+  "schema": {
+    "before": [
+      "1:course-free-activities",
+      "2:reliable-activity-works"
+    ],
+    "after": [
+      "1:course-free-activities",
+      "2:reliable-activity-works",
+      "3:course-activity-coordination"
+    ]
+  },
+  "work": {
+    "before": [
+      {
+        "objectId": "dcc4abd5-5279-45a5-92eb-b22c988fafb2",
+        "name": "升级原文.txt",
+        "kind": "text",
+        "contentId": "968725e6-6c77-4020-8b3c-e2083323c133",
+        "encoding": "utf8",
+        "mediaType": "text/plain",
+        "value": "﻿中文原文\r\n第二行：保留 BOM 与 CRLF\r\n第三行：升级后必须字节一致\r\n"
+      }
+    ],
+    "after": [
+      {
+        "objectId": "dcc4abd5-5279-45a5-92eb-b22c988fafb2",
+        "name": "升级原文.txt",
+        "kind": "text",
+        "contentId": "968725e6-6c77-4020-8b3c-e2083323c133",
+        "encoding": "utf8",
+        "mediaType": "text/plain",
+        "value": "﻿中文原文\r\n第二行：保留 BOM 与 CRLF\r\n第三行：升级后必须字节一致\r\n"
+      }
+    ],
+    "preserved": true
+  },
+  "commands": [
+    "upgrade --root /tmp/xj-v2-env --resources /Users/robertwu/XunJie-acceptance/wp02-5ba2f41/product-darwin-arm64-r6/resources.json --file /Users/robertwu/XunJie-acceptance/wp02-5ba2f41/mac-completion/upgrade-input.json"
+  ],
+  "sourceEndpoint": "http://127.0.0.1:56988",
+  "activity": {
+    "activityId": "718da31b-50da-44ad-8530-d3d1a7eec116",
+    "identity": {
+      "environmentId": "846e9a11-d061-4ca5-bfd9-ba974831be08",
+      "spaceId": "c1f1b845-7814-4dbc-8d9e-21c2ed57f1be",
+      "principalId": "5fa945ab-2c2e-416d-9c26-3b9bf5d46f3e",
+      "kind": "personal",
+      "name": "个人学习空间"
+    },
+    "target": {
+      "environmentId": "846e9a11-d061-4ca5-bfd9-ba974831be08",
+      "serviceId": "ade50bfd-8742-41b5-9b27-0c89dcc98cbb",
+      "version": 1
+    },
+    "goal": "v2升级基线-中文学习活动-6ff78208",
+    "question": "升级到 v3 课程协同后，原有活动与作品字节必须保持不变。\n第二行：保留 BOM、CRLF 与中文标点“引号”。",
+    "references": [],
+    "status": "open",
+    "createdAt": "2026-10-31T07:44:03.676Z"
+  },
+  "upgrade": {
+    "phase": "isolated",
+    "root": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/mac-completion/upgraded-env",
+    "backupId": "54ac864b-9c81-41fa-b2f0-8e19ec979441"
+  },
+  "targetStart": {
+    "state": "maintenance",
+    "endpoint": "http://127.0.0.1:57111"
+  },
+  "takeover": {
+    "phase": "active",
+    "backupId": "54ac864b-9c81-41fa-b2f0-8e19ec979441",
+    "installationId": "acaffc69-02b5-4cec-a649-e317677a1928"
+  },
+  "activityPreserved": true,
+  "targetEndpoint": "http://127.0.0.1:57111",
+  "screenshot": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/results/screenshots/wp02-course-mac-schema-upgrade.png",
+  "uiText": "返回活动列表\nv2升级基线-中文学习活动-6ff78208\n\n升级到 v3 课程协同后，原有活动与作品字节必须保持不变。\n第二行：保留 BOM、CRLF 与中文标点“引号”。\n\n继续围绕这个目标学习。\n\n关闭活动\n当前作品\n文件名\n新建文件\n升级原文.txt\n新名称\n重命名\n删除文件\n1\n2\n3\n4\n中文原文\n第二行：保留 BOM 与 CRLF\n第三行：升级后必须字节一致",
+  "completedAt": "2026-10-31T07:44:49.703Z",
+  "restartCheck": {
+    "status": "passed",
+    "checkedAt": "2026-10-31T07:50:26.349107+00:00",
+    "endpoint": "http://127.0.0.1:57111",
+    "activityId": "718da31b-50da-44ad-8530-d3d1a7eec116",
+    "afterStopStart": true,
+    "file": "升级原文.txt",
+    "objectId": "dcc4abd5-5279-45a5-92eb-b22c988fafb2",
+    "contentId": "968725e6-6c77-4020-8b3c-e2083323c133",
+    "sameAsBeforeUpgrade": true,
+    "bytes": 91,
+    "sha256": "dcb75a6cc643259bab0f226aff6e2156c1a228f5a676724607c5cb60c97fac80",
+    "bom": "efbbbf",
+    "crlfCount": 3,
+    "files": [
+      "升级原文.txt"
+    ],
+    "uiEvidence": "/Users/robertwu/XunJie-acceptance/wp02-5ba2f41/results/screenshots/wp02-course-mac-schema-upgrade.png"
+  }
+}

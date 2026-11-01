@@ -1,0 +1,414 @@
+{
+  "subject": "PR157 R1-R8 repair platform acceptance",
+  "measuredAt": {
+    "windowsFinished": "2026-11-01T12:39:04.316Z",
+    "crosshostFinished": "2026-11-01T12:57:04.063Z"
+  },
+  "reviewedHead": "6fc35b20e2169ce36b44c4bd7854a239abc8e8b0",
+  "acceptedWorkingTreeDiffSha256": "6b43e215ca97b1a217ab873b692ac72e7bab62ee0fa2463041c0c1398b512dbc",
+  "productSourceSha256": {
+    "packages/product-runtime/src/connections.ts": "c1355d8bbc455b40b59d43f35e1c19e2987627077dcff062582ddd25282be271",
+    "packages/learning-space/src/learning-data/works.ts": "72b0485ca45dcf25a0c77770953116eb31f0d41109d15f94f5b56a5ab2ba295c",
+    "apps/web/src/reliable-workspace/coordinator.ts": "f1b4d9371ca50584ca7d9c51cc324149b1f6562bf96a623cb8ad5727a0d2d609",
+    "apps/web/src/reliable-workspace/draft.ts": "69531f9c3406e61da561ef5d8a14ac132a888893ac5199df9d1fd04ca7eaa861",
+    "apps/web/src/reliable-workspace/index.ts": "85d84dee6bafa936e5e272d97afb5d5ba1fb9bf82cc4fd2d3da87cbed2888e64",
+    "apps/web/src/reliable-workspace/action-store.ts": "25af9f8da028e88d26e4c22caadbe2ef2053a22bf4ffa3738d4c9f94894db3ac",
+    "apps/web/src/reliable-workspace/actions.ts": "d607530e9266fbf2112c0bfff905538cd6307db038a674a234859d47d9eef865"
+  },
+  "sourceNote": "The accepted product files match acceptedProductCommit. Acceptance froze HEAD 6fc35b2 plus all 14 uncommitted repair files; later delivery documentation is separate from the accepted product sources.",
+  "windows": {
+    "platform": "Windows 11 Home 26200 x64",
+    "node": "v24.21.0",
+    "postgres": "postgres (PostgreSQL) 18.6",
+    "chrome": "156.0.8078.79",
+    "browserMode": "installed Chrome, headed, interactive ordinary-user desktop session; Playwright automation",
+    "native": {
+      "connections-installation.test.mjs": {
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0
+      },
+      "connections.test.ts": {
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0
+      },
+      "recovery-connections.test.mjs": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0
+      },
+      "learning-works.runtime.test.mjs": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "browser": {
+      "reliableWorkspaceDraft.spec.ts": {
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0
+      },
+      "reliableWorkspaceActions.spec.ts": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      },
+      "actionIntents.spec.ts": {
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0
+      },
+      "questionDrafts.spec.ts": {
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0
+      },
+      "worksEditor.spec.ts": {
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0
+      },
+      "hybridDeployment.spec.ts": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "totals": {
+      "native": {
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0
+      },
+      "chrome": {
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0
+      }
+    },
+    "package": {
+      "sha256": "23a16c3968f235bf0c99c1901c021006cd5735170467faba4c68e8317b2c2483",
+      "bytes": 86073225,
+      "checks": [
+        "managed PostgreSQL local installation",
+        "packaged daemon ready",
+        "packaged production web served",
+        "owned daemon stopped",
+        "restart retains exact Chinese work in PostgreSQL"
+      ],
+      "status": "passed",
+      "boundary": "Package public runtime API install/start/stop/restart; no double-click launcher or graphical installer acceptance."
+    },
+    "cleanup": {
+      "isolationRootRemoved": true,
+      "scheduledTasksRemaining": 0,
+      "checkedAt": "2026-11-01T12:42:46.3772447Z",
+      "ownedProcessesRemaining": 0
+    }
+  },
+  "crosshost": {
+    "topology": "Apple Silicon macOS -> direct public HTTPS -> independent Ubuntu 24.04.5 x64 school; real SSH fencing uses the packaged CLI.",
+    "local": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "osRelease": "27.2.0",
+      "node": "v24.21.0"
+    },
+    "remote": {
+      "platform": "linux",
+      "arch": "x64",
+      "osRelease": "6.8.0-139-generic",
+      "node": "v24.21.0",
+      "distributionSha256": "a6d63100fd6574f3640769d0a652675b8ee725f2c58d8fc69c6293a99bbaf97e"
+    },
+    "candidateManifestSha256": {
+      "linux-x64": "a6d63100fd6574f3640769d0a652675b8ee725f2c58d8fc69c6293a99bbaf97e",
+      "darwin-arm64": "5bc77c299c60515bc785a024bcd62001d52da016083a5200714a097bb9184be5"
+    },
+    "linuxArchive": {
+      "archiveSha256": "02fc9820388920fd2a2c849bb7213f8062544b55269ee74b08982e611a075698",
+      "bytes": 88061278
+    },
+    "stages": [
+      {
+        "name": "native-distributions-and-public-strict-tls",
+        "status": "passed",
+        "durationMs": 940
+      },
+      {
+        "name": "real-school-identity-and-managed-local-binding",
+        "status": "passed",
+        "durationMs": 6464
+      },
+      {
+        "name": "school-course-fixed-release-and-original-local-bytes",
+        "status": "passed",
+        "durationMs": 5814
+      },
+      {
+        "name": "desktop-chrome-production-page-over-real-crosshost-binding",
+        "status": "passed",
+        "durationMs": 10789
+      },
+      {
+        "name": "fixed-basis-before-older-manifest-and-durable-action-facts",
+        "status": "passed",
+        "durationMs": 18092
+      },
+      {
+        "name": "real-school-outage-recovery-and-current-eligibility",
+        "status": "passed",
+        "durationMs": 10496
+      },
+      {
+        "name": "separate-held-backups-and-school-independent-isolated-restore",
+        "status": "passed",
+        "durationMs": 11101
+      },
+      {
+        "name": "real-ssh-takeover-fences-retired-and-unattributed-grants",
+        "status": "passed",
+        "durationMs": 7622
+      },
+      {
+        "name": "successor-reconnection-original-facts-and-namespace-isolation",
+        "status": "passed",
+        "durationMs": 3551
+      }
+    ],
+    "browser": {
+      "browser": "156.0.8078.79",
+      "installedChrome": true,
+      "headless": false,
+      "workCount": 2,
+      "draft": "跨机编辑后继续保留的问题",
+      "originalBOMCRLFAndEmoji": "preserved",
+      "screenshot": "chrome-real-crosshost.png"
+    },
+    "fixedBasis": {
+      "olderManifestRevision": 3,
+      "newestRevision": 4,
+      "newObjectPublished": "63a8fa46-a084-4e91-aaae-75b5e92e9e75",
+      "preparedId": "a255c842-f801-40ae-b708-b7b23faac443",
+      "cancelledId": "c3251f8f-5504-4fef-8796-0b50e096817e",
+      "basisId": "b239b9fb-75ab-4b70-85bb-2544481c3736",
+      "dispatchStatus": 503,
+      "originalFixedWorkCount": 2,
+      "newestHeadWorkCount": 3
+    },
+    "outageAndAuthorization": {
+      "offlineStatus": 503,
+      "exactDraftRecovered": true,
+      "revokedEligibilityStatus": 403,
+      "originalIntentRetained": true
+    },
+    "backupsAndIndependentRestore": {
+      "school": {
+        "backupId": "15814b88-d076-441c-9d38-9fe004d9c987",
+        "boundaryAt": "2026-11-01T12:56:41.276Z",
+        "artifacts": 6
+      },
+      "local": {
+        "backupId": "9c64ce31-7421-460a-b6ce-c73f7578f1fc",
+        "boundaryAt": "2026-11-01T12:56:42.212Z",
+        "artifacts": 9,
+        "receiverIds": [
+          "9a06adb5-de4d-48c4-9467-32426d0b36ac/06e07d06-3677-4499-9898-a109202c1afb"
+        ]
+      },
+      "commonClosedBoundary": "school held before device held; school resumed only after both backups and independent school validation",
+      "schoolIsolatedRestore": {
+        "phase": "isolated",
+        "state": "maintenance",
+        "publicReadStatus": 503,
+        "installationId": "36601de7-8342-4dab-8884-0d0c15c344d5",
+        "namespace": "xunjie.v1.9a06adb5-de4d-48c4-9467-32426d0b36ac.recovery.84b45faa-1e29-4ef6-882c-24656cdfe51d",
+        "ownerIds": [
+          "06e07d06-3677-4499-9898-a109202c1afb",
+          "4b93ef48-aee7-4ebc-9cfa-61a1b52cdc33",
+          "da2e3497-a3bc-427b-bd85-ba033c5aa39e"
+        ]
+      },
+      "localIsolated": "maintenance",
+      "targetInstallation": "98a66eef-90b4-4274-97e0-fa7913744dc7",
+      "missingReceiverRejected": true
+    },
+    "sshTakeover": {
+      "phase": "active",
+      "targetState": "ready",
+      "retiredScopedStatus": 401,
+      "legacyStatus": 401,
+      "restoredLegacyAfterReceiverRestart": 401,
+      "preAuthorizedSuccessorStillValid": 200,
+      "sourceStart": "source-retired",
+      "markers": [
+        {
+          "serviceId": "74814f17-7b09-453a-8e2c-d7eb8c213905",
+          "unattributed": {
+            "formatVersion": 1,
+            "generation": 1
+          },
+          "retired": {
+            "formatVersion": 1,
+            "generation": 1
+          },
+          "sourceWideGenerationExists": false
+        },
+        {
+          "serviceId": "80620686-8c4d-43d1-8b11-cc13ac52ffcb",
+          "unattributed": {
+            "formatVersion": 1,
+            "generation": 1
+          },
+          "retired": {
+            "formatVersion": 1,
+            "generation": 1
+          },
+          "sourceWideGenerationExists": false
+        },
+        {
+          "serviceId": "878cb7f0-8e0c-45a6-ab09-592ec0950c35",
+          "unattributed": {
+            "formatVersion": 1,
+            "generation": 1
+          },
+          "retired": {
+            "formatVersion": 1,
+            "generation": 1
+          },
+          "sourceWideGenerationExists": false
+        }
+      ]
+    },
+    "successorFacts": {
+      "targetState": "ready",
+      "dependencyReady": true,
+      "originalFiles": 3,
+      "question": "跨机编辑后继续保留的问题",
+      "referenceCopy": "甲",
+      "prepared": "a255c842-f801-40ae-b708-b7b23faac443",
+      "cancelled": "c3251f8f-5504-4fef-8796-0b50e096817e",
+      "originalFixedWorkCount": 2,
+      "namespace": {
+        "stale": 403,
+        "current": 200,
+        "absent": 403
+      }
+    },
+    "sameIdentityRetriesInFinalRun": [],
+    "status": "passed",
+    "earlierObservations": [
+      "Acceptance harness corrections: use the receiving host local TLS endpoint for administrative setup, check refusal plus unchanged grant files instead of requiring one RPC error code, and use the official outbound connection client.",
+      "One earlier fixed-basis sequence returned 503 unavailable. The failed run is retained locally. The final complete nine-stage run passed without triggering same-identity retries; no product source was changed during this follow-up."
+    ],
+    "cleanup": {
+      "processes": [
+        {
+          "name": "target",
+          "state": "stopped"
+        },
+        {
+          "name": "source",
+          "state": "stopped"
+        },
+        {
+          "name": "school",
+          "state": "stopped",
+          "pgRunning": false
+        }
+      ],
+      "local": {
+        "privateRootRemoved": true,
+        "databasePidFiles": 0,
+        "runtimeInstanceFiles": 0,
+        "unpackedCandidatesRemoved": true,
+        "sourceDiffMatchedDuringAcceptance": true,
+        "productSourceHashesVerified": true
+      },
+      "remote": {
+        "ownedProcesses": [],
+        "databasePidFiles": 0,
+        "runtimeInstances": 0,
+        "removed": true
+      },
+      "network": {
+        "ruleId": "sgr-2ze15nhjh4dyf763wtet",
+        "port": "38195/38195",
+        "source": "101.94.133.245/32",
+        "revoked": true,
+        "verifiedAbsent": true,
+        "remainingIngressPorts": [
+          "8443/8443",
+          "22/22",
+          "-1/-1"
+        ]
+      }
+    }
+  },
+  "screenshots": {
+    "windows": "wp02-pr157-windows-pending-and-new-draft.png",
+    "crosshost": "wp02-pr157-real-crosshost.png"
+  },
+  "evidenceBoundary": [
+    "Controlled receivers in Windows tests validate the action contract; real Agent, teacher and execution receivers remain outside this acceptance.",
+    "Programmatic browser input does not establish physical keyboard or system IME acceptance. Teaching effectiveness was not assessed."
+  ],
+  "localRawEvidence": {
+    "windows": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/157/windows/REPORT.md",
+    "crosshost": "/Users/robertwu/Documents/Projects/AI+教育创新技能大赛/XunJie/.verification/157/crosshost/crosshost-results.json"
+  },
+  "acceptedProductCommit": "7be961cdb2108f7f21638a7336e161a2f7a3b554",
+  "engineeringVerification": {
+    "node": "v24.21.0",
+    "fullVerify": {
+      "command": "npm run verify",
+      "status": "passed",
+      "finishedAt": "2026-11-01T12:23:24.915Z",
+      "stages": [
+        {
+          "name": "typecheck",
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "name": "build",
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "name": "check:contracts:browser",
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "name": "check:docs",
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "name": "test",
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "rawSummarySha256": "568f3242049871adffe5663c0241a0af0fbfd603f6637c6f4dffb3c572d10bcb"
+    },
+    "finalIncrementalVerification": {
+      "webTypecheck": "passed",
+      "webRuntimeBuild": "passed",
+      "affectedActionChromeCases": {
+        "passed": 20,
+        "failed": 0,
+        "includedInMac54": true
+      }
+    },
+    "macDesktopChromeCases": {
+      "passed": 54,
+      "failed": 0
+    },
+    "boundary": "The final local-action settlement adjustment was followed by Web typecheck, runtime build and the affected 20 Chrome regressions; repeated cases are not added to the unique 54."
+  }
+}

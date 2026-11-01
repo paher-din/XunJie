@@ -1,0 +1,65 @@
+{
+  "executedOn": "2026-11-01",
+  "method": "有头本机 Google Chrome 156.0.8078.79 + 真实学校 Ubuntu 24.04 x64 主机 HTTPS 入口（101.201.141.133:38195），非 Chromium、非同机模拟",
+  "connection": {
+    "connectionId": "fa771234-033d-4858-97a0-d6f0a77960cf",
+    "steps": [
+      "设备页在无学校账号时显示「连接学校提供的入口」",
+      "以学校真实入口发起连接并得到学校认证链接",
+      "学校页登录 hybrid-154-… 并「允许连接」，出现「连接已批准，请返回原客户端完成连接」",
+      "回到设备「已在学校批准，完成连接」，学校空间出现在设备页"
+    ],
+    "evidence": ["wp02-hybrid-mac-school-approve.png"]
+  },
+  "threePaths": {
+    "hybrid (学校身份 + 本机 learning-data owner)": {
+      "activityId": "0b5fae23-b2f2-41cf-a47d-97a4e26fd8e3",
+      "checks": ["固定发布版本可达", "私有材料 404 不可读", "中文作品在正式编辑器创建", "自动保存并经公开 API 读回", "关闭重开同一活动与同一正文"],
+      "status": "passed"
+    },
+    "school-shared (学校共享空间)": {
+      "activityId": "fcecf53a-e6c7-4887-891a-126e6d25fad6",
+      "checks": ["固定发布版本可达", "私有材料 404 不可读", "中文作品创建与读回", "关闭重开一致"],
+      "status": "passed"
+    },
+    "personal (个人空间)": {
+      "activityId": "3cf88222-0e40-47f3-b5af-ca007f43da0e",
+      "checks": ["固定发布版本可达", "中文作品创建与读回", "关闭重开一致"],
+      "status": "passed"
+    }
+  },
+  "disconnectAndResume": {
+    "activityId": "0b5fae23-b2f2-41cf-a47d-97a4e26fd8e3",
+    "steps": [
+      "绑定学校空间加载原活动",
+      "撤销学校安全组放行（规则 sgr-2zeby96mxn52bsskcht7）使真实路径断开",
+      "设备拒绝学校读取（503），浏览器保留原文与当前活动，未另建共享或个人副本",
+      "恢复原放行后原活动完整可读（200），正文仍在"
+    ],
+    "status": "passed"
+  },
+  "courseEligibility": {
+    "courseId": "6954806d-a9dd-4139-b6bb-ec6b45a9e7ba",
+    "releaseId": "e3db89a1-8472-4ecf-b7d3-e82792ca0fbc",
+    "principalId": "e1455a98-c5d0-4b0f-ae5b-c722d1407922",
+    "steps": [
+      "撤销前可读固定课程（baseline revision 2）",
+      "撤销资格后 release/work/course-activities 均 403（课程目录仍列名属预期，不提供内容）",
+      "恢复资格（新 requestId）后原课程与原作品返回，objectId 相同、revision 未变、无第二份作品"
+    ],
+    "status": "passed"
+  },
+  "restoreAndTakeover": {
+    "isolatedRestore": "见 wp02-hybrid-mac-backup-restore.json",
+    "takeover": "见 wp02-hybrid-mac-takeover.json",
+    "rebind": "见 wp02-hybrid-mac-rebind.json"
+  },
+  "sameHostChromeRegression": {
+    "command": "XUNJIE_E2E_BROWSER_CHANNEL=chrome XUNJIE_PRODUCT_POSTGRES_BIN=<package>/resources/postgres/bin npx playwright test -c apps/web/playwright.config.ts hybridDeployment worksEditor",
+    "browser": "installed Chrome 156.0.8078.79, headless: false",
+    "passed": 18,
+    "failed": 0,
+    "breakdown": "hybridDeployment 3 条（personal / school-shared / hybrid-local-owner）+ worksEditor 15 项",
+    "evidence": ["wp02-hybrid-mac-chrome.json", "wp02-hybrid-mac-personal.png", "wp02-hybrid-mac-school-shared.png", "wp02-hybrid-mac-hybrid-local-owner.png"]
+  }
+}

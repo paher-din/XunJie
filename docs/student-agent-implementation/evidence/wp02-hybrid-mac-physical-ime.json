@@ -1,0 +1,254 @@
+{
+  "executedOn": "2026-11-01",
+  "platform": "macOS 27.2 Apple M5 arm64",
+  "browser": "156.0.8078.79",
+  "instance": "http://127.0.0.1:58988",
+  "activityId": "2e2f37d5-2fff-4c60-b81c-995a70ddd0c9",
+  "method": "OS 物理键盘级：CGEventPost(.cghidEventTap, .hidSystemState) 注入按键 → WindowServer → 系统输入法（TIS 选中的豆包拼音）→ Chrome。页面侧只做只读观测（读工作内容、采集 DOM 事件），不经 CDP 合成任何输入",
+  "injection": {
+    "tool": "xjkeys（自建 Swift 注入器，源码与用法见 evidence/tools/mac-ime-keys.swift 与 evidence/tools/README.md）",
+    "mechanism": "CGEventPost(.cghidEventTap, .hidSystemState)",
+    "source": "OS WindowServer",
+    "accessibilityTrusted": true,
+    "note": "注入器走系统 HID tap，按键先经系统输入法处理再进入浏览器，与 CDP Input.* 合成事件是两条不同路径",
+    "harness": "evidence/tools/mac-physical-ime.mjs"
+  },
+  "inputMethod": {
+    "requested": "com.bytedance.inputmethod.doubaoime.pinyin",
+    "selected": "TISSelectInputSource status=0 requested=com.bytedance.inputmethod.doubaoime.pinyin now=com.bytedance.inputmethod.doubaoime.pinyin",
+    "before": "com.apple.keylayout.ABC",
+    "after": "com.bytedance.inputmethod.doubaoime.pinyin"
+  },
+  "steps": [
+    {
+      "name": "the product page creates an activity and an editable work file",
+      "status": "passed",
+      "detail": {
+        "activityId": "2e2f37d5-2fff-4c60-b81c-995a70ddd0c9",
+        "fileName": "系统输入法.txt"
+      }
+    },
+    {
+      "name": "a real OS Chinese input method composes and commits four words",
+      "status": "passed",
+      "detail": {
+        "words": [
+          "开始",
+          "你好",
+          "世界",
+          "结束"
+        ],
+        "pinyin": [
+          "kaishi",
+          "nihao",
+          "shijie",
+          "jieshu"
+        ],
+        "commitKey": "space",
+        "roundTrip": "compositionstart → compositionupdate(逐字母) → compositionupdate(候选中文) → compositionend"
+      }
+    },
+    {
+      "name": "every injected keystroke is consumed by the input method (VK_PROCESSKEY)",
+      "status": "passed",
+      "detail": {
+        "keydowns": 33,
+        "composingKeydowns": 27,
+        "ratio": 0.818,
+        "sample": {
+          "type": "keydown",
+          "at": 2918,
+          "key": "k",
+          "code": "KeyK",
+          "keyCode": 229,
+          "isComposing": false,
+          "trusted": true
+        }
+      }
+    },
+    {
+      "name": "paste through a real Cmd+V lands every character",
+      "status": "passed",
+      "detail": {
+        "clipboard": "粘贴中文",
+        "pasteEventTrusted": true,
+        "clipboardLength": 4
+      }
+    },
+    {
+      "name": "focus survives a blur/refocus round trip",
+      "status": "passed",
+      "detail": {
+        "focus-round-trip": {
+          "step": "focus-round-trip",
+          "awayFocused": true,
+          "backFocused": {
+            "window": true,
+            "editor": true,
+            "activeTag": "TEXTAREA"
+          }
+        }
+      }
+    },
+    {
+      "name": "Meta navigation moves the caret without changing the text",
+      "status": "passed",
+      "detail": {
+        "meta-boundary": {
+          "step": "meta-boundary",
+          "textUnchanged": true
+        }
+      }
+    },
+    {
+      "name": "the final work text is exactly what was typed",
+      "status": "passed",
+      "detail": {
+        "text": "开始你好世界\n粘贴中文\n结束",
+        "length": 14,
+        "expected": "开始你好世界\n粘贴中文\n结束"
+      }
+    }
+  ],
+  "signals": {
+    "keydowns": 33,
+    "composingKeydowns": 27,
+    "compositionStarts": 4,
+    "trustedPastes": 1,
+    "firstWordTimeline": [
+      {
+        "type": "compositionstart",
+        "data": "",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionupdate",
+        "data": "k",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionupdate",
+        "data": "ka",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionupdate",
+        "data": "kai",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionupdate",
+        "data": "kai's",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionupdate",
+        "data": "kai'sh",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionupdate",
+        "data": "kai'shi",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionupdate",
+        "data": "开始",
+        "trusted": true,
+        "isComposing": null,
+        "keyCode": null
+      },
+      {
+        "type": "compositionend",
+        "data": "开始",
+        "trusted": false,
+        "isComposing": null,
+        "keyCode": null
+      }
+    ],
+    "sampleKeydowns": [
+      {
+        "key": "Escape",
+        "code": "Escape",
+        "keyCode": 27,
+        "isComposing": false,
+        "trusted": true
+      },
+      {
+        "key": "k",
+        "code": "KeyK",
+        "keyCode": 229,
+        "isComposing": false,
+        "trusted": true
+      },
+      {
+        "key": "a",
+        "code": "KeyA",
+        "keyCode": 229,
+        "isComposing": true,
+        "trusted": true
+      },
+      {
+        "key": "i",
+        "code": "KeyI",
+        "keyCode": 229,
+        "isComposing": true,
+        "trusted": true
+      },
+      {
+        "key": "s",
+        "code": "KeyS",
+        "keyCode": 229,
+        "isComposing": true,
+        "trusted": true
+      },
+      {
+        "key": "h",
+        "code": "KeyH",
+        "keyCode": 229,
+        "isComposing": true,
+        "trusted": true
+      },
+      {
+        "key": "i",
+        "code": "KeyI",
+        "keyCode": 229,
+        "isComposing": true,
+        "trusted": true
+      },
+      {
+        "key": " ",
+        "code": "Space",
+        "keyCode": 229,
+        "isComposing": true,
+        "trusted": true
+      }
+    ]
+  },
+  "note": [
+    "按键由自建注入器 xjkeys 通过 CGEventPost 投递到系统 HID tap，先经 WindowServer 与 TIS 选中的系统输入法（豆包拼音，TISSelectInputSource status=0），再由 Chrome 接收；页面内不做任何输入合成。",
+    "真实输入法的判别依据：组合期间每个字母键的 keydown 都是 keyCode=229（VK_PROCESSKEY），且 compositionupdate 逐字母增长（k → ka → kai → kai's → kai'sh → kai'shi → 开始）后提交中文。CDP 的 Input.imeSetComposition 一次提交整串，不会产生这种逐键增量，因此本组数据可区分两条路径。",
+    "compositionend 的 isTrusted 为 false 属正常现象：该事件由浏览器在提交时合成，IME 真实参与体现在 compositionupdate 序列与 229 键码上。",
+    "粘贴使用真实 Cmd+V（CGEvent 带 maskCommand），页面 paste 事件 isTrusted=true，剪贴板内容取自系统剪贴板。",
+    "注入了 4 次真实组合（compositionstart=4），逐段核对工作正文；浅/深色截图由 CDP 截屏取得（本会话未开屏幕录制权限，screencapture 不可用，与输入路径无关）。"
+  ],
+  "finalText": "开始你好世界\n粘贴中文\n结束",
+  "screenshots": [
+    "wp02-hybrid-mac-physical-ime-light.png",
+    "wp02-hybrid-mac-physical-ime-dark.png"
+  ]
+}

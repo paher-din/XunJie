@@ -155,6 +155,17 @@ test('space identity persists and authorization follows current membership', { t
       const logged = await api('login', { loginName: 'http-student', password });
       assert.equal(logged.status, 200);
       const cookie = logged.headers.get('set-cookie').split(';')[0];
+      const connectionRequest = randomUUID();
+      const connectionVerifier = randomUUID() + randomUUID();
+      assert.equal((await api('connections/start', { requestId: connectionRequest, clientId: randomUUID(),
+        challenge: createHash('sha256').update(connectionVerifier).digest('base64url') })).status, 200);
+      assert.equal((await api('connections/approve', { requestId: connectionRequest }, { cookie })).status, 200);
+      const exchanged = await api('connections/exchange', { requestId: connectionRequest, verifier: connectionVerifier });
+      assert.equal(exchanged.status, 200);
+      const connectionId = (await exchanged.json()).connectionId;
+      const adminRevoked = await api('manage/connection', { connectionId }, { authorization: `Bearer ${control}` });
+      assert.equal(adminRevoked.status, 200);
+      assert.deepEqual(await adminRevoked.json(), { revoked: true });
       const unauthorized = await api('activities/' + activity.activityId, undefined, { cookie, 'x-xj-space': 'school' });
       assert.equal(unauthorized.status, 404);
       const forged = await api('activities/' + activity.activityId, undefined, { 'x-xj-space': 'school', 'x-user-id': activity.identity.principalId });

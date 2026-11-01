@@ -1,0 +1,45 @@
+{
+  "formatVersion": 1,
+  "issue": 149,
+  "ticket": 155,
+  "observedAt": "2026-10-30T16:40:38.959Z",
+  "platform": "macOS 27.2 (26B123), arm64",
+  "browser": "Google Chrome 156.0.8078.79",
+  "method": "Physical keystrokes through the installed macOS Chinese input method into headed Google Chrome",
+  "checks": [
+    {
+      "name": "IME goal input",
+      "inputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+      "typed": "digui + space, hanshu + space",
+      "value": "递归函数",
+      "passed": true
+    },
+    {
+      "name": "IME question input with newline and focus",
+      "typed": "zhongzhi + space, Return, tiaojian + space",
+      "value": "终止\n条件",
+      "focus": "textarea",
+      "passed": true
+    },
+    {
+      "name": "IME text persists in the created activity",
+      "detail": "返回活动列表\n递归函数\n\n终止\n条件\n\n继续围绕这个目标学习。\n\n关闭活动",
+      "passed": true
+    }
+  ],
+  "screenshot": "wp02-mac-ime.png",
+  "passed": true,
+  "inputSourceAfter": "com.apple.keylayout.ABC",
+  "inputSourceBefore": "com.apple.keylayout.ABC",
+  "sourceRevision": {
+    "commit": "4bd2c0e428375aa79e1a456567dda24a275c2093",
+    "baseCommit": "036d0b69ea0247df44c33e6019239db891d65b72",
+    "workingTreeDirty": false,
+    "note": "Acceptance build produced from the production sources at this commit; the product package bundles the same source."
+  },
+  "notes": [
+    "Physical keystrokes were sent through the installed Doubao Pinyin input method; Apple SCIM was not exposed by TIS on this host.",
+    "The input source was ABC before and after the check.",
+    "Enter inserted a newline in the textarea and focus stayed in the textarea; the form was submitted only by clicking 建立学习活动."
+  ]
+}

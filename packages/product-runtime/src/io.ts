@@ -9,9 +9,20 @@ import { promisify } from 'node:util';
 
 export interface ProcessOwner { pid: number; processIdentity: string }
 let macBootIdentity: Promise<string> | undefined;
+let selfIdentity: Promise<string | null> | undefined;
 
 /** OS creation identity prevents a recycled PID from owning an old lease. */
 export async function processIdentity(pid: number): Promise<string | null> {
+  // This process's birth identity cannot change while this module is alive. Other PIDs
+  // always query the OS again: their reuse must never turn a stale lease into a live one.
+  if (pid !== process.pid) return readProcessIdentity(pid);
+  selfIdentity ??= readProcessIdentity(pid).then(identity => {
+    if (!identity) selfIdentity = undefined;
+    return identity;
+  }, error => { selfIdentity = undefined; throw error; });
+  return selfIdentity;
+}
+async function readProcessIdentity(pid: number): Promise<string | null> {
   if (!alive(pid)) return null;
   try {
     let identity: string;
