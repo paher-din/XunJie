@@ -45,7 +45,9 @@ export type QuestionReferenceInput = z.infer<typeof questionReferenceInputSchema
 export const questionReferenceSchema = questionReferenceInputSchema.extend({ copyDigest: courseDigestSchema }).strict();
 export type QuestionReference = z.infer<typeof questionReferenceSchema>;
 
-export const questionTextSchema = z.string().max(10000);
+/** The owner refuses longer question text; the composer truncates input at the same bound. */
+export const QUESTION_TEXT_MAX_LENGTH = 10000;
+export const questionTextSchema = z.string().max(QUESTION_TEXT_MAX_LENGTH);
 export const questionReferencesSchema = z.array(questionReferenceInputSchema).max(64)
   .refine(references => new Set(references.map(item => item.referenceId)).size === references.length
     && new Set(references.map(item => questionReferenceKey(item))).size === references.length

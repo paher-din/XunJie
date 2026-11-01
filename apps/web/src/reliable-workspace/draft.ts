@@ -6,6 +6,8 @@ import type { DraftConflict, DraftContent, DraftRecord, DraftSync } from './draf
 
 export const LOCAL_DRAFT_MAX_WAIT_MS = LOCAL_MAX_WAIT_MS
 export const NETWORK_DRAFT_MAX_WAIT_MS = NETWORK_MAX_WAIT_MS
+/** The owner refused the pending request without writing anything: the kept text still syncs after an edit. */
+const REJECTED_PENDING_TEXT = '这份问题草稿未通过校验（例如问题过长），原文仍保留；修改后会自动同步。'
 export interface QuestionDraftTransport {
   read(): Promise<QuestionDraftView>
   receipt(requestId: string): Promise<QuestionDraftView | null>
@@ -90,7 +92,8 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
       this.pendingBases = mergeBases(local.bases, conflict?.local.bases ?? [], (conflict?.local ?? local).references)
       if (!this.disposed) {
         this.record = { ...local, conflict }
-        this.notify({ ready: true, error: '', question: conflict?.local.question ?? local.question,
+        this.notify({ ready: true, error: local.pendingRejected ? REJECTED_PENDING_TEXT : '',
+          question: conflict?.local.question ?? local.question,
           references: structuredClone((conflict?.local ?? local).references),
           revision: local.remoteRevision, revisionId: local.revisionId, conflict })
       }
@@ -112,6 +115,10 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
       ...(this.state.conflict ? { conflict: { ...this.state.conflict, local: content } } : {}) })
   }
   private pendingBases: QuestionWorkBasis[] = []
+  /** The same refusal text is kept instead of being restated on every bounded tick. */
+  private notifyRejected() {
+    if (this.state.error !== REJECTED_PENDING_TEXT) this.notify({ error: REJECTED_PENDING_TEXT })
+  }
   /** Synchronous capture: no await may mix later question/reference edits into this action. */
   capture() {
     if (!this.state.ready || this.state.conflict) throw new Error('请先读取问题草稿并处理分歧。')
@@ -139,10 +146,12 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
         }
         const saved = await this.store.change(this.key, current => {
           const previous = current ?? this.record
-          const nextPending = previous.pending ?? { ...pendingFor(content, previous.remoteRevision, bases, previous.draftId) }
+          // A pending the owner already refused is never resent; editing builds a fresh request.
+          const reused = previous.pending && !previous.pendingRejected ? previous.pending : undefined
+          const nextPending = reused ?? pendingFor(content, previous.remoteRevision, bases, previous.draftId)
           return { ...previous, contentToken, localRevision: previous.localRevision + 1, question: content.question,
             references: content.references, bases,
-            pending: nextPending,
+            pending: nextPending, pendingRejected: nextPending === previous.pending ? previous.pendingRejected : false,
             ...(conflict ? { conflict: { ...conflict, local: content, at: previous.localRevision + 1 } } : {}) }
         }, { expected: this.record.localRevision, content })
         this.record = saved
@@ -152,11 +161,17 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
       } else {
         const current = await this.store.read(this.key)
         if (current && current.localRevision !== this.record.localRevision && epoch === this.editEpoch) {
+          if (this.state.conflict) {
+            // An unresolved comparison keeps this page's content; the other side only advances.
+            this.record = current
+            this.notify({ conflict: { ...this.state.conflict, other: contentOf(current), at: current.localRevision } })
+            return
+          }
           this.record = current
           this.apply(current)
         } else if (current && current.localRevision === this.record.localRevision) this.record = current
       }
-      if (!this.denied) this.notify({ error: '' })
+      if (!this.denied) this.notify({ error: this.record.pendingRejected ? REJECTED_PENDING_TEXT : '' })
     } catch (error) {
       if (error instanceof DraftLocalCompetition) {
         this.record = error.current
@@ -175,8 +190,10 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
     try {
       await this.protect()
       const current = await this.store.read(this.key)
-      const pending = current?.pending
+      // A refused pending keeps its text: it is never resent and the remote never replaces it.
+      const pending = current?.pending && !current.pendingRejected ? current.pending : undefined
       if (!current || !pending) {
+        if (current?.pendingRejected) { this.notifyRejected(); return }
         const remote = questionDraftViewSchema.parse(await this.transport.read())
         if (this.stopped || this.dirty || this.state.conflict) return
         if (remote.revision !== this.record.remoteRevision) {
@@ -227,6 +244,15 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
             remoteRevision: other.revision }, error: '另一客户端修改了问题草稿，请比较并选择。' })
           await this.protect()
         } catch { /* keep the original pending request until the service is available */ }
+      } else if (code === 'invalid' && attempted) {
+        // The owner refused this exact request and wrote no receipt, unlike an unknown receive result.
+        const requestId = attempted.requestId
+        const baseline = this.record
+        try {
+          this.record = await this.store.change(this.key, saved => saved && saved.pending?.requestId === requestId
+            ? { ...saved, pendingRejected: true } : saved ?? baseline)
+        } catch { /* the refusal is reported again on the next bounded tick */ }
+        this.notifyRejected()
       } else if (code === 'forbidden' || code === 'stale-generation') {
         this.denied = true
         this.notify({ error: '访问资格已失效，已停止该身份的草稿同步。本机草稿仍保留，请重新登录原空间。' })
@@ -245,14 +271,24 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
     const bases = mergeBases([...this.record.bases, ...this.pendingBases,
       ...(conflict.local.bases ?? []), ...(conflict.other.bases ?? [])], addedBases, selected.references)
     const content = { ...selected, bases }
+    // Captured before the transaction so input made during the choice is never overwritten by it.
+    const epoch = this.editEpoch
+    const token = this.contentToken
     const saved = await this.store.change(this.key, current => {
       if (!current) throw new Error('本机草稿记录不可读。')
       const revision = conflict.source === 'remote' ? conflict.remoteRevision : current.remoteRevision
       return { ...current, contentToken: crypto.randomUUID(), localRevision: current.localRevision + 1, remoteRevision: revision,
         question: content.question, references: content.references, bases,
-        conflict: undefined, pending: pendingFor(content, revision, bases, current.draftId) }
+        conflict: undefined, pendingRejected: false, pending: pendingFor(content, revision, bases, current.draftId) }
     }, { expected: conflict.at, content }, conflict.candidateId)
-    this.record = saved; this.dirty = false; this.pendingBases = saved.bases
+    this.record = saved
+    // Later input wins: the transaction result is only the durable baseline for the chosen content.
+    if (epoch !== this.editEpoch || token !== this.contentToken) {
+      this.notify({ conflict: undefined, revision: saved.remoteRevision, revisionId: saved.revisionId })
+      return
+    }
+    this.dirty = false
+    this.pendingBases = saved.bases
     this.contentToken = saved.contentToken!
     this.notify({ question: saved.question, references: structuredClone(saved.references), conflict: undefined,
       revision: saved.remoteRevision, revisionId: saved.revisionId, error: '' })

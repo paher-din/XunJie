@@ -4,7 +4,9 @@ export interface DraftContent { question: string; references: QuestionReferenceI
 export interface DraftConflict { source: 'local' | 'remote'; local: DraftContent; other: DraftContent
   at: number; remoteRevision: number; candidateId?: string }
 export interface DraftRecord extends DraftContent { key: string; draftId: string; localRevision: number
-  remoteRevision: number; revisionId: string | null; bases: QuestionWorkBasis[]; pending: DraftSync | null; conflict?: DraftConflict; contentToken?: string }
+  remoteRevision: number; revisionId: string | null; bases: QuestionWorkBasis[]; pending: DraftSync | null; conflict?: DraftConflict; contentToken?: string
+  /** The owner refused this exact pending: keep its text, never resend it, until the content changes. */
+  pendingRejected?: boolean }
 export interface DraftSync { requestId: string; draftId: string; baseRevision: number
   question: string; references: QuestionReferenceInput[]; bases: QuestionWorkBasis[] }
 

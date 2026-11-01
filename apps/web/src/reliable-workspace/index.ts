@@ -96,6 +96,12 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       } else {
         const current = await this.store.read(this.key)
         if (current && current.localRevision !== this.record.localRevision && epoch === this.editEpoch) {
+          if (this.state.conflict) {
+            // An unresolved comparison keeps this page's files; the other side only advances.
+            this.record = current
+            this.notify({ conflict: { ...this.state.conflict, other: structuredClone(current.files), at: current.localRevision } })
+            return
+          }
           this.record = current
           this.notify({ files: current.files, editorEpoch: this.state.editorEpoch + 1, conflict: current.conflict })
         } else if (current && current.localRevision === this.record.localRevision) this.record = current
@@ -172,6 +178,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     if (conflict.source === 'remote') files = files.map(file =>
       this.record.confirmedFiles?.some(old => old.objectId === file.objectId) && !conflict.other.some(other => other.objectId === file.objectId)
         ? { ...file, objectId: crypto.randomUUID(), contentId: crypto.randomUUID() } : file)
+    // Captured before the transaction so input made during the choice is never overwritten by it.
+    const epoch = this.editEpoch
     const saved = await this.store.change(this.key, current => {
       if (!current) throw new Error('本机作品记录不可读。')
       const revision = conflict.source === 'remote' ? conflict.remoteRevision : current.remoteRevision
@@ -179,7 +187,10 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
         confirmedFiles: conflict.source === 'remote' ? conflict.other : current.confirmedFiles,
         conflict: undefined, pending: conflict.source === 'local' && current.pending ? current.pending : pendingFor(files, revision) }
     }, { expected: conflict.at, files }, conflict.candidateId)
-    this.record = saved; this.dirty = false
+    this.record = saved
+    // Later input wins: the transaction result is only the durable baseline, and the editor keeps its own content.
+    if (epoch !== this.editEpoch) { this.notify({ conflict: undefined, error: '' }); return }
+    this.dirty = false
     this.notify({ files, conflict: undefined, error: '', editorEpoch: this.state.editorEpoch + 1 })
     void this.synchronize()
   }

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
 import { submissionReference, referenceKey, snapshotReference, type ReferenceSelection, type ReferenceSource,
   type ReferenceSubmission, type WorkspaceReference } from './model'
 import './references.css'
@@ -206,7 +207,7 @@ export function WorkspaceReferenceComposer() {
     <WorkspaceReferenceList />
     <form onSubmit={event => { event.preventDefault(); if (sendAvailable) void submit() }}>
       <label htmlFor={questionId}>你的问题</label>
-      <textarea ref={input} id={questionId} value={question} disabled={!draftReady}
+      <textarea ref={input} id={questionId} value={question} disabled={!draftReady} maxLength={QUESTION_TEXT_MAX_LENGTH}
         onChange={event => setQuestion(event.target.value)} placeholder="写下想讨论的问题…"
         onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
         onKeyDown={event => {
