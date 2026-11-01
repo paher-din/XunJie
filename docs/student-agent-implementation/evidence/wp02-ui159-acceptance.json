@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "issue": "https://github.com/paher-din/XunJie/issues/159",
-  "recordedAt": "2026-11-01T15:54:03.124712+00:00",
-  "status": "implemented-with-explicit-validation-gaps",
+  "recordedAt": "2026-11-01T16:02:43.814828+00:00",
+  "status": "implemented-and-verified-with-recorded-boundaries",
   "baselines": {
     "r1ToR8": "b45bb826bd364207e44158fd981a2d5e352043a8",
     "mainDocumentationCommits": [
@@ -214,6 +214,72 @@
         "reason": "Real xj-dev lifecycle tests detected stale dependency preparation after merging package manifests and started npm ci in the shared checkout while other tasks read those dependencies. Ran npm ci --include=dev before the next full attempt."
       },
       "scope": "The last full command exited 1 only for the workspace-status mutation above; report the targeted rerun separately, not as a new exit-0 full command. Existing environment-gated skips remain skips."
+    },
+    "hostedCI": {
+      "conclusion": "success",
+      "event": "pull_request",
+      "headSha": "66e56b3e674652a8ddb3d36773a675af8f471a4b",
+      "jobs": [
+        {
+          "conclusion": "success",
+          "name": "verify / prepare",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 4/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 1/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 1/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (unit, 1/1)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 3/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 3/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (server, 2/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 4/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "verify / tests (tools, 2/4)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "name": "release",
+          "status": "completed"
+        }
+      ],
+      "runId": 41323592648,
+      "status": "completed",
+      "url": "https://github.com/paher-din/XunJie/actions/runs/41323592648",
+      "scope": "Commit 66e56b3 contains all final product and test code. The following evidence-only commit records this result and the completed physical IME check; no product or test source changed."
     }
   },
   "acceptedPackages": [
@@ -1626,92 +1692,563 @@
   },
   "validationGaps": {
     "systemPhysicalIme": {
-      "status": "pending-retest-console-locked",
-      "initialLockedProbe": {
-        "status": "not-run",
-        "reason": "macOS console is at loginwindow; native CGEvent inputs did not reach the Chrome process",
-        "frontProcess": {
-          "pid": 612,
-          "name": "loginwindow"
-        },
-        "probe": {
-          "before": "front=612",
-          "activated": "before=612 target=44277 activated=true",
-          "pid": 44277,
-          "frontAfter": "front=612",
-          "text": "",
-          "events": []
-        },
-        "browserImeProtocol": "covered by productUi.spec.ts on both target platforms"
-      },
-      "latestProbe": {
-        "startedAt": "2026-11-01T15:51:17.427Z",
-        "status": "failed",
+      "status": "passed",
+      "platform": "darwin-arm64",
+      "osRelease": "27.2.0",
+      "node": "v24.21.0",
+      "scope": "OS-level CGEvent HID keyboard injection through the installed Doubao Pinyin IME, not CDP text insertion or a human hardware-keyboard observation.",
+      "report": {
+        "startedAt": "2026-11-01T16:00:04.768Z",
+        "status": "passed",
         "mechanism": "CGEvent HID keyboard events -> installed system IME -> actual Chrome -> packaged product -> native PostgreSQL",
         "expected": "开始你好世界\n粘贴中文\n结束",
         "steps": [
           {
             "step": "activate",
-            "front": "front=612",
-            "ownedChrome": false,
-            "ancestors": [
-              612,
-              1
-            ],
-            "foregroundExecutable": "/System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow"
+            "front": "front=40817",
+            "ownedChrome": true,
+            "ancestors": [],
+            "foregroundExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          },
+          {
+            "step": "activate",
+            "front": "front=40817",
+            "ownedChrome": true,
+            "ancestors": [],
+            "foregroundExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          },
+          {
+            "step": "activate",
+            "front": "front=40817",
+            "ownedChrome": true,
+            "ancestors": [],
+            "foregroundExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
           }
         ],
-        "inputSourceBefore": "com.apple.keylayout.ABC",
-        "foregroundBefore": "front=612",
+        "inputSourceBefore": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "foregroundBefore": "front=39694",
         "nativeProbeCorrection": "Select the source after OS window activation; avoid re-selecting an already active IME between composed words.",
         "focusAssertion": "OS GetFrontProcess across app round-trip; document.hasFocus under Playwright is not used for the result",
         "browser": "156.0.8078.79",
-        "chromePid": 35179,
-        "inputSourceSelected": "com.apple.keylayout.ABC",
-        "activeInputSource": "com.apple.keylayout.ABC",
-        "error": "Error: Foreground process is outside the isolated Chrome process tree: front=612",
+        "chromePid": 40817,
+        "inputSourceSelected": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "activeInputSource": "com.bytedance.inputmethod.doubaoime.pinyin",
+        "awayForeground": "front=39694",
+        "awayFocused": true,
+        "backFocused": true,
+        "editorRestarts": 0,
+        "actual": "开始你好世界\n粘贴中文\n结束",
+        "events": [
+          {
+            "type": "keydown",
+            "key": "Escape",
+            "keyCode": 27,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "k",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "k",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "a",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ka",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "s",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai's",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai'sh",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "kai'shi",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "开始",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "开始",
+            "trusted": false
+          },
+          {
+            "type": "keydown",
+            "key": "n",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "n",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni'h",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "a",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni'ha",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "o",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ni'hao",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "你好",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "你好",
+            "trusted": false
+          },
+          {
+            "type": "keydown",
+            "key": "s",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "s",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "sh",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "j",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi'j",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi'ji",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "e",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "shi'jie",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "世界",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "世界",
+            "trusted": false
+          },
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "keyCode": 13,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "v",
+            "keyCode": 86,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "paste",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "ArrowLeft",
+            "keyCode": 37,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "ArrowRight",
+            "keyCode": 39,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "Enter",
+            "keyCode": 13,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "j",
+            "keyCode": 229,
+            "isComposing": false,
+            "trusted": true
+          },
+          {
+            "type": "compositionstart",
+            "data": "",
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "j",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "i",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "ji",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "e",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "s",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie's",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "h",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie'sh",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": "u",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "jie'shu",
+            "trusted": true
+          },
+          {
+            "type": "keydown",
+            "key": " ",
+            "keyCode": 229,
+            "isComposing": true,
+            "trusted": true
+          },
+          {
+            "type": "compositionupdate",
+            "data": "结束",
+            "trusted": true
+          },
+          {
+            "type": "compositionend",
+            "data": "结束",
+            "trusted": false
+          }
+        ],
+        "signals": {
+          "compositionStarts": 4,
+          "composingKeydowns": 27,
+          "trustedPastes": 1
+        },
+        "afterReload": "开始你好世界\n粘贴中文\n结束",
         "cleanup": true,
-        "finishedAt": "2026-11-01T15:51:23.489Z"
+        "finishedAt": "2026-11-01T16:00:34.353Z"
       },
-      "earlierUnlockedAttempts": "Native CGEvent inputs produced real composition events and exact Chinese text/reload in early runs, but the wrapper incorrectly asserted document.hasFocus rather than OS foreground. Later probe calibration runs had partial/literal text or foreground interruptions and are not accepted as a completed physical IME run.",
-      "rawDiagnosticLogs": [
-        {
-          "file": "physical-current-accepted.log",
-          "sha256": "726a6fd87f87812f94d770db3e7c10b2c9b74a740cba7191c25759a0fedb7c6c"
+      "reportSha256": "cbed01d5e216aa1b7568a3a2d6dfb29bfd377426a2bca6912167c638feec3449",
+      "previousProbeDiagnostics": {
+        "status": "pending-retest-console-locked",
+        "initialLockedProbe": {
+          "status": "not-run",
+          "reason": "macOS console is at loginwindow; native CGEvent inputs did not reach the Chrome process",
+          "frontProcess": {
+            "pid": 612,
+            "name": "loginwindow"
+          },
+          "probe": {
+            "before": "front=612",
+            "activated": "before=612 target=44277 activated=true",
+            "pid": 44277,
+            "frontAfter": "front=612",
+            "text": "",
+            "events": []
+          },
+          "browserImeProtocol": "covered by productUi.spec.ts on both target platforms"
         },
-        {
-          "file": "physical-current-confirmed-source.log",
-          "sha256": "1d1f4499f57a7d7b666abd65bcf8c9c8ac2fca2f96467bc38461e8dad50b12cd"
+        "latestProbe": {
+          "startedAt": "2026-11-01T15:51:17.427Z",
+          "status": "failed",
+          "mechanism": "CGEvent HID keyboard events -> installed system IME -> actual Chrome -> packaged product -> native PostgreSQL",
+          "expected": "开始你好世界\n粘贴中文\n结束",
+          "steps": [
+            {
+              "step": "activate",
+              "front": "front=612",
+              "ownedChrome": false,
+              "ancestors": [
+                612,
+                1
+              ],
+              "foregroundExecutable": "/System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow"
+            }
+          ],
+          "inputSourceBefore": "com.apple.keylayout.ABC",
+          "foregroundBefore": "front=612",
+          "nativeProbeCorrection": "Select the source after OS window activation; avoid re-selecting an already active IME between composed words.",
+          "focusAssertion": "OS GetFrontProcess across app round-trip; document.hasFocus under Playwright is not used for the result",
+          "browser": "156.0.8078.79",
+          "chromePid": 35179,
+          "inputSourceSelected": "com.apple.keylayout.ABC",
+          "activeInputSource": "com.apple.keylayout.ABC",
+          "error": "Error: Foreground process is outside the isolated Chrome process tree: front=612",
+          "cleanup": true,
+          "finishedAt": "2026-11-01T15:51:23.489Z"
         },
-        {
-          "file": "physical-current-final.log",
-          "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
-        },
-        {
-          "file": "physical-current-foreground-source.log",
-          "sha256": "01892c0c23c5fdab7d60d097ff8d2977105ecec5ea33738f9deb0dc99561aaa4"
-        },
-        {
-          "file": "physical-current-idle.log",
-          "sha256": "c1c99d66ba398eb52166c099d0e409e8a2834ec29dbf69dbd5379ef92f62e76e"
-        },
-        {
-          "file": "physical-current-rerun.log",
-          "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
-        },
-        {
-          "file": "physical-current-stable-focus.log",
-          "sha256": "e7cec0a415555308c063577c55511e8b408503b00075c3200674b65fe93f5b7a"
-        },
-        {
-          "file": "physical-current-verified-process.log",
-          "sha256": "41479bf614da9df455f40be8742a506a61fb48f5042f03f8c6e0f98209e3b9a6"
-        },
-        {
-          "file": "physical-current.log",
-          "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
-        }
-      ]
+        "earlierUnlockedAttempts": "Native CGEvent inputs produced real composition events and exact Chinese text/reload in early runs, but the wrapper incorrectly asserted document.hasFocus rather than OS foreground. Later probe calibration runs had partial/literal text or foreground interruptions and are not accepted as a completed physical IME run.",
+        "rawDiagnosticLogs": [
+          {
+            "file": "physical-current-accepted.log",
+            "sha256": "726a6fd87f87812f94d770db3e7c10b2c9b74a740cba7191c25759a0fedb7c6c"
+          },
+          {
+            "file": "physical-current-confirmed-source.log",
+            "sha256": "1d1f4499f57a7d7b666abd65bcf8c9c8ac2fca2f96467bc38461e8dad50b12cd"
+          },
+          {
+            "file": "physical-current-final.log",
+            "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+          },
+          {
+            "file": "physical-current-foreground-source.log",
+            "sha256": "01892c0c23c5fdab7d60d097ff8d2977105ecec5ea33738f9deb0dc99561aaa4"
+          },
+          {
+            "file": "physical-current-idle.log",
+            "sha256": "c1c99d66ba398eb52166c099d0e409e8a2834ec29dbf69dbd5379ef92f62e76e"
+          },
+          {
+            "file": "physical-current-rerun.log",
+            "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+          },
+          {
+            "file": "physical-current-stable-focus.log",
+            "sha256": "e7cec0a415555308c063577c55511e8b408503b00075c3200674b65fe93f5b7a"
+          },
+          {
+            "file": "physical-current-verified-process.log",
+            "sha256": "41479bf614da9df455f40be8742a506a61fb48f5042f03f8c6e0f98209e3b9a6"
+          },
+          {
+            "file": "physical-current.log",
+            "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+          }
+        ]
+      },
+      "probeCorrections": "Use OS GetFrontProcess and the isolated Chrome process tree rather than document.hasFocus under Playwright focus emulation. Select the system source after bringing the real window forward and avoid repeatedly selecting an already active IME. Final run after unlocking passed all content, persistence and OS focus checks."
     },
     "browserImeComposition": {
       "status": "passed-on-both-target-platforms",
@@ -1941,6 +2478,20 @@
           "width": 1440,
           "height": 1000
         }
+      },
+      {
+        "file": "wp02-ui159-system-ime.png",
+        "sha256": "bd74a472a1e541c487c7da02b0174682a1904054be4e4821f11273d91cad72ec",
+        "kind": "after-accepted-product-system-ime",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        },
+        "theme": "light"
       }
     ],
     "beforeCapture": "Full-page captures with the same viewport; the previous long page exceeds viewport height."
@@ -1995,7 +2546,13 @@
       "state": "stopped",
       "pgRunning": false
     },
-    "referenceWorktreeRemoved": true
+    "referenceWorktreeRemoved": true,
+    "physicalIme": {
+      "rootRemoved": true,
+      "clipboardRestored": true,
+      "inputSourceRestored": true,
+      "temporaryBrowserClosed": true
+    }
   },
   "acceptedPackagesRebuiltComparison": [
     {
