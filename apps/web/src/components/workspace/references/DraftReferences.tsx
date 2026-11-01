@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type Reac
 import { questionReferenceKey, questionReferenceSourceId } from '@xunjie/contracts/question-drafts'
 import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts'
 import type { ReliableQuestionDraft } from '../../../reliable-workspace/draft'
+import type { ReliableActions } from '../../../reliable-workspace/actions'
 import { snapshotReference, type ReferenceSelection, type ReferenceSource, type WorkspaceReference } from './model'
 import { ReferencesContext, type ReferencesController } from './WorkspaceReferences'
 
@@ -13,13 +14,18 @@ function displayReferences(references: readonly QuestionReferenceInput[], worksp
     text: reference.copy, source: reference.source,
     range: Object.freeze({ start: reference.range.start, end: reference.range.end }) }))
 }
-export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; children: ReactNode }
-/** Production host: the reliable draft is the only mutable authority; the send path stays unavailable. */
+export interface DraftReferencesProviderProps { workspaceKey: string; draft: ReliableQuestionDraft; actions: ReliableActions; children: ReactNode }
+/** Production host consumes the common workspace; availability comes only from registered receivers. */
 export function DraftReferencesProvider(props: DraftReferencesProviderProps) {
   return <DraftReferencesSession key={props.workspaceKey} {...props} />
 }
-function DraftReferencesSession({ workspaceKey, draft, children }: DraftReferencesProviderProps) {
+function DraftReferencesSession({ workspaceKey, draft, actions, children }: DraftReferencesProviderProps) {
   const state = useSyncExternalStore(draft.subscribe, draft.snapshot)
+  const actionState = useSyncExternalStore(actions.subscribe, actions.snapshot)
+  const receiver = actionState.receivers.find(item => item.kind === 'question')
+  const [busy, setBusy] = useState(false)
+  const creating = useRef(false)
+  const actionIds = useRef(new Map<string, string>())
   const [open, setOpenState] = useState(false)
   const [pending, setPending] = useState<ReferenceSelection | null>(null)
   const [notice, setNotice] = useState('')
@@ -97,7 +103,23 @@ function DraftReferencesSession({ workspaceKey, draft, children }: DraftReferenc
     } catch { setNotice('来源当前不可用；引用副本仍然保留。') }
   }
   const submit = async () => {
-    setNotice('真实 Agent 尚未接入，暂不能发送；问题与引用会自动保存在原工作区。')
+    if (!receiver || !actionState.ready) { setNotice('真实 Agent 尚未接入，暂不能发送；问题与引用会自动保存在原工作区。'); return }
+    if (creating.current || !draft.snapshot().question.trim()) return
+    creating.current = true; setBusy(true)
+    try {
+      const token = draft.capture().token + ':' + JSON.stringify(receiver)
+      const items = actions.snapshot().items
+      const pending = items.find(item => item.input.draft.token + ':' + JSON.stringify(item.input.receiver) === token
+        && !['accepted', 'cancelled', 'failed'].includes(item.phase))
+      if (pending) { setNotice('仍在沿原请求核实这次问题，请查看待发与接收记录。'); return }
+      const remembered = actionIds.current.get(token)
+      const previous = items.find(item => item.input.requestId === remembered)
+      const requestId = remembered && !previous ? remembered : crypto.randomUUID()
+      actionIds.current.set(token, requestId)
+      await actions.create({ requestId, receiver })
+      setNotice('已保留这次问题，可继续编辑；接收情况见下方记录。')
+    } catch { setNotice('这次问题尚未可靠保留，未继续派发。请保留此页，原文仍可复制。') }
+    finally { creating.current = false; setBusy(false) }
   }
   const resolveConflict = async (side: 'local' | 'other') => {
     const conflict = draft.snapshot().conflict
@@ -113,8 +135,8 @@ function DraftReferencesSession({ workspaceKey, draft, children }: DraftReferenc
     other: { question: state.conflict.other.question, references: displayReferences(state.conflict.other.references, workspaceKey) },
   } : undefined
   const value: ReferencesController = { workspaceKey, open, setOpen, question: state.question, setQuestion, references: refs,
-    pending, select, clearSelection, ask, remove, locate, register, submit, busy: false,
-    notice, sendAvailable: false, draftReady: state.ready,
+    pending, select, clearSelection, ask, remove, locate, register, submit, busy,
+    notice, sendAvailable: !!receiver && actionState.ready && actionState.active, draftReady: state.ready,
     draftError: state.error, ...(conflict ? { draftConflict: conflict } : {}), draftConflictReady: state.conflictReady,
     resolveDraftConflict: resolveConflict }
   return <ReferencesContext.Provider value={value}>{children}</ReferencesContext.Provider>

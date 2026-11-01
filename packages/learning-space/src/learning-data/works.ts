@@ -16,9 +16,6 @@ export const workMigration: Migration = { version: 2, name: 'reliable-activity-w
     PRIMARY KEY(activity_id,revision));
 ` };
 type ManifestFile = Omit<WorkFile, 'value'>;
-const basisSchema = z.object({ objectId: z.uuid(), contentId: z.uuid(), name: workFileSchema.shape.name,
-  kind: z.enum(['text', 'code']), encoding: z.literal('utf8'), mediaType: z.string().min(1).max(200),
-  value: z.string().max(2000000) }).strict();
 const digest = (input: unknown) => createHash('sha256').update(JSON.stringify(input)).digest('hex');
 function bytes(file: WorkFile) {
   const result = Buffer.from(file.value, file.encoding === 'base64' ? 'base64' : 'utf8');
@@ -128,7 +125,7 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
    */
   async function registerBasis(identity: SpaceIdentity, activityId: string, value: unknown) {
     await authorize(identity, activityId); z.uuid().parse(activityId);
-    const file: WorkFile = basisSchema.parse(value);
+    const file: WorkFile = workFileSchema.parse(value);
     const uploaded = bytes(file);
     await storage.stageResource({ uploadId: file.contentId, scope: `works/${activityId}/${file.objectId}`,
       bytes: uploaded, mediaType: file.mediaType, contentVersion: 1 });

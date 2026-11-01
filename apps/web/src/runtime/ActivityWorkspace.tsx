@@ -1,27 +1,14 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState, useSyncExternalStore } from 'react'
-import { workViewSchema } from '@xunjie/contracts/learning-data'
+import { forwardRef, useImperativeHandle, useMemo, useState, useSyncExternalStore } from 'react'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
-import { ReliableWorkspace } from '../reliable-workspace'
 import { CodeReferenceSource } from '../components/workspace/references'
-import { learningRequest, workspaceScope } from './learningTransport'
+import { workspaceScope } from './learningTransport'
+import { useActivitySession } from './ActivitySession'
 
 export interface ActivityWorkspaceHandle { leave(): Promise<void> }
 export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity: LearningActivity; spaceKey: string; namespace: string; authorized: boolean }>(
-  function ActivityWorkspace({ activity, spaceKey, namespace, authorized }, ref) {
+  function ActivityWorkspace({ activity, namespace }, ref) {
     const scope = workspaceScope(namespace, activity)
-    const workspace = useMemo(() => {
-      const base = 'workspaces/' + activity.activityId
-      const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, base + suffix, body)
-      const instance = new ReliableWorkspace(scope, {
-        read: async () => workViewSchema.parse(await request('')),
-        receipt: async id => {
-          const value = await request('/receipts/' + id)
-          return value === null ? null : workViewSchema.parse(value)
-        },
-        sync: async input => workViewSchema.parse(await request('', input)) })
-      if (!authorized) instance.suspend()
-      return instance
-    }, [scope, activity.activityId, spaceKey, namespace, authorized])
+    const { workspace, draft, actions } = useActivitySession()
     const state = useSyncExternalStore(workspace.subscribe, workspace.snapshot)
     const editorNamespace = useMemo(() => scope + ':' + crypto.randomUUID(), [scope, workspace])
     const [failure, setFailure] = useState('')
@@ -29,11 +16,7 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
     const [name, setName] = useState('')
     const [rename, setRename] = useState('')
     const [merged, setMerged] = useState('')
-    useEffect(() => {
-      void workspace.open().catch(() => { /* Workspace state reports failure and retries initialization. */ })
-      return () => workspace.dispose()
-    }, [workspace])
-    useImperativeHandle(ref, () => ({ leave: () => workspace.leave() }), [workspace])
+    useImperativeHandle(ref, () => ({ leave: async () => { await workspace.leave(); await draft.leave(); await actions.leave() } }), [workspace, draft, actions])
     const file = state.files.find(f => f.objectId === selected) ?? state.files[0]
     const attempt = (operation: () => unknown) => { try { operation(); setFailure('') } catch { setFailure('操作未完成，请检查文件名、内容大小或重复路径。原内容仍保留。') } }
     const choose = async (files: WorkFile[]) => {

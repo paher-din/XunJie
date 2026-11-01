@@ -79,7 +79,7 @@ export function createLearningEntry(options: {
     try {
       if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
       const route = pathname.slice('/api/learning/'.length);
-      if ((route.startsWith('workspaces/') || route.startsWith('drafts/')) && request.headers['x-xj-namespace']
+      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -88,7 +88,8 @@ export function createLearningEntry(options: {
       if (typeof remote === 'string' && remote.startsWith('school:') && options.client) {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
-        result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request, route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
+        result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
+          route.startsWith('intents/') ? 16000000 : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -176,6 +177,18 @@ export function createLearningEntry(options: {
         result = await learning.createCourse(await current(request), await readLearningBody(request));
       } else if (route.startsWith('course-activity-results/') && method === 'GET') {
         result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
+      } else if (route.startsWith('intents/')) {
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        const parts = route.split('/');
+        if (parts.length === 2 && method === 'GET') result = await learning.intents.list(identity, parts[1]!);
+        else if (parts.length === 2 && method === 'POST') result = await learning.intents.prepare(identity, parts[1]!, await readLearningBody(request, 16000000));
+        else if (parts.length === 3 && parts[2] === 'capabilities' && method === 'GET') result = await learning.intents.capabilities(identity, parts[1]!);
+        else if (parts.length === 3 && method === 'GET') result = await learning.intents.read(identity, parts[1]!, parts[2]!);
+        else if (parts.length === 4 && parts[3] === 'dispatch' && method === 'POST') result = await learning.intents.dispatch(identity, parts[1]!, parts[2]!);
+        else if (parts.length === 4 && parts[3] === 'cancel' && method === 'POST') result = await learning.intents.cancel(identity, parts[1]!, parts[2]!);
+        else throw new StorageError('missing');
       } else if (route.startsWith('drafts/')) {
         const parts = route.split('/');
         const identity = await current(request);

@@ -87,7 +87,7 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
     return questionDraftViewSchema.parse((saved.result as { draft: unknown }).draft);
   }
 
-  async function verifySources(identity: SpaceIdentity, activity: LearningActivity, input: QuestionDraftSync) {
+  async function verifySources(identity: SpaceIdentity, activity: LearningActivity, input: Pick<QuestionDraftSync, 'bases' | 'references'>) {
     const bases = new Map<string, QuestionDraftSync['bases'][number]>();
     for (const basis of input.bases) {
       if (bases.has(basis.contentId)) return fail('identity-conflict');
@@ -174,7 +174,10 @@ export function createQuestionDrafts(storage: OwnedStorage, options: {
     return questionDraftViewSchema.parse((result.result as { draft: unknown }).draft);
   }
 
-  return { read, revision, sync, receipt, validate: () => validateQuestionDrafts(storage) };
+  return { read, revision, sync, receipt,
+    verifyReferences: async (identity: SpaceIdentity, activityId: string, input: Pick<QuestionDraftSync, 'bases' | 'references'>) =>
+      verifySources(identity, await open(identity, activityId), input),
+    validate: () => validateQuestionDrafts(storage) };
 }
 
 export async function validateQuestionDrafts(storage: OwnedStorage) {

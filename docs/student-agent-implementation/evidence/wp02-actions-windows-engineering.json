@@ -1,0 +1,522 @@
+{
+  "issue": 153,
+  "measuredAt": "2026-11-01T07:21:15.283Z",
+  "implementationBase": "c79be3bef739134c65a95054b0fc939ea3cba214",
+  "productCommit": "110774f8dca267b5b64057f1710db1d56908a2f8",
+  "harnessCommit": "72475e09ba46691754d893186b6efed2837fc4fb",
+  "provenance": "72475e0 only updates the pre-existing migration expectation and adds theme screenshots; product code and package remain 110774f.",
+  "platform": {
+    "os": "Windows 11 x64",
+    "osRelease": "10.0.26200",
+    "node": "v24.21.0",
+    "postgres": "18.6",
+    "chrome": "156.0.8078.76",
+    "installedChrome": true,
+    "headed": true
+  },
+  "engineering": {
+    "rootVerify": {
+      "sourceCommit": "5dd741e18615c077f471dd1aee0651823e3bcad7",
+      "exitCode": 1,
+      "stages": [
+        {
+          "name": "typecheck",
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "name": "build",
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "name": "check:contracts:browser",
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "name": "check:docs",
+          "status": "failed",
+          "exitCode": 1
+        },
+        {
+          "name": "test",
+          "status": "pending"
+        }
+      ],
+      "documentFailure": "252 broken links in pre-existing untracked local documents; preserved. Test stage not reached in verify."
+    },
+    "trackedMaintainedDocs": {
+      "files": 164,
+      "localTargets": 1233,
+      "failed": 0,
+      "note": "All tracked Markdown outside docs/archive. Final delivery documents checked separately after writing."
+    },
+    "browserContracts": {
+      "publicExports": 10,
+      "failed": 0
+    },
+    "finalWebTypecheck": "passed",
+    "fullTest": {
+      "sourceCommit": "110774f8dca267b5b64057f1710db1d56908a2f8",
+      "exitCode": 1,
+      "checks": {
+        "passed": 27,
+        "failed": 0,
+        "skipped": 1
+      },
+      "productRuntime": {
+        "passed": 118,
+        "failed": 1,
+        "skipped": 5
+      },
+      "storage": {
+        "passed": 12,
+        "failed": 1,
+        "skipped": 1
+      },
+      "server": {
+        "passed": 640,
+        "failed": 2,
+        "skipped": 19
+      },
+      "web": {
+        "files": 58,
+        "passed": 688,
+        "failed": 0
+      },
+      "tools": "not reached after workspace failures",
+      "failures": [
+        "product-runtime recovery-files symlink EPERM",
+        "storage blobs symlink EPERM",
+        "server application-database symlink EPERM",
+        "server access local-account LOCAL_SOCKET_CONFLICT"
+      ],
+      "note": "Same pre-existing Windows limitations recorded in #154. No skip counted as passed. Independent CI reported separately."
+    },
+    "native": {
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 287522.251,
+      "files": [
+        "apps/server/tests/action-intents.runtime.test.mjs",
+        "apps/server/tests/course-releases.runtime.test.mjs",
+        "apps/server/tests/learning-entry.runtime.test.mjs",
+        "packages/product-runtime/test/school-client.test.mjs",
+        "packages/product-runtime/test/hybrid-learning.runtime.test.mjs",
+        "packages/product-runtime/test/works.runtime.test.mjs"
+      ],
+      "cases": [
+        "✔ an action retains only its fixed inputs without replacing later work or draft heads (8445.6183ms)",
+        "✔ lost receiver replies are queried by the original identity and workspace confirmation never accepts a business action (11573.5317ms)",
+        "✔ durable cancellation wins before dispatch, and late acceptance is never described as withdrawal (12183.2747ms)",
+        "✔ an in-flight action never leaks through another member or an altered authenticated scope (10106.995ms)",
+        "✔ production maintenance drains dispatch and full recovery preserves accepted facts, cancelled requests and fixed resources (14985.9558ms)",
+        "✔ explicit owner migration preserves an actual v4 question draft and work bytes before admitting v5 actions (11344.5306ms)",
+        "✔ course releases pin versions, project only open material and follow current eligibility (21801.2991ms)",
+        "✔ a deleted work accepts its selected historical basis without reviving the head (8690.2488ms)",
+        "✔ work reference bases keep their identity after a display-name change (9747.3193ms)",
+        "✔ course activities resume across prepared, confirmed and committed stages with one stable activity (9211.7155ms)",
+        "✔ existing owners upgrade to course schema without losing autonomous state (11720.4742ms)",
+        "✔ installed client forwards course discovery, materials and pinned activities under the school grant (21137.8702ms)",
+        "✔ question drafts fix course and work references across edits, deletion and eligibility (11171.4947ms)",
+        "✔ device profiles cannot expose an anonymous personal identity on a shared listener (97.0636ms)",
+        "✔ school login is real and membership revocation invalidates existing sessions (203.5366ms)",
+        "✔ independent learning owner creates one course-free activity and rejects other members (363.3949ms)",
+        "✔ client proof grants are bound to the school member and independently revocable (1478.6409ms)",
+        "✔ one installed client switches personal and school using actual school-page approval (10545.6203ms)",
+        "✔ both production owners restore the original activity and fence old school sessions (17738.3682ms)",
+        "✔ production daemon exposes real learning APIs and reopens activities after restart (37586.465ms)",
+        "✔ space identity persists and authorization follows current membership (51251.3935ms)",
+        "✔ a managed school binding stores school activity works only in its installed client owner (45155.7607ms)",
+        "✔ revoking a school connection wins over an already exchanged but delayed confirmation (832.2287ms)",
+        "✔ installed client forwards the course surface and rejects malformed or foreign responses (268.6336ms)",
+        "✔ production activity works retain Chinese source and stable object/content identities (25894.3059ms)"
+      ]
+    },
+    "fullPackageCli": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 63212.3352,
+      "test": "packages/product-runtime/test/learning-cli.runtime.test.mjs",
+      "usesPackagedNodePostgresAndCli": true
+    },
+    "finalDeliveryDocs": {
+      "files": 164,
+      "localTargets": 1237,
+      "failed": 0
+    }
+  },
+  "package": {
+    "localPath": ".verification/153/product-win32-x64",
+    "status": "unsigned-candidate",
+    "profile": "full",
+    "platform": "win32-x64",
+    "createdAt": "2026-11-01T07:16:12.238Z",
+    "manifestSha256": "124238608ba86da9d97061f7ce13f22649b448f0438f873e6643315d05c14323",
+    "resources": [
+      {
+        "id": "node",
+        "version": "24.21.0"
+      },
+      {
+        "id": "postgres",
+        "version": "18.6"
+      }
+    ],
+    "productionDependencyGraph": "passed",
+    "testReceiverControls": "absent from app/web scan",
+    "boundary": "Unsigned candidate. Existing signing policy retained; no clean-machine/signing acceptance is claimed."
+  },
+  "browser": {
+    "distinctCasesPassed": 41,
+    "failedAfterTargetedCorrection": 0,
+    "skipped": 0,
+    "firstRun": {
+      "passed": 40,
+      "failed": 1,
+      "note": "Old questionDrafts migration assertion expected v2 and four stores; actual v3 retains those stores plus actions. Original work/editor assertions passed."
+    },
+    "correction": {
+      "passed": 1,
+      "test": "existing reliable workspace database upgrades without losing its work",
+      "change": "Expect v3 and additive actions store; all original byte/editor preservation assertions retained."
+    },
+    "presentationRecheck": {
+      "passed": 1,
+      "newCaseCount": 0,
+      "note": "Same production composer case rechecked with dark system theme and 420x900 viewport; screenshots visually inspected."
+    },
+    "categories": {
+      "actions": {
+        "total": 15,
+        "productionUi": 2,
+        "publicInterfaceSupplements": 13
+      },
+      "questionDrafts": {
+        "total": 8,
+        "productionUi": 6,
+        "publicInterfaceSupplements": 2
+      },
+      "worksEditor": 15,
+      "hybridDeployment": 3
+    },
+    "cases": [
+      {
+        "firstRun": "ok  1 [chromium] › e2e\\actionIntents.spec.ts:39:1 › quota refusal sends nothing and an unsent cancellation survives a new workspace instance (3.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  2 [chromium] › e2e\\actionIntents.spec.ts:105:1 › one workspace call durably captures A while later edits B continue and reload keeps the same action (2.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  3 [chromium] › e2e\\actionIntents.spec.ts:158:1 › production composer shows pending facts and late acceptance keeps the newer question (4.2s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  4 [chromium] › e2e\\actionIntents.spec.ts:204:1 › rejected contents recover as an independent draft and merge only after an explicit choice (1.4s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  5 [chromium] › e2e\\actionIntents.spec.ts:222:1 › a local input receiver gets durable fixed typed inputs without waiting for any remote dependency (977ms)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  6 [chromium] › e2e\\actionIntents.spec.ts:268:1 › a new client namespace preserves the old queue and only explicit verified reconnection resumes its original identity (2.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  7 [chromium] › e2e\\actionIntents.spec.ts:300:1 › reconnecting an unsent cancellation never revives a preparation whose reply was lost (2.4s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  8 [chromium] › e2e\\actionIntents.spec.ts:327:1 › cancellation retains a trusted acceptance from another browser with independent local storage (2.3s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok  9 [chromium] › e2e\\actionIntents.spec.ts:366:1 › explicit cancellation of server history from an independent browser reaches the original owner (3.3s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 10 [chromium] › e2e\\actionIntents.spec.ts:401:1 › expired school membership blocks dispatch and original reauthorization resumes without another create (3.2s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 11 [chromium] › e2e\\actionIntents.spec.ts:437:1 › known school access denial blocks a local receiver until original authorization returns (5.9s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 12 [chromium] › e2e\\actionIntents.spec.ts:481:1 › two actual tabs cannot revive a cancellation committed before their resumed dispatch (2.8s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 13 [chromium] › e2e\\actionIntents.spec.ts:519:1 › accepted but lost replies remain unknown through reopening and reconcile without changing identity or the new draft (1.4s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 14 [chromium] › e2e\\actionIntents.spec.ts:555:1 › accepted draft cleanup survives reopening when its first local write was refused (1.2s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 15 [chromium] › e2e\\actionIntents.spec.ts:593:1 › pausing during a real IndexedDB wait prevents a new local handoff (867ms)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 16 [chromium] › e2e\\hybridDeployment.spec.ts:79:3 › personal: the production page automatically retains Chinese work and reopens the same activity (4.8s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 17 [chromium] › e2e\\hybridDeployment.spec.ts:79:3 › school-shared: the production page automatically retains Chinese work and reopens the same activity (5.2s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 18 [chromium] › e2e\\hybridDeployment.spec.ts:79:3 › hybrid-local-owner: the production page automatically retains Chinese work and reopens the same activity (10.2s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 19 [chromium] › e2e\\questionDrafts.spec.ts:98:1 › course text and requirements stay as fixed references through collapse, reload and activity switch (7.7s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 20 [chromium] › e2e\\questionDrafts.spec.ts:205:1 › code reference keeps original copy after rename and edit, and survives file deletion and reload (4.0s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "x  21 [chromium] › e2e\\questionDrafts.spec.ts:257:1 › an existing reliable workspace database upgrades without losing its work (1.5s)",
+        "finalStatus": "passed after targeted v3 expectation correction"
+      },
+      {
+        "firstRun": "ok 22 [chromium] › e2e\\questionDrafts.spec.ts:307:1 › a restored draft resumes periodic sync after authentication recovers (3.4s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 23 [chromium] › e2e\\questionDrafts.spec.ts:331:1 › a local conflict candidate retains an unsynchronized code basis across reload (1.6s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 24 [chromium] › e2e\\questionDrafts.spec.ts:375:1 › local storage refusal keeps memory and retries automatically (2.1s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 25 [chromium] › e2e\\questionDrafts.spec.ts:397:1 › two actual tabs preserve both local drafts until an explicit choice (2.1s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 26 [chromium] › e2e\\questionDrafts.spec.ts:419:1 › another client conflict keeps both drafts and a late acknowledgement never settles later input (4.6s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 27 [chromium] › e2e\\worksEditor.spec.ts:59:1 › course catalog returns after activity restoration races with discovery (1.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 28 [chromium] › e2e\\worksEditor.spec.ts:97:1 › actual editor automatically protects and synchronizes Chinese original text across reload (4.4s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 29 [chromium] › e2e\\worksEditor.spec.ts:121:1 › an opened activity survives API disconnection and reload, then continues its original pending sync (7.9s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 30 [chromium] › e2e\\worksEditor.spec.ts:143:1 › late and lost confirmations never settle later editor content (6.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 31 [chromium] › e2e\\worksEditor.spec.ts:183:1 › failed navigation leaves the editor able to continue automatic sync (3.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 32 [chromium] › e2e\\worksEditor.spec.ts:206:1 › reopening an activity uses the latest body from another actual tab, not a retained editor model (6.4s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 33 [chromium] › e2e\\worksEditor.spec.ts:232:1 › a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically (7.8s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 34 [chromium] › e2e\\worksEditor.spec.ts:255:1 › two actual tabs preserve both local edits under simultaneous IndexedDB competition (8.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 35 [chromium] › e2e\\worksEditor.spec.ts:294:1 › a remote conflict comparison includes input made while the original service read was delayed (7.8s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 36 [chromium] › e2e\\worksEditor.spec.ts:345:1 › continuous input advances durable local and remote content before the student stops typing (6.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 37 [chromium] › e2e\\worksEditor.spec.ts:364:1 › the actual editor retains UTF-8 BOM and CRLF of an existing immutable source while editing (2.5s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 38 [chromium] › e2e\\worksEditor.spec.ts:379:1 › successful navigation protects input entered immediately before its delayed response (2.2s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 39 [chromium] › e2e\\worksEditor.spec.ts:399:1 › initial storage refusal retries automatically after the browser permits transactions again (1.4s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 40 [chromium] › e2e\\worksEditor.spec.ts:409:51 › school workspace logout › confirmed logout clears the old identity despite failed context refresh, preserving work for reauthentication (3.2s)",
+        "finalStatus": "passed"
+      },
+      {
+        "firstRun": "ok 41 [chromium] › e2e\\worksEditor.spec.ts:409:51 › school workspace logout › confirmed logout clears the old identity despite failed context refresh after switching spaces, preserving work for reauthentication (3.2s)",
+        "finalStatus": "passed"
+      }
+    ],
+    "screenshots": [
+      "wp02-actions-windows-light.png",
+      "wp02-actions-windows-dark-narrow.png"
+    ],
+    "receiverScope": "Only controlled test authority. Production default has no receiver; no real Agent reply, teacher receipt or experiment execution."
+  },
+  "review": {
+    "sourceCommit": "110774f8dca267b5b64057f1710db1d56908a2f8",
+    "standardsRemaining": 0,
+    "specRemaining": 0,
+    "fixed": [
+      "durable draft settlement",
+      "pause after IndexedDB wait",
+      "cancelled namespace reconnection",
+      "shared explicit access denial for local handoff",
+      "trusted late acceptance facts",
+      "explicit cancellation of imported history"
+    ]
+  },
+  "remaining": {
+    "macAndRealCrossMachine": {
+      "issue": 155,
+      "status": "not executed for #153",
+      "newPendingItems": 18,
+      "preservedCompletedItems": 114
+    },
+    "physicalWindowsIme": "not separately assessed for #153",
+    "realAgent": "WP07",
+    "realTeacher": "WP12",
+    "realExecution": "WP03",
+    "teachingEffect": "not assessed",
+    "schemaUpgradeCli": "no adapter registered; explicit refusal remains"
+  },
+  "logs": {
+    "final-root-verify": {
+      "localPath": ".verification/153/final-root-verify.log",
+      "bytes": 17441,
+      "sha256": "c9862bdf3b72c47756305ee41551f73a2457aad55c487138ebf8a99280bfeef5"
+    },
+    "final-full-test": {
+      "localPath": ".verification/153/final-full-test.log",
+      "bytes": 120638,
+      "sha256": "40fc62d17f6d8a67610554120a68edc933690546f6ffcdb1da7bebfc85458242"
+    },
+    "final-native": {
+      "localPath": ".verification/153/final-native.log",
+      "bytes": 2984,
+      "sha256": "f06adf8b296cd879a3b01803d2a0f7bf9ad54ff2e9e6a4808066e12b048709b2"
+    },
+    "final-package": {
+      "localPath": ".verification/153/final-package.log",
+      "bytes": 18819,
+      "sha256": "71da065b48559c3c72ba0f417bda03b441d59b5d6ef2895cd9e80504759b0cec"
+    },
+    "final-package-cli": {
+      "localPath": ".verification/153/final-package-cli.log",
+      "bytes": 224,
+      "sha256": "c145a27fa50b1917e310f2032112b102c8a862c816f595cbeef76b365a3fec4b"
+    },
+    "final-chrome": {
+      "localPath": ".verification/153/final-chrome.log",
+      "bytes": 8154,
+      "sha256": "f6be9fb30c1caea23da7dac9c4dd7facf488b0e62dc72dd3b873e61cf4834c3d"
+    },
+    "final-idb-migration-green": {
+      "localPath": ".verification/153/final-idb-migration-green.log",
+      "bytes": 363,
+      "sha256": "b705fa4b094659c0b3cd914db72b09cf3539fa8c64644d8ecf9f1bbbde11891f"
+    },
+    "final-chrome-theme": {
+      "localPath": ".verification/153/final-chrome-theme.log",
+      "bytes": 374,
+      "sha256": "e18da159d1643115d8299b79718576c45ce7b1c470a50fe9a9338de1c17131dd"
+    },
+    "final-web-typecheck": {
+      "localPath": ".verification/153/final-web-typecheck.log",
+      "bytes": 303,
+      "sha256": "ba4673390308b50e879b786f78536e1dce86724f3598e57ea19133bb5a8180f1"
+    },
+    "tracked-docs": {
+      "localPath": ".verification/153/tracked-docs.log",
+      "bytes": 64,
+      "sha256": "9e3b479461702997b4e88124be11b1c8b0fbba0f9db420f5d876aa0ec85b8bbc"
+    },
+    "review-cleanup-red": {
+      "localPath": ".verification/153/review-cleanup-red.log",
+      "bytes": 1349,
+      "sha256": "bcc4463002b350886de2ee768878bede3c4316a9d603775a8f2dbdfe457154de"
+    },
+    "review-cleanup-green": {
+      "localPath": ".verification/153/review-cleanup-green.log",
+      "bytes": 368,
+      "sha256": "ce698204ee61dc79f421c85450539814faa4e45509da67e867345322f1abd185"
+    },
+    "review-local-pause-red": {
+      "localPath": ".verification/153/review-local-pause-red.log",
+      "bytes": 1496,
+      "sha256": "f9ca1c8cdae1a6e9084f0fb33e6889049f89903634466cd96080950934e866b2"
+    },
+    "review-local-pause-green": {
+      "localPath": ".verification/153/review-local-pause-green.log",
+      "bytes": 355,
+      "sha256": "e881c0fe858adcb333eee868f7db25f4d06819ae422b7128ca70604be9c25b04"
+    },
+    "review-reconnect-red": {
+      "localPath": ".verification/153/review-reconnect-red.log",
+      "bytes": 1486,
+      "sha256": "9e25e725abe5db011f652fb9bf55afdd94f38e5340e7516db933ae6cee90f333"
+    },
+    "review-reconnect-green": {
+      "localPath": ".verification/153/review-reconnect-green.log",
+      "bytes": 373,
+      "sha256": "76e70c75e1888a25f33d79892865b63f1a745771a9e51d93899a88b3b6557489"
+    },
+    "review-late-fact-red": {
+      "localPath": ".verification/153/review-late-fact-red.log",
+      "bytes": 1813,
+      "sha256": "174afb38492a3e74bc6d3015eeeef13457d6998b9e0a473c5259150cf29096fa"
+    },
+    "review-cancellation-green": {
+      "localPath": ".verification/153/review-cancellation-green.log",
+      "bytes": 840,
+      "sha256": "02ecc2f8d0623d16c66b12c0322d16cf3604cbe85c99a809b0894fc0ded54dab"
+    },
+    "review-local-auth-red": {
+      "localPath": ".verification/153/review-local-auth-red.log",
+      "bytes": 1827,
+      "sha256": "398ed1ad4cfd3e50c28f9522c4897c5a62ba040eebdc6148416f65bf382d7cc6"
+    },
+    "review-local-auth-green": {
+      "localPath": ".verification/153/review-local-auth-green.log",
+      "bytes": 679,
+      "sha256": "120663c077fc8853ba18155bc88191a1a04574ea9efe9c24a892807220938948"
+    },
+    "review-history-cancel-red": {
+      "localPath": ".verification/153/review-history-cancel-red.log",
+      "bytes": 1614,
+      "sha256": "83898150f463c6e9e95e556eda6a7ea9b6c0f053ea7c7203044e34d72834a56f"
+    },
+    "review-history-cancel-green": {
+      "localPath": ".verification/153/review-history-cancel-green.log",
+      "bytes": 384,
+      "sha256": "45601087cc6d8b2937aa43845a02f3f61cdaebbf6029582e7d8ade9325a62474"
+    },
+    "final-tracked-docs": {
+      "localPath": ".verification/153/final-tracked-docs.log",
+      "bytes": 64,
+      "sha256": "444d73085ddea92793b7d02750fcfef7a9876114e437ea44ac70416af69c7767"
+    }
+  }
+}

@@ -7,6 +7,7 @@ import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spa
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
+import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
@@ -175,6 +176,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route === 'course-activities') return learning.createCourse(identity, body);
     if (route.startsWith('course-activity-results/')) return learning.courseResult(identity, route.slice('course-activity-results/'.length));
     const parts = route.split('/');
+    if (parts[0] === 'intents') {
+      if (parts.length === 2) return body === undefined ? learning.intents.list(identity, parts[1]!) : learning.intents.prepare(identity, parts[1]!, body);
+      if (parts.length === 3 && parts[2] === 'capabilities' && body === undefined) return learning.intents.capabilities(identity, parts[1]!);
+      if (parts.length === 3 && body === undefined) return learning.intents.read(identity, parts[1]!, parts[2]!);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'dispatch') return learning.intents.dispatch(identity, parts[1]!, parts[2]!);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'cancel') return learning.intents.cancel(identity, parts[1]!, parts[2]!);
+      throw new StorageError('forbidden');
+    }
     if (parts[0] === 'drafts') {
       if (parts.length === 2) return body === undefined ? learning.drafts.read(identity, parts[1]!) : learning.drafts.sync(identity, parts[1]!, body);
       if (parts[2] === 'receipts') return learning.drafts.receipt(identity, parts[1]!, parts[3]!);
@@ -189,14 +198,14 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const id = '[0-9a-f-]{36}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|connections/revoke)$`).test(route)) {
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
-    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
     }
@@ -228,6 +237,20 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
         || JSON.stringify(activity.target) !== JSON.stringify(connection.grant!.target)) throw new StorageError('forbidden');
       return activity;
     };
+    if (route.startsWith('intents/')) {
+      if (route.endsWith('/capabilities')) return parsed(z.array(actionReceiverSchema), value);
+      const checkIntent = (candidate: unknown) => {
+        const intent = parsed(actionViewSchema, candidate), scope = intent.input.scope, identity = connection.grant!.identity;
+        if (scope.environmentId !== identity.environmentId || scope.spaceId !== identity.spaceId || scope.principalId !== identity.principalId
+          || scope.activityId !== route.split('/')[1]) throw new StorageError('forbidden');
+        return intent;
+      };
+      if (route.split('/').length === 2 && body === undefined) {
+        if (!Array.isArray(value)) throw new StorageError('unavailable');
+        return value.map(checkIntent);
+      }
+      return value === null ? null : checkIntent(value);
+    }
     if (route.startsWith('drafts/')) return value === null ? null : parsed(questionDraftViewSchema, value);
     if (route === 'courses') return parsed(courseCatalogSchema, value);
     if (route.startsWith('releases/')) {

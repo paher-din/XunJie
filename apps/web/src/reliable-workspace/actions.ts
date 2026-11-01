@@ -1,0 +1,397 @@
+import { actionInputSchema, actionViewSchema, actionScopeSchema, actionReceiptSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents'
+import type { ActionInput, ActionView, ActionReceiverIdentity, ActionReceiver, ActionReceipt } from '@xunjie/contracts/action-intents'
+import { ActionStore } from './action-store'
+import type { LocalAction } from './action-store'
+import type { ReliableQuestionDraft } from './draft'
+import { NETWORK_MAX_WAIT_MS } from './coordinator'
+import { questionReferenceKey, questionReferencesSchema, questionTextSchema } from '@xunjie/contracts/question-drafts'
+
+export interface ActionTransport {
+  prepare(input: ActionInput): Promise<ActionView>
+  read(requestId: string): Promise<ActionView | null>
+  list(): Promise<ActionView[]>
+  dispatch(requestId: string): Promise<ActionView>
+  cancel(requestId: string): Promise<ActionView>
+  capabilities(): Promise<ActionReceiverIdentity[]>
+}
+export interface ActionQueueState { ready: boolean; active: boolean; items: LocalAction[]; previous: LocalAction[]; error: string; receivers: ActionReceiverIdentity[] }
+const terminal = (item: LocalAction) => ['accepted', 'cancelled', 'failed'].includes(item.phase)
+const matches = (a: ActionInput, b: ActionInput) => JSON.stringify(actionInputSchema.parse(a)) === JSON.stringify(actionInputSchema.parse(b))
+async function actionInputDigest(input: ActionInput): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(actionInputSchema.parse(input)))
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+function scopeFromKey(key: string) {
+  const [, environmentId, spaceId, principalId, activityId] = JSON.parse(key) as string[]
+  return actionScopeSchema.parse({ environmentId, spaceId, principalId, activityId })
+}
+
+/** A workspace-owned durable action queue, not an Agent runner or an experiment executor. */
+export class ReliableActions {
+  private store = new ActionStore()
+  private listeners = new Set<() => void>()
+  private unprotected = new Map<string, LocalAction>()
+  private active = new Map<string, Promise<void>>()
+  private localReceivers = new Map<string, ActionReceiver>()
+  private cancellationRequests = new Set<string>()
+  private timer?: ReturnType<typeof setInterval>
+  private stopped = false
+  private disposed = false
+  private denied = false
+  state: ActionQueueState = { ready: false, active: true, items: [], previous: [], error: '', receivers: [] }
+  constructor(readonly key: string, private draft: ReliableQuestionDraft,
+    private captureWorks: () => ActionInput['works'], private transport: ActionTransport,
+    private access: { denied(): boolean; confirmed(): void }) {
+    if (draft.key !== key) throw new Error('问题与作品不属于同一工作区。')
+  }
+  subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
+  snapshot = () => this.state
+  private accessDenied() { return this.denied || this.access.denied() }
+  private rejectAccess(error?: unknown) {
+    if (error && !['forbidden', 'stale-generation'].includes((error as { code?: string }).code ?? '')) return false
+    this.denied = true
+    this.notify({ active: false, error: '原空间访问资格已失效，待发内容仍保留；请重新登录原空间。' })
+    return true
+  }
+  registerLocal(receiver: ActionReceiver) {
+    const identity = actionReceiverSchema.parse(receiver.identity)
+    if (identity.location !== 'local') throw new Error('本机接收器必须声明本机交接。')
+    const id = JSON.stringify(identity)
+    if (this.localReceivers.has(id)) throw new Error('不能替换原动作的接收方。')
+    this.localReceivers.set(id, receiver)
+    this.notify({ receivers: [...this.state.receivers.filter(item => item.location !== 'local'), ...this.localReceivers.values()].map(item => 'identity' in item ? item.identity : item) })
+    void this.synchronize()
+    return () => { if (this.localReceivers.get(id) === receiver) this.localReceivers.delete(id) }
+  }
+  private notify(patch: Partial<ActionQueueState>) {
+    if (this.disposed) return
+    this.state = { ...this.state, ...patch }; for (const listener of this.listeners) listener()
+  }
+  private async refresh() {
+    const saved = await this.store.list(this.key)
+    this.notify({ ready: true, items: [...saved, ...[...this.unprotected.values()].filter(item => !saved.some(other => other.key === item.key))] })
+  }
+  async open() {
+    this.timer ??= setInterval(() => { void this.synchronize() }, NETWORK_MAX_WAIT_MS)
+    window.addEventListener('beforeunload', this.beforeUnload)
+    try { await this.refresh(); this.notify({ previous: await this.previous() }) }
+    catch (error) { this.notify({ error: '本机待发记录暂时无法读取；不会派发未核实的动作，系统会自动重试。' }); throw error }
+    void this.synchronize()
+  }
+  private beforeUnload = (event: BeforeUnloadEvent) => {
+    if (this.unprotected.size || this.cancellationRequests.size) { event.preventDefault(); event.returnValue = '' }
+  }
+  async create(options: { requestId: string; receiver: ActionReceiverIdentity; evidence?: ActionInput['evidence']; objectIds?: string[] }) {
+    // Capture all partitions before the first await. Later edits are independent from this input.
+    const works = structuredClone(this.captureWorks())
+    const scope = scopeFromKey(this.key)
+    const input = actionInputSchema.parse({ requestId: options.requestId, scope, receiver: options.receiver, draft: this.draft.capture(),
+      works: options.objectIds ? works.filter(file => options.objectIds!.includes(file.objectId)) : works, evidence: options.evidence ?? [] })
+    if (options.objectIds?.some(id => !works.some(file => file.objectId === id))) throw new Error('所需作品已不在当前工作区。')
+    const entry: LocalAction = { key: JSON.stringify([this.key, input.requestId]), scope: this.key,
+      input, phase: 'unprotected', cancelRequested: false, error: '' }
+    const existing = this.unprotected.get(input.requestId)
+    if (existing && !matches(existing.input, input)) throw new Error('同一动作身份不能改变内容。')
+    this.unprotected.set(input.requestId, entry)
+    try {
+      const saved = await this.retain(entry)
+      await this.refresh()
+      void this.synchronize()
+      return saved
+    } catch (error) {
+      if ((error as { code?: string }).code === 'identity-conflict') {
+        this.unprotected.delete(input.requestId)
+        await this.refresh(); throw error
+      }
+      this.notify({ error: '这次动作和依据尚未获得本机保护，未继续派发。请保留页面，可查看或复制原内容；系统会自动重试。',
+        items: [...this.state.items.filter(item => item.input.requestId !== input.requestId), entry] })
+      throw error
+    }
+  }
+  private async retain(entry: LocalAction) {
+    const saved = await this.store.change(this.key, entry.input.requestId, previous => {
+      if (previous && !matches(previous.input, entry.input)) throw Object.assign(new Error('同一动作身份不能改变内容。'), { code: 'identity-conflict' })
+      return previous ?? { ...entry, phase: this.cancellationRequests.has(entry.input.requestId) ? 'cancelled' : 'waiting-dependencies',
+        cancelRequested: this.cancellationRequests.has(entry.input.requestId) }
+    })
+    this.unprotected.delete(entry.input.requestId)
+    return saved
+  }
+  async read(requestId: string) {
+    return (await this.store.list(this.key)).find(item => item.input.requestId === requestId)
+      ?? this.unprotected.get(requestId) ?? null
+  }
+  async previous() {
+    const scope = JSON.stringify(scopeFromKey(this.key))
+    return (await this.store.list()).filter(item => item.scope !== this.key && JSON.stringify(item.input.scope) === scope)
+  }
+  async reconnect(requestId: string, previousKey = this.key) {
+    if (JSON.stringify(scopeFromKey(previousKey)) !== JSON.stringify(scopeFromKey(this.key)))
+      throw new Error('不能将动作接到其他空间、主体或活动。')
+    const original = (await this.store.list(previousKey)).find(item => item.input.requestId === requestId)
+    if (!original) throw new Error('原动作不可读。')
+    if (original.input.receiver.location !== 'remote') throw new Error('本机旧交接必须由原执行能力核实，不能自动重跑。')
+    const capabilities = await this.transport.capabilities()
+    if (!capabilities.some(receiver => JSON.stringify(actionReceiverSchema.parse(receiver)) === JSON.stringify(original.input.receiver)))
+      throw new Error('原接收能力尚未接入，旧动作继续保留。')
+    let known = await this.transport.read(requestId)
+    if (!known || !matches(original.input, known.input) || known.inputDigest !== await actionInputDigest(original.input))
+      throw new Error('原主体、目标或请求结果尚未核实，不能另造身份继续。')
+    const cancelled = original.cancelRequested || original.phase === 'cancelled'
+    if (cancelled) {
+      known = actionViewSchema.parse(await this.transport.cancel(requestId))
+      if (!matches(original.input, known.input) || known.inputDigest !== await actionInputDigest(original.input))
+        throw new Error('取消结果与原动作不符。')
+    }
+    await this.store.change(this.key, requestId, current => {
+      if (current && !matches(current.input, original.input)) throw new Error('同一身份存在不同内容。')
+      if (current && terminal(current)) return current
+      return { ...original, key: JSON.stringify([this.key, requestId]), scope: this.key, remote: known,
+        history: false, phase: cancelled && known!.state === 'prepared' ? 'cancelled' : known!.state === 'prepared' ? 'ready' : known!.state,
+        cancelRequested: cancelled || known!.cancelRequested }
+    })
+    await this.refresh(); void this.synchronize()
+  }
+  async cancel(requestId: string) {
+    if (!await this.read(requestId)) throw new Error('原动作不可读。')
+    this.cancellationRequests.add(requestId)
+    const key = requestId + ':cancel'
+    const task = this.active.get(key) ?? this.cancelAction(requestId).then(() => {})
+    this.active.set(key, task)
+    try { await task } finally { if (this.active.get(key) === task) this.active.delete(key) }
+    return (await this.read(requestId))!
+  }
+  private async cancelAction(requestId: string, reconcile = true) {
+    const captured = this.unprotected.get(requestId)
+    const cancelled = await this.store.change(this.key, requestId, saved => {
+      const current = saved ?? captured
+      if (!current) throw new Error('原动作不可读。')
+      if (terminal(current)) return current
+      // An explicit cancellation adopts history only for cancellation, never for dispatch.
+      return { ...current, history: false, cancelRequested: true,
+        phase: current.phase === 'dispatched' ? 'dispatched' : 'cancelled' }
+    })
+    this.unprotected.delete(requestId)
+    this.cancellationRequests.delete(requestId)
+    await this.refresh()
+    if (!reconcile) return cancelled
+    await this.reconcileCancellation(cancelled)
+    await this.refresh()
+    return (await this.read(requestId))!
+  }
+  private async reconcileCancellation(item: LocalAction) {
+    if (!item.cancelRequested || item.history || this.stopped || this.accessDenied() || this.disposed
+      || item.localReceipt || item.remote && ['accepted', 'cancelled', 'failed'].includes(item.remote.state)) return
+    try {
+      if (item.input.receiver.location === 'local') {
+        const receiver = this.localReceivers.get(JSON.stringify(item.input.receiver))
+        if (!receiver) return
+        const digest = await actionInputDigest(item.input)
+        let receipt = await receiver.query(item.input.requestId, digest)
+        if (this.stopped || this.accessDenied() || this.disposed) return
+        receipt ??= await receiver.cancel(item.input.requestId, digest)
+        if (receipt) await this.storeLocalReceipt(item, receipt)
+      } else {
+        // Preparation may have committed even when its response never reached this browser.
+        const known = await this.transport.read(item.input.requestId)
+        if (!known || this.stopped || this.accessDenied() || this.disposed) return
+        await this.acceptRemote(item, ['prepared', 'dispatched'].includes(known.state)
+          ? await this.transport.cancel(item.input.requestId) : known)
+      }
+    } catch (error) { this.rejectAccess(error) /* Keep the local stop and query the original authority on recovery. */ }
+  }
+  private async storeLocalReceipt(item: LocalAction, value: unknown) {
+    const receipt = actionReceiptSchema.parse(value)
+    if (receipt.requestId !== item.input.requestId || receipt.inputDigest !== await actionInputDigest(item.input)
+      || JSON.stringify(receipt.receiver) !== JSON.stringify(item.input.receiver)) throw new Error('接收回执与原动作不符。')
+    return this.store.change(this.key, item.input.requestId, saved => {
+      if (saved?.localReceipt && JSON.stringify(saved.localReceipt) === JSON.stringify(receipt)) return saved
+      if (!saved || saved.phase !== 'dispatched' && !(saved.phase === 'cancelled' && saved.cancelRequested && !saved.localReceipt))
+        throw new Error('动作尚未派发，不能接纳业务回执。')
+      return { ...saved, localReceipt: receipt, phase: receipt.state === 'rejected' ? 'failed' : receipt.state, error: '' }
+    })
+  }
+  /** Receipt callbacks are verified against the original registered authority, never trusted as bare JSON. */
+  async acceptReceipt(requestId: string, value: ActionReceipt) {
+    const current = await this.read(requestId)
+    if (!current) throw new Error('原动作不可读。')
+    if (current.input.receiver.location === 'local') {
+      const receiver = this.localReceivers.get(JSON.stringify(current.input.receiver))
+      if (!receiver) throw new Error('原接收能力尚未接入。')
+      const known = await receiver.query(requestId, await actionInputDigest(current.input))
+      if (!known || JSON.stringify(actionReceiptSchema.parse(known)) !== JSON.stringify(actionReceiptSchema.parse(value)))
+        throw new Error('原接收方尚未确认此回执。')
+      await this.storeLocalReceipt(current, known)
+    } else {
+      const known = await this.transport.read(requestId)
+      if (!known?.receipt || JSON.stringify(actionReceiptSchema.parse(known.receipt)) !== JSON.stringify(actionReceiptSchema.parse(value)))
+        throw new Error('原接收方尚未确认此回执。')
+      await this.acceptRemote(current, known)
+    }
+    await this.refresh()
+  }
+  private async advanceLocal(item: LocalAction) {
+    const receiver = this.localReceivers.get(JSON.stringify(item.input.receiver))
+    if (!receiver || this.stopped || this.accessDenied() || terminal(item) || item.history || this.cancellationRequests.has(item.input.requestId)) return
+    const current = await this.store.change(this.key, item.input.requestId, saved => {
+      if (!saved) throw new Error('原动作不可读。')
+      return terminal(saved) ? saved : { ...saved, phase: 'dispatched' }
+    })
+    if (terminal(current) || this.stopped || this.accessDenied() || this.cancellationRequests.has(item.input.requestId)) return
+    const digest = await actionInputDigest(current.input)
+    try {
+      let receipt = await receiver.query(current.input.requestId, digest)
+      if (this.stopped || this.accessDenied() || this.cancellationRequests.has(item.input.requestId)) return
+      const latest = (await this.read(current.input.requestId))!
+      if (this.stopped || this.accessDenied() || this.disposed || this.cancellationRequests.has(item.input.requestId)) return
+      if (!receipt) receipt = latest.cancelRequested ? await receiver.cancel(current.input.requestId, digest)
+        : await receiver.accept(current.input, digest)
+      if (receipt) await this.storeLocalReceipt(current, receipt)
+    } catch (error) { this.rejectAccess(error) /* Remains unknown and queries this exact authority on recovery. */ }
+  }
+  private async run(item: LocalAction) {
+    if (this.active.has(item.input.requestId) || this.cancellationRequests.has(item.input.requestId)) return
+    const task = item.input.receiver.location === 'local' ? this.advanceLocal(item) : this.advance(item)
+    this.active.set(item.input.requestId, task)
+    try { await task } finally { this.active.delete(item.input.requestId) }
+  }
+  async recover(requestId: string) {
+    const saved = await this.store.change(this.key, requestId, current => {
+      if (!current || !['cancelled', 'failed'].includes(current.phase)) throw new Error('请先核实原动作的结果。')
+      if (current.recovered) return current
+      const { token: _token, ...content } = structuredClone(current.input.draft)
+      return { ...current, recovered: { ...content, draftId: crypto.randomUUID() } }
+    })
+    await this.refresh(); return saved.recovered!
+  }
+  async mergeRecovered(requestId: string) {
+    const item = await this.read(requestId)
+    if (!item?.recovered) throw new Error('请先取回独立草稿。')
+    const current = this.draft.capture(), recovered = item.recovered
+    const references = [...current.references]
+    for (const reference of recovered.references) {
+      if (references.some(other => questionReferenceKey(other) === questionReferenceKey(reference))) continue
+      references.push({ ...reference, referenceId: references.some(other => other.referenceId === reference.referenceId)
+        ? crypto.randomUUID() : reference.referenceId })
+    }
+    const question = questionTextSchema.parse([current.question, recovered.question].filter(Boolean).join('\n\n'))
+    this.draft.change(question, questionReferencesSchema.parse(references), recovered.bases)
+    await this.draft.protect()
+  }
+  private async acceptRemote(item: LocalAction, value: unknown) {
+    const remote = actionViewSchema.parse(value)
+    if (!matches(item.input, remote.input) || remote.inputDigest !== await actionInputDigest(item.input))
+      throw Object.assign(new Error('回执与固定依据不符。'), { code: 'corrupt' })
+    return this.store.change(this.key, item.input.requestId, saved => {
+      const current = saved ?? item
+      // A locally confirmed unsent cancellation can never be revived by a late preparation reply.
+      if (current.phase === 'cancelled' && remote.state === 'prepared') return current.remote ? current : { ...current, remote }
+      const confirmed = current.localReceipt || current.remote && ['accepted', 'cancelled', 'failed'].includes(current.remote.state)
+      if (terminal(current) && current.phase !== remote.state && !(current.phase === 'cancelled' && current.cancelRequested && !confirmed)) return current
+      return { ...current, remote, phase: remote.state === 'prepared' ? 'ready' : remote.state,
+        cancelRequested: current.cancelRequested || remote.cancelRequested, error: '' }
+    })
+  }
+  private async settleDraft(item: LocalAction) {
+    if (item.phase !== 'accepted' || item.draftSettled || item.history || this.stopped || this.disposed) return
+    try {
+      this.draft.acknowledge(item.input.draft.token)
+      // The durable marker must never get ahead of the draft transaction it describes.
+      await this.draft.protect()
+      await this.store.change(this.key, item.input.requestId, saved => {
+        if (!saved) throw new Error('原接收记录不可读。')
+        return saved.phase === 'accepted' ? { ...saved, draftSettled: true } : saved
+      })
+    } catch { /* The draft reports protection failures; the original receipt stays unsettled for recovery. */ }
+  }
+  private async advance(item: LocalAction) {
+    let current = (await this.read(item.input.requestId))!
+    if (terminal(current) || current.history || this.stopped || this.accessDenied() || this.cancellationRequests.has(item.input.requestId)) return
+    try {
+      const remote = await this.transport.read(current.input.requestId)
+      if (this.stopped || this.accessDenied()) return
+      current = await this.acceptRemote(current, remote ?? await this.transport.prepare(current.input))
+      if (terminal(current) || this.stopped || this.accessDenied() || this.cancellationRequests.has(item.input.requestId)) {
+        if (current.phase === 'cancelled' && !this.stopped && !this.denied && current.remote?.state === 'prepared')
+          await this.transport.cancel(current.input.requestId)
+        return
+      }
+      current = await this.store.change(this.key, current.input.requestId, saved => {
+        if (!saved) throw new Error('原动作不可读。')
+        return terminal(saved) ? saved : { ...saved, phase: 'dispatched' }
+      })
+      if (terminal(current) || this.stopped || this.accessDenied() || this.cancellationRequests.has(item.input.requestId)) return
+      current = await this.acceptRemote(current, current.cancelRequested
+        ? await this.transport.cancel(current.input.requestId) : await this.transport.dispatch(current.input.requestId))
+      await this.settleDraft(current)
+    } catch (error) {
+      const code = (error as { code?: string }).code
+      if (this.rejectAccess(error)) { /* Reauthorization is checked against the original route. */ }
+      else if (code && !['unavailable', 'maintenance', 'commit-unknown'].includes(code)) {
+        await this.store.change(this.key, item.input.requestId, saved => {
+          const current = saved ?? item
+          return { ...current, phase: ['invalid', 'identity-conflict'].includes(code) && ['waiting-dependencies', 'ready'].includes(current.phase)
+            ? 'failed' : current.phase, error: '原动作尚未完成核实：' + code }
+        })
+      }
+    }
+  }
+  private async synchronize() {
+    if (this.disposed) return
+    try {
+      for (const entry of this.unprotected.values()) {
+        try { await this.retain(entry) }
+        catch (error) { if ((error as { code?: string }).code === 'identity-conflict') this.unprotected.delete(entry.input.requestId) }
+      }
+      for (const requestId of this.cancellationRequests) {
+        try { await this.cancelAction(requestId, false) } catch { /* Keep suppressing dispatch until cancellation is durable. */ }
+      }
+      await this.refresh()
+      if (this.stopped) return
+      if (this.access.denied()) this.rejectAccess()
+      if (this.denied) {
+        // Probe only the original bound activity. A different login/namespace cannot authorize this route.
+        try { await this.transport.capabilities() } catch { return }
+        if (this.stopped) return
+        this.access.confirmed(); this.denied = false; this.notify({ active: true })
+      }
+      // Track receiver cancellation work in the same lifetime used by maintenance drain.
+      await Promise.all(this.state.items.filter(item => item.cancelRequested && !item.history && !item.localReceipt
+        && !['accepted', 'cancelled', 'failed'].includes(item.remote?.state ?? '')).map(item => this.cancel(item.input.requestId)))
+      // Local handoff must not wait for any remote capability or dependency query.
+      await Promise.all(this.state.items.filter(item => item.input.receiver.location === 'local').map(item => this.run(item)))
+      let history: ActionView[] = []
+      try {
+        const receivers = await this.transport.capabilities()
+        if (this.stopped || this.accessDenied()) return
+        this.notify({ receivers: [...receivers, ...[...this.localReceivers.values()].map(item => item.identity)] })
+        history = await this.transport.list()
+      } catch (error) { if (this.rejectAccess(error)) return /* Network outage alone does not revoke local access. */ }
+      for (const remote of history) {
+        if (JSON.stringify(remote.input.scope) !== JSON.stringify(scopeFromKey(this.key))) continue
+        const found = await this.read(remote.input.requestId)
+        if (found) continue
+        const input = actionInputSchema.parse(remote.input)
+        await this.store.change(this.key, input.requestId, saved => saved ?? { key: JSON.stringify([this.key, input.requestId]),
+          scope: this.key, input, phase: remote.state === 'prepared' ? 'ready' : remote.state,
+          cancelRequested: remote.cancelRequested, remote: actionViewSchema.parse(remote), history: true, error: '' })
+      }
+      await Promise.all(this.state.items.filter(item => item.input.receiver.location === 'remote' && !terminal(item) && !item.history).map(item => this.run(item)))
+      await this.refresh()
+      // A crash between receipt storage and draft settlement is safe to resume; tokens protect newer edits.
+      for (const item of this.state.items.filter(item => item.phase === 'accepted' && !item.draftSettled && !item.history)) {
+        await this.settleDraft(item)
+      }
+      if (!this.unprotected.size && !this.denied) this.notify({ error: '' })
+    } catch { /* Retain contents and retry from the same identity on the next bounded tick. */ }
+  }
+  suspend() { this.stopped = true; this.notify({ active: false }) }
+  resume() { this.stopped = false; this.notify({ active: !this.accessDenied() }); void this.synchronize() }
+  async leave() {
+    for (const entry of this.unprotected.values()) await this.retain(entry)
+    for (const requestId of this.cancellationRequests) await this.cancelAction(requestId, false)
+  }
+  async drain() { this.suspend(); await Promise.allSettled([...this.active.values()]) }
+  dispose() { this.disposed = true; this.suspend(); if (this.timer) clearInterval(this.timer)
+    window.removeEventListener('beforeunload', this.beforeUnload); this.listeners.clear() }
+}

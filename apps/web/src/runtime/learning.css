@@ -52,3 +52,9 @@
 .work-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .work-comparison pre { overflow: auto; max-height: 320px; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .work-comparison { grid-template-columns: 1fr; } }
+.learning-action-records { margin-top: 24px; }
+.learning-action-record { border-top: 1px solid var(--line); padding: 16px 0; }
+.learning-action-records pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; font-size: 13px; }
+.learning-action-record details { margin: 12px 0; }
+.learning-action-record summary { cursor: pointer; color: var(--ink-soft); }
+.learning-action-record .action-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
