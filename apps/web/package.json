@@ -5,13 +5,15 @@
   "type": "module",
   "description": "循阶师生共用 Web 应用",
   "scripts": {
+    "pretest:e2e": "node ../../scripts/build.mjs web:test",
+    "pretest": "node ../../scripts/build.mjs web:test",
     "dev": "vite",
     "dev:prep": "vite --mode prep --port 5601 --strictPort",
-    "build": "tsc --noEmit && vite build",
-    "build:runtime": "tsc --noEmit && vite build --config vite.runtime.config.ts",
+    "build": "node ../../scripts/build.mjs web --",
+    "build:runtime": "node ../../scripts/build.mjs web:runtime --",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "typecheck": "node ../../scripts/build.mjs web:typecheck",
     "test:e2e": "playwright test",
     "predev": "npm run build -w @xunjie/contracts",
     "predev:prep": "npm run build -w @xunjie/contracts"

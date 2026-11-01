@@ -1,9 +1,9 @@
-import { reuseWorkspaceDependencies } from './workspace-dependencies.mjs';
+import { prepareWorkspaceOutputs, removeWorkspaceDependencies, reuseWorkspaceDependencies } from './workspace-dependencies.mjs';
 // Real local business API in two Git worktrees; no execution/model/network-service substitute.
 import assert from 'node:assert/strict';
 import { request } from 'node:https';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
@@ -46,10 +46,7 @@ test('capture before stale-editor save; restore actual code/data to another work
   t.after(async () => {
     for (const context of [source, ...receivers]) await down(context);
     for (const target of targets) if (existsSync(target)) {
-      {
-        const dependencies = join(target, 'node_modules');
-        if (existsSync(dependencies) && lstatSync(dependencies).isSymbolicLink()) unlinkSync(dependencies);
-      }
+      removeWorkspaceDependencies(target);
       git(worktree, ['worktree', 'remove', '--force', target]);
     }
     if (previousHome === undefined) delete process.env.XJ_DEV_HOME; else process.env.XJ_DEV_HOME = previousHome;
@@ -126,6 +123,7 @@ test('capture before stale-editor save; restore actual code/data to another work
   // Preinstalled local dependencies are reused for this acceptance, never installed during restore.
   {
     reuseWorkspaceDependencies(worktree, target);
+    await prepareWorkspaceOutputs(target);
   }
   assert.equal(withDb(receiver, db => JSON.parse(db.prepare('SELECT attempt_json FROM attempts').get().attempt_json).workspaceRevision), attempt.workspaceRevision, 'restored the pre-trigger revision');
   assert.equal(withDb(receiver, db => db.prepare('SELECT count(*) AS n FROM sessions').get().n), 0);
@@ -203,6 +201,7 @@ test('capture before stale-editor save; restore actual code/data to another work
     const retryReceiver = resolveContext({ worktree: retryTarget }); receivers.push(retryReceiver);
     {
       reuseWorkspaceDependencies(worktree, retryTarget);
+      await prepareWorkspaceOutputs(retryTarget);
     }
     await up(retryReceiver, () => {});
     const retried = await verifyRepro(retryReceiver, { file: retryFile });

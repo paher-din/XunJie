@@ -71,20 +71,20 @@ function hasCode(code: string) {
 }
 
 async function host(t: TestContext, handlers: Record<string, CapabilityHandler> = { echo: (payload) => payload }, root?: string) {
-  const requests = new Set<Promise<unknown>>();
+  const inFlight = new Set<Promise<void>>();
   let server: Server | undefined;
   const dispose = async () => {
     if (server) await close(server);
     // A disconnected socket does not mean its admitted handler has finished.
-    await Promise.allSettled([...requests]);
+    while (inFlight.size) await Promise.allSettled([...inFlight]);
   };
   const directory = root ?? await privateRoot(t, dispose);
   let authority: ReturnType<typeof createConnectionAuthority>;
   server = createServer((request, response) => {
-    const handling = authority.handle(request, response).then((handled) => {
+    const handling: Promise<void> = authority.handle(request, response).then((handled) => {
       if (!handled) { response.writeHead(404); response.end(); }
-    }).catch(() => response.destroy()).finally(() => { requests.delete(handling); });
-    requests.add(handling);
+    }).catch(() => { response.destroy(); }).finally(() => { inFlight.delete(handling); });
+    inFlight.add(handling);
   });
   t.after(dispose);
   const endpoint = await listen(server);
@@ -92,6 +92,7 @@ async function host(t: TestContext, handlers: Record<string, CapabilityHandler> 
   authority = createConnectionAuthority({ root: directory, service: target, handlers });
   return {
     target, server, root: directory,
+    async drain() { while (inFlight.size) await Promise.all(inFlight); },
     get authority() { return authority; },
     reopen() { authority = createConnectionAuthority({ root: directory, service: target, handlers }); },
     async restart() {
@@ -320,8 +321,10 @@ test('source fencing waits for all parallel handlers, including those admitted b
 test('source fencing fails explicitly when an in-flight caller disconnects without stopping its handler', async (t) => {
   const started = Promise.withResolvers<void>();
   const finish = Promise.withResolvers<void>();
-  t.after(() => finish.resolve());
-  const receiver = await host(t, { echo: async () => {
+  let receiver: Awaited<ReturnType<typeof host>> | undefined;
+  // Registered before host's privateRoot cleanup, including assertion failures.
+  t.after(async () => { finish.resolve(); await receiver?.drain(); });
+  receiver = await host(t, { echo: async () => {
     started.resolve();
     await finish.promise;
   } });

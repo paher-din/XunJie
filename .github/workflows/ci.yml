@@ -2,40 +2,37 @@ name: ci
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**/*.png'
+      - 'docs/**/*.jpg'
+      - 'docs/**/*.svg'
+      - 'docs/**/*.pdf'
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**/*.png'
+      - 'docs/**/*.jpg'
+      - 'docs/**/*.svg'
+      - 'docs/**/*.pdf'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.21.0
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci --include=dev --no-audit --no-fund
-      - run: npm run verify
-      - name: Check legacy HDL node ledger
-        run: |
-          sudo install -d -m 0700 -o "$(id -un)" -g "$(id -gn)" /run/xunjie-dlc
-          node --test apps/server/runner/alu-node.runtime.test.ts
-      - name: Save verification logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: verification-${{ github.job }}
-          path: .verification/
-          include-hidden-files: true
-          if-no-files-found: ignore
-          retention-days: 7
+    uses: ./.github/workflows/verify.yml
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    permissions:
+      contents: write
+    uses: ./.github/workflows/cloud-release.yml
+    with:
+      build-artifact: ${{ needs.verify.outputs.build-artifact }}
