@@ -26,7 +26,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
     return new ReliableActions(this.key, draft, () => {
       if (!this.state.ready || this.state.conflict) throw new Error('请先读取作品并处理分歧。')
       return structuredClone(this.state.files)
-    }, transport)
+    }, transport, { denied: () => this.accessDenied() || draft.accessDenied(),
+      confirmed: () => { this.confirmAccess(); draft.confirmAccess() } })
   }
   private notify(patch: Partial<WorkspaceState> = {}) { this.state = { ...this.state, ...patch, conflictReady: !this.dirty }; for (const listener of this.listeners) listener() }
   protected ready() { return this.state.ready }

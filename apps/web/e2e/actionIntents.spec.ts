@@ -297,6 +297,72 @@ test('a new client namespace preserves the old queue and only explicit verified 
   expect(result.oldStillExists.phase).toBe('waiting-dependencies')
 })
 
+test('reconnecting an unsent cancellation never revives a preparation whose reply was lost', async ({ page }) => {
+  const config = await driver(page)
+  const result = await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    const old = await openActionWorkspace(config)
+    old.workspace.suspend(); old.draft.suspend(); old.actions.suspend()
+    old.draft.change('已经取消的旧环境问题', [])
+    const fixed = await old.actions.create({ requestId: crypto.randomUUID(),
+      receiver: { receiverId: 'controlled-agent', location: 'remote', kind: 'question' } })
+    // The owner commits preparation, but this browser never receives that response.
+    await old.request(old.actionPath, fixed.input)
+    await old.actions.cancel(fixed.input.requestId); old.dispose()
+    const scope = JSON.parse(config.key); scope[0] = 'cancel-reconnection-namespace'
+    const fresh = await openActionWorkspace({ ...config, key: JSON.stringify(scope) })
+    await fresh.actions.reconnect(fixed.input.requestId, config.key)
+    await new Promise(resolve => setTimeout(resolve, 1300))
+    const adopted = await fresh.actions.read(fixed.input.requestId)
+    const remote = await fresh.request(fresh.actionPath + '/' + fixed.input.requestId)
+    fresh.dispose()
+    return { adopted, remote }
+  }, config)
+  expect(result.adopted.phase).toBe('cancelled')
+  expect(result.adopted.cancelRequested).toBe(true)
+  expect(result.remote.state).toBe('cancelled')
+  expect(receiver.acceptedInput(result.adopted.input.requestId)).toBeUndefined()
+})
+
+test('cancellation retains a trusted acceptance from another browser with independent local storage', async ({ page, browser }) => {
+  const config = await driver(page)
+  const id = await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    const session = await openActionWorkspace(config); window.actionIntentDriver = session
+    session.workspace.suspend(); session.draft.suspend(); session.actions.suspend()
+    session.draft.change('另一浏览器已接收的原问题', [])
+    const fixed = await session.actions.create({ requestId: crypto.randomUUID(),
+      receiver: { receiverId: 'controlled-agent', location: 'remote', kind: 'question' } })
+    await session.request(session.actionPath, fixed.input)
+    return fixed.input.requestId
+  }, config)
+  const otherContext = await browser.newContext()
+  const other = await otherContext.newPage()
+  try {
+    await other.route('**/__action_public_interface.js', route => route.fulfill({ contentType: 'application/javascript', body: bundle }))
+    await other.goto(endpoint + '/?diagnostics=1')
+    await other.evaluate(async config => {
+      const { openActionWorkspace } = await import(config.moduleUrl)
+      window.actionIntentDriver = await openActionWorkspace(config)
+    }, config)
+    await expect.poll(() => other.evaluate(async id => !!await window.actionIntentDriver!.actions.read(id), id)).toBe(true)
+    await other.evaluate(id => window.actionIntentDriver!.actions.reconnect(id), id)
+    await expect.poll(() => receiver.acceptedInput(id)?.requestId).toBe(id)
+    await page.evaluate(async id => {
+      await window.actionIntentDriver!.actions.cancel(id)
+      window.actionIntentDriver!.actions.resume()
+    }, id)
+    await expect.poll(() => page.evaluate(async id => (await window.actionIntentDriver!.actions.read(id))!.phase, id)).toBe('accepted')
+    const record = await page.evaluate(async id => window.actionIntentDriver!.actions.read(id), id)
+    expect(record!.cancelRequested).toBe(true)
+    expect(record!.remote!.receipt!.state).toBe('accepted')
+    expect(record!.input.draft.question).toBe('另一浏览器已接收的原问题')
+  } finally {
+    await page.evaluate(() => { window.actionIntentDriver?.dispose(); delete window.actionIntentDriver })
+    await otherContext.close()
+  }
+})
+
 test('expired school membership blocks dispatch and original reauthorization resumes without another create', async ({ page }) => {
   const control = await resolveCredential(runtimeRoot, 'control'), password = randomUUID(), loginName = 'intent-' + randomUUID()
   const manage = async (route: string, data: unknown) => {
@@ -330,6 +396,50 @@ test('expired school membership blocks dispatch and original reauthorization res
     await expect.poll(() => page.evaluate(async id => (await window.actionIntentDriver!.actions.read(id))!.phase, id), { timeout: 15000 }).toBe('accepted')
     expect(receiver.acceptedInput(id)?.scope.principalId).toBe(member.principalId)
     expect(receiver.acceptedInput(id)?.requestId).toBe(id)
+  } finally { await page.evaluate(() => { window.actionIntentDriver?.dispose(); delete window.actionIntentDriver }) }
+})
+
+test('known school access denial blocks a local receiver until original authorization returns', async ({ page }) => {
+  const control = await resolveCredential(runtimeRoot, 'control'), password = randomUUID(), loginName = 'local-intent-' + randomUUID()
+  const manage = async (route: string, data: unknown) => {
+    const response = await page.request.post(endpoint + '/api/learning/manage/' + route,
+      { headers: { authorization: 'Bearer ' + control }, data })
+    expect(response.status()).toBe(200); return response.json()
+  }
+  const member = await manage('members', { requestId: randomUUID(), loginName, password })
+  expect((await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })).status()).toBe(200)
+  const created = await page.request.post(endpoint + '/api/learning/activities',
+    { data: { requestId: randomUUID(), goal: '本机交接也尊重已知资格', question: '', references: [] } })
+  expect(created.status()).toBe(200)
+  const config = await driver(page, await created.json())
+  await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    window.actionIntentDriver = await openActionWorkspace(config)
+  }, config)
+  try {
+    await manage('membership', { requestId: randomUUID(), principalId: member.principalId, active: false })
+    await page.waitForTimeout(1500)
+    const id = await page.evaluate(async () => {
+      const session = window.actionIntentDriver!
+      const identity = { receiverId: 'local-authorized-executor', location: 'local', kind: 'execution' } as const
+      const receipts = new Map()
+      session.actions.registerLocal({ identity, query: async id => receipts.get(id) ?? null,
+        accept: async (input, digest) => {
+          const receipt = { requestId: input.requestId, inputDigest: digest, receiver: identity, state: 'accepted' as const,
+            receiptId: crypto.randomUUID(), detail: 'Test input handoff' }
+          receipts.set(input.requestId, receipt); return receipt
+        }, cancel: async () => null })
+      session.draft.change('资格失效时保留而不交接', [])
+      const requestId = crypto.randomUUID()
+      await session.actions.create({ requestId, receiver: identity })
+      return requestId
+    })
+    await page.waitForTimeout(1300)
+    expect(await page.evaluate(async id => (await window.actionIntentDriver!.actions.read(id))!.phase, id)).toBe('waiting-dependencies')
+    expect(await page.evaluate(() => window.actionIntentDriver!.actions.snapshot().active)).toBe(false)
+    await manage('membership', { requestId: randomUUID(), principalId: member.principalId, active: true })
+    expect((await page.request.post(endpoint + '/api/learning/login', { data: { loginName, password } })).status()).toBe(200)
+    await expect.poll(() => page.evaluate(async id => (await window.actionIntentDriver!.actions.read(id))!.phase, id), { timeout: 15000 }).toBe('accepted')
   } finally { await page.evaluate(() => { window.actionIntentDriver?.dispose(); delete window.actionIntentDriver }) }
 })
 
@@ -405,4 +515,92 @@ test('accepted but lost replies remain unknown through reopening and reconcile w
     receiver.offline(false)
     await page.evaluate(() => { window.actionIntentDriver?.dispose(); delete window.actionIntentDriver })
   }
+})
+
+test('accepted draft cleanup survives reopening when its first local write was refused', async ({ page }) => {
+  const config = await driver(page)
+  const result = await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    const session = await openActionWorkspace(config)
+    session.workspace.suspend(); session.draft.suspend(); session.actions.suspend()
+    session.draft.change('只清理这次真正接收的问题', []); await session.draft.protect()
+    const requestId = crypto.randomUUID()
+    await session.actions.create({ requestId, receiver: { receiverId: 'controlled-agent', location: 'remote', kind: 'question' } })
+    const put = IDBObjectStore.prototype.put
+    let refuse = true
+    IDBObjectStore.prototype.put = function (...args: Parameters<IDBObjectStore['put']>) {
+      if (refuse && this.name === 'drafts' && (args[0] as { question?: string }).question === '')
+        throw new DOMException('Controlled cleanup quota refusal', 'QuotaExceededError')
+      return put.apply(this, args)
+    }
+    try {
+      session.actions.resume()
+      const deadline = Date.now() + 5000
+      while ((await session.actions.read(requestId)).phase !== 'accepted' && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20))
+      await session.actions.drain()
+      session.dispose(); refuse = false
+      const restored = await openActionWorkspace(config)
+      const recovered = Date.now() + 3000
+      while (restored.draft.snapshot().question && Date.now() < recovered) await new Promise(resolve => setTimeout(resolve, 20))
+      const question = restored.draft.snapshot().question, action = await restored.actions.read(requestId)
+      await restored.draft.leave(); restored.dispose()
+      const again = await openActionWorkspace(config)
+      const persistedQuestion = again.draft.snapshot().question
+      again.dispose()
+      return { question, persistedQuestion, phase: action.phase }
+    } finally { refuse = false; IDBObjectStore.prototype.put = put; session.dispose() }
+  }, config)
+  expect(result.phase).toBe('accepted')
+  expect(result.question).toBe('')
+  expect(result.persistedQuestion).toBe('')
+})
+
+test('pausing during a real IndexedDB wait prevents a new local handoff', async ({ page }) => {
+  const config = await driver(page)
+  const result = await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    const session = await openActionWorkspace(config)
+    session.workspace.suspend(); session.draft.suspend(); session.actions.suspend()
+    session.draft.change('等待期间已暂停的输入', [])
+    let held = true, blocked = false, gated = false
+    const receipts = new Map()
+    const identity = { receiverId: 'paused-local-input', location: 'local', kind: 'execution' }
+    session.actions.registerLocal({ identity,
+      query: async (id: string) => {
+        if (!gated) {
+          gated = true
+          const database = await new Promise<IDBDatabase>((resolve, reject) => {
+            const opening = indexedDB.open('xunjie-reliable-works-v1')
+            opening.onsuccess = () => resolve(opening.result); opening.onerror = () => reject(opening.error)
+          })
+          const tx = database.transaction('actions', 'readwrite')
+          const keepAlive = () => {
+            const request = tx.objectStore('actions').get('__held_local_handoff__')
+            request.onsuccess = () => { if (held) keepAlive() }
+          }
+          tx.oncomplete = () => database.close(); keepAlive(); blocked = true
+        }
+        return receipts.get(id) ?? null
+      },
+      accept: async (input: { requestId: string }, inputDigest: string) => {
+        const receipt = { requestId: input.requestId, receiver: identity, inputDigest, state: 'accepted',
+          receiptId: crypto.randomUUID(), detail: '交接被接受' }
+        receipts.set(input.requestId, receipt); return receipt
+      }, cancel: async () => null,
+    })
+    const requestId = crypto.randomUUID()
+    await session.actions.create({ requestId, receiver: identity }); session.actions.resume()
+    const deadline = Date.now() + 3000
+    while (!blocked && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
+    if (!blocked) throw new Error('The actual IndexedDB boundary was not held')
+    session.actions.suspend()
+    const draining = session.actions.drain()
+    held = false; await draining
+    const record = await session.actions.read(requestId)
+    session.dispose()
+    return { accepted: [...receipts.keys()], phase: record.phase, question: record.input.draft.question }
+  }, config)
+  expect(result.accepted).toEqual([])
+  expect(result.phase).toBe('dispatched')
+  expect(result.question).toBe('等待期间已暂停的输入')
 })

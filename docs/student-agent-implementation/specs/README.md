@@ -13,6 +13,7 @@
 
 | 实施票 | 文档 | 文档性质 |
 | --- | --- | --- |
+| [固定依据与持久待发意图](https://github.com/paher-din/XunJie/issues/153) | [实施方案](wp02-durable-action-intents.md) · [接入与交接](../wp02-action-intents.md) | 当前分支实施；固定输入、可靠待发、取消、原请求核实与接收回执，Mac/跨机交接 #155 |
 | [课程任务与固定发布版本](https://github.com/paher-din/XunJie/issues/150) | [实施方案与验收计划](wp02-course-task-releases.md) · [实施与验收记录](../wp02-course-releases-acceptance.md) | 已实施（`codex/wp02`，未合并 main）；工程及 Windows/Mac 分项验证范围见验收记录，教学效果未评估 |
 | [固定引用与问题草稿恢复](https://github.com/paher-din/XunJie/issues/152) | [实施方案与验收计划](wp02-fixed-references-and-question-drafts.md) · [实施与验收记录](../wp02-fixed-references-acceptance.md) | 已实施（`codex/wp02` 工作树，未提交/合并）；Windows 工程、真实 PG 与 Chrome 已验证，Mac 与教学效果未执行 |
 

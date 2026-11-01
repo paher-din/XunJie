@@ -51,6 +51,9 @@ export abstract class ReliableStateCoordinator {
       this.networkTimer ??= setInterval(() => { void this.synchronize() }, NETWORK_MAX_WAIT_MS)
   }
   async leave(): Promise<void> { await this.protect(); if (this.dirty) return this.leave() }
+  accessDenied() { return this.denied }
+  /** Called only after the original scoped route has confirmed current authorization. */
+  confirmAccess() { this.denied = false }
   suspend() {
     this.stopped = true
     if (this.networkTimer) clearInterval(this.networkTimer)
