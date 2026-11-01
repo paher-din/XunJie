@@ -12,7 +12,6 @@ import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action
 import { z } from 'zod'
 import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
-import { ActivityActions } from './ActivityActions'
 
 const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
 const decode = (base64: string) => {
@@ -72,7 +71,7 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, authorized])
   return <ActivitySessionContext.Provider value={{ workspace, draft, actions }}>
-    <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}<ActivityActions /></DraftReferencesProvider>
+    <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}</DraftReferencesProvider>
   </ActivitySessionContext.Provider>
 }
 

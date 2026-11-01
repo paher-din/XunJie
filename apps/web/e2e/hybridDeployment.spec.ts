@@ -1,3 +1,4 @@
+import { createWorkFile, clickActivityAction, openWorkspacePopover, closeWorkspacePopover, openCourseTasks } from './support/product-ui'
 import { test, expect } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
@@ -11,6 +12,7 @@ test.use({ trace: 'off' })
 let school: ReturnType<typeof openProductRuntime>, device: ReturnType<typeof openProductRuntime>
 let schoolEndpoint: string, deviceEndpoint: string, hybridKey: string
 let schoolRoot: string
+let courseReleaseId: string
 let browserVersion: string
 const password = randomUUID(), loginName = 'hybrid-browser-' + randomUUID()
 const results: { name: string; status?: string; durationMs: number }[] = []
@@ -25,7 +27,7 @@ test.beforeAll(async ({ browser }) => {
   schoolRoot = join(root, 'school')
   const deviceRoot = join(root, 'device')
   const resources = { nodePath: process.execPath, nodeVersion: '24.21.0', postgresVersion: '18.6',
-    postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN, webRoot: fileURLToPath(new URL('../dist-runtime', import.meta.url)),
+    postgresBin: process.env.XUNJIE_PRODUCT_POSTGRES_BIN, webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) }
   school = openProductRuntime({ root: schoolRoot, resources }); device = openProductRuntime({ root: deviceRoot, resources })
   await school.install({ profile: 'school', database: { mode: 'managed' } }); await device.install({ profile: 'local' })
@@ -42,6 +44,7 @@ test.beforeAll(async ({ browser }) => {
   const hybridName = loginName + '-device'
   const localMember = await api(schoolEndpoint, 'manage/members', { requestId: randomUUID(), loginName: hybridName, password, target }, admin)
   const courseId = randomUUID(), taskId = randomUUID(), releaseId = randomUUID(), materialId = randomUUID()
+  courseReleaseId = releaseId
   const bytes = Buffer.from('# 学校原始题目\n编辑中文作品并重新打开。')
   await api(schoolEndpoint, 'manage/course-import', { formatVersion: 1, requestId: randomUUID(), course: { courseId, name: '部署验收课程' },
     task: { taskId, title: '部署验收任务', summary: '' }, release: { releaseId, objectives: ['在原空间继续学习'], requirements: '保存并重开中文作品。',
@@ -89,26 +92,33 @@ for (const mode of ['personal', 'school-shared', 'hybrid-local-owner'] as const)
       await page.getByLabel('学习目标', { exact: true }).fill(goal)
       await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
     } else {
+      await openCourseTasks(page, '部署验收课程')
       await page.getByRole('button', { name: /最近发布/ }).click()
       await page.getByRole('button', { name: '从这一版本开始活动', exact: true }).click()
-      await expect(page.getByText('固定版本', { exact: false })).toBeVisible({ timeout: 30000 })
+      await expect(page.locator('#activity-title')).toHaveText('部署验收任务', { timeout: 30000 })
       await page.getByRole('button', { name: '学校原题', exact: false }).click()
       await expect(page.getByRole('link', { name: '打开或下载材料' })).toBeVisible()
     }
-    await page.getByLabel('文件名', { exact: true }).fill('中文原文.txt')
-    await page.getByRole('button', { name: '新建文件', exact: true }).click()
+    await createWorkFile(page, '中文原文.txt')
     await page.locator('.monaco-editor textarea').focus()
     await page.keyboard.insertText('学校身份与中文作品\n自动保存，重开不变。')
     const activityId = new URL(page.url()).searchParams.get('activity')!
     const spaceKey = mode === 'personal' ? 'personal' : mode === 'school-shared' ? 'school' : hybridKey
+    if (mode !== 'personal') {
+      const activity = await page.request.get(endpoint + '/api/learning/activities/' + activityId, { headers: { 'x-xj-space': spaceKey } })
+      expect(activity.status()).toBe(200)
+      expect((await activity.json()).course.releaseId).toBe(courseReleaseId)
+    }
     const read = async () => {
       const response = await page.request.get(endpoint + '/api/learning/workspaces/' + activityId, { headers: { 'x-xj-space': spaceKey } })
       expect(response.status()).toBe(200); return response.json()
     }
     await expect.poll(async () => (await read()).files[0]?.value, { timeout: 30000 }).toBe('学校身份与中文作品\n自动保存，重开不变。')
-    await page.getByRole('button', { name: '关闭活动', exact: true }).click()
+    await clickActivityAction(page, '关闭活动')
     await page.reload()
-    await expect(page.getByRole('button', { name: '重新开始活动', exact: true })).toBeVisible()
+    const activityMenu = await openWorkspacePopover(page, '活动')
+    await expect(activityMenu.getByRole('button', { name: '重新开始活动', exact: true })).toBeVisible()
+    await closeWorkspacePopover(page, '活动')
     await expect(page.locator('.monaco-editor .view-lines')).toContainText('自动保存，重开不变。')
     await page.screenshot({ path: join(evidence, `chrome-${mode}.png`), fullPage: true })
     expect((await read()).files).toHaveLength(1)

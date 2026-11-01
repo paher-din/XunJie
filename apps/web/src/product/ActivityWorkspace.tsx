@@ -1,6 +1,8 @@
 import { forwardRef, useImperativeHandle, useMemo, useState, useSyncExternalStore } from 'react'
 import type { WorkFile, LearningActivity } from '@xunjie/contracts/learning-data'
 import { CodeReferenceSource } from '../components/workspace/references'
+import { FileTabs } from '../components/workspace/FileTabs'
+import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { workspaceScope } from './learningTransport'
 import { useActivitySession } from './ActivitySession'
 
@@ -28,32 +30,35 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
     return <section className="learning-workspace" aria-label="当前作品">
-      <h2>当前作品</h2>
       {(failure || state.error) && <div role="alert" className="learning-error"><p>{failure || state.error}</p>
-        <button type="button" onClick={download}>导出当前作品</button>
+        <button type="button" className="ws-btn ghost" onClick={download}>导出当前作品</button>
         <label>可复制的当前原文<textarea readOnly value={file?.value ?? ''} /></label></div>}
       {!state.ready ? <p>正在读取作品…</p> : <>
         {state.conflict && <div role="alert" className="learning-error"><h3>作品存在分歧</h3>
           <p>双方内容均保留。请比较后选择，或在下方合并当前文件。</p>
           <div className="work-comparison"><div><h4>本页内容</h4>{state.conflict.local.map(f => <details key={f.objectId} open><summary>{f.name}</summary><pre>{f.value}</pre></details>)}</div>
             <div><h4>另一版本</h4>{state.conflict.other.map(f => <details key={f.objectId} open><summary>{f.name}</summary><pre>{f.value}</pre></details>)}</div></div>
-          <button type="button" disabled={!state.conflictReady} onClick={() => void choose(state.conflict!.local)}>采用本页内容</button>
-          <button type="button" disabled={!state.conflictReady} onClick={() => void choose(state.conflict!.other)}>采用另一版本</button>
+          <button type="button" className="ws-btn ghost" disabled={!state.conflictReady} onClick={() => void choose(state.conflict!.local)}>采用本页内容</button>
+          <button type="button" className="ws-btn ghost" disabled={!state.conflictReady} onClick={() => void choose(state.conflict!.other)}>采用另一版本</button>
           {file?.encoding === 'utf8' && <><label>合并内容<textarea value={merged} onChange={e => setMerged(e.target.value)} /></label>
-            <button type="button" disabled={!state.conflictReady} onClick={() => void choose(state.conflict!.local.map(f => f.objectId === file.objectId ? { ...f, contentId: crypto.randomUUID(), value: merged } : f))}>采用合并内容</button></>}
+            <button type="button" className="ws-btn ghost" disabled={!state.conflictReady} onClick={() => void choose(state.conflict!.local.map(f => f.objectId === file.objectId ? { ...f, contentId: crypto.randomUUID(), value: merged } : f))}>采用合并内容</button></>}
         </div>}
-          <form onSubmit={e => { e.preventDefault(); attempt(() => { setSelected(workspace.create(name, /\.(c|cc|cpp|h|hpp|js|jsx|ts|tsx|py|v|sv|java|rs|go)$/i.test(name) ? 'code' : 'text')); setName('') }) }}>
+        <nav className="cw-filestrip" aria-label="作品文件">
+        <WorkspacePopover label="文件" icon="folder-with-files">
+          <form className="product-file-form" onSubmit={e => { e.preventDefault(); attempt(() => { setSelected(workspace.create(name, /\.(c|cc|cpp|h|hpp|js|jsx|ts|tsx|py|v|sv|java|rs|go)$/i.test(name) ? 'code' : 'text')); setName('') }) }}>
           <label>文件名<input value={name} required onChange={e => setName(e.target.value)} /></label>
-          <button type="submit" disabled={!!state.conflict}>新建文件</button>
+          <button type="submit" className="ws-btn solid" disabled={!!state.conflict}>新建文件</button>
         </form>
-        <nav aria-label="作品文件">{state.files.map(f => <button type="button" key={f.objectId} aria-pressed={f.objectId === file?.objectId}
-          onClick={() => { setSelected(f.objectId); setRename('') }}>{f.name}</button>)}</nav>
-        {file ? <>
-          <form onSubmit={e => { e.preventDefault(); attempt(() => { workspace.rename(file.objectId, rename); setRename('') }) }}>
+        {file && <form className="product-file-form" onSubmit={e => { e.preventDefault(); attempt(() => { workspace.rename(file.objectId, rename); setRename('') }) }}>
             <label>新名称<input value={rename} required onChange={e => setRename(e.target.value)} /></label>
-            <button type="submit" disabled={!!state.conflict}>重命名</button>
-            <button type="button" disabled={!!state.conflict} onClick={() => attempt(() => workspace.remove(file.objectId))}>删除文件</button>
-          </form>
+            <button type="submit" className="ws-btn ghost" disabled={!!state.conflict}>重命名</button>
+            <button type="button" className="ws-btn ghost" disabled={!!state.conflict} onClick={() => attempt(() => workspace.remove(file.objectId))}>删除文件</button>
+          </form>}
+        </WorkspacePopover>
+        <FileTabs files={state.files.map(f => ({ id: f.objectId, name: f.name }))} activeId={file?.objectId ?? null}
+          onOpen={id => { setSelected(id); setRename('') }} />
+        </nav>
+        {file ? <>
           {file.encoding === 'utf8' && ['text', 'code'].includes(file.kind) ? <CodeReferenceSource key={state.editorEpoch}
             editorWorkspaceKey={editorNamespace + ':' + state.editorEpoch}
             fileId={file.objectId} sourceName={file.name} language={file.kind === 'text' ? 'plaintext' : /\.c(pp|c)?$/.test(file.name) ? 'cpp' : /\.v$/.test(file.name) ? 'verilog' : 'plaintext'}
@@ -62,7 +67,7 @@ export const ActivityWorkspace = forwardRef<ActivityWorkspaceHandle, { activity:
               kind: file.kind === 'text' ? 'text' : 'code', encoding: 'utf8', mediaType: file.mediaType })}
             onTextChange={(id, text) => attempt(() => workspace.edit(id, text))} onCursorChange={() => {}} />
             : <pre>{file.value}</pre>}
-        </> : <p>从一个文本或代码文件开始。</p>}
+        </> : <div className="empty"><p>从一个文本或代码文件开始。</p><p>在「文件」中创建你的第一份作品。</p></div>}
       </>}
     </section>
   })

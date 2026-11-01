@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from 'react'
@@ -20,7 +19,7 @@ import { Composer } from './Composer'
 import { CompanionButton } from './CompanionButton'
 import { ProfileCard } from './ProfileCard'
 import { ThemeMenu } from './ThemeMenu'
-import { XunjieLogo } from '../brand/XunjieLogo'
+import { ShellFrame, useShellNavigation } from './ShellFrame'
 import { useAccount } from '../lib/account'
 import { THEME_OPTIONS, useTheme } from '../lib/theme'
 import { useSession } from './SessionEntry'
@@ -30,15 +29,6 @@ import { getSessionState } from '../workspace/session'
 import { logoutSession } from '../workspace/session'
 import { displayAccountName } from '../lib/displayNames'
 import { HomeNavigationProvider } from '../lib/homeCourseNavigation'
-
-const NARROW_NAV_QUERY = '(width < 1024px)'
-function subscribeNarrowNavigation(notify: () => void) {
-  const media = window.matchMedia(NARROW_NAV_QUERY)
-  media.addEventListener('change', notify)
-  return () => media.removeEventListener('change', notify)
-}
-const narrowNavigation = () => window.matchMedia(NARROW_NAV_QUERY).matches
-const serverNavigation = () => false
 
 /** 历史会话按单一时间流分组：今天 / 昨天 / 更早（2026-10-11 由四档收成三档——「近 7 天」并进
     「更早」：最近两档已经由今天、昨天担起来，2 天以前统一算更早，不再切一个 7 天的口子）。 */
@@ -160,10 +150,7 @@ export default function AppShell() {
   const inWorkspace = location.pathname.startsWith('/task')
 
   const [composerOpen, setComposerOpen] = useState(false)
-  const narrowWindow = useSyncExternalStore(subscribeNarrowNavigation, narrowNavigation, serverNavigation)
-  // null follows the window; either explicit choice lasts for this shell session.
-  const [sidebarOverride, setSidebarOverride] = useState<boolean | null>(null)
-  const sidebarCollapsed = sidebarOverride ?? narrowWindow
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useShellNavigation()
   const sidebarToggleRef = useRef<HTMLButtonElement>(null)
   const [accountMenu, setAccountMenu] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -786,15 +773,11 @@ export default function AppShell() {
   }
 
   return (
-    <div
-      className={
-        'shell' + (inWorkspace ? ' immersive' : '') + (sidebarCollapsed ? ' collapsed' : '')
-      }
-    >
-      <aside className="sidebar" inert={sidebarCollapsed || inWorkspace} aria-hidden={sidebarCollapsed || inWorkspace ? true : undefined}>
-        <div className="brand xunjie-brand">
-          <XunjieLogo format="horizontal" label="循阶" />
-        </div>
+    <ShellFrame
+      collapsed={sidebarCollapsed}
+      immersive={inWorkspace}
+      mainRef={mainRef}
+      navigation={
         <nav className="side-nav">
           <button className={onHome ? 'sidebtn active' : 'sidebtn'} onClick={() => navigate('/')}>
             <span className="navicon"><Icon name="home-2" size={20} variant={onHome ? 'bold' : 'linear'} /></span>首页
@@ -812,6 +795,8 @@ export default function AppShell() {
             <div className="agent-sub-inner">{convPane(undefined, () => {})}</div>
           </div>
         </nav>
+      }
+      bottom={
         <div className="side-bottom">
           <div className="account-wrap" ref={accountRef}>
             <button
@@ -866,32 +851,20 @@ export default function AppShell() {
             />
           </div>
         </div>
-      </aside>
-      <main className="main" ref={mainRef}>
-        <HomeNavigationProvider scope={`${session.epoch}:${session.session?.userId ?? 'prep'}`}>
-          <div
-            className={'page-enter' + (enterKey ? '' : ' revisit')}
-            key={onHome ? 'home' : enterMountKey}
-          >
-            <Outlet />
-          </div>
-        </HomeNavigationProvider>
-      </main>
-      {!inWorkspace && (
+      }
+      toggle={
         <button
           className="sidebar-toggle"
           ref={sidebarToggleRef}
-          onClick={() => setSidebarOverride(!sidebarCollapsed)}
+          onClick={toggleSidebar}
           aria-label="切换边栏"
           aria-expanded={!sidebarCollapsed}
           title="切换边栏"
         >
           <Icon name="panel-left-close" size={18} />
         </button>
-      )}
-      {/* 收起态左侧轨道：图标与展开态各行同坐标（2026-10-11 加「已归档」，位置跟着展开区走），
-          淡入与侧栏淡出同位对接 */}
-      <div className={'rail' + (railVisible ? ' on' : '')} inert={!railVisible} aria-hidden={!railVisible ? true : undefined}>
+      }
+      rail={<>
         <button
           className={'railbtn r-home' + (onHome ? ' active' : '')}
           onClick={() => {
@@ -992,41 +965,52 @@ export default function AppShell() {
           </button>
           <AccountMenu open={accountMenu && railVisible} anchor="rail" {...accountActions} />
         </div>
-      </div>
-      {railPanelVisible && <div className="railshade" onClick={closeRailPanel} />}
-      <div className={'railpanel' + (railPanelVisible ? ' on' : '')} ref={railPanelRef}
-        inert={!railPanelVisible} aria-hidden={!railPanelVisible ? true : undefined}>
-        {convPane(panelSearchRef, closeRailPanel)}
-      </div>
-      {onHome && (
-        <>
-          <CompanionButton
-            className="mascot"
-            attention={composerOpen}
-            ambient
-            onClick={() => setComposerOpen((open) => !open)}
-            aria-label="唤起 Agent 输入框"
-            aria-expanded={composerOpen}
-            title="唤起 Agent · ⌘ / Ctrl + J"
-          />
-          {/* 入口气泡与输入气泡是同一个盒子：点它或点 IP 都原地长开（几何见 app.css .ask 一段） */}
-          <Composer
-            open={composerOpen}
-            value={draft}
-            onChange={setDraft}
-            onSend={sendFromHome}
-            onOpen={() => setComposerOpen(true)}
-            onClose={() => setComposerOpen(false)}
-          />
-        </>
-      )}
-      <ProfileCard open={profileOpen} onClose={() => setProfileOpen(false)} onAction={showToast} />
-      {conversations.error && <div className="toast" role="alert">会话列表读取失败，请刷新后重试。</div>}
-      {toast && (
-        <div className="toast" role="status">
-          {toast}
+      </>}
+      overlays={<>
+        {railPanelVisible && <div className="railshade" onClick={closeRailPanel} />}
+        <div className={'railpanel' + (railPanelVisible ? ' on' : '')} ref={railPanelRef}
+          inert={!railPanelVisible} aria-hidden={!railPanelVisible ? true : undefined}>
+          {convPane(panelSearchRef, closeRailPanel)}
         </div>
-      )}
-    </div>
+        {onHome && (
+          <>
+            <CompanionButton
+              className="mascot"
+              attention={composerOpen}
+              ambient
+              onClick={() => setComposerOpen((open) => !open)}
+              aria-label="唤起 Agent 输入框"
+              aria-expanded={composerOpen}
+              title="唤起 Agent · ⌘ / Ctrl + J"
+            />
+            {/* 入口气泡与输入气泡是同一个盒子：点它或点 IP 都原地长开（几何见 app.css .ask 一段） */}
+            <Composer
+              open={composerOpen}
+              value={draft}
+              onChange={setDraft}
+              onSend={sendFromHome}
+              onOpen={() => setComposerOpen(true)}
+              onClose={() => setComposerOpen(false)}
+            />
+          </>
+        )}
+        <ProfileCard open={profileOpen} onClose={() => setProfileOpen(false)} onAction={showToast} />
+        {conversations.error && <div className="toast" role="alert">会话列表读取失败，请刷新后重试。</div>}
+        {toast && (
+          <div className="toast" role="status">
+            {toast}
+          </div>
+        )}
+      </>}
+    >
+      <HomeNavigationProvider scope={`${session.epoch}:${session.session?.userId ?? 'prep'}`}>
+        <div
+          className={'page-enter' + (enterKey ? '' : ' revisit')}
+          key={onHome ? 'home' : enterMountKey}
+        >
+          <Outlet />
+        </div>
+      </HomeNavigationProvider>
+    </ShellFrame>
   )
 }

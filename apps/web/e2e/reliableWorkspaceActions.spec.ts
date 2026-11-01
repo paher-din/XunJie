@@ -30,7 +30,7 @@ test.beforeAll(async ({ browser }, info) => {
   runtimeRoot = root
   runtime = openProductRuntime({ root, resources: {
     nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
-    webRoot: fileURLToPath(new URL('../dist-runtime', import.meta.url)),
+    webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
   await runtime.install({ profile: 'local' })
   host = await createProductRuntimeHost({ root,

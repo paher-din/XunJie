@@ -20,7 +20,7 @@
 | [学习数据 owner](../../../packages/learning-space/src/learning-data/README.md) | 无课程活动、稳定请求身份、回执、列出、重开和状态变化 | 可选课程绑定、跨 owner 创建协调及课程依据读取 |
 | [生产 HTTP 入口](../../../packages/learning-space/src/learning-entry/README.md) | 真实身份解析、管理入口、已安装客户端学校代理 | 课程管理和学生端路由、代理能力及权限检查 |
 | [活动 wire](../../../packages/contracts/src/learning-data.ts)与[身份 wire](../../../packages/contracts/src/spaces.ts) | 浏览器可消费的严格 schema、身份与服务绑定 | 课程公开投影、固定发布引用、课程活动输入和错误契约 |
-| [生产学习页面](../../../apps/web/src/runtime/LearningPage.tsx) | 空间切换、活动请求身份及重开 | 课程列表、任务/版本详情、开放材料和课程活动入口 |
+| [生产学习页面](../../../apps/web/src/product/LearningApp.tsx) | 空间切换、活动请求身份及重开 | 课程列表、任务/版本详情、开放材料和课程活动入口 |
 | [WP01 存储](../../../packages/storage/README.md)及[产品运行接线](../../../packages/product-runtime/src/learning-entry.ts) | 所属事务、资源确认、维护参与者和恢复目标 | 新迁移、资源引用、领域校验与跨 owner 关联核对 |
 
 课程资格尚未实现，不能把学校成员有效等同于已获准全部课程；也不能把现有自主活动的 HTTPS URL 引用当作已持久保留的课程材料。

@@ -1,4 +1,4 @@
-import { Icon, IconText, type IconName } from '../icons'
+import { Icon, IconText } from '../icons'
 import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +9,7 @@ import { DashboardSection } from '../components/dashboard/DashboardSection'
 import { FluidHighlight } from '../components/FluidHighlight'
 import { ProgressBar } from '../components/ProgressBar'
 import { StatusChip, type TaskDisplayStatus } from '../components/StatusChip'
-import { useFluidHover, useRegisterFluidHoverItem } from '../lib/fluidHover'
+import { useFluidHover } from '../lib/fluidHover'
 import {
   filterTasks,
   formatDeadline,
@@ -28,20 +28,13 @@ import { useHomeCourseNavigation } from '../lib/homeCourseNavigation'
 
 const STATUS_FILTERS: Array<'全部' | TaskStatus> = ['全部', '进行中', '未开始', '已完成']
 const ASSIGNMENT_FILTERS = ['全部', '已分配', '任务已暂停'] as const
-const COURSE_ICONS: IconName[] = ['virtual-board', 'code-square', 'structure']
+import { CourseTiles as SharedCourseTiles, LearningTaskCard } from '../components/home/LearningCards'
 
 function realCourseTone(course: HomeCourse): number {
   const kinds = new Set(course.assignments.map(task => task.executionKind))
   if (kinds.size === 0) return 2
   if (kinds.size > 1) return 2
   return kinds.has('hdl_board') ? 0 : 1
-}
-
-/** 课程封面插画（动画风），放在 app/public/courses/ 下；缺图时回退课程色占位块。 */
-const COURSE_COVERS: Record<string, string> = {
-  数字逻辑与部件设计: '/courses/digital-logic.png',
-  程序设计基础: '/courses/programming-basics.png',
-  数据结构: '/courses/data-structures.png',
 }
 
 /**
@@ -302,70 +295,8 @@ function CourseTiles({
   titleOf?: (course: string) => string
   summaryOf?: (course: string) => string
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const hover = useFluidHover(ref)
-  return (
-    <div className="course-tiles" ref={ref} {...hover.handlers}>
-      <FluidHighlight
-        activeIndex={hover.activeIndex}
-        rects={hover.itemRects}
-        className="card-grid-highlight"
-      />
-      {courses.map((c, i) => (
-        <CourseTile
-          key={c}
-          courseId={c}
-          course={titleOf(c)}
-          index={i}
-          tone={toneOf(c)}
-          summary={summaryOf ? summaryOf(c) : pendingCount(tasks, c) > 0 ? pendingCount(tasks, c) + ' 个待完成' : '暂无待完成任务'}
-          onOpen={keyboard => onOpen(c, keyboard)}
-          registerItem={hover.registerItem}
-        />
-      ))}
-    </div>
-  )
-}
-
-function CourseTile({
-  courseId,
-  course,
-  index,
-  tone,
-  summary,
-  onOpen,
-  registerItem,
-}: {
-  courseId: string
-  course: string
-  index: number
-  tone: number
-  summary: string
-  onOpen: (keyboard: boolean) => void
-  registerItem: (index: number, el: HTMLElement | null) => void
-}) {
-  const tileRef = useRef<HTMLButtonElement>(null)
-  useRegisterFluidHoverItem(registerItem, index, tileRef)
-  const [imgFailed, setImgFailed] = useState(false)
-  const cover = COURSE_COVERS[course]
-  return (
-    <button ref={tileRef} className="course-tile" data-course-id={courseId} onClick={event => onOpen(event.detail === 0)}>
-      {cover && !imgFailed ? (
-        <img className="course-cover" src={cover} alt="" onError={() => setImgFailed(true)} />
-      ) : (
-        <span className={`course-cover-ph course-${tone}`} aria-hidden>
-          <Icon name={COURSE_ICONS[tone] ?? 'virtual-board'} size={48} />
-        </span>
-      )}
-      <span className="course-tile-body">
-        <h3>{course}</h3>
-        <p>{summary}</p>
-        <span className="course-tile-foot">
-          <span className="cb-primary">查看任务</span>
-        </span>
-      </span>
-    </button>
-  )
+  return <SharedCourseTiles courses={courses} toneOf={toneOf} onOpen={onOpen} titleOf={titleOf}
+    summaryOf={id => summaryOf ? summaryOf(id) : pendingCount(tasks, id) > 0 ? pendingCount(tasks, id) + ' 个待完成' : '暂无待完成任务'} />
 }
 
 /**
@@ -420,29 +351,11 @@ function TaskCard({
   onOpen: () => void
   registerItem: (index: number, el: HTMLElement | null) => void
 }) {
-  const cardRef = useRef<HTMLButtonElement>(null)
-  useRegisterFluidHoverItem(registerItem, index, cardRef)
-  const action = explicitAction ?? (
-    task.status === '未开始' ? '开始任务' : task.status === '进行中' ? '继续任务' : '查看任务')
-  return (
-    <button ref={cardRef} className={`task-card${task.progress ? '' : ' task-card-without-progress'}`} onClick={onOpen}>
-      <div>
-        <StatusChip status={task.status} />
-        {overdue && <span className="status overdue">已逾期</span>}
-      </div>
-      <h3>{task.name}</h3>
-      {task.goal && <p>{task.goal}</p>}
-      {task.progress && <><div className="progresslabel">
-        <span>任务进度</span>
-        <span>{task.progress.percent}%</span>
-      </div>
+  const action = explicitAction ?? (task.status === '未开始' ? '开始任务' : task.status === '进行中' ? '继续任务' : '查看任务')
+  return <LearningTaskCard title={task.name} goal={task.goal} index={index} register={registerItem} onOpen={onOpen} action={action}
+    badge={<><StatusChip status={task.status} />{overdue && <span className="status overdue">已逾期</span>}</>}
+    footer={task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : undefined}>
+    {task.progress && <><div className="progresslabel"><span>任务进度</span><span>{task.progress.percent}%</span></div>
       <ProgressBar percent={task.progress.percent} done={task.progress.done} /></>}
-      <div className="card-foot">
-        <span className={task.deadlineAt ? 'deadline' : undefined}>
-          {task.deadlineAt ? '截止 ' + formatDeadline(task.deadlineAt) : ''}
-        </span>
-        <span className="action"><IconText name="arrow-right" position="end">{action}</IconText></span>
-      </div>
-    </button>
-  )
+  </LearningTaskCard>
 }

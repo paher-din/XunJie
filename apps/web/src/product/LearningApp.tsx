@@ -5,10 +5,14 @@ import { courseCatalogSchema, courseReleaseSchema, courseMaterialContentSchema, 
 import type { Course, CourseRelease, CourseMaterial } from '@xunjie/contracts/courses'
 import { spaceIdentitySchema, type SpaceIdentity } from '@xunjie/contracts/spaces'
 import { useTheme } from '../lib/theme'
-import './learning.css'
-import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
+import './product.css'
+import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
+import { ActivityPage } from './ActivityPage'
+import { ProductShell } from '../components/ProductShell'
+import { CourseTiles, LearningTaskCard, LearningCardGrid } from '../components/home/LearningCards'
+import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
-import { WorkspaceReferenceComposer, SelectionToolbar } from '../components/workspace/references'
+
 
 type Context = { clientNamespace: string; profile: string; identities: { key: string; identity: SpaceIdentity }[] }
 type PendingConnection = { requestId: string; authorizationUrl: string }
@@ -58,16 +62,36 @@ function CourseSections({ content, level, busy, onMaterial, requirementsContent 
     {content.starterWorks.length > 0 && <><Heading>起始作品</Heading>
       <ul className="course-points">{content.starterWorks.map(work => <li key={work.workId}>
         <strong>{work.title}</strong>{work.description ? ` · ${work.description}` : ''}</li>)}</ul></>}
-    {content.capabilities.length > 0 && <p className="capability-note">固定能力引用：{content.capabilities.map(item => `${item.kind}/${item.objectId.slice(0, 8)}@${item.version}`).join('、')}。未接入前不提供运行或编辑。</p>}
+    {content.capabilities.length > 0 && <details className="capability-note"><summary>课程工具详情</summary>
+      <p>本课程声明的工具尚未接入当前工作区。</p>
+      <ul>{content.capabilities.map(item => <li key={item.objectId}>{item.kind} · {item.objectId} · {item.version}</li>)}</ul>
+    </details>}
   </>
 }
 
-export function LearningPage() {
+export function LearningApp() {
+  const router = useRef<ReturnType<typeof createBrowserRouter> | null>(null)
+  if (!router.current) router.current = createBrowserRouter([{ path: '*', element: <LearningView /> }])
+  return <RouterProvider router={router.current} />
+}
+
+function LearningView() {
   useTheme()
+  const route = useLocation()
+  const navigate = useNavigate()
+  const currentSearch = useRef(route.search)
+  currentSearch.current = route.search
+  const routeReadEpoch = useRef(0)
+  const contentReadEpoch = useRef(0)
+  const actionEpoch = useRef(0)
+  const approvedSearch = useRef<string | null>(null)
+  const [connectionsOpen, setConnectionsOpen] = useState(false)
+  const selectedCourseId = new URLSearchParams(route.search).get('course')
   const [context, setContext] = useState<Context | null>(null)
   const [contextVerified, setContextVerified] = useState(true)
   const [key, setKey] = useState('')
   const [activities, setActivities] = useState<LearningActivity[] | null>(null)
+  const [activitiesFor, setActivitiesFor] = useState('')
   const [opened, setOpened] = useState<LearningActivity | null>(null)
   const [catalog, setCatalog] = useState<Course[] | null>(null)
   const [release, setRelease] = useState<CourseRelease | null>(null)
@@ -90,18 +114,46 @@ export function LearningPage() {
   const currentView = useRef({ context, key, opened })
   currentView.current = { context, key, opened }
   const workspace = useRef<ActivityWorkspaceHandle>(null)
+  const returnFocus = useRef<{ key: string; activityId: string; scrollTop: number } | null>(null)
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
+    if (approvedSearch.current === nextLocation.search) { approvedSearch.current = null; return false }
+    return !!currentView.current.opened && currentLocation.search !== nextLocation.search
+  })
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return
+    let active = true
+    void workspace.current?.leave().then(() => { if (active) blocker.proceed() }).catch(() => {
+      if (active) { setError('本机内容尚未得到保护，请保留当前页面并复制或导出作品。'); blocker.reset() }
+    })
+    return () => { active = false }
+  }, [blocker])
   const requestedActivity = useRef(new URLSearchParams(location.search).get('activity'))
-  function rememberActivity(activity: LearningActivity | null) {
+  function rememberActivity(activity: LearningActivity | null, nextKey = key) {
+    if (activity) returnFocus.current = { key: nextKey, activityId: activity.activityId,
+      scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
     ++epoch.current
     setBusy(false)
     const url = new URL(location.href)
-    if (activity) { url.searchParams.set('activity', activity.activityId); url.searchParams.set('space', key) }
-    else { url.searchParams.delete('activity'); url.searchParams.delete('space') }
-    history.replaceState(null, '', url)
+    if (activity) url.searchParams.set('activity', activity.activityId)
+    else url.searchParams.delete('activity')
+    if (nextKey) url.searchParams.set('space', nextKey)
+    if (url.search !== location.search) {
+      approvedSearch.current = url.search
+      navigate({ pathname: route.pathname, search: url.search })
+    }
     if (activity && context) {
       try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${key}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* IndexedDB owns work protection. */ }
     }
     setOpened(activity)
+  }
+  function selectCourse(courseId: string | null) {
+    ++contentReadEpoch.current
+    const params = new URLSearchParams(route.search)
+    if (courseId) params.set('course', courseId)
+    else params.delete('course')
+    navigate({ pathname: route.pathname, search: params.toString() })
+    setRelease(null); rememberMaterial(null)
+    requestAnimationFrame(() => { const heading = document.getElementById('course-title'); heading?.focus(); heading?.scrollIntoView({ block: 'start' }) })
   }
   const formScope = useRef('')
   const materialUrl = useRef('')
@@ -113,6 +165,20 @@ export function LearningPage() {
   const activityAuthorized = !!opened && !!identity && contextVerified
     && opened.identity.environmentId === identity.environmentId && opened.identity.spaceId === identity.spaceId
     && opened.identity.principalId === identity.principalId
+
+  useEffect(() => {
+    const target = returnFocus.current
+    if (opened || !activities || activitiesFor !== pendingKey || !target || target.key !== key) return
+    const frame = requestAnimationFrame(() => {
+      const button = document.querySelector<HTMLButtonElement>(`[data-activity-id="${CSS.escape(target.activityId)}"]`)
+      if (!button) return
+      button.focus({ preventScroll: true })
+      const main = document.querySelector('.main')
+      if (main) main.scrollTop = target.scrollTop
+      returnFocus.current = null
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [opened, activities, activitiesFor, pendingKey, key])
 
   function rememberMaterial(next: { title: string; url: string } | null) {
     if (materialUrl.current) URL.revokeObjectURL(materialUrl.current)
@@ -128,13 +194,14 @@ export function LearningPage() {
     if (generation !== epoch.current || authentication !== authEpoch.current) return
     await workspace.current?.leave()
     if (generation !== epoch.current || authentication !== authEpoch.current) return
-    rememberActivity(null); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null)
+    const nextKey = prefer && next.identities.some(item => item.key === prefer) ? prefer
+      : next.identities.some(item => item.key === key) ? key : next.identities[0]?.key ?? ''
+    rememberActivity(null, nextKey); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null)
     try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(next)) } catch { /* Optional reopening hint only. */ }
     setContextVerified(true)
     setContext(next)
     setReload(value => value + 1)
-    setKey(previous => prefer && next.identities.some(item => item.key === prefer) ? prefer
-      : next.identities.some(item => item.key === previous) ? previous : next.identities[0]?.key ?? '')
+    setKey(nextKey)
   }
   useEffect(() => {
     let disposed = false
@@ -219,11 +286,7 @@ export function LearningPage() {
       void api('activities', undefined, key, controller.signal).then(value => {
         if (epoch.current === generation) {
           setActivities((value as unknown[]).map(item => activitySchema.parse(item)))
-          const activityId = requestedActivity.current
-          requestedActivity.current = null
-          if (activityId) void api('activities/' + activityId, undefined, key, controller.signal).then(value => {
-            if (epoch.current === generation) rememberActivity(activitySchema.parse(value))
-          }).catch(error => { if (epoch.current === generation) setError(errorText(error)) })
+          setActivitiesFor(pendingKey)
         }
       }).catch(error => { if (epoch.current === generation && !controller.signal.aborted) setError(errorText(error)) })
       if (identity?.kind === 'school') {
@@ -235,22 +298,69 @@ export function LearningPage() {
     return () => { ++epoch.current; controller.abort() }
   }, [key, pendingKey, coursePendingKey, reload, contextVerified])
 
+  useEffect(() => {
+    ++contentReadEpoch.current
+    ++actionEpoch.current
+    setBusy(false)
+    setRelease(null); rememberMaterial(null)
+  }, [selectedCourseId, key])
+
+  // Browser history uses the same leave gate as buttons. A route is only read after that gate succeeds.
+  useEffect(() => {
+    const readGeneration = ++routeReadEpoch.current
+    const controller = new AbortController()
+    const retire = () => controller.abort()
+    if (!context) return
+    const params = new URLSearchParams(route.search)
+    const desiredKey = params.get('space') ?? context.identities[0]?.key ?? ''
+    const activityId = params.get('activity')
+    requestedActivity.current = activityId
+    if (desiredKey !== currentView.current.key) {
+      if (!context.identities.some(item => item.key === desiredKey)) return retire
+      requestedActivity.current = activityId
+      setOpened(null); setActivities(null); setActivitiesFor(''); setKey(desiredKey)
+      return retire
+    }
+    if (activityId === (currentView.current.opened?.activityId ?? null)) return retire
+    if (!activityId) { ++epoch.current; setOpened(null); setBusy(false); setReload(n => n + 1); return retire }
+    if (!contextVerified || !activities || activitiesFor !== pendingKey) return retire
+    const generation = ++epoch.current
+    const search = route.search
+    const applies = () => !controller.signal.aborted && generation === epoch.current
+      && readGeneration === routeReadEpoch.current && currentSearch.current === search
+    setOpened(null); setError(''); rememberMaterial(null)
+    void api('activities/' + activityId, undefined, desiredKey, controller.signal).then(value => {
+      if (applies()) {
+        const activity = activitySchema.parse(value)
+        try { sessionStorage.setItem(`xj.works-activity.${context.clientNamespace}.${desiredKey}.${activity.activityId}`, JSON.stringify(activity)) } catch { /* Optional reopening hint. */ }
+        setOpened(activity)
+        returnFocus.current ??= { key: desiredKey, activityId: activity.activityId, scrollTop: 0 }
+      }
+    }).catch(cause => { if (applies()) setError(errorText(cause)) })
+    return retire
+  }, [route.search, context?.clientNamespace, key, pendingKey, contextVerified, activities !== null, activitiesFor])
+
   async function switchSpace(next: string) {
     if (next === key) return
     try { await workspace.current?.leave() } catch { setError('本机内容尚未得到保护，请保留当前页面并复制或导出作品。'); return }
-    rememberActivity(null)
+    rememberActivity(null, next)
     ++epoch.current; setKey(next); setOpened(null); setActivities(null); setError(''); setNotice('')
     setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
     setGoal(''); setQuestion(''); setReference(''); setBusy(false)
   }
   async function action(operation: (generation: number) => Promise<void>) {
     const generation = epoch.current
+    const operationId = ++actionEpoch.current
+    const startedSearch = currentSearch.current
     setBusy(true); setError(''); setNotice('')
-    try { await operation(generation) } catch (error) { if (generation === epoch.current) setError(errorText(error)) }
-    finally { if (generation === epoch.current) setBusy(false) }
+    try { await operation(generation) } catch (error) {
+      if (operationId === actionEpoch.current && generation === epoch.current && startedSearch === currentSearch.current) setError(errorText(error))
+    }
+    finally { if (operationId === actionEpoch.current && generation === epoch.current) setBusy(false) }
   }
   async function createActivity() {
     const generation = epoch.current
+    const startedSearch = currentSearch.current
     const scopeKey = pendingKey
     const selected = key
     const input = pendingRequest ?? createActivitySchema.parse({ requestId: crypto.randomUUID(), goal, question,
@@ -263,8 +373,9 @@ export function LearningPage() {
       const activity = activitySchema.parse(existing ?? await api('activities', input, selected))
       const saved = localStorage.getItem(scopeKey)
       if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
-      if (generation === epoch.current) {
+      if (generation === epoch.current && startedSearch === currentSearch.current) {
         setPendingRequest(null); rememberActivity(activity); setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
+        setActivitiesFor(scopeKey)
         setGoal(''); setQuestion(''); setReference('')
       }
     } catch (error) {
@@ -272,7 +383,7 @@ export function LearningPage() {
       if ((error as { code?: string }).code === 'invalid') {
         const saved = localStorage.getItem(scopeKey)
         if (saved && createActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(scopeKey)
-        if (generation === epoch.current) setPendingRequest(null)
+        if (generation === epoch.current && startedSearch === currentSearch.current) setPendingRequest(null)
       }
       throw error
     }
@@ -284,10 +395,11 @@ export function LearningPage() {
         if (saved && createCourseActivitySchema.parse(JSON.parse(saved)).requestId === input.requestId) localStorage.removeItem(coursePendingKey)
       } catch { localStorage.removeItem(coursePendingKey) }
     }
-    if (generation === epoch.current) setCoursePending(null)
+    if (generation === epoch.current) setCoursePending(current => current?.requestId === input.requestId ? null : current)
   }
   async function startCourse(releaseId: string) {
     const generation = epoch.current
+    const startedSearch = currentSearch.current
     const selected = key
     const input = coursePending ?? createCourseActivitySchema.parse({ requestId: crypto.randomUUID(), releaseId })
     if (!coursePendingKey) return
@@ -304,9 +416,10 @@ export function LearningPage() {
         ? activitySchema.parse(existing.activity)
         : activitySchema.parse(await api('course-activities', input, selected))
       clearCoursePending(input, generation)
-      if (generation === epoch.current) {
+      if (generation === epoch.current && startedSearch === currentSearch.current) {
         rememberActivity(activity)
         setActivities(previous => [activity, ...(previous ?? []).filter(item => item.activityId !== activity.activityId)])
+        setActivitiesFor(pendingKey)
       }
     } catch (error) {
       const code = (error as { code?: string }).code
@@ -324,11 +437,10 @@ export function LearningPage() {
   }
   async function openActivity(activityId: string) {
     await workspace.current?.leave()
-    const generation = epoch.current
-    const activity = activitySchema.parse(await api('activities/' + activityId, undefined, key))
-    if (generation !== epoch.current) return
-    await workspace.current?.leave()
-    if (generation === epoch.current) rememberActivity(activity)
+    returnFocus.current = { key, activityId, scrollTop: document.querySelector('.main')?.scrollTop ?? 0 }
+    const params = new URLSearchParams(currentSearch.current)
+    params.set('activity', activityId); params.set('space', key)
+    navigate({ pathname: route.pathname, search: params.toString() })
   }
   async function changeStatus(activity: LearningActivity) {
     const generation = epoch.current
@@ -338,14 +450,18 @@ export function LearningPage() {
   }
   async function viewRelease(releaseId: string) {
     const generation = epoch.current
+    const contentGeneration = ++contentReadEpoch.current
+    const courseId = selectedCourseId
     setRelease(null); rememberMaterial(null)
     const detail = courseReleaseSchema.parse(await api('releases/' + releaseId, undefined, key))
-    if (generation === epoch.current) setRelease(detail)
+    if (generation === epoch.current && contentGeneration === contentReadEpoch.current
+      && new URLSearchParams(currentSearch.current).get('course') === courseId && detail.courseId === courseId) setRelease(detail)
   }
   async function readMaterial(releaseId: string, item: CourseMaterial) {
     const generation = epoch.current
+    const contentGeneration = ++contentReadEpoch.current
     const content = courseMaterialContentSchema.parse(await api(`releases/${releaseId}/materials/${item.materialId}`, undefined, key))
-    if (generation !== epoch.current) return
+    if (generation !== epoch.current || contentGeneration !== contentReadEpoch.current) return
     const binary = atob(content.contentBase64)
     const data = new Uint8Array(binary.length)
     for (let index = 0; index < binary.length; index++) data[index] = binary.charCodeAt(index)
@@ -353,100 +469,7 @@ export function LearningPage() {
     rememberMaterial({ title: content.title, url })
   }
 
-  return <main className="learning-page">
-    <header><div><p className="eyebrow">循阶 · 学习空间</p><h1>{identity?.name ?? '从这里开始学习'}</h1></div>
-      <a href="?diagnostics=1">运行诊断</a></header>
-    {context && <nav aria-label="学习空间" className="space-switcher">
-      {context.identities.map(item => <button type="button" key={item.key} aria-pressed={item.key === key}
-        onClick={() => switchSpace(item.key)}>{item.identity.kind === 'personal' ? '个人空间' : '学校空间'}
-        {context.identities.filter(other => other.identity.kind === 'school').length > 1 && item.identity.kind === 'school' ? ` · ${item.identity.name}` : ''}</button>)}
-      <button type="button" disabled={busy} onClick={() => void action(async generation => {
-        await refreshContext(undefined, generation)
-      })}>刷新列表</button>
-    </nav>}
-    {error && <p className="learning-error" role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
-    {!context && !error && <p role="status">正在连接学习空间…</p>}
-    {authorize && <section aria-labelledby="approve-title"><h2 id="approve-title">连接这台客户端</h2>
-      <p>确认后，此客户端可以使用你在本学校的学习活动。你可以随时撤销连接。</p>
-      <button type="button" className="primary" disabled={busy || !context?.identities.some(item => item.key === 'school')}
-        onClick={() => void action(async () => { await api('connections/approve', { requestId: authorize }); setNotice('连接已批准，请返回原客户端完成连接。') })}>允许连接</button>
-    </section>}
-    {context && identity && <>
-      {opened ? <ActivityReferences activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}>
-      <section aria-labelledby="activity-title">
-        <button type="button" onClick={() => void action(async () => {
-          await workspace.current?.leave(); rememberActivity(null); rememberMaterial(null)
-          setReload(value => value + 1)
-        })}>返回活动列表</button>
-        <h2 id="activity-title">{opened.course ? opened.course.taskTitle : opened.goal || opened.question || '资料学习'}</h2>
-        {opened.course ? <>
-          <p className="detail">{opened.course.courseName} · 固定版本 {opened.course.releaseId.slice(0, 8)} · 依据摘要 {opened.course.contentDigest.slice(0, 12)}</p>
-          <CourseSections content={opened.course} level={3} busy={busy}
-            requirementsContent={<CourseRequirementsReference course={opened.course} />}
-            onMaterial={item => void action(() => readMaterial(opened.course!.releaseId, item))} />
-          <CourseMaterialReferences activity={opened} course={opened.course} spaceKey={key} namespace={context.clientNamespace} />
-        </> : <>
-          {opened.question && opened.goal && <p className="preserve-lines">{opened.question}</p>}
-          {opened.references.map((item, index) => <p key={index}><a href={item.url} target="_blank" rel="noreferrer">{item.label}</a></p>)}
-        </>}
-        {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
-        <p className="detail">{opened.status === 'closed' ? '活动已关闭，可随时重新开始。' : '继续围绕这个目标学习。'}</p>
-        <button type="button" disabled={busy} onClick={() => void action(() => changeStatus(opened))}>{opened.status === 'closed' ? '重新开始活动' : '关闭活动'}</button>
-        <ActivityWorkspace key={context.clientNamespace + key + opened.activityId} ref={workspace} activity={opened} spaceKey={key} namespace={context.clientNamespace}
-          authorized={activityAuthorized} />
-        <WorkspaceReferenceComposer />
-        <SelectionToolbar />
-      </section>
-      </ActivityReferences> : <>
-        {identity.kind === 'school' && <section aria-labelledby="course-title"><h2 id="course-title">课程任务</h2>
-          {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对（版本 {coursePending.releaseId.slice(0, 8)}），将先查询原请求。</p>
-            <button type="button" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>
-            <button type="button" disabled={busy} onClick={discardCoursePending}>放弃这次请求</button></div>}
-          {catalog === null ? <p>{error ? '课程列表尚未读取成功。' : '正在读取课程…'}</p>
-            : catalog.length === 0 ? <p className="detail">尚未获得课程资格。请联系课程管理员授予后再刷新。</p>
-            : <div className="course-list">{catalog.map(course => <article className="course-card" key={course.courseId}>
-              <h3>{course.name}</h3>
-              {course.tasks.map(task => <div className="course-task" key={task.taskId}>
-                <h4>{task.title}</h4>
-                {task.summary && <p className="detail">{task.summary}</p>}
-                <ul className="release-list">{task.releases.map((item, index) => <li key={item.releaseId}>
-                  <button type="button" aria-pressed={release?.releaseId === item.releaseId} disabled={busy}
-                    onClick={() => void action(() => viewRelease(item.releaseId))}>{published(item.publishedAt)}{index === 0 ? ' · 最近发布' : ''}</button>
-                  <span className="detail">{item.objectives[0]}</span></li>)}</ul>
-              </div>)}
-            </article>)}</div>}
-          {release && <article className="release-detail" aria-labelledby="release-title">
-            <h3 id="release-title">{release.taskTitle}</h3>
-            <p className="detail">{release.courseName} · 发布 {published(release.publishedAt)} · 版本 {release.releaseId.slice(0, 8)}</p>
-            <CourseSections content={release} level={4} busy={busy}
-              onMaterial={item => void action(() => readMaterial(release.releaseId, item))} />
-            {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
-            <button type="button" className="primary" disabled={busy || !!coursePending} onClick={() => void action(() => startCourse(release.releaseId))}>从这一版本开始活动</button>
-          </article>}
-        </section>}
-        <section aria-labelledby="new-activity-title"><h2 id="new-activity-title">开始一次自主学习</h2><p className="detail">从一个目标、问题或资料开始。</p>
-          <form onSubmit={event => { event.preventDefault(); void action(createActivity) }}>
-            <label>学习目标<input value={goal} maxLength={4000} disabled={!!pendingRequest} onChange={event => setGoal(event.target.value)} /></label>
-            <label>起始问题<textarea value={question} maxLength={10000} disabled={!!pendingRequest} onChange={event => setQuestion(event.target.value)} rows={3} /></label>
-            <label>资料链接（可选）<input type="url" value={reference} disabled={!!pendingRequest} onChange={event => setReference(event.target.value)} placeholder="https://" /></label>
-            {pendingRequest && <p className="detail">上次建立活动的结果尚未核对，将先查询原请求。</p>}
-            {pendingRequest && <button type="button" disabled={busy} onClick={discardPending}>放弃这次请求并重新填写</button>}
-            <button className="primary" disabled={busy || !pendingRequest && !goal.trim() && !question.trim() && !reference}>
-              {busy ? '正在处理…' : pendingRequest ? '核对并继续原请求' : '建立学习活动'}</button>
-          </form>
-        </section>
-        <section aria-labelledby="activities-title"><h2 id="activities-title">我的学习活动</h2>
-          {activities === null ? <p>{error ? '列表尚未读取成功。' : '正在读取活动…'}</p> : activities.length === 0 ? <p className="detail">还没有学习活动，从上面开始。</p>
-            : <ul>{activities.map(activity => <li key={activity.activityId} className="activity-row"><span>
-              <button type="button" disabled={busy}
-                onClick={() => void action(() => openActivity(activity.activityId))}>{activity.course ? activity.course.taskTitle : activity.goal || activity.question || '资料学习'}</button>
-              {activity.course && <span className="course-badge">课程任务 · {activity.course.courseName}</span>}</span>
-              <span className="detail">{activity.status === 'closed' ? '已关闭' : '进行中'}</span></li>)}</ul>}
-        </section>
-      </>}
-    </>}
-    {context && <section aria-labelledby="school-title"><h2 id="school-title">学校学习空间</h2>
+  const schoolControls = context && <section aria-labelledby="school-title"><h2 id="school-title">学校学习空间</h2>
       {context.identities.some(item => item.key === 'school') ? <button type="button" disabled={busy} onClick={() => void action(async () => {
         const authentication = ++authEpoch.current
         await workspace.current?.leave()
@@ -460,8 +483,9 @@ export function LearningPage() {
         try { sessionStorage.setItem('xj.works-context.v1', JSON.stringify(signedOut)) } catch { /* Optional hint. */ }
         setContext(signedOut)
         if (currentView.current.key === 'school') {
-          rememberActivity(null); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
-          setKey(signedOut.identities.some(item => item.key === 'personal') ? 'personal' : signedOut.identities[0]?.key ?? '')
+          const nextKey = signedOut.identities.some(item => item.key === 'personal') ? 'personal' : signedOut.identities[0]?.key ?? ''
+          rememberActivity(null, nextKey); setActivities(null); setCatalog(null); setRelease(null); rememberMaterial(null); setCoursePending(null)
+          setKey(nextKey)
           setReload(value => value + 1)
         }
       })}>退出学校登录</button> : context.profile === 'school' && <form onSubmit={event => { event.preventDefault(); void action(async generation => {
@@ -490,6 +514,96 @@ export function LearningPage() {
         // The revoked connection is gone; re-read so the stale school space cannot be selected again.
         if (generation === epoch.current) await refreshContext(context.identities.some(item => item.key === 'personal') ? 'personal' : undefined, generation)
       })}>撤销此客户端连接</button>}
-    </section>}
-  </main>
+    </section>
+  const feedback = <>{error && <p className="learning-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}</>
+  const selectedCourse = catalog?.find(course => course.courseId === selectedCourseId)
+  const visibleRelease = release?.courseId === selectedCourseId ? release : null
+  const visibleActivities = activitiesFor === pendingKey ? activities : null
+  const goHome = () => void action(async () => { await workspace.current?.leave(); rememberActivity(null); rememberMaterial(null); setReload(value => value + 1) })
+  const now = new Date()
+  const greeting = now.getHours() < 12 ? '上午好' : now.getHours() < 18 ? '下午好' : '晚上好'
+  return <ProductShell immersive={!!opened} identityName={identity?.name ?? '学习空间'}
+    spaces={context?.identities.map(item => ({ key: item.key, label: item.identity.kind === 'personal' ? '个人空间'
+      : context.identities.filter(other => other.identity.kind === 'school').length > 1 ? `学校空间 · ${item.identity.name}` : '学校空间' })) ?? []}
+    spaceKey={key} onSpaceChange={next => void switchSpace(next)} onHome={goHome}
+    onConnections={() => { goHome(); setConnectionsOpen(true) }}>
+    {context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
+      activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}>
+      <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
+        workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}
+        onRefresh={() => void action(async generation => { await refreshContext(undefined, generation) })} account={schoolControls}
+        error={error || notice ? feedback : null} details={<>
+          {opened.course ? <><CourseSections content={opened.course} level={3} busy={busy}
+            requirementsContent={<CourseRequirementsReference course={opened.course} />}
+            onMaterial={item => void action(() => readMaterial(opened.course!.releaseId, item))} />
+            <CourseMaterialReferences activity={opened} course={opened.course} spaceKey={key} namespace={context.clientNamespace} />
+          </> : <><h2>学习目标</h2><p className="preserve-lines">{opened.goal || opened.question || '资料学习'}</p>
+            {opened.question && opened.goal && <><h3>起始问题</h3><p className="preserve-lines">{opened.question}</p></>}
+            {opened.references.length > 0 && <><h3>学习材料</h3>{opened.references.map((item, index) => <p key={index}><a href={item.url} target="_blank" rel="noreferrer">{item.label}</a></p>)}</>}
+          </>}
+          {material && <p className="material-note" role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
+        </>} />
+    </ActivityReferences> : <div className="content home-page product-home">
+      <div className="intro"><h1>{greeting}{identity ? `，${identity.name}` : '，从这里开始学习'}</h1><span className="date">{now.getMonth() + 1} 月 {now.getDate()} 日</span></div>
+      {feedback}
+      {!context && !error && <p role="status">正在连接学习空间…</p>}
+      {!context && error && <button type="button" className="outline" onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>重新连接</button>}
+      {authorize && <section className="product-connection" aria-labelledby="approve-title"><h2 id="approve-title">连接这台客户端</h2>
+        <p>确认后，此客户端可以使用你在本学校的学习活动。你可以随时撤销连接。</p>
+        <button type="button" className="primary" disabled={busy || !context?.identities.some(item => item.key === 'school')}
+          onClick={() => void action(async () => { await api('connections/approve', { requestId: authorize }); setNotice('连接已批准，请返回原客户端完成连接。') })}>允许连接</button>
+      </section>}
+      {(connectionsOpen || context?.profile === 'school' && !identity || authorize) && schoolControls}
+      {context && identity && <>
+        {identity.kind === 'school' && <section className="course-region" aria-labelledby="course-title">
+          <div className="sectionhead"><h2 id="course-title" tabIndex={-1}>{selectedCourse?.name ?? '我的课程'}<small>{selectedCourse ? `${selectedCourse.tasks.length} 个任务` : catalog ? `${catalog.length} 门` : ''}</small></h2>
+            {selectedCourse && <button type="button" className="outline" onClick={() => selectCourse(null)}>全部课程</button>}</div>
+          {coursePending && <div className="course-pending"><p>上次课程活动的请求结果尚未核对，将先查询原请求。</p>
+            <button type="button" className="outline" disabled={busy} onClick={() => void action(() => startCourse(coursePending.releaseId))}>核对并继续原请求</button>
+            <button type="button" className="outline" disabled={busy} onClick={discardCoursePending}>放弃这次请求</button></div>}
+          {catalog === null ? <p>{error ? '课程列表尚未读取成功。' : '正在读取课程…'}</p>
+            : catalog.length === 0 ? <div className="empty">尚未获得课程资格。请联系课程管理员授予后再刷新。</div>
+            : !selectedCourse ? <CourseTiles courses={catalog.map(course => course.courseId)} toneOf={id => catalog.findIndex(course => course.courseId === id)}
+              titleOf={id => catalog.find(course => course.courseId === id)!.name}
+              summaryOf={id => `${catalog.find(course => course.courseId === id)!.tasks.length} 个任务`} onOpen={id => selectCourse(id)} />
+            : <div className="task-card-grid">{selectedCourse.tasks.map(task => <article key={task.taskId} className="product-course-task">
+              <h3>{task.title}</h3>{task.summary && <p>{task.summary}</p>}
+              <div className="product-release-list">{task.releases.map((item, index) => <button type="button" className="outline" key={item.releaseId} disabled={busy}
+                onClick={() => void action(() => viewRelease(item.releaseId))}>{published(item.publishedAt)}{index === 0 ? ' · 最近发布' : ''}</button>)}</div>
+            </article>)}</div>}
+          {visibleRelease && <article className="product-release" aria-labelledby="release-title"><h3 id="release-title">{visibleRelease.taskTitle}</h3>
+            <CourseSections content={visibleRelease} level={4} busy={busy} onMaterial={item => void action(() => readMaterial(visibleRelease.releaseId, item))} />
+            {material && <p role="status">已读取 {material.title}：<a href={material.url} target="_blank" rel="noreferrer" download={material.title}>打开或下载材料</a></p>}
+            <button type="button" className="primary" disabled={busy || !!coursePending} onClick={() => void action(() => startCourse(visibleRelease.releaseId))}>从这一版本开始活动</button>
+          </article>}
+        </section>}
+        <section aria-labelledby="activities-title">
+          <div className="sectionhead"><h2 id="activities-title">我的学习活动</h2><button type="button" className="outline" disabled={busy}
+            onClick={() => void action(async generation => { await refreshContext(undefined, generation) })}>刷新列表</button></div>
+          {visibleActivities === null ? <p>{error ? '列表尚未读取成功。' : '正在读取活动…'}</p>
+            : visibleActivities.length === 0 ? <p className="empty">从一个目标、问题或资料开始。</p>
+            : <LearningCardGrid>{register => visibleActivities.map((activity, index) => <LearningTaskCard key={activity.activityId} register={register} index={index}
+              activityId={activity.activityId}
+              accessibleLabel={activity.course?.taskTitle || activity.goal || activity.question || '资料学习'}
+              title={activity.course?.taskTitle || activity.goal || activity.question || '资料学习'}
+              goal={activity.course?.objectives[0] || activity.question || undefined}
+              badge={<span className={'status' + (activity.status === 'closed' ? ' pending' : '')}>{activity.status === 'closed' ? '已关闭' : '进行中'}</span>}
+              footer={activity.course?.courseName ?? '自主学习'} action={activity.status === 'closed' ? '重新开始' : '继续学习'}
+              onOpen={() => void action(() => openActivity(activity.activityId))} />)}</LearningCardGrid>}
+        </section>
+        <section aria-labelledby="new-activity-title" className="product-new-activity"><details open={identity.kind === 'personal' || !!pendingRequest}>
+          <summary><h2 id="new-activity-title">开始一次自主学习</h2></summary>
+          <form onSubmit={event => { event.preventDefault(); void action(createActivity) }}>
+            <label>学习目标<input value={goal} maxLength={4000} disabled={!!pendingRequest} onChange={event => setGoal(event.target.value)} placeholder="你想完成什么？" /></label>
+            <label>起始问题<textarea value={question} maxLength={10000} disabled={!!pendingRequest} onChange={event => setQuestion(event.target.value)} rows={2} /></label>
+            <label>资料链接（可选）<input type="url" value={reference} disabled={!!pendingRequest} onChange={event => setReference(event.target.value)} placeholder="https://" /></label>
+            {pendingRequest && <p className="detail">上次建立活动的结果尚未核对，将先查询原请求。</p>}
+            {pendingRequest && <button type="button" className="outline" disabled={busy} onClick={discardPending}>放弃这次请求并重新填写</button>}
+            <button className="primary" disabled={busy || !pendingRequest && !goal.trim() && !question.trim() && !reference}>
+              {busy ? '正在处理…' : pendingRequest ? '核对并继续原请求' : '建立学习活动'}</button>
+          </form>
+        </details></section>
+      </>}
+    </div>}
+  </ProductShell>
 }

@@ -26,7 +26,7 @@ test.beforeAll(async ({ browser }) => {
   runtimeRoot = root
   runtime = openProductRuntime({ root, resources: {
     nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
-    webRoot: fileURLToPath(new URL('../dist-runtime', import.meta.url)),
+    webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
   await runtime.install({ profile: 'local' })
   host = await createProductRuntimeHost({ root,
@@ -194,8 +194,8 @@ test('production composer shows pending facts and late acceptance keeps the newe
     await expect.poll(async () => (await (await page.request.get(endpoint + '/api/learning/workspaces/' + config.activityId,
       { headers: { 'x-xj-space': 'personal' } })).json()).files[0].value).toContain('后续继续编辑的作品 B')
     await page.reload()
-    await expect(page.getByRole('region', { name: '待发与接收记录', exact: true })).toContainText('接收方已接受')
     await page.getByRole('button', { name: '打开对话', exact: true }).click()
+    await expect(page.getByRole('region', { name: '待发与接收记录', exact: true })).toContainText('接收方已接受')
     await expect(question).toHaveValue('发送后继续写的问题 B')
     await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/153/chrome-pending-and-new-draft.png', import.meta.url)), fullPage: true })
     await page.emulateMedia({ colorScheme: 'dark' })

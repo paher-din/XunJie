@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { FileTabs } from './FileTabs'
 import { Icon, type IconName } from '../../icons'
 import type { ProjectFile } from '../../bridge/types'
 import {
@@ -25,11 +26,6 @@ import { lifecycleProblemMessage } from '../../workspace/fileLifecycle'
 function fileIcon(path: string): IconName {
   const language = languageOf(path)
   return language === 'plaintext' || language === 'markdown' ? 'file-text' : 'file-code'
-}
-
-function splitPath(path: string): { dir: string; base: string } {
-  const slash = path.lastIndexOf('/')
-  return slash < 0 ? { dir: '', base: path } : { dir: `${path.slice(0, slash + 1)}`, base: path.slice(slash + 1) }
 }
 
 export interface FileStripHandle {
@@ -311,41 +307,9 @@ export const FileStrip = forwardRef<FileStripHandle, FileStripProps>(function Fi
         )}
       </div>
 
-      <div className="cw-filetabs" role="tablist" aria-label="已打开的文件">
-        {openFiles.map((file) => {
-          const { dir, base } = splitPath(file.path)
-          const active = file.fileId === activeFileId
-          return (
-            // 标签盒本身不参与可访问性树：里面是「激活」与「关闭」两个平级按钮，
-            // 不做嵌套交互元素，键盘也能分别到达
-            <div key={file.fileId} className={active ? 'cw-filetab active' : 'cw-filetab'} role="presentation">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className="cw-filetab-main"
-                title={file.path}
-                onClick={() => onOpen(file.fileId)}
-              >
-                <Icon name={fileIcon(file.path)} size={14} tone="neutral" />
-                {dir && <span className="cw-filetab-dir">{dir}</span>}
-                <span className="cw-filetab-name">{base}</span>
-                {isCreated(file) ? <span className="cw-tag-new">新建</span> : isDirty(file) ? <i className="cw-dot" /> : null}
-              </button>
-              <button
-                type="button"
-                className="cw-filetab-x"
-                aria-label={`关闭 ${file.path} 的标签`}
-                title="关闭标签（文件仍在项目里）"
-                onClick={() => onClose(file.fileId)}
-              >
-                <Icon name="close" size={12} />
-              </button>
-            </div>
-          )
-        })}
-        {openFiles.length === 0 && <span className="cw-filetabs-empty">没有打开的文件</span>}
-      </div>
+      <FileTabs files={openFiles.map(file => ({ id: file.fileId, name: file.path,
+        decoration: isCreated(file) ? <span className="cw-tag-new">新建</span> : isDirty(file) ? <i className="cw-dot" /> : null }))}
+        activeId={activeFileId} onOpen={onOpen} onClose={onClose} tabRoles />
     </div>
   )
 })

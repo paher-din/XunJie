@@ -1,6 +1,6 @@
 # 可靠活动工作区
 
-正式产品的 [ActivityWorkspace](../runtime/ActivityWorkspace.tsx) 与现有 [Monaco 宿主](../components/workspace/CodeEditorHost.tsx) 通过 `ReliableWorkspace` 处理文件变化，不各自安排保存、冻结或同步。课程与自主活动共用这条路径；组件状态与资源使用相同的类型化 wire，不强制变成代码文件。需求和验证见 [#151 交接](../../../../docs/student-agent-implementation/wp02-reliable-works.md)。
+正式产品的 [ActivityWorkspace](../product/ActivityWorkspace.tsx) 与现有 [Monaco 宿主](../components/workspace/CodeEditorHost.tsx) 通过 `ReliableWorkspace` 处理文件变化，不各自安排保存、冻结或同步。课程与自主活动共用这条路径；组件状态与资源使用相同的类型化 wire，不强制变成代码文件。需求和验证见 [#151 交接](../../../../docs/student-agent-implementation/wp02-reliable-works.md)。
 
 问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，沿用同库 v2 新增的 `drafts`/`draftCandidates` 分区，当前数据库非破坏升级为 v3；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 [#152 记录](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)。
 

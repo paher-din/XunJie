@@ -1,3 +1,4 @@
+import { renameWorkFile, deleteWorkFile, selectProductSpace } from './support/product-ui'
 import { test, expect, type Page } from '@playwright/test'
 import { randomUUID, createHash } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
@@ -21,7 +22,7 @@ test.beforeAll(async ({ browser }) => {
   browserVersion = browser.version()
   runtimeRoot = await mkdtemp(join(tmpdir(), 'xj-drafts-browser-'))
   runtime = openProductRuntime({ root: runtimeRoot, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
-    postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../dist-runtime', import.meta.url)),
+    postgresVersion: '18.6', webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
   await runtime.install({ profile: 'local' })
   endpoint = (await runtime.start()).endpoint!
@@ -190,10 +191,10 @@ test('course text and requirements stay as fixed references through collapse, re
   await openComposer(page)
   await expect(question(page)).toHaveValue('为什么需要边界输入？')
   await expect(refs(page)).toHaveCount(2)
-  await page.getByRole('button', { name: '个人空间', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '个人学习空间', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '学校空间', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '课程任务', exact: true })).toBeVisible()
+  await selectProductSpace(page, '个人空间')
+  await expect(page.getByRole('heading', { name: '我的学习活动', exact: true })).toBeVisible()
+  await selectProductSpace(page, '学校空间')
+  await expect(page.getByRole('heading', { name: '我的课程', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '固定引用的任务', exact: true }).click()
   await expect(page.getByRole('heading', { name: '固定引用的任务', exact: true })).toBeVisible()
   await openComposer(page)
@@ -225,8 +226,7 @@ test('code reference keeps original copy after rename and edit, and survives fil
   expect(firstDraft.references[0].range.start).toBe(1)
   expect(firstDraft.references[0].copy).toBe(original.slice(1))
 
-  await page.getByLabel('新名称', { exact: true }).fill('renamed.sv')
-  await page.getByRole('button', { name: '重命名', exact: true }).click()
+  await renameWorkFile(page, 'renamed.sv')
   await expect(page.getByRole('button', { name: 'renamed.sv', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '定位引用 1：demo.sv', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: '已定位引用来源。' })).toBeVisible()
@@ -242,7 +242,7 @@ test('code reference keeps original copy after rename and edit, and survives fil
   expect(await refs(page).nth(0).locator('pre').textContent()).toBe(original.slice(1))
   expect(await refs(page).nth(1).locator('pre').textContent()).toContain('// 已编辑')
   await expect.poll(async () => (await draftOf(page, activityId)).references.length).toBe(2)
-  await page.getByRole('button', { name: '删除文件', exact: true }).click()
+  await deleteWorkFile(page)
   await expect(page.getByRole('button', { name: 'renamed.sv', exact: true })).toHaveCount(0)
   await page.reload()
   await openComposer(page)

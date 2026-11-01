@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   base: '/',
-  publicDir: false,
+  publicDir: 'public',
   plugins: [react(), {
     name: 'runtime-root-entry',
     enforce: 'post',

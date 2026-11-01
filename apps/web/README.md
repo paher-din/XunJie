@@ -10,6 +10,29 @@ XunJie 主仓库的师生共用 Web 工程。首次内容由设计仓库 `XunJie
 
 页面、组件、样式或交互修改前先读根目录 [DESIGN.md](../../DESIGN.md)，遵循其中的视觉与交互规则，复用原有组件；缺真实数据时按实际可用字段呈现，不另写一套简化 UI。
 
+## 正式产品入口与后续 WP
+
+本机产品、学校网页及混合连接共用 [`product/LearningApp.tsx`](src/product/LearningApp.tsx)，普通 Web 的默认入口与产品包 `build:runtime` 都装配这一个应用。`runtime/` 只保留启动装配和 `?diagnostics=1` 辅助诊断，不再承载独立学习页面。正式产品消费 `/api/learning/*` 的新空间身份、活动、课程发布、作品、问题草稿与动作接口；不会在请求失败时回退演示课程或旧 Session。
+
+| 位置 | 当前职责与后续接入 |
+| --- | --- |
+| [`components/ShellFrame.tsx`](src/components/ShellFrame.tsx)、[`ProductShell`](src/components/ProductShell.tsx) | 从原 AppShell 抽出的共享外壳、品牌、导航轨道、主题与焦点；以新空间身份与实际可用能力驱动。新导航在此增补。 |
+| [`components/home/LearningCards.tsx`](src/components/home/LearningCards.tsx)、`LearningApp` | 复用原课程卡、任务卡与 fluid hover；首页接课程任务、自主活动建立与重开。没有统计接口时省略看板，不补演示进度。 |
+| [`product/ActivityPage.tsx`](src/product/ActivityPage.tsx) | 既有沉浸工作区的目标／材料入口、`CenterToolArea`、文件条与问题面板。课程工具、执行结果（WP03）接中心工具区；Agent（WP07）接同一讨论位置与真实 receiver。 |
+| [`product/ActivityWorkspace.tsx`](src/product/ActivityWorkspace.tsx)、[`FileTabs`](src/components/workspace/FileTabs.tsx) | 稳定对象身份上的创建、编辑、改名、删除和同名重建；复用 Monaco、原文投影和选区交互。 |
+| [`product/ActivityReferences.tsx`](src/product/ActivityReferences.tsx)、[`ActivityActions`](src/product/ActivityActions.tsx) | 装配唯一可靠会话，登记固定材料／作品引用、持久问题草稿、待发与真实回执。没有真实接收方时保留草稿并禁用发送。 |
+| [`reliable-workspace`](src/reliable-workspace/README.md) | 作品、问题、引用和动作的唯一持久状态权威；本机保护、冲突、离开与恢复均调用其公开接口，页面不另建仓库、保存队列或派发循环。 |
+
+活动地址使用 `?space=<key>&activity=<id>`，课程选择使用 `course` 查询参数。浏览器前进／后退与页面导航同样先完成离开保护；保护失败留在原活动并提供复制、导出。退出与空间切换继续核对原身份，异步结果按视图代次隔离。新产品没有手动保存、确认／冻结前置操作或常态保存状态。
+
+后续 WP 在上述外壳、页面与工作区对应位置新增或替换能力，完成所属模块公开接口的真实接线，并清理被替代的实现。教学交付（WP12）接当前活动操作；不再建立另一套正式学习页。仍被旧执行／教师路径使用的组件和 API 由对应 WP 替换时移除。
+
+正式交付执行 `npm run build:runtime -w @xunjie/web` 与 `npm run package:product -- --platform <目标平台>`，后者提供真实宿主与同源 API；单独运行 Vite 默认页只提供前端，须由产品宿主提供 `/api/learning`。`npm run dev:prep -w @xunjie/web` 是原已确认 UI 的隔离参考。新界面与证据见 [#159 实施与验收](../../docs/student-agent-implementation/wp02-product-ui.md)。
+
+## 尚未替换的教学与执行入口
+
+以下说明仅适用于 [`LegacyApp.tsx`](src/LegacyApp.tsx) 的既有执行、Agent、设置与教师消费方，以及显式 `dev:prep` 预览；它们保留原业务模型，不能作为 WP02 正式首页、数据恢复或后续 WP 的新接入路径。普通 Web 对既有 `/#/teacher`、`/#/task/*` 等链接保留过渡路由；产品独立包不装配这些旧业务。下述原确认、快照、Session 和演示看板均不进入新的默认产品链路。
+
 教师工作台复用此工程与设计系统。真实入口 `/#/teacher` 使用现有登录与任教课程授权，接通材料、原生蓝图编辑/检查、三角色预览、确认分配、固定提交审阅、正式反馈及修订、修订许可和后续项目复制；学生在原任务页的“提交与反馈”中明确提交并主动消费许可。真实材料按既有后端限额 256 KiB 导入，权限默认关闭。操作结果未知时保留原字节与幂等键，通过“核对原教师操作”读取原回执。
 
 教师“工作台设置 → 模型”（`/#/teacher/settings/model`）直接复用学生模型设置页：供应商、API Key、模型能力/上下文/最大输出、默认模型、思考强度、连接测试和个人启停均使用当前教师账号的后台配置。Key 留空保留原值，服务端读取仅返回脱敏状态，不与学生账号共享。开发教师预览不加载真实配置；教师项目设计的模型预算仍由原宿主开关控制。
@@ -18,7 +41,7 @@ XunJie 主仓库的师生共用 Web 工程。首次内容由设计仓库 `XunJie
 
 真实项目设计页新增“AI 协助设计”：新项目可请求项目候选或完整建议，已保存草稿可请求允许字段内的局部建议或样例量规试评。只选择获准教师设计用途的材料段落；试评样例另须教师明确确认。根候选采纳为新草稿时保留已选课程配置，已有草稿采纳产生新 revision；文字目标与量规建议仍须教师建立正式关联、保存并检查。任务可以取消、刷新后读取及按原请求核对；人工修改后旧候选保留对照但不能覆盖。该入口消费真实 API，未配置 provider 或预算时显示实际拒绝，不回退示例。共享运行环境的 provider/预算接线与部署状态见[本轮记录](../../docs/archive/tasks/I1_TEACHER_DESIGN_AI_UI_20261015.md)，本地源码完成不表示云端已更新或真实模型已调用。
 
-## 运行
+## 既有教学宿主与开发预览
 
 团队演示和共用任务连接负责人私下交接的共享 HTTPS 宿主，由同一服务提供页面、API 和数据库；不执行本机初始化或 `dev:prep`，这些开发命令用于隔离验证。连接工具的通用结构见[基础设施模板](../../tools/i0-cloud/README.md)。姓名、课程名、项目显示标题来自 Session 与分配的后端资料，缺字段时保留原 ID/Activity 标题，历史交付见[共享资料记录](../../docs/archive/tasks/I0-UI_SHARED_DATA_ENTRY.md)。
 
@@ -68,12 +91,12 @@ XUNJIE_E2E_BROWSER_CHANNEL=chrome npm run test:e2e
 
 只换浏览器实现，不换用例、不换断言；不设该变量时仍是自带 Chromium，保证任何人跑同一道门禁。
 
-## 两种模式
+## 既有消费方的两种模式
 
 依据 [客户端约束 §2](../../docs/archive/tasks/I0_UI_CLIENT_CONTRACT.md)。模式在启动命令上固定，
 运行期不切换，真实请求失败不回退到 fixture。
 
-| | `npm run dev:prep` | `npm run dev` / `npm run build` |
+| | `npm run dev:prep` | 显式旧业务路由（`npm run dev` / `npm run build`） |
 | --- | --- | --- |
 | 模式 | preparation（合成） | real |
 | 窄客户端 base | `/__i0prep/api` | 同源 `/api` |

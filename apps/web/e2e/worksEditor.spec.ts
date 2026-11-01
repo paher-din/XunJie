@@ -1,3 +1,4 @@
+import { createWorkFile, clickActivityAction, openWorkspacePopover, closeWorkspacePopover, selectProductSpace } from './support/product-ui'
 import { test, expect } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, writeFile, mkdir } from 'node:fs/promises'
@@ -33,7 +34,7 @@ test.beforeAll(async ({ browser }) => {
   const root = await mkdtemp(join(tmpdir(), 'xj-editor-browser-'))
   runtimeRoot = root
   runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
-    postgresVersion: '18.6', webRoot: fileURLToPath(new URL('../dist-runtime', import.meta.url)),
+    postgresVersion: '18.6', webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
   await runtime.install({ profile: 'local' })
   endpoint = (await runtime.start()).endpoint!
@@ -96,8 +97,7 @@ test('course catalog returns after activity restoration races with discovery', a
 
 test('actual editor automatically protects and synchronizes Chinese original text across reload', async ({ page }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('递归.c')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '递归.c')
   await expect(page.locator('.monaco-editor')).toBeVisible()
   await page.locator('.monaco-editor textarea').focus()
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
@@ -120,8 +120,7 @@ test('actual editor automatically protects and synchronizes Chinese original tex
 
 test('an opened activity survives API disconnection and reload, then continues its original pending sync', async ({ page }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('离线.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '离线.txt')
   await page.locator('.monaco-editor textarea').focus()
   await page.keyboard.insertText('离线甲')
   const read = async () => (await (await fetch(new URL('/api/learning/workspaces/' + activityId, endpoint), {
@@ -142,8 +141,7 @@ test('an opened activity survives API disconnection and reload, then continues i
 
 test('late and lost confirmations never settle later editor content', async ({ page }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('迟到.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '迟到.txt')
   await page.locator('.monaco-editor textarea').focus()
   const read = async () => (await (await fetch(new URL('/api/learning/workspaces/' + activityId, endpoint), {
     headers: { 'x-xj-space': 'personal' } })).json()).files
@@ -182,18 +180,19 @@ test('late and lost confirmations never settle later editor content', async ({ p
 
 test('failed navigation leaves the editor able to continue automatic sync', async ({ page }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('导航.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '导航.txt')
   await page.locator('.monaco-editor textarea').focus()
   await page.keyboard.insertText('导航前')
   let aborted!: () => void
   const failed = new Promise<void>(resolve => { aborted = resolve })
   await page.route('**/api/learning/context', route => { aborted(); return route.abort('connectionfailed') })
-  await page.getByRole('button', { name: '刷新列表', exact: true }).click()
+  await clickActivityAction(page, '刷新列表')
   // The request is issued only after leave() protects pending input; removing the route
   // before it fails lets the navigation succeed and unmount the editor under the test.
   await failed
-  await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled()
+  const activityMenu = await openWorkspacePopover(page, '活动')
+  await expect(activityMenu.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled()
+  await closeWorkspacePopover(page, '活动')
   await expect(page.locator('.monaco-editor')).toBeVisible()
   await page.unroute('**/api/learning/context')
   await page.locator('.monaco-editor textarea').focus()
@@ -205,8 +204,7 @@ test('failed navigation leaves the editor able to continue automatic sync', asyn
 
 test('reopening an activity uses the latest body from another actual tab, not a retained editor model', async ({ page, context }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('重开.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '重开.txt')
   await page.locator('.monaco-editor textarea').focus()
   await page.keyboard.insertText('原文')
   const read = async () => (await (await fetch(new URL('/api/learning/workspaces/' + activityId, endpoint), {
@@ -232,8 +230,7 @@ test('reopening an activity uses the latest body from another actual tab, not a 
 test('a browser storage transaction failure blocks navigation, keeps exportable memory, and retries automatically', async ({ page }) => {
   await page.addInitScript(storageFaultBoundary, false)
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('配额.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '配额.txt')
   await page.locator('.monaco-editor textarea').focus()
   await page.keyboard.insertText('受保护')
   const read = async () => (await (await fetch(new URL('/api/learning/workspaces/' + activityId, endpoint), {
@@ -264,8 +261,7 @@ test('two actual tabs preserve both local edits under simultaneous IndexedDB com
   }
   await page.addInitScript(intervalBarrier)
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('并发.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '并发.txt')
   await page.locator('.monaco-editor textarea').focus()
   await page.keyboard.insertText('共同基线')
   const read = async () => (await (await fetch(new URL('/api/learning/workspaces/' + activityId, endpoint), {
@@ -293,8 +289,7 @@ test('two actual tabs preserve both local edits under simultaneous IndexedDB com
 
 test('a remote conflict comparison includes input made while the original service read was delayed', async ({ page, browser }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('远端竞争.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '远端竞争.txt')
   await page.locator('.monaco-editor textarea').focus()
   await page.keyboard.insertText('基线')
   const read = async () => (await (await fetch(new URL('/api/learning/workspaces/' + activityId, endpoint), {
@@ -324,8 +319,7 @@ test('a remote conflict comparison includes input made while the original servic
     })
     await page.locator('.monaco-editor textarea').focus(); await page.keyboard.press(endOfDocument); await page.keyboard.insertText('甲')
     await expect.poll(async () => (await read())[0]?.value).toBe('基线甲')
-    await other.getByLabel('文件名', { exact: true }).fill('附录.txt')
-    await other.getByRole('button', { name: '新建文件', exact: true }).click()
+    await createWorkFile(other, '附录.txt')
     await other.getByRole('button', { name: '远端竞争.txt', exact: true }).click()
     await other.locator('.monaco-editor textarea').focus(); await other.keyboard.press(endOfDocument); await other.keyboard.insertText('乙')
     await reading
@@ -344,8 +338,7 @@ test('a remote conflict comparison includes input made while the original servic
 
 test('continuous input advances durable local and remote content before the student stops typing', async ({ page }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('持续.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '持续.txt')
   await page.locator('.monaco-editor textarea').focus()
   for (let i = 0; i < 30; i++) {
     await page.keyboard.insertText('中')
@@ -378,8 +371,7 @@ test('the actual editor retains UTF-8 BOM and CRLF of an existing immutable sour
 
 test('successful navigation protects input entered immediately before its delayed response', async ({ page }) => {
   await page.goto(endpoint + '/?activity=' + activityId)
-  await page.getByLabel('文件名', { exact: true }).fill('切换窗口.txt')
-  await page.getByRole('button', { name: '新建文件', exact: true }).click()
+  await createWorkFile(page, '切换窗口.txt')
   await page.locator('.monaco-editor textarea').focus(); await page.keyboard.insertText('开始')
   let release!: () => void
   let admitted!: () => void
@@ -387,7 +379,7 @@ test('successful navigation protects input entered immediately before its delaye
   const sent = new Promise<void>(resolve => { admitted = resolve })
   await page.route('**/api/learning/context', async route => { const response = await route.fetch(); admitted(); await held; await route.fulfill({ response }) })
   try {
-    await page.getByRole('button', { name: '刷新列表', exact: true }).click()
+    await clickActivityAction(page, '刷新列表')
     await sent
     await page.locator('.monaco-editor textarea').focus(); await page.keyboard.press(endOfDocument); await page.keyboard.insertText('切换前输入')
     release()
@@ -401,7 +393,9 @@ test('initial storage refusal retries automatically after the browser permits tr
   await page.goto(endpoint + '/?activity=' + activityId)
   await expect(page.getByRole('button', { name: '导出当前作品' })).toBeVisible()
   await page.evaluate(() => { (window as unknown as { workStorageFault: { blocked: boolean } }).workStorageFault.blocked = false })
-  await expect(page.getByLabel('文件名', { exact: true })).toBeVisible()
+  const files = await openWorkspacePopover(page, '文件')
+  await expect(files.getByLabel('文件名', { exact: true })).toBeVisible()
+  await closeWorkspacePopover(page, '文件')
   await expect(page.getByRole('button', { name: '导出当前作品' })).toHaveCount(0)
 })
 
@@ -418,8 +412,7 @@ test.describe('school workspace logout', () => {
     expect(created.status()).toBe(200)
     const schoolActivity = (await created.json()).activityId
     await page.goto(endpoint + '/?space=school&activity=' + schoolActivity)
-    await page.getByLabel('文件名', { exact: true }).fill('学校.txt')
-    await page.getByRole('button', { name: '新建文件', exact: true }).click()
+    await createWorkFile(page, '学校.txt')
     await page.locator('.monaco-editor textarea').focus(); await page.keyboard.insertText('学校原文')
     let release!: () => void
     let admitted!: () => void
@@ -428,10 +421,10 @@ test.describe('school workspace logout', () => {
     await page.route('**/api/learning/context', route => route.abort('connectionfailed'))
     await page.route('**/api/learning/logout', async route => { const response = await route.fetch(); admitted(); await held; await route.fulfill({ response }) })
     try {
-      await page.getByRole('button', { name: '退出学校登录' }).click()
+      await clickActivityAction(page, '退出学校登录')
       await sent
       await page.locator('.monaco-editor textarea').focus(); await page.keyboard.press(endOfDocument); await page.keyboard.insertText('退出前新输入')
-      if (switchWhilePending) await page.getByRole('button', { name: '个人空间', exact: true }).click()
+      if (switchWhilePending) await selectProductSpace(page, '个人空间')
       release()
       await expect(page.getByRole('button', { name: '退出学校登录' })).toHaveCount(0)
       await expect(page.getByRole('button', { name: '学校空间', exact: true })).toHaveCount(0)

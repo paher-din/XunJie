@@ -14,7 +14,7 @@
 | 学习数据 owner | 迁移 v4（草稿 head、不可变修订、回执）与 [`createQuestionDrafts`](../../packages/learning-space/src/learning-data/drafts.ts)：按活动稳定 `draftId`、单调版本 CAS、稳定请求身份、原文范围/副本核验、按 `revisionId` 读取历史修订、作品内容保留关系、领域校验；课程选区最终经 owner `verifyReference` 核验，不传整份大材料；不写课程表、不共享可写事务 |
 | HTTP | `/api/learning/` 新增 `GET/POST drafts/:activityId`、`GET drafts/:activityId/receipts/:requestId`、`GET drafts/:activityId/revisions/:revisionId`；沿用真实会话/连接身份与预期主体检查。学校客户端代理加入草稿路由和响应 schema 校验 |
 | 可靠工作区 | IndexedDB `xunjie-reliable-works-v1` 非破坏升级到 v2，新增 `drafts`/`draftCandidates`；[`ReliableQuestionDraft`](../../apps/web/src/reliable-workspace/draft.ts) 复用 250ms 本机保护、1000ms 网络检查、稳定 pending、迟到确认保护、双标签候选、远端分歧与离开保护。旧作品记录保持可读 |
-| 生产页面 | [ActivityReferences](../../apps/web/src/runtime/ActivityReferences.tsx) 把同一活动的要求、开放文本材料与 Monaco 编辑器登记为来源；[DraftReferencesProvider](../../apps/web/src/components/workspace/references/DraftReferences.tsx) 以可靠草稿为唯一可变权威。输入区关闭时“询问 Agent”，打开时新选择直接加入；收起、刷新、活动/空间切换后恢复。发送按钮明确禁用并说明真实 Agent 尚未接入 |
+| 生产页面 | [ActivityReferences](../../apps/web/src/product/ActivityReferences.tsx) 把同一活动的要求、开放文本材料与 Monaco 编辑器登记为来源；[DraftReferencesProvider](../../apps/web/src/components/workspace/references/DraftReferences.tsx) 以可靠草稿为唯一可变权威。输入区关闭时“询问 Agent”，打开时新选择直接加入；收起、刷新、活动/空间切换后恢复。发送按钮明确禁用并说明真实 Agent 尚未接入 |
 | 维护与恢复 | `validateLearningData` 校验草稿 head/修订/回执、引用范围与副本摘要、作品内容归属、资源引用与正文切片；作品与草稿资源随既有备份/隔离恢复/接管流程保留 |
 
 ## 行为与验收对照

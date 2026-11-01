@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { QUESTION_TEXT_MAX_LENGTH } from '@xunjie/contracts/question-drafts'
 import { submissionReference, referenceKey, snapshotReference, type ReferenceSelection, type ReferenceSource,
   type ReferenceSubmission, type WorkspaceReference } from './model'
@@ -177,7 +177,7 @@ export function WorkspaceReferenceList() {
   </section>
 }
 /** Optional composer; callers can also compose the controller and reference list with their own input. */
-export function WorkspaceReferenceComposer() {
+export function WorkspaceReferenceComposer({ closeFocusRef }: { closeFocusRef?: RefObject<HTMLElement | null> } = {}) {
   const { open, setOpen, question, setQuestion, submit, busy, notice, sendAvailable, draftReady, draftError,
     draftConflict, draftConflictReady, resolveDraftConflict } = useWorkspaceReferences()
   const input = useRef<HTMLTextAreaElement>(null)
@@ -186,7 +186,7 @@ export function WorkspaceReferenceComposer() {
   useEffect(() => { if (open) input.current?.focus() }, [open])
   if (!open) return <button className="wr-button" type="button" onClick={() => setOpen(true)}>打开对话</button>
   return <section className="wr-composer" aria-label="Agent 问题草稿" data-reference-ui>
-    <header><h2>询问 Agent</h2><button type="button" onClick={() => setOpen(false)}>收起对话</button></header>
+    <header><h2>询问 Agent</h2><button type="button" onClick={() => { setOpen(false); closeFocusRef?.current?.focus() }}>收起对话</button></header>
     {draftConflict && <div className="wr-conflict" role="alert">
       <h3>问题草稿存在分歧</h3>
       <p>本页与另一版本均保留，请比较后明确选择。</p>

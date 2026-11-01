@@ -14,6 +14,12 @@
 
 `@xunjie/contracts` 的浏览器导出及传递依赖不含 Node 专属库，不从 runner/数据库的 `ReturnType` 推导公开 wire。内部 schema、repository 和权限投影留在后端，viewmodel 留在 Web；旧 `apps/server/contracts` 中未提取的内部类型不因此成为新产品长期公开协议。后续按事实 owner 增加真实消费者需要的导出，不跨 app 导入 implementation。
 
+## 统一产品 UI
+
+[#159](https://github.com/paher-din/XunJie/issues/159) 将默认 Web 和独立产品包接到同一个 [LearningApp](../../apps/web/src/product/LearningApp.tsx)。外壳、首页课程与任务卡、中心工具区、Monaco、文件标签和选区组件复用既有产品实现；业务状态只从新公开契约与[可靠工作区](../../apps/web/src/reliable-workspace/README.md)消费。
+
+后续 WP 的接入位置、临时旧消费方及移除责任统一见 [Web 入口表](../../apps/web/README.md#正式产品入口与后续-wp)。WP03 扩展当前中心工具与结果，WP07 扩展当前问题／引用面板并登记真实接收方，WP12 扩展当前活动交付；均随能力完成真实接线与旧路径清理。`runtime/` 是装配与辅助诊断，`dev:prep` 是隔离 UI 参考，二者都不是另建正式学习页的入口。基线、映射和真实截图见 [UI 整合交付](wp02-product-ui.md)。
+
 ## 安装、构建与测试
 
 使用根 [package.json](../../package.json)要求的 Node.js `24.21.0`，本地工具测试还需要 `python3`。所有下列命令均在仓库根执行；workspace 依赖只使用根 [package-lock.json](../../package-lock.json)，不在 app 内单独安装或生成锁文件。

@@ -12,6 +12,8 @@
 
 项目正在进行新一轮设计与重构，已定设计、Wayfinder 本地决议和实施总览见[本轮架构与设计](docs/student-agent-implementation/README.md)。开发规则见 [AGENTS.md](AGENTS.md)，UI 设计遵循根目录 [DESIGN.md](DESIGN.md)。旧文档及其证据已移入 [docs/archive/](docs/archive/)，停止使用和维护，不作为本轮开发依据。以下使用说明对应现有演示实现。
 
+WP02 正式学习空间已统一复用产品外壳、首页与沉浸工作区；实际产品包与普通 Web 默认入口消费同一实现。当前能力、启动方式和后续 WP 接入见 [Web 入口](apps/web/README.md#正式产品入口与后续-wp)，真实前后界面及验收边界见 [#159 交付](docs/student-agent-implementation/wp02-product-ui.md)。
+
 ## 功能概览
 
 | 功能 | 可以做什么 |

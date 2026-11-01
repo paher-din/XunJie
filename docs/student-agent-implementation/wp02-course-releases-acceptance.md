@@ -14,7 +14,7 @@
 | HTTP | `/api/learning/` 新增 `GET courses`、`GET releases/:id`、`GET releases/:id/materials/:materialId`、`POST course-activities`、`GET course-activity-results/:requestId`；管理边界新增 `manage/course-import`、`manage/course-access`、`manage/course-result` |
 | 运行时 | 空间/课程 owner 使用 `spaceCourseMigrations`；课程校验接入维护参与者与恢复目标；学习数据 owner 注入课程 authority；课程资源随 `space-course` 资源根参与备份/恢复 |
 | CLI | `xunjie course-import --file <清单.json>`、`xunjie course-access --file`、`xunjie course-result --file`；清单资源按材料 `path` 从清单目录读取，拒绝越界、摘要或长度不一致 |
-| 学生页面 | [`LearningPage.tsx`](../../apps/web/src/runtime/LearningPage.tsx) 展示获准课程、任务、明确发布版本、目标/要求/开放材料/起始作品/固定能力引用；支持读取材料、从选定版本建立活动、pending 请求核对、刷新后重开；保留自主活动路径 |
+| 学生页面 | [`LearningApp.tsx`](../../apps/web/src/product/LearningApp.tsx) 展示获准课程、任务、明确发布版本、目标/要求/开放材料/起始作品/固定能力引用；支持读取材料、从选定版本建立活动、pending 请求核对、刷新后重开；保留自主活动路径 |
 
 ## 支持入口
 

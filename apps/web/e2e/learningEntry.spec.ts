@@ -1,3 +1,4 @@
+import { selectProductSpace } from './support/product-ui'
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import { REAL_URL } from './env'
@@ -26,12 +27,12 @@ test('a late rejected activity cannot erase the next unknown submission across r
     return route.fulfill({ json: [] })
   })
   try {
-    await page.goto(REAL_URL + '/runtime.html')
+    await page.goto(REAL_URL)
     await page.getByLabel('学习目标', { exact: true }).fill('请求 A')
     await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
     await expect.poll(() => receipts.length).toBe(1)
-    await page.getByRole('button', { name: '学校空间', exact: true }).click()
-    await page.getByRole('button', { name: '个人空间', exact: true }).click()
+    await selectProductSpace(page, '学校空间')
+    await selectProductSpace(page, '个人空间')
     await page.getByRole('button', { name: '放弃这次请求并重新填写' }).click()
     await page.getByLabel('学习目标', { exact: true }).fill('请求 B')
     await page.getByRole('button', { name: '建立学习活动', exact: true }).click()
