@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "issue": "https://github.com/paher-din/XunJie/issues/159",
-  "recordedAt": "2026-11-01T15:21:43.377021+00:00",
+  "recordedAt": "2026-11-01T15:54:03.124712+00:00",
   "status": "implemented-with-explicit-validation-gaps",
   "baselines": {
     "r1ToR8": "b45bb826bd364207e44158fd981a2d5e352043a8",
@@ -15,7 +15,10 @@
       "entry": "isolated dev:prep, / and /#/task/counter",
       "scope": "UI reference only; HDL preview and product course are different business data"
     },
-    "previousRepairEvidence": "wp02-pr157-repair-platform-acceptance.json"
+    "previousRepairEvidence": "wp02-pr157-repair-platform-acceptance.json",
+    "implementationCommit": "28b9e858028efcbb11560af0dc3e19026052e116",
+    "additionalMainCommit": "4bf1e6042408a174b216dd167eac20fe76f62932",
+    "integrationCommit": "ee750a27d2d4f932f1d1cb61442abc4c199bdd3b"
   },
   "sourceSha256": {
     "apps/web/e2e/actionIntents.spec.ts": "aec243a79716689c0f0f8274290fa8dd18cef0da6d5f4483c418611695cc34a3",
@@ -82,7 +85,11 @@
     }
   },
   "engineering": {
-    "fullVerify": {
+    "webUnitTests": {
+      "passed": 688,
+      "scope": "Before final navigation-only adjustments; no backend or reliable-workspace sources modified."
+    },
+    "initialFullVerify": {
       "status": "passed",
       "nodeVersion": "v24.21.0",
       "startedAt": "2026-11-01T14:14:37.586Z",
@@ -122,9 +129,91 @@
       ],
       "scope": "Before the final navigation fixes; subsequent Web typecheck, production build and affected browser cases passed. Existing test skips remain skips."
     },
-    "webUnitTests": {
-      "passed": 688,
-      "scope": "Before final navigation-only adjustments; no backend or reliable-workspace sources modified."
+    "afterMainIntegration": {
+      "sourceCommit": "ee750a27d2d4f932f1d1cb61442abc4c199bdd3b",
+      "status": "all-checks-passed-after-targeted-rerun",
+      "fullAttempt": {
+        "status": "failed",
+        "exitCode": 1,
+        "startedAt": "2026-11-01T15:46:17.898Z",
+        "finishedAt": "2026-11-01T15:50:45.173Z",
+        "summarySha256": "de2ea6a7bf1681aa86f8fae4831e36dcb989f752d046215631b82bf4ca7d9a61",
+        "stages": [
+          {
+            "name": "prepare",
+            "status": "passed",
+            "durationMs": 2576,
+            "tasks": 4,
+            "passed": 4
+          },
+          {
+            "name": "build:test",
+            "status": "passed",
+            "durationMs": 701,
+            "tasks": 1,
+            "passed": 1
+          },
+          {
+            "name": "unit",
+            "status": "passed",
+            "durationMs": 263993,
+            "tasks": 23,
+            "passed": 23
+          },
+          {
+            "name": "server",
+            "status": "passed",
+            "durationMs": 261078,
+            "tasks": 78,
+            "passed": 78
+          },
+          {
+            "name": "tools",
+            "status": "failed",
+            "durationMs": 193374,
+            "tasks": 45,
+            "passed": 44
+          }
+        ]
+      },
+      "targetedRerun": {
+        "file": "tools/xj-dev/tests/repro-e2e.test.mjs",
+        "status": "passed",
+        "passedTests": 6,
+        "failedTests": 0,
+        "skippedTests": 0,
+        "durationMs": 24593.421916,
+        "logSha256": "b830b500368573b8dca4198a73d49824902aef82e24986bab64a43b4f5fdfb75",
+        "reason": "Agent edited the acceptance JSON while the full verification was running. The reproduction test correctly rejected the changed Git status. No production or test assertion was changed; the complete file passed once workspace state stayed fixed."
+      },
+      "latestTaskResults": {
+        "prepare": {
+          "passed": 4,
+          "failed": 0
+        },
+        "build:test": {
+          "passed": 1,
+          "failed": 0
+        },
+        "unit": {
+          "passed": 23,
+          "failed": 0
+        },
+        "server": {
+          "passed": 78,
+          "failed": 0
+        },
+        "tools": {
+          "passed": 45,
+          "failed": 0
+        }
+      },
+      "priorIntegrationAttempt": {
+        "status": "failed",
+        "summarySha256": "5eae673ccd3f7cb1b3266ed3a3c44bd44a89f6eabaa3c5ca9ce2d7888a3eb4d1",
+        "reason": "Real xj-dev lifecycle tests detected stale dependency preparation after merging package manifests and started npm ci in the shared checkout while other tasks read those dependencies. Ran npm ci --include=dev before the next full attempt."
+      },
+      "scope": "The last full command exited 1 only for the workspace-status mutation above; report the targeted rerun separately, not as a new exit-0 full command. Existing environment-gated skips remain skips."
     }
   },
   "acceptedPackages": [
@@ -1537,21 +1626,92 @@
   },
   "validationGaps": {
     "systemPhysicalIme": {
-      "status": "not-run",
-      "reason": "macOS console is at loginwindow; native CGEvent inputs did not reach the Chrome process",
-      "frontProcess": {
-        "pid": 612,
-        "name": "loginwindow"
+      "status": "pending-retest-console-locked",
+      "initialLockedProbe": {
+        "status": "not-run",
+        "reason": "macOS console is at loginwindow; native CGEvent inputs did not reach the Chrome process",
+        "frontProcess": {
+          "pid": 612,
+          "name": "loginwindow"
+        },
+        "probe": {
+          "before": "front=612",
+          "activated": "before=612 target=44277 activated=true",
+          "pid": 44277,
+          "frontAfter": "front=612",
+          "text": "",
+          "events": []
+        },
+        "browserImeProtocol": "covered by productUi.spec.ts on both target platforms"
       },
-      "probe": {
-        "before": "front=612",
-        "activated": "before=612 target=44277 activated=true",
-        "pid": 44277,
-        "frontAfter": "front=612",
-        "text": "",
-        "events": []
+      "latestProbe": {
+        "startedAt": "2026-11-01T15:51:17.427Z",
+        "status": "failed",
+        "mechanism": "CGEvent HID keyboard events -> installed system IME -> actual Chrome -> packaged product -> native PostgreSQL",
+        "expected": "开始你好世界\n粘贴中文\n结束",
+        "steps": [
+          {
+            "step": "activate",
+            "front": "front=612",
+            "ownedChrome": false,
+            "ancestors": [
+              612,
+              1
+            ],
+            "foregroundExecutable": "/System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow"
+          }
+        ],
+        "inputSourceBefore": "com.apple.keylayout.ABC",
+        "foregroundBefore": "front=612",
+        "nativeProbeCorrection": "Select the source after OS window activation; avoid re-selecting an already active IME between composed words.",
+        "focusAssertion": "OS GetFrontProcess across app round-trip; document.hasFocus under Playwright is not used for the result",
+        "browser": "156.0.8078.79",
+        "chromePid": 35179,
+        "inputSourceSelected": "com.apple.keylayout.ABC",
+        "activeInputSource": "com.apple.keylayout.ABC",
+        "error": "Error: Foreground process is outside the isolated Chrome process tree: front=612",
+        "cleanup": true,
+        "finishedAt": "2026-11-01T15:51:23.489Z"
       },
-      "browserImeProtocol": "covered by productUi.spec.ts on both target platforms"
+      "earlierUnlockedAttempts": "Native CGEvent inputs produced real composition events and exact Chinese text/reload in early runs, but the wrapper incorrectly asserted document.hasFocus rather than OS foreground. Later probe calibration runs had partial/literal text or foreground interruptions and are not accepted as a completed physical IME run.",
+      "rawDiagnosticLogs": [
+        {
+          "file": "physical-current-accepted.log",
+          "sha256": "726a6fd87f87812f94d770db3e7c10b2c9b74a740cba7191c25759a0fedb7c6c"
+        },
+        {
+          "file": "physical-current-confirmed-source.log",
+          "sha256": "1d1f4499f57a7d7b666abd65bcf8c9c8ac2fca2f96467bc38461e8dad50b12cd"
+        },
+        {
+          "file": "physical-current-final.log",
+          "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+        },
+        {
+          "file": "physical-current-foreground-source.log",
+          "sha256": "01892c0c23c5fdab7d60d097ff8d2977105ecec5ea33738f9deb0dc99561aaa4"
+        },
+        {
+          "file": "physical-current-idle.log",
+          "sha256": "c1c99d66ba398eb52166c099d0e409e8a2834ec29dbf69dbd5379ef92f62e76e"
+        },
+        {
+          "file": "physical-current-rerun.log",
+          "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+        },
+        {
+          "file": "physical-current-stable-focus.log",
+          "sha256": "e7cec0a415555308c063577c55511e8b408503b00075c3200674b65fe93f5b7a"
+        },
+        {
+          "file": "physical-current-verified-process.log",
+          "sha256": "41479bf614da9df455f40be8742a506a61fb48f5042f03f8c6e0f98209e3b9a6"
+        },
+        {
+          "file": "physical-current.log",
+          "sha256": "ad5e612ee5d10307493bb0f285a4dfd1791308ba4cdd924cb8c4f6d927c33b02"
+        }
+      ]
     },
     "browserImeComposition": {
       "status": "passed-on-both-target-platforms",
@@ -1594,7 +1754,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-after-course.png",
@@ -1604,7 +1768,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-after-home.png",
@@ -1614,7 +1782,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-after-personal.png",
@@ -1624,7 +1796,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-after-references.png",
@@ -1634,7 +1810,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-after-school-home.png",
@@ -1644,7 +1824,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-after-storage-failure.png",
@@ -1654,7 +1838,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-before-course.png",
@@ -1664,7 +1852,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1887
+        }
       },
       {
         "file": "wp02-ui159-before-home.png",
@@ -1674,7 +1866,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1009
+        }
       },
       {
         "file": "wp02-ui159-before-personal.png",
@@ -1684,7 +1880,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1270
+        }
       },
       {
         "file": "wp02-ui159-crosshost-hybrid.png",
@@ -1694,7 +1894,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-crosshost-school.png",
@@ -1704,7 +1908,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-reference-home.png",
@@ -1714,7 +1922,11 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       },
       {
         "file": "wp02-ui159-reference-workspace.png",
@@ -1724,9 +1936,14 @@
           "width": 1440,
           "height": 1000
         },
-        "theme": "light"
+        "theme": "light",
+        "imagePixels": {
+          "width": 1440,
+          "height": 1000
+        }
       }
-    ]
+    ],
+    "beforeCapture": "Full-page captures with the same viewport; the previous long page exceeds viewport height."
   },
   "cleanup": {
     "mac": {
@@ -1779,5 +1996,28 @@
       "pgRunning": false
     },
     "referenceWorktreeRemoved": true
-  }
+  },
+  "acceptedPackagesRebuiltComparison": [
+    {
+      "platform": "darwin-arm64",
+      "acceptedFiles": 159,
+      "rebuiltFiles": 159,
+      "matches": true,
+      "differentFiles": []
+    },
+    {
+      "platform": "win32-x64",
+      "acceptedFiles": 159,
+      "rebuiltFiles": 159,
+      "matches": true,
+      "differentFiles": []
+    },
+    {
+      "platform": "linux-x64",
+      "acceptedFiles": 159,
+      "rebuiltFiles": 159,
+      "matches": true,
+      "differentFiles": []
+    }
+  ]
 }
