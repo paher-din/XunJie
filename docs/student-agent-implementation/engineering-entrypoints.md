@@ -42,7 +42,7 @@ npm run verify -- --group tools --shard 1/4
 npm run verify -- --group tests --jobs 4
 ```
 
-不传分组仍运行完整门禁，`tests` 包含全部本地测试；构建准备完成后，unit/server/tools 交错排队，共用 1–4 个 worker。生命周期测试的恢复工作树使用独立输出，可与其他文件并行；单文件内部仍串行，未知 workspace 的 npm 测试回退仍独占 worker 池。分片只改变调度，不改变 local/external 分类。`cloud-release` 的手动入口同样先运行完整验证；`publish=false` 只装配并上传产物证据，不创建 Release 或清理旧发布。
+不传分组仍运行完整门禁，`tests` 包含全部本地测试；构建准备完成后，独立的 unit/server/纯 tools 测试先交错排队，共用 1–4 个 worker，server 仍最长优先。全部独立测试退出后，六个生命周期文件（恢复、环境删除、集成、状态与证书）、有界协议时序测试 `packages/product-runtime/test/connections.test.ts` 及未知 workspace 的 npm 测试回退在最后阶段逐个独占执行；协议时序断言和期限保持不变。生命周期 CLI 的 `NODE_OPTIONS` 插桩可能改变构建指纹并重建共享产物，因此即使恢复工作树已隔离也不能与读取共享产物的测试重叠。单文件内部仍串行；分片只改变调度，不改变 local/external 分类。`cloud-release` 的手动入口同样先运行完整验证；`publish=false` 只装配并上传产物证据，不创建 Release 或清理旧发布。
 
 根类型检查、构建和测试按 workspace 依赖准备公共包与产物，同一输入复用已核对的构建；产品运行和存储测试仍从公开 package 消费。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
 

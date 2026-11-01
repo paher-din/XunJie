@@ -115,8 +115,30 @@ test('lock/config/env/tool bytes invalidate, upstream identities propagate and f
   assert.equal((await calls(root)).length,count+2);
 });
 
-test('restored cache hits in a different checkout with the same content and tools',async t=>{
+test('installed graph markers invalidate with the root lock unchanged',async t=>{
+  const root=await fixture(t);
+  const rootLock=await readFile(join(root,'package-lock.json'),'utf8');
+  await ensureBuild('contracts',{root,env:{},...quiet});
+  let count=(await calls(root)).length;
+  for(const path of ['node_modules/.package-lock.json','packages/contracts/node_modules/.package-lock.json']) {
+    for(const version of ['1.0.0','2.0.0']) {
+      await put(root,path,JSON.stringify({lockfileVersion:3,packages:{'node_modules/example':{version}}}));
+      await ensureBuild('contracts',{root,env:{},...quiet});
+      assert.equal((await calls(root)).length,++count);
+      assert.equal(await readFile(join(root,'package-lock.json'),'utf8'),rootLock);
+    }
+  }
+  await ensureBuild('contracts',{root,env:{},...quiet});
+  assert.equal((await calls(root)).length,count);
+});
+
+test('restored cache hits in a different checkout with the same content and installed graph',async t=>{
   const root=await fixture(t),other=await fixture(t);
+  for(const checkout of [root,other]) {
+    for(const path of ['node_modules/.package-lock.json','packages/contracts/node_modules/.package-lock.json']) {
+      await put(checkout,path,JSON.stringify({lockfileVersion:3,packages:{'node_modules/example':{version:'1.0.0'}}}));
+    }
+  }
   await ensureBuild('contracts',{root,env:{},...quiet});
   await cp(join(root,'.cache'),join(other,'.cache'),{recursive:true});
   await cp(join(root,'packages/contracts/dist'),join(other,'packages/contracts/dist'),{recursive:true});

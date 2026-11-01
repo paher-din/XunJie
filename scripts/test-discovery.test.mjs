@@ -83,7 +83,7 @@ test('current checkout discovery equals the original recursive test sets, includ
 
 test('test task commands use exact cwd, a single worker, and Python for external ssh policy', () => {
   const tasks = targetTasks('/fixture', 'tools', ['tools/xj-dev/tests/integration.test.mjs', 'tools/other.test.mjs', 'tools/xj-dev-access/ssh-policy.test.py']);
-  assert.deepEqual(tasks.map(task => task.exclusive), [false, false, false]);
+  assert.deepEqual(tasks.map(task => task.exclusive), [true, false, false]);
   assert(tasks.every(task => task.cwd === join('/fixture', 'tools')));
   assert.deepEqual(tasks[0].args.slice(0, 2), ['--test', '--test-concurrency=1']);
   assert.equal(tasks[2].command, 'python3');
@@ -97,23 +97,34 @@ test('CLI defaults and compatibility include external, list, jobs and shards wit
   assert.throws(() => parseOptions(['tools', '--shard', '1/3'], 'test'), /Usage/);
 });
 
-test('prepare precedes one interleaved unit/server/tools phase with a single build prerequisite', t => {
+test('independent unit/server/pure tools run first; lifecycle and unknown npm runners run exclusively last', t => {
   const { root, write } = fixture(t);
   write('package.json', JSON.stringify({ workspaces: ['apps/*', 'packages/*'] }));
   for (const path of ['apps/server', 'packages/contracts', 'packages/storage', 'packages/product-runtime']) {
     write(`${path}/package.json`, JSON.stringify({ scripts: { test: 'fixture' } }));
   }
   for (const path of ['scripts/check.test.mjs', 'apps/server/server.test.mjs', 'packages/storage/storage.test.mjs',
-    'packages/product-runtime/product.test.mjs', 'tools/tool.test.mjs']) write(path);
+    'packages/product-runtime/product.test.mjs', 'packages/product-runtime/test/connections.test.ts', 'tools/tool.test.mjs']) write(path);
+  for (const path of sensitiveTools) write('tools/' + path);
+  write('packages/new-package/package.json', JSON.stringify({ scripts: { test: 'custom-runner' } }));
   mkdirSync(join(root, 'packages/contracts'), { recursive: true });
   const prepare = verificationPlan(root, parseOptions(['--group', 'prepare']));
   assert.deepEqual(prepare.flat().map(task => task.name), ['typecheck', 'build', 'check:contracts:browser', 'check:docs']);
   const plan = verificationPlan(root, parseOptions(['--group', 'tests']));
   assert.deepEqual(plan[0].map(task => task.args), [['scripts/build.mjs', 'test']]);
-  assert.equal(plan.length, 2);
+  assert.equal(plan.length, 3);
   assert.deepEqual(plan[1].slice(0, 3).map(task => task.group), ['unit', 'server', 'tools']);
   assert.deepEqual([...new Set(plan[1].map(task => task.group))], ['unit', 'server', 'tools']);
+  assert(plan[1].every(task => !task.exclusive));
+  assert(plan[2].every(task => task.exclusive));
+  assert.deepEqual(plan[2].map(task => task.name).sort(),
+    ['workspace:packages/new-package', 'packages/product-runtime/test/connections.test.ts', ...[...sensitiveTools].map(path => 'tools/' + path)].sort());
   assert.equal(plan.flat().filter(task => task.name === 'build:test').length, 1);
+  const unit = verificationPlan(root, parseOptions(['--group', 'unit']));
+  assert(unit.at(-1).some(task => task.name === 'packages/product-runtime/test/connections.test.ts' && task.exclusive));
+  const direct = targetTasks(root, 'product-runtime', discoverTests(root, 'product-runtime'));
+  assert.equal(direct.find(task => task.name.endsWith('/connections.test.ts')).exclusive, true);
+  assert.equal(direct.find(task => task.name.endsWith('/product.test.mjs')).exclusive, false);
 });
 
 test('new apps/packages test scripts are discovered automatically and run via an exclusive npm fallback', t => {
@@ -132,5 +143,7 @@ test('new apps/packages test scripts are discovered automatically and run via an
   const fallback = plan.flat().filter(task => task.name.startsWith('workspace:'));
   assert.deepEqual(fallback.map(task => task.name), ['workspace:apps/new-app', 'workspace:packages/new-package']);
   assert(fallback.every(task => task.group === 'unit' && task.exclusive && task.cwd === root && task.command === process.execPath));
+  assert(plan.at(-1).every(task => task.exclusive));
+  assert(plan.slice(1, -1).flat().every(task => !task.exclusive));
   assert.deepEqual(fallback.map(task => task.args.slice(1)), [['test', '--workspace', 'apps/new-app'], ['test', '--workspace', 'packages/new-package']]);
 });

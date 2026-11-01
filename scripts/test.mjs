@@ -1,6 +1,6 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { discoverTests, parseOptions, targetTasks, testUsage } from './test-discovery.mjs';
+import { discoverTests, parseOptions, scheduleTestPhases, targetTasks, testUsage } from './test-discovery.mjs';
 import { runVerification } from './test-scheduler.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -16,7 +16,7 @@ try {
       const tasks = targetTasks(root, options.target, files);
       process.exitCode = await runVerification({ root, options, phases: [
         [{ name: 'build:test', command: process.execPath, args: ['scripts/build.mjs', 'test'], group: 'build:test', cwd: root }],
-        tasks,
+        ...scheduleTestPhases(tasks),
       ] });
     }
   }

@@ -59,6 +59,10 @@ export async function createBuildTasks({ root = repository, env = process.env } 
     node: { version: process.version, versions: process.versions, platform: process.platform, arch: process.arch },
     env: environment(env),
     files: await contentManifest(root, ['package.json', 'package-lock.json', '.npmrc', '.node-version', '.nvmrc',
+      // npm can change the installed graph without rewriting the root lock.
+      // Include independent workspace installs and parent resolution locations.
+      'node_modules/.package-lock.json', 'apps/node_modules/.package-lock.json', 'packages/node_modules/.package-lock.json',
+      ...Object.values(workspaces).map(path => `${path}/node_modules/.package-lock.json`),
       'scripts/build.mjs', 'scripts/build-cache.mjs', 'scripts/build-server.mjs']),
   });
   const fingerprint = (workspace, paths, names = [['typescript', 'tsc']]) => async () => ({

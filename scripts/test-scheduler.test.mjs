@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { runVerification } from './test-scheduler.mjs';
-import { sensitiveTools, targetTasks } from './test-discovery.mjs';
+import { scheduleTestPhases, sensitiveTools, targetTasks } from './test-discovery.mjs';
 import { reuseWorkspaceDependencies } from '../tools/xj-dev/tests/workspace-dependencies.mjs';
 
 function fixture(t) {
@@ -79,7 +79,7 @@ test('tests rerun on a second invocation and keep separate raw logs', async t =>
   assert.match(readFileSync(second.logFile, 'utf8'), /stderr again/);
 });
 
-test('real lifecycle task flags share the global budget while helper-linked outputs stay isolated', async t => {
+test('real lifecycle tasks run serially after all independent readers; helper-linked outputs stay isolated', async t => {
   const f = fixture(t), source = join(f.root, 'source');
   function workspace(root) {
     mkdirSync(join(root, 'packages/contracts/dist'), { recursive: true });
@@ -103,20 +103,33 @@ writeFileSync(join(target,'node_modules/@xunjie/contracts/dist/result.txt'),name
 await setTimeout(120);
 appendFileSync(events,JSON.stringify({name,action:'end'})+'\\n');
 `);
-  const tasks = [f.task('unit', 'unit'), f.task('server', 'server')];
+  const tasks = [f.task('unit', 'unit'), f.task('server', 'server'), f.task('pure-tool-1', 'tools'), f.task('pure-tool-2', 'tools')];
   const targets = [];
   for (const [index, task] of targetTasks(f.root, 'tools', [...sensitiveTools].map(path => 'tools/' + path)).entries()) {
-    assert.equal(task.exclusive, false);
+    assert.equal(task.exclusive, true);
     assert.equal(task.args[1], '--test-concurrency=1');
     const target = join(f.root, 'receiver-' + index); workspace(target);
     reuseWorkspaceDependencies(source, target);
     assert.equal(realpathSync(join(target, 'node_modules/@xunjie/contracts')), realpathSync(join(target, 'packages/contracts')));
     targets.push({ target, name: task.name });
-    tasks.push({ ...task, cwd: target, args: [worker, f.events, task.name, target] });
+    // Queue independent work after lifecycle entries as well: partitioning must
+    // move every reader ahead of the resource-exclusive phase.
+    tasks.push({ ...task, cwd: target, args: [worker, f.events, task.name, target] }, f.task('reader-' + index, 'server'));
   }
-  assert.equal(await runVerification({ root: f.root, options: { jobs: 4 }, phases: [tasks] }), 0);
+  assert.equal(await runVerification({ root: f.root, options: { jobs: 4 }, phases: scheduleTestPhases(tasks) }), 0);
   let active = 0, peak = 0;
+  let exclusiveStarted = false, readersEnded = 0;
   for (const event of readFileSync(f.events, 'utf8').trim().split('\n').map(JSON.parse)) {
+    const exclusive = targets.some(target => target.name === event.name);
+    if (event.action === 'start' && exclusive) {
+      exclusiveStarted = true;
+      assert.equal(active, 0);
+      assert.equal(readersEnded, 10);
+    }
+    if (!exclusive) {
+      assert.equal(exclusiveStarted, false);
+      if (event.action === 'end') readersEnded++;
+    }
     active += event.action === 'start' ? 1 : -1; peak = Math.max(peak, active);
     assert(active >= 0 && active <= 4);
   }

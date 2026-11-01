@@ -115,9 +115,11 @@ export function targetTasks(root, target, files) {
     name: file, group, cwd: join(root, directory),
     command: file.endsWith('.py') ? 'python3' : process.execPath,
     args: file.endsWith('.py') ? [join(root, file)] : ['--test', '--test-concurrency=1', join(root, file)],
-    // Prebuild completes before this phase. Lifecycle helpers isolate restored
-    // workspace outputs; each file still uses one sequential Node test worker.
-    exclusive: false,
+    // Lifecycle CLIs can rebuild shared outputs under a different NODE_OPTIONS
+    // fingerprint, even when restored workspaces have their own package links.
+    exclusive: target === 'tools' && sensitiveTools.has(file.slice(directory.length + 1))
+      // Keep the bounded fencing protocol assertion outside competing test load.
+      || file === 'packages/product-runtime/test/connections.test.ts',
   }));
 }
 
@@ -168,6 +170,12 @@ function interleaveGroups(tasks) {
   return result;
 }
 
+export function scheduleTestPhases(tasks) {
+  const independent = interleaveGroups(tasks.filter(task => !task.exclusive));
+  const exclusive = tasks.filter(task => task.exclusive);
+  return [independent, exclusive].filter(phase => phase.length);
+}
+
 export function verificationPlan(root, options) {
   const selected = options.group ?? 'full';
   const phases = [];
@@ -194,6 +202,6 @@ export function verificationPlan(root, options) {
   if (['full', 'tests', 'tools'].includes(selected)) {
     tasks.push(...targetTasks(root, 'tools', discoverTests(root, 'tools', options)));
   }
-  if (tasks.length) phases.push(interleaveGroups(tasks));
+  phases.push(...scheduleTestPhases(tasks));
   return phases;
 }
