@@ -289,7 +289,7 @@ export function openProductRuntime(options: { root: string; resources?: RuntimeR
         }
         return recoveryControl<RetirementProof>('retire', input);
       },
-      fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; timeoutMs?: number }) => recoveryControl('fence-source', input),
+      fenceSource: (input: { sourceEnvironmentId: string; sourceServiceId: string; sourceInstallationId?: string; timeoutMs?: number }) => recoveryControl('fence-source', input),
       takeover: (input: { sourceRoot: string; receivers: ({ id: string; root: string } | import('./ssh-recovery.js').SshRecoveryReceiver)[] }) => recoveryControl('takeover', input),
     },
     async stop() { await assertRoot(root); return withLock(root, stopUnlocked); },

@@ -234,11 +234,16 @@ async function main(): Promise<void> {
       if (typeof input.expectedReceiver !== 'string' || typeof input.sourceEnvironmentId !== 'string'
         || !Array.isArray(input.sourceServiceIds) || !input.sourceServiceIds.length || input.sourceServiceIds.length > 100
         || !input.sourceServiceIds.every(id => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id))) throw new Error('接收方核验输入无效');
+      if (input.sourceInstallationId !== undefined
+        && (typeof input.sourceInstallationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.sourceInstallationId))) throw new Error('接收方核验输入无效');
       const current = (await runtime.status()).environment;
       if (!current.services.some(service => `${current.environmentId}/${service.serviceId}` === input.expectedReceiver)) throw new Error('receiver-identity-conflict');
       for (const serviceId of input.sourceServiceIds as string[]) await runtime.recovery.fenceSource({
-        sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: serviceId });
-      output({ fenced: true, receiverId: input.expectedReceiver, sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceIds: input.sourceServiceIds });
+        sourceEnvironmentId: input.sourceEnvironmentId, sourceServiceId: serviceId,
+        ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }) });
+      output({ fenced: true, receiverId: input.expectedReceiver, sourceEnvironmentId: input.sourceEnvironmentId,
+        ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId }),
+        sourceServiceIds: input.sourceServiceIds });
       break;
     }
     case 'recovery-key': {
@@ -450,6 +455,8 @@ async function main(): Promise<void> {
       const input = await jsonFile(required('file'), '授权');
       if (typeof input.sourceEnvironmentId !== 'string' || !input.sourceEnvironmentId
         || typeof input.sourceServiceId !== 'string' || !input.sourceServiceId
+        || (input.sourceInstallationId !== undefined
+          && (typeof input.sourceInstallationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.sourceInstallationId)))
         || !Array.isArray(input.capabilities)
         || !input.capabilities.every((capability) => typeof capability === 'string' && capability.length > 0)) {
         throw new Error('授权文件需要 sourceEnvironmentId、sourceServiceId 和 capabilities 数组');
@@ -468,6 +475,7 @@ async function main(): Promise<void> {
         const grant = await runtime.authorize({
           sourceEnvironmentId: input.sourceEnvironmentId,
           sourceServiceId: input.sourceServiceId,
+          ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }),
           capabilities: input.capabilities,
         } as Authorization);
         grantId = grant.grantId;

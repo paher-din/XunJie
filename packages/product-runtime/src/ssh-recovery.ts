@@ -18,6 +18,9 @@ export function createSshRecoveryReceiver(value: SshRecoveryReceiver): RecoveryR
   return { id: receiver.id, async fence(source, serviceIds) {
     const ids = z.array(z.uuid()).min(1).max(100).parse([...serviceIds]);
     const environmentId = z.uuid().parse(source.environmentId);
+    // The retired installation is fenced by identity, so a successor installation of the same
+    // environment and service remains authorized at the receiving authority.
+    const installationId = z.uuid().parse(source.installationId);
     const command = [receiver.ssh.nodePath, receiver.ssh.cliPath, 'fence-source', '--root', receiver.ssh.root,
       '--file', '/dev/stdin'].map(quote).join(' ');
     return new Promise((resolve, reject) => {
@@ -35,12 +38,13 @@ export function createSshRecoveryReceiver(value: SshRecoveryReceiver): RecoveryR
         if (code !== 0) { fail(); return; }
         try {
           const proof = z.object({ fenced: z.literal(true), receiverId: z.literal(receiver.id), sourceEnvironmentId: z.literal(environmentId),
-            sourceServiceIds: z.array(z.uuid()) }).strict().parse(JSON.parse(output));
+            sourceInstallationId: z.literal(installationId), sourceServiceIds: z.array(z.uuid()) }).strict().parse(JSON.parse(output));
           if (JSON.stringify(proof.sourceServiceIds) !== JSON.stringify(ids)) throw new Error();
           resolve(proof);
         } catch { reject(new RecoveryError('invalid-receiver-proof')); }
       });
-      child.stdin.end(JSON.stringify({ expectedReceiver: receiver.id, sourceEnvironmentId: environmentId, sourceServiceIds: ids }));
+      child.stdin.end(JSON.stringify({ expectedReceiver: receiver.id, sourceEnvironmentId: environmentId,
+        sourceInstallationId: installationId, sourceServiceIds: ids }));
     });
   } };
 }

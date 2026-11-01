@@ -256,13 +256,30 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
               const receiverRuntime = openProductRuntime({ root: receiver.root });
               const target = (await receiverRuntime.status()).environment;
               if (!target.services.some(item => receiver.id === `${target.environmentId}/${item.serviceId}`)) throw new RecoveryError('receiver-identity-conflict');
-              // Every source service identity is fenced at each receiving authority.
+              // Every source service identity is fenced at each receiving authority. The retired
+              // installation is fenced, not the whole environment, so a successor installation can
+              // still be authorized and connected.
               for (const serviceId of sourceServiceIds) await receiverRuntime.recovery.fenceSource({
                 sourceEnvironmentId: sourceEnvironment.environmentId, sourceServiceId: serviceId,
+                sourceInstallationId: sourceEnvironment.installationId,
               });
               return { fenced: true };
             } })),
           });
+          // The grants held by this installation were retired together with the source instance, so
+          // connections to those receivers are void. Keeping them would make readiness report a
+          // dependency that can never return without a fresh authorization for this installation.
+          const fencedReceivers = new Set(receivers.map(receiver => receiver.id));
+          const installed = await readJson<InstalledConfiguration>(join(root, 'installation.json'));
+          const dropped = installed.connections.filter(item => fencedReceivers.has(`${item.target.environmentId}/${item.target.serviceId}`));
+          if (dropped.length) {
+            const droppedIds = new Set(dropped.map(item => item.connectionId));
+            // The credential reference is retained for audit; only the void connection is removed.
+            await atomicJson(join(root, 'installation.json'), { ...installed,
+              connections: installed.connections.filter(item => !droppedIds.has(item.connectionId)) });
+            const state = await readJson<Record<string, unknown>>(join(root, 'recovery-state.json'));
+            await atomicJson(join(root, 'recovery-state.json'), { ...state, fencedConnections: [...droppedIds] });
+          }
         } else throw new RecoveryError('unknown-action');
         send(response, 200, result); return;
       } catch (error) {
