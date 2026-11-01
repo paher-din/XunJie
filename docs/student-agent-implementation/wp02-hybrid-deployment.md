@@ -101,3 +101,16 @@ PR #157 已补齐标题、实现及验收说明，保持 OPEN、未合并；[#15
 - macOS 中文输入与界面状态已按 OS 物理键盘级路径取证：自建注入器把按键投递到系统 HID tap，经 TIS 选中的系统中文输入法（豆包拼音，`TISSelectInputSource` status=0）组合上屏四段词（`kaishi`→开始、`nihao`→你好、`shijie`→世界、`jieshu`→结束）。判别依据是该组合期间每个字母键的 keydown 都是 `keyCode=229`（`VK_PROCESSKEY`）、`compositionupdate` 逐字母增长（`k`→`ka`→`kai`→`kai's`→`kai'shi`→开始），而 CDP 的 `Input.imeSetComposition` 一次提交整串、不会产生这种增量。真实 `Cmd+V` 粘贴保留换行（页面 `paste` 事件 `isTrusted=true`，内容取自系统剪贴板），`Cmd+←/→` 到行首/行尾后正文不变，最终正文精确为 `开始你好世界\n粘贴中文\n结束`。每次注入前复核窗口与编辑器焦点均在前台（`activeTag=TEXTAREA`）；`Finder` 前置未夺走 Chrome 焦点，故“失焦段”实际未发生，只验证了复位后的焦点状态。见[物理键盘级输入记录](evidence/wp02-hybrid-mac-physical-ime.json)及[浅色](evidence/wp02-hybrid-mac-physical-ime-light.png)、[深色](evidence/wp02-hybrid-mac-physical-ime-dark.png)截图；同日先跑的 CDP 组合协议一组（[wp02-hybrid-mac-ime.json](evidence/wp02-hybrid-mac-ime.json)）作为浏览器侧对照保留。
 - 全量 `npm test` **通过（exit 0）**：checks **28/0/0**、product-runtime **122/0/2**、storage **14/0/0**、server **643/0/16**、Web **688**（58 文件）、tools Node **304/0/1**，另 Python **34** 通过（通过/失败/跳过）。19 项跳过仍为跳过：真模型/真 HDL/真 C1 SSH 外部提供方门禁、Windows 专属路径、node-local 合成检查，不作为真实模型或跨机证明。
 - 验收结束已撤销安全组临时放行的 38195 两条规则（客户端真实出口 `101.94.133.245/32`、学校回环 `101.201.141.133/32`），核对 ingress 恢复原有 3 条（8443、22、ICMP），外部 HTTPS 38195 已不可达；学校 `/home/xunjie-admin/xj154`（385M，含产品包、root、备份、密钥、输入）已删除，学校守护进程与测试 PG 已停止，本机两侧运行库已停止。
+
+### Windows 11 设备侧跨机验收（2026-11-01 补做）
+
+2026-11-01 在 Windows 11 家庭版 26200（Intel Core Ultra 9 285H、AMD64、产品包内置 Node 24.21.0 与 PostgreSQL 18.6、已安装 Google Chrome 156.0.8078.79 有头执行）上，用完整 win32-x64 产品包（`pkg-win.tgz`，86,783,792 字节，`sha256 d425ee21…`，本机与 Windows 主机字节数一致）作为设备侧，通过公网 HTTPS 连接独立学校 Ubuntu 24.04.5 x64 主机（Node 24.21.0、PostgreSQL 18.6、`school` profile）。取证见[Windows 跨机记录](evidence/wp02-hybrid-win-crosshost.json)。
+
+- 拓扑为真实跨机：设备侧自带 PostgreSQL 与文件资源、三个 owner 齐全；学校主机独立进程与数据库。未使用 SSH 隧道、端口转发、同进程 HTTP 或改地址冒充直连，学校也不访问设备私网端口。
+- 学校主机原计划 38195，实测当前网络出站只放行 8443，其余端口约 5000ms 后被 RST；因此把学校产品改绑 8443（同一 `environmentId dd2d1e89…`、`serviceId d14ac21d…`，仅端口与 endpoint 变化）。这是环境约束，不是产品配置放宽。
+- `connect` 首轮以 `invalid_value path ["target","unit"]` 被拒：`connection.target` 必须是完整 `runtimeServiceSchema`。按学校 `environment.json` 的 `services[0]`（`unit=client`）补全后 `registered:true`，`learning-binding` 返回 `configured:true`，混合空间键为 `school:36889f61-…`，绑定主体 `principalId 7606ad1f…`、`spaceId bd9b37ba…`。
+- 三条业务路径全部通过：个人 `07972a52-…`、学校共享 `3e53266a-…`、学校主体 + 本机 owner `386fa6bd-…`。三者均读到固定发布版本（页面显示 `固定版本 23b6d05e` 与依据摘要 `f7847b8593e6`，与课程登记一致）、写入中文作品后自动保存为预期原文、关闭并重新加载后回到同一 `activity` 且仅一个文件。公开材料同一 API 路径 200，私有材料 404，页面中私有材料按钮计数为 0。
+- 学校共享路径需要**未绑定设备 target** 的学校成员（learning data 留在学校主机）。把绑定到设备 target 的混合成员用于纯学校网页时，`activities` 与 `course-activity-results` 按设计返回 403；本轮另建成员 `win154-shared-d44de070` 并单独授予课程资格后 8 项全通过。这是身份与 owner 语义正确的表现，不是缺陷。
+- 真实断连与恢复：用产品 `stop` 停掉学校守护进程（8443 关闭、TCP 拒绝）后，设备侧混合空间读取返回 503 明确拒绝、未静默转存个人空间、未新建第二份作品，页面仍停在该混合空间；恢复后原绑定与原请求继续，读回同一活动、单文件、原文一致，活动列表中该活动仅出现 1 次。
+- 资格与连接撤销：撤销课程资格后混合空间读取与新建课程活动均 403 `forbidden`，个人自主活动仍 200；重新授予后回到同一活动与同一份作品。撤销客户端连接（学校 `manage/connection`）后混合空间读取 403、个人自主活动 200，设备页恢复「个人学习空间」与「连接学校提供的入口」，原学校连接入口不可用。
+- 限制：本轮只补 Windows 设备侧的跨机业务与撤权/断连；双侧 held 备份、独立恢复与 SSH fencing 接管仍以 macOS 侧证据为准，未在 Windows 侧重做；未验证 Windows 物理键盘级中文输入法（页面输入为脚本文本输入）；不产生教学效果结论。
