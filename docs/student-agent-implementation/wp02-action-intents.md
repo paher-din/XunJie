@@ -83,6 +83,24 @@ Mac、物理 macOS 输入法及 #153 的真实跨机全部归 [#155](https://git
 | 三条回归 | 26/26 通过（`questionDrafts` 8、`worksEditor` 15、`hybridDeployment` 3） | — |
 | 物理 macOS 中文输入法 | 自建注入器经 `CGEventPost(.cghidEventTap)` 输入「你的问题」与真实 Monaco：30 次 keydown 中 27 次 `keyCode=229`、4 次 `compositionstart`、27 次 `compositionupdate`；问题精确为 `开始你好世界\n结束`、作品为 `你好\n结束`；`Cmd+←/→` 后正文不变；**全程 0 次派发、0 条意图** | 不产生教学效果结论 |
 | Mac 客户端 + 独立学校 Linux | 学校页批准、`connect`、`learning-binding` 全部成功；混合空间作品字节/草稿问题/prepared 与 cancelled 意图齐全；学校空间直读 403/404（无第二份）；真实停学校后读取 503，恢复后原 ID 与原状态一致 | — |
-| 分机备份/独立恢复/SSH fencing 接管 | 客户端 held 备份 `3592f0a8…`（receiver 记录学校 `dd2d1e89…/d14ac21d…`）→ 新目标恢复 `isolated` → 带 SSH fencing 的 `takeover` 返回 `phase=active`，学校被真实 fence 并进入 `maintenance` | **未通过**：接管后目标把被 fence 的学校 client 仍当作必需依赖，运行库判定 `failed`（`client:d14ac21d… unavailable`），无法在该目标经公开业务接口重读意图事实。该项不勾选，需产品侧先明确「接管目标是否应继续依赖被 fence 的同伴」 |
+| 分机备份/独立恢复/SSH fencing 接管 | 见下方「接管后读取：修复与重跑」——修复后该项通过 | 首轮未通过，修复后重跑通过 |
+| 接管后读取（修复后重跑 `dd47494`） | 客户端 held 备份 `797661b2…`（9 工件，receiver 声明学校 `1adf830b…/d9c5fbf6…`）→ 独立空目标恢复 `isolated`（新 namespace `…recovery.ba7e9cbc…`）→ 带 SSH fencing 的 `takeover` 返回 `phase=active`，目标运行库 **`ready`**；在目标上重读作品字节（BOM/CRLF/emoji）、草稿问题、prepared 未结意图 `86bca7ff…` 与 cancelled 意图 `503448e1…` 全部与播种一致；旧 namespace 403、当前 200、不存在 namespace 403；被退休 installation `572ac321…` 的 grant 在学校返回 **401**、源 `start` 报 `source-retired`；同环境新 installation `3f7fa3c1…` 重新授权后握手成功、依赖 `client:d9c5fbf6…` 回到 `ready`（学校自身始终 `ready`） | 未运行真实 Agent/教师接收器，派发仍 503 `unavailable`：只证明「未派发事实可恢复」，不宣称远端接受 |
 
-本轮未执行并如实标注：Windows 物理输入法、真实 WP03/WP07/WP12 业务（不宣称），以及上表中 `failed` 的接管后读取。
+本轮未执行并如实标注：Windows 物理输入法、真实 WP03/WP07/WP12 业务（不宣称）。
+
+### 接管后读取：修复与重跑
+
+首轮在 `ba79645` 上观察到接管目标 `failed`。诊断确认是产品缺陷而非验收搭错，最小复现不需要 SSH（三个本机 root 即可稳定重现），根因是一条三处相连的链：
+
+1. `host.ts` 把 `installation.json.connections` 的目标当作备份接收器，同一份数据又生成运行库必需依赖；
+2. `recovery.ts` 的 `takeover` 对每个接收器执行 fence，而 `connections.ts` 的 `ConnectionSource` 只有 environment 与 service，没有 installation；
+3. 接管目标按规定复用同一 environment/service、只换 installationId，因此被自己的接管作废了 grant，必需依赖随即 `unavailable`。
+
+这也与 `specs/wp01-product-runtime-and-data.md`「使接收方拒绝**旧实例**的新请求」不符：实现退化成拒绝整个 source service 身份。修复 `dd47494`：
+
+- `ConnectionSource` 增加可选 `sourceInstallationId`；`authorize` 把它写进 grant 并记录 installation 代际，与 scope 代际并存；
+- `fenceSource` 带 installation 时只提升该实例代际，不带时仍提升整个 scope（保持既有语义）；
+- 本地与 SSH 接收器都传被退休的 installationId，SSH 回执必须回显它；
+- 接管成功后移除刚被作废的连接，并把 `connectionId` 记入 `recovery-state.json` 的 `fencedConnections`，使目标状态反映真实情况。
+
+回归测试 `recovery-connections.test.mjs`：旧实例 `http_401`、后继实例无悬空依赖且 `ready`、后继重新授权后依赖恢复而旧实例仍被拒。`product-runtime` 全量 125 项（123 通过 / 2 跳过 / 0 失败）与全仓 `typecheck` 通过。修复后证据见[接管重跑记录](evidence/wp02-intents-mac-fencing-takeover.json)。

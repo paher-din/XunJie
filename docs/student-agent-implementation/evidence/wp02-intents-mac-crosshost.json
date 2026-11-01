@@ -145,5 +145,6 @@
   ],
   "limitations": [
     "SSH fencing 后未重新签发 grant 并重绑以验证新 namespace 下的意图读取；该缺口与 failed 项同源，需产品侧明确「接管目标是否应继续依赖被 fence 的同伴」"
-  ]
+  ],
+  "supersededBy": "evidence/wp02-intents-mac-fencing-takeover.json（修复 dd47494 后重跑；本文件中 takeoverOutcome.state=failed 为修复前观察，保留原样）"
 }
