@@ -241,7 +241,7 @@ test('server weighted shard selection runs each file exactly once across four in
 });
 
 for (const target of ['checks', 'contracts', 'storage', 'product-runtime', 'server', 'tools']) {
-  test(`independent ${target} test entry prepares build and preserves cwd`, { timeout: 10_000 }, async t => {
+  test(`independent ${target} test entry prepares only required builds and preserves cwd`, { timeout: 10_000 }, async t => {
     const entry = join(source, 'test.mjs');
     const f = fixture(t, {}, ['--group', 'prepare', '--list']);
     await f.exit;
@@ -253,7 +253,13 @@ for (const target of ['checks', 'contracts', 'storage', 'product-runtime', 'serv
       env: { ...process.env, EVENTS: join(f.root, 'events.jsonl') }, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', data => output += data); child.stderr.on('data', data => output += data);
     assert.deepEqual(await once(child, 'close'), [0, null], output);
-    assert.equal(f.events()[0].stage, 'test');
+    if (target === 'checks') {
+      assert.deepEqual(f.events().map(event => event.stage), ['checks'], 'checks must not invoke any build');
+      assert.deepEqual(f.summary().stages.map(stage => stage.name), ['unit']);
+    } else {
+      assert.equal(f.events()[0].stage, `${target}:test`);
+      assert.deepEqual(f.summary().stages[0].tasks[0].args, ['scripts/build.mjs', `${target}:test`]);
+    }
     assert.equal(realpathSync(f.summary().cwd), realpathSync(f.root));
   });
 }

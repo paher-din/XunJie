@@ -14,8 +14,11 @@ try {
     else {
       if (options.external) console.log('External tests require their documented runtime/provider/owner-sshd environment; existing environment gates remain in effect.');
       const tasks = targetTasks(root, options.target, files);
+      const preparation = options.target === 'checks' ? [] : [[{
+        name: 'build:test', command: process.execPath, args: ['scripts/build.mjs', `${options.target}:test`], group: 'build:test', cwd: root,
+      }]];
       process.exitCode = await runVerification({ root, options, phases: [
-        [{ name: 'build:test', command: process.execPath, args: ['scripts/build.mjs', 'test'], group: 'build:test', cwd: root }],
+        ...preparation,
         ...scheduleTestPhases(tasks),
       ] });
     }
