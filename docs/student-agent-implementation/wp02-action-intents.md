@@ -59,7 +59,7 @@ XUNJIE_XJ_DEV_URL=isolated-native-product XUNJIE_E2E_BROWSER_CHANNEL=chrome npm 
 | Windows 完整 full 产品包 | 正式包内 Node、PG、CLI 备份/独立恢复/接管 1/1；默认能力空、派发不可用；app/web 无测试接收器控制 | 未签名候选包，不声称净机安装或签名验收 |
 | 桌面 Chrome 156.0.8078.76 | 41 个不同场景通过：动作 15、草稿 8、作品 15、部署 3 | 首轮 40/41；旧迁移用例预期 v2，保留原作品断言并更新为新增 actions 的 v3 后单项通过，未冒充一次全绿运行 |
 | 新增动作页面 | 2 条生产 UI + 13 条公开接口补充，真实 IndexedDB/HTTP/PG；浅色及 420×900 深色截图目视检查 | 补充接口测试不算额外生产 UI；物理 Windows 输入法未单独评估 |
-| 类型、构建、契约、文档 | `5dd741e` 全仓类型/构建及 10 个 browser-safe 导出通过；最终 Web 类型通过；当前受版本管理的 164 份非归档 Markdown、1233 个目标通过 | 全仓 verify 在文档阶段因原有未跟踪旧文件的 252 条失效链接退出 1，测试阶段未到达；保留这些无关文件 |
+| 类型、构建、契约、文档 | `5dd741e` 全仓类型/构建及 10 个 browser-safe 导出通过；最终 Web 类型通过；当前受版本管理的 164 份非归档 Markdown、1237 个目标通过 | 全仓 verify 在文档阶段因原有未跟踪旧文件的 252 条失效链接退出 1，测试阶段未到达；保留这些无关文件 |
 | 独立完整 `npm test` | `110774f` 退出 1：checks 27/0/1、product-runtime 118/1/5、storage 12/1/1、server 640/2/19（通过/失败/跳过）；Web 688/688 | 三项 Windows symlink EPERM、一项既有 LOCAL_SOCKET_CONFLICT；末尾 tools 未到达；跳过不算通过 |
 
 完整包 `distribution.json` SHA256：`124238608ba86da9d97061f7ce13f22649b448f0438f873e6643315d05c14323`。原始日志与候选包保留在本机 `.verification/153/`，入库 JSON 记录日志摘要，不提交数据库、私有账号或浏览器 trace。[浅色页面](evidence/wp02-actions-windows-light.png)、[深色窄窗口](evidence/wp02-actions-windows-dark-narrow.png)展示旧动作接受后仍保留后来问题和作品。
