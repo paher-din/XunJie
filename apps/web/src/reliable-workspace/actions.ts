@@ -167,7 +167,8 @@ export class ReliableActions {
       const current = saved ?? captured
       if (!current) throw new Error('原动作不可读。')
       if (terminal(current)) return current
-      return { ...current, cancelRequested: true,
+      // An explicit cancellation adopts history only for cancellation, never for dispatch.
+      return { ...current, history: false, cancelRequested: true,
         phase: current.phase === 'dispatched' ? 'dispatched' : 'cancelled' }
     })
     this.unprotected.delete(requestId)

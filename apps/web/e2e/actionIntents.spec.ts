@@ -363,6 +363,41 @@ test('cancellation retains a trusted acceptance from another browser with indepe
   }
 })
 
+test('explicit cancellation of server history from an independent browser reaches the original owner', async ({ page, browser }) => {
+  const config = await driver(page)
+  const id = await page.evaluate(async config => {
+    const { openActionWorkspace } = await import(config.moduleUrl)
+    const session = await openActionWorkspace(config); window.actionIntentDriver = session
+    session.workspace.suspend(); session.draft.suspend(); session.actions.suspend()
+    session.draft.change('服务端历史上的原动作', [])
+    const fixed = await session.actions.create({ requestId: crypto.randomUUID(),
+      receiver: { receiverId: 'controlled-agent', location: 'remote', kind: 'question' } })
+    await session.request(session.actionPath, fixed.input)
+    return fixed.input.requestId
+  }, config)
+  const otherContext = await browser.newContext(), other = await otherContext.newPage()
+  try {
+    await other.route('**/__action_public_interface.js', route => route.fulfill({ contentType: 'application/javascript', body: bundle }))
+    await other.goto(endpoint + '/?diagnostics=1')
+    await other.evaluate(async config => {
+      const { openActionWorkspace } = await import(config.moduleUrl)
+      window.actionIntentDriver = await openActionWorkspace(config)
+    }, config)
+    await expect.poll(() => other.evaluate(async id => (await window.actionIntentDriver!.actions.read(id))?.history, id)).toBe(true)
+    await other.evaluate(id => window.actionIntentDriver!.actions.cancel(id), id)
+    const stored = await (await page.request.get(`${endpoint}/api/learning/intents/${config.activityId}/${id}`,
+      { headers: { 'x-xj-space': 'personal' } })).json()
+    expect(stored.state).toBe('cancelled')
+    await page.evaluate(() => window.actionIntentDriver!.actions.resume())
+    await page.waitForTimeout(1300)
+    expect(receiver.acceptedInput(id)).toBeUndefined()
+    expect(await other.evaluate(async id => (await window.actionIntentDriver!.actions.read(id))!.phase, id)).toBe('cancelled')
+  } finally {
+    await page.evaluate(() => { window.actionIntentDriver?.dispose(); delete window.actionIntentDriver })
+    await otherContext.close()
+  }
+})
+
 test('expired school membership blocks dispatch and original reauthorization resumes without another create', async ({ page }) => {
   const control = await resolveCredential(runtimeRoot, 'control'), password = randomUUID(), loginName = 'intent-' + randomUUID()
   const manage = async (route: string, data: unknown) => {
