@@ -23,6 +23,9 @@
 | `POST manage/course-import` / `manage/course-access` / `manage/course-result` | 管理者登记不可变发布、授予/撤销课程资格、查询原登记结果 |
 | `GET/POST drafts/:activityId` | 读取或同步活动的问题草稿与固定引用；单次请求携带问题、引用顺序、范围/副本和未登记作品的固定依据 |
 | `GET drafts/:activityId/receipts/:requestId` / `revisions/:revisionId` | 查询原同步请求结果或按稳定修订身份读取历史草稿；未知返回 null |
+| `GET/POST intents/:activityId` / `GET intents/:activityId/:requestId` | 列出、固定准备或查询原动作；内容确认不等于业务接受 |
+| `GET intents/:activityId/capabilities` | 当前原活动已注册的接收能力；默认空列表，不挂载测试接收器 |
+| `POST intents/:activityId/:requestId/dispatch` / `cancel` | 沿原身份派发、核实及持久协调取消；未知不伪装为未接收或已撤回 |
 
 `x-xj-space` 只选择已认证空间，不接受主体身份注入。个人空间仅由本机产品组合提供；学校会话及客户端 grant 每次都核验当前学校授权。客户端失联或被拒绝后不会静默换到个人数据服务。跨源浏览器调用拒绝；共享学校监听沿用产品 HTTPS 配置。
 

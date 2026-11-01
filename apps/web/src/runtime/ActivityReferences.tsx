@@ -7,6 +7,12 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { DraftReferencesProvider, TextReferenceSource } from '../components/workspace/references'
 import { ReliableQuestionDraft } from '../reliable-workspace/draft'
 import { learningRequest, workspaceScope } from './learningTransport'
+import { workViewSchema } from '@xunjie/contracts/learning-data'
+import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents'
+import { z } from 'zod'
+import { ReliableWorkspace } from '../reliable-workspace'
+import { ActivitySessionContext } from './ActivitySession'
+import { ActivityActions } from './ActivityActions'
 
 const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
 const decode = (base64: string) => {
@@ -34,15 +40,40 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
     return new ReliableQuestionDraft(scope, transport)
   }, [scope, activity.activityId, activity.identity.environmentId, activity.identity.spaceId,
     activity.identity.principalId, spaceKey, namespace])
+  const workspace = useMemo(() => {
+    const path = 'workspaces/' + activity.activityId
+    const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, path + suffix, body)
+    return new ReliableWorkspace(scope, {
+      read: async () => workViewSchema.parse(await request('')),
+      receipt: async id => { const value = await request('/receipts/' + id); return value === null ? null : workViewSchema.parse(value) },
+      sync: async body => workViewSchema.parse(await request('', body)),
+    })
+  }, [scope, spaceKey, namespace])
+  const actions = useMemo(() => {
+    const path = 'intents/' + activity.activityId
+    const request = (suffix: string, body?: unknown) => learningRequest(activity, spaceKey, namespace, path + suffix, body)
+    return workspace.actions(draft, {
+      prepare: async body => actionViewSchema.parse(await request('', body)),
+      read: async id => { const value = await request('/' + id); return value === null ? null : actionViewSchema.parse(value) },
+      list: async () => z.array(actionViewSchema).parse(await request('')),
+      dispatch: async id => actionViewSchema.parse(await request('/' + id + '/dispatch', {})),
+      cancel: async id => actionViewSchema.parse(await request('/' + id + '/cancel', {})),
+      capabilities: async () => z.array(actionReceiverSchema).parse(await request('/capabilities')),
+    })
+  }, [workspace, draft, scope, spaceKey, namespace])
   useEffect(() => {
-    void draft.open().catch(() => { /* Draft state reports failure and retries initialization. */ })
-    return () => draft.dispose()
-  }, [draft])
+    let active = true
+    void Promise.allSettled([draft.open(), workspace.open()]).then(() => { if (active) return actions.open() })
+      .catch(() => { /* Each partition reports initialization failure and retains its own contents. */ })
+    return () => { active = false; actions.dispose(); workspace.dispose(); draft.dispose() }
+  }, [draft, workspace, actions])
   useEffect(() => {
-    if (authorized) draft.resume()
-    else draft.suspend()
-  }, [draft, authorized])
-  return <DraftReferencesProvider workspaceKey={scope} draft={draft}>{children}</DraftReferencesProvider>
+    if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
+    else { draft.suspend(); workspace.suspend(); actions.suspend() }
+  }, [draft, workspace, actions, authorized])
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions }}>
+    <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}<ActivityActions /></DraftReferencesProvider>
+  </ActivitySessionContext.Provider>
 }
 
 export function CourseRequirementsReference({ course }: { course: CourseActivityBinding }) {

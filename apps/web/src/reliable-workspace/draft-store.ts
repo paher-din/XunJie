@@ -4,7 +4,7 @@ export interface DraftContent { question: string; references: QuestionReferenceI
 export interface DraftConflict { source: 'local' | 'remote'; local: DraftContent; other: DraftContent
   at: number; remoteRevision: number; candidateId?: string }
 export interface DraftRecord extends DraftContent { key: string; draftId: string; localRevision: number
-  remoteRevision: number; revisionId: string | null; bases: QuestionWorkBasis[]; pending: DraftSync | null; conflict?: DraftConflict }
+  remoteRevision: number; revisionId: string | null; bases: QuestionWorkBasis[]; pending: DraftSync | null; conflict?: DraftConflict; contentToken?: string }
 export interface DraftSync { requestId: string; draftId: string; baseRevision: number
   question: string; references: QuestionReferenceInput[]; bases: QuestionWorkBasis[] }
 
@@ -13,17 +13,18 @@ export class DraftLocalCompetition extends Error {
 }
 
 let opening: Promise<IDBDatabase> | undefined
-/** Version 2 only adds stores; existing reliable workspace records stay readable. */
+/** Additive upgrades preserve the original reliable work and draft stores. */
 export function openWorkspaceDatabase(): Promise<IDBDatabase> {
   if (!opening) {
     opening = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('xunjie-reliable-works-v1', 2)
+      const request = indexedDB.open('xunjie-reliable-works-v1', 3)
       request.onupgradeneeded = () => {
         const db = request.result
         if (!db.objectStoreNames.contains('workspaces')) db.createObjectStore('workspaces', { keyPath: 'key' })
         if (!db.objectStoreNames.contains('candidates')) db.createObjectStore('candidates', { keyPath: 'id' }).createIndex('scope', 'scope')
         if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts', { keyPath: 'key' })
         if (!db.objectStoreNames.contains('draftCandidates')) db.createObjectStore('draftCandidates', { keyPath: 'id' }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('actions')) db.createObjectStore('actions', { keyPath: 'key' }).createIndex('scope', 'scope')
       }
       request.onsuccess = () => {
         const db = request.result

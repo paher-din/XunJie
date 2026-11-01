@@ -9,6 +9,9 @@ import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { SpaceIdentity, SpaceAuthority } from '@xunjie/contracts/spaces';
 import { createWorks, workMigration, validateWorks } from './works.js';
 import { createQuestionDrafts, questionDraftMigration, validateQuestionDrafts } from './drafts.js';
+import { createActionIntents, actionIntentMigration, validateActionIntents } from './intents.js';
+import type { ActionIntentOptions } from './intents.js';
+export type { ActionIntentOptions } from './intents.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
   CREATE TABLE activities (id uuid PRIMARY KEY,space_environment_id uuid NOT NULL,space_id uuid NOT NULL,
@@ -22,7 +25,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
     activity_id uuid NOT NULL,input_digest text NOT NULL,state text NOT NULL CHECK(state IN ('pending','accepted','rejected')),
     binding jsonb,result jsonb,error text,updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX course_activity_requests_scope ON course_activity_requests(space_environment_id,space_id,principal_id);
-` }, questionDraftMigration];
+` }, questionDraftMigration, actionIntentMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -44,6 +47,7 @@ function requestResult(row: Record<string, unknown>): CourseActivityResult {
 export async function validateLearningData(storage: OwnedStorage) {
   await validateWorks(storage);
   await validateQuestionDrafts(storage);
+  await validateActionIntents(storage);
   const { rows } = await storage.read('SELECT id,body,space_environment_id,space_id,principal_id FROM activities');
   for (const row of rows) {
     const a = activitySchema.parse(row.body);
@@ -71,7 +75,7 @@ export async function validateLearningData(storage: OwnedStorage) {
 }
 
 /** Only this module writes activities. Authority supplies a narrow, current member binding. */
-export function createLearningData(storage: OwnedStorage, authority: SpaceAuthority, courses?: CourseBindingAuthority) {
+export function createLearningData(storage: OwnedStorage, authority: SpaceAuthority, courses?: CourseBindingAuthority, actions: ActionIntentOptions = {}) {
   async function access(identity: SpaceIdentity) {
     const target = await authority.resolveBinding(identity);
     if (target.environmentId !== storage.owner.environmentId || target.serviceId !== storage.owner.serviceId || target.version !== 1) fail('forbidden');
@@ -248,5 +252,6 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
   }
   const works = createWorks(storage, open);
   const drafts = createQuestionDrafts(storage, { activity: open, works, courses });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, works, drafts, validate: () => validateLearningData(storage) };
+  const intents = createActionIntents(storage, { activity: open, works, drafts, ...actions });
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, works, drafts, intents, validate: () => validateLearningData(storage) };
 }

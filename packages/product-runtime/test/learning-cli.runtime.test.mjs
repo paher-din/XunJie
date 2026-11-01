@@ -120,6 +120,28 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     const savedDraft = await draftSync.json();
     assert.equal(savedDraft.revision, 1);
     assert.equal(savedDraft.references.length, 2);
+    const actionInput = { requestId: randomUUID(), scope: { environmentId: pinned.identity.environmentId,
+      spaceId: pinned.identity.spaceId, principalId: pinned.identity.principalId, activityId: pinned.activityId },
+      receiver: { receiverId: 'future-agent', location: 'remote', kind: 'question' },
+      draft: { token: randomUUID(), question: draftInput.question, references: draftInput.references, bases: [draftWork] },
+      works: [draftWork], evidence: [] };
+    const prepareAction = await fetch(new URL('/api/learning/intents/' + pinned.activityId, started.endpoint), {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(actionInput) });
+    assert.equal(prepareAction.status, 200);
+    const savedAction = await prepareAction.json();
+    assert.equal(savedAction.state, 'prepared');
+    const capabilities = await fetch(new URL(`/api/learning/intents/${pinned.activityId}/capabilities`, started.endpoint), { headers: { cookie } });
+    assert.equal(capabilities.status, 200); assert.deepEqual(await capabilities.json(), []);
+    assert.equal((await fetch(new URL(`/api/learning/intents/${pinned.activityId}/${actionInput.requestId}/dispatch`, started.endpoint), {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: '{}' })).status, 503);
+    const cancelledInput = { ...actionInput, requestId: randomUUID() };
+    assert.equal((await fetch(new URL('/api/learning/intents/' + pinned.activityId, started.endpoint), {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(cancelledInput) })).status, 200);
+    const cancelAction = await fetch(new URL(`/api/learning/intents/${pinned.activityId}/${cancelledInput.requestId}/cancel`, started.endpoint), {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: '{}' });
+    assert.equal(cancelAction.status, 200);
+    const cancelledAction = await cancelAction.json();
+    assert.equal(cancelledAction.state, 'cancelled');
     const work = { objectId: randomUUID(), contentId: randomUUID(), name: '课程恢复.txt', kind: 'text', encoding: 'utf8',
       mediaType: 'text/plain', value: '课程与作品在同一完整备份边界\n' };
     const workRequest = { requestId: randomUUID(), baseRevision: 1, files: [work] };
@@ -206,6 +228,16 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
       { headers: { cookie: restoredCookie } });
     assert.equal(restoredDraftReceipt.status, 200);
     assert.deepEqual(await restoredDraftReceipt.json(), savedDraft);
+    for (const action of [savedAction, cancelledAction]) {
+      const restoredAction = await fetch(new URL(`/api/learning/intents/${pinned.activityId}/${action.input.requestId}`, isolated.endpoint),
+        { headers: { cookie: restoredCookie } });
+      assert.equal(restoredAction.status, 200);
+      assert.deepEqual(await restoredAction.json(), action);
+    }
+    const oldActionScope = await fetch(new URL(`/api/learning/intents/${pinned.activityId}/${actionInput.requestId}/dispatch`, isolated.endpoint), {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie: restoredCookie,
+        'x-xj-namespace': started.environment.clientNamespace }, body: '{}' });
+    assert.equal(oldActionScope.status, 403);
     assert.equal(savedDraft.references[0].copy, materialCopy);
     assert.equal(savedDraft.references[1].copy, codeCopy);
     for (const suffix of ['', '/receipts/' + workRequest.requestId]) {
@@ -219,7 +251,7 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     assert.equal(Buffer.from((await concurrentMaterial.json()).contentBase64, 'base64').toString('utf8'), latestPublished.value);
     const queried = await run('course-result', target, '--file', await input('course-result', { requestId: imported.requestId }));
     assert.equal(queried.contentDigest, imported.contentDigest);
-    // No schema migration was released: the CLI must reach that check, rather than fail assembling owners.
+    // No CLI schema-upgrade adapter is registered: reach that check instead of failing owner assembly.
     await assert.rejects(run('upgrade', target, '--file', await input('upgrade', { kind: 'schema', targetRoot: upgradeTarget,
       keyFile, backupDirectory: join(directory, 'upgrade-backups') })), error => {
       assert.match(error.stderr, /no-schema-upgrade-registered/);

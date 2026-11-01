@@ -3,6 +3,9 @@ import { workFilesSchema, workViewSchema } from '@xunjie/contracts/learning-data
 import type { WorkFile, WorkView, WorkSync } from '@xunjie/contracts/learning-data'
 import { WorkStore, LocalCompetition, sameFiles, pendingFor, initialRecord } from './store'
 import type { WorkRecord, WorkConflict } from './store'
+import { ReliableActions } from './actions'
+import type { ActionTransport } from './actions'
+import type { ReliableQuestionDraft } from './draft'
 
 export { LOCAL_MAX_WAIT_MS, NETWORK_MAX_WAIT_MS } from './coordinator'
 export interface WorkTransport { read(): Promise<WorkView>; receipt(requestId: string): Promise<WorkView | null>; sync(input: WorkSync): Promise<WorkView> }
@@ -19,6 +22,12 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   constructor(readonly key: string, private transport: WorkTransport) { super(); this.record = initialRecord(key, { revision: 0, files: [] }) }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.state
+  actions(draft: ReliableQuestionDraft, transport: ActionTransport) {
+    return new ReliableActions(this.key, draft, () => {
+      if (!this.state.ready || this.state.conflict) throw new Error('请先读取作品并处理分歧。')
+      return structuredClone(this.state.files)
+    }, transport)
+  }
   private notify(patch: Partial<WorkspaceState> = {}) { this.state = { ...this.state, ...patch, conflictReady: !this.dirty }; for (const listener of this.listeners) listener() }
   protected ready() { return this.state.ready }
   protected conflicted() { return !!this.state.conflict }

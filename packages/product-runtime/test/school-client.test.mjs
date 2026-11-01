@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -80,6 +80,13 @@ test('installed client forwards the course surface and rejects malformed or fore
     references: [], status: 'open', createdAt: publishedAt, course: { associationId: randomUUID(), courseId,
       courseName: '课程', taskId, taskTitle: '任务', releaseId, contentDigest: digest, objectives: ['目标'],
       requirements: '要求', materials: [material], starterWorks: [], capabilities: [] } };
+  const actionId = randomUUID(), malformedIntentActivity = randomUUID(), foreignIntentActivity = randomUUID();
+  const receiver = { receiverId: 'school-question-receiver', location: 'remote', kind: 'question' };
+  const actionInput = { requestId: actionId, scope: { environmentId: grant.identity.environmentId,
+    spaceId: grant.identity.spaceId, principalId: grant.identity.principalId, activityId: activity.activityId }, receiver,
+    draft: { token: randomUUID(), question: '转发原意图', references: [], bases: [] }, works: [], evidence: [] };
+  const action = { input: actionInput, inputDigest: createHash('sha256').update(JSON.stringify(actionInput)).digest('hex'),
+    dependencies: [], state: 'prepared', cancelRequested: false, receipt: null };
   const school = createServer(async (request, response) => {
     response.setHeader('content-type', 'application/json');
     const url = request.url;
@@ -92,6 +99,14 @@ test('installed client forwards the course surface and rejects malformed or fore
     } else if (url.endsWith('/api/learning/course-activity-results/' + activity.activityId)) response.end('null');
     else if (url.endsWith('/api/learning/activities')) response.end(JSON.stringify(request.method === 'POST' ? activity : [activity]));
     else if (url.endsWith('/api/learning/course-activities')) response.end(JSON.stringify(activity));
+    else if (url.includes('/api/learning/intents/')) {
+      if (url.includes('/intents/' + malformedIntentActivity)) response.end(JSON.stringify({ ...action, state: 'accepted' }));
+      else if (url.includes('/intents/' + foreignIntentActivity)) response.end(JSON.stringify({ ...action,
+        input: { ...actionInput, scope: { ...actionInput.scope, activityId: foreignIntentActivity, principalId: randomUUID() } } }));
+      else if (url.endsWith('/capabilities')) response.end(JSON.stringify([receiver]));
+      else if (url.endsWith('/intents/' + activity.activityId) && request.method === 'GET') response.end(JSON.stringify([action]));
+      else response.end(JSON.stringify(action));
+    }
     else if (url.includes('/api/learning/drafts/')) {
       if (url.endsWith('/drafts/' + malformedDraftActivityId)) response.end(JSON.stringify({ draftId }));
       else response.end(JSON.stringify(draft));
@@ -134,6 +149,13 @@ test('installed client forwards the course surface and rejects malformed or fore
     assert.equal((await api(`drafts/${activity.activityId}/receipts/${randomUUID()}`, undefined, remote)).status, 200);
     assert.equal((await api('drafts/' + malformedDraftActivityId, undefined, remote)).status, 503);
     assert.equal((await api('drafts/not-a-uuid', undefined, remote)).status, 403);
+    assert.deepEqual((await api('intents/' + activity.activityId, undefined, remote)).value, [action]);
+    assert.deepEqual((await api('intents/' + activity.activityId, actionInput, remote)).value, action);
+    assert.deepEqual((await api(`intents/${activity.activityId}/${actionId}`, undefined, remote)).value, action);
+    assert.deepEqual((await api(`intents/${activity.activityId}/capabilities`, undefined, remote)).value, [receiver]);
+    assert.equal((await api(`intents/${malformedIntentActivity}/${actionId}`, undefined, remote)).status, 503);
+    assert.equal((await api(`intents/${foreignIntentActivity}/${actionId}`, undefined, remote)).status, 403);
+    assert.equal((await api('intents/not-a-uuid', undefined, remote)).status, 403);
     assert.equal((await api('manage/course-import', { requestId: randomUUID() }, remote)).status, 403);
   } finally {
     await host?.stop();

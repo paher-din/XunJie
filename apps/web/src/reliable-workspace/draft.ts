@@ -44,6 +44,7 @@ function matchesPending(view: QuestionDraftView, pending: NonNullable<DraftRecor
 export class ReliableQuestionDraft extends ReliableStateCoordinator {
   private record: DraftRecord
   private editEpoch = 0
+  private contentToken = crypto.randomUUID() as string
   private sending = false
   private store = new DraftStore()
   private listeners = new Set<() => void>()
@@ -60,6 +61,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
     for (const listener of this.listeners) listener()
   }
   private apply(record: DraftRecord, extra: Partial<QuestionDraftState> = {}) {
+    this.contentToken = record.contentToken ?? `${record.draftId}:${record.localRevision}`
     this.notify({ question: record.question, references: structuredClone(record.references),
       revision: record.remoteRevision, revisionId: record.revisionId,
       conflict: record.conflict, ...extra })
@@ -79,6 +81,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
         local = this.record
       }
       this.record = local
+      this.contentToken = local.contentToken ?? `${local.draftId}:${local.localRevision}`
       this.pendingBases = local.bases
       const candidates = await this.store.candidates(this.key)
       let conflict = local.conflict
@@ -102,15 +105,26 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
   change(question: string, references: QuestionReferenceInput[], addedBases: QuestionWorkBasis[] = []) {
     // Preserve a basis added after the last IndexedDB protection; typing must not drop it.
     const bases = mergeBases([...this.record.bases, ...this.pendingBases], addedBases, references)
-    this.editEpoch++; this.dirty = true
+    this.editEpoch++; this.dirty = true; this.contentToken = crypto.randomUUID()
     this.pendingBases = bases
     const content = { question, references: structuredClone(inputReferences(references)), bases }
     this.notify({ question, references: structuredClone(content.references),
       ...(this.state.conflict ? { conflict: { ...this.state.conflict, local: content } } : {}) })
   }
   private pendingBases: QuestionWorkBasis[] = []
+  /** Synchronous capture: no await may mix later question/reference edits into this action. */
+  capture() {
+    if (!this.state.ready || this.state.conflict) throw new Error('请先读取问题草稿并处理分歧。')
+    return { token: this.contentToken, question: this.state.question, references: structuredClone(inputReferences(this.state.references)),
+      bases: structuredClone(mergeBases(this.record.bases, this.pendingBases, this.state.references)) }
+  }
+  acknowledge(token: string) {
+    if (this.contentToken !== token || !this.state.ready || this.state.conflict) return false
+    this.change('', []); return true
+  }
   protected async persist() {
     const epoch = this.editEpoch
+    const contentToken = this.contentToken
     const selected = contentOf(this.state)
     const bases = this.pendingBases.length ? this.pendingBases : mergeBases(this.record.bases, [], selected.references)
     const content = { ...selected, bases }
@@ -126,7 +140,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
         const saved = await this.store.change(this.key, current => {
           const previous = current ?? this.record
           const nextPending = previous.pending ?? { ...pendingFor(content, previous.remoteRevision, bases, previous.draftId) }
-          return { ...previous, localRevision: previous.localRevision + 1, question: content.question,
+          return { ...previous, contentToken, localRevision: previous.localRevision + 1, question: content.question,
             references: content.references, bases,
             pending: nextPending,
             ...(conflict ? { conflict: { ...conflict, local: content, at: previous.localRevision + 1 } } : {}) }
@@ -169,7 +183,7 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
           const next = await this.store.change(this.key, saved => {
             if (!saved || saved.pending || saved.localRevision !== current?.localRevision) return saved ?? this.record
             const references = inputReferences(remote.references)
-            return { ...saved, remoteRevision: remote.revision, revisionId: remote.revisionId,
+            return { ...saved, contentToken: crypto.randomUUID(), remoteRevision: remote.revision, revisionId: remote.revisionId,
               question: remote.question, references, bases: mergeBases([], [], references),
               localRevision: saved.localRevision + 1 }
           })
@@ -234,11 +248,12 @@ export class ReliableQuestionDraft extends ReliableStateCoordinator {
     const saved = await this.store.change(this.key, current => {
       if (!current) throw new Error('本机草稿记录不可读。')
       const revision = conflict.source === 'remote' ? conflict.remoteRevision : current.remoteRevision
-      return { ...current, localRevision: current.localRevision + 1, remoteRevision: revision,
+      return { ...current, contentToken: crypto.randomUUID(), localRevision: current.localRevision + 1, remoteRevision: revision,
         question: content.question, references: content.references, bases,
         conflict: undefined, pending: pendingFor(content, revision, bases, current.draftId) }
     }, { expected: conflict.at, content }, conflict.candidateId)
     this.record = saved; this.dirty = false; this.pendingBases = saved.bases
+    this.contentToken = saved.contentToken!
     this.notify({ question: saved.question, references: structuredClone(saved.references), conflict: undefined,
       revision: saved.remoteRevision, revisionId: saved.revisionId, error: '' })
     void this.synchronize()

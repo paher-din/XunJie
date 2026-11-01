@@ -90,6 +90,16 @@ test('a managed school binding stores school activity works only in its installe
       ] };
     const savedDraft = await api(deviceStatus.endpoint, draftPath, draftInput, selected);
     assert.equal(savedDraft.references.length, 3);
+    const actionPath = 'intents/' + activity.activityId;
+    const actionInput = { requestId: randomUUID(), scope: { environmentId: member.environmentId, spaceId: member.spaceId,
+      principalId: member.principalId, activityId: activity.activityId },
+      receiver: { receiverId: 'future-agent', location: 'remote', kind: 'question' },
+      draft: { token: randomUUID(), question: draftInput.question, references: draftInput.references, bases: [] }, works: [file], evidence: [] };
+    const preparedAction = await api(deviceStatus.endpoint, actionPath, actionInput, selected);
+    assert.equal(preparedAction.state, 'prepared');
+    assert.equal((await call(schoolStatus.endpoint, actionPath, undefined, { cookie })).status, 403);
+    assert.equal((await call(deviceStatus.endpoint, actionPath + '/' + actionInput.requestId, undefined,
+      { ...selected, 'x-xj-expected-subject': randomUUID() })).status, 403);
     const changedCopy = structuredClone(draftInput);
     changedCopy.requestId = randomUUID(); changedCopy.baseRevision = 1;
     changedCopy.references[2].copy = '伪造副本';
@@ -126,6 +136,7 @@ test('a managed school binding stores school activity works only in its installe
     await api(schoolStatus.endpoint, 'manage/course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: false }, admin);
     assert.equal((await call(deviceStatus.endpoint, 'workspaces/' + activity.activityId, sync, selected)).status, 403);
     assert.equal((await call(deviceStatus.endpoint, draftPath, draftInput, selected)).status, 403);
+    assert.equal((await call(deviceStatus.endpoint, actionPath + '/' + actionInput.requestId, undefined, selected)).status, 403);
     await api(schoolStatus.endpoint, 'manage/course-access', { requestId: randomUUID(), courseId, principalId: member.principalId, active: true }, admin);
     const key = randomBytes(32), directory = join(root, 'backups');
     await device.setCredential('hybrid-recovery-key', key.toString('base64'));
@@ -160,6 +171,9 @@ test('a managed school binding stores school activity works only in its installe
       assert.deepEqual(await api(isolated.endpoint, draftPath, undefined, restoredSpace), savedDraft);
       assert.deepEqual(await api(isolated.endpoint, draftPath + '/revisions/' + savedDraft.revisionId, undefined, restoredSpace), savedDraft);
       assert.deepEqual(await api(isolated.endpoint, draftPath + '/receipts/' + draftInput.requestId, undefined, restoredSpace), savedDraft);
+      assert.deepEqual(await api(isolated.endpoint, actionPath + '/' + actionInput.requestId, undefined, restoredSpace), preparedAction);
+      assert.equal((await call(isolated.endpoint, actionPath + '/' + actionInput.requestId + '/dispatch', {},
+        { ...restoredSpace, 'x-xj-namespace': deviceStatus.environment.clientNamespace })).status, 403);
       assert.equal((await call(isolated.endpoint, draftPath, undefined,
         { ...restoredSpace, 'x-xj-namespace': deviceStatus.environment.clientNamespace })).status, 403);
       assert.deepEqual(await api(isolated.endpoint, 'workspaces/' + activity.activityId, undefined, restoredSpace), { revision: 1, files: [file] });

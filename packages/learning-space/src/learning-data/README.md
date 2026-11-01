@@ -12,4 +12,6 @@
 
 `works.registerBasis` 为[#152 固定引用](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)登记选择时的作品对象、内容、正文与资源引用，**不推进当前 head**，因此可以引用尚未同步或已被后续编辑替换的内容。`learning.drafts.read/sync/receipt/revision` 使用同一 owner 的活动与访问核验：每活动稳定 `draftId`、单调版本 CAS、不可变修订、稳定请求回执和按 `revisionId` 的历史读取；引用来源只接受本活动本人作品、活动固定发布的课程要求或开放文本材料。问题与引用在同一草稿修订中提交，作品内容登记和课程核验在所属事务前完成，不建立第二套同步引擎。
 
-`learningMigrations` 登记活动、课程协调、作品、草稿及其请求索引，当前末尾为 v4 `question-drafts-and-fixed-references`；`validateLearningData` 校验活动身份、目标、课程绑定，作品 head、版本、资源归属、字节与回执，以及草稿 head/修订/回执、引用范围/副本摘要、作品内容归属和资源正文。storage 的资源、维护、备份和恢复接口由产品宿主装配。活动与已发布内容持续保留，不按页面或活动关闭删除；真实待发意图由后续子票接入。
+`learning.intents` 为 [#153 固定动作](../../../../docs/student-agent-implementation/wp02-action-intents.md)提供准备、查询、取消、派发和注册接收能力。固定内容独立保留，不推进可变 head；当前主体、资格和目标每次核验。派发先记录，未知先查询原接收方，同身份幂等，取消先落地的未派发动作不再发送；工作区内容确认不代替业务回执。
+
+`learningMigrations` 在 v4 草稿之后追加 v5 `durable-action-intents`，包含固定输入、派发/取消及真实回执；`validateLearningData` 同时核对原活动范围、不可变输入摘要、资源字节和固定引用。产品宿主将派发关闸/排空纳入同一维护及三 owner 备份恢复。活动、固定动作与已发布内容持续保留，不按页面或活动关闭删除；浏览器独有待发不在服务端备份中。

@@ -2,7 +2,7 @@
 
 正式产品的 [ActivityWorkspace](../runtime/ActivityWorkspace.tsx) 与现有 [Monaco 宿主](../components/workspace/CodeEditorHost.tsx) 通过 `ReliableWorkspace` 处理文件变化，不各自安排保存、冻结或同步。课程与自主活动共用这条路径；组件状态与资源使用相同的类型化 wire，不强制变成代码文件。需求和验证见 [#151 交接](../../../../docs/student-agent-implementation/wp02-reliable-works.md)。
 
-问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，使用同一个 IndexedDB 数据库的非破坏 v2 `drafts`/`draftCandidates` 分区；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 [#152 记录](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)。
+问题草稿由同模块的 [`ReliableQuestionDraft`](draft.ts) 持有，沿用同库 v2 新增的 `drafts`/`draftCandidates` 分区，当前数据库非破坏升级为 v3；它复用相同的等待窗口、稳定 pending、迟到确认、本机竞争与离开保护，但不发送问题或调用模型。界面通过 [DraftReferencesProvider](../components/workspace/references/DraftReferences.tsx) 消费它，问题、引用顺序、固定来源与选中副本均以该记录为唯一可变权威。需求与验收见 [#152 记录](../../../../docs/student-agent-implementation/wp02-fixed-references-acceptance.md)。
 
 ## 对外接口
 
@@ -25,6 +25,8 @@
 待同步项固定请求 ID、远端基线和文件清单。远端已确认清单与本机当前清单分开；恢复远端确已删除的对象使用新身份，本机尚未被接收的新对象保留原身份。先查询原回执，再按相同请求重试；回执只结清相同 ID，后续正文与下一项不会被旧确认删除。存储失败保持内存与导出能力，周期性重试；短暂网络故障保持安静，权限、损坏及冲突明确反馈。比较期间的正文也必须先受到本机保护，才开放选择操作。
 
 ## 边界
+
+[#153 的 `workspace.actions(draft, transport)`](../../../../docs/student-agent-implementation/wp02-action-intents.md) 将同步捕获的固定输入与动作保存在同库 v3 分区；独立依赖登记不推进当前作品/草稿 head。待发、取消和原接收回执按原身份协调；新命名空间不自动消费旧队列，显式接回先核实原范围及请求结果。没有真实接收器时正式输入区继续明确不可发送。
 
 普通页面不显示保存按钮或常态保存状态。会话内的 context/activity 缓存只负责在原 API 断开时定位原活动，不是认证或作品权威；离线恢复页暂停网络派发，重新核实原身份后才续传。服务器备份不包含浏览器未同步的正文。
 
