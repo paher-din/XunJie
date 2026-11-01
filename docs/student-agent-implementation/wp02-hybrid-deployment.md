@@ -50,7 +50,7 @@
 
 适配器使用既有 SSH 配置与严格主机核验、禁止 agent 转发，不接受新主机身份或索取/打印密钥。远端完整包的 fence-source CLI 通过 stdin 接收无秘密源 service 清单，先核对 receiver 身份，再调用同一 WP01 私有控制 API；非零退出、超时、错身份或不完整结果不能确认接管。首个远端学校支持目标仍是 WP01 的 Ubuntu 24.04 x64 组合；Windows/Mac 是客户端。旧包没有此 CLI 时须先明确更新部署包，不能忽略失败。
 
-接管后，接收方重新 authorize（仍须带新安装的 sourceInstallationId），目标用 set-credential 写回保留连接的原 credentialRef；不能重复 connect 同一 connectionId。学校页面重新批准新成员连接，再执行 learning-binding。学校数据库恢复后旧 cookie/连接凭据也失效，须重新登录授权。恢复活动可读不表示旧浏览器队列已导入。
+接管后，被 fence 的连接已从目标配置移除。接收方重新 authorize（须带后继安装的 sourceInstallationId），目标用 set-credential 保存新凭据，并用新 connectionId 执行 connect 重新登记连接；随后将 learning-binding 中的 connectionId 更新为新连接。学校页面也须重新批准新成员连接，再执行对应 learning-binding。学校数据库恢复后旧 cookie/连接凭据也失效，须重新登录授权。恢复活动可读不表示旧浏览器队列已导入。
 
 #154 本身没有新增 schema 迁移；当前整合版已包含 #152 的学习数据 v4，问题、固定引用副本、草稿当前/历史修订及原请求回执均纳入恢复验证。正式 CLI 没有另行登记的 schema 升级适配时仍应到达 no-schema-upgrade-registered 校验，不能据此宣称不存在 v4。#153 尚未交付的状态不创建占位成功。
 
