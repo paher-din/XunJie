@@ -81,11 +81,13 @@
   "note": [
     "本轮先尝试沿用 #152 的 OS 级 AppleScript 键击装置（select_ime + System Events）。当前会话的自动化授权未开通：TISSelectInputSource 对 Apple 拼音返回 -50，Doubao 拼音虽可选但立即回退，osascript 在等待用户授权时挂起，因此未取得物理键盘级证据。",
     "本轮改用 Chromium 输入法组合协议（Input.imeSetComposition + Input.insertText）触发真实的 compositionstart/compositionupdate/compositionend 与插入，仍是浏览器侧真实的输入法组合路径，但不是 OS 物理键盘证据；粘贴走浏览器原生 paste 命令（Input.dispatchKeyEvent commands:['paste']）。",
-    "浅/深色通过 emulateMedia colorScheme 切换并各截图核验；焦点检查覆盖编辑区失焦后重新聚焦。"
+    "浅/深色通过 emulateMedia colorScheme 切换并各截图核验；焦点检查覆盖编辑区失焦后重新聚焦。",
+    "2026-11-01 同日已补取 OS 物理键盘级证据（自建 CGEvent 注入器 + 系统输入法），见 wp02-hybrid-mac-physical-ime.json；本文件保留为浏览器侧 CDP 组合协议的对照记录。"
   ],
   "finalText": "开始你好世界\n粘贴中文\n结束",
   "screenshots": [
     "wp02-hybrid-mac-ime-light.png",
     "wp02-hybrid-mac-ime-dark.png"
-  ]
+  ],
+  "supersededBy": "wp02-hybrid-mac-physical-ime.json"
 }
