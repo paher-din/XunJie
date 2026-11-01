@@ -86,7 +86,7 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
     const files = input.files.map(({ value: _value, ...file }) => file);
     const result = await storage.request({ requestId: input.requestId, fingerprint }, async tx => {
       await tx.query('INSERT INTO work_heads VALUES ($1,0,$2) ON CONFLICT DO NOTHING', [activityId, '[]']);
-      const { rows: [head] } = await tx.query('SELECT revision FROM work_heads WHERE activity_id=$1 FOR UPDATE', [activityId]);
+      const { rows: [head] } = await tx.query('SELECT revision,files FROM work_heads WHERE activity_id=$1 FOR UPDATE', [activityId]);
       if (head!.revision !== input.baseRevision) throw new StorageError('conflict');
       for (const f of files) {
         await tx.query('INSERT INTO work_objects(object_id,activity_id,kind) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [f.objectId, activityId, f.kind]);
@@ -100,7 +100,12 @@ export function createWorks(storage: OwnedStorage, authorize: (identity: SpaceId
         await tx.reference('work-content/' + f.contentId, f.contentId);
       }
       const revision = input.baseRevision + 1;
-      await tx.query('UPDATE work_objects SET deleted=true WHERE activity_id=$1 AND NOT(object_id=ANY($2::uuid[]))', [activityId, files.map(f => f.objectId)]);
+      // Leaving the head is scoped to the manifest this commit replaces: only an object carried by
+      // the previous manifest is removed from it. A fixed basis registered for a pending action has
+      // never entered a head, so an older list that omits it must not tombstone it.
+      const previousObjectIds = (head!.files as ManifestFile[]).map(f => f.objectId);
+      await tx.query('UPDATE work_objects SET deleted=true WHERE activity_id=$1 AND NOT(object_id=ANY($2::uuid[])) AND object_id=ANY($3::uuid[])',
+        [activityId, files.map(f => f.objectId), previousObjectIds]);
       await tx.query('UPDATE work_heads SET revision=$2,files=$3 WHERE activity_id=$1', [activityId, revision, JSON.stringify(files)]);
       await tx.query('INSERT INTO work_versions VALUES ($1,$2,$3)', [activityId, revision, JSON.stringify(files)]);
       await tx.query('INSERT INTO work_receipts VALUES ($1,$2)', [input.requestId, activityId]);
