@@ -58,7 +58,7 @@ function supervisor() {
   const interrupt = () => stop('SIGINT'), terminate = () => stop('SIGTERM');
   process.on('SIGINT', interrupt);
   process.on('SIGTERM', terminate);
-  const poll = setInterval(discover, 100);
+  const poll = setInterval(discover, 500);
   poll.unref();
   return {
     add(child) {

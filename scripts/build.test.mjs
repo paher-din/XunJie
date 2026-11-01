@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, readFile, rm, cp, utimes } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, cp, utimes, stat, readdir } from 'node:fs/promises';
 import { tmpdir, hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
 import { contentManifest, digest, runBuildGraph } from './build-cache.mjs';
 import { ensureBuild, expandTargets, parseBuildArgs, resolveTool } from './build.mjs';
 import { scanServerOutput } from './build-server.mjs';
@@ -52,6 +53,86 @@ async function fixture(t) {
 }
 async function calls(root) { return (await readFile(join(root,'calls.log'),'utf8')).trim().split('\n').map(line=>JSON.parse(line)); }
 const quiet = {log:()=>{}};
+
+const contractsCompiler = `import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+const args=process.argv.slice(2),cwd=process.cwd();
+appendFileSync(resolve(cwd,'../../calls.log'),JSON.stringify({tool:'tsc',workspace:'contracts',args,nodeOptions:process.env.NODE_OPTIONS})+'\\n');
+await new Promise(resolve=>setTimeout(resolve,75));
+const out=resolve(cwd,args.includes('--outDir')?args[args.indexOf('--outDir')+1]:'dist');
+for(const name of readdirSync(join(cwd,'src'),{recursive:true})) {
+ if(!name.endsWith('.ts'))continue;
+ const output=join(out,name.slice(0,-3));mkdirSync(dirname(output),{recursive:true});
+ writeFileSync(output+'.js',readFileSync(join(cwd,'src',name)));
+ writeFileSync(output+'.d.ts','export declare const value: number;');
+}`;
+
+test('contracts recompiles on loader env changes while identical dist stays continuously readable and untouched',async t=>{
+  const root=await fixture(t);
+  await put(root,'packages/contracts/node_modules/typescript/tsc.mjs',contractsCompiler);
+  await ensureBuild('contracts',{root,...quiet});
+  const dist=join(root,'packages/contracts/dist'),output=join(dist,'index.js');
+  await utimes(output,new Date(0),new Date(0));
+  const before=await Promise.all([stat(dist),stat(output),stat(join(dist,'index.d.ts'))]);
+  // The real Node loader reads the live output before the compiler starts. The
+  // former rm-before-compile implementation fails here deterministically.
+  await put(root,'reader-loader.mjs',`import {readFileSync} from 'node:fs';
+if(readFileSync(new URL('./packages/contracts/dist/index.js',import.meta.url),'utf8')!=='export const value = 1;')throw new Error('Live contracts output changed');`);
+  const options=[process.env.NODE_OPTIONS,`--import=${pathToFileURL(join(root,'reader-loader.mjs')).href}`].filter(Boolean).join(' ');
+  let reading=true,reads=0,readerError;
+  const reader=(async()=>{
+    try {while(reading){assert.equal(await readFile(output,'utf8'),'export const value = 1;');reads++;await delay(1);}}
+    catch(error){readerError=error;}
+  })();
+  try {await ensureBuild('contracts',{root,env:{...process.env,NODE_OPTIONS:options},...quiet});}
+  finally {reading=false;await reader;}
+  assert.ifError(readerError);assert.ok(reads>1);
+  assert.equal((await calls(root)).length,2);
+  assert.equal((await calls(root))[1].nodeOptions,options);
+  const after=await Promise.all([stat(dist),stat(output),stat(join(dist,'index.d.ts'))]);
+  assert.deepEqual(after.map(s=>[s.ino,s.mtimeMs,s.ctimeMs]),before.map(s=>[s.ino,s.mtimeMs,s.ctimeMs]));
+  assert.equal((await readdir(join(root,'.cache/xunjie-build'))).some(name=>name.startsWith('contracts-')),false);
+});
+
+test('contracts publishes changed and deleted source emissions without stale files and keeps custom outDir working',async t=>{
+  const root=await fixture(t);
+  await put(root,'packages/contracts/node_modules/typescript/tsc.mjs',contractsCompiler);
+  await put(root,'packages/contracts/src/nested/extra.ts','export const value = 2;');
+  await ensureBuild('contracts',{root,...quiet});
+  await readFile(join(root,'packages/contracts/dist/nested/extra.js'));
+  await put(root,'packages/contracts/src/index.ts','export const value = 3;');
+  await rm(join(root,'packages/contracts/src/nested'),{recursive:true});
+  await put(root,'packages/contracts/dist/stale.js','stale');
+  await ensureBuild('contracts',{root,...quiet});
+  assert.equal(await readFile(join(root,'packages/contracts/dist/index.js'),'utf8'),'export const value = 3;');
+  assert.deepEqual((await readdir(join(root,'packages/contracts/dist'))).sort(),['index.d.ts','index.js']);
+  await ensureBuild('contracts',{root,args:['--outDir',join(root,'custom-contracts')],...quiet});
+  assert.equal(await readFile(join(root,'custom-contracts/index.js'),'utf8'),'export const value = 3;');
+  assert.equal((await readdir(join(root,'.cache/xunjie-build'))).some(name=>name.startsWith('contracts-')),false);
+});
+
+test('contracts failed and cancelled compiles clean staging, preserve live output and publish no success',async t=>{
+  const root=await fixture(t);
+  await ensureBuild('contracts',{root,...quiet});
+  const output=join(root,'packages/contracts/dist/index.js');
+  const original=await readFile(output,'utf8');
+  const before=await stat(output);
+  await put(root,'packages/contracts/node_modules/typescript/tsc.mjs',"process.exit(2);");
+  await assert.rejects(ensureBuild('contracts',{root,...quiet}),/Build command failed/);
+  await put(root,'packages/contracts/node_modules/typescript/tsc.mjs',contractsCompiler.replace('setTimeout(resolve,75)','setTimeout(resolve,10000)'));
+  const controller=new AbortController(),count=(await calls(root)).length;
+  const running=ensureBuild('contracts',{root,signal:controller.signal,...quiet});
+  const rejected=assert.rejects(running);
+  const timeout=setTimeout(()=>controller.abort(),2000);
+  try {
+    while((await calls(root)).length===count&&!controller.signal.aborted)await delay(5);
+    controller.abort();await rejected;
+  } finally {clearTimeout(timeout);controller.abort();}
+  assert.equal(await readFile(output,'utf8'),original);
+  const after=await stat(output);assert.deepEqual([after.ino,after.mtimeMs,after.ctimeMs],[before.ino,before.mtimeMs,before.ctimeMs]);
+  await assert.rejects(readFile(join(root,'.cache/xunjie-build/contracts.json')),{code:'ENOENT'});
+  assert.equal((await readdir(join(root,'.cache/xunjie-build'))).some(name=>name.startsWith('contracts-')),false);
+});
 
 test('content fingerprints ignore mtimes and checkout paths but detect names and bytes',async t=>{
   const a=await fixture(t),b=await fixture(t);

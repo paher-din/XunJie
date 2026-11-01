@@ -1,4 +1,4 @@
-import { readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -76,9 +76,29 @@ export async function createBuildTasks({ root = repository, env = process.env } 
       deps: dependencies[name], outputs: [`${path}/dist`],
       requiredOutputs: [`${path}/dist/${name === 'server' ? 'server/main' : name === 'local-runtime' ? 'cli' : 'index'}.js`],
       fingerprint: fingerprint(name, ['.']),
-      async run({ run }) {
+      async run({ run, signal }) {
         const compiler = (await tool(name)).path;
         if (name === 'server') return buildServer({ root, compiler, run });
+        if (name === 'contracts') {
+          const cache = join(root, '.cache/xunjie-build');
+          await mkdir(cache, { recursive: true });
+          const staging = await mkdtemp(join(cache, 'contracts-'));
+          const dist = join(root, path, 'dist');
+          try {
+            await run(process.execPath, [compiler, '-p', 'tsconfig.json', '--outDir', staging], { cwd: join(root, path) });
+            signal?.throwIfAborted();
+            const staged = await contentManifest(staging, ['.'], { required: true });
+            const existing = await contentManifest(dist, ['.']);
+            signal?.throwIfAborted();
+            // Instrumented CLI readers can rebuild under a different loader
+            // environment. Keep their live dependency untouched when it matches.
+            if (JSON.stringify(staged) !== JSON.stringify(existing)) {
+              await rm(dist, { recursive: true, force: true });
+              await rename(staging, dist);
+            }
+          } finally { await rm(staging, { recursive: true, force: true }); }
+          return;
+        }
         await rm(join(root, path, 'dist'), { recursive: true, force: true });
         await run(process.execPath, [compiler, '-p', 'tsconfig.json'], { cwd: join(root, path) });
       },

@@ -9,7 +9,7 @@ export const targetDirectories = {
 export const groups = ['prepare', 'unit', 'server', 'tools', 'tests'];
 export const verifyUsage = 'Usage: npm run verify [-- --group prepare|unit|server|tools|tests] [--shard i/n] [--jobs N] [--list | --help]\n'
   + 'No arguments: prepare, then all local tests. tests: unit + server + tools. Tests always run; only builds are cached.\n'
-  + 'Jobs: 1..4 (default 4). Shards: server uses measured-weight LPT across n shards, longest first; tools has four fixed shards.\n'
+  + 'Jobs: 1..4 (default 4). Shards: server --shard uses measured-weight LPT, longest first; unsharded server stays lexical; tools has four fixed shards.\n'
   + 'Raw logs, durations and exit statuses: .verification/latest.json';
 export const testUsage = 'Usage: node scripts/test.mjs <server|contracts|product-runtime|storage|tools|checks> [--external] [--shard i/n] [--jobs N] [--list | --help]';
 
@@ -72,13 +72,13 @@ function longestFirst(files) {
 }
 
 export function shardTests(files, target, shard) {
-  const sorted = target === 'server' ? longestFirst(files) : [...files].sort();
+  const sorted = [...files].sort();
   if (!shard) return sorted;
   if (target === 'server') {
     // LPT: descending weights, then lexical paths; equal loads choose the
     // lowest shard index. Never use machine-dependent runtime measurements.
     const bins = Array.from({ length: Math.min(shard.count, sorted.length) }, () => ({ load: 0, files: [] }));
-    for (const file of sorted) {
+    for (const file of longestFirst(sorted)) {
       let selected = 0;
       for (let index = 1; index < bins.length; index++) if (bins[index].load < bins[selected].load) selected = index;
       bins[selected].files.push(file);
@@ -111,15 +111,13 @@ export function discoverTests(root, target, { external = false, shard } = {}) {
 export function targetTasks(root, target, files) {
   const directory = targetDirectories[target];
   const group = ['checks', 'contracts', 'storage', 'product-runtime'].includes(target) ? 'unit' : target;
-  return (target === 'server' ? longestFirst(files) : files).map(file => ({
+  return files.map(file => ({
     name: file, group, cwd: join(root, directory),
     command: file.endsWith('.py') ? 'python3' : process.execPath,
     args: file.endsWith('.py') ? [join(root, file)] : ['--test', '--test-concurrency=1', join(root, file)],
-    // Lifecycle CLIs can rebuild shared outputs under a different NODE_OPTIONS
-    // fingerprint, even when restored workspaces have their own package links.
-    exclusive: target === 'tools' && sensitiveTools.has(file.slice(directory.length + 1))
-      // Keep the bounded fencing protocol assertion outside competing test load.
-      || file === 'packages/product-runtime/test/connections.test.ts',
+    // Contracts compile into staging; byte-identical outputs stay in place.
+    // Keep the bounded fencing protocol assertion outside competing test load.
+    exclusive: file === 'packages/product-runtime/test/connections.test.ts',
   }));
 }
 

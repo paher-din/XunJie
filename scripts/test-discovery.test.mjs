@@ -43,13 +43,16 @@ test('server measured heavy files lead separate LPT shards; unknown files have a
   for (let i = 0; i < 4; i++) assert.deepEqual(shards[i], shardTests([...files].reverse(), 'server', { index: i + 1, count: 4 }));
   assert.equal(serverTestWeight('new/unknown.test.ts'), 10000);
   assert.equal(serverTestWeight('apps/server/tests/review.test.ts'), serverTestWeight('tests/review.test.ts'));
-  assert.deepEqual(shardTests(files, 'server'), [...heavy, 'new/unknown.test.ts', 'runner/alu-check.test.ts']);
+  assert.deepEqual(shardTests(files, 'server'), [...files].sort());
+  assert.deepEqual(shardTests(files, 'server', { index: 1, count: 1 }), [...heavy, 'new/unknown.test.ts', 'runner/alu-check.test.ts']);
   assert.deepEqual(shards[2], [heavy[2], 'runner/alu-check.test.ts']);
   assert.deepEqual(shards[3], [heavy[3], 'new/unknown.test.ts']);
   assert.deepEqual(shardTests([], 'server', { index: 4, count: 4 }), []);
   assert.deepEqual(shardTests(['a.test.ts'], 'server', { index: 4, count: 4 }), []);
-  assert.deepEqual(targetTasks('/fixture', 'server', [...files].reverse().map(file => 'apps/server/' + file)).map(task => task.name),
-    shardTests(files, 'server').map(file => 'apps/server/' + file));
+  for (const selection of [undefined, { index: 1, count: 4 }]) {
+    const selected = shardTests(files, 'server', selection).map(file => 'apps/server/' + file);
+    assert.deepEqual(targetTasks('/fixture', 'server', selected).map(task => task.name), selected);
+  }
 });
 
 test('tools shards keep each approved lifecycle pair and automatically collect every other file', () => {
@@ -83,7 +86,7 @@ test('current checkout discovery equals the original recursive test sets, includ
 
 test('test task commands use exact cwd, a single worker, and Python for external ssh policy', () => {
   const tasks = targetTasks('/fixture', 'tools', ['tools/xj-dev/tests/integration.test.mjs', 'tools/other.test.mjs', 'tools/xj-dev-access/ssh-policy.test.py']);
-  assert.deepEqual(tasks.map(task => task.exclusive), [true, false, false]);
+  assert.deepEqual(tasks.map(task => task.exclusive), [false, false, false]);
   assert(tasks.every(task => task.cwd === join('/fixture', 'tools')));
   assert.deepEqual(tasks[0].args.slice(0, 2), ['--test', '--test-concurrency=1']);
   assert.equal(tasks[2].command, 'python3');
@@ -97,7 +100,7 @@ test('CLI defaults and compatibility include external, list, jobs and shards wit
   assert.throws(() => parseOptions(['tools', '--shard', '1/3'], 'test'), /Usage/);
 });
 
-test('independent unit/server/pure tools run first; lifecycle and unknown npm runners run exclusively last', t => {
+test('unit/server/tools interleave; only connections and unknown npm runners run exclusively last', t => {
   const { root, write } = fixture(t);
   write('package.json', JSON.stringify({ workspaces: ['apps/*', 'packages/*'] }));
   for (const path of ['apps/server', 'packages/contracts', 'packages/storage', 'packages/product-runtime']) {
@@ -118,7 +121,9 @@ test('independent unit/server/pure tools run first; lifecycle and unknown npm ru
   assert(plan[1].every(task => !task.exclusive));
   assert(plan[2].every(task => task.exclusive));
   assert.deepEqual(plan[2].map(task => task.name).sort(),
-    ['workspace:packages/new-package', 'packages/product-runtime/test/connections.test.ts', ...[...sensitiveTools].map(path => 'tools/' + path)].sort());
+    ['workspace:packages/new-package', 'packages/product-runtime/test/connections.test.ts'].sort());
+  assert.deepEqual(plan[1].filter(task => task.group === 'tools').map(task => task.name).sort(),
+    ['tools/tool.test.mjs', ...[...sensitiveTools].map(path => 'tools/' + path)].sort());
   assert.equal(plan.flat().filter(task => task.name === 'build:test').length, 1);
   const unit = verificationPlan(root, parseOptions(['--group', 'unit']));
   assert(unit.at(-1).some(task => task.name === 'packages/product-runtime/test/connections.test.ts' && task.exclusive));
