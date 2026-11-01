@@ -1,0 +1,91 @@
+{
+  "executedOn": "2026-11-01",
+  "platform": "macOS 27.2 Apple M5 arm64",
+  "browser": "156.0.8078.79",
+  "instance": "http://127.0.0.1:58988",
+  "activityId": "5b07afb1-8787-4173-98d6-8a5300296960",
+  "method": "Chromium Input.imeSetComposition + Input.insertText（真实 composition 事件），粘贴换行、Meta 导航、焦点与浅/深色",
+  "steps": [
+    {
+      "name": "the product page creates an activity and an editable work file",
+      "status": "passed",
+      "detail": {
+        "activityId": "5b07afb1-8787-4173-98d6-8a5300296960",
+        "goal": "输入法验收-1793515043800"
+      }
+    },
+    {
+      "name": "a Chinese input method composition commits through the browser IME protocol",
+      "status": "passed",
+      "detail": {
+        "text": "你好世界"
+      }
+    },
+    {
+      "name": "paste with surrounding newlines keeps every character",
+      "status": "passed",
+      "detail": {
+        "length": 10,
+        "lines": 3
+      }
+    },
+    {
+      "name": "Meta navigation moves the caret without losing the composed text",
+      "status": "passed",
+      "detail": {
+        "head": "开始你好世界\n粘贴中文\n",
+        "tail": "你好世界\n粘贴中文\n结束"
+      }
+    },
+    {
+      "name": "focus survives a blur/refocus round trip",
+      "status": "passed",
+      "detail": {
+        "before": {
+          "active": "TEXTAREA",
+          "editor": "inputarea monaco-mouse-cursor-text",
+          "hasFocus": true,
+          "scheme": "rgb(249, 249, 248)"
+        },
+        "after": {
+          "active": "TEXTAREA",
+          "editor": "inputarea monaco-mouse-cursor-text",
+          "hasFocus": true,
+          "scheme": "rgb(249, 249, 248)"
+        }
+      }
+    },
+    {
+      "name": "light and dark themes both render the same work",
+      "status": "passed",
+      "detail": {
+        "light": {
+          "background": "rgb(249, 249, 248)",
+          "path": "/Users/robertwu/xj-154/evidence/ime-light.png"
+        },
+        "dark": {
+          "background": "rgb(24, 24, 24)",
+          "path": "/Users/robertwu/xj-154/evidence/ime-dark.png"
+        }
+      }
+    },
+    {
+      "name": "the final work text is exactly what was typed",
+      "status": "passed",
+      "detail": {
+        "text": "开始你好世界\n粘贴中文\n结束",
+        "length": 14
+      }
+    }
+  ],
+  "note": [
+    "本轮先尝试沿用 #152 的 OS 级 AppleScript 键击装置（select_ime + System Events）。当前会话的自动化授权未开通：TISSelectInputSource 对 Apple 拼音返回 -50，Doubao 拼音虽可选但立即回退，osascript 在等待用户授权时挂起，因此未取得物理键盘级证据。",
+    "本轮改用 Chromium 输入法组合协议（Input.imeSetComposition + Input.insertText）触发真实的 compositionstart/compositionupdate/compositionend 与插入，仍是浏览器侧真实的输入法组合路径，但不是 OS 物理键盘证据；粘贴走浏览器原生 paste 命令（Input.dispatchKeyEvent commands:['paste']）。",
+    "浅/深色通过 emulateMedia colorScheme 切换并各截图核验；焦点检查覆盖编辑区失焦后重新聚焦。"
+  ],
+  "finalText": "开始你好世界\n粘贴中文\n结束",
+  "screenshots": [
+    "wp02-hybrid-mac-ime-light.png",
+    "wp02-hybrid-mac-ime-dark.png"
+  ]
+}

@@ -2,7 +2,7 @@
 
 对应 [#154](https://github.com/paher-din/XunJie/issues/154)，方案与测试边界见[实施方案](specs/wp02-hybrid-deployment.md)。同机多进程与旧 WP01 证据不代替本票实际跨机验收。
 
-当前固定工程验收基点为 `29398b3`，产品修复基点为 `37122b4`，连接夹具清理修复为 `5c5a4ac`。本机原生业务、完整包 CLI 与桌面 Chrome 定向检查通过，固定基点的 Linux 完整 CI 通过；Windows 全量仍有 4 项失败。按负责人最新要求，真实跨机部署、断网恢复与 SSH fencing/接管统一纳入 [#155](https://github.com/paher-din/XunJie/issues/155) 的 Mac 工作，由 Apple Silicon Mac 客户端连接独立学校 Linux 主机执行并回填 #154；Windows 本轮不再单独等待跨机入口。上述分机项和 Mac 项均待执行，本票尚未完整验收通过。
+当前固定工程验收基点为 `29398b3`，产品修复基点为 `37122b4`，连接夹具清理修复为 `5c5a4ac`。本机原生业务、完整包 CLI 与桌面 Chrome 定向检查通过，固定基点的 Linux 完整 CI 通过；Windows 全量仍有 4 项失败。按负责人最新要求，真实跨机部署、断网恢复与 SSH fencing/接管统一纳入 [#155](https://github.com/paher-din/XunJie/issues/155) 的 Mac 工作，由 Apple Silicon Mac 客户端连接独立学校 Linux 主机执行并回填 #154；Windows 本轮不再单独等待跨机入口。2026-11-01 已在 Apple Silicon Mac 上执行该组跨机与 Mac 项，结果见文末[Apple Silicon Mac 跨机验收](#apple-silicon-mac-跨机验收)；Windows 分机项仍待执行。
 
 ## 部署绑定
 
@@ -84,3 +84,20 @@ PR #157 已补齐标题、实现及验收说明，保持 OPEN、未合并；[#15
 另行补跑旧工具组时修复了本机缺失依赖和 OpenSSL 路径；最终 Node **265/25/15**（通过/失败/跳过），Python 未到达，失败涉及 Git tar 路径优先级、Windows 链接/socket 约束与部分 CLI 超时。该长运行期间分支有并行更新，仅作诊断，不作为固定提交的整体通过证据。Linux CI、Windows 全量、定向原生、Chrome、真实跨机和教学效果分别报告。
 
 此前 WP01 学校主机为 101.201.141.133，现有受管配置可核对主机 pin，但本机凭据对部署用户 xunjie-admin 返回 Permission denied (publickey)。普通成员页面/文件权限不能替代部署权限，未修改现行共享服务。真实跨机所需的获准部署配置和测试目录由 #155 执行时核实；#155 的 24 项 #154 清单已经包含 Mac → 学校 Linux 的业务、故障和分机维护接管要求，本轮不增加重复清单、不将其勾选为通过。教学效果未评估。
+
+### Apple Silicon Mac 跨机验收
+
+2026-11-01 在 Apple Silicon Mac（macOS 27.2、Apple M5、arm64、Node 24.21.0、PG 18.6、本机安装的 Google Chrome 156.0.8078.79）连接独立学校 Ubuntu 24.04.5 x64 主机（`101.201.141.133:38195`，HTTPS）执行。工程与打包见[工程记录](evidence/wp02-hybrid-mac-engineering.json)，跨机业务见[跨机记录](evidence/wp02-hybrid-mac-crosshost.json)，备份恢复见[备份恢复记录](evidence/wp02-hybrid-mac-backup-restore.json)，接管见[接管记录](evidence/wp02-hybrid-mac-takeover.json)，重签与重绑见[重绑记录](evidence/wp02-hybrid-mac-rebind.json)，同机 Chrome 回归见[Chrome 记录](evidence/wp02-hybrid-mac-chrome.json)。
+
+- 全仓 typecheck / build 通过，9 个浏览器安全契约导出通过，文档链接 1214 个目标 0 失败；`package:product` 同时产出 darwin-arm64 与 linux-x64 full 包，两者 `resourceCatalogSha256` 均为 `9d64fbd2…`。
+- 原生混合与完整包 CLI 两项 **2/2 通过、0 跳过**（覆盖 1.1MB 大材料短选区、伪造副本/拆分代理对/CRLF 拒绝、课程固定版本、绑定降级 403）；`XUNJIE_PRODUCT_TEST_PACKAGE` 下正式 CLI 备份/隔离恢复 **1/1 通过**，其中草稿当前修订、历史修订与原回执随恢复返回。
+- 真实跨机连接与三条业务路径：连接批准 `fa771234-…`；混合（本机 owner）`0b5fae23-…`、学校共享 `fcecf53a-…`、个人 `3cf88222-…` 各**全部通过**，均含私有材料 404 与关闭重开一致。撤销学校安全组放行造成真实断网后设备拒绝读取（503）并保留浏览器原文，恢复放行后原活动与正文完好、无第二份作品。课程资格撤销后 release/作品/活动均 403，恢复资格后原作品返回且 objectId、revision 不变。
+- held 备份：学校 `db127ec3-…`（boundaryAt 06:03:42.524Z，3 个 owner、10 个工件）先关，本机 `36f28f9d-…`（06:03:46.685Z，11 个工件，receiver 记录学校 client）后关，共同关闭区间 06:03:46.685Z–06:07:12.042Z。两份分别取证，不称为分布式原子备份。
+- 独立空目标恢复生成新 installation `1016c6d0-…` 与新 client namespace `….recovery.e2260755-…`，隔离阶段公开业务 503；逐项核对恢复后的成员/绑定、5 个资源文件字节一致、活动与作品（revision 2、同一 objectId）及回执与 held 边界完全相同。
+- 失败场景：真实安装上移除 learning-data owner 的存储凭据后运行库拒绝启动（`Storage operation failed: forbidden`）、无法取得完整备份且数据保留，放回凭据后复验 200；把 held 备份的一名工件改坏后恢复以 `invalid-recovery` 拒绝、目标 0 条目，原备份 11 个工件摘要全部完好。
+- 远端接管：缺 receiver 报 `missing-receiver`、接收方 SSH 不可达报 `receiver-unavailable`，两次均保持 isolated；源退休后 `maintenance-resume` 与 `start` 均报 `source-retired`，旧端口读取写入 503。正式接管返回 `phase=active`，学校经完整包 `fence-source` 对 `dd66e818…`、`fdf0a85f…`、`42431de5…` 全部 fence；fence 后旧 grant `c9b84a0e…` 在学校返回 403，旧 connectionId 在新安装返回 403。
+- 接管后按 WP01 机制重签：学校重新 `authorize`（新 grant `8bf9ea1e-…`，`learning.authority`）、目标 `set-credential` 写回原 `credentialRef`（`saved:true`，未重复 connect 同一 connectionId）、学校页重新批准新成员连接 `00797b17-…`、管理员 `learning-binding` 成功；新安装在正式编辑器读回课程与材料并在「重新开始活动」后写入成功（revision 4）。旧浏览器队列未重放。
+- 同机 Chrome 回归以 `XUNJIE_E2E_BROWSER_CHANNEL=chrome` 运行 `hybridDeployment` 与 `worksEditor`：**18/18 通过、0 失败**（部署 3 条 + 编辑器 15 项），浏览器为安装版 Chrome 156.0.8078.79、有头执行。
+- macOS 中文输入与界面状态：组合输入「你好世界」经浏览器输入法组合协议落盘、粘贴内容保留换行、Meta 到文首/文末后继续输入仍落在边界、编辑区失焦再聚焦可继续输入、浅/深色下同一作品渲染一致，最终正文精确为 `开始你好世界\n粘贴中文\n结束`。见[输入与主题记录](evidence/wp02-hybrid-mac-ime.json)及[浅色](evidence/wp02-hybrid-mac-ime-light.png)、[深色](evidence/wp02-hybrid-mac-ime-dark.png)截图。本轮未能取得 OS 物理键盘级证据：本会话未开通自动化授权（Apple 拼音选择返回 -50、Doubao 拼音选择后立即回退、osascript 等待授权挂起），改用 CDP 组合协议，属浏览器侧真实组合路径而非物理键盘，如实标注。
+- 全量 `npm test` **通过（exit 0）**：checks **28/0/0**、product-runtime **122/0/2**、storage **14/0/0**、server **643/0/16**、Web **688**（58 文件）、tools Node **304/0/1**，另 Python **34** 通过（通过/失败/跳过）。19 项跳过仍为跳过：真模型/真 HDL/真 C1 SSH 外部提供方门禁、Windows 专属路径、node-local 合成检查，不作为真实模型或跨机证明。
+- 验收结束已撤销安全组临时放行的 38195 两条规则（客户端真实出口 `101.94.133.245/32`、学校回环 `101.201.141.133/32`），核对 ingress 恢复原有 3 条（8443、22、ICMP），外部 HTTPS 38195 已不可达；学校 `/home/xunjie-admin/xj154`（385M，含产品包、root、备份、密钥、输入）已删除，学校守护进程与测试 PG 已停止，本机两侧运行库已停止。
