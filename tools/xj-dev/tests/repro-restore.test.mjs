@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { prepareWorkspaceOutputs, removeWorkspaceDependencies, reuseWorkspaceDependencies } from './workspace-dependencies.mjs';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, parse, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
@@ -45,13 +46,14 @@ import cp from 'node:child_process';
 import fs from 'node:fs';
 import {resolve,join} from 'node:path';
 import {syncBuiltinESMExports} from 'node:module';
+import {reuseWorkspaceDependencies} from ${JSON.stringify(pathToFileURL(join(import.meta.dirname, 'workspace-dependencies.mjs')).href)};
 const originalSpawn=cp.spawnSync, originalAsyncSpawn=cp.spawn, originalWrite=fs.writeFileSync;
 cp.spawn=function(command,args,options){
   if(process.env.XJ_REVIEW_INSTALL_FROM && args[1]==='ci' && args[0].endsWith('npm-cli.js')){
     const app='workspace';
     fs.appendFileSync(process.env.XJ_REVIEW_INSTALL_TRACE,app+'\\n');
-    fs.symlinkSync(join(process.env.XJ_REVIEW_INSTALL_FROM,'node_modules'),join(options.cwd,'node_modules'),process.platform==='win32'?'junction':'dir');
-    return originalAsyncSpawn.call(this,command,['-e',''],options);
+    reuseWorkspaceDependencies(process.env.XJ_REVIEW_INSTALL_FROM,options.cwd);
+    return originalAsyncSpawn.call(this,command,[join(options.cwd,'scripts/build.mjs'),'learning-space'],options);
   }
   return originalAsyncSpawn.call(this,command,args,options);
 };
@@ -83,7 +85,10 @@ syncBuiltinESMExports();
 `);
 });
 after(() => {
-  for (const target of targets) if (existsSync(target)) git(worktree, ['worktree', 'remove', '--force', target]);
+  for (const target of targets) if (existsSync(target)) {
+    removeWorkspaceDependencies(target);
+    git(worktree, ['worktree', 'remove', '--force', target]);
+  }
   rmSync(root, { recursive: true, force: true, maxRetries: 3 });
 });
 
@@ -108,7 +113,7 @@ function launch(home, target, controls = {}) {
 }
 function coldCheckout(receiver, localStartup = false) {
   mkdirSync(receiver); git(receiver, ['init', '-q']);
-  for (const path of [...codePaths, 'apps/server', ...(localStartup ? ['apps/web'] : []), 'packages/contracts', 'scripts', 'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
+  for (const path of [...codePaths, 'apps/server', ...(localStartup ? ['apps/web'] : []), 'packages', 'scripts', 'tools/xj-dev/src', 'tools/xj-dev/xj-dev.mjs']) {
     mkdirSync(dirname(join(receiver, path)), { recursive: true });
     cpSync(join(worktree, path), join(receiver, path), { recursive: true,
       filter: source => !['node_modules', 'dist', 'coverage', 'evidence'].includes(basename(source)) });
@@ -127,7 +132,8 @@ test('a real captured scene restores from a cold checkout only after explicit de
   assert.equal(existsSync(join(receiver, 'node_modules')), false);
   // Reuse the test host's installed native dependency to model the explicit
   // preparation boundary. Restore itself must never install or start services.
-  symlinkSync(join(worktree, 'node_modules'), join(receiver, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  reuseWorkspaceDependencies(worktree, receiver);
+  await prepareWorkspaceOutputs(receiver);
   const prepared = await launchCli(home, args, {}, receiver).result;
   assert.equal(prepared.status, 0, JSON.stringify(prepared.envelope.failure));
   assert.equal(prepared.envelope.verification.restored, true);

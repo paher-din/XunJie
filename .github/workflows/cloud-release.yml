@@ -4,21 +4,34 @@
 name: cloud-release
 
 on:
-  push:
-    branches: [main]
+  workflow_call:
+    inputs:
+      build-artifact:
+        description: Verified build artifact from this workflow run
+        type: string
+        required: true
   workflow_dispatch:
-
-concurrency:
-  # Only the newest commit on each ref needs a build. Cancellation leaves at
-  # most an immutable tag/draft; the Release becomes visible only after upload.
-  group: cloud-release-${{ github.ref }}
-  cancel-in-progress: true
+    inputs:
+      publish:
+        description: Publish the assembled runtime (false only assembles and uploads evidence)
+        type: boolean
+        default: true
 
 permissions:
   contents: write
 
 jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/verify.yml
+    permissions:
+      contents: read
   publish-runtime-artifact:
+    needs: verify
+    if: >-
+      always() && !cancelled() &&
+      ((github.event_name == 'workflow_dispatch' && needs.verify.result == 'success') ||
+       (github.event_name == 'push' && inputs.build-artifact != ''))
     concurrency:
       group: cloud-artifact-${{ github.sha }}
       cancel-in-progress: false
@@ -31,20 +44,11 @@ jobs:
           node-version: 24.21.0
           cache: npm
           cache-dependency-path: package-lock.json
-      - name: Install the workspace toolchain
-        run: npm ci --include=dev --no-audit --no-fund
-      - name: Check the workspace
-        run: |
-          npm run verify
-      - name: Save verification logs
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: verification-${{ github.job }}
-          path: .verification/
-          include-hidden-files: true
-          if-no-files-found: ignore
-          retention-days: 7
+          name: ${{ inputs.build-artifact || needs.verify.outputs.build-artifact }}
+          path: ${{ runner.temp }}/build/
+      - run: node scripts/ci-build-artifact.mjs restore "$RUNNER_TEMP/build"
       - name: Install only production runtime dependencies
         run: node tools/i0-cloud/prepare-production-runtime.mjs . "$RUNNER_TEMP/production"
       - name: Assemble the verifiable runtime artifact
@@ -59,7 +63,14 @@ jobs:
             --expected-node-version v24.21.0 \
             | tee "$RUNNER_TEMP/artifact-summary.json"
           test "$(node -e 'process.stdout.write(require(process.env.RUNNER_TEMP + "/artifact-summary.json").status)')" = built
+      - name: Save assembled runtime evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/artifact/
+          retention-days: 7
       - name: Publish an immutable artifact and its bound release
+        if: github.event_name != 'workflow_dispatch' || inputs.publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: cloud-${{ github.sha }}
@@ -145,6 +156,7 @@ jobs:
             --notes-file "$RUNNER_TEMP/release-notes.md"
           gh release edit "$TAG" --draft=false
       - name: Prune superseded artifact releases
+        if: github.event_name != 'workflow_dispatch' || inputs.publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

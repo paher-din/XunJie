@@ -10,9 +10,9 @@
     "./maintenance": { "types": "./dist/maintenance.d.ts", "import": "./dist/maintenance.js" }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "pretest": "npm run build",
+    "build": "node ../../scripts/build.mjs product-runtime --",
+    "typecheck": "node ../../scripts/build.mjs product-runtime:typecheck",
+    "pretest": "node ../../scripts/build.mjs product-runtime:test",
     "test": "node ../../scripts/test.mjs product-runtime"
   },
   "dependencies": { "@xunjie/contracts": "0.1.0", "@xunjie/storage": "0.1.0", "@xunjie/learning-space": "0.1.0", "pg": "8.16.3" },

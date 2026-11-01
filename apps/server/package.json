@@ -9,9 +9,9 @@
   },
   "scripts": {
     "preinstall": "node tools/check-runtime.mjs",
-    "typecheck": "node tools/check-runtime.mjs && tsc --noEmit",
-    "build": "node tools/check-runtime.mjs && node ../../scripts/build-server.mjs",
-    "pretest": "npm run build",
+    "typecheck": "node ../../scripts/build.mjs server:typecheck",
+    "build": "node ../../scripts/build.mjs server --",
+    "pretest": "node ../../scripts/build.mjs server:test",
     "test": "node tools/check-runtime.mjs && node ../../scripts/test.mjs server",
     "test:external": "node ../../scripts/test.mjs server --external",
     "start": "node tools/check-runtime.mjs && node dist/server/main.js"

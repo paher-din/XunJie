@@ -22,3 +22,6 @@ dist-runtime/
 
 # Python
 __pycache__/
+
+# Local content-addressed build preparation
+/.cache/xunjie-build/

@@ -6,8 +6,8 @@
   "files": ["dist"],
   "bin": { "xunjie": "dist/cli.js" },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "node ../../scripts/build.mjs local-runtime --",
+    "typecheck": "node ../../scripts/build.mjs local-runtime:typecheck",
     "package": "node ../../scripts/package-product.mjs"
   },
   "dependencies": { "@xunjie/product-runtime": "0.1.0" },

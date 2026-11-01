@@ -1,0 +1,110 @@
+name: workspace-verification
+
+on:
+  workflow_call:
+    outputs:
+      build-artifact:
+        description: Build outputs verified by every test group in this run
+        value: ${{ jobs.prepare.outputs.build-artifact }}
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      build-artifact: build-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --include=dev --no-audit --no-fund
+      - run: npm run verify -- --group prepare
+      - run: node scripts/ci-build-artifact.mjs pack "$RUNNER_TEMP/build"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/build/
+          retention-days: 7
+      - name: Save verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-prepare-${{ github.run_attempt }}
+          path: .verification/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+  tests:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { group: unit, shard: '1/1' }
+          - { group: server, shard: '1/4' }
+          - { group: server, shard: '2/4' }
+          - { group: server, shard: '3/4' }
+          - { group: server, shard: '4/4' }
+          - { group: tools, shard: '1/4' }
+          - { group: tools, shard: '2/4' }
+          - { group: tools, shard: '3/4' }
+          - { group: tools, shard: '4/4' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --include=dev --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.build-artifact }}
+          path: ${{ runner.temp }}/build/
+      - run: node scripts/ci-build-artifact.mjs restore "$RUNNER_TEMP/build"
+      - name: Run the test group
+        env:
+          TEST_GROUP: ${{ matrix.group }}
+          TEST_SHARD: ${{ matrix.shard }}
+        run: |
+          args=(--group "$TEST_GROUP")
+          if test "$TEST_GROUP" != unit; then args+=(--shard "$TEST_SHARD"); fi
+          npm run verify -- "${args[@]}"
+      - name: Check legacy HDL node ledger
+        if: matrix.group == 'unit'
+        run: |
+          sudo install -d -m 0700 -o "$(id -un)" -g "$(id -gn)" /run/xunjie-dlc
+          node --test apps/server/runner/alu-node.runtime.test.ts
+      - name: Name the log artifact
+        if: always()
+        env:
+          TEST_GROUP: ${{ matrix.group }}
+          TEST_SHARD: ${{ matrix.shard }}
+        run: echo "LOG_ARTIFACT=verification-$TEST_GROUP-${TEST_SHARD//\//-}-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - name: Save verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.LOG_ARTIFACT }}
+          path: .verification/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+  verified:
+    if: always()
+    needs: [prepare, tests]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every verification job to succeed
+        env:
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          TEST_RESULT: ${{ needs.tests.result }}
+        run: test "$PREPARE_RESULT" = success && test "$TEST_RESULT" = success
