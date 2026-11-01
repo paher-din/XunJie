@@ -1,0 +1,93 @@
+{
+  "measuredAt": "2026-11-01T07:15:32.237Z",
+  "node": "v24.21.0",
+  "postgres": "18.6",
+  "platform": "win32",
+  "arch": "x64",
+  "osRelease": "10.0.26200",
+  "browser": "installed Chrome",
+  "browserVersion": "156.0.8078.76",
+  "headless": false,
+  "cases": [
+    {
+      "name": "quota refusal sends nothing and an unsent cancellation survives a new workspace instance",
+      "status": "passed",
+      "durationMs": 3475
+    },
+    {
+      "name": "one workspace call durably captures A while later edits B continue and reload keeps the same action",
+      "status": "passed",
+      "durationMs": 2470
+    },
+    {
+      "name": "production composer shows pending facts and late acceptance keeps the newer question",
+      "status": "passed",
+      "durationMs": 4203
+    },
+    {
+      "name": "rejected contents recover as an independent draft and merge only after an explicit choice",
+      "status": "passed",
+      "durationMs": 1402
+    },
+    {
+      "name": "a local input receiver gets durable fixed typed inputs without waiting for any remote dependency",
+      "status": "passed",
+      "durationMs": 961
+    },
+    {
+      "name": "a new client namespace preserves the old queue and only explicit verified reconnection resumes its original identity",
+      "status": "passed",
+      "durationMs": 2460
+    },
+    {
+      "name": "reconnecting an unsent cancellation never revives a preparation whose reply was lost",
+      "status": "passed",
+      "durationMs": 2380
+    },
+    {
+      "name": "cancellation retains a trusted acceptance from another browser with independent local storage",
+      "status": "passed",
+      "durationMs": 2262
+    },
+    {
+      "name": "explicit cancellation of server history from an independent browser reaches the original owner",
+      "status": "passed",
+      "durationMs": 3270
+    },
+    {
+      "name": "expired school membership blocks dispatch and original reauthorization resumes without another create",
+      "status": "passed",
+      "durationMs": 3180
+    },
+    {
+      "name": "known school access denial blocks a local receiver until original authorization returns",
+      "status": "passed",
+      "durationMs": 5925
+    },
+    {
+      "name": "two actual tabs cannot revive a cancellation committed before their resumed dispatch",
+      "status": "passed",
+      "durationMs": 2795
+    },
+    {
+      "name": "accepted but lost replies remain unknown through reopening and reconcile without changing identity or the new draft",
+      "status": "passed",
+      "durationMs": 1402
+    },
+    {
+      "name": "accepted draft cleanup survives reopening when its first local write was refused",
+      "status": "passed",
+      "durationMs": 1164
+    },
+    {
+      "name": "pausing during a real IndexedDB wait prevents a new local handoff",
+      "status": "passed",
+      "durationMs": 850
+    }
+  ],
+  "receiverScope": "Public workspace API and actual IndexedDB/HTTP/PG; no real Agent, execution or teacher receiver.",
+  "productCommit": "110774f8dca267b5b64057f1710db1d56908a2f8",
+  "harnessCommit": "72475e09ba46691754d893186b6efed2837fc4fb",
+  "productionUiCases": 2,
+  "publicInterfaceSupplementCases": 13
+}

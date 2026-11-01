@@ -48,3 +48,22 @@ XUNJIE_XJ_DEV_URL=isolated-native-product XUNJIE_E2E_BROWSER_CHANNEL=chrome npm 
 原生测试使用 Node 24.21.0、真实 PostgreSQL 18.6 和文件资源；设置 `XUNJIE_PRODUCT_POSTGRES_BIN`。完整包 CLI 验证另外设置 `XUNJIE_PRODUCT_TEST_PACKAGE` 指向实际候选包。浏览器包含生产输入区/待发呈现，以及同一公开工作区接口、真实 IndexedDB 和真实业务存储的故障补充，分别记录，不重复计数。
 
 可控接收器仅位于测试支持，覆盖接受、可信查询、拒绝、取消竞争和丢回包；产品构建及正常分发不挂载它。正式产品未注册真实能力时发送明确不可用。工程、Chrome、测试接收器、Mac 与真实跨机、真实 Agent/教师/执行以及教学效果分别报告；后续业务由 WP03、WP07、WP12 接入。
+
+## Windows 验收（2026-11-01）
+
+开始于 `269d41a`，实施期间快进纳入同伴的 `c79be3b` Mac/跨机证据。固定产品提交为 `110774f8dca267b5b64057f1710db1d56908a2f8`；`72475e0` 仅更新旧迁移测试的 v3 预期和增加深色窄窗口取证，产品代码及完整包不变。[逐项工程证据](evidence/wp02-actions-windows-engineering.json)、[15 项动作 Chrome 记录](evidence/wp02-actions-windows-chrome.json)。
+
+| 范围 | 实测结果 | 限制 |
+| --- | --- | --- |
+| 真实 PG / HTTP / 所属文件资源 | 原生组合 25/25，0 失败、0 跳过；其中新增动作 6 项 | 可控接收器只证明协议；不产生真实业务结论 |
+| Windows 完整 full 产品包 | 正式包内 Node、PG、CLI 备份/独立恢复/接管 1/1；默认能力空、派发不可用；app/web 无测试接收器控制 | 未签名候选包，不声称净机安装或签名验收 |
+| 桌面 Chrome 156.0.8078.76 | 41 个不同场景通过：动作 15、草稿 8、作品 15、部署 3 | 首轮 40/41；旧迁移用例预期 v2，保留原作品断言并更新为新增 actions 的 v3 后单项通过，未冒充一次全绿运行 |
+| 新增动作页面 | 2 条生产 UI + 13 条公开接口补充，真实 IndexedDB/HTTP/PG；浅色及 420×900 深色截图目视检查 | 补充接口测试不算额外生产 UI；物理 Windows 输入法未单独评估 |
+| 类型、构建、契约、文档 | `5dd741e` 全仓类型/构建及 10 个 browser-safe 导出通过；最终 Web 类型通过；当前受版本管理的 164 份非归档 Markdown、1233 个目标通过 | 全仓 verify 在文档阶段因原有未跟踪旧文件的 252 条失效链接退出 1，测试阶段未到达；保留这些无关文件 |
+| 独立完整 `npm test` | `110774f` 退出 1：checks 27/0/1、product-runtime 118/1/5、storage 12/1/1、server 640/2/19（通过/失败/跳过）；Web 688/688 | 三项 Windows symlink EPERM、一项既有 LOCAL_SOCKET_CONFLICT；末尾 tools 未到达；跳过不算通过 |
+
+完整包 `distribution.json` SHA256：`124238608ba86da9d97061f7ce13f22649b448f0438f873e6643315d05c14323`。原始日志与候选包保留在本机 `.verification/153/`，入库 JSON 记录日志摘要，不提交数据库、私有账号或浏览器 trace。[浅色页面](evidence/wp02-actions-windows-light.png)、[深色窄窗口](evidence/wp02-actions-windows-dark-narrow.png)展示旧动作接受后仍保留后来问题和作品。
+
+Standards / Spec 两轴补审在 `110774f` 均无剩余发现。发现并以真实浏览器红绿回归修复：清理草稿先落盘后确认、IndexedDB 等待后复查暂停、旧取消接回不复活、本机交接遵守已知资格拒绝、另一浏览器迟到接受事实不被本机取消遮蔽，以及历史动作显式取消到达原 owner。旧迁移断言只随 schema 增量更新，原内容保留断言未删减。
+
+Mac、物理 macOS 输入法及 #153 的真实跨机全部归 [#155](https://github.com/paher-din/XunJie/issues/155)，已保留原 114 项完成记录并新增 18 项待验；此前 #154 的 Mac/跨机证据不替代新增动作的验收。正式 CLI 未登记 schema 升级适配仍明确拒绝。真实 Agent、教师和执行分别由 WP07、WP12、WP03 接入；教学效果未评估。交付位于 [PR #157](https://github.com/paher-din/XunJie/pull/157)，保持开放、不合并。
