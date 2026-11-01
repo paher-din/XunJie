@@ -20,7 +20,8 @@ test('a receiver connected after host startup enters the same held boundary and 
     hostA = await createProductRuntimeHost({ root: join(directory, 'source') });
     hostB = await createProductRuntimeHost({ root: join(directory, 'receiver') });
     const grant = await b.authorize({ sourceEnvironmentId: source.environmentId,
-      sourceServiceId: source.services[0].serviceId, capabilities: ['runtime.status'] });
+      sourceServiceId: source.services[0].serviceId, sourceInstallationId: source.installationId,
+      capabilities: ['runtime.status'] });
     const connection = { connectionId: randomUUID(), sourceEnvironmentId: source.environmentId,
       sourceServiceId: source.services[0].serviceId, target: receiver.services[0],
       requiredCapabilities: ['runtime.status'], optionalCapabilities: [], credentialRef: 'receiver' };

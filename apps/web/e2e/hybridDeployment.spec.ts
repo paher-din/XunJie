@@ -57,7 +57,7 @@ test.beforeAll(async ({ browser }) => {
   await api(deviceEndpoint, 'client/start', { requestId, schoolEndpoint })
   await api(schoolEndpoint, 'connections/approve', { requestId }, { cookie })
   await api(deviceEndpoint, 'client/complete', { requestId })
-  const grant = await school.authorize({ sourceEnvironmentId: target.environmentId, sourceServiceId: target.serviceId, capabilities: ['learning.authority'] })
+  const grant = await school.authorize({ sourceEnvironmentId: target.environmentId, sourceServiceId: target.serviceId, sourceInstallationId: deviceStatus.environment.installationId, capabilities: ['learning.authority'] })
   const runtimeConnectionId = randomUUID()
   await device.connect({ connectionId: runtimeConnectionId, sourceEnvironmentId: target.environmentId, sourceServiceId: target.serviceId,
     target: (await school.status()).environment.services[0]!, requiredCapabilities: ['learning.authority'], optionalCapabilities: [], credentialRef: 'school-authority' }, grant.token)

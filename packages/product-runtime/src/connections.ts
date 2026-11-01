@@ -42,6 +42,12 @@ export type CapabilityHandler = (
 ) => unknown | Promise<unknown>;
 
 export interface ConnectionAuthorization extends ConnectionSource {
+  /**
+   * Required for new grants: a credential that names no installation cannot be attributed, so
+   * fencing the retiring instance would leave it usable. `ConnectionSource` keeps the optional
+   * form for fence input and for reading grants written before this was mandatory.
+   */
+  sourceInstallationId: string;
   capabilities: readonly string[];
 }
 
@@ -182,6 +188,37 @@ export function createConnectionAuthority(options: {
   const installationGeneration = (source: ConnectionSource, installationId: string) =>
     readGeneration(installationGenerationPath(source, installationId));
 
+  /**
+   * A grant that names no installation cannot be attributed to any instance, so fencing one
+   * installation has to revoke it instead of leaving a credential that no fence can retire.
+   */
+  async function revokeUnattributedGrants(source: ConnectionSource): Promise<void> {
+    const names = await readdir(grantsRoot).catch((error: unknown) => {
+      if (errorCode(error) === 'ENOENT') return [] as string[];
+      throw new RuntimeConnectionError('grant_storage_unavailable');
+    });
+    const unattributed: string[] = [];
+    for (const name of names) {
+      if (!name.endsWith('.json')) continue;
+      let value: unknown;
+      try {
+        value = JSON.parse(await readFile(join(grantsRoot, name), 'utf8')) as unknown;
+      } catch (error) {
+        if (errorCode(error) === 'ENOENT' || error instanceof SyntaxError) continue;
+        throw new RuntimeConnectionError('grant_storage_unavailable');
+      }
+      if (!record(value) || value.sourceEnvironmentId !== source.sourceEnvironmentId
+        || value.sourceServiceId !== source.sourceServiceId) continue;
+      if (value.sourceInstallationId === undefined) unattributed.push(name);
+    }
+    for (const name of unattributed) {
+      await unlink(join(grantsRoot, name)).catch((error: unknown) => {
+        if (errorCode(error) === 'ENOENT') return;
+        throw new RuntimeConnectionError('grant_storage_unavailable');
+      });
+    }
+  }
+
   async function fenceSource(input: ConnectionSource & { timeoutMs?: number }): Promise<SourceFenceProof> {
     const source: ConnectionSource = { sourceEnvironmentId: input.sourceEnvironmentId,
       sourceServiceId: input.sourceServiceId,
@@ -198,7 +235,9 @@ export function createConnectionAuthority(options: {
       return ms;
     };
     // A fence scoped to one installation only retires that instance's grants; fencing without an
-    // installation advances the whole scope and cuts every installation off.
+    // installation advances the whole scope and cuts every installation off. Fencing one instance
+    // also has to revoke grants of the same environment and service that name no installation,
+    // because they cannot be attributed to the successor and no later fence can reach them.
     const scoped = source.sourceInstallationId;
     const path = scoped === undefined ? generationPath(source) : installationGenerationPath(source, scoped);
     try {
@@ -210,6 +249,7 @@ export function createConnectionAuthority(options: {
         next = (scoped === undefined ? await generation(source) : await installationGeneration(source, scoped)) + 1;
         if (!Number.isSafeInteger(next)) throw new RuntimeConnectionError('generation_exhausted');
         await atomicJson(path, { formatVersion: 1, generation: next });
+        if (scoped !== undefined) await revokeUnattributedGrants(source);
       } finally { await release(); }
       // Release the admission lock while draining so handlers can finish and
       // other fences can advance. No operation/daemon lock is acquired here.
@@ -238,7 +278,7 @@ export function createConnectionAuthority(options: {
   async function authorize(input: ConnectionAuthorization): Promise<ConnectionGrant> {
     input = structuredClone(input);
     if (!uuid.test(input.sourceEnvironmentId) || !uuid.test(input.sourceServiceId)
-      || (input.sourceInstallationId !== undefined && !uuid.test(input.sourceInstallationId))
+      || typeof input.sourceInstallationId !== 'string' || !uuid.test(input.sourceInstallationId)
       || !strings(input.capabilities) || input.capabilities.some((capability) => !handlers.has(capability))) {
       throw new RuntimeConnectionError('invalid_authorization');
     }
@@ -248,7 +288,7 @@ export function createConnectionAuthority(options: {
       formatVersion: 1, grantId, tokenHash: digest(token),
       sourceEnvironmentId: input.sourceEnvironmentId,
       sourceServiceId: input.sourceServiceId,
-      ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId }),
+      sourceInstallationId: input.sourceInstallationId,
       capabilities: [...new Set(input.capabilities)],
       targetEnvironmentId: service.environmentId,
       targetServiceId: service.serviceId,
@@ -258,15 +298,13 @@ export function createConnectionAuthority(options: {
     const release = await acquireLock(options.root, sourceScope(input));
     try {
       grant.generation = await generation(input);
-      if (grant.sourceInstallationId !== undefined) {
-        grant.installationGeneration = await installationGeneration(input, grant.sourceInstallationId);
-      }
+      grant.installationGeneration = await installationGeneration(input, grant.sourceInstallationId);
       await atomicJson(grantPath(grantId), grant);
     } finally { await release(); }
     return {
       grantId, token, sourceEnvironmentId: grant.sourceEnvironmentId,
       sourceServiceId: grant.sourceServiceId,
-      ...(grant.sourceInstallationId === undefined ? {} : { sourceInstallationId: grant.sourceInstallationId }),
+      sourceInstallationId: grant.sourceInstallationId,
       capabilities: [...grant.capabilities],
     };
   }

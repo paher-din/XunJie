@@ -115,9 +115,11 @@ Windows 侧待发条目由公开接口 prepare 后由生产组件渲染，而不
 
 这也与 `specs/wp01-product-runtime-and-data.md`「使接收方拒绝**旧实例**的新请求」不符：实现退化成拒绝整个 source service 身份。修复 `dd47494`：
 
-- `ConnectionSource` 增加可选 `sourceInstallationId`；`authorize` 把它写进 grant 并记录 installation 代际，与 scope 代际并存；
-- `fenceSource` 带 installation 时只提升该实例代际，不带时仍提升整个 scope（保持既有语义）；
+- `ConnectionSource` 保留可选 `sourceInstallationId`（供 fence 输入与读取旧数据），而 `ConnectionAuthorization` 将其定为必填；`authorize` 始终把安装 ID 与 installation 代际写进 grant，与 scope 代际并存，缺失或非法 UUID 抛 `invalid_authorization`；
+- `fenceSource` 带 installation 时只提升该实例代际，不带时仍提升整个 scope（保持既有语义）；按安装 fence 还会在同一 scope 锁内删除同一环境/服务下**没有**安装 ID 的旧 grant——它无法归属到任何实例，任何后续 fence 都够不到它，只能安全撤销；
 - 本地与 SSH 接收器都传被退休的 installationId，SSH 回执必须回显它；
 - 接管成功后移除刚被作废的连接，并把 `connectionId` 记入 `recovery-state.json` 的 `fencedConnections`，使目标状态反映真实情况。
+
+后续审查（PR #157 R1）发现仅提升 installation 代际仍留下漏洞：正式 `authorize` 允许不带安装 ID，这种 grant 只校验 scope 代际，于是接管使用的按安装 fence 对它无效，fence 后仍能执行写 handler。上述“必填安装 ID + 按安装 fence 撤销无归属旧 grant”即该缺陷的修复；回归见 `packages/product-runtime/test/connections-installation.test.mjs`。
 
 回归测试 `recovery-connections.test.mjs`：旧实例 `http_401`、后继实例无悬空依赖且 `ready`、后继重新授权后依赖恢复而旧实例仍被拒。`product-runtime` 全量 125 项（123 通过 / 2 跳过 / 0 失败）与全仓 `typecheck` 通过。修复后证据见[接管重跑记录](evidence/wp02-intents-mac-fencing-takeover.json)。

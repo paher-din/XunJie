@@ -117,6 +117,7 @@ xunjie delete --root /private/environment --environment-id <environmentId>
 {
   "sourceEnvironmentId": "来源环境 UUID",
   "sourceServiceId": "来源服务 UUID",
+  "sourceInstallationId": "来源安装 UUID",
   "capabilities": ["目标实际支持的能力"]
 }
 ```
@@ -125,6 +126,8 @@ xunjie delete --root /private/environment --environment-id <environmentId>
 xunjie authorize --root /private/target --file /private/authorization.json --out /private/grant.json
 xunjie revoke --root /private/target --grant-id <grantId>
 ```
+
+授权必须绑定来源安装 ID：`sourceInstallationId` 取自来源环境真实的 `installationId`（`xunjie status --root <来源root>` 的 environment），缺失或不是 UUID 时命令直接报错，不产生 grant。这样来源实例的退休/失权（fence）能精确作废该实例持有的凭据，同一环境/服务的后继安装不受影响；无法归属到某个安装的旧授权会在按安装 fence 时被一并撤销。
 
 `--out` 的父目录须已存在，文件须不存在。CLI 以私有 `0600` 模式新建并写入完整 grant（含 token），stdout 仅返回 `{ "path": "绝对路径", "grantId": "…" }`。POSIX 模式不等同于 Windows ACL，Windows 文件访问限制需在目标平台验收。写入失败会尝试撤销已产生的授权，撤销失败会明确报错。妥善保管及交接 grant 文件，不将它提交或贴进日志。
 

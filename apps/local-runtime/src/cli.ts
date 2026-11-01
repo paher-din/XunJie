@@ -455,12 +455,13 @@ async function main(): Promise<void> {
       const input = await jsonFile(required('file'), '授权');
       if (typeof input.sourceEnvironmentId !== 'string' || !input.sourceEnvironmentId
         || typeof input.sourceServiceId !== 'string' || !input.sourceServiceId
-        || (input.sourceInstallationId !== undefined
-          && (typeof input.sourceInstallationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.sourceInstallationId)))
+        || typeof input.sourceInstallationId !== 'string'
+        || !/^[0-9a-f-]{36}$/i.test(input.sourceInstallationId)
         || !Array.isArray(input.capabilities)
         || !input.capabilities.every((capability) => typeof capability === 'string' && capability.length > 0)) {
-        throw new Error('授权文件需要 sourceEnvironmentId、sourceServiceId 和 capabilities 数组');
+        throw new Error('授权文件需要绑定来源安装 ID：sourceEnvironmentId、sourceServiceId、sourceInstallationId 和 capabilities 数组');
       }
+      const sourceInstallationId = input.sourceInstallationId;
       const path = resolve(required('out'));
       // Reserve the destination before issuing a grant; never overwrite a private file.
       let destination;
@@ -475,7 +476,7 @@ async function main(): Promise<void> {
         const grant = await runtime.authorize({
           sourceEnvironmentId: input.sourceEnvironmentId,
           sourceServiceId: input.sourceServiceId,
-          ...(input.sourceInstallationId === undefined ? {} : { sourceInstallationId: input.sourceInstallationId as string }),
+          sourceInstallationId,
           capabilities: input.capabilities,
         } as Authorization);
         grantId = grant.grantId;

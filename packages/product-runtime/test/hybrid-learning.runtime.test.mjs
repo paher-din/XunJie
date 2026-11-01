@@ -41,7 +41,8 @@ test('a managed school binding stores school activity works only in its installe
     await api(schoolStatus.endpoint, 'connections/approve', { requestId }, { cookie });
     await api(deviceStatus.endpoint, 'client/complete', { requestId });
     const runtimeGrant = await school.authorize({ sourceEnvironmentId: target.environmentId,
-      sourceServiceId: target.serviceId, capabilities: ['learning.authority'] });
+      sourceServiceId: target.serviceId, sourceInstallationId: deviceStatus.environment.installationId,
+      capabilities: ['learning.authority'] });
     const runtimeConnectionId = randomUUID();
     await device.connect({ connectionId: runtimeConnectionId, sourceEnvironmentId: target.environmentId, sourceServiceId: target.serviceId,
       target: (await school.status()).environment.services[0], requiredCapabilities: ['learning.authority'],

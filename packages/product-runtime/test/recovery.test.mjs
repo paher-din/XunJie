@@ -288,7 +288,8 @@ async function takeoverFixture(t, { receiverCount = 1, handler = value => value 
     const authorityOptions = { root: join(f.directory, `receiver-${index}`), service, handlers: { echo: handler } };
     authority = createConnectionAuthority(authorityOptions);
     const source = { sourceEnvironmentId: f.environment.environmentId, sourceServiceId: f.serviceId };
-    const grant = await authority.authorize({ ...source, capabilities: ['echo'] });
+    const grant = await authority.authorize({ ...source, sourceInstallationId: f.environment.installationId,
+      capabilities: ['echo'] });
     const connection = { connectionId: randomUUID(), ...source, target: service,
       requiredCapabilities: ['echo'], optionalCapabilities: [], credentialRef: `test:${randomUUID()}` };
     const client = () => createOutboundConnection({ connection, credential: async () => grant.token,
