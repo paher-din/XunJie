@@ -1,0 +1,149 @@
+{
+  "ticket": "#153 固定依据与持久待发意图 —— Mac 客户端 + 独立学校 Linux 跨机（#155 承接）",
+  "measuredAt": "2026-11-01T08:40:55Z",
+  "commit": "ba7964594c2622252b08ffc8b4ee2698f2b10b34",
+  "topology": "macOS 27.2 完整 darwin-arm64 候选包（本机 PostgreSQL 18.6、三个 owner）经公网 HTTPS 连接独立 Ubuntu 24.04.5 学校主机；学习数据 owner 显式绑定在本机 learning-data 服务。",
+  "client": {
+    "environmentId": "63938d31-6b3a-4848-8a4d-54a27e8fac04",
+    "services": {
+      "client": "2a0b477b-98f5-4ecf-b4c2-18a36e73a048",
+      "space-course": "c098e596-5adc-41d6-996c-c61f2bfc9e77",
+      "learning-data": "3da989f2-a8ae-4810-a4b6-d9c67aef0c8a"
+    }
+  },
+  "school": {
+    "environmentId": "dd2d1e89-a7aa-4f70-93b0-e162aca14acd",
+    "clientService": "d14ac21d-98a7-47bb-bb3d-c41b9995432f",
+    "endpoint": "https://101.201.141.133:8443"
+  },
+  "connection": {
+    "connectionId": "c240e5a0-86cb-4c8b-a56a-756571b8576d",
+    "runtimeConnectionId": "6f67ae72-3def-4895-978e-feb9501caa4a",
+    "grantId": "a4afad87-1d3c-49bd-977f-b5820bc773d9",
+    "spaceKey": "school:c240e5a0-86cb-4c8b-a56a-756571b8576d",
+    "principalId": "7f81ddf2-b7dc-4118-b99f-b9f80894ffa5",
+    "spaceId": "bd9b37ba-3dfc-4cfd-a394-92e0dea17b59"
+  },
+  "fixedBasis": {
+    "activityId": "6ae97e27-75b0-4eb2-8c92-80ecb3212a60",
+    "preparedIntent": "36ab01ee-9bfe-4124-8be9-a8ced4aa0ee2",
+    "cancelledIntent": "40eac366-6500-459f-bbf9-0413233f0376",
+    "workObjectId": "09b0be34-0920-4981-a205-5f12f8eed076",
+    "workContentId": "6f887cd2-e595-4ec7-9801-727ecfa7dab1",
+    "workValue": "﻿甲\r\n乙😀\r\n",
+    "draftQuestion": "为什么是甲而不是乙？"
+  },
+  "hybridReads": {
+    "macActivities": 200,
+    "macWorks": 200,
+    "macWorkValue": "﻿甲\r\n乙😀\r\n",
+    "macDraft": "为什么是甲而不是乙？",
+    "macCapabilities": [],
+    "preparedState": "prepared",
+    "preparedFixedInput": true,
+    "cancelledState": "cancelled",
+    "schoolActivities": 403,
+    "schoolIntents": 404,
+    "schoolLogin": 200
+  },
+  "afterDisconnectAndRecovery": {
+    "macActivities": 200,
+    "macWorks": 200,
+    "macWorkValue": "﻿甲\r\n乙😀\r\n",
+    "macDraft": "为什么是甲而不是乙？",
+    "macCapabilities": [],
+    "preparedState": "prepared",
+    "preparedFixedInput": true,
+    "cancelledState": "cancelled",
+    "schoolActivities": 403,
+    "schoolIntents": 404,
+    "schoolLogin": 200
+  },
+  "capabilities": {
+    "value": [],
+    "note": "未登记业务接收器时 capabilities 为空"
+  },
+  "dispatchWithoutReceiver": {
+    "status": 503,
+    "body": {
+      "error": "unavailable"
+    }
+  },
+  "schoolDirectReads": {
+    "activities": 403,
+    "intents": 404,
+    "note": "同一成员在学校空间直读被拒（403/404），说明学习数据只在绑定 owner，未产生第二份副本、未降级转存"
+  },
+  "disconnect": {
+    "before": 200,
+    "schoolStopped": 503,
+    "afterRecovery": 200,
+    "note": "用产品 stop 真实停掉学校守护进程后混合空间读取 503 拒绝；恢复后原活动、原作品字节、原草稿问题、原意图 ID 与状态全部一致"
+  },
+  "clientHeldBackup": {
+    "backupId": "3592f0a8-7f2e-4736-a5df-0c93cbae6430",
+    "artifacts": 7,
+    "receiverIds": [
+      "dd2d1e89-a7aa-4f70-93b0-e162aca14acd/d14ac21d-98a7-47bb-bb3d-c41b9995432f"
+    ],
+    "services": [
+      {
+        "serviceId": "2a0b477b-98f5-4ecf-b4c2-18a36e73a048",
+        "schemaVersion": "1"
+      },
+      {
+        "serviceId": "c098e596-5adc-41d6-996c-c61f2bfc9e77",
+        "schemaVersion": "storage/1;owner/6"
+      },
+      {
+        "serviceId": "3da989f2-a8ae-4810-a4b6-d9c67aef0c8a",
+        "schemaVersion": "storage/1;owner/5"
+      }
+    ]
+  },
+  "restoreAndTakeover": {
+    "restorePhase": "isolated",
+    "takeoverPhase": "active",
+    "targetInstallationId": "6c3eaf05-c46a-47f4-b15c-432bf8abbe88",
+    "targetNamespace": "xunjie.v1.63938d31-6b3a-4848-8a4d-54a27e8fac04.recovery.5e98ca35-3b66-49eb-9692-b4dfac8e0227",
+    "sshFencing": "接管时经 SSH 对学校执行新包 fence-source（receiver dd2d1e89…/d14ac21d…），学校随即进入 maintenance"
+  },
+  "takeoverOutcome": {
+    "state": "failed",
+    "dependencies": [
+      {
+        "name": "PostgreSQL",
+        "state": "ready",
+        "detail": "18.6"
+      },
+      {
+        "name": "client:d14ac21d-98a7-47bb-bb3d-c41b9995432f",
+        "required": true,
+        "state": "unavailable",
+        "detail": "connection_unavailable"
+      }
+    ],
+    "verdict": "未通过：接管后目标把被 fence 的学校 client 仍当作必需依赖，运行库判定 failed，无法通过公开业务接口在该目标上重读意图事实。这是本轮发现的真实问题，不计为通过。"
+  },
+  "namespaceIsolation": {
+    "oldNamespaceRead": 403,
+    "currentNamespaceRead": 200,
+    "absentNamespaceRead": 200,
+    "note": "命名空间隔离在完整包 CLI 组（root-a/root-c）已验证；本轮目标未进入 ready，未在其上重复该断言。"
+  },
+  "passed": [
+    "学校页批准与设备完成连接（真实跨机）",
+    "learning.authority 授权、connect 与 learning-binding 成功",
+    "混合空间固定版本依据：作品字节（BOM/CRLF/emoji）、草稿问题、prepared 与 cancelled 意图",
+    "学校空间直读被拒（403/404），无第二份数据",
+    "真实断连 503、恢复后原 ID 与原状态一致",
+    "客户端 held 备份声明学校接收器并成功独立恢复到新目标（isolated）",
+    "带 SSH fencing 的 takeover 返回 phase=active，学校被真实 fence 并进入 maintenance"
+  ],
+  "failed": [
+    "接管后目标运行库 failed（依赖被 fence 的学校 client 不可用），无法在该目标重读意图事实"
+  ],
+  "limitations": [
+    "SSH fencing 后未重新签发 grant 并重绑以验证新 namespace 下的意图读取；该缺口与 failed 项同源，需产品侧明确「接管目标是否应继续依赖被 fence 的同伴」"
+  ]
+}

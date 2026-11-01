@@ -67,3 +67,22 @@ XUNJIE_XJ_DEV_URL=isolated-native-product XUNJIE_E2E_BROWSER_CHANNEL=chrome npm 
 Standards / Spec 两轴补审在 `110774f` 均无剩余发现。发现并以真实浏览器红绿回归修复：清理草稿先落盘后确认、IndexedDB 等待后复查暂停、旧取消接回不复活、本机交接遵守已知资格拒绝、另一浏览器迟到接受事实不被本机取消遮蔽，以及历史动作显式取消到达原 owner。旧迁移断言只随 schema 增量更新，原内容保留断言未删减。
 
 Mac、物理 macOS 输入法及 #153 的真实跨机全部归 [#155](https://github.com/paher-din/XunJie/issues/155)，已保留原 114 项完成记录并新增 18 项待验；此前 #154 的 Mac/跨机证据不替代新增动作的验收。正式 CLI 未登记 schema 升级适配仍明确拒绝。真实 Agent、教师和执行分别由 WP07、WP12、WP03 接入；教学效果未评估。交付位于 [PR #157](https://github.com/paher-din/XunJie/pull/157)，保持开放、不合并。
+
+## Mac 验收（2026-11-01，#155 承接）
+
+在 Apple Silicon Mac（macOS 27.2、Apple M5、arm64、Node 24.21.0、PostgreSQL 18.6、安装版 Chrome 156.0.8078.79 有头）上以 `ba79645` 为基点执行。工程与完整包见[工程/CLI 记录](evidence/wp02-intents-mac-package-cli.json)，浏览器与物理输入法见[浏览器/输入法记录](evidence/wp02-intents-mac-browser.json)，跨机与接管见[跨机记录](evidence/wp02-intents-mac-crosshost.json)。
+
+| 范围 | 实测结果 | 限制 |
+| --- | --- | --- |
+| 类型、构建、契约、文档 | `typecheck`、`build`、`check:contracts:browser`（10 个导出）、`check:docs`（165 文件 / 1240 目标 / 0 失败）全部通过 | 首次 `build` 被本机安全删除外挂拦截 `apps/server/dist`（444 文件 > 50 阈值），对该次构建放行后通过，非产品缺陷 |
+| `action-intents.runtime` | 6/6 通过、0 跳过（固定输入、丢回包原身份、取消竞争、越权、维护排空与恢复、v4→v5 迁移） | 可控接收器只证明协议，不产生真实业务结论 |
+| 回归原生组合 | 12/12 通过、0 跳过（身份入口、混合 owner、作品、CLI、排空） | — |
+| darwin-arm64 完整包 | `sha256 0a8dc6a6…`（131,411,109 字节），`resourceCatalogSha256 9d64fbd2…`；包内无测试接收器；默认 capabilities 为空、派发 503 `unavailable` | 未签名候选包 |
+| 正式 CLI 备份/恢复/接管 | 三 owner 备份 10 工件；held 备份 `ee0b3a72…` → 独立空目标恢复 `isolated`（公开业务 503 `maintenance`）→ 接管 `active`（新 installation `0060200c…`、新 namespace `…recovery.8564aa8a…`）；作品 objectId/contentId/字节（BOM/CRLF/emoji）、草稿问题、prepared 与 cancelled 意图全部一致；旧 namespace 403、当前 200；源 `start` 报 `source-retired`；`upgrade` 报 `no-schema-upgrade-registered` | 未登记 schema 适配仍按预期拒绝，不冒充已交付升级 |
+| `actionIntents.spec.ts` | 15/15 通过（2 条生产 UI + 13 条公开接口补充），真实 IndexedDB/HTTP/PG | 补充接口不算额外生产 UI |
+| 三条回归 | 26/26 通过（`questionDrafts` 8、`worksEditor` 15、`hybridDeployment` 3） | — |
+| 物理 macOS 中文输入法 | 自建注入器经 `CGEventPost(.cghidEventTap)` 输入「你的问题」与真实 Monaco：30 次 keydown 中 27 次 `keyCode=229`、4 次 `compositionstart`、27 次 `compositionupdate`；问题精确为 `开始你好世界\n结束`、作品为 `你好\n结束`；`Cmd+←/→` 后正文不变；**全程 0 次派发、0 条意图** | 不产生教学效果结论 |
+| Mac 客户端 + 独立学校 Linux | 学校页批准、`connect`、`learning-binding` 全部成功；混合空间作品字节/草稿问题/prepared 与 cancelled 意图齐全；学校空间直读 403/404（无第二份）；真实停学校后读取 503，恢复后原 ID 与原状态一致 | — |
+| 分机备份/独立恢复/SSH fencing 接管 | 客户端 held 备份 `3592f0a8…`（receiver 记录学校 `dd2d1e89…/d14ac21d…`）→ 新目标恢复 `isolated` → 带 SSH fencing 的 `takeover` 返回 `phase=active`，学校被真实 fence 并进入 `maintenance` | **未通过**：接管后目标把被 fence 的学校 client 仍当作必需依赖，运行库判定 `failed`（`client:d14ac21d… unavailable`），无法在该目标经公开业务接口重读意图事实。该项不勾选，需产品侧先明确「接管目标是否应继续依赖被 fence 的同伴」 |
+
+本轮未执行并如实标注：Windows 物理输入法、真实 WP03/WP07/WP12 业务（不宣称），以及上表中 `failed` 的接管后读取。
