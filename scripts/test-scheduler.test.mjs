@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { runVerification } from './test-scheduler.mjs';
+import { sensitiveTools, targetTasks } from './test-discovery.mjs';
+import { reuseWorkspaceDependencies } from '../tools/xj-dev/tests/workspace-dependencies.mjs';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'xunjie-scheduler-'));
@@ -75,4 +77,51 @@ test('tests rerun on a second invocation and keep separate raw logs', async t =>
   assert.equal(readFileSync(f.events, 'utf8').trim().split('\n').length, 4);
   assert.match(readFileSync(first.logFile, 'utf8'), /stdout again/);
   assert.match(readFileSync(second.logFile, 'utf8'), /stderr again/);
+});
+
+test('real lifecycle task flags share the global budget while helper-linked outputs stay isolated', async t => {
+  const f = fixture(t), source = join(f.root, 'source');
+  function workspace(root) {
+    mkdirSync(join(root, 'packages/contracts/dist'), { recursive: true });
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ workspaces: ['packages/*'] }));
+    writeFileSync(join(root, 'package-lock.json'), '{}');
+    writeFileSync(join(root, 'packages/contracts/package.json'), JSON.stringify({ name: '@xunjie/contracts' }));
+    writeFileSync(join(root, 'packages/contracts/dist/result.txt'), 'prepared');
+  }
+  workspace(source);
+  mkdirSync(join(source, 'node_modules/@xunjie'), { recursive: true });
+  symlinkSync(join(source, 'packages/contracts'), join(source, 'node_modules/@xunjie/contracts'), process.platform === 'win32' ? 'junction' : 'dir');
+  const worker = join(f.root, 'isolation.mjs');
+  writeFileSync(worker, `
+import {appendFileSync,writeFileSync,realpathSync} from 'node:fs';
+import {join} from 'node:path';
+import {setTimeout} from 'node:timers/promises';
+const [events,name,target]=process.argv.slice(2);
+appendFileSync(events,JSON.stringify({name,action:'start'})+'\\n');
+if(realpathSync(join(target,'node_modules/@xunjie/contracts'))!==realpathSync(join(target,'packages/contracts')))throw Error('shared output alias');
+writeFileSync(join(target,'node_modules/@xunjie/contracts/dist/result.txt'),name);
+await setTimeout(120);
+appendFileSync(events,JSON.stringify({name,action:'end'})+'\\n');
+`);
+  const tasks = [f.task('unit', 'unit'), f.task('server', 'server')];
+  const targets = [];
+  for (const [index, task] of targetTasks(f.root, 'tools', [...sensitiveTools].map(path => 'tools/' + path)).entries()) {
+    assert.equal(task.exclusive, false);
+    assert.equal(task.args[1], '--test-concurrency=1');
+    const target = join(f.root, 'receiver-' + index); workspace(target);
+    reuseWorkspaceDependencies(source, target);
+    assert.equal(realpathSync(join(target, 'node_modules/@xunjie/contracts')), realpathSync(join(target, 'packages/contracts')));
+    targets.push({ target, name: task.name });
+    tasks.push({ ...task, cwd: target, args: [worker, f.events, task.name, target] });
+  }
+  assert.equal(await runVerification({ root: f.root, options: { jobs: 4 }, phases: [tasks] }), 0);
+  let active = 0, peak = 0;
+  for (const event of readFileSync(f.events, 'utf8').trim().split('\n').map(JSON.parse)) {
+    active += event.action === 'start' ? 1 : -1; peak = Math.max(peak, active);
+    assert(active >= 0 && active <= 4);
+  }
+  assert.equal(peak, 4);
+  assert.equal(active, 0);
+  for (const { target, name } of targets) assert.equal(readFileSync(join(target, 'packages/contracts/dist/result.txt'), 'utf8'), name);
+  assert.equal(readFileSync(join(source, 'packages/contracts/dist/result.txt'), 'utf8'), 'prepared');
 });

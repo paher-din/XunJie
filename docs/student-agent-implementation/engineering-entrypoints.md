@@ -32,7 +32,7 @@ npm run verify
 
 构建准备共用内容缓存 `.cache/xunjie-build/`：源码、配置、依赖、工具链或相关环境变化，以及产物缺失、篡改或多出陈旧文件，都会触发重建；未提交的文件变化也计入。测试结果不缓存。`npm run build -- --force` 可强制重建。根测试会准备普通 Web 与 runtime Web 两套产物，不依赖上次构建残留。
 
-CI 的 `prepare` 分组构建并检查一次，再将绑定本次提交、Git tree、Node 与平台的产物分发到独立 Ubuntu runner。server 分为四片，tools 按恢复、生命周期、状态与证书、其余测试分为四组；全部通过后，main 的发布流程复用同一产物。纯 Markdown／文档图片变更不启动 CI，文档目录中的代码仍触发；当前没有必需检查，未来设置分支保护时不能将被路径过滤跳过的工作流设为必需检查。
+CI 的 `prepare` 分组构建并检查一次，再将绑定本次提交、Git tree、Node 与平台的产物分发到独立 Ubuntu runner。server 按 [hosted 耗时权重](../../scripts/server-test-weights.json)用稳定的 LPT 分为四片：按估计耗时降序，将每个文件分给累计权重最小的一片；同权重按路径排序，同负载选编号最小的一片。未知文件估计为 10 秒，片内及未分片的 server 队列均优先运行耗时最长的文件；权重仅影响调度，不决定测试发现范围。tools 按恢复、生命周期、状态与证书、其余测试分为四组；全部通过后，main 的发布流程复用同一产物。纯 Markdown／文档图片变更不启动 CI，文档目录中的代码仍触发；当前没有必需检查，未来设置分支保护时不能将被路径过滤跳过的工作流设为必需检查。
 
 ```sh
 npm run verify -- --group prepare
@@ -42,7 +42,7 @@ npm run verify -- --group tools --shard 1/4
 npm run verify -- --group tests --jobs 4
 ```
 
-不传分组仍运行完整门禁，`tests` 包含全部本地测试；并发预算为 1–4，共享资源用例保持串行。分片只改变调度，不改变 local/external 分类。`cloud-release` 的手动入口同样先运行完整验证；`publish=false` 只装配并上传产物证据，不创建 Release 或清理旧发布。
+不传分组仍运行完整门禁，`tests` 包含全部本地测试；构建准备完成后，unit/server/tools 交错排队，共用 1–4 个 worker。生命周期测试的恢复工作树使用独立输出，可与其他文件并行；单文件内部仍串行，未知 workspace 的 npm 测试回退仍独占 worker 池。分片只改变调度，不改变 local/external 分类。`cloud-release` 的手动入口同样先运行完整验证；`publish=false` 只装配并上传产物证据，不创建 Release 或清理旧发布。
 
 根类型检查、构建和测试按 workspace 依赖准备公共包与产物，同一输入复用已核对的构建；产品运行和存储测试仍从公开 package 消费。保留 Web 的 TypeScript 5.9 与 server 的 TypeScript 7，各 workspace 使用自己的编译器和配置。页面开发使用 `npm run dev:prep -w @xunjie/web`（合成数据）或 `npm run dev -w @xunjie/web`；构建后 `npm start -w @xunjie/server` 启动后端，真实课程仍需相应宿主配置。
 

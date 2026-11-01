@@ -230,7 +230,7 @@ test('a failed test does not discard the remaining files or groups', { timeout: 
   assert.match(f.output(), /known failure detail/);
 });
 
-test('server shard selection runs each sorted file exactly once across four invocations', { timeout: 10_000 }, async t => {
+test('server weighted shard selection runs each file exactly once across four invocations', { timeout: 10_000 }, async t => {
   const seen = [];
   for (let index = 1; index <= 4; index++) {
     const f = fixture(t, {}, ['--group', 'server', '--shard', `${index}/4`]);
@@ -247,6 +247,7 @@ for (const target of ['checks', 'contracts', 'storage', 'product-runtime', 'serv
     await f.exit;
     cpSync(entry, join(f.root, 'scripts/test.mjs'));
     cpSync(join(source, 'test-discovery.mjs'), join(f.root, 'scripts/test-discovery.mjs'));
+    cpSync(join(source, 'server-test-weights.json'), join(f.root, 'scripts/server-test-weights.json'));
     cpSync(join(source, 'test-scheduler.mjs'), join(f.root, 'scripts/test-scheduler.mjs'));
     const child = spawn(process.execPath, [join(f.root, 'scripts/test.mjs'), target], { cwd: tmpdir(),
       env: { ...process.env, EVENTS: join(f.root, 'events.jsonl') }, stdio: ['ignore', 'pipe', 'pipe'] });

@@ -1,5 +1,6 @@
 import { existsSync, globSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import serverTimings from './server-test-weights.json' with { type: 'json' };
 
 export const targetDirectories = {
   server: 'apps/server', contracts: 'packages/contracts', storage: 'packages/storage',
@@ -8,7 +9,7 @@ export const targetDirectories = {
 export const groups = ['prepare', 'unit', 'server', 'tools', 'tests'];
 export const verifyUsage = 'Usage: npm run verify [-- --group prepare|unit|server|tools|tests] [--shard i/n] [--jobs N] [--list | --help]\n'
   + 'No arguments: prepare, then all local tests. tests: unit + server + tools. Tests always run; only builds are cached.\n'
-  + 'Jobs: 1..4 (default 4). Shards: server sorted modulo n; tools has four fixed shards.\n'
+  + 'Jobs: 1..4 (default 4). Shards: server uses measured-weight LPT across n shards, longest first; tools has four fixed shards.\n'
   + 'Raw logs, durations and exit statuses: .verification/latest.json';
 export const testUsage = 'Usage: node scripts/test.mjs <server|contracts|product-runtime|storage|tools|checks> [--external] [--shard i/n] [--jobs N] [--list | --help]';
 
@@ -62,9 +63,29 @@ const toolsShards = [
 ].map(names => names.map(name => `xj-dev/tests/${name}.test.mjs`));
 export const sensitiveTools = new Set(toolsShards.flat());
 
+export function serverTestWeight(path) {
+  return serverTimings.durationMs[path.replace(/^apps\/server\//, '')] ?? serverTimings.defaultDurationMs;
+}
+
+function longestFirst(files) {
+  return [...files].sort((a, b) => serverTestWeight(b) - serverTestWeight(a) || (a < b ? -1 : a > b ? 1 : 0));
+}
+
 export function shardTests(files, target, shard) {
-  const sorted = [...files].sort();
+  const sorted = target === 'server' ? longestFirst(files) : [...files].sort();
   if (!shard) return sorted;
+  if (target === 'server') {
+    // LPT: descending weights, then lexical paths; equal loads choose the
+    // lowest shard index. Never use machine-dependent runtime measurements.
+    const bins = Array.from({ length: Math.min(shard.count, sorted.length) }, () => ({ load: 0, files: [] }));
+    for (const file of sorted) {
+      let selected = 0;
+      for (let index = 1; index < bins.length; index++) if (bins[index].load < bins[selected].load) selected = index;
+      bins[selected].files.push(file);
+      bins[selected].load += serverTestWeight(file);
+    }
+    return bins[shard.index - 1]?.files ?? [];
+  }
   if (target === 'tools') {
     if (shard.count !== 4) throw new Error('tools requires --shard i/4');
     return sorted.filter(path => {
@@ -90,12 +111,13 @@ export function discoverTests(root, target, { external = false, shard } = {}) {
 export function targetTasks(root, target, files) {
   const directory = targetDirectories[target];
   const group = ['checks', 'contracts', 'storage', 'product-runtime'].includes(target) ? 'unit' : target;
-  return files.map(file => ({
+  return (target === 'server' ? longestFirst(files) : files).map(file => ({
     name: file, group, cwd: join(root, directory),
     command: file.endsWith('.py') ? 'python3' : process.execPath,
     args: file.endsWith('.py') ? [join(root, file)] : ['--test', '--test-concurrency=1', join(root, file)],
-    // Lifecycle files can rebuild or reload shared workspace outputs.
-    exclusive: target === 'tools' && sensitiveTools.has(file.slice(directory.length + 1)),
+    // Prebuild completes before this phase. Lifecycle helpers isolate restored
+    // workspace outputs; each file still uses one sequential Node test worker.
+    exclusive: false,
   }));
 }
 
@@ -133,6 +155,19 @@ function workspaceTasks(root, workspace, options) {
     command: process.execPath, args: [npmCli(), 'test', '--workspace', workspace.directory], exclusive: true }];
 }
 
+function interleaveGroups(tasks) {
+  const queues = new Map();
+  for (const task of tasks) {
+    if (!queues.has(task.group)) queues.set(task.group, []);
+    queues.get(task.group).push(task);
+  }
+  const result = [];
+  for (let index = 0; result.length < tasks.length; index++) {
+    for (const queue of queues.values()) if (queue[index]) result.push(queue[index]);
+  }
+  return result;
+}
+
 export function verificationPlan(root, options) {
   const selected = options.group ?? 'full';
   const phases = [];
@@ -156,11 +191,9 @@ export function verificationPlan(root, options) {
       if (['full', 'tests', group].includes(selected)) tasks.push(...workspaceTasks(root, workspace, options));
     }
   }
-  if (tasks.length) phases.push(tasks);
   if (['full', 'tests', 'tools'].includes(selected)) {
-    // Keep shared-output lifecycle work after unit/server until helper isolation is complete.
-    const tools = targetTasks(root, 'tools', discoverTests(root, 'tools', options));
-    if (tools.length) phases.push(tools);
+    tasks.push(...targetTasks(root, 'tools', discoverTests(root, 'tools', options)));
   }
+  if (tasks.length) phases.push(interleaveGroups(tasks));
   return phases;
 }

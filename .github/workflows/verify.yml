@@ -98,13 +98,3 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
-  verified:
-    if: always()
-    needs: [prepare, tests]
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Require every verification job to succeed
-        env:
-          PREPARE_RESULT: ${{ needs.prepare.result }}
-          TEST_RESULT: ${{ needs.tests.result }}
-        run: test "$PREPARE_RESULT" = success && test "$TEST_RESULT" = success

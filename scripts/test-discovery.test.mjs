@@ -3,7 +3,7 @@ import { globSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { discoverTests, discoverTestWorkspaces, parseOptions, sensitiveTools, shardTests, targetDirectories, targetTasks, verificationPlan } from './test-discovery.mjs';
+import { discoverTests, discoverTestWorkspaces, parseOptions, sensitiveTools, serverTestWeight, shardTests, targetDirectories, targetTasks, verificationPlan } from './test-discovery.mjs';
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'xunjie-discovery-'));
@@ -26,12 +26,30 @@ test('recursive discovery preserves the entire legacy local/external partition',
   assert.deepEqual(discoverTests(root, 'tools'), ['tools/local.test.mjs']);
 });
 
-test('server sorted modulo shards are stable, disjoint and exhaustive with new files', () => {
+test('server weighted LPT shards are stable, disjoint and exhaustive with equal unknown weights', () => {
   const files = Array.from({ length: 29 }, (_, i) => `nested/${String(i).padStart(2, '0')}.test.ts`).reverse();
   const shards = Array.from({ length: 4 }, (_, i) => shardTests(files, 'server', { index: i + 1, count: 4 }));
   assert.deepEqual(shards.flat().sort(), files.sort());
   assert.equal(new Set(shards.flat()).size, files.length);
   assert.deepEqual(shards[0], files.filter((_, index) => index % 4 === 0));
+});
+
+test('server measured heavy files lead separate LPT shards; unknown files have a conservative estimate', () => {
+  const heavy = ['tests/review.test.ts', 'tests/access.test.ts', 'tests/design-activities.test.ts', 'tests/dl-a-app.test.ts'];
+  const files = [...heavy, 'runner/alu-check.test.ts', 'new/unknown.test.ts'];
+  const shards = Array.from({ length: 4 }, (_, i) => shardTests(files, 'server', { index: i + 1, count: 4 }));
+  assert.deepEqual(shards.map(shard => shard[0]), heavy);
+  assert.deepEqual(shards.flat().sort(), [...files].sort());
+  for (let i = 0; i < 4; i++) assert.deepEqual(shards[i], shardTests([...files].reverse(), 'server', { index: i + 1, count: 4 }));
+  assert.equal(serverTestWeight('new/unknown.test.ts'), 10000);
+  assert.equal(serverTestWeight('apps/server/tests/review.test.ts'), serverTestWeight('tests/review.test.ts'));
+  assert.deepEqual(shardTests(files, 'server'), [...heavy, 'new/unknown.test.ts', 'runner/alu-check.test.ts']);
+  assert.deepEqual(shards[2], [heavy[2], 'runner/alu-check.test.ts']);
+  assert.deepEqual(shards[3], [heavy[3], 'new/unknown.test.ts']);
+  assert.deepEqual(shardTests([], 'server', { index: 4, count: 4 }), []);
+  assert.deepEqual(shardTests(['a.test.ts'], 'server', { index: 4, count: 4 }), []);
+  assert.deepEqual(targetTasks('/fixture', 'server', [...files].reverse().map(file => 'apps/server/' + file)).map(task => task.name),
+    shardTests(files, 'server').map(file => 'apps/server/' + file));
 });
 
 test('tools shards keep each approved lifecycle pair and automatically collect every other file', () => {
@@ -58,14 +76,14 @@ test('current checkout discovery equals the original recursive test sets, includ
     for (const external of [false, true]) {
       const expected = discovered.filter(path => legacyExternal(path) === external).map(path => directory + '/' + path);
       if (!expected.length && target !== 'contracts') assert.throws(() => discoverTests(root, target, { external }), /No .* tests discovered/);
-      else assert.deepEqual(discoverTests(root, target, { external }), expected);
+      else assert.deepEqual(discoverTests(root, target, { external }).sort(), expected);
     }
   }
 });
 
 test('test task commands use exact cwd, a single worker, and Python for external ssh policy', () => {
   const tasks = targetTasks('/fixture', 'tools', ['tools/xj-dev/tests/integration.test.mjs', 'tools/other.test.mjs', 'tools/xj-dev-access/ssh-policy.test.py']);
-  assert.deepEqual(tasks.map(task => task.exclusive), [true, false, false]);
+  assert.deepEqual(tasks.map(task => task.exclusive), [false, false, false]);
   assert(tasks.every(task => task.cwd === join('/fixture', 'tools')));
   assert.deepEqual(tasks[0].args.slice(0, 2), ['--test', '--test-concurrency=1']);
   assert.equal(tasks[2].command, 'python3');
@@ -79,7 +97,7 @@ test('CLI defaults and compatibility include external, list, jobs and shards wit
   assert.throws(() => parseOptions(['tools', '--shard', '1/3'], 'test'), /Usage/);
 });
 
-test('prepare has no test tasks; full plan preserves independent unit/server work and a conservative tools barrier', t => {
+test('prepare precedes one interleaved unit/server/tools phase with a single build prerequisite', t => {
   const { root, write } = fixture(t);
   write('package.json', JSON.stringify({ workspaces: ['apps/*', 'packages/*'] }));
   for (const path of ['apps/server', 'packages/contracts', 'packages/storage', 'packages/product-runtime']) {
@@ -92,8 +110,9 @@ test('prepare has no test tasks; full plan preserves independent unit/server wor
   assert.deepEqual(prepare.flat().map(task => task.name), ['typecheck', 'build', 'check:contracts:browser', 'check:docs']);
   const plan = verificationPlan(root, parseOptions(['--group', 'tests']));
   assert.deepEqual(plan[0].map(task => task.args), [['scripts/build.mjs', 'test']]);
-  assert.deepEqual([...new Set(plan[1].map(task => task.group))], ['unit', 'server']);
-  assert(plan[2].every(task => task.group === 'tools'));
+  assert.equal(plan.length, 2);
+  assert.deepEqual(plan[1].slice(0, 3).map(task => task.group), ['unit', 'server', 'tools']);
+  assert.deepEqual([...new Set(plan[1].map(task => task.group))], ['unit', 'server', 'tools']);
   assert.equal(plan.flat().filter(task => task.name === 'build:test').length, 1);
 });
 
