@@ -8,9 +8,9 @@
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "pretest": "npm run build",
+    "build": "node ../../scripts/build.mjs storage --",
+    "typecheck": "node ../../scripts/build.mjs storage:typecheck",
+    "pretest": "node ../../scripts/build.mjs storage:test",
     "test": "node ../../scripts/test.mjs storage"
   },
   "dependencies": { "@xunjie/contracts": "0.1.0", "pg": "8.16.3" },

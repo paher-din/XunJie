@@ -68,8 +68,60 @@ export function git(cwd, args, options = {}) {
       GIT_AUTHOR_NAME: 'XunJie Repro', GIT_AUTHOR_EMAIL: 'repro@invalid', GIT_COMMITTER_NAME: 'XunJie Repro', GIT_COMMITTER_EMAIL: 'repro@invalid',
       GIT_AUTHOR_DATE: '2000-01-01T00:00:00Z', GIT_COMMITTER_DATE: '2000-01-01T00:00:00Z' },
   });
-  if (result.status !== 0) throw reproError('GIT_FAILED', `Git 操作失败（${args[0]}）。请检查工作树和包内代码资源。`);
+  if (result.error || result.signal || result.status !== 0) throw reproError('GIT_FAILED', `Git 操作失败（${args[0]}）。请检查工作树和包内代码资源。`);
   return result.stdout;
+}
+
+// Sizes come from ls-tree, so batching never makes previously accepted individual
+// blobs fail merely because their combined output exceeds git()'s default buffer.
+const BLOB_BATCH_BYTES = 128 * 1024 * 1024;
+function codeTree(repository, commit) {
+  return git(repository, ['ls-tree', '-rlz', '--full-tree', commit]).split('\0').filter(Boolean).map(line => {
+    const match = /^(\d{6}) (\S+) ([0-9a-f]{40}|[0-9a-f]{64}) +([0-9]+|-)\t([\s\S]+)$/.exec(line);
+    if (!match) throw reproError('GIT_FAILED', 'Git 源码树响应无效。');
+    const [, mode, type, oid, size, path] = match;
+    if (size !== '-' && !Number.isSafeInteger(Number(size))) throw reproError('GIT_FAILED', 'Git 源码大小无效。');
+    return { mode, type, oid, size: size === '-' ? undefined : Number(size), path };
+  });
+}
+
+// Parse by byte offsets: binary bodies may contain NULs, newlines or fake headers.
+export function* decodeBlobBatch(output, records) {
+  const invalid = () => { throw reproError('GIT_FAILED', 'Git blob 批量响应边界、对象或大小无效。'); };
+  if (!Buffer.isBuffer(output)) invalid();
+  let cursor = 0;
+  for (const row of records) {
+    const end = output.indexOf(10, cursor);
+    if (end < cursor || end - cursor > 100) invalid();
+    const header = output.subarray(cursor, end);
+    const match = /^([0-9a-f]{40}|[0-9a-f]{64}) blob (0|[1-9][0-9]*)$/.exec(header.toString('ascii'));
+    if (!match || !header.equals(Buffer.from(match[0], 'ascii')) || match[1] !== row.oid) invalid();
+    const size = Number(match[2]), start = end + 1;
+    if (!Number.isSafeInteger(size) || size !== row.size || size > output.length - start - 1 || output[start + size] !== 10) invalid();
+    cursor = start + size + 1;
+    yield output.subarray(start, start + size);
+  }
+  if (cursor !== output.length) invalid();
+}
+
+function* readCodeBlobs(repository, records) {
+  for (let start = 0; start < records.length;) {
+    let end = start, bytes = 0;
+    do {
+      const row = records[end];
+      if (!Number.isSafeInteger(row.size) || row.size < 0) throw reproError('GIT_FAILED', 'Git blob 大小无效。');
+      const length = row.size + row.oid.length + 32;
+      if (end > start && bytes + length > BLOB_BATCH_BYTES) break;
+      bytes += length; end++;
+    } while (end < records.length && bytes < BLOB_BATCH_BYTES);
+    const batch = records.slice(start, end);
+    const output = git(repository, ['cat-file', '--batch'], {
+      input: batch.map(row => row.oid + '\n').join(''), encoding: null,
+      maxBuffer: Math.max(BLOB_BATCH_BYTES, bytes),
+    });
+    yield* decodeBlobBatch(output, batch);
+    start = end;
+  }
 }
 
 export function validateCodePaths(paths) {
@@ -111,22 +163,17 @@ export function collectCode(worktree, scratch, spec = {}) {
     if (excludedPath(path) || path.startsWith('-')) throw reproError('EXCLUDED_SOURCE', '选中源码位于禁止共享的目录。');
   }
   const sourceCommit = git(worktree, ['rev-parse', '--verify', 'HEAD']).trim();
-  const tree = git(worktree, ['ls-tree', '-rz', '--full-tree', sourceCommit], { encoding: null });
-  const records = tree.toString().split('\0').filter(Boolean).map(line => {
-    const tab = line.indexOf('\t'), [mode, type, oid] = line.slice(0, tab).split(' ');
-    return { mode, type, oid, path: line.slice(tab + 1) };
-  }).filter(row => inScope(row.path, roots) && !excludedPath(row.path));
+  const records = codeTree(worktree, sourceCommit).filter(row => inScope(row.path, roots) && !excludedPath(row.path));
   const files = new Map(), modes = new Map();
-  const output = git(worktree, ['cat-file', '--batch'], { input: records.map(row => row.oid + '\n').join(''), encoding: null });
-  let cursor = 0;
   for (const row of records) {
     if (!['100644', '100755'].includes(row.mode) || row.type !== 'blob') throw reproError('UNSAFE_PATH', '可分发源码不支持符号链接或子模块。');
     safeEntry(row.path);
-    const end = output.indexOf(10, cursor), size = Number(output.subarray(cursor, end).toString().split(' ')[2]);
-    const bytes = output.subarray(end + 1, end + 1 + size);
+  }
+  let index = 0;
+  for (const bytes of readCodeBlobs(worktree, records)) {
+    const row = records[index++];
     assertShareable(bytes, `提交源码 ${row.path}`);
     files.set(row.path, Buffer.from(bytes)); modes.set(row.path, row.mode);
-    cursor = end + 1 + size + 1;
   }
   const changes = [];
   for (const path of selected) {
@@ -170,17 +217,19 @@ export function restoreCode(repository, bundle, metadata, scratch, target, condi
   git(quarantine, ['fetch', '--no-tags', bundle, 'refs/heads/repro-snapshot:refs/heads/repro-snapshot']);
   const commit = git(quarantine, ['rev-parse', 'refs/heads/repro-snapshot']).trim();
   if (commit !== metadata.exportedCommit) throw reproError('CODE_DIGEST_MISMATCH', 'bundle 提交与清单不符。');
-  const records = git(quarantine, ['ls-tree', '-rz', commit]).split('\0').filter(Boolean);
+  const records = codeTree(quarantine, commit);
   const expected = new Map(metadata.files.map(item => [safeEntry(item.path), item]));
   validateCodePaths(metadata.files.map(item => item.path));
-  validateCodePaths(records.map(row => row.slice(row.indexOf('\t') + 1)));
+  validateCodePaths(records.map(row => row.path));
   if (records.length !== expected.size) throw reproError('CODE_DIGEST_MISMATCH', 'bundle 文件数与清单不符。');
   const files = new Map();
-  for (const row of records) {
-    const tab = row.indexOf('\t'), [mode, type, oid] = row.slice(0, tab).split(' '), path = safeEntry(row.slice(tab + 1));
+  for (const { mode, type, path } of records) {
     const item = expected.get(path);
     if (!item || excludedPath(path) || !['100644', '100755'].includes(mode) || type !== 'blob' || item.mode !== mode) throw reproError('UNSAFE_PATH', 'bundle 含非清单源码或特殊文件。');
-    const bytes = git(quarantine, ['cat-file', 'blob', oid], { encoding: null });
+  }
+  let index = 0;
+  for (const bytes of readCodeBlobs(quarantine, records)) {
+    const { path } = records[index++], item = expected.get(path);
     if (digest(bytes) !== item.digest || bytes.length !== item.bytes) throw reproError('CODE_DIGEST_MISMATCH', 'bundle 源码摘要不符。');
     assertShareable(bytes, '包内源码'); files.set(path, bytes);
   }
