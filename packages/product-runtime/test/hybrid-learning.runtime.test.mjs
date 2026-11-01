@@ -159,14 +159,21 @@ test('a managed school binding stores school activity works only in its installe
       const connection = { connectionId: randomUUID(), sourceEnvironmentId: target.environmentId, sourceServiceId: target.serviceId,
         target: schoolStatus.environment.services[0], requiredCapabilities: ['learning.authority'], optionalCapabilities: [], credentialRef: 'old-source' };
       await assert.rejects(createOutboundConnection({ connection, credential: async () => runtimeGrant.token, allowInsecureLoopback: true }).request('learning.authority', {}), /http_401/);
-      const renewed = await school.authorize({ sourceEnvironmentId: target.environmentId, sourceServiceId: target.serviceId, capabilities: ['learning.authority'] });
-      await targetRuntime.setCredential('hybrid-school-runtime', renewed.token);
+      const renewed = await school.authorize({ sourceEnvironmentId: target.environmentId, sourceServiceId: target.serviceId,
+        sourceInstallationId: isolated.environment.installationId, capabilities: ['learning.authority'] });
+      // The grants of the retired installation are void, so the takeover drops the runtime connection
+      // that carried them. The successor re-authorizes for its own installation and registers the
+      // connection again; readiness must not keep a dependency that can never recover.
+      const restoredRuntimeConnectionId = randomUUID();
+      await targetRuntime.connect({ connectionId: restoredRuntimeConnectionId, sourceEnvironmentId: target.environmentId,
+        sourceServiceId: target.serviceId, target: schoolStatus.environment.services[0],
+        requiredCapabilities: ['learning.authority'], optionalCapabilities: [], credentialRef: 'hybrid-school-runtime' }, renewed.token);
       const reconnect = randomUUID();
       await api(isolated.endpoint, 'client/start', { requestId: reconnect, schoolEndpoint: schoolStatus.endpoint });
       await api(schoolStatus.endpoint, 'connections/approve', { requestId: reconnect }, { cookie });
       await api(isolated.endpoint, 'client/complete', { requestId: reconnect });
       const restoredAdmin = { authorization: 'Bearer ' + await resolveCredential(restoredRoot, 'control') };
-      await api(isolated.endpoint, 'manage/local-binding', { connectionId: reconnect, runtimeConnectionId, target }, restoredAdmin);
+      await api(isolated.endpoint, 'manage/local-binding', { connectionId: reconnect, runtimeConnectionId: restoredRuntimeConnectionId, target }, restoredAdmin);
       const restoredSpace = { 'x-xj-space': 'school:' + reconnect };
       assert.deepEqual(await api(isolated.endpoint, 'activities/' + activity.activityId, undefined, restoredSpace), activity);
       assert.deepEqual(await api(isolated.endpoint, draftPath, undefined, restoredSpace), savedDraft);
