@@ -27,7 +27,11 @@ export class ActionStore {
       const request = store.get(JSON.stringify([scope, requestId]))
       let result: LocalAction, failure: unknown
       request.onsuccess = () => {
-        try { result = update(request.result); store.put(result) } catch (error) { failure = error; tx.abort() }
+        try {
+          result = update(request.result)
+          // Returning the very same record means no fact changed, so no write is issued.
+          if (result !== request.result) store.put(result)
+        } catch (error) { failure = error; tx.abort() }
       }
       tx.oncomplete = () => resolve(result)
       tx.onabort = () => reject(failure ?? tx.error ?? new Error('动作与依据尚未可靠保留。'))
