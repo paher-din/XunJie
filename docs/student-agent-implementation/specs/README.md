@@ -11,6 +11,12 @@
 
 WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#further-notes)；实施前沿以[规范母票](https://github.com/paher-din/XunJie/issues/163)的原生子议题及阻塞关系为准。
 
+## WP03 子票实施方案
+
+| 实施票 | 文档 | 文档性质 |
+| --- | --- | --- |
+| [组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171) | [实施方案与验收计划](wp03-component-preparation.md) | 待审阅方案；真实浏览器依赖、独立自检、持久准备和恢复，尚未实施 |
+
 ## WP02 子票实施方案
 
 混合部署与恢复接管见 [#154 实施方案](wp02-hybrid-deployment.md) 与[生产操作及验收记录](../wp02-hybrid-deployment.md)。真实跨机与 Mac 结果分别登记，不以同机替代。
