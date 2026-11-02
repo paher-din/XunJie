@@ -116,7 +116,11 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
   let scheduler: ReturnType<typeof setInterval> | undefined;
   let scheduled = false;
   async function authorityClosed() {
-    return gatesClosed || await exists(join(root, 'retired.json')) || await exists(join(root, 'recovery-state.json'))
+    // A maintenance boundary closes admission when the transition starts, not when every
+    // participant has finished closing. Otherwise work accepted in the 'closing' window is
+    // reported as started after the operator asked the host to stop taking new work.
+    return gatesClosed || maintenance.status().phase !== 'open'
+      || await exists(join(root, 'retired.json')) || await exists(join(root, 'recovery-state.json'))
       && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
   }
 
