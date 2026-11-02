@@ -1,0 +1,122 @@
+{
+  "productBase": "4ded6cd1a60a9f5c76df413e67842108ab73f97a",
+  "date": "2026-11-02T11:22:24.219Z",
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-chat-text-v1",
+  "maxGenerations": 4,
+  "results": [
+    {
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "finite-text",
+      "attemptId": "0ff80310-9dcb-43d7-800f-8d673c2b0c8d",
+      "state": "completed",
+      "reason": "stop",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 1,
+        "totalTokens": 15,
+        "cachedTokens": 0
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": false,
+      "upstreamStopped": "unknown",
+      "resultRef": "a6d0312f-5eaf-4b9a-832d-68baff5ad36f",
+      "textBytes": 2,
+      "textSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+      "queryKeptOriginal": true
+    },
+    {
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "client-cancel",
+      "attemptId": "fe957049-ea18-41cb-b2f5-e8067b8ceb0c",
+      "state": "cancelled",
+      "reason": "client-abort",
+      "usage": {
+        "state": "unknown"
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": true,
+      "upstreamStopped": "unknown",
+      "resultRef": "cd0267b9-e0a7-4d70-8715-c93d2b87d117",
+      "textBytes": 0,
+      "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "queryKeptOriginal": true
+    },
+    {
+      "endpoint": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "finite-text",
+      "attemptId": "64a274a7-51b7-4c16-aa97-68b53307b3ee",
+      "state": "completed",
+      "reason": "stop",
+      "usage": {
+        "state": "final",
+        "inputTokens": 40,
+        "outputTokens": 15,
+        "totalTokens": 55,
+        "cachedTokens": 0,
+        "reasoningTokens": 13
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": false,
+      "upstreamStopped": "unknown",
+      "resultRef": "b58c2ce0-190b-4167-b9c3-e42e5176f8b3",
+      "textBytes": 2,
+      "textSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+      "queryKeptOriginal": true
+    },
+    {
+      "endpoint": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "client-cancel",
+      "attemptId": "2d390797-c9a5-4937-8ed4-2c2598f0eb57",
+      "state": "cancelled",
+      "reason": "client-abort",
+      "usage": {
+        "state": "unknown"
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": true,
+      "upstreamStopped": "unknown",
+      "resultRef": "53a63b60-0846-4218-8f82-766c53769a2d",
+      "textBytes": 0,
+      "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "queryKeptOriginal": true
+    }
+  ]
+}

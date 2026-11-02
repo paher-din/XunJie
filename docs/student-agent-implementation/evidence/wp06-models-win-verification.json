@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-02T19:43:37.8298693+08:00",
+  "codeCommit": "2b4b87f2b962f38201320ed75ca1398fbd0cf389",
+  "platform": "Windows 11 x64",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "chrome": "156.0.8078.76",
+  "modelNative": {
+    "passed": 11,
+    "skipped": 0,
+    "failed": 0,
+    "codeCommit": "4216198c74ddf1ddeca80d9367754c80f25c3f78"
+  },
+  "actionIntentsNative": {
+    "passed": 6,
+    "skipped": 0,
+    "failed": 0
+  },
+  "learningCliRestore": {
+    "passed": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "preWp06BackupRestoreTakeoverRestart": "passed: source owners 3, current owners 4, empty new model owner",
+  "ordinaryWebChrome": {
+    "passed": 3,
+    "failed": 0,
+    "codeCommit": "2b4b87f2b962f38201320ed75ca1398fbd0cf389"
+  },
+  "fullProductPackageChrome": {
+    "passed": 3,
+    "failed": 0,
+    "codeCommit": "2b4b87f2b962f38201320ed75ca1398fbd0cf389"
+  },
+  "typecheck": "passed",
+  "build": "passed",
+  "fullLocalTestTasks": {
+    "passed": 127,
+    "note": "Counts are test-file tasks, not individual test cases. Three xj-dev tasks exceeded five minutes and were explicitly terminated after verifying process ownership.",
+    "failures": [
+      "packages/product-runtime/test/connections-installation.test.mjs",
+      "packages/product-runtime/test/lifecycle.test.mjs",
+      "packages/product-runtime/test/recovery-files.test.mjs",
+      "packages/storage/test/blobs.test.mjs",
+      "apps/server/server/tutoring/test/index.test.ts",
+      "apps/server/tests/account-control.test.ts",
+      "apps/server/tests/application-database.test.ts",
+      "tools/i0-cloud/backup-retained.test.mjs",
+      "tools/i0-cloud/build-runtime-artifact.test.mjs",
+      "tools/i0-cloud/capacity-run-failure.test.mjs",
+      "tools/i0-cloud/deploy-artifact.test.py",
+      "tools/xj-dev-access/package-service.test.mjs",
+      "tools/xj-dev-access/server.test.mjs",
+      "tools/xj-dev/tests/baseline-team.test.mjs",
+      "tools/xj-dev/tests/enrollment-client.test.mjs",
+      "tools/xj-dev/tests/env-removal.test.mjs",
+      "tools/xj-dev/tests/gateway-certificate-lifecycle.test.mjs",
+      "tools/xj-dev/tests/package-transfer.test.mjs",
+      "tools/xj-dev/tests/repro.test.mjs"
+    ],
+    "failed": 19
+  },
+  "mac": "not-run; #155",
+  "fullCrossHost": "later #168",
+  "physicalWindowsIme": "not-run; Chrome CDP composition was tested",
+  "teachingEffect": "not-evaluated",
+  "explicitUnsupportedRegression": {
+    "failed": 0,
+    "passed": 1,
+    "codeCommit": "2b4b87f2b962f38201320ed75ca1398fbd0cf389"
+  },
+  "productDistributionSha256": "5d10af5124982c31bbbeb8da4e51fde33c44d89d8e78750e039ba35a92b6cd46",
+  "maintainedDocs": {
+    "defaultDiscoveryFailures": 252,
+    "files": 172,
+    "failures": 0,
+    "localTargets": 1365
+  }
+}
