@@ -21,17 +21,18 @@ export function createChecks(storage: OwnedStorage, owner: {
   assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
 }) {
   const active = new Map<string, { controller: AbortController; task: Promise<void> }>();
-  const unsentClaims = new Map<string, { identity: SpaceIdentity; requestId: string; fingerprint: string }>();
+  const unsentClaims = new Map<string, { attemptId: string; identity: SpaceIdentity; requestId: string; fingerprint: string }>();
   let closed = false;
   let admissionClosed = false;
   let starting = 0;
   async function settleUnsentClaims() {
-    for (const [id, claim] of unsentClaims) {
+    for (const [requestId, claim] of unsentClaims) {
+      const id = claim.attemptId;
       const receipt = await storage.receipt(claim.requestId, claim.fingerprint);
       if (!receipt) continue;
       if (receipt.result === true) await update(claim.identity, id, body => body.state === 'dispatched' && !active.has(id)
         ? { ...body, state: 'failed', reason: 'dispatch-not-started', physicalRequestEnded: true, dispatched: false } : body);
-      unsentClaims.delete(id);
+      unsentClaims.delete(requestId);
     }
   }
   async function reconcileDispatchers() {
@@ -157,7 +158,7 @@ export function createChecks(storage: OwnedStorage, owner: {
     }); } catch (error) {
       if (!(error instanceof StorageError) || error.code !== 'commit-unknown') throw error;
       // This invocation has not started an SDK request. Confirm its own claim receipt, never replay it.
-      unsentClaims.set(attemptId, { identity, ...claim });
+      unsentClaims.set(claim.requestId, { attemptId, identity, ...claim });
       await settleUnsentClaims();
       return read(identity, attemptId);
     }
@@ -229,6 +230,8 @@ export function createChecks(storage: OwnedStorage, owner: {
         await Promise.allSettled([...active.values()].map(value => value.task));
         if (starting) await new Promise(resolve => setTimeout(resolve, 5));
       }
+      await settleUnsentClaims();
+      if (unsentClaims.size) throw new StorageError('resource-busy');
     },
     resume() { closed = false; admissionClosed = false; } };
 }
