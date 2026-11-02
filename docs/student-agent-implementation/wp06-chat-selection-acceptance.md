@@ -48,7 +48,7 @@ Chat 工具产图是“配对文本 + 紧邻用户图片”的实测装配，非
 | 完整本地 `npm test` | 一次全量运行：146 个测试文件任务中 131 通过、15 失败，准备构建另计通过。15 个失败文件均在 #164 的原失败清单中；全量闸门未通过。包括 Windows 软链/路径/socket、旧 zod 初始化及工具故障；`package-transfer` 超过 18 分钟，经核对所属进程后终止，计失败 |
 | 完整 Windows 独立候选包 | `win32-x64`、`full`、unsigned candidate；包内 Node/PG/CLI 与正式前端完成 7/7 桌面 Chrome，0 跳过。`app/cli.js` SHA256 `5836916b50dfc9560820e796419c4abdf5f8882c62868ea7c8a57a2630ced221` |
 | 学校网页与安装客户端的桌面 Chrome | 普通正式 Web 7/7，完整产品包 7/7；均 installed Chrome、headed、单 worker。覆盖来源选择/撤销、真实主体及空间隔离、Enter、720×900 深色、迟到回执不污染新视图/中文输入、确认 CAS 冲突后重试，以及原设置保存/检查/焦点/Tab/Escape/空白 key 回归 |
-| Apple Silicon Mac | 未执行；登记到 #178，不记通过 |
+| Apple Silicon Mac | 已执行，见下节 [Mac（Apple Silicon）](#macapple-silicon-2026-11-03-178)：工程、恢复、持有方、浏览器、手工与物理输入法均已留下本机证据 |
 | 教学效果 | 未评估；本次模型连接和合成工具验收不证明教学效果或完整 Agent 可用 |
 
 首轮模型原生回归与全量套件同时重建了共享前端目录，出现缺构建产物的失败；保留该失败记录，停止并行重建后隔离运行的 23 项通过。最终修复后的定向回归、构建、普通 Web 和包验收依次完成。
@@ -63,6 +63,43 @@ Windows 为 Windows 11 x64（内核 `10.0.26200`），Node 24.21.0、PostgreSQL 
 
 ![720×900 深色窄桌面](evidence/wp06-selection-dark-narrow-win.png)
 
+## Mac（Apple Silicon）（2026-11-03，#178）
+
+Mac 环境为 macOS 27.2（26B123）、arm64、Apple M5、16 GB，安装版桌面 Chrome `156.0.8078.79`，Node 24.21.0、PostgreSQL 18.6，SDK `openai@7.42.0`、native adapter `xunjie-chat-native-v2`。检出提交 `cb9c7f5`（功能与 Windows 包快照 `5b86ead`），完整 `darwin-arm64` 包为本工作树现场构建：4077 个文件 / 407 MB 的 unsigned candidate，包内 Node 24.21.0 与 PostgreSQL 18.6，`app/cli.js` SHA256 `5836916b50dfc9560820e796419c4abdf5f8882c62868ea7c8a57a2630ced221`；产品 root 全部位于仓库外，只用包内 Node/PG。私有凭据只由获准私有文件读入内存，未写入仓库、数据库或日志。
+
+| 检查 | Mac 记录 |
+| --- | --- |
+| build / typecheck / 契约 / 文档 | `npm run build`、`npm run typecheck` 均退出 0（保留既有大 chunk 与 zod 注释警告）；浏览器公共契约 11 个公开导出、0 失败；受维护文档 174 份、1390 个本地目标、0 失败 |
+| 完整本地 `npm test` | 一次全量运行：147 个测试文件任务全部通过，exit 0，约 5 分 46 秒，4 并发（`build:test` 1、`unit` 23、`server` 78、`tools` 45）。与 Windows 的 131/146 不同，本机没有出现这些失败，也不把 Windows 结果当作 Mac 结果 |
+| 原生模型五个文件 | 10 + 1 + 5 + 8 + 1 = 25/25，0 跳过；真实 PostgreSQL、真实 WP02 身份与所属资源、直接 SDK，不复制 Windows 计数 |
+| 备份 → 隔离还原 → 严格接管 | 四 owner 备份（schema `1`、`owner/6`、`owner/5`、`owner/8`）；restore 后仍 `isolated`/`maintenance`，takeover 后 `active`/`ready`。授权、连接、图片、待配对工具（`read_marker`、`produce_image`）、结果引用与 usage 7/4/11 保留；重启后按原段续接第二轮，上游共 2 次请求 |
+| `owner/3` → `owner/8` 升级 | #164 包产生 `storage/1;owner/3`，经 WP01 正式 `upgradeProductRecovery` → 隔离还原 → 严格接管至 `storage/1;owner/8`；旧凭据保留，原 completed 结果引用与 cancelled（`client-abort`、usage unknown）事实不变，新授权与选用可用。未直接改数据库，未放宽精确版本闸门 |
+| 安装客户端的学校默认/本机个人持有方 | 6/6：真实主体校验（伪造 subject 403）、稳定尝试 ID 换持有方 409 且原版本重读为同一 resultRef、工具未结清 409→结清后新段保留 boundary 与原 owner 的可移植结果、旧原件与隐藏推理不进入另一方的请求、未知结果引用 404 且不封存旧段、重启出处一致、摘要为 UTF-8 文本的 sha256 且在 `TZ`/`LANG`/`LC_ALL` 变化下不变 |
+| 安装版桌面 Chrome | 普通正式 `apps/web/dist` 7/7，完整 `darwin-arm64` 包 7/7；均 `XUNJIE_E2E_BROWSER_CHANNEL=chrome`、headed、单 worker，两条路径都设置本机 `XUNJIE_PRODUCT_POSTGRES_BIN`，包路径另设 `XUNJIE_PRODUCT_TEST_PACKAGE`，0 跳过 |
+| 手工核对与截图 | 8/8：来源/费用/能力、默认服务与授权并选用/撤销、空间切换、无模型仍能编辑活动/作品/问题草稿、迟到学校回执不污染新个人视图与新输入、确认 CAS 冲突后无需刷新可重载重试、浅深主题与 720×900 窄桌面、Enter/Tab/Escape/焦点与 Meta 操作 |
+| macOS 物理中文输入法 | 5/5：系统简体拼音 + System Events 物理按键组字并提交「中文」、Tab 焦点留在对话框内且 Escape 返回打开按钮、Meta 复制粘贴、文本域换行「你好\n世界」、切换空间后保留物理新输入（迟到回执不污染）；深色 720×900。未用 CDP composition/fill/insertText 充抵 |
+| 真实两路 Chat | DeepSeek `deepseek-flash` 完成 6 次有限生成：首轮 2 个工具且图片左半读取为 red，重启查询同一结果引用后实际下一轮 wire 保真、nonce 与工具图正确（usage 600/84/684、945/295/1240，均 final），JSON mode + 应用 schema 通过，有效与无效 native `json_schema` 均返回 400，thinking 强制具体工具返回 400。Command Code `deepseek/deepseek-v4.1-flash`：key 已过期，同机 `curl` 复核为 HTTP 401 `authentication_error`/`UNAUTHORIZED`，本轮沿用负责人对该路线的豁免，保留失败记录，**未取得该路线成功证据、不声称通过** |
+
+![选用前：学校默认与个人来源](evidence/wp06-selection-mac-before-school.png)
+
+![选用后：来源、费用与当前模型](evidence/wp06-selection-mac-after-school.png)
+
+![撤销后的原授权提示](evidence/wp06-selection-mac-school-revoked.png)
+
+![安装客户端 720×900 深色窄桌面](evidence/wp06-selection-mac-device-dark-narrow.png)
+
+![迟到学校回执时的个人空间输入](evidence/wp06-selection-mac-device-late-receipt.png)
+
+物理输入法组字与切换空间后的保留（候选窗由系统输入法绘制，不在页面截图内，组字串、提交结果与切换后的输入可见）：
+
+![物理输入法组字](evidence/wp06-selection-mac-ime-compose.png)
+
+![切换空间后保留物理新输入](evidence/wp06-selection-mac-ime-space-switch.png)
+
+![输入法场景的深色窄桌面](evidence/wp06-selection-mac-ime-dark-narrow.png)
+
+工程、浏览器、包摘要、恢复/升级、持有方、手工与输入法逐项结果见 [Mac 验证 JSON](evidence/wp06-selection-chat-mac-verification.json)，两路真实端点、用量与能力分类见 [Mac Chat 端点 JSON](evidence/wp06-chat-native-mac.json)。教学效果未评估；完整独立部署、真实跨机与独立持有组件恢复接管仍属 #168。
+
 ## 审查与剩余边界
 
 双轴静态审查以 `f0c211ad...5b86ead` 为固定差异，两名独立审查者分别检查仓库规范和 #165/母规范；没有把静态审查当作测试执行。
@@ -75,6 +112,6 @@ Windows 为 Windows 11 x64（内核 `10.0.26200`），Node 24.21.0、PostgreSQL 
 
 最终审查剩余 0 项。初审发现 CAS 冲突恢复及跨持有方切段/可移植结果引用不足；已修复，并以双向学校↔个人持有方、工具未结清拒绝、未知引用不封存原段、重启后出处一致等公开接口用例验证。新段仅携带获准文本和结果事实，旧原件、原持有方及出处保留。
 
-审查汇总：Standards 0，Spec 0；两轴均无剩余代码发现。Mac 的平台验收仍未执行，不包含在该静态结论内。
+审查汇总：Standards 0，Spec 0；两轴均无剩余代码发现。Mac 平台验收已按 #178 单独执行并记入上节，静态结论仍只覆盖上述固定差异。
 
 Responses/Messages 属于 #166/#167；完整独立部署、真实跨机和独立持有组件恢复接管属于 #168；本票 Windows 上两个真实产品进程的持有方切换不冒充跨主机验收。本票的具体 Mac 验收统一交接 #178；教学效果未评估。本次提交到同一 `wp06` 分支，不合并 PR、不关闭 #165。

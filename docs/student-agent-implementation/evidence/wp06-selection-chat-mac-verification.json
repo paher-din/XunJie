@@ -1,0 +1,447 @@
+{
+  "measuredAt": "2026-11-03T01:30:00+08:00",
+  "platform": "macOS 27.2 (26B123)",
+  "architecture": "arm64",
+  "hardware": "Apple M5, 16 GB",
+  "node": "24.21.0",
+  "postgres": "18.6",
+  "chrome": {
+    "platform": "darwin",
+    "os": "27.2.0",
+    "browser": "installed Chrome",
+    "browserVersion": "156.0.8078.79",
+    "headless": false,
+    "measuredAt": "2026-11-02T17:02:33.187Z",
+    "cases": [
+      {
+        "title": "school website explicitly selects and revokes a personal model and preserves learning without a model",
+        "status": "passed",
+        "duration": 1239
+      },
+      {
+        "title": "installed client exposes the device connection to the actual school subject and keeps space choices separate",
+        "status": "passed",
+        "duration": 789
+      },
+      {
+        "title": "a late school selection receipt cannot replace a new personal-space view or its form input",
+        "status": "passed",
+        "duration": 708
+      },
+      {
+        "title": "a confirmed selection conflict can be reloaded and retried without refreshing the page",
+        "status": "passed",
+        "duration": 787
+      }
+    ],
+    "ordinaryFormalWeb": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "completeProductPackage": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "note": "modelSelection.spec.ts plus personalModelSettings.spec.ts, channel=chrome, headed, single worker, XUNJIE_PRODUCT_POSTGRES_BIN set for both paths."
+  },
+  "sdk": "openai@7.42.0",
+  "nativeAdapter": "xunjie-chat-native-v2",
+  "featureSnapshot": "cb9c7f5542563dadba0f3b6e9103c62739f4750f",
+  "productPackage": {
+    "platform": "darwin-arm64",
+    "profile": "full",
+    "status": "unsigned-candidate",
+    "createdAt": "2026-11-02T16:53:14.875Z",
+    "files": 4077,
+    "size": "407M",
+    "appCliSha256": "5836916b50dfc9560820e796419c4abdf5f8882c62868ea7c8a57a2630ced221",
+    "bundledNode": "24.21.0",
+    "bundledPostgres": "18.6",
+    "note": "Built in this worktree from the same commit; private root outside the repository, only the packaged Node and PostgreSQL were used."
+  },
+  "build": "passed",
+  "typecheck": "passed",
+  "browserContracts": {
+    "publicExports": 11,
+    "failed": 0
+  },
+  "trackedDocumentLinks": {
+    "files": 174,
+    "targets": 1400,
+    "failed": 0,
+    "scope": "Tracked maintained Markdown; excludes docs/archive. 1390 targets before this section's evidence links were added"
+  },
+  "fullLocalTestFileTasks": {
+    "command": "npm test",
+    "status": "passed",
+    "exitCode": 0,
+    "nodeVersion": "v24.21.0",
+    "startedAt": "2026-11-02T16:53:42.358Z",
+    "finishedAt": "2026-11-02T16:59:28.418Z",
+    "tasks": 147,
+    "passed": 147,
+    "failed": 0,
+    "skipped": 0,
+    "stages": {
+      "build:test": {
+        "status": "passed",
+        "seconds": 8.7
+      },
+      "unit": {
+        "status": "passed",
+        "seconds": 337.4
+      },
+      "server": {
+        "status": "passed",
+        "seconds": 334.4
+      },
+      "tools": {
+        "status": "passed",
+        "seconds": 234.6
+      }
+    },
+    "note": "One full local suite run on macOS, 4 jobs. Counts are test-file tasks, not individual assertions."
+  },
+  "nativeModelFiles": [
+    {
+      "file": "apps/server/tests/model-gateway.runtime.test.mjs",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "apps/server/tests/model-claim-concurrency.runtime.test.mjs",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "apps/server/tests/model-selection.runtime.test.mjs",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "apps/server/tests/model-chat.runtime.test.mjs",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "apps/server/tests/model-client.runtime.test.mjs",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "uniqueModelScenariosCovered": 25,
+  "recoveryRetention": {
+    "status": "passed",
+    "backupServices": 4,
+    "backupSchemaVersions": [
+      "1",
+      "storage/1;owner/6",
+      "storage/1;owner/5",
+      "storage/1;owner/8"
+    ],
+    "restorePhase": "isolated",
+    "isolatedState": "maintenance",
+    "takeoverPhase": "active",
+    "targetState": "ready",
+    "retained": {
+      "grantId": "a9c01eac-177c-46bf-b234-b8745a95e7c4",
+      "resultRef": "6a2266ac-66f0-427b-9838-179b501fcd40",
+      "pendingTools": [
+        "read_marker",
+        "produce_image"
+      ],
+      "state": "completed",
+      "usage": {
+        "state": "final",
+        "inputTokens": 7,
+        "outputTokens": 4,
+        "totalTokens": 11
+      }
+    },
+    "continuation": {
+      "state": "completed",
+      "reason": "stop",
+      "text": "恢复后完成",
+      "upstreamRequests": 2,
+      "reasoningReplayed": "PRIVATE-RESTORE-甲乙",
+      "toolOrder": [
+        [
+          "tool-marker",
+          "read_marker",
+          "{\"nonce\" : \"R\"}"
+        ],
+        [
+          "tool-image",
+          "produce_image",
+          "{}"
+        ]
+      ],
+      "pairedImageIsUserMessage": true,
+      "pairedImageMatchesOriginal": true,
+      "originalImageMatches": true,
+      "usage": {
+        "state": "final",
+        "inputTokens": 21,
+        "outputTokens": 3,
+        "totalTokens": 24
+      }
+    },
+    "afterRestart": {
+      "state": "ready",
+      "grantId": "a9c01eac-177c-46bf-b234-b8745a95e7c4",
+      "resultRef": "6a2266ac-66f0-427b-9838-179b501fcd40",
+      "segmentSequence": 2,
+      "pendingTools": 0,
+      "upstreamRequests": 2
+    }
+  },
+  "schemaUpgrade": {
+    "from": "storage/1;owner/3",
+    "to": "storage/1;owner/8",
+    "status": "passed",
+    "upgradePhase": "isolated",
+    "isolatedState": "maintenance",
+    "takeoverPhase": "active",
+    "newBackupSchemaVersions": [
+      "1",
+      "storage/1;owner/6",
+      "storage/1;owner/5",
+      "storage/1;owner/8"
+    ],
+    "credentialsRetained": true,
+    "originalCancelledAttemptUnchanged": true,
+    "originalCompletedResultRetained": "847d19fd-a489-4db8-803c-6591523dce34",
+    "newGrantAndSelectionUsable": true,
+    "note": "WP01 formal recovery upgrade only; no direct database edit and no relaxed exact-version gate."
+  },
+  "installedClientOwners": {
+    "status": "passed",
+    "steps": [
+      {
+        "id": "real-subject-identity-enforced",
+        "passed": true,
+        "deniedStatus": 403,
+        "selectedKind": "school",
+        "schoolFeeSource": 6,
+        "deviceOptionPresent": true
+      },
+      {
+        "id": "stable-attempt-id-keeps-original-owner",
+        "passed": true,
+        "schoolOwner": "school",
+        "schoolFeeSource": "school:cde33383-2fb9-40a1-976e-62dea7734d27:c68e07b8-80d8-4c42-9a5d-81ed432688e9",
+        "personalOwner": "personal",
+        "personalFeeSource": "f26103b8-e864-43ea-b3d0-c538d7bdc295.dec7c4e9-a7f0-4e5f-96d3-68dac4decc7b.b26aeaa9-bcd6-44d1-8b71-93674a157813",
+        "crossOwnerStatus": 409,
+        "upstreamCredentials": [
+          "Bearer synthetic-school-owner",
+          "Bearer synthetic-device-owner"
+        ]
+      },
+      {
+        "id": "unsettled-tools-refused-then-settled-new-segment",
+        "passed": true,
+        "unsettledStatus": 409,
+        "boundarySegment": "30ca23c3-ed58-4425-8a0a-af2a41d600b6",
+        "boundaryDestination": "school",
+        "resultOwner": "cde33383-2fb9-40a1-976e-62dea7734d27",
+        "oldSegmentClosed": true
+      },
+      {
+        "id": "old-originals-and-provenance-retained",
+        "passed": true,
+        "leakedOriginals": 0,
+        "unknownReferenceStatus": 404,
+        "oldSegmentClosed": false,
+        "returnedBoundary": "d0efe568-742d-422d-ab79-73c60a9ea642"
+      },
+      {
+        "id": "restart-provenance-consistent",
+        "passed": true,
+        "provenance": {
+          "boundary": {
+            "owner": {
+              "environmentId": "f26103b8-e864-43ea-b3d0-c538d7bdc295",
+              "serviceId": "5cc648f9-4b21-45b0-9896-798f4046e9a8"
+            },
+            "segmentId": "d0efe568-742d-422d-ab79-73c60a9ea642",
+            "sequence": 1,
+            "routeId": "b8a45c5d-c55c-46b3-8963-81b9dc233d33",
+            "resultRef": "adb80204-7497-4d6e-9e76-56eeb730ee9d",
+            "destination": "local"
+          },
+          "results": [
+            {
+              "owner": {
+                "environmentId": "f26103b8-e864-43ea-b3d0-c538d7bdc295",
+                "serviceId": "5cc648f9-4b21-45b0-9896-798f4046e9a8"
+              },
+              "attemptId": "996b497e-7936-42ec-961d-ad8b9263767c",
+              "resultRef": "adb80204-7497-4d6e-9e76-56eeb730ee9d",
+              "routeId": "b8a45c5d-c55c-46b3-8963-81b9dc233d33",
+              "configurationVersion": 1,
+              "visibleTextSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+              "destination": "local"
+            }
+          ]
+        }
+      },
+      {
+        "id": "summary-independent-of-platform-and-locale",
+        "passed": true,
+        "expectedSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+        "readings": [
+          {
+            "env": {
+              "TZ": "UTC",
+              "LANG": "C",
+              "LC_ALL": "C"
+            },
+            "sha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+            "textLength": 2
+          },
+          {
+            "env": {
+              "TZ": "America/New_York",
+              "LANG": "zh_CN.UTF-8",
+              "LC_ALL": "zh_CN.UTF-8"
+            },
+            "sha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+            "textLength": 2
+          }
+        ]
+      }
+    ],
+    "note": "Packaged CLI school and device roots outside the repository; real subject headers, stable attempt ids, settlement, portable results, unknown references, restart and locale settings."
+  },
+  "manualChecks": {
+    "status": "passed",
+    "steps": [
+      {
+        "id": "school-default-and-personal-source",
+        "passed": true,
+        "text": [
+          "当前空间模型",
+          "",
+          "使用学校额度",
+          "",
+          "个人连接需为这个空间明确授权；未选模型仍可编辑活动和保留问题。",
+          "",
+          "学校默认服务",
+          "https://synthetic.invalid/v1",
+          "当前选用",
+          "",
+          "学校提供 · synthetic",
+          ""
+        ]
+      },
+      {
+        "id": "school-select-personal-with-enter",
+        "passed": true,
+        "feeSource": "personal"
+      },
+      {
+        "id": "school-dialog-keyboard-and-meta",
+        "passed": true,
+        "copied": "Meta 编辑中文",
+        "tabStayedInside": true,
+        "escapeReturnedFocus": true
+      },
+      {
+        "id": "school-revoke-selection",
+        "passed": true,
+        "alert": "原授权已撤销，请重新选用模型。"
+      },
+      {
+        "id": "school-without-model-activity-work-question",
+        "passed": true,
+        "activityTitle": "未选模型也能编辑活动",
+        "workBodyTyped": true,
+        "draftQuestion": "无模型也能保存问题草稿"
+      },
+      {
+        "id": "device-school-subject-and-personal-space",
+        "passed": true,
+        "spacesSeparated": true,
+        "personalSelected": true
+      },
+      {
+        "id": "device-late-school-receipt",
+        "passed": true,
+        "inputPreserved": true,
+        "viewClean": true
+      },
+      {
+        "id": "device-selection-cas-conflict-retry",
+        "passed": true,
+        "alert": "选用记录已变化，请重新读取后选择。",
+        "retriedWithoutReload": true
+      },
+      {
+        "id": "device-dark-narrow-keyboard",
+        "passed": true,
+        "overflow": false,
+        "focused": "撤销此空间授权"
+      }
+    ],
+    "screenshots": [
+      "evidence/wp06-selection-mac-before-school.png",
+      "evidence/wp06-selection-mac-after-school.png",
+      "evidence/wp06-selection-mac-school-revoked.png",
+      "evidence/wp06-selection-mac-device-dark-narrow.png",
+      "evidence/wp06-selection-mac-device-late-receipt.png"
+    ]
+  },
+  "physicalIme": {
+    "status": "passed",
+    "steps": [
+      {
+        "id": "physical-ime-compose-and-commit",
+        "passed": true,
+        "composingLength": 9,
+        "committed": "中文"
+      },
+      {
+        "id": "physical-ime-tab-escape-focus",
+        "passed": true,
+        "focused": "添加供应商"
+      },
+      {
+        "id": "physical-ime-meta-edit",
+        "passed": true,
+        "before": "编辑",
+        "after": "编辑编辑"
+      },
+      {
+        "id": "physical-ime-multiline-goal",
+        "passed": true,
+        "value": "你好\n世界"
+      },
+      {
+        "id": "physical-ime-space-switch-keeps-input",
+        "passed": true,
+        "before": "中文",
+        "after": "中文",
+        "viewClean": true,
+        "trigger": "授权并选用#1",
+        "cards": 2
+      }
+    ],
+    "method": "macOS system Simplified Pinyin with physical System Events key codes; no CDP composition, fill or insertText",
+    "screenshots": [
+      "evidence/wp06-selection-mac-ime-compose.png",
+      "evidence/wp06-selection-mac-ime-space-switch.png",
+      "evidence/wp06-selection-mac-ime-dark-narrow.png"
+    ]
+  },
+  "realChatEndpoints": "evidence/wp06-chat-native-mac.json",
+  "teachingOutcome": "not-evaluated",
+  "completeIndependentCrossHostDeployment": "separate #168"
+}
