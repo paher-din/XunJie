@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelAttemptSchema, modelCheckInputSchema } from '@xunjie/contracts/model-connections';
-import type { ModelAttempt, ModelCheckInput, ModelConfiguration, ModelConnection } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelCheckInput, ModelConfiguration, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
 import { checkPayload, runChat } from './chat.js';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
@@ -10,7 +10,8 @@ export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql:
     credential_ref uuid,state text NOT NULL,physical_ended boolean NOT NULL,dispatcher_id text,created_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX model_attempt_scope ON model_attempts(scope,created_at);
 ` }];
-export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; retain?(tx: OwnedTransaction): Promise<void> }
+export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; source?: ModelAttempt['source'];
+  policy?: ModelCheckPolicy; retain?(tx: OwnedTransaction): Promise<void> }
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function createChecks(storage: OwnedStorage, owner: {
@@ -102,15 +103,22 @@ export function createChecks(storage: OwnedStorage, owner: {
     const prior = await storage.receipt('model-check:' + input.attemptId, fingerprint);
     if (prior) return read(identity, input.attemptId);
     const snapshot = await owner.snapshot(identity, input.source);
-      const payload = checkPayload(snapshot.connection, input.limits.maxOutputTokens);
+      const limits = snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
+        timeoutMs: Math.min(input.limits.timeoutMs, snapshot.policy.timeoutMs) } : input.limits;
+      const payload = checkPayload(snapshot.connection, limits.maxOutputTokens);
       const request = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-request:' + input.attemptId,
         bytes: Buffer.from(JSON.stringify(payload)), mediaType: 'application/json', contentVersion: 1 });
       const body: ModelAttempt = { attemptId: input.attemptId, purpose: input.purpose, connection: snapshot.connection,
-        limits: input.limits, state: 'accepted', dispatched: false, cancelRequested: false, physicalRequestEnded: true,
+        limits, ...(snapshot.source ? { source: snapshot.source } : {}), state: 'accepted', dispatched: false, cancelRequested: false, physicalRequestEnded: true,
         upstreamStopped: 'unknown', text: '', usage: { state: 'unknown' }, reason: '', requestRef: request.resourceId, resultRef: null,
         createdAt: new Date().toISOString() };
       await storage.request({ requestId: 'model-check:' + input.attemptId, fingerprint }, async tx => {
         await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-admission:' + scope]);
+        if (snapshot.source) {
+          await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-budget:' + snapshot.source.feeSource]);
+          const { rows: [billed] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE body->'source'->>'feeSource'=$1 AND created_at > clock_timestamp()-interval '1 hour'", [snapshot.source.feeSource]);
+          if (Number(billed!.total) >= (snapshot.policy?.maxChecksPerHour ?? 6)) throw new StorageError('resource-busy');
+        }
         const { rows: [count] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE scope=$1 AND created_at > clock_timestamp()-interval '1 hour'", [scope]);
         if (Number(count!.total) >= 6) throw new StorageError('resource-busy');
         await snapshot.retain?.(tx);

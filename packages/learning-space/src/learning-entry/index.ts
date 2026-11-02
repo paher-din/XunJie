@@ -126,7 +126,10 @@ export function createLearningEntry(options: {
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
-        if (route === 'manage/course-import') {
+        if (route === 'manage/model-default') {
+          if (!options.models) throw new StorageError('unavailable');
+          result = await options.models.school.save(await spaces.schoolSpace(), await readLearningBody(request));
+        } else if (route === 'manage/course-import') {
           if (!options.courses) throw new StorageError('forbidden');
           result = await options.courses.registerRelease(await readLearningBody(request, 64 * 1024 * 1024));
         } else if (route === 'manage/course-result') {
@@ -184,7 +187,8 @@ export function createLearningEntry(options: {
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         if (!options.models) throw new StorageError('unavailable');
-        if (route === 'models/connections' && method === 'GET') result = await options.models.list(identity);
+        if (route === 'models/selection' && method === 'GET') result = await options.models.selection.read(identity);
+        else if (route === 'models/connections' && method === 'GET') result = await options.models.list(identity);
         else if (route === 'models/connections' && method === 'POST') result = await options.models.save(identity, await readLearningBody(request));
         else if (route === 'models/checks' && method === 'POST') result = await options.models.checks.receive(identity, await readLearningBody(request));
         else if (route === 'models/checks' && method === 'GET') result = await options.models.checks.list(identity);

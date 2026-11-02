@@ -24,8 +24,18 @@ export type ModelConfiguration = z.infer<typeof modelConfigurationSchema>;
 export type ModelConnection = z.infer<typeof modelConnectionSchema>;
 export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
 
+export const modelCheckPolicySchema = z.object({ checksAllowed: z.boolean(), maxChecksPerHour: z.number().int().min(1).max(60),
+  maxOutputTokens: z.number().int().min(1).max(128), timeoutMs: z.number().int().min(250).max(30000) }).strict();
+export const schoolModelInputSchema = saveModelConnectionSchema.safeExtend({ policy: modelCheckPolicySchema });
+export const schoolModelSchema = z.object({ kind: z.literal('school'), connection: modelConnectionSchema,
+  policy: modelCheckPolicySchema }).strict();
+export const modelSelectionSchema = z.object({ version: z.number().int().nonnegative(), selected: schoolModelSchema.nullable(),
+  options: z.array(schoolModelSchema) }).strict();
+export type ModelCheckPolicy = z.infer<typeof modelCheckPolicySchema>;
+
 export const modelCheckInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
   source: z.union([
+    z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative() }).strict(),
     z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
     z.object({ draft: modelConfigurationSchema, credential: modelCredentialChangeSchema,
       savedCredential: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict().optional() }).strict(),
@@ -36,6 +46,8 @@ export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'u
   totalTokens: z.number().nonnegative().optional(), cachedTokens: z.number().nonnegative().optional(),
   reasoningTokens: z.number().nonnegative().optional() }).strict();
 export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
+  source: z.object({ kind: z.enum(['school', 'personal']), ownerScope: z.string().min(1).max(500),
+    feeSource: z.string().min(1).max(500), grantId: z.uuid().optional() }).strict().optional(),
   connection: modelConnectionSchema, limits: modelCheckInputSchema.shape.limits,
   state: z.enum(['accepted', 'dispatched', 'completed', 'incomplete', 'failed', 'cancelled', 'unknown']),
   dispatched: z.boolean(), cancelRequested: z.boolean(), physicalRequestEnded: z.boolean(),
