@@ -116,7 +116,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-admission:' + scope]);
         if (snapshot.source) {
           await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-budget:' + snapshot.source.feeSource]);
-          const { rows: [billed] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE body->'source'->>'feeSource'=$1 AND created_at > clock_timestamp()-interval '1 hour'", [snapshot.source.feeSource]);
+          const { rows: [billed] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE (body->'source'->>'feeSource'=$1 OR (body->'source' IS NULL AND scope=$1)) AND created_at > clock_timestamp()-interval '1 hour'", [snapshot.source.feeSource]);
           if (Number(billed!.total) >= (snapshot.policy?.maxChecksPerHour ?? 6)) throw new StorageError('resource-busy');
         }
         const { rows: [count] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE scope=$1 AND created_at > clock_timestamp()-interval '1 hour'", [scope]);

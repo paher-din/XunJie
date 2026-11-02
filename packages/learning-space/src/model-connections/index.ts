@@ -7,6 +7,7 @@ import type { ModelConfiguration, ModelConnection, ModelCheckPolicy } from '@xun
 import { sealCredential, openCredential } from './vault.js';
 import { createChecks, checkMigrations, type CheckSnapshot } from './checks.js';
 import type { ModelCheckInput, ModelAttempt } from '@xunjie/contracts/model-connections';
+import { createModelSelections, selectionMigrations } from './selection.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -19,7 +20,7 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
   ALTER TABLE model_credentials ADD COLUMN temporary boolean NOT NULL DEFAULT false;
 ` }, { version: 4, name: 'school-model-default', sql: `
   CREATE UNIQUE INDEX model_school_default ON model_connections(scope) WHERE scope LIKE 'school:%';
-` }];
+` }, ...selectionMigrations];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
@@ -108,13 +109,14 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       return schoolModelSchema.parse({ kind: 'school', connection, policy });
     },
   };
-  const selection = {
-    async read(identity: SpaceIdentity) {
-      await options.authorize(identity);
-      const selected = await schoolDefault(identity);
-      return { version: 0, selected, options: selected ? [selected] : [] };
+  const selection = createModelSelections(storage, {
+    authorize: options.authorize, school: schoolDefault, list,
+    assertWritable() { if (writesClosed) throw new StorageError('maintenance'); },
+    async connection(scope, connectionId) {
+      const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [scope, connectionId]);
+      if (!row) throw new StorageError('missing'); return projection(row.body as StoredConnection);
     },
-  };
+  });
   async function stored(identity: SpaceIdentity, id: string) {
     const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [scopeOf(identity), id]);
     if (!row) throw new StorageError('missing');
@@ -123,16 +125,15 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
     await options.authorize(identity);
     if ('selected' in source) {
-      const chosen = await selection.read(identity);
-      if (chosen.version !== source.selectionVersion) throw new StorageError('conflict');
-      if (!chosen.selected || !chosen.selected.policy.checksAllowed) throw new StorageError('unavailable');
-      const ownerScope = schoolScope(identity.spaceId);
-      const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [ownerScope, chosen.selected.connection.connectionId]);
+      const chosen = await selection.snapshot(identity, source.selectionVersion);
+      if (!chosen.choice.policy.checksAllowed) throw new StorageError('unavailable');
+      const ownerScope = chosen.source.ownerScope;
+      const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [ownerScope, chosen.choice.connection.connectionId]);
       if (!row) throw new StorageError('unavailable');
       const stored = row.body as StoredConnection;
       if (!stored.configuration.enabled || !stored.credentialRef || projection(stored).adapterState !== 'ready') throw new StorageError('unavailable');
-      return { connection: projection(stored), credentialRef: stored.credentialRef, policy: stored.policy!,
-        source: { kind: 'school', ownerScope, feeSource: ownerScope } };
+      return { connection: projection(stored), credentialRef: stored.credentialRef, policy: stored.policy ?? chosen.choice.policy,
+        source: chosen.source };
     }
     let configuration: ModelConfiguration, credentialRef: string | null, version: number, routeId: string;
     let retain: ((tx: OwnedTransaction) => Promise<void>) | undefined;
@@ -163,7 +164,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     }
     if (!configuration.enabled || configuration.protocol !== 'chat-completions' || !credentialRef
       || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek') throw new StorageError('unavailable');
-    return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef, ...(retain ? { retain } : {}) };
+    return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef,
+      source: { kind: 'personal', ownerScope: scopeOf(identity), feeSource: scopeOf(identity) }, ...(retain ? { retain } : {}) };
   }
   const checks = createChecks(storage, {
     dispatcher: options.dispatcher,
@@ -179,6 +181,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       if (Date.now() - Date.parse(attempt.createdAt) > 60000) throw new StorageError('forbidden');
       const ownerScope = attempt.source?.ownerScope ?? scopeOf(identity);
       if (attempt.source?.kind === 'school' && (identity.kind !== 'school' || ownerScope !== schoolScope(identity.spaceId))) throw new StorageError('forbidden');
+      if (attempt.source?.kind === 'personal' && ownerScope !== scopeOf(identity) && !attempt.source.grantId) throw new StorageError('forbidden');
+      await selection.authorizeAttempt(identity, attempt.source);
       const { rows: [credential] } = await storage.read('SELECT temporary FROM model_credentials WHERE id=$1 AND scope=$2', [ref, ownerScope]);
       if (!credential) throw new StorageError('forbidden');
       if (!credential.temporary) {

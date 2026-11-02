@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { spaceIdentitySchema } from './spaces.js';
 
 /** Model owner wire. SDK objects, credentials and native reasoning never enter public projections. */
 export const modelProtocolSchema = z.enum(['chat-completions', 'responses', 'messages']);
@@ -29,8 +30,20 @@ export const modelCheckPolicySchema = z.object({ checksAllowed: z.boolean(), max
 export const schoolModelInputSchema = saveModelConnectionSchema.safeExtend({ policy: modelCheckPolicySchema });
 export const schoolModelSchema = z.object({ kind: z.literal('school'), connection: modelConnectionSchema,
   policy: modelCheckPolicySchema }).strict();
-export const modelSelectionSchema = z.object({ version: z.number().int().nonnegative(), selected: schoolModelSchema.nullable(),
-  options: z.array(schoolModelSchema) }).strict();
+export const personalModelChoiceSchema = z.object({ kind: z.literal('personal'), connection: modelConnectionSchema,
+  policy: modelCheckPolicySchema, origin: z.enum(['self', 'device', 'grant']), grantId: z.uuid().optional() }).strict();
+export const modelChoiceSchema = z.union([schoolModelSchema, personalModelChoiceSchema]);
+export const modelSelectionSchema = z.object({ version: z.number().int().nonnegative(), selected: modelChoiceSchema.nullable(),
+  options: z.array(modelChoiceSchema), unavailableReason: z.string().optional() }).strict();
+export const modelSelectionSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('school'), connectionId: z.uuid() }).strict(),
+  z.object({ kind: z.literal('personal'), connectionId: z.uuid(), grantId: z.uuid() }).strict(),
+]);
+export const selectModelSchema = z.object({ requestId: z.uuid(), expectedVersion: z.number().int().nonnegative(), source: modelSelectionSourceSchema }).strict();
+export const modelGrantInputSchema = z.object({ requestId: z.uuid(), grantId: z.uuid(), connectionId: z.uuid(), owner: z.enum(['self', 'device']) }).strict();
+export const modelGrantSchema = z.object({ grantId: z.uuid(), connectionId: z.uuid(), owner: spaceIdentitySchema,
+  recipient: spaceIdentitySchema, version: z.number().int().positive(), active: z.boolean() }).strict();
+export const revokeModelGrantSchema = z.object({ requestId: z.uuid(), expectedVersion: z.number().int().positive() }).strict();
 export type ModelCheckPolicy = z.infer<typeof modelCheckPolicySchema>;
 
 export const modelCheckInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
@@ -47,7 +60,7 @@ export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'u
   reasoningTokens: z.number().nonnegative().optional() }).strict();
 export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
   source: z.object({ kind: z.enum(['school', 'personal']), ownerScope: z.string().min(1).max(500),
-    feeSource: z.string().min(1).max(500), grantId: z.uuid().optional() }).strict().optional(),
+    feeSource: z.string().min(1).max(500), grantId: z.uuid().optional(), grantVersion: z.number().int().positive().optional() }).strict().optional(),
   connection: modelConnectionSchema, limits: modelCheckInputSchema.shape.limits,
   state: z.enum(['accepted', 'dispatched', 'completed', 'incomplete', 'failed', 'cancelled', 'unknown']),
   dispatched: z.boolean(), cancelRequested: z.boolean(), physicalRequestEnded: z.boolean(),

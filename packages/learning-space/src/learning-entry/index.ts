@@ -7,6 +7,7 @@ import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
 import type { createModelGateway } from '../model-connections/index.js';
+import { modelGrantInputSchema } from '@xunjie/contracts/model-connections';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
@@ -187,7 +188,15 @@ export function createLearningEntry(options: {
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         if (!options.models) throw new StorageError('unavailable');
-        if (route === 'models/selection' && method === 'GET') result = await options.models.selection.read(identity);
+        if (route === 'models/selection' && method === 'GET') result = await options.models.selection.read(identity,
+          environment.profile === 'local' ? await spaces.personal() : undefined);
+        else if (route === 'models/selection' && method === 'POST') result = await options.models.selection.save(identity, await readLearningBody(request));
+        else if (route === 'models/grants' && method === 'POST') {
+          const input = modelGrantInputSchema.parse(await readLearningBody(request));
+          if (input.owner === 'device' && environment.profile !== 'local') throw new StorageError('forbidden');
+          result = await options.models.selection.createGrant(identity, input.owner === 'device' ? await spaces.personal() : identity, input);
+        }
+        else if (/^models\/grants\/[^/]+\/revoke$/.test(route) && method === 'POST') result = await options.models.selection.revoke(identity, route.split('/')[2]!, await readLearningBody(request));
         else if (route === 'models/connections' && method === 'GET') result = await options.models.list(identity);
         else if (route === 'models/connections' && method === 'POST') result = await options.models.save(identity, await readLearningBody(request));
         else if (route === 'models/checks' && method === 'POST') result = await options.models.checks.receive(identity, await readLearningBody(request));

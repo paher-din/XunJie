@@ -104,3 +104,51 @@ test('school checks fix configuration and costs, enforce the shared limit, and r
     });
   } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
 });
+
+test('personal connection reuse needs explicit subject-scoped grants and revocation blocks pending dispatch without hiding history', { timeout: 180000 }, async () => {
+  const received = [];
+  const upstream = createServer(async (request, response) => {
+    const chunks = []; for await (const chunk of request) chunks.push(chunk);
+    received.push({ body: JSON.parse(Buffer.concat(chunks)), authorization: request.headers.authorization });
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta: { content: '个人路线' }, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  try {
+    await product(async ({ api, admin, member }) => {
+      const alice = await member('personal-choice-alice'), bob = await member('personal-choice-bob');
+      await api('manage/model-default', configuration(), admin);
+      const { policy: _policy, ...input } = configuration();
+      input.name = '设备本人连接'; input.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
+      input.credential.value = 'synthetic-personal-key';
+      assert.equal((await api('models/connections', input, { 'x-xj-space': 'personal' })).status, 200);
+      const choose = grantId => ({ requestId: randomUUID(), expectedVersion: 0, source: { kind: 'personal', connectionId: input.connectionId, grantId } });
+      assert.equal((await api('models/selection', choose(randomUUID()), alice.headers)).status, 403);
+      const grant = await api('models/grants', { requestId: randomUUID(), grantId: randomUUID(), connectionId: input.connectionId, owner: 'device' }, alice.headers);
+      assert.equal(grant.status, 200); assert.equal(grant.value.recipient.principalId, alice.identity.principalId);
+      assert.equal(JSON.stringify(grant.value).includes(input.credential.value), false);
+      assert.equal((await api('models/selection', choose(grant.value.grantId), bob.headers)).status, 403);
+      const selected = await api('models/selection', choose(grant.value.grantId), alice.headers);
+      assert.equal(selected.status, 200); assert.equal(selected.value.version, 1); assert.equal(selected.value.selected.kind, 'personal');
+      assert.equal((await api('models/selection', undefined, bob.headers)).value.selected.kind, 'school');
+      const check = () => ({ attemptId: randomUUID(), purpose: 'connection-check', source: { selected: true, selectionVersion: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 5000 } });
+      const first = check(); await api('models/checks', first, alice.headers);
+      await api(`models/checks/${first.attemptId}/dispatch`, {}, alice.headers);
+      for (let count = 0; count < 100; count++) {
+        if ((await api(`models/checks/${first.attemptId}`, undefined, alice.headers)).value.physicalRequestEnded) break;
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      assert.equal(received.length, 1); assert.equal(received[0].authorization, 'Bearer synthetic-personal-key');
+      const second = check(); await api('models/checks', second, alice.headers);
+      const revoked = await api(`models/grants/${grant.value.grantId}/revoke`, { requestId: randomUUID(), expectedVersion: 1 }, { 'x-xj-space': 'personal' });
+      assert.equal(revoked.status, 200);
+      assert.equal((await api(`models/checks/${second.attemptId}/dispatch`, {}, alice.headers)).status, 403);
+      assert.equal((await api('models/checks', check(), alice.headers)).status, 403);
+      assert.equal((await api(`models/checks/${first.attemptId}`, undefined, alice.headers)).value.state, 'completed');
+      assert.equal((await api(`models/checks/${first.attemptId}`, undefined, bob.headers)).status, 404);
+      const unavailable = await api('models/selection', undefined, alice.headers);
+      assert.equal(unavailable.value.selected, null); assert.equal(unavailable.value.unavailableReason, 'grant-revoked');
+      assert.equal(received.length, 1, 'revocation never switches back to school or resends the original attempt');
+    });
+  } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
