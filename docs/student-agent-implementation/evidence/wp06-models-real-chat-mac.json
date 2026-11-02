@@ -1,0 +1,164 @@
+{
+  "issue": 178,
+  "sourceIssue": 164,
+  "codeCommit": "b778e394d891d6df7dff6b763c1f070a1ea2170c",
+  "date": "2026-11-02T12:28:07.184Z",
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-chat-text-v1",
+  "maxGenerations": 4,
+  "parameters": {
+    "maxOutputTokens": 64,
+    "timeoutMs": 30000,
+    "retries": 0,
+    "stream": true,
+    "includeUsage": true
+  },
+  "credentialHandling": "Read into memory from an approved private file on the same machine. Not written to the repository, the database, application logs or the evidence below.",
+  "results": [
+    {
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "finite-text",
+      "attemptId": "174582de-4ccf-4e4b-89bc-f56d625401f5",
+      "state": "completed",
+      "reason": "stop",
+      "usage": {
+        "state": "final",
+        "inputTokens": 14,
+        "outputTokens": 1,
+        "totalTokens": 15,
+        "cachedTokens": 0
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": false,
+      "upstreamStopped": "unknown",
+      "resultRef": "a9edac4c-6780-48b4-af7b-cabad0ad757f",
+      "textBytes": 2,
+      "textSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+      "queryKeptOriginal": true
+    },
+    {
+      "endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "client-cancel",
+      "attemptId": "62a07db8-2438-4953-a7c6-5b28b19a08b8",
+      "state": "cancelled",
+      "reason": "client-abort",
+      "usage": {
+        "state": "unknown"
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": true,
+      "upstreamStopped": "unknown",
+      "resultRef": "52958dfd-777d-415a-bb37-7804fb7d9c0d",
+      "textBytes": 0,
+      "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "queryKeptOriginal": true
+    },
+    {
+      "endpoint": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "finite-text",
+      "attemptId": "52f4ed44-94d7-4390-86ea-f35e6fd3921a",
+      "state": "failed",
+      "reason": "authentication",
+      "usage": {
+        "state": "unknown"
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": false,
+      "upstreamStopped": "unknown",
+      "resultRef": "98071746-2294-4f37-85e5-2a21c7e4375f",
+      "textBytes": 0,
+      "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "queryKeptOriginal": true
+    },
+    {
+      "endpoint": "https://api.commandcode.ai/provider/v1/chat/completions",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "protocol": "chat-completions",
+      "parameters": {
+        "mode": "plain",
+        "maxOutputTokens": 64,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "operation": "client-cancel",
+      "attemptId": "c2acc9ed-c0c7-41b8-9b1b-ee9a357d62f0",
+      "state": "failed",
+      "reason": "authentication",
+      "usage": {
+        "state": "unknown"
+      },
+      "dispatched": true,
+      "physicalRequestEnded": true,
+      "cancelRequested": false,
+      "upstreamStopped": "unknown",
+      "resultRef": "73e8fb13-8b13-4b0d-84bc-4472398ab917",
+      "textBytes": 0,
+      "textSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "queryKeptOriginal": true
+    }
+  ],
+  "connections": [
+    {
+      "connectionId": "97db982b-f6be-4071-be03-88b9739d3a68",
+      "name": "Mac DeepSeek",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "modelId": "deepseek-flash",
+      "dialect": "deepseek",
+      "parameterMode": "plain",
+      "version": 1,
+      "hasCredential": true
+    },
+    {
+      "connectionId": "9f7ad8a0-f629-41ee-9a54-bf966f09cdf8",
+      "name": "Mac Command Code",
+      "baseUrl": "https://api.commandcode.ai/provider/v1",
+      "modelId": "deepseek/deepseek-v4.1-flash",
+      "dialect": "command-code",
+      "parameterMode": "plain",
+      "version": 1,
+      "hasCredential": true
+    }
+  ],
+  "outcome": {
+    "deepseek": {
+      "finiteText": "passed",
+      "clientCancel": "passed"
+    },
+    "commandCode": {
+      "finiteText": "failed",
+      "clientCancel": "failed",
+      "reason": "authentication",
+      "upstream": "HTTP 401 authentication_error UNAUTHORIZED: the approved Mac API key has expired; Command Code asks the operator to log in again or issue a new key"
+    }
+  },
+  "status": "partial",
+  "note": "Only the DeepSeek leg is evidence of real endpoint behaviour on this machine. The Command Code leg reached the configured endpoint and failed closed as authentication, so it is not counted as passed; a fresh approved key is required to re-run it.",
+  "teachingEffect": "not-evaluated"
+}

@@ -1,6 +1,6 @@
 # WP06 #164：个人模型设置与可靠连接检查交付
 
-来源 [#164](https://github.com/paher-din/XunJie/issues/164)，实施分支 `wp06`，基线 `f0979d5`，最终代码 `2b4b87f2b962f38201320ed75ca1398fbd0cf389`。实施边界见[方案](specs/wp06-personal-model-checks.md)，操作及生命周期见[模型 owner](../../packages/learning-space/src/model-connections/README.md)。[草稿 PR #177](https://github.com/paher-din/XunJie/pull/177) 不合并；Mac 待验项独立登记在 [#178](https://github.com/paher-din/XunJie/issues/178)，完整跨机/独立部署接管属于后继 [#168](https://github.com/paher-din/XunJie/issues/168)。
+来源 [#164](https://github.com/paher-din/XunJie/issues/164)，实施分支 `wp06`，基线 `f0979d5`，最终代码 `2b4b87f2b962f38201320ed75ca1398fbd0cf389`。实施边界见[方案](specs/wp06-personal-model-checks.md)，操作及生命周期见[模型 owner](../../packages/learning-space/src/model-connections/README.md)。[草稿 PR #177](https://github.com/paher-din/XunJie/pull/177) 不合并；Windows 与 Apple Silicon Mac 的验收结果均在本文，Mac 交接与逐项勾选见 [#178](https://github.com/paher-din/XunJie/issues/178)，完整跨机/独立部署接管属于后继 [#168](https://github.com/paher-din/XunJie/issues/168)。
 
 ## 本次变化
 
@@ -12,7 +12,7 @@
 
 ## 工程与恢复
 
-逐项结果见 [Windows 验证 JSON](evidence/wp06-models-win-verification.json)。本次使用 Node 24.21.0、PostgreSQL 18.6、Windows 11 x64 和安装版桌面 Google Chrome 156.0.8078.76。
+Windows 逐项结果见 [Windows 验证 JSON](evidence/wp06-models-win-verification.json)，Apple Silicon Mac 结果见 [Mac 验证 JSON](evidence/wp06-models-mac-verification.json)。Windows 使用 Node 24.21.0、PostgreSQL 18.6、Windows 11 x64 和安装版桌面 Google Chrome 156.0.8078.76；Mac 环境见下节。
 
 | 检查 | 结果与边界 |
 | --- | --- |
@@ -38,7 +38,7 @@
 - 真实 POST 已提交但 HTTP 回执延迟期间继续输入 B；A 回执保留 B，下一次保存用已确认新版本成功。
 - Tab 焦点留在表单，Escape 返回打开按钮；Chrome CDP 中文组合输入、空白 key 沿用、返回首页；浅/深主题和 720×900 窄桌面。
 
-CDP 组合输入不充抵物理系统输入法候选窗验收。本轮未另做 Windows 物理输入法验证；Apple Silicon Mac 的工程、独立产品包、桌面 Chrome、物理中文输入法及 Meta 操作仍待 #178 执行。
+CDP 组合输入不充抵物理系统输入法候选窗验收。本轮未另做 Windows 物理输入法验证；Apple Silicon Mac 的工程、独立产品包、桌面 Chrome、物理中文输入法及 Meta 操作在 #178 执行，结果见下文「Mac（Apple Silicon）」。
 
 实际正式入口改动前（没有模型设置入口）：
 
@@ -63,8 +63,56 @@ CDP 组合输入不充抵物理系统输入法候选窗验收。本轮未另做 
 
 每条都按原 attemptId 查询到同一 resultRef。脱敏事实、日期和参数见 [真实端点 JSON](evidence/wp06-models-real-chat-win.json)；不发布模型原生 reasoning。初测与交付复测合计最多 8 次外发尝试（两轮各四次），均有限额。Command Code 地址规则亦与其[官方 Provider 文档](https://commandcode.ai/docs/provider)核对。
 
+## Mac（Apple Silicon）
+
+2026-11-02 于 macOS 27.2（构建 26B123）、Apple M5 / arm64、16 GiB、安装版桌面 Google Chrome 156.0.8078.79 上，按提交 `b778e39`（功能代码 `2b4b87f`）复验。Node 24.21.0 与 PostgreSQL 18.6 与 Windows 同版本。逐项结果见 [Mac 验证 JSON](evidence/wp06-models-mac-verification.json)，真实端点见 [Mac 真实端点 JSON](evidence/wp06-models-real-chat-mac.json)。
+
+| 检查 | 结果与边界 |
+| --- | --- |
+| `npm ci` / `npm run build` / `npm run typecheck` | 通过；`npm ci` 装入 326 个包，构建保留既有大 chunk / zod 注释警告。`npm ls --all` 另报 1 处既有 hoisted `semver@7.8.5` 与构建期 `^6.3.1`/`^5.0.1` 不匹配及 93 个可选依赖未安装，本轮未改动这些依赖，不影响构建与测试结论 |
+| 浏览器公共契约检查 | 通过；11 个公开导出均判定浏览器安全 |
+| 文档 | 172 份文档、1372 个本地目标、0 失败（含本节新增的 Mac 证据链接）；与 Windows 同口径，仍未含用户原有未跟踪目录 |
+| 全量 `npm test` | **通过：147/147 个测试文件任务，exit 0**，3 分 14 秒，4 并发（`build:test` 1、`unit` 23、`server` 78、`tools` 45）。与 Windows 的 127/146 不同：本机未出现 symlink EPERM、路径/本机 socket 冲突与工具任务不退出 |
+| 模型原生测试 | 10/10，0 跳过；真实 PG、真实身份与资源、实际 SDK→合成 HTTP/SSE、真实子进程终止与 PG wire COMMIT 回执丢失，明确不支持分类在该文件的畸形/失败用例内断言 |
+| 并发 ACK 补充测试 | 1/1 |
+| 固定动作旧消费者回归 | 6/6，0 跳过 |
+| 正式 CLI 完整备份/恢复 | 1/1 |
+| `darwin-arm64` 完整产品包正式 CLI | 通过；4069 个文件 / 406 MB 的 unsigned candidate，用包内 Node 24.21.0 与 PostgreSQL 18.6，运行根在仓库外。33 步 CLI 中 31 步通过，2 步为预期拒绝（隔离目标拒绝 `maintenance-resume`、已退役源拒绝 `start`）；环境含 `client`、`space-course`、`learning-data`、`model-connection` 四个 owner |
+| 旧三 owner 备份接管 | 通过；三 owner 备份 → restore `isolated`（仍三 owner）→ takeover `active` → 正常 `stop`/`start` 后才出现空的 `model-connection`，未跳过精确版本校验 |
+| 模型配置/凭据/原检查/资源保留 | 通过；四 owner 备份服务数 4，连接与检查逐字段一致，凭据保留且不投影到浏览器，还原后原检查仍到达上游 fixture |
+| 桌面 Chrome 普通正式 Web | 3/3；`XUNJIE_PRODUCT_WEB_ROOT=<web/dist>`，headed、单 worker，使用本机 Node 24.21.0 与 `apps/web/dist` |
+| 桌面 Chrome 完整产品包 | 3/3；`XUNJIE_PRODUCT_TEST_PACKAGE=<darwin 完整包>`，由包内 Node/PG 在仓库外临时 root 启动 |
+| 手工场景 | 14/14：入口、刷新不自动检查、保存前独立快照、空白 key 沿用、CAS 冲突保留后来输入、清除与替换、认证目标变化拒绝、原检查查询与取消、能力未知 usage、上游明确不支持、协议待接入、身份边界不串读、浅/深主题 720×900、无模型仍可建活动与问题草稿 |
+| 物理中文输入法 | 通过；系统简体拼音 + System Events 物理按键，覆盖候选组字、提交「中文」、Meta 编辑、Tab 焦点留在对话框、Escape 返回打开按钮、文本域换行「你好\n世界」、深色窄屏 |
+| 真实端点 | DeepSeek 两项通过；Command Code 两项**未通过（凭据过期）** |
+
+两条 Chrome 路径各自留存 JSON 报告，均以 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` 启动且无 `--headless`（`channel=chrome`、`--workers=1`）。完整产品包首次运行时未设 `XUNJIE_PRODUCT_POSTGRES_BIN`，`test.skip` 把三项标为 skipped；补齐变量重跑后为 3/3，跳过不计为通过。
+
+Mac 正式入口与窄桌面深色：
+
+![Mac 模型设置入口](evidence/wp06-models-mac-entry.png)
+
+![Mac 窄桌面深色](evidence/wp06-models-mac-dark-narrow.png)
+
+物理输入法组字与提交（候选窗由系统输入法绘制，不在页面截图内，组字串与提交结果可见）：
+
+![物理输入法组字](evidence/wp06-models-mac-physical-ime-compose.png)
+
+![物理输入法提交中文](evidence/wp06-models-mac-physical-ime-commit.png)
+
+### Mac 真实目标端点
+
+沿用 SDK `openai@7.42.0`、adapter `xunjie-chat-text-v1`、`max_tokens=64`、30 秒、`retries=0`；凭据由获准私有文件读入内存，不入库、不入日志。同一轮共 4 次生成尝试。
+
+| 路线 | 有限文本 | 客户端取消 |
+| --- | --- | --- |
+| `https://api.deepseek.com/v1/chat/completions`，`deepseek-flash`，显式 thinking disabled | completed/stop；final usage 输入 14、输出 1、总计 15、缓存 0 | cancelled/client-abort；本机物理结束；usage 与上游停止/退款未知 |
+| `https://api.commandcode.ai/provider/v1/chat/completions`，`deepseek/deepseek-v4.1-flash`，默认文本参数 | **failed/authentication** | **failed/authentication** |
+
+Command Code 两次都在鉴权阶段关闭，页面与记录都未产生成功结果；同机以 `curl` 复核该地址返回 HTTP 401 `authentication_error`/`UNAUTHORIZED`，提示 API key 已过期、需重新登录或新建 key。因此本机没有该路线的成功证据，不计为通过；换用新的获准 key 后可原样重跑同一夹具补齐。DeepSeek 两条均按原 attemptId 查询到同一 resultRef。
+
 ## 审查与未执行项
 
 双轴审查固定基线 `f0979d5`，最终代码 `2b4b87f`：Standards 0 项剩余发现；Spec 0 项剩余发现。已修复临时凭据原子清理、迟到保存/空白 key、跨 delta 密钥脱敏、结果资源核验、维护/本机死进程槽、旧备份接管及并发 COMMIT ACK 窗口；红绿证据保留在本机 `.verification/164/`。
 
-Mac 待 #178，完整跨机部署/恢复/接管待 #168；其他协议、学校默认/跨空间个人授权、Chat 图像/工具由对应后继票扩展。本票没有实现完整学习 Run、真实 Agent/教师接收器，不产生教学效果结论。
+Mac 平台项已在 #178 验完，唯一缺项是 Command Code 真实端点（获准 key 过期，401 拒登），不计为通过。完整跨机部署/恢复/接管待 #168；其他协议、学校默认/跨空间个人授权、Chat 图像/工具由对应后继票扩展。本票没有实现完整学习 Run、真实 Agent/教师接收器，不产生教学效果结论。
