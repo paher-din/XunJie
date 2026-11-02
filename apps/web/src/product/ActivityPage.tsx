@@ -54,7 +54,7 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
     <div className="ws-body">
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">{details}</aside>}
       <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
-        beforeToolChange={() => workspace.protect()}
+        beforeToolChange={() => workspace.leave()}
         tool="design" onToolChange={() => { setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
         designBody={<ActivityWorkspace ref={workspaceRef} activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
       {references.open && <aside className="product-discussion" aria-label="问题与引用">

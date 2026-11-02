@@ -2,7 +2,7 @@ import { ReliableStateCoordinator } from './coordinator'
 import { workFilesSchema, workViewSchema } from '@xunjie/contracts/learning-data'
 import type { WorkFile, WorkView, WorkSync } from '@xunjie/contracts/learning-data'
 import { WorkStore, LocalCompetition, sameFiles, pendingFor, initialRecord } from './store'
-import type { WorkRecord, WorkConflict } from './store'
+import type { WorkRecord, WorkConflict, WorkOperation, WorkOperationReceipt } from './store'
 import { ReliableActions } from './actions'
 import type { ActionTransport } from './actions'
 import type { ReliableQuestionDraft } from './draft'
@@ -17,11 +17,65 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   private editEpoch = 0
   private sending = false
   private store = new WorkStore()
+  private operations = new Map<string, WorkOperation>()
+  private inputs = new Set<Promise<unknown>>()
   private listeners = new Set<() => void>()
   state: WorkspaceState = { files: [], ready: false, error: '', conflictReady: false, editorEpoch: 0 }
   constructor(readonly key: string, private transport: WorkTransport) { super(); this.record = initialRecord(key, { revision: 0, files: [] }) }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   snapshot = () => this.state
+  trackInput<T>(input: Promise<T>): Promise<T> {
+    this.inputs.add(input)
+    const settled = () => { this.inputs.delete(input) }
+    void input.then(settled, settled)
+    return input
+  }
+  protected unprotectedInput() { return super.unprotectedInput() || this.inputs.size > 0 }
+  async leave(): Promise<void> {
+    while (this.inputs.size) await Promise.all([...this.inputs])
+    await super.leave()
+  }
+  /** Local confirmations belong to this workspace, atomically committed with the protected files. */
+  async applyOperation(operation: WorkOperation, apply: () => void, retainUnknown: () => void): Promise<WorkOperationReceipt> {
+    if (!navigator.locks) { retainUnknown(); throw new Error('capability-unavailable') }
+    return navigator.locks.request(`xunjie-work-operation:${this.key}:${operation.scope}:${operation.operationId}`, async () => {
+      let previous: WorkOperationReceipt | undefined
+      try { previous = await this.store.operation(this.key, operation.scope, operation.operationId) }
+      catch { retainUnknown(); throw new Error('outcome-unknown') }
+      if (previous) {
+        if (previous.inputDigest !== operation.inputDigest) throw new Error('conflict')
+        return previous
+      }
+      const key = operation.scope + ':' + operation.operationId
+      const pending = this.operations.get(key)
+      if (pending) {
+        if (pending.inputDigest !== operation.inputDigest) throw new Error('conflict')
+        await super.leave()
+        const receipt = await this.store.operation(this.key, operation.scope, operation.operationId)
+        if (!receipt) throw new Error('outcome-unknown')
+        return receipt
+      }
+      try { apply() } catch (error) {
+        if (this.state.conflict) await this.protect()
+        throw error
+      }
+      this.operations.set(key, operation)
+      let protectedInput = false
+      try {
+        await super.leave()
+        protectedInput = true
+        if (this.state.conflict) throw new Error('conflict')
+        const receipt = await this.store.operation(this.key, operation.scope, operation.operationId)
+        if (!receipt) throw new Error('outcome-unknown')
+        return receipt
+      } catch (error) {
+        // An unconfirmed operation stays paired with the dirty input for automatic protection/re-query.
+        if (this.state.conflict) this.operations.delete(key)
+        if (protectedInput && !this.state.conflict) throw new Error('outcome-unknown')
+        throw error
+      }
+    })
+  }
   actions(draft: ReliableQuestionDraft, transport: ActionTransport) {
     return new ReliableActions(this.key, draft, () => {
       if (!this.state.ready || this.state.conflict) throw new Error('请先读取作品并处理分歧。')
@@ -63,7 +117,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   }
   /** A stale component view keeps its candidate in this same protected workspace, never in an iframe-only buffer. */
   retainConflict(files: WorkFile[]) {
-    const other = structuredClone(this.state.files)
+    const other = structuredClone(this.state.conflict?.other ?? this.state.files)
     this.change(files, true)
     this.notify({ conflict: { source: 'local', local: structuredClone(files), other,
       at: this.record.localRevision, remoteRevision: this.record.remoteRevision }, error: '组件读取的状态已变化，请在「作品」中比较双方内容。' })
@@ -83,6 +137,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
   protected async persist() {
     const epoch = this.editEpoch
     const files = structuredClone(this.state.files)
+    const operations = [...this.operations.entries()]
     try {
       if (this.dirty) {
         workFilesSchema.parse(files)
@@ -98,7 +153,8 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
           return { ...previous, localRevision: previous.localRevision + 1, files,
             pending: previous.pending ?? pendingFor(files, previous.remoteRevision),
             ...(conflict ? { conflict: { ...conflict, local: files, at: previous.localRevision + 1 } } : {}) }
-        }, { expected: this.record.localRevision, files })
+        }, { expected: this.record.localRevision, files }, undefined, operations.map(([, value]) => value))
+        for (const [key, value] of operations) if (this.operations.get(key) === value) this.operations.delete(key)
         if (epoch === this.editEpoch) this.dirty = false
         if (this.state.conflict && this.record.conflict) this.notify({ conflict: { ...this.record.conflict, local: this.state.files } })
       } else {
@@ -117,6 +173,7 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       if (!this.denied) this.notify({ error: '' })
     } catch (error) {
       if (error instanceof LocalCompetition) {
+        for (const [key, value] of operations) if (this.operations.get(key) === value) this.operations.delete(key)
         this.record = error.current
         this.notify({ conflict: { source: 'local', local: files, other: error.current.files, at: error.current.localRevision,
           remoteRevision: error.current.remoteRevision, candidateId: error.candidateId }, error: error.message })

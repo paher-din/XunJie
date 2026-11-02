@@ -50,13 +50,14 @@ export abstract class ReliableStateCoordinator {
     try { await task } finally { if (this.protecting === task) this.protecting = undefined }
   }
   private beforeUnload = (event: BeforeUnloadEvent) => {
-    if (this.dirty) { event.preventDefault(); event.returnValue = '' }
+    if (this.unprotectedInput()) { event.preventDefault(); event.returnValue = '' }
   }
+  protected unprotectedInput() { return this.dirty }
   private startNetwork() {
     if (!this.stopped && !this.disposed)
       this.networkTimer ??= setInterval(() => { void this.synchronize() }, NETWORK_MAX_WAIT_MS)
   }
-  async leave(): Promise<void> { await this.protect(); if (this.dirty) return this.leave() }
+  async leave(): Promise<void> { do { await this.protect() } while (this.dirty) }
   accessDenied() { return this.denied }
   /** Called only after the original scoped route has confirmed current authorization. */
   confirmAccess() { this.denied = false }

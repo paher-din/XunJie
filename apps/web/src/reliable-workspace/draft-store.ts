@@ -19,7 +19,7 @@ let opening: Promise<IDBDatabase> | undefined
 export function openWorkspaceDatabase(): Promise<IDBDatabase> {
   if (!opening) {
     opening = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('xunjie-reliable-works-v1', 3)
+      const request = indexedDB.open('xunjie-reliable-works-v1', 4)
       request.onupgradeneeded = () => {
         const db = request.result
         if (!db.objectStoreNames.contains('workspaces')) db.createObjectStore('workspaces', { keyPath: 'key' })
@@ -27,6 +27,7 @@ export function openWorkspaceDatabase(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts', { keyPath: 'key' })
         if (!db.objectStoreNames.contains('draftCandidates')) db.createObjectStore('draftCandidates', { keyPath: 'id' }).createIndex('scope', 'scope')
         if (!db.objectStoreNames.contains('actions')) db.createObjectStore('actions', { keyPath: 'key' }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('workOperations')) db.createObjectStore('workOperations', { keyPath: ['workspace', 'scope', 'operationId'] })
       }
       request.onsuccess = () => {
         const db = request.result

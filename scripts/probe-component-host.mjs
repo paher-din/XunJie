@@ -56,6 +56,26 @@ try {
   browser = await chromium.launch({ channel: 'chrome', headless: false });
   report.browserVersion = browser.version(); report.headless = false;
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  // Observe the real capability transfer inside the test browser; business traffic remains unmodified.
+  await context.addInitScript(() => {
+    if (window === parent) return;
+    window.addEventListener('message', event => {
+      if (event.source !== parent || event.data?.method !== 'host.initialize' || !event.ports[0]) return;
+      const port = event.ports[0], binding = event.data;
+      const pending = new Map();
+      port.addEventListener('message', event => {
+        const finish = pending.get(event.data?.replyTo);
+        if (finish) { pending.delete(event.data.replyTo); finish(event.data); }
+      });
+      window.__componentProbe = { connectionId: binding.connectionId, instanceId: binding.instanceId,
+        request: (method, payload, connectionId = binding.connectionId) => new Promise((resolve, reject) => {
+          const messageId = crypto.randomUUID();
+          const timer = setTimeout(() => { pending.delete(messageId); reject(new Error('Probe response timeout')); }, 10000);
+          pending.set(messageId, value => { clearTimeout(timer); resolve(value); });
+          port.postMessage({ hostApiVersion: 1, connectionId, instanceId: binding.instanceId, messageId, method, payload });
+        }) };
+    });
+  });
   const login = await context.request.post(endpoint + '/api/learning/login', { data: { loginName, password } });
   assert.equal(login.status(), 200);
   const created = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
@@ -115,6 +135,53 @@ try {
   await page.getByRole('tab', { name: '材料标注', exact: true }).click();
   await expect(page.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue(original);
   passed('reload recovers confirmed component state without any execution');
+  const protocol = await page.frameLocator('iframe[title="材料标注"]').locator('body').evaluate(async () => {
+    const probe = window.__componentProbe;
+    const invalid = await probe.request('workspace.change', {});
+    if (invalid.error?.code !== 'invalid-input') throw new Error('Payload validation error misclassified');
+    const read = await probe.request('workspace.read', {});
+    let expected = read.payload.contentId, first, receipt;
+    for (let i = 0; i < 257; i++) {
+      const input = { operationId: crypto.randomUUID(), expectedContentId: expected, contentId: crypto.randomUUID(), content: read.payload.content };
+      const result = await probe.request('workspace.change', input);
+      if (result.error) throw new Error('Operation failed: ' + result.error.code);
+      if (i === 0) { first = input; receipt = result.payload; }
+      expected = input.contentId;
+    }
+    const replay = await probe.request('workspace.change', first);
+    if (JSON.stringify(replay.payload) !== JSON.stringify(receipt)) throw new Error('Old operation receipt changed');
+    const changed = await probe.request('workspace.change', { ...first, content: { annotations: [] } });
+    if (changed.error?.code !== 'conflict') throw new Error('Changed operation identity accepted');
+    const burst = [];
+    for (let i = 0; i < 12; i++) {
+      const input = { operationId: crypto.randomUUID(), expectedContentId: expected, contentId: crypto.randomUUID(), content: read.payload.content };
+      burst.push(probe.request('workspace.change', input)); expected = input.contentId;
+    }
+    if ((await Promise.all(burst)).some(reply => reply.error)) throw new Error('Burst input lost its acceptance order');
+    return { first, receipt, latest: expected, connectionId: probe.connectionId };
+  });
+  passed('257 real IndexedDB operations replay their original receipt and reject altered input');
+  await page.locator('iframe[title="材料标注"]').evaluate(element => { element.src = element.src; });
+  await expect(page.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue(original);
+  const reloaded = await page.frameLocator('iframe[title="材料标注"]').locator('body').evaluate(async (_, old) => {
+    const probe = window.__componentProbe;
+    const stale = await probe.request('workspace.change', { operationId: crypto.randomUUID(), expectedContentId: old.latest,
+      contentId: crypto.randomUUID(), content: { annotations: [] } }, old.connectionId);
+    const replay = await probe.request('workspace.change', old.first);
+    const current = await probe.request('workspace.read', {});
+    return { connectionId: probe.connectionId, stale: stale.error?.code, receipt: replay.payload, latest: current.payload.contentId };
+  }, protocol);
+  assert.notEqual(reloaded.connectionId, protocol.connectionId);
+  assert.equal(reloaded.stale, 'stale-connection');
+  assert.deepEqual(reloaded.receipt, protocol.receipt); assert.equal(reloaded.latest, protocol.latest);
+  passed('iframe reload rotates its private port/connection, rejects old identity and replays durable receipts');
+  await page.reload();
+  await page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(page.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue(original);
+  const replayAfterPageReload = await page.frameLocator('iframe[title="材料标注"]').locator('body').evaluate(async (_, old) =>
+    (await window.__componentProbe.request('workspace.change', old)).payload, protocol.first);
+  assert.deepEqual(replayAfterPageReload, protocol.receipt);
+  passed('a full page restart recovers operation receipts from the existing workspace database');
   const second = await context.newPage(); await second.goto(page.url());
   await second.getByRole('tab', { name: '材料标注', exact: true }).click();
   const secondNote = second.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true });
@@ -151,6 +218,99 @@ try {
   await failingFrame.getByRole('button', { name: '导出当前标注' }).click();
   assert.match(await failingFrame.getByRole('textbox', { name: '可复制的标注备份' }).inputValue(), /存储失败时保留这份中文输入/);
   passed('real IndexedDB write failure blocks unmount and retains input with a copyable export');
+  const unknownActivity = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
+  const unknownPage = await context.newPage();
+  await unknownPage.goto(endpoint + '?space=school&activity=' + (await unknownActivity.json()).activityId);
+  await unknownPage.getByRole('tab', { name: '材料标注', exact: true }).click();
+  const unknownFrame = unknownPage.frameLocator('iframe[title="材料标注"]');
+  await expect(unknownFrame.getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+  await unknownPage.evaluate(() => {
+    const original = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function(stores, mode, options) {
+      if (mode === 'readonly' && (typeof stores === 'string' ? [stores] : [...stores]).includes('workOperations'))
+        throw new DOMException('Injected receipt read failure', 'UnknownError');
+      return original.call(this, stores, mode, options);
+    };
+  });
+  const unknown = await unknownFrame.locator('body').evaluate(async () => window.__componentProbe.request('workspace.change', {
+    operationId: crypto.randomUUID(), expectedContentId: null, contentId: crypto.randomUUID(),
+    content: { annotations: [{ id: crypto.randomUUID(), quote: '保留来源', note: '回执无法查询时保留我的输入' }] }
+  }));
+  assert.equal(unknown.error?.code, 'outcome-unknown');
+  await unknownPage.getByRole('tab', { name: '作品', exact: true }).click();
+  await expect(unknownPage.getByRole('heading', { name: '作品存在分歧', exact: true })).toBeVisible();
+  await expect(unknownPage.getByText('回执无法查询时保留我的输入', { exact: false }).first()).toBeVisible();
+  passed('receipt read failure reports outcome-unknown and protects input as an exportable workspace candidate');
+  const delayedActivity = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
+  const delayedPage = await context.newPage();
+  await delayedPage.goto(endpoint + '?space=school&activity=' + (await delayedActivity.json()).activityId);
+  await delayedPage.getByRole('tab', { name: '材料标注', exact: true }).click();
+  const delayedFrame = delayedPage.frameLocator('iframe[title="材料标注"]');
+  await expect(delayedFrame.getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+  await delayedPage.evaluate(() => {
+    const original = navigator.locks.request.bind(navigator.locks);
+    navigator.locks.request = async (...args) => {
+      await new Promise(resolve => { window.releaseOperation = resolve; });
+      return original(...args);
+    };
+  });
+  await delayedFrame.locator('body').evaluate(() => {
+    window.pendingProbe = window.__componentProbe.request('workspace.change', { operationId: crypto.randomUUID(), expectedContentId: null,
+      contentId: crypto.randomUUID(), content: { annotations: [{ id: crypto.randomUUID(), quote: '异步读取', note: '查询期间不能卸载' }] } });
+  });
+  await expect.poll(() => delayedPage.evaluate(() => typeof window.releaseOperation)).toBe('function');
+  await delayedPage.getByRole('tab', { name: '作品', exact: true }).click();
+  await expect(delayedPage.getByRole('tab', { name: '材料标注', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await delayedPage.evaluate(() => window.releaseOperation());
+  await expect(delayedPage.getByRole('tab', { name: '作品', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(delayedPage.getByText('查询期间不能卸载', { exact: false }).first()).toBeVisible();
+  passed('tool navigation waits for an in-flight operation before unmounting the component');
+  const upgradeContext = await browser.newContext();
+  await upgradeContext.request.post(endpoint + '/api/learning/login', { data: { loginName, password } });
+  const upgradePage = await upgradeContext.newPage();
+  await upgradePage.goto(endpoint + '/api/learning/context');
+  await upgradePage.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('xunjie-reliable-works-v1', 3);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      db.createObjectStore('workspaces', { keyPath: 'key' });
+      db.createObjectStore('candidates', { keyPath: 'id' }).createIndex('scope', 'scope');
+      db.createObjectStore('drafts', { keyPath: 'key' });
+      db.createObjectStore('draftCandidates', { keyPath: 'id' }).createIndex('scope', 'scope');
+      db.createObjectStore('actions', { keyPath: 'key' }).createIndex('scope', 'scope');
+    };
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('workspaces', 'readwrite');
+      tx.objectStore('workspaces').put({ key: 'upgrade-sentinel', text: '已有中文作品不得丢失' });
+      tx.oncomplete = () => { db.close(); resolve(); }; tx.onabort = () => reject(tx.error);
+    };
+  }));
+  await upgradePage.goto(endpoint + '?space=school&activity=' + activity.activityId);
+  await upgradePage.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(upgradePage.frameLocator('iframe[title="材料标注"]').getByRole('textbox', { name: '标注内容', exact: true })).toBeVisible();
+  const upgrade = await upgradePage.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('xunjie-reliable-works-v1', 4);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('workspaces', 'readonly');
+      const value = tx.objectStore('workspaces').get('upgrade-sentinel');
+      tx.oncomplete = () => { resolve({ version: db.version, operations: db.objectStoreNames.contains('workOperations'), text: value.result.text }); db.close(); };
+      tx.onabort = () => reject(tx.error);
+    };
+  }));
+  assert.deepEqual(upgrade, { version: 4, operations: true, text: '已有中文作品不得丢失' });
+  await upgradeContext.close();
+  passed('the real v3 IndexedDB upgrades additively to v4 without losing existing workspace data');
+  const revokedActivity = await context.request.post(endpoint + '/api/learning/course-activities', { data: { requestId: randomUUID(), releaseId } });
+  const revokedPage = await context.newPage();
+  await revokedPage.goto(endpoint + '?space=school&activity=' + (await revokedActivity.json()).activityId);
+  await revokedPage.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(revokedPage.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+  await api('manage/course-access', { requestId: randomUUID(), courseId, principalId: identity.principalId, active: false }, admin);
+  await expect.poll(async () => revokedPage.frameLocator('iframe[title="材料标注"]').locator('body').evaluate(async () =>
+    (await window.__componentProbe.request('workspace.read', {})).error?.code), { timeout: 15000 }).toBe('forbidden');
+  passed('known course revocation is reported as forbidden by the real mounted host');
   assert.equal(await artifactDigest(webRoot), assetsBefore);
   report.frontendSha256 = assetsBefore;
   passed('component import and use leave the main frontend artifact unchanged');

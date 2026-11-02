@@ -14,12 +14,12 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
 <aside aria-label="我的标注"><h2>我的标注</h2><p id="empty" class="muted">选中材料中的文字，记下你的理解或疑问。</p><p id="error" class="error" role="alert" hidden></p><div id="annotations"></div></aside></main>
 <script>
 (() => {
-  let connection, contentId = null, state, initialized = false, blocked = false;
+  let connection, port, contentId = null, state, initialized = false, blocked = false;
   const pending = new Map();
   function request(method, payload, done) {
     const messageId = crypto.randomUUID();
     if (done) pending.set(messageId, done);
-    parent.postMessage({hostApiVersion:1,connectionId:connection.connectionId,instanceId:connection.instanceId,messageId,method,payload}, '*');
+    port.postMessage({hostApiVersion:1,connectionId:connection.connectionId,instanceId:connection.instanceId,messageId,method,payload});
   }
   function error(text) { blocked = true; const el = document.querySelector('#error'); el.hidden = false; el.textContent = text;
     document.querySelector('#add').disabled = true; document.querySelectorAll('#annotations textarea').forEach(input => { input.readOnly = true; }); }
@@ -58,8 +58,8 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
     const output = document.createElement('textarea'); output.readOnly = true; output.value = text; output.setAttribute('aria-label','可复制的标注备份');
     document.querySelector('aside').append(output); output.select(); };
   document.querySelector('aside').append(exportButton);
-  window.addEventListener('message', event => {
-    if (event.source !== parent || event.data?.hostApiVersion !== 1) return;
+  function receive(event) {
+    if (event.data?.hostApiVersion !== 1) return;
     const message = event.data;
     if (message.method === 'host.initialize') {
       if (connection && (connection.connectionId !== message.connectionId || connection.instanceId !== message.instanceId)) return;
@@ -81,7 +81,11 @@ blockquote{margin:0 0 12px;padding:8px 12px;background:var(--chip);border-radius
     } else if (connection && message.connectionId === connection.connectionId && message.instanceId === connection.instanceId && message.replyTo) {
       const callback = pending.get(message.replyTo); pending.delete(message.replyTo); callback?.(message);
     }
+  }
+  window.addEventListener('message', event => {
+    if (event.source !== parent || event.data?.method !== 'host.initialize' || event.data.hostApiVersion !== 1 || !event.ports[0]) return;
+    port?.close(); pending.clear(); initialized = false; connection = undefined;
+    port = event.ports[0]; port.onmessage = receive; receive(event);
   });
-  parent.postMessage({method:'component.hello'}, '*');
 })();
 </script></body></html>
