@@ -22,10 +22,11 @@ export const modelConnectionSchema = modelConfigurationSchema.safeExtend({ versi
   hasCredential: z.boolean(), adapterState: z.enum(['ready', 'not-integrated']),
   capabilities: z.object({ text: capabilityStateSchema, images: capabilityStateSchema, tools: capabilityStateSchema,
     strictSchema: capabilityStateSchema, nativeReplay: capabilityStateSchema.optional(), jsonMode: capabilityStateSchema.optional(),
-    applicationSchema: capabilityStateSchema.optional() }).strict(),
+    applicationSchema: capabilityStateSchema.optional(), strictTools: capabilityStateSchema.optional(),
+    serverStorage: capabilityStateSchema.optional(), serverQuery: capabilityStateSchema.optional(), serverCancel: capabilityStateSchema.optional() }).strict(),
   capabilityEvidence: z.object({ observedAt: z.iso.date(), sdk: z.string(), adapter: z.string(), endpoint: z.url(), modelId: z.string(),
     protocol: modelProtocolSchema, parameterMode: z.enum(['plain', 'thinking']), testedToolChoice: z.literal('auto'),
-    toolImageStrategy: z.literal('paired-text-adjacent-user-image'), limitations: z.array(z.string()) }).strict().optional() });
+    toolImageStrategy: z.enum(['paired-text-adjacent-user-image', 'native-function-output-image']), limitations: z.array(z.string()) }).strict().optional() });
 export type ModelConfiguration = z.infer<typeof modelConfigurationSchema>;
 export type ModelConnection = z.infer<typeof modelConnectionSchema>;
 export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
@@ -68,7 +69,7 @@ export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.lite
 export const modelImageInputSchema = z.object({ requestId: z.uuid(), imageId: z.uuid(), mediaType: z.literal('image/png'),
   dataBase64: z.string().min(1).max(350000), source: modelImageRefSchema.safeExtend({ transformation: z.string().min(1).max(200) }).optional() }).strict();
 export const modelToolSchema = z.object({ name: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/), description: z.string().max(1000),
-  inputSchema: z.record(z.string(), z.unknown()) }).strict();
+  inputSchema: z.record(z.string(), z.unknown()), strict: z.boolean().optional() }).strict();
 export const modelToolIntentSchema = z.object({ callId: z.string().min(1).max(200), name: z.string().min(1).max(64),
   arguments: z.record(z.string(), z.unknown()) }).strict();
 export const modelToolResultSchema = z.object({ callId: z.string().min(1).max(200), outcome: z.enum(['success', 'error', 'not-executed']),
@@ -82,7 +83,7 @@ export const modelChatOptionsSchema = z.object({
   responseFormat: z.union([z.object({ kind: z.literal('json-object') }).strict(), z.object({ kind: z.literal('json-schema'),
     name: modelToolSchema.shape.name, schema: z.record(z.string(), z.unknown()), strict: z.boolean() }).strict()]).optional(),
   applicationSchema: z.record(z.string(), z.unknown()).optional(),
-  requiredCapabilities: z.array(z.enum(['text', 'images', 'tools', 'nativeReplay', 'jsonMode', 'applicationSchema', 'nativeStrict'])).max(7).optional(),
+  requiredCapabilities: z.array(z.enum(['text', 'images', 'tools', 'nativeReplay', 'jsonMode', 'applicationSchema', 'nativeStrict', 'strictTools'])).max(8).optional(),
   capabilityProbe: z.boolean().optional(),
 }).strict();
 export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId: z.uuid(), source: modelCheckInputSchema.shape.source,

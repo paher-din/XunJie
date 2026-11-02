@@ -3,7 +3,8 @@ import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelAttemptSchema, modelAttemptInputSchema } from '@xunjie/contracts/model-connections';
 import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelTool } from '@xunjie/contracts/model-connections';
-import { checkPayload, runChat, type ChatPayload } from './chat.js';
+import { connectionCheckPayload, limitPayload, runModel, type NativePayload } from './transport.js';
+import { validateResponsesNative } from './responses.js';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
   CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
@@ -11,7 +12,7 @@ export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql:
   CREATE INDEX model_attempt_scope ON model_attempts(scope,created_at);
 ` }];
 export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; source?: ModelAttempt['source'];
-  policy?: ModelCheckPolicy; payload?: ChatPayload; tools?: ModelTool[]; applicationSchema?: Record<string, unknown>; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
+  policy?: ModelCheckPolicy; payload?: NativePayload; tools?: ModelTool[]; applicationSchema?: Record<string, unknown>; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function createChecks(storage: OwnedStorage, owner: {
@@ -109,7 +110,8 @@ export function createChecks(storage: OwnedStorage, owner: {
     const snapshot = input.purpose === 'connection-check' ? await owner.snapshot(identity, input.source) : await owner.prepareChat(identity, input);
       const limits = snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
         timeoutMs: Math.min(input.limits.timeoutMs, snapshot.policy.timeoutMs) } : input.limits;
-      const payload = snapshot.payload ? { ...snapshot.payload, max_tokens: limits.maxOutputTokens } : checkPayload(snapshot.connection, limits.maxOutputTokens);
+      const payload = snapshot.payload ? limitPayload(snapshot.connection, snapshot.payload, limits.maxOutputTokens)
+        : connectionCheckPayload(snapshot.connection, limits.maxOutputTokens);
       const request = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-request:' + input.attemptId,
         bytes: Buffer.from(JSON.stringify(payload)), mediaType: 'application/json', contentVersion: 1 });
       const body: ModelAttempt = { attemptId: input.attemptId, purpose: input.purpose, connection: snapshot.connection,
@@ -194,18 +196,16 @@ export function createChecks(storage: OwnedStorage, owner: {
       const current = await row(identity, attempt.attemptId);
       if ((current.body as ModelAttempt).cancelRequested) controller.abort('cancel');
       const credential = await owner.credential(identity, ref);
-      const payload = JSON.parse(Buffer.from(await storage.readResource(attempt.requestRef)).toString('utf8')) as ChatPayload;
-      const tools = attempt.segment ? payload.tools?.map(tool => {
-        if (tool.type !== 'function') throw new StorageError('corrupt');
-        return { name: tool.function.name, description: tool.function.description ?? '', inputSchema: tool.function.parameters ?? {} };
-      }) ?? [] : undefined;
+      const payload = JSON.parse(Buffer.from(await storage.readResource(attempt.requestRef)).toString('utf8')) as NativePayload;
       await owner.assertDispatch(identity, attempt, ref);
       await storage.pendingIntents();
       if (closed) throw new StorageError('maintenance');
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
-        : await runChat(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, tools, metadata?.applicationSchema);
-      if (controller.signal.reason === 'timeout') { result.state = 'unknown'; result.reason = 'timeout'; }
+        : await runModel(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, !!attempt.segment, metadata?.applicationSchema);
+      if (controller.signal.reason === 'timeout' && !['completed', 'failed'].includes(result.state)) {
+        result.state = 'unknown'; result.reason = 'timeout'; result.toolIntents = [];
+      }
       const resource = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-result:' + attempt.attemptId,
         bytes: Buffer.from(JSON.stringify(result.native)), mediaType: 'application/json', contentVersion: 1 });
       await storage.request({ requestId: randomUUID(), fingerprint: 'model-result:' + attempt.attemptId }, async tx => {
@@ -238,7 +238,18 @@ export function createChecks(storage: OwnedStorage, owner: {
     for (const row of rows) {
       const body = modelAttemptSchema.parse(row.body);
       await storage.readResource(body.requestRef);
-      if (body.resultRef) await storage.readResource(body.resultRef);
+      if (body.resultRef) {
+        const bytes = await storage.readResource(body.resultRef);
+        if (body.state === 'completed' && body.connection.protocol === 'responses') {
+          const request = JSON.parse(Buffer.from(await storage.readResource(body.requestRef)).toString('utf8')) as NativePayload;
+          if (!('input' in request)) throw new StorageError('corrupt');
+          const tools = request.tools?.map(tool => {
+            if (tool.type !== 'function') throw new StorageError('corrupt');
+            return { name: tool.name, description: tool.description ?? '', inputSchema: tool.parameters ?? {} };
+          }) ?? [];
+          validateResponsesNative(JSON.parse(Buffer.from(bytes).toString('utf8')), tools);
+        }
+      }
       if (body.state === 'completed' && !body.resultRef) throw new StorageError('corrupt');
     }
   }

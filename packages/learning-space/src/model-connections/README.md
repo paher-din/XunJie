@@ -69,3 +69,12 @@ JSON mode、应用校验与 native strict 是不同事实。前两者执行实�
 #165 新增迁移仅追加到既有版本；授权、选择、图片/变换来源、工具结果、观察、段和客户端持有方绑定都进入同一模型 owner。资源 pin 随接收/结果/段事务提交，旧段或设置更新不释放仍引用的原件。维护验证检查已有结果与图片内容；真实备份→隔离还原→接管后可读原引用并继续原生工具配对。旧 schema 必须走 WP01 正式升级，正常启动不偷偷迁移。
 
 主测试 [model-gateway.runtime.test.mjs](../../../../apps/server/tests/model-gateway.runtime.test.mjs) 经生产 API、真实身份/PostgreSQL/资源和 SDK→合成 HTTP/SSE；需要 `XUNJIE_PRODUCT_POSTGRES_BIN`。桌面 Chrome 用例见 [personalModelSettings.spec.ts](../../../../apps/web/e2e/personalModelSettings.spec.ts)，可指定 `XUNJIE_PRODUCT_WEB_ROOT` 验普通 Web，或 `XUNJIE_PRODUCT_TEST_PACKAGE` 启动完整独立包。实施范围见 [#164 方案](../../../../docs/student-agent-implementation/specs/wp06-personal-model-checks.md)。
+
+
+## Responses（#166）
+
+同一 Gateway、尝试、授权、费用和续接段支持 `responses`；正式设置和安装客户端消费同一 wire。直接 `openai@7.42.0` / `xunjie-responses-native-v1`，retries=0；DeepSeek 使用 `reasoning.effort`，系统前缀编码为 `instructions`。每次 `store:false`，原生完整历史重发，不使用远端 retrieve/cancel。
+
+owner 保存完整 events/response/output，并在维护和续接时校验格式、已观察增量与终态的一致性。工具 added 暂缺 arguments 合法，只有完整 completed、原生回放验证与工具参数应用校验都通过才发布意图。凭据回显拒绝成功，敏感原生正文及可重建的碎片不保存。图片使用固定所属资源；工具图片直接进入 `function_call_output.output`，按 call_id 配对，不使用 item ID。新段沿用结清工具与可移植上下文规则。
+
+主测试 [model-responses.runtime.test.mjs](../../../../apps/server/tests/model-responses.runtime.test.mjs) 使用生产 Gateway、真实 PG/资源和 SDK；含重启、备份还原、取消和 Chat 双向换段。[实际路线及能力边界](../../../../docs/student-agent-implementation/wp06-responses-acceptance.md)区分 JSON mode、应用 schema、原生 schema 与 strictTools；未知能力不自动晋升。显式实测工具 [probe-model-responses.mjs](../../../../scripts/probe-model-responses.mjs) 从获准 Magpie 私有配置读取 DeepSeek key，支持 `--case native|schemas`；每次最多六次有限生成，输出不含原生推理或密钥。Command Code 本轮由负责人豁免真实端点，合成 summary/缺 arguments 方言回归保留。

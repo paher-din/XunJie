@@ -9,6 +9,9 @@ import { checkPayload, type ChatPayload } from './chat.js';
 import type { CheckSnapshot } from './checks.js';
 import type { createModelImages } from './images.js';
 import type { z } from 'zod';
+import type OpenAI from 'openai';
+import { responsesCheckPayload, validateResponsesNative, type ResponsesPayload } from './responses.js';
+import type { NativePayload } from './transport.js';
 
 export const chatWorkMigrations = [{ version: 6, name: 'fixed-chat-images-and-native-segments', sql: `
   CREATE TABLE model_images(id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL);
@@ -116,13 +119,16 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (forcedName && snapshot.connection.capabilityEvidence?.limitations.includes('thinking-forced-tool-unsupported') && !options?.capabilityProbe) throw new StorageError('unavailable');
     if (options?.responseFormat?.kind === 'json-schema' && options.responseFormat.strict
       && snapshot.connection.capabilities.strictSchema !== 'verified' && !options.capabilityProbe) throw new StorageError('unavailable');
+    if (input.prefix.tools.some(tool => tool.strict) && snapshot.connection.capabilities.strictTools !== 'verified'
+      && !options?.capabilityProbe) throw new StorageError('unavailable');
     for (const capability of options?.requiredCapabilities ?? []) {
       const supported = capability === 'applicationSchema' || capability === 'text' && snapshot.connection.capabilities.text === 'verified'
         || capability === 'images' && snapshot.connection.capabilities.images === 'verified'
         || capability === 'tools' && snapshot.connection.capabilities.tools === 'verified'
         || capability === 'nativeReplay' && snapshot.connection.capabilities.nativeReplay === 'verified'
         || capability === 'jsonMode' && snapshot.connection.capabilities.jsonMode === 'verified'
-        || capability === 'nativeStrict' && snapshot.connection.capabilities.strictSchema === 'verified';
+        || capability === 'nativeStrict' && snapshot.connection.capabilities.strictSchema === 'verified'
+        || capability === 'strictTools' && snapshot.connection.capabilities.strictTools === 'verified';
       if (!supported && !options?.capabilityProbe) throw new StorageError('unavailable');
     }
     if (input.previousSegmentId) {
@@ -167,46 +173,79 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (segment.pendingAttemptId) throw new StorageError('resource-busy');
     await owner.assertDispatch(identity, { connection: segment.snapshot.connection, source: segment.snapshot.source,
       createdAt: new Date().toISOString() }, segment.snapshot.credentialRef);
-    const messages: ChatPayload['messages'] = [];
+    const responses = segment.snapshot.connection.protocol === 'responses';
+    const messages: ChatPayload['messages'] = [], items: OpenAI.Responses.ResponseInput = [];
+    const nativeImages = (content: Awaited<ReturnType<typeof images.materialize>>['content']) => content.map(part => ({
+      type: 'input_image' as const, image_url: part.image_url.url, detail: 'auto' as const,
+    }));
+    function user(text: string, content: Awaited<ReturnType<typeof images.materialize>>['content'] = []) {
+      if (responses) items.push({ role: 'user', content: [...(text ? [{ type: 'input_text' as const, text }] : []), ...nativeImages(content)] });
+      else messages.push({ role: 'user', content: [...(text ? [{ type: 'text' as const, text }] : []), ...content] });
+    }
     const resultImages: Awaited<ReturnType<typeof images.materialize>>[] = [];
     let settlement: { attemptId: string; results: ModelToolResult[] } | null = null;
     if (segment.headAttemptId) {
       const prior = await attempt(identity, segment.headAttemptId);
       if (prior.state !== 'completed' || !prior.resultRef) throw new StorageError('conflict');
-      const native = JSON.parse(Buffer.from(await storage.readResource(prior.resultRef)).toString('utf8')) as { assistant?: NativeChatAssistant };
-      if (!native.assistant) throw new StorageError('corrupt');
-      const previous = JSON.parse(Buffer.from(await storage.readResource(prior.requestRef)).toString('utf8')) as ChatPayload;
-      messages.push(...previous.messages, native.assistant);
+      const native = JSON.parse(Buffer.from(await storage.readResource(prior.resultRef)).toString('utf8')) as { assistant?: NativeChatAssistant; output?: OpenAI.Responses.ResponseInput };
+      const previous = JSON.parse(Buffer.from(await storage.readResource(prior.requestRef)).toString('utf8')) as NativePayload;
+      if (responses) {
+        validateResponsesNative(native, segment.prefix.tools);
+        if (!Array.isArray(native.output) || !('input' in previous) || !Array.isArray(previous.input)) throw new StorageError('corrupt');
+        items.push(...previous.input, ...native.output);
+      } else {
+        if (!native.assistant || !('messages' in previous)) throw new StorageError('corrupt');
+        messages.push(...previous.messages, native.assistant);
+      }
       const saved = await toolResults(identity, prior.attemptId);
       if (saved && input.input.toolResults.length) throw new StorageError('conflict');
       const results = paired(prior, saved ?? input.input.toolResults);
       if (!saved && results.length) settlement = { attemptId: prior.attemptId, results };
       for (const result of results) {
-        messages.push({ role: 'tool', tool_call_id: result.callId, content: result.outcome === 'success' ? result.text : JSON.stringify({ outcome: result.outcome, text: result.text }) });
         const image = await images.materialize(identity, result.images);
         resultImages.push(image);
-        if (image.content.length) messages.push({ role: 'user', content: image.content });
+        const text = result.outcome === 'success' ? result.text : JSON.stringify({ outcome: result.outcome, text: result.text });
+        if (responses) items.push({ type: 'function_call_output', call_id: result.callId,
+          output: image.content.length ? [{ type: 'input_text', text }, ...nativeImages(image.content)] : text });
+        else {
+          messages.push({ role: 'tool', tool_call_id: result.callId, content: text });
+          if (image.content.length) messages.push({ role: 'user', content: image.content });
+        }
       }
     } else {
       if (input.input.toolResults.length) throw new StorageError('invalid');
-      messages.push({ role: 'system', content: segment.prefix.system });
-      for (const portable of segment.portable) messages.push({ role: 'user', content: portable.text });
+      if (!responses) messages.push({ role: 'system', content: segment.prefix.system });
+      for (const portable of segment.portable) user(portable.text);
     }
     const image = await images.materialize(identity, input.input.images);
-    if (input.input.text || image.content.length) messages.push({ role: 'user', content: [
-      ...(input.input.text ? [{ type: 'text' as const, text: input.input.text }] : []), ...image.content,
-    ] });
-    for (const observation of input.input.observations) messages.push({ role: 'user', content: JSON.stringify(observation) });
+    if (input.input.text || image.content.length) user(input.input.text, image.content);
+    for (const observation of input.input.observations) user(JSON.stringify(observation));
     const base = checkPayload(segment.snapshot.connection, input.limits.maxOutputTokens);
     const options = segment.prefix.options;
-    const payload: ChatPayload = { ...base, messages, ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({
-      type: 'function' as const, function: { name: tool.name, description: tool.description, parameters: tool.inputSchema },
+    const payload: NativePayload = responses ? {
+      ...responsesCheckPayload(segment.snapshot.connection, input.limits.maxOutputTokens), instructions: segment.prefix.system, input: items,
+      ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({ type: 'function' as const,
+        name: tool.name, description: tool.description, parameters: tool.inputSchema, strict: tool.strict ?? false })), tool_choice: 'auto' as const } : {}),
+      ...(options?.toolChoice ? { tool_choice: typeof options.toolChoice === 'string' ? options.toolChoice : { type: 'function' as const, name: options.toolChoice.name } } : {}),
+      ...(options?.responseFormat ? { text: { format: options.responseFormat.kind === 'json-object' ? { type: 'json_object' as const }
+        : { type: 'json_schema' as const, name: options.responseFormat.name, schema: options.responseFormat.schema, strict: options.responseFormat.strict } } } : {}),
+    } satisfies ResponsesPayload : { ...base, messages, ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({
+      type: 'function' as const, function: { name: tool.name, description: tool.description, parameters: tool.inputSchema,
+        ...(tool.strict === undefined ? {} : { strict: tool.strict }) },
     })), tool_choice: 'auto' as const } : {}), ...(options?.toolChoice ? { tool_choice: typeof options.toolChoice === 'string'
       ? options.toolChoice : { type: 'function' as const, function: { name: options.toolChoice.name } } } : {}),
       ...(options?.responseFormat ? { response_format: options.responseFormat.kind === 'json-object' ? { type: 'json_object' as const }
         : { type: 'json_schema' as const, json_schema: { name: options.responseFormat.name, schema: options.responseFormat.schema, strict: options.responseFormat.strict } } } : {}) };
-    const imageCount = messages.reduce((count, message) => count + (Array.isArray(message.content)
-      ? message.content.filter(part => part.type === 'image_url').length : 0), 0);
+    function countImages(value: unknown): number {
+      if (Array.isArray(value)) return value.reduce((count, item) => count + countImages(item), 0);
+      if (value && typeof value === 'object') {
+        const object = value as Record<string, unknown>;
+        if (object.type === 'image_url' || object.type === 'input_image') return 1;
+        return Object.values(object).reduce<number>((count, item) => count + countImages(item), 0);
+      }
+      return 0;
+    }
+    const imageCount = countImages(payload);
     if (imageCount > 8) throw new StorageError('invalid');
     if (Buffer.byteLength(JSON.stringify(payload)) > 1000000) throw new StorageError('invalid');
     return { ...segment.snapshot, payload, tools: segment.prefix.tools, ...(options?.applicationSchema ? { applicationSchema: options.applicationSchema } : {}), segment: { segmentId: input.segmentId, sequence: input.expectedSequence },

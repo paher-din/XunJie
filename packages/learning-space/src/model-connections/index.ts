@@ -14,6 +14,7 @@ import { createChatWork, chatWorkMigrations } from './chat-work.js';
 import { createModelRouting, modelRoutingMigrations } from './routing.js';
 import { measuredCapabilities } from './capabilities.js';
 import { createModelResults } from './results.js';
+import { adapterReady } from './transport.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -56,8 +57,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   if (key.byteLength !== 32) throw new StorageError('corrupt');
   const projection = (stored: StoredConnection): ModelConnection => modelConnectionSchema.parse({ ...stored.configuration,
     version: stored.version, routeId: stored.routeId, hasCredential: !!stored.credentialRef,
-    adapterState: stored.configuration.protocol === 'chat-completions'
-      && (stored.configuration.parameterMode === 'plain' || stored.configuration.dialect === 'deepseek') ? 'ready' : 'not-integrated',
+    adapterState: adapterReady(stored.configuration) ? 'ready' : 'not-integrated',
     ...measuredCapabilities(stored.configuration) });
   async function list(identity: SpaceIdentity) {
     await options.authorize(identity);
@@ -164,8 +164,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     } else {
       configuration = source.draft; version = 1; routeId = randomUUID(); credentialRef = null;
       // Reject unsupported/disabled snapshots before any temporary secret is retained.
-      if (!configuration.enabled || configuration.protocol !== 'chat-completions'
-        || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek') throw new StorageError('unavailable');
+      if (!configuration.enabled || !adapterReady(configuration)) throw new StorageError('unavailable');
       if (source.credential.action === 'keep' && source.savedCredential) {
         const saved = await stored(identity, source.savedCredential.connectionId);
         if (saved.version !== source.savedCredential.version || saved.configuration.connectionId !== configuration.connectionId
@@ -182,8 +181,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         };
       }
     }
-    if (!configuration.enabled || configuration.protocol !== 'chat-completions' || !credentialRef
-      || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek') throw new StorageError('unavailable');
+    if (!configuration.enabled || !adapterReady(configuration) || !credentialRef) throw new StorageError('unavailable');
     return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef,
       source: { kind: 'personal', ownerScope: scopeOf(identity), feeSource: scopeOf(identity) }, ...(retain ? { retain } : {}) };
   }

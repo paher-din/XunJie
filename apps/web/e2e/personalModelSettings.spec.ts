@@ -15,9 +15,20 @@ test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
 let runtime: Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>, endpoint: string, baseUrl: string
 let calls = 0
-const upstream = createServer(async (_request, response) => {
+const upstream = createServer(async (request, response) => {
   calls++
   response.writeHead(200, { 'content-type': 'text/event-stream' })
+  if (request.url === '/v1/responses') {
+    const chunks = []; for await (const chunk of request) chunks.push(chunk)
+    const input = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    if (input.model === 'fixture-responses-cancel') {
+      response.write('data: ' + JSON.stringify({ type: 'response.created', response: { id: 'ui-pending', object: 'response', status: 'in_progress', output: [] } }) + '\n\n')
+      return
+    }
+    response.end('data: ' + JSON.stringify({ type: 'response.completed', response: { id: 'ui-responses', object: 'response', status: 'completed',
+      output: [{ type: 'message', id: 'ui-message', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text: 'Responses 检查正常', annotations: [] }] }] } }) + '\n\n')
+    return
+  }
   response.end('data: ' + JSON.stringify({ id: 'check-ui', choices: [{ index: 0, delta: { content: '检查正常' }, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n')
 })
 test.beforeAll(async () => {
@@ -129,4 +140,36 @@ test('dialog keyboard focus, Chinese composition, blank-key reuse and ordinary n
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: '首页', exact: true }).click()
   await expect(page.getByRole('heading', { name: '个人模型设置', exact: true })).toBeHidden()
+})
+
+test('Responses settings check drafts, save, reopen and cancel through the formal owner', async ({ page }) => {
+  await page.goto(endpoint + '/?settings=models')
+  await page.getByRole('button', { name: '添加供应商', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('Responses 正式连接')
+  await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill(baseUrl)
+  await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('fixture-responses')
+  await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-responses-ui-key')
+  await dialog.getByLabel('协议', { exact: true }).selectOption('responses')
+  const check = dialog.getByRole('button', { name: '保存前检查', exact: true })
+  await expect(check).toBeEnabled()
+  await check.click()
+  await expect(dialog.getByRole('status')).toContainText('检查已完成')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await page.reload()
+  const card = page.getByRole('region', { name: '个人连接配置', exact: true }).locator('.st-provider').filter({ hasText: 'Responses 正式连接' })
+  await expect(card.getByText('responses · 版本 1', { exact: true })).toBeVisible()
+  await card.getByRole('button', { name: '连接检查', exact: true }).click()
+  await expect(page.getByText('Responses 检查正常', { exact: true })).toHaveCount(2)
+  await card.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(dialog.getByLabel('协议', { exact: true })).toHaveValue('responses')
+  await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('')
+  await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('fixture-responses-cancel')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await card.getByRole('button', { name: '连接检查', exact: true }).click()
+  await expect(page.getByText('正在检查', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '停止检查', exact: true }).click()
+  await expect(page.getByText('已停止本机检查', { exact: true })).toBeVisible()
+  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/responses-settings.png', import.meta.url)), fullPage: true })
 })

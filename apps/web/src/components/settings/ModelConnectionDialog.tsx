@@ -57,11 +57,11 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
         <Field label="协议"><select className="st-input" aria-label="协议" value={configuration.protocol} onChange={event => {
           const protocol = event.target.value as ModelConfiguration['protocol']
           change({ protocol, path: ({ 'chat-completions': '/chat/completions', responses: '/responses', messages: '/v1/messages' } as const)[protocol] })
-        }}><option value="chat-completions">Chat Completions</option><option value="responses">Responses（适配器待接入）</option><option value="messages">Messages（适配器待接入）</option></select></Field>
+        }}><option value="chat-completions">Chat Completions</option><option value="responses">Responses</option><option value="messages">Messages（适配器待接入）</option></select></Field>
         <p className="detail">最终路径：{configuration.baseUrl.replace(/\/$/, '')}{configuration.path}</p>
         <Field label="模型 ID" tip="目录不可用时可直接填写已知型号"><TextInput aria-label="模型 ID" className="st-mono-input" value={configuration.modelId} onChange={event => change({ modelId: event.target.value })} /></Field>
         <Field label="方言"><select className="st-input" aria-label="方言" value={configuration.dialect} onChange={event => change({ dialect: event.target.value as ModelConfiguration['dialect'] })}>
-          <option value="standard">标准 Chat</option><option value="deepseek">DeepSeek</option><option value="command-code">Command Code</option></select></Field>
+          <option value="standard">标准协议</option><option value="deepseek">DeepSeek</option><option value="command-code">Command Code</option></select></Field>
         <Field label="参数模式"><select className="st-input" aria-label="参数模式" value={configuration.parameterMode} onChange={event => change({ parameterMode: event.target.value as ModelConfiguration['parameterMode'] })}>
           <option value="plain">默认文本参数</option><option value="thinking" disabled={configuration.dialect !== 'deepseek'}>DeepSeek 思考模式</option></select></Field>
         <label><input type="checkbox" checked={configuration.enabled} onChange={event => change({ enabled: event.target.checked })} />启用连接</label>
@@ -69,7 +69,7 @@ export function ModelConnectionDialog({ connection, attempts, onClose, onSave, o
         {error && <p role="alert">{error}</p>}
         {currentResult && <p role="status">{currentResult.state === 'completed' ? '检查已完成' : currentResult.state === 'cancelled' ? '已停止本机检查' : '检查结果待核实'} · {currentResult.usage.state === 'unknown' ? '用量未知' : '已记录用量'}</p>}
       </div>
-      <div className="st-dialog-foot"><button type="button" className="outline" disabled={checking || configuration.protocol !== 'chat-completions' || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek'} onClick={() => void test()}>{checking ? '正在检查…' : '保存前检查'}</button>
+      <div className="st-dialog-foot"><button type="button" className="outline" disabled={checking || configuration.protocol === 'messages' || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek'} onClick={() => void test()}>{checking ? '正在检查…' : '保存前检查'}</button>
         {currentResult && !currentResult.physicalRequestEnded && <button type="button" className="outline" onClick={() => void onCancel(currentResult)}>停止检查</button>}
         <div className="st-dialog-foot-right"><Dialog.Close asChild><button type="button" className="outline">取消</button></Dialog.Close>
           <button type="button" className="primary" disabled={saving} onClick={() => void save()}>{saving ? '保存中…' : '保存'}</button></div></div>

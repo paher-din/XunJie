@@ -13,6 +13,8 @@ WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#furt
 
 WP06 首张子票 [#164：个人模型设置与可靠连接检查](https://github.com/paher-din/XunJie/issues/164)的范围、owner 和测试边界见[实施方案](wp06-personal-model-checks.md)，实际结果与前后截图见[交付记录](../wp06-personal-models-acceptance.md)。
 
+WP06 [#166：Responses 完整接入](https://github.com/paher-din/XunJie/issues/166)的原生结果、工具图像、续接及验收见[实施方案](wp06-responses.md)和[交付记录](../wp06-responses-acceptance.md)。
+
 [#165：学校／个人模型选择与 Chat 原生续接](https://github.com/paher-din/XunJie/issues/165)见[实施方案](wp06-selection-chat-continuations.md)、[模型 owner](../../../packages/learning-space/src/model-connections/README.md)及[分项验收](../wp06-chat-selection-acceptance.md)。Mac 后续验收统一交接 #178。
 
 ## WP02 子票实施方案

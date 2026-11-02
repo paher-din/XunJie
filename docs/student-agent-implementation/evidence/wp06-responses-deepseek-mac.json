@@ -1,0 +1,448 @@
+{
+  "measuredAtLocal": "2026-11-03 Asia/Shanghai",
+  "sdk": "openai@7.42.0",
+  "adapter": "xunjie-responses-native-v1",
+  "commandCode": {
+    "status": "waived",
+    "authority": "Robert, this session, 2026-11-03"
+  },
+  "runs": [
+    {
+      "name": "deepseek-responses.json",
+      "measuredAt": "2026-11-02T18:02:09.109Z",
+      "sdk": "openai@7.42.0",
+      "adapter": "xunjie-responses-native-v1",
+      "commandCode": "waived-by-owner-2026-11-03",
+      "maxGenerations": 6,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "results": [
+        {
+          "endpoint": "https://api.deepseek.com/v1/responses",
+          "model": "deepseek-flash",
+          "protocol": "responses",
+          "nativeMode": "thinking",
+          "cases": [
+            {
+              "name": "image-and-multiple-tools",
+              "configVersion": 1,
+              "state": "failed",
+              "reason": "malformed-response",
+              "usage": {
+                "state": "unknown"
+              },
+              "resultRef": "ec11b3b7-957d-4cc3-ab41-99fcff9274dc",
+              "physicalRequestEnded": true,
+              "toolCount": 0,
+              "inputImageRead": false,
+              "parameterMode": "thinking"
+            },
+            {
+              "name": "json-mode-and-application-validation",
+              "configVersion": 2,
+              "state": "failed",
+              "reason": "malformed-response",
+              "usage": {
+                "state": "unknown"
+              },
+              "resultRef": "8106edf2-1467-44da-82da-38c8b29774c0",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 200,
+              "parameterMode": "plain"
+            },
+            {
+              "name": "native-schema-positive",
+              "configVersion": 2,
+              "state": "failed",
+              "reason": "malformed-response",
+              "usage": {
+                "state": "unknown"
+              },
+              "resultRef": "09cbdc0f-0be0-42bd-b9bb-dfac62fc663b",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 200,
+              "parameterMode": "plain"
+            },
+            {
+              "name": "native-schema-invalid-counterexample",
+              "configVersion": 2,
+              "state": "failed",
+              "reason": "upstream-http",
+              "usage": {
+                "state": "unknown"
+              },
+              "resultRef": "57419079-18c4-4ad5-86eb-10aea088d389",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 400,
+              "parameterMode": "plain"
+            },
+            {
+              "name": "thinking-with-forced-tool-counterexample",
+              "configVersion": 3,
+              "state": "failed",
+              "reason": "upstream-http",
+              "usage": {
+                "state": "unknown"
+              },
+              "resultRef": "09688970-4ede-47a4-afd6-c9598d98a065",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 400,
+              "parameterMode": "thinking"
+            }
+          ]
+        }
+      ],
+      "actualGenerations": 5
+    },
+    {
+      "name": "deepseek-native-retest.json",
+      "measuredAt": "2026-11-02T18:03:36.528Z",
+      "sdk": "openai@7.42.0",
+      "adapter": "xunjie-responses-native-v1",
+      "commandCode": "waived-by-owner-2026-11-03",
+      "maxGenerations": 6,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "results": [
+        {
+          "endpoint": "https://api.deepseek.com/v1/responses",
+          "model": "deepseek-flash",
+          "protocol": "responses",
+          "nativeMode": "thinking",
+          "cases": [
+            {
+              "name": "image-and-multiple-tools",
+              "configVersion": 1,
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 600,
+                "outputTokens": 84,
+                "totalTokens": 684,
+                "cachedTokens": 384,
+                "reasoningTokens": 32
+              },
+              "resultRef": "ed4a6a4d-b9cd-418d-95ac-73f081d6b434",
+              "physicalRequestEnded": true,
+              "toolCount": 2,
+              "inputImageRead": true,
+              "parameterMode": "thinking"
+            },
+            {
+              "name": "restart-native-tool-image-replay",
+              "configVersion": 1,
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 943,
+                "outputTokens": 48,
+                "totalTokens": 991,
+                "cachedTokens": 640,
+                "reasoningTokens": 11
+              },
+              "resultRef": "b3df417f-a7c8-4179-bc43-d32153d41171",
+              "physicalRequestEnded": true,
+              "nativePreserved": true,
+              "nativeSha256": "e3bd9dd9af6fbb9565ca6d1d89e02f8269d8936c811dad76b1b104865cdfae23",
+              "nativeItemTypes": [
+                "reasoning",
+                "function_call",
+                "function_call"
+              ],
+              "reasoningValue": "nonempty",
+              "correctNonce": true,
+              "returnedImageRead": true,
+              "nativeToolImage": true,
+              "exactImageResourceReplay": true,
+              "stateless": true,
+              "parameterMode": "thinking"
+            }
+          ]
+        }
+      ],
+      "actualGenerations": 2
+    },
+    {
+      "name": "deepseek-schemas.json",
+      "measuredAt": "2026-11-02T18:04:39.638Z",
+      "sdk": "openai@7.42.0",
+      "adapter": "xunjie-responses-native-v1",
+      "commandCode": "waived-by-owner-2026-11-03",
+      "maxGenerations": 6,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "results": [
+        {
+          "endpoint": "https://api.deepseek.com/v1/responses",
+          "model": "deepseek-flash",
+          "protocol": "responses",
+          "nativeMode": "thinking",
+          "cases": [
+            {
+              "name": "json-mode-and-application-validation",
+              "configVersion": 2,
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 41,
+                "outputTokens": 5,
+                "totalTokens": 46,
+                "cachedTokens": 0,
+                "reasoningTokens": 0
+              },
+              "resultRef": "995c51ac-4484-4b89-905e-d244ee16f7bd",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 200,
+              "parameterMode": "plain"
+            },
+            {
+              "name": "native-schema-positive",
+              "configVersion": 2,
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 65,
+                "outputTokens": 5,
+                "totalTokens": 70,
+                "cachedTokens": 0,
+                "reasoningTokens": 0
+              },
+              "resultRef": "485ca7a0-e233-4843-acbb-5bacb480c9c2",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 200,
+              "parameterMode": "plain"
+            },
+            {
+              "name": "native-schema-invalid-counterexample",
+              "configVersion": 2,
+              "state": "failed",
+              "reason": "upstream-http",
+              "usage": {
+                "state": "unknown"
+              },
+              "resultRef": "fa4b9497-e0f8-4e6b-a3d2-2d9af50dd8be",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 400,
+              "parameterMode": "plain"
+            },
+            {
+              "name": "thinking-with-forced-tool-counterexample",
+              "configVersion": 3,
+              "state": "failed",
+              "reason": "upstream-http",
+              "usage": {
+                "state": "unknown"
+              },
+              "resultRef": "e5ec5a87-8931-4ed1-be80-5b2efc084abf",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 400,
+              "parameterMode": "thinking"
+            },
+            {
+              "name": "strict-tool-positive",
+              "configVersion": 4,
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 285,
+                "outputTokens": 32,
+                "totalTokens": 317,
+                "cachedTokens": 0,
+                "reasoningTokens": 0
+              },
+              "resultRef": "f49f0421-fb93-4662-bbdf-5b78ba2fdde1",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 200,
+              "toolCount": 1,
+              "strictWire": true,
+              "parameterMode": "plain"
+            },
+            {
+              "name": "strict-tool-native-schema-counterexample",
+              "configVersion": 4,
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 297,
+                "outputTokens": 32,
+                "totalTokens": 329,
+                "cachedTokens": 0,
+                "reasoningTokens": 0
+              },
+              "resultRef": "f9331874-439b-4e32-8cf5-ae3a3b1b8f83",
+              "physicalRequestEnded": true,
+              "upstreamStatus": 200,
+              "toolCount": 1,
+              "strictWire": true,
+              "parameterMode": "plain",
+              "interpretation": "valid JSON Schema oneOf was accepted; negative control inconclusive; strictTools remains unknown"
+            }
+          ]
+        }
+      ],
+      "actualGenerations": 6
+    },
+    {
+      "name": "deepseek-native-final.json",
+      "measuredAt": "2026-11-02T18:17:20.618Z",
+      "sdk": "openai@7.42.0",
+      "adapter": "xunjie-responses-native-v1",
+      "commandCode": "waived-by-owner-2026-11-03",
+      "maxGenerations": 6,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "results": [
+        {
+          "endpoint": "https://api.deepseek.com/v1/responses",
+          "model": "deepseek-flash",
+          "protocol": "responses",
+          "nativeMode": "thinking",
+          "cases": [
+            {
+              "name": "image-and-multiple-tools",
+              "configVersion": 1,
+              "parameterMode": "thinking",
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 600,
+                "outputTokens": 81,
+                "totalTokens": 681,
+                "cachedTokens": 384,
+                "reasoningTokens": 29
+              },
+              "resultRef": "ab1e295b-4e59-4a6e-88c0-8cfce3806566",
+              "physicalRequestEnded": true,
+              "toolCount": 2,
+              "inputImageRead": true
+            },
+            {
+              "name": "restart-native-tool-image-replay",
+              "configVersion": 1,
+              "parameterMode": "thinking",
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 939,
+                "outputTokens": 56,
+                "totalTokens": 995,
+                "cachedTokens": 640,
+                "reasoningTokens": 20
+              },
+              "resultRef": "573e72d3-d26d-43c5-a6c4-de32ca84d3b4",
+              "physicalRequestEnded": true,
+              "nativePreserved": true,
+              "nativeSha256": "2792b1751423769e165727f08c03f9b0b075585935c2ee498f8c8d6c8e635afa",
+              "nativeItemTypes": [
+                "reasoning",
+                "function_call",
+                "function_call"
+              ],
+              "reasoningValue": "nonempty",
+              "correctNonce": true,
+              "returnedImageRead": true,
+              "nativeToolImage": true,
+              "exactImageResourceReplay": true,
+              "stateless": true
+            }
+          ]
+        }
+      ],
+      "actualGenerations": 2
+    },
+    {
+      "name": "deepseek-native-reviewed.json",
+      "measuredAt": "2026-11-02T18:25:16.629Z",
+      "sdk": "openai@7.42.0",
+      "adapter": "xunjie-responses-native-v1",
+      "commandCode": "waived-by-owner-2026-11-03",
+      "maxGenerations": 6,
+      "limits": {
+        "maxOutputTokens": 2048,
+        "timeoutMs": 30000,
+        "retries": 0
+      },
+      "results": [
+        {
+          "endpoint": "https://api.deepseek.com/v1/responses",
+          "model": "deepseek-flash",
+          "protocol": "responses",
+          "nativeMode": "thinking",
+          "cases": [
+            {
+              "name": "image-and-multiple-tools",
+              "configVersion": 1,
+              "parameterMode": "thinking",
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 600,
+                "outputTokens": 86,
+                "totalTokens": 686,
+                "cachedTokens": 384,
+                "reasoningTokens": 34
+              },
+              "resultRef": "21a7ba0a-f619-428b-97ea-6db448b75bd2",
+              "physicalRequestEnded": true,
+              "toolCount": 2,
+              "inputImageRead": true
+            },
+            {
+              "name": "restart-native-tool-image-replay",
+              "configVersion": 1,
+              "parameterMode": "thinking",
+              "state": "completed",
+              "reason": "completed",
+              "usage": {
+                "state": "final",
+                "inputTokens": 945,
+                "outputTokens": 51,
+                "totalTokens": 996,
+                "cachedTokens": 640,
+                "reasoningTokens": 14
+              },
+              "resultRef": "f9ecc0fa-c577-4871-b9bd-a801f9613523",
+              "physicalRequestEnded": true,
+              "nativePreserved": true,
+              "nativeSha256": "6c499197b9da9f8c31c04126dcd5b423e90767394c8a7a6627b55e1e95df47cd",
+              "nativeItemTypes": [
+                "reasoning",
+                "function_call",
+                "function_call"
+              ],
+              "reasoningValue": "nonempty",
+              "correctNonce": true,
+              "returnedImageRead": true,
+              "nativeToolImage": true,
+              "exactImageResourceReplay": true,
+              "stateless": true
+            }
+          ]
+        }
+      ],
+      "actualGenerations": 2
+    }
+  ],
+  "totalGenerations": 17
+}
