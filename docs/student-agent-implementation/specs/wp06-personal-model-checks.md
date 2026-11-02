@@ -21,4 +21,4 @@
 
 主测试只经生产宿主 ModelGateway 配置、接收、查询、取消及结果接口；使用真实身份、PostgreSQL、所属资源、直接 SDK 和受控上游。主例逐条红绿推进，存储或崩溃故障只在真实边界注入。Chrome 验证正式产品包/普通 Web 共同入口，旧预览和路由 mock 不算正式接线。
 
-DeepSeek 官方 `deepseek-flash` 与 Command Code `deepseek/deepseek-v4.1-flash` 各自验证有限文本、usage、终态及客户端取消；使用本机获准私有凭据，密钥不入日志。Mac 与真实跨机按负责人此前分工另行登记；完整跨机部署/独立恢复接管属于后继票，不以此延后本票的首次持久化。每项如实区分通过、失败、跳过、未执行；不产生真实 Agent、教学效果或上游退款结论。
+DeepSeek 官方 `deepseek-flash` 与 Command Code `deepseek/deepseek-v4.1-flash` 各自验证有限文本、usage、终态及客户端取消；使用本机获准私有凭据，密钥不入日志。Mac 验收按负责人最新分工独立登记在 [#178](https://github.com/paher-din/XunJie/issues/178)；完整跨机部署/独立恢复接管属于后继 [#168](https://github.com/paher-din/XunJie/issues/168)，不以此延后本票的首次持久化。每项如实区分通过、失败、跳过、未执行；不产生真实 Agent、教学效果或上游退款结论。

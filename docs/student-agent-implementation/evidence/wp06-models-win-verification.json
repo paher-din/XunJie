@@ -60,7 +60,7 @@
     ],
     "failed": 19
   },
-  "mac": "not-run; #155",
+  "mac": "not-run; #178",
   "fullCrossHost": "later #168",
   "physicalWindowsIme": "not-run; Chrome CDP composition was tested",
   "teachingEffect": "not-evaluated",

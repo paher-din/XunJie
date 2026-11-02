@@ -1,6 +1,6 @@
 # WP06 #164：个人模型设置与可靠连接检查交付
 
-来源 [#164](https://github.com/paher-din/XunJie/issues/164)，实施分支 `wp06`，基线 `f0979d5`，最终代码 `2b4b87f2b962f38201320ed75ca1398fbd0cf389`。实施边界见[方案](specs/wp06-personal-model-checks.md)，操作及生命周期见[模型 owner](../../packages/learning-space/src/model-connections/README.md)。[草稿 PR #177](https://github.com/paher-din/XunJie/pull/177) 不合并；Mac 待验项已登记在 [#155 专节](https://github.com/paher-din/XunJie/issues/155#issuecomment-6576481863)，完整跨机/独立部署接管属于后继 [#168](https://github.com/paher-din/XunJie/issues/168)。
+来源 [#164](https://github.com/paher-din/XunJie/issues/164)，实施分支 `wp06`，基线 `f0979d5`，最终代码 `2b4b87f2b962f38201320ed75ca1398fbd0cf389`。实施边界见[方案](specs/wp06-personal-model-checks.md)，操作及生命周期见[模型 owner](../../packages/learning-space/src/model-connections/README.md)。[草稿 PR #177](https://github.com/paher-din/XunJie/pull/177) 不合并；Mac 待验项独立登记在 [#178](https://github.com/paher-din/XunJie/issues/178)，完整跨机/独立部署接管属于后继 [#168](https://github.com/paher-din/XunJie/issues/168)。
 
 ## 本次变化
 
@@ -38,7 +38,7 @@
 - 真实 POST 已提交但 HTTP 回执延迟期间继续输入 B；A 回执保留 B，下一次保存用已确认新版本成功。
 - Tab 焦点留在表单，Escape 返回打开按钮；Chrome CDP 中文组合输入、空白 key 沿用、返回首页；浅/深主题和 720×900 窄桌面。
 
-CDP 组合输入不充抵物理系统输入法候选窗验收。本轮未另做 Windows 物理输入法验证；Apple Silicon Mac 的工程、独立产品包、桌面 Chrome、物理中文输入法及 Meta 操作仍待 #155 执行。
+CDP 组合输入不充抵物理系统输入法候选窗验收。本轮未另做 Windows 物理输入法验证；Apple Silicon Mac 的工程、独立产品包、桌面 Chrome、物理中文输入法及 Meta 操作仍待 #178 执行。
 
 实际正式入口改动前（没有模型设置入口）：
 
@@ -67,4 +67,4 @@ CDP 组合输入不充抵物理系统输入法候选窗验收。本轮未另做 
 
 双轴审查固定基线 `f0979d5`，最终代码 `2b4b87f`：Standards 0 项剩余发现；Spec 0 项剩余发现。已修复临时凭据原子清理、迟到保存/空白 key、跨 delta 密钥脱敏、结果资源核验、维护/本机死进程槽、旧备份接管及并发 COMMIT ACK 窗口；红绿证据保留在本机 `.verification/164/`。
 
-Mac 待 #155，完整跨机部署/恢复/接管待 #168；其他协议、学校默认/跨空间个人授权、Chat 图像/工具由对应后继票扩展。本票没有实现完整学习 Run、真实 Agent/教师接收器，不产生教学效果结论。
+Mac 待 #178，完整跨机部署/恢复/接管待 #168；其他协议、学校默认/跨空间个人授权、Chat 图像/工具由对应后继票扩展。本票没有实现完整学习 Run、真实 Agent/教师接收器，不产生教学效果结论。
