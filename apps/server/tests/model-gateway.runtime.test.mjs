@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, resolveCredential, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 import { createServer } from 'node:http';
+import { modelCommitRelay } from './model-commit-relay.mjs';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Requires native PostgreSQL 18.6.');
@@ -120,7 +121,7 @@ test('a saved connection check uses the actual SDK once and persists its origina
       assert.equal(received.length, 1);
       const key = randomBytes(32);
       await runtime.setCredential('model-backup-test', key.toString('base64'));
-      const backup = await runtime.recovery.backup({ directory: join(root, 'model-backups'), recoveryKeyRef: 'model-backup-test' });
+      const backup = await runtime.recovery.backup({ directory: await mkdtemp(join(tmpdir(), 'xj-model-backups-')), recoveryKeyRef: 'model-backup-test' });
       assert.equal(backup.services.length, 4, 'model facts and native resources participate in the product backup');
       assert.equal((await api(`checks/${check.attemptId}`)).value.resultRef, result.value.resultRef);
       // Fault at the real owned resource boundary, not in a mocked repository.
@@ -421,4 +422,51 @@ test('real school subjects isolate connections and checks, and revoked membershi
     assert.equal((await api(`checks/${second.attemptId}`, undefined, alice.headers)).status, 403);
     assert.deepEqual((await api('connections', undefined, bob.headers)).value, []);
   });
+});
+
+test('lost real PostgreSQL claim and result COMMIT replies keep truthful physical slots and durable completions', { timeout: 180000 }, async () => {
+  let calls = 0;
+  const upstream = createServer((_request, response) => {
+    calls++; response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta: { content: '确认完成' }, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  let relay;
+  try {
+    await product(async ({ api, runtime, root }) => {
+      await runtime.stop();
+      const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
+      const descriptor = environment.services.find(service => service.unit === 'model-connection');
+      const ref = 'storage-' + descriptor.serviceId;
+      const binding = JSON.parse(await resolveCredential(root, ref));
+      relay = await modelCommitRelay(binding.connection.port);
+      await writeFile(join(root, 'credentials', ref), JSON.stringify({ ...binding, connection: { ...binding.connection, port: relay.port } }), { mode: 0o600 });
+      await runtime.start();
+      const input = { ...connection(), baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, dialect: 'standard' };
+      await api('connections', { requestId: randomUUID(), ...input });
+      const check = () => ({ attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: input.connectionId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 10000 } });
+      const first = check(); await api('checks', first);
+      relay.arm('physical_ended=false,dispatcher_id');
+      await api(`checks/${first.attemptId}/dispatch`, {});
+      const notSent = await api(`checks/${first.attemptId}`);
+      assert.equal(relay.cuts(), 1); assert.equal(calls, 0);
+      assert.equal(notSent.value.physicalRequestEnded, true, 'this process never started the SDK for its lost-ACK claim');
+      assert.equal(notSent.value.dispatched, false); assert.equal(notSent.value.reason, 'dispatch-not-started');
+      await api(`checks/${first.attemptId}/dispatch`, {}); assert.equal(calls, 0);
+      const second = check(); await api('checks', second);
+      relay.arm('state=$3,physical_ended=true WHERE');
+      await api(`checks/${second.attemptId}/dispatch`, {});
+      let completed;
+      for (let count = 0; count < 150; count++) {
+        completed = await api(`checks/${second.attemptId}`);
+        if (completed.value.physicalRequestEnded) break;
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      assert.equal(relay.cuts(), 2); assert.equal(calls, 1);
+      assert.equal(completed.value.state, 'completed'); assert.ok(completed.value.resultRef);
+      await runtime.stop(); await runtime.start();
+      assert.deepEqual((await api(`checks/${second.attemptId}`)).value, completed.value);
+      assert.equal(calls, 1);
+    });
+  } finally { await relay?.close(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
 });

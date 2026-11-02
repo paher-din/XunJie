@@ -21,11 +21,22 @@ export function createChecks(storage: OwnedStorage, owner: {
   assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
 }) {
   const active = new Map<string, { controller: AbortController; task: Promise<void> }>();
+  const unsentClaims = new Map<string, { identity: SpaceIdentity; requestId: string; fingerprint: string }>();
   let closed = false;
   let admissionClosed = false;
   let starting = 0;
+  async function settleUnsentClaims() {
+    for (const [id, claim] of unsentClaims) {
+      const receipt = await storage.receipt(claim.requestId, claim.fingerprint);
+      if (!receipt) continue;
+      if (receipt.result === true) await update(claim.identity, id, body => body.state === 'dispatched' && !active.has(id)
+        ? { ...body, state: 'failed', reason: 'dispatch-not-started', physicalRequestEnded: true, dispatched: false } : body);
+      unsentClaims.delete(id);
+    }
+  }
   async function reconcileDispatchers() {
     if (admissionClosed) return;
+    await settleUnsentClaims();
     const { rows: expired } = await storage.read("SELECT id FROM model_attempts WHERE state='accepted' AND created_at < clock_timestamp()-interval '60 seconds'");
     for (const item of expired) {
       await storage.request({ requestId: 'model-grant-expired:' + item.id, fingerprint: 'model-check-grant-v1' }, async tx => {
@@ -131,7 +142,9 @@ export function createChecks(storage: OwnedStorage, owner: {
     if (closed) throw new StorageError('maintenance');
     await storage.pendingIntents();
     await owner.assertDispatch(identity, original, found.credential_ref as string);
-    const claimed = await storage.request({ requestId: randomUUID(), fingerprint: 'model-dispatch:' + attemptId }, async tx => {
+    const claim = { requestId: randomUUID(), fingerprint: 'model-dispatch:' + attemptId };
+    let claimed;
+    try { claimed = await storage.request(claim, async tx => {
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', ['model-physical-slots']);
       const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [attemptId]);
       const body = modelAttemptSchema.parse(current!.body);
@@ -141,7 +154,13 @@ export function createChecks(storage: OwnedStorage, owner: {
       const next = { ...body, state: 'dispatched', dispatched: true, physicalRequestEnded: false };
       await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=false,dispatcher_id=$4 WHERE id=$1', [attemptId, next, 'dispatched', owner.dispatcher?.id ?? null]);
       return true;
-    });
+    }); } catch (error) {
+      if (!(error instanceof StorageError) || error.code !== 'commit-unknown') throw error;
+      // This invocation has not started an SDK request. Confirm its own claim receipt, never replay it.
+      unsentClaims.set(attemptId, { identity, ...claim });
+      await settleUnsentClaims();
+      return read(identity, attemptId);
+    }
     if (!claimed.result) return read(identity, attemptId);
     const controller = new AbortController();
     const task = deliver(identity, original, found.credential_ref as string, controller);
@@ -181,7 +200,8 @@ export function createChecks(storage: OwnedStorage, owner: {
       });
     } catch {
       // No success without the resource and result transaction. Never replay a dispatched attempt.
-      await update(identity, attempt.attemptId, body => ({ ...body, state: 'unknown', reason: 'result-unconfirmed', physicalRequestEnded: true })).catch(() => {});
+      await update(identity, attempt.attemptId, body => body.resultRef || body.physicalRequestEnded ? body
+        : { ...body, state: 'unknown', reason: 'result-unconfirmed', physicalRequestEnded: true }).catch(() => {});
     } finally { clearTimeout(timeout); }
   }
   async function cancel(identity: SpaceIdentity, attemptId: string) {
@@ -204,6 +224,7 @@ export function createChecks(storage: OwnedStorage, owner: {
     closeAdmission() { admissionClosed = true; },
     closeDispatch() { closed = true; },
     async drain() {
+      await settleUnsentClaims();
       while (starting || active.size) {
         await Promise.allSettled([...active.values()].map(value => value.task));
         if (starting) await new Promise(resolve => setTimeout(resolve, 5));

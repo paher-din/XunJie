@@ -31,7 +31,7 @@ test.beforeAll(async () => {
     const execute = promisify(execFile)
     const run = async (command: string, args: string[] = []) => JSON.parse((await execute(resolve(product, resources.nodePath),
       [join(product, 'app/cli.js'), command, '--root', root, ...args], { windowsHide: true, timeout: 180000 })).stdout)
-    runtime = { install: input => run('install', ['--profile', input.profile]), start: () => run('start'), stop: () => run('stop') }
+    runtime = { install: input => run('install', ['--profile', input?.profile ?? 'local']), start: () => run('start'), stop: () => run('stop') }
   } else runtime = openProductRuntime({ root, resources: {
     nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
     webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
