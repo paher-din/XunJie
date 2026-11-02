@@ -1,19 +1,22 @@
 import OpenAI from 'openai';
-import type { ModelConfiguration, ModelUsage } from '@xunjie/contracts/model-connections';
+import type { ModelConfiguration, ModelUsage, ModelTool } from '@xunjie/contracts/model-connections';
 import { modelUsageSchema } from '@xunjie/contracts/model-connections';
+import { createChatAssembler } from './chat-native.js';
 
 export const chatAdapterVersion = 'xunjie-chat-text-v1';
 export const sdkVersion = 'openai@7.42.0';
+export type ChatPayload = OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & { thinking?: { type: string } };
 class MalformedResponse extends Error {}
 export function checkPayload(configuration: ModelConfiguration, maxOutputTokens: number) {
   return { model: configuration.modelId, messages: [{ role: 'user' as const, content: 'Reply briefly with OK to check this model connection.' }],
     max_tokens: maxOutputTokens, stream: true as const, stream_options: { include_usage: true },
     ...(configuration.dialect === 'deepseek' ? { thinking: { type: configuration.parameterMode === 'thinking' ? 'enabled' : 'disabled' } } : {}) };
 }
-export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ReturnType<typeof checkPayload>,
-  signal: AbortSignal, timeoutMs: number) {
+export async function runChat(configuration: ModelConfiguration, apiKey: string, payload: ChatPayload,
+  signal: AbortSignal, timeoutMs: number, nativeTools?: ModelTool[]) {
   const clean = (value: string) => apiKey ? value.split(apiKey).join('[redacted]') : value;
   const chunks: unknown[] = [];
+  const assembler = nativeTools ? createChatAssembler() : null;
   let text = '', finishReason: string | null = null, bytes = 0, usage: ModelUsage = { state: 'unknown' };
   let upstreamError: unknown = null;
   let reason = 'missing-terminal', state: 'completed' | 'incomplete' | 'failed' | 'unknown' | 'cancelled' = 'incomplete';
@@ -26,6 +29,7 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
       bytes += Buffer.byteLength(encoded);
       if (bytes > 2_000_000) { stream.controller.abort(); reason = 'response-limit'; break; }
       chunks.push(JSON.parse(encoded));
+      if (assembler) { try { assembler.add(value); } catch { throw new MalformedResponse(); } }
       if (!Array.isArray(value.choices)) throw new MalformedResponse();
       const choice = value.choices.find(item => item.index === 0);
       if (choice && (!choice.delta || choice.delta.content != null && typeof choice.delta.content !== 'string'
@@ -49,7 +53,7 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
     }
     if (reason !== 'response-limit') {
       reason = finishReason ?? 'missing-terminal';
-      state = finishReason === 'stop' ? 'completed' : 'incomplete';
+      state = finishReason === 'stop' || nativeTools && finishReason === 'tool_calls' ? 'completed' : 'incomplete';
       if (state === 'completed' && usage.inputTokens !== undefined && usage.outputTokens !== undefined && usage.totalTokens !== undefined)
         usage = { ...usage, state: 'final' };
     }
@@ -64,6 +68,11 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
   }
   // The SDK may end its iterator cleanly after abort rather than throwing.
   // A terminal response already received still wins a later cancellation race.
-  if (signal.aborted && finishReason !== 'stop') { state = 'cancelled'; reason = 'client-abort'; }
-  return { state, reason, text: clean(text), usage, native: { formatVersion: 1, sdk: sdkVersion, adapter: chatAdapterVersion, chunks, finishReason, upstreamError } };
+  if (signal.aborted && finishReason !== 'stop' && !(nativeTools && finishReason === 'tool_calls')) { state = 'cancelled'; reason = 'client-abort'; }
+  const assembled = assembler?.result(nativeTools ?? [], clean);
+  if (state === 'completed' && assembled && !assembled.valid) { state = 'failed'; reason = 'invalid-native-result'; }
+  if (state === 'completed' && assembled?.assistant?.refusal) { state = 'failed'; reason = 'content-refused'; }
+  return { state, reason, text: clean(text), usage, toolIntents: state === 'completed' ? assembled?.intents ?? [] : [],
+    native: { formatVersion: 1, sdk: sdkVersion, adapter: nativeTools ? 'xunjie-chat-native-v1' : chatAdapterVersion, chunks, finishReason, upstreamError,
+      ...(assembled ? { assistant: assembled.assistant, choices: assembled.choices } : {}) } };
 }

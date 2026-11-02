@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelAttemptSchema, modelCheckInputSchema } from '@xunjie/contracts/model-connections';
-import type { ModelAttempt, ModelCheckInput, ModelConfiguration, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
-import { checkPayload, runChat } from './chat.js';
+import { modelAttemptSchema, modelAttemptInputSchema } from '@xunjie/contracts/model-connections';
+import type { ModelAttempt, ModelCheckInput, ModelConnection, ModelCheckPolicy, ModelChatInput, ModelTool } from '@xunjie/contracts/model-connections';
+import { checkPayload, runChat, type ChatPayload } from './chat.js';
 
 export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql: `
   CREATE TABLE model_attempts (id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL,input_digest text NOT NULL,
@@ -11,13 +11,15 @@ export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql:
   CREATE INDEX model_attempt_scope ON model_attempts(scope,created_at);
 ` }];
 export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; source?: ModelAttempt['source'];
-  policy?: ModelCheckPolicy; retain?(tx: OwnedTransaction): Promise<void> }
+  policy?: ModelCheckPolicy; payload?: ChatPayload; tools?: ModelTool[]; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function createChecks(storage: OwnedStorage, owner: {
   dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } | undefined;
   authorize(identity: SpaceIdentity): Promise<void>;
   snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot>;
+  prepareChat(identity: SpaceIdentity, input: ModelChatInput): Promise<CheckSnapshot>;
+  publishChat(tx: OwnedTransaction, attempt: ModelAttempt): Promise<void>;
   credential(identity: SpaceIdentity, ref: string): Promise<string>;
   assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
 }) {
@@ -48,6 +50,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         const next = { ...body, state: 'cancelled', reason: 'authorization-expired' };
         await tx.query('UPDATE model_attempts SET body=$2,state=$3 WHERE id=$1', [item.id, next, 'cancelled']);
         await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [current!.credential_ref]);
+        if (body.segment) await owner.publishChat(tx, modelAttemptSchema.parse(next));
         return { expired: true };
       });
     }
@@ -65,6 +68,7 @@ export function createChecks(storage: OwnedStorage, owner: {
         const next = { ...body, physicalRequestEnded: true, state: 'unknown', reason: 'dispatcher-ended' };
         await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=true WHERE id=$1', [row.id, next, 'unknown']);
         await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [row.credential_ref]);
+        if (body.segment) await owner.publishChat(tx, modelAttemptSchema.parse(next));
         return { reconciled: true };
       });
     }
@@ -99,17 +103,18 @@ export function createChecks(storage: OwnedStorage, owner: {
   async function receive(identity: SpaceIdentity, value: unknown) {
     if (admissionClosed) throw new StorageError('maintenance');
     await owner.authorize(identity);
-    const input = modelCheckInputSchema.parse(value), scope = scopeOf(identity), fingerprint = digest({ scope, input });
+    const input = modelAttemptInputSchema.parse(value), scope = scopeOf(identity), fingerprint = digest({ scope, input });
     const prior = await storage.receipt('model-check:' + input.attemptId, fingerprint);
     if (prior) return read(identity, input.attemptId);
-    const snapshot = await owner.snapshot(identity, input.source);
+    const snapshot = input.purpose === 'connection-check' ? await owner.snapshot(identity, input.source) : await owner.prepareChat(identity, input);
       const limits = snapshot.policy ? { maxOutputTokens: Math.min(input.limits.maxOutputTokens, snapshot.policy.maxOutputTokens),
         timeoutMs: Math.min(input.limits.timeoutMs, snapshot.policy.timeoutMs) } : input.limits;
-      const payload = checkPayload(snapshot.connection, limits.maxOutputTokens);
+      const payload = snapshot.payload ? { ...snapshot.payload, max_tokens: limits.maxOutputTokens } : checkPayload(snapshot.connection, limits.maxOutputTokens);
       const request = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-request:' + input.attemptId,
         bytes: Buffer.from(JSON.stringify(payload)), mediaType: 'application/json', contentVersion: 1 });
       const body: ModelAttempt = { attemptId: input.attemptId, purpose: input.purpose, connection: snapshot.connection,
-        limits, ...(snapshot.source ? { source: snapshot.source } : {}), state: 'accepted', dispatched: false, cancelRequested: false, physicalRequestEnded: true,
+        limits, ...(snapshot.source ? { source: snapshot.source } : {}), ...(snapshot.segment ? { segment: snapshot.segment } : {}),
+        state: 'accepted', dispatched: false, cancelRequested: false, physicalRequestEnded: true,
         upstreamStopped: 'unknown', text: '', usage: { state: 'unknown' }, reason: '', requestRef: request.resourceId, resultRef: null,
         createdAt: new Date().toISOString() };
       await storage.request({ requestId: 'model-check:' + input.attemptId, fingerprint }, async tx => {
@@ -137,6 +142,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=$4 WHERE id=$1', [id, body, body.state, body.physicalRequestEnded]);
       if (body.physicalRequestEnded && body.state !== 'accepted')
         await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [found.credential_ref]);
+      if (body.segment && body.physicalRequestEnded && body.state !== 'accepted') await owner.publishChat(tx, body);
       return body;
     });
   }
@@ -187,13 +193,17 @@ export function createChecks(storage: OwnedStorage, owner: {
       const current = await row(identity, attempt.attemptId);
       if ((current.body as ModelAttempt).cancelRequested) controller.abort('cancel');
       const credential = await owner.credential(identity, ref);
-      const payload = JSON.parse(Buffer.from(await storage.readResource(attempt.requestRef)).toString('utf8')) as ReturnType<typeof checkPayload>;
+      const payload = JSON.parse(Buffer.from(await storage.readResource(attempt.requestRef)).toString('utf8')) as ChatPayload;
+      const tools = attempt.segment ? payload.tools?.map(tool => {
+        if (tool.type !== 'function') throw new StorageError('corrupt');
+        return { name: tool.function.name, description: tool.function.description ?? '', inputSchema: tool.function.parameters ?? {} };
+      }) ?? [] : undefined;
       await owner.assertDispatch(identity, attempt, ref);
       await storage.pendingIntents();
       if (closed) throw new StorageError('maintenance');
       const result = controller.signal.aborted
-        ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, native: { chunks: [] } }
-        : await runChat(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs);
+        ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
+        : await runChat(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, tools);
       if (controller.signal.reason === 'timeout') { result.state = 'unknown'; result.reason = 'timeout'; }
       const resource = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-result:' + attempt.attemptId,
         bytes: Buffer.from(JSON.stringify(result.native)), mediaType: 'application/json', contentVersion: 1 });
@@ -201,10 +211,12 @@ export function createChecks(storage: OwnedStorage, owner: {
         const { rows: [current] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 FOR UPDATE', [attempt.attemptId]);
         const body = modelAttemptSchema.parse(current!.body);
         const next = { ...body, state: result.state, reason: result.reason, text: result.text, usage: result.usage,
+          ...(attempt.segment ? { toolIntents: result.toolIntents } : {}),
           physicalRequestEnded: true, resultRef: resource.resourceId };
         await tx.reference('model-result:' + attempt.attemptId, resource.resourceId);
         await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=true WHERE id=$1', [attempt.attemptId, next, next.state]);
         await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [ref]);
+        if (next.segment) await owner.publishChat(tx, next);
         return { resultRef: resource.resourceId };
       });
     } catch {

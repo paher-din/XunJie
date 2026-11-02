@@ -8,6 +8,8 @@ import { sealCredential, openCredential } from './vault.js';
 import { createChecks, checkMigrations, type CheckSnapshot } from './checks.js';
 import type { ModelCheckInput, ModelAttempt } from '@xunjie/contracts/model-connections';
 import { createModelSelections, selectionMigrations } from './selection.js';
+import { createModelImages } from './images.js';
+import { createChatWork, chatWorkMigrations } from './chat-work.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -20,7 +22,7 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
   ALTER TABLE model_credentials ADD COLUMN temporary boolean NOT NULL DEFAULT false;
 ` }, { version: 4, name: 'school-model-default', sql: `
   CREATE UNIQUE INDEX model_school_default ON model_connections(scope) WHERE scope LIKE 'school:%';
-` }, ...selectionMigrations];
+` }, ...selectionMigrations, ...chatWorkMigrations];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
@@ -167,16 +169,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef,
       source: { kind: 'personal', ownerScope: scopeOf(identity), feeSource: scopeOf(identity) }, ...(retain ? { retain } : {}) };
   }
-  const checks = createChecks(storage, {
-    dispatcher: options.dispatcher,
-    authorize: options.authorize, snapshot,
-    async credential(identity, ref) {
-      // The private dispatcher already checked this attempt's actor and immutable owner scope.
-      const { rows: [row] } = await storage.read('SELECT binding,sealed FROM model_credentials WHERE id=$1', [ref]);
-      if (!row) throw new StorageError('forbidden');
-      return openCredential(key, row.binding as string, row.sealed as ReturnType<typeof sealCredential>);
-    },
-    async assertDispatch(identity, attempt: ModelAttempt, ref) {
+  async function assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string) {
       await options.authorize(identity);
       if (Date.now() - Date.parse(attempt.createdAt) > 60000) throw new StorageError('forbidden');
       const ownerScope = attempt.source?.ownerScope ?? scopeOf(identity);
@@ -192,6 +185,18 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         if (!current.configuration.enabled || current.credentialRef !== ref) throw new StorageError('forbidden');
         if (attempt.source?.kind === 'school' && !current.policy?.checksAllowed) throw new StorageError('forbidden');
       }
+  }
+  const images = createModelImages(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
+  const segments = createChatWork(storage, images, { authorize: options.authorize, snapshot, assertDispatch,
+    assertWritable() { if (writesClosed) throw new StorageError('maintenance'); } });
+  const checks = createChecks(storage, {
+    dispatcher: options.dispatcher,
+    authorize: options.authorize, snapshot, assertDispatch, prepareChat: segments.prepare, publishChat: segments.publish,
+    async credential(_identity, ref) {
+      // The private dispatcher already checked this attempt's actor and immutable owner scope.
+      const { rows: [row] } = await storage.read('SELECT binding,sealed FROM model_credentials WHERE id=$1', [ref]);
+      if (!row) throw new StorageError('forbidden');
+      return openCredential(key, row.binding as string, row.sealed as ReturnType<typeof sealCredential>);
     },
   });
   async function validate() {
@@ -207,8 +212,9 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       }
     }
     await checks.validate();
+    await segments.validate();
   }
-  return { list, save, school, selection, validate, checks,
+  return { list, save, school, selection, images, segments, validate, checks,
     closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
     resume() { writesClosed = false; checks.resume(); } };
 }

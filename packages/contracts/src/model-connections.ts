@@ -26,7 +26,7 @@ export type ModelConnection = z.infer<typeof modelConnectionSchema>;
 export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
 
 export const modelCheckPolicySchema = z.object({ checksAllowed: z.boolean(), maxChecksPerHour: z.number().int().min(1).max(60),
-  maxOutputTokens: z.number().int().min(1).max(128), timeoutMs: z.number().int().min(250).max(30000) }).strict();
+  maxOutputTokens: z.number().int().min(1).max(2048), timeoutMs: z.number().int().min(250).max(30000) }).strict();
 export const schoolModelInputSchema = saveModelConnectionSchema.safeExtend({ policy: modelCheckPolicySchema });
 export const schoolModelSchema = z.object({ kind: z.literal('school'), connection: modelConnectionSchema,
   policy: modelCheckPolicySchema }).strict();
@@ -58,10 +58,34 @@ export const modelUsageSchema = z.object({ state: z.enum(['final', 'partial', 'u
   inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(),
   totalTokens: z.number().nonnegative().optional(), cachedTokens: z.number().nonnegative().optional(),
   reasoningTokens: z.number().nonnegative().optional() }).strict();
-export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
+export const modelImageRefSchema = z.object({ imageId: z.uuid(), version: z.literal(1) }).strict();
+export const modelImageInputSchema = z.object({ requestId: z.uuid(), imageId: z.uuid(), mediaType: z.literal('image/png'),
+  dataBase64: z.string().min(1).max(350000), source: modelImageRefSchema.safeExtend({ transformation: z.string().min(1).max(200) }).optional() }).strict();
+export const modelToolSchema = z.object({ name: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/), description: z.string().max(1000),
+  inputSchema: z.record(z.string(), z.unknown()) }).strict();
+export const modelToolIntentSchema = z.object({ callId: z.string().min(1).max(200), name: z.string().min(1).max(64),
+  arguments: z.record(z.string(), z.unknown()) }).strict();
+export const modelToolResultSchema = z.object({ callId: z.string().min(1).max(200), outcome: z.enum(['success', 'error', 'not-executed']),
+  text: z.string().max(8192), images: z.array(modelImageRefSchema).max(2) }).strict();
+export const settleModelToolsSchema = z.object({ requestId: z.uuid(), expectedSequence: z.number().int().nonnegative(),
+  results: z.array(modelToolResultSchema).min(1).max(8) }).strict();
+export const modelObservationSchema = z.object({ observationId: z.uuid(), version: z.number().int().positive(),
+  source: z.literal('caller'), text: z.string().max(8192) }).strict();
+export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId: z.uuid(), source: modelCheckInputSchema.shape.source,
+  prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8) }).strict(),
+  portable: z.array(z.object({ text: z.string().max(8192), resultRef: z.uuid().optional() }).strict()).max(8),
+  previousSegmentId: z.uuid().optional() }).strict();
+export const modelChatInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('chat-probe'), segmentId: z.uuid(),
+  expectedSequence: z.number().int().min(0).max(32), input: z.object({ text: z.string().max(8192), images: z.array(modelImageRefSchema).max(2),
+    toolResults: z.array(modelToolResultSchema).max(8), observations: z.array(modelObservationSchema).max(8).default([]) }).strict(),
+  limits: z.object({ maxOutputTokens: z.number().int().min(1).max(2048), timeoutMs: z.number().int().min(250).max(30000) }).strict() }).strict();
+export const modelAttemptInputSchema = z.union([modelCheckInputSchema, modelChatInputSchema]);
+export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.enum(['connection-check', 'chat-probe']),
   source: z.object({ kind: z.enum(['school', 'personal']), ownerScope: z.string().min(1).max(500),
     feeSource: z.string().min(1).max(500), grantId: z.uuid().optional(), grantVersion: z.number().int().positive().optional() }).strict().optional(),
-  connection: modelConnectionSchema, limits: modelCheckInputSchema.shape.limits,
+  connection: modelConnectionSchema, limits: modelChatInputSchema.shape.limits,
+  segment: z.object({ segmentId: z.uuid(), sequence: z.number().int().nonnegative() }).strict().optional(),
+  toolIntents: z.array(modelToolIntentSchema).max(8).optional(),
   state: z.enum(['accepted', 'dispatched', 'completed', 'incomplete', 'failed', 'cancelled', 'unknown']),
   dispatched: z.boolean(), cancelRequested: z.boolean(), physicalRequestEnded: z.boolean(),
   upstreamStopped: z.literal('unknown'), text: z.string(), usage: modelUsageSchema,
@@ -70,3 +94,9 @@ export const modelAttemptSchema = z.object({ attemptId: z.uuid(), purpose: z.lit
 export type ModelCheckInput = z.infer<typeof modelCheckInputSchema>;
 export type ModelAttempt = z.infer<typeof modelAttemptSchema>;
 export type ModelUsage = z.infer<typeof modelUsageSchema>;
+export type ModelChatInput = z.infer<typeof modelChatInputSchema>;
+export type ModelAttemptInput = z.infer<typeof modelAttemptInputSchema>;
+export type ModelTool = z.infer<typeof modelToolSchema>;
+export type ModelToolIntent = z.infer<typeof modelToolIntentSchema>;
+export type ModelToolResult = z.infer<typeof modelToolResultSchema>;
+export type ModelImageRef = z.infer<typeof modelImageRefSchema>;

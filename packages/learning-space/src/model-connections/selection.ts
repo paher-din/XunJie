@@ -12,7 +12,7 @@ export const selectionMigrations = [{ version: 5, name: 'explicit-model-use-and-
 ` }];
 export const modelScopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const personalPolicy: ModelCheckPolicy = { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 128, timeoutMs: 30000 };
+const personalPolicy: ModelCheckPolicy = { checksAllowed: true, maxChecksPerHour: 6, maxOutputTokens: 2048, timeoutMs: 30000 };
 type School = { kind: 'school'; connection: ModelConnection; policy: ModelCheckPolicy };
 type Personal = { kind: 'personal'; connection: ModelConnection; policy: ModelCheckPolicy; origin: 'self' | 'device' | 'grant'; grantId?: string };
 type Source = z.infer<typeof selectModelSchema>['source'];

@@ -1,0 +1,76 @@
+import { Ajv, type ValidateFunction } from 'ajv';
+import { StorageError } from '@xunjie/storage';
+import type { ModelTool, ModelToolIntent } from '@xunjie/contracts/model-connections';
+import { modelToolIntentSchema } from '@xunjie/contracts/model-connections';
+
+export type NativeChatAssistant = { role: 'assistant'; content: string | null; reasoning_content?: string | null;
+  tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[]; [field: string]: unknown };
+const ajv = new Ajv({ strict: true, allErrors: false });
+export function toolValidators(tools: ModelTool[]) {
+  if (new Set(tools.map(tool => tool.name)).size !== tools.length || Buffer.byteLength(JSON.stringify(tools)) > 24000) throw new StorageError('invalid');
+  const compiled = new Map<string, ValidateFunction>();
+  for (const tool of tools) {
+    if (tool.inputSchema.type !== 'object') throw new StorageError('invalid');
+    try { compiled.set(tool.name, ajv.compile(tool.inputSchema)); } catch { throw new StorageError('invalid'); }
+  }
+  return compiled;
+}
+export function createChatAssembler() {
+  const choices = new Map<number, { assistant: NativeChatAssistant; tools: Map<number, NonNullable<NativeChatAssistant['tool_calls']>[number]>; finish: string | null }>();
+  let unsupported = false;
+  function add(value: unknown) {
+    const chunk = value as { choices?: { index: number; delta: Record<string, unknown>; finish_reason?: string | null }[] };
+    if (!Array.isArray(chunk.choices)) throw new StorageError('invalid');
+    for (const choice of chunk.choices) {
+      if (!Number.isSafeInteger(choice.index) || choice.index < 0 || choice.index > 7 || !choice.delta || typeof choice.delta !== 'object'
+        || choice.finish_reason != null && typeof choice.finish_reason !== 'string') throw new StorageError('invalid');
+      let current = choices.get(choice.index);
+      if (!current) { current = { assistant: { role: 'assistant', content: null }, tools: new Map(), finish: null }; choices.set(choice.index, current); }
+      if (current.finish && (Object.keys(choice.delta).length || choice.finish_reason)) throw new StorageError('invalid');
+      for (const [key, part] of Object.entries(choice.delta)) {
+        if (!['role', 'content', 'reasoning_content', 'refusal', 'tool_calls'].includes(key)) unsupported = true;
+        if (key === 'tool_calls') {
+          if (!Array.isArray(part)) throw new StorageError('invalid');
+          for (const item of part as { index: number; id?: string; type?: string; function?: { name?: string; arguments?: string } }[]) {
+            if (!Number.isSafeInteger(item.index) || item.index < 0 || item.index > 7 || item.type && item.type !== 'function') throw new StorageError('invalid');
+            if (item.id !== undefined && typeof item.id !== 'string' || item.function?.name !== undefined && typeof item.function.name !== 'string'
+              || item.function?.arguments !== undefined && typeof item.function.arguments !== 'string') throw new StorageError('invalid');
+            const tool = current.tools.get(item.index) ?? { id: '', type: 'function', function: { name: '', arguments: '' } };
+            if (!current.tools.has(item.index) && (item.type !== 'function' || !item.id)) throw new StorageError('invalid');
+            if (item.id) { if (tool.id && tool.id !== item.id) throw new StorageError('invalid'); tool.id = item.id; }
+            if (item.function?.name !== undefined) tool.function.name += item.function.name;
+            if (item.function?.arguments !== undefined) tool.function.arguments += item.function.arguments;
+            current.tools.set(item.index, tool);
+          }
+        } else if (key === 'role') { if (part !== 'assistant') throw new StorageError('invalid'); }
+        else if (typeof part === 'string') current.assistant[key] = (typeof current.assistant[key] === 'string' ? current.assistant[key] : '') + part;
+        else if (part === null) { if (!(key in current.assistant)) current.assistant[key] = null; }
+        else { current.assistant[key] = structuredClone(part); unsupported = true; }
+      }
+      if (choice.finish_reason) current.finish = choice.finish_reason;
+    }
+  }
+  function result(tools: ModelTool[], clean: (value: string) => string) {
+    const all = [...choices].sort(([a], [b]) => a - b).map(([index, choice]) => ({ index, finishReason: choice.finish,
+      assistant: { ...choice.assistant, ...(choice.tools.size ? { tool_calls: [...choice.tools].sort(([a], [b]) => a - b).map(([, value]) => value) } : {}) } as NativeChatAssistant }));
+    const primary = all.find(choice => choice.index === 0);
+    const nativeChoices = JSON.parse(clean(JSON.stringify(all))) as typeof all;
+    const assistant = nativeChoices.find(choice => choice.index === 0)?.assistant;
+    const intents: ModelToolIntent[] = [];
+    let valid = !unsupported && all.length === 1 && !!primary && !!assistant;
+    if (primary && [...choices.get(0)!.tools.keys()].sort((a, b) => a - b).some((index, position) => index !== position)) valid = false;
+    if (valid && primary!.finishReason === 'tool_calls') {
+      const validators = toolValidators(tools), ids = new Set<string>();
+      if (!assistant!.tool_calls?.length) valid = false;
+      for (const tool of assistant!.tool_calls ?? []) {
+        try {
+          const args: unknown = JSON.parse(tool.function.arguments), validate = validators.get(tool.function.name);
+          if (!tool.id || ids.has(tool.id) || !validate || !validate(args)) { valid = false; continue; }
+          ids.add(tool.id); intents.push(modelToolIntentSchema.parse({ callId: tool.id, name: tool.function.name, arguments: args }));
+        } catch { valid = false; }
+      }
+    } else if (assistant?.tool_calls?.length) valid = false;
+    return { valid, choices: nativeChoices, assistant, intents: valid ? intents : [] };
+  }
+  return { add, result };
+}
