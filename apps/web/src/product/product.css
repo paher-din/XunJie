@@ -97,3 +97,7 @@
 .product-model-settings .st-provider-info { min-width: 120px; }
 .product-model-settings .st-provider-url, .product-model-settings .st-model-chip { overflow-wrap: anywhere; }
 .model-check-record { margin-top: 16px; padding: 16px; overflow-wrap: anywhere; }
+.product-model-selection-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.product-model-settings .detail { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.product-model-nav-label { display: grid; gap: 2px; text-align: start; overflow-wrap: anywhere; }
+.product-model-nav-label small { color: var(--muted); font-size: 12px; font-weight: 400; }

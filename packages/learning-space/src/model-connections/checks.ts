@@ -11,7 +11,7 @@ export const checkMigrations = [{ version: 2, name: 'durable-model-checks', sql:
   CREATE INDEX model_attempt_scope ON model_attempts(scope,created_at);
 ` }];
 export interface CheckSnapshot { connection: ModelConnection; credentialRef: string; source?: ModelAttempt['source'];
-  policy?: ModelCheckPolicy; payload?: ChatPayload; tools?: ModelTool[]; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
+  policy?: ModelCheckPolicy; payload?: ChatPayload; tools?: ModelTool[]; applicationSchema?: Record<string, unknown>; segment?: ModelAttempt['segment']; retain?(tx: OwnedTransaction): Promise<void> }
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function createChecks(storage: OwnedStorage, owner: {
@@ -127,8 +127,9 @@ export function createChecks(storage: OwnedStorage, owner: {
         const { rows: [count] } = await tx.query("SELECT count(*)::integer AS total FROM model_attempts WHERE scope=$1 AND created_at > clock_timestamp()-interval '1 hour'", [scope]);
         if (Number(count!.total) >= 6) throw new StorageError('resource-busy');
         await snapshot.retain?.(tx);
-        await tx.query('INSERT INTO model_attempts(id,scope,body,input_digest,credential_ref,state,physical_ended) VALUES($1,$2,$3,$4,$5,$6,true)',
-          [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, 'accepted']);
+        await tx.query('INSERT INTO model_attempts(id,scope,body,input_digest,credential_ref,state,physical_ended,input_metadata) VALUES($1,$2,$3,$4,$5,$6,true,$7)',
+          [input.attemptId, scope, body, fingerprint, snapshot.credentialRef, 'accepted', input.purpose === 'chat-probe'
+            ? { input: input.input, ...(snapshot.applicationSchema ? { applicationSchema: snapshot.applicationSchema } : {}) } : null]);
         await tx.reference('model-request:' + input.attemptId, request.resourceId);
         return { attemptId: input.attemptId };
       });
@@ -178,13 +179,13 @@ export function createChecks(storage: OwnedStorage, owner: {
     }
     if (!claimed.result) return read(identity, attemptId);
     const controller = new AbortController();
-    const task = deliver(identity, original, found.credential_ref as string, controller);
+    const task = deliver(identity, original, found.credential_ref as string, controller, found.input_metadata as { applicationSchema?: Record<string, unknown> } | null);
     active.set(attemptId, { controller, task });
     void task.finally(() => active.delete(attemptId)).catch(() => {});
     return read(identity, attemptId);
     } finally { starting--; }
   }
-  async function deliver(identity: SpaceIdentity, attempt: ModelAttempt, ref: string, controller: AbortController) {
+  async function deliver(identity: SpaceIdentity, attempt: ModelAttempt, ref: string, controller: AbortController, metadata: { applicationSchema?: Record<string, unknown> } | null) {
     const timeout = setTimeout(() => controller.abort('timeout'), attempt.limits.timeoutMs);
     try {
       await owner.assertDispatch(identity, attempt, ref);
@@ -203,7 +204,7 @@ export function createChecks(storage: OwnedStorage, owner: {
       if (closed) throw new StorageError('maintenance');
       const result = controller.signal.aborted
         ? { state: 'cancelled' as const, reason: 'cancelled-before-send', text: '', usage: { state: 'unknown' as const }, toolIntents: [], native: { chunks: [] } }
-        : await runChat(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, tools);
+        : await runChat(attempt.connection, credential, payload, controller.signal, attempt.limits.timeoutMs, tools, metadata?.applicationSchema);
       if (controller.signal.reason === 'timeout') { result.state = 'unknown'; result.reason = 'timeout'; }
       const resource = await storage.stageResource({ uploadId: randomUUID(), scope: 'model-result:' + attempt.attemptId,
         bytes: Buffer.from(JSON.stringify(result.native)), mediaType: 'application/json', contentVersion: 1 });

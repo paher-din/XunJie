@@ -4,12 +4,13 @@ import { modelAttemptSchema, modelConnectionSchema, type ModelAttempt, type Mode
 import { ModelTab } from '../components/settings/ModelTab'
 import { ModelConnectionDialog } from '../components/settings/ModelConnectionDialog'
 import { z } from 'zod'
+import { ModelSelection, type ModelSelectionController } from './ModelSelection'
 
 const failures: Record<string, string> = { conflict: '配置已被更新，当前输入保留，请核对后重新读取。', 'identity-conflict': '原检查身份与内容冲突，请查询原记录。',
   forbidden: '原空间资格已失效，请重新登录原空间。', 'resource-busy': '检查频次或并发已达上限，请保留原检查记录并稍后再试。',
   unavailable: '连接或相应适配器不可用，请检查配置。', invalid: '请检查地址、协议、模型及密钥填写。', maintenance: '模型服务正在维护，请稍后重试。' }
-export function PersonalModelSettings({ identity, spaceKey, namespace, onBack }: {
-  identity: SpaceIdentity; spaceKey: string; namespace: string; onBack(): void
+export function PersonalModelSettings({ identity, spaceKey, namespace, onBack, selection }: {
+  identity: SpaceIdentity; spaceKey: string; namespace: string; onBack(): void; selection: ModelSelectionController
 }) {
   const [connections, setConnections] = useState<ModelConnection[]>([]), [attempts, setAttempts] = useState<ModelAttempt[]>([])
   const [dialog, setDialog] = useState<{ connection: ModelConnection | null } | null>(null)
@@ -52,14 +53,16 @@ export function PersonalModelSettings({ identity, spaceKey, namespace, onBack }:
   const save = async (input: Omit<SaveModelConnection, 'requestId'>) => {
     const saved = modelConnectionSchema.parse(await request('connections', { ...input, requestId: crypto.randomUUID() }))
     await reload()
+    await selection.reload()
     return saved
   }
   return <div className="content product-model-settings">
     <div className="sectionhead"><h1>个人模型设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>
-    <div className="st-body-in"><ModelTab connections={connections} attempts={attempts} loading={loading} error={error}
+    <div className="st-body-in"><ModelSelection controller={selection} onCheck={() => void act(() => check({ selected: true, selectionVersion: selection.selection!.version }))} />
+      <div role="region" aria-label="个人连接配置"><ModelTab connections={connections} attempts={attempts} loading={loading} error={error}
       onReload={() => void reload(true)} onNew={() => setDialog({ connection: null })} onEdit={connection => setDialog({ connection })}
       onCheck={connection => void act(() => check({ connectionId: connection.connectionId, version: connection.version }))}
-      onCancel={attempt => void act(() => cancel(attempt))} /></div>
+      onCancel={attempt => void act(() => cancel(attempt))} /></div></div>
     {dialog && <ModelConnectionDialog connection={dialog.connection} attempts={attempts} onClose={() => setDialog(null)} onSave={save} onCheck={check} onCancel={cancel} />}
   </div>
 }

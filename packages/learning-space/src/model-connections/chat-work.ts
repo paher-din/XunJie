@@ -4,10 +4,11 @@ import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelSegmentInputSchema, modelAttemptSchema, settleModelToolsSchema, modelToolResultSchema } from '@xunjie/contracts/model-connections';
 import type { ModelAttempt, ModelChatInput, ModelCheckInput, ModelTool, ModelToolResult } from '@xunjie/contracts/model-connections';
 import { modelScopeOf } from './selection.js';
-import { toolValidators, type NativeChatAssistant } from './chat-native.js';
+import { toolValidators, compileOutputSchema, type NativeChatAssistant } from './chat-native.js';
 import { checkPayload, type ChatPayload } from './chat.js';
 import type { CheckSnapshot } from './checks.js';
 import type { createModelImages } from './images.js';
+import type { z } from 'zod';
 
 export const chatWorkMigrations = [{ version: 6, name: 'fixed-chat-images-and-native-segments', sql: `
   CREATE TABLE model_images(id uuid PRIMARY KEY,scope text NOT NULL,body jsonb NOT NULL);
@@ -16,7 +17,7 @@ export const chatWorkMigrations = [{ version: 6, name: 'fixed-chat-images-and-na
   CREATE TABLE model_observations(id uuid NOT NULL,version integer NOT NULL,scope text NOT NULL,body jsonb NOT NULL,PRIMARY KEY(id,version,scope));
 ` }];
 type Segment = { segmentId: string; formatVersion: 1; sequence: number; snapshot: Omit<CheckSnapshot, 'retain' | 'payload'>;
-  prefix: { system: string; tools: ModelTool[] }; prefixDigest: string; portable: { text: string; resultRef?: string | undefined }[];
+  prefix: z.infer<typeof modelSegmentInputSchema>['prefix']; prefixDigest: string; portable: { text: string; resultRef?: string | undefined }[];
   headAttemptId: string | null; pendingAttemptId: string | null; closed: boolean; previousSegmentId?: string };
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -29,7 +30,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
   authorize(identity: SpaceIdentity): Promise<void>;
   assertWritable(): void;
   snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot>;
-  assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, credentialRef: string): Promise<void>;
+  assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt'>, credentialRef: string): Promise<void>;
 }) {
   async function stored(identity: SpaceIdentity, id: string) {
     await owner.authorize(identity);
@@ -87,7 +88,21 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     const prior = await storage.receipt('model-segment:' + input.requestId, hash); if (prior) return read(identity, input.segmentId);
     if ('draft' in input.source) throw new StorageError('invalid');
     toolValidators(input.prefix.tools);
+    const options = input.prefix.options;
+    const forcedName = typeof options?.toolChoice === 'object' ? options.toolChoice.name : undefined;
+    if (forcedName && !input.prefix.tools.some(tool => tool.name === forcedName)) throw new StorageError('invalid');
+    if (options?.applicationSchema) compileOutputSchema(options.applicationSchema);
     const snapshot = await owner.snapshot(identity, input.source);
+    if (forcedName && snapshot.connection.capabilityEvidence?.limitations.includes('thinking-forced-tool-unsupported') && !options?.capabilityProbe) throw new StorageError('unavailable');
+    for (const capability of options?.requiredCapabilities ?? []) {
+      const supported = capability === 'applicationSchema' || capability === 'text' && snapshot.connection.capabilities.text === 'verified'
+        || capability === 'images' && snapshot.connection.capabilities.images === 'verified'
+        || capability === 'tools' && snapshot.connection.capabilities.tools === 'verified'
+        || capability === 'nativeReplay' && snapshot.connection.capabilities.nativeReplay === 'verified'
+        || capability === 'jsonMode' && snapshot.connection.capabilities.jsonMode === 'verified'
+        || capability === 'nativeStrict' && snapshot.connection.capabilities.strictSchema === 'verified';
+      if (!supported && !options?.capabilityProbe) throw new StorageError('unavailable');
+    }
     if (input.previousSegmentId) {
       const old = await stored(identity, input.previousSegmentId);
       if (old.pendingAttemptId) throw new StorageError('resource-busy');
@@ -131,7 +146,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (segment.closed) throw new StorageError('conflict');
     if (segment.pendingAttemptId) throw new StorageError('resource-busy');
     await owner.assertDispatch(identity, { connection: segment.snapshot.connection, source: segment.snapshot.source,
-      createdAt: new Date().toISOString() } as ModelAttempt, segment.snapshot.credentialRef);
+      createdAt: new Date().toISOString() }, segment.snapshot.credentialRef);
     const messages: ChatPayload['messages'] = [];
     const resultImages: Awaited<ReturnType<typeof images.materialize>>[] = [];
     let settlement: { attemptId: string; results: ModelToolResult[] } | null = null;
@@ -163,11 +178,18 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     ] });
     for (const observation of input.input.observations) messages.push({ role: 'user', content: JSON.stringify(observation) });
     const base = checkPayload(segment.snapshot.connection, input.limits.maxOutputTokens);
+    const options = segment.prefix.options;
     const payload: ChatPayload = { ...base, messages, ...(segment.prefix.tools.length ? { tools: segment.prefix.tools.map(tool => ({
       type: 'function' as const, function: { name: tool.name, description: tool.description, parameters: tool.inputSchema },
-    })), tool_choice: 'auto' as const } : {}) };
+    })), tool_choice: 'auto' as const } : {}), ...(options?.toolChoice ? { tool_choice: typeof options.toolChoice === 'string'
+      ? options.toolChoice : { type: 'function' as const, function: { name: options.toolChoice.name } } } : {}),
+      ...(options?.responseFormat ? { response_format: options.responseFormat.kind === 'json-object' ? { type: 'json_object' as const }
+        : { type: 'json_schema' as const, json_schema: { name: options.responseFormat.name, schema: options.responseFormat.schema, strict: options.responseFormat.strict } } } : {}) };
+    const imageCount = messages.reduce((count, message) => count + (Array.isArray(message.content)
+      ? message.content.filter(part => part.type === 'image_url').length : 0), 0);
+    if (imageCount > 8) throw new StorageError('invalid');
     if (Buffer.byteLength(JSON.stringify(payload)) > 1000000) throw new StorageError('invalid');
-    return { ...segment.snapshot, payload, tools: segment.prefix.tools, segment: { segmentId: input.segmentId, sequence: input.expectedSequence },
+    return { ...segment.snapshot, payload, tools: segment.prefix.tools, ...(options?.applicationSchema ? { applicationSchema: options.applicationSchema } : {}), segment: { segmentId: input.segmentId, sequence: input.expectedSequence },
       async retain(tx) {
         const { rows: [row] } = await tx.query('SELECT body FROM model_segments WHERE id=$1 FOR UPDATE', [input.segmentId]);
         const current = row!.body as Segment;
@@ -188,7 +210,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (!fact.segment) return;
     const { rows: [row] } = await tx.query('SELECT body FROM model_segments WHERE id=$1 FOR UPDATE', [fact.segment.segmentId]);
     if (!row) throw new StorageError('corrupt'); const segment = row.body as Segment;
-    if (segment.headAttemptId === fact.attemptId) return;
+    if (segment.headAttemptId === fact.attemptId || segment.sequence > fact.segment.sequence && segment.pendingAttemptId !== fact.attemptId) return;
     if (segment.pendingAttemptId !== fact.attemptId || segment.sequence !== fact.segment.sequence) throw new StorageError('conflict');
     await tx.query('UPDATE model_segments SET body=$2 WHERE id=$1', [segment.segmentId,
       { ...segment, sequence: segment.sequence + 1, headAttemptId: fact.attemptId, pendingAttemptId: null }]);

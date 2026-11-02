@@ -116,12 +116,28 @@ export function createModelSelections(storage: OwnedStorage, owner: {
     const result = await resolve(identity, saved?.source);
     if (!result) throw new StorageError('unavailable'); return result;
   }
-  async function authorizeAttempt(identity: SpaceIdentity, source: ModelAttempt['source']) {
+  async function authorizeAttempt(identity: SpaceIdentity, source: ModelAttempt['source'], connectionId: string) {
     if (!source?.grantId) return;
     const authorization = await grant(source.grantId);
-    if (!authorization.active || authorization.version !== source.grantVersion || modelScopeOf(authorization.recipient) !== modelScopeOf(identity)
+    if (!authorization.active || authorization.connectionId !== connectionId || authorization.version !== source.grantVersion || modelScopeOf(authorization.recipient) !== modelScopeOf(identity)
       || modelScopeOf(authorization.owner) !== source.ownerScope) throw new StorageError('forbidden');
     await owner.authorize(authorization.owner);
   }
-  return { read, save, createGrant, revoke, snapshot, authorizeAttempt };
+  async function validate() {
+    const { rows: grants } = await storage.read('SELECT * FROM model_use_grants');
+    for (const row of grants) {
+      const item = modelGrantSchema.parse(row.body);
+      if (item.grantId !== row.id || modelScopeOf(item.owner) !== row.owner_scope || modelScopeOf(item.recipient) !== row.recipient_scope) throw new StorageError('corrupt');
+      await owner.connection(modelScopeOf(item.owner), item.connectionId);
+    }
+    const { rows: selections } = await storage.read('SELECT * FROM model_selections');
+    for (const row of selections) {
+      const item = selectModelSchema.omit({ requestId: true, expectedVersion: true }).extend({ version: selectModelSchema.shape.expectedVersion }).parse(row.body);
+      if (item.source.kind === 'personal') {
+        const authorization = await grant(item.source.grantId);
+        if (authorization.connectionId !== item.source.connectionId || modelScopeOf(authorization.recipient) !== row.scope) throw new StorageError('corrupt');
+      }
+    }
+  }
+  return { read, save, createGrant, revoke, snapshot, authorizeAttempt, validate };
 }

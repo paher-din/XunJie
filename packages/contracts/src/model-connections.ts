@@ -20,7 +20,11 @@ export const capabilityStateSchema = z.enum(['unknown', 'declared', 'verified', 
 export const modelConnectionSchema = modelConfigurationSchema.safeExtend({ version: z.number().int().positive(), routeId: z.uuid(),
   hasCredential: z.boolean(), adapterState: z.enum(['ready', 'not-integrated']),
   capabilities: z.object({ text: capabilityStateSchema, images: capabilityStateSchema, tools: capabilityStateSchema,
-    strictSchema: capabilityStateSchema }).strict() });
+    strictSchema: capabilityStateSchema, nativeReplay: capabilityStateSchema.optional(), jsonMode: capabilityStateSchema.optional(),
+    applicationSchema: capabilityStateSchema.optional() }).strict(),
+  capabilityEvidence: z.object({ observedAt: z.iso.date(), sdk: z.string(), adapter: z.string(), endpoint: z.url(), modelId: z.string(),
+    protocol: modelProtocolSchema, parameterMode: z.enum(['plain', 'thinking']), testedToolChoice: z.literal('auto'),
+    toolImageStrategy: z.literal('paired-text-adjacent-user-image'), limitations: z.array(z.string()) }).strict().optional() });
 export type ModelConfiguration = z.infer<typeof modelConfigurationSchema>;
 export type ModelConnection = z.infer<typeof modelConnectionSchema>;
 export type SaveModelConnection = z.infer<typeof saveModelConnectionSchema>;
@@ -72,8 +76,16 @@ export const settleModelToolsSchema = z.object({ requestId: z.uuid(), expectedSe
   results: z.array(modelToolResultSchema).min(1).max(8) }).strict();
 export const modelObservationSchema = z.object({ observationId: z.uuid(), version: z.number().int().positive(),
   source: z.literal('caller'), text: z.string().max(8192) }).strict();
+export const modelChatOptionsSchema = z.object({
+  toolChoice: z.union([z.enum(['auto', 'none']), z.object({ name: modelToolSchema.shape.name }).strict()]).optional(),
+  responseFormat: z.union([z.object({ kind: z.literal('json-object') }).strict(), z.object({ kind: z.literal('json-schema'),
+    name: modelToolSchema.shape.name, schema: z.record(z.string(), z.unknown()), strict: z.boolean() }).strict()]).optional(),
+  applicationSchema: z.record(z.string(), z.unknown()).optional(),
+  requiredCapabilities: z.array(z.enum(['text', 'images', 'tools', 'nativeReplay', 'jsonMode', 'applicationSchema', 'nativeStrict'])).max(7).optional(),
+  capabilityProbe: z.boolean().optional(),
+}).strict();
 export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId: z.uuid(), source: modelCheckInputSchema.shape.source,
-  prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8) }).strict(),
+  prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8), options: modelChatOptionsSchema.optional() }).strict(),
   portable: z.array(z.object({ text: z.string().max(8192), resultRef: z.uuid().optional() }).strict()).max(8),
   previousSegmentId: z.uuid().optional() }).strict();
 export const modelChatInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('chat-probe'), segmentId: z.uuid(),

@@ -10,6 +10,7 @@ import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityPage } from './ActivityPage'
 import { ProductShell } from '../components/ProductShell'
 import { PersonalModelSettings } from './PersonalModelSettings'
+import { useModelSelection } from './ModelSelection'
 import { CourseTiles, LearningTaskCard, LearningCardGrid } from '../components/home/LearningCards'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
@@ -161,6 +162,7 @@ function LearningView() {
   const materialUrl = useRef('')
   const authorize = new URLSearchParams(location.search).get('authorize')
   const identity = context?.identities.find(item => item.key === key)?.identity
+  const modelSelection = useModelSelection(identity, key, context?.clientNamespace ?? '')
   const pendingKey = context && identity ? `xj.activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
   const coursePendingKey = context && identity?.kind === 'school'
     ? `xj.course-activity-request.${context.clientNamespace}.${identity.environmentId}.${identity.spaceId}.${identity.principalId}` : ''
@@ -534,9 +536,10 @@ function LearningView() {
     spaces={context?.identities.map(item => ({ key: item.key, label: item.identity.kind === 'personal' ? '个人空间'
       : context.identities.filter(other => other.identity.kind === 'school').length > 1 ? `学校空间 · ${item.identity.name}` : '学校空间' })) ?? []}
     spaceKey={key} onSpaceChange={next => void switchSpace(next)} onHome={() => { closeModels(); goHome() }} onModels={openModels}
+    modelName={modelSelection.selection?.selected?.connection.name ?? '未选用模型'}
     onConnections={() => { closeModels(); goHome(); setConnectionsOpen(true) }}>
     {modelsOpen && context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
-      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} />
+      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} selection={modelSelection} />
     : context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}>
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}

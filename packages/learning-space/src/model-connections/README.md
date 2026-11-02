@@ -1,6 +1,6 @@
-# 个人模型连接与有限检查
+# 模型选择、有限检查与原生 Chat 续接
 
-本模块是 #164 的 `ModelGateway` 实现，由产品组合注入 WP02 的 `authorize` 和真实所属 storage。配置、加密凭据、不可变检查输入、准入及原生结果属于独立 `model-connection` owner。浏览器只消费 [公开 wire](../../../contracts/src/model-connections.ts)，不引用 OpenAI SDK、数据库或旧 Session/store。
+本模块承接 #164/#165 的 `ModelGateway`，由产品组合注入 WP02 的真实授权与所属 storage。配置、加密凭据、选择/授权、固定图片、工具结果、原生段和调用事实属于独立 `model-connection` owner。浏览器只消费 [公开 wire](../../../contracts/src/model-connections.ts)，不引用 SDK、数据库或旧 Session/store。验收见 [#164](../../../../docs/student-agent-implementation/wp06-personal-models-acceptance.md) 和 [#165](../../../../docs/student-agent-implementation/wp06-chat-selection-acceptance.md)。
 
 ## 公开接口与生命周期
 
@@ -11,8 +11,44 @@
 | `checks.dispatch(identity, id)` | 有效授权与代际下最多一次外发；重复派发只查原记录；没有课程、活动或 Run 前置 |
 | `checks.read/list(identity, id?)` | 只读原事实，并核验结果资源；结果含部分文本、usage 及 resultRef，不返回原生 reasoning 或错误正文 |
 | `checks.cancel(identity, id)` | 未外发确认未开始；外发后 abort 本机 SDK；保留终态竞争的实际事实，上游计算/费用仍未知 |
+| `school.save(spaceId, input)` | 仅受认证的宿主管理入口调用；每个学校一个默认连接，CAS 更新、停用、检查许可和限额 |
+| `selection.read/save`、`selection.createGrant/revoke` | 真实主体的显式引用、费用来源及授权版本；撤销不删除历史，不回退到学校额度 |
+| `images.upload` | 接收本主体的固定 PNG 原件或有来源的变换版本；不接受 URL、教师材料 ID 或任意文件路径 |
+| `segments.create/read/settle` | 固定路线、格式版本、system/工具/参数前缀、序号、完整结果引用及调用方工具结清 |
 
 HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只发送固定合成短文本；最多 128 个输出 token、30 秒等待、每主体每小时 6 次准入，全组件最多 2 个、同主体最多 1 个未结束物理请求。取消、失败、缺 usage、重复请求或重启均不返还准入计数。授权 60 秒有效，查询时将未派发的过期检查终结并释放临时凭据。临时凭据随检查终态在同一所属事务删除，避免完成回执后崩溃留下密钥。
+
+## 学校默认和个人引用
+
+学校维护者使用 `xunjie school-model --root <学校环境> --file <私有 JSON>`，其输入为 `schoolModelInputSchema`：正常连接保存字段、`requestId/expectedVersion/credential`，以及 `policy: { checksAllowed, maxChecksPerHour, maxOutputTokens, timeoutMs }`。首次版本为 0；更新用返回版本；`enabled:false` 停用，`credential.action:"clear"` 显式清除。凭据放私有文件，命令只输出脱敏配置；管理凭据由产品在本机解析，学生不能调用管理写入。没有“管理员允许个人模型”开关。
+
+正式设置通过 `models/selection` 读取学校默认、本人及本机持有的选项。个人选项的“授权并选用”先用 `models/grants` 为**当前已认证主体**建立引用，再以选择版本 CAS 提交；`owner:device` 只由安装客户端证明本机持有者。学校网页的个人连接由该网页所在持有方保管，跨组件的本机模型由安装客户端持有。不存在以账号同名、请求中的主体 ID 或连接 ID 借用密钥的入口。
+
+安装客户端沿 WP02 的真实学校连接授权实时核验身份及目标；学校服务在学校生成，个人服务在本机生成。客户端 owner 持久绑定每个 attempt/segment/image ID 的原持有方和输入摘要，重复接收和后续查询/取消不会因当前选择改变而转发到另一方。断连/撤销后不能继续外发；完整独立部署、跨机和代际接管归 #168。`x-xj-expected-subject/namespace` 只作视图隔离，不能建立身份。
+
+接收和紧邻 SDK 外发前均重新检查成员、个人授权版本、连接启用及凭据可用性。普通配置更新不更换已接受请求的模型、地址、参数、凭据引用或费用来源；清除/替换凭据、停用和撤销阻止尚未外发者。共享学校检查上限按费用来源串行准入，不从个人借额；原生探针与检查均有持久准入和物理并发上限，不是 WP07 的学习 Run 预算。
+
+## 原生 Chat 调用 wire
+
+`POST models/segments` 接收 `segmentId/requestId/source/prefix/portable`，可用 `previousSegmentId` 表达新段出处。`prefix` 固定 `system`、工具 `{name,description,inputSchema}` 和可选参数：显式 `toolChoice`、`responseFormat`、`applicationSchema`、`requiredCapabilities`、`capabilityProbe`。工具只支持同步、有限深度的本地 JSON Schema 校验；异步、外部引用、正则执行等未接入项在外发前拒绝。
+
+`POST models/calls` 是受控调用方使用的同一 Gateway 入口：`purpose:"chat-probe"`、稳定 `attemptId`、`segmentId/expectedSequence`、`input:{text,images,toolResults,observations}` 和有限 `limits`。这不建立学习聊天或执行工具。`models/calls/<id>` 的查询、`dispatch/cancel` 复用可靠调用状态机；`models/checks` 仍只接受合成文本检查用途，两类 ID 不能混用。原生调用最多 2048 输出 token、30 秒、32 步；完整 wire 最多 1 MB、8 张图片，超限拒绝而不裁剪。
+
+工具参数按 choice/tool index 聚合；只有名字、身份、完整 JSON/schema、整体终态和可读持久结果同时成立，公开结果才出现 `toolIntents`。拒绝、半截参数、截断、未知关键块、缺终态或本地发布失败不交付意图。DeepSeek 保留 `reasoning_content`；已实测 Command Code 方言保留 `reasoning` 及按块索引聚合的 `reasoning_details`，未知关键格式保留原始 chunks 但不可续接。公开投影不返回原生推理。
+
+调用方用 `toolResults:{callId,outcome,text,images}` 明确提供 success/error/not-executed；同段下一步必须完整、唯一配对。也可用 `POST models/segments/<id>/tool-results` 先结清而不请求模型。Gateway 不替调用方执行或取消工具。工具产图用配对文本结果和紧邻用户图像，原关联保留在工具结果及输入元数据；不声明原生 tool-image 支持。
+
+段前缀不允许修改；换 system、工具集合、参数或路线时，在工具已结清且物理请求结束后创建新段，封存旧段。新段只接调用方提供的可移植文本和本主体已完成结果引用，不搬旧 native/tool ID。新观察使用 `{observationId,version,source:"caller",text}` 追加，版本冲突不能覆盖；这只记录调用方提供的观察，不替代 WP02 的材料/工作区授权。没有 WP08 压缩算法或 WP07 切换流程。
+
+图片只支持固定 `image/png`，单件不超过 256 KiB、2048×2048，校验 PNG chunk/CRC、颜色/位深、解压长度及扫描线。输入每组最多两张；总历史仍受上述 wire 限制。原件和变换来源均按当前主体校验并保留资源引用，真正编码为 image content；不能用图片 ID 读取其他主体或教师原件。
+
+## 能力证据与参数组合
+
+直接 SDK `openai@7.42.0`，原生 adapter `xunjie-chat-native-v2`。`capabilities.ts` 只匹配已复验的 endpoint/model/protocol/dialect/mode，并返回日期和 SDK/adapter 版本；改名称不改变证据，改地址/型号/模式不能继承。凭据和当前可用性仍单独检查，文本检查不会自动点亮其他能力。
+
+JSON mode、应用校验与 native strict 是不同事实。前两者执行实际 JSON 解析/schema 校验；native strict 需要有效和无效 schema 对照。已测两条标准 Chat 路线均不标为 native strict。DeepSeek thinking + auto 可用，显式强制工具组合的已测限制单独记录；必需能力缺项在外发前拒绝。受控 `capabilityProbe` 可复验未知/受限组合以记录新的实际结果，不能把探针成功等同于所有输入或所有服务版本可用。
+
+真实端点复验入口为 [probe-model-chat.mjs](../../../../scripts/probe-model-chat.mjs)，必须显式提供私有凭据文件和输出路径，最多 11 次生成、每次 2048 token/30 秒、重试为 0。报告只记录状态、哈希、保真比较及用量，不输出密钥、签名或原生 reasoning。`--provider` 可限定单条路线。
 
 ## SDK、结果及错误
 
@@ -25,5 +61,7 @@ HTTP 装配见 [learning-entry](../learning-entry/README.md)。每个检查只�
 ## 恢复与验证
 
 配置版本、加密凭据引用、vault key、请求及结果资源随所属迁移和 WP01 加密备份恢复。默认产品新增后共四个 owner（含 runtime）。恢复旧三 owner 备份时，隔离阶段保持原 owner 集合；按原流程接管后正常停止/启动一次，才初始化空的模型 owner。不要跳过通用恢复的精确版本校验，也不回退到 legacy 模型配置。
+
+#165 新增迁移仅追加到既有版本；授权、选择、图片/变换来源、工具结果、观察、段和客户端持有方绑定都进入同一模型 owner。资源 pin 随接收/结果/段事务提交，旧段或设置更新不释放仍引用的原件。维护验证检查已有结果与图片内容；真实备份→隔离还原→接管后可读原引用并继续原生工具配对。旧 schema 必须走 WP01 正式升级，正常启动不偷偷迁移。
 
 主测试 [model-gateway.runtime.test.mjs](../../../../apps/server/tests/model-gateway.runtime.test.mjs) 经生产 API、真实身份/PostgreSQL/资源和 SDK→合成 HTTP/SSE；需要 `XUNJIE_PRODUCT_POSTGRES_BIN`。桌面 Chrome 用例见 [personalModelSettings.spec.ts](../../../../apps/web/e2e/personalModelSettings.spec.ts)，可指定 `XUNJIE_PRODUCT_WEB_ROOT` 验普通 Web，或 `XUNJIE_PRODUCT_TEST_PACKAGE` 启动完整独立包。实施范围见 [#164 方案](../../../../docs/student-agent-implementation/specs/wp06-personal-model-checks.md)。

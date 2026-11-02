@@ -12,7 +12,7 @@ export function ModelTab({ connections, attempts, loading, error, onNew, onEdit,
   onCancel(attempt: ModelAttempt): void; onReload(): void
 }) {
   return <>
-    <Section title="个人模型配置" desc="连接只属于当前空间内的本人。未配置或检查失败仍可建立活动、编辑作品和保留问题。">
+    <Section title="个人模型配置" desc="配置保留在原持有方；为其他空间选用时单独授权。未配置或检查失败仍可建立活动、编辑作品和保留问题。">
       {error && <p role="alert">{error}</p>}
       <button type="button" className="outline" onClick={onReload} disabled={loading}>重新读取配置</button>
       {loading && <p role="status">正在读取配置…</p>}

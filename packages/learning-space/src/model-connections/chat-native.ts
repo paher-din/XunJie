@@ -5,18 +5,32 @@ import { modelToolIntentSchema } from '@xunjie/contracts/model-connections';
 
 export type NativeChatAssistant = { role: 'assistant'; content: string | null; reasoning_content?: string | null;
   tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[]; [field: string]: unknown };
-const ajv = new Ajv({ strict: true, allErrors: false });
+export function compileOutputSchema(schema: Record<string, unknown>) {
+  function check(value: unknown, depth = 0) {
+    if (depth > 32) throw new StorageError('invalid');
+    if (Array.isArray(value)) { for (const item of value) check(item, depth + 1); }
+    else if (value !== null && typeof value === 'object') for (const [key, item] of Object.entries(value)) {
+      // Only synchronous, bounded local validation. Regex/remote/async execution is outside this owner.
+      if (['$async', '$id', '$ref', 'pattern', 'patternProperties'].includes(key)) throw new StorageError('invalid');
+      check(item, depth + 1);
+    }
+  }
+  if (Buffer.byteLength(JSON.stringify(schema)) > 16000) throw new StorageError('invalid'); check(schema);
+  try { return new Ajv({ strict: true, allErrors: false }).compile(schema); } catch { throw new StorageError('invalid'); }
+}
 export function toolValidators(tools: ModelTool[]) {
   if (new Set(tools.map(tool => tool.name)).size !== tools.length || Buffer.byteLength(JSON.stringify(tools)) > 24000) throw new StorageError('invalid');
   const compiled = new Map<string, ValidateFunction>();
   for (const tool of tools) {
     if (tool.inputSchema.type !== 'object') throw new StorageError('invalid');
-    try { compiled.set(tool.name, ajv.compile(tool.inputSchema)); } catch { throw new StorageError('invalid'); }
+    compiled.set(tool.name, compileOutputSchema(tool.inputSchema));
   }
   return compiled;
 }
-export function createChatAssembler() {
-  const choices = new Map<number, { assistant: NativeChatAssistant; tools: Map<number, NonNullable<NativeChatAssistant['tool_calls']>[number]>; finish: string | null }>();
+export function createChatAssembler(dialect: string) {
+  type ReasoningText = { type: 'reasoning.text'; text: string; format: string; index: number };
+  const choices = new Map<number, { assistant: NativeChatAssistant; tools: Map<number, NonNullable<NativeChatAssistant['tool_calls']>[number]>;
+    details: Map<number, ReasoningText>; finish: string | null }>();
   let unsupported = false;
   function add(value: unknown) {
     const chunk = value as { choices?: { index: number; delta: Record<string, unknown>; finish_reason?: string | null }[] };
@@ -25,11 +39,22 @@ export function createChatAssembler() {
       if (!Number.isSafeInteger(choice.index) || choice.index < 0 || choice.index > 7 || !choice.delta || typeof choice.delta !== 'object'
         || choice.finish_reason != null && typeof choice.finish_reason !== 'string') throw new StorageError('invalid');
       let current = choices.get(choice.index);
-      if (!current) { current = { assistant: { role: 'assistant', content: null }, tools: new Map(), finish: null }; choices.set(choice.index, current); }
+      if (!current) { current = { assistant: { role: 'assistant', content: null }, tools: new Map(), details: new Map(), finish: null }; choices.set(choice.index, current); }
       if (current.finish && (Object.keys(choice.delta).length || choice.finish_reason)) throw new StorageError('invalid');
       for (const [key, part] of Object.entries(choice.delta)) {
-        if (!['role', 'content', 'reasoning_content', 'refusal', 'tool_calls'].includes(key)) unsupported = true;
-        if (key === 'tool_calls') {
+        if (!['role', 'content', 'reasoning_content', 'refusal', 'tool_calls'].includes(key)
+          && !(dialect === 'command-code' && ['reasoning', 'reasoning_details'].includes(key))) unsupported = true;
+        if (key === 'reasoning_details' && dialect === 'command-code' && Array.isArray(part)) {
+          current.assistant.reasoning_details ??= [];
+          for (const item of part as ReasoningText[]) {
+            if (!item || !Number.isSafeInteger(item.index) || item.index < 0 || item.index > 7 || item.type !== 'reasoning.text'
+              || typeof item.text !== 'string' || typeof item.format !== 'string'
+              || Object.keys(item).some(key => !['type', 'text', 'format', 'index'].includes(key))) { unsupported = true; continue; }
+            const previous = current.details.get(item.index);
+            if (previous && previous.format !== item.format) throw new StorageError('invalid');
+            current.details.set(item.index, { ...item, text: (previous?.text ?? '') + item.text });
+          }
+        } else if (key === 'tool_calls') {
           if (!Array.isArray(part)) throw new StorageError('invalid');
           for (const item of part as { index: number; id?: string; type?: string; function?: { name?: string; arguments?: string } }[]) {
             if (!Number.isSafeInteger(item.index) || item.index < 0 || item.index > 7 || item.type && item.type !== 'function') throw new StorageError('invalid');
@@ -52,7 +77,8 @@ export function createChatAssembler() {
   }
   function result(tools: ModelTool[], clean: (value: string) => string) {
     const all = [...choices].sort(([a], [b]) => a - b).map(([index, choice]) => ({ index, finishReason: choice.finish,
-      assistant: { ...choice.assistant, ...(choice.tools.size ? { tool_calls: [...choice.tools].sort(([a], [b]) => a - b).map(([, value]) => value) } : {}) } as NativeChatAssistant }));
+      assistant: { ...choice.assistant, ...(choice.details.size ? { reasoning_details: [...choice.details].sort(([a], [b]) => a - b).map(([, value]) => value) } : {}),
+        ...(choice.tools.size ? { tool_calls: [...choice.tools].sort(([a], [b]) => a - b).map(([, value]) => value) } : {}) } as NativeChatAssistant }));
     const primary = all.find(choice => choice.index === 0);
     const nativeChoices = JSON.parse(clean(JSON.stringify(all))) as typeof all;
     const assistant = nativeChoices.find(choice => choice.index === 0)?.assistant;

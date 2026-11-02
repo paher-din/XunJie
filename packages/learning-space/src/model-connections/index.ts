@@ -12,6 +12,7 @@ import { createModelSelections, selectionMigrations } from './selection.js';
 import { createModelImages } from './images.js';
 import { createChatWork, chatWorkMigrations } from './chat-work.js';
 import { createModelRouting, modelRoutingMigrations } from './routing.js';
+import { measuredCapabilities } from './capabilities.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -24,7 +25,9 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
   ALTER TABLE model_credentials ADD COLUMN temporary boolean NOT NULL DEFAULT false;
 ` }, { version: 4, name: 'school-model-default', sql: `
   CREATE UNIQUE INDEX model_school_default ON model_connections(scope) WHERE scope LIKE 'school:%';
-` }, ...selectionMigrations, ...chatWorkMigrations, ...modelRoutingMigrations];
+` }, ...selectionMigrations, ...chatWorkMigrations, ...modelRoutingMigrations, { version: 8, name: 'native-call-input-validation-metadata', sql: `
+  ALTER TABLE model_attempts ADD COLUMN input_metadata jsonb;
+` }];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
@@ -54,7 +57,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     version: stored.version, routeId: stored.routeId, hasCredential: !!stored.credentialRef,
     adapterState: stored.configuration.protocol === 'chat-completions'
       && (stored.configuration.parameterMode === 'plain' || stored.configuration.dialect === 'deepseek') ? 'ready' : 'not-integrated',
-    capabilities: { text: 'unknown', images: 'unknown', tools: 'unknown', strictSchema: 'unknown' } });
+    ...measuredCapabilities(stored.configuration) });
   async function list(identity: SpaceIdentity) {
     await options.authorize(identity);
     const { rows } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 ORDER BY id', [scopeOf(identity)]);
@@ -183,13 +186,13 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef,
       source: { kind: 'personal', ownerScope: scopeOf(identity), feeSource: scopeOf(identity) }, ...(retain ? { retain } : {}) };
   }
-  async function assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string) {
+  async function assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt'>, ref: string) {
       await options.authorize(identity);
       if (Date.now() - Date.parse(attempt.createdAt) > 60000) throw new StorageError('forbidden');
       const ownerScope = attempt.source?.ownerScope ?? scopeOf(identity);
       if (attempt.source?.kind === 'school' && (identity.kind !== 'school' || ownerScope !== schoolScope(identity.spaceId))) throw new StorageError('forbidden');
       if (attempt.source?.kind === 'personal' && ownerScope !== scopeOf(identity) && !attempt.source.grantId) throw new StorageError('forbidden');
-      await selection.authorizeAttempt(identity, attempt.source);
+      await selection.authorizeAttempt(identity, attempt.source, attempt.connection.connectionId);
       const { rows: [credential] } = await storage.read('SELECT temporary FROM model_credentials WHERE id=$1 AND scope=$2', [ref, ownerScope]);
       if (!credential) throw new StorageError('forbidden');
       if (!credential.temporary) {
@@ -227,6 +230,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       }
     }
     await checks.validate();
+    await selection.validate();
     await segments.validate();
     await routing.validate();
   }

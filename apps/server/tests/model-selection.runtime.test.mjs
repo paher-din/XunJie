@@ -77,6 +77,23 @@ test('the supported school-model CLI applies private input and prints only a mas
   });
 });
 
+test('measured capability evidence matches the exact endpoint, model and mode instead of a provider name', { timeout: 180000 }, async () => {
+  await product(async ({ api }) => {
+    const { policy: _policy, ...base } = configuration();
+    const headers = { 'x-xj-space': 'personal' };
+    const deepseek = await api('models/connections', { ...base, baseUrl: 'https://api.deepseek.com/v1', modelId: 'deepseek-flash', dialect: 'deepseek', parameterMode: 'thinking' }, headers);
+    assert.equal(deepseek.status, 200); assert.equal(deepseek.value.capabilities.images, 'verified');
+    assert.equal(deepseek.value.capabilities.nativeReplay, 'verified');
+    assert.equal(deepseek.value.capabilityEvidence.sdk, 'openai@7.42.0');
+    const command = await api('models/connections', { ...base, requestId: randomUUID(), connectionId: randomUUID(),
+      baseUrl: 'https://api.commandcode.ai/provider/v1', modelId: 'deepseek/deepseek-v4.1-flash', dialect: 'command-code' }, headers);
+    assert.equal(command.value.capabilities.strictSchema, 'unsupported'); assert.equal(command.value.capabilities.jsonMode, 'verified');
+    const changed = await api('models/connections', { ...base, requestId: randomUUID(), connectionId: randomUUID(),
+      baseUrl: 'https://synthetic.invalid/v1', name: 'DeepSeek 官方', modelId: 'deepseek-flash', dialect: 'deepseek', parameterMode: 'thinking' }, headers);
+    assert.equal(changed.value.capabilities.images, 'unknown'); assert.equal(changed.value.capabilityEvidence, undefined);
+  });
+});
+
 test('school checks fix configuration and costs, enforce the shared limit, and reject dispatch after disable', { timeout: 180000 }, async () => {
   const received = [];
   const upstream = createServer(async (request, response) => {
