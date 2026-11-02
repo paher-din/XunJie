@@ -39,7 +39,7 @@ export function ModelTab({ connections, attempts, loading, error, onNew, onEdit,
         <p role="status">{states[attempt.state]}</p>
         {attempt.text && <p className="preserve-lines">{attempt.text}</p>}
         <p className="detail">{attempt.usage.state === 'unknown' ? '用量未知' : `${attempt.usage.state === 'final' ? '最终用量' : '部分用量'} · 输入 ${attempt.usage.inputTokens ?? '未知'} / 输出 ${attempt.usage.outputTokens ?? '未知'}`}</p>
-        {attempt.reason && attempt.reason !== 'stop' && <p className="detail">{attempt.reason}</p>}
+        {attempt.reason && attempt.reason !== 'stop' && <p className="detail">{attempt.reason === 'upstream-unsupported' ? '上游明确不支持本次模型或参数组合' : attempt.reason}</p>}
         {attempt.cancelRequested && <p className="detail">上游是否停止计算及费用仍未知。</p>}
         {(attempt.state === 'accepted' || ['dispatched', 'unknown'].includes(attempt.state) && !attempt.physicalRequestEnded) && <button type="button" className="outline st-xs" onClick={() => onCancel(attempt)}>停止检查</button>}
       </article>)}

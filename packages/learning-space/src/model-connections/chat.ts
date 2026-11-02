@@ -55,9 +55,11 @@ export async function runChat(configuration: ModelConfiguration, apiKey: string,
     }
   } catch (error) {
     const status = error instanceof OpenAI.APIError ? error.status : undefined;
+    const unsupported = error instanceof OpenAI.APIError && ['unsupported_model', 'model_not_supported', 'model_not_found',
+      'unsupported_parameter', 'unsupported_value'].includes(error.code ?? '');
     if (error instanceof OpenAI.APIError && error.error) upstreamError = JSON.parse(clean(JSON.stringify(error.error)));
     reason = error instanceof MalformedResponse ? 'malformed-response' : signal.aborted ? 'client-abort' : status === 401 || status === 403 ? 'authentication'
-      : status === 429 ? 'rate-limited' : status ? 'upstream-http' : 'upstream-stream';
+      : status === 429 ? 'rate-limited' : unsupported ? 'upstream-unsupported' : status ? 'upstream-http' : 'upstream-stream';
     state = error instanceof MalformedResponse ? 'failed' : signal.aborted ? 'cancelled' : status || upstreamError ? 'failed' : chunks.length ? 'incomplete' : 'unknown';
   }
   // The SDK may end its iterator cleanly after abort rather than throwing.

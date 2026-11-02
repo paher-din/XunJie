@@ -138,6 +138,8 @@ test('a saved connection check uses the actual SDK once and persists its origina
 test('malformed upstream usage and shapes are readable failures while a bounded wait ends as unknown', { timeout: 180000 }, async () => {
   let mode = 'negative-usage';
   const upstream = createServer((_request, response) => {
+    if (mode === 'unsupported') { response.writeHead(400, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: { message: 'private unsupported diagnostic', code: 'unsupported_model' } })); return; }
     response.writeHead(200, { 'content-type': 'text/event-stream' });
     if (mode === 'timeout') { response.write(': waiting\n\n'); return; }
     const value = mode === 'negative-usage'
@@ -150,7 +152,7 @@ test('malformed upstream usage and shapes are readable failures while a bounded 
     await product(async ({ api }) => {
       const input = { ...connection(), baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, dialect: 'standard' };
       await api('connections', { requestId: randomUUID(), ...input });
-      for (const scenario of ['negative-usage', 'malformed-text', 'timeout']) {
+      for (const scenario of ['negative-usage', 'malformed-text', 'timeout', 'unsupported']) {
         mode = scenario;
         const check = { attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: input.connectionId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 1000 } };
         await api('checks', check); await api(`checks/${check.attemptId}/dispatch`, {});
@@ -162,7 +164,7 @@ test('malformed upstream usage and shapes are readable failures while a bounded 
           await new Promise(resolve => setTimeout(resolve, 20));
         }
         assert.equal(result.value.state, scenario === 'timeout' ? 'unknown' : 'failed', scenario);
-        assert.equal(result.value.reason, scenario === 'timeout' ? 'timeout' : 'malformed-response');
+        assert.equal(result.value.reason, scenario === 'timeout' ? 'timeout' : scenario === 'unsupported' ? 'upstream-unsupported' : 'malformed-response');
         assert.equal(result.value.usage.state, 'unknown');
         assert.ok(result.value.resultRef);
       }
