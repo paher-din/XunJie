@@ -360,7 +360,8 @@ test('cancellation retains a trusted acceptance from another browser with indepe
     const record = await page.evaluate(async id => window.actionIntentDriver!.actions.read(id), id)
     expect(record!.cancelRequested).toBe(true)
     expect(record!.remote!.receipt!.state).toBe('accepted')
-    expect(record!.input.draft.question).toBe('另一浏览器已接收的原问题')
+    // The action union widened for execution; a legacy question record still carries its draft.
+    expect('draft' in record!.input ? record!.input.draft.question : null).toBe('另一浏览器已接收的原问题')
   } finally {
     await page.evaluate(() => { window.actionIntentDriver?.dispose(); delete window.actionIntentDriver })
     await otherContext.close()

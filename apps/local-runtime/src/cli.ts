@@ -384,12 +384,19 @@ async function main(): Promise<void> {
       const input = await jsonFile(manifestPath, '组件导入清单');
       const importRoot = await realpath(dirname(manifestPath));
       if (typeof input.path !== 'string' || input.contentBase64 !== undefined) throw new Error('组件入口通过 path 从导入目录读取');
-      const absolute = await realpath(resolve(importRoot, input.path));
-      const confined = relative(importRoot, absolute);
-      if (!confined || confined.startsWith('..') || isAbsolute(confined)) throw new Error('组件入口越出导入目录');
-      const bytes = await readFile(absolute);
-      const { path: _path, ...body } = input;
-      output(await manageCourse('component-import', { ...body, contentBase64: bytes.toString('base64') })); break;
+      const read = async (path: unknown, label: string) => {
+        if (typeof path !== 'string') throw new Error(`${label}通过 path 从导入目录读取`);
+        const absolute = await realpath(resolve(importRoot, path));
+        const confined = relative(importRoot, absolute);
+        if (!confined || confined.startsWith('..') || isAbsolute(confined)) throw new Error(`${label}越出导入目录`);
+        return (await readFile(absolute)).toString('base64');
+      };
+      const bytes = await read(input.path, '组件入口');
+      const algorithm = input.algorithm as { path?: unknown; contentBase64?: unknown } | undefined;
+      const algorithmBase64 = algorithm === undefined ? undefined : await read(algorithm.path, '组件算法');
+      const { path: _path, algorithm: _algorithm, ...body } = input;
+      output(await manageCourse('component-import', { ...body, contentBase64: bytes,
+        ...(algorithmBase64 === undefined ? {} : { algorithmBase64 }) })); break;
     }
     case 'component-read': {
       output(await manageCourse('component-read', await jsonFile(required('file'), '组件查询'))); break;

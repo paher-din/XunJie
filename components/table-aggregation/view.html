@@ -1,0 +1,267 @@
+<html lang="zh-CN"><head><title>表格聚合</title><style>
+:root{color-scheme:light dark;font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;color:var(--ink);background:var(--canvas)}
+*{box-sizing:border-box}body{margin:0}main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(250px,1fr);height:100vh}
+section{padding:20px;overflow:auto}section+section{border-left:1px solid var(--line)}
+h1,h2{font-size:16px;font-weight:600;line-height:1.5;margin:0 0 12px}
+p{margin:0 0 12px}.muted{color:var(--muted);font-size:13px}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{background:var(--hover)}button:disabled{cursor:default;opacity:.55}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select{border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--canvas);width:100%}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:3px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:13px;color:var(--ink-soft)}td.n{text-align:right;font-variant-numeric:tabular-nums}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.row-remove{padding:2px 8px;font-size:12px}
+label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:4px}
+.field{margin-bottom:12px}.status{margin:12px 0;padding:8px 10px;background:var(--chip);border-radius:6px;font-size:13px}
+.error{color:var(--ink);background:var(--chip);border-left:3px solid var(--accent);padding:10px;margin:12px 0;font-size:13px}
+pre{margin:0;overflow:auto;max-height:220px;font-size:12px;background:var(--chip);padding:10px;border-radius:6px}
+@media(max-width:720px){main{grid-template-columns:1fr;height:auto}section+section{border-left:0;border-top:1px solid var(--line)}}
+</style></head><body><main>
+<section aria-label="表格"><h1 id="title">表格聚合</h1>
+  <p class="muted">直接编辑单元格，选择分组列与数值列后计算。数值列必须是数字，空单元格会按行号提示。</p>
+  <div id="table-host"></div>
+  <div class="toolbar"><button id="add-row" type="button">添加一行</button><button id="reset" type="button">恢复示例数据</button></div>
+</section>
+<section aria-label="计算"><h2>计算</h2>
+  <div class="field"><label for="group">分组列</label><select id="group"></select></div>
+  <div class="field"><label for="value">数值列</label><select id="value"></select></div>
+  <div class="field"><label for="aggregate">计算方式</label><select id="aggregate">
+    <option value="count">计数</option><option value="sum">求和</option><option value="mean">平均</option></select></div>
+  <div class="toolbar"><button id="run" type="button" disabled>运行计算</button><button id="stop" type="button" hidden>停止</button></div>
+  <p id="status" class="status" role="status">正在连接…</p>
+  <p id="error" class="error" role="alert" hidden></p>
+  <div id="result" hidden><h2>结果</h2><p id="summary" class="muted"></p><div id="groups"></div>
+    <h2 style="margin-top:16px">结果文件</h2><pre id="csv"></pre>
+    <p class="muted">结果已保存在本机执行记录中，可在工作区的「计算」记录里下载 CSV。</p></div>
+</section>
+</main>
+<script>
+(() => {
+  let connection, port, contentId = null, state, initialized = false, blocked = false;
+  let capabilities, requestId = null, polling = null, chain = Promise.resolve(), saveTimer = null;
+  const stopIds = new Map();
+  const pending = new Map();
+  function request(method, payload, done) {
+    const messageId = crypto.randomUUID();
+    if (done) pending.set(messageId, done);
+    port.postMessage({hostApiVersion:1,connectionId:connection.connectionId,instanceId:connection.instanceId,messageId,method,payload});
+  }
+  function fail(text) {
+    const el = document.querySelector('#error'); el.hidden = false; el.textContent = text;
+    document.querySelector('#status').textContent = '本次计算没有完成。';
+    document.querySelector('#stop').hidden = true;
+  }
+  function clearError() { const el = document.querySelector('#error'); el.hidden = true; el.textContent = ''; }
+  function editable() { return !blocked && connection && !connection.readOnly; }
+
+  function persist() {
+    chain = chain.then(() => new Promise(resolve => {
+      const previous = contentId; contentId = crypto.randomUUID();
+      const snapshot = {operationId:crypto.randomUUID(), expectedContentId:previous, contentId, content:structuredClone(state)};
+      request('workspace.change', snapshot, reply => {
+        if (reply.error) {
+          contentId = previous;
+          fail('本次修改尚未确认。请保留页面，作品原内容仍保留。');
+        } else if (reply.payload) {
+          contentId = reply.payload.contentId ?? contentId;
+          clearError();
+        }
+        resolve();
+      });
+    }));
+    return chain;
+  }
+  function schedule() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { void persist(); }, 250); }
+
+  function renderTable() {
+    const host = document.querySelector('#table-host'); host.replaceChildren();
+    const table = document.createElement('table');
+    const head = document.createElement('thead'); const headRow = document.createElement('tr');
+    for (const name of state.table.columns) { const th = document.createElement('th'); th.textContent = name; headRow.append(th); }
+    headRow.append(document.createElement('th')); head.append(headRow); table.append(head);
+    const body = document.createElement('tbody');
+    state.table.rows.forEach((row, index) => {
+      const tr = document.createElement('tr');
+      row.forEach((cell, column) => {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.value = cell; input.maxLength = 40; input.readOnly = !editable();
+        input.setAttribute('aria-label', state.table.columns[column] + ' 第' + (index + 1) + '行');
+        input.addEventListener('input', () => { state.table.rows[index][column] = input.value; schedule(); });
+        td.append(input); tr.append(td);
+      });
+      const actions = document.createElement('td');
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'row-remove';
+      remove.textContent = '删除'; remove.disabled = !editable();
+      remove.onclick = () => { state.table.rows.splice(index, 1); void persist(); renderTable(); };
+      actions.append(remove); tr.append(actions); body.append(tr);
+    });
+    table.append(body); host.append(table);
+  }
+  function renderParameters() {
+    const columns = state.table.columns;
+    for (const [id, key] of [['#group', 'groupColumn'], ['#value', 'valueColumn']]) {
+      const select = document.querySelector(id); select.replaceChildren();
+      for (const name of columns) { const option = document.createElement('option'); option.value = name; option.textContent = name; select.append(option); }
+      if (!columns.includes(state.parameters[key])) state.parameters[key] = columns[0] ?? '';
+      select.value = state.parameters[key]; select.disabled = !editable();
+    }
+    const aggregate = document.querySelector('#aggregate');
+    if (!['count', 'sum', 'mean'].includes(state.parameters.aggregate)) state.parameters.aggregate = 'count';
+    aggregate.value = state.parameters.aggregate; aggregate.disabled = !editable();
+  }
+  function renderControls() {
+    const available = !!capabilities && capabilities.operations.some(item => item.available);
+    document.querySelector('#run').disabled = !editable() || !available || !!requestId;
+    document.querySelector('#reset').disabled = !editable();
+    document.querySelector('#add-row').disabled = !editable();
+  }
+  function render() { renderTable(); renderParameters(); renderControls(); }
+
+  // Display only: the CSV keeps the algorithm's full precision.
+  function display(value) { return String(Number(Number(value).toFixed(6))); }
+  function renderResult(query) {
+    const output = query.output && query.output.output;
+    document.querySelector('#result').hidden = !output;
+    if (!output) return;
+    document.querySelector('#summary').textContent = '按「' + output.groupColumn + '」分组，共 ' + output.rows + ' 行、'
+      + output.groups.length + ' 组，数值列为「' + output.valueColumn + '」。总计：' + display(output.value);
+    const host = document.querySelector('#groups'); host.replaceChildren();
+    const table = document.createElement('table'); const head = document.createElement('tr');
+    for (const name of [output.groupColumn, '计数', '求和', '平均', '最小', '最大']) {
+      const th = document.createElement('th'); th.textContent = name; head.append(th);
+    }
+    const thead = document.createElement('thead'); thead.append(head); table.append(thead);
+    const body = document.createElement('tbody');
+    for (const group of output.groups) {
+      const tr = document.createElement('tr');
+      const key = document.createElement('td'); key.textContent = group.key; tr.append(key);
+      for (const value of [group.count, group.sum, group.mean, group.min, group.max]) {
+        const cell = document.createElement('td'); cell.className = 'n';
+        cell.textContent = display(value); tr.append(cell);
+      }
+      body.append(tr);
+    }
+    table.append(body); host.append(table);
+    // The CSV bytes live in the workspace run record, not in the sandbox; show only what the run reported.
+    document.querySelector('#csv').textContent = query.output.artifact
+      ? query.output.artifact.name + ' · ' + query.output.artifact.byteLength + ' 字节 · sha256 ' + query.output.artifact.sha256.slice(0, 16) + '…'
+      : '结果文件未生成。';
+  }
+  function stopPolling() { clearTimeout(polling); polling = null; }
+  let emptyPolls = 0;
+  function poll(id) {
+    stopPolling();
+    request('execution.query', {requestId:id}, reply => {
+      if (reply.error) { requestId = null; renderControls(); fail('执行状态暂时无法核实。原执行记录仍在本机，可在工作区「计算」记录中查询，不要重复发起。'); return; }
+      const query = reply.payload;
+      // The handoff is durable before it is readable here; an empty answer is queried again, never resubmitted.
+      if (!query) {
+        document.querySelector('#status').textContent = '已提交，正在确认本机执行记录…';
+        if (emptyPolls++ >= 10) { requestId = null; renderControls(); fail('本机暂时查不到这次执行记录。请在工作区「计算」记录中核对，不要重复发起。'); return; }
+        polling = setTimeout(() => poll(id), 400);
+        return;
+      }
+      emptyPolls = 0;
+      document.querySelector('#status').textContent = label(query);
+      document.querySelector('#stop').hidden = ['succeeded', 'failed', 'cancelled'].includes(query.state);
+      if (['succeeded', 'failed', 'cancelled'].includes(query.state)) {
+        stopPolling(); requestId = null; renderControls();
+        document.querySelector('#stop').hidden = true;
+        if (query.state === 'succeeded') { renderResult(query); clearError(); }
+        // A stopped run is a real, expected outcome: keep its own label instead of a failure headline.
+        else if (query.state === 'cancelled') clearError();
+        else fail(query.reason ? query.reason.detail : '执行没有完成。');
+        return;
+      }
+      polling = setTimeout(() => poll(id), 400);
+    });
+  }
+  function label(query) {
+    const text = {queued:'已接收，等待执行', running:'正在执行', paused:'已暂停', succeeded:'已完成', failed:'未完成', cancelled:'已取消'}[query.state];
+    const unknown = query.statusKnowledge === 'unknown' ? '（状态待核实）' : '';
+    const stop = query.stopRequested && !['succeeded','failed','cancelled'].includes(query.state) ? ' · 已请求停止' : '';
+    return text + unknown + stop;
+  }
+
+  document.querySelector('#group').addEventListener('change', event => { state.parameters.groupColumn = event.target.value; void persist(); });
+  document.querySelector('#value').addEventListener('change', event => { state.parameters.valueColumn = event.target.value; void persist(); });
+  document.querySelector('#aggregate').addEventListener('change', event => { state.parameters.aggregate = event.target.value; void persist(); });
+  document.querySelector('#add-row').onclick = () => {
+    if (state.table.rows.length >= 1000) return;
+    state.table.rows.push(state.table.columns.map(() => ''));
+    void persist(); renderTable();
+  };
+  document.querySelector('#reset').onclick = () => {
+    state.table.rows = connection.initialTable.rows.map(row => [...row]);
+    void persist(); renderTable(); renderParameters();
+  };
+  document.querySelector('#run').onclick = () => {
+    if (!editable() || requestId) return;
+    clearError();
+    document.querySelector('#status').textContent = '正在保存当前表格…';
+    void persist().then(() => { submit(); });
+    function submit() {
+      const id = crypto.randomUUID();
+      document.querySelector('#status').textContent = '正在提交计算…';
+      request('execution.submit', {requestId:id, operationId:capabilities.operations[0].operationId,
+        parameters:structuredClone(state.parameters), expectedContentId:contentId}, reply => {
+        if (reply.error) {
+          document.querySelector('#status').textContent = '本次计算没有提交。';
+          fail(reply.error.code === 'conflict' ? '表格在你提交前又发生了变化，已停止提交。请核对后重新运行。'
+            : '当前不能发起计算：' + (reply.error.next ?? '请核对组件与工作区状态。'));
+          return;
+        }
+        requestId = reply.payload.requestId;
+        document.querySelector('#stop').hidden = false;
+        renderControls();
+        poll(requestId);
+      });
+    }
+  };
+  document.querySelector('#stop').onclick = () => {
+    if (!requestId) return;
+    // One stop identity per run: pressing 停止 again repeats the same stop, not a second one.
+    if (!stopIds.has(requestId)) stopIds.set(requestId, crypto.randomUUID());
+    const stopId = stopIds.get(requestId);
+    document.querySelector('#status').textContent = '正在停止…';
+    request('execution.stop', {requestId, stopId}, reply => {
+      if (reply.error) { fail('停止请求没有确认。原执行仍在记录中，请在工作区「计算」记录中核对。'); return; }
+      document.querySelector('#status').textContent = reply.payload ? label(reply.payload) : '已请求停止，正在确认原执行状态…';
+    });
+  };
+
+  function receive(event) {
+    if (event.data?.hostApiVersion !== 1) return;
+    const message = event.data;
+    if (message.method === 'host.initialize') {
+      if (connection && (connection.connectionId !== message.connectionId || connection.instanceId !== message.instanceId)) return;
+      connection = {...message, readOnly:message.payload.readOnly, initialTable:message.payload.binding.definition.manifest.initialState.table};
+      for (const [name,value] of Object.entries(message.payload.theme)) document.documentElement.style.setProperty('--'+name,value);
+      if (initialized) { if (state) render(); return; }
+      initialized = true;
+      document.querySelector('#title').textContent = message.payload.binding.configuration.title;
+      request('component.ready', {}, () => {});
+      request('execution.capabilities', {}, reply => {
+        if (reply.error) { capabilities = null; renderControls(); fail('当前视图不能发起计算：' + (reply.error.next ?? '')); return; }
+        capabilities = reply.payload;
+        document.querySelector('#status').textContent = capabilities.operations.some(item => item.available)
+          ? '可以选择分组列与数值列后运行。' : '当前视图不可发起计算。';
+        renderControls();
+      });
+      request('workspace.read', {}, reply => {
+        if (reply.error) { fail('当前表格暂时无法读取，请保留原作品并重新打开核对。'); return; }
+        state = reply.payload.content; contentId = reply.payload.contentId; render();
+      });
+    } else if (connection && message.connectionId === connection.connectionId && message.instanceId === connection.instanceId && message.replyTo) {
+      const callback = pending.get(message.replyTo); pending.delete(message.replyTo); callback?.(message);
+    }
+  }
+  window.addEventListener('message', event => {
+    if (event.source !== parent || event.data?.method !== 'host.initialize' || event.data.hostApiVersion !== 1 || !event.ports[0]) return;
+    stopPolling(); requestId = null; port?.close(); pending.clear(); initialized = false; connection = undefined;
+    port = event.ports[0]; port.onmessage = receive; receive(event);
+  });
+})();
+</script></body></html>

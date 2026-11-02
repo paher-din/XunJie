@@ -21,30 +21,43 @@ export function createComponents(storage: OwnedStorage) {
     if (result.digest !== componentDigest(result.manifest) || result.manifest.componentId !== componentId || result.manifest.version !== version) throw new StorageError('corrupt');
     return result;
   }
+  async function resource(reference: { resourceId: string; sha256: string; byteLength: number }) {
+    const data = Buffer.from(await storage.readResource(reference.resourceId));
+    if (data.length !== reference.byteLength || createHash('sha256').update(data).digest('hex') !== reference.sha256)
+      throw new StorageError('corrupt');
+    return data;
+  }
   async function bytes(definition: ComponentDefinition) {
-    const data = Buffer.from(await storage.readResource(definition.manifest.entry.resourceId));
-    if (data.length !== definition.manifest.entry.byteLength || createHash('sha256').update(data).digest('hex') !== definition.manifest.entry.sha256
-      || Buffer.from(data.toString('utf8')).compare(data) !== 0) throw new StorageError('corrupt');
+    const data = await resource(definition.manifest.entry);
+    // The view is served as HTML, so its bytes must survive a UTF-8 round trip unchanged.
+    if (Buffer.from(data.toString('utf8')).compare(data) !== 0) throw new StorageError('corrupt');
     return data;
   }
   async function register(value: unknown) {
     const input = componentImportSchema.parse(value), { manifest } = input;
     const definition = { manifest, digest: componentDigest(manifest) };
     const fingerprint = componentDigest(definition);
-    const data = Buffer.from(input.contentBase64, 'base64');
-    if (data.toString('base64') !== input.contentBase64 || data.length !== manifest.entry.byteLength
-      || createHash('sha256').update(data).digest('hex') !== manifest.entry.sha256
-      || Buffer.from(data.toString('utf8')).compare(data) !== 0) throw new StorageError('invalid');
+    const uploads = [{ resource: manifest.entry, data: Buffer.from(input.contentBase64, 'base64'), encoding: input.contentBase64 },
+      ...(manifest.algorithm && input.algorithmBase64 ? [{ resource: manifest.algorithm.resource,
+        data: Buffer.from(input.algorithmBase64, 'base64'), encoding: input.algorithmBase64 }] : [])];
+    for (const upload of uploads) {
+      if (upload.data.toString('base64') !== upload.encoding || upload.data.length !== upload.resource.byteLength
+        || createHash('sha256').update(upload.data).digest('hex') !== upload.resource.sha256) throw new StorageError('invalid');
+    }
     const previous = await storage.receipt(input.requestId, fingerprint);
     if (previous) return componentDefinitionSchema.parse(previous.result);
-    const resource = await storage.stageResource({ uploadId: manifest.entry.resourceId, scope: `component/${manifest.componentId}/${manifest.version}`,
-      bytes: data, mediaType: 'text/html', contentVersion: 1 });
-    if (resource.sha256 !== manifest.entry.sha256 || resource.byteLength !== manifest.entry.byteLength) throw new StorageError('invalid');
+    const scope = `component/${manifest.componentId}/${manifest.version}`;
+    for (const upload of uploads) {
+      const staged = await storage.stageResource({ uploadId: upload.resource.resourceId, scope,
+        bytes: upload.data, mediaType: upload.resource.mediaType, contentVersion: 1 });
+      if (staged.sha256 !== upload.resource.sha256 || staged.byteLength !== upload.resource.byteLength) throw new StorageError('invalid');
+    }
     const receipt = await storage.request({ requestId: input.requestId, fingerprint }, async tx => {
       await tx.query('INSERT INTO course_components VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [manifest.componentId, manifest.version, JSON.stringify(definition)]);
       const { rows: [row] } = await tx.query('SELECT definition FROM course_components WHERE component_id=$1 AND version=$2', [manifest.componentId, manifest.version]);
       if (!row || componentDefinitionSchema.parse(row.definition).digest !== definition.digest) throw new StorageError('identity-conflict');
-      await tx.reference(`component/${manifest.componentId}/${manifest.version}`, manifest.entry.resourceId);
+      await tx.reference(scope, manifest.entry.resourceId);
+      if (manifest.algorithm) await tx.reference(`${scope}/algorithm`, manifest.algorithm.resource.resourceId);
       return definition;
     });
     return componentDefinitionSchema.parse(receipt.result);
@@ -53,6 +66,8 @@ export function createComponents(storage: OwnedStorage) {
     const actual = await read(expected.manifest.componentId, expected.manifest.version);
     if (actual.digest !== expected.digest || componentDigest(expected.manifest) !== expected.digest) throw new StorageError('identity-conflict');
     await bytes(actual);
+    // A pinned algorithm must still be the exact file the digest names.
+    if (actual.manifest.algorithm) await resource(actual.manifest.algorithm.resource);
     return actual;
   }
   async function assertEnabled(componentId: string, version: number) {
@@ -74,9 +89,16 @@ export function createComponents(storage: OwnedStorage) {
     for (const row of rows) {
       const definition = await read(String(row.component_id), Number(row.version));
       await bytes(definition);
-      const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1', [`component/${row.component_id}/${row.version}`]);
-      if (links.length !== 1 || links[0]!.resource_id !== definition.manifest.entry.resourceId) throw new StorageError('corrupt');
+      const scope = `component/${row.component_id}/${row.version}`;
+      const expected: { reference: string; resource: { resourceId: string; sha256: string; byteLength: number } }[] =
+        [{ reference: scope, resource: definition.manifest.entry }];
+      if (definition.manifest.algorithm) expected.push({ reference: `${scope}/algorithm`, resource: definition.manifest.algorithm.resource });
+      for (const item of expected) {
+        const { rows: links } = await storage.read('SELECT resource_id FROM _storage_references WHERE reference_id=$1', [item.reference]);
+        if (links.length !== 1 || links[0]!.resource_id !== item.resource.resourceId) throw new StorageError('corrupt');
+        await resource(item.resource);
+      }
     }
   }
-  return { read, bytes, register, verify, validate, assertEnabled, setStatus };
+  return { read, bytes, resource, register, verify, validate, assertEnabled, setStatus };
 }

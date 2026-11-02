@@ -200,7 +200,9 @@ async function createHost(options: ProductHostOptions, release: () => Promise<vo
     const contentType = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
       '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' } as Record<string, string>)[extname(file)] ?? 'application/octet-stream';
     response.writeHead(200, { 'content-type': contentType, 'x-content-type-options': 'nosniff',
-      'content-security-policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'", 'cache-control': 'no-cache' });
+      // The execution path compiles a pinned, digest-checked WebAssembly algorithm in a dedicated
+      // worker; `wasm-unsafe-eval` permits exactly that compilation. `unsafe-eval` stays forbidden.
+      'content-security-policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-ancestors 'none'", 'cache-control': 'no-cache' });
     response.end(request.method === 'HEAD' ? undefined : await readFile(file));
   }
   const handle = (action: (req: IncomingMessage, res: ServerResponse) => Promise<void>) => (req: IncomingMessage, res: ServerResponse) => {

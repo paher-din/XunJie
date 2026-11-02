@@ -89,7 +89,8 @@ export function createLearningEntry(options: {
         request.headers['x-xj-expected-subject'] = expected;
         route = route.slice(0, -5);
       }
-      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')) && request.headers['x-xj-namespace']
+      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')
+        || route.startsWith('executions/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -99,7 +100,8 @@ export function createLearningEntry(options: {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
-          route.startsWith('intents/') ? 16000000 : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
+          route.startsWith('intents/') || route.startsWith('executions/') ? 16000000
+            : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -195,6 +197,9 @@ export function createLearningEntry(options: {
         else if (parts.length === 3 && parts[1] === 'components') {
           result = await options.courses.readComponent(await current(request), parts[0]!, parts[2]!);
         }
+        else if (parts.length === 4 && parts[1] === 'components' && parts[3] === 'algorithm') {
+          result = await options.courses.readComponentAlgorithm(await current(request), parts[0]!, parts[2]!);
+        }
         else if (parts.length === 3 && parts[1] === 'materials') {
           result = await options.courses.readMaterial(await current(request), parts[0]!, parts[2]!);
         } else throw new StorageError('missing');
@@ -202,6 +207,22 @@ export function createLearningEntry(options: {
         result = await learning.createCourse(await current(request), await readLearningBody(request));
       } else if (route.startsWith('course-activity-results/') && method === 'GET') {
         result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
+      } else if (route.startsWith('executions/')) {
+        // The execution owner answers accept, query, report, stop and result under one identity.
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        const parts = route.split('/');
+        if (parts.length === 2 && method === 'POST')
+          result = await learning.executions.accept(identity, parts[1]!, await readLearningBody(request, 8000000));
+        else if (parts.length === 3 && method === 'GET') result = await learning.executions.read(identity, parts[1]!, parts[2]!);
+        else if (parts.length === 4 && parts[3] === 'report' && method === 'POST')
+          result = await learning.executions.report(identity, parts[1]!, parts[2]!, await readLearningBody(request, 65536));
+        else if (parts.length === 4 && parts[3] === 'stop' && method === 'POST')
+          result = await learning.executions.stop(identity, parts[1]!, parts[2]!, await readLearningBody(request));
+        else if (parts.length === 4 && parts[3] === 'result' && method === 'POST')
+          result = await learning.executions.result(identity, parts[1]!, parts[2]!, await readLearningBody(request, 8000000));
+        else throw new StorageError('missing');
       } else if (route.startsWith('intents/')) {
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==

@@ -20,11 +20,13 @@
     "test:tools": "node scripts/test.mjs tools",
     "test:e2e": "npm run test:e2e -w @xunjie/web",
     "verify": "node apps/server/tools/check-runtime.mjs && node scripts/verify.mjs",
-    "test:storage:native": "node scripts/build.mjs server && node scripts/probe-storage.mjs"
+    "test:storage:native": "node scripts/build.mjs server && node scripts/probe-storage.mjs",
+    "probe:execution": "node scripts/probe-execution.mjs"
   },
   "devDependencies": {
     "entities": "9.0.0",
     "esbuild": "0.28.2",
-    "marked": "18.1.0"
+    "marked": "18.1.0",
+    "wabt": "1.0.36"
   }
 }

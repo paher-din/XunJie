@@ -6,7 +6,8 @@ import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
-import { componentBundleSchema } from '@xunjie/contracts/components';
+import { componentAlgorithmBundleSchema, componentBundleSchema } from '@xunjie/contracts/components';
+import { executionQuerySchema } from '@xunjie/contracts/execution';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
@@ -190,6 +191,15 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (parts[2] === 'receipts') return learning.drafts.receipt(identity, parts[1]!, parts[3]!);
       return learning.drafts.revision(identity, parts[1]!, parts[3]!);
     }
+    if (parts[0] === 'executions') {
+      // A run is owned by the same activity the grant names; the fixed basis never travels elsewhere.
+      if (parts.length === 2 && body !== undefined) return learning.executions.accept(identity, parts[1]!, body);
+      if (parts.length === 3 && body === undefined) return learning.executions.read(identity, parts[1]!, parts[2]!);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'report') return learning.executions.report(identity, parts[1]!, parts[2]!, body);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'stop') return learning.executions.stop(identity, parts[1]!, parts[2]!, body);
+      if (parts.length === 4 && body !== undefined && parts[3] === 'result') return learning.executions.result(identity, parts[1]!, parts[2]!, body);
+      throw new StorageError('forbidden');
+    }
     if (parts[0] !== 'workspaces') throw new StorageError('forbidden');
     if (parts.length === 2) return body === undefined ? learning.works.read(identity, parts[1]!) : learning.works.sync(identity, parts[1]!, body as never);
     if (parts[2] === 'receipts') return learning.works.receipt(identity, parts[1]!, parts[3]!);
@@ -198,15 +208,16 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string) {
     const id = '[0-9a-f-]{36}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
-      `|releases/${id}/materials/${id}|releases/${id}/components/[a-z][a-z0-9-]{0,47}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|connections/revoke)$`).test(route)) {
+      `|releases/${id}/materials/${id}|releases/${id}/components/[a-z][a-z0-9-]{0,47}(?:/algorithm)?|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?` +
+      `|executions/${id}(?:/${id}(?:/(?:report|stop|result))?)?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
-    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents)(\/|$)/.test(route)) {
+    if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents|executions)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
     }
@@ -254,8 +265,19 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     }
     if (route.startsWith('drafts/')) return value === null ? null : parsed(questionDraftViewSchema, value);
     if (route === 'courses') return parsed(courseCatalogSchema, value);
+    if (route.startsWith('executions/')) {
+      if (value === null) return null;
+      // A run under another activity or principal is not this grant's business.
+      const query = parsed(executionQuerySchema, value), scope = query.scope, identity = connection.grant!.identity;
+      if (scope.environmentId !== identity.environmentId || scope.spaceId !== identity.spaceId
+        || scope.principalId !== identity.principalId || scope.activityId !== route.split('/')[1]) throw new StorageError('forbidden');
+      return query;
+    }
     if (route.startsWith('releases/')) {
-      if (route.split('/')[2] === 'components') return parsed(componentBundleSchema, value);
+      if (route.split('/')[2] === 'components') {
+        if (route.split('/')[4] === 'algorithm') return parsed(componentAlgorithmBundleSchema, value);
+        return parsed(componentBundleSchema, value);
+      }
       return route.split('/').length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);
     }
     if (route.startsWith('course-activity-results/')) {

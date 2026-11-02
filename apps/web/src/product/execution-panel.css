@@ -1,0 +1,13 @@
+.component-tool { height: 100%; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+.execution-panel { border-top: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  max-height: 40vh; overflow: auto; padding: 12px 16px; }
+.execution-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.execution-records { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.execution-records li { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.execution-title { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.execution-hint { margin: 0 0 4px; font-size: 12px; color: var(--muted); }
+.execution-warn { margin: 0 0 4px; font-size: 12px; color: var(--ink); background: var(--chip-bg);
+  border-left: 2px solid var(--accent); padding: 6px 8px; border-radius: 4px; }
+.execution-note { margin: 0 0 8px; font-size: 12px; background: var(--chip-bg); padding: 6px 8px; border-radius: 4px; }
+.execution-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.execution-actions .ws-btn { font-size: 12px; }

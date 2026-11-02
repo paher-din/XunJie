@@ -3,6 +3,7 @@ import { questionReferenceKey, questionReferenceSourceId } from '@xunjie/contrac
 import type { QuestionReferenceInput } from '@xunjie/contracts/question-drafts'
 import type { ReliableQuestionDraft } from '../../../reliable-workspace/draft'
 import type { ReliableActions } from '../../../reliable-workspace/actions'
+import { isExecutionAction } from '@xunjie/contracts/execution'
 import { snapshotReference, type ReferenceSelection, type ReferenceSource, type WorkspaceReference } from './model'
 import { ReferencesContext, type ReferencesController } from './WorkspaceReferences'
 
@@ -109,7 +110,9 @@ function DraftReferencesSession({ workspaceKey, draft, actions, children }: Draf
     try {
       const token = draft.capture().token + ':' + JSON.stringify(receiver)
       const items = actions.snapshot().items
-      const pending = items.find(item => item.input.draft.token + ':' + JSON.stringify(item.input.receiver) === token
+      // Only question actions are ever resumed from a draft token; an execution record has no draft.
+      const pending = items.find(item => !isExecutionAction(item.input)
+        && item.input.draft.token + ':' + JSON.stringify(item.input.receiver) === token
         && !['accepted', 'cancelled', 'failed'].includes(item.phase))
       if (pending) { setNotice('仍在沿原请求核实这次问题，请查看待发与接收记录。'); return }
       const remembered = actionIds.current.get(token)

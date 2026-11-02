@@ -11,6 +11,7 @@ import { createWorks, workMigration, validateWorks } from './works.js';
 import { createQuestionDrafts, questionDraftMigration, validateQuestionDrafts } from './drafts.js';
 import { createActionIntents, actionIntentMigration, validateActionIntents } from './intents.js';
 import type { ActionIntentOptions } from './intents.js';
+import { createExecutions, executionMigration, validateExecutions } from './executions.js';
 export type { ActionIntentOptions } from './intents.js';
 
 export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'course-free-activities', sql: `
@@ -25,7 +26,7 @@ export const learningMigrations: readonly Migration[] = [{ version: 1, name: 'co
     activity_id uuid NOT NULL,input_digest text NOT NULL,state text NOT NULL CHECK(state IN ('pending','accepted','rejected')),
     binding jsonb,result jsonb,error text,updated_at timestamptz NOT NULL DEFAULT clock_timestamp());
   CREATE INDEX course_activity_requests_scope ON course_activity_requests(space_environment_id,space_id,principal_id);
-` }, questionDraftMigration, actionIntentMigration];
+` }, questionDraftMigration, actionIntentMigration, executionMigration];
 const fingerprint = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scope = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId];
 const fail = (code: 'missing' | 'forbidden' | 'identity-conflict'): never => { throw new StorageError(code); };
@@ -48,6 +49,7 @@ export async function validateLearningData(storage: OwnedStorage) {
   await validateWorks(storage);
   await validateQuestionDrafts(storage);
   await validateActionIntents(storage);
+  await validateExecutions(storage);
   const { rows } = await storage.read('SELECT id,body,space_environment_id,space_id,principal_id FROM activities');
   for (const row of rows) {
     const a = activitySchema.parse(row.body);
@@ -254,5 +256,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
   const works = createWorks(storage, open);
   const drafts = createQuestionDrafts(storage, { activity: open, works, courses });
   const intents = createActionIntents(storage, { activity: open, works, drafts, ...actions });
-  return { create, createCourse, courseResult, list, open, receipt, setStatus, works, drafts, intents, validate: () => validateLearningData(storage) };
+  const executions = createExecutions(storage, { activity: open, works });
+  return { create, createCourse, courseResult, list, open, receipt, setStatus, works, drafts, intents, executions,
+    validate: () => validateLearningData(storage) };
 }

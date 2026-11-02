@@ -1,5 +1,7 @@
 import { actionInputSchema, actionViewSchema, actionScopeSchema, actionReceiptSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents'
 import type { ActionInput, ActionView, ActionReceiverIdentity, ActionReceiver, ActionReceipt } from '@xunjie/contracts/action-intents'
+import { executionAcceptanceSchema, fixedActionSchema, isExecutionAction, rejectedExecutionAcceptance } from '@xunjie/contracts/execution'
+import type { FixedAction, ExecutionAction, ExecutionAcceptance, ExecutionQuery } from '@xunjie/contracts/execution'
 import { ActionStore } from './action-store'
 import type { LocalAction } from './action-store'
 import type { ReliableQuestionDraft } from './draft'
@@ -14,17 +16,33 @@ export interface ActionTransport {
   cancel(requestId: string): Promise<ActionView>
   capabilities(): Promise<ActionReceiverIdentity[]>
 }
+/** The browser-side execution receiver seam: durable acceptance, original-identity query and a real stop. */
+export interface LocalExecutionReceiver {
+  identity: ActionReceiverIdentity
+  accept(action: ExecutionAction, inputDigest: string): Promise<ExecutionAcceptance>
+  query(requestId: string, inputDigest: string): Promise<ExecutionQuery | null>
+  cancel(requestId: string, inputDigest: string): Promise<ExecutionAcceptance | null>
+  blocked(requestId: string, inputDigest: string): Promise<boolean>
+}
 export interface ActionQueueState { ready: boolean; active: boolean; items: LocalAction[]; previous: LocalAction[]; error: string; receivers: ActionReceiverIdentity[] }
 const terminal = (item: LocalAction) => ['accepted', 'cancelled', 'failed'].includes(item.phase)
-const matches = (a: ActionInput, b: ActionInput) => JSON.stringify(actionInputSchema.parse(a)) === JSON.stringify(actionInputSchema.parse(b))
-async function actionInputDigest(input: ActionInput): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(actionInputSchema.parse(input)))
+const parseFixed = (value: unknown) => fixedActionSchema.parse(value)
+const matches = (a: FixedAction, b: FixedAction) => JSON.stringify(parseFixed(a)) === JSON.stringify(parseFixed(b))
+async function actionInputDigest(input: FixedAction): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(parseFixed(input)))
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+/** Question-only partitions stay unreachable for an execution intent. */
+function questionPart(input: FixedAction): ActionInput {
+  if (isExecutionAction(input)) throw new Error('执行动作不参与问题派发。')
+  return input
 }
 function scopeFromKey(key: string) {
   const [, environmentId, spaceId, principalId, activityId] = JSON.parse(key) as string[]
   return actionScopeSchema.parse({ environmentId, spaceId, principalId, activityId })
 }
+/** One workspace key is one fixed action scope; hosts never invent a second scope. */
+export const actionScopeFromWorkspaceKey = scopeFromKey
 
 /** A workspace-owned durable action queue, not an Agent runner or an experiment executor. */
 export class ReliableActions {
@@ -33,6 +51,7 @@ export class ReliableActions {
   private unprotected = new Map<string, LocalAction>()
   private active = new Map<string, Promise<void>>()
   private localReceivers = new Map<string, ActionReceiver>()
+  private executionReceivers = new Map<string, LocalExecutionReceiver>()
   private cancellationRequests = new Set<string>()
   private timer?: ReturnType<typeof setInterval>
   private stopped = false
@@ -63,6 +82,17 @@ export class ReliableActions {
     void this.synchronize()
     return () => { if (this.localReceivers.get(id) === receiver) this.localReceivers.delete(id) }
   }
+  /** Execution intents use the same durable queue and handoff, never a second dispatch loop. */
+  registerLocalExecution(receiver: LocalExecutionReceiver) {
+    const identity = actionReceiverSchema.parse(receiver.identity)
+    if (identity.location !== 'local' || identity.kind !== 'execution') throw new Error('执行接收器必须声明本机执行交接。')
+    const id = JSON.stringify(identity)
+    if (this.executionReceivers.has(id)) throw new Error('不能替换原动作的接收方。')
+    this.executionReceivers.set(id, receiver)
+    this.notify({ receivers: [...this.state.receivers.filter(item => JSON.stringify(item) !== id), identity] })
+    void this.synchronize()
+    return () => { if (this.executionReceivers.get(id) === receiver) this.executionReceivers.delete(id) }
+  }
   private notify(patch: Partial<ActionQueueState>) {
     if (this.disposed) return
     this.state = { ...this.state, ...patch }; for (const listener of this.listeners) listener()
@@ -85,9 +115,30 @@ export class ReliableActions {
     // Capture all partitions before the first await. Later edits are independent from this input.
     const works = structuredClone(this.captureWorks())
     const scope = scopeFromKey(this.key)
-    const input = actionInputSchema.parse({ requestId: options.requestId, scope, receiver: options.receiver, draft: this.draft.capture(),
+    const input: FixedAction = actionInputSchema.parse({ requestId: options.requestId, scope, receiver: options.receiver, draft: this.draft.capture(),
       works: options.objectIds ? works.filter(file => options.objectIds!.includes(file.objectId)) : works, evidence: options.evidence ?? [] })
     if (options.objectIds?.some(id => !works.some(file => file.objectId === id))) throw new Error('所需作品已不在当前工作区。')
+    return this.retainNew(input)
+  }
+  /**
+   * An execution intent fixes its own basis only: the current works and the selected state file.
+   * It never reads, sends or clears the question draft, and later edits cannot widen it.
+   */
+  async createExecution(options: { requestId: string; receiver: ActionReceiverIdentity
+    execution: Omit<ExecutionAction['execution'], 'basis'> & { basis: Pick<ExecutionAction['execution']['basis'], 'state' | 'expected' | 'resources'> } }) {
+    const works = structuredClone(this.captureWorks())
+    const scope = scopeFromKey(this.key)
+    const state = options.execution.basis.state
+    // Only the state copy this run reads: unrelated saves must not change this input's digest,
+    // and the command must stay inside the 4 MB wire budget.
+    const cited = state ? works.filter(file => file.name === state.name && file.contentId === state.contentId) : []
+    if (state && !cited.length) throw new Error('运行时使用的组件状态已不在当前工作区。')
+    const input = fixedActionSchema.parse({ protocolVersion: 2, kind: 'execution', requestId: options.requestId, scope,
+      receiver: options.receiver, execution: { ...options.execution, basis: { works: cited, state,
+        expected: options.execution.basis.expected, resources: options.execution.basis.resources } } })
+    return this.retainNew(input)
+  }
+  private async retainNew(input: FixedAction) {
     const entry: LocalAction = { key: JSON.stringify([this.key, input.requestId]), scope: this.key,
       input, phase: 'unprotected', cancelRequested: false, preparationAttempted: false, error: '' }
     const existing = this.unprotected.get(input.requestId)
@@ -130,6 +181,7 @@ export class ReliableActions {
       throw new Error('不能将动作接到其他空间、主体或活动。')
     const original = (await this.store.list(previousKey)).find(item => item.input.requestId === requestId)
     if (!original) throw new Error('原动作不可读。')
+    if (isExecutionAction(original.input)) throw new Error('执行记录只能按原执行实例查询，不能接到其他接收方重跑。')
     if (original.input.receiver.location !== 'remote') throw new Error('本机旧交接必须由原执行能力核实，不能自动重跑。')
     const capabilities = await this.transport.capabilities()
     if (!capabilities.some(receiver => JSON.stringify(actionReceiverSchema.parse(receiver)) === JSON.stringify(original.input.receiver)))
@@ -184,8 +236,17 @@ export class ReliableActions {
   }
   private async reconcileCancellation(item: LocalAction) {
     if (!item.cancelRequested || item.history || this.stopped || this.accessDenied() || this.disposed
-      || item.localReceipt || item.remote && ['accepted', 'cancelled', 'failed'].includes(item.remote.state)) return
+      || item.localReceipt || item.localAcceptance || item.remote && ['accepted', 'cancelled', 'failed'].includes(item.remote.state)) return
     try {
+      if (isExecutionAction(item.input)) {
+        const receiver = this.executionReceivers.get(JSON.stringify(item.input.receiver))
+        if (!receiver) return
+        const digest = await actionInputDigest(item.input)
+        const acceptance = await receiver.cancel(item.input.requestId, digest)
+        if (this.stopped || this.accessDenied() || this.disposed || !acceptance) return
+        await this.storeLocalAcceptance(item, acceptance)
+        return
+      }
       if (item.input.receiver.location === 'local') {
         const receiver = this.localReceivers.get(JSON.stringify(item.input.receiver))
         if (!receiver) return
@@ -255,6 +316,7 @@ export class ReliableActions {
     await this.refresh()
   }
   private async advanceLocal(item: LocalAction) {
+    if (isExecutionAction(item.input)) return this.advanceLocalExecution(item, item.input)
     const receiver = this.localReceivers.get(JSON.stringify(item.input.receiver))
     if (!receiver || this.stopped || this.accessDenied() || terminal(item) || item.history || this.cancellationRequests.has(item.input.requestId)) return
     const current = await this.store.change(this.key, item.input.requestId, saved => {
@@ -269,9 +331,45 @@ export class ReliableActions {
       const latest = (await this.read(current.input.requestId))!
       if (this.stopped || this.accessDenied() || this.disposed || this.cancellationRequests.has(item.input.requestId)) return
       if (!receipt) receipt = latest.cancelRequested ? await receiver.cancel(current.input.requestId, digest)
-        : await receiver.accept(current.input, digest)
+        : await receiver.accept(questionPart(current.input), digest)
       if (receipt) await this.settleDraft(await this.storeLocalReceipt(current, receipt))
     } catch (error) { this.rejectAccess(error) /* Remains unknown and queries this exact authority on recovery. */ }
+  }
+  /**
+   * Local handoff for an execution intent: accept is idempotent on its original identity, so a
+   * lost reply is retried as the same request instead of a new one. A durable pre-accept block
+   * always wins over a late acceptance.
+   */
+  private async advanceLocalExecution(item: LocalAction, action: ExecutionAction) {
+    const receiver = this.executionReceivers.get(JSON.stringify(action.receiver))
+    if (!receiver || this.stopped || this.accessDenied() || terminal(item) || item.history || this.cancellationRequests.has(action.requestId)) return
+    const current = await this.store.change(this.key, action.requestId, saved => {
+      if (!saved) throw new Error('原动作不可读。')
+      return terminal(saved) ? saved : { ...saved, phase: 'dispatched' }
+    })
+    if (terminal(current) || this.stopped || this.accessDenied() || this.cancellationRequests.has(action.requestId)) return
+    const digest = await actionInputDigest(action)
+    try {
+      if (await receiver.blocked(action.requestId, digest)) {
+        const blocked = rejectedExecutionAcceptance(action.requestId, digest, action.receiver, '接收前已取消，不会再接受。')
+        await this.storeLocalAcceptance(current, { ...blocked, receipt: { ...blocked.receipt, state: 'cancelled' } })
+        return
+      }
+      const acceptance = await receiver.accept(action, digest)
+      await this.storeLocalAcceptance(current, acceptance)
+    } catch (error) { this.rejectAccess(error) /* Remains unknown and queries this exact receiver on recovery. */ }
+  }
+  private async storeLocalAcceptance(item: LocalAction, value: unknown) {
+    const acceptance = executionAcceptanceSchema.parse(value)
+    if (acceptance.receipt.requestId !== item.input.requestId || acceptance.receipt.inputDigest !== await actionInputDigest(item.input)
+      || JSON.stringify(acceptance.receipt.receiver) !== JSON.stringify(item.input.receiver)) throw new Error('执行接收回执与原动作不符。')
+    return this.store.change(this.key, item.input.requestId, saved => {
+      if (saved?.localAcceptance && JSON.stringify(saved.localAcceptance) === JSON.stringify(acceptance)) return saved
+      if (!saved || saved.phase !== 'dispatched' && !(saved.phase === 'cancelled' && saved.cancelRequested && !saved.localAcceptance))
+        throw new Error('动作尚未派发，不能接纳执行回执。')
+      return { ...saved, localAcceptance: acceptance, error: '',
+        phase: acceptance.receipt.state === 'rejected' ? 'failed' : acceptance.receipt.state }
+    })
   }
   private async run(item: LocalAction) {
     // One action is never dispatched and cancelled at the same time; cancellation keeps its own mutex.
@@ -284,6 +382,7 @@ export class ReliableActions {
   async recover(requestId: string) {
     const saved = await this.store.change(this.key, requestId, current => {
       if (!current || !['cancelled', 'failed'].includes(current.phase)) throw new Error('请先核实原动作的结果。')
+      if (isExecutionAction(current.input)) throw new Error('执行动作不提供恢复为问题草稿。')
       if (current.recovered) return current
       const { token: _token, ...content } = structuredClone(current.input.draft)
       return { ...current, recovered: { ...content, draftId: crypto.randomUUID() } }
@@ -323,6 +422,8 @@ export class ReliableActions {
     })
   }
   private async settleDraft(item: LocalAction) {
+    // An execution action never touched the draft, so there is nothing to acknowledge.
+    if (isExecutionAction(item.input)) return
     if (item.phase !== 'accepted' || item.draftSettled || item.history || this.stopped || this.disposed) return
     try {
       this.draft.acknowledge(item.input.draft.token)
@@ -349,7 +450,7 @@ export class ReliableActions {
         if (terminal(current) || current.cancelRequested || this.stopped || this.accessDenied()
           || this.cancellationRequests.has(item.input.requestId)) return
       }
-      current = await this.acceptRemote(current, remote ?? await this.transport.prepare(current.input))
+      current = await this.acceptRemote(current, remote ?? await this.transport.prepare(questionPart(current.input)))
       if (terminal(current) || this.stopped || this.accessDenied() || this.cancellationRequests.has(item.input.requestId)) {
         if (current.phase === 'cancelled' && !this.stopped && !this.denied && current.remote?.state === 'prepared')
           await this.transport.cancel(current.input.requestId)

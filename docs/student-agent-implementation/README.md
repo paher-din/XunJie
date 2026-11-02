@@ -13,6 +13,7 @@
 | 本轮有哪些工作包、前置依赖和完整验收边界 | [实施总览](student-agent-implementation-overview.md) |
 | WP02 的统一产品 UI、复用组件、前后截图及后续 WP 接入位置 | [产品 UI 整合与验收](wp02-product-ui.md) · [Web 接入表](../../apps/web/README.md#正式产品入口与后续-wp) |
 | WP03 的组件宿主、语义引用、依赖准备及有限作业/持续会话实施契约 | [课程组件宿主与公共执行规范](specs/wp03-course-components-and-execution.md) |
+| WP03 的浏览器有限作业：固定执行请求、持久接收、真实 Worker/WASM 计算、查询/停止与结果重读 | [浏览器计算与持久执行](wp03-execution.md) · [固定表格聚合样例](../../components/table-aggregation/README.md) |
 | WP06 的模型配置、三协议接入、原生续接及调用恢复边界 | [三协议模型连接规范](specs/wp06-model-connections.md) |
 | 学习空间身份、学校接入及无课程活动的生产入口和验证边界 | [学习空间身份与活动交接](wp02-identity-activity.md) |
 | 课程任务、固定发布、访问投影及跨 owner 活动建立的实施方案与验收记录 | [课程任务与固定发布版本实施方案](specs/wp02-course-task-releases.md) · [验收记录](wp02-course-releases-acceptance.md) |

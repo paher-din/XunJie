@@ -12,7 +12,7 @@ const hash = async (bytes: Uint8Array) => [...new Uint8Array(await crypto.subtle
 export function ComponentView({ activity, binding, spaceKey, namespace, authorized }: {
   activity: LearningActivity; binding: ComponentBinding; spaceKey: string; namespace: string; authorized: boolean
 }) {
-  const { workspace } = useActivitySession()
+  const { workspace, execution } = useActivitySession()
   const frame = useRef<HTMLIFrameElement>(null)
   const loaded = useRef<() => void>(() => {})
   const [document, setDocument] = useState('')
@@ -40,7 +40,9 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
     loaded.current = () => {
       if (!live || !frame.current?.contentWindow) return
       retire()
-      const mount = createComponentBridge(workspace, activity.activityId, binding, () => live && allowed.current && !workspace.accessDenied())
+      const mount = createComponentBridge(workspace, activity.activityId, binding,
+        () => live && allowed.current && !workspace.accessDenied(),
+        { controller: execution, canRun: () => live && allowed.current && !workspace.accessDenied() && authorized })
       const channel = new MessageChannel()
       bridge = mount; port = channel.port1
       setReady(false); setError('')
@@ -89,7 +91,7 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
       if (live) setDocument(`/api/learning/releases/${activity.course!.releaseId}/components/${binding.key}/view?${query}`)
     })().catch(() => { if (live) setError('组件暂时无法打开。已有作品仍保留，可在「作品」中读取或导出后重试。') })
     return () => { live = false; retire(); loaded.current = () => {}; observer.disconnect() }
-  }, [activity, binding, namespace, spaceKey, workspace])
+  }, [activity, binding, namespace, spaceKey, workspace, execution, authorized])
   return <section className="component-view" aria-label={binding.configuration.title}>
     {error ? <p role="alert" className="learning-error">{error}</p> : <>
       {!ready && <p role="status" className="ws-pane-note">正在打开{binding.configuration.title}…</p>}

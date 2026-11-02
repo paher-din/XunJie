@@ -551,6 +551,19 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     const definition = await components.verify(binding.definition);
     return { definition, contentBase64: (await components.bytes(definition)).toString('base64') };
   }
-  return { components, readComponent, registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
+  /** The restricted algorithm reaches the host through the same authorised release, never the view. */
+  async function readComponentAlgorithm(identity: SpaceIdentity, releaseId: string, key: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+    const definition = await components.verify(binding.definition);
+    const algorithm = definition.manifest.algorithm;
+    if (!algorithm) return fail('missing');
+    return { definition, mediaType: algorithm.mediaType, entry: algorithm.entry, memoryPages: algorithm.memoryPages,
+      sha256: algorithm.resource.sha256, byteLength: algorithm.resource.byteLength,
+      contentBase64: (await components.resource(algorithm.resource)).toString('base64') };
+  }
+  return { components, readComponent, readComponentAlgorithm, registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

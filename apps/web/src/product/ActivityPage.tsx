@@ -8,6 +8,7 @@ import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityActions } from './ActivityActions'
+import { ExecutionPanel } from './ExecutionPanel'
 
 /** The existing workspace container consumes the reliable session; it owns only layout and focus. */
 export function ActivityPage({ activity, spaceKey, namespace, authorized, workspaceRef, busy, onBack, onStatus, onRefresh, details, account, error }: {
@@ -24,8 +25,14 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
   const [toolError, setToolError] = useState('')
   const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
     ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
+  // A component may declare a restricted run; its record, stop and download stay in this area.
   const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
-    <ComponentView key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />]))
+    (binding.definition.manifest.operations?.length
+      ? <div key={binding.key} className="component-tool">
+        <ComponentView activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />
+        <ExecutionPanel activity={activity} binding={binding} authorized={authorized} />
+      </div>
+      : <ComponentView key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />)]))
   const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
   return <div className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">

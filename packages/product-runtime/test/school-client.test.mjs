@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProductRuntime, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
+import { aggregationPackage } from '../../../components/table-aggregation/package.mjs';
 
 test('revoking a school connection wins over an already exchanged but delayed confirmation', { timeout: 30000 }, async () => {
   const requestId = randomUUID();
@@ -81,6 +82,18 @@ test('installed client forwards the course surface and rejects malformed or fore
       courseName: '课程', taskId, taskTitle: '任务', releaseId, contentDigest: digest, objectives: ['目标'],
       requirements: '要求', materials: [material], starterWorks: [], capabilities: [] } };
   const actionId = randomUUID(), malformedIntentActivity = randomUUID(), foreignIntentActivity = randomUUID();
+  const executionId = randomUUID(), malformedExecutionActivity = randomUUID(), foreignExecutionActivity = randomUUID();
+  const foreignPrincipalExecution = randomUUID();
+  const executionQuery = { requestId: executionId, inputDigest: digest, executionRef: randomUUID(),
+    scope: { environmentId: grant.identity.environmentId, spaceId: grant.identity.spaceId,
+      principalId: grant.identity.principalId, activityId: activity.activityId },
+    state: 'queued', statusKnowledge: 'confirmed', stopRequested: false, confirmedSeq: 1, reason: null, output: null };
+  // The algorithm is served through the authorised release, never from the component view.
+  const published = await aggregationPackage();
+  const algorithmBundle = { definition: { manifest: published.manifest,
+    digest: createHash('sha256').update(JSON.stringify(published.manifest)).digest('hex') }, mediaType: 'application/wasm',
+    entry: 'aggregate', memoryPages: 256, sha256: published.manifest.algorithm.resource.sha256,
+    byteLength: published.manifest.algorithm.resource.byteLength, contentBase64: published.algorithmBase64 };
   const receiver = { receiverId: 'school-question-receiver', location: 'remote', kind: 'question' };
   const actionInput = { requestId: actionId, scope: { environmentId: grant.identity.environmentId,
     spaceId: grant.identity.spaceId, principalId: grant.identity.principalId, activityId: activity.activityId }, receiver,
@@ -94,6 +107,17 @@ test('installed client forwards the course surface and rejects malformed or fore
     else if (url.endsWith('/connections/exchange')) response.end(JSON.stringify(grant));
     else if (url.endsWith('/api/learning/courses')) response.end(JSON.stringify(catalog));
     else if (url.endsWith('/api/learning/releases/' + releaseId)) response.end(JSON.stringify(release));
+    else if (url.endsWith('/api/learning/releases/' + releaseId + '/components/table/algorithm')) {
+      response.end(JSON.stringify(algorithmBundle));
+    } else if (url.includes('/api/learning/executions/')) {
+      if (url.includes('/executions/' + malformedExecutionActivity)) response.end(JSON.stringify({ state: 'queued' }));
+      // The run that comes back belongs to another activity than the one the caller asked under.
+      else if (url.includes('/executions/' + foreignExecutionActivity)) response.end(JSON.stringify({ ...executionQuery,
+        scope: { ...executionQuery.scope, activityId: activity.activityId } }));
+      else if (url.includes('/executions/' + foreignPrincipalExecution)) response.end(JSON.stringify({ ...executionQuery,
+        scope: { ...executionQuery.scope, principalId: randomUUID() } }));
+      else response.end(JSON.stringify(executionQuery));
+    }
     else if (url.endsWith('/api/learning/releases/' + releaseId + '/materials/' + materialId)) {
       response.end(JSON.stringify({ ...material, contentBase64: 'eA==' }));
     } else if (url.endsWith('/api/learning/course-activity-results/' + activity.activityId)) response.end('null');
@@ -156,6 +180,21 @@ test('installed client forwards the course surface and rejects malformed or fore
     assert.equal((await api(`intents/${malformedIntentActivity}/${actionId}`, undefined, remote)).status, 503);
     assert.equal((await api(`intents/${foreignIntentActivity}/${actionId}`, undefined, remote)).status, 403);
     assert.equal((await api('intents/not-a-uuid', undefined, remote)).status, 403);
+    // A browser run is forwarded under the same grant and the same activity it was accepted for.
+    assert.equal((await api('executions/' + activity.activityId, { action: {}, acceptance: {} }, remote)).value.executionRef,
+      executionQuery.executionRef);
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}`, undefined, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/report`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/stop`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${activity.activityId}/${executionId}/result`, {}, remote)).value.state, 'queued');
+    assert.equal((await api(`executions/${malformedExecutionActivity}/${executionId}`, undefined, remote)).status, 503);
+    assert.equal((await api(`executions/${foreignExecutionActivity}/${executionId}`, undefined, remote)).status, 403);
+    assert.equal((await api(`executions/${foreignPrincipalExecution}/${executionId}`, undefined, remote)).status, 403);
+    assert.equal((await api('executions/not-a-uuid/' + executionId, undefined, remote)).status, 403);
+    assert.equal((await api('executions/' + activity.activityId + '/' + executionId + '/dispatch', {}, remote)).status, 403);
+    assert.equal((await api(`releases/${releaseId}/components/table/algorithm`, undefined, remote)).value.contentBase64,
+      published.algorithmBase64);
+    assert.equal((await api(`releases/${releaseId}/components/table/algorithm/extra`, undefined, remote)).status, 403);
     assert.equal((await api('manage/course-import', { requestId: randomUUID() }, remote)).status, 403);
   } finally {
     await host?.stop();

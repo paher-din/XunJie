@@ -12,6 +12,10 @@ import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action
 import { z } from 'zod'
 import { ReliableWorkspace } from '../reliable-workspace'
 import { ActivitySessionContext } from './ActivitySession'
+import { BrowserExecutionReceiver } from '../tool-execution/receiver'
+import { ExecutionController } from '../tool-execution/controller'
+import { createAlgorithmProvider } from '../tool-execution/provider'
+import { createExecutionTransport } from './executionTransport'
 
 const readable = (mediaType: string) => mediaType.startsWith('text/') || mediaType === 'application/json'
 const decode = (base64: string) => {
@@ -60,17 +64,26 @@ export function ActivityReferences({ activity, spaceKey, namespace, authorized, 
       capabilities: async () => z.array(actionReceiverSchema).parse(await request('/capabilities')),
     })
   }, [workspace, draft, scope, spaceKey, namespace])
+  const execution = useMemo(() => {
+    // One page load is one executor generation; an older page cannot adopt a newer run.
+    const receiver = new BrowserExecutionReceiver({ receiverId: 'browser-execution', location: 'local', kind: 'execution' },
+      scope, Date.now())
+    return new ExecutionController(scope, receiver, actions,
+      createExecutionTransport(activity, spaceKey, namespace), createAlgorithmProvider(activity, spaceKey, namespace))
+  }, [scope, actions, activity, spaceKey, namespace])
   useEffect(() => {
     let active = true
+    const unregister = actions.registerLocalExecution(execution.receiver)
     void Promise.allSettled([draft.open(), workspace.open()]).then(() => { if (active) return actions.open() })
+      .then(() => { if (active) return execution.open() })
       .catch(() => { /* Each partition reports initialization failure and retains its own contents. */ })
-    return () => { active = false; actions.dispose(); workspace.dispose(); draft.dispose() }
-  }, [draft, workspace, actions])
+    return () => { active = false; unregister(); execution.dispose(); actions.dispose(); workspace.dispose(); draft.dispose() }
+  }, [draft, workspace, actions, execution])
   useEffect(() => {
     if (authorized) { draft.resume(); workspace.resume(); actions.resume() }
     else { draft.suspend(); workspace.suspend(); actions.suspend() }
   }, [draft, workspace, actions, authorized])
-  return <ActivitySessionContext.Provider value={{ workspace, draft, actions }}>
+  return <ActivitySessionContext.Provider value={{ workspace, draft, actions, execution }}>
     <DraftReferencesProvider workspaceKey={scope} draft={draft} actions={actions}>{children}</DraftReferencesProvider>
   </ActivitySessionContext.Provider>
 }

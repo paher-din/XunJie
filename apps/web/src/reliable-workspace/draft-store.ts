@@ -19,7 +19,7 @@ let opening: Promise<IDBDatabase> | undefined
 export function openWorkspaceDatabase(): Promise<IDBDatabase> {
   if (!opening) {
     opening = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('xunjie-reliable-works-v1', 4)
+      const request = indexedDB.open('xunjie-reliable-works-v1', 5)
       request.onupgradeneeded = () => {
         const db = request.result
         if (!db.objectStoreNames.contains('workspaces')) db.createObjectStore('workspaces', { keyPath: 'key' })
@@ -28,6 +28,13 @@ export function openWorkspaceDatabase(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains('draftCandidates')) db.createObjectStore('draftCandidates', { keyPath: 'id' }).createIndex('scope', 'scope')
         if (!db.objectStoreNames.contains('actions')) db.createObjectStore('actions', { keyPath: 'key' }).createIndex('scope', 'scope')
         if (!db.objectStoreNames.contains('workOperations')) db.createObjectStore('workOperations', { keyPath: ['workspace', 'scope', 'operationId'] })
+        // v5: the browser execution ledger. Commands and their pending facts commit together;
+        // stop requests, result bytes and service synchronisation are separate durable partitions.
+        if (!db.objectStoreNames.contains('executionCommands')) db.createObjectStore('executionCommands', { keyPath: 'key' }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('executionPending')) db.createObjectStore('executionPending', { keyPath: ['scope', 'requestId', 'seq'] })
+        if (!db.objectStoreNames.contains('executionStops')) db.createObjectStore('executionStops', { keyPath: ['scope', 'stopId'] }).createIndex('scope', 'scope')
+        if (!db.objectStoreNames.contains('executionResults')) db.createObjectStore('executionResults', { keyPath: ['scope', 'executionRef'] })
+        if (!db.objectStoreNames.contains('executionSync')) db.createObjectStore('executionSync', { keyPath: ['scope', 'requestId'] })
       }
       request.onsuccess = () => {
         const db = request.result
