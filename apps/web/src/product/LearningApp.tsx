@@ -9,6 +9,7 @@ import './product.css'
 import type { ActivityWorkspaceHandle } from './ActivityWorkspace'
 import { ActivityPage } from './ActivityPage'
 import { ProductShell } from '../components/ProductShell'
+import { PersonalModelSettings } from './PersonalModelSettings'
 import { CourseTiles, LearningTaskCard, LearningCardGrid } from '../components/home/LearningCards'
 import { createBrowserRouter, RouterProvider, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { ActivityReferences, CourseMaterialReferences, CourseRequirementsReference } from './ActivityReferences'
@@ -87,6 +88,7 @@ function LearningView() {
   const approvedSearch = useRef<string | null>(null)
   const [connectionsOpen, setConnectionsOpen] = useState(false)
   const selectedCourseId = new URLSearchParams(route.search).get('course')
+  const modelsOpen = new URLSearchParams(route.search).get('settings') === 'models'
   const [context, setContext] = useState<Context | null>(null)
   const [contextVerified, setContextVerified] = useState(true)
   const [key, setKey] = useState('')
@@ -522,12 +524,20 @@ function LearningView() {
   const goHome = () => void action(async () => { await workspace.current?.leave(); rememberActivity(null); rememberMaterial(null); setReload(value => value + 1) })
   const now = new Date()
   const greeting = now.getHours() < 12 ? '上午好' : now.getHours() < 18 ? '下午好' : '晚上好'
-  return <ProductShell immersive={!!opened} identityName={identity?.name ?? '学习空间'}
+  const openModels = () => void action(async () => {
+    await workspace.current?.leave()
+    const params = new URLSearchParams(currentSearch.current); params.delete('activity'); params.delete('course'); params.set('settings', 'models')
+    navigate({ pathname: route.pathname, search: params.toString() })
+  })
+  const closeModels = () => { const params = new URLSearchParams(currentSearch.current); params.delete('settings'); navigate({ pathname: route.pathname, search: params.toString() }) }
+  return <ProductShell immersive={!!opened && !modelsOpen} identityName={identity?.name ?? '学习空间'}
     spaces={context?.identities.map(item => ({ key: item.key, label: item.identity.kind === 'personal' ? '个人空间'
       : context.identities.filter(other => other.identity.kind === 'school').length > 1 ? `学校空间 · ${item.identity.name}` : '学校空间' })) ?? []}
-    spaceKey={key} onSpaceChange={next => void switchSpace(next)} onHome={goHome}
-    onConnections={() => { goHome(); setConnectionsOpen(true) }}>
-    {context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
+    spaceKey={key} onSpaceChange={next => void switchSpace(next)} onHome={() => { closeModels(); goHome() }} onModels={openModels}
+    onConnections={() => { closeModels(); goHome(); setConnectionsOpen(true) }}>
+    {modelsOpen && context && identity ? <PersonalModelSettings key={context.clientNamespace + key + identity.principalId}
+      identity={identity} spaceKey={key} namespace={context.clientNamespace} onBack={closeModels} />
+    : context && identity && opened ? <ActivityReferences key={context.clientNamespace + key + opened.activityId}
       activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}>
       <ActivityPage activity={opened} spaceKey={key} namespace={context.clientNamespace} authorized={activityAuthorized}
         workspaceRef={workspace} busy={busy} onBack={goHome} onStatus={() => void action(() => changeStatus(opened))}

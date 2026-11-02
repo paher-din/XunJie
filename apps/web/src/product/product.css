@@ -91,3 +91,9 @@
   .product-workspace.discussion-open .ws-center { display: none; }
   .product-discussion { width: 100%; }
 }
+.product-model-settings { max-width: 1080px; }
+.product-model-settings .st-body-in { width: 100%; max-width: 880px; margin: 0; padding: 0; }
+.product-model-settings .st-provider-head { flex-wrap: wrap; }
+.product-model-settings .st-provider-info { min-width: 120px; }
+.product-model-settings .st-provider-url, .product-model-settings .st-model-chip { overflow-wrap: anywhere; }
+.model-check-record { margin-top: 16px; padding: 16px; overflow-wrap: anywhere; }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '../../icons'
-import { smartModelDefaults, type ProviderModel } from '../../lib/settings'
+import type { ProviderModel } from '../../lib/settings'
+import { smartModelDefaults } from './modelPresentation'
 
 /** 设置区块：标题 + 可选说明 + 内容。 */
 export function Section({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {

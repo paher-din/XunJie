@@ -6,6 +6,7 @@ import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
 import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
+import type { createModelGateway } from '../model-connections/index.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
@@ -39,6 +40,7 @@ export function createLearningEntry(options: {
   spaces?: ReturnType<typeof createSpaces>;
   learning?: ReturnType<typeof createLearningData>;
   courses?: ReturnType<typeof createCourses>;
+  models?: Awaited<ReturnType<typeof createModelGateway>>;
   administratorToken: string;
   client?: {
     list(): Promise<{ key: string; identity: SpaceIdentity }[]>;
@@ -79,7 +81,7 @@ export function createLearningEntry(options: {
     try {
       if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
       const route = pathname.slice('/api/learning/'.length);
-      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')) && request.headers['x-xj-namespace']
+      if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/') || route.startsWith('models/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
       let result: unknown;
@@ -177,6 +179,19 @@ export function createLearningEntry(options: {
         result = await learning.createCourse(await current(request), await readLearningBody(request));
       } else if (route.startsWith('course-activity-results/') && method === 'GET') {
         result = await learning.courseResult(await current(request), route.slice('course-activity-results/'.length));
+      } else if (route.startsWith('models/')) {
+        const identity = await current(request);
+        if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
+          [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
+        if (!options.models) throw new StorageError('unavailable');
+        if (route === 'models/connections' && method === 'GET') result = await options.models.list(identity);
+        else if (route === 'models/connections' && method === 'POST') result = await options.models.save(identity, await readLearningBody(request));
+        else if (route === 'models/checks' && method === 'POST') result = await options.models.checks.receive(identity, await readLearningBody(request));
+        else if (route === 'models/checks' && method === 'GET') result = await options.models.checks.list(identity);
+        else if (/^models\/checks\/[^/]+$/.test(route) && method === 'GET') result = await options.models.checks.read(identity, route.split('/')[2]!);
+        else if (/^models\/checks\/[^/]+\/dispatch$/.test(route) && method === 'POST') result = await options.models.checks.dispatch(identity, route.split('/')[2]!);
+        else if (/^models\/checks\/[^/]+\/cancel$/.test(route) && method === 'POST') result = await options.models.checks.cancel(identity, route.split('/')[2]!);
+        else throw new StorageError('missing');
       } else if (route.startsWith('intents/')) {
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==

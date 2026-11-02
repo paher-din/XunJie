@@ -14,6 +14,7 @@ export interface ProductShellProps {
   onSpaceChange: (key: string) => void
   onHome: () => void
   onConnections: () => void
+  onModels?: () => void
 }
 
 function ProductThemeButton({ visible, rail = false }: { visible: boolean; rail?: boolean }) {
@@ -66,7 +67,7 @@ function ProductThemeButton({ visible, rail = false }: { visible: boolean; rail?
 
 /** Product presentation consumes real data and callbacks; it owns no business services or routing. */
 export function ProductShell({
-  children, immersive, identityName, spaces, spaceKey, onSpaceChange, onHome, onConnections,
+  children, immersive, identityName, spaces, spaceKey, onSpaceChange, onHome, onConnections, onModels,
 }: ProductShellProps) {
   const { collapsed, toggle } = useShellNavigation()
   const toggleRef = useRef<HTMLButtonElement>(null)
@@ -116,6 +117,7 @@ export function ProductShell({
           <button type="button" className="sidebtn" onClick={onConnections}>
             <span className="navicon"><Icon name="link" size={20} /></span>学校连接
           </button>
+          {onModels && <button type="button" className="sidebtn" onClick={onModels}><span className="navicon"><Icon name="model" size={20} /></span>模型设置</button>}
         </nav>
       }
       bottom={
@@ -163,6 +165,7 @@ export function ProductShell({
           <button type="button" className="railbtn" title="学校连接" aria-label="学校连接" onClick={onConnections}>
             <Icon name="link" size={20} />
           </button>
+          {onModels && <button type="button" className="railbtn" title="模型设置" aria-label="模型设置" onClick={onModels}><Icon name="model" size={20} /></button>}
         </nav>
         <div className="product-rail-bottom">
           <span className="railbtn product-rail-identity" role="img" title={identityName} aria-label={identityName}>
