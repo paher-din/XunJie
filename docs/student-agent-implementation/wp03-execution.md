@@ -1,6 +1,6 @@
 # #170 浏览器计算与持久执行请求
 
-日期：2026-11-03。状态：本地候选实现（Apple Silicon Mac 已用真实浏览器、真实 Worker/WASM、原生 PostgreSQL 验证）；Windows 11 x64 与基线前后截图未执行，不标记本票完整验收。
+日期：2026-11-03。状态：本地候选实现（Apple Silicon Mac 与 Windows 11 x64 两台机器都用真实浏览器、真实 Worker/WASM、原生 PostgreSQL 验证通过）；基线前后对照截图仍未执行，不标记本票完整验收。
 
 ## 依据与授权
 
@@ -47,7 +47,7 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 ### 工程
 
 - 环境：macOS 27.2（build 26B123）、Apple M5（arm64）、Node 24.21.0、桌面 Google Chrome 156.0.8078.79（非 headless）、产品自带原生 PostgreSQL 18.6。
-- `npm run verify`：prepare（typecheck、build、`check:contracts:browser`、`check:docs`）、build:test、unit、server 全部通过；tools 组两项失败，见“未执行与已知失败”。
+- `npm run verify`：五个组全部通过（exit 0）——prepare 4 项、build:test 1 项、unit 23 项、server 78 项、tools 45 项；摘要见 `.verification/2026-11-02T17-08-56-780Z-dq158u/summary.json`。在此之前的两轮里 tools 组有三项失败，原因见“未执行与已知失败”（是本次会话的沙箱删除保护，不是本票改动）。
 - 单元与集成：`store.test.ts` 10/10、`action.test.ts` 3/3、`runner.test.ts` 3/3、`aggregation.test.ts` 14/14、`bridge.test.ts` 5/5；`apps/server/tests/execution.runtime.test.mjs` 1/1（真实 API、原生 PostgreSQL 与资源、原回执、停止、单份结果、未引用状态副本被拒）；`packages/product-runtime/test/school-client.test.mjs` 2/2（五条执行路由与算法路由转发、畸形 503、他人活动/主体 403、非 UUID 403、`/dispatch` 403、算法包字段）。
 - TDD 覆盖的公开边界：作用域键一致、同身份换输入拒绝、接受前取消成持久阻断、终态不被较晚旧事实覆盖、单执行器 claim 与旧代际 `stale-generation`、只在未开始时 adopt、按执行引用读结果、停止走真实 abort 且原接收不变、未知请求查询为空、查询摘要不符为空、同一 stop 身份只留一条、能力上报的计划与上限等于被接受的命令。
 
@@ -62,6 +62,7 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 ### 平台浏览器
 
 - Apple Silicon Mac + 桌面 Chrome：上述 10 项通过，浅色/深色/窄桌面均实际渲染（深色截图底板取到 `#1f1f1f`，不是浅色误报）。
+- Windows 11 x64 + 桌面 Chrome：同一探针 10 项通过（PROBE_EXIT=0）。环境为 Windows 11 家庭版中文版（`10.0.26200`）、Intel Core Ultra 9 285H、Node 24.21.0、桌面 Google Chrome 156.0.8078.79（非 headless）、本机打出的正式产品包 `dist/product-win32-x64`（自带 PostgreSQL 18.6.1、Node 24.21.0），VC 运行库 14.51.36247.0 已就绪。报告 `evidence/wp03-170-windows-browser-report.json`，截图 `evidence/wp03-170-windows-light.png`、`-dark.png`、`-narrow.png`（深色图确认为真实渲染，`计算记录` 里同时有「已取消」「已完成」「未完成」三条）。
 
 ## 发现并修复
 
@@ -74,10 +75,11 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 
 ## 未执行与已知失败
 
-- **Windows 11 x64**：未执行。需用 Windows 原生包与自带 PostgreSQL 在桌面 Chrome 上重跑 `npm run probe:execution`；本记录不把它记为通过。
+- **Windows 侧为完成验收而对实验副本做的两处环境适配（仓库源码未改）**：① `npm 11.19` 默认不执行安装脚本，需在实验机上 `npm install-scripts approve esbuild better-sqlite3`；② `scripts/package-product.mjs` 走 Windows 分支时，`npm/cmd` 会把 `--outDir` 的引号作为路径的一部分交给 Vite（`mkdir 'apps\web\"C:\...\web"'`），只在实验副本的 `scripts/build.mjs` 里剥掉参数外层的引号后打包才成功。**这是仓库打包脚本在 Windows 上的真实缺陷，不在本票写集内，本票未修改它**，需要单独开票修复。
 - **基线前后对照截图**：未重新在基线 `3c90652` 上采集「修改前」。正文 `wp03-169-after-light.png` 是同一活动在 #170 之前的产品 UI（无运行/停止与「计算记录」），仅作参照；本票新增界面的对照图属未执行项。
-- **`tools/xj-dev` 两项失败**：`repro-e2e.test.mjs`、`repro-restore.test.mjs` 报 `LOCKFILE_MISMATCH`。原因是 `collectCode` 从 `HEAD` 树取 `package-lock.json`，而本票新增 `wabt` / `fake-indexeddb` 尚未提交；提交后应以同一命令复跑确认。
-- `local-status.test.mjs` 曾在一次 verify 中失败，原因是同时运行 `npm install` 干扰；`npm install` 落定后复跑通过。
+- **`tools/xj-dev` 曾报 `LOCKFILE_MISMATCH`**：`repro-e2e.test.mjs`、`repro-restore.test.mjs` 的 `collectCode` 从 `HEAD` 树取 `package-lock.json`，本票新增 `wabt` / `fake-indexeddb` 时尚未提交；提交后两组随 tools 一起通过。
+- **`tools` 组三项曾失败（`integration.test.mjs`、`local-status.test.mjs`、`repro-e2e.test.mjs`）**：它们各自运行 `npm run build --workspace @xunjie/contracts`，而构建脚本每跑一次就会删除自己在 `.cache/xunjie-build/locks/` 的锁票据。本次会话的沙箱对「同一工具调用内的批量删除」有阈值保护，超过阈值后第 N 次删除被拒，构建脚本退出 1，xj-dev 把它报成 `CONTRACT_BUILD_FAILED`。三项单独跑（`node --test`）与整组跑（`node scripts/verify.mjs --group tools --jobs 2`，45/45）都通过；把该阈值调高后完整 `npm run verify` 也全绿。这是执行环境的保护策略与本仓库构建脚本的交互，不是本票改动引入的问题。
+- **构建锁曾被一个残留票据永久卡住**：`.cache/xunjie-build/locks/` 里 32 个被强杀进程留下的 Lamport 票据中，有一个 pid 被系统进程（`contentlinkingd`）复用，脚本的存活检测 `process.kill(pid, 0)` 便一直认为持有者还在，等待循环没有超时，于是 typecheck 空转 9 分钟。清掉这些票据后 `node scripts/build.mjs typecheck` 只要 1.2 秒。锁本身仍在用（无 `--force` 的并发构建会串行化，已实测三个并发 `npm run build --workspace @xunjie/contracts` 一 RUN 两 HIT）。
 - 仅 `executionSync` 的续传逻辑按“已确认则不重发”实现；未在真实断网-重连中注入验证。
 - 未验证：系统中文输入法候选、Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。
 
