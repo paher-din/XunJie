@@ -139,11 +139,6 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
         if (!current.configuration.enabled || current.credentialRef !== ref) throw new StorageError('forbidden');
       }
     },
-    async release(ref) {
-      await storage.request({ requestId: randomUUID(), fingerprint: 'release-temporary-credential' }, async tx => {
-        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [ref]); return { released: true };
-      });
-    },
   });
   async function validate() {
     const { rows } = await storage.read('SELECT body FROM model_versions');

@@ -19,7 +19,6 @@ export function createChecks(storage: OwnedStorage, owner: {
   snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot>;
   credential(identity: SpaceIdentity, ref: string): Promise<string>;
   assertDispatch(identity: SpaceIdentity, attempt: ModelAttempt, ref: string): Promise<void>;
-  release(ref: string): Promise<void>;
 }) {
   const active = new Map<string, { controller: AbortController; task: Promise<void> }>();
   let closed = false;
@@ -52,9 +51,9 @@ export function createChecks(storage: OwnedStorage, owner: {
         if (body.physicalRequestEnded) return null;
         const next = { ...body, physicalRequestEnded: true, state: 'unknown', reason: 'dispatcher-ended' };
         await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=true WHERE id=$1', [row.id, next, 'unknown']);
+        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [row.credential_ref]);
         return { reconciled: true };
       });
-      await owner.release(row.credential_ref as string);
     }
   }
   async function row(identity: SpaceIdentity, attemptId: string) {
@@ -112,10 +111,12 @@ export function createChecks(storage: OwnedStorage, owner: {
   }
   async function update(identity: SpaceIdentity, id: string, effect: (body: ModelAttempt) => ModelAttempt) {
     return storage.request({ requestId: randomUUID(), fingerprint: 'model-transition:' + id }, async tx => {
-      const { rows: [found] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 AND scope=$2 FOR UPDATE', [id, scopeOf(identity)]);
+      const { rows: [found] } = await tx.query('SELECT body,credential_ref FROM model_attempts WHERE id=$1 AND scope=$2 FOR UPDATE', [id, scopeOf(identity)]);
       if (!found) throw new StorageError('missing');
       const body = effect(modelAttemptSchema.parse(found.body));
       await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=$4 WHERE id=$1', [id, body, body.state, body.physicalRequestEnded]);
+      if (body.physicalRequestEnded && body.state !== 'accepted')
+        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [found.credential_ref]);
       return body;
     });
   }
@@ -175,19 +176,19 @@ export function createChecks(storage: OwnedStorage, owner: {
           physicalRequestEnded: true, resultRef: resource.resourceId };
         await tx.reference('model-result:' + attempt.attemptId, resource.resourceId);
         await tx.query('UPDATE model_attempts SET body=$2,state=$3,physical_ended=true WHERE id=$1', [attempt.attemptId, next, next.state]);
+        await tx.query('DELETE FROM model_credentials WHERE id=$1 AND temporary=true', [ref]);
         return { resultRef: resource.resourceId };
       });
     } catch {
       // No success without the resource and result transaction. Never replay a dispatched attempt.
       await update(identity, attempt.attemptId, body => ({ ...body, state: 'unknown', reason: 'result-unconfirmed', physicalRequestEnded: true })).catch(() => {});
-    } finally { clearTimeout(timeout); await owner.release(ref).catch(() => {}); }
+    } finally { clearTimeout(timeout); }
   }
   async function cancel(identity: SpaceIdentity, attemptId: string) {
-    const original = await row(identity, attemptId);
+    await row(identity, attemptId);
     await update(identity, attemptId, body => ['accepted', 'dispatched', 'unknown'].includes(body.state)
       ? { ...body, cancelRequested: true, ...(body.state === 'accepted' ? { state: 'cancelled' as const, reason: 'not-started' } : {}) } : body);
     active.get(attemptId)?.controller.abort('cancel');
-    if ((original.body as ModelAttempt).state === 'accepted') await owner.release(original.credential_ref as string);
     return read(identity, attemptId);
   }
   async function validate() {

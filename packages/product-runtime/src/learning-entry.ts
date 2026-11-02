@@ -10,7 +10,7 @@ import type { ActionIntentOptions } from '@xunjie/learning-space';
 import { createModelGateway, modelMigrations } from '@xunjie/learning-space';
 import type { InstalledConfiguration } from './runtime.js';
 import { databaseBinding, resolveCredential, storeCredential } from './postgres.js';
-import { atomicJson, exists, alive, processIdentity } from './io.js';
+import { atomicJson, exists, alive, processIdentity, readJson } from './io.js';
 import { createStorageRecoveryOwner } from './storage-recovery.js';
 import { createStorageRecoveryTarget } from './storage-recovery.js';
 import type { RuntimeResources } from './postgres.js';
@@ -68,9 +68,14 @@ export async function createProductLearningApplication(context: {
     }
     const space = await owner('space-course', spaceCourseMigrations);
     const data = await owner('learning-data', learningMigrations);
-    const model = await owner('model-connection', modelMigrations);
+    // An isolated pre-WP06 restore must keep exactly the authenticated backup's owner set through takeover.
+    // Its first normal restart after activation initializes the new, empty model owner.
+    const deferModel = !environment.services.some(service => service.unit === 'model-connection')
+      && await exists(join(root, 'recovery-state.json'))
+      && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
+    const model = deferModel ? undefined : await owner('model-connection', modelMigrations);
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
-    const models = await createModelGateway(model.storage, { authorize: spaces.authorize, dispatcher: {
+    const models = model ? await createModelGateway(model.storage, { authorize: spaces.authorize, dispatcher: {
       id: JSON.stringify([hostname(), process.pid, await processIdentity(process.pid)]),
       async hasEnded(id) {
         const [host, pid, birth] = JSON.parse(id) as [string, number, string];
@@ -79,11 +84,12 @@ export async function createProductLearningApplication(context: {
         const current = await processIdentity(pid);
         return current !== null && current !== birth;
       },
-    } });
+    } }) : undefined;
     const courses = createCourses(space.storage, spaces);
     const learning = createLearningData(data.storage, spaces, courses, actions);
-    for (const [module, validate] of [[space, async () => { await spaces.validate(); await courses.validate(); }],
-      [data, learning.validate], [model, models.validate]] as const) {
+    const modules = [[space, async () => { await spaces.validate(); await courses.validate(); }], [data, learning.validate],
+      ...(model && models ? [[model, models.validate] as const] : [])] as const;
+    for (const [module, validate] of modules) {
       const recoveryOwner = createStorageRecoveryOwner({ storage: module.storage, binding: module.binding, migrations: module.migrations,
         resources: configuration.resources, resourceRoots: [join(root, 'learning-resources', module === space ? 'space-course' : module === data ? 'learning-data' : 'model-connection')],
         validateService: validate });
@@ -92,7 +98,7 @@ export async function createProductLearningApplication(context: {
         async closeDispatch() { learning.intents.closeDispatch(); await participant.closeDispatch(); },
         async drain() { await learning.intents.drain(); await participant.drain(); },
         async resume() { await participant.resume(); learning.intents.resume(); },
-      } } : module === model ? { ...recoveryOwner, participant: { ...participant,
+      } } : module === model && models ? { ...recoveryOwner, participant: { ...participant,
         async closeWrites() { models.closeWrites(); await models.checks.drain(); await participant.closeWrites(); await participant.closeDispatch(); },
         async closeDispatch() { models.checks.closeDispatch(); },
         async drain() { await models.checks.drain(); await participant.drain(); },
@@ -102,7 +108,7 @@ export async function createProductLearningApplication(context: {
     const localTarget = { ...data.storage.owner, version: 1 as const };
     const schoolClient = environment.profile === 'school' ? undefined : createSchoolClient(root, environment, {
       target: localTarget, create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions) });
-    return { owners, capabilities: { 'learning.authority': createLearningAuthority(spaces, courses) }, handle: createLearningEntry({ environment, spaces, learning, courses, models, client: schoolClient,
+    return { owners, capabilities: { 'learning.authority': createLearningAuthority(spaces, courses) }, handle: createLearningEntry({ environment, spaces, learning, courses, ...(models ? { models } : {}), client: schoolClient,
       target: { ...data.storage.owner, version: 1 }, administratorToken: await resolveCredential(root, 'control') }) };
   } catch (error) { await Promise.allSettled(opened.map(storage => storage.close())); throw error; }
 }

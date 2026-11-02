@@ -5,11 +5,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { openProductRuntime } from '@xunjie/product-runtime'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN
 test.skip(!postgresBin, 'Requires native PostgreSQL 18.6')
 test.use({ trace: 'off' })
-let runtime: ReturnType<typeof openProductRuntime>, endpoint: string, baseUrl: string
+let runtime: Pick<ReturnType<typeof openProductRuntime>, 'install' | 'start' | 'stop'>, endpoint: string, baseUrl: string
 let calls = 0
 const upstream = createServer(async (_request, response) => {
   calls++
@@ -20,7 +24,15 @@ test.beforeAll(async () => {
   await mkdir(fileURLToPath(new URL('../../../.verification/164', import.meta.url)), { recursive: true })
   await new Promise<void>(resolve => upstream.listen(0, '127.0.0.1', resolve))
   baseUrl = `http://127.0.0.1:${(upstream.address() as { port: number }).port}/v1`
-  runtime = openProductRuntime({ root: await mkdtemp(join(tmpdir(), 'xj-models-chrome-')), resources: {
+  const root = await mkdtemp(join(tmpdir(), 'xj-models-chrome-'))
+  if (process.env.XUNJIE_PRODUCT_TEST_PACKAGE) {
+    const product = resolve(process.env.XUNJIE_PRODUCT_TEST_PACKAGE)
+    const resources = JSON.parse(await readFile(join(product, 'resources.json'), 'utf8'))
+    const execute = promisify(execFile)
+    const run = async (command: string, args: string[] = []) => JSON.parse((await execute(resolve(product, resources.nodePath),
+      [join(product, 'app/cli.js'), command, '--root', root, ...args], { windowsHide: true, timeout: 180000 })).stdout)
+    runtime = { install: input => run('install', ['--profile', input.profile]), start: () => run('start'), stop: () => run('stop') }
+  } else runtime = openProductRuntime({ root, resources: {
     nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin, postgresVersion: '18.6',
     webRoot: process.env.XUNJIE_PRODUCT_WEB_ROOT ?? fileURLToPath(new URL('../dist-runtime', import.meta.url)),
     windowsPrerequisitePath: fileURLToPath(new URL('../../../scripts/windows-prereq-prepare.ps1', import.meta.url)) } })
