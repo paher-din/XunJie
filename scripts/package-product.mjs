@@ -244,6 +244,22 @@ async function resourceRecord(id, specification, asset, destination, tools) {
   };
 }
 
+/**
+ * npm.cmd cannot be spawned without a shell on Windows, and every extra shell
+ * layer re-quotes passthrough arguments (see normalizePassthroughArgs in
+ * scripts/build.mjs, which strips the layer npm adds). Prefer the CLI entry
+ * point on every platform so npm arguments survive as separate argv entries.
+ * Returns undefined when only the shell wrapper is available.
+ */
+export async function npmCommand(args, { execPath = process.env.npm_execpath, platform = process.platform } = {}) {
+  if (execPath && /\.[cm]?js$/i.test(execPath)) return [process.execPath, [execPath, ...args]];
+  if (execPath && /\.(?:cmd|bat)$/i.test(execPath)) {
+    const cli = join(dirname(execPath), 'node_modules/npm/bin/npm-cli.js');
+    if (await exists(cli)) return [process.execPath, [cli, ...args]];
+  }
+  return platform === 'win32' ? undefined : ['npm', args];
+}
+
 export async function packageProduct(options) {
   const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
   const platform = options.platform ?? `${process.platform}-${process.arch}`;
@@ -265,13 +281,12 @@ export async function packageProduct(options) {
     // Each package owns its web output; never reuse or empty the shared Vite directory.
     const web = join(staging, 'web');
     const webArgs = ['run', 'build:runtime', '--workspace', '@xunjie/web', '--', '--outDir', web];
-    if (process.env.npm_execpath) await run(process.execPath, [process.env.npm_execpath, ...webArgs]);
-    else if (process.platform === 'win32') {
-      // Keep command text fixed and pass the absolute output path through a quoted env reference.
+    const command = await npmCommand(webArgs);
+    if (command) await run(...command);
+    else // Keep command text fixed and pass the absolute output path through a quoted env reference.
       await run(process.env.ComSpec || 'cmd.exe', ['/d', '/v:off', '/s', '/c', 'npm.cmd run build:runtime --workspace @xunjie/web -- --outDir "%XUNJIE_PRODUCT_WEB_OUT%"'], {
         env: { ...process.env, XUNJIE_PRODUCT_WEB_OUT: web },
       });
-    } else await run('npm', webArgs);
     if (!await exists(join(web, 'index.html'))) throw new Error('Runtime web build did not produce index.html.');
     await mkdir(join(staging, 'resources'), { recursive: true });
     const specifications = [['node', catalog.node], ...(profile === 'full' ? [['postgres', postgres]] : [])];

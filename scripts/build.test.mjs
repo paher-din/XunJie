@@ -7,7 +7,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { contentManifest, digest, runBuildGraph } from './build-cache.mjs';
-import { ensureBuild, expandTargets, parseBuildArgs, resolveTool } from './build.mjs';
+import { ensureBuild, expandTargets, normalizePassthroughArgs, parseBuildArgs, resolveTool } from './build.mjs';
 import { scanServerOutput } from './build-server.mjs';
 
 const paths = { contracts: 'packages/contracts', storage: 'packages/storage', 'learning-space': 'packages/learning-space',
@@ -305,6 +305,85 @@ await runBuildGraph({root,force:process.argv.includes('--force'),log:()=>{},task
   assert.equal(await readFile(join(root,'runs'),'utf8'),'run\n');
   await Promise.all(Array.from({length:6},()=>processRun(true)));
   assert.equal(await readFile(join(root,'runs'),'utf8'),'run\n'.repeat(7));
+});
+
+test('Windows npm/cmd re-quoting is stripped so --outDir reaches Vite as a real path',async t=>{
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','"C:\\build\\web"'],'win32'),['--outDir','C:\\build\\web']);
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','"C:\\Program Files\\web"'],'win32'),['--outDir','C:\\Program Files\\web']);
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','C:\\build\\web'],'win32'),['--outDir','C:\\build\\web']);
+  assert.deepEqual(normalizePassthroughArgs(['--outDir','"kept"'],'linux'),['--outDir','"kept"']);
+  assert.deepEqual(parseBuildArgs(['web:runtime','--','--outDir','"C:\\build\\web"'],'win32'),
+    {target:'web:runtime',force:false,args:['--outDir','C:\\build\\web']});
+  // The stripped value is what the bundler actually receives: a quoted value
+  // would land as `apps/web/"candidate"` instead of the requested directory.
+  const root=await fixture(t);
+  await ensureBuild('web:runtime',{root,args:parseBuildArgs(['--','--outDir','candidate'],'win32').args,...quiet});
+  assert.equal(await readFile(join(root,'apps/web/candidate/index.html'),'utf8'),'<html>built</html>');
+  assert.equal((await calls(root)).at(-1).args.at(-1),'candidate');
+});
+
+const cacheModule = pathToFileURL(fileURLToPath(new URL('./build-cache.mjs', import.meta.url))).href;
+
+async function lockWorker(root, sleepMs) {
+  await put(root,'lock-worker.mjs',`import {runBuildGraph} from ${JSON.stringify(cacheModule)};
+import { appendFile, open, mkdir, writeFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+const root=process.argv[2];
+await runBuildGraph({root,log:()=>{},tasks:{one:{outputs:['output'],cache:false,fingerprint:async()=>({v:1}),async run(){
+ const exclusive=await open(join(root,'exclusive'),'wx');
+ try {await appendFile(join(root,'runs'),'run\\n'); await new Promise(r=>setTimeout(r,${sleepMs}));
+  await mkdir(join(root,'output'),{recursive:true}); await writeFile(join(root,'output/index.js'),'ok');}
+ finally {await exclusive.close(); await rm(join(root,'exclusive'));}
+}}},targets:['one']});`);
+}
+async function lockRun(root, env) {
+  const started=Date.now();
+  await new Promise((accept,reject)=>{
+    const child=spawn(process.execPath,[join(root,'lock-worker.mjs'),root],{env,stdio:['ignore','pipe','pipe']});
+    let output='';child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);
+    child.once('error',reject);
+    child.once('close',code=>code===0?accept():reject(new Error(output.trim()||`exit ${code}`)));
+  });
+  return Date.now()-started;
+}
+
+test('a lock ticket whose pid was reused ages out instead of blocking forever',async t=>{
+  const root=await fixture(t);
+  await lockWorker(root,0);
+  const host=digest(hostname()).slice(0,16);
+  // The recorded pid is alive but belongs to a different process now: start
+  // markers disagree, which is exactly the pid reuse that hung real builds.
+  await put(root,`.cache/xunjie-build/locks/${host}-${process.pid}-reused.json`,JSON.stringify({
+    pid:process.pid,host,choosing:true,number:1,start:'start-of-a-process-that-no-longer-exists',
+    createdAt:Date.now()-60_000,updatedAt:Date.now()-60_000}));
+  const env={...process.env,XUNJIE_BUILD_LOCK_STALE_MS:'150',XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'30',XUNJIE_BUILD_LOCK_WAIT_MS:'20000'};
+  await lockRun(root,env);
+  assert.equal(await readFile(join(root,'runs'),'utf8'),'run\n');
+  await assert.rejects(readFile(join(root,`.cache/xunjie-build/locks/${host}-${process.pid}-reused.json`)),{code:'ENOENT'});
+});
+
+test('a live owner keeps refreshing so waiters queue instead of running concurrently',async t=>{
+  const root=await fixture(t);
+  await lockWorker(root,400);
+  const env={...process.env,XUNJIE_BUILD_LOCK_STALE_MS:'150',XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'30',XUNJIE_BUILD_LOCK_WAIT_MS:'20000'};
+  await Promise.all([lockRun(root,env),lockRun(root,env)]);
+  assert.equal(await readFile(join(root,'runs'),'utf8'),'run\nrun\n');
+});
+
+test('waiting for the lock fails with a deadline and a diagnosis instead of hanging',async t=>{
+  const root=await fixture(t);
+  await lockWorker(root,0);
+  const host=digest(hostname()).slice(0,16);
+  await put(root,`.cache/xunjie-build/locks/${host}-${process.pid}-fresh.json`,JSON.stringify({
+    pid:process.pid,host,choosing:true,number:1,start:undefined,createdAt:Date.now(),updatedAt:Date.now()}));
+  const env={...process.env,XUNJIE_BUILD_LOCK_STALE_MS:'600000',XUNJIE_BUILD_LOCK_HEARTBEAT_MS:'30',XUNJIE_BUILD_LOCK_WAIT_MS:'250'};
+  const started=Date.now();
+  let error;
+  try { await lockRun(root,env); } catch (cause) { error=cause; }
+  const elapsed=Date.now()-started;
+  assert.match(error?.message??'',/Timed out after 250ms waiting for the build lock/);
+  assert.ok(error.message.includes(String(process.pid)),error.message);
+  assert.ok(elapsed<15_000,`waited ${elapsed}ms`);
 });
 
 test('abort terminates a real command and prevents caching its partial output',async t=>{
