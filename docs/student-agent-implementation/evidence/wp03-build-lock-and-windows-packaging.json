@@ -78,6 +78,12 @@
       "guarantees": ["staleMs >= 4 * heartbeatMs", "waitMs >= 2 * staleMs"],
       "overrides": ["XUNJIE_BUILD_LOCK_HEARTBEAT_MS", "XUNJIE_BUILD_LOCK_STALE_MS", "XUNJIE_BUILD_LOCK_POLL_MS", "XUNJIE_BUILD_LOCK_WAIT_MS", "XUNJIE_BUILD_LOCK_START_VERIFY_MS"]
     },
+    "windowsStartMarker": {
+      "purpose": "Windows 分支的启动标记来自 PowerShell StartTime；在真实 Windows 上验证它能识别 pid 复用（读不到就会退化为旧行为并触发等待超时）",
+      "probe": "node probe.mjs <root>（票据 pid = 本进程 pid、start 为不可能匹配的值，XUNJIE_BUILD_LOCK_WAIT_MS=4000）",
+      "result": "{\"platform\":\"win32\",\"elapsedMs\":367,\"outcome\":\"passed\",\"locks\":[]}",
+      "interpretation": "367 毫秒通过并清掉票据，说明 PowerShell 读到了启动标记并判定该 pid 已复用；若读不到，同一场景会等满 4 秒后报等待超时"
+    },
     "regressionProof": "三进程竞态测试在“等待者不刷新 + 陈旧即忽略”的写法下真的失败（EEXIST exclusive，两个构建同时进入临界区）；修复后三者严格串行（约 2.85 秒完成三轮各 0.9 秒的临界区）"
   },
   "tests": {
