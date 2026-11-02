@@ -383,13 +383,30 @@ async function main(): Promise<void> {
       const manifestPath = resolve(required('file'));
       const input = await jsonFile(manifestPath, '组件导入清单');
       const importRoot = await realpath(dirname(manifestPath));
+      const confined = async (label: string, target: string) => {
+        const absolute = await realpath(resolve(importRoot, target));
+        const inside = relative(importRoot, absolute);
+        if (!inside || inside.startsWith('..') || isAbsolute(inside)) throw new Error(`${label}越出导入目录`);
+        return readFile(absolute);
+      };
       if (typeof input.path !== 'string' || input.contentBase64 !== undefined) throw new Error('组件入口通过 path 从导入目录读取');
-      const absolute = await realpath(resolve(importRoot, input.path));
-      const confined = relative(importRoot, absolute);
-      if (!confined || confined.startsWith('..') || isAbsolute(confined)) throw new Error('组件入口越出导入目录');
-      const bytes = await readFile(absolute);
-      const { path: _path, ...body } = input;
-      output(await manageCourse('component-import', { ...body, contentBase64: bytes.toString('base64') })); break;
+      const bytes = await confined('组件入口', input.path);
+      const { path: _path, dependencies: declared, ...body } = input;
+      // Dependency bytes come from the import directory by declared path, keyed to the manifest's fixed resourceId.
+      const manifest = object(body.manifest, '组件清单');
+      const declaredDependencies = manifest.dependencies;
+      const resources = declared === undefined ? undefined : (Array.isArray(declared) ? declared : []).map(item => {
+        const dependency = object(item, '组件依赖');
+        const entry = (Array.isArray(declaredDependencies) ? declaredDependencies : [])
+          .map(candidate => object(candidate, '清单依赖')).find(candidate => candidate.dependencyId === dependency.dependencyId);
+        if (typeof dependency.path !== 'string' || !entry || typeof entry.resourceId !== 'string')
+          throw new Error('组件依赖需要 dependencyId 与 path，且清单必须声明同一依赖');
+        return { path: dependency.path, resourceId: entry.resourceId };
+      });
+      if (declared !== undefined && !Array.isArray(declared)) throw new Error('组件依赖必须是数组');
+      output(await manageCourse('component-import', { ...body, contentBase64: bytes.toString('base64'),
+        ...(resources ? { dependencies: await Promise.all(resources.map(async item =>
+          ({ resourceId: item.resourceId, contentBase64: (await confined('组件依赖', item.path)).toString('base64') }))) } : {}) })); break;
     }
     case 'component-read': {
       output(await manageCourse('component-read', await jsonFile(required('file'), '组件查询'))); break;

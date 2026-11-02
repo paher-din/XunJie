@@ -1,2 +1,7 @@
 .component-view { height: 100%; min-height: 0; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); }
 .component-view iframe { width: 100%; flex: 1; min-height: 240px; border: 0; background: var(--paper); }
+.component-view > .learning-error, .component-view > .ws-pane-note, .component-view > .component-view-note { flex: none; margin: 16px 16px 0; }
+.component-view > iframe + .learning-error, .component-view > .learning-error + iframe { margin-top: 16px; }
+.component-view-note { font-size: 12px; line-height: 1.6; color: var(--muted); }
+.component-view-actions { display: flex; gap: 8px; margin-top: 10px; }
+.component-view-actions .ws-btn { font-size: 12px; padding: 4px 10px; }

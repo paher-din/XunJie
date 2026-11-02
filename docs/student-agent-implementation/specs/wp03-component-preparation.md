@@ -4,6 +4,8 @@
 
 **状态：待负责人审阅的实施方案；尚未实现或执行产品验收。** 本文区分既定要求与工程建议，不替代 GitHub 的实时状态。本轮只完善文档与规划。后续在当前 `wp03` 开发、验证并推送 `origin/wp03`，不创建 PR、不合并 `main`。本轮授权优先于旧交付记录中针对上一轮推送的审批约定。
 
+**2026-11-03 修订：负责人已确认工程方案并授权迁移 9，切片 1–4 已实现并在本机 Windows 11 x64 + 桌面 Chrome 上完成产品验收。** 下方原文保留为规划依据；实际落地与验证结果见文末「实施结果与验收证据」。未执行项（Apple Silicon Mac、教学效果）在该节单独列出，不视为通过。
+
 ## 目标、既定范围与建议
 
 学生打开固定组件后，产品自动取得和校验依赖、检查设备能力、在独立实例自检，并在满足条件后开放对应能力。重新打开复用仍有效的准备记录；中断后沿原准备身份查询和继续。准备失败仍能读取已有作品，并保留无关编辑能力。全过程无需 Agent 或 #170 的公共执行器。
@@ -171,3 +173,99 @@ Opaque iframe 的 DOM 不能由父页面直接读取：视图测试入口负责�
 按根 [AGENTS.md](../../../AGENTS.md) 的「大改动前先在出方案，我确认后再动手」和「数据库 schema 变更或数据迁移」红线，实施将单独说明并取得迁移授权：预计在课程 owner 新增准备诊断/引用登记结构，在浏览器新增准备元数据/缓存结构。采用新增、非破坏迁移，具体 DDL/版本与兼容规则在执行前核实；风险是升级失败、空间配额、旧客户端无法理解新格式或错误启用缓存。通过旧格式保留、逐阶段确认、旧环境保留及真实恢复验证控制这些风险。本次规划不等于执行迁移授权。
 
 若需要删除旧文件、改 `.env`/密钥/CI 或公开部署，另按红线说明具体对象、理由及风险后询问。当前方案无需上述操作。后续普通开发分支提交与推送已由本轮要求授权；只暂存本票文件、不强推、不创建 PR、不合 main，不将推送解释为生产发布或两平台完整验收。
+
+## 实施结果与验收证据
+
+本节记录实际落地，不是对上方规划的追认。基线 `60f58c5`，实施于 `wp03`，未创建 PR、未合并 `main`。
+
+### 切片 1：版本与资源链路
+
+- [组件 wire](../../../packages/contracts/src/components.ts)：新增 `formatVersion=2` 分支（`componentPreparedManifestSchema`），声明依赖资源、环境/设备需求、预算、固定自检与 `preparationProtocolVersion=1`；`formatVersion=1` 分支对象字面量逐字未动，规范化结果与摘要不变。运行测试以固定值 `e553551c0213e6bd6fa1e8491de88606414a5a68f60aec0df61eca9ed154caf8` 硬断言旧摘要，客户端由返回清单重算摘要也必须一致。
+- 新增准备协议 wire：`componentPreparationMessageSchema` / `componentPreparationReplySchema`（observation 与 error 二选一）、`componentInitializeSchema`（format 2 必须显式携带 `preparation.mode`）、准备状态/原因码/逐能力投影、`componentPreparationReportSchema` 与提交/回执/列表 schema。准备协议、宿主协议、清单格式、状态结构与迁移版本各自编号。
+- 课程 owner（[components.ts](../../../packages/learning-space/src/courses/components.ts)）：`register` 校验 entry 与全部依赖字节后原子登记；每个依赖使用独立保留引用 `component/<componentId>/<version>/dependency/<dependencyId>`，entry 沿用原引用 ID，因此旧版 `validate()` 断言仍然成立；新增 `dependencyBytes` / `dependencyContent`；同版本换定义或换字节仍为 `identity-conflict`；`verify` 与 `validate` 覆盖依赖字节与依赖保留引用。预算超限、未知必需特性、缺失或多余依赖资源在 schema 层被拒（refine 全部为全函数，避免抛非校验错误被误映射为 503）。
+- **迁移 9（负责人已授权）**：新增非破坏表，不改既有表：
+  ```sql
+  CREATE TABLE component_preparation_reports(report_id uuid PRIMARY KEY,
+    component_id uuid NOT NULL,version integer NOT NULL,
+    preparation_protocol_version integer NOT NULL,self_test_version integer NOT NULL,
+    request_id uuid NOT NULL,fingerprint text NOT NULL,report jsonb NOT NULL,
+    submitted_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    FOREIGN KEY(component_id,version) REFERENCES course_components(component_id,version));
+  ```
+  写入走既有 `storage.request` 回执去重；`components.validate()` 重新解析每条报告并核对组件/版本/摘要，纳入 owner 的维护与恢复校验。format 1 组件不接受报告（返回 `invalid`），报告不是任何设备或资格的 ready 凭证。
+- 正式 HTTP（[learning-entry](../../../packages/learning-space/src/learning-entry/index.ts)）新增三个固定路由，均先走既有 `authorizedRelease` 资格校验，不接受任意路径或 URL：`GET releases/<releaseId>/components/<key>/dependencies/<dependencyId>`、`POST .../preparation-report`、`GET .../preparation-reports`。学校转发（[school-client](../../../packages/product-runtime/src/school-client.ts)）的允许列表与响应校验同步扩展，未加 `/view` 等不经过转发的路径。
+- 本地 CLI（[cli.ts](../../../apps/local-runtime/src/cli.ts)）的 `component-import` 支持 `dependencies: [{ dependencyId, path }]`，路径仍限制在导入目录内，`resourceId` 取自清单声明，不接受调用方自选。
+- 标注样例新增版本 2（[view-v2.html](../../../components/material-annotation/view-v2.html)），`package.mjs` 同时生成 `component.json`（版本 1，未变）与 `component-v2.json`。依赖为 `mark.js@8.11.1` 的 `dist/mark.min.js`，16917 字节，SHA-256 `21d62e1053f7589fe6365cccd7c636d1781abf7879a605d8ce5f1f5b81a7b8fa`，随附 MIT 许可证与取得方式见 [vendor/README.md](../../../components/material-annotation/vendor/README.md)。版本 1 的 `view.html` 未改动。
+
+### 切片 2–3：准备 Module、独立自检与逐能力启用
+
+[apps/web/src/component-preparation](../../../apps/web/src/component-preparation/preparation.ts) 提供 `prepare` / `query` / `resume` / `capabilities` / `dependencies` / `reports` / `subscribe` / `scopeKey`：
+
+- 身份：`preparationId` 持久随机身份；`requestDigest` 固定组件定义、配置、自检/协议版本与实际设备指纹（不含调用方 requestId），同范围同指纹复用原身份，同 requestId 换输入拒绝。`scopeKey` 含恢复 namespace、环境/空间/主体与完整定义，不跨主体命中。
+- 持久：独立 IndexedDB `xunjie-component-preparation-v1`（preparations / checks / resources / environments），与学生作品库 `xunjie-reliable-works-v1` 分离；准备代码不读写作品表。每一步先落盘再推进；Web Locks 做跨标签互斥，缺失时退化为同页互斥。
+- 缓存：依赖字节按 SHA-256 存；命中后仍重新计算摘要才使用；缓存写失败保留本页内存副本并记录诊断，不因此断言已持久就绪；可用环境指针写失败则状态为 `repairable`/`storage-unavailable` 且 `environmentId` 为空。
+- 自检：[self-test.ts](../../../apps/web/src/component-preparation/self-test.ts) 用同一 `/view` 资源、同一固定视图代码，在独立 iframe 中由 [bridge.ts](../../../apps/web/src/component-preparation/bridge.ts) 提供**仅内存**临时状态；该桥接不接可靠工作区、学习数据、问题草稿、执行接收器或学习事件，且无执行/引用能力。宿主核对固定预期、消息顺序与 `selfTestTimeoutMs`；超时或畸形应答记为 `interrupted`，不激活环境。
+- 复用粒度：声明的步骤是一条共享同一临时状态的有序序列，因此检查结果复用是全有或全无；**配置变化命中全部缓存结果、不重跑自检**（`无关结果复用` 的可观察情形），组件代码、依赖或设备指纹变化则整条重跑（安全超集）。
+- 逐能力：`workspace.read` / `workspace.change` 由标注往返与负例检查把关；`material.highlight` 另需其声明依赖取得、校验并实际加载。执行能力不投影、桥接直接拒绝。
+- 报告：提交前先持久 `reportId` 与 `requestId`，上传失败不阻塞本机已验证能力，下次打开按原身份重试。
+
+### 切片 4：产品接线
+
+[ComponentView](../../../apps/web/src/component-host/ComponentView.tsx)：`formatVersion=1` 保持原路径；`formatVersion=2` 先完成清单/材料校验与准备，激活环境后才挂载并把已验证依赖经同一 MessagePort 交付，组件侧再按清单摘要与长度独立复核后才执行。失败时就近显示原因、可用能力与「按原准备身份继续」；环境未激活时不挂载，新版失败不改绑旧版本。
+
+### 浏览器高亮的一处实现修正
+
+`mark.js` 的 `accuracy: 'exactly'` 会把关键词包成 `(^|\s)(quote)(?=$|\s)`，要求两侧为空白或边界，在中文正文中无法命中句内引文。实现改用 `accuracy: 'partially'` 配合 `separateWordSearch: false`（整段引文作单一关键词）、`caseSensitive: true`、`diacritics: false`、`acrossElements: true`，并关闭 wildcards/synonyms/ignoreJoiners/ignorePunctuation，得到「整段引文、区分大小写、按精确子串」的固定匹配；高亮完成以库的 `done` 回调为准，不用本地替代算法。界面只呈现「材料中 N 处匹配」，并明示同一段文字多处出现不代表原选区位置。
+
+### 实际调用的检查
+
+```sh
+node scripts/build.mjs typecheck            # 全工作区类型检查
+node scripts/build.mjs all                  # 构建
+npm run check:contracts:browser             # 11 个公开导出浏览器安全
+npm run check:docs                          # 172 个 Markdown、1363 个本地目标、0 失败
+npm test -w @xunjie/web                     # 61 个文件 / 709 项
+node scripts/test.mjs server                # 本地（非 external）
+node scripts/test.mjs product-runtime
+node scripts/test.mjs storage
+node scripts/test.mjs checks
+# 原生集成（需 XUNJIE_PRODUCT_POSTGRES_BIN 指向 PostgreSQL 18.6）
+node --test apps/server/tests/component-host.runtime.test.mjs
+node scripts/probe-component-preparation.mjs   # 真实桌面 Chrome
+node scripts/probe-component-host.mjs          # 既有 v1 回归
+```
+
+### 结果
+
+工程检查（全部实际运行，非推算）：
+
+| 检查 | 结果 |
+| --- | --- |
+| 类型检查 / 构建 / 公开契约浏览器检查 / 文档链接 | 通过 |
+| `@xunjie/web` Vitest | 61 文件 709 项通过；其中新增准备桥接 5 项、准备 Module 11 项 |
+| 服务端原生集成（PostgreSQL 18.6 + 产品运行时） | 2 项通过：版本 1 原路径；版本 2 导入、依赖读取、报告、重启与损坏资源处置 |
+| 新验收探针（桌面 Chrome，本机 Windows 11 x64） | 13 项通过，见下 |
+| 既有 v1 宿主探针 | 15 项通过，未回归 |
+| 服务端本地套件 | 75/78 通过；3 项为 Windows 平台限制（见下） |
+| product-runtime 本地套件 | 14 个文件中 12 个通过；`connections.test.ts` 单独重跑 31/31 通过（并发下的时序抖动） |
+| storage 本地套件 | 除 Windows symlink 一项外通过 |
+| checks 组 | 7 个文件中 6 个通过；`ci-build-artifact.test.mjs` 在基线 `60f58c5` 上同样 5/5 失败（GNU tar 把 `C:` 当远程主机） |
+
+新探针覆盖：导入不改变主前端产物；冷准备真实取得/校验/自检并激活单一环境；独立自检不产生学生作品；生产 iframe 真正以脚本执行交付字节并定义声明全局；真实库对中文字段多处匹配计数并还原正文；热重开命中记录与缓存且不重跑自检；报告经生产路由进入 PostgreSQL 并记录真实设备；中断后按原 `preparationId` 继续；依赖取不到只关闭高亮、标注与持久化继续并显示就近原因；准备存储失败不挂载、不宣称就绪、已确认作品无损；版本 1 发布仍走原路径且不建准备环境；浅色/深色/窄桌面截图；失权同时关闭依赖路由。
+
+### 未执行或未通过项
+
+- **Apple Silicon Mac**：本机无该设备，未运行；不作为通过。
+- **教学效果**：未评估，不作通过结论。
+- **Windows 平台限制导致的既有失败**（不在本票写集内，未修改）：
+  - `apps/server/tests/account-control.test.ts`：`local-socket.ts` 的 `s.uid !== process.getuid?.()` 在 Windows 恒为真（uid 为 0，`getuid` 未定义），必然 `LOCAL_SOCKET_CONFLICT`。
+  - `apps/server/tests/application-database.test.ts`、`packages/product-runtime/test/recovery-files.test.mjs`、`packages/storage/test/blobs.test.mjs`：本机创建符号链接返回 `EPERM`（需开发者模式或提权）。
+  - `packages/product-runtime/test/lifecycle.test.mjs`：清理临时目录时 `EBUSY`（Windows 句柄未释放）。
+  - `scripts/ci-build-artifact.test.mjs`：GNU tar 解析 `C:` 为远程主机；基线同样失败。
+- `connections.test.ts` 在并发全量下偶发时序失败，单独重跑通过；未用放宽断言掩盖。
+
+### 已知取舍
+
+- 自检结果复用为全有或全无（原因见切片 2–3）。若后续要按依赖粒度复用，需要把声明步骤拆成互不共享临时状态的独立序列。
+- 准备报告表不设容量上限，读取按提交时间取最近 50 条；清理与跨 owner 恢复仍归 #176。
+- 浏览器准备缓存只在本机有效，未进入服务器备份；恢复后重新探测设备并重读依赖字节，恢复报告不能激活环境。

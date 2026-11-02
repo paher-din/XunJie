@@ -15,7 +15,7 @@ WP06 的五张实施子票入口见[规范末尾](wp06-model-connections.md#furt
 
 | 实施票 | 文档 | 文档性质 |
 | --- | --- | --- |
-| [组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171) | [实施方案与验收计划](wp03-component-preparation.md) | 待审阅方案；真实浏览器依赖、独立自检、持久准备和恢复，尚未实施 |
+| [组件依赖准备、自检与失败恢复](https://github.com/paher-din/XunJie/issues/171) | [实施方案与验收计划](wp03-component-preparation.md) | 已实施（切片 1–4）并在本机 Windows 11 + 桌面 Chrome 完成产品验收；Apple Silicon Mac 与教学效果未执行 |
 
 ## WP02 子票实施方案
 

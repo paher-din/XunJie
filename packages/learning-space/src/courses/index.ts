@@ -15,8 +15,8 @@ import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spa
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { spaceMigrations } from '../spaces/index.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
-import { componentBindingsSchema } from '@xunjie/contracts/components';
-import { createComponents, componentMigration, componentStatusMigration } from './components.js';
+import { componentBindingsSchema, componentPreparationReportSubmissionSchema } from '@xunjie/contracts/components';
+import { createComponents, componentMigration, componentStatusMigration, componentReportMigration } from './components.js';
 
 export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'course-catalog-and-releases', sql: `
   CREATE TABLE courses (course_id uuid PRIMARY KEY,space_id uuid NOT NULL REFERENCES spaces(id),
@@ -47,7 +47,7 @@ export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'cour
 ` }];
 
 /** The school/course owner migration set: existing space versions plus the course domain. */
-export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration];
+export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration, componentReportMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();
@@ -551,6 +551,31 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     const definition = await components.verify(binding.definition);
     return { definition, contentBase64: (await components.bytes(definition)).toString('base64') };
   }
-  return { components, readComponent, registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
+  /** Fixed dependency bytes for an already-eligible caller; the id must be declared by the bound version. */
+  async function readComponentDependency(identity: SpaceIdentity, releaseId: string, key: string, dependencyId: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+    return components.dependencyContent(await components.verify(binding.definition), dependencyId);
+  }
+  /** A report is one device's diagnostic: submitting or reading it changes no eligibility and activates no environment. */
+  async function submitComponentReport(identity: SpaceIdentity, releaseId: string, key: string, value: unknown) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    const input = componentPreparationReportSubmissionSchema.parse(value);
+    if (input.report.componentId !== binding.definition.manifest.componentId
+      || input.report.version !== binding.definition.manifest.version) return fail('invalid');
+    return components.submitReport(input);
+  }
+  async function readComponentReports(identity: SpaceIdentity, releaseId: string, key: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    return components.readReports(binding.definition.manifest.componentId, binding.definition.manifest.version);
+  }
+  return { components, readComponent, readComponentDependency, submitComponentReport, readComponentReports,
+    registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

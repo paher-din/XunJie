@@ -81,6 +81,10 @@ export function createLearningEntry(options: {
       if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
       let route = pathname.slice('/api/learning/'.length);
       const componentView = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/view$/.test(route);
+      // Fixed dependency and diagnostic routes only: no arbitrary path reaches a resource backend through these.
+      const componentDependency = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/dependencies\/[a-z][a-z0-9-]{0,47}$/.test(route);
+      const componentReports = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/preparation-reports$/.test(route);
+      const componentReport = request.method === 'POST' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/preparation-report$/.test(route);
       if (componentView) {
         const query = new URL(request.url!, endpoint).searchParams;
         request.headers['x-xj-space'] = z.string().regex(/^(?:personal|school|school:[0-9a-f-]{36})$/).parse(query.get('space'));
@@ -186,7 +190,7 @@ export function createLearningEntry(options: {
       } else if (route === 'courses' && method === 'GET') {
         if (!options.courses) throw new StorageError('forbidden');
         result = await options.courses.listCourses(await current(request));
-      } else if (route.startsWith('releases/') && method === 'GET') {
+      } else if (route.startsWith('releases/') && (method === 'GET' || componentReport)) {
         if (!options.courses) throw new StorageError('forbidden');
         const identity = await current(request);
         if (componentView && request.headers['x-xj-expected-subject'] !== [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
@@ -197,6 +201,12 @@ export function createLearningEntry(options: {
         }
         else if (parts.length === 3 && parts[1] === 'materials') {
           result = await options.courses.readMaterial(await current(request), parts[0]!, parts[2]!);
+        } else if (componentDependency && parts.length === 5 && parts[1] === 'components' && parts[3] === 'dependencies') {
+          result = await options.courses.readComponentDependency(identity, parts[0]!, parts[2]!, parts[4]!);
+        } else if (componentReports && parts.length === 4 && parts[1] === 'components') {
+          result = await options.courses.readComponentReports(identity, parts[0]!, parts[2]!);
+        } else if (componentReport && parts.length === 4 && parts[1] === 'components') {
+          result = await options.courses.submitComponentReport(identity, parts[0]!, parts[2]!, await readLearningBody(request));
         } else throw new StorageError('missing');
       } else if (route === 'course-activities' && method === 'POST') {
         result = await learning.createCourse(await current(request), await readLearningBody(request));
