@@ -3,7 +3,7 @@
  * 纯函数实现：所有操作返回新树，由 CenterToolArea 持有状态并持久化。
  */
 
-export type CoreToolKey = 'design' | 'board' | 'wave'
+export type CoreToolKey = 'design' | 'board' | 'wave' | `component:${string}`
 /**
  * 中心工具区标签：核心工具（课程包预置）+ 生成交互卡标签（gen:<cardId>，第 19 条）。
  * 生成卡标签与核心工具同级：可关闭（只关视图，卡本体仍在会话与收纳里）、可拖拽分屏，

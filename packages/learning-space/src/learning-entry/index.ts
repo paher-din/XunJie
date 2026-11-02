@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z } from 'zod';
+import { componentBundleSchema } from '@xunjie/contracts/components';
 import { StorageError } from '@xunjie/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import type { LearningTarget, SpaceIdentity } from '@xunjie/contracts/spaces';
@@ -78,7 +79,16 @@ export function createLearningEntry(options: {
     if (!pathname.startsWith('/api/learning/')) return false;
     try {
       if (request.headers.origin && !allowedOrigins.has(request.headers.origin) || request.headers['sec-fetch-site'] === 'cross-site') throw new StorageError('forbidden');
-      const route = pathname.slice('/api/learning/'.length);
+      let route = pathname.slice('/api/learning/'.length);
+      const componentView = request.method === 'GET' && /^releases\/[0-9a-f-]{36}\/components\/[a-z][a-z0-9-]{0,47}\/view$/.test(route);
+      if (componentView) {
+        const query = new URL(request.url!, endpoint).searchParams;
+        request.headers['x-xj-space'] = z.string().regex(/^(?:personal|school|school:[0-9a-f-]{36})$/).parse(query.get('space'));
+        const expected = query.get('subject');
+        if (!expected || !/^[0-9a-f.-]{110}$/.test(expected)) throw new StorageError('invalid');
+        request.headers['x-xj-expected-subject'] = expected;
+        route = route.slice(0, -5);
+      }
       if ((route.startsWith('workspaces/') || route.startsWith('drafts/') || route.startsWith('intents/')) && request.headers['x-xj-namespace']
         && request.headers['x-xj-namespace'] !== environment.clientNamespace) throw new StorageError('forbidden');
       const method = request.method;
@@ -124,7 +134,17 @@ export function createLearningEntry(options: {
         result = { loggedOut: true };
       } else if (route.startsWith('manage/') && method === 'POST') {
         if (request.headers.authorization !== `Bearer ${options.administratorToken}`) throw new StorageError('forbidden');
-        if (route === 'manage/course-import') {
+        if (route === 'manage/component-import') {
+          if (!options.courses) throw new StorageError('forbidden');
+          result = await options.courses.components.register(await readLearningBody(request, 2000000));
+        } else if (route === 'manage/component-status') {
+          if (!options.courses) throw new StorageError('forbidden');
+          result = await options.courses.components.setStatus(await readLearningBody(request));
+        } else if (route === 'manage/component-read') {
+          if (!options.courses) throw new StorageError('forbidden');
+          const input = z.object({ componentId: z.uuid(), version: z.number().int().positive() }).strict().parse(await readLearningBody(request));
+          result = await options.courses.components.read(input.componentId, input.version);
+        } else if (route === 'manage/course-import') {
           if (!options.courses) throw new StorageError('forbidden');
           result = await options.courses.registerRelease(await readLearningBody(request, 64 * 1024 * 1024));
         } else if (route === 'manage/course-result') {
@@ -168,8 +188,13 @@ export function createLearningEntry(options: {
         result = await options.courses.listCourses(await current(request));
       } else if (route.startsWith('releases/') && method === 'GET') {
         if (!options.courses) throw new StorageError('forbidden');
+        const identity = await current(request);
+        if (componentView && request.headers['x-xj-expected-subject'] !== [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         const parts = route.slice('releases/'.length).split('/');
         if (parts.length === 1) result = await options.courses.readRelease(await current(request), parts[0]!);
+        else if (parts.length === 3 && parts[1] === 'components') {
+          result = await options.courses.readComponent(await current(request), parts[0]!, parts[2]!);
+        }
         else if (parts.length === 3 && parts[1] === 'materials') {
           result = await options.courses.readMaterial(await current(request), parts[0]!, parts[2]!);
         } else throw new StorageError('missing');
@@ -218,7 +243,15 @@ export function createLearningEntry(options: {
         z.object({ requestId: z.uuid(), activityId: z.uuid(), status: z.enum(['open', 'closed']) }).strict().parse(await readLearningBody(request)));
       else if (route.startsWith('receipts/') && method === 'GET') result = await learning.receipt(await current(request), route.slice(9));
       else throw new StorageError('missing');
-      sendLearning(response, 200, result);
+      if (componentView) {
+        const bundle = componentBundleSchema.parse(result);
+        if (new URL(request.url!, endpoint).searchParams.get('digest') !== bundle.definition.digest) throw new StorageError('conflict');
+        response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
+          'permissions-policy': 'camera=(), microphone=(), geolocation=(), clipboard-read=(), clipboard-write=()',
+          'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; sandbox allow-scripts; frame-ancestors 'self'" });
+        response.end(Buffer.from(bundle.contentBase64, 'base64'));
+      } else sendLearning(response, 200, result);
     } catch (error) { learningFailure(response, error); }
     return true;
   };

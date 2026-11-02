@@ -8,6 +8,7 @@
     "dist"
   ],
   "exports": {
+    "./components": { "types": "./dist/components.d.ts", "import": "./dist/components.js" },
     "./action-intents": { "types": "./dist/action-intents.d.ts", "import": "./dist/action-intents.js" },
     "./spaces": { "types": "./dist/spaces.d.ts", "import": "./dist/spaces.js" },
     "./courses": { "types": "./dist/courses.d.ts", "import": "./dist/courses.js" },

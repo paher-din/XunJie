@@ -1,0 +1,2 @@
+.component-view { height: 100%; min-height: 0; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); }
+.component-view iframe { width: 100%; flex: 1; min-height: 240px; border: 0; background: var(--paper); }

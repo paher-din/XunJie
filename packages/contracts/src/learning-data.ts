@@ -25,7 +25,7 @@ export const createActivitySchema = z.object({ requestId: z.uuid(), goal: z.stri
 export type CreateActivity = z.infer<typeof createActivitySchema>;
 export const activitySchema = z.object({ activityId: z.uuid(), identity: spaceIdentitySchema,
   target: learningTargetSchema, goal: z.string(), question: z.string(), references: createActivitySchema.shape.references,
-  status: z.enum(['open', 'closed']), createdAt: z.string(), course: courseActivityBindingSchema.optional() }).strict();
+  status: z.enum(['open', 'closed']), createdAt: z.string(), course: courseActivityBindingSchema.optional(), purpose: z.literal('preview').optional() }).strict();
 export type LearningActivity = z.infer<typeof activitySchema>;
 
 export const courseActivityResultSchema = z.object({ requestId: z.uuid(),

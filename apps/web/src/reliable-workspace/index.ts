@@ -55,10 +55,18 @@ export class ReliableWorkspace extends ReliableStateCoordinator {
       throw error
     }
   }
-  change(files: WorkFile[]) {
-    workFilesSchema.parse(files)
+  change(files: WorkFile[], retainInput = false) {
+    if (!retainInput) workFilesSchema.parse(files)
     this.editEpoch++; this.dirty = true
     this.notify({ files: structuredClone(files) })
+    if (retainInput) workFilesSchema.parse(files)
+  }
+  /** A stale component view keeps its candidate in this same protected workspace, never in an iframe-only buffer. */
+  retainConflict(files: WorkFile[]) {
+    const other = structuredClone(this.state.files)
+    this.change(files, true)
+    this.notify({ conflict: { source: 'local', local: structuredClone(files), other,
+      at: this.record.localRevision, remoteRevision: this.record.remoteRevision }, error: '组件读取的状态已变化，请在「作品」中比较双方内容。' })
   }
   edit(objectId: string, value: string) {
     const files = this.state.files.map(file => file.objectId === objectId ? { ...file, value, contentId: crypto.randomUUID() } : file)

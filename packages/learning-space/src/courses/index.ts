@@ -15,6 +15,8 @@ import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spa
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { spaceMigrations } from '../spaces/index.js';
 import { referenceTextSelection, referenceSelectionDigest } from '../reference-text.js';
+import { componentBindingsSchema } from '@xunjie/contracts/components';
+import { createComponents, componentMigration, componentStatusMigration } from './components.js';
 
 export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'course-catalog-and-releases', sql: `
   CREATE TABLE courses (course_id uuid PRIMARY KEY,space_id uuid NOT NULL REFERENCES spaces(id),
@@ -45,7 +47,7 @@ export const courseMigrations: readonly Migration[] = [{ version: 5, name: 'cour
 ` }];
 
 /** The school/course owner migration set: existing space versions plus the course domain. */
-export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations];
+export const spaceCourseMigrations: readonly Migration[] = [...spaceMigrations, ...courseMigrations, componentMigration, componentStatusMigration];
 
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.uuid();
@@ -66,7 +68,7 @@ const storedContentSchema = z.object({
     workId: uuid, title: z.string().min(1).max(300), description: z.string().max(4000), materialId: uuid.nullable(),
   }).strict()).max(50), capabilities: z.array(z.object({
     kind: z.enum(['component', 'executor']), objectId: uuid, version: z.number().int().positive(),
-  }).strict()).max(50),
+  }).strict()).max(50), components: componentBindingsSchema.optional(),
 }).strict();
 type StoredContent = z.infer<typeof storedContentSchema>;
 
@@ -85,7 +87,8 @@ function bindingOf(associationId: string, courseName: string, taskTitle: string,
   return courseActivityBindingSchema.parse({ associationId, courseId: content.courseId, courseName,
     taskId: content.taskId, taskTitle, releaseId: content.releaseId, contentDigest: contentDigest(content),
     objectives: content.objectives, requirements: content.requirements, materials: studentMaterials(content),
-    starterWorks: content.starterWorks, capabilities: content.capabilities });
+    starterWorks: content.starterWorks, capabilities: content.capabilities,
+    ...(content.components ? { components: content.components } : {}) });
 }
 
 const bindingRowSchema = z.object({
@@ -127,7 +130,8 @@ function planImport(value: unknown) {
     sha256: material.sha256, byteLength: material.byteLength }));
   const content: StoredContent = { formatVersion: 1, courseId: input.course.courseId, taskId: input.task.taskId,
     releaseId: input.release.releaseId, objectives: input.release.objectives, requirements: input.release.requirements,
-    materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[] };
+    materials, starterWorks: input.release.starterWorks as CourseStarterWork[], capabilities: input.release.capabilities as CourseCapability[],
+    ...(input.release.components ? { components: input.release.components } : {}) };
   storedContentSchema.parse(content);
   return { input, content, materials, contentHash: contentDigest(content) };
 }
@@ -155,6 +159,7 @@ function readImportResources(input: CourseImport): Map<string, Buffer> {
 /** Only this module writes course facts; learning data reaches it through the narrow authority interface. */
 export function createCourses(storage: OwnedStorage, spaces: { authorize(identity: SpaceIdentity): Promise<void>;
   schoolSpace(): Promise<string> }) {
+  const components = createComponents(storage);
   async function accessActive(identity: SpaceIdentity, courseId: string): Promise<boolean> {
     const { rows } = await storage.read('SELECT 1 FROM course_access WHERE course_id=$1 AND space_id=$2 AND principal_id=$3 AND active',
       [courseId, identity.spaceId, identity.principalId]);
@@ -208,6 +213,11 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
       return result.success ? result.data : fail('identity-conflict');
     }
     const resources = readImportResources(input);
+    for (const binding of content.components ?? []) {
+      await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+      await components.verify(binding.definition);
+      if (binding.materialIds.some(id => !studentMaterials(content).some(material => material.materialId === id))) fail('invalid');
+    }
     const paths = new Map(input.release.materials.map(item => [item.materialId, item.path]));
     const spaceId = await spaces.schoolSpace();
     for (const material of materials) {
@@ -306,7 +316,8 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     return courseReleaseSchema.parse({ formatVersion: 1, courseId: content.courseId, taskId: content.taskId,
       releaseId: content.releaseId, contentDigest: row.content_digest, objectives: content.objectives,
       requirements: content.requirements, materials: studentMaterials(content), starterWorks: content.starterWorks,
-      capabilities: content.capabilities, publishedAt: row.published_at.toISOString(), courseName: row.course_name,
+      capabilities: content.capabilities, ...(content.components ? { components: content.components } : {}),
+      publishedAt: row.published_at.toISOString(), courseName: row.course_name,
       taskTitle: row.task_title });
   }
 
@@ -477,6 +488,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
   }
 
   async function validate() {
+    await components.validate();
     const { rows: courses } = await storage.read('SELECT course_id,space_id,name FROM courses');
     for (const course of courses) {
       const { rows: [space] } = await storage.read('SELECT 1 FROM spaces WHERE id=$1', [course.space_id]);
@@ -489,6 +501,7 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     const { rows: releases } = await storage.read('SELECT release_id,task_id,content_digest,content FROM course_releases');
     for (const release of releases) {
       const content = parseContent(release.content);
+      for (const binding of content.components ?? []) await components.verify(binding.definition);
       if (content.releaseId !== release.release_id || content.taskId !== release.task_id
         || contentDigest(content) !== release.content_digest) fail('corrupt');
       const rows = await materialRows(release.release_id as string);
@@ -530,6 +543,14 @@ export function createCourses(storage: OwnedStorage, spaces: { authorize(identit
     }
   }
 
-  return { registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
+  async function readComponent(identity: SpaceIdentity, releaseId: string, key: string) {
+    const { content } = await authorizedRelease(identity, releaseId);
+    const binding = content.components?.find(item => item.key === key);
+    if (!binding) return fail('missing');
+    await components.assertEnabled(binding.definition.manifest.componentId, binding.definition.manifest.version);
+    const definition = await components.verify(binding.definition);
+    return { definition, contentBase64: (await components.bytes(definition)).toString('base64') };
+  }
+  return { components, readComponent, registerRelease, registrationResult, listCourses, readRelease, readMaterial, referenceText, verifyReference, setAccess,
     prepare, confirm, confirmForMember, bindingResult, authorize, validate };
 }

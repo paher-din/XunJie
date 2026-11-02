@@ -1,7 +1,9 @@
 import { useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { Icon, IconText } from '../icons'
-import { CenterToolArea, CODE_TOOLS } from '../components/workspace/CenterToolArea'
+import { CenterToolArea, type ToolSpec } from '../components/workspace/CenterToolArea'
+import { ComponentView } from '../component-host/ComponentView'
+import { useActivitySession } from './ActivitySession'
 import { WorkspacePopover } from '../components/workspace/WorkspacePopover'
 import { SelectionToolbar, WorkspaceReferenceComposer, useWorkspaceReferences } from '../components/workspace/references'
 import { ActivityWorkspace, type ActivityWorkspaceHandle } from './ActivityWorkspace'
@@ -18,6 +20,12 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null)
   const references = useWorkspaceReferences()
   const ask = useRef<HTMLButtonElement>(null)
+  const { workspace } = useActivitySession()
+  const [toolError, setToolError] = useState('')
+  const tools: ToolSpec[] = [{ key: 'design', label: '作品', icon: 'code-square' },
+    ...(activity.course?.components ?? []).map(binding => ({ key: `component:${binding.key}` as const, label: binding.configuration.title, icon: 'clipboard-text' as const }))]
+  const toolBodies = Object.fromEntries((activity.course?.components ?? []).map(binding => [`component:${binding.key}`,
+    <ComponentView key={binding.key} activity={activity} binding={binding} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />]))
   const title = activity.course?.taskTitle || activity.goal || activity.question || '资料学习'
   return <div className={'ws ws-organized product-workspace' + (references.open ? ' discussion-open' : '')}>
     <header className="ws-head">
@@ -40,12 +48,14 @@ export function ActivityPage({ activity, spaceKey, namespace, authorized, worksp
       </div>
     </header>
     {error && <div className="product-workspace-notice">{error}</div>}
+    {toolError && <div role="alert" className="product-workspace-notice">{toolError}</div>}
     <div className="ws-commandbar"><div className="ws-head-tabs" ref={setTabsSlot} />
       <span className="product-workspace-caption">当前作品{activity.status === 'closed' ? ' · 活动已关闭' : ''}</span></div>
     <div className="ws-body">
       {materialsOpen && <aside className="product-task-details" aria-label="目标与材料">{details}</aside>}
-      <CenterToolArea taskId={namespace + ':' + activity.activityId} variant="textscope-c" tools={CODE_TOOLS}
-        tool="design" onToolChange={() => {}} onToast={() => {}} tabsSlot={tabsSlot}
+      <CenterToolArea taskId={namespace + ':' + activity.activityId} tools={tools} toolBodies={toolBodies}
+        beforeToolChange={() => workspace.protect()}
+        tool="design" onToolChange={() => { setToolError('') }} onToast={setToolError} tabsSlot={tabsSlot}
         designBody={<ActivityWorkspace ref={workspaceRef} activity={activity} spaceKey={spaceKey} namespace={namespace} authorized={authorized} />} />
       {references.open && <aside className="product-discussion" aria-label="问题与引用">
         <WorkspaceReferenceComposer closeFocusRef={ask} /><ActivityActions />

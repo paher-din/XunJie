@@ -103,6 +103,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
     const visible: LearningActivity[] = [];
     for (const row of rows) {
       const activity = activitySchema.parse(row.body);
+      if (activity.purpose === 'preview') continue;
       if (!activity.course) { visible.push(activity); continue; }
       try { await courseAuthorize(identity, activity); visible.push(activity); }
       catch (error) {
@@ -147,7 +148,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
     const courseAuthority = courses;
     if (!courseAuthority) return fail('forbidden');
     const input = createCourseActivitySchema.parse(value);
-    const inputDigest = fingerprint({ identity, target, releaseId: input.releaseId });
+    const inputDigest = fingerprint({ identity, target, releaseId: input.releaseId, ...(input.purpose ? { purpose: input.purpose } : {}) });
     const associationId = operationId(`course-association:${input.requestId}`);
     const activityId = operationId(`course-activity:${input.requestId}`);
     const registered = await storage.request({ requestId: `${input.requestId}:register`, fingerprint: inputDigest }, async tx => {
@@ -192,7 +193,7 @@ export function createLearningData(storage: OwnedStorage, authority: SpaceAuthor
       if (row.state === 'accepted') return activitySchema.parse(row.result);
       if (row.state === 'rejected') throw new StorageError((row.error ?? 'missing') as 'missing');
       const activity: LearningActivity = { activityId, identity, target, goal: prepared.binding!.taskTitle, question: '',
-        references: [], status: 'open', createdAt: new Date().toISOString(), course: prepared.binding! };
+        references: [], status: 'open', createdAt: new Date().toISOString(), course: prepared.binding!, ...(input.purpose ? { purpose: input.purpose } : {}) };
       await tx.query('INSERT INTO activities VALUES ($1,$2,$3,$4,$5)', [activityId, ...scope(identity), JSON.stringify(activity)]);
       await tx.query('INSERT INTO activity_requests VALUES ($1,$2,$3,$4)', [input.requestId, ...scope(identity)]);
       await tx.query(`UPDATE course_activity_requests SET state='accepted',result=$2,error=NULL,updated_at=clock_timestamp()

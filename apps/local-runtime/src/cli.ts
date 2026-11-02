@@ -43,6 +43,9 @@ const commands: Record<string, readonly string[]> = {
   'school-connection': ['file', 'resources'],
   'learning-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
+  'component-import': ['file', 'resources'],
+  'component-read': ['file', 'resources'],
+  'component-status': ['file', 'resources'],
   'course-access': ['file', 'resources'],
   'course-result': ['file', 'resources'],
 };
@@ -216,7 +219,7 @@ async function main(): Promise<void> {
     return { database: input.database as RestoreInput['database'], databaseCredential,
       installation: input.installation as RestoreInput['installation'] };
   };
-  const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result', body: unknown, timeout = 15000) => {
+  const manageCourse = async (action: 'course-import' | 'course-access' | 'course-result' | 'component-import' | 'component-read' | 'component-status', body: unknown, timeout = 15000) => {
     const status = await run(() => runtime.status());
     if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
     const response = await fetch(new URL(`/api/learning/manage/${action}`, status.endpoint), {
@@ -375,6 +378,24 @@ async function main(): Promise<void> {
       });
       if (!response.ok) throw new Error(`学校成员操作未完成（${response.status}），请核对输入及当前授权`);
       output(await response.json()); break;
+    }
+    case 'component-import': {
+      const manifestPath = resolve(required('file'));
+      const input = await jsonFile(manifestPath, '组件导入清单');
+      const importRoot = await realpath(dirname(manifestPath));
+      if (typeof input.path !== 'string' || input.contentBase64 !== undefined) throw new Error('组件入口通过 path 从导入目录读取');
+      const absolute = await realpath(resolve(importRoot, input.path));
+      const confined = relative(importRoot, absolute);
+      if (!confined || confined.startsWith('..') || isAbsolute(confined)) throw new Error('组件入口越出导入目录');
+      const bytes = await readFile(absolute);
+      const { path: _path, ...body } = input;
+      output(await manageCourse('component-import', { ...body, contentBase64: bytes.toString('base64') })); break;
+    }
+    case 'component-read': {
+      output(await manageCourse('component-read', await jsonFile(required('file'), '组件查询'))); break;
+    }
+    case 'component-status': {
+      output(await manageCourse('component-status', await jsonFile(required('file'), '组件装载状态'))); break;
     }
     case 'course-import': {
       const manifestPath = resolve(required('file'));

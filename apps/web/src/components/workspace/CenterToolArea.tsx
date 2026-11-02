@@ -396,6 +396,8 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   boardBody,
   waveBody,
   runCluster,
+  toolBodies,
+  beforeToolChange,
 }: {
   taskId: string
   /** 外部（引导脚本）要求聚焦的工具。 */
@@ -426,6 +428,9 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   waveBody?: ReactNode
   /** 顶栏运行簇内容：状态与操作由学科工具包声明（缺省是虚拟板的状态与烧录）。 */
   runCluster?: ReactNode
+  /** Generic product tools supply content; legacy course variants remain with their existing consumers. */
+  toolBodies?: Partial<Record<CoreToolKey, ReactNode>>
+  beforeToolChange?: () => Promise<void>
 }, ref: React.Ref<CenterToolAreaHandle>) {
   const [count, setCount] = useState(3)
   const [sw, setSw] = useState([true, false, true, false])
@@ -433,7 +438,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
 
   const toolKeys = tools.map((t) => t.key)
   const storeKey = `ws-layout:${taskId}`
-  const [layout, setLayout] = useState<LayoutNode>(() => {
+  const [layout, setLayoutState] = useState<LayoutNode>(() => {
     try {
       const raw = localStorage.getItem(storeKey)
       if (raw) {
@@ -446,6 +451,10 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
     }
     return defaultLayout(toolKeys)
   })
+  const setLayout = (update: React.SetStateAction<LayoutNode>) => {
+    if (!beforeToolChange) { setLayoutState(update); return }
+    void beforeToolChange().then(() => setLayoutState(update)).catch(() => onToast('当前输入尚未保护，请保留页面并导出作品。'))
+  }
   const [dragTool, setDragTool] = useState<ToolKey | null>(null)
   const [dropHint, setDropHint] = useState<string | null>(null)
 
@@ -491,6 +500,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
   }
 
   function renderContent(k: ToolKey): ReactNode {
+    if (toolBodies && Object.hasOwn(toolBodies, k)) return toolBodies[k as CoreToolKey]
     const cardId = genCardIdOf(k)
     if (cardId) {
       const card = genCards.find((c) => c.cardId === cardId) ?? null
@@ -545,7 +555,7 @@ export const CenterToolArea = forwardRef(function CenterToolArea({
         tools={tools}
         allowDrop={dragTool != null}
         genCards={genCards}
-        onActivate={onToolChange}
+        onActivate={key => { setLayout(current => activateTool(current, key)); onToolChange(key) }}
         onDragStart={setDragTool}
         onDragEnd={endDrag}
         onDropOn={(paneId) => dropOnPane(paneId, 'center')}

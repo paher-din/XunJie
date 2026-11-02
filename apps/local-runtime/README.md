@@ -1,5 +1,7 @@
 # XunJie 产品 CLI（候选交付）
 
+WP03 新增 `component-import` / `component-read` / `component-status`，用于登记不可变组件、读取固定定义、启停新装载；样例生成、输入及平台限制见 [#169 操作与交接](../../docs/student-agent-implementation/wp03-component-host.md)。沿用产品管理授权，停用不会删除学生作品。
+
 混合部署管理新增 `learning-binding --file` 与远端维护的 `fence-source --file`；成员创建支持首次固定 target，takeover 的 receiver 支持既有 SSH 部署配置。具体输入、认证边界及恢复顺序见 [#154 操作说明](../../docs/student-agent-implementation/wp02-hybrid-deployment.md)。原同机 receiver 的 `{id,root}` 仍受支持。
 
 本目录提供产品运行、维护恢复及学校成员管理 CLI，薄装配 `@xunjie/product-runtime` 公共 API。项目入口见[根 README](../../README.md)，既有教学 Web 说明见[相邻 Web README](../web/README.md)。默认产品网页已接入[学习空间身份与活动](../../docs/student-agent-implementation/wp02-identity-activity.md)与[课程任务与固定发布版本](../../docs/student-agent-implementation/specs/wp02-course-task-releases.md)，`school-member` / `school-membership` / `school-connection` 从仓库外私密输入建立成员、授予或撤销资格、撤销指定客户端连接；`course-import` / `course-access` / `course-result` 消费版本化课程清单、授予/撤销课程资格并查询原登记结果。安装或启动成功不代表课程、Agent 或教学效果验收通过。

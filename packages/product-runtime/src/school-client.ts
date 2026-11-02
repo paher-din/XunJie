@@ -6,6 +6,7 @@ import { StorageError } from '@xunjie/storage';
 import { spaceIdentitySchema, learningTargetSchema } from '@xunjie/contracts/spaces';
 import { activitySchema, courseActivityResultSchema } from '@xunjie/contracts/learning-data';
 import { courseCatalogSchema, courseMaterialContentSchema, courseReleaseSchema } from '@xunjie/contracts/courses';
+import { componentBundleSchema } from '@xunjie/contracts/components';
 import { questionDraftViewSchema } from '@xunjie/contracts/question-drafts';
 import { actionViewSchema, actionReceiverSchema } from '@xunjie/contracts/action-intents';
 import { courseBindingStateSchema } from '@xunjie/contracts/courses';
@@ -197,7 +198,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
   async function forward(connectionId: string, route: string, body?: unknown, expectedSubject?: string) {
     const id = '[0-9a-f-]{36}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
-      `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
+      `|releases/${id}/materials/${id}|releases/${id}/components/[a-z][a-z0-9-]{0,47}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
@@ -254,6 +255,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route.startsWith('drafts/')) return value === null ? null : parsed(questionDraftViewSchema, value);
     if (route === 'courses') return parsed(courseCatalogSchema, value);
     if (route.startsWith('releases/')) {
+      if (route.split('/')[2] === 'components') return parsed(componentBundleSchema, value);
       return route.split('/').length === 2 ? parsed(courseReleaseSchema, value) : parsed(courseMaterialContentSchema, value);
     }
     if (route.startsWith('course-activity-results/')) {

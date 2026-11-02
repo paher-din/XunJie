@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { LearningTarget, SpaceIdentity } from './spaces.js';
+import { componentBindingsSchema } from './components.js';
 
 /** Course owner wire. Student projections never contain teacher-private material or storage locators. */
 export const courseDigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -31,6 +32,7 @@ export const courseReleaseSchema = z.object({
   contentDigest: courseDigestSchema, objectives: objectivesSchema, requirements: requirementsSchema,
   materials: z.array(courseMaterialSchema).max(100), starterWorks: starterWorksSchema,
   capabilities: capabilitiesSchema, publishedAt: z.string(), courseName: z.string().min(1).max(200),
+  components: componentBindingsSchema.optional(),
   taskTitle: z.string().min(1).max(300),
 }).strict();
 export type CourseRelease = z.infer<typeof courseReleaseSchema>;
@@ -83,6 +85,7 @@ export const courseImportSchema = z.object({
     releaseId: z.uuid(), objectives: objectivesSchema, requirements: requirementsSchema,
     materials: z.array(courseImportMaterialSchema).max(100), starterWorks: starterWorksSchema,
     capabilities: capabilitiesSchema,
+    components: componentBindingsSchema.optional(),
   }).strict(),
   resources: z.array(courseImportResourceSchema).max(100),
 }).strict();
@@ -100,7 +103,7 @@ export const courseAccessInputSchema = z.object({
 }).strict();
 export type CourseAccessInput = z.infer<typeof courseAccessInputSchema>;
 
-export const createCourseActivitySchema = z.object({ requestId: z.uuid(), releaseId: z.uuid() }).strict();
+export const createCourseActivitySchema = z.object({ requestId: z.uuid(), releaseId: z.uuid(), purpose: z.literal('preview').optional() }).strict();
 export type CreateCourseActivity = z.infer<typeof createCourseActivitySchema>;
 
 /** Fixed evidence stored on the activity: task, release and student-open material basis. */
@@ -109,6 +112,7 @@ export const courseActivityBindingSchema = z.object({
   taskId: z.uuid(), taskTitle: z.string().min(1).max(300), releaseId: z.uuid(), contentDigest: courseDigestSchema,
   objectives: objectivesSchema, requirements: requirementsSchema, materials: z.array(courseMaterialSchema).max(100),
   starterWorks: starterWorksSchema, capabilities: capabilitiesSchema,
+  components: componentBindingsSchema.optional(),
 }).strict();
 export type CourseActivityBinding = z.infer<typeof courseActivityBindingSchema>;
 
