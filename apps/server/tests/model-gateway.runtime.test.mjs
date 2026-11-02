@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { randomUUID, randomBytes } from 'node:crypto';
+import { mkdtemp, readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openProductRuntime } from '@xunjie/product-runtime';
+import { openProductRuntime, resolveCredential, createProductRuntimeHost, createProductLearningApplication } from '@xunjie/product-runtime';
 import { createServer } from 'node:http';
 
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
@@ -72,6 +72,9 @@ test('a saved connection check uses the actual SDK once and persists its origina
     const message = Buffer.from('data: ' + JSON.stringify({ id: 'chat-real-sdk', choices: [{ index: 0, delta: { content: '连接成功😀' }, finish_reason: null }] }) + '\n\n');
     const position = message.indexOf(Buffer.from('😀')) + 2;
     response.write(message.subarray(0, position)); response.write(message.subarray(position));
+    const key = request.headers.authorization.slice(7), split = Math.floor(key.length / 2);
+    event({ id: 'chat-real-sdk', choices: [{ index: 0, delta: { content: key.slice(0, split) }, finish_reason: null }] });
+    event({ id: 'chat-real-sdk', choices: [{ index: 0, delta: { content: key.slice(split) }, finish_reason: null }] });
     event({ id: 'chat-real-sdk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] });
     event({ id: 'chat-real-sdk', choices: [], usage: { prompt_tokens: 7, completion_tokens: 3, total_tokens: 10, prompt_tokens_details: { cached_tokens: 0 } } });
     response.end('data: [DONE]\n\n');
@@ -96,7 +99,7 @@ test('a saved connection check uses the actual SDK once and persists its origina
         await new Promise(resolve => setTimeout(resolve, 25));
       }
       assert.equal(result.value.state, 'completed');
-      assert.equal(result.value.text, '连接成功😀');
+      assert.equal(result.value.text, '连接成功😀[redacted]');
       assert.equal(result.value.usage.state, 'final');
       assert.equal(result.value.usage.inputTokens, 7);
       assert.equal(result.value.usage.cachedTokens, 0);
@@ -115,14 +118,55 @@ test('a saved connection check uses the actual SDK once and persists its origina
       assert.equal(after.value.text, result.value.text);
       assert.equal((await api(`checks/${check.attemptId}/dispatch`, {})).value.resultRef, result.value.resultRef);
       assert.equal(received.length, 1);
+      const key = randomBytes(32);
+      await runtime.setCredential('model-backup-test', key.toString('base64'));
+      const backup = await runtime.recovery.backup({ directory: join(root, 'model-backups'), recoveryKeyRef: 'model-backup-test' });
+      assert.equal(backup.services.length, 4, 'model facts and native resources participate in the product backup');
+      assert.equal((await api(`checks/${check.attemptId}`)).value.resultRef, result.value.resultRef);
       // Fault at the real owned resource boundary, not in a mocked repository.
       const environment = JSON.parse(await readFile(join(root, 'environment.json'), 'utf8'));
       const service = environment.services.find(service => service.unit === 'model-connection');
       const resourcePath = join(root, 'learning-resources', 'model-connection', environment.environmentId, service.serviceId, result.value.resultRef);
       await writeFile(resourcePath, 'damaged-native-resource');
       assert.equal((await api(`checks/${check.attemptId}`)).status, 503, 'a result without its verified native resource is not readable');
+      assert.equal((await api('checks')).status, 503, 'the polling list verifies the same resource boundary');
     });
   } finally { await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('malformed upstream usage and shapes are readable failures while a bounded wait ends as unknown', { timeout: 180000 }, async () => {
+  let mode = 'negative-usage';
+  const upstream = createServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    if (mode === 'timeout') { response.write(': waiting\n\n'); return; }
+    const value = mode === 'negative-usage'
+      ? { choices: [{ index: 0, delta: { content: '已收到' }, finish_reason: 'stop' }], usage: { prompt_tokens: -1, completion_tokens: 2, total_tokens: 1 } }
+      : { choices: [{ index: 0, delta: { content: 123 }, finish_reason: 'stop' }] };
+    response.end('data: ' + JSON.stringify(value) + '\n\ndata: [DONE]\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  try {
+    await product(async ({ api }) => {
+      const input = { ...connection(), baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, dialect: 'standard' };
+      await api('connections', { requestId: randomUUID(), ...input });
+      for (const scenario of ['negative-usage', 'malformed-text', 'timeout']) {
+        mode = scenario;
+        const check = { attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: input.connectionId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 1000 } };
+        await api('checks', check); await api(`checks/${check.attemptId}/dispatch`, {});
+        let result;
+        for (let count = 0; count < 150; count++) {
+          result = await api(`checks/${check.attemptId}`);
+          assert.equal(result.status, 200);
+          if (result.value.physicalRequestEnded) break;
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.equal(result.value.state, scenario === 'timeout' ? 'unknown' : 'failed', scenario);
+        assert.equal(result.value.reason, scenario === 'timeout' ? 'timeout' : 'malformed-response');
+        assert.equal(result.value.usage.state, 'unknown');
+        assert.ok(result.value.resultRef);
+      }
+    });
+  } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
 });
 
 test('unsaved checks preserve their snapshot, cancel before dispatch, and never change saved configuration', { timeout: 180000 }, async () => {
@@ -211,4 +255,170 @@ test('HTTP and stream failures, missing terminals, truncation, unknown usage and
       assert.equal(limited.status, 503, 'failed/unknown checks still count toward the durable frequency limit');
     });
   } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('a killed production dispatcher preserves unknown usage without replay and reconciles its dead local client slot', { timeout: 180000 }, async () => {
+  let calls = 0;
+  const upstream = createServer(async (request, response) => {
+    for await (const _chunk of request) { /* Consume the real SDK request before the process fault. */ }
+    calls++; response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.write('data: ' + JSON.stringify({ id: 'interrupted', choices: [{ index: 0, delta: { content: '中断前' }, finish_reason: null }] }) + '\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  try {
+    await product(async ({ api, runtime, root, endpoint }) => {
+      const input = { ...connection(), baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, dialect: 'standard' };
+      await api('connections', { requestId: randomUUID(), ...input });
+      const check = () => ({ attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: input.connectionId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 30000 } });
+      const original = check(); await api('checks', original);
+      const concurrent = await Promise.all([api(`checks/${original.attemptId}/dispatch`, {}), api(`checks/${original.attemptId}/dispatch`, {})]);
+      assert.equal(concurrent.every(result => result.status === 200), true);
+      for (let count = 0; calls === 0 && count < 100; count++) await new Promise(resolve => setTimeout(resolve, 20));
+      assert.equal(calls, 1);
+      const instance = JSON.parse(await readFile(join(root, 'instance.json'), 'utf8'));
+      const control = await fetch(instance.endpoint + '/runtime/control/status', { headers: { authorization: 'Bearer ' + await resolveCredential(root, 'control') } });
+      assert.equal((await control.json()).environment.environmentId, (await runtime.status()).environment.environmentId);
+      assert.ok(instance.pid > 0 && instance.pid !== process.pid);
+      process.kill(instance.pid, 'SIGKILL');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await runtime.start();
+      const unknown = await api(`checks/${original.attemptId}`);
+      assert.equal(unknown.value.state, 'unknown'); assert.equal(unknown.value.dispatched, true);
+      assert.equal(unknown.value.resultRef, null);
+      assert.equal(unknown.value.physicalRequestEnded, true);
+      assert.equal(unknown.value.usage.state, 'unknown');
+      await api(`checks/${original.attemptId}/dispatch`, {});
+      assert.equal(calls, 1);
+      const another = check(); await api('checks', another);
+      assert.equal((await api(`checks/${another.attemptId}/dispatch`, {})).status, 200);
+      for (let count = 0; calls < 2 && count < 100; count++) await new Promise(resolve => setTimeout(resolve, 20));
+      assert.equal(calls, 2);
+      await api(`checks/${another.attemptId}/cancel`, {});
+      const cancelled = await api(`checks/${original.attemptId}/cancel`, {});
+      assert.equal(cancelled.value.state, 'unknown'); assert.equal(cancelled.value.upstreamStopped, 'unknown');
+      assert.equal(calls, 2);
+    });
+  } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('production maintenance finishes admitted checks before closing their result writes and reopens usable slots', { timeout: 180000 }, async () => {
+  let release = () => {}, calls = 0;
+  const held = new Promise(resolve => { release = resolve; });
+  const upstream = createServer(async (_request, response) => {
+    calls++; response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.write('data: ' + JSON.stringify({ id: 'maintenance-check', choices: [{ index: 0, delta: { content: '已收到' }, finish_reason: null }] }) + '\n\n');
+    await held;
+    response.end('data: ' + JSON.stringify({ id: 'maintenance-check', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const root = await mkdtemp(join(tmpdir(), 'xj-model-maintenance-'));
+  const runtime = openProductRuntime({ root, resources });
+  let host;
+  try {
+    await runtime.install({ profile: 'local' }); host = await createProductRuntimeHost({ root, createApplication: createProductLearningApplication });
+    const api = async (path, body) => {
+      const response = await fetch(host.endpoint + '/api/learning/models/' + path, { headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+      return { status: response.status, value: await response.json() };
+    };
+    const input = { ...connection(), baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, dialect: 'standard' };
+    await api('connections', { requestId: randomUUID(), ...input });
+    const check = () => ({ attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: input.connectionId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 20000 } });
+    const first = check(); await api('checks', first); await api(`checks/${first.attemptId}/dispatch`, {});
+    for (let count = 0; calls === 0 && count < 100; count++) await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(calls, 1);
+    const maintenance = host.maintenance.enter('model-check-test');
+    while (host.maintenance.status().phase === 'open') await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal((await api('checks', check())).status, 503);
+    release();
+    assert.equal((await maintenance).safeToStop, true);
+    await host.maintenance.resume();
+    const result = await api(`checks/${first.attemptId}`);
+    assert.equal(result.value.state, 'completed'); assert.equal(result.value.physicalRequestEnded, true);
+    const next = check(); await api('checks', next); await api(`checks/${next.attemptId}/dispatch`, {});
+    for (let count = 0; count < 100; count++) {
+      if ((await api(`checks/${next.attemptId}`)).value.state === 'completed') break;
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    assert.equal((await api(`checks/${next.attemptId}`)).value.state, 'completed'); assert.equal(calls, 2);
+  } finally { release(); await host?.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('a failed native result publication never publishes completion or releases a still running physical request', { timeout: 180000 }, async () => {
+  let release = () => {}, calls = 0;
+  const held = new Promise(resolve => { release = resolve; });
+  const upstream = createServer(async (_request, response) => {
+    calls++; response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.write('data: ' + JSON.stringify({ choices: [{ index: 0, delta: { content: '部分' }, finish_reason: null }] }) + '\n\n');
+    await held;
+    response.end('data: ' + JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }) + '\n\ndata: [DONE]\n\n');
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  try {
+    await product(async ({ api, root }) => {
+      const input = { ...connection(), baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, dialect: 'standard' };
+      await api('connections', { requestId: randomUUID(), ...input });
+      const check = () => ({ attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: input.connectionId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 10000 } });
+      const first = check(); await api('checks', first); await api(`checks/${first.attemptId}/dispatch`, {});
+      for (let count = 0; calls === 0 && count < 100; count++) await new Promise(resolve => setTimeout(resolve, 20));
+      assert.equal(calls, 1);
+      assert.equal((await api(`checks/${first.attemptId}`)).value.physicalRequestEnded, false);
+      const second = check(); await api('checks', second);
+      assert.equal((await api(`checks/${second.attemptId}/dispatch`, {})).status, 503);
+      // Temporarily obstruct only this fixture's owned backend. PostgreSQL remains available.
+      const resourceRoot = join(root, 'learning-resources', 'model-connection'), parked = resourceRoot + '-parked';
+      await rename(resourceRoot, parked); await writeFile(resourceRoot, 'blocked-resource-backend');
+      try {
+        release(); let result;
+        for (let count = 0; count < 150; count++) {
+          result = await api(`checks/${first.attemptId}`);
+          if (result.value.physicalRequestEnded) break;
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.equal(result.value.state, 'unknown'); assert.equal(result.value.reason, 'result-unconfirmed');
+        assert.equal(result.value.resultRef, null); assert.equal(result.value.usage.state, 'unknown');
+      } finally { await unlink(resourceRoot); await rename(parked, resourceRoot); }
+      await api(`checks/${first.attemptId}/dispatch`, {}); assert.equal(calls, 1);
+      await api(`checks/${second.attemptId}/dispatch`, {});
+      for (let count = 0; count < 100; count++) {
+        if ((await api(`checks/${second.attemptId}`)).value.state === 'completed') break;
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      assert.equal((await api(`checks/${second.attemptId}`)).value.state, 'completed'); assert.equal(calls, 2);
+    });
+  } finally { release(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('real school subjects isolate connections and checks, and revoked membership or cleared credentials cannot dispatch', { timeout: 180000 }, async () => {
+  await product(async ({ api, root, endpoint }) => {
+    const token = await resolveCredential(root, 'control');
+    const manage = async (path, body) => fetch(endpoint + '/api/learning/manage/' + path, { method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify(body) });
+    const member = async loginName => {
+      const password = randomUUID();
+      const response = await manage('members', { requestId: randomUUID(), loginName, password });
+      assert.equal(response.status, 200); const identity = await response.json();
+      const login = await fetch(endpoint + '/api/learning/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ loginName, password }) });
+      return { identity, headers: { 'x-xj-space': 'school', cookie: login.headers.get('set-cookie').split(';')[0] } };
+    };
+    const alice = await member('model-alice'), bob = await member('model-bob');
+    const input = connection();
+    assert.equal((await api('connections', { requestId: randomUUID(), ...input }, alice.headers)).status, 200);
+    assert.deepEqual((await api('connections', undefined, bob.headers)).value, []);
+    const check = () => ({ attemptId: randomUUID(), purpose: 'connection-check', source: { connectionId: input.connectionId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 1000 } });
+    const first = check(); assert.equal((await api('checks', first, alice.headers)).status, 200);
+    assert.equal((await api(`checks/${first.attemptId}`, undefined, bob.headers)).status, 404);
+    assert.equal((await api(`checks/${first.attemptId}/cancel`, {}, bob.headers)).status, 404);
+    assert.equal((await api('checks', check(), bob.headers)).status, 404);
+    await api('connections', { requestId: randomUUID(), ...input, expectedVersion: 1, credential: { action: 'clear' } }, alice.headers);
+    assert.equal((await api(`checks/${first.attemptId}/dispatch`, {}, alice.headers)).status, 403);
+    assert.equal((await api(`checks/${first.attemptId}/cancel`, {}, alice.headers)).value.dispatched, false);
+    const restored = await api('connections', { requestId: randomUUID(), ...input, expectedVersion: 2 }, alice.headers);
+    const second = check(); second.source.version = restored.value.version;
+    await api('checks', second, alice.headers);
+    assert.equal((await manage('membership', { requestId: randomUUID(), principalId: alice.identity.principalId, active: false })).status, 200);
+    assert.equal((await api(`checks/${second.attemptId}/dispatch`, {}, alice.headers)).status, 403);
+    assert.equal((await api(`checks/${second.attemptId}`, undefined, alice.headers)).status, 403);
+    assert.deepEqual((await api('connections', undefined, bob.headers)).value, []);
+  });
 });

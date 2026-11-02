@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import type { OwnedStorage, Migration } from '@xunjie/storage';
+import type { OwnedStorage, Migration, OwnedTransaction } from '@xunjie/storage';
 import { StorageError } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelConfigurationSchema, modelConnectionSchema, saveModelConnectionSchema } from '@xunjie/contracts/model-connections';
@@ -22,10 +22,12 @@ type StoredConnection = { configuration: ModelConfiguration; version: number; ro
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const targetOf = (configuration: ModelConfiguration) => JSON.stringify([configuration.protocol, configuration.baseUrl, configuration.path]);
-export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promise<void> }
+export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promise<void>;
+  dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } }
 
 /** Independently owned PostgreSQL schema/resources; no activity, Run or legacy Session is required. */
 export async function createModelGateway(storage: OwnedStorage, options: ModelGatewayOptions) {
+  let writesClosed = false;
   const { rows: [existingKey] } = await storage.read('SELECT resource_id FROM model_vault WHERE id=$1', ['credentials']);
   let keyId = existingKey?.resource_id as string | undefined;
   if (!keyId) {
@@ -42,7 +44,8 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   if (key.byteLength !== 32) throw new StorageError('corrupt');
   const projection = (stored: StoredConnection): ModelConnection => modelConnectionSchema.parse({ ...stored.configuration,
     version: stored.version, routeId: stored.routeId, hasCredential: !!stored.credentialRef,
-    adapterState: stored.configuration.protocol === 'chat-completions' ? 'ready' : 'not-integrated',
+    adapterState: stored.configuration.protocol === 'chat-completions'
+      && (stored.configuration.parameterMode === 'plain' || stored.configuration.dialect === 'deepseek') ? 'ready' : 'not-integrated',
     capabilities: { text: 'unknown', images: 'unknown', tools: 'unknown', strictSchema: 'unknown' } });
   async function list(identity: SpaceIdentity) {
     await options.authorize(identity);
@@ -50,6 +53,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     return rows.map(row => projection(row.body as StoredConnection));
   }
   async function save(identity: SpaceIdentity, value: unknown) {
+    if (writesClosed) throw new StorageError('maintenance');
     await options.authorize(identity);
     const input = saveModelConnectionSchema.parse(value), scope = scopeOf(identity);
     const configuration = modelConfigurationSchema.parse(Object.fromEntries(Object.entries(input).filter(([name]) =>
@@ -86,32 +90,39 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   }
   async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
     await options.authorize(identity);
-    let configuration: ModelConfiguration, credentialRef: string | null, version: number, routeId: string, temporary = false;
+    let configuration: ModelConfiguration, credentialRef: string | null, version: number, routeId: string;
+    let retain: ((tx: OwnedTransaction) => Promise<void>) | undefined;
     if ('connectionId' in source) {
       const current = await stored(identity, source.connectionId);
       if (current.version !== source.version) throw new StorageError('conflict');
       ({ configuration, credentialRef, version, routeId } = current);
     } else {
       configuration = source.draft; version = 1; routeId = randomUUID(); credentialRef = null;
+      // Reject unsupported/disabled snapshots before any temporary secret is retained.
+      if (!configuration.enabled || configuration.protocol !== 'chat-completions'
+        || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek') throw new StorageError('unavailable');
       if (source.credential.action === 'keep' && source.savedCredential) {
         const saved = await stored(identity, source.savedCredential.connectionId);
         if (saved.version !== source.savedCredential.version || saved.configuration.connectionId !== configuration.connectionId
           || targetOf(saved.configuration) !== targetOf(configuration)) throw new StorageError('conflict');
         credentialRef = saved.credentialRef; version = saved.version; routeId = saved.routeId;
       } else if (source.credential.action === 'replace') {
-        credentialRef = randomUUID(); temporary = true;
+        credentialRef = randomUUID();
         const binding = JSON.stringify([scopeOf(identity), configuration.connectionId, targetOf(configuration), credentialRef]);
         const sealed = sealCredential(key, binding, source.credential.value);
-        await storage.request({ requestId: randomUUID(), fingerprint: 'temporary-model-credential' }, async tx => {
+        const retainedRef = credentialRef;
+        retain = async tx => {
           await tx.query('INSERT INTO model_credentials(id,scope,binding,sealed,temporary) VALUES($1,$2,$3,$4,true)',
-            [credentialRef, scopeOf(identity), binding, sealed]); return { retained: true };
-        });
+            [retainedRef, scopeOf(identity), binding, sealed]);
+        };
       }
     }
-    if (!configuration.enabled || configuration.protocol !== 'chat-completions' || !credentialRef) throw new StorageError('unavailable');
-    return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef, temporary };
+    if (!configuration.enabled || configuration.protocol !== 'chat-completions' || !credentialRef
+      || configuration.parameterMode === 'thinking' && configuration.dialect !== 'deepseek') throw new StorageError('unavailable');
+    return { connection: projection({ configuration, credentialRef, routeId, version }), credentialRef, ...(retain ? { retain } : {}) };
   }
   const checks = createChecks(storage, {
+    dispatcher: options.dispatcher,
     authorize: options.authorize, snapshot,
     async credential(identity, ref) {
       const { rows: [row] } = await storage.read('SELECT binding,sealed FROM model_credentials WHERE id=$1 AND scope=$2', [ref, scopeOf(identity)]);
@@ -148,5 +159,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     }
     await checks.validate();
   }
-  return { list, save, validate, checks };
+  return { list, save, validate, checks,
+    closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
+    resume() { writesClosed = false; checks.resume(); } };
 }

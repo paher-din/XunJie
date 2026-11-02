@@ -42,6 +42,20 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     await run('install', source, '--profile', 'local');
     const started = await run('start', source);
     assert.equal(started.state, 'ready');
+    const modelId = randomUUID();
+    const modelApi = async (endpoint, path, body) => {
+      const response = await fetch(new URL('/api/learning/models/' + path, endpoint), {
+        headers: { 'content-type': 'application/json', 'x-xj-space': 'personal' },
+        ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }) });
+      assert.equal(response.status, 200); return response.json();
+    };
+    const modelConnection = await modelApi(started.endpoint, 'connections', { requestId: randomUUID(), connectionId: modelId, expectedVersion: 0,
+      name: '随备份恢复的个人模型', protocol: 'chat-completions', baseUrl: 'https://api.deepseek.com/v1', path: '/chat/completions',
+      modelId: 'deepseek-flash', dialect: 'deepseek', parameterMode: 'plain', enabled: true,
+      credential: { action: 'replace', value: 'synthetic-recovery-model-key' } });
+    const modelCheck = await modelApi(started.endpoint, 'checks', { attemptId: randomUUID(), purpose: 'connection-check',
+      source: { connectionId: modelId, version: 1 }, limits: { maxOutputTokens: 32, timeoutMs: 5000 } });
+    const modelCancelled = await modelApi(started.endpoint, `checks/${modelCheck.attemptId}/cancel`, {});
     const receiverId = started.environment.environmentId + '/' + started.environment.services[0].serviceId;
     const fencedSource = randomUUID(), fencedService = randomUUID();
     await assert.rejects(run('fence-source', source, '--file', await input('wrong-receiver', {
@@ -183,7 +197,7 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     await Promise.all([writer, publisher]);
     assert.ok(latestWork.revision > 2 && latestPublished, 'real work and new resource publications must precede the held boundary');
     assert.ok(workClosed && publicationClosed, 'closing must reject continuing producers instead of waiting for input to stop');
-    assert.equal(backup.services.length, 3);
+    assert.equal(backup.services.length, 4);
     const damagedBackup = join(directory, 'damaged-backup-copy');
     await cp(join(backupDirectory, backup.backupId), damagedBackup, { recursive: true });
     await unlink(join(damagedBackup, 'artifacts', backup.artifacts[0].path));
@@ -195,6 +209,8 @@ test('the normal CLI restores all learning owners and reaches schema upgrade val
     const isolated = await run('start', target);
     assert.equal(isolated.state, 'maintenance');
     await run('takeover', target, '--file', await input('takeover', { sourceRoot: source, receivers: [] }));
+    assert.deepEqual(await modelApi(isolated.endpoint, 'connections'), [modelConnection]);
+    assert.deepEqual(await modelApi(isolated.endpoint, `checks/${modelCheck.attemptId}`), modelCancelled);
     const response = await fetch(new URL('/api/learning/activities/' + activity.activityId, isolated.endpoint), {
       headers: { 'x-xj-space': 'personal' } });
     assert.equal(response.status, 200);

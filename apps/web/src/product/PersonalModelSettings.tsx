@@ -15,7 +15,7 @@ export function PersonalModelSettings({ identity, spaceKey, namespace, onBack }:
   const [dialog, setDialog] = useState<{ connection: ModelConnection | null } | null>(null)
   const [loading, setLoading] = useState(false), [error, setError] = useState('')
   const live = useRef(true)
-  useEffect(() => () => { live.current = false }, [])
+  useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const request = useCallback(async (route: string, body?: unknown) => {
     const response = await fetch('/api/learning/models/' + route, { method: body === undefined ? 'GET' : 'POST',
       credentials: 'same-origin', redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(35000),
@@ -50,8 +50,9 @@ export function PersonalModelSettings({ identity, spaceKey, namespace, onBack }:
   }
   const cancel = async (attempt: ModelAttempt) => { await request('checks/' + attempt.attemptId + '/cancel', {}); await reload() }
   const save = async (input: Omit<SaveModelConnection, 'requestId'>) => {
-    modelConnectionSchema.parse(await request('connections', { ...input, requestId: crypto.randomUUID() }))
+    const saved = modelConnectionSchema.parse(await request('connections', { ...input, requestId: crypto.randomUUID() }))
     await reload()
+    return saved
   }
   return <div className="content product-model-settings">
     <div className="sectionhead"><h1>个人模型设置</h1><button type="button" className="outline" onClick={onBack}>返回学习空间</button></div>

@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
@@ -9,7 +10,7 @@ import type { ActionIntentOptions } from '@xunjie/learning-space';
 import { createModelGateway, modelMigrations } from '@xunjie/learning-space';
 import type { InstalledConfiguration } from './runtime.js';
 import { databaseBinding, resolveCredential, storeCredential } from './postgres.js';
-import { atomicJson, exists } from './io.js';
+import { atomicJson, exists, alive, processIdentity } from './io.js';
 import { createStorageRecoveryOwner } from './storage-recovery.js';
 import { createStorageRecoveryTarget } from './storage-recovery.js';
 import type { RuntimeResources } from './postgres.js';
@@ -69,7 +70,16 @@ export async function createProductLearningApplication(context: {
     const data = await owner('learning-data', learningMigrations);
     const model = await owner('model-connection', modelMigrations);
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
-    const models = await createModelGateway(model.storage, { authorize: spaces.authorize });
+    const models = await createModelGateway(model.storage, { authorize: spaces.authorize, dispatcher: {
+      id: JSON.stringify([hostname(), process.pid, await processIdentity(process.pid)]),
+      async hasEnded(id) {
+        const [host, pid, birth] = JSON.parse(id) as [string, number, string];
+        if (host !== hostname() || !Number.isSafeInteger(pid) || pid < 1) return false;
+        if (!alive(pid)) return true;
+        const current = await processIdentity(pid);
+        return current !== null && current !== birth;
+      },
+    } });
     const courses = createCourses(space.storage, spaces);
     const learning = createLearningData(data.storage, spaces, courses, actions);
     for (const [module, validate] of [[space, async () => { await spaces.validate(); await courses.validate(); }],
@@ -83,9 +93,10 @@ export async function createProductLearningApplication(context: {
         async drain() { await learning.intents.drain(); await participant.drain(); },
         async resume() { await participant.resume(); learning.intents.resume(); },
       } } : module === model ? { ...recoveryOwner, participant: { ...participant,
-        async closeDispatch() { models.checks.closeDispatch(); await participant.closeDispatch(); },
+        async closeWrites() { models.closeWrites(); await models.checks.drain(); await participant.closeWrites(); await participant.closeDispatch(); },
+        async closeDispatch() { models.checks.closeDispatch(); },
         async drain() { await models.checks.drain(); await participant.drain(); },
-        async resume() { await participant.resume(); models.checks.resume(); },
+        async resume() { await participant.resume(); models.resume(); },
       } } : recoveryOwner);
     }
     const localTarget = { ...data.storage.owner, version: 1 as const };
@@ -103,6 +114,7 @@ export function createLearningRecoveryTargets(options: {
 }) {
   return (['space-course', 'learning-data', 'model-connection'] as const).map(unit => {
     const descriptors = options.environment.services.filter(service => service.unit === unit);
+    if (unit === 'model-connection' && descriptors.length === 0) return null; // Pre-WP06 backups have no model facts to restore.
     if (descriptors.length !== 1) throw new RecoveryError('missing-business-owner');
     const descriptor = descriptors[0]!;
     const resourceRoot = join(options.root, 'learning-resources', unit);
@@ -117,5 +129,5 @@ export function createLearningRecoveryTargets(options: {
         await spaces.validate();
         await createCourses(storage, spaces).validate();
       } });
-  });
+  }).filter((target): target is NonNullable<typeof target> => target !== null);
 }

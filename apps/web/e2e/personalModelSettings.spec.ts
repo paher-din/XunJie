@@ -59,3 +59,62 @@ test('formal model settings save and reopen a personal connection without a lega
   await page.emulateMedia({ colorScheme: 'dark' }); await page.setViewportSize({ width: 720, height: 900 })
   await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/after-model-settings-dark-narrow.png', import.meta.url)), fullPage: true })
 })
+
+test('a delayed save confirmation preserves later form input and its next versioned save', async ({ page }) => {
+  await page.goto(endpoint + '/?settings=models')
+  await page.getByRole('button', { name: '添加供应商', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('先提交 A')
+  await dialog.getByRole('textbox', { name: 'Base URL', exact: true }).fill(baseUrl)
+  await dialog.getByRole('textbox', { name: '模型 ID', exact: true }).fill('known-form-model')
+  await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-first-key')
+  let release!: () => void, committed!: () => void
+  const held = new Promise<void>(resolve => { release = resolve })
+  const reached = new Promise<void>(resolve => { committed = resolve })
+  await page.route('**/api/learning/models/connections', async route => {
+    if (route.request().method() !== 'POST') { await route.continue(); return }
+    const response = await route.fetch(); committed(); await held; await route.fulfill({ response })
+  })
+  try {
+    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    await reached
+    await dialog.getByRole('textbox', { name: '连接名称', exact: true }).fill('等待时继续填写 B')
+    await dialog.getByLabel('API Key', { exact: true }).fill('synthetic-second-key')
+    release()
+    await expect(dialog.getByRole('button', { name: '保存', exact: true })).toBeEnabled()
+    await expect(dialog.getByRole('textbox', { name: '连接名称', exact: true })).toHaveValue('等待时继续填写 B')
+    await expect(dialog.getByLabel('API Key', { exact: true })).toHaveValue('synthetic-second-key')
+    await dialog.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByText('等待时继续填写 B', { exact: true })).toBeVisible()
+  } finally { release(); await page.unroute('**/api/learning/models/connections') }
+})
+
+test('dialog keyboard focus, Chinese composition, blank-key reuse and ordinary navigation remain usable', async ({ page }) => {
+  await page.goto(endpoint + '/?settings=models')
+  const add = page.getByRole('button', { name: '添加供应商', exact: true })
+  await add.click()
+  const dialog = page.getByRole('dialog')
+  const name = dialog.getByRole('textbox', { name: '连接名称', exact: true })
+  await name.focus()
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: '循阶中文输入', selectionStart: 6, selectionEnd: 6 })
+  await cdp.send('Input.insertText', { text: '循阶中文输入' })
+  await expect(name).toHaveValue('循阶中文输入')
+  for (let index = 0; index < 18; index++) {
+    await page.keyboard.press('Tab')
+    expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
+  }
+  await page.screenshot({ path: fileURLToPath(new URL('../../../.verification/164/model-dialog-keyboard.png', import.meta.url)), fullPage: true })
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(add).toBeFocused()
+  const card = page.locator('.st-provider').filter({ hasText: '本人的测试服务' })
+  await card.getByRole('button', { name: '编辑', exact: true }).click()
+  await dialog.getByLabel('API Key', { exact: true }).fill('   ')
+  await dialog.getByRole('button', { name: '保存前检查', exact: true }).click()
+  await expect(dialog.getByRole('status')).toContainText('检查已完成')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: '首页', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '个人模型设置', exact: true })).toBeHidden()
+})

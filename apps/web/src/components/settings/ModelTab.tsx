@@ -27,7 +27,7 @@ export function ModelTab({ connections, attempts, loading, error, onNew, onEdit,
         <p className="detail">SDK 路径：{connection.path} · {connection.dialect} · {connection.parameterMode === 'thinking' ? '思考模式' : '普通文本'}</p>
         <p className="detail">图像、工具和 strict schema：能力未知</p>
         <div className="st-provider-test"><button type="button" className="outline st-xs" disabled={loading || !connection.enabled || !connection.hasCredential || connection.adapterState !== 'ready'
-          || attempts.some(attempt => attempt.connection.connectionId === connection.connectionId && ['accepted', 'dispatched', 'unknown'].includes(attempt.state))}
+          || attempts.some(attempt => attempt.connection.connectionId === connection.connectionId && (attempt.state === 'accepted' || !attempt.physicalRequestEnded))}
           onClick={() => onCheck(connection)}>连接检查</button>
           {connection.adapterState !== 'ready' && <span>该协议适配器尚未接入</span>}</div>
       </ModelProviderCard>)}
