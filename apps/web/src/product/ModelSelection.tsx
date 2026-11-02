@@ -24,7 +24,7 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
         'x-xj-space': spaceKey, 'x-xj-namespace': namespace, 'x-xj-expected-subject': identity ? [identity.environmentId, identity.spaceId, identity.principalId].join('.') : '' },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
     const result = await response.json()
-    if (!response.ok) throw new Error(errors[result.error] ?? '选用结果尚未确认，请重新读取。')
+    if (!response.ok) throw Object.assign(new Error(errors[result.error] ?? '选用结果尚未确认，请重新读取。'), { code: result.error })
     return result as unknown
   }, [scope])
   const reload = useCallback(async () => {
@@ -59,7 +59,13 @@ export function useModelSelection(identity: SpaceIdentity | undefined, spaceKey:
     }
     operation.select ??= { requestId: crypto.randomUUID(), expectedVersion: state.selection!.version, source: choice.kind === 'school'
       ? { kind: 'school', connectionId: choice.connection.connectionId } : { kind: 'personal', connectionId: choice.connection.connectionId, grantId: grantId! } }
-    await request('selection', operation.select)
+    try { await request('selection', operation.select) }
+    catch (error) {
+      const code = error instanceof Error && 'code' in error ? error.code : undefined
+      if (code === 'conflict' || code === 'identity-conflict') delete operation.select
+      else if (code === 'forbidden' || code === 'invalid' || code === 'missing') pending.current.delete(operationKey)
+      throw error
+    }
     pending.current.delete(operationKey)
   })
   const revoke = (choice: Choice) => act(async () => {

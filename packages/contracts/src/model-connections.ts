@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { spaceIdentitySchema } from './spaces.js';
+import { storageOwnerSchema } from './storage.js';
 
 /** Model owner wire. SDK objects, credentials and native reasoning never enter public projections. */
 export const modelProtocolSchema = z.enum(['chat-completions', 'responses', 'messages']);
@@ -88,6 +89,13 @@ export const modelSegmentInputSchema = z.object({ requestId: z.uuid(), segmentId
   prefix: z.object({ system: z.string().max(8192), tools: z.array(modelToolSchema).max(8), options: modelChatOptionsSchema.optional() }).strict(),
   portable: z.array(z.object({ text: z.string().max(8192), resultRef: z.uuid().optional() }).strict()).max(8),
   previousSegmentId: z.uuid().optional() }).strict();
+export const modelSegmentCloseSchema = z.object({ requestId: z.uuid(), expectedSequence: z.number().int().nonnegative() }).strict();
+export const modelPortableResultSchema = z.object({ owner: storageOwnerSchema, attemptId: z.uuid(), resultRef: z.uuid(), routeId: z.uuid(),
+  configurationVersion: z.number().int().positive(), text: z.string(), visibleTextSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
+export const modelSegmentBoundarySchema = z.object({ owner: storageOwnerSchema, segmentId: z.uuid(), sequence: z.number().int().nonnegative(),
+  routeId: z.uuid(), resultRef: z.uuid().nullable() }).strict();
+export const modelSegmentProvenanceSchema = z.object({ boundary: modelSegmentBoundarySchema.extend({ destination: z.enum(['local', 'school']) }).optional(),
+  results: z.array(modelPortableResultSchema.omit({ text: true }).extend({ destination: z.enum(['local', 'school']) })).max(8) }).strict();
 export const modelChatInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('chat-probe'), segmentId: z.uuid(),
   expectedSequence: z.number().int().min(0).max(32), input: z.object({ text: z.string().max(8192), images: z.array(modelImageRefSchema).max(2),
     toolResults: z.array(modelToolResultSchema).max(8), observations: z.array(modelObservationSchema).max(8).default([]) }).strict(),

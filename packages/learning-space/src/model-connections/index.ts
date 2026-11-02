@@ -13,6 +13,7 @@ import { createModelImages } from './images.js';
 import { createChatWork, chatWorkMigrations } from './chat-work.js';
 import { createModelRouting, modelRoutingMigrations } from './routing.js';
 import { measuredCapabilities } from './capabilities.js';
+import { createModelResults } from './results.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -205,7 +206,9 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   }
   const images = createModelImages(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
   const routing = createModelRouting(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
+  const results = createModelResults(storage, options.authorize);
   const segments = createChatWork(storage, images, { authorize: options.authorize, snapshot, assertDispatch,
+    readPortable: results.read,
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); } });
   const checks = createChecks(storage, {
     dispatcher: options.dispatcher,
@@ -234,7 +237,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     await segments.validate();
     await routing.validate();
   }
-  return { list, save, school, selection, images, segments, routing, validate, checks,
+  return { list, save, school, selection, images, segments, routing, results, validate, checks,
     closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
     resume() { writesClosed = false; checks.resume(); } };
 }

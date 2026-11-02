@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { StorageError, type OwnedStorage, type OwnedTransaction } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelSegmentInputSchema, modelAttemptSchema, settleModelToolsSchema, modelToolResultSchema } from '@xunjie/contracts/model-connections';
+import { modelSegmentInputSchema, modelAttemptSchema, settleModelToolsSchema, modelToolResultSchema, modelSegmentCloseSchema, modelSegmentBoundarySchema } from '@xunjie/contracts/model-connections';
 import type { ModelAttempt, ModelChatInput, ModelCheckInput, ModelTool, ModelToolResult } from '@xunjie/contracts/model-connections';
 import { modelScopeOf } from './selection.js';
 import { toolValidators, compileOutputSchema, type NativeChatAssistant } from './chat-native.js';
@@ -21,7 +21,7 @@ type Segment = { segmentId: string; formatVersion: 1; sequence: number; snapshot
   headAttemptId: string | null; pendingAttemptId: string | null; closed: boolean; previousSegmentId?: string };
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
-  if (value !== null && typeof value === 'object') return '{' + Object.entries(value).sort(([a], [b]) => a.localeCompare(b))
+  if (value !== null && typeof value === 'object') return '{' + Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
     .map(([key, item]) => JSON.stringify(key) + ':' + canonical(item)).join(',') + '}';
   return JSON.stringify(value);
 }
@@ -29,6 +29,7 @@ const digest = (value: unknown) => createHash('sha256').update(canonical(value))
 export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof createModelImages>, owner: {
   authorize(identity: SpaceIdentity): Promise<void>;
   assertWritable(): void;
+  readPortable(identity: SpaceIdentity, resultRef: string): Promise<unknown>;
   snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot>;
   assertDispatch(identity: SpaceIdentity, attempt: Pick<ModelAttempt, 'connection' | 'source' | 'createdAt'>, credentialRef: string): Promise<void>;
 }) {
@@ -82,6 +83,25 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     });
     return read(identity, id);
   }
+  async function close(identity: SpaceIdentity, id: string, value: unknown) {
+    owner.assertWritable(); await stored(identity, id);
+    const input = modelSegmentCloseSchema.parse(value), scope = modelScopeOf(identity);
+    const result = await storage.request({ requestId: 'model-boundary:' + input.requestId, fingerprint: digest({ scope, id, input }) }, async tx => {
+      const { rows: [row] } = await tx.query('SELECT body FROM model_segments WHERE id=$1 AND scope=$2 FOR UPDATE', [id, scope]);
+      const segment = row!.body as Segment;
+      if (segment.pendingAttemptId || segment.sequence !== input.expectedSequence) throw new StorageError('conflict');
+      let resultRef: string | null = null;
+      if (segment.headAttemptId) {
+        const { rows: [head] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1 AND scope=$2', [segment.headAttemptId, scope]);
+        const fact = modelAttemptSchema.parse(head!.body);
+        const { rows: settled } = await tx.query('SELECT attempt_id FROM model_tool_results WHERE attempt_id=$1 AND scope=$2', [fact.attemptId, scope]);
+        if (!fact.physicalRequestEnded || fact.toolIntents?.length && !settled.length) throw new StorageError('conflict'); resultRef = fact.resultRef;
+      }
+      await tx.query('UPDATE model_segments SET body=$2 WHERE id=$1', [id, { ...segment, closed: true }]);
+      return { owner: storage.owner, segmentId: id, sequence: segment.sequence, routeId: segment.snapshot.connection.routeId, resultRef };
+    });
+    return { ...await read(identity, id), boundary: modelSegmentBoundarySchema.parse(result.result) };
+  }
   async function create(identity: SpaceIdentity, value: unknown) {
     owner.assertWritable(); await owner.authorize(identity);
     const input = modelSegmentInputSchema.parse(value), scope = modelScopeOf(identity), hash = digest({ scope, input });
@@ -94,6 +114,8 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     if (options?.applicationSchema) compileOutputSchema(options.applicationSchema);
     const snapshot = await owner.snapshot(identity, input.source);
     if (forcedName && snapshot.connection.capabilityEvidence?.limitations.includes('thinking-forced-tool-unsupported') && !options?.capabilityProbe) throw new StorageError('unavailable');
+    if (options?.responseFormat?.kind === 'json-schema' && options.responseFormat.strict
+      && snapshot.connection.capabilities.strictSchema !== 'verified' && !options.capabilityProbe) throw new StorageError('unavailable');
     for (const capability of options?.requiredCapabilities ?? []) {
       const supported = capability === 'applicationSchema' || capability === 'text' && snapshot.connection.capabilities.text === 'verified'
         || capability === 'images' && snapshot.connection.capabilities.images === 'verified'
@@ -113,9 +135,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     }
     for (const portable of input.portable) {
       if (!portable.resultRef) continue;
-      const { rows: [row] } = await storage.read('SELECT body FROM model_attempts WHERE scope=$1 AND body->>\'resultRef\'=$2', [scope, portable.resultRef]);
-      if (!row || modelAttemptSchema.parse(row.body).state !== 'completed') throw new StorageError('forbidden');
-      await storage.readResource(portable.resultRef);
+      await owner.readPortable(identity, portable.resultRef);
     }
     const { retain: _retain, ...fixed } = snapshot;
     const body: Segment = { segmentId: input.segmentId, sequence: 0, formatVersion: 1, prefix: input.prefix, portable: input.portable,
@@ -125,7 +145,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
       if (input.previousSegmentId) {
         const { rows: [row] } = await tx.query('SELECT body FROM model_segments WHERE id=$1 AND scope=$2 FOR UPDATE', [input.previousSegmentId, scope]);
         const old = row!.body as Segment;
-        if (old.closed || old.pendingAttemptId) throw new StorageError('conflict');
+        if (old.pendingAttemptId) throw new StorageError('conflict');
         if (old.headAttemptId) {
           const { rows: [fact] } = await tx.query('SELECT body FROM model_attempts WHERE id=$1', [old.headAttemptId]);
           const last = modelAttemptSchema.parse(fact!.body);
@@ -225,5 +245,5 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
     }
     await images.validate();
   }
-  return { create, read, settle, prepare, publish, validate };
+  return { create, read, settle, close, prepare, publish, validate };
 }

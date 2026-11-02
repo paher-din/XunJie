@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomUUID, randomBytes, createHash } from 'node:crypto';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -178,6 +178,19 @@ test('image validation rejects invalid pixels before dispatch and transformed im
   });
 });
 
+test('a persisted prefix digest follows fixed UTF16 ordering for non-ASCII schema properties', { timeout: 180000 }, async () => {
+  await product((_request, response) => response.end(), async ({ api, source, runtime }) => {
+    const input = { requestId: randomUUID(), segmentId: randomUUID(), source, prefix: { system: '前缀', tools: [
+      { name: 'probe', description: '', inputSchema: { type: 'object', properties: { a: { type: 'string' }, z: { type: 'string' }, ä: { type: 'string' } } } },
+    ] }, portable: [] };
+    const canonical = '{"system":"前缀","tools":[{"description":"","inputSchema":{"properties":{"a":{"type":"string"},"z":{"type":"string"},"ä":{"type":"string"}},"type":"object"},"name":"probe"}]}';
+    const created = await api('segments', input); assert.equal(created.status, 200);
+    assert.equal(created.value.prefixDigest, createHash('sha256').update(canonical).digest('hex'));
+    await runtime.stop(); await runtime.start();
+    assert.equal((await api('segments/' + input.segmentId)).value.prefixDigest, created.value.prefixDigest);
+  });
+});
+
 test('Command Code reasoning fields and indexed text details replay unchanged after restart', { timeout: 180000 }, async () => {
   const received = [];
   await product(async (request, response) => {
@@ -274,6 +287,9 @@ test('explicit JSON mode and application validation keep their own outcomes and 
     const rejected = await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source, prefix: { system: '', tools: [],
       options: { requiredCapabilities: ['nativeStrict'] } }, portable: [] });
     assert.equal(rejected.status, 503); assert.equal(received.length, 3);
+    const explicitStrict = await api('segments', { requestId: randomUUID(), segmentId: randomUUID(), source, prefix: { system: '', tools: [],
+      options: { responseFormat: { kind: 'json-schema', name: 'unsupported_strict', schema: { type: 'object' }, strict: true } } }, portable: [] });
+    assert.equal(explicitStrict.status, 503, 'an explicit strict requirement cannot silently become application-only validation');
   });
 });
 

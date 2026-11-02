@@ -15,7 +15,8 @@ import type { createLearningData } from '@xunjie/learning-space';
 import { routeModels } from '@xunjie/learning-space';
 import type { createModelGateway } from '@xunjie/learning-space';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
-import { modelSelectionSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema } from '@xunjie/contracts/model-connections';
+import { modelSelectionSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema,
+  modelPortableResultSchema, modelSegmentBoundarySchema, modelSegmentProvenanceSchema } from '@xunjie/contracts/model-connections';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { acquireLock, atomicJson, exists, readJson } from './io.js';
@@ -96,17 +97,56 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const identity = await modelAccess(connection), models = local?.models;
     if (!models) return call(connection, route, body, true);
     const personal = await local?.personal?.();
-    const localCall = () => routeModels(models, identity, route, body, personal);
+    const localCall = (input = body) => routeModels(models, identity, route, input, personal);
     const remoteCall = (input = body) => call(connection, route, input, true);
     type Binding = Awaited<ReturnType<typeof models.routing.bind>>;
+    async function portableResult(resultRef: string) {
+      try { return { ...await models!.results.read(identity, resultRef), destination: 'local' as const }; }
+      catch (error) { if (!(error instanceof StorageError) || error.code !== 'missing') throw error; }
+      return { ...modelPortableResultSchema.parse(await call(connection, 'models/results/' + resultRef, undefined, true)), destination: 'school' as const };
+    }
+    async function portableSegment(input: z.infer<typeof modelSegmentInputSchema>, binding: Binding) {
+      let provenance = binding.provenance;
+      if (!provenance) {
+        const results = [];
+        for (const item of input.portable) if (item.resultRef) {
+          const { text: _text, ...reference } = await portableResult(item.resultRef); results.push(reference);
+        }
+        let boundary;
+        if (input.previousSegmentId) {
+          const old = await models!.routing.read(identity, 'segment', input.previousSegmentId);
+          if (!old) throw new StorageError('missing');
+          if (old.destination !== binding.destination) {
+            const view = old.destination === 'local' ? await models!.segments.read(identity, input.previousSegmentId)
+              : z.object({ sequence: z.number().int().nonnegative() }).parse(await call(connection, 'models/segments/' + input.previousSegmentId, undefined, true));
+            const close = { requestId: input.requestId, expectedSequence: view.sequence };
+            const closed = old.destination === 'local' ? await models!.segments.close(identity, input.previousSegmentId, close)
+              : z.object({ boundary: modelSegmentBoundarySchema }).parse(await call(connection, 'models/segments/' + input.previousSegmentId + '/close', close, true));
+            boundary = { ...closed.boundary, destination: old.destination };
+          }
+        }
+        provenance = modelSegmentProvenanceSchema.parse({ ...(boundary ? { boundary } : {}), results });
+        await models!.routing.provenance(identity, input.segmentId, provenance);
+      }
+      const forwarded = { ...input, portable: input.portable.map(item => provenance!.results.some(reference => reference.resultRef === item.resultRef && reference.destination !== binding.destination)
+        ? { text: item.text } : item) };
+      if (provenance.boundary && provenance.boundary.destination !== binding.destination) delete forwarded.previousSegmentId;
+      return { provenance, input: forwarded };
+    }
     async function routeBound(kind: 'attempt' | 'segment' | 'image', id: string, input: unknown,
       choose: () => Promise<Omit<Binding, 'fingerprint'>>) {
       const fingerprint = createHash('sha256').update(JSON.stringify(input)).digest('hex');
       let binding = await models!.routing.read(identity, kind, id);
       if (binding && binding.fingerprint !== fingerprint) throw new StorageError('identity-conflict');
       binding ??= await models!.routing.bind(identity, kind, id, { ...await choose(), fingerprint });
-      return binding.destination === 'local' ? localCall() : remoteCall(binding.schoolSource
-        ? { ...(input as Record<string, unknown>), source: binding.schoolSource } : input);
+      const portable = kind === 'segment' ? await portableSegment(modelSegmentInputSchema.parse(input), binding) : null;
+      const forwarded = portable?.input ?? input;
+      const result = await (binding.destination === 'local' ? localCall(forwarded) : remoteCall(binding.schoolSource
+        ? { ...(forwarded as Record<string, unknown>), source: binding.schoolSource } : forwarded));
+      return portable ? { ...(result as Record<string, unknown>), provenance: portable.provenance } : result;
+    }
+    if (/^models\/results\/[^/]+$/.test(route) && body === undefined) {
+      const { destination: _destination, ...result } = await portableResult(route.split('/')[2]!); return result;
     }
     if (route === 'models/checks' && body === undefined) {
       const remote = z.array(modelAttemptSchema).parse(await remoteCall());
@@ -118,10 +158,11 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       if (!binding) throw new StorageError('missing');
       return binding.destination === 'local' ? localCall() : remoteCall();
     }
-    if (/^models\/segments\/[^/]+(?:\/tool-results)?$/.test(route)) {
+    if (/^models\/segments\/[^/]+(?:\/(?:tool-results|close))?$/.test(route)) {
       const binding = await models.routing.read(identity, 'segment', route.split('/')[2]!);
       if (!binding) throw new StorageError('missing');
-      return binding.destination === 'local' ? localCall() : remoteCall();
+      const result = await (binding.destination === 'local' ? localCall() : remoteCall());
+      return binding.provenance ? { ...(result as Record<string, unknown>), provenance: binding.provenance } : result;
     }
     if (route === 'models/calls' && body !== undefined) {
       const input = modelChatInputSchema.parse(body);
@@ -288,7 +329,7 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
       `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?` +
-      `|models/(?:selection|connections|images|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/tool-results)?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)|connections/revoke)$`).test(route)) {
+      `|models/(?:selection|connections|images|results/${id}|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/(?:tool-results|close))?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);

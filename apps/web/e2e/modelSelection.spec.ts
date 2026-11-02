@@ -93,6 +93,8 @@ test('installed client exposes the device connection to the actual school subjec
   await expect(personal.getByText('当前选用', { exact: true })).toBeVisible()
   await expect(choices.getByText('图片：尚未验证', { exact: false }).first()).toBeVisible()
   await page.emulateMedia({ colorScheme: 'dark' }); await page.setViewportSize({ width: 720, height: 900 })
+  await expect.poll(() => page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running'
+    && animation.effect?.getComputedTiming().iterations !== Infinity).length)).toBe(0)
   await page.screenshot({ path: join(output, 'after-device-model-selection-dark-narrow.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('button', { name: '个人空间', exact: true }).click()
@@ -122,4 +124,22 @@ test('a late school selection receipt cannot replace a new personal-space view o
     await page.keyboard.press('Escape')
     await expect(page.getByRole('button', { name: '添加供应商', exact: true })).toBeFocused()
   } finally { release(); await page.unroute('**/api/learning/models/selection') }
+})
+
+test('a confirmed selection conflict can be reloaded and retried without refreshing the page', async ({ page }) => {
+  await page.goto(deviceEndpoint + '/?settings=models&space=' + encodeURIComponent(connectionKey))
+  const choices = page.getByRole('region', { name: '当前空间模型', exact: true })
+  await expect(choices.locator('.st-provider').filter({ hasText: '学校默认服务' }).getByText('当前选用', { exact: true })).toBeVisible()
+  const headers = { 'x-xj-space': connectionKey }
+  const current = await (await page.request.get(deviceEndpoint + '/api/learning/models/selection', { headers })).json()
+  const advanced = await page.request.post(deviceEndpoint + '/api/learning/models/selection', { headers,
+    data: { requestId: randomUUID(), expectedVersion: current.version, source: { kind: 'school', connectionId: current.selected.connection.connectionId } } })
+  expect(advanced.status()).toBe(200)
+  const personal = choices.locator('.st-provider').filter({ hasText: '本机一次配置的连接' })
+  await personal.getByRole('button', { name: '选用', exact: true }).click()
+  await expect(choices.getByRole('alert')).toContainText('选用记录已变化')
+  await choices.getByRole('button', { name: '重新读取选用', exact: true }).click()
+  await expect(choices.getByRole('alert')).toHaveCount(0)
+  await personal.getByRole('button', { name: '选用', exact: true }).click()
+  await expect(personal.getByText('当前选用', { exact: true })).toBeVisible()
 })

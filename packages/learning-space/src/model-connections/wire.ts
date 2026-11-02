@@ -15,9 +15,11 @@ export async function routeModels(models: Awaited<ReturnType<typeof createModelG
   if (/^models\/grants\/[^/]+\/revoke$/.test(route) && body !== undefined) return models.selection.revoke(identity, route.split('/')[2]!, body);
   if (route === 'models/connections') return body === undefined ? models.list(identity) : models.save(identity, body);
   if (route === 'models/images' && body !== undefined) return models.images.upload(identity, body);
+  if (/^models\/results\/[^/]+$/.test(route) && body === undefined) return models.results.read(identity, route.split('/')[2]!);
   if (route === 'models/segments' && body !== undefined) return models.segments.create(identity, body);
   if (/^models\/segments\/[^/]+$/.test(route) && body === undefined) return models.segments.read(identity, route.split('/')[2]!);
   if (/^models\/segments\/[^/]+\/tool-results$/.test(route) && body !== undefined) return models.segments.settle(identity, route.split('/')[2]!, body);
+  if (/^models\/segments\/[^/]+\/close$/.test(route) && body !== undefined) return models.segments.close(identity, route.split('/')[2]!, body);
   if (route === 'models/calls' && body !== undefined) return models.checks.receive(identity, modelChatInputSchema.parse(body));
   if (route === 'models/checks') return body === undefined ? (await models.checks.list(identity)).filter(item => item.purpose === 'connection-check')
     : models.checks.receive(identity, modelCheckInputSchema.parse(body));
