@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +34,7 @@ async function product(run) {
       assert.equal(response.status, 200);
       return { identity: created.value, headers: { cookie: response.headers.get('set-cookie').split(';')[0], 'x-xj-space': 'school' } };
     };
-    await run({ api, admin, member, runtime });
+    await run({ api, admin, member, runtime, root });
   } finally { await runtime.stop(); }
 }
 const configuration = () => ({ requestId: randomUUID(), connectionId: randomUUID(), expectedVersion: 0, name: '学校文本模型',
@@ -59,6 +61,19 @@ test('the supported school management entry owns a masked default with durable l
     assert.equal((await api('manage/model-default', { ...input, requestId: randomUUID(), name: '过期管理写入' }, admin)).status, 409);
     await runtime.stop(); await runtime.start();
     assert.deepEqual((await api('models/selection', undefined, alice.headers)).value, selected.value);
+  });
+});
+
+test('the supported school-model CLI applies private input and prints only a masked school default', { timeout: 180000 }, async () => {
+  await product(async ({ api, member, root }) => {
+    const input = configuration(), alice = await member('cli-model-alice');
+    const privateFile = join(root, 'school-model-input.json');
+    await writeFile(privateFile, JSON.stringify(input), { mode: 0o600 });
+    const { stdout, stderr } = await promisify(execFile)(process.execPath, [fileURLToPath(new URL('../../local-runtime/dist/cli.js', import.meta.url)),
+      'school-model', '--root', root, '--file', privateFile], { windowsHide: true, timeout: 30000 });
+    assert.equal((stdout + stderr).includes(input.credential.value), false);
+    const result = JSON.parse(stdout); assert.equal(result.kind, 'school'); assert.equal(result.connection.hasCredential, true);
+    assert.equal((await api('models/selection', undefined, alice.headers)).value.selected.connection.connectionId, input.connectionId);
   });
 });
 

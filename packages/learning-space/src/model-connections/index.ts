@@ -4,12 +4,14 @@ import { StorageError } from '@xunjie/storage';
 import type { SpaceIdentity } from '@xunjie/contracts/spaces';
 import { modelConfigurationSchema, modelConnectionSchema, saveModelConnectionSchema, schoolModelInputSchema, schoolModelSchema } from '@xunjie/contracts/model-connections';
 import type { ModelConfiguration, ModelConnection, ModelCheckPolicy } from '@xunjie/contracts/model-connections';
+import type { z } from 'zod';
 import { sealCredential, openCredential } from './vault.js';
 import { createChecks, checkMigrations, type CheckSnapshot } from './checks.js';
 import type { ModelCheckInput, ModelAttempt } from '@xunjie/contracts/model-connections';
 import { createModelSelections, selectionMigrations } from './selection.js';
 import { createModelImages } from './images.js';
 import { createChatWork, chatWorkMigrations } from './chat-work.js';
+import { createModelRouting, modelRoutingMigrations } from './routing.js';
 
 export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'personal-model-connections', sql: `
   CREATE TABLE model_vault (id text PRIMARY KEY,resource_id uuid NOT NULL);
@@ -22,12 +24,13 @@ export const modelMigrations: readonly Migration[] = [{ version: 1, name: 'perso
   ALTER TABLE model_credentials ADD COLUMN temporary boolean NOT NULL DEFAULT false;
 ` }, { version: 4, name: 'school-model-default', sql: `
   CREATE UNIQUE INDEX model_school_default ON model_connections(scope) WHERE scope LIKE 'school:%';
-` }, ...selectionMigrations, ...chatWorkMigrations];
+` }, ...selectionMigrations, ...chatWorkMigrations, ...modelRoutingMigrations];
 type StoredConnection = { configuration: ModelConfiguration; version: number; routeId: string; credentialRef: string | null; policy?: ModelCheckPolicy };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const scopeOf = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId].join('.');
 const targetOf = (configuration: ModelConfiguration) => JSON.stringify([configuration.protocol, configuration.baseUrl, configuration.path]);
 export interface ModelGatewayOptions { authorize(identity: SpaceIdentity): Promise<void>;
+  schoolDefault?(identity: SpaceIdentity): Promise<z.infer<typeof schoolModelSchema> | null>;
   dispatcher?: { id: string; hasEnded(id: string): Promise<boolean> } }
 
 /** Independently owned PostgreSQL schema/resources; no activity, Run or legacy Session is required. */
@@ -98,6 +101,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   const schoolScope = (spaceId: string) => 'school:' + storage.owner.environmentId + ':' + spaceId;
   async function schoolDefault(identity: SpaceIdentity) {
     if (identity.kind !== 'school') return null;
+    if (identity.environmentId !== storage.owner.environmentId) return options.schoolDefault ? options.schoolDefault(identity) : null;
     const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1', [schoolScope(identity.spaceId)]);
     if (!row) return null;
     const stored = row.body as StoredConnection;
@@ -126,6 +130,16 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
   }
   async function snapshot(identity: SpaceIdentity, source: ModelCheckInput['source']): Promise<CheckSnapshot> {
     await options.authorize(identity);
+    if ('school' in source) {
+      const current = await schoolDefault(identity);
+      if (!current || current.connection.connectionId !== source.school.connectionId || current.connection.version !== source.school.version) throw new StorageError('conflict');
+      const { rows: [row] } = await storage.read('SELECT body FROM model_connections WHERE scope=$1 AND id=$2', [schoolScope(identity.spaceId), source.school.connectionId]);
+      if (!row) throw new StorageError('unavailable');
+      const stored = row.body as StoredConnection;
+      if (!stored.configuration.enabled || !stored.credentialRef || !stored.policy?.checksAllowed || projection(stored).adapterState !== 'ready') throw new StorageError('unavailable');
+      return { connection: projection(stored), credentialRef: stored.credentialRef, policy: stored.policy,
+        source: { kind: 'school', ownerScope: schoolScope(identity.spaceId), feeSource: schoolScope(identity.spaceId) } };
+    }
     if ('selected' in source) {
       const chosen = await selection.snapshot(identity, source.selectionVersion);
       if (!chosen.choice.policy.checksAllowed) throw new StorageError('unavailable');
@@ -187,6 +201,7 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
       }
   }
   const images = createModelImages(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
+  const routing = createModelRouting(storage, options.authorize, () => { if (writesClosed) throw new StorageError('maintenance'); });
   const segments = createChatWork(storage, images, { authorize: options.authorize, snapshot, assertDispatch,
     assertWritable() { if (writesClosed) throw new StorageError('maintenance'); } });
   const checks = createChecks(storage, {
@@ -213,8 +228,9 @@ export async function createModelGateway(storage: OwnedStorage, options: ModelGa
     }
     await checks.validate();
     await segments.validate();
+    await routing.validate();
   }
-  return { list, save, school, selection, images, segments, validate, checks,
+  return { list, save, school, selection, images, segments, routing, validate, checks,
     closeWrites() { writesClosed = true; checks.closeAdmission(); checks.closeDispatch(); },
     resume() { writesClosed = false; checks.resume(); } };
 }

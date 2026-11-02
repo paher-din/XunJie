@@ -12,6 +12,10 @@ import { courseBindingStateSchema } from '@xunjie/contracts/courses';
 import type { SpaceAuthority, LearningTarget } from '@xunjie/contracts/spaces';
 import type { CourseBindingAuthority } from '@xunjie/contracts/courses';
 import type { createLearningData } from '@xunjie/learning-space';
+import { routeModels } from '@xunjie/learning-space';
+import type { createModelGateway } from '@xunjie/learning-space';
+import type { SpaceIdentity } from '@xunjie/contracts/spaces';
+import { modelSelectionSchema, modelAttemptSchema, schoolModelSchema, modelCheckInputSchema, modelSegmentInputSchema, modelChatInputSchema, modelImageInputSchema } from '@xunjie/contracts/model-connections';
 import { storageErrorCodes } from '@xunjie/contracts/storage';
 import type { RuntimeEnvironment } from '@xunjie/contracts/product-runtime';
 import { acquireLock, atomicJson, exists, readJson } from './io.js';
@@ -30,6 +34,8 @@ type Connection = z.infer<typeof connectionSchema>;
 export function createSchoolClient(root: string, environment: RuntimeEnvironment, local?: {
   target: LearningTarget;
   create(authority: SpaceAuthority, courses: CourseBindingAuthority): ReturnType<typeof createLearningData>;
+  models?: Awaited<ReturnType<typeof createModelGateway>> | undefined;
+  personal?(): Promise<SpaceIdentity>;
 }) {
   const ref = (id: string) => `school-client-${z.uuid().parse(id)}`;
   const path = (id: string) => join(root, 'credentials', ref(id));
@@ -62,6 +68,89 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
       throw new StorageError(code);
     }
     return response.json() as Promise<unknown>;
+  }
+  const subject = (identity: SpaceIdentity) => [identity.environmentId, identity.spaceId, identity.principalId, identity.kind].join('.');
+  async function modelAccess(connection: Connection) {
+    if (!connection.grant) throw new StorageError('forbidden');
+    const value = z.object({ identity: spaceIdentitySchema, target: learningTargetSchema }).strict().parse(await call(connection, 'access', undefined, true));
+    if (subject(value.identity) !== subject(connection.grant.identity)
+      || JSON.stringify(value.target) !== JSON.stringify(connection.grant.target)) throw new StorageError('forbidden');
+    return value.identity;
+  }
+  async function identityConnection(identity: SpaceIdentity) {
+    for (const item of await list()) {
+      if (subject(item.identity) !== subject(identity)) continue;
+      const connection = await read(item.key.slice('school:'.length));
+      await modelAccess(connection); return connection;
+    }
+    throw new StorageError('forbidden');
+  }
+  async function authorizeModel(identity: SpaceIdentity) { await identityConnection(identity); }
+  async function schoolModel(identity: SpaceIdentity) {
+    const connection = await identityConnection(identity);
+    const selection = modelSelectionSchema.parse(await call(connection, 'models/selection', undefined, true));
+    const school = selection.options.find(item => item.kind === 'school');
+    return school ? schoolModelSchema.parse(school) : null;
+  }
+  async function modelForward(connection: Connection, route: string, body?: unknown) {
+    const identity = await modelAccess(connection), models = local?.models;
+    if (!models) return call(connection, route, body, true);
+    const personal = await local?.personal?.();
+    const localCall = () => routeModels(models, identity, route, body, personal);
+    const remoteCall = (input = body) => call(connection, route, input, true);
+    type Binding = Awaited<ReturnType<typeof models.routing.bind>>;
+    async function routeBound(kind: 'attempt' | 'segment' | 'image', id: string, input: unknown,
+      choose: () => Promise<Omit<Binding, 'fingerprint'>>) {
+      const fingerprint = createHash('sha256').update(JSON.stringify(input)).digest('hex');
+      let binding = await models!.routing.read(identity, kind, id);
+      if (binding && binding.fingerprint !== fingerprint) throw new StorageError('identity-conflict');
+      binding ??= await models!.routing.bind(identity, kind, id, { ...await choose(), fingerprint });
+      return binding.destination === 'local' ? localCall() : remoteCall(binding.schoolSource
+        ? { ...(input as Record<string, unknown>), source: binding.schoolSource } : input);
+    }
+    if (route === 'models/checks' && body === undefined) {
+      const remote = z.array(modelAttemptSchema).parse(await remoteCall());
+      const own = (await models.checks.list(identity)).filter(item => item.purpose === 'connection-check');
+      return [...own, ...remote].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50);
+    }
+    if (/^models\/(?:checks|calls)\/[^/]+(?:\/(?:dispatch|cancel))?$/.test(route)) {
+      const binding = await models.routing.read(identity, 'attempt', route.split('/')[2]!);
+      if (!binding) throw new StorageError('missing');
+      return binding.destination === 'local' ? localCall() : remoteCall();
+    }
+    if (/^models\/segments\/[^/]+(?:\/tool-results)?$/.test(route)) {
+      const binding = await models.routing.read(identity, 'segment', route.split('/')[2]!);
+      if (!binding) throw new StorageError('missing');
+      return binding.destination === 'local' ? localCall() : remoteCall();
+    }
+    if (route === 'models/calls' && body !== undefined) {
+      const input = modelChatInputSchema.parse(body);
+      return routeBound('attempt', input.attemptId, input, async () => {
+        const segment = await models.routing.read(identity, 'segment', input.segmentId);
+        if (!segment) throw new StorageError('missing'); return { destination: segment.destination };
+      });
+    }
+    if ((route === 'models/checks' || route === 'models/segments') && body !== undefined) {
+      const input = route === 'models/checks' ? modelCheckInputSchema.parse(body) : modelSegmentInputSchema.parse(body);
+      return routeBound('attemptId' in input ? 'attempt' : 'segment', 'attemptId' in input ? input.attemptId : input.segmentId, input, async () => {
+        if ('school' in input.source) return { destination: 'school', schoolSource: input.source };
+        if ('selected' in input.source) {
+          const selected = modelSelectionSchema.parse(await models.selection.read(identity, personal));
+          if (selected.version !== input.source.selectionVersion) throw new StorageError('conflict');
+          if (selected.selected?.kind === 'school') return { destination: 'school', schoolSource: { school: {
+            connectionId: selected.selected.connection.connectionId, version: selected.selected.connection.version } } };
+        }
+        return { destination: 'local' };
+      });
+    }
+    if (route === 'models/images') {
+      const input = modelImageInputSchema.parse(body);
+      return routeBound('image', input.imageId, input, async () => {
+        const selected = modelSelectionSchema.parse(await models.selection.read(identity, personal));
+        return { destination: selected.selected?.kind === 'school' ? 'school' : 'local' };
+      });
+    }
+    return localCall();
   }
   const view = (connection: Connection) => ({ connectionId: connection.requestId,
     requestId: connection.requestId, schoolEndpoint: connection.schoolEndpoint,
@@ -198,13 +287,15 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     const id = '[0-9a-f-]{36}';
     if (!new RegExp(`^(?:activities(?:/${id})?|activity-status|receipts/${id}|courses|releases/${id}` +
       `|releases/${id}/materials/${id}|course-activities|course-activity-results/${id}|workspaces/${id}(?:/(?:receipts|contents)/${id})?` +
-      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?|connections/revoke)$`).test(route)) {
+      `|drafts/${id}(?:/(?:receipts|revisions)/${id})?|intents/${id}(?:/capabilities|/${id}(?:/(?:dispatch|cancel))?)?` +
+      `|models/(?:selection|connections|images|grants(?:/${id}/revoke)?|segments(?:/${id}(?:/tool-results)?)?|checks(?:/${id}(?:/(?:dispatch|cancel))?)?|calls(?:/${id}(?:/(?:dispatch|cancel))?)?)|connections/revoke)$`).test(route)) {
       throw new StorageError('forbidden');
     }
     const connection = await read(connectionId);
     if (!connection.grant) throw new StorageError('forbidden');
     if (expectedSubject && expectedSubject !== [connection.grant.identity.environmentId, connection.grant.identity.spaceId,
       connection.grant.identity.principalId].join('.')) throw new StorageError('forbidden');
+    if (route.startsWith('models/')) return modelForward(connection, route, body);
     if (connection.localBinding && /^(activities|activity-status|receipts|course-activities|course-activity-results|workspaces|drafts|intents)(\/|$)/.test(route)) {
       if (!local) throw new StorageError('unavailable');
       return localForward(connection, route, body);
@@ -267,5 +358,5 @@ export function createSchoolClient(root: string, environment: RuntimeEnvironment
     if (route.startsWith('receipts/')) return value === null ? null : check(value);
     return value;
   }
-  return { list, start, complete, configureLocal, forward };
+  return { list, start, complete, configureLocal, forward, authorizeModel, schoolModel };
 }

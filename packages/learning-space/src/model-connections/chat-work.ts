@@ -34,7 +34,7 @@ export function createChatWork(storage: OwnedStorage, images: ReturnType<typeof 
   async function stored(identity: SpaceIdentity, id: string) {
     await owner.authorize(identity);
     const { rows: [row] } = await storage.read('SELECT body FROM model_segments WHERE id=$1 AND scope=$2', [id, modelScopeOf(identity)]);
-    if (!row) throw new StorageError('forbidden'); return row.body as Segment;
+    if (!row) throw new StorageError('missing'); return row.body as Segment;
   }
   async function attempt(identity: SpaceIdentity, id: string) {
     const { rows: [row] } = await storage.read('SELECT body FROM model_attempts WHERE id=$1 AND scope=$2', [id, modelScopeOf(identity)]);

@@ -48,6 +48,7 @@ export type ModelCheckPolicy = z.infer<typeof modelCheckPolicySchema>;
 
 export const modelCheckInputSchema = z.object({ attemptId: z.uuid(), purpose: z.literal('connection-check'),
   source: z.union([
+    z.object({ school: z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict() }).strict(),
     z.object({ selected: z.literal(true), selectionVersion: z.number().int().nonnegative() }).strict(),
     z.object({ connectionId: z.uuid(), version: z.number().int().positive() }).strict(),
     z.object({ draft: modelConfigurationSchema, credential: modelCredentialChangeSchema,

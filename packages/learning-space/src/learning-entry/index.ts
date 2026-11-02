@@ -7,7 +7,7 @@ import type { createSpaces } from '../spaces/index.js';
 import type { createLearningData } from '../learning-data/index.js';
 import type { createCourses } from '../courses/index.js';
 import type { createModelGateway } from '../model-connections/index.js';
-import { modelGrantInputSchema, modelCheckInputSchema, modelChatInputSchema } from '@xunjie/contracts/model-connections';
+import { routeModels } from '../model-connections/wire.js';
 export { createSpaces, spaceMigrations } from '../spaces/index.js';
 export { createCourses, courseMigrations, spaceCourseMigrations } from '../courses/index.js';
 export { createLearningData, learningMigrations, validateLearningData } from '../learning-data/index.js';
@@ -92,7 +92,7 @@ export function createLearningEntry(options: {
         const expected = request.headers['x-xj-expected-subject'];
         if (expected !== undefined && typeof expected !== 'string') throw new StorageError('forbidden');
         result = await options.client.forward(remote.slice(7), route, method === 'POST' ? await readLearningBody(request,
-          route.startsWith('intents/') ? 16000000 : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
+          route === 'models/images' ? 360000 : route.startsWith('intents/') ? 16000000 : route.startsWith('workspaces/') || route.startsWith('drafts/') ? 8000000 : 65536) : undefined, expected);
       } else if (route === 'client/start' && method === 'POST' && options.client) {
         result = await options.client.start(z.object({ requestId: z.uuid(), schoolEndpoint: z.url() }).strict().parse(await readLearningBody(request)));
       } else if (route === 'client/complete' && method === 'POST' && options.client) {
@@ -115,7 +115,10 @@ export function createLearningEntry(options: {
         result = { profile: environment.profile, clientNamespace: environment.clientNamespace,
           identities: [...identities, ...await options.client?.list() ?? []] };
       } else if (!spaces || !learning || !options.target) throw new StorageError('forbidden');
-      else if (route === 'login' && method === 'POST') {
+      else if (route === 'access' && method === 'GET') {
+        const identity = await current(request);
+        result = { identity, target: await spaces.resolveBinding(identity) };
+      } else if (route === 'login' && method === 'POST') {
         const input = z.object({ loginName: z.string(), password: z.string() }).strict().parse(await readLearningBody(request));
         const login = await spaces.login(input.loginName, input.password);
         response.setHeader('set-cookie', `${cookieName}=${login.token}${cookieFlags}; Max-Age=28800`);
@@ -188,31 +191,10 @@ export function createLearningEntry(options: {
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==
           [identity.environmentId, identity.spaceId, identity.principalId].join('.')) throw new StorageError('forbidden');
         if (!options.models) throw new StorageError('unavailable');
-        if (route === 'models/selection' && method === 'GET') result = await options.models.selection.read(identity,
+        if (method !== 'GET' && method !== 'POST') throw new StorageError('missing');
+        result = await routeModels(options.models, identity, route, method === 'POST'
+          ? await readLearningBody(request, route === 'models/images' ? 360000 : 65536) : undefined,
           environment.profile === 'local' ? await spaces.personal() : undefined);
-        else if (route === 'models/selection' && method === 'POST') result = await options.models.selection.save(identity, await readLearningBody(request));
-        else if (route === 'models/grants' && method === 'POST') {
-          const input = modelGrantInputSchema.parse(await readLearningBody(request));
-          if (input.owner === 'device' && environment.profile !== 'local') throw new StorageError('forbidden');
-          result = await options.models.selection.createGrant(identity, input.owner === 'device' ? await spaces.personal() : identity, input);
-        }
-        else if (/^models\/grants\/[^/]+\/revoke$/.test(route) && method === 'POST') result = await options.models.selection.revoke(identity, route.split('/')[2]!, await readLearningBody(request));
-        else if (route === 'models/connections' && method === 'GET') result = await options.models.list(identity);
-        else if (route === 'models/connections' && method === 'POST') result = await options.models.save(identity, await readLearningBody(request));
-        else if (route === 'models/images' && method === 'POST') result = await options.models.images.upload(identity, await readLearningBody(request, 360000));
-        else if (route === 'models/segments' && method === 'POST') result = await options.models.segments.create(identity, await readLearningBody(request));
-        else if (/^models\/segments\/[^/]+$/.test(route) && method === 'GET') result = await options.models.segments.read(identity, route.split('/')[2]!);
-        else if (/^models\/segments\/[^/]+\/tool-results$/.test(route) && method === 'POST') result = await options.models.segments.settle(identity, route.split('/')[2]!, await readLearningBody(request));
-        else if (route === 'models/calls' && method === 'POST') result = await options.models.checks.receive(identity, modelChatInputSchema.parse(await readLearningBody(request)));
-        else if (/^models\/calls\/[^/]+$/.test(route) && method === 'GET') result = await options.models.checks.read(identity, route.split('/')[2]!);
-        else if (/^models\/calls\/[^/]+\/dispatch$/.test(route) && method === 'POST') result = await options.models.checks.dispatch(identity, route.split('/')[2]!);
-        else if (/^models\/calls\/[^/]+\/cancel$/.test(route) && method === 'POST') result = await options.models.checks.cancel(identity, route.split('/')[2]!);
-        else if (route === 'models/checks' && method === 'POST') result = await options.models.checks.receive(identity, modelCheckInputSchema.parse(await readLearningBody(request)));
-        else if (route === 'models/checks' && method === 'GET') result = await options.models.checks.list(identity);
-        else if (/^models\/checks\/[^/]+$/.test(route) && method === 'GET') result = await options.models.checks.read(identity, route.split('/')[2]!);
-        else if (/^models\/checks\/[^/]+\/dispatch$/.test(route) && method === 'POST') result = await options.models.checks.dispatch(identity, route.split('/')[2]!);
-        else if (/^models\/checks\/[^/]+\/cancel$/.test(route) && method === 'POST') result = await options.models.checks.cancel(identity, route.split('/')[2]!);
-        else throw new StorageError('missing');
       } else if (route.startsWith('intents/')) {
         const identity = await current(request);
         if (request.headers['x-xj-expected-subject'] && request.headers['x-xj-expected-subject'] !==

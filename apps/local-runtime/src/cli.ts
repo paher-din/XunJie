@@ -41,6 +41,7 @@ const commands: Record<string, readonly string[]> = {
   'school-member': ['file', 'resources'],
   'school-membership': ['file', 'resources'],
   'school-connection': ['file', 'resources'],
+  'school-model': ['file', 'resources'],
   'learning-binding': ['file', 'resources'],
   'course-import': ['file', 'resources'],
   'course-access': ['file', 'resources'],
@@ -374,6 +375,18 @@ async function main(): Promise<void> {
         body: JSON.stringify(input),
       });
       if (!response.ok) throw new Error(`学校成员操作未完成（${response.status}），请核对输入及当前授权`);
+      output(await response.json()); break;
+    }
+    case 'school-model': {
+      const input = await jsonFile(required('file'), '学校默认模型');
+      if (typeof input.credential === 'object' && input.credential !== null && 'value' in input.credential
+        && typeof input.credential.value === 'string') rememberSecret(input.credential.value);
+      const status = await run(() => runtime.status());
+      if (!status.endpoint || !['ready', 'degraded'].includes(status.state)) throw new Error('请先启动本学校产品环境');
+      const response = await fetch(new URL('/api/learning/manage/model-default', status.endpoint), { method: 'POST', redirect: 'error',
+        signal: AbortSignal.timeout(15000), headers: { 'content-type': 'application/json',
+          authorization: `Bearer ${rememberSecret(await resolveCredential(root, 'control'))}` }, body: JSON.stringify(input) });
+      if (!response.ok) throw new Error(`学校模型操作未完成（${response.status}），请核对配置版本、检查许可和限额`);
       output(await response.json()); break;
     }
     case 'course-import': {

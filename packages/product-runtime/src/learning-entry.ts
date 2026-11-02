@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { createFileBackend, openStorage, provisionStorage } from '@xunjie/storage';
+import { StorageError } from '@xunjie/storage';
 import type { OwnedStorage, StorageBinding, DatabaseConnection } from '@xunjie/storage';
 import { createSpaces, spaceMigrations, createLearningData, learningMigrations, createLearningEntry, validateLearningData,
   createCourses, spaceCourseMigrations, createLearningAuthority } from '@xunjie/learning-space';
@@ -75,7 +76,13 @@ export async function createProductLearningApplication(context: {
       && (await readJson<{ phase: string }>(join(root, 'recovery-state.json'))).phase !== 'active';
     const model = deferModel ? undefined : await owner('model-connection', modelMigrations);
     const spaces = createSpaces(space.storage, { credentialNamespace: environment.installationId });
-    const models = model ? await createModelGateway(model.storage, { authorize: spaces.authorize, dispatcher: {
+    const models = model ? await createModelGateway(model.storage, {
+      async authorize(identity) {
+        if (identity.environmentId === environment.environmentId) return spaces.authorize(identity);
+        if (!client || identity.kind !== 'school') throw new StorageError('forbidden');
+        await client.authorizeModel(identity);
+      },
+      async schoolDefault(identity) { return client ? client.schoolModel(identity) : null; }, dispatcher: {
       id: JSON.stringify([hostname(), process.pid, await processIdentity(process.pid)]),
       async hasEnded(id) {
         const [host, pid, birth] = JSON.parse(id) as [string, number, string];
@@ -107,7 +114,8 @@ export async function createProductLearningApplication(context: {
     }
     const localTarget = { ...data.storage.owner, version: 1 as const };
     const schoolClient = environment.profile === 'school' ? undefined : createSchoolClient(root, environment, {
-      target: localTarget, create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions) });
+      target: localTarget, create: (authority, courseAuthority) => createLearningData(data.storage, authority, courseAuthority, actions),
+      models, personal: spaces.personal });
     return { owners, capabilities: { 'learning.authority': createLearningAuthority(spaces, courses) }, handle: createLearningEntry({ environment, spaces, learning, courses, ...(models ? { models } : {}), client: schoolClient,
       target: { ...data.storage.owner, version: 1 }, administratorToken: await resolveCredential(root, 'control') }) };
   } catch (error) { await Promise.allSettled(opened.map(storage => storage.close())); throw error; }
