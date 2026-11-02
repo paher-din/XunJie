@@ -64,7 +64,7 @@ test('fixed images and multi-tool reasoning survive persistence and restart into
         { index: 0, id: 'tool-marker', type: 'function', function: { name: 'read_marker', arguments: '{"nonce"' } }] }, finish_reason: null }] });
       send({ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { arguments: ' : "A"}' } }, { index: 1, function: { arguments: '}' } }] }, finish_reason: 'tool_calls' }] });
       send({ choices: [], usage: { prompt_tokens: 7, completion_tokens: 4, total_tokens: 11 } });
-    } else send({ id: 'final-result', choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: '', content: 'nonce-X' }, finish_reason: 'stop' }] });
+    } else send({ id: 'final-result', choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: received.length === 3 ? null : '', content: 'nonce-X' }, finish_reason: 'stop' }] });
     response.end('data: [DONE]\n\n');
   }, async ({ api, source, finish, runtime }) => {
     const uploaded = await api('images', { requestId: randomUUID(), imageId: randomUUID(), mediaType: 'image/png', dataBase64: png });
@@ -104,6 +104,11 @@ test('fixed images and multi-tool reasoning survive persistence and restart into
       input: { text: '再次续接', images: [], toolResults: [] }, limits: { maxOutputTokens: 512, timeoutMs: 10000 } });
     assert.equal(third.state, 'completed');
     assert.equal(received[2].messages.filter(message => message.role === 'assistant')[1].reasoning_content, '');
+    await runtime.stop(); await runtime.start();
+    const fourth = await finish({ attemptId: randomUUID(), purpose: 'chat-probe', segmentId, expectedSequence: 3,
+      input: { text: '保留合法 null', images: [], toolResults: [] }, limits: { maxOutputTokens: 512, timeoutMs: 10000 } });
+    assert.equal(fourth.state, 'completed');
+    assert.equal(received[3].messages.filter(message => message.role === 'assistant')[2].reasoning_content, null);
   });
 });
 
