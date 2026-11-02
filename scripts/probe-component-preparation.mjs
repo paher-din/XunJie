@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir, release } from 'node:os';
@@ -7,7 +8,7 @@ import { chromium, expect } from '@playwright/test';
 import { openProductRuntime, resolveCredential } from '@xunjie/product-runtime';
 import { annotationPackage, preparedAnnotationPackage, selfTestMaterial } from '../components/material-annotation/package.mjs';
 
-const output = resolve('.verification/wp03-171');
+const output = resolve(process.env.XUNJIE_PREPARATION_REPORT_DIR ?? '.verification/wp03-171');
 const webRoot = resolve(process.env.XUNJIE_PRODUCT_WEB_ROOT ?? 'apps/web/dist-runtime');
 async function artifactDigest(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -23,7 +24,13 @@ const root = await mkdtemp(join(tmpdir(), 'xj-preparation-'));
 const postgresBin = process.env.XUNJIE_PRODUCT_POSTGRES_BIN;
 if (!postgresBin) throw new Error('Native PostgreSQL required');
 const report = { platform: process.platform, arch: process.arch, os: release(), root, cases: [], status: 'running',
-  browser: 'Google Chrome', node: process.version, mac: 'not-run', teachingOutcome: 'not-evaluated' };
+  browser: 'Google Chrome', node: process.version, mac: process.platform === 'darwin' && process.arch === 'arm64' ? 'running' : 'not-run',
+  sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+  sourceDirty: !!execFileSync('git', ['status', '--porcelain', '--', 'apps/web/src/component-host', 'apps/web/src/component-preparation',
+    'scripts/probe-component-preparation.mjs'], { encoding: 'utf8' }).trim(),
+  preparationSourceSha256: await artifactDigest(resolve('apps/web/src/component-preparation')),
+  hostSourceSha256: createHash('sha256').update(await readFile(resolve('apps/web/src/component-host/ComponentView.tsx'))).digest('hex'),
+  teachingOutcome: 'not-evaluated' };
 const runtime = openProductRuntime({ root, resources: { nodePath: process.execPath, nodeVersion: '24.21.0', postgresBin,
   postgresVersion: '18.6', webRoot, windowsPrerequisitePath: resolve('scripts/windows-prereq-prepare.ps1') } });
 let browser;
@@ -50,6 +57,7 @@ const preparationFacts = page => page.evaluate(() => new Promise((resolveFacts, 
     tx.oncomplete = () => {
       const pick = value => ({ preparationId: value.preparationId, status: value.status, stage: value.stage, reason: value.reason,
         environmentId: value.environmentId, cacheHit: value.cacheHit, resourceBytes: value.resourceBytes,
+        durationMs: value.durationMs,
         reportSubmitted: value.reportSubmitted, diagnostics: value.diagnostics.map(item => `${item.stage}/${item.reason}: ${item.detail}`),
         checks: value.checks.map(item => ({ checkId: item.checkId, verification: item.verification, reason: item.reason })),
         capabilities: Object.fromEntries(value.capabilities.map(item => [item.capability, item.availability])) });
@@ -150,7 +158,8 @@ try {
   assert.equal(dependencyFetches.length, 1, 'the dependency came from the registered owner over the production route');
   assert.equal(views.length, 2, 'one isolated self-test instance plus the production instance');
   report.cold = { dependencyFetches: dependencyFetches.length, viewLoads: views.length,
-    resourceBytes: cold.preparations[0].resourceBytes, environmentId: cold.environments[0].environmentId };
+    resourceBytes: cold.preparations[0].resourceBytes, durationMs: cold.preparations[0].durationMs,
+    environmentId: cold.environments[0].environmentId };
   passed('cold preparation fetched, digest-verified, self-tested in an isolated instance and activated one environment');
 
   // ---- the self-test wrote no student work ----
@@ -221,12 +230,125 @@ try {
   assert.equal(reports[0].preview, false);
   assert.equal(reports[0].definitionDigest, preparedDefinition.digest);
   assert.equal(reports[0].device.browser, 'chrome');
-  assert.equal(reports[0].device.preparationImplementationVersion, 1);
+  assert.equal(reports[0].device.preparationImplementationVersion, 2);
   assert.ok(reports[0].device.features.includes('indexeddb'));
   assert.match(reports[0].memoryNote, /未测量浏览器进程内存/);
   report.report = { browserVersion: reports[0].device.browserVersion, platform: reports[0].device.platform,
     durationMs: reports[0].durationMs, resourceBytes: reports[0].resourceBytes };
   passed('the preparation report reached PostgreSQL over the production route and names the real device, not a claim for others');
+
+  // Missing and corrupt cache bytes must be repaired on the original identity without losing student notes.
+  for (const corrupt of [false, true]) {
+    await page.evaluate(corrupt => new Promise((resolve, reject) => {
+      const request = indexedDB.open('xunjie-component-preparation-v1', 1);
+      request.onsuccess = () => {
+        const db = request.result, tx = db.transaction('resources', 'readwrite'), store = tx.objectStore('resources');
+        const all = store.getAll();
+        all.onsuccess = () => { for (const item of all.result) {
+          if (corrupt) { item.bytes = new Uint8Array(item.byteLength); store.put(item); }
+          else store.delete(item.sha256);
+        } };
+        tx.oncomplete = () => { db.close(); resolve(); }; tx.onabort = () => reject(tx.error);
+      };
+      request.onerror = () => reject(request.error);
+    }), corrupt);
+    await page.reload();
+    await page.getByRole('tab', { name: '材料标注', exact: true }).click();
+    await expect(frame.getByRole('textbox', { name: '标注内容', exact: true })).toHaveValue('先确认观察，再讨论解释。', { timeout: 30000 });
+    await expect.poll(() => frame.locator('body').evaluate(() => typeof window.Mark)).toBe('function');
+    assert.equal((await preparationFacts(page)).preparations[0].preparationId, cold.preparations[0].preparationId);
+  }
+  passed('missing and corrupt warm-cache bytes were reacquired under the original identity and kept confirmed annotations');
+
+  // Two cold tabs of the same browser race at the actual persistent identity boundary.
+  const parallelContext = await browser.newContext();
+  await parallelContext.request.post(endpoint + '/api/learning/login', { data: { loginName, password } });
+  const parallel = await Promise.all([openActivity(preparedReleaseId, parallelContext), openActivity(preparedReleaseId, parallelContext)]);
+  await Promise.all(parallel.map(async ({ page }) => {
+    await page.getByRole('tab', { name: '材料标注', exact: true }).click();
+    await expect(page.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled({ timeout: 30000 });
+  }));
+  const parallelFacts = await preparationFacts(parallel[0].page);
+  assert.equal(parallelFacts.preparations.length, 1);
+  assert.equal(parallelFacts.environments.length, 1);
+  await parallelContext.close();
+  passed('simultaneous cold tabs shared one durable preparation identity and one environment');
+
+  // A real /view response is held before iframe load; the declared self-test budget still expires.
+  const timeoutImport = { requestId: randomUUID(), ...await preparedAnnotationPackage() };
+  timeoutImport.manifest.version = 3;
+  timeoutImport.manifest.entry.resourceId = randomUUID();
+  timeoutImport.manifest.budget.selfTestTimeoutMs = 1000;
+  timeoutImport.manifest.dependencies[0].resourceId = randomUUID();
+  timeoutImport.dependencies[0].resourceId = timeoutImport.manifest.dependencies[0].resourceId;
+  const timeoutDefinition = await api('manage/component-import', timeoutImport, admin);
+  const timeoutRelease = randomUUID(), timeoutCourse = importCourse(timeoutRelease);
+  timeoutCourse.release.components = [{ key: 'annotation', definition: timeoutDefinition, configuration: { title: '材料标注' }, materialIds: [materialId] }];
+  await api('manage/course-import', timeoutCourse, admin);
+  const timeoutContext = await browser.newContext();
+  await timeoutContext.request.post(endpoint + '/api/learning/login', { data: { loginName, password } });
+  const timed = await openActivity(timeoutRelease, timeoutContext);
+  await timed.page.route('**/components/annotation/view?**', () => {});
+  await timed.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(timed.page.locator('.component-view [role="alert"]')).toContainText('自检被中断', { timeout: 15000 });
+  const timedFacts = await preparationFacts(timed.page);
+  assert.equal(timedFacts.environments.length, 0);
+  assert.equal(await timed.page.locator('iframe[title$="准备自检"]').count(), 0);
+  await timed.page.unroute('**/components/annotation/view?**');
+  await timed.page.getByRole('button', { name: '按原准备身份继续' }).click();
+  await expect(timed.page.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled({ timeout: 15000 });
+  assert.equal((await preparationFacts(timed.page)).preparations[0].preparationId, timedFacts.preparations[0].preparationId);
+  await timeoutContext.close();
+  passed('stalled self-test iframe load timed out, retired the frame and resumed with its original preparation identity');
+
+  // Inject an actual transport error after the production instance receives the locked bytes.
+  const loadFailureContext = await browser.newContext();
+  await loadFailureContext.request.post(endpoint + '/api/learning/login', { data: { loginName, password } });
+  await loadFailureContext.addInitScript(() => {
+    let production = false;
+    window.addEventListener('message', event => {
+      if (event.data?.method === 'host.initialize') production = event.data.payload?.preparation?.mode === 'production';
+    });
+    const send = MessagePort.prototype.postMessage;
+    MessagePort.prototype.postMessage = function (message, ...args) {
+      if (production && message?.preparationProtocolVersion === 1 && message.replyTo)
+        message = { preparationProtocolVersion: 1, connectionId: message.connectionId, instanceId: message.instanceId,
+          replyTo: message.replyTo, error: { code: 'resource-unavailable' } };
+      return send.call(this, message, ...args);
+    };
+  });
+  const loadFailed = await openActivity(preparedReleaseId, loadFailureContext);
+  await loadFailed.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(loadFailed.page.locator('.component-view-note')).toContainText('原文高亮暂不可用', { timeout: 30000 });
+  await expect(loadFailed.page.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled();
+  await loadFailed.page.screenshot({ path: join(output, 'production-load-failure-light.png'), fullPage: true });
+  await loadFailureContext.close();
+  passed('production dependency delivery error disabled the affected capability visibly while leaving base annotation available');
+
+  const activationContext = await browser.newContext();
+  await activationContext.request.post(endpoint + '/api/learning/login', { data: { loginName, password } });
+  await activationContext.addInitScript(() => {
+    let once = true;
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value, ...args) {
+      if (once && this.name === 'preparations' && value?.stage === 'activate' && value.environmentId) {
+        once = false; this.transaction.abort(); throw new DOMException('Injected activation write failure', 'AbortError');
+      }
+      return put.call(this, value, ...args);
+    };
+  });
+  const activationFailed = await openActivity(preparedReleaseId, activationContext);
+  await activationFailed.page.getByRole('tab', { name: '材料标注', exact: true }).click();
+  await expect(activationFailed.page.locator('.component-view [role="alert"]')).toContainText('浏览器准备存储不可用', { timeout: 30000 });
+  const activationFacts = await preparationFacts(activationFailed.page);
+  assert.equal(activationFacts.environments.length, 0);
+  assert.equal(activationFacts.preparations[0].environmentId, null);
+  assert.equal(await activationFailed.page.locator('iframe[title="材料标注"]').count(), 0);
+  await activationFailed.page.getByRole('button', { name: '按原准备身份继续' }).click();
+  await expect(activationFailed.page.frameLocator('iframe[title="材料标注"]').getByRole('button', { name: '标注选中文字' })).toBeEnabled({ timeout: 30000 });
+  assert.equal((await preparationFacts(activationFailed.page)).preparations[0].preparationId, activationFacts.preparations[0].preparationId);
+  await activationContext.close();
+  passed('aborted activation atomically preserved both preparation and environment facts and allowed retry without mounting prematurely');
 
   // ---- interruption continues under the original preparation identity ----
   // A dedicated context, so this preparation really starts cold and the same browser store sees both halves.
@@ -341,6 +463,7 @@ try {
 } catch (error) {
   report.status = 'failed'; report.error = error instanceof Error ? error.message : String(error); throw error;
 } finally {
+  if (process.platform === 'darwin' && process.arch === 'arm64') report.mac = report.status;
   await browser?.close();
   try { await runtime.stop(); report.cleanup = 'owned product stopped'; } catch (error) { report.cleanup = String(error); }
   await writeFile(join(output, 'preparation-report.json'), JSON.stringify(report, null, 2));

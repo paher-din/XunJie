@@ -38,19 +38,28 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
   const [ready, setReady] = useState(false)
   const [preparation, setPreparation] = useState<PreparationSnapshot | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [retryIssue, setRetryIssue] = useState('')
   // One identity per mounted view: a retry continues the original preparation instead of minting a second one.
   const requestId = useRef(crypto.randomUUID())
   const preparationId = useRef<string | null>(null)
+  const requestScope = useRef('')
   const allowed = useRef(authorized)
   allowed.current = authorized
   const prepared = requiresPreparation(binding)
   useEffect(() => {
     let live = true
     const target = { activity, binding, spaceKey, namespace }
+    const scope = prepared ? componentPreparation.scopeKey(target) : `${namespace}:${activity.activityId}:${binding.key}`
+    if (requestScope.current !== scope) {
+      requestScope.current = scope; requestId.current = crypto.randomUUID(); preparationId.current = null
+      setPreparation(null)
+    }
     const materials: { title: string; text: string }[] = []
     let bridge: ReturnType<typeof createComponentBridge> | undefined
     let port: MessagePort | undefined
     let handshakeTimer: ReturnType<typeof setTimeout> | undefined
+    let dependencyTimer: ReturnType<typeof setTimeout> | undefined
+    let dependencyRequestId: string | undefined
     let dependencies: { dependencyId: string; scriptBase64: string }[] = []
     const unsubscribe = prepared ? componentPreparation.subscribe(componentPreparation.scopeKey(target),
       snapshot => { if (live) setPreparation(snapshot) }) : () => {}
@@ -66,7 +75,14 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
         payload: { binding, theme, materials, readOnly: !allowed.current,
           ...(prepared ? { preparation: { preparationProtocolVersion: 1, mode: 'production' as const } } : {}) } })
     }
-    const retire = () => { bridge?.close(); port?.close(); clearTimeout(handshakeTimer) }
+    const failDependency = () => setPreparation(snapshot => snapshot && { ...snapshot,
+      reason: 'dependency-load-failed', status: 'repairable', capabilities: snapshot.capabilities.map(item => {
+        const manifest = binding.definition.manifest
+        const needsDependency = manifest.formatVersion === 2 && manifest.environment.capabilityDependencies
+          .some(declaration => declaration.capability === item.capability && declaration.dependencyIds.length > 0)
+        return needsDependency ? { ...item, availability: 'unavailable', verification: 'failed', reason: 'dependency-load-failed' } : item
+      }) })
+    const retire = () => { bridge?.close(); port?.close(); clearTimeout(handshakeTimer); clearTimeout(dependencyTimer); dependencyRequestId = undefined }
     loaded.current = () => {
       if (!live || !frame.current?.contentWindow) return
       retire()
@@ -82,9 +98,15 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
         if ((raw as { preparationProtocolVersion?: unknown }).preparationProtocolVersion === 1) {
           // The component reports what the delivered bytes really defined; a failure costs only the gated capability.
           const reply = componentPreparationReplySchema.safeParse(raw)
-          if (reply.success && reply.data.error) setPreparation(snapshot => snapshot && { ...snapshot,
-            diagnostics: [...snapshot.diagnostics, { at: new Date().toISOString(), stage: 'load' as const,
-              reason: 'dependency-load-failed' as const, detail: `组件未能加载依赖：${reply.data.error?.code ?? 'unknown'}` }] })
+          if (!reply.success || reply.data.connectionId !== mount.connectionId || reply.data.instanceId !== mount.instanceId
+            || reply.data.replyTo !== dependencyRequestId) return
+          clearTimeout(dependencyTimer); dependencyRequestId = undefined
+          const observation = reply.data.observation
+          const manifest = binding.definition.manifest
+          if (reply.data.error || observation?.kind !== 'loaded'
+            || !dependencies.every(dependency => observation.loaded.some(item => item.dependencyId === dependency.dependencyId))
+            || (manifest.formatVersion === 2 && !manifest.selfTest.steps.every(step => step.kind !== 'dependency-loads'
+              || step.dependencyIds.every(id => observation.loaded.some(item => item.dependencyId === id && item.globals.includes(step.expect.globalName)))))) failDependency()
           return
         }
         if (typeof (raw as { messageId?: unknown }).messageId !== 'string') return
@@ -96,14 +118,20 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
             // Sent only after the view initialized, so the component never receives bytes before its connection.
             if (dependencies.length) {
               try {
-                channel.port1.postMessage(componentPreparationMessageSchema.parse({
+                dependencyRequestId = crypto.randomUUID()
+                const message = componentPreparationMessageSchema.parse({
                   preparationProtocolVersion: 1, connectionId: mount.connectionId, instanceId: mount.instanceId,
-                  messageId: crypto.randomUUID(), request: { method: 'preparation.load', payload: { dependencies } } }))
+                  messageId: dependencyRequestId, request: { method: 'preparation.load', payload: { dependencies } } })
+                const manifest = binding.definition.manifest
+                if (manifest.formatVersion === 2 && new TextEncoder().encode(JSON.stringify(message)).byteLength > manifest.budget.messageBytes)
+                  throw new Error('budget-exceeded')
+                channel.port1.postMessage(message)
+                dependencyTimer = setTimeout(() => {
+                  if (live && bridge === mount) { dependencyRequestId = undefined; failDependency() }
+                }, manifest.formatVersion === 2 ? manifest.budget.selfTestTimeoutMs : 10000)
               } catch {
                 // Never degrade silently: a delivery that cannot be built is a failed capability, not a passing one.
-                setPreparation(snapshot => snapshot && { ...snapshot, diagnostics: [...snapshot.diagnostics,
-                  { at: new Date().toISOString(), stage: 'load' as const, reason: 'dependency-load-failed' as const,
-                    detail: '准备完成后未能向组件交付依赖消息。' }] })
+                dependencyRequestId = undefined; failDependency()
               }
             }
           }
@@ -143,8 +171,8 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
           const result = attempt > 0 && preparationId.current
             ? await componentPreparation.resume(target, preparationId.current, requestId.current)
             : await componentPreparation.prepare(target, requestId.current)
-          preparationId.current = result.preparationId
           if (!live) return
+          preparationId.current = result.preparationId
           setPreparation(result.snapshot)
           // Without an activated environment nothing mounts: a failed new version never runs in place of the old one.
           if (!result.snapshot.environmentId) return
@@ -167,18 +195,29 @@ export function ComponentView({ activity, binding, spaceKey, namespace, authoriz
   const working = blocked && (preparation.status === 'preparing' || preparation.status === 'unprepared')
   const degraded = prepared && !!preparation?.environmentId
     ? preparation.capabilities.filter(item => item.availability !== 'available') : []
+  const retry = () => {
+    const scope = requestScope.current
+    void workspace.leave().then(() => {
+      if (scope !== requestScope.current) return
+      setRetryIssue(''); setAttempt(value => value + 1)
+    }).catch(() => {
+      if (scope === requestScope.current) setRetryIssue('当前标注尚未受到本机保护，暂不能重新装入组件。请保留当前界面，可复制输入后再继续。')
+    })
+  }
   return <section className="component-view" aria-label={binding.configuration.title}>
+    {retryIssue && <p role="alert" className="learning-error">{retryIssue}</p>}
     {error ? <p role="alert" className="learning-error">{error}</p> : <>
       {working && <p role="status" className="ws-pane-note">
         正在准备{binding.configuration.title}：{stageText[preparation.stage] ?? preparation.stage}…</p>}
       {blocked && !working && <p role="alert" className="learning-error">
         {describe(preparation.reason)}。已有标注仍保留，可在「作品」中读取或导出。
         <span className="component-view-actions">
-          <button type="button" className="ws-btn ghost" onClick={() => setAttempt(value => value + 1)}>按原准备身份继续</button>
+          <button type="button" className="ws-btn ghost" onClick={retry}>按原准备身份继续</button>
         </span>
       </p>}
       {degraded.length > 0 && <p role="status" className="component-view-note">
         {degraded.map(item => `${capabilityText[item.capability] ?? item.capability}暂不可用（${describe(item.reason)}）`).join('；')}。其余已可用能力不受影响。
+        <button type="button" className="ws-btn ghost" onClick={retry}>按原准备身份继续</button>
       </p>}
       {!ready && !blocked && <p role="status" className="ws-pane-note">正在打开{binding.configuration.title}…</p>}
       {document && <iframe ref={frame} onLoad={() => loaded.current()} title={binding.configuration.title} sandbox="allow-scripts" referrerPolicy="no-referrer"

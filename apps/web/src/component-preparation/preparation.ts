@@ -6,7 +6,7 @@ import type { LearningActivity } from '@xunjie/contracts/learning-data'
 import { learningRequest } from '../product/learningTransport'
 import { decodeBase64, detectDevice, encodeBase64, fingerprint, hostVersion, missingFeatures,
   preparationImplementationVersion, sha256, type PreparationDeviceProbe } from './device'
-import { gatedCapabilities, runSelfTest, type SelfTestCheck, type SelfTestInput, type SelfTestOutcome } from './self-test'
+import { gatedCapabilities, runSelfTest, checkGroup, type SelfTestCheck, type SelfTestInput, type SelfTestOutcome } from './self-test'
 import { preparationStore, withPreparationLock, type ActiveEnvironment, type PreparationCheck,
   type PreparationDiagnostic, type PreparationRecord, type PreparationStore } from './store'
 
@@ -35,6 +35,14 @@ export interface PreparationResult { preparationId: string; snapshot: Preparatio
 export interface CapabilityProjection { environmentId: string | null; capabilities: PreparationCapability[] }
 
 const failure = (reason: PreparationReasonCode, message: string = reason) => Object.assign(new Error(message), { reason })
+async function beforeDeadline<T>(task: Promise<T>, deadline: number, reason: PreparationReasonCode = 'resource-missing'): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([task, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(failure(reason, 'preparation-timeout')), Math.max(0, deadline - Date.now()))
+    })])
+  } finally { clearTimeout(timer) }
+}
 
 export function preparedManifest(binding: ComponentBinding): ComponentPreparedManifest {
   if (binding.definition.manifest.formatVersion === 1) throw new Error('unsupported-version')
@@ -85,7 +93,7 @@ function projectCapabilities(manifest: ComponentPreparedManifest, checks: GatedC
     const blocked = declared.map(id => dependencyFailure.get(id)).find((reason): reason is PreparationReasonCode => reason !== undefined)
     if (blocked) return { capability, availability: 'unavailable', reason: blocked, verification: 'failed' }
     const gating = checks.filter(check => check.capabilities.includes(capability))
-    if (!gating.length) return { capability, availability: 'available', reason: 'none', verification: 'verified' }
+    if (!gating.length) return { capability, availability: 'unavailable', reason: 'outcome-unknown', verification: 'unverified' }
     const failed = gating.find(check => check.verification === 'failed')
     if (failed) return { capability, availability: 'unavailable', reason: failed.reason, verification: 'failed' }
     const unfinished = gating.find(check => check.verification !== 'verified')
@@ -119,7 +127,6 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
   const detect = options.device ?? detectDevice
   const lock = options.lock ?? withPreparationLock
   const listeners = new Map<string, Set<(snapshot: PreparationSnapshot) => void>>()
-  const running = new Map<string, Promise<PreparationResult>>()
   /** Verified bytes for this page's lifetime, so a cache write failure still serves the activated environment. */
   const sessionBytes = new Map<string, Uint8Array>()
 
@@ -145,18 +152,21 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
       preparationProtocolVersion: manifest.environment.preparationProtocolVersion, deviceFingerprint })
   }
   async function checkFingerprintOf(target: PreparationTarget, manifest: ComponentPreparedManifest,
-    deviceFingerprint: string, step: ComponentSelfTestStep, capabilities: ComponentCapability[]) {
-    return fingerprint({ preparationImplementationVersion, componentId: manifest.componentId, version: manifest.version,
-      definitionDigest: target.binding.definition.digest, entry: manifest.entry.sha256,
-      selfTestVersion: manifest.selfTest.selfTestVersion, checkId: step.checkId, step, deviceFingerprint,
+    deviceFingerprint: string, step: ComponentSelfTestStep) {
+    const group = checkGroup(manifest, step)
+    const groupCapabilities = group.flatMap(item => gatedCapabilities(manifest, item))
+    return fingerprint({ preparationImplementationVersion, componentId: manifest.componentId,
+      scope: [target.namespace, target.activity.identity], entry: manifest.entry.sha256,
+      selfTestVersion: manifest.selfTest.selfTestVersion, checkId: step.checkId, group,
+      initialState: manifest.initialState, material: manifest.selfTest.material, deviceFingerprint,
       dependencies: manifest.environment.capabilityDependencies
-        .filter(item => capabilities.includes(item.capability))
+        .filter(item => groupCapabilities.includes(item.capability))
         .flatMap(item => item.dependencyIds)
-        .map(id => manifest.dependencies.find(dependency => dependency.dependencyId === id)?.sha256 ?? null) })
+        .map(id => manifest.dependencies.find(dependency => dependency.dependencyId === id)) })
   }
   /** Cached bytes are re-hashed before use: a cache hit does not prove the file survived intact. */
   async function acquire(target: PreparationTarget, record: PreparationRecord,
-    dependency: ComponentPreparedManifest['dependencies'][number], cached: Set<string>) {
+    dependency: ComponentPreparedManifest['dependencies'][number], cached: Set<string>, deadline: number) {
     const stored = await store.readResource(dependency.sha256).catch(() => undefined)
     if (stored && stored.bytes.length === dependency.byteLength && await sha256(stored.bytes) === dependency.sha256) {
       cached.add(dependency.dependencyId)
@@ -164,7 +174,7 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
       return stored.bytes
     }
     if (stored) await store.dropResource(dependency.sha256).catch(() => undefined)
-    const payload = componentDependencyContentSchema.parse(await transport.dependency(target, dependency.dependencyId))
+    const payload = componentDependencyContentSchema.parse(await beforeDeadline(transport.dependency(target, dependency.dependencyId), deadline))
     if (payload.resourceId !== dependency.resourceId || payload.sha256 !== dependency.sha256
       || payload.byteLength !== dependency.byteLength || payload.mediaType !== dependency.mediaType) throw failure('resource-corrupt')
     const bytes = decodeBase64(payload.contentBase64)
@@ -180,21 +190,30 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
 
   async function submitReport(target: PreparationTarget, record: PreparationRecord) {
     const manifest = preparedManifest(target.binding)
-    // The report keeps its identity before the call, so a failed upload continues later without a new one.
-    if (!record.reportId || !record.reportRequestId) {
-      record.reportId = crypto.randomUUID()
-      record.reportRequestId = crypto.randomUUID()
-      await store.write(structuredClone(record)).catch(() => undefined)
-    }
     const report: ComponentPreparationReport = componentPreparationReportSchema.parse({ formatVersion: 1,
       componentId: manifest.componentId, version: manifest.version, definitionDigest: target.binding.definition.digest,
       preparationProtocolVersion: manifest.environment.preparationProtocolVersion,
       selfTestVersion: manifest.selfTest.selfTestVersion, hostVersion, device: record.device,
       status: record.status, reason: record.reason, stage: record.stage, capabilities: record.capabilities,
-      durationMs: record.durationMs, resourceBytes: record.resourceBytes, cacheHit: record.cacheHit, preview: false,
+      durationMs: record.durationMs, resourceBytes: record.resourceBytes, cacheHit: record.cacheHit, preview: target.activity.purpose === 'preview',
       memoryNote: '仅统计准备实际取得的依赖字节数；未测量浏览器进程内存。' })
     try {
-      await transport.submitReport(target, { reportId: record.reportId, requestId: record.reportRequestId, report })
+      // Persist the complete immutable submission before sending. A lost ACK must replay identical bytes,
+      // including cacheHit and timing; a later observation gets a new request only after the old one is settled.
+      if (record.reportPayload && !record.reportSubmitted) {
+        await beforeDeadline(transport.submitReport(target,
+          { reportId: record.reportId, requestId: record.reportRequestId, report: record.reportPayload }), Date.now() + 5000)
+        record.reportSubmitted = true
+        await store.write(structuredClone(record))
+      }
+      if (record.reportPayload && await fingerprint(record.reportPayload) === await fingerprint(report)) return
+      record.reportId = crypto.randomUUID()
+      record.reportRequestId = crypto.randomUUID()
+      record.reportPayload = report
+      record.reportSubmitted = false
+      await store.write(structuredClone(record))
+      await beforeDeadline(transport.submitReport(target,
+        { reportId: record.reportId, requestId: record.reportRequestId, report: record.reportPayload }), Date.now() + 5000)
       record.reportSubmitted = true
     } catch {
       // Upload failure never blocks the verified local capability; the same identity resumes when connected.
@@ -231,7 +250,7 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
       let resourceBytes = 0
       for (const dependency of manifestDependencies(manifest)) {
         try {
-          const bytes = await acquire(target, record, dependency, cached)
+          const bytes = await acquire(target, record, dependency, cached, started + manifest.budget.preparationTimeoutMs)
           acquired.push({ dependencyId: dependency.dependencyId, bytes })
           resourceBytes += bytes.length
         } catch (error) {
@@ -251,14 +270,14 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
       for (const step of manifest.selfTest.steps) {
         const capabilities = gatedCapabilities(manifest, step)
         capabilitiesOf.set(step.checkId, capabilities)
-        fingerprints.set(step.checkId, await checkFingerprintOf(target, manifest, deviceFingerprint, step, capabilities))
+        fingerprints.set(step.checkId, await checkFingerprintOf(target, manifest, deviceFingerprint, step))
       }
       const reusable = await Promise.all(manifest.selfTest.steps.map(async step => {
         const found = await store.readCheck(fingerprints.get(step.checkId)!).catch(() => undefined)
         return found?.verification === 'verified' ? found : undefined
       }))
-      // Declared steps are one ordered sequence over a single temporary state, so reuse is all-or-nothing: a
-      // configuration change hits every cached result, while any code, dependency or device change re-runs all.
+      // Steps sharing capabilities share temporary state. Re-run the affected groups in declared order,
+      // while preserving verified groups that do not depend on the changed input.
       let checks: SelfTestCheck[]
       if (reusable.every(found => found !== undefined)) {
         checks = reusable.map(found => ({ checkId: found!.checkId, verification: found!.verification,
@@ -266,10 +285,15 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
         await commit(record, { stage: 'persist', status: 'preparing' })
       } else {
         await commit(record, { stage: 'self-test', status: 'preparing' })
-        const outcome = await selfTest({ preparationId: record.preparationId, binding: target.binding, manifest,
-          viewUrl: componentViewUrl(target), dependencies: acquired, initialContent: manifest.initialState })
+        const missingIds = new Set(manifest.selfTest.steps.flatMap((step, index) => reusable[index] ? []
+          : checkGroup(manifest, step).map(item => item.checkId)))
+        const deadline = started + manifest.budget.preparationTimeoutMs
+        const outcome = await beforeDeadline(selfTest({ preparationId: record.preparationId, binding: target.binding, manifest,
+          viewUrl: componentViewUrl(target), dependencies: acquired, initialContent: manifest.initialState,
+          checkIds: [...missingIds], deadline }), deadline, 'self-test-interrupted')
         // A dependency that never arrived explains its own gated checks better than a generic mismatch.
-        checks = outcome.checks.map(check => {
+        checks = [...reusable.filter((found): found is NonNullable<typeof found> => !!found)
+          .filter(found => !missingIds.has(found.checkId)), ...outcome.checks].map(check => {
           const blocked = [...dependencyFailure.keys()].find(id => manifest.environment.capabilityDependencies
             .some(item => item.dependencyIds.includes(id) && check.capabilities.includes(item.capability)))
           return blocked && check.verification === 'failed' ? { ...check, reason: dependencyFailure.get(blocked)! } : check
@@ -298,27 +322,21 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
       if (status !== 'ready') diagnose(record, 'self-test', reason, interrupted ? '自检被中断，结果未知，未启用新环境'
         : `检查未全部通过：${checks.filter(check => check.verification !== 'verified').map(check => check.checkId).join('、') || reason}`)
       // Only capabilities whose gating checks were all verified become usable; an interrupted run activates nothing.
-      let environmentId: string | null = null
+      let environment: ActiveEnvironment | undefined
       if (available.length && !interrupted) {
-        const environment: ActiveEnvironment = { scopeKey: record.scopeKey, environmentId: record.environmentId ?? crypto.randomUUID(),
+        environment = { scopeKey: record.scopeKey, environmentId: record.environmentId ?? crypto.randomUUID(),
           preparationId: record.preparationId, componentId: manifest.componentId, version: manifest.version,
           definitionDigest: target.binding.definition.digest, activatedAt: new Date().toISOString() }
-        try {
-          await store.writeEnvironment(environment)
-          environmentId = environment.environmentId
-        } catch {
-          // An unpersisted pointer must not read as durable readiness; the previous environment stays as it was.
-          diagnose(record, 'activate', 'storage-unavailable', '可用环境指针未能持久化，本次不声明就绪。')
-        }
       }
-      const activated = environmentId !== null
-      await commit(record, { stage: activated ? 'activate' : 'self-test',
-        status: activated ? status : status === 'ready' ? 'repairable' : status,
-        reason: activated ? reason : status === 'ready' ? 'storage-unavailable' : reason,
-        environmentId,
+      const completed: PreparationRecord = { ...record, stage: environment ? 'activate' : 'self-test', status, reason,
+        environmentId: environment?.environmentId ?? null,
         checks: checks.map(check => ({ fingerprint: fingerprints.get(check.checkId) ?? '', checkId: check.checkId,
           verification: check.verification, reason: check.reason })),
-        capabilities: projected, durationMs: Date.now() - started })
+        capabilities: projected, durationMs: Date.now() - started, updatedAt: new Date().toISOString() }
+      if (environment) await store.activate(structuredClone(completed), environment)
+      else await store.write(structuredClone(completed))
+      Object.assign(record, completed)
+      publish(record)
       await submitReport(target, record)
       return { preparationId: record.preparationId, snapshot: publish(record) }
     } catch (error) {
@@ -326,7 +344,7 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
       diagnose(record, record.stage, reason, `准备未完成：${(error as Error).message}`)
       // A store failure keeps the diagnostics and the previously active environment; it never claims readiness.
       const capabilities = projectCapabilities(manifest, [], dependencyFailure)
-      try { await commit(record, { status: 'repairable', reason, capabilities, durationMs: Date.now() - started }) }
+      try { await commit(record, { status: 'repairable', reason, capabilities, environmentId: null, durationMs: Date.now() - started }) }
       catch { publish(record) }
       return { preparationId: record.preparationId, snapshot: publish(record) }
     }
@@ -338,7 +356,7 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
     const deviceFingerprint = await fingerprint(device)
     const scopeKey = scopeKeyOf(target)
     const requestDigest = await requestDigestOf(target, deviceFingerprint)
-    const existing = await store.list(scopeKey).catch(() => [])
+    const existing = await store.list(scopeKey)
     // Same scope and same fingerprint reuse the original identity instead of installing or self-testing twice.
     const reused = existing.find(record => record.requestDigest === requestDigest)
     if (reused) return reused
@@ -354,33 +372,30 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
   }
 
   async function start(target: PreparationTarget, requestId: string, expectedPreparationId?: string): Promise<PreparationResult> {
-    const record = await identity(target, requestId)
-    // The same identity with different fixed inputs is refused; the original record stays intact.
-    if (expectedPreparationId && expectedPreparationId !== record.preparationId) throw failure('outcome-unknown', 'identity-conflict')
-    const inFlight = running.get(record.preparationId)
-    if (inFlight) return inFlight
-    const task = lock(record.preparationId, async () => {
-      const persisted = await store.read(record.preparationId).catch(() => undefined)
+    // The stable scope, rather than a newly random ID, protects discovery and allocation across tabs.
+    return lock(scopeKeyOf(target), async () => {
+      const record = await identity(target, requestId)
+      if (expectedPreparationId && expectedPreparationId !== record.preparationId) throw failure('outcome-unknown', 'identity-conflict')
+      const persisted = await store.read(record.preparationId)
       const current = persisted ?? record
       if (persisted && persisted.requestDigest === record.requestDigest && persisted.status === 'ready' && persisted.environmentId) {
-        // A warm open re-reads and re-hashes the bytes it is about to use: a cache hit does not prove they survived.
         const dependencies = manifestDependencies(preparedManifest(target.binding))
         const cached = await Promise.all(dependencies.map(async dependency => {
           const stored = await store.readResource(dependency.sha256).catch(() => undefined)
           return !!stored && stored.bytes.length === dependency.byteLength && await sha256(stored.bytes) === dependency.sha256
         }))
         const cacheHit = dependencies.length > 0 && cached.every(Boolean)
-        if (persisted.cacheHit !== cacheHit) await commit(persisted, { cacheHit }).catch(() => undefined)
-        // A report that never reached the owner is retried under its original identity; local readiness does not wait on it.
+        if (!cacheHit) {
+          await commit(persisted, { status: 'preparing', cacheHit: false })
+          return run(target, persisted)
+        }
+        if (persisted.cacheHit !== cacheHit) await commit(persisted, { cacheHit })
         if (!persisted.reportSubmitted) await submitReport(target, persisted).catch(() => undefined)
         return { preparationId: persisted.preparationId, snapshot: publish(persisted) }
       }
-      current.requestId = requestId
       await commit(current, { stage: current.stage === 'resolve' ? 'identity' : current.stage, status: 'preparing' })
       return run(target, current)
     })
-    running.set(record.preparationId, task)
-    try { return await task } finally { running.delete(record.preparationId) }
   }
 
   async function capabilities(target: PreparationTarget): Promise<CapabilityProjection> {
@@ -389,6 +404,9 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
     if (!environment || environment.definitionDigest !== target.binding.definition.digest)
       return { environmentId: null, capabilities: projectCapabilities(manifest, [], new Map()) }
     const record = await store.read(environment.preparationId).catch(() => undefined)
+    if (!record || record.environmentId !== environment.environmentId || record.stage !== 'activate'
+      || record.deviceFingerprint !== await fingerprint(detect()))
+      return { environmentId: null, capabilities: projectCapabilities(manifest, [], new Map()) }
     return { environmentId: environment.environmentId, capabilities: record?.capabilities ?? projectCapabilities(manifest, [], new Map()) }
   }
 
@@ -397,7 +415,7 @@ export function createComponentPreparation(options: PreparationOptions = {}) {
     prepare: (target: PreparationTarget, requestId: string) => start(target, requestId),
     /** Absent and unknown stay distinct: a missing record is null, an unfinished one reports its own stage. */
     query: async (preparationId: string): Promise<PreparationSnapshot | null> => {
-      const record = await store.read(preparationId).catch(() => undefined)
+      const record = await store.read(preparationId)
       return record ? snapshotOf(record) : null
     },
     /** Re-checks eligibility and fixed inputs, then continues from the first unconfirmed stage under the same identity. */

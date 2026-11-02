@@ -1,7 +1,7 @@
 import type { PreparationDevice } from '@xunjie/contracts/components'
 
 /** Bumped when the preparation implementation changes behaviour; invalidates cached check results. */
-export const preparationImplementationVersion = 1
+export const preparationImplementationVersion = 2
 export const hostVersion = '1'
 
 const probes = {

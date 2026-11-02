@@ -1,4 +1,4 @@
-import type { ComponentCapability, PreparationCapability, PreparationDevice, PreparationReasonCode,
+import type { ComponentCapability, ComponentPreparationReport, PreparationCapability, PreparationDevice, PreparationReasonCode,
   PreparationStage, PreparationStatus, PreparationVerification } from '@xunjie/contracts/components'
 
 /**
@@ -40,6 +40,7 @@ export interface PreparationRecord {
   reportId: string | null
   reportRequestId: string | null
   reportSubmitted: boolean
+  reportPayload?: ComponentPreparationReport
   diagnostics: PreparationDiagnostic[]
   createdAt: string
   updatedAt: string
@@ -77,7 +78,7 @@ export interface PreparationStore {
   writeResource(resource: CachedResource): Promise<void>
   dropResource(digest: string): Promise<void>
   readEnvironment(scopeKey: string): Promise<ActiveEnvironment | undefined>
-  writeEnvironment(environment: ActiveEnvironment): Promise<void>
+  activate(record: PreparationRecord, environment: ActiveEnvironment): Promise<void>
 }
 
 let opening: Promise<IDBDatabase> | undefined
@@ -132,7 +133,14 @@ export const preparationStore: PreparationStore = {
   writeResource: (resource: CachedResource) => transact('resources', 'readwrite', store => store.put(resource)).then(() => undefined),
   dropResource: (digest: string) => transact('resources', 'readwrite', store => store.delete(digest)).then(() => undefined),
   readEnvironment: (scopeKey: string) => transact<ActiveEnvironment | undefined>('environments', 'readonly', store => store.get(scopeKey) as IDBRequest<ActiveEnvironment | undefined>),
-  writeEnvironment: (environment: ActiveEnvironment) => transact('environments', 'readwrite', store => store.put(environment)).then(() => undefined),
+  activate: (record, environment) => open().then(db => new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['preparations', 'environments'], 'readwrite')
+    tx.objectStore('preparations').put(record)
+    tx.objectStore('environments').put(environment)
+    tx.oncomplete = () => resolve()
+    tx.onabort = () => reject(tx.error)
+    tx.onerror = () => { /* onabort owns failure */ }
+  })),
 }
 
 /**

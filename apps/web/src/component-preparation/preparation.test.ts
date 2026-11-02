@@ -64,8 +64,9 @@ function memoryStore(faults: { resource?: boolean; environment?: boolean } = {})
     writeResource: async resource => { if (faults.resource) throw new Error('QuotaExceededError'); resources.set(resource.sha256, structuredClone(resource)) },
     dropResource: async key => { resources.delete(key) },
     readEnvironment: async key => structuredClone(environments.get(key)),
-    writeEnvironment: async environment => {
+    activate: async (record, environment) => {
       if (faults.environment) throw new Error('QuotaExceededError')
+      preparations.set(record.preparationId, structuredClone(record))
       environments.set(environment.scopeKey, structuredClone(environment))
     },
   }
@@ -96,7 +97,8 @@ function memorySelfTest(options: { interrupted?: boolean } = {}) {
     if (options.interrupted) return { interrupted: true, elapsedMs: 1, checks: input.manifest.selfTest.steps.map(step =>
       ({ checkId: step.checkId, verification: 'interrupted' as const, reason: 'self-test-interrupted' as const,
         capabilities: gatedCapabilities(input.manifest, step) })) }
-    return { interrupted: false, elapsedMs: 1, checks: input.manifest.selfTest.steps.map(step => {
+    return { interrupted: false, elapsedMs: 1, checks: input.manifest.selfTest.steps
+      .filter(step => !input.checkIds || input.checkIds.includes(step.checkId)).map(step => {
       const blocked = !input.dependencies.length && gatedCapabilities(input.manifest, step).includes('material.highlight')
       return { checkId: step.checkId, verification: blocked ? 'failed' as const : 'verified' as const,
         reason: blocked ? 'self-test-mismatch' as const : 'none' as const, capabilities: gatedCapabilities(input.manifest, step) }
@@ -108,6 +110,105 @@ const availability = (snapshot: { capabilities: { capability: string; availabili
   Object.fromEntries(snapshot.capabilities.map(item => [item.capability, item.availability]))
 
 describe('component preparation module', () => {
+  it('repairs missing or corrupt warm-cache bytes under the original preparation identity', async () => {
+    const binding = await bindingFor(libraryBytes, 2), target = targetFor(binding), store = memoryStore()
+    const transport = memoryTransport(libraryBytes, { resourceId: libraryResource, sha256: await sha256(libraryBytes) })
+    const create = () => createComponentPreparation({ transport: transport.transport, store: store.store,
+      selfTest: memorySelfTest().selfTest, device: () => device })
+    const original = await create().prepare(target, crypto.randomUUID())
+    for (const corrupt of [false, true]) {
+      store.resources.clear()
+      if (corrupt) store.resources.set(await sha256(libraryBytes), { sha256: await sha256(libraryBytes),
+        bytes: new Uint8Array(libraryBytes.length), byteLength: libraryBytes.length, mediaType: 'text/javascript', storedAt: '' })
+      const reopened = create()
+      const result = await reopened.prepare(target, crypto.randomUUID())
+      expect(result.preparationId).toBe(original.preparationId)
+      expect(await reopened.dependencies(target)).toHaveLength(1)
+    }
+    expect(transport.calls.dependency).toBe(3)
+  })
+
+  it('serializes identity discovery across independent clients before allocating an identity', async () => {
+    const binding = await bindingFor(libraryBytes, 2), target = targetFor(binding), store = memoryStore()
+    const transport = memoryTransport(libraryBytes, { resourceId: libraryResource, sha256: await sha256(libraryBytes) })
+    const tails = new Map<string, Promise<unknown>>()
+    const lock = <T>(key: string, run: () => Promise<T>): Promise<T> => {
+      const next = (tails.get(key) ?? Promise.resolve()).then(run)
+      tails.set(key, next.catch(() => undefined))
+      return next
+    }
+    const create = () => createComponentPreparation({ transport: transport.transport, store: store.store,
+      selfTest: memorySelfTest().selfTest, device: () => device, lock })
+    const results = await Promise.all([create().prepare(target, crypto.randomUUID()), create().prepare(target, crypto.randomUUID())])
+    expect(new Set(results.map(item => item.preparationId)).size).toBe(1)
+    expect(store.preparations.size).toBe(1)
+    expect(store.environments.size).toBe(1)
+    expect(transport.calls.dependency).toBe(1)
+  })
+
+  it('retries the exact frozen report after the owner accepted it but its acknowledgement was lost', async () => {
+    const binding = await bindingFor(libraryBytes, 2), target = targetFor(binding), store = memoryStore()
+    const transport = memoryTransport(libraryBytes, { resourceId: libraryResource, sha256: await sha256(libraryBytes) }).transport
+    const submissions: unknown[] = []
+    transport.submitReport = async (_target, submission) => {
+      submissions.push(structuredClone(submission))
+      if (submissions.length === 1) throw new Error('lost-ack')
+      if ((submission as { requestId: string }).requestId === (submissions[0] as { requestId: string }).requestId)
+        expect(submission).toEqual(submissions[0])
+      return submission
+    }
+    const create = () => createComponentPreparation({ transport, store: store.store, selfTest: memorySelfTest().selfTest, device: () => device })
+    const first = await create().prepare(target, crypto.randomUUID())
+    await create().prepare(target, crypto.randomUUID())
+    expect(submissions).toHaveLength(3)
+    expect(submissions[1]).toEqual(submissions[0])
+    expect(store.preparations.get(first.preparationId)?.reportSubmitted).toBe(true)
+  })
+
+  it('does not report unreadable storage as an absent preparation', async () => {
+    const store = memoryStore()
+    store.store.read = async () => { throw new Error('unreadable-store') }
+    const preparation = createComponentPreparation({ store: store.store })
+    await expect(preparation.query(crypto.randomUUID())).rejects.toThrow('unreadable-store')
+  })
+
+  it('never activates or claims verified capabilities before a durable preparation exists', async () => {
+    const binding = await bindingFor(libraryBytes, 2), store = memoryStore()
+    const preparation = createComponentPreparation({ store: store.store })
+    const projection = await preparation.capabilities(targetFor(binding))
+    expect(projection.environmentId).toBeNull()
+    expect(projection.capabilities.every(item => item.availability === 'unavailable' && item.verification === 'unverified')).toBe(true)
+    store.store.list = async () => { throw new Error('unreadable-identities') }
+    await expect(preparation.prepare(targetFor(binding), crypto.randomUUID())).rejects.toThrow('unreadable-identities')
+    expect(store.preparations.size).toBe(0)
+  })
+
+  it('applies the overall preparation deadline to the self-test as well as dependency downloads', async () => {
+    const binding = await bindingFor(libraryBytes, 2), store = memoryStore()
+    ;(binding.definition.manifest as ComponentPreparedManifest).budget.preparationTimeoutMs = 1000
+    const result = await createComponentPreparation({ store: store.store,
+      transport: memoryTransport(libraryBytes, { resourceId: libraryResource, sha256: await sha256(libraryBytes) }).transport,
+      selfTest: async () => new Promise(() => {}), device: () => device }).prepare(targetFor(binding), crypto.randomUUID())
+    expect(result.snapshot.reason).toBe('self-test-interrupted')
+    expect(result.snapshot.environmentId).toBeNull()
+    expect(store.environments.size).toBe(0)
+  }, 2500)
+
+  it('records preview provenance and bounds a stalled dependency acquisition', async () => {
+    const binding = await bindingFor(libraryBytes, 2), target = targetFor(binding), store = memoryStore()
+    target.activity.purpose = 'preview'
+    const transport = memoryTransport(libraryBytes, { resourceId: libraryResource, sha256: await sha256(libraryBytes) }).transport
+    let preview: boolean | undefined
+    transport.submitReport = async (_target, submission) => { preview = (submission as { report: { preview: boolean } }).report.preview; return {} }
+    transport.dependency = async () => new Promise(() => {})
+    const manifest = binding.definition.manifest as ComponentPreparedManifest
+    manifest.budget.preparationTimeoutMs = 1000
+    const result = await createComponentPreparation({ transport, store: store.store,
+      selfTest: memorySelfTest().selfTest, device: () => device }).prepare(target, crypto.randomUUID())
+    expect(result.snapshot.status).toBe('repairable')
+    expect(result.snapshot.reason).toBe('resource-missing')
+    expect(preview).toBe(true)
+  }, 2500)
   it('prepares cold, then reuses the identity, cached bytes and check results on a warm open', async () => {
     const binding = await bindingFor(libraryBytes, 2)
     const store = memoryStore()
@@ -160,6 +261,7 @@ describe('component preparation module', () => {
       store: store.store, selfTest: changedTest.selfTest, device: () => device }).prepare(targetFor(changed), crypto.randomUUID())
     expect(upgraded.snapshot.status).toBe('ready')
     expect(changedTest.calls.length).toBe(1)
+    expect(changedTest.calls[0]?.checkIds).toEqual(['loads', 'hit'])
     // The previous version keeps its own environment pointer; a new version never rebinds it.
     expect(store.environments.get(scopeKeyOf(targetFor(binding)))?.definitionDigest).toBe(binding.definition.digest)
     expect(store.environments.get(scopeKeyOf(targetFor(changed)))?.definitionDigest).toBe(changed.definition.digest)
@@ -253,9 +355,9 @@ describe('component preparation module', () => {
       selfTest: memorySelfTest().selfTest, device: () => device })
     const second = await reconnected.prepare(target, crypto.randomUUID())
     expect(second.snapshot.status).toBe('ready')
-    expect(online.calls.submitReport).toBe(1)
+    expect(online.calls.submitReport).toBe(2)
     expect(store.preparations.get(first.preparationId)!.reportSubmitted).toBe(true)
-    expect(store.preparations.get(first.preparationId)!.reportRequestId).toBe(stored.reportRequestId)
+    expect(store.preparations.get(first.preparationId)!.reportRequestId).not.toBe(stored.reportRequestId)
   })
 
   it('reports an unsupported device separately from a temporarily unavailable resource', async () => {

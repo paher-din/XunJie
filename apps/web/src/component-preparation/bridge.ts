@@ -1,18 +1,9 @@
 import { z } from 'zod'
 import { acceptsState, componentMessageSchema, componentChangeSchema, componentStateSchema, componentTestInstanceId,
   type ComponentBinding } from '@xunjie/contracts/components'
+import { fingerprint as inputDigest } from './device'
 
 export const preparationStateMediaType = 'application/vnd.xunjie.component-state+json'
-
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical)
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([key, child]) => [key, canonical(child)]))
-  return value
-}
-async function inputDigest(value: unknown) {
-  const bytes = new TextEncoder().encode(JSON.stringify(canonical(value)))
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(item => item.toString(16).padStart(2, '0')).join('')
-}
 
 /**
  * The self-test's only writable surface. It holds temporary state in memory for one preparation instance and

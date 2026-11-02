@@ -25,6 +25,22 @@ export function gatedCapabilities(manifest: ComponentPreparedManifest, step: Com
   return ['workspace.read', 'workspace.change']
 }
 
+/** Transitive groups preserve the ordered state dependencies between checks of the same capabilities. */
+export function checkGroup(manifest: ComponentPreparedManifest, step: ComponentSelfTestStep): ComponentSelfTestStep[] {
+  const capabilities = new Set(gatedCapabilities(manifest, step))
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const candidate of manifest.selfTest.steps) {
+      const related = gatedCapabilities(manifest, candidate)
+      if (!related.some(capability => capabilities.has(capability))) continue
+      for (const capability of related) if (!capabilities.has(capability)) { capabilities.add(capability); changed = true }
+    }
+  }
+  return manifest.selfTest.steps.filter(candidate => candidate.checkId === step.checkId
+    || gatedCapabilities(manifest, candidate).some(capability => capabilities.has(capability)))
+}
+
 function matches(step: ComponentSelfTestStep, observation: unknown): boolean {
   if (typeof observation !== 'object' || observation === null) return false
   const kind = (observation as { kind?: unknown }).kind
@@ -54,6 +70,8 @@ export interface SelfTestInput {
   viewUrl: string
   dependencies: { dependencyId: string; bytes: Uint8Array }[]
   initialContent: unknown
+  checkIds?: string[]
+  deadline?: number
 }
 
 /**
@@ -62,16 +80,20 @@ export interface SelfTestInput {
  */
 export async function runSelfTest(input: SelfTestInput): Promise<SelfTestOutcome> {
   const started = Date.now()
-  const deadline = started + input.manifest.budget.selfTestTimeoutMs
-  const steps = input.manifest.selfTest.steps
+  const deadline = Math.min(started + input.manifest.budget.selfTestTimeoutMs, input.deadline ?? Infinity)
+  const steps = input.manifest.selfTest.steps.filter(step => !input.checkIds || input.checkIds.includes(step.checkId))
   const checks: SelfTestCheck[] = steps.map(step => ({ checkId: step.checkId, verification: 'unverified', reason: 'none',
     capabilities: gatedCapabilities(input.manifest, step) }))
   const bridge = createPreparationBridge(input.preparationId, input.binding, input.initialContent)
   const frame = document.createElement('iframe')
   const channel = new MessageChannel()
-  const pending = new Map<string, { settle(reply: unknown): void; timer: ReturnType<typeof setTimeout> }>()
+  const pending = new Map<string, { settle(reply: unknown): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>()
   let live = true
   let ready: (() => void) | undefined
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined
+  const deadlineSignal = new Promise<never>((_, reject) => {
+    deadlineTimer = setTimeout(() => reject(new Error('self-test-interrupted')), Math.max(0, deadline - Date.now()))
+  })
   const readySignal = new Promise<void>(resolve => { ready = resolve })
   const fail = (reason: PreparationReasonCode) => {
     for (const check of checks) if (check.verification === 'unverified') { check.verification = 'interrupted'; check.reason = reason }
@@ -79,6 +101,7 @@ export async function runSelfTest(input: SelfTestInput): Promise<SelfTestOutcome
   }
   const retire = () => {
     live = false
+    clearTimeout(deadlineTimer)
     bridge.close()
     for (const entry of pending.values()) clearTimeout(entry.timer)
     pending.clear()
@@ -106,11 +129,18 @@ export async function runSelfTest(input: SelfTestInput): Promise<SelfTestOutcome
         const replyTo = (raw as { replyTo: string }).replyTo
         const entry = pending.get(replyTo)
         if (!entry) return
+        const parsed = componentPreparationReplySchema.safeParse(raw)
+        if (parsed.success && (parsed.data.connectionId !== bridge.connectionId || parsed.data.instanceId !== bridge.instanceId)) return
         pending.delete(replyTo)
         clearTimeout(entry.timer)
-        const parsed = componentPreparationReplySchema.safeParse(raw)
-        // A malformed observation is a failed check, not a mismatch against the fixed expectation.
-        entry.settle(parsed.success ? parsed.data : { error: { code: 'invalid-input' } })
+        try {
+          if (new TextEncoder().encode(JSON.stringify(raw)).byteLength > input.manifest.budget.messageBytes) {
+            entry.reject(new Error('self-test-interrupted')); return
+          }
+        } catch { entry.reject(new Error('self-test-interrupted')); return }
+        // Malformed transport data is an unknown observation, not a known negative result.
+        if (!parsed.success) { entry.reject(new Error('self-test-interrupted')); return }
+        entry.settle(parsed.data)
         return
       }
       if ((raw as { hostApiVersion?: unknown }).hostApiVersion !== 1) return
@@ -131,32 +161,49 @@ export async function runSelfTest(input: SelfTestInput): Promise<SelfTestOutcome
     const loaded = new Promise<void>(resolve => { frame.onload = () => resolve() })
     frame.src = input.viewUrl
     document.body.append(frame)
-    await loaded
+    await Promise.race([loaded, deadlineSignal])
     frame.contentWindow?.postMessage(initialize, '*', [channel.port2])
     const send = (request: { method: string; payload: unknown }) => new Promise<unknown>((resolve, reject) => {
       const remaining = deadline - Date.now()
       if (remaining <= 0) { reject(new Error('self-test-interrupted')); return }
       const message = componentPreparationMessageSchema.parse({ preparationProtocolVersion: 1, connectionId: bridge.connectionId,
         instanceId: bridge.instanceId, messageId: crypto.randomUUID(), request })
+      if (new TextEncoder().encode(JSON.stringify(message)).byteLength > input.manifest.budget.messageBytes) {
+        reject(new Error('budget-exceeded')); return
+      }
       const timer = setTimeout(() => { pending.delete(message.messageId); reject(new Error('self-test-interrupted')) }, remaining)
-      pending.set(message.messageId, { settle: resolve, timer })
+      pending.set(message.messageId, { settle: reply => {
+        const error = (reply as { error?: { code: string } }).error
+        if (error && request.method !== 'preparation.step') reject(new Error(error.code))
+        else resolve(reply)
+      }, reject, timer })
       channel.port1.postMessage(message)
     })
     // A handshake timeout must never be mistaken for component.ready: only the view's own message resolves this.
     let handshakeTimer: ReturnType<typeof setTimeout> | undefined
     try {
-      await Promise.race([readySignal, new Promise<never>((_, reject) => {
+      await Promise.race([readySignal, deadlineSignal, new Promise<never>((_, reject) => {
         handshakeTimer = setTimeout(() => reject(new Error('self-test-interrupted')), Math.max(0, deadline - Date.now()))
       })])
     } finally { if (handshakeTimer) clearTimeout(handshakeTimer) }
     if (!live) return fail('self-test-interrupted')
     // A dependency that never arrived is not delivered: the checks it gates then fail on their own evidence.
-    if (input.dependencies.length)
-      await send({ method: 'preparation.load',
-        payload: { dependencies: input.dependencies.map(item => ({ dependencyId: item.dependencyId, scriptBase64: encodeBase64(item.bytes) })) } })
+    if (input.dependencies.length) {
+      try {
+        await send({ method: 'preparation.load',
+          payload: { dependencies: input.dependencies.map(item => ({ dependencyId: item.dependencyId, scriptBase64: encodeBase64(item.bytes) })) } })
+      } catch (error) {
+        if (Date.now() >= deadline) throw error
+        const affected = new Set(input.manifest.environment.capabilityDependencies.filter(item => item.dependencyIds.length).map(item => item.capability))
+        for (const check of checks) if (check.capabilities.some(capability => affected.has(capability))) {
+          check.verification = 'failed'; check.reason = 'dependency-load-failed'
+        }
+      }
+    }
     await send({ method: 'preparation.reset', payload: {} })
     for (const [index, step] of steps.entries()) {
       const check = checks[index]!
+      if (check.verification === 'failed') continue
       const reply = await send({ method: 'preparation.step', payload: { step } }) as { observation?: unknown; error?: { code?: string } }
       if (reply.error) { check.verification = 'failed'; check.reason = 'self-test-failed'; continue }
       if (matches(step, reply.observation)) { check.verification = 'verified'; check.reason = 'none' }
