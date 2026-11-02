@@ -72,16 +72,20 @@ npm run probe:execution          # 需 XUNJIE_PRODUCT_POSTGRES_BIN 指向产品�
 - 接受时要求状态副本已同步到服务端，而工作区上传顺序独立：改为校验命令自带的状态字节。
 - 面板在无结果时也显示输入行数；「已取消」曾被当成失败文案；`83.33333333333333` 曾直接显示。
 - 契约审查后修复：`execution.capabilities` 上报的计划摘要漏了 `operationId`、并发上限写死为 1、运行/排队数写死为 0；执行命令把整个工作区塞进依据（无关保存会改摘要、逼近 4 MB）；停止身份每次新建；查询不校验输入摘要；`executionSync` 分区只写不读；队列上限实际只按“等待数”计，2+4 只排到 4；无 Web Locks 时静默不限并发；控制器内混入表格聚合语义；面板字号/圆角/说明字未走 DESIGN 阶梯。
+- **同一票内接着修掉的两个仓库级缺陷（原登记为“未执行与已知失败”，现已改仓库源码并双平台实测）**：
+  - **Windows 打包 `--outDir` 引号**：`scripts/build.mjs` 新增 `normalizePassthroughArgs`，在 Windows 上剥掉 npm/cmd 重建命令行时加上的引号层；`scripts/package-product.mjs` 新增 `npmCommand`，各平台优先直接执行 `npm-cli.js`（少一层 `cmd.exe` / `npm.cmd` 重引号），Windows 只有拿不到 CLI 时才回退到原来的 env+cmd 写法。在那台 Windows 11（`10.0.26200`、Core Ultra 9 285H、Node 24.21.0、npm 11.19.0）上先复现失败（`package-product: cmd.exe failed (1)`，npm 回显 `--outDir ^"\^"C:\...\.product-Mt5eDM\web\^"^"`），再换修复版重跑同一命令产出 `Unsigned product candidate`、`web/index.html` 187 个文件、sha256 `9980c7ae…`。
+  - **构建锁被 pid 复用卡死**：`scripts/build-cache.mjs` 的 Lamport 锁给票据加心跳（`updatedAt`）、陈旧判定与硬等待超时，并用进程启动标记（Linux `/proc/<pid>/stat`、macOS `ps -o lstart=`、Windows PowerShell `StartTime`）识别 pid 复用；持有者只清理“确定死亡”的票据。默认心跳 15s / 陈旧 120s / 轮询 50ms / 等待上限 10 分钟，可用 `XUNJIE_BUILD_LOCK_*` 覆盖。本机先复现（一张 pid 指向存活系统进程的票据让 `node scripts/build.mjs storage` 20 秒仍无输出，直至被杀），修复后同一场景 1.3 秒完成并清掉该票据。
+  - 两者都有回归：`scripts/build.test.mjs` 19/19（新增 Windows 重引号剥离、pid 复用票据过期、活跃持有者不被误判因而两个进程严格串行、等待超时带诊断），新增 `scripts/package-product.test.mjs` 1/1；`npm run verify` 五组全绿（prepare 4 / build:test 1 / unit 24 / server 78 / tools 45）。证据 `evidence/wp03-build-lock-and-windows-packaging.json`。
 
 ## 未执行与已知失败
 
-- **Windows 侧为完成验收而对实验副本做的两处环境适配（仓库源码未改）**：① `npm 11.19` 默认不执行安装脚本，需在实验机上 `npm install-scripts approve esbuild better-sqlite3`；② `scripts/package-product.mjs` 走 Windows 分支时，`npm/cmd` 会把 `--outDir` 的引号作为路径的一部分交给 Vite（`mkdir 'apps\web\"C:\...\web"'`），只在实验副本的 `scripts/build.mjs` 里剥掉参数外层的引号后打包才成功。**这是仓库打包脚本在 Windows 上的真实缺陷，不在本票写集内，本票未修改它**，需要单独开票修复。
+npm 11.19 默认不执行安装脚本，机器上需 `npm install-scripts approve esbuild better-sqlite3` + `npm rebuild esbuild`（环境准入，不是仓库缺陷）。**原第 ② 项（Windows 打包 `--outDir` 引号）与下面的构建锁缺陷已在同票修复**，见“发现并修复”。
 - **基线前后对照截图**：未重新在基线 `3c90652` 上采集「修改前」。正文 `wp03-169-after-light.png` 是同一活动在 #170 之前的产品 UI（无运行/停止与「计算记录」），仅作参照；本票新增界面的对照图属未执行项。
 - **`tools/xj-dev` 曾报 `LOCKFILE_MISMATCH`**：`repro-e2e.test.mjs`、`repro-restore.test.mjs` 的 `collectCode` 从 `HEAD` 树取 `package-lock.json`，本票新增 `wabt` / `fake-indexeddb` 时尚未提交；提交后两组随 tools 一起通过。
 - **`tools` 组三项曾失败（`integration.test.mjs`、`local-status.test.mjs`、`repro-e2e.test.mjs`）**：它们各自运行 `npm run build --workspace @xunjie/contracts`，而构建脚本每跑一次就会删除自己在 `.cache/xunjie-build/locks/` 的锁票据。本次会话的沙箱对「同一工具调用内的批量删除」有阈值保护，超过阈值后第 N 次删除被拒，构建脚本退出 1，xj-dev 把它报成 `CONTRACT_BUILD_FAILED`。三项单独跑（`node --test`）与整组跑（`node scripts/verify.mjs --group tools --jobs 2`，45/45）都通过；把该阈值调高后完整 `npm run verify` 也全绿。这是执行环境的保护策略与本仓库构建脚本的交互，不是本票改动引入的问题。
-- **构建锁曾被一个残留票据永久卡住**：`.cache/xunjie-build/locks/` 里 32 个被强杀进程留下的 Lamport 票据中，有一个 pid 被系统进程（`contentlinkingd`）复用，脚本的存活检测 `process.kill(pid, 0)` 便一直认为持有者还在，等待循环没有超时，于是 typecheck 空转 9 分钟。清掉这些票据后 `node scripts/build.mjs typecheck` 只要 1.2 秒。锁本身仍在用（无 `--force` 的并发构建会串行化，已实测三个并发 `npm run build --workspace @xunjie/contracts` 一 RUN 两 HIT）。
+- **构建锁曾被一个残留票据永久卡住**（已修复，见“发现并修复”）：`.cache/xunjie-build/locks/` 里 32 个被强杀进程留下的 Lamport 票据中，有一个 pid 被系统进程（`contentlinkingd`）复用，脚本的存活检测 `process.kill(pid, 0)` 便一直认为持有者还在，等待循环没有超时，于是 typecheck 空转 9 分钟。清掉这些票据后 `node scripts/build.mjs typecheck` 只要 1.2 秒。锁本身仍在用（无 `--force` 的并发构建会串行化，已实测三个并发 `npm run build --workspace @xunjie/contracts` 一 RUN 两 HIT）。
 - 仅 `executionSync` 的续传逻辑按“已确认则不重发”实现；未在真实断网-重连中注入验证。
-- 未验证：系统中文输入法候选、Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。
+- 未验证：系统中文输入法候选、Apple Silicon Mac 上的学校网页执行路径、跨机远端执行（属后续子票）、教学效果判断。这四项都不是本票代码的已知缺陷，而是“条件不具备”的验收项，所以登记为未验证而不是缺陷：输入法候选要真人在真实浏览器里切换系统 IME，Playwright 的按键注入不产生系统级候选；跨机远端执行的范围在后续子票（本票只做浏览器本地执行 + 学校端转发结果），单机两平台验收不能代替；断网-重连可用 CDP 离线模拟补做探针，但本次未做，故不声称已验证。
 
 ## 保留消费者
 
