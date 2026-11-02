@@ -109,10 +109,10 @@ Mac 正式入口与窄桌面深色：
 | `https://api.deepseek.com/v1/chat/completions`，`deepseek-flash`，显式 thinking disabled | completed/stop；final usage 输入 14、输出 1、总计 15、缓存 0 | cancelled/client-abort；本机物理结束；usage 与上游停止/退款未知 |
 | `https://api.commandcode.ai/provider/v1/chat/completions`，`deepseek/deepseek-v4.1-flash`，默认文本参数 | **failed/authentication** | **failed/authentication** |
 
-Command Code 两次都在鉴权阶段关闭，页面与记录都未产生成功结果；同机以 `curl` 复核该地址返回 HTTP 401 `authentication_error`/`UNAUTHORIZED`，提示 API key 已过期、需重新登录或新建 key。因此本机没有该路线的成功证据，不计为通过；换用新的获准 key 后可原样重跑同一夹具补齐。DeepSeek 两条均按原 attemptId 查询到同一 resultRef。
+Command Code 两次都在鉴权阶段关闭，页面与记录都未产生成功结果；同机以 `curl` 复核该地址返回 HTTP 401 `authentication_error`/`UNAUTHORIZED`，提示 API key 已过期、需重新登录或新建 key。因此本机没有该路线的成功证据，不计为通过。负责人 2026-11-02 确认本轮不需要该路线，未再重试；保留失败记录，不勾为通过。DeepSeek 两条均按原 attemptId 查询到同一 resultRef。
 
 ## 审查与未执行项
 
 双轴审查固定基线 `f0979d5`，最终代码 `2b4b87f`：Standards 0 项剩余发现；Spec 0 项剩余发现。已修复临时凭据原子清理、迟到保存/空白 key、跨 delta 密钥脱敏、结果资源核验、维护/本机死进程槽、旧备份接管及并发 COMMIT ACK 窗口；红绿证据保留在本机 `.verification/164/`。
 
-Mac 平台项已在 #178 验完，唯一缺项是 Command Code 真实端点（获准 key 过期，401 拒登），不计为通过。完整跨机部署/恢复/接管待 #168；其他协议、学校默认/跨空间个人授权、Chat 图像/工具由对应后继票扩展。本票没有实现完整学习 Run、真实 Agent/教师接收器，不产生教学效果结论。
+Mac 平台项已在 #178 验完；Command Code 真实端点因获准 key 过期未取得成功证据，负责人确认本轮不需要，仍不计为通过。完整跨机部署/恢复/接管待 #168；其他协议、学校默认/跨空间个人授权、Chat 图像/工具由对应后继票扩展。本票没有实现完整学习 Run、真实 Agent/教师接收器，不产生教学效果结论。

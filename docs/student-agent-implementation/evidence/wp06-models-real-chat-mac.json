@@ -160,5 +160,10 @@
   },
   "status": "partial",
   "note": "Only the DeepSeek leg is evidence of real endpoint behaviour on this machine. The Command Code leg reached the configured endpoint and failed closed as authentication, so it is not counted as passed; a fresh approved key is required to re-run it.",
-  "teachingEffect": "not-evaluated"
+  "teachingEffect": "not-evaluated",
+  "ownerDecision": {
+    "date": "2026-11-02",
+    "decision": "the owner confirmed the Command Code leg is not required for this round",
+    "effect": "the leg stays recorded as failed and is not counted as passed; no further attempts were made on this machine"
+  }
 }
