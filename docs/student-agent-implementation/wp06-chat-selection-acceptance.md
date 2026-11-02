@@ -1,6 +1,8 @@
 # WP06 #165：学校／个人选择与 Chat 原生续接
 
-来源 [#165](https://github.com/paher-din/XunJie/issues/165)；依据[母规范](specs/wp06-model-connections.md)和[实施方案](specs/wp06-selection-chat-continuations.md)。开发基线 `wp06 @ f0c211ad27455063480b28cbfd8c6a33f97eacd4`，分支 `codex/wp06-165`，单独向 `wp06` 提 PR，不合并、不修改 PR #177。Windows 交付验证在本记录中；本票 Mac 验收追加到统一交接 [#178](https://github.com/paher-din/XunJie/issues/178)，完整独立部署/真实跨机接管归 [#168](https://github.com/paher-din/XunJie/issues/168)。
+来源 [#165](https://github.com/paher-din/XunJie/issues/165)；依据[母规范](specs/wp06-model-connections.md)和[实施方案](specs/wp06-selection-chat-continuations.md)。开发基线 `wp06 @ f0c211ad27455063480b28cbfd8c6a33f97eacd4`，继续在同一 `wp06` 分支开发，由已有 [PR #177](https://github.com/paher-din/XunJie/pull/177)（`wp06 → main`）统一承载，保持草稿且不合并。Windows 交付验证在本记录中；本票 Mac 验收追加到统一交接 [#178](https://github.com/paher-din/XunJie/issues/178)，完整独立部署/真实跨机接管归 [#168](https://github.com/paher-din/XunJie/issues/168)。
+
+2026-11-03 更正交付分支：此前误建了 `codex/wp06-165` 和 [PR #180](https://github.com/paher-din/XunJie/pull/180)。#180 已关闭且未合并；#165 的 7 个原提交完整快进到 `wp06`，功能源码、测试和包验证快照不变。本次更正只修订分支与交接记录。
 
 ## 本次行为
 
@@ -75,4 +77,4 @@ Windows 为 Windows 11 x64（内核 `10.0.26200`），Node 24.21.0、PostgreSQL 
 
 审查汇总：Standards 0，Spec 0；两轴均无剩余代码发现。Mac 的平台验收仍未执行，不包含在该静态结论内。
 
-Responses/Messages 属于 #166/#167；完整独立部署、真实跨机和独立持有组件恢复接管属于 #168；本票 Windows 上两个真实产品进程的持有方切换不冒充跨主机验收。本票的具体 Mac 验收统一交接 #178；教学效果未评估。本次单独提交 PR，不合并、不关闭 #165。
+Responses/Messages 属于 #166/#167；完整独立部署、真实跨机和独立持有组件恢复接管属于 #168；本票 Windows 上两个真实产品进程的持有方切换不冒充跨主机验收。本票的具体 Mac 验收统一交接 #178；教学效果未评估。本次提交到同一 `wp06` 分支，不合并 PR、不关闭 #165。

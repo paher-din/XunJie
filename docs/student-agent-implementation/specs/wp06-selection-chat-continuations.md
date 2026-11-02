@@ -1,6 +1,6 @@
 # WP06 #165：学校／个人选择与 Chat 原生续接实施方案
 
-依据 [#165](https://github.com/paher-din/XunJie/issues/165) 与[已批准母规范](wp06-model-connections.md)。起点 `wp06 @ f0c211ad27455063480b28cbfd8c6a33f97eacd4`，开发分支 `codex/wp06-165`；完成后单独向 `wp06` 提 PR，不合并，不改变 PR #177。
+依据 [#165](https://github.com/paher-din/XunJie/issues/165) 与[已批准母规范](wp06-model-connections.md)。起点 `wp06 @ f0c211ad27455063480b28cbfd8c6a33f97eacd4`，继续在同一 `wp06` 分支开发，由已有 [PR #177](https://github.com/paher-din/XunJie/pull/177)（`wp06 → main`）承载，保持草稿且不合并。
 
 ## 范围与实现顺序
 
@@ -8,7 +8,7 @@
 2. 扩展同一 Gateway 的受控一步 Chat 调用：固定图像资源、工具 schema、完整原生助手/工具结果、持久结果读取、续接段及费用快照。继续使用直接 `openai@7.42.0`，禁用 SDK 自动重试；不执行工具、不引入学习聊天或 RunDriver。
 3. 固定前缀/工具集合和路线的段只接收已结清工具的下一步；换路线或前缀必须从获准可移植输入开启新段，保留旧资源和出处。验证 tool identity/完整参数/schema/响应终态后才发布可消费意图。
 4. 在正式模型设置和当前空间位置展示默认/个人来源、选用及实际能力，复用既有外壳、表单、token、焦点与主题。旧 Session/聊天/教师控制器继续隔离。
-5. 真实目标互操作、Windows Chrome、产品包和学校网页、受影响工程/legacy 回归；双轴审查并修复后提交独立 PR。Mac 本票具体待验项在实现落地后登记到统一交接 [#178](https://github.com/paher-din/XunJie/issues/178)。完整跨机部署/接管留 [#168](https://github.com/paher-din/XunJie/issues/168)。
+5. 真实目标互操作、Windows Chrome、产品包和学校网页、受影响工程/legacy 回归；双轴审查并修复后提交并推送到同一 `wp06` 分支。Mac 本票具体待验项在实现落地后登记到统一交接 [#178](https://github.com/paher-din/XunJie/issues/178)。完整跨机部署/接管留 [#168](https://github.com/paher-din/XunJie/issues/168)。
 
 ## 已批准测试边界
 
