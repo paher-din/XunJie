@@ -1,6 +1,6 @@
 # #173 本机有状态实验会话
 
-状态：已实施 Windows 11 x64 本机路径，macOS 与 OS 级强制隔离待验收。实施与验收记录见 [本机有状态实验会话](../wp03-native-sessions.md)。实施基线以远端 wp03 为准，公共执行接线参照 [#170 交付记录](../wp03-execution.md)、[WP03 规范](wp03-course-components-and-execution.md)与[组件准备](wp03-component-preparation.md)。范围以 [#173](https://github.com/paher-din/XunJie/issues/173) 为准。
+状态：Windows 11 x64 与 Apple Silicon macOS 两条本机路径均已实施并通过各自的隔离探针与产品包验收；签名、干净机器与教学效果未验收。实施与验收记录见 [本机有状态实验会话](../wp03-native-sessions.md) 与 [#184 Apple Silicon 验收](../wp03-184-mac-native-isolation.md)。实施基线以远端 wp03 为准，公共执行接线参照 [#170 交付记录](../wp03-execution.md)、[WP03 规范](wp03-course-components-and-execution.md)与[组件准备](wp03-component-preparation.md)。范围以 [#173](https://github.com/paher-din/XunJie/issues/173) 为准。
 
 ## 产品路径
 
@@ -18,7 +18,9 @@ PostgreSQL 所属执行模块持久化命令、待处理事实、原回执、所
 
 ## 原生隔离选型门槛
 
-第一阶段在 Windows 11 x64 与 Apple Silicon macOS 实测产品可携带的固定模拟器和监督器。建议先比较 Windows 受限执行身份与 Job Object 的组合，以及 macOS 产品可分发的沙盒 helper 与受管进程监督组合。候选尚未选定。逐平台证明受控文件目录、禁网、清理后代、时间与内存硬限制、输出封顶和并发/会话准入；任何一项缺少可重复的强制证据，该组合不得接入产品。测试覆盖干净系统、签名/权限要求和独立于开发工具链的安装。选型记录填写 OS 与二进制版本、构建摘要、资源路径、限额和实测结果。
+第一阶段在 Windows 11 x64 与 Apple Silicon macOS 实测产品可携带的固定模拟器和监督器。已选定的组合是：Windows 用受限执行身份（AppContainer）+ Job Object + 原生启动器；macOS 用系统 `sandbox-exec` 加载运行时生成的 Seatbelt profile（`xunjie-native-session-v1`），不依赖签名 `.app` bundle 与 container。逐平台证明受控文件目录、禁网、清理后代、时间与内存硬限制、输出封顶和并发/会话准入；任何一项缺少可重复的强制证据，该组合不得接入产品。测试覆盖干净系统、签名/权限要求和独立于开发工具链的安装。选型记录填写 OS 与二进制版本、构建摘要、资源路径、限额和实测结果。
+
+macOS 的既有边界须随实现一同声明：profile 采用「宽读 + 显式 deny 受保护根 + 具体放行」，只保证 `/Users`、`/Volumes`、`/private/tmp`、`/private/var` 与会话根之外的用户数据不可读写，系统路径仍可读；内存上限由 V8 堆上限与 RSS 看门狗共同约束，不是内核级硬上限。App Sandbox 需要签名 bundle 与 container，在当前未签名分发形态下不可用。
 
 只执行固定发布中受支持的模拟器和结构化输入。进程启动使用最小环境与专属会话目录，限定句柄、可访问文件和网络。执行所有者在失去连接后按已声明的心跳期限停止推进并回收，空闲和最长持续时间均从监督器执行。资格撤销阻断新接受和实际推进，执行所有者仍有清理权限。心跳周期、超时及资源具体值随平台探针结果确定并纳入固定能力声明；无确认的维护动作返回待核实。普通重启保留已确认事实与未知操作，完整检查点和跨所有者接管由后续票交付。
 
@@ -29,4 +31,4 @@ PostgreSQL 所属执行模块持久化命令、待处理事实、原回执、所
 3. 接正式中心工具区。以固定初态 0 的四态累加模拟为候选样例，输入 1、2、2 后观察 1、3、1，另开会话从 0 开始并对同一输入独立核对。跨学生、活动、会话尝试读写均隔离。重开按原引用核对，停止后输入不能推进。
 4. 用两平台实际产品包、桌面 Chrome 和真实资源复验以上路径及预算超限。运行受影响工程检查与浏览器有限作业、可靠动作、编辑回归。若产生大幅 UI 变更，附实际前后截图。交付分别记录工程、产品包与真实运行、Chrome 和教学效果，附版本、限制、原始证据与未执行项。
 
-当前交付为 Windows 11 x64 本机路径实现；Apple Silicon macOS、OS 级强制隔离与跨所有者接管仍未验收。平台选型、产品行为和教学效果分别记录在[实施与验收记录](../wp03-native-sessions.md)。
+当前交付为 Windows 11 x64 与 Apple Silicon macOS 两条本机路径；OS 级强制隔离在两端均有探针证据，签名、干净机器验收与跨所有者接管仍未交付。平台选型、产品行为和教学效果分别记录在[实施与验收记录](../wp03-native-sessions.md)与[#184 Apple Silicon 验收](../wp03-184-mac-native-isolation.md)。

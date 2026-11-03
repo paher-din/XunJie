@@ -17,7 +17,7 @@
 - 停止先发协议停止；未退出时用 Windows `taskkill /T /F` 结束受管子进程树。POSIX 路径使用独立进程组和组信号，但本机未实测。
 - 普通产品重启后旧 `supervisorEpoch` 的未终态会话标为 `unknown`，不新建进程重放；维护停机时先停止并回收会话，已确认观察保留。
 
-**未满足的隔离门槛**：当前没有独立受限执行身份、Job Object 或 OS 级文件/网络沙箱。适配器是产品固定代码，未授予任意程序或网络能力，但这不是设计文档要求的强制隔离证据。macOS 与 OS 级隔离实测仍待完成，本记录不宣称双平台隔离已验收。
+**本票当时的隔离门槛**：当前没有独立受限执行身份、Job Object 或 OS 级文件/网络沙箱。适配器是产品固定代码，未授予任意程序或网络能力，但这不是设计文档要求的强制隔离证据。macOS 与 OS 级隔离实测由后续两票补齐：Windows 侧见本文「Windows 产品接入」，Apple Silicon 侧见 [#184 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md)。
 
 ## 实现与接口
 
@@ -63,8 +63,8 @@ XUNJIE_PRODUCT_POSTGRES_BIN=<产品自带 PostgreSQL bin> XUNJIE_E2E_BROWSER_CHA
 
 ## 未执行与已知限制
 
-- **Apple Silicon macOS**：POSIX 组停止路径已实现但未在 Mac 上运行，双平台验收未完成。
-- **OS 级隔离**：没有受限执行身份、Job Object、文件/网络强制隔离的实测证据；当前只执行产品固定适配器。设计文档的隔离门槛尚未全部满足。
+- **Apple Silicon macOS**：本票交付时 POSIX 组停止路径已实现但未在 Mac 上运行。后续 [#184](wp03-184-mac-native-isolation.md) 已在 Mac17,3 / macOS 27.2 上完成 Seatbelt 隔离、回收、预算与产品包 Chrome 验收。
+- **OS 级隔离（本票范围）**：本票自身没有受限执行身份、Job Object、文件/网络强制隔离的实测证据；两平台的强制隔离证据分别在本文「Windows 产品接入」与 [#184](wp03-184-mac-native-isolation.md)。
 - **排队**：适配器声明 `queuedSessions: 0`；达到并发上限直接拒绝，没有实现排队。
 - **保留与容量**：会话/操作行当前没有按时间或容量的清理策略；只登记了 schema、维护排空与恢复校验，长期容量与保留策略留给维护票。
 - **检查点与恢复**：没有进程内检查点；重启后旧会话只保留已确认观察并标为待核实/终态，不恢复内部状态（#174）。
@@ -135,3 +135,7 @@ python scripts/probe-native-windows-appcontainer.py .tmp/probe-native-windows-ap
 隔离运行时验收通过：Node 24.21.0、真实 PostgreSQL 18.6.1、Windows 11 x64。工程 typecheck 通过，真实原生与 PostgreSQL 回归 4/4，桌面 Chrome 156 headed 1/1。隔离运行时的 Chrome 报告在 `.verification/wp03-173-windows-isolation/browser-report.json`。完整产品包由同一 Chrome 用例通过 `XUNJIE_NATIVE_SESSION_PRODUCT` 选项使用包内 CLI 安装与启动，独立保存证据。
 
 完整 Windows x64 产品包构建通过。打包器核对了锁定的 Node 与 PostgreSQL 上游归档，包内清单记录 helper SHA-256。用包内 CLI 在新测试根目录安装和启动，运行包内 Node 24.21.0、PostgreSQL 18.6.1、隔离启动器与正式 Web，桌面 Chrome 156 headed 1/1。覆盖启动、连续输入 1/2/2、观察 1/3/1、切换与刷新恢复、停止后禁用输入，以及新会话独立从 0 开始。[Chrome 报告](evidence/wp03-173-windows-product-chrome.json)。本轮无 UI 实现变更，浅色、深色和窄桌面复验截图存于 `.verification/wp03-173-windows-product/`。此包为本地验收候选，未发布；Apple Silicon 与教学效果本轮未验收。
+
+### Apple Silicon 收口（#184）
+
+Apple Silicon 侧由 [#184](https://github.com/paher-din/XunJie/issues/184) 补齐，完整记录见 [Apple Silicon 原生会话隔离与产品包验收](wp03-184-mac-native-isolation.md)。摘要：隔离改用系统 `sandbox-exec` 加载运行时生成的 Seatbelt profile（`xunjie-native-session-v1`），不再期望可签名 helper；App Sandbox 因需要签名 bundle 与 container 而被排除。Mac17,3 / macOS 27.2 实测：目录外读写、loopback 与非 loopback 出站、执行非固定二进制、向沙盒外发信号全部返回 `EPERM`，同一接收端接受计数从基线 1 降为 0；监督器被 `SIGKILL` 后 51ms 内回收会话与后代，停止竞争 804ms 确认，外来进程不受影响；内存、输出、空闲、最长时限预算均由真实退出生效。`dist/product-darwin-arm64-wp03-r2` 用包内 CLI 在受限 `PATH` 下安装并自检通过，桌面 Chrome 156 headed 走通 1/2/2 → 1/3/1、重开查询、丢回包与重放、错序 409、停止、崩溃与并发上限 2。签名、干净机器与教学效果仍未验收。
